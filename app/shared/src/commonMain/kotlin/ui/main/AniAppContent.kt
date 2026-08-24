@@ -43,7 +43,6 @@ import androidx.navigation3.runtime.entryProvider
 import androidx.navigation3.runtime.rememberSaveableStateHolderNavEntryDecorator
 import androidx.navigation3.ui.NavDisplay
 import androidx.window.core.layout.WindowSizeClass
-import me.him188.ani.app.shared.Res
 import me.him188.ani.app.data.models.subject.SubjectInfo
 import me.him188.ani.app.domain.mediasource.rss.RssMediaSource
 import me.him188.ani.app.domain.mediasource.web.SelectorMediaSource
@@ -57,6 +56,7 @@ import me.him188.ani.app.navigation.SubjectDetailPlaceholder
 import me.him188.ani.app.navigation.rememberAniBackStack
 import me.him188.ani.app.platform.LocalContext
 import me.him188.ani.app.platform.navigation.LocalBrowserNavigator
+import me.him188.ani.app.shared.Res
 import me.him188.ani.app.ui.adaptive.navigation.AniNavigationSuiteDefaults
 import me.him188.ani.app.ui.cache.CacheManagementScreen
 import me.him188.ani.app.ui.cache.CacheManagementViewModel
@@ -175,10 +175,9 @@ private fun AniAppContentImpl(
     val navMotionScheme by rememberUpdatedState(NavigationMotionScheme.current)
     val emailLoginViewModel = viewModel<EmailLoginViewModel> { EmailLoginViewModel() }
 
-    // 提供给 Modifier.subjectContainerTransform: 条目卡片 -> 条目详情页的 container transform
     SharedTransitionLayout(modifier) {
         CompositionLocalProvider(LocalSharedTransitionScope provides this) {
-            AniNavDisplay(
+            AniAppContentImplNavDisplay(
                 aniNavigator = aniNavigator,
                 backStack = backStack,
                 mainSceneInitialPage = mainSceneInitialPage,
@@ -192,7 +191,7 @@ private fun AniAppContentImpl(
 }
 
 @Composable
-private fun AniNavDisplay(
+private fun AniAppContentImplNavDisplay(
     aniNavigator: AniNavigator,
     backStack: List<NavRoutes>,
     mainSceneInitialPage: MainScreenPage,
@@ -211,13 +210,13 @@ private fun AniNavDisplay(
             rememberViewModelStoreNavEntryDecorator(),
         ),
         transitionSpec = {
-            navMotionScheme.screen.enterTransition togetherWith navMotionScheme.screen.exitTransition
+            navMotionScheme.enterTransition togetherWith navMotionScheme.exitTransition
         },
         popTransitionSpec = {
-            navMotionScheme.screen.popEnterTransition togetherWith navMotionScheme.screen.popExitTransition
+            navMotionScheme.popEnterTransition togetherWith navMotionScheme.popExitTransition
         },
         predictivePopTransitionSpec = {
-            navMotionScheme.screen.popEnterTransition togetherWith navMotionScheme.screen.popExitTransition
+            navMotionScheme.predictiveBack.popEnterTransition togetherWith navMotionScheme.predictiveBack.popExitTransition
         },
         entryProvider = entryProvider {
             entry<NavRoutes.Welcome> {

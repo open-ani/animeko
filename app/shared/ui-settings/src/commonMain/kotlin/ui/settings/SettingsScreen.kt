@@ -165,8 +165,8 @@ import me.him188.ani.app.ui.settings.tabs.log.LogTab
 import me.him188.ani.app.ui.settings.tabs.media.BackupSettings
 import me.him188.ani.app.ui.settings.tabs.media.CacheDirectoryGroup
 import me.him188.ani.app.ui.settings.tabs.media.MediaSelectionGroup
-import me.him188.ani.app.ui.settings.tabs.media.TorrentEngineGroup
 import me.him188.ani.app.ui.settings.tabs.media.PikPakAcceleratorGroup
+import me.him188.ani.app.ui.settings.tabs.media.TorrentEngineGroup
 import me.him188.ani.app.ui.settings.tabs.media.source.MediaSourceGroup
 import me.him188.ani.app.ui.settings.tabs.media.source.MediaSourceSelectionActions
 import me.him188.ani.app.ui.settings.tabs.media.source.MediaSourceSubscriptionGroup
@@ -662,7 +662,6 @@ internal fun SettingsPageLayout(
 
                 NavDisplay(
                     backStack = detailPaneBackStack,
-                    // predictive back 的缩放动画会让页面短暂超出 pane 的范围, 双栏时会盖到左边的列表上
                     modifier = Modifier.clipToBounds(),
                     onBack = navigateUp,
                     entryDecorators = listOf(
@@ -670,149 +669,149 @@ internal fun SettingsPageLayout(
                         rememberViewModelStoreNavEntryDecorator(),
                     ),
                     transitionSpec = {
-                        navMotionScheme.screen.enterTransition togetherWith navMotionScheme.screen.exitTransition
+                        navMotionScheme.enterTransition togetherWith navMotionScheme.exitTransition
                     },
                     popTransitionSpec = {
-                        navMotionScheme.screen.popEnterTransition togetherWith navMotionScheme.screen.popExitTransition
+                        navMotionScheme.popEnterTransition togetherWith navMotionScheme.popExitTransition
                     },
                     predictivePopTransitionSpec = {
-                        navMotionScheme.screen.popEnterTransition togetherWith navMotionScheme.screen.popExitTransition
+                        navMotionScheme.predictiveBack.popEnterTransition togetherWith navMotionScheme.predictiveBack.popExitTransition
                     },
                     entryProvider = entryProvider {
-                    entry<DetailPaneRoutes.Main> {
-                        val tab = navigationTab.orDefault()
-                        DetailPaneRoute(
-                            topAppBar = {
-                                tab?.let {
+                        entry<DetailPaneRoutes.Main> {
+                            val tab = navigationTab.orDefault()
+                            DetailPaneRoute(
+                                topAppBar = {
+                                    tab?.let {
+                                        AniTopAppBar(
+                                            title = {
+                                                AniTopAppBarDefaults.Title(getName(it))
+                                            },
+                                            navigationIcon = {
+                                                if (listDetailLayoutParameters.preferSinglePane) {
+                                                    BackNavigationIconButton(onClickBackOnDetailPage)
+                                                }
+                                            },
+                                            colors = topAppBarColors,
+                                            windowInsets = topAppBarWindowInsets,
+                                            size = topAppBarSize,
+                                            scrollBehavior = detailPaneTopAppBarScrollBehavior,
+                                        )
+                                    }
+                                },
+                                detailPaneTopAppBarScrollBehavior,
+                                tabContent = {
+                                    RouteContent {
+                                        tabContent(tab)
+                                    }
+                                },
+                                floatingContent = {
+                                    detailPaneBottomBar(
+                                        tab,
+                                        paneContentWindowInsets.only(
+                                            WindowInsetsSides.Bottom + WindowInsetsSides.Horizontal,
+                                        ),
+                                    )
+                                },
+                            )
+                        }
+                        entry<DetailPaneRoutes.Acknowledgements> {
+                            DetailPaneRoute(
+                                topAppBar = {
                                     AniTopAppBar(
-                                        title = {
-                                            AniTopAppBarDefaults.Title(getName(it))
-                                        },
+                                        title = { AniTopAppBarDefaults.Title(stringResource(Lang.acknowledgements)) },
                                         navigationIcon = {
-                                            if (listDetailLayoutParameters.preferSinglePane) {
-                                                BackNavigationIconButton(onClickBackOnDetailPage)
-                                            }
+                                            BackNavigationIconButton(navigateUp)
                                         },
                                         colors = topAppBarColors,
                                         windowInsets = topAppBarWindowInsets,
                                         size = topAppBarSize,
                                         scrollBehavior = detailPaneTopAppBarScrollBehavior,
                                     )
-                                }
-                            },
-                            detailPaneTopAppBarScrollBehavior,
-                            tabContent = {
+                                },
+                                detailPaneTopAppBarScrollBehavior,
+                            ) {
                                 RouteContent {
-                                    tabContent(tab)
+                                    AcknowledgementsTab(
+                                        onClickOpenSourceLicenses = {
+                                            navigateTo(DetailPaneRoutes.OpenSourceLicenses)
+                                        },
+                                        Modifier.fillMaxSize(),
+                                    )
                                 }
-                            },
-                            floatingContent = {
-                                detailPaneBottomBar(
-                                    tab,
-                                    paneContentWindowInsets.only(
-                                        WindowInsetsSides.Bottom + WindowInsetsSides.Horizontal,
-                                    ),
-                                )
-                            },
-                        )
-                    }
-                    entry<DetailPaneRoutes.Acknowledgements> {
-                        DetailPaneRoute(
-                            topAppBar = {
-                                AniTopAppBar(
-                                    title = { AniTopAppBarDefaults.Title(stringResource(Lang.acknowledgements)) },
-                                    navigationIcon = {
-                                        BackNavigationIconButton(navigateUp)
-                                    },
-                                    colors = topAppBarColors,
-                                    windowInsets = topAppBarWindowInsets,
-                                    size = topAppBarSize,
-                                    scrollBehavior = detailPaneTopAppBarScrollBehavior,
-                                )
-                            },
-                            detailPaneTopAppBarScrollBehavior,
-                        ) {
-                            RouteContent {
-                                AcknowledgementsTab(
-                                    onClickOpenSourceLicenses = {
-                                        navigateTo(DetailPaneRoutes.OpenSourceLicenses)
-                                    },
-                                    Modifier.fillMaxSize(),
-                                )
                             }
                         }
-                    }
-                    entry<DetailPaneRoutes.OpenSourceLicenses> {
-                        DetailPaneRoute(
-                            topAppBar = {
-                                AniTopAppBar(
-                                    title = {
-                                        AniTopAppBarDefaults.Title(
-                                            stringResource(Lang.settings_acknowledgements_oss_licenses),
-                                        )
-                                    },
-                                    navigationIcon = {
-                                        BackNavigationIconButton(navigateUp)
-                                    },
-                                    colors = topAppBarColors,
-                                    windowInsets = topAppBarWindowInsets,
-                                    size = topAppBarSize,
-                                    scrollBehavior = detailPaneTopAppBarScrollBehavior,
-                                )
-                            },
-                            detailPaneTopAppBarScrollBehavior,
-                        ) {
-                            // LibrariesContainer 自带 LazyColumn, 不能套在 verticalScroll 里
-                            RouteContent(scrollable = false) {
-                                OpenSourceLibrariesTab(
-                                    loadOpenSourceLibrariesJsons,
-                                    Modifier.fillMaxSize(),
-                                )
+                        entry<DetailPaneRoutes.OpenSourceLicenses> {
+                            DetailPaneRoute(
+                                topAppBar = {
+                                    AniTopAppBar(
+                                        title = {
+                                            AniTopAppBarDefaults.Title(
+                                                stringResource(Lang.settings_acknowledgements_oss_licenses),
+                                            )
+                                        },
+                                        navigationIcon = {
+                                            BackNavigationIconButton(navigateUp)
+                                        },
+                                        colors = topAppBarColors,
+                                        windowInsets = topAppBarWindowInsets,
+                                        size = topAppBarSize,
+                                        scrollBehavior = detailPaneTopAppBarScrollBehavior,
+                                    )
+                                },
+                                detailPaneTopAppBarScrollBehavior,
+                            ) {
+                                // LibrariesContainer 自带 LazyColumn, 不能套在 verticalScroll 里
+                                RouteContent(scrollable = false) {
+                                    OpenSourceLibrariesTab(
+                                        loadOpenSourceLibrariesJsons,
+                                        Modifier.fillMaxSize(),
+                                    )
+                                }
                             }
                         }
-                    }
-                    entry<DetailPaneRoutes.Developers> {
-                        DetailPaneRoute(
-                            topAppBar = {
-                                AniTopAppBar(
-                                    title = { AniTopAppBarDefaults.Title(stringResource(Lang.developer_list)) },
-                                    navigationIcon = {
-                                        BackNavigationIconButton(navigateUp)
-                                    },
-                                    colors = topAppBarColors,
-                                    windowInsets = topAppBarWindowInsets,
-                                    size = topAppBarSize,
-                                    scrollBehavior = detailPaneTopAppBarScrollBehavior,
-                                )
-                            },
-                            detailPaneTopAppBarScrollBehavior,
-                        ) {
-                            RouteContent {
-                                DevelopersTab(Modifier.fillMaxSize())
+                        entry<DetailPaneRoutes.Developers> {
+                            DetailPaneRoute(
+                                topAppBar = {
+                                    AniTopAppBar(
+                                        title = { AniTopAppBarDefaults.Title(stringResource(Lang.developer_list)) },
+                                        navigationIcon = {
+                                            BackNavigationIconButton(navigateUp)
+                                        },
+                                        colors = topAppBarColors,
+                                        windowInsets = topAppBarWindowInsets,
+                                        size = topAppBarSize,
+                                        scrollBehavior = detailPaneTopAppBarScrollBehavior,
+                                    )
+                                },
+                                detailPaneTopAppBarScrollBehavior,
+                            ) {
+                                RouteContent {
+                                    DevelopersTab(Modifier.fillMaxSize())
+                                }
                             }
                         }
-                    }
-                    entry<DetailPaneRoutes.BangumiSync> {
-                        DetailPaneRoute(
-                            topAppBar = {
-                                AniTopAppBar(
-                                    title = { AniTopAppBarDefaults.Title("Bangumi 同步") },
-                                    navigationIcon = {
-                                        BackNavigationIconButton(navigateUp)
-                                    },
-                                    colors = topAppBarColors,
-                                    windowInsets = topAppBarWindowInsets,
-                                    size = topAppBarSize,
-                                    scrollBehavior = detailPaneTopAppBarScrollBehavior,
-                                )
-                            },
-                            detailPaneTopAppBarScrollBehavior,
-                        ) {
-                            RouteContent(scrollable = false) {
-                                BangumiSyncTab()
+                        entry<DetailPaneRoutes.BangumiSync> {
+                            DetailPaneRoute(
+                                topAppBar = {
+                                    AniTopAppBar(
+                                        title = { AniTopAppBarDefaults.Title("Bangumi 同步") },
+                                        navigationIcon = {
+                                            BackNavigationIconButton(navigateUp)
+                                        },
+                                        colors = topAppBarColors,
+                                        windowInsets = topAppBarWindowInsets,
+                                        size = topAppBarSize,
+                                        scrollBehavior = detailPaneTopAppBarScrollBehavior,
+                                    )
+                                },
+                                detailPaneTopAppBarScrollBehavior,
+                            ) {
+                                RouteContent(scrollable = false) {
+                                    BangumiSyncTab()
+                                }
                             }
                         }
-                    }
                     },
                 )
             }

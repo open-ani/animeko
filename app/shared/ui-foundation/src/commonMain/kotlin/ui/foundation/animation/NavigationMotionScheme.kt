@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2024-2025 OpenAni and contributors.
+ * Copyright (C) 2024-2026 OpenAni and contributors.
  *
  * 此源代码的使用受 GNU AFFERO GENERAL PUBLIC LICENSE version 3 许可证的约束, 可以在以下链接找到该许可证.
  * Use of this source code is governed by the GNU AGPLv3 license, which can be found at the following link.
@@ -39,7 +39,7 @@ data class NavigationMotionScheme(
      * 在支持 predictive back 的平台上, **返回**方向换成 [PredictiveBackMotion] 的参数, 前进方向与
      * 上面的一致; 其他平台上它就是上面四个动画.
      */
-    val screen: ScreenNavigationMotionScheme,
+    val predictiveBack: PredictiveBackNavigationMotionScheme,
 ) {
     companion object {
         inline val current
@@ -64,7 +64,7 @@ data class NavigationMotionScheme(
 
         /**
          * @param useSlide 是否使用水平滑动. 窄屏才滑动, 宽屏只淡入淡出.
-         * @param usePredictiveBack 页面导航 ([NavigationMotionScheme.screen]) 是否使用 predictive back
+         * @param usePredictiveBack 页面导航 ([NavigationMotionScheme.predictiveBack]) 是否使用 predictive back
          * 动效参数. 见 [isPlatformSupportPredictiveBack].
          */
         fun calculate(
@@ -131,15 +131,10 @@ data class NavigationMotionScheme(
                 exitTransition = exitTransition,
                 popEnterTransition = popEnterTransition,
                 popExitTransition = popExitTransition,
-                screen = if (usePredictiveBack) {
-                    calculatePredictiveBackScreenScheme(
-                        enterTransition = enterTransition,
-                        exitTransition = exitTransition,
-                    )
+                predictiveBack = if (usePredictiveBack) {
+                    calculatePredictiveBackScreenScheme()
                 } else {
-                    ScreenNavigationMotionScheme(
-                        enterTransition = enterTransition,
-                        exitTransition = exitTransition,
+                    PredictiveBackNavigationMotionScheme(
                         popEnterTransition = popEnterTransition,
                         popExitTransition = popExitTransition,
                     )
@@ -152,19 +147,11 @@ data class NavigationMotionScheme(
 /**
  * 全屏页面导航 (`NavDisplay`) 的动画方案.
  *
- * @see NavigationMotionScheme.screen
+ * @see NavigationMotionScheme.predictiveBack
  */
 @Stable
 @Immutable
-class ScreenNavigationMotionScheme(
-    /**
-     * 前进到新页面时, 新页面的进入动画.
-     */
-    val enterTransition: EnterTransition,
-    /**
-     * 前进到新页面时, 旧页面的退出动画.
-     */
-    val exitTransition: ExitTransition,
+class PredictiveBackNavigationMotionScheme(
     /**
      * 返回上一个页面时, 上一个页面的进入动画.
      */

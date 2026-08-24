@@ -22,7 +22,9 @@ import androidx.compose.runtime.ProvidableCompositionLocal
 import androidx.compose.runtime.Stable
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.staticCompositionLocalOf
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.layout.ContentScale
 import androidx.navigation3.ui.LocalNavAnimatedContentScope
 
 /**
@@ -77,14 +79,15 @@ private data class SubjectContainerTransformKey(val subjectId: Int)
 @Composable
 fun Modifier.subjectContainerTransform(subjectId: Int): Modifier {
     val sharedTransitionScope = LocalSharedTransitionScope.current ?: return this
-    // LocalNavAnimatedContentScope 没有默认值, 只有在 NavEntry 里才能读. LocalSharedTransitionScope
-    // 只在 NavDisplay 外层提供, 所以能走到这里就一定在 NavEntry 内部.
+    // LocalNavAnimatedContentScope 没有默认值, 只有在 NavEntry 里才能读. 
+    // LocalSharedTransitionScope 只在 NavDisplay 外层提供, 所以能走到这里就一定在 NavEntry 内部.
     val animatedContentScope = LocalNavAnimatedContentScope.current
     val key = remember(subjectId) { SubjectContainerTransformKey(subjectId) }
     return with(sharedTransitionScope) {
         this@subjectContainerTransform.sharedBounds(
             rememberSharedContentState(key),
             animatedVisibilityScope = animatedContentScope,
+            resizeMode = SharedTransitionScope.ResizeMode.scaleToBounds(ContentScale.Crop, Alignment.Center),
         )
     }
 }

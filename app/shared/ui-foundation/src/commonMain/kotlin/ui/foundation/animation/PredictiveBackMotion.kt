@@ -9,8 +9,6 @@
 
 package me.him188.ani.app.ui.foundation.animation
 
-import androidx.compose.animation.EnterTransition
-import androidx.compose.animation.ExitTransition
 import androidx.compose.animation.core.CubicBezierEasing
 import androidx.compose.animation.core.Easing
 import androidx.compose.animation.core.tween
@@ -19,6 +17,7 @@ import androidx.compose.animation.fadeOut
 import androidx.compose.animation.scaleIn
 import androidx.compose.animation.scaleOut
 import androidx.compose.runtime.Stable
+import me.him188.ani.app.ui.foundation.animation.PredictiveBackMotion.FadeThroughThreshold
 import kotlin.math.roundToInt
 
 /**
@@ -95,10 +94,7 @@ object PredictiveBackMotion {
  * @param enterTransition 前进时新页面的进入动画, 保持原样
  * @param exitTransition 前进时旧页面的退出动画, 保持原样
  */
-internal fun calculatePredictiveBackScreenScheme(
-    enterTransition: EnterTransition,
-    exitTransition: ExitTransition,
-): ScreenNavigationMotionScheme {
+internal fun calculatePredictiveBackScreenScheme(): PredictiveBackNavigationMotionScheme {
     val totalDuration = NavigationMotionScheme.TotalDurationMillis
     val fadeOutDuration = PredictiveBackMotion.FadeOutDurationMillis
     val fadeInDuration = totalDuration - fadeOutDuration
@@ -120,10 +116,7 @@ internal fun calculatePredictiveBackScreenScheme(
         tween(fadeOutDuration, easing = StandardAccelerateEasing),
     )
 
-    return ScreenNavigationMotionScheme(
-        // 前进方向保持原样
-        enterTransition = enterTransition,
-        exitTransition = exitTransition,
+    return PredictiveBackNavigationMotionScheme(
         // 返回方向用指南的参数
         popEnterTransition = popEnterTransition,
         popExitTransition = popExitTransition,
