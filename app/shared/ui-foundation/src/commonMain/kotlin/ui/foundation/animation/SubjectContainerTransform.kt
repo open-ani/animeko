@@ -14,10 +14,13 @@ import androidx.compose.animation.ExitTransition
 import androidx.compose.animation.ExperimentalSharedTransitionApi
 import androidx.compose.animation.SharedTransitionLayout
 import androidx.compose.animation.SharedTransitionScope
+import androidx.compose.foundation.background
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.ProvidableCompositionLocal
 import androidx.compose.runtime.Stable
+import androidx.compose.runtime.remember
 import androidx.compose.runtime.staticCompositionLocalOf
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -46,14 +49,27 @@ fun Modifier.subjectContainerTransform(
 ): Modifier {
     val sharedTransitionScope = LocalSharedTransitionScope.current ?: return this
     val animatedContentScope = LocalNavAnimatedContentScope.current
+
+    val bgKey = remember(key) { key.copy(from = "${key.from}+background") }
+
     return with(sharedTransitionScope) {
-        this@subjectContainerTransform.sharedBounds(
-            rememberSharedContentState(key),
-            animatedVisibilityScope = animatedContentScope,
-            resizeMode = SharedTransitionScope.ResizeMode.scaleToBounds(ContentScale.None, Alignment.TopCenter),
-            clipInOverlayDuringTransition = OverlayClip(RoundedCornerShape(12.dp)),
-            enter = enter,
-            exit = exit,
-        )
+        val overlayClip = OverlayClip(RoundedCornerShape(12.dp))
+        this@subjectContainerTransform
+            .sharedBounds(
+                rememberSharedContentState(bgKey),
+                animatedVisibilityScope = animatedContentScope,
+                clipInOverlayDuringTransition = overlayClip,
+                enter = EnterTransition.None,
+                exit = ExitTransition.None,
+            )
+            .background(MaterialTheme.colorScheme.surfaceContainer)
+            .sharedBounds(
+                rememberSharedContentState(key),
+                animatedVisibilityScope = animatedContentScope,
+                resizeMode = SharedTransitionScope.ResizeMode.scaleToBounds(ContentScale.None, Alignment.TopCenter),
+                clipInOverlayDuringTransition = overlayClip,
+                enter = enter,
+                exit = exit,
+            )
     }
 }
