@@ -31,6 +31,7 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.text.selection.SelectionContainer
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ThumbDown
 import androidx.compose.material.icons.filled.ThumbUp
@@ -226,12 +227,15 @@ fun CommentItem(
                 val scaledContent = remember(comment.content) {
                     comment.content.withDefaultFontSize(CommentItemDefaults.ContentFontSize)
                 }
-                RichText(
-                    elements = scaledContent.elements,
-                    modifier = Modifier.fillMaxWidth(),
-                    onClickUrl = onClickUrl,
-                    onClickImage = onClickImage,
-                )
+                // 允许划选复制正文. 长按选择文本会优先于长按唤出菜单, 菜单仍可通过正文以外的区域长按或右键唤出.
+                SelectionContainer {
+                    RichText(
+                        elements = scaledContent.elements,
+                        modifier = Modifier.fillMaxWidth(),
+                        onClickUrl = onClickUrl,
+                        onClickImage = onClickImage,
+                    )
+                }
             },
             reactions = if (comment.reactions.isNotEmpty()) {
                 {
