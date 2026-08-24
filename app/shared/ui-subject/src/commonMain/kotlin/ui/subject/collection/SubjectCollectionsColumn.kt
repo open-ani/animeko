@@ -64,6 +64,7 @@ import me.him188.ani.app.data.models.subject.SubjectCollectionInfo
 import me.him188.ani.app.data.models.subject.TestSubjectCollections
 import me.him188.ani.app.data.models.subject.TestSubjectProgressInfos
 import me.him188.ani.app.domain.foundation.LoadError
+import me.him188.ani.app.navigation.SubjectDetailImageSharedElementKey
 import me.him188.ani.app.ui.foundation.AsyncImage
 import me.him188.ani.app.ui.foundation.ProvideCompositionLocalsForPreview
 import me.him188.ani.app.ui.foundation.animation.LocalAniMotionScheme
@@ -72,8 +73,9 @@ import me.him188.ani.app.ui.foundation.ifThen
 import me.him188.ani.app.ui.foundation.layout.currentWindowAdaptiveInfo1
 import me.him188.ani.app.ui.foundation.layout.isWidthCompact
 import me.him188.ani.app.ui.foundation.layout.plus
-import me.him188.ani.app.ui.lang.*
 import me.him188.ani.app.ui.foundation.stateOf
+import me.him188.ani.app.ui.lang.Lang
+import me.him188.ani.app.ui.lang.video_player_select_episode
 import me.him188.ani.app.ui.search.LoadErrorCard
 import me.him188.ani.app.ui.search.isLoadingNextPage
 import me.him188.ani.app.ui.subject.AiringLabel
@@ -85,7 +87,7 @@ import me.him188.ani.app.ui.subject.collection.progress.SubjectProgressButton
 import me.him188.ani.app.ui.subject.collection.progress.rememberTestSubjectProgressState
 import me.him188.ani.app.ui.subject.details.components.COVER_WIDTH_TO_HEIGHT_RATIO
 import me.him188.ani.utils.platform.annotations.TestOnly
-import org.jetbrains.compose.resources.*
+import org.jetbrains.compose.resources.stringResource
 
 /**
  * 用户的收藏列表.
@@ -182,10 +184,15 @@ fun SubjectCollectionItem(
 ) {
     Card(
         onClick,
-        // 点进条目详情页时, 卡片形变成详情页 (container transform).
-        // sharedBounds 要求裁剪放在它后面, 否则形变过程中会丢失圆角.
-        modifier.subjectContainerTransform(item.subjectId)
-            .clip(shape).fillMaxWidth().height(height),
+        modifier.subjectContainerTransform(
+            SubjectDetailImageSharedElementKey(
+                item.subjectId,
+                SubjectDetailImageSharedElementKey.FromCollectionItem,
+            ),
+        )
+            .clip(shape)
+            .fillMaxWidth()
+            .height(height),
         shape = shape,
         colors = colors,
     ) {

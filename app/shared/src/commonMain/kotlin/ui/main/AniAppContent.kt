@@ -73,6 +73,7 @@ import me.him188.ani.app.ui.foundation.animation.NavigationMotionScheme
 import me.him188.ani.app.ui.foundation.animation.ProvideAniMotionCompositionLocals
 import me.him188.ani.app.ui.foundation.animation.SharedTransitionNavTransition
 import me.him188.ani.app.ui.foundation.animation.subjectContainerTransform
+import me.him188.ani.app.ui.foundation.ifThen
 import me.him188.ani.app.ui.foundation.layout.currentWindowAdaptiveInfo1
 import me.him188.ani.app.ui.foundation.layout.desktopTitleBar
 import me.him188.ani.app.ui.foundation.widgets.BackNavigationIconButton
@@ -393,8 +394,11 @@ private fun AniAppContentImplNavDisplay(
                     onClickTag = {
                         aniNavigator.navigateSubjectSearch(NavRoutes.SubjectSearch(tags = listOf(it.name)))
                     },
-                    // 与列表里的条目卡片连成 container transform
-                    modifier = Modifier.subjectContainerTransform(route.subjectId),
+                    modifier = Modifier.ifThen(route.imageSharedElementKey != null) {
+                        subjectContainerTransform(
+                            checkNotNull(route.imageSharedElementKey) { "route.imageSharedElementKey was null." },
+                        )
+                    },
                     windowInsets = windowInsets,
                     navigationIcon = {
                         Row {
