@@ -48,10 +48,12 @@ import com.github.panpf.sketch.request.ImageRequest
 import com.github.panpf.sketch.request.ImageResult
 import com.github.panpf.sketch.request.LoadState
 import com.github.panpf.sketch.resize.Precision
+import com.github.panpf.sketch.resize.Scale
+import com.github.panpf.sketch.resize.ScaleDecider
 import com.github.panpf.sketch.state.PainterStateImage
 import com.github.panpf.sketch.state.StateImage
+import com.github.panpf.sketch.util.Size
 import com.github.panpf.sketch.util.asComposeImageBitmap
-import com.github.panpf.sketch.util.toScale
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import me.him188.ani.app.platform.LocalContext
@@ -303,10 +305,63 @@ internal fun ImageRequest.Builder.configureAniImageRequest(
     if (requestSize != null && requestSize.width > 0 && requestSize.height > 0) {
         size(requestSize.width * 2, requestSize.height * 2)
     }
-    scale(toScale(contentScale, alignment))
+    scale(aniScaleDecider(contentScale, alignment))
     when (contentScale) {
         ContentScale.Crop -> precision(Precision.SAME_ASPECT_RATIO)
         ContentScale.FillBounds -> precision(Precision.EXACTLY)
+    }
+}
+
+/**
+ * Sketch's built-in alignment conversion only considers the horizontal component. For example,
+ * [Alignment.TopCenter] becomes [Scale.CENTER_CROP], which discards the top before Compose draws
+ * the image. Select the relevant alignment component after Sketch knows the source aspect ratio.
+ */
+private fun aniScaleDecider(contentScale: ContentScale, alignment: Alignment): ScaleDecider {
+    if (
+        contentScale == ContentScale.FillBounds ||
+        contentScale == ContentScale.FillWidth ||
+        contentScale == ContentScale.FillHeight
+    ) {
+        return ScaleDecider(Scale.FILL)
+    }
+
+    val (horizontalScale, verticalScale) = when (alignment) {
+        Alignment.TopStart -> Scale.START_CROP to Scale.START_CROP
+        Alignment.TopCenter -> Scale.CENTER_CROP to Scale.START_CROP
+        Alignment.TopEnd -> Scale.END_CROP to Scale.START_CROP
+        Alignment.CenterStart -> Scale.START_CROP to Scale.CENTER_CROP
+        Alignment.Center -> Scale.CENTER_CROP to Scale.CENTER_CROP
+        Alignment.CenterEnd -> Scale.END_CROP to Scale.CENTER_CROP
+        Alignment.BottomStart -> Scale.START_CROP to Scale.END_CROP
+        Alignment.BottomCenter -> Scale.CENTER_CROP to Scale.END_CROP
+        Alignment.BottomEnd -> Scale.END_CROP to Scale.END_CROP
+        else -> Scale.CENTER_CROP to Scale.CENTER_CROP
+    }
+    return AniAlignmentScaleDecider(horizontalScale, verticalScale)
+}
+
+private data class AniAlignmentScaleDecider(
+    val horizontalScale: Scale,
+    val verticalScale: Scale,
+) : ScaleDecider {
+    override val key: String = "AniAlignment($horizontalScale,$verticalScale)"
+
+    override fun get(imageSize: Size, targetSize: Size): Scale {
+        if (
+            imageSize.width <= 0 || imageSize.height <= 0 ||
+            targetSize.width <= 0 || targetSize.height <= 0
+        ) {
+            return Scale.CENTER_CROP
+        }
+
+        val imageAspectProduct = imageSize.width.toLong() * targetSize.height
+        val targetAspectProduct = targetSize.width.toLong() * imageSize.height
+        return when {
+            imageAspectProduct > targetAspectProduct -> horizontalScale
+            imageAspectProduct < targetAspectProduct -> verticalScale
+            else -> Scale.CENTER_CROP
+        }
     }
 }
 
