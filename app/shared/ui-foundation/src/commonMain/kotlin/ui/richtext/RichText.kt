@@ -54,6 +54,7 @@ import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -97,10 +98,12 @@ fun List<UIRichElement>.toLayout(
             RichTextDefaults.AnnotatedText(
                 slice = e.slice,
                 maskState = maskState,
-                modifier = Modifier,
+                // 指定了对齐方式时必须占满宽度, 否则文本框会包裹内容, 对齐无效果
+                modifier = if (e.align == TextAlign.Unspecified) Modifier else Modifier.fillMaxWidth(),
                 color = color,
                 style = style,
                 maxLine = e.maxLine,
+                align = e.align,
                 onClick = { it.url?.let(onClickUrl) },
             )
         }
@@ -208,6 +211,7 @@ object RichTextDefaults {
         color: Color = LocalContentColor.current,
         style: TextStyle = LocalTextStyle.current,
         maxLine: Int? = null,
+        align: TextAlign = TextAlign.Unspecified,
         onClick: (UIRichElement.Annotated) -> Unit
     ) {
         val inlineStickerMap: MutableMap<String, InlineTextContent> = remember { mutableStateMapOf() }
@@ -335,7 +339,7 @@ object RichTextDefaults {
             text = content,
             modifier = modifier,
             inlineContent = inlineStickerMap,
-            style = TextStyle.Default,
+            style = TextStyle.Default.copy(textAlign = align),
             maxLines = maxLine ?: Int.MAX_VALUE,
             overflow = TextOverflow.Ellipsis,
             shouldConsumeTap = { textPos ->
