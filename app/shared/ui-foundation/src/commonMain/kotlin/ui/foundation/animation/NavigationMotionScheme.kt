@@ -40,8 +40,8 @@ data class NavigationMotionScheme(
     /**
      * 全屏页面导航 (`NavDisplay`) 使用的动画.
      *
-     * 在支持 predictive back 的平台上, 页面**退出**动画换成 [PredictiveBackMotion] 的参数, 进入动画
-     * 与上面的一致; 其他平台上它就是上面四个动画.
+     * 在支持 predictive back 的平台上, **返回**方向换成 [PredictiveBackMotion] 的参数, 前进方向与
+     * 上面的一致; 其他平台上它就是上面四个动画.
      */
     val screen: ScreenNavigationMotionScheme,
 ) {
@@ -140,7 +140,7 @@ data class NavigationMotionScheme(
                     calculatePredictiveBackScreenScheme(
                         density,
                         enterTransition = enterTransition,
-                        popEnterTransition = popEnterTransition,
+                        exitTransition = exitTransition,
                     )
                 } else {
                     ScreenNavigationMotionScheme(
