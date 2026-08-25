@@ -76,12 +76,6 @@ class DefaultTorrentManager(
             ) { config, rules ->
                 PeerFilterSettings(
                     rules + config.createRuleWithEnabled(),
-                    // 必须跟着 enableIdFilter 一起判断: "总是过滤异常指纹" 这个开关在设置界面里是嵌在
-                    // "过滤客户端指纹" 的展开区内的 (PeerFilterEditPane), 外层一关它就看不见了.
-                    // 而 blockInvalidId 默认是 true, enableIdFilter 默认是 false, 于是开箱即得一个
-                    // 看不见又关不掉的指纹过滤器 —— 它会拦掉所有 peer id 不是 `-xxxxxx-` 格式的客户端,
-                    // 国内 swarm 里这种占比很高, 表现就是 "peer 连上一堆但全被拦, 速度 0, BT 不下载".
-                    // (2026-08-11 真机: 单个种子一小时内拦掉 256 个 peer, 只剩 1 个还 choke 我们)
                     config.enableIdFilter && config.blockInvalidId,
                 )
             },
