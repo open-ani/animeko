@@ -209,11 +209,14 @@ fun MainViewController(app: AniIosApplication): UIViewController {
         ProvideIosResourceEnvironment {
             CompositionLocalProvider(
                 LocalOnBackPressedDispatcherOwner provides app.onBackPressedDispatcherOwner,
+                // AniApp 自己就要读 LocalContext (rememberAniSketchInstance 要拿 cacheDir 建
+                // Sketch 实例), 所以必须在它外面提供, 否则启动就抛 "No Context provided".
+                // Desktop 端也是在 AniApp 外面提供的.
+                LocalContext provides app.context,
             ) {
                 AniApp {
                     val platformWindow = rememberPlatformWindow()
                     CompositionLocalProvider(
-                        LocalContext provides app.context,
                         LocalPlatformWindow provides platformWindow,
                     ) {
                         Box(
