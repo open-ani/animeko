@@ -74,7 +74,7 @@ import me.him188.ani.app.data.repository.user.SettingsRepository
 import me.him188.ani.app.domain.comment.PostCommentUseCase
 import me.him188.ani.app.domain.danmaku.DanmakuRepository
 import me.him188.ani.app.domain.danmaku.SetDanmakuEnabledUseCase
-import me.him188.ani.app.domain.episode.EpisodeCompletionContext.isKnownCompleted
+import me.him188.ani.app.domain.episode.EpisodeCompletionContext.isKnownOnAir
 import me.him188.ani.app.domain.episode.EpisodeDanmakuLoader
 import me.him188.ani.app.domain.episode.EpisodeFetchSelectPlayState
 import me.him188.ani.app.domain.episode.EpisodeSession
@@ -340,7 +340,8 @@ class EpisodeViewModel(
                     } else {
                         val nextEpisode = list.getOrNull(currentIndex + 1) ?: return@Factory null
 
-                        if (!nextEpisode.episodeInfo.isKnownCompleted(subject.recurrence)) {
+                        // 只拦"确定还没播出"的下一集, 不能用 !isKnownCompleted 代替
+                        if (nextEpisode.episodeInfo.isKnownOnAir(subject.recurrence)) {
                             null
                         } else {
                             nextEpisode.episodeId
