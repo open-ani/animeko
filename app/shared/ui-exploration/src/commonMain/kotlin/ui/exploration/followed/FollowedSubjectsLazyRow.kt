@@ -56,7 +56,6 @@ import me.him188.ani.app.ui.external.placeholder.placeholder
 import me.him188.ani.app.ui.foundation.AsyncImage
 import me.him188.ani.app.ui.foundation.ProvideCompositionLocalsForPreview
 import me.him188.ani.app.ui.foundation.animation.subjectContainerTransform
-import me.him188.ani.app.ui.foundation.animation.subjectImageSharedElement
 import me.him188.ani.app.ui.foundation.ifThen
 import me.him188.ani.app.ui.foundation.layout.BasicCarouselItem
 import me.him188.ani.app.ui.foundation.layout.CarouselItemDefaults
@@ -169,23 +168,21 @@ fun FollowedSubjectsLazyRow(
                 onTemporarilyDisplay = { subjectNsfwType = NsfwMode.DISPLAY },
                 shape = layoutParameters.shape,
             ) {
-                val sharedElementKey = item?.let {
-                    SubjectDetailImageSharedElementKey(
-                        it.subjectInfo.subjectId,
-                        SubjectDetailImageSharedElementKey.FromFellowSubject,
-                    )
-                }
                 FollowedSubjectItem(
                     item,
                     onClick = { item?.let { onClick(it) } },
                     onPlay = { item?.let { onPlay(it) } },
                     layoutParameters.imageSize,
                     layoutParameters.shape,
-                    imageSharedElementKey = sharedElementKey,
                     // 点进条目详情页时, 卡片形变成详情页 (container transform)
-                    modifier = Modifier.ifThen(sharedElementKey != null) {
+                    modifier = Modifier.ifThen(item != null) {
                         subjectContainerTransform(
-                            checkNotNull(sharedElementKey),
+                            SubjectDetailImageSharedElementKey(
+                                checkNotNull(item) {
+                                    "item was null in fellowSubjects in Modifier.ifThen(item != null)"
+                                }.subjectInfo.subjectId,
+                                SubjectDetailImageSharedElementKey.FromFellowSubject,
+                            ),
                             shape = layoutParameters.shape,
                         )
                     },
@@ -202,7 +199,6 @@ private fun FollowedSubjectItem(
     onPlay: () -> Unit,
     imageSize: DpSize,
     shape: Shape,
-    imageSharedElementKey: SubjectDetailImageSharedElementKey? = null,
     modifier: Modifier = Modifier,
 ) {
     BasicCarouselItem(
@@ -233,8 +229,7 @@ private fun FollowedSubjectItem(
             val image = @Composable {
                 AsyncImage(
                     item.subjectInfo.imageLarge,
-                    // 与详情页封面精确对位
-                    modifier = Modifier.size(imageSize).subjectImageSharedElement(imageSharedElementKey),
+                    modifier = Modifier.size(imageSize),
                     contentDescription = item.subjectInfo.displayName,
                     contentScale = ContentScale.Crop,
                 )

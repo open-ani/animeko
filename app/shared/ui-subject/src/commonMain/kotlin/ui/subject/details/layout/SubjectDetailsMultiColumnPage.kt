@@ -75,7 +75,6 @@ import me.him188.ani.app.ui.foundation.AniImageLoadSuccess
 import me.him188.ani.app.ui.foundation.AsyncImage
 import me.him188.ani.app.ui.foundation.animation.AniAnimatedVisibility
 import me.him188.ani.app.ui.foundation.animation.boundOffsetAlignment
-import me.him188.ani.app.ui.foundation.animation.subjectImageSharedElement
 import me.him188.ani.app.ui.foundation.ifThen
 import me.him188.ani.app.ui.foundation.text.ProvideContentColor
 import me.him188.ani.app.ui.foundation.theme.AniThemeDefaults
@@ -485,9 +484,9 @@ private fun SubjectSidebar(
 ) {
     Column(modifier, verticalArrangement = Arrangement.spacedBy(itemSpacing)) {
         // 封面: 固定海报比例 (849:1200) + 圆角 16, 对齐定稿 340×482, 不随图片本征尺寸变形.
-        // 尺寸定在外层 Box 上, 不能依赖子节点: 里面的 AsyncImage 挂了 sharedElement, 形变期间它会按
-        // 动画中的 bounds 测量, 尺寸留在里面会污染 boundOffsetAlignment 的锚点计算.
-        Box(
+        AsyncImage(
+            info.imageLarge,
+            contentDescription = null,
             Modifier
                 .fillMaxWidth()
                 .aspectRatio(COVER_WIDTH_TO_HEIGHT_RATIO)
@@ -495,16 +494,9 @@ private fun SubjectSidebar(
                 .ifThen(onClickCover != null) { clickable(onClick = checkNotNull(onClickCover)) }
                 .boundOffsetAlignment()
                 .testTag(SUBJECT_COVER_IMAGE_TEST_TAG),
-        ) {
-            AsyncImage(
-                info.imageLarge,
-                contentDescription = null,
-                // 与列表卡片的封面精确对位
-                Modifier.fillMaxSize().subjectImageSharedElement(),
-                contentScale = ContentScale.Crop,
-                onSuccess = onCoverImageSuccess,
-            )
-        }
+            contentScale = ContentScale.Crop,
+            onSuccess = onCoverImageSuccess,
+        )
         // 播放按钮 (定稿: 全宽 Filled; 无选集列表小按钮, 选集操作走中栏网格)
         SubjectProgressButton(
             state.subjectProgressState,

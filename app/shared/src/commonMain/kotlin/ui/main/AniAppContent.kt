@@ -71,7 +71,6 @@ import me.him188.ani.app.ui.exploration.schedule.ScheduleViewModel
 import me.him188.ani.app.ui.foundation.animation.BoundOffsetAlignmentDefaults
 import me.him188.ani.app.ui.foundation.animation.LocalBoundOffsetAlignmentState
 import me.him188.ani.app.ui.foundation.animation.LocalSharedTransitionScope
-import me.him188.ani.app.ui.foundation.animation.LocalSubjectDetailImageSharedElementKey
 import me.him188.ani.app.ui.foundation.animation.NavigationMotionScheme
 import me.him188.ani.app.ui.foundation.animation.ProvideAniMotionCompositionLocals
 import me.him188.ani.app.ui.foundation.animation.rememberBoundOffsetAlignment
@@ -404,11 +403,7 @@ private fun AniAppContentImplNavDisplay(
                 val coverAnchor = rememberBoundOffsetAlignment(
                     BoundOffsetAlignmentDefaults.subjectDetailsCover(),
                 )
-                CompositionLocalProvider(
-                    LocalBoundOffsetAlignmentState provides coverAnchor,
-                    // 详情页封面用它与列表卡片的封面配对成 shared element
-                    LocalSubjectDetailImageSharedElementKey provides route.imageSharedElementKey,
-                ) {
+                CompositionLocalProvider(LocalBoundOffsetAlignmentState provides coverAnchor) {
                     SubjectDetailsScreen(
                         vm,
                         onPlay = { aniNavigator.navigateEpisodeDetails(route.subjectId, it) },

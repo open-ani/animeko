@@ -43,7 +43,6 @@ import me.him188.ani.app.ui.external.placeholder.placeholder
 import me.him188.ani.app.ui.foundation.AsyncImage
 import me.him188.ani.app.ui.foundation.ProvideCompositionLocalsForPreview
 import me.him188.ani.app.ui.foundation.animation.subjectContainerTransform
-import me.him188.ani.app.ui.foundation.animation.subjectImageSharedElement
 import me.him188.ani.app.ui.foundation.ifThen
 import me.him188.ani.app.ui.foundation.layout.CarouselAutoAdvanceEffect
 import me.him188.ani.app.ui.foundation.layout.CarouselItem
@@ -73,19 +72,18 @@ fun TrendingSubjectsCarousel(
     Box(modifier.padding(contentPadding).hoverable(interactionSource)) {
         val content: @Composable CarouselItemScope.(Int) -> Unit = { index ->
             val item = if (items.isLoadingFirstPageOrRefreshing) null else items[index]
-            val sharedElementKey = item?.let {
-                SubjectDetailImageSharedElementKey(
-                    it.bangumiId,
-                    SubjectDetailImageSharedElementKey.FromTrendingCarouselItem,
-                )
-            }
             CarouselItem(
                 label = { CarouselItemDefaults.Text(item?.nameCn ?: "") },
                 Modifier
                     .placeholder(item == null, shape = rememberMaskShape(CarouselItemDefaults.shape))
-                    .ifThen(sharedElementKey != null) {
+                    .ifThen(item != null) {
                         subjectContainerTransform(
-                            checkNotNull(sharedElementKey),
+                            SubjectDetailImageSharedElementKey(
+                                checkNotNull(item) {
+                                    "item was null in trending carousel in Modifier.ifThen(item != null)"
+                                }.bangumiId,
+                                SubjectDetailImageSharedElementKey.FromTrendingCarouselItem,
+                            ),
                             shape = CarouselItemDefaults.shape,
                         )
                     },
@@ -94,9 +92,7 @@ fun TrendingSubjectsCarousel(
                     Surface({ onClick(item) }) {
                         AsyncImage(
                             item.imageLarge,
-                            // 与详情页封面精确对位
-                            modifier = Modifier.height(size.imageHeight)
-                                .subjectImageSharedElement(sharedElementKey),
+                            modifier = Modifier.height(size.imageHeight),
                             contentDescription = item.nameCn,
                             contentScale = ContentScale.Crop,
                         )

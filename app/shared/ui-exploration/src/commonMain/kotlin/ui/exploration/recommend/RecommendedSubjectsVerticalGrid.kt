@@ -77,20 +77,18 @@ fun LazyGridScope.recommendationItems(
         when (val item = data[index]) {
             null,// placeholder
             is RecommendedSubjectInfo -> {
-                val sharedElementKey = item?.let {
-                    SubjectDetailImageSharedElementKey(
-                        it.bangumiId,
-                        SubjectDetailImageSharedElementKey.FromRecommendationItem,
-                    )
-                }
                 RecommendedSubjectCard(
                     item = item,
                     onClick = { item?.let { onClick(it) } },
-                    imageSharedElementKey = sharedElementKey,
                     modifier = Modifier
-                        .ifThen(sharedElementKey != null) {
+                        .ifThen(item != null) {
                             subjectContainerTransform(
-                                checkNotNull(sharedElementKey),
+                                SubjectDetailImageSharedElementKey(
+                                    checkNotNull(item) {
+                                        "item was null in recommendationItems in Modifier.ifThen(item != null)"
+                                    }.bangumiId,
+                                    SubjectDetailImageSharedElementKey.FromRecommendationItem,
+                                ),
                                 shape = layoutParams.cardShape,
                             )
                         }
@@ -111,7 +109,6 @@ private fun RecommendedSubjectCard(
     item: RecommendedSubjectInfo?, // null means placeholder
     onClick: () -> Unit,
     shape: Shape = CarouselItemDefaults.shape,
-    imageSharedElementKey: SubjectDetailImageSharedElementKey? = null,
     modifier: Modifier = Modifier,
 ) {
     SubjectCoverCard(
@@ -121,10 +118,7 @@ private fun RecommendedSubjectCard(
         onClick = onClick,
         modifier = modifier,
         shape = shape,
-        // 限制最大宽度, 可以让 iOS 不卡一点; 封面与详情页封面精确对位
-        imageModifier = Modifier
-            .subjectImageSharedElement(imageSharedElementKey)
-            .sizeIn(maxWidth = 300.dp, maxHeight = (300f / 9 * 16).dp),
+        imageModifier = Modifier.sizeIn(maxWidth = 300.dp, maxHeight = (300f / 9 * 16).dp), // 限制最大宽度, 可以让 iOS 不卡一点
     )
 }
 
