@@ -183,6 +183,7 @@ fun FollowedSubjectsLazyRow(
                                 }.subjectInfo.subjectId,
                                 SubjectDetailImageSharedElementKey.FromFellowSubject,
                             ),
+                            shape = layoutParameters.shape,
                         )
                     },
                 )

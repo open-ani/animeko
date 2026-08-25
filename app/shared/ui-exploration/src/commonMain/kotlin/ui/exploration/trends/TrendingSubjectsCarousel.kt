@@ -84,6 +84,7 @@ fun TrendingSubjectsCarousel(
                                 }.bangumiId,
                                 SubjectDetailImageSharedElementKey.FromTrendingCarouselItem,
                             ),
+                            shape = CarouselItemDefaults.shape,
                         )
                     },
             ) {

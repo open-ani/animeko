@@ -189,6 +189,7 @@ fun SubjectCollectionItem(
                 item.subjectId,
                 SubjectDetailImageSharedElementKey.FromCollectionItem,
             ),
+            shape = shape,
         )
             .clip(shape)
             .fillMaxWidth()

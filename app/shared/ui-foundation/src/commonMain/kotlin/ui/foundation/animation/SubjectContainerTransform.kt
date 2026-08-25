@@ -15,7 +15,6 @@ import androidx.compose.animation.ExperimentalSharedTransitionApi
 import androidx.compose.animation.SharedTransitionLayout
 import androidx.compose.animation.SharedTransitionScope
 import androidx.compose.foundation.background
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.ProvidableCompositionLocal
@@ -24,11 +23,13 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.staticCompositionLocalOf
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.layout.onPlaced
-import androidx.compose.ui.unit.dp
 import androidx.navigation3.ui.LocalNavAnimatedContentScope
 import me.him188.ani.app.navigation.SubjectDetailImageSharedElementKey
+import me.him188.ani.app.ui.foundation.ifThen
 
 /**
  * 当前 `NavDisplay` 外层的 [SharedTransitionScope], 由 [SharedTransitionLayout] 提供.
@@ -51,6 +52,7 @@ val LocalSharedTransitionScope: ProvidableCompositionLocal<SharedTransitionScope
 fun Modifier.subjectContainerTransform(
     key: SubjectDetailImageSharedElementKey,
     alignmentState: BoundOffsetAlignmentState? = null,
+    shape: Shape = MaterialTheme.shapes.large,
     enter: EnterTransition = LocalNavigationMotionScheme.current.predictiveSharedContainer.containerEnterTransition,
     exit: ExitTransition = LocalNavigationMotionScheme.current.predictiveSharedContainer.containerExitTransition,
 ): Modifier {
@@ -68,7 +70,7 @@ fun Modifier.subjectContainerTransform(
     val bgKey = remember(key) { key.copy(from = "${key.from}+background") }
 
     return with(sharedTransitionScope) {
-        val overlayClip = OverlayClip(RoundedCornerShape(12.dp))
+        val overlayClip = OverlayClip(shape)
         this@subjectContainerTransform
             .sharedBounds(
                 rememberSharedContentState(bgKey),
@@ -77,20 +79,19 @@ fun Modifier.subjectContainerTransform(
                 enter = EnterTransition.None,
                 exit = ExitTransition.None,
             )
+            .clip(shape)
             .background(MaterialTheme.colorScheme.surfaceContainer)
             .sharedBounds(
                 rememberSharedContentState(key),
                 animatedVisibilityScope = animatedContentScope,
                 resizeMode = resizeMode,
-                clipInOverlayDuringTransition = overlayClip,
                 enter = enter,
                 exit = exit,
             )
             // 必须挂在内层 sharedBounds 之后: 这样才落在它的 SkipToLookaheadSizeNode 子树内,
             // 量到的是最终尺寸.
-            .then(
-                if (alignmentState == null) Modifier
-                else Modifier.onPlaced { alignmentState.onContainerPlaced(it) },
-            )
+            .ifThen(alignmentState != null) {
+                onPlaced { checkNotNull(alignmentState).onContainerPlaced(it) }
+            }
     }
 }

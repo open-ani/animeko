@@ -22,6 +22,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.layout.LayoutCoordinates
 import androidx.compose.ui.layout.onPlaced
+import me.him188.ani.app.ui.foundation.ifThen
 import me.him188.ani.app.ui.foundation.layout.currentWindowAdaptiveInfo1
 import me.him188.ani.app.ui.foundation.layout.isWidthAtLeastMedium
 
@@ -76,11 +77,10 @@ class BoundOffsetAlignmentState internal constructor(
         // (最终) constraints 布局, 所以这里量到的相对位置就是最终布局的位置, 不会被形变动画污染,
         // 也就不会出现「用动画中的坐标算 alignment -> 摆放变化 -> 坐标又变」的自反馈.
         val anchorTopLeft = container.localPositionOf(anchor, Offset.Zero)
-        val anchorCenter = anchorTopLeft + Offset(anchor.size.width / 2f, anchor.size.height / 2f)
 
         val new = fractionAlignment(
-            horizontal = (anchorCenter.x / containerSize.width).coerceIn(0f, 1f),
-            vertical = (anchorCenter.y / containerSize.height).coerceIn(0f, 1f),
+            horizontal = (anchorTopLeft.x / (containerSize.width - anchor.size.width)).coerceIn(0f, 1f),
+            vertical = (anchorTopLeft.y / (containerSize.height - anchor.size.height)).coerceIn(0f, 1f),
         )
         // 必须判等: onPlaced 每帧都会回调, 不判等就是每帧在 layout 阶段写一个会被 composition 读的
         // state, 会导致持续重组.
@@ -95,7 +95,7 @@ class BoundOffsetAlignmentState internal constructor(
  */
 @Composable
 fun rememberBoundOffsetAlignment(
-    defaultAlignment: BiasAlignment = BoundOffsetAlignmentDefaults.subjectDetailsCover(),
+    defaultAlignment: BiasAlignment,
 ): BoundOffsetAlignmentState = remember(defaultAlignment) { BoundOffsetAlignmentState(defaultAlignment) }
 
 /**
@@ -107,7 +107,9 @@ fun rememberBoundOffsetAlignment(
 @Composable
 fun Modifier.boundOffsetAlignment(
     state: BoundOffsetAlignmentState? = LocalBoundOffsetAlignmentState.current,
-): Modifier = if (state == null) this else onPlaced { state.onAnchorPlaced(it) }
+): Modifier = ifThen(state != null) {
+    onPlaced { checkNotNull(state).onAnchorPlaced(it) }
+}
 
 /**
  * 供 [Modifier.boundOffsetAlignment] 就近读取, 免得从详情页入口一路把 state 传到封面那一层.

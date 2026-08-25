@@ -93,8 +93,8 @@ import me.him188.ani.app.ui.subject.collection.progress.SubjectProgressButton
 import me.him188.ani.app.ui.subject.details.components.AnimatedGradientBackground
 import me.him188.ani.app.ui.subject.details.components.COVER_WIDTH_TO_HEIGHT_RATIO
 import me.him188.ani.app.ui.subject.details.components.RatingHistogram
-import me.him188.ani.app.ui.subject.details.components.SUBJECT_COVER_IMAGE_TEST_TAG
 import me.him188.ani.app.ui.subject.details.components.RelatedSubjectsGrid
+import me.him188.ani.app.ui.subject.details.components.SUBJECT_COVER_IMAGE_TEST_TAG
 import me.him188.ani.app.ui.subject.details.components.rememberNavigateToRelatedSubject
 import me.him188.ani.app.ui.subject.details.sections.CharactersSection
 import me.him188.ani.app.ui.subject.details.sections.HotReviewsCardContent
@@ -492,9 +492,8 @@ private fun SubjectSidebar(
                 .aspectRatio(COVER_WIDTH_TO_HEIGHT_RATIO)
                 .clip(RoundedCornerShape(16.dp))
                 .ifThen(onClickCover != null) { clickable(onClick = checkNotNull(onClickCover)) }
-                .testTag(SUBJECT_COVER_IMAGE_TEST_TAG)
-                // container transform 从这里开始向外扩
-                .boundOffsetAlignment(),
+                .boundOffsetAlignment()
+                .testTag(SUBJECT_COVER_IMAGE_TEST_TAG),
             contentScale = ContentScale.Crop,
             onSuccess = onCoverImageSuccess,
         )

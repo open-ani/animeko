@@ -152,9 +152,8 @@ fun SubjectDetailsHeaderCompact(
                 Modifier
                     .clip(MaterialTheme.shapes.medium)
                     .ifThen(onClickCover != null) { clickable(onClick = checkNotNull(onClickCover)) }
-                    .testTag(SUBJECT_COVER_IMAGE_TEST_TAG)
-                    // container transform 从这里开始向外扩
-                    .boundOffsetAlignment(),
+                    .boundOffsetAlignment()
+                    .testTag(SUBJECT_COVER_IMAGE_TEST_TAG),
             ) {
                 AsyncImage(
                     model = coverImageUrl,
@@ -246,9 +245,8 @@ fun SubjectDetailsHeaderWide(
                 Modifier
                     .clip(MaterialTheme.shapes.medium)
                     .ifThen(onClickCover != null) { clickable(onClick = checkNotNull(onClickCover)) }
-                    .testTag(SUBJECT_COVER_IMAGE_TEST_TAG)
-                    // container transform 从这里开始向外扩
-                    .boundOffsetAlignment(),
+                    .boundOffsetAlignment()
+                    .testTag(SUBJECT_COVER_IMAGE_TEST_TAG),
             ) {
                 AsyncImage(
                     model = coverImageUrl,

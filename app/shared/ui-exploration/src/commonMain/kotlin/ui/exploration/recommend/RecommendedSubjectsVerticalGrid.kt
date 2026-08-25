@@ -89,6 +89,7 @@ fun LazyGridScope.recommendationItems(
                                     }.bangumiId,
                                     SubjectDetailImageSharedElementKey.FromRecommendationItem,
                                 ),
+                                shape = layoutParams.cardShape,
                             )
                         }
                         .animateItem(

@@ -68,11 +68,12 @@ import me.him188.ani.app.ui.cache.subject.SubjectCacheScreen
 import me.him188.ani.app.ui.cache.subject.SubjectCacheViewModelImpl
 import me.him188.ani.app.ui.exploration.schedule.ScheduleScreen
 import me.him188.ani.app.ui.exploration.schedule.ScheduleViewModel
+import me.him188.ani.app.ui.foundation.animation.BoundOffsetAlignmentDefaults
 import me.him188.ani.app.ui.foundation.animation.LocalBoundOffsetAlignmentState
 import me.him188.ani.app.ui.foundation.animation.LocalSharedTransitionScope
-import me.him188.ani.app.ui.foundation.animation.rememberBoundOffsetAlignment
 import me.him188.ani.app.ui.foundation.animation.NavigationMotionScheme
 import me.him188.ani.app.ui.foundation.animation.ProvideAniMotionCompositionLocals
+import me.him188.ani.app.ui.foundation.animation.rememberBoundOffsetAlignment
 import me.him188.ani.app.ui.foundation.animation.subjectContainerTransform
 import me.him188.ani.app.ui.foundation.ifThen
 import me.him188.ani.app.ui.foundation.layout.currentWindowAdaptiveInfo1
@@ -399,7 +400,9 @@ private fun AniAppContentImplNavDisplay(
                 }
                 // container transform 从条目封面开始向外扩, 而不是从页面顶部中间.
                 // 封面在页面里的位置由 Modifier.boundOffsetAlignment 量出来写进这个 state.
-                val coverAnchor = rememberBoundOffsetAlignment()
+                val coverAnchor = rememberBoundOffsetAlignment(
+                    BoundOffsetAlignmentDefaults.subjectDetailsCover(),
+                )
                 CompositionLocalProvider(LocalBoundOffsetAlignmentState provides coverAnchor) {
                     SubjectDetailsScreen(
                         vm,
