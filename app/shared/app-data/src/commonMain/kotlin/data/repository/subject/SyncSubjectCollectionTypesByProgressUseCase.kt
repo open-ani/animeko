@@ -95,27 +95,24 @@ class SyncSubjectCollectionTypesByProgressUseCaseImpl(
 }
 
 internal fun SubjectCollectionInfo.syncedCollectionTypeByEpisodeProgress(): UnifiedCollectionType? {
-    val mainStoryCollectionTypes = episodes
-        .asSequence()
+    val mainStoryEpisodes = episodes
         .filter { it.episodeInfo.type == EpisodeType.MainStory }
-        .map { it.collectionType }
-        .toList()
+        .sortedBy { it.episodeInfo.sort }
 
-    if (mainStoryCollectionTypes.isEmpty()) return null
+    if (mainStoryEpisodes.isEmpty()) return null
+
+    val hasWatchedMainStory = mainStoryEpisodes.any { it.collectionType == UnifiedCollectionType.DONE }
+    val hasFinishedMainStory = airingInfo.isCompleted &&
+        mainStoryEpisodes.last().collectionType == UnifiedCollectionType.DONE
 
     return when (collectionType) {
         UnifiedCollectionType.WISH -> when {
-            airingInfo.isCompleted && mainStoryCollectionTypes.all { it == UnifiedCollectionType.DONE } -> {
-                UnifiedCollectionType.DONE
-            }
-
-            mainStoryCollectionTypes.any { it == UnifiedCollectionType.DONE } -> UnifiedCollectionType.DOING
+            hasFinishedMainStory -> UnifiedCollectionType.DONE
+            hasWatchedMainStory -> UnifiedCollectionType.DOING
             else -> null
         }
 
-        UnifiedCollectionType.DOING -> UnifiedCollectionType.DONE.takeIf {
-            airingInfo.isCompleted && mainStoryCollectionTypes.all { it == UnifiedCollectionType.DONE }
-        }
+        UnifiedCollectionType.DOING -> UnifiedCollectionType.DONE.takeIf { hasFinishedMainStory }
 
         else -> null
     }

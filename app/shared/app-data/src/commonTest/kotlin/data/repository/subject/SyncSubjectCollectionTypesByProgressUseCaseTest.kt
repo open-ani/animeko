@@ -35,10 +35,10 @@ class SyncSubjectCollectionTypesByProgressUseCaseTest {
     }
 
     @Test
-    fun `completed wish becomes done when every main story episode is done`() {
+    fun `completed wish becomes done when the last main story episode is done`() {
         val collection = collection(
             type = UnifiedCollectionType.WISH,
-            episode(UnifiedCollectionType.DONE),
+            episode(UnifiedCollectionType.NOT_COLLECTED),
             episode(UnifiedCollectionType.DONE, id = 2),
             completed = true,
         )
@@ -79,10 +79,10 @@ class SyncSubjectCollectionTypesByProgressUseCaseTest {
     }
 
     @Test
-    fun `completed doing becomes done when every main story episode is done`() {
+    fun `completed doing becomes done when the last main story episode is done`() {
         val collection = collection(
             type = UnifiedCollectionType.DOING,
-            episode(UnifiedCollectionType.DONE),
+            episode(UnifiedCollectionType.NOT_COLLECTED),
             episode(UnifiedCollectionType.DONE, id = 2),
             completed = true,
         )
