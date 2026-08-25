@@ -211,13 +211,6 @@ class AndroidWebViewVideoExtractor(
                     deferred.await()
                 }
             } finally {
-                // 销毁 WebView 挂在 deferred 完成上 (见 createWebView 里的 invokeOnCompletion), 而
-                // withTimeoutOrNull 超时只取消里面那次 await, deferred 本身仍是活的 —— 嗅探不到地址
-                // 的源 (失效/被墙) 每试一次就留下一个永不销毁、仍在加载页面并持有 Context 的 WebView.
-                // 自动换源会一个接一个地试, 一集下来就是好几个常驻实例.
-                //
-                // 放 finally 而不是原来的 catch: withTimeoutOrNull 把超时异常吞掉了, 根本不进 catch,
-                // 而超时正是最需要销毁的那条路. 已完成时 cancel() 是 no-op, 成功路径不受影响.
                 deferred.cancel()
             }
         }
