@@ -166,9 +166,6 @@ fun Toast(
             }
         },
     ) {
-        // 配色取自主题 (同更新提示气泡的 surfaceContainerHigh): 之前按 isSystemInDarkTheme()
-        // 在纯黑/纯白之间二选一 —— 那是**系统**的深浅色, 与应用内的主题设置 (深色/浅色/主题色)
-        // 无关, 于是应用切了主题 toast 还是同一套黑白, 在 TV 上尤其突兀
         Surface(
             modifier = Modifier.padding(horizontal = 60.dp),
             shape = RoundedCornerShape(15.dp),
