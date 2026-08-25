@@ -37,7 +37,14 @@ data class NavigationMotionScheme(
     val popExitTransition: ExitTransition,
     val predictivePopEnterTransition: EnterTransition,
     val predictivePopExitTransition: ExitTransition,
-    val predictiveSharedContainer: PredictiveBackSharedTransitionMotionScheme
+    val predictiveSharedContainer: PredictiveBackSharedTransitionMotionScheme,
+    /**
+     * 下层页面压暗蒙版的最大不透明度. `0f` 表示不压暗.
+     *
+     * 只有 iOS 那套动效需要 —— Material 那套本来就有淡入淡出, 再压暗会显脏.
+     * 用法见 [rememberNavigationDimNavEntryDecorator].
+     */
+    val navigationDimMaxAlpha: Float,
 ) {
     companion object {
         inline val current
@@ -55,11 +62,13 @@ data class NavigationMotionScheme(
         private val exitEasing = EmphasizedAccelerateEasing
 
         /**
-         * @param useSlide 是否使用水平滑动. 窄屏才滑动, 宽屏只淡入淡出.
+         * @param useSlide 是否使用水平滑动. 窄屏才滑动, 宽屏只淡入淡出. [useIosMotionSpec] 为 true 时不生效.
+         * @param useIosMotionSpec 四个常规导航动画是否改用 iOS 的动效. 见 [IosNavigationMotion].
          */
         fun calculate(
             useSlide: Boolean,
             usePredictiveBackMotion: Boolean,
+            useIosMotionSpec: Boolean,
         ): NavigationMotionScheme {
             val slideInMargin = 1f / 16
             val slideOutMargin = 1f / 16
@@ -73,43 +82,55 @@ data class NavigationMotionScheme(
             val fadeIn = fadeIn(tween(enterDuration, delayMillis = exitDuration, easing = enterEasing))
             val fadeOut = fadeOut(tween(exitDuration, easing = exitEasing))
 
-            val enterTransition = if (useSlide) {
-                val delay = exitDuration
-                val slideIn = slideInHorizontally(
-                    tween(enterDuration, delayMillis = delay, easing = enterEasing),
-                    initialOffsetX = { (it * slideInMargin).roundToInt() },
-                )
-                slideIn.plus(fadeIn)
-            } else {
-                fadeIn
+            // iOS: 新页面整宽划入, 旧页面反向视差移动约 1/3, 全程一条临界阻尼弹簧, 不做淡入淡出.
+            // 位移比例和弹簧参数见 IosNavigationMotion.
+            val iosParallax: (Int) -> Int = { (it * IosNavigationMotion.ParallaxFraction).roundToInt() }
+
+            val enterTransition = when {
+                useIosMotionSpec -> slideInHorizontally(IosNavigationMotion.SlideSpec) { it }
+                useSlide -> {
+                    val delay = exitDuration
+                    val slideIn = slideInHorizontally(
+                        tween(enterDuration, delayMillis = delay, easing = enterEasing),
+                        initialOffsetX = { (it * slideInMargin).roundToInt() },
+                    )
+                    slideIn.plus(fadeIn)
+                }
+
+                else -> fadeIn
             }
 
-            val exitTransition = if (useSlide) {
-                slideOutHorizontally(
+            val exitTransition = when {
+                useIosMotionSpec -> slideOutHorizontally(IosNavigationMotion.SlideSpec) { -iosParallax(it) }
+                useSlide -> slideOutHorizontally(
                     tween(exitDuration, easing = exitEasing),
                     targetOffsetX = { -(it * slideOutMargin).roundToInt() },
                 ).plus(fadeOut)
-            } else {
-                fadeOut
+
+                else -> fadeOut
             }
 
-            val popEnterTransition = if (useSlide) {
-                slideInHorizontally(
+            val popEnterTransition = when {
+                useIosMotionSpec -> slideInHorizontally(IosNavigationMotion.SlideSpec) { -iosParallax(it) }
+                useSlide -> slideInHorizontally(
                     tween(enterDuration, delayMillis = exitDuration, easing = enterEasing),
                     initialOffsetX = { -(it * slideInMargin).roundToInt() },
                 ) + fadeIn
-            } else {
-                fadeIn // clean fade
+
+                else -> fadeIn // clean fade
             }
 
-            val popExitTransition = if (useSlide) {
-                val slide = slideOutHorizontally(
-                    tween(exitDuration, easing = exitEasing),
-                    targetOffsetX = { (it * slideOutMargin).roundToInt() },
-                )
-                slide.plus(fadeOut)
-            } else {
-                fadeOut
+            val popExitTransition = when {
+                useIosMotionSpec -> slideOutHorizontally(IosNavigationMotion.SlideSpec) { it }
+                useSlide -> {
+                    val slide = slideOutHorizontally(
+                        tween(exitDuration, easing = exitEasing),
+                        targetOffsetX = { (it * slideOutMargin).roundToInt() },
+                    )
+                    slide.plus(fadeOut)
+                }
+
+                else -> fadeOut
             }
 
             val predictivePopEnterTransition = scaleIn(
@@ -185,6 +206,7 @@ data class NavigationMotionScheme(
                 popExitTransition = popExitTransition,
                 predictivePopEnterTransition = if (usePredictiveBackMotion) predictivePopEnterTransition else popEnterTransition,
                 predictivePopExitTransition = if (usePredictiveBackMotion) predictivePopExitTransition else popExitTransition,
+                navigationDimMaxAlpha = if (useIosMotionSpec) IosNavigationMotion.DimMaxAlpha else 0f,
                 predictiveSharedContainer = sharedContainerMotion,
             )
         }

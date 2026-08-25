@@ -52,6 +52,7 @@ import me.him188.ani.app.ui.foundation.theme.EasingDurations
 import me.him188.ani.app.ui.foundation.theme.LocalThemeSettings
 import me.him188.ani.utils.platform.Platform
 import me.him188.ani.utils.platform.currentPlatform
+import me.him188.ani.utils.platform.isIos
 
 /**
  * APP 统一动画方案
@@ -300,6 +301,8 @@ fun ProvideAniMotionCompositionLocals(
     val density by rememberUpdatedState(LocalDensity.current)
     val windowSizeClass by rememberUpdatedState(currentWindowAdaptiveInfo1().windowSizeClass)
     val enablePredictiveBackMotion = LocalThemeSettings.current.enablePredictiveBackAndSharedContainerTransformMotion
+    // iOS 上用系统那套导航动效. 想做成设置项的话把这里换成读设置就行.
+    val useIosMotionSpec = remember { currentPlatform().isIos() }
 
     val isWidthCompact by remember {
         derivedStateOf {
@@ -308,7 +311,11 @@ fun ProvideAniMotionCompositionLocals(
     }
     val navigationMotionScheme by remember {
         derivedStateOf {
-            NavigationMotionScheme.calculate(useSlide = isWidthCompact, enablePredictiveBackMotion)
+            NavigationMotionScheme.calculate(
+                useSlide = isWidthCompact,
+                usePredictiveBackMotion = enablePredictiveBackMotion,
+                useIosMotionSpec = useIosMotionSpec,
+            )
         }
     }
     val aniMotionScheme by remember {

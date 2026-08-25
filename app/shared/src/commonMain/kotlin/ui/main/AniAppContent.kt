@@ -74,6 +74,7 @@ import me.him188.ani.app.ui.foundation.animation.LocalSharedTransitionScope
 import me.him188.ani.app.ui.foundation.animation.NavigationMotionScheme
 import me.him188.ani.app.ui.foundation.animation.ProvideAniMotionCompositionLocals
 import me.him188.ani.app.ui.foundation.animation.rememberBoundOffsetAlignment
+import me.him188.ani.app.ui.foundation.animation.rememberNavigationDimNavEntryDecorator
 import me.him188.ani.app.ui.foundation.animation.subjectContainerTransform
 import me.him188.ani.app.ui.foundation.ifThen
 import me.him188.ani.app.ui.foundation.layout.currentWindowAdaptiveInfo1
@@ -211,6 +212,8 @@ private fun AniAppContentImplNavDisplay(
             // 让每个页面各自持有 rememberSaveable 状态和 ViewModel, 出栈时一并销毁
             rememberSaveableStateHolderNavEntryDecorator(),
             rememberViewModelStoreNavEntryDecorator(),
+            // iOS 动效: 给被盖住的下层页面加压暗蒙版. 其他动效方案下 maxAlpha 是 0, 等于关闭.
+            rememberNavigationDimNavEntryDecorator(backStack, navMotionScheme.navigationDimMaxAlpha),
         ),
         transitionSpec = {
             navMotionScheme.enterTransition togetherWith navMotionScheme.exitTransition
