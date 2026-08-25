@@ -56,8 +56,8 @@ import kotlinx.coroutines.withContext
 import me.him188.ani.app.data.models.comment.CommentReportTargetType
 import me.him188.ani.app.data.models.episode.displayName
 import me.him188.ani.app.data.models.episode.renderEpisodeEp
-import me.him188.ani.app.data.models.preference.VideoScaffoldConfig
 import me.him188.ani.app.data.models.preference.VideoEnhancementDefaultMode
+import me.him188.ani.app.data.models.preference.VideoScaffoldConfig
 import me.him188.ani.app.data.models.preference.parseMpvOptions
 import me.him188.ani.app.data.models.subject.SubjectInfo
 import me.him188.ani.app.data.models.subject.SubjectProgressInfo
@@ -301,7 +301,11 @@ class EpisodeViewModel(
             runBlocking { applyCustomOptions() }
         }
 
-    val videoEnhancement = createVideoEnhancementController(player, backgroundScope.coroutineContext)
+    val videoEnhancement = createVideoEnhancementController(
+        player,
+        settingsRepository.playerKernelConfig.flow,
+        backgroundScope.coroutineContext,
+    )
 
     /** `null` 表示本次播放尚未调整过倍速, 此时跟随配置. */
     private val playbackSpeedOverride = MutableStateFlow<Float?>(null)

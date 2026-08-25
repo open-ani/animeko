@@ -351,6 +351,12 @@ open class KtorHttpDownloader(
     override suspend fun pause(downloadId: DownloadId): Boolean {
         stateMutex.withLock {
             val entry = _downloadStatesFlow.value[downloadId] ?: return false
+            // 终态不允许被暂停. 尤其是重启后恢复的 COMPLETED 条目 (job == null),
+            // 若被置为 PAUSED 会持久化到数据库, 导致已完成的缓存永久变为不可播放的暂停态.
+            if (entry.state.status == COMPLETED || entry.state.status == CANCELED) {
+                logger.info { "Cannot pause $downloadId because it is already ${entry.state.status}." }
+                return false
+            }
             val job = entry.job
             if (job != null) {
                 if (!job.isActive) {

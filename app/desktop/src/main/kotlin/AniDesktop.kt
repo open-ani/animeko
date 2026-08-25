@@ -53,6 +53,7 @@ import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.joinAll
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
+import kotlinx.coroutines.withContext
 import me.him188.ani.app.data.models.preference.DarkMode
 import me.him188.ani.app.data.models.preference.UISettings
 import me.him188.ani.app.data.persistent.database.BundledSqliteInterpositionGuard
@@ -151,6 +152,41 @@ object AniDesktop {
 
     init {
         System.setProperty("native.encoding", "UTF-8")
+    }
+
+    private fun prepareMpvLibraries(composeResDir: String) {
+        try {
+            val devNativeDir = System.getProperty("mediamp.mpv.dev.native.dir")
+            if (devNativeDir != null) {
+                // mediamp composite 开发: 直接加载本地编译的 JNI wrapper (见 local.properties
+                // 的 ani.build.mediamp.mpv.devNativeDir)
+                MPVHandle.setRuntimeLibraryDirectory(devNativeDir, false)
+            } else if (currentProcessName()?.contains("java") == true) {
+                MPVHandle.useDefaultRuntimeLibraryDirectory()
+            } else {
+                MPVHandle.setRuntimeLibraryDirectory(composeResDir, false)
+            }
+            val mpvLogger = logger<MPVHandle>()
+            // mpv_log_level in https://github.com/mpv-player/mpv/blob/master/include/mpv/client.h
+            MPVHandle.setLogHandler {
+                val prefix = it.prefix.padStart(9, ' ')
+                val handle = "0x${it.instanceHandle.toHexString().trimStart('0')}"
+                if (it.level in 1..20) {
+                    mpvLogger.error { "[$prefix@$handle] ${it.line}" }
+                } else if (it.level <= 30) {
+                    mpvLogger.warn { "[$prefix@$handle] ${it.line}" }
+                } else if (it.level <= 40) {
+                    mpvLogger.info { "[$prefix@$handle] ${it.line}" }
+                } else if (it.level <= 50) {
+                    mpvLogger.debug { "[$prefix@$handle] ${it.line}" }
+                } else {
+                    mpvLogger.trace { "[$prefix@$handle] ${it.line}" }
+                }
+            }
+            logger.info { "mediampv is loaded." }
+        } catch (e: Throwable) {
+            logger.error(e) { "Failed to load libmpv component of mediamp." }
+        }
     }
 
     private fun calculateWindowSize(
@@ -331,13 +367,19 @@ object AniDesktop {
             }
         }
 
+        // 为什么是这个目录?
+        // CMP 打包 task 会把 resource dir 放到 jar 包的目录里
+        // 我们 hack 打包 task 把包含 runtime library 的 jar 包解压到那一堆 jar 包的目录
+        val composeResDir = File(System.getProperty("compose.application.resources.dir"))
+            .parentFile.absolutePath
+
         val loadLibraryJob = coroutineScope.launch(Dispatchers.IO) {
-            configureLibrariesAndResources()
+            configureLibrariesAndResources(composeResDir)
         }
 
         // Initialize CEF application.
         coroutineScope.launch {
-            logger.info { "[JCEF init] awaiting anitorrent, FFmpegKit and libmpv loaded." }
+            logger.info { "[JCEF init] awaiting anitorrent and FFmpegKit." }
             try {
                 analyticsInitializer.join()
                 loadLibraryJob.join()
@@ -349,17 +391,25 @@ object AniDesktop {
             val proxySettings = koin.koin.get<ProxyProvider>()
                 .proxy.first()
 
-            logger.info { "[JCEF init] initializing AniCefApp." }
-
-            AniCefApp.initialize(
-                logDir = dataDir.toFile().resolve("logs"),
-                cacheDir = cacheDir.toFile().resolve("jcef-cache"),
-                proxyServer = proxySettings?.url,
-                proxyAuthUsername = proxySettings?.authorization?.username,
-                proxyAuthPassword = proxySettings?.authorization?.password,
+            initializeJcefAndPlayerBackend(
+                preparePlayerBeforeJcef = shouldPreparePlayerBeforeJcef(currentPlatformDesktop()),
+                preparePlayer = {
+                    withContext(Dispatchers.IO) {
+                        prepareMpvLibraries(composeResDir)
+                    }
+                },
+                initializeJcef = {
+                    logger.info { "[JCEF init] initializing AniCefApp." }
+                    AniCefApp.initialize(
+                        logDir = dataDir.toFile().resolve("logs"),
+                        cacheDir = cacheDir.toFile().resolve("jcef-cache"),
+                        proxyServer = proxySettings?.url,
+                        proxyAuthUsername = proxySettings?.authorization?.username,
+                        proxyAuthPassword = proxySettings?.authorization?.password,
+                    )
+                    logger.info { "[JCEF init] AniCefApp is initialized." }
+                },
             )
-
-            logger.info { "[JCEF init] AniCefApp is initialized." }
         }
 
         coroutineScope.launch {
@@ -559,19 +609,13 @@ object AniDesktop {
         // unreachable here
     }
 
-    private fun configureLibrariesAndResources() {
+    private fun configureLibrariesAndResources(composeResDir: String) {
         try {
             AnitorrentLibraryLoader.loadLibraries()
             logger.info { "Anitorrent is loaded." }
         } catch (e: Throwable) {
             logger.error(e) { "Failed to load anitorrent libraries" }
         }
-
-        // 为什么是这个目录?
-        // CMP 打包 task 会把 resource dir 放到 jar 包的目录里
-        // 我们 hack 打包 task 把包含 runtime library 的 jar 包解压到那一堆 jar 包的目录
-        val composeResDir = File(System.getProperty("compose.application.resources.dir"))
-            .parentFile.absolutePath
 
         try {
             if (currentProcessName()?.contains("java") == true) {
@@ -582,41 +626,6 @@ object AniDesktop {
             logger.info { "FFmpegKit is loaded." }
         } catch (e: Throwable) {
             logger.error(e) { "Failed to load FFmpeg component of mediamp." }
-        }
-
-        run {
-            try {
-                val devNativeDir = System.getProperty("mediamp.mpv.dev.native.dir")
-                if (devNativeDir != null) {
-                    // mediamp composite 开发: 直接加载本地编译的 JNI wrapper (见 local.properties
-                    // 的 ani.build.mediamp.mpv.devNativeDir)
-                    MPVHandle.setRuntimeLibraryDirectory(devNativeDir, false)
-                } else if (currentProcessName()?.contains("java") == true) {
-                    MPVHandle.useDefaultRuntimeLibraryDirectory()
-                } else {
-                    MPVHandle.setRuntimeLibraryDirectory(composeResDir, false)
-                }
-                val mpvLogger = logger<MPVHandle>()
-                // mpv_log_level in https://github.com/mpv-player/mpv/blob/master/include/mpv/client.h
-                MPVHandle.setLogHandler {
-                    val prefix = it.prefix.padStart(9, ' ')
-                    val handle = "0x${it.instanceHandle.toHexString().trimStart('0')}"
-                    if (it.level in 1..20) {
-                        mpvLogger.error { "[$prefix@$handle] ${it.line}" }
-                    } else if (it.level <= 30) {
-                        mpvLogger.warn { "[$prefix@$handle] ${it.line}" }
-                    } else if (it.level <= 40) {
-                        mpvLogger.info { "[$prefix@$handle] ${it.line}" }
-                    } else if (it.level <= 50) {
-                        mpvLogger.debug { "[$prefix@$handle] ${it.line}" }
-                    } else {
-                        mpvLogger.trace { "[$prefix@$handle] ${it.line}" }
-                    }
-                }
-            } catch (e: Throwable) {
-                logger.error(e) { "Failed to load libmpv component of mediamp." }
-            }
-            logger.info { "mediampv is loaded." }
         }
 
         if (currentProcessName()?.contains("java") != true) {

@@ -862,7 +862,7 @@
     <string name="cache_subject_manage_all">管理全部緩存</string>
     <string name="cache_unknown">未知</string>
     <string name="cache_management_select_item_for_details">選擇一個條目查看具體緩存</string>
-    <string name="cache_management_selected_count">%1$d 個已選</string>
+    <string name="cache_management_selected_count">已選 %1$d</string>
     <string name="cache_management_exit_selection">退出選擇</string>
     <string name="cache_management_select_all">選擇所有</string>
     <string name="cache_management_delete_selected">刪除所選</string>
@@ -874,6 +874,12 @@
     <string name="cache_management_delete_cache_confirmation">刪除後不可恢復，確認刪除嗎？</string>
     <string name="cache_management_finished_count">%1$d/%2$d 已完成</string>
     <string name="cache_management_downloading_count">%1$d 個下載中</string>
+    <string name="cache_subject_pause_all">全部暫停</string>
+    <string name="cache_subject_resume_all">全部繼續</string>
+    <string name="cache_management_selection_downloading_count">含 %1$d 個下載中</string>
+    <string name="cache_management_select_all_action">全選</string>
+    <string name="cache_management_deselect_all">取消全選</string>
+    <string name="cache_episode_status_paused">已暫停</string>
     <string name="cache_management_episode_label">第%1$d話 · %2$s</string>
     <string name="cache_management_more_actions">更多操作</string>
     <string name="cache_management_play">播放</string>
@@ -1168,6 +1174,8 @@
     <string name="settings_app_notification_settings">通知設定</string>
     <string name="settings_app_open_settings">開啟設定</string>
     <string name="settings_app_danmaku_refresh_rate">彈幕刷新率</string>
+    <string name="settings_player_exoplayer_preinit_effect_graph">預先載入畫質增強著色器</string>
+    <string name="settings_player_exoplayer_preinit_effect_graph_desc">啟用此選項後，即使預設未啟用畫質增強也會載入對應的著色器，切換畫質增強選項時便可立即生效，否則可能需要重新播放才會生效。\n如果遇到黑畫面或系統功能無法生效（例如運動補償），請關閉此選項。</string>
     <string name="settings_log_share_today_log_file">分享當日日誌檔案</string>
     <string name="settings_log_share_file">分享日誌檔案</string>
     <string name="settings_log_copy_today_log_content">複製當日日誌內容（很大）</string>

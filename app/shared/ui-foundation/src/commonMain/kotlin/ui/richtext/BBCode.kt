@@ -17,6 +17,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.TextUnit
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -84,11 +85,25 @@ class BBCodeRichTextState(
 // TODO: move to BBCodeRichTextState
 fun RichText.toUIRichElements(overrideTextSize: Float? = null): List<UIRichElement> = buildList {
     val annotated = mutableListOf<UIRichElement.Annotated>()
+    // 当前累积的 annotated 所属的对齐方式. 对齐是段落级属性, 对齐方式变化时必须切分出新的 AnnotatedText
+    var currentAlign = TextAlign.Unspecified
+
+    fun flushAnnotated() {
+        if (annotated.isNotEmpty()) {
+            add(UIRichElement.AnnotatedText(annotated.toList(), align = currentAlign))
+            annotated.clear()
+        }
+        currentAlign = TextAlign.Unspecified
+    }
 
     elements.forEach { e ->
         when (e) {
             is RichElement.Text -> {
                 if (e.value.trim().isNotEmpty()) {
+                    val align = e.align.toTextAlign()
+                    if (align != currentAlign) flushAnnotated()
+                    currentAlign = align
+
                     annotated.add(
                         UIRichElement.Annotated.Text(
                             content = e.value,
@@ -123,27 +138,25 @@ fun RichText.toUIRichElements(overrideTextSize: Float? = null): List<UIRichEleme
             )
 
             is RichElement.Quote -> {
-                if (annotated.isNotEmpty()) {
-                    add(UIRichElement.AnnotatedText(annotated.toList()))
-                    annotated.clear()
-                }
+                flushAnnotated()
                 add(UIRichElement.Quote(e.contents.toUIRichElements()))
             }
 
             is RichElement.Image -> {
-                if (annotated.isNotEmpty()) {
-                    add(UIRichElement.AnnotatedText(annotated.toList()))
-                    annotated.clear()
-                }
+                flushAnnotated()
                 add(UIRichElement.Image(e.imageUrl, e.jumpUrl))
             }
         }
     }
 
-    if (annotated.isNotEmpty()) {
-        add(UIRichElement.AnnotatedText(annotated.toList()))
-        annotated.clear()
-    }
+    flushAnnotated()
+}
+
+private fun RichElement.Text.Align.toTextAlign(): TextAlign = when (this) {
+    RichElement.Text.Align.DEFAULT -> TextAlign.Unspecified
+    RichElement.Text.Align.LEFT -> TextAlign.Left
+    RichElement.Text.Align.CENTER -> TextAlign.Center
+    RichElement.Text.Align.RIGHT -> TextAlign.Right
 }
 
 fun RichText.toUIBriefText(): UIRichElement.AnnotatedText {

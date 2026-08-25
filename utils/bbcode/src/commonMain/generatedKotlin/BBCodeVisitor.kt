@@ -7,7 +7,7 @@
  * https://github.com/open-ani/ani/blob/main/LICENSE
  */
 
-// Generated from /Users/general_k1ng/Documents/project/animeko/utils/bbcode/BBCode.g4 by ANTLR 4.13.1
+// Generated from /Users/stageguard/Projects/animeko/utils/bbcode/BBCode.g4 by ANTLR 4.13.1
 package me.him188.ani.utils.bbcode
 
 import org.antlr.v4.kotlinruntime.tree.ParseTreeVisitor
@@ -122,6 +122,30 @@ public interface BBCodeVisitor<T> : ParseTreeVisitor<T> {
      * @return The visitor result
      */
     public fun visitColor(ctx: BBCodeParser.ColorContext): T
+
+    /**
+     * Visit a parse tree produced by [BBCodeParser.center].
+     *
+     * @param ctx The parse tree
+     * @return The visitor result
+     */
+    public fun visitCenter(ctx: BBCodeParser.CenterContext): T
+
+    /**
+     * Visit a parse tree produced by [BBCodeParser.left].
+     *
+     * @param ctx The parse tree
+     * @return The visitor result
+     */
+    public fun visitLeft(ctx: BBCodeParser.LeftContext): T
+
+    /**
+     * Visit a parse tree produced by [BBCodeParser.right].
+     *
+     * @param ctx The parse tree
+     * @return The visitor result
+     */
+    public fun visitRight(ctx: BBCodeParser.RightContext): T
 
     /**
      * Visit a parse tree produced by [BBCodeParser.bgm_sticker].

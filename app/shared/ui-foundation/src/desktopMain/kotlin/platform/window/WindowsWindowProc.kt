@@ -73,6 +73,24 @@ import java.awt.Window
 
 private val logger = logger("HandleWindowsWindowProc")
 
+internal const val WINDOWS_11_MIN_BUILD_NUMBER = 22000
+
+internal data class WindowsWindowCompositionMode(
+    val frameMargin: Int,
+    val skiaLayerTransparency: Boolean,
+)
+
+internal fun windowsWindowCompositionMode(
+    windowsBuildNumber: Int?,
+    fullscreen: Boolean,
+): WindowsWindowCompositionMode = WindowsWindowCompositionMode(
+    // Microsoft documents all-zero margins as resetting an extended DWM frame.
+    frameMargin = if (fullscreen) 0 else -1,
+    // Windows 10 needs this for the custom title bar, but a fullscreen window must be opaque.
+    skiaLayerTransparency = !fullscreen &&
+        (windowsBuildNumber ?: WINDOWS_11_MIN_BUILD_NUMBER) < WINDOWS_11_MIN_BUILD_NUMBER,
+)
+
 @Composable
 fun HandleWindowsWindowProc() {
     if (LocalPlatform.current.isWindows()) {
@@ -203,7 +221,7 @@ internal open class BasicWindowProc(
 internal class ExtendedTitleBarWindowProc(
     window: Window,
     private val user32: ExtendedUser32,
-    dwmapi: Dwmapi
+    private val dwmapi: Dwmapi,
 ) : BasicWindowProc(user32, window, installTouchBridge = false) {
 
     private var childHitTestOwner: WindowsWindowHitTestOwner? = null
@@ -216,8 +234,10 @@ internal class ExtendedTitleBarWindowProc(
 
     private var hitTestResult = WindowsWindowHitResult.CLIENT
 
+    private val skiaLayer = window.findSkiaLayer()
     private val skiaLayerWindowProc: SkiaLayerHitTestWindowProc? =
-        window.findSkiaLayer()?.let { SkiaLayerHitTestWindowProc(it, user32, ::hitTest, window) }
+        skiaLayer?.let { SkiaLayerHitTestWindowProc(it, user32, ::hitTest, window) }
+    private val windowsBuildNumber = WindowsWindowUtils.instance.windowsBuildNumber()
 
     private var isMaximized: Boolean = user32.isWindowInMaximized(windowHandle)
     private var dpi: UINT = UINT(0)
@@ -230,9 +250,24 @@ internal class ExtendedTitleBarWindowProc(
     private var padding: Int = 0
 
     init {
-        dwmapi.DwmExtendFrameIntoClientArea(windowHandle, Dwmapi.WindowMargins(-1, -1, -1, -1))
+        applyWindowCompositionMode(fullscreen = false)
         windowHandle.updateWindowStyle { it and WS_SYSMENU.inv() }
         eraseWindowBackground()
+    }
+
+    /**
+     * A Windows 10 custom title bar uses a glass client frame and a transparent Skia layer.
+     * Borderless fullscreen has no title bar to extend and must stay opaque; otherwise
+     * partially transparent Compose/video pixels are blended with the desktop.
+     */
+    internal fun applyWindowCompositionMode(fullscreen: Boolean) {
+        val mode = windowsWindowCompositionMode(windowsBuildNumber, fullscreen)
+        val margin = mode.frameMargin
+        skiaLayer?.transparency = mode.skiaLayerTransparency
+        dwmapi.DwmExtendFrameIntoClientArea(
+            windowHandle,
+            Dwmapi.WindowMargins(margin, margin, margin, margin),
+        )
     }
 
     /***
@@ -455,8 +490,8 @@ internal class ExtendedTitleBarWindowProc(
 
     // Workaround for background erase.
     private fun eraseWindowBackground() {
-        val buildNumber = WindowsWindowUtils.instance.windowsBuildNumber() ?: return
-        if (buildNumber < 22000) {
+        val buildNumber = windowsBuildNumber ?: return
+        if (buildNumber < WINDOWS_11_MIN_BUILD_NUMBER) {
             val flag =
                 SWP_NOZORDER or SWP_NOACTIVATE or SWP_FRAMECHANGED or SWP_NOMOVE or SWP_NOSIZE or SWP_ASYNCWINDOWPOS
             user32.SetWindowPos(windowHandle, null, 0, 0, 0, 0, flag or SWP_HIDEWINDOW)
@@ -593,8 +628,6 @@ internal class SkiaLayerHitTestWindowProc(
             skiaLayerWindow = windowHandle,
             contentWindow = contentHandle,
         )
-        val buildNumber = WindowsWindowUtils.instance.windowsBuildNumber() ?: 22000
-        skiaLayer.transparency = buildNumber < 22000
     }
 
     override fun callback(

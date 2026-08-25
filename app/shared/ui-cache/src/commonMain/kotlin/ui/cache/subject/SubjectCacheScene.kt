@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2024-2025 OpenAni and contributors.
+ * Copyright (C) 2024-2026 OpenAni and contributors.
  *
  * 此源代码的使用受 GNU AFFERO GENERAL PUBLIC LICENSE version 3 许可证的约束, 可以在以下链接找到该许可证.
  * Use of this source code is governed by the GNU AGPLv3 license, which can be found at the following link.
@@ -9,41 +9,24 @@
 
 package me.him188.ani.app.ui.cache.subject
 
-import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.WindowInsets
-import androidx.compose.foundation.layout.WindowInsetsSides
-import androidx.compose.foundation.layout.fillMaxHeight
-import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.only
-import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.windowInsetsBottomHeight
-import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.verticalScroll
-import androidx.compose.material3.Scaffold
-import androidx.compose.material3.ScaffoldDefaults
-import androidx.compose.material3.Text
-import androidx.compose.material3.TopAppBar
-import androidx.compose.runtime.Composable
 import androidx.compose.runtime.Stable
 import androidx.compose.runtime.getValue
-import androidx.compose.ui.Alignment
-import androidx.compose.ui.Modifier
-import androidx.compose.ui.text.style.TextOverflow
-import androidx.compose.ui.unit.dp
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.collect
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.combineTransform
+import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.emitAll
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.mapLatest
+import kotlinx.coroutines.flow.onStart
 import kotlinx.coroutines.flow.take
+import kotlinx.coroutines.flow.transformLatest
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.supervisorScope
 import me.him188.ani.app.data.models.episode.displayName
@@ -56,9 +39,11 @@ import me.him188.ani.app.data.repository.subject.SubjectRelationsRepository
 import me.him188.ani.app.data.repository.user.SettingsRepository
 import me.him188.ani.app.domain.danmaku.DanmakuRepository
 import me.him188.ani.app.domain.episode.EpisodeCompletionContext.isKnownCompleted
+import me.him188.ani.app.domain.media.cache.DeleteCacheByCacheIdUseCase
 import me.him188.ani.app.domain.media.cache.DeleteCacheByEpisodeIdUseCase
 import me.him188.ani.app.domain.media.cache.MediaCache
 import me.him188.ani.app.domain.media.cache.MediaCacheManager
+import me.him188.ani.app.domain.media.cache.MediaCacheState
 import me.him188.ani.app.domain.media.cache.requester.CacheRequestStage
 import me.him188.ani.app.domain.media.cache.requester.EpisodeCacheRequest
 import me.him188.ani.app.domain.media.cache.requester.EpisodeCacheRequester
@@ -67,21 +52,17 @@ import me.him188.ani.app.domain.media.fetch.MediaSourceManager
 import me.him188.ani.app.domain.media.resolver.toEpisodeMetadata
 import me.him188.ani.app.domain.media.selector.MediaSelectorFactory
 import me.him188.ani.app.domain.media.selector.eventHandling
-import me.him188.ani.app.navigation.LocalNavigator
-import me.him188.ani.app.ui.external.placeholder.placeholder
+import me.him188.ani.app.ui.cache.components.CacheEpisodeState
+import me.him188.ani.app.ui.cache.components.allCachesWithEngineFlow
+import me.him188.ani.app.ui.cache.components.createCacheEpisodeStateFlow
 import me.him188.ani.app.ui.foundation.AbstractViewModel
-import me.him188.ani.app.ui.foundation.interaction.WindowDragArea
 import me.him188.ani.app.ui.foundation.launchInBackground
-import me.him188.ani.app.ui.foundation.lists.ScrollStateVerticalScrollbar
-import me.him188.ani.app.ui.foundation.lists.hasScrollableContent
 import me.him188.ani.app.ui.foundation.produceState
 import me.him188.ani.app.ui.foundation.stateOf
-import me.him188.ani.app.ui.foundation.theme.AniThemeDefaults
 import me.him188.ani.app.ui.mediafetch.MediaSourceInfoProvider
-import me.him188.ani.app.ui.settings.SettingsTab
-import me.him188.ani.app.ui.settings.framework.components.SettingsScope
 import me.him188.ani.danmaku.api.provider.DanmakuFetchRequest
 import me.him188.ani.datasources.api.source.MediaSourceKind
+import me.him188.ani.datasources.api.topic.UnifiedCollectionType
 import me.him188.ani.utils.analytics.Analytics
 import me.him188.ani.utils.analytics.AnalyticsEvent.Companion.CacheCreate
 import me.him188.ani.utils.analytics.recordEvent
@@ -104,6 +85,25 @@ interface SubjectCacheViewModel {
     val cacheListState: EpisodeCacheListState
 
     val mediaSourceInfoProvider: MediaSourceInfoProvider
+
+    /**
+     * 该条目当前已有的缓存的 UI 状态列表, 按剧集序号排序.
+     */
+    val cacheEpisodesFlow: StateFlow<List<CacheEpisodeState>>
+
+    fun pauseCache(cache: CacheEpisodeState)
+    fun resumeCache(cache: CacheEpisodeState)
+    fun deleteCache(cache: CacheEpisodeState)
+
+    /**
+     * 暂停该条目的所有未完成缓存.
+     */
+    fun pauseAllCaches()
+
+    /**
+     * 继续该条目的所有已暂停缓存.
+     */
+    fun resumeAllCaches()
 }
 
 @Stable
@@ -119,6 +119,7 @@ class SubjectCacheViewModelImpl(
     private val subjectRelationsRepository: SubjectRelationsRepository by inject()
     private val danmakuRepository: DanmakuRepository by inject()
     private val deleteCacheByEpisodeIdUseCase: DeleteCacheByEpisodeIdUseCase by inject()
+    private val deleteCacheByCacheIdUseCase: DeleteCacheByCacheIdUseCase by inject()
 
     private val subjectInfoFlow = subjectCollectionRepository.subjectCollectionFlow(subjectId)
         .retryWithBackoffDelay()
@@ -236,6 +237,69 @@ class SubjectCacheViewModelImpl(
         },
     )
 
+    override val cacheEpisodesFlow: StateFlow<List<CacheEpisodeState>> = cacheManager.enabledStorages
+        .allCachesWithEngineFlow()
+        .map { list -> list.filter { it.cache.metadata.subjectId.toIntOrNull() == subjectId } }
+        // 其他条目的缓存变化不应重建本条目的所有行状态 (会重置下载速度统计)
+        .distinctUntilChanged()
+        .transformLatest { caches ->
+            if (caches.isEmpty()) {
+                emit(emptyList())
+                return@transformLatest
+            }
+            val collectionType = subjectCollectionRepository.getSubjectCollectionTypeOffline(subjectId)
+                .onStart { emit(UnifiedCollectionType.NOT_COLLECTED) }
+            emitAll(
+                combine(
+                    caches.map { createCacheEpisodeStateFlow(subjectId.toString(), it, collectionType) },
+                ) { states ->
+                    states.toList()
+                        .distinctBy { it.listItemKey }
+                        .sortedBy { it.sort }
+                },
+            )
+        }
+        .stateInBackground(emptyList())
+
+    override fun pauseCache(cache: CacheEpisodeState) {
+        launchInBackground {
+            cacheManager.findFirstCache { it.cacheId == cache.cacheId }?.pause()
+        }
+    }
+
+    override fun resumeCache(cache: CacheEpisodeState) {
+        launchInBackground {
+            cacheManager.findFirstCache { it.cacheId == cache.cacheId }?.resume()
+        }
+    }
+
+    override fun deleteCache(cache: CacheEpisodeState) {
+        launchInBackground {
+            deleteCacheByCacheIdUseCase(cache.subjectId, cache.episodeId, cache.cacheId)
+        }
+    }
+
+    override fun pauseAllCaches() {
+        launchInBackground {
+            cacheManager.listCacheForSubject(subjectId).first().forEach { cache ->
+                // 只暂停下载中的. 尤其不能对已完成的缓存调用 pause, 否则 web 缓存会被持久化为暂停态而无法播放.
+                if (cache.state.first() == MediaCacheState.IN_PROGRESS) {
+                    cache.pause()
+                }
+            }
+        }
+    }
+
+    override fun resumeAllCaches() {
+        launchInBackground {
+            cacheManager.listCacheForSubject(subjectId).first().forEach { cache ->
+                if (cache.state.first() == MediaCacheState.PAUSED) {
+                    cache.resume()
+                }
+            }
+        }
+    }
+
     init {
         launchInBackground {
             val firstWorkingEpisode = episodesFlow
@@ -295,106 +359,5 @@ class SubjectCacheViewModelImpl(
             fileHash = null,
             videoDuration = Duration.ZERO,
         )
-    }
-}
-
-@Composable
-fun SubjectCacheScreen(
-    vm: SubjectCacheViewModel,
-    modifier: Modifier = Modifier,
-    windowInsets: WindowInsets = ScaffoldDefaults.contentWindowInsets,
-    navigationIcon: @Composable () -> Unit = {},
-) {
-    SubjectCachePageScaffold(
-        title = {
-            val title = vm.subjectTitle
-            Text(
-                title.orEmpty(), Modifier.placeholder(title == null),
-                maxLines = 1, overflow = TextOverflow.Ellipsis,
-            )
-        },
-        autoCacheGroup = {
-            val navigator = LocalNavigator.current
-            AutoCacheGroup {
-                navigator.navigateCaches()
-            }
-        },
-        cacheListGroup = {
-            EpisodeCacheListGroup(
-                vm.cacheListState,
-                vm.mediaSourceInfoProvider,
-                mediaSelectorSettingsProvider = {
-                    vm.mediaSelectorSettingsFlow
-                },
-            )
-        },
-        modifier,
-        windowInsets = windowInsets,
-        navigationIcon = navigationIcon,
-    )
-}
-
-/**
- * 条目缓存页面的布局框架
- *
- * @param title 顶部的标题
- * @param autoCacheGroup 自动缓存设置
- * @param cacheListGroup 管理该条目的所有剧集的缓存情况
- */
-@Composable
-fun SubjectCachePageScaffold(
-    title: @Composable () -> Unit,
-    autoCacheGroup: @Composable SettingsScope.() -> Unit,
-    cacheListGroup: @Composable SettingsScope.() -> Unit,
-    modifier: Modifier = Modifier,
-    windowInsets: WindowInsets = ScaffoldDefaults.contentWindowInsets,
-    navigationIcon: @Composable () -> Unit = {},
-) {
-    val appBarColors = AniThemeDefaults.topAppBarColors()
-    val scrollState = rememberScrollState()
-    val scrollbarEndPadding = if (scrollState.hasScrollableContent()) 16.dp else 0.dp
-    Scaffold(
-        modifier,
-        topBar = {
-            WindowDragArea {
-                TopAppBar(
-                    title = {
-                        title()
-                    },
-                    navigationIcon = navigationIcon,
-                    colors = appBarColors,
-                    windowInsets = windowInsets.only(WindowInsetsSides.Horizontal + WindowInsetsSides.Top),
-                )
-            }
-        },
-        contentWindowInsets = windowInsets.only(WindowInsetsSides.Horizontal),
-    ) { paddingValues ->
-        Box(Modifier.padding(paddingValues).fillMaxSize()) {
-            Column(Modifier.fillMaxSize().verticalScroll(scrollState).padding(end = scrollbarEndPadding)) {
-//                Surface(Modifier.fillMaxWidth(), color = appBarColors.containerColor) {
-//                    Row(Modifier.padding(horizontal = 16.dp).padding(bottom = 16.dp)) {
-//                        ProvideTextStyle(MaterialTheme.typography.titleMedium) {
-//                            title()
-//                        }
-//                    }
-//                }
-
-                SettingsTab {
-                    Spacer(Modifier.fillMaxWidth()) // tab has spacedBy arrangement
-                    autoCacheGroup()
-                    cacheListGroup()
-                    Spacer(Modifier.fillMaxWidth()) // tab has spacedBy arrangement
-                }
-
-                Spacer(Modifier.windowInsetsBottomHeight(windowInsets))
-            }
-
-            ScrollStateVerticalScrollbar(
-                state = scrollState,
-                modifier = Modifier
-                    .align(Alignment.CenterEnd)
-                    .fillMaxHeight(),
-            )
-        }
     }
 }

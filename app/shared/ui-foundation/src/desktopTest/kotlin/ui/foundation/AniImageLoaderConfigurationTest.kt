@@ -12,6 +12,7 @@ package me.him188.ani.app.ui.foundation
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.layout.ContentScale
 import com.github.panpf.sketch.PlatformContext
+import com.github.panpf.sketch.asBitmapOrNull
 import com.github.panpf.sketch.cache.CachePolicy
 import com.github.panpf.sketch.decode.SvgDecoder
 import com.github.panpf.sketch.request.ImageRequest
@@ -32,6 +33,8 @@ import me.him188.ani.utils.io.deleteRecursively
 import me.him188.ani.utils.ktor.asScopedHttpClient
 import okio.Path.Companion.toPath
 import org.jetbrains.skia.EncodedImageFormat
+import org.jetbrains.skia.Paint
+import org.jetbrains.skia.Rect
 import org.jetbrains.skia.Surface
 import kotlin.test.Test
 import kotlin.test.assertEquals
@@ -220,6 +223,49 @@ class AniImageLoaderConfigurationTest {
     }
 
     @Test
+    fun `top center crop keeps the top of a portrait image`() = runTest {
+        val bytes = encodedVerticalBands()
+        val client = HttpClient(
+            MockEngine {
+                respond(
+                    content = bytes,
+                    headers = headersOf(HttpHeaders.ContentType, "image/png"),
+                )
+            },
+        )
+        val sketch = createDefaultSketch(PlatformContext.INSTANCE, client.asScopedHttpClient())
+
+        try {
+            suspend fun crop(alignment: Alignment, path: String): Int {
+                val success = assertIs<ImageResult.Success>(
+                    sketch.execute(
+                        ImageRequest(PlatformContext.INSTANCE, "https://example.com/$path.png") {
+                            size(100, 100)
+                            configureAniImageRequest(
+                                contentScale = ContentScale.Crop,
+                                alignment = alignment,
+                            )
+                            downloadCachePolicy(CachePolicy.DISABLED)
+                            resultCachePolicy(CachePolicy.DISABLED)
+                            memoryCachePolicy(CachePolicy.DISABLED)
+                        },
+                    ),
+                )
+                return requireNotNull(success.image.asBitmapOrNull()).getColor(50, 50)
+            }
+
+            val topColor = crop(Alignment.TopCenter, "top-center")
+            val centerColor = crop(Alignment.Center, "center")
+
+            assertColor(topColor, minRed = 200, maxGreen = 50, maxBlue = 50)
+            assertColor(centerColor, maxRed = 50, minGreen = 200, maxBlue = 50)
+        } finally {
+            sketch.shutdown()
+            client.close()
+        }
+    }
+
+    @Test
     fun `disk cache re-decodes the original at each requested size without retaining images`() = runTest {
         val bytes = encodedRaster(EncodedImageFormat.PNG, width = 600, height = 900)
         var calls = 0
@@ -383,5 +429,42 @@ class AniImageLoaderConfigurationTest {
         } finally {
             surface.close()
         }
+    }
+
+    private fun encodedVerticalBands(): ByteArray {
+        val surface = Surface.makeRasterN32Premul(100, 300)
+        val paint = Paint()
+        try {
+            paint.color = 0xFFFF0000.toInt()
+            surface.canvas.drawRect(Rect.makeXYWH(0f, 0f, 100f, 100f), paint)
+            paint.color = 0xFF00FF00.toInt()
+            surface.canvas.drawRect(Rect.makeXYWH(0f, 100f, 100f, 100f), paint)
+            paint.color = 0xFF0000FF.toInt()
+            surface.canvas.drawRect(Rect.makeXYWH(0f, 200f, 100f, 100f), paint)
+            return requireNotNull(
+                surface.makeImageSnapshot().encodeToData(EncodedImageFormat.PNG, 100),
+            ).bytes
+        } finally {
+            paint.close()
+            surface.close()
+        }
+    }
+
+    private fun assertColor(
+        color: Int,
+        minRed: Int = 0,
+        maxRed: Int = 255,
+        minGreen: Int = 0,
+        maxGreen: Int = 255,
+        minBlue: Int = 0,
+        maxBlue: Int = 255,
+    ) {
+        val red = color shr 16 and 0xFF
+        val green = color shr 8 and 0xFF
+        val blue = color and 0xFF
+        assertTrue(
+            red in minRed..maxRed && green in minGreen..maxGreen && blue in minBlue..maxBlue,
+            "Unexpected color: red=$red, green=$green, blue=$blue",
+        )
     }
 }

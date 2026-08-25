@@ -861,6 +861,12 @@
     <string name="cache_management_delete_cache_confirmation">Deletion cannot be undone. Delete this cache?</string>
     <string name="cache_management_finished_count">%1$d/%2$d completed</string>
     <string name="cache_management_downloading_count">%1$d downloading</string>
+    <string name="cache_subject_pause_all">Pause all</string>
+    <string name="cache_subject_resume_all">Resume all</string>
+    <string name="cache_management_selection_downloading_count">incl. %1$d downloading</string>
+    <string name="cache_management_select_all_action">Select all</string>
+    <string name="cache_management_deselect_all">Deselect all</string>
+    <string name="cache_episode_status_paused">Paused</string>
     <string name="cache_management_episode_label">Episode %1$d · %2$s</string>
     <string name="cache_management_more_actions">More Actions</string>
     <string name="cache_management_play">Play</string>
@@ -1155,6 +1161,8 @@
     <string name="settings_app_notification_settings">Notification settings</string>
     <string name="settings_app_open_settings">Open settings</string>
     <string name="settings_app_danmaku_refresh_rate">Danmaku refresh rate</string>
+    <string name="settings_player_exoplayer_preinit_effect_graph">Preload video enhancement shaders</string>
+    <string name="settings_player_exoplayer_preinit_effect_graph_desc">When enabled, video enhancement shaders are loaded even if video enhancement is disabled by default, allowing changes to video enhancement options to take effect immediately. Otherwise, you may need to restart playback for them to take effect.\nDisable this option if the screen turns black or system features (such as motion compensation) stop working.</string>
     <string name="settings_log_share_today_log_file">Share today\'s log file</string>
     <string name="settings_log_share_file">Share log file</string>
     <string name="settings_log_copy_today_log_content">Copy today\'s log content (large)</string>
