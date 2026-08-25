@@ -25,6 +25,7 @@ data class SubjectCollectionProgressSyncResult(
     val fetched: Int,
     val skipped: Int,
     val wishToDoing: Int,
+    val wishToDone: Int,
     val doingToDone: Int,
     val failed: Int,
 )
@@ -47,15 +48,19 @@ class SyncSubjectCollectionTypesByProgressUseCaseImpl(
         }
 
         var wishToDoing = 0
+        var wishToDone = 0
         var doingToDone = 0
         var failed = 0
         updates.forEach { (collection, targetType) ->
             try {
                 setSubjectCollectionTypeOrDeleteUseCase(collection.subjectId, targetType)
-                when (targetType) {
-                    UnifiedCollectionType.DOING -> wishToDoing++
-                    UnifiedCollectionType.DONE -> doingToDone++
-                    else -> error("Unexpected collection sync target: $targetType")
+                when (collection.collectionType to targetType) {
+                    UnifiedCollectionType.WISH to UnifiedCollectionType.DOING -> wishToDoing++
+                    UnifiedCollectionType.WISH to UnifiedCollectionType.DONE -> wishToDone++
+                    UnifiedCollectionType.DOING to UnifiedCollectionType.DONE -> doingToDone++
+                    else -> error(
+                        "Unexpected collection sync transition: ${collection.collectionType} to $targetType",
+                    )
                 }
             } catch (e: CancellationException) {
                 throw e
@@ -71,12 +76,14 @@ class SyncSubjectCollectionTypesByProgressUseCaseImpl(
             fetched = collections.size,
             skipped = collections.size - updates.size,
             wishToDoing = wishToDoing,
+            wishToDone = wishToDone,
             doingToDone = doingToDone,
             failed = failed,
         )
         logger.info {
             "Manual subject collection progress sync completed: fetched=${result.fetched}, " +
                 "skipped=${result.skipped}, wishToDoing=${result.wishToDoing}, " +
+                "wishToDone=${result.wishToDone}, " +
                 "doingToDone=${result.doingToDone}, failed=${result.failed}"
         }
         return result
@@ -97,8 +104,13 @@ internal fun SubjectCollectionInfo.syncedCollectionTypeByEpisodeProgress(): Unif
     if (mainStoryCollectionTypes.isEmpty()) return null
 
     return when (collectionType) {
-        UnifiedCollectionType.WISH -> UnifiedCollectionType.DOING.takeIf {
-            mainStoryCollectionTypes.any { it == UnifiedCollectionType.DONE }
+        UnifiedCollectionType.WISH -> when {
+            airingInfo.isCompleted && mainStoryCollectionTypes.all { it == UnifiedCollectionType.DONE } -> {
+                UnifiedCollectionType.DONE
+            }
+
+            mainStoryCollectionTypes.any { it == UnifiedCollectionType.DONE } -> UnifiedCollectionType.DOING
+            else -> null
         }
 
         UnifiedCollectionType.DOING -> UnifiedCollectionType.DONE.takeIf {

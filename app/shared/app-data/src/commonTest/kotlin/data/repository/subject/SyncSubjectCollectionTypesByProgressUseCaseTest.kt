@@ -35,6 +35,30 @@ class SyncSubjectCollectionTypesByProgressUseCaseTest {
     }
 
     @Test
+    fun `completed wish becomes done when every main story episode is done`() {
+        val collection = collection(
+            type = UnifiedCollectionType.WISH,
+            episode(UnifiedCollectionType.DONE),
+            episode(UnifiedCollectionType.DONE, id = 2),
+            completed = true,
+        )
+
+        assertEquals(UnifiedCollectionType.DONE, collection.syncedCollectionTypeByEpisodeProgress())
+    }
+
+    @Test
+    fun `completed wish becomes doing when only some main story episodes are done`() {
+        val collection = collection(
+            type = UnifiedCollectionType.WISH,
+            episode(UnifiedCollectionType.DONE),
+            episode(UnifiedCollectionType.NOT_COLLECTED, id = 2),
+            completed = true,
+        )
+
+        assertEquals(UnifiedCollectionType.DOING, collection.syncedCollectionTypeByEpisodeProgress())
+    }
+
+    @Test
     fun `wish ignores done non-main-story episodes`() {
         val collection = collection(
             type = UnifiedCollectionType.WISH,
