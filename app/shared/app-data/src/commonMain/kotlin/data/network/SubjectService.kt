@@ -35,6 +35,7 @@ import me.him188.ani.app.domain.session.checkAccessAniApiNow
 import me.him188.ani.app.platform.getAniUserAgent
 import me.him188.ani.client.apis.SubjectsAniApi
 import me.him188.ani.client.models.AniCollectionType
+import me.him188.ani.client.models.AniPaginatedResponseSubjectCollection
 import me.him188.ani.client.models.AniPerson
 import me.him188.ani.client.models.AniSubjectCollection
 import me.him188.ani.client.models.AniSubjectRecommendation
@@ -55,6 +56,12 @@ import kotlin.coroutines.CoroutineContext
  * Use [SubjectManager] instead.
  */
 interface SubjectService {
+    suspend fun getSubjectCollectionsPage(
+        type: BangumiSubjectCollectionType?,
+        offset: Int,
+        limit: Int,
+    ): AniPaginatedResponseSubjectCollection
+
     suspend fun getSubjectCollections(
         type: BangumiSubjectCollectionType?,
         offset: Int,
@@ -120,20 +127,28 @@ class RemoteSubjectService(
 ) : SubjectService, KoinComponent {
     private val logger = logger<RemoteSubjectService>()
 
+    override suspend fun getSubjectCollectionsPage(
+        type: BangumiSubjectCollectionType?,
+        offset: Int,
+        limit: Int,
+    ): AniPaginatedResponseSubjectCollection = withContext(ioDispatcher) {
+        sessionManager.checkAccessAniApiNow()
+        subjectApi {
+            getSubjectCollections(
+                type = type?.toAniCollectionType(),
+                limit = limit,
+                offset = offset,
+            ).body()
+        }
+    }
+
     override suspend fun getSubjectCollections(
         type: BangumiSubjectCollectionType?,
         offset: Int,
         limit: Int
-    ): List<AniSubjectCollection> = withContext(ioDispatcher) {
-        sessionManager.checkAccessAniApiNow()
+    ): List<AniSubjectCollection> {
         val collections = try {
-            subjectApi {
-                getSubjectCollections(
-                    type = type?.toAniCollectionType(),
-                    limit = limit,
-                    offset = offset,
-                ).body().items
-            }
+            getSubjectCollectionsPage(type, offset, limit).items
         } catch (e: ClientRequestException) {
             // invalid: 400 . Text: "{"title":"Bad Request","details":{"path":"/v0/users/him188/collections","method":"GET","query_string":"subject_type=2&type=1&limit=30&offset=35"},"request_id":".","description":"offset should be less than or equal to 34"}
             if (e.response.status == HttpStatusCode.BadRequest) {
@@ -142,7 +157,7 @@ class RemoteSubjectService(
                 throw e
             }
         }
-        return@withContext collections
+        return collections
     }
 
     override suspend fun getSubjectCollection(subjectId: Int): AniSubjectCollection? {

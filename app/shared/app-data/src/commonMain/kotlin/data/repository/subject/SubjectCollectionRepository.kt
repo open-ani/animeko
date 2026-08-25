@@ -134,6 +134,16 @@ sealed class SubjectCollectionRepository(
     )
 
     /**
+     * Fetches complete server snapshots for [types] and replaces the corresponding local caches.
+     *
+     * Room is not used as the source because collection caches are neither partitioned by user nor guaranteed to
+     * contain every page.
+     */
+    abstract suspend fun fetchSubjectCollectionsSnapshot(
+        types: List<UnifiedCollectionType>,
+    ): List<SubjectCollectionInfo>
+
+    /**
      * 获取最近更新的条目收藏 cold [Flow].
      */
     abstract fun mostRecentlyUpdatedSubjectCollectionsFlow(
@@ -370,6 +380,51 @@ class SubjectCollectionRepositoryImpl(
         }
     }
 
+    override suspend fun fetchSubjectCollectionsSnapshot(
+        types: List<UnifiedCollectionType>,
+    ): List<SubjectCollectionInfo> {
+        return try {
+            withContext(defaultDispatcher) {
+                require(types.none { it == UnifiedCollectionType.NOT_COLLECTED }) {
+                    "types must not contain NOT_COLLECTED"
+                }
+
+                val snapshots = types.distinct().associateWith { type ->
+                    fetchCompleteSnapshot(
+                        pageSize = SUBJECT_COLLECTION_SNAPSHOT_PAGE_SIZE,
+                        keySelector = AniSubjectCollection::id,
+                    ) { offset, limit ->
+                        val page = subjectService.getSubjectCollectionsPage(
+                            type = type.toSubjectCollectionType(),
+                            offset = offset,
+                            limit = limit,
+                        )
+                        page.total to page.items
+                    }
+                }
+
+                // Do not replace any cache until every requested server snapshot has passed validation.
+                snapshots.forEach { (type, items) ->
+                    subjectCollectionDao.deleteAll(type)
+                    saveSubjectCollectionsWithEpisodes(items)
+                }
+
+                val currentDate = getCurrentDate()
+                val nsfwModeSettings = nsfwModeSettingsFlow.first()
+                snapshots.values.flatten().map { collection ->
+                    val lastFetched = currentTimeMillis()
+                    val entity = collection.toEntity(lastFetched)
+                    val episodes = collection.episodes.map { episode ->
+                        episode.toEntity1(collection.id.toInt(), lastFetched).toEpisodeCollectionInfo()
+                    }
+                    entity.toSubjectCollectionInfo(episodes, currentDate, nsfwModeSettings)
+                }
+            }
+        } catch (e: Exception) {
+            throw RepositoryException.wrapOrThrowCancellation(e)
+        }
+    }
+
     // transparent exception
     /**
      * 执行网络查询条目收藏及其剧集列表, 在所有网络请求都成功后调用 [onFetched], 然后保存查询结果到数据库.
@@ -394,10 +449,14 @@ class SubjectCollectionRepositoryImpl(
 
         onFetched(items)
 
+        saveSubjectCollectionsWithEpisodes(items)
+    }
+
+    private suspend fun saveSubjectCollectionsWithEpisodes(items: List<AniSubjectCollection>) {
         // 批量插入条目信息
         val lastFetched = currentTimeMillis()
         subjectCollectionDao.upsert(
-            items.mapIndexed { index, batchSubjectCollection ->
+            items.map { batchSubjectCollection ->
                 batchSubjectCollection.toEntity(lastFetched = lastFetched)
             },
         )
@@ -629,6 +688,61 @@ private fun SubjectCollectionEntity.toSubjectCollectionInfo(
     )
 }
 
+
+private const val SUBJECT_COLLECTION_SNAPSHOT_PAGE_SIZE = 100
+
+internal suspend fun <T, K> fetchCompleteSnapshot(
+    pageSize: Int,
+    keySelector: (T) -> K,
+    fetchPage: suspend (offset: Int, limit: Int) -> Pair<Long, List<T>>,
+): List<T> {
+    require(pageSize > 0) { "pageSize must be positive" }
+
+    var expectedTotal: Long? = null
+    var offset = 0
+    val itemsByKey = linkedMapOf<K, T>()
+
+    while (true) {
+        val (total, items) = fetchPage(offset, pageSize)
+        require(total in 0..Int.MAX_VALUE.toLong()) { "Invalid collection snapshot total: $total" }
+
+        val initialTotal = expectedTotal
+        if (initialTotal == null) {
+            expectedTotal = total
+        } else {
+            check(total == initialTotal) {
+                "Collection snapshot total changed while paging: expected $initialTotal, actual $total"
+            }
+        }
+
+        if (items.isEmpty()) {
+            check(itemsByKey.size.toLong() == total) {
+                "Collection snapshot ended early: expected $total, actual ${itemsByKey.size}"
+            }
+            return itemsByKey.values.toList()
+        }
+
+        items.forEach { item ->
+            val key = keySelector(item)
+            check(itemsByKey.put(key, item) == null) {
+                "Collection snapshot contained duplicate item: $key"
+            }
+        }
+
+        check(offset <= Int.MAX_VALUE - items.size) { "Collection snapshot offset overflow" }
+        offset += items.size
+        check(offset.toLong() <= total) {
+            "Collection snapshot exceeded total: expected $total, fetched $offset"
+        }
+
+        if (offset.toLong() == total) {
+            check(itemsByKey.size == offset) {
+                "Collection snapshot item count mismatch: expected $total, actual ${itemsByKey.size}"
+            }
+            return itemsByKey.values.toList()
+        }
+    }
+}
 
 data class LoadInfo(
     val offset: Int,
