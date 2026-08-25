@@ -12,7 +12,6 @@ package me.him188.ani.app.ui.subject.collection
 import androidx.compose.foundation.lazy.grid.LazyGridState
 import androidx.compose.runtime.Stable
 import androidx.compose.runtime.getValue
-import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.flow.filter
@@ -27,8 +26,10 @@ import me.him188.ani.app.data.repository.episode.EpisodeCollectionRepository
 import me.him188.ani.app.data.repository.episode.EpisodeProgressRepository
 import me.him188.ani.app.data.repository.subject.SetSubjectCollectionTypeOrDeleteUseCase
 import me.him188.ani.app.data.repository.subject.SubjectCollectionRepository
+import me.him188.ani.app.data.repository.subject.SubjectCollectionProgressSyncReason
 import me.him188.ani.app.data.repository.subject.SyncSubjectCollectionTypesByProgressUseCase
 import me.him188.ani.app.data.repository.user.SettingsRepository
+import me.him188.ani.app.domain.episode.SetEpisodeCollectionTypeUseCase
 import me.him188.ani.app.domain.foundation.LoadError
 import me.him188.ani.app.domain.session.SessionEvent
 import me.him188.ani.app.domain.session.SessionStateProvider
@@ -56,6 +57,7 @@ class UserCollectionsViewModel : AbstractViewModel(), KoinComponent {
     private val settingsRepository: SettingsRepository by inject()
     private val sessionStateProvider: SessionStateProvider by inject()
     private val setSubjectCollectionTypeOrDeleteUseCase: SetSubjectCollectionTypeOrDeleteUseCase by inject()
+    private val setEpisodeCollectionTypeUseCase: SetEpisodeCollectionTypeUseCase by inject()
     private val syncSubjectCollectionTypesByProgressUseCase: SyncSubjectCollectionTypesByProgressUseCase by inject()
 
     val lazyGridState = LazyGridState()
@@ -70,9 +72,6 @@ class UserCollectionsViewModel : AbstractViewModel(), KoinComponent {
 
     private val fullSyncTasker = MonoTasker(backgroundScope)
     val fullSyncState: MutableStateFlow<BangumiSyncState?> = MutableStateFlow(null)
-
-    private val progressSyncTasker = MonoTasker(backgroundScope)
-    val isProgressSyncing = progressSyncTasker.isRunning
 
     val state = UserCollectionsState(
         startSearch = { subjectCollectionRepository.subjectCollectionsPager(it) },
@@ -100,6 +99,10 @@ class UserCollectionsViewModel : AbstractViewModel(), KoinComponent {
         )
 
     override fun init() {
+        syncSubjectCollectionTypesByProgressUseCase.requestFullSync(
+            SubjectCollectionProgressSyncReason.MAIN_SCREEN_ENTERED,
+        )
+
 //        // 获取第一页, 得到数量
 //        // 不要太快, 测试到的如果全并行就会导致 "在看" 没有数据, 不清楚是哪边问题.
 //        launchInBackground {
@@ -133,24 +136,10 @@ class UserCollectionsViewModel : AbstractViewModel(), KoinComponent {
         episodeId: Int,
         collectionType: UnifiedCollectionType
     ): LoadError? = LoadError.runAndWrapOrThrowCancellation {
-        episodeCollectionRepository.setEpisodeCollectionType(
+        setEpisodeCollectionTypeUseCase(
             subjectId,
             episodeId,
             collectionType.toggleCollected(),
         )
-    }
-
-    fun syncCollectionTypesByEpisodeProgress() {
-        progressSyncTasker.launch {
-            try {
-                syncSubjectCollectionTypesByProgressUseCase()
-            } catch (e: CancellationException) {
-                throw e
-            } catch (e: Exception) {
-                logger.error("Manual subject collection progress sync failed", e)
-            } finally {
-                state.refresh()
-            }
-        }
     }
 }

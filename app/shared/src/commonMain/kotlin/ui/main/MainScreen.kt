@@ -343,8 +343,6 @@ private fun MainScreenNavigationLayout(
                             state = userCollectionsViewModel.state,
                             selfInfo = selfInfo,
                             fullSyncState = userCollectionsViewModel.fullSyncState.collectAsStateWithLifecycle().value,
-                            isProgressSyncing = userCollectionsViewModel.isProgressSyncing.collectAsStateWithLifecycle().value,
-                            onSyncCollectionProgress = userCollectionsViewModel::syncCollectionTypesByEpisodeProgress,
                             onClickSearch = onNavigateToSearch,
                             onClickLogin = onLogin,
                             onClickSettings = { navigator.navigateSettings() },

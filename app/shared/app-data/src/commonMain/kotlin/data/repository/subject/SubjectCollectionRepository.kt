@@ -404,9 +404,11 @@ class SubjectCollectionRepositoryImpl(
                 }
 
                 // Do not replace any cache until every requested server snapshot has passed validation.
-                snapshots.forEach { (type, items) ->
-                    subjectCollectionDao.deleteAll(type)
-                    saveSubjectCollectionsWithEpisodes(items)
+                updateRecentlyUpdatedSubjectCollectionsMutex.withLock {
+                    snapshots.forEach { (type, items) ->
+                        subjectCollectionDao.deleteAll(type)
+                        saveSubjectCollectionsWithEpisodes(items)
+                    }
                 }
 
                 val currentDate = getCurrentDate()

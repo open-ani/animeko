@@ -45,7 +45,6 @@ import androidx.compose.material.icons.rounded.Refresh
 import androidx.compose.material.icons.rounded.Search
 import androidx.compose.material.icons.rounded.Settings
 import androidx.compose.material.icons.rounded.Sync
-import androidx.compose.material.icons.rounded.SyncAlt
 import androidx.compose.material3.Badge
 import androidx.compose.material3.Button
 import androidx.compose.material3.FilledTonalButton
@@ -244,8 +243,6 @@ fun CollectionPage(
     state: UserCollectionsState,
     selfInfo: SelfInfoUiState,
     fullSyncState: BangumiSyncState?,
-    isProgressSyncing: Boolean,
-    onSyncCollectionProgress: () -> Unit,
     onClickSearch: () -> Unit,
     onClickLogin: () -> Unit,
     onClickSettings: () -> Unit,
@@ -272,16 +269,6 @@ fun CollectionPage(
             }
         },
         actions = {
-            IconButton(
-                onClick = onSyncCollectionProgress,
-                enabled = selfInfo.isSessionValid == true &&
-                        !isProgressSyncing &&
-                        !isBangumiSyncing &&
-                        !state.selectedPageRefreshing,
-            ) {
-                Icon(Icons.Rounded.SyncAlt, contentDescription = null)
-            }
-
             if (hideBangumiSync && isBangumiSyncing) {
                 val infiniteTransition = rememberInfiniteTransition(label = "rotation")
                 val angle by infiniteTransition.animateFloat(
@@ -357,7 +344,7 @@ fun CollectionPage(
                 scrollState = state.tabRowScrollState,
             )
         },
-        isRefreshing = { state.selectedPageRefreshing || isBangumiSyncing || isProgressSyncing },
+        isRefreshing = { state.selectedPageRefreshing || isBangumiSyncing },
         onRefresh = { state.refreshSelectedPage() },
         modifier,
         windowInsets,
@@ -372,7 +359,7 @@ fun CollectionPage(
                 isPullToRefreshing,
                 onRefresh = { items.refresh() },
                 state = pullToRefreshState,
-                enabled = !isBangumiSyncing && !isProgressSyncing,
+                enabled = !isBangumiSyncing,
                 touchOnly = true,
                 indicator = {
                     // 内容延伸到 top bar 下方, 指示器需要避开 top bar.
