@@ -905,6 +905,7 @@
     <string name="cache_management_select_all_action">全选</string>
     <string name="cache_management_deselect_all">取消全选</string>
     <string name="cache_episode_status_paused">已暂停</string>
+    <string name="cache_episode_watched_progress">已观看 %1$s</string>
     <string name="cache_management_episode_label">第%1$d话 · %2$s</string>
     <string name="cache_management_more_actions">更多操作</string>
     <string name="cache_management_play">播放</string>

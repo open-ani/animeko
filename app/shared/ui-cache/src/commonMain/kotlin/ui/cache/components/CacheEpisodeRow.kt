@@ -41,6 +41,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.graphics.StrokeCap
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import me.him188.ani.app.tools.getOrZero
@@ -53,6 +54,7 @@ import me.him188.ani.app.ui.lang.cache_episode_download_failed
 import me.him188.ani.app.ui.lang.cache_episode_pause_download
 import me.him188.ani.app.ui.lang.cache_episode_resume_download
 import me.him188.ani.app.ui.lang.cache_episode_status_paused
+import me.him188.ani.app.ui.lang.cache_episode_watched_progress
 import me.him188.ani.app.ui.lang.cache_filter_status_finished
 import me.him188.ani.app.ui.lang.cache_management_episode_label
 import me.him188.ani.app.ui.lang.cache_management_invalid_cache_info
@@ -203,16 +205,30 @@ fun CacheEpisodeRow(
                 }
             }
 
-            AniAnimatedVisibility(!episode.isFinished) {
+            val showPlaybackProgress = episode.isFinished && episode.hasPlaybackProgress
+            AniAnimatedVisibility(!episode.isFinished || showPlaybackProgress) {
                 Row(
                     Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.spacedBy(16.dp),
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
-                    val progress by animateFloatAsState(episode.progress.getOrZero())
+                    val displayedProgress = if (showPlaybackProgress) {
+                        episode.playbackProgress
+                    } else {
+                        episode.progress
+                    }
+                    val progress by animateFloatAsState(displayedProgress.getOrZero())
                     LinearProgressIndicator(
                         progress = { progress },
-                        modifier = Modifier.weight(1f),
+                        modifier = Modifier
+                            .weight(1f)
+                            .then(
+                                if (showPlaybackProgress) {
+                                    Modifier.testTag(CacheEpisodeRowTestTags.playbackProgress(episode.cacheId))
+                                } else {
+                                    Modifier
+                                },
+                            ),
                         strokeCap = StrokeCap.Round,
                     )
                     Row(
@@ -220,6 +236,10 @@ fun CacheEpisodeRow(
                         verticalAlignment = Alignment.CenterVertically,
                     ) {
                         val statusText = when {
+                            showPlaybackProgress -> stringResource(
+                                Lang.cache_episode_watched_progress,
+                                episode.playbackProgressText ?: "",
+                            )
                             episode.isFailed -> stringResource(Lang.cache_episode_download_failed)
                             episode.isPaused -> stringResource(Lang.cache_episode_status_paused)
                             else -> episode.speedText
@@ -231,12 +251,20 @@ fun CacheEpisodeRow(
                                 color = if (episode.isFailed) MaterialTheme.colorScheme.error else Color.Unspecified,
                             )
                         }
-                        episode.progressText?.let { Text(it, style = MaterialTheme.typography.labelMedium) }
+                        if (!showPlaybackProgress) {
+                            episode.progressText?.let { Text(it, style = MaterialTheme.typography.labelMedium) }
+                        }
                     }
                 }
             }
         }
     }
+}
+
+object CacheEpisodeRowTestTags {
+    private const val PLAYBACK_PROGRESS_PREFIX = "cache_episode_playback_progress_"
+
+    fun playbackProgress(cacheId: String): String = PLAYBACK_PROGRESS_PREFIX + cacheId
 }
 
 /**

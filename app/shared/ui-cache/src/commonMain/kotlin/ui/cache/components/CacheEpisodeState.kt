@@ -37,6 +37,10 @@ class CacheEpisodeState(
     val screenShots: List<String>, // url
     val stats: Stats,
     val state: CacheEpisodePaused,
+    /**
+     * 该剧集的观看进度. 仅在播放历史包含有效时长和大于 0 的播放位置时可用.
+     */
+    val playbackProgress: Progress = Progress.Unspecified,
     val engineKey: MediaCacheEngineKey?,
     val subjectCollectionType: UnifiedCollectionType?,
     val playability: Playability = Playability.PLAYABLE,
@@ -66,6 +70,12 @@ class CacheEpisodeState(
     val listItemKey = "$subjectId-$groupId-$episodeId-$cacheId"
 
     val progress get() = stats.progress
+
+    val hasPlaybackProgress get() = !playbackProgress.isUnspecified
+
+    val playbackProgressText: String? = playbackProgress.getOrNull()?.let {
+        "${String.format1f(it * 100)}%"
+    }
 
     val isPaused get() = state == CacheEpisodePaused.PAUSED
     val isFailed get() = state == CacheEpisodePaused.FAILED
@@ -182,6 +192,7 @@ fun createTestCacheEpisode(
     progress: Progress = 0.3f.toProgress(),
     totalSize: FileSize = 888.megaBytes,
     mediaSourceId: String? = "AnimeGarden",
+    playbackProgress: Progress = Progress.Unspecified,
 ): CacheEpisodeState {
     val cacheId = Random.nextInt(10000, 99999).toString()
     val resolvedState = initialState ?: when {
@@ -205,6 +216,7 @@ fun createTestCacheEpisode(
             totalSize = totalSize,
         ),
         state = resolvedState,
+        playbackProgress = playbackProgress,
         engineKey = MediaCacheEngineKey.Anitorrent,
         subjectCollectionType = UnifiedCollectionType.DOING,
         mediaSourceId = mediaSourceId,

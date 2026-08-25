@@ -865,6 +865,7 @@
     <string name="cache_management_select_all_action">Select all</string>
     <string name="cache_management_deselect_all">Deselect all</string>
     <string name="cache_episode_status_paused">Paused</string>
+    <string name="cache_episode_watched_progress">Watched %1$s</string>
     <string name="cache_management_episode_label">Episode %1$d · %2$s</string>
     <string name="cache_management_more_actions">More Actions</string>
     <string name="cache_management_play">Play</string>
