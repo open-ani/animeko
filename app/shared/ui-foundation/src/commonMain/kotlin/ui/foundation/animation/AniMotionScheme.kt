@@ -49,6 +49,7 @@ import androidx.compose.ui.unit.dp
 import me.him188.ani.app.ui.foundation.layout.currentWindowAdaptiveInfo1
 import me.him188.ani.app.ui.foundation.layout.isWidthCompact
 import me.him188.ani.app.ui.foundation.theme.EasingDurations
+import me.him188.ani.app.ui.foundation.theme.LocalThemeSettings
 import me.him188.ani.utils.platform.Platform
 import me.him188.ani.utils.platform.currentPlatform
 
@@ -298,6 +299,7 @@ fun ProvideAniMotionCompositionLocals(
 ) {
     val density by rememberUpdatedState(LocalDensity.current)
     val windowSizeClass by rememberUpdatedState(currentWindowAdaptiveInfo1().windowSizeClass)
+    val enablePredictiveBackMotion = LocalThemeSettings.current.enablePredictiveBackAndSharedContainerTransformMotion
 
     val isWidthCompact by remember {
         derivedStateOf {
@@ -306,7 +308,7 @@ fun ProvideAniMotionCompositionLocals(
     }
     val navigationMotionScheme by remember {
         derivedStateOf {
-            NavigationMotionScheme.calculate(useSlide = isWidthCompact)
+            NavigationMotionScheme.calculate(useSlide = isWidthCompact, enablePredictiveBackMotion)
         }
     }
     val aniMotionScheme by remember {

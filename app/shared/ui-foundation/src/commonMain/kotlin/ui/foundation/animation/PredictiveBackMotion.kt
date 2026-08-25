@@ -51,7 +51,7 @@ object PredictiveBackMotion {
     /**
      * 返回时, 当前页面缩小到的比例. 指南 "Exit Scale: 100% -> 90%".
      */
-    const val ExitScale = 0.9f
+    const val ExitScale = 0.95f
 
     /**
      * 返回时, 上一个页面进入的起始比例. 指南 "Enter Scale: 110% -> 100%".
@@ -65,10 +65,13 @@ object PredictiveBackMotion {
      * 整个导航动画的总时长 ([NavigationMotionScheme.PredictiveTotalDurationMillis]) 取比例.
      */
     const val FadeThroughThreshold = 0.35f
+    const val SharedContainerFadeThroughThreshold = 0.2f
 
     /**
      * 旧页面淡出所占的时长, 对应 [FadeThroughThreshold] 的手势进度.
      */
     val FadeOutDurationMillis =
         (NavigationMotionScheme.PredictiveTotalDurationMillis * FadeThroughThreshold).roundToInt()
+    val SharedContainerFadeOutDurationMillis =
+        (NavigationMotionScheme.PredictiveTotalDurationMillis * SharedContainerFadeThroughThreshold).roundToInt()
 }

@@ -529,6 +529,8 @@
     <string name="settings_theme_animated_gradient_subject_description">Generate animated gradient background based on cover image. Enabling this may increase device temperature and battery usage</string>
     <string name="settings_theme_frosted_glass">Frosted Glass Top and Navigation Bars</string>
     <string name="settings_theme_frosted_glass_description">Use a blurred translucent background for the top app bar and navigation bar</string>
+    <string name="settings_theme_predictive_back_and_shared_container_transform_motion">Enable Experimental Predictive Back Gestures and Shared-Element Animations</string>
+    <string name="settings_theme_predictive_back_and_shared_container_transform_motion_desc">Enable experimental predictive back gesture animations on Android 14+ and iOS, and experimental shared-element navigation animations between the home and item detail pages. Restart to take effect.</string>
     <string name="settings_theme_palette">Color Palette</string>
     <string name="settings_theme_mode_light">Light</string>
     <string name="settings_theme_mode_dark">Dark</string>

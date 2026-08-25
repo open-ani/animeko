@@ -57,74 +57,83 @@ data class NavigationMotionScheme(
         /**
          * @param useSlide 是否使用水平滑动. 窄屏才滑动, 宽屏只淡入淡出.
          */
-        fun calculate(useSlide: Boolean): NavigationMotionScheme {
+        fun calculate(
+            useSlide: Boolean,
+            usePredictiveBackMotion: Boolean,
+        ): NavigationMotionScheme {
             val slideInMargin = 1f / 16
             val slideOutMargin = 1f / 16
 
             val predictiveFadeOutDuration = PredictiveBackMotion.FadeOutDurationMillis
             val predictiveFadeInDuration = PredictiveTotalDurationMillis - predictiveFadeOutDuration
-
-            val predictiveSharedContainerFadeOutDuration =
-                EasingDurations.emphasized - EasingDurations.emphasizedDecelerate
+            val sharedContainerPredictiveFadeOutDuration = PredictiveBackMotion.SharedContainerFadeOutDurationMillis
+            val sharedContainerPredictiveFadeInDuration =
+                PredictiveTotalDurationMillis - sharedContainerPredictiveFadeOutDuration
 
             val fadeIn = fadeIn(tween(enterDuration, delayMillis = exitDuration, easing = enterEasing))
             val fadeOut = fadeOut(tween(exitDuration, easing = exitEasing))
 
-            return NavigationMotionScheme(
-                enterTransition = if (useSlide) {
-                    val delay = exitDuration
-                    val slideIn = slideInHorizontally(
-                        tween(enterDuration, delayMillis = delay, easing = enterEasing),
-                        initialOffsetX = { (it * slideInMargin).roundToInt() },
-                    )
-                    slideIn.plus(fadeIn)
-                } else {
-                    fadeIn
-                },
-                exitTransition = if (useSlide) {
-                    slideOutHorizontally(
-                        tween(exitDuration, easing = exitEasing),
-                        targetOffsetX = { -(it * slideOutMargin).roundToInt() },
-                    ).plus(fadeOut)
-                } else {
-                    fadeOut
-                },
-                popEnterTransition = if (useSlide) {
-                    slideInHorizontally(
-                        tween(enterDuration, delayMillis = exitDuration, easing = enterEasing),
-                        initialOffsetX = { -(it * slideInMargin).roundToInt() },
-                    ) + fadeIn
-                } else {
-                    fadeIn // clean fade
-                },
-                popExitTransition = if (useSlide) {
-                    val slide = slideOutHorizontally(
-                        tween(exitDuration, easing = exitEasing),
-                        targetOffsetX = { (it * slideOutMargin).roundToInt() },
-                    )
-                    slide.plus(fadeOut)
-                } else {
-                    fadeOut
-                },
-                predictivePopEnterTransition = scaleIn(
-                    tween(PredictiveTotalDurationMillis, easing = PredictiveBackMotion.ProgressEasing),
-                    initialScale = PredictiveBackMotion.EnterScale,
-                ) + fadeIn(
-                    // alpha 从 35% 处才开始
-                    tween(
-                        predictiveFadeInDuration,
-                        delayMillis = predictiveFadeOutDuration,
-                        easing = StandardDecelerateEasing,
-                    ),
+            val enterTransition = if (useSlide) {
+                val delay = exitDuration
+                val slideIn = slideInHorizontally(
+                    tween(enterDuration, delayMillis = delay, easing = enterEasing),
+                    initialOffsetX = { (it * slideInMargin).roundToInt() },
+                )
+                slideIn.plus(fadeIn)
+            } else {
+                fadeIn
+            }
+
+            val exitTransition = if (useSlide) {
+                slideOutHorizontally(
+                    tween(exitDuration, easing = exitEasing),
+                    targetOffsetX = { -(it * slideOutMargin).roundToInt() },
+                ).plus(fadeOut)
+            } else {
+                fadeOut
+            }
+
+            val popEnterTransition = if (useSlide) {
+                slideInHorizontally(
+                    tween(enterDuration, delayMillis = exitDuration, easing = enterEasing),
+                    initialOffsetX = { -(it * slideInMargin).roundToInt() },
+                ) + fadeIn
+            } else {
+                fadeIn // clean fade
+            }
+
+            val popExitTransition = if (useSlide) {
+                val slide = slideOutHorizontally(
+                    tween(exitDuration, easing = exitEasing),
+                    targetOffsetX = { (it * slideOutMargin).roundToInt() },
+                )
+                slide.plus(fadeOut)
+            } else {
+                fadeOut
+            }
+
+            val predictivePopEnterTransition = scaleIn(
+                tween(PredictiveTotalDurationMillis, easing = PredictiveBackMotion.ProgressEasing),
+                initialScale = PredictiveBackMotion.EnterScale,
+            ) + fadeIn(
+                // alpha 从 35% 处才开始
+                tween(
+                    predictiveFadeInDuration,
+                    delayMillis = predictiveFadeOutDuration,
+                    easing = StandardDecelerateEasing,
                 ),
-                predictivePopExitTransition = scaleOut(
-                    tween(PredictiveTotalDurationMillis, easing = PredictiveBackMotion.ProgressEasing),
-                    targetScale = PredictiveBackMotion.ExitScale,
-                ) + fadeOut(
-                    // alpha 在 35% 处结束
-                    tween(predictiveFadeOutDuration, easing = StandardAccelerateEasing),
-                ),
-                predictiveSharedContainer = PredictiveBackSharedTransitionMotionScheme(
+            )
+
+            val predictivePopExitTransition = scaleOut(
+                tween(PredictiveTotalDurationMillis, easing = PredictiveBackMotion.ProgressEasing),
+                targetScale = PredictiveBackMotion.ExitScale,
+            ) + fadeOut(
+                // alpha 在 35% 处结束
+                tween(predictiveFadeOutDuration, easing = StandardAccelerateEasing),
+            )
+
+            val sharedContainerMotion = if (usePredictiveBackMotion) {
+                PredictiveBackSharedTransitionMotionScheme(
                     enterTransition = EnterTransition.None, // 由 containerEnterTransition 决定
                     exitTransition = scaleOut(
                         tween(PredictiveTotalDurationMillis, easing = PredictiveBackMotion.ProgressEasing),
@@ -137,15 +146,46 @@ data class NavigationMotionScheme(
                     popExitTransition = ExitTransition.None, // 由 containerPopExitTransition 决定
                     containerEnterTransition = fadeIn(
                         tween(
-                            EasingDurations.emphasizedDecelerate,
-                            delayMillis = predictiveSharedContainerFadeOutDuration,
+                            sharedContainerPredictiveFadeInDuration,
+                            delayMillis = sharedContainerPredictiveFadeOutDuration,
                             easing = StandardDecelerateEasing,
                         ),
                     ),
                     containerExitTransition = fadeOut(
-                        tween(predictiveSharedContainerFadeOutDuration, easing = StandardAccelerateEasing),
+                        tween(sharedContainerPredictiveFadeOutDuration, easing = StandardAccelerateEasing),
                     ),
-                ),
+                    containerPopEnterTransition = fadeIn(
+                        tween(
+                            predictiveFadeInDuration,
+                            delayMillis = predictiveFadeOutDuration,
+                            easing = StandardDecelerateEasing,
+                        ),
+                    ),
+                    containerPopExitTransition = fadeOut(
+                        tween(sharedContainerPredictiveFadeInDuration, easing = StandardAccelerateEasing),
+                    ),
+                )
+            } else {
+                PredictiveBackSharedTransitionMotionScheme(
+                    enterTransition = enterTransition,
+                    exitTransition = exitTransition,
+                    popEnterTransition = popEnterTransition,
+                    popExitTransition = popExitTransition,
+                    containerEnterTransition = EnterTransition.None,
+                    containerExitTransition = ExitTransition.None,
+                    containerPopEnterTransition = EnterTransition.None,
+                    containerPopExitTransition = ExitTransition.None,
+                )
+            }
+
+            return NavigationMotionScheme(
+                enterTransition = enterTransition,
+                exitTransition = exitTransition,
+                popEnterTransition = popEnterTransition,
+                popExitTransition = popExitTransition,
+                predictivePopEnterTransition = if (usePredictiveBackMotion) predictivePopEnterTransition else popEnterTransition,
+                predictivePopExitTransition = if (usePredictiveBackMotion) predictivePopExitTransition else popExitTransition,
+                predictiveSharedContainer = sharedContainerMotion,
             )
         }
     }
@@ -160,6 +200,8 @@ class PredictiveBackSharedTransitionMotionScheme(
     val popExitTransition: ExitTransition,
     val containerEnterTransition: EnterTransition,
     val containerExitTransition: ExitTransition,
+    val containerPopEnterTransition: EnterTransition,
+    val containerPopExitTransition: ExitTransition,
 )
 
 @Stable

@@ -28,6 +28,10 @@ android {
         debug {
             buildConfigField("String", "APP_APPLICATION_ID", "\"${idGroup}.debug2\"")
         }
+
+        debugOptimizedLib {
+            buildConfigField("String", "APP_APPLICATION_ID", "\"${idGroup}.debug2\"")
+        }
     }
 
     buildFeatures {

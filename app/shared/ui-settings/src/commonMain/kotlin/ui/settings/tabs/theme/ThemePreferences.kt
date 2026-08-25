@@ -39,6 +39,8 @@ import me.him188.ani.app.ui.lang.settings_theme_frosted_glass_description
 import me.him188.ani.app.ui.lang.settings_theme_high_contrast
 import me.him188.ani.app.ui.lang.settings_theme_high_contrast_description
 import me.him188.ani.app.ui.lang.settings_theme_palette
+import me.him188.ani.app.ui.lang.settings_theme_predictive_back_and_shared_container_transform_motion
+import me.him188.ani.app.ui.lang.settings_theme_predictive_back_and_shared_container_transform_motion_desc
 import me.him188.ani.app.ui.lang.settings_theme_title
 import me.him188.ani.app.ui.settings.framework.SettingsState
 import me.him188.ani.app.ui.settings.framework.components.SettingsScope
@@ -119,6 +121,16 @@ fun SettingsScope.ThemeGroup(
                 description = { Text(stringResource(Lang.settings_theme_frosted_glass_description)) },
             )
         }
+
+        SwitchItem(
+            checked = themeSettings.enablePredictiveBackAndSharedContainerTransformMotion,
+            onCheckedChange = { checked ->
+                state.update(themeSettings.copy(enablePredictiveBackAndSharedContainerTransformMotion = checked))
+            },
+            title = { Text(stringResource(Lang.settings_theme_predictive_back_and_shared_container_transform_motion)) },
+            description = { Text(stringResource(Lang.settings_theme_predictive_back_and_shared_container_transform_motion_desc)) },
+        )
+
     }
 
     Box(

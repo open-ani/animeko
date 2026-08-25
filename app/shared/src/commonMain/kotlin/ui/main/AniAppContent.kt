@@ -415,6 +415,7 @@ private fun AniAppContentImplNavDisplay(
                             subjectContainerTransform(
                                 checkNotNull(route.imageSharedElementKey) { "route.imageSharedElementKey was null." },
                                 alignmentState = coverAnchor,
+                                isPopTransition = true,
                             )
                         },
                         windowInsets = windowInsets,

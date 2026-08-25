@@ -30,6 +30,7 @@ import androidx.compose.ui.layout.onPlaced
 import androidx.navigation3.ui.LocalNavAnimatedContentScope
 import me.him188.ani.app.navigation.SubjectDetailImageSharedElementKey
 import me.him188.ani.app.ui.foundation.ifThen
+import me.him188.ani.app.ui.foundation.theme.LocalThemeSettings
 
 /**
  * 当前 `NavDisplay` 外层的 [SharedTransitionScope], 由 [SharedTransitionLayout] 提供.
@@ -53,10 +54,15 @@ fun Modifier.subjectContainerTransform(
     key: SubjectDetailImageSharedElementKey,
     alignmentState: BoundOffsetAlignmentState? = null,
     shape: Shape = MaterialTheme.shapes.large,
-    enter: EnterTransition = LocalNavigationMotionScheme.current.predictiveSharedContainer.containerEnterTransition,
-    exit: ExitTransition = LocalNavigationMotionScheme.current.predictiveSharedContainer.containerExitTransition,
+    isPopTransition: Boolean = false,
+    motion: PredictiveBackSharedTransitionMotionScheme = LocalNavigationMotionScheme.current.predictiveSharedContainer,
+    enter: EnterTransition = motion.containerEnterTransition,
+    exit: ExitTransition = motion.containerExitTransition,
+    popEnter: EnterTransition = motion.containerPopEnterTransition,
+    popExit: ExitTransition = motion.containerPopExitTransition,
 ): Modifier {
-    val alignment: Alignment = alignmentState?.alignment ?: Alignment.TopCenter
+    if (!LocalThemeSettings.current.enablePredictiveBackAndSharedContainerTransformMotion) return Modifier
+    val alignment: Alignment = alignmentState?.alignment ?: BoundOffsetAlignmentDefaults.subjectDetailsCover()
     // 自定义 alignment 不会走 ScaleToBoundsCached 的缓存 (它只按 identity 认那 9 个标准 Alignment),
     // 而 ScaleToBoundsImpl 没有 equals, SkipToLookaheadSizeElement 是引用比较. 不 remember 的话每次
     // 重组都会判定为变化并重新测量.
@@ -85,8 +91,8 @@ fun Modifier.subjectContainerTransform(
                 rememberSharedContentState(key),
                 animatedVisibilityScope = animatedContentScope,
                 resizeMode = resizeMode,
-                enter = enter,
-                exit = exit,
+                enter = if (isPopTransition) enter else popEnter,
+                exit = if (isPopTransition) popExit else exit,
             )
             // 必须挂在内层 sharedBounds 之后: 这样才落在它的 SkipToLookaheadSizeNode 子树内,
             // 量到的是最终尺寸.

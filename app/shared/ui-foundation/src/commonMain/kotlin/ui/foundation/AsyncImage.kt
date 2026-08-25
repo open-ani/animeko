@@ -61,13 +61,13 @@ import me.him188.ani.utils.io.resolve
 import me.him188.ani.utils.ktor.ScopedHttpClient
 import me.him188.ani.utils.platform.currentPlatform
 import me.him188.ani.utils.platform.isDesktop
-import me.him188.ani.utils.platform.isIos
 import okio.Path
 import okio.Path.Companion.toPath
 import com.github.panpf.sketch.AsyncImage as SketchAsyncImage
 
 private const val MEBIBYTE = 1024L * 1024L
-private const val IMAGE_DOWNLOAD_CACHE_SIZE = 100L * MEBIBYTE
+private const val IMAGE_MEMORY_CACHE_SIZE = 64L * MEBIBYTE
+private const val IMAGE_DOWNLOAD_CACHE_SIZE = 128L * MEBIBYTE
 private const val ANI_IMAGE_CACHE_DIRECTORY = "image-cache"
 
 val LocalSketch = staticCompositionLocalOf<Sketch> {
@@ -335,7 +335,11 @@ internal fun createDefaultSketch(
     cacheDirectory: Path? = null,
 ): Sketch = Sketch.Builder(context).apply {
     componentLoaderEnabled(false)
-    memoryCache(DisabledMemoryCache)
+    memoryCache(
+        MemoryCache.Builder(context)
+            .maxSizeBytes(IMAGE_MEMORY_CACHE_SIZE)
+            .build(),
+    )
     downloadCacheOptions(
         DiskCache.Options(
             directory = cacheDirectory?.resolve("download"),
@@ -349,12 +353,12 @@ internal fun createDefaultSketch(
     )
     globalImageOptions(
         ImageOptions {
+            memoryCachePolicy(CachePolicy.ENABLED)
             downloadCachePolicy(CachePolicy.ENABLED)
-            memoryCachePolicy(CachePolicy.DISABLED)
             // Result cache re-encodes transformed images. Keep the original bytes in the LRU
             // download cache instead so disk caching cannot reduce image quality.
             resultCachePolicy(CachePolicy.DISABLED)
-            crossfade(!currentPlatform().isIos())
+            crossfade(false)
         },
     )
     addComponents {
@@ -363,7 +367,7 @@ internal fun createDefaultSketch(
     }
 }.build()
 
-/** Prevents requests from retaining decoded images while the download disk cache stays enabled. */
+/** Keeps previews deterministic without retaining their synthetic images. */
 private data object DisabledMemoryCache : MemoryCache {
     private val mutex = Mutex()
 
