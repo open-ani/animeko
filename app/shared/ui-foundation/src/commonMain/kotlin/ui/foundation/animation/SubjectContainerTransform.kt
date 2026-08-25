@@ -43,6 +43,56 @@ val LocalSharedTransitionScope: ProvidableCompositionLocal<SharedTransitionScope
     staticCompositionLocalOf { null }
 
 /**
+ * 详情页那一侧封面图的 shared element key, 由详情页入口提供.
+ *
+ * 免得从入口一路把 key 传到封面那一层. 列表卡片那一侧不走这个 local, 直接把 key 传给
+ * [Modifier.subjectImageSharedElement].
+ */
+@Stable
+val LocalSubjectDetailImageSharedElementKey: ProvidableCompositionLocal<SubjectDetailImageSharedElementKey?> =
+    staticCompositionLocalOf { null }
+
+/**
+ * 条目封面图的 shared element: 列表卡片的封面 <-> 详情页的封面.
+ *
+ * 嵌在 [subjectContainerTransform] 的容器里. 容器的 `alignment` 只管容器内容 (标题文字等) 在窗口里
+ * 摆哪儿, 而封面图有自己的 bounds 动画, 画在 overlay 里, 所以是**精确对位**地从卡片飞到详情页封面,
+ * 不受容器 alignment 影响.
+ *
+ * 几个源码层面的性质:
+ * - 用 `sharedElement` 而不是 `sharedBounds`: 两侧是同一张图, 不需要 cross-fade.
+ * - `renderInOverlayDuringTransition = true`, 所以容器的 `exit` 淡出**不会**作用在它身上 ——
+ *   容器内容淡出、封面保持不透明地飞过去, 正是 Material container transform 的样子.
+ * - `sharedElement` 内部 `renderOnlyWhenVisible = true`, 形变期间只画 target 那一侧
+ *   (`SharedElementEntry.shouldRenderAtAll`), 不会出现两张图重叠.
+ * - 形变期间子节点按 `Constraints.fixed(动画中的 bounds)` 重新测量
+ *   (`SharedContentNode.approachMeasure`), 所以卡片的 9:16 和详情页的 849:1200 之间不会拉伸,
+ *   只是裁剪范围在变.
+ *
+ * 不传 `boundsTransform`: 和 [subjectContainerTransform] 一样用默认的
+ * `spring(stiffness = 400f, dampingRatio = 1f)`, 两条动画才不会脱节.
+ *
+ * 注意**不要**和 [Modifier.boundOffsetAlignment] 挂在同一个节点上: `sharedElement` 没有
+ * `SkipToLookaheadSizeNode`, 挂上之后那个节点会按动画中的 bounds 测量, 锚点计算就会被污染.
+ */
+@OptIn(ExperimentalSharedTransitionApi::class)
+@Composable
+fun Modifier.subjectImageSharedElement(
+    key: SubjectDetailImageSharedElementKey? = LocalSubjectDetailImageSharedElementKey.current,
+): Modifier {
+    if (key == null) return this
+    val sharedTransitionScope = LocalSharedTransitionScope.current ?: return this
+    val animatedContentScope = LocalNavAnimatedContentScope.current
+    val imageKey = remember(key) { key.copy(from = "${key.from}+image") }
+    return with(sharedTransitionScope) {
+        this@subjectImageSharedElement.sharedElement(
+            rememberSharedContentState(imageKey),
+            animatedVisibilityScope = animatedContentScope,
+        )
+    }
+}
+
+/**
  * @param alignmentState 形变从内容的哪一点向外扩. 传 `null` 时从页面顶部中间开始扩.
  * 详情页那一侧传 [rememberBoundOffsetAlignment] 建的 state, 让它跟着条目封面走;
  * 列表卡片那一侧不需要 —— 窗口涨大时卡片内容早就淡出了, 摆哪儿都看不出来.

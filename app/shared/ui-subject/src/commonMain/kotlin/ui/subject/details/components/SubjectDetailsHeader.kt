@@ -51,6 +51,7 @@ import me.him188.ani.app.ui.foundation.AniImageLoadSuccess
 import me.him188.ani.app.ui.foundation.AsyncImage
 import me.him188.ani.app.ui.foundation.ProvideCompositionLocalsForPreview
 import me.him188.ani.app.ui.foundation.animation.boundOffsetAlignment
+import me.him188.ani.app.ui.foundation.animation.subjectImageSharedElement
 import me.him188.ani.app.ui.foundation.ifThen
 import me.him188.ani.app.ui.foundation.layout.currentWindowAdaptiveInfo1
 import me.him188.ani.app.ui.foundation.layout.isWidthAtLeastMedium
@@ -148,8 +149,12 @@ fun SubjectDetailsHeaderCompact(
         Row(Modifier.height(IntrinsicSize.Min), verticalAlignment = Alignment.Top) {
             val imageWidth = 140.dp
 
+            // 尺寸定在这一层, 不能依赖子节点: 里面的 AsyncImage 挂了 sharedElement, 形变期间它会按
+            // 动画中的 bounds 测量, 尺寸留在里面会污染 boundOffsetAlignment 的锚点计算.
             Box(
                 Modifier
+                    .width(imageWidth)
+                    .height(imageWidth / COVER_WIDTH_TO_HEIGHT_RATIO)
                     .clip(MaterialTheme.shapes.medium)
                     .ifThen(onClickCover != null) { clickable(onClick = checkNotNull(onClickCover)) }
                     .boundOffsetAlignment()
@@ -158,9 +163,8 @@ fun SubjectDetailsHeaderCompact(
                 AsyncImage(
                     model = coverImageUrl,
                     contentDescription = null,
-                    modifier = Modifier
-                        .width(imageWidth)
-                        .height(imageWidth / COVER_WIDTH_TO_HEIGHT_RATIO),
+                    // 与列表卡片的封面精确对位
+                    modifier = Modifier.fillMaxSize().subjectImageSharedElement(),
                     contentScale = ContentScale.Crop,
                     crossfadeDurationMillis = 300,
                     onSuccess = onSuccess,
@@ -241,8 +245,11 @@ fun SubjectDetailsHeaderWide(
         ) {
             val imageWidth = 220.dp
 
+            // 尺寸定在这一层, 原因同 SubjectDetailsHeaderCompact
             Box(
                 Modifier
+                    .width(imageWidth)
+                    .height(imageWidth / COVER_WIDTH_TO_HEIGHT_RATIO)
                     .clip(MaterialTheme.shapes.medium)
                     .ifThen(onClickCover != null) { clickable(onClick = checkNotNull(onClickCover)) }
                     .boundOffsetAlignment()
@@ -251,9 +258,8 @@ fun SubjectDetailsHeaderWide(
                 AsyncImage(
                     model = coverImageUrl,
                     contentDescription = null,
-                    modifier = Modifier
-                        .width(imageWidth)
-                        .height(imageWidth / COVER_WIDTH_TO_HEIGHT_RATIO),
+                    // 与列表卡片的封面精确对位
+                    modifier = Modifier.fillMaxSize().subjectImageSharedElement(),
                     contentScale = ContentScale.Crop,
                     crossfadeDurationMillis = 300,
                     onSuccess = onCoverImageSuccess,

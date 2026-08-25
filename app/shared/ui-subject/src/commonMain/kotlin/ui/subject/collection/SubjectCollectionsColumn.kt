@@ -69,6 +69,7 @@ import me.him188.ani.app.ui.foundation.AsyncImage
 import me.him188.ani.app.ui.foundation.ProvideCompositionLocalsForPreview
 import me.him188.ani.app.ui.foundation.animation.LocalAniMotionScheme
 import me.him188.ani.app.ui.foundation.animation.subjectContainerTransform
+import me.him188.ani.app.ui.foundation.animation.subjectImageSharedElement
 import me.him188.ani.app.ui.foundation.ifThen
 import me.him188.ani.app.ui.foundation.layout.currentWindowAdaptiveInfo1
 import me.him188.ani.app.ui.foundation.layout.isWidthCompact
@@ -182,15 +183,15 @@ fun SubjectCollectionItem(
     shape: Shape = SubjectCollectionItemDefaults.shape,
     colors: CardColors = CardDefaults.cardColors(),
 ) {
+    val sharedElementKey = remember(item.subjectId) {
+        SubjectDetailImageSharedElementKey(
+            item.subjectId,
+            SubjectDetailImageSharedElementKey.FromCollectionItem,
+        )
+    }
     Card(
         onClick,
-        modifier.subjectContainerTransform(
-            SubjectDetailImageSharedElementKey(
-                item.subjectId,
-                SubjectDetailImageSharedElementKey.FromCollectionItem,
-            ),
-            shape = shape,
-        )
+        modifier.subjectContainerTransform(sharedElementKey, shape = shape)
             .clip(shape)
             .fillMaxWidth()
             .height(height),
@@ -198,13 +199,15 @@ fun SubjectCollectionItem(
         colors = colors,
     ) {
         Row(Modifier.weight(1f, fill = false)) {
-            AsyncImage(
-                item.subjectInfo.imageLarge,
-                contentDescription = null,
-                modifier = Modifier
-                    .height(height).width(height * COVER_WIDTH_TO_HEIGHT_RATIO),
-                contentScale = ContentScale.Crop,
-            )
+            Box(Modifier.height(height).width(height * COVER_WIDTH_TO_HEIGHT_RATIO)) {
+                AsyncImage(
+                    item.subjectInfo.imageLarge,
+                    contentDescription = null,
+                    // 与详情页封面精确对位
+                    modifier = Modifier.fillMaxSize().subjectImageSharedElement(sharedElementKey),
+                    contentScale = ContentScale.Crop,
+                )
+            }
 
             Box(Modifier.weight(1f)) {
                 SubjectCollectionItemContent(
