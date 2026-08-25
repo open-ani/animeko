@@ -301,7 +301,6 @@ fun ProvideAniMotionCompositionLocals(
     val density by rememberUpdatedState(LocalDensity.current)
     val windowSizeClass by rememberUpdatedState(currentWindowAdaptiveInfo1().windowSizeClass)
     val enablePredictiveBackMotion = LocalThemeSettings.current.enablePredictiveBackAndSharedContainerTransformMotion
-    // iOS 上用系统那套导航动效. 想做成设置项的话把这里换成读设置就行.
     val useIosMotionSpec = remember { currentPlatform().isIos() }
 
     val isWidthCompact by remember {

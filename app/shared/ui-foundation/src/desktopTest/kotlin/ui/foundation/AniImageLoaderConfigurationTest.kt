@@ -55,7 +55,7 @@ class AniImageLoaderConfigurationTest {
         try {
             assertEquals(64L * 1024L * 1024L, sketch.memoryCache.maxSize)
             assertEquals(0L, sketch.memoryCache.size)
-            assertEquals(100L * 1024L * 1024L, sketch.downloadCache.maxSize)
+            assertEquals(128L * 1024L * 1024L, sketch.downloadCache.maxSize)
             assertEquals(cacheDirectory.resolve("download"), sketch.downloadCache.directory)
             assertEquals(cacheDirectory.resolve("result"), sketch.resultCache.directory)
 

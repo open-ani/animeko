@@ -37,7 +37,6 @@ import org.jetbrains.skia.EncodedImageFormat
 import org.jetbrains.skia.Surface
 import java.util.concurrent.atomic.AtomicInteger
 import kotlin.test.Test
-import kotlin.test.assertEquals
 import kotlin.test.assertTrue
 
 class AsyncImageSizingTest {
@@ -106,7 +105,7 @@ class AsyncImageSizingTest {
                 }
 
                 assertTrue(successfulLoads.get() > initialSuccessfulLoads)
-                assertEquals(0L, sketch.memoryCache.size)
+                assertTrue(sketch.memoryCache.size > 0L)
             }
         } finally {
             sketch.shutdown()

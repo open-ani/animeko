@@ -212,7 +212,6 @@ private fun AniAppContentImplNavDisplay(
             // 让每个页面各自持有 rememberSaveable 状态和 ViewModel, 出栈时一并销毁
             rememberSaveableStateHolderNavEntryDecorator(),
             rememberViewModelStoreNavEntryDecorator(),
-            // iOS 动效: 给被盖住的下层页面加压暗蒙版. 其他动效方案下 maxAlpha 是 0, 等于关闭.
             rememberNavigationDimNavEntryDecorator(backStack, navMotionScheme.navigationDimMaxAlpha),
         ),
         transitionSpec = {
