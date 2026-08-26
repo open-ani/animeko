@@ -228,7 +228,7 @@ data class VideoScaffoldConfig @SerializationOnly constructor(
             videoEnhancementDefaultMode = VideoEnhancementDefaultMode.OFF,
             pauseVideoOnEditDanmaku = false,
             autoMarkDone = false,
-            hideSelectorOnSelect = true,
+            hideSelectorOnSelect = false,
             autoFullscreenOnLandscapeMode = false,
             autoPlayNext = false,
             autoSkipOpEd = false,
