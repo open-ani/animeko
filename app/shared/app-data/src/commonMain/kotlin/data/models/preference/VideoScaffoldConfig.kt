@@ -69,7 +69,7 @@ data class VideoScaffoldConfig @SerializationOnly constructor(
     /**
      * 在点击选择剧集后, 立即隐藏 media selector
      */
-    val hideSelectorOnSelect: Boolean = false,
+    val hideSelectorOnSelect: Boolean = true,
     /**
      * 横屏时自动全屏
      */
@@ -228,7 +228,7 @@ data class VideoScaffoldConfig @SerializationOnly constructor(
             videoEnhancementDefaultMode = VideoEnhancementDefaultMode.OFF,
             pauseVideoOnEditDanmaku = false,
             autoMarkDone = false,
-            hideSelectorOnSelect = false,
+            hideSelectorOnSelect = true,
             autoFullscreenOnLandscapeMode = false,
             autoPlayNext = false,
             autoSkipOpEd = false,

@@ -577,6 +577,7 @@ private fun EpisodeScreenTabletVeryWide(
                                     { page.mediaSourceResultListPresentation },
                                     page.selfInfo,
                                     modifier = Modifier.fillMaxSize(),
+                                    hideSelectorOnSelect = vm.videoScaffoldConfig.hideSelectorOnSelect,
                                     onSwitchEpisode = { episodeId ->
                                         if (!vm.episodeSelectorState.selectEpisodeId(episodeId)) {
                                             navigator.navigateEpisodeDetails(vm.subjectId, episodeId)
@@ -746,6 +747,7 @@ private fun EpisodeScreenContentPhone(
                     page.mediaSelectorState,
                     { page.mediaSourceResultListPresentation },
                     page.selfInfo,
+                    hideSelectorOnSelect = vm.videoScaffoldConfig.hideSelectorOnSelect,
                     onSwitchEpisode = { episodeId ->
                         if (!vm.episodeSelectorState.selectEpisodeId(episodeId)) {
                             navigator.navigateEpisodeDetails(vm.subjectId, episodeId)
@@ -1161,6 +1163,7 @@ private fun EpisodeVideo(
                             onDismissRequest = { goBack() },
                             onRefresh = { vm.refreshFetch() },
                             onRestartSource = { vm.restartSource(it) },
+                            hideOnSelect = vm.videoScaffoldConfig.hideSelectorOnSelect,
                         )
                     }
                 },
