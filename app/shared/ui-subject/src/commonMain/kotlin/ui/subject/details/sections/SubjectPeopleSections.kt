@@ -34,7 +34,6 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.layout.ContentScale
-import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
@@ -164,8 +163,6 @@ fun SubjectRatingSummary(
  * 尺寸对齐 Figma `CharacterCard`: 桌面 Large (头像 76, 间距 12), 手机 Small (头像 56, 间距 0).
  *
  * @param contentPadding 头像条与标题的水平内边距; 手机端传水平 16dp 可让头像条边到边滚动.
- * @param onClickImage 非 null 时点击头像放大查看大图 (点击名字仍进入角色详情);
- * "查看全部" sheet 中点击头像会先关闭 sheet (页面级查看器在 sheet 之下).
  */
 @Composable
 fun CharactersSection(
@@ -177,7 +174,6 @@ fun CharactersSection(
     itemWidth: Dp = 76.dp,
     avatarSize: Dp = 76.dp,
     itemSpacing: Dp = 12.dp,
-    onClickImage: ((url: String) -> Unit)? = null,
 ) {
     if (exposedCharacters.itemCount == 0) return
     var showAll by rememberSaveable { mutableStateOf(false) }
@@ -195,13 +191,9 @@ fun CharactersSection(
         ) {
             items(exposedCharacters.itemCount) { i ->
                 val item = exposedCharacters[i] ?: return@items
-                val imageUrl = item.character.imageLarge.takeIf { it.isNotBlank() }
                 CharacterAvatarCell(
                     item, itemWidth, avatarSize,
                     onClick = { onClickCharacter(PeoplePreviewTarget.Character(item.character.id)) },
-                    onClickImage = if (onClickImage != null && imageUrl != null) {
-                        { onClickImage(imageUrl) }
-                    } else null,
                 )
             }
         }
@@ -214,7 +206,6 @@ fun CharactersSection(
             items = allCharacters,
             onDismissRequest = { showAll = false },
         ) {
-            val imageUrl = it.character.imageLarge.takeIf { url -> url.isNotBlank() }
             PersonCard(
                 it,
                 Modifier
@@ -223,19 +214,10 @@ fun CharactersSection(
                         showAll = false
                         onClickCharacter(PeoplePreviewTarget.Character(it.character.id))
                     },
-                onClickImage = if (onClickImage != null && imageUrl != null) {
-                    {
-                        showAll = false
-                        onClickImage(imageUrl)
-                    }
-                } else null,
             )
         }
     }
 }
-
-/** 角色横向头像条中头像的 test tag, 供 UI 测试定位点击放大入口. */
-const val CHARACTER_AVATAR_TEST_TAG = "CharacterAvatar"
 
 @Composable
 private fun CharacterAvatarCell(
@@ -243,7 +225,6 @@ private fun CharacterAvatarCell(
     itemWidth: Dp,
     avatarSize: Dp,
     onClick: () -> Unit,
-    onClickImage: (() -> Unit)? = null,
 ) {
     val cv = remember(info) { info.character.actors.firstOrNull()?.displayName }
     Column(
@@ -255,13 +236,7 @@ private fun CharacterAvatarCell(
         verticalArrangement = Arrangement.spacedBy(6.dp),
     ) {
         // 固定圆形, crop, 顶部对齐 (立绘顶部为脸部)
-        Box(
-            Modifier
-                .size(avatarSize)
-                .clip(CircleShape)
-                .ifThen(onClickImage != null) { clickable(onClick = checkNotNull(onClickImage)) }
-                .testTag(CHARACTER_AVATAR_TEST_TAG),
-        ) {
+        Box(Modifier.size(avatarSize).clip(CircleShape)) {
             AvatarImage(
                 info.character.imageMedium,
                 Modifier.matchParentSize(),
@@ -294,9 +269,6 @@ private fun CharacterAvatarCell(
  * 内容形态 (对齐定稿):
  * - [gridColumns] 非 null: `职位 上 / 名字 下` 的网格 (双栏中栏单行 6 列, 手机 3 列两行);
  * - [gridColumns] 为 null: `职位 -> 名字` 竖排键值行 (三栏右栏卡, 显示 [maxItems] 个职位).
- *
- * @param onClickImage 非 null 时 "查看全部" sheet 中点击头像放大查看大图
- * (会先关闭 sheet, 页面级查看器在 sheet 之下); 区块本体为纯文字, 无图片.
  */
 @Composable
 fun StaffSection(
@@ -306,7 +278,6 @@ fun StaffSection(
     modifier: Modifier = Modifier,
     gridColumns: Int? = null,
     maxItems: Int = if (gridColumns != null) 6 else 10,
-    onClickImage: ((url: String) -> Unit)? = null,
 ) {
     if (exposedStaff.itemCount == 0) return
     var showAll by rememberSaveable { mutableStateOf(false) }
@@ -336,7 +307,6 @@ fun StaffSection(
             items = allStaff,
             onDismissRequest = { showAll = false },
         ) {
-            val imageUrl = it.personInfo.imageLarge.takeIf { url -> url.isNotBlank() }
             PersonCard(
                 it,
                 Modifier
@@ -345,12 +315,6 @@ fun StaffSection(
                         showAll = false
                         onClickPerson(PeoplePreviewTarget.Person(it.personInfo.id))
                     },
-                onClickImage = if (onClickImage != null && imageUrl != null) {
-                    {
-                        showAll = false
-                        onClickImage(imageUrl)
-                    }
-                } else null,
             )
         }
     }
