@@ -339,8 +339,7 @@ private fun SubjectDetailsPage(
         )
     }
     val onClickCommentImage = { url: String -> imageViewer.viewImage(url) }
-    // 封面/角色/制作人员图片点击放大 (与评论图片共用页面级查看器)
-    val onClickPersonImage = { url: String -> imageViewer.viewImage(url) }
+    // 封面点击放大 (与评论图片共用页面级查看器)
     val coverImageUrl = state.info?.imageLarge?.takeIf { it.isNotBlank() }
     val onClickCover: (() -> Unit)? = coverImageUrl?.let { url -> { imageViewer.viewImage(url) } }
     // Bangumi 源评价的 "在 Bangumi 打开" 菜单项
@@ -415,7 +414,6 @@ private fun SubjectDetailsPage(
                     onClickOpenExternal = onClickOpenExternal,
                     onCoverImageSuccess = onCoverImageSuccess,
                     onClickCover = onClickCover,
-                    onClickPersonImage = onClickPersonImage,
                 )
             }
             return@MaterialThemeFromPaletteAndImage
@@ -507,7 +505,6 @@ private fun SubjectDetailsPage(
                             .nestedScrollWorkaround(state.detailsTabLazyListState),
                         listState = state.detailsTabLazyListState,
                         contentPadding = tabContentPadding,
-                        onClickPersonImage = onClickPersonImage,
                     )
                 },
                 commentsTab = { tabContentPadding ->

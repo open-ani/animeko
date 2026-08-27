@@ -138,7 +138,6 @@ internal fun SubjectDetailsMultiColumnPage(
     onClickOpenExternal: () -> Unit = {},
     onCoverImageSuccess: (AniImageLoadSuccess) -> Unit = {},
     onClickCover: (() -> Unit)? = null,
-    onClickPersonImage: ((url: String) -> Unit)? = null,
 ) {
     val info = state.info ?: return
     val presentation by state.presentation.collectAsStateWithLifecycle()
@@ -233,17 +232,13 @@ internal fun SubjectDetailsMultiColumnPage(
                     }
                 },
             )
-            CharactersSection(
-                exposedCharacters, allCharacters, totalCharactersCount,
-                onClickImage = onClickPersonImage,
-            )
+            CharactersSection(exposedCharacters, allCharacters, totalCharactersCount)
             if (!layoutParams.showRail) {
                 StaffSection(
                     exposedStaff,
                     allStaff,
                     totalStaffCount,
                     gridColumns = layoutParams.staffGridColumns,
-                    onClickImage = onClickPersonImage,
                 )
             }
             if (related.itemCount > 0) {
@@ -279,10 +274,7 @@ internal fun SubjectDetailsMultiColumnPage(
                 }
                 if (exposedStaff.itemCount > 0) {
                     RailCard {
-                        StaffSection(
-                            exposedStaff, allStaff, totalStaffCount,
-                            onClickImage = onClickPersonImage,
-                        )
+                        StaffSection(exposedStaff, allStaff, totalStaffCount)
                     }
                 }
             }
