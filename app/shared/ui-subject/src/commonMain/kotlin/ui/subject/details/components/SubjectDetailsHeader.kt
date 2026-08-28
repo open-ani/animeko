@@ -50,6 +50,7 @@ import me.him188.ani.app.data.models.subject.TestSubjectInfo
 import me.him188.ani.app.ui.foundation.AniImageLoadSuccess
 import me.him188.ani.app.ui.foundation.AsyncImage
 import me.him188.ani.app.ui.foundation.ProvideCompositionLocalsForPreview
+import me.him188.ani.app.ui.foundation.animation.boundOffsetAlignment
 import me.him188.ani.app.ui.foundation.ifThen
 import me.him188.ani.app.ui.foundation.layout.currentWindowAdaptiveInfo1
 import me.him188.ani.app.ui.foundation.layout.isWidthAtLeastMedium
@@ -151,6 +152,7 @@ fun SubjectDetailsHeaderCompact(
                 Modifier
                     .clip(MaterialTheme.shapes.medium)
                     .ifThen(onClickCover != null) { clickable(onClick = checkNotNull(onClickCover)) }
+                    .boundOffsetAlignment()
                     .testTag(SUBJECT_COVER_IMAGE_TEST_TAG),
             ) {
                 AsyncImage(
@@ -243,6 +245,7 @@ fun SubjectDetailsHeaderWide(
                 Modifier
                     .clip(MaterialTheme.shapes.medium)
                     .ifThen(onClickCover != null) { clickable(onClick = checkNotNull(onClickCover)) }
+                    .boundOffsetAlignment()
                     .testTag(SUBJECT_COVER_IMAGE_TEST_TAG),
             ) {
                 AsyncImage(

@@ -18,7 +18,6 @@ import androidx.compose.foundation.layout.WindowInsetsSides
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.only
-import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.layout.wrapContentWidth
@@ -66,6 +65,7 @@ import me.him188.ani.app.data.models.subject.subjectInfo
 import me.him188.ani.app.data.models.subject.toNavPlaceholder
 import me.him188.ani.app.data.models.trending.TrendingSubjectInfo
 import me.him188.ani.app.navigation.LocalNavigator
+import me.him188.ani.app.navigation.SubjectDetailImageSharedElementKey
 import me.him188.ani.app.navigation.SubjectDetailPlaceholder
 import me.him188.ani.app.ui.adaptive.AniTopAppBar
 import me.him188.ani.app.ui.adaptive.AniTopAppBarDefaults
@@ -285,6 +285,7 @@ fun ExplorationScreen(
                                         name = it.nameCn,
                                         coverUrl = it.imageLarge,
                                     ),
+                                    imageSharedElementKeyFrom = SubjectDetailImageSharedElementKey.FromTrendingCarouselItem,
                                 )
                             },
                             contentPadding = PaddingValues(vertical = 8.dp),
@@ -328,6 +329,7 @@ fun ExplorationScreen(
                                 navigator.navigateSubjectDetails(
                                     subjectId = it.subjectInfo.subjectId,
                                     placeholder = it.subjectInfo.toNavPlaceholder(),
+                                    imageSharedElementKeyFrom = SubjectDetailImageSharedElementKey.FromFellowSubject,
                                 )
                             },
                             onPlay = {
@@ -363,6 +365,7 @@ fun ExplorationScreen(
                             navigator.navigateSubjectDetails(
                                 subjectId = info.bangumiId,
                                 placeholder = info.toNavPlaceholder(),
+                                imageSharedElementKeyFrom = SubjectDetailImageSharedElementKey.FromRecommendationItem,
                             )
                         }
                     }

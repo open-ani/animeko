@@ -104,6 +104,7 @@ import me.him188.ani.app.data.models.subject.SubjectCollectionInfo
 import me.him188.ani.app.data.models.subject.toNavPlaceholder
 import me.him188.ani.app.data.repository.subject.CollectionsFilterQuery
 import me.him188.ani.app.navigation.LocalNavigator
+import me.him188.ani.app.navigation.SubjectDetailImageSharedElementKey
 import me.him188.ani.app.ui.adaptive.AniTopAppBar
 import me.him188.ani.app.ui.adaptive.AniTopAppBarDefaults
 import me.him188.ani.app.ui.foundation.LocalPlatform
@@ -650,6 +651,7 @@ private fun SubjectCollectionItem(
             navigator.navigateSubjectDetails(
                 subjectCollection.subjectId,
                 placeholder = subjectCollection.subjectInfo.toNavPlaceholder(),
+                imageSharedElementKeyFrom = SubjectDetailImageSharedElementKey.FromCollectionItem,
             )
         },
         onShowEpisodeList = {

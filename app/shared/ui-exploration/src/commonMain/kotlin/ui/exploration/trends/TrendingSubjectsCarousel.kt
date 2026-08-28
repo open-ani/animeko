@@ -38,9 +38,12 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.paging.compose.LazyPagingItems
 import me.him188.ani.app.data.models.trending.TrendingSubjectInfo
+import me.him188.ani.app.navigation.SubjectDetailImageSharedElementKey
 import me.him188.ani.app.ui.external.placeholder.placeholder
 import me.him188.ani.app.ui.foundation.AsyncImage
 import me.him188.ani.app.ui.foundation.ProvideCompositionLocalsForPreview
+import me.him188.ani.app.ui.foundation.animation.subjectContainerTransform
+import me.him188.ani.app.ui.foundation.ifThen
 import me.him188.ani.app.ui.foundation.layout.CarouselAutoAdvanceEffect
 import me.him188.ani.app.ui.foundation.layout.CarouselItem
 import me.him188.ani.app.ui.foundation.layout.CarouselItemDefaults
@@ -71,7 +74,19 @@ fun TrendingSubjectsCarousel(
             val item = if (items.isLoadingFirstPageOrRefreshing) null else items[index]
             CarouselItem(
                 label = { CarouselItemDefaults.Text(item?.nameCn ?: "") },
-                Modifier.placeholder(item == null, shape = rememberMaskShape(CarouselItemDefaults.shape)),
+                Modifier
+                    .placeholder(item == null, shape = rememberMaskShape(CarouselItemDefaults.shape))
+                    .ifThen(item != null) {
+                        subjectContainerTransform(
+                            SubjectDetailImageSharedElementKey(
+                                checkNotNull(item) {
+                                    "item was null in trending carousel in Modifier.ifThen(item != null)"
+                                }.bangumiId,
+                                SubjectDetailImageSharedElementKey.FromTrendingCarouselItem,
+                            ),
+                            shape = CarouselItemDefaults.shape,
+                        )
+                    },
             ) {
                 if (item != null) {
                     Surface({ onClick(item) }) {

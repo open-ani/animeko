@@ -9,6 +9,8 @@
 
 package me.him188.ani.app.ui.main
 
+import androidx.compose.animation.ExperimentalSharedTransitionApi
+import androidx.compose.animation.SharedTransitionLayout
 import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
@@ -41,7 +43,6 @@ import androidx.navigation3.runtime.entryProvider
 import androidx.navigation3.runtime.rememberSaveableStateHolderNavEntryDecorator
 import androidx.navigation3.ui.NavDisplay
 import androidx.window.core.layout.WindowSizeClass
-import me.him188.ani.app.shared.Res
 import me.him188.ani.app.data.models.subject.SubjectInfo
 import me.him188.ani.app.domain.mediasource.rss.RssMediaSource
 import me.him188.ani.app.domain.mediasource.web.SelectorMediaSource
@@ -55,6 +56,7 @@ import me.him188.ani.app.navigation.SubjectDetailPlaceholder
 import me.him188.ani.app.navigation.rememberAniBackStack
 import me.him188.ani.app.platform.LocalContext
 import me.him188.ani.app.platform.navigation.LocalBrowserNavigator
+import me.him188.ani.app.shared.Res
 import me.him188.ani.app.ui.adaptive.navigation.AniNavigationSuiteDefaults
 import me.him188.ani.app.ui.cache.CacheManagementScreen
 import me.him188.ani.app.ui.cache.CacheManagementViewModel
@@ -66,8 +68,15 @@ import me.him188.ani.app.ui.cache.subject.SubjectCacheScreen
 import me.him188.ani.app.ui.cache.subject.rememberSubjectCacheViewModel
 import me.him188.ani.app.ui.exploration.schedule.ScheduleScreen
 import me.him188.ani.app.ui.exploration.schedule.ScheduleViewModel
+import me.him188.ani.app.ui.foundation.animation.BoundOffsetAlignmentDefaults
+import me.him188.ani.app.ui.foundation.animation.LocalBoundOffsetAlignmentState
+import me.him188.ani.app.ui.foundation.animation.LocalSharedTransitionScope
 import me.him188.ani.app.ui.foundation.animation.NavigationMotionScheme
 import me.him188.ani.app.ui.foundation.animation.ProvideAniMotionCompositionLocals
+import me.him188.ani.app.ui.foundation.animation.rememberBoundOffsetAlignment
+import me.him188.ani.app.ui.foundation.animation.rememberNavigationDimNavEntryDecorator
+import me.him188.ani.app.ui.foundation.animation.subjectContainerTransform
+import me.him188.ani.app.ui.foundation.ifThen
 import me.him188.ani.app.ui.foundation.layout.currentWindowAdaptiveInfo1
 import me.him188.ani.app.ui.foundation.layout.desktopTitleBar
 import me.him188.ani.app.ui.foundation.widgets.BackNavigationIconButton
@@ -155,6 +164,7 @@ fun AniAppContent(aniNavigator: AniNavigator) {
     }
 }
 
+@OptIn(ExperimentalSharedTransitionApi::class)
 @Composable
 private fun AniAppContentImpl(
     aniNavigator: AniNavigator,
@@ -169,14 +179,40 @@ private fun AniAppContentImpl(
     val navMotionScheme by rememberUpdatedState(NavigationMotionScheme.current)
     val emailLoginViewModel = viewModel<EmailLoginViewModel> { EmailLoginViewModel() }
 
+    SharedTransitionLayout(modifier) {
+        CompositionLocalProvider(LocalSharedTransitionScope provides this) {
+            AniAppContentImplNavDisplay(
+                aniNavigator = aniNavigator,
+                backStack = backStack,
+                mainSceneInitialPage = mainSceneInitialPage,
+                navMotionScheme = navMotionScheme,
+                emailLoginViewModel = emailLoginViewModel,
+                windowInsets = windowInsets,
+                windowInsetsWithoutTitleBar = windowInsetsWithoutTitleBar,
+            )
+        }
+    }
+}
+
+@Composable
+private fun AniAppContentImplNavDisplay(
+    aniNavigator: AniNavigator,
+    backStack: List<NavRoutes>,
+    mainSceneInitialPage: MainScreenPage,
+    navMotionScheme: NavigationMotionScheme,
+    emailLoginViewModel: EmailLoginViewModel,
+    windowInsets: WindowInsets,
+    windowInsetsWithoutTitleBar: WindowInsets,
+) {
     NavDisplay(
         backStack = backStack,
-        modifier = modifier,
+        modifier = Modifier.fillMaxSize(),
         onBack = { aniNavigator.popBackStack() },
         entryDecorators = listOf(
             // 让每个页面各自持有 rememberSaveable 状态和 ViewModel, 出栈时一并销毁
             rememberSaveableStateHolderNavEntryDecorator(),
             rememberViewModelStoreNavEntryDecorator(),
+            rememberNavigationDimNavEntryDecorator(backStack, navMotionScheme.navigationDimMaxAlpha),
         ),
         transitionSpec = {
             navMotionScheme.enterTransition togetherWith navMotionScheme.exitTransition
@@ -185,7 +221,7 @@ private fun AniAppContentImpl(
             navMotionScheme.popEnterTransition togetherWith navMotionScheme.popExitTransition
         },
         predictivePopTransitionSpec = {
-            navMotionScheme.popEnterTransition togetherWith navMotionScheme.popExitTransition
+            navMotionScheme.predictivePopEnterTransition togetherWith navMotionScheme.predictivePopExitTransition
         },
         entryProvider = entryProvider {
             entry<NavRoutes.Welcome> {
@@ -342,41 +378,70 @@ private fun AniAppContentImpl(
                     windowInsets = windowInsets,
                 )
             }
-            entry<NavRoutes.SubjectDetail> { route ->
+            entry<NavRoutes.SubjectDetail>(
+                // 条目详情页和列表卡片之间是 container transform, 页面级动画不能再叠加 predictive back
+                // 的全屏缩放, 否则会双重缩放. 见 SharedTransitionNavTransition.
+                metadata = NavDisplay.transitionSpec {
+                    navMotionScheme.predictiveSharedContainer.enterTransition togetherWith
+                            navMotionScheme.predictiveSharedContainer.exitTransition
+                } +
+                        NavDisplay.popTransitionSpec {
+                            navMotionScheme.predictiveSharedContainer.popEnterTransition togetherWith
+                                    navMotionScheme.predictiveSharedContainer.popExitTransition
+                        } +
+                        NavDisplay.predictivePopTransitionSpec {
+                            navMotionScheme.predictiveSharedContainer.popEnterTransition togetherWith
+                                    navMotionScheme.predictiveSharedContainer.popExitTransition
+                        },
+            ) { route ->
                 val vm = viewModel<SubjectDetailsViewModel>(key = route.subjectId.toString()) {
                     val placeholder = route.placeholder?.run {
                         SubjectInfo.createPlaceholder(id, name, coverUrl, nameCN)
                     }
                     SubjectDetailsViewModel(route.subjectId, placeholder)
                 }
-                SubjectDetailsScreen(
-                    vm,
-                    onPlay = { aniNavigator.navigateEpisodeDetails(route.subjectId, it) },
-                    onLoadErrorRetry = { vm.reload() },
-                    onClickTag = {
-                        aniNavigator.navigateSubjectSearch(NavRoutes.SubjectSearch(tags = listOf(it.name)))
-                    },
-                    windowInsets = windowInsets,
-                    navigationIcon = {
-                        Row {
-                            BackNavigationIconButton(
-                                {
-                                    aniNavigator.popBackStack(route, inclusive = true)
-                                },
-                            )
-                            TopAppBarActionButton(
-                                {
-                                    aniNavigator.popBackOrNavigateToMain(mainSceneInitialPage)
-                                },
-                            ) {
-                                Icon(
-                                    Icons.Rounded.Home,
-                                    contentDescription = null,
-                                )
-                            }
-                        }
-                    },
+                // container transform 从条目封面开始向外扩, 而不是从页面顶部中间.
+                // 封面在页面里的位置由 Modifier.boundOffsetAlignment 量出来写进这个 state.
+                val coverAnchor = rememberBoundOffsetAlignment(
+                    BoundOffsetAlignmentDefaults.subjectDetailsCover(),
                 )
+                CompositionLocalProvider(LocalBoundOffsetAlignmentState provides coverAnchor) {
+                    SubjectDetailsScreen(
+                        vm,
+                        onPlay = { aniNavigator.navigateEpisodeDetails(route.subjectId, it) },
+                        onLoadErrorRetry = { vm.reload() },
+                        onClickTag = {
+                            aniNavigator.navigateSubjectSearch(NavRoutes.SubjectSearch(tags = listOf(it.name)))
+                        },
+                        modifier = Modifier.ifThen(route.imageSharedElementKey != null) {
+                            subjectContainerTransform(
+                                checkNotNull(route.imageSharedElementKey) { "route.imageSharedElementKey was null." },
+                                alignmentState = coverAnchor,
+                                isPopTransition = true,
+                            )
+                        },
+                        windowInsets = windowInsets,
+                        navigationIcon = {
+                            Row {
+                                BackNavigationIconButton(
+                                    {
+                                        aniNavigator.popBackStack(route, inclusive = true)
+                                    },
+                                )
+                                TopAppBarActionButton(
+                                    {
+                                        aniNavigator.popBackOrNavigateToMain(mainSceneInitialPage)
+                                    },
+                                ) {
+                                    Icon(
+                                        Icons.Rounded.Home,
+                                        contentDescription = null,
+                                    )
+                                }
+                            }
+                        },
+                    )
+                }
             }
             entry<NavRoutes.EpisodeDetail> { route ->
                 val context = LocalContext.current

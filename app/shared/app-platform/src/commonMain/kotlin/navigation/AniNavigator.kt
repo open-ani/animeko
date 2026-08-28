@@ -76,8 +76,9 @@ interface AniNavigator {
     fun navigateSubjectDetails(
         subjectId: Int,
         placeholder: SubjectDetailPlaceholder?,
+        imageSharedElementKeyFrom: String? = null,
     ) {
-        navigate(NavRoutes.SubjectDetail(subjectId, placeholder))
+        navigate(NavRoutes.SubjectDetail(subjectId, placeholder, imageSharedElementKeyFrom))
     }
 
     fun navigateSubjectCaches(subjectId: Int) {

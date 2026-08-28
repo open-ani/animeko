@@ -51,9 +51,12 @@ import me.him188.ani.app.data.models.subject.FollowedSubjectInfo
 import me.him188.ani.app.data.models.subject.TestFollowedSubjectInfos
 import me.him188.ani.app.data.models.subject.hasNewEpisodeToPlay
 import me.him188.ani.app.data.models.subject.subjectInfo
+import me.him188.ani.app.navigation.SubjectDetailImageSharedElementKey
 import me.him188.ani.app.ui.external.placeholder.placeholder
 import me.him188.ani.app.ui.foundation.AsyncImage
 import me.him188.ani.app.ui.foundation.ProvideCompositionLocalsForPreview
+import me.him188.ani.app.ui.foundation.animation.subjectContainerTransform
+import me.him188.ani.app.ui.foundation.ifThen
 import me.him188.ani.app.ui.foundation.layout.BasicCarouselItem
 import me.him188.ani.app.ui.foundation.layout.CarouselItemDefaults
 import me.him188.ani.app.ui.foundation.layout.currentWindowAdaptiveInfo1
@@ -171,6 +174,18 @@ fun FollowedSubjectsLazyRow(
                     onPlay = { item?.let { onPlay(it) } },
                     layoutParameters.imageSize,
                     layoutParameters.shape,
+                    // 点进条目详情页时, 卡片形变成详情页 (container transform)
+                    modifier = Modifier.ifThen(item != null) {
+                        subjectContainerTransform(
+                            SubjectDetailImageSharedElementKey(
+                                checkNotNull(item) {
+                                    "item was null in fellowSubjects in Modifier.ifThen(item != null)"
+                                }.subjectInfo.subjectId,
+                                SubjectDetailImageSharedElementKey.FromFellowSubject,
+                            ),
+                            shape = layoutParameters.shape,
+                        )
+                    },
                 )
             }
         }

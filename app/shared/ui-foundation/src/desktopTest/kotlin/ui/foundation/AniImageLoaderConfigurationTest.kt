@@ -19,7 +19,6 @@ import com.github.panpf.sketch.request.ImageRequest
 import com.github.panpf.sketch.request.ImageResult
 import com.github.panpf.sketch.request.LoadState
 import com.github.panpf.sketch.source.DataFrom
-import com.github.panpf.sketch.transition.CrossfadeTransition
 import io.ktor.client.HttpClient
 import io.ktor.client.engine.mock.MockEngine
 import io.ktor.client.engine.mock.respond
@@ -41,6 +40,7 @@ import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertIs
 import kotlin.test.assertNotNull
+import kotlin.test.assertNull
 import kotlin.test.assertTrue
 
 class AniImageLoaderConfigurationTest {
@@ -56,17 +56,17 @@ class AniImageLoaderConfigurationTest {
         )
 
         try {
-            assertEquals(0L, sketch.memoryCache.maxSize)
+            assertEquals(64L * 1024L * 1024L, sketch.memoryCache.maxSize)
             assertEquals(0L, sketch.memoryCache.size)
-            assertEquals(100L * 1024L * 1024L, sketch.downloadCache.maxSize)
+            assertEquals(128L * 1024L * 1024L, sketch.downloadCache.maxSize)
             assertEquals(cacheDirectory.resolve("download"), sketch.downloadCache.directory)
             assertEquals(cacheDirectory.resolve("result"), sketch.resultCache.directory)
 
             val options = requireNotNull(sketch.globalImageOptions)
             assertEquals(CachePolicy.ENABLED, options.downloadCachePolicy)
-            assertEquals(CachePolicy.DISABLED, options.memoryCachePolicy)
+            assertEquals(CachePolicy.ENABLED, options.memoryCachePolicy)
             assertEquals(CachePolicy.DISABLED, options.resultCachePolicy)
-            assertIs<CrossfadeTransition.Factory>(options.transitionFactory)
+            assertNull(options.transitionFactory)
 
             assertTrue(
                 sketch.components.registry.fetchers.any { it is ScopedHttpClientHttpUriFetcherFactory },
@@ -80,6 +80,42 @@ class AniImageLoaderConfigurationTest {
             sketch.shutdown()
             client.close()
             tempDirectory.deleteRecursively()
+        }
+    }
+
+    @Test
+    fun `default Sketch reuses decoded images from memory cache`() = runTest {
+        val bytes = encodedRaster(EncodedImageFormat.PNG)
+        var calls = 0
+        val client = HttpClient(
+            MockEngine {
+                calls++
+                respond(
+                    content = bytes,
+                    headers = headersOf(HttpHeaders.ContentType, "image/png"),
+                )
+            },
+        )
+        val sketch = createDefaultSketch(PlatformContext.INSTANCE, client.asScopedHttpClient())
+        val url = "https://example.com/memory-${System.nanoTime()}.png"
+
+        try {
+            fun request() = ImageRequest(PlatformContext.INSTANCE, url) {
+                size(7, 5)
+                downloadCachePolicy(CachePolicy.DISABLED)
+                resultCachePolicy(CachePolicy.DISABLED)
+            }
+
+            val first = assertIs<ImageResult.Success>(sketch.execute(request()))
+            val second = assertIs<ImageResult.Success>(sketch.execute(request()))
+
+            assertEquals(DataFrom.NETWORK, first.dataFrom)
+            assertEquals(DataFrom.MEMORY_CACHE, second.dataFrom)
+            assertEquals(1, calls)
+            assertTrue(sketch.memoryCache.size > 0L)
+        } finally {
+            sketch.shutdown()
+            client.close()
         }
     }
 

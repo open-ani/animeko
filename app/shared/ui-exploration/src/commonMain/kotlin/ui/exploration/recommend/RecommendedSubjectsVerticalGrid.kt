@@ -32,8 +32,11 @@ import me.him188.ani.app.data.models.recommend.TestRecommendedItemInfos
 import me.him188.ani.app.data.models.recommend.id
 import me.him188.ani.app.data.models.recommend.type
 import me.him188.ani.app.domain.foundation.LoadError
+import me.him188.ani.app.navigation.SubjectDetailImageSharedElementKey
 import me.him188.ani.app.ui.foundation.ProvideCompositionLocalsForPreview
 import me.him188.ani.app.ui.foundation.animation.LocalAniMotionScheme
+import me.him188.ani.app.ui.foundation.animation.subjectContainerTransform
+import me.him188.ani.app.ui.foundation.ifThen
 import me.him188.ani.app.ui.foundation.layout.CarouselItemDefaults
 import me.him188.ani.app.ui.foundation.layout.currentWindowAdaptiveInfo1
 import me.him188.ani.app.ui.foundation.layout.minimumHairlineSize
@@ -74,16 +77,26 @@ fun LazyGridScope.recommendationItems(
         when (val item = data[index]) {
             null,// placeholder
             is RecommendedSubjectInfo -> {
-                val animateItem = Modifier
-                    .animateItem(
-                        fadeInSpec = aniMotionScheme.feedItemFadeInSpec,
-                        fadeOutSpec = aniMotionScheme.feedItemFadeOutSpec,
-                        placementSpec = aniMotionScheme.feedItemPlacementSpec,
-                    )
                 RecommendedSubjectCard(
                     item = item,
                     onClick = { item?.let { onClick(it) } },
-                    modifier = animateItem,
+                    modifier = Modifier
+                        .ifThen(item != null) {
+                            subjectContainerTransform(
+                                SubjectDetailImageSharedElementKey(
+                                    checkNotNull(item) {
+                                        "item was null in recommendationItems in Modifier.ifThen(item != null)"
+                                    }.bangumiId,
+                                    SubjectDetailImageSharedElementKey.FromRecommendationItem,
+                                ),
+                                shape = layoutParams.cardShape,
+                            )
+                        }
+                        .animateItem(
+                            fadeInSpec = aniMotionScheme.feedItemFadeInSpec,
+                            fadeOutSpec = aniMotionScheme.feedItemFadeOutSpec,
+                            placementSpec = aniMotionScheme.feedItemPlacementSpec,
+                        ),
                     shape = layoutParams.cardShape,
                 )
             }

@@ -21,6 +21,9 @@ android {
     buildFeatures {
         aidl = true
     }
+    buildTypes {
+        debugOptimizedLib()
+    }
 }
 
 dependencies {
