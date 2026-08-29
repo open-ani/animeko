@@ -1943,3 +1943,11 @@ jobs:
         ANI_APPIMAGE="${{ github.workspace }}/ci-helper/verify/Animeko-x86_64.AppImage"
         chmod +x "$ANI_APPIMAGE"
         ANIMEKO_DESKTOP_TEST_TASK="sqlite-bundled-load-test" "$ANI_APPIMAGE"
+    - id: 'step-7'
+      name: 'Check that JCEF can be initialized'
+      timeout-minutes: 5
+      shell: 'bash'
+      run: |-
+        ANI_APPIMAGE="${{ github.workspace }}/ci-helper/verify/Animeko-x86_64.AppImage"
+        chmod +x "$ANI_APPIMAGE"
+        XDG_SESSION_TYPE=wayland WAYLAND_DISPLAY=wayland-0 xvfb-run --auto-servernum env ANIMEKO_DESKTOP_TEST_TASK="jcef-init-test" "$ANI_APPIMAGE"

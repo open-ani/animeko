@@ -16,6 +16,7 @@ import me.him188.ani.app.domain.foundation.ScopedHttpClientUserAgent
 import me.him188.ani.app.data.persistent.database.BundledSqliteInterpositionGuard
 import me.him188.ani.app.data.persistent.database.SqliteGlobalScopeProbe
 import me.him188.ani.app.domain.foundation.get
+import me.him188.ani.app.platform.AniCefApp
 import me.him188.ani.app.platform.DesktopContext
 import me.him188.ani.app.platform.currentAniBuildConfig
 import me.him188.ani.app.tools.update.DefaultFileDownloader
@@ -58,6 +59,11 @@ object TestTasks {
                 exitProcess(0)
             }
 
+            "jcef-init-test" -> {
+                checkJcef(context)
+                exitProcess(0)
+            }
+
             "download-update-and-install" -> {
                 downloadUpdateAndInstall(args, context)
             }
@@ -97,6 +103,20 @@ object TestTasks {
             FFmpegKit().execute(listOf("-version"))
         }
         check(result.isSuccess) { "FFmpeg smoke test failed: $result" }
+    }
+
+    // Asserts that JCEF can reach the INITIALIZED state under the same X11-fallback path
+    // that the AppImage's CI verify job exercises (xvfb-run with XDG_SESSION_TYPE=wayland),
+    // which is the Wayland session that crashes Chromium's default display backend (#3359).
+    private fun checkJcef(context: DesktopContext) {
+        runBlocking {
+            AniCefApp.initialize(
+                logDir = context.logsDir,
+                cacheDir = context.cacheDir.resolve("jcef-cache"),
+            )
+        }
+        logger.info { "JCEF initialization check succeeded." }
+        AniCefApp.disposeBlocking()
     }
 
     private fun checkBundledSqlite() {
