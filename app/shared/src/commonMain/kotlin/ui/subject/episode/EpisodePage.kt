@@ -989,7 +989,7 @@ private fun EpisodeVideo(
             // not yet supported
         },
         onPreviewFinished = {
-            vm.player.seekTo(it)
+            vm.seekTo(it)
         },
     )
     val framePreview = if (vm.videoScaffoldConfig.enableFramePreview) {
