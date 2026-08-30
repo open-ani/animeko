@@ -330,7 +330,6 @@ fun SettingsScreen(
 
                     SettingsTab.DEBUG -> DebugTab(
                         vm.debugSettingsState,
-                        vm.uiSettings,
                         tabModifier,
                     )
 

@@ -112,11 +112,7 @@ class AniAppViewModel : AbstractViewModel(), KoinComponent {
         mediaCacheComposablesFlow,
     ) { themeSettings, mainSceneInitialPage, uiSettings, mediaCacheComposables ->
         AniAppState(
-            if (!uiSettings.onboardingCompleted) {
-                NavRoutes.Welcome
-            } else {
-                NavRoutes.Main(mainSceneInitialPage)
-            },
+            NavRoutes.Main(mainSceneInitialPage),
             uiSettings.mainSceneInitialPage,
             themeSettings,
             imageLoaderClient,
@@ -131,12 +127,6 @@ class AniAppViewModel : AbstractViewModel(), KoinComponent {
         started = SharingStarted.Eagerly,
         replay = 1,
     )
-
-    /*init {
-        launchInMain {
-            settings.uiSettings.update { copy(onboardingCompleted = false) }
-        }
-    }*/
 
     suspend fun unbindBangumi() {
         userRepository.unbindBangumi()

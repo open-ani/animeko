@@ -102,18 +102,18 @@ class AniNavigatorTest {
 
     @Test
     fun `navigateMain pops up to the target before pushing`() {
-        val navigator = navigatorWith(NavRoutes.Welcome, NavRoutes.Onboarding(), NavRoutes.OnboardingComplete())
-        navigator.navigateMain(MainScreenPage.Collection, popUpTargetInclusive = NavRoutes.Welcome)
+        val navigator = navigatorWith(NavRoutes.EmailLoginStart, NavRoutes.EmailLoginVerify, NavRoutes.BangumiAuthorize)
+        navigator.navigateMain(MainScreenPage.Collection, popUpTargetInclusive = NavRoutes.EmailLoginStart)
 
         assertEquals(listOf(NavRoutes.Main(MainScreenPage.Collection)), navigator.backStack)
     }
 
     @Test
     fun `navigateMain without a pop target just pushes`() {
-        val navigator = navigatorWith(NavRoutes.Welcome)
+        val navigator = navigatorWith(NavRoutes.EmailLoginStart)
         navigator.navigateMain(MainScreenPage.Collection)
 
-        assertEquals(listOf(NavRoutes.Welcome, NavRoutes.Main(MainScreenPage.Collection)), navigator.backStack)
+        assertEquals(listOf(NavRoutes.EmailLoginStart, NavRoutes.Main(MainScreenPage.Collection)), navigator.backStack)
     }
 
     @Test
@@ -127,7 +127,7 @@ class AniNavigatorTest {
 
     @Test
     fun `popBackOrNavigateToMain resets the stack when there is no Main`() {
-        val navigator = navigatorWith(NavRoutes.Welcome, NavRoutes.Onboarding())
+        val navigator = navigatorWith(NavRoutes.EmailLoginStart, NavRoutes.EmailLoginVerify)
         navigator.popBackOrNavigateToMain(MainScreenPage.Collection)
 
         assertEquals(listOf(NavRoutes.Main(MainScreenPage.Collection)), navigator.backStack)

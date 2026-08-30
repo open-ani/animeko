@@ -82,11 +82,6 @@
     <string name="settings_debug_show_all_episodes">Show all episodes</string>
     <string name="settings_debug_show_all_episodes_description">Show all episodes, including SP, OP, ED, etc. Currently only supported by some online sources. Use with caution</string>
     <string name="settings_debug_metered_network">Metered network information</string>
-    <string name="settings_debug_onboarding">New user guide settings</string>
-    <string name="settings_debug_enter_onboarding">Enter new user tutorial</string>
-    <string name="settings_debug_reset_onboarding">Reset new user guide status</string>
-    <string name="settings_debug_reset_onboarding_description">After reset, the next time you start the app, it will go through the new user guide</string>
-    <string name="settings_debug_reset_onboarding_toast">New user guide status has been reset</string>
     <string name="settings_debug_others">Others</string>
     <string name="settings_debug_get_bangumi_token">Obtain Bangumi access token</string>
     <string name="settings_debug_get_ani_token">Obtain Ani access token</string>
@@ -511,6 +506,7 @@
     <string name="exploration_horizontal_scroll_tip">Hold Shift + mouse wheel to scroll horizontally</string>
 
     <!-- MainScreenPage -->
+    <string name="main_network_check_failed">Failed to connect to the Animeko server. Check your network, or configure a proxy in Settings.</string>
     <string name="main_screen_page_exploration">Explore</string>
     <string name="main_screen_page_collection">Collection</string>
     <string name="main_screen_page_cache_management">Cache</string>
@@ -631,34 +627,6 @@
     <string name="settings_debug_logged_out">Logged out</string>
     <string name="settings_tab_account">Account</string>
 
-    <!-- Onboarding -->
-    <string name="onboarding_welcome_title">Welcome to Animeko</string>
-    <string name="onboarding_welcome_subtitle">A one-stop online anime platform with danmaku (Ani for short)</string>
-    <string name="onboarding_welcome_maintained">Ani is maintained by the OpenAni community and contributors. It is completely free and open source on GitHub.</string>
-    <string name="onboarding_welcome_goal">Ani aims to provide the simplest and most comfortable anime-watching experience possible.</string>
-    <string name="onboarding_welcome_continue">Continue</string>
-    <string name="onboarding_theme_settings">Theme Settings</string>
-    <string name="onboarding_network_settings">Network Settings</string>
-    <string name="onboarding_complete_welcome_with_nickname">Welcome, %1$s</string>
-    <string name="onboarding_complete_welcome">Welcome</string>
-    <string name="onboarding_complete_finish">Finish</string>
-    <string name="onboarding_theme_color">Colors</string>
-    <string name="onboarding_theme_dynamic_color">Dynamic Colors</string>
-    <string name="onboarding_theme_dynamic_color_desc">Use system accent colors</string>
-    <string name="onboarding_bittorrent_play_while_downloading">Ani supports streaming BT resources while downloading. BT speed depends on your network quality.</string>
-    <string name="onboarding_bittorrent_notification_permission_hint">Allow notification permission to view download progress while caching.</string>
-    <string name="onboarding_bittorrent_enable">Enable BitTorrent features</string>
-    <string name="onboarding_bittorrent_allow_notification">Allow notifications</string>
-    <string name="onboarding_bittorrent_notification_description">Show BT download progress, speed, and other information</string>
-    <string name="onboarding_bittorrent_authorized">Authorized</string>
-    <string name="onboarding_bittorrent_grant_permission">Grant permission</string>
-    <string name="onboarding_navigation_step_indicator">Step %1$d / %2$d</string>
-    <string name="onboarding_navigation_next">Next</string>
-    <string name="onboarding_navigation_previous">Previous</string>
-    <string name="onboarding_navigation_skip">Skip</string>
-    <string name="onboarding_navigation_choose_theme">Choose Theme</string>
-    <string name="onboarding_navigation_configure_proxy">Configure Proxy</string>
-    <string name="onboarding_navigation_bittorrent">BitTorrent Features</string>
 
     <!-- Login -->
     <string name="login_sign_in">Sign In</string>

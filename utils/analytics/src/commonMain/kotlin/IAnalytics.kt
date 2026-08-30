@@ -50,11 +50,6 @@ value class AnalyticsEvent(val event: String) {
         val AppServerTestError = AnalyticsEvent("app_server_test_error")
         val AppServerSelectError = AnalyticsEvent("app_server_select_error")
 
-        val OnboardingStart = AnalyticsEvent("onboarding_start")
-        val OnboardingNetworkEnter = AnalyticsEvent("onboarding_network_enter")
-        val OnboardingLoginEnter = AnalyticsEvent("onboarding_login_enter")
-        val OnboardingDone = AnalyticsEvent("onboarding_done")
-
         val NetworkCheckFailed = AnalyticsEvent("network_check_failed")
         val LoginClick = AnalyticsEvent("login_click")
         val LoginBangumiSuccess = AnalyticsEvent("login_bangumi_success")

@@ -47,10 +47,6 @@ data class UISettings(
     val searchSettings: SearchSettings = SearchSettings.Default,
     val episodeProgress: EpisodeProgressSettings = EpisodeProgressSettings.Default,
     val desktopCloseBehavior: DesktopCloseBehavior = DesktopCloseBehavior.EXIT,
-    /**
-     * 欢迎向导是否已经完成, 若为 false 则在启动 APP 时进入 OnboardingScreen, 而非 MainScreen
-     */
-    val onboardingCompleted: Boolean = false,
     @Suppress("PropertyName") @Transient val _placeholder: Int = 0,
 ) {
     companion object {
