@@ -15,9 +15,7 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.add
-import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.widthIn
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.Home
 import androidx.compose.material3.Icon
@@ -25,6 +23,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ScaffoldDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -33,14 +32,12 @@ import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.lifecycle.viewmodel.navigation3.rememberViewModelStoreNavEntryDecorator
 import androidx.navigation3.runtime.entryProvider
 import androidx.navigation3.runtime.rememberSaveableStateHolderNavEntryDecorator
 import androidx.navigation3.ui.NavDisplay
-import androidx.window.core.layout.WindowSizeClass
 import me.him188.ani.app.shared.Res
 import me.him188.ani.app.data.models.subject.SubjectInfo
 import me.him188.ani.app.domain.mediasource.rss.RssMediaSource
@@ -71,17 +68,15 @@ import me.him188.ani.app.ui.foundation.animation.ProvideAniMotionCompositionLoca
 import me.him188.ani.app.ui.foundation.layout.currentWindowAdaptiveInfo1
 import me.him188.ani.app.ui.foundation.layout.desktopTitleBar
 import me.him188.ani.app.ui.foundation.widgets.BackNavigationIconButton
+import me.him188.ani.app.ui.foundation.widgets.LocalToaster
 import me.him188.ani.app.ui.foundation.widgets.TopAppBarActionButton
+import me.him188.ani.app.ui.lang.Lang
+import me.him188.ani.app.ui.lang.main_network_check_failed
 import me.him188.ani.app.ui.login.EmailLoginStartScreen
 import me.him188.ani.app.ui.login.EmailLoginVerifyScreen
 import me.him188.ani.app.ui.login.EmailLoginViewModel
 import me.him188.ani.app.ui.oauth.BangumiAuthorizeScreen
 import me.him188.ani.app.ui.oauth.BangumiAuthorizeViewModel
-import me.him188.ani.app.ui.onboarding.OnboardingCompleteScreen
-import me.him188.ani.app.ui.onboarding.OnboardingCompleteViewModel
-import me.him188.ani.app.ui.onboarding.OnboardingScreen
-import me.him188.ani.app.ui.onboarding.OnboardingViewModel
-import me.him188.ani.app.ui.onboarding.WelcomeScreen
 import me.him188.ani.app.ui.playback.PlaybackHistoryScreen
 import me.him188.ani.app.ui.playback.PlaybackHistorySyncStatusScreen
 import me.him188.ani.app.ui.playback.PlaybackHistoryViewModel
@@ -109,6 +104,7 @@ import me.him188.ani.app.ui.watchtogether.WatchTogetherOverlayHost
 import me.him188.ani.app.ui.watchtogether.WatchTogetherPlayerController
 import me.him188.ani.app.ui.watchtogether.WatchTogetherViewModel
 import me.him188.ani.datasources.api.source.FactoryId
+import org.jetbrains.compose.resources.stringResource
 
 /**
  * UI 入口点. 包含所有子页面, 以及组合这些子页面的方式 (navigation).
@@ -188,17 +184,6 @@ private fun AniAppContentImpl(
             navMotionScheme.popEnterTransition togetherWith navMotionScheme.popExitTransition
         },
         entryProvider = entryProvider {
-            entry<NavRoutes.Welcome> {
-                WelcomeScreen(
-                    onClickContinue = {
-                        // 从 WelcomeScreen 进入 onboarding, 最后 navigateMain 要 popupTo Welcome
-                        aniNavigator.navigateOnboarding(NavRoutes.Welcome)
-                    },
-                    contactActions = { AniContactList() },
-                    Modifier.fillMaxSize(),
-                    windowInsets,
-                )
-            }
             entry<NavRoutes.EmailLoginStart> {
                 EmailLoginStartScreen(
                     onOtpSent = {
@@ -253,48 +238,6 @@ private fun AniAppContentImpl(
                     },
                 )
             }
-            entry<NavRoutes.Onboarding> { route ->
-                OnboardingScreen(
-                    viewModel { OnboardingViewModel() },
-                    onFinishOnboarding = {
-                        // 传递 popUpTarget 给 OnboardingComplete
-                        aniNavigator.navigateOnboardingComplete(route.popUpTargetInclusive)
-                    },
-                    contactActions = { AniContactList() },
-                    navigationIcon = {
-                        BackNavigationIconButton(
-                            {
-                                aniNavigator.popBackStack()
-                            },
-                        )
-                    },
-                    Modifier
-                        .widthIn(max = WindowSizeClass.WIDTH_DP_MEDIUM_LOWER_BOUND.dp)
-                        .fillMaxHeight(),
-                    windowInsets,
-                )
-            }
-            entry<NavRoutes.OnboardingComplete> { route ->
-                OnboardingCompleteScreen(
-                    viewModel { OnboardingCompleteViewModel() },
-                    onClickContinue = {
-                        // 传递 popUpTarget 给 OnboardingComplete
-                        aniNavigator.navigateMain(
-                            page = mainSceneInitialPage,
-                            popUpTargetInclusive = route.popUpTargetInclusive,
-                        )
-                    },
-                    backNavigation = {
-                        BackNavigationIconButton(
-                            {
-                                aniNavigator.popBackStack()
-                            },
-                        )
-                    },
-                    Modifier.fillMaxSize(),
-                    windowInsets,
-                )
-            }
             entry<NavRoutes.Main> { route ->
                 val navigationLayoutType =
                     AniNavigationSuiteDefaults.calculateLayoutType(
@@ -303,6 +246,14 @@ private fun AniAppContentImpl(
 
                 val vm = viewModel { MainScreenSharedViewModel() }
                 var currentPage by rememberSaveable { mutableStateOf(route.initialPage) }
+
+                val toaster = LocalToaster.current
+                val networkCheckFailedMessage = stringResource(Lang.main_network_check_failed)
+                LaunchedEffect(vm) {
+                    vm.networkCheckFailed.collect {
+                        toaster.toast(networkCheckFailedMessage)
+                    }
+                }
 
                 OverrideNavigation(
                     {

@@ -25,7 +25,6 @@ import kotlinx.coroutines.flow.filterNotNull
 import kotlinx.coroutines.flow.first
 import me.him188.ani.datasources.api.source.FactoryId
 import me.him188.ani.utils.analytics.Analytics
-import me.him188.ani.utils.analytics.AnalyticsEvent
 import me.him188.ani.utils.analytics.AnalyticsEvent.Companion.EpisodeEnter
 
 /**
@@ -110,33 +109,10 @@ interface AniNavigator {
         )
     }
 
-    fun navigateWelcome() {
-        navigate(NavRoutes.Welcome)
-    }
-
-    /**
-     * 向导结束后, 导航到主页时要弹出的目标.
-     *
-     * @see NavRoutes.Onboarding.popUpTargetInclusive
-     */
-    fun navigateOnboarding(completionPopUpTargetInclusive: NavRoutes?) {
-        navigate(NavRoutes.Onboarding(completionPopUpTargetInclusive))
-    }
-
-    /**
-     * 向导结束后, 导航到主页时要弹出的目标.
-     *
-     * @see NavRoutes.Onboarding.popUpTargetInclusive
-     */
-    fun navigateOnboardingComplete(completionPopUpTargetInclusive: NavRoutes?) {
-        navigate(NavRoutes.OnboardingComplete(completionPopUpTargetInclusive))
-        Analytics.recordEvent(AnalyticsEvent.OnboardingDone)
-    }
-
     /**
      * 导航到主页. 如果指定了 [popUpTargetInclusive], 则先把它 (含) 之上的页面全部弹出.
      *
-     * 注意这里允许把栈弹空 (例如从 [NavRoutes.Welcome] 开始的向导结束时), 因为紧接着就会压入主页.
+     * 注意这里允许把栈弹空, 因为紧接着就会压入主页.
      */
     fun navigateMain(
         page: MainScreenPage,

@@ -27,35 +27,10 @@ import org.jetbrains.compose.resources.stringResource
 @Serializable
 sealed class NavRoutes : NavKey {
     @Serializable
-    data object Welcome : NavRoutes()
-
-    @Serializable
     data object EmailLoginStart : NavRoutes()
 
     @Serializable
     data object EmailLoginVerify : NavRoutes()
-
-    @Serializable
-    data class Onboarding(
-        /**
-         * 在这个界面, 用户只能导航到 [OnboardingComplete] 随后导航到 [Main],
-         * 并且不能再回到 [Onboarding] 和 [OnboardingComplete].
-         *
-         * 但是由于用户可能从不同的界面进入 [Onboarding] (如首次进入 APP 从 [Welcome] 进入, 重新运行向导从 [Settings] 进入),
-         * 所以最后 [OnboardingComplete] 导航到 [Main] 时要弹出的目标也不一样.
-         *
-         * 如果为 `null`, 则不弹出任何已有页面.
-         */
-        val popUpTargetInclusive: NavRoutes? = null,
-    ) : NavRoutes()
-
-    @Serializable
-    data class OnboardingComplete(
-        /**
-         * 同 [Onboarding.popUpTargetInclusive]
-         */
-        val popUpTargetInclusive: NavRoutes? = null,
-    ) : NavRoutes()
 
     @Serializable
     data class Main(

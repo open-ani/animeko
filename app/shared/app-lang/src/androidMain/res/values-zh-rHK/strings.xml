@@ -65,11 +65,6 @@
     <string name="settings_debug_show_all_episodes">顯示所有劇集</string>
     <string name="settings_debug_show_all_episodes_description">顯示所有劇集，包括SP、OP、ED等，目前僅部分在線源支持，請謹慎啟用</string>
     <string name="settings_debug_metered_network">計費網絡資訊</string>
-    <string name="settings_debug_onboarding">新手引導設置</string>
-    <string name="settings_debug_enter_onboarding">進入新手嚮導</string>
-    <string name="settings_debug_reset_onboarding">重置新手引導狀態</string>
-    <string name="settings_debug_reset_onboarding_description">重置後，下次啟動 APP 會進入新手引導</string>
-    <string name="settings_debug_reset_onboarding_toast">已重置新手引導狀態</string>
     <string name="settings_debug_others">其他</string>
     <string name="settings_debug_get_bangumi_token">獲取 Bangumi access token</string>
     <string name="settings_debug_get_ani_token">獲取 Ani access token</string>
@@ -516,6 +511,7 @@
     <string name="exploration_horizontal_scroll_tip">按住 Shift + 滑鼠滾輪 同樣可以水平滾動</string>
 
     <!-- MainScreenPage -->
+    <string name="main_network_check_failed">無法連接到 Animeko 伺服器, 請檢查網絡, 或在設置中配置代理</string>
     <string name="main_screen_page_exploration">探索</string>
     <string name="main_screen_page_collection">追番</string>
     <string name="main_screen_page_cache_management">緩存</string>
@@ -644,34 +640,6 @@
     <string name="settings_update_version_expired_copied_to_clipboard">已複製到剪貼板，請到新版本點擊導入</string>
     <string name="settings_update_version_expired_export_settings">導出設置</string>
 
-    <!-- Onboarding -->
-    <string name="onboarding_welcome_title">歡迎使用 Animeko</string>
-    <string name="onboarding_welcome_subtitle">一站式在線彈幕追番平台 (簡稱 Ani)</string>
-    <string name="onboarding_welcome_maintained">Ani 目前由愛好者組成的組織 OpenAni 和社區貢獻者維護，完全免費，並在 GitHub 上開源。</string>
-    <string name="onboarding_welcome_goal">Ani 的目標是提供盡可能簡單且舒適的追番體驗。</string>
-    <string name="onboarding_welcome_continue">繼續</string>
-    <string name="onboarding_theme_settings">主題設置</string>
-    <string name="onboarding_network_settings">網絡設置</string>
-    <string name="onboarding_complete_welcome_with_nickname">歡迎，%1$s</string>
-    <string name="onboarding_complete_welcome">歡迎</string>
-    <string name="onboarding_complete_finish">完成</string>
-    <string name="onboarding_theme_color">色彩</string>
-    <string name="onboarding_theme_dynamic_color">動態色彩</string>
-    <string name="onboarding_theme_dynamic_color_desc">使用系統強調色</string>
-    <string name="onboarding_bittorrent_play_while_downloading">Ani 支持邊下邊播 BT 資源，BT 下載速度取決於網絡質量</string>
-    <string name="onboarding_bittorrent_notification_permission_hint">允許通知權限，在緩存時查看下載進度</string>
-    <string name="onboarding_bittorrent_enable">啟用 BitTorrent 功能</string>
-    <string name="onboarding_bittorrent_allow_notification">允許通知</string>
-    <string name="onboarding_bittorrent_notification_description">顯示 BT 下載進度和速度等資訊</string>
-    <string name="onboarding_bittorrent_authorized">已授權</string>
-    <string name="onboarding_bittorrent_grant_permission">授予權限</string>
-    <string name="onboarding_navigation_step_indicator">步驟 %1$d / %2$d</string>
-    <string name="onboarding_navigation_next">下一步</string>
-    <string name="onboarding_navigation_previous">上一步</string>
-    <string name="onboarding_navigation_skip">跳過</string>
-    <string name="onboarding_navigation_choose_theme">選擇主題</string>
-    <string name="onboarding_navigation_configure_proxy">設置代理</string>
-    <string name="onboarding_navigation_bittorrent">BitTorrent 功能</string>
 
     <!-- Login -->
     <string name="login_sign_in">登入</string>
