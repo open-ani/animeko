@@ -114,7 +114,7 @@ sealed class SubjectCollectionRepository(
     abstract fun subjectCollectionsPager(
         query: CollectionsFilterQuery = CollectionsFilterQuery.Empty,
         pagingConfig: PagingConfig = PagingConfig(
-            pageSize = 10,
+            pageSize = 30,
             prefetchDistance = 30,
         ),
     ): Flow<PagingData<SubjectCollectionInfo>>
@@ -466,6 +466,7 @@ class SubjectCollectionRepositoryImpl(
                     ?: return@withContext MediatorResult.Success(endOfPaginationReached = true)
                 logger.debug { "${loadType}, Loading $offset, limit=$limit" }
 
+                var endOfPaginationReached = false
                 fetchAndSaveSubjectCollectionsWithEpisodes(
                     type = query.type,
                     limit = limit,
@@ -477,13 +478,13 @@ class SubjectCollectionRepositoryImpl(
                             subjectCollectionDao.deleteAll(query.type)
                         }
 
-                        if (items.isEmpty()) {
-                            return@withContext MediatorResult.Success(endOfPaginationReached = items.isEmpty())
-                        }
+                        // 拿到的数量小于请求的 limit 就代表这是最后一页, 否则总数不是 limit 整数倍时
+                        // 会永远在同一个 offset 重复请求, 造成无限刷新循环 (列表反复重排/跳动)
+                        endOfPaginationReached = items.size < limit
                     },
                 )
 
-                MediatorResult.Success(endOfPaginationReached = false)
+                MediatorResult.Success(endOfPaginationReached = endOfPaginationReached)
             }
         } catch (e: Exception) {
             MediatorResult.Error(RepositoryException.wrapOrThrowCancellation(e))
