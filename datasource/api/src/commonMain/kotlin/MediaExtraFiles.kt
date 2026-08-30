@@ -17,10 +17,26 @@ import kotlinx.serialization.Serializable
 @Serializable
 class MediaExtraFiles(
     val subtitles: List<Subtitle> = emptyList(),
+    val chapters: List<MediaChapter> = emptyList(),
 ) {
     companion object {
         val EMPTY = MediaExtraFiles()
     }
+}
+
+@Serializable
+data class MediaChapter(
+    val name: String,
+    val durationMillis: Long,
+    val offsetMillis: Long,
+    val kind: MediaChapterKind = MediaChapterKind.CHAPTER,
+)
+
+@Serializable
+enum class MediaChapterKind {
+    CHAPTER,
+    OPENING,
+    ENDING,
 }
 
 @Serializable
