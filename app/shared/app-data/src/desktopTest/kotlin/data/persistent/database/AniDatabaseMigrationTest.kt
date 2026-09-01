@@ -125,6 +125,17 @@ class AniDatabaseMigrationTest {
     }
 
     @Test
+    fun `MIG-06 v22到v23的AutoMigration增加Bangumi合并基线表`() {
+        val helper = createHelper()
+        helper.createDatabase(22).use { connection ->
+            assertFalse(connection.tableNames().contains("bangumi_merge_baseline"))
+        }
+        helper.runMigrationsAndValidate(23, emptyList()).use { connection ->
+            assertContains(connection.tableNames(), "bangumi_merge_baseline")
+        }
+    }
+
+    @Test
     fun `MIG-04 缺失手动19-20迁移时从v16迁移到v21失败`() {
         val helper = createHelper()
         helper.createDatabase(16).use {}

@@ -16,9 +16,13 @@ import androidx.compose.foundation.layout.BoxScope
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.WindowInsetsSides
 import androidx.compose.foundation.layout.add
 import androidx.compose.foundation.layout.asPaddingValues
 import androidx.compose.foundation.layout.consumeWindowInsets
+import androidx.compose.foundation.layout.navigationBars
+import androidx.compose.foundation.layout.only
+import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
@@ -34,6 +38,7 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.NavigationRailItem
 import androidx.compose.material3.OutlinedButton
+import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.adaptive.navigationsuite.NavigationSuiteDefaults
@@ -71,6 +76,7 @@ import me.him188.ani.app.platform.LocalContext
 import me.him188.ani.app.ui.adaptive.navigation.AniNavigationSuite
 import me.him188.ani.app.ui.adaptive.navigation.AniNavigationSuiteDefaults
 import me.him188.ani.app.ui.adaptive.navigation.AniNavigationSuiteLayout
+import me.him188.ani.app.ui.bangumi.merge.BangumiConflictNotifier
 import me.him188.ani.app.ui.cache.CacheManagementScreen
 import me.him188.ani.app.ui.cache.CacheManagementViewModel
 import me.him188.ani.app.ui.exploration.ExplorationScreen
@@ -309,7 +315,8 @@ private fun MainScreenNavigationLayout(
 
         TabContent(
             layoutType = navigationLayoutType,
-            Modifier.ifThen(navigationLayoutType != NavigationSuiteType.NavigationBar && !isRightCaptionButton) {
+            selfInfo = selfInfo,
+            modifier = Modifier.ifThen(navigationLayoutType != NavigationSuiteType.NavigationBar && !isRightCaptionButton) {
                 // macos 标题栏只会在 NavigationRail 的区域内, TabContent 区域无需这些 padding.
                 consumeWindowInsets(WindowInsets.desktopTitleBar())
             },
@@ -383,6 +390,7 @@ private fun MainScreenNavigationLayout(
 @Composable
 private fun TabContent(
     layoutType: NavigationSuiteType,
+    selfInfo: SelfInfoUiState,
     modifier: Modifier = Modifier,
     content: @Composable () -> Unit,
 ) {
@@ -407,20 +415,38 @@ private fun TabContent(
             content()
 
             // 毛玻璃导航栏覆盖在内容上时, 通知需要避开导航栏.
-            // 注意不能用 windowInsetsPadding: 祖先已 consume 了系统导航栏 insets,
+            // 注意不能只用 windowInsetsPadding: 毛玻璃模式下祖先已 consume 了系统导航栏 insets,
             // windowInsetsPadding 会减去已消耗的部分, 导致通知被导航栏遮挡一截.
+            // NavigationRail 模式下则相反, 底部系统栏 insets 未被消耗, 需要额外补上.
             Box(
                 Modifier.matchParentSize()
-                    .padding(LocalAppChromeOverlayInsets.current.asPaddingValues()),
+                    .padding(LocalAppChromeOverlayInsets.current.asPaddingValues())
+                    .windowInsetsPadding(WindowInsets.navigationBars.only(WindowInsetsSides.Bottom)),
             ) {
-                UpdateNotifierWithVersionExpiryCheck()
+                // 两个通知共享一个 SnackbarHostState: 同时出现时按序排队展示, 而不是重叠在一起.
+                val sharedSnackbarState = remember { SnackbarHostState() }
+                UpdateNotifierWithVersionExpiryCheck(snackbarHostState = sharedSnackbarState)
+
+                // 版本过期锁定页展示时不检查冲突, 也不在其上叠加可跳转的提示.
+                val versionExpiryService = remember { KoinPlatform.getKoin().get<VersionExpiryService>() }
+                val versionExpired by versionExpiryService.state.collectAsStateWithLifecycle(null)
+                if (versionExpired == null) {
+                    val navigator = LocalNavigator.current
+                    BangumiConflictNotifier(
+                        selfInfo = selfInfo,
+                        onNavigateToMerge = { navigator.navigateBangumiMerge() },
+                        snackbarHostState = sharedSnackbarState,
+                    )
+                }
             }
         }
     }
 }
 
 @Composable
-private fun BoxScope.UpdateNotifierWithVersionExpiryCheck() {
+private fun BoxScope.UpdateNotifierWithVersionExpiryCheck(
+    snackbarHostState: SnackbarHostState = remember { SnackbarHostState() },
+) {
     // Force check when version expired
     val updateVm = viewModel { AppUpdateViewModel() }
     val versionExpiryService = remember { KoinPlatform.getKoin().get<VersionExpiryService>() }
@@ -494,5 +520,5 @@ private fun BoxScope.UpdateNotifierWithVersionExpiryCheck() {
             }
         }
     }
-    UpdateNotifier(viewModel = updateVm)
+    UpdateNotifier(viewModel = updateVm, snackbarHostState = snackbarHostState)
 }

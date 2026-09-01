@@ -131,6 +131,12 @@ interface SubjectCollectionDao {
     @Upsert
     suspend fun upsert(item: SubjectCollectionEntity)
 
+    /**
+     * 一次性读取全部收藏, 供 Bangumi 合并冲突检测构建本地快照.
+     */
+    @Query("""SELECT * FROM subject_collection""")
+    suspend fun getAllList(): List<SubjectCollectionEntity>
+
     @Upsert
     @Transaction
     suspend fun upsert(item: List<SubjectCollectionEntity>)

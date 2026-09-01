@@ -38,12 +38,16 @@ import me.him188.ani.app.data.models.bangumi.BangumiSyncOp
 import me.him188.ani.app.data.models.bangumi.BangumiSyncState
 import me.him188.ani.app.data.repository.subject.BangumiSyncCommandRepository
 import me.him188.ani.app.data.repository.subject.SubjectCollectionRepository
+import me.him188.ani.app.navigation.LocalNavigator
 import me.him188.ani.app.ui.external.placeholder.placeholder
 import me.him188.ani.app.ui.foundation.AbstractViewModel
 import me.him188.ani.app.ui.foundation.ProvideCompositionLocalsForPreview
 import me.him188.ani.app.ui.foundation.animation.LocalAniMotionScheme
 import me.him188.ani.app.ui.foundation.rememberAsyncHandler
 import me.him188.ani.app.ui.lang.Lang
+import me.him188.ani.app.ui.lang.bangumi_merge_entry_description
+import me.him188.ani.app.ui.lang.bangumi_merge_title
+import me.him188.ani.app.ui.lang.settings_account_bangumi_conflict_handling
 import me.him188.ani.app.ui.lang.settings_account_bangumi_execute_all
 import me.him188.ani.app.ui.lang.settings_account_bangumi_manual_full_sync
 import me.him188.ani.app.ui.lang.settings_account_bangumi_pending_sync_ops
@@ -120,10 +124,12 @@ fun BangumiSyncTab(
     modifier: Modifier = Modifier
 ) {
     val asyncHandler = rememberAsyncHandler()
+    val navigator = LocalNavigator.current
 
     BangumiSyncTabImpl(
         syncCommandsFlow = vm.syncCommandsFlow,
         syncState = vm.syncState,
+        onMergeClick = { navigator.navigateBangumiMerge() },
         onFullSyncClick = {
             asyncHandler.launch {
                 vm.fullSync()
@@ -150,12 +156,16 @@ fun BangumiSyncTab(
 fun BangumiSyncTabImpl(
     syncCommandsFlow: Flow<PagingData<BangumiSyncCommand>>,
     syncState: Flow<BangumiSyncState?>,
+    onMergeClick: () -> Unit,
     onFullSyncClick: () -> Unit,
     onPushClick: () -> Unit,
     onSyncCancel: () -> Unit,
     isBangumiSyncing: Boolean,
     modifier: Modifier = Modifier,
 ) = SettingsTab(modifier) {
+    val mergeTitleText = stringResource(Lang.bangumi_merge_title)
+    val mergeDescriptionText = stringResource(Lang.bangumi_merge_entry_description)
+    val conflictGroupText = stringResource(Lang.settings_account_bangumi_conflict_handling)
     val fullSyncText = stringResource(Lang.settings_account_bangumi_manual_full_sync)
     val redownloadText = stringResource(Lang.settings_account_bangumi_redownload_all_data)
     val redownloadDescriptionText = stringResource(Lang.settings_account_bangumi_redownload_all_data_description)
@@ -164,6 +174,19 @@ fun BangumiSyncTabImpl(
     val executeAllText = stringResource(Lang.settings_account_bangumi_execute_all)
     val loadingText = stringResource(Lang.settings_account_loading)
     val loadingPlaceholderText = stringResource(Lang.settings_account_loading_placeholder)
+
+    Group({ Text(conflictGroupText) }) {
+        TextItem(
+            title = {
+                Text(mergeTitleText)
+            },
+            onClick = onMergeClick,
+            onClickEnabled = !isBangumiSyncing,
+            description = {
+                Text(mergeDescriptionText)
+            },
+        )
+    }
 
     Group({ Text(fullSyncText) }) {
         TextItem(
@@ -307,6 +330,7 @@ private fun PreviewBangumiSyncTab() = ProvideCompositionLocalsForPreview {
     BangumiSyncTabImpl(
         syncCommandsFlow = createTestPager(TestAniBangumiSyncCommandEntities),
         syncState = flowOf(null),
+        onMergeClick = {},
         onFullSyncClick = {},
         onPushClick = {},
         onSyncCancel = {},

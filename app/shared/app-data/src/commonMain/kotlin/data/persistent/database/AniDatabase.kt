@@ -26,6 +26,8 @@ import androidx.sqlite.execSQL
 import me.him188.ani.app.data.persistent.database.converters.DurationConverter
 import me.him188.ani.app.data.persistent.database.converters.InstantConverter
 import me.him188.ani.app.data.persistent.database.converters.PackedDateConverter
+import me.him188.ani.app.data.persistent.database.dao.BangumiMergeBaselineDao
+import me.him188.ani.app.data.persistent.database.dao.BangumiMergeBaselineEntity
 import me.him188.ani.app.data.persistent.database.dao.DanmakuDao
 import me.him188.ani.app.data.persistent.database.dao.DanmakuEntity
 import me.him188.ani.app.data.persistent.database.dao.EpisodeCollectionDao
@@ -84,8 +86,10 @@ import me.him188.ani.utils.httpdownloader.DownloadState
         PreferredWebMediaSource::class,
         PlaybackHistoryRecordEntity::class,
         PlaybackHistoryPendingOpEntity::class,
+
+        BangumiMergeBaselineEntity::class,
     ],
-    version = 22,
+    version = 23,
     autoMigrations = [
         AutoMigration(from = 1, to = 2, spec = Migrations.Migration_1_2::class),
         AutoMigration(from = 2, to = 3, spec = Migrations.Migration_2_3::class),
@@ -107,6 +111,7 @@ import me.him188.ani.utils.httpdownloader.DownloadState
         AutoMigration(from = 18, to = 19, spec = Migrations.Migration_18_19::class),
         AutoMigration(from = 20, to = 21, spec = Migrations.Migration_20_21::class),
         AutoMigration(from = 21, to = 22, spec = Migrations.Migration_21_22::class),
+        AutoMigration(from = 22, to = 23, spec = Migrations.Migration_22_23::class),
     ],
     exportSchema = true,
 )
@@ -156,6 +161,11 @@ abstract class AniDatabase : RoomDatabase() {
     abstract fun danmakuDao(): DanmakuDao
     abstract fun preferredWebMediaSourceDao(): PreferredWebMediaSourceDao
     abstract fun playbackHistoryDao(): PlaybackHistoryDao
+
+    /**
+     * @since 5.4.0
+     */
+    abstract fun bangumiMergeBaselineDao(): BangumiMergeBaselineDao
 }
 
 expect object AniDatabaseConstructor : RoomDatabaseConstructor<AniDatabase> {
@@ -393,6 +403,16 @@ internal object Migrations {
     @DeleteTable("web_search_episode")
     @DeleteTable("web_search_subject")
     class Migration_21_22 : AutoMigrationSpec {
+        override fun onPostMigrate(connection: SQLiteConnection) {
+        }
+    }
+
+    /**
+     * 增加了 Bangumi 合并同步基线表 [BangumiMergeBaselineEntity].
+     *
+     * @since 5.4.0
+     */
+    class Migration_22_23 : AutoMigrationSpec {
         override fun onPostMigrate(connection: SQLiteConnection) {
         }
     }

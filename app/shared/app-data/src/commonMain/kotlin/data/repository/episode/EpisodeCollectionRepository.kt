@@ -148,19 +148,24 @@ class EpisodeCollectionRepository(
         episodeCollectionDao.setAllEpisodesWatched(subjectId)
     }
 
+    /**
+     * @return 服务器是否接受了该修改. 返回 `false` 表示会话无效或用户没有收藏这个条目,
+     * 此时本地缓存仍会乐观更新, 但调用方不应认为两侧已收敛.
+     */
     suspend fun setEpisodeCollectionType(
         subjectId: Int,
         episodeId: Int,
         collectionType: UnifiedCollectionType,
-    ) = withContext(defaultDispatcher) {
+    ): Boolean = withContext(defaultDispatcher) {
         if (subjectCollectionRepository.subjectCollectionFlow(subjectId)
                 .first().collectionType == UnifiedCollectionType.NOT_COLLECTED
         ) {
             logger.warn { "User has not yet collected subject $subjectId when we want to setEpisodeCollectionType, ignoring." }
 //            subjectCollectionRepository.setSubjectCollectionTypeOrDelete(subjectId, UnifiedCollectionType.DOING)
         }
-        episodeService.setEpisodeCollection(subjectId, listOf(episodeId), collectionType)
+        val accepted = episodeService.setEpisodeCollection(subjectId, listOf(episodeId), collectionType)
         episodeCollectionDao.updateSelfCollectionType(subjectId, episodeId, collectionType)
+        accepted
     }
 
     /**

@@ -11,7 +11,11 @@ package me.him188.ani.app.data.repository
 
 import me.him188.ani.app.data.network.AniApiProvider
 import me.him188.ani.app.data.persistent.PlatformDataStoreManager
+import me.him188.ani.app.data.persistent.database.AniDatabase
+import me.him188.ani.app.data.repository.subject.BangumiMergeRepository
 import me.him188.ani.app.data.repository.subject.BangumiSyncCommandRepository
+import me.him188.ani.app.data.repository.subject.DefaultBangumiMergeRepository
+import me.him188.ani.app.data.repository.subject.DefaultBangumiMergeWriteGateway
 import me.him188.ani.app.data.repository.user.UserRepository
 import org.koin.core.KoinApplication
 import org.koin.core.scope.Scope
@@ -36,6 +40,21 @@ fun KoinApplication.repositoryModules(dataStores: PlatformDataStoreManager) = mo
     single<BangumiSyncCommandRepository> {
         BangumiSyncCommandRepository(
             aniApiProvider.bangumiApi,
+        )
+    }
+    single<BangumiMergeRepository> {
+        val database = get<AniDatabase>()
+        DefaultBangumiMergeRepository(
+            subjectService = get(),
+            subjectCollectionDao = database.subjectCollection(),
+            episodeCollectionDao = database.episodeCollection(),
+            baselineDao = database.bangumiMergeBaselineDao(),
+            writeGateway = DefaultBangumiMergeWriteGateway(
+                subjectCollectionRepository = get(),
+                episodeCollectionRepository = get(),
+                subjectCollectionDao = database.subjectCollection(),
+                subjectService = get(),
+            ),
         )
     }
 }
