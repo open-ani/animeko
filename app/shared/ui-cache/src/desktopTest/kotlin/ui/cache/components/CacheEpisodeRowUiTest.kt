@@ -9,9 +9,9 @@
 
 package me.him188.ani.app.ui.cache.components
 
-import androidx.compose.ui.semantics.ProgressBarRangeInfo
-import androidx.compose.ui.test.assertRangeInfoEquals
-import androidx.compose.ui.test.onNodeWithTag
+import androidx.compose.ui.semantics.SemanticsProperties
+import androidx.compose.ui.test.SemanticsMatcher
+import androidx.compose.ui.test.assertCountEquals
 import androidx.compose.ui.test.onNodeWithText
 import kotlinx.coroutines.runBlocking
 import me.him188.ani.app.tools.toProgress
@@ -27,7 +27,7 @@ import kotlin.test.Test
 @OptIn(TestOnly::class)
 class CacheEpisodeRowUiTest {
     @Test
-    fun `completed cache shows playback progress`() = runAniComposeUiTest {
+    fun `completed cache shows playback progress text without progress semantics`() = runAniComposeUiTest {
         val episode = createTestCacheEpisode(
             sort = 1,
             initialState = CacheEpisodePaused.COMPLETED,
@@ -58,7 +58,7 @@ class CacheEpisodeRowUiTest {
         }
 
         onNodeWithText(watchedText).assertExists()
-        onNodeWithTag(CacheEpisodeRowTestTags.playbackProgress(episode.cacheId))
-            .assertRangeInfoEquals(ProgressBarRangeInfo(0.5f, 0f..1f))
+        onAllNodes(SemanticsMatcher.keyIsDefined(SemanticsProperties.ProgressBarRangeInfo))
+            .assertCountEquals(0)
     }
 }

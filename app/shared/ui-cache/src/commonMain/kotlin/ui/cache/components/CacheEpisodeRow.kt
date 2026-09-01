@@ -41,7 +41,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.graphics.StrokeCap
-import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import me.him188.ani.app.tools.getOrZero
@@ -205,53 +205,46 @@ fun CacheEpisodeRow(
                 }
             }
 
-            val showPlaybackProgress = episode.isFinished && episode.hasPlaybackProgress
-            AniAnimatedVisibility(!episode.isFinished || showPlaybackProgress) {
-                Row(
-                    Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(16.dp),
-                    verticalAlignment = Alignment.CenterVertically,
-                ) {
-                    val displayedProgress = if (showPlaybackProgress) {
-                        episode.playbackProgress
-                    } else {
-                        episode.progress
-                    }
-                    val progress by animateFloatAsState(displayedProgress.getOrZero())
-                    LinearProgressIndicator(
-                        progress = { progress },
-                        modifier = Modifier
-                            .weight(1f)
-                            .then(
-                                if (showPlaybackProgress) {
-                                    Modifier.testTag(CacheEpisodeRowTestTags.playbackProgress(episode.cacheId))
-                                } else {
-                                    Modifier
-                                },
-                            ),
-                        strokeCap = StrokeCap.Round,
+            val showPlaybackProgressText = episode.isFinished && episode.hasPlaybackProgress
+            AniAnimatedVisibility(!episode.isFinished || showPlaybackProgressText) {
+                if (showPlaybackProgressText) {
+                    Text(
+                        stringResource(
+                            Lang.cache_episode_watched_progress,
+                            episode.playbackProgressText ?: "",
+                        ),
+                        modifier = Modifier.fillMaxWidth(),
+                        style = MaterialTheme.typography.labelMedium,
+                        textAlign = TextAlign.End,
                     )
+                } else {
                     Row(
-                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                        Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(16.dp),
                         verticalAlignment = Alignment.CenterVertically,
                     ) {
-                        val statusText = when {
-                            showPlaybackProgress -> stringResource(
-                                Lang.cache_episode_watched_progress,
-                                episode.playbackProgressText ?: "",
-                            )
-                            episode.isFailed -> stringResource(Lang.cache_episode_download_failed)
-                            episode.isPaused -> stringResource(Lang.cache_episode_status_paused)
-                            else -> episode.speedText
-                        }
-                        statusText?.let {
-                            Text(
-                                it,
-                                style = MaterialTheme.typography.labelMedium,
-                                color = if (episode.isFailed) MaterialTheme.colorScheme.error else Color.Unspecified,
-                            )
-                        }
-                        if (!showPlaybackProgress) {
+                        val progress by animateFloatAsState(episode.progress.getOrZero())
+                        LinearProgressIndicator(
+                            progress = { progress },
+                            modifier = Modifier.weight(1f),
+                            strokeCap = StrokeCap.Round,
+                        )
+                        Row(
+                            horizontalArrangement = Arrangement.spacedBy(8.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                        ) {
+                            val statusText = when {
+                                episode.isFailed -> stringResource(Lang.cache_episode_download_failed)
+                                episode.isPaused -> stringResource(Lang.cache_episode_status_paused)
+                                else -> episode.speedText
+                            }
+                            statusText?.let {
+                                Text(
+                                    it,
+                                    style = MaterialTheme.typography.labelMedium,
+                                    color = if (episode.isFailed) MaterialTheme.colorScheme.error else Color.Unspecified,
+                                )
+                            }
                             episode.progressText?.let { Text(it, style = MaterialTheme.typography.labelMedium) }
                         }
                     }
@@ -259,12 +252,6 @@ fun CacheEpisodeRow(
             }
         }
     }
-}
-
-object CacheEpisodeRowTestTags {
-    private const val PLAYBACK_PROGRESS_PREFIX = "cache_episode_playback_progress_"
-
-    fun playbackProgress(cacheId: String): String = PLAYBACK_PROGRESS_PREFIX + cacheId
 }
 
 /**
