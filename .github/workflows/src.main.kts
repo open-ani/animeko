@@ -650,6 +650,10 @@ fun getVerifyJobBody(
          * 指定此项, 则在所有的 Runner 上执行, 但在指定的 Runner 上不执行.
          */
         val disabledOn: List<Runner>? = null,
+        /**
+         * 在虚拟 X11 显示器中运行此任务.
+         */
+        val runWithXvfb: Boolean = false,
     )
 
     val tasksToExecute = listOf(
@@ -685,6 +689,12 @@ fun getVerifyJobBody(
             name = "sqlite-bundled-load-test",
             step = "Check that bundled SQLite can be loaded",
             enabledOnlyOn = listOf(Runner.GithubWindows11Arm64, Runner.GithubUbuntu2404),
+        ),
+        VerifyTask(
+            name = "jcef-init-test",
+            step = "Check that JCEF can be initialized",
+            enabledOnlyOn = listOf(Runner.GithubUbuntu2404),
+            runWithXvfb = true,
         ),
     ).filter { task ->
         // Filter task that should execute on this runner.
@@ -752,6 +762,11 @@ fun getVerifyJobBody(
             tasksToExecute.forEach { task ->
                 val appimagePath =
                     """${expr { github.workspace }}/ci-helper/verify/Animeko-x86_64.AppImage"""
+                val commandPrefix = if (task.runWithXvfb) {
+                    "XDG_SESSION_TYPE=wayland WAYLAND_DISPLAY=wayland-0 xvfb-run --auto-servernum env " + ""
+                } else {
+                    ""
+                }
                 run(
                     name = task.step,
                     shell = Shell.Bash,
@@ -759,7 +774,7 @@ fun getVerifyJobBody(
                         $$"""
                             ANI_APPIMAGE="$$appimagePath"
                             chmod +x "$ANI_APPIMAGE"
-                            ANIMEKO_DESKTOP_TEST_TASK="$${task.name}" "$ANI_APPIMAGE"
+                            $${commandPrefix}ANIMEKO_DESKTOP_TEST_TASK="$${task.name}" "$ANI_APPIMAGE"
                         """.trimIndent(),
                     ),
                     `if` = task.`if`,
