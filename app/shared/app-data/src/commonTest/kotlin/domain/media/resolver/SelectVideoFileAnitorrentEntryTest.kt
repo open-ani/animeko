@@ -401,20 +401,31 @@ class SelectVideoFileAnitorrentEntryTest {
     }
 
     @Test
-    fun `does not select S00E01 special when selecting first episode`() {
+    fun `case from PR 3346`() {
         val selected = TorrentMediaResolver.selectVideoFileEntry(
             listOf(
-                "Example Anime Series 2015 S00E01-[1080p][BDRIP][x265.OPUS].mkv",
-                "Example Anime Series 2015 S01E01-[1080p][BDRIP][x265.OPUS].mkv",
-                "Example Anime Series 2015 S01E02-[1080p][BDRIP][x265.OPUS].mkv",
+                "Dungeon ni Deai wo Motomeru no wa Machigatteiru Darou ka 2015 S00E01-[1080p][BDRIP][x265.OPUS].mkv",
+                "Dungeon ni Deai wo Motomeru no wa Machigatteiru Darou ka 2015 S01E01-[1080p][BDRIP][x265.OPUS].mkv",
+                "Dungeon ni Deai wo Motomeru no wa Machigatteiru Darou ka 2015 S01E02-[1080p][BDRIP][x265.OPUS].mkv",
+                "Dungeon ni Deai wo Motomeru no wa Machigatteiru Darou ka 2015 S01E03-[1080p][BDRIP][x265.OPUS].mkv",
+                "Dungeon ni Deai wo Motomeru no wa Machigatteiru Darou ka 2015 S01E04-[1080p][BDRIP][x265.OPUS].mkv",
+                "Dungeon ni Deai wo Motomeru no wa Machigatteiru Darou ka 2015 S01E05-[1080p][BDRIP][x265.OPUS].mkv",
+                "Dungeon ni Deai wo Motomeru no wa Machigatteiru Darou ka 2015 S01E06-[1080p][BDRIP][x265.OPUS].mkv",
+                "Dungeon ni Deai wo Motomeru no wa Machigatteiru Darou ka 2015 S01E07-[1080p][BDRIP][x265.OPUS].mkv",
+                "Dungeon ni Deai wo Motomeru no wa Machigatteiru Darou ka 2015 S01E08-[1080p][BDRIP][x265.OPUS].mkv",
+                "Dungeon ni Deai wo Motomeru no wa Machigatteiru Darou ka 2015 S01E09-[1080p][BDRIP][x265.OPUS].mkv",
+                "Dungeon ni Deai wo Motomeru no wa Machigatteiru Darou ka 2015 S01E10-[1080p][BDRIP][x265.OPUS].mkv",
+                "Dungeon ni Deai wo Motomeru no wa Machigatteiru Darou ka 2015 S01E11-[1080p][BDRIP][x265.OPUS].mkv",
+                "Dungeon ni Deai wo Motomeru no wa Machigatteiru Darou ka 2015 S01E12-[1080p][BDRIP][x265.OPUS].mkv",
+                "Dungeon ni Deai wo Motomeru no wa Machigatteiru Darou ka 2015 S01E13-[1080p][BDRIP][x265.OPUS].mkv",
             ),
             { this },
-            episodeTitles = listOf("某一集标题"),
+            episodeTitles = listOf("冒険者「ベル・クラネル」", "冒险者「贝尔·克朗尼」"),
             episodeSort = EpisodeSort(1),
             episodeEp = EpisodeSort(1),
         )
         assertEquals(
-            "Example Anime Series 2015 S01E01-[1080p][BDRIP][x265.OPUS].mkv",
+            "Dungeon ni Deai wo Motomeru no wa Machigatteiru Darou ka 2015 S01E01-[1080p][BDRIP][x265.OPUS].mkv",
             selected,
         )
     }
