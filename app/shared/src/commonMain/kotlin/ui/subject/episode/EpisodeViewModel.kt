@@ -195,11 +195,20 @@ import org.koin.core.component.inject
 import org.openani.mediamp.InternalMediampApi
 import org.openani.mediamp.MediampPlayer
 import org.openani.mediamp.MediampPlayerFactory
+import org.openani.mediamp.features.PlaybackSpeed
 import org.openani.mediamp.features.chapters
 import org.openani.mediamp.metadata.Chapter
 import kotlin.time.Duration.Companion.milliseconds
 import kotlin.time.Duration.Companion.minutes
 import kotlin.time.Duration.Companion.seconds
+
+
+private const val OP_ED_AUTO_SKIP_BASE_SAMPLE_INTERVAL_MILLIS = 1_000L
+
+private fun opEdAutoSkipSampleIntervalMillis(playbackSpeed: Float): Long {
+    val effectiveSpeed = playbackSpeed.takeIf { it.isFinite() && it > 0f } ?: 1f
+    return (OP_ED_AUTO_SKIP_BASE_SAMPLE_INTERVAL_MILLIS / effectiveSpeed).toLong().coerceAtLeast(1L)
+}
 
 
 @Stable
@@ -1119,10 +1128,22 @@ class EpisodeViewModel(
                 .collectLatest { enabled ->
                     if (!enabled) return@collectLatest
 
-                    // 设置启用
+                    // 根据当前倍速调整采样间隔, 使其在媒体时间线上对应一秒.
+                    val positionSamples = player.features[PlaybackSpeed]?.let { playbackSpeed ->
+                        playbackSpeed.valueFlow
+                            .onStart { emit(playbackSpeed.value) }
+                            .distinctUntilChanged()
+                            .flatMapLatest { speed ->
+                                player.currentPositionMillis.sampleWithInitial(
+                                    opEdAutoSkipSampleIntervalMillis(speed),
+                                )
+                            }
+                    } ?: player.currentPositionMillis.sampleWithInitial(
+                        OP_ED_AUTO_SKIP_BASE_SAMPLE_INTERVAL_MILLIS,
+                    )
                     @OptIn(UnsafeEpisodeSessionApi::class)
                     combine(
-                        player.currentPositionMillis.sampleWithInitial(1000),
+                        positionSamples,
                         episodeIdFlow,
                         episodeCollectionsFlow,
                     ) { pos, id, collections ->
