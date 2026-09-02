@@ -16,8 +16,17 @@ import androidx.paging.PagingData
 import androidx.paging.PagingState
 import androidx.paging.RemoteMediator
 import androidx.paging.map
+import kotlinx.atomicfu.atomic
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.async
+import kotlinx.coroutines.awaitAll
+import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.MutableSharedFlow
+import kotlinx.coroutines.flow.SharedFlow
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.catch
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.distinctUntilChanged
@@ -31,7 +40,9 @@ import kotlinx.coroutines.flow.retry
 import kotlinx.coroutines.flow.toList
 import kotlinx.coroutines.flow.transform
 import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.Semaphore
 import kotlinx.coroutines.sync.withLock
+import kotlinx.coroutines.sync.withPermit
 import kotlinx.coroutines.withContext
 import me.him188.ani.app.data.models.bangumi.BangumiSyncState
 import me.him188.ani.app.data.models.episode.EpisodeCollectionInfo
@@ -88,6 +99,8 @@ import me.him188.ani.utils.coroutines.combine
 import me.him188.ani.utils.coroutines.flows.flowOfEmptyList
 import me.him188.ani.utils.logging.debug
 import me.him188.ani.utils.logging.logger
+import me.him188.ani.utils.logging.warn
+import me.him188.ani.utils.platform.annotations.TestOnly
 import me.him188.ani.utils.platform.currentTimeMillis
 import me.him188.ani.utils.serialization.BigNum
 import kotlin.coroutines.CoroutineContext
@@ -100,8 +113,10 @@ import kotlin.time.Instant
  * 条目信息和条目收藏的仓库.
  *
  * [SubjectInfo], [SubjectCollectionInfo], [SubjectCollectionCounts]
+ *
+ * 是 abstract 而不是 sealed: 生产实现只有 [SubjectCollectionRepositoryImpl], 但 Bangumi 收藏合并相关的测试 (其他模块) 需要用轻量的 fake 替代它.
  */
-sealed class SubjectCollectionRepository(
+abstract class SubjectCollectionRepository(
     defaultDispatcher: CoroutineContext = Dispatchers.Default
 ) : Repository(defaultDispatcher) {
     /**
@@ -180,6 +195,52 @@ sealed class SubjectCollectionRepository(
     abstract suspend fun performBangumiFullSync()
 
     abstract suspend fun getBangumiFullSyncState(): BangumiSyncState?
+
+    /**
+     * 使 [subjectIds] 对应条目的本地缓存失效, 并立即从服务端重新拉取这些条目 (并行度有限, 见实现):
+     * - 服务端仍有收藏 → 用服务端的值覆盖本地行与剧集缓存 (正在展示的收藏列表随之更新);
+     * - 服务端已无收藏 (条目不存在或未收藏) → 删除本地行 (剧集缓存随之级联删除);
+     * - 网络失败 → 保留本地行 (绝不因失败删除), 只将其 `lastFetched` 置 0, 下次访问时重新拉取;
+     *   首次失败后不再对剩余条目发起新的拉取 (多半是断网, 逐个等待超时会让 "应用合并" 长时间转圈), 已发起的照常完成.
+     *
+     * 之后将所有条目的 `lastFetched` 置 0 (下次创建收藏列表分页器时从服务端刷新), 并发出 [collectionsInvalidated].
+     *
+     * [subjectIds] 为空时不做任何事.
+     *
+     * 用于服务端解决 Bangumi 收藏冲突之后: 这些条目在服务端的值已经改变, 本地缓存不再可信.
+     */
+    abstract suspend fun invalidateCache(subjectIds: List<Int>)
+
+    /**
+     * 将所有条目的 `lastFetched` 置 0 (不删除本地数据), 使下次进入收藏页或条目页时从服务端刷新, 并发出 [collectionsInvalidated].
+     *
+     * 用于服务端 Bangumi 全量同步 (对账) 完成之后: 自动合并的结果已写入服务端, 本地缓存可能过期.
+     */
+    abstract suspend fun invalidateAllCaches()
+
+    private val _collectionsInvalidated = MutableSharedFlow<Unit>(extraBufferCapacity = 1)
+
+    /**
+     * [invalidateCache] / [invalidateAllCaches] 完成后发出一次, 供已经创建的收藏列表分页器重新加载.
+     *
+     * 分页器只在创建时 (`RemoteMediator.initialize`) 根据 `lastFetched` 决定是否从服务端刷新, 已在展示的列表不会因为
+     * `lastFetched` 被置 0 而自动刷新; 收藏页的 ViewModel 收集此流并重建分页器.
+     */
+    val collectionsInvalidated: SharedFlow<Unit> = _collectionsInvalidated.asSharedFlow()
+
+    /**
+     * [collectionsInvalidated] 当前的订阅者数. 仅测试用: 等 ViewModel 订阅之后再触发失效, 否则事件没有订阅者会被丢弃.
+     */
+    @TestOnly
+    val collectionsInvalidatedSubscriptionCount: StateFlow<Int>
+        get() = _collectionsInvalidated.subscriptionCount
+
+    /**
+     * 缓存失效完成后调用, 发出 [collectionsInvalidated]. 没有订阅者时直接丢弃; 订阅者来不及处理时多次失效合并为一次.
+     */
+    protected fun notifyCollectionsInvalidated() {
+        _collectionsInvalidated.tryEmit(Unit)
+    }
 }
 
 class SubjectCollectionRepositoryImpl(
@@ -243,27 +304,7 @@ class SubjectCollectionRepositoryImpl(
 
                 // 如果没有缓存, 则 fetch 然后插入 subject 缓存
                 if (existing == null || existing.isExpired()) {
-                    val subject = subjectService.getSubjectCollection(subjectId)
-                    val lastFetched = currentTimeMillis()
-                    val subjectEntity = subject?.toEntity(
-                        lastFetched = lastFetched,
-                    )
-                    if (subjectEntity != null) {
-                        val episodeEntities = subject.episodes.map {
-                            it.toEntity1(subjectId, lastFetched = lastFetched)
-                        }
-                        subjectCollectionDao.upsert(subjectEntity)
-
-                        // 更新剧集列表
-                        val oldIds = episodeCollectionDao.listIdBySubjectId(subjectId).first().toMutableList()
-                        episodeCollectionDao.upsert(episodeEntities)
-                        for (newEntity in episodeEntities) {
-                            oldIds.remove(newEntity.episodeId)
-                        }
-                        if (oldIds.isNotEmpty()) { // 删除本地存的多余的剧集 (通常没有)
-                            episodeCollectionDao.deleteAllByEpisodeIds(subjectId, oldIds)
-                        }
-                    }
+                    refetchSubjectCollection(subjectId)
                     // TODO: 2025/5/24 handle subject not found 
                 }
             }
@@ -283,6 +324,32 @@ class SubjectCollectionRepositoryImpl(
                 )
             }
     }.flowOn(defaultDispatcher)
+
+    /**
+     * 从服务端拉取条目 (含用户的收藏状态与剧集) 并写入本地缓存: 覆盖同 id 的旧行 (`lastFetched` 为当前时间), 删除本地多余的剧集.
+     *
+     * @return 服务端返回的条目; 条目不存在 (404) 时为 `null`, 此时不写入任何东西.
+     */
+    private suspend fun refetchSubjectCollection(subjectId: Int): AniSubjectCollection? {
+        val subject = subjectService.getSubjectCollection(subjectId) ?: return null
+        val lastFetched = currentTimeMillis()
+        val subjectEntity = subject.toEntity(lastFetched = lastFetched)
+        val episodeEntities = subject.episodes.map {
+            it.toEntity1(subjectId, lastFetched = lastFetched)
+        }
+        subjectCollectionDao.upsert(subjectEntity)
+
+        // 更新剧集列表
+        val oldIds = episodeCollectionDao.listIdBySubjectId(subjectId).first().toMutableList()
+        episodeCollectionDao.upsert(episodeEntities)
+        for (newEntity in episodeEntities) {
+            oldIds.remove(newEntity.episodeId)
+        }
+        if (oldIds.isNotEmpty()) { // 删除本地存的多余的剧集 (通常没有)
+            episodeCollectionDao.deleteAllByEpisodeIds(subjectId, oldIds)
+        }
+        return subject
+    }
 
     override fun mostRecentlyUpdatedSubjectCollectionsFlow(
         limit: Int,
@@ -569,8 +636,57 @@ class SubjectCollectionRepositoryImpl(
         }
     }
 
+    override suspend fun invalidateCache(subjectIds: List<Int>) {
+        if (subjectIds.isEmpty()) return
+        withContext(defaultDispatcher) {
+            coroutineScope {
+                // 有限并行: 解决冲突后通常要重新拉取几十个条目 (每个都带完整剧集列表), 串行会让 "应用合并" 等几十个 RTT.
+                val semaphore = Semaphore(INVALIDATE_REFETCH_PARALLELISM)
+                // 首次网络失败后不再发起新的拉取: 断网时每个请求都要等到连接超时, 剩余行由下面的 resetAllLastFetched 覆盖.
+                val failed = atomic(false)
+                subjectIds.distinct().map { subjectId ->
+                    async {
+                        semaphore.withPermit {
+                            if (failed.value) return@withPermit
+                            val fetched = try {
+                                refetchSubjectCollection(subjectId)
+                            } catch (e: CancellationException) {
+                                throw e
+                            } catch (e: Exception) {
+                                // 网络失败: 保留本地行, 靠下面的 resetAllLastFetched 让它下次重新拉取.
+                                // 绝不因失败删除, 否则条目会从正在展示的收藏列表里消失.
+                                failed.value = true
+                                logger.warn(e) { "Failed to refetch subject collection $subjectId after invalidation, keeping the cached row and skipping the remaining refetches" }
+                                return@withPermit
+                            }
+                            if (fetched == null || fetched.collectionType == null) {
+                                // 服务端已无收藏 (条目不存在或未收藏): 删除本地行, 剧集缓存有 ON DELETE CASCADE 随之删除
+                                subjectCollectionDao.delete(subjectId)
+                            }
+                        }
+                    }
+                }.awaitAll()
+            }
+            // 分页器创建时只看最新的 lastFetched 决定是否从服务端刷新; 已在展示的分页器由 collectionsInvalidated 触发重建
+            subjectCollectionDao.resetAllLastFetched()
+        }
+        notifyCollectionsInvalidated()
+    }
+
+    override suspend fun invalidateAllCaches() {
+        withContext(defaultDispatcher) {
+            subjectCollectionDao.resetAllLastFetched()
+        }
+        notifyCollectionsInvalidated()
+    }
+
     private companion object {
         private val logger = logger<SubjectCollectionRepository>()
+
+        /**
+         * [invalidateCache] 重新拉取条目的最大并行数.
+         */
+        private const val INVALIDATE_REFETCH_PARALLELISM = 4
     }
 }
 

@@ -56,6 +56,8 @@ import me.him188.ani.app.navigation.rememberAniBackStack
 import me.him188.ani.app.platform.LocalContext
 import me.him188.ani.app.platform.navigation.LocalBrowserNavigator
 import me.him188.ani.app.ui.adaptive.navigation.AniNavigationSuiteDefaults
+import me.him188.ani.app.ui.bangumi.merge.BangumiMergeScreen
+import me.him188.ani.app.ui.bangumi.merge.BangumiMergeViewModel
 import me.him188.ani.app.ui.cache.CacheManagementScreen
 import me.him188.ani.app.ui.cache.CacheManagementViewModel
 import me.him188.ani.app.ui.cache.details.MediaCacheDetailsPageViewModel
@@ -443,6 +445,21 @@ private fun AniAppContentImpl(
             entry<NavRoutes.PlaybackHistorySyncStatus> { route ->
                 PlaybackHistorySyncStatusScreen(
                     vm = viewModel { PlaybackHistoryViewModel() },
+                    onNavigateBack = { aniNavigator.popBackStack(route, inclusive = true) },
+                    modifier = Modifier.fillMaxSize(),
+                    navigationIcon = {
+                        BackNavigationIconButton(
+                            {
+                                aniNavigator.popBackStack(route, inclusive = true)
+                            },
+                        )
+                    },
+                    windowInsets = windowInsetsWithoutTitleBar,
+                )
+            }
+            entry<NavRoutes.BangumiMerge> { route ->
+                BangumiMergeScreen(
+                    vm = viewModel { BangumiMergeViewModel() },
                     onNavigateBack = { aniNavigator.popBackStack(route, inclusive = true) },
                     modifier = Modifier.fillMaxSize(),
                     navigationIcon = {

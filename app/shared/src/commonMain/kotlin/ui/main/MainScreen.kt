@@ -71,6 +71,7 @@ import me.him188.ani.app.platform.LocalContext
 import me.him188.ani.app.ui.adaptive.navigation.AniNavigationSuite
 import me.him188.ani.app.ui.adaptive.navigation.AniNavigationSuiteDefaults
 import me.him188.ani.app.ui.adaptive.navigation.AniNavigationSuiteLayout
+import me.him188.ani.app.ui.bangumi.merge.BangumiConflictNotifier
 import me.him188.ani.app.ui.cache.CacheManagementScreen
 import me.him188.ani.app.ui.cache.CacheManagementViewModel
 import me.him188.ani.app.ui.exploration.ExplorationScreen
@@ -309,7 +310,8 @@ private fun MainScreenNavigationLayout(
 
         TabContent(
             layoutType = navigationLayoutType,
-            Modifier.ifThen(navigationLayoutType != NavigationSuiteType.NavigationBar && !isRightCaptionButton) {
+            selfInfo = selfInfo,
+            modifier = Modifier.ifThen(navigationLayoutType != NavigationSuiteType.NavigationBar && !isRightCaptionButton) {
                 // macos 标题栏只会在 NavigationRail 的区域内, TabContent 区域无需这些 padding.
                 consumeWindowInsets(WindowInsets.desktopTitleBar())
             },
@@ -383,6 +385,7 @@ private fun MainScreenNavigationLayout(
 @Composable
 private fun TabContent(
     layoutType: NavigationSuiteType,
+    selfInfo: SelfInfoUiState,
     modifier: Modifier = Modifier,
     content: @Composable () -> Unit,
 ) {
@@ -409,13 +412,42 @@ private fun TabContent(
             // 毛玻璃导航栏覆盖在内容上时, 通知需要避开导航栏.
             // 注意不能用 windowInsetsPadding: 祖先已 consume 了系统导航栏 insets,
             // windowInsetsPadding 会减去已消耗的部分, 导致通知被导航栏遮挡一截.
-            Box(
+            BottomNotifierStack(
                 Modifier.matchParentSize()
                     .padding(LocalAppChromeOverlayInsets.current.asPaddingValues()),
-            ) {
-                UpdateNotifierWithVersionExpiryCheck()
-            }
+                top = { UpdateNotifierWithVersionExpiryCheck() },
+                bottom = {
+                    // 版本过期锁定页展示时不检查 Bangumi 收藏冲突, 也不在其上叠加可跳转的提示.
+                    val versionExpiryService = remember { KoinPlatform.getKoin().get<VersionExpiryService>() }
+                    val versionExpired by versionExpiryService.state.collectAsStateWithLifecycle(null)
+                    if (versionExpired == null) {
+                        val navigator = LocalNavigator.current
+                        BangumiConflictNotifier(
+                            selfInfo = selfInfo,
+                            onNavigateToMerge = { navigator.navigateBangumiMerge() },
+                        )
+                    }
+                },
+            )
         }
+    }
+}
+
+/**
+ * 主界面底部的通知堆叠: [top] (更新提示 / 版本过期锁定页) 在上, [bottom] (Bangumi 收藏冲突提示) 在下, 竖向排列.
+ * 两者各自持有 SnackbarHostState 且都是 Indefinite (手机上更新提示也是 snackbar), 若都锚在同一个 BottomCenter 会互相遮挡.
+ *
+ * 版本过期锁定页 (fillMaxSize) 也在 [top] 里, 用 weight 让它能占满剩余高度; 平时更新提示只占自身高度.
+ */
+@Composable
+internal fun BottomNotifierStack(
+    modifier: Modifier = Modifier,
+    top: @Composable BoxScope.() -> Unit,
+    bottom: @Composable BoxScope.() -> Unit,
+) {
+    Column(modifier, verticalArrangement = Arrangement.Bottom) {
+        Box(Modifier.fillMaxWidth().weight(1f, fill = false), content = top)
+        Box(Modifier.fillMaxWidth(), content = bottom)
     }
 }
 

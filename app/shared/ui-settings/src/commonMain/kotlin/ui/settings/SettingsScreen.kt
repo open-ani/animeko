@@ -125,6 +125,7 @@ import me.him188.ani.app.ui.lang.acknowledgements
 import me.him188.ani.app.ui.lang.developer_list
 import me.him188.ani.app.ui.lang.settings
 import me.him188.ani.app.ui.lang.settings_acknowledgements_oss_licenses
+import me.him188.ani.app.ui.lang.settings_account_bangumi_sync_title
 import me.him188.ani.app.ui.lang.settings_category_app_ui
 import me.him188.ani.app.ui.lang.settings_category_data_playback
 import me.him188.ani.app.ui.lang.settings_category_network_storage
@@ -793,7 +794,7 @@ internal fun SettingsPageLayout(
                         DetailPaneRoute(
                             topAppBar = {
                                 AniTopAppBar(
-                                    title = { AniTopAppBarDefaults.Title("Bangumi 同步") },
+                                    title = { AniTopAppBarDefaults.Title(stringResource(Lang.settings_account_bangumi_sync_title)) },
                                     navigationIcon = {
                                         BackNavigationIconButton(navigateUp)
                                     },
