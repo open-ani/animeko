@@ -9,9 +9,6 @@
 
 package me.him188.ani.app.ui.main
 
-import androidx.compose.foundation.clickable
-import androidx.compose.foundation.focusable
-import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.runtime.Composable
@@ -19,10 +16,7 @@ import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.Stable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.platform.LocalFocusManager
-import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import kotlinx.coroutines.flow.Flow
@@ -55,6 +49,7 @@ import me.him188.ani.app.ui.foundation.ifThen
 import me.him188.ani.app.ui.foundation.input.ActiveInputSourceState
 import me.him188.ani.app.ui.foundation.input.LocalActiveInputSource
 import me.him188.ani.app.ui.foundation.input.trackActiveInputSource
+import me.him188.ani.app.ui.foundation.interaction.clearFocusOnUnhandledTap
 import me.him188.ani.app.ui.foundation.navigation.LocalBackDispatcher
 import me.him188.ani.app.ui.foundation.navigation.onBackNavigationInput
 import me.him188.ani.app.ui.foundation.rememberAniSketchInstance
@@ -150,8 +145,6 @@ fun AniApp(
         LocalPlatformFontFamily provides rememberPlatformFontFamily(appState.platformFont),
         LocalActiveInputSource provides remember { ActiveInputSourceState() },
     ) {
-        val focusManager by rememberUpdatedState(LocalFocusManager.current)
-        val keyboard by rememberUpdatedState(LocalSoftwareKeyboardController.current)
         val backDispatcher = LocalBackDispatcher.current
 
         AniTheme {
@@ -160,13 +153,7 @@ fun AniApp(
                     .trackActiveInputSource(LocalActiveInputSource.current)
                     .onBackNavigationInput(backDispatcher::onBackPressed)
                     .ifThen(LocalPlatform.current.isMobile()) {
-                        focusable(false).clickable(
-                            remember { MutableInteractionSource() },
-                            null,
-                        ) {
-                            keyboard?.hide()
-                            focusManager.clearFocus()
-                        }
+                        clearFocusOnUnhandledTap()
                     },
             ) {
                 Box {
