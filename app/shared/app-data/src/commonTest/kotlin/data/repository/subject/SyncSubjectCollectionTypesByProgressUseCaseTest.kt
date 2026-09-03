@@ -8,7 +8,6 @@
 
 package me.him188.ani.app.data.repository.subject
 
-import kotlinx.coroutines.test.runTest
 import me.him188.ani.app.data.models.episode.EpisodeCollectionInfo
 import me.him188.ani.app.data.models.episode.EpisodeInfo
 import me.him188.ani.app.data.models.subject.SubjectCollectionInfo
@@ -19,7 +18,6 @@ import me.him188.ani.datasources.api.EpisodeType
 import me.him188.ani.datasources.api.topic.UnifiedCollectionType
 import kotlin.test.Test
 import kotlin.test.assertEquals
-import kotlin.test.assertFailsWith
 import kotlin.test.assertNull
 
 class SyncSubjectCollectionTypesByProgressUseCaseTest {
@@ -111,44 +109,6 @@ class SyncSubjectCollectionTypesByProgressUseCaseTest {
         )
 
         assertNull(collection.syncedCollectionTypeByEpisodeProgress())
-    }
-
-    @Test
-    fun `complete snapshot loads every page`() = runTest {
-        val source = (1..5).toList()
-
-        val result = fetchCompleteSnapshot(
-            pageSize = 2,
-            keySelector = { it },
-        ) { offset, limit ->
-            source.size.toLong() to source.drop(offset).take(limit)
-        }
-
-        assertEquals(source, result)
-    }
-
-    @Test
-    fun `complete snapshot rejects duplicate items across pages`() = runTest {
-        assertFailsWith<IllegalStateException> {
-            fetchCompleteSnapshot(
-                pageSize = 2,
-                keySelector = { it },
-            ) { offset, _ ->
-                4L to if (offset == 0) listOf(1, 2) else listOf(2, 3)
-            }
-        }
-    }
-
-    @Test
-    fun `complete snapshot rejects an early empty page`() = runTest {
-        assertFailsWith<IllegalStateException> {
-            fetchCompleteSnapshot(
-                pageSize = 2,
-                keySelector = { it },
-            ) { offset, _ ->
-                3L to if (offset == 0) listOf(1, 2) else emptyList()
-            }
-        }
     }
 
     private fun collection(

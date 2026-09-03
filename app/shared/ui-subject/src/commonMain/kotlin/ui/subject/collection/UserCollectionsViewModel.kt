@@ -26,8 +26,6 @@ import me.him188.ani.app.data.repository.episode.EpisodeCollectionRepository
 import me.him188.ani.app.data.repository.episode.EpisodeProgressRepository
 import me.him188.ani.app.data.repository.subject.SetSubjectCollectionTypeOrDeleteUseCase
 import me.him188.ani.app.data.repository.subject.SubjectCollectionRepository
-import me.him188.ani.app.data.repository.subject.SubjectCollectionProgressSyncReason
-import me.him188.ani.app.data.repository.subject.SyncSubjectCollectionTypesByProgressUseCase
 import me.him188.ani.app.data.repository.user.SettingsRepository
 import me.him188.ani.app.domain.episode.SetEpisodeCollectionTypeUseCase
 import me.him188.ani.app.domain.foundation.LoadError
@@ -58,7 +56,6 @@ class UserCollectionsViewModel : AbstractViewModel(), KoinComponent {
     private val sessionStateProvider: SessionStateProvider by inject()
     private val setSubjectCollectionTypeOrDeleteUseCase: SetSubjectCollectionTypeOrDeleteUseCase by inject()
     private val setEpisodeCollectionTypeUseCase: SetEpisodeCollectionTypeUseCase by inject()
-    private val syncSubjectCollectionTypesByProgressUseCase: SyncSubjectCollectionTypesByProgressUseCase by inject()
 
     val lazyGridState = LazyGridState()
 
@@ -99,10 +96,6 @@ class UserCollectionsViewModel : AbstractViewModel(), KoinComponent {
         )
 
     override fun init() {
-        syncSubjectCollectionTypesByProgressUseCase.requestFullSync(
-            SubjectCollectionProgressSyncReason.MAIN_SCREEN_ENTERED,
-        )
-
 //        // 获取第一页, 得到数量
 //        // 不要太快, 测试到的如果全并行就会导致 "在看" 没有数据, 不清楚是哪边问题.
 //        launchInBackground {

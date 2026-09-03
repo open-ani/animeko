@@ -12,9 +12,6 @@ import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineName
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.flow.Flow
-import kotlinx.coroutines.flow.distinctUntilChanged
-import kotlinx.coroutines.flow.drop
-import kotlinx.coroutines.flow.filter
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.sync.Mutex
@@ -28,14 +25,7 @@ import me.him188.ani.utils.logging.logger
 import me.him188.ani.utils.logging.warn
 
 interface SyncSubjectCollectionTypesByProgressUseCase {
-    fun requestFullSync(reason: SubjectCollectionProgressSyncReason)
-
     fun requestSubjectSync(subjectId: Int)
-}
-
-enum class SubjectCollectionProgressSyncReason {
-    MAIN_SCREEN_ENTERED,
-    SETTING_ENABLED,
 }
 
 class SyncSubjectCollectionTypesByProgressUseCaseImpl(
@@ -46,99 +36,19 @@ class SyncSubjectCollectionTypesByProgressUseCaseImpl(
 ) : SyncSubjectCollectionTypesByProgressUseCase {
     private val syncMutex = Mutex()
 
-    init {
-        backgroundScope.launch(CoroutineName("SubjectCollectionProgressSyncer.settings")) {
-            autoAdvanceEnabled
-                .distinctUntilChanged()
-                .drop(1)
-                .filter { it }
-                .collect {
-                    requestFullSync(SubjectCollectionProgressSyncReason.SETTING_ENABLED)
-                }
-        }
-    }
-
-    override fun requestFullSync(reason: SubjectCollectionProgressSyncReason) {
-        launchSync("full sync ($reason)") {
-            syncAll(reason)
-        }
-    }
-
     override fun requestSubjectSync(subjectId: Int) {
-        launchSync("subject $subjectId") {
-            syncSubject(subjectId)
-        }
-    }
-
-    private fun launchSync(description: String, block: suspend () -> Unit) {
-        backgroundScope.launch(CoroutineName("SubjectCollectionProgressSyncer")) {
+        backgroundScope.launch(CoroutineName("SubjectCollectionProgressSyncer[$subjectId]")) {
             syncMutex.withLock {
-                runCatchingSync(description, block)
-            }
-        }
-    }
-
-    private suspend fun runCatchingSync(description: String, block: suspend () -> Unit) {
-        try {
-            block()
-        } catch (e: CancellationException) {
-            throw e
-        } catch (e: Exception) {
-            logger.warn(e) { "Automatic subject collection progress $description failed" }
-        }
-    }
-
-    private suspend fun syncAll(reason: SubjectCollectionProgressSyncReason) {
-        if (!autoAdvanceEnabled.first()) {
-            logger.info { "Skipping automatic subject collection progress sync because it is disabled" }
-            return
-        }
-
-        logger.info { "Starting automatic subject collection progress sync: reason=$reason" }
-        val collections = subjectCollectionRepository.fetchSubjectCollectionsSnapshot(
-            listOf(UnifiedCollectionType.WISH, UnifiedCollectionType.DOING),
-        )
-        if (!autoAdvanceEnabled.first()) {
-            logger.info { "Stopping automatic subject collection progress sync because it was disabled" }
-            return
-        }
-        val updates = collections.mapNotNull { collection ->
-            collection.syncedCollectionTypeByEpisodeProgress()?.let { collection to it }
-        }
-
-        logger.info {
-            "Fetched ${collections.size} collections; ${updates.size} require a collection type update"
-        }
-
-        var wishToDoing = 0
-        var wishToDone = 0
-        var doingToDone = 0
-        var failed = 0
-        updates.forEach { (collection, targetType) ->
-            try {
-                setSubjectCollectionTypeOrDeleteUseCase(collection.subjectId, targetType)
-                when (collection.collectionType to targetType) {
-                    UnifiedCollectionType.WISH to UnifiedCollectionType.DOING -> wishToDoing++
-                    UnifiedCollectionType.WISH to UnifiedCollectionType.DONE -> wishToDone++
-                    UnifiedCollectionType.DOING to UnifiedCollectionType.DONE -> doingToDone++
-                    else -> error(
-                        "Unexpected collection sync transition: ${collection.collectionType} to $targetType",
-                    )
-                }
-            } catch (e: CancellationException) {
-                throw e
-            } catch (e: Exception) {
-                failed++
-                logger.warn(e) {
-                    "Failed to sync subject ${collection.subjectId} from ${collection.collectionType} to $targetType"
+                try {
+                    syncSubject(subjectId)
+                } catch (e: CancellationException) {
+                    throw e
+                } catch (e: Exception) {
+                    logger.warn(e) {
+                        "Automatic subject collection progress sync failed for subject $subjectId"
+                    }
                 }
             }
-        }
-
-        logger.info {
-            "Automatic subject collection progress sync completed: reason=$reason, fetched=${collections.size}, " +
-                "skipped=${collections.size - updates.size}, wishToDoing=$wishToDoing, " +
-                "wishToDone=$wishToDone, doingToDone=$doingToDone, failed=$failed"
         }
     }
 
@@ -151,12 +61,6 @@ class SyncSubjectCollectionTypesByProgressUseCaseImpl(
         }
 
         val collection = subjectCollectionRepository.subjectCollectionFlow(subjectId).first()
-        if (!autoAdvanceEnabled.first()) {
-            logger.info {
-                "Stopping automatic subject collection progress sync for subject $subjectId because it was disabled"
-            }
-            return
-        }
         val targetType = collection.syncedCollectionTypeByEpisodeProgress()
         if (targetType == null) {
             logger.info { "No automatic collection type advancement needed for subject $subjectId" }
