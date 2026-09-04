@@ -28,7 +28,6 @@ import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.flowOn
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.retry
-import kotlinx.coroutines.flow.toList
 import kotlinx.coroutines.flow.transform
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
@@ -52,16 +51,16 @@ import me.him188.ani.app.data.network.EpisodeService
 import me.him188.ani.app.data.network.SubjectService
 import me.him188.ani.app.data.persistent.database.dao.EpisodeCollectionDao
 import me.him188.ani.app.data.persistent.database.dao.EpisodeCollectionEntity
+import me.him188.ani.app.data.persistent.database.dao.SubjectCollectionAndEpisodes
 import me.him188.ani.app.data.persistent.database.dao.SubjectCollectionDao
 import me.him188.ani.app.data.persistent.database.dao.SubjectCollectionEntity
 import me.him188.ani.app.data.persistent.database.dao.SubjectRelations
 import me.him188.ani.app.data.persistent.database.dao.SubjectRelationsDao
 import me.him188.ani.app.data.persistent.database.dao.deleteAll
-import me.him188.ani.app.data.persistent.database.dao.filterMostRecentUpdated
+import me.him188.ani.app.data.persistent.database.dao.filterMostRecentUpdatedWithEpisodes
 import me.him188.ani.app.data.repository.Repository
 import me.him188.ani.app.data.repository.RepositoryException
 import me.him188.ani.app.data.repository.episode.AnimeScheduleRepository
-import me.him188.ani.app.data.repository.episode.EpisodeCollectionRepository
 import me.him188.ani.app.data.repository.episode.toEpisodeCollectionInfo
 import me.him188.ani.app.data.repository.shouldRetry
 import me.him188.ani.app.domain.search.SubjectType
@@ -85,7 +84,6 @@ import me.him188.ani.datasources.api.PackedDate
 import me.him188.ani.datasources.api.topic.UnifiedCollectionType
 import me.him188.ani.datasources.bangumi.processing.toSubjectCollectionType
 import me.him188.ani.utils.coroutines.combine
-import me.him188.ani.utils.coroutines.flows.flowOfEmptyList
 import me.him188.ani.utils.logging.debug
 import me.him188.ani.utils.logging.logger
 import me.him188.ani.utils.platform.currentTimeMillis
@@ -186,7 +184,6 @@ class SubjectCollectionRepositoryImpl(
     private val subjectService: SubjectService,
     private val subjectCollectionDao: SubjectCollectionDao,
     private val subjectRelationsDao: SubjectRelationsDao,
-    private val episodeCollectionRepository: EpisodeCollectionRepository,
     private val animeScheduleRepository: AnimeScheduleRepository,
     private val episodeService: EpisodeService,
     private val episodeCollectionDao: EpisodeCollectionDao,
@@ -284,32 +281,25 @@ class SubjectCollectionRepositoryImpl(
             }
     }.flowOn(defaultDispatcher)
 
+    /**
+     * 条目与其剧集在同一次查询里取出 (`@Relation`), 整条链只有一条 Room flow, 不带网络请求.
+     * 数据新鲜度由调用方先行的 [updateRecentlyUpdatedSubjectCollections] 保证.
+     */
     override fun mostRecentlyUpdatedSubjectCollectionsFlow(
         limit: Int,
         types: List<UnifiedCollectionType>?, // null for all
-    ): Flow<List<SubjectCollectionInfo>> = subjectCollectionDao.filterMostRecentUpdated(types, limit)
-        .restartOnNewLogin(sessionManager)
-        .combine(nsfwModeSettingsFlow) { list, nsfwModeSettings ->
-            list to nsfwModeSettings
-        }
-        .flatMapLatest { (list, nsfwModeSettings) ->
-            if (list.isEmpty()) {
-                return@flatMapLatest flowOfEmptyList()
-            }
-            combine(
-                list.map { entity ->
-                    episodeCollectionRepository.subjectEpisodeCollectionInfosFlow(entity.subjectId).map { episodes ->
-                        entity.toSubjectCollectionInfo(
-                            episodes = episodes,
-                            currentDate = getCurrentDate(),
-                            nsfwModeSettings = nsfwModeSettings,
-                        )
-                    }
-                },
-            ) {
-                it.toList()
-            }
-        }
+    ): Flow<List<SubjectCollectionInfo>> = combine(
+        subjectCollectionDao.filterMostRecentUpdatedWithEpisodes(types, limit)
+            .restartOnNewLogin(sessionManager),
+        nsfwModeSettingsFlow,
+        getEpisodeTypeFiltersUseCase(),
+    ) { list, nsfwModeSettings, epTypes ->
+        val currentDate = getCurrentDate()
+        list.map { it.toSubjectCollectionInfo(epTypes, currentDate, nsfwModeSettings) }
+    }
+        // entity 的 lastFetched 每次刷新都变却不进 SubjectCollectionInfo, 挡掉"刷新了但数据没变"
+        // 引起的整栏重建
+        .distinctUntilChanged()
         .flowOn(defaultDispatcher)
 
     override fun subjectCollectionsPager(
@@ -330,20 +320,7 @@ class SubjectCollectionRepositoryImpl(
                     )
                 },
             ).flow.map { data ->
-                data.map { (entity, episodesOfAnyType) ->
-                    val date = getCurrentDate()
-                    entity.toSubjectCollectionInfo(
-                        episodes = episodesOfAnyType
-                            .asSequence()
-                            .let { sequence ->
-                                sequence.filter { it.episodeType in epTypes }
-                            }
-                            .map { it.toEpisodeCollectionInfo() }
-                            .toList(),
-                        currentDate = date,
-                        nsfwModeSettings = nsfwModeSettings,
-                    )
-                }
+                data.map { it.toSubjectCollectionInfo(epTypes, getCurrentDate(), nsfwModeSettings) }
             }
         }.flowOn(defaultDispatcher)
 
@@ -628,6 +605,28 @@ private fun SubjectCollectionEntity.toSubjectCollectionInfo(
         relations = relations ?: SubjectRelations.Empty,
     )
 }
+
+/**
+ * `@Relation` 一次取出的"条目 + 其全部剧集"到 [SubjectCollectionInfo] 的映射,
+ * 追番页 pager 与探索页"继续观看"共用.
+ */
+private fun SubjectCollectionAndEpisodes.toSubjectCollectionInfo(
+    epTypes: List<EpisodeType>,
+    currentDate: PackedDate,
+    nsfwModeSettings: NsfwMode,
+): SubjectCollectionInfo = collection.toSubjectCollectionInfo(
+    episodes = episodesOfAnyType
+        .asSequence()
+        .filter { it.episodeType in epTypes }
+        // @Relation 的子查询没有 ORDER BY, 而 [SubjectCollectionInfo.episodes] 约定按 sort 升序.
+        // 与 DAO 里其余查询的 `ORDER BY sortNumber ASC, sort ASC` 一致. 次级键用 sort.toString()
+        // 而不是 EpisodeSort: 后者的 Special 分支不满足反对称性, 会撞上 TimSort 的 contract 检查
+        .sortedWith(compareBy({ it.sortNumber }, { it.sort.toString() }))
+        .map { it.toEpisodeCollectionInfo() }
+        .toList(),
+    currentDate = currentDate,
+    nsfwModeSettings = nsfwModeSettings,
+)
 
 
 data class LoadInfo(
