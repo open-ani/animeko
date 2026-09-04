@@ -63,6 +63,7 @@ class SubjectDetailsStateLoader(
 
     fun clear() {
         tasker.cancel()
+        _state.value = null
     }
 
     fun reload(
