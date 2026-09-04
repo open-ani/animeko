@@ -531,6 +531,7 @@
     <string name="exploration_schedule_view_details">查看详情</string>
     <string name="exploration_schedule_episode">第 %1$s 话</string>
     <string name="exploration_schedule_episode_ep_and_sort">第 %1$s (%2$s) 话</string>
+    <string name="exploration_schedule_time_unknown">时间未定</string>
     <string name="exploration_schedule_weekday_monday">一</string>
     <string name="exploration_schedule_weekday_tuesday">二</string>
     <string name="exploration_schedule_weekday_wednesday">三</string>

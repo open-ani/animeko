@@ -491,6 +491,7 @@
     <string name="exploration_schedule_view_details">View details</string>
     <string name="exploration_schedule_episode">Ep. %1$s</string>
     <string name="exploration_schedule_episode_ep_and_sort">Ep. %1$s (%2$s)</string>
+    <string name="exploration_schedule_time_unknown">Time TBA</string>
     <string name="exploration_schedule_weekday_monday">Mon</string>
     <string name="exploration_schedule_weekday_tuesday">Tue</string>
     <string name="exploration_schedule_weekday_wednesday">Wed</string>
