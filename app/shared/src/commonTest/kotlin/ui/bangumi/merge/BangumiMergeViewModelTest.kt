@@ -350,7 +350,8 @@ class BangumiMergeViewModelTest {
             .all { it.side == BangumiMergeSide.BANGUMI })
 
         // 状态替换为剩余 (空), 选择清空; 服务端返回的剩余状态带同步时间, 不会被当成 "同步中".
-        val after = vm.uiState.first { !it.hasConflicts }
+        // 剩余状态先于 isApplying 复位发布, 等两者都到位再断言, 避免读到中间帧.
+        val after = vm.uiState.first { !it.hasConflicts && !it.isApplying }
         assertTrue(after.choices.isEmpty())
         assertFalse(after.isApplying)
         assertFalse(after.syncInProgress)

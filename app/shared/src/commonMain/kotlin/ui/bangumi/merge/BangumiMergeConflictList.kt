@@ -10,6 +10,7 @@
 package me.him188.ani.app.ui.bangumi.merge
 
 import androidx.compose.animation.animateContentSize
+import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
@@ -431,9 +432,9 @@ private fun MergeCompactSubjectCard(
     modifier: Modifier = Modifier,
 ) {
     MergeCardSurface(highlighted, modifier.testTag(BangumiMergeTestTags.card(group.subjectId))) {
-        Column(Modifier.padding(horizontal = 8.dp, vertical = 7.dp)) {
+        Column(Modifier.padding(top = 10.dp, bottom = 12.dp)) {
             Row(
-                Modifier.fillMaxWidth().padding(horizontal = 4.dp, vertical = 3.dp),
+                Modifier.fillMaxWidth().padding(horizontal = 2.dp, vertical = 3.dp),
                 horizontalArrangement = Arrangement.spacedBy(8.dp),
                 verticalAlignment = Alignment.CenterVertically,
             ) {
@@ -482,7 +483,7 @@ private fun MergeTableSubjectCard(
 ) {
     MergeCardSurface(highlighted, modifier.testTag(BangumiMergeTestTags.card(group.subjectId))) {
         Row(
-            Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 10.dp),
+            Modifier.fillMaxWidth().padding(vertical = 12.dp),
             horizontalArrangement = Arrangement.spacedBy(16.dp),
         ) {
             Column(
@@ -523,17 +524,16 @@ private fun MergeCardSurface(
     modifier: Modifier = Modifier,
     content: @Composable () -> Unit,
 ) {
-    Surface(
-        modifier = modifier.fillMaxWidth().animateContentSize(),
-        shape = RoundedCornerShape(14.dp),
-        color = MaterialTheme.colorScheme.surfaceContainerLow,
-        border = if (highlighted) {
-            BorderStroke(1.5.dp, MaterialTheme.colorScheme.primary)
-        } else {
-            null
-        },
-    ) {
-        content()
+    // 条目不用带底色的卡片: 页面上只留一种强调色 (选中格) 和一种语义色 (已删除收藏), 条目之间用留白 + 细分隔线分组.
+    // 闪烁提示 (点禁用的 "应用合并") 用很淡的主色底短暂标出目标条目.
+    val highlightColor by animateColorAsState(
+        if (highlighted) MaterialTheme.colorScheme.primary.copy(alpha = 0.08f) else Color.Transparent,
+    )
+    Column(modifier.fillMaxWidth().animateContentSize()) {
+        Box(Modifier.fillMaxWidth().clip(RoundedCornerShape(12.dp)).background(highlightColor)) {
+            content()
+        }
+        HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f))
     }
 }
 
@@ -552,12 +552,12 @@ private fun MergeGroupStatus(
                 Icons.Rounded.Check,
                 null,
                 Modifier.size(12.dp),
-                tint = MaterialTheme.colorScheme.primary,
+                tint = MaterialTheme.colorScheme.onSurfaceVariant,
             )
             Text(
                 stringResource(Lang.bangumi_merge_resolved),
                 style = MaterialTheme.typography.labelSmall,
-                color = MaterialTheme.colorScheme.primary,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
         }
     } else {
@@ -661,7 +661,7 @@ private fun MergeChoiceCell(
     } else {
         RoundedCornerShape(topStart = 4.dp, bottomStart = 4.dp, topEnd = 10.dp, bottomEnd = 10.dp)
     }
-    val contentAlpha by animateFloatAsState(if (ghost) 0.6f else 1f)
+    val contentAlpha by animateFloatAsState(if (ghost) 0.5f else 1f)
     Surface(
         modifier = modifier
             .clip(shape)
@@ -672,15 +672,12 @@ private fun MergeChoiceCell(
                 this.selected = selected
             },
         shape = shape,
-        color = when {
-            selected -> MaterialTheme.colorScheme.secondaryContainer
-            ghost -> MaterialTheme.colorScheme.surfaceContainerHigh
-            else -> Color.Transparent
-        },
-        border = if (!selected && !ghost) {
-            BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant)
-        } else {
+        // 只有选中格有底色; 落选格 (ghost) 不再铺灰底, 只把描边和内容压淡.
+        color = if (selected) MaterialTheme.colorScheme.secondaryContainer else Color.Transparent,
+        border = if (selected) {
             null
+        } else {
+            BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = if (ghost) 0.5f else 1f))
         },
     ) {
         if (layoutParams.twoLineCell) {

@@ -35,7 +35,7 @@ import androidx.compose.material.icons.rounded.Schedule
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.CircularProgressIndicator
-import androidx.compose.material3.FilledTonalButton
+import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.LinearProgressIndicator
@@ -490,7 +490,7 @@ private fun SyncInProgressNotice(modifier: Modifier = Modifier) {
         Text(
             stringResource(Lang.bangumi_merge_sync_in_progress_notice),
             style = MaterialTheme.typography.bodySmall,
-            color = MaterialTheme.colorScheme.tertiary,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
         )
     }
 }
@@ -500,7 +500,7 @@ private fun AdoptNewerButton(
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    FilledTonalButton(
+    OutlinedButton(
         onClick = onClick,
         modifier = modifier.testTag(BangumiMergeTestTags.ADOPT_NEWER),
     ) {
@@ -532,7 +532,7 @@ private fun MergeBottomBar(
 ) {
     Column(modifier.fillMaxWidth().testTag(BangumiMergeTestTags.BOTTOM_BAR)) {
         HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
-        Surface(color = MaterialTheme.colorScheme.surfaceContainer) {
+        Surface(color = AniThemeDefaults.pageContentBackgroundColor) {
             Row(
                 Modifier
                     .fillMaxWidth()
@@ -559,7 +559,7 @@ private fun MergeBottomBar(
                         Text(
                             stringResource(Lang.bangumi_merge_sync_in_progress),
                             style = MaterialTheme.typography.labelSmall,
-                            color = MaterialTheme.colorScheme.tertiary,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
                         )
                     }
                 }
