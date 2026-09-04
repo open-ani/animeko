@@ -16,10 +16,13 @@
 
 package me.him188.ani.client.apis
 
+import me.him188.ani.client.models.AniBangumiMergeState
+import me.him188.ani.client.models.AniBangumiMergeSummary
 import me.him188.ani.client.models.AniListSyncCommandsSortBy
 import me.him188.ani.client.models.AniLoginWithRefreshTokenRequest
 import me.him188.ani.client.models.AniOAuthRedirectResponse
 import me.him188.ani.client.models.AniPaginatedResponse1BangumiSyncCommandEntity
+import me.him188.ani.client.models.AniResolveMergeConflictsRequest
 import me.him188.ani.client.models.AniUserAuthRoutingAuthenticationResponse
 import me.him188.ani.client.models.AniUserAuthRoutingLoginResponse
 
@@ -105,6 +108,70 @@ open class BangumiAniApi : ApiClient {
         val localVariableConfig = RequestConfig<kotlin.Any?>(
             RequestMethod.POST,
             "/v2/bangumi/sync",
+            query = localVariableQuery,
+            headers = localVariableHeaders,
+            requiresAuthentication = true,
+        )
+
+        return request(
+            localVariableConfig,
+            localVariableBody,
+            localVariableAuthNames
+        ).wrap()
+    }
+
+
+    /**
+     * 获取 Bangumi 收藏合并状态
+     * 待处理的冲突列表 (含条目名称) 与上次全量同步的自动合并明细 (最多 100 条). 会先触发一次同步 (不等待).
+     * @return AniBangumiMergeState
+     */
+    @Suppress("UNCHECKED_CAST")
+    open suspend fun getMergeState(): HttpResponse<AniBangumiMergeState> {
+
+        val localVariableAuthNames = listOf<String>("auth-jwt")
+
+        val localVariableBody =
+            io.ktor.client.utils.EmptyContent
+
+        val localVariableQuery = mutableMapOf<String, List<String>>()
+        val localVariableHeaders = mutableMapOf<String, String>()
+
+        val localVariableConfig = RequestConfig<kotlin.Any?>(
+            RequestMethod.GET,
+            "/v2/bangumi/sync/merge",
+            query = localVariableQuery,
+            headers = localVariableHeaders,
+            requiresAuthentication = true,
+        )
+
+        return request(
+            localVariableConfig,
+            localVariableBody,
+            localVariableAuthNames
+        ).wrap()
+    }
+
+
+    /**
+     * 获取 Bangumi 收藏合并摘要
+     * 待处理的冲突字段数与上次全量同步自动合并的差异数. 会先触发一次同步 (不等待): 首次绑定的冲突在同步结束后才可见, 客户端可据 &#x60;syncInProgress&#x60; / &#x60;lastSyncedAt&#x60; 轮询.
+     * @return AniBangumiMergeSummary
+     */
+    @Suppress("UNCHECKED_CAST")
+    open suspend fun getMergeSummary(): HttpResponse<AniBangumiMergeSummary> {
+
+        val localVariableAuthNames = listOf<String>("auth-jwt")
+
+        val localVariableBody =
+            io.ktor.client.utils.EmptyContent
+
+        val localVariableQuery = mutableMapOf<String, List<String>>()
+        val localVariableHeaders = mutableMapOf<String, String>()
+
+        val localVariableConfig = RequestConfig<kotlin.Any?>(
+            RequestMethod.GET,
+            "/v2/bangumi/sync/merge/summary",
             query = localVariableQuery,
             headers = localVariableHeaders,
             requiresAuthentication = true,
@@ -294,6 +361,39 @@ open class BangumiAniApi : ApiClient {
             localVariableAuthNames
         ).wrap()
     }
+
+
+    /**
+     * 解决 Bangumi 收藏冲突
+     * 按用户对每个冲突字段的选择解决冲突: 选 Animeko 则把 Animeko 的值推送到 Bangumi, 选 Bangumi 则写入本地. 找不到的冲突 / 字段忽略 (幂等). 返回剩余的合并状态.
+     * @param aniResolveMergeConflictsRequest
+     * @return AniBangumiMergeState
+     */
+    @Suppress("UNCHECKED_CAST")
+    open suspend fun resolveMergeConflicts(aniResolveMergeConflictsRequest: AniResolveMergeConflictsRequest): HttpResponse<AniBangumiMergeState> {
+
+        val localVariableAuthNames = listOf<String>("auth-jwt")
+
+        val localVariableBody = aniResolveMergeConflictsRequest
+
+        val localVariableQuery = mutableMapOf<String, List<String>>()
+        val localVariableHeaders = mutableMapOf<String, String>()
+
+        val localVariableConfig = RequestConfig<kotlin.Any?>(
+            RequestMethod.POST,
+            "/v2/bangumi/sync/merge/resolve",
+            query = localVariableQuery,
+            headers = localVariableHeaders,
+            requiresAuthentication = true,
+        )
+
+        return jsonRequest(
+            localVariableConfig,
+            localVariableBody,
+            localVariableAuthNames
+        ).wrap()
+    }
+
 
 
     /**

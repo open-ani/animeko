@@ -191,6 +191,13 @@ interface AniNavigator {
     fun navigatePlaybackHistory() {
         navigate(NavRoutes.PlaybackHistory)
     }
+
+    /**
+     * 合并收藏: 处理 Animeko 与 Bangumi 两侧的收藏冲突.
+     */
+    fun navigateBangumiMerge() {
+        navigate(NavRoutes.BangumiMerge)
+    }
 }
 
 fun AniNavigator(): AniNavigator = AniNavigatorImpl()

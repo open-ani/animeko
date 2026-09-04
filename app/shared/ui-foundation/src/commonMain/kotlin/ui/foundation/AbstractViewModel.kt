@@ -25,6 +25,9 @@ import me.him188.ani.utils.logging.trace
  *
  * 因此 [AbstractViewModel] 需要与 compose remember 一起使用, 否则需手动管理生命周期.
  * 在构造 [AbstractViewModel] 时需要考虑其声明周期问题.
+ *
+ * 注意: 通过 androidx `viewModel {}` 取得的实例不会被 remember, [onRemembered] / [init] 永远不会执行 (作用域由 [onCleared] 关闭);
+ * 这类 ViewModel 需要在构造时启动的后台收集应放在 Kotlin `init {}` 块里.
  */ // We can't use Android's Viewmodel because it's not available in Desktop platforms. 
 abstract class AbstractViewModel : RememberObserver, ViewModel(), HasBackgroundScope {
     val logger by lazy { thisLogger() }
@@ -49,6 +52,7 @@ abstract class AbstractViewModel : RememberObserver, ViewModel(), HasBackgroundS
     }
 
     @CallSuper
+    @Suppress("DEPRECATION")
     override fun onRemembered() {
         referenceCount++
         logger.trace { "${this::class.simpleName} onRemembered, refCount=$referenceCount" }
@@ -67,7 +71,14 @@ abstract class AbstractViewModel : RememberObserver, ViewModel(), HasBackgroundS
 
     /**
      * Called when the view model is remembered the first time.
+     *
+     * 只有把实例交给 compose `remember {}` 时才会 (经 [onRemembered]) 调用. 通过 androidx `viewModel {}` 取得的 ViewModel
+     * 不会被 remember, 此方法永远不会执行, 覆盖它是无声的空操作; 这类 ViewModel 请改用 Kotlin `init {}` 块.
      */
+    @Deprecated(
+        "只对 remember {} 创建的 ViewModel 生效; viewModel {} 取得的实例永远不会调用它, 请改用 Kotlin init {} 块",
+        level = DeprecationLevel.WARNING,
+    )
     protected open fun init() {
     }
 

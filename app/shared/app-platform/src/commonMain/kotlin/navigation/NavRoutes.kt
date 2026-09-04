@@ -109,6 +109,12 @@ sealed class NavRoutes : NavKey {
 
     @Serializable
     data object PlaybackHistorySyncStatus : NavRoutes()
+
+    /**
+     * 合并收藏: 处理 Animeko 与 Bangumi 两侧的收藏冲突.
+     */
+    @Serializable
+    data object BangumiMerge : NavRoutes()
 }
 
 @Serializable
