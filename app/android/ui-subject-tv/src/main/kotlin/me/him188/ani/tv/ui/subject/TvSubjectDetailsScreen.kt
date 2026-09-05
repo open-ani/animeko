@@ -253,7 +253,9 @@ private fun TvSubjectDetailsContent(
             scrollOffset = { scrollState.value },
         )
     }
-    fun Modifier.scrollSection(key: String) = tvDetailsScrollSection(anchors, key) { scrollState.value }
+    val sectionAnchorInsetPx = with(LocalDensity.current) { TvSubjectDetailsDefaults.SectionAnchorInset.toPx() }
+    fun Modifier.scrollSection(key: String, anchorInsetPx: Float = 0f) =
+        tvDetailsScrollSection(anchors, key, anchorInsetPx) { scrollState.value }
     val lifecycle = LocalLifecycleOwner.current.lifecycle
     LaunchedEffect(Unit) {
         lifecycle.currentStateFlow.first { it.isAtLeast(Lifecycle.State.RESUMED) }
@@ -325,7 +327,8 @@ private fun TvSubjectDetailsContent(
                 // 行内任意卡按上都回"展开简介" (出组重定向, 不依赖几何对齐)
                 .tvFocusExit(focus, FocusDirection.Up to TvDetailsFocus.ExpandSummary),
             onFocusedWithin = { backLevel = TvDetailsBackLevel.Episodes },
-            modifier = Modifier.scrollSection("episodes"),
+            // 锚点在区块上边缘之上 64dp: 聚焦「展开简介」时封面/标题不贴屏顶 (只动锚点, 不加布局 padding)
+            modifier = Modifier.scrollSection("episodes", anchorInsetPx = sectionAnchorInsetPx),
         )
         TvDetailsBelowSections(
             details = details,
@@ -385,15 +388,20 @@ private class TvDetailsScrollAnchors {
     var focusedSection by mutableStateOf<String?>(null)
 }
 
-/** 标注本节点为滚动区块 [key] (几何上报 + 子树持焦上报; 挂在区块根节点). */
+/**
+ * 标注本节点为滚动区块 [key] (几何上报 + 子树持焦上报; 挂在区块根节点).
+ * [anchorInsetPx]: 锚点在区块上边缘之上多少 —— 对齐后区块顶与视口顶留这段距离 (锚点位置的
+ * 一部分, 不是布局 padding); 0 = 区块顶贴视口顶.
+ */
 private fun Modifier.tvDetailsScrollSection(
     anchors: TvDetailsScrollAnchors,
     key: String,
+    anchorInsetPx: Float,
     scrollOffset: () -> Int,
 ): Modifier = this
     .onGloballyPositioned { coords ->
-        val top = coords.positionInRoot().y - anchors.contentTopInRoot + scrollOffset()
-        if (anchors.sectionTops[key] != top) anchors.sectionTops[key] = top
+        val anchor = coords.positionInRoot().y - anchors.contentTopInRoot + scrollOffset() - anchorInsetPx
+        if (anchors.sectionTops[key] != anchor) anchors.sectionTops[key] = anchor
     }
     .onFocusChanged { if (it.hasFocus) anchors.focusedSection = key }
 
@@ -809,6 +817,9 @@ private fun TvDetailsBelowSections(
 internal object TvSubjectDetailsDefaults {
     /** 内容水平留白 (含让开侧栏收起宽; 详情页是独立目的地, 自带留白). */
     val HorizontalPadding = 48.dp
+
+    /** 第二屏 (简介/选集) 区块的滚动锚点在其上边缘之上的距离: 聚焦「展开简介」时封面/标题不贴屏顶. */
+    val SectionAnchorInset = 64.dp
 
     /** backdrop 随滚动淡出的距离. */
     val BackdropFadeDistance = 400.dp
