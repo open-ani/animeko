@@ -15,10 +15,14 @@ import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.collect
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.emptyFlow
+import kotlinx.coroutines.flow.filter
 import kotlinx.coroutines.flow.filterNotNull
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.flowOf
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.mapLatest
+import kotlinx.coroutines.flow.merge
 import kotlinx.coroutines.flow.produceIn
 import kotlinx.coroutines.flow.shareIn
 import kotlinx.coroutines.flow.takeWhile
@@ -26,6 +30,7 @@ import kotlinx.coroutines.flow.transformWhile
 import kotlinx.coroutines.selects.onTimeout
 import kotlinx.coroutines.selects.select
 import me.him188.ani.app.data.models.preference.MediaSelectorSettings
+import me.him188.ani.app.domain.media.fetch.CompletedConditions
 import me.him188.ani.app.domain.media.fetch.MediaFetchSession
 import me.him188.ani.app.domain.media.fetch.MediaSourceFetchResult
 import me.him188.ani.app.domain.media.fetch.MediaSourceFetchState
@@ -63,21 +68,83 @@ class MediaSelectorAutoSelect(
      *
      * @param waitForKind 等待此数据源类型完成后, 才执行选择. 如果为 `null`, 则等待所有数据源查询完成.
      */
+    @OptIn(UnsafeOriginalMediaAccess::class)
     suspend fun awaitCompletedAndSelectDefault(
         mediaFetchSession: MediaFetchSession,
         waitForKind: Flow<MediaSourceKind?> = flowOf(null)
     ): Media? {
-        // 等全部加载完成
-        mediaFetchSession.awaitCompletion { completedConditions ->
-            return@awaitCompletion waitForKind.first()?.let {
+        suspend fun isTargetCompleted(completedConditions: CompletedConditions): Boolean {
+            return waitForKind.first()?.let {
                 completedConditions[it]
             } ?: completedConditions.allCompleted()
         }
-        if (mediaSelector.selected.value == null) {
-            val selected = mediaSelector.trySelectDefault()
-            return selected
+
+        fun sourceStates(): List<MediaSourceFetchState> {
+            return mediaFetchSession.mediaSourceResults.map { it.state.value }
         }
-        return null
+
+        fun sourceStateChanges(
+            expected: List<MediaSourceFetchState>,
+        ): Flow<PropagationWaitResult> {
+            if (mediaFetchSession.mediaSourceResults.isEmpty()) return emptyFlow()
+            return combine(mediaFetchSession.mediaSourceResults.map { it.state }) {
+                it.toList()
+            }.filter {
+                it != expected
+            }.map {
+                PropagationWaitResult.QueryChanged
+            }
+        }
+
+        while (true) {
+            // 等当前目标数据源加载完成. 查询可能被 restart/restartAll 开启新一轮, 因此下方会在
+            // 传播等待期间监听完成条件和每个数据源的具体状态, 失效时重新取得快照.
+            mediaFetchSession.awaitCompletion(::isTargetCompleted)
+            if (mediaSelector.selected.value != null) return null
+
+            val completedSourceStates = sourceStates()
+            val completedResults = mediaFetchSession.cumulativeResults.first()
+
+            // 获取结果期间若查询轮次已经变化, 不得使用这一旧快照.
+            if (sourceStates() != completedSourceStates) continue
+            if (!isTargetCompleted(mediaFetchSession.hasCompleted.first())) continue
+            if (completedResults.isEmpty()) return null
+
+            val waitResult = merge(
+                // filterMediaList 会 1:1 地将 Media 包装为 Included 或 Excluded. 必须等待本轮实际
+                // Media 全部进入候选流；仅比较 mediaId 会把同 ID、不同服务器或资源版本的旧候选误认
+                // 为当前结果.
+                mediaSelector.filteredCandidates.filter { candidates ->
+                    completedResults.all { completed ->
+                        candidates.any { it.original == completed }
+                    }
+                }.map {
+                    PropagationWaitResult.Propagated
+                },
+                // restart 会让完成条件暂时失效；即使新一轮很快完成，Completed 中的 restart ID
+                // 也会让 sourceStateChanges 检测到轮次变化.
+                mediaFetchSession.hasCompleted.filter {
+                    !isTargetCompleted(it)
+                }.map {
+                    PropagationWaitResult.QueryChanged
+                },
+                sourceStateChanges(completedSourceStates),
+                mediaSelector.selected.filterNotNull().map {
+                    PropagationWaitResult.SelectedElsewhere
+                },
+            ).first()
+
+            when (waitResult) {
+                PropagationWaitResult.QueryChanged -> continue
+                PropagationWaitResult.SelectedElsewhere -> return null
+                PropagationWaitResult.Propagated -> {
+                    if (mediaSelector.selected.value != null) return null
+                    if (sourceStates() != completedSourceStates) continue
+                    if (!isTargetCompleted(mediaFetchSession.hasCompleted.first())) continue
+                    return mediaSelector.trySelectDefault()
+                }
+            }
+        }
     }
 
     /**
@@ -283,6 +350,12 @@ class MediaSelectorAutoSelect(
          */
         val InstantSelectTierThreshold = MediaSourceTier(0u)
     }
+}
+
+private enum class PropagationWaitResult {
+    Propagated,
+    QueryChanged,
+    SelectedElsewhere,
 }
 
 private const val STOP = true
