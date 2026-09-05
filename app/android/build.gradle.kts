@@ -108,6 +108,12 @@ android {
         create("default") {
             dimension = "distribution"
         }
+        create("tv") {
+            // Android TV 形态 (atv-architecture.md D1): 与 default 平级、单维度,
+            // 保证手机任务名 assembleDefaultRelease 与产物路径零变化.
+            dimension = "distribution"
+            applicationId = "me.him188.ani.tv" // 整体覆写 (非 suffix), 可与手机并存; debug 后缀照常叠加
+        }
     }
     buildFeatures {
         compose = true
@@ -116,6 +122,7 @@ android {
 }
 
 dependencies {
+    // 两个 flavor 共用完整依赖树 (D1: TV 与手机共享数据层/装配, 边界靠约定 + Konsist, 不做依赖收窄)
     implementation(projects.app.shared)
     implementation(projects.app.shared.application)
 
@@ -130,6 +137,9 @@ dependencies {
 
     implementation(libs.ktor.client.core)
     implementation(libs.mediamp.ffmpeg)
+
+    // ── TV UI 库模块 (仅 tv variant classpath; tv-material 等经其 api 传递) ──
+    "tvImplementation"(projects.app.android.uiMainTv)
 }
 
 idea {
@@ -138,9 +148,63 @@ idea {
     }
 }
 
+// 清单守护 (atv-architecture.md §10.2): 断言 tv variant 合并清单无 torrent 服务、权限 ⊆ 白名单,
+// 防止手机侧新增声明误入 src/main 交集后静默泄漏进 TV (§13 风险 #10). CI 在 assembleTvDebug 后执行.
+val verifyTvManifestPurity = tasks.register("verifyTvManifestPurity") {
+    dependsOn("processTvDebugManifest")
+    val manifestsDir = layout.buildDirectory.dir("intermediates/merged_manifests/tvDebug")
+    inputs.dir(manifestsDir)
+    doLast {
+        val allowedPermissions = setOf(
+            "android.permission.INTERNET",
+            "android.permission.ACCESS_NETWORK_STATE",
+            "android.permission.WAKE_LOCK",
+            "android.permission.REQUEST_INSTALL_PACKAGES",
+        )
+        val manifests = manifestsDir.get().asFile.walkTopDown()
+            .filter { it.name == "AndroidManifest.xml" }.toList()
+        check(manifests.isNotEmpty()) { "未找到 tvDebug 合并清单, AGP 中间产物路径可能已变化" }
+        for (manifest in manifests) {
+            val text = manifest.readText()
+            check(!text.contains("torrent", ignoreCase = true)) {
+                "tv 合并清单混入 torrent 声明 (应只在 src/default): $manifest"
+            }
+            val permissions = Regex("""<uses-permission[^>]*android:name="([^"]+)"""")
+                .findAll(text).map { it.groupValues[1] }.toList()
+            val disallowed = permissions.filterNot {
+                it in allowedPermissions || it.endsWith("DYNAMIC_RECEIVER_NOT_EXPORTED_PERMISSION")
+            }
+            check(disallowed.isEmpty()) {
+                "tv 合并清单混入非白名单权限 $disallowed (手机专属权限应放 src/default): $manifest"
+            }
+        }
+    }
+}
+
 googleServices {
     missingGoogleServicesStrategy = (getLocalProperty("ani.enable.firebase") ?: "false").toBooleanStrict()
         .let {
             if (it) MissingGoogleServicesStrategy.ERROR else MissingGoogleServicesStrategy.IGNORE
         }
+}
+
+// tv flavor 不接入 Firebase: google-services.json 只含手机包名, 禁用 tv variant 的
+// GoogleServices 任务以避免 "No matching client found" 失败 (atv-architecture.md §10.1).
+tasks.configureEach {
+    if (name.startsWith("processTv") && name.endsWith("GoogleServices")) {
+        enabled = false
+    }
+}
+
+// 同时从 tv variant 的依赖闭包剔除 Firebase/GMS (经 :utils:analytics api 传递进来):
+// TV 端 Analytics 永不初始化, 剔除后 manifest 不再混入 AD_ID/AdServices 权限与 measurement 服务.
+configurations.configureEach {
+    if (name.startsWith("tv") && name.endsWith("Classpath")) {
+        exclude(group = "dev.gitlive", module = "firebase-analytics")
+        exclude(group = "dev.gitlive", module = "firebase-analytics-android")
+        exclude(group = "dev.gitlive", module = "firebase-app")
+        exclude(group = "dev.gitlive", module = "firebase-app-android")
+        exclude(group = "com.google.firebase")
+        exclude(group = "com.google.android.gms")
+    }
 }

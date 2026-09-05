@@ -1,0 +1,79 @@
+<?xml version="1.0" encoding="utf-8"?>
+
+<!--
+  ~ Copyright (C) 2024-2026 OpenAni and contributors.
+  ~
+  ~ 此源代码的使用受 GNU AFFERO GENERAL PUBLIC LICENSE version 3 许可证的约束, 可以在以下链接找到该许可证.
+  ~ Use of this source code is governed by the GNU AGPLv3 license, which can be found at the following link.
+  ~
+  ~ https://github.com/open-ani/ani/blob/main/LICENSE
+  -->
+
+<!-- default (手机) flavor 增量 manifest, 与 src/main 交集做加法合并.
+     torrent/缓存、通知、网页 OAuth 等手机专属声明集中于此, 不进 tv variant. -->
+<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+        xmlns:tools="http://schemas.android.com/tools">
+
+    <uses-permission android:name="android.permission.VIBRATE" />
+    <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_DATA_SYNC" />
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_MEDIA_PLAYBACK" />
+    <uses-permission
+            android:name="android.permission.WRITE_EXTERNAL_STORAGE"
+            android:maxSdkVersion="28"
+            tools:ignore="ScopedStorage" />
+
+    <application android:name="AniApplication">
+
+        <activity
+                android:name=".activity.MainActivity"
+                android:exported="true"
+                android:launchMode="singleTask">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+
+            <intent-filter android:autoVerify="false">
+                <action android:name="android.intent.action.VIEW" />
+
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+
+                <data
+                        android:host="bangumi-oauth-callback"
+                        android:scheme="ani" />
+            </intent-filter>
+
+            <intent-filter android:autoVerify="false">
+                <action android:name="android.intent.action.VIEW" />
+
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+
+                <data
+                        android:host="subjects"
+                        android:scheme="ani" />
+            </intent-filter>
+        </activity>
+
+        <service
+                android:name="me.him188.ani.app.domain.torrent.service.AniTorrentServiceApi34"
+                android:description="@string/service_torrent_engine_description"
+                android:enabled="true"
+                android:exported="false"
+                android:foregroundServiceType="mediaPlayback"
+                android:process=":torrent_service"
+                tools:targetApi="34" />
+
+        <service
+                android:name="me.him188.ani.app.domain.torrent.service.AniTorrentServiceApiDefault"
+                android:description="@string/service_torrent_engine_description"
+                android:enabled="true"
+                android:exported="false"
+                android:foregroundServiceType="dataSync"
+                android:process=":torrent_service" />
+
+    </application>
+</manifest>

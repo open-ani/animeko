@@ -94,6 +94,17 @@ includeProject(":torrent:anitorrent")
 includeProject(":torrent:pikpak") // PikPak 云离线下载后端
 
 includeProject(":app:shared")
+// TV UI 模块统一命名 ui-<feature>-tv, 仅 tv flavor 引用
+includeProject(":app:android:ui-main-tv", "app/android/ui-main-tv") // TV 主壳/导航/页面注册表 (androidx.tv)
+includeProject(":app:android:ui-foundation-tv", "app/android/ui-foundation-tv") // TV 设计系统 (主题/焦点/通用组件)
+includeProject(":app:android:ui-exploration-tv", "app/android/ui-exploration-tv") // TV 探索页
+includeProject(":app:android:ui-subject-tv", "app/android/ui-subject-tv") // TV 条目详情页
+includeProject(":app:android:ui-episode-tv", "app/android/ui-episode-tv") // TV 播放页
+includeProject(":app:android:ui-collection-tv", "app/android/ui-collection-tv") // TV 追番页
+includeProject(":app:android:ui-search-tv", "app/android/ui-search-tv") // TV 搜索页
+includeProject(":app:android:ui-schedule-tv", "app/android/ui-schedule-tv") // TV 新番时间表
+includeProject(":app:android:ui-login-tv", "app/android/ui-login-tv") // TV 邮箱 OTP 登录
+includeProject(":app:android:ui-settings-tv", "app/android/ui-settings-tv") // TV 设置子集
 includeProject(":app:shared:app-platform")
 includeProject(":app:shared:app-data")
 includeProject(":app:shared:app-data-aidl")

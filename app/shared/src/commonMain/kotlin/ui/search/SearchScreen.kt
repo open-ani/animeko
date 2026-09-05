@@ -79,7 +79,7 @@ fun SearchScreen(
         suggestionsPager = vm::suggestionsPager,
         detailContent = {
             val subjectDetailsState by vm.subjectDetailsStateLoader.state
-                .collectAsStateWithLifecycle(null)
+                .collectAsStateWithLifecycle()
             val selfInfo by vm.selfInfoFlow.collectAsStateWithLifecycle()
 
             SubjectDetailsScreen(

@@ -1,0 +1,31 @@
+<?xml version="1.0" encoding="utf-8"?>
+
+<!--
+  ~ Copyright (C) 2024-2026 OpenAni and contributors.
+  ~
+  ~ 此源代码的使用受 GNU AFFERO GENERAL PUBLIC LICENSE version 3 许可证的约束, 可以在以下链接找到该许可证.
+  ~ Use of this source code is governed by the GNU AGPLv3 license, which can be found at the following link.
+  ~
+  ~ https://github.com/open-ani/ani/blob/main/LICENSE
+  -->
+
+<!-- Leanback 启动器横幅 (320x180). 视觉复刻 PR#3217: #2F3943 底 + #7EBBED 圆环 + 白圆.
+     TODO(M4): 补齐 PR 视觉中的黑「あ」字形 (需矢量路径), 参照 claude.ai/design「Animeko TV」镜像. -->
+<layer-list xmlns:android="http://schemas.android.com/apk/res/android">
+    <item>
+        <shape android:shape="rectangle">
+            <solid android:color="#2F3943" />
+        </shape>
+    </item>
+    <item android:gravity="center">
+        <shape android:shape="oval">
+            <size
+                    android:width="100dp"
+                    android:height="100dp" />
+            <solid android:color="#FFFFFF" />
+            <stroke
+                    android:width="10dp"
+                    android:color="#7EBBED" />
+        </shape>
+    </item>
+</layer-list>
