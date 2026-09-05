@@ -17,6 +17,7 @@ import me.him188.ani.app.data.models.episode.displayName
 import me.him188.ani.app.data.models.episode.renderEpisodeEp
 import me.him188.ani.app.data.models.subject.SubjectRecurrence
 import me.him188.ani.app.domain.episode.EpisodeCompletionContext.isKnownCompleted
+import me.him188.ani.app.domain.episode.EpisodeCompletionContext.isKnownOnAir
 import me.him188.ani.datasources.api.topic.UnifiedCollectionType
 
 /**
@@ -44,9 +45,14 @@ data class EpisodePresentation(
     val sort: String,
     val collectionType: UnifiedCollectionType,
     /**
-     * 是否已经确定开播了
+     * 是否已经确定开播了. 保守判定: 拿不到播出日期时为 `false`, 因此它的否定是"不确定播没播",
+     * 要表达"确定没播"请用 [isKnownNotYetAired].
      */
     val isKnownBroadcast: Boolean,
+    /**
+     * 是否确定还未播出. 同样是保守判定: 拿不到播出日期时为 `false`.
+     */
+    val isKnownNotYetAired: Boolean,
     val isPlaceholder: Boolean = false,
 ) {
     companion object {
@@ -58,6 +64,7 @@ data class EpisodePresentation(
             sort = "placeholder",
             collectionType = UnifiedCollectionType.WISH,
             isKnownBroadcast = false,
+            isKnownNotYetAired = false,
             isPlaceholder = true,
         )
     }
@@ -72,4 +79,5 @@ fun EpisodeCollectionInfo.toPresentation(
     sort = episodeInfo.sort.toString(),
     collectionType = collectionType,
     isKnownBroadcast = episodeInfo.isKnownCompleted(recurrence),
+    isKnownNotYetAired = episodeInfo.isKnownOnAir(recurrence),
 )
