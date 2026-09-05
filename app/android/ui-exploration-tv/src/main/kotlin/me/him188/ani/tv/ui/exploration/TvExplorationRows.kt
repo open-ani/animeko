@@ -16,8 +16,11 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.material3.MaterialTheme
@@ -66,41 +69,46 @@ import me.him188.ani.tv.ui.foundation.widgets.TvPageDefaults
 import me.him188.ani.tv.ui.foundation.widgets.tvHeroContentColor
 
 /*
- * 探索页 Prime 式行列表 (atv-architecture.md §7.1 v5): hero 常驻, 下方为纵向行列表,
- * 每行是横向锚定卡片行 —— 焦点卡始终在行首, 焦点行始终贴在 hero 下方 (焦点项恒在左上角).
+ * 探索页 hero 下方的行列表 (atv-architecture.md §7.1 v5): 纵向 LazyColumn, 焦点行始终贴在
+ * hero 下方; 「继续观看」是横向锚定行 (焦点卡恒在行首), 「为你推荐」是纵向自适应网格
+ * (列数按可用宽算、行内 weight 等分, 手机 GridCells.Adaptive 同语义).
  *
- * 锚定用 Compose 的 BringIntoViewSpec 实现: 焦点落到卡片 → 焦点系统发 bringIntoView →
- * 行 (横向) 把卡对齐行首, 列 (纵向) 把行头对齐顶部. 纯焦点事件驱动, 无轮询/延时 (§14.4-8).
+ * 纵向锚定用 Compose 的 BringIntoViewSpec 实现: 焦点落到卡片 → 焦点系统发 bringIntoView →
+ * 列把卡对齐顶部 (有行头的行预留行头高度). 纯焦点事件驱动, 无轮询/延时 (§14.4-8).
  */
 
 /**
  * 锚定式 BringIntoViewSpec: 目标总是滚到容器前缘 (再留 [leadingReservePx] 给行头),
- * 而不是默认的"只要露出来就不动".
+ * 而不是默认的"只要露出来就不动". 预留量用 lambda: 聚焦行有无行头不同 (焦点回调同步写入,
+ * 滚动计算在其后的协程里读取).
  */
 @OptIn(ExperimentalFoundationApi::class)
-internal class TvAnchoredBringIntoViewSpec(private val leadingReservePx: Float = 0f) : BringIntoViewSpec {
+internal class TvAnchoredBringIntoViewSpec(private val leadingReservePx: () -> Float = { 0f }) : BringIntoViewSpec {
     override fun calculateScrollDistance(offset: Float, size: Float, containerSize: Float): Float =
-        offset - leadingReservePx
+        offset - leadingReservePx()
 }
 
-/** 行内卡片锚点: (行 key, 卡索引). 行间导航/左右移动都以此为送焦目标. */
+/** 行内卡片锚点: (行 key, 行内索引). 行间导航/横向行左右移动都以此为送焦目标. */
 internal data class TvExplorationCardKey(val rowKey: String, val index: Int) : TvFocusKey
 
-/** 探索页一行的数据规格. [count] 随 Paging 加载增长. */
-internal sealed class TvExplorationRow(val key: String, val title: String) {
+/** 探索页一行的数据规格. [title] null = 网格续行 (无行头). [count] 随 Paging 加载增长. */
+internal sealed class TvExplorationRow(val key: String, val title: String?) {
     abstract val count: Int
 
+    /** 继续观看: 横向锚定行. */
     class ContinueWatching(val items: LazyPagingItems<FollowedSubjectInfo>) :
         TvExplorationRow("followed", "继续观看") {
         override val count: Int get() = items.itemCount
     }
 
-    /** 为你推荐按 [TvExplorationDefaults.RecommendationRowSize] 分段成多行 (Prime 式多行浏览). */
-    class Recommendations(val items: LazyPagingItems<RecommendedItemInfo>, val chunk: Int) :
-        TvExplorationRow("rec-$chunk", if (chunk == 0) "为你推荐" else "为你推荐 · ${chunk + 1}") {
-        val start: Int = chunk * TvExplorationDefaults.RecommendationRowSize
-        override val count: Int
-            get() = (items.itemCount - start).coerceIn(0, TvExplorationDefaults.RecommendationRowSize)
+    /** 为你推荐网格的第 [rowIndex] 行 ([columns] 列), 只有首行带行头. */
+    class RecommendationGrid(
+        val items: LazyPagingItems<RecommendedItemInfo>,
+        val rowIndex: Int,
+        val columns: Int,
+    ) : TvExplorationRow("rec-$rowIndex", if (rowIndex == 0) "为你推荐" else null) {
+        val start: Int = rowIndex * columns
+        override val count: Int get() = (items.itemCount - start).coerceIn(0, columns)
     }
 }
 
@@ -190,11 +198,11 @@ internal class TvSubjectMediaState(
 internal fun tmdbBackdropCardUrl(url: String): String = url.replace("/t/p/w1280/", "/t/p/w780/")
 
 /**
- * 探索页一行: 行头 + 横向锚定卡片行. 焦点接线在此 (行内左右 / 行间上下均显式送焦,
- * 因为锚定后前一张卡/上一行都已滚出组合, 空间搜索找不到):
- * - ← 前一张: 先滚行让其重新组合, 再送焦 (请求悬挂到锚点附着); 首卡按左不消费 (交给侧栏)
- * - → 后一张: 直接送焦 (后一张在视口内已组合), BringIntoView 把它对齐行首
- * - ↑/↓: [onNavigateVertical] (行 0 按上回 hero)
+ * 探索页一行: [行头] + 内容. 焦点接线在此:
+ * - 继续观看 (横向锚定行): ← 前一张先滚行让其重新组合再送焦 (锚定后前一张已滚出组合,
+ *   空间搜索找不到), 首卡按左不消费 (交给侧栏); → 直接送焦 (后一张已组合), BringIntoView 对齐行首
+ * - 网格行: ←→ 交给空间搜索 (整行都在组合中)
+ * - ↑/↓ 一律显式 [onNavigateVertical] (上一行已滚出组合; 行 0 按上回 hero)
  */
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
@@ -204,12 +212,68 @@ internal fun TvExplorationRowItem(
     focus: TvFocusScope,
     rowStates: SnapshotStateMap<String, LazyListState>,
     focusedIndexByRow: SnapshotStateMap<String, Int>,
-    onCardFocused: (TvHeroSubject) -> Unit,
+    onCardFocused: (row: TvExplorationRow, subject: TvHeroSubject) -> Unit,
     onClickSubject: (TvHeroSubject) -> Unit,
-    onNavigateVertical: (delta: Int) -> Unit,
+    onNavigateVertical: (delta: Int, fromIndex: Int) -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    // 行的横向位置随 route 返回/列表回收保留 (rememberSaveable): 跨 route 焦点恢复要求目标卡仍在组合中
+    val verticalNav = Modifier.onPreviewKeyEvent { event ->
+        if (event.type != KeyEventType.KeyDown) return@onPreviewKeyEvent false
+        val current = focusedIndexByRow[row.key] ?: 0
+        when (event.key) {
+            Key.DirectionUp -> {
+                onNavigateVertical(-1, current)
+                true
+            }
+
+            Key.DirectionDown -> {
+                onNavigateVertical(1, current)
+                true
+            }
+
+            else -> false
+        }
+    }
+    Column(modifier.fillMaxWidth()) {
+        if (row.title != null) {
+            Box(
+                Modifier.height(TvExplorationDefaults.RowHeaderHeight),
+                contentAlignment = Alignment.CenterStart,
+            ) {
+                Text(
+                    row.title,
+                    style = MaterialTheme.typography.titleMedium,
+                    color = tvHeroContentColor(),
+                )
+            }
+        }
+        when (row) {
+            is TvExplorationRow.ContinueWatching -> TvContinueWatchingRow(
+                row, media, focus, rowStates, focusedIndexByRow, onCardFocused, onClickSubject,
+                modifier = verticalNav,
+            )
+
+            is TvExplorationRow.RecommendationGrid -> TvRecommendationGridRow(
+                row, media, focus, focusedIndexByRow, onCardFocused, onClickSubject,
+                modifier = verticalNav,
+            )
+        }
+    }
+}
+
+/** 继续观看: 横向锚定 LazyRow, 横向位置随 route 返回/列表回收保留 (rememberSaveable). */
+@OptIn(ExperimentalFoundationApi::class)
+@Composable
+private fun TvContinueWatchingRow(
+    row: TvExplorationRow.ContinueWatching,
+    media: TvSubjectMediaState,
+    focus: TvFocusScope,
+    rowStates: SnapshotStateMap<String, LazyListState>,
+    focusedIndexByRow: SnapshotStateMap<String, Int>,
+    onCardFocused: (row: TvExplorationRow, subject: TvHeroSubject) -> Unit,
+    onClickSubject: (TvHeroSubject) -> Unit,
+    modifier: Modifier = Modifier,
+) {
     val rowState = rememberSaveable(saver = LazyListState.Saver) { LazyListState() }
     SideEffect { if (rowStates[row.key] !== rowState) rowStates[row.key] = rowState }
     val scope = rememberCoroutineScope()
@@ -221,104 +285,108 @@ internal fun TvExplorationRowItem(
         focus.request(TvExplorationCardKey(row.key, target))
     }
 
-    Column(modifier.fillMaxWidth()) {
-        Box(
-            Modifier.height(TvExplorationDefaults.RowHeaderHeight),
-            contentAlignment = Alignment.CenterStart,
-        ) {
-            Text(
-                row.title,
-                style = MaterialTheme.typography.titleMedium,
-                color = tvHeroContentColor(),
-            )
-        }
-        CompositionLocalProvider(LocalBringIntoViewSpec provides startAligned) {
-            LazyRow(
-                state = rowState,
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .onPreviewKeyEvent { event ->
-                        if (event.type != KeyEventType.KeyDown) return@onPreviewKeyEvent false
-                        val current = focusedIndexByRow[row.key] ?: rowState.firstVisibleItemIndex
-                        when (event.key) {
-                            Key.DirectionUp -> {
-                                onNavigateVertical(-1)
-                                true
-                            }
-
-                            Key.DirectionDown -> {
-                                onNavigateVertical(1)
-                                true
-                            }
-
-                            Key.DirectionLeft -> if (current > 0) {
-                                moveTo(current - 1, scrollFirst = true)
-                                true
-                            } else {
-                                false
-                            }
-
-                            Key.DirectionRight -> {
-                                if (current + 1 < row.count) moveTo(current + 1, scrollFirst = false)
-                                true
-                            }
-
-                            else -> false
+    CompositionLocalProvider(LocalBringIntoViewSpec provides startAligned) {
+        LazyRow(
+            state = rowState,
+            modifier = modifier
+                .fillMaxWidth()
+                .onPreviewKeyEvent { event ->
+                    if (event.type != KeyEventType.KeyDown) return@onPreviewKeyEvent false
+                    val current = focusedIndexByRow[row.key] ?: rowState.firstVisibleItemIndex
+                    when (event.key) {
+                        Key.DirectionLeft -> if (current > 0) {
+                            moveTo(current - 1, scrollFirst = true)
+                            true
+                        } else {
+                            false
                         }
-                    },
-                horizontalArrangement = Arrangement.spacedBy(TvLandscapeCardDefaults.Spacing),
-                contentPadding = PaddingValues(end = TvPageDefaults.EndPadding),
-            ) {
-                when (row) {
-                    is TvExplorationRow.ContinueWatching -> items(
-                        row.count,
-                        key = { row.items.peek(it)?.subjectInfo?.subjectId ?: it },
-                    ) { index ->
-                        val info = row.items[index] ?: return@items
-                        SideEffect { media.putInfo(info.subjectCollectionInfo) }
-                        val subject = TvHeroSubject(
-                            info.subjectInfo.subjectId,
-                            info.subjectInfo.displayName,
-                            info.subjectInfo.imageLarge,
-                        )
-                        TvExplorationCard(
-                            subject = subject,
-                            memoryId = "followed-${subject.subjectId}",
-                            row = row,
-                            index = index,
-                            media = media,
-                            focus = focus,
-                            focusedIndexByRow = focusedIndexByRow,
-                            onCardFocused = onCardFocused,
-                            onClickSubject = onClickSubject,
-                        )
-                    }
 
-                    is TvExplorationRow.Recommendations -> items(
-                        row.count,
-                        key = { (row.items.peek(row.start + it) as? RecommendedSubjectInfo)?.bangumiId ?: (row.start + it) },
-                    ) { index ->
-                        val rec = row.items[row.start + index] as? RecommendedSubjectInfo ?: return@items
-                        val subject = TvHeroSubject(rec.bangumiId, rec.nameCn, rec.imageLarge)
-                        TvExplorationCard(
-                            subject = subject,
-                            memoryId = "rec-${subject.subjectId}",
-                            row = row,
-                            index = index,
-                            media = media,
-                            focus = focus,
-                            focusedIndexByRow = focusedIndexByRow,
-                            onCardFocused = onCardFocused,
-                            onClickSubject = onClickSubject,
-                        )
+                        Key.DirectionRight -> {
+                            if (current + 1 < row.count) moveTo(current + 1, scrollFirst = false)
+                            true
+                        }
+
+                        else -> false
                     }
-                }
+                },
+            horizontalArrangement = Arrangement.spacedBy(TvLandscapeCardDefaults.Spacing),
+            contentPadding = PaddingValues(end = TvPageDefaults.EndPadding),
+        ) {
+            items(
+                row.count,
+                key = { row.items.peek(it)?.subjectInfo?.subjectId ?: it },
+            ) { index ->
+                val info = row.items[index] ?: return@items
+                SideEffect { media.putInfo(info.subjectCollectionInfo) }
+                val subject = TvHeroSubject(
+                    info.subjectInfo.subjectId,
+                    info.subjectInfo.displayName,
+                    info.subjectInfo.imageLarge,
+                )
+                TvExplorationCard(
+                    subject = subject,
+                    memoryId = "followed-${subject.subjectId}",
+                    row = row,
+                    index = index,
+                    media = media,
+                    focus = focus,
+                    focusedIndexByRow = focusedIndexByRow,
+                    onCardFocused = onCardFocused,
+                    onClickSubject = onClickSubject,
+                )
             }
         }
     }
 }
 
-/** 行内一张卡: 横图取 TMDB backdrop (卡片档), 缺图退化海报裁切; 聚焦上报行内索引 + hero 目标. */
+/**
+ * 为你推荐网格的一行: 行内 weight 等分拉伸 (不会出现固定宽度下最右侧最后一项被压缩),
+ * 尾行空位 Spacer 占住.
+ */
+@Composable
+private fun TvRecommendationGridRow(
+    row: TvExplorationRow.RecommendationGrid,
+    media: TvSubjectMediaState,
+    focus: TvFocusScope,
+    focusedIndexByRow: SnapshotStateMap<String, Int>,
+    onCardFocused: (row: TvExplorationRow, subject: TvHeroSubject) -> Unit,
+    onClickSubject: (TvHeroSubject) -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    Row(
+        modifier.fillMaxWidth().padding(end = TvPageDefaults.EndPadding),
+        horizontalArrangement = Arrangement.spacedBy(TvLandscapeCardDefaults.Spacing),
+    ) {
+        repeat(row.columns) { column ->
+            val itemIndex = row.start + column
+            val rec = if (itemIndex < row.items.itemCount) {
+                row.items[itemIndex] as? RecommendedSubjectInfo
+            } else {
+                null
+            }
+            if (rec != null) {
+                val subject = TvHeroSubject(rec.bangumiId, rec.nameCn, rec.imageLarge)
+                TvExplorationCard(
+                    subject = subject,
+                    memoryId = "rec-${subject.subjectId}",
+                    row = row,
+                    index = column,
+                    media = media,
+                    focus = focus,
+                    focusedIndexByRow = focusedIndexByRow,
+                    onCardFocused = onCardFocused,
+                    onClickSubject = onClickSubject,
+                    width = null,
+                    modifier = Modifier.weight(1f),
+                )
+            } else {
+                Spacer(Modifier.weight(1f))
+            }
+        }
+    }
+}
+
+/** 一张卡: 横图取 TMDB backdrop (卡片档), 缺图退化海报裁切; 聚焦上报行内索引 + hero 目标. */
 @Composable
 private fun TvExplorationCard(
     subject: TvHeroSubject,
@@ -328,8 +396,10 @@ private fun TvExplorationCard(
     media: TvSubjectMediaState,
     focus: TvFocusScope,
     focusedIndexByRow: SnapshotStateMap<String, Int>,
-    onCardFocused: (TvHeroSubject) -> Unit,
+    onCardFocused: (row: TvExplorationRow, subject: TvHeroSubject) -> Unit,
     onClickSubject: (TvHeroSubject) -> Unit,
+    width: androidx.compose.ui.unit.Dp? = TvLandscapeCardDefaults.Width,
+    modifier: Modifier = Modifier,
 ) {
     LaunchedEffect(subject.subjectId) { media.requestBackdrop(subject.subjectId) }
     val backdrop = media.backdropCache[subject.subjectId]
@@ -339,9 +409,10 @@ private fun TvExplorationCard(
         onClick = { onClickSubject(subject) },
         onFocused = {
             focusedIndexByRow[row.key] = index
-            onCardFocused(subject)
+            onCardFocused(row, subject)
         },
         memoryId = memoryId,
-        modifier = Modifier.tvFocusAnchor(focus, TvExplorationCardKey(row.key, index)),
+        width = width,
+        modifier = modifier.tvFocusAnchor(focus, TvExplorationCardKey(row.key, index)),
     )
 }

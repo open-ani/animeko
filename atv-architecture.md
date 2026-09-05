@@ -575,11 +575,11 @@ class TvAniApplication : Application() {
 
 | 维度 | 设计 |
 |---|---|
-| 数据 | `TrendsRepository.trendsInfoPager()`（hero 轮播 ≤20 项）、`FollowedSubjectsRepository`（继续观看行）、`RecommendationRepository`（推荐分页，按 12 张分段成多行）、`TmdbImageService.getBackdropUrl`（hero 与卡片共用横图；条目原名来自 `SubjectCollectionRepository`，页内 `TvSubjectMediaState` 缓存 + 并发 3 预取） |
-| 结构（v5，对齐 Prime Video 实测） | `Column`：**常驻 hero**（高度两态插值 250ms：展开 0.66 屏高 / 收缩 0.46）+ 纵向行列表 `LazyColumn`（weight 1，底部留整屏 padding 让末行也能锚到顶）。每行 = 行头（定高 32dp）+ 横向 `LazyRow` 的 16:9 `TvLandscapeCard`（192dp 宽、间距 16dp、TMDB backdrop w780，缺图退化海报裁切、卡内底部渐变叠标题） |
-| hero 双态 | 焦点在 hero → 展开：最高热度轮播条目 + 「更多详细内容」按钮 + 指示器**在整个 hero 底部水平居中**；焦点在卡片行 → 收缩：展示聚焦条目信息，按钮/指示器淡出 200ms。文字即时切换，**backdrop 目标防抖 500ms** 再 crossfade（Prime 实测：快速划过卡片不闪图） |
-| 锚定滚动 | **焦点项恒在左上角**：用 `BringIntoViewSpec`（`TvAnchoredBringIntoViewSpec`）—— 行内 spec 把焦点卡对齐行首，列 spec 把焦点行对齐顶部并预留行头高度；纯焦点事件驱动。每行各自 `rememberSaveable` 横向位置（Prime 同款、跨 route 返回后目标卡仍在组合中，焦点记忆可恢复） |
-| 按键 | hero 上 ←→ 切轮播；↓ 显式送焦行 0 记住的卡；行内 → 直接送焦下一张，← 先滚行让前一张重新组合再送焦（锚定后前一张已滚出组合，空间搜索找不到），首卡按左放行侧边栏；↑/↓ 行间导航 = 滚列表 + 送焦目标行记住的卡（悬挂到锚点附着）；行 0 按上回 hero 按钮；确认 → 详情 |
+| 数据 | `TrendsRepository.trendsInfoPager()`（hero 轮播 ≤20 项）、`FollowedSubjectsRepository`（继续观看行）、`RecommendationRepository`（推荐分页，纵向自适应网格）、`TmdbImageService.getBackdropUrl`（hero 与卡片共用横图；条目原名来自 `SubjectCollectionRepository`，页内 `TvSubjectMediaState` 缓存 + 并发 3 预取） |
+| 结构（v5，对齐 Prime Video 实测） | 根 `Box`：**backdrop 在页面根层（surface 背景级）**，16:9 贴右上，高度 = 屏高 ×（hero 两态比例 + 下探 0.10），左缘渐隐终点 0.42（不压简介文字），渐隐尾部延伸到卡片行下方；其上 `Column`：**常驻 hero**（高度两态插值 250ms：展开 0.66 / 收缩 0.46）+ 纵向行列表 `LazyColumn`（weight 1，底部留整屏 padding 让末行也能锚到顶）。行 = [行头 32dp]（仅有标题的行）+ 内容：「继续观看」为横向锚定 `LazyRow`；「为你推荐」为纵向自适应网格（列数按可用宽算、行内 weight 等分、尾行 Spacer 占位，仅首行带行头）。卡片统一 16:9 `TvLandscapeCard`（192dp、间距 16dp、TMDB backdrop w780，缺图退化海报裁切、卡内底部渐变叠标题） |
+| hero 双态 | 焦点在 hero → 展开：最高热度轮播条目 + 「更多详细内容」按钮 + 指示器**在整个 hero 底部水平居中**；焦点在卡片行 → 收缩：展示聚焦条目信息。**按钮/指示器的出现与消失就是 hero 高度动画本身**（高度与透明度跟随同一条插值进度，不另起淡入淡出）。文字即时切换，**backdrop 目标防抖 500ms** 再 crossfade（Prime 实测：快速划过卡片不闪图） |
+| 锚定滚动 | **焦点行恒贴 hero 下缘**：用 `BringIntoViewSpec`（`TvAnchoredBringIntoViewSpec`）—— 继续观看行内 spec 把焦点卡对齐行首，列 spec 把焦点卡对齐顶部并预留行头高度（预留量动态：聚焦行有行头留 32dp、网格续行留 0，焦点回调同步写入、滚动计算稍后读取）；纯焦点事件驱动。继续观看行 `rememberSaveable` 横向位置（跨 route 返回后目标卡仍在组合中，焦点记忆可恢复） |
+| 按键 | hero 上 ←→ 切轮播；↓ 显式送焦行 0；继续观看行内 → 直接送焦下一张，← 先滚行让前一张重新组合再送焦（锚定后前一张已滚出组合，空间搜索找不到），首卡按左放行侧边栏；网格行内 ←→ 交给空间搜索；↑/↓ 行间导航一律显式 = 滚列表 + 送焦目标行（网格保持同列、继续观看回记住的卡；悬挂到锚点附着）；行 0 按上回 hero 按钮；确认 → 详情 |
 | 状态 | 行结构变化（Paging 后到的继续观看插首行）时 hero 聚焦态下列表滚回顶（LazyColumn 按 key 保位会把新首行藏在视口上方）；trending 空 → 无指示器 |
 
 ### 7.2 新番时间表 `TvScheduleScreen`
@@ -894,7 +894,7 @@ D1 放弃编译期隔离后，**Konsist 是 §4.2 约定边界的主要机械守
 | 范围 | 裁定 |
 |---|---|
 | 全局 | 菜单键从任意位置直达侧边栏；侧边栏进入落点=**当前页**条目（`selected` 标记，回退 defaultFocus）；条目卡统一 `TvPosterCard` 样式（标题在卡内），**聚焦时标题跑马灯**、失焦单行截断 |
-| 探索页 | **v5 Prime 式**：hero 常驻双态（焦点在 hero=轮播展开 0.66 + 按钮 + 居中指示器；焦点在卡片行=收缩 0.46 显示聚焦条目、按钮/指示器淡出、backdrop 防抖 500ms）；下方纵向行列表（继续观看 + 为你推荐 12 张/行分段），16:9 横版卡 TMDB 横图；焦点项恒在左上角（BringIntoViewSpec 锚定，行头对齐 hero 下缘）；每行各自保留横向位置；首卡按左放行侧边栏；行 0 按上回 hero |
+| 探索页 | **v5 Prime 式**：backdrop 在页面根层（surface 背景级，随 hero 两态 + 下探 0.10）；hero 常驻双态（焦点在 hero=轮播展开 0.66 + 按钮 + 居中指示器；焦点在卡片行=收缩 0.46 显示聚焦条目，按钮/指示器随同一条高度动画收放，backdrop 防抖 500ms）；下方纵向列表 = 继续观看横向锚定行 + 为你推荐纵向自适应网格，16:9 横版卡 TMDB 横图；焦点行恒贴 hero 下缘（BringIntoViewSpec 锚定，行头预留动态）；网格上下保持同列；首卡按左放行侧边栏；行 0 按上回 hero |
 | 追番页 | tab 聚焦即选中；网格按上/按返回回**当前**分类 tab（不是几何最近的）；列表左右缘按左右=切相邻分类并落"对应位置"（同行近缘列、钳到末项）；首 tab 左缘交给侧边栏；tab 行再按返回才交壳回探索 |
 | 时间表 | 手机 **Medium 档多列布局**复刻（360dp 定宽列 + DayOfWeekHeadline 列头，无 TabRow/无 pager），复用 `ScheduleScreenState`；`HorizontalScrollControlScaffoldOnDesktop` 不可复用（hover 驱动，TV 无此事件源） |
 | 详情页 | 返回键三级分层（下方区块→选集轮播→Hero→退出）；backdrop 三态（未解析按有图排版，防海报闪替） |

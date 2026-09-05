@@ -9,11 +9,8 @@
 
 package me.him188.ani.tv.ui.exploration
 
-import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.Crossfade
 import androidx.compose.animation.core.tween
-import androidx.compose.animation.fadeIn
-import androidx.compose.animation.fadeOut
 import androidx.compose.foundation.background
 import androidx.compose.foundation.basicMarquee
 import androidx.compose.foundation.layout.Arrangement
@@ -37,10 +34,13 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.clipToBounds
 import androidx.compose.ui.draw.drawWithContent
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.layout.layout
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import me.him188.ani.app.data.models.subject.SubjectCollectionInfo
@@ -52,16 +52,18 @@ import me.him188.ani.tv.ui.foundation.widgets.tvBackdropFadeFromBlackStops
 import me.him188.ani.tv.ui.foundation.widgets.tvBackdropFadeToBlackStops
 import me.him188.ani.tv.ui.foundation.widgets.tvHeroContentColor
 import me.him188.ani.tv.ui.foundation.widgets.tvHeroSecondaryContentColor
-import me.him188.ani.tv.ui.foundation.widgets.tvShellBackgroundColor
+import kotlin.math.roundToInt
 
 /**
- * 探索页常驻 hero (纯视图; 状态与焦点接线在 [TvExplorationScreen]), 双态 (Prime Video 实测):
+ * 探索页常驻 hero 的信息层 (纯视图; 状态与焦点接线在 [TvExplorationScreen]; backdrop 不在此,
+ * 见 [TvExplorationBackdrop] —— 它画在页面根层作为 surface 背景). 双态 (Prime Video 实测):
  * - **展开** (焦点在 hero): 最高热度轮播条目, 左侧标题/评分连载行/简介 + 「更多详细内容」按钮,
  *   轮播指示器在整个 hero 底部水平居中;
- * - **收缩** (焦点在下方卡片行, [collapsed]): 展示聚焦条目信息, 按钮与指示器淡出, 高度由外层缩减.
+ * - **收缩** (焦点在下方卡片行): 展示聚焦条目信息; 按钮与指示器随 hero 高度动画一同收起.
  *
- * [bottomFadeStart] 用 lambda 传入: 值随焦点两态插值动画逐帧变化, 必须只在 draw 阶段读取,
- * 直接传值会让整个 hero 每帧重组.
+ * [expandProgress] = hero 高度在 [收缩, 展开] 区间的插值进度 (0..1), 逐帧变化, 只在
+ * layout/draw 阶段读取: 按钮/指示器的高度与透明度跟随它 —— 出现与消失就是 hero 变高变矮
+ * 的同一条动画, 不另起淡入淡出.
  *
  * [buttonModifier] 由调用方注入焦点锚点与按键处理 (页面私有的 TvFocusKey 不外泄).
  */
@@ -70,9 +72,7 @@ internal fun TvExplorationHero(
     hero: TvHeroSubject?,
     info: SubjectCollectionInfo?,
     summaryFallback: String?,
-    backdropUrl: String?,
-    bottomFadeStart: () -> Float,
-    collapsed: Boolean,
+    expandProgress: () -> Float,
     carouselSize: Int,
     carouselIndex: Int,
     onClickDetails: () -> Unit,
@@ -80,16 +80,8 @@ internal fun TvExplorationHero(
     modifier: Modifier = Modifier,
     buttonModifier: Modifier = Modifier,
 ) {
-    val shellBackground = tvShellBackgroundColor()
     Box(modifier) {
-        // Backdrop: 16:9 贴右上, 顶缘轻压暗 + 左缘/下缘平滑渐隐 (采样停点无马赫带)
-        TvExplorationHeroBackdrop(
-            url = backdropUrl,
-            fadeColor = shellBackground,
-            bottomFadeStart = bottomFadeStart,
-            modifier = Modifier.align(Alignment.TopEnd),
-        )
-        // 左侧信息列: 标题/评分(固定) + 简介(weight=1 弹性, 收缩态自然只剩两三行) + 按钮 (展开态)
+        // 左侧信息列: 标题/评分(固定) + 简介(weight=1 弹性, 收缩态自然只剩两三行) + 按钮 (随进度收放)
         Column(Modifier.fillMaxSize().padding(top = 24.dp, bottom = 10.dp)) {
             // 标题: 定高一行, 长标题跑马灯; 换条目 crossfade
             Crossfade(hero?.title, animationSpec = tween(TvHeroDefaults.TextFadeMillis), label = "title") { title ->
@@ -120,12 +112,9 @@ internal fun TvExplorationHero(
                     overflow = TextOverflow.Ellipsis,
                 )
             }
-            // 唯一操作按钮 (展开态): 聚焦时左右键切换轮播、下键进卡片行 (按键处理在 buttonModifier)
-            AnimatedVisibility(
-                visible = !collapsed,
-                enter = fadeIn(tween(TvExplorationDefaults.HeroChromeFadeMillis)),
-                exit = fadeOut(tween(TvExplorationDefaults.HeroChromeFadeMillis)),
-            ) {
+            // 唯一操作按钮: 聚焦时左右键切换轮播、下键进卡片行 (按键处理在 buttonModifier);
+            // 高度/透明度跟随 hero 展开进度
+            Box(Modifier.followHeroExpand(expandProgress)) {
                 TvHeroButton(
                     text = "更多详细内容",
                     icon = Icons.Outlined.Info,
@@ -136,32 +125,46 @@ internal fun TvExplorationHero(
                 )
             }
         }
-        // 轮播指示器: 整个 hero 底部水平居中 (Prime 同款; 不可聚焦, 纯展示; 收缩态淡出)
-        AnimatedVisibility(
-            visible = !collapsed && carouselSize >= 2,
-            modifier = Modifier.align(Alignment.BottomCenter),
-            enter = fadeIn(tween(TvExplorationDefaults.HeroChromeFadeMillis)),
-            exit = fadeOut(tween(TvExplorationDefaults.HeroChromeFadeMillis)),
-        ) {
+        // 轮播指示器: 整个 hero 底部水平居中 (Prime 同款; 不可聚焦, 纯展示); 同样跟随展开进度
+        if (carouselSize >= 2) {
             TvExplorationCarouselIndicator(
                 size = carouselSize,
                 selectedIndex = carouselIndex,
-                modifier = Modifier.padding(bottom = 12.dp).fillMaxWidth(),
+                modifier = Modifier
+                    .align(Alignment.BottomCenter)
+                    .followHeroExpand(expandProgress)
+                    .padding(bottom = 12.dp)
+                    .fillMaxWidth(),
             )
         }
     }
 }
 
 /**
- * hero backdrop 层: 换图 crossfade, 顶缘压暗 + 左缘渐隐固定, 下缘渐隐起点由
- * [bottomFadeStart] 每帧提供 (hero/卡片两态插值).
+ * 让节点的高度与透明度跟随 hero 展开进度 [progress] (0 = 完全收起不占位, 1 = 完整):
+ * 与 hero 高度是同一条插值, 所以按钮/指示器的出现和消失就是 hero 变高变矮的过程本身.
+ */
+private fun Modifier.followHeroExpand(progress: () -> Float): Modifier = this
+    .graphicsLayer { alpha = progress().coerceIn(0f, 1f) }
+    .clipToBounds()
+    .layout { measurable, constraints ->
+        val placeable = measurable.measure(constraints)
+        val height = (placeable.height * progress().coerceIn(0f, 1f)).roundToInt()
+        layout(placeable.width, height) { placeable.placeRelative(0, 0) }
+    }
+
+/**
+ * 探索页 backdrop (画在页面根层, surface 背景级): 16:9 贴右上, 换图 crossfade,
+ * 顶缘压暗 + 左缘渐隐固定, 下缘渐隐起点由 [bottomFadeStart] 每帧提供 (hero/卡片两态插值).
+ * 高度由调用方给 (随 hero 两态 + 下探量), 图的渐隐尾部延伸到卡片行下方.
  */
 @Composable
-private fun TvExplorationHeroBackdrop(
+internal fun TvExplorationBackdrop(
     url: String?,
     fadeColor: Color,
     bottomFadeStart: () -> Float,
     modifier: Modifier = Modifier,
+    leftFadeEnd: Float = TvBackdropDefaults.LeftFadeEnd,
 ) {
     Crossfade(
         url,
@@ -172,7 +175,6 @@ private fun TvExplorationHeroBackdrop(
         if (current != null) {
             Box(
                 Modifier
-                    // 外层 hero Box 已按两态限高, 这里占满它
                     .fillMaxHeight()
                     .aspectRatio(TvBackdropDefaults.AspectRatio, matchHeightConstraintsFirst = true)
                     .drawWithContent {
@@ -190,7 +192,7 @@ private fun TvExplorationHeroBackdrop(
                             brush = Brush.horizontalGradient(
                                 *tvBackdropFadeFromBlackStops(
                                     start = TvBackdropDefaults.LeftFadeStart,
-                                    end = TvBackdropDefaults.LeftFadeEnd,
+                                    end = leftFadeEnd,
                                     color = fadeColor,
                                 ),
                             ),

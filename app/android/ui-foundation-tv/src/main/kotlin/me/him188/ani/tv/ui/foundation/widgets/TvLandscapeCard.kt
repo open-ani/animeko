@@ -77,7 +77,8 @@ fun TvLandscapeCard(
     onFocused: () -> Unit = {},
     /** 焦点记忆身份键 (页内唯一): 跨 route 返回时恢复焦点用; null = 不参与. */
     memoryId: Any? = null,
-    width: Dp = TvLandscapeCardDefaults.Width,
+    /** null = 宽度交给调用方 modifier 决定 (如 Row 内 weight 等分的自适应网格). */
+    width: Dp? = TvLandscapeCardDefaults.Width,
     /** 标题下的一行次要信息 (如继续观看进度); null 不显示. */
     subtitle: String? = null,
 ) {
@@ -85,7 +86,7 @@ fun TvLandscapeCard(
     Surface(
         onClick = onClick,
         modifier = modifier
-            .width(width)
+            .then(if (width != null) Modifier.width(width) else Modifier)
             .tvFocusMemorable(memoryId)
             .onFocusChanged {
                 selfFocused = it.isFocused
