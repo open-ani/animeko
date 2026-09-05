@@ -88,10 +88,12 @@
   持有数据源级 `tiers` 与 channel 级 `channelTiers`，由
   `MediaSourceManagerImpl.mediaSourceTiersFlow()` 从各实例的
   `MediaSourceArguments.tier` / `channelTiers` 汇总。排序按
-  `(mediaSourceId, alliance)` 查有效阶级；快速选择
-  `MediaSelectorAutoSelect.fastSelectWebSources` 也按同样的有效阶级判定资源，
-  通过 `trySelectFromMediaSources` 的 `candidateMediaFilter` 参数把每一阶段、每一档阶级
-  允许的资源交给选择器。各阶段的规则集中在 `FastSelectRules`。
+  `(mediaSourceId, alliance)` 查有效阶级；Web 自动选择的纯决策函数
+  `decideWebAutoSelect`（`domain/media/selector/engine/WebAutoSelectPolicy.kt`）
+  也按同样的有效阶级分组逐档尝试。
+- Web 自动选择引擎：`domain/media/selector/engine/` —— `AutoSelectSnapshot.kt`（一致快照）、
+  `WebAutoSelectPolicy.kt`（纯决策）、`MediaSelectionDecider.kt`（DFS 偏好选择纯函数）、
+  `WebAutoSelectDriver.kt`（唯一的执行循环）。见 [media-selector.md](media-selector.md#web-自动选择-决策核)。
 - 查询结果并不天然“正确”；数据源实现应尽量返回准确的 `episodeRange`，`MediaSelector`
   只是在其上做额外的过滤和排序。
 

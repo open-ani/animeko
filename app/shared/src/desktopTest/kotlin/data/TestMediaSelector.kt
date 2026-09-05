@@ -20,6 +20,8 @@ import me.him188.ani.app.domain.media.selector.MaybeExcludedMedia
 import me.him188.ani.app.domain.media.selector.MediaPreferenceItem
 import me.him188.ani.app.domain.media.selector.MediaSelector
 import me.him188.ani.app.domain.media.selector.MediaSelectorEvents
+import me.him188.ani.app.domain.media.selector.engine.AutoSelectSnapshot
+import me.him188.ani.app.domain.media.selector.engine.SourceSnapshot
 import me.him188.ani.app.domain.media.selector.MutableMediaSelectorEvents
 import me.him188.ani.app.domain.media.selector.OptionalPreference
 import me.him188.ani.app.domain.media.selector.filter.MediaSelectorFilterSortAlgorithm
@@ -118,6 +120,14 @@ open class TestMediaSelector(
         allowNonPreferred: Boolean,
         candidateMediaFilter: ((MaybeExcludedMedia.Included) -> Boolean)?
     ): Media? {
+        throw UnsupportedOperationException()
+    }
+
+    override fun autoSelectSnapshots(sources: Flow<List<SourceSnapshot>>): Flow<AutoSelectSnapshot> {
+        throw UnsupportedOperationException()
+    }
+
+    override suspend fun selectAutomatically(candidate: Media, expectedSelection: Media?): Media? {
         throw UnsupportedOperationException()
     }
 

@@ -236,6 +236,57 @@ class MediaSelectorAutoSelectUseCaseTest {
     }
 
     @Test
+    fun `prefer web with all web sources disabled waits for bt and selects it`() = runFetchMediaSelectorTestSuite {
+        initSubject()
+        preferenceApi.savedUserPreference.value = MediaPreference.Any
+        preferenceApi.mediaSelectorSettings.value = autoSelectSettings()
+
+        val (_, session, sources) = configureFetchSession {
+            object {
+                val web1 by web(enabled = false)
+                val bt1 by bt()
+            }
+        }
+
+        val job = launchAutoSelect(session)
+        testScope().runCurrent()
+        // 没有启用的 WEB 源: 不能立刻放弃, 要等其他源结束
+        assertNull(selector.selected.value)
+        assertFalse(job.isCompleted)
+
+        sources.bt1.complete(media(kind = BitTorrent, subjectName = initApi.subjectName))
+        testScope().runCurrent()
+
+        assertSelectedSource(sources.bt1)
+        job.assertCompleted()
+    }
+
+    @Test
+    fun `prefer web with no web source at all selects local cache as soon as it appears`() = runFetchMediaSelectorTestSuite {
+        initSubject()
+        preferenceApi.savedUserPreference.value = MediaPreference.Any
+        preferenceApi.mediaSelectorSettings.value = autoSelectSettings()
+
+        val (_, session, sources) = configureFetchSession {
+            object {
+                val cached by localCache()
+                val bt1 by bt() // 一直在查询中
+            }
+        }
+
+        val job = launchAutoSelect(session)
+        testScope().runCurrent()
+        assertNull(selector.selected.value)
+        assertFalse(job.isCompleted)
+
+        sources.cached.complete(media(kind = LocalCache, subjectName = initApi.subjectName))
+        testScope().runCurrent()
+
+        assertSelectedSource(sources.cached)
+        job.assertCompleted()
+    }
+
+    @Test
     fun `local cache can win while preferred web source is still pending`() = runFetchMediaSelectorTestSuite {
         initSubject()
         preferenceApi.savedUserPreference.value = MediaPreference.Any

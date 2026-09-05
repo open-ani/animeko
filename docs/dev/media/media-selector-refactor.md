@@ -1,5 +1,7 @@
 # Media Selector 重构方案
 
+> **进展(2026-09-06)**:方向 A 已在 WEB 路径落地——`engine/` 下的 `AutoSelectSnapshot`(一致快照)、`decideWebAutoSelect`(纯策略, 含记忆源/缓存/两段截止/兜底)、`findMediaByPreference`(DFS 纯函数, Step 1)、`runWebAutoSelect`(唯一执行循环, Step 6)。`MediaSelector` 接口新增 `autoSelectSnapshots` 与 `selectAutomatically`, 其余签名不变; BT/无偏好路径仍走旧 select{} 编排。§2.2 的一致性论证依赖的 "state 置 Succeed 时 replay 已含最终列表" 原本不成立(flatMapLatest 的 channel 造成延迟), 已在 `MediaFetcher` 中修正。§2.3 的 R2 应按两段截止时间(精确优先、按 tier、模糊仅在第二段后)理解。尚未做: UI 候选流收敛为单一快照点(Step 3)、BT 路径接入策略、Step 7 其余 workaround 清理、方向 B。
+>
 > 状态:**方案定稿**;2026-08-02 增补 Phase C(BT/WEB 双模式拆分,方向已批,D8–D11 已定,见 §5/§7);其余决策点待批,批准前不动任何生产代码。
 > 日期:2026-07-31 定稿,2026-08-02 修订(Phase C + §3.1 复合主键),基于 main 分支(行号均已核实)。
 > 姊妹文档:[行为清单(重构基线)](media-selector-behavior-catalog.md) —— 128 条可测行为断言,本方案所有 "ID"(FILT-01、ORCH-06 等)均指向该清单。
