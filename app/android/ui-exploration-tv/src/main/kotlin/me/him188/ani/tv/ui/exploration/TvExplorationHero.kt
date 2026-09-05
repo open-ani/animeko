@@ -9,8 +9,11 @@
 
 package me.him188.ani.tv.ui.exploration
 
+import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.Crossfade
 import androidx.compose.animation.core.tween
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
 import androidx.compose.foundation.background
 import androidx.compose.foundation.basicMarquee
 import androidx.compose.foundation.layout.Arrangement
@@ -52,13 +55,15 @@ import me.him188.ani.tv.ui.foundation.widgets.tvHeroSecondaryContentColor
 import me.him188.ani.tv.ui.foundation.widgets.tvShellBackgroundColor
 
 /**
- * 探索页 hero 区 item 内容 (纯视图; 状态与焦点接线在 [TvExplorationScreen]):
- * backdrop 贴右上 + 左侧信息列 (标题/评分连载行/简介/操作按钮/轮播指示器).
+ * 探索页常驻 hero (纯视图; 状态与焦点接线在 [TvExplorationScreen]), 双态 (Prime Video 实测):
+ * - **展开** (焦点在 hero): 最高热度轮播条目, 左侧标题/评分连载行/简介 + 「更多详细内容」按钮,
+ *   轮播指示器在整个 hero 底部水平居中;
+ * - **收缩** (焦点在下方卡片行, [collapsed]): 展示聚焦条目信息, 按钮与指示器淡出, 高度由外层缩减.
  *
  * [bottomFadeStart] 用 lambda 传入: 值随焦点两态插值动画逐帧变化, 必须只在 draw 阶段读取,
  * 直接传值会让整个 hero 每帧重组.
  *
- * [buttonModifier] 由调用方注入焦点锚点/链接与轮播按键处理 (页面私有的 TvFocusKey 不外泄).
+ * [buttonModifier] 由调用方注入焦点锚点与按键处理 (页面私有的 TvFocusKey 不外泄).
  */
 @Composable
 internal fun TvExplorationHero(
@@ -67,6 +72,7 @@ internal fun TvExplorationHero(
     summaryFallback: String?,
     backdropUrl: String?,
     bottomFadeStart: () -> Float,
+    collapsed: Boolean,
     carouselSize: Int,
     carouselIndex: Int,
     onClickDetails: () -> Unit,
@@ -83,9 +89,7 @@ internal fun TvExplorationHero(
             bottomFadeStart = bottomFadeStart,
             modifier = Modifier.align(Alignment.TopEnd),
         )
-        // 左侧信息列: 占满 hero 高度 —— 标题/评分(固定) + 简介(weight=1 弹性) +
-        // 按钮 Row + 指示器(底部, 信息列宽内居中). 按钮与指示器常驻 (不再随焦点隐藏,
-        // 之前被固定高度信息块挤出裁掉)
+        // 左侧信息列: 标题/评分(固定) + 简介(weight=1 弹性, 收缩态自然只剩两三行) + 按钮 (展开态)
         Column(Modifier.fillMaxSize().padding(top = 24.dp, bottom = 10.dp)) {
             // 标题: 定高一行, 长标题跑马灯; 换条目 crossfade
             Crossfade(hero?.title, animationSpec = tween(TvHeroDefaults.TextFadeMillis), label = "title") { title ->
@@ -101,7 +105,6 @@ internal fun TvExplorationHero(
                 info,
                 Modifier.padding(top = 8.dp).height(TvExplorationDefaults.StatusRowHeight),
             )
-            // 简介: 弹性占据剩余空间 (用户指定 weight=1)
             val summary = info?.subjectInfo?.summary?.takeIf { it.isNotBlank() } ?: summaryFallback
             Crossfade(
                 summary,
@@ -117,25 +120,34 @@ internal fun TvExplorationHero(
                     overflow = TextOverflow.Ellipsis,
                 )
             }
-            // 唯一操作按钮 (用户裁定去掉立即观看): 聚焦时左右键切换轮播 (按键处理在 buttonModifier)
-            TvHeroButton(
-                text = "更多详细内容",
-                icon = Icons.Outlined.Info,
-                filled = true,
-                onClick = onClickDetails,
-                onFocused = onButtonFocused,
-                modifier = Modifier.padding(top = 10.dp).then(buttonModifier),
-            )
-            // 轮播指示器: hero 底部, 信息列宽内居中 (不可聚焦, 纯展示; 由自动轮播驱动)
-            if (carouselSize >= 2) {
-                TvExplorationCarouselIndicator(
-                    size = carouselSize,
-                    selectedIndex = carouselIndex,
-                    modifier = Modifier
-                        .padding(top = 12.dp)
-                        .fillMaxWidth(TvHeroDefaults.SummaryWidthFraction),
+            // 唯一操作按钮 (展开态): 聚焦时左右键切换轮播、下键进卡片行 (按键处理在 buttonModifier)
+            AnimatedVisibility(
+                visible = !collapsed,
+                enter = fadeIn(tween(TvExplorationDefaults.HeroChromeFadeMillis)),
+                exit = fadeOut(tween(TvExplorationDefaults.HeroChromeFadeMillis)),
+            ) {
+                TvHeroButton(
+                    text = "更多详细内容",
+                    icon = Icons.Outlined.Info,
+                    filled = true,
+                    onClick = onClickDetails,
+                    onFocused = onButtonFocused,
+                    modifier = Modifier.padding(top = 10.dp, bottom = 22.dp).then(buttonModifier),
                 )
             }
+        }
+        // 轮播指示器: 整个 hero 底部水平居中 (Prime 同款; 不可聚焦, 纯展示; 收缩态淡出)
+        AnimatedVisibility(
+            visible = !collapsed && carouselSize >= 2,
+            modifier = Modifier.align(Alignment.BottomCenter),
+            enter = fadeIn(tween(TvExplorationDefaults.HeroChromeFadeMillis)),
+            exit = fadeOut(tween(TvExplorationDefaults.HeroChromeFadeMillis)),
+        ) {
+            TvExplorationCarouselIndicator(
+                size = carouselSize,
+                selectedIndex = carouselIndex,
+                modifier = Modifier.padding(bottom = 12.dp).fillMaxWidth(),
+            )
         }
     }
 }
@@ -160,7 +172,7 @@ private fun TvExplorationHeroBackdrop(
         if (current != null) {
             Box(
                 Modifier
-                    // 外层 hero Box 已限高 0.66 屏, 这里占满它 (再乘 fraction 会双重缩小)
+                    // 外层 hero Box 已按两态限高, 这里占满它
                     .fillMaxHeight()
                     .aspectRatio(TvBackdropDefaults.AspectRatio, matchHeightConstraintsFirst = true)
                     .drawWithContent {

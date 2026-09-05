@@ -575,10 +575,12 @@ class TvAniApplication : Application() {
 
 | 维度 | 设计 |
 |---|---|
-| 数据 | `TrendsRepository.trendsInfoPager()`（hero 轮播 ≤20 项）、`FollowedSubjectsRepository`（继续观看行）、`RecommendationRepository`（推荐分页，12 张/行循环）、`TmdbImageService`（backdrop） |
-| 结构 | 层叠：`TvBackdropLayer`（右上 16:9、0.66 屏高、左/下缘渐隐，hero/卡片双态 400ms 插值）→ 内容列（hero 信息块 200/240dp + `Carousel` 驱动 + 按钮列）→ 卡片区（`TvAnchoredRow` × N，聚焦行吸顶 = 外层 LazyColumn 也套 pivot 0f） |
-| 按键 | hero 上 ←→ 切轮播（Carousel 自带）；↓ 进卡片区；卡片区行内 ←→ 列表滑动（锚点行）；顶行 ↑ 回 hero；确认短按 → 详情，长按 → 收藏菜单（`onLongClick`）；播放键 → 续播/直接播（根 `onPreviewKeyEvent` 拦 `MediaPlayPause`），hero/继续观看上长按播放键 → 强制刷新 + toast |
-| 状态 | 图 shimmer；trending 空 → 无指示器；错误静默重试（PR 同） |
+| 数据 | `TrendsRepository.trendsInfoPager()`（hero 轮播 ≤20 项）、`FollowedSubjectsRepository`（继续观看行）、`RecommendationRepository`（推荐分页，按 12 张分段成多行）、`TmdbImageService.getBackdropUrl`（hero 与卡片共用横图；条目原名来自 `SubjectCollectionRepository`，页内 `TvSubjectMediaState` 缓存 + 并发 3 预取） |
+| 结构（v5，对齐 Prime Video 实测） | `Column`：**常驻 hero**（高度两态插值 250ms：展开 0.66 屏高 / 收缩 0.46）+ 纵向行列表 `LazyColumn`（weight 1，底部留整屏 padding 让末行也能锚到顶）。每行 = 行头（定高 32dp）+ 横向 `LazyRow` 的 16:9 `TvLandscapeCard`（192dp 宽、间距 16dp、TMDB backdrop w780，缺图退化海报裁切、卡内底部渐变叠标题） |
+| hero 双态 | 焦点在 hero → 展开：最高热度轮播条目 + 「更多详细内容」按钮 + 指示器**在整个 hero 底部水平居中**；焦点在卡片行 → 收缩：展示聚焦条目信息，按钮/指示器淡出 200ms。文字即时切换，**backdrop 目标防抖 500ms** 再 crossfade（Prime 实测：快速划过卡片不闪图） |
+| 锚定滚动 | **焦点项恒在左上角**：用 `BringIntoViewSpec`（`TvAnchoredBringIntoViewSpec`）—— 行内 spec 把焦点卡对齐行首，列 spec 把焦点行对齐顶部并预留行头高度；纯焦点事件驱动。每行各自 `rememberSaveable` 横向位置（Prime 同款、跨 route 返回后目标卡仍在组合中，焦点记忆可恢复） |
+| 按键 | hero 上 ←→ 切轮播；↓ 显式送焦行 0 记住的卡；行内 → 直接送焦下一张，← 先滚行让前一张重新组合再送焦（锚定后前一张已滚出组合，空间搜索找不到），首卡按左放行侧边栏；↑/↓ 行间导航 = 滚列表 + 送焦目标行记住的卡（悬挂到锚点附着）；行 0 按上回 hero 按钮；确认 → 详情 |
+| 状态 | 行结构变化（Paging 后到的继续观看插首行）时 hero 聚焦态下列表滚回顶（LazyColumn 按 key 保位会把新首行藏在视口上方）；trending 空 → 无指示器 |
 
 ### 7.2 新番时间表 `TvScheduleScreen`
 
@@ -826,7 +828,7 @@ D1 放弃编译期隔离后，**Konsist 是 §4.2 约定边界的主要机械守
 | 里程碑 | 内容 | 验收 |
 |---|---|---|
 | **M0 骨架**（前置重构 + 可运行空壳）✅ 已完成 | R1/R2 重构（`application` 装配双入口 + `:app:android` 源集重排 + manifest 三层分治）；`tv` flavor + `ui-main-tv`/`ui-foundation-tv` 库模块；banner；`AniTvTheme` + `TvFocusDefaults`；主壳 NavigationDrawer + 空页面路由；CI 增加 `assembleTvDebug` 与清单守护 | 手机 APK 二进制行为不变（default variant 合并 manifest 与基线语义等价 78 元素一致）；TV APK 真机安装通过、抽屉焦点导航/返回语义正常（魅族 18X 实测） |
-| **M1 看番主链路** 🔶 主链路已通（真机验证） | ✅ 探索页（hero 聚焦驱动 + 趋势/推荐行真实数据）；✅ 详情页（评分/简介/选集/续播按钮）；✅ 播放器控制层交互对齐（§8.2 状态机 HIDDEN/CONTROLS + 拖拽预览 + 按住倍速 + 选集条切集 + 数据源选择弹窗 + TvSeekBar 缓冲/已播分色 + 媒体键播停/上下集 + 返回逐层）；✅ 胶囊行浮出面板 ×5（推荐/Staff/角色/评论只读/弹幕列表吸底，玻璃条目 + 惰性订阅 + 面板内点击推荐跳详情；DETAILS 层未做）；扩展已挂载（自动连播/进度记忆/倍速）；✅ 跨 route 焦点恢复（TvFocusMemory，自研替代 focusRestorer）。**未完**：R3 TMDB 数据合入（backdrop 仍用海报、选集条无剧照）、锚点行吸附（现为普通 LazyRow）、hero 轮播自动播、帧预览浮窗（现退化纯时间反馈，附录 A 允许） | 从打开 TV 应用到「选番→看完一集→自动下一集」全程仅遥控器完成（自动连播完整周期待整集实测） |
+| **M1 看番主链路** 🔶 主链路已通（真机验证） | ✅ 探索页（hero 聚焦驱动 + 趋势/推荐行真实数据）；✅ 详情页（评分/简介/选集/续播按钮）；✅ 播放器控制层交互对齐（§8.2 状态机 HIDDEN/CONTROLS + 拖拽预览 + 按住倍速 + 选集条切集 + 数据源选择弹窗 + TvSeekBar 缓冲/已播分色 + 媒体键播停/上下集 + 返回逐层）；✅ 胶囊行浮出面板 ×5（推荐/Staff/角色/评论只读/弹幕列表吸底，玻璃条目 + 惰性订阅 + 面板内点击推荐跳详情；DETAILS 层未做）；扩展已挂载（自动连播/进度记忆/倍速）；✅ 跨 route 焦点恢复（TvFocusMemory，自研替代 focusRestorer）。✅ 探索页 v5（Prime 式：hero 常驻双态 + 16:9 TMDB 横图卡 + BringIntoViewSpec 锚定纵向滚动、焦点项恒在左上角）。**未完**：TMDB 选集条剧照、帧预览浮窗（现退化纯时间反馈，附录 A 允许）、其它页锚点行吸附 | 从打开 TV 应用到「选番→看完一集→自动下一集」全程仅遥控器完成（自动连播完整周期待整集实测） |
 | **M2 内容面完整** 🔶 三页已通（真机验证） | ✅ 追番（五 tab 聚焦即选中+数量角标+Adaptive 网格+空态）；✅ 搜索（TvTextField 精简版+软键盘 Search 提交+Paging 结果网格）；✅ 时间表（15 天胶囊行聚焦即换天+初始焦点落今天+当天网格）；主壳三态重构+时间表抽屉入口。**未完**：行对齐跨页、长按收藏管理、搜索历史/补全/筛选弹窗、播放历史续播、播放键全局语义、BrowserNavigator 二维码 | PR UX 附录 A 的交互清单逐项对照通过 |
 | **M3 账号与管理** 🔶 核心已通（真机验证） | ✅ 邮箱 OTP 登录（两步式，抽屉账号条目显示昵称）；✅ 设置子集（弹幕开关+播放三开关+版本+手机端占位）；✅ Toaster（原生 Toast 实现 provide LocalToaster）；✅ Konsist 边界守护三条（§11.1 落地，scopeFromExternalDirectories 绕过根探测被 app/gradlew 误导的问题）。**未完**：弹幕设置面板（TvSlider 7 项）/弹幕源管理/时间校准、帧预览、低端机降级开关、登录后各页数据联动实测 | 未登录/登录/弱网/无源等状态全覆盖 |
 | **M4 系统集成与收尾** 🔶 发布流水线已通 | ✅ 发布流水线全量（release 双 APK：`assembleTvRelease` 同 job 构建 + `uploadAndroidTvApk` 发布 `ani-tv-*` 资产 + workflow artifacts）。**跳过**（维护者指示）：应用内更新（依赖服务端 `android-tv` 支持，TV 端保持关闭）。**未做**：屏保 DreamService、主屏频道（Watch Next）、性能调优、真 TV 设备（盒子/模拟器）验证 | 正式版随手机版同步发布 |
@@ -892,7 +894,7 @@ D1 放弃编译期隔离后，**Konsist 是 §4.2 约定边界的主要机械守
 | 范围 | 裁定 |
 |---|---|
 | 全局 | 菜单键从任意位置直达侧边栏；侧边栏进入落点=**当前页**条目（`selected` 标记，回退 defaultFocus）；条目卡统一 `TvPosterCard` 样式（标题在卡内），**聚焦时标题跑马灯**、失焦单行截断 |
-| 探索页 | 整页单 LazyColumn（hero 参与滚动，backdrop 在 hero item 内且 fillMaxWidth）；hero **只由轮播驱动**（卡片聚焦不换 hero）；hero 单按钮"更多详细内容" + 左右键切轮播（首项按左放行侧边栏）+ 指示器/按钮常驻；下方=继续观看行 + 为你推荐**自适应网格**（手机 GridCells.Adaptive 语义：列数按可用宽算、行内 weight 等分、最右项不得压缩、尾行 Spacer 占位） |
+| 探索页 | **v5 Prime 式**：hero 常驻双态（焦点在 hero=轮播展开 0.66 + 按钮 + 居中指示器；焦点在卡片行=收缩 0.46 显示聚焦条目、按钮/指示器淡出、backdrop 防抖 500ms）；下方纵向行列表（继续观看 + 为你推荐 12 张/行分段），16:9 横版卡 TMDB 横图；焦点项恒在左上角（BringIntoViewSpec 锚定，行头对齐 hero 下缘）；每行各自保留横向位置；首卡按左放行侧边栏；行 0 按上回 hero |
 | 追番页 | tab 聚焦即选中；网格按上/按返回回**当前**分类 tab（不是几何最近的）；列表左右缘按左右=切相邻分类并落"对应位置"（同行近缘列、钳到末项）；首 tab 左缘交给侧边栏；tab 行再按返回才交壳回探索 |
 | 时间表 | 手机 **Medium 档多列布局**复刻（360dp 定宽列 + DayOfWeekHeadline 列头，无 TabRow/无 pager），复用 `ScheduleScreenState`；`HorizontalScrollControlScaffoldOnDesktop` 不可复用（hover 驱动，TV 无此事件源） |
 | 详情页 | 返回键三级分层（下方区块→选集轮播→Hero→退出）；backdrop 三态（未解析按有图排版，防海报闪替） |
@@ -922,7 +924,7 @@ D1 放弃编译期隔离后，**Konsist 是 §4.2 约定边界的主要机械守
 |---|---|
 | 时序 | 长按阈值 500ms · seek 步长 5s · seek 连按升级窗口 ~620ms · 控制层自动隐藏 5s（暂停不隐藏） · 对话框焦点延迟 300ms · hero 媒体防抖 300ms · hero 文字淡化 500ms · backdrop crossfade 600ms · backdrop 双态插值 400ms · 选集条滑入 250ms · 详情层 fade 300/500ms · 长按窥视 220ms · 轮播自动 6000ms |
 | 焦点视觉 | 海报卡：2.5dp primary 描边 @ 圆角 11dp（=8+3），内容常驻内缩 3dp，无缩放；按钮/胶囊：整块反色；播放器系：白底黑内容反色 |
-| 度量 | 侧栏收起 48dp（=内容左缘）· 海报卡 112dp/0.72/圆角 8/间距 10 · backdrop 0.66~0.70 屏高 16:9 贴右上 · hero 标题 0.5 宽 / 简介 0.4 宽 · 底缘遮罩 90dp smoothstep→95% · 选集卡 256×144(详情)/204×114.75(播放器) · 播放器 scrim 380/180dp · 面板 420/240dp 宽 max300dp · 居中弹窗 0.72×0.85 / 0.45 / 380dp |
+| 度量 | 侧栏收起 48dp（=内容左缘）· 海报卡 112dp/0.72/圆角 8/间距 10 · **横版卡 192dp/16:9/间距 16（Prime 实测卡宽≈屏宽 20%、4 整卡 + 1 半露）· 探索 hero 展开 0.66/收缩 0.46（Prime 0.78/0.53 含顶栏）· 行头 32dp · hero 高度过渡 250ms · backdrop 跟随防抖 500ms** · backdrop 0.66~0.70 屏高 16:9 贴右上 · hero 标题 0.5 宽 / 简介 0.4 宽 · 底缘遮罩 90dp smoothstep→95% · 选集卡 256×144(详情)/204×114.75(播放器) · 播放器 scrim 380/180dp · 面板 420/240dp 宽 max300dp · 居中弹窗 0.72×0.85 / 0.45 / 380dp |
 | 渐隐曲线 | `fadeFromBlack`: smoothstep 15 停点；`fadeToBlack`: quintic smootherstep^2.5 21 停点（两个纯函数直接从 PR 移植） |
 | 按键语义 | 确认短按=点击 / 长按=收藏菜单(列表页)、倍速(播放器)；播放键=直接播（列表页）/播停（播放器），长按=强制刷新；返回=逐层；←→ 在 hero=切轮播、在锚点行=滑列表、在时间表网格=时间线（跨天）、在播放器 HIDDEN=seek |
 | 文案 | `app-lang` 中 PR 铺设的 49 条 `*_tv_*` key 沿用（立即观看/正在刷新…/这一天没有新番/播放键继续播放 · 长按选择键编辑收藏 等） |
