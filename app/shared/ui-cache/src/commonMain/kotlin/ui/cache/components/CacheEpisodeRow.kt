@@ -53,6 +53,7 @@ import me.him188.ani.app.ui.lang.cache_episode_download_failed
 import me.him188.ani.app.ui.lang.cache_episode_pause_download
 import me.him188.ani.app.ui.lang.cache_episode_resume_download
 import me.him188.ani.app.ui.lang.cache_episode_status_paused
+import me.him188.ani.app.ui.lang.cache_episode_watched_progress
 import me.him188.ani.app.ui.lang.cache_filter_status_finished
 import me.him188.ani.app.ui.lang.cache_management_episode_label
 import me.him188.ani.app.ui.lang.cache_management_invalid_cache_info
@@ -65,7 +66,7 @@ import org.jetbrains.compose.resources.stringResource
 /**
  * 新设计的剧集缓存行, 用于条目缓存页与全局缓存管理页的详情栏.
  *
- * - 已完成: 标题 + "1.2 GB · AnimeGarden · 已完成" + 播放/更多按钮
+ * - 已完成: 标题 + "1.2 GB · AnimeGarden · 已完成 · 已观看 50.0%" (有观看进度时) + 播放/更多按钮
  * - 下载中: 标题 + "890 MB / 1.3 GB · AnimeGarden" + 暂停/更多按钮 + 进度条 + 速度/百分比
  * - 已暂停: 同上, 主操作为继续, 进度条右侧显示 "已暂停"
  * - 多选模式: 行首复选框, 行尾操作隐藏
@@ -287,7 +288,7 @@ private fun CacheEpisodePrimaryAction(
 }
 
 /**
- * "1.2 GB · AnimeGarden · 已完成" 形式的行副标题.
+ * "1.2 GB · AnimeGarden · 已完成 · 已观看 50.0%" 形式的行副标题, 观看进度仅在已完成且有播放历史时展示.
  */
 @Composable
 private fun cacheEpisodeMetaText(
@@ -301,6 +302,11 @@ private fun cacheEpisodeMetaText(
         episode.isFinished -> stringResource(Lang.cache_filter_status_finished)
         else -> null
     }
-    return listOfNotNull(episode.detailedSizeText, sourceName, statusText)
+    val watchedText = if (episode.isFinished) {
+        episode.playbackProgressText?.let { stringResource(Lang.cache_episode_watched_progress, it) }
+    } else {
+        null
+    }
+    return listOfNotNull(episode.detailedSizeText, sourceName, statusText, watchedText)
         .joinToString(" · ")
 }
