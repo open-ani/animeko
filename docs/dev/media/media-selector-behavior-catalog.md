@@ -1,5 +1,13 @@
 # Media Selector 行为清单(重构基线)
 
+> 2026-09-06：Web 自动选择已按新的两段截止时间策略实现，见[当前规则](../../contributing/code/media/media-selector.md#web-自动选择)。
+> 下文的 Web 四分支竞速、超时放开模糊匹配、ORCH-06 与 MIG-DUAL-02 为历史基线，已由明确阶段决策替代。
+> WEB 记忆源优先且阻塞的规则保留；BT 的完成条件、偏好与持久化规则保留。
+> 后续收拢为 `MediaAutoSelector` 单一执行循环，WEB 与 BT 均不再使用分支协程竞速。
+> `MediaSelectorAutoSelect` 及 `.autoSelect` 已删除；下文保留旧公开方法的约束及相关行号为历史记录。
+> 下载缓存调用方直接等待完成并调用 `trySelectDefault`，播放和换源统一调用 `MediaAutoSelector.select`。
+
+
 > 生成自 2026-07-31 对 main 分支的全量代码盘点(全部行号已核实)。
 > 这是重构的"不可破坏行为"基线:每一条要么已有测试覆盖,要么在重构前按[重构方案](media-selector-refactor.md)补齐。
 > 共 128 条;已覆盖 70 条,缺口 56 条(P0 14 / P1 26 / P2 16)。

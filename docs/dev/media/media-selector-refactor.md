@@ -1,5 +1,13 @@
 # Media Selector 重构方案
 
+> 2026-09-06：Web 自动选择已按新的两段截止时间策略实现，见[当前规则](../../contributing/code/media/media-selector.md#web-自动选择)。
+> 下文的 Web 四分支竞速、超时放开模糊匹配、ORCH-06 与 MIG-DUAL-02 为历史基线，已由明确阶段决策替代。
+> WEB 记忆源优先且阻塞的规则保留；BT 的完成条件、偏好与持久化规则保留。
+> 后续收拢为 `MediaAutoSelector` 单一执行循环，WEB 与 BT 均不再使用分支协程竞速。
+> `MediaSelectorAutoSelect` 及 `.autoSelect` 已删除；下文保留旧公开方法的约束及相关行号为历史记录。
+> 下载缓存调用方直接等待完成并调用 `trySelectDefault`，播放和换源统一调用 `MediaAutoSelector.select`。
+
+
 > 状态:**方案定稿**;2026-08-02 增补 Phase C(BT/WEB 双模式拆分,方向已批,D8–D11 已定,见 §5/§7);其余决策点待批,批准前不动任何生产代码。
 > 日期:2026-07-31 定稿,2026-08-02 修订(Phase C + §3.1 复合主键),基于 main 分支(行号均已核实)。
 > 姊妹文档:[行为清单(重构基线)](media-selector-behavior-catalog.md) —— 128 条可测行为断言,本方案所有 "ID"(FILT-01、ORCH-06 等)均指向该清单。

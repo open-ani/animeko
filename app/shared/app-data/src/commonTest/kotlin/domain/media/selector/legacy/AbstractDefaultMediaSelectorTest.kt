@@ -41,7 +41,7 @@ import me.him188.ani.utils.platform.collections.toImmutable
 
 /**
  * @suppress 已弃用, 新的 test 使用 [me.him188.ani.app.domain.media.selector.testFramework.TestMediaFetchSessionBuilder].
- * @see me.him188.ani.app.domain.media.selector.MediaSelectorAutoSelect
+ * @see me.him188.ani.app.domain.media.selector.MediaSelector
  */
 @Deprecated(MediaSelectorDeprecationMessage)
 abstract class AbstractDefaultMediaSelectorTest {
