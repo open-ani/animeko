@@ -63,12 +63,22 @@ import me.him188.ani.danmaku.ui.DanmakuConfig
 import me.him188.ani.danmaku.ui.DanmakuHostState
 import me.him188.ani.danmaku.ui.DanmakuPresentation
 import me.him188.ani.danmaku.ui.DanmakuTrackProperties
+import me.him188.ani.app.domain.episode.episodeIdFlow
+import me.him188.ani.datasources.api.Media
+import me.him188.ani.datasources.api.source.MediaSourceKind
+import me.him188.ani.datasources.api.topic.UnifiedCollectionType
 import org.koin.core.Koin
 import org.koin.core.component.KoinComponent
 import org.koin.core.component.inject
+import org.openani.mediamp.ExperimentalMediampApi
 import org.openani.mediamp.MediampPlayer
 import org.openani.mediamp.MediampPlayerFactory
+import org.openani.mediamp.features.AspectRatioMode
+import org.openani.mediamp.features.Buffering
+import org.openani.mediamp.features.PlaybackSpeed
+import org.openani.mediamp.features.VideoAspectRatio
 import org.openani.mediamp.togglePause
+import kotlin.math.abs
 
 /**
  * TV 播放页薄 VM (atv-architecture.md §8.1): 与手机共用同一套播放编排 (app-data domain),
@@ -171,6 +181,106 @@ class TvEpisodeViewModel(
     val videoLoadingState: StateFlow<VideoLoadingState> =
         fetchPlayState.playerSession.videoLoadingState
 
+    /** 选集条条目 (§8.3): 集序号 + 标题 + 已看标记. */
+    data class StripEpisode(
+        val episodeId: Int,
+        val sortLabel: String,
+        val title: String,
+        val watched: Boolean,
+    )
+
+    val episodeStripFlow: StateFlow<List<StripEpisode>> = episodeCollectionsFlow
+        .map { list ->
+            list.map { collection ->
+                val info = collection.episodeInfo
+                StripEpisode(
+                    episodeId = collection.episodeId,
+                    sortLabel = "第 ${info.sort} 集",
+                    title = info.nameCn.ifBlank { info.name },
+                    watched = collection.collectionType == UnifiedCollectionType.DONE,
+                )
+            }
+        }
+        .stateIn(backgroundScope, SharingStarted.WhileSubscribed(5_000), emptyList())
+
+    /** 当前播放的分集 (切集后随会话切换). */
+    @OptIn(UnsafeEpisodeSessionApi::class)
+    val currentEpisodeIdFlow: StateFlow<Int> = fetchPlayState.episodeIdFlow
+        .stateIn(backgroundScope, SharingStarted.WhileSubscribed(5_000), initialEpisodeId)
+
+    // endregion
+
+    // region 数据源选择 (§8.1: 仅 WEB 源; TV 未装配缓存/torrent, 双保险过滤)
+
+    @OptIn(UnsafeEpisodeSessionApi::class)
+    val mediaCandidates: StateFlow<List<Media>> = fetchPlayState.mediaSelectorFlow
+        .flatMapLatest { selector ->
+            selector?.filteredCandidatesMedia ?: flowOf(emptyList())
+        }
+        .map { list -> list.filter { it.kind == MediaSourceKind.WEB } }
+        .stateIn(backgroundScope, SharingStarted.WhileSubscribed(5_000), emptyList())
+
+    @OptIn(UnsafeEpisodeSessionApi::class)
+    val selectedMedia: StateFlow<Media?> = fetchPlayState.mediaSelectorFlow
+        .flatMapLatest { selector -> selector?.selected ?: flowOf(null) }
+        .stateIn(backgroundScope, SharingStarted.WhileSubscribed(5_000), null)
+
+    @OptIn(UnsafeEpisodeSessionApi::class)
+    fun selectMedia(media: Media) {
+        backgroundScope.launch {
+            fetchPlayState.mediaSelectorFlow.filterNotNull().first().select(media)
+        }
+    }
+
+    // endregion
+
+    // region 播放器能力 (mediamp features)
+
+    private val playbackSpeedFeature get() = player.features[PlaybackSpeed]
+    private val aspectRatioFeature get() = player.features[VideoAspectRatio]
+
+    val playbackSpeedStateFlow: StateFlow<Float> =
+        (playbackSpeedFeature?.valueFlow ?: flowOf(1f))
+            .stateIn(backgroundScope, SharingStarted.WhileSubscribed(5_000), playbackSpeedFeature?.value ?: 1f)
+
+    val aspectRatioModeFlow: StateFlow<AspectRatioMode> =
+        aspectRatioFeature?.mode
+            ?: kotlinx.coroutines.flow.MutableStateFlow(AspectRatioMode.FIT)
+
+    @OptIn(ExperimentalMediampApi::class)
+    val bufferedFractionFlow: StateFlow<Float> =
+        (player.features[Buffering]?.bufferedPercentage ?: flowOf(0))
+            .map { it / 100f }
+            .stateIn(backgroundScope, SharingStarted.WhileSubscribed(5_000), 0f)
+
+    /** 确认键按住 2.5x 快进 (附录 A: 长按 500ms, 松开还原原倍速). */
+    private var speedBeforeHold: Float? = null
+
+    fun setSpeedHold(engaged: Boolean) {
+        val feature = playbackSpeedFeature ?: return
+        if (engaged) {
+            if (speedBeforeHold == null) speedBeforeHold = feature.value
+            feature.set(SPEED_HOLD_FACTOR)
+        } else {
+            speedBeforeHold?.let { feature.set(it) }
+            speedBeforeHold = null
+        }
+    }
+
+    /** 图标行倍速按钮: 在档位间循环 (会话内生效, 不写回设置). */
+    fun cycleSpeed() {
+        val feature = playbackSpeedFeature ?: return
+        val current = feature.value
+        val index = SPEED_STEPS.indexOfFirst { abs(it - current) < 0.01f }
+        feature.set(SPEED_STEPS[(index + 1).mod(SPEED_STEPS.size)])
+    }
+
+    fun cycleAspectRatio() {
+        val feature = aspectRatioFeature ?: return
+        val modes = AspectRatioMode.entries
+        feature.setMode(modes[(modes.indexOf(feature.mode.value) + 1) % modes.size])
+    }
+
     // endregion
 
     // region 弹幕 (接线拷自手机 EpisodeViewModel, atv-architecture.md §8.3)
@@ -243,6 +353,25 @@ class TvEpisodeViewModel(
         player.seekTo(target)
     }
 
+    fun seekTo(positionMillis: Long) {
+        player.seekTo(positionMillis.coerceAtLeast(0))
+    }
+
+    fun switchEpisode(episodeId: Int) {
+        backgroundScope.launch { fetchPlayState.switchEpisode(episodeId) }
+    }
+
+    /** 上一集 (-1) / 下一集 (+1); 到列表边界则不动 (媒体键 RW/FF, §8.2 全局键). */
+    fun switchToNeighborEpisode(offset: Int) {
+        backgroundScope.launch {
+            val list = episodeCollectionsFlow.first()
+            val index = list.indexOfFirst { it.episodeId == currentEpisodeIdFlow.value }
+            if (index == -1) return@launch
+            val target = list.getOrNull(index + offset) ?: return@launch
+            fetchPlayState.switchEpisode(target.episodeId)
+        }
+    }
+
     init {
         backgroundScope.launch {
             settingsRepository.danmakuConfig.flow.collect { danmakuConfigState.value = it }
@@ -266,4 +395,12 @@ class TvEpisodeViewModel(
     }
 
     override fun getKoin(): Koin = koin
+
+    companion object {
+        /** 确认键按住快进倍率 (附录 A). */
+        const val SPEED_HOLD_FACTOR = 2.5f
+
+        /** 图标行倍速循环档位. */
+        val SPEED_STEPS = listOf(0.5f, 0.75f, 1f, 1.25f, 1.5f, 2f)
+    }
 }
