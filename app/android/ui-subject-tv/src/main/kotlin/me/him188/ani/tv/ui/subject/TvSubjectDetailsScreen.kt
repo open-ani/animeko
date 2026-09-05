@@ -216,6 +216,8 @@ private fun TvSubjectDetailsContent(
     val heroBackdropUrl = backdropState?.url
         ?: subjectInfo.imageLarge.takeIf { backdropState != null && it.isNotBlank() }
 
+    // 选集尚未到达 (占位态): 播放钮以「加载中…」占位常驻, 焦点当帧落定 (见 TvDetailsHeroSection)
+    val episodesLoading = presentation.isPlaceholder || presentation.episodeListUiState.isPlaceholder
     // 续播目标: 手机同款语义 (SubjectProgressState.episodeIdToPlay), 未就绪回退第一个未看正片
     val playTargetId = details.subjectProgressState.episodeIdToPlay
         ?: episodes.firstOrNull { !it.isDoneOrDropped }?.episodeId
@@ -263,6 +265,7 @@ private fun TvSubjectDetailsContent(
             airingCollection = airingCollection,
             playTargetId = playTargetId,
             playTargetSort = playTargetSort,
+            episodesLoading = episodesLoading,
             watchedCount = watched,
             onPlayEpisode = onPlayEpisode,
             playButtonModifier = Modifier
@@ -379,6 +382,7 @@ private fun TvDetailsHeroSection(
     airingCollection: SubjectCollectionInfo?,
     playTargetId: Int?,
     playTargetSort: EpisodeSort?,
+    episodesLoading: Boolean,
     watchedCount: Int,
     onPlayEpisode: (episodeId: Int) -> Unit,
     playButtonModifier: Modifier,
@@ -413,23 +417,26 @@ private fun TvDetailsHeroSection(
             horizontalArrangement = Arrangement.spacedBy(32.dp),
             verticalAlignment = Alignment.Bottom,
         ) {
-            // 左列: 播放按钮 (续播目标 = 手机 SubjectProgressState.episodeIdToPlay 同款语义)
+            // 左列: 播放按钮 (续播目标 = 手机 SubjectProgressState.episodeIdToPlay 同款语义).
+            // 槽位常驻可聚焦: 选集未到时以「加载中…」占位 (同一锚点), 进页初始焦点当帧落定 ——
+            // 否则页面无焦点持有者, 首个按键会让 Compose 默认聚焦「展开简介」并把整页滚下去
             Column(Modifier.width(210.dp)) {
-                if (playTargetId != null) {
-                    val label = if (watchedCount > 0 && playTargetSort != null) {
+                val label = when {
+                    playTargetId != null && watchedCount > 0 && playTargetSort != null ->
                         "继续观看 第 $playTargetSort 话"
-                    } else {
-                        "开始观看"
-                    }
-                    TvHeroButton(
-                        text = label,
-                        icon = Icons.Rounded.PlayArrow,
-                        filled = true,
-                        onClick = { onPlayEpisode(playTargetId) },
-                        onFocused = {},
-                        modifier = playButtonModifier,
-                    )
+
+                    playTargetId != null -> "开始观看"
+                    episodesLoading -> "加载中…"
+                    else -> "暂无剧集"
                 }
+                TvHeroButton(
+                    text = label,
+                    icon = Icons.Rounded.PlayArrow,
+                    filled = playTargetId != null,
+                    onClick = { playTargetId?.let(onPlayEpisode) },
+                    onFocused = {},
+                    modifier = playButtonModifier,
+                )
             }
 
             // 中列: 年月/连载 + 收藏统计 + 标签墙
