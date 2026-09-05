@@ -888,6 +888,8 @@ D1 放弃编译期隔离后，**Konsist 是 §4.2 约定边界的主要机械守
 6. **多方参与的焦点协议单文件收口**：焦点记忆（同页/跨 route 恢复）全协议在 `TvFocusMemory.kt`（组件只挂 `tvFocusMemorable(id)`），网格聚焦第 N 项/边缘切换在 `TvFocusGrid.kt`——新增此类协议时照此模式，禁止把步骤散进壳/组件/页面各写一段。
 7. 本节 1/2 的可静态检查部分已固化为 Konsist 测试（TvArchitectureTest：持有 scope 必装 Resolver+信号、`requesterOf` 仅框架内部可用——裸 requester 无锚点上报，事件驱动解析无法感知目标）；框架纯逻辑（调度/记忆/网格状态机）有单元测试守护（ui-foundation-tv/src/test）。
 8. **焦点处理必须全事件驱动，禁止轮询与延时**（用户裁定，Konsist 守护框架目录禁 `delay`/`withFrameNanos`）。可用的确定性信号只有四类：**节点附着事件**（`tvFocusAnchor` 上报，悬挂中的 `request` 在目标附着瞬间送达——这是对 Compose"对未附着节点 requestFocus 静默失败且无附着回调"缺口的补齐）、**焦点得失事件**（onFocusChanged 上报）、**快照状态变化**（`snapshotFlow`，如用户交互代数、分页 itemCount）、**数据层完成事件**（如 Paging `LoadState` 判定"确无数据"）。失败语义 = 单发不抢：送焦后被后到分配抢走不追抢，用户按键即取消在途请求；"目标可能永不出现"一律用数据层事件判定，不准用超时猜测。历史教训：轮询+延时版本在慢设备上暴露整族时序竞态（烧满轮询抢用户焦点、时序窗口内按键误伤），全部源于"猜时间"。
+9. **滚动容器的 BringIntoView 策略必须显式给定**（`LocalBringIntoViewSpec`）。Compose 在 Android TV 上的平台默认是 **pivot 30%**：聚焦项前缘无论是否已可见都会被滚到容器 30% 处——它会把整屏 hero 滚掉半屏、把锚定行滚到错位，且总能压过手写的 `animateScrollTo`（两条动画争同一 ScrollState，后启动的赢，而 BIV 由 focusable 节点在焦点回调之后的协程里启动）。规则：页面想要的滚动位置全部编码进自己的 spec（探索页 `TvAnchoredBringIntoViewSpec`：对齐前缘+行头预留；详情页 `TvDetailsBringIntoViewSpec`：焦点在播放钮 → 回页顶，其余 pivot 30%），**不要**在焦点回调里手写滚动去和 BIV 抢。spec 需要"是谁聚焦"时用状态 lambda：焦点回调同步写入，BIV 的距离计算在其后的协程里读取。
+10. **进页初始焦点在 RESUMED 后送达**（`InitialFocus` 对所有路径统一等 Lifecycle RESUMED）：转场中的 requestFocus 会被转场收尾冲掉，push/pop 皆然，真人按键时序下稳定复现。`Resolver` 送焦被拒不清 pending（目标下次附着重试），用户按键仍可取消。进页期间页面上应只有默认锚点一个可聚焦节点（详情页：播放钮槽位常驻、第二屏在首次聚焦前不组合），杂散按键无处可落。
 
 ### 14.5 交互细则（逐轮验收裁定，视为验收标准）
 

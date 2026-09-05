@@ -11,6 +11,10 @@ package me.him188.ani.tv.ui.subject
 
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.ScrollState
+import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.foundation.gestures.LocalBringIntoViewSpec
+import androidx.compose.foundation.gestures.BringIntoViewSpec
+import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.basicMarquee
 import androidx.compose.foundation.layout.Arrangement
@@ -48,7 +52,6 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -56,6 +59,8 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.drawWithContent
 import androidx.compose.ui.focus.FocusDirection
 import androidx.compose.ui.focus.onFocusChanged
+import androidx.lifecycle.compose.LocalLifecycleOwner
+import androidx.lifecycle.Lifecycle
 import androidx.compose.ui.graphics.BlendMode
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
@@ -69,7 +74,6 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.paging.compose.collectAsLazyPagingItems
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.flow.first
-import kotlinx.coroutines.launch
 import me.him188.ani.app.data.models.subject.SubjectCollectionInfo
 import me.him188.ani.app.data.models.subject.SubjectInfo
 import me.him188.ani.app.data.network.TmdbImageService
@@ -226,11 +230,24 @@ private fun TvSubjectDetailsContent(
     val watched = episodes.count { it.isDoneOrDropped }
 
     val scrollState = rememberScrollState()
-    val scope = rememberCoroutineScope()
-    // 统一焦点框架: 进页初始焦点落播放按钮
+    // 统一焦点框架: 进页初始焦点落播放按钮 (转场结束后送达, 见 InitialFocus)
     val focus = rememberTvFocusScope()
     focus.Resolver()
     focus.InitialFocus(TvDetailsFocus.Play)
+    // 首屏之下的区块 (简介/选集/角色…) 在播放钮拿到焦点之前不组合: 进页期间页面上只有
+    // 播放钮一个可聚焦节点, 任何来路的默认聚焦/杂散按键都只能落在它上面, 不可能把页面滚下去.
+    // 第二屏本就在折叠线之下 (hero 整屏), 晚组合几百毫秒不可见. RESUMED 兜底防按钮永不聚焦.
+    var belowFoldReady by remember { mutableStateOf(false) }
+    // 播放钮是否持焦 (焦点回调同步写入; BringIntoView 的滚动计算在其后的协程里读取)
+    var playFocused by remember { mutableStateOf(false) }
+    val bringIntoViewSpec = remember(scrollState) {
+        TvDetailsBringIntoViewSpec(playFocused = { playFocused }, scrollOffset = { scrollState.value })
+    }
+    val lifecycle = LocalLifecycleOwner.current.lifecycle
+    LaunchedEffect(Unit) {
+        lifecycle.currentStateFlow.first { it.isAtLeast(Lifecycle.State.RESUMED) }
+        belowFoldReady = true
+    }
     // 返回键三级分层 (PR 语义): 选集之下区块 -> 回选集; 选集 -> 回 Hero; Hero -> 退出.
     // 层级用"最后持有过焦点的区块"记忆 (各区块 onFocusChanged 上报), 不读瞬时焦点
     var backLevel by remember { mutableStateOf(TvDetailsBackLevel.Hero) }
@@ -252,6 +269,7 @@ private fun TvSubjectDetailsContent(
     TvSubjectDetailsPageLayout(
         focus = focus,
         scrollState = scrollState,
+        bringIntoViewSpec = bringIntoViewSpec,
         backdrop = {
             heroBackdropUrl?.let { url -> TvDetailsBackdrop(url, scrollState) }
         },
@@ -269,13 +287,17 @@ private fun TvSubjectDetailsContent(
             watchedCount = watched,
             onPlayEpisode = onPlayEpisode,
             playButtonModifier = Modifier
-                // 焦点落到播放钮即滚回页顶, 完整露出沉浸式封面 (焦点事件驱动; ↑ 回按钮 /
-                // 返回分层回 Hero 共用这一条, 不另写滚动)
-                .onFocusChanged { if (it.isFocused) scope.launch { scrollState.animateScrollTo(0) } }
+                // 播放钮聚焦态上报: 页面的 BringIntoViewSpec 据此把滚动目标定为页顶 (见
+                // TvDetailsBringIntoViewSpec); 首次聚焦后放开第二屏组合
+                .onFocusChanged {
+                    playFocused = it.isFocused
+                    if (it.isFocused) belowFoldReady = true
+                }
                 .tvFocusAnchor(focus, TvDetailsFocus.Play)
                 .tvFocusLink(focus, down = TvDetailsFocus.ExpandSummary),
             modifier = Modifier.height(heroHeight),
         )
+        if (!belowFoldReady) return@TvSubjectDetailsPageLayout
         TvDetailsEpisodesSection(
             subjectInfo = subjectInfo,
             episodes = episodes,
@@ -309,10 +331,12 @@ private fun TvSubjectDetailsContent(
  * 统一焦点接线 + 全屏 [backdrop] 背景层 + 纵向滚动内容列.
  * heroHeight = 视口高 - 16dp, 供 hero 首屏与选集整页各占一屏.
  */
+@OptIn(ExperimentalFoundationApi::class)
 @Composable
 private fun TvSubjectDetailsPageLayout(
     focus: TvFocusScope,
     scrollState: ScrollState,
+    bringIntoViewSpec: BringIntoViewSpec,
     backdrop: @Composable BoxScope.() -> Unit,
     modifier: Modifier = Modifier,
     content: @Composable ColumnScope.(heroHeight: Dp) -> Unit,
@@ -320,9 +344,33 @@ private fun TvSubjectDetailsPageLayout(
     BoxWithConstraints(modifier.fillMaxSize().tvFocusNavSignal(focus)) {
         val heroHeight = maxHeight - 16.dp
         backdrop()
-        Column(Modifier.fillMaxSize().verticalScroll(scrollState)) {
-            content(heroHeight)
+        // 纵向滚动的 BringIntoView 策略由页面给定 (覆盖 Android TV 平台默认的 pivot 30%)
+        CompositionLocalProvider(LocalBringIntoViewSpec provides bringIntoViewSpec) {
+            Column(Modifier.fillMaxSize().verticalScroll(scrollState)) {
+                content(heroHeight)
+            }
         }
+    }
+}
+
+/**
+ * 详情页纵向滚动的 BringIntoView 策略. Android TV 上 Compose 的平台默认是 **pivot 30%**:
+ * 聚焦项前缘无论是否已可见都会被滚到容器 30% 处 —— 正是它在进页后把整屏 hero 滚掉半屏
+ * (播放钮停在 30% 线上), 且总能压过手写的 animateScrollTo(0) (两条动画争同一 ScrollState,
+ * 后启动的赢). 这里改成: 焦点在播放钮 → 滚动量 = -当前滚动偏移, 即回到页顶完整露出沉浸式
+ * 封面; 其余焦点 (简介/选集/角色…) → 保留 pivot 30% (第二屏排版按此设计). 单一机制, 无互抢.
+ */
+@OptIn(ExperimentalFoundationApi::class)
+private class TvDetailsBringIntoViewSpec(
+    private val playFocused: () -> Boolean,
+    private val scrollOffset: () -> Int,
+) : BringIntoViewSpec {
+    override fun calculateScrollDistance(offset: Float, size: Float, containerSize: Float): Float =
+        if (playFocused()) -scrollOffset().toFloat() else offset - containerSize * PIVOT_FRACTION
+
+    private companion object {
+        /** Android TV 平台默认 pivot 比例 (Compose foundation BringIntoViewSpec.android). */
+        const val PIVOT_FRACTION = 0.3f
     }
 }
 

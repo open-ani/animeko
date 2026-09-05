@@ -124,7 +124,8 @@ class TvFocusScope {
 
     /**
      * 解析安装点: 页面根部组合一次. 快照流响应"有 pending 且目标锚点已附着" ->
-     * 立即送焦一次并清 pending. 单实例消化所有 [request], 避免多处请求打架.
+     * 送焦一次, **成功才清 pending**: 送焦被拒 (目标暂不可聚焦 / 转场中) 时请求继续悬挂,
+     * 目标下次附着或换代时重试; 用户按键仍可取消. 单实例消化所有 [request], 避免多处请求打架.
      */
     @Composable
     fun Resolver() {
@@ -136,18 +137,20 @@ class TvFocusScope {
             }
                 .filterNotNull()
                 .collect { (key, _, _) ->
-                    runCatching { requesterOf(key).requestFocus() }
-                    if (pending?.first == key) pending = null
+                    val granted = runCatching { requesterOf(key).requestFocus() }.getOrDefault(false)
+                    if (granted && pending?.first == key) pending = null
                 }
         }
     }
 
     /**
-     * 进页初始焦点: 组合完成后请求 [key] (锚点未附着则悬挂到附着, 无延时).
+     * 进页初始焦点: 等 route 进入前台的 **Lifecycle RESUMED 事件** (转场完成) 后请求 [key]
+     * (锚点未附着则悬挂到附着, 无延时). 转场中一律不送焦 —— 转场里的 requestFocus 会被
+     * 转场收尾冲掉 (push/pop 皆然, 真人按键时序下稳定复现), 事件门控比"送了再补"可靠.
+     * 壳内切页 (同一 route) 时 lifecycle 已是 RESUMED, 等价于立即请求.
      *
-     * 跨 route 返回 (焦点记忆 Armed) 时等 route 进入前台的 **Lifecycle RESUMED 事件**
-     * (转场完成) 再裁决: 认领已登记 -> 记忆恢复原位, 不落默认锚点; 无认领 (数据未到) ->
-     * 落默认锚点防悬空, 目标附着后由记忆即时接管. 转场中不送焦 (会被转场收尾冲掉).
+     * 跨 route 返回 (焦点记忆 Armed) 时先裁决记忆: 认领已登记 -> 记忆恢复原位, 不落默认锚点;
+     * 无认领 (数据未到) -> 落默认锚点防悬空, 目标附着后由记忆即时接管.
      */
     @Composable
     fun InitialFocus(key: TvFocusKey) {
@@ -155,10 +158,8 @@ class TvFocusScope {
         val lifecycle = LocalLifecycleOwner.current.lifecycle
         LaunchedEffect(this) {
             // LaunchedEffect 在组合应用后执行, 此刻首帧组合内的记忆认领 (SideEffect) 已完成
-            if (memory?.pendingRestoreId != null) {
-                lifecycle.currentStateFlow.first { it.isAtLeast(Lifecycle.State.RESUMED) }
-                if (memory.activate()) return@LaunchedEffect
-            }
+            lifecycle.currentStateFlow.first { it.isAtLeast(Lifecycle.State.RESUMED) }
+            if (memory?.pendingRestoreId != null && memory.activate()) return@LaunchedEffect
             request(key)
         }
     }
