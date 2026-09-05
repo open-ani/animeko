@@ -10,7 +10,6 @@
 package me.him188.ani.tv.ui.exploration
 
 import androidx.compose.foundation.ExperimentalFoundationApi
-import androidx.compose.foundation.gestures.BringIntoViewSpec
 import androidx.compose.foundation.gestures.LocalBringIntoViewSpec
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -60,6 +59,7 @@ import me.him188.ani.app.data.network.BangumiSummaryService
 import me.him188.ani.app.data.network.TmdbImageService
 import me.him188.ani.app.data.network.newestAiredDateStringOrNull
 import me.him188.ani.app.data.repository.subject.SubjectCollectionRepository
+import me.him188.ani.tv.ui.foundation.focus.TvAnchoredBringIntoViewSpec
 import me.him188.ani.tv.ui.foundation.focus.TvFocusKey
 import me.him188.ani.tv.ui.foundation.focus.TvFocusScope
 import me.him188.ani.tv.ui.foundation.focus.tvFocusAnchor
@@ -77,17 +77,6 @@ import me.him188.ani.tv.ui.foundation.widgets.tvHeroContentColor
  * 纵向锚定用 Compose 的 BringIntoViewSpec 实现: 焦点落到卡片 → 焦点系统发 bringIntoView →
  * 列把卡对齐顶部 (有行头的行预留行头高度). 纯焦点事件驱动, 无轮询/延时 (§14.4-8).
  */
-
-/**
- * 锚定式 BringIntoViewSpec: 目标总是滚到容器前缘 (再留 [leadingReservePx] 给行头),
- * 而不是默认的"只要露出来就不动". 预留量用 lambda: 聚焦行有无行头不同 (焦点回调同步写入,
- * 滚动计算在其后的协程里读取).
- */
-@OptIn(ExperimentalFoundationApi::class)
-internal class TvAnchoredBringIntoViewSpec(private val leadingReservePx: () -> Float = { 0f }) : BringIntoViewSpec {
-    override fun calculateScrollDistance(offset: Float, size: Float, containerSize: Float): Float =
-        offset - leadingReservePx()
-}
 
 /** 行内卡片锚点: (行 key, 行内索引). 行间导航/横向行左右移动都以此为送焦目标. */
 internal data class TvExplorationCardKey(val rowKey: String, val index: Int) : TvFocusKey

@@ -59,6 +59,11 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.drawWithContent
 import androidx.compose.ui.focus.FocusDirection
 import androidx.compose.ui.focus.onFocusChanged
+import androidx.compose.runtime.Stable
+import androidx.compose.ui.layout.positionInRoot
+import androidx.compose.ui.layout.onGloballyPositioned
+import androidx.compose.runtime.mutableStateMapOf
+import androidx.compose.runtime.mutableFloatStateOf
 import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.lifecycle.Lifecycle
 import androidx.compose.ui.graphics.BlendMode
@@ -92,6 +97,8 @@ import me.him188.ani.tv.ui.foundation.focus.TvFocusScope
 import me.him188.ani.tv.ui.foundation.focus.rememberTvFocusScope
 import me.him188.ani.tv.ui.foundation.focus.tvFocusAnchor
 import me.him188.ani.tv.ui.foundation.focus.tvFocusLink
+import androidx.compose.ui.platform.LocalDensity
+import me.him188.ani.tv.ui.foundation.focus.TvAnchoredBringIntoViewSpec
 import me.him188.ani.tv.ui.foundation.focus.tvFocusExit
 import me.him188.ani.tv.ui.foundation.focus.tvFocusNavSignal
 import me.him188.ani.tv.ui.foundation.widgets.TvHeroButton
@@ -238,11 +245,15 @@ private fun TvSubjectDetailsContent(
     // 播放钮一个可聚焦节点, 任何来路的默认聚焦/杂散按键都只能落在它上面, 不可能把页面滚下去.
     // 第二屏本就在折叠线之下 (hero 整屏), 晚组合几百毫秒不可见. RESUMED 兜底防按钮永不聚焦.
     var belowFoldReady by remember { mutableStateOf(false) }
-    // 播放钮是否持焦 (焦点回调同步写入; BringIntoView 的滚动计算在其后的协程里读取)
-    var playFocused by remember { mutableStateOf(false) }
+    // 滚动锚点 = 聚焦项所在区块的上边缘 (各区块根节点上报几何 + 子树持焦; 见 TvDetailsScrollAnchors)
+    val anchors = remember { TvDetailsScrollAnchors() }
     val bringIntoViewSpec = remember(scrollState) {
-        TvDetailsBringIntoViewSpec(playFocused = { playFocused }, scrollOffset = { scrollState.value })
+        TvDetailsBringIntoViewSpec(
+            targetScroll = { anchors.focusedSection?.let { anchors.sectionTops[it] } },
+            scrollOffset = { scrollState.value },
+        )
     }
+    fun Modifier.scrollSection(key: String) = tvDetailsScrollSection(anchors, key) { scrollState.value }
     val lifecycle = LocalLifecycleOwner.current.lifecycle
     LaunchedEffect(Unit) {
         lifecycle.currentStateFlow.first { it.isAtLeast(Lifecycle.State.RESUMED) }
@@ -270,6 +281,7 @@ private fun TvSubjectDetailsContent(
         focus = focus,
         scrollState = scrollState,
         bringIntoViewSpec = bringIntoViewSpec,
+        scrollContentModifier = Modifier.onGloballyPositioned { anchors.contentTopInRoot = it.positionInRoot().y },
         backdrop = {
             heroBackdropUrl?.let { url -> TvDetailsBackdrop(url, scrollState) }
         },
@@ -287,15 +299,11 @@ private fun TvSubjectDetailsContent(
             watchedCount = watched,
             onPlayEpisode = onPlayEpisode,
             playButtonModifier = Modifier
-                // 播放钮聚焦态上报: 页面的 BringIntoViewSpec 据此把滚动目标定为页顶 (见
-                // TvDetailsBringIntoViewSpec); 首次聚焦后放开第二屏组合
-                .onFocusChanged {
-                    playFocused = it.isFocused
-                    if (it.isFocused) belowFoldReady = true
-                }
+                // 首次聚焦后放开第二屏组合 (滚回页顶由 hero 区块锚点 = 0 自然给出)
+                .onFocusChanged { if (it.isFocused) belowFoldReady = true }
                 .tvFocusAnchor(focus, TvDetailsFocus.Play)
                 .tvFocusLink(focus, down = TvDetailsFocus.ExpandSummary),
-            modifier = Modifier.height(heroHeight),
+            modifier = Modifier.height(heroHeight).scrollSection("hero"),
         )
         if (!belowFoldReady) return@TvSubjectDetailsPageLayout
         TvDetailsEpisodesSection(
@@ -317,11 +325,13 @@ private fun TvSubjectDetailsContent(
                 // 行内任意卡按上都回"展开简介" (出组重定向, 不依赖几何对齐)
                 .tvFocusExit(focus, FocusDirection.Up to TvDetailsFocus.ExpandSummary),
             onFocusedWithin = { backLevel = TvDetailsBackLevel.Episodes },
+            modifier = Modifier.scrollSection("episodes"),
         )
         TvDetailsBelowSections(
             details = details,
             onClickRelated = onClickRelated,
             onFocusedWithin = { backLevel = TvDetailsBackLevel.Below },
+            blockModifier = { key -> Modifier.scrollSection(key) },
         )
     }
 }
@@ -337,6 +347,7 @@ private fun TvSubjectDetailsPageLayout(
     focus: TvFocusScope,
     scrollState: ScrollState,
     bringIntoViewSpec: BringIntoViewSpec,
+    scrollContentModifier: Modifier,
     backdrop: @Composable BoxScope.() -> Unit,
     modifier: Modifier = Modifier,
     content: @Composable ColumnScope.(heroHeight: Dp) -> Unit,
@@ -344,33 +355,69 @@ private fun TvSubjectDetailsPageLayout(
     BoxWithConstraints(modifier.fillMaxSize().tvFocusNavSignal(focus)) {
         val heroHeight = maxHeight - 16.dp
         backdrop()
-        // 纵向滚动的 BringIntoView 策略由页面给定 (覆盖 Android TV 平台默认的 pivot 30%)
+        // 纵向滚动的 BringIntoView 策略由页面给定 (覆盖 Android TV 平台默认的 pivot 30%);
+        // 列内的横向行 (选集轮播/角色/制作人员…) 各自用"对齐行首 + 留起始 padding" —— 不显式给,
+        // 它们会继承列的纵向策略, 把纵向距离当横向用
+        val rowStartPaddingPx = with(LocalDensity.current) { TvSubjectDetailsDefaults.HorizontalPadding.toPx() }
+        val rowSpec = remember(rowStartPaddingPx) { TvAnchoredBringIntoViewSpec { rowStartPaddingPx } }
         CompositionLocalProvider(LocalBringIntoViewSpec provides bringIntoViewSpec) {
-            Column(Modifier.fillMaxSize().verticalScroll(scrollState)) {
-                content(heroHeight)
+            Column(scrollContentModifier.fillMaxSize().verticalScroll(scrollState)) {
+                CompositionLocalProvider(LocalBringIntoViewSpec provides rowSpec) {
+                    content(heroHeight)
+                }
             }
         }
     }
 }
 
 /**
- * 详情页纵向滚动的 BringIntoView 策略. Android TV 上 Compose 的平台默认是 **pivot 30%**:
- * 聚焦项前缘无论是否已可见都会被滚到容器 30% 处 —— 正是它在进页后把整屏 hero 滚掉半屏
- * (播放钮停在 30% 线上), 且总能压过手写的 animateScrollTo(0) (两条动画争同一 ScrollState,
- * 后启动的赢). 这里改成: 焦点在播放钮 → 滚动量 = -当前滚动偏移, 即回到页顶完整露出沉浸式
- * 封面; 其余焦点 (简介/选集/角色…) → 保留 pivot 30% (第二屏排版按此设计). 单一机制, 无互抢.
+ * 详情页滚动锚点登记: 每个区块 (hero / 第二屏 / 角色 / 制作人员 …) 的根节点上报自己在滚动
+ * 内容里的上边缘, 以及子树是否持焦; BringIntoView 就把"聚焦项所在区块的上边缘"对齐到视口
+ * 上边缘 —— 锚点是布局的边, 不是 30% 这种无依据的比例. hero 的上边缘 = 0, 播放钮聚焦即回页顶.
+ *
+ * 区块上边缘 = 区块 positionInRoot.y - 滚动内容 positionInRoot.y + 当时的滚动偏移
+ * (每次布局都重新上报, 滚动中也一致; 嵌套在子容器里的区块同样成立).
+ */
+@Stable
+private class TvDetailsScrollAnchors {
+    var contentTopInRoot by mutableFloatStateOf(0f)
+    val sectionTops = mutableStateMapOf<String, Float>()
+    var focusedSection by mutableStateOf<String?>(null)
+}
+
+/** 标注本节点为滚动区块 [key] (几何上报 + 子树持焦上报; 挂在区块根节点). */
+private fun Modifier.tvDetailsScrollSection(
+    anchors: TvDetailsScrollAnchors,
+    key: String,
+    scrollOffset: () -> Int,
+): Modifier = this
+    .onGloballyPositioned { coords ->
+        val top = coords.positionInRoot().y - anchors.contentTopInRoot + scrollOffset()
+        if (anchors.sectionTops[key] != top) anchors.sectionTops[key] = top
+    }
+    .onFocusChanged { if (it.hasFocus) anchors.focusedSection = key }
+
+/**
+ * 详情页纵向滚动的 BringIntoView 策略. Android TV 上 Compose 的平台默认是 **pivot 30%**
+ * (聚焦项前缘无论是否已可见都被滚到容器 30% 处 —— 曾把整屏 hero 滚掉半屏, 且总能压过手写的
+ * animateScrollTo: 两条动画争同一 ScrollState, 后启动的赢). 这里改为: 目标滚动位置 =
+ * 聚焦项所在区块的上边缘 ([targetScroll], 见 [TvDetailsScrollAnchors]); 区块未知时退化为
+ * "最小滚动露出" (非 TV 平台的默认语义). 单一机制, 无互抢.
  */
 @OptIn(ExperimentalFoundationApi::class)
 private class TvDetailsBringIntoViewSpec(
-    private val playFocused: () -> Boolean,
+    private val targetScroll: () -> Float?,
     private val scrollOffset: () -> Int,
 ) : BringIntoViewSpec {
-    override fun calculateScrollDistance(offset: Float, size: Float, containerSize: Float): Float =
-        if (playFocused()) -scrollOffset().toFloat() else offset - containerSize * PIVOT_FRACTION
+    override fun calculateScrollDistance(offset: Float, size: Float, containerSize: Float): Float {
+        val target = targetScroll() ?: return revealMinimal(offset, size, containerSize)
+        return target - scrollOffset()
+    }
 
-    private companion object {
-        /** Android TV 平台默认 pivot 比例 (Compose foundation BringIntoViewSpec.android). */
-        const val PIVOT_FRACTION = 0.3f
+    private fun revealMinimal(offset: Float, size: Float, containerSize: Float): Float = when {
+        offset < 0f -> offset
+        offset + size > containerSize -> if (size > containerSize) offset else offset + size - containerSize
+        else -> 0f
     }
 }
 
@@ -674,6 +721,8 @@ private fun TvDetailsBelowSections(
     details: SubjectDetailsState,
     onClickRelated: (subjectId: Int) -> Unit,
     onFocusedWithin: () -> Unit,
+    /** 每个区块 (角色/制作人员/关联条目/评价) 根节点的注入 modifier (滚动锚点登记, 页面私有). */
+    blockModifier: (key: String) -> Modifier,
     modifier: Modifier = Modifier,
 ) {
     Column(
@@ -684,64 +733,72 @@ private fun TvDetailsBelowSections(
     ) {
         val characters = details.exposedCharactersPager.collectAsLazyPagingItems()
         if (characters.itemCount > 0) {
-            TvDetailsSectionHeader("角色", details.totalCharactersCountState.value)
-            LazyRow(
-                horizontalArrangement = Arrangement.spacedBy(12.dp),
-                contentPadding = PaddingValues(
-                    start = TvSubjectDetailsDefaults.HorizontalPadding,
-                    end = TvSubjectDetailsDefaults.HorizontalPadding,
-                ),
-            ) {
-                items(characters.itemCount, key = { characters.peek(it)?.character?.id ?: it }) { i ->
-                    characters[i]?.let { TvCharacterCard(it) }
+            Column(blockModifier("characters"), verticalArrangement = Arrangement.spacedBy(24.dp)) {
+                TvDetailsSectionHeader("角色", details.totalCharactersCountState.value)
+                LazyRow(
+                    horizontalArrangement = Arrangement.spacedBy(12.dp),
+                    contentPadding = PaddingValues(
+                        start = TvSubjectDetailsDefaults.HorizontalPadding,
+                        end = TvSubjectDetailsDefaults.HorizontalPadding,
+                    ),
+                ) {
+                    items(characters.itemCount, key = { characters.peek(it)?.character?.id ?: it }) { i ->
+                        characters[i]?.let { TvCharacterCard(it) }
+                    }
                 }
             }
         }
 
         val staff = details.exposedStaffPager.collectAsLazyPagingItems()
         if (staff.itemCount > 0) {
-            TvDetailsSectionHeader("制作人员", details.totalStaffCountState.value)
-            LazyRow(
-                horizontalArrangement = Arrangement.spacedBy(12.dp),
-                contentPadding = PaddingValues(
-                    start = TvSubjectDetailsDefaults.HorizontalPadding,
-                    end = TvSubjectDetailsDefaults.HorizontalPadding,
-                ),
-            ) {
-                items(staff.itemCount, key = { staff.peek(it)?.personInfo?.id ?: it }) { i ->
-                    staff[i]?.let { TvStaffCard(it) }
+            Column(blockModifier("staff"), verticalArrangement = Arrangement.spacedBy(24.dp)) {
+                TvDetailsSectionHeader("制作人员", details.totalStaffCountState.value)
+                LazyRow(
+                    horizontalArrangement = Arrangement.spacedBy(12.dp),
+                    contentPadding = PaddingValues(
+                        start = TvSubjectDetailsDefaults.HorizontalPadding,
+                        end = TvSubjectDetailsDefaults.HorizontalPadding,
+                    ),
+                ) {
+                    items(staff.itemCount, key = { staff.peek(it)?.personInfo?.id ?: it }) { i ->
+                        staff[i]?.let { TvStaffCard(it) }
+                    }
                 }
             }
         }
 
         val related = details.relatedSubjectsPager.collectAsLazyPagingItems()
         if (related.itemCount > 0) {
-            TvDetailsSectionHeader("关联条目", null)
-            LazyRow(
-                horizontalArrangement = Arrangement.spacedBy(12.dp),
-                contentPadding = PaddingValues(
-                    start = TvSubjectDetailsDefaults.HorizontalPadding,
-                    end = TvSubjectDetailsDefaults.HorizontalPadding,
-                ),
-            ) {
-                items(related.itemCount, key = { related.peek(it)?.subjectId ?: it }) { i ->
-                    related[i]?.let { TvRelatedSubjectCard(it, onClickRelated) }
+            Column(blockModifier("related"), verticalArrangement = Arrangement.spacedBy(24.dp)) {
+                TvDetailsSectionHeader("关联条目", null)
+                LazyRow(
+                    horizontalArrangement = Arrangement.spacedBy(12.dp),
+                    contentPadding = PaddingValues(
+                        start = TvSubjectDetailsDefaults.HorizontalPadding,
+                        end = TvSubjectDetailsDefaults.HorizontalPadding,
+                    ),
+                ) {
+                    items(related.itemCount, key = { related.peek(it)?.subjectId ?: it }) { i ->
+                        related[i]?.let { TvRelatedSubjectCard(it, onClickRelated) }
+                    }
                 }
             }
         }
 
         val comments = details.subjectCommentState.list.collectAsLazyPagingItems()
         if (comments.itemCount > 0) {
-            TvDetailsSectionHeader("评价", details.subjectCommentState.count)
-            LazyRow(
-                horizontalArrangement = Arrangement.spacedBy(12.dp),
-                contentPadding = PaddingValues(
-                    start = TvSubjectDetailsDefaults.HorizontalPadding,
-                    end = TvSubjectDetailsDefaults.HorizontalPadding,
-                ),
-            ) {
-                items(comments.itemCount, key = { comments.peek(it)?.stableId ?: it.toString() }) { i ->
-                    comments[i]?.let { TvCommentCard(it) }
+            Column(blockModifier("comments"), verticalArrangement = Arrangement.spacedBy(24.dp)) {
+                TvDetailsSectionHeader("评价", details.subjectCommentState.count)
+                LazyRow(
+                    horizontalArrangement = Arrangement.spacedBy(12.dp),
+                    contentPadding = PaddingValues(
+                        start = TvSubjectDetailsDefaults.HorizontalPadding,
+                        end = TvSubjectDetailsDefaults.HorizontalPadding,
+                    ),
+                ) {
+                    items(comments.itemCount, key = { comments.peek(it)?.stableId ?: it.toString() }) { i ->
+                        comments[i]?.let { TvCommentCard(it) }
+                    }
                 }
             }
         }

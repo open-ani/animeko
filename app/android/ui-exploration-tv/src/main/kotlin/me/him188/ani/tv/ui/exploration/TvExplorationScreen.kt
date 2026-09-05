@@ -62,6 +62,7 @@ import kotlinx.coroutines.flow.filterNotNull
 import kotlinx.coroutines.launch
 import me.him188.ani.app.domain.usecase.GlobalKoin
 import me.him188.ani.app.ui.main.ExplorationPageViewModel
+import me.him188.ani.tv.ui.foundation.focus.TvAnchoredBringIntoViewSpec
 import me.him188.ani.tv.ui.foundation.focus.TvFocusKey
 import me.him188.ani.tv.ui.foundation.focus.TvFocusScope
 import me.him188.ani.tv.ui.foundation.focus.rememberTvFocusScope
