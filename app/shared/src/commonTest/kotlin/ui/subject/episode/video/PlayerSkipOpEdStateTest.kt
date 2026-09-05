@@ -9,11 +9,16 @@
 
 package me.him188.ani.app.ui.subject.episode.video
 
+import androidx.compose.runtime.mutableStateOf
 import me.him188.ani.app.ui.foundation.stateOf
+import me.him188.ani.datasources.api.MediaChapter
+import me.him188.ani.datasources.api.MediaChapterKind
 import org.openani.mediamp.InternalMediampApi
 import org.openani.mediamp.metadata.Chapter
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertFalse
+import kotlin.test.assertTrue
 import kotlin.time.Duration.Companion.minutes
 
 @OptIn(InternalMediampApi::class)
@@ -29,9 +34,8 @@ class PlayerSkipOpEdStateTest {
 
         private fun createState_opChapterOnStart_24minutes(onSkip: (targetMillis: Long) -> Unit = {}): PlayerSkipOpEdState {
             return PlayerSkipOpEdState(
-                stateOf(opChapterOnStart),
+                stateOf(opChapterOnStart.filter { isLikelyOpEdChapter(it, videoLength) }),
                 onSkip = onSkip,
-                stateOf(videoLength),
             )
         }
 
@@ -126,9 +130,8 @@ class PlayerSkipOpEdStateTest {
 
         private fun createState_opChapterOnChapter2_24minutes(onSkip: (targetMillis: Long) -> Unit = {}): PlayerSkipOpEdState {
             return PlayerSkipOpEdState(
-                stateOf(opChapterOnChapter2),
+                stateOf(opChapterOnChapter2.filter { isLikelyOpEdChapter(it, videoLength) }),
                 onSkip = onSkip,
-                stateOf(videoLength),
             )
         }
 
@@ -412,6 +415,119 @@ class PlayerSkipOpEdStateTest {
             localState.update(7_000L)
             assertEquals(false, localState.showSkipTips)
             assertEquals(true, localState.skipped)
+        }
+    }
+
+    class `explicit OP chapter` {
+        @Test
+        fun `chapter with non-standard duration is skipped`() {
+            val chapters = listOf(
+                Chapter("Intro", 70_000L, 10_000L),
+                Chapter("Outro", 60_000L, 1_000_000L),
+            )
+            var skippedMillis = 0L
+            val state = PlayerSkipOpEdState(
+                stateOf(chapters),
+                onSkip = { skippedMillis = it },
+            )
+            state.update(7_000L)
+            assertEquals(true, state.showSkipTips)
+
+            state.update(10_000L)
+            assertEquals(80_000L, skippedMillis)
+        }
+
+        @Test
+        fun `uses replacement chapter when candidates change`() {
+            val chapters = mutableStateOf(listOf(Chapter("fallback OP", 90_000L, 60_000L)))
+            var skippedMillis = 0L
+            val state = PlayerSkipOpEdState(chapters) { skippedMillis = it }
+
+            state.update(57_000L)
+            chapters.value = listOf(Chapter("explicit OP", 70_000L, 62_000L))
+            state.update(60_000L)
+            assertEquals(0L, skippedMillis)
+
+            state.update(62_000L)
+            assertEquals(132_000L, skippedMillis)
+        }
+
+        @Test
+        fun `clears current chapter when candidates become empty`() {
+            val chapters = mutableStateOf(listOf(Chapter("OP", 90_000L, 60_000L)))
+            val state = PlayerSkipOpEdState(chapters) {}
+
+            state.update(57_000L)
+            assertTrue(state.showSkipTips)
+
+            chapters.value = emptyList()
+            state.update(58_000L)
+            assertFalse(state.showSkipTips)
+        }
+    }
+
+    class `chapter candidate selection` {
+        @Test
+        fun `regular media chapter is never a skip candidate regardless of name or duration`() {
+            val chapter = MediaChapter(
+                name = "Opening Scene",
+                durationMillis = 85_000L,
+                offsetMillis = 10_000L,
+            )
+
+            val fallback = listOf(Chapter("fallback", 85_000L, 20_000L))
+            assertEquals(fallback, selectSkipChapters(listOf(chapter), fallback))
+            assertEquals(fallback, selectSkipChapters(listOf(chapter.copy(name = "Intro")), fallback))
+        }
+
+        @Test
+        fun `typed media opening is a skip candidate regardless of duration`() {
+            val chapter = MediaChapter(
+                name = "OP",
+                durationMillis = 70_000L,
+                offsetMillis = 10_000L,
+                kind = MediaChapterKind.OPENING,
+            )
+
+            val selected = selectSkipChapters(listOf(chapter), emptyList()).single()
+            assertEquals("OP", selected.name)
+            assertEquals(70_000L, selected.durationMillis)
+            assertEquals(10_000L, selected.offsetMillis)
+        }
+
+        @Test
+        fun `player chapter heuristic uses duration but never name`() {
+            assertTrue(
+                isLikelyOpEdChapter(
+                    Chapter("Anything", 85_000L, 10_000L),
+                    24.minutes,
+                ),
+            )
+            assertFalse(
+                isLikelyOpEdChapter(
+                    Chapter("Opening Scene", 7 * 60_000L, 10_000L),
+                    24.minutes,
+                ),
+            )
+        }
+
+        @Test
+        fun `explicit media markers replace fallback markers`() {
+            val mediaOpening = MediaChapter(
+                name = "OP",
+                durationMillis = 70_000L,
+                offsetMillis = 10_000L,
+                kind = MediaChapterKind.OPENING,
+            )
+            val fallback = listOf(
+                Chapter("OP", 85_000L, 12_000L),
+                Chapter("ED", 85_000L, 1_200_000L),
+            )
+
+            val selected = selectSkipChapters(listOf(mediaOpening), fallback).single()
+            assertEquals("OP", selected.name)
+            assertEquals(70_000L, selected.durationMillis)
+            assertEquals(10_000L, selected.offsetMillis)
         }
     }
 }

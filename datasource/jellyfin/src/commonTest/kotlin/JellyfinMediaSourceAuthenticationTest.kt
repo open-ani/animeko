@@ -24,10 +24,13 @@ import io.ktor.http.content.OutgoingContent
 import io.ktor.http.headersOf
 import io.ktor.serialization.kotlinx.json.json
 import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.coroutineScope
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.test.runTest
+import kotlinx.coroutines.withContext
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
@@ -407,6 +410,157 @@ class JellyfinMediaSourceAuthenticationTest {
             download.uri,
         )
         assertEquals(1, loginCount)
+    }
+
+    @Test
+    fun `chapter enrichment timeout preserves embedded chapters`() = runTest {
+        val source = JellyfinMediaSource(
+            config = passwordConfig(),
+            client = mockClient { request ->
+                when (request.url.encodedPath) {
+                    "/Users/AuthenticateByName" -> respondJson(
+                        """
+                        {
+                          "AccessToken": "playback-session-token",
+                          "User": { "Id": "session-user-id" }
+                        }
+                        """.trimIndent(),
+                    )
+
+                    "/Items" -> respondJson(
+                        """
+                        {
+                          "Items": [
+                            {
+                              "Name": "Episode 1",
+                              "SeriesName": "Test Anime",
+                              "Id": "episode-1",
+                              "IndexNumber": 1,
+                              "Type": "Episode",
+                              "RunTimeTicks": 1200000000,
+                              "Chapters": [
+                                { "Name": "Chapter 1", "StartPositionTicks": 0 },
+                                { "Name": "Chapter 2", "StartPositionTicks": 600000000 }
+                              ]
+                            }
+                          ]
+                        }
+                        """.trimIndent(),
+                    )
+
+                    "/MediaSegments/episode-1" -> {
+                        delay(60_000L)
+                        error("Chapter request should have timed out")
+                    }
+
+                    else -> error("Unexpected request: ${request.url}")
+                }
+            },
+        )
+
+        val startedAt = testScheduler.currentTime
+        val pagedSource = assertIs<PagedSource<MediaMatch>>(source.fetch(testRequest()))
+        val media = assertNotNull(pagedSource.nextPageOrNull()).single().media
+
+        assertTrue(testScheduler.currentTime - startedAt < 30_000L)
+        assertEquals(listOf("Chapter 1", "Chapter 2"), media.extraFiles.chapters.map { it.name })
+    }
+
+    @Test
+    fun `fetch uses refreshed chapter request token in download url`() = runTest {
+        var loginCount = 0
+        var mediaSegmentsCount = 0
+        val source = JellyfinMediaSource(
+            config = passwordConfig(),
+            client = mockClient { request ->
+                when {
+                    request.url.encodedPath == "/Users/AuthenticateByName" -> {
+                        loginCount++
+                        respondJson(
+                            """
+                            {
+                              "AccessToken": "session-token-$loginCount",
+                              "User": { "Id": "session-user-id" }
+                            }
+                            """.trimIndent(),
+                        )
+                    }
+
+                    request.url.encodedPath == "/Items" -> respondJson(
+                        """
+                        {
+                          "Items": [
+                            {
+                              "Name": "Episode 1",
+                              "SeriesName": "Test Anime",
+                              "Id": "episode-1",
+                              "IndexNumber": 1,
+                              "Type": "Episode"
+                            }
+                          ]
+                        }
+                        """.trimIndent(),
+                    )
+
+                    request.url.encodedPath == "/MediaSegments/episode-1" -> {
+                        mediaSegmentsCount++
+                        when (mediaSegmentsCount) {
+                            1 -> {
+                                assertTrue(
+                                    request.headers[HttpHeaders.Authorization]
+                                        .orEmpty()
+                                        .contains("""Token="session-token-1""""),
+                                )
+                                respondJson("""{"error":"invalid token"}""", HttpStatusCode.Unauthorized)
+                            }
+
+                            2 -> {
+                                assertTrue(
+                                    request.headers[HttpHeaders.Authorization]
+                                        .orEmpty()
+                                        .contains("""Token="session-token-2""""),
+                                )
+                                respondJson(
+                                    """
+                                    {
+                                      "Items": [
+                                        {
+                                          "Type": "Intro",
+                                          "StartTicks": 0,
+                                          "EndTicks": 900000000
+                                        },
+                                        {
+                                          "Type": "Outro",
+                                          "StartTicks": 12000000000,
+                                          "EndTicks": 12900000000
+                                        }
+                                      ]
+                                    }
+                                    """.trimIndent(),
+                                )
+                            }
+
+                            else -> error("Unexpected MediaSegments request #$mediaSegmentsCount")
+                        }
+                    }
+
+                    else -> error("Unexpected request: ${request.url}")
+                }
+            },
+        )
+
+        val media = withContext(Dispatchers.Default) {
+            val pagedSource = assertIs<PagedSource<MediaMatch>>(source.fetch(testRequest()))
+            assertNotNull(pagedSource.nextPageOrNull()).single().media
+        }
+        val download = assertIs<ResourceLocation.HttpStreamingFile>(media.download)
+
+        assertEquals(
+            "$TEST_BASE_URL/Items/episode-1/Download?ApiKey=session-token-2",
+            download.uri,
+        )
+        assertEquals(2, loginCount)
+        assertEquals(2, mediaSegmentsCount)
     }
 
     @Test
