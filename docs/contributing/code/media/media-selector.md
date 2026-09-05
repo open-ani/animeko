@@ -145,8 +145,27 @@ Sealed class [`MaybeExcludedMedia`][MaybeExcludedMedia] 表示一个可能被排
 例如 A 源的 channel A/B 为 tier 0、B 源的 channel C 为 tier 1 时，排序为
 `A/channelA、A/channelB → B/channelC`，而不是按数据源整体分块。
 
-快速选择（`MediaSelectorAutoSelect.fastSelectWebSources`）同样按 channel 粒度判定：
-只有有效阶级不超过阈值的资源才会被立即选择。
+### 快速选择
+
+快速选择（`MediaSelectorAutoSelect.fastSelectWebSources`）是一个响应式循环：观察
+（当前阶段，各 WEB 源的查询状态，候选流），任一变化就按当前阶段的规则调用一次
+`trySelectFromMediaSources`，选中即返回。阶段随时间推进，规则只放宽不收紧：
+
+| 阶段 | 时间 | 可选的资源 | 顺序 |
+|---|---|---|---|
+| Instant | 开始至 `fastSelectWebLowTierToleranceDuration`（默认 5 秒） | 有效阶级不超过 `InstantSelectTierThreshold`（0）且条目名称精确匹配 | 数据源一查询成功就选 |
+| ExactOnly | 至 `DefaultFuzzyFallbackDuration`（15 秒） | 任意阶级，只要精确匹配 | 按有效阶级升序逐档尝试 |
+| Fuzzy | 15 秒后，或所有 WEB 源都已结束查询 | 任意 | 先精确匹配按阶级升序，再模糊匹配按阶级升序 |
+
+“精确匹配”指 `MatchMetadata.subjectMatchKind == EXACT`。同一阶级内的取舍仍由
+`trySelectFromMediaSources` 的偏好逻辑（分辨率、字幕语言、字幕组、数据源顺序）决定。
+阶级判定按 channel 粒度：数据源整体是 tier 0 但被降级的 channel 的资源不会被秒选。
+
+候选流是从查询结果异步派生的，源状态刚变成 Succeed 时候选流可能还没吸收它的结果。
+快速选择会跳过这种不一致的快照，等候选流更新后再评估，因此不会因为传播延迟而漏选或误选。
+
+用户已手动选择、或所有 WEB 源都结束且允许模糊匹配仍选不出时，快速选择返回 `null`；
+只要还有 WEB 源在查询中就一直等待。
 
 [MediaSelectorFilterSortAlgorithm]: ../../../../app/shared/app-data/src/commonMain/kotlin/domain/media/selector/filter/MediaSelectorFilterSortAlgorithm.kt
 

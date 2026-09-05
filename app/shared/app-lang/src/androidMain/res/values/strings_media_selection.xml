@@ -41,7 +41,7 @@
     <string name="settings_media_video_link_resolve_timeout">Video Link Resolve Timeout</string>
     <string name="settings_media_video_link_resolve_timeout_description">Maximum time allowed to resolve the final playable URL for online video sources. If resolution takes too long, playback will fail faster and switch or retry sooner. 8-15 seconds is recommended</string>
     <string name="settings_media_max_wait_time">Maximum Wait Time</string>
-    <string name="settings_media_max_wait_time_description">Maximum wait time for each query. At the end of this time, a data source will be automatically selected from those already queried based on your preferences. If the wait time is too short, your preference settings may be ignored; if longer, it can better meet your preferences but may cause slow playback starts. 5–10 seconds is recommended</string>
+    <string name="settings_media_max_wait_time_description">First stage of the maximum wait time. Within this time only high-priority sources whose subject name matches exactly are selected immediately. After it, exactly matching resources from the sources queried so far are selected in priority order. Fuzzy matches are only accepted after a further wait. 5–10 seconds is recommended</string>
     <string name="settings_media_web_search_cache_ttl">Web Search Cache Duration</string>
     <string name="settings_media_web_search_cache_ttl_description">Reuse web source search results when switching episodes or quickly re-entering the player. The effective duration is the smaller of this value and the one defined by each data source</string>
     <string name="settings_media_cache_ttl_none">Off</string>

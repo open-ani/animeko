@@ -25,6 +25,7 @@ import me.him188.ani.app.domain.media.selector.testFramework.runSimpleMediaSelec
 import me.him188.ani.app.domain.media.selector.testFramework.tier
 import me.him188.ani.app.domain.player.extension.PlayerLoadErrorHandler
 import me.him188.ani.datasources.api.source.MediaSourceKind
+import me.him188.ani.datasources.api.source.MediaSourceKind.BitTorrent
 import me.him188.ani.datasources.api.source.MediaSourceKind.WEB
 import me.him188.ani.test.DisabledOnNative
 import kotlin.test.Test
@@ -86,6 +87,40 @@ class PlayerLoadErrorHandlerTest {
     }
 
     @Test
+    fun `ERR-05 所有 WEB 源都已结束时 1s 后立即换源, 不等容忍窗`() = runFetchMediaSelectorTestSuite {
+        initSubject("test")
+        val (_, session, sources) = configureFetchSession {
+            object {
+                val webA by web { tier = 1 }
+            }
+        }
+        val mediaA = media(kind = WEB, subjectName = initApi.subjectName)
+        val mediaB = media(kind = WEB, subjectName = initApi.subjectName)
+        sources.webA.complete(mediaA, mediaB)
+        testScope().runCurrent()
+
+        selector.select(selector.filteredCandidatesMedia.first().single { it.mediaId == mediaA.mediaId })
+
+        val handler = PlayerLoadErrorHandler(
+            getPreferKind = { MediaSourceKind.WEB },
+            getSourceTiers = { preferenceApi.sourceTiers!! },
+        )
+        val job = testScope().launch { handler.handleError(session, selector) }
+        testScope().runCurrent()
+
+        testScope().advanceTimeBy(999.milliseconds)
+        testScope().runCurrent()
+        assertFalse(job.isCompleted)
+        assertEquals(mediaA.mediaId, selector.selected.value?.mediaId)
+
+        // 唯一的 WEB 源已经查询完成, 没有别的源可等, 跨过 1s 延迟后直接进入兜底阶段换源
+        testScope().advanceTimeBy(2.milliseconds)
+        testScope().runCurrent()
+        assertTrue(job.isCompleted)
+        assertEquals(mediaB.mediaId, selector.selected.value?.mediaId)
+    }
+
+    @Test
     fun `ERR-05 高 tier 源只能由 1s 容忍窗超时 fallback 选中`() = runFetchMediaSelectorTestSuite {
         initSubject("test")
         val (_, session, sources) = configureFetchSession {
@@ -93,6 +128,9 @@ class PlayerLoadErrorHandlerTest {
                 // tier=1 高于 InstantSelectTierThreshold(0), 该源永远进不了 instant 候选,
                 // 因此只有 lowTierToleranceDuration 超时后的 fallback 能选出东西.
                 val webA by web { tier = 1 }
+
+                // 一直在查询中的 tier 0 源: 有它在, 快速选择就不会因为 "所有源都结束了" 而提前进入兜底阶段.
+                val webPending by web { tier = 0 }
             }
         }
         val mediaA = media(kind = WEB, subjectName = initApi.subjectName)
@@ -126,6 +164,119 @@ class PlayerLoadErrorHandlerTest {
         assertTrue(job.isCompleted)
         assertEquals(mediaB.mediaId, selector.selected.value?.mediaId)
         assertEquals(setOf(mediaA.mediaId), handler.blacklist)
+    }
+
+    @Test
+    fun `ERR-05 模糊匹配要等 3s 第二段超时才会被换到`() = runFetchMediaSelectorTestSuite {
+        initSubject("test")
+        val (_, session, sources) = configureFetchSession {
+            object {
+                val webA by web { tier = 1 }
+                val webPending by web { tier = 0 } // 一直在查询中
+            }
+        }
+        val mediaA = media(kind = WEB, subjectName = initApi.subjectName)
+        val mediaFuzzy = media(kind = WEB, subjectName = "${initApi.subjectName} fuzzy season")
+        sources.webA.complete(mediaA, mediaFuzzy)
+        testScope().runCurrent()
+
+        selector.select(selector.filteredCandidatesMedia.first().single { it.mediaId == mediaA.mediaId })
+
+        val handler = PlayerLoadErrorHandler(
+            getPreferKind = { MediaSourceKind.WEB },
+            getSourceTiers = { preferenceApi.sourceTiers!! },
+        )
+        val job = testScope().launch { handler.handleError(session, selector) }
+        testScope().runCurrent()
+
+        // t=1s 延迟 + 1s 第一段: 只允许精确匹配, mediaA 已拉黑, 无可选
+        testScope().advanceTimeBy(3.seconds + 999.milliseconds)
+        testScope().runCurrent()
+        assertFalse(job.isCompleted)
+        assertEquals(mediaA.mediaId, selector.selected.value?.mediaId)
+
+        // t=1s + 3s: 第二段超时, 允许模糊匹配
+        testScope().advanceTimeBy(2.milliseconds)
+        testScope().runCurrent()
+        assertTrue(job.isCompleted)
+        assertEquals(mediaFuzzy.mediaId, selector.selected.value?.mediaId)
+    }
+
+    @Test
+    fun `ERR-05 延迟期间用户手动选择了最佳候选时保留该选择而不是降级`() = runFetchMediaSelectorTestSuite {
+        initSubject("test")
+        val (_, session, sources) = configureFetchSession {
+            object {
+                val webA by web { tier = 0 }
+                val webC by web { tier = 1 }
+            }
+        }
+        val mediaA = media(kind = WEB, subjectName = initApi.subjectName)
+        val mediaB = media(kind = WEB, subjectName = initApi.subjectName)
+        val mediaC = media(kind = WEB, subjectName = initApi.subjectName)
+        sources.webA.complete(mediaA, mediaB)
+        sources.webC.complete(mediaC)
+        testScope().runCurrent()
+
+        selector.select(selector.filteredCandidatesMedia.first().single { it.mediaId == mediaA.mediaId })
+
+        val handler = PlayerLoadErrorHandler(
+            getPreferKind = { MediaSourceKind.WEB },
+            getSourceTiers = { preferenceApi.sourceTiers!! },
+        )
+        val job = testScope().launch { handler.handleError(session, selector) }
+        testScope().runCurrent()
+        assertEquals(setOf(mediaA.mediaId), handler.blacklist)
+
+        // 用户在 1s 延迟期间手动选了 tier 0 的 mediaB
+        selector.select(selector.filteredCandidatesMedia.first().single { it.mediaId == mediaB.mediaId })
+
+        testScope().advanceTimeBy(1.seconds + 1.milliseconds)
+        testScope().runCurrent()
+        assertTrue(job.isCompleted)
+        // 不能因为 "选到了同一个" 而降级到 tier 1 的 mediaC
+        assertEquals(mediaB.mediaId, selector.selected.value?.mediaId)
+    }
+
+    @Test
+    fun `ERR-05 等待期间选择被外部改变时放弃覆盖`() = runFetchMediaSelectorTestSuite {
+        initSubject("test")
+        val (_, session, sources) = configureFetchSession {
+            object {
+                val bt by bt()
+                val webA by web { tier = 1 }
+                val webPending by web { tier = 0 } // 一直在查询中
+            }
+        }
+        val mediaA = media(kind = WEB, subjectName = initApi.subjectName)
+        val mediaFuzzy = media(kind = WEB, subjectName = "${initApi.subjectName} fuzzy season")
+        val mediaBt = media(kind = BitTorrent, subjectName = initApi.subjectName)
+        sources.webA.complete(mediaA, mediaFuzzy)
+        sources.bt.complete(mediaBt)
+        testScope().runCurrent()
+
+        selector.select(selector.filteredCandidatesMedia.first().single { it.mediaId == mediaA.mediaId })
+
+        val handler = PlayerLoadErrorHandler(
+            getPreferKind = { MediaSourceKind.WEB },
+            getSourceTiers = { preferenceApi.sourceTiers!! },
+        )
+        val job = testScope().launch { handler.handleError(session, selector) }
+        testScope().runCurrent()
+
+        // 第一段超时后仍无精确匹配可选, 快速选择还在等
+        testScope().advanceTimeBy(2.seconds + 500.milliseconds)
+        testScope().runCurrent()
+        assertFalse(job.isCompleted)
+
+        // 用户手动选了一个 BT 资源 (不在快速选择的候选里; 完结番单集 BT 资源会被过滤, 所以直接 select 该对象)
+        selector.select(mediaBt)
+
+        // 到了第二段超时, 本来可以换到模糊匹配的 web 资源, 但选择已被用户改掉, 必须放弃覆盖
+        testScope().advanceTimeBy(2.seconds)
+        testScope().runCurrent()
+        assertTrue(job.isCompleted)
+        assertEquals(mediaBt.mediaId, selector.selected.value?.mediaId)
     }
 
     @Test

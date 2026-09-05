@@ -99,6 +99,10 @@ class MediaSelectorFilterSortAlgorithm {
                     media.episodeRange,
                     context.episodeInfo?.sort,
                     context.episodeInfo?.ep,
+                    // 与下方 ContainsSubjectName 的 OVA 特例保持一致: 数据源搜到 OVA 剧集时, 条目名加 "OVA" 也算精确匹配
+                    alternativeSubjectName = if (media.episodeRange?.contains(EpisodeSort("OVA")) == true) {
+                        media.properties.subjectName?.let { "$it OVA" }
+                    } else null,
                 ),
             )
         }
@@ -222,11 +226,13 @@ class MediaSelectorFilterSortAlgorithm {
         mediaSubjectName: String,
         mediaEpisodeRange: EpisodeRange?,
         contextEpisodeSort: EpisodeSort?,
-        contextEpisodeEp: EpisodeSort?
+        contextEpisodeEp: EpisodeSort?,
+        alternativeSubjectName: String? = null,
     ) = MatchMetadata(
         subjectMatchKind = if (
             contextSubjectNames.any {
-                MediaListFilters.specialEquals(mediaSubjectName, it)
+                MediaListFilters.specialEquals(mediaSubjectName, it) ||
+                        (alternativeSubjectName != null && MediaListFilters.specialEquals(alternativeSubjectName, it))
             }
         ) {
             MatchMetadata.SubjectMatchKind.EXACT

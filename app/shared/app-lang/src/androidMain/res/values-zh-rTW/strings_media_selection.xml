@@ -41,7 +41,7 @@
     <string name="settings_media_video_link_resolve_timeout">影片連結解析逾時</string>
     <string name="settings_media_video_link_resolve_timeout_description">播放線上影片來源時，解析最終可播放連結的最長等待時間。逾時後會更快判定失敗並切換或重試。建議設置 8-15 秒</string>
     <string name="settings_media_max_wait_time">最長等待時間</string>
-    <string name="settings_media_max_wait_time_description">每次查詢的最長等待時間。在此時間結束時，將會從已經查詢到的數據源中根據你設置的偏好自動選擇數據源。如果等待時間太短，可能會忽略你的偏好設置；如果時間更長，可以更好地滿足你的偏好設置，但可能會導致每次開播很慢。建議設置 5–10 秒</string>
+    <string name="settings_media_max_wait_time_description">最長等待時間的第一段。此時間內只會立即選擇高優先級且條目名稱精確匹配的數據源；超時後按優先級從已查詢完成的源中選擇精確匹配的資源；只有再等待一段時間後才會接受模糊匹配的資源。建議設置 5–10 秒</string>
     <string name="settings_media_web_search_cache_ttl">Web 搜尋快取有效期</string>
     <string name="settings_media_web_search_cache_ttl_description">切換劇集或短暫退出後重新進入播放頁時，複用 Web 源的搜尋結果。實際生效值為此值與資料源自身定義的較小者</string>
     <string name="settings_media_cache_ttl_none">不快取</string>

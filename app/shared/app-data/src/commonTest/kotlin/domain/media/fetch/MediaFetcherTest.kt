@@ -12,8 +12,10 @@ package me.him188.ani.app.domain.media.fetch
 import kotlinx.atomicfu.atomic
 import kotlinx.coroutines.currentCoroutineContext
 import kotlinx.coroutines.flow.asFlow
+import kotlinx.coroutines.flow.collect
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.toList
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.test.runTest
 import me.him188.ani.app.domain.media.TestMediaList
 import me.him188.ani.app.domain.mediasource.web.BlockReason
@@ -590,6 +592,65 @@ class MediaFetcherTest {
         assertEquals(1, fetchCalled.get())
         res.results.first()
         assertEquals(1, fetchCalled.get())
+    }
+
+    ///////////////////////////////////////////////////////////////////////////
+    // Succeed 与 replayCache 的顺序
+    ///////////////////////////////////////////////////////////////////////////
+
+    @Test
+    fun `when state becomes Succeed the results replay already holds the final list`() = runTest {
+        // 快速选择的一致性检查依赖此保证: 观察到 Succeed 之后立即读 results, 必须拿到完整列表.
+        val session = createFetcher(
+            createTestMediaSourceInstance(
+                TestHttpMediaSource(
+                    fetch = {
+                        SinglePagePagedSource {
+                            TestMediaList.map { MediaMatch(it, MatchKind.EXACT) }.asFlow()
+                        }
+                    },
+                ),
+            ),
+        ).newSession(request1)
+        val res = session.mediaSourceResults.first()
+
+        val job = launch { session.cumulativeResults.collect() } // 驱动查询
+        res.state.first { it is MediaSourceFetchState.Succeed }
+        assertEquals(5, res.results.first().size)
+        job.cancel()
+    }
+
+    @Test
+    fun `completion marker of a cancelled run does not mark the restarted run as Succeed`() = runTest {
+        // 第一次查询抛异常 -> Failed(0), 其完成标记仍在 channel 里; 此时 restart() 开启第二次查询.
+        // 旧标记送达时必须被忽略, 否则第二次查询会在进行中被错误地标成 Succeed(0).
+        val fetchCalled = AtomicInteger(0)
+        val session = createFetcher(
+            createTestMediaSourceInstance(
+                TestHttpMediaSource(
+                    fetch = {
+                        if (fetchCalled.incrementAndGet() == 1) {
+                            throw IllegalStateException("first attempt fails")
+                        }
+                        SinglePagePagedSource {
+                            TestMediaList.map { MediaMatch(it, MatchKind.EXACT) }.asFlow()
+                        }
+                    },
+                ),
+            ),
+        ).newSession(request1)
+        val res = session.mediaSourceResults.first()
+
+        assertEquals(emptyList(), session.awaitCompletedResults())
+        assertIs<MediaSourceFetchState.Failed>(res.state.value)
+
+        res.restart()
+        assertIs<MediaSourceFetchState.Idle>(res.state.value)
+
+        assertEquals(5, session.awaitCompletedResults().size)
+        val state = assertIs<MediaSourceFetchState.Succeed>(res.state.value)
+        assertEquals(1, state.id)
+        assertEquals(2, fetchCalled.get())
     }
 
     @Test

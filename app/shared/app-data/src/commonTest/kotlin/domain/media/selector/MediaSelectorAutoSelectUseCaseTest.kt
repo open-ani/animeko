@@ -206,6 +206,36 @@ class MediaSelectorAutoSelectUseCaseTest {
     }
 
     @Test
+    fun `fuzzy match is only selected after fuzzy fallback timeout`() = runFetchMediaSelectorTestSuite {
+        initSubject()
+        preferenceApi.savedUserPreference.value = MediaPreference.Any
+        preferenceApi.mediaSelectorSettings.value = autoSelectSettings()
+
+        val (_, session, sources) = configureFetchSession {
+            object {
+                val web1 by web { tier = 0 }
+                val web2 by web { tier = 2 } // 一直在查询中
+            }
+        }
+
+        val job = launchAutoSelect(session)
+        sources.web1.complete(media(kind = WEB, subjectName = "${initApi.subjectName} fuzzy season"))
+        testScope().runCurrent()
+
+        assertNull(selector.selected.value)
+
+        testScope().advanceTimeBy(5.seconds)
+        testScope().runCurrent()
+        assertNull(selector.selected.value) // 第一段超时后仍只接受精确匹配
+        assertFalse(job.isCompleted)
+
+        testScope().advanceTimeBy(10.seconds)
+        testScope().runCurrent()
+        assertSelectedSource(sources.web1) // 15s 后允许模糊匹配兜底
+        job.assertCompleted()
+    }
+
+    @Test
     fun `local cache can win while preferred web source is still pending`() = runFetchMediaSelectorTestSuite {
         initSubject()
         preferenceApi.savedUserPreference.value = MediaPreference.Any

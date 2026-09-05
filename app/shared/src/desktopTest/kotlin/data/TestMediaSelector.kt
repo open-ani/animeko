@@ -116,17 +116,7 @@ open class TestMediaSelector(
         overrideUserSelection: Boolean,
         blacklistMediaIds: Set<String>,
         allowNonPreferred: Boolean,
-        candidateMediaFilter: ((Media) -> Boolean)?
-    ): Media? {
-        throw UnsupportedOperationException()
-    }
-
-    override suspend fun awaitSelectFromMediaSources(
-        candidateSources: List<String>,
-        overrideUserSelection: Boolean,
-        blacklistMediaIds: Set<String>,
-        allowNonPreferred: Boolean,
-        candidateMediaFilter: ((Media) -> Boolean)?
+        candidateMediaFilter: ((MaybeExcludedMedia.Included) -> Boolean)?
     ): Media? {
         throw UnsupportedOperationException()
     }

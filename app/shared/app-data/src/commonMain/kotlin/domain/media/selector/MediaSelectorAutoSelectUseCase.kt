@@ -9,7 +9,6 @@
 
 package me.him188.ani.app.domain.media.selector
 
-import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitCancellation
@@ -65,51 +64,35 @@ class MediaSelectorAutoSelectUseCaseImpl(
                     this@cancellableCoroutineScope.async { block() }.onAwait { it }
                 }
 
+                // 四条路径竞速, 任一路径返回即结束编排. 返回 null 也算结束 (目前只有兜底会这样).
+                // 路径内部通过 awaitCancellation() 表示 "放弃竞争但不结束编排".
                 select {
-                    val selectPreferredFailed = CompletableDeferred<Unit>()
-
-                    // 这个 clause 和下面 选缓存 与 兜底 一起竞争
-                    // 快速选择不和这些竞争, 快速选择在这个 clause 完成之后再启动
+                    // 偏好 web 源, 然后是快速选择. 二者顺序执行, 不竞速: 只有偏好源落空后才开始快速选择.
                     resulting {
-                        // subjectId 无效就等别的 clause.
                         val subjectId = session.request.first().subjectId.toIntOrNull()
-                        if (subjectId == null) {
-                            selectPreferredFailed.complete(Unit)
-                            awaitCancellation()
+                        if (subjectId != null) {
+                            val preferred = autoSelector.trySelectPreferredWebSource(
+                                session, getPreferredWebMediaSource(subjectId).first(),
+                            )
+                            logger.info { "selectPreferredWebSource result: $preferred" }
+                            if (preferred != null) return@resulting preferred
                         }
 
-                        val result = autoSelector.trySelectPreferredWebSource(
-                            session, getPreferredWebMediaSource(subjectId).first(),
-                        )
-
-                        logger.info { "selectPreferredWebSource result: $result" }
-
-                        if (result == null) {
-                            selectPreferredFailed.complete(Unit)
-                            awaitCancellation()
-                        }
-                        result
-                    }
-
-                    // 快速自动选择数据源: 当按规则快速选择相应 Tier 的数据源. 仅在偏好 Web 时并且启用了快速选择时才执行.
-                    resulting {
+                        // 快速选择仅在偏好 Web 且启用了快速选择时才执行.
                         val selectorSettings = mediaSelectorSettingsFlow.first()
                         if (!selectorSettings.fastSelectWebKind || selectorSettings.preferKind != MediaSourceKind.WEB) {
-                            // 没开启 fast select 就等别的 clause.
                             awaitCancellation()
                         }
 
-                        // 上面选完并且没结果再开始这个 clause
-                        selectPreferredFailed.await()
-
+                        val lowTierTolerance = selectorSettings.fastSelectWebLowTierToleranceDuration
                         val result = autoSelector.fastSelectWebSources(
                             session,
                             getMediaSelectorSourceTiers().first(),
                             overrideUserSelection = false,
                             blacklistMediaIds = emptySet(),
-                            selectorSettings.fastSelectWebLowTierToleranceDuration,
+                            lowTierToleranceDuration = lowTierTolerance,
+                            fuzzyFallbackDuration = maxOf(MediaSelectorAutoSelect.DefaultFuzzyFallbackDuration, lowTierTolerance),
                         )
-
                         logger.info { "fastSelectWebSources result: $result" }
                         result ?: awaitCancellation()
                     }

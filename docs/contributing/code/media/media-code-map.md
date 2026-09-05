@@ -89,9 +89,9 @@
   `MediaSourceManagerImpl.mediaSourceTiersFlow()` 从各实例的
   `MediaSourceArguments.tier` / `channelTiers` 汇总。排序按
   `(mediaSourceId, alliance)` 查有效阶级；快速选择
-  `MediaSelectorAutoSelect.fastSelectWebSources` 用 `getBestTier(...)` 判定候选数据源，
-  并通过 `awaitSelectFromMediaSources` 的 `candidateMediaFilter` 参数把秒选限制在低阶级
-  channel 的资源上。
+  `MediaSelectorAutoSelect.fastSelectWebSources` 也按同样的有效阶级判定资源，
+  通过 `trySelectFromMediaSources` 的 `candidateMediaFilter` 参数把每一阶段、每一档阶级
+  允许的资源交给选择器。各阶段的规则集中在 `FastSelectRules`。
 - 查询结果并不天然“正确”；数据源实现应尽量返回准确的 `episodeRange`，`MediaSelector`
   只是在其上做额外的过滤和排序。
 

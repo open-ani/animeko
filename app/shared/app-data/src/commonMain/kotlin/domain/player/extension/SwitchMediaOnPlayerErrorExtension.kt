@@ -189,6 +189,7 @@ internal class PlayerLoadErrorHandler(
             blacklistMediaIds = blacklistedMediaIds,
             // 错误切换不需要等太长时间.
             lowTierToleranceDuration = 1.seconds,
+            fuzzyFallbackDuration = 3.seconds,
         )
         logger.info { "Player errored, automatically switched to next media: $result" }
     }
