@@ -1215,6 +1215,7 @@
     <string name="exploration_search_filter_source">来源</string>
     <string name="exploration_search_filter_technology">技术</string>
     <string name="exploration_search_filter_custom">自定义</string>
+    <string name="exploration_search_filter_all">全部</string>
     <string name="settings_app_background_running">后台运行</string>
     <string name="settings_app_background_running_description">缓存功能需要应用保持在后台运行才能下载视频</string>
     <string name="settings_app_ignore_battery_optimizations">禁用电池优化</string>
