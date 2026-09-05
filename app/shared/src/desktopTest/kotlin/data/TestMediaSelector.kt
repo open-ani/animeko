@@ -17,6 +17,8 @@ import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.map
 import me.him188.ani.app.data.models.preference.MediaPreference
 import me.him188.ani.app.domain.media.selector.MaybeExcludedMedia
+import me.him188.ani.app.domain.media.selector.MediaAutoSelectSnapshot
+import me.him188.ani.app.domain.media.selector.MediaSourceSelectionSnapshot
 import me.him188.ani.app.domain.media.selector.MediaPreferenceItem
 import me.him188.ani.app.domain.media.selector.MediaSelector
 import me.him188.ani.app.domain.media.selector.MediaSelectorEvents
@@ -65,6 +67,14 @@ open class TestMediaSelector(
     ),
     private val algorithm: MediaSelectorFilterSortAlgorithm = MediaSelectorFilterSortAlgorithm(),
 ) : MediaSelector {
+    override fun autoSelectSnapshots(sources: Flow<List<MediaSourceSelectionSnapshot>>): Flow<MediaAutoSelectSnapshot> {
+        throw UnsupportedOperationException()
+    }
+
+    override suspend fun selectAutomatically(candidate: Media, expectedSelection: Media?): Media? {
+        throw UnsupportedOperationException()
+    }
+
     final override val filteredCandidatesMedia: Flow<List<Media>> =
         filteredCandidates.map { list -> list.mapNotNull { it.result } }
     final override val alliance: TestMediaPreferenceItem<String> = TestMediaPreferenceItem()

@@ -9,35 +9,19 @@
 
 package me.him188.ani.app.domain.media.selector
 
-import kotlinx.coroutines.awaitCancellation
-import kotlinx.coroutines.cancel
 import kotlinx.coroutines.flow.Flow
-import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.collect
 import kotlinx.coroutines.flow.combine
-import kotlinx.coroutines.flow.filterNotNull
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.flowOf
-import kotlinx.coroutines.flow.mapLatest
-import kotlinx.coroutines.flow.produceIn
-import kotlinx.coroutines.flow.shareIn
 import kotlinx.coroutines.flow.takeWhile
-import kotlinx.coroutines.flow.transformWhile
-import kotlinx.coroutines.selects.onTimeout
-import kotlinx.coroutines.selects.select
 import me.him188.ani.app.data.models.preference.MediaSelectorSettings
 import me.him188.ani.app.domain.media.fetch.MediaFetchSession
-import me.him188.ani.app.domain.media.fetch.MediaSourceFetchResult
-import me.him188.ani.app.domain.media.fetch.MediaSourceFetchState
 import me.him188.ani.app.domain.media.fetch.awaitCompletedResults
 import me.him188.ani.app.domain.media.fetch.awaitCompletion
-import me.him188.ani.app.domain.media.fetch.isFinal
 import me.him188.ani.app.domain.mediasource.codec.MediaSourceTier
 import me.him188.ani.datasources.api.Media
 import me.him188.ani.datasources.api.source.MediaSourceKind
-import me.him188.ani.utils.coroutines.cancellableCoroutineScope
-import me.him188.ani.utils.coroutines.childScope
-import me.him188.ani.utils.logging.debug
 import me.him188.ani.utils.logging.logger
 import kotlin.concurrent.Volatile
 import kotlin.time.Duration
@@ -86,11 +70,14 @@ class MediaSelectorAutoSelect(
      * 返回成功选择的 [Media] 对象. 当用户已经手动选择过一个别的 [Media], 或者没有可选的 [Media] 时返回 `null`.
      *
      * @param overrideUserSelection 是否覆盖用户选择.
-     * 若为 `true`, 则会忽略用户目前的选择, 使用此函数的结果替换选择.
+     * 若为 `true`, 则允许替换调用开始时的选择；等待期间的新选择不会被覆盖.
      * 若为 `false`, 如果用户已经选择了一个 media, 则此函数不会做任何事情.
      * @param blacklistMediaIds 黑名单, 这些 media 不会被选择. 如果遇到黑名单中的 media, 将会跳过.
      * @param lowTierToleranceDuration 详见 [MediaSelector] 中 "快速选择" 部分的说明.
-     * @param instantSelectTierThreshold Low Tier 与 High Tier 的分界线, 小于等于此 Tier 的数据源被视作 Low Tier.
+     * @param instantSelectTierThreshold 有效 tier 不超过此阈值的精确匹配资源可立即选择。
+     * @param fuzzyMatchToleranceDuration 从本次选择开始计算的模糊匹配截止时间，默认 15 秒。
+     * 不早于 lowTierToleranceDuration；无限等待时不允许模糊匹配。
+     * @param waitForPendingSources 到最后阶段仍无结果时是否继续等查询中的源。播放失败换源传 false。
      */ // #1323
     suspend fun fastSelectWebSources(
         mediaFetchSession: MediaFetchSession,
@@ -99,85 +86,20 @@ class MediaSelectorAutoSelect(
         blacklistMediaIds: Set<String> = emptySet(),
         lowTierToleranceDuration: Duration = 5.seconds,
         instantSelectTierThreshold: MediaSourceTier = InstantSelectTierThreshold,
-    ): Media? {
-
-        // 数据源能达到的最优 tier: 只要有一个 channel 足够低就有机会被立即选择
-        fun MediaSourceFetchResult.getBestTier(): MediaSourceTier = sourceTiers.getBestTier(this.mediaSourceId)
-
-        // media 级过滤: 只有其有效 tier (channel tier 优先) 满足阈值的资源才能被立即选择.
-        // 这保证了例如数据源整体是 tier 0, 但某个 channel 被降到 tier 1 时, 该 channel 的资源不会被秒选.
-        val instantSelectMediaFilter: (Media) -> Boolean = { media ->
-            sourceTiers.get(media.mediaSourceId, media.properties.alliance) <= instantSelectTierThreshold
-        }
-
-        return cancellableCoroutineScope {
-            val backgroundTasks = childScope()
-
-            val webSourceResults = combine(
-                mediaFetchSession.mediaSourceResults
-                    .filter { it.kind == MediaSourceKind.WEB }
-                    .map { result ->
-                        result.state.transformWhile { !it.also { emit(result) }.isFinal }
-                    },
-                Array<MediaSourceFetchResult>::toList,
-            ).shareIn(backgroundTasks, started = SharingStarted.Eagerly, replay = 1) // 至少 replay 一个可以让 select 里读到
-
-            // 选择合适的数据源
-            val selectedMedia = select {
-                webSourceResults.mapLatest { list ->
-                    // 所有满足 fast select 条件的源: low tier, succeeded, 有结果
-                    val candidateResults = buildList {
-                        list.forEach { result ->
-                            if (result.getBestTier() > instantSelectTierThreshold) return@forEach // high tier 不考虑
-                            if (result.state.value !is MediaSourceFetchState.Succeed) return@forEach // 没完事的不考虑
-                            if (result.results.first().count() <= 0) return@forEach // 没结果的不考虑
-                            add(result)
-                        }
-                    }.also {
-                        // 如果没有候选源就不往下走了
-                        if (it.isEmpty()) awaitCancellation()
-                    }
-
-                    logger.debug { "fastSources: select instantly from ${candidateResults.size} candidate sources." }
-
-                    // 如果这些满足条件的源中没有选出任何一个 media, 这里会挂起.
-                    // 当下一个满足条件的源查询好后, mapLatest 会将这里的挂起取消, 重新执行.
-                    // 例如: 第一个源查询好了, 但是两条结果都被排除了, 这里就会挂起.
-                    // 第二个查询好了, 有满足条件的结果, 那第一次选择就被取消, 第二次就会成功.
-                    // 成功后结果给 select builder, select 就会返回, 这个就是最终结果.
-                    mediaSelector.awaitSelectFromMediaSources(
-                        candidateResults.map { it.mediaSourceId },
-                        overrideUserSelection = overrideUserSelection,
-                        blacklistMediaIds = blacklistMediaIds,
-                        allowNonPreferred = true, // 快速选择源是 web 源, 可以不考虑偏好.
-                        candidateMediaFilter = instantSelectMediaFilter,
-                    )
-                }
-                    .filterNotNull()
-                    .produceIn(backgroundTasks)
-                    .onReceive { it }
-
-                // 等了 lowTierToleranceDuration 之后上面还没选出结果的话
-                // 就从所有已经成功查询的源选一个, 具体选择逻辑在 MediaSelector 中实现.
-                onTimeout(lowTierToleranceDuration) {
-                    val fallback = webSourceResults.first()
-                        .filter { it.state.value is MediaSourceFetchState.Succeed }
-                    logger.debug { "fastSources: low tier tolerance timeout, select from ${fallback.size} succeeded sources." }
-                    mediaSelector.trySelectFromMediaSources(
-                        fallback.map { it.mediaSourceId },
-                        overrideUserSelection = overrideUserSelection,
-                        blacklistMediaIds = blacklistMediaIds,
-                        allowNonPreferred = true, // 快速选择源是 web 源, 可以不考虑偏好. 
-                    )
-                }
-            }
-
-            logger.debug { "fastSources: selected media: $selectedMedia" }
-            backgroundTasks.cancel()
-
-            selectedMedia
-        }
-    }
+        fuzzyMatchToleranceDuration: Duration = 15.seconds,
+        waitForPendingSources: Boolean = true,
+    ): Media? = mediaSelector.runWebAutoSelect(
+        mediaFetchSession,
+        WebAutoSelectConfig(
+            sourceTiers = sourceTiers,
+            exactMatchAfter = lowTierToleranceDuration,
+            fuzzyMatchAfter = fuzzyMatchToleranceDuration,
+            instantTier = instantSelectTierThreshold,
+            blacklist = blacklistMediaIds,
+            waitForPendingSources = waitForPendingSources,
+        ),
+        expectedSelection = if (overrideUserSelection) mediaSelector.selected.value else null,
+    )
 
     /**
      * 从用户偏好的 web 数据源快速选择媒体, 如果没有则返回 null
@@ -277,7 +199,7 @@ class MediaSelectorAutoSelect(
     companion object {
         /**
          * 如果快速选择数据源功能为启用状态 ([MediaSelectorSettings.fastSelectWebKind]),
-         * 不经过任何等待, 只要该数据源查询成功并且满足字幕语言偏好就立即选择.
+         * 不经过任何等待, 只要该数据源查询成功并且有精确匹配资源就立即选择.
          *
          * @see MediaSelector
          */

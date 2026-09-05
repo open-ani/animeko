@@ -27,7 +27,8 @@ import me.him188.ani.app.domain.episode.MediaFetchSelectBundle
 import me.him188.ani.app.domain.media.fetch.MediaFetchSession
 import me.him188.ani.app.domain.media.selector.MediaSelector
 import me.him188.ani.app.domain.media.selector.MediaSelectorSourceTiers
-import me.him188.ani.app.domain.media.selector.autoSelect
+import me.him188.ani.app.domain.media.selector.WebAutoSelectConfig
+import me.him188.ani.app.domain.media.selector.runWebAutoSelect
 import me.him188.ani.app.domain.mediasource.GetMediaSelectorSourceTiersUseCase
 import me.him188.ani.app.domain.player.VideoLoadingState
 import me.him188.ani.app.domain.settings.GetMediaSelectorSettingsFlowUseCase
@@ -165,11 +166,13 @@ internal class PlayerLoadErrorHandler(
         logger.info { "Player errored, automatically switching to next media" }
 
         // 将当前播放的 mediaId 加入黑名单
-        mediaSelector.selected.value?.let {
+        val failedMedia = mediaSelector.selected.value
+        failedMedia?.let {
             blacklistedMediaIds = blacklistedMediaIds.add(it.mediaId) // thread-safe
         }
 
         delay(1.seconds) // 稍等让用户看到播放出错
+        if (mediaSelector.selected.value != failedMedia) return
 
         // Load data in parallel
         val (preferKind, sourceTiers) = combine(
@@ -182,13 +185,17 @@ internal class PlayerLoadErrorHandler(
             return
         }
 
-        val result = mediaSelector.autoSelect.fastSelectWebSources(
+        val result = mediaSelector.runWebAutoSelect(
             session,
-            sourceTiers = sourceTiers,
-            overrideUserSelection = true, // Note: 覆盖用户选择
-            blacklistMediaIds = blacklistedMediaIds,
-            // 错误切换不需要等太长时间.
-            lowTierToleranceDuration = 1.seconds,
+            WebAutoSelectConfig(
+                sourceTiers = sourceTiers,
+                blacklist = blacklistedMediaIds,
+                // 错误切换不需要等太长时间。
+                exactMatchAfter = 1.seconds,
+                fuzzyMatchAfter = 1.seconds,
+                waitForPendingSources = false,
+            ),
+            expectedSelection = failedMedia,
         )
         logger.info { "Player errored, automatically switched to next media: $result" }
     }

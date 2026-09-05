@@ -274,6 +274,24 @@ class PlayerLoadErrorHandlerTest {
         assertEquals(setOf(mediaA.mediaId), handler1.blacklist)
     }
 
+    @Test
+    fun `manual choice during player error delay cancels automatic replacement`() = runFetchMediaSelectorTestSuite {
+        initSubject("test")
+        val (_, session, sources) = configureFetchSession { object { val web1 by web { tier = 0 } } }
+        sources.web1.complete(media(kind = WEB, subjectName = initApi.subjectName))
+        testScope().runCurrent()
+        val failed = media(kind = WEB, subjectName = initApi.subjectName)
+        selector.select(failed)
+        val handler = PlayerLoadErrorHandler(getPreferKind = { WEB }, getSourceTiers = { preferenceApi.sourceTiers!! })
+        val job = testScope().launch { handler.handleError(session, selector) }
+        testScope().runCurrent()
+        val manual = media(kind = WEB, subjectName = initApi.subjectName)
+        selector.select(manual)
+        testScope().advanceUntilIdle()
+        assertTrue(job.isCompleted)
+        assertEquals(manual, selector.selected.value)
+    }
+
     context(scope: TestScope)
     private fun testScope(): TestScope = implicit()
 }
