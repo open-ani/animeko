@@ -375,6 +375,12 @@ fun CollectionPage(
                     items,
                     item = { collection ->
                         var nsfwModeState: NsfwMode by rememberSaveable(collection) { mutableStateOf(collection.nsfwMode) }
+                        val editableSubjectCollectionTypeState = remember(
+                            collection.subjectId,
+                            collection.collectionType,
+                        ) {
+                            state.createEditableSubjectCollectionTypeState(collection)
+                        }
                         NsfwMask(
                             nsfwModeState,
                             onTemporarilyDisplay = { nsfwModeState = NsfwMode.DISPLAY },
@@ -384,7 +390,7 @@ fun CollectionPage(
                                 collection,
                                 { onCollectionUpdate(collection.subjectId, it) },
                                 state.subjectProgressStateFactory,
-                                state.createEditableSubjectCollectionTypeState(collection),
+                                editableSubjectCollectionTypeState,
                             )
                         }
                     },
