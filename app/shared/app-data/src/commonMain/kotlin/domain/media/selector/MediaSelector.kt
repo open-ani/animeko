@@ -565,7 +565,7 @@ class DefaultMediaSelector(
     private suspend fun findUsingPreferenceFromCandidates(
         candidates: List<MaybeExcludedMedia.Included>,
         mergedPreference: MediaPreference,
-    ): Media? = findMediaByPreference(
+    ): Media? = MediaSelectionDecider.findByPreference(
         candidates,
         mergedPreference,
         alliance.available.first(),

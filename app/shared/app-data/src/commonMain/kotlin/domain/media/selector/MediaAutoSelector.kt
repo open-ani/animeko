@@ -12,9 +12,11 @@ package me.him188.ani.app.domain.media.selector
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.launch
 import me.him188.ani.app.data.models.preference.MediaPreference.Companion.ANY_FILTER
 import me.him188.ani.app.domain.media.fetch.MediaFetchSession
@@ -69,7 +71,7 @@ internal class MediaAutoSelector(private val mediaSelector: MediaSelector) {
         var deadlines: Job? = null
         try {
             combine(
-                mediaSelector.autoSelectSnapshots(session.selectionSnapshots()), stage, mediaSelector.selected,
+                mediaSelector.autoSelectSnapshots(sourceSnapshots(session)), stage, mediaSelector.selected,
             ) { snapshot, phase, currentSelection ->
                 if (currentSelection != expectedSelection) Decision.Exhausted
                 else decide(snapshot, config, phase)
@@ -104,6 +106,26 @@ internal class MediaAutoSelector(private val mediaSelector: MediaSelector) {
             deadlines?.cancel()
         }
         result
+    }
+
+    private fun sourceSnapshots(session: MediaFetchSession): Flow<List<MediaSourceSelectionSnapshot>> {
+        if (session.mediaSourceResults.isEmpty()) return flowOf(emptyList())
+        return combine(session.mediaSourceResults.map { source ->
+            // Keep a stable subscription to results: these subscriptions also drive lazy source queries.
+            combine(source.state, source.results) { state, results ->
+                // combine can observe a terminal state before delivering the corresponding results event.
+                // Fetcher publishes terminal state after results have entered its replay cache, so read
+                // that cache while our stable subscription is still alive. Never pair Succeed with an
+                // older result list (including an empty list).
+                val currentResults = if (state.isFinal) source.results.first() else results
+                val currentState = source.state.value
+                MediaSourceSelectionSnapshot(
+                    source.mediaSourceId, source.kind,
+                    if (currentState == state) state else MediaSourceFetchState.Working,
+                    currentResults,
+                )
+            }
+        }) { it.toList() }
     }
 
     private enum class Stage { PreferredSource, Instant, Exact, Fuzzy }
@@ -162,7 +184,7 @@ internal class MediaAutoSelector(private val mediaSelector: MediaSelector) {
         if (waitingFor.any { !it.state.isFinal }) return Decision.Wait
         if (preferred.isEmpty()) return Decision.Exhausted
         if (!snapshot.context.allFieldsLoaded()) return Decision.Wait
-        val media = findMediaByPreference(
+        val media = MediaSelectionDecider.findByPreference(
             preferred, snapshot.preference, snapshot.availableAlliances, snapshot.context, snapshot.settings,
         ) ?: return Decision.Exhausted
         return Decision.Select(media, "preferred kind completed")
@@ -226,7 +248,7 @@ internal class MediaAutoSelector(private val mediaSelector: MediaSelector) {
         snapshot: MediaAutoSelectSnapshot,
         candidates: List<MaybeExcludedMedia.Included>,
         relax: Boolean = false,
-    ): Media? = findMediaByPreference(
+    ): Media? = MediaSelectionDecider.findByPreference(
         candidates,
         if (relax) snapshot.preference.copy(
             alliance = ANY_FILTER, resolution = ANY_FILTER, subtitleLanguageId = ANY_FILTER, mediaSourceId = ANY_FILTER,

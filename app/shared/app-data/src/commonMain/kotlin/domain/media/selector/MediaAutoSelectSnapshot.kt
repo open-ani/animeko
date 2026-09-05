@@ -9,15 +9,9 @@
 
 package me.him188.ani.app.domain.media.selector
 
-import kotlinx.coroutines.flow.Flow
-import kotlinx.coroutines.flow.combine
-import kotlinx.coroutines.flow.first
-import kotlinx.coroutines.flow.flowOf
 import me.him188.ani.app.data.models.preference.MediaPreference
 import me.him188.ani.app.data.models.preference.MediaSelectorSettings
-import me.him188.ani.app.domain.media.fetch.MediaFetchSession
 import me.him188.ani.app.domain.media.fetch.MediaSourceFetchState
-import me.him188.ani.app.domain.media.fetch.isFinal
 import me.him188.ani.datasources.api.Media
 import me.him188.ani.datasources.api.source.MediaSourceKind
 
@@ -39,24 +33,4 @@ data class MediaAutoSelectSnapshot(
     val context: MediaSelectorContext,
 ) {
     internal val availableAlliances get() = candidates.map { it.result.properties.alliance }.distinct().sortedBy { it }
-}
-
-internal fun MediaFetchSession.selectionSnapshots(): Flow<List<MediaSourceSelectionSnapshot>> {
-    if (mediaSourceResults.isEmpty()) return flowOf(emptyList())
-    return combine(mediaSourceResults.map { source ->
-        // Keep a stable subscription to results: these subscriptions also drive lazy source queries.
-        combine(source.state, source.results) { state, results ->
-            // combine can observe a terminal state before delivering the corresponding results event.
-            // Fetcher publishes terminal state after results have entered its replay cache, so read
-            // that cache while our stable subscription is still alive. Never pair Succeed with an
-            // older result list (including an empty list).
-            val currentResults = if (state.isFinal) source.results.first() else results
-            val currentState = source.state.value
-            MediaSourceSelectionSnapshot(
-                source.mediaSourceId, source.kind,
-                if (currentState == state) state else MediaSourceFetchState.Working,
-                currentResults,
-            )
-        }
-    }) { it.toList() }
 }
