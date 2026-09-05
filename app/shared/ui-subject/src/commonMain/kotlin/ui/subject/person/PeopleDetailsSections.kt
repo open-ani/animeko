@@ -159,6 +159,8 @@ internal fun peopleMetaLine(kindLabel: String, collects: Int): String =
 
 /**
  * 头部行: 竖版立绘/照片 (固定 110x147, crop 顶部对齐) + 名字/原名/meta 行. 用于单栏与侧边预览.
+ *
+ * @param onClickImage 点击图片的回调 (如打开大图查看器). 为 `null` 时图片不可点击.
  */
 @Composable
 internal fun PeopleHeaderRow(
@@ -168,6 +170,7 @@ internal fun PeopleHeaderRow(
     metaLine: String,
     modifier: Modifier = Modifier,
     isPlaceholder: Boolean = false,
+    onClickImage: (() -> Unit)? = null,
 ) {
     Row(
         modifier.fillMaxWidth(),
@@ -178,6 +181,7 @@ internal fun PeopleHeaderRow(
             Modifier
                 .size(110.dp, 147.dp)
                 .clip(MaterialTheme.shapes.medium)
+                .then(if (onClickImage != null) Modifier.clickable(onClick = onClickImage) else Modifier)
                 .placeholder(isPlaceholder),
         ) {
             AvatarImage(
