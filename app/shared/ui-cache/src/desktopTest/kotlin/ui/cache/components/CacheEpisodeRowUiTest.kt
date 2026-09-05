@@ -19,6 +19,7 @@ import me.him188.ani.app.ui.foundation.ProvideCompositionLocalsForPreview
 import me.him188.ani.app.ui.framework.runAniComposeUiTest
 import me.him188.ani.app.ui.lang.Lang
 import me.him188.ani.app.ui.lang.cache_episode_watched_progress
+import me.him188.ani.app.ui.lang.cache_filter_status_finished
 import me.him188.ani.datasources.api.topic.FileSize
 import me.him188.ani.utils.platform.annotations.TestOnly
 import org.jetbrains.compose.resources.getString
@@ -27,7 +28,7 @@ import kotlin.test.Test
 @OptIn(TestOnly::class)
 class CacheEpisodeRowUiTest {
     @Test
-    fun `completed cache shows playback progress text without progress semantics`() = runAniComposeUiTest {
+    fun `completed cache shows watched progress beside finished without progress semantics`() = runAniComposeUiTest {
         val episode = createTestCacheEpisode(
             sort = 1,
             initialState = CacheEpisodePaused.COMPLETED,
@@ -35,8 +36,9 @@ class CacheEpisodeRowUiTest {
             downloadSpeed = FileSize.Unspecified,
             playbackProgress = 0.5f.toProgress(),
         )
-        val watchedText = runBlocking {
-            getString(Lang.cache_episode_watched_progress, "50.0%")
+        val metadataText = runBlocking {
+            "${episode.detailedSizeText} · ${getString(Lang.cache_filter_status_finished)} · " +
+                    getString(Lang.cache_episode_watched_progress, "50.0%")
         }
 
         setContent {
@@ -57,7 +59,7 @@ class CacheEpisodeRowUiTest {
             }
         }
 
-        onNodeWithText(watchedText).assertExists()
+        onNodeWithText(metadataText, useUnmergedTree = true).assertExists()
         onAllNodes(SemanticsMatcher.keyIsDefined(SemanticsProperties.ProgressBarRangeInfo))
             .assertCountEquals(0)
     }

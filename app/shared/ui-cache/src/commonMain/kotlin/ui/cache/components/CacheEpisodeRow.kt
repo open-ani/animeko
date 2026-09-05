@@ -41,7 +41,6 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.graphics.StrokeCap
-import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import me.him188.ani.app.tools.getOrZero
@@ -67,7 +66,7 @@ import org.jetbrains.compose.resources.stringResource
 /**
  * 新设计的剧集缓存行, 用于条目缓存页与全局缓存管理页的详情栏.
  *
- * - 已完成: 标题 + "1.2 GB · AnimeGarden · 已完成" + 播放/更多按钮
+ * - 已完成: 标题 + "1.2 GB · AnimeGarden · 已完成 · 已观看 50.0%" (有观看进度时) + 播放/更多按钮
  * - 下载中: 标题 + "890 MB / 1.3 GB · AnimeGarden" + 暂停/更多按钮 + 进度条 + 速度/百分比
  * - 已暂停: 同上, 主操作为继续, 进度条右侧显示 "已暂停"
  * - 多选模式: 行首复选框, 行尾操作隐藏
@@ -205,48 +204,35 @@ fun CacheEpisodeRow(
                 }
             }
 
-            val showPlaybackProgressText = episode.isFinished && episode.hasPlaybackProgress
-            AniAnimatedVisibility(!episode.isFinished || showPlaybackProgressText) {
-                if (showPlaybackProgressText) {
-                    Text(
-                        stringResource(
-                            Lang.cache_episode_watched_progress,
-                            episode.playbackProgressText ?: "",
-                        ),
-                        modifier = Modifier.fillMaxWidth(),
-                        style = MaterialTheme.typography.labelMedium,
-                        textAlign = TextAlign.End,
+            AniAnimatedVisibility(!episode.isFinished) {
+                Row(
+                    Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(16.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    val progress by animateFloatAsState(episode.progress.getOrZero())
+                    LinearProgressIndicator(
+                        progress = { progress },
+                        modifier = Modifier.weight(1f),
+                        strokeCap = StrokeCap.Round,
                     )
-                } else {
                     Row(
-                        Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.spacedBy(16.dp),
+                        horizontalArrangement = Arrangement.spacedBy(8.dp),
                         verticalAlignment = Alignment.CenterVertically,
                     ) {
-                        val progress by animateFloatAsState(episode.progress.getOrZero())
-                        LinearProgressIndicator(
-                            progress = { progress },
-                            modifier = Modifier.weight(1f),
-                            strokeCap = StrokeCap.Round,
-                        )
-                        Row(
-                            horizontalArrangement = Arrangement.spacedBy(8.dp),
-                            verticalAlignment = Alignment.CenterVertically,
-                        ) {
-                            val statusText = when {
-                                episode.isFailed -> stringResource(Lang.cache_episode_download_failed)
-                                episode.isPaused -> stringResource(Lang.cache_episode_status_paused)
-                                else -> episode.speedText
-                            }
-                            statusText?.let {
-                                Text(
-                                    it,
-                                    style = MaterialTheme.typography.labelMedium,
-                                    color = if (episode.isFailed) MaterialTheme.colorScheme.error else Color.Unspecified,
-                                )
-                            }
-                            episode.progressText?.let { Text(it, style = MaterialTheme.typography.labelMedium) }
+                        val statusText = when {
+                            episode.isFailed -> stringResource(Lang.cache_episode_download_failed)
+                            episode.isPaused -> stringResource(Lang.cache_episode_status_paused)
+                            else -> episode.speedText
                         }
+                        statusText?.let {
+                            Text(
+                                it,
+                                style = MaterialTheme.typography.labelMedium,
+                                color = if (episode.isFailed) MaterialTheme.colorScheme.error else Color.Unspecified,
+                            )
+                        }
+                        episode.progressText?.let { Text(it, style = MaterialTheme.typography.labelMedium) }
                     }
                 }
             }
@@ -302,7 +288,7 @@ private fun CacheEpisodePrimaryAction(
 }
 
 /**
- * "1.2 GB · AnimeGarden · 已完成" 形式的行副标题.
+ * "1.2 GB · AnimeGarden · 已完成 · 已观看 50.0%" 形式的行副标题, 观看进度仅在已完成且有播放历史时展示.
  */
 @Composable
 private fun cacheEpisodeMetaText(
@@ -316,6 +302,11 @@ private fun cacheEpisodeMetaText(
         episode.isFinished -> stringResource(Lang.cache_filter_status_finished)
         else -> null
     }
-    return listOfNotNull(episode.detailedSizeText, sourceName, statusText)
+    val watchedText = if (episode.isFinished) {
+        episode.playbackProgressText?.let { stringResource(Lang.cache_episode_watched_progress, it) }
+    } else {
+        null
+    }
+    return listOfNotNull(episode.detailedSizeText, sourceName, statusText, watchedText)
         .joinToString(" · ")
 }
