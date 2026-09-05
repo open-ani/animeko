@@ -37,11 +37,10 @@ import me.him188.ani.app.tools.Progress
 import me.him188.ani.app.tools.toProgress
 import me.him188.ani.app.ui.cache.subject.EpisodeCacheActionIcon
 import me.him188.ani.app.ui.cache.subject.EpisodeCacheInfo
-import me.him188.ani.app.ui.cache.subject.EpisodeCacheItem
 import me.him188.ani.app.ui.cache.subject.EpisodeCacheState
+import me.him188.ani.app.ui.cache.subject.EpisodeNotCachedRow
 import me.him188.ani.app.ui.foundation.ProvideCompositionLocalsForPreview
 import me.him188.ani.app.ui.foundation.stateOf
-import me.him188.ani.app.ui.settings.SettingsTab
 import me.him188.ani.datasources.api.EpisodeSort
 import me.him188.ani.datasources.api.topic.FileSize
 import me.him188.ani.datasources.api.topic.UnifiedCollectionType
@@ -143,12 +142,12 @@ private fun PreviewEpisodeCacheActionIconHasActionRunningChange() {
 @OptIn(TestOnly::class)
 @Preview
 @Composable
-private fun PreviewEpisodeItem() = ProvideCompositionLocalsForPreview {
-    SettingsTab {
+private fun PreviewEpisodeNotCachedRow() = ProvideCompositionLocalsForPreview {
+    Column {
         var id = 0
         listOf(true, false).forEach { hasPublished ->
             UnifiedCollectionType.entries.forEach { watchStatus ->
-                EpisodeCacheItem(
+                EpisodeNotCachedRow(
                     episode = rememberTestEpisodeCacheState(
                         info = EpisodeCacheInfo(
                             sort = EpisodeSort(++id),
@@ -158,9 +157,10 @@ private fun PreviewEpisodeItem() = ProvideCompositionLocalsForPreview {
                             hasPublished = true,
                         ),
                     ),
-                    onClick = {},
                     isRequestHidden = false,
-                    dropdown = { },
+                    inSelectionMode = false,
+                    onClick = {},
+                    onCancel = {},
                 )
             }
         }
@@ -170,24 +170,22 @@ private fun PreviewEpisodeItem() = ProvideCompositionLocalsForPreview {
 @OptIn(TestOnly::class)
 @Preview
 @Composable
-private fun PreviewEpisodeItemVeryLong() = ProvideCompositionLocalsForPreview {
-    SettingsTab {
-        EpisodeCacheItem(
-            rememberTestEpisodeCacheState(
-                EpisodeCacheInfo(
-                    sort = EpisodeSort(1),
-                    ep = null,
-                    title = "测试标题".repeat(10),
-                    watchStatus = UnifiedCollectionType.WISH,
-                    hasPublished = true,
-                ),
-                EpisodeCacheStatus.NotCached,
+private fun PreviewEpisodeNotCachedRowVeryLong() = ProvideCompositionLocalsForPreview {
+    EpisodeNotCachedRow(
+        rememberTestEpisodeCacheState(
+            EpisodeCacheInfo(
+                sort = EpisodeSort(1),
+                ep = null,
+                title = "测试标题".repeat(10),
+                watchStatus = UnifiedCollectionType.WISH,
+                hasPublished = true,
             ),
-            onClick = {},
-            isRequestHidden = false,
-            dropdown = { },
-        )
-    }
+        ),
+        isRequestHidden = false,
+        inSelectionMode = false,
+        onClick = {},
+        onCancel = {},
+    )
 }
 
 @Composable

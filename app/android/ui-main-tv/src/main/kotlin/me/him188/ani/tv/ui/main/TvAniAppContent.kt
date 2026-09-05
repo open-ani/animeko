@@ -16,25 +16,25 @@ import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.lifecycle.viewmodel.compose.viewModel
-import androidx.navigation.compose.NavHost
-import androidx.navigation.compose.composable
-import androidx.navigation.compose.rememberNavController
-import androidx.navigation.toRoute
+import androidx.lifecycle.viewmodel.navigation3.rememberViewModelStoreNavEntryDecorator
+import androidx.navigation3.runtime.entryProvider
+import androidx.navigation3.runtime.rememberSaveableStateHolderNavEntryDecorator
+import androidx.navigation3.ui.NavDisplay
 import androidx.tv.material3.Surface
+import me.him188.ani.app.data.models.subject.SubjectInfo
 import me.him188.ani.app.navigation.AniNavigator
 import me.him188.ani.app.navigation.LocalNavigator
 import me.him188.ani.app.navigation.MainScreenPage
 import me.him188.ani.app.navigation.NavRoutes
-import me.him188.ani.app.navigation.SubjectDetailPlaceholder
+import me.him188.ani.app.navigation.rememberAniBackStack
 import me.him188.ani.tv.ui.episode.TvEpisodeScreen
-import me.him188.ani.tv.ui.foundation.focus.TvFocusMemory
 import me.him188.ani.tv.ui.episode.TvEpisodeViewModel
-import me.him188.ani.app.data.models.subject.SubjectInfo
+import me.him188.ani.tv.ui.foundation.focus.TvFocusMemory
 import me.him188.ani.tv.ui.subject.TvSubjectDetailsScreen
-import kotlin.reflect.typeOf
 
 /**
- * TV 端根内容: 注册 TV 支持的 [NavRoutes] 子集 (atv-architecture.md §6.3).
+ * TV 端根内容: 注册 TV 支持的 [NavRoutes] 子集 (atv-architecture.md §6.3), Navigation 3
+ * backStack 模型 (接线同手机 AniAppContent).
  *
  * `Caches`/`BangumiAuthorize` 等按 §1.2 裁剪永不注册.
  */
@@ -43,60 +43,57 @@ fun TvAniAppContent(
     aniNavigator: AniNavigator,
     modifier: Modifier = Modifier,
 ) {
-    val navController = rememberNavController()
-    aniNavigator.setNavController(navController)
-    // 主壳焦点记忆放 NavHost 之上: 进详情页返回时 Main route 组合重建, 记忆须跨 route 存活
+    val backStack = rememberAniBackStack(NavRoutes.Main(MainScreenPage.Exploration))
+    aniNavigator.setBackStack(backStack)
+    // 主壳焦点记忆放 NavDisplay 之上: 进详情页返回时 Main 条目组合重建, 记忆须跨 route 存活
     // (身份键恢复流程见 TvFocusMemory)
     val shellFocusMemory = remember { TvFocusMemory() }
 
     CompositionLocalProvider(LocalNavigator provides aniNavigator) {
         // tv MaterialTheme 不绘制窗口背景, 根部铺一层 Surface (深色 surface + content color)
         Surface(modifier.fillMaxSize()) {
-            NavHost(
-                navController = navController,
-                startDestination = NavRoutes.Main(MainScreenPage.Exploration),
-            ) {
-                composable<NavRoutes.Main>(
-                    typeMap = mapOf(typeOf<MainScreenPage>() to MainScreenPage.NavType),
-                ) {
-                    TvMainShell(focusMemory = shellFocusMemory)
-                }
-
-                composable<NavRoutes.SubjectDetail>(
-                    typeMap = mapOf(
-                        typeOf<SubjectDetailPlaceholder?>() to SubjectDetailPlaceholder.NavType,
-                    ),
-                ) { backStackEntry ->
-                    val route = backStackEntry.toRoute<NavRoutes.SubjectDetail>()
-                    TvSubjectDetailsScreen(
-                        subjectId = route.subjectId,
-                        placeholder = route.placeholder?.run {
-                            SubjectInfo.createPlaceholder(id, name, coverUrl, nameCN)
-                        },
-                        onPlayEpisode = { episodeId ->
-                            aniNavigator.navigateEpisodeDetails(route.subjectId, episodeId)
-                        },
-                        onClickRelated = { relatedId ->
-                            aniNavigator.navigateSubjectDetails(relatedId, null)
-                        },
-                    )
-                }
-
-                composable<NavRoutes.EpisodeDetail> { backStackEntry ->
-                    val route = backStackEntry.toRoute<NavRoutes.EpisodeDetail>()
-                    val context = LocalContext.current.applicationContext
-                    val vm = viewModel<TvEpisodeViewModel>(key = route.episodeId.toString()) {
-                        TvEpisodeViewModel(route.subjectId, route.episodeId, context)
+            NavDisplay(
+                backStack = backStack,
+                onBack = { aniNavigator.popBackStack() },
+                entryDecorators = listOf(
+                    // 让每个页面各自持有 rememberSaveable 状态和 ViewModel, 出栈时一并销毁
+                    rememberSaveableStateHolderNavEntryDecorator(),
+                    rememberViewModelStoreNavEntryDecorator(),
+                ),
+                entryProvider = entryProvider {
+                    entry<NavRoutes.Main> {
+                        TvMainShell(focusMemory = shellFocusMemory)
                     }
-                    TvEpisodeScreen(
-                        vm,
-                        onClickRelatedSubject = { relatedId ->
-                            aniNavigator.navigateSubjectDetails(relatedId, null)
-                        },
-                    )
-                }
 
-            }
+                    entry<NavRoutes.SubjectDetail> { route ->
+                        TvSubjectDetailsScreen(
+                            subjectId = route.subjectId,
+                            placeholder = route.placeholder?.run {
+                                SubjectInfo.createPlaceholder(id, name, coverUrl, nameCN)
+                            },
+                            onPlayEpisode = { episodeId ->
+                                aniNavigator.navigateEpisodeDetails(route.subjectId, episodeId)
+                            },
+                            onClickRelated = { relatedId ->
+                                aniNavigator.navigateSubjectDetails(relatedId, null)
+                            },
+                        )
+                    }
+
+                    entry<NavRoutes.EpisodeDetail> { route ->
+                        val context = LocalContext.current.applicationContext
+                        val vm = viewModel<TvEpisodeViewModel>(key = route.episodeId.toString()) {
+                            TvEpisodeViewModel(route.subjectId, route.episodeId, context)
+                        }
+                        TvEpisodeScreen(
+                            vm,
+                            onClickRelatedSubject = { relatedId ->
+                                aniNavigator.navigateSubjectDetails(relatedId, null)
+                            },
+                        )
+                    }
+                },
+            )
         }
     }
 }

@@ -210,11 +210,8 @@ class AndroidWebViewVideoExtractor(
                 withTimeoutOrNull(timeoutMillis) {
                     deferred.await()
                 }
-            } catch (e: Throwable) {
-                if (deferred.isActive) {
-                    deferred.cancel()
-                }
-                throw e
+            } finally {
+                deferred.cancel()
             }
         }
 //        }

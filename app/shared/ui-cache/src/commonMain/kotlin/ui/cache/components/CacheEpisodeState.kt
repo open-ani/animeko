@@ -40,6 +40,10 @@ class CacheEpisodeState(
     val engineKey: MediaCacheEngineKey?,
     val subjectCollectionType: UnifiedCollectionType?,
     val playability: Playability = Playability.PLAYABLE,
+    /**
+     * 该缓存来源的数据源 id, 用于展示数据源名称. `null` 表示未知.
+     */
+    val mediaSourceId: String? = null,
 ) {
     enum class Playability {
         PLAYABLE,
@@ -97,6 +101,15 @@ class CacheEpisodeState(
             return@run "${speed}/s"
         }
         null
+    }
+
+    /**
+     * 设计稿中的尺寸文案: 已完成时为 "1.2 GB", 未完成时为 "890 MB / 1.3 GB".
+     */
+    val detailedSizeText: String? = if (isFinished) {
+        sizeText
+    } else {
+        calculateSizeText(stats.totalSize, stats.progress.getOrNull()) ?: sizeText
     }
 
     val isProgressUnspecified get() = stats.progress.isUnspecified
@@ -168,6 +181,7 @@ fun createTestCacheEpisode(
     downloadSpeed: FileSize = 233.megaBytes,
     progress: Progress = 0.3f.toProgress(),
     totalSize: FileSize = 888.megaBytes,
+    mediaSourceId: String? = "AnimeGarden",
 ): CacheEpisodeState {
     val cacheId = Random.nextInt(10000, 99999).toString()
     val resolvedState = initialState ?: when {
@@ -193,5 +207,6 @@ fun createTestCacheEpisode(
         state = resolvedState,
         engineKey = MediaCacheEngineKey.Anitorrent,
         subjectCollectionType = UnifiedCollectionType.DOING,
+        mediaSourceId = mediaSourceId,
     )
 }

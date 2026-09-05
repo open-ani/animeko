@@ -42,6 +42,15 @@
     <string name="settings_media_video_link_resolve_timeout_description">播放線上影片來源時，解析最終可播放連結的最長等待時間。逾時後會更快判定失敗並切換或重試。建議設置 8-15 秒</string>
     <string name="settings_media_max_wait_time">最長等待時間</string>
     <string name="settings_media_max_wait_time_description">每次查詢的最長等待時間。在此時間結束時，將會從已經查詢到的數據源中根據你設置的偏好自動選擇數據源。如果等待時間太短，可能會忽略你的偏好設置；如果時間更長，可以更好地滿足你的偏好設置，但可能會導致每次開播很慢。建議設置 5–10 秒</string>
+    <string name="settings_media_web_search_cache_ttl">Web 搜尋快取有效期</string>
+    <string name="settings_media_web_search_cache_ttl_description">切換劇集或短暫退出後重新進入播放頁時，複用 Web 源的搜尋結果。實際生效值為此值與資料源自身定義的較小者</string>
+    <string name="settings_media_cache_ttl_none">不快取</string>
+    <string name="settings_media_cache_ttl_5min">5 分鐘</string>
+    <string name="settings_media_cache_ttl_15min">15 分鐘</string>
+    <string name="settings_media_cache_ttl_30min">30 分鐘</string>
+    <string name="settings_media_cache_ttl_1h">1 小時</string>
+    <string name="settings_media_cache_ttl_6h">6 小時</string>
+    <string name="settings_media_cache_ttl_1d">1 天</string>
     <string name="settings_media_show_disabled">顯示禁用的數據源</string>
     <string name="settings_media_show_disabled_description">播放時，以灰色顯示在"數據源管理"設置中禁用的數據源，而不是隱藏。以便在偏好數據源中未找到資源時，可臨時啟用禁用的數據源</string>
     <string name="settings_media_image_captcha_auto_solve">自動識別圖片驗證碼</string>

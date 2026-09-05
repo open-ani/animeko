@@ -9,8 +9,11 @@
 
 package me.him188.ani.app.ui.comment
 
+import me.him188.ani.app.data.models.comment.CommentVoteValue
 import me.him188.ani.app.data.models.episode.EpisodeComment
+import me.him188.ani.app.data.models.episode.EpisodeCommentSource
 import me.him188.ani.app.data.models.subject.SubjectReview
+import me.him188.ani.app.data.models.subject.SubjectReviewSource
 import me.him188.ani.app.ui.richtext.toUIBriefText
 import me.him188.ani.app.ui.richtext.toUIRichElements
 import me.him188.ani.utils.bbcode.BBCode
@@ -25,6 +28,16 @@ object CommentMapperContext {
     fun parseBBCodeAsReply(code: String): UIRichText =
         UIRichText(listOf(BBCode.parse(code).toUIBriefText().copy(maxLine = 2)))
 
+    private fun CommentVoteValue.toUICommentVote(): UICommentVote = when (this) {
+        CommentVoteValue.LIKE -> UICommentVote.LIKE
+        CommentVoteValue.DISLIKE -> UICommentVote.DISLIKE
+    }
+
+    fun UICommentVote.toCommentVoteValue(): CommentVoteValue = when (this) {
+        UICommentVote.LIKE -> CommentVoteValue.LIKE
+        UICommentVote.DISLIKE -> CommentVoteValue.DISLIKE
+    }
+
     fun SubjectReview.parseToUIComment() =
         UIComment(
             id = id,
@@ -36,6 +49,15 @@ object CommentMapperContext {
             briefReplies = emptyList(),
             replyCount = 0,
             rating = rating,
+            source = when (source) {
+                SubjectReviewSource.ANI -> UICommentSource.ANI
+                SubjectReviewSource.BANGUMI -> UICommentSource.BANGUMI
+            },
+            sourceCommentId = reviewId,
+            canReply = false,
+            likeCount = likeCount,
+            selfVote = selfVote?.toUICommentVote(),
+            rawContent = content,
         )
 
     fun EpisodeComment.parseToUIComment(): UIComment {
@@ -59,21 +81,27 @@ object CommentMapperContext {
                     replyCount = 0,
                     rating = null,
                     source = when (reply.source) {
-                        me.him188.ani.app.data.models.episode.EpisodeCommentSource.ANI -> UICommentSource.ANI
-                        me.him188.ani.app.data.models.episode.EpisodeCommentSource.BANGUMI -> UICommentSource.BANGUMI
+                        EpisodeCommentSource.ANI -> UICommentSource.ANI
+                        EpisodeCommentSource.BANGUMI -> UICommentSource.BANGUMI
                     },
                     sourceCommentId = reply.sourceCommentId,
                     canReply = reply.canReply,
+                    rawContent = reply.content,
+                    episodeId = reply.episodeId,
                 )
             },
-            replyCount = comment.replies.size,
+            replyCount = comment.replyCount,
             rating = null,
             source = when (comment.source) {
-                me.him188.ani.app.data.models.episode.EpisodeCommentSource.ANI -> UICommentSource.ANI
-                me.him188.ani.app.data.models.episode.EpisodeCommentSource.BANGUMI -> UICommentSource.BANGUMI
+                EpisodeCommentSource.ANI -> UICommentSource.ANI
+                EpisodeCommentSource.BANGUMI -> UICommentSource.BANGUMI
             },
             sourceCommentId = comment.sourceCommentId,
             canReply = comment.canReply,
+            likeCount = comment.likeCount,
+            selfVote = comment.selfVote?.toUICommentVote(),
+            rawContent = comment.content,
+            episodeId = comment.episodeId,
         )
     }
 

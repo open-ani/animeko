@@ -65,11 +65,6 @@
     <string name="settings_debug_show_all_episodes">顯示所有劇集</string>
     <string name="settings_debug_show_all_episodes_description">顯示所有劇集，包括SP、OP、ED等，目前僅部分線上源支援，請謹慎啟用</string>
     <string name="settings_debug_metered_network">計費網路資訊</string>
-    <string name="settings_debug_onboarding">新手引導設定</string>
-    <string name="settings_debug_enter_onboarding">進入新手嚮導</string>
-    <string name="settings_debug_reset_onboarding">重設新手引導狀態</string>
-    <string name="settings_debug_reset_onboarding_description">重設後，下次啟動 APP 會進入新手引導</string>
-    <string name="settings_debug_reset_onboarding_toast">已重設新手引導狀態</string>
     <string name="settings_debug_others">其他</string>
     <string name="settings_debug_get_bangumi_token">取得 Bangumi access token</string>
     <string name="settings_debug_get_ani_token">取得 Ani access token</string>
@@ -136,6 +131,8 @@
     <string name="settings_mediasource_selector_config_search_subject_names_count_description">每次播放使用多少個條目名稱進行查詢。\n為 1 則只使用主名稱，為 2 額外使用日文原名，大於 2 將額外使用其他別名，別名的數量不固定。\n一般用 1 就夠了，使用多個名稱將會顯著增加播放時的等待時間。</string>
     <string name="settings_mediasource_selector_config_request_interval">搜尋請求間隔時間 (毫秒)</string>
     <string name="settings_mediasource_selector_config_request_interval_description">控制每送出一個請求後等待多久再送出下一個請求</string>
+    <string name="settings_mediasource_selector_config_search_cache_ttl">搜尋快取有效期 (分鐘)</string>
+    <string name="settings_mediasource_selector_config_search_cache_ttl_description">在此時間內切換劇集時複用搜尋結果。實際生效值為此值與使用者設定中的較小者，0 表示不快取</string>
     <string name="settings_mediasource_selector_config_filter_settings">過濾設定</string>
     <string name="settings_mediasource_selector_config_filter_by_subject_name">使用條目名稱過濾</string>
     <string name="settings_mediasource_selector_config_filter_by_subject_name_description">要求資源標題包含條目名稱。適用於資料來源可能搜到無關內容的情況。此功能只對 4.4.0 以前版本有效，對其他版本無效</string>
@@ -194,6 +191,14 @@
     <string name="settings_acknowledgements_bangumi_description">條目資料與收藏服務</string>
     <string name="settings_acknowledgements_dandanplay">彈彈play</string>
     <string name="settings_acknowledgements_dandanplay_description">彈幕聚合</string>
+    <string name="settings_acknowledgements_mikan">蜜柑計劃</string>
+    <string name="settings_acknowledgements_mikan_description">新番 BT 資源索引</string>
+    <string name="settings_acknowledgements_dmhy">動漫花園</string>
+    <string name="settings_acknowledgements_dmhy_description">BT 資源分享社區</string>
+    <string name="settings_acknowledgements_oss_licenses">開源許可</string>
+    <string name="settings_acknowledgements_oss_licenses_description">本應用使用的開源庫及其許可證</string>
+    <string name="settings_oss_licenses_homepage">主頁</string>
+    <string name="settings_oss_licenses_license">許可證</string>
 
     <!-- AppSettingsTab -->
     <string name="settings_app_initial_page">初始頁面</string>
@@ -258,6 +263,8 @@
     <string name="settings_player_fullscreen_only_in_controller">不顯示</string>
     <string name="settings_player_fullscreen_button">豎屏模式下顯示全螢幕按鈕</string>
     <string name="settings_player_fullscreen_button_description">總是顯示播放器右下角的切換全螢幕按鈕，方便切換</string>
+    <string name="settings_player_video_enhancement_default">畫質增強預設狀態</string>
+    <string name="settings_player_video_enhancement_default_description">設定每次進入播放器時使用的畫質增強模式</string>
     <string name="settings_player_frame_preview">顯示進度條畫面預覽</string>
     <string name="settings_player_frame_preview_description">懸停或拖動進度條時，顯示目標位置的影片畫面</string>
     <string name="settings_player_enable_regex_filter">啟用正則彈幕過濾器</string>
@@ -283,6 +290,11 @@
     <string name="settings_player_remember_playback_speed_description">在播放器內調整的倍速跨劇集和重啟保持。關閉後僅對本次播放生效，退出播放器即回到預設倍速。</string>
     <string name="settings_player_default_playback_speed">預設倍速</string>
     <string name="settings_player_default_playback_speed_description">每次進入播放器時的起始倍速</string>
+    <string name="settings_player_mpv_options">自訂 mpv 選項</string>
+    <string name="settings_player_mpv_options_description">每行一個選項，格式為 key=value，以 # 開頭的行為註釋。儲存後立即生效</string>
+    <string name="settings_player_mpv_options_empty">未設定</string>
+    <string name="settings_player_mpv_options_count">已設定 %1$d 個選項</string>
+    <string name="settings_player_mpv_options_placeholder">hwdec=auto\nprofile=fast</string>
 
     <!-- Storage Settings -->
     <string name="settings_storage_title">儲存設定</string>
@@ -484,6 +496,7 @@
     <string name="exploration_schedule_view_details">查看詳情</string>
     <string name="exploration_schedule_episode">第 %1$s 話</string>
     <string name="exploration_schedule_episode_ep_and_sort">第 %1$s (%2$s) 話</string>
+    <string name="exploration_schedule_time_unknown">時間未定</string>
     <string name="exploration_schedule_weekday_monday">一</string>
     <string name="exploration_schedule_weekday_tuesday">二</string>
     <string name="exploration_schedule_weekday_wednesday">三</string>
@@ -499,6 +512,7 @@
     <string name="exploration_horizontal_scroll_tip">按住 Shift + 滑鼠滾輪 同樣可以水平滾動</string>
 
     <!-- MainScreenPage -->
+    <string name="main_network_check_failed">無法連接到 Animeko 伺服器, 請檢查網路, 或在設定中配置代理</string>
     <string name="main_screen_page_exploration">探索</string>
     <string name="main_screen_page_collection">追番</string>
     <string name="main_screen_page_cache_management">緩存</string>
@@ -600,6 +614,9 @@
     <string name="settings_media_torrent_limit_upload_on_metered_description">在計費網絡環境下限制上傳速度為 1 KB/s</string>
     <string name="settings_media_torrent_peer_filter">Peer 過濾和屏蔽設置</string>
     <string name="settings_media_torrent_peer_filter_description">在下載或上傳緩存的番劇時不與黑名單或命中過濾規則的客戶端連接</string>
+    <string name="settings_media_torrent_extra_trackers">額外 Tracker</string>
+    <string name="settings_media_torrent_extra_trackers_description">在 BT 下載開始前額外添加的 tracker 伺服器，幫助發現更多用戶</string>
+    <string name="settings_media_torrent_extra_trackers_dialog_description">每行一個 tracker 地址，例如 udp://tracker.example.com:6969/announce。將在 BT 下載開始前與內置 tracker 一起添加。修改僅對之後開始的下載生效。</string>
 
     <!-- AutoCacheGroup -->
     <string name="settings_media_auto_cache_title">自動快取</string>
@@ -613,34 +630,6 @@
     <string name="settings_media_auto_cache_count_description">目前設定: 僅快取最近看過的 %d 部番劇</string>
     <string name="settings_media_auto_cache_manage">管理已快取的劇集</string><string name="settings_debug_logout">登出</string><string name="settings_debug_logged_out">已登出</string><string name="settings_tab_account">賬戶</string>
 
-    <!-- Onboarding -->
-    <string name="onboarding_welcome_title">歡迎使用 Animeko</string>
-    <string name="onboarding_welcome_subtitle">一站式線上彈幕追番平台 (簡稱 Ani)</string>
-    <string name="onboarding_welcome_maintained">Ani 目前由愛好者組成的組織 OpenAni 和社群貢獻者維護，完全免費，並在 GitHub 上開源。</string>
-    <string name="onboarding_welcome_goal">Ani 的目標是提供盡可能簡單且舒適的追番體驗。</string>
-    <string name="onboarding_welcome_continue">繼續</string>
-    <string name="onboarding_theme_settings">主題設定</string>
-    <string name="onboarding_network_settings">網路設定</string>
-    <string name="onboarding_complete_welcome_with_nickname">歡迎，%1$s</string>
-    <string name="onboarding_complete_welcome">歡迎</string>
-    <string name="onboarding_complete_finish">完成</string>
-    <string name="onboarding_theme_color">色彩</string>
-    <string name="onboarding_theme_dynamic_color">動態色彩</string>
-    <string name="onboarding_theme_dynamic_color_desc">使用系統強調色</string>
-    <string name="onboarding_bittorrent_play_while_downloading">Ani 支援邊下邊播 BT 資源，BT 下載速度取決於網路品質</string>
-    <string name="onboarding_bittorrent_notification_permission_hint">允許通知權限，以便在快取時查看下載進度</string>
-    <string name="onboarding_bittorrent_enable">啟用 BitTorrent 功能</string>
-    <string name="onboarding_bittorrent_allow_notification">允許通知</string>
-    <string name="onboarding_bittorrent_notification_description">顯示 BT 下載進度和速度等資訊</string>
-    <string name="onboarding_bittorrent_authorized">已授權</string>
-    <string name="onboarding_bittorrent_grant_permission">授予權限</string>
-    <string name="onboarding_navigation_step_indicator">步驟 %1$d / %2$d</string>
-    <string name="onboarding_navigation_next">下一步</string>
-    <string name="onboarding_navigation_previous">上一步</string>
-    <string name="onboarding_navigation_skip">跳過</string>
-    <string name="onboarding_navigation_choose_theme">選擇主題</string>
-    <string name="onboarding_navigation_configure_proxy">設定代理</string>
-    <string name="onboarding_navigation_bittorrent">BitTorrent 功能</string>
 
     <!-- Login -->
     <string name="login_sign_in">登入</string>
@@ -696,6 +685,10 @@
     <string name="video_player_auto">自動</string>
     <string name="video_player_audio_track">音軌</string>
     <string name="video_player_off">關閉</string>
+    <string name="video_player_on">開啟</string>
+    <string name="video_player_performance">效能優先</string>
+    <string name="video_player_quality">最高品質</string>
+    <string name="video_player_video_enhancement">畫質增強</string>
     <string name="video_player_subtitle">字幕</string>
     <string name="video_player_disable_danmaku">停用彈幕</string>
     <string name="video_player_enable_danmaku">啟用彈幕</string>
@@ -825,7 +818,7 @@
     <string name="cache_subject_manage_all">管理全部緩存</string>
     <string name="cache_unknown">未知</string>
     <string name="cache_management_select_item_for_details">選擇一個條目查看具體緩存</string>
-    <string name="cache_management_selected_count">%1$d 個已選</string>
+    <string name="cache_management_selected_count">已選 %1$d</string>
     <string name="cache_management_exit_selection">退出選擇</string>
     <string name="cache_management_select_all">選擇所有</string>
     <string name="cache_management_delete_selected">刪除所選</string>
@@ -837,6 +830,12 @@
     <string name="cache_management_delete_cache_confirmation">刪除後不可恢復，確認刪除嗎？</string>
     <string name="cache_management_finished_count">%1$d/%2$d 已完成</string>
     <string name="cache_management_downloading_count">%1$d 個下載中</string>
+    <string name="cache_subject_pause_all">全部暫停</string>
+    <string name="cache_subject_resume_all">全部繼續</string>
+    <string name="cache_management_selection_downloading_count">含 %1$d 個下載中</string>
+    <string name="cache_management_select_all_action">全選</string>
+    <string name="cache_management_deselect_all">取消全選</string>
+    <string name="cache_episode_status_paused">已暫停</string>
     <string name="cache_management_episode_label">第%1$d話 · %2$s</string>
     <string name="cache_management_more_actions">更多操作</string>
     <string name="cache_management_play">播放</string>
@@ -891,6 +890,59 @@
     <string name="settings_account_bangumi_redownload_all_data">重新下載全部 Bangumi 資料</string>
     <string name="settings_account_bangumi_redownload_all_data_description">將 Bangumi 的收藏資料下載到 Animeko 收藏服務。通常不需要進行這個操作，Animeko 能自動完成同步。僅在你發現資料不一致時才需要手動下載。此操作可能需要數分鐘才能完成，在同步過程中其他功能不可用。請注意，每十分鐘只能執行一次全量同步</string>
     <string name="settings_account_bangumi_sync_queue">同步佇列</string>
+    <string name="settings_account_bangumi_sync_title">Bangumi 同步</string>
+    <string name="settings_account_bangumi_conflict_handling">衝突處理</string>
+    <string name="bangumi_merge_title">合併收藏</string>
+    <string name="bangumi_merge_title_conflicts">合併收藏 · %1$d 項衝突</string>
+    <string name="bangumi_merge_entry_description">處理 Animeko 與 Bangumi 兩側都修改過的收藏</string>
+    <string name="bangumi_merge_entry_conflict_count">%1$d 項衝突</string>
+    <string name="bangumi_merge_conflict_notification">偵測到 %1$d 項 Bangumi 收藏衝突</string>
+    <string name="bangumi_merge_conflict_notification_action">處理</string>
+    <string name="bangumi_merge_headline">%1$d 項衝突需要確認</string>
+    <string name="bangumi_merge_info">兩側都修改過的條目需要確認，● 標記較新的一側；其餘 %1$d 項已自動合併。</string>
+    <string name="bangumi_merge_info_no_auto">兩側都修改過的條目需要確認，● 標記較新的一側。</string>
+    <string name="bangumi_merge_adopt_newer">採用較新的</string>
+    <string name="bangumi_merge_select_all">全選</string>
+    <string name="bangumi_merge_resolved">已解決</string>
+    <string name="bangumi_merge_pending_count">%1$d 待選</string>
+    <string name="bangumi_merge_auto_merged">已自動合併 %1$d 項無衝突差異</string>
+    <string name="bangumi_merge_auto_merged_more">另有 %1$d 項…</string>
+    <string name="bangumi_merge_confirmed_progress">已確認 %1$d / %2$d</string>
+    <string name="bangumi_merge_apply">套用合併</string>
+    <string name="bangumi_merge_apply_success">已合併 %1$d 項變更</string>
+    <string name="bangumi_merge_apply_partial">已合併 %1$d 項，還有 %2$d 項待處理</string>
+    <string name="bangumi_merge_sync_in_progress">全量同步進行中，請稍後再試</string>
+    <string name="bangumi_merge_sync_in_progress_notice">全量同步進行中，衝突列表可能不完整</string>
+    <string name="bangumi_merge_syncing_title">正在同步收藏…</string>
+    <string name="bangumi_merge_syncing_description">首次同步完成後，需要處理的衝突會顯示在這裡。</string>
+    <string name="bangumi_merge_synced">收藏已完全同步</string>
+    <string name="bangumi_merge_synced_description">Animeko 與 Bangumi 兩側沒有需要處理的收藏衝突。</string>
+    <string name="bangumi_merge_last_synced">上次同步：%1$s</string>
+    <string name="bangumi_merge_deleted_collection">已刪除收藏</string>
+    <string name="bangumi_merge_score">%1$d 分</string>
+    <string name="bangumi_merge_no_rating">未評分</string>
+    <string name="bangumi_merge_no_comment">無短評</string>
+    <string name="bangumi_merge_tags">標籤: %1$s</string>
+    <string name="bangumi_merge_no_tags">無標籤</string>
+    <string name="bangumi_merge_private">私密</string>
+    <string name="bangumi_merge_public">公開</string>
+    <string name="bangumi_merge_field_collection">收藏</string>
+    <string name="bangumi_merge_field_status">狀態</string>
+    <string name="bangumi_merge_field_rating">評分</string>
+    <string name="bangumi_merge_field_comment">短評</string>
+    <string name="bangumi_merge_subject_column">條目</string>
+    <string name="bangumi_merge_field_column">欄位</string>
+    <string name="bangumi_merge_yesterday">昨</string>
+    <string name="bangumi_merge_from_animeko">來自 Animeko</string>
+    <string name="bangumi_merge_from_bangumi">來自 Bangumi</string>
+    <string name="bangumi_merge_auto_new_collection">新增收藏 · %1$s</string>
+    <string name="bangumi_merge_auto_collection_type">狀態 · %1$s</string>
+    <string name="bangumi_merge_auto_rating">評分 %1$d</string>
+    <string name="bangumi_merge_auto_comment">短評「%1$s」</string>
+    <string name="bangumi_merge_auto_rating_cleared">清除評分</string>
+    <string name="bangumi_merge_auto_watched">觀看進度 → %1$s</string>
+    <string name="bangumi_merge_auto_unwatched">取消已看 %1$s</string>
+    <string name="bangumi_merge_episode">EP%1$s</string>
     <string name="settings_account_bangumi_pending_sync_ops">待執行的同步操作</string>
     <string name="settings_account_bangumi_execute_all">執行全部</string>
     <string name="settings_account_loading">載入中...</string>
@@ -1132,6 +1184,8 @@
     <string name="settings_app_notification_settings">通知設定</string>
     <string name="settings_app_open_settings">開啟設定</string>
     <string name="settings_app_danmaku_refresh_rate">彈幕刷新率</string>
+    <string name="settings_player_exoplayer_preinit_effect_graph">預先載入畫質增強著色器</string>
+    <string name="settings_player_exoplayer_preinit_effect_graph_desc">啟用此選項後，即使預設未啟用畫質增強也會載入對應的著色器，切換畫質增強選項時便可立即生效，否則可能需要重新播放才會生效。\n如果遇到黑畫面或系統功能無法生效（例如動態補償），請關閉此選項。</string>
     <string name="settings_log_share_today_log_file">分享當日日誌檔案</string>
     <string name="settings_log_share_file">分享日誌檔案</string>
     <string name="settings_log_copy_today_log_content">複製當日日誌內容（很大）</string>
@@ -1164,6 +1218,27 @@
     <string name="comment_rendering">渲染中...</string>
     <string name="comment_reply">回覆評論</string>
     <string name="comment_view_more_replies">查看更多 %1$d 則回覆&gt;</string>
+    <string name="comment_like">按讚</string>
+    <string name="comment_dislike">倒讚</string>
+    <string name="comment_more_actions">更多操作</string>
+    <string name="comment_expand_replies">展開 %1$d 則回覆</string>
+    <string name="comment_copy_content">複製內容</string>
+    <string name="comment_open_in_bangumi">在 Bangumi 開啟</string>
+    <string name="comment_block_user">封鎖此使用者</string>
+    <string name="comment_report">檢舉</string>
+    <string name="comment_copied">已複製</string>
+    <string name="comment_report_title">檢舉評論</string>
+    <string name="comment_report_subtitle">檢舉會提交給 Animeko 審核，不會通知對方</string>
+    <string name="comment_report_reason_spam">垃圾廣告或引流</string>
+    <string name="comment_report_reason_harassment">人身攻擊、騷擾</string>
+    <string name="comment_report_reason_spoiler">劇透</string>
+    <string name="comment_report_reason_nsfw">色情、血腥或令人不適</string>
+    <string name="comment_report_reason_illegal">違法違規內容</string>
+    <string name="comment_report_reason_other">其他</string>
+    <string name="comment_report_detail_hint">補充說明（選填）</string>
+    <string name="comment_report_submit">提交檢舉</string>
+    <string name="comment_report_cancel">取消</string>
+    <string name="comment_report_submitted">已收到檢舉</string>
     <string name="comment_add_emoji">添加表情</string>
     <string name="comment_bold">粗體</string>
     <string name="comment_italic">斜體</string>

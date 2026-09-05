@@ -216,7 +216,9 @@ fun VideoScaffold(
                                     .padding(top = 8.dp),
                                 contentAlignment = Alignment.TopCenter,
                             ) {
-                                centerOverlay()
+                                CompositionLocalProvider(LocalContentColor provides MaterialTheme.colorScheme.onBackground) {
+                                    centerOverlay()
+                                }
                             }
                         }
                     }

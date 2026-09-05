@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 
 <!--
-  ~ Copyright (C) 2024-2025 OpenAni and contributors.
+  ~ Copyright (C) 2024-2026 OpenAni and contributors.
   ~
   ~ 此源代码的使用受 GNU AFFERO GENERAL PUBLIC LICENSE version 3 许可证的约束, 可以在以下链接找到该许可证.
   ~ Use of this source code is governed by the GNU AGPLv3 license, which can be found at the following link.
@@ -19,6 +19,16 @@
     <uses-permission android:name="android.permission.REQUEST_INSTALL_PACKAGES" />
     <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
     <uses-permission android:name="android.permission.WAKE_LOCK" />
+
+    <queries>
+        <intent>
+            <action android:name="android.intent.action.VIEW" />
+            <category android:name="android.intent.category.DEFAULT" />
+            <data
+                    android:mimeType="application/vnd.android.package-archive"
+                    android:scheme="content" />
+        </intent>
+    </queries>
 
     <application
             android:allowBackup="true"

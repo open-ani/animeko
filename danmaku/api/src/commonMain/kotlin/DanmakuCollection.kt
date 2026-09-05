@@ -163,8 +163,9 @@ class TimeBasedDanmakuSession private constructor(
                                 logger.debug("Danmaku list updated, size=${it.size}")
 
                                 state.updateList(filterList(currentList, currentFilterList))
-                                // reset indexing, 这里 reset 后下一次 tick 会从头索引一次.
-                                state.lastIndex = -1
+                                // 重新装填屏幕. 不能只重置 lastIndex: 那样下一次 tick 会从列表开头
+                                // 逐条 Add, 把当前时间之前的所有历史弹幕当作新弹幕一次性发出去.
+                                state.requestRepopulate()
                             }
                         }
                     }

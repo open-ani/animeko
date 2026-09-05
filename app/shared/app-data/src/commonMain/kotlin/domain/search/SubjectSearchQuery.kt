@@ -35,9 +35,6 @@ data class SubjectSearchQuery(
     }
 }
 
-/**
- * @see me.him188.ani.datasources.bangumi.models.search.BangumiSort
- */
 enum class SearchSort {
     MATCH,
 

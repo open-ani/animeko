@@ -43,14 +43,15 @@ import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
+import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.onSizeChanged
@@ -69,6 +70,7 @@ import me.him188.ani.app.navigation.AniNavigator
 import me.him188.ani.app.navigation.EpisodeNavigationGuardRegistry
 import me.him188.ani.app.navigation.NavRoutes
 import me.him188.ani.app.navigation.findLast
+import me.him188.ani.app.ui.foundation.animation.AniAnimatedVisibility
 import me.him188.ani.app.ui.foundation.effects.OnLifecycleEvent
 import me.him188.ani.app.ui.lang.Lang
 import me.him188.ani.app.ui.lang.watch_together_following
@@ -94,8 +96,10 @@ fun BoxScope.WatchTogetherOverlayHost(
     aniNavigator: AniNavigator,
 ) {
     val state by viewModel.uiStateFlow.collectAsStateWithLifecycle()
+    val playerController = LocalWatchTogetherPlayerController.current
     var dialogVisible by rememberSaveable { mutableStateOf(false) }
     val toastHostState = remember { SnackbarHostState() }
+    val bubblePositionState = rememberDraggableBubblePositionState()
 
     OnLifecycleEvent { event ->
         when (event) {
@@ -117,7 +121,7 @@ fun BoxScope.WatchTogetherOverlayHost(
                         )
 
                         is SyncAction.PopThenPushEpisode -> {
-                            aniNavigator.currentNavigator.findLast<NavRoutes.EpisodeDetail>()
+                            aniNavigator.findLast<NavRoutes.EpisodeDetail>()
                                 ?.let { aniNavigator.popBackStack(it, inclusive = true) }
                             aniNavigator.navigateEpisodeDetails(
                                 action.subjectId,
@@ -222,13 +226,24 @@ fun BoxScope.WatchTogetherOverlayHost(
         if (!state.featureEnabled) dialogVisible = false
     }
 
+    LaunchedEffect(viewModel) {
+        viewModel.dialogOpenRequests.collect {
+            dialogVisible = true
+        }
+    }
+
     if (!state.featureEnabled) return
 
-    DraggableWatchTogetherBubble(
-        state = state,
-        onClick = { dialogVisible = true },
-        modifier = Modifier.fillMaxSize(),
-    )
+    AniAnimatedVisibility(
+        visible = playerController.isDraggablePopupVisible,
+    ) {
+        DraggableWatchTogetherBubble(
+            state = state,
+            positionState = bubblePositionState,
+            onClick = { dialogVisible = true },
+            modifier = Modifier.fillMaxSize(),
+        )
+    }
 
     if (dialogVisible) {
         WatchTogetherDialog(
@@ -292,62 +307,90 @@ private fun WatchTogetherToast(data: SnackbarData) {
 @Composable
 private fun BoxScope.DraggableWatchTogetherBubble(
     state: WatchTogetherUiState,
+    positionState: DraggableBubblePositionState,
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     BoxWithConstraints(modifier) {
         val density = LocalDensity.current
         val marginPx = with(density) { 16.dp.toPx() }
-        val containerWidth = constraints.maxWidth.toFloat()
-        val containerHeight = constraints.maxHeight.toFloat()
+        val containerSize = IntSize(constraints.maxWidth, constraints.maxHeight)
         var bubbleSize by remember { mutableStateOf(IntSize.Zero) }
-        var targetX by rememberSaveable { mutableFloatStateOf(-1f) }
-        var targetY by rememberSaveable { mutableFloatStateOf(-1f) }
         var dragging by remember { mutableStateOf(false) }
+        var dragTarget by remember { mutableStateOf<Offset?>(null) }
 
-        val maxX = (containerWidth - bubbleSize.width - marginPx).coerceAtLeast(marginPx)
-        val maxY = (containerHeight - bubbleSize.height - marginPx).coerceAtLeast(marginPx)
-        LaunchedEffect(containerWidth, containerHeight, bubbleSize) {
-            targetX = if (targetX < 0f) maxX else targetX.coerceIn(marginPx, maxX)
-            targetY = if (targetY < 0f) {
-                (containerHeight * 0.68f).coerceIn(marginPx, maxY)
-            } else {
-                targetY.coerceIn(marginPx, maxY)
+        val settledTarget = positionState.targetFor(containerSize, bubbleSize, marginPx)
+        LaunchedEffect(containerSize, bubbleSize, settledTarget, dragging) {
+            if (!dragging && settledTarget != null) {
+                positionState.settle(settledTarget, containerSize, bubbleSize)
             }
         }
 
+        val target = dragTarget ?: settledTarget
+        val baseModifier = Modifier
+            .align(Alignment.TopStart)
+            .onSizeChanged { bubbleSize = it }
+
+        if (target == null) {
+            Box(modifier = baseModifier.alpha(0f)) {
+                WatchTogetherBubble(state, onClick)
+            }
+            return@BoxWithConstraints
+        }
+
         val animatedX by animateFloatAsState(
-            targetValue = targetX.coerceAtLeast(0f),
+            targetValue = target.x,
             animationSpec = if (dragging) snap() else spring(),
         )
         val animatedY by animateFloatAsState(
-            targetValue = targetY.coerceAtLeast(0f),
-            animationSpec = snap(),
+            targetValue = target.y,
+            animationSpec = if (dragging) snap() else spring(),
         )
+        val currentAnimatedOffset by rememberUpdatedState(Offset(animatedX, animatedY))
         val animatedAlpha by animateFloatAsState(targetValue = if (state.inPlayer) 0.68f else 1f)
+        val maxX = (containerSize.width - bubbleSize.width - marginPx).coerceAtLeast(marginPx)
+        val maxY = (containerSize.height - bubbleSize.height - marginPx).coerceAtLeast(marginPx)
 
         Box(
-            modifier = Modifier
-                .align(Alignment.TopStart)
-                .onSizeChanged { bubbleSize = it }
+            modifier = baseModifier
                 .offsetInParent(animatedX, animatedY)
                 .alpha(animatedAlpha)
-                .pointerInput(containerWidth, containerHeight, bubbleSize) {
+                .pointerInput(containerSize, bubbleSize, marginPx) {
                     detectDragGestures(
-                        onDragStart = { dragging = true },
-                        onDragCancel = { dragging = false },
-                        onDragEnd = {
+                        onDragStart = {
+                            dragTarget = currentAnimatedOffset
+                            dragging = true
+                        },
+                        onDragCancel = {
                             dragging = false
-                            targetX = if (targetX + bubbleSize.width / 2f < containerWidth / 2f) {
-                                marginPx
-                            } else {
-                                maxX
+                            dragTarget = null
+                        },
+                        onDragEnd = {
+                            val draggedTarget = dragTarget ?: settledTarget
+                            if (draggedTarget != null) {
+                                val snappedX = if (
+                                    draggedTarget.x + bubbleSize.width / 2f < containerSize.width / 2f
+                                ) {
+                                    marginPx
+                                } else {
+                                    maxX
+                                }
+                                positionState.settle(
+                                    Offset(snappedX, draggedTarget.y),
+                                    containerSize,
+                                    bubbleSize,
+                                )
                             }
+                            dragging = false
+                            dragTarget = null
                         },
                     ) { change, dragAmount ->
                         change.consume()
-                        targetX = (targetX + dragAmount.x).coerceIn(marginPx, maxX)
-                        targetY = (targetY + dragAmount.y).coerceIn(marginPx, maxY)
+                        val currentTarget = dragTarget ?: settledTarget ?: return@detectDragGestures
+                        dragTarget = Offset(
+                            x = (currentTarget.x + dragAmount.x).coerceIn(marginPx, maxX),
+                            y = (currentTarget.y + dragAmount.y).coerceIn(marginPx, maxY),
+                        )
                     }
                 },
         ) {

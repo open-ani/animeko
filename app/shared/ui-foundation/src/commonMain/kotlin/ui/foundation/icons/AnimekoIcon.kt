@@ -29,8 +29,9 @@ public val Icons.Filled.Animeko: ImageVector
         }
         _animekoIcon = Builder(
             name = "AnimekoIcon",
-            defaultWidth = 108.0.dp,
-            defaultHeight = 108.0.dp,
+            // Icon 按矢量的固有尺寸渲染, 108dp (launcher icon 画布) 会撑大列表行
+            defaultWidth = 24.0.dp,
+            defaultHeight = 24.0.dp,
             viewportWidth = 108.0f,
             viewportHeight = 108.0f,
         ).apply {

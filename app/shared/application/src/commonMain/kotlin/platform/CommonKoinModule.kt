@@ -24,6 +24,7 @@ import kotlinx.coroutines.runBlocking
 import kotlinx.io.files.Path
 import kotlinx.io.files.SystemFileSystem
 import me.him188.ani.app.data.network.AniApiProvider
+import me.him188.ani.app.data.network.AniCommentReportService
 import me.him188.ani.app.data.network.AniEpisodeCommentService
 import me.him188.ani.app.data.network.AniSubjectRelationIndexService
 import me.him188.ani.app.data.network.AniSubjectSearchService
@@ -33,7 +34,6 @@ import me.him188.ani.app.data.network.TmdbImageService
 import me.him188.ani.app.data.network.AutoSkipRepository
 import me.him188.ani.app.data.network.BangumiBangumiCommentServiceImpl
 import me.him188.ani.app.data.network.BangumiCommentService
-import me.him188.ani.app.data.network.BangumiProfileService
 import me.him188.ani.app.data.network.BangumiRelatedPeopleService
 import me.him188.ani.app.data.network.DefaultWatchTogetherApiService
 import me.him188.ani.app.data.network.EpisodeService
@@ -83,7 +83,6 @@ import me.him188.ani.app.data.repository.user.AccessTokenSession
 import me.him188.ani.app.data.repository.user.PreferencesRepositoryImpl
 import me.him188.ani.app.data.repository.user.SettingsRepository
 import me.him188.ani.app.data.repository.user.TokenRepository
-import me.him188.ani.app.domain.comment.TurnstileState
 import me.him188.ani.app.domain.danmaku.DanmakuRepository
 import me.him188.ani.app.domain.foundation.ConvertSendCountExceedExceptionFeature
 import me.him188.ani.app.domain.foundation.ConvertSendCountExceedExceptionFeatureHandler
@@ -146,7 +145,6 @@ import me.him188.ani.app.ui.subject.details.state.DefaultSubjectDetailsStateFact
 import me.him188.ani.app.ui.subject.details.state.SubjectDetailsStateFactory
 import me.him188.ani.datasources.bangumi.BangumiClient
 import me.him188.ani.datasources.bangumi.BangumiClientImpl
-import me.him188.ani.datasources.bangumi.turnstileBaseUrl
 import me.him188.ani.utils.coroutines.IO_
 import me.him188.ani.utils.coroutines.childScope
 import me.him188.ani.utils.coroutines.childScopeContext
@@ -158,7 +156,6 @@ import org.koin.core.KoinApplication
 import org.koin.core.scope.Scope
 import org.koin.dsl.module
 import kotlin.time.Duration.Companion.minutes
-import me.him188.ani.app.ui.comment.TurnstileState as CreateTurnstileState
 
 private val Scope.client get() = get<BangumiClient>()
 private val Scope.database get() = get<AniDatabase>()
@@ -386,7 +383,6 @@ private fun KoinApplication.otherModules(getContext: () -> Context, coroutineSco
     single<BangumiCommentRepository> {
         BangumiCommentRepository(
             get(),
-            database.episodeCommentDao(),
             database.subjectReviews(),
         )
     }
@@ -407,14 +403,10 @@ private fun KoinApplication.otherModules(getContext: () -> Context, coroutineSco
         )
     }
     single<EpisodeScreenshotRepository> { WhatslinkEpisodeScreenshotRepository() }
-    single<BangumiCommentService> { BangumiBangumiCommentServiceImpl(get(), get(), get<AniApiProvider>().subjectApi) }
+    single<BangumiCommentService> { BangumiBangumiCommentServiceImpl(get<AniApiProvider>().subjectApi) }
     single<AniEpisodeCommentService> { AniEpisodeCommentService(get<AniApiProvider>().episodesApi) }
-    single<EpisodeCommentRepository> {
-        EpisodeCommentRepository(
-            aniCommentService = get(),
-            bangumiCommentService = get(),
-        )
-    }
+    single<AniCommentReportService> { AniCommentReportService(get<AniApiProvider>().commentsApi) }
+    single<EpisodeCommentRepository> { EpisodeCommentRepository(aniCommentService = get()) }
     single<MediaSourceInstanceRepository> {
         MediaSourceInstanceRepositoryImpl(getContext().dataStores.mediaSourceSaveStore)
     }
@@ -449,12 +441,11 @@ private fun KoinApplication.otherModules(getContext: () -> Context, coroutineSco
             builtinPeerFilterRuleApi = get<AniApiProvider>().pfRuleApi,
         )
     }
-    single<BangumiProfileService> { BangumiProfileService() }
     single<AnimeScheduleService> { AnimeScheduleService(get<AniApiProvider>().scheduleApi) }
     // TV 横版 backdrop / 分集剧照; 未配置 ani.tmdb.api.token 时自动关闭 (atv-architecture.md §4.3-R3)
     single<TmdbImageService> { TmdbImageService(get(), getContext().dataStores.tmdbImageCacheStore) }
     single<BangumiSummaryService> { BangumiSummaryService(get()) }
-    single<TrendsRepository> { TrendsRepository(get<AniApiProvider>().trendsApi, get<BangumiClient>().nextTrendingApi) }
+    single<TrendsRepository> { TrendsRepository(get<AniApiProvider>().trendsApi) }
     single<RecommendationRepository> { RecommendationRepository(get<AniApiProvider>().homeApi) }
     single<AutoSkipRepository> { AutoSkipRepository(get<AniApiProvider>().episodesApi) }
 
@@ -518,24 +509,14 @@ private fun KoinApplication.otherModules(getContext: () -> Context, coroutineSco
     }
     single<SelectorMediaSourceEpisodeCacheRepository> {
         SelectorMediaSourceEpisodeCacheRepository(
-            webSubjectInfoDao = database.webSearchSubjectInfoDao(),
-            webEpisodeInfoDao = database.webSearchEpisodeInfoDao(),
+            dao = database.webSearchSessionCacheDao(),
+            userTtlFlow = get<SettingsRepository>().mediaSelectorSettings.flow.map { it.webSearchCacheTtl },
         )
     }
 
     // Caching
     single<MeteredNetworkDetector> { createMeteredNetworkDetector(getContext()) }
     single<SubjectDetailsStateFactory> { DefaultSubjectDetailsStateFactory() }
-
-    factory<TurnstileState> {
-        CreateTurnstileState(
-            buildString {
-                append(get<BangumiClient>().turnstileBaseUrl)
-                append("?redirect_uri=")
-                append(TurnstileState.CALLBACK_INTERCEPTION_PREFIX)
-            },
-        )
-    }
 }
 
 /**

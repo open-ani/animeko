@@ -25,6 +25,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.asCoroutineDispatcher
 import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.delay
@@ -72,6 +73,7 @@ class MpvVideoAnalyzer {
                 if (msg.level <= 30) println("[mpv/" + msg.prefix + "] " + msg.line) // warn+
             }
         }.onFailure { exception ->
+            if (exception is CancellationException) throw exception
             return Output(
                 MediaAnalysisResult(
                     available = false,
@@ -152,6 +154,8 @@ class MpvVideoAnalyzer {
                 ),
                 frames,
             )
+        } catch (e: CancellationException) {
+            throw e
         } catch (e: Exception) {
             Output(
                 MediaAnalysisResult(
@@ -189,6 +193,8 @@ class MpvVideoAnalyzer {
         val openStart = System.currentTimeMillis()
         try {
             player.setMediaData(UriMediaData(input.videoUrl, input.headers, MediaExtraFiles()))
+        } catch (e: CancellationException) {
+            throw e
         } catch (e: Exception) {
             errors += "打开媒体失败: ${e::class.simpleName}: ${e.message.orEmpty()}"
             return PlaybackTestResult(

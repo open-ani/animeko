@@ -16,14 +16,13 @@ import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.remember
-import coil3.compose.LocalPlatformContext
 import me.him188.ani.app.domain.foundation.HttpClientProvider
 import me.him188.ani.app.domain.foundation.ScopedHttpClientUserAgent
 import me.him188.ani.app.domain.foundation.get
 import me.him188.ani.app.navigation.AniNavigator
-import me.him188.ani.app.platform.BaseComponentActivity
-import me.him188.ani.app.ui.foundation.LocalImageLoader
-import me.him188.ani.app.ui.foundation.createDefaultImageLoader
+import me.him188.ani.app.platform.AniComponentActivity
+import me.him188.ani.app.ui.foundation.LocalSketch
+import me.him188.ani.app.ui.foundation.rememberAniSketchInstance
 import me.him188.ani.app.ui.foundation.widgets.LocalToaster
 import me.him188.ani.app.ui.foundation.widgets.Toaster
 import me.him188.ani.tv.ui.foundation.theme.AniTvTheme
@@ -35,7 +34,7 @@ import org.koin.android.ext.android.getKoin
  *
  * M2: handleStartIntent 解析 `ani://subjects/<id>` deep link -> navigateSubjectDetails.
  */
-class MainActivity : BaseComponentActivity() {
+class MainActivity : AniComponentActivity() {
 
     private val aniNavigator = AniNavigator()
 
@@ -48,14 +47,11 @@ class MainActivity : BaseComponentActivity() {
         )
         setContent {
             AniTvTheme {
-                val coilContext = LocalPlatformContext.current
-                val imageLoader = remember(coilContext) {
-                    // 与手机 AniApp 同款装配 (§5.6)
-                    createDefaultImageLoader(
-                        coilContext,
-                        getKoin().get<HttpClientProvider>().get(ScopedHttpClientUserAgent.ANI),
-                    )
+                // 与手机 AniApp 同款 Sketch 装配 (§5.6; main 已从 coil 迁移至 sketch)
+                val imageLoaderClient = remember {
+                    getKoin().get<HttpClientProvider>().get(ScopedHttpClientUserAgent.ANI)
                 }
+                val sketch = rememberAniSketchInstance(imageLoaderClient)
                 val toaster = remember {
                     // TV 端 Toaster: 原生 Toast (10-foot 下自绘胶囊 M4 视觉阶段再换, §5.3)
                     object : Toaster {
@@ -67,7 +63,7 @@ class MainActivity : BaseComponentActivity() {
                     }
                 }
                 CompositionLocalProvider(
-                    LocalImageLoader provides imageLoader,
+                    LocalSketch provides sketch,
                     LocalToaster provides toaster,
                 ) {
                     TvAniAppContent(aniNavigator)

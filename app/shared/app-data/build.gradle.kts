@@ -8,16 +8,11 @@
  */
 
 plugins {
-    alias(libs.plugins.kotlin.multiplatform)
-    alias(libs.plugins.android.kotlin.multiplatform.library)
-    alias(libs.plugins.kotlin.plugin.compose)
-    alias(libs.plugins.jetbrains.compose)
-
-    `ani-mpp-lib-targets`
+    id("ani.kmp-compose")
     alias(libs.plugins.kotlin.plugin.serialization)
 
     // alias(libs.plugins.kotlinx.atomicfu)
-    id("kotlin-parcelize")
+    alias(libs.plugins.kotlin.parcelize)
 
     alias(libs.plugins.google.devtools.ksp)
     alias(libs.plugins.androidx.room)
@@ -25,7 +20,7 @@ plugins {
 }
 
 kotlin {
-    androidLibrary {
+    android {
         namespace = "me.him188.ani.app.data"
     }
     sourceSets.commonMain.dependencies {
@@ -101,6 +96,9 @@ kotlin {
     }
     sourceSets.desktopTest {
         resources.srcDir("src/androidDeviceTest/assets")
+        dependencies {
+            implementation("androidx.room:room-testing:${libs.versions.room.get()}")
+        }
     }
     sourceSets.androidMain.dependencies {
         implementation(libs.androidx.browser)
@@ -123,6 +121,12 @@ compose.resources {
     generateResClass = always
 }
 
+// 两个都要, 不是重复配置, 删任何一个都会坏:
+// - room {} 负责 Android 侧, 并注册 copyRoomSchemas* (把 schema 拷进 androidTest assets 给 MigrationTestHelper 用);
+//   但它没把 room.schemaLocation 传给 KMP 的 desktop / iOS 那几个 KSP task.
+// - ksp {} 的 arg 对所有 KSP task 生效, 补上 room {} 没覆盖到的 target.
+// 少了下面这段, kspKotlinDesktop 会报 "Schema import directory was not provided" 而失败 (自动迁移读不到旧 schema).
+// 两者同时存在不冲突, Room 插件不会因此报错.
 room {
     schemaDirectory("$projectDir/schemas")
 }

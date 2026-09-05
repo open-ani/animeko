@@ -128,7 +128,7 @@ abstract class AbstractDataStoreMediaCacheStorage(
         }
 
         combine(
-            caches.map { cache ->
+            caches.distinctBy { it.origin.download.uri }.map { cache ->
                 cache.sessionStats.map { stats ->
                     MediaStats(
                         uploaded = stats.uploadedBytes,

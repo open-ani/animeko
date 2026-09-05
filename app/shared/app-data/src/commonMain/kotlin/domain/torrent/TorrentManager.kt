@@ -76,7 +76,7 @@ class DefaultTorrentManager(
             ) { config, rules ->
                 PeerFilterSettings(
                     rules + config.createRuleWithEnabled(),
-                    config.blockInvalidId,
+                    config.enableIdFilter && config.blockInvalidId,
                 )
             },
             baseSaveDir().resolve(TorrentEngineType.Anitorrent.id),

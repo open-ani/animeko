@@ -23,40 +23,21 @@ import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.withContext
 import me.him188.ani.app.data.models.UserInfo
+import me.him188.ani.app.data.models.comment.CommentVoteValue
 import me.him188.ani.app.data.models.episode.EpisodeComment
 import me.him188.ani.app.data.models.episode.EpisodeCommentSource
 import me.him188.ani.app.data.models.subject.SubjectReview
+import me.him188.ani.app.data.models.subject.SubjectReviewSource
 import me.him188.ani.app.data.network.BangumiCommentService
-import me.him188.ani.app.data.persistent.database.dao.EpisodeCommentDao
 import me.him188.ani.app.data.persistent.database.dao.SubjectReviewDao
-import me.him188.ani.app.data.persistent.database.entity.EpisodeCommentEntity
-import me.him188.ani.app.data.persistent.database.entity.EpisodeCommentEntityWithReplies
 import me.him188.ani.app.data.persistent.database.entity.SubjectReviewEntity
 import me.him188.ani.app.data.repository.Repository
 import me.him188.ani.app.data.repository.RepositoryException
 
 class BangumiCommentRepository(
     private val commentService: BangumiCommentService,
-    private val episodeCommentDao: EpisodeCommentDao,
     private val subjectReviewDao: SubjectReviewDao,
 ) : Repository() {
-    fun subjectEpisodeCommentsPager(episodeId: Long): Flow<PagingData<EpisodeComment>> {
-        return flow {
-            val data = try {
-                withContext(defaultDispatcher) {
-                    val items = commentService.getSubjectEpisodeComments(episodeId)
-                        ?: return@withContext emptyList()
-                    episodeCommentDao.upsert(items.flatMap { it.toEntityWithReplies().toList() })
-                    episodeCommentDao.findByEpisodeIdWithReplies(episodeId)
-                        .map { it.toInfo() }
-                }
-            } catch (e: Exception) {
-                throw RepositoryException.wrapOrThrowCancellation(e)
-            }
-            emit(from(data))
-        }
-    }
-
     fun subjectCommentsPager(subjectId: Int): Flow<PagingData<SubjectReview>> {
         return Pager(
             config = defaultPagingConfig,
@@ -65,6 +46,14 @@ class BangumiCommentRepository(
                 SubjectReviewPagingSource(subjectId)
             },
         ).flow
+    }
+
+    /**
+     * 对条目评价投票 (点赞/点踩). [vote] 为 `null` 表示取消投票.
+     * 只支持 [SubjectReviewSource.ANI] 来源的评价, [reviewId] 为服务端评价 ID.
+     */
+    suspend fun voteSubjectReview(subjectId: Int, reviewId: String, vote: CommentVoteValue?) {
+        commentService.voteSubjectReview(subjectId, reviewId, vote)
     }
 
     private inner class SubjectReviewPagingSource(
@@ -129,47 +118,6 @@ class BangumiCommentRepository(
     }
 }
 
-private fun EpisodeComment.toEntityWithReplies(): Sequence<EpisodeCommentEntity> {
-    return sequence {
-        yield(toEntity(null)) // 必须在 children 前面
-        replies.forEach {
-            yield(it.toEntity(commentId))
-        }
-    }.filterNotNull()
-}
-
-private suspend fun EpisodeCommentDao.findByEpisodeIdWithReplies(
-    episodeId: Long,
-): List<EpisodeCommentEntityWithReplies> {
-    val topLevelComments = findTopLevelByEpisodeId(episodeId)
-    if (topLevelComments.isEmpty()) {
-        return emptyList()
-    }
-
-    val repliesByParentId = findRepliesByParentCommentIds(topLevelComments.map { it.commentId })
-        .groupBy { requireNotNull(it.parentCommentId) }
-
-    return topLevelComments.map { entity ->
-        EpisodeCommentEntityWithReplies(
-            entity = entity,
-            replies = repliesByParentId[entity.commentId].orEmpty(),
-        )
-    }
-}
-
-private fun EpisodeComment.toEntity(parentCommentId: String?): EpisodeCommentEntity {
-    return EpisodeCommentEntity(
-        episodeId,
-        commentId = commentId,
-        parentCommentId = parentCommentId,
-        authorId = requireNotNull(author?.id) { "EpisodeComment.author.id is required for persistence" },
-        authorNickname = author.nickname ?: "",
-        authorAvatarUrl = author.avatarUrl,
-        createdAt = createdAt,
-        content = content,
-    )
-}
-
 private fun SubjectReview.toEntity(subjectId: Int): SubjectReviewEntity? {
     return SubjectReviewEntity(
         subjectId = subjectId,
@@ -185,6 +133,8 @@ private fun SubjectReview.toEntity(subjectId: Int): SubjectReviewEntity? {
 private fun SubjectReviewEntity.toInfo(): SubjectReview {
     return SubjectReview(
         id = packInts(subjectId, authorId),
+        reviewId = "",
+        source = SubjectReviewSource.BANGUMI,
         updatedAt = updatedAt,
         content = content,
         creator = UserInfo(
@@ -194,30 +144,5 @@ private fun SubjectReviewEntity.toInfo(): SubjectReview {
             avatarUrl = authorAvatarUrl,
         ),
         rating = rating,
-    )
-}
-
-private fun EpisodeCommentEntityWithReplies.toInfo(): EpisodeComment {
-    return entity.toInfo().copy(
-        replies = replies.map { it.toInfo() },
-    )
-}
-
-private fun EpisodeCommentEntity.toInfo(): EpisodeComment {
-    return EpisodeComment(
-        stableId = "bangumi:$commentId",
-        source = EpisodeCommentSource.BANGUMI,
-        sourceCommentId = commentId,
-        commentId = commentId,
-        episodeId = episodeId,
-        createdAt = createdAt,
-        content = content,
-        author = UserInfo(
-            id = authorId,
-            username = null,
-            nickname = authorNickname,
-            avatarUrl = authorAvatarUrl,
-        ),
-        canReply = false,
     )
 }

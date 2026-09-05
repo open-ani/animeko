@@ -31,6 +31,7 @@ import me.him188.ani.app.data.models.preference.MediaPreference
 import me.him188.ani.app.data.models.preference.MediaSelectorSettings
 import me.him188.ani.app.data.models.preference.OneshotActionConfig
 import me.him188.ani.app.data.models.preference.PikPakConfig
+import me.him188.ani.app.data.models.preference.PlayerKernelConfig
 import me.him188.ani.app.data.models.preference.ProfileSettings
 import me.him188.ani.app.data.models.preference.ProxySettings
 import me.him188.ani.app.data.models.preference.ThemeSettings
@@ -74,6 +75,13 @@ interface SettingsRepository {
     val themeSettings: Settings<ThemeSettings>
     val updateSettings: Settings<UpdateSettings>
     val videoScaffoldConfig: Settings<VideoScaffoldConfig>
+
+    /**
+     * 播放器内核配置.
+     *
+     * @since 6.1.0
+     */
+    val playerKernelConfig: Settings<PlayerKernelConfig>
 
     val videoResolverSettings: Settings<VideoResolverSettings>
     val anitorrentConfig: Settings<AnitorrentConfig>
@@ -216,6 +224,11 @@ class PreferencesRepositoryImpl(
         "videoScaffoldConfig",
         VideoScaffoldConfig.serializer(),
         default = { VideoScaffoldConfig.Default },
+    )
+    override val playerKernelConfig: Settings<PlayerKernelConfig> = SerializablePreference(
+        "playerKernelConfig",
+        PlayerKernelConfig.serializer(),
+        default = { PlayerKernelConfig.Default },
     )
     override val videoResolverSettings: Settings<VideoResolverSettings> = SerializablePreference(
         "videoResolverSettings",

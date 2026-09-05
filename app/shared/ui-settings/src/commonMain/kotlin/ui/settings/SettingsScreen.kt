@@ -10,6 +10,7 @@
 package me.him188.ani.app.ui.settings
 
 import androidx.compose.animation.AnimatedContent
+import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxScope
@@ -65,12 +66,17 @@ import androidx.compose.runtime.Stable
 import androidx.compose.runtime.compositionLocalOf
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.rememberUpdatedState
+import androidx.compose.runtime.saveable.Saver
+import androidx.compose.runtime.saveable.listSaver
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
+import androidx.compose.runtime.snapshots.SnapshotStateList
+import androidx.compose.runtime.toMutableStateList
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -81,10 +87,11 @@ import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import androidx.navigation.NavHostController
-import androidx.navigation.compose.NavHost
-import androidx.navigation.compose.composable
-import androidx.navigation.compose.rememberNavController
+import androidx.lifecycle.viewmodel.navigation3.rememberViewModelStoreNavEntryDecorator
+import androidx.navigation3.runtime.NavKey
+import androidx.navigation3.runtime.entryProvider
+import androidx.navigation3.runtime.rememberSaveableStateHolderNavEntryDecorator
+import androidx.navigation3.ui.NavDisplay
 import dev.chrisbanes.haze.rememberHazeState
 import kotlinx.coroutines.CoroutineStart
 import kotlinx.coroutines.launch
@@ -117,6 +124,8 @@ import me.him188.ani.app.ui.lang.Lang
 import me.him188.ani.app.ui.lang.acknowledgements
 import me.him188.ani.app.ui.lang.developer_list
 import me.him188.ani.app.ui.lang.settings
+import me.him188.ani.app.ui.lang.settings_acknowledgements_oss_licenses
+import me.him188.ani.app.ui.lang.settings_account_bangumi_sync_title
 import me.him188.ani.app.ui.lang.settings_category_app_ui
 import me.him188.ani.app.ui.lang.settings_category_data_playback
 import me.him188.ani.app.ui.lang.settings_category_network_storage
@@ -147,6 +156,7 @@ import me.him188.ani.app.ui.settings.tabs.DebugTab
 import me.him188.ani.app.ui.settings.tabs.about.AboutTab
 import me.him188.ani.app.ui.settings.tabs.about.AcknowledgementsTab
 import me.him188.ani.app.ui.settings.tabs.about.DevelopersTab
+import me.him188.ani.app.ui.settings.tabs.about.OpenSourceLibrariesTab
 import me.him188.ani.app.ui.settings.tabs.app.AppearanceGroup
 import me.him188.ani.app.ui.settings.tabs.app.PlayerGroup
 import me.him188.ani.app.ui.settings.tabs.app.SoftwareUpdateGroup
@@ -178,6 +188,7 @@ fun SettingsScreen(
     vm: SettingsViewModel,
     onNavigateToEmailLogin: () -> Unit,
     onNavigateToBangumiOAuth: () -> Unit,
+    loadOpenSourceLibrariesJsons: suspend () -> List<ByteArray>,
     modifier: Modifier = Modifier,
     initialTab: SettingsTab? = null,
     windowInsets: WindowInsets = AniWindowInsets.forColumnPageContent(),
@@ -306,10 +317,10 @@ fun SettingsScreen(
                         onClickFeedback = { browserNavigator.openBrowser(context, AniHelperDestination.ISSUE_TRACKER) },
                         onClickSource = { browserNavigator.openBrowser(context, AniHelperDestination.GITHUB_HOME) },
                         onClickDevelopers = {
-                            detailPaneNavController.navigate(DetailPaneRoutes.Developers)
+                            navigateTo(DetailPaneRoutes.Developers)
                         },
                         onClickAcknowledgements = {
-                            detailPaneNavController.navigate(DetailPaneRoutes.Acknowledgements)
+                            navigateTo(DetailPaneRoutes.Acknowledgements)
                         },
                         modifier = tabModifier,
                     )
@@ -320,7 +331,6 @@ fun SettingsScreen(
 
                     SettingsTab.DEBUG -> DebugTab(
                         vm.debugSettingsState,
-                        vm.uiSettings,
                         tabModifier,
                     )
 
@@ -331,7 +341,7 @@ fun SettingsScreen(
                             SettingsTab.PROFILE -> ProfileGroup(
                                 onNavigateToEmail = onNavigateToEmailLogin,
                                 onNavigateToBangumiSync = {
-                                    detailPaneNavController.navigate(DetailPaneRoutes.BangumiSync)
+                                    navigateTo(DetailPaneRoutes.BangumiSync)
                                 },
                                 onNavigateToBangumiOAuth = onNavigateToBangumiOAuth,
                             )
@@ -342,6 +352,7 @@ fun SettingsScreen(
                             SettingsTab.PLAYER -> {
                                 PlayerGroup(
                                     vm.videoScaffoldConfig,
+                                    vm.playerKernelConfig,
                                     vm.danmakuFilterConfigState,
                                     vm.danmakuRegexFilterState,
                                     vm.isInDebugMode,
@@ -416,6 +427,7 @@ fun SettingsScreen(
         contentWindowInsets = windowInsets,
         navigationIcon = navigationIcon,
         layoutParameters = layoutParameters,
+        loadOpenSourceLibrariesJsons = loadOpenSourceLibrariesJsons,
     )
 }
 
@@ -435,6 +447,7 @@ internal fun SettingsPageLayout(
     containerColor: Color = AniThemeDefaults.pageContentBackgroundColor,
     layoutParameters: ListDetailLayoutParameters = ListDetailLayoutParameters.calculate(navigator.scaffoldDirective),
     navigationIcon: @Composable () -> Unit = {},
+    loadOpenSourceLibrariesJsons: suspend () -> List<ByteArray>,
 ) = SettingsPageSurface(containerColor) {
     val layoutParametersState by rememberUpdatedState(layoutParameters)
 
@@ -587,7 +600,15 @@ internal fun SettingsPageLayout(
                         MaterialTheme.colorScheme.surfaceContainer
                     },
                 )
-                val detailPaneNavController = rememberNavController()
+                val detailPaneBackStack = rememberSaveable(saver = DetailPaneBackStackSaver) {
+                    mutableStateListOf<DetailPaneRoutes>(DetailPaneRoutes.Main)
+                }
+                // 栈底的 Main 不能被弹出, 空栈会让 NavDisplay 抛异常
+                val navigateUp: () -> Unit = {
+                    if (detailPaneBackStack.size > 1) {
+                        detailPaneBackStack.removeAt(detailPaneBackStack.lastIndex)
+                    }
+                }
 
                 @Composable
                 fun PaneScope.RouteContent(
@@ -595,11 +616,20 @@ internal fun SettingsPageLayout(
                     content: @Composable SettingsDetailPaneScope.() -> Unit,
                 ) {
                     val paneScope = this
-                    val scope = remember(paneScope, detailPaneNavController) {
+                    val scope = remember(paneScope, detailPaneBackStack) {
                         object : SettingsDetailPaneScope, PaneScope by paneScope {
-                            override val detailPaneNavController: NavHostController =
-                                detailPaneNavController
+                            override fun navigateTo(route: DetailPaneRoutes) {
+                                // 同一个页面重复入栈会让栈里出现相同的 key, NavDisplay 不允许
+                                if (detailPaneBackStack.lastOrNull() != route) {
+                                    detailPaneBackStack.add(route)
+                                }
+                            }
 
+                            override fun navigateUp() {
+                                if (detailPaneBackStack.size > 1) {
+                                    detailPaneBackStack.removeAt(detailPaneBackStack.lastIndex)
+                                }
+                            }
                         }
                     }
                     Column(
@@ -629,15 +659,24 @@ internal fun SettingsPageLayout(
                     }
                 }
 
-                NavHost(
-                    detailPaneNavController,
-                    DetailPaneRoutes.Main,
-                    enterTransition = { navMotionScheme.enterTransition },
-                    exitTransition = { navMotionScheme.exitTransition },
-                    popEnterTransition = { navMotionScheme.popEnterTransition },
-                    popExitTransition = { navMotionScheme.popExitTransition },
-                ) {
-                    composable<DetailPaneRoutes.Main> {
+                NavDisplay(
+                    backStack = detailPaneBackStack,
+                    onBack = navigateUp,
+                    entryDecorators = listOf(
+                        rememberSaveableStateHolderNavEntryDecorator(),
+                        rememberViewModelStoreNavEntryDecorator(),
+                    ),
+                    transitionSpec = {
+                        navMotionScheme.enterTransition togetherWith navMotionScheme.exitTransition
+                    },
+                    popTransitionSpec = {
+                        navMotionScheme.popEnterTransition togetherWith navMotionScheme.popExitTransition
+                    },
+                    predictivePopTransitionSpec = {
+                        navMotionScheme.popEnterTransition togetherWith navMotionScheme.popExitTransition
+                    },
+                    entryProvider = entryProvider {
+                    entry<DetailPaneRoutes.Main> {
                         val tab = navigationTab.orDefault()
                         DetailPaneRoute(
                             topAppBar = {
@@ -674,13 +713,13 @@ internal fun SettingsPageLayout(
                             },
                         )
                     }
-                    composable<DetailPaneRoutes.Acknowledgements> {
+                    entry<DetailPaneRoutes.Acknowledgements> {
                         DetailPaneRoute(
                             topAppBar = {
                                 AniTopAppBar(
                                     title = { AniTopAppBarDefaults.Title(stringResource(Lang.acknowledgements)) },
                                     navigationIcon = {
-                                        BackNavigationIconButton({ detailPaneNavController.navigateUp() })
+                                        BackNavigationIconButton(navigateUp)
                                     },
                                     colors = topAppBarColors,
                                     windowInsets = topAppBarWindowInsets,
@@ -691,17 +730,51 @@ internal fun SettingsPageLayout(
                             detailPaneTopAppBarScrollBehavior,
                         ) {
                             RouteContent {
-                                AcknowledgementsTab(Modifier.fillMaxSize())
+                                AcknowledgementsTab(
+                                    onClickOpenSourceLicenses = {
+                                        navigateTo(DetailPaneRoutes.OpenSourceLicenses)
+                                    },
+                                    Modifier.fillMaxSize(),
+                                )
                             }
                         }
                     }
-                    composable<DetailPaneRoutes.Developers> {
+                    entry<DetailPaneRoutes.OpenSourceLicenses> {
+                        DetailPaneRoute(
+                            topAppBar = {
+                                AniTopAppBar(
+                                    title = {
+                                        AniTopAppBarDefaults.Title(
+                                            stringResource(Lang.settings_acknowledgements_oss_licenses),
+                                        )
+                                    },
+                                    navigationIcon = {
+                                        BackNavigationIconButton(navigateUp)
+                                    },
+                                    colors = topAppBarColors,
+                                    windowInsets = topAppBarWindowInsets,
+                                    size = topAppBarSize,
+                                    scrollBehavior = detailPaneTopAppBarScrollBehavior,
+                                )
+                            },
+                            detailPaneTopAppBarScrollBehavior,
+                        ) {
+                            // LibrariesContainer 自带 LazyColumn, 不能套在 verticalScroll 里
+                            RouteContent(scrollable = false) {
+                                OpenSourceLibrariesTab(
+                                    loadOpenSourceLibrariesJsons,
+                                    Modifier.fillMaxSize(),
+                                )
+                            }
+                        }
+                    }
+                    entry<DetailPaneRoutes.Developers> {
                         DetailPaneRoute(
                             topAppBar = {
                                 AniTopAppBar(
                                     title = { AniTopAppBarDefaults.Title(stringResource(Lang.developer_list)) },
                                     navigationIcon = {
-                                        BackNavigationIconButton({ detailPaneNavController.navigateUp() })
+                                        BackNavigationIconButton(navigateUp)
                                     },
                                     colors = topAppBarColors,
                                     windowInsets = topAppBarWindowInsets,
@@ -716,13 +789,13 @@ internal fun SettingsPageLayout(
                             }
                         }
                     }
-                    composable<DetailPaneRoutes.BangumiSync> {
+                    entry<DetailPaneRoutes.BangumiSync> {
                         DetailPaneRoute(
                             topAppBar = {
                                 AniTopAppBar(
-                                    title = { AniTopAppBarDefaults.Title("Bangumi 同步") },
+                                    title = { AniTopAppBarDefaults.Title(stringResource(Lang.settings_account_bangumi_sync_title)) },
                                     navigationIcon = {
-                                        BackNavigationIconButton({ detailPaneNavController.navigateUp() })
+                                        BackNavigationIconButton(navigateUp)
                                     },
                                     colors = topAppBarColors,
                                     windowInsets = topAppBarWindowInsets,
@@ -737,7 +810,8 @@ internal fun SettingsPageLayout(
                             }
                         }
                     }
-                }
+                    },
+                )
             }
         },
         modifier,
@@ -765,7 +839,15 @@ private val LocalSettingsTopAppBarUnderlapHeight = compositionLocalOf { 0 }
 
 @Stable
 interface SettingsDetailPaneScope : PaneScope {
-    val detailPaneNavController: NavHostController
+    /**
+     * 在详情页内部导航到 [route]. 如果它已经在栈顶则不做任何操作.
+     */
+    fun navigateTo(route: DetailPaneRoutes)
+
+    /**
+     * 返回详情页内部的上一页. 已经在 [DetailPaneRoutes.Main] 时不做任何操作.
+     */
+    fun navigateUp()
 }
 
 @Composable
@@ -833,8 +915,11 @@ private fun PaneScope.DetailPaneRoute(
     }
 }
 
+/**
+ * 设置详情页内部的导航目标. 栈底总是 [Main].
+ */
 @Serializable
-internal sealed class DetailPaneRoutes {
+sealed class DetailPaneRoutes : NavKey {
     @Serializable
     data object Main : DetailPaneRoutes()
 
@@ -842,11 +927,34 @@ internal sealed class DetailPaneRoutes {
     data object Acknowledgements : DetailPaneRoutes()
 
     @Serializable
+    data object OpenSourceLicenses : DetailPaneRoutes()
+
+    @Serializable
     data object Developers : DetailPaneRoutes()
 
     @Serializable
     data object BangumiSync : DetailPaneRoutes()
 }
+
+private val DetailPaneBackStackSaver: Saver<SnapshotStateList<DetailPaneRoutes>, Any> = listSaver(
+    save = { stack -> stack.map { it::class.simpleName ?: "Main" } },
+    restore = { saved ->
+        // 空栈会让 NavDisplay 抛异常, 此时放弃恢复
+        if (saved.isEmpty()) {
+            null
+        } else {
+            saved.map { name ->
+                when (name as String) {
+                    "Acknowledgements" -> DetailPaneRoutes.Acknowledgements
+                    "OpenSourceLicenses" -> DetailPaneRoutes.OpenSourceLicenses
+                    "Developers" -> DetailPaneRoutes.Developers
+                    "BangumiSync" -> DetailPaneRoutes.BangumiSync
+                    else -> DetailPaneRoutes.Main
+                }
+            }.toMutableStateList()
+        }
+    },
+)
 
 @Stable
 abstract class SettingsDrawerScope internal constructor() : ColumnScope {

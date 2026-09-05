@@ -8,8 +8,8 @@
  */
 
 plugins {
-    alias(libs.plugins.kotlin.jvm)
-    `flatten-source-sets`
+    id("ani.jvm-library")
+    id("ani.flatten-source-sets")
 }
 
 dependencies {

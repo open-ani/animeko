@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2024 OpenAni and contributors.
+ * Copyright (C) 2024-2026 OpenAni and contributors.
  *
  * 此源代码的使用受 GNU AFFERO GENERAL PUBLIC LICENSE version 3 许可证的约束, 可以在以下链接找到该许可证.
  * Use of this source code is governed by the GNU AGPLv3 license, which can be found at the following link.
@@ -23,6 +23,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.InlineTextContent
 import androidx.compose.foundation.text.appendInlineContent
 import androidx.compose.material3.LocalContentColor
+import androidx.compose.material3.LocalTextStyle
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.runtime.Composable
@@ -53,13 +54,11 @@ import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import coil3.compose.LocalPlatformContext
-import coil3.request.ImageRequest
-import coil3.request.crossfade
 import me.him188.ani.app.ui.external.placeholder.placeholder
 import me.him188.ani.app.ui.foundation.AsyncImage
 import me.him188.ani.app.ui.foundation.ClickableText
@@ -71,6 +70,8 @@ import org.jetbrains.compose.resources.painterResource
 fun RichText(
     elements: List<UIRichElement>,
     modifier: Modifier = Modifier,
+    color: Color = LocalContentColor.current,
+    style: TextStyle = LocalTextStyle.current,
     onClickUrl: (String) -> Unit = { },
     onClickImage: (String) -> Unit = { }
 ) {
@@ -80,12 +81,14 @@ fun RichText(
         modifier = modifier,
         horizontalAlignment = Alignment.Start,
     ) {
-        elements.toLayout(onClickUrl, onClickImage)
+        elements.toLayout(color, style, onClickUrl, onClickImage)
     }
 }
 
 @Composable
 fun List<UIRichElement>.toLayout(
+    color: Color,
+    style: TextStyle,
     onClickUrl: (String) -> Unit,
     onClickImage: (String) -> Unit
 ) = forEach { e ->
@@ -95,8 +98,12 @@ fun List<UIRichElement>.toLayout(
             RichTextDefaults.AnnotatedText(
                 slice = e.slice,
                 maskState = maskState,
-                modifier = Modifier,
+                // 指定了对齐方式时必须占满宽度, 否则文本框会包裹内容, 对齐无效果
+                modifier = if (e.align == TextAlign.Unspecified) Modifier else Modifier.fillMaxWidth(),
+                color = color,
+                style = style,
                 maxLine = e.maxLine,
+                align = e.align,
                 onClick = { it.url?.let(onClickUrl) },
             )
         }
@@ -110,6 +117,8 @@ fun List<UIRichElement>.toLayout(
         is UIRichElement.Quote -> RichTextDefaults.Quote(
             elements = e.content,
             modifier = Modifier,
+            color = color,
+            style = style,
             onClickUrl = onClickUrl,
         )
     }
@@ -199,7 +208,10 @@ object RichTextDefaults {
         slice: List<UIRichElement.Annotated>,
         maskState: AnnotatedMaskState,
         modifier: Modifier = Modifier,
+        color: Color = LocalContentColor.current,
+        style: TextStyle = LocalTextStyle.current,
         maxLine: Int? = null,
+        align: TextAlign = TextAlign.Unspecified,
         onClick: (UIRichElement.Annotated) -> Unit
     ) {
         val inlineStickerMap: MutableMap<String, InlineTextContent> = remember { mutableStateMapOf() }
@@ -208,7 +220,6 @@ object RichTextDefaults {
         val colorScheme = MaterialTheme.colorScheme
 
         val currentOnClick by rememberUpdatedState(onClick)
-        val contentColor = LocalContentColor.current
 
         val content = buildAnnotatedString {
             var currentLength = 0
@@ -247,7 +258,7 @@ object RichTextDefaults {
                                 colorScheme.onPrimaryContainer.copy(0.12f)
                                     .compositeOver(colorScheme.surfaceContainerHigh)
                             } else {
-                                e.color.takeOrElse { contentColor }
+                                e.color.takeOrElse { color }
                             },
                         )
 
@@ -255,8 +266,8 @@ object RichTextDefaults {
                             style = SpanStyle(
                                 color = textColor,
                                 fontSize = if (e.size != bodyLarge) e.size.sp else 15.5.sp,
-                                fontWeight = if (e.bold) FontWeight.Bold else null,
-                                fontStyle = if (e.italic) FontStyle.Italic else null,
+                                fontWeight = if (e.bold) FontWeight.Bold else style.fontWeight,
+                                fontStyle = if (e.italic) FontStyle.Italic else style.fontStyle,
                                 textDecoration = if (!e.underline && !e.strikethrough) null
                                 else TextDecoration.combine(
                                     buildList {
@@ -265,7 +276,7 @@ object RichTextDefaults {
                                     },
                                 ),
                                 background = background,
-                                fontFamily = if (e.code) FontFamily.Monospace else null,
+                                fontFamily = if (e.code) FontFamily.Monospace else style.fontFamily,
                             ),
                             start = currentLength,
                             end = currentLength + elementLength,
@@ -328,9 +339,16 @@ object RichTextDefaults {
             text = content,
             modifier = modifier,
             inlineContent = inlineStickerMap,
-            style = TextStyle.Default,
+            style = TextStyle.Default.copy(textAlign = align),
             maxLines = maxLine ?: Int.MAX_VALUE,
             overflow = TextOverflow.Ellipsis,
+            shouldConsumeTap = { textPos ->
+                // 只消费落在未揭开的遮罩或链接上的点击, 其余点击传给父级 (如整条评论点击回复)
+                val annotations = content.getStringAnnotations(textPos, textPos)
+                val maskAnno = annotations.firstOrNull { it.tag == "mask" }
+                val maskActive = maskAnno?.item?.toIntOrNull()?.let { maskState[it] == true } == true
+                maskActive || annotations.any { it.tag == "url" }
+            },
             onClick = { textPos ->
                 val annotations = content.getStringAnnotations(textPos, textPos)
 
@@ -363,16 +381,10 @@ object RichTextDefaults {
         modifier: Modifier = Modifier,
         onClick: () -> Unit
     ) {
-        val context = LocalPlatformContext.current
         var state by rememberSaveable { mutableIntStateOf(0) } // 0: loading, 1: success, 2: failed
 
         AsyncImage(
-            model = remember(element.imageUrl, context) {
-                ImageRequest.Builder(context)
-                    .data(element.imageUrl)
-                    .crossfade(false)
-                    .build()
-            },
+            model = element.imageUrl,
             contentDescription = null,
             modifier = modifier
                 .padding(4.dp)
@@ -384,6 +396,7 @@ object RichTextDefaults {
                 .clip(RoundedCornerShape(8.dp))
                 .then(Modifier.clickable { onClick() }),
             contentScale = ContentScale.Fit,
+            crossfade = false,
             onSuccess = {
                 if (state != 1) state = 1
             },
@@ -394,6 +407,8 @@ object RichTextDefaults {
     fun Quote(
         elements: List<UIRichElement>,
         modifier: Modifier = Modifier,
+        color: Color = LocalContentColor.current,
+        style: TextStyle = LocalTextStyle.current,
         onClickUrl: (String) -> Unit,
     ) {
         Surface(
@@ -405,7 +420,7 @@ object RichTextDefaults {
                 CompositionLocalProvider(
                     LocalContentColor provides MaterialTheme.colorScheme.onSurfaceVariant,
                 ) {
-                    elements.toLayout(onClickUrl, { })
+                    elements.toLayout(color, style, onClickUrl) { }
                 }
             }
         }

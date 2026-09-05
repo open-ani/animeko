@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2024-2025 OpenAni and contributors.
+ * Copyright (C) 2024-2026 OpenAni and contributors.
  *
  * 此源代码的使用受 GNU AFFERO GENERAL PUBLIC LICENSE version 3 许可证的约束, 可以在以下链接找到该许可证.
  * Use of this source code is governed by the GNU AGPLv3 license, which can be found at the following link.
@@ -13,21 +13,25 @@ import android.os.Build
 import androidx.appcompat.app.AppCompatDelegate
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.text.intl.Locale
 import androidx.core.os.LocaleListCompat
+import me.him188.ani.app.data.models.preference.PlayerKernelConfig
 import me.him188.ani.app.data.models.preference.UISettings
 import me.him188.ani.app.data.models.preference.VideoScaffoldConfig
 import me.him188.ani.app.platform.LocalContext
 import me.him188.ani.app.ui.lang.Lang
 import me.him188.ani.app.ui.lang.SupportedLocales
-import me.him188.ani.app.ui.lang.settings_app_language
-import me.him188.ani.app.ui.lang.Lang
 import me.him188.ani.app.ui.lang.settings_app_danmaku_refresh_rate
+import me.him188.ani.app.ui.lang.settings_app_language
+import me.him188.ani.app.ui.lang.settings_player_exoplayer_preinit_effect_graph
+import me.him188.ani.app.ui.lang.settings_player_exoplayer_preinit_effect_graph_desc
 import me.him188.ani.app.ui.lang.settings_theme_mode_auto
 import me.him188.ani.app.ui.settings.framework.SettingsState
 import me.him188.ani.app.ui.settings.framework.components.DropdownItem
 import me.him188.ani.app.ui.settings.framework.components.SettingsScope
+import me.him188.ani.app.ui.settings.framework.components.SwitchItem
 import org.jetbrains.compose.resources.stringResource
 import kotlin.math.roundToInt
 
@@ -62,7 +66,12 @@ internal actual fun SettingsScope.LanguageSettingsPlatform(
 }
 
 @Composable
-actual fun SettingsScope.PlayerGroupPlatform(videoScaffoldConfig: SettingsState<VideoScaffoldConfig>) {
+actual fun SettingsScope.PlayerGroupPlatform(
+    videoScaffoldConfig: SettingsState<VideoScaffoldConfig>,
+    @Suppress("UNUSED_PARAMETER") playerKernelConfig: SettingsState<PlayerKernelConfig>,
+) {
+    val kernelConfig by playerKernelConfig
+
     if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
         val context = LocalContext.current
         val supportedModes = remember(context) {
@@ -94,4 +103,15 @@ actual fun SettingsScope.PlayerGroupPlatform(videoScaffoldConfig: SettingsState<
             },
         )
     }
+    HorizontalDividerItem()
+    SwitchItem(
+        checked = kernelConfig.exoPlayerInitEffectGraphInAdvance,
+        onCheckedChange = {
+            playerKernelConfig.update(
+                kernelConfig.copy(exoPlayerInitEffectGraphInAdvance = it),
+            )
+        },
+        title = { Text(stringResource(Lang.settings_player_exoplayer_preinit_effect_graph)) },
+        description = { Text(stringResource(Lang.settings_player_exoplayer_preinit_effect_graph_desc)) },
+    )
 }

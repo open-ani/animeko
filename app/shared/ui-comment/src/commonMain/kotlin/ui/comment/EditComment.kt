@@ -48,7 +48,6 @@ import androidx.compose.ui.unit.max
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import kotlinx.coroutines.launch
 import me.him188.ani.app.domain.comment.CommentSendResult
-import me.him188.ani.app.domain.comment.TurnstileState
 import me.him188.ani.app.ui.foundation.animation.AniAnimatedVisibility
 import me.him188.ani.app.ui.foundation.ifThen
 import me.him188.ani.app.ui.foundation.interaction.isImeVisible
@@ -69,7 +68,6 @@ import org.jetbrains.compose.resources.stringResource
 @Composable
 fun EditComment(
     state: CommentEditorState,
-    turnstileState: TurnstileState,
     modifier: Modifier = Modifier,
     focusRequester: FocusRequester = remember { FocusRequester() },
     stickerPanelHeight: Dp = EditCommentDefaults.MinStickerHeight.dp,
@@ -136,13 +134,6 @@ fun EditComment(
                     },
                 )
             }
-        },
-        captcha = {
-            if (!sendingComment) return@EditCommentScaffold
-            Turnstile(
-                state = turnstileState,
-                modifier = Modifier.fillMaxWidth().height(100.dp),
-            )
         },
         expanded = state.expandButtonState,
         onClickExpand = { state.editExpanded = it },
@@ -234,7 +225,6 @@ private fun renderCommentSendError(result: CommentSendResult.Error): String {
  * @param onClickExpand 点击展开按钮时触发该点击事件.
  * @param title 评论编辑标题, 一般显示 正在为哪个对象发送评论. see [EditCommentDefaults.Title].
  * @param content 评论编辑框. see [EditCommentDefaults.CommentTextField].
- * @param captcha 发送评论时的验证码交互.
  */
 @Composable
 fun EditCommentScaffold(
@@ -245,7 +235,6 @@ fun EditCommentScaffold(
     modifier: Modifier = Modifier,
     expanded: Boolean? = null,
     title: (@Composable () -> Unit)? = null,
-    captcha: @Composable () -> Unit = {},
     contentColor: Color = Color.Unspecified,
     content: @Composable ColumnScope.(previewing: Boolean) -> Unit,
 ) {
@@ -290,8 +279,6 @@ fun EditCommentScaffold(
             
         }
 
-        captcha()
-        
         Column {
             actionRow()
         }

@@ -28,8 +28,8 @@ class TvArchitectureTest {
     /** me.him188.ani.app.ui.* 中 TV 允许 import 的基建白名单 (§4.2). */
     private val uiFoundationInfraAllowList = listOf(
         "me.him188.ani.app.ui.foundation.AsyncImage",
-        "me.him188.ani.app.ui.foundation.LocalImageLoader",
-        "me.him188.ani.app.ui.foundation.createDefaultImageLoader",
+        "me.him188.ani.app.ui.foundation.LocalSketch",
+        "me.him188.ani.app.ui.foundation.rememberAniSketchInstance",
         "me.him188.ani.app.ui.foundation.AbstractViewModel",
         "me.him188.ani.app.ui.foundation.animation.",
         "me.him188.ani.app.ui.foundation.widgets.Toaster",

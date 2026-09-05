@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2024-2025 OpenAni and contributors.
+ * Copyright (C) 2024-2026 OpenAni and contributors.
  *
  * 此源代码的使用受 GNU AFFERO GENERAL PUBLIC LICENSE version 3 许可证的约束, 可以在以下链接找到该许可证.
  * Use of this source code is governed by the GNU AGPLv3 license, which can be found at the following link.
@@ -27,8 +27,8 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.testTag
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import coil3.annotation.ExperimentalCoilApi
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.launch
@@ -38,10 +38,10 @@ import me.him188.ani.app.ui.foundation.animation.AniAnimatedVisibility
 import me.him188.ani.app.ui.foundation.animation.LocalAniMotionScheme
 
 interface ImageViewerHandler {
-    val imageModel: StateFlow<Any?>
+    val imageModel: StateFlow<String?>
     val viewing: State<Boolean>
 
-    fun viewImage(model: Any?)
+    fun viewImage(model: String?)
     fun clear()
 }
 
@@ -49,14 +49,17 @@ val LocalImageViewerHandler: ProvidableCompositionLocal<ImageViewerHandler> = co
     error("no ImageViewerHandler provided")
 }
 
+/** [ImageViewer] 缩放层的 test tag, 供 UI 测试断言查看器已打开. */
+const val IMAGE_VIEWER_TEST_TAG = "ImageViewer"
+
 @Composable
 fun rememberImageViewerHandler(): ImageViewerHandler {
     return remember {
         object : ImageViewerHandler {
-            override val imageModel: MutableStateFlow<Any?> = MutableStateFlow(null)
+            override val imageModel: MutableStateFlow<String?> = MutableStateFlow(null)
             override val viewing: MutableState<Boolean> = mutableStateOf(false)
 
-            override fun viewImage(model: Any?) {
+            override fun viewImage(model: String?) {
                 imageModel.value = model
                 viewing.value = model != null
             }
@@ -69,7 +72,6 @@ fun rememberImageViewerHandler(): ImageViewerHandler {
     }
 }
 
-@OptIn(ExperimentalCoilApi::class)
 @Composable
 fun ImageViewer(
     handler: ImageViewerHandler,
@@ -102,14 +104,14 @@ fun ImageViewer(
                         modifier = Modifier.fillMaxSize(),
                         contentDescription = null,
                         onSuccess = {
-                            contentSizeX = it.result.image.width.toFloat()
-                            contentSizeY = it.result.image.height.toFloat()
+                            contentSizeX = it.width.toFloat()
+                            contentSizeY = it.height.toFloat()
                         },
                     )
                 },
             ),
             state = zoomableState,
-            modifier = Modifier.background(Color.Black),
+            modifier = Modifier.testTag(IMAGE_VIEWER_TEST_TAG).background(Color.Black),
             detectGesture = ZoomableGestureScope(
                 onDoubleTap = { offset -> scope.launch { zoomableState.toggleScale(offset) } },
                 onTap = { _ -> onClose() },

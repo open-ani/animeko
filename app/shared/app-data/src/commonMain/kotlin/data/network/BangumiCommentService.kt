@@ -9,21 +9,17 @@
 
 package me.him188.ani.app.data.network
 
-import io.ktor.client.plugins.ClientRequestException
-import io.ktor.http.HttpStatusCode
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.flow.firstOrNull
 import kotlinx.coroutines.withContext
 import me.him188.ani.app.data.models.UserInfo
-import me.him188.ani.app.data.models.episode.EpisodeComment
-import me.him188.ani.app.data.models.episode.toEpisodeComment
+import me.him188.ani.app.data.models.comment.CommentVoteValue
 import me.him188.ani.app.data.models.subject.SubjectReview
-import me.him188.ani.app.data.repository.user.UserRepository
+import me.him188.ani.app.data.models.subject.SubjectReviewSource
+import me.him188.ani.app.data.repository.RepositoryException
 import me.him188.ani.client.apis.SubjectsAniApi
 import me.him188.ani.client.models.AniSubjectReview
+import me.him188.ani.client.models.AniSubjectReviewSource
 import me.him188.ani.datasources.api.paging.Paged
-import me.him188.ani.datasources.bangumi.BangumiClient
-import me.him188.ani.datasources.bangumi.next.models.BangumiNextCreateEpisodeCommentRequest
 import me.him188.ani.utils.ktor.ApiInvoker
 import me.him188.ani.utils.coroutines.IO_
 import kotlin.coroutines.CoroutineContext
@@ -36,28 +32,13 @@ interface BangumiCommentService {
     suspend fun getSubjectComments(subjectId: Int, offset: Int, limit: Int): Paged<SubjectReview>?
 
     /**
-     * @return `null` if [episodeId] is invalid
+     * 对条目评价投票. [vote] 为 `null` 表示取消投票.
+     * 只有 [SubjectReviewSource.ANI] 来源的评价可投票.
      */
-    suspend fun getSubjectEpisodeComments(episodeId: Long): List<EpisodeComment>?
-
-    // comment.id 会被忽略
-    suspend fun postEpisodeComment(
-        episodeId: Long,
-        content: String,
-        cfTurnstileResponse: String,
-        replyToCommentId: Int? = null
-    )
-
-    suspend fun submitEpisodeCommentReaction(
-        commentId: String,
-        value: String,
-        selected: Boolean,
-    )
+    suspend fun voteSubjectReview(subjectId: Int, reviewId: String, vote: CommentVoteValue?)
 }
 
 class BangumiBangumiCommentServiceImpl(
-    private val client: BangumiClient,
-    private val userRepository: UserRepository,
     private val subjectsApi: ApiInvoker<SubjectsAniApi>,
     private val ioDispatcher: CoroutineContext = Dispatchers.IO_,
 ) : BangumiCommentService {
@@ -75,59 +56,18 @@ class BangumiBangumiCommentServiceImpl(
         }
     }
 
-    override suspend fun postEpisodeComment(
-        episodeId: Long,
-        content: String,
-        cfTurnstileResponse: String,
-        replyToCommentId: Int?
-    ) {
+    override suspend fun voteSubjectReview(subjectId: Int, reviewId: String, vote: CommentVoteValue?) {
         withContext(ioDispatcher) {
-            client.nextEpisodeApi {
-                createEpisodeComment(
-                    episodeId,
-                    BangumiNextCreateEpisodeCommentRequest(
-                        content,
-                        cfTurnstileResponse,
-                        replyToCommentId,
-                    ),
-                )
-                Unit // suppress inspection
-            }
-        }
-    }
-
-    override suspend fun getSubjectEpisodeComments(episodeId: Long): List<EpisodeComment>? {
-        return withContext(ioDispatcher) {
-            val selfBangumiUsername = userRepository.selfInfoFlow.firstOrNull()?.bangumiUsername
-            val response = try {
-                client.nextEpisodeApi {
-                    getEpisodeComments(episodeId)
-                        .body()
-                        .map { it.toEpisodeComment(episodeId, selfBangumiUsername) }
+            try {
+                subjectsApi {
+                    if (vote == null) {
+                        removeSubjectReviewVote(subjectId.toLong(), reviewId).body()
+                    } else {
+                        voteSubjectReview(subjectId.toLong(), reviewId, vote.toAniCommentVoteValue()).body()
+                    }
                 }
-            } catch (e: ClientRequestException) {
-                if (e.response.status == HttpStatusCode.NotFound || e.response.status == HttpStatusCode.BadRequest) {
-                    return@withContext null
-                }
-                throw e
-            }
-            response
-        }
-    }
-
-    override suspend fun submitEpisodeCommentReaction(
-        commentId: String,
-        value: String,
-        selected: Boolean,
-    ) {
-        val bangumiCommentId = commentId.toIntOrNull() ?: return
-        if (!value.startsWith("bgm")) return
-        val bangumiReactionId = value.removePrefix("bgm").toIntOrNull() ?: return
-        withContext(ioDispatcher) {
-            if (selected) {
-                client.likeEpisodeComment(bangumiCommentId, bangumiReactionId)
-            } else {
-                client.unlikeEpisodeComment(bangumiCommentId)
+            } catch (e: Exception) {
+                throw RepositoryException.wrapOrThrowCancellation(e)
             }
         }
     }
@@ -135,6 +75,11 @@ class BangumiBangumiCommentServiceImpl(
 
 private fun AniSubjectReview.toSubjectReview() = SubjectReview(
     id = id.hashCode().toLong(),
+    reviewId = id,
+    source = when (source) {
+        AniSubjectReviewSource.ANIMEKO -> SubjectReviewSource.ANI
+        AniSubjectReviewSource.BANGUMI -> SubjectReviewSource.BANGUMI
+    },
     content = contentBbcode,
     updatedAt = Instant.parse(updatedAt).toEpochMilliseconds(),
     rating = rating,
@@ -146,4 +91,6 @@ private fun AniSubjectReview.toSubjectReview() = SubjectReview(
             avatarUrl = it.avatarUrl,
         )
     },
+    likeCount = likeCount,
+    selfVote = selfVote?.toCommentVoteValue(),
 )

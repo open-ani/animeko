@@ -88,6 +88,7 @@ private fun AniScheduledAnimeEpisode.toEpisodeWithAiringTime(): EpisodeWithAirin
         subject = subject.toLightSubjectInfo(),
         episode = episode.toLightEpisodeInfo(),
         airingTime = Instant.parse(airingTime),
+        timeKnown = timeKnown ?: true, // 旧服务端没有这个字段, 视为时间已知
     )
 }
 

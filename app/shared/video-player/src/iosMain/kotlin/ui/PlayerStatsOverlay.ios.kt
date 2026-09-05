@@ -21,12 +21,12 @@ import kotlin.time.Duration.Companion.seconds
 actual fun rememberPlayerStatsState(player: MediampPlayer): State<PlayerStatsSnapshot?> {
     return produceState<PlayerStatsSnapshot?>(initialValue = null, player) {
         while (true) {
-            val properties = player.getCurrentMediaProperties()
+            val properties = player.mediaProperties.value
             value = PlayerStatsSnapshot(
                 backend = player.impl::class.simpleName ?: "iOS",
-                playbackState = player.playbackState.value.toString(),
+                playbackState = player.state.value.toString(),
                 title = properties?.title,
-                positionMillis = player.getCurrentPositionMillis(),
+                positionMillis = player.currentPositionMillis.value,
                 durationMillis = properties?.durationMillis?.takeIf { it >= 0 },
                 playbackSpeed = player.features[PlaybackSpeed]?.value,
                 resolution = null,

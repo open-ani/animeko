@@ -116,4 +116,8 @@ class TorrentDownloaderConfig(
      * share ratio limit, 100 = 1.0
      */
     val shareRatioLimit: Int = 200,
+    /**
+     * 额外的 tracker 服务器, 将在 BT 下载开始前与内置 tracker 一起添加
+     */
+    val extraTrackers: List<String> = emptyList(),
 )

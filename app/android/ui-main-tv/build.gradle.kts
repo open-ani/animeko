@@ -8,7 +8,7 @@
  */
 
 plugins {
-    alias(libs.plugins.android.library) // AGP 9 内置 Kotlin 支持
+    id("ani.android-library") // convention: jvmTarget/OptIns/编码 等全仓约定 (AGP 9 内置 Kotlin 支持)
     alias(libs.plugins.kotlin.plugin.compose)
     alias(libs.plugins.jetbrains.compose)
 }
@@ -36,7 +36,9 @@ dependencies {
     implementation(projects.app.android.uiSettingsTv)
     implementation(projects.app.shared.appData) // SelfInfo (抽屉登录态)
     implementation(projects.app.shared.appPlatform)
-    implementation(libs.compose.navigation.compose)
+    implementation(libs.compose.navigation3.runtime)
+    implementation(libs.compose.navigation3.ui)
+    implementation(libs.compose.lifecycle.viewmodel.navigation3)
     implementation(libs.compose.lifecycle.viewmodel.compose)
     implementation(libs.koin.core)
     implementation(compose.materialIconsExtended)

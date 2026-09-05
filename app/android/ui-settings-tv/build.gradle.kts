@@ -8,7 +8,7 @@
  */
 
 plugins {
-    alias(libs.plugins.android.library) // AGP 9 内置 Kotlin 支持
+    id("ani.android-library") // convention: jvmTarget/OptIns/编码 等全仓约定 (AGP 9 内置 Kotlin 支持)
     alias(libs.plugins.kotlin.plugin.compose)
     alias(libs.plugins.jetbrains.compose)
 }

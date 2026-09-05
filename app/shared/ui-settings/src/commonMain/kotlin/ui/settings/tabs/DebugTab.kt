@@ -16,25 +16,19 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalClipboard
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import androidx.navigation.toRoute
 import kotlinx.coroutines.launch
 import me.him188.ani.app.data.models.preference.DebugSettings
-import me.him188.ani.app.data.models.preference.UISettings
 import me.him188.ani.app.data.models.preference.supportsLimitUploadOnMeteredNetwork
 import me.him188.ani.app.data.repository.user.AccessTokenSession
 import me.him188.ani.app.data.repository.user.UserRepository
 import me.him188.ani.app.domain.session.SessionManager
 import me.him188.ani.app.domain.usecase.GlobalKoin
-import me.him188.ani.app.navigation.LocalNavigator
-import me.him188.ani.app.navigation.NavRoutes
-import me.him188.ani.app.navigation.findLast
 import me.him188.ani.app.platform.MeteredNetworkDetector
 import me.him188.ani.app.ui.foundation.LocalPlatform
 import me.him188.ani.app.ui.foundation.setClipEntryText
 import me.him188.ani.app.ui.foundation.widgets.LocalToaster
 import me.him188.ani.app.ui.lang.Lang
 import me.him188.ani.app.ui.lang.settings_debug_copied
-import me.him188.ani.app.ui.lang.settings_debug_enter_onboarding
 import me.him188.ani.app.ui.lang.settings_debug_episodes
 import me.him188.ani.app.ui.lang.settings_debug_get_ani_token
 import me.him188.ani.app.ui.lang.settings_debug_logged_out
@@ -42,11 +36,7 @@ import me.him188.ani.app.ui.lang.settings_debug_logout
 import me.him188.ani.app.ui.lang.settings_debug_metered_network
 import me.him188.ani.app.ui.lang.settings_debug_mode
 import me.him188.ani.app.ui.lang.settings_debug_mode_description
-import me.him188.ani.app.ui.lang.settings_debug_onboarding
 import me.him188.ani.app.ui.lang.settings_debug_others
-import me.him188.ani.app.ui.lang.settings_debug_reset_onboarding
-import me.him188.ani.app.ui.lang.settings_debug_reset_onboarding_description
-import me.him188.ani.app.ui.lang.settings_debug_reset_onboarding_toast
 import me.him188.ani.app.ui.lang.settings_debug_show_all_episodes
 import me.him188.ani.app.ui.lang.settings_debug_show_all_episodes_description
 import me.him188.ani.app.ui.lang.settings_debug_status
@@ -61,13 +51,11 @@ import org.koin.mp.KoinPlatform
 @Composable
 fun DebugTab(
     debugSettingsState: SettingsState<DebugSettings>,
-    uiSettingsState: SettingsState<UISettings>,
     modifier: Modifier = Modifier,
     onDisableDebugMode: () -> Unit = {}
 ) {
     val debugSettings by debugSettingsState
     val toaster = LocalToaster.current
-    val navigator = LocalNavigator.current
     val scope = rememberCoroutineScope()
     val clipboard = LocalClipboard.current
 
@@ -109,31 +97,6 @@ fun DebugTab(
                 val isMetered by networkDetector.isMeteredNetworkFlow.collectAsStateWithLifecycle(false)
                 Text("isMetered: $isMetered")
             }
-        }
-        Group(title = { Text(stringResource(Lang.settings_debug_onboarding)) }, useThinHeader = true) {
-            TextItem(
-                onClick = {
-                    val navController = navigator.currentNavigator
-                    // 从 SettingsScreen 进入 onboarding, 最后 navigateMain 要 popUpTo Main
-                    // 如果 back stack 没有 Main, 那就 popUpTo Settings, 这个一定有
-                    navigator.navigateOnboarding(
-                        navController.findLast<NavRoutes.Main>()
-                            ?: navController.currentBackStackEntry?.toRoute<NavRoutes.Settings>(),
-                    )
-                },
-            ) {
-                Text(stringResource(Lang.settings_debug_enter_onboarding))
-            }
-            TextItem(
-                title = { Text(stringResource(Lang.settings_debug_reset_onboarding)) },
-                description = { Text(stringResource(Lang.settings_debug_reset_onboarding_description)) },
-                onClick = {
-                    uiSettingsState.update(uiSettingsState.value.copy(onboardingCompleted = false))
-                    scope.launch {
-                        toaster.toast(getString(Lang.settings_debug_reset_onboarding_toast))
-                    }
-                },
-            )
         }
         Group(title = { Text(stringResource(Lang.settings_debug_others)) }, useThinHeader = true) {
             TextItem(

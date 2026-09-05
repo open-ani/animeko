@@ -10,7 +10,7 @@
 package me.him188.ani.app.data.models.episode
 
 import me.him188.ani.app.data.models.UserInfo
-import me.him188.ani.datasources.bangumi.next.models.BangumiNextGetEpisodeComments200ResponseInner
+import me.him188.ani.app.data.models.comment.CommentVoteValue
 
 enum class EpisodeCommentSource {
     ANI,
@@ -33,66 +33,22 @@ data class EpisodeComment(
     val reactions: List<EpisodeCommentReaction> = emptyList(),
     val replies: List<EpisodeComment> = listOf(),
     val canReply: Boolean = false,
+    /**
+     * 总回复数. [replies] 只是简要回复, 可能少于此数.
+     */
+    val replyCount: Int = replies.size,
+    /**
+     * 点赞总数. [EpisodeCommentSource.BANGUMI] 来源的评论恒为 `0`.
+     */
+    val likeCount: Int = 0,
+    /**
+     * 当前登录用户对这条评论的投票, 未投票或未登录时为 `null`.
+     */
+    val selfVote: CommentVoteValue? = null,
 )
 
 data class EpisodeCommentReaction(
     val value: String,
     val count: Int,
     val selected: Boolean,
-)
-
-fun BangumiNextGetEpisodeComments200ResponseInner.toEpisodeComment(
-    episodeId: Long,
-    selfBangumiUsername: String? = null,
-) = EpisodeComment(
-    stableId = "bangumi:$id",
-    source = EpisodeCommentSource.BANGUMI,
-    sourceCommentId = id.toString(),
-    commentId = id.toString(),
-    episodeId = episodeId,
-    createdAt = createdAt * 1000L,
-    content = content,
-    author = user?.let { u ->
-        UserInfo(
-            id = u.id.toString(),
-            nickname = u.nickname,
-            username = null,
-            avatarUrl = u.avatar.large,
-        ) // 没有username
-    },
-    reactions = reactions.orEmpty().map { reaction ->
-        EpisodeCommentReaction(
-            value = "bgm${reaction.value}",
-            count = reaction.users.size,
-            selected = selfBangumiUsername != null && reaction.users.any { it.username == selfBangumiUsername },
-        )
-    },
-    replies = replies.map { r ->
-        EpisodeComment(
-            stableId = "bangumi:${r.id}",
-            source = EpisodeCommentSource.BANGUMI,
-            sourceCommentId = r.id.toString(),
-            commentId = r.id.toString(),
-            episodeId = episodeId,
-            createdAt = r.createdAt * 1000L,
-            content = r.content,
-            author = r.user?.let { u ->
-                UserInfo(
-                    id = u.id.toString(),
-                    nickname = u.nickname,
-                    username = null,
-                    avatarUrl = u.avatar.large,
-                )
-            },
-            reactions = r.reactions.orEmpty().map { reaction ->
-                EpisodeCommentReaction(
-                    value = "bgm${reaction.value}",
-                    count = reaction.users.size,
-                    selected = selfBangumiUsername != null && reaction.users.any { it.username == selfBangumiUsername },
-                )
-            },
-            canReply = false,
-        )
-    },
-    canReply = false,
 )

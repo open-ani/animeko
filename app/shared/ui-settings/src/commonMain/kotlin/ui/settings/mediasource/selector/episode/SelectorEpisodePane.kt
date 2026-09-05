@@ -61,9 +61,16 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import androidx.navigation.compose.NavHost
-import androidx.navigation.compose.composable
-import androidx.navigation.compose.rememberNavController
+import androidx.compose.runtime.mutableStateListOf
+import androidx.compose.runtime.saveable.Saver
+import androidx.compose.runtime.saveable.listSaver
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.snapshots.SnapshotStateList
+import androidx.compose.runtime.toMutableStateList
+import androidx.navigation3.runtime.NavKey
+import androidx.navigation3.runtime.entryProvider
+import androidx.navigation3.runtime.rememberSaveableStateHolderNavEntryDecorator
+import androidx.navigation3.ui.NavDisplay
 import kotlinx.coroutines.launch
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
@@ -115,83 +122,118 @@ fun SelectorTestAndEpisodePane(
     contentPadding: PaddingValues = PaddingValues(0.dp),
     initialRoute: SelectorEpisodePaneRoutes = SelectorEpisodePaneRoutes.TEST,
 ) {
-    val nestedNav = rememberNavController()
-    state.episodeNavController = nestedNav
-
-    NavHost(nestedNav, initialRoute, modifier) {
-        composable<SelectorEpisodePaneRoutes.TEST> {
-            SelectorTestPane(
-                state.testState,
-                onViewEpisode = {
-                    state.viewEpisode(it)
-                },
-                Modifier.fillMaxSize(),
-                contentPadding = contentPadding,
-            )
-        }
-        composable<SelectorEpisodePaneRoutes.EPISODE> {
-            val onBack: () -> Unit = {
-                state.stopViewing()
-                nestedNav.popBackStack(SelectorEpisodePaneRoutes.EPISODE, inclusive = true)
-            }
-            BackHandler(onBack = onBack)
-            val cardColors: CardColors = CardDefaults.cardColors(
-                containerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
-            )
-
-            // decorate
-            val content: @Composable () -> Unit = {
-                SelectorEpisodePaneContent(
-                    state.episodeState,
-                    Modifier.fillMaxSize(),
-                    itemColors = ListItemDefaults.colors(containerColor = cardColors.containerColor),
-                )
-            }
-            val topAppBarDecorated = if (layout.showTopBarInPane) {
-                {
-                    // list 展开, 能编辑配置
-                    Card(
-                        Modifier.fillMaxSize(),
-                        colors = cardColors,
-                        shape = MaterialTheme.shapes.large,
-                    ) {
-                        SelectorEpisodePaneDefaults.TopAppBar(
-                            state.episodeState,
-                            navigationIcon = {
-                                BackNavigationIconButton({ onBack() })
-                            },
-                        )
-                        content()
-                    }
-                }
-            } else content
-
-            val bottomSheetDecorated = if (layout.showBottomSheet) {
-                {
-                    BottomSheetScaffold(
-                        sheetContent = {
-                            SelectorEpisodePaneDefaults.ConfigurationContent(
-                                state.configurationState,
-                                contentPadding = PaddingValues(start = 16.dp, end = 16.dp, bottom = 16.dp),
-                            )
-                        },
-                        Modifier
-                            .fillMaxSize(),
-                        sheetPeekHeight = 78.dp,
-                    ) { paddingValues ->
-                        Box(Modifier.padding(paddingValues)) {
-                            topAppBarDecorated()
-                        }
-                    }
-                }
-            } else topAppBarDecorated
-
-            Box(Modifier.padding(contentPadding)) {
-                bottomSheetDecorated()
-            }
+    // 栈底总是 TEST, EPISODE 叠在它上面, 所以最多两层
+    val backStack = rememberSaveable(saver = SelectorEpisodePaneBackStackSaver) {
+        if (initialRoute == SelectorEpisodePaneRoutes.TEST) {
+            mutableStateListOf<SelectorEpisodePaneRoutes>(SelectorEpisodePaneRoutes.TEST)
+        } else {
+            mutableStateListOf(SelectorEpisodePaneRoutes.TEST, initialRoute)
         }
     }
+    state.episodeBackStack = backStack
+
+    NavDisplay(
+        backStack = backStack,
+        modifier = modifier,
+        onBack = { state.stopViewing() },
+        entryDecorators = listOf(rememberSaveableStateHolderNavEntryDecorator()),
+        entryProvider = entryProvider {
+            entry<SelectorEpisodePaneRoutes.TEST> {
+                SelectorTestPane(
+                    state.testState,
+                    onViewEpisode = {
+                        state.viewEpisode(it)
+                    },
+                    Modifier.fillMaxSize(),
+                    contentPadding = contentPadding,
+                )
+            }
+            entry<SelectorEpisodePaneRoutes.EPISODE> {
+                // stopViewing 会把栈弹回 TEST
+                val onBack: () -> Unit = { state.stopViewing() }
+                BackHandler(onBack = onBack)
+                val cardColors: CardColors = CardDefaults.cardColors(
+                    containerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
+                )
+
+                // decorate
+                val content: @Composable () -> Unit = {
+                    SelectorEpisodePaneContent(
+                        state.episodeState,
+                        Modifier.fillMaxSize(),
+                        itemColors = ListItemDefaults.colors(containerColor = cardColors.containerColor),
+                    )
+                }
+                val topAppBarDecorated = if (layout.showTopBarInPane) {
+                    {
+                        // list 展开, 能编辑配置
+                        Card(
+                            Modifier.fillMaxSize(),
+                            colors = cardColors,
+                            shape = MaterialTheme.shapes.large,
+                        ) {
+                            SelectorEpisodePaneDefaults.TopAppBar(
+                                state.episodeState,
+                                navigationIcon = {
+                                    BackNavigationIconButton({ onBack() })
+                                },
+                            )
+                            content()
+                        }
+                    }
+                } else content
+
+                val bottomSheetDecorated = if (layout.showBottomSheet) {
+                    {
+                        BottomSheetScaffold(
+                            sheetContent = {
+                                SelectorEpisodePaneDefaults.ConfigurationContent(
+                                    state.configurationState,
+                                    contentPadding = PaddingValues(start = 16.dp, end = 16.dp, bottom = 16.dp),
+                                )
+                            },
+                            Modifier
+                                .fillMaxSize(),
+                            sheetPeekHeight = 78.dp,
+                        ) { paddingValues ->
+                            Box(Modifier.padding(paddingValues)) {
+                                topAppBarDecorated()
+                            }
+                        }
+                    }
+                } else topAppBarDecorated
+
+                Box(Modifier.padding(contentPadding)) {
+                    bottomSheetDecorated()
+                }
+            }
+        },
+    )
 }
+
+private val SelectorEpisodePaneBackStackSaver: Saver<SnapshotStateList<SelectorEpisodePaneRoutes>, Any> = listSaver(
+    save = { stack ->
+        stack.map { route ->
+            when (route) {
+                SelectorEpisodePaneRoutes.TEST -> "TEST"
+                SelectorEpisodePaneRoutes.EPISODE -> "EPISODE"
+            }
+        }
+    },
+    restore = { saved ->
+        // 空栈会让 NavDisplay 抛异常, 此时放弃恢复
+        if (saved.isEmpty()) {
+            null
+        } else {
+            saved.map { entry ->
+                when (entry as String) {
+                    "EPISODE" -> SelectorEpisodePaneRoutes.EPISODE
+                    else -> SelectorEpisodePaneRoutes.TEST
+                }
+            }.toMutableStateList()
+        }
+    },
+)
 
 
 @Composable
@@ -382,7 +424,7 @@ fun SelectorEpisodePaneContent(
 
 
 @Serializable
-sealed class SelectorEpisodePaneRoutes {
+sealed class SelectorEpisodePaneRoutes : NavKey {
     @Serializable
     @SerialName("TEST")
     data object TEST : SelectorEpisodePaneRoutes()

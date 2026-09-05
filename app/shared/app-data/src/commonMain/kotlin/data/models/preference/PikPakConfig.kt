@@ -60,11 +60,13 @@ data class PikPakConfig(
      * [SLOT_QUEUE_UNLIMITED]) that disables eviction entirely.
      */
     val slotQueueLength: Int = 1,
+    /** Number of parallel HTTP range requests used by explicit PikPak caches. */
+    val downloadConcurrency: Int = DEFAULT_DOWNLOAD_CONCURRENCY,
 ) {
     override fun toString(): String {
         return "PikPakConfig(enabled=$enabled, username=$username, password.hash=${password.hashCode()}, " +
                 "refreshToken.hash=${refreshToken.let { if (it.isNotEmpty()) it.hashCode() else "" }}, " +
-                "slotQueueLength=$slotQueueLength)"
+                "slotQueueLength=$slotQueueLength, downloadConcurrency=$downloadConcurrency)"
     }
 
     companion object {
@@ -78,6 +80,10 @@ data class PikPakConfig(
          * stop. Any value ≥ this is treated as unlimited by the engine.
          */
         const val SLOT_QUEUE_UNLIMITED: Int = SLOT_QUEUE_MAX_NUMERIC + 1
+
+        const val MIN_DOWNLOAD_CONCURRENCY: Int = 1
+        const val MAX_DOWNLOAD_CONCURRENCY: Int = 8
+        const val DEFAULT_DOWNLOAD_CONCURRENCY: Int = 4
     }
 }
 

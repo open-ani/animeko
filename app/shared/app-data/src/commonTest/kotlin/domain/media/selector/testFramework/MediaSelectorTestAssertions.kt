@@ -186,6 +186,7 @@ class MaybeExcludedMediaAssertions {
         sourceId: String? = null,
         source: Handle? = null,
         kind: MediaSourceKind? = null,
+        exclusionReason: MediaExclusionReason? = null,
     ): Target {
         removeUnusedTarget(this)
         check(sourceId == null || source == null) {
@@ -201,6 +202,7 @@ class MaybeExcludedMediaAssertions {
                 included = included,
                 sourceId = sourceId ?: source?.instance?.mediaSourceId,
                 kind = kind,
+                exclusionReason = exclusionReason,
             ),
         )
         return this

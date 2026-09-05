@@ -101,6 +101,12 @@ class SelectorConfigState(
         SelectorMediaSourceArguments.Default.searchConfig.requestInterval,
     )
 
+    var searchCacheTtl by argumentsStorage.prop(
+        { it.searchConfig.searchCacheTtl },
+        { copy(searchConfig = searchConfig.copy(searchCacheTtl = it.coerceAtLeast(0.milliseconds))) },
+        SelectorMediaSourceArguments.Default.searchConfig.searchCacheTtl,
+    )
+
     // region SubjectFormat
 
     val allSubjectFormats get() = SelectorSubjectFormat.entries

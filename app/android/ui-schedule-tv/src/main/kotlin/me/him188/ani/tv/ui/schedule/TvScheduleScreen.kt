@@ -398,7 +398,8 @@ private val timeFormatter = LocalTime.Format {
     minute()
 }
 
-private fun renderTime(time: LocalTime): String = timeFormatter.format(time)
+private fun renderTime(time: LocalTime?): String =
+    time?.let { timeFormatter.format(it) } ?: "时间未定"
 
 /** 集数渲染: 手机 ScheduleItemDefaults.Episode 同语义 ("第 N 话 [名称]" / ep(sort) 特殊形). */
 private fun renderEpisode(

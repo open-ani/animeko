@@ -31,6 +31,9 @@ import java.lang.reflect.Method
 
 private val logger = logger("ComposeSceneTouchBridge")
 
+/** AWT reports the mouse as pointer 0; Windows touch ids never collide with it. */
+private const val HOVERING_CURSOR_POINTER_ID = 0L
+
 /**
  * Injects native Windows touch events into [ComposeScene].
  *
@@ -62,6 +65,10 @@ internal class ComposeSceneTouchBridge private constructor(
                 density = scene.density.density,
                 sceneBoundsInPx = sceneBoundsInPxOrZero(),
             )
+            if (event.type == WindowsTouchEventType.PRESS) {
+                exitHoveringCursor(position, event.pointer.eventTimeMillis)
+            }
+
             val pointer = ComposeScenePointer(
                 id = PointerId(event.pointer.id),
                 position = position,
@@ -79,8 +86,41 @@ internal class ComposeSceneTouchBridge private constructor(
                 event.pointer.eventTimeMillis,
                 null,
                 null,
+                1f, // scaleGestureFactor
+                Offset.Zero.packedValue, // panGestureOffset
             )
         }
+    }
+
+    /**
+     * Ends the AWT mouse hover before the first injected touch of a sequence.
+     *
+     * CMP resolves an injected pointer against the scene's current cursor input source. While the
+     * mouse is still hovering, the touch PRESS arrives as [PointerType.Mouse] and only the RELEASE
+     * reports [PointerType.Touch]; the tap is then discarded because down and up disagree, so the
+     * first touch after using the mouse does nothing at all.
+     */
+    private fun exitHoveringCursor(position: Offset, eventTimeMillis: Long) {
+        val cursor = ComposeScenePointer(
+            id = PointerId(HOVERING_CURSOR_POINTER_ID),
+            position = position,
+            pressed = false,
+            type = PointerType.Mouse,
+            pressure = 0f,
+        )
+        sendPointerEventMethod.invoke(
+            scene,
+            PointerEventType.Exit.value,
+            listOf(cursor),
+            0,
+            0,
+            Offset.Zero.packedValue,
+            eventTimeMillis,
+            null,
+            null,
+            1f, // scaleGestureFactor
+            Offset.Zero.packedValue, // panGestureOffset
+        )
     }
 
     private fun sceneBoundsInPxOrZero(): Rect {
@@ -184,7 +224,7 @@ internal class ComposeSceneTouchBridge private constructor(
             val methods = (scene.javaClass.methods.asSequence() + ComposeScene::class.java.methods.asSequence())
                 .filter { method ->
                     method.name.startsWith("sendPointerEvent-") &&
-                        method.parameterTypes.size == 8 &&
+                        method.parameterTypes.size == 10 &&
                         method.parameterTypes[1] == List::class.java
                 }
                 .distinctBy { method -> method.name }

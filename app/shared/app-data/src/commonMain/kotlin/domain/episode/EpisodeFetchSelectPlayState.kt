@@ -34,6 +34,7 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
+import me.him188.ani.app.data.repository.media.SelectorMediaSourceEpisodeCacheRepository
 import me.him188.ani.app.domain.foundation.LoadError
 import me.him188.ani.app.domain.media.fetch.MediaFetchSession
 import me.him188.ani.app.domain.media.resolver.toEpisodeMetadata
@@ -51,7 +52,6 @@ import me.him188.ani.utils.logging.info
 import me.him188.ani.utils.logging.logger
 import org.koin.core.Koin
 import org.openani.mediamp.MediampPlayer
-import org.openani.mediamp.PlaybackState
 import kotlin.coroutines.AbstractCoroutineContextElement
 import kotlin.coroutines.CoroutineContext
 import kotlin.coroutines.cancellation.CancellationException
@@ -90,6 +90,8 @@ class EpisodeFetchSelectPlayState(
     interface AnalyticsContext {
         suspend fun isFullscreen(): Boolean? = false
     }
+
+    private val selectorCacheRepo by koin.inject<SelectorMediaSourceEpisodeCacheRepository>()
 
     private val _episodeSessionFlow = MutableStateFlow(
         newEpisodeSession(initialEpisodeId),
@@ -163,7 +165,8 @@ class EpisodeFetchSelectPlayState(
                     // 2. 暂停播放, '冻结'播放器状态. 此时还不能 stop, 因为要调用扩展.
                     logger.info { "SwitchEpisode($episodeId): Pausing player" }
                     withContext(mainDispatcher) {
-                        if (player.playbackState.value == PlaybackState.PLAYING) {
+                        // 按播放意图判断: 缓冲中也应当暂停 (v1 只在 PLAYING 时暂停, 是个缺陷)
+                        if (player.state.value.playWhenReady) {
                             player.pause()
                         }
                     }
@@ -216,6 +219,11 @@ class EpisodeFetchSelectPlayState(
                 }
             }
         }
+
+        // 清除已过期的 web 源搜索缓存. 与启动查询无关 (读取本身就会过滤过期行), 因此不阻塞 session 启动.
+        backgroundScope.launch {
+            selectorCacheRepo.purgeExpired()
+        }
     }
 
     /**
@@ -224,6 +232,8 @@ class EpisodeFetchSelectPlayState(
     suspend fun onClose() {
         extensionManager.call { it.onClose() }
         playerSession.stopPlayback()
+        // 未过期的缓存会保留, 短暂退出后重进播放页仍可复用; 这里只是顺手回收已过期的行.
+        selectorCacheRepo.purgeExpired()
     }
 
     /**

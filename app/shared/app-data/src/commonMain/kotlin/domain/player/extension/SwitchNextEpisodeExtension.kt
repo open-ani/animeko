@@ -21,12 +21,12 @@ import me.him188.ani.utils.logging.info
 import me.him188.ani.utils.logging.logger
 import org.koin.core.Koin
 import org.openani.mediamp.MediampPlayer
-import org.openani.mediamp.PlaybackState
+import org.openani.mediamp.PlaybackEvent
 
 /**
  * 自动连播.
  *
- * 监控 [MediampPlayer.playbackState], 当其变为 [PlaybackState.FINISHED] 且距离视频结束不足 5 秒时, 切换到下一集.
+ * 监听 [MediampPlayer.events] 的 [PlaybackEvent.MediaEnded] 事件, 当播放自然结束且最终位置距离视频结束不足 5 秒时, 切换到下一集.
  * 下一集由 [getNextEpisode] 提供.
  */
 class SwitchNextEpisodeExtension(
@@ -62,21 +62,17 @@ class SwitchNextEpisodeExtension(
 
     private suspend fun impl(session: EpisodeSession): Nothing {
         val player = context.player
-        var previous: PlaybackState? = null
-        player.playbackState.collect { current ->
-            if (previous == PlaybackState.PLAYING && current == PlaybackState.FINISHED) {
-                val closeToEnd = player.mediaProperties.value.let { prop ->
-                    prop != null && prop.durationMillis > 0L && prop.durationMillis - player.currentPositionMillis.value < 5000
-                }
+        player.events.collect { event ->
+            if (event !is PlaybackEvent.MediaEnded) return@collect
+            val durationMillis = event.durationMillis
+            val closeToEnd = durationMillis != null && durationMillis - event.finalPositionMillis < 5000
 
-                if (closeToEnd) {
-                    if (automationGate.suppressed.value) return@collect
-                    val nextEpisode = getNextEpisode(session.episodeId)
-                    logger.info("播放完毕，切换下一集 $nextEpisode")
-                    context.switchEpisode(nextEpisode ?: return@collect)
-                }
+            if (closeToEnd) {
+                if (automationGate.suppressed.value) return@collect
+                val nextEpisode = getNextEpisode(session.episodeId)
+                logger.info("播放完毕，切换下一集 $nextEpisode")
+                context.switchEpisode(nextEpisode ?: return@collect)
             }
-            previous = current
         }
     }
 

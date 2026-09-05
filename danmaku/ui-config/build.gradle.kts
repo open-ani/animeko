@@ -8,17 +8,12 @@
  */
 
 plugins {
-    alias(libs.plugins.kotlin.multiplatform)
-    alias(libs.plugins.android.kotlin.multiplatform.library)
-    alias(libs.plugins.kotlin.plugin.compose)
-    alias(libs.plugins.jetbrains.compose)
-
-    `ani-mpp-lib-targets`
+    id("ani.kmp-compose")
     alias(libs.plugins.kotlin.plugin.serialization)
 }
 
 kotlin {
-    androidLibrary {
+    android {
         namespace = "me.him188.ani.danmaku.ui.config"
     }
     sourceSets.commonMain {

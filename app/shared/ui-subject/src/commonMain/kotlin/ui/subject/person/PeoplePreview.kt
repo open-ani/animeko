@@ -9,14 +9,8 @@
 
 package me.him188.ani.app.ui.subject.person
 
-import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
-import androidx.compose.foundation.interaction.MutableInteractionSource
-import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.fillMaxHeight
-import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
@@ -29,7 +23,6 @@ import androidx.compose.material.icons.rounded.OpenInFull
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
@@ -42,14 +35,13 @@ import androidx.compose.runtime.setValue
 import androidx.compose.runtime.staticCompositionLocalOf
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.window.Dialog
-import androidx.compose.ui.window.DialogProperties
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.paging.compose.collectAsLazyPagingItems
 import me.him188.ani.app.navigation.LocalNavigator
+import me.him188.ani.app.ui.foundation.widgets.ModalSideSheet
+import me.him188.ani.app.ui.foundation.widgets.rememberModalSideSheetState
 import me.him188.ani.app.ui.lang.Lang
 import me.him188.ani.app.ui.lang.person_details_open_full_page
 import org.jetbrains.compose.resources.stringResource
@@ -108,46 +100,32 @@ private fun PeoplePreviewSideSheet(
     onDismissRequest: () -> Unit,
 ) {
     val navigator = LocalNavigator.current
-    Dialog(
-        onDismissRequest = onDismissRequest,
-        properties = DialogProperties(usePlatformDefaultWidth = false),
+    val state = rememberModalSideSheetState()
+    ModalSideSheet(
+        onDismiss = onDismissRequest,
+        modifier = Modifier.width(412.dp),
+        state = state,
+        shape = RoundedCornerShape(topStart = 16.dp, bottomStart = 16.dp),
+        containerColor = MaterialTheme.colorScheme.surfaceContainerLow,
     ) {
-        Box(Modifier.fillMaxSize()) {
-            Box(
-                Modifier
-                    .fillMaxSize()
-                    .background(Color.Black.copy(alpha = 0.32f))
-                    .clickable(
-                        interactionSource = remember { MutableInteractionSource() },
-                        indication = null,
-                        onClick = onDismissRequest,
-                    ),
+        when (target) {
+            is PeoplePreviewTarget.Person -> PersonPreviewContent(
+                target.personId,
+                onOpenFullPage = {
+                    onDismissRequest()
+                    navigator.navigatePersonDetails(target.personId)
+                },
+                onDismissRequest = { state.close() },
             )
-            Surface(
-                Modifier.align(Alignment.CenterEnd).fillMaxHeight().width(412.dp),
-                shape = RoundedCornerShape(topStart = 16.dp, bottomStart = 16.dp),
-                color = MaterialTheme.colorScheme.surfaceContainerLow,
-            ) {
-                when (target) {
-                    is PeoplePreviewTarget.Person -> PersonPreviewContent(
-                        target.personId,
-                        onOpenFullPage = {
-                            onDismissRequest()
-                            navigator.navigatePersonDetails(target.personId)
-                        },
-                        onDismissRequest = onDismissRequest,
-                    )
 
-                    is PeoplePreviewTarget.Character -> CharacterPreviewContent(
-                        target.characterId,
-                        onOpenFullPage = {
-                            onDismissRequest()
-                            navigator.navigateCharacterDetails(target.characterId)
-                        },
-                        onDismissRequest = onDismissRequest,
-                    )
-                }
-            }
+            is PeoplePreviewTarget.Character -> CharacterPreviewContent(
+                target.characterId,
+                onOpenFullPage = {
+                    onDismissRequest()
+                    navigator.navigateCharacterDetails(target.characterId)
+                },
+                onDismissRequest = { state.close() },
+            )
         }
     }
 }
@@ -170,6 +148,7 @@ private fun PersonPreviewContent(
                 casts = vm.castsPager.collectAsLazyPagingItems(),
                 works = vm.worksPager.collectAsLazyPagingItems(),
                 commentState = vm.commentState,
+                originalCommentsUrl = vm.originalCommentsUrl,
                 modifier = Modifier.padding(horizontal = 16.dp).padding(bottom = 16.dp),
                 // 预览内点击跳转前先关闭预览
                 navigation = rememberPeopleDetailsNavigation(onBeforeNavigate = onDismissRequest),
@@ -197,6 +176,7 @@ private fun CharacterPreviewContent(
                 details = details,
                 subjects = vm.subjectsPager.collectAsLazyPagingItems(),
                 commentState = vm.commentState,
+                originalCommentsUrl = vm.originalCommentsUrl,
                 modifier = Modifier.padding(horizontal = 16.dp).padding(bottom = 16.dp),
                 // 预览内点击跳转前先关闭预览
                 navigation = rememberPeopleDetailsNavigation(onBeforeNavigate = onDismissRequest),

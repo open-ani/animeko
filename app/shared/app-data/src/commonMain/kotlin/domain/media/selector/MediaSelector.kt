@@ -325,11 +325,19 @@ class DefaultMediaSelector(
      */
     private val enableCaching: Boolean = true,
     private val algorithm: MediaSelectorFilterSortAlgorithm = MediaSelectorFilterSortAlgorithm(),
+    /**
+     * [cached] 使用的 scope. 为 `null` 时保持原行为: 每个 [cached] 调用创建一个无人管理的 [CoroutineScope].
+     */
+    private val cachingScope: CoroutineScope? = null,
 ) : MediaSelector {
     private fun <T> Flow<T>.cached(): Flow<T> {
         if (!enableCaching) return this
         // TODO: 2025/1/5 We need to correctly handle lifecycle. Let DefaultMediaSelector's caller control it.
-        return this.shareIn(CoroutineScope(flowCoroutineContext), SharingStarted.WhileSubscribed(5_000), replay = 1)
+        return this.shareIn(
+            cachingScope ?: CoroutineScope(flowCoroutineContext),
+            SharingStarted.WhileSubscribed(5_000),
+            replay = 1,
+        )
     }
 
     private val mediaSelectorSettings = mediaSelectorSettings.cached()

@@ -123,7 +123,7 @@ cat > "$workdir/prompt.md" <<PROMPT
 - 分割线下方需要包含所有其他对用户使用有影响的更新；文档更新、纯构建/CI/依赖/内部重构、测试调整、代码清理等对用户使用没有直接影响的更新不要包含。
 - 如果某个更新已经在分割线上方提及，分割线下方不要重复写。
 - PR 可以放在重要更新或次要更新里；有关联 PR 的条目统一使用格式："内容 (#123 by @author)"。
-- 但 @Him188 和 @StageGuard 的 PR 不需要写 PR 编号和作者；只要正文提到对应改动即可。
+- 但 @Him188、@StageGuard 和 @openanibot 的 PR 不需要写 PR 编号和作者；只要正文提到对应改动即可。
 - 不要用“关闭 PR”“关闭链接”“关闭 https://...”这类说法来表示 PR；要直接描述用户可感知的改动。
 - 不要重复提及同一个 PR；如果某个 PR 已经在分割线上面提及，分割线下面不要再提及它。
 - 分割线下面只写其他对用户使用有影响且未在上方提及的更新；不要写文档、纯构建/CI/依赖/内部重构、测试调整、代码清理。
@@ -170,6 +170,21 @@ text = notes_path.read_text().strip()
 text = re.sub(r"^```(?:markdown)?\s*", "", text, flags=re.I).strip()
 text = re.sub(r"\s*```$", "", text).strip()
 
+pr_lines = [line.strip() for line in prs_path.read_text().splitlines() if line.strip()]
+
+# Bot-authored PRs are treated like maintainer PRs: no PR number, no author.
+# Strip "(#123 by @openanibot)" / "(by @openanibot)" / a trailing " by @openanibot",
+# plus a bare "(#123)" when #123 is known to be an openanibot PR.
+text = re.sub(r"\s*\(\s*(?:#\d+\s+)?by @openanibot[^)]*\)", "", text, flags=re.I)
+text = re.sub(r"\s+by @openanibot\b", "", text, flags=re.I)
+bot_pr_numbers = {
+    m.group(1)
+    for m in (re.search(r"#(\d+):.*\bby @openanibot\b", line, re.I) for line in pr_lines)
+    if m
+}
+for number in bot_pr_numbers:
+    text = re.sub(rf"\s*\(\s*#{number}(?!\d)[^)]*\)", "", text)
+
 if not re.search(r"(?m)^-\s+", text):
     text = "- 本次更新包含多项体验优化与问题修复\n\n----\n\n" + text
 
@@ -187,7 +202,6 @@ if not re.search(r"(?m)^----\s*$", text):
 if "Full Changelog" not in text:
     text = text.rstrip() + f"\n\n**Full Changelog**: {compare_url}"
 
-pr_lines = [line.strip() for line in prs_path.read_text().splitlines() if line.strip()]
 missing = []
 for line in pr_lines:
     m = re.search(r"#(\d+):\s*(.*?)\s+by @([^\s]+)(?:\s+in\s+(https://\S+/pull/\d+))?$", line)
@@ -205,7 +219,7 @@ for line in pr_lines:
         author_name = m.group(3)
         url = m.group(4) or ""
 
-    if not author_name or author_name in {"Him188", "StageGuard"}:
+    if not author_name or author_name.lower() in {"him188", "stageguard", "openanibot"}:
         # Maintainer/unknown PRs do not need explicit attribution or links; avoid
         # adding generic fallback bullets that would duplicate user-facing summaries.
         continue

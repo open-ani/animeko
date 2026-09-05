@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2026 OpenAni and contributors.
+ * Copyright (C) 2024-2026 OpenAni and contributors.
  *
  * 此源代码的使用受 GNU AFFERO GENERAL PUBLIC LICENSE version 3 许可证的约束, 可以在以下链接找到该许可证.
  * Use of this source code is governed by the GNU AGPLv3 license, which can be found at the following link.
@@ -16,6 +16,27 @@ import kotlin.test.assertFailsWith
 import kotlin.time.Duration.Companion.seconds
 
 class VideoScaffoldConfigTest {
+    @Test
+    fun `missing video enhancement default uses performance`() {
+        val config = DataStoreJson.decodeFromString(VideoScaffoldConfig.serializer(), "{}")
+
+        assertEquals(VideoEnhancementDefaultMode.OFF, config.videoEnhancementDefaultMode)
+    }
+
+    @Test
+    fun `video enhancement default survives serialization`() {
+        val config = VideoScaffoldConfig.Default.copy(
+            videoEnhancementDefaultMode = VideoEnhancementDefaultMode.QUALITY,
+        )
+
+        val decoded = DataStoreJson.decodeFromString(
+            VideoScaffoldConfig.serializer(),
+            DataStoreJson.encodeToString(VideoScaffoldConfig.serializer(), config),
+        )
+
+        assertEquals(VideoEnhancementDefaultMode.QUALITY, decoded.videoEnhancementDefaultMode)
+    }
+
     @Test
     fun `missing OP ED skip duration uses 85 seconds`() {
         val config = DataStoreJson.decodeFromString(VideoScaffoldConfig.serializer(), "{}")

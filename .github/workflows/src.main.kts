@@ -650,6 +650,10 @@ fun getVerifyJobBody(
          * 指定此项, 则在所有的 Runner 上执行, 但在指定的 Runner 上不执行.
          */
         val disabledOn: List<Runner>? = null,
+        /**
+         * 在虚拟 X11 显示器中运行此任务.
+         */
+        val runWithXvfb: Boolean = false,
     )
 
     val tasksToExecute = listOf(
@@ -685,6 +689,12 @@ fun getVerifyJobBody(
             name = "sqlite-bundled-load-test",
             step = "Check that bundled SQLite can be loaded",
             enabledOnlyOn = listOf(Runner.GithubWindows11Arm64, Runner.GithubUbuntu2404),
+        ),
+        VerifyTask(
+            name = "jcef-init-test",
+            step = "Check that JCEF can be initialized",
+            enabledOnlyOn = listOf(Runner.GithubUbuntu2404),
+            runWithXvfb = true,
         ),
     ).filter { task ->
         // Filter task that should execute on this runner.
@@ -752,6 +762,11 @@ fun getVerifyJobBody(
             tasksToExecute.forEach { task ->
                 val appimagePath =
                     """${expr { github.workspace }}/ci-helper/verify/Animeko-x86_64.AppImage"""
+                val commandPrefix = if (task.runWithXvfb) {
+                    "XDG_SESSION_TYPE=wayland WAYLAND_DISPLAY=wayland-0 xvfb-run --auto-servernum env " + ""
+                } else {
+                    ""
+                }
                 run(
                     name = task.step,
                     shell = Shell.Bash,
@@ -759,7 +774,7 @@ fun getVerifyJobBody(
                         $$"""
                             ANI_APPIMAGE="$$appimagePath"
                             chmod +x "$ANI_APPIMAGE"
-                            ANIMEKO_DESKTOP_TEST_TASK="$${task.name}" "$ANI_APPIMAGE"
+                            $${commandPrefix}ANIMEKO_DESKTOP_TEST_TASK="$${task.name}" "$ANI_APPIMAGE"
                         """.trimIndent(),
                     ),
                     `if` = task.`if`,
@@ -1280,7 +1295,9 @@ class WithMatrix(
                     actionVersion = "v3",
                     inputs = mapOf(
                         "accept-android-sdk-licenses" to "true",
-                        "packages" to "platform-tools platforms;android-36 build-tools;36.0.0",
+                        // API 37 起 platform 包 id 带上了 minor version (`android-37.0`, 即 "Android SDK Platform 17").
+                        // 写成 `android-37` 会 Failed to find package. 与 gradle.properties 的 android.compile.sdk 对应.
+                        "packages" to "platform-tools platforms;android-37.0 build-tools;36.0.0",
                     ),
                 ),
             )
@@ -1840,6 +1857,11 @@ class WithMatrix(
         }
 
         if (matrix.isUbuntu) {
+            run(
+                // isolateLinuxBundledLibraries needs it to give the bundled libraries a DT_RPATH.
+                name = "Install patchelf",
+                command = "sudo apt-get install -y patchelf",
+            )
             runGradle(
                 name = "Package Desktop",
                 tasks = arrayOf("createReleaseDistributable"),
@@ -1912,7 +1934,13 @@ class WithMatrix(
                         # Fix permissions
                         chmod a+x AppDir/AppRun
                         chmod a+x AppDir/usr/bin/Ani
-                        chmod a+x AppDir/usr/lib/runtime/lib/jcef_helper
+
+                        # The CEF helpers get their executable bit from restoreLinuxRuntimeExecutables,
+                        # so assert rather than chmod. A chmod here would keep the AppImage green while
+                        # the deb, the rpm and every direct user of createReleaseDistributable ship a
+                        # runtime whose helpers cannot be spawned (#3259).
+                        test -x AppDir/usr/lib/runtime/lib/jcef_helper
+                        test -x AppDir/usr/lib/runtime/lib/cef_server
                         
                         # Build an AppImage whose zsync metadata points at this repository's release asset.
                         # Build with the final release filename so the generated zsync metadata keeps that name,

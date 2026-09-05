@@ -94,6 +94,8 @@ import me.him188.ani.app.ui.lang.settings_mediasource_selector_config_player_sel
 import me.him188.ani.app.ui.lang.settings_mediasource_selector_config_referer_description
 import me.him188.ani.app.ui.lang.settings_mediasource_selector_config_request_interval
 import me.him188.ani.app.ui.lang.settings_mediasource_selector_config_request_interval_description
+import me.him188.ani.app.ui.lang.settings_mediasource_selector_config_search_cache_ttl
+import me.him188.ani.app.ui.lang.settings_mediasource_selector_config_search_cache_ttl_description
 import me.him188.ani.app.ui.lang.settings_mediasource_selector_config_search_first_word
 import me.him188.ani.app.ui.lang.settings_mediasource_selector_config_search_first_word_description
 import me.him188.ani.app.ui.lang.settings_mediasource_selector_config_search_remove_special
@@ -114,6 +116,7 @@ import me.him188.ani.datasources.api.topic.SubtitleLanguage
 import me.him188.ani.utils.platform.annotations.TestOnly
 import org.jetbrains.compose.resources.stringResource
 import kotlin.time.Duration.Companion.milliseconds
+import kotlin.time.Duration.Companion.minutes
 
 @Composable
 internal fun SelectorConfigurationPane(
@@ -288,6 +291,27 @@ internal fun SelectorConfigurationPane(
                         Text(stringResource(Lang.settings_mediasource_selector_config_request_interval_description))
                     },
                     isError = requestIntervalString.toLongOrNull() == null,
+                    keyboardOptions = KeyboardOptions(imeAction = ImeAction.Next),
+                    shape = textFieldShape,
+                    enabled = state.enableEdit,
+                )
+                var searchCacheTtlString by remember(state.searchCacheTtl) {
+                    mutableStateOf(state.searchCacheTtl.inWholeMinutes.toString())
+                }
+                OutlinedTextField(
+                    searchCacheTtlString,
+                    {
+                        searchCacheTtlString = it
+                        state.searchCacheTtl = it.toLongOrNull()?.minutes ?: state.searchCacheTtl
+                    },
+                    Modifier
+                        .padding(top = (verticalSpacing - 8.dp).coerceAtLeast(0.dp))
+                        .fillMaxWidth().moveFocusOnEnter(),
+                    label = { Text(stringResource(Lang.settings_mediasource_selector_config_search_cache_ttl)) },
+                    supportingText = {
+                        Text(stringResource(Lang.settings_mediasource_selector_config_search_cache_ttl_description))
+                    },
+                    isError = searchCacheTtlString.toLongOrNull() == null,
                     keyboardOptions = KeyboardOptions(imeAction = ImeAction.Next),
                     shape = textFieldShape,
                     enabled = state.enableEdit,

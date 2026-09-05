@@ -30,6 +30,9 @@ import kotlin.time.Duration.Companion.seconds
 class PersonDetailsViewModel(personId: Int) : AbstractViewModel(), KoinComponent {
     private val repository: PersonDetailsRepository by inject()
 
+    /** 评论来源页 (人物吐槽箱), 用于菜单的 "在 Bangumi 打开". */
+    val originalCommentsUrl = "https://bgm.tv/person/$personId"
+
     val details = repository.personDetailsFlow(personId)
         .retryWithBackoff()
         .stateInBackground(null)
@@ -47,6 +50,9 @@ class PersonDetailsViewModel(personId: Int) : AbstractViewModel(), KoinComponent
 
 class CharacterDetailsViewModel(characterId: Int) : AbstractViewModel(), KoinComponent {
     private val repository: PersonDetailsRepository by inject()
+
+    /** @see PersonDetailsViewModel.originalCommentsUrl */
+    val originalCommentsUrl = "https://bgm.tv/character/$characterId"
 
     val details = repository.characterDetailsFlow(characterId)
         .retryWithBackoff()
@@ -81,6 +87,7 @@ private fun PersonCommentInfo.toUIComment(): UIComment {
         briefReplies = emptyList(),
         replyCount = replyCount,
         rating = null,
+        rawContent = content,
     )
 }
 

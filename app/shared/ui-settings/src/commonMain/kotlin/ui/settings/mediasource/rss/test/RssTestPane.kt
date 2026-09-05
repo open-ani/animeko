@@ -42,17 +42,16 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import kotlinx.serialization.Serializable
 import me.him188.ani.app.domain.media.TestMediaList
 import me.him188.ani.app.tools.rememberUiMonoTasker
-import me.him188.ani.app.ui.foundation.LocalPlatform
 import me.him188.ani.app.ui.foundation.interaction.nestedScrollWorkaround
 import me.him188.ani.app.ui.foundation.layout.connectedScroll
 import me.him188.ani.app.ui.foundation.layout.rememberConnectedScrollState
 import me.him188.ani.app.ui.foundation.widgets.FastLinearProgressIndicator
+import me.him188.ani.app.ui.foundation.input.touchHorizontalScrollOnly
 import me.him188.ani.app.ui.media.rememberMediaDetailsStrings
 import me.him188.ani.app.ui.settings.mediasource.EditMediaSourceTestDataCardDefaults
 import me.him188.ani.app.ui.settings.mediasource.RefreshIndicatedHeadlineRow
 import me.him188.ani.app.ui.settings.mediasource.rss.detail.RssViewingItem
 import me.him188.ani.utils.platform.annotations.TestOnly
-import me.him188.ani.utils.platform.isMobile
 
 @Composable
 fun RssTestPane(
@@ -128,7 +127,7 @@ fun RssTestPane(
 
             HorizontalPager(
                 pagerState,
-                userScrollEnabled = LocalPlatform.current.isMobile(),
+                modifier = Modifier.touchHorizontalScrollOnly(),
                 verticalAlignment = Alignment.Top,
             ) { pageIndex ->
                 if (result !is RssTestResult.Success) return@HorizontalPager

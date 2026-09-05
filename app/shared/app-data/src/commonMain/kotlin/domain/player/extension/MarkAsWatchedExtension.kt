@@ -28,7 +28,6 @@ import me.him188.ani.utils.logging.info
 import me.him188.ani.utils.logging.logger
 import org.koin.core.Koin
 import org.openani.mediamp.MediampPlayer
-import org.openani.mediamp.isPlaying
 import kotlin.math.min
 import kotlin.time.Duration.Companion.seconds
 
@@ -100,9 +99,9 @@ class MarkAsWatchedExtension(
                     .let { if (enableSamplingAndDebounce) it.sampleWithInitial(5000) else it },
                 player.mediaProperties.map { it?.durationMillis }
                     .let { if (enableSamplingAndDebounce) it.debounce(5000) else it },
-                player.playbackState,
-            ) { pos, videoLength, playback ->
-                if (videoLength == null || !playback.isPlaying) return@combine
+                player.state,
+            ) { pos, videoLength, state ->
+                if (videoLength == null || !state.isPlaying) return@combine
                 if (videoLength < 10.seconds.inWholeMilliseconds) return@combine // 视频数据不正确, 忽略
                 if (pos >=
                     min(

@@ -11,7 +11,6 @@ package me.him188.ani.app.ui.subject.episode.list
 
 import androidx.compose.runtime.Immutable
 import me.him188.ani.app.data.models.episode.EpisodeCollectionInfo
-import me.him188.ani.app.data.models.subject.SubjectRecurrence
 import me.him188.ani.datasources.api.EpisodeSort
 import me.him188.ani.datasources.api.topic.UnifiedCollectionType
 import me.him188.ani.utils.platform.annotations.TestOnly
@@ -39,7 +38,7 @@ data class EpisodeListItem(
 
     companion object {
         /**
-         * @param isBroadcast See [SubjectRecurrence.isEpisodeBroadcast]
+         * @param isBroadcast 是否已经开播, 见 [EpisodeListUiState.isEpisodeBroadcast]
          */
         fun from(
             collection: EpisodeCollectionInfo,

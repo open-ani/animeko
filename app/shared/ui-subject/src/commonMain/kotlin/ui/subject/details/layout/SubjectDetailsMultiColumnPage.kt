@@ -10,6 +10,7 @@
 package me.him188.ani.app.ui.subject.details.layout
 
 import androidx.compose.foundation.ScrollState
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -55,13 +56,13 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.paging.compose.LazyPagingItems
 import androidx.paging.compose.collectAsLazyPagingItemsWithLifecycle
-import coil3.compose.AsyncImagePainter
 import com.kmpalette.color
 import com.kmpalette.palette.graphics.Palette
 import kotlinx.collections.immutable.toImmutableList
@@ -70,8 +71,10 @@ import me.him188.ani.app.data.models.subject.SubjectInfo
 import me.him188.ani.app.data.models.subject.Tag
 import me.him188.ani.app.tools.ColorUtils
 import me.him188.ani.app.ui.external.placeholder.placeholder
+import me.him188.ani.app.ui.foundation.AniImageLoadSuccess
 import me.him188.ani.app.ui.foundation.AsyncImage
 import me.him188.ani.app.ui.foundation.animation.AniAnimatedVisibility
+import me.him188.ani.app.ui.foundation.ifThen
 import me.him188.ani.app.ui.foundation.text.ProvideContentColor
 import me.him188.ani.app.ui.foundation.theme.AniThemeDefaults
 import me.him188.ani.app.ui.lang.Lang
@@ -89,6 +92,7 @@ import me.him188.ani.app.ui.subject.collection.progress.SubjectProgressButton
 import me.him188.ani.app.ui.subject.details.components.AnimatedGradientBackground
 import me.him188.ani.app.ui.subject.details.components.COVER_WIDTH_TO_HEIGHT_RATIO
 import me.him188.ani.app.ui.subject.details.components.RatingHistogram
+import me.him188.ani.app.ui.subject.details.components.SUBJECT_COVER_IMAGE_TEST_TAG
 import me.him188.ani.app.ui.subject.details.components.RelatedSubjectsGrid
 import me.him188.ani.app.ui.subject.details.components.rememberNavigateToRelatedSubject
 import me.him188.ani.app.ui.subject.details.sections.CharactersSection
@@ -132,7 +136,8 @@ internal fun SubjectDetailsMultiColumnPage(
     backgroundPalette: Palette? = null,
     navigationIcon: @Composable () -> Unit = {},
     onClickOpenExternal: () -> Unit = {},
-    onCoverImageSuccess: (AsyncImagePainter.State.Success) -> Unit = {},
+    onCoverImageSuccess: (AniImageLoadSuccess) -> Unit = {},
+    onClickCover: (() -> Unit)? = null,
 ) {
     val info = state.info ?: return
     val presentation by state.presentation.collectAsStateWithLifecycle()
@@ -187,6 +192,7 @@ internal fun SubjectDetailsMultiColumnPage(
             itemSpacing = layoutParams.sidebarItemSpacing,
             onCoverImageSuccess = onCoverImageSuccess,
             modifier = Modifier.width(layoutParams.sidebarWidth),
+            onClickCover = onClickCover,
         )
 
         // 中栏内容流. 区块序 (定稿): 标题 → 评分 → 简介 → 选集 → 角色
@@ -463,8 +469,9 @@ private fun SubjectSidebar(
     onClickTag: (Tag) -> Unit,
     onClickLogin: () -> Unit,
     itemSpacing: Dp,
-    onCoverImageSuccess: (AsyncImagePainter.State.Success) -> Unit,
+    onCoverImageSuccess: (AniImageLoadSuccess) -> Unit,
     modifier: Modifier = Modifier,
+    onClickCover: (() -> Unit)? = null,
 ) {
     Column(modifier, verticalArrangement = Arrangement.spacedBy(itemSpacing)) {
         // 封面: 固定海报比例 (849:1200) + 圆角 16, 对齐定稿 340×482, 不随图片本征尺寸变形.
@@ -474,7 +481,9 @@ private fun SubjectSidebar(
             Modifier
                 .fillMaxWidth()
                 .aspectRatio(COVER_WIDTH_TO_HEIGHT_RATIO)
-                .clip(RoundedCornerShape(16.dp)),
+                .clip(RoundedCornerShape(16.dp))
+                .ifThen(onClickCover != null) { clickable(onClick = checkNotNull(onClickCover)) }
+                .testTag(SUBJECT_COVER_IMAGE_TEST_TAG),
             contentScale = ContentScale.Crop,
             onSuccess = onCoverImageSuccess,
         )
