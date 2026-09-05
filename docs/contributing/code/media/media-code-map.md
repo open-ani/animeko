@@ -98,11 +98,40 @@
 ## 播放时使用的 Resolver
 
 - `TorrentMediaResolver`：解析磁力/种子资源，并在种子内选择具体视频文件。
+- `JellyfinMediaResolver`：识别由具体 `JellyfinMediaSource` 实例产生的资源，
+  在播放阶段协商 Jellyfin `PlaybackInfo`，并将播放方案转换为 `UriMediaData`。
+  无法恢复对应实例时回退到 `HttpStreamingMediaResolver`。
 - `HttpStreamingMediaResolver`：解析直接 HTTP 流媒体文件。
 - 平台 web resolver：
     - Android：`AndroidWebMediaResolver`
     - Desktop：`DesktopWebMediaResolver`
     - Apple/iOS：`IosWebMediaResolver`
+
+### Jellyfin 播放协商边界
+
+Jellyfin 码率切换使用以下调用链：
+
+1. `PlayerSession.loadMedia(...)` 通过 `JellyfinMediaResolver` 识别 Jellyfin 资源；
+2. `JellyfinMediaDataProvider` 从 `JellyfinPlaybackQualityRepository`
+   读取当前数据源实例的码率偏好；
+3. `BaseJellyfinMediaSource.createPlaybackPlan(...)`
+   提交 `PlaybackInfo`、`DeviceProfile` 和目标总码率；
+4. Jellyfin 返回 Direct Play 或 HLS 转码方案；
+5. `JellyfinPlaybackController`
+   持有当前 Jellyfin 播放计划，并串行处理停止、重新协商和旧转码清理；
+6. `PlayerSession` 只保留安装、切换和卸载 Jellyfin provider 的条件式接入。
+
+切换码率时会先保存当前位置并停止当前播放，再固定原播放计划的物理
+`MediaSourceId` 重新请求 `PlaybackInfo`，最后通过普通 HLS 准备和
+`setMediaData(...)` 流程从原位置附近继续播放。切换不保留暂停状态、音轨或字幕，
+新流打开失败时也不会回退旧流。
+
+这条链路不改变通用 `MediaSource.fetch(...)`、`MediaSelector`
+或非 Jellyfin 播放源的生命周期。`PlaybackInfo` 不应进入资源查询和选择阶段。
+
+当前 `DeviceProfile` 在 Android、Desktop 和 iOS 之间共用一套能力声明。
+平台专属能力协商属于后续改进；在拆分前应保持该差异为显式限制，
+并通过各平台测试验证共用能力集合。
 
 ### Web 播放的重要细节
 

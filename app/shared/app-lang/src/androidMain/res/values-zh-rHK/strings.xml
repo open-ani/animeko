@@ -694,6 +694,9 @@
     <string name="video_player_aspect_stretch">填充</string>
     <string name="video_player_aspect_crop">裁切</string>
     <string name="video_player_auto">自動</string>
+    <string name="video_player_original_quality">原始品質</string>
+    <string name="video_player_playback_bitrate">播放碼率</string>
+    <string name="video_player_quality_switch_failed">切換播放碼率失敗</string>
     <string name="video_player_audio_track">音軌</string>
     <string name="video_player_off">關閉</string>
     <string name="video_player_on">開啟</string>

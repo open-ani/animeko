@@ -16,6 +16,7 @@ import kotlinx.coroutines.CoroutineStart
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.NonCancellable
+import kotlinx.coroutines.async
 import kotlinx.coroutines.cancelAndJoin
 import kotlinx.coroutines.currentCoroutineContext
 import kotlinx.coroutines.flow.Flow
@@ -34,7 +35,9 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
+import me.him188.ani.app.data.models.episode.displayName
 import me.him188.ani.app.data.repository.media.SelectorMediaSourceEpisodeCacheRepository
+import me.him188.ani.app.data.repository.player.EpisodePlayHistoryRepository
 import me.him188.ani.app.domain.foundation.LoadError
 import me.him188.ani.app.domain.media.fetch.MediaFetchSession
 import me.him188.ani.app.domain.media.resolver.toEpisodeMetadata
@@ -46,6 +49,7 @@ import me.him188.ani.app.domain.player.extension.ExtensionBackgroundTaskScope
 import me.him188.ani.app.domain.player.extension.PlayerExtension
 import me.him188.ani.app.domain.player.extension.PlayerExtensionEvent
 import me.him188.ani.app.domain.usecase.GlobalKoin
+import me.him188.ani.datasources.jellyfin.JellyfinPlaybackQuality
 import me.him188.ani.utils.analytics.Analytics
 import me.him188.ani.utils.analytics.AnalyticsEvent.Companion.EpisodeSwitch
 import me.him188.ani.utils.logging.info
@@ -92,6 +96,7 @@ class EpisodeFetchSelectPlayState(
     }
 
     private val selectorCacheRepo by koin.inject<SelectorMediaSourceEpisodeCacheRepository>()
+    private val playProgressRepository by koin.inject<EpisodePlayHistoryRepository>()
 
     private val _episodeSessionFlow = MutableStateFlow(
         newEpisodeSession(initialEpisodeId),
@@ -108,6 +113,60 @@ class EpisodeFetchSelectPlayState(
         koin,
         mainDispatcher,
     )
+
+    val jellyfinPlaybackQualityState get() = playerSession.jellyfinPlaybackQualityState
+
+    /** Reloads only the current Jellyfin playback in the current [EpisodeSession]. */
+    suspend fun switchJellyfinPlaybackQuality(quality: JellyfinPlaybackQuality): Result<Unit> {
+        val episodeSession = episodeSessionFlow.value
+        return episodeSession.sessionScope.async(
+            CoroutineName("JellyfinPlaybackQualitySwitch"),
+            start = CoroutineStart.UNDISPATCHED,
+        ) {
+            try {
+                val (positionMillis, durationMillis) = withContext(mainDispatcher) {
+                    val duration = player.mediaProperties.value?.durationMillis
+                    check(duration != null && duration > 0L) {
+                        "Cannot reload Jellyfin quality before the media duration is available"
+                    }
+                    player.currentPositionMillis.value.coerceIn(0L, duration) to duration
+                }
+                saveProgressBeforeJellyfinReload(
+                    episodeSession = episodeSession,
+                    positionMillis = positionMillis,
+                    durationMillis = durationMillis,
+                )
+                playerSession.reloadJellyfinPlaybackQuality(quality, positionMillis)
+            } catch (e: CancellationException) {
+                throw e
+            } catch (e: Throwable) {
+                Result.failure(e)
+            }
+        }.await()
+    }
+
+    private suspend fun saveProgressBeforeJellyfinReload(
+        episodeSession: EpisodeSession,
+        positionMillis: Long,
+        durationMillis: Long,
+    ) {
+        if (durationMillis - positionMillis < 5_000L) {
+            playProgressRepository.remove(episodeSession.episodeId)
+            return
+        }
+
+        val info = episodeSession.infoBundleFlow.filterNotNull().first()
+        playProgressRepository.saveOrUpdate(
+            episodeId = episodeSession.episodeId,
+            positionMillis = positionMillis,
+            subjectId = info.subjectId,
+            episodeSort = info.episodeInfo.sort.number,
+            subjectName = info.subjectInfo.displayName,
+            subjectImageUrl = info.subjectInfo.imageLarge,
+            episodeName = info.episodeInfo.displayName,
+            durationMillis = durationMillis,
+        )
+    }
 
     private val extensionManager by lazy {
         val intrinsicExtensions = listOf(
