@@ -9,10 +9,15 @@
 
 package me.him188.ani.app.domain.usecase
 
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.flow.map
 import me.him188.ani.app.data.repository.subject.GetEpisodeTypeFiltersUseCase
 import me.him188.ani.app.data.repository.subject.GetEpisodeTypeFiltersUseCaseImpl
 import me.him188.ani.app.data.repository.subject.SetSubjectCollectionTypeOrDeleteUseCase
 import me.him188.ani.app.data.repository.subject.SetSubjectCollectionTypeOrDeleteUseCaseImpl
+import me.him188.ani.app.data.repository.subject.SyncSubjectCollectionTypesByProgressUseCase
+import me.him188.ani.app.data.repository.subject.SyncSubjectCollectionTypesByProgressUseCaseImpl
+import me.him188.ani.app.data.repository.user.SettingsRepository
 import me.him188.ani.app.domain.comment.PostCommentUseCase
 import me.him188.ani.app.domain.comment.PostCommentUseCaseImpl
 import me.him188.ani.app.domain.danmaku.SetDanmakuEnabledUseCase
@@ -65,7 +70,7 @@ import org.koin.core.KoinApplication
 import org.koin.dsl.module
 import org.koin.mp.KoinPlatform
 
-fun KoinApplication.useCaseModules() = module {
+fun KoinApplication.useCaseModules(backgroundScope: CoroutineScope) = module {
     single<GetEpisodeCollectionInfoFlowUseCase> { GetEpisodeCollectionInfoFlowUseCaseImpl() }
     single<GetDanmakuRegexFilterListFlowUseCase> { GetDanmakuRegexFilterListFlowUseCaseImpl() }
     single<MediaSelectorAutoSelectUseCase> { MediaSelectorAutoSelectUseCaseImpl() }
@@ -76,6 +81,14 @@ fun KoinApplication.useCaseModules() = module {
     single<GetVideoScaffoldConfigUseCase> { GetVideoScaffoldConfigUseCaseImpl }
     single<SetDanmakuEnabledUseCase> { SetDanmakuEnabledUseCaseImpl(koin) }
     single<SetSubjectCollectionTypeOrDeleteUseCase> { SetSubjectCollectionTypeOrDeleteUseCaseImpl(get(), get(), get()) }
+    single<SyncSubjectCollectionTypesByProgressUseCase> {
+        SyncSubjectCollectionTypesByProgressUseCaseImpl(
+            get(),
+            get(),
+            get<SettingsRepository>().uiSettings.flow.map { it.myCollections.autoAdvanceCollectionType },
+            backgroundScope,
+        )
+    }
     single<SetEpisodeCollectionTypeUseCase> { SetEpisodeCollectionTypeUseCaseImpl(koin) }
     single<GetEpisodeCollectionTypeUseCase> { GetEpisodeCollectionTypeUseCaseImpl(koin) }
     single<GetAnimeScheduleFlowUseCase> { GetAnimeScheduleFlowUseCaseImpl(get()) }
