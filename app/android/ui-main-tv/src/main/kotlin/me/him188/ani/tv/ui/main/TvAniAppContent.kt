@@ -88,7 +88,12 @@ fun TvAniAppContent(
                     val vm = viewModel<TvEpisodeViewModel>(key = route.episodeId.toString()) {
                         TvEpisodeViewModel(route.subjectId, route.episodeId, context)
                     }
-                    TvEpisodeScreen(vm)
+                    TvEpisodeScreen(
+                        vm,
+                        onClickRelatedSubject = { relatedId ->
+                            aniNavigator.navigateSubjectDetails(relatedId, null)
+                        },
+                    )
                 }
 
             }

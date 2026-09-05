@@ -36,7 +36,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.FocusDirection
 import androidx.compose.ui.focus.focusProperties
 import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.graphics.Color
@@ -57,8 +57,10 @@ import me.him188.ani.app.ui.foundation.navigation.BackHandler
 import me.him188.ani.app.videoplayer.ui.VideoPlayer
 import me.him188.ani.tv.ui.foundation.focus.TV_CONFIRM_KEYS
 import me.him188.ani.tv.ui.foundation.focus.TvFocusKey
+import androidx.paging.compose.collectAsLazyPagingItems
 import me.him188.ani.tv.ui.foundation.focus.rememberTvFocusScope
 import me.him188.ani.tv.ui.foundation.focus.tvFocusAnchor
+import me.him188.ani.tv.ui.foundation.focus.tvFocusExit
 import me.him188.ani.tv.ui.foundation.focus.tvFocusLink
 import me.him188.ani.tv.ui.foundation.focus.tvFocusNavSignal
 import org.openani.mediamp.PlaybackState
@@ -89,7 +91,11 @@ import java.util.Locale
 /** 播放页焦点锚点. Root 仅 HIDDEN 态可聚焦 (无焦点持有者按键派发会整体失效). */
 private enum class TvPlayerFocus : TvFocusKey {
     Root, SeekBar, IconRow, IconRowEntry, StripCurrent, SourceDialog, SourceDialogEntry,
+    PanelHost, PanelEntry,
 }
+
+/** 胶囊按钮锚点 (面板关闭/向下退出时焦点回对应胶囊). */
+private data class PanelChipKey(val panel: TvPlayerPanel) : TvFocusKey
 
 /** 播放页交互参数 (附录 A 时序). */
 private object TvEpisodeScreenDefaults {
@@ -120,6 +126,9 @@ private class TvPlayerOverlayState {
         private set
 
     var stripExpanded by mutableStateOf(false)
+
+    /** 打开中的浮出面板 (§8.3); null = 无. */
+    var activePanel by mutableStateOf<TvPlayerPanel?>(null)
 
     /** 拖拽预览位置; null = 非预览态. */
     var scrubMillis by mutableStateOf<Long?>(null)
@@ -155,6 +164,8 @@ private class ConfirmHoldTracker {
 fun TvEpisodeScreen(
     viewModel: TvEpisodeViewModel,
     modifier: Modifier = Modifier,
+    /** 相关推荐面板点击条目 (跳详情页); 默认空实现方便预览. */
+    onClickRelatedSubject: (subjectId: Int) -> Unit = {},
 ) {
     val player = viewModel.player
     val playbackState by player.playbackState.collectAsState()
@@ -210,6 +221,7 @@ fun TvEpisodeScreen(
 
     fun hideControls() {
         state.stripExpanded = false
+        state.activePanel = null
         state.scrubMillis = null
         state.controlsVisible = false
         focus.request(TvPlayerFocus.Root)
@@ -398,15 +410,21 @@ fun TvEpisodeScreen(
         return false
     }
 
-    // 自动隐藏 5s: 暂停 / 拖拽预览 / 选集条聚焦浏览外的弹窗 打开时不隐藏 (附录 A)
+    // 自动隐藏 5s: 暂停 / 拖拽预览 / 弹窗 / 浮出面板 打开时不隐藏 (附录 A)
     val isPlaying = playbackState.isPlaying
     LaunchedEffect(state.interactionGeneration, isPlaying) {
         if (state.controlsVisible && isPlaying &&
-            state.scrubMillis == null && !state.sourceDialogVisible
+            state.scrubMillis == null && !state.sourceDialogVisible && state.activePanel == null
         ) {
             delay(TvEpisodeScreenDefaults.ControlsAutoHideMillis)
             hideControls()
         }
+    }
+
+    // 面板打开: 焦点送入口条目 (request 悬挂语义天然等数据 —— 空面板锚点不附着,
+    // 焦点留在胶囊, 用户按键自动放弃在途请求)
+    LaunchedEffect(state.activePanel) {
+        if (state.activePanel != null) focus.request(TvPlayerFocus.PanelEntry)
     }
 
     // 中央闪烁自动消隐
@@ -434,16 +452,23 @@ fun TvEpisodeScreen(
         focus.request(TvPlayerFocus.SourceDialogEntry)
     }
 
-    // 返回键逐层 (§8.2): 弹窗 → 拖拽 → 选集条 → 控制层 → 系统退出播放页
+    // 返回键逐层 (§8.2): 弹窗 → 面板 → 拖拽 → 选集条 → 控制层 → 系统退出播放页
     BackHandler(
-        enabled = state.sourceDialogVisible || state.scrubMillis != null ||
-            state.stripExpanded || state.controlsVisible,
+        enabled = state.sourceDialogVisible || state.activePanel != null ||
+            state.scrubMillis != null || state.stripExpanded || state.controlsVisible,
     ) {
         when {
             state.sourceDialogVisible -> {
                 state.sourceDialogVisible = false
                 state.bump()
                 focus.request(TvPlayerFocus.SeekBar)
+            }
+
+            state.activePanel != null -> {
+                val panel = state.activePanel
+                state.activePanel = null
+                state.bump()
+                panel?.let { focus.request(PanelChipKey(it)) }
             }
 
             state.scrubMillis != null -> {
@@ -538,12 +563,16 @@ fun TvEpisodeScreen(
                     AspectRatioMode.STRETCH -> "拉伸"
                     AspectRatioMode.CROP -> "裁剪"
                 },
+                activePanel = state.activePanel,
                 seekBarModifier = Modifier
                     .tvFocusAnchor(focus, TvPlayerFocus.SeekBar)
-                    // 显式方向链接: 上方胶囊行是静态信息, 下方直达图标行首钮 ——
+                    // 显式方向链接: 上达胶囊行首钮, 下达图标行首钮 ——
                     // 空间搜索会落到不可见的视频/根节点 (§14.4-4 边缘元素显式声明去向)
-                    .tvFocusLink(focus, down = TvPlayerFocus.IconRowEntry)
-                    .focusProperties { up = FocusRequester.Cancel }
+                    .tvFocusLink(
+                        focus,
+                        up = PanelChipKey(TvPlayerPanel.Recommendations),
+                        down = TvPlayerFocus.IconRowEntry,
+                    )
                     .focusable(),
                 iconRowModifier = Modifier
                     .tvFocusAnchor(focus, TvPlayerFocus.IconRow)
@@ -551,6 +580,36 @@ fun TvEpisodeScreen(
                 seekBackButtonModifier = Modifier
                     .tvFocusAnchor(focus, TvPlayerFocus.IconRowEntry)
                     .tvFocusLink(focus, up = TvPlayerFocus.SeekBar),
+                capsuleAnchor = { panel -> Modifier.tvFocusAnchor(focus, PanelChipKey(panel)) },
+                onTogglePanel = { panel ->
+                    state.activePanel = if (state.activePanel == panel) null else panel
+                    state.bump()
+                },
+                panelHost = state.activePanel?.let { panel ->
+                    @Composable {
+                        // 面板数据惰性订阅: 打开面板才 collect, WhileSubscribed 的仓库流随之启动
+                        val relatedSubjects by viewModel.relatedSubjectsFlow.collectAsState()
+                        val staff by viewModel.staffFlow.collectAsState()
+                        val characters by viewModel.charactersFlow.collectAsState()
+                        val danmakuList by viewModel.danmakuListFlow.collectAsState()
+                        val comments = viewModel.episodeCommentsPager.collectAsLazyPagingItems()
+                        TvPlayerPanelHost(
+                            panel = panel,
+                            relatedSubjects = relatedSubjects,
+                            staff = staff,
+                            characters = characters,
+                            comments = comments,
+                            danmakuList = danmakuList,
+                            panelModifier = Modifier
+                                .tvFocusAnchor(focus, TvPlayerFocus.PanelHost)
+                                // 向下离开面板回对应胶囊 (面板保持打开); 其余方向停留
+                                .tvFocusExit(focus, FocusDirection.Down to PanelChipKey(panel)),
+                            entryAnchorModifier = Modifier
+                                .tvFocusAnchor(focus, TvPlayerFocus.PanelEntry),
+                            onClickSubject = { onClickRelatedSubject(it.subjectId) },
+                        )
+                    }
+                },
                 onSeekBack = {
                     viewModel.seekBy(-TvEpisodeScreenDefaults.IconSeekBackMillis)
                     state.bump()

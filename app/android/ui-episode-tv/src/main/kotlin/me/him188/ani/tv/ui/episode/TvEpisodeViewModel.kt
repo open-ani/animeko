@@ -63,6 +63,17 @@ import me.him188.ani.danmaku.ui.DanmakuConfig
 import me.him188.ani.danmaku.ui.DanmakuHostState
 import me.him188.ani.danmaku.ui.DanmakuPresentation
 import me.him188.ani.danmaku.ui.DanmakuTrackProperties
+import androidx.paging.PagingData
+import androidx.paging.cachedIn
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.catch
+import me.him188.ani.app.data.models.episode.EpisodeComment
+import me.him188.ani.app.data.models.subject.RelatedCharacterInfo
+import me.him188.ani.app.data.models.subject.RelatedPersonInfo
+import me.him188.ani.app.data.models.subject.RelatedSubjectInfo
+import me.him188.ani.app.data.network.BangumiRelatedPeopleService
+import me.him188.ani.app.data.repository.episode.EpisodeCommentRepository
+import me.him188.ani.app.data.repository.subject.SubjectRelationsRepository
 import me.him188.ani.app.domain.episode.episodeIdFlow
 import me.him188.ani.datasources.api.Media
 import me.him188.ani.datasources.api.source.MediaSourceKind
@@ -234,6 +245,41 @@ class TvEpisodeViewModel(
 
     // endregion
 
+    // region 浮出面板数据 (§8.3 面板 ×5: 推荐/Staff/角色为条目级, 评论随当前集, 弹幕为已加载列表)
+
+    private val subjectRelationsRepository: SubjectRelationsRepository by inject()
+    private val episodeCommentRepository: EpisodeCommentRepository by inject()
+    private val bangumiRelatedPeopleService: BangumiRelatedPeopleService by inject()
+
+    val relatedSubjectsFlow: StateFlow<List<RelatedSubjectInfo>> = bangumiRelatedPeopleService
+        .relatedSubjectsFlow(subjectId)
+        .map { RelatedSubjectInfo.sortList(it) }
+        .catch { emit(emptyList()) }
+        .stateIn(backgroundScope, SharingStarted.WhileSubscribed(5_000), emptyList())
+
+    val staffFlow: StateFlow<List<RelatedPersonInfo>> = subjectRelationsRepository
+        .subjectRelatedPersonsFlow(subjectId)
+        .map { it.sortedWith(RelatedPersonInfo.ImportanceOrder) }
+        .catch { emit(emptyList()) }
+        .stateIn(backgroundScope, SharingStarted.WhileSubscribed(5_000), emptyList())
+
+    val charactersFlow: StateFlow<List<RelatedCharacterInfo>> = subjectRelationsRepository
+        .subjectRelatedCharactersFlow(subjectId)
+        .map { it.sortedWith(RelatedCharacterInfo.ImportanceOrder) }
+        .catch { emit(emptyList()) }
+        .stateIn(backgroundScope, SharingStarted.WhileSubscribed(5_000), emptyList())
+
+    /** 当前集的评论 (只读, §1.2); 切集自动换源. */
+    val episodeCommentsPager: Flow<PagingData<EpisodeComment>> = currentEpisodeIdFlow
+        .flatMapLatest { episodeCommentRepository.subjectEpisodeCommentsPager(it.toLong()) }
+        .cachedIn(backgroundScope)
+
+    /** 已加载弹幕 (新→旧; Repopulate 重置 + Add 头插, 面板 reverseLayout 吸底展示). */
+    private val danmakuList = MutableStateFlow<List<DanmakuPresentation>>(emptyList())
+    val danmakuListFlow: StateFlow<List<DanmakuPresentation>> = danmakuList
+
+    // endregion
+
     // region 播放器能力 (mediamp features)
 
     private val playbackSpeedFeature get() = player.features[PlaybackSpeed]
@@ -377,6 +423,17 @@ class TvEpisodeViewModel(
             settingsRepository.danmakuConfig.flow.collect { danmakuConfigState.value = it }
         }
         backgroundScope.launch {
+            // 弹幕列表面板数据: 与渲染层共享同一 danmakuEventFlow (shareIn), 不重复拉取
+            danmakuEventFlow.collect { event ->
+                when (event) {
+                    is TvUIDanmakuEvent.Repopulate -> danmakuList.value = event.list.asReversed()
+                    is TvUIDanmakuEvent.Add ->
+                        danmakuList.value =
+                            (listOf(event.presentation) + danmakuList.value).take(DANMAKU_LIST_CAP)
+                }
+            }
+        }
+        backgroundScope.launch {
             // 保证数据源会一直查询 (拷自手机 EpisodePageState): MediaFetchSession 是冷流,
             // 必须有订阅者 cumulativeResults 才会真正向各数据源发起请求, AutoSelect 才有候选可选.
             fetchPlayState.episodeSessionFlow.collectLatest { session ->
@@ -402,5 +459,8 @@ class TvEpisodeViewModel(
 
         /** 图标行倍速循环档位. */
         val SPEED_STEPS = listOf(0.5f, 0.75f, 1f, 1.25f, 1.5f, 2f)
+
+        /** 弹幕列表面板保留上限. */
+        const val DANMAKU_LIST_CAP = 500
     }
 }

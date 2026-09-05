@@ -21,12 +21,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.AspectRatio
-import androidx.compose.material.icons.rounded.Comment
-import androidx.compose.material.icons.rounded.Face
-import androidx.compose.material.icons.rounded.FormatListBulleted
 import androidx.compose.material.icons.rounded.Forward30
-import androidx.compose.material.icons.rounded.Groups
-import androidx.compose.material.icons.rounded.Recommend
 import androidx.compose.material.icons.rounded.Replay10
 import androidx.compose.material.icons.rounded.SkipNext
 import androidx.compose.material.icons.rounded.Speed
@@ -95,9 +90,12 @@ internal fun TvPlayerControlsOverlay(
     playStateLabel: String,
     speedLabel: String,
     aspectLabel: String,
+    activePanel: TvPlayerPanel?,
     seekBarModifier: Modifier,
     iconRowModifier: Modifier,
     seekBackButtonModifier: Modifier,
+    capsuleAnchor: (TvPlayerPanel) -> Modifier,
+    onTogglePanel: (TvPlayerPanel) -> Unit,
     onSeekBack: () -> Unit,
     onNextEpisode: () -> Unit,
     onSeekForward: () -> Unit,
@@ -105,6 +103,7 @@ internal fun TvPlayerControlsOverlay(
     onCycleSpeed: () -> Unit,
     onCycleAspect: () -> Unit,
     modifier: Modifier = Modifier,
+    panelHost: (@Composable () -> Unit)? = null,
     episodeStrip: (@Composable () -> Unit)? = null,
 ) {
     Box(modifier.fillMaxSize()) {
@@ -160,13 +159,19 @@ internal fun TvPlayerControlsOverlay(
                 .padding(top = 56.dp, bottom = 20.dp),
         ) {
             Column(Modifier.padding(horizontal = TvPlayerControlsDefaults.HorizontalPadding)) {
-                // 功能胶囊行 (面板接入前为静态信息层)
+                // 浮出面板宿主: 胶囊行上方透明区 (§8.3)
+                panelHost?.invoke()
+
+                // 功能胶囊行: 确认开/关对应浮出面板
                 Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                    CapsuleChip(Icons.Rounded.Recommend, "相关推荐")
-                    CapsuleChip(Icons.Rounded.Groups, "制作人员")
-                    CapsuleChip(Icons.Rounded.Face, "角色")
-                    CapsuleChip(Icons.Rounded.Comment, "评论")
-                    CapsuleChip(Icons.Rounded.FormatListBulleted, "弹幕列表")
+                    TvPlayerPanel.entries.forEach { panel ->
+                        CapsuleChipButton(
+                            panel = panel,
+                            active = activePanel == panel,
+                            onClick = { onTogglePanel(panel) },
+                            modifier = capsuleAnchor(panel),
+                        )
+                    }
                 }
 
                 // 进度条行: 左当前时间 (拖拽预览时显示目标) · TvSeekBar · 右总时长
@@ -252,17 +257,38 @@ internal fun TvPlayerControlsOverlay(
     }
 }
 
+/** 面板胶囊按钮: 聚焦白底黑内容反色; [active] (面板开着) 时底色提亮一档. */
 @Composable
-private fun CapsuleChip(icon: ImageVector, text: String, modifier: Modifier = Modifier) {
-    Row(
-        modifier
-            .background(TvPlayerControlsDefaults.CapsuleContainer, CircleShape)
-            .padding(horizontal = 16.dp, vertical = 9.dp),
-        horizontalArrangement = Arrangement.spacedBy(8.dp),
-        verticalAlignment = Alignment.CenterVertically,
+private fun CapsuleChipButton(
+    panel: TvPlayerPanel,
+    active: Boolean,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    Surface(
+        onClick = onClick,
+        modifier = modifier,
+        shape = ClickableSurfaceDefaults.shape(CircleShape),
+        colors = ClickableSurfaceDefaults.colors(
+            containerColor = if (active) {
+                Color.White.copy(alpha = 0.32f)
+            } else {
+                TvPlayerControlsDefaults.CapsuleContainer
+            },
+            focusedContainerColor = TvPlayerControlsDefaults.FocusedContainer,
+            contentColor = TvPlayerControlsDefaults.Content,
+            focusedContentColor = TvPlayerControlsDefaults.FocusedContent,
+        ),
+        scale = ClickableSurfaceDefaults.scale(focusedScale = 1f),
     ) {
-        Icon(icon, contentDescription = null, Modifier.size(18.dp), tint = TvPlayerControlsDefaults.Content)
-        Text(text, style = MaterialTheme.typography.labelLarge, color = TvPlayerControlsDefaults.Content)
+        Row(
+            Modifier.padding(horizontal = 16.dp, vertical = 9.dp),
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Icon(panel.icon, contentDescription = null, Modifier.size(18.dp))
+            Text(panel.title, style = MaterialTheme.typography.labelLarge)
+        }
     }
 }
 

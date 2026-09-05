@@ -31,4 +31,5 @@ dependencies {
     implementation(projects.app.shared.videoPlayer) // expect VideoPlayer (ExoPlayer surface + libass)
     implementation(projects.danmaku.danmakuUi) // DanmakuHost 纯 Canvas 渲染
     implementation(libs.koin.core)
+    implementation(libs.paging.compose.android) // 评论面板 LazyPagingItems
 }
