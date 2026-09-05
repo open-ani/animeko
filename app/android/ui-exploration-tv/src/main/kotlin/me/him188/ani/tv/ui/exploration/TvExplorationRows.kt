@@ -52,6 +52,7 @@ import kotlinx.coroutines.sync.Semaphore
 import kotlinx.coroutines.sync.withPermit
 import me.him188.ani.app.data.models.recommend.RecommendedItemInfo
 import me.him188.ani.app.data.models.recommend.RecommendedSubjectInfo
+import me.him188.ani.app.data.models.subject.ContinueWatchingStatus
 import me.him188.ani.app.data.models.subject.FollowedSubjectInfo
 import me.him188.ani.app.data.models.subject.SubjectCollectionInfo
 import me.him188.ani.app.data.models.subject.subjectInfo
@@ -333,6 +334,7 @@ private fun TvContinueWatchingRow(
                     focusedIndexByRow = focusedIndexByRow,
                     onCardFocused = onCardFocused,
                     onClickSubject = onClickSubject,
+                    overline = renderContinueWatchingOverline(info.subjectProgressInfo.continueWatchingStatus),
                 )
             }
         }
@@ -400,12 +402,14 @@ private fun TvExplorationCard(
     onClickSubject: (TvHeroSubject) -> Unit,
     width: androidx.compose.ui.unit.Dp? = TvLandscapeCardDefaults.Width,
     modifier: Modifier = Modifier,
+    overline: String? = null,
 ) {
     LaunchedEffect(subject.subjectId) { media.requestBackdrop(subject.subjectId) }
     val backdrop = media.backdropCache[subject.subjectId]
     TvLandscapeCard(
         imageUrl = backdrop?.let(::tmdbBackdropCardUrl) ?: subject.imageUrl,
         title = subject.title,
+        overline = overline,
         onClick = { onClickSubject(subject) },
         onFocused = {
             focusedIndexByRow[row.key] = index
@@ -415,4 +419,16 @@ private fun TvExplorationCard(
         width = width,
         modifier = modifier.tvFocusAnchor(focus, TvExplorationCardKey(row.key, index)),
     )
+}
+
+/**
+ * 继续观看卡的进度小字 (语义同手机 SubjectProgressState.buttonText, 10-foot 精简版):
+ * 待看下一话 → 「继续 · 第 N 话」; 已追到最新 → 「已看到第 N 话」; 一话未看 → 「开始观看」.
+ */
+private fun renderContinueWatchingOverline(status: ContinueWatchingStatus): String = when (status) {
+    is ContinueWatchingStatus.Continue -> "继续 · 第 ${status.episodeEp ?: status.episodeSort ?: "?"} 话"
+    is ContinueWatchingStatus.Watched -> "已看到第 ${status.episodeEp ?: status.episodeSort ?: "?"} 话"
+    ContinueWatchingStatus.Start -> "开始观看"
+    is ContinueWatchingStatus.NotOnAir -> "未开播"
+    ContinueWatchingStatus.Done -> "已看完"
 }

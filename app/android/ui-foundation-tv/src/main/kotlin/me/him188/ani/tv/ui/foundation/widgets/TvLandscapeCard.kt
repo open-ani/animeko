@@ -65,7 +65,7 @@ object TvLandscapeCardDefaults {
 
 /**
  * 横版 16:9 条目卡 (探索页 Prime 式行列表): TMDB backdrop 横图 (缺图时退化为海报裁切),
- * 卡内底部渐变遮罩上叠标题 (横图无片名, 与 Prime 的 key art 不同, 必须自绘标题);
+ * 卡内底部渐变遮罩上叠 [overline 小字 +] 标题 (横图无片名, 与 Prime 的 key art 不同, 必须自绘标题);
  * 聚焦 2.5dp primary 描边 @ 圆角 11dp, 内容常驻内缩 3dp, 无缩放 (TvFocusDefaults), 标题跑马灯.
  */
 @Composable
@@ -79,8 +79,8 @@ fun TvLandscapeCard(
     memoryId: Any? = null,
     /** null = 宽度交给调用方 modifier 决定 (如 Row 内 weight 等分的自适应网格). */
     width: Dp? = TvLandscapeCardDefaults.Width,
-    /** 标题下的一行次要信息 (如继续观看进度); null 不显示. */
-    subtitle: String? = null,
+    /** 标题上方的一行小字 (如继续观看进度「继续 · 第 3 话」); null 不显示. */
+    overline: String? = null,
 ) {
     var selfFocused by remember { mutableStateOf(false) }
     Surface(
@@ -130,6 +130,15 @@ fun TvLandscapeCard(
                     )
                     .padding(horizontal = 10.dp, vertical = 8.dp),
             ) {
+                if (overline != null) {
+                    Text(
+                        overline,
+                        style = MaterialTheme.typography.labelSmall,
+                        color = Color.White.copy(alpha = 0.78f),
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                    )
+                }
                 Text(
                     title,
                     Modifier
@@ -141,15 +150,6 @@ fun TvLandscapeCard(
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis,
                 )
-                if (subtitle != null) {
-                    Text(
-                        subtitle,
-                        style = MaterialTheme.typography.labelSmall,
-                        color = Color.White.copy(alpha = 0.72f),
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis,
-                    )
-                }
             }
         }
     }
