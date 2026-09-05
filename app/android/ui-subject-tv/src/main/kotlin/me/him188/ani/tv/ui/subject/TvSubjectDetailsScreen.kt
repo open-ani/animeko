@@ -248,10 +248,7 @@ private fun TvSubjectDetailsContent(
     // 滚动锚点 = 聚焦项所在区块的上边缘 (各区块根节点上报几何 + 子树持焦; 见 TvDetailsScrollAnchors)
     val anchors = remember { TvDetailsScrollAnchors() }
     val bringIntoViewSpec = remember(scrollState) {
-        TvDetailsBringIntoViewSpec(
-            targetScroll = { anchors.focusedSection?.let { anchors.sectionTops[it] } },
-            scrollOffset = { scrollState.value },
-        )
+        TvDetailsBringIntoViewSpec(anchors, scrollOffset = { scrollState.value })
     }
     val sectionAnchorInsetPx = with(LocalDensity.current) { TvSubjectDetailsDefaults.SectionAnchorInset.toPx() }
     fun Modifier.scrollSection(key: String, anchorInsetPx: Float = 0f) =
@@ -324,6 +321,8 @@ private fun TvSubjectDetailsContent(
                 ),
             carouselModifier = Modifier
                 .tvFocusAnchor(focus, TvDetailsFocus.EpisodesCarousel)
+                // 选集卡聚焦: 卡片下边缘 + 64dp 对齐视口下边缘 (底边锚点, 优先于所在第二屏的顶边锚点)
+                .tvDetailsScrollSectionBottom(anchors, "carousel", sectionAnchorInsetPx)
                 // 行内任意卡按上都回"展开简介" (出组重定向, 不依赖几何对齐)
                 .tvFocusExit(focus, FocusDirection.Up to TvDetailsFocus.ExpandSummary),
             onFocusedWithin = { backLevel = TvDetailsBackLevel.Episodes },
@@ -384,8 +383,19 @@ private fun TvSubjectDetailsPageLayout(
 @Stable
 private class TvDetailsScrollAnchors {
     var contentTopInRoot by mutableFloatStateOf(0f)
+
+    /** 顶边锚点区块: key -> 锚点在滚动内容里的位置 (区块上边缘 - 内缩量). */
     val sectionTops = mutableStateMapOf<String, Float>()
-    var focusedSection by mutableStateOf<String?>(null)
+
+    /** 底边锚点区块: key -> 聚焦项下边缘之下的留白; 对齐目标是"聚焦项下边缘 + 留白 = 视口下边缘". */
+    val bottomInsets = mutableStateMapOf<String, Float>()
+
+    /** 各区块子树是否持焦 (嵌套区块会同时为 true; 底边区块优先, 其后取任一持焦的顶边区块). */
+    val focusedKeys = mutableStateMapOf<String, Boolean>()
+
+    fun focusedBottomInset(): Float? = bottomInsets.entries.firstOrNull { focusedKeys[it.key] == true }?.value
+
+    fun focusedSectionTop(): Float? = sectionTops.entries.firstOrNull { focusedKeys[it.key] == true }?.value
 }
 
 /**
@@ -403,7 +413,19 @@ private fun Modifier.tvDetailsScrollSection(
         val anchor = coords.positionInRoot().y - anchors.contentTopInRoot + scrollOffset() - anchorInsetPx
         if (anchors.sectionTops[key] != anchor) anchors.sectionTops[key] = anchor
     }
-    .onFocusChanged { if (it.hasFocus) anchors.focusedSection = key }
+    .onFocusChanged { if (anchors.focusedKeys[key] != it.hasFocus) anchors.focusedKeys[key] = it.hasFocus }
+
+/**
+ * 标注本节点为**底边锚点**区块 [key] (如选集轮播): 子树内任一项聚焦时, 滚动到"该项下边缘 + [bottomInsetPx]
+ * 对齐视口下边缘" (几何直接用 BringIntoView 传来的聚焦项矩形, 无需上报). 嵌套在顶边区块内时优先.
+ */
+private fun Modifier.tvDetailsScrollSectionBottom(
+    anchors: TvDetailsScrollAnchors,
+    key: String,
+    bottomInsetPx: Float,
+): Modifier = this
+    .onGloballyPositioned { if (anchors.bottomInsets[key] != bottomInsetPx) anchors.bottomInsets[key] = bottomInsetPx }
+    .onFocusChanged { if (anchors.focusedKeys[key] != it.hasFocus) anchors.focusedKeys[key] = it.hasFocus }
 
 /**
  * 详情页纵向滚动的 BringIntoView 策略. Android TV 上 Compose 的平台默认是 **pivot 30%**
@@ -414,12 +436,15 @@ private fun Modifier.tvDetailsScrollSection(
  */
 @OptIn(ExperimentalFoundationApi::class)
 private class TvDetailsBringIntoViewSpec(
-    private val targetScroll: () -> Float?,
+    private val anchors: TvDetailsScrollAnchors,
     private val scrollOffset: () -> Int,
 ) : BringIntoViewSpec {
     override fun calculateScrollDistance(offset: Float, size: Float, containerSize: Float): Float {
-        val target = targetScroll() ?: return revealMinimal(offset, size, containerSize)
-        return target - scrollOffset()
+        // 底边锚点 (选集卡): 聚焦项下边缘 + 留白 对齐视口下边缘
+        anchors.focusedBottomInset()?.let { inset -> return offset + size + inset - containerSize }
+        // 顶边锚点 (hero / 第二屏 / 角色…): 区块上边缘 (- 内缩) 对齐视口上边缘
+        anchors.focusedSectionTop()?.let { top -> return top - scrollOffset() }
+        return revealMinimal(offset, size, containerSize)
     }
 
     private fun revealMinimal(offset: Float, size: Float, containerSize: Float): Float = when {
@@ -818,7 +843,10 @@ internal object TvSubjectDetailsDefaults {
     /** 内容水平留白 (含让开侧栏收起宽; 详情页是独立目的地, 自带留白). */
     val HorizontalPadding = 48.dp
 
-    /** 第二屏 (简介/选集) 区块的滚动锚点在其上边缘之上的距离: 聚焦「展开简介」时封面/标题不贴屏顶. */
+    /**
+     * 滚动锚点留白: 第二屏 (简介) 区块顶边锚点在其上边缘之上 64dp (聚焦「展开简介」时封面/标题不贴屏顶);
+     * 选集卡底边锚点 = 卡片下边缘 + 64dp 对齐视口下边缘.
+     */
     val SectionAnchorInset = 64.dp
 
     /** backdrop 随滚动淡出的距离. */
