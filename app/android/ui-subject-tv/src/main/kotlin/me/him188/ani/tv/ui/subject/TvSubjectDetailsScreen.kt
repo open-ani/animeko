@@ -240,7 +240,7 @@ private fun TvSubjectDetailsContent(
             }
 
             else -> {
-                scope.launch { scrollState.animateScrollTo(0) }
+                // 滚回页顶由播放钮聚焦回调统一处理
                 backLevel = TvDetailsBackLevel.Hero
                 focus.request(TvDetailsFocus.Play)
             }
@@ -266,6 +266,9 @@ private fun TvSubjectDetailsContent(
             watchedCount = watched,
             onPlayEpisode = onPlayEpisode,
             playButtonModifier = Modifier
+                // 焦点落到播放钮即滚回页顶, 完整露出沉浸式封面 (焦点事件驱动; ↑ 回按钮 /
+                // 返回分层回 Hero 共用这一条, 不另写滚动)
+                .onFocusChanged { if (it.isFocused) scope.launch { scrollState.animateScrollTo(0) } }
                 .tvFocusAnchor(focus, TvDetailsFocus.Play)
                 .tvFocusLink(focus, down = TvDetailsFocus.ExpandSummary),
             modifier = Modifier.height(heroHeight),
