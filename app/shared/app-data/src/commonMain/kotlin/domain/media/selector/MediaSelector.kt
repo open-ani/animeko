@@ -9,7 +9,6 @@
 
 package me.him188.ani.app.domain.media.selector
 
-import androidx.compose.ui.util.fastFirstOrNull
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
@@ -27,11 +26,13 @@ import kotlinx.coroutines.withContext
 import me.him188.ani.app.data.models.preference.MediaPreference
 import me.him188.ani.app.data.models.preference.MediaPreference.Companion.ANY_FILTER
 import me.him188.ani.app.data.models.preference.MediaSelectorSettings
+import me.him188.ani.app.domain.media.selector.engine.AutoSelectSnapshot
+import me.him188.ani.app.domain.media.selector.engine.SourceSnapshot
+import me.him188.ani.app.domain.media.selector.engine.findMediaByPreference
 import me.him188.ani.app.domain.media.selector.filter.MediaSelectorFilterSortAlgorithm
 import me.him188.ani.datasources.api.Media
 import me.him188.ani.datasources.api.isLocalCache
 import me.him188.ani.datasources.api.source.MediaSourceKind
-import me.him188.ani.datasources.api.topic.hasSeason
 import kotlin.coroutines.CoroutineContext
 
 /**
@@ -83,13 +84,22 @@ import kotlin.coroutines.CoroutineContext
  * ### 快速选择
  *
  * 快速选择是由 [MediaSelectorAutoSelect] 实现的[拓展功能][MediaSelectorAutoSelect.fastSelectWebSources], 仅对 [WEB][MediaSourceKind.WEB] 源有效.
- * 如果快速选择数据源功能为启用状态 ([MediaSelectorSettings.fastSelectWebKind] 为 [WEB][MediaSourceKind.WEB]), 将会考虑如下因素:
+ * 决策本身是纯函数 [me.him188.ani.app.domain.media.selector.engine.decideWebAutoSelect], 输入是 [autoSelectSnapshots] 组装的一致快照,
+ * 由 [me.him188.ani.app.domain.media.selector.engine.runWebAutoSelect] 这一个执行循环驱动.
+ * 如果快速选择数据源功能为启用状态 ([MediaSelectorSettings.fastSelectWebKind] 为 `true` 且偏好 [WEB][MediaSourceKind.WEB]),
+ * 快速选择会随着时间推进经过三个阶段, 每个阶段只允许选择满足该阶段条件的资源, 数据源每次查询完成都会按当前阶段重新评估一次:
  *
- * - 当任意 Tier 0 数据源在 [fastSelectWebLowTierToleranceDuration][MediaSelectorSettings.fastSelectWebLowTierToleranceDuration]
- * 时长内加载好, [MediaSelectorAutoSelect] 将会立即选择该数据源.
- * 判定与选择均按 channel 粒度: 只有有效 tier (channel tier 优先) 不超过阈值的资源才会被立即选择.
- * - 在等待 [fastSelectWebLowTierToleranceDuration][MediaSelectorSettings.fastSelectWebLowTierToleranceDuration] 时长后,
- * 选择所有已加载好的数据源中 Tier 最低的一个.
+ * 1. **立即选择** (从开始到 [fastSelectWebLowTierToleranceDuration][MediaSelectorSettings.fastSelectWebLowTierToleranceDuration]):
+ *    只选择有效 tier (channel tier 优先) 不超过 [MediaSelectorAutoSelect.InstantSelectTierThreshold] 且条目名称精确匹配的资源.
+ *    数据源一旦查询成功就立即选择, 不等待其他数据源.
+ * 2. **仅精确匹配** (直到 [MediaSelectorAutoSelect.DefaultFuzzyFallbackDuration]):
+ *    放开 tier 限制, 但仍只选择条目名称精确匹配的资源, 按有效 tier 升序逐档尝试.
+ * 3. **允许模糊匹配** (超过第二段时长, 或所有 WEB 源都已结束查询):
+ *    先按 tier 升序选精确匹配, 都没有再按 tier 升序选模糊匹配.
+ *
+ * "精确匹配" 指 [MatchMetadata.subjectMatchKind] 为 [EXACT][MatchMetadata.SubjectMatchKind.EXACT].
+ * 同一 tier 内的取舍由纯函数 [me.him188.ani.app.domain.media.selector.engine.findMediaByPreference] 的偏好逻辑 (分辨率、字幕语言、字幕组、数据源顺序) 决定:
+ * 先在用户偏好候选内选, 再放开全部偏好选.
  *
  * ## 使用示例
  *
@@ -214,8 +224,7 @@ interface MediaSelector {
      * 
      * 注意, 调用此方法时将从 [preferredCandidates] 和 [filteredCandidates] 当前的 snapshot 中选择,
      * 如果在选的过程中这些 flow 有更新, 则不会影响此次选择. 所以这个函数会很快返回结果.
-     * 
-     * 如果希望始终从最新的数据中选择, 使用 [awaitSelectFromMediaSources].
+     * WEB 自动选择不走此方法, 而是在 [autoSelectSnapshots] 的每次 emission 上重新决策 (参见 `engine/WebAutoSelectDriver.kt`).
      *
      * @param candidateSources 候选数据源, 只会从这些里选.
      * @param overrideUserSelection 是否覆盖用户选择.
@@ -225,7 +234,8 @@ interface MediaSelector {
      * @param allowNonPreferred 是否允许选择不满足用户偏好设置的项目. 如果为 `false`, 将只会从 [preferredCandidatesMedia] 中选择.
      * 如果为 `true`, 则放弃用户偏好, 只根据数据源顺序选择.
      * @param candidateMediaFilter 额外的 media 级过滤. 只有返回 `true` 的 media 才会被选择.
-     * `null` 表示不额外过滤. 用于 channel 级 tier 等需要比数据源更细粒度控制的场景.
+     * `null` 表示不额外过滤. 过滤器能看到 [MaybeExcludedMedia.Included.metadata], 用于 channel 级 tier、
+     * 条目名称匹配程度等需要比数据源更细粒度控制的场景.
      *
      * @return 成功选择且已经记录的 [Media]. 返回 `null` 时表示没有选择.
      */
@@ -234,20 +244,7 @@ interface MediaSelector {
         overrideUserSelection: Boolean = false,
         blacklistMediaIds: Set<String> = emptySet(),
         allowNonPreferred: Boolean = false,
-        candidateMediaFilter: ((Media) -> Boolean)? = null,
-    ): Media?
-
-    /**
-     * 根据提供的 [candidateSources], 挂起到第一个满足的 media 出现为止.
-     *
-     * @see trySelectFromMediaSources
-     */
-    suspend fun awaitSelectFromMediaSources(
-        candidateSources: List<String>,
-        overrideUserSelection: Boolean = false,
-        blacklistMediaIds: Set<String> = emptySet(),
-        allowNonPreferred: Boolean = false,
-        candidateMediaFilter: ((Media) -> Boolean)? = null,
+        candidateMediaFilter: ((MaybeExcludedMedia.Included) -> Boolean)? = null,
     ): Media?
 
     /**
@@ -256,6 +253,22 @@ interface MediaSelector {
      * @see autoSelect
      */
     suspend fun trySelectCached(): Media?
+
+    /**
+     * 为自动选择决策核组装一致快照: 把 [sources] 的每次 emission 与当前偏好、设置、context 同步合并,
+     * 在同一次 emission 内算出过滤、排序与偏好筛选结果. 不经过 [filteredCandidates] 等带缓存的派生流, 因此没有传播延迟.
+     *
+     * 实现细节, 供 [MediaSelectorAutoSelect] 使用.
+     */
+    fun autoSelectSnapshots(sources: Flow<List<SourceSnapshot>>): Flow<AutoSelectSnapshot>
+
+    /**
+     * 自动选择的提交: 仅当当前 [selected] 仍为 [expectedSelection] 时以 CAS 切换到 [candidate]. 不更新用户偏好.
+     * [candidate] 与 [expectedSelection] 相同时视为保留当前选择, 直接返回它, 不发事件.
+     *
+     * @return 提交后的 [Media]; 选择已被别人改变 (CAS 失败) 时返回 `null`.
+     */
+    suspend fun selectAutomatically(candidate: Media, expectedSelection: Media?): Media?
 
     /**
      * 逐渐取消选择, 直到 [preferredCandidatesMedia] 有至少一个元素.
@@ -506,21 +519,47 @@ class DefaultMediaSelector(
         selected.value = null
     }
 
-    private suspend fun selectDefault(candidate: Media): Media? {
-        if (selected.value != null) return null
+    private suspend fun selectDefault(candidate: Media): Media? = selectAutomatically(candidate, expectedSelection = null)
+
+    override suspend fun selectAutomatically(candidate: Media, expectedSelection: Media?): Media? {
+        if (selected.value != expectedSelection) return null
+        if (candidate == expectedSelection) return candidate // 保留当前选择
 
         val event = SelectEvent(
             media = candidate,
             subtitleLanguageId = null,
-            previousMedia = null,
+            previousMedia = expectedSelection,
         )
         events.onBeforeSelect.emit(event)
 
-        if (!selected.compareAndSet(null, candidate)) return null
+        if (!selected.compareAndSet(expectedSelection, candidate)) return null
         events.onSelect.emit(event)
 
         // 自动选择时不更新 preference
         return candidate
+    }
+
+    override fun autoSelectSnapshots(sources: Flow<List<SourceSnapshot>>): Flow<AutoSelectSnapshot> {
+        return combine(
+            sources,
+            savedDefaultPreference, // 与 filteredCandidates 一致: 过滤只用全局默认偏好 (见 filteredCandidates 处注释)
+            newPreferences,
+            mediaSelectorSettings,
+            mediaSelectorContext,
+        ) { sourceSnapshots, defaultPreference, mergedPreference, settings, context ->
+            val mediaList = sourceSnapshots.flatMap { it.results }.distinctBy { it.mediaId }
+            val candidates = algorithm.filterMediaList(mediaList, defaultPreference, settings, context)
+                .let { algorithm.sortMediaList(it, settings, context) }
+            AutoSelectSnapshot(
+                sources = sourceSnapshots,
+                candidates = candidates,
+                preferred = algorithm.filterByPreference(candidates, mergedPreference)
+                    .filterIsInstance<MaybeExcludedMedia.Included>(),
+                mergedPreference = mergedPreference,
+                settings = settings,
+                context = context,
+            )
+        }.flowOn(flowCoroutineContext)
     }
 
     private suspend fun broadcastChangePreference(overrideLanguageId: String? = null) {
@@ -548,178 +587,18 @@ class DefaultMediaSelector(
 
     /**
      * 参照用户偏好和各种限制设置, 从 [candidates] 中选择出最合适的 media.
-     * 不会调用 [selectImpl] nor [selectDefault], 也就是说不会更新 [selected]
+     * 不会调用 [selectImpl] nor [selectDefault], 也就是说不会更新 [selected].
+     *
+     * 决策本身是纯函数 [findMediaByPreference]; 这里只负责等待 context 加载完成并取字幕组列表.
      */
     private suspend fun findUsingPreferenceFromCandidates(
         candidates: List<MaybeExcludedMedia.Included>,
         mergedPreference: MediaPreference,
     ): Media? {
-        val selectedSubtitleLanguageId = mergedPreference.subtitleLanguageId
-        val selectedResolution = mergedPreference.resolution
-        val selectedAlliance = mergedPreference.alliance
-        val selectedMediaSource = mergedPreference.mediaSourceId
-        val allianceRegexes = mergedPreference.alliancePatterns.orEmpty().map { it.toRegex() }
         val availableAlliances = alliance.available.first()
-
-
-        val mediaSelectorContext = mediaSelectorContext.filter {
-            it.allFieldsLoaded()
-        }.first()
-        val mediaSelectorSettings = mediaSelectorSettings.first()
-
-
-        val shouldPreferSeasons = mediaSelectorContext.subjectFinished == true
-                && mediaSelectorSettings.preferSeasons
-
-        val preferKind = mediaSelectorSettings.preferKind
-
-        val languageIds = sequence {
-            selectedSubtitleLanguageId?.let {
-                yield(it)
-                return@sequence
-            }
-            yieldAll(mergedPreference.fallbackSubtitleLanguageIds.orEmpty())
-        }
-        val resolutions = sequence {
-            selectedResolution?.let {
-                yield(it)
-                return@sequence
-            }
-            yieldAll(mergedPreference.fallbackResolutions.orEmpty())
-        }
-        val alliances = sequence {
-            selectedAlliance?.let {
-                yield(it)
-                return@sequence
-            }
-            if (allianceRegexes.isEmpty()) {
-                yield(ANY_FILTER)
-            } else {
-                for (regex in allianceRegexes) {
-                    for (alliance in availableAlliances) {
-                        // lazy 匹配, 但没有 cache, 若 `alliances` 反复访问则会进行多次匹配
-                        if (regex.find(alliance) != null) yield(alliance)
-                    }
-                }
-            }
-        }
-        val mediaSources = sequence {
-            selectedMediaSource?.let {
-                yield(it)
-                return@sequence
-            }
-            val fallback = mediaSelectorContext.mediaSourcePrecedence
-            if (fallback != null) {
-                yieldAll(fallback) // 如果有设置, 那就优先使用设置的
-            }
-            yield(null) // 最后 (未匹配到时) 总是任意选一个
-        }
-
-        // For rules discussion, see #174
-
-        // 选择顺序
-        // 1. 分辨率
-        // 2. 字幕语言
-        // 3. 字幕组
-        // 4. 数据源
-
-        // 规则: 
-        // - 分辨率最高优先: 1080P >> 720P, 但不能为了要 4K 而选择不想要的字幕语言
-        // - 不要为了选择偏好字幕组而放弃其他字幕组的更好的语言
-
-        // 实际上这些 loop 都只需要跑一次, 除了分辨率. 而这也只需要多遍历两次 list 而已.
-        // 例如: 4K (无匹配) -> 2K (无匹配) -> 1080P -> 简中 -> 桜都 -> Mikan
-
-        fun selectAny(list: List<Media>): Media? {
-            if (list.isEmpty()) {
-                return null
-            }
-            if (shouldPreferSeasons) {
-                return list.fastFirstOrNull { it.episodeRange?.hasSeason() == null }
-                    ?: list.first()
-            }
-            return list.first()
-        }
-
-        fun selectAny(candidates: List<MaybeExcludedMedia.Included>) =
-            selectAny(candidates.map { it.result })
-
-        // TODO: too complex, should refactor
-
-        fun selectImpl(candidates: List<Media>): Media? {
-            for (resolution in resolutions) { // DFS 尽可能匹配第一个分辨率
-                val filteredByResolution =
-                    if (resolution == ANY_FILTER) candidates
-                    else candidates.filter { resolution == it.properties.resolution }
-                if (filteredByResolution.isEmpty()) continue
-
-                for (languageId in languageIds) {
-                    val filteredByLanguage =
-                        if (languageId == ANY_FILTER) filteredByResolution
-                        else filteredByResolution.filter { languageId in it.properties.subtitleLanguageIds }
-                    if (filteredByLanguage.isEmpty()) continue
-
-                    for (alliance in alliances) { // 能匹配第一个最好
-                        // 这里是消耗最大的地方, 因为有正则匹配
-                        val filteredByAlliance =
-                            if (alliance == ANY_FILTER) filteredByLanguage
-                            else filteredByLanguage.filter { alliance == it.properties.alliance }
-                        if (filteredByAlliance.isEmpty()) continue
-
-                        for (mediaSource in mediaSources) {
-                            val filteredByMediaSource =
-                                if (mediaSource == ANY_FILTER) filteredByAlliance
-                                else filteredByAlliance.filter {
-                                    mediaSource == null || mediaSource == it.mediaSourceId
-                                }
-                            if (filteredByMediaSource.isEmpty()) continue
-                            return selectAny(filteredByMediaSource)
-                        }
-                    }
-
-                    // 字幕组没匹配到, 但最好不要换更差语言
-
-                    for (mediaSource in mediaSources) {
-                        val filteredByMediaSource =
-                            if (mediaSource == ANY_FILTER) filteredByLanguage
-                            else filteredByLanguage.filter {
-                                mediaSource == null || mediaSource == it.mediaSourceId
-                            }
-                        if (filteredByMediaSource.isEmpty()) continue
-                        return selectAny(filteredByMediaSource)
-                    }
-                }
-
-                // 该分辨率下无字幕语言, 换下一个分辨率
-            }
-            return null
-        }
-
-        fun selectImpl(maybeExcludedMedia: List<MaybeExcludedMedia.Included>) =
-            selectImpl(maybeExcludedMedia.map { it.result })
-
-        if (preferKind != null) {
-            val preferred = candidates.filter { it.result.kind == preferKind }
-            if (preferKind == MediaSourceKind.WEB) {
-                // 如果用户倾向于 WEB, 优先从相似度足够高的项目中选择.
-                //  否则会导致快速选择数据源时选择了高优先数据源中的错误资源, 而放弃了低优先数据源中的正确资源. #1521
-                selectImpl(preferred.filter { it.similarity > 80 })?.let {
-                    return it
-                }
-            }
-            selectImpl(preferred)?.let {
-                return it
-            }
-        }
-
-        if (shouldPreferSeasons) {
-            val seasons = candidates.filter { it.result.episodeRange?.hasSeason() == true }
-            selectImpl(seasons)?.let {
-                return it
-            }
-        }
-        selectImpl(candidates)?.let { return it }
-        return selectAny(candidates)
+        val context = mediaSelectorContext.filter { it.allFieldsLoaded() }.first()
+        val settings = mediaSelectorSettings.first()
+        return findMediaByPreference(candidates, mergedPreference, availableAlliances, context, settings)
     }
 
     override suspend fun trySelectDefault(): Media? {
@@ -740,30 +619,35 @@ class DefaultMediaSelector(
         overrideUserSelection: Boolean,
         blacklistMediaIds: Set<String>,
         allowNonPreferred: Boolean,
-        candidateMediaFilter: ((Media) -> Boolean)?
+        candidateMediaFilter: ((MaybeExcludedMedia.Included) -> Boolean)?
     ): Media? {
         if (candidateSources.isEmpty()) return null
 
         fun bake(candidates: List<MaybeExcludedMedia.Included>): List<MaybeExcludedMedia.Included> {
             return candidates.filter {
                 it.result.mediaSourceId in candidateSources && it.result.mediaId !in blacklistMediaIds
-                        && (candidateMediaFilter == null || candidateMediaFilter(it.result))
+                        && (candidateMediaFilter == null || candidateMediaFilter(it))
             }
                 .sortedBy { candidateSources.indexOf(it.result.mediaSourceId) }
         }
 
         val selected = run {
             val mergedPreference = newPreferences.first()
+            // 只取一次 filteredCandidates 快照, 偏好列表从同一份快照现算.
+            // 若改为读 preferredCandidates (另一个 shareIn), 它可能比 filteredCandidates 落后一次更新,
+            // 导致偏好轮看到旧列表落空, 而非偏好轮在新列表里选出不符合用户偏好的资源.
+            val filtered = filteredCandidates.first()
+            val preferred = algorithm.filterByPreference(filtered, mergedPreference)
 
             findUsingPreferenceFromCandidates(
-                bake(preferredCandidates.first().filterIsInstance<MaybeExcludedMedia.Included>()),
+                bake(preferred.filterIsInstance<MaybeExcludedMedia.Included>()),
                 mergedPreference.copy(alliance = ANY_FILTER),
             )?.let { return@run it } // 先考虑用户偏好
 
             if (allowNonPreferred) {
                 // 如果用户偏好里面没有, 并且允许选择非偏好的, 才考虑全部列表
                 findUsingPreferenceFromCandidates(
-                    bake(filteredCandidates.first().filterIsInstance<MaybeExcludedMedia.Included>()),
+                    bake(filtered.filterIsInstance<MaybeExcludedMedia.Included>()),
                     mergedPreference.copy(
                         alliance = ANY_FILTER,
                         resolution = ANY_FILTER,
@@ -786,56 +670,6 @@ class DefaultMediaSelector(
             } else {
                 selectDefault(it)
             }
-        }
-    }
-
-    override suspend fun awaitSelectFromMediaSources(
-        candidateSources: List<String>,
-        overrideUserSelection: Boolean,
-        blacklistMediaIds: Set<String>,
-        allowNonPreferred: Boolean,
-        candidateMediaFilter: ((Media) -> Boolean)?
-    ): Media? {
-        if (candidateSources.isEmpty()) return null
-
-        fun bake(candidates: List<MaybeExcludedMedia.Included>): List<MaybeExcludedMedia.Included> {
-            return candidates.filter {
-                it.result.mediaSourceId in candidateSources && it.result.mediaId !in blacklistMediaIds
-                        && (candidateMediaFilter == null || candidateMediaFilter(it.result))
-            }
-                .sortedBy { candidateSources.indexOf(it.result.mediaSourceId) }
-        }
-
-        val selected = combine(preferredCandidates, filteredCandidates) { preferred, candidates ->
-            val preferredSelected = findUsingPreferenceFromCandidates(
-                bake(preferred.filterIsInstance<MaybeExcludedMedia.Included>()),
-                newPreferences.first().copy(alliance = ANY_FILTER),
-            )
-            if (preferredSelected != null) return@combine preferredSelected
-            if (!allowNonPreferred) return@combine null
-
-            val filteredSelected = findUsingPreferenceFromCandidates(
-                bake(candidates.filterIsInstance<MaybeExcludedMedia.Included>()),
-                newPreferences.first().copy(
-                    alliance = ANY_FILTER,
-                    resolution = ANY_FILTER,
-                    subtitleLanguageId = ANY_FILTER,
-                    mediaSourceId = ANY_FILTER,
-                ),
-            )
-            return@combine filteredSelected
-        }
-            .filterNotNull()
-            .first()
-
-        return if (overrideUserSelection) {
-            if (selectImpl(selected, updatePreference = false)) {
-                selected
-            } else {
-                null
-            }
-        } else {
-            selectDefault(selected)
         }
     }
 

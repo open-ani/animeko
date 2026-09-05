@@ -36,6 +36,7 @@ import kotlinx.coroutines.flow.onStart
 import kotlinx.coroutines.flow.runningFold
 import kotlinx.coroutines.flow.shareIn
 import kotlinx.coroutines.flow.take
+import kotlinx.coroutines.flow.transform
 import kotlinx.coroutines.launch
 import kotlinx.io.IOException
 import me.him188.ani.app.data.models.episode.EpisodeInfo
@@ -186,7 +187,7 @@ class MediaSourceMediaFetcher(
                     // 此时的 currentState 是可信的
 
                     if (restartCount == 0 && currentState is MediaSourceFetchState.Disabled)
-                        return@flatMapLatest flowOf(emptyList()) // 禁用的数据源, 第一次查询给空列表, 必须要 restart 才能发起查询
+                        return@flatMapLatest flowOf(FetchEvent.Results(emptyList())) // 禁用的数据源, 第一次查询给空列表, 必须要 restart 才能发起查询
 
                     val lastRestartCount = when (currentState) {
                         is MediaSourceFetchState.Completed -> currentState.id
@@ -229,22 +230,22 @@ class MediaSourceMediaFetcher(
                     .runningFold(emptyList<Media>()) { acc, list ->
                         acc + list
                     }
-                    .map { list ->
-                        list.distinctBy { it.mediaId }
+                    .map<List<Media>, FetchEvent> { list ->
+                        FetchEvent.Results(list.distinctBy { it.mediaId })
                     }
                     .onStart {
                         // 启动时 emit emptyList, 更新 replayCache 为 empty. 
                         // 这是为了处理 cancellation. 如果 results collect 在 emit 第一个 list 之前就被 cancel, 就会记忆一个 MediaSourceFetchState.Failed, 并且下次重新 collect 也不会重试.
-                        emit(emptyList())
+                        emit(FetchEvent.Results(emptyList()))
                     }
                     .onCompletion { exception ->
                         if (exception == null) {
-                            // catch might have already updated the state
-                            if (state.value !is MediaSourceFetchState.Completed) {
-                                resetRateLimitAutoRestartBudget()
-                                state.value = MediaSourceFetchState.Succeed(restartCount)
-                                // 不能直接设置为 Succeed, 必须等待 `shareIn` 完成缓存 (replayCache)
-                            }
+                            // 不能在这里直接把 state 设为 Succeed: 这里到下游 shareIn 之间隔着 flatMapLatest 的 channel,
+                            // 此刻最后一批结果可能还没进入 replayCache, 观察到 Succeed 的人读 results 会拿到旧列表.
+                            // 因此改为发一个完成标记, 由 shareIn 侧 (见下方 transform) 在收到全部结果之后再更新 state.
+                            emit(FetchEvent.Completed(restartCount))
+                            // 注意: 若 shareIn 的收集协程恰好在此标记送达前被取消 (没有订阅者了), state 会停留在 Working.
+                            // 下一次有人订阅 results 时, 因为 state 不是 Completed, 会重新发起查询, 状态随之恢复.
                         } else {
                             val currentState = state.value
                             if (currentState !is MediaSourceFetchState.Failed) {
@@ -257,6 +258,20 @@ class MediaSourceMediaFetcher(
                             // upstream failure re-caught here
                         }
                     }
+            }.transform { event ->
+                // 这里运行在 shareIn 的收集协程里: 处理到 Completed 标记时, 之前的所有结果列表都已经 emit 给 shareIn 了.
+                when (event) {
+                    is FetchEvent.Results -> emit(event.list)
+                    is FetchEvent.Completed -> {
+                        // restart 会取消旧的查询, 但旧查询已经进入 channel 的标记仍会被送达, 必须忽略.
+                        if (event.restartCount != restartCount.value) return@transform
+                        // catch might have already updated the state
+                        if (state.value !is MediaSourceFetchState.Completed) {
+                            resetRateLimitAutoRestartBudget()
+                            state.value = MediaSourceFetchState.Succeed(event.restartCount)
+                        }
+                    }
+                }
             }.shareIn(
                 CoroutineScope(flowContext), replay = 1, started = SharingStarted.WhileSubscribed(),
             ).onCompletion {
@@ -519,4 +534,9 @@ data class CompletedConditions(
             ImmutableEnumMap { true },
         )
     }
+}
+
+private sealed class FetchEvent {
+    class Results(val list: List<Media>) : FetchEvent()
+    class Completed(val restartCount: Int) : FetchEvent()
 }

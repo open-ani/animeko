@@ -84,18 +84,13 @@ class MediaSelectorOrchestrationCharacterizationTest {
     }
 
     /**
-     * 夹具要点: 让 "clause④ 判 null" 与 "容忍窗 fallback 本可选中" 两件事分离, 尾部的 [assertNull] 才有判别力.
+     * 故意行为变更 (2026-09, 快速选择重构): 旧实现里兜底 clause 在所有 WEB 源完成时以 `trySelectDefault` 的 null 结束整个编排,
+     * 并顺带取消还在容忍窗内的快速选择, 导致 "偏好字幕组不在候选中" 时是否能选中取决于源完成得快不快 (对照组证明超时路径本来能选中).
      *
-     * - 两个源都返回 subjectName 匹配的 media, 所以 `filteredCandidates` 非空:
-     *   若 clause② (快速选择) 没有被 [cancelScope][me.him188.ani.utils.coroutines.cancellableCoroutineScope] 取消,
-     *   它会在容忍窗 (5s) 超时后以 `allowNonPreferred = true` 选中其中一条 (见对照组用例).
-     * - 但 media 的 alliance 与 `savedUserPreference.alliance` 不符, 所以 `preferredCandidates` 为空,
-     *   clause④ 的 `trySelectDefault` 返回 null, 以 null 结束编排.
-     *
-     * 因此 "5s 后仍然没有选中" 只可能是因为快速选择被取消了.
+     * 新实现是一个纯策略: 所有 WEB 源结束后按 FUZZY 阶段规则放宽偏好选择, 与超时路径行为一致. 这里钉住新行为.
      */
     @Test
-    fun `ORCH-06 clause4 以 null 结束编排并取消容忍窗内的快速选择`() = runFetchMediaSelectorTestSuite {
+    fun `ORCH-06 所有 WEB 源完成后偏好字幕组不在候选中时放宽偏好选中`() = runFetchMediaSelectorTestSuite {
         initSubject()
         preferenceApi.savedUserPreference.value = MediaPreference.Any.copy(alliance = "组A")
         preferenceApi.mediaSelectorSettings.value = autoSelectSettings()
@@ -116,21 +111,13 @@ class MediaSelectorOrchestrationCharacterizationTest {
             sources.web2.complete(media(kind = WEB, alliance = "组B", subjectName = initApi.subjectName))
             testScope().runCurrent()
 
-            // PINNED: ORCH-06
-            // 前半段: clause④ 以 null 终结, cancelScope() 结束整个编排 (少了它 clause②③ 永不结束, job 挂死).
             job.assertCompleted()
-            assertNull(selector.selected.value)
-            // 候选非空但偏好候选为空: 证明 "选不出" 来自偏好层而不是过滤层.
+            // 候选非空但偏好候选为空: 选择来自放宽偏好后的兜底, 不是过滤层.
             assertEquals(2, selector.filteredCandidatesMedia.first().size)
             assertEquals(emptyList(), selector.preferredCandidatesMedia.first())
-
-            // 后半段: 容忍窗到点时快速选择已被取消, 不会再选中任何东西.
-            testScope().advanceTimeBy(5.seconds)
-            testScope().runCurrent()
-            assertNull(selector.selected.value)
+            assertSelectedSource(sources.web1)
         }
-        // 第二重口径: 全程没有任何选择事件发出.
-        assertEquals(emptyList(), collected.onSelect)
+        assertEquals(1, collected.onSelect.size)
     }
 
     /**

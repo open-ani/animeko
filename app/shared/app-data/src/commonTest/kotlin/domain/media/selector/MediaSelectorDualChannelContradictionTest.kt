@@ -117,8 +117,13 @@ class MediaSelectorDualChannelContradictionTest {
         job.assertCompleted()
     }
 
+    /**
+     * 故意行为变更 (2026-09, 快速选择重构): 旧实现里 JSON 偏好源空手时兜底 clause 只看 preferredCandidates
+     * (被 mediaSourceId=web1 滤成空), 以 null 终结编排, Room 偏好源的结果被彻底忽略.
+     * 新策略在所有 WEB 源结束后放宽偏好选择, 会选中 web2 的结果. 这里钉住新行为.
+     */
     @Test
-    fun `MIG-DUAL-02 JSON偏好web1无结果时Room偏好web2有结果自动选择彻底不发生`() = runFetchMediaSelectorTestSuite {
+    fun `MIG-DUAL-02 JSON偏好web1无结果时Room偏好web2有结果最终放宽偏好选中web2`() = runFetchMediaSelectorTestSuite {
         initSubject()
         preferenceApi.savedUserPreference.value = MediaPreference.Any.copy(mediaSourceId = "web1")
         preferenceApi.mediaSelectorSettings.value = autoSelectSettings()
@@ -141,9 +146,7 @@ class MediaSelectorDualChannelContradictionTest {
         sources.web1.complete(emptyList<Media>())
         testScope().runCurrent()
 
-        // PINNED: MIG-DUAL-02 JSON 偏好源空手时 clause④ 的 trySelectDefault 只看 preferredCandidates
-        // (被 mediaSourceId=web1 滤成空), 以 null 终结编排; Room 偏好源的结果被彻底忽略
-        assertNull(selector.selected.value)
+        assertSelectedSource(sources.web2)
         job.assertCompleted()
     }
 

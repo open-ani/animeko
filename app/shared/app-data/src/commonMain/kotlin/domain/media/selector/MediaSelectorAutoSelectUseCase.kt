@@ -9,7 +9,6 @@
 
 package me.him188.ani.app.domain.media.selector
 
-import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitCancellation
@@ -49,68 +48,43 @@ class MediaSelectorAutoSelectUseCaseImpl(
     override suspend fun invoke(session: MediaFetchSession, mediaSelector: MediaSelector) {
         coroutineScope {
             val mediaSelectorSettingsFlow = getMediaSelectorSettingsFlow()
-            val preferKindFlow = mediaSelectorSettingsFlow.map { it.preferKind }
-
             val autoSelector = mediaSelector.autoSelect
 
-            // #355 播放时自动启用上次临时启用选择的数据源
+            // #355 播放时自动启用上次临时启用选择的数据源. 独立于选择流程, 不随选择结束而取消.
             launch {
-                if (getMediaSelectorSettingsFlow().first().autoEnableLastSelected) {
+                if (mediaSelectorSettingsFlow.first().autoEnableLastSelected) {
                     autoSelector.autoEnableLastSelected(session)
                 }
             }
 
+            val settings = mediaSelectorSettingsFlow.first()
+            val subjectId = session.request.first().subjectId.toIntOrNull()
+            val preferredWebSourceId = subjectId?.let { getPreferredWebMediaSource(it).first() }
+
+            if (settings.preferKind == MediaSourceKind.WEB) {
+                // 偏好 WEB: 记忆源 → 分阶段快速选择 → 全部结束后默认选择, 缓存随时可胜出. 一个纯策略, 一个执行循环.
+                val result = autoSelector.autoSelectWeb(
+                    session,
+                    sourceTiers = getMediaSelectorSourceTiers().first(),
+                    preferredWebMediaSourceId = preferredWebSourceId,
+                    fastSelect = settings.fastSelectWebKind,
+                    lowTierToleranceDuration = settings.fastSelectWebLowTierToleranceDuration,
+                )
+                logger.info { "autoSelectWeb result: $result" }
+                return@coroutineScope
+            }
+
+            // 其他偏好 (BT / 无偏好): 沿用原有编排. 三条路径竞速, 任一路径返回即结束; awaitCancellation() 表示放弃竞争但不结束编排.
             cancellableCoroutineScope {
                 fun <T> SelectBuilder<T>.resulting(block: suspend CoroutineScope.() -> T) {
                     this@cancellableCoroutineScope.async { block() }.onAwait { it }
                 }
 
                 select {
-                    val selectPreferredFailed = CompletableDeferred<Unit>()
-
-                    // 这个 clause 和下面 选缓存 与 兜底 一起竞争
-                    // 快速选择不和这些竞争, 快速选择在这个 clause 完成之后再启动
+                    // 记忆的 web 源
                     resulting {
-                        // subjectId 无效就等别的 clause.
-                        val subjectId = session.request.first().subjectId.toIntOrNull()
-                        if (subjectId == null) {
-                            selectPreferredFailed.complete(Unit)
-                            awaitCancellation()
-                        }
-
-                        val result = autoSelector.trySelectPreferredWebSource(
-                            session, getPreferredWebMediaSource(subjectId).first(),
-                        )
-
+                        val result = autoSelector.trySelectPreferredWebSource(session, preferredWebSourceId)
                         logger.info { "selectPreferredWebSource result: $result" }
-
-                        if (result == null) {
-                            selectPreferredFailed.complete(Unit)
-                            awaitCancellation()
-                        }
-                        result
-                    }
-
-                    // 快速自动选择数据源: 当按规则快速选择相应 Tier 的数据源. 仅在偏好 Web 时并且启用了快速选择时才执行.
-                    resulting {
-                        val selectorSettings = mediaSelectorSettingsFlow.first()
-                        if (!selectorSettings.fastSelectWebKind || selectorSettings.preferKind != MediaSourceKind.WEB) {
-                            // 没开启 fast select 就等别的 clause.
-                            awaitCancellation()
-                        }
-
-                        // 上面选完并且没结果再开始这个 clause
-                        selectPreferredFailed.await()
-
-                        val result = autoSelector.fastSelectWebSources(
-                            session,
-                            getMediaSelectorSourceTiers().first(),
-                            overrideUserSelection = false,
-                            blacklistMediaIds = emptySet(),
-                            selectorSettings.fastSelectWebLowTierToleranceDuration,
-                        )
-
-                        logger.info { "fastSelectWebSources result: $result" }
                         result ?: awaitCancellation()
                     }
 
@@ -121,9 +95,12 @@ class MediaSelectorAutoSelectUseCaseImpl(
                         result ?: awaitCancellation()
                     }
 
-                    // 兜底策略: 等所有数据源都准备好后, 选择一个.
+                    // 兜底策略: 等偏好类型的数据源都准备好后, 选择一个.
                     resulting {
-                        val result = autoSelector.awaitCompletedAndSelectDefault(session, preferKindFlow)
+                        val result = autoSelector.awaitCompletedAndSelectDefault(
+                            session,
+                            mediaSelectorSettingsFlow.map { it.preferKind },
+                        )
                         logger.info { "awaitCompletedAndSelectDefault result: $result" }
                         result
                     }

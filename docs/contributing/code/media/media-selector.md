@@ -145,8 +145,39 @@ Sealed class [`MaybeExcludedMedia`][MaybeExcludedMedia] 表示一个可能被排
 例如 A 源的 channel A/B 为 tier 0、B 源的 channel C 为 tier 1 时，排序为
 `A/channelA、A/channelB → B/channelC`，而不是按数据源整体分块。
 
-快速选择（`MediaSelectorAutoSelect.fastSelectWebSources`）同样按 channel 粒度判定：
-只有有效阶级不超过阈值的资源才会被立即选择。
+### Web 自动选择 (决策核)
+
+偏好 WEB 时的自动选择由 `domain/media/selector/engine/` 下的三层组成，取代了旧的 `select{}` 四路竞速：
+
+| 层 | 文件 | 职责 |
+|---|---|---|
+| 快照 | `AutoSelectSnapshot.kt` | `MediaFetchSession.sourceSnapshots()` 观察每个源的 (状态, 结果)；`MediaSelector.autoSelectSnapshots()` 在同一次 emission 内同步算出过滤、排序、偏好筛选，产出 `AutoSelectSnapshot`。不经过 UI 用的 `filteredCandidates` 等带缓存的派生流，因此没有“源已完成但候选还没吸收结果”的中间态。 |
+| 纯决策 | `WebAutoSelectPolicy.kt`、`MediaSelectionDecider.kt` | `decideWebAutoSelect(snapshot, config, stage)` 是无 suspend、无副作用、无时间的纯函数，返回 `Wait` / `ReleasePreferredSourceGate` / `Select` / `Finish`。`findMediaByPreference` 是原 DFS 偏好选择的纯函数版本。 |
+| 执行 | `WebAutoSelectDriver.kt` | `runWebAutoSelect` 是唯一的非纯部分：`combine(快照, 阶段, 当前选择)` 每次变化调用一次策略并执行决定；两个计时器在记忆源放行后推进阶段；提交用 `selectAutomatically` 做 CAS，不更新偏好。 |
+
+`MediaSelectorAutoSelect` 的 `autoSelectWeb`、`fastSelectWebSources`、`trySelectPreferredWebSource` 都是同一策略的不同配置
+（`WebAutoSelectConfig`）。偏好 BT 或无偏好时仍沿用原有编排（记忆源、缓存、兜底三条路径竞速）。
+
+策略按固定顺序求值，优先级是结构性的，不依赖并发时序：
+
+1. 开启 `selectCache` 时任何阶段有本地缓存就选缓存；
+2. `PREFERRED_SOURCE` 阶段：记忆的 web 源未结束则等；结束后只在它的偏好候选里选；选不出则放行并开始计时；
+3. 分阶段规则（所有 WEB 源都结束时直接按 FUZZY 评估）：
+
+| 阶段 | 时间（从放行起算） | 可选的资源 | 组的顺序 |
+|---|---|---|---|
+| INSTANT | 0 到 `fastSelectWebLowTierToleranceDuration`（默认 5 秒） | 有效阶级 ≤ 0 且条目名称精确匹配 | 单组 |
+| EXACT_ONLY | 至 `DefaultFuzzyFallbackDuration`（15 秒） | 任意阶级，只要精确匹配 | 按有效阶级升序逐组 |
+| FUZZY | 15 秒后，或所有 WEB 源都已结束 | 任意 | 精确匹配各阶级升序，再模糊匹配各阶级升序 |
+
+   组内先在用户偏好候选里按偏好选（字幕组放开），再放开全部偏好选；严格逐组保证阶级优先级不会被数据源列表顺序或分辨率、语言偏好跨阶级覆盖。覆盖模式（播放失败换源）下当前选择若在组内则保留它。
+4. 所有 WEB 源都结束仍选不出：编排入口按偏好从偏好候选（含非 WEB）里选一个（旧 `trySelectDefault` 语义），否则结束。
+   “都结束”的口径与旧兜底一致：一个 WEB 源都没启用时改为等所有源结束，只用 BT 或缓存的用户仍能得到默认选择。
+
+“精确匹配”指 `MatchMetadata.subjectMatchKind == EXACT`；数据源搜到 OVA 剧集时条目名加 “OVA” 也算精确。阶级判定按 channel 粒度。
+
+与旧实现相比的故意变更：所有 WEB 源结束后会放宽偏好选择（旧实现只看偏好候选，偏好字幕组或偏好源不在候选中时什么都不选）；
+模糊匹配的 T0 资源不再被秒选；所有 WEB 源都结束后不再等容忍窗。
 
 [MediaSelectorFilterSortAlgorithm]: ../../../../app/shared/app-data/src/commonMain/kotlin/domain/media/selector/filter/MediaSelectorFilterSortAlgorithm.kt
 

@@ -32,6 +32,7 @@ import me.him188.ani.datasources.api.source.MediaSourceKind.WEB
 import me.him188.ani.test.DisabledOnNative
 import kotlin.test.Test
 import kotlin.test.assertNotNull
+import kotlin.test.assertNull
 import kotlin.time.Duration.Companion.seconds
 
 /**
@@ -307,6 +308,183 @@ class MediaSelectorSourceTierAutoSelectTest {
                 cancelAndIgnoreRemainingEvents()
             }
         }
+
+    ///////////////////////////////////////////////////////////////////////////
+    // 两段超时: 精确匹配优先, 模糊匹配只能在第二段超时后兜底
+    ///////////////////////////////////////////////////////////////////////////
+
+    @Test
+    fun `fuzzy t0 is not selected instantly and waits for fuzzy fallback`() = runFetchMediaSelectorTestSuite {
+        initSubject()
+        val (handles, session, sources) = configureFetchSession {
+            object {
+                val web1 by web { tier = 0 }
+                val web2 by web { tier = 2 } // 一直在查询中
+            }
+        }
+        createFastSelectFlow(session).test {
+            expectNoEvents()
+            sources.web1.complete(fuzzyMedia())
+            testScope().runCurrent()
+            expectNoEvents() // T0 但只是模糊匹配, 不能秒选
+
+            testScope().advanceTimeBy(5.seconds)
+            testScope().runCurrent()
+            expectNoEvents() // 第一段超时后仍只允许精确匹配
+
+            testScope().advanceTimeBy(10.seconds)
+            testScope().runCurrent()
+            listOf(assertNotNull(awaitItem())).assert {
+                single().assert(source = sources.web1) // 第二段超时后允许模糊匹配
+            }
+            cancelAndIgnoreRemainingEvents()
+        }
+    }
+
+    @Test
+    fun `exact t2 beats fuzzy t0 after first timeout`() = runFetchMediaSelectorTestSuite {
+        initSubject()
+        val (handles, session, sources) = configureFetchSession {
+            object {
+                val web1 by web { tier = 0 }
+                val web2 by web { tier = 2 }
+                val web3 by web { tier = 0 } // 一直在查询中
+            }
+        }
+        createFastSelectFlow(session).test {
+            expectNoEvents()
+            sources.web1.complete(fuzzyMedia())
+            sources.web2.complete(media(kind = WEB, subjectName = initApi.subjectName))
+            testScope().runCurrent()
+            expectNoEvents()
+
+            testScope().advanceTimeBy(5.seconds)
+            testScope().runCurrent()
+            listOf(assertNotNull(awaitItem())).assert {
+                single().assert(source = sources.web2)
+            }
+            cancelAndIgnoreRemainingEvents()
+        }
+    }
+
+    @Test
+    fun `after first timeout exact matches are ordered by tier not by source order`() = runFetchMediaSelectorTestSuite {
+        initSubject()
+        val (handles, session, sources) = configureFetchSession {
+            object {
+                val web2 by web { tier = 2 } // 在数据源列表里排在前面
+                val web1 by web { tier = 1 }
+                val web0 by web { tier = 0 } // 一直在查询中
+            }
+        }
+        createFastSelectFlow(session).test {
+            expectNoEvents()
+            sources.web2.complete(media(kind = WEB, subjectName = initApi.subjectName))
+            sources.web1.complete(media(kind = WEB, subjectName = initApi.subjectName))
+            testScope().runCurrent()
+            expectNoEvents()
+
+            testScope().advanceTimeBy(5.seconds)
+            testScope().runCurrent()
+            listOf(assertNotNull(awaitItem())).assert {
+                single().assert(source = sources.web1)
+            }
+            cancelAndIgnoreRemainingEvents()
+        }
+    }
+
+    @Test
+    fun `fuzzy fallback prefers exact match of any tier over fuzzy low tier`() = runFetchMediaSelectorTestSuite {
+        initSubject()
+        val (handles, session, sources) = configureFetchSession {
+            object {
+                val web1 by web { tier = 0 }
+                val web2 by web { tier = 2 }
+            }
+        }
+        createFastSelectFlow(session).test {
+            expectNoEvents()
+            sources.web1.complete(fuzzyMedia())
+            sources.web2.complete(media(kind = WEB, subjectName = initApi.subjectName))
+            testScope().runCurrent()
+            // 两个源都结束了, 直接进入兜底阶段: 精确匹配的 T2 优先于模糊匹配的 T0
+            listOf(assertNotNull(awaitItem())).assert {
+                single().assert(source = sources.web2)
+            }
+            cancelAndIgnoreRemainingEvents()
+        }
+    }
+
+    @Test
+    fun `all web sources completed enters fuzzy fallback immediately`() = runFetchMediaSelectorTestSuite {
+        initSubject()
+        val (handles, session, sources) = configureFetchSession {
+            object {
+                val bt1 by bt() // 非 WEB 源不影响 "所有 WEB 源都已结束" 的判定
+                val web1 by web { tier = 2 }
+                val web2 by web { tier = 0 }
+            }
+        }
+        createFastSelectFlow(session).test {
+            expectNoEvents()
+            sources.web1.complete(fuzzyMedia())
+            sources.web2.complete(fuzzyMedia())
+            testScope().runCurrent()
+            listOf(assertNotNull(awaitItem())).assert {
+                single().assert(source = sources.web2) // 模糊匹配之间按 tier 排序
+            }
+            cancelAndIgnoreRemainingEvents()
+        }
+    }
+
+    @Test
+    fun `returns null when all web sources completed without selectable media`() = runFetchMediaSelectorTestSuite {
+        initSubject()
+        val (handles, session, sources) = configureFetchSession {
+            object {
+                val web1 by web { tier = 0 }
+                val web2 by web { tier = 2 }
+            }
+        }
+        createFastSelectFlow(session).test {
+            expectNoEvents()
+            sources.web1.complete(media(kind = WEB, subjectName = "Invalid subject name"))
+            sources.web2.complete(emptyList<Media>())
+            testScope().runCurrent()
+            assertNull(awaitItem())
+            awaitComplete()
+        }
+    }
+
+    @Test
+    fun `returns null when user selected manually`() = runFetchMediaSelectorTestSuite {
+        initSubject()
+        val (handles, session, sources) = configureFetchSession {
+            object {
+                val web1 by web { tier = 2 }
+                val web2 by web { tier = 0 } // 一直在查询中
+            }
+        }
+        val manual = media(kind = WEB, subjectName = initApi.subjectName)
+        createFastSelectFlow(session).test {
+            expectNoEvents()
+            sources.web1.complete(manual)
+            testScope().runCurrent()
+            expectNoEvents()
+
+            selector.select(selector.filteredCandidatesMedia.first().single { it.mediaId == manual.mediaId })
+            testScope().advanceTimeBy(5.seconds)
+            testScope().runCurrent()
+            assertNull(awaitItem())
+            awaitComplete()
+        }
+    }
+
+    /**
+     * 能通过条目名称过滤 (包含条目名), 但不是精确匹配的资源.
+     */
+    private fun MediaSelectorTestSuite.fuzzyMedia() =
+        media(kind = WEB, subjectName = "${initApi.subjectName} fuzzy season")
 
     private fun FetchMediaSelectorTestSuite.createFastSelectFlow(
         session: MediaFetchSession,

@@ -42,9 +42,9 @@ interface MediaSource {
 为最高阶级。阶级影响 [MediaSelector](media-selector.md) 的两个环节：
 
 - **排序**：有效阶级低的资源排在前面，详见[排序阶段](media-selector.md#排序阶段)；
-- **快速选择**：阶级不超过阈值（目前为 `0`）的 WEB 数据源查询完成后会被立即选择，
-  无需等待其他数据源。超过阈值的数据源只能在等待一段时间后通过兜底逻辑被选择。
-  入口为 `MediaSelectorAutoSelect.fastSelectWebSources`。
+- **快速选择**：阶级不超过阈值（目前为 `0`）且条目名称精确匹配的 WEB 资源在其数据源查询完成后会被立即选择，
+  无需等待其他数据源。超过阈值的数据源要等第一段超时（或所有 WEB 源都已结束查询）后按阶级升序选择，模糊匹配的资源要等第二段超时后才会被兜底选中。
+  入口为 `MediaSelectorAutoSelect.fastSelectWebSources`，详见 [Web 自动选择](media-selector.md#web-自动选择-决策核)。
 
 阶级来源于数据源配置 `MediaSourceArguments.tier`，通常由订阅提供；用户未配置时使用回退值
 `MediaSourceTier.Fallback`（`2`）。
@@ -67,7 +67,7 @@ interface MediaSource {
 
 - 同一数据源的不同 channel 可以与其他数据源交叉排序；
 - 数据源整体阶级较高（数值大），但拥有一个 tier 0 channel 时，该 channel 的资源仍可被快速选择立即选中；
-- 反之，数据源整体是 tier 0，但被降级的 channel 的资源不会被立即选中，只能走兜底。
+- 反之，数据源整体是 tier 0，但被降级的 channel 的资源不会被立即选中，只能在第一段超时后按阶级参与选择。
 
 订阅 JSON 中的配置示例（`SelectorMediaSourceArguments` 片段）：
 
