@@ -231,8 +231,10 @@ abstract class BaseJellyfinMediaSource(
                             isExplicitSeasonTitle && candidate.hasExactContainerTitle(searchName)
                         val hasIsolatedSeriesEvidence =
                             seriesSubjectMatch == ProviderIdMatch.MATCH || matchesExplicitSeasonTitle
-                        val usesLocalSeasonNumbering =
-                            seasons.size == 1 && hasIsolatedSeriesEvidence
+                        // S00 specials do not make an isolated series a multi-season library.
+                        // Only its sole non-special season can use the series' subject identity.
+                        val locallyNumberedSeason = seasons.singleOrNull { it.IndexNumber != 0 }
+                            ?.takeIf { hasIsolatedSeriesEvidence }
                         val matchedSeasons = seasons.mapNotNull { season ->
                             val seasonSubjectMatch = season.containerSubjectIdMatch(query)
                             when {
@@ -240,7 +242,7 @@ abstract class BaseJellyfinMediaSource(
                                 seasonSubjectMatch == ProviderIdMatch.MATCH ->
                                     MatchedSeason(season, inheritedSubjectMatch = true)
 
-                                usesLocalSeasonNumbering ->
+                                season == locallyNumberedSeason ->
                                     MatchedSeason(
                                         season,
                                         inheritedSubjectMatch =
