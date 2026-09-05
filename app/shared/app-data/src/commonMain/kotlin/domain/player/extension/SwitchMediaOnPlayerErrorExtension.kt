@@ -10,6 +10,7 @@
 package me.him188.ani.app.domain.player.extension
 
 import androidx.annotation.VisibleForTesting
+import kotlin.time.Duration.Companion.seconds
 import kotlinx.collections.immutable.persistentHashSetOf
 import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.delay
@@ -25,10 +26,9 @@ import kotlinx.coroutines.launch
 import me.him188.ani.app.domain.episode.EpisodeSession
 import me.him188.ani.app.domain.episode.MediaFetchSelectBundle
 import me.him188.ani.app.domain.media.fetch.MediaFetchSession
+import me.him188.ani.app.domain.media.selector.MediaAutoSelector
 import me.him188.ani.app.domain.media.selector.MediaSelector
 import me.him188.ani.app.domain.media.selector.MediaSelectorSourceTiers
-import me.him188.ani.app.domain.media.selector.WebAutoSelectConfig
-import me.him188.ani.app.domain.media.selector.runWebAutoSelect
 import me.him188.ani.app.domain.mediasource.GetMediaSelectorSourceTiersUseCase
 import me.him188.ani.app.domain.player.VideoLoadingState
 import me.him188.ani.app.domain.settings.GetMediaSelectorSettingsFlowUseCase
@@ -39,7 +39,6 @@ import me.him188.ani.utils.logging.logger
 import org.koin.core.Koin
 import org.openani.mediamp.MediaStatus
 import org.openani.mediamp.PlayerState
-import kotlin.time.Duration.Companion.seconds
 
 /**
  * 当播放失败时, 自动切换到下一个可选择的 media.
@@ -185,15 +184,18 @@ internal class PlayerLoadErrorHandler(
             return
         }
 
-        val result = mediaSelector.runWebAutoSelect(
+        val result = MediaAutoSelector(mediaSelector).select(
             session,
-            WebAutoSelectConfig(
-                sourceTiers = sourceTiers,
+            MediaAutoSelector.Config(
+                selectCache = false,
                 blacklist = blacklistedMediaIds,
-                // 错误切换不需要等太长时间。
-                exactMatchAfter = 1.seconds,
-                fuzzyMatchAfter = 1.seconds,
-                waitForPendingSources = false,
+                web = MediaAutoSelector.Web(
+                    sourceTiers = sourceTiers,
+                    // 错误切换不需要等太长时间。
+                    exactMatchAfter = 1.seconds,
+                    fuzzyMatchAfter = 1.seconds,
+                    waitForPendingSources = false,
+                ),
             ),
             expectedSelection = failedMedia,
         )

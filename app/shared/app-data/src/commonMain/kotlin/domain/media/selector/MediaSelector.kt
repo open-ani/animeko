@@ -80,7 +80,7 @@ import kotlin.coroutines.CoroutineContext
  *
  * ### 快速选择
  *
- * Web 自动选择由纯策略 [decideWebAutoSelect] 与单一执行循环实现。
+ * 自动选择由 [MediaAutoSelector] 统一管理决策、阶段与执行循环。
  * 先等待按番剧记忆的 Web 源；没有可选结果后才开始计时，本地缓存仍可提前选中。
  * - 第一阶段只接受有效 tier 为 0 的精确匹配资源。
  * - 到达 [MediaSelectorSettings.fastSelectWebLowTierToleranceDuration]（默认 5 秒）后，
@@ -209,7 +209,7 @@ interface MediaSelector {
      * 尝试使用目前的偏好设置, 自动选择一个. 当已经有用户选择或默认选择时返回 `null`.
      *
      * @return 成功选择且已经记录的 [Media]. 返回 `null` 时表示没有选择.
-     * @see autoSelect
+     * @see MediaAutoSelector
      */
     suspend fun trySelectDefault(): Media?
 
@@ -257,7 +257,7 @@ interface MediaSelector {
     /**
      * 尝试选择缓存 ([MediaSourceKind.LocalCache]) 作为默认选择, 如果没有缓存则不做任何事情
      * @return 成功选择且已经记录的缓存, 若没有缓存或用户已经手动选择了一个则返回 `null`
-     * @see autoSelect
+     * @see MediaAutoSelector
      */
     suspend fun trySelectCached(): Media?
 

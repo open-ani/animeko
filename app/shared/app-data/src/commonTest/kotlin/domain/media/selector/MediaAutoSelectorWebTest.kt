@@ -19,12 +19,12 @@ import kotlinx.coroutines.test.runCurrent
 import me.him188.ani.app.data.models.preference.MediaPreference
 import me.him188.ani.app.data.models.preference.MediaSelectorSettings
 import me.him188.ani.app.domain.media.fetch.MediaFetchSession
-import me.him188.ani.app.domain.media.fetch.isFinal
 import me.him188.ani.app.domain.media.selector.testFramework.FetchMediaSelectorTestSuite
 import me.him188.ani.app.domain.media.selector.testFramework.channelTiers
 import me.him188.ani.app.domain.media.selector.testFramework.runFetchMediaSelectorTestSuite
 import me.him188.ani.app.domain.media.selector.testFramework.tier
 import me.him188.ani.datasources.api.Media
+import me.him188.ani.datasources.api.source.MediaSourceKind.LocalCache
 import me.him188.ani.datasources.api.source.MediaSourceKind.WEB
 import me.him188.ani.test.DisabledOnNative
 import kotlin.test.Test
@@ -36,7 +36,7 @@ import kotlin.time.Duration
 import kotlin.time.Duration.Companion.seconds
 
 @DisabledOnNative
-class WebMediaAutoSelectTest {
+class MediaAutoSelectorWebTest {
     @Test
     fun `exact T0 at eight seconds beats an earlier fuzzy source`() = runFetchMediaSelectorTestSuite(cachingEnabled = true) {
         initWeb()
@@ -113,12 +113,20 @@ class WebMediaAutoSelectTest {
                 val exact by web { tier = 2 }
             }
         }
+        val context = preferenceApi.mediaSelectorContext.value
+        preferenceApi.mediaSelectorContext.value = context.copy(subjectFinished = null)
+        val job = launchSelection(session)
         sources.fuzzy.complete(media(kind = WEB, subjectName = "Example Series Special"))
         sources.exact.complete(media(kind = WEB, subjectName = "Example Series"))
+        testScope().advanceTimeBy(15.seconds)
         testScope().runCurrent()
-        val snapshot = selector.autoSelectSnapshots(session.selectionSnapshots()).first { it.candidates.size == 2 && it.sources.all { source -> source.state.isFinal } }
-        val decision = decideWebAutoSelect(snapshot, WebAutoSelectConfig(preferenceApi.sourceTiers!!), WebAutoSelectStage.Fuzzy)
-        assertEquals(sources.exact.instance.mediaSourceId, (decision as WebAutoSelectDecision.Select).media.mediaSourceId)
+        assertNull(selector.selected.value)
+        assertFalse(job.isCompleted)
+        // Both candidates become selectable after the fuzzy deadline.
+        preferenceApi.mediaSelectorContext.value = context
+        testScope().runCurrent()
+        assertEquals(sources.exact.instance.mediaSourceId, selector.selected.value?.mediaSourceId)
+        assertTrue(job.isCompleted)
     }
 
     @Test
@@ -285,7 +293,9 @@ class WebMediaAutoSelectTest {
             }
         }
         val job = testScope().launch {
-            selector.runWebAutoSelect(session, WebAutoSelectConfig(preferenceApi.sourceTiers!!, fastSelect = false))
+            MediaAutoSelector(selector).select(session, MediaAutoSelector.Config(
+                web = MediaAutoSelector.Web(preferenceApi.sourceTiers!!, fastSelect = false),
+            ))
         }
         sources.web1.complete(media(kind = WEB, subjectName = "Example Series Special"))
         testScope().runCurrent()
@@ -326,7 +336,11 @@ class WebMediaAutoSelectTest {
         val previous = media(kind = WEB, subjectName = "Example Series")
         selector.select(previous)
         val job = testScope().launch {
-            selector.autoSelect.fastSelectWebSources(session, preferenceApi.sourceTiers!!, overrideUserSelection = true)
+            MediaAutoSelector(selector).select(
+                session,
+                MediaAutoSelector.Config(web = MediaAutoSelector.Web(preferenceApi.sourceTiers!!)),
+                expectedSelection = previous,
+            )
         }
         testScope().runCurrent()
         val manual = media(kind = WEB, subjectName = "Example Series")
@@ -337,6 +351,27 @@ class WebMediaAutoSelectTest {
         testScope().runCurrent()
         assertTrue(job.isCompleted)
         assertEquals(manual, selector.selected.value)
+    }
+
+    @Test
+    fun `completed empty Web sources keep waiting for a pending cache`() = runFetchMediaSelectorTestSuite {
+        initWeb()
+        val (_, session, sources) = configureFetchSession {
+            object {
+                val web1 by web()
+                val cached by localCache()
+            }
+        }
+        val job = launchSelection(session)
+        sources.web1.complete(emptyList<Media>())
+        testScope().advanceTimeBy(15.seconds)
+        testScope().runCurrent()
+        assertFalse(job.isCompleted)
+        assertNull(selector.selected.value)
+        sources.cached.complete(media(kind = LocalCache, subjectName = "Example Series"))
+        testScope().runCurrent()
+        assertTrue(job.isCompleted)
+        assertEquals(sources.cached.instance.mediaSourceId, selector.selected.value?.mediaSourceId)
     }
 
     private fun FetchMediaSelectorTestSuite.initWeb() {
@@ -353,11 +388,12 @@ class WebMediaAutoSelectTest {
         preferredSourceId: String? = null,
         exactAfter: Duration = 5.seconds,
     ): Job = scope.launch(start = CoroutineStart.UNDISPATCHED) {
-        selector.runWebAutoSelect(session, WebAutoSelectConfig(
-            sourceTiers = preferenceApi.sourceTiers!!,
+        MediaAutoSelector(selector).select(session, MediaAutoSelector.Config(
             preferredSourceId = preferredSourceId,
-            selectCache = true,
-            exactMatchAfter = exactAfter,
+            web = MediaAutoSelector.Web(
+                sourceTiers = preferenceApi.sourceTiers!!,
+                exactMatchAfter = exactAfter,
+            ),
         ))
     }
 

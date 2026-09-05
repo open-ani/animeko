@@ -71,8 +71,8 @@
 4. `MediaSourceMediaFetcher` 并发调用每个启用实例的 `instance.source.fetch(...)`，
    合并进 `cumulativeResults`。
 5. `DefaultMediaSelector` 对查询到的 `Media` 过滤、排序、选择。
-6. `MediaSelectorAutoSelectUseCaseImpl` 执行自动选择策略：偏好的 web 源、fast web select、
-   缓存优先，最后兜底。
+6. `MediaSelectorAutoSelectUseCaseImpl` 准备配置并启用上次使用的源，调用
+   `MediaAutoSelector.select`；后者统一处理缓存、记忆源、WEB 两段超时或 BT 完成条件。
 7. `EpisodeFetchSelectPlayState.LoadMediaOnSelectExtension` 监听 `mediaSelector.selected` 并调用
    `PlayerSession.loadMedia(...)`。
 8. `PlayerSession.loadMedia(...)` 通过 `MediaResolver.resolve(...)` 解析，打开得到的
@@ -89,9 +89,8 @@
   `MediaSourceManagerImpl.mediaSourceTiersFlow()` 从各实例的
   `MediaSourceArguments.tier` / `channelTiers` 汇总。排序按
   `(mediaSourceId, alliance)` 查有效阶级；快速选择
-  `MediaSelectorAutoSelect.fastSelectWebSources` 用 `getBestTier(...)` 判定候选数据源，
-  并通过 `awaitSelectFromMediaSources` 的 `candidateMediaFilter` 参数把秒选限制在低阶级
-  channel 的资源上。
+  `MediaAutoSelector` 按资源的有效 tier 限制即时选择，并在后续阶段先按精确匹配、
+  再按 tier 排序；只在最优组内应用偏好。
 - 查询结果并不天然“正确”；数据源实现应尽量返回准确的 `episodeRange`，`MediaSelector`
   只是在其上做额外的过滤和排序。
 

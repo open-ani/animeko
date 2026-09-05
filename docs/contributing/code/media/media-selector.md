@@ -145,12 +145,15 @@ Sealed class [`MaybeExcludedMedia`][MaybeExcludedMedia] 表示一个可能被排
 例如 A 源的 channel A/B 为 tier 0、B 源的 channel C 为 tier 1 时，排序为
 `A/channelA、A/channelB → B/channelC`，而不是按数据源整体分块。
 
-快速选择（`MediaSelectorAutoSelect.fastSelectWebSources`）同样按 channel 粒度判定：
+快速选择（`MediaAutoSelector.select` 的 WEB 阶段）同样按 channel 粒度判定：
 只有有效阶级不超过阈值的资源才会被立即选择。
 
 ## Web 自动选择
 
-Web 播放入口使用 `WebMediaAutoSelectPolicy` 纯决策函数和 `WebMediaAutoSelect` 单一执行循环。
+播放自动选择和播放失败换源统一调用 `MediaAutoSelector.select`。
+`MediaSelectorAutoSelectUseCase` 只负责读取配置、subject 偏好及启用上次使用的源；
+`MediaAutoSelector` 在一个执行循环中管理源订阅、阶段、内部纯决策及最终选择。
+配置、阶段与决策类型都归属该类，不再提供 `.autoSelect` 或单独的快速选择入口。
 按番剧记忆的 Web 源保持最高优先级并阻塞后续阶段；本地缓存在等待期间仍可选中。
 记忆源不存在或最终选不出资源后，开始两个截止时间：
 
@@ -178,3 +181,14 @@ Web 播放入口使用 `WebMediaAutoSelectPolicy` 纯决策函数和 `WebMediaAu
 
 [MaybeExcludedMedia]: ../../../../app/shared/app-data/src/commonMain/kotlin/domain/media/selector/MaybeExcludedMedia.kt
 
+## BT 与等待完成的选择
+
+未启用 WEB 阶段时，同一个 `MediaAutoSelector` 执行按完成条件选择：
+
+- 记忆的 WEB 源完成后仍可优先选择，本地缓存也可在其他源查询期间选中。
+- 等偏好类型的启用源全部完成后，按原有偏好规则选择；没有匹配候选时结束。
+- 偏好类型没有启用的源，或没有类型偏好时，等待所有源完成。
+- 等待 BT 完成不受记忆 WEB 源阻塞，也不使用 WEB 的两段超时。
+
+下载缓存请求只需 `session.awaitCompletion()` 后调用 `mediaSelector.trySelectDefault()`，
+不进入播放自动选择的计时流程。

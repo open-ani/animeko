@@ -17,7 +17,7 @@ import me.him188.ani.datasources.api.Media
 import me.him188.ani.datasources.api.source.MediaSourceKind
 import me.him188.ani.datasources.api.topic.hasSeason
 
-/** Pure preference decision shared by legacy selection and the Web policy. */
+/** Pure preference matching shared by MediaSelector operations and MediaAutoSelector. */
 internal fun findMediaByPreference(
     candidates: List<MaybeExcludedMedia.Included>,
     mergedPreference: MediaPreference,
