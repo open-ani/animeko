@@ -57,6 +57,7 @@ import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.unit.dp
 import com.github.panpf.sketch.LocalPlatformContext
+import com.github.panpf.sketch.PlatformContext
 import com.github.panpf.sketch.rememberAsyncImageState
 import com.github.panpf.sketch.request.ImageRequest
 import com.github.panpf.sketch.request.LoadState
@@ -218,13 +219,7 @@ fun ImageViewerContent(
         if (model != null) {
             val platformContext = LocalPlatformContext.current
             val request = remember(platformContext, model, decodeSize) {
-                ImageRequest(platformContext, model) {
-                    if (decodeSize != null) {
-                        // 只按 2 的幂采样, 不裁剪; 宽高都不超过 decodeSize
-                        size(decodeSize.width, decodeSize.height)
-                        precision(Precision.SMALLER_SIZE)
-                    }
-                }
+                imageViewerImageRequest(platformContext, model, decodeSize)
             }
             SketchZoomAsyncImage(
                 request = request,
@@ -394,4 +389,19 @@ fun imageViewerExportDirectory(context: ContextMP): SystemPath {
         runCatching { directory.deleteRecursively() }
     }
     return directory
+}
+
+/**
+ * 查看器加载图片用的请求. 独立窗口预加载 (拿尺寸) 和显示都用同一个请求, 第二次直接命中内存缓存.
+ *
+ * @param decodeSize 解码尺寸上限 (px), 见 [ImageViewerContent].
+ */
+fun imageViewerImageRequest(context: PlatformContext, model: String, decodeSize: IntSize?): ImageRequest {
+    return ImageRequest(context, model) {
+        if (decodeSize != null) {
+            // 只按 2 的幂采样, 不裁剪; 宽高都不超过 decodeSize
+            size(decodeSize.width, decodeSize.height)
+            precision(Precision.SMALLER_SIZE)
+        }
+    }
 }

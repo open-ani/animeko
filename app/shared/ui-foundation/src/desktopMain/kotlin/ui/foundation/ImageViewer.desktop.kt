@@ -16,9 +16,12 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.setValue
 import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -53,18 +56,25 @@ import androidx.compose.ui.window.Window
 import androidx.compose.ui.window.WindowPosition
 import androidx.compose.ui.window.rememberWindowState
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.github.panpf.sketch.LocalPlatformContext
+import com.github.panpf.sketch.request.ImageResult
 import com.github.panpf.zoomimage.compose.zoom.ZoomableState
 import com.github.panpf.zoomimage.zoom.GestureType
 import com.github.panpf.zoomimage.zoom.MouseWheelScaleCalculator
 import io.github.vinceglb.filekit.dialogs.FileKitDialogSettings
+import kotlinx.coroutines.async
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withTimeoutOrNull
 import me.him188.ani.app.platform.PlatformWindow
 import me.him188.ani.app.platform.window.MacTrackpadGestures
 import me.him188.ani.app.platform.window.rememberLayoutHitTestOwner
+import me.him188.ani.app.ui.foundation.LocalSketch
 import me.him188.ani.app.ui.foundation.imageviewer.FileKitImageFileSaver
 import me.him188.ani.app.ui.foundation.imageviewer.ImageViewerContent
 import me.him188.ani.app.ui.foundation.imageviewer.ImageViewerExportedFile
+import me.him188.ani.app.ui.foundation.imageviewer.ImageViewerWindowBounds
 import me.him188.ani.app.ui.foundation.imageviewer.computeImageViewerWindowBounds
+import me.him188.ani.app.ui.foundation.imageviewer.imageViewerImageRequest
 import me.him188.ani.app.ui.foundation.imageviewer.screenDensity
 import me.him188.ani.app.ui.foundation.imageviewer.usableScreenArea
 import me.him188.ani.app.ui.foundation.layout.LocalPlatformWindow
@@ -86,6 +96,7 @@ import java.awt.datatransfer.UnsupportedFlavorException
 import java.awt.image.BufferedImage
 import java.io.File
 import kotlin.math.roundToInt
+import kotlin.time.Duration.Companion.milliseconds
 
 private val logger = logger("ImageViewer")
 
@@ -129,10 +140,44 @@ private fun ImageViewerWindow(
 ) {
     val model by handler.imageModel.collectAsStateWithLifecycle()
     val onCloseState = rememberUpdatedState(onClose)
-    // 图片加载前先用一个不大的初始尺寸, 加载后按图片大小调整 (见 computeImageViewerWindowBounds).
+    val screen = remember(hostWindow) { usableScreenArea(hostWindow) }
+    val density = remember(hostWindow) { screenDensity(hostWindow) }
+    // Sketch 只按 2 的幂采样. 上限放宽到屏幕的 2 倍, 略大于屏幕的图不会被减半后再 1:1 显示得偏小.
+    val decodeSize = remember(screen, density) {
+        IntSize(
+            (screen.width.value * density * DECODE_SIZE_MULTIPLIER).roundToInt(),
+            (screen.height.value * density * DECODE_SIZE_MULTIPLIER).roundToInt(),
+        )
+    }
+
+    // URL 里没有图片尺寸, 先在宿主窗口里把图加载出来拿到尺寸, 再按尺寸开窗口, 避免窗口开了之后再变大小.
+    // 加载超过 PREFETCH_TIMEOUT 就先按默认尺寸开窗口 (给用户反馈), 加载完再调整.
+    val sketch = LocalSketch.current
+    val platformContext = LocalPlatformContext.current
+    val initialModel = remember { model }
+    var prefetchedBounds by remember { mutableStateOf<ImageViewerWindowBounds?>(null) }
+    var prefetchTimedOut by remember { mutableStateOf(initialModel == null) }
+    LaunchedEffect(sketch, platformContext, initialModel) {
+        val m = initialModel ?: return@LaunchedEffect
+        val result = async { sketch.execute(imageViewerImageRequest(platformContext, m, decodeSize)) }
+        // 超时只是不再等, 不取消加载 (窗口打开后会命中同一个请求的缓存)
+        val timely = withTimeoutOrNull(PREFETCH_TIMEOUT) { result.await() }
+        if (timely == null) prefetchTimedOut = true
+        val success = result.await() as? ImageResult.Success ?: run {
+            prefetchTimedOut = true
+            return@LaunchedEffect
+        }
+        prefetchedBounds = computeImageViewerWindowBounds(
+            IntSize(success.image.width, success.image.height), density, screen,
+        )
+    }
+    val initialBounds = prefetchedBounds
+    if (initialBounds == null && !prefetchTimedOut) return
+
     val windowState = rememberWindowState(
-        size = INITIAL_WINDOW_SIZE,
-        position = WindowPosition.Aligned(Alignment.Center),
+        size = initialBounds?.size ?: INITIAL_WINDOW_SIZE,
+        position = initialBounds?.let { WindowPosition.Absolute(it.position.x, it.position.y) }
+            ?: WindowPosition.Aligned(Alignment.Center),
     )
     // 沿用主窗口的图标 (Windows/Linux 任务栏).
     val icon = remember(hostWindow) {
@@ -166,8 +211,6 @@ private fun ImageViewerWindow(
         }
         val window = this.window
         val saveDialogTitle = stringResource(Lang.image_viewer_save)
-        val screen = remember(hostWindow) { usableScreenArea(hostWindow) }
-        val density = remember(hostWindow) { screenDensity(hostWindow) }
         val content: @Composable () -> Unit = {
             ImageViewerContent(
                 model = model,
@@ -188,17 +231,14 @@ private fun ImageViewerWindow(
                 },
                 // 图片不放大, 只缩小; 窗口贴合图片 (见 computeImageViewerWindowBounds).
                 contentScale = ContentScale.Inside,
-                // Sketch 只按 2 的幂采样. 上限放宽到屏幕的 2 倍, 略大于屏幕的图不会被减半后再 1:1 显示得偏小.
-                decodeSize = remember(screen, density) {
-                    IntSize(
-                        (screen.width.value * density * DECODE_SIZE_MULTIPLIER).roundToInt(),
-                        (screen.height.value * density * DECODE_SIZE_MULTIPLIER).roundToInt(),
-                    )
-                },
+                decodeSize = decodeSize,
+                // 预加载已按尺寸开好窗口时这里尺寸相同, 不动; 只有预加载超时或换了图片才调整.
                 onImageSizeAvailable = { imageSize ->
                     val bounds = computeImageViewerWindowBounds(imageSize, density, screen)
-                    windowState.size = bounds.size
-                    windowState.position = WindowPosition.Absolute(bounds.position.x, bounds.position.y)
+                    if (windowState.size != bounds.size) {
+                        windowState.size = bounds.size
+                        windowState.position = WindowPosition.Absolute(bounds.position.x, bounds.position.y)
+                    }
                 },
             )
         }
@@ -214,6 +254,9 @@ private fun ImageViewerWindow(
 }
 
 private const val SCALE_EPSILON = 0.001f
+
+/** 预加载拿图片尺寸最多等这么久, 超过就先按默认尺寸开窗口. */
+private val PREFETCH_TIMEOUT = 800.milliseconds
 
 /** 解码尺寸上限相对屏幕像素的倍数. */
 private const val DECODE_SIZE_MULTIPLIER = 2f
