@@ -2,12 +2,14 @@
 
 | | |
 |---|---|
-| 状态 | 草案（供评审） |
-| 日期 | 2026-08-01 |
-| 范围 | 新增 Android TV 客户端（定位**纯在线播放端**，功能裁剪见 §1.2），以 `:app:android` 的 `tv` flavor 出包；发布物为 **手机 APK + TV APK 两个安装包** |
-| 交互参考 | [PR#3217](https://github.com/open-ani/animeko/pull/3217)（仅复用其 UI/UX 交互设计，**不采用其工程架构**）；UI/UX 稿已镜像至 claude.ai/design 项目 [「Animeko TV」](https://claude.ai/design/2a3b7d37-075a-400b-bedb-ef2072b6caf3)，作为实现期的可视化对照基准 |
-| UI 技术 | Google 官方 Compose for TV：`androidx.tv:tv-material` 1.1.0（稳定）+ 标准 compose foundation lazy（TvLazy* 已废弃，无需 tv-foundation） |
-| 基线 | 本文所有「现状」结论核对自 `main` 分支（kotlin 2.3.10 / AGP 9.0.1 / CMP 1.10.3 / minSdk 27 / compileSdk 36） |
+| 状态 | 实施中：工程骨架已落地，看番主链路与内容页已有实现，功能补齐和验收仍在进行 |
+| 设计日期 / 最近核对 | 2026-08-01 / **2026-09-06** |
+| 核对基线 | 当前分支 `tv/m0-bootstrap-and-flavor`，提交 `a692f476797ad04dbb8bd685f37b585d1e3e547a` + 本工作区 TV MVI 重构与设备回归修复 |
+| 范围 | `:app:android` 的 `tv` flavor，定位**纯在线播放端**；手机 APK 与 TV APK 独立安装、更新 |
+| 交互参考 | [PR#3217](https://github.com/open-ani/animeko/pull/3217) 与设计镜像 [「Animeko TV」](https://claude.ai/design/2a3b7d37-075a-400b-bedb-ef2072b6caf3)；后续裁定见 §14，探索页已演进为 Prime 风格 v5 |
+| 当前技术栈 | Kotlin 2.4.10 / AGP 9.1.1 / CMP 1.11.1 / minSdk 27 / compileSdk、targetSdk 37；Material3 + 存量 tv-material 1.1.0，Navigation 3、Sketch、mediamp 0.3.2 |
+
+> **阅读口径**：本次根据当前分支源码、测试定义与 CI 配置核对，并重构 TV 的 MVI 边界；已在本地 Android 16 / API 36 TV 模拟器进行设备回归，构建、测试、通过路径与遗留问题记录在 §12.2。正文区分「代码已实现」「待实现/待接线」「待验收」；旧文档中的真机通过记录保留为历史记录，本轮单台模拟器结果不代表完整设备矩阵通过。§12 是进度总表，§14 是开发约束；尚未实施的设计明确标为待办。
 
 ---
 
@@ -15,105 +17,59 @@
 
 ### 1.1 目标
 
-1. **独立 TV APK**：`:app:android` 在既有 `distribution` 维度新增 `tv` flavor（与 `default` 平级），applicationId 覆写为 `me.him188.ani.tv`，Leanback 启动器入口，可与手机版并存、独立更新。
-2. **TV 界面全部基于 androidx.tv（tv-material3）**：焦点态、导航抽屉、轮播、卡片等交由官方组件承担，不在共享 Compose UI 上打补丁。
-3. **最大化复用现有非 UI 资产**：`app-data`（仓库/领域/播放编排/弹幕/会话）、`app-platform`（导航契约/构建信息）、`app-lang`（多语言）、`video-player`（播放画面）、`danmaku-ui`（弹幕渲染）、datasource 在线源——**零改动或最小改动**复用；torrent/缓存链路在 classpath 上共存但**不进 TV 运行时**（DI 门控为空实现，见 §1.2/D4）。
-4. **交互对齐 PR#3217 的 UX 设计**：沉浸式探索页（hero 轮播+backdrop）、正交按键时间表、锚点选集轮播、单一状态机播放器、返回键逐层语义、确认键长短按等。
-5. **对手机端零行为变化**：手机构建任务名（`assembleDefaultRelease`）、产物路径、二进制行为完全不变；允许的改动仅限纯搬迁式重排（R1 `application` 内装配函数重构、R2 `:app:android` 源集重排与 manifest 分层，见 §4.3），以产物对比验收。
+1. **独立 TV APK**：在既有 `distribution` 维度增加与 `default` 平级的 `tv` flavor，applicationId 为 `me.him188.ani.tv`，提供 Leanback 启动器入口。
+2. **独立 TV 视图层**：页面与组件位于 `app/android/ui-*-tv`。当前以 Material3 + Compose foundation 为主，保留 tv-material 组件；统一焦点调度、记忆和网格协议位于 `ui-foundation-tv`。
+3. **复用状态、领域和数据层**：各业务页面由 TV ViewModel 接收 Intent、提供只读状态；探索、追番、时间表、登录适配共享 ViewModel，详情复用共享状态工厂/加载器。视频画面、弹幕渲染及在线取源复用共享模块。
+4. **遥控器完成核心流程**：探索/搜索/追番/时间表 → 详情 → 在线播放；逐层返回、焦点恢复、选集与选源已有实现，详细交互和验收缺口见 §7/§8/§12。
+5. **手机端行为不回退**：保留手机 flavor 名、构建任务与产物路径。R1/R2 已完成；后续允许为状态复用重构共享层，但须同步适配消费者并回归，不能把「仅 M0 可改共享代码」作为现行限制。
 
-### 1.2 非目标（明确不做）
+### 1.2 非目标（明确裁剪）
 
-**功能裁剪 —— TV 定位为「纯在线播放端」**。以下能力**整体砍掉、不列路线图**（区别于「首版不做」）；架构上保留按模块复装的可能（缓存/BT 的装配被隔离为独立 Koin 模块，见 §4.3-R1）：
+**TV 定位为纯在线播放端**，下列能力不列入当前产品路线图：
 
-| 砍掉 | 理由 | 架构落点 |
-|---|---|---|
-| **缓存系统**（MediaCache 全链路：缓存页、缓存设置、HTTP/离线下载引擎） | 电视场景常开网络、盒子存储小，离线价值低；砍掉后省去缓存装配与启动期缓存恢复任务 | `getTvCommonKoinModule` 把缓存门控为空引擎实现（§4.3-R1）；`Caches`/`CacheDetail` 路由不注册（§6.3）；主壳无缓存入口（§6.4） |
-| **BT 源播放**（torrent 引擎、Anitorrent、`:torrent_service` 前台服务进程） | TV ROM 后台限制下 BT 前台服务稳定性差（该风险随裁剪就地消除）；TV 因此保持**单进程**，manifest 大幅精简 | torrent 绑定归位 `src/default` 源集、tv variant 不编译（§4.3-R2）；选源仅 `MediaSourceKind.WEB`（§8.1）；tv variant 合并 manifest 无 torrent 服务与前台服务权限（§6.2） |
-| **发送评论** | Turnstile 验证码依赖 WebView 交互，遥控器场景不适配 | 评论保留**只读**浏览（详情页/播放器面板）；`TurnstileState` 绑定 TV 亦注册但**永不调用**（Koin 惰性，D4）。注意：`CaptchaBrowserFactory`/`ImageCaptchaRecognizer` **需要注册**——M1 实施修正：它们是 Web 数据源解析链（`WebSessionManager`）的依赖，服务于播放取源而非评论（§6.1） |
-| **Bangumi OAuth 网页授权** | 依赖 WebView/系统浏览器，TV 多数设备没有 | 登录仅邮箱 OTP（§7.7）；不声明 `ani://bangumi-oauth-callback`（§6.2）；Bangumi 绑定在手机端完成后经账号体系自然同步 |
-| **编辑个人资料** | 低频且文本输入密集，10-foot 体验差 | 无入口；头像/账号处提示「请在手机端编辑」（§7.7） |
+| 裁剪能力 | 当前落点 |
+|---|---|
+| **视频离线缓存/下载系统** | `getDisabledMediaCacheKoinModule()` 仍实例化 `MediaCacheManagerImpl`，但存储列表为空；不装配下载器与缓存引擎，无缓存页面。这里不包括图片、元数据、DataStore 等正常持久化 |
+| **BT 源播放** | torrent 平台绑定留在 `src/default`；TV 解析器没有 torrent/offline 链路，候选弹窗仅列 WEB；共享 classpath 仍可包含 torrent 符号 |
+| **发送评论** | 详情页与播放器评论只读；当前 `CommonKoinModule` 没有 `TurnstileState` 绑定。Web 源解析必需的 `CaptchaBrowserFactory`/`ImageCaptchaRecognizer` 则已在 TV 注册 |
+| **Bangumi OAuth 网页授权** | 没有 OAuth 回调清单或 TV 授权界面；仅邮箱 OTP 登录。手机端账号绑定后的服务端同步需在 TV 验收 |
+| **编辑个人资料** | TV 没有编辑入口；侧边栏显示账号头像/昵称，点击进入登录页，尚无独立账号管理页 |
 
-**架构非目标**：
+**架构边界**：
 
-- ❌ 不引入 PR#3217 的 `AniUiBehavior` 行为开关与 `Local*Variant` 页面插槽——共享 UI 模块不为 TV 加任何分支。
-- ❌ 不复用手机端 Compose 界面树（`ui-exploration` / `ui-subject` / `ui-episode` 等的 Composable 一概不进 TV 依赖图；基建类例外，见 §5.6）。
-- ❌ 不使用旧世代 `androidx.leanback`。
-- ❌ 不自研焦点引擎（PR 的 `GridFocusController` / `resolveFocusRepeatedly` / `TvLongPressKey` 均以官方 API 等价替代，见 §5.4）。
-- ❌ 首版不做（列入路线图后期）：一起看、屏保/主屏频道。
+- TV 不引入共享手机页面的变体插槽，不直接复用手机页面 Composable；允许共享状态与白名单基建。
+- 两 flavor 共用共享依赖树，边界由 import 约定、Konsist 和 DI 门控维护，**不是编译期 UI 依赖隔离**；Firebase/GMS 有单独的 TV classpath 排除。
+- 不使用旧 Leanback UI 控件；Leanback launcher 的 manifest 声明仍然需要。
+- 当前已有自建 `TvFocusScope`/`TvFocusMemory`/网格与长按原语，底层使用 Compose 焦点 API；早期「全部以官方组件替代」的设想已被实施修正。
+- 一起看、屏保和主屏频道属于后期能力，当前没有 TV 接线；应用内更新按维护者指示暂缓。
 
 ---
 
-## 2. 现状架构速览（设计输入）
+## 2. 当前架构速览
 
 ### 2.1 分层
 
-```mermaid
-graph TD
-    subgraph 应用入口
-        AND[":app:android<br/>(唯一 com.android.application)"]
-        DESK[":app:desktop"]
-        IOS[":app:ios"]
-    end
-    subgraph 聚合与装配
-        SHARED[":app:shared<br/>手机/桌面 UI 聚合器<br/>AniApp / AniAppContent / EpisodeViewModel"]
-        APPL[":app:shared:application<br/>getCommonKoinModule / startCommonKoinModule"]
-    end
-    subgraph 手机 UI 层["手机 UI 层（Material3, TV 不依赖）"]
-        UIF[":app:shared:ui-foundation"]
-        UIX["ui-exploration / ui-subject / ui-episode<br/>ui-settings / ui-cache / ui-onboarding / …"]
-    end
-    subgraph 领域与数据["领域与数据层（无 UI 依赖，TV 复用底座）"]
-        DATA[":app:shared:app-data<br/>repositories / domain / session / update"]
-        PLAT[":app:shared:app-platform<br/>AniNavigator / NavRoutes / AniBuildConfig"]
-        LANG[":app:shared:app-lang"]
-    end
-    subgraph 基建
-        VP[":app:shared:video-player<br/>expect VideoPlayer (ExoPlayer+libass)"]
-        DMK[":danmaku:danmaku-ui / danmaku-api / ui-config"]
-        DS[":datasource:*"]
-        TOR[":torrent:anitorrent"]
-    end
-    AND --> SHARED
-    AND --> APPL
-    APPL --> SHARED
-    SHARED --> UIX --> UIF
-    UIF --> DATA
-    DATA --> PLAT
-    DATA --> DS
-    DATA --> TOR
-    SHARED --> VP
-    SHARED --> DMK
-```
+`app/android` 是出包层，`src/main` 提供 Android 交集，`src/default` 与 `src/tv` 各自提供应用入口与平台绑定。TV 已拆成 **10 个 UI 库模块**：foundation、main 与 8 个功能模块（§4.1）。共享 `app-data` 负责仓库、会话与播放编排；部分共享 `ui-*` 模块提供可复用状态对象，TV 自行实现视图。
 
-### 2.2 与本设计直接相关的既有事实
+### 2.2 当前代码事实与入口
 
-| 主题 | 事实 | 出处 |
+| 主题 | 当前实现 | 代码入口 |
 |---|---|---|
-| 构建约定 | 库模块 = KMP + `com.android.kotlin.multiplatform.library` + 约定插件 `ani-mpp-lib-targets`（自动注入 CMP material3 等）；**没有** android application/library convention 插件；仅 `:app:android` 用 `com.android.application` | `buildSrc/src/main/kotlin/ani-mpp-lib-targets.gradle.kts` |
-| Compose | 全仓库用 JetBrains CMP（`org.jetbrains.compose` 1.10.3），compiler 走 `kotlin.plugin.compose`，无 `composeCompiler{}` 定制 | 各模块 `build.gradle.kts` |
-| DI | `getCommonKoinModule()`（约 30 个 UseCase + 30+ 服务绑定）在 `:app:shared:application`；其中**仅两处 UI 绑定**：`SubjectDetailsStateFactory`（ui-subject）、`TurnstileState`（ui-comment）；Android 平台绑定 `getAndroidModules()` 与 `AniApplication` 在 `:app:android` 内（包 `me.him188.ani.android`） | `app/shared/application/src/commonMain/kotlin/platform/CommonKoinModule.kt:569,571`；`app/android/src/main/kotlin/AndroidModules.kt:96` |
-| 导航 | `AniNavigator`（接口 + default 实现，直接操作 `NavHostController`）与 `@Serializable sealed class NavRoutes`、`MainScreenPage` 均在 `:app:shared:app-platform` → **TV 可原样复用** | `app-platform/src/commonMain/kotlin/navigation/` |
-| 播放编排 | `EpisodeFetchSelectPlayState`（换集/取源/选源/装载）、`EpisodeSession`、`PlayerSession`、`MediaFetchSelectBundle`、`EpisodeDanmakuLoader` **全部在 `app-data` domain 层**；手机 `EpisodeViewModel`（1118 行）只是在其上叠手机 presentation | `app-data/src/commonMain/kotlin/domain/episode/` |
-| 页面数据源 | `TrendsRepository` / `RecommendationRepository` / `FollowedSubjectsRepository` / `AnimeScheduleRepository`(+`GetAnimeScheduleFlowUseCase`) / `SubjectSearchRepository`(Paging) / `SubjectCollectionRepository` / `EpisodeCollectionRepository` / `EpisodePlayHistoryRepository` / `SettingsRepository`(22 个 `Settings<T>`) / `UserRepository`(邮箱 OTP) / `SessionManager` — 全在 `app-data` | agent 调查报告 §4 |
-| 手机 VM 耦合度 | `ExplorationPageViewModel` / `ScheduleViewModel` / `EmailLoginViewModel` 都是「注入 repo → 组装 State」的薄层（≤ 数十行核心逻辑）→ TV 自建薄 VM 成本低 | `app/shared/src/commonMain/kotlin/ui/main/` |
-| 播放画面 | `expect fun VideoPlayer(player: MediampPlayer, modifier)`，Android actual = `ExoPlayerMediampPlayerSurface` + libass `AssSubtitleView`；倍速/画面比例/章节/**帧预览**走 `player.features[PlaybackSpeed / VideoAspectRatio / FramePreview / chapters]` | `app/shared/video-player/`；mediamp 0.2.1 |
-| 弹幕渲染 | `DanmakuHost(state, modifier, baseStyle)` 纯 Canvas 绘制，material3 仅作为 `baseStyle` 默认参数 → TV 显式传 style 即可复用；播放器接线 `PlayerDanmakuHost` 约 50 行，可拷贝 | `danmaku/ui/src/commonMain/kotlin/DanmakuHost.kt:92` |
-| 图片 | coil3；`AsyncImage` 封装与 `createDefaultImageLoader(context, ScopedHttpClient)` 在 ui-foundation，`LocalImageLoader` 由手机 `AniApp` 提供 → TV 需自行 provide | `ui-foundation/.../AsyncImage.kt:154` |
-| 字符串 | `Lang` = CMP resources 生成的 `Res.string` 别名，源是 `app-lang/src/androidMain/res/values*/strings.xml`；android-only 模块直接依赖即可 `stringResource(Lang.xxx)` | `app/shared/app-lang/` |
-| Manifest | torrent 前台服务实现于 `app-data` androidMain，但 `<service>` 声明**只在** `:app:android` 的 manifest（`:torrent_service` 进程）；FileProvider / InitializationProvider / 8 组权限亦然 → manifest 需按 flavor 分层：交集进 `src/main`、torrent 服务等手机专属进 `src/default`、TV 增量进 `src/tv`（§6.2） | `app/android/src/main/AndroidManifest.xml` |
-| 更新 | `UpdateChecker` 向 Ani 服务端要 `downloadUrlAlternatives`（参数 `clientPlatform/clientArch/releaseClass`），**不是**扫 GitHub 资产；CI 产物命名 `ani-<ver>-<arch>.apk`（`buildSrc/ciHelperTasks.kt:102`） | `ui-settings/tools/update/` |
-| CI | workflow 由 `.github/workflows/src.main.kts` 生成（github-workflows-kt）；Android 任务 `assembleDefaultRelease`；签名走 `signing_release_*` Gradle 属性 | `.github/workflows/src.main.kts` |
-| androidx.tv 现状 | catalog 与全部模块中**无任何** androidx.tv/leanback 条目 | `gradle/libs.versions.toml` |
+| 构建约定 | 应用使用 `ani.android-application`，TV 库使用 `ani.android-library`，KMP 库使用 `ani.kmp-library`；构建逻辑已从旧 `buildSrc` 迁往 `build-logic` | `app/android/build.gradle.kts`、`build-logic/src/main/kotlin/` |
+| Compose | CMP 1.11.1 + `kotlin.plugin.compose`，TV 同时使用 Material3 与 tv-material 1.1.0 | `gradle/libs.versions.toml`、`ui-foundation-tv` |
+| DI | `getCommonKoinModule` / `getTvCommonKoinModule` 共用核心装配，缓存模块分流；`SubjectDetailsStateFactory` 被 TV 复用的详情 VM 实际使用 | `app/shared/application/src/commonMain/kotlin/platform/CommonKoinModule.kt` |
+| 页面 VM 创建 | `TvAniAppContent` 统一通过 `tvViewModel { TvXxxViewModel(...) }` 显式构建 9 个 TV VM；Koin 不注册 VM，`Tv*Route` 接收实例并收集状态，`Tv*Screen` 只渲染状态并发送 Intent | `ui-main-tv/.../main/TvAniAppContent.kt`、各 `Tv*Route.kt` |
+| 导航 | Navigation 3：`rememberAniBackStack` / `AniNavigator.setBackStack` / `NavDisplay`；只注册 Main、SubjectDetail、EpisodeDetail | `ui-main-tv/.../main/TvAniAppContent.kt` |
+| 播放 | TV 自建 `TvEpisodeViewModel`，复用 `EpisodeFetchSelectPlayState` 与扩展；Android 画面仍是 ExoPlayer + libass | `ui-episode-tv/.../TvEpisodeViewModel.kt`、`src/main/kotlin/CommonAndroidModules.kt` |
+| 图片 | 已迁移到 Sketch 4.6.0：`MainActivity` 提供 `LocalSketch`，页面继续使用共享 `AsyncImage` | `src/tv/kotlin/MainActivity.kt`、共享 `ui-foundation/.../AsyncImage.kt` |
+| TMDB/简介 | `TmdbImageService`、`TmdbEpisodeMatcher`、`BangumiSummaryService`、`StaleRefreshGate` 已存在；探索与详情已消费部分能力 | `app/shared/app-data/src/commonMain/kotlin/data/network/` |
+| 文案 | 可以复用 `app-lang`，但当前 TV 页面仍有大量中文字符串常量，不能视为 TV 多语言整理已完成 | `app/android/ui-*-tv/src/main/` |
+| 清单 | 三层拆分已落地；TV 无 torrent 服务，但交集保留禁用的 `AppLocalesMetadataHolderService`，不能写作「无任何 service」 | `app/android/src/{main,default,tv}/AndroidManifest.xml` |
+| 发布 | 双包构建、TV workflow artifact 与 `uploadAndroidTvApk` 配置均在；本次未核验远端发布运行结果 | `.github/workflows/src.main.kts`、`ci-helper/build.gradle.kts`、`build-logic/src/main/kotlin/ciHelperTasks.kt` |
 
-### 2.3 PR#3217 留下了什么
+### 2.3 PR#3217 的继承边界
 
-PR#3217 的资产分两类，本方案**只继承第一类**。其 UI/UX 稿已完整镜像到 claude.ai/design 项目 [「Animeko TV」](https://claude.ai/design/2a3b7d37-075a-400b-bedb-ef2072b6caf3)——PR 关闭后视觉/交互规格不依赖翻代码考古，实现与评审以该镜像为准：
-
-| 类别 | 内容 | 本方案处置 |
-|---|---|---|
-| **UX 设计**（继承） | 沉浸式三页（backdrop 渐隐参数/hero 信息块/锚点卡片行/聚焦行吸顶）、时间表正交按键模型、详情页单列 10-foot + 固定锚点选集轮播、播放器三层状态机与全部按键语义、确认键长短按 500ms、返回键逐层、收藏长按菜单、TMDB 横版图/分集剧照的数据需求 | 作为交互规格逐页落实（§7/§8），参数速查见附录 A |
-| **工程架构**（不继承） | `formFactor` flavor、`AniUiBehavior` 13 项开关、7 个 `Local*Variant` 插槽、自研焦点引擎（`GridFocusController`/`resolveFocusRepeatedly`/`restoreFocusAfter`/`TvLongPressKey`）、在共享 M3 组件里做 TV 分支 | 由「TV UI 独立库模块 + 打包层 flavor（共享 UI 零分支，与 PR 的 formFactor 方案本质不同，见 D1）+ androidx.tv 官方组件/焦点 API」整体替代（对照表见 §5.4） |
-| 数据侧新增（择机另行评估） | `TmdbImageService`/`TmdbEpisodeMatcher`（横版 backdrop、分集剧照）、`BangumiSummaryService`（空简介兜底）、`StaleRefreshGate` | TV 沉浸式界面**需要**横版图数据；这部分是纯 `app-data` 扩展、与 UI 架构无关，建议按 PR 的数据实现独立成一个小 PR 合入 `app-data`（见 §9.2） |
+继承 UI/UX 参考与可改造的低层基建；页面代码自行实现，不合入 PR 的共享页面变体架构。当前已按维护者裁定调整部分设计：探索页采用 Prime 风格，时间表复刻共享手机 Medium 档的多列布局，焦点协议统一封装。原 PR 的长按收藏、评分、完整播放器 DETAILS 等设计仍可作为后续参考，不能因此标为已实现。
 
 ---
 
@@ -121,17 +77,17 @@ PR#3217 的资产分两类，本方案**只继承第一类**。其 UI/UX 稿已�
 
 ### 3.1 核心决策
 
-| # | 决策 | 结论 | 理由 |
-|---|---|---|---|
-| D1 | 双 APK 的产出方式 | **`:app:android` 在既有 `distribution` 维度新增 `tv` flavor**（`default`/`tv` 平级，**不加新维度**）；TV UI 用 androidx.tv 重写并**保持模块化**——库模块置于 `app/android/` 下、按 `ui-<feature>-tv` 命名（§4.1），出包胶水在 `src/tv` 源集 | 单维度保证手机任务名 `assembleDefaultRelease` 与产物路径零变化；版本/签名/SDK 单一台账；**两 flavor 共享完整依赖树**（数据层/装配全量共用，不做依赖收窄）——「TV 不得调用手机 UI」是**约定边界**，由本文档 + Konsist（§11.1）+ 清单守护（§10.2）看护，不由编译器强制；与 PR#3217 flavor 方案的区别：共享 UI 模块零分支、无行为开关，TV 差异收敛在 `ui-*-tv` 模块 + `src/tv` 胶水 + DI 门控（D4）。方案演进史与备选记录见 §4.5 |
-| D2 | TV UI 技术 | `androidx.tv:tv-material:1.1.0`；列表用**标准 compose foundation lazy**（TvLazy* 已随 tv-foundation 1.0 移除，官方迁移路径即标准 lazy），锚点/吸顶滚动语义用自实现的 pivot 版 `BringIntoViewSpec`（compose foundation 1.7+ 内建该扩展点；`tv-foundation` 无需引入） | 官方稳定版；焦点视觉（scale/border/glow）、抽屉、轮播、TabRow 开箱即用 |
-| D3 | 逻辑复用策略 | 数据层/装配全量共用；ViewModel **按适配性选用**——纯数据编排的手机 VM（如 `EmailLoginViewModel`）可直接复用，深度绑定手机交互形态的（如手机 `EpisodeViewModel` 的 presentation 层）由 TV 自建薄 VM 替代；UI 层必须用 androidx.tv 重写 | 手机依赖树对 tv variant 完整可见（D1），复用无技术障碍；取舍标准只看「该 VM 的状态形态是否适合 10-foot 交互」 |
-| D4 | DI | **flavor 门控，不引入新模块**（§4.3-R1）：`:app:shared:application` 提供两个装配入口——`getCommonKoinModule`（手机/desktop，含完整缓存/BT，行为与历史一致）与 `getTvCommonKoinModule`（TV，缓存绑定为空引擎实现）；UI 绑定（`SubjectDetailsStateFactory`/`TurnstileState`）两端都注册，Koin 惰性绑定，TV 不使用即不实例化 | 缓存/BT 是被公共链路**主动注入**的基础设施（`MediaSourceManager`/`EpisodeProgressRepository` 直接 `get<MediaCacheManager>()`），「不用就行」不成立，必须有装配级开关；除此之外 TV 与手机装配完全一致 |
-| D5 | 导航 | 复用 `AniNavigator` + `NavRoutes`（app-platform），TV 自建 NavHost 只注册 TV 支持的路由子集 | 路由类型是 `@Serializable` 纯数据；deep link `ani://subjects/{id}` 语义两端一致 |
-| D6 | 主题 | `AniTvTheme`：复用 materialkolor 由 `ThemeSettings.seedColor`（默认 `#4F378B`）生成 M3 配色，**逐字段映射**到 `androidx.tv.material3.ColorScheme`；TV 默认深色（可设置跟随） | 品牌一致；TV 环境深色是行业惯例（PR `forceDarkInPlayer` 同理由） |
-| D7 | 焦点视觉 | 交互语义严格对齐 PR；**视觉默认采用 tv-material 习语但调参贴近 PR**：`scale = 1f`（无缩放）+ `Border(2.5dp primary, inset 3dp)`（「色圈+留白」）+ 无 glow；集中在 `TvFocusDefaults` 一处 token，可整体切换回官方缩放风格 | 官方组件状态机免费拿到；PR 的无缩放描边风格已被实机验证 |
-| D8 | 应用内更新 | MVP 阶段 TV 端**关闭**自动更新入口（提示到 GitHub Release）；待服务端 `clientPlatform` 支持 `android-tv` 后开启 | 更新源是 Ani 服务端接口而非 GitHub 资产扫描，需要服务端配合（§10.4） |
-| D9 | TV 功能范围 | **纯在线播放端**：砍掉缓存系统、BT 源播放、评论发送、Bangumi OAuth 网页授权、编辑个人资料（§1.2） | 电视场景收益低或依赖 WebView/多进程前台服务；砍掉后 TV 单进程、无 torrent/缓存装配，依赖图更薄、ROM 兼容风险显著下降；装配以独立 Koin 模块隔离，日后按需可整体复装 |
+| # | 决策 | 当前结论 |
+|---|---|---|
+| D1 | 双 APK / 模块边界 | 单一 `distribution = default / tv` 维度；`ui-*-tv` 独立视图模块，`src/tv` 为出包胶水。共享依赖树不为 UI/BT 做编译期收窄，TV 额外排除 Firebase/GMS |
+| D2 | UI / 焦点技术 | Material3 + 存量 tv-material 1.1.0 + 标准 foundation lazy；使用统一事件驱动 `TvFocusScope`，滚动采用显式 `BringIntoViewSpec` |
+| D3 | 状态复用 | 优先复用共享 VM/状态对象；搜索、设置、播放保留 TV VM。视图层独立，禁止借白名单直接复用手机页面 |
+| D4 | DI | 共享核心 + flavor 缓存门控。TV 使用空存储 `MediaCacheManagerImpl`，不注册下载器/缓存引擎/torrent 平台绑定；详情状态工厂已被 TV 使用，当前无 `TurnstileState` 绑定 |
+| D5 | 导航 | 复用 `AniNavigator` / `NavRoutes` 的 Navigation 3 back stack；三个路由入口，六种主壳内容。深链只有 manifest 声明，Activity 解析待接 |
+| D6 | 主题 | `AniTvTheme(seedColor)` 固定深色、非 AMOLED，默认 `#4F378B`；materialkolor 生成配色并同时提供两套 MaterialTheme。未订阅 `ThemeSettings` |
+| D7 | 焦点视觉 | `TvFocusDefaults` 集中定义 2.5dp 描边、3dp 间隙、11dp 圆角、无缩放；Hero 按钮和播放器控件使用各自反色样式 |
+| D8 | 应用内更新 | 按维护者指示暂缓；当前只显示版本，没有更新按钮、安装器或 Release 二维码。服务端 `android-tv` 支持属于恢复开发的前置条件 |
+| D9 | 产品范围 | 纯在线播放端；裁剪视频离线缓存、BT、评论发送、网页 OAuth 与资料编辑；共享底层依赖仍在，不能把运行时裁剪等同包体依赖已移除 |
 
 ### 3.2 总体架构
 
@@ -143,7 +99,7 @@ graph TD
         SRCMAIN["src/main（两 flavor 交集）<br/>getCommonAndroidModules · manifest 交集"]
         SRCDEF["src/default（现手机代码整体迁入）<br/>AniApplication · torrent/缓存绑定 · manifest 增量"]
     end
-    subgraph 共享["两 flavor 共享的完整依赖树（不做依赖收窄, D1）"]
+    subgraph 共享["两 flavor 共用的共享模块<br/>(TV 另排除 Firebase/GMS, D1)"]
         SHARED[":app:shared + :app:shared:application<br/>getCommonKoinModule（手机/desktop 完整版）<br/>getTvCommonKoinModule（TV 门控版·空引擎缓存）"]
         DATA[":app:shared:app-data（含 DataStores 桥接, R1 搬迁）"]
         PLAT[":app:shared:app-platform"]
@@ -151,16 +107,16 @@ graph TD
         DMK[":danmaku:*"]
     end
     SRCTV -- "tvImplementation" --> TVUI
-    TVUI -- "约定: 只用 androidx.tv + 数据层<br/>(Konsist §11.1 守护)" --> SHARED
+    TVUI -- "约定: TV 视图 + 共享状态/数据<br/>(Konsist §11.1 守护)" --> SHARED
     SRCDEF --> SHARED
     SRCMAIN --> SHARED
     SHARED --> DATA --> PLAT
     SHARED --> VP
     SHARED --> DMK
-    TVUI -. "androidx.tv:tv-material · materialkolor · navigation" .-> EXT[(TV 专属外部依赖)]
+    TVUI -. "Material3 / tv-material · materialkolor · Navigation 3" .-> EXT[(UI 依赖)]
 ```
 
-手机端感知面：① `:app:shared:application` 的 `getCommonKoinModule` 内部重构为「核心 + 缓存模块」组合（对外签名与行为不变，desktop/iOS 零感知），并新增 TV 门控入口 `getTvCommonKoinModule`；② `:app:android` 现有 `src/main` 整体迁入 `src/default`，交集上提回 `src/main` 并做 manifest 分层。均为纯搬迁：`assembleDefaultRelease` 任务名、产物路径与二进制行为不变（§4.3 验收）。
+手机端感知面：① `:app:shared:application` 的 `getCommonKoinModule` 内部重构为「核心 + 缓存模块」组合（对外签名与行为不变，desktop/iOS 零感知），并新增 TV 门控入口 `getTvCommonKoinModule`；② `:app:android` 现有 `src/main` 整体迁入 `src/default`，交集上提回 `src/main` 并做 manifest 分层。这是 M0 的重构范围；任务名与产物路径保留。后续共享状态层也有重构，手机行为不回退仍需持续回归（§14.3）。
 
 ---
 
@@ -168,121 +124,106 @@ graph TD
 
 ### 4.1 模块与源集布局
 
-**TV UI 库模块**——UI 保持模块化，模块目录置于 `app/android/` 下，统一命名 **`ui-<feature>-tv`**（叶名独立，天然避开与 `:app:shared:ui-foundation` 的 Gradle 坐标冲突）；库模块不随 app variant 切换，IDE 始终可解析：
+10 个模块均已在 `settings.gradle.kts` 注册，目录为 `app/android/ui-<feature>-tv`，Gradle 坐标为 `:app:android:ui-<feature>-tv`：
 
-| 模块 | 目录 | namespace | 职责 |
-|---|---|---|---|
-| `:app:android:ui-foundation-tv` | `app/android/ui-foundation-tv` | `me.him188.ani.tv.ui.foundation` | TV 设计系统：`AniTvTheme`、`TvColorMapping`、`TvFocusDefaults`、`TvScreenScaffold`；（M1+）通用组件 `TvPosterCard`、`TvBackdropLayer`、`TvCenteredDialog`、`TvTextField`、`TvSlider`、`TvSeekBar` 等 |
-| `:app:android:ui-main-tv` | `app/android/ui-main-tv` | `me.him188.ani.tv.ui` | 主壳/导航：`TvAniAppContent`（NavHost）、`TvMainShell`、`TvKoinModule`；M0 起步也承载页面，M1–M3 按 feature 增长后拆出 `ui-exploration-tv` / `ui-subject-tv` / `ui-episode-tv` 等同格式模块 |
-
-插件形态：`com.android.library`（AGP 9 内置 Kotlin）+ `jetbrains.compose` + `kotlin.plugin.compose`；`ui-foundation-tv` `api(libs.androidx.tv.material)` 向上传递；`:app:android` 仅以 `"tvImplementation"(projects.app.android.uiMainTv)` 引入。
-
-**`:app:android` 三源集**（`tv` flavor 在既有 `distribution` 维度内平级新增，不加新维度——两维度交叉会改变手机任务名 `assembleDefaultRelease` 的语义与产物路径）：
-
-| flavor / 源集 | 内容 |
+| 模块叶名 | 当前职责 |
 |---|---|
-| `default`（现有） | 手机形态。现 `src/main` 的全部代码与手机专属 manifest 声明**整体迁入 `src/default`**（包名不变，git mv，§4.3-R2） |
-| `tv`（新增） | applicationId 覆写 `me.him188.ani.tv`。`src/tv` 只放**出包胶水**：`TvAniApplication` / `MainActivity` / `TvAndroidModules` + manifest 增量 + banner + `app_name` 覆写 |
-| `src/main`（交集） | 两 flavor 共用的 Android 绑定（`getCommonAndroidModules`，§4.3-R2）与 manifest 交集 |
+| `ui-foundation-tv` | 双主题、焦点框架/记忆/网格/按键、滚动锚点、侧边栏、海报/横图卡、Hero/backdrop、输入框、进度条 |
+| `ui-main-tv` | `TvAniAppContent`（统一构建 VM）、`TvMainRoute`/`TvMainShell`、应用依赖参数与架构守护测试 |
+| `ui-exploration-tv` | 探索页、Hero、继续观看与推荐行 |
+| `ui-subject-tv` | 详情页及剧照、人物、关联、评价卡片 |
+| `ui-episode-tv` | 播放 VM、控制层、弹幕层、选集条、选源弹窗与五个内容面板 |
+| `ui-collection-tv` | 追番分类网格 |
+| `ui-search-tv` | 搜索页与 TV 搜索 VM |
+| `ui-schedule-tv` | 多天并排的时间表 |
+| `ui-login-tv` | 邮箱 OTP 登录视图 |
+| `ui-settings-tv` | 设置子集与 TV 设置 VM |
+
+库模块使用 `ani.android-library` + Compose 插件；foundation 以 `api` 暴露 tv-material、app-platform 和 foundation，main 聚合功能模块。应用仅通过 `"tvImplementation"(projects.app.android.uiMainTv)` 追加 TV UI。
+
+| 源集 | 当前内容 |
+|---|---|
+| `src/main` | `CommonAndroidModules.kt`、通用清单与 FileProvider 路径 |
+| `src/default` | 手机 `AniApplication`、Activity、平台绑定与手机清单，包含 torrent/缓存/更新等专属链路 |
+| `src/tv` | `TvAniApplication`、`MainActivity`、`TvAndroidModules`、Leanback 清单、banner 与 app_name |
 
 ### 4.2 约定边界（import 规则，非依赖隔离）
 
-依赖图**不做隔离**（D1）：tv variant 与 default variant 共享 `:app:shared` + `:app:shared:application` 的完整依赖树，手机 UI、torrent/缓存、Turnstile 等全部**在 classpath 上可见**。边界是 **import 级约定**，由本节 + §11.1 Konsist + code review 看护：
-
-| TV 代码（`ui-*-tv` 模块 + `src/tv` 胶水） | 规则 |
+| TV 代码引用 | 规则 / 当前守护 |
 |---|---|
-| `androidx.tv.material3.*` / compose foundation / navigation | ✅ TV UI 唯一允许的组件体系 |
-| `app-data` / `app-platform` / `app-lang` / `video-player` / `danmaku-ui` 及可复用 VM（D3） | ✅ 数据层/领域层/基建全量共用 |
-| `androidx.compose.material3.*` | ❌ **禁止 import**（唯一例外：`TvColorMapping.kt` 的色板类型桥接）——两套 MaterialTheme 不共存于同一子树 |
-| `me.him188.ani.app.ui.*`（手机 UI 树） | ❌ **禁止 import**，白名单基建除外（见下）；手机 Composable 在 tv-material 主题下渲染错乱且无焦点支持 |
-| torrent / `MediaCache` 具体实现类 | ❌ 不得直接引用——运行期由 DI 门控为空实现（D4），直接引用会绕过门控 |
+| Material3、tv-material、Compose foundation、Navigation 3 | 允许；Material3 禁令已删除，主题同时提供两套 |
+| app-data / app-platform / app-lang / video-player / danmaku | 复用领域、数据和基建 |
+| `me.him188.ani.app.ui.*` | 只允许共享状态与批准的基建，不直接调用手机页面 Composable |
+| torrent / 视频缓存具体引擎与存储 | TV 不直接引用；装配通过空缓存门控，Konsist 检查三个包前缀（§11.1） |
 
-> `app-data` 传递依赖 torrent 模块（classpath 上不可避免），tv variant **零装配、零实例化**（§4.3：`getTvCommonKoinModule` 空引擎门控，torrent 平台绑定在 `src/default`、tv variant 不编译），运行期不触碰 torrent/缓存类，也无 `:torrent_service` 进程。
+**当前白名单事实**：`TvArchitectureTest.uiFoundationInfraAllowList` 允许 `AsyncImage`、`LocalSketch`、`rememberAniSketchInstance`、`AbstractViewModel`、Toast 等基建，以及探索/登录/时间表/追番/详情/评论等共享状态。现有测试采用 `startsWith`，部分条目是**包前缀**，并不检查被导入符号是否为 Composable。因此，「禁止手机页面」仍须 review 配合；不能声称测试已逐类精确放行或已机械保证白名单包中没有页面调用。新增放行要求仍见 §14.3。
 
-**「ui-foundation(基建)」白名单**（`me.him188.ani.app.ui.*` 中 TV 允许 import 的例外，由 §11.1 的 Konsist 测试强制）：
+TV 不装配 torrent 平台绑定、缓存引擎与 `HttpDownloader`，但会实例化空存储的 `MediaCacheManagerImpl`。`SubjectDetailsStateFactory` 也会因复用详情 VM 被实际解析，不能继续写作「所有共享 UI 状态绑定都惰性闲置」。
 
-```
-me.him188.ani.app.ui.foundation.AsyncImage / LocalImageLoader / createDefaultImageLoader
-me.him188.ani.app.ui.foundation.AbstractViewModel
-me.him188.ani.app.ui.foundation.animation.*            (AniMotionScheme / MaterialEasing / AniAnimatedVisibility)
-me.him188.ani.app.ui.foundation.widgets.Toaster / LocalToaster   (接口；TV 自己实现)
-me.him188.ani.app.ui.foundation.navigation.BackHandler (若为 CMP 兼容封装)
-me.him188.ani.app.ui.search.renderLoadErrorToastMessage (LoadError → 文案)
-```
+### 4.3 已完成的重构与共享层扩充
 
-> 备选方案（记录备查）：若后续想彻底摆脱 material3 传递依赖，可把上述基建从 ui-foundation 下沉到新的 `:app:shared:ui-infra`。首版不做——搬迁面大、收益小，Konsist 守护已足够。
+**R1 — 装配分流已完成**：
 
-### 4.3 前置重构（唯一动手机侧的部分，均为纯搬迁）
+- `getCommonKoinModule` 使用共享核心 + `getMediaCacheKoinModule`；TV 使用核心 + `getDisabledMediaCacheKoinModule`。
+- 空缓存模块绑定 `MediaCacheManagerImpl(storagesIncludingDisabled = emptyList())`，保留公共注入点；启动时 `HttpDownloader` 不存在则跳过初始化，缓存恢复遍历为空。
+- `Context.dataStores` 和平台 SettingsStore 桥接已归位 `app-data`；正常图片/元数据缓存不在视频离线缓存的裁剪范围内。
 
-**R1 — `:app:shared:application` 装配重构（无新模块，函数级拆分）**
+**R2 — Android 源集和清单分层已完成**：
 
-| 动作 | 内容 |
+| 位置 | 当前绑定 |
 |---|---|
-| 拆分（缓存/BT，服务 D9） | `CommonKoinModule.kt` 内部：`single<MediaCacheManager>`（其引擎装配 `get<TorrentManager>().engines` + `HttpMediaCacheEngine`）与 `single<HttpDownloader>`（写缓存目录）从 `otherModules` 独立成 **`getMediaCacheKoinModule()`**；新增 **`getDisabledMediaCacheKoinModule()`**（空引擎 `MediaCacheManagerImpl`）——`MediaSourceManager` 的本地缓存源、`EpisodeProgressRepository` 等**直接注入 `MediaCacheManager` 的点**照常解析、行为自然为空（实施发现这类注入点不止选源一处，空实现比 getOrNull 手术更稳）；`startCommonKoinModule` 的缓存恢复段对 `HttpDownloader`/`MediaCacheManager` 做 `getOrNull` 判空 |
-| 双入口 | `getCommonKoinModule` = 核心 + `getMediaCacheKoinModule()`——**手机（`AniApplication.kt:142`）/desktop（`AniDesktop.kt`）/iOS 调用点与行为零改动**；新增 **`getTvCommonKoinModule`** = 核心 + `getDisabledMediaCacheKoinModule()`——TV 唯一入口（flavor 门控，D4）。两个 UI 绑定（`SubjectDetailsStateFactory`/`TurnstileState`）保留在核心里，TV 注册但不使用（惰性） |
-| 搬迁（实施发现） | `Context.dataStores` 桥接（`DataStores.kt` + 三端 `SettingsStore.*.kt`，共 4 个薄文件）从 `:app:shared` 聚合器搬入 `app-data`（包 `me.him188.ani.app.data.persistent` 不变，全仓 import 零改动）——持久化桥接本就属数据层，顺手归位 |
-| 验收 | 手机 APK 依赖图与运行行为不变；**tv variant 无任何 torrent/缓存实例化**（classpath 存在但零装配、零类初始化，启动期无缓存恢复、无 `:torrent_service` 进程） |
+| `src/main` | `PermissionManager`、`HlsPlaybackPreparer`、ExoPlayer + libass 的 `MediampPlayerFactory` / surface provider |
+| `src/default` | 手机应用和 Activity；torrent、下载/缓存、完整解析器、浏览器、更新安装、外部内容提供器等 |
+| `src/tv` | `NoopBrowserNavigator`、TV `AppTerminator`、LocalFile/HttpStreaming/AndroidWeb 解析器、验证码浏览器与 ONNX 图片验证码识别器 |
 
-**R2 — `:app:android` 源集重排（纯搬迁，git mv）**
+TV Toast 已在 `MainActivity` 中实现并通过 `LocalToaster` 提供，不是待补的 Koin 绑定。`UpdateInstaller` 仍未注册。
 
-现 `src/main` 整体迁入 `src/default`，再把两 flavor 交集**上提回 `src/main`**；`AndroidModules.kt`（`getAndroidModules`）随之按源集拆分：
+**R3 — 数据能力已落地，消费范围仍有差异**：
 
-| 归宿 | 内容 |
-|---|---|
-| `src/main`（交集）：`getCommonAndroidModules(scope)` | `PermissionManager`、`HlsPlaybackPreparer`、`MediampPlayerFactory`（ExoPlayer+libass 注册）。**M0 实施修正**：`MediaResolver`（手机实现耦合 torrent/offline 解析链）与 `AppTerminator`（手机实现引用 `AniTorrentService`）不是交集，按 flavor 各自实现；`MeteredNetworkDetector` 本就绑在 Koin 核心 commonMain |
-| `src/default`（手机专属；tv variant 不编译） | 现有手机代码全量（`AniApplication`/Activity/通知等）；缓存/BT 链路绑定：`TorrentEngineAccess`、`TorrentServiceConnection`（及 serviceConnectionManager）、`TorrentManager`、`MediaSaveDirProvider`、`HttpMediaCacheEngine`、`OfflineDownloadEngine`；`MediaResolver`（含 torrent/offline 解析）、`AppTerminator`（停 torrent 服务）；`BrowserNavigator`（手机实现）、`CaptchaBrowserFactory` / `ImageCaptchaRecognizer`（WebView 验证码）、`UpdateInstaller`、`ExternalContentProviderFactory`（发行渠道相关） |
-| `src/tv`（TV 专属）：`TvAndroidModules` | `BrowserNavigator`（暂用 `NoopBrowserNavigator`，M2 换二维码降级实现）、`AppTerminator`（finishAffinity + exitProcess，无服务停靠）；TV 版 `MediaResolver`（LocalFile/HttpStreaming/Web，无 torrent/offline）；`CaptchaBrowserFactory`/`ImageCaptchaRecognizer`（**M1 修正：必须注册**——Web 解析链 `WebSessionManager` 的依赖，服务于取源而非评论）；M2 补 `Toaster` TV 实现；`UpdateInstaller` 按 D8 暂缓 |
+`TmdbImageService`、`TmdbEpisodeMatcher`、`BangumiSummaryService`、`StaleRefreshGate` 均已位于 `app-data`，TMDB/简介服务已注册到公共 Koin。探索使用横图和简介兜底，详情使用横图和分集剧照；播放器选集条尚未接剧照。共享 `SubjectDetailsStateLoader` 等状态层也已为复用调整，因此后续改动并非全部局限于 TV 目录。
 
-依赖（`build.gradle.kts`）：`implementation(projects.app.shared)` / `implementation(projects.app.shared.application)` 保持 common 作用域**不收窄**（D1，两 flavor 共享完整依赖树）；TV 专属 UI 栈以 `"tvImplementation"` 追加（tv-material / materialkolor / navigation-compose，完整脚本见 §10.1）。
+M0 旧记录称手机合并清单与基线 78 个元素语义等价；这是历史验收记录。当前源码核对只能确认结构与配置，手机行为不回退和完整 APK 构建仍应按 §11/§14 回归。
 
-验收：`assembleDefaultRelease` 产物与重排前对比无行为差异（任务名与输出路径本身不变）；`assembleTvDebug` 验证 tv 源集可编译（进 PR 检查，§10.2）。注意：手机符号对 tv variant 同样可见，越界 import 由 Konsist（§11.1）与 review 拦截，编译器不拦（D1 的取舍）。
+### 4.4 当前目录结构
 
-**R3 — 数据补充（可与 M1 并行）**：从 PR#3217 摘取纯数据实现合入 `app-data`：`TmdbImageService`（横版 backdrop + 分集剧照，含持久缓存）、`TmdbEpisodeMatcher`、`BangumiSummaryService`、`StaleRefreshGate`。这是沉浸式 UI 的数据前提，与 UI 架构无关（PR 中这些文件本就位于 `app-data`，可近乎原样 cherry-pick）。
-
-### 4.4 目录结构
-
-```
-app/android/                                 # 唯一 application 模块 + TV UI 库模块（§4.1）
-├── src/
-│   ├── main/                                # 交集
-│   │   ├── AndroidManifest.xml              # manifest 交集（通用权限 / FileProvider / InitializationProvider）
-│   │   └── kotlin/CommonAndroidModules.kt   # getCommonAndroidModules（§4.3-R2）
-│   ├── default/                             # 手机：现 src/main 整体迁入（包名不变）
-│   │   ├── AndroidManifest.xml              # 增量：torrent 双服务 · 手机专属权限差集 · oauth callback
-│   │   └── kotlin/...                       # AniApplication · 手机侧 AndroidModules 等
-│   └── tv/                                  # 出包胶水（包 me.him188.ani.tv）
-│       ├── AndroidManifest.xml              # 增量：leanback 声明 · TV Application/Activity · banner
-│       ├── kotlin/
-│       │   ├── TvAniApplication.kt          # startKoin：getTvCommonKoinModule + 交集/TV 平台绑定
-│       │   ├── MainActivity.kt              # BaseComponentActivity + AniTvTheme + TvAniAppContent · deep link
-│       │   └── TvAndroidModules.kt          # TV 侧平台绑定（BrowserNavigator 降级 / AppTerminator 等）
-│       └── res/
-│           ├── drawable/tv_banner.xml       # 320×180 横幅（复刻 PR 视觉）
-│           └── values/strings.xml           # app_name 覆写（"Animeko TV"，覆盖 :app:shared 库资源）
-├── ui-foundation-tv/                        # :app:android:ui-foundation-tv（me.him188.ani.tv.ui.foundation）
+```text
+app/android/
+├── src/main/                 # CommonAndroidModules + 通用 manifest
+├── src/default/              # 手机入口/平台绑定/manifest
+├── src/tv/
+│   ├── kotlin/               # TvAniApplication / MainActivity / TvAndroidModules
+│   ├── AndroidManifest.xml
+│   └── res/                  # tv_banner / app_name
+├── ui-foundation-tv/
 │   └── src/main/kotlin/me/him188/ani/tv/ui/foundation/
-│       ├── theme/    AniTvTheme.kt · TvColorMapping.kt ·（M1+）TvTypography.kt
-│       ├── focus/    TvFocusDefaults.kt ·（M1+）InitialFocus.kt · AnchorBringIntoView.kt
-│       ├── layout/   TvScreenScaffold.kt（统一 48dp 安全边距 / overscan）
-│       └── widgets/ （M1+）TvPosterCard · TvBackdropLayer · TvHeroButton · TvCenteredDialog
-│                     TvTextField · TvSlider · TvSeekBar · TvDropdownMenu · TvToastHost
-└── ui-main-tv/                              # :app:android:ui-main-tv（me.him188.ani.tv.ui）
-    └── src/main/kotlin/me/him188/ani/tv/ui/
-        ├── main/         TvAniAppContent.kt（NavHost）· TvMainShell.kt（NavigationDrawer 主壳）
-        ├── di/           TvKoinModule.kt（薄 VM 注册表）
-        └──（M1–M3 按 feature 分包，增长后拆 ui-<feature>-tv 模块）exploration/ schedule/
-                           search/ collection/ subject/ episode/(player/) settings/ login/
+│       ├── theme/            # AniTvTheme / TvColorMapping
+│       ├── focus/            # TvFocusScope / Modifiers / Memory / Grid / Keys / BringIntoView
+│       ├── layout/           # TvScreenScaffold（当前页面未调用）
+│       └── widgets/          # SideRail / PosterCard / LandscapeCard / ImmersiveCards / TextField / SeekBar
+├── ui-main-tv/               # NavDisplay / 主壳 MVI / VM 统一构建 / 架构测试
+├── ui-exploration-tv/
+├── ui-subject-tv/
+├── ui-episode-tv/
+├── ui-collection-tv/
+├── ui-search-tv/
+├── ui-schedule-tv/
+├── ui-login-tv/
+└── ui-settings-tv/
 ```
+
+`TvSlider`、`TvCenteredDialog`、`TvDropdownMenu`、`TvToastHost`、独立 `TvTypography`/`TvColors` 文件目前均不存在；待实现组件不能作为现有目录列出。
 
 ### 4.5 方案演进史与备选记录
 
-本设计经历三轮收敛，记录备查（均可机械回退/前进）：
+工程架构经历前三轮收敛，随后在其上迭代视图与焦点实现：
 
 | 版本 | 方案 | 结局 |
 |---|---|---|
 | v1 | 独立 `:app:tv:application` 模块出包 | 不采用——双 application 模块 + 版本/签名台账重复；对比记录见 D1 |
 | v2 | flavor 出包 + **编译期隔离**：`:app:shared:app-bootstrap` 无 UI 装配模块 + `defaultImplementation`/`tvImplementation` 依赖收窄 + TV UI 独立库模块（`:app:tv:ui*`）。曾完整实施并通过验收 | 按维护者决策回退——判断「TV 不调用手机 UI」用约定约束即可，不值得为编译期强制付出 3 个新模块与更复杂的依赖拓扑 |
-| **v3（现行）** | flavor 出包 + **约定边界**：两 flavor 共享完整依赖树（不收窄），差异收敛为 DI 门控（`getTvCommonKoinModule`）+ manifest 分层 + Konsist/清单守护；TV UI 保持模块化——库模块置于 `app/android/` 下、`ui-<feature>-tv` 命名（叶名独立免坐标冲突），`src/tv` 只留出包胶水 | ✅ 现行方案（D1/D4） |
+| **v3（现行工程边界）** | flavor 出包 + **约定边界**：两 flavor 共享完整依赖树（不收窄），差异收敛为 DI 门控（`getTvCommonKoinModule`）+ manifest 分层 + Konsist/清单守护；TV UI 保持模块化——库模块置于 `app/android/` 下、`ui-<feature>-tv` 命名（叶名独立免坐标冲突），`src/tv` 只留出包胶水 | ✅ 现行方案（D1/D4） |
+
+v4 在 v3 工程边界上引入 Material3 双主题、共享状态复用与统一焦点框架；焦点实现随后改为全事件驱动。v5 更新探索页与布局锚点，不改变 flavor/模块边界。
 
 v2→v3 保留下来的实施资产：缓存/BT 的装配级开关（v2 证明「不用就行」对被注入的基础设施不成立）、manifest 三层分治、`DataStores` 归位 app-data、tv classpath 的 firebase 剔除、清单守护任务。若未来需要更硬的隔离（如 TV 包体成为问题），沿 v2 路线重新收窄依赖即可，装配开关无需改动。
 
@@ -292,180 +233,87 @@ v2→v3 保留下来的实施资产：缓存/BT 的装配级开关（v2 证明�
 
 ### 5.1 依赖与版本
 
-`gradle/libs.versions.toml` 新增：
+当前 `gradle/libs.versions.toml` 中 TV 依赖为：
 
 ```toml
-[versions]
-androidx-tv-material = "1.1.0"     # 2026-05 稳定
-
-[libraries]
-androidx-tv-material = { module = "androidx.tv:tv-material", version.ref = "androidx-tv-material" }
+androidx-tv-material = { module = "androidx.tv:tv-material", version = "1.1.0" }
 ```
 
-> 不引入 `androidx.tv:tv-foundation`：其 TvLazy* 已被移除，官方迁移指南明确「标准 compose foundation lazy + 自定义 `BringIntoViewSpec`」即完整替代，该库已无本项目需要的 API。
+Material3 通过共享 UI 基建等依赖可用；列表使用标准 `LazyColumn`/`LazyRow`/`LazyVerticalGrid`，没有引入 `tv-foundation`。主壳使用 Navigation 3 runtime/UI 1.1.1 与 ViewModel navigation3 decorator。10 个 TV 模块的注册见 `settings.gradle.kts`，并非只注册 foundation/main 两个骨架模块。
 
-`settings.gradle.kts` 新增（沿用既有 `includeProject` 帮助函数，TV UI 模块统一 `ui-<feature>-tv` 命名）：
+### 5.2 当前组件映射
 
-```kotlin
-includeProject(":app:android:ui-main-tv", "app/android/ui-main-tv")
-includeProject(":app:android:ui-foundation-tv", "app/android/ui-foundation-tv")
-```
+| UI 元素 | 当前实现 |
+|---|---|
+| 左侧展开导航 | 自建 `TvNavigationSideRail`，焦点进入展开、离开收起；不是 tv-material `NavigationDrawer` |
+| 探索 Hero 轮播 | `TvExplorationScreen` 管理下标和 6s 定时，`TvExplorationHero` 自绘指示器；不是官方 `Carousel` |
+| 海报/横图卡 | `TvPosterCard`、`TvLandscapeCard`，自绘聚焦环，标题跑马灯与记忆 ID |
+| Hero 操作按钮 | `TvHeroButton`，Material3 Surface + 聚焦反色 |
+| 追番分类 | tv-material `TabRow`/`Tab`，聚焦即选中，分类数量角标 |
+| 时间表 | 多天固定宽列 + 日期列头 + 各列独立时间线，无日期胶囊 TabRow |
+| 设置项 | tv-material `ListItem`；当前仅四个开关和版本/占位项 |
+| 播放器控制/选源 | tv-material Surface 等组件 + 自绘控制布局；选源是页面内模态遮罩，焦点限定在列表内 |
+| 详情简介弹窗 | Material3 `AlertDialog` + `TextButton`，尚未抽成通用 TV 对话框 |
+| 滚动/恢复 | 显式 `BringIntoViewSpec` + `TvFocusScope` / `TvFocusMemory`；不使用 `focusRestorer` 作为当前恢复协议 |
 
-### 5.2 组件映射（PR UX 元素 → tv-material）
+### 5.3 通用件：已实现与待实现
 
-| PR UX 元素 | tv-material / 官方方案 | 备注 |
-|---|---|---|
-| 左侧可展开导航栏（收起图标列 ⇄ 聚焦展开文字） | `NavigationDrawer` + `NavigationDrawerItem` | 官方组件行为与 PR 设计几乎一致（焦点进入展开、离开收起）；头像项用自定义 `NavigationDrawerScope` 内容；PR 的 180dp 右缘羽化遮罩用 drawer 背景自定义还原 |
-| 探索页 hero 轮播（6s 自动 + 指示器 + 手动左右） | `Carousel` + `CarouselDefaults.IndicatorRow` | `autoScrollDurationMillis = 6000`；焦点在内容按钮上时自动暂停轮播由 Carousel 自带 |
-| 竖版海报卡（聚焦色圈+留白、无缩放、底部进度条） | `Surface`(clickable) / `Card` + `ClickableSurfaceDefaults.border/scale` | `Border(BorderStroke(2.5.dp, primary), inset = 3.dp, shape = RoundedCornerShape(11.dp))`，`scale(focusedScale = 1f)`；进度条自绘 2.5dp 胶囊 |
-| Hero 操作按钮（立即观看/更多详情） | `Button` / `WideButton` | 聚焦反色由组件 colors 配置 |
-| 追番分类 Tab（聚焦即选中 + 滑动指示条） | `TabRow` + `Tab` | tv-material TabRow 的焦点即选中语义与 PR 完全一致 |
-| 时间表日期胶囊行（←→ 换天） | `TabRow`（胶囊样式）或 FilterChip 行 | 选中态三档（聚焦/选中未聚焦/普通）用 `TabDefaults`/自定义 colors |
-| 收藏状态长按菜单 | `Surface` 长按（`onLongClick` 参数）+ 自建 `TvDropdownMenu`（Popup + tv `ListItem`） | tv-material `Surface` 原生支持 `onLongClick`，**替代 PR 的 tvLongPressKey**；弹出层内按键防连发由 Popup 焦点隔离天然解决 |
-| 设置/面板列表行 | `ListItem` / `DenseListItem` | |
-| 筛选胶囊 | `FilterChip` | |
-| 播放器底部图标行 | `IconButton` + `Surface` | 聚焦标签槽自绘（18dp 占位） |
-| 弹窗（收藏确认/评分/阅读全文/数据源选择） | `compose.ui.window.Dialog` + tv `Surface` 内容（封装为 `TvCenteredDialog`） | tv-material 无 Dialog 组件；尺寸沿用 PR：0.72×0.85 / 0.45 宽 / 380dp 评分窗，圆角 16，`surfaceContainerHigh@94%` |
-| 列表滚动 | **标准** `LazyColumn/LazyRow/LazyVerticalGrid` | TvLazy* 已废弃移除 |
-| 锚点行/吸顶（聚焦项钉在行首/行吸视口顶） | `LocalBringIntoViewSpec provides TvPivotBringIntoViewSpec(parentFraction = 0f)`——自实现的 pivot 语义 `BringIntoViewSpec`（约 20 行，官方迁移指南给了样例实现），放在 `ui-foundation/focus/AnchorBringIntoView.kt` | **官方扩展点替代 PR 的 animateScrollToItem 手工驱动**；`parentFraction = 0f` = 聚焦项对齐容器起点 |
-| 聚焦丢失恢复 | `Modifier.focusRestorer(fallback)` + `FocusRequester` | 官方 API，替代 PR 的 restoreFocusAfter |
+| 能力 | 当前状态 |
+|---|---|
+| `TvTextField` | 已有 BasicTextField + tv Surface，用于 OTP 登录；搜索页内另有相似的 `TvSearchField`，锚点直接挂内层输入框 |
+| `TvSeekBar` | 已有 6dp 轨道、缓冲/已播分色、聚焦圆点及预览时间；按键处理在播放器根节点 |
+| Toast | `MainActivity` 使用原生 Android Toast 实现 `Toaster`，provide `LocalToaster`；无 `TvToastHost` |
+| `TvScreenScaffold` | 工具函数存在，但当前页面使用各自的 `*PageLayout`，未统一调用它 |
+| `TvSlider` | 未实现；弹幕高级参数/时间校准等遥控器步进输入仍待开发 |
+| `TvCenteredDialog` / `TvDropdownMenu` | 未实现；收藏管理、评分、搜索筛选等待办可据需要抽取。不能沿用延迟 300ms 送焦的旧方案（§14.4） |
 
-### 5.3 tv-material 缺口 → `ui-foundation-tv` 自建件
+### 5.4 当前焦点与按键协议
 
-| 缺口 | 自建件 | 设计 |
-|---|---|---|
-| TextField | `TvTextField` | `BasicTextField` + tv `Surface` 外壳（聚焦 2.5dp primary 描边、primary 光标）；配合系统软键盘（`ImeAction.Search/Send`）；用于搜索、邮箱登录、弹幕发送、评分评语 |
-| Slider | `TvSlider` | 聚焦态下 ←→ 步进（`onPreviewKeyEvent`），↑↓ 放行给焦点系统；用于弹幕设置 7 项、音量、弹幕时间校准（±30s） |
-| 进度条/Seek | `TvSeekBar` | 播放器专用：整行单焦点、6dp 轨、缓冲段/已播段分色、聚焦圆点、拖拽预览锚点回调（§8.3） |
-| Dialog | `TvCenteredDialog` | 见 §5.2；打开后 300ms 内请求初始焦点（对话框窗口不自动分配焦点，PR 结论仍适用） |
-| DropdownMenu | `TvDropdownMenu` | `Popup` + tv `ListItem` 列，锚点定位复刻 PR（卡片右下角） |
-| Toast | `TvToastHost` | 实现 ui-foundation 的 `Toaster` 接口并 provide `LocalToaster`；视觉沿用 PR（`surfaceContainerHigh` 胶囊、跟随主题） |
+| 问题域 | 当前实现 / 范围 |
+|---|---|
+| 程序化送焦 | `TvFocusScope.request(key)` + `Resolver()`，通过锚点附着和快照事件解析；没有轮询、帧等待或超时 |
+| 页面/区域定向移动 | `tvFocusLink`、`tvFocusEnterGate`、`tvFocusExit`；跨大间距区域显式声明 |
+| Lazy 网格目标与边缘切换 | `TvFocusGrid.kt`：等数据与布局 → 滚动使目标组合 → 请求动态锚点；追番跨分类已接入 |
+| 同页/跨路由恢复 | `TvFocusMemory` + `tvFocusMemorable(id)`；主壳记忆放在 `NavDisplay` 之上，识别返回后的目标 ID，用户操作可取消迟到恢复 |
+| 锚定滚动 | `TvAnchoredBringIntoViewSpec`：聚焦项前缘对齐容器前缘 + 动态预留；详情另有区块顶边/选集卡底边策略 |
+| 长按 | `TvKeys.kt` 已有 `tvLongPressKey` 与 `consumeHeldConfirmKey`；列表页尚未调用它们实现收藏菜单。播放器用自己的 `ConfirmHoldTracker` |
+| 长按判定 | 系统首个自动重复 KeyDown 触发（通常约 400–500ms）；不是应用定时器保证精确 500ms |
+| 返回键 | 各页面用 `BackHandler` 分层；播放器按键在根 `onPreviewKeyEvent` 收口 |
 
-### 5.4 焦点工程：PR 自研 → 官方 API 对照
+### 5.4.1 统一焦点框架 `TvFocusScope`
 
-| PR#3217 自研机制 | 问题域 | 本方案（官方 API） |
-|---|---|---|
-| `GridFocusController` + `resolveFocusRepeatedly`（设目标→请求→上报→滚动重试→按键放弃） | Lazy 网格「聚焦第 N 项」没有原语、焦点事务被静默拒绝 | ① item 侧挂 `FocusRequester`，`LaunchedEffect` 中 `lazyGridState.scrollToItem(n)` 后 `requestFocus()`（item 已组合则一次成功）；② 行/网格容器挂 `Modifier.focusRestorer { firstItemRequester }` 处理「进入容器落到上次位置」；③ 恢复场景（返回本页）统一封装成 `rememberInitialFocus(key)` 工具（`ui-foundation/focus/InitialFocus.kt`），内部即 ①，不做轮询重试——tv-foundation 1.0 时代的 lazy+focus 兼容性已由官方修复，若实测仍有竞态再加受限重试 |
-| BringIntoView 全局禁用 + `animateScrollToItem` 手工驱动（锚点行/吸顶） | 聚焦卡吸附行首、聚焦行吸视口顶 | `CompositionLocalProvider(LocalBringIntoViewSpec provides TvPivotBringIntoViewSpec(0f, 0f))` 包住对应 LazyRow/LazyColumn——滚动由焦点系统驱动、对齐点声明式给出（`TvPivotBringIntoViewSpec` 为按官方迁移样例自实现的 `BringIntoViewSpec`，见 §5.2） |
-| `restoreFocusAfter`（弹窗关闭找回焦点） | 弹层关闭后焦点丢失 | `Modifier.focusRestorer()`；Dialog 场景：打开前记录 `FocusRequester`，`onDismissRequest` 后 `requestFocus()`（封装进 `TvCenteredDialog`） |
-| `TvLongPressKey`（repeatCount==0 判据）+ `consumeHeldConfirmKey`（菜单免疫残余连发） | 确认键长短按、长按弹层被连发误点 | tv `Surface(onClick, onLongClick)` 原生长按；弹出层用 `Popup(focusable = true)` 独立焦点域，按住期间的重复 KeyDown 不会穿给新窗口的 KeyUp 语义（实现时以 UI 测试锁定该行为，见 §11.2） |
-| `FOCUS_REQ_DELAY_MILLIS = 300` | 弹窗/布局变化后过早请求焦点失败 | 保留该经验值：`TvCenteredDialog` 内 `LaunchedEffect { delay(300); requester.requestFocus() }` |
-| 播放器根部唯一按键路由 `onPreviewKeyEvent` | 媒体键/方向键全局语义 | **保留此设计**（这是交互架构而非焦点补丁）：TV 播放器同样在根 `onPreviewKeyEvent` 收敛（§8.2） |
-| 返回键分层 BackHandler | 逐层退出 | 标准 `BackHandler(enabled) {}` 按层注册，同 PR 语义 |
+框架文件：`TvFocusScope.kt`、`TvFocusModifiers.kt`、`TvFocusMemory.kt`、`TvFocusGrid.kt`，均位于 `ui-foundation-tv/focus`。
 
-**锚点行示例**（选集轮播 / 探索页卡片行通用）：
+| API / 状态 | 当前语义 |
+|---|---|
+| `TvFocusKey` | 页面私有 enum 或具名 key；列表可使用带身份的 key |
+| `tvFocusAnchor(scope, key)` | 挂 requester，并报告节点附着/脱离和焦点得失 |
+| `request(key)` + `Resolver()` | 后发覆盖先发；目标已附着时尝试一次，成功才清 pending，失败等下一次附着/换代事件；成功后不追抢 |
+| `tvFocusNavSignal` / `tvFocusHotkey` | 用户方向/确认键取消在途请求；主壳另用 `tvFocusHotkeyToggle` 实现菜单键往返 |
+| `InitialFocus(key)` | 等 Lifecycle RESUMED，再优先处理跨 route 记忆，否则请求默认锚点；没有固定延迟 |
+| `TvGridFocusState` | 等目标网格数据/列数，按同行近缘列计算落点并钳到末项；目标聚焦、用户操作或确认空数据时结束 pending |
+| `TvFocusMemory` | 跨 route 目标认领、激活、迟到恢复、用户取消集中在一个协议内；无 ID 的组件只参与同页恢复 |
 
-```kotlin
-// AnchorBringIntoView.kt —— pivot 语义的 BringIntoViewSpec（官方迁移指南样例的封装，~20 行）
-class TvPivotBringIntoViewSpec(
-    private val parentFraction: Float, // 焦点项在视口中的锚点位置：0f=起点(锚点行/吸顶)
-    private val childFraction: Float = 0f,
-) : BringIntoViewSpec {
-    override fun calculateScrollDistance(offset: Float, size: Float, containerSize: Float): Float =
-        (offset + size * childFraction) - containerSize * parentFraction
-}
-
-@Composable
-fun TvAnchoredRow(state: LazyListState, content: LazyListScope.() -> Unit) {
-    CompositionLocalProvider(
-        LocalBringIntoViewSpec provides remember {
-            TvPivotBringIntoViewSpec(parentFraction = 0f) // 聚焦项吸附行首
-        },
-    ) {
-        LazyRow(
-            state = state,
-            horizontalArrangement = Arrangement.spacedBy(16.dp),
-            // 行尾留整行空白，末卡也能吸附行首（PR 结论沿用）
-            contentPadding = PaddingValues(start = 48.dp, end = rowEndPaddingForAnchor()),
-            modifier = Modifier.focusRestorer(),
-            content = content,
-        )
-    }
-}
-```
-
-### 5.4.1 统一焦点框架 `TvFocusScope`（v4 实装，取代 5.4 表中部分推断）
-
-§5.4 的对照表写于 v3（假设 tv-material + 官方原语点用即可）。v4 实装期实测推翻了其中两条：
-`requestFocus()` **不能**假设一次成功（触屏设备 touch mode 下 material3 clickable 不参与键盘焦点、
-页面转场头几帧节点未附着、返回值对未附着节点说谎）；跨大段不可聚焦内容的空间焦点搜索**不可靠**
-（落错或落空）。于是把上游 PR 每页手写的调度器泛化成统一框架，落在
-`ui-foundation-tv/focus/TvFocusScope.kt` + `TvFocusModifiers.kt`：
-
-| 概念 | API | 说明 |
-|---|---|---|
-| 锚点标识 | `TvFocusKey`（页面私有 enum 实现，或 `TvFocusKey("name")` 工厂） | 页面内具名焦点位置 |
-| 页面调度器 | `rememberTvFocusScope()` + 根部装 `focus.Resolver()` | 所有程序化聚焦走 `request(key)`，单解析循环消化：轮询 `requestFocus` + **到位确认**（当前聚焦状态 + 事件闩，不信 requestFocus 返回值；已到位不再重发，否则会把用户刚移开的焦点抢回） |
-| 锚点声明 | `Modifier.tvFocusAnchor(scope, key)` | 挂 requester + 焦点得失自动上报（hasFocus，容器/叶子皆可） |
-| 显式方向链接 | `Modifier.tvFocusLink(scope, up/down/left/right)` | 边缘元素声明去向，替代不可靠的空间搜索 |
-| 进入门控 | `Modifier.tvFocusEnterGate(scope, entry, allow)` | 容器只允许白名单方向进入（`FocusDirection.Enter` = 编程式聚焦，通常须包含） |
-| 全局快捷键 | `Modifier.tvFocusHotkey(scope, Key.Menu to key)` | 挂壳根，任意深度一键直达（如菜单键→侧边栏） |
-| 进页初始焦点 | `focus.InitialFocus(key)` | 标准延迟后走同一条 request 解析路径 |
-
-配套前置：触屏设备跑 TV 界面须在壳里 `LocalInputModeManager.requestInputMode(InputMode.Keyboard)`
-（touch mode 下整个键盘焦点系统不工作，真 TV 无此问题）。返回键分层仍用标准 `BackHandler` +
-`focus.request(上层锚点)` 组合。三个既有调用点（主壳菜单键/探索页/详情页）已迁移，真机回归通过。
-尚未纳入框架（需要时再泛化自 PR）：跨区块纵向路由（`TvDetailsSectionNav` 的有序区块表）、
-聚焦吸附滚动（SnapOnFocusSection）、Lazy 网格「聚焦第 N 项」两段解析。
+触屏设备运行 TV 壳时，`TvMainShell` 主动请求 `InputMode.Keyboard`。焦点框架已被页面使用，但各页接入深度不同：搜索/时间表仍有不少系统空间导航，详情滚动策略是页内实现，不能把框架存在等同所有页面交互已验收。
 
 ### 5.5 主题系统 `AniTvTheme`
 
-```kotlin
-// :app:android:ui-foundation-tv  theme/AniTvTheme.kt
-@Composable
-fun AniTvTheme(themeSettings: ThemeSettings, content: @Composable () -> Unit) {
-    // 1) 复用 materialkolor（与手机同一算法、同一种子色，品牌一致）
-    val m3 = dynamicColorScheme(
-        primary = themeSettings.seedColor,           // 默认 #4F378B
-        isDark = true,                               // TV 默认深色；设置项可开「跟随手机端语义」
-        isAmoled = themeSettings.useBlackBackground,
-        style = PaletteStyle.TonalSpot,
-    )
-    // 2) 逐字段映射到 androidx.tv.material3.ColorScheme
-    val tvColors = m3.toTvColorScheme()              // TvColorMapping.kt
-    MaterialTheme(                                    // androidx.tv.material3.MaterialTheme
-        colorScheme = tvColors,
-        typography = AniTvTypography,                 // M3 刻度 + 10-foot 微调（正文不小于 12sp）
-        content = content,
-    )
-}
+当前签名为 `AniTvTheme(seedColor: Color = AniTvThemeDefaults.SeedColor, content)`：
 
-// TvColorMapping.kt —— tv ColorScheme 比 m3 多 border/borderVariant，取 outline/outlineVariant
-fun androidx.compose.material3.ColorScheme.toTvColorScheme() =
-    androidx.tv.material3.darkColorScheme(
-        primary = primary, onPrimary = onPrimary, primaryContainer = primaryContainer, /* …全字段… */
-        border = outline, borderVariant = outlineVariant, scrim = scrim,
-    )
-```
-
-配套：
-
-- `LocalThemeSettings`：TV 在 `MainActivity` 用 `SettingsRepository.themeSettings.flow` 提供（不复用手机 `AniTheme`——那是 m3 `MaterialTheme`）。
-- **两套 MaterialTheme 不共存于同一子树**：TV 代码只 import `androidx.tv.material3.MaterialTheme`；Konsist 禁 `androidx.compose.material3`（§11.1）。
-- 字面色 token（PR 实测值）进 `TvColors.kt`：hero 文字 `#F1F1F1`/`#B4B5B7`、hero 按钮底 `#31363D`/`#17191C`、播放器控制层白/黑 alpha 系（§8）。
-- `TvFocusDefaults`（唯一焦点视觉出口）：
-
-```kotlin
-object TvFocusDefaults {
-    val scale = 1f                       // PR 风格：无缩放；切官方风格改 1.05f 一处生效
-    @Composable fun cardBorder() = Border(
-        border = BorderStroke(2.5.dp, MaterialTheme.colorScheme.primary),
-        inset = 3.dp, shape = RoundedCornerShape(11.dp),
-    )
-    @Composable fun cardGlow() = Glow.None
-}
-```
+- 默认种子色 `#4F378B`，`dynamicColorScheme(isDark = true, isAmoled = false, style = TonalSpot)`。
+- 外层提供 Material3 MaterialTheme，内层提供经 `toTvColorScheme()` 映射的 tv-material MaterialTheme。两套主题**有意共存**。
+- `MainActivity` 调用默认主题，没有订阅 `SettingsRepository.themeSettings`；主题编辑、跟随系统/用户选择、独立 TV 字体刻度仍未实现。
+- 焦点尺寸集中于 `TvFocusDefaults`；Hero/backdrop、侧栏、海报与横图卡参数放在相应 `*Defaults` 对象。没有独立 `TvColors.kt` 或 `AniTvTypography`。
 
 ### 5.6 其余基建复用方式
 
-| 能力 | 方式 |
+| 能力 | 当前方式 |
 |---|---|
-| 图片 | 依赖 ui-foundation 的 `AsyncImage`/`LocalImageLoader`；`TvAniApplication`/`MainActivity` 用 `createDefaultImageLoader(context, scopedHttpClient)` 提供（手机 `AniApp.kt:198` 同款装配，约 10 行） |
-| 占位 shimmer | `:app:shared:placeholder` 的 `Placeholder.kt`/`PlaceholderHighlight.kt`（纯 foundation 层，**不用** PlaceholderMaterial3） |
-| 字符串 | 直接 `stringResource(Lang.xxx)`；TV 专属新串加进 `app-lang`（PR 已铺好 49 条 TV 文案 key，可沿用命名） |
-| 动效 | `AniMotionScheme`/`MaterialEasing`/`AniAnimatedVisibility` 原样复用 |
-| 错误呈现 | `LoadError`（app-data）+ `renderLoadErrorToastMessage`；错误卡片 TV 自绘（tv `Surface` + 文案） |
-| backdrop 渐隐曲线 | PR 的 `tvBackdropFadeToBlackStops`/`tvBackdropFadeFromBlackStops` 两个纯函数照搬进 `TvBackdropLayer.kt`（数学与 UI 框架无关） |
+| 图片 | `MainActivity` 用 `HttpClientProvider.get(ANI)` + `rememberAniSketchInstance` provide `LocalSketch`；页面调用共享 `AsyncImage`，旧 Coil 装配已失效 |
+| 字符串 | 可直接复用 `stringResource(Lang.xxx)`；TV 当前大量中文常量仍需资源化，旧文档「49 个 key 已沿用」不能作为完成结论 |
+| 状态对象 | 共享状态通过白名单使用，视图自绘；允许的实际前缀以 `TvArchitectureTest` 为准 |
+| backdrop | `TvImmersiveCards.kt` 内的渐隐函数与 `TvBackdropDefaults`，探索页再按双态高度和防抖控制 |
+| 错误呈现 | 页面各自实现：时间表/详情有重试，登录有错误文案；搜索和选源空列表尚不能完整区分加载、失败与真正无结果 |
 
 ---
 
@@ -473,442 +321,466 @@ object TvFocusDefaults {
 
 ### 6.1 进程与启动
 
-```kotlin
-// :app:android src/tv  TvAniApplication.kt —— tv variant 的 android:name（经 src/tv manifest 增量声明）
-class TvAniApplication : Application() {
-    override fun onCreate() {
-        super.onCreate()
-        AndroidLoggingConfigurator.configure(filesDir.resolve("logs").absolutePath)
-        val scope = createAppRootCoroutineScope()
-        startKoin {
-            androidContext(this@TvAniApplication)
-            // 共享装配 + 空引擎缓存门控（D4）—— TV 无缓存/BT，选源池自然无 LocalCache 源（§1.2）
-            modules(getTvCommonKoinModule({ this@TvAniApplication }, scope))
-            modules(getCommonAndroidModules(scope))                  // src/main 交集（无 torrent 绑定）
-            modules(getTvAndroidModules())                           // src/tv — BrowserNavigator 降级 / AppTerminator
-            modules(getTvKoinModule())                               // src/tv ui/di — 薄 VM 注册表
-        }.startCommonKoinModule(this, scope)                          // proxy/Session 后台任务；缓存恢复段判空自动跳过
-    }
-}
-```
+`TvAniApplication.onCreate` 初始化日志与根协程域，依次装配：
 
-`getTvKoinModule()`（`ui-main-tv` 的 `di`）注册各页 ViewModel（`viewModel { ... }`）；`getTvAndroidModules()`（`src/tv`）注册：`BrowserNavigator` 降级实现（暂 Noop，M2 换二维码对话框）、TV 版 `AppTerminator`、TV 版 `MediaResolver`（仅在线链路）、`CaptchaBrowserFactory`/`ImageCaptchaRecognizer`（Web 解析链依赖，服务取源，M1 修正）；`UpdateInstaller` 按 D8 暂不注册；`TurnstileState` 绑定虽注册但无调用方（评论发送裁剪，D4）。
+1. `getTvCommonKoinModule`：共享核心 + 空视频缓存存储。
+2. `getCommonAndroidModules`：共享 Android 权限/HLS/播放器工厂。
+3. `getTvAndroidModules`：Web 解析、验证码、Noop 浏览器与 TV 退出实现。
+4. `startCommonKoinModule`：启动共享后台任务；没有 HTTP 下载器，缓存恢复为空。
+5. 异步将 TV 独立 DataStore 的 `mediaSelectorSettings.preferKind` 写为 `WEB`。
+
+Koin 仅装配业务与平台依赖，不注册 TV ViewModel；VM 的统一构建入口为 `TvAniAppContent`。
+
+TV 不启动 torrent 服务连接，不初始化 Sentry/Firebase。`SubjectDetailsStateFactory` 会被详情页实际注入；旧注释提到的 `TurnstileState` 当前没有对应绑定。`CaptchaBrowserFactory` 和 `ImageCaptchaRecognizer` 服务于 Web 数据源解析，已注册。
 
 ### 6.2 Activity 与 Manifest
 
-单 Activity（`MainActivity : BaseComponentActivity`，横屏、`singleTask`），Compose 全屏；`BaseComponentActivity` 来自 `:app:shared:application` androidMain（两 flavor 共用）。
+`MainActivity : AniComponentActivity`（基类在共享 application 模块），manifest 声明横屏、`singleTask`，Activity 使用 edge-to-edge、`AniTvTheme`、Sketch 和原生 Toast。进入组合前通过 `TvAppDependencies.fromKoin` 取得 VM 所需的业务依赖，并创建图片客户端；依赖参数只交给根内容中的 VM 构造回调，页面不解析依赖、不调用仓库业务方法。
 
-**Manifest 三层分治**（合并方向：flavor 增量 → `src/main` 交集，**纯加法**，不需要任何 `tools:node="remove"` 手术）：
-
-| 层 | 内容 |
+| 清单层 | 当前声明 |
 |---|---|
-| `src/main`（交集） | 通用权限：`INTERNET` / `ACCESS_NETWORK_STATE` / `WAKE_LOCK` / `REQUEST_INSTALL_PACKAGES`；`AppLocalesMetadataHolderService`、`InitializationProvider(ProcessLifecycleInitializer)`、`FileProvider(@xml/file_paths)`；`<application>` 通用属性（`largeHeap`/`usesCleartextTraffic` 等） |
-| `src/default`（手机增量） | 现手机清单减去交集：torrent 双服务（`:torrent_service` 进程/前台类型）、权限差集（`FOREGROUND_SERVICE(_DATA_SYNC/_MEDIA_PLAYBACK)` / `POST_NOTIFICATIONS` / `VIBRATE`）、`ani://bangumi-oauth-callback` intent-filter、手机 `AniApplication`/Activity 声明 |
-| `src/tv`（TV 增量） | 见下：Leanback 声明、TV Application/Activity、banner |
+| `src/main` | INTERNET / ACCESS_NETWORK_STATE / WAKE_LOCK / REQUEST_INSTALL_PACKAGES；禁用的 `AppLocalesMetadataHolderService`、InitializationProvider、FileProvider 与通用 application 属性 |
+| `src/default` | 手机 Application/Activity、torrent 服务与手机专属权限、OAuth 回调 |
+| `src/tv` | 必需 Leanback、非必需触屏、TV Application/Activity、banner、LEANBACK_LAUNCHER、`ani://subjects/...` intent-filter |
 
-拆分验收：**default variant 合并后 manifest 与现状 diff 为空**（对比 `processDefaultReleaseManifest` 产物，进 CI 一次性校验后可移除）。
+应用模块 namespace 为 **`me.him188.ani.android`**；TV Kotlin 包为 `me.him188.ani.tv`，清单使用全限定类名。TV 没有 torrent 前台服务/进程，但不能写作「合并后没有任何 service」。`tv_banner.xml` 已有 320×180 图形，黑色「あ」字形仍有 TODO，不能标为视觉全部完成。
 
-`src/tv/AndroidManifest.xml`：
-
-```xml
-<manifest>
-    <!-- TV 形态声明 -->
-    <uses-feature android:name="android.software.leanback" android:required="true"/>
-    <uses-feature android:name="android.hardware.touchscreen" android:required="false"/>
-
-    <!-- android:name 覆写 main 的 <application>（flavor 增量优先级更高） -->
-    <application android:name="me.him188.ani.tv.TvAniApplication"
-        android:banner="@drawable/tv_banner">
-
-        <activity android:name="me.him188.ani.tv.MainActivity" android:exported="true"
-            android:launchMode="singleTask" android:screenOrientation="landscape">
-            <intent-filter>
-                <action android:name="android.intent.action.MAIN"/>
-                <category android:name="android.intent.category.LEANBACK_LAUNCHER"/>
-            </intent-filter>
-            <intent-filter> <!-- 与手机端同 scheme：ani://subjects/{id} -->
-                <action android:name="android.intent.action.VIEW"/>
-                <category android:name="android.intent.category.DEFAULT"/>
-                <data android:scheme="ani" android:host="subjects"/>
-            </intent-filter>
-        </activity>
-    </application>
-</manifest>
-```
-
-> 注意：模块 namespace 仍是 `me.him188.ani`（namespace 为模块级），TV 源集包 `me.him188.ani.tv` 在 manifest 中写**全限定类名**；`ani://bangumi-oauth-callback` 与 torrent 服务都在 `src/default` 增量里，tv variant 合并结果**天然不含**它们（网页 OAuth/BT 已裁剪，§1.2）——合并后无任何 `<service>`，保持单进程；`tv_banner.xml` 复刻 PR 的 320×180 视觉（`#2F3943` 底 + `#7EBBED` 圆环 + 白圆 + 黑「あ」）。
+**深链缺口**：虽然有 intent-filter，TV Activity 目前没有解析启动 Intent 或处理 `onNewIntent` 的代码；不能把系统能启动 Activity 等同已跳到条目详情。
 
 ### 6.3 导航
 
-- 复用 `AniNavigator`（app-platform）：TV `MainActivity` 内 `rememberNavController()` → `aniNavigator.setNavController(...)`，业务代码统一走 `LocalNavigator.current.navigateXxx(...)`——与手机端习惯一致。
-- `TvAniAppContent` 注册 **TV 路由子集**：
+`TvAniAppContent` 创建 `rememberAniBackStack(NavRoutes.Main(Exploration))`，调用 `aniNavigator.setBackStack`，再用 `NavDisplay` 和保存状态/ViewModel 两个 decorator 展示页面。全部 9 个 TV VM 在这个函数内调用 `tvViewModel { ... }` 构建，实例仍归属所在导航条目的 `ViewModelStore`；主壳功能 VM 在页面首次显示时创建并随主条目保留，详情/播放 VM 出栈时销毁。主壳的 `SavedStateHandle` 来自条目的 `CreationExtras`。当前只注册：
 
-| NavRoutes | TV 落点 | 说明 |
-|---|---|---|
-| `Main(initialPage)` | `TvMainShell`（探索/追番 两 tab） | |
-| `Schedule` | `TvScheduleScreen` | 独立目的地（同 PR） |
-| `SubjectSearch` | `TvSearchScreen` | |
-| `SubjectDetail` / `EpisodeDetail` | `TvSubjectDetailsScreen` / `TvEpisodeScreen` | |
-| `Settings(tab)` | `TvSettingsScreen`（子集） | 未覆盖的 tab 显示「请在手机端配置」占位 |
-| `EmailLoginStart/Verify` · `Welcome` | `TvEmailLoginScreen` · 精简欢迎页 | Onboarding 完整流程不搬，首启只做「登录或跳过 + 主题确认」 |
-| 其余（`Caches`/`CacheDetail`/`SubjectCaches`/`TorrentPeerSettings`/`BangumiAuthorize`/`EditMediaSource`/…） | 不注册；入口在 TV 界面不出现（缓存/BT/OAuth 均为 §1.2 裁剪项；资料编辑无独立路由，在账号界面直接不放入口） | |
+| NavRoutes | TV 落点 |
+|---|---|
+| `Main` | `TvMainShell`；壳内保存 Search / Exploration / Schedule / Collection / Login / Settings 六种内容状态，当前未消费 Main 的 initialPage 参数 |
+| `SubjectDetail` | `TvSubjectDetailsRoute` + TV VM/视图，VM 复用共享状态加载器；可跳播放页与关联条目 |
+| `EpisodeDetail` | `TvEpisodeViewModel` + TV 播放页；推荐面板可跳详情 |
 
-- **返回语义**（PR 继承）：主壳内非探索 tab → 回探索；探索 → 退出应用。页内逐层（面板→覆盖层→页面）由各层 `BackHandler` 表达。
-- deep link：`MainActivity.handleStartIntent` 解析 `ani://subjects/<id>` → `navigateSubjectDetails`（照抄手机实现）。
+搜索、时间表、设置、邮箱两步登录是**主壳内部内容**，没有各自独立 NavRoutes entry；`Welcome`、缓存、OAuth 等也没有注册。当前没有首启「登录或跳过 + 主题确认」流程。`ani://subjects/<id>` 解析仍待接入。
 
 ### 6.4 主壳 `TvMainShell`
 
-`NavigationDrawer`（tv-material）+ 内容区：
-
-- 条目自上而下：头像（登录态/未登录 AccountCircle）→ 搜索 → 探索 → 追番 → 设置——复用 `MainScreenPage.getIcon()/getText()`（app-platform，Icon 为纯 ImageVector 可直接用于 tv 组件）；无缓存条目（§1.2）。
-- 收起态宽 48dp，内容区 `padding(start = 48.dp)`（与 PR 对齐，详情页内容左缘同值）。
-- 焦点门控：drawer 仅响应内容区「按左」进入（`focusProperties { onEnter }` 过滤方向）；进入落点固定「探索」；返回/右键回内容区上次焦点（`focusRestorer`）。
-- 当前 tab 不做常驻高亮（PR 结论：聚焦高亮与选中高亮并存会误导）。
+- 自建 `TvNavigationSideRail` 浮于内容之上；头像 → 搜索 → 探索 → 时间表 → 追番 → 设置，收起宽 48dp。
+- 进入侧栏优先落**当前页条目**，无选中条目才回退探索；不是固定聚焦探索。头像进入登录页。
+- 菜单键在壳的内容区和侧栏之间往返；返回/右键/点击条目可恢复内容焦点，使用 `TvFocusMemory`。
+- 菜单快捷键挂在**主壳**，独立的详情/播放 route 没有同一侧栏，不能称为全应用任意页面都可召出。
+- 壳内换页用淡入淡出；换页清除旧焦点记忆。非探索内容返回探索，探索返回交给系统；页内返回先由对应 BackHandler 消费。
 
 ---
 
 ## 7. 页面架构
 
-通用约定：每页 = `TvXxxScreen(state, onIntent)`（纯展示）+ `TvXxxViewModel : AbstractViewModel, KoinComponent`（薄编排）；页面骨架统一 `TvScreenScaffold`（48dp 安全边距、overscan 兼容）；卡片/网格用 §5 组件；聚焦条目驱动 hero 区更新一律 **300ms 防抖**（媒体请求）+ **500ms 文字交叉淡化** + **600ms backdrop crossfade**（PR 参数，进 `TvMotion` 常量）。
+以下为**当前代码实现**，待开发的原设计另列。各业务页面均使用 `TvAniAppContent` 统一构建的 `TvXxxViewModel`；`TvXxxRoute(viewModel, ...)` 接收实例并完成生命周期/状态/导航接线，再传给 `TvXxxScreen(state, onIntent)` → 页面私有 `*PageLayout` → 区块/卡片组件。基础组件仍使用数据和回调，不为纯焦点/布局行为创建 VM。
+
+| 页面 | 当前状态来源 |
+|---|---|
+| 探索 | `TvExplorationViewModel` 适配共享探索 VM；媒体缓存和防抖/去重/并发加载在 TV VM 中，向视图暴露只读 `TvSubjectMediaUiState` |
+| 时间表 | `TvScheduleViewModel` 适配共享 `ScheduleViewModel`；视图使用可保存的 `LazyListState` 保留横向及列内位置 |
+| 追番 | `TvCollectionViewModel` 适配共享 VM/状态；分类切换与边界判断走 Intent，分页与各分类滚动状态继续复用 |
+| 详情 | `TvSubjectDetailsViewModel` 复用 `SubjectDetailsStateFactory` / `SubjectDetailsStateLoader`；VM 聚合只读展示状态并决定续播与图片加载 |
+| 登录 | `TvLoginViewModel` 适配共享 `EmailLoginViewModel`；TV 步骤、请求忙碌态、倒计时、错误与导航结果由 VM 管理 |
+| 搜索 / 设置 / 播放 | `TvSearchViewModel` / `TvSettingsViewModel` / `TvEpisodeViewModel` |
 
 ### 7.1 探索页 `TvExplorationScreen`
 
 | 维度 | 设计 |
 |---|---|
-| 数据 | `TrendsRepository.trendsInfoPager()`（hero 轮播 ≤20 项）、`FollowedSubjectsRepository`（继续观看行）、`RecommendationRepository`（推荐分页，纵向自适应网格）、`TmdbImageService.getBackdropUrl`（hero 与卡片共用横图；条目原名来自 `SubjectCollectionRepository`，页内 `TvSubjectMediaState` 缓存 + 并发 3 预取） |
+| 数据 | 共享 `ExplorationPageState` 的趋势/继续观看/推荐 pager；`TvExplorationViewModel` 在 `ShowHero`/`CardVisible` Intent 后加载条目信息/横图/空简介兜底，Hero 与卡片请求去重，横图并发上限 3；视图不持有仓库或加载器 |
 | 结构（v5，对齐 Prime Video 实测） | 根 `Box`：**backdrop 在页面根层（surface 背景级）**，16:9 贴右上，高度 = 屏高 ×（hero 两态比例 + 下探 0.10），左缘渐隐终点 0.42（不压简介文字），渐隐尾部延伸到卡片行下方；其上 `Column`：**常驻 hero**（高度两态插值 250ms：展开 0.66 / 收缩 0.46）+ 纵向行列表 `LazyColumn`（weight 1，底部留整屏 padding 让末行也能锚到顶）。行 = [行头 32dp]（仅有标题的行）+ 内容：「继续观看」为横向锚定 `LazyRow`；「为你推荐」为纵向自适应网格（列数按可用宽算、行内 weight 等分、尾行 Spacer 占位，仅首行带行头）。卡片统一 16:9 `TvLandscapeCard`（192dp、间距 16dp、TMDB backdrop w780，缺图退化海报裁切、卡内底部渐变叠标题） |
 | hero 双态 | 焦点在 hero → 展开：最高热度轮播条目 + 「更多详细内容」按钮 + 指示器**在整个 hero 底部水平居中**；焦点在卡片行 → 收缩：展示聚焦条目信息。**按钮/指示器的出现与消失就是 hero 高度动画本身**（高度与透明度跟随同一条插值进度，不另起淡入淡出）。文字即时切换，**backdrop 目标防抖 500ms** 再 crossfade（Prime 实测：快速划过卡片不闪图） |
 | 锚定滚动 | **焦点行恒贴 hero 下缘**：用 `BringIntoViewSpec`（`TvAnchoredBringIntoViewSpec`）—— 继续观看行内 spec 把焦点卡对齐行首，列 spec 把焦点卡对齐顶部并预留行头高度（预留量动态：聚焦行有行头留 32dp、网格续行留 0，焦点回调同步写入、滚动计算稍后读取）；纯焦点事件驱动。继续观看行 `rememberSaveable` 横向位置（跨 route 返回后目标卡仍在组合中，焦点记忆可恢复） |
 | 按键 | hero 上 ←→ 切轮播；↓ 显式送焦行 0；继续观看行内 → 直接送焦下一张，← 先滚行让前一张重新组合再送焦（锚定后前一张已滚出组合，空间搜索找不到），首卡按左放行侧边栏；网格行内 ←→ 交给空间搜索；↑/↓ 行间导航一律显式 = 滚列表 + 送焦目标行（网格保持同列、继续观看回记住的卡；悬挂到锚点附着）；行 0 按上回 hero 按钮；确认 → 详情 |
 | 状态 | 行结构变化（Paging 后到的继续观看插首行）时 hero 聚焦态下列表滚回顶（LazyColumn 按 key 保位会把新首行藏在视口上方）；trending 空 → 无指示器 |
 
+继续观看卡已展示「继续 · 第 N 话 / 已看到第 N 话 / 开始观看 / 未开播 / 已看完」状态。确认卡片仍跳详情，由详情播放按钮选续播目标；未实现列表页播放键直接续播或独立播放历史页。轮播在 Hero 聚焦且静止时每 6s 前进，手动切换重置计时。
+
 ### 7.2 新番时间表 `TvScheduleScreen`
 
-| 维度 | 设计 |
+| 维度 | 当前实现 |
 |---|---|
-| 数据 | `GetAnimeScheduleFlowUseCase(today, timeZone)` → 15 天窗口；本地每分钟重算「现在」分界 |
-| 结构 | `TvFullScreenBackdropLayer`（整屏 Crop + 背景色 46% 压暗、无边缘渐隐）→ 日期胶囊行（TabRow 胶囊样式，一屏 n 整枚+半枚露头的宽度反推算法照搬 PR）→ 概况行（18dp 定高）→ 当天网格（列数由「2 行铺满」反推，整行吸附滚动） |
-| 按键 | **正交模型**（PR 核心设计）：胶囊行 ←→=换天（聚焦即切换）、↓ 进网格；网格 ←→=顺播出时间线性走、全天两端跨天、↑顶行回胶囊；返回逐层（非首卡→首卡→胶囊行→退出）；长按确认=收藏菜单+窥视（其余卡淡出 220ms） |
-| 备注 | 跨天焦点交接：换天导致网格整批重建 → 目标卡 `FocusRequester` + `LaunchedEffect(dayIndex)` 落焦（替代 PR 的 1dp 隐形锚点方案） |
+| 数据 | TV VM 暴露共享 `ScheduleViewModel.presentationFlow`；日期窗口与列表内容复用共享实现，横向及列内滚动位置由页面的可保存 `LazyListState` 管理 |
+| 布局 | `LazyRow` 横向并排的固定 360dp 日期列，列间 16dp；列头 M/d + 星期；列内 `LazyColumn` 展示时间、56dp 封面、标题、集数、当前时间指示与占位骨架 |
+| 焦点 | 初始锚点在今天列**第一条番剧**；每张卡以条目/剧集 ID 参与焦点记忆。详情返回期间保持已保存视口，新的用户导航事件恢复 BringIntoView 滚动，避免转场临时焦点把列表滚走；跨列主要依赖 Compose 空间导航 |
+| 状态 | 加载骨架、空日提示、失败文案与重试按钮已有实现 |
+| 待补/待验收 | 本轮已验证跨日浏览、详情返回原卡片与视口、返回后继续纵向滚动；长按收藏未接，空日/错误/跨列边界仍需专项回归 |
+
+旧的「15 天日期胶囊 + 当天网格 + 正交按键」方案已被 §14.5 的多列布局裁定替代，不能继续作为当前界面或未完成的必做布局。
 
 ### 7.3 搜索 `TvSearchScreen`
 
-| 维度 | 设计 |
-|---|---|
-| 数据 | `SubjectSearchRepository.searchSubjects()`（Paging，`paging-compose` 模块复用）、`SubjectSearchHistoryRepository`、补全 `SubjectSearchCompletionRepository`（300ms 防抖） |
-| 结构 | 输入态（`TvTextField` 0.55 宽 + 系统软键盘 + 历史/补全列）⇄ 结果态（backdrop + hero 230dp + `LazyVerticalGrid` Adaptive 112dp）500ms 渐隐互切；筛选 `TvCenteredDialog`（0.62×0.8，排序/最低评分/标签 FilterChip 词表，仅「确认」按钮，返回=取消） |
-| 按键 | 网格严格同列 ↑↓（`focusProperties` 显式接线）；行首 ← → drawer；返回：非首卡→首卡→输入态→退出（深链进入直接退出） |
+- `TvSearchViewModel` 直接调用 `SubjectSearchRepository`；输入框 + 系统软键盘 Search 提交，结果为 Paging Adaptive 海报网格，点击跳详情。
+- 当前是固定输入框加下方网格，没有输入态/结果态 Hero 的 500ms 过渡，也没有历史、补全、筛选弹窗。
+- 初始焦点进输入框，Search 提交后主动收起系统键盘；有结果时，下键通过显式锚点进入首张卡片。卡片有记忆 ID，本轮已验证详情返回保留查询与卡片焦点；网格尚未实现旧设计的显式同列导航与「非首卡→首卡→输入态」返回链。
+- 当前 `itemCount == 0` 统一显示「没有找到相关番剧」，未按 Paging LoadState 区分加载中、失败和真正无结果；加载/重试呈现仍待补。
+
+**保留的待办设计**：历史与 300ms 防抖补全、排序/最低评分/标签筛选及确认/取消语义；具体 TV 对话框与焦点接线需随实现补齐。
 
 ### 7.4 追番 `TvCollectionScreen`
 
-| 维度 | 设计 |
-|---|---|
-| 数据 | `SubjectCollectionRepository.subjectCollectionsPager(type)` + `subjectCollectionCountsFlow()`；hero 观看状态行取 `EpisodeProgressRepository`/`EpisodePlayHistoryRepository`（剩余分钟） |
-| 结构 | 顶部 `TabRow`（想看/在看/搁置/看过/抛弃，聚焦即选中 + 数量角标）→ hero 240dp（个人观看状态行 primary 色）→ Adaptive 网格（在看卡带进度条）；跨 tab 网格横滑 560ms（`AnimatedContent`） |
-| 按键 | 行末 → = 下一分类同行最左卡（行对齐跨页）；长按=五态菜单+「取消追番」二次确认（`TvCenteredDialog`，无取消按钮）；改状态走 `SetSubjectCollectionTypeOrDeleteUseCase`，成功后焦点落相邻卡 |
+- 共享 `UserCollectionsViewModel/UserCollectionsState`，五分类 TabRow 在用户导航聚焦时选中并显示数量；每个分类保留分页与滚动状态，登录变化刷新由共享状态处理。页面恢复前的程序化临时焦点不触发分类切换，避免详情返回误选首分类。
+- TV 展示流使用 `WhileSubscribed`，等待 Route 在组合提交后订阅，避免后台提前读取新建 Compose snapshot 导致状态流终止。本轮已复现并修复「焦点移动但选中分类不变」，游客空态下五分类切换通过设备复测。
+- 当前布局只有分类栏 + Adaptive 海报网格/空态，**没有**旧设计的 Hero、观看进度条或 560ms 横滑过渡。
+- 网格边缘切相邻分类已接入 `TvGridFocusState`：按目标网格列数落同行近缘列，越界钳到末项；切换中冻结聚焦即选中的副作用，且旧网格不能提前消费异步 Intent 对应的送焦请求。空列表判定同时等待 Paging 聚合、source 与 mediator 的 refresh 完成，避免 Room 尚在加载时错误取消送焦。
+- 网格按上出区/返回回**当前分类**，首分类左缘可交给侧栏。分类下键通过网格请求先滚动、组合首项再送焦，支持首卡已被长列表回收的情况。
+- **已登录设备回归通过**：五分类显示 4/14/10/8/41 项，首次进入分类、同行边缘切换/末项钳位、41 项长列表、上下/返回路径、侧栏往返及详情返回原卡片与视口均已复测；详见 §12.2。登录切换瞬间的刷新和数量请求仍需单独验收。
+- **未接线**：长按五态收藏菜单、取消追番确认与修改后焦点落相邻卡。共享状态虽有修改能力，TV 视图没有入口；观看进度呈现与修改类交互仍待补。
 
 ### 7.5 条目详情 `TvSubjectDetailsScreen`
 
-| 维度 | 设计 |
+| 维度 | 当前实现 |
 |---|---|
-| 数据 | `SubjectCollectionRepository.subjectCollectionFlow(id)`、`EpisodeCollectionRepository.subjectEpisodeCollectionInfosFlow`、`SubjectRelationsRepository`（角色/Staff/关联）、`EpisodeCommentRepository`（只读预览）、`TmdbImageService`（backdrop+分集剧照）、评分 `SubjectCollectionRepository.updateRating` |
-| 结构 | 单列 10-foot 信息流：Hero 首屏（全屏 backdrop + 贴底三列信息带：圆钮行+播放钮 / 年月·统计·标签墙 / 评分直方图+摘要）→ 选集整页（**锚点轮播** = `TvAnchoredRow`，256×144 剧照卡）→ 角色/Staff → 作品信息/关联/评价；区块吸附滚动（LazyColumn + pivot spec，snap 24dp） |
-| 按键 | ↑↓ 区块间；播放钮长按=跳当前集卡；选集卡长按=本集详情弹窗（剧照满幅+看过按钮）；评分块确认 → `TvRatingDialog`（380dp，星星行整行单焦点 ←→ 调分 0..10，评价词表沿用 PR 文案，仅「确认」出口）；返回三级（下方区块→选集→Hero→退出） |
-| 进页焦点 | 播放按钮（`rememberInitialFocus`） |
+| 状态 | TV VM 复用共享加载器的 Placeholder / Err / Ok；`Retry` 重载详情及图片，`Resume` 优先采用共享进度目标，再回退未看/首集；UI 不选择播放目标 |
+| 信息层 | Hero 首屏含播放/加载中按钮、日期/统计/标签、评分直方图；下方为简介展开、选集、角色、Staff、作品信息、关联与只读评价 |
+| 图片 | TMDB backdrop + `getEpisodeStills` / `matchToEpisodes` 已接；选集卡优先分集剧照，缺图回退 backdrop/海报。backdrop 用未解析/有图/无图三态避免进页闪替 |
+| 选集/简介 | 226dp 宽、16:9 剧照卡，点击播放，已看状态减淡；简介可用 Material3 AlertDialog 展开 |
+| 初始焦点 | 播放按钮槽位常驻；`InitialFocus` 等 RESUMED；下方区块在首次播放钮聚焦或 RESUMED 后才组合 |
+| 当前滚动 | Hero 顶边 = 0；第二屏区块顶边保留 64dp；选集卡**下边缘 + 64dp 对齐视口下边缘**；角色、制作人员、关联条目、评价沿用平台默认纵向滚动。内层横向列表保留行首 + 48dp 锚定 |
+| 返回 | 下方区块 → 选集 → Hero → 退出；播放钮/展开简介/选集间有显式方向链接 |
+| 待实现 | 收藏/其他圆钮、标签菜单、选集网格菜单、播放钮长按跳当前集、选集长按详情/标记看过、交互评分弹窗 |
+
+当前评分块是**展示**，没有 `TvRatingDialog` 或评分提交入口。详情页分集剧照和区块锚定已实现，不能再与播放器选集条剧照一起笼统列为未做。
 
 ### 7.6 设置（TV 子集）`TvSettingsScreen`
 
-覆盖：播放（`videoScaffoldConfig`）、弹幕（`danmakuConfig` 7 项 `TvSlider` + 类型 chips + 正则过滤开关）、网络与代理（`proxySettings`，含连通性测试展示）、数据源（**只做启停/排序**，编辑提示去手机端；BT 类数据源不展示，§1.2）、主题（种子色圆盘 + 深色策略）、播放历史同步、关于/版本。**不含**缓存管理与 BT/端口设置（对应能力已裁剪，§1.2）。全部走 `SettingsRepository` 的 `Settings<T>.flow/update`——与手机共享同一份 DataStore 语义（注意：TV 是独立应用有独立数据目录，配置不跨端同步，见 §13）。
+当前 `TvSettingsViewModel` 可读写四个开关，但**配置保存与播放行为接线必须分开验收**：
 
-### 7.7 登录 `TvEmailLoginScreen`
+| 设置项 | 保存配置 | TV 播放链路 |
+|---|---|---|
+| 显示弹幕 | 已读写 `SettingsRepository.danmakuEnabled` | **未接**：`TvEpisodeScreen` 始终组合 `TvPlayerDanmakuHost`，VM/Host 未消费该总开关 |
+| 自动连播 | 已读写 `autoPlayNext` | 已挂载 `SwitchNextEpisodeExtension` 并消费配置；整集自动切下一集仍待验收 |
+| 自动跳过 OP/ED | 已读写 `autoSkipOpEd` | **未接**：跳过逻辑在手机 `EpisodeViewModel`，TV VM 未复用该逻辑或提供等价接线 |
+| 播放出错自动换源 | 已读写 `autoSwitchMediaOnPlayerError` | 已挂载 `SwitchMediaOnPlayerErrorExtension` 并消费配置；异常场景仍待验收 |
 
-复刻手机 `EmailLoginViewModel`（仅注入 `UserRepository` + `SessionManager`，可近乎照抄到 TV 模块）：邮箱输入（`TvTextField`+软键盘）→ `sendEmailOtpForLogin` → 6 位验证码输入 → `registerOrLoginByEmailOtp`。Bangumi OAuth 授权与个人资料编辑均已裁剪（§1.2），账号页仅展示只读资料 + 「请在手机端编辑/绑定」提示；Bangumi 绑定在手机端完成后经账号体系对 TV 自然生效。
+已有版本信息；数据源/代理/主题/弹幕高级设置仅显示「请在手机端配置（与 TV 端独立存储）」占位。该文案不代表手机设置会同步到 TV。
+
+**待开发范围**：先补两处设置消费，再做弹幕 7 项步进/类型/正则配置、源管理与时间校准、WEB 数据源启停排序、代理与测试、主题选择、播放历史/同步管理。离线缓存和 BT 设置按 §1.2 裁剪。
+
+### 7.7 登录 `TvLoginScreen`
+
+`TvLoginViewModel` 适配共享 `EmailLoginViewModel`，视图发送修改邮箱/验证码、发送、提交、重输邮箱 Intent。请求在 VM 作用域执行；同步获取请求互斥锁，避免遥控器/IME 重复提交；取消不转为业务错误。步骤、忙碌态、倒计时和错误由 VM 下发。成功发出一次性导航事件，主壳通过 Intent 回探索；`TvMainViewModel` 订阅登录态更新头像/昵称。
+
+登录步切换当前直接 `focus.request(Field)`，并非所有页面都只通过 `InitialFocus` 送焦。登录是壳内内容，不是独立 Start/Verify 路由；没有欢迎向导、独立资料管理或 OAuth 入口。登录后的跨页数据联动仍需回归。
 
 ---
 
 ## 8. 播放器详设 `TvEpisodeScreen`
 
-### 8.1 状态编排（复用 domain，全新薄 VM）
+### 8.1 状态编排与实际复用范围
 
-```kotlin
-class TvEpisodeViewModel(subjectId: Int, initialEpisodeId: Int) : AbstractViewModel(), KoinComponent {
-    private val player: MediampPlayer = get<MediampPlayerFactory<*>>().create(...)
+`TvEpisodeViewModel` 显式接收条目/剧集、平台上下文、Koin 及仓库/服务依赖，使用共享 `EpisodeFetchSelectPlayState` / `EpisodeSession` / `PlayerSession`，自行提供 TV presentation。
 
-    // 核心：与手机端共用同一套播放编排（app-data domain）
-    private val fetchPlayState = EpisodeFetchSelectPlayState(
-        subjectId, initialEpisodeId, player, backgroundScope,
-        extensions = tvPlayerExtensions,   // 复用手机端扩展工厂：进度保存/自动标记看过/自动连播/自动跳过
-    )
-    val episodeSession get() = fetchPlayState.episodeSessionFlow      // 条目/分集信息 + 取源选源
-    val mediaSelector  get() = fetchPlayState.mediaSelectorFlow       // 数据源面板数据
-    val videoLoading   get() = fetchPlayState.playerSession.videoLoadingState
+**当前挂载的 8 个扩展**：
 
-    private val danmakuLoader = EpisodeDanmakuLoader(/* selectedMedia, infoBundleFlow, DanmakuRepository */)
-    val danmakuEvents get() = danmakuLoader.danmakuEventFlow          // → DanmakuHostState
+- `PlaybackSpeedExtension`、`RememberPlayProgressExtension`、`MarkAsWatchedExtension`；
+- `SwitchNextEpisodeExtension`、`SwitchMediaOnPlayerErrorExtension`；
+- `AutoSelectExtension`、`SaveMediaPreferenceExtension`、`ObserveWebMediaSourcePreferenceExtension`。
 
-    suspend fun switchEpisode(id: Int) = fetchPlayState.switchEpisode(id)
-    // 倍速/画面比例/章节/帧预览：player.features[PlaybackSpeed / VideoAspectRatio / chapters / FramePreview]
-}
-```
+因此进度保存、自动选源、连播与出错换源已有接线，但 OP/ED 自动跳过不在其中；不能沿用「手机播放器能力已全部复用」的说法。列表边界/下一集未播出时的自动连播条件由 TV 提供的 `getNextEpisode` 判断。
 
-**仅在线源**（§1.2 裁剪在播放链路的落点）：TV 未装配缓存模块（§4.3-R1）→ `MediaSourceManager` 无 `LocalCache` 源；TV 启动时把 `mediaSelectorSettings.preferKind` 固定写为 `WEB`（TV 独立 DataStore，不影响手机），配合默认开启的 `fastSelectWebKind` 实现「Web 源就绪即快速选源」；数据源选择弹窗仅展示 `WEB` 源分组。M1 实测：18 个默认订阅源并发查询，fast-select 在首批 Web 源完成后 ~5s 容忍期内选中 1080P WEB 源。
+**WEB 取源**：启动时固定偏好 WEB；空缓存存储不产生本地缓存源；`mediaCandidates` 再按 `MediaSourceKind.WEB` 过滤。TV 解析器由 LocalFile/HttpStreaming/AndroidWeb 组成，不含 torrent/offline 解析。保留 LocalFile resolver 不等同开放离线下载功能。
 
-**三个必须的生命周期接线**（M1 实机调试确认，缺一个整条链路就静默卡死，全部拷自手机 EpisodePage 语义）：
+**三个已经接好的生命周期入口**：
 
-1. **`fetchPlayState.onUIReady()`**（页面首帧调用）——扩展系统的启动开关：不调则 AutoSelect/自动连播/进度记忆/倍速全部不挂载，表现为「取源结果永远没人选」。
-2. **订阅 `mediaFetchSession.cumulativeResults` 保活**——`MediaFetchSession` 是**冷流**，没有订阅者就不会向任何数据源发起请求（手机端在 `EpisodePageState` 有同款保活收集，注释「保证数据源会一直查询」）；TV VM 在 `init` 里 `episodeSessionFlow.collectLatest { it.fetchSelectFlow.flatMapLatest { it?.mediaFetchSession?.cumulativeResults ?: flowOf(emptyList()) }.collect() }`。
-3. **`mediaResolver.ComposeContent()`**（播放页组合内调用）——挂载 WebView 解析器；不挂则选源成功后报 `WebVideoSourceResolver not attached`。
+1. Route 首次组合发送 `UiReady` Intent，VM 幂等启动扩展。
+2. VM 持续订阅 `mediaFetchSession.cumulativeResults`，使冷流取源实际运行。
+3. 页面组合 `mediaResolver.ComposeContent()`，挂载 WebView 解析器。
 
-**明确不引入**的手机 presentation：`MediaSelectorState`（TV 自建简化列表）、`SubjectDetailsStateFactory`、`TurnstileState`、评论发送、截图分享。
+退出 VM 时调用 `fetchPlayState.onClose()`。弹幕通过 `EpisodeDanmakuLoader`、共享事件流与 `DanmakuHost` 渲染，已订阅 `danmakuConfig`，但总开关缺口见 §7.6。
 
-### 8.2 覆盖层状态机（PR 语义 1:1 继承）
+### 8.2 当前覆盖层与按键
 
-```
-TvPlayerLayer = HIDDEN | CONTROLS | DETAILS          （互斥三层）
-正交子态: activePanel(5 面板) · focusRegion · episodeStripExpanded · scrub(拖拽预览)
-```
+VM 持有 `TvPlayerStateMachine`，发布不可变 `TvPlayerOverlayState`，用 `controlsVisible` 表达 HIDDEN/CONTROLS，另有 `activePanel`、`stripExpanded`、`scrubMillis`、`speedHolding`、`sourceDialogVisible`。**没有 DETAILS 层**；旧三层状态机中的 DETAILS 仍属待办。
 
-按键全部收敛在根 `Modifier.onPreviewKeyEvent`（唯一路由，PR 架构中被验证的部分予以保留）：
-
-| 层 | 键 | 行为（同 PR，参数见附录 A） |
-|---|---|---|
-| HIDDEN | 确认短按 | 播↔停（暂停时唤出 CONTROLS） |
-| HIDDEN | 确认长按 500ms | 2.5x 倍速（`player.features[PlaybackSpeed]`），松开还原 |
-| HIDDEN | ←→ 单按 | ±5s 静默 seek + 中央闪烁；~620ms 窗口内连按 → 升级拖拽预览 |
-| HIDDEN | ↑↓ | 唤出 CONTROLS（焦点进度条） |
-| CONTROLS | 区间移动/面板/选集条/自动隐藏 5s（暂停不隐藏） | 同 PR §2 全表 |
-| DETAILS | 返回 / 顶部↑ | 回纯视频 / 回选集条 |
-| 全局 | MediaPlayPause/FF/RW | 播停 / 下一集 / 上一集 |
-
-### 8.3 组件构成
-
-| 部件 | 实现 |
+| 状态 / 键 | 当前行为 |
 |---|---|
-| 视频面 | `VideoPlayer(player)`（`:app:shared:video-player` expect/actual，ExoPlayer surface + libass 字幕） |
-| 弹幕层 | `DanmakuHost(state, baseStyle = TvTypography.danmaku)`（danmaku-ui）+ 拷贝 `PlayerDanmakuHost` 接线（~50 行） |
-| 控制层 | 顶部信息（标题/集数/源/时钟）+ 底部 [胶囊行 → `TvSeekBar` → 图标行]；scrim 380/180dp 黑渐变；字面白/黑 alpha 色系进 `TvPlayerColors` |
-| 选集条 | `TvAnchoredRow` 4 卡/屏（204×114.75dp，剧照卡三态），slide+fade 250ms |
-| 浮出面板 ×5 | 弹幕列表/评论(只读)/推荐/角色/Staff：胶囊上方透明宿主 + 玻璃条目（black 55%/80%），`LazyColumn(reverseLayout)` 吸底 |
-| 拖拽预览 | `TvSeekBar` 圆点 + 160×90 浮窗；帧图优先 `player.features[FramePreview]`（mediamp 能力），不可用则退化纯时间胶囊——**不再自接 media3 FrameExtractor**（PR 方案仅当 mediamp 能力不满足时作为后备记录） |
-| 居中弹窗 | 数据源选择（0.72 宽，`MediaSelector` 数据自建简化列表，仅 WEB 源分组，§8.1）/ 弹幕设置（0.45 宽，`TvSlider`×7）/ 选集 sheet |
+| HIDDEN + 确认短按 | 切换播停；暂停时唤出控制层 |
+| HIDDEN + 确认长按 | 本节点起手后首个系统连发触发 2.5x，松开还原；不是精确计时 500ms |
+| HIDDEN/进度条 + 左右 | 单按 ±5s seek；约 620ms 内连按进入预览，显示预览时间 |
+| HIDDEN + 上下 | 显示控制层，焦点进度条 |
+| 预览 + 左右 / 确认 / 返回 | 移动预览点 / 确认 seek / 取消；上下也会取消预览 |
+| 图标行 + 下 | 展开选集条，等数据后滚到当前集并送焦 |
+| 播放页媒体键 | MediaPlayPause 切换；MediaPlay/MediaPause 分别只播放/只暂停，忽略连发；FF/Next 切下一集，RW/Previous 切上一集；不是列表页全局播放语义 |
+| 自动隐藏 | 控制层有 5s 自动隐藏逻辑，暂停、预览、选源、内容面板打开时保留；需要交互回归 |
+| 返回顺序 | 选源弹窗 → 内容面板 → 预览 → 选集条 → 控制层 → 退出播放页 |
+
+播放器根 `onPreviewKeyEvent` 仅将平台按键、连发、事件时间和当前焦点区域转换为 `RemoteKey` Intent。VM/reducer 决定消费、seek/预览、播停和返回分层；计时器与播放位置读取也在 VM。焦点请求以事件下发，由 UI 等待锚点和列表就绪后执行。路由离开或生命周期暂停时释放按住倍速。
+
+### 8.3 组件状态
+
+| 部件 | 当前实现 / 剩余工作 |
+|---|---|
+| 视频面 | 共享 `VideoPlayer` + ExoPlayer/libass；视频 View 不参与键盘焦点 |
+| 弹幕层 | VM 转发弹幕事件、同步暂停状态；`TvPlayerDanmakuHost` 只渲染；总开关、源管理、时间校准待接 |
+| 控制层 | 标题、集名、来源标签、时钟、缓冲/已播进度、后退 10s / 前进 30s / 下一集 / 选源 / 倍速 / 画面比例 |
+| 倍速/比例 | 使用 mediamp PlaybackSpeed/VideoAspectRatio；倍速按钮按 0.5、0.75、1、1.25、1.5、2 循环，当前仅会话生效 |
+| 选集条 | 204×114.75dp 卡、12dp 间距，当前/已看/未看状态，250ms 滑入淡入；卡片仍为纯色渐变 + 文本，**尚未接 TMDB 剧照和显式行首锚定 spec** |
+| 五个浮出面板 | 推荐、Staff、角色、当前集只读评论、已加载弹幕；玻璃条目，宽 420/240dp、最高 300dp；弹幕列表 reverseLayout 吸底 |
+| 面板订阅 | VM 根据 `activePanel` 选择对应的推荐/Staff/角色/弹幕数据流；评论分页仅在评论面板组合时订阅。推荐点击上报 Intent 后跳详情，人物/评论/弹幕条目没有对应详情动作 |
+| 选源弹窗 | 页面内 0.72 宽 × 0.8 高遮罩，只列 WEB；初始焦点到选中项或首项，焦点被限制在弹窗；空候选统一「正在查询…」，无源/失败结束态尚待区分 |
+| 预览 | 当前只有时间反馈，TV 未调用 FramePreview；160×90 帧浮窗仍待实现 |
+| DETAILS / 弹幕设置 | 未实现完整 DETAILS、7 项 Slider 弹幕弹窗或独立选集 sheet |
 
 ---
 
 ## 9. 数据与领域层复用清单
 
-### 9.1 直接复用（零改动）
+### 9.1 已复用
 
-| 层 | 复用件 | TV 用途 |
-|---|---|---|
-| 播放编排 | `EpisodeFetchSelectPlayState` / `EpisodeSession` / `PlayerSession` / `MediaFetchSelectBundle` / 播放器扩展工厂 | §8.1 |
-| 选源 | `MediaSelector` / `MediaFetchSession` / `MediaSourceManager` | 数据源面板/自动选源 |
-| 弹幕 | `EpisodeDanmakuLoader` / `DanmakuRepository` / `DanmakuConfig`(ui-config) / `DanmakuRegexFilterRepository` | 渲染+设置+源管理 |
-| 页面数据 | Trends/Recommendation/FollowedSubjects/AnimeSchedule/SubjectSearch/SubjectCollection/EpisodeCollection/EpisodePlayHistory 各 Repository + 对应 UseCase | §7 各页 |
-| 会话 | `SessionManager` / `SessionStateProvider` / `UserRepository`(邮箱 OTP) / `TokenRepository` | 登录/鉴权 |
-| 设置 | `SettingsRepository`（22 个 `Settings<T>`）/ `PlatformDataStoreManager` / Room `AniDatabase` | 设置页/全局配置 |
-| 导航 | `AniNavigator` / `NavRoutes` / `MainScreenPage` | §6.3 |
-| 更新 | `UpdateManager`（清理旧包）；`UpdateChecker` 待服务端支持后启用 | §10.4 |
-
-> **明确不复用**（§1.2 裁剪对照）：`MediaCacheManager` / `HttpMediaCacheEngine` / `HttpDownloader` / torrent 全链路（含 `:torrent_service` 进程模型）——TV 无缓存与 BT；`TurnstileState` / 评论发送链路——评论只读；Bangumi OAuth 授权流程与资料编辑接口——仅只读展示。这些代码不删除、不修改，仅不进 TV 装配。
-
-### 9.2 需要新增/扩充（均落在 `app-data`，与 UI 无关）
-
-| 件 | 说明 |
+| 层 | 当前用途 |
 |---|---|
-| `TmdbImageService` / `TmdbEpisodeMatcher` / `BangumiSummaryService` / `StaleRefreshGate` | 从 PR#3217 摘取（其实现本就位于 app-data 目录约定内），提供横版 backdrop、分集剧照、空简介兜底；探索/时间表/搜索/追番/详情/播放器选集条全部依赖 → **R3 前置项** |
-| `ThemeSettings.tvXxx` 降级开关（可选） | 低端盒子关闭沉浸布局/完整过渡（PR 设置项设计可沿用，字段放 `ThemeSettings` 尾部，不影响手机端序列化） |
+| 播放编排/选源 | `EpisodeFetchSelectPlayState`、播放会话、MediaSelector、MediaFetchSession、8 个播放器扩展（§8.1） |
+| 弹幕 | `EpisodeDanmakuLoader`、DanmakuRepository、DanmakuConfig、正则过滤列表与渲染层 |
+| 页面状态 | 探索/追番/时间表/详情/登录的共享 VM 或状态；搜索与设置通过 TV VM 访问仓库 |
+| 会话/配置/持久化 | SessionManager、UserRepository、SettingsRepository、DataStore、Room；TV 与手机应用数据目录独立 |
+| 导航 | app-platform 中 Navigation 3 版 AniNavigator、NavRoutes、back stack |
+| 图片与详情 | Sketch AsyncImage、TMDB 横图/分集剧照匹配、BangumiSummaryService 简介兜底 |
+
+视频缓存管理器保留空存储实例以满足注入；torrent、离线下载和手机页面视图不接入 TV 运行链路。共享状态工厂属于实际复用范围。
+
+### 9.2 已有数据能力与尚未消费的部分
+
+| 能力 | 当前情况 |
+|---|---|
+| `TmdbImageService` / `TmdbEpisodeMatcher` | 已在 app-data，包含持久化图片信息与分集匹配；探索横图、详情横图/剧照已消费，播放器剧照未接 |
+| `BangumiSummaryService` | 已注册公共 Koin，探索 Hero 空简介兜底已用；不能据此推断每个 TV 页面都用了兜底 |
+| `StaleRefreshGate` | 已存在并用于 TMDB 刷新控制，不再是 R3 待新增项 |
+| 低端设备降级 | TV 主题/布局没有设备分档接线；禁用复杂过渡、弹幕密度分档等仍待实现与测量 |
+| 配置消费 | 弹幕总开关、自动跳 OP/ED 仍需在 TV 播放层接线（§7.6），不属于数据仓库缺失 |
 
 ---
 
 ## 10. 构建与发布
 
-### 10.1 `:app:android` 构建脚本改动要点
+### 10.1 当前构建配置
+
+`app/android/build.gradle.kts` 使用 `ani.android-application`，保留共享的 SDK、版本、签名、ABI splits 与 buildTypes；flavor 配置为：
 
 ```kotlin
-android {
-    // namespace/compileSdk/minSdk/targetSdk/versionCode/versionName/splits/签名/buildTypes 全部沿用现状——单一台账，零双份维护
-    flavorDimensions += "distribution"                       // 现状已有（build.gradle.kts:116）
-    productFlavors {
-        create("default") { /* 现状不动 */ }
-        create("tv") {
-            dimension = "distribution"
-            applicationId = "me.him188.ani.tv"               // 整体覆写（非 suffix），与手机并存
-            // debug 沿用全局 applicationIdSuffix（.debug2）→ me.him188.ani.tv.debug2
-        }
+flavorDimensions += "distribution"
+productFlavors {
+    create("default") { dimension = "distribution" }
+    create("tv") {
+        dimension = "distribution"
+        applicationId = "me.him188.ani.tv"
     }
-}
-dependencies {
-    // 两 flavor 共用完整依赖树（D1：不做依赖收窄），现有依赖声明零改动
-    implementation(projects.app.shared)
-    implementation(projects.app.shared.application)
-    // ... 其余现有依赖不变 ...
-
-    // ── TV UI 库模块（仅 tv variant classpath；tv-material/materialkolor/navigation 经其 api/implementation 封装） ──
-    "tvImplementation"(projects.app.android.uiMainTv)
 }
 ```
 
-> 手机 flavor 名沿用 `default` 是刻意的：改名（如 `mobile`）会连累 CI 任务名 `assembleDefaultRelease` 与产物路径，违背零变化目标（§1.1-5）。
+共享依赖仍为 `implementation(projects.app.shared)` 和 `implementation(projects.app.shared.application)`，TV 额外追加 `tvImplementation(projects.app.android.uiMainTv)`。
 
-M0 实施补充的两个坑（均已落在构建脚本注释中）：
+TV 专属处理已经落地：
 
-1. **Firebase 泄漏**：`:utils:analytics` 经 app-platform api 传递 gitlive firebase，会混入 tv variant 的 manifest（AD_ID/AdServices 权限 + measurement 服务）——tv classpath 上 exclude `dev.gitlive` firebase 桥 + `com.google.firebase` + `com.google.android.gms`（TV 端 Analytics 永不初始化）；同时禁用 `processTv*GoogleServices` 任务（google-services.json 只含手机包名）。
-2. **app_name 覆写**：`:app:shared` 库资源的 `app_name`（"Animeko"）在 tv variant 同样可见，`src/tv/res/values/strings.xml` 以应用资源优先级覆写为 "Animeko TV"；`ic_launcher` 直接复用库资源，无需自备。
+- 禁用 `processTv*GoogleServices`，从 TV classpath 排除 GitLive Firebase 桥、Firebase/GMS，避免手机分析组件的权限与服务进入 TV 清单。
+- `src/tv/res/values/strings.xml` 覆写应用名为 Animeko TV，启动图标复用共享资源。
+- 默认 debug 后缀 `.debug2`，可通过 `ani.android.debug.applicationIdSuffix` 覆写；TV debug 通常为 `me.him188.ani.tv.debug2`。
+- 本地默认 ABI 为 arm64-v8a，构建参数 `ani.android.abis` 可指定其他 ABI；是否成功构建应以实际运行结果为准。
+- TMDB 图片依赖构建时的 `ani.tmdb.api.token`；图片回归先执行 `:app:shared:app-platform:verifyTmdbConfiguration` 检查配置非空，再核验设备上的实际图片来源。仅构建成功或看到 Bangumi 回退图不能判为 TMDB 通过。
 
-### 10.2 CI 改造（改 `.github/workflows/src.main.kts` 后重新生成 yml）
+### 10.2 CI 与上传配置
 
-| 项 | 改动 |
+工作流源为 `.github/workflows/src.main.kts`，生成结果为 `build.yml` / `release.yml`。当前已配置：
+
+| 项 | 实现 |
 |---|---|
-| 构建 | Android 构建步骤追加 `:app:android:assembleTvRelease`（同 job，共享缓存与签名注入）；**手机任务 `assembleDefaultRelease` 名称、行为、产物路径零变化**（单维度设计的关键收益，D1） |
-| 上传 | `ci-helper` 仿照 `uploadAndroidApk` 增加 `uploadAndroidTvApk`，扫描 `app/android/build/outputs/apk/tv/release`（手机路径 `apk/default/release` 不变） |
-| 命名 | `ReleaseArtifactNames` 增加 `androidTvApp(fullVersion, arch) = "ani-tv-$fullVersion-$arch.apk"`（避免与手机 arch 名冲突） |
-| PR 检查 | `check` 流水线增加 `:app:android:assembleTvDebug`（单 ABI）——同时承担交集源集纯净性的编译期验证（§4.3-R2）：`src/main` 越界引用手机符号在此步直接失败 |
-| 清单守护 | tv variant 合并 manifest 断言：无 `<service>`、权限集合 ⊆ 白名单——防手机侧新增声明误入 `src/main` 静默泄漏进 TV（§13 风险 #10） |
+| Debug 构建 | `assembleDefaultDebug assembleTvDebug verifyTvManifestPurity` |
+| Release 构建 | 同 job 执行 `assembleDefaultRelease assembleTvRelease`，共享缓存与签名 |
+| Workflow artifact | 上传各 ABI 的 `app/android/build/outputs/apk/tv/release/android-tv-<arch>-release.apk` |
+| TV 发布任务 | `:ci-helper:uploadAndroidTvApk`，扫描 `outputs/apk/tv/release`，`flavor = "tv"` |
+| 发布命名 | `build-logic/src/main/kotlin/ciHelperTasks.kt` 中 `ReleaseArtifactNames.androidTvApp` 生成 `ani-tv-<version>-<arch>.apk` |
+| 清单守护 | `verifyTvManifestPurity` 依赖 `processTvDebugManifest`；检查文本不含 torrent、uses-permission 在白名单（含动态接收器权限例外） |
+
+清单守护**没有断言「无任何 service」**。TV Debug 编译能发现 `src/main` 对仅在 `src/default` 定义符号的误引用，但无法拦截共享模块里的手机 UI；后者靠 §11.1。
+
+通用 CI 测试步骤目前是 `desktopTest` 和 `testAndroidHostTest`，工作流没有显式调用五个 TV 库的 `testDebugUnitTest`。不能由 APK 构建步骤存在推断 TV 架构/焦点等单测已经在 CI 执行。本次核对确认配置存在，未查询远端 CI 或发布资产状态。
 
 ### 10.3 版本与并存策略
 
-- versionCode/versionName 同一模块天然同源（同一次 release 同步出双包，无需属性对齐样板）。
-- flavor 覆写 applicationId（`me.him188.ani.tv`）→ 同设备可并存、更新互不影响；代价：**不共享登录态与本地数据**（TV/手机本就是不同设备场景，接受；跨端同步依赖既有服务端能力：收藏/进度经 Bangumi/Ani 账号自然同步）。
-- debug 构建：全局 `applicationIdSuffix`（`.debug2`，`build.gradle.kts:111`）自动作用于两个 flavor → `me.him188.ani.tv.debug2`，避免与正式包冲突。
+- 手机与 TV 在同一 application 模块，共用 versionCode/versionName 与签名配置；手机任务名/输出目录保持 `default`。
+- `me.him188.ani.tv` 与手机应用可并存，但登录凭据、设置和本地数据库独立；账号体系支持的数据通过服务器同步，**手机设置不会自动复制到 TV**。
+- TV 和手机是否在某次 release 都已成功发布，需要查对应流水线运行结果，不能仅以这份架构文档证明。
 
 ### 10.4 应用内更新
 
-现链路：`UpdateChecker → Ani 服务端 v1/updates/incremental/details(clientPlatform, clientArch, releaseClass) → downloadUrlAlternatives`。TV 需要：
+按维护者指示暂缓。当前 TV 设置只有版本显示，平台层未注册 `UpdateInstaller`，浏览器为 `NoopBrowserNavigator`，**没有 Release 地址二维码**。
 
-1. 服务端新增 `clientPlatform = "android-tv"` 分发 `ani-tv-*` 资产（服务端工作项，跟踪于路线图 M4）；
-2. TV 端在此之前隐藏「检查更新」执行入口，仅显示当前版本 + GitHub Release 地址二维码；
-3. 开启后复用 `FileDownloader` + `AndroidUpdateInstaller`（TV 遥控器场景默认「下载完成自动拉起安装」，即 PR `autoInstallUpdates` 的产品结论，作为 TV 端固定行为而非开关）。
+恢复开发前需确认服务端支持 `clientPlatform = "android-tv"`，随后再接 TV 更新检查、下载和安装流程。本次未检查服务端仓库的实现状态。二维码浏览器降级仍是独立待办，不因更新暂缓而算已完成。
 
 ---
 
 ## 11. 质量保障
 
-### 11.1 架构守护（Konsist，跑在 `:app:android` test 里）
+### 11.1 当前架构守护（Konsist）
 
-D1 放弃编译期隔离后，**Konsist 是 §4.2 约定边界的主要机械守护**（编译器不再拦越界 import），M1 起随首批 TV 页面落地：
+位置：`app/android/ui-main-tv/src/test/kotlin/me/him188/ani/tv/ui/main/TvArchitectureTest.kt`。任务：`:app:android:ui-main-tv:testDebugUnitTest`。
 
-```kotlin
-@Test fun `tv code must not import phone material3 or phone ui`() {
-    // TV 代码 = ui-*-tv 模块 + src/tv 胶水（§4.1）
-    val tvScope = Konsist.scopeFromDirectory("app/android/ui-main-tv") +
-        Konsist.scopeFromDirectory("app/android/ui-foundation-tv") +
-        Konsist.scopeFromDirectory("app/android/src/tv")
-    tvScope.files.assertFalse { file ->
-        if (file.name == "TvColorMapping.kt") return@assertFalse false // 唯一例外: 色板类型桥接（§4.2）
-        file.imports.any {
-            it.name.startsWith("androidx.compose.material3.") ||
-            (it.name.startsWith("me.him188.ani.app.ui.") && it.name !in UiFoundationInfraAllowList)
-        }
-    }
-}
-```
+测试自行向上定位 `settings.gradle.kts`，用 `scopeFromExternalDirectories` 扫描 10 个 TV 库的 `src/main` 与 `app/android/src/tv`。当前有 **10 条测试**：
 
-`src/main` 与 `src/default` 不需要守护（本就是手机/交集代码）；torrent/`MediaCache` 实现类的直接引用禁令（§4.2）可加第二条同型测试，M1 视需要补。
+1. 禁止导入白名单之外的手机 `me.him188.ani.app.ui.*`。
+2. 禁止导入 `domain.torrent.*`、`domain.media.cache.engine.*`、`domain.media.cache.storage.*`。
+3. 非 foundation 文件持有 `rememberTvFocusScope()` 时，必须含 Resolver 和导航/快捷键信号接线。
+4. 焦点框架目录不得包含 `delay(` 或 `withFrameNanos`。
+5. 非 foundation 文件不得调用原始 `requesterOf(`。
+6. 含 Composable 的 TV 文件不得导入仓库、Service、UseCase 或 Koin，也不得使用已知业务层全限定引用。
+7. TV 代码不得使用 `GlobalKoin` 或 `KoinComponent`/组件注入；业务依赖在装配处提供。
+8. `Tv*Screen.kt` 不得调用/导入 ViewModel；VM 接线放在 Route。
+9. TV ViewModel 构造调用和构造函数引用只能出现在 `TvAniAppContent.kt`。
+10. `tvViewModel` 只能由根内容调用；其他文件不能绕过 helper 使用 Compose `viewModel`，Koin 模块不得注册 VM。
 
-### 11.2 测试策略
+Material3 import 禁令已删除。以上部分规则是源码字符串/前缀检查，不是完整的调用图或类型分析；尤其白名单包内的手机 Composable 不会因此被自动区分（§4.2）。本轮执行结果见 §12.2。
 
-| 层 | 手段 |
+### 11.2 已有测试与待补验证
+
+| 范围 | 当前覆盖 |
 |---|---|
-| 焦点/按键交互 | Compose UI test + `performKeyInput { pressKey(Key.DirectionRight) }`：锁定 ①锚点行吸附 ②长按 500ms 阈值与长按后 KeyUp 不触发 click ③弹层打开时按住确认键的残余连发不误点首项 ④返回逐层 ⑤网格同列上下 |
-| 播放器状态机 | `TvPlayerOverlayState` 纯 JVM 单测（层×键→行为表逐条断言，PR 的表即测试用例来源） |
-| 薄 VM | 复用 app-data 现有 test fixtures（repository fake） |
-| 截图回归（可选） | Roborazzi 对 tokens/卡片态出图 |
-| 设备矩阵 | Android TV 模拟器 1080p（API 34）· 低配 4K 盒子（实机）· NVIDIA Shield（Android 11）· 手动清单沿用 PR README 的已知问题项（Android ≤10 焦点、数据源侧栏返回键） |
+| 焦点调度/网格状态 | `TvFocusScopeTest` 7 个单测，覆盖 pending、请求替换、用户取消、附着/焦点记账、网格请求取消，以及异步分类切换时旧网格不得消费送焦请求 |
+| 焦点记忆 | `TvFocusMemoryTest` 9 个单测，覆盖返回认领/激活/迟到恢复/取消/无 ID/清理等状态 |
+| 收藏分页 | `TvCollectionPagingTest` 2 个单测，覆盖 mediator 跳过刷新但 Room 仍在加载，以及 source/mediator 加载或失败不得被视为刷新完成 |
+| 播放器覆盖层状态机 | 新增 `TvPlayerStateMachineTest` 12 个单测，覆盖首按/连按预览、确认/取消、边界、长按释放、返回分层、选源焦点保护、自动隐藏、媒体键幂等与反馈过期 |
+| 详情续播 | 新增 `TvResumeEpisodeTest` 4 个单测，覆盖共享目标优先、目标失效、跳过已看/放弃集、全部看完与空列表 |
+| 页面/配置接线 | 各 Route 的生命周期/导航、登录并发/错误、配置消费与加载/错误/无结果分支仍需更多集成/UI 回归 |
+| 可复用 UI 回归 | TV 模块当前没有交互截图测试；按仓库规范优先使用 `runAniComposeUiTest` 等可复用测试方式，必要时适配 TV 的 Android 库测试入口 |
+| 原生/设备验证 | 本轮 API 36 TV 模拟器已覆盖系统 IME、遥控器页面导航、已登录收藏五分类/长列表/详情返回、Web 源解析出画、播放控制、手动换源和配置持久化；16 KB 兼容提示与第二集某线路 `NoMatchingFile` 留存，其他设备/ROM 与完整播放矩阵待验 |
 
-### 11.3 性能预算
+单测任务为 `:app:android:ui-{main,foundation,episode,subject,collection}-tv:testDebugUnitTest`（花括号表示五个独立模块）。架构、焦点、播放器、详情和收藏五个 TV 单测任务还应明确接入 CI（§10.2）。设备矩阵保留 Android TV 模拟器、低配盒子和不同 Android 版本的验收目标；完整自动连播、登录联动、弱网/无源/错误与焦点恢复不能仅靠源码存在判断通过。
 
-- 冷启动到探索页首帧 ≤ 2.5s（中端盒子）；图片：海报 `imageLarge`、backdrop 用 TMDB w1280 上限，coil 内存缓存 10MB 沿用；1080p 合成分辨率（4K 盒子按密度缩放，不出 4K 位图）。
-- 弹幕：低端盒子默认密度档下调（`DanmakuConfig` 初值按设备内存分档，M3 阶段调参）。
-- LazyGrid `beyondBoundsPageCount` 保持默认，避免 TV 上过度预组合。
+### 11.3 性能目标与当前限制
+
+- 冷启动到探索首帧 ≤2.5s（中端盒子）仍是目标，未在本次取得测量结果。
+- 当前共享图片加载器是 Sketch，`createDefaultSketch` 使用 `DisabledMemoryCache` 与磁盘缓存，旧「Coil 内存缓存 10MB」描述已失效。
+- 探索 backdrop 使用 TMDB w1280，卡片降到 w780；详情剧照消费原 URL，不能把图片服务提供降档函数等同所有消费端都已使用。
+- 低端机弹幕密度、复杂过渡降级和 4K 设备内存/合成表现尚需实现或测量；不把未执行的性能预算写成达标结果。
 
 ---
 
 ## 12. 实施路线图
 
-| 里程碑 | 内容 | 验收 |
-|---|---|---|
-| **M0 骨架**（前置重构 + 可运行空壳）✅ 已完成 | R1/R2 重构（`application` 装配双入口 + `:app:android` 源集重排 + manifest 三层分治）；`tv` flavor + `ui-main-tv`/`ui-foundation-tv` 库模块；banner；`AniTvTheme` + `TvFocusDefaults`；主壳 NavigationDrawer + 空页面路由；CI 增加 `assembleTvDebug` 与清单守护 | 手机 APK 二进制行为不变（default variant 合并 manifest 与基线语义等价 78 元素一致）；TV APK 真机安装通过、抽屉焦点导航/返回语义正常（魅族 18X 实测） |
-| **M1 看番主链路** 🔶 主链路已通（真机验证） | ✅ 探索页（hero 聚焦驱动 + 趋势/推荐行真实数据）；✅ 详情页（评分/简介/选集/续播按钮）；✅ 播放器控制层交互对齐（§8.2 状态机 HIDDEN/CONTROLS + 拖拽预览 + 按住倍速 + 选集条切集 + 数据源选择弹窗 + TvSeekBar 缓冲/已播分色 + 媒体键播停/上下集 + 返回逐层）；✅ 胶囊行浮出面板 ×5（推荐/Staff/角色/评论只读/弹幕列表吸底，玻璃条目 + 惰性订阅 + 面板内点击推荐跳详情；DETAILS 层未做）；扩展已挂载（自动连播/进度记忆/倍速）；✅ 跨 route 焦点恢复（TvFocusMemory，自研替代 focusRestorer）。✅ 探索页 v5（Prime 式：hero 常驻双态 + 16:9 TMDB 横图卡 + BringIntoViewSpec 锚定纵向滚动、焦点项恒在左上角）。**未完**：TMDB 选集条剧照、帧预览浮窗（现退化纯时间反馈，附录 A 允许）、其它页锚点行吸附 | 从打开 TV 应用到「选番→看完一集→自动下一集」全程仅遥控器完成（自动连播完整周期待整集实测） |
-| **M2 内容面完整** 🔶 三页已通（真机验证） | ✅ 追番（五 tab 聚焦即选中+数量角标+Adaptive 网格+空态）；✅ 搜索（TvTextField 精简版+软键盘 Search 提交+Paging 结果网格）；✅ 时间表（15 天胶囊行聚焦即换天+初始焦点落今天+当天网格）；主壳三态重构+时间表抽屉入口。**未完**：行对齐跨页、长按收藏管理、搜索历史/补全/筛选弹窗、播放历史续播、播放键全局语义、BrowserNavigator 二维码 | PR UX 附录 A 的交互清单逐项对照通过 |
-| **M3 账号与管理** 🔶 核心已通（真机验证） | ✅ 邮箱 OTP 登录（两步式，抽屉账号条目显示昵称）；✅ 设置子集（弹幕开关+播放三开关+版本+手机端占位）；✅ Toaster（原生 Toast 实现 provide LocalToaster）；✅ Konsist 边界守护三条（§11.1 落地，scopeFromExternalDirectories 绕过根探测被 app/gradlew 误导的问题）。**未完**：弹幕设置面板（TvSlider 7 项）/弹幕源管理/时间校准、帧预览、低端机降级开关、登录后各页数据联动实测 | 未登录/登录/弱网/无源等状态全覆盖 |
-| **M4 系统集成与收尾** 🔶 发布流水线已通 | ✅ 发布流水线全量（release 双 APK：`assembleTvRelease` 同 job 构建 + `uploadAndroidTvApk` 发布 `ani-tv-*` 资产 + workflow artifacts）。**跳过**（维护者指示）：应用内更新（依赖服务端 `android-tv` 支持，TV 端保持关闭）。**未做**：屏保 DreamService、主屏频道（Watch Next）、性能调优、真 TV 设备（盒子/模拟器）验证 | 正式版随手机版同步发布 |
+### 12.1 当前里程碑（代码核对）
 
-依赖关系：M0 是唯一动共享代码（`application` 装配重构、`:app:android` 源集重排）的阶段，须单独成 PR 先行合入；M1 起全部改动局限在 `app/android/ui-*-tv/**`、`app/android/src/tv/**` 与 `app-lang` 文案。
+| 里程碑 | 当前已实现 | 主要剩余工作 |
+|---|---|---|
+| **M0 骨架** ✅ 工程落地 | flavor 双包、10 个 TV UI 模块、DI 门控、清单分层、主题/主壳、TV Debug 和清单检查配置 | 手机行为不回退属于持续回归要求；不能以 M0 历史验收替代当前提交验证 |
+| **M1 看番主链路** 🔶 已有实现 | 探索 v5、继续观看状态、详情续播/TMDB 剧照、区块/选集底边滚动锚点、在线取源播放、弹幕、控制层/预览时间/倍速/切集/选源、五面板、焦点记忆、8 个共享扩展 | **弹幕总开关和 OP/ED 自动跳过接线**；播放器 DETAILS、选集条剧照/锚定、帧预览；详情评分/长按/管理动作；自动连播整集与异常回归 |
+| **M2 内容浏览** 🔶 页面已有实现 | 追番五分类与网格边缘跨分类落位、关键词分页搜索、多天并排时间表；继续观看经详情续播 | 长按收藏、搜索历史/补全/筛选、搜索与选源的加载/错误/无源区分、独立播放历史与列表播放键、深链解析、二维码浏览器、各页导航回归 |
+| **M3 账号与设置** 🔶 基础界面已有实现 | 共享邮箱 OTP VM、登录反馈/倒计时、侧栏账号信息、四个配置开关的读写、版本/Toast；架构与焦点单测已定义 | 两处开关缺口见 M1；弹幕高级配置/源管理/校准、WEB 源启停排序、代理/主题/同步管理、文案资源化、登录后跨页联动验收 |
+| **M4 系统与发布** 🔶 发布配置已接入 | 双包 release 构建、TV workflow artifact、`uploadAndroidTvApk` 和 `ani-tv-*` 资产命名 | 16 KB 页大小下原生库 ELF 对齐兼容问题、TV 单测显式接入 CI、可复用交互截图测试与完整播放器回归、真实设备矩阵、性能测量与降级、banner 字形；屏保/Watch Next 等后期能力；应用内更新按指示暂缓 |
+
+M0 是骨架前置，后续里程碑已有并行实现，**并非 M1–M4 全部验收完成**。共享状态和 app-data 已有后续改动，开发范围遵循 §14.3，不再限定「M1 起只能改 TV 目录」。
+
+### 12.2 验收记录的口径
+
+- 旧文档记录过魅族 18X 安装、主链路与页面交互验证，以及 M0 手机清单 78 元素语义等价。
+- 当前代码注释还记录了 **TV 模拟器**上的焦点恢复、跨分类切换和详情页按键问题复现；不能继续笼统写「模拟器验证从未做过」。
+- 这些历史记录不等同当前提交完整设备矩阵通过。MVI 重构后 `assembleTvDebug`、`assembleDefaultDebug`、`verifyTvManifestPurity` 均已本地通过；随后将全部 VM 构建集中到 `TvAniAppContent`，重新通过 TV 构建、清单校验及 main/foundation/episode/subject 四个 TV 模块的 `testDebugUnitTest`，共 **41 个测试，0 失败/跳过**。此次集中构建改动及后续设备修复仅涉及 TV，未重跑手机构建，也未核验远端发布。
+- **2026-09-06 设备回归**：使用既有 `emulator-5554`，Android 16 / API 36、Google TV x86_64 16 KB 镜像、3840×2160。设备原有 `me.him188.ani.tv.debug2` 与本机调试签名不同，因此用临时构建配置安装独立 `me.him188.ani.tv.regression` 包，以游客状态测试，保留原应用及数据。
+- **通过路径**：探索加载、侧栏切页、搜索提交/收起 IME/下键进入结果/详情返回、时间表跨日浏览/详情返回原焦点与视口/继续滚动、追番空态五分类切换、四开关读写及进程重启后保存；Fate/Zero 第一集实际出画、暂停、seek 预览/确认、倍速控件、手动换源后再次出画、逐层返回。登录只验证邮箱输入与下键到发送按钮，未发送 OTP。
+- **本轮修复**：追番展示流过早读取 snapshot；搜索提交不收起 IME，并补齐下键焦点路径；时间表返回丢失滚动/焦点及转场 BringIntoView 抢滚动。同时补齐登录输入框到提交按钮的下键路径。最终包对修改页面复测通过，TV 构建、清单与上述 41 个单测再次通过；最终应用进程日志未发现崩溃或未处理状态读取异常。
+- **首次游客回归的遗留与边界**：首次启动有「16 KB 不兼容 / ELF alignment check failed」系统提示，允许兼容模式后可播放；Fate/Zero 在「线路1」手动切第二集时界面报 `NoMatchingFile`，第二集该线路未出画。当时自动换源关闭，不能据此判定自动换源扩展失效。该轮未验证真实 OTP/已登录收藏、整集自动连播、弱网注入、音频及其他设备；已登录收藏的后续结果见下文。四开关持久化通过不代表 §7.6 两处播放接线缺口已修复。
+- 本地操作、截图、日志、APK 摘要和构建结果见 [设备回归报告](build/reports/tv-device-regression/report.md)（`build/` 下的本地产物，不纳入版本控制）。回归包四开关已恢复为初始开启状态，模拟器保持运行。
+- **2026-09-06 已登录收藏补测**：用户已在回归包登录；保留会话覆盖安装本轮修复包。五分类显示抛弃 4、想看 14、在看 10、搁置 8、看过 41；首次进入分类、左右边缘切分类、同行落位及短列表末项钳位、最右边界、41 项长列表、返回分类后下键进入首卡、侧栏往返、详情返回原分类/卡片/视口均通过。
+- **收藏补测修复**：修复首次进入有缓存分类时误判空态、详情返回误选「抛弃」、首卡被回收后分类下键无法进入网格三处焦点问题；同时阻止旧网格消费异步分类切换的送焦请求。新增 3 项单测，最终 TV 构建、清单和 main/foundation/collection 三模块共 **28 个测试，0 失败/错误/跳过**；本轮未重跑未改动的 episode/subject 测试。最终应用日志未发现崩溃或 snapshot 读取异常。
+- **收藏补测边界**：初次接手时列表有数据但数量角标缺失，旧进程日志存在登录前后的未授权数量请求；保留登录冷启动后恢复，最终 `/v1/me` 返回 200。未复现登录切换全过程，不能将数量缺失标为已修复。没有修改收藏状态；真实空分类、登录切换、远端修改同步及弱网刷新仍待专项验收。报告和截图见 [已登录收藏回归](build/reports/tv-device-regression/collection-report.md)，结束时保留登录并停留在「在看」首卡。
+- **2026-09-06 TMDB 回归更正与补测**：前两轮回归包漏带 `ani.tmdb.api.token`，生成的 `tmdbApiToken` 为空，服务直接返回空图片结果；探索卡片/背景、详情背景/分集卡片使用的是 Bangumi 回退图，前述导航验证不能视为 TMDB 验证。用户补齐本地配置后保留登录覆盖安装，以同一条目 CLANNAD（Bangumi 51）对照，四处均恢复 TMDB；日志确认 TMDB 匹配到 TV 24835、backdrop 的 w780/w1280 下载成功、分集索引按播出日期返回 49 条记录，设备第 1～4 集呈现不同剧照。没有改回 UI 仓库访问或 Koin VM 注册。配置检查、TV 构建、清单和 10 项架构测试通过，截图及最新 APK 摘要见 [TMDB 图片回归](build/reports/tv-device-regression/tmdb-report.md)。
+- **2026-09-06 详情滚动调整**：按用户裁定移除角色、制作人员、关联条目、评价的纵向区块锚点，未登记锚点时委托页面覆盖前的 `LocalBringIntoViewSpec`，恢复平台默认纵向行为；横向行首 + 48dp 锚定保留。已在同一 API 36 TV 模拟器保留登录覆盖安装，以 CLANNAD 验证四类卡片下行、同行左右切换、评价上键回关联条目、返回键回选集再回 Hero；简介 64dp 顶部预留与剧集 64dp 底部预留正常。TMDB 配置检查、TV 构建、清单以及 main/subject 两模块共 **14 个测试，0 失败/错误/跳过**。截图、坐标与 APK 摘要见 [详情滚动回归](build/reports/tv-device-regression/details-scroll-report.md)。
+- **2026-09-06 提交前检查**：上述改动完成后补跑 `:app:android:assembleDefaultDebug`，手机构建通过；结合已通过的 TV 构建、架构测试和清单校验，完成本轮提交前检查。手机构建通过不代表手机行为已做设备回归。
+- 后续验收应记录提交、设备/API、操作路径、截图/日志和测试结果，尤其是整集连播、两处设置消费修复、弱网/无源与登录切换。
+
+### 12.3 本次核对的关键代码入口
+
+| 范围 | 入口 |
+|---|---|
+| flavor / 清单守护 | [build.gradle.kts](app/android/build.gradle.kts) |
+| 平台装配 / 深链缺口 | [TvAndroidModules.kt](app/android/src/tv/kotlin/TvAndroidModules.kt)、[MainActivity.kt](app/android/src/tv/kotlin/MainActivity.kt) |
+| MVI / VM 装配 | [TvAniAppContent.kt](app/android/ui-main-tv/src/main/kotlin/me/him188/ani/tv/ui/main/TvAniAppContent.kt)、[TvAppDependencies.kt](app/android/ui-main-tv/src/main/kotlin/me/him188/ani/tv/ui/di/TvAppDependencies.kt)、[TvViewModel.kt](app/android/ui-foundation-tv/src/main/kotlin/me/him188/ani/tv/ui/foundation/TvViewModel.kt)、[TvNavigation.kt](app/android/ui-foundation-tv/src/main/kotlin/me/him188/ani/tv/ui/foundation/TvNavigation.kt) |
+| 播放器 Intent 状态机 | [TvPlayerStateMachine.kt](app/android/ui-episode-tv/src/main/kotlin/me/him188/ani/tv/ui/episode/TvPlayerStateMachine.kt)、[TvPlayerStateMachineTest.kt](app/android/ui-episode-tv/src/test/kotlin/me/him188/ani/tv/ui/episode/TvPlayerStateMachineTest.kt) |
+| Navigation 3 / 主壳 | [TvAniAppContent.kt](app/android/ui-main-tv/src/main/kotlin/me/him188/ani/tv/ui/main/TvAniAppContent.kt)、[TvMainShell.kt](app/android/ui-main-tv/src/main/kotlin/me/him188/ani/tv/ui/main/TvMainShell.kt) |
+| 主题 / 焦点 | [AniTvTheme.kt](app/android/ui-foundation-tv/src/main/kotlin/me/him188/ani/tv/ui/foundation/theme/AniTvTheme.kt)、[TvFocusScope.kt](app/android/ui-foundation-tv/src/main/kotlin/me/him188/ani/tv/ui/foundation/focus/TvFocusScope.kt)、[TvFocusGrid.kt](app/android/ui-foundation-tv/src/main/kotlin/me/him188/ani/tv/ui/foundation/focus/TvFocusGrid.kt) |
+| 探索 / 时间表 / 追番 | [TvExplorationScreen.kt](app/android/ui-exploration-tv/src/main/kotlin/me/him188/ani/tv/ui/exploration/TvExplorationScreen.kt)、[TvScheduleScreen.kt](app/android/ui-schedule-tv/src/main/kotlin/me/him188/ani/tv/ui/schedule/TvScheduleScreen.kt)、[TvCollectionScreen.kt](app/android/ui-collection-tv/src/main/kotlin/me/him188/ani/tv/ui/collection/TvCollectionScreen.kt) |
+| 详情剧照 / 锚定 | [TvSubjectDetailsScreen.kt](app/android/ui-subject-tv/src/main/kotlin/me/him188/ani/tv/ui/subject/TvSubjectDetailsScreen.kt) |
+| 播放扩展 / 配置消费 | [TvEpisodeViewModel.kt](app/android/ui-episode-tv/src/main/kotlin/me/him188/ani/tv/ui/episode/TvEpisodeViewModel.kt)、[TvEpisodeScreen.kt](app/android/ui-episode-tv/src/main/kotlin/me/him188/ani/tv/ui/episode/TvEpisodeScreen.kt)、[TvSettingsViewModel.kt](app/android/ui-settings-tv/src/main/kotlin/me/him188/ani/tv/ui/settings/TvSettingsViewModel.kt) |
+| 架构测试 / CI | [TvArchitectureTest.kt](app/android/ui-main-tv/src/test/kotlin/me/him188/ani/tv/ui/main/TvArchitectureTest.kt)、[工作流源](.github/workflows/src.main.kts)、[发布任务](ci-helper/build.gradle.kts) |
 
 ---
 
 ## 13. 风险与开放问题
 
-| # | 风险/问题 | 影响 | 对策 |
-|---|---|---|---|
-| 1 | 双端 UI 双份维护（同一页面手机/TV 两套 Compose） | 长期成本 | 边界清晰化已把重复面压到「纯视图层」；领域/数据/文案单份；页面级规格以本文 §7/§8 + 附录 A 为共同事实源 |
-| 2 | tv-material 组件缺口（TextField/Slider/Dialog） | 自建件质量 | §5.3 三件套集中在 ui-foundation，UI 测试覆盖；关注 androidx.tv 后续版本补齐后替换 |
-| 3 | 标准 lazy + 焦点在个别厂商 ROM 上的兼容性（PR 实测 Android ≤10 焦点请求易失败） | 低版本盒子不可用 | 设备矩阵含 Android 9/10 盒子；问题复现时在 `rememberInitialFocus` 内加受限重试（≤40 次），作为兼容层而非默认路径；README 沿用 PR 的版本建议话术 |
-| 4 | 应用内更新依赖服务端 `android-tv` 平台支持 | TV 端更新体验 | D8 过渡策略（二维码指向 GitHub Release）；服务端工作项进 M4 |
-| 5 | 约定边界依赖人工遵守：手机 UI / torrent 符号对 tv variant 完整可见（D1 放弃编译期隔离），误用不会编译失败 | TV 界面混入手机组件（渲染错乱、无焦点）或绕过 DI 门控直接触碰 torrent 类 | Konsist import 禁令（§11.1，M1 随首批页面落地）+ review 检查表；若边界侵蚀成为现实问题，按 §4.5 v2 路线重新收窄依赖，装配开关无需改动 |
-| 6 | TMDB 图片走代理场景（PR 发现：代理不当 → 图全挂） | 沉浸式界面白屏感 | 复用 PR 的「代理测试加入 TMDB 探测」改动（已在 main？若未合入则并入 R3）；无图退化路径在 §7 各页已定义 |
-| 7 | 同 versionCode 双包在 Play Store 单一 listing 的策略（若未来上架） | 分发 | 当前 GitHub 分发不受影响；上架时再评估「同 applicationId + leanback 分包」方案（需要放弃并存安装），本文不预设 |
-| 8 | 功能预期落差：手机端重度 BT/缓存用户可能期待 TV 同能力（§1.2 裁剪） | 口碑 / issue 压力 | README 与发布说明明确「TV = 纯在线播放端」定位；TV 界面不出现任何缓存/BT 入口（避免"有入口但不可用"的观感）；架构上缓存/BT 装配已隔离为 `getMediaCacheKoinModule()` + `src/default` torrent 绑定（§4.3），若定位变化可整体复装，无需重构 |
-| 9 | `distribution` 维度语义混用：`tv` 是形态而非发行渠道（D1 权衡的残留代价） | 未来手机需要第二发行渠道（如商店分发）时，`tv × 渠道` 无法在单维度表达 | 当前 GitHub 单渠道下零成本；届时把形态拆为独立 dimension 或回退 §4.5 备选方案——重排是机械性的（flavor 结构调整 + CI 任务名同步），无架构返工 |
-| 10 | manifest 错放导致静默泄漏：手机侧新增声明误入 `src/main` 交集清单会自动带进 TV | TV 包携带多余权限/服务，精简性回退 | CI 清单守护断言 tv variant 合并清单无 torrent 声明、权限 ⊆ 白名单（`verifyTvManifestPurity`，§10.2）；代码侧同风险见 #5（约定边界） |
-
-> 原风险「评论发送/Bangumi OAuth 依赖 WebView」「torrent 前台服务在 TV ROM 的后台限制」随 §1.2 功能裁剪就地消除，不再列为风险。
+| # | 风险/问题 | 当前判断与后续工作 |
+|---|---|---|
+| 1 | 双端视图维护 | 通过共享 VM/状态、领域和仓库减少重复；视图与遥控器行为仍需要独立回归 |
+| 2 | 设置界面先于播放接线 | 弹幕总开关/自动跳 OP/ED 当前仅保存值；优先补消费端，防止「开关可操作但行为不变」 |
+| 3 | 焦点/滚动在不同设备上的差异 | 已用附着/快照/生命周期事件修复一批竞态；仍需不同 API/ROM、空数据、慢加载、IME 和连发回归，禁止回退轮询/延时方案 |
+| 4 | 更新与外链入口不完整 | 更新暂缓；浏览器仍 Noop，Release 二维码与深链解析均未接入 |
+| 5 | import 约定的机械守护不完整 | 共享手机 UI 可见，现有白名单含包前缀；需收窄或增加符号级检查，不能把当前 Konsist 等同编译期隔离 |
+| 6 | TMDB 图片与资源退化 | 需要配置访问令牌和网络通路；探索/详情有缺图回退，但各消费端降档、代理场景和解码内存仍待验证 |
+| 7 | 发布配置与成功分发不同 | 当前可确认双包构建/上传配置；正式发布成功、安装升级与签名一致性需在实际流水线与设备验证 |
+| 8 | 产品范围预期 | 发布说明明确 TV 纯在线播放；缓存/BT 等属于裁剪，不作为未完成项；低端设备优化属于待办 |
+| 9 | 单维度混用形态与发行渠道 | 目前 `default/tv` 可满足双包；未来新增商店渠道时再评估拆维度，保留手机任务兼容要求 |
+| 10 | manifest 声明泄漏 | 清单检查防 torrent 和越权权限，但不限制所有服务类型；共用清单新增组件仍需 review |
+| 11 | 自动化覆盖不足 | 现有架构/焦点单测需明确接入 CI；页面截图、播放器状态、配置消费和真实设备矩阵尚不足以支持「全部通过」结论 |
 
 ---
 
 ## 14. 开发规范与约束（实施期裁定汇总）
 
-> 本章汇总 M0 至今由维护者与实施负责人逐轮裁定的规范，是后续 TV 侧开发的**行为事实源**；与前文冲突处以本章为准（前文为设计期草案，个别结论已被实机迭代推翻，如 §1.1-2 的"全部基于 tv-material"已演进为 v4，见 14.2）。
+> 本章保留维护者与实施负责人逐轮裁定的开发约束。本次已同步前文的过时实现描述；规范与当前实现尚有差距的地方在正文明确列为待办，不把「代码存在」等同「已符合全部规范或已验收」。
 
 ### 14.1 参照与实现方式
 
 1. **UI/UX 事实源 = PR#3217 的实机效果**，不是其源码，也不是文档。验证机需安装参考版（包名 `me.him188.ani.tv`，与 debug 包 `me.him188.ani.tv.debug2` 并存），逐页实机对照。
-2. **参考 PR 源码只为理解布局与交互，禁止整体照搬**（曾尝试 merge 整个 PR 被否决并回滚）。裁定的折中：**低层基建可改造借用**进 `ui-foundation-tv`（按键/卡片视觉/渐变曲线/侧边栏等），**页面代码一律自行实现**。PR 源码保留在本地分支 `pr3217`，随时 `git show pr3217:<path>` 查阅。
-3. **实机验证驱动**：每轮 UI/交互改动必须在真机上验证后才算完成（adb + `tools/tv-remote` TUI 遥控器；菜单键=keyevent 82）。触屏设备跑 TV 界面需壳里强制 `InputMode.Keyboard`（touch mode 下 clickable 不参与键盘焦点）。
+2. **参考 PR 源码只为理解布局与交互，禁止整体照搬**（曾尝试 merge 整个 PR 被否决并回滚）。裁定的折中：**低层基建可改造借用**进 `ui-foundation-tv`（按键/卡片视觉/渐变曲线/侧边栏等），**页面代码一律自行实现**。本地已有 `pr3217` 分支时可用 `git show pr3217:<path>` 查阅。
+3. **验证方式遵循仓库 [AGENTS.md](AGENTS.md)**：普通 UI/焦点交互优先留下可复用的交互截图测试；WebView、原生播放、系统 IME 和设备差异等自动化无法覆盖的部分再做模拟器/实机验证，并记录证据。设备对照可使用 adb + `tools/tv-remote`（菜单键=keyevent 82）。触屏设备跑 TV 界面需壳里请求 `InputMode.Keyboard`。
 
 ### 14.2 UI 技术栈（v4 现实）
 
-1. 参考版**完全不用 tv-material**：material3 + 自研焦点系统。TV 侧新组件一律读 **material3** 主题（主题同时 provide 两套，tv-material 仅存量组件残留）；Konsist 的 material3 禁令已删除。
+1. TV 侧新组件一律读 **Material3** 主题，并使用统一焦点框架；主题同时 provide Material3 与 tv-material 两套，供存量组件使用。Konsist 的 Material3 禁令已删除。
 2. **视觉规格**以实机对照校准：色圈+留白聚焦（2.5dp primary 描边 + 3dp 间隙）、Prime 风格灰底按钮（聚焦整颗反色）、smootherstep 采样渐变（附录 A 参数仍有效）。
 
 ### 14.3 状态层复用（D3 强化为硬性要求）
 
 1. **"尽量做到 ViewModel 和 state object 复用"**：TV 页面优先复用手机端 VM/状态对象（UserCollections/Schedule/EmailLogin/ExplorationPage/SubjectDetails 等已落地），只有视图层允许双份。
 2. 复用受阻于公共层设计糟糕时，**允许重构公共层**使架构更好（例：`SubjectDetailsStateLoader` 重构为非空状态流 + 单一 `load(force)` 入口），须同步适配全部消费者并保证手机端行为不变。
-3. UI 改动过大的页面不硬套：播放页等上游 `EpisodeScreenVariant` 接缝成熟再迁；设置页保留薄 VM（手机版多 tab 巨型状态机不值得为 4 个开关引入）。
-4. 每次新增复用需在 Konsist 白名单**逐条**放行（状态层放行、composable 仍禁），不得整包放开。
+3. UI 改动过大的页面不硬套：播放页当前保留 TV VM，未来共享播放器状态层具备适合 TV 的复用入口时再评估迁移；设置页保留薄 VM（手机版多 tab 状态机不必为 4 个开关整体引入）。
+4. 每次新增复用需在 Konsist 白名单**逐条**放行（状态层放行、composable 仍禁），不得整包放开。**当前差距**：已有测试包含包前缀白名单，尚不能机械保证仅放行状态对象，收窄/加强检查见 §4.2/§11.1。
+
+### 14.3.1 MVI 单向数据流（硬性要求）
+
+1. **状态向下，Intent 向上**：业务页面以只读状态/分页数据和 `onIntent` 为接口；仓库/服务、加载缓存、持久化、选集/选源决策、错误处理均由 VM 或其复用的状态/领域层承担。
+2. **Composable 永远不访问 Repository**，也不通过 `GlobalKoin`、`getKoin`、`inject` 或手动创建服务绕过边界。`LaunchedEffect`/`rememberCoroutineScope` 不是业务请求的豁免入口；数据加载只能通过 Intent 交给 VM。
+3. **所有 TV ViewModel 必须在 `TvAniAppContent` 内通过 `tvViewModel { TvXxxViewModel(...) }` 显式构建，禁止在 Koin 中提供 VM，也禁止 Route/Screen 自行创建 VM。** 构建调用保留在对应导航条目中，由 Navigation 3 管理生命周期。`MainActivity` 在进入组合前取得 `TvAppDependencies` 和图片客户端；根内容仅将依赖传入 VM 构造函数。`Tv*Route` 接收 VM，只收集只读状态、转发 Intent 和执行一次性导航/平台渲染。
+4. 焦点锚点、滚动几何、动画等纯 UI 状态留在 View；焦点变化若要加载业务数据，发送 Intent。VM 不持有 `FocusRequester`，播放器只下发抽象焦点事件。
+5. 复用共享 VM 的 TV 适配器沿用同一作用域/生命周期，不在 Composable 中调用共享状态的业务变更方法，也不创建不受管理的嵌套 VM。
 
 ### 14.4 焦点工程规范
 
 1. **必须使用统一焦点框架 `TvFocusScope`**（§5.4.1）声明焦点关系：页面私有 `TvFocusKey` 枚举 + `tvFocusAnchor/tvFocusLink/tvFocusEnterGate/tvFocusExit/tvFocusHotkey`；禁止散落手写 requestFocus 轮询。每页根部挂 `Resolver()` 与 `tvFocusNavSignal`。
 2. **不与用户抢焦点**：程序化送焦（`request(key)`）在用户按方向键的瞬间放弃；按住连发（repeatCount>0）不重复触发快捷键/边缘切换。
 3. **跨大间距/跨区块的焦点移动一律显式声明**（link/exit 重定向），不信任空间搜索；`focusProperties.onExit` 内 requestFocus 重定向已实机验证可用。
-4. **Lazy 容器内的焦点目标先保证组合**：目标 item 可能已被回收，须先 `scrollToItem` 再 request，框架轮询兜住附着时序。
+4. **Lazy 容器内的焦点目标先保证组合**：目标 item 可能已被回收，须先滚动使目标组合再 request，框架以锚点附着事件送达，不做轮询。
 5. 已知陷阱：切换数据源导致聚焦节点销毁时，焦点会瞬时跌落到布局中**第一个可聚焦节点**——若该节点有"聚焦即选中"语义须在过渡期冻结（读 `TvGridFocusState.switching`，追番页边缘切 tab 的实测教训）。
 6. **多方参与的焦点协议单文件收口**：焦点记忆（同页/跨 route 恢复）全协议在 `TvFocusMemory.kt`（组件只挂 `tvFocusMemorable(id)`），网格聚焦第 N 项/边缘切换在 `TvFocusGrid.kt`——新增此类协议时照此模式，禁止把步骤散进壳/组件/页面各写一段。
 7. 本节 1/2 的可静态检查部分已固化为 Konsist 测试（TvArchitectureTest：持有 scope 必装 Resolver+信号、`requesterOf` 仅框架内部可用——裸 requester 无锚点上报，事件驱动解析无法感知目标）；框架纯逻辑（调度/记忆/网格状态机）有单元测试守护（ui-foundation-tv/src/test）。
-8. **焦点处理必须全事件驱动，禁止轮询与延时**（用户裁定，Konsist 守护框架目录禁 `delay`/`withFrameNanos`）。可用的确定性信号只有四类：**节点附着事件**（`tvFocusAnchor` 上报，悬挂中的 `request` 在目标附着瞬间送达——这是对 Compose"对未附着节点 requestFocus 静默失败且无附着回调"缺口的补齐）、**焦点得失事件**（onFocusChanged 上报）、**快照状态变化**（`snapshotFlow`，如用户交互代数、分页 itemCount）、**数据层完成事件**（如 Paging `LoadState` 判定"确无数据"）。失败语义 = 单发不抢：送焦后被后到分配抢走不追抢，用户按键即取消在途请求；"目标可能永不出现"一律用数据层事件判定，不准用超时猜测。历史教训：轮询+延时版本在慢设备上暴露整族时序竞态（烧满轮询抢用户焦点、时序窗口内按键误伤），全部源于"猜时间"。
-9. **滚动容器的 BringIntoView 策略必须显式给定**（`LocalBringIntoViewSpec`）。Compose 在 Android TV 上的平台默认是 **pivot 30%**：聚焦项前缘无论是否已可见都会被滚到容器 30% 处——它会把整屏 hero 滚掉半屏、把锚定行滚到错位，且总能压过手写的 `animateScrollTo`（两条动画争同一 ScrollState，后启动的赢，而 BIV 由 focusable 节点在焦点回调之后的协程里启动）。规则：**滚动锚点是布局的边，不是比例**——页面想要的位置编码进自己的 spec，框架原语 `TvAnchoredBringIntoViewSpec`（ui-foundation-tv/focus：聚焦项对齐容器前缘 + 可动态的预留量）供各页复用：探索页列 = 行头预留 / 继续观看行 = 行首；详情页列 = **聚焦项所在区块的上边缘**（各区块根节点经 `onGloballyPositioned` 上报自己在滚动内容里的顶边 + `onFocusChanged(hasFocus)` 上报持焦，hero 区块顶边 = 0 所以播放钮聚焦自然回页顶）、列内横向行 = 行首 + contentPadding。**嵌套的可滚动容器要各自再提供 spec**（否则继承外层的、把纵向距离当横向用）；行内容不比视口宽时锚定受滚动上限约束是物理限制。**不要**在焦点回调里手写滚动去和 BIV 抢。spec 需要"是谁聚焦"时用状态 lambda：焦点回调同步写入，BIV 的距离计算在其后的协程里读取。
-10. **进页初始焦点在 RESUMED 后送达**（`InitialFocus` 对所有路径统一等 Lifecycle RESUMED）：转场中的 requestFocus 会被转场收尾冲掉，push/pop 皆然，真人按键时序下稳定复现。`Resolver` 送焦被拒不清 pending（目标下次附着重试），用户按键仍可取消。进页期间页面上应只有默认锚点一个可聚焦节点（详情页：播放钮槽位常驻、第二屏在首次聚焦前不组合），杂散按键无处可落。
+8. **焦点处理必须全事件驱动，禁止轮询与延时**（用户裁定，Konsist 守护框架目录禁 `delay`/`withFrameNanos`）。可用的确定性信号包括：**节点附着事件**（`tvFocusAnchor` 上报，悬挂中的 `request` 在目标附着瞬间送达——这是对 Compose"对未附着节点 requestFocus 静默失败且无附着回调"缺口的补齐）、**焦点得失事件**（onFocusChanged 上报）、**快照状态变化**（`snapshotFlow`，如用户交互代数、分页 itemCount）、**数据层完成事件**（如 Paging `LoadState` 判定"确无数据"）、**生命周期事件**（如 RESUMED）。失败语义 = 单发不抢：送焦后被后到分配抢走不追抢，用户按键即取消在途请求；"目标可能永不出现"一律用数据层事件判定，不准用超时猜测。历史教训：轮询+延时版本在慢设备上暴露整族时序竞态（烧满轮询抢用户焦点、时序窗口内按键误伤），全部源于"猜时间"。
+9. **自定义滚动锚点必须通过 BringIntoView 策略给定**（`LocalBringIntoViewSpec`）。Compose 在 Android TV 上的平台默认是 **pivot 30%**；首屏和需要锚定的行应覆盖此行为，避免 hero 被滚掉半屏或行错位。自定义锚点取布局的边，框架原语 `TvAnchoredBringIntoViewSpec`（ui-foundation-tv/focus：聚焦项对齐容器前缘 + 可动态的预留量）供各页复用：探索页列 = 行头预留 / 继续观看行 = 行首；详情页列仅为 **hero、简介和选集设置纵向锚点**（hero 顶边 = 0；第二屏简介区顶边预留 64dp；选集卡下边缘 + 64dp 对齐视口下边缘，且底边规则优先）。**从角色卡片开始，包含制作人员、关联条目和评价，恢复平台默认纵向滚动，仅保留横向锚定**（用户裁定）：这些区块不登记纵向锚点，纵向 spec 未匹配锚点时委托页面覆盖前的默认 spec，不能用自写的最小露出规则代替平台默认；实现见 `TvDetailsScrollAnchors`/`TvDetailsBringIntoViewSpec`。列内横向行 = 行首 + contentPadding，详情页为 48dp。**嵌套的横向滚动容器须独立提供 spec**，避免继承外层纵向策略；行内容不比视口宽或到达末尾时锚定受滚动边界约束。**不要**在焦点回调里手写滚动去和 BIV 抢。spec 需要"是谁聚焦"时用状态 lambda：焦点回调同步写入，BIV 的距离计算在其后的协程里读取。
+10. **进页初始焦点在 RESUMED 后送达**（`InitialFocus` 对所有路径统一等 Lifecycle RESUMED）：转场中的 requestFocus 会被转场收尾冲掉，push/pop 皆然，真人按键时序下稳定复现。`Resolver` 送焦被拒不清 pending（目标下次附着重试），用户按键仍可取消。进页期间页面上应只有默认锚点一个可聚焦节点（详情页：播放钮槽位常驻，第二屏等首次播放钮聚焦或 RESUMED 后再组合），杂散按键无处可落。
 
 ### 14.5 交互细则（逐轮验收裁定，视为验收标准）
 
 | 范围 | 裁定 |
 |---|---|
-| 全局 | 菜单键从任意位置直达侧边栏；侧边栏进入落点=**当前页**条目（`selected` 标记，回退 defaultFocus）；条目卡统一 `TvPosterCard` 样式（标题在卡内），**聚焦时标题跑马灯**、失焦单行截断 |
+| 主壳 | 菜单键在内容区/侧栏往返，进入落点=**当前页**条目（`selected` 标记，回退 defaultFocus）；这套侧栏只在 Main route。竖版 `TvPosterCard` 与探索横版 `TvLandscapeCard` 标题在卡内，聚焦跑马灯、失焦截断 |
 | 探索页 | **v5 Prime 式**：backdrop 在页面根层（surface 背景级，随 hero 两态 + 下探 0.10）；hero 常驻双态（焦点在 hero=轮播展开 0.66 + 按钮 + 居中指示器；焦点在卡片行=收缩 0.46 显示聚焦条目，按钮/指示器随同一条高度动画收放，backdrop 防抖 500ms）；下方纵向列表 = 继续观看横向锚定行 + 为你推荐纵向自适应网格，16:9 横版卡 TMDB 横图；焦点行恒贴 hero 下缘（BringIntoViewSpec 锚定，行头预留动态）；网格上下保持同列；首卡按左放行侧边栏；行 0 按上回 hero |
 | 追番页 | tab 聚焦即选中；网格按上/按返回回**当前**分类 tab（不是几何最近的）；列表左右缘按左右=切相邻分类并落"对应位置"（同行近缘列、钳到末项）；首 tab 左缘交给侧边栏；tab 行再按返回才交壳回探索 |
-| 时间表 | 手机 **Medium 档多列布局**复刻（360dp 定宽列 + DayOfWeekHeadline 列头，无 TabRow/无 pager），复用 `ScheduleScreenState`；`HorizontalScrollControlScaffoldOnDesktop` 不可复用（hover 驱动，TV 无此事件源） |
-| 详情页 | 返回键三级分层（下方区块→选集轮播→Hero→退出）；backdrop 三态（未解析按有图排版，防海报闪替） |
+| 时间表 | 手机 **Medium 档多列布局**复刻（360dp 定宽列 + DayOfWeekHeadline 列头，无 TabRow/无 pager），复用共享 presentation，页面保存滚动状态并恢复原卡片焦点；`HorizontalScrollControlScaffoldOnDesktop` 不可复用（hover 驱动，TV 无此事件源） |
+| 详情页 | 返回键三级分层（下方区块→选集轮播→Hero→退出）；backdrop 三态；简介区顶边预留 64dp，选集卡下边缘 + 64dp 对齐视口底边，播放钮聚焦回页顶；角色及之后的卡片恢复平台默认纵向滚动，仅保留横向行首 + 48dp 锚定 |
 | 通用 UI | 横竖屏两个极端都要顾及：竖屏顾小屏幕、横屏顾超宽屏幕，不做两态硬切 |
 
 ### 14.6 工程与流程
 
 1. **架构边界**：v3 约定边界不动摇（共享依赖树 + DI 门控）；TV 模块命名 `app/android/ui-<feature>-tv`；`src/tv` 只留出包胶水；不为隔离引入新模块。
-2. **每轮回归三件套全绿**后才提交：`assembleDefaultDebug`（手机零行为变化）、`:app:android:ui-main-tv:testDebugUnitTest`（Konsist）、`verifyTvManifestPurity`。
+2. **每轮回归三件套全绿**后才提交：`assembleDefaultDebug`（手机构建回归）、`:app:android:ui-main-tv:testDebugUnitTest`（Konsist）、`verifyTvManifestPurity`。这三项不单独证明手机行为零变化；涉及焦点框架另跑 `:app:android:ui-foundation-tv:testDebugUnitTest`，行为与设备回归按改动范围补齐。
 3. **分层提交**：每个 commit 独立可编译，按里程碑/功能切分。
 4. 应用内更新按维护者指示暂缓（服务端 `android-tv` 支持就绪前 TV 端保持关闭）。
-5. 构建环境：`ANDROID_HOME` 需显式 export；TMDB 需 `local.properties` 配 `ani.tmdb.api.token`（未配置全链路静默退化）。
+5. 构建环境：需设置 `ANDROID_HOME`；TMDB 需 `local.properties` 配 `ani.tmdb.api.token`（未配置全链路静默退化）。TMDB 图片回归前必须运行 `:app:shared:app-platform:verifyTmdbConfiguration`，并在设备上核对图片来源与独立分集剧照；该任务只检查配置非空，不保证鉴权或网络成功。
 
 ### 14.7 代码组织与风格
 
@@ -918,18 +790,24 @@ D1 放弃编译期隔离后，**Konsist 是 §4.2 约定边界的主要机械守
 
 ---
 
-## 附录 A · PR#3217 UX 参数速查（TV 端交互事实源）
+## 附录 A · 交互参数与参考设计
 
-> 完整逐页规格见 PR#3217 评审时产出的 8 份规格文档；UI/UX 视觉稿镜像于 claude.ai/design 项目 [「Animeko TV」](https://claude.ai/design/2a3b7d37-075a-400b-bedb-ef2072b6caf3)（逐页可交互对照，M1–M3 验收时与本附录参数互为事实源）。此处摘迁移必需的常量。
+> 原 PR/设计镜像仍可作为未实现交互的参考；本表把当前参数和待办分开，避免将旧设计值视为现状。精确常量以各组件 `*Defaults` 为准。
 
-| 类别 | 参数 |
+| 范围 | 当前实现 |
 |---|---|
-| 时序 | 长按阈值 500ms · seek 步长 5s · seek 连按升级窗口 ~620ms · 控制层自动隐藏 5s（暂停不隐藏） · 对话框焦点延迟 300ms · hero 媒体防抖 300ms · hero 文字淡化 500ms · backdrop crossfade 600ms · backdrop 双态插值 400ms · 选集条滑入 250ms · 详情层 fade 300/500ms · 长按窥视 220ms · 轮播自动 6000ms |
-| 焦点视觉 | 海报卡：2.5dp primary 描边 @ 圆角 11dp（=8+3），内容常驻内缩 3dp，无缩放；按钮/胶囊：整块反色；播放器系：白底黑内容反色 |
-| 度量 | 侧栏收起 48dp（=内容左缘）· 海报卡 112dp/0.72/圆角 8/间距 10 · **横版卡 192dp/16:9/间距 16（Prime 实测卡宽≈屏宽 20%、4 整卡 + 1 半露）· 探索 hero 展开 0.66/收缩 0.46（Prime 0.78/0.53 含顶栏）· 行头 32dp · hero 高度过渡 250ms · backdrop 跟随防抖 500ms** · backdrop 0.66~0.70 屏高 16:9 贴右上 · hero 标题 0.5 宽 / 简介 0.4 宽 · 底缘遮罩 90dp smoothstep→95% · 选集卡 256×144(详情)/204×114.75(播放器) · 播放器 scrim 380/180dp · 面板 420/240dp 宽 max300dp · 居中弹窗 0.72×0.85 / 0.45 / 380dp |
-| 渐隐曲线 | `fadeFromBlack`: smoothstep 15 停点；`fadeToBlack`: quintic smootherstep^2.5 21 停点（两个纯函数直接从 PR 移植） |
-| 按键语义 | 确认短按=点击 / 长按=收藏菜单(列表页)、倍速(播放器)；播放键=直接播（列表页）/播停（播放器），长按=强制刷新；返回=逐层；←→ 在 hero=切轮播、在锚点行=滑列表、在时间表网格=时间线（跨天）、在播放器 HIDDEN=seek |
-| 文案 | `app-lang` 中 PR 铺设的 49 条 `*_tv_*` key 沿用（立即观看/正在刷新…/这一天没有新番/播放键继续播放 · 长按选择键编辑收藏 等） |
+| 长按 | 系统首个自动重复 KeyDown 触发，通常约 400–500ms；不保证精确 500ms |
+| 播放 seek / 控制层 | 5s 步长、620ms 连按升级预览、5s 自动隐藏；预览只有时间；选集条过渡 250ms |
+| 探索 Hero | 展开 0.66 / 收缩 0.46；高度过渡 250ms；背景目标防抖 500ms；未缓存详情请求防抖 300ms；轮播每 6000ms 前进 |
+| 焦点视觉 | 2.5dp primary 描边，3dp 间隙，11dp 圆角，无缩放；Hero/播放器按钮反色 |
+| 探索布局 | 横版卡 192dp、16:9、间距 16dp；行头 32dp；焦点行锚到 Hero 下缘 |
+| 详情布局 | 选集卡宽 226dp、16:9；简介区顶边预留 64dp，选集卡下边缘 +64dp 对齐视口底边 |
+| 时间表 | 多天并排，固定列宽 360dp、间距 16dp，无日期胶囊/当天网格 |
+| 播放器选集 / 面板 | 卡片 204×114.75dp，间距 12dp；面板宽 420/240dp，最高 300dp；选源遮罩 0.72 宽 ×0.8 高 |
+| 侧栏 | 收起宽 48dp，进入落当前页；菜单键只在主壳侧栏协议中生效 |
+| 文案 | TV 页面仍有大量中文常量，后续资源化；不再按「PR 的 49 条 TV key 已全部沿用」计完成 |
+
+**尚未实现的原参考交互**：列表长按收藏/窥视、列表播放键直接播及长按刷新、评分弹窗（原稿 380dp）、弹幕 7 项 Slider 弹窗（原稿 0.45 宽）、160×90 视频帧预览、播放器 DETAILS。原「对话框焦点延迟 300ms」方案已废弃，任何新弹窗都必须遵循 §14.4 的事件驱动焦点规范。
 
 ## 附录 B · 术语
 
@@ -938,5 +816,5 @@ D1 放弃编译期隔离后，**Konsist 是 §4.2 约定边界的主要机械守
 | 10-foot UI | 3 米观看距离的电视界面设计（大字号、强焦点、少层级） |
 | 锚点行 | 聚焦卡固定在行首、按键滚动列表本身的横向列表（Prime Video 式） |
 | 拖拽预览 (scrub) | 进度圆点脱离播放位置移动、确认才 seek 的预览态 |
-| overscan | 电视裁切画面边缘的历史行为，安全边距 48dp 由 `TvScreenScaffold` 统一处理 |
+| overscan | 电视裁切画面边缘的历史行为；当前页通过各自 Layout/Defaults 设置安全留白，未统一调用 TvScreenScaffold |
 | CMP | Compose Multiplatform（org.jetbrains.compose） |
