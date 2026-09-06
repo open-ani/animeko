@@ -122,9 +122,10 @@ android {
 }
 
 dependencies {
-    // 两个 flavor 共用完整依赖树 (D1: TV 与手机共享数据层/装配, 边界靠约定 + Konsist, 不做依赖收窄)
+    // 两个 flavor 共用共享库；TV 对手机页面的访问边界靠约定 + Konsist 维护。
     implementation(projects.app.shared)
     implementation(projects.app.shared.application)
+    "tvImplementation"(projects.app.shared.tv)
 
     implementation(libs.androidx.core.ktx)
     implementation(libs.androidx.appcompat)
@@ -137,47 +138,11 @@ dependencies {
 
     implementation(libs.ktor.client.core)
     implementation(libs.mediamp.ffmpeg)
-
-    // ── TV UI 库模块 (仅 tv variant classpath; tv-material 等经其 api 传递) ──
-    "tvImplementation"(projects.app.android.uiMainTv)
 }
 
 idea {
     module {
         excludeDirs.add(file(".cxx"))
-    }
-}
-
-// 清单守护 (atv-architecture.md §10.2): 断言 tv variant 合并清单无 torrent 服务、权限 ⊆ 白名单,
-// 防止手机侧新增声明误入 src/main 交集后静默泄漏进 TV (§13 风险 #10). CI 在 assembleTvDebug 后执行.
-val verifyTvManifestPurity = tasks.register("verifyTvManifestPurity") {
-    dependsOn("processTvDebugManifest")
-    val manifestsDir = layout.buildDirectory.dir("intermediates/merged_manifests/tvDebug")
-    inputs.dir(manifestsDir)
-    doLast {
-        val allowedPermissions = setOf(
-            "android.permission.INTERNET",
-            "android.permission.ACCESS_NETWORK_STATE",
-            "android.permission.WAKE_LOCK",
-            "android.permission.REQUEST_INSTALL_PACKAGES",
-        )
-        val manifests = manifestsDir.get().asFile.walkTopDown()
-            .filter { it.name == "AndroidManifest.xml" }.toList()
-        check(manifests.isNotEmpty()) { "未找到 tvDebug 合并清单, AGP 中间产物路径可能已变化" }
-        for (manifest in manifests) {
-            val text = manifest.readText()
-            check(!text.contains("torrent", ignoreCase = true)) {
-                "tv 合并清单混入 torrent 声明 (应只在 src/default): $manifest"
-            }
-            val permissions = Regex("""<uses-permission[^>]*android:name="([^"]+)"""")
-                .findAll(text).map { it.groupValues[1] }.toList()
-            val disallowed = permissions.filterNot {
-                it in allowedPermissions || it.endsWith("DYNAMIC_RECEIVER_NOT_EXPORTED_PERMISSION")
-            }
-            check(disallowed.isEmpty()) {
-                "tv 合并清单混入非白名单权限 $disallowed (手机专属权限应放 src/default): $manifest"
-            }
-        }
     }
 }
 

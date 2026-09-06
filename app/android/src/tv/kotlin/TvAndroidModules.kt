@@ -7,7 +7,7 @@
  * https://github.com/open-ani/ani/blob/main/LICENSE
  */
 
-package me.him188.ani.tv
+package me.him188.ani.android.leanback
 
 import android.app.Activity
 import kotlinx.coroutines.Dispatchers

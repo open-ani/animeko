@@ -36,8 +36,8 @@ def disp_width(text: str) -> int:
 
 # TV 包候选: 本地 debug 构建优先, 其次参考版
 DEFAULT_PACKAGES = [
-    ("me.him188.ani.tv.debug2", "me.him188.ani.tv.MainActivity"),
-    ("me.him188.ani.tv", "me.him188.ani.android.activity.MainActivity"),
+    ("me.him188.ani.leanback.debug2", "me.him188.ani.android.leanback.MainActivity"),
+    ("me.him188.ani.leanback", "me.him188.ani.android.leanback.MainActivity"),
 ]
 
 ADB = shutil.which("adb") or f"{__import__('os').path.expanduser('~')}/Library/Android/sdk/platform-tools/adb"

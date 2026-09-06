@@ -31,8 +31,6 @@ kotlin {
     sourceSets.named("jvmTest").dependencies {
         implementation(kotlin("reflect"))
     }
-    sourceSets.androidMain.dependencies {
-    }
     sourceSets.desktopMain.dependencies {
     }
 }

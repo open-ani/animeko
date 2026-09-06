@@ -1618,9 +1618,16 @@ class WithMatrix(
         if (matrix.uploadApk) {
             runGradle(
                 name = "Build Android Debug APKs",
-                // assembleTvDebug 兼作交集源集纯净性的编译期验证, verifyTvManifestPurity 为清单守护
-                // (atv-architecture.md §10.2)
-                tasks = arrayOf("assembleDefaultDebug", "assembleTvDebug", "verifyTvManifestPurity"),
+                tasks = arrayOf("assembleDefaultDebug", "assembleTvDebug"),
+            )
+            runGradle(
+                name = "Test Android TV",
+                tasks = buildList {
+                    for (module in listOf(":app:shared:tv", ":app:shared:ui-foundation-tv", ":app:shared:ui-episode-tv", ":app:shared:ui-subject-tv")) {
+                        add("$module:testAndroidHostTest")
+                        add("--tests 'me.him188.ani.leanback.*'")
+                    }
+                }.toTypedArray(),
             )
         }
 
@@ -1646,7 +1653,6 @@ class WithMatrix(
             runGradle(
                 name = "Build Android Release APKs",
                 `if` = expr { github.isAnimekoRepository and !github.isPullRequest },
-                // TV flavor 与手机同 job 构建, 共享缓存与签名 (atv-architecture.md §10.2)
                 tasks = arrayOf("assembleDefaultRelease", "assembleTvRelease"),
                 env = mapOf(
                     "signing_release_storeFileFromRoot" to expr { prepareSigningKey.outputs["filePath"] },

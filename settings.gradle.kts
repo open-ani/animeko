@@ -94,31 +94,28 @@ includeProject(":torrent:anitorrent")
 includeProject(":torrent:pikpak") // PikPak 云离线下载后端
 
 includeProject(":app:shared")
-// TV UI 模块统一命名 ui-<feature>-tv, 仅 tv flavor 引用
-includeProject(":app:android:ui-main-tv", "app/android/ui-main-tv") // TV 主壳/导航/页面注册表 (androidx.tv)
-includeProject(":app:android:ui-foundation-tv", "app/android/ui-foundation-tv") // TV 设计系统 (主题/焦点/通用组件)
-includeProject(":app:android:ui-exploration-tv", "app/android/ui-exploration-tv") // TV 探索页
-includeProject(":app:android:ui-subject-tv", "app/android/ui-subject-tv") // TV 条目详情页
-includeProject(":app:android:ui-episode-tv", "app/android/ui-episode-tv") // TV 播放页
-includeProject(":app:android:ui-collection-tv", "app/android/ui-collection-tv") // TV 追番页
-includeProject(":app:android:ui-search-tv", "app/android/ui-search-tv") // TV 搜索页
-includeProject(":app:android:ui-schedule-tv", "app/android/ui-schedule-tv") // TV 新番时间表
-includeProject(":app:android:ui-login-tv", "app/android/ui-login-tv") // TV 邮箱 OTP 登录
-includeProject(":app:android:ui-settings-tv", "app/android/ui-settings-tv") // TV 设置子集
+// TV child modules compile their parent's src/androidTv directories and depend on the shared KMP modules.
+includeProject(":app:shared:tv", "app/shared/shared-tv")
 includeProject(":app:shared:app-platform")
 includeProject(":app:shared:app-data")
 includeProject(":app:shared:app-data-aidl")
 includeProject(":app:shared:app-lang") // We have a separate module so that the project compiles faster
 includeProject(":app:shared:ui-foundation")
+includeProject(":app:shared:ui-foundation-tv", "app/shared/ui-foundation/tv")
 includeProject(":app:shared:ui-settings")
+includeProject(":app:shared:ui-settings-tv", "app/shared/ui-settings/tv")
 includeProject(":app:shared:ui-adaptive")
 includeProject(":app:shared:ui-subject")
+includeProject(":app:shared:ui-subject-tv", "app/shared/ui-subject/tv")
 includeProject(":app:shared:ui-cache")
 includeProject(":app:shared:ui-exploration")
+includeProject(":app:shared:ui-exploration-tv", "app/shared/ui-exploration/tv")
 includeProject(":app:shared:ui-comment")
 includeProject(":app:shared:ui-onboarding")
+includeProject(":app:shared:ui-onboarding-tv", "app/shared/ui-onboarding/tv")
 includeProject(":app:shared:ui-mediaselect")
 includeProject(":app:shared:ui-episode")
+includeProject(":app:shared:ui-episode-tv", "app/shared/ui-episode/tv")
 includeProject(":app:shared:ui-exprovider")
 includeProject(":app:shared:ui-watchtogether")
 includeProject(":app:shared:video-player:video-player-api", "app/shared/video-player/api")

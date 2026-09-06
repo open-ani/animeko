@@ -3,14 +3,14 @@
 |             |                                                                                                                                                                            |
 |-------------|----------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
 | 状态          | 实施中：工程骨架已落地，看番主链路与内容页已有实现，功能补齐和验收仍在进行                                                                                                                                      |
-| 设计日期 / 最近核对 | 2026-08-01 / **2026-09-06**                                                                                                                                                |
-| 核对基线        | 当前分支 `tv/m0-bootstrap-and-flavor`，提交 `03d8afb436e62c94b66a52467ef1f2c1164ee543` + 本工作区 TV 播放器 P0–P2 实现与设备回归修复                                                              |
+| 设计日期 / 最近核对 | 2026-08-01 / **2026-09-07**                                                                                                                                                |
+| 核对基线        | 当前分支 `tv/m0-bootstrap-and-flavor`，提交 `e358a86be019fa14c950809ab5e275197c23b6bd` + 本工作区包名调整与共享目录下的 TV 子模块拆分                                                              |
 | 范围          | `:app:android` 的 `tv` flavor，定位**纯在线播放端**；手机 APK 与 TV APK 独立安装、更新                                                                                                          |
 | 交互参考        | [PR#3217](https://github.com/open-ani/animeko/pull/3217) 与设计镜像 [「Animeko TV」](https://claude.ai/design/2a3b7d37-075a-400b-bedb-ef2072b6caf3)；后续裁定见 §14，探索页已演进为 Prime 风格 v5 |
 | 当前技术栈       | Kotlin 2.4.10 / AGP 9.1.1 / CMP 1.11.1 / minSdk 27 / compileSdk、targetSdk 37；Material3 + 存量 tv-material 1.1.0，Navigation 3、Sketch、mediamp 0.3.2                            |
 
 > **阅读口径
-**：本次根据当前分支源码、测试定义与 CI 配置核对，并重构 TV 的 MVI 边界；已在本地 Android 16 / API 36 TV 模拟器进行设备回归，构建、测试、通过路径与遗留问题记录在 §12.2。正文区分「代码已实现」「待实现/待接线」「待验收」；旧文档中的真机通过记录保留为历史记录，本轮单台模拟器结果不代表完整设备矩阵通过。§12 是进度总表，§14 是开发约束；尚未实施的设计明确标为待办。
+**：根据当前分支源码、测试定义与 CI 配置核对，TV 文件位于共享模块的 `src/androidTv` / `src/androidTvTest`，由各模块下的 `tv` KMP Compose 子模块编译。此前 MVI 重构和播放器迭代已有本地 Android 16 / API 36 TV 模拟器回归，迁移后的构建、测试和启动导航验证也记录在 §12.2。正文区分「代码已实现」「待实现/待接线」「待验收」；历史验收不等同当前提交的完整设备矩阵通过。§12 是进度总表，§14 是开发约束；尚未实施的设计明确标为待办。
 
 ---
 
@@ -19,10 +19,10 @@
 ### 1.1 目标
 
 1. **独立 TV APK**：在既有 `distribution` 维度增加与 `default` 平级的 `tv` flavor，applicationId 为
-   `me.him188.ani.tv`，提供 Leanback 启动器入口。
+   `me.him188.ani.leanback`，提供 Leanback 启动器入口。
 2. **独立 TV 视图层**：页面与组件位于
-   `app/android/ui-*-tv`。当前以 Material3 + Compose foundation 为主，保留 tv-material 组件；统一焦点调度、记忆和网格协议位于
-   `ui-foundation-tv`。
+   `app/shared` 各模块的 `src/androidTv`。当前以 Material3 + Compose foundation 为主，保留 tv-material 组件；统一焦点调度、记忆和网格协议位于
+   `ui-foundation/src/androidTv`。
 3. **复用状态、领域和数据层
    **：各业务页面由 TV ViewModel 接收 Intent、提供只读状态；探索、追番、时间表、登录适配共享 ViewModel，详情复用共享状态工厂/加载器。视频画面、弹幕渲染及在线取源复用共享模块。
 4. **遥控器完成核心流程
@@ -45,8 +45,7 @@
 **架构边界**：
 
 - TV 不引入共享手机页面的变体插槽，不直接复用手机页面 Composable；允许共享状态与白名单基建。
-- 两 flavor 共用共享依赖树，边界由 import 约定、Konsist 和 DI 门控维护，**不是编译期 UI 依赖隔离
-  **；Firebase/GMS 有单独的 TV classpath 排除。
+- 手机和 TV 共用原有 Android 库；TV 子模块与 `tv-material` 仅由应用的 `tv` flavor 引入，手机不引入它们。TV 仍可访问共享手机 UI，其访问边界由 import 约定、Konsist 和 DI 门控维护。Firebase/GMS 有单独的 TV classpath 排除。
 - 不使用旧 Leanback UI 控件；Leanback launcher 的 manifest 声明仍然需要。
 - 当前已有自建 `TvFocusScope`/
   `TvFocusMemory`/网格与长按原语，底层使用 Compose 焦点 API；早期「全部以官方组件替代」的设想已被实施修正。
@@ -58,24 +57,30 @@
 
 ### 2.1 分层
 
-`app/android` 是出包层，`src/main` 提供 Android 交集，`src/default` 与
-`src/tv` 各自提供应用入口与平台绑定。TV 已拆成 **10 个 UI 库模块
-**：foundation、main 与 8 个功能模块（§4.1）。共享 `app-data` 负责仓库、会话与播放编排；部分共享
-`ui-*` 模块提供可复用状态对象，TV 自行实现视图。
+`app/android` 是出包层，`src/main` 提供 Android 交集，`src/default` 与 `src/tv`
+各自提供入口与平台绑定。原有 10 个独立 TV UI 库按功能整理到 **7 个现有 KMP 模块目录下**：
+`:app:shared` 负责主壳，foundation、exploration、subject、episode、onboarding、settings
+六个共享 UI 模块承载各功能的 `src/androidTv/kotlin`（§4.1）。
+
+每处目录下新增一个 TV KMP Compose 子模块，功能模块位于 `ui-xxx/tv`，主壳位于 `shared-tv`，
+均依赖原 KMP 模块，并编译其 TV 目录。
+原 KMP 库不编译 TV 文件，TV 专用依赖也只加入子模块。应用通过 `tvImplementation(projects.app.shared.tv)`
+引入 TV 主壳和各功能子模块；手机、desktop、iOS 不引入 TV 代码与专用依赖。
+应用同时注册 `default` 与 `tv` 两个 flavor，可在同一次 Gradle 调用中构建两个 APK，无需构建开关。
 
 ### 2.2 当前代码事实与入口
 
 | 主题       | 当前实现                                                                                                                                                     | 代码入口                                                                                                         |
 |----------|----------------------------------------------------------------------------------------------------------------------------------------------------------|--------------------------------------------------------------------------------------------------------------|
-| 构建约定     | 应用使用 `ani.android-application`，TV 库使用 `ani.android-library`，KMP 库使用 `ani.kmp-library`；构建逻辑已从旧 `buildSrc` 迁往 `build-logic`                                | `app/android/build.gradle.kts`、`build-logic/src/main/kotlin/`                                                |
-| Compose  | CMP 1.11.1 + `kotlin.plugin.compose`，TV 同时使用 Material3 与 tv-material 1.1.0                                                                               | `gradle/libs.versions.toml`、`ui-foundation-tv`                                                               |
+| 构建约定     | 应用使用 `ani.android-application`；共享 UI 使用 `ani.kmp-compose`；TV 子模块同样使用 `ani.kmp-compose`，编译父目录下的 TV 文件                                | `app/android/build.gradle.kts`、`app/shared/**/tv/build.gradle.kts`、`build-logic/src/main/kotlin/`                                                |
+| Compose  | CMP 1.11.1 + `kotlin.plugin.compose`，TV 同时使用 Material3 与 tv-material 1.1.0                                                                               | `gradle/libs.versions.toml`、`ui-foundation/src/androidTv`                                                               |
 | DI       | `getCommonKoinModule` / `getTvCommonKoinModule` 共用核心装配，缓存模块分流；`SubjectDetailsStateFactory` 被 TV 复用的详情 VM 实际使用                                            | `app/shared/application/src/commonMain/kotlin/platform/CommonKoinModule.kt`                                  |
-| 页面 VM 创建 | `TvAniAppContent` 统一通过 `tvViewModel { TvXxxViewModel(...) }` 显式构建 10 个 TV VM（含应用作用域的一起看 VM）；Koin 不注册 VM，`Tv*Route` 接收实例并收集状态，`Tv*Screen` 只渲染状态并发送 Intent | `ui-main-tv/.../main/TvAniAppContent.kt`、各 `Tv*Route.kt`                                                     |
-| 导航       | Navigation 3：`rememberAniBackStack` / `AniNavigator.setBackStack` / `NavDisplay`；只注册 Main、SubjectDetail、EpisodeDetail                                    | `ui-main-tv/.../main/TvAniAppContent.kt`                                                                     |
-| 播放       | TV 自建 `TvEpisodeViewModel`，复用 `EpisodeFetchSelectPlayState` 与扩展；Android 画面仍是 ExoPlayer + libass                                                          | `ui-episode-tv/.../TvEpisodeViewModel.kt`、`src/main/kotlin/CommonAndroidModules.kt`                          |
+| 页面 VM 创建 | `TvAniAppContent` 统一通过 `tvViewModel { TvXxxViewModel(...) }` 显式构建 10 个 TV VM（含应用作用域的一起看 VM）；Koin 不注册 VM，`Tv*Route` 接收实例并收集状态，`Tv*Screen` 只渲染状态并发送 Intent | `app/shared/src/androidTv/kotlin/ui/main/TvAniAppContent.kt`、各 `Tv*Route.kt`                                                     |
+| 导航       | Navigation 3：`rememberAniBackStack` / `AniNavigator.setBackStack` / `NavDisplay`；只注册 Main、SubjectDetail、EpisodeDetail                                    | `app/shared/src/androidTv/kotlin/ui/main/TvAniAppContent.kt`                                                                     |
+| 播放       | TV 自建 `TvEpisodeViewModel`，复用 `EpisodeFetchSelectPlayState` 与扩展；Android 画面仍是 ExoPlayer + libass                                                          | `ui-episode/src/androidTv/kotlin/ui/episode/TvEpisodeViewModel.kt`、`src/main/kotlin/CommonAndroidModules.kt`                          |
 | 图片       | 已迁移到 Sketch 4.6.0：`MainActivity` 提供 `LocalSketch`，页面继续使用共享 `AsyncImage`                                                                                  | `src/tv/kotlin/MainActivity.kt`、共享 `ui-foundation/.../AsyncImage.kt`                                         |
 | TMDB/简介  | `TmdbImageService`、`TmdbEpisodeMatcher`、`BangumiSummaryService`、`StaleRefreshGate` 已存在；探索与详情已消费部分能力                                                      | `app/shared/app-data/src/commonMain/kotlin/data/network/`                                                    |
-| 文案       | 可以复用 `app-lang`，但当前 TV 页面仍有大量中文字符串常量，不能视为 TV 多语言整理已完成                                                                                                    | `app/android/ui-*-tv/src/main/`                                                                              |
+| 文案       | 可以复用 `app-lang`，但当前 TV 页面仍有大量中文字符串常量，不能视为 TV 多语言整理已完成                                                                                                    | `app/shared/**/src/androidTv/`                                                                              |
 | 清单       | 三层拆分已落地；TV 无 torrent 服务，但交集保留禁用的 `AppLocalesMetadataHolderService`，不能写作「无任何 service」                                                                     | `app/android/src/{main,default,tv}/AndroidManifest.xml`                                                      |
 | 发布       | 双包构建、TV workflow artifact 与 `uploadAndroidTvApk` 配置均在；本次未核验远端发布运行结果                                                                                      | `.github/workflows/src.main.kts`、`ci-helper/build.gradle.kts`、`build-logic/src/main/kotlin/ciHelperTasks.kt` |
 
@@ -91,7 +96,7 @@
 
 | #  | 决策           | 当前结论                                                                                                                |
 |----|--------------|---------------------------------------------------------------------------------------------------------------------|
-| D1 | 双 APK / 模块边界 | 单一 `distribution = default / tv` 维度；`ui-*-tv` 独立视图模块，`src/tv` 为出包胶水。共享依赖树不为 UI/BT 做编译期收窄，TV 额外排除 Firebase/GMS       |
+| D1 | 双 APK / 模块边界 | `distribution = default / tv`；TV 文件位于共享模块的 `src/androidTv` 目录，由各自的 `tv` 子模块编译。手机不引入 TV 子模块，TV 可访问共享 Android 库；双包可同次构建，TV 额外排除 Firebase/GMS |
 | D2 | UI / 焦点技术    | Material3 + 存量 tv-material 1.1.0 + 标准 foundation lazy；使用统一事件驱动 `TvFocusScope`，滚动采用显式 `BringIntoViewSpec`            |
 | D3 | 状态复用         | 优先复用共享 VM/状态对象；搜索、设置、播放保留 TV VM。视图层独立，禁止借白名单直接复用手机页面                                                                |
 | D4 | DI           | 共享核心 + flavor 缓存门控。TV 使用空存储 `MediaCacheManagerImpl`，不注册下载器/缓存引擎/torrent 平台绑定；详情状态工厂已被 TV 使用，当前无 `TurnstileState` 绑定 |
@@ -106,10 +111,12 @@
 ```mermaid
 graph TD
     subgraph APP[":app:android（唯一 application 模块 · distribution = default / tv）"]
-        TVUI["ui-main-tv / ui-foundation-tv<br/>（app/android/ 下的 TV UI 库模块, ui-<feature>-tv 命名）<br/>主壳/导航 · AniTvTheme · TvFocusDefaults"]
         SRCTV["src/tv（出包胶水）<br/>TvAniApplication · MainActivity · TvAndroidModules<br/>manifest 增量 · banner"]
         SRCMAIN["src/main（两 flavor 交集）<br/>getCommonAndroidModules · manifest 交集"]
         SRCDEF["src/default（现手机代码整体迁入）<br/>AniApplication · torrent/缓存绑定 · manifest 增量"]
+    end
+    subgraph TV["仅 tv flavor 引入的 7 个 KMP Compose 子模块"]
+        TVUI[":app:shared:tv + 各 ui-xxx-tv 子模块<br/>编译父目录中的 src/androidTv<br/>主壳/导航 · AniTvTheme · TvFocusDefaults"]
     end
     subgraph 共享["两 flavor 共用的共享模块<br/>(TV 另排除 Firebase/GMS, D1)"]
         SHARED[":app:shared + :app:shared:application<br/>getCommonKoinModule（手机/desktop 完整版）<br/>getTvCommonKoinModule（TV 门控版·空引擎缓存）"]
@@ -118,7 +125,7 @@ graph TD
         VP[":app:shared:video-player"]
         DMK[":danmaku:*"]
     end
-    SRCTV -- "tvImplementation" --> TVUI
+    SRCTV --> TVUI
     TVUI -- "约定: TV 视图 + 共享状态/数据<br/>(Konsist §11.1 守护)" --> SHARED
     SRCDEF --> SHARED
     SRCMAIN --> SHARED
@@ -137,33 +144,38 @@ graph TD
 
 ## 4. 模块设计
 
-### 4.1 模块与源集布局
+### 4.1 模块与源码布局
 
-10 个模块均已在 `settings.gradle.kts` 注册，目录为 `app/android/ui-<feature>-tv`，Gradle 坐标为
-`:app:android:ui-<feature>-tv`：
+以下共享模块继续使用 `ani.kmp-compose`，功能模块在 `tv/build.gradle.kts` 注册 `ui-xxx-tv` KMP Compose 子模块，
+主壳模块 `:app:shared:tv` 则位于 `app/shared/shared-tv/build.gradle.kts`。
+子模块同样使用 `ani.kmp-compose`，将 `../src/androidTv/kotlin` 加入自己的 `androidMain`，
+将 `../src/androidTvTest/kotlin` 加入自己的 `androidHostTest`；父 KMP 模块不编译这两个目录：
 
-| 模块叶名                | 当前职责                                                                 |
-|---------------------|----------------------------------------------------------------------|
-| `ui-foundation-tv`  | 双主题、焦点框架/记忆/网格/按键、滚动锚点、侧边栏、海报/横图卡、Hero/backdrop、输入框、进度条              |
-| `ui-main-tv`        | `TvAniAppContent`（统一构建 VM）、`TvMainRoute`/`TvMainShell`、应用依赖参数与架构守护测试 |
-| `ui-exploration-tv` | 探索页、Hero、继续观看与推荐行                                                    |
-| `ui-subject-tv`     | 详情页及剧照、人物、关联、评价卡片                                                    |
-| `ui-episode-tv`     | 播放 VM、控制层、弹幕层、选集条、选源弹窗、药丸面板和设置弹窗                                        |
-| `ui-collection-tv`  | 追番分类网格                                                               |
-| `ui-search-tv`      | 搜索页与 TV 搜索 VM                                                        |
-| `ui-schedule-tv`    | 多天并排的时间表                                                             |
-| `ui-login-tv`       | 邮箱 OTP 登录视图                                                          |
-| `ui-settings-tv`    | 设置子集与 TV 设置 VM                                                       |
+| 目录所属共享模块（各有独立 TV 子模块） | androidTv 内容 |
+|----------|----------------|
+| `:app:shared` | `TvAniAppContent`、主壳/导航、VM 装配、应用依赖与架构守护测试 |
+| `ui-foundation` | 双主题、焦点框架、锚点、侧栏、卡片、输入框与进度条 |
+| `ui-exploration` | 探索、搜索、时间表 |
+| `ui-subject` | 详情、人物/关联/评价卡片、追番分类网格 |
+| `ui-episode` | 播放 VM、控制层、弹幕、选集、选源与设置面板 |
+| `ui-onboarding` | TV 邮箱 OTP 登录 |
+| `ui-settings` | TV 设置子集 |
 
-库模块使用 `ani.android-library` + Compose 插件；foundation 以
-`api` 暴露 tv-material、app-platform 和 foundation，main 聚合功能模块。应用仅通过
-`"tvImplementation"(projects.app.android.uiMainTv)` 追加 TV UI。
+`androidTv` 和 `androidTvTest` 是目录名，不是 KMP target 或 KotlinSourceSet。
+源码包名为 `me.him188.ani.leanback.ui.*`。每个 TV 子模块依赖原 KMP 模块，访问其公开 API，
+不能访问原模块的 `internal` 声明。原模块的 `androidMain` 继续提供两端需要的 Android `actual` 实现。
+六个功能子模块的 namespace 为 `me.him188.ani.app.leanback.ui.<feature>`，主壳 namespace 为 `me.him188.ani.leanback`。
+`tv-material` 位于 `:app:shared:ui-foundation-tv`，TV 测试依赖位于对应子模块的 `androidHostTest`，JUnit 和 Compose 配置由约定插件提供。
+共享 `ExplorationPageViewModel` 已下移到 `ui-exploration/commonMain`，避免功能模块反向依赖 `:app:shared`。
 
-| 源集            | 当前内容                                                                               |
-|---------------|------------------------------------------------------------------------------------|
-| `src/main`    | `CommonAndroidModules.kt`、通用清单与 FileProvider 路径                                    |
-| `src/default` | 手机 `AniApplication`、Activity、平台绑定与手机清单，包含 torrent/缓存/更新等专属链路                       |
-| `src/tv`      | `TvAniApplication`、`MainActivity`、`TvAndroidModules`、Leanback 清单、banner 与 app_name |
+应用继续依赖 `:app:shared`，并通过 `tvImplementation(projects.app.shared.tv)` 仅向 TV flavor
+加入主壳子模块；主壳依赖其余六个 TV 子模块。父 KMP 模块不反向依赖 TV 子模块，避免循环依赖。
+
+| 应用源集 | 当前内容 |
+|----------|----------|
+| `src/main` | 通用平台绑定、清单与 FileProvider |
+| `src/default` | 手机 Application/Activity、torrent/缓存/更新绑定与手机清单 |
+| `src/tv` | `TvAniApplication`、`MainActivity`、`TvAndroidModules`、Leanback 清单与 banner |
 
 ### 4.2 约定边界（import 规则，非依赖隔离）
 
@@ -214,32 +226,26 @@ M0 旧记录称手机合并清单与基线 78 个元素语义等价；这是历�
 ### 4.4 当前目录结构
 
 ```text
-app/android/
-├── src/main/                 # CommonAndroidModules + 通用 manifest
-├── src/default/              # 手机入口/平台绑定/manifest
-├── src/tv/
-│   ├── kotlin/               # TvAniApplication / MainActivity / TvAndroidModules
-│   ├── AndroidManifest.xml
-│   └── res/                  # tv_banner / app_name
-├── ui-foundation-tv/
-│   └── src/main/kotlin/me/him188/ani/tv/ui/foundation/
-│       ├── theme/            # AniTvTheme / TvColorMapping
-│       ├── focus/            # TvFocusScope / Modifiers / Memory / Grid / Keys / BringIntoView
-│       ├── layout/           # TvScreenScaffold（当前页面未调用）
-│       └── widgets/          # SideRail / PosterCard / LandscapeCard / ImmersiveCards / TextField / SeekBar
-├── ui-main-tv/               # NavDisplay / 主壳 MVI / VM 统一构建 / 架构测试
-├── ui-exploration-tv/
-├── ui-subject-tv/
-├── ui-episode-tv/
-├── ui-collection-tv/
-├── ui-search-tv/
-├── ui-schedule-tv/
-├── ui-login-tv/
-└── ui-settings-tv/
+app/
+├── android/src/
+│   ├── main/                 # 交集平台绑定与清单
+│   ├── default/              # 手机入口与平台绑定
+│   └── tv/                   # TV 入口、平台绑定、清单与资源
+└── shared/
+    ├── shared-tv/build.gradle.kts # :app:shared:tv 主壳，依赖原 shared 与各 ui-xxx-tv 子模块
+    ├── src/androidTv/kotlin/ui/{main,di}/
+    ├── src/androidTvTest/kotlin/ui/main/
+    ├── ui-foundation/src/androidTv/kotlin/ui/foundation/
+    ├── ui-exploration/src/androidTv/kotlin/ui/{exploration,search,schedule}/
+    ├── ui-subject/src/androidTv/kotlin/ui/{subject,collection}/
+    ├── ui-episode/src/androidTv/kotlin/ui/episode/
+    ├── ui-onboarding/src/androidTv/kotlin/ui/login/
+    └── ui-settings/src/androidTv/kotlin/ui/settings/
 ```
 
-`TvSlider`、`TvCenteredDialog`、`TvDropdownMenu`、`TvToastHost`、独立 `TvTypography`/
-`TvColors` 文件目前均不存在；待实现组件不能作为现有目录列出。
+六个 `ui-*` 目录下也各有 `tv/build.gradle.kts`，依赖各自原 KMP 模块，编译同级的 TV 目录。
+foundation、subject、episode 还各有 `src/androidTvTest/kotlin`，由对应子模块的 `androidHostTest` 编译。
+原有 common/android/desktop/iOS 源集继续保留；TV 包名与手机包名独立，移动目录不改变页面职责与 MVI 边界。
 
 ### 4.5 方案演进史与备选记录
 
@@ -249,12 +255,12 @@ app/android/
 |----------------|-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|--------------------------------------------------------------|
 | v1             | 独立 `:app:tv:application` 模块出包                                                                                                                                                                   | 不采用——双 application 模块 + 版本/签名台账重复；对比记录见 D1                   |
 | v2             | flavor 出包 + **编译期隔离**：`:app:shared:app-bootstrap` 无 UI 装配模块 + `defaultImplementation`/`tvImplementation` 依赖收窄 + TV UI 独立库模块（`:app:tv:ui*`）。曾完整实施并通过验收                                           | 按维护者决策回退——判断「TV 不调用手机 UI」用约定约束即可，不值得为编译期强制付出 3 个新模块与更复杂的依赖拓扑 |
-| **v3（现行工程边界）** | flavor 出包 + **约定边界**：两 flavor 共享完整依赖树（不收窄），差异收敛为 DI 门控（`getTvCommonKoinModule`）+ manifest 分层 + Konsist/清单守护；TV UI 保持模块化——库模块置于 `app/android/` 下、`ui-<feature>-tv` 命名（叶名独立免坐标冲突），`src/tv` 只留出包胶水 | ✅ 现行方案（D1/D4）                                                |
+| **v3（历史工程边界）** | flavor 出包 + **约定边界**：两 flavor 共享完整依赖树（不收窄），差异收敛为 DI 门控（`getTvCommonKoinModule`）+ manifest 分层 + Konsist；TV UI 保持模块化——库模块置于 `app/android/` 下、`ui-<feature>-tv` 命名（叶名独立免坐标冲突），`src/tv` 只留出包胶水 | DI/约定边界保留，模块布局已由 §4.1 的 KMP 合并方案替代                                                |
 
 v4 在 v3 工程边界上引入 Material3 双主题、共享状态复用与统一焦点框架；焦点实现随后改为全事件驱动。v5 更新探索页与布局锚点，不改变 flavor/模块边界。
 
 v2→v3 保留下来的实施资产：缓存/BT 的装配级开关（v2 证明「不用就行」对被注入的基础设施不成立）、manifest 三层分治、
-`DataStores` 归位 app-data、tv classpath 的 firebase 剔除、清单守护任务。若未来需要更硬的隔离（如 TV 包体成为问题），沿 v2 路线重新收窄依赖即可，装配开关无需改动。
+`DataStores` 归位 app-data、tv classpath 的 firebase 剔除。若未来需要更硬的隔离（如 TV 包体成为问题），沿 v2 路线重新收窄依赖即可，装配开关无需改动。
 
 ---
 
@@ -269,7 +275,7 @@ androidx-tv-material = { module = "androidx.tv:tv-material", version = "1.1.0" }
 ```
 
 Material3 通过共享 UI 基建等依赖可用；列表使用标准 `LazyColumn`/`LazyRow`/`LazyVerticalGrid`，没有引入
-`tv-foundation`。主壳使用 Navigation 3 runtime/UI 1.1.1 与 ViewModel navigation3 decorator。10 个 TV 模块的注册见
+`tv-foundation`。主壳使用 Navigation 3 runtime/UI 1.1.1 与 ViewModel navigation3 decorator。TV 所在共享模块的注册见
 `settings.gradle.kts`，并非只注册 foundation/main 两个骨架模块。
 
 ### 5.2 当前组件映射
@@ -314,7 +320,7 @@ Material3 通过共享 UI 基建等依赖可用；列表使用标准 `LazyColumn
 ### 5.4.1 统一焦点框架 `TvFocusScope`
 
 框架文件：`TvFocusScope.kt`、`TvFocusModifiers.kt`、`TvFocusMemory.kt`、`TvFocusGrid.kt`，均位于
-`ui-foundation-tv/focus`。
+`ui-foundation/src/androidTv/kotlin/ui/foundation/focus`。
 
 | API / 状态                             | 当前语义                                                  |
 |--------------------------------------|-------------------------------------------------------|
@@ -384,7 +390,7 @@ TV 不启动 torrent 服务连接，不初始化 Sentry/Firebase。`SubjectDetai
 | `src/tv`      | 必需 Leanback、非必需触屏、TV Application/Activity、banner、LEANBACK_LAUNCHER、`ani://subjects/...` intent-filter                                                               |
 
 应用模块 namespace 为 **`me.him188.ani.android`**；TV Kotlin 包为
-`me.him188.ani.tv`，清单使用全限定类名。TV 没有 torrent 前台服务/进程，但不能写作「合并后没有任何 service」。
+`me.him188.ani.android.leanback`；TV UI 包为 `me.him188.ani.leanback.ui.*`，清单使用 `.leanback.*` 相对入口名。TV 没有 torrent 前台服务/进程，但不能写作「合并后没有任何 service」。
 `tv_banner.xml` 已有 320×180 图形，黑色「あ」字形仍有 TODO，不能标为视觉全部完成。
 
 **深链缺口**：虽然有 intent-filter，TV Activity 目前没有解析启动 Intent 或处理
@@ -630,36 +636,20 @@ TV 不启动 torrent 服务连接，不初始化 Sentry/Firebase。`SubjectDetai
 
 ## 10. 构建与发布
 
-### 10.1 当前构建配置
+### 10.1 本地构建
 
-`app/android/build.gradle.kts` 使用
-`ani.android-application`，保留共享的 SDK、版本、签名、ABI splits 与 buildTypes；flavor 配置为：
+手机和 TV 可以在同一次调用中构建，也可以只指定其中一个任务：
 
-```kotlin
-flavorDimensions += "distribution"
-productFlavors {
-    create("default") { dimension = "distribution" }
-    create("tv") {
-        dimension = "distribution"
-        applicationId = "me.him188.ani.tv"
-    }
-}
+```shell
+./gradlew :app:android:assembleDefaultDebug :app:android:assembleTvDebug
 ```
 
-共享依赖仍为 `implementation(projects.app.shared)` 和
-`implementation(projects.app.shared.application)`，TV 额外追加
-`tvImplementation(projects.app.android.uiMainTv)`。
+共享库供两端复用，TV 子模块及专用依赖只加入应用的 `tv` flavor；入口与清单也由 flavor 区分。
+IDE 直接选择相应的 Build Variant。Release 与 install 任务同样按 flavor 选择，
+APK 仍输出到 `outputs/apk/{default,tv}/{debug,release}`。
 
-TV 专属处理已经落地：
-
-- 禁用
-  `processTv*GoogleServices`，从 TV classpath 排除 GitLive Firebase 桥、Firebase/GMS，避免手机分析组件的权限与服务进入 TV 清单。
-- `src/tv/res/values/strings.xml` 覆写应用名为 Animeko TV，启动图标复用共享资源。
-- 默认 debug 后缀 `.debug2`，可通过 `ani.android.debug.applicationIdSuffix` 覆写；TV debug 通常为
-  `me.him188.ani.tv.debug2`。
-- 本地默认 ABI 为 arm64-v8a，构建参数 `ani.android.abis` 可指定其他 ABI；是否成功构建应以实际运行结果为准。
-- TMDB 图片依赖构建时的
-  `ani.tmdb.api.token`；图片回归需核验设备上的实际图片来源。仅构建成功或看到 Bangumi 回退图不能判为 TMDB 通过。
+TMDB 需 `local.properties` 的 `ani.tmdb.api.token`；图片回归需核验设备上的实际图片来源。
+仅构建成功或看到 Bangumi 回退图不能判为 TMDB 通过。
 
 ### 10.2 CI 与上传配置
 
@@ -667,24 +657,25 @@ TV 专属处理已经落地：
 
 | 项                 | 实现                                                                                                                    |
 |-------------------|-----------------------------------------------------------------------------------------------------------------------|
-| Debug 构建          | `assembleDefaultDebug assembleTvDebug verifyTvManifestPurity`                                                         |
-| Release 构建        | 同 job 执行 `assembleDefaultRelease assembleTvRelease`，共享缓存与签名                                                           |
+| Debug 构建          | 同一次调用执行 `assembleDefaultDebug assembleTvDebug`                                                         |
+| Release 构建        | 同一次调用执行 `assembleDefaultRelease assembleTvRelease`，共享缓存与签名                                                           |
 | Workflow artifact | 上传各 ABI 的 `app/android/build/outputs/apk/tv/release/android-tv-<arch>-release.apk`                                    |
 | TV 发布任务           | `:ci-helper:uploadAndroidTvApk`，扫描 `outputs/apk/tv/release`，`flavor = "tv"`                                           |
 | 发布命名              | `build-logic/src/main/kotlin/ciHelperTasks.kt` 中 `ReleaseArtifactNames.androidTvApp` 生成 `ani-tv-<version>-<arch>.apk` |
-| 清单守护              | `verifyTvManifestPurity` 依赖 `processTvDebugManifest`；检查文本不含 torrent、uses-permission 在白名单（含动态接收器权限例外）                  |
 
-清单守护**没有断言「无任何 service」**。TV Debug 编译能发现 `src/main` 对仅在
+TV Debug 编译能发现 `src/main` 对仅在
 `src/default` 定义符号的误引用，但无法拦截共享模块里的手机 UI；后者靠 §11.1。
 
-通用 CI 测试步骤目前是 `desktopTest` 和 `testAndroidHostTest`，工作流没有显式调用五个 TV 库的
-`testDebugUnitTest`。不能由 APK 构建步骤存在推断 TV 架构/焦点等单测已经在 CI 执行。本次核对确认配置存在，未查询远端 CI 或发布资产状态。
+通用 CI 测试步骤继续运行 `desktopTest` 和 `testAndroidHostTest`，覆盖共享代码。
+Android APK job 另外调用四个 TV 子模块的 `testAndroidHostTest`，使用
+`--tests 'me.him188.ani.leanback.*'` 覆盖迁移后的 61 项 TV 测试。
+这是工作流配置，本次未查询远端 CI 或发布资产状态。
 
 ### 10.3 版本与并存策略
 
 - 手机与 TV 在同一 application 模块，共用 versionCode/versionName 与签名配置；手机任务名/输出目录保持
   `default`。
-- `me.him188.ani.tv` 与手机应用可并存，但登录凭据、设置和本地数据库独立；账号体系支持的数据通过服务器同步，
+- `me.him188.ani.leanback` 与手机应用可并存，但登录凭据、设置和本地数据库独立；账号体系支持的数据通过服务器同步，
   **手机设置不会自动复制到 TV**。
 - TV 和手机是否在某次 release 都已成功发布，需要查对应流水线运行结果，不能仅以这份架构文档证明。
 
@@ -702,11 +693,11 @@ TV 专属处理已经落地：
 
 ### 11.1 当前架构守护（Konsist）
 
-位置：`app/android/ui-main-tv/src/test/kotlin/me/him188/ani/tv/ui/main/TvArchitectureTest.kt`。任务：
-`:app:android:ui-main-tv:testDebugUnitTest`。
+位置：`app/shared/src/androidTvTest/kotlin/ui/main/TvArchitectureTest.kt`。任务：
+`:app:shared:tv:testAndroidHostTest --tests 'me.him188.ani.leanback.ui.main.*'`。
 
-测试自行向上定位 `settings.gradle.kts`，用 `scopeFromExternalDirectories` 扫描 10 个 TV 库的
-`src/main` 与 `app/android/src/tv`。当前有 **10 条测试**：
+测试自行向上定位 `settings.gradle.kts`，用 `scopeFromExternalDirectories` 扫描 7 个共享模块的
+`src/androidTv` 与 `app/android/src/tv`。当前有 **10 条测试**：
 
 1. 禁止导入白名单之外的手机 `me.him188.ani.app.ui.*`。
 2. 禁止导入 `domain.torrent.*`、`domain.media.cache.engine.*`、`domain.media.cache.storage.*`。
@@ -736,7 +727,9 @@ Material3 import 禁令已删除。以上部分规则是源码字符串/前缀�
 | 原生/设备验证   | 本轮 API 36 TV 模拟器已覆盖系统 IME、遥控器页面导航、已登录收藏五分类/长列表/详情返回、Web 源解析出画、播放控制、手动换源和配置持久化；16 KB 兼容提示与第二集某线路 `NoMatchingFile` 留存，其他设备/ROM 与完整播放矩阵待验 |
 
 单测任务为
-`:app:android:ui-{main,foundation,episode,subject,collection}-tv:testDebugUnitTest`（花括号表示五个独立模块）。架构、焦点、播放器、详情和收藏五个 TV 单测任务还应明确接入 CI（§10.2）。设备矩阵保留 Android TV 模拟器、低配盒子和不同 Android 版本的验收目标；完整自动连播、登录联动、弱网/无源/错误与焦点恢复不能仅靠源码存在判断通过。
+四个 TV 子模块的 `testAndroidHostTest`：`:app:shared:tv`、`:app:shared:ui-foundation-tv`、
+`:app:shared:ui-episode-tv`、`:app:shared:ui-subject-tv`；可用 `--tests 'me.him188.ani.leanback.*'` 筛选 TV 测试。
+设备行为与完整播放矩阵仍需按改动范围回归。
 
 ### 11.3 性能目标与当前限制
 
@@ -754,11 +747,11 @@ Material3 import 禁令已删除。以上部分规则是源码字符串/前缀�
 
 | 里程碑                      | 当前已实现                                                                                             | 主要剩余工作                                                                                                          |
 |--------------------------|---------------------------------------------------------------------------------------------------|-----------------------------------------------------------------------------------------------------------------|
-| **M0 骨架** ✅ 工程落地         | flavor 双包、10 个 TV UI 模块、DI 门控、清单分层、主题/主壳、TV Debug 和清单检查配置                                         | 手机行为不回退属于持续回归要求；不能以 M0 历史验收替代当前提交验证                                                                             |
+| **M0 骨架** ✅ 工程落地         | flavor 双包、TV 文件按功能位于 7 个共享模块目录、各 `tv` 子模块编译 TV 代码与测试、DI 门控、清单分层、主题/主壳、TV Debug 构建配置                                         | 手机行为不回退属于持续回归要求；不能以 M0 历史验收替代当前提交验证                                                                             |
 | **M1 看番主链路** 🔶 已有实现     | 探索 v5、续播、TMDB 横图/剧照、在线播放、9 个共享扩展；播放器 P0–P2 的预览 seek、双模式选源、倍速/字幕、弹幕开关与属性/匹配、自动跳过、横向选集/长按、收藏、画质增强、一起看 | 详情评分/长按/管理动作、完整 DETAILS；自动连播整集、异常换源、不同字幕轨道、房间多人同步及设备矩阵验收                                                        |
 | **M2 内容浏览** 🔶 页面已有实现    | 追番五分类与网格边缘跨分类落位、关键词分页搜索、多天并排时间表；继续观看经详情续播                                                         | 长按收藏、搜索历史/补全/筛选、搜索与选源的加载/错误/无源区分、独立播放历史与列表播放键、深链解析、二维码浏览器、各页导航回归                                                |
 | **M3 账号与设置** 🔶 基础界面已有实现 | 邮箱 OTP、侧栏账号、四个设置的保存与播放消费；播放器弹幕属性/来源/校准、收藏和房间入口                                                    | 设置主页整理、弹幕正则、WEB 源启停排序、代理/主题/同步管理、文案资源化和跨页联动验收                                                                   |
-| **M4 系统与发布** 🔶 发布配置已接入  | 双包 release 构建、TV workflow artifact、`uploadAndroidTvApk` 和 `ani-tv-*` 资产命名                         | 16 KB 页大小下原生库 ELF 对齐兼容问题、TV 单测显式接入 CI、可复用交互截图测试与完整播放器回归、真实设备矩阵、性能测量与降级、banner 字形；屏保/Watch Next 等后期能力；应用内更新按指示暂缓 |
+| **M4 系统与发布** 🔶 发布配置已接入  | 双包同次构建、TV 单测 CI 步骤、TV workflow artifact、`uploadAndroidTvApk` 和 `ani-tv-*` 资产命名                         | 16 KB 页大小下原生库 ELF 对齐兼容问题、可复用交互截图测试与完整播放器回归、真实设备矩阵、性能测量与降级、banner 字形；屏保/Watch Next 等后期能力；应用内更新按指示暂缓 |
 
 M0 是骨架前置，后续里程碑已有并行实现，**并非 M1–M4 全部验收完成
 **。共享状态和 app-data 已有后续改动，开发范围遵循 §14.3，不再限定「M1 起只能改 TV 目录」。
@@ -767,9 +760,8 @@ M0 是骨架前置，后续里程碑已有并行实现，**并非 M1–M4 全部
 
 - 旧文档记录过魅族 18X 安装、主链路与页面交互验证，以及 M0 手机清单 78 元素语义等价。
 - 当前代码注释还记录了 **TV 模拟器**上的焦点恢复、跨分类切换和详情页按键问题复现；不能继续笼统写「模拟器验证从未做过」。
-- 这些历史记录不等同当前提交完整设备矩阵通过。MVI 重构后 `assembleTvDebug`、`assembleDefaultDebug`、
-  `verifyTvManifestPurity` 均已本地通过；随后将全部 VM 构建集中到
-  `TvAniAppContent`，重新通过 TV 构建、清单校验及 main/foundation/episode/subject 四个 TV 模块的
+- 这些历史记录不等同当前提交完整设备矩阵通过。MVI 重构后 `assembleTvDebug`、`assembleDefaultDebug` 均已本地通过；随后将全部 VM 构建集中到
+  `TvAniAppContent`，重新通过 TV 构建及 main/foundation/episode/subject 四个 TV 模块的
   `testDebugUnitTest`，共 **41 个测试，0 失败/跳过
   **。此次集中构建改动及后续设备修复仅涉及 TV，未重跑手机构建，也未核验远端发布。
 - **2026-09-06 设备回归**：使用既有
@@ -779,7 +771,7 @@ M0 是骨架前置，后续里程碑已有并行实现，**并非 M1–M4 全部
 - **通过路径
   **：探索加载、侧栏切页、搜索提交/收起 IME/下键进入结果/详情返回、时间表跨日浏览/详情返回原焦点与视口/继续滚动、追番空态五分类切换、四开关读写及进程重启后保存；Fate/Zero 第一集实际出画、暂停、seek 预览/确认、倍速控件、手动换源后再次出画、逐层返回。登录只验证邮箱输入与下键到发送按钮，未发送 OTP。
 - **本轮修复
-  **：追番展示流过早读取 snapshot；搜索提交不收起 IME，并补齐下键焦点路径；时间表返回丢失滚动/焦点及转场 BringIntoView 抢滚动。同时补齐登录输入框到提交按钮的下键路径。最终包对修改页面复测通过，TV 构建、清单与上述 41 个单测再次通过；最终应用进程日志未发现崩溃或未处理状态读取异常。
+  **：追番展示流过早读取 snapshot；搜索提交不收起 IME，并补齐下键焦点路径；时间表返回丢失滚动/焦点及转场 BringIntoView 抢滚动。同时补齐登录输入框到提交按钮的下键路径。最终包对修改页面复测通过，TV 构建与上述 41 个单测再次通过；最终应用进程日志未发现崩溃或未处理状态读取异常。
 - **首次游客回归的遗留与边界
   **：首次启动有「16 KB 不兼容 / ELF alignment check failed」系统提示，允许兼容模式后可播放；Fate/Zero 在「线路1」手动切第二集时界面报
   `NoMatchingFile`，第二集该线路未出画。当时自动换源关闭，不能据此判定自动换源扩展失效。该轮未验证真实 OTP/已登录收藏、整集自动连播、弱网注入、音频及其他设备；已登录收藏的后续结果见下文。四开关持久化通过不代表 §7.6 两处播放接线缺口已修复。
@@ -788,19 +780,19 @@ M0 是骨架前置，后续里程碑已有并行实现，**并非 M1–M4 全部
 - **2026-09-06 已登录收藏补测
   **：用户已在回归包登录；保留会话覆盖安装本轮修复包。五分类显示抛弃 4、想看 14、在看 10、搁置 8、看过 41；首次进入分类、左右边缘切分类、同行落位及短列表末项钳位、最右边界、41 项长列表、返回分类后下键进入首卡、侧栏往返、详情返回原分类/卡片/视口均通过。
 - **收藏补测修复
-  **：修复首次进入有缓存分类时误判空态、详情返回误选「抛弃」、首卡被回收后分类下键无法进入网格三处焦点问题；同时阻止旧网格消费异步分类切换的送焦请求。新增 3 项单测，最终 TV 构建、清单和 main/foundation/collection 三模块共
+  **：修复首次进入有缓存分类时误判空态、详情返回误选「抛弃」、首卡被回收后分类下键无法进入网格三处焦点问题；同时阻止旧网格消费异步分类切换的送焦请求。新增 3 项单测，最终 TV 构建和 main/foundation/collection 三模块共
   **28 个测试，0 失败/错误/跳过
   **；本轮未重跑未改动的 episode/subject 测试。最终应用日志未发现崩溃或 snapshot 读取异常。
 - **收藏补测边界**：初次接手时列表有数据但数量角标缺失，旧进程日志存在登录前后的未授权数量请求；保留登录冷启动后恢复，最终
   `/v1/me` 返回 200。未复现登录切换全过程，不能将数量缺失标为已修复。没有修改收藏状态；真实空分类、登录切换、远端修改同步及弱网刷新仍待专项验收。报告和截图见 [已登录收藏回归](build/reports/tv-device-regression/collection-report.md)，结束时保留登录并停留在「在看」首卡。
 - **2026-09-06 TMDB 回归更正与补测**：前两轮回归包漏带 `ani.tmdb.api.token`，生成的
-  `tmdbApiToken` 为空，服务直接返回空图片结果；探索卡片/背景、详情背景/分集卡片使用的是 Bangumi 回退图，前述导航验证不能视为 TMDB 验证。用户补齐本地配置后保留登录覆盖安装，以同一条目 CLANNAD（Bangumi 51）对照，四处均恢复 TMDB；日志确认 TMDB 匹配到 TV 24835、backdrop 的 w780/w1280 下载成功、分集索引按播出日期返回 49 条记录，设备第 1～4 集呈现不同剧照。没有改回 UI 仓库访问或 Koin VM 注册。配置检查、TV 构建、清单和 10 项架构测试通过，截图及最新 APK 摘要见 [TMDB 图片回归](build/reports/tv-device-regression/tmdb-report.md)。
+  `tmdbApiToken` 为空，服务直接返回空图片结果；探索卡片/背景、详情背景/分集卡片使用的是 Bangumi 回退图，前述导航验证不能视为 TMDB 验证。用户补齐本地配置后保留登录覆盖安装，以同一条目 CLANNAD（Bangumi 51）对照，四处均恢复 TMDB；日志确认 TMDB 匹配到 TV 24835、backdrop 的 w780/w1280 下载成功、分集索引按播出日期返回 49 条记录，设备第 1～4 集呈现不同剧照。没有改回 UI 仓库访问或 Koin VM 注册。配置检查、TV 构建和 10 项架构测试通过，截图及最新 APK 摘要见 [TMDB 图片回归](build/reports/tv-device-regression/tmdb-report.md)。
 - **2026-09-06 详情滚动调整**：按用户裁定移除角色、制作人员、关联条目、评价的纵向区块锚点，未登记锚点时委托页面覆盖前的
-  `LocalBringIntoViewSpec`，恢复平台默认纵向行为；横向行首 + 48dp 锚定保留。已在同一 API 36 TV 模拟器保留登录覆盖安装，以 CLANNAD 验证四类卡片下行、同行左右切换、评价上键回关联条目、返回键回选集再回 Hero；简介 64dp 顶部预留与剧集 64dp 底部预留正常。TMDB 配置检查、TV 构建、清单以及 main/subject 两模块共
+  `LocalBringIntoViewSpec`，恢复平台默认纵向行为；横向行首 + 48dp 锚定保留。已在同一 API 36 TV 模拟器保留登录覆盖安装，以 CLANNAD 验证四类卡片下行、同行左右切换、评价上键回关联条目、返回键回选集再回 Hero；简介 64dp 顶部预留与剧集 64dp 底部预留正常。TMDB 配置检查、TV 构建以及 main/subject 两模块共
   **14 个测试，0 失败/错误/跳过
   **。截图、坐标与 APK 摘要见 [详情滚动回归](build/reports/tv-device-regression/details-scroll-report.md)。
 - **2026-09-06 提交前检查**：上述改动完成后补跑
-  `:app:android:assembleDefaultDebug`，手机构建通过；结合已通过的 TV 构建、架构测试和清单校验，完成本轮提交前检查。手机构建通过不代表手机行为已做设备回归。随后按用户要求撤回新增的 TMDB 配置检查任务及其配套构建说明；此前执行结果保留为历史记录，当前构建不再提供该任务。
+  `:app:android:assembleDefaultDebug`，手机构建通过；结合已通过的 TV 构建与架构测试，完成本轮提交前检查。手机构建通过不代表手机行为已做设备回归。随后按用户要求撤回新增的 TMDB 配置检查任务及其配套构建说明；此前执行结果保留为历史记录，当前构建不再提供该任务。
 - 后续验收应记录提交、设备/API、操作路径、截图/日志和测试结果，尤其是整集连播、两处设置消费修复、弱网/无源与登录切换。
 
 - **2026-09-06 播放器 P0–P2
@@ -808,28 +800,38 @@ M0 是骨架前置，后续里程碑已有并行实现，**并非 M1–M4 全部
   `TvAniAppContent` 用
   `tvViewModel` 创建。共享层仅把 Android 播放统计抽成 VM 可订阅的 Flow，手机原入口继续使用该 Flow。
 - **本轮验证**：episode 22 项 + main 架构 10 项，共 **32 项测试全部通过**；`assembleTvDebug`、
-  `assembleDefaultDebug` 和
-  `verifyTvManifestPurity` 通过。保留登录覆盖安装到同一 API 36 TV 模拟器，以 CLANNAD 第 3 集验证真实播放、双模式方向切换、排除 switch、菜单/操作栏焦点、帧预览确认和取消、OP 倒计时返回取消、弹幕开关/字号、倍速/字幕空态、收藏下拉、剧集剧照/长按及画质信息。一起看快速输入/上下导航、取消、密码错误和 30 秒超时已验证，但新房间加入请求仍超时，
+  `assembleDefaultDebug` 通过。保留登录覆盖安装到同一 API 36 TV 模拟器，以 CLANNAD 第 3 集验证真实播放、双模式方向切换、排除 switch、菜单/操作栏焦点、帧预览确认和取消、OP 倒计时返回取消、弹幕开关/字号、倍速/字幕空态、收藏下拉、剧集剧照/长按及画质信息。一起看快速输入/上下导航、取消、密码错误和 30 秒超时已验证，但新房间加入请求仍超时，
   **多人房间同步未验收
   **；弹弹 play 请求出现 HTTP 403，重新匹配成功路径未验收；样本没有可切换的字幕轨道。详细证据和边界见 [播放器回归记录](build/reports/tv-player-features/report.md)。
 
 - **2026-09-06 播放器交互细化**：移除后退/快进按钮，选集改为药丸上方的 TMDB 剧照横条；弹幕和选源使用共享端同款图标，已选源显示源图标。选源模式聚焦即切换，详细源标签提供加载遮罩及不可用暗色状态；修复简单模式末项切入详细模式时的焦点回跳。倍速改为单焦点三段式调节，画质增强改为三段选项，弹幕列表移至设置底部，遥控说明只保留在药丸上方的 seek 预览。
-- **细化验证**：episode 27 项 + main 架构 10 项，共 **37 项测试，0 失败/错误/跳过**；TV/手机构建及 TV 清单检查通过。保留登录覆盖安装到同一 API 36 TV 模拟器，验证选集/剧集操作/弹幕列表的返回焦点、倍速左右调节且箭头不可聚焦、字幕面板、画质增强、源图标加载/无结果/全排除状态、chip 边界与连续切源后模式聚焦切换；真实 seek 帧显示及返回取消通过，当前进程 crash buffer 为空。源码和回归范围见 [播放器交互细化回归](build/reports/tv-player-refinements/report.md)。本轮未扩展多人同步及弹幕重新匹配的服务验收。
+- **细化验证**：episode 27 项 + main 架构 10 项，共 **37 项测试，0 失败/错误/跳过**；TV/手机构建通过。保留登录覆盖安装到同一 API 36 TV 模拟器，验证选集/剧集操作/弹幕列表的返回焦点、倍速左右调节且箭头不可聚焦、字幕面板、画质增强、源图标加载/无结果/全排除状态、chip 边界与连续切源后模式聚焦切换；真实 seek 帧显示及返回取消通过，当前进程 crash buffer 为空。源码和回归范围见 [播放器交互细化回归](build/reports/tv-player-refinements/report.md)。本轮未扩展多人同步及弹幕重新匹配的服务验收。
+
+- **2026-09-07 TV 代码合并到 KMP 模块**：将 10 个独立 TV UI 库的 82 个 Kotlin 文件合并到 7 个现有共享模块，生产代码位于 `src/androidTv`，测试位于 `src/androidTvTest`。迁移过程中曾由原 KMP 库无条件编译 TV 文件；随后按维护者选择改为每个共享模块下的 `tv` 子模块编译（见下方最新记录）。两个应用 flavor 同时可用，CI 的 Debug、Release 保留双包同次构建。共享 `ExplorationPageViewModel` 下移到 `ui-exploration`，避免模块循环依赖。
+- **迁移初期验证（当时按开关分开构建）**：x86_64 的 TV Debug、手机 Debug 和 `:app:shared:compileKotlinDesktop` 均通过；迁移后的 **61 项 TV 测试，0 失败/错误/跳过**。当时检查编译源码目录和 APK DEX：手机包没有 TV UI 类或 `androidx.tv` 类，TV 包包含 1219 个 TV UI 类及 384 个 `androidx.tv` 类，两者均包含共享手机 UI；这是迁移初期配置的验证结果，当前子模块方案的验证见下方最新记录。覆盖安装 `me.him188.ani.leanback.regression` 到既有 API 36 TV 模拟器，启动、探索页加载、进入详情及返回恢复焦点通过，未发现该应用的崩溃记录。构建日志、源集模型、测试结果与截图保存在 `build/reports/tv-kmp-migration/`；该次设备验证范围为上述启动与导航路径。
+
+- **中间方案验证（原 KMP 库无条件编译 TV，已被子模块方案替代）**：同一次 Gradle 调用完成手机与 TV 的 x86_64 Debug APK 构建、`:app:shared:compileKotlinDesktop` 和 **61 项 TV 测试，0 失败/错误/跳过**。源码模型确认 7 个共享模块的 75 个 TV 源文件及 7 个测试文件始终纳入 Android，desktop 不接入 TV 目录。两个 Debug APK 均含 1219 个 TV UI 类及 384 个 `androidx.tv` 类，TV Activity 入口只出现在 TV 包。构建日志和检查结果保存在 `build/reports/tv-kmp-migration/unconditional-*`。
+
+- **2026-09-07 TV 子模块初版（随后改为 KMP Compose）**：在上述 7 个共享模块目录下分别新增 `tv/build.gradle.kts`，复用现有 `ani.android-library` 与 Compose 插件，依赖各自原 KMP 模块，编译父目录的 TV 生产代码和测试。应用仅通过 `tvImplementation(projects.app.shared.tv)` 引入 TV 子模块；共享 KMP 库不再接入 TV 目录和专用依赖。各子模块使用独立 `group`，避免同名 `tv` 的默认依赖坐标冲突。82 个 TV 源码与测试文件均未改动，CI 和构建文档已同步。
+- **子模块初版验证（Android library）**：同一次调用完成手机与 TV 的 x86_64 Debug APK、桌面共享模块编译和 **61 项 TV 测试，0 失败/错误/跳过**；再次调用确认配置缓存可复用。源码模型确认 75 个 TV 源文件与 7 个测试文件只归属对应 TV 子模块，Debug/Release 的手机依赖均不含 TV 子模块或 `androidx.tv`。Debug APK 检查：手机包两类 TV 类数量均为 0；TV 包有 1219 个 TV 代码类、7 个子模块生成的 `R` 类及 384 个 `androidx.tv` 类，两端仍包含共享手机 UI。证据见 [TV 子模块验证记录](build/reports/tv-child-modules/report.md)。本轮未执行 Release APK 构建或设备/IDE 交互验证。
+
+- **2026-09-07 子模块统一为 KMP Compose**：7 个 TV 子模块均使用 `ani.kmp-compose`，生产目录接入子模块的 `androidMain`，测试目录接入 `androidHostTest`，TV 专用依赖只加入 Android 源集。Compose、SDK、编译和 JUnit 配置改由统一约定提供，CI 切换到子模块的 `testAndroidHostTest`。探索、详情/收藏和播放统一依赖项目内 `paging-compose`，消除官方分页库遮蔽 `collectWithLifecycle` 的问题；82 个 TV 源码与测试文件均未改动。
+- **KMP 子模块验证**：手机与 TV 的 x86_64 Debug 双包、共享桌面编译、7 个子模块的桌面编译任务及 **61 项 TV 测试全部通过，0 失败/错误/跳过**，配置缓存可复用。模型确认 TV 文件只进入子模块的 Android 编译，desktop/metadata 不接入 TV 目录；Debug/Release 手机依赖不含 TV 子模块及 `androidx.tv`。手机 APK 哈希与子模块初版一致，TV 包包含 1226 个 TV 类（含 7 个 `R` 类）及 384 个 `androidx.tv` 类。证据见 [KMP TV 子模块验证](build/reports/tv-kmp-child-modules/report.md)；本轮未构建 Release APK 或执行设备/IDE 交互验证。
 
 ### 12.3 本次核对的关键代码入口
 
 | 范围                | 入口                                                                                                                                                                                                                                                                                                                                                                                                                                              |
 |-------------------|-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
-| flavor / 清单守护     | [build.gradle.kts](app/android/build.gradle.kts)                                                                                                                                                                                                                                                                                                                                                                                                |
+| flavor / 构建配置     | [build.gradle.kts](app/android/build.gradle.kts)                                                                                                                                                                                                                                                                                                                                                                                                |
 | 平台装配 / 深链缺口       | [TvAndroidModules.kt](app/android/src/tv/kotlin/TvAndroidModules.kt)、[MainActivity.kt](app/android/src/tv/kotlin/MainActivity.kt)                                                                                                                                                                                                                                                                                                               |
-| MVI / VM 装配       | [TvAniAppContent.kt](app/android/ui-main-tv/src/main/kotlin/me/him188/ani/tv/ui/main/TvAniAppContent.kt)、[TvAppDependencies.kt](app/android/ui-main-tv/src/main/kotlin/me/him188/ani/tv/ui/di/TvAppDependencies.kt)、[TvViewModel.kt](app/android/ui-foundation-tv/src/main/kotlin/me/him188/ani/tv/ui/foundation/TvViewModel.kt)、[TvNavigation.kt](app/android/ui-foundation-tv/src/main/kotlin/me/him188/ani/tv/ui/foundation/TvNavigation.kt) |
-| 播放器 Intent 状态机    | [TvPlayerStateMachine.kt](app/android/ui-episode-tv/src/main/kotlin/me/him188/ani/tv/ui/episode/TvPlayerStateMachine.kt)、[TvPlayerStateMachineTest.kt](app/android/ui-episode-tv/src/test/kotlin/me/him188/ani/tv/ui/episode/TvPlayerStateMachineTest.kt)                                                                                                                                                                                       |
-| Navigation 3 / 主壳 | [TvAniAppContent.kt](app/android/ui-main-tv/src/main/kotlin/me/him188/ani/tv/ui/main/TvAniAppContent.kt)、[TvMainShell.kt](app/android/ui-main-tv/src/main/kotlin/me/him188/ani/tv/ui/main/TvMainShell.kt)                                                                                                                                                                                                                                       |
-| 主题 / 焦点           | [AniTvTheme.kt](app/android/ui-foundation-tv/src/main/kotlin/me/him188/ani/tv/ui/foundation/theme/AniTvTheme.kt)、[TvFocusScope.kt](app/android/ui-foundation-tv/src/main/kotlin/me/him188/ani/tv/ui/foundation/focus/TvFocusScope.kt)、[TvFocusGrid.kt](app/android/ui-foundation-tv/src/main/kotlin/me/him188/ani/tv/ui/foundation/focus/TvFocusGrid.kt)                                                                                        |
-| 探索 / 时间表 / 追番     | [TvExplorationScreen.kt](app/android/ui-exploration-tv/src/main/kotlin/me/him188/ani/tv/ui/exploration/TvExplorationScreen.kt)、[TvScheduleScreen.kt](app/android/ui-schedule-tv/src/main/kotlin/me/him188/ani/tv/ui/schedule/TvScheduleScreen.kt)、[TvCollectionScreen.kt](app/android/ui-collection-tv/src/main/kotlin/me/him188/ani/tv/ui/collection/TvCollectionScreen.kt)                                                                    |
-| 详情剧照 / 锚定         | [TvSubjectDetailsScreen.kt](app/android/ui-subject-tv/src/main/kotlin/me/him188/ani/tv/ui/subject/TvSubjectDetailsScreen.kt)                                                                                                                                                                                                                                                                                                                    |
-| 播放扩展 / 配置消费       | [TvEpisodeViewModel.kt](app/android/ui-episode-tv/src/main/kotlin/me/him188/ani/tv/ui/episode/TvEpisodeViewModel.kt)、[TvEpisodeScreen.kt](app/android/ui-episode-tv/src/main/kotlin/me/him188/ani/tv/ui/episode/TvEpisodeScreen.kt)、[TvSettingsViewModel.kt](app/android/ui-settings-tv/src/main/kotlin/me/him188/ani/tv/ui/settings/TvSettingsViewModel.kt)                                                                                    |
-| 架构测试 / CI         | [TvArchitectureTest.kt](app/android/ui-main-tv/src/test/kotlin/me/him188/ani/tv/ui/main/TvArchitectureTest.kt)、[工作流源](.github/workflows/src.main.kts)、[发布任务](ci-helper/build.gradle.kts)                                                                                                                                                                                                                                                        |
+| MVI / VM 装配       | [TvAniAppContent.kt](app/shared/src/androidTv/kotlin/ui/main/TvAniAppContent.kt)、[TvAppDependencies.kt](app/shared/src/androidTv/kotlin/ui/di/TvAppDependencies.kt)、[TvViewModel.kt](app/shared/ui-foundation/src/androidTv/kotlin/ui/foundation/TvViewModel.kt)、[TvNavigation.kt](app/shared/ui-foundation/src/androidTv/kotlin/ui/foundation/TvNavigation.kt) |
+| 播放器 Intent 状态机    | [TvPlayerStateMachine.kt](app/shared/ui-episode/src/androidTv/kotlin/ui/episode/TvPlayerStateMachine.kt)、[TvPlayerStateMachineTest.kt](app/shared/ui-episode/src/androidTvTest/kotlin/ui/episode/TvPlayerStateMachineTest.kt)                                                                                                                                                                                       |
+| Navigation 3 / 主壳 | [TvAniAppContent.kt](app/shared/src/androidTv/kotlin/ui/main/TvAniAppContent.kt)、[TvMainShell.kt](app/shared/src/androidTv/kotlin/ui/main/TvMainShell.kt)                                                                                                                                                                                                                                       |
+| 主题 / 焦点           | [AniTvTheme.kt](app/shared/ui-foundation/src/androidTv/kotlin/ui/foundation/theme/AniTvTheme.kt)、[TvFocusScope.kt](app/shared/ui-foundation/src/androidTv/kotlin/ui/foundation/focus/TvFocusScope.kt)、[TvFocusGrid.kt](app/shared/ui-foundation/src/androidTv/kotlin/ui/foundation/focus/TvFocusGrid.kt)                                                                                        |
+| 探索 / 时间表 / 追番     | [TvExplorationScreen.kt](app/shared/ui-exploration/src/androidTv/kotlin/ui/exploration/TvExplorationScreen.kt)、[TvScheduleScreen.kt](app/shared/ui-exploration/src/androidTv/kotlin/ui/schedule/TvScheduleScreen.kt)、[TvCollectionScreen.kt](app/shared/ui-subject/src/androidTv/kotlin/ui/collection/TvCollectionScreen.kt)                                                                    |
+| 详情剧照 / 锚定         | [TvSubjectDetailsScreen.kt](app/shared/ui-subject/src/androidTv/kotlin/ui/subject/TvSubjectDetailsScreen.kt)                                                                                                                                                                                                                                                                                                                    |
+| 播放扩展 / 配置消费       | [TvEpisodeViewModel.kt](app/shared/ui-episode/src/androidTv/kotlin/ui/episode/TvEpisodeViewModel.kt)、[TvEpisodeScreen.kt](app/shared/ui-episode/src/androidTv/kotlin/ui/episode/TvEpisodeScreen.kt)、[TvSettingsViewModel.kt](app/shared/ui-settings/src/androidTv/kotlin/ui/settings/TvSettingsViewModel.kt)                                                                                    |
+| 架构测试 / CI         | [TvArchitectureTest.kt](app/shared/src/androidTvTest/kotlin/ui/main/TvArchitectureTest.kt)、[工作流源](.github/workflows/src.main.kts)、[发布任务](ci-helper/build.gradle.kts)                                                                                                                                                                                                                                                        |
 
 ---
 
@@ -846,7 +848,7 @@ M0 是骨架前置，后续里程碑已有并行实现，**并非 M1–M4 全部
 | 7  | 发布配置与成功分发不同       | 当前可确认双包构建/上传配置；正式发布成功、安装升级与签名一致性需在实际流水线与设备验证                    |
 | 8  | 产品范围预期            | 发布说明明确 TV 纯在线播放；缓存/BT 等属于裁剪，不作为未完成项；低端设备优化属于待办                  |
 | 9  | 单维度混用形态与发行渠道      | 目前 `default/tv` 可满足双包；未来新增商店渠道时再评估拆维度，保留手机任务兼容要求                |
-| 10 | manifest 声明泄漏     | 清单检查防 torrent 和越权权限，但不限制所有服务类型；共用清单新增组件仍需 review                |
+| 10 | manifest 声明泄漏     | 共用清单新增组件或权限仍需 review                |
 | 11 | 自动化覆盖不足           | 现有架构/焦点单测需明确接入 CI；页面截图、播放器状态、配置消费和真实设备矩阵尚不足以支持「全部通过」结论          |
 
 ---
@@ -858,9 +860,9 @@ M0 是骨架前置，后续里程碑已有并行实现，**并非 M1–M4 全部
 ### 14.1 参照与实现方式
 
 1. **UI/UX 事实源 = PR#3217 的实机效果**，不是其源码，也不是文档。验证机需安装参考版（包名
-   `me.him188.ani.tv`，与 debug 包 `me.him188.ani.tv.debug2` 并存），逐页实机对照。
+   `me.him188.ani.leanback`，与 debug 包 `me.him188.ani.tv.debug2` 并存），逐页实机对照。
 2. **参考 PR 源码只为理解布局与交互，禁止整体照搬**（曾尝试 merge 整个 PR 被否决并回滚）。裁定的折中：*
-   *低层基建可改造借用**进 `ui-foundation-tv`（按键/卡片视觉/渐变曲线/侧边栏等），**页面代码一律自行实现
+   *低层基建可改造借用**进 `ui-foundation/src/androidTv`（按键/卡片视觉/渐变曲线/侧边栏等），**页面代码一律自行实现
    **。本地已有 `pr3217` 分支时可用 `git show pr3217:<path>` 查阅。
 3. **验证方式遵循仓库 [AGENTS.md](AGENTS.md)
    **：普通 UI/焦点交互优先留下可复用的交互截图测试；WebView、原生播放、系统 IME 和设备差异等自动化无法覆盖的部分再做模拟器/实机验证，并记录证据。设备对照可使用 adb +
@@ -920,7 +922,7 @@ M0 是骨架前置，后续里程碑已有并行实现，**并非 M1–M4 全部
    `tvFocusMemorable(id)`），网格聚焦第 N 项/边缘切换在
    `TvFocusGrid.kt`——新增此类协议时照此模式，禁止把步骤散进壳/组件/页面各写一段。
 7. 本节 1/2 的可静态检查部分已固化为 Konsist 测试（TvArchitectureTest：持有 scope 必装 Resolver+信号、
-   `requesterOf` 仅框架内部可用——裸 requester 无锚点上报，事件驱动解析无法感知目标）；框架纯逻辑（调度/记忆/网格状态机）有单元测试守护（ui-foundation-tv/src/test）。
+   `requesterOf` 仅框架内部可用——裸 requester 无锚点上报，事件驱动解析无法感知目标）；框架纯逻辑（调度/记忆/网格状态机）有单元测试守护（ui-foundation/src/androidTvTest）。
 8. **焦点处理必须全事件驱动，禁止轮询与延时**（用户裁定，Konsist 守护框架目录禁 `delay`/
    `withFrameNanos`）。可用的确定性信号包括：**节点附着事件**（`tvFocusAnchor` 上报，悬挂中的
    `request` 在目标附着瞬间送达——这是对 Compose"对未附着节点 requestFocus 静默失败且无附着回调"缺口的补齐）、
@@ -931,7 +933,7 @@ M0 是骨架前置，后续里程碑已有并行实现，**并非 M1–M4 全部
 9. **自定义滚动锚点必须通过 BringIntoView 策略给定**（
    `LocalBringIntoViewSpec`）。Compose 在 Android TV 上的平台默认是 **pivot 30%
    **；首屏和需要锚定的行应覆盖此行为，避免 hero 被滚掉半屏或行错位。自定义锚点取布局的边，框架原语
-   `TvAnchoredBringIntoViewSpec`（ui-foundation-tv/focus：聚焦项对齐容器前缘 + 可动态的预留量）供各页复用：探索页列按可见行布局边缘计算卡片顶边，统一预留 32dp / 继续观看行 = 行首；详情页列仅为
+   `TvAnchoredBringIntoViewSpec`（ui-foundation/src/androidTv/kotlin/ui/foundation/focus：聚焦项对齐容器前缘 + 可动态的预留量）供各页复用：探索页列按可见行布局边缘计算卡片顶边，统一预留 32dp / 继续观看行 = 行首；详情页列仅为
    **hero、简介和选集设置纵向锚点
    **（hero 顶边 = 0；第二屏简介区顶边预留 64dp；选集卡下边缘 + 64dp 对齐视口下边缘，且底边规则优先）。*
    *从角色卡片开始，包含制作人员、关联条目和评价，恢复平台默认纵向滚动，仅保留横向锚定
@@ -957,12 +959,11 @@ M0 是骨架前置，后续里程碑已有并行实现，**并非 M1–M4 全部
 
 ### 14.6 工程与流程
 
-1. **架构边界**：v3 约定边界不动摇（共享依赖树 + DI 门控）；TV 模块命名 `app/android/ui-<feature>-tv`；
-   `src/tv` 只留出包胶水；不为隔离引入新模块。
-2. **每轮回归三件套全绿**后才提交：`assembleDefaultDebug`（手机构建回归）、
-   `:app:android:ui-main-tv:testDebugUnitTest`（Konsist）、
-   `verifyTvManifestPurity`。这三项不单独证明手机行为零变化；涉及焦点框架另跑
-   `:app:android:ui-foundation-tv:testDebugUnitTest`，行为与设备回归按改动范围补齐。
+1. **架构边界**：保留共享依赖树、MVI 与 DI 门控；TV 源码位于共享模块 `src/androidTv`，由各自 `tv` 子模块编译并依赖原 KMP 模块；应用只在 `tv` flavor 引入这些子模块。两个 flavor 同时可用；应用 `src/tv` 只留出包胶水。
+2. **提交前回归**：`assembleDefaultDebug`（手机构建回归）和
+   `:app:shared:tv:testAndroidHostTest --tests 'me.him188.ani.leanback.ui.main.*'`（Konsist）。
+   这些检查不单独证明手机行为零变化；涉及焦点框架另跑
+   `:app:shared:ui-foundation-tv:testAndroidHostTest --tests 'me.him188.ani.leanback.*'`，行为与设备回归按改动范围补齐。
 3. **分层提交**：每个 commit 独立可编译，按里程碑/功能切分。
 4. 应用内更新按维护者指示暂缓（服务端 `android-tv` 支持就绪前 TV 端保持关闭）。
 5. 构建环境：需设置 `ANDROID_HOME`；TMDB 需 `local.properties` 配
