@@ -15,6 +15,8 @@ import java.lang.instrument.Instrumentation;
  *   press <x> <y>     (mouse down only; following `move`s are delivered as drags until `release`)
  *   release <x> <y>
  *   move <x> <y>
+ *   wheel <x> <y> <dy> [dx] [ctrl]  (mouse wheel / trackpad scroll at x,y; dy>0 scrolls down;
+ *                      pass `ctrl` to hold Ctrl, e.g. for Ctrl+wheel zoom)
  *   type <text>
  *   key <awt-keycode>
  *   info              (frame bounds, content-area screen origin and size)
@@ -89,6 +91,14 @@ public final class InputAgent {
                 String[] xy = a[1].split("\\s+");
                 int x = Integer.parseInt(xy[0]), y = Integer.parseInt(xy[1]);
                 return mouse(frame, a[0], x, y);
+            }
+            case "wheel": {
+                String[] p = a[1].split("\\s+");
+                int x = Integer.parseInt(p[0]), y = Integer.parseInt(p[1]);
+                double dy = Double.parseDouble(p[2]);
+                double dx = p.length > 3 && !p[3].equals("ctrl") ? Double.parseDouble(p[3]) : 0;
+                boolean ctrl = java.util.Arrays.asList(p).contains("ctrl");
+                return wheel(frame, x, y, dx, dy, ctrl);
             }
             case "type":
                 return type(frame, a.length > 1 ? a[1] : "");
@@ -172,6 +182,36 @@ public final class InputAgent {
             }
             lastMouseTarget = target;
             result[0] = "ok " + kind + " " + x + "," + y + " -> " + target.getClass().getName();
+        });
+        return result[0];
+    }
+
+    static String wheel(Frame frame, int x, int y, double dx, double dy, boolean ctrl) throws Exception {
+        final String[] result = new String[1];
+        EventQueue.invokeAndWait(() -> {
+            Container content = contentOf(frame);
+            Component target = javax.swing.SwingUtilities.getDeepestComponentAt(content, x, y);
+            if (target == null) { result[0] = "err nothing at " + x + "," + y; return; }
+            // AWT does not bubble mouse events, so deliver to the nearest ancestor that actually
+            // listens for wheel events (Skiko registers it on the layer, not on the canvas child).
+            while (target.getMouseWheelListeners().length == 0 && target.getParent() != null && target != content) {
+                target = target.getParent();
+            }
+            Point p = javax.swing.SwingUtilities.convertPoint(content, x, y, target);
+            EventQueue q = Toolkit.getDefaultToolkit().getSystemEventQueue();
+            int modifiers = ctrl ? java.awt.event.InputEvent.CTRL_DOWN_MASK : 0;
+            long when = System.currentTimeMillis();
+            // Horizontal scrolling is delivered by AWT as a wheel event with Shift held.
+            if (dx != 0) {
+                q.postEvent(new java.awt.event.MouseWheelEvent(target, MouseEvent.MOUSE_WHEEL, when, modifiers | java.awt.event.InputEvent.SHIFT_DOWN_MASK,
+                        p.x, p.y, 0, 0, 0, false, java.awt.event.MouseWheelEvent.WHEEL_UNIT_SCROLL, 1, (int) Math.round(dx), dx));
+            }
+            if (dy != 0) {
+                q.postEvent(new java.awt.event.MouseWheelEvent(target, MouseEvent.MOUSE_WHEEL, when, modifiers,
+                        p.x, p.y, 0, 0, 0, false, java.awt.event.MouseWheelEvent.WHEEL_UNIT_SCROLL, 1, (int) Math.round(dy), dy));
+            }
+            lastMouseTarget = target;
+            result[0] = "ok wheel " + x + "," + y + " dx=" + dx + " dy=" + dy + (ctrl ? " ctrl" : "") + " -> " + target.getClass().getName();
         });
         return result[0];
     }
