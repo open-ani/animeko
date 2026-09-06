@@ -82,7 +82,13 @@ internal fun TvExplorationHero(
 ) {
     Box(modifier) {
         // 左侧信息列: 标题/评分(固定) + 简介(weight=1 弹性, 收缩态自然只剩两三行) + 按钮 (随进度收放)
-        Column(Modifier.fillMaxSize().padding(top = 24.dp, bottom = 10.dp)) {
+        Column(
+            Modifier.fillMaxSize().padding(
+                start = TvExplorationDefaults.StartPadding,
+                top = 24.dp,
+                bottom = 10.dp,
+            ),
+        ) {
             // 标题: 定高一行, 长标题跑马灯; 换条目 crossfade
             Crossfade(hero?.title, animationSpec = tween(TvHeroDefaults.TextFadeMillis), label = "title") { title ->
                 Text(

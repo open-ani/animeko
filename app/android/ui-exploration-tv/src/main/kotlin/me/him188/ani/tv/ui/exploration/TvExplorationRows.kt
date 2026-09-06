@@ -58,12 +58,12 @@ import me.him188.ani.tv.ui.foundation.widgets.TvPageDefaults
 import me.him188.ani.tv.ui.foundation.widgets.tvHeroContentColor
 
 /*
- * 探索页 hero 下方的行列表 (atv-architecture.md §7.1 v5): 纵向 LazyColumn, 焦点行始终贴在
- * hero 下方; 「继续观看」是横向锚定行 (焦点卡恒在行首), 「为你推荐」是纵向自适应网格
+ * 探索页 hero 下方的行列表 (atv-architecture.md §7.1 v5): 纵向 LazyColumn, 焦点卡顶边距列表
+ * 上边界 32dp; 「继续观看」是横向锚定行 (焦点卡恒在行首), 「为你推荐」是纵向自适应网格
  * (列数按可用宽算、行内 weight 等分, 手机 GridCells.Adaptive 同语义).
  *
  * 纵向锚定用 Compose 的 BringIntoViewSpec 实现: 焦点落到卡片 → 焦点系统发 bringIntoView →
- * 列把卡对齐顶部 (有行头的行预留行头高度). 纯焦点事件驱动, 无轮询/延时 (§14.4-8).
+ * 列按真实行布局边缘计算卡片顶边, 统一留出 32dp. 纯焦点事件驱动, 无轮询/延时 (§14.4-8).
  */
 
 /** 行内卡片锚点: (行 key, 行内索引). 行间导航/横向行左右移动都以此为送焦目标. */

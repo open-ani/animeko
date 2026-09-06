@@ -13,6 +13,7 @@ import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
+import androidx.compose.foundation.gestures.BringIntoViewSpec
 import androidx.compose.foundation.gestures.LocalBringIntoViewSpec
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -32,7 +33,6 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateMapOf
 import androidx.compose.runtime.mutableStateOf
@@ -43,6 +43,12 @@ import androidx.compose.runtime.setValue
 import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.drawWithContent
+import androidx.compose.ui.graphics.BlendMode
+import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.CompositingStrategy
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.key.Key
 import androidx.compose.ui.input.key.KeyEventType
 import androidx.compose.ui.input.key.key
@@ -59,7 +65,6 @@ import kotlinx.coroutines.launch
 import me.him188.ani.app.data.models.recommend.RecommendedItemInfo
 import me.him188.ani.app.data.models.subject.FollowedSubjectInfo
 import me.him188.ani.app.data.models.trending.TrendingSubjectInfo
-import me.him188.ani.tv.ui.foundation.focus.TvAnchoredBringIntoViewSpec
 import me.him188.ani.tv.ui.foundation.focus.TvFocusKey
 import me.him188.ani.tv.ui.foundation.focus.TvFocusScope
 import me.him188.ani.tv.ui.foundation.focus.rememberTvFocusScope
@@ -83,7 +88,7 @@ private enum class TvExplorationFocus : TvFocusKey {
  * - hero **常驻**顶部, 双态: 焦点在 hero → 展开 (0.66 屏高), 轮播最高热度条目 + 按钮 + 居中指示器;
  *   焦点在下方卡片行 → 收缩 (0.46), 展示聚焦条目信息; 按钮/指示器随同一条高度动画收放.
  * - 下方为纵向行列表: 继续观看 (横向锚定行) + 为你推荐 (纵向自适应网格, 16:9 TMDB 横图卡);
- *   **焦点行恒贴 hero 下缘**: BringIntoViewSpec 锚定 (有行头的行预留行头高度).
+ *   按布局边缘锚定: 焦点卡顶边距列表上边界 32dp, 列表上下边缘随滚动渐隐.
  */
 @OptIn(FlowPreview::class)
 @Composable
@@ -103,6 +108,7 @@ fun TvExplorationScreen(
     // hero 双态: 焦点在 hero 按钮 = 展开 (轮播); 焦点在卡片行 = 收缩 (聚焦卡驱动)
     var heroFocused by remember { mutableStateOf(true) }
     var focusedCardSubject by remember { mutableStateOf<TvHeroSubject?>(null) }
+    var focusedRow by remember { mutableStateOf<TvExplorationRow?>(null) }
 
     val columnState = rememberLazyListState()
     val rowStates = remember { mutableStateMapOf<String, LazyListState>() }
@@ -155,10 +161,6 @@ fun TvExplorationScreen(
         label = "bottomFade",
     )
 
-    // 纵向锚定的行头预留: 聚焦行有行头留行头高, 网格续行留 0 (焦点回调同步写, 滚动计算稍后读)
-    val headerReservePx = with(LocalDensity.current) { TvExplorationDefaults.RowHeaderHeight.toPx() }
-    var columnReservePx by remember { mutableFloatStateOf(headerReservePx) }
-
     BoxWithConstraints(modifier.fillMaxSize()) {
         val viewportHeight = maxHeight
         val rowWidth = maxWidth - TvExplorationDefaults.StartPadding - TvPageDefaults.EndPadding
@@ -181,18 +183,22 @@ fun TvExplorationScreen(
         }
 
         /**
-         * 行间导航: 滚列表让目标行组合, 送焦目标行的卡 (悬挂到锚点附着), BringIntoView 再对齐顶部.
+         * 行间导航: 目标行被回收时先滚动使其组合, 再送焦; BringIntoView 负责最终锚定.
          * 网格行保持同列 (Prime/手机网格同语义); 横向锚定行回其记住的卡.
          */
         fun navigateToRow(target: Int, fromIndex: Int) {
             val row = rows.getOrNull(target) ?: return
-            uiScope.launch { columnState.animateScrollToItem(target) }
             val index = when (row) {
                 is TvExplorationRow.RecommendationGrid -> fromIndex
                 is TvExplorationRow.ContinueWatching ->
                     focusedIndexByRow[row.key] ?: rowStates[row.key]?.firstVisibleItemIndex ?: 0
             }.coerceIn(0, (row.count - 1).coerceAtLeast(0))
-            focus.request(TvExplorationCardKey(row.key, index))
+            uiScope.launch {
+                if (columnState.layoutInfo.visibleItemsInfo.none { it.key == row.key }) {
+                    columnState.scrollToItem(target)
+                }
+                focus.request(TvExplorationCardKey(row.key, index))
+            }
         }
 
         fun returnToHero() {
@@ -204,7 +210,7 @@ fun TvExplorationScreen(
             viewportHeight = viewportHeight,
             heroHeightFraction = heroHeightFraction,
             columnState = columnState,
-            columnReservePx = { columnReservePx },
+            focusedRow = { focusedRow },
             focus = focus,
             backdrop = { backdropModifier ->
                 TvExplorationBackdrop(
@@ -272,8 +278,8 @@ fun TvExplorationScreen(
                     focus = focus,
                     rowStates = rowStates,
                     focusedIndexByRow = focusedIndexByRow,
-                    onCardFocused = { focusedRow, subject ->
-                        columnReservePx = if (focusedRow.title != null) headerReservePx else 0f
+                    onCardFocused = { row, subject ->
+                        focusedRow = row
                         heroFocused = false
                         focusedCardSubject = subject
                     },
@@ -291,7 +297,7 @@ fun TvExplorationScreen(
 /**
  * 探索页骨架 (slot 模式): 沉浸式底色 + 根层 backdrop (surface 背景级, 贴右上, 高度随 hero
  * 两态 + 下探量) + 统一焦点接线 + [常驻 hero (两态高度)] + [纵向行列表].
- * 行列表提供锚定 BringIntoViewSpec (焦点卡对齐顶部, 预留量由 [columnReservePx] 提供),
+ * 行列表提供按行布局边缘计算的 BringIntoViewSpec (焦点卡顶边距列表上边界 32dp),
  * 底部留整屏 padding 让末行也能锚到顶.
  */
 @OptIn(ExperimentalFoundationApi::class)
@@ -300,14 +306,22 @@ private fun TvExplorationPageLayout(
     viewportHeight: Dp,
     heroHeightFraction: Float,
     columnState: LazyListState,
-    columnReservePx: () -> Float,
+    focusedRow: () -> TvExplorationRow?,
     focus: TvFocusScope,
     backdrop: @Composable (Modifier) -> Unit,
     hero: @Composable (Modifier) -> Unit,
     modifier: Modifier = Modifier,
     rows: LazyListScope.() -> Unit,
 ) {
-    val topAligned = remember { TvAnchoredBringIntoViewSpec(columnReservePx) }
+    val density = LocalDensity.current
+    val topAligned = remember(columnState, density) {
+        TvExplorationBringIntoViewSpec(
+            columnState = columnState,
+            focusedRow = focusedRow,
+            headerHeightPx = with(density) { TvExplorationDefaults.RowHeaderHeight.toPx() },
+            anchorInsetPx = with(density) { TvExplorationDefaults.RowAnchorInset.toPx() },
+        )
+    }
     Box(
         modifier
             .fillMaxSize()
@@ -326,6 +340,7 @@ private fun TvExplorationPageLayout(
                     Modifier
                         .fillMaxWidth()
                         .weight(1f)
+                        .verticalFadingEdges(columnState)
                         .padding(start = TvExplorationDefaults.StartPadding),
                     state = columnState,
                     contentPadding = PaddingValues(bottom = viewportHeight),
@@ -336,6 +351,57 @@ private fun TvExplorationPageLayout(
         }
     }
 }
+
+/**
+ * 同详情页区块锚点: 用真实布局边缘计算滚动距离, 不依赖嵌套 LazyRow 可能裁切的聚焦矩形.
+ * LazyColumn 已提供当前视口内的行 offset, 加上行头高度就是卡片顶边, 无需另登记绝对坐标.
+ */
+@OptIn(ExperimentalFoundationApi::class)
+private class TvExplorationBringIntoViewSpec(
+    private val columnState: LazyListState,
+    private val focusedRow: () -> TvExplorationRow?,
+    private val headerHeightPx: Float,
+    private val anchorInsetPx: Float,
+) : BringIntoViewSpec {
+    override fun calculateScrollDistance(offset: Float, size: Float, containerSize: Float): Float {
+        val row = focusedRow()
+        val layout = columnState.layoutInfo.visibleItemsInfo.firstOrNull { it.key == row?.key }
+        val cardTop = if (layout != null) {
+            layout.offset + if (row?.title != null) headerHeightPx else 0f
+        } else {
+            offset
+        }
+        return cardTop - anchorInsetPx
+    }
+}
+
+/** 擦除列表边缘自身的 alpha, 透出原有 backdrop; 渐隐高度小于锚点留白, 避开聚焦描边. */
+private fun Modifier.verticalFadingEdges(state: LazyListState): Modifier = this
+    .graphicsLayer { compositingStrategy = CompositingStrategy.Offscreen }
+    .drawWithContent {
+        drawContent()
+        val edgeHeight = TvExplorationDefaults.FadingEdgeHeight.toPx().coerceAtMost(size.height / 2)
+        if (state.canScrollBackward) {
+            drawRect(
+                brush = Brush.verticalGradient(
+                    colors = listOf(Color.Black, Color.Transparent),
+                    startY = 0f,
+                    endY = edgeHeight,
+                ),
+                blendMode = BlendMode.DstOut,
+            )
+        }
+        if (state.canScrollForward) {
+            drawRect(
+                brush = Brush.verticalGradient(
+                    colors = listOf(Color.Transparent, Color.Black),
+                    startY = size.height - edgeHeight,
+                    endY = size.height,
+                ),
+                blendMode = BlendMode.DstOut,
+            )
+        }
+    }
 
 /** 探索页默认值/调参 (Prime Video 实测 + 上游 PR 值; 共享参数见 ui-foundation-tv 的各 Defaults). */
 internal object TvExplorationDefaults {
@@ -375,8 +441,14 @@ internal object TvExplorationDefaults {
     /** 自动轮播切换间隔. */
     const val CarouselAutoAdvanceMillis = 6000L
 
-    /** 行头 (区块标题) 固定高度; 也是纵向锚定时有行头的行在卡上方预留的空间. */
+    /** 行头 (区块标题) 固定高度. */
     val RowHeaderHeight = 32.dp
+
+    /** 聚焦卡片顶边到列表视口上边界的距离 (含行头的行与网格续行一致). */
+    val RowAnchorInset = 32.dp
+
+    /** 上下边缘的渐隐范围; 在 32dp 锚点之前结束, 保留完整聚焦描边. */
+    val FadingEdgeHeight = 24.dp
 
     /** 行与行之间的间距 (含网格行间). */
     val RowGap = 16.dp
