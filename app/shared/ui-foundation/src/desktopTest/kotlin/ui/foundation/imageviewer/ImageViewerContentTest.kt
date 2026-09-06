@@ -12,6 +12,7 @@ package me.him188.ani.app.ui.foundation.imageviewer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.input.key.Key
 import androidx.compose.ui.semantics.SemanticsProperties
 import androidx.compose.ui.semantics.getOrNull
@@ -21,6 +22,7 @@ import androidx.compose.ui.test.assertIsNotEnabled
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performKeyInput
+import androidx.compose.ui.test.performTouchInput
 import androidx.compose.ui.test.pressKey
 import androidx.compose.ui.test.withKeyDown
 import com.github.panpf.sketch.PlatformContext
@@ -182,6 +184,25 @@ class ImageViewerContentTest {
         onNodeWithTag(ImageViewerTestTags.RESET_ZOOM).performClick()
         env.waitUntilPumpingMain(this) { scalePercent() == initial }
         onNodeWithTag(ImageViewerTestTags.ZOOM_OUT).assertIsNotEnabled()
+    }
+
+    @Test
+    fun `tap on the image closes, drag does not`() = runViewerTest { env ->
+        // 适应窗口时单指拖动没有人消费, zoomimage 的 detectTapGestures 抬起时也会报 tap; 这里要求不关闭
+        onNodeWithTag(IMAGE_VIEWER_TEST_TAG).performTouchInput {
+            down(center)
+            moveBy(Offset(200f, 0f))
+            up()
+        }
+        // 让 detectTapGestures 的双击等待超时后再判断
+        mainClock.advanceTimeBy(1_000)
+        env.mainScheduler.advanceUntilIdle()
+        waitForIdle()
+        assertEquals(0, env.closeCount.get())
+
+        onNodeWithTag(IMAGE_VIEWER_TEST_TAG).performTouchInput { down(center); up() }
+        env.waitUntilPumpingMain(this, timeoutMillis = 5_000) { env.closeCount.get() == 1 }
+        assertEquals(1, env.closeCount.get())
     }
 
     @Test

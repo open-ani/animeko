@@ -11,6 +11,8 @@ package me.him188.ani.app.ui.foundation.imageviewer
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.focusable
+import androidx.compose.foundation.gestures.awaitEachGesture
+import androidx.compose.foundation.gestures.awaitFirstDown
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Row
@@ -34,11 +36,11 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -52,8 +54,10 @@ import androidx.compose.ui.input.key.isMetaPressed
 import androidx.compose.ui.input.key.key
 import androidx.compose.ui.input.key.onKeyEvent
 import androidx.compose.ui.input.key.type
-import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.input.pointer.PointerEventPass
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.unit.dp
 import com.github.panpf.sketch.LocalPlatformContext
@@ -202,6 +206,9 @@ fun ImageViewerContent(
     }
 
     val imageModifier = platformImageModifier(exported, zoomState.zoomable)
+    // zoomimage 的 onTap 用 detectTapGestures 实现: 适应窗口时单指拖动没人消费, 抬起也会当成 tap 关掉查看器.
+    // 在 Initial 阶段记录这一次手势是否超过 touchSlop, 拖动过就不当 tap.
+    val tapGuard = remember { ImageViewerTapGuard() }
     Box(
         modifier
             .background(Color.Black)
@@ -230,12 +237,27 @@ fun ImageViewerContent(
                     .testTag(IMAGE_VIEWER_TEST_TAG)
                     .focusRequester(focusRequester)
                     .focusable()
+                    .pointerInput(tapGuard) {
+                        val slop = viewConfiguration.touchSlop
+                        awaitEachGesture {
+                            val down = awaitFirstDown(requireUnconsumed = false, pass = PointerEventPass.Initial)
+                            var dragged = false
+                            while (true) {
+                                val event = awaitPointerEvent(PointerEventPass.Initial)
+                                if (event.changes.any { (it.position - down.position).getDistance() > slop }) {
+                                    dragged = true
+                                }
+                                if (event.changes.none { it.pressed }) break
+                            }
+                            tapGuard.dragged = dragged
+                        }
+                    }
                     .then(imageModifier),
                 state = imageState,
                 contentScale = contentScale,
                 zoomState = zoomState,
                 onTap = if (closeOnTap) {
-                    { onClose() }
+                    { if (!tapGuard.dragged) onClose() }
                 } else {
                     null
                 },
@@ -389,6 +411,11 @@ fun imageViewerExportDirectory(context: ContextMP): SystemPath {
         runCatching { directory.deleteRecursively() }
     }
     return directory
+}
+
+private class ImageViewerTapGuard {
+    /** 最近一次手势是否拖动过 (超过 touchSlop). Initial 阶段写, zoomimage 的 onTap (Main 阶段) 读. */
+    var dragged: Boolean = false
 }
 
 /**
