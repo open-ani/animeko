@@ -320,6 +320,32 @@ class PlayerLoadErrorHandlerTest {
         events.expectNoEvents()
     }
 
+    @Test
+    fun `player error skips ready and pending local caches`() = runFetchMediaSelectorTestSuite {
+        initSubject("test")
+        val (_, session, sources) = configureFetchSession {
+            object {
+                val cached by localCache()
+                val pendingCache by localCache()
+                val web1 by web { tier = 0 }
+            }
+        }
+        val failed = media(kind = WEB, subjectName = initApi.subjectName)
+        val replacement = media(kind = WEB, subjectName = initApi.subjectName)
+        sources.web1.complete(failed, replacement)
+        sources.cached.complete(media(kind = MediaSourceKind.LocalCache, subjectName = initApi.subjectName))
+        testScope().runCurrent()
+        selector.select(selector.filteredCandidatesMedia.first().single { it.mediaId == failed.mediaId })
+
+        val handler = PlayerLoadErrorHandler(getPreferKind = { WEB }, getSourceTiers = { preferenceApi.sourceTiers!! })
+        val job = testScope().launch { handler.handleError(session, selector) }
+        testScope().advanceUntilIdle()
+
+        assertTrue(job.isCompleted)
+        assertEquals(replacement.mediaId, selector.selected.value?.mediaId)
+        assertEquals(setOf(failed.mediaId), handler.blacklist)
+    }
+
     context(scope: TestScope)
     private fun testScope(): TestScope = implicit()
 }

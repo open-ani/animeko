@@ -38,6 +38,7 @@ import kotlin.time.Duration.Companion.seconds
 internal class MediaAutoSelector(private val mediaSelector: MediaSelector) {
     data class Config(
         val preferredSourceId: String? = null,
+        /** Select available local caches first; otherwise wait for their lookups before considering network media. */
         val selectCache: Boolean = true,
         val blacklist: Set<String> = emptySet(),
         /** Null waits for the preferred source kind to complete, using the existing BT preference rules. */
@@ -147,19 +148,22 @@ internal class MediaAutoSelector(private val mediaSelector: MediaSelector) {
         val candidates = snapshot.candidates.filter { it.result.mediaId !in config.blacklist }
         val preferred = snapshot.preferred.filter { it.result.mediaId !in config.blacklist }
 
+        // A ready cache wins immediately, even over a completed remembered WEB source.
+        if (config.selectCache) {
+            (preferred.firstOrNull { it.result.kind == MediaSourceKind.LocalCache }
+                ?: candidates.firstOrNull { it.result.kind == MediaSourceKind.LocalCache })?.let {
+                return Decision.Select(it.result, "local cache")
+            }
+            if (snapshot.sources.any { it.kind == MediaSourceKind.LocalCache && !it.state.isFinal }) {
+                return Decision.Wait
+            }
+        }
+
         if (stage == Stage.PreferredSource && preferredSource?.state?.isFinal == true &&
             snapshot.context.allFieldsLoaded()
         ) {
             findWebCandidate(snapshot, preferred.filter { it.result.mediaSourceId == preferredSource.mediaSourceId })?.let {
                 return Decision.Select(it, "preferred source")
-            }
-        }
-
-        // Cache can win while the remembered source is still pending.
-        if (config.selectCache) {
-            (preferred.firstOrNull { it.result.kind == MediaSourceKind.LocalCache }
-                ?: candidates.firstOrNull { it.result.kind == MediaSourceKind.LocalCache })?.let {
-                return Decision.Select(it.result, "local cache")
             }
         }
 
@@ -202,8 +206,6 @@ internal class MediaAutoSelector(private val mediaSelector: MediaSelector) {
         val web = checkNotNull(config.web)
         val webSources = snapshot.sources.filter { it.kind == MediaSourceKind.WEB }
         val allCompleted = webSources.all { it.state.isFinal }
-        val allRelevantCompleted = allCompleted && (!config.selectCache || snapshot.sources
-            .filter { it.kind == MediaSourceKind.LocalCache }.all { it.state.isFinal })
         if (!web.fastSelect && !allCompleted) return Decision.Wait
         val succeededIds = webSources.filter { it.state is MediaSourceFetchState.Succeed }.map { it.mediaSourceId }.toSet()
         val webCandidates = candidates.filter { it.result.kind == MediaSourceKind.WEB && it.result.mediaSourceId in succeededIds }
@@ -241,12 +243,12 @@ internal class MediaAutoSelector(private val mediaSelector: MediaSelector) {
         }
 
         // Empty final results can finish early; candidates belonging to a later phase must wait.
-        if (allRelevantCompleted && webCandidates.isEmpty()) {
+        if (allCompleted && webCandidates.isEmpty()) {
             return if (config.fallbackToOtherKinds) {
                 decideOnCompletion(snapshot, preferred.filter { it.result.kind != MediaSourceKind.WEB })
             } else Decision.Exhausted
         }
-        if (stage == Stage.Fuzzy && (allRelevantCompleted || !web.waitForPendingSources)) return Decision.Exhausted
+        if (stage == Stage.Fuzzy && (allCompleted || !web.waitForPendingSources)) return Decision.Exhausted
         return Decision.Wait
     }
 
