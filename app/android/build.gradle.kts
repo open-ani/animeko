@@ -112,7 +112,7 @@ android {
             // Android TV 形态 (atv-architecture.md D1): 与 default 平级、单维度,
             // 保证手机任务名 assembleDefaultRelease 与产物路径零变化.
             dimension = "distribution"
-            applicationId = "me.him188.ani.tv" // 整体覆写 (非 suffix), 可与手机并存; debug 后缀照常叠加
+            applicationIdSuffix = ".leanback"
         }
     }
     buildFeatures {
