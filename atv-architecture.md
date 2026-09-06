@@ -575,7 +575,7 @@ TV 专属处理已经落地：
 - `src/tv/res/values/strings.xml` 覆写应用名为 Animeko TV，启动图标复用共享资源。
 - 默认 debug 后缀 `.debug2`，可通过 `ani.android.debug.applicationIdSuffix` 覆写；TV debug 通常为 `me.him188.ani.tv.debug2`。
 - 本地默认 ABI 为 arm64-v8a，构建参数 `ani.android.abis` 可指定其他 ABI；是否成功构建应以实际运行结果为准。
-- TMDB 图片依赖构建时的 `ani.tmdb.api.token`；图片回归先执行 `:app:shared:app-platform:verifyTmdbConfiguration` 检查配置非空，再核验设备上的实际图片来源。仅构建成功或看到 Bangumi 回退图不能判为 TMDB 通过。
+- TMDB 图片依赖构建时的 `ani.tmdb.api.token`；图片回归需核验设备上的实际图片来源。仅构建成功或看到 Bangumi 回退图不能判为 TMDB 通过。
 
 ### 10.2 CI 与上传配置
 
@@ -682,7 +682,7 @@ M0 是骨架前置，后续里程碑已有并行实现，**并非 M1–M4 全部
 - **收藏补测边界**：初次接手时列表有数据但数量角标缺失，旧进程日志存在登录前后的未授权数量请求；保留登录冷启动后恢复，最终 `/v1/me` 返回 200。未复现登录切换全过程，不能将数量缺失标为已修复。没有修改收藏状态；真实空分类、登录切换、远端修改同步及弱网刷新仍待专项验收。报告和截图见 [已登录收藏回归](build/reports/tv-device-regression/collection-report.md)，结束时保留登录并停留在「在看」首卡。
 - **2026-09-06 TMDB 回归更正与补测**：前两轮回归包漏带 `ani.tmdb.api.token`，生成的 `tmdbApiToken` 为空，服务直接返回空图片结果；探索卡片/背景、详情背景/分集卡片使用的是 Bangumi 回退图，前述导航验证不能视为 TMDB 验证。用户补齐本地配置后保留登录覆盖安装，以同一条目 CLANNAD（Bangumi 51）对照，四处均恢复 TMDB；日志确认 TMDB 匹配到 TV 24835、backdrop 的 w780/w1280 下载成功、分集索引按播出日期返回 49 条记录，设备第 1～4 集呈现不同剧照。没有改回 UI 仓库访问或 Koin VM 注册。配置检查、TV 构建、清单和 10 项架构测试通过，截图及最新 APK 摘要见 [TMDB 图片回归](build/reports/tv-device-regression/tmdb-report.md)。
 - **2026-09-06 详情滚动调整**：按用户裁定移除角色、制作人员、关联条目、评价的纵向区块锚点，未登记锚点时委托页面覆盖前的 `LocalBringIntoViewSpec`，恢复平台默认纵向行为；横向行首 + 48dp 锚定保留。已在同一 API 36 TV 模拟器保留登录覆盖安装，以 CLANNAD 验证四类卡片下行、同行左右切换、评价上键回关联条目、返回键回选集再回 Hero；简介 64dp 顶部预留与剧集 64dp 底部预留正常。TMDB 配置检查、TV 构建、清单以及 main/subject 两模块共 **14 个测试，0 失败/错误/跳过**。截图、坐标与 APK 摘要见 [详情滚动回归](build/reports/tv-device-regression/details-scroll-report.md)。
-- **2026-09-06 提交前检查**：上述改动完成后补跑 `:app:android:assembleDefaultDebug`，手机构建通过；结合已通过的 TV 构建、架构测试和清单校验，完成本轮提交前检查。手机构建通过不代表手机行为已做设备回归。
+- **2026-09-06 提交前检查**：上述改动完成后补跑 `:app:android:assembleDefaultDebug`，手机构建通过；结合已通过的 TV 构建、架构测试和清单校验，完成本轮提交前检查。手机构建通过不代表手机行为已做设备回归。随后按用户要求撤回新增的 TMDB 配置检查任务及其配套构建说明；此前执行结果保留为历史记录，当前构建不再提供该任务。
 - 后续验收应记录提交、设备/API、操作路径、截图/日志和测试结果，尤其是整集连播、两处设置消费修复、弱网/无源与登录切换。
 
 ### 12.3 本次核对的关键代码入口
@@ -780,7 +780,7 @@ M0 是骨架前置，后续里程碑已有并行实现，**并非 M1–M4 全部
 2. **每轮回归三件套全绿**后才提交：`assembleDefaultDebug`（手机构建回归）、`:app:android:ui-main-tv:testDebugUnitTest`（Konsist）、`verifyTvManifestPurity`。这三项不单独证明手机行为零变化；涉及焦点框架另跑 `:app:android:ui-foundation-tv:testDebugUnitTest`，行为与设备回归按改动范围补齐。
 3. **分层提交**：每个 commit 独立可编译，按里程碑/功能切分。
 4. 应用内更新按维护者指示暂缓（服务端 `android-tv` 支持就绪前 TV 端保持关闭）。
-5. 构建环境：需设置 `ANDROID_HOME`；TMDB 需 `local.properties` 配 `ani.tmdb.api.token`（未配置全链路静默退化）。TMDB 图片回归前必须运行 `:app:shared:app-platform:verifyTmdbConfiguration`，并在设备上核对图片来源与独立分集剧照；该任务只检查配置非空，不保证鉴权或网络成功。
+5. 构建环境：需设置 `ANDROID_HOME`；TMDB 需 `local.properties` 配 `ani.tmdb.api.token`（未配置全链路静默退化）。TMDB 图片回归需在设备上核对图片来源与独立分集剧照。
 
 ### 14.7 代码组织与风格
 

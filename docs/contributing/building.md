@@ -13,17 +13,6 @@ ani.dandanplay.app.id=aaaaaaaaa
 ani.dandanplay.app.secret=aaaaaaaaaaaaaaa
 ```
 
-TV 的探索卡片、背景图和详情页分集剧照还需要 TMDB API Read Access Token (v4 Bearer)：
-
-```properties
-ani.tmdb.api.token=<your TMDB API Read Access Token>
-```
-
-该值在构建时写入应用；补齐后需重新构建并安装。图片功能回归前先运行
-`./gradlew :app:shared:app-platform:verifyTmdbConfiguration`，避免把缺配置时的 Bangumi
-封面回退误判为 TMDB 验证通过。此任务只检查配置非空，实际请求和图片来源仍需在设备上确认。
-不要提交含 token 的 `local.properties` 或生成的构建配置，也不要将 token 写入回归日志。
-
 ## 打包 Android APP
 
 默认只构建 `arm64-v8a`。如果你需要完整 APK 集合，可在 `local.properties` 中加入
