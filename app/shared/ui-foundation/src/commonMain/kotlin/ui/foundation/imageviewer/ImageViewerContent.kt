@@ -13,7 +13,6 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.RowScope
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
@@ -81,7 +80,6 @@ object ImageViewerTestTags {
     const val SCALE_TEXT = "ImageViewer.ScaleText"
     const val SAVE = "ImageViewer.Save"
     const val CLOSE = "ImageViewer.Close"
-    const val DRAG_OUT = "ImageViewer.DragOut"
 }
 
 /** 每次点击放大/缩小按钮的倍率. */
@@ -90,7 +88,7 @@ private const val ZOOM_STEP = 1.5f
 private val logger = logger<ImageViewerTestTags>()
 
 /**
- * 图片查看器的内容: 可缩放图片 + 底部工具栏 (缩小 / 缩放比例 / 放大 / 适应窗口 / 保存 / [extraActions] / 关闭).
+ * 图片查看器的内容: 可缩放图片 + 底部工具栏 (缩小 / 缩放比例 / 放大 / 适应窗口 / 保存 / 关闭).
  *
  * 缩放由 zoomimage 提供: 触摸双指缩放, 双击切换, 鼠标滚轮缩放, 键盘 `+`/`-` 缩放.
  * 图片加载成功后会在后台导出一份带扩展名的本地副本 ([ImageViewerExportedFile]), 供保存和拖拽使用.
@@ -99,7 +97,8 @@ private val logger = logger<ImageViewerTestTags>()
  * @param closeOnTap 单击图片是否关闭 (覆盖层模式为 `true`; 独立窗口为 `false`).
  * @param showCloseButton 工具栏是否显示关闭按钮.
  * @param fileSaver 点击保存时的保存方式, 默认弹系统对话框.
- * @param extraActions 工具栏关闭按钮前的额外控件, 参数为当前已导出的本地副本 (未就绪时为 `null`).
+ * @param platformImageModifier 平台相关的图片层扩展: 返回附加在图片上的 [Modifier] (例如桌面端把图片拖到其他应用),
+ * 也可以在其中注册额外手势 (例如触摸板捏合缩放). 参数为当前已导出的本地副本 (未就绪时为 `null`) 和缩放状态.
  * @param exportDirectory 本地副本所在目录, 默认为 [imageViewerExportDirectory].
  */
 @Composable
@@ -110,7 +109,8 @@ fun ImageViewerContent(
     closeOnTap: Boolean = true,
     showCloseButton: Boolean = true,
     fileSaver: ImageFileSaver = rememberFileKitImageFileSaver(),
-    extraActions: @Composable RowScope.(exported: ImageViewerExportedFile?) -> Unit = {},
+    platformImageModifier: @Composable (exported: ImageViewerExportedFile?, zoomable: ZoomableState) -> Modifier =
+        { _, _ -> Modifier },
     exportDirectory: SystemPath = imageViewerExportDirectory(LocalContext.current),
 ) {
     val sketch = LocalSketch.current
@@ -137,13 +137,14 @@ fun ImageViewerContent(
     val savedText = stringResource(Lang.image_viewer_saved)
     val saveFailedText = stringResource(Lang.image_viewer_save_failed)
 
+    val imageModifier = platformImageModifier(exported, zoomState.zoomable)
     Box(modifier.background(Color.Black)) {
         if (model != null) {
             SketchZoomAsyncImage(
                 uri = model,
                 contentDescription = null,
                 sketch = sketch,
-                modifier = Modifier.fillMaxSize().testTag(IMAGE_VIEWER_TEST_TAG),
+                modifier = Modifier.fillMaxSize().testTag(IMAGE_VIEWER_TEST_TAG).then(imageModifier),
                 state = imageState,
                 zoomState = zoomState,
                 onTap = if (closeOnTap) {
@@ -180,7 +181,6 @@ fun ImageViewerContent(
             },
             showCloseButton = showCloseButton,
             onClose = onClose,
-            extraActions = { extraActions(exported) },
             modifier = Modifier
                 .align(Alignment.BottomCenter)
                 .windowInsetsPadding(WindowInsets.safeDrawing)
@@ -214,7 +214,6 @@ private fun ImageViewerToolbar(
     onSave: () -> Unit,
     showCloseButton: Boolean,
     onClose: () -> Unit,
-    extraActions: @Composable RowScope.() -> Unit,
     modifier: Modifier = Modifier,
 ) {
     val scope = rememberCoroutineScope()
@@ -267,7 +266,6 @@ private fun ImageViewerToolbar(
             ) {
                 Icon(Icons.Rounded.SaveAlt, contentDescription = stringResource(Lang.image_viewer_save))
             }
-            extraActions()
             if (showCloseButton) {
                 IconButton(
                     onClick = onClose,

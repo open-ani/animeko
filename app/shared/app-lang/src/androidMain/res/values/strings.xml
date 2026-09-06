@@ -1470,7 +1470,6 @@
     <string name="image_viewer_save">Save image</string>
     <string name="image_viewer_saved">Image saved</string>
     <string name="image_viewer_save_failed">Failed to save image</string>
-    <string name="image_viewer_drag_out">Drag to another app</string>
     <string name="image_viewer_load_failed">Failed to load image</string>
     <string name="image_viewer_close">Close</string>
 </resources>

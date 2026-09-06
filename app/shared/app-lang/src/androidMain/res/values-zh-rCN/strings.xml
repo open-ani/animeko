@@ -1510,7 +1510,6 @@
     <string name="image_viewer_save">保存图片</string>
     <string name="image_viewer_saved">图片已保存</string>
     <string name="image_viewer_save_failed">保存图片失败</string>
-    <string name="image_viewer_drag_out">拖到其他应用</string>
     <string name="image_viewer_load_failed">图片加载失败</string>
     <string name="image_viewer_close">关闭</string>
 </resources>

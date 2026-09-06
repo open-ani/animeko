@@ -1473,7 +1473,6 @@
     <string name="image_viewer_save">儲存圖片</string>
     <string name="image_viewer_saved">圖片已儲存</string>
     <string name="image_viewer_save_failed">儲存圖片失敗</string>
-    <string name="image_viewer_drag_out">拖到其他應用程式</string>
     <string name="image_viewer_load_failed">圖片載入失敗</string>
     <string name="image_viewer_close">關閉</string>
 </resources>
