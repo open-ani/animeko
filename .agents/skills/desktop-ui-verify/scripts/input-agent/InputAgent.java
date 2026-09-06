@@ -18,6 +18,10 @@ import java.lang.instrument.Instrumentation;
  *   type <text>
  *   key <awt-keycode>
  *   info              (frame bounds, content-area screen origin and size)
+ *   resize <w> <h>    (set the target Frame's outer size in points; no Accessibility needed)
+ *   windows           (list visible Frames: index, focused flag, title)
+ *   window <title|index>  (route following commands to that Frame instead of the focused one;
+ *                      `window -` clears the selection)
  * Replies "ok <detail>" or "err <detail>" per line.
  */
 public final class InputAgent {
@@ -56,6 +60,28 @@ public final class InputAgent {
     static String handle(String line) throws Exception {
         String[] a = line.split("\\s+", 2);
         if (a.length == 0 || a[0].isEmpty()) return "err empty";
+        if (a[0].equals("windows")) {
+            StringBuilder sb = new StringBuilder("ok");
+            int i = 0;
+            for (Frame f : Frame.getFrames()) {
+                if (!f.isVisible()) continue;
+                sb.append(" [").append(i++).append(f.isFocused() ? "*" : "").append(" '").append(f.getTitle()).append("']");
+            }
+            return sb.toString();
+        }
+        if (a[0].equals("window")) {
+            String sel = a.length > 1 ? a[1].trim() : "-";
+            if (sel.equals("-")) { selectedFrame = null; return "ok selection cleared"; }
+            int i = 0;
+            for (Frame f : Frame.getFrames()) {
+                if (!f.isVisible()) continue;
+                if (String.valueOf(i++).equals(sel) || f.getTitle().contains(sel)) {
+                    selectedFrame = f;
+                    return "ok selected '" + f.getTitle() + "'";
+                }
+            }
+            return "err no visible frame matching " + sel;
+        }
         Frame frame = targetFrame();
         if (frame == null) return "err no visible frame";
         switch (a[0]) {
@@ -68,6 +94,12 @@ public final class InputAgent {
                 return type(frame, a.length > 1 ? a[1] : "");
             case "key":
                 return key(frame, Integer.parseInt(a[1]));
+            case "resize": {
+                String[] wh = a[1].split("\\s+");
+                int w = Integer.parseInt(wh[0]), h = Integer.parseInt(wh[1]);
+                EventQueue.invokeAndWait(() -> frame.setSize(w, h));
+                return "ok resized to " + w + "x" + h;
+            }
             case "info": {
                 final String[] r = new String[1];
                 EventQueue.invokeAndWait(() -> {
@@ -85,8 +117,11 @@ public final class InputAgent {
     }
 
     private static volatile Component lastMouseTarget;
+    private static volatile Frame selectedFrame;
 
     static Frame targetFrame() {
+        Frame selected = selectedFrame;
+        if (selected != null && selected.isVisible()) return selected;
         Frame focused = null, visible = null;
         for (Frame f : Frame.getFrames()) {
             if (!f.isVisible()) continue;
