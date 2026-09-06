@@ -1377,6 +1377,7 @@
     <string name="person_details_meta">%1$s · collected by %2$s</string>
     <string name="person_details_open_full_page">Open full page</string>
     <string name="person_details_no_comments">No comments yet</string>
+    <string name="person_details_write_comment">Write a comment</string>
     <string name="person_details_person">Person</string>
     <string name="person_details_role_character">Character</string>
     <string name="person_details_role_mecha">Mecha</string>

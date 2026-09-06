@@ -61,7 +61,6 @@ import me.him188.ani.app.data.models.person.PersonCastInfo
 import me.him188.ani.app.data.models.person.PersonDetailsInfo
 import me.him188.ani.app.data.models.person.PersonWorkInfo
 import me.him188.ani.app.data.models.subject.nameCn
-import me.him188.ani.app.ui.comment.CommentState
 import me.him188.ani.app.ui.external.placeholder.placeholder
 import me.him188.ani.app.ui.foundation.AsyncImage
 import me.him188.ani.app.ui.foundation.ImageViewer
@@ -118,12 +117,10 @@ fun PersonDetailsScreen(
         },
         summary = details?.person?.summary.orEmpty(),
         centerStrips = { PersonStrips(casts, works) },
-        commentState = vm.commentState,
-        originalCommentsUrl = vm.originalCommentsUrl,
+        comments = vm.comments,
         compactContent = { imageViewer ->
             PersonDetailsContentColumn(
-                details, casts, works, vm.commentState,
-                originalCommentsUrl = vm.originalCommentsUrl,
+                details, casts, works, vm.comments,
                 imageViewer = imageViewer,
             )
         },
@@ -161,12 +158,10 @@ fun CharacterDetailsScreen(
         },
         summary = details?.summary.orEmpty(),
         centerStrips = { CharacterStrips(details, subjects) },
-        commentState = vm.commentState,
-        originalCommentsUrl = vm.originalCommentsUrl,
+        comments = vm.comments,
         compactContent = { imageViewer ->
             CharacterDetailsContentColumn(
-                details, subjects, vm.commentState,
-                originalCommentsUrl = vm.originalCommentsUrl,
+                details, subjects, vm.comments,
                 imageViewer = imageViewer,
             )
         },
@@ -195,10 +190,9 @@ private fun PeopleDetailsScaffold(
     titleBlock: @Composable (isPlaceholder: Boolean) -> Unit,
     summary: String,
     centerStrips: @Composable () -> Unit,
-    commentState: CommentState,
+    comments: PeopleCommentsState,
     compactContent: @Composable (imageViewer: ImageViewerHandler) -> Unit,
     modifier: Modifier = Modifier,
-    originalCommentsUrl: String? = null,
 ) {
     var showAllComments by rememberSaveable { mutableStateOf(false) }
     val imageViewer = rememberImageViewerHandler()
@@ -355,7 +349,7 @@ private fun PeopleDetailsScaffold(
                             }
                             centerStrips()
                             if (!layoutParams.showRail) {
-                                PersonCommentsSection(commentState, onShowAll = { showAllComments = true })
+                                PersonCommentsSection(comments.commentState, onShowAll = { showAllComments = true })
                             }
                         }
 
@@ -367,7 +361,7 @@ private fun PeopleDetailsScaffold(
                                 color = MaterialTheme.colorScheme.surfaceContainerLow,
                             ) {
                                 PersonCommentsSection(
-                                    commentState,
+                                    comments.commentState,
                                     onShowAll = { showAllComments = true },
                                     // 对齐修正后的设计稿 rail 卡 (视觉: 标题字形距顶 ~21, 距侧 20):
                                     // 标题行自带 ~17dp 顶空 (TextButton min 40dp 居中 + 行框留白, 截图实测),
@@ -383,14 +377,11 @@ private fun PeopleDetailsScaffold(
 
         // 页面级大图查看器, 覆盖整个骨架 (含顶栏).
         ImageViewer(imageViewer) { imageViewer.clear() }
-    }
 
-    if (showAllComments) {
-        PersonCommentsSheet(
-            commentState,
-            onDismissRequest = { showAllComments = false },
-            originalCommentsUrl = originalCommentsUrl,
-        )
+        // 评论区宿主 (举报弹层/失败提示/全量评论 sheet). 单栏由 compactContent 里的内容列自带, 这里只在多栏挂.
+        if (layoutParams.isMultiColumn) {
+            PeopleCommentsHost(comments, showAllComments, onDismissAllComments = { showAllComments = false })
+        }
     }
 }
 
@@ -417,8 +408,7 @@ internal fun PersonDetailsContentColumn(
     details: PersonDetailsInfo?,
     casts: LazyPagingItems<PersonCastInfo>,
     works: LazyPagingItems<PersonWorkInfo>,
-    commentState: CommentState,
-    originalCommentsUrl: String? = null,
+    comments: PeopleCommentsState,
     modifier: Modifier = Modifier,
     navigation: PeopleDetailsNavigation = rememberPeopleDetailsNavigation(),
     imageViewer: ImageViewerHandler? = null,
@@ -446,15 +436,9 @@ internal fun PersonDetailsContentColumn(
             }
         }
         PersonStrips(casts, works, navigation)
-        PersonCommentsSection(commentState, onShowAll = { showAllComments = true })
+        PersonCommentsSection(comments.commentState, onShowAll = { showAllComments = true })
     }
-    if (showAllComments) {
-        PersonCommentsSheet(
-            commentState,
-            onDismissRequest = { showAllComments = false },
-            originalCommentsUrl = originalCommentsUrl,
-        )
-    }
+    PeopleCommentsHost(comments, showAllComments, onDismissAllComments = { showAllComments = false })
 }
 
 /** 人物详情的两个横滑条: 出演角色 / 参与作品 (+ 各自的查看全部 sheet). */
@@ -532,8 +516,7 @@ private fun PersonStrips(
 internal fun CharacterDetailsContentColumn(
     details: CharacterDetailsInfo?,
     subjects: LazyPagingItems<CharacterSubjectInfo>,
-    commentState: CommentState,
-    originalCommentsUrl: String? = null,
+    comments: PeopleCommentsState,
     modifier: Modifier = Modifier,
     navigation: PeopleDetailsNavigation = rememberPeopleDetailsNavigation(),
     imageViewer: ImageViewerHandler? = null,
@@ -561,15 +544,9 @@ internal fun CharacterDetailsContentColumn(
             }
         }
         CharacterStrips(details, subjects, navigation)
-        PersonCommentsSection(commentState, onShowAll = { showAllComments = true })
+        PersonCommentsSection(comments.commentState, onShowAll = { showAllComments = true })
     }
-    if (showAllComments) {
-        PersonCommentsSheet(
-            commentState,
-            onDismissRequest = { showAllComments = false },
-            originalCommentsUrl = originalCommentsUrl,
-        )
-    }
+    PeopleCommentsHost(comments, showAllComments, onDismissAllComments = { showAllComments = false })
 }
 
 /** 角色详情的两个横滑条: 声优 / 出演作品 (+ 查看全部 sheet). */

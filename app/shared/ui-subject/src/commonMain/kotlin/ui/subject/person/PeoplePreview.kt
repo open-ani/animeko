@@ -147,8 +147,7 @@ private fun PersonPreviewContent(
                 details = details,
                 casts = vm.castsPager.collectAsLazyPagingItems(),
                 works = vm.worksPager.collectAsLazyPagingItems(),
-                commentState = vm.commentState,
-                originalCommentsUrl = vm.originalCommentsUrl,
+                comments = vm.comments,
                 modifier = Modifier.padding(horizontal = 16.dp).padding(bottom = 16.dp),
                 // 预览内点击跳转前先关闭预览
                 navigation = rememberPeopleDetailsNavigation(onBeforeNavigate = onDismissRequest),
@@ -175,8 +174,7 @@ private fun CharacterPreviewContent(
             CharacterDetailsContentColumn(
                 details = details,
                 subjects = vm.subjectsPager.collectAsLazyPagingItems(),
-                commentState = vm.commentState,
-                originalCommentsUrl = vm.originalCommentsUrl,
+                comments = vm.comments,
                 modifier = Modifier.padding(horizontal = 16.dp).padding(bottom = 16.dp),
                 // 预览内点击跳转前先关闭预览
                 navigation = rememberPeopleDetailsNavigation(onBeforeNavigate = onDismissRequest),

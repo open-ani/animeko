@@ -1417,6 +1417,7 @@
     <string name="person_details_meta">%1$s · %2$s 人收藏</string>
     <string name="person_details_open_full_page">打开完整页面</string>
     <string name="person_details_no_comments">还没有评论</string>
+    <string name="person_details_write_comment">写评论</string>
     <string name="person_details_person">人物</string>
     <string name="person_details_role_character">角色</string>
     <string name="person_details_role_mecha">机体</string>

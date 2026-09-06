@@ -10,6 +10,16 @@
 package me.him188.ani.app.ui.subject.person
 
 import androidx.compose.foundation.clickable
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.rounded.AddComment
+import androidx.compose.material3.Icon
+import androidx.compose.material3.TextButton
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.setValue
+import androidx.compose.ui.platform.testTag
+import me.him188.ani.app.ui.comment.EditCommentSheet
+import me.him188.ani.app.ui.lang.person_details_write_comment
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -495,53 +505,111 @@ private fun PersonCommentPreviewItem(
 
 /**
  * 全量评论 sheet: 复用剧集/条目评论列 ([SubjectCommentColumn]), 支持 BBCode 表情/图片/链接.
- * 与条目评论 sheet 的差别: 人物评论无评分, 也没有 "写评价" 入口.
+ * 与条目评论 sheet 的差别: 人物评论无评分. 头部提供 "写评论" 入口, Ani 评论可回复/贴纸回应/点赞/举报,
+ * Bangumi 评论只读, 可在 Bangumi 打开.
+ *
+ * 编辑器 ([EditCommentSheet]) 挂在本 sheet 的内容里 (而不是页面级): 它是 Popup, 必须与本 sheet 处于同一窗口才能盖在上面.
+ * 举报弹层则由页面级的 [PeopleCommentsHost] 承载.
  */
 @Composable
 internal fun PersonCommentsSheet(
-    state: CommentState,
+    comments: PeopleCommentsState,
     onDismissRequest: () -> Unit,
     modifier: Modifier = Modifier,
-    originalCommentsUrl: String? = null,
 ) {
-    val browserNavigator = LocalUriHandler.current
-    val toaster = LocalToaster.current
-    val externalAppLinkWarningPrefix = stringResource(Lang.foundation_richtext_external_app_link_warning_prefix)
-    val openLinkFailedPrefix = stringResource(Lang.foundation_richtext_open_failed_prefix)
     val imageViewer = rememberImageViewerHandler()
-
     ModalBottomSheet(
         onDismissRequest,
         modifier = modifier,
         sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true),
     ) {
-        Column(Modifier.fillMaxWidth()) {
+        PersonCommentsSheetContent(
+            comments,
+            onClickImage = { imageViewer.viewImage(it) },
+        )
+    }
+    ImageViewer(imageViewer) { imageViewer.clear() }
+}
+
+/**
+ * [PersonCommentsSheet] 的内容: 标题行 (评论数 + "写评论") + 评论列 + 编辑器. 拆出来是为了能脱离 [ModalBottomSheet] 测试.
+ */
+@Composable
+internal fun PersonCommentsSheetContent(
+    comments: PeopleCommentsState,
+    onClickImage: (String) -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    val state = comments.commentState
+    val browserNavigator = LocalUriHandler.current
+    val toaster = LocalToaster.current
+    val externalAppLinkWarningPrefix = stringResource(Lang.foundation_richtext_external_app_link_warning_prefix)
+    val openLinkFailedPrefix = stringResource(Lang.foundation_richtext_open_failed_prefix)
+    // 不用 rememberSaveable: 编辑目标存在 view model 里, 进程重建后 sheet 也不会自动恢复
+    var showEditor by remember { mutableStateOf(false) }
+
+    Column(modifier.fillMaxWidth()) {
+        Row(
+            Modifier.fillMaxWidth().padding(horizontal = 16.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
             Text(
                 state.count?.takeIf { it > 0 }?.let {
                     stringResource(Lang.person_details_comments) + " · " + remember(it) { groupThousands(it) }
                 } ?: stringResource(Lang.person_details_comments),
-                Modifier.padding(horizontal = 16.dp),
+                Modifier.weight(1f),
                 style = MaterialTheme.typography.titleLarge,
             )
-            SubjectDetailsDefaults.SubjectCommentColumn(
-                state = state,
-                onClickUrl = { url ->
-                    RichTextDefaults.checkSanityAndOpen(
-                        url,
-                        browserNavigator,
-                        toaster,
-                        externalAppLinkWarningPrefix,
-                        openLinkFailedPrefix,
-                    )
+            TextButton(
+                onClick = {
+                    comments.startNewComment()
+                    showEditor = true
                 },
-                onClickImage = { imageViewer.viewImage(it) },
-                onOpenOriginal = originalCommentsUrl?.let { url ->
-                    { browserNavigator.openUri(url) }
-                },
-                connectedScrollState = rememberConnectedScrollState(),
-                modifier = Modifier.fillMaxWidth().weight(1f, fill = false),
-            )
+                Modifier.testTag(PersonCommentsSheetTestTags.WriteComment),
+            ) {
+                Icon(Icons.Rounded.AddComment, contentDescription = null, Modifier.size(18.dp))
+                Text(
+                    stringResource(Lang.person_details_write_comment),
+                    Modifier.padding(start = 8.dp),
+                )
+            }
         }
+        SubjectDetailsDefaults.SubjectCommentColumn(
+            state = state,
+            onClickUrl = { url ->
+                RichTextDefaults.checkSanityAndOpen(
+                    url,
+                    browserNavigator,
+                    toaster,
+                    externalAppLinkWarningPrefix,
+                    openLinkFailedPrefix,
+                )
+            },
+            onClickImage = onClickImage,
+            reportState = comments.reportState,
+            onOpenOriginal = { browserNavigator.openUri(comments.originalCommentsUrl) },
+            onClickReply = { comment ->
+                comments.startReply(comment.sourceCommentId)
+                showEditor = true
+            },
+            onToggleReaction = { comment, value -> state.submitReaction(comment, value) },
+            connectedScrollState = rememberConnectedScrollState(),
+            modifier = Modifier.fillMaxWidth().weight(1f, fill = false),
+        )
     }
-    ImageViewer(imageViewer) { imageViewer.clear() }
+
+    if (showEditor) {
+        EditCommentSheet(
+            state = comments.editorState,
+            onDismiss = {
+                showEditor = false
+                comments.editorState.cancelSend()
+            },
+            onSendComplete = { comments.refresh() },
+        )
+    }
+}
+
+object PersonCommentsSheetTestTags {
+    const val WriteComment = "PersonCommentsSheet.WriteComment"
 }

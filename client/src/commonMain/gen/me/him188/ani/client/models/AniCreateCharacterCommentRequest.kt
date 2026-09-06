@@ -16,7 +16,6 @@
 
 package me.him188.ani.client.models
 
-import me.him188.ani.client.models.AniPersonComment
 
 import kotlinx.serialization.*
 import kotlinx.serialization.descriptors.*
@@ -25,16 +24,13 @@ import kotlinx.serialization.encoding.*
 /**
  *
  *
- * @param total
- * @param items
+ * @param contentBbcode
  */
 @Serializable
 
-data class AniPersonCommentsPage (
+data class AniCreateCharacterCommentRequest (
 
-    @SerialName(value = "total") @Required val total: kotlin.Int,
-
-    @SerialName(value = "items") @Required val items: kotlin.collections.List<AniPersonComment>
+    @SerialName(value = "contentBbcode") @Required val contentBbcode: kotlin.String
 
 ) {
 

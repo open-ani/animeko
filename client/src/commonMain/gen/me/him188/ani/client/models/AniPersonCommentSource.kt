@@ -22,22 +22,16 @@ import kotlinx.serialization.*
 /**
  *
  *
- * Values: EPISODE_COMMENT,SUBJECT_REVIEW,PERSON_COMMENT,CHARACTER_COMMENT
+ * Values: ANIMEKO,BANGUMI
  */
 @Serializable
-enum class AniCommentReportTargetType(val value: kotlin.String) {
+enum class AniPersonCommentSource(val value: kotlin.String) {
 
-    @SerialName(value = "episode_comment")
-    EPISODE_COMMENT("episode_comment"),
+    @SerialName(value = "animeko")
+    ANIMEKO("animeko"),
 
-    @SerialName(value = "subject_review")
-    SUBJECT_REVIEW("subject_review"),
-
-    @SerialName(value = "person_comment")
-    PERSON_COMMENT("person_comment"),
-
-    @SerialName(value = "character_comment")
-    CHARACTER_COMMENT("character_comment");
+    @SerialName(value = "bangumi")
+    BANGUMI("bangumi");
 
     /**
      * Override [toString()] to avoid using the enum variable name as the value, and instead use
@@ -52,12 +46,12 @@ enum class AniCommentReportTargetType(val value: kotlin.String) {
         /**
          * Converts the provided [data] to a [String] on success, null otherwise.
          */
-        fun encode(data: kotlin.Any?): kotlin.String? = if (data is AniCommentReportTargetType) "$data" else null
+        fun encode(data: kotlin.Any?): kotlin.String? = if (data is AniPersonCommentSource) "$data" else null
 
         /**
-         * Returns a valid [AniCommentReportTargetType] for [data], null otherwise.
+         * Returns a valid [AniPersonCommentSource] for [data], null otherwise.
          */
-        fun decode(data: kotlin.Any?): AniCommentReportTargetType? = data?.let {
+        fun decode(data: kotlin.Any?): AniPersonCommentSource? = data?.let {
           val normalizedData = "$it".lowercase()
           values().firstOrNull { value ->
             it == value || normalizedData == "$value".lowercase()

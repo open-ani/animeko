@@ -26,6 +26,7 @@ import kotlinx.io.files.SystemFileSystem
 import me.him188.ani.app.data.network.AniApiProvider
 import me.him188.ani.app.data.network.AniCommentReportService
 import me.him188.ani.app.data.network.AniEpisodeCommentService
+import me.him188.ani.app.data.network.AniPersonCommentService
 import me.him188.ani.app.data.network.AniSubjectRelationIndexService
 import me.him188.ani.app.data.network.AniSubjectSearchService
 import me.him188.ani.app.data.network.AnimeScheduleService
@@ -66,6 +67,7 @@ import me.him188.ani.app.data.repository.player.EpisodePlayHistoryRepositoryImpl
 import me.him188.ani.app.data.repository.player.EpisodeScreenshotRepository
 import me.him188.ani.app.data.repository.player.PlaybackHistorySyncer
 import me.him188.ani.app.data.repository.player.WhatslinkEpisodeScreenshotRepository
+import me.him188.ani.app.data.repository.person.PersonCommentRepository
 import me.him188.ani.app.data.repository.person.PersonDetailsRepository
 import me.him188.ani.app.data.repository.repositoryModules
 import me.him188.ani.app.data.repository.subject.DefaultSubjectRelationsRepository
@@ -384,6 +386,13 @@ private fun KoinApplication.otherModules(getContext: () -> Context, coroutineSco
     single<AniEpisodeCommentService> { AniEpisodeCommentService(get<AniApiProvider>().episodesApi) }
     single<AniCommentReportService> { AniCommentReportService(get<AniApiProvider>().commentsApi) }
     single<EpisodeCommentRepository> { EpisodeCommentRepository(aniCommentService = get()) }
+    single<AniPersonCommentService> {
+        AniPersonCommentService(
+            personsApi = get<AniApiProvider>().personsApi,
+            charactersApi = get<AniApiProvider>().charactersApi,
+        )
+    }
+    single<PersonCommentRepository> { PersonCommentRepository(aniCommentService = get()) }
     single<MediaSourceInstanceRepository> {
         MediaSourceInstanceRepositoryImpl(getContext().dataStores.mediaSourceSaveStore)
     }
