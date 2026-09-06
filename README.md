@@ -10,3 +10,4 @@ Reference files by commit SHA so that links keep working after later commits:
 Contents:
 
 - `pr-3378/` — Bangumi 收藏冲突合并页截图 (PR #3378)
+- `pr-3389/` — 图片查看器独立窗口截图 (PR #3389)
