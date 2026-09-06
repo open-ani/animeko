@@ -18,9 +18,11 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyGridState
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
+import androidx.compose.foundation.lazy.grid.rememberLazyGridState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.key
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
@@ -67,7 +69,7 @@ private enum class TvCollectionFocus : TvFocusKey {
  * 顶部 TabRow (聚焦即选中 + 数量角标) + Adaptive 网格.
  *
  * 状态层复用手机 UserCollectionsViewModel/UserCollectionsState (D3): 每 tab 独立缓存的
- * LazyPagingItems 与网格滚动状态 (跨 tab 保留数据与位置)、登录变更自动刷新.
+ * LazyPagingItems、登录变更自动刷新. 每分类的网格滚动位置由 UI 保存.
  * TV ViewModel 复用共享状态，通过 Intent 选择分类和打开条目。
  */
 @Composable
@@ -79,6 +81,7 @@ fun TvCollectionScreen(
     val counts = state.counts
     val selectedTabIndex = state.selectedTabIndex
     val items = state.items
+    val gridStates = COLLECTION_TABS_SORTED.map { type -> key(type) { rememberLazyGridState() } }
 
     // 统一焦点框架: 进页初始焦点落当前选中 tab; tab 行按下键直达网格首卡
     val focus = rememberTvFocusScope()
@@ -125,7 +128,7 @@ fun TvCollectionScreen(
         } else {
             TvCollectionGrid(
                 items = items,
-                gridState = state.gridState, // 跨 tab 保留滚动位置
+                gridState = gridStates[selectedTabIndex],
                 focus = focus,
                 gridFocus = gridFocus,
                 onClickSubject = { onIntent(TvCollectionIntent.OpenSubject(it)) },

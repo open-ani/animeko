@@ -33,6 +33,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberUpdatedState
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
@@ -60,6 +61,7 @@ import kotlinx.coroutines.flow.first
 import me.him188.ani.app.data.models.episode.EpisodeComment
 import me.him188.ani.app.domain.player.VideoLoadingState
 import me.him188.ani.app.ui.foundation.navigation.BackHandler
+import me.him188.ani.datasources.api.topic.UnifiedCollectionType
 import me.him188.ani.tv.ui.foundation.focus.TV_CONFIRM_KEYS
 import me.him188.ani.tv.ui.foundation.focus.TvFocusKey
 import me.him188.ani.tv.ui.foundation.focus.rememberTvFocusScope
@@ -77,7 +79,7 @@ import android.view.KeyEvent as AndroidKeyEvent
  *   HIDDEN (纯视频) | CONTROLS (控制层)   正交子态: 选集条展开 · 拖拽预览 (scrub) ·
  *   按住倍速 · 数据源弹窗
  *
- * 按键全部收敛在根部唯一 onPreviewKeyEvent 路由 (§8.2 保留的 PR 交互架构):
+ * 播放控制按键收敛在根部 onPreviewKeyEvent 路由 (§8.2); 纯 UI 导航由对应组件处理:
  * - HIDDEN: 确认短按=播↔停 (暂停时唤出控制层), 长按 (系统连发判定, 同 tvLongPressKey
  *   判据) = 配置的倍速, 松开还原; ←→ 总是进入画面预览, 确认才 seek; ↑↓ 唤出控制层.
  * - CONTROLS: 焦点在进度条时 ←→/确认沿用 seek/播停语义, 其余按键交给焦点系统;
@@ -98,6 +100,11 @@ private enum class TvPlayerFocus : TvFocusKey {
 /** 胶囊按钮锚点 (面板关闭/向下退出时焦点回对应胶囊). */
 private data class PanelChipKey(val panel: TvPlayerPanel) : TvFocusKey
 
+/** Confirmation content has its own anchor so a request cannot reach the previous lazy item. */
+private data class CollectionPanelEntryKey(val prompt: TvCollectionPrompt?) : TvFocusKey
+
+private data class TogetherPanelEntryKey(val joined: Boolean, val confirmLeave: Boolean) : TvFocusKey
+
 private data class EpisodeCardKey(val episodeId: Int) : TvFocusKey
 
 @Composable
@@ -107,6 +114,7 @@ fun TvEpisodeScreen(
     onTogetherIntent: (TvTogetherIntent) -> Unit,
     commentsPager: Flow<PagingData<EpisodeComment>>,
     focusRequests: Flow<TvPlayerFocusRequest>,
+    actionEvents: Flow<TvEpisodeEvent>,
     onIntent: (TvEpisodeIntent) -> Boolean,
     video: @Composable (Modifier) -> Unit,
     resolver: @Composable () -> Unit,
@@ -123,8 +131,28 @@ fun TvEpisodeScreen(
     val currentEpisodeId = uiState.currentEpisodeId
     val selectedMedia = uiState.selectedMedia
     val positionMillis = uiState.positionMillis
-    val clockText = uiState.clockText
     val latestState by rememberUpdatedState(uiState)
+    val sourceDialogState = rememberTvSourceDialogState()
+    var episodeActionId by rememberSaveable { mutableStateOf<Int?>(null) }
+    val latestEpisodeActionId by rememberUpdatedState(episodeActionId)
+    var collectionPrompt by rememberSaveable { mutableStateOf<TvCollectionPrompt?>(null) }
+    var confirmLeave by rememberSaveable(togetherState.joined, togetherState.roomName) { mutableStateOf(false) }
+    val panelEntryKey = when (state.activePanel) {
+        TvPlayerPanel.Collection -> CollectionPanelEntryKey(collectionPrompt)
+        TvPlayerPanel.Together -> TogetherPanelEntryKey(togetherState.joined, confirmLeave)
+        else -> TvPlayerFocus.PanelEntry
+    }
+
+    LaunchedEffect(actionEvents) {
+        actionEvents.collect { event ->
+            collectionPrompt = when (event) {
+                is TvEpisodeEvent.CollectionChanged ->
+                    TvCollectionPrompt.MarkAllWatched.takeIf { event.type == UnifiedCollectionType.DONE }
+
+                TvEpisodeEvent.AllEpisodesWatched -> null
+            }
+        }
+    }
 
     val focus = rememberTvFocusScope()
     focus.Resolver()
@@ -151,7 +179,7 @@ fun TvEpisodeScreen(
                         TvPlayerDialog.DanmakuMatch -> TvPlayerFocus.DanmakuMatchButton
                         TvPlayerDialog.DanmakuList -> TvPlayerFocus.DanmakuListButton
                         TvPlayerDialog.EpisodeActions -> EpisodeCardKey(
-                            latestState.options.episodeActionId ?: latestState.currentEpisodeId,
+                            latestEpisodeActionId ?: latestState.currentEpisodeId,
                         )
                     },
                 )
@@ -161,7 +189,7 @@ fun TvEpisodeScreen(
         }
     }
 
-    // Translate platform events into facts. All playback/overlay decisions belong to the ViewModel.
+    // Translate platform events into playback input; local UI navigation stays in its components.
     fun handleKey(event: KeyEvent): Boolean = onIntent(
         TvEpisodeIntent.RemoteKey(
             key = event.key.toTvRemoteKey(),
@@ -177,7 +205,7 @@ fun TvEpisodeScreen(
     // 面板打开: 焦点送入口条目 (request 悬挂语义天然等数据 —— 空面板锚点不附着,
     // 焦点留在胶囊, 用户按键自动放弃在途请求)
     LaunchedEffect(state.activePanel) {
-        if (state.activePanel != null) focus.request(TvPlayerFocus.PanelEntry)
+        if (state.activePanel != null) focus.request(panelEntryKey)
         if (state.activePanel == TvPlayerPanel.Together) onTogetherIntent(TvTogetherIntent.Open)
     }
     LaunchedEffect(state.dialog, uiState.panel.danmaku.isEmpty()) {
@@ -187,16 +215,15 @@ fun TvEpisodeScreen(
         if (state.dialog == TvPlayerDialog.DanmakuMatch) focus.request(TvPlayerFocus.DialogEntry)
     }
     LaunchedEffect(
-        uiState.options.confirmRemoveCollection,
-        uiState.options.offerMarkAllWatched,
+        collectionPrompt,
         uiState.options.collectionBusy,
     ) {
         if (state.activePanel == TvPlayerPanel.Collection && !uiState.options.collectionBusy) focus.request(
-            TvPlayerFocus.PanelEntry,
+            panelEntryKey,
         )
     }
-    LaunchedEffect(togetherState.joined, togetherState.confirmLeave) {
-        if (state.activePanel == TvPlayerPanel.Together) focus.request(TvPlayerFocus.PanelEntry)
+    LaunchedEffect(togetherState.joined, confirmLeave) {
+        if (state.activePanel == TvPlayerPanel.Together) focus.request(panelEntryKey)
     }
 
     // 选集条展开: 等列表数据就绪 → 滚到当前集 → 送焦当前集卡 (全事件驱动)
@@ -218,9 +245,8 @@ fun TvEpisodeScreen(
         when {
             uiState.options.skipPrompt != null -> onIntent(TvEpisodeIntent.Back)
             state.activePanel == TvPlayerPanel.Together && togetherState.joining -> onTogetherIntent(TvTogetherIntent.CancelJoin)
-            state.activePanel == TvPlayerPanel.Together && togetherState.confirmLeave -> onTogetherIntent(
-                TvTogetherIntent.CancelLeave,
-            )
+            state.activePanel == TvPlayerPanel.Together && confirmLeave -> confirmLeave = false
+            state.activePanel == TvPlayerPanel.Collection && collectionPrompt != null -> collectionPrompt = null
 
             else -> onIntent(TvEpisodeIntent.Back)
         }
@@ -289,7 +315,6 @@ fun TvEpisodeScreen(
             var stripHadFocus by remember { mutableStateOf(false) }
             TvPlayerControlsOverlay(
                 title = title,
-                clockText = clockText,
                 sourceIconUrl = uiState.sources.groups.firstOrNull { it.sourceId == selectedMedia?.mediaSourceId }?.iconUrl,
                 positionMillis = positionMillis,
                 durationMillis = uiState.durationMillis,
@@ -336,7 +361,7 @@ fun TvEpisodeScreen(
                         val panelModifier = Modifier
                             .tvFocusAnchor(focus, TvPlayerFocus.PanelHost)
                             .tvFocusExit(focus, FocusDirection.Down to PanelChipKey(panel))
-                        val entryModifier = Modifier.tvFocusAnchor(focus, TvPlayerFocus.PanelEntry)
+                        val entryModifier = Modifier.tvFocusAnchor(focus, panelEntryKey)
                         if (panel in setOf(
                                 TvPlayerPanel.Collection,
                                 TvPlayerPanel.DanmakuSettings,
@@ -351,6 +376,10 @@ fun TvEpisodeScreen(
                                 onIntent,
                                 onTogetherIntent,
                                 entryModifier,
+                                collectionPrompt = collectionPrompt,
+                                onCollectionPromptChange = { collectionPrompt = it },
+                                confirmLeave = confirmLeave,
+                                onConfirmLeaveChange = { confirmLeave = it },
                                 danmakuListModifier = Modifier.tvFocusAnchor(focus, TvPlayerFocus.DanmakuListButton),
                                 danmakuMatchModifier = Modifier.tvFocusAnchor(focus, TvPlayerFocus.DanmakuMatchButton),
                                 modifier = panelModifier,
@@ -398,7 +427,10 @@ fun TvEpisodeScreen(
                             }.focusGroup(),
                             cardModifier = { Modifier.tvFocusAnchor(focus, EpisodeCardKey(it.episodeId)) },
                             onClickEpisode = { onIntent(TvEpisodeIntent.SelectEpisode(it.episodeId)) },
-                            onLongClickEpisode = { onIntent(TvEpisodeIntent.EpisodeActions(it.episodeId)) },
+                            onLongClickEpisode = {
+                                episodeActionId = it.episodeId
+                                onIntent(TvEpisodeIntent.OpenDialog(TvPlayerDialog.EpisodeActions))
+                            },
                         )
                     }
                 },
@@ -419,6 +451,7 @@ fun TvEpisodeScreen(
         if (state.sourceDialogVisible) {
             TvPlayerSourceDialog(
                 state = uiState.sources,
+                dialogState = sourceDialogState,
                 selected = selectedMedia,
                 containerModifier = Modifier.tvFocusAnchor(focus, TvPlayerFocus.SourceDialog),
                 entryAnchorModifier = Modifier
@@ -468,7 +501,7 @@ fun TvEpisodeScreen(
                     }
 
                     TvPlayerDialog.EpisodeActions -> {
-                        val episode = stripEpisodes.find { it.episodeId == uiState.options.episodeActionId }
+                        val episode = stripEpisodes.find { it.episodeId == episodeActionId }
                         if (episode != null) {
                             TvOptionRow("播放 ${episode.sortLabel}", modifier = entryModifier) {
                                 onIntent(

@@ -52,6 +52,7 @@ fun TvEpisodeRoute(
         onTogetherIntent = togetherViewModel::onIntent,
         commentsPager = viewModel.episodeCommentsPager,
         focusRequests = viewModel.focusRequests,
+        actionEvents = viewModel.actionEvents,
         onIntent = viewModel::onIntent,
         video = { VideoPlayer(viewModel.player, it) },
         resolver = { viewModel.mediaResolver.ComposeContent() },

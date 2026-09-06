@@ -49,7 +49,6 @@ data class TvTogetherState(
     val watching: String = "",
     val members: List<String> = emptyList(),
     val error: String? = null,
-    val confirmLeave: Boolean = false,
 )
 
 sealed interface TvTogetherIntent {
@@ -59,8 +58,6 @@ sealed interface TvTogetherIntent {
     data object Join : TvTogetherIntent
     data object CancelJoin : TvTogetherIntent
     data object ToggleFollowing : TvTogetherIntent
-    data object AskLeave : TvTogetherIntent
-    data object CancelLeave : TvTogetherIntent
     data object Leave : TvTogetherIntent
     data class Foreground(val value: Boolean) : TvTogetherIntent
 }
@@ -109,7 +106,7 @@ class TvWatchTogetherViewModel(
     val uiState = combine(room, form, sessionStateProvider.stateFlow) { room, form, session ->
         room.copy(
             roomName = if (room.joined) room.roomName else form.roomName, password = form.password,
-            requiresLogin = session !is SessionState.Valid, error = form.error, confirmLeave = form.confirmLeave,
+            requiresLogin = session !is SessionState.Valid, error = form.error,
         )
     }.stateIn(backgroundScope, SharingStarted.Eagerly, TvTogetherState())
 
@@ -145,7 +142,6 @@ class TvWatchTogetherViewModel(
                     is WatchTogetherEffect.RoomEnded -> form.update {
                         it.copy(
                             error = "房间已结束",
-                            confirmLeave = false,
                             password = "",
                         )
                     }
@@ -164,8 +160,6 @@ class TvWatchTogetherViewModel(
             is TvTogetherIntent.RoomName -> form.update { it.copy(roomName = intent.value, error = null) }
             is TvTogetherIntent.Password -> form.update { it.copy(password = intent.value, error = null) }
             is TvTogetherIntent.Foreground -> manager.setAppForeground(intent.value)
-            TvTogetherIntent.AskLeave -> form.update { it.copy(confirmLeave = true) }
-            TvTogetherIntent.CancelLeave -> form.update { it.copy(confirmLeave = false) }
             TvTogetherIntent.ToggleFollowing -> backgroundScope.launch { manager.setFollowing(!uiState.value.following) }
             TvTogetherIntent.CancelJoin -> {
                 val job = joinJob
@@ -175,7 +169,7 @@ class TvWatchTogetherViewModel(
 
             TvTogetherIntent.Leave -> backgroundScope.launch {
                 manager.leave()
-                form.update { it.copy(confirmLeave = false, password = "", error = null) }
+                form.update { it.copy(password = "", error = null) }
             }
 
             TvTogetherIntent.Join -> {

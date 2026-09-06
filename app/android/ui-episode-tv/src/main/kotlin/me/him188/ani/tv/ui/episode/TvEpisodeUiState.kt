@@ -64,7 +64,6 @@ data class TvEpisodeUiState(
     val selectedMedia: Media? = null,
     val overlay: TvPlayerOverlayState = TvPlayerOverlayState(),
     val panel: TvPlayerPanelState = TvPlayerPanelState(),
-    val clockText: String = "",
     val sources: TvSourceSelectionState = TvSourceSelectionState(),
     val options: TvPlayerOptionsState = TvPlayerOptionsState(),
     val danmakuMatch: TvDanmakuMatchState = TvDanmakuMatchState(),
@@ -116,16 +115,16 @@ sealed interface TvEpisodeIntent {
     data class SelectDanmakuSubject(val id: String) : TvEpisodeIntent
     data class SelectDanmakuEpisode(val id: String) : TvEpisodeIntent
     data class SetCollection(val type: UnifiedCollectionType) : TvEpisodeIntent
-    data object ConfirmRemoveCollection : TvEpisodeIntent
     data object MarkAllWatched : TvEpisodeIntent
-    data class EpisodeActions(val episodeId: Int) : TvEpisodeIntent
     data class SetEpisodeWatched(val episodeId: Int, val watched: Boolean) : TvEpisodeIntent
-    data class SetSourceMode(val mode: TvSourceMode) : TvEpisodeIntent
-    data class SelectSourceTab(val instanceId: String) : TvEpisodeIntent
-    data class MoveSource(val direction: Int) : TvEpisodeIntent
-    data object ToggleExcludedSources : TvEpisodeIntent
     data class RetrySources(val instanceId: String? = null) : TvEpisodeIntent
     data object RetryPlayback : TvEpisodeIntent
+}
+
+/** Completed business actions; the UI decides which follow-up prompt to show. */
+sealed interface TvEpisodeEvent {
+    data class CollectionChanged(val type: UnifiedCollectionType) : TvEpisodeEvent
+    data object AllEpisodesWatched : TvEpisodeEvent
 }
 
 sealed interface TvPlayerFocusRequest {

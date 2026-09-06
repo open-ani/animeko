@@ -84,6 +84,8 @@ import kotlin.math.roundToInt
 
 private enum class OptionFieldFocus : TvFocusKey { Name, Password, Submit }
 
+internal enum class TvCollectionPrompt { Remove, MarkAllWatched }
+
 @Composable
 internal fun TvOptionRow(
     title: String,
@@ -276,6 +278,10 @@ internal fun TvInteractivePanel(
     onIntent: (TvEpisodeIntent) -> Boolean,
     onTogetherIntent: (TvTogetherIntent) -> Unit,
     entryModifier: Modifier,
+    collectionPrompt: TvCollectionPrompt?,
+    onCollectionPromptChange: (TvCollectionPrompt?) -> Unit,
+    confirmLeave: Boolean,
+    onConfirmLeaveChange: (Boolean) -> Unit,
     danmakuListModifier: Modifier,
     danmakuMatchModifier: Modifier,
     modifier: Modifier = Modifier,
@@ -301,25 +307,25 @@ internal fun TvInteractivePanel(
             when (panel) {
                 TvPlayerPanel.Collection -> {
                     when {
-                        options.confirmRemoveCollection -> {
+                        collectionPrompt == TvCollectionPrompt.Remove -> {
                             item { Text("确定取消收藏？", color = Color.White, modifier = Modifier.padding(10.dp)) }
                             item {
                                 TvOptionRow(
                                     "取消收藏",
                                     modifier = entryModifier,
-                                ) { onIntent(TvEpisodeIntent.ConfirmRemoveCollection) }
+                                ) { onIntent(TvEpisodeIntent.SetCollection(UnifiedCollectionType.NOT_COLLECTED)) }
                             }
-                            item { TvOptionRow("保留收藏") { onIntent(TvEpisodeIntent.Back) } }
+                            item { TvOptionRow("保留收藏") { onCollectionPromptChange(null) } }
                         }
 
-                        options.offerMarkAllWatched -> {
+                        collectionPrompt == TvCollectionPrompt.MarkAllWatched -> {
                             item {
                                 TvOptionRow(
                                     "将全部剧集标为已看",
                                     modifier = entryModifier,
                                 ) { onIntent(TvEpisodeIntent.MarkAllWatched) }
                             }
-                            item { TvOptionRow("仅修改收藏状态") { onIntent(TvEpisodeIntent.Back) } }
+                            item { TvOptionRow("仅修改收藏状态") { onCollectionPromptChange(null) } }
                         }
 
                         else -> items(UnifiedCollectionType.entries) { type ->
@@ -329,7 +335,13 @@ internal fun TvInteractivePanel(
                                 compact = true,
                                 modifier = if (type == UnifiedCollectionType.entries.first()) entryModifier else Modifier,
                                 selected = type == options.collectionType,
-                            ) { onIntent(TvEpisodeIntent.SetCollection(type)) }
+                            ) {
+                                if (type == UnifiedCollectionType.NOT_COLLECTED) {
+                                    onCollectionPromptChange(TvCollectionPrompt.Remove)
+                                } else {
+                                    onIntent(TvEpisodeIntent.SetCollection(type))
+                                }
+                            }
                         }
                     }
                 }
@@ -401,7 +413,8 @@ internal fun TvInteractivePanel(
                     }
                     items(
                         options.danmakuOrigins.filter { it.canMatch },
-                        key = { "match-${it.serviceId.value}" }) { origin ->
+                        key = { "match-${it.serviceId.value}" }
+                    ) { origin ->
                         TvOptionRow(
                             "重新匹配弹幕",
                             value = origin.name,
@@ -490,14 +503,14 @@ internal fun TvInteractivePanel(
                                 modifier = Modifier.padding(8.dp),
                             )
                         }
-                    } else if (together.confirmLeave) {
+                    } else if (confirmLeave) {
                         item {
                             TvOptionRow(
                                 if (together.isHost) "确定解散房间" else "确定退出房间",
                                 modifier = entryModifier,
                             ) { onTogetherIntent(TvTogetherIntent.Leave) }
                         }
-                        item { TvOptionRow("留在房间") { onTogetherIntent(TvTogetherIntent.CancelLeave) } }
+                        item { TvOptionRow("留在房间") { onConfirmLeaveChange(false) } }
                     } else {
                         item {
                             Text(
@@ -525,7 +538,7 @@ internal fun TvInteractivePanel(
                             TvOptionRow(
                                 if (together.isHost) "解散房间" else "退出房间",
                                 modifier = if (together.isHost) entryModifier else Modifier,
-                            ) { onTogetherIntent(TvTogetherIntent.AskLeave) }
+                            ) { onConfirmLeaveChange(true) }
                         }
                         items(together.members) {
                             TvOptionRow(it, onClick = {})

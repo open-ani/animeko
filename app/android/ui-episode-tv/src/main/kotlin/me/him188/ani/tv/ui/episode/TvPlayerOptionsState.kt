@@ -21,8 +21,6 @@ import me.him188.ani.danmaku.ui.DanmakuConfig
 import me.him188.ani.datasources.api.Media
 import me.him188.ani.datasources.api.topic.UnifiedCollectionType
 
-enum class TvSourceMode { Simple, Detailed }
-
 data class TvSourceItem(val media: Media, val excludedReason: String? = null)
 
 data class TvSourceGroup(
@@ -37,24 +35,10 @@ data class TvSourceGroup(
 )
 
 data class TvSourceSelectionState(
-    val mode: TvSourceMode = TvSourceMode.Simple,
-    val selectedSourceId: String? = null,
-    val showExcluded: Boolean = false,
     val groups: List<TvSourceGroup> = emptyList(),
     val loading: Boolean = true,
     val error: String? = null,
-) {
-    val selectedIndex: Int get() = groups.indexOfFirst { it.instanceId == selectedSourceId }.coerceAtLeast(0)
-    val selectedGroup: TvSourceGroup? get() = groups.getOrNull(selectedIndex)
-}
-
-/** Horizontal navigation changes the mode/source, never an attribute filter. */
-internal fun TvSourceSelectionState.moveHorizontally(direction: Int): TvSourceSelectionState = when {
-    mode == TvSourceMode.Simple && direction > 0 -> copy(mode = TvSourceMode.Detailed)
-    mode == TvSourceMode.Simple -> this
-    direction < 0 && selectedIndex == 0 -> copy(mode = TvSourceMode.Simple)
-    else -> copy(selectedSourceId = groups.getOrNull(selectedIndex + direction)?.instanceId ?: selectedSourceId)
-}
+)
 
 enum class TvPlayerDialog { Speed, Subtitles, EpisodeActions, DanmakuMatch, DanmakuList }
 
@@ -101,9 +85,6 @@ data class TvPlayerOptionsState(
     val chapters: List<TvChapter> = emptyList(),
     val skipPrompt: TvSkipPrompt? = null,
     val message: String? = null,
-    val episodeActionId: Int? = null,
-    val confirmRemoveCollection: Boolean = false,
-    val offerMarkAllWatched: Boolean = false,
 )
 
 data class TvChapter(val name: String, val offsetMillis: Long, val durationMillis: Long)

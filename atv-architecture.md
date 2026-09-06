@@ -398,7 +398,7 @@ TV 不启动 torrent 服务连接，不初始化 Sentry/Firebase。`SubjectDetai
 `tvViewModel { ... }` 构建：一起看 VM 位于
 `NavDisplay` 外，随应用界面保留房间和跟随状态；其余 VM 归属所在导航条目的
 `ViewModelStore`。主壳功能 VM 在页面首次显示时创建并随主条目保留，详情/播放 VM 出栈时销毁。主壳的
-`SavedStateHandle` 来自条目的 `CreationExtras`。当前只注册：
+当前页由 Main 条目内的 `rememberSaveable` 管理，主壳用 `SaveableStateHolder` 保留各功能页的 UI 状态。当前只注册：
 
 | NavRoutes       | TV 落点                                                                                                                 |
 |-----------------|-----------------------------------------------------------------------------------------------------------------------|
@@ -431,7 +431,7 @@ TV 不启动 torrent 服务连接，不初始化 Sentry/Firebase。`SubjectDetai
 |--------------|-----------------------------------------------------------------------------------------------------------------|
 | 探索           | `TvExplorationViewModel` 适配共享探索 VM；媒体缓存和防抖/去重/并发加载在 TV VM 中，向视图暴露只读 `TvSubjectMediaUiState`                     |
 | 时间表          | `TvScheduleViewModel` 适配共享 `ScheduleViewModel`；视图使用可保存的 `LazyListState` 保留横向及列内位置                               |
-| 追番           | `TvCollectionViewModel` 适配共享 VM/状态；分类切换与边界判断走 Intent，分页与各分类滚动状态继续复用                                             |
+| 追番           | `TvCollectionViewModel` 适配共享 VM/状态；分类切换与边界判断走 Intent，分页复用；各分类网格位置由 UI 的 rememberLazyGridState 保存                                             |
 | 详情           | `TvSubjectDetailsViewModel` 复用 `SubjectDetailsStateFactory` / `SubjectDetailsStateLoader`；VM 聚合只读展示状态并决定续播与图片加载 |
 | 登录           | `TvLoginViewModel` 适配共享 `EmailLoginViewModel`；TV 步骤、请求忙碌态、倒计时、错误与导航结果由 VM 管理                                    |
 | 搜索 / 设置 / 播放 | `TvSearchViewModel` / `TvSettingsViewModel` / `TvEpisodeViewModel`                                              |
@@ -521,7 +521,7 @@ TV 不启动 torrent 服务连接，不初始化 Sentry/Firebase。`SubjectDetai
 ### 7.7 登录 `TvLoginScreen`
 
 `TvLoginViewModel` 适配共享
-`EmailLoginViewModel`，视图发送修改邮箱/验证码、发送、提交、重输邮箱 Intent。请求在 VM 作用域执行；同步获取请求互斥锁，避免遥控器/IME 重复提交；取消不转为业务错误。步骤、忙碌态、倒计时和错误由 VM 下发。成功发出一次性导航事件，主壳通过 Intent 回探索；
+`EmailLoginViewModel`，视图发送修改邮箱/验证码、发送、提交、重输邮箱 Intent。请求在 VM 作用域执行；同步获取请求互斥锁，避免遥控器/IME 重复提交；取消不转为业务错误。步骤、忙碌态、倒计时和错误由 VM 下发。成功发出一次性导航事件，主壳在 UI 中切回探索；
 `TvMainViewModel` 订阅登录态更新头像/昵称。
 
 登录步切换当前直接 `focus.request(Field)`，并非所有页面都只通过
@@ -571,7 +571,7 @@ TV 不启动 torrent 服务连接，不初始化 Sentry/Firebase。`SubjectDetai
 | 自动隐藏            | 播放且没有预览、面板、选源或弹窗时，5 秒后隐藏                                                |
 | 返回顺序            | 优先取消正在提示的自动跳过；其后弹窗/选源 → 面板 → 预览 → 选集条 → 控制层 → 退出。一起看加入中先取消请求，退出确认中先取消退出 |
 
-按键只转成 Intent；VM/reducer 决定行为并下发焦点事件。UI 等覆盖层、列表和锚点附着后送焦，不使用延时或轮询补焦。文本框的上下导航显式链接到相邻输入框与提交按钮。
+播放控制按键转成 Intent，由 VM/reducer 决定播放行为并下发焦点事件；选源模式、浏览 tab、排除项显示和确认提示在 UI 内处理。UI 等覆盖层、列表和锚点附着后送焦，不使用延时或轮询补焦。文本框的上下导航显式链接到相邻输入框与提交按钮。
 
 ### 8.3 组件状态
 
@@ -894,8 +894,12 @@ M0 是骨架前置，后续里程碑已有并行实现，**并非 M1–M4 全部
    ** 构建调用保留在对应导航条目中，由 Navigation 3 管理生命周期。`MainActivity` 在进入组合前取得
    `TvAppDependencies` 和图片客户端；根内容仅将依赖传入 VM 构造函数。
    `Tv*Route` 接收 VM，只收集只读状态、转发 Intent 和执行一次性导航/平台渲染。
-4. 焦点锚点、滚动几何、动画等纯 UI 状态留在 View；焦点变化若要加载业务数据，发送 Intent。VM 不持有
-   `FocusRequester`，播放器只下发抽象焦点事件。
+4. **纯 UI 状态由 View 持有，不为统一 MVI 而塞入 VM 的 UiState**。只改变展示的操作使用本地回调，
+   不增加仅执行 `copy` 的 Intent；需要恢复时使用 `rememberSaveable`/`SaveableStateHolder`。
+   当前包括选源模式、浏览的数据源 tab、显示排除项、主壳当前页、各收藏分类的网格位置、剧集操作目标、
+   收藏确认/后续提示、一起看退出确认与播放器时钟。选源数据加载/选择播放、收藏提交等业务操作仍经 Intent 交给 VM；
+   收藏提交成功后 VM 发结果事件，UI 决定后续提示。焦点、滚动几何、动画仍在 View，VM 不持有 `FocusRequester`。
+   登录/搜索/弹幕匹配的表单与请求状态、持久化设置，以及参与帧预览请求、自动跳过和长按倍速的播放交互状态留在 VM。
 5. 复用共享 VM 的 TV 适配器沿用同一作用域/生命周期，不在 Composable 中调用共享状态的业务变更方法，也不创建不受管理的嵌套 VM。
 
 ### 14.4 焦点工程规范

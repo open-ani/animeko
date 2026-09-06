@@ -90,11 +90,13 @@ private object TvSourceDialogDefaults {
 @OptIn(ExperimentalComposeUiApi::class)
 internal fun TvPlayerSourceDialog(
     state: TvSourceSelectionState,
+    dialogState: TvSourceDialogState,
     selected: Media?,
     containerModifier: Modifier,
     entryAnchorModifier: Modifier,
     onIntent: (TvEpisodeIntent) -> Boolean,
 ) {
+    val selectedGroup = dialogState.selectedGroup(state.groups)
     val resultsState = rememberLazyListState()
     val tabsState = rememberLazyListState()
     val resultFocus = rememberTvFocusScope()
@@ -105,7 +107,7 @@ internal fun TvPlayerSourceDialog(
         if (event.key != Key.DirectionRight) return@onPreviewKeyEvent false
         if (event.type == KeyEventType.KeyDown) {
             restoreResultFocus = !resultFocus.isFocused(SourceFocus.FirstResult)
-            onIntent(TvEpisodeIntent.MoveSource(1))
+            dialogState.moveHorizontally(1, state.groups)
         }
         true
     }
@@ -113,28 +115,28 @@ internal fun TvPlayerSourceDialog(
         if (event.key != Key.DirectionLeft && event.key != Key.DirectionRight) return@onPreviewKeyEvent false
         if (event.type == KeyEventType.KeyDown) {
             restoreResultFocus = !resultFocus.isFocused(SourceFocus.FirstResult)
-            onIntent(TvEpisodeIntent.MoveSource(if (event.key == Key.DirectionRight) 1 else -1))
+            dialogState.moveHorizontally(if (event.key == Key.DirectionRight) 1 else -1, state.groups)
         }
         true
     }
-    LaunchedEffect(state.mode, state.selectedSourceId, state.showExcluded, restoreResultFocus) {
+    LaunchedEffect(dialogState.mode, dialogState.selectedSourceId, dialogState.showExcluded, restoreResultFocus) {
         if (restoreResultFocus) {
             resultsState.scrollToItem(0)
             resultFocus.request(SourceFocus.FirstResult)
         }
     }
-    LaunchedEffect(state.mode, state.selectedGroup?.instanceId) {
-        if (state.mode == TvSourceMode.Detailed) {
-            val index = state.groups.indexOfFirst { it.instanceId == state.selectedGroup?.instanceId }
+    LaunchedEffect(dialogState.mode, selectedGroup?.instanceId) {
+        if (dialogState.mode == TvSourceMode.Detailed) {
+            val index = state.groups.indexOfFirst { it.instanceId == selectedGroup?.instanceId }
             if (index >= 0 && tabsState.layoutInfo.visibleItemsInfo.none { it.index == index }) {
                 tabsState.scrollToItem(index)
             }
         }
     }
-    val groups = if (state.mode == TvSourceMode.Simple) {
+    val groups = if (dialogState.mode == TvSourceMode.Simple) {
         state.groups.filter { group -> group.items.any { it.excludedReason == null } }
     } else {
-        listOfNotNull(state.selectedGroup)
+        listOfNotNull(selectedGroup)
     }
     Box(
         Modifier
@@ -171,31 +173,31 @@ internal fun TvPlayerSourceDialog(
                 ) {
                     TvSourceTab(
                         "简单模式",
-                        state.mode == TvSourceMode.Simple,
+                        dialogState.mode == TvSourceMode.Simple,
                         Modifier
-                            .then(if (state.mode == TvSourceMode.Simple) entryAnchorModifier else Modifier)
+                            .then(if (dialogState.mode == TvSourceMode.Simple) entryAnchorModifier else Modifier)
                             .onFocusChanged {
                                 if (it.isFocused && !restoreResultFocus) {
-                                    onIntent(TvEpisodeIntent.SetSourceMode(TvSourceMode.Simple))
+                                    dialogState.mode = TvSourceMode.Simple
                                 }
                             }
                             .testTag("tv-source-simple"),
-                    ) { onIntent(TvEpisodeIntent.SetSourceMode(TvSourceMode.Simple)) }
+                    ) { dialogState.mode = TvSourceMode.Simple }
                     TvSourceTab(
                         "详细模式",
-                        state.mode == TvSourceMode.Detailed,
+                        dialogState.mode == TvSourceMode.Detailed,
                         Modifier
-                            .then(if (state.mode == TvSourceMode.Detailed) entryAnchorModifier else Modifier)
+                            .then(if (dialogState.mode == TvSourceMode.Detailed) entryAnchorModifier else Modifier)
                             .onFocusChanged {
                                 if (it.isFocused && !restoreResultFocus) {
-                                    onIntent(TvEpisodeIntent.SetSourceMode(TvSourceMode.Detailed))
+                                    dialogState.mode = TvSourceMode.Detailed
                                 }
                             }
                             .testTag("tv-source-detailed"),
-                    ) { onIntent(TvEpisodeIntent.SetSourceMode(TvSourceMode.Detailed)) }
+                    ) { dialogState.mode = TvSourceMode.Detailed }
                 }
             }
-            if (state.mode == TvSourceMode.Detailed) {
+            if (dialogState.mode == TvSourceMode.Detailed) {
                 TvPlayerDivider()
                 LazyRow(
                     state = tabsState,
@@ -207,14 +209,12 @@ internal fun TvPlayerSourceDialog(
                         val dimmed = !group.loading &&
                                 (group.failed || group.items.none { it.excludedReason == null })
                         TvSourceTab(
-                            group.name, state.selectedGroup?.instanceId == group.instanceId,
+                            group.name, selectedGroup?.instanceId == group.instanceId,
                             Modifier
                                 .onFocusChanged {
-                                    if (it.isFocused && !restoreResultFocus) onIntent(
-                                        TvEpisodeIntent.SelectSourceTab(
-                                            group.instanceId
-                                        )
-                                    )
+                                    if (it.isFocused && !restoreResultFocus) {
+                                        dialogState.selectedSourceId = group.instanceId
+                                    }
                                 }
                                 .semantics { stateDescription = group.status },
                             underline = true,
@@ -227,16 +227,16 @@ internal fun TvPlayerSourceDialog(
                                 )
                             },
                         ) {
-                            onIntent(TvEpisodeIntent.SelectSourceTab(group.instanceId))
+                            dialogState.selectedSourceId = group.instanceId
                         }
                     }
                 }
                 TvOptionRow(
                     "显示排除的源",
-                    checked = state.showExcluded,
+                    checked = dialogState.showExcluded,
                     modifier = Modifier.testTag("tv-source-excluded"),
                 ) {
-                    onIntent(TvEpisodeIntent.ToggleExcludedSources)
+                    dialogState.showExcluded = !dialogState.showExcluded
                 }
             }
             TvPlayerDivider()
@@ -245,7 +245,7 @@ internal fun TvPlayerSourceDialog(
                 modifier = Modifier
                     .weight(1f)
                     .fillMaxWidth()
-                    .then(if (state.mode == TvSourceMode.Detailed) resultKeys else Modifier)
+                    .then(if (dialogState.mode == TvSourceMode.Detailed) resultKeys else Modifier)
                     .testTag("tv-source-results"),
                 verticalArrangement = Arrangement.spacedBy(10.dp),
                 contentPadding = PaddingValues(4.dp),
@@ -254,8 +254,8 @@ internal fun TvPlayerSourceDialog(
                 item(key = "retry") {
                     val status = when {
                         state.loading -> "查询中…"
-                        state.mode == TvSourceMode.Simple -> "${groups.size} 个数据源"
-                        else -> state.selectedGroup?.status.orEmpty()
+                        dialogState.mode == TvSourceMode.Simple -> "${groups.size} 个数据源"
+                        else -> selectedGroup?.status.orEmpty()
                     }
                     TvOptionRow(
                         title = status,
@@ -265,7 +265,7 @@ internal fun TvPlayerSourceDialog(
                             .onFocusChanged { if (it.isFocused) restoreResultFocus = false }
                             .tvFocusAnchor(resultFocus, SourceFocus.FirstResult),
                     ) {
-                        onIntent(TvEpisodeIntent.RetrySources(if (state.mode == TvSourceMode.Detailed) state.selectedGroup?.instanceId else null))
+                        onIntent(TvEpisodeIntent.RetrySources(if (dialogState.mode == TvSourceMode.Detailed) selectedGroup?.instanceId else null))
                     }
                 }
                 if (groups.isEmpty()) item {
@@ -280,7 +280,7 @@ internal fun TvPlayerSourceDialog(
                     )
                 }
                 groups.forEach { group ->
-                    if (state.mode == TvSourceMode.Simple) item(key = "header-${group.instanceId}") {
+                    if (dialogState.mode == TvSourceMode.Simple) item(key = "header-${group.instanceId}") {
                         Row(
                             Modifier
                                 .fillMaxWidth()
@@ -314,7 +314,7 @@ internal fun TvPlayerSourceDialog(
                         }
                     }
                     val results =
-                        group.items.filter { state.mode == TvSourceMode.Detailed && state.showExcluded || it.excludedReason == null }
+                        group.items.filter { dialogState.mode == TvSourceMode.Detailed && dialogState.showExcluded || it.excludedReason == null }
                     if (results.isEmpty()) item(key = "empty-${group.instanceId}") {
                         TvOptionRow(
                             if (group.items.isNotEmpty()) "结果已被排除" else group.status,
@@ -323,7 +323,7 @@ internal fun TvPlayerSourceDialog(
                             onIntent(TvEpisodeIntent.RetrySources(group.instanceId))
                         }
                     }
-                    if (state.mode == TvSourceMode.Simple && results.isNotEmpty()) {
+                    if (dialogState.mode == TvSourceMode.Simple && results.isNotEmpty()) {
                         item(key = "channels-${group.instanceId}") {
                             TvSourceChannelRow(
                                 results,

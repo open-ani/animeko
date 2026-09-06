@@ -9,7 +9,6 @@
 
 package me.him188.ani.tv.ui.collection
 
-import androidx.compose.foundation.lazy.grid.LazyGridState
 import androidx.paging.compose.LazyPagingItems
 import me.him188.ani.app.data.models.subject.SubjectCollectionCounts
 import me.him188.ani.app.data.models.subject.SubjectCollectionInfo
@@ -18,7 +17,6 @@ data class TvCollectionUiState(
     val selectedTabIndex: Int,
     val counts: SubjectCollectionCounts?,
     val items: LazyPagingItems<SubjectCollectionInfo>,
-    val gridState: LazyGridState,
     val hasPreviousTab: Boolean,
     val hasNextTab: Boolean,
 )

@@ -24,6 +24,7 @@ import kotlinx.coroutines.CoroutineName
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.NonCancellable
+import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -44,6 +45,7 @@ import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.mapNotNull
 import kotlinx.coroutines.flow.onStart
+import kotlinx.coroutines.flow.receiveAsFlow
 import kotlinx.coroutines.flow.shareIn
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.transformLatest
@@ -117,9 +119,6 @@ import org.openani.mediamp.features.chapters
 import org.openani.mediamp.features.subtitleTracks
 import org.openani.mediamp.isPlaying
 import org.openani.mediamp.togglePause
-import java.text.SimpleDateFormat
-import java.util.Date
-import java.util.Locale
 
 /**
  * TV 播放页薄 VM (atv-architecture.md §8.1): 与手机共用同一套播放编排 (app-data domain),
@@ -153,6 +152,8 @@ class TvEpisodeViewModel(
     private val danmakuMatch = MutableStateFlow(TvDanmakuMatchState())
     private var matchingJob: Job? = null
     private val sourceSelection = MutableStateFlow(TvSourceSelectionState())
+    private val events = Channel<TvEpisodeEvent>(Channel.BUFFERED)
+    val actionEvents = events.receiveAsFlow()
     private val episodeStills = MutableStateFlow<Map<Int, String>>(emptyMap())
     private val playbackSpeedOverride = MutableStateFlow<Float?>(null)
     private val playbackSpeedFlow: Flow<Float> =
@@ -475,13 +476,6 @@ class TvEpisodeViewModel(
             }
         }.stateIn(backgroundScope, SharingStarted.WhileSubscribed(5_000), 0L)
 
-    private val clockFlow = flow {
-        val format = SimpleDateFormat("HH:mm", Locale.getDefault())
-        while (true) {
-            emit(format.format(Date()))
-            delay(30_000)
-        }
-    }
     private val panelState =
         interaction.states.map { it.activePanel to it.dialog }.distinctUntilChanged().flatMapLatest { (panel, dialog) ->
             when {
@@ -523,7 +517,6 @@ class TvEpisodeViewModel(
     }.combine(interaction.states) { state, overlay -> state.copy(overlay = overlay) }
         .combine(panelState) { state, panel -> state.copy(panel = panel) }
         .combine(positionFlow) { state, position -> state.copy(positionMillis = position) }
-        .combine(clockFlow) { state, clock -> state.copy(clockText = clock) }
         .combine(sourceSelection) { state, sources -> state.copy(sources = sources) }
         .combine(playerOptions) { state, options -> state.copy(options = options) }
         .combine(danmakuMatch) { state, matching -> state.copy(danmakuMatch = matching) }
@@ -567,8 +560,6 @@ class TvEpisodeViewModel(
                             error = null,
                         )
                     }
-                } else if (playerOptions.value.confirmRemoveCollection || playerOptions.value.offerMarkAllWatched) {
-                    playerOptions.update { it.copy(confirmRemoveCollection = false, offerMarkAllWatched = false) }
                 } else {
                     matchingJob?.cancel()
                     return interaction.onIntent(intent)
@@ -684,24 +675,10 @@ class TvEpisodeViewModel(
                     )
                 }
 
-            is TvEpisodeIntent.SetCollection -> {
-                if (intent.type == UnifiedCollectionType.NOT_COLLECTED) playerOptions.update {
-                    it.copy(
-                        confirmRemoveCollection = true,
-                    )
-                }
-                else setCollection(intent.type)
-            }
-
-            TvEpisodeIntent.ConfirmRemoveCollection -> setCollection(UnifiedCollectionType.NOT_COLLECTED)
+            is TvEpisodeIntent.SetCollection -> setCollection(intent.type)
             TvEpisodeIntent.MarkAllWatched -> runAction {
                 episodeCollectionRepository.setAllEpisodesWatched(subjectId)
-                playerOptions.update { it.copy(offerMarkAllWatched = false) }
-            }
-
-            is TvEpisodeIntent.EpisodeActions -> {
-                playerOptions.update { it.copy(episodeActionId = intent.episodeId) }
-                interaction.onIntent(TvEpisodeIntent.OpenDialog(TvPlayerDialog.EpisodeActions))
+                events.send(TvEpisodeEvent.AllEpisodesWatched)
             }
 
             is TvEpisodeIntent.SetEpisodeWatched -> runAction {
@@ -713,10 +690,6 @@ class TvEpisodeViewModel(
                 interaction.closeDialog()
             }
 
-            is TvEpisodeIntent.SetSourceMode -> sourceSelection.update { it.copy(mode = intent.mode) }
-            is TvEpisodeIntent.SelectSourceTab -> sourceSelection.update { it.copy(selectedSourceId = intent.instanceId) }
-            is TvEpisodeIntent.MoveSource -> sourceSelection.update { it.moveHorizontally(intent.direction) }
-            TvEpisodeIntent.ToggleExcludedSources -> sourceSelection.update { it.copy(showExcluded = !it.showExcluded) }
             is TvEpisodeIntent.RetrySources -> retrySources(intent.instanceId)
             TvEpisodeIntent.RetryPlayback -> retryPlayback()
             is TvEpisodeIntent.OpenSubject -> navigation.emit(TvNavigationEvent.Subject(intent.subjectId))
@@ -769,13 +742,8 @@ class TvEpisodeViewModel(
                     subjectId,
                     type.takeUnless { it == UnifiedCollectionType.NOT_COLLECTED },
                 )
-                playerOptions.update {
-                    it.copy(
-                        collectionType = type,
-                        confirmRemoveCollection = false,
-                        offerMarkAllWatched = type == UnifiedCollectionType.DONE,
-                    )
-                }
+                playerOptions.update { it.copy(collectionType = type) }
+                events.send(TvEpisodeEvent.CollectionChanged(type))
             } finally {
                 playerOptions.update { it.copy(collectionBusy = false) }
             }
@@ -957,15 +925,7 @@ class TvEpisodeViewModel(
                         error = error?.let { "剧集信息加载失败，请重新查询" },
                     )
                 }
-            }.collect { source ->
-                sourceSelection.update {
-                    it.copy(
-                        groups = source.groups,
-                        loading = source.loading,
-                        error = source.error,
-                    )
-                }
-            }
+            }.collect { source -> sourceSelection.value = source }
         }
         backgroundScope.launch(Dispatchers.Main) {
             player.subtitleTracks?.let { tracks ->

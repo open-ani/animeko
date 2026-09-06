@@ -31,6 +31,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberUpdatedState
+import androidx.compose.runtime.saveable.rememberSaveableStateHolder
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
@@ -54,6 +55,8 @@ import me.him188.ani.tv.ui.foundation.widgets.TvNavigationRailDefaults
 import me.him188.ani.tv.ui.foundation.widgets.TvNavigationSideRail
 import me.him188.ani.tv.ui.foundation.widgets.tvShellBackgroundColor
 
+enum class TvShellContent { Search, Exploration, Schedule, Collection, Login, Settings }
+
 /** 主壳焦点锚点 (统一焦点框架, 见 ui-foundation-tv/focus). */
 private enum class TvShellFocus : TvFocusKey {
     /** 侧边栏进入落点 ("探索"条目); 菜单键从任意位置直达. */
@@ -69,15 +72,16 @@ private enum class TvShellFocus : TvFocusKey {
 @Composable
 fun TvMainShell(
     uiState: TvMainUiState,
-    onIntent: (TvMainIntent) -> Unit,
+    content: TvShellContent,
+    onContentChange: (TvShellContent) -> Unit,
     modifier: Modifier = Modifier,
     /** 焦点记忆; 调用方在 NavHost 之上创建传入使其跨 route 存活 (进详情页返回恢复焦点用). */
     focusMemory: TvFocusMemory? = null,
     pageContent: @Composable (TvShellContent) -> Unit,
 ) {
-    val content = uiState.content
     val selfInfo = uiState.selfInfo
     val currentContent by rememberUpdatedState(content)
+    val pageStates = rememberSaveableStateHolder()
 
     // 触屏设备上跑 TV 界面时强制键盘输入模式: touch mode 下 clickable 节点不参与
     // 键盘焦点 (requestFocus 恒 false), 遥控器/dpad 导航整个失效. 真 TV 永远非 touch mode.
@@ -88,7 +92,7 @@ fun TvMainShell(
 
     // 返回语义: 非探索内容先回探索; 探索交给系统 (退出应用)
     BackHandler(enabled = content != TvShellContent.Exploration) {
-        onIntent(TvMainIntent.Back)
+        onContentChange(TvShellContent.Exploration)
     }
 
     // 菜单键在"内容区 <-> 侧边栏"间往返: 焦点在内容时直达侧边栏 (落当前页条目, rail 随
@@ -144,7 +148,7 @@ fun TvMainShell(
                     transitionSpec = { fadeIn() togetherWith fadeOut() },
                     label = "tvShellContent",
                 ) { current ->
-                    pageContent(current)
+                    pageStates.SaveableStateProvider(current) { pageContent(current) }
                 }
             }
         }
@@ -152,29 +156,29 @@ fun TvMainShell(
         // 侧边栏浮于内容之上 (展开时渐变面板压住内容左缘)
         TvNavigationSideRail(
             selfInfo = selfInfo,
-            onAvatarClick = { onIntent(TvMainIntent.SelectContent(TvShellContent.Login)) },
+            onAvatarClick = { onContentChange(TvShellContent.Login) },
             // selected = 当前页条目: 进入侧边栏 (按左/菜单键) 焦点落到它上, 而不是固定落"探索"
             items = listOf(
                 TvNavRailItem(
                     Icons.Rounded.Search, "搜索",
                     selected = content == TvShellContent.Search,
-                ) { onIntent(TvMainIntent.SelectContent(TvShellContent.Search)) },
+                ) { onContentChange(TvShellContent.Search) },
                 TvNavRailItem(
                     Icons.Rounded.TravelExplore, "探索", defaultFocus = true,
                     selected = content == TvShellContent.Exploration,
-                ) { onIntent(TvMainIntent.SelectContent(TvShellContent.Exploration)) },
+                ) { onContentChange(TvShellContent.Exploration) },
                 TvNavRailItem(
                     Icons.Rounded.CalendarMonth, "时间表",
                     selected = content == TvShellContent.Schedule,
-                ) { onIntent(TvMainIntent.SelectContent(TvShellContent.Schedule)) },
+                ) { onContentChange(TvShellContent.Schedule) },
                 TvNavRailItem(
                     Icons.Rounded.Star, "追番",
                     selected = content == TvShellContent.Collection,
-                ) { onIntent(TvMainIntent.SelectContent(TvShellContent.Collection)) },
+                ) { onContentChange(TvShellContent.Collection) },
                 TvNavRailItem(
                     Icons.Rounded.Settings, "设置",
                     selected = content == TvShellContent.Settings,
-                ) { onIntent(TvMainIntent.SelectContent(TvShellContent.Settings)) },
+                ) { onContentChange(TvShellContent.Settings) },
             ),
             // Rail 锚点挂容器而非条目: requestFocus 经进入门控落到当前页条目, 而
             // hasFocus 对整个子树上报到位 —— 否则 request(Rail) 的解析轮询永远等不到

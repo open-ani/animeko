@@ -9,23 +9,14 @@
 
 package me.him188.ani.tv.ui.main
 
-import androidx.lifecycle.SavedStateHandle
 import kotlinx.coroutines.flow.SharingStarted
-import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.onStart
 import kotlinx.coroutines.flow.stateIn
 import me.him188.ani.app.data.repository.user.UserRepository
 import me.him188.ani.app.ui.foundation.AbstractViewModel
 
-class TvMainViewModel(repository: UserRepository, private val savedState: SavedStateHandle) : AbstractViewModel() {
-    private val content = savedState.getStateFlow("content", TvShellContent.Exploration)
-    val uiState = combine(content, repository.selfInfoFlow.onStart { emit(null) }) { content, selfInfo -> TvMainUiState(content, selfInfo) }
-        .stateIn(backgroundScope, SharingStarted.WhileSubscribed(5_000), TvMainUiState(content.value))
-
-    fun onIntent(intent: TvMainIntent) {
-        savedState["content"] = when (intent) {
-            is TvMainIntent.SelectContent -> intent.content
-            TvMainIntent.Back, TvMainIntent.LoggedIn -> TvShellContent.Exploration
-        }
-    }
+class TvMainViewModel(repository: UserRepository) : AbstractViewModel() {
+    val uiState = repository.selfInfoFlow.onStart { emit(null) }.map { TvMainUiState(it) }
+        .stateIn(backgroundScope, SharingStarted.WhileSubscribed(5_000), TvMainUiState())
 }

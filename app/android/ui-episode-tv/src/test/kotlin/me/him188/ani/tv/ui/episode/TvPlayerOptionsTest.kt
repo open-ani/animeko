@@ -9,6 +9,7 @@
 
 package me.him188.ani.tv.ui.episode
 
+import androidx.compose.runtime.saveable.SaverScope
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertNull
@@ -21,25 +22,50 @@ class TvPlayerOptionsTest {
 
     @Test
     fun `source navigation follows mode then source hierarchy`() {
-        var state = TvSourceSelectionState(groups = sources)
-        state = state.moveHorizontally(-1)
+        val state = TvSourceDialogState()
+        state.moveHorizontally(-1, sources)
         assertEquals(TvSourceMode.Simple, state.mode)
-        state = state.moveHorizontally(1)
+        state.moveHorizontally(1, sources)
         assertEquals(TvSourceMode.Detailed, state.mode)
-        assertEquals("one", state.selectedGroup?.instanceId)
-        state = state.moveHorizontally(1)
-        assertEquals("two", state.selectedGroup?.instanceId)
-        state = state.moveHorizontally(1).moveHorizontally(1)
-        assertEquals("three", state.selectedGroup?.instanceId)
-        state = state.moveHorizontally(-1).moveHorizontally(-1).moveHorizontally(-1)
+        assertEquals("one", state.selectedGroup(sources)?.instanceId)
+        state.moveHorizontally(1, sources)
+        assertEquals("two", state.selectedGroup(sources)?.instanceId)
+        repeat(2) { state.moveHorizontally(1, sources) }
+        assertEquals("three", state.selectedGroup(sources)?.instanceId)
+        repeat(3) { state.moveHorizontally(-1, sources) }
         assertEquals(TvSourceMode.Simple, state.mode)
     }
 
     @Test
     fun `empty source list still supports both modes`() {
-        val state = TvSourceSelectionState().moveHorizontally(1)
+        val state = TvSourceDialogState()
+        state.moveHorizontally(1, emptyList())
         assertEquals(TvSourceMode.Detailed, state.mode)
-        assertEquals(TvSourceMode.Simple, state.moveHorizontally(-1).mode)
+        state.moveHorizontally(-1, emptyList())
+        assertEquals(TvSourceMode.Simple, state.mode)
+    }
+
+    @Test
+    fun `source browsing survives result refresh and reordering`() {
+        val state = TvSourceDialogState(TvSourceMode.Detailed, "two", showExcluded = true)
+        assertNull(state.selectedGroup(emptyList()))
+        assertEquals("two", state.selectedGroup(sources.reversed())?.instanceId)
+        assertEquals("one", state.selectedGroup(sources.take(1))?.instanceId)
+        assertEquals(TvSourceMode.Detailed, state.mode)
+        assertTrue(state.showExcluded)
+    }
+
+    @Test
+    fun `source browsing choices are saveable without results`() {
+        val state = TvSourceDialogState(TvSourceMode.Detailed, "two", showExcluded = true)
+        val scope = object : SaverScope {
+            override fun canBeSaved(value: Any): Boolean = true
+        }
+        val saved = with(TvSourceDialogState.Saver) { scope.save(state) }
+        val restored = requireNotNull(TvSourceDialogState.Saver.restore(requireNotNull(saved)))
+        assertEquals(TvSourceMode.Detailed, restored.mode)
+        assertEquals("two", restored.selectedGroup(sources)?.instanceId)
+        assertTrue(restored.showExcluded)
     }
 
     @Test

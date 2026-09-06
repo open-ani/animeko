@@ -42,6 +42,7 @@ import androidx.compose.material.icons.rounded.ViewModule
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.produceState
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
@@ -65,7 +66,11 @@ import androidx.tv.material3.Icon
 import androidx.tv.material3.MaterialTheme
 import androidx.tv.material3.Surface
 import androidx.tv.material3.Text
+import kotlinx.coroutines.delay
 import me.him188.ani.tv.ui.foundation.widgets.TvSeekBar
+import java.text.SimpleDateFormat
+import java.util.Date
+import java.util.Locale
 
 /**
  * 播放器控制层样式 (atv-architecture.md §8.3 / 附录 A):
@@ -91,6 +96,23 @@ internal object TvPlayerControlsDefaults {
     val SecondaryContent: Color = Color.White.copy(alpha = 0.72f)
 }
 
+@Composable
+private fun TvPlayerClock(modifier: Modifier = Modifier) {
+    val text by produceState("") {
+        val format = SimpleDateFormat("HH:mm", Locale.getDefault())
+        while (true) {
+            value = format.format(Date())
+            delay(30_000)
+        }
+    }
+    Text(
+        text,
+        modifier,
+        style = MaterialTheme.typography.titleMedium,
+        color = TvPlayerControlsDefaults.SecondaryContent,
+    )
+}
+
 /**
  * 播放器控制层 (atv-architecture.md §8.3):
  * 顶部 [标题两行 + 时钟] -> 底部 [选集条/面板/预览 -> 胶囊行 -> 进度条行 -> 图标行].
@@ -101,7 +123,6 @@ internal object TvPlayerControlsDefaults {
 @Composable
 internal fun TvPlayerControlsOverlay(
     title: TvEpisodeTitle,
-    clockText: String,
     sourceIconUrl: String?,
     positionMillis: Long,
     durationMillis: Long,
@@ -181,12 +202,7 @@ internal fun TvPlayerControlsOverlay(
                     overflow = TextOverflow.Ellipsis,
                 )
             }
-            Text(
-                clockText,
-                Modifier.padding(start = 24.dp, top = 4.dp),
-                style = MaterialTheme.typography.titleMedium,
-                color = TvPlayerControlsDefaults.SecondaryContent,
-            )
+            TvPlayerClock(Modifier.padding(start = 24.dp, top = 4.dp))
         }
 
         Column(

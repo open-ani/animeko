@@ -14,13 +14,16 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.compose.LocalLifecycleOwner
-import androidx.lifecycle.createSavedStateHandle
 import androidx.lifecycle.viewmodel.navigation3.rememberViewModelStoreNavEntryDecorator
 import androidx.navigation3.runtime.entryProvider
 import androidx.navigation3.runtime.rememberSaveableStateHolderNavEntryDecorator
@@ -120,10 +123,16 @@ fun TvAniAppContent(
                 ),
                 entryProvider = entryProvider {
                     entry<NavRoutes.Main> {
+                        var shellContent by rememberSaveable { mutableStateOf(TvShellContent.Exploration) }
                         val mainViewModel = tvViewModel {
-                            TvMainViewModel(dependencies.userRepository, createSavedStateHandle())
+                            TvMainViewModel(dependencies.userRepository)
                         }
-                        TvMainRoute(mainViewModel, focusMemory = shellFocusMemory) { content ->
+                        TvMainRoute(
+                            mainViewModel,
+                            content = shellContent,
+                            onContentChange = { shellContent = it },
+                            focusMemory = shellFocusMemory,
+                        ) { content ->
                             when (content) {
                                 TvShellContent.Exploration -> {
                                     val viewModel = tvViewModel {
@@ -159,7 +168,7 @@ fun TvAniAppContent(
                                         viewModel,
                                         onNavigate = { event ->
                                             when (event) {
-                                                TvNavigationEvent.LoggedIn -> mainViewModel.onIntent(TvMainIntent.LoggedIn)
+                                                TvNavigationEvent.LoggedIn -> shellContent = TvShellContent.Exploration
                                                 else -> onNavigate(event)
                                             }
                                         },

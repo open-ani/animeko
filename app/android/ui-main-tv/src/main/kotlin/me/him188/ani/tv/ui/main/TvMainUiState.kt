@@ -11,12 +11,4 @@ package me.him188.ani.tv.ui.main
 
 import me.him188.ani.app.data.models.user.SelfInfo
 
-enum class TvShellContent { Search, Exploration, Schedule, Collection, Login, Settings }
-
-data class TvMainUiState(val content: TvShellContent = TvShellContent.Exploration, val selfInfo: SelfInfo? = null)
-
-sealed interface TvMainIntent {
-    data class SelectContent(val content: TvShellContent) : TvMainIntent
-    data object Back : TvMainIntent
-    data object LoggedIn : TvMainIntent
-}
+data class TvMainUiState(val selfInfo: SelfInfo? = null)

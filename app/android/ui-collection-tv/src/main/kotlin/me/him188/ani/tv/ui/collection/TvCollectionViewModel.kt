@@ -34,7 +34,6 @@ class TvCollectionViewModel(koin: Koin) : UserCollectionsViewModel(koin) {
         selectedTabIndex = index,
         counts = state.collectionCounts,
         items = state.getCollectionLazyPagingItems(index),
-        gridState = state.getGridState(index),
         hasPreviousTab = index > 0,
         hasNextTab = index < COLLECTION_TABS_SORTED.lastIndex,
     )
@@ -45,10 +44,17 @@ class TvCollectionViewModel(koin: Koin) : UserCollectionsViewModel(koin) {
             is TvCollectionIntent.SwitchTab -> selectTab(state.selectedTypeIndex + intent.direction)
             is TvCollectionIntent.OpenSubject -> {
                 val info = intent.subject.subjectInfo
-                navigation.emit(TvNavigationEvent.Subject(
-                    info.subjectId,
-                    SubjectDetailPlaceholder(id = info.subjectId, name = info.name, coverUrl = info.imageLarge, nameCN = info.nameCn),
-                ))
+                navigation.emit(
+                    TvNavigationEvent.Subject(
+                        info.subjectId,
+                        SubjectDetailPlaceholder(
+                            id = info.subjectId,
+                            name = info.name,
+                            coverUrl = info.imageLarge,
+                            nameCN = info.nameCn
+                        ),
+                    )
+                )
             }
         }
     }

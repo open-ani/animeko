@@ -18,10 +18,12 @@ import me.him188.ani.tv.ui.foundation.focus.TvFocusMemory
 @Composable
 fun TvMainRoute(
     viewModel: TvMainViewModel,
+    content: TvShellContent,
+    onContentChange: (TvShellContent) -> Unit,
     modifier: Modifier = Modifier,
     focusMemory: TvFocusMemory? = null,
     pageContent: @Composable (TvShellContent) -> Unit,
 ) {
     val state by viewModel.uiState.collectAsState()
-    TvMainShell(state, viewModel::onIntent, modifier, focusMemory, pageContent)
+    TvMainShell(state, content, onContentChange, modifier, focusMemory, pageContent)
 }
