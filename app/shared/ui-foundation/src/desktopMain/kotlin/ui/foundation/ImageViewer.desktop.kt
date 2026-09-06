@@ -39,12 +39,15 @@ import androidx.compose.ui.input.pointer.PointerEventType
 import androidx.compose.ui.input.pointer.SuspendingPointerInputModifierNode
 import androidx.compose.ui.input.pointer.isCtrlPressed
 import androidx.compose.ui.input.pointer.isMetaPressed
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.node.DelegatingNode
 import androidx.compose.ui.node.ModifierNodeElement
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.unit.DpSize
 import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.height
+import androidx.compose.ui.unit.width
 import androidx.compose.ui.window.FrameWindowScope
 import androidx.compose.ui.window.Window
 import androidx.compose.ui.window.WindowPosition
@@ -61,6 +64,9 @@ import me.him188.ani.app.platform.window.rememberLayoutHitTestOwner
 import me.him188.ani.app.ui.foundation.imageviewer.FileKitImageFileSaver
 import me.him188.ani.app.ui.foundation.imageviewer.ImageViewerContent
 import me.him188.ani.app.ui.foundation.imageviewer.ImageViewerExportedFile
+import me.him188.ani.app.ui.foundation.imageviewer.computeImageViewerWindowBounds
+import me.him188.ani.app.ui.foundation.imageviewer.screenDensity
+import me.him188.ani.app.ui.foundation.imageviewer.usableScreenArea
 import me.him188.ani.app.ui.foundation.layout.LocalPlatformWindow
 import me.him188.ani.app.ui.foundation.layout.LocalSecondaryWindowFrame
 import me.him188.ani.app.ui.lang.Lang
@@ -123,8 +129,9 @@ private fun ImageViewerWindow(
 ) {
     val model by handler.imageModel.collectAsStateWithLifecycle()
     val onCloseState = rememberUpdatedState(onClose)
+    // 图片加载前先用一个不大的初始尺寸, 加载后按图片大小调整 (见 computeImageViewerWindowBounds).
     val windowState = rememberWindowState(
-        size = DpSize(1000.dp, 720.dp),
+        size = INITIAL_WINDOW_SIZE,
         position = WindowPosition.Aligned(Alignment.Center),
     )
     // 沿用主窗口的图标 (Windows/Linux 任务栏).
@@ -159,6 +166,8 @@ private fun ImageViewerWindow(
         }
         val window = this.window
         val saveDialogTitle = stringResource(Lang.image_viewer_save)
+        val screen = remember(hostWindow) { usableScreenArea(hostWindow) }
+        val density = remember(hostWindow) { screenDensity(hostWindow) }
         val content: @Composable () -> Unit = {
             ImageViewerContent(
                 model = model,
@@ -177,6 +186,20 @@ private fun ImageViewerWindow(
                         .imageDragOut(exported, zoomable)
                         .imageScrollPan(zoomable)
                 },
+                // 图片不放大, 只缩小; 窗口贴合图片 (见 computeImageViewerWindowBounds).
+                contentScale = ContentScale.Inside,
+                // Sketch 只按 2 的幂采样. 上限放宽到屏幕的 2 倍, 略大于屏幕的图不会被减半后再 1:1 显示得偏小.
+                decodeSize = remember(screen, density) {
+                    IntSize(
+                        (screen.width.value * density * DECODE_SIZE_MULTIPLIER).roundToInt(),
+                        (screen.height.value * density * DECODE_SIZE_MULTIPLIER).roundToInt(),
+                    )
+                },
+                onImageSizeAvailable = { imageSize ->
+                    val bounds = computeImageViewerWindowBounds(imageSize, density, screen)
+                    windowState.size = bounds.size
+                    windowState.position = WindowPosition.Absolute(bounds.position.x, bounds.position.y)
+                },
             )
         }
         CompositionLocalProvider(LocalPlatformWindow provides platformWindow) {
@@ -191,6 +214,12 @@ private fun ImageViewerWindow(
 }
 
 private const val SCALE_EPSILON = 0.001f
+
+/** 解码尺寸上限相对屏幕像素的倍数. */
+private const val DECODE_SIZE_MULTIPLIER = 2f
+
+/** 图片尺寸未知时的初始窗口大小. */
+private val INITIAL_WINDOW_SIZE = DpSize(800.dp, 600.dp)
 
 /** 拖出时鼠标旁显示的缩略图最长边 (px). */
 private const val DRAG_DECORATION_MAX_SIZE = 240

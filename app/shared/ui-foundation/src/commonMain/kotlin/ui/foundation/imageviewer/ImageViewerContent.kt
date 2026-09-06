@@ -34,6 +34,7 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -52,9 +53,14 @@ import androidx.compose.ui.input.key.key
 import androidx.compose.ui.input.key.onKeyEvent
 import androidx.compose.ui.input.key.type
 import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.unit.dp
+import com.github.panpf.sketch.LocalPlatformContext
 import com.github.panpf.sketch.rememberAsyncImageState
+import com.github.panpf.sketch.request.ImageRequest
 import com.github.panpf.sketch.request.LoadState
+import com.github.panpf.sketch.resize.Precision
 import com.github.panpf.zoomimage.SketchZoomAsyncImage
 import com.github.panpf.zoomimage.compose.zoom.ZoomableState
 import com.github.panpf.zoomimage.rememberSketchZoomState
@@ -118,6 +124,10 @@ private val logger = logger<ImageViewerTestTags>()
  * @param platformImageModifier 平台相关的图片层扩展: 返回附加在图片上的 [Modifier] (例如桌面端把图片拖到其他应用),
  * 也可以在其中注册额外手势 (例如触摸板捏合缩放). 参数为当前已导出的本地副本 (未就绪时为 `null`) 和缩放状态.
  * @param exportDirectory 本地副本所在目录, 默认为 [imageViewerExportDirectory].
+ * @param contentScale 初始 (最小) 缩放方式. 覆盖层用 [ContentScale.Fit] 填满屏幕; 独立窗口用 [ContentScale.Inside] 不放大小图.
+ * @param decodeSize 解码尺寸上限 (px, 只按 2 的幂采样). 默认按显示区域解码; 独立窗口传屏幕的 2 倍, 让屏幕能放下的图片按原尺寸解码,
+ * 这样 [ContentScale.Inside] 就能 1:1 显示.
+ * @param onImageSizeAvailable 图片加载成功后回调解码后的像素尺寸 (独立窗口用来按图片大小调整窗口).
  */
 @Composable
 fun ImageViewerContent(
@@ -131,6 +141,9 @@ fun ImageViewerContent(
     platformImageModifier: @Composable (exported: ImageViewerExportedFile?, zoomable: ZoomableState) -> Modifier =
         { _, _ -> Modifier },
     exportDirectory: SystemPath = imageViewerExportDirectory(LocalContext.current),
+    contentScale: ContentScale = ContentScale.Fit,
+    decodeSize: IntSize? = null,
+    onImageSizeAvailable: (IntSize) -> Unit = {},
 ) {
     val sketch = LocalSketch.current
     val toaster = LocalToaster.current
@@ -140,6 +153,12 @@ fun ImageViewerContent(
     val imageState = rememberAsyncImageState()
     val loadState = imageState.loadState
     val loaded = loadState is LoadState.Success
+
+    val onImageSizeAvailableState = rememberUpdatedState(onImageSizeAvailable)
+    LaunchedEffect(loadState) {
+        val image = (loadState as? LoadState.Success)?.result?.image ?: return@LaunchedEffect
+        onImageSizeAvailableState.value(IntSize(image.width, image.height))
+    }
 
     // 图片加载成功后再导出, 此时 Sketch 的下载缓存已命中, 不会再下载一次.
     var exported by remember(model) { mutableStateOf<ImageViewerExportedFile?>(null) }
@@ -197,8 +216,18 @@ fun ImageViewerContent(
             },
     ) {
         if (model != null) {
+            val platformContext = LocalPlatformContext.current
+            val request = remember(platformContext, model, decodeSize) {
+                ImageRequest(platformContext, model) {
+                    if (decodeSize != null) {
+                        // 只按 2 的幂采样, 不裁剪; 宽高都不超过 decodeSize
+                        size(decodeSize.width, decodeSize.height)
+                        precision(Precision.SMALLER_SIZE)
+                    }
+                }
+            }
             SketchZoomAsyncImage(
-                uri = model,
+                request = request,
                 contentDescription = null,
                 sketch = sketch,
                 modifier = Modifier
@@ -208,6 +237,7 @@ fun ImageViewerContent(
                     .focusable()
                     .then(imageModifier),
                 state = imageState,
+                contentScale = contentScale,
                 zoomState = zoomState,
                 onTap = if (closeOnTap) {
                     { onClose() }
