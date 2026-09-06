@@ -22,10 +22,10 @@ class ImageViewerWindowBoundsTest {
     private val screen = DpRect(left = 0.dp, top = 25.dp, right = 1920.dp, bottom = 1080.dp)
 
     @Test
-    fun `small image gets a margin around original size and is centered`() {
+    fun `small image window matches original size and is centered`() {
         val bounds = computeImageViewerWindowBounds(IntSize(600, 500), 1f, screen)
-        assertEquals(DpSize(664.dp, 564.dp), bounds.size)
-        assertEquals(DpOffset(((1920 - 664) / 2f).dp, 25.dp + ((1055 - 564) / 2f).dp), bounds.position)
+        assertEquals(DpSize(600.dp, 500.dp), bounds.size)
+        assertEquals(DpOffset(((1920 - 600) / 2f).dp, 25.dp + ((1055 - 500) / 2f).dp), bounds.position)
     }
 
     @Test
@@ -33,15 +33,14 @@ class ImageViewerWindowBoundsTest {
         val bounds = computeImageViewerWindowBounds(IntSize(849, 1200), 1f, screen)
         val maxHeight = 1055 * 0.9f
         assertEquals(maxHeight.dp, bounds.size.height)
-        val contentHeight = maxHeight - 64
-        val expectedWidth = 849f * (contentHeight / 1200f) + 64
+        val expectedWidth = 849f * (maxHeight / 1200f)
         assertEquals(expectedWidth, bounds.size.width.value, absoluteTolerance = 0.01f)
     }
 
     @Test
     fun `retina pixels are halved to dp`() {
         val bounds = computeImageViewerWindowBounds(IntSize(1200, 1000), 2f, screen)
-        assertEquals(DpSize(664.dp, 564.dp), bounds.size)
+        assertEquals(DpSize(600.dp, 500.dp), bounds.size)
     }
 
     @Test

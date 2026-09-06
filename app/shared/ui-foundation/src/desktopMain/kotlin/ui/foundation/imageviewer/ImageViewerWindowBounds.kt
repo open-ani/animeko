@@ -9,7 +9,6 @@
 
 package me.him188.ani.app.ui.foundation.imageviewer
 
-import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.DpOffset
 import androidx.compose.ui.unit.DpRect
 import androidx.compose.ui.unit.DpSize
@@ -27,9 +26,6 @@ internal data class ImageViewerWindowBounds(
     val size: DpSize,
 )
 
-/** 窗口比图片大出的一圈. */
-internal val IMAGE_VIEWER_WINDOW_MARGIN: Dp = 32.dp
-
 /** 窗口最小尺寸, 保证工具栏放得下. */
 internal val IMAGE_VIEWER_WINDOW_MIN_SIZE: DpSize = DpSize(480.dp, 360.dp)
 
@@ -37,8 +33,8 @@ internal val IMAGE_VIEWER_WINDOW_MIN_SIZE: DpSize = DpSize(480.dp, 360.dp)
 internal const val IMAGE_VIEWER_WINDOW_MAX_SCREEN_FRACTION: Float = 0.9f
 
 /**
- * 按图片尺寸算出查看器窗口的大小: 图片按 1:1 (像素 / [density]) 显示外加 [margin] 一圈, 不超过屏幕可用区域的 [maxScreenFraction],
- * 不小于 [minSize]; 超出上限时按比例缩小图片区域. 窗口在 [screen] 内居中.
+ * 按图片尺寸算出查看器窗口的大小: 与图片 1:1 (像素 / [density]) 一样大, 不超过屏幕可用区域的 [maxScreenFraction],
+ * 不小于 [minSize]; 超出上限时按比例缩小. 窗口在 [screen] 内居中.
  *
  * @param imageSize 解码后的图片像素尺寸.
  * @param density 窗口所在屏幕的像素密度 (Retina 为 2).
@@ -48,21 +44,18 @@ internal fun computeImageViewerWindowBounds(
     imageSize: IntSize,
     density: Float,
     screen: DpRect,
-    margin: Dp = IMAGE_VIEWER_WINDOW_MARGIN,
     minSize: DpSize = IMAGE_VIEWER_WINDOW_MIN_SIZE,
     maxScreenFraction: Float = IMAGE_VIEWER_WINDOW_MAX_SCREEN_FRACTION,
 ): ImageViewerWindowBounds {
     val maxWidth = screen.width * maxScreenFraction
     val maxHeight = screen.height * maxScreenFraction
-    val maxContentWidth = (maxWidth - margin * 2).coerceAtLeast(1.dp)
-    val maxContentHeight = (maxHeight - margin * 2).coerceAtLeast(1.dp)
 
     val imageWidth = imageSize.width.coerceAtLeast(1) / density.coerceAtLeast(0.01f)
     val imageHeight = imageSize.height.coerceAtLeast(1) / density.coerceAtLeast(0.01f)
-    val scale = min(1f, min(maxContentWidth.value / imageWidth, maxContentHeight.value / imageHeight))
+    val scale = min(1f, min(maxWidth.value / imageWidth, maxHeight.value / imageHeight))
 
-    val width = (imageWidth * scale).dp + margin * 2
-    val height = (imageHeight * scale).dp + margin * 2
+    val width = (imageWidth * scale).dp
+    val height = (imageHeight * scale).dp
     val size = DpSize(
         width.coerceIn(minOf(minSize.width, maxWidth), maxWidth),
         height.coerceIn(minOf(minSize.height, maxHeight), maxHeight),
