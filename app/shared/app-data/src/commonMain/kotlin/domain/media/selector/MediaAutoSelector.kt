@@ -42,6 +42,8 @@ internal class MediaAutoSelector(private val mediaSelector: MediaSelector) {
         val blacklist: Set<String> = emptySet(),
         /** Null waits for the preferred source kind to complete, using the existing BT preference rules. */
         val web: Web? = null,
+        /** Startup may fall back to another kind; player-error replacement stays within WEB. */
+        val fallbackToOtherKinds: Boolean = false,
     )
 
     /** Web deadlines start only after the remembered source has finished without a selection. */
@@ -239,7 +241,11 @@ internal class MediaAutoSelector(private val mediaSelector: MediaSelector) {
         }
 
         // Empty final results can finish early; candidates belonging to a later phase must wait.
-        if (allRelevantCompleted && webCandidates.isEmpty()) return Decision.Exhausted
+        if (allRelevantCompleted && webCandidates.isEmpty()) {
+            return if (config.fallbackToOtherKinds) {
+                decideOnCompletion(snapshot, preferred.filter { it.result.kind != MediaSourceKind.WEB })
+            } else Decision.Exhausted
+        }
         if (stage == Stage.Fuzzy && (allRelevantCompleted || !web.waitForPendingSources)) return Decision.Exhausted
         return Decision.Wait
     }

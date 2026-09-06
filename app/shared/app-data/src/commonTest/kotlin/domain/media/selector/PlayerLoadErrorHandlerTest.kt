@@ -292,6 +292,34 @@ class PlayerLoadErrorHandlerTest {
         assertEquals(manual, selector.selected.value)
     }
 
+    @Test
+    fun `player error does not fall back to BT when WEB candidates are exhausted`() = runFetchMediaSelectorTestSuite {
+        initSubject("test")
+        val (_, session, sources) = configureFetchSession {
+            object {
+                val web1 by web { tier = 0 }
+                val bt1 by bt()
+            }
+        }
+        val failed = media(kind = WEB, subjectName = initApi.subjectName)
+        sources.web1.complete(failed)
+        sources.bt1.complete(media(kind = MediaSourceKind.BitTorrent, subjectName = initApi.subjectName))
+        testScope().runCurrent()
+        selector.select(selector.filteredCandidatesMedia.first().single { it.mediaId == failed.mediaId })
+
+        val handler = PlayerLoadErrorHandler(getPreferKind = { WEB }, getSourceTiers = { preferenceApi.sourceTiers!! })
+        lateinit var job: Job
+        val events = selector.collectEvents {
+            job = testScope().launch { handler.handleError(session, selector) }
+            testScope().advanceUntilIdle()
+        }
+
+        assertTrue(job.isCompleted)
+        assertEquals(failed.mediaId, selector.selected.value?.mediaId)
+        assertEquals(setOf(failed.mediaId), handler.blacklist)
+        events.expectNoEvents()
+    }
+
     context(scope: TestScope)
     private fun testScope(): TestScope = implicit()
 }

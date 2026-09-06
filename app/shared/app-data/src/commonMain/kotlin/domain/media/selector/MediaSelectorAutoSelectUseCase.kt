@@ -55,6 +55,7 @@ class MediaSelectorAutoSelectUseCaseImpl(
                         fastSelect = settings.fastSelectWebKind,
                         exactMatchAfter = settings.fastSelectWebLowTierToleranceDuration,
                     ) else null,
+                    fallbackToOtherKinds = true,
                 ),
             )
         }
