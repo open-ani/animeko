@@ -12,6 +12,7 @@ package me.him188.ani.app.ui.foundation.imageviewer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.input.key.Key
 import androidx.compose.ui.semantics.SemanticsProperties
 import androidx.compose.ui.semantics.getOrNull
 import androidx.compose.ui.test.assertIsDisplayed
@@ -19,6 +20,9 @@ import androidx.compose.ui.test.assertIsEnabled
 import androidx.compose.ui.test.assertIsNotEnabled
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.performClick
+import androidx.compose.ui.test.performKeyInput
+import androidx.compose.ui.test.pressKey
+import androidx.compose.ui.test.withKeyDown
 import com.github.panpf.sketch.PlatformContext
 import com.github.panpf.sketch.Sketch
 import io.ktor.client.HttpClient
@@ -42,6 +46,7 @@ import me.him188.ani.app.ui.framework.AniComposeUiTest
 import me.him188.ani.app.ui.framework.runAniComposeUiTest
 import me.him188.ani.app.ui.framework.runOnSwingEdt
 import me.him188.ani.app.ui.lang.Lang
+import me.him188.ani.app.ui.lang.image_viewer_copied
 import me.him188.ani.app.ui.lang.image_viewer_save_failed
 import me.him188.ani.app.ui.lang.image_viewer_saved
 import me.him188.ani.utils.io.SystemPath
@@ -88,6 +93,7 @@ class ImageViewerContentTest {
 
     private fun runViewerTest(
         fileSaver: ImageFileSaver = ImageFileSaver { true },
+        imageClipboard: ImageClipboard? = null,
         block: AniComposeUiTest.(Env) -> Unit,
     ) {
         val tempDirectory = SystemPaths.createTempDirectory("ani-image-viewer-content-test")
@@ -135,6 +141,7 @@ class ImageViewerContentTest {
                                     onClose = { env.closeCount.incrementAndGet() },
                                     modifier = Modifier.fillMaxSize(),
                                     fileSaver = fileSaver,
+                                    imageClipboard = imageClipboard,
                                     exportDirectory = env.exportDirectory,
                                 )
                             }
@@ -198,6 +205,33 @@ class ImageViewerContentTest {
             assertTrue(saved.single().path.absolutePath.startsWith(env.exportDirectory.absolutePath))
             assertEquals(listOf(runBlocking { getString(Lang.image_viewer_saved) }), env.toasts)
         }
+    }
+
+    @Test
+    fun `copy button and shortcut copy the exported image`() {
+        val copied = CopyOnWriteArrayList<ImageViewerExportedFile>()
+        runViewerTest(imageClipboard = { copied.add(it) }) { env ->
+            env.waitUntilPumpingMain(this, timeoutMillis = 10_000) {
+                runCatching { onNodeWithTag(ImageViewerTestTags.COPY).assertIsEnabled() }.isSuccess
+            }
+            onNodeWithTag(ImageViewerTestTags.COPY).performClick()
+            env.waitUntilPumpingMain(this) { env.toasts.size == 1 }
+            assertEquals(1, copied.size)
+            assertEquals("png", copied.single().extension)
+
+            // 图片加载后自动获得焦点, Ctrl+C 直接可用
+            onNodeWithTag(IMAGE_VIEWER_TEST_TAG).performKeyInput {
+                withKeyDown(Key.CtrlLeft) { pressKey(Key.C) }
+            }
+            env.waitUntilPumpingMain(this) { env.toasts.size == 2 }
+            assertEquals(2, copied.size)
+            assertEquals(List(2) { runBlocking { getString(Lang.image_viewer_copied) } }, env.toasts)
+        }
+    }
+
+    @Test
+    fun `no copy button when the platform has no image clipboard`() = runViewerTest(imageClipboard = null) {
+        onNodeWithTag(ImageViewerTestTags.COPY).assertDoesNotExist()
     }
 
     @Test

@@ -10,6 +10,7 @@
 package me.him188.ani.app.ui.foundation.imageviewer
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.focusable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Row
@@ -21,6 +22,7 @@ import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.Close
+import androidx.compose.material.icons.rounded.ContentCopy
 import androidx.compose.material.icons.rounded.FitScreen
 import androidx.compose.material.icons.rounded.SaveAlt
 import androidx.compose.material.icons.rounded.ZoomIn
@@ -39,7 +41,16 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.input.key.Key
+import androidx.compose.ui.input.key.KeyEventType
+import androidx.compose.ui.input.key.isCtrlPressed
+import androidx.compose.ui.input.key.isMetaPressed
+import androidx.compose.ui.input.key.key
+import androidx.compose.ui.input.key.onKeyEvent
+import androidx.compose.ui.input.key.type
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.unit.dp
 import com.github.panpf.sketch.rememberAsyncImageState
@@ -57,6 +68,9 @@ import me.him188.ani.app.ui.foundation.LocalSketch
 import me.him188.ani.app.ui.foundation.widgets.LocalToaster
 import me.him188.ani.app.ui.lang.Lang
 import me.him188.ani.app.ui.lang.image_viewer_close
+import me.him188.ani.app.ui.lang.image_viewer_copied
+import me.him188.ani.app.ui.lang.image_viewer_copy
+import me.him188.ani.app.ui.lang.image_viewer_copy_failed
 import me.him188.ani.app.ui.lang.image_viewer_load_failed
 import me.him188.ani.app.ui.lang.image_viewer_reset_zoom
 import me.him188.ani.app.ui.lang.image_viewer_save
@@ -78,6 +92,7 @@ object ImageViewerTestTags {
     const val ZOOM_OUT = "ImageViewer.ZoomOut"
     const val RESET_ZOOM = "ImageViewer.ResetZoom"
     const val SCALE_TEXT = "ImageViewer.ScaleText"
+    const val COPY = "ImageViewer.Copy"
     const val SAVE = "ImageViewer.Save"
     const val CLOSE = "ImageViewer.Close"
 }
@@ -88,7 +103,9 @@ private const val ZOOM_STEP = 1.5f
 private val logger = logger<ImageViewerTestTags>()
 
 /**
- * 图片查看器的内容: 可缩放图片 + 底部工具栏 (缩小 / 缩放比例 / 放大 / 适应窗口 / 保存 / 关闭).
+ * 图片查看器的内容: 可缩放图片 + 底部工具栏 (缩小 / 缩放比例 / 放大 / 适应窗口 / 复制 / 保存 / 关闭).
+ *
+ * 快捷键: Ctrl/Cmd+C 复制图片.
  *
  * 缩放由 zoomimage 提供: 触摸双指缩放, 双击切换, 鼠标滚轮缩放, 键盘 `+`/`-` 缩放.
  * 图片加载成功后会在后台导出一份带扩展名的本地副本 ([ImageViewerExportedFile]), 供保存和拖拽使用.
@@ -97,6 +114,7 @@ private val logger = logger<ImageViewerTestTags>()
  * @param closeOnTap 单击图片是否关闭 (覆盖层模式为 `true`; 独立窗口为 `false`).
  * @param showCloseButton 工具栏是否显示关闭按钮.
  * @param fileSaver 点击保存时的保存方式, 默认弹系统对话框.
+ * @param imageClipboard 复制图片的方式, `null` 表示不支持复制 (隐藏按钮).
  * @param platformImageModifier 平台相关的图片层扩展: 返回附加在图片上的 [Modifier] (例如桌面端把图片拖到其他应用),
  * 也可以在其中注册额外手势 (例如触摸板捏合缩放). 参数为当前已导出的本地副本 (未就绪时为 `null`) 和缩放状态.
  * @param exportDirectory 本地副本所在目录, 默认为 [imageViewerExportDirectory].
@@ -109,6 +127,7 @@ fun ImageViewerContent(
     closeOnTap: Boolean = true,
     showCloseButton: Boolean = true,
     fileSaver: ImageFileSaver = rememberFileKitImageFileSaver(),
+    imageClipboard: ImageClipboard? = rememberImageClipboard(),
     platformImageModifier: @Composable (exported: ImageViewerExportedFile?, zoomable: ZoomableState) -> Modifier =
         { _, _ -> Modifier },
     exportDirectory: SystemPath = imageViewerExportDirectory(LocalContext.current),
@@ -136,15 +155,58 @@ fun ImageViewerContent(
 
     val savedText = stringResource(Lang.image_viewer_saved)
     val saveFailedText = stringResource(Lang.image_viewer_save_failed)
+    val copiedText = stringResource(Lang.image_viewer_copied)
+    val copyFailedText = stringResource(Lang.image_viewer_copy_failed)
+
+    val onCopy: (() -> Unit)? = if (imageClipboard == null) null else {
+        {
+            val file = exported
+            if (file != null) {
+                scope.launch {
+                    try {
+                        imageClipboard.copy(file)
+                        toaster.toast(copiedText)
+                    } catch (e: Exception) {
+                        logger.warn(e) { "Failed to copy image ${file.fileName}" }
+                        toaster.toast(copyFailedText)
+                    }
+                }
+            }
+        }
+    }
+
+    // 图片加载后让图片获得焦点: 键盘缩放 (zoomimage) 和 Ctrl/Cmd+C 都依赖焦点
+    val focusRequester = remember { FocusRequester() }
+    LaunchedEffect(model, loaded) {
+        if (loaded) runCatching { focusRequester.requestFocus() }
+    }
 
     val imageModifier = platformImageModifier(exported, zoomState.zoomable)
-    Box(modifier.background(Color.Black)) {
+    Box(
+        modifier
+            .background(Color.Black)
+            .onKeyEvent { event ->
+                val isCopy = event.type == KeyEventType.KeyDown && event.key == Key.C &&
+                        (event.isCtrlPressed || event.isMetaPressed)
+                if (isCopy && onCopy != null) {
+                    onCopy()
+                    true
+                } else {
+                    false
+                }
+            },
+    ) {
         if (model != null) {
             SketchZoomAsyncImage(
                 uri = model,
                 contentDescription = null,
                 sketch = sketch,
-                modifier = Modifier.fillMaxSize().testTag(IMAGE_VIEWER_TEST_TAG).then(imageModifier),
+                modifier = Modifier
+                    .fillMaxSize()
+                    .testTag(IMAGE_VIEWER_TEST_TAG)
+                    .focusRequester(focusRequester)
+                    .focusable()
+                    .then(imageModifier),
                 state = imageState,
                 zoomState = zoomState,
                 onTap = if (closeOnTap) {
@@ -168,6 +230,7 @@ fun ImageViewerContent(
             scalePercent = if (loaded) zoomState.currentScalePercent() else null,
             enabled = loaded,
             canSave = exported != null,
+            onCopy = onCopy,
             onSave = {
                 val file = exported ?: return@ImageViewerToolbar
                 scope.launch {
@@ -211,6 +274,7 @@ private fun ImageViewerToolbar(
     scalePercent: Int?,
     enabled: Boolean,
     canSave: Boolean,
+    onCopy: (() -> Unit)?,
     onSave: () -> Unit,
     showCloseButton: Boolean,
     onClose: () -> Unit,
@@ -258,6 +322,15 @@ private fun ImageViewerToolbar(
                 modifier = Modifier.testTag(ImageViewerTestTags.RESET_ZOOM),
             ) {
                 Icon(Icons.Rounded.FitScreen, contentDescription = stringResource(Lang.image_viewer_reset_zoom))
+            }
+            if (onCopy != null) {
+                IconButton(
+                    onClick = onCopy,
+                    enabled = canSave,
+                    modifier = Modifier.testTag(ImageViewerTestTags.COPY),
+                ) {
+                    Icon(Icons.Rounded.ContentCopy, contentDescription = stringResource(Lang.image_viewer_copy))
+                }
             }
             IconButton(
                 onClick = onSave,

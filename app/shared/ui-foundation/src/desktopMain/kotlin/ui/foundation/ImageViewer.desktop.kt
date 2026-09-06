@@ -35,7 +35,10 @@ import androidx.compose.ui.input.key.KeyEventType
 import androidx.compose.ui.input.key.key
 import androidx.compose.ui.input.key.type
 import androidx.compose.ui.input.pointer.PointerEventPass
+import androidx.compose.ui.input.pointer.PointerEventType
 import androidx.compose.ui.input.pointer.SuspendingPointerInputModifierNode
+import androidx.compose.ui.input.pointer.isCtrlPressed
+import androidx.compose.ui.input.pointer.isMetaPressed
 import androidx.compose.ui.node.DelegatingNode
 import androidx.compose.ui.node.ModifierNodeElement
 import androidx.compose.ui.platform.LocalDensity
@@ -49,6 +52,7 @@ import androidx.compose.ui.window.rememberWindowState
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.github.panpf.zoomimage.compose.zoom.ZoomableState
 import com.github.panpf.zoomimage.zoom.GestureType
+import com.github.panpf.zoomimage.zoom.MouseWheelScaleCalculator
 import io.github.vinceglb.filekit.dialogs.FileKitDialogSettings
 import kotlinx.coroutines.launch
 import me.him188.ani.app.platform.PlatformWindow
@@ -169,7 +173,9 @@ private fun ImageViewerWindow(
                 },
                 platformImageModifier = { exported, zoomable ->
                     MacTrackpadPinchZoom(zoomable)
-                    Modifier.imageDragOut(exported, zoomable)
+                    Modifier
+                        .imageDragOut(exported, zoomable)
+                        .imageScrollPan(zoomable)
                 },
             )
         }
@@ -283,6 +289,82 @@ private class ImageDragOutNode(
         if (this.exported !== exported) decoration = null
         this.exported = exported
         this.zoomable = zoomable
+    }
+}
+
+/** 滚轮/触摸板每个滚动单位平移的距离, 与 Compose 桌面端滚动容器一致. */
+private val SCROLL_PAN_STEP = 64.dp
+
+/**
+ * 滚轮和触摸板双指滚动: 不按修饰键时平移图片, 按住 Ctrl/Cmd 时缩放 (与 Preview / Figma 一致).
+ *
+ * zoomimage 默认把所有滚动都当缩放且不看修饰键. 这里在 Initial 阶段先记录本次滚动有没有按修饰键:
+ * 有则交给 zoomimage 自己缩放 (它的算法通过 [ModifierAwareWheelScaleCalculator] 只在此时生效),
+ * 没有则由这里平移并消费事件.
+ */
+@Composable
+internal fun Modifier.imageScrollPan(zoomable: ZoomableState): Modifier {
+    val calculator = remember { ModifierAwareWheelScaleCalculator() }
+    LaunchedEffect(zoomable, calculator) {
+        zoomable.setMouseWheelScaleCalculator(calculator)
+    }
+    return this.then(ImageScrollPanElement(zoomable, calculator))
+}
+
+/** 只在最近一次滚动按着 Ctrl/Cmd 时才缩放, 否则返回原比例 (不缩放). */
+private class ModifierAwareWheelScaleCalculator : MouseWheelScaleCalculator {
+    @Volatile
+    var zoomModifierPressed: Boolean = false
+
+    override fun calculateScale(currentScale: Float, scrollDelta: Float): Float {
+        return if (zoomModifierPressed) {
+            MouseWheelScaleCalculator.Default.calculateScale(currentScale, scrollDelta)
+        } else {
+            currentScale
+        }
+    }
+}
+
+private data class ImageScrollPanElement(
+    val zoomable: ZoomableState,
+    val calculator: ModifierAwareWheelScaleCalculator,
+) : ModifierNodeElement<ImageScrollPanNode>() {
+    override fun create() = ImageScrollPanNode(zoomable, calculator)
+
+    override fun update(node: ImageScrollPanNode) {
+        node.zoomable = zoomable
+        node.calculator = calculator
+    }
+}
+
+private class ImageScrollPanNode(
+    var zoomable: ZoomableState,
+    var calculator: ModifierAwareWheelScaleCalculator,
+) : DelegatingNode() {
+    init {
+        delegate(
+            SuspendingPointerInputModifierNode {
+                val step = SCROLL_PAN_STEP.toPx()
+                awaitPointerEventScope {
+                    while (true) {
+                        val event = awaitPointerEvent(PointerEventPass.Initial)
+                        if (event.type != PointerEventType.Scroll) continue
+                        val change = event.changes.firstOrNull() ?: continue
+                        val modifiers = event.keyboardModifiers
+                        val zoomModifierPressed = modifiers.isCtrlPressed || modifiers.isMetaPressed
+                        calculator.zoomModifierPressed = zoomModifierPressed
+                        if (zoomModifierPressed) continue // zoomimage 在 Main 阶段自己缩放
+                        val delta = change.scrollDelta
+                        if (delta == Offset.Zero) continue
+                        change.consume()
+                        val zoomable = zoomable
+                        coroutineScope.launch {
+                            zoomable.offsetBy(Offset(-delta.x * step, -delta.y * step), animated = false)
+                        }
+                    }
+                }
+            },
+        )
     }
 }
 

@@ -1471,6 +1471,9 @@
     <string name="image_viewer_saved">Image saved</string>
     <string name="image_viewer_save_failed">Failed to save image</string>
     <string name="image_viewer_load_failed">Failed to load image</string>
+    <string name="image_viewer_copy">Copy image</string>
+    <string name="image_viewer_copied">Image copied</string>
+    <string name="image_viewer_copy_failed">Failed to copy image</string>
     <string name="image_viewer_close">Close</string>
 </resources>
 
