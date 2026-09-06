@@ -11,12 +11,16 @@ package me.him188.ani.app.ui.cache.components
 
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.map
+import me.him188.ani.app.data.models.player.EpisodeHistory
 import me.him188.ani.app.domain.media.cache.MediaCache
 import me.him188.ani.app.domain.media.cache.MediaCacheState
 import me.him188.ani.app.domain.media.cache.engine.MediaCacheEngineKey
 import me.him188.ani.app.domain.media.cache.storage.MediaCacheStorage
+import me.him188.ani.app.tools.Progress
+import me.him188.ani.app.tools.toProgress
 import me.him188.ani.app.torrent.api.files.averageRate
 import me.him188.ani.app.ui.foundation.HasBackgroundScope
 import me.him188.ani.datasources.api.topic.FileSize.Companion.bytes
@@ -54,6 +58,7 @@ internal fun HasBackgroundScope.createCacheEpisodeStateFlow(
     groupId: String,
     mediaCache: CacheWithEngine,
     subjectCollectionType: Flow<UnifiedCollectionType?>,
+    playbackHistoriesByEpisodeId: Flow<Map<Int, EpisodeHistory>>,
 ): Flow<CacheEpisodeState> {
     val statsFlow = mediaCache.cache.fileStats
         .combine(
@@ -75,14 +80,18 @@ internal fun HasBackgroundScope.createCacheEpisodeStateFlow(
         .stateInBackground(CacheEpisodePaused.IN_PROGRESS)
 
     val metadata = mediaCache.cache.metadata
+    val subjectId = metadata.subjectId.toInt()
+    val episodeId = metadata.episodeId.toInt()
+    val playbackProgressFlow = playbackHistoriesByEpisodeId
+        .map { histories -> histories[episodeId].toPlaybackProgress() }
+        .distinctUntilChanged()
     return combine(
         statsFlow,
         stateFlow,
         subjectCollectionType,
         mediaCache.cache.canPlay,
-    ) { stats, state, type, canPlay ->
-        val subjectId = metadata.subjectId.toInt()
-        val episodeId = metadata.episodeId.toInt()
+        playbackProgressFlow,
+    ) { stats, state, type, canPlay, playbackProgress ->
         CacheEpisodeState(
             groupId = groupId,
             subjectId = subjectId,
@@ -95,6 +104,7 @@ internal fun HasBackgroundScope.createCacheEpisodeStateFlow(
             screenShots = emptyList(),
             stats = stats,
             state = state,
+            playbackProgress = playbackProgress,
             engineKey = mediaCache.engineKey,
             subjectCollectionType = type,
             playability = when {
@@ -105,6 +115,12 @@ internal fun HasBackgroundScope.createCacheEpisodeStateFlow(
             mediaSourceId = mediaCache.cache.origin.mediaSourceId,
         )
     }
+}
+
+internal fun EpisodeHistory?.toPlaybackProgress(): Progress {
+    if (this == null || isDeleted || positionMillis <= 0L) return Progress.Unspecified
+    val duration = durationMillis?.takeIf { it > 0L } ?: return Progress.Unspecified
+    return (positionMillis.toDouble() / duration.toDouble()).toFloat().toProgress()
 }
 
 internal fun toCacheEpisodePaused(state: MediaCacheState): CacheEpisodePaused {

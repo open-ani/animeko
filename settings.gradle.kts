@@ -117,7 +117,6 @@ includeProject(":app:shared:application")
 
 includeProject(":app:shared:placeholder", "app/shared/thirdparty/placeholder")
 includeProject(":app:shared:paging-compose", "app/shared/thirdparty/paging-compose")
-includeProject(":app:shared:image-viewer", "app/shared/thirdparty/image-viewer")
 includeProject(":app:shared:reorderable", "app/shared/thirdparty/reorderable")
 
 includeProject(":app:desktop", "app/desktop") // desktop JVM client for macOS, Windows, and Linux

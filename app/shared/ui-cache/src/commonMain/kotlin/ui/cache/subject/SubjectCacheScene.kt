@@ -34,6 +34,7 @@ import me.him188.ani.app.data.models.preference.MediaSelectorSettings
 import me.him188.ani.app.data.models.subject.nameCnOrName
 import me.him188.ani.app.data.repository.episode.EpisodeCollectionRepository
 import me.him188.ani.app.data.repository.media.EpisodePreferencesRepository
+import me.him188.ani.app.data.repository.player.EpisodePlayHistoryRepository
 import me.him188.ani.app.data.repository.subject.SubjectCollectionRepository
 import me.him188.ani.app.data.repository.subject.SubjectRelationsRepository
 import me.him188.ani.app.data.repository.user.SettingsRepository
@@ -120,6 +121,11 @@ class SubjectCacheViewModelImpl(
     private val danmakuRepository: DanmakuRepository by inject()
     private val deleteCacheByEpisodeIdUseCase: DeleteCacheByEpisodeIdUseCase by inject()
     private val deleteCacheByCacheIdUseCase: DeleteCacheByCacheIdUseCase by inject()
+    private val episodePlayHistoryRepository: EpisodePlayHistoryRepository by inject()
+
+    private val playbackHistoriesByEpisodeId = episodePlayHistoryRepository.flow
+        .map { histories -> histories.associateBy { it.episodeId } }
+        .stateInBackground(emptyMap())
 
     private val subjectInfoFlow = subjectCollectionRepository.subjectCollectionFlow(subjectId)
         .retryWithBackoffDelay()
@@ -251,7 +257,14 @@ class SubjectCacheViewModelImpl(
                 .onStart { emit(UnifiedCollectionType.NOT_COLLECTED) }
             emitAll(
                 combine(
-                    caches.map { createCacheEpisodeStateFlow(subjectId.toString(), it, collectionType) },
+                    caches.map {
+                        createCacheEpisodeStateFlow(
+                            subjectId.toString(),
+                            it,
+                            collectionType,
+                            playbackHistoriesByEpisodeId,
+                        )
+                    },
                 ) { states ->
                     states.toList()
                         .distinctBy { it.listItemKey }

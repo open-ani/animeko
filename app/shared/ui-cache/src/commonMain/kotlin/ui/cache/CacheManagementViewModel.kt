@@ -20,6 +20,7 @@ import kotlinx.coroutines.flow.onStart
 import kotlinx.coroutines.flow.transformLatest
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.supervisorScope
+import me.him188.ani.app.data.repository.player.EpisodePlayHistoryRepository
 import me.him188.ani.app.data.repository.subject.SubjectCollectionRepository
 import me.him188.ani.app.data.repository.subject.staticSubjectImageLargeUrl
 import me.him188.ani.app.domain.media.cache.DeleteCacheByCacheIdUseCase
@@ -45,6 +46,11 @@ class CacheManagementViewModel : AbstractViewModel(), KoinComponent {
     private val cacheManager: MediaCacheManager by inject()
     private val deleteCacheByCacheIdUseCase: DeleteCacheByCacheIdUseCase by inject()
     private val subjectRepository: SubjectCollectionRepository by inject()
+    private val episodePlayHistoryRepository: EpisodePlayHistoryRepository by inject()
+
+    private val playbackHistoriesByEpisodeId = episodePlayHistoryRepository.flow
+        .map { histories -> histories.associateBy { it.episodeId } }
+        .stateInBackground(emptyMap())
 
     val stateFlow = run {
         val overallStatsFlow = cacheManager.enabledStorages
@@ -75,7 +81,16 @@ class CacheManagementViewModel : AbstractViewModel(), KoinComponent {
                     .onStart { emit(null) }
 
                 val entriesFlow =
-                    combine(caches.map { createCacheEpisodeStateFlow(groupId, it, collectionType) }) { states ->
+                    combine(
+                        caches.map {
+                            createCacheEpisodeStateFlow(
+                                groupId,
+                                it,
+                                collectionType,
+                                playbackHistoriesByEpisodeId,
+                            )
+                        },
+                    ) { states ->
                         // 防止意外情况出现了相同的 list key, 也就是相同的数据源的同一剧集缓存.
                         // 就算出现了 duplicated key, 这两个 item 对应的 cache 是同一个引用.
                         states.toList().distinctBy { it.listItemKey }

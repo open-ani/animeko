@@ -64,7 +64,10 @@ import me.him188.ani.app.data.models.subject.nameCn
 import me.him188.ani.app.ui.comment.CommentState
 import me.him188.ani.app.ui.external.placeholder.placeholder
 import me.him188.ani.app.ui.foundation.AsyncImage
+import me.him188.ani.app.ui.foundation.ImageViewer
+import me.him188.ani.app.ui.foundation.ImageViewerHandler
 import me.him188.ani.app.ui.foundation.animation.AniAnimatedVisibility
+import me.him188.ani.app.ui.foundation.rememberImageViewerHandler
 import me.him188.ani.app.ui.foundation.theme.AniThemeDefaults
 import me.him188.ani.app.ui.foundation.theme.LocalAppChromeHazeState
 import me.him188.ani.app.ui.foundation.theme.appChromeFrostedGlass
@@ -117,10 +120,11 @@ fun PersonDetailsScreen(
         centerStrips = { PersonStrips(casts, works) },
         commentState = vm.commentState,
         originalCommentsUrl = vm.originalCommentsUrl,
-        compactContent = {
+        compactContent = { imageViewer ->
             PersonDetailsContentColumn(
                 details, casts, works, vm.commentState,
                 originalCommentsUrl = vm.originalCommentsUrl,
+                imageViewer = imageViewer,
             )
         },
         modifier = modifier,
@@ -159,10 +163,11 @@ fun CharacterDetailsScreen(
         centerStrips = { CharacterStrips(details, subjects) },
         commentState = vm.commentState,
         originalCommentsUrl = vm.originalCommentsUrl,
-        compactContent = {
+        compactContent = { imageViewer ->
             CharacterDetailsContentColumn(
                 details, subjects, vm.commentState,
                 originalCommentsUrl = vm.originalCommentsUrl,
+                imageViewer = imageViewer,
             )
         },
         modifier = modifier,
@@ -176,6 +181,8 @@ fun CharacterDetailsScreen(
  * - Expanded: 评论卡移到右栏.
  *
  * 整页一起滚动, 与条目详情多栏布局一致.
+ *
+ * 页面级 [ImageViewer] 覆盖整个骨架, 供多栏左栏图片与单栏头部行图片 (经 [compactContent] 参数传入) 点击放大.
  */
 @Composable
 private fun PeopleDetailsScaffold(
@@ -189,11 +196,12 @@ private fun PeopleDetailsScaffold(
     summary: String,
     centerStrips: @Composable () -> Unit,
     commentState: CommentState,
-    compactContent: @Composable () -> Unit,
+    compactContent: @Composable (imageViewer: ImageViewerHandler) -> Unit,
     modifier: Modifier = Modifier,
     originalCommentsUrl: String? = null,
 ) {
     var showAllComments by rememberSaveable { mutableStateOf(false) }
+    val imageViewer = rememberImageViewerHandler()
 
     BoxWithConstraints(modifier.fillMaxSize()) {
         val layoutParams = SubjectDetailsLayoutParams.calculate(maxWidth)
@@ -273,7 +281,7 @@ private fun PeopleDetailsScaffold(
                                 bottom = layoutParams.contentBottomPadding,
                             ),
                     ) {
-                        compactContent()
+                        compactContent(imageViewer)
                     }
                 } else {
                     Row(
@@ -298,11 +306,19 @@ private fun PeopleDetailsScaffold(
                         ) {
                             // 定稿: 固定宽度, 高按原图比例自适应 (加载前用 340:482 占位)
                             var coverAspect by remember(sidebarImageUrl) { mutableStateOf(340f / 482f) }
+                            val onClickSidebarImage = imageViewer.viewImageOrNull(sidebarImageUrl)
                             Box(
                                 Modifier
                                     .fillMaxWidth()
                                     .aspectRatio(coverAspect.coerceIn(0.4f, 1.6f))
                                     .clip(MaterialTheme.shapes.medium)
+                                    .then(
+                                        if (onClickSidebarImage != null) {
+                                            Modifier.clickable(onClick = onClickSidebarImage)
+                                        } else {
+                                            Modifier
+                                        },
+                                    )
                                     .placeholder(isPlaceholder),
                             ) {
                                 AsyncImage(
@@ -364,6 +380,9 @@ private fun PeopleDetailsScaffold(
                 }
             }
         }
+
+        // 页面级大图查看器, 覆盖整个骨架 (含顶栏).
+        ImageViewer(imageViewer) { imageViewer.clear() }
     }
 
     if (showAllComments) {
@@ -373,6 +392,15 @@ private fun PeopleDetailsScaffold(
             originalCommentsUrl = originalCommentsUrl,
         )
     }
+}
+
+/**
+ * 图片 URL 非空且提供了查看器时, 返回打开该图片的点击回调; 否则返回 `null` (图片不可点击).
+ */
+private fun ImageViewerHandler?.viewImageOrNull(imageUrl: String?): (() -> Unit)? {
+    val handler = this ?: return null
+    val url = imageUrl?.takeIf { it.isNotBlank() } ?: return null
+    return { handler.viewImage(url) }
 }
 
 /** 单栏头部行里名字的大致底部位置 (110x147 图片右侧垂直居中), 用于估算标题滚出的时机. */
@@ -393,6 +421,7 @@ internal fun PersonDetailsContentColumn(
     originalCommentsUrl: String? = null,
     modifier: Modifier = Modifier,
     navigation: PeopleDetailsNavigation = rememberPeopleDetailsNavigation(),
+    imageViewer: ImageViewerHandler? = null,
 ) {
     var showAllComments by rememberSaveable { mutableStateOf(false) }
     Column(modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(24.dp)) {
@@ -402,6 +431,7 @@ internal fun PersonDetailsContentColumn(
             originalName = details?.person?.name,
             metaLine = peopleMetaLine(personKindLabel(details?.career.orEmpty()), details?.collects ?: 0),
             isPlaceholder = details == null,
+            onClickImage = imageViewer.viewImageOrNull(details?.person?.imageLarge),
         )
         details?.person?.summary?.takeIf { it.isNotBlank() }?.let { summaryText ->
             Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
@@ -506,6 +536,7 @@ internal fun CharacterDetailsContentColumn(
     originalCommentsUrl: String? = null,
     modifier: Modifier = Modifier,
     navigation: PeopleDetailsNavigation = rememberPeopleDetailsNavigation(),
+    imageViewer: ImageViewerHandler? = null,
 ) {
     var showAllComments by rememberSaveable { mutableStateOf(false) }
     Column(modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(24.dp)) {
@@ -515,6 +546,7 @@ internal fun CharacterDetailsContentColumn(
             originalName = details?.character?.name,
             metaLine = peopleMetaLine(characterRoleLabel(details?.role ?: 1), details?.collects ?: 0),
             isPlaceholder = details == null,
+            onClickImage = imageViewer.viewImageOrNull(details?.character?.imageLarge),
         )
         details?.summary?.takeIf { it.isNotBlank() }?.let { summaryText ->
             Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
