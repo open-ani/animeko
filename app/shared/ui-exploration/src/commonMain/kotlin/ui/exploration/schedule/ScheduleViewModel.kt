@@ -10,6 +10,11 @@
 package me.him188.ani.app.ui.exploration.schedule
 
 import androidx.compose.runtime.mutableStateOf
+import kotlin.time.Clock
+import kotlin.time.Duration
+import kotlin.time.Duration.Companion.milliseconds
+import kotlin.time.Duration.Companion.seconds
+import kotlin.time.Instant
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.SharingStarted
@@ -38,11 +43,6 @@ import me.him188.ani.utils.coroutines.flows.catching
 import me.him188.ani.utils.coroutines.flows.restartable
 import me.him188.ani.utils.platform.annotations.TestOnly
 import org.koin.core.Koin
-import kotlin.time.Clock
-import kotlin.time.Duration
-import kotlin.time.Duration.Companion.milliseconds
-import kotlin.time.Duration.Companion.seconds
-import kotlin.time.Instant
 
 /**
  * 新番时间表页面的 ViewModel.
@@ -61,7 +61,7 @@ import kotlin.time.Instant
  *
  * @param clock 时钟. 测试用假时钟驱动跨午夜.
  */
-class ScheduleViewModel(
+open class ScheduleViewModel(
     koin: Koin = GlobalKoin,
     private val timeZone: TimeZone = TimeZone.currentSystemDefault(),
     private val clock: Clock = Clock.System,

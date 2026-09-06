@@ -28,7 +28,7 @@ dependencies {
     api(projects.app.android.uiFoundationTv)
     implementation(projects.app.shared.appData)
     // 仅复用其探索状态层 (ExplorationPageViewModel/ExplorationPageState, D3); UI 自绘
-    implementation(projects.app.shared)
+    api(projects.app.shared) // public shared ViewModel superclass
     implementation(projects.app.shared.uiExploration)
     implementation(projects.app.shared.pagingCompose) // fork 版 LazyPagingItems
     api(projects.app.shared.uiFoundation) // 仅白名单基建: AsyncImage / AbstractViewModel (§4.2)

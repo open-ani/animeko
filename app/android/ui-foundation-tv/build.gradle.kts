@@ -28,6 +28,7 @@ dependencies {
     api(libs.androidx.tv.material)
     api(projects.app.shared.appPlatform)
     api(compose.foundation)
+    api(libs.compose.lifecycle.viewmodel.compose)
     implementation(projects.app.shared.uiFoundation) // 仅白名单基建: AsyncImage (§4.2)
     // materialkolor 生成 m3 ColorScheme, 由 TvColorMapping 逐字段映射到 tv-material ColorScheme.
     // 这是 TV 代码中唯一允许接触 androidx.compose.material3 类型的位置 (atv-architecture.md §4.2).

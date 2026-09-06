@@ -30,6 +30,7 @@ import me.him188.ani.app.data.repository.user.SettingsRepository
 import me.him188.ani.app.domain.foundation.LoadError
 import me.him188.ani.app.domain.session.SessionEvent
 import me.him188.ani.app.domain.session.SessionStateProvider
+import me.him188.ani.app.domain.usecase.GlobalKoin
 import me.him188.ani.app.navigation.AniNavigator
 import me.him188.ani.app.tools.MonoTasker
 import me.him188.ani.app.ui.foundation.AbstractViewModel
@@ -42,11 +43,14 @@ import me.him188.ani.datasources.api.topic.toggleCollected
 import me.him188.ani.utils.coroutines.flows.FlowRestarter
 import me.him188.ani.utils.coroutines.flows.restartable
 import me.him188.ani.utils.logging.info
+import org.koin.core.Koin
 import org.koin.core.component.KoinComponent
 import org.koin.core.component.inject
 
 @Stable
-class UserCollectionsViewModel : AbstractViewModel(), KoinComponent {
+open class UserCollectionsViewModel(private val koin: Koin = GlobalKoin) : AbstractViewModel(), KoinComponent {
+    override fun getKoin(): Koin = koin
+
     lateinit var navigator: AniNavigator
 
     private val subjectCollectionRepository: SubjectCollectionRepository by inject()

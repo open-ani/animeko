@@ -11,6 +11,9 @@ package me.him188.ani.app.ui.login
 
 import androidx.compose.runtime.Immutable
 import androidx.compose.runtime.Stable
+import kotlin.time.Clock
+import kotlin.time.Duration.Companion.seconds
+import kotlin.time.Instant
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.combine
@@ -20,15 +23,16 @@ import me.him188.ani.app.data.repository.user.UserRepository
 import me.him188.ani.app.domain.session.InvalidSessionReason
 import me.him188.ani.app.domain.session.SessionManager
 import me.him188.ani.app.domain.session.SessionState
+import me.him188.ani.app.domain.usecase.GlobalKoin
 import me.him188.ani.app.ui.foundation.AbstractViewModel
+import org.koin.core.Koin
 import org.koin.core.component.KoinComponent
 import org.koin.core.component.inject
-import kotlin.time.Clock
-import kotlin.time.Duration.Companion.seconds
-import kotlin.time.Instant
 
 @Stable
-class EmailLoginViewModel : AbstractViewModel(), KoinComponent {
+open class EmailLoginViewModel(private val koin: Koin = GlobalKoin) : AbstractViewModel(), KoinComponent {
+    override fun getKoin(): Koin = koin
+
     private val userRepository: UserRepository by inject()
     private val sessionManager: SessionManager by inject()
 

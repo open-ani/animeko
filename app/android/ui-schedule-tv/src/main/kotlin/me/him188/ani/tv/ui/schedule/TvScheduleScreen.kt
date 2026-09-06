@@ -9,10 +9,12 @@
 
 package me.him188.ani.tv.ui.schedule
 
-import androidx.compose.animation.Crossfade
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.ExperimentalFoundationApi
+import androidx.compose.foundation.gestures.BringIntoViewSpec
+import androidx.compose.foundation.gestures.LocalBringIntoViewSpec
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.interaction.collectIsFocusedAsState
 import androidx.compose.foundation.layout.Arrangement
@@ -26,48 +28,43 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.rounded.Refresh
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.saveable.rememberSaveable
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.focus.onFocusChanged
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
-import androidx.lifecycle.viewmodel.compose.viewModel
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.rounded.Refresh
 import kotlinx.datetime.LocalTime
 import kotlinx.datetime.format.char
 import kotlinx.datetime.isoDayNumber
 import me.him188.ani.app.ui.exploration.schedule.AiringScheduleColumnItem
 import me.him188.ani.app.ui.exploration.schedule.AiringScheduleItemPresentation
 import me.him188.ani.app.ui.exploration.schedule.ScheduleDay
-import me.him188.ani.app.ui.exploration.schedule.ScheduleScreenState
-import me.him188.ani.app.ui.exploration.schedule.ScheduleViewModel
+import me.him188.ani.app.ui.exploration.schedule.SchedulePagePresentation
 import me.him188.ani.app.ui.foundation.AsyncImage
 import me.him188.ani.datasources.api.EpisodeSort
 import me.him188.ani.tv.ui.foundation.focus.TvFocusDefaults
+import me.him188.ani.tv.ui.foundation.focus.LocalTvFocusMemory
 import me.him188.ani.tv.ui.foundation.focus.TvFocusKey
+import me.him188.ani.tv.ui.foundation.focus.TvFocusScope
 import me.him188.ani.tv.ui.foundation.focus.rememberTvFocusScope
 import me.him188.ani.tv.ui.foundation.focus.tvFocusAnchor
+import me.him188.ani.tv.ui.foundation.focus.tvFocusMemorable
 import me.him188.ani.tv.ui.foundation.focus.tvFocusNavSignal
 import me.him188.ani.tv.ui.foundation.widgets.TvHeroButton
 import me.him188.ani.tv.ui.foundation.widgets.TvPageDefaults
@@ -75,36 +72,60 @@ import me.him188.ani.tv.ui.foundation.widgets.tvHeroContentColor
 import me.him188.ani.tv.ui.foundation.widgets.tvHeroSecondaryContentColor
 
 /** 时间表焦点锚点 (统一焦点框架, 见 ui-foundation-tv/focus). */
-private enum class TvScheduleFocus : TvFocusKey {
-    /** 「今天」日期胶囊 (进页初始焦点). */
-    Today,
+private sealed interface TvScheduleFocus : TvFocusKey {
+    /** 今天列的第一条番剧 (进页初始焦点). */
+    data object Today : TvScheduleFocus
+    data class Item(val subjectId: Int, val episodeId: Int) : TvScheduleFocus
 }
 
 /*
  * TV 新番时间表: 手机端 ScheduleScreen 宽屏 (Medium) 布局的搬运 (atv-architecture.md §7.2) ——
  * 多天并排的固定宽列 (360dp) 横向排列, 列头为「M/d + 周几」(今天主题色 + 圆头分隔线),
  * 每列一条时间线列表 (时间行 / 56dp 封面 / 标题 / 集数副行 / 当前时间指示器 / 占位骨架).
- * 状态层直接复用手机 ScheduleViewModel + ScheduleScreenState (D3).
+ * 数据复用手机 ScheduleViewModel，视口由页面的可保存 LazyListState 持有。
  *
  * 滚动控制: 手机 desktop 用 HorizontalScrollControlScaffoldOnDesktop (鼠标悬停出滚动按钮,
  * 修 CMP 的 LazyRow 无法鼠标拖动); TV 上它是 Platform.Desktop 分支的空透传, 且 hover/click
  * 输入源都不存在 —— 跨列横向滚动由焦点系统天然承担 (聚焦移到视口外的列, BringIntoView
  * 自动滚动 LazyRow), 与 desktop 滚动按钮等效.
  */
+@OptIn(ExperimentalFoundationApi::class)
 @Composable
 fun TvScheduleScreen(
-    onClickSubject: (subjectId: Int) -> Unit,
+    presentation: SchedulePagePresentation,
+    onIntent: (TvScheduleIntent) -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    // 状态层复用手机 ScheduleViewModel (D3); UI 为 TV 自绘
-    val viewModel = viewModel<ScheduleViewModel> { ScheduleViewModel() }
-    val presentation by viewModel.presentationFlow.collectAsState()
-    // 复用手机 ScheduleScreenState: days + 初始滚动到今天列的 lazyListState + 各列独立列表状态
-    val state = remember { ScheduleScreenState { viewModel.pageState.days } }
+    // rememberLazyListState saves the viewport in the navigation entry across detail visits.
+    val days = presentation.days
+    val listState = rememberLazyListState(days.indexOfFirst { it.kind == ScheduleDay.Kind.TODAY }.coerceAtLeast(0))
 
     val focus = rememberTvFocusScope()
     focus.Resolver()
-    focus.InitialFocus(TvScheduleFocus.Today)
+    val restoreTarget = (LocalTvFocusMemory.current?.pendingRestoreId as? TvScheduleFocus.Item)
+        ?.takeIf { target ->
+            presentation.airingSchedules.any { day ->
+                day.episodes.any { entry ->
+                    entry is AiringScheduleColumnItem.Data &&
+                        entry.item.subjectId == target.subjectId && entry.item.episodeId == target.episodeId
+                }
+            }
+        }
+    // Lazy children can claim focus after InitialFocus runs. Its fallback must target the
+    // same saved item; focusing Today first starts a scroll that outlives focus restoration.
+    focus.InitialFocus(restoreTarget ?: TvScheduleFocus.Today)
+    val restoringViewport = remember { restoreTarget != null }
+    val parentScrollSpec = LocalBringIntoViewSpec.current
+    val scrollSpec = remember(focus, restoringViewport, parentScrollSpec) {
+        object : BringIntoViewSpec by parentScrollSpec {
+            override fun calculateScrollDistance(offset: Float, size: Float, containerSize: Float): Float {
+                // Keep the saved viewport through navigation's temporary default focus and
+                // memory restoration. Only a new user navigation may scroll it again.
+                if (restoringViewport && focus.userNavGeneration == 0) return 0f
+                return parentScrollSpec.calculateScrollDistance(offset, size, containerSize)
+            }
+        }
+    }
 
     // ── 错误态: 文本 + 重试 ──
     val error = presentation.error
@@ -123,7 +144,7 @@ fun TvScheduleScreen(
                 text = "重试",
                 icon = Icons.Rounded.Refresh,
                 filled = true,
-                onClick = { viewModel.refresh() },
+                onClick = { onIntent(TvScheduleIntent.Refresh) },
                 onFocused = {},
                 modifier = Modifier.padding(top = 16.dp),
             )
@@ -132,22 +153,24 @@ fun TvScheduleScreen(
     }
 
     // ── 多列并排 (手机 Medium 档): 固定 360dp 列宽, 列间 16dp, 初始滚动到今天列 ──
-    LazyRow(
-        modifier.fillMaxSize().tvFocusNavSignal(focus),
-        state = state.lazyListState,
-        horizontalArrangement = Arrangement.spacedBy(TvScheduleDefaults.PageSpacing),
-        contentPadding = PaddingValues(start = TvScheduleDefaults.StartPadding, end = TvPageDefaults.EndPadding),
-    ) {
-        items(state.days, key = { it.date.toString() }) { day ->
-            val columnItems = presentation.airingSchedules
-                .firstOrNull { it.date == day.date }?.episodes.orEmpty()
-            TvScheduleDayColumn(
-                day = day,
-                items = columnItems,
-                onClickSubject = onClickSubject,
-                focus = focus,
-                modifier = Modifier.width(TvScheduleDefaults.PageWidth).fillParentMaxHeight(),
-            )
+    CompositionLocalProvider(LocalBringIntoViewSpec provides scrollSpec) {
+        LazyRow(
+            modifier.fillMaxSize().tvFocusNavSignal(focus),
+            state = listState,
+            horizontalArrangement = Arrangement.spacedBy(TvScheduleDefaults.PageSpacing),
+            contentPadding = PaddingValues(start = TvScheduleDefaults.StartPadding, end = TvPageDefaults.EndPadding),
+        ) {
+            items(days, key = { it.date.toString() }) { day ->
+                val columnItems = presentation.airingSchedules
+                    .firstOrNull { it.date == day.date }?.episodes.orEmpty()
+                TvScheduleDayColumn(
+                    day = day,
+                    items = columnItems,
+                    onClickSubject = { onIntent(TvScheduleIntent.OpenSubject(it)) },
+                    focus = focus,
+                    modifier = Modifier.width(TvScheduleDefaults.PageWidth).fillParentMaxHeight(),
+                )
+            }
         }
     }
 }
@@ -161,7 +184,7 @@ private fun TvScheduleDayColumn(
     day: ScheduleDay,
     items: List<AiringScheduleColumnItem>,
     onClickSubject: (subjectId: Int) -> Unit,
-    focus: me.him188.ani.tv.ui.foundation.focus.TvFocusScope,
+    focus: TvFocusScope,
     modifier: Modifier = Modifier,
 ) {
     val isToday = day.kind == ScheduleDay.Kind.TODAY
@@ -201,6 +224,7 @@ private fun TvScheduleDayColumn(
                             item = item.item,
                             showTime = item.showTime,
                             onClick = { onClickSubject(item.item.subjectId) },
+                            focus = focus,
                             modifier = if (isToday && index == firstDataIndex) {
                                 Modifier.tvFocusAnchor(focus, TvScheduleFocus.Today)
                             } else Modifier,
@@ -253,6 +277,7 @@ private fun TvScheduleItem(
     item: AiringScheduleItemPresentation,
     showTime: Boolean,
     onClick: () -> Unit,
+    focus: TvFocusScope,
     modifier: Modifier = Modifier,
 ) {
     val interactionSource = remember { MutableInteractionSource() }
@@ -285,6 +310,8 @@ private fun TvScheduleItem(
                     .fillMaxWidth()
                     .padding(TvFocusDefaults.RingInset)
                     .clip(RoundedCornerShape(TvScheduleDefaults.ItemCornerRadius))
+                    .tvFocusAnchor(focus, TvScheduleFocus.Item(item.subjectId, item.episodeId))
+                    .tvFocusMemorable(TvScheduleFocus.Item(item.subjectId, item.episodeId))
                     .clickable(
                         interactionSource = interactionSource,
                         indication = null,

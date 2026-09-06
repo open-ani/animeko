@@ -11,39 +11,42 @@ package me.him188.ani.tv.ui.settings
 
 import androidx.compose.runtime.Stable
 import kotlinx.coroutines.flow.SharingStarted
-import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import me.him188.ani.app.data.models.preference.VideoScaffoldConfig
 import me.him188.ani.app.data.repository.user.SettingsRepository
 import me.him188.ani.app.ui.foundation.AbstractViewModel
-import org.koin.core.component.KoinComponent
-import org.koin.core.component.inject
 
 /**
  * TV 设置子集薄 VM (atv-architecture.md §7.6, M3 精简版):
  * 播放三开关 + 弹幕总开关. 数据源/代理/主题等编辑入口提示到手机端.
  */
 @Stable
-class TvSettingsViewModel : AbstractViewModel(), KoinComponent {
-    private val settingsRepository: SettingsRepository by inject()
+class TvSettingsViewModel(
+    private val settingsRepository: SettingsRepository,
+) : AbstractViewModel() {
+    val uiState = combine(
+        settingsRepository.danmakuEnabled.flow,
+        settingsRepository.videoScaffoldConfig.flow,
+    ) { danmakuEnabled, videoConfig -> TvSettingsUiState(danmakuEnabled, videoConfig) }
+        .stateIn(backgroundScope, SharingStarted.WhileSubscribed(5_000), TvSettingsUiState())
 
-    val danmakuEnabled: StateFlow<Boolean?> = settingsRepository.danmakuEnabled.flow
-        .stateIn(backgroundScope, SharingStarted.WhileSubscribed(5_000), null)
+    fun onIntent(intent: TvSettingsIntent) {
+        when (intent) {
+            TvSettingsIntent.ToggleDanmaku -> toggleDanmakuEnabled()
+            TvSettingsIntent.ToggleAutoPlayNext -> updateVideoConfig { copy(autoPlayNext = !autoPlayNext) }
+            TvSettingsIntent.ToggleAutoSkipOpEd -> updateVideoConfig { copy(autoSkipOpEd = !autoSkipOpEd) }
+            TvSettingsIntent.ToggleAutoSwitchMediaOnError ->
+                updateVideoConfig { copy(autoSwitchMediaOnPlayerError = !autoSwitchMediaOnPlayerError) }
+        }
+    }
 
-    val videoConfig: StateFlow<VideoScaffoldConfig?> = settingsRepository.videoScaffoldConfig.flow
-        .stateIn(backgroundScope, SharingStarted.WhileSubscribed(5_000), null)
-
-    fun toggleDanmakuEnabled() {
+    private fun toggleDanmakuEnabled() {
         backgroundScope.launch {
             settingsRepository.danmakuEnabled.update { !this }
         }
     }
-
-    fun toggleAutoPlayNext() = updateVideoConfig { copy(autoPlayNext = !autoPlayNext) }
-    fun toggleAutoSkipOpEd() = updateVideoConfig { copy(autoSkipOpEd = !autoSkipOpEd) }
-    fun toggleAutoSwitchMediaOnError() =
-        updateVideoConfig { copy(autoSwitchMediaOnPlayerError = !autoSwitchMediaOnPlayerError) }
 
     private fun updateVideoConfig(block: VideoScaffoldConfig.() -> VideoScaffoldConfig) {
         backgroundScope.launch {

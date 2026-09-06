@@ -80,7 +80,7 @@ internal object TvPlayerControlsDefaults {
  */
 @Composable
 internal fun TvPlayerControlsOverlay(
-    title: TvEpisodeViewModel.TitleInfo,
+    title: TvEpisodeTitle,
     clockText: String,
     mediaLabel: String?,
     positionMillis: Long,

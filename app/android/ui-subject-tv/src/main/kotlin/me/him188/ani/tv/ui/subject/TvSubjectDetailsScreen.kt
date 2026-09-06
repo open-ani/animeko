@@ -10,13 +10,12 @@
 package me.him188.ani.tv.ui.subject
 
 import androidx.activity.compose.BackHandler
-import androidx.compose.foundation.ScrollState
-import androidx.compose.runtime.CompositionLocalProvider
-import androidx.compose.foundation.gestures.LocalBringIntoViewSpec
-import androidx.compose.foundation.gestures.BringIntoViewSpec
 import androidx.compose.foundation.ExperimentalFoundationApi
+import androidx.compose.foundation.ScrollState
 import androidx.compose.foundation.background
 import androidx.compose.foundation.basicMarquee
+import androidx.compose.foundation.gestures.BringIntoViewSpec
+import androidx.compose.foundation.gestures.LocalBringIntoViewSpec
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxScope
@@ -47,9 +46,12 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.Stable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableFloatStateOf
+import androidx.compose.runtime.mutableStateMapOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
@@ -59,47 +61,34 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.drawWithContent
 import androidx.compose.ui.focus.FocusDirection
 import androidx.compose.ui.focus.onFocusChanged
-import androidx.compose.runtime.Stable
-import androidx.compose.ui.layout.positionInRoot
-import androidx.compose.ui.layout.onGloballyPositioned
-import androidx.compose.runtime.mutableStateMapOf
-import androidx.compose.runtime.mutableFloatStateOf
-import androidx.lifecycle.compose.LocalLifecycleOwner
-import androidx.lifecycle.Lifecycle
 import androidx.compose.ui.graphics.BlendMode
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.CompositingStrategy
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.layout.onGloballyPositioned
+import androidx.compose.ui.layout.positionInRoot
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
-import androidx.lifecycle.viewmodel.compose.viewModel
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.paging.compose.collectAsLazyPagingItems
-import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.flow.first
 import me.him188.ani.app.data.models.subject.SubjectCollectionInfo
 import me.him188.ani.app.data.models.subject.SubjectInfo
-import me.him188.ani.app.data.network.TmdbImageService
-import me.him188.ani.app.data.network.matchToEpisodes
-import me.him188.ani.app.data.network.newestAiredDateStringOrNull
-import me.him188.ani.app.data.repository.subject.SubjectCollectionRepository
-import me.him188.ani.app.domain.usecase.GlobalKoin
 import me.him188.ani.app.ui.foundation.AsyncImage
-import me.him188.ani.app.ui.subject.details.SubjectDetailsUIState
-import me.him188.ani.app.ui.subject.details.SubjectDetailsViewModel
-import me.him188.ani.app.ui.subject.details.state.SubjectDetailsState
 import me.him188.ani.app.ui.subject.episode.list.EpisodeListItem
 import me.him188.ani.datasources.api.EpisodeSort
+import me.him188.ani.tv.ui.foundation.focus.TvAnchoredBringIntoViewSpec
 import me.him188.ani.tv.ui.foundation.focus.TvFocusKey
 import me.him188.ani.tv.ui.foundation.focus.TvFocusScope
 import me.him188.ani.tv.ui.foundation.focus.rememberTvFocusScope
 import me.him188.ani.tv.ui.foundation.focus.tvFocusAnchor
-import me.him188.ani.tv.ui.foundation.focus.tvFocusLink
-import androidx.compose.ui.platform.LocalDensity
-import me.him188.ani.tv.ui.foundation.focus.TvAnchoredBringIntoViewSpec
 import me.him188.ani.tv.ui.foundation.focus.tvFocusExit
+import me.him188.ani.tv.ui.foundation.focus.tvFocusLink
 import me.him188.ani.tv.ui.foundation.focus.tvFocusNavSignal
 import me.him188.ani.tv.ui.foundation.widgets.TvHeroButton
 import me.him188.ani.tv.ui.foundation.widgets.TvPosterCardDefaults
@@ -130,60 +119,18 @@ private enum class TvDetailsBackLevel { Hero, Episodes, Below }
  *
  * 未实现 (上游有): 圆钮行/选集网格菜单/标签菜单/吸附滚动.
  */
-/** TMDB 横版 backdrop 三态: null = 未解析 (按有图排版等待); Resolved(url=null) = 确认无图回退封面. */
-private data class TvBackdropState(val url: String?)
-
 @Composable
 fun TvSubjectDetailsScreen(
-    subjectId: Int,
-    placeholder: SubjectInfo?,
-    onPlayEpisode: (episodeId: Int) -> Unit,
-    onClickRelated: (subjectId: Int) -> Unit,
+    uiState: TvSubjectDetailsUiState,
+    onIntent: (TvSubjectDetailsIntent) -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    // 状态层复用手机 SubjectDetailsViewModel (D3): info/选集列表/续播目标/角色/评论 pagers
-    val viewModel = viewModel<SubjectDetailsViewModel>(key = subjectId.toString()) {
-        SubjectDetailsViewModel(subjectId, placeholder)
-    }
-    LaunchedEffect(viewModel) { viewModel.reload() }
-    val uiState by viewModel.state.collectAsState()
-
-    // TMDB backdrop/剧照 (TV 特有, 页内加载; 匹配需 EpisodeCollectionInfo, 独立拉 collection)
-    val collectionRepo = remember { GlobalKoin.get<SubjectCollectionRepository>() }
-    val tmdb = remember { GlobalKoin.get<TmdbImageService>() }
-    var backdropState by remember { mutableStateOf<TvBackdropState?>(null) }
-    var episodeStills by remember { mutableStateOf<Map<Int, String>>(emptyMap()) }
-    var airingCollection by remember { mutableStateOf<SubjectCollectionInfo?>(null) }
-    LaunchedEffect(subjectId) {
-        val collection = try {
-            collectionRepo.subjectCollectionFlow(subjectId).first()
-        } catch (e: CancellationException) {
-            throw e
-        } catch (e: Exception) {
-            null
-        } ?: return@LaunchedEffect
-        airingCollection = collection
-        val newest = collection.episodes.newestAiredDateStringOrNull()
-        backdropState = TvBackdropState(
-            runCatching {
-                tmdb.getBackdropUrl(subjectId, collection.subjectInfo.name, activeAsOfDate = newest)
-            }.getOrNull(),
-        )
-        runCatching {
-            tmdb.getEpisodeStills(subjectId, collection.subjectInfo.name, "zh-CN", newestWantedAirDate = newest)
-        }.onSuccess { stills ->
-            episodeStills = stills.matchToEpisodes(collection.episodes)
-                .mapNotNull { (id, media) -> media.stillUrl?.let { id to it } }
-                .toMap()
-        }
-    }
-
     Box(modifier.fillMaxSize().background(tvShellBackgroundColor())) {
-        when (val state = uiState) {
-            is SubjectDetailsUIState.Placeholder ->
+        when {
+            uiState.content == null && uiState.error == null ->
                 CircularProgressIndicator(Modifier.align(Alignment.Center))
 
-            is SubjectDetailsUIState.Err -> Column(
+            uiState.error != null -> Column(
                 Modifier.align(Alignment.Center),
                 horizontalAlignment = Alignment.CenterHorizontally,
             ) {
@@ -196,45 +143,39 @@ fun TvSubjectDetailsScreen(
                     text = "重试",
                     icon = Icons.Rounded.Refresh,
                     filled = true,
-                    onClick = { viewModel.reload() },
+                    onClick = { onIntent(TvSubjectDetailsIntent.Retry) },
                     onFocused = {},
                     modifier = Modifier.padding(top = 16.dp),
                 )
             }
 
-            is SubjectDetailsUIState.Ok -> TvSubjectDetailsContent(
-                state.value, airingCollection, backdropState, episodeStills, onPlayEpisode, onClickRelated,
-            )
+            else -> uiState.content?.let { content ->
+                TvSubjectDetailsContent(content, uiState.images, onIntent)
+            }
         }
     }
 }
 
 /** 详情页内容: 状态接线 (焦点/返回分层/滚动) + 各区块填进 [TvSubjectDetailsPageLayout] 骨架. */
+@OptIn(ExperimentalFoundationApi::class)
 @Composable
 private fun TvSubjectDetailsContent(
-    details: SubjectDetailsState,
-    airingCollection: SubjectCollectionInfo?,
-    backdropState: TvBackdropState?,
-    episodeStills: Map<Int, String>,
-    onPlayEpisode: (episodeId: Int) -> Unit,
-    onClickRelated: (subjectId: Int) -> Unit,
+    details: TvSubjectDetailsContentState,
+    images: TvSubjectImages,
+    onIntent: (TvSubjectDetailsIntent) -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    val subjectInfo = details.info ?: SubjectInfo.Empty
-    val presentation by details.presentation.collectAsState()
-    val episodes = presentation.episodeListUiState.mainEpisodes + presentation.episodeListUiState.otherEpisodes
-    // backdrop 三态 (对齐 PR): 未解析时不显示回退图, 按"有图"排版等待 (图到直接淡入零跳变)
+    val subjectInfo = details.info
+    val episodes = details.episodes
+    val airingCollection = images.collection
+    val backdropState = images.backdrop
+    val episodeStills = images.episodeStills
     val heroBackdropUrl = backdropState?.url
         ?: subjectInfo.imageLarge.takeIf { backdropState != null && it.isNotBlank() }
-
-    // 选集尚未到达 (占位态): 播放钮以「加载中…」占位常驻, 焦点当帧落定 (见 TvDetailsHeroSection)
-    val episodesLoading = presentation.isPlaceholder || presentation.episodeListUiState.isPlaceholder
-    // 续播目标: 手机同款语义 (SubjectProgressState.episodeIdToPlay), 未就绪回退第一个未看正片
-    val playTargetId = details.subjectProgressState.episodeIdToPlay
-        ?: episodes.firstOrNull { !it.isDoneOrDropped }?.episodeId
-        ?: episodes.firstOrNull()?.episodeId
+    val playTargetId = details.playTargetId
     val playTargetSort = episodes.firstOrNull { it.episodeId == playTargetId }?.sort
-    val watched = episodes.count { it.isDoneOrDropped }
+    val episodesLoading = details.episodesLoading
+    val watched = details.watchedCount
 
     val scrollState = rememberScrollState()
     // 统一焦点框架: 进页初始焦点落播放按钮 (转场结束后送达, 见 InitialFocus)
@@ -245,10 +186,15 @@ private fun TvSubjectDetailsContent(
     // 播放钮一个可聚焦节点, 任何来路的默认聚焦/杂散按键都只能落在它上面, 不可能把页面滚下去.
     // 第二屏本就在折叠线之下 (hero 整屏), 晚组合几百毫秒不可见. RESUMED 兜底防按钮永不聚焦.
     var belowFoldReady by remember { mutableStateOf(false) }
-    // 滚动锚点 = 聚焦项所在区块的上边缘 (各区块根节点上报几何 + 子树持焦; 见 TvDetailsScrollAnchors)
+    // 首屏/简介/选集使用显式锚点; 角色及后续区块沿用页面覆盖前的默认纵向滚动策略.
     val anchors = remember { TvDetailsScrollAnchors() }
-    val bringIntoViewSpec = remember(scrollState) {
-        TvDetailsBringIntoViewSpec(anchors, scrollOffset = { scrollState.value })
+    val defaultBringIntoViewSpec = LocalBringIntoViewSpec.current
+    val bringIntoViewSpec = remember(scrollState, defaultBringIntoViewSpec) {
+        TvDetailsBringIntoViewSpec(
+            anchors,
+            scrollOffset = { scrollState.value },
+            defaultSpec = defaultBringIntoViewSpec,
+        )
     }
     val sectionAnchorInsetPx = with(LocalDensity.current) { TvSubjectDetailsDefaults.SectionAnchorInset.toPx() }
     fun Modifier.scrollSection(key: String, anchorInsetPx: Float = 0f) =
@@ -296,7 +242,7 @@ private fun TvSubjectDetailsContent(
             playTargetSort = playTargetSort,
             episodesLoading = episodesLoading,
             watchedCount = watched,
-            onPlayEpisode = onPlayEpisode,
+            onPlay = { onIntent(TvSubjectDetailsIntent.Resume) },
             playButtonModifier = Modifier
                 // 首次聚焦后放开第二屏组合 (滚回页顶由 hero 区块锚点 = 0 自然给出)
                 .onFocusChanged { if (it.isFocused) belowFoldReady = true }
@@ -311,7 +257,7 @@ private fun TvSubjectDetailsContent(
             episodeStills = episodeStills,
             fallbackImageUrl = heroBackdropUrl,
             pageHeight = heroHeight,
-            onPlayEpisode = onPlayEpisode,
+            onPlayEpisode = { onIntent(TvSubjectDetailsIntent.PlayEpisode(it)) },
             summaryButtonModifier = Modifier
                 .tvFocusAnchor(focus, TvDetailsFocus.ExpandSummary)
                 .tvFocusLink(
@@ -331,9 +277,8 @@ private fun TvSubjectDetailsContent(
         )
         TvDetailsBelowSections(
             details = details,
-            onClickRelated = onClickRelated,
+            onClickRelated = { onIntent(TvSubjectDetailsIntent.OpenRelatedSubject(it)) },
             onFocusedWithin = { backLevel = TvDetailsBackLevel.Below },
-            blockModifier = { key -> Modifier.scrollSection(key) },
         )
     }
 }
@@ -357,7 +302,7 @@ private fun TvSubjectDetailsPageLayout(
     BoxWithConstraints(modifier.fillMaxSize().tvFocusNavSignal(focus)) {
         val heroHeight = maxHeight - 16.dp
         backdrop()
-        // 纵向滚动的 BringIntoView 策略由页面给定 (覆盖 Android TV 平台默认的 pivot 30%);
+        // 页面只为首屏/简介/选集覆盖纵向策略, 其余区块沿用平台默认行为;
         // 列内的横向行 (选集轮播/角色/制作人员…) 各自用"对齐行首 + 留起始 padding" —— 不显式给,
         // 它们会继承列的纵向策略, 把纵向距离当横向用
         val rowStartPaddingPx = with(LocalDensity.current) { TvSubjectDetailsDefaults.HorizontalPadding.toPx() }
@@ -373,7 +318,7 @@ private fun TvSubjectDetailsPageLayout(
 }
 
 /**
- * 详情页滚动锚点登记: 每个区块 (hero / 第二屏 / 角色 / 制作人员 …) 的根节点上报自己在滚动
+ * 详情页滚动锚点登记: hero / 第二屏的根节点上报自己在滚动
  * 内容里的上边缘, 以及子树是否持焦; BringIntoView 就把"聚焦项所在区块的上边缘"对齐到视口
  * 上边缘 —— 锚点是布局的边, 不是 30% 这种无依据的比例. hero 的上边缘 = 0, 播放钮聚焦即回页顶.
  *
@@ -428,29 +373,21 @@ private fun Modifier.tvDetailsScrollSectionBottom(
     .onFocusChanged { if (anchors.focusedKeys[key] != it.hasFocus) anchors.focusedKeys[key] = it.hasFocus }
 
 /**
- * 详情页纵向滚动的 BringIntoView 策略. Android TV 上 Compose 的平台默认是 **pivot 30%**
- * (聚焦项前缘无论是否已可见都被滚到容器 30% 处 —— 曾把整屏 hero 滚掉半屏, 且总能压过手写的
- * animateScrollTo: 两条动画争同一 ScrollState, 后启动的赢). 这里改为: 目标滚动位置 =
- * 聚焦项所在区块的上边缘 ([targetScroll], 见 [TvDetailsScrollAnchors]); 区块未知时退化为
- * "最小滚动露出" (非 TV 平台的默认语义). 单一机制, 无互抢.
+ * 详情页纵向滚动策略: 首屏/简介按顶边锚点, 选集卡按底边锚点.
+ * 角色及后续区块不登记纵向锚点, 直接交给页面覆盖前的 [defaultSpec], 保留平台默认行为.
  */
 @OptIn(ExperimentalFoundationApi::class)
 private class TvDetailsBringIntoViewSpec(
     private val anchors: TvDetailsScrollAnchors,
     private val scrollOffset: () -> Int,
+    private val defaultSpec: BringIntoViewSpec,
 ) : BringIntoViewSpec {
     override fun calculateScrollDistance(offset: Float, size: Float, containerSize: Float): Float {
         // 底边锚点 (选集卡): 聚焦项下边缘 + 留白 对齐视口下边缘
         anchors.focusedBottomInset()?.let { inset -> return offset + size + inset - containerSize }
-        // 顶边锚点 (hero / 第二屏 / 角色…): 区块上边缘 (- 内缩) 对齐视口上边缘
+        // 顶边锚点 (hero / 第二屏): 区块上边缘 (- 内缩) 对齐视口上边缘
         anchors.focusedSectionTop()?.let { top -> return top - scrollOffset() }
-        return revealMinimal(offset, size, containerSize)
-    }
-
-    private fun revealMinimal(offset: Float, size: Float, containerSize: Float): Float = when {
-        offset < 0f -> offset
-        offset + size > containerSize -> if (size > containerSize) offset else offset + size - containerSize
-        else -> 0f
+        return defaultSpec.calculateScrollDistance(offset, size, containerSize)
     }
 }
 
@@ -512,7 +449,7 @@ private fun TvDetailsHeroSection(
     playTargetSort: EpisodeSort?,
     episodesLoading: Boolean,
     watchedCount: Int,
-    onPlayEpisode: (episodeId: Int) -> Unit,
+    onPlay: () -> Unit,
     playButtonModifier: Modifier,
     modifier: Modifier = Modifier,
 ) {
@@ -561,7 +498,7 @@ private fun TvDetailsHeroSection(
                     text = label,
                     icon = Icons.Rounded.PlayArrow,
                     filled = playTargetId != null,
-                    onClick = { playTargetId?.let(onPlayEpisode) },
+                    onClick = onPlay,
                     onFocused = {},
                     modifier = playButtonModifier,
                 )
@@ -747,15 +684,13 @@ private fun TvDetailsEpisodesSection(
 
 /**
  * 角色 / 制作人员 / 关联条目 / 评价区块 (数据来自复用的 SubjectDetailsState pagers).
- * 区块获得焦点时经 [onFocusedWithin] 上报返回分层.
+ * 区块获得焦点时经 [onFocusedWithin] 上报返回分层; 不设置纵向锚点, 横向行仍保留行首锚定.
  */
 @Composable
 private fun TvDetailsBelowSections(
-    details: SubjectDetailsState,
+    details: TvSubjectDetailsContentState,
     onClickRelated: (subjectId: Int) -> Unit,
     onFocusedWithin: () -> Unit,
-    /** 每个区块 (角色/制作人员/关联条目/评价) 根节点的注入 modifier (滚动锚点登记, 页面私有). */
-    blockModifier: (key: String) -> Modifier,
     modifier: Modifier = Modifier,
 ) {
     Column(
@@ -766,8 +701,8 @@ private fun TvDetailsBelowSections(
     ) {
         val characters = details.exposedCharactersPager.collectAsLazyPagingItems()
         if (characters.itemCount > 0) {
-            Column(blockModifier("characters"), verticalArrangement = Arrangement.spacedBy(24.dp)) {
-                TvDetailsSectionHeader("角色", details.totalCharactersCountState.value)
+            Column(verticalArrangement = Arrangement.spacedBy(24.dp)) {
+                TvDetailsSectionHeader("角色", details.totalCharactersCount)
                 LazyRow(
                     horizontalArrangement = Arrangement.spacedBy(12.dp),
                     contentPadding = PaddingValues(
@@ -784,8 +719,8 @@ private fun TvDetailsBelowSections(
 
         val staff = details.exposedStaffPager.collectAsLazyPagingItems()
         if (staff.itemCount > 0) {
-            Column(blockModifier("staff"), verticalArrangement = Arrangement.spacedBy(24.dp)) {
-                TvDetailsSectionHeader("制作人员", details.totalStaffCountState.value)
+            Column(verticalArrangement = Arrangement.spacedBy(24.dp)) {
+                TvDetailsSectionHeader("制作人员", details.totalStaffCount)
                 LazyRow(
                     horizontalArrangement = Arrangement.spacedBy(12.dp),
                     contentPadding = PaddingValues(
@@ -802,7 +737,7 @@ private fun TvDetailsBelowSections(
 
         val related = details.relatedSubjectsPager.collectAsLazyPagingItems()
         if (related.itemCount > 0) {
-            Column(blockModifier("related"), verticalArrangement = Arrangement.spacedBy(24.dp)) {
+            Column(verticalArrangement = Arrangement.spacedBy(24.dp)) {
                 TvDetailsSectionHeader("关联条目", null)
                 LazyRow(
                     horizontalArrangement = Arrangement.spacedBy(12.dp),
@@ -818,10 +753,10 @@ private fun TvDetailsBelowSections(
             }
         }
 
-        val comments = details.subjectCommentState.list.collectAsLazyPagingItems()
+        val comments = details.commentsPager.collectAsLazyPagingItems()
         if (comments.itemCount > 0) {
-            Column(blockModifier("comments"), verticalArrangement = Arrangement.spacedBy(24.dp)) {
-                TvDetailsSectionHeader("评价", details.subjectCommentState.count)
+            Column(verticalArrangement = Arrangement.spacedBy(24.dp)) {
+                TvDetailsSectionHeader("评价", details.commentCount)
                 LazyRow(
                     horizontalArrangement = Arrangement.spacedBy(12.dp),
                     contentPadding = PaddingValues(

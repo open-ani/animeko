@@ -15,7 +15,7 @@ import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
-import androidx.lifecycle.viewmodel.compose.viewModel
+import androidx.lifecycle.createSavedStateHandle
 import androidx.lifecycle.viewmodel.navigation3.rememberViewModelStoreNavEntryDecorator
 import androidx.navigation3.runtime.entryProvider
 import androidx.navigation3.runtime.rememberSaveableStateHolderNavEntryDecorator
@@ -27,20 +27,40 @@ import me.him188.ani.app.navigation.LocalNavigator
 import me.him188.ani.app.navigation.MainScreenPage
 import me.him188.ani.app.navigation.NavRoutes
 import me.him188.ani.app.navigation.rememberAniBackStack
-import me.him188.ani.tv.ui.episode.TvEpisodeScreen
+import me.him188.ani.tv.ui.collection.TvCollectionRoute
+import me.him188.ani.tv.ui.collection.TvCollectionViewModel
+import me.him188.ani.tv.ui.di.TvAppDependencies
+import me.him188.ani.tv.ui.episode.TvEpisodeRoute
 import me.him188.ani.tv.ui.episode.TvEpisodeViewModel
+import me.him188.ani.tv.ui.exploration.TvExplorationRoute
+import me.him188.ani.tv.ui.exploration.TvExplorationViewModel
+import me.him188.ani.tv.ui.foundation.TvNavigationEvent
 import me.him188.ani.tv.ui.foundation.focus.TvFocusMemory
-import me.him188.ani.tv.ui.subject.TvSubjectDetailsScreen
+import me.him188.ani.tv.ui.foundation.tvViewModel
+import me.him188.ani.tv.ui.login.TvLoginRoute
+import me.him188.ani.tv.ui.login.TvLoginViewModel
+import me.him188.ani.tv.ui.schedule.TvScheduleRoute
+import me.him188.ani.tv.ui.schedule.TvScheduleViewModel
+import me.him188.ani.tv.ui.search.TvSearchRoute
+import me.him188.ani.tv.ui.search.TvSearchViewModel
+import me.him188.ani.tv.ui.settings.TvSettingsRoute
+import me.him188.ani.tv.ui.settings.TvSettingsViewModel
+import me.him188.ani.tv.ui.subject.TvSubjectDetailsRoute
+import me.him188.ani.tv.ui.subject.TvSubjectDetailsViewModel
 
 /**
  * TV 端根内容: 注册 TV 支持的 [NavRoutes] 子集 (atv-architecture.md §6.3), Navigation 3
  * backStack 模型 (接线同手机 AniAppContent).
+ *
+ * 所有 TV ViewModel 只在这里通过 tvViewModel 显式构造, 生命周期归属所在导航条目.
+ * 主壳内的功能页首次显示时才创建对应 ViewModel, Route 只接收实例并连接状态/Intent.
  *
  * `Caches`/`BangumiAuthorize` 等按 §1.2 裁剪永不注册.
  */
 @Composable
 fun TvAniAppContent(
     aniNavigator: AniNavigator,
+    dependencies: TvAppDependencies,
     modifier: Modifier = Modifier,
 ) {
     val backStack = rememberAniBackStack(NavRoutes.Main(MainScreenPage.Exploration))
@@ -49,6 +69,13 @@ fun TvAniAppContent(
     // (身份键恢复流程见 TvFocusMemory)
     val shellFocusMemory = remember { TvFocusMemory() }
 
+    val onNavigate: (TvNavigationEvent) -> Unit = { event ->
+        when (event) {
+            is TvNavigationEvent.Subject -> aniNavigator.navigateSubjectDetails(event.subjectId, event.placeholder)
+            is TvNavigationEvent.Episode -> aniNavigator.navigateEpisodeDetails(event.subjectId, event.episodeId)
+            TvNavigationEvent.LoggedIn -> Unit // handled by the Main entry
+        }
+    }
     CompositionLocalProvider(LocalNavigator provides aniNavigator) {
         // tv MaterialTheme 不绘制窗口背景, 根部铺一层 Surface (深色 surface + content color)
         Surface(modifier.fillMaxSize()) {
@@ -62,35 +89,86 @@ fun TvAniAppContent(
                 ),
                 entryProvider = entryProvider {
                     entry<NavRoutes.Main> {
-                        TvMainShell(focusMemory = shellFocusMemory)
+                        val mainViewModel = tvViewModel {
+                            TvMainViewModel(dependencies.userRepository, createSavedStateHandle())
+                        }
+                        TvMainRoute(mainViewModel, focusMemory = shellFocusMemory) { content ->
+                            when (content) {
+                                TvShellContent.Exploration -> {
+                                    val viewModel = tvViewModel {
+                                        TvExplorationViewModel(
+                                            koin = dependencies.koin,
+                                            collectionRepository = dependencies.subjectCollectionRepository,
+                                            tmdb = dependencies.tmdbImageService,
+                                            summaryService = dependencies.bangumiSummaryService,
+                                        )
+                                    }
+                                    TvExplorationRoute(viewModel, onNavigate)
+                                }
+                                TvShellContent.Schedule -> {
+                                    val viewModel = tvViewModel { TvScheduleViewModel(dependencies.koin) }
+                                    TvScheduleRoute(viewModel, onNavigate)
+                                }
+                                TvShellContent.Collection -> {
+                                    val viewModel = tvViewModel { TvCollectionViewModel(dependencies.koin) }
+                                    TvCollectionRoute(viewModel, onNavigate)
+                                }
+                                TvShellContent.Search -> {
+                                    val viewModel = tvViewModel { TvSearchViewModel(dependencies.subjectSearchRepository) }
+                                    TvSearchRoute(viewModel, onNavigate)
+                                }
+                                TvShellContent.Login -> {
+                                    val viewModel = tvViewModel { TvLoginViewModel(dependencies.koin) }
+                                    TvLoginRoute(viewModel, onNavigate = { event ->
+                                        when (event) {
+                                            TvNavigationEvent.LoggedIn -> mainViewModel.onIntent(TvMainIntent.LoggedIn)
+                                            else -> onNavigate(event)
+                                        }
+                                    })
+                                }
+                                TvShellContent.Settings -> {
+                                    val viewModel = tvViewModel { TvSettingsViewModel(dependencies.settingsRepository) }
+                                    TvSettingsRoute(viewModel)
+                                }
+                            }
+                        }
                     }
 
                     entry<NavRoutes.SubjectDetail> { route ->
-                        TvSubjectDetailsScreen(
-                            subjectId = route.subjectId,
-                            placeholder = route.placeholder?.run {
-                                SubjectInfo.createPlaceholder(id, name, coverUrl, nameCN)
-                            },
-                            onPlayEpisode = { episodeId ->
-                                aniNavigator.navigateEpisodeDetails(route.subjectId, episodeId)
-                            },
-                            onClickRelated = { relatedId ->
-                                aniNavigator.navigateSubjectDetails(relatedId, null)
-                            },
-                        )
+                        val viewModel = tvViewModel(key = "subject-${route.subjectId}") {
+                            TvSubjectDetailsViewModel(
+                                subjectId = route.subjectId,
+                                placeholder = route.placeholder?.run {
+                                    SubjectInfo.createPlaceholder(id, name, coverUrl, nameCN)
+                                },
+                                factory = dependencies.subjectDetailsStateFactory,
+                                collectionRepository = dependencies.subjectCollectionRepository,
+                                tmdb = dependencies.tmdbImageService,
+                            )
+                        }
+                        TvSubjectDetailsRoute(viewModel, onNavigate)
                     }
 
                     entry<NavRoutes.EpisodeDetail> { route ->
                         val context = LocalContext.current.applicationContext
-                        val vm = viewModel<TvEpisodeViewModel>(key = route.episodeId.toString()) {
-                            TvEpisodeViewModel(route.subjectId, route.episodeId, context)
+                        val viewModel = tvViewModel(key = "episode-${route.subjectId}-${route.episodeId}") {
+                            TvEpisodeViewModel(
+                                subjectId = route.subjectId,
+                                initialEpisodeId = route.episodeId,
+                                context = context,
+                                koin = dependencies.koin,
+                                playerStateFactory = dependencies.playerStateFactory,
+                                episodeCollectionRepository = dependencies.episodeCollectionRepository,
+                                subjectCollectionRepository = dependencies.subjectCollectionRepository,
+                                danmakuRepository = dependencies.danmakuRepository,
+                                settingsRepository = dependencies.settingsRepository,
+                                getDanmakuRegexFilterListFlowUseCase = dependencies.getDanmakuRegexFilterListFlowUseCase,
+                                subjectRelationsRepository = dependencies.subjectRelationsRepository,
+                                episodeCommentRepository = dependencies.episodeCommentRepository,
+                                bangumiRelatedPeopleService = dependencies.bangumiRelatedPeopleService,
+                            )
                         }
-                        TvEpisodeScreen(
-                            vm,
-                            onClickRelatedSubject = { relatedId ->
-                                aniNavigator.navigateSubjectDetails(relatedId, null)
-                            },
-                        )
+                        TvEpisodeRoute(viewModel, onNavigate)
                     }
                 },
             )

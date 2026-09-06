@@ -27,33 +27,25 @@ import androidx.compose.material.icons.rounded.TravelExplore
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.collectAsState
-import androidx.compose.runtime.remember
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.snapshotFlow
-import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
+import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.ExperimentalComposeUiApi
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.input.InputMode
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.focus.onFocusChanged
+import androidx.compose.ui.input.InputMode
 import androidx.compose.ui.input.key.Key
 import androidx.compose.ui.platform.LocalInputModeManager
 import kotlinx.coroutines.flow.drop
-import androidx.lifecycle.viewmodel.compose.viewModel
-import me.him188.ani.app.data.repository.user.UserRepository
-import me.him188.ani.app.domain.usecase.GlobalKoin
-import me.him188.ani.app.navigation.LocalNavigator
-import me.him188.ani.app.navigation.SubjectDetailPlaceholder
-import me.him188.ani.tv.ui.collection.TvCollectionScreen
-import me.him188.ani.tv.ui.exploration.TvExplorationScreen
 import me.him188.ani.tv.ui.foundation.focus.LocalTvFocusMemory
-import me.him188.ani.tv.ui.foundation.focus.TvFocusMemory
 import me.him188.ani.tv.ui.foundation.focus.TvFocusKey
+import me.him188.ani.tv.ui.foundation.focus.TvFocusMemory
 import me.him188.ani.tv.ui.foundation.focus.rememberTvFocusScope
 import me.him188.ani.tv.ui.foundation.focus.tvFocusAnchor
 import me.him188.ani.tv.ui.foundation.focus.tvFocusHotkeyToggle
@@ -61,15 +53,6 @@ import me.him188.ani.tv.ui.foundation.widgets.TvNavRailItem
 import me.him188.ani.tv.ui.foundation.widgets.TvNavigationRailDefaults
 import me.him188.ani.tv.ui.foundation.widgets.TvNavigationSideRail
 import me.him188.ani.tv.ui.foundation.widgets.tvShellBackgroundColor
-import me.him188.ani.tv.ui.login.TvLoginScreen
-import me.him188.ani.tv.ui.schedule.TvScheduleScreen
-import me.him188.ani.tv.ui.search.TvSearchScreen
-import me.him188.ani.tv.ui.search.TvSearchViewModel
-import me.him188.ani.tv.ui.settings.TvSettingsScreen
-import me.him188.ani.tv.ui.settings.TvSettingsViewModel
-
-/** 主壳内容区: 探索/时间表/追番 + 搜索/登录/设置 (TV 额外 tab). */
-private enum class TvShellContent { Search, Exploration, Schedule, Collection, Login, Settings }
 
 /** 主壳焦点锚点 (统一焦点框架, 见 ui-foundation-tv/focus). */
 private enum class TvShellFocus : TvFocusKey {
@@ -85,11 +68,16 @@ private enum class TvShellFocus : TvFocusKey {
 @OptIn(ExperimentalComposeUiApi::class)
 @Composable
 fun TvMainShell(
+    uiState: TvMainUiState,
+    onIntent: (TvMainIntent) -> Unit,
     modifier: Modifier = Modifier,
     /** 焦点记忆; 调用方在 NavHost 之上创建传入使其跨 route 存活 (进详情页返回恢复焦点用). */
     focusMemory: TvFocusMemory? = null,
+    pageContent: @Composable (TvShellContent) -> Unit,
 ) {
-    var content by rememberSaveable { mutableStateOf(TvShellContent.Exploration) }
+    val content = uiState.content
+    val selfInfo = uiState.selfInfo
+    val currentContent by rememberUpdatedState(content)
 
     // 触屏设备上跑 TV 界面时强制键盘输入模式: touch mode 下 clickable 节点不参与
     // 键盘焦点 (requestFocus 恒 false), 遥控器/dpad 导航整个失效. 真 TV 永远非 touch mode.
@@ -100,12 +88,8 @@ fun TvMainShell(
 
     // 返回语义: 非探索内容先回探索; 探索交给系统 (退出应用)
     BackHandler(enabled = content != TvShellContent.Exploration) {
-        content = TvShellContent.Exploration
+        onIntent(TvMainIntent.Back)
     }
-
-    val navigator = LocalNavigator.current
-    // rail 头像的登录态 (登录页状态层已复用手机 EmailLoginViewModel, 这里直取仓库)
-    val selfInfo by remember { GlobalKoin.get<UserRepository>() }.selfInfoFlow.collectAsState(null)
 
     // 菜单键在"内容区 <-> 侧边栏"间往返: 焦点在内容时直达侧边栏 (落当前页条目, rail 随
     // hasFocus 自动展开); 焦点已在侧边栏时按菜单/返回/点击条目 = 收起并**恢复进入前的
@@ -121,7 +105,7 @@ fun TvMainShell(
     // 内容 tab **真实变化**时才清记忆: 首启 (含 route 返回重组) 不清 —— 否则刚 arm 的
     // 跨 route 恢复目标与认领会被摧毁 (事件驱动版实测事故)
     LaunchedEffect(Unit) {
-        snapshotFlow { content }.drop(1).collect { memory.clear() }
+        snapshotFlow { currentContent }.drop(1).collect { memory.clear() }
     }
     // 用户交互 (壳根信号, 快照事件) 取消未认领的跨 route 恢复: 迟到的数据不再抢焦点
     LaunchedEffect(focus, memory) {
@@ -155,98 +139,42 @@ fun TvMainShell(
                 .focusRequester(contentFocus),
         ) {
             CompositionLocalProvider(LocalTvFocusMemory provides memory) {
-            AnimatedContent(
-                content,
-                transitionSpec = { fadeIn() togetherWith fadeOut() },
-                label = "tvShellContent",
-            ) { current ->
-                when (current) {
-                    TvShellContent.Exploration -> TvExplorationScreen(
-                        onClickSubject = { hero ->
-                            navigator.navigateSubjectDetails(
-                                hero.subjectId,
-                                SubjectDetailPlaceholder(
-                                    id = hero.subjectId,
-                                    nameCN = hero.title,
-                                    coverUrl = hero.imageUrl,
-                                ),
-                            )
-                        },
-                    )
-
-                    TvShellContent.Schedule -> TvScheduleScreen(
-                        onClickSubject = { subjectId ->
-                            navigator.navigateSubjectDetails(subjectId, null)
-                        },
-                    )
-
-                    TvShellContent.Collection -> TvCollectionScreen(
-                        onClickSubject = { info ->
-                            navigator.navigateSubjectDetails(
-                                info.subjectId,
-                                SubjectDetailPlaceholder(
-                                    id = info.subjectId,
-                                    name = info.subjectInfo.name,
-                                    nameCN = info.subjectInfo.nameCn,
-                                    coverUrl = info.subjectInfo.imageLarge,
-                                ),
-                            )
-                        },
-                    )
-
-                    TvShellContent.Search -> TvSearchScreen(
-                        viewModel { TvSearchViewModel() },
-                        onClickSubject = { details ->
-                            navigator.navigateSubjectDetails(
-                                details.subjectInfo.subjectId,
-                                SubjectDetailPlaceholder(
-                                    id = details.subjectInfo.subjectId,
-                                    name = details.subjectInfo.name,
-                                    nameCN = details.subjectInfo.nameCn,
-                                    coverUrl = details.subjectInfo.imageLarge,
-                                ),
-                            )
-                        },
-                    )
-
-                    TvShellContent.Login -> TvLoginScreen(
-                        onLoggedIn = { content = TvShellContent.Exploration },
-                    )
-
-                    TvShellContent.Settings -> TvSettingsScreen(
-                        viewModel { TvSettingsViewModel() },
-                    )
+                AnimatedContent(
+                    content,
+                    transitionSpec = { fadeIn() togetherWith fadeOut() },
+                    label = "tvShellContent",
+                ) { current ->
+                    pageContent(current)
                 }
-            }
             }
         }
 
         // 侧边栏浮于内容之上 (展开时渐变面板压住内容左缘)
         TvNavigationSideRail(
             selfInfo = selfInfo,
-            onAvatarClick = { content = TvShellContent.Login },
+            onAvatarClick = { onIntent(TvMainIntent.SelectContent(TvShellContent.Login)) },
             // selected = 当前页条目: 进入侧边栏 (按左/菜单键) 焦点落到它上, 而不是固定落"探索"
             items = listOf(
                 TvNavRailItem(
                     Icons.Rounded.Search, "搜索",
                     selected = content == TvShellContent.Search,
-                ) { content = TvShellContent.Search },
+                ) { onIntent(TvMainIntent.SelectContent(TvShellContent.Search)) },
                 TvNavRailItem(
                     Icons.Rounded.TravelExplore, "探索", defaultFocus = true,
                     selected = content == TvShellContent.Exploration,
-                ) { content = TvShellContent.Exploration },
+                ) { onIntent(TvMainIntent.SelectContent(TvShellContent.Exploration)) },
                 TvNavRailItem(
                     Icons.Rounded.CalendarMonth, "时间表",
                     selected = content == TvShellContent.Schedule,
-                ) { content = TvShellContent.Schedule },
+                ) { onIntent(TvMainIntent.SelectContent(TvShellContent.Schedule)) },
                 TvNavRailItem(
                     Icons.Rounded.Star, "追番",
                     selected = content == TvShellContent.Collection,
-                ) { content = TvShellContent.Collection },
+                ) { onIntent(TvMainIntent.SelectContent(TvShellContent.Collection)) },
                 TvNavRailItem(
                     Icons.Rounded.Settings, "设置",
                     selected = content == TvShellContent.Settings,
-                ) { content = TvShellContent.Settings },
+                ) { onIntent(TvMainIntent.SelectContent(TvShellContent.Settings)) },
             ),
             // Rail 锚点挂容器而非条目: requestFocus 经进入门控落到当前页条目, 而
             // hasFocus 对整个子树上报到位 —— 否则 request(Rail) 的解析轮询永远等不到

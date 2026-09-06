@@ -34,4 +34,6 @@ dependencies {
     implementation(libs.koin.core)
     implementation(libs.compose.lifecycle.viewmodel.compose)
     implementation(libs.paging.compose.android)
+    testImplementation(kotlin("test-junit5"))
+    testImplementation(libs.junit5.jupiter.engine)
 }

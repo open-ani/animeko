@@ -25,6 +25,7 @@ import me.him188.ani.app.ui.foundation.LocalSketch
 import me.him188.ani.app.ui.foundation.rememberAniSketchInstance
 import me.him188.ani.app.ui.foundation.widgets.LocalToaster
 import me.him188.ani.app.ui.foundation.widgets.Toaster
+import me.him188.ani.tv.ui.di.TvAppDependencies
 import me.him188.ani.tv.ui.foundation.theme.AniTvTheme
 import me.him188.ani.tv.ui.main.TvAniAppContent
 import org.koin.android.ext.android.getKoin
@@ -45,12 +46,12 @@ class MainActivity : AniComponentActivity() {
             statusBarStyle = SystemBarStyle.dark(android.graphics.Color.TRANSPARENT),
             navigationBarStyle = SystemBarStyle.dark(android.graphics.Color.TRANSPARENT),
         )
+        // Resolve application services before entering composition.
+        val dependencies = TvAppDependencies.fromKoin(getKoin())
+        val imageLoaderClient = getKoin().get<HttpClientProvider>().get(ScopedHttpClientUserAgent.ANI)
         setContent {
             AniTvTheme {
                 // 与手机 AniApp 同款 Sketch 装配 (§5.6; main 已从 coil 迁移至 sketch)
-                val imageLoaderClient = remember {
-                    getKoin().get<HttpClientProvider>().get(ScopedHttpClientUserAgent.ANI)
-                }
                 val sketch = rememberAniSketchInstance(imageLoaderClient)
                 val toaster = remember {
                     // TV 端 Toaster: 原生 Toast (10-foot 下自绘胶囊 M4 视觉阶段再换, §5.3)
@@ -66,7 +67,7 @@ class MainActivity : AniComponentActivity() {
                     LocalSketch provides sketch,
                     LocalToaster provides toaster,
                 ) {
-                    TvAniAppContent(aniNavigator)
+                    TvAniAppContent(aniNavigator, dependencies)
                 }
             }
         }

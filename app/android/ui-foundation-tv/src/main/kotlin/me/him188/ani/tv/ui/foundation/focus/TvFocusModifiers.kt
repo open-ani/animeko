@@ -156,6 +156,22 @@ fun Modifier.tvFocusHotkey(
     }
 
 /**
+ * 按键触发由调用方准备的焦点操作, 如滚动 Lazy 网格后聚焦首项.
+ * 适用于目标尚未组合、不能直接请求固定锚点的场景; 连发与 KeyUp 语义同上.
+ */
+fun Modifier.tvFocusHotkey(
+    scope: TvFocusScope,
+    hotkey: Key,
+    onPress: () -> Unit,
+): Modifier = this
+    .tvFocusNavSignal(scope)
+    .onPreviewKeyEvent { event ->
+        if (event.key != hotkey) return@onPreviewKeyEvent false
+        if (event.type == KeyEventType.KeyDown && !event.isAutoRepeatCompat) onPress()
+        true
+    }
+
+/**
  * 全局按键"去/回"切换 (挂壳/页面根): [hotkey] 按下时, 焦点不在 [target] 子树 -> 送往
  * [target]; 已在其中 -> 调用 [onLeave] (典型: 恢复内容区上次焦点, 目标容器随失焦自动收起).
  * 判据用锚点上报 ([TvFocusScope.isFocused]), 所以 [target] 必须挂有 [tvFocusAnchor].

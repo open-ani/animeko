@@ -66,12 +66,12 @@ internal object TvPlayerEpisodeStripDefaults {
  */
 @Composable
 internal fun TvPlayerEpisodeStrip(
-    episodes: List<TvEpisodeViewModel.StripEpisode>,
+    episodes: List<TvStripEpisode>,
     currentEpisodeId: Int,
     listState: LazyListState,
     stripModifier: Modifier,
     currentCardModifier: Modifier,
-    onClickEpisode: (TvEpisodeViewModel.StripEpisode) -> Unit,
+    onClickEpisode: (TvStripEpisode) -> Unit,
     modifier: Modifier = Modifier,
 ) {
     LazyRow(
@@ -94,7 +94,7 @@ internal fun TvPlayerEpisodeStrip(
 
 @Composable
 private fun EpisodeStripCard(
-    episode: TvEpisodeViewModel.StripEpisode,
+    episode: TvStripEpisode,
     isCurrent: Boolean,
     onClick: () -> Unit,
     modifier: Modifier = Modifier,

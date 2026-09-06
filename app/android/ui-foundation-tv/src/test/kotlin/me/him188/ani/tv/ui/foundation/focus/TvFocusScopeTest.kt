@@ -9,6 +9,7 @@
 
 package me.him188.ani.tv.ui.foundation.focus
 
+import androidx.compose.foundation.lazy.grid.LazyGridState
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
@@ -79,5 +80,26 @@ class TvFocusScopeTest {
         assertTrue(scope.userNavGeneration != grid.navGenerationAtRequest)
         grid.cancel()
         assertFalse(grid.switching)
+    }
+
+    @Test
+    fun `edge request waits for destination grid after asynchronous category change`() {
+        val grid = TvGridFocusState(TvFocusScope())
+        val source = LazyGridState()
+        val destination = LazyGridState()
+
+        grid.focusRowEdge(row = 2, direction = 1, sourceGridState = source)
+
+        assertTrue(grid.switching)
+        assertFalse(grid.canResolveIn(source))
+        assertTrue(grid.canResolveIn(destination))
+
+        // Cancelling before the destination arrives must also prevent late focus delivery.
+        grid.cancel()
+        assertFalse(grid.canResolveIn(destination))
+
+        // A later request within the original grid is independent of the cancelled switch.
+        grid.focusItem(5)
+        assertTrue(grid.canResolveIn(source))
     }
 }

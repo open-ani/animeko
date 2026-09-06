@@ -51,17 +51,14 @@ import androidx.compose.ui.input.key.type
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
-import androidx.lifecycle.viewmodel.compose.viewModel
-import androidx.paging.compose.collectAsLazyPagingItems
-import androidx.paging.compose.collectWithLifecycle
+import androidx.paging.compose.LazyPagingItems
 import kotlinx.coroutines.FlowPreview
 import kotlinx.coroutines.delay
-import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.flow.debounce
-import kotlinx.coroutines.flow.filterNotNull
 import kotlinx.coroutines.launch
-import me.him188.ani.app.domain.usecase.GlobalKoin
-import me.him188.ani.app.ui.main.ExplorationPageViewModel
+import me.him188.ani.app.data.models.recommend.RecommendedItemInfo
+import me.him188.ani.app.data.models.subject.FollowedSubjectInfo
+import me.him188.ani.app.data.models.trending.TrendingSubjectInfo
 import me.him188.ani.tv.ui.foundation.focus.TvAnchoredBringIntoViewSpec
 import me.him188.ani.tv.ui.foundation.focus.TvFocusKey
 import me.him188.ani.tv.ui.foundation.focus.TvFocusScope
@@ -72,13 +69,6 @@ import me.him188.ani.tv.ui.foundation.widgets.TvBackdropDefaults
 import me.him188.ani.tv.ui.foundation.widgets.TvLandscapeCardDefaults
 import me.him188.ani.tv.ui.foundation.widgets.TvPageDefaults
 import me.him188.ani.tv.ui.foundation.widgets.tvShellBackgroundColor
-
-/** 探索页 hero 区当前展示的条目 (轮播 / 聚焦卡驱动). */
-data class TvHeroSubject(
-    val subjectId: Int,
-    val title: String,
-    val imageUrl: String,
-)
 
 /** 探索页焦点锚点 (卡片锚点见 [TvExplorationCardKey]). */
 private enum class TvExplorationFocus : TvFocusKey {
@@ -98,20 +88,14 @@ private enum class TvExplorationFocus : TvFocusKey {
 @OptIn(FlowPreview::class)
 @Composable
 fun TvExplorationScreen(
-    onClickSubject: (TvHeroSubject) -> Unit,
+    trendsPager: LazyPagingItems<TrendingSubjectInfo>,
+    recommendations: LazyPagingItems<RecommendedItemInfo>,
+    followed: LazyPagingItems<FollowedSubjectInfo>,
+    media: TvSubjectMediaUiState,
+    onIntent: (TvExplorationIntent) -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    // 状态层复用手机 ExplorationPageViewModel/ExplorationPageState (D3)
-    val pageViewModel = viewModel<ExplorationPageViewModel> { ExplorationPageViewModel() }
-    val pageState = pageViewModel.explorationPageState
-    val trendsPager = pageState.trendingSubjectInfoPager.collectWithLifecycle()
-    val recommendations = pageState.recommendationPager.collectAsLazyPagingItems()
-    val followed = pageState.followedSubjectsPager.collectAsLazyPagingItems()
-
     val uiScope = rememberCoroutineScope()
-    val media = remember {
-        TvSubjectMediaState(GlobalKoin.get(), GlobalKoin.get(), GlobalKoin.get(), uiScope)
-    }
 
     val carouselSize = minOf(trendsPager.itemCount, TvExplorationDefaults.CarouselMaxDots)
     var carouselIndex by rememberSaveable { mutableIntStateOf(0) }
@@ -133,11 +117,11 @@ fun TvExplorationScreen(
         ?.let { TvHeroSubject(it.bangumiId, it.nameCn, it.imageLarge) }
     val heroSubject = if (heroFocused) carouselHero else (focusedCardSubject ?: carouselHero)
 
-    // hero 目标变化驱动异步加载 (collectLatest: 换条目取消在途请求)
+    // 向 VM 上报展示目标；本地目标仅用于 backdrop 过渡动画。
     var heroTarget by remember { mutableStateOf<TvHeroSubject?>(null) }
     LaunchedEffect(heroSubject?.subjectId) { heroSubject?.let { heroTarget = it } }
-    LaunchedEffect(Unit) {
-        snapshotFlow { heroTarget }.filterNotNull().collectLatest { media.loadHero(it) }
+    LaunchedEffect(heroSubject) {
+        heroSubject?.let { onIntent(TvExplorationIntent.ShowHero(it)) }
     }
     // backdrop 展示目标防抖 (Prime: 文字即时换, 背景图约半秒后才跟上)
     var heroBackdropTarget by remember { mutableStateOf<TvHeroSubject?>(null) }
@@ -242,7 +226,7 @@ fun TvExplorationScreen(
                     },
                     carouselSize = carouselSize,
                     carouselIndex = carouselIndex,
-                    onClickDetails = { heroSubject?.let(onClickSubject) },
+                    onClickDetails = { heroSubject?.let { onIntent(TvExplorationIntent.OpenSubject(it)) } },
                     onButtonFocused = { heroFocused = true },
                     modifier = heroModifier,
                     buttonModifier = Modifier
@@ -284,6 +268,7 @@ fun TvExplorationScreen(
                 TvExplorationRowItem(
                     row = row,
                     media = media,
+                    onIntent = onIntent,
                     focus = focus,
                     rowStates = rowStates,
                     focusedIndexByRow = focusedIndexByRow,
@@ -292,7 +277,7 @@ fun TvExplorationScreen(
                         heroFocused = false
                         focusedCardSubject = subject
                     },
-                    onClickSubject = onClickSubject,
+                    onClickSubject = { onIntent(TvExplorationIntent.OpenSubject(it)) },
                     onNavigateVertical = { delta, fromIndex ->
                         val target = rowIndex + delta
                         if (target < 0) returnToHero() else navigateToRow(target, fromIndex)

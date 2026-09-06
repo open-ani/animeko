@@ -7,14 +7,15 @@
  * https://github.com/open-ani/ani/blob/main/LICENSE
  */
 
-package me.him188.ani.tv.ui.di
+package me.him188.ani.tv.ui.settings
 
-import org.koin.core.module.Module
-import org.koin.dsl.module
+import me.him188.ani.app.data.models.preference.VideoScaffoldConfig
 
-/**
- * TV 页面层 Koin 注册表: M1 起注册各页薄 ViewModel (atv-architecture.md §7).
- */
-fun getTvKoinModule(): Module = module {
-    // M1: TvExplorationViewModel / TvSubjectDetailsViewModel / TvEpisodeViewModel ...
+data class TvSettingsUiState(
+    val danmakuEnabled: Boolean? = null,
+    val videoConfig: VideoScaffoldConfig? = null,
+)
+
+enum class TvSettingsIntent {
+    ToggleDanmaku, ToggleAutoPlayNext, ToggleAutoSkipOpEd, ToggleAutoSwitchMediaOnError,
 }

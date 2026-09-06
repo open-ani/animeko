@@ -24,13 +24,17 @@ import me.him188.ani.app.data.network.TrendsRepository
 import me.him188.ani.app.data.repository.subject.FollowedSubjectsRepository
 import me.him188.ani.app.data.repository.user.SettingsRepository
 import me.him188.ani.app.domain.session.SessionManager
+import me.him188.ani.app.domain.usecase.GlobalKoin
 import me.him188.ani.app.ui.exploration.ExplorationPageState
 import me.him188.ani.app.ui.foundation.AbstractViewModel
+import org.koin.core.Koin
 import org.koin.core.component.KoinComponent
 import org.koin.core.component.inject
 
 @Stable
-class ExplorationPageViewModel : AbstractViewModel(), KoinComponent {
+open class ExplorationPageViewModel(private val koin: Koin = GlobalKoin) : AbstractViewModel(), KoinComponent {
+    override fun getKoin(): Koin = koin
+
     private val trendsRepository: TrendsRepository by inject()
     private val recommendationRepository: RecommendationRepository by inject()
     private val sessionManager: SessionManager by inject()

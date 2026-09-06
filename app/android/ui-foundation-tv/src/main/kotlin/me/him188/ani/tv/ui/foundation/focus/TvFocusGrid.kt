@@ -67,6 +67,10 @@ class TvGridFocusState internal constructor(internal val scope: TvFocusScope) {
     /** 待按目标网格列数解析的 (row, direction) 目标 (边缘切换: 同行近缘列). */
     private var pendingRowEdge: Pair<Int, Int>? by mutableStateOf(null)
 
+    // MVI may publish the next category after the key handler returns. The outgoing grid
+    // must not consume the request while it is still displaying the previous category.
+    private var sourceGridState: LazyGridState? = null
+
     /** 请求代数 ([SendFocusEffect] 的重启键: 同目标连续请求也能重新触发). */
     private var requestGeneration by mutableStateOf(0)
 
@@ -80,6 +84,7 @@ class TvGridFocusState internal constructor(internal val scope: TvFocusScope) {
     /** 程序化聚焦第 [index] 项 (越界会钳到末项; 由 [SendFocusEffect] 消化). */
     fun focusItem(index: Int) {
         navGenerationAtRequest = scope.userNavGeneration
+        sourceGridState = null
         pendingRowEdge = null
         pendingIndex = index
         requestGeneration++
@@ -89,8 +94,9 @@ class TvGridFocusState internal constructor(internal val scope: TvFocusScope) {
      * 聚焦第 [row] 行的近缘列 (边缘切换的"对应位置"): [direction] > 0 = 从左进入落行首列,
      * < 0 = 从右进入落行尾列. 列数按**目标网格**的实际布局解析 (源网格列数可能不同).
      */
-    fun focusRowEdge(row: Int, direction: Int) {
+    fun focusRowEdge(row: Int, direction: Int, sourceGridState: LazyGridState? = null) {
         navGenerationAtRequest = scope.userNavGeneration
+        this.sourceGridState = sourceGridState
         pendingIndex = null
         pendingRowEdge = row to direction
         requestGeneration++
@@ -98,9 +104,13 @@ class TvGridFocusState internal constructor(internal val scope: TvFocusScope) {
 
     /** 取消在途请求 (调用方确定目标不会出现, 如分页确定空列表). */
     fun cancel() {
+        sourceGridState = null
         pendingIndex = null
         pendingRowEdge = null
     }
+
+    internal fun canResolveIn(gridState: LazyGridState): Boolean =
+        switching && sourceGridState !== gridState
 
     /**
      * 送焦效应: 网格组合内装一次. 等数据就绪 (快照事件) -> 行缘目标按目标网格布局列数
@@ -110,7 +120,7 @@ class TvGridFocusState internal constructor(internal val scope: TvFocusScope) {
     @Composable
     fun SendFocusEffect(gridState: LazyGridState, itemCount: () -> Int) {
         LaunchedEffect(requestGeneration, gridState) {
-            if (pendingIndex == null && pendingRowEdge == null) return@LaunchedEffect
+            if (!canResolveIn(gridState)) return@LaunchedEffect
             snapshotFlow { itemCount() }.first { it > 0 }
             pendingRowEdge?.let { (row, direction) ->
                 // 等目标网格首帧布局 (快照事件) 拿实际列数
@@ -209,7 +219,7 @@ fun Modifier.tvGridEdgeSwitchKeys(
     }
     if (event.type == KeyEventType.KeyDown && !event.isAutoRepeatCompat) {
         // "对应位置" = 同一行、进入方向的近缘列 (列数按目标网格布局解析, 见 focusRowEdge)
-        state.focusRowEdge(info.row, direction)
+        state.focusRowEdge(info.row, direction, sourceGridState = gridState)
         onSwitch(direction)
     }
     true

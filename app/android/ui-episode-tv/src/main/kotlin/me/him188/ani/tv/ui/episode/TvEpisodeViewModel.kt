@@ -11,20 +11,32 @@ package me.him188.ani.tv.ui.episode
 
 import androidx.compose.runtime.Stable
 import androidx.compose.runtime.mutableStateOf
+import androidx.paging.PagingData
+import androidx.paging.cachedIn
+import java.text.SimpleDateFormat
+import java.util.Date
+import java.util.Locale
+import kotlin.math.abs
 import kotlinx.coroutines.CoroutineName
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.NonCancellable
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.catch
 import kotlinx.coroutines.flow.collect
 import kotlinx.coroutines.flow.collectLatest
+import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.distinctUntilChanged
-import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.emitAll
+import kotlinx.coroutines.flow.emptyFlow
 import kotlinx.coroutines.flow.filterNotNull
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.flatMapLatest
+import kotlinx.coroutines.flow.flow
+import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.mapNotNull
 import kotlinx.coroutines.flow.shareIn
@@ -32,18 +44,24 @@ import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.transformLatest
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import me.him188.ani.app.data.models.episode.EpisodeComment
+import me.him188.ani.app.data.models.subject.RelatedCharacterInfo
+import me.him188.ani.app.data.models.subject.RelatedPersonInfo
+import me.him188.ani.app.data.models.subject.RelatedSubjectInfo
+import me.him188.ani.app.data.network.BangumiRelatedPeopleService
 import me.him188.ani.app.data.repository.episode.EpisodeCollectionRepository
-import me.him188.ani.app.data.repository.player.DanmakuRegexFilterRepository
+import me.him188.ani.app.data.repository.episode.EpisodeCommentRepository
 import me.him188.ani.app.data.repository.subject.SubjectCollectionRepository
+import me.him188.ani.app.data.repository.subject.SubjectRelationsRepository
 import me.him188.ani.app.data.repository.user.SettingsRepository
 import me.him188.ani.app.domain.danmaku.DanmakuRepository
 import me.him188.ani.app.domain.episode.EpisodeCompletionContext.isKnownCompleted
 import me.him188.ani.app.domain.episode.EpisodeDanmakuLoader
 import me.him188.ani.app.domain.episode.EpisodeFetchSelectPlayState
 import me.him188.ani.app.domain.episode.UnsafeEpisodeSessionApi
+import me.him188.ani.app.domain.episode.episodeIdFlow
 import me.him188.ani.app.domain.episode.infoBundleFlow
 import me.him188.ani.app.domain.episode.mediaSelectorFlow
-import me.him188.ani.app.domain.settings.GetDanmakuRegexFilterListFlowUseCase
 import me.him188.ani.app.domain.media.resolver.MediaResolver
 import me.him188.ani.app.domain.player.VideoLoadingState
 import me.him188.ani.app.domain.player.extension.AutoSelectExtension
@@ -54,7 +72,7 @@ import me.him188.ani.app.domain.player.extension.RememberPlayProgressExtension
 import me.him188.ani.app.domain.player.extension.SaveMediaPreferenceExtension
 import me.him188.ani.app.domain.player.extension.SwitchMediaOnPlayerErrorExtension
 import me.him188.ani.app.domain.player.extension.SwitchNextEpisodeExtension
-import me.him188.ani.app.domain.usecase.GlobalKoin
+import me.him188.ani.app.domain.settings.GetDanmakuRegexFilterListFlowUseCase
 import me.him188.ani.app.platform.ContextMP
 import me.him188.ani.app.ui.foundation.AbstractViewModel
 import me.him188.ani.danmaku.api.DanmakuEvent
@@ -63,24 +81,12 @@ import me.him188.ani.danmaku.ui.DanmakuConfig
 import me.him188.ani.danmaku.ui.DanmakuHostState
 import me.him188.ani.danmaku.ui.DanmakuPresentation
 import me.him188.ani.danmaku.ui.DanmakuTrackProperties
-import androidx.paging.PagingData
-import androidx.paging.cachedIn
-import kotlinx.coroutines.flow.MutableStateFlow
-import kotlinx.coroutines.flow.catch
-import me.him188.ani.app.data.models.episode.EpisodeComment
-import me.him188.ani.app.data.models.subject.RelatedCharacterInfo
-import me.him188.ani.app.data.models.subject.RelatedPersonInfo
-import me.him188.ani.app.data.models.subject.RelatedSubjectInfo
-import me.him188.ani.app.data.network.BangumiRelatedPeopleService
-import me.him188.ani.app.data.repository.episode.EpisodeCommentRepository
-import me.him188.ani.app.data.repository.subject.SubjectRelationsRepository
-import me.him188.ani.app.domain.episode.episodeIdFlow
 import me.him188.ani.datasources.api.Media
 import me.him188.ani.datasources.api.source.MediaSourceKind
 import me.him188.ani.datasources.api.topic.UnifiedCollectionType
+import me.him188.ani.tv.ui.foundation.TvNavigationEvent
+import me.him188.ani.tv.ui.foundation.TvNavigationEvents
 import org.koin.core.Koin
-import org.koin.core.component.KoinComponent
-import org.koin.core.component.inject
 import org.openani.mediamp.ExperimentalMediampApi
 import org.openani.mediamp.MediampPlayer
 import org.openani.mediamp.MediampPlayerFactory
@@ -88,8 +94,8 @@ import org.openani.mediamp.features.AspectRatioMode
 import org.openani.mediamp.features.Buffering
 import org.openani.mediamp.features.PlaybackSpeed
 import org.openani.mediamp.features.VideoAspectRatio
+import org.openani.mediamp.isPlaying
 import org.openani.mediamp.togglePause
-import kotlin.math.abs
 
 /**
  * TV 播放页薄 VM (atv-architecture.md §8.1): 与手机共用同一套播放编排 (app-data domain),
@@ -100,14 +106,17 @@ class TvEpisodeViewModel(
     val subjectId: Int,
     initialEpisodeId: Int,
     context: ContextMP,
-    private val koin: Koin = GlobalKoin,
-) : AbstractViewModel(), KoinComponent {
-    private val playerStateFactory: MediampPlayerFactory<*> by inject()
-    private val episodeCollectionRepository: EpisodeCollectionRepository by inject()
-    private val subjectCollectionRepository: SubjectCollectionRepository by inject()
-    private val danmakuRepository: DanmakuRepository by inject()
-    private val settingsRepository: SettingsRepository by inject()
-    private val getDanmakuRegexFilterListFlowUseCase: GetDanmakuRegexFilterListFlowUseCase by inject()
+    private val koin: Koin,
+    private val playerStateFactory: MediampPlayerFactory<*>,
+    private val episodeCollectionRepository: EpisodeCollectionRepository,
+    private val subjectCollectionRepository: SubjectCollectionRepository,
+    private val danmakuRepository: DanmakuRepository,
+    private val settingsRepository: SettingsRepository,
+    private val getDanmakuRegexFilterListFlowUseCase: GetDanmakuRegexFilterListFlowUseCase,
+    private val subjectRelationsRepository: SubjectRelationsRepository,
+    private val episodeCommentRepository: EpisodeCommentRepository,
+    private val bangumiRelatedPeopleService: BangumiRelatedPeopleService,
+) : AbstractViewModel() {
 
     val player: MediampPlayer =
         playerStateFactory.create(context, backgroundScope.coroutineContext)
@@ -159,14 +168,14 @@ class TvEpisodeViewModel(
     // region 页面状态
 
     /** 播放页顶部两行标题: 条目名 / 「第 NN 集 集标题」(对齐参考版). */
-    data class TitleInfo(val subjectName: String, val episodeLine: String)
+
 
     @OptIn(UnsafeEpisodeSessionApi::class)
-    val titleFlow: StateFlow<TitleInfo> = fetchPlayState.infoBundleFlow
+    private val titleFlow: StateFlow<TvEpisodeTitle> = fetchPlayState.infoBundleFlow
         .filterNotNull()
         .map { bundle ->
             val episode = bundle.episodeCollectionInfo.episodeInfo
-            TitleInfo(
+            TvEpisodeTitle(
                 subjectName = bundle.subjectCollectionInfo.subjectInfo.displayName,
                 episodeLine = buildString {
                     append("第 ${episode.sort} 集")
@@ -175,11 +184,11 @@ class TvEpisodeViewModel(
                 },
             )
         }
-        .stateIn(backgroundScope, SharingStarted.WhileSubscribed(5_000), TitleInfo("", ""))
+        .stateIn(backgroundScope, SharingStarted.WhileSubscribed(5_000), TvEpisodeTitle("", ""))
 
     /** 当前选中数据源名 (播放器底栏展示). */
     @OptIn(UnsafeEpisodeSessionApi::class)
-    val currentMediaLabel: StateFlow<String?> = fetchPlayState.mediaSelectorFlow
+    private val currentMediaLabel: StateFlow<String?> = fetchPlayState.mediaSelectorFlow
         .transformLatest { selector ->
             if (selector == null) {
                 emit(null)
@@ -189,22 +198,16 @@ class TvEpisodeViewModel(
         }
         .stateIn(backgroundScope, SharingStarted.WhileSubscribed(5_000), null)
 
-    val videoLoadingState: StateFlow<VideoLoadingState> =
+    private val videoLoadingState: StateFlow<VideoLoadingState> =
         fetchPlayState.playerSession.videoLoadingState
 
     /** 选集条条目 (§8.3): 集序号 + 标题 + 已看标记. */
-    data class StripEpisode(
-        val episodeId: Int,
-        val sortLabel: String,
-        val title: String,
-        val watched: Boolean,
-    )
 
-    val episodeStripFlow: StateFlow<List<StripEpisode>> = episodeCollectionsFlow
+    private val episodeStripFlow: StateFlow<List<TvStripEpisode>> = episodeCollectionsFlow
         .map { list ->
             list.map { collection ->
                 val info = collection.episodeInfo
-                StripEpisode(
+                TvStripEpisode(
                     episodeId = collection.episodeId,
                     sortLabel = "第 ${info.sort} 集",
                     title = info.nameCn.ifBlank { info.name },
@@ -216,7 +219,7 @@ class TvEpisodeViewModel(
 
     /** 当前播放的分集 (切集后随会话切换). */
     @OptIn(UnsafeEpisodeSessionApi::class)
-    val currentEpisodeIdFlow: StateFlow<Int> = fetchPlayState.episodeIdFlow
+    private val currentEpisodeIdFlow: StateFlow<Int> = fetchPlayState.episodeIdFlow
         .stateIn(backgroundScope, SharingStarted.WhileSubscribed(5_000), initialEpisodeId)
 
     // endregion
@@ -224,7 +227,7 @@ class TvEpisodeViewModel(
     // region 数据源选择 (§8.1: 仅 WEB 源; TV 未装配缓存/torrent, 双保险过滤)
 
     @OptIn(UnsafeEpisodeSessionApi::class)
-    val mediaCandidates: StateFlow<List<Media>> = fetchPlayState.mediaSelectorFlow
+    private val mediaCandidates: StateFlow<List<Media>> = fetchPlayState.mediaSelectorFlow
         .flatMapLatest { selector ->
             selector?.filteredCandidatesMedia ?: flowOf(emptyList())
         }
@@ -232,12 +235,12 @@ class TvEpisodeViewModel(
         .stateIn(backgroundScope, SharingStarted.WhileSubscribed(5_000), emptyList())
 
     @OptIn(UnsafeEpisodeSessionApi::class)
-    val selectedMedia: StateFlow<Media?> = fetchPlayState.mediaSelectorFlow
+    private val selectedMedia: StateFlow<Media?> = fetchPlayState.mediaSelectorFlow
         .flatMapLatest { selector -> selector?.selected ?: flowOf(null) }
         .stateIn(backgroundScope, SharingStarted.WhileSubscribed(5_000), null)
 
     @OptIn(UnsafeEpisodeSessionApi::class)
-    fun selectMedia(media: Media) {
+    private fun selectMedia(media: Media) {
         backgroundScope.launch {
             fetchPlayState.mediaSelectorFlow.filterNotNull().first().select(media)
         }
@@ -247,23 +250,20 @@ class TvEpisodeViewModel(
 
     // region 浮出面板数据 (§8.3 面板 ×5: 推荐/Staff/角色为条目级, 评论随当前集, 弹幕为已加载列表)
 
-    private val subjectRelationsRepository: SubjectRelationsRepository by inject()
-    private val episodeCommentRepository: EpisodeCommentRepository by inject()
-    private val bangumiRelatedPeopleService: BangumiRelatedPeopleService by inject()
 
-    val relatedSubjectsFlow: StateFlow<List<RelatedSubjectInfo>> = bangumiRelatedPeopleService
+    private val relatedSubjectsFlow: StateFlow<List<RelatedSubjectInfo>> = bangumiRelatedPeopleService
         .relatedSubjectsFlow(subjectId)
         .map { RelatedSubjectInfo.sortList(it) }
         .catch { emit(emptyList()) }
         .stateIn(backgroundScope, SharingStarted.WhileSubscribed(5_000), emptyList())
 
-    val staffFlow: StateFlow<List<RelatedPersonInfo>> = subjectRelationsRepository
+    private val staffFlow: StateFlow<List<RelatedPersonInfo>> = subjectRelationsRepository
         .subjectRelatedPersonsFlow(subjectId)
         .map { it.sortedWith(RelatedPersonInfo.ImportanceOrder) }
         .catch { emit(emptyList()) }
         .stateIn(backgroundScope, SharingStarted.WhileSubscribed(5_000), emptyList())
 
-    val charactersFlow: StateFlow<List<RelatedCharacterInfo>> = subjectRelationsRepository
+    private val charactersFlow: StateFlow<List<RelatedCharacterInfo>> = subjectRelationsRepository
         .subjectRelatedCharactersFlow(subjectId)
         .map { it.sortedWith(RelatedCharacterInfo.ImportanceOrder) }
         .catch { emit(emptyList()) }
@@ -276,7 +276,7 @@ class TvEpisodeViewModel(
 
     /** 已加载弹幕 (新→旧; Repopulate 重置 + Add 头插, 面板 reverseLayout 吸底展示). */
     private val danmakuList = MutableStateFlow<List<DanmakuPresentation>>(emptyList())
-    val danmakuListFlow: StateFlow<List<DanmakuPresentation>> = danmakuList
+    private val danmakuListFlow: StateFlow<List<DanmakuPresentation>> = danmakuList
 
     // endregion
 
@@ -285,16 +285,16 @@ class TvEpisodeViewModel(
     private val playbackSpeedFeature get() = player.features[PlaybackSpeed]
     private val aspectRatioFeature get() = player.features[VideoAspectRatio]
 
-    val playbackSpeedStateFlow: StateFlow<Float> =
+    private val playbackSpeedStateFlow: StateFlow<Float> =
         (playbackSpeedFeature?.valueFlow ?: flowOf(1f))
             .stateIn(backgroundScope, SharingStarted.WhileSubscribed(5_000), playbackSpeedFeature?.value ?: 1f)
 
-    val aspectRatioModeFlow: StateFlow<AspectRatioMode> =
+    private val aspectRatioModeFlow: StateFlow<AspectRatioMode> =
         aspectRatioFeature?.mode
-            ?: kotlinx.coroutines.flow.MutableStateFlow(AspectRatioMode.FIT)
+            ?: MutableStateFlow(AspectRatioMode.FIT)
 
     @OptIn(ExperimentalMediampApi::class)
-    val bufferedFractionFlow: StateFlow<Float> =
+    private val bufferedFractionFlow: StateFlow<Float> =
         (player.features[Buffering]?.bufferedPercentage ?: flowOf(0))
             .map { it / 100f }
             .stateIn(backgroundScope, SharingStarted.WhileSubscribed(5_000), 0f)
@@ -302,11 +302,11 @@ class TvEpisodeViewModel(
     /** 确认键按住 2.5x 快进 (附录 A: 长按 500ms, 松开还原原倍速). */
     private var speedBeforeHold: Float? = null
 
-    fun setSpeedHold(engaged: Boolean) {
+    private fun setSpeedHold(engaged: Boolean) {
         val feature = playbackSpeedFeature ?: return
         if (engaged) {
             if (speedBeforeHold == null) speedBeforeHold = feature.value
-            feature.set(SPEED_HOLD_FACTOR)
+            feature.set(TV_SPEED_HOLD_FACTOR)
         } else {
             speedBeforeHold?.let { feature.set(it) }
             speedBeforeHold = null
@@ -314,14 +314,14 @@ class TvEpisodeViewModel(
     }
 
     /** 图标行倍速按钮: 在档位间循环 (会话内生效, 不写回设置). */
-    fun cycleSpeed() {
+    private fun cycleSpeed() {
         val feature = playbackSpeedFeature ?: return
         val current = feature.value
         val index = SPEED_STEPS.indexOfFirst { abs(it - current) < 0.01f }
         feature.set(SPEED_STEPS[(index + 1).mod(SPEED_STEPS.size)])
     }
 
-    fun cycleAspectRatio() {
+    private fun cycleAspectRatio() {
         val feature = aspectRatioFeature ?: return
         val modes = AspectRatioMode.entries
         feature.setMode(modes[(modes.indexOf(feature.mode.value) + 1) % modes.size])
@@ -348,7 +348,7 @@ class TvEpisodeViewModel(
         sharingStarted = SharingStarted.WhileSubscribed(5_000),
     )
 
-    val danmakuEventFlow: Flow<TvUIDanmakuEvent> = danmakuRepository.selfId.flatMapLatest { selfId ->
+    private val danmakuEventFlow: Flow<TvUIDanmakuEvent> = danmakuRepository.selfId.flatMapLatest { selfId ->
         fun createDanmakuPresentation(data: DanmakuInfo, selfId: String?) =
             DanmakuPresentation(data, isSelf = selfId == data.senderId)
 
@@ -386,35 +386,154 @@ class TvEpisodeViewModel(
     val mediaResolver: MediaResolver get() = fetchPlayState.playerSession.mediaResolver
 
     /** 启动扩展系统 (AutoSelect/自动连播/进度记忆等), 由页面首帧调用 (同手机 EpisodePage). */
-    fun onUIReady() {
+    private fun onUIReady() {
         fetchPlayState.onUIReady()
     }
 
-    fun togglePause() {
+    private fun togglePause() {
         player.togglePause()
     }
 
-    fun seekBy(deltaMillis: Long) {
-        val target = (player.getCurrentPositionMillis() + deltaMillis).coerceAtLeast(0)
-        player.seekTo(target)
+    private fun seekBy(deltaMillis: Long) {
+        seekTo(player.getCurrentPositionMillis() + deltaMillis)
     }
 
-    fun seekTo(positionMillis: Long) {
-        player.seekTo(positionMillis.coerceAtLeast(0))
+    private fun seekTo(positionMillis: Long) {
+        val duration = player.mediaProperties.value?.durationMillis?.takeIf { it > 0 } ?: Long.MAX_VALUE
+        player.seekTo(positionMillis.coerceIn(0, duration))
     }
 
-    fun switchEpisode(episodeId: Int) {
+    private fun switchEpisode(episodeId: Int) {
         backgroundScope.launch { fetchPlayState.switchEpisode(episodeId) }
     }
 
     /** 上一集 (-1) / 下一集 (+1); 到列表边界则不动 (媒体键 RW/FF, §8.2 全局键). */
-    fun switchToNeighborEpisode(offset: Int) {
+    private fun switchToNeighborEpisode(offset: Int) {
         backgroundScope.launch {
             val list = episodeCollectionsFlow.first()
             val index = list.indexOfFirst { it.episodeId == currentEpisodeIdFlow.value }
             if (index == -1) return@launch
             val target = list.getOrNull(index + offset) ?: return@launch
             fetchPlayState.switchEpisode(target.episodeId)
+        }
+    }
+
+    private val interaction = TvPlayerStateMachine(
+        playback = {
+            TvPlaybackSnapshot(player.playbackState.value.isPlaying, player.getCurrentPositionMillis(), player.mediaProperties.value?.durationMillis ?: 0)
+        },
+        execute = { command ->
+            when (command) {
+                TvPlaybackCommand.TogglePause -> togglePause()
+                is TvPlaybackCommand.SeekBy -> seekBy(command.deltaMillis)
+                is TvPlaybackCommand.SeekTo -> seekTo(command.positionMillis)
+                is TvPlaybackCommand.SwitchNeighbor -> switchToNeighborEpisode(command.offset)
+                is TvPlaybackCommand.SpeedHold -> setSpeedHold(command.engaged)
+                TvPlaybackCommand.CycleSpeed -> cycleSpeed()
+                TvPlaybackCommand.CycleAspectRatio -> cycleAspectRatio()
+            }
+        },
+    )
+    val focusRequests = interaction.focusRequests
+    private val navigation = TvNavigationEvents()
+    val navigationEvents = navigation.events
+    private var uiReady = false
+
+    private val positionFlow = interaction.states.map { it.controlsVisible }.distinctUntilChanged().flatMapLatest { visible ->
+        if (!visible) emptyFlow() else flow {
+            while (true) {
+                emit(withContext(Dispatchers.Main) { player.getCurrentPositionMillis() })
+                delay(500)
+            }
+        }
+    }.stateIn(backgroundScope, SharingStarted.WhileSubscribed(5_000), 0L)
+
+    private val clockFlow = flow {
+        val format = SimpleDateFormat("HH:mm", Locale.getDefault())
+        while (true) {
+            emit(format.format(Date()))
+            delay(30_000)
+        }
+    }
+    private val panelState = interaction.states.map { it.activePanel }.distinctUntilChanged().flatMapLatest { panel ->
+        when (panel) {
+            TvPlayerPanel.Recommendations -> relatedSubjectsFlow.map { TvPlayerPanelState(relatedSubjects = it) }
+            TvPlayerPanel.Staff -> staffFlow.map { TvPlayerPanelState(staff = it) }
+            TvPlayerPanel.Characters -> charactersFlow.map { TvPlayerPanelState(characters = it) }
+            TvPlayerPanel.DanmakuList -> danmakuListFlow.map { TvPlayerPanelState(danmaku = it) }
+            else -> flowOf(TvPlayerPanelState())
+        }
+    }
+    private val options = combine(bufferedFractionFlow, playbackSpeedStateFlow, aspectRatioModeFlow) { buffer, speed, aspect ->
+        Triple(buffer, speed, aspect)
+    }
+    private val selection = combine(episodeStripFlow, currentEpisodeIdFlow, mediaCandidates, selectedMedia) { episodes, episodeId, media, selected ->
+        TvEpisodeUiState(episodes = episodes, currentEpisodeId = episodeId, mediaCandidates = media, selectedMedia = selected)
+    }
+    val uiState = combine(titleFlow, player.playbackState, videoLoadingState, currentMediaLabel, player.mediaProperties) { title, playback, loading, label, properties ->
+        TvEpisodeUiState(title = title, playbackState = playback, loadingState = loading, mediaLabel = label, durationMillis = properties?.durationMillis ?: 0)
+    }.combine(options) { state, options ->
+        state.copy(bufferedFraction = options.first, playbackSpeed = options.second, aspectRatioMode = options.third)
+    }.combine(selection) { state, selected ->
+        state.copy(episodes = selected.episodes, currentEpisodeId = selected.currentEpisodeId, mediaCandidates = selected.mediaCandidates, selectedMedia = selected.selectedMedia)
+    }.combine(interaction.states) { state, overlay -> state.copy(overlay = overlay) }
+        .combine(panelState) { state, panel -> state.copy(panel = panel) }
+        .combine(positionFlow) { state, position -> state.copy(positionMillis = position) }
+        .combine(clockFlow) { state, clock -> state.copy(clockText = clock) }
+        .stateIn(backgroundScope, SharingStarted.WhileSubscribed(5_000), TvEpisodeUiState(currentEpisodeId = initialEpisodeId))
+
+    fun onIntent(intent: TvEpisodeIntent): Boolean {
+        when (intent) {
+            TvEpisodeIntent.UiReady -> if (!uiReady) {
+                uiReady = true
+                onUIReady()
+            }
+            is TvEpisodeIntent.SelectEpisode -> {
+                if (episodeStripFlow.value.none { it.episodeId == intent.episodeId }) return true
+                if (intent.episodeId != currentEpisodeIdFlow.value) switchEpisode(intent.episodeId)
+                interaction.episodeSelected()
+            }
+            is TvEpisodeIntent.SelectMedia -> {
+                if (mediaCandidates.value.none { it == intent.media }) return true
+                selectMedia(intent.media)
+                interaction.mediaSelected()
+            }
+            is TvEpisodeIntent.OpenSubject -> navigation.emit(TvNavigationEvent.Subject(intent.subjectId))
+            else -> return interaction.onIntent(intent)
+        }
+        return true
+    }
+
+    init {
+        // Timers and playback decisions share the main dispatcher with remote intents.
+        backgroundScope.launch(Dispatchers.Main) {
+            combine(interaction.states, player.playbackState) { state, playback ->
+                Triple(state.interactionGeneration, state.canAutoHide, playback.isPlaying)
+            }.distinctUntilChanged().collectLatest { (_, canHide, playing) ->
+                if (canHide && playing) {
+                    delay(5_000)
+                    interaction.autoHide()
+                }
+            }
+        }
+        backgroundScope.launch(Dispatchers.Main) {
+            interaction.states.map { it.seekFlash }.distinctUntilChanged().collectLatest { flash ->
+                if (flash != null) {
+                    delay(650)
+                    interaction.clearFlash(flash)
+                }
+            }
+        }
+        backgroundScope.launch(Dispatchers.Main) {
+            player.playbackState.collect { danmakuHostState.setPaused(!it.isPlaying) }
+        }
+        backgroundScope.launch(Dispatchers.Main) {
+            danmakuEventFlow.collect { event ->
+                when (event) {
+                    is TvUIDanmakuEvent.Add -> danmakuHostState.trySend(event.presentation)
+                    is TvUIDanmakuEvent.Repopulate -> danmakuHostState.repopulate(event.list, event.currentPositionMillis)
+                }
+            }
         }
     }
 
@@ -445,18 +564,15 @@ class TvEpisodeViewModel(
     }
 
     override fun onCleared() {
+        interaction.onIntent(TvEpisodeIntent.ReleaseHeldSpeed)
         super.onCleared()
         backgroundScope.launch(NonCancellable + CoroutineName("TvEpisodeViewModel#onCleared")) {
             fetchPlayState.onClose()
         }
     }
 
-    override fun getKoin(): Koin = koin
 
     companion object {
-        /** 确认键按住快进倍率 (附录 A). */
-        const val SPEED_HOLD_FACTOR = 2.5f
-
         /** 图标行倍速循环档位. */
         val SPEED_STEPS = listOf(0.5f, 0.75f, 1f, 1.25f, 1.5f, 2f)
 

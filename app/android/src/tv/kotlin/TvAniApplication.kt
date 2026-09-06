@@ -18,7 +18,6 @@ import me.him188.ani.app.platform.createAppRootCoroutineScope
 import me.him188.ani.app.platform.getTvCommonKoinModule
 import me.him188.ani.app.platform.startCommonKoinModule
 import me.him188.ani.datasources.api.source.MediaSourceKind
-import me.him188.ani.tv.ui.di.getTvKoinModule
 import me.him188.ani.utils.logging.error
 import me.him188.ani.utils.logging.logger
 import org.koin.android.ext.koin.androidContext
@@ -54,7 +53,6 @@ class TvAniApplication : Application() {
             modules(getTvCommonKoinModule({ this@TvAniApplication }, scope))
             modules(getCommonAndroidModules(scope)) // src/main 交集 (无 torrent 绑定)
             modules(getTvAndroidModules()) // src/tv — Web 解析链 / BrowserNavigator 降级 / AppTerminator
-            modules(getTvKoinModule()) // :app:android:ui-main-tv — 薄 VM 注册表 (M1 起)
         }.startCommonKoinModule(this@TvAniApplication, scope) // proxy/Session 后台任务; 缓存恢复段判空跳过
 
         scope.launch {

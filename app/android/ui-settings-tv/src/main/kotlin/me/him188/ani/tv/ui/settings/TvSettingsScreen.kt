@@ -19,8 +19,6 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.collectAsState
-import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import androidx.tv.material3.ListItem
@@ -45,11 +43,12 @@ private enum class TvSettingsFocus : TvFocusKey {
  */
 @Composable
 fun TvSettingsScreen(
-    viewModel: TvSettingsViewModel,
+    state: TvSettingsUiState,
+    onIntent: (TvSettingsIntent) -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    val danmakuEnabled by viewModel.danmakuEnabled.collectAsState()
-    val videoConfig by viewModel.videoConfig.collectAsState()
+    val danmakuEnabled = state.danmakuEnabled
+    val videoConfig = state.videoConfig
 
     // 统一焦点框架: 进页初始焦点落第一个开关项
     val focus = rememberTvFocusScope()
@@ -61,13 +60,13 @@ fun TvSettingsScreen(
         ToggleItem(
             "显示弹幕", danmakuEnabled,
             modifier = Modifier.tvFocusAnchor(focus, TvSettingsFocus.FirstItem),
-        ) { viewModel.toggleDanmakuEnabled() }
+        ) { onIntent(TvSettingsIntent.ToggleDanmaku) }
 
         SectionTitle("播放")
-        ToggleItem("自动连播", videoConfig?.autoPlayNext) { viewModel.toggleAutoPlayNext() }
-        ToggleItem("自动跳过 OP/ED", videoConfig?.autoSkipOpEd) { viewModel.toggleAutoSkipOpEd() }
+        ToggleItem("自动连播", videoConfig?.autoPlayNext) { onIntent(TvSettingsIntent.ToggleAutoPlayNext) }
+        ToggleItem("自动跳过 OP/ED", videoConfig?.autoSkipOpEd) { onIntent(TvSettingsIntent.ToggleAutoSkipOpEd) }
         ToggleItem("播放出错时自动换源", videoConfig?.autoSwitchMediaOnPlayerError) {
-            viewModel.toggleAutoSwitchMediaOnError()
+            onIntent(TvSettingsIntent.ToggleAutoSwitchMediaOnError)
         }
 
         SectionTitle("其他")

@@ -47,6 +47,9 @@ import androidx.tv.material3.ClickableSurfaceDefaults
 import androidx.tv.material3.MaterialTheme
 import androidx.tv.material3.Surface
 import androidx.tv.material3.Text
+import java.text.SimpleDateFormat
+import java.util.Date
+import java.util.Locale
 import me.him188.ani.app.data.models.episode.EpisodeComment
 import me.him188.ani.app.data.models.subject.RelatedCharacterInfo
 import me.him188.ani.app.data.models.subject.RelatedPersonInfo
@@ -55,14 +58,11 @@ import me.him188.ani.app.data.models.subject.SubjectRelation
 import me.him188.ani.app.data.models.subject.nameCn
 import me.him188.ani.app.ui.foundation.AsyncImage
 import me.him188.ani.danmaku.ui.DanmakuPresentation
-import java.text.SimpleDateFormat
-import java.util.Date
-import java.util.Locale
 
 /**
  * 浮出面板种类 (atv-architecture.md §8.3 面板 ×5). [wide] 区分文本面板 420dp / 卡片面板 240dp.
  */
-internal enum class TvPlayerPanel(val title: String, val icon: ImageVector, val wide: Boolean) {
+enum class TvPlayerPanel(val title: String, val icon: ImageVector, val wide: Boolean) {
     Recommendations("相关推荐", Icons.Rounded.Recommend, false),
     Staff("制作人员", Icons.Rounded.Groups, false),
     Characters("角色", Icons.Rounded.Face, false),
@@ -103,7 +103,7 @@ internal fun TvPlayerPanelHost(
     relatedSubjects: List<RelatedSubjectInfo>,
     staff: List<RelatedPersonInfo>,
     characters: List<RelatedCharacterInfo>,
-    comments: LazyPagingItems<EpisodeComment>,
+    comments: LazyPagingItems<EpisodeComment>?,
     danmakuList: List<DanmakuPresentation>,
     panelModifier: Modifier,
     entryAnchorModifier: Modifier,
@@ -136,7 +136,7 @@ internal fun TvPlayerPanelHost(
             }
         }
 
-        TvPlayerPanel.Comments -> PanelList(
+        TvPlayerPanel.Comments -> if (comments != null) PanelList(
             listModifier, modifier,
             empty = comments.itemCount == 0,
             emptyText = if (comments.loadState.refresh is LoadState.Loading) "正在加载评论…" else "暂无评论",

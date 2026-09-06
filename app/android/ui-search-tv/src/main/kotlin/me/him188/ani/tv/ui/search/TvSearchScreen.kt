@@ -21,16 +21,15 @@ import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.collectAsState
-import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.SolidColor
+import androidx.compose.ui.input.key.Key
+import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.unit.dp
 import androidx.paging.compose.LazyPagingItems
-import androidx.paging.compose.collectAsLazyPagingItems
 import androidx.tv.material3.MaterialTheme
 import androidx.tv.material3.Surface
 import androidx.tv.material3.SurfaceDefaults
@@ -40,6 +39,7 @@ import me.him188.ani.tv.ui.foundation.focus.TvFocusKey
 import me.him188.ani.tv.ui.foundation.focus.TvFocusScope
 import me.him188.ani.tv.ui.foundation.focus.rememberTvFocusScope
 import me.him188.ani.tv.ui.foundation.focus.tvFocusAnchor
+import me.him188.ani.tv.ui.foundation.focus.tvFocusHotkey
 import me.him188.ani.tv.ui.foundation.focus.tvFocusNavSignal
 import me.him188.ani.tv.ui.foundation.widgets.TvPageDefaults
 import me.him188.ani.tv.ui.foundation.widgets.TvPosterCard
@@ -48,6 +48,7 @@ import me.him188.ani.tv.ui.foundation.widgets.TvPosterCard
 private enum class TvSearchFocus : TvFocusKey {
     /** 搜索输入框 (进页初始焦点). */
     Field,
+    FirstResult,
 }
 
 /**
@@ -56,14 +57,11 @@ private enum class TvSearchFocus : TvFocusKey {
  */
 @Composable
 fun TvSearchScreen(
-    viewModel: TvSearchViewModel,
-    onClickSubject: (BatchSubjectDetails) -> Unit,
+    state: TvSearchUiState,
+    results: LazyPagingItems<BatchSubjectDetails>,
+    onIntent: (TvSearchIntent) -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    val keywords by viewModel.keywords.collectAsState()
-    val submitted by viewModel.hasSearched.collectAsState()
-    val results = viewModel.results.collectAsLazyPagingItems()
-
     // 统一焦点框架: 进页初始焦点落输入框 (聚焦后按确认弹软键盘)
     val focus = rememberTvFocusScope()
     focus.Resolver()
@@ -73,18 +71,24 @@ fun TvSearchScreen(
         focus = focus,
         searchBar = {
             TvSearchField(
-                keywords = keywords,
-                onKeywordsChange = viewModel::setKeywords,
-                onSearch = { viewModel.search() },
-                fieldModifier = Modifier.tvFocusAnchor(focus, TvSearchFocus.Field),
+                keywords = state.keywords,
+                onKeywordsChange = { onIntent(TvSearchIntent.ChangeKeywords(it)) },
+                onSearch = { onIntent(TvSearchIntent.Search) },
+                fieldModifier = Modifier
+                    .tvFocusAnchor(focus, TvSearchFocus.Field)
+                    .then(
+                        if (results.itemCount > 0) {
+                            Modifier.tvFocusHotkey(focus, Key.DirectionDown to TvSearchFocus.FirstResult)
+                        } else Modifier,
+                    ),
             )
         },
         modifier = modifier,
     ) {
         when {
-            submitted == null -> TvSearchCenteredHint("输入关键词, 按软键盘搜索键开始")
+            !state.hasSearched -> TvSearchCenteredHint("输入关键词, 按软键盘搜索键开始")
             results.itemCount == 0 -> TvSearchCenteredHint("没有找到相关番剧")
-            else -> TvSearchResultsGrid(results, onClickSubject)
+            else -> TvSearchResultsGrid(results, { onIntent(TvSearchIntent.OpenSubject(it)) }, focus)
         }
     }
 }
@@ -123,6 +127,7 @@ private fun TvSearchField(
     modifier: Modifier = Modifier,
     fieldModifier: Modifier = Modifier,
 ) {
+    val keyboard = LocalSoftwareKeyboardController.current
     Surface(
         modifier = modifier
             .padding(start = TvSearchDefaults.FieldStartPadding)
@@ -145,7 +150,10 @@ private fun TvSearchField(
             ),
             cursorBrush = SolidColor(MaterialTheme.colorScheme.primary),
             keyboardOptions = KeyboardOptions(imeAction = ImeAction.Search),
-            keyboardActions = KeyboardActions(onSearch = { onSearch() }),
+            keyboardActions = KeyboardActions(onSearch = {
+                onSearch()
+                keyboard?.hide()
+            }),
             singleLine = true,
             decorationBox = { innerTextField ->
                 Box {
@@ -168,6 +176,7 @@ private fun TvSearchField(
 private fun TvSearchResultsGrid(
     results: LazyPagingItems<BatchSubjectDetails>,
     onClickSubject: (BatchSubjectDetails) -> Unit,
+    focus: TvFocusScope,
     modifier: Modifier = Modifier,
 ) {
     LazyVerticalGrid(
@@ -184,6 +193,7 @@ private fun TvSearchResultsGrid(
                 title = details.subjectInfo.displayName,
                 onClick = { onClickSubject(details) },
                 memoryId = "search-${details.subjectInfo.subjectId}",
+                modifier = if (index == 0) Modifier.tvFocusAnchor(focus, TvSearchFocus.FirstResult) else Modifier,
             )
         }
     }

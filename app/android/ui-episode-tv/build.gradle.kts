@@ -32,4 +32,7 @@ dependencies {
     implementation(projects.danmaku.danmakuUi) // DanmakuHost 纯 Canvas 渲染
     implementation(libs.koin.core)
     implementation(libs.paging.compose.android) // 评论面板 LazyPagingItems
+    testImplementation(kotlin("test-junit5"))
+    testImplementation(libs.junit5.jupiter.engine)
+
 }

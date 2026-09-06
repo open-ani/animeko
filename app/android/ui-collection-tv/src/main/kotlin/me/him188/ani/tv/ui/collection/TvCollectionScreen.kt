@@ -29,11 +29,9 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusDirection
 import androidx.compose.ui.focus.onFocusChanged
+import androidx.compose.ui.input.key.Key
 import androidx.compose.ui.unit.dp
-import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.paging.compose.LazyPagingItems
-import androidx.paging.LoadState
-import androidx.paging.compose.collectWithLifecycle
 import androidx.tv.material3.MaterialTheme
 import androidx.tv.material3.Tab
 import androidx.tv.material3.TabRow
@@ -42,7 +40,6 @@ import kotlinx.coroutines.flow.first
 import me.him188.ani.app.data.models.subject.SubjectCollectionCounts
 import me.him188.ani.app.data.models.subject.SubjectCollectionInfo
 import me.him188.ani.app.ui.subject.collection.COLLECTION_TABS_SORTED
-import me.him188.ani.app.ui.subject.collection.UserCollectionsViewModel
 import me.him188.ani.datasources.api.topic.UnifiedCollectionType
 import me.him188.ani.tv.ui.foundation.focus.TvFocusKey
 import me.him188.ani.tv.ui.foundation.focus.TvFocusScope
@@ -51,7 +48,7 @@ import me.him188.ani.tv.ui.foundation.focus.rememberTvFocusScope
 import me.him188.ani.tv.ui.foundation.focus.rememberTvGridFocus
 import me.him188.ani.tv.ui.foundation.focus.tvFocusAnchor
 import me.him188.ani.tv.ui.foundation.focus.tvFocusExit
-import me.him188.ani.tv.ui.foundation.focus.tvFocusLink
+import me.him188.ani.tv.ui.foundation.focus.tvFocusHotkey
 import me.him188.ani.tv.ui.foundation.focus.tvFocusNavSignal
 import me.him188.ani.tv.ui.foundation.focus.tvGridEdgeSwitchKeys
 import me.him188.ani.tv.ui.foundation.focus.tvGridFocusItem
@@ -63,8 +60,6 @@ private enum class TvCollectionFocus : TvFocusKey {
     /** 当前选中的分类 tab (进页初始焦点; 网格按上/按返回的回归目标). 锚点随选中迁移. */
     CurrentTab,
 
-    /** 网格首卡 (tab 行按下键的显式落点). */
-    FirstCard,
 }
 
 /**
@@ -73,21 +68,17 @@ private enum class TvCollectionFocus : TvFocusKey {
  *
  * 状态层复用手机 UserCollectionsViewModel/UserCollectionsState (D3): 每 tab 独立缓存的
  * LazyPagingItems 与网格滚动状态 (跨 tab 保留数据与位置)、登录变更自动刷新.
- * [UserCollectionsViewModel.navigator] 是手机装配的 lateinit, TV 侧不触碰.
+ * TV ViewModel 复用共享状态，通过 Intent 选择分类和打开条目。
  */
 @Composable
 fun TvCollectionScreen(
-    onClickSubject: (SubjectCollectionInfo) -> Unit,
+    state: TvCollectionUiState,
+    onIntent: (TvCollectionIntent) -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    val viewModel = viewModel<UserCollectionsViewModel> { UserCollectionsViewModel() }
-    val state = viewModel.state
-    val counts = state.collectionCounts
-    val selectedTabIndex = state.selectedTypeIndex
-    // 每 tab 独立缓存 (状态持有式 LazyPagingItems, desktop 消费模式同款)
-    val items = remember(selectedTabIndex) {
-        state.getCollectionLazyPagingItems(selectedTabIndex)
-    }.collectWithLifecycle()
+    val counts = state.counts
+    val selectedTabIndex = state.selectedTabIndex
+    val items = state.items
 
     // 统一焦点框架: 进页初始焦点落当前选中 tab; tab 行按下键直达网格首卡
     val focus = rememberTvFocusScope()
@@ -109,10 +100,13 @@ fun TvCollectionScreen(
                 selectedTabIndex = selectedTabIndex,
                 counts = counts,
                 focus = focus,
+                onEnterGrid = { gridFocus.focusItem(0) },
                 onTabFocused = { index ->
-                    // 聚焦即选中 (PR 语义, §5.2); 边缘切 tab 在途时冻结 (见 TvFocusGrid.kt)
-                    if (!gridFocus.switching && selectedTabIndex != index) {
-                        state.selectTypeIndex(index)
+                    // Navigation can temporarily focus the first tab while restoring this
+                    // page. Only user navigation may change the selected category; an edge
+                    // switch also keeps its destination frozen until the new grid is ready.
+                    if (focus.userNavGeneration > 0 && !gridFocus.switching && selectedTabIndex != index) {
+                        onIntent(TvCollectionIntent.SelectTab(index))
                     }
                 },
             )
@@ -131,15 +125,15 @@ fun TvCollectionScreen(
         } else {
             TvCollectionGrid(
                 items = items,
-                gridState = state.getGridState(selectedTabIndex), // 跨 tab 保留滚动位置
+                gridState = state.gridState, // 跨 tab 保留滚动位置
                 focus = focus,
                 gridFocus = gridFocus,
-                onClickSubject = onClickSubject,
+                onClickSubject = { onIntent(TvCollectionIntent.OpenSubject(it)) },
                 hasAdjacentTab = { direction ->
-                    selectedTabIndex + direction in COLLECTION_TABS_SORTED.indices
+                    if (direction < 0) state.hasPreviousTab else state.hasNextTab
                 },
                 onSwitchTab = { direction ->
-                    state.selectTypeIndex(selectedTabIndex + direction)
+                    onIntent(TvCollectionIntent.SwitchTab(direction))
                 },
                 modifier = Modifier
                     .fillMaxSize()
@@ -179,6 +173,7 @@ private fun TvCollectionTabRow(
     selectedTabIndex: Int,
     counts: SubjectCollectionCounts?,
     focus: TvFocusScope,
+    onEnterGrid: () -> Unit,
     onTabFocused: (index: Int) -> Unit,
     modifier: Modifier = Modifier,
 ) {
@@ -198,8 +193,9 @@ private fun TvCollectionTabRow(
                             Modifier.tvFocusAnchor(focus, TvCollectionFocus.CurrentTab)
                         } else Modifier,
                     )
-                    // 跨过网格上缘空隙直达首卡 (空间搜索跨大间距不可靠)
-                    .tvFocusLink(focus, down = TvCollectionFocus.FirstCard),
+                    // The first card may have been recycled after scrolling. Let the grid
+                    // compose it before requesting focus instead of using a detached anchor.
+                    .tvFocusHotkey(focus, Key.DirectionDown, onEnterGrid),
             ) {
                 val count = counts?.getCount(type)
                 Text(
@@ -227,7 +223,7 @@ private fun TvCollectionEmptyPlaceholder(
     LaunchedEffect(edgeSwitchInFlight, items) {
         if (edgeSwitchInFlight) {
             snapshotFlow {
-                items.loadState.refresh is LoadState.NotLoading && items.itemCount == 0
+                items.itemCount == 0 && items.loadState.isCollectionRefreshComplete()
             }.first { it }
             onReturnFocusToTab()
         }
@@ -275,13 +271,7 @@ private fun TvCollectionGrid(
                 title = info.subjectInfo.displayName,
                 onClick = { onClickSubject(info) },
                 memoryId = "col-${info.subjectId}",
-                modifier = Modifier
-                    .then(
-                        if (index == 0) {
-                            Modifier.tvFocusAnchor(focus, TvCollectionFocus.FirstCard)
-                        } else Modifier,
-                    )
-                    .tvGridFocusItem(gridFocus, index, items.itemCount),
+                modifier = Modifier.tvGridFocusItem(gridFocus, index, items.itemCount),
             )
         }
     }

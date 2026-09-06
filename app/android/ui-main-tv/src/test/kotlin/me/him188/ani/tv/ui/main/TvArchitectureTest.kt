@@ -96,6 +96,72 @@ class TvArchitectureTest {
         }
     }
 
+
+    @Test
+    fun `tv composables must not resolve dependencies or access repositories and services`() {
+        tvScope().files.assertFalse { file ->
+            file.text.contains("@Composable") && (
+                file.imports.any {
+                    it.name.startsWith("org.koin.") ||
+                        it.name.startsWith("me.him188.ani.app.data.repository.") ||
+                        it.name.endsWith("GlobalKoin") ||
+                        it.name.endsWith("Repository") ||
+                        it.name.endsWith("Service") ||
+                        it.name.endsWith("UseCase")
+                } ||
+                    file.text.contains("me.him188.ani.app.data.repository.") ||
+                    file.text.contains("me.him188.ani.app.domain.usecase.GlobalKoin")
+                )
+        }
+    }
+
+    @Test
+    fun `tv feature code must not use global koin or component injection`() {
+        tvScope().files.assertFalse { file ->
+            file.imports.any {
+                it.name.endsWith("GlobalKoin") ||
+                    it.name.startsWith("org.koin.core.component.")
+            }
+        }
+    }
+
+    @Test
+    fun `tv screens must render state and dispatch intents instead of calling viewmodels`() {
+        tvScope().files.assertFalse { file ->
+            file.path.endsWith("Screen.kt") && (
+                file.imports.any { it.name.endsWith("ViewModel") } ||
+                    file.text.contains("viewModel.") ||
+                    file.text.contains("viewModel<") ||
+                    file.text.contains("tvViewModel<")
+                )
+        }
+    }
+
+    @Test
+    fun `tv viewmodels must only be constructed in app content`() {
+        val declaration = Regex("""\bclass\s+Tv\w*ViewModel\s*\(""")
+        val constructor = Regex("""\bTv\w*ViewModel\s*\(|::Tv\w*ViewModel\b""")
+        tvScope().files.assertFalse { file ->
+            !file.path.replace('\\', '/').endsWith("/TvAniAppContent.kt") &&
+                constructor.containsMatchIn(file.text.replace(declaration, ""))
+        }
+    }
+
+    @Test
+    fun `tv viewmodel provisioning must use the app content helper without koin registration`() {
+        val providerCall = Regex("""\b(?:tvViewModel|viewModel|koinViewModel)\s*(?:<[^>]+>)?\s*[({]""")
+        tvScope().files.assertFalse { file ->
+            val path = file.path.replace('\\', '/')
+            val isAppContent = path.endsWith("/TvAniAppContent.kt")
+            val isHelper = path.endsWith("/foundation/TvViewModel.kt")
+            val hasKoinModule = file.imports.any { it.name == "org.koin.dsl.module" }
+            (!isAppContent && !isHelper && providerCall.containsMatchIn(file.text)) ||
+                (!isAppContent && file.imports.any { it.name.endsWith(".tvViewModel") }) ||
+                (!isHelper && file.imports.any { it.name == "androidx.lifecycle.viewmodel.compose.viewModel" }) ||
+                (hasKoinModule && file.text.contains("ViewModel"))
+        }
+    }
+
     // ============ 焦点框架规约 (atv-architecture.md §14.4; 违反 = 运行期焦点 bug) ============
 
     /** 页面持有 TvFocusScope 就必须装解析循环 + 用户交互放弃信号, 否则送焦请求无人消化 / 轮询抢焦点. */

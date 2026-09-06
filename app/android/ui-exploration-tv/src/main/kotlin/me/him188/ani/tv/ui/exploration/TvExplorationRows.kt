@@ -28,8 +28,6 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.SideEffect
-import androidx.compose.runtime.Stable
-import androidx.compose.runtime.mutableStateMapOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.saveable.rememberSaveable
@@ -41,29 +39,19 @@ import androidx.compose.ui.input.key.KeyEventType
 import androidx.compose.ui.input.key.key
 import androidx.compose.ui.input.key.onPreviewKeyEvent
 import androidx.compose.ui.input.key.type
+import androidx.compose.ui.unit.Dp
 import androidx.paging.compose.LazyPagingItems
-import kotlinx.coroutines.CancellationException
-import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.delay
-import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.sync.Semaphore
-import kotlinx.coroutines.sync.withPermit
 import me.him188.ani.app.data.models.recommend.RecommendedItemInfo
 import me.him188.ani.app.data.models.recommend.RecommendedSubjectInfo
 import me.him188.ani.app.data.models.subject.ContinueWatchingStatus
 import me.him188.ani.app.data.models.subject.FollowedSubjectInfo
 import me.him188.ani.app.data.models.subject.SubjectCollectionInfo
 import me.him188.ani.app.data.models.subject.subjectInfo
-import me.him188.ani.app.data.network.BangumiSummaryService
-import me.him188.ani.app.data.network.TmdbImageService
-import me.him188.ani.app.data.network.newestAiredDateStringOrNull
-import me.him188.ani.app.data.repository.subject.SubjectCollectionRepository
 import me.him188.ani.tv.ui.foundation.focus.TvAnchoredBringIntoViewSpec
 import me.him188.ani.tv.ui.foundation.focus.TvFocusKey
 import me.him188.ani.tv.ui.foundation.focus.TvFocusScope
 import me.him188.ani.tv.ui.foundation.focus.tvFocusAnchor
-import me.him188.ani.tv.ui.foundation.widgets.TvHeroDefaults
 import me.him188.ani.tv.ui.foundation.widgets.TvLandscapeCard
 import me.him188.ani.tv.ui.foundation.widgets.TvLandscapeCardDefaults
 import me.him188.ani.tv.ui.foundation.widgets.TvPageDefaults
@@ -102,88 +90,6 @@ internal sealed class TvExplorationRow(val key: String, val title: String?) {
     }
 }
 
-/**
- * 条目媒体缓存 (页内单例): 详情 (评分/连载/简介) + TMDB 横版 backdrop + 简介兜底.
- * hero 与卡片共用: 卡片先拉的 backdrop, 聚焦时 hero 直接复用.
- */
-@Stable
-internal class TvSubjectMediaState(
-    private val collectionRepo: SubjectCollectionRepository,
-    private val tmdb: TmdbImageService,
-    private val bangumiSummaryService: BangumiSummaryService,
-    private val scope: CoroutineScope,
-) {
-    val infoCache = mutableStateMapOf<Int, SubjectCollectionInfo>()
-
-    /** value null = TMDB 已确认无图 (卡片退化海报裁切, hero 退化海报). */
-    val backdropCache = mutableStateMapOf<Int, String?>()
-    val summaryFallbackCache = mutableStateMapOf<Int, String>()
-
-    private val backdropInFlight = mutableSetOf<Int>()
-    private val backdropGate = Semaphore(TvExplorationDefaults.BackdropConcurrency)
-
-    /** 调用方已持有详情 (继续观看行自带 SubjectCollectionInfo) 时直接入缓存, 省一次拉取. */
-    fun putInfo(info: SubjectCollectionInfo) {
-        val id = info.subjectInfo.subjectId
-        if (id !in infoCache) infoCache[id] = info
-    }
-
-    /**
-     * hero 用: 加载 [target] 的详情/backdrop/简介兜底. 详情未缓存时防抖 300ms
-     * (焦点快速划过时不发请求); 由 collectLatest 驱动, 换条目自动取消在途.
-     */
-    suspend fun loadHero(target: TvHeroSubject) {
-        var info = infoCache[target.subjectId]
-        if (info == null) {
-            delay(TvHeroDefaults.MediaDebounceMillis)
-            info = fetchInfo(target.subjectId) ?: return
-        }
-        if (target.subjectId !in backdropCache) fetchBackdrop(target.subjectId, info)
-        if (info.subjectInfo.summary.isBlank() && target.subjectId !in summaryFallbackCache) {
-            runCatching { bangumiSummaryService.getSummary(target.subjectId) }
-                .onSuccess { summaryFallbackCache[target.subjectId] = it.orEmpty() }
-        }
-    }
-
-    /** 卡片用: 后台确保 [subjectId] 的 backdrop 已请求 (有限并发; 已有结果/在途则跳过). */
-    fun requestBackdrop(subjectId: Int) {
-        if (subjectId in backdropCache || !backdropInFlight.add(subjectId)) return
-        scope.launch {
-            try {
-                backdropGate.withPermit {
-                    val info = infoCache[subjectId] ?: fetchInfo(subjectId)
-                    if (info == null) {
-                        backdropCache[subjectId] = null // 详情拿不到: 本页不再重试
-                        return@withPermit
-                    }
-                    fetchBackdrop(subjectId, info)
-                }
-            } finally {
-                backdropInFlight.remove(subjectId)
-            }
-        }
-    }
-
-    private suspend fun fetchInfo(subjectId: Int): SubjectCollectionInfo? = try {
-        collectionRepo.subjectCollectionFlow(subjectId).first().also { infoCache[subjectId] = it }
-    } catch (e: CancellationException) {
-        throw e
-    } catch (e: Exception) {
-        null
-    }
-
-    private suspend fun fetchBackdrop(subjectId: Int, info: SubjectCollectionInfo) {
-        // 失败也写 null: 本页不再重试 (TmdbImageService 自身持久负缓存; 网络错误它下次进页会重试)
-        backdropCache[subjectId] = runCatching {
-            tmdb.getBackdropUrl(
-                subjectId,
-                info.subjectInfo.name,
-                activeAsOfDate = info.episodes.newestAiredDateStringOrNull(),
-            )
-        }.getOrNull()
-    }
-}
-
 /** TMDB w1280 backdrop 降到卡片档 (w780). */
 internal fun tmdbBackdropCardUrl(url: String): String = url.replace("/t/p/w1280/", "/t/p/w780/")
 
@@ -198,7 +104,8 @@ internal fun tmdbBackdropCardUrl(url: String): String = url.replace("/t/p/w1280/
 @Composable
 internal fun TvExplorationRowItem(
     row: TvExplorationRow,
-    media: TvSubjectMediaState,
+    media: TvSubjectMediaUiState,
+    onIntent: (TvExplorationIntent) -> Unit,
     focus: TvFocusScope,
     rowStates: SnapshotStateMap<String, LazyListState>,
     focusedIndexByRow: SnapshotStateMap<String, Int>,
@@ -239,12 +146,12 @@ internal fun TvExplorationRowItem(
         }
         when (row) {
             is TvExplorationRow.ContinueWatching -> TvContinueWatchingRow(
-                row, media, focus, rowStates, focusedIndexByRow, onCardFocused, onClickSubject,
+                row, media, onIntent, focus, rowStates, focusedIndexByRow, onCardFocused, onClickSubject,
                 modifier = verticalNav,
             )
 
             is TvExplorationRow.RecommendationGrid -> TvRecommendationGridRow(
-                row, media, focus, focusedIndexByRow, onCardFocused, onClickSubject,
+                row, media, onIntent, focus, focusedIndexByRow, onCardFocused, onClickSubject,
                 modifier = verticalNav,
             )
         }
@@ -256,7 +163,8 @@ internal fun TvExplorationRowItem(
 @Composable
 private fun TvContinueWatchingRow(
     row: TvExplorationRow.ContinueWatching,
-    media: TvSubjectMediaState,
+    media: TvSubjectMediaUiState,
+    onIntent: (TvExplorationIntent) -> Unit,
     focus: TvFocusScope,
     rowStates: SnapshotStateMap<String, LazyListState>,
     focusedIndexByRow: SnapshotStateMap<String, Int>,
@@ -307,7 +215,6 @@ private fun TvContinueWatchingRow(
                 key = { row.items.peek(it)?.subjectInfo?.subjectId ?: it },
             ) { index ->
                 val info = row.items[index] ?: return@items
-                SideEffect { media.putInfo(info.subjectCollectionInfo) }
                 val subject = TvHeroSubject(
                     info.subjectInfo.subjectId,
                     info.subjectInfo.displayName,
@@ -319,10 +226,12 @@ private fun TvContinueWatchingRow(
                     row = row,
                     index = index,
                     media = media,
+                    onIntent = onIntent,
                     focus = focus,
                     focusedIndexByRow = focusedIndexByRow,
                     onCardFocused = onCardFocused,
                     onClickSubject = onClickSubject,
+                    collection = info.subjectCollectionInfo,
                     overline = renderContinueWatchingOverline(info.subjectProgressInfo.continueWatchingStatus),
                 )
             }
@@ -337,7 +246,8 @@ private fun TvContinueWatchingRow(
 @Composable
 private fun TvRecommendationGridRow(
     row: TvExplorationRow.RecommendationGrid,
-    media: TvSubjectMediaState,
+    media: TvSubjectMediaUiState,
+    onIntent: (TvExplorationIntent) -> Unit,
     focus: TvFocusScope,
     focusedIndexByRow: SnapshotStateMap<String, Int>,
     onCardFocused: (row: TvExplorationRow, subject: TvHeroSubject) -> Unit,
@@ -363,6 +273,7 @@ private fun TvRecommendationGridRow(
                     row = row,
                     index = column,
                     media = media,
+                    onIntent = onIntent,
                     focus = focus,
                     focusedIndexByRow = focusedIndexByRow,
                     onCardFocused = onCardFocused,
@@ -384,16 +295,20 @@ private fun TvExplorationCard(
     memoryId: String,
     row: TvExplorationRow,
     index: Int,
-    media: TvSubjectMediaState,
+    media: TvSubjectMediaUiState,
+    onIntent: (TvExplorationIntent) -> Unit,
     focus: TvFocusScope,
     focusedIndexByRow: SnapshotStateMap<String, Int>,
     onCardFocused: (row: TvExplorationRow, subject: TvHeroSubject) -> Unit,
     onClickSubject: (TvHeroSubject) -> Unit,
-    width: androidx.compose.ui.unit.Dp? = TvLandscapeCardDefaults.Width,
+    width: Dp? = TvLandscapeCardDefaults.Width,
     modifier: Modifier = Modifier,
     overline: String? = null,
+    collection: SubjectCollectionInfo? = null,
 ) {
-    LaunchedEffect(subject.subjectId) { media.requestBackdrop(subject.subjectId) }
+    LaunchedEffect(subject.subjectId, collection) {
+        onIntent(TvExplorationIntent.CardVisible(subject.subjectId, collection))
+    }
     val backdrop = media.backdropCache[subject.subjectId]
     TvLandscapeCard(
         imageUrl = backdrop?.let(::tmdbBackdropCardUrl) ?: subject.imageUrl,

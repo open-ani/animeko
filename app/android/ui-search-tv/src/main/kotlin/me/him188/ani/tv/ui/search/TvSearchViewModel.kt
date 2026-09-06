@@ -14,26 +14,29 @@ import androidx.paging.PagingData
 import androidx.paging.cachedIn
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
-import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.emptyFlow
 import kotlinx.coroutines.flow.flatMapLatest
+import kotlinx.coroutines.flow.update
 import me.him188.ani.app.data.network.BatchSubjectDetails
 import me.him188.ani.app.data.repository.subject.SubjectSearchRepository
 import me.him188.ani.app.domain.search.SubjectSearchQuery
+import me.him188.ani.app.navigation.SubjectDetailPlaceholder
 import me.him188.ani.app.ui.foundation.AbstractViewModel
-import org.koin.core.component.KoinComponent
-import org.koin.core.component.inject
+import me.him188.ani.tv.ui.foundation.TvNavigationEvent
+import me.him188.ani.tv.ui.foundation.TvNavigationEvents
 
 /**
  * TV 搜索页薄 VM (atv-architecture.md §7.3, M2 精简版: 关键词搜索, 筛选弹窗 M3).
  */
 @Stable
-class TvSearchViewModel : AbstractViewModel(), KoinComponent {
-    private val subjectSearchRepository: SubjectSearchRepository by inject()
-
-    private val _keywords = MutableStateFlow("")
-    val keywords: StateFlow<String> = _keywords.asStateFlow()
+class TvSearchViewModel(
+    private val subjectSearchRepository: SubjectSearchRepository,
+) : AbstractViewModel() {
+    private val _uiState = MutableStateFlow(TvSearchUiState())
+    val uiState = _uiState.asStateFlow()
+    private val navigation = TvNavigationEvents()
+    val navigationEvents = navigation.events
 
     /** 已提交的搜索 (软键盘 Search 动作触发, 非边输边搜) */
     private val submittedQuery = MutableStateFlow<SubjectSearchQuery?>(null)
@@ -48,16 +51,23 @@ class TvSearchViewModel : AbstractViewModel(), KoinComponent {
         }
         .cachedIn(backgroundScope)
 
-    val hasSearched: StateFlow<SubjectSearchQuery?> = submittedQuery.asStateFlow()
-
-    fun setKeywords(value: String) {
-        _keywords.value = value
-    }
-
-    fun search() {
-        val query = SubjectSearchQuery(keywords = _keywords.value).normalized()
-        if (query.hasSearchRequest()) {
-            submittedQuery.value = query
+    fun onIntent(intent: TvSearchIntent) {
+        when (intent) {
+            is TvSearchIntent.ChangeKeywords -> _uiState.update { it.copy(keywords = intent.value) }
+            TvSearchIntent.Search -> {
+                val query = SubjectSearchQuery(keywords = _uiState.value.keywords).normalized()
+                if (query.hasSearchRequest()) {
+                    submittedQuery.value = query
+                    _uiState.update { it.copy(hasSearched = true) }
+                }
+            }
+            is TvSearchIntent.OpenSubject -> {
+                val info = intent.subject.subjectInfo
+                navigation.emit(TvNavigationEvent.Subject(
+                    info.subjectId,
+                    SubjectDetailPlaceholder(id = info.subjectId, name = info.name, coverUrl = info.imageLarge, nameCN = info.nameCn),
+                ))
+            }
         }
     }
 }
