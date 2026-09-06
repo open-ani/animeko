@@ -37,6 +37,7 @@ import me.him188.ani.app.ui.comment.createTestCommentState
 import me.him188.ani.app.ui.foundation.IMAGE_VIEWER_TEST_TAG
 import me.him188.ani.app.ui.foundation.ProvideCompositionLocalsForPreview
 import me.him188.ani.app.ui.foundation.stateOf
+import me.him188.ani.app.ui.framework.runOnSwingEdt
 import me.him188.ani.app.ui.rating.createTestEditableRatingState
 import me.him188.ani.app.ui.search.createTestPager
 import me.him188.ani.app.ui.subject.collection.components.createTestEditableSubjectCollectionTypeState
@@ -114,9 +115,10 @@ class SubjectDetailsImageViewerTest {
     }
 
     @OptIn(kotlinx.coroutines.ExperimentalCoroutinesApi::class)
-    private fun runPageTest(widthDp: Int, heightDp: Int, block: SkikoComposeUiTest.() -> Unit) {
+    private fun runPageTest(widthDp: Int, heightDp: Int, block: SkikoComposeUiTest.() -> Unit) = runOnSwingEdt {
         // 查看器的单击关闭经 Dispatchers.Main 真实 delay 触发; 确保 Main 未被其他测试替换为虚拟时钟.
         Dispatchers.resetMain()
+        // 查看器 (zoomimage) 要求手势在 Swing EDT 上处理, 因此整个测试在 EDT 上跑.
         runSkikoComposeUiTest(Size(widthDp.toFloat(), heightDp.toFloat()), density = Density(1f)) {
             setContent {
                 ProvideCompositionLocalsForPreview {

@@ -1465,6 +1465,17 @@
     <string name="watch_together_resynced_forward">已與房主重新同步（快進 %1$d 秒）</string>
     <string name="watch_together_resynced_backward">已與房主重新同步（快退 %1$d 秒）</string>
     <string name="watch_together_got_it">知道了</string>
+    <!-- Image viewer -->
+    <string name="image_viewer_window_title">圖片</string>
+    <string name="image_viewer_zoom_in">放大</string>
+    <string name="image_viewer_zoom_out">縮小</string>
+    <string name="image_viewer_reset_zoom">適應視窗</string>
+    <string name="image_viewer_save">儲存圖片</string>
+    <string name="image_viewer_saved">圖片已儲存</string>
+    <string name="image_viewer_save_failed">儲存圖片失敗</string>
+    <string name="image_viewer_drag_out">拖到其他應用程式</string>
+    <string name="image_viewer_load_failed">圖片載入失敗</string>
+    <string name="image_viewer_close">關閉</string>
 </resources>
 
 <!--@formatter:on-->

@@ -1462,6 +1462,17 @@
     <string name="watch_together_resynced_forward">Re-synced with the host (skipped ahead %1$d s)</string>
     <string name="watch_together_resynced_backward">Re-synced with the host (went back %1$d s)</string>
     <string name="watch_together_got_it">Got it</string>
+    <!-- Image viewer -->
+    <string name="image_viewer_window_title">Image</string>
+    <string name="image_viewer_zoom_in">Zoom in</string>
+    <string name="image_viewer_zoom_out">Zoom out</string>
+    <string name="image_viewer_reset_zoom">Fit to window</string>
+    <string name="image_viewer_save">Save image</string>
+    <string name="image_viewer_saved">Image saved</string>
+    <string name="image_viewer_save_failed">Failed to save image</string>
+    <string name="image_viewer_drag_out">Drag to another app</string>
+    <string name="image_viewer_load_failed">Failed to load image</string>
+    <string name="image_viewer_close">Close</string>
 </resources>
 
 <!--@formatter:on-->

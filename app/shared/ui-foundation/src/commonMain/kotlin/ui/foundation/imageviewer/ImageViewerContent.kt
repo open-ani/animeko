@@ -1,0 +1,296 @@
+/*
+ * Copyright (C) 2024-2026 OpenAni and contributors.
+ *
+ * 此源代码的使用受 GNU AFFERO GENERAL PUBLIC LICENSE version 3 许可证的约束, 可以在以下链接找到该许可证.
+ * Use of this source code is governed by the GNU AGPLv3 license, which can be found at the following link.
+ *
+ * https://github.com/open-ani/ani/blob/main/LICENSE
+ */
+
+package me.him188.ani.app.ui.foundation.imageviewer
+
+import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.RowScope
+import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.safeDrawing
+import androidx.compose.foundation.layout.windowInsetsPadding
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.rounded.Close
+import androidx.compose.material.icons.rounded.FitScreen
+import androidx.compose.material.icons.rounded.SaveAlt
+import androidx.compose.material.icons.rounded.ZoomIn
+import androidx.compose.material.icons.rounded.ZoomOut
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Surface
+import androidx.compose.material3.Text
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.unit.dp
+import com.github.panpf.sketch.rememberAsyncImageState
+import com.github.panpf.sketch.request.LoadState
+import com.github.panpf.zoomimage.SketchZoomAsyncImage
+import com.github.panpf.zoomimage.compose.zoom.ZoomableState
+import com.github.panpf.zoomimage.rememberSketchZoomState
+import kotlinx.atomicfu.atomic
+import kotlinx.coroutines.launch
+import me.him188.ani.app.platform.ContextMP
+import me.him188.ani.app.platform.LocalContext
+import me.him188.ani.app.platform.files
+import me.him188.ani.app.ui.foundation.IMAGE_VIEWER_TEST_TAG
+import me.him188.ani.app.ui.foundation.LocalSketch
+import me.him188.ani.app.ui.foundation.widgets.LocalToaster
+import me.him188.ani.app.ui.lang.Lang
+import me.him188.ani.app.ui.lang.image_viewer_close
+import me.him188.ani.app.ui.lang.image_viewer_load_failed
+import me.him188.ani.app.ui.lang.image_viewer_reset_zoom
+import me.him188.ani.app.ui.lang.image_viewer_save
+import me.him188.ani.app.ui.lang.image_viewer_save_failed
+import me.him188.ani.app.ui.lang.image_viewer_saved
+import me.him188.ani.app.ui.lang.image_viewer_zoom_in
+import me.him188.ani.app.ui.lang.image_viewer_zoom_out
+import me.him188.ani.utils.io.SystemPath
+import me.him188.ani.utils.io.deleteRecursively
+import me.him188.ani.utils.io.resolve
+import me.him188.ani.utils.logging.logger
+import me.him188.ani.utils.logging.warn
+import org.jetbrains.compose.resources.stringResource
+import kotlin.math.roundToInt
+
+/** 查看器内各控件的 test tag. */
+object ImageViewerTestTags {
+    const val ZOOM_IN = "ImageViewer.ZoomIn"
+    const val ZOOM_OUT = "ImageViewer.ZoomOut"
+    const val RESET_ZOOM = "ImageViewer.ResetZoom"
+    const val SCALE_TEXT = "ImageViewer.ScaleText"
+    const val SAVE = "ImageViewer.Save"
+    const val CLOSE = "ImageViewer.Close"
+    const val DRAG_OUT = "ImageViewer.DragOut"
+}
+
+/** 每次点击放大/缩小按钮的倍率. */
+private const val ZOOM_STEP = 1.5f
+
+private val logger = logger<ImageViewerTestTags>()
+
+/**
+ * 图片查看器的内容: 可缩放图片 + 底部工具栏 (缩小 / 缩放比例 / 放大 / 适应窗口 / 保存 / [extraActions] / 关闭).
+ *
+ * 缩放由 zoomimage 提供: 触摸双指缩放, 双击切换, 鼠标滚轮缩放, 键盘 `+`/`-` 缩放.
+ * 图片加载成功后会在后台导出一份带扩展名的本地副本 ([ImageViewerExportedFile]), 供保存和拖拽使用.
+ *
+ * @param model 图片 URL. 为 `null` 时只显示黑底.
+ * @param closeOnTap 单击图片是否关闭 (覆盖层模式为 `true`; 独立窗口为 `false`).
+ * @param showCloseButton 工具栏是否显示关闭按钮.
+ * @param fileSaver 点击保存时的保存方式, 默认弹系统对话框.
+ * @param extraActions 工具栏关闭按钮前的额外控件, 参数为当前已导出的本地副本 (未就绪时为 `null`).
+ * @param exportDirectory 本地副本所在目录, 默认为 [imageViewerExportDirectory].
+ */
+@Composable
+fun ImageViewerContent(
+    model: String?,
+    onClose: () -> Unit,
+    modifier: Modifier = Modifier,
+    closeOnTap: Boolean = true,
+    showCloseButton: Boolean = true,
+    fileSaver: ImageFileSaver = rememberFileKitImageFileSaver(),
+    extraActions: @Composable RowScope.(exported: ImageViewerExportedFile?) -> Unit = {},
+    exportDirectory: SystemPath = imageViewerExportDirectory(LocalContext.current),
+) {
+    val sketch = LocalSketch.current
+    val toaster = LocalToaster.current
+    val scope = rememberCoroutineScope()
+
+    val zoomState = rememberSketchZoomState()
+    val imageState = rememberAsyncImageState()
+    val loadState = imageState.loadState
+    val loaded = loadState is LoadState.Success
+
+    // 图片加载成功后再导出, 此时 Sketch 的下载缓存已命中, 不会再下载一次.
+    var exported by remember(model) { mutableStateOf<ImageViewerExportedFile?>(null) }
+    LaunchedEffect(model, loaded) {
+        if (model == null || !loaded) return@LaunchedEffect
+        exported = try {
+            sketch.exportImageForViewer(model, exportDirectory)
+        } catch (e: Exception) {
+            logger.warn(e) { "Failed to export image for viewer: $model" }
+            null
+        }
+    }
+
+    val savedText = stringResource(Lang.image_viewer_saved)
+    val saveFailedText = stringResource(Lang.image_viewer_save_failed)
+
+    Box(modifier.background(Color.Black)) {
+        if (model != null) {
+            SketchZoomAsyncImage(
+                uri = model,
+                contentDescription = null,
+                sketch = sketch,
+                modifier = Modifier.fillMaxSize().testTag(IMAGE_VIEWER_TEST_TAG),
+                state = imageState,
+                zoomState = zoomState,
+                onTap = if (closeOnTap) {
+                    { onClose() }
+                } else {
+                    null
+                },
+            )
+        }
+        if (loadState is LoadState.Error) {
+            Text(
+                stringResource(Lang.image_viewer_load_failed),
+                Modifier.align(Alignment.Center),
+                color = Color.White,
+                style = MaterialTheme.typography.bodyLarge,
+            )
+        }
+
+        ImageViewerToolbar(
+            zoomable = zoomState.zoomable,
+            scalePercent = if (loaded) zoomState.currentScalePercent() else null,
+            enabled = loaded,
+            canSave = exported != null,
+            onSave = {
+                val file = exported ?: return@ImageViewerToolbar
+                scope.launch {
+                    try {
+                        if (fileSaver.save(file)) toaster.toast(savedText)
+                    } catch (e: Exception) {
+                        logger.warn(e) { "Failed to save image ${file.fileName}" }
+                        toaster.toast(saveFailedText)
+                    }
+                }
+            },
+            showCloseButton = showCloseButton,
+            onClose = onClose,
+            extraActions = { extraActions(exported) },
+            modifier = Modifier
+                .align(Alignment.BottomCenter)
+                .windowInsetsPadding(WindowInsets.safeDrawing)
+                .padding(16.dp),
+        )
+    }
+}
+
+/**
+ * 当前显示比例, 相对于原图像素: 100% 表示原图一个像素对应屏幕一个 dp.
+ * Sketch 会按显示尺寸缩小解码, 所以要用分块加载拿到的原图尺寸换算.
+ */
+@Composable
+private fun com.github.panpf.zoomimage.compose.ZoomState.currentScalePercent(): Int {
+    val contentWidth = zoomable.contentSize.width
+    val originalWidth = subsampling.imageInfo?.width
+    val sourceFactor = if (originalWidth != null && originalWidth > 0 && contentWidth > 0) {
+        contentWidth.toFloat() / originalWidth
+    } else {
+        1f
+    }
+    return (zoomable.transform.scaleX * sourceFactor * 100).roundToInt()
+}
+
+@Composable
+private fun ImageViewerToolbar(
+    zoomable: ZoomableState,
+    scalePercent: Int?,
+    enabled: Boolean,
+    canSave: Boolean,
+    onSave: () -> Unit,
+    showCloseButton: Boolean,
+    onClose: () -> Unit,
+    extraActions: @Composable RowScope.() -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    val scope = rememberCoroutineScope()
+    val scale = zoomable.transform.scaleX
+    val canZoomOut = enabled && scale > zoomable.minScale + SCALE_EPSILON
+    val canZoomIn = enabled && scale < zoomable.maxScale - SCALE_EPSILON
+
+    Surface(
+        modifier = modifier,
+        shape = CircleShape,
+        color = MaterialTheme.colorScheme.surface.copy(alpha = 0.92f),
+        contentColor = MaterialTheme.colorScheme.onSurface,
+        tonalElevation = 3.dp,
+    ) {
+        Row(
+            Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(4.dp),
+        ) {
+            IconButton(
+                onClick = { scope.launch { zoomable.scale(scale / ZOOM_STEP, animated = true) } },
+                enabled = canZoomOut,
+                modifier = Modifier.testTag(ImageViewerTestTags.ZOOM_OUT),
+            ) {
+                Icon(Icons.Rounded.ZoomOut, contentDescription = stringResource(Lang.image_viewer_zoom_out))
+            }
+            Text(
+                text = scalePercent?.let { "$it%" } ?: "—",
+                modifier = Modifier.testTag(ImageViewerTestTags.SCALE_TEXT),
+                style = MaterialTheme.typography.labelLarge,
+            )
+            IconButton(
+                onClick = { scope.launch { zoomable.scale(scale * ZOOM_STEP, animated = true) } },
+                enabled = canZoomIn,
+                modifier = Modifier.testTag(ImageViewerTestTags.ZOOM_IN),
+            ) {
+                Icon(Icons.Rounded.ZoomIn, contentDescription = stringResource(Lang.image_viewer_zoom_in))
+            }
+            IconButton(
+                onClick = { scope.launch { zoomable.scale(zoomable.minScale, animated = true) } },
+                enabled = canZoomOut,
+                modifier = Modifier.testTag(ImageViewerTestTags.RESET_ZOOM),
+            ) {
+                Icon(Icons.Rounded.FitScreen, contentDescription = stringResource(Lang.image_viewer_reset_zoom))
+            }
+            IconButton(
+                onClick = onSave,
+                enabled = canSave,
+                modifier = Modifier.testTag(ImageViewerTestTags.SAVE),
+            ) {
+                Icon(Icons.Rounded.SaveAlt, contentDescription = stringResource(Lang.image_viewer_save))
+            }
+            extraActions()
+            if (showCloseButton) {
+                IconButton(
+                    onClick = onClose,
+                    modifier = Modifier.testTag(ImageViewerTestTags.CLOSE),
+                ) {
+                    Icon(Icons.Rounded.Close, contentDescription = stringResource(Lang.image_viewer_close))
+                }
+            }
+        }
+    }
+}
+
+private const val SCALE_EPSILON = 0.001f
+
+private val exportDirectoryCleared = atomic(false)
+
+/**
+ * 查看器导出副本所在目录 (`cacheDir/image-viewer`). 进程内首次使用时清空上次运行留下的文件.
+ */
+fun imageViewerExportDirectory(context: ContextMP): SystemPath {
+    val directory = context.files.cacheDir.resolve("image-viewer")
+    if (exportDirectoryCleared.compareAndSet(expect = false, update = true)) {
+        runCatching { directory.deleteRecursively() }
+    }
+    return directory
+}
