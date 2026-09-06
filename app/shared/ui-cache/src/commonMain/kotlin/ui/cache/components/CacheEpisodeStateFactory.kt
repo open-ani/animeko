@@ -14,6 +14,7 @@ import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.flow.onStart
 import me.him188.ani.app.data.models.player.EpisodeHistory
 import me.him188.ani.app.domain.media.cache.MediaCache
 import me.him188.ani.app.domain.media.cache.MediaCacheState
@@ -89,7 +90,8 @@ internal fun HasBackgroundScope.createCacheEpisodeStateFlow(
         statsFlow,
         stateFlow,
         subjectCollectionType,
-        mediaCache.cache.canPlay,
+        // 播放能力尚未就绪时也要展示下载任务, 否则 combine 会阻塞整个缓存列表.
+        mediaCache.cache.canPlay.onStart { emit(false) },
         playbackProgressFlow,
     ) { stats, state, type, canPlay, playbackProgress ->
         CacheEpisodeState(
