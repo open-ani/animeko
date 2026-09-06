@@ -186,6 +186,7 @@ object AniDesktop {
             logger.info { "mediampv is loaded." }
         } catch (e: Throwable) {
             logger.error(e) { "Failed to load libmpv component of mediamp." }
+            throw e
         }
     }
 
@@ -377,40 +378,33 @@ object AniDesktop {
             configureLibrariesAndResources(composeResDir)
         }
 
-        // Initialize CEF application.
-        coroutineScope.launch {
-            logger.info { "[JCEF init] awaiting anitorrent and FFmpegKit." }
-            try {
+        val playerBackendReady = coroutineScope.launchDesktopNativeStartup(
+            preparePlayerBeforeJcef = shouldPreparePlayerBeforeJcef(currentPlatformDesktop()),
+            beforeInitialization = {
+                logger.info { "[JCEF init] awaiting anitorrent and FFmpegKit." }
                 analyticsInitializer.join()
                 loadLibraryJob.join()
-            } catch (_: Throwable) {
-            }
-            // Load anitorrent libraries before JCEF, so they won't load at the same time.
-            // We suspect concurrent loading of native libraries may cause some issues #1121.
-
-            val proxySettings = koin.koin.get<ProxyProvider>()
-                .proxy.first()
-
-            initializeJcefAndPlayerBackend(
-                preparePlayerBeforeJcef = shouldPreparePlayerBeforeJcef(currentPlatformDesktop()),
-                preparePlayer = {
-                    withContext(Dispatchers.IO) {
-                        prepareMpvLibraries(composeResDir)
-                    }
-                },
-                initializeJcef = {
-                    logger.info { "[JCEF init] initializing AniCefApp." }
-                    AniCefApp.initialize(
-                        logDir = dataDir.toFile().resolve("logs"),
-                        cacheDir = cacheDir.toFile().resolve("jcef-cache"),
-                        proxyServer = proxySettings?.url,
-                        proxyAuthUsername = proxySettings?.authorization?.username,
-                        proxyAuthPassword = proxySettings?.authorization?.password,
-                    )
-                    logger.info { "[JCEF init] AniCefApp is initialized." }
-                },
-            )
-        }
+                // Load anitorrent libraries before JCEF, so they won't load at the same time.
+                // We suspect concurrent loading of native libraries may cause some issues #1121.
+            },
+            preparePlayer = {
+                withContext(Dispatchers.IO) {
+                    prepareMpvLibraries(composeResDir)
+                }
+            },
+            initializeJcef = {
+                val proxySettings = koin.koin.get<ProxyProvider>().proxy.first()
+                logger.info { "[JCEF init] initializing AniCefApp." }
+                AniCefApp.initialize(
+                    logDir = dataDir.toFile().resolve("logs"),
+                    cacheDir = cacheDir.toFile().resolve("jcef-cache"),
+                    proxyServer = proxySettings?.url,
+                    proxyAuthUsername = proxySettings?.authorization?.username,
+                    proxyAuthPassword = proxySettings?.authorization?.password,
+                )
+                logger.info { "[JCEF init] AniCefApp is initialized." }
+            },
+        )
 
         coroutineScope.launch {
             kotlin.runCatching {
@@ -454,6 +448,10 @@ object AniDesktop {
         if (jobsToWait.any { it.isActive }) {
             runBlocking { jobsToWait.joinAll() }
         }
+        // EpisodeViewModel creates its player synchronously. Wait here, before starting the UI,
+        // so an early playback request cannot load mpv before its runtime directory is configured.
+        // await (rather than join) also propagates initialization failures instead of enabling playback.
+        runBlocking { playerBackendReady.await() }
         startupTimeMonitor.mark(StepName.Analytics)
 
         val systemThemeDetector = SystemThemeDetector()
