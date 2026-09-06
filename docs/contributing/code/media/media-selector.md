@@ -1,5 +1,8 @@
 # MediaSelector
 
+自动选择的实采回归用例、清洗规则和采集命令见
+[实采数据驱动的自动选择回归测试](../../../../app/shared/app-data/src/desktopTest/resources/media-selector-traces/README.md)。
+
 MediaSelector 是用于管理一组 `Media`
 ，通过对其进行过滤、应用用户偏好以及上下文信息，最终选择出单个 `Media` 资源的选择器接口。
 

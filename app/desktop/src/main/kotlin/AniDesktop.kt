@@ -439,6 +439,7 @@ object AniDesktop {
         }
 
         val navigator = AniNavigator()
+        DesktopMediaTraceCapture.install(koin.koin, coroutineScope)?.start(navigator)
 
         val windowStateRepository = koin.koin.get<WindowStateRepository>()
         val savedWindowStateDeferred = coroutineScope.async {
