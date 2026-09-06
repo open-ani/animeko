@@ -57,6 +57,8 @@ import androidx.compose.ui.input.key.key
 import androidx.compose.ui.input.key.onPreviewKeyEvent
 import androidx.compose.ui.input.key.type
 import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.semantics.stateDescription
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.tv.material3.ClickableSurfaceDefaults
@@ -76,6 +78,7 @@ private enum class SourceFocus : TvFocusKey { FirstResult }
 
 private object TvSourceDialogDefaults {
     const val WidthFraction = 2f / 3f
+    const val DimmedLabelAlpha = .38f
     val HorizontalMargin = 48.dp
     val VerticalMargin = 28.dp
     val ChipMinWidth = 72.dp
@@ -96,11 +99,12 @@ internal fun TvPlayerSourceDialog(
     val tabsState = rememberLazyListState()
     val resultFocus = rememberTvFocusScope()
     resultFocus.Resolver()
+    // Removing a focused result can briefly focus a mode tab. Do not treat that fallback as a mode choice.
     var restoreResultFocus by remember { mutableStateOf(false) }
     val showDetailedAtRowEnd = Modifier.onPreviewKeyEvent { event ->
         if (event.key != Key.DirectionRight) return@onPreviewKeyEvent false
         if (event.type == KeyEventType.KeyDown) {
-            restoreResultFocus = true
+            restoreResultFocus = !resultFocus.isFocused(SourceFocus.FirstResult)
             onIntent(TvEpisodeIntent.MoveSource(1))
         }
         true
@@ -108,16 +112,15 @@ internal fun TvPlayerSourceDialog(
     val resultKeys = Modifier.onPreviewKeyEvent { event ->
         if (event.key != Key.DirectionLeft && event.key != Key.DirectionRight) return@onPreviewKeyEvent false
         if (event.type == KeyEventType.KeyDown) {
-            restoreResultFocus = true
+            restoreResultFocus = !resultFocus.isFocused(SourceFocus.FirstResult)
             onIntent(TvEpisodeIntent.MoveSource(if (event.key == Key.DirectionRight) 1 else -1))
         }
         true
     }
-    LaunchedEffect(state.mode, state.selectedSourceId, state.showExcluded) {
+    LaunchedEffect(state.mode, state.selectedSourceId, state.showExcluded, restoreResultFocus) {
         if (restoreResultFocus) {
             resultsState.scrollToItem(0)
             resultFocus.request(SourceFocus.FirstResult)
-            restoreResultFocus = false
         }
     }
     LaunchedEffect(state.mode, state.selectedGroup?.instanceId) {
@@ -169,18 +172,31 @@ internal fun TvPlayerSourceDialog(
                     TvSourceTab(
                         "简单模式",
                         state.mode == TvSourceMode.Simple,
-                        entryAnchorModifier.testTag("tv-source-simple"),
+                        Modifier
+                            .then(if (state.mode == TvSourceMode.Simple) entryAnchorModifier else Modifier)
+                            .onFocusChanged {
+                                if (it.isFocused && !restoreResultFocus) {
+                                    onIntent(TvEpisodeIntent.SetSourceMode(TvSourceMode.Simple))
+                                }
+                            }
+                            .testTag("tv-source-simple"),
                     ) { onIntent(TvEpisodeIntent.SetSourceMode(TvSourceMode.Simple)) }
                     TvSourceTab(
                         "详细模式",
                         state.mode == TvSourceMode.Detailed,
-                        Modifier.testTag("tv-source-detailed"),
+                        Modifier
+                            .then(if (state.mode == TvSourceMode.Detailed) entryAnchorModifier else Modifier)
+                            .onFocusChanged {
+                                if (it.isFocused && !restoreResultFocus) {
+                                    onIntent(TvEpisodeIntent.SetSourceMode(TvSourceMode.Detailed))
+                                }
+                            }
+                            .testTag("tv-source-detailed"),
                     ) { onIntent(TvEpisodeIntent.SetSourceMode(TvSourceMode.Detailed)) }
                 }
-                Box(Modifier.weight(1f))
-                TvRemoteHint("菜单", "播放控制")
             }
             if (state.mode == TvSourceMode.Detailed) {
+                TvPlayerDivider()
                 LazyRow(
                     state = tabsState,
                     horizontalArrangement = Arrangement.spacedBy(12.dp),
@@ -188,10 +204,28 @@ internal fun TvPlayerSourceDialog(
                     modifier = Modifier.testTag("tv-source-tabs"),
                 ) {
                     items(state.groups, key = { it.instanceId }) { group ->
+                        val dimmed = !group.loading &&
+                                (group.failed || group.items.none { it.excludedReason == null })
                         TvSourceTab(
                             group.name, state.selectedGroup?.instanceId == group.instanceId,
-                            Modifier.onFocusChanged { if (it.isFocused) onIntent(TvEpisodeIntent.SelectSourceTab(group.instanceId)) },
+                            Modifier
+                                .onFocusChanged {
+                                    if (it.isFocused && !restoreResultFocus) onIntent(
+                                        TvEpisodeIntent.SelectSourceTab(
+                                            group.instanceId
+                                        )
+                                    )
+                                }
+                                .semantics { stateDescription = group.status },
                             underline = true,
+                            dimmed = dimmed,
+                            leadingIcon = {
+                                TvSourceIcon(
+                                    group.iconUrl,
+                                    loading = group.loading,
+                                    dimmed = dimmed,
+                                )
+                            },
                         ) {
                             onIntent(TvEpisodeIntent.SelectSourceTab(group.instanceId))
                         }
@@ -218,11 +252,18 @@ internal fun TvPlayerSourceDialog(
             ) {
                 // A full-width refresh row is always focusable, including empty/error states.
                 item(key = "retry") {
+                    val status = when {
+                        state.loading -> "查询中…"
+                        state.mode == TvSourceMode.Simple -> "${groups.size} 个数据源"
+                        else -> state.selectedGroup?.status.orEmpty()
+                    }
                     TvOptionRow(
-                        "重新查询",
-                        value = if (state.loading) "查询中…" else if (state.mode == TvSourceMode.Detailed) state.selectedGroup?.status.orEmpty() else "${groups.size} 个数据源",
-                        icon = Icons.Rounded.Refresh,
-                        modifier = Modifier.tvFocusAnchor(resultFocus, SourceFocus.FirstResult),
+                        title = status,
+                        value = "重新查询",
+                        valueIcon = Icons.Rounded.Refresh,
+                        modifier = Modifier
+                            .onFocusChanged { if (it.isFocused) restoreResultFocus = false }
+                            .tvFocusAnchor(resultFocus, SourceFocus.FirstResult),
                     ) {
                         onIntent(TvEpisodeIntent.RetrySources(if (state.mode == TvSourceMode.Detailed) state.selectedGroup?.instanceId else null))
                     }
@@ -232,7 +273,7 @@ internal fun TvPlayerSourceDialog(
                         state.error ?: when {
                             state.loading -> "正在查询数据源…"
                             state.groups.isEmpty() -> "没有可用的在线数据源，请在设置中添加"
-                            else -> "没有找到可用线路，可重新查询或切换到详细模式"
+                            else -> "没有找到可用线路"
                         },
                         color = TvPlayerSurfaceDefaults.Muted,
                         modifier = Modifier.padding(16.dp),
@@ -276,8 +317,7 @@ internal fun TvPlayerSourceDialog(
                         group.items.filter { state.mode == TvSourceMode.Detailed && state.showExcluded || it.excludedReason == null }
                     if (results.isEmpty()) item(key = "empty-${group.instanceId}") {
                         TvOptionRow(
-                            if (group.items.isNotEmpty()) "结果已被排除，可在详细模式中查看" else group.status,
-                            supportingText = "确认重新查询此数据源",
+                            if (group.items.isNotEmpty()) "结果已被排除" else group.status,
                             filled = true,
                         ) {
                             onIntent(TvEpisodeIntent.RetrySources(group.instanceId))
@@ -300,20 +340,6 @@ internal fun TvPlayerSourceDialog(
                     }
                 }
             }
-            TvPlayerDivider()
-            Row(horizontalArrangement = Arrangement.spacedBy(20.dp), verticalAlignment = Alignment.CenterVertically) {
-                TvRemoteHint("↑ ↓", if (state.mode == TvSourceMode.Simple) "选择数据源" else "选择资源")
-                TvRemoteHint(
-                    "← →",
-                    if (state.mode == TvSourceMode.Simple) "选择线路" else "切换数据源",
-                )
-                TvRemoteHint("确认", "播放")
-            }
-            Text(
-                if (state.mode == TvSourceMode.Simple) "最后一条线路按 → 进入详细模式" else "首个源按 ← 返回简单模式",
-                color = TvPlayerSurfaceDefaults.Muted,
-                style = MaterialTheme.typography.bodySmall,
-            )
         }
     }
 }
@@ -342,7 +368,12 @@ private fun TvSourceChannelRow(
                     .focusProperties { if (index == 0) left = FocusRequester.Cancel }
                     .then(if (index == items.lastIndex) endOfRowModifier else Modifier),
                 shape = ClickableSurfaceDefaults.shape(CircleShape),
-                colors = tvPlayerOptionColors(selectedMediaId == item.media.mediaId, filled = true),
+                colors = if (selectedMediaId == item.media.mediaId) ClickableSurfaceDefaults.colors(
+                    containerColor = MaterialTheme.colorScheme.primary,
+                    contentColor = MaterialTheme.colorScheme.onPrimary,
+                    focusedContainerColor = TvPlayerSurfaceDefaults.FocusedContainer,
+                    focusedContentColor = TvPlayerSurfaceDefaults.FocusedContent,
+                ) else tvPlayerOptionColors(filled = true),
                 scale = ClickableSurfaceDefaults.scale(focusedScale = 1f),
             ) {
                 Box(Modifier.padding(horizontal = 20.dp, vertical = 10.dp), contentAlignment = Alignment.Center) {
@@ -364,7 +395,9 @@ private fun TvSourceTab(
     selected: Boolean,
     modifier: Modifier = Modifier,
     underline: Boolean = false,
-    onClick: () -> Unit
+    dimmed: Boolean = false,
+    leadingIcon: (@Composable () -> Unit)? = null,
+    onClick: () -> Unit,
 ) {
     var focused by remember { mutableStateOf(false) }
     Column(horizontalAlignment = Alignment.CenterHorizontally) {
@@ -381,12 +414,23 @@ private fun TvSourceTab(
             ),
             scale = ClickableSurfaceDefaults.scale(focusedScale = 1f),
         ) {
-            Text(
-                label,
-                Modifier.padding(horizontal = 20.dp, vertical = 10.dp),
-                style = MaterialTheme.typography.labelLarge,
-                maxLines = 1,
-            )
+            Row(
+                Modifier.padding(horizontal = 16.dp, vertical = 10.dp),
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                leadingIcon?.invoke()
+                Text(
+                    label,
+                    style = MaterialTheme.typography.labelLarge,
+                    maxLines = 1,
+                    color = when {
+                        !dimmed -> Color.Unspecified
+                        focused -> TvPlayerSurfaceDefaults.FocusedContent.copy(alpha = TvSourceDialogDefaults.DimmedLabelAlpha)
+                        else -> TvPlayerSurfaceDefaults.Content.copy(alpha = TvSourceDialogDefaults.DimmedLabelAlpha)
+                    },
+                )
+            }
         }
         if (underline) Box(
             Modifier

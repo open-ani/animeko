@@ -26,7 +26,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
-import androidx.compose.foundation.lazy.rememberLazyListState
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.rounded.KeyboardArrowLeft
@@ -59,6 +59,7 @@ import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.role
 import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.semantics.selected
 import androidx.compose.ui.semantics.toggleableState
 import androidx.compose.ui.state.ToggleableState
 import androidx.compose.ui.text.input.PasswordVisualTransformation
@@ -79,7 +80,6 @@ import me.him188.ani.tv.ui.foundation.focus.rememberTvFocusScope
 import me.him188.ani.tv.ui.foundation.focus.tvFocusAnchor
 import me.him188.ani.tv.ui.foundation.focus.tvFocusHotkey
 import me.him188.ani.tv.ui.foundation.focus.tvFocusNavSignal
-import kotlin.math.abs
 import kotlin.math.roundToInt
 
 private enum class OptionFieldFocus : TvFocusKey { Name, Password, Submit }
@@ -94,6 +94,7 @@ internal fun TvOptionRow(
     checked: Boolean? = null,
     supportingText: String? = null,
     icon: ImageVector? = null,
+    valueIcon: ImageVector? = null,
     adjustable: Boolean = false,
     filled: Boolean = false,
     compact: Boolean = false,
@@ -131,10 +132,11 @@ internal fun TvOptionRow(
                     )
                 }
             }
-            if (value.isNotEmpty() || adjustable) Row(
+            if (value.isNotEmpty() || adjustable || valueIcon != null) Row(
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.spacedBy(4.dp),
             ) {
+                valueIcon?.let { Icon(it, null, Modifier.size(20.dp)) }
                 if (adjustable) Icon(Icons.AutoMirrored.Rounded.KeyboardArrowLeft, null, Modifier.size(16.dp))
                 Text(value, style = MaterialTheme.typography.labelLarge)
                 if (adjustable) Icon(Icons.AutoMirrored.Rounded.KeyboardArrowRight, null, Modifier.size(16.dp))
@@ -251,7 +253,6 @@ internal fun TvOptionModal(
                         style = MaterialTheme.typography.headlineSmall,
                         color = TvPlayerSurfaceDefaults.Content,
                     )
-                    TvRemoteHint("返回", "关闭")
                 }
                 subtitle?.let {
                     Text(
@@ -275,6 +276,8 @@ internal fun TvInteractivePanel(
     onIntent: (TvEpisodeIntent) -> Boolean,
     onTogetherIntent: (TvTogetherIntent) -> Unit,
     entryModifier: Modifier,
+    danmakuListModifier: Modifier,
+    danmakuMatchModifier: Modifier,
     modifier: Modifier = Modifier,
 ) {
     val options = state.options
@@ -283,7 +286,6 @@ internal fun TvInteractivePanel(
     TvPlayerPanelSurface(
         title = panel.title,
         icon = panel.icon,
-        subtitle = if (panel == TvPlayerPanel.DanmakuSettings) "上下选择 · 左右调整" else null,
         showHeader = panel != TvPlayerPanel.Collection,
         modifier = modifier
             .width(panel.width)
@@ -378,7 +380,7 @@ internal fun TvInteractivePanel(
                             )
                             TvOptionRow(
                                 "时间校准", "${origin.shiftMillis / 1000f}s",
-                                supportingText = "左右调整 · 确认归零", adjustable = true,
+                                adjustable = true,
                                 modifier = Modifier.tvStepKeys {
                                     onIntent(
                                         TvEpisodeIntent.ShiftDanmakuSource(
@@ -390,29 +392,30 @@ internal fun TvInteractivePanel(
                             ) {
                                 onIntent(TvEpisodeIntent.ShiftDanmakuSource(origin.serviceId, null))
                             }
-                            if (origin.canMatch) TvOptionRow("重新匹配弹幕") {
-                                onIntent(
-                                    TvEpisodeIntent.MatchDanmaku(
-                                        origin.providerId,
-                                    ),
-                                )
-                            }
                         }
+                    }
+                    item {
+                        TvOptionRow("弹幕列表", modifier = danmakuListModifier.testTag("tv-danmaku-list-button")) {
+                            onIntent(TvEpisodeIntent.OpenDialog(TvPlayerDialog.DanmakuList))
+                        }
+                    }
+                    items(
+                        options.danmakuOrigins.filter { it.canMatch },
+                        key = { "match-${it.serviceId.value}" }) { origin ->
+                        TvOptionRow(
+                            "重新匹配弹幕",
+                            value = origin.name,
+                            modifier = if (origin == options.danmakuOrigins.firstOrNull { it.canMatch }) danmakuMatchModifier else Modifier,
+                        ) { onIntent(TvEpisodeIntent.MatchDanmaku(origin.providerId)) }
                     }
                 }
 
                 TvPlayerPanel.VideoSettings -> {
                     if (options.enhancementMode != null) {
-                        items(VideoEnhancementMode.entries) { mode ->
-                            TvOptionRow(
-                                when (mode) {
-                                    VideoEnhancementMode.OFF -> "原始画质"
-                                    VideoEnhancementMode.PERFORMANCE -> "性能优先"
-                                    VideoEnhancementMode.QUALITY -> "画质优先"
-                                },
-                                modifier = if (mode == VideoEnhancementMode.OFF) entryModifier else Modifier,
-                                selected = mode == options.enhancementMode,
-                            ) { onIntent(TvEpisodeIntent.SetEnhancement(mode)) }
+                        item {
+                            TvEnhancementSelector(options.enhancementMode, entryModifier) {
+                                onIntent(TvEpisodeIntent.SetEnhancement(it))
+                            }
                         }
                     }
                     item { TvPlayerSectionLabel("播放信息") }
@@ -539,19 +542,15 @@ internal fun TvInteractivePanel(
 @Composable
 internal fun TvSpeedDialog(state: TvEpisodeUiState, onIntent: (TvEpisodeIntent) -> Boolean, entryModifier: Modifier) {
     val config = state.options.videoConfig
-    val speeds = remember(config.minPlaybackSpeed, config.maxPlaybackSpeed) {
-        generateSequence(config.minPlaybackSpeed) { it + .25f }.takeWhile { it <= config.maxPlaybackSpeed + .001f }
-            .toList()
-    }
-    val initialSpeed = remember { speeds.minByOrNull { abs(it - state.playbackSpeed) } }
-    val list = rememberLazyListState(initialFirstVisibleItemIndex = (speeds.indexOf(initialSpeed) - 2).coerceAtLeast(0))
-    LazyColumn(Modifier.testTag("tv-speed-options"), state = list, verticalArrangement = Arrangement.spacedBy(3.dp)) {
-        items(speeds) { speed ->
-            TvOptionRow(
-                "${speed}x", if (speed == 1f) "正常速度" else "",
-                modifier = if (speed == initialSpeed) entryModifier else Modifier,
-                selected = abs(speed - state.playbackSpeed) < .01f,
-            ) { onIntent(TvEpisodeIntent.SetSpeed(speed)) }
+    LazyColumn(Modifier.testTag("tv-speed-options"), verticalArrangement = Arrangement.spacedBy(3.dp)) {
+        item {
+            TvSpeedControl(
+                speed = state.playbackSpeed,
+                minSpeed = config.minPlaybackSpeed,
+                maxSpeed = config.maxPlaybackSpeed,
+                modifier = entryModifier,
+                onStep = { onIntent(TvEpisodeIntent.AdjustSpeed(it)) },
+            )
         }
         item { TvPlayerSectionLabel("速度偏好") }
         item {
@@ -569,10 +568,49 @@ internal fun TvSpeedDialog(state: TvEpisodeUiState, onIntent: (TvEpisodeIntent) 
         }
         item {
             TvOptionRow(
-                "长按确认键的速度",
+                "长按倍速",
                 "${config.fastForwardSpeed}x", adjustable = true,
                 modifier = Modifier.tvStepKeys { onIntent(TvEpisodeIntent.SetHoldSpeed(config.fastForwardSpeed + it * .25f)) },
             ) {}
+        }
+    }
+}
+
+@Composable
+private fun TvEnhancementSelector(
+    selectedMode: VideoEnhancementMode,
+    entryModifier: Modifier,
+    onSelect: (VideoEnhancementMode) -> Unit,
+) {
+    Row(
+        Modifier.fillMaxWidth().background(TvPlayerSurfaceDefaults.Raised, CircleShape).padding(4.dp),
+        horizontalArrangement = Arrangement.spacedBy(4.dp),
+    ) {
+        VideoEnhancementMode.entries.forEach { mode ->
+            Surface(
+                onClick = { onSelect(mode) },
+                modifier = Modifier.weight(1f)
+                    .then(if (mode == selectedMode) entryModifier else Modifier)
+                    .semantics { selected = mode == selectedMode },
+                shape = ClickableSurfaceDefaults.shape(CircleShape),
+                colors = tvPlayerOptionColors(mode == selectedMode),
+                scale = ClickableSurfaceDefaults.scale(focusedScale = 1f),
+            ) {
+                Box(
+                    Modifier.fillMaxWidth().heightIn(min = 44.dp).padding(horizontal = 8.dp, vertical = 10.dp),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Text(
+                        when (mode) {
+                            VideoEnhancementMode.OFF -> "原始画质"
+                            VideoEnhancementMode.PERFORMANCE -> "性能优先"
+                            VideoEnhancementMode.QUALITY -> "画质优先"
+                        },
+                        style = MaterialTheme.typography.labelLarge,
+                        maxLines = 1,
+                    )
+                }
+            }
         }
     }
 }

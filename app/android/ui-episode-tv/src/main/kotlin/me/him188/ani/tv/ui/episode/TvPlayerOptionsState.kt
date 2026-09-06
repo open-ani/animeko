@@ -33,6 +33,7 @@ data class TvSourceGroup(
     val status: String,
     val loading: Boolean,
     val items: List<TvSourceItem>,
+    val failed: Boolean = false,
 )
 
 data class TvSourceSelectionState(
@@ -55,7 +56,7 @@ internal fun TvSourceSelectionState.moveHorizontally(direction: Int): TvSourceSe
     else -> copy(selectedSourceId = groups.getOrNull(selectedIndex + direction)?.instanceId ?: selectedSourceId)
 }
 
-enum class TvPlayerDialog { Speed, Subtitles, Episodes, EpisodeActions, DanmakuMatch }
+enum class TvPlayerDialog { Speed, Subtitles, EpisodeActions, DanmakuMatch, DanmakuList }
 
 enum class TvDanmakuProperty { FontSize, Opacity, Speed, Density, Area, Stroke, Weight, Top, Bottom, Floating, Color }
 

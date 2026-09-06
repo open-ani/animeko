@@ -35,14 +35,15 @@ internal fun tvSourceGroups(session: MediaFetchSession, selector: MediaSelector)
                     iconUrl = source.sourceInfo.iconUrl,
                     status = when (state) {
                         MediaSourceFetchState.Idle, MediaSourceFetchState.Working -> "正在查询…"
-                        MediaSourceFetchState.Disabled -> "未启用 · 确认后查询"
-                        is MediaSourceFetchState.CaptchaRequired -> "需要验证 · 确认后继续"
+                        MediaSourceFetchState.Disabled -> "未启用"
+                        is MediaSourceFetchState.CaptchaRequired -> "需要验证"
                         is MediaSourceFetchState.RateLimited -> "请求过于频繁，请稍后重试"
-                        is MediaSourceFetchState.Failed, is MediaSourceFetchState.Abandoned -> "查询失败 · 确认后重试"
-                        is MediaSourceFetchState.Succeed -> if (items.isEmpty()) "没有找到资源 · 确认后重新查询" else "${items.size} 个结果"
+                        is MediaSourceFetchState.Failed, is MediaSourceFetchState.Abandoned -> "查询失败"
+                        is MediaSourceFetchState.Succeed -> if (items.isEmpty()) "没有找到资源" else "${items.size} 个结果"
                     },
                     loading = state == MediaSourceFetchState.Idle || state == MediaSourceFetchState.Working,
                     items = items,
+                    failed = state is MediaSourceFetchState.Failed || state is MediaSourceFetchState.Abandoned,
                 )
             }
         },

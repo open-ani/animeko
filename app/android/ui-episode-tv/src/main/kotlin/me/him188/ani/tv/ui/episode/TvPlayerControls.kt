@@ -33,13 +33,11 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.AspectRatio
-import androidx.compose.material.icons.rounded.ChatBubbleOutline
-import androidx.compose.material.icons.rounded.Forward30
-import androidx.compose.material.icons.rounded.Replay10
+import androidx.compose.material.icons.rounded.DisplaySettings
 import androidx.compose.material.icons.rounded.SkipNext
 import androidx.compose.material.icons.rounded.Speed
 import androidx.compose.material.icons.rounded.Subtitles
-import androidx.compose.material.icons.rounded.SwitchVideo
+import androidx.compose.material.icons.rounded.SubtitlesOff
 import androidx.compose.material.icons.rounded.ViewModule
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -95,7 +93,7 @@ internal object TvPlayerControlsDefaults {
 
 /**
  * 播放器控制层 (atv-architecture.md §8.3):
- * 顶部 [标题两行 + 时钟] -> 底部 [胶囊行 -> 进度条行 -> 图标行 -> 选集条 slot].
+ * 顶部 [标题两行 + 时钟] -> 底部 [选集条/面板/预览 -> 胶囊行 -> 进度条行 -> 图标行].
  *
  * 纯视图组件: 焦点锚点/按键语义由 Screen 组装成 modifier 注入
  * ([seekBarModifier]/[iconRowModifier], §14.7-2), 本层只画状态.
@@ -104,28 +102,25 @@ internal object TvPlayerControlsDefaults {
 internal fun TvPlayerControlsOverlay(
     title: TvEpisodeTitle,
     clockText: String,
-    mediaLabel: String?,
+    sourceIconUrl: String?,
     positionMillis: Long,
     durationMillis: Long,
     bufferedFraction: Float,
     scrubMillis: Long?,
-    playStateLabel: String,
     speedLabel: String,
     aspectLabel: String,
     activePanel: TvPlayerPanel?,
     options: TvPlayerOptionsState,
     seekBarModifier: Modifier,
     iconRowModifier: Modifier,
-    seekBackButtonModifier: Modifier,
+    nextEpisodeButtonModifier: Modifier,
     sourceButtonModifier: Modifier,
     speedButtonModifier: Modifier,
     subtitleButtonModifier: Modifier,
     episodesButtonModifier: Modifier,
     capsuleAnchor: (TvPlayerPanel) -> Modifier,
     onTogglePanel: (TvPlayerPanel) -> Unit,
-    onSeekBack: () -> Unit,
     onNextEpisode: () -> Unit,
-    onSeekForward: () -> Unit,
     onOpenSourceDialog: () -> Unit,
     onOpenSpeed: () -> Unit,
     onCycleAspect: () -> Unit,
@@ -200,6 +195,7 @@ internal fun TvPlayerControlsOverlay(
                 .fillMaxWidth()
                 .padding(top = 12.dp, bottom = 28.dp),
         ) {
+            episodeStrip?.invoke()
             Column(Modifier.padding(horizontal = TvPlayerControlsDefaults.HorizontalPadding)) {
                 val capsuleList = rememberLazyListState()
                 val density = LocalDensity.current
@@ -219,33 +215,11 @@ internal fun TvPlayerControlsOverlay(
                     Box(Modifier.offset(x = start)) { panelHost() }
                 }
 
-                // 功能胶囊行: 确认开/关对应浮出面板
-                LazyRow(
-                    state = capsuleList,
-                    horizontalArrangement = Arrangement.spacedBy(12.dp),
-                    contentPadding = PaddingValues(horizontal = 4.dp, vertical = 4.dp),
-                ) {
-                    items(TvPlayerPanel.entries) { panel ->
-                        CapsuleChipButton(
-                            panel = panel,
-                            active = activePanel == panel,
-                            onClick = { onTogglePanel(panel) },
-                            modifier = capsuleAnchor(panel),
-                            label = when (panel) {
-                                TvPlayerPanel.Collection -> options.collectionType.tvLabel()
-                                TvPlayerPanel.Recommendations -> "推荐"
-                                TvPlayerPanel.VideoSettings -> "画质"
-                                else -> panel.title
-                            },
-                        )
-                    }
-                }
-
                 if (scrubMillis != null) {
                     Row(
                         Modifier
                             .fillMaxWidth()
-                            .padding(top = 12.dp, bottom = 4.dp),
+                            .padding(bottom = 16.dp),
                         verticalAlignment = Alignment.CenterVertically,
                         horizontalArrangement = Arrangement.Center,
                     ) {
@@ -288,6 +262,28 @@ internal fun TvPlayerControlsOverlay(
                                 TvRemoteHint("返回", "取消")
                             }
                         }
+                    }
+                }
+
+                // 功能胶囊行: 确认开/关对应浮出面板
+                LazyRow(
+                    state = capsuleList,
+                    horizontalArrangement = Arrangement.spacedBy(12.dp),
+                    contentPadding = PaddingValues(horizontal = 4.dp, vertical = 4.dp),
+                ) {
+                    items(TvPlayerPanel.entries) { panel ->
+                        CapsuleChipButton(
+                            panel = panel,
+                            active = activePanel == panel,
+                            onClick = { onTogglePanel(panel) },
+                            modifier = capsuleAnchor(panel),
+                            label = when (panel) {
+                                TvPlayerPanel.Collection -> options.collectionType.tvLabel()
+                                TvPlayerPanel.Recommendations -> "推荐"
+                                TvPlayerPanel.VideoSettings -> "画质增强"
+                                else -> panel.title
+                            },
+                        )
                     }
                 }
 
@@ -346,7 +342,7 @@ internal fun TvPlayerControlsOverlay(
                     )
                 }
 
-                // 图标行: 左组 (回跳/下一集/前跳) · 右组 (数据源/倍速/画面比例/状态)
+                // 图标行: 左组 (下一集/选集/弹幕) · 右组 (数据源/倍速/字幕/画面比例)
                 Row(
                     iconRowModifier
                         .fillMaxWidth()
@@ -358,16 +354,14 @@ internal fun TvPlayerControlsOverlay(
                         verticalAlignment = Alignment.CenterVertically,
                     ) {
                         PlayerIconButton(
-                            Icons.Rounded.Replay10,
-                            label = "后退 10 秒",
-                            onClick = onSeekBack,
-                            modifier = seekBackButtonModifier,
+                            Icons.Rounded.SkipNext,
+                            label = "下一集",
+                            onClick = onNextEpisode,
+                            modifier = nextEpisodeButtonModifier,
                         )
-                        PlayerIconButton(Icons.Rounded.SkipNext, "下一集", onClick = onNextEpisode)
-                        PlayerIconButton(Icons.Rounded.Forward30, "前进 30 秒", onClick = onSeekForward)
                         PlayerLabelButton(Icons.Rounded.ViewModule, "选集", onEpisodes, episodesButtonModifier)
                         PlayerLabelButton(
-                            Icons.Rounded.ChatBubbleOutline,
+                            if (options.danmakuEnabled) Icons.Rounded.Subtitles else Icons.Rounded.SubtitlesOff,
                             if (options.danmakuEnabled) "弹幕开" else "弹幕关",
                             onToggleDanmaku,
                             Modifier.testTag("tv-danmaku-toggle"),
@@ -379,10 +373,11 @@ internal fun TvPlayerControlsOverlay(
                         verticalAlignment = Alignment.CenterVertically,
                     ) {
                         PlayerLabelButton(
-                            Icons.Rounded.SwitchVideo,
+                            Icons.Rounded.DisplaySettings,
                             "选源",
                             onClick = onOpenSourceDialog,
                             modifier = sourceButtonModifier.testTag("tv-source-button"),
+                            iconContent = { TvSourceIcon(sourceIconUrl, modifier = Modifier.size(20.dp)) },
                         )
                         PlayerLabelButton(
                             Icons.Rounded.Speed,
@@ -401,7 +396,6 @@ internal fun TvPlayerControlsOverlay(
                 }
             }
 
-            episodeStrip?.invoke()
         }
     }
 }
@@ -475,6 +469,7 @@ private fun PlayerLabelButton(
     text: String,
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
+    iconContent: (@Composable () -> Unit)? = null,
 ) {
     Surface(
         onClick = onClick,
@@ -490,7 +485,7 @@ private fun PlayerLabelButton(
             horizontalArrangement = Arrangement.spacedBy(6.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
-            Icon(icon, contentDescription = null, Modifier.size(20.dp))
+            if (iconContent != null) iconContent() else Icon(icon, contentDescription = null, Modifier.size(20.dp))
             Text(text, style = MaterialTheme.typography.labelLarge, maxLines = 1)
         }
     }

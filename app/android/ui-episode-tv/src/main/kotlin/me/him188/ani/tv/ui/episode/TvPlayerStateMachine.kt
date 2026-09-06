@@ -19,7 +19,6 @@ internal data class TvPlaybackSnapshot(val playing: Boolean, val positionMillis:
 
 internal sealed interface TvPlaybackCommand {
     data object TogglePause : TvPlaybackCommand
-    data class SeekBy(val deltaMillis: Long) : TvPlaybackCommand
     data class SeekTo(val positionMillis: Long) : TvPlaybackCommand
     data class SwitchNeighbor(val offset: Int) : TvPlaybackCommand
     data class SpeedHold(val engaged: Boolean) : TvPlaybackCommand
@@ -42,12 +41,19 @@ internal class TvPlayerStateMachine(
         when (intent) {
             is TvEpisodeIntent.RemoteKey -> return onKey(intent)
             TvEpisodeIntent.Back -> return back()
-            TvEpisodeIntent.SeekBack -> {
-                execute(TvPlaybackCommand.SeekBy(-10_000)); bump()
-            }
-
-            TvEpisodeIntent.SeekForward -> {
-                execute(TvPlaybackCommand.SeekBy(30_000)); bump()
+            TvEpisodeIntent.ToggleEpisodeStrip -> {
+                releaseHeldSpeed()
+                val expanded = !state.value.stripExpanded
+                state.value = state.value.copy(
+                    controlsVisible = true,
+                    stripExpanded = expanded,
+                    activePanel = null,
+                    scrubMillis = null,
+                    dialog = null,
+                    sourceDialogVisible = false,
+                )
+                if (!expanded) focus.trySend(TvPlayerFocusRequest.EpisodesButton)
+                bump()
             }
 
             TvEpisodeIntent.NextEpisode -> {
@@ -70,6 +76,7 @@ internal class TvPlayerStateMachine(
                 state.value = state.value.copy(
                     sourceDialogVisible = true,
                     controlsVisible = true,
+                    stripExpanded = false,
                     scrubMillis = null,
                     activePanel = null,
                     dialog = null,
@@ -82,7 +89,10 @@ internal class TvPlayerStateMachine(
                 state.value = state.value.copy(
                     dialog = intent.dialog,
                     controlsVisible = true,
-                    activePanel = null,
+                    activePanel = state.value.activePanel.takeIf {
+                        intent.dialog == TvPlayerDialog.DanmakuList || intent.dialog == TvPlayerDialog.DanmakuMatch
+                    },
+                    stripExpanded = state.value.stripExpanded && intent.dialog == TvPlayerDialog.EpisodeActions,
                     scrubMillis = null,
                     sourceDialogVisible = false,
                 )
@@ -93,7 +103,10 @@ internal class TvPlayerStateMachine(
                 execute(TvPlaybackCommand.CycleAspectRatio); bump()
             }
 
-            TvEpisodeIntent.StripFocusLost -> state.value = state.value.copy(stripExpanded = false)
+            TvEpisodeIntent.StripFocusLost -> if (state.value.dialog == null) {
+                state.value = state.value.copy(stripExpanded = false)
+            }
+
             TvEpisodeIntent.ReleaseHeldSpeed -> releaseHeldSpeed()
             else -> return false
         }
@@ -121,6 +134,7 @@ internal class TvPlayerStateMachine(
             controlsVisible = true,
             sourceDialogVisible = false,
             dialog = null,
+            stripExpanded = false,
             activePanel = null,
             scrubMillis = null,
         )
@@ -201,7 +215,7 @@ internal class TvPlayerStateMachine(
             state.value.stripExpanded -> {
                 state.value = state.value.copy(stripExpanded = false)
                 bump()
-                focus.trySend(TvPlayerFocusRequest.SeekBar)
+                focus.trySend(TvPlayerFocusRequest.EpisodesButton)
             }
 
             state.value.controlsVisible -> hideControls()
@@ -302,10 +316,6 @@ internal class TvPlayerStateMachine(
         }
         if (event.iconRowFocused && key == TvRemoteKey.Up) {
             if (isNewPress) focus.trySend(TvPlayerFocusRequest.SeekBar)
-            return true
-        }
-        if (event.iconRowFocused && key == TvRemoteKey.Down) {
-            if (isNewPress) state.value = state.value.copy(stripExpanded = true)
             return true
         }
         return false

@@ -63,10 +63,10 @@ internal object TvPlayerEpisodeStripDefaults {
 }
 
 /**
- * 播放器选集条 (atv-architecture.md §8.3): 图标行下方横向剧照卡列表, 三态 =
+ * 播放器选集条 (atv-architecture.md §8.3): 功能药丸上方横向剧照卡列表, 三态 =
  * 正在播放 (primary 徽标) / 已看 (对勾) / 未看. 优先展示 TMDB 独立分集剧照.
  *
- * 纯视图组件: 展开/收起与焦点接线由 Screen 注入 ([stripModifier]/[currentCardModifier], §14.7-2).
+ * 纯视图组件: 展开/收起与焦点接线由 Screen 注入 ([stripModifier]/[cardModifier], §14.7-2).
  */
 @Composable
 internal fun TvPlayerEpisodeStrip(
@@ -74,7 +74,7 @@ internal fun TvPlayerEpisodeStrip(
     currentEpisodeId: Int,
     listState: LazyListState,
     stripModifier: Modifier,
-    currentCardModifier: Modifier,
+    cardModifier: (TvStripEpisode) -> Modifier,
     onClickEpisode: (TvStripEpisode) -> Unit,
     onLongClickEpisode: (TvStripEpisode) -> Unit,
     modifier: Modifier = Modifier,
@@ -83,10 +83,10 @@ internal fun TvPlayerEpisodeStrip(
         modifier = modifier
             .then(stripModifier)
             .fillMaxWidth()
-            .padding(top = 18.dp),
+            .padding(bottom = 12.dp),
         state = listState,
         horizontalArrangement = Arrangement.spacedBy(TvPlayerEpisodeStripDefaults.CardSpacing),
-        contentPadding = PaddingValues(horizontal = TvPlayerControlsDefaults.HorizontalPadding),
+        contentPadding = PaddingValues(horizontal = TvPlayerControlsDefaults.HorizontalPadding, vertical = 8.dp),
     ) {
         items(episodes, key = { it.episodeId }) { episode ->
             val isCurrent = episode.episodeId == currentEpisodeId
@@ -94,7 +94,7 @@ internal fun TvPlayerEpisodeStrip(
                 episode = episode,
                 isCurrent = isCurrent,
                 onClick = { onClickEpisode(episode) },
-                modifier = if (isCurrent) currentCardModifier else Modifier,
+                modifier = cardModifier(episode),
                 onLongClick = { onLongClickEpisode(episode) },
             )
         }

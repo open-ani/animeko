@@ -85,8 +85,7 @@ sealed interface TvEpisodeIntent {
     ) : TvEpisodeIntent
 
     data object Back : TvEpisodeIntent
-    data object SeekBack : TvEpisodeIntent
-    data object SeekForward : TvEpisodeIntent
+    data object ToggleEpisodeStrip : TvEpisodeIntent
     data object NextEpisode : TvEpisodeIntent
     data class SelectEpisode(val episodeId: Int) : TvEpisodeIntent
     data class SelectMedia(val media: Media) : TvEpisodeIntent
@@ -100,6 +99,7 @@ sealed interface TvEpisodeIntent {
     data object CancelAutoSkip : TvEpisodeIntent
     data class OpenDialog(val dialog: TvPlayerDialog) : TvEpisodeIntent
     data class SetSpeed(val speed: Float) : TvEpisodeIntent
+    data class AdjustSpeed(val direction: Int) : TvEpisodeIntent
     data class SetDefaultSpeed(val speed: Float) : TvEpisodeIntent
     data class SetHoldSpeed(val speed: Float) : TvEpisodeIntent
     data object ToggleRememberSpeed : TvEpisodeIntent
@@ -132,6 +132,7 @@ sealed interface TvPlayerFocusRequest {
     data object Root : TvPlayerFocusRequest
     data object SeekBar : TvPlayerFocusRequest
     data object SourceButton : TvPlayerFocusRequest
+    data object EpisodesButton : TvPlayerFocusRequest
     data class DialogButton(val dialog: TvPlayerDialog) : TvPlayerFocusRequest
     data class PanelChip(val panel: TvPlayerPanel) : TvPlayerFocusRequest
 }

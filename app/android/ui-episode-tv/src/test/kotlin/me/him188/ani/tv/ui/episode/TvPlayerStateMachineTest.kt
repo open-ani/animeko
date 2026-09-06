@@ -25,9 +25,6 @@ class TvPlayerStateMachineTest {
             commands += command
             when (command) {
                 TvPlaybackCommand.TogglePause -> playback = playback.copy(playing = !playback.playing)
-                is TvPlaybackCommand.SeekBy -> playback =
-                    playback.copy(positionMillis = playback.positionMillis + command.deltaMillis)
-
                 else -> Unit
             }
         }
@@ -247,5 +244,76 @@ class TvPlayerStateMachineTest {
         f.machine.mediaSelected()
         assertFalse(f.state.sourceDialogVisible)
         assertTrue(f.state.controlsVisible)
+    }
+
+    @Test
+    fun `episode button opens inline strip and back restores its button`() = runBlocking {
+        val f = Fixture()
+        f.machine.onIntent(TvEpisodeIntent.TogglePanel(TvPlayerPanel.Comments))
+        f.machine.onIntent(TvEpisodeIntent.ToggleEpisodeStrip)
+        assertTrue(f.state.stripExpanded)
+        assertNull(f.state.activePanel)
+        assertNull(f.state.dialog)
+        f.machine.autoHide()
+        assertTrue(f.state.controlsVisible)
+        f.machine.onIntent(TvEpisodeIntent.Back)
+        assertFalse(f.state.stripExpanded)
+        assertTrue(f.state.controlsVisible)
+        assertEquals(TvPlayerFocusRequest.EpisodesButton, f.machine.focusRequests.first())
+        assertTrue(f.commands.isEmpty())
+    }
+
+    @Test
+    fun `episode actions preserve strip while modal takes focus`() = runBlocking {
+        val f = Fixture()
+        f.machine.onIntent(TvEpisodeIntent.ToggleEpisodeStrip)
+        f.machine.onIntent(TvEpisodeIntent.OpenDialog(TvPlayerDialog.EpisodeActions))
+        f.machine.onIntent(TvEpisodeIntent.StripFocusLost)
+        assertTrue(f.state.stripExpanded)
+        assertEquals(TvPlayerDialog.EpisodeActions, f.state.dialog)
+        f.machine.onIntent(TvEpisodeIntent.Back)
+        assertTrue(f.state.stripExpanded)
+        assertNull(f.state.dialog)
+        assertEquals(TvPlayerFocusRequest.DialogButton(TvPlayerDialog.EpisodeActions), f.machine.focusRequests.first())
+        f.machine.onIntent(TvEpisodeIntent.StripFocusLost)
+        assertFalse(f.state.stripExpanded)
+    }
+
+    @Test
+    fun `danmaku dialogs keep settings and return focus to their entry`() = runBlocking {
+        for (dialog in listOf(TvPlayerDialog.DanmakuList, TvPlayerDialog.DanmakuMatch)) {
+            val f = Fixture()
+            f.machine.onIntent(TvEpisodeIntent.TogglePanel(TvPlayerPanel.DanmakuSettings))
+            f.machine.onIntent(TvEpisodeIntent.OpenDialog(dialog))
+            assertEquals(TvPlayerPanel.DanmakuSettings, f.state.activePanel)
+            f.machine.onIntent(TvEpisodeIntent.Back)
+            assertNull(f.state.dialog)
+            assertEquals(TvPlayerPanel.DanmakuSettings, f.state.activePanel)
+            assertEquals(TvPlayerFocusRequest.DialogButton(dialog), f.machine.focusRequests.first())
+        }
+    }
+
+    @Test
+    fun `source speed and menu replace an expanded strip`() {
+        for (intent in listOf(TvEpisodeIntent.OpenSourceDialog, TvEpisodeIntent.OpenDialog(TvPlayerDialog.Speed))) {
+            val f = Fixture()
+            f.machine.onIntent(TvEpisodeIntent.ToggleEpisodeStrip)
+            f.machine.onIntent(intent)
+            assertFalse(f.state.stripExpanded)
+        }
+        val f = Fixture()
+        f.machine.onIntent(TvEpisodeIntent.ToggleEpisodeStrip)
+        f.key(TvRemoteKey.Menu)
+        assertFalse(f.state.stripExpanded)
+        assertTrue(f.state.controlsVisible)
+        assertTrue(f.commands.isEmpty())
+    }
+
+    @Test
+    fun `down from operation bar no longer opens episodes`() {
+        val f = Fixture()
+        assertFalse(f.machine.onIntent(TvEpisodeIntent.RemoteKey(TvRemoteKey.Down, true, 0, 1_000, false, true, false)))
+        assertFalse(f.state.stripExpanded)
+        assertTrue(f.commands.isEmpty())
     }
 }

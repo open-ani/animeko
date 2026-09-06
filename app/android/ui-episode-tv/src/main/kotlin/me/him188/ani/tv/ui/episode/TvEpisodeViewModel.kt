@@ -413,10 +413,6 @@ class TvEpisodeViewModel(
         player.togglePause()
     }
 
-    private fun seekBy(deltaMillis: Long) {
-        seekTo(player.getCurrentPositionMillis() + deltaMillis)
-    }
-
     private fun seekTo(positionMillis: Long) {
         if (!canControlPlayback()) return
         val duration = player.mediaProperties.value?.durationMillis?.takeIf { it > 0 } ?: Long.MAX_VALUE
@@ -457,7 +453,6 @@ class TvEpisodeViewModel(
         execute = { command ->
             when (command) {
                 TvPlaybackCommand.TogglePause -> togglePause()
-                is TvPlaybackCommand.SeekBy -> seekBy(command.deltaMillis)
                 is TvPlaybackCommand.SeekTo -> seekTo(command.positionMillis)
                 is TvPlaybackCommand.SwitchNeighbor -> switchToNeighborEpisode(command.offset)
                 is TvPlaybackCommand.SpeedHold -> setSpeedHold(command.engaged)
@@ -487,13 +482,14 @@ class TvEpisodeViewModel(
             delay(30_000)
         }
     }
-    private val panelState = interaction.states.map { it.activePanel }.distinctUntilChanged().flatMapLatest { panel ->
-        when (panel) {
-            TvPlayerPanel.Recommendations -> relatedSubjectsFlow.map { TvPlayerPanelState(relatedSubjects = it) }
-            TvPlayerPanel.DanmakuList -> danmakuListFlow.map { TvPlayerPanelState(danmaku = it) }
-            else -> flowOf(TvPlayerPanelState())
+    private val panelState =
+        interaction.states.map { it.activePanel to it.dialog }.distinctUntilChanged().flatMapLatest { (panel, dialog) ->
+            when {
+                dialog == TvPlayerDialog.DanmakuList -> danmakuListFlow.map { TvPlayerPanelState(danmaku = it) }
+                panel == TvPlayerPanel.Recommendations -> relatedSubjectsFlow.map { TvPlayerPanelState(relatedSubjects = it) }
+                else -> flowOf(TvPlayerPanelState())
+            }
         }
-    }
     private val options =
         combine(bufferedFractionFlow, playbackSpeedStateFlow, aspectRatioModeFlow) { buffer, speed, aspect ->
             Triple(buffer, speed, aspect)
@@ -580,6 +576,7 @@ class TvEpisodeViewModel(
             }
 
             is TvEpisodeIntent.SetSpeed -> setSpeed(intent.speed)
+            is TvEpisodeIntent.AdjustSpeed -> setSpeed(playbackSpeedStateFlow.value + intent.direction * .25f)
             is TvEpisodeIntent.SetDefaultSpeed -> runAction {
                 settingsRepository.videoScaffoldConfig.update {
                     copy(

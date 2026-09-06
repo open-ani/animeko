@@ -25,7 +25,6 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.Bookmark
 import androidx.compose.material.icons.rounded.Comment
-import androidx.compose.material.icons.rounded.FormatListBulleted
 import androidx.compose.material.icons.rounded.Groups
 import androidx.compose.material.icons.rounded.HighQuality
 import androidx.compose.material.icons.rounded.Recommend
@@ -65,8 +64,7 @@ enum class TvPlayerPanel(val title: String, val icon: ImageVector, val width: Dp
     Recommendations("相关推荐", Icons.Rounded.Recommend, 360.dp),
     Comments("评论", Icons.Rounded.Comment, 400.dp),
     DanmakuSettings("弹幕设置", Icons.Rounded.Tune, 400.dp),
-    DanmakuList("弹幕列表", Icons.Rounded.FormatListBulleted, 400.dp),
-    VideoSettings("画质与播放信息", Icons.Rounded.HighQuality, 400.dp),
+    VideoSettings("画质增强", Icons.Rounded.HighQuality, 400.dp),
     Together("一起看", Icons.Rounded.Groups, 360.dp),
 }
 
@@ -85,7 +83,7 @@ internal object TvPlayerPanelDefaults {
  * 浮出面板宿主 (§8.3): 锚定对应药丸, 标题固定, 内容独立滚动.
  *
  * 纯视图组件: 焦点接线由 Screen 注入 —— [panelModifier] 挂列表容器 (锚点 + 向下退出回胶囊),
- * [entryAnchorModifier] 挂入口条目 (第一条; 弹幕列表吸底, 入口即最新一条).
+ * [entryAnchorModifier] 挂入口条目 (第一条).
  * 数据为空时展示不可聚焦的占位条, 焦点留在胶囊行.
  */
 @Composable
@@ -93,7 +91,6 @@ internal fun TvPlayerPanelHost(
     panel: TvPlayerPanel,
     relatedSubjects: List<RelatedSubjectInfo>,
     comments: LazyPagingItems<EpisodeComment>?,
-    danmakuList: List<DanmakuPresentation>,
     panelModifier: Modifier,
     entryAnchorModifier: Modifier,
     onClickSubject: (RelatedSubjectInfo) -> Unit,
@@ -129,18 +126,23 @@ internal fun TvPlayerPanelHost(
                 }
             }
 
-            TvPlayerPanel.DanmakuList -> PanelList(
-                listModifier, Modifier,
-                empty = danmakuList.isEmpty(),
-                emptyText = "还没有弹幕",
-                reverseLayout = true, // 吸底: index 0 (最新) 画在底部
-            ) {
-                itemsIndexed(danmakuList, key = { index, it -> "${it.danmaku.id}-$index" }) { index, danmaku ->
-                    DanmakuItem(danmaku, modifier = anchorFor(index))
-                }
-            }
-
             else -> Unit // Interactive option panels have their own state/intent-only renderer.
+        }
+    }
+}
+
+@Composable
+internal fun TvDanmakuListDialog(
+    danmakuList: List<DanmakuPresentation>,
+    entryModifier: Modifier,
+) {
+    if (danmakuList.isEmpty()) {
+        TvOptionRow("还没有弹幕", modifier = entryModifier, onClick = {})
+    } else {
+        PanelList(Modifier.fillMaxWidth(), Modifier, empty = false, reverseLayout = true) {
+            itemsIndexed(danmakuList, key = { index, it -> "${it.danmaku.id}-$index" }) { index, danmaku ->
+                DanmakuItem(danmaku, modifier = if (index == 0) entryModifier else Modifier)
+            }
         }
     }
 }
