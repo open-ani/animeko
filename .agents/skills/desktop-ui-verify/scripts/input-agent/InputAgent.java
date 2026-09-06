@@ -12,7 +12,7 @@ import java.lang.instrument.Instrumentation;
  * frontmost visible Frame):
  *   click <x> <y>
  *   rightclick <x> <y>  (BUTTON3 with popup trigger, e.g. for context menus)
- *   press <x> <y>     (mouse down only)
+ *   press <x> <y>     (mouse down only; following `move`s are delivered as drags until `release`)
  *   release <x> <y>
  *   move <x> <y>
  *   type <text>
@@ -118,6 +118,7 @@ public final class InputAgent {
 
     private static volatile Component lastMouseTarget;
     private static volatile Frame selectedFrame;
+    private static volatile boolean button1Down;
 
     static Frame targetFrame() {
         Frame selected = selectedFrame;
@@ -146,18 +147,27 @@ public final class InputAgent {
             long when = System.currentTimeMillis();
             EventQueue q = Toolkit.getDefaultToolkit().getSystemEventQueue();
             if (kind.equals("move")) {
-                q.postEvent(new MouseEvent(target, MouseEvent.MOUSE_MOVED, when, 0, p.x, p.y, 0, false));
+                // While button 1 is held, AWT (and Compose) expect MOUSE_DRAGGED, not MOUSE_MOVED.
+                if (button1Down) {
+                    q.postEvent(new MouseEvent(target, MouseEvent.MOUSE_DRAGGED, when, MouseEvent.BUTTON1_DOWN_MASK, p.x, p.y, 0, false, MouseEvent.BUTTON1));
+                } else {
+                    q.postEvent(new MouseEvent(target, MouseEvent.MOUSE_MOVED, when, 0, p.x, p.y, 0, false));
+                }
             } else if (kind.equals("rightclick")) {
                 // macOS convention: popup trigger fires on press
                 q.postEvent(new MouseEvent(target, MouseEvent.MOUSE_PRESSED, when, MouseEvent.BUTTON3_DOWN_MASK, p.x, p.y, 1, true, MouseEvent.BUTTON3));
                 q.postEvent(new MouseEvent(target, MouseEvent.MOUSE_RELEASED, when + 20, 0, p.x, p.y, 1, false, MouseEvent.BUTTON3));
                 q.postEvent(new MouseEvent(target, MouseEvent.MOUSE_CLICKED, when + 20, 0, p.x, p.y, 1, false, MouseEvent.BUTTON3));
             } else {
-                if (!kind.equals("release"))
-                    q.postEvent(new MouseEvent(target, MouseEvent.MOUSE_PRESSED, when, 0, p.x, p.y, 1, false, MouseEvent.BUTTON1));
+                if (!kind.equals("release")) {
+                    q.postEvent(new MouseEvent(target, MouseEvent.MOUSE_PRESSED, when, MouseEvent.BUTTON1_DOWN_MASK, p.x, p.y, 1, false, MouseEvent.BUTTON1));
+                    button1Down = true;
+                }
                 if (!kind.equals("press")) {
                     q.postEvent(new MouseEvent(target, MouseEvent.MOUSE_RELEASED, when + 20, 0, p.x, p.y, 1, false, MouseEvent.BUTTON1));
-                    q.postEvent(new MouseEvent(target, MouseEvent.MOUSE_CLICKED, when + 20, 0, p.x, p.y, 1, false, MouseEvent.BUTTON1));
+                    if (!kind.equals("release"))
+                        q.postEvent(new MouseEvent(target, MouseEvent.MOUSE_CLICKED, when + 20, 0, p.x, p.y, 1, false, MouseEvent.BUTTON1));
+                    button1Down = false;
                 }
             }
             lastMouseTarget = target;
