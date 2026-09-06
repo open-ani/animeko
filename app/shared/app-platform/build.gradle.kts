@@ -24,6 +24,18 @@ val aniAuthServerUrlRelease = getPropertyOrNull("ani.auth.server.url.release") ?
 val dandanplayAppId = getPropertyOrNull("ani.dandanplay.app.id") ?: ""
 val dandanplayAppSecret = getPropertyOrNull("ani.dandanplay.app.secret") ?: ""
 val tmdbApiToken = getPropertyOrNull("ani.tmdb.api.token") ?: ""
+
+tasks.register("verifyTmdbConfiguration") {
+    group = "verification"
+    description = "Checks that TMDB image verification is not running with the feature disabled."
+    inputs.property("configured", tmdbApiToken.isNotBlank())
+    doLast {
+        check(inputs.properties["configured"] == true) {
+            "TMDB image verification requires ani.tmdb.api.token in local.properties or another supported property source."
+        }
+    }
+}
+
 val sentryDsn = getPropertyOrNull("ani.sentry.dsn") ?: ""
 val analyticsKey = getPropertyOrNull("ani.analytics.key") ?: ""
 val overrideAniApiServer = getPropertyOrNull("ani.api.server")?.takeIf { it.isNotBlank() }
