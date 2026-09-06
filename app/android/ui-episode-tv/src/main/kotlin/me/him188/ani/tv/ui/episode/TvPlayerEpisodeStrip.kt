@@ -15,10 +15,12 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
@@ -32,6 +34,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
@@ -40,7 +43,9 @@ import androidx.tv.material3.Icon
 import androidx.tv.material3.MaterialTheme
 import androidx.tv.material3.Surface
 import androidx.tv.material3.Text
+import me.him188.ani.app.ui.foundation.AsyncImage
 import me.him188.ani.tv.ui.foundation.focus.TvFocusDefaults
+import me.him188.ani.tv.ui.foundation.focus.tvLongPressKey
 
 /** [TvPlayerEpisodeStrip] 默认值 (附录 A: 选集卡 204×114.75dp/播放器, 三态). */
 internal object TvPlayerEpisodeStripDefaults {
@@ -59,8 +64,7 @@ internal object TvPlayerEpisodeStripDefaults {
 
 /**
  * 播放器选集条 (atv-architecture.md §8.3): 图标行下方横向剧照卡列表, 三态 =
- * 正在播放 (primary 徽标) / 已看 (降透明 + 对勾) / 未看. TMDB 分集剧照 (R3) 落地前
- * 卡面为纯色渐变 + 集序号/标题.
+ * 正在播放 (primary 徽标) / 已看 (对勾) / 未看. 优先展示 TMDB 独立分集剧照.
  *
  * 纯视图组件: 展开/收起与焦点接线由 Screen 注入 ([stripModifier]/[currentCardModifier], §14.7-2).
  */
@@ -72,10 +76,14 @@ internal fun TvPlayerEpisodeStrip(
     stripModifier: Modifier,
     currentCardModifier: Modifier,
     onClickEpisode: (TvStripEpisode) -> Unit,
+    onLongClickEpisode: (TvStripEpisode) -> Unit,
     modifier: Modifier = Modifier,
 ) {
     LazyRow(
-        modifier = modifier.then(stripModifier).fillMaxWidth().padding(top = 18.dp),
+        modifier = modifier
+            .then(stripModifier)
+            .fillMaxWidth()
+            .padding(top = 18.dp),
         state = listState,
         horizontalArrangement = Arrangement.spacedBy(TvPlayerEpisodeStripDefaults.CardSpacing),
         contentPadding = PaddingValues(horizontal = TvPlayerControlsDefaults.HorizontalPadding),
@@ -87,24 +95,26 @@ internal fun TvPlayerEpisodeStrip(
                 isCurrent = isCurrent,
                 onClick = { onClickEpisode(episode) },
                 modifier = if (isCurrent) currentCardModifier else Modifier,
+                onLongClick = { onLongClickEpisode(episode) },
             )
         }
     }
 }
 
 @Composable
-private fun EpisodeStripCard(
+internal fun EpisodeStripCard(
     episode: TvStripEpisode,
     isCurrent: Boolean,
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
+    onLongClick: () -> Unit,
 ) {
     Surface(
         onClick = onClick,
-        modifier = modifier.size(
-            TvPlayerEpisodeStripDefaults.CardWidth,
-            TvPlayerEpisodeStripDefaults.CardHeight,
-        ),
+        modifier = modifier
+            .tvLongPressKey(onLongClick, onClick)
+            .width(TvPlayerEpisodeStripDefaults.CardWidth)
+            .aspectRatio(16f / 9f),
         shape = ClickableSurfaceDefaults.shape(RoundedCornerShape(TvFocusDefaults.RingCornerRadius)),
         colors = ClickableSurfaceDefaults.colors(
             containerColor = Color.Transparent,
@@ -127,6 +137,19 @@ private fun EpisodeStripCard(
                     ),
                 ),
         ) {
+            episode.stillUrl?.let {
+                AsyncImage(
+                    it,
+                    contentDescription = null,
+                    modifier = Modifier.fillMaxSize(),
+                    contentScale = ContentScale.Crop,
+                )
+            }
+            Box(
+                Modifier
+                    .fillMaxSize()
+                    .background(Brush.verticalGradient(0f to Color.Transparent, 1f to Color.Black.copy(alpha = .85f))),
+            )
             if (episode.watched && !isCurrent) {
                 Icon(
                     Icons.Rounded.CheckCircle,
@@ -149,7 +172,7 @@ private fun EpisodeStripCard(
                         episode.sortLabel,
                         style = MaterialTheme.typography.labelLarge,
                         color = if (episode.watched && !isCurrent) {
-                            Color.White.copy(alpha = 0.55f)
+                            Color.White.copy(alpha = 0.8f)
                         } else {
                             Color.White
                         },
@@ -184,7 +207,7 @@ private fun EpisodeStripCard(
                     Modifier.padding(top = 2.dp),
                     style = MaterialTheme.typography.bodySmall,
                     color = if (episode.watched && !isCurrent) {
-                        Color.White.copy(alpha = 0.45f)
+                        Color.White.copy(alpha = 0.7f)
                     } else {
                         Color.White.copy(alpha = 0.8f)
                     },

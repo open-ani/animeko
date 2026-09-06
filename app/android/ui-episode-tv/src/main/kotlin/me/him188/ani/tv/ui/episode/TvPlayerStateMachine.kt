@@ -23,7 +23,6 @@ internal sealed interface TvPlaybackCommand {
     data class SeekTo(val positionMillis: Long) : TvPlaybackCommand
     data class SwitchNeighbor(val offset: Int) : TvPlaybackCommand
     data class SpeedHold(val engaged: Boolean) : TvPlaybackCommand
-    data object CycleSpeed : TvPlaybackCommand
     data object CycleAspectRatio : TvPlaybackCommand
 }
 
@@ -38,26 +37,62 @@ internal class TvPlayerStateMachine(
     val focusRequests = focus.receiveAsFlow()
     private var trackingConfirm = false
     private var firedConfirm = false
-    private var lastSeekPressAt: Long? = null
 
     fun onIntent(intent: TvEpisodeIntent): Boolean {
         when (intent) {
             is TvEpisodeIntent.RemoteKey -> return onKey(intent)
             TvEpisodeIntent.Back -> return back()
-            TvEpisodeIntent.SeekBack -> { execute(TvPlaybackCommand.SeekBy(-10_000)); bump() }
-            TvEpisodeIntent.SeekForward -> { execute(TvPlaybackCommand.SeekBy(30_000)); bump() }
-            TvEpisodeIntent.NextEpisode -> { execute(TvPlaybackCommand.SwitchNeighbor(1)); bump() }
+            TvEpisodeIntent.SeekBack -> {
+                execute(TvPlaybackCommand.SeekBy(-10_000)); bump()
+            }
+
+            TvEpisodeIntent.SeekForward -> {
+                execute(TvPlaybackCommand.SeekBy(30_000)); bump()
+            }
+
+            TvEpisodeIntent.NextEpisode -> {
+                execute(TvPlaybackCommand.SwitchNeighbor(1)); bump()
+            }
+
             is TvEpisodeIntent.TogglePanel -> {
-                state.value = state.value.copy(activePanel = intent.panel.takeUnless { it == state.value.activePanel })
+                releaseHeldSpeed()
+                state.value = state.value.copy(
+                    activePanel = intent.panel.takeUnless { it == state.value.activePanel },
+                    scrubMillis = null,
+                    stripExpanded = false,
+                    dialog = null,
+                )
                 bump()
             }
+
             TvEpisodeIntent.OpenSourceDialog -> {
                 releaseHeldSpeed()
-                state.value = state.value.copy(sourceDialogVisible = true, controlsVisible = true)
+                state.value = state.value.copy(
+                    sourceDialogVisible = true,
+                    controlsVisible = true,
+                    scrubMillis = null,
+                    activePanel = null,
+                    dialog = null,
+                )
                 bump()
             }
-            TvEpisodeIntent.CycleSpeed -> { execute(TvPlaybackCommand.CycleSpeed); bump() }
-            TvEpisodeIntent.CycleAspectRatio -> { execute(TvPlaybackCommand.CycleAspectRatio); bump() }
+
+            is TvEpisodeIntent.OpenDialog -> {
+                releaseHeldSpeed()
+                state.value = state.value.copy(
+                    dialog = intent.dialog,
+                    controlsVisible = true,
+                    activePanel = null,
+                    scrubMillis = null,
+                    sourceDialogVisible = false,
+                )
+                bump()
+            }
+
+            TvEpisodeIntent.CycleAspectRatio -> {
+                execute(TvPlaybackCommand.CycleAspectRatio); bump()
+            }
+
             TvEpisodeIntent.StripFocusLost -> state.value = state.value.copy(stripExpanded = false)
             TvEpisodeIntent.ReleaseHeldSpeed -> releaseHeldSpeed()
             else -> return false
@@ -70,15 +105,31 @@ internal class TvPlayerStateMachine(
     fun mediaSelected() {
         state.value = state.value.copy(sourceDialogVisible = false)
         bump()
-        focus.trySend(TvPlayerFocusRequest.SeekBar)
+        focus.trySend(TvPlayerFocusRequest.SourceButton)
+    }
+
+    fun closeDialog() {
+        val dialog = state.value.dialog ?: return
+        state.value = state.value.copy(dialog = null)
+        bump()
+        focus.trySend(TvPlayerFocusRequest.DialogButton(dialog))
+    }
+
+    fun sourceControls() {
+        releaseHeldSpeed()
+        state.value = state.value.copy(
+            controlsVisible = true,
+            sourceDialogVisible = false,
+            dialog = null,
+            activePanel = null,
+            scrubMillis = null,
+        )
+        bump()
+        focus.trySend(TvPlayerFocusRequest.SourceButton)
     }
 
     fun autoHide() {
         if (playback().playing && state.value.canAutoHide) hideControls()
-    }
-
-    fun clearFlash(flash: Pair<String, Int>) {
-        if (state.value.seekFlash == flash) state.value = state.value.copy(seekFlash = null)
     }
 
     private fun bump() {
@@ -94,7 +145,13 @@ internal class TvPlayerStateMachine(
 
     private fun hideControls() {
         releaseHeldSpeed()
-        state.value = state.value.copy(controlsVisible = false, stripExpanded = false, activePanel = null, scrubMillis = null)
+        state.value = state.value.copy(
+            controlsVisible = false,
+            stripExpanded = false,
+            activePanel = null,
+            scrubMillis = null,
+            dialog = null,
+        )
         focus.trySend(TvPlayerFocusRequest.Root)
     }
 
@@ -107,27 +164,17 @@ internal class TvPlayerStateMachine(
 
     private fun moveScrub(deltaMillis: Long) {
         val playback = playback()
-        val upperBound = playback.durationMillis.takeIf { it > 0 } ?: Long.MAX_VALUE
+        if (playback.durationMillis <= 0) return
+        val upperBound = playback.durationMillis
         val base = state.value.scrubMillis ?: playback.positionMillis
         state.value = state.value.copy(
             controlsVisible = true,
             scrubMillis = (base + deltaMillis).coerceIn(0, upperBound),
+            activePanel = null,
+            stripExpanded = false,
         )
         bump()
         focus.trySend(TvPlayerFocusRequest.SeekBar)
-    }
-
-    private fun seekPress(deltaMillis: Long, eventTimeMillis: Long) {
-        val previous = lastSeekPressAt
-        if (previous != null && eventTimeMillis - previous in 0..620) {
-            moveScrub(deltaMillis)
-        } else {
-            execute(TvPlaybackCommand.SeekBy(deltaMillis))
-            state.value = state.value.copy(seekFlash =
-                (if (deltaMillis > 0) "+5 秒" else "-5 秒") to ((state.value.seekFlash?.second ?: 0) + 1),
-            )
-        }
-        lastSeekPressAt = eventTimeMillis
     }
 
     private fun togglePause() {
@@ -138,6 +185,7 @@ internal class TvPlayerStateMachine(
 
     private fun back(): Boolean {
         when {
+            state.value.dialog != null -> closeDialog()
             state.value.sourceDialogVisible -> mediaSelected()
             state.value.activePanel != null -> {
                 val panel = state.value.activePanel!!
@@ -145,12 +193,17 @@ internal class TvPlayerStateMachine(
                 bump()
                 focus.trySend(TvPlayerFocusRequest.PanelChip(panel))
             }
-            state.value.scrubMillis != null -> { state.value = state.value.copy(scrubMillis = null); bump() }
+
+            state.value.scrubMillis != null -> {
+                state.value = state.value.copy(scrubMillis = null); bump()
+            }
+
             state.value.stripExpanded -> {
                 state.value = state.value.copy(stripExpanded = false)
                 bump()
                 focus.trySend(TvPlayerFocusRequest.SeekBar)
             }
+
             state.value.controlsVisible -> hideControls()
             else -> return false
         }
@@ -161,14 +214,20 @@ internal class TvPlayerStateMachine(
         val key = event.key
         val isDown = event.isDown
         val isNewPress = isDown && event.repeatCount == 0
+        if (key == TvRemoteKey.Menu) {
+            if (isNewPress) sourceControls()
+            return true
+        }
         // Explicit Play/Pause keys are idempotent, while PlayPause toggles.
         when (key) {
             TvRemoteKey.PlayPause, TvRemoteKey.Play, TvRemoteKey.Pause -> {
                 if (isNewPress && (key == TvRemoteKey.PlayPause ||
-                        (key == TvRemoteKey.Play && !playback().playing) ||
-                        (key == TvRemoteKey.Pause && playback().playing))) togglePause()
+                            (key == TvRemoteKey.Play && !playback().playing) ||
+                            (key == TvRemoteKey.Pause && playback().playing))
+                ) togglePause()
                 return true
             }
+
             TvRemoteKey.Next, TvRemoteKey.Previous -> {
                 if (isNewPress) {
                     execute(TvPlaybackCommand.SwitchNeighbor(if (key == TvRemoteKey.Next) 1 else -1))
@@ -176,11 +235,13 @@ internal class TvPlayerStateMachine(
                 }
                 return true
             }
+
             else -> Unit
         }
         if (state.value.sourceDialogVisible) {
             return !event.sourceDialogFocused && key in navigationKeys
         }
+        if (state.value.dialog != null) return false
         if (state.value.scrubMillis != null) {
             when (key) {
                 TvRemoteKey.Left, TvRemoteKey.Right -> if (isDown) moveScrub(if (key == TvRemoteKey.Right) 5_000 else -5_000)
@@ -189,10 +250,12 @@ internal class TvPlayerStateMachine(
                     state.value = state.value.copy(scrubMillis = null)
                     bump()
                 }
+
                 TvRemoteKey.Up, TvRemoteKey.Down -> if (isNewPress) {
                     state.value = state.value.copy(scrubMillis = null)
                     bump()
                 }
+
                 else -> return false
             }
             return true
@@ -215,7 +278,8 @@ internal class TvPlayerStateMachine(
                         if (!wasHeld) togglePause()
                     }
                 }
-                TvRemoteKey.Left, TvRemoteKey.Right -> if (isDown) seekPress(if (key == TvRemoteKey.Right) 5_000 else -5_000, event.eventTimeMillis)
+
+                TvRemoteKey.Left, TvRemoteKey.Right -> if (isDown) moveScrub(if (key == TvRemoteKey.Right) 5_000 else -5_000)
                 TvRemoteKey.Up, TvRemoteKey.Down -> if (isNewPress) showControls()
                 else -> return false
             }
@@ -225,12 +289,20 @@ internal class TvPlayerStateMachine(
         if (event.seekBarFocused) {
             when (key) {
                 TvRemoteKey.Left, TvRemoteKey.Right -> {
-                    if (isDown) seekPress(if (key == TvRemoteKey.Right) 5_000 else -5_000, event.eventTimeMillis)
+                    if (isDown) moveScrub(if (key == TvRemoteKey.Right) 5_000 else -5_000)
                     return true
                 }
-                TvRemoteKey.Confirm -> { if (isNewPress) togglePause(); return true }
+
+                TvRemoteKey.Confirm -> {
+                    if (isNewPress) togglePause(); return true
+                }
+
                 else -> Unit
             }
+        }
+        if (event.iconRowFocused && key == TvRemoteKey.Up) {
+            if (isNewPress) focus.trySend(TvPlayerFocusRequest.SeekBar)
+            return true
         }
         if (event.iconRowFocused && key == TvRemoteKey.Down) {
             if (isNewPress) state.value = state.value.copy(stripExpanded = true)
@@ -240,6 +312,7 @@ internal class TvPlayerStateMachine(
     }
 
     private companion object {
-        val navigationKeys = setOf(TvRemoteKey.Left, TvRemoteKey.Right, TvRemoteKey.Up, TvRemoteKey.Down, TvRemoteKey.Confirm)
+        val navigationKeys =
+            setOf(TvRemoteKey.Left, TvRemoteKey.Right, TvRemoteKey.Up, TvRemoteKey.Down, TvRemoteKey.Confirm)
     }
 }

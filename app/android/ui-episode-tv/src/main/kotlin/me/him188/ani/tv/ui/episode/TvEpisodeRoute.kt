@@ -25,16 +25,20 @@ import me.him188.ani.tv.ui.foundation.TvNavigationEvent
 @Composable
 fun TvEpisodeRoute(
     viewModel: TvEpisodeViewModel,
+    togetherViewModel: TvWatchTogetherViewModel,
     onNavigate: (TvNavigationEvent) -> Unit,
     modifier: Modifier = Modifier,
 ) {
     val state by viewModel.uiState.collectAsState()
+    val togetherState by togetherViewModel.uiState.collectAsState()
     TvNavigationEffect(viewModel.navigationEvents, onNavigate)
     LaunchedEffect(viewModel) { viewModel.onIntent(TvEpisodeIntent.UiReady) }
     val lifecycle = LocalLifecycleOwner.current.lifecycle
     DisposableEffect(viewModel, lifecycle) {
         val observer = LifecycleEventObserver { _, event ->
             if (event == Lifecycle.Event.ON_PAUSE) viewModel.onIntent(TvEpisodeIntent.ReleaseHeldSpeed)
+            if (event == Lifecycle.Event.ON_STOP) viewModel.onIntent(TvEpisodeIntent.ForegroundChanged(false))
+            if (event == Lifecycle.Event.ON_START) viewModel.onIntent(TvEpisodeIntent.ForegroundChanged(true))
         }
         lifecycle.addObserver(observer)
         onDispose {
@@ -44,6 +48,8 @@ fun TvEpisodeRoute(
     }
     TvEpisodeScreen(
         uiState = state,
+        togetherState = togetherState,
+        onTogetherIntent = togetherViewModel::onIntent,
         commentsPager = viewModel.episodeCommentsPager,
         focusRequests = viewModel.focusRequests,
         onIntent = viewModel::onIntent,

@@ -9,18 +9,26 @@
 
 package me.him188.ani.tv.ui.episode
 
-import me.him188.ani.app.data.models.subject.RelatedCharacterInfo
-import me.him188.ani.app.data.models.subject.RelatedPersonInfo
 import me.him188.ani.app.data.models.subject.RelatedSubjectInfo
 import me.him188.ani.app.domain.player.VideoLoadingState
+import me.him188.ani.app.videoplayer.videoenhancement.VideoEnhancementMode
+import me.him188.ani.danmaku.api.DanmakuServiceId
+import me.him188.ani.danmaku.api.provider.DanmakuProviderId
 import me.him188.ani.danmaku.ui.DanmakuPresentation
 import me.him188.ani.datasources.api.Media
+import me.him188.ani.datasources.api.topic.UnifiedCollectionType
 import org.openani.mediamp.PlaybackState
 import org.openani.mediamp.features.AspectRatioMode
 
 data class TvEpisodeTitle(val subjectName: String = "", val episodeLine: String = "")
 
-data class TvStripEpisode(val episodeId: Int, val sortLabel: String, val title: String, val watched: Boolean)
+data class TvStripEpisode(
+    val episodeId: Int,
+    val sortLabel: String,
+    val title: String,
+    val watched: Boolean,
+    val stillUrl: String? = null
+)
 
 data class TvPlayerOverlayState(
     val controlsVisible: Boolean = true,
@@ -30,16 +38,14 @@ data class TvPlayerOverlayState(
     val scrubMillis: Long? = null,
     val speedHolding: Boolean = false,
     val sourceDialogVisible: Boolean = false,
-    val seekFlash: Pair<String, Int>? = null,
+    val dialog: TvPlayerDialog? = null,
 ) {
-    val handlesBack: Boolean get() = sourceDialogVisible || activePanel != null || scrubMillis != null || stripExpanded || controlsVisible
-    val canAutoHide: Boolean get() = controlsVisible && scrubMillis == null && !sourceDialogVisible && activePanel == null
+    val handlesBack: Boolean get() = dialog != null || sourceDialogVisible || activePanel != null || scrubMillis != null || stripExpanded || controlsVisible
+    val canAutoHide: Boolean get() = controlsVisible && dialog == null && scrubMillis == null && !stripExpanded && !sourceDialogVisible && activePanel == null
 }
 
 data class TvPlayerPanelState(
     val relatedSubjects: List<RelatedSubjectInfo> = emptyList(),
-    val staff: List<RelatedPersonInfo> = emptyList(),
-    val characters: List<RelatedCharacterInfo> = emptyList(),
     val danmaku: List<DanmakuPresentation> = emptyList(),
 )
 
@@ -55,14 +61,16 @@ data class TvEpisodeUiState(
     val aspectRatioMode: AspectRatioMode = AspectRatioMode.FIT,
     val episodes: List<TvStripEpisode> = emptyList(),
     val currentEpisodeId: Int = 0,
-    val mediaCandidates: List<Media> = emptyList(),
     val selectedMedia: Media? = null,
     val overlay: TvPlayerOverlayState = TvPlayerOverlayState(),
     val panel: TvPlayerPanelState = TvPlayerPanelState(),
     val clockText: String = "",
+    val sources: TvSourceSelectionState = TvSourceSelectionState(),
+    val options: TvPlayerOptionsState = TvPlayerOptionsState(),
+    val danmakuMatch: TvDanmakuMatchState = TvDanmakuMatchState(),
 )
 
-enum class TvRemoteKey { Left, Right, Up, Down, Confirm, PlayPause, Play, Pause, Next, Previous, Other }
+enum class TvRemoteKey { Left, Right, Up, Down, Confirm, Menu, PlayPause, Play, Pause, Next, Previous, Other }
 
 sealed interface TvEpisodeIntent {
     data object UiReady : TvEpisodeIntent
@@ -75,6 +83,7 @@ sealed interface TvEpisodeIntent {
         val iconRowFocused: Boolean,
         val sourceDialogFocused: Boolean,
     ) : TvEpisodeIntent
+
     data object Back : TvEpisodeIntent
     data object SeekBack : TvEpisodeIntent
     data object SeekForward : TvEpisodeIntent
@@ -84,16 +93,45 @@ sealed interface TvEpisodeIntent {
     data class TogglePanel(val panel: TvPlayerPanel) : TvEpisodeIntent
     data class OpenSubject(val subjectId: Int) : TvEpisodeIntent
     data object OpenSourceDialog : TvEpisodeIntent
-    data object CycleSpeed : TvEpisodeIntent
     data object CycleAspectRatio : TvEpisodeIntent
     data object StripFocusLost : TvEpisodeIntent
     data object ReleaseHeldSpeed : TvEpisodeIntent
+    data object ToggleDanmaku : TvEpisodeIntent
+    data object CancelAutoSkip : TvEpisodeIntent
+    data class OpenDialog(val dialog: TvPlayerDialog) : TvEpisodeIntent
+    data class SetSpeed(val speed: Float) : TvEpisodeIntent
+    data class SetDefaultSpeed(val speed: Float) : TvEpisodeIntent
+    data class SetHoldSpeed(val speed: Float) : TvEpisodeIntent
+    data object ToggleRememberSpeed : TvEpisodeIntent
+    data class SelectSubtitle(val id: String?) : TvEpisodeIntent
+    data class SetEnhancement(val mode: VideoEnhancementMode) : TvEpisodeIntent
+    data class ViewportChanged(val width: Int, val height: Int) : TvEpisodeIntent
+    data class ForegroundChanged(val foreground: Boolean) : TvEpisodeIntent
+    data class AdjustDanmaku(val property: TvDanmakuProperty, val direction: Int) : TvEpisodeIntent
+    data class ToggleDanmakuSource(val serviceId: DanmakuServiceId) : TvEpisodeIntent
+    data class ShiftDanmakuSource(val serviceId: DanmakuServiceId, val deltaMillis: Long?) : TvEpisodeIntent
+    data class MatchDanmaku(val providerId: DanmakuProviderId) : TvEpisodeIntent
+    data class DanmakuQuery(val value: String) : TvEpisodeIntent
+    data object SearchDanmaku : TvEpisodeIntent
+    data class SelectDanmakuSubject(val id: String) : TvEpisodeIntent
+    data class SelectDanmakuEpisode(val id: String) : TvEpisodeIntent
+    data class SetCollection(val type: UnifiedCollectionType) : TvEpisodeIntent
+    data object ConfirmRemoveCollection : TvEpisodeIntent
+    data object MarkAllWatched : TvEpisodeIntent
+    data class EpisodeActions(val episodeId: Int) : TvEpisodeIntent
+    data class SetEpisodeWatched(val episodeId: Int, val watched: Boolean) : TvEpisodeIntent
+    data class SetSourceMode(val mode: TvSourceMode) : TvEpisodeIntent
+    data class SelectSourceTab(val instanceId: String) : TvEpisodeIntent
+    data class MoveSource(val direction: Int) : TvEpisodeIntent
+    data object ToggleExcludedSources : TvEpisodeIntent
+    data class RetrySources(val instanceId: String? = null) : TvEpisodeIntent
+    data object RetryPlayback : TvEpisodeIntent
 }
 
 sealed interface TvPlayerFocusRequest {
     data object Root : TvPlayerFocusRequest
     data object SeekBar : TvPlayerFocusRequest
+    data object SourceButton : TvPlayerFocusRequest
+    data class DialogButton(val dialog: TvPlayerDialog) : TvPlayerFocusRequest
     data class PanelChip(val panel: TvPlayerPanel) : TvPlayerFocusRequest
 }
-
-internal const val TV_SPEED_HOLD_FACTOR = 2.5f

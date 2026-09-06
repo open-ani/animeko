@@ -18,9 +18,19 @@ import androidx.compose.animation.slideOutVertically
 import androidx.compose.foundation.background
 import androidx.compose.foundation.focusGroup
 import androidx.compose.foundation.focusable
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.grid.GridCells
+import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
+import androidx.compose.foundation.lazy.grid.items
+import androidx.compose.foundation.lazy.grid.rememberLazyGridState
+import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.Composable
@@ -43,12 +53,15 @@ import androidx.compose.ui.input.key.KeyEventType
 import androidx.compose.ui.input.key.key
 import androidx.compose.ui.input.key.onPreviewKeyEvent
 import androidx.compose.ui.input.key.type
+import androidx.compose.ui.layout.onSizeChanged
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.unit.dp
 import androidx.paging.PagingData
 import androidx.paging.compose.collectAsLazyPagingItems
 import androidx.tv.material3.MaterialTheme
 import androidx.tv.material3.Text
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.flow.first
 import me.him188.ani.app.data.models.episode.EpisodeComment
 import me.him188.ani.app.domain.player.VideoLoadingState
@@ -73,8 +86,7 @@ import android.view.KeyEvent as AndroidKeyEvent
  *
  * 按键全部收敛在根部唯一 onPreviewKeyEvent 路由 (§8.2 保留的 PR 交互架构):
  * - HIDDEN: 确认短按=播↔停 (暂停时唤出控制层), 长按 (系统连发判定, 同 tvLongPressKey
- *   判据) = 2.5x 倍速松开还原; ←→ 单按 ±5s 静默 seek + 中央闪烁, ~620ms 内连按 (含按住
- *   连发) 升级拖拽预览; ↑↓ 唤出控制层.
+ *   判据) = 配置的倍速, 松开还原; ←→ 总是进入画面预览, 确认才 seek; ↑↓ 唤出控制层.
  * - CONTROLS: 焦点在进度条时 ←→/确认沿用 seek/播停语义, 其余按键交给焦点系统;
  *   图标行按下进入选集条; 任意按键刷新 5s 自动隐藏 (暂停/拖拽/弹窗不隐藏).
  * - 拖拽预览: ←→ 移动预览点, 确认跳转, 返回取消.
@@ -86,6 +98,7 @@ import android.view.KeyEvent as AndroidKeyEvent
 private enum class TvPlayerFocus : TvFocusKey {
     Root, SeekBar, IconRow, IconRowEntry, StripCurrent, SourceDialog, SourceDialogEntry,
     PanelHost, PanelEntry,
+    SourceButton, SpeedButton, SubtitleButton, EpisodesButton, DialogHost, DialogEntry,
 }
 
 /** 胶囊按钮锚点 (面板关闭/向下退出时焦点回对应胶囊). */
@@ -94,6 +107,8 @@ private data class PanelChipKey(val panel: TvPlayerPanel) : TvFocusKey
 @Composable
 fun TvEpisodeScreen(
     uiState: TvEpisodeUiState,
+    togetherState: TvTogetherState,
+    onTogetherIntent: (TvTogetherIntent) -> Unit,
     commentsPager: Flow<PagingData<EpisodeComment>>,
     focusRequests: Flow<TvPlayerFocusRequest>,
     onIntent: (TvEpisodeIntent) -> Boolean,
@@ -112,7 +127,6 @@ fun TvEpisodeScreen(
     val aspectRatioMode = uiState.aspectRatioMode
     val stripEpisodes = uiState.episodes
     val currentEpisodeId = uiState.currentEpisodeId
-    val mediaCandidates = uiState.mediaCandidates
     val selectedMedia = uiState.selectedMedia
     val positionMillis = uiState.positionMillis
     val clockText = uiState.clockText
@@ -122,32 +136,69 @@ fun TvEpisodeScreen(
     focus.Resolver()
     focus.InitialFocus(if (state.controlsVisible) TvPlayerFocus.SeekBar else TvPlayerFocus.Root)
     val stripListState = rememberLazyListState()
-    val dialogListState = rememberLazyListState()
     LaunchedEffect(focusRequests, focus) {
-        focusRequests.collect { request ->
+        focusRequests.collectLatest { request ->
+            // Wait for the overlay removal to reach composition before leaving its focus trap.
+            snapshotFlow { latestState.overlay }.first { overlay ->
+                when (request) {
+                    TvPlayerFocusRequest.Root -> !overlay.controlsVisible
+                    else -> overlay.controlsVisible && !overlay.sourceDialogVisible && overlay.dialog == null
+                }
+            }
             when (request) {
                 TvPlayerFocusRequest.Root -> focus.request(TvPlayerFocus.Root)
                 TvPlayerFocusRequest.SeekBar -> focus.request(TvPlayerFocus.SeekBar)
+                TvPlayerFocusRequest.SourceButton -> focus.request(TvPlayerFocus.SourceButton)
+                is TvPlayerFocusRequest.DialogButton -> focus.request(
+                    when (request.dialog) {
+                        TvPlayerDialog.Speed -> TvPlayerFocus.SpeedButton
+                        TvPlayerDialog.Subtitles -> TvPlayerFocus.SubtitleButton
+                        TvPlayerDialog.DanmakuMatch -> PanelChipKey(TvPlayerPanel.DanmakuSettings)
+                        else -> TvPlayerFocus.EpisodesButton
+                    },
+                )
+
                 is TvPlayerFocusRequest.PanelChip -> focus.request(PanelChipKey(request.panel))
             }
         }
     }
 
     // Translate platform events into facts. All playback/overlay decisions belong to the ViewModel.
-    fun handleKey(event: KeyEvent): Boolean = onIntent(TvEpisodeIntent.RemoteKey(
-        key = event.key.toTvRemoteKey(),
-        isDown = event.type == KeyEventType.KeyDown,
-        repeatCount = event.repeatCountCompat,
-        eventTimeMillis = event.eventTimeMillisCompat,
-        seekBarFocused = focus.isFocused(TvPlayerFocus.SeekBar),
-        iconRowFocused = focus.isFocused(TvPlayerFocus.IconRow),
-        sourceDialogFocused = focus.isFocused(TvPlayerFocus.SourceDialog),
-    ))
+    fun handleKey(event: KeyEvent): Boolean = onIntent(
+        TvEpisodeIntent.RemoteKey(
+            key = event.key.toTvRemoteKey(),
+            isDown = event.type == KeyEventType.KeyDown,
+            repeatCount = event.repeatCountCompat,
+            eventTimeMillis = event.eventTimeMillisCompat,
+            seekBarFocused = focus.isFocused(TvPlayerFocus.SeekBar),
+            iconRowFocused = focus.isFocused(TvPlayerFocus.IconRow),
+            sourceDialogFocused = focus.isFocused(TvPlayerFocus.SourceDialog),
+        ),
+    )
 
     // 面板打开: 焦点送入口条目 (request 悬挂语义天然等数据 —— 空面板锚点不附着,
     // 焦点留在胶囊, 用户按键自动放弃在途请求)
     LaunchedEffect(state.activePanel) {
         if (state.activePanel != null) focus.request(TvPlayerFocus.PanelEntry)
+        if (state.activePanel == TvPlayerPanel.Together) onTogetherIntent(TvTogetherIntent.Open)
+    }
+    LaunchedEffect(state.dialog) {
+        if (state.dialog != null) focus.request(TvPlayerFocus.DialogEntry)
+    }
+    LaunchedEffect(uiState.danmakuMatch.selectedSubject?.id) {
+        if (state.dialog == TvPlayerDialog.DanmakuMatch) focus.request(TvPlayerFocus.DialogEntry)
+    }
+    LaunchedEffect(
+        uiState.options.confirmRemoveCollection,
+        uiState.options.offerMarkAllWatched,
+        uiState.options.collectionBusy,
+    ) {
+        if (state.activePanel == TvPlayerPanel.Collection && !uiState.options.collectionBusy) focus.request(
+            TvPlayerFocus.PanelEntry,
+        )
+    }
+    LaunchedEffect(togetherState.joined, togetherState.confirmLeave) {
+        if (state.activePanel == TvPlayerPanel.Together) focus.request(TvPlayerFocus.PanelEntry)
     }
 
     // 选集条展开: 等列表数据就绪 → 滚到当前集 → 送焦当前集卡 (全事件驱动)
@@ -159,21 +210,29 @@ fun TvEpisodeScreen(
         focus.request(TvPlayerFocus.StripCurrent)
     }
 
-    // 数据源弹窗打开: 等候选就绪 → 滚到当前选中 → 送焦
+    // 模式切换始终可操作, 不等待源结果返回。
     LaunchedEffect(state.sourceDialogVisible) {
         if (!state.sourceDialogVisible) return@LaunchedEffect
-        val list = snapshotFlow { latestState.mediaCandidates }.first { it.isNotEmpty() }
-        val index = list.indexOf(latestState.selectedMedia).takeIf { it >= 0 } ?: 0
-        dialogListState.scrollToItem(index)
         focus.request(TvPlayerFocus.SourceDialogEntry)
     }
 
-    BackHandler(enabled = state.handlesBack) { onIntent(TvEpisodeIntent.Back) }
+    BackHandler(enabled = state.handlesBack || uiState.options.skipPrompt != null) {
+        when {
+            uiState.options.skipPrompt != null -> onIntent(TvEpisodeIntent.Back)
+            state.activePanel == TvPlayerPanel.Together && togetherState.joining -> onTogetherIntent(TvTogetherIntent.CancelJoin)
+            state.activePanel == TvPlayerPanel.Together && togetherState.confirmLeave -> onTogetherIntent(
+                TvTogetherIntent.CancelLeave,
+            )
+
+            else -> onIntent(TvEpisodeIntent.Back)
+        }
+    }
 
     Box(
         modifier
             .fillMaxSize()
             .background(Color.Black)
+            .onSizeChanged { onIntent(TvEpisodeIntent.ViewportChanged(it.width, it.height)) }
             .tvFocusNavSignal(focus)
             .onPreviewKeyEvent(::handleKey)
             .tvFocusAnchor(focus, TvPlayerFocus.Root)
@@ -182,16 +241,23 @@ fun TvEpisodeScreen(
             .focusable(),
     ) {
         // canFocus=false: 嵌入的播放器 View 不参与焦点 (空间搜索落进去会"看不见的焦点"死角)
-        video(Modifier.fillMaxSize().focusProperties { canFocus = false })
+        video(
+            Modifier
+                .fillMaxSize()
+                .focusProperties { canFocus = false },
+        )
         resolver()
-        danmaku(Modifier.fillMaxSize())
+        if (uiState.options.danmakuEnabled) danmaku(Modifier.fillMaxSize())
 
         // 取源/加载状态
         val loading = loadingState
+        val sourceError = uiState.sources.error
+        val noResults =
+            !uiState.sources.loading && uiState.sources.groups.none { group -> group.items.any { it.excludedReason == null } } && selectedMedia == null
         if (loading !is VideoLoadingState.Succeed) {
             Text(
-                text = when (loading) {
-                    is VideoLoadingState.Failed -> "加载失败: $loading"
+                text = sourceError ?: if (noResults) "没有找到可用资源，按菜单键重新选源" else when (loading) {
+                    is VideoLoadingState.Failed -> "播放失败，按菜单键选择其他数据源"
                     VideoLoadingState.Initial, VideoLoadingState.ResolvingSource -> "正在取源…"
                     else -> "加载中…"
                 },
@@ -202,6 +268,17 @@ fun TvEpisodeScreen(
                 style = MaterialTheme.typography.titleMedium,
                 color = Color.White,
             )
+        }
+        if (loadingState is VideoLoadingState.Failed || sourceError != null || noResults) {
+            Column(
+                Modifier
+                    .align(Alignment.Center)
+                    .padding(top = 105.dp)
+                    .width(260.dp),
+            ) {
+                TvOptionRow("重试播放") { onIntent(TvEpisodeIntent.RetryPlayback) }
+                TvOptionRow("选择其他数据源") { onIntent(TvEpisodeIntent.OpenSourceDialog) }
+            }
         }
 
         // 控制层
@@ -235,13 +312,14 @@ fun TvEpisodeScreen(
                     AspectRatioMode.CROP -> "裁剪"
                 },
                 activePanel = state.activePanel,
+                options = uiState.options,
                 seekBarModifier = Modifier
                     .tvFocusAnchor(focus, TvPlayerFocus.SeekBar)
                     // 显式方向链接: 上达胶囊行首钮, 下达图标行首钮 ——
                     // 空间搜索会落到不可见的视频/根节点 (§14.4-4 边缘元素显式声明去向)
                     .tvFocusLink(
                         focus,
-                        up = PanelChipKey(TvPlayerPanel.Recommendations),
+                        up = PanelChipKey(TvPlayerPanel.Collection),
                         down = TvPlayerFocus.IconRowEntry,
                     )
                     .focusable(),
@@ -251,6 +329,10 @@ fun TvEpisodeScreen(
                 seekBackButtonModifier = Modifier
                     .tvFocusAnchor(focus, TvPlayerFocus.IconRowEntry)
                     .tvFocusLink(focus, up = TvPlayerFocus.SeekBar),
+                sourceButtonModifier = Modifier.tvFocusAnchor(focus, TvPlayerFocus.SourceButton),
+                speedButtonModifier = Modifier.tvFocusAnchor(focus, TvPlayerFocus.SpeedButton),
+                subtitleButtonModifier = Modifier.tvFocusAnchor(focus, TvPlayerFocus.SubtitleButton),
+                episodesButtonModifier = Modifier.tvFocusAnchor(focus, TvPlayerFocus.EpisodesButton),
                 capsuleAnchor = { panel -> Modifier.tvFocusAnchor(focus, PanelChipKey(panel)) },
                 onTogglePanel = { panel ->
                     onIntent(TvEpisodeIntent.TogglePanel(panel))
@@ -258,17 +340,33 @@ fun TvEpisodeScreen(
                 panelHost = state.activePanel?.let { panel ->
                     @Composable {
                         val relatedSubjects = uiState.panel.relatedSubjects
-                        val staff = uiState.panel.staff
-                        val characters = uiState.panel.characters
                         val danmakuList = uiState.panel.danmaku
                         val comments = if (panel == TvPlayerPanel.Comments) {
                             commentsPager.collectAsLazyPagingItems()
                         } else null
-                        TvPlayerPanelHost(
+                        val panelModifier = Modifier
+                            .tvFocusAnchor(focus, TvPlayerFocus.PanelHost)
+                            .tvFocusExit(focus, FocusDirection.Down to PanelChipKey(panel))
+                        val entryModifier = Modifier.tvFocusAnchor(focus, TvPlayerFocus.PanelEntry)
+                        if (panel in setOf(
+                                TvPlayerPanel.Collection,
+                                TvPlayerPanel.DanmakuSettings,
+                                TvPlayerPanel.VideoSettings,
+                                TvPlayerPanel.Together,
+                            )
+                        ) {
+                            TvInteractivePanel(
+                                panel,
+                                uiState,
+                                togetherState,
+                                onIntent,
+                                onTogetherIntent,
+                                entryModifier,
+                                panelModifier,
+                            )
+                        } else TvPlayerPanelHost(
                             panel = panel,
                             relatedSubjects = relatedSubjects,
-                            staff = staff,
-                            characters = characters,
                             comments = comments,
                             danmakuList = danmakuList,
                             panelModifier = Modifier
@@ -285,8 +383,11 @@ fun TvEpisodeScreen(
                 onNextEpisode = { onIntent(TvEpisodeIntent.NextEpisode) },
                 onSeekForward = { onIntent(TvEpisodeIntent.SeekForward) },
                 onOpenSourceDialog = { onIntent(TvEpisodeIntent.OpenSourceDialog) },
-                onCycleSpeed = { onIntent(TvEpisodeIntent.CycleSpeed) },
+                onOpenSpeed = { onIntent(TvEpisodeIntent.OpenDialog(TvPlayerDialog.Speed)) },
                 onCycleAspect = { onIntent(TvEpisodeIntent.CycleAspectRatio) },
+                onToggleDanmaku = { onIntent(TvEpisodeIntent.ToggleDanmaku) },
+                onSubtitles = { onIntent(TvEpisodeIntent.OpenDialog(TvPlayerDialog.Subtitles)) },
+                onEpisodes = { onIntent(TvEpisodeIntent.OpenDialog(TvPlayerDialog.Episodes)) },
                 episodeStrip = {
                     // 选集条滑入/滑出 250ms (附录 A); 收起后离开组合, 卡片锚点随之脱离
                     AnimatedVisibility(
@@ -310,6 +411,7 @@ fun TvEpisodeScreen(
                             currentCardModifier = Modifier
                                 .tvFocusAnchor(focus, TvPlayerFocus.StripCurrent),
                             onClickEpisode = { onIntent(TvEpisodeIntent.SelectEpisode(it.episodeId)) },
+                            onLongClickEpisode = { onIntent(TvEpisodeIntent.EpisodeActions(it.episodeId)) },
                         )
                     }
                 },
@@ -319,26 +421,131 @@ fun TvEpisodeScreen(
         // 按住倍速指示
         if (state.speedHolding) {
             PlayerCenterCapsule(
-                "${formatSpeedLabel(TV_SPEED_HOLD_FACTOR)} 快进中 ▶▶",
-                Modifier.align(Alignment.TopCenter).padding(top = 48.dp),
+                "${formatSpeedLabel(uiState.options.videoConfig.fastForwardSpeed)} 快进中 ▶▶",
+                Modifier
+                    .align(Alignment.TopCenter)
+                    .padding(top = 48.dp),
             )
-        }
-
-        // 中央闪烁 (±5s 静默 seek 反馈)
-        state.seekFlash?.let { (text, _) ->
-            PlayerCenterCapsule(text, Modifier.align(Alignment.Center))
         }
 
         // 数据源选择弹窗 (最上层)
         if (state.sourceDialogVisible) {
             TvPlayerSourceDialog(
-                candidates = mediaCandidates,
+                state = uiState.sources,
                 selected = selectedMedia,
-                listState = dialogListState,
                 containerModifier = Modifier.tvFocusAnchor(focus, TvPlayerFocus.SourceDialog),
                 entryAnchorModifier = Modifier
                     .tvFocusAnchor(focus, TvPlayerFocus.SourceDialogEntry),
-                onSelect = { onIntent(TvEpisodeIntent.SelectMedia(it)) },
+                onIntent = onIntent,
+            )
+        }
+        state.dialog?.let { dialog ->
+            val entryModifier = Modifier.tvFocusAnchor(focus, TvPlayerFocus.DialogEntry)
+            TvOptionModal(
+                when (dialog) {
+                    TvPlayerDialog.Speed -> "播放速度"
+                    TvPlayerDialog.Subtitles -> "字幕"
+                    TvPlayerDialog.Episodes -> "全部剧集"
+                    TvPlayerDialog.EpisodeActions -> "剧集操作"
+                    TvPlayerDialog.DanmakuMatch -> "匹配弹幕"
+                },
+                Modifier.tvFocusAnchor(focus, TvPlayerFocus.DialogHost),
+                subtitle = when (dialog) {
+                    TvPlayerDialog.Episodes -> "${stripEpisodes.size} 集 · 确认播放 · 长按更改已看状态"
+                    TvPlayerDialog.Speed -> "上下选择 · 确认应用"
+                    TvPlayerDialog.DanmakuMatch -> "搜索番剧，选择对应剧集的弹幕"
+                    else -> null
+                },
+                width = if (dialog == TvPlayerDialog.Episodes) 520.dp else 480.dp,
+            ) {
+                when (dialog) {
+                    TvPlayerDialog.Speed -> TvSpeedDialog(uiState, onIntent, entryModifier)
+                    TvPlayerDialog.Subtitles -> LazyColumn {
+                        item {
+                            TvOptionRow(
+                                "关闭字幕",
+                                modifier = entryModifier,
+                                selected = uiState.options.selectedSubtitleId == null,
+                            ) { onIntent(TvEpisodeIntent.SelectSubtitle(null)) }
+                        }
+                        items(uiState.options.subtitles, key = { it.id }) { subtitle ->
+                            TvOptionRow(
+                                subtitle.label,
+                                selected = subtitle.id == uiState.options.selectedSubtitleId,
+                            ) { onIntent(TvEpisodeIntent.SelectSubtitle(subtitle.id)) }
+                        }
+                        if (uiState.options.subtitles.isEmpty()) item {
+                            Text(
+                                "此资源没有可切换的字幕",
+                                color = TvPlayerSurfaceDefaults.Muted,
+                                modifier = Modifier.padding(horizontal = 16.dp, vertical = 12.dp),
+                            )
+                        }
+                    }
+
+                    TvPlayerDialog.Episodes -> {
+                        val grid = rememberLazyGridState()
+                        LaunchedEffect(Unit) {
+                            val index = stripEpisodes.indexOfFirst { it.episodeId == currentEpisodeId }.coerceAtLeast(0)
+                            grid.scrollToItem(index)
+                            focus.request(TvPlayerFocus.DialogEntry)
+                        }
+                        LazyVerticalGrid(
+                            columns = GridCells.Fixed(2), state = grid,
+                            horizontalArrangement = Arrangement.spacedBy(16.dp),
+                            verticalArrangement = Arrangement.spacedBy(16.dp),
+                            contentPadding = PaddingValues(8.dp),
+                        ) {
+                            items(stripEpisodes, key = { it.episodeId }) { episode ->
+                                EpisodeStripCard(
+                                    episode,
+                                    episode.episodeId == currentEpisodeId,
+                                    { onIntent(TvEpisodeIntent.SelectEpisode(episode.episodeId)) },
+                                    modifier = if (episode.episodeId == currentEpisodeId) entryModifier else Modifier,
+                                    onLongClick = { onIntent(TvEpisodeIntent.EpisodeActions(episode.episodeId)) },
+                                )
+                            }
+                        }
+                    }
+
+                    TvPlayerDialog.EpisodeActions -> {
+                        val episode = stripEpisodes.find { it.episodeId == uiState.options.episodeActionId }
+                        if (episode != null) {
+                            TvOptionRow("播放 ${episode.sortLabel}", modifier = entryModifier) {
+                                onIntent(
+                                    TvEpisodeIntent.SelectEpisode(episode.episodeId),
+                                )
+                            }
+                            TvOptionRow(if (episode.watched) "标记为未看" else "标记为已看") {
+                                onIntent(
+                                    TvEpisodeIntent.SetEpisodeWatched(
+                                        episode.episodeId,
+                                        !episode.watched,
+                                    ),
+                                )
+                            }
+                        }
+                    }
+
+                    TvPlayerDialog.DanmakuMatch -> TvDanmakuMatchPanel(uiState.danmakuMatch, onIntent, entryModifier)
+                }
+            }
+        }
+        uiState.options.skipPrompt?.let { prompt ->
+            PlayerCenterCapsule(
+                "${prompt.secondsRemaining} 秒后跳过 ${prompt.name} · 按返回取消",
+                Modifier
+                    .align(Alignment.TopEnd)
+                    .padding(top = 100.dp, end = 48.dp)
+                    .testTag("tv-auto-skip-popup"),
+            )
+        }
+        uiState.options.message?.let { message ->
+            PlayerCenterCapsule(
+                message,
+                Modifier
+                    .align(Alignment.TopCenter)
+                    .padding(top = 100.dp),
             )
         }
     }
@@ -349,9 +556,9 @@ private fun PlayerCenterCapsule(text: String, modifier: Modifier = Modifier) {
     Text(
         text,
         modifier
-            .background(Color.Black.copy(alpha = 0.6f), RoundedCornerShape(24.dp))
-            .padding(horizontal = 18.dp, vertical = 10.dp),
-        style = MaterialTheme.typography.titleMedium,
+            .background(TvPlayerSurfaceDefaults.Container, RoundedCornerShape(28.dp))
+            .padding(horizontal = 20.dp, vertical = 12.dp),
+        style = MaterialTheme.typography.titleSmall,
         color = Color.White,
     )
 }
@@ -376,6 +583,7 @@ private fun Key.toTvRemoteKey(): TvRemoteKey = when (this) {
     Key.MediaPlayPause -> TvRemoteKey.PlayPause
     Key.MediaPlay -> TvRemoteKey.Play
     Key.MediaPause -> TvRemoteKey.Pause
+    Key.Menu -> TvRemoteKey.Menu
     Key.MediaFastForward, Key.MediaSkipForward, Key.MediaNext -> TvRemoteKey.Next
     Key.MediaRewind, Key.MediaSkipBackward, Key.MediaPrevious -> TvRemoteKey.Previous
     else -> TvRemoteKey.Other

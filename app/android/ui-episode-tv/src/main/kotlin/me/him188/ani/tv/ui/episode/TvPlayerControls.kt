@@ -9,23 +9,38 @@
 
 package me.him188.ani.tv.ui.episode
 
+import androidx.compose.foundation.Canvas
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
+import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.lazy.LazyRow
+import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.AspectRatio
+import androidx.compose.material.icons.rounded.ChatBubbleOutline
 import androidx.compose.material.icons.rounded.Forward30
 import androidx.compose.material.icons.rounded.Replay10
 import androidx.compose.material.icons.rounded.SkipNext
 import androidx.compose.material.icons.rounded.Speed
+import androidx.compose.material.icons.rounded.Subtitles
 import androidx.compose.material.icons.rounded.SwitchVideo
+import androidx.compose.material.icons.rounded.ViewModule
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -33,10 +48,18 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.focus.onFocusChanged
+import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.compositeOver
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.tv.material3.ClickableSurfaceDefaults
@@ -48,20 +71,20 @@ import me.him188.ani.tv.ui.foundation.widgets.TvSeekBar
 
 /**
  * 播放器控制层样式 (atv-architecture.md §8.3 / 附录 A):
- * scrim 380/180dp 黑渐变; 播放器系焦点视觉 = 白底黑内容整块反色.
+ * 固定高度的底部黑渐变; 播放器系焦点视觉 = 浅底深色内容整块反色.
  */
 internal object TvPlayerControlsDefaults {
     /** 内容水平安全边距 (overscan 48dp). */
     val HorizontalPadding: Dp = 48.dp
 
     /** 聚焦反色: 底. */
-    val FocusedContainer: Color = Color.White
+    val FocusedContainer: Color = TvPlayerSurfaceDefaults.FocusedContainer
 
     /** 聚焦反色: 内容. */
-    val FocusedContent: Color = Color.Black
+    val FocusedContent: Color = TvPlayerSurfaceDefaults.FocusedContent
 
     /** 胶囊底色 (未聚焦). */
-    val CapsuleContainer: Color = Color.White.copy(alpha = 0.16f)
+    val CapsuleContainer: Color = TvPlayerSurfaceDefaults.Raised.copy(alpha = .94f)
 
     /** 主内容色. */
     val Content: Color = Color.White
@@ -76,7 +99,6 @@ internal object TvPlayerControlsDefaults {
  *
  * 纯视图组件: 焦点锚点/按键语义由 Screen 组装成 modifier 注入
  * ([seekBarModifier]/[iconRowModifier], §14.7-2), 本层只画状态.
- * 胶囊行在浮出面板落地前为静态信息 (M5 面板接入后改为按钮).
  */
 @Composable
 internal fun TvPlayerControlsOverlay(
@@ -91,36 +113,59 @@ internal fun TvPlayerControlsOverlay(
     speedLabel: String,
     aspectLabel: String,
     activePanel: TvPlayerPanel?,
+    options: TvPlayerOptionsState,
     seekBarModifier: Modifier,
     iconRowModifier: Modifier,
     seekBackButtonModifier: Modifier,
+    sourceButtonModifier: Modifier,
+    speedButtonModifier: Modifier,
+    subtitleButtonModifier: Modifier,
+    episodesButtonModifier: Modifier,
     capsuleAnchor: (TvPlayerPanel) -> Modifier,
     onTogglePanel: (TvPlayerPanel) -> Unit,
     onSeekBack: () -> Unit,
     onNextEpisode: () -> Unit,
     onSeekForward: () -> Unit,
     onOpenSourceDialog: () -> Unit,
-    onCycleSpeed: () -> Unit,
+    onOpenSpeed: () -> Unit,
     onCycleAspect: () -> Unit,
+    onToggleDanmaku: () -> Unit,
+    onSubtitles: () -> Unit,
+    onEpisodes: () -> Unit,
     modifier: Modifier = Modifier,
     panelHost: (@Composable () -> Unit)? = null,
     episodeStrip: (@Composable () -> Unit)? = null,
 ) {
     Box(modifier.fillMaxSize()) {
+        // Keep the scrim independent of panel height so opening a panel cannot wash out the controls.
+        Box(
+            Modifier
+                .align(Alignment.BottomCenter)
+                .fillMaxWidth()
+                .height(300.dp)
+                .background(
+                    Brush.verticalGradient(
+                        0f to Color.Transparent,
+                        .4f to Color.Black.copy(alpha = .72f),
+                        1f to Color.Black.copy(alpha = .96f),
+                    ),
+                ),
+        )
         // 顶部 scrim + 标题/时钟
         Row(
             Modifier
                 .fillMaxWidth()
                 .background(
                     Brush.verticalGradient(
-                        0f to Color.Black.copy(alpha = 0.75f),
+                        0f to Color.Black.copy(alpha = 0.85f),
+                        .65f to Color.Black.copy(alpha = 0.65f),
                         1f to Color.Transparent,
                     ),
                 )
                 .padding(
                     start = TvPlayerControlsDefaults.HorizontalPadding,
                     end = TvPlayerControlsDefaults.HorizontalPadding,
-                    top = 24.dp,
+                    top = 28.dp,
                     bottom = 40.dp,
                 ),
         ) {
@@ -129,12 +174,16 @@ internal fun TvPlayerControlsOverlay(
                     title.subjectName,
                     style = MaterialTheme.typography.headlineSmall,
                     color = TvPlayerControlsDefaults.Content,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
                 )
                 Text(
                     title.episodeLine,
                     Modifier.padding(top = 4.dp),
                     style = MaterialTheme.typography.titleSmall,
                     color = TvPlayerControlsDefaults.SecondaryContent,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
                 )
             }
             Text(
@@ -149,28 +198,96 @@ internal fun TvPlayerControlsOverlay(
             Modifier
                 .align(Alignment.BottomCenter)
                 .fillMaxWidth()
-                .background(
-                    Brush.verticalGradient(
-                        0f to Color.Transparent,
-                        0.45f to Color.Black.copy(alpha = 0.55f),
-                        1f to Color.Black.copy(alpha = 0.88f),
-                    ),
-                )
-                .padding(top = 56.dp, bottom = 20.dp),
+                .padding(top = 12.dp, bottom = 28.dp),
         ) {
             Column(Modifier.padding(horizontal = TvPlayerControlsDefaults.HorizontalPadding)) {
-                // 浮出面板宿主: 胶囊行上方透明区 (§8.3)
-                panelHost?.invoke()
+                val capsuleList = rememberLazyListState()
+                val density = LocalDensity.current
+                // Anchor the panel to the visible trigger; clamp the last pills to the safe right edge.
+                if (panelHost != null && activePanel != null) BoxWithConstraints(
+                    Modifier
+                        .fillMaxWidth()
+                        .padding(bottom = 12.dp),
+                ) {
+                    val triggerOffset =
+                        capsuleList.layoutInfo.visibleItemsInfo.firstOrNull { it.index == activePanel.ordinal }?.offset
+                            ?: 0
+                    val start = with(density) { triggerOffset.toDp() }.coerceIn(
+                        0.dp,
+                        (maxWidth - activePanel.width).coerceAtLeast(0.dp),
+                    )
+                    Box(Modifier.offset(x = start)) { panelHost() }
+                }
 
                 // 功能胶囊行: 确认开/关对应浮出面板
-                Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                    TvPlayerPanel.entries.forEach { panel ->
+                LazyRow(
+                    state = capsuleList,
+                    horizontalArrangement = Arrangement.spacedBy(12.dp),
+                    contentPadding = PaddingValues(horizontal = 4.dp, vertical = 4.dp),
+                ) {
+                    items(TvPlayerPanel.entries) { panel ->
                         CapsuleChipButton(
                             panel = panel,
                             active = activePanel == panel,
                             onClick = { onTogglePanel(panel) },
                             modifier = capsuleAnchor(panel),
+                            label = when (panel) {
+                                TvPlayerPanel.Collection -> options.collectionType.tvLabel()
+                                TvPlayerPanel.Recommendations -> "推荐"
+                                TvPlayerPanel.VideoSettings -> "画质"
+                                else -> panel.title
+                            },
                         )
+                    }
+                }
+
+                if (scrubMillis != null) {
+                    Row(
+                        Modifier
+                            .fillMaxWidth()
+                            .padding(top = 12.dp, bottom = 4.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.Center,
+                    ) {
+                        Box(
+                            Modifier
+                                .width(192.dp)
+                                .height(108.dp)
+                                .shadow(8.dp, RoundedCornerShape(12.dp))
+                                .clip(RoundedCornerShape(12.dp))
+                                .background(TvPlayerSurfaceDefaults.Container),
+                        ) {
+                            options.preview?.let {
+                                Image(
+                                    it,
+                                    contentDescription = "目标位置画面预览",
+                                    modifier = Modifier.fillMaxSize(),
+                                    contentScale = ContentScale.Fit,
+                                )
+                            }
+                            if (options.preview == null) Text(
+                                if (options.previewLoading) "正在加载预览…" else "暂无画面预览",
+                                modifier = Modifier.align(Alignment.Center),
+                                style = MaterialTheme.typography.bodySmall,
+                                color = Color.LightGray,
+                            )
+                        }
+                        Column(Modifier.padding(start = 16.dp)) {
+                            Text(
+                                formatTime(scrubMillis),
+                                color = Color.White,
+                                style = MaterialTheme.typography.titleLarge,
+                            )
+                            Text(
+                                "预览位置",
+                                color = TvPlayerSurfaceDefaults.Muted,
+                                style = MaterialTheme.typography.bodySmall,
+                            )
+                            Row(Modifier.padding(top = 12.dp), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                                TvRemoteHint("确认", "跳转")
+                                TvRemoteHint("返回", "取消")
+                            }
+                        }
                     }
                 }
 
@@ -179,7 +296,7 @@ internal fun TvPlayerControlsOverlay(
                 Row(
                     Modifier
                         .fillMaxWidth()
-                        .padding(top = 18.dp),
+                        .padding(top = 12.dp),
                     verticalAlignment = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.spacedBy(16.dp),
                 ) {
@@ -206,6 +323,21 @@ internal fun TvPlayerControlsOverlay(
                             scrubMillis = scrubMillis,
                             showDot = seekBarFocused,
                         )
+                        Canvas(
+                            Modifier
+                                .fillMaxWidth()
+                                .height(16.dp),
+                        ) {
+                            if (durationMillis > 0) options.chapters.forEach { chapter ->
+                                val x = size.width * (chapter.offsetMillis.toFloat() / durationMillis).coerceIn(0f, 1f)
+                                drawLine(
+                                    Color.White.copy(alpha = .7f),
+                                    Offset(x, size.height / 2 - 3.dp.toPx()),
+                                    Offset(x, size.height / 2 + 3.dp.toPx()),
+                                    2.dp.toPx(),
+                                )
+                            }
+                        }
                     }
                     Text(
                         formatTime(durationMillis),
@@ -221,33 +353,50 @@ internal fun TvPlayerControlsOverlay(
                         .padding(top = 14.dp),
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
-                    Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                    Row(
+                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
                         PlayerIconButton(
                             Icons.Rounded.Replay10,
+                            label = "后退 10 秒",
                             onClick = onSeekBack,
                             modifier = seekBackButtonModifier,
                         )
-                        PlayerIconButton(Icons.Rounded.SkipNext, onClick = onNextEpisode)
-                        PlayerIconButton(Icons.Rounded.Forward30, onClick = onSeekForward)
+                        PlayerIconButton(Icons.Rounded.SkipNext, "下一集", onClick = onNextEpisode)
+                        PlayerIconButton(Icons.Rounded.Forward30, "前进 30 秒", onClick = onSeekForward)
+                        PlayerLabelButton(Icons.Rounded.ViewModule, "选集", onEpisodes, episodesButtonModifier)
+                        PlayerLabelButton(
+                            Icons.Rounded.ChatBubbleOutline,
+                            if (options.danmakuEnabled) "弹幕开" else "弹幕关",
+                            onToggleDanmaku,
+                            Modifier.testTag("tv-danmaku-toggle"),
+                        )
                     }
                     Box(Modifier.weight(1f))
                     Row(
-                        horizontalArrangement = Arrangement.spacedBy(12.dp),
+                        horizontalArrangement = Arrangement.spacedBy(4.dp),
                         verticalAlignment = Alignment.CenterVertically,
                     ) {
                         PlayerLabelButton(
                             Icons.Rounded.SwitchVideo,
-                            mediaLabel ?: "数据源",
+                            "选源",
                             onClick = onOpenSourceDialog,
+                            modifier = sourceButtonModifier.testTag("tv-source-button"),
                         )
-                        PlayerLabelButton(Icons.Rounded.Speed, speedLabel, onClick = onCycleSpeed)
+                        PlayerLabelButton(
+                            Icons.Rounded.Speed,
+                            speedLabel,
+                            onClick = onOpenSpeed,
+                            modifier = speedButtonModifier.testTag("tv-speed-button"),
+                        )
+                        if (options.supportsSubtitles) PlayerLabelButton(
+                            Icons.Rounded.Subtitles,
+                            "字幕",
+                            onSubtitles,
+                            subtitleButtonModifier,
+                        )
                         PlayerLabelButton(Icons.Rounded.AspectRatio, aspectLabel, onClick = onCycleAspect)
-                        Text(
-                            playStateLabel,
-                            Modifier.padding(start = 6.dp),
-                            style = MaterialTheme.typography.labelLarge,
-                            color = TvPlayerControlsDefaults.SecondaryContent,
-                        )
                     }
                 }
             }
@@ -264,6 +413,7 @@ private fun CapsuleChipButton(
     active: Boolean,
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
+    label: String = panel.title,
 ) {
     Surface(
         onClick = onClick,
@@ -271,7 +421,7 @@ private fun CapsuleChipButton(
         shape = ClickableSurfaceDefaults.shape(CircleShape),
         colors = ClickableSurfaceDefaults.colors(
             containerColor = if (active) {
-                Color.White.copy(alpha = 0.32f)
+                MaterialTheme.colorScheme.primary.copy(alpha = .22f).compositeOver(TvPlayerSurfaceDefaults.Container)
             } else {
                 TvPlayerControlsDefaults.CapsuleContainer
             },
@@ -279,15 +429,17 @@ private fun CapsuleChipButton(
             contentColor = TvPlayerControlsDefaults.Content,
             focusedContentColor = TvPlayerControlsDefaults.FocusedContent,
         ),
-        scale = ClickableSurfaceDefaults.scale(focusedScale = 1f),
+        scale = ClickableSurfaceDefaults.scale(focusedScale = 1.05f),
     ) {
         Row(
-            Modifier.padding(horizontal = 16.dp, vertical = 9.dp),
+            Modifier
+                .heightIn(min = 40.dp)
+                .padding(horizontal = 14.dp, vertical = 10.dp),
             horizontalArrangement = Arrangement.spacedBy(8.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
             Icon(panel.icon, contentDescription = null, Modifier.size(18.dp))
-            Text(panel.title, style = MaterialTheme.typography.labelLarge)
+            Text(label, style = MaterialTheme.typography.labelLarge)
         }
     }
 }
@@ -296,6 +448,7 @@ private fun CapsuleChipButton(
 @Composable
 private fun PlayerIconButton(
     icon: ImageVector,
+    label: String,
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
@@ -306,7 +459,12 @@ private fun PlayerIconButton(
         colors = playerInverseSurfaceColors(),
         scale = ClickableSurfaceDefaults.scale(focusedScale = 1f),
     ) {
-        Icon(icon, contentDescription = null, Modifier.padding(8.dp).size(26.dp))
+        Icon(
+            icon, contentDescription = label,
+            Modifier
+                .padding(10.dp)
+                .size(24.dp),
+        )
     }
 }
 
@@ -326,7 +484,9 @@ private fun PlayerLabelButton(
         scale = ClickableSurfaceDefaults.scale(focusedScale = 1f),
     ) {
         Row(
-            Modifier.padding(horizontal = 12.dp, vertical = 8.dp),
+            Modifier
+                .heightIn(min = 44.dp)
+                .padding(horizontal = 12.dp, vertical = 10.dp),
             horizontalArrangement = Arrangement.spacedBy(6.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {

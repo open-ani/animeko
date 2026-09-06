@@ -9,6 +9,8 @@
 
 package me.him188.ani.tv.ui.episode
 
+import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.runBlocking
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
@@ -23,7 +25,9 @@ class TvPlayerStateMachineTest {
             commands += command
             when (command) {
                 TvPlaybackCommand.TogglePause -> playback = playback.copy(playing = !playback.playing)
-                is TvPlaybackCommand.SeekBy -> playback = playback.copy(positionMillis = playback.positionMillis + command.deltaMillis)
+                is TvPlaybackCommand.SeekBy -> playback =
+                    playback.copy(positionMillis = playback.positionMillis + command.deltaMillis)
+
                 else -> Unit
             }
         }
@@ -34,14 +38,14 @@ class TvPlayerStateMachineTest {
     }
 
     @Test
-    fun `first arrow seeks immediately and rapid repeat enters preview without committing`() {
+    fun `arrows only preview and confirm commits once`() {
         val f = Fixture()
         f.key(TvRemoteKey.Right, time = 100) // Includes events near boot; no phantom previous press.
-        assertEquals(listOf<TvPlaybackCommand>(TvPlaybackCommand.SeekBy(5_000)), f.commands)
-        assertNull(f.state.scrubMillis)
+        assertTrue(f.commands.isEmpty())
+        assertEquals(25_000L, f.state.scrubMillis)
         f.key(TvRemoteKey.Right, time = 500)
         assertEquals(30_000L, f.state.scrubMillis)
-        assertEquals(1, f.commands.size)
+        assertTrue(f.commands.isEmpty())
         f.key(TvRemoteKey.Confirm)
         assertEquals(TvPlaybackCommand.SeekTo(30_000), f.commands.last())
         assertNull(f.state.scrubMillis)
@@ -55,7 +59,7 @@ class TvPlayerStateMachineTest {
         f.machine.onIntent(TvEpisodeIntent.Back)
         assertNull(f.state.scrubMillis)
         assertTrue(f.state.controlsVisible)
-        assertEquals(listOf<TvPlaybackCommand>(TvPlaybackCommand.SeekBy(5_000)), f.commands)
+        assertTrue(f.commands.isEmpty())
     }
 
     @Test
@@ -79,7 +83,10 @@ class TvPlayerStateMachineTest {
         assertTrue(f.state.speedHolding)
         f.key(TvRemoteKey.Confirm, down = false)
         assertFalse(f.state.speedHolding)
-        assertEquals(listOf<TvPlaybackCommand>(TvPlaybackCommand.SpeedHold(true), TvPlaybackCommand.SpeedHold(false)), f.commands)
+        assertEquals(
+            listOf<TvPlaybackCommand>(TvPlaybackCommand.SpeedHold(true), TvPlaybackCommand.SpeedHold(false)),
+            f.commands,
+        )
     }
 
     @Test
@@ -90,7 +97,10 @@ class TvPlayerStateMachineTest {
         f.key(TvRemoteKey.Confirm, repeats = 1)
         f.machine.onIntent(TvEpisodeIntent.ReleaseHeldSpeed)
         f.key(TvRemoteKey.Confirm, down = false)
-        assertEquals(listOf<TvPlaybackCommand>(TvPlaybackCommand.SpeedHold(true), TvPlaybackCommand.SpeedHold(false)), f.commands)
+        assertEquals(
+            listOf<TvPlaybackCommand>(TvPlaybackCommand.SpeedHold(true), TvPlaybackCommand.SpeedHold(false)),
+            f.commands,
+        )
     }
 
     @Test
@@ -105,14 +115,12 @@ class TvPlayerStateMachineTest {
     }
 
     @Test
-    fun `back dismisses source then panel then controls then lets navigation handle it`() {
+    fun `source replaces open panel and back returns to controller`() {
         val f = Fixture()
-        f.machine.onIntent(TvEpisodeIntent.TogglePanel(TvPlayerPanel.Staff))
+        f.machine.onIntent(TvEpisodeIntent.TogglePanel(TvPlayerPanel.DanmakuSettings))
         f.machine.onIntent(TvEpisodeIntent.OpenSourceDialog)
         assertTrue(f.machine.onIntent(TvEpisodeIntent.Back))
         assertFalse(f.state.sourceDialogVisible)
-        assertEquals(TvPlayerPanel.Staff, f.state.activePanel)
-        f.machine.onIntent(TvEpisodeIntent.Back)
         assertNull(f.state.activePanel)
         assertTrue(f.state.controlsVisible)
         f.machine.onIntent(TvEpisodeIntent.Back)
@@ -127,7 +135,19 @@ class TvPlayerStateMachineTest {
         assertTrue(f.key(TvRemoteKey.Right))
         assertTrue(f.key(TvRemoteKey.Confirm))
         assertTrue(f.commands.isEmpty())
-        assertFalse(f.machine.onIntent(TvEpisodeIntent.RemoteKey(TvRemoteKey.Right, true, 0, 1_000, false, false, true)))
+        assertFalse(
+            f.machine.onIntent(
+                TvEpisodeIntent.RemoteKey(
+                    TvRemoteKey.Right,
+                    true,
+                    0,
+                    1_000,
+                    false,
+                    false,
+                    true,
+                ),
+            ),
+        )
     }
 
     @Test
@@ -169,13 +189,53 @@ class TvPlayerStateMachineTest {
     }
 
     @Test
-    fun `old flash expiry does not clear newer feedback`() {
+    fun `menu closes source panel and restores controller without playback commands`() {
         val f = Fixture()
+        f.machine.onIntent(TvEpisodeIntent.OpenSourceDialog)
+        f.key(TvRemoteKey.Menu)
+        assertFalse(f.state.sourceDialogVisible)
+        assertTrue(f.state.controlsVisible)
+        assertTrue(f.commands.isEmpty())
+    }
+
+    @Test
+    fun `unknown duration cannot enter seek preview`() {
+        val f = Fixture()
+        f.playback = f.playback.copy(durationMillis = 0)
         f.key(TvRemoteKey.Right)
-        val oldFlash = f.state.seekFlash!!
-        f.key(TvRemoteKey.Left, time = 2_000)
-        f.machine.clearFlash(oldFlash)
-        assertEquals("-5 秒", f.state.seekFlash?.first)
+        assertNull(f.state.scrubMillis)
+        assertTrue(f.commands.isEmpty())
+    }
+
+    @Test
+    fun `speed dialog traps playback navigation and prevents auto hide`() {
+        val f = Fixture()
+        f.machine.onIntent(TvEpisodeIntent.OpenDialog(TvPlayerDialog.Speed))
+        assertFalse(f.key(TvRemoteKey.Right))
+        f.machine.autoHide()
+        assertTrue(f.state.controlsVisible)
+        assertTrue(f.commands.isEmpty())
+        f.machine.onIntent(TvEpisodeIntent.Back)
+        assertNull(f.state.dialog)
+    }
+
+    @Test
+    fun `hidden controller arrows also preview without seeking`() {
+        val f = Fixture()
+        f.machine.onIntent(TvEpisodeIntent.Back)
+        f.key(TvRemoteKey.Left)
+        assertEquals(15_000L, f.state.scrubMillis)
+        assertTrue(f.state.controlsVisible)
+        f.machine.onIntent(TvEpisodeIntent.Back)
+        assertTrue(f.commands.isEmpty())
+    }
+
+    @Test
+    fun `up from operation bar always targets timeline`() = runBlocking {
+        val f = Fixture()
+        assertTrue(f.machine.onIntent(TvEpisodeIntent.RemoteKey(TvRemoteKey.Up, true, 0, 1_000, false, true, false)))
+        assertEquals(TvPlayerFocusRequest.SeekBar, f.machine.focusRequests.first())
+        assertTrue(f.commands.isEmpty())
     }
 
     @Test

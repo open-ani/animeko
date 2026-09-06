@@ -12,9 +12,14 @@ package me.him188.ani.tv.ui.main
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.runtime.DisposableEffect
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.LifecycleEventObserver
+import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.lifecycle.createSavedStateHandle
 import androidx.lifecycle.viewmodel.navigation3.rememberViewModelStoreNavEntryDecorator
 import androidx.navigation3.runtime.entryProvider
@@ -26,12 +31,15 @@ import me.him188.ani.app.navigation.AniNavigator
 import me.him188.ani.app.navigation.LocalNavigator
 import me.him188.ani.app.navigation.MainScreenPage
 import me.him188.ani.app.navigation.NavRoutes
+import me.him188.ani.app.navigation.findLast
 import me.him188.ani.app.navigation.rememberAniBackStack
 import me.him188.ani.tv.ui.collection.TvCollectionRoute
 import me.him188.ani.tv.ui.collection.TvCollectionViewModel
 import me.him188.ani.tv.ui.di.TvAppDependencies
 import me.him188.ani.tv.ui.episode.TvEpisodeRoute
 import me.him188.ani.tv.ui.episode.TvEpisodeViewModel
+import me.him188.ani.tv.ui.episode.TvTogetherIntent
+import me.him188.ani.tv.ui.episode.TvWatchTogetherViewModel
 import me.him188.ani.tv.ui.exploration.TvExplorationRoute
 import me.him188.ani.tv.ui.exploration.TvExplorationViewModel
 import me.him188.ani.tv.ui.foundation.TvNavigationEvent
@@ -68,6 +76,29 @@ fun TvAniAppContent(
     // 主壳焦点记忆放 NavDisplay 之上: 进详情页返回时 Main 条目组合重建, 记忆须跨 route 存活
     // (身份键恢复流程见 TvFocusMemory)
     val shellFocusMemory = remember { TvFocusMemory() }
+    val togetherViewModel = tvViewModel {
+        TvWatchTogetherViewModel(
+            dependencies.watchTogetherManager,
+            dependencies.settingsRepository,
+            dependencies.sessionStateProvider,
+        )
+    }
+    LaunchedEffect(togetherViewModel, aniNavigator) {
+        togetherViewModel.navigationEvents.collect { event ->
+            if (event.replacePlayer) aniNavigator.findLast<NavRoutes.EpisodeDetail>()
+                ?.let { aniNavigator.popBackStack(it, inclusive = true) }
+            aniNavigator.navigateEpisodeDetails(event.subjectId, event.episodeId, force = true)
+        }
+    }
+    val lifecycle = LocalLifecycleOwner.current.lifecycle
+    DisposableEffect(togetherViewModel, lifecycle) {
+        val observer = LifecycleEventObserver { _, event ->
+            if (event == Lifecycle.Event.ON_START) togetherViewModel.onIntent(TvTogetherIntent.Foreground(true))
+            if (event == Lifecycle.Event.ON_STOP) togetherViewModel.onIntent(TvTogetherIntent.Foreground(false))
+        }
+        lifecycle.addObserver(observer)
+        onDispose { lifecycle.removeObserver(observer) }
+    }
 
     val onNavigate: (TvNavigationEvent) -> Unit = { event ->
         when (event) {
@@ -105,27 +136,36 @@ fun TvAniAppContent(
                                     }
                                     TvExplorationRoute(viewModel, onNavigate)
                                 }
+
                                 TvShellContent.Schedule -> {
                                     val viewModel = tvViewModel { TvScheduleViewModel(dependencies.koin) }
                                     TvScheduleRoute(viewModel, onNavigate)
                                 }
+
                                 TvShellContent.Collection -> {
                                     val viewModel = tvViewModel { TvCollectionViewModel(dependencies.koin) }
                                     TvCollectionRoute(viewModel, onNavigate)
                                 }
+
                                 TvShellContent.Search -> {
-                                    val viewModel = tvViewModel { TvSearchViewModel(dependencies.subjectSearchRepository) }
+                                    val viewModel =
+                                        tvViewModel { TvSearchViewModel(dependencies.subjectSearchRepository) }
                                     TvSearchRoute(viewModel, onNavigate)
                                 }
+
                                 TvShellContent.Login -> {
                                     val viewModel = tvViewModel { TvLoginViewModel(dependencies.koin) }
-                                    TvLoginRoute(viewModel, onNavigate = { event ->
-                                        when (event) {
-                                            TvNavigationEvent.LoggedIn -> mainViewModel.onIntent(TvMainIntent.LoggedIn)
-                                            else -> onNavigate(event)
-                                        }
-                                    })
+                                    TvLoginRoute(
+                                        viewModel,
+                                        onNavigate = { event ->
+                                            when (event) {
+                                                TvNavigationEvent.LoggedIn -> mainViewModel.onIntent(TvMainIntent.LoggedIn)
+                                                else -> onNavigate(event)
+                                            }
+                                        },
+                                    )
                                 }
+
                                 TvShellContent.Settings -> {
                                     val viewModel = tvViewModel { TvSettingsViewModel(dependencies.settingsRepository) }
                                     TvSettingsRoute(viewModel)
@@ -163,12 +203,16 @@ fun TvAniAppContent(
                                 danmakuRepository = dependencies.danmakuRepository,
                                 settingsRepository = dependencies.settingsRepository,
                                 getDanmakuRegexFilterListFlowUseCase = dependencies.getDanmakuRegexFilterListFlowUseCase,
-                                subjectRelationsRepository = dependencies.subjectRelationsRepository,
                                 episodeCommentRepository = dependencies.episodeCommentRepository,
                                 bangumiRelatedPeopleService = dependencies.bangumiRelatedPeopleService,
+                                autoSkipRepository = dependencies.autoSkipRepository,
+                                tmdbImageService = dependencies.tmdbImageService,
+                                selectorEpisodeCacheRepository = dependencies.selectorEpisodeCacheRepository,
+                                webSessionManager = dependencies.webSessionManager,
+                                playbackAutomationGate = dependencies.playbackAutomationGate,
                             )
                         }
-                        TvEpisodeRoute(viewModel, onNavigate)
+                        TvEpisodeRoute(viewModel, togetherViewModel, onNavigate)
                     }
                 },
             )

@@ -9,18 +9,23 @@
 
 package me.him188.ani.tv.ui.di
 
+import me.him188.ani.app.data.network.AutoSkipRepository
 import me.him188.ani.app.data.network.BangumiRelatedPeopleService
 import me.him188.ani.app.data.network.BangumiSummaryService
 import me.him188.ani.app.data.network.TmdbImageService
 import me.him188.ani.app.data.repository.episode.EpisodeCollectionRepository
 import me.him188.ani.app.data.repository.episode.EpisodeCommentRepository
+import me.him188.ani.app.data.repository.media.SelectorMediaSourceEpisodeCacheRepository
 import me.him188.ani.app.data.repository.subject.SubjectCollectionRepository
-import me.him188.ani.app.data.repository.subject.SubjectRelationsRepository
 import me.him188.ani.app.data.repository.subject.SubjectSearchRepository
 import me.him188.ani.app.data.repository.user.SettingsRepository
 import me.him188.ani.app.data.repository.user.UserRepository
 import me.him188.ani.app.domain.danmaku.DanmakuRepository
+import me.him188.ani.app.domain.mediasource.web.captcha.WebSessionManager
+import me.him188.ani.app.domain.session.SessionStateProvider
 import me.him188.ani.app.domain.settings.GetDanmakuRegexFilterListFlowUseCase
+import me.him188.ani.app.domain.watchtogether.PlaybackAutomationGate
+import me.him188.ani.app.domain.watchtogether.WatchTogetherManager
 import me.him188.ani.app.ui.subject.details.state.SubjectDetailsStateFactory
 import org.koin.core.Koin
 import org.openani.mediamp.MediampPlayerFactory
@@ -40,9 +45,14 @@ class TvAppDependencies(
     val episodeCollectionRepository: EpisodeCollectionRepository,
     val danmakuRepository: DanmakuRepository,
     val getDanmakuRegexFilterListFlowUseCase: GetDanmakuRegexFilterListFlowUseCase,
-    val subjectRelationsRepository: SubjectRelationsRepository,
     val episodeCommentRepository: EpisodeCommentRepository,
     val bangumiRelatedPeopleService: BangumiRelatedPeopleService,
+    val autoSkipRepository: AutoSkipRepository,
+    val selectorEpisodeCacheRepository: SelectorMediaSourceEpisodeCacheRepository,
+    val webSessionManager: WebSessionManager,
+    val playbackAutomationGate: PlaybackAutomationGate,
+    val watchTogetherManager: WatchTogetherManager,
+    val sessionStateProvider: SessionStateProvider,
 ) {
     companion object {
         fun fromKoin(koin: Koin): TvAppDependencies = TvAppDependencies(
@@ -58,9 +68,14 @@ class TvAppDependencies(
             episodeCollectionRepository = koin.get(),
             danmakuRepository = koin.get(),
             getDanmakuRegexFilterListFlowUseCase = koin.get(),
-            subjectRelationsRepository = koin.get(),
             episodeCommentRepository = koin.get(),
             bangumiRelatedPeopleService = koin.get(),
+            autoSkipRepository = koin.get(),
+            selectorEpisodeCacheRepository = koin.get(),
+            webSessionManager = koin.get(),
+            playbackAutomationGate = koin.get(),
+            watchTogetherManager = koin.get(),
+            sessionStateProvider = koin.get(),
         )
     }
 }
