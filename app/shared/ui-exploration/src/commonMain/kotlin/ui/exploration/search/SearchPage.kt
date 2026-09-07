@@ -79,6 +79,7 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.launch
+import me.him188.ani.app.data.models.schedule.AnimeSeasonId
 import me.him188.ani.app.data.repository.RepositoryNetworkException
 import me.him188.ani.app.domain.search.SearchSort
 import me.him188.ani.app.ui.adaptive.AdaptiveSearchBar
@@ -243,6 +244,39 @@ fun SearchPage(
                                     onIntent(
                                         SearchPageIntent.UpdateQuery(
                                             updatedQuery,
+                                        ),
+                                    )
+                                },
+                                timeFilterState = SearchTimeFilterState(
+                                    selectedYear = state.query.year,
+                                    selectedSeason = state.query.season?.season,
+                                ),
+                                onYearSelected = { year ->
+                                    val currentSeason = state.query.season?.season
+                                    onIntent(
+                                        SearchPageIntent.UpdateQuery(
+                                            state.query.copy(
+                                                year = year,
+                                                season = if (year != null && currentSeason != null) {
+                                                    AnimeSeasonId(year, currentSeason)
+                                                } else {
+                                                    null
+                                                },
+                                            ),
+                                        ),
+                                    )
+                                },
+                                onSeasonSelected = { season ->
+                                    val year = state.query.year
+                                    onIntent(
+                                        SearchPageIntent.UpdateQuery(
+                                            state.query.copy(
+                                                season = if (year != null && season != null) {
+                                                    AnimeSeasonId(year, season)
+                                                } else {
+                                                    null
+                                                },
+                                            ),
                                         ),
                                     )
                                 },

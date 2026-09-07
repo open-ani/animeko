@@ -16,6 +16,7 @@ data class SubjectSearchQuery(
     val type: SubjectType = SubjectType.ANIME,
 //    val useOldSearchApi: Boolean = true,
     val tags: List<String>? = null,
+    val year: Int? = null,
     val season: AnimeSeasonId? = null,
     val rating: RatingRange? = null,
 //    val rank: Pair<String?, String?> = Pair(null, null),
@@ -27,7 +28,7 @@ data class SubjectSearchQuery(
     }
 
     fun hasFilters(): Boolean {
-        return tags != null || season != null || rating != null || nsfw != null || sort != SearchSort.MATCH
+        return tags != null || year != null || season != null || rating != null || nsfw != null || sort != SearchSort.MATCH
     }
 
     fun hasSearchRequest(): Boolean {
