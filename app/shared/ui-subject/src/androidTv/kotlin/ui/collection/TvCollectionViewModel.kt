@@ -18,9 +18,8 @@ import me.him188.ani.app.ui.subject.collection.COLLECTION_TABS_SORTED
 import me.him188.ani.app.ui.subject.collection.UserCollectionsViewModel
 import me.him188.ani.leanback.ui.foundation.TvNavigationEvent
 import me.him188.ani.leanback.ui.foundation.TvNavigationEvents
-import org.koin.core.Koin
 
-class TvCollectionViewModel(koin: Koin) : UserCollectionsViewModel(koin) {
+class TvCollectionViewModel : UserCollectionsViewModel() {
     private val navigation = TvNavigationEvents()
     val navigationEvents = navigation.events
 
