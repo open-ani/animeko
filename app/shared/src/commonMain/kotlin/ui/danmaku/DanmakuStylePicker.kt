@@ -21,29 +21,37 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.FlowRow
-import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.offset
+import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.selection.selectable
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.rounded.Add
 import androidx.compose.material.icons.rounded.Check
 import androidx.compose.material.icons.rounded.VerticalAlignBottom
 import androidx.compose.material.icons.rounded.VerticalAlignTop
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.LocalContentColor
+import androidx.compose.material3.LocalMinimumInteractiveComponentSize
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Slider
+import androidx.compose.material3.SliderDefaults
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TooltipAnchorPosition
 import androidx.compose.material3.TooltipDefaults
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.Immutable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -56,12 +64,16 @@ import androidx.compose.ui.focus.focusProperties
 import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.graphics.luminance
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.text.font.FontFamily
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Popup
@@ -72,12 +84,14 @@ import me.him188.ani.app.ui.foundation.theme.AniTheme
 import me.him188.ani.app.ui.lang.Lang
 import me.him188.ani.app.ui.lang.danmaku_send_style
 import me.him188.ani.app.ui.lang.danmaku_send_style_color
+import me.him188.ani.app.ui.lang.danmaku_send_style_custom_color
 import me.him188.ani.app.ui.lang.danmaku_send_style_location
 import me.him188.ani.app.ui.lang.subject_episode_video_settings_bottom
 import me.him188.ani.app.ui.lang.subject_episode_video_settings_floating
 import me.him188.ani.app.ui.lang.subject_episode_video_settings_top
 import me.him188.ani.danmaku.api.DanmakuLocation
 import org.jetbrains.compose.resources.stringResource
+import kotlin.math.roundToInt
 
 /**
  * 用户发送弹幕时选择的样式: 颜色和位置.
@@ -102,21 +116,20 @@ fun DanmakuSettings.toDanmakuSendStyle(): DanmakuSendStyle = DanmakuSendStyle(se
 
 object DanmakuSendColors {
     /**
-     * 可选的预设颜色, RGB.
+     * 可选的预设颜色, RGB. 都偏亮, 在视频画面上可读; 面板里最后一格是自定义颜色.
      */
     val Presets: List<Int> = listOf(
         0xFFFFFF, // 白
-        0xFE0302, // 红
-        0xFF7204, // 橙
-        0xFFAA02, // 金
-        0xFFD302, // 黄
-        0xA0EE00, // 黄绿
-        0x00CD00, // 绿
-        0x019899, // 青
-        0x4266BE, // 蓝
-        0x89D5FF, // 浅蓝
-        0xCC0273, // 紫
-        0x000000, // 黑
+        0xFF4D4D, // 红
+        0xFF7A2F, // 橙
+        0xFFC53D, // 黄
+        0xA6F03A, // 黄绿
+        0x3DDC84, // 绿
+        0x22D3EE, // 青
+        0x5AB4FF, // 天蓝
+        0x7C8CFF, // 蓝
+        0xC084FC, // 紫
+        0xFF6FB5, // 粉
     )
 
     /**
@@ -131,6 +144,8 @@ object DanmakuSendColors {
 
 const val TAG_DANMAKU_STYLE_BUTTON = "danmakuStyleButton"
 const val TAG_DANMAKU_STYLE_PANEL = "danmakuStylePanel"
+const val TAG_DANMAKU_CUSTOM_COLOR_SWATCH = "danmakuCustomColorSwatch"
+const val TAG_DANMAKU_CUSTOM_COLOR_HEX = "danmakuCustomColorHex"
 
 fun danmakuLocationTileTag(location: DanmakuLocation): String = "danmakuLocationTile-${location.name}"
 fun danmakuColorSwatchTag(color: Int): String = "danmakuColorSwatch-${color.toRgbHex()}"
@@ -263,6 +278,8 @@ fun DanmakuStylePanel(
             style = MaterialTheme.typography.labelLarge,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
         )
+        // 当前颜色不在预设里时, 说明是自定义颜色; 用户点了自定义格之后即使颜色仍等于某个预设, 也保持在自定义模式
+        var customMode by remember { mutableStateOf(style.color !in DanmakuSendColors.Presets) }
         FlowRow(
             horizontalArrangement = Arrangement.spacedBy(8.dp),
             verticalArrangement = Arrangement.spacedBy(8.dp),
@@ -270,12 +287,167 @@ fun DanmakuStylePanel(
             for (color in DanmakuSendColors.Presets) {
                 DanmakuColorSwatch(
                     color = color,
-                    selected = style.color == color,
-                    onClick = { onStyleChange(style.copy(color = color)) },
+                    selected = !customMode && style.color == color,
+                    onClick = {
+                        customMode = false
+                        onStyleChange(style.copy(color = color))
+                    },
                     modifier = Modifier.testTag(danmakuColorSwatchTag(color)),
                 )
             }
+            DanmakuCustomColorSwatch(
+                color = style.color,
+                selected = customMode,
+                onClick = { customMode = true },
+                modifier = Modifier.testTag(TAG_DANMAKU_CUSTOM_COLOR_SWATCH),
+            )
         }
+        if (customMode) {
+            DanmakuCustomColorEditor(
+                color = style.color,
+                onColorChange = { onStyleChange(style.copy(color = it)) },
+                modifier = Modifier.padding(top = 4.dp),
+            )
+        }
+    }
+}
+
+/**
+ * 自定义颜色入口: 彩虹环, 选中时中间显示当前颜色.
+ */
+@Composable
+private fun DanmakuCustomColorSwatch(
+    color: Int,
+    selected: Boolean,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    val description = stringResource(Lang.danmaku_send_style_custom_color)
+    val rainbow = remember {
+        Brush.sweepGradient(
+            listOf(
+                Color(0xFFFF4D4D), Color(0xFFFFC53D), Color(0xFF3DDC84),
+                Color(0xFF22D3EE), Color(0xFF7C8CFF), Color(0xFFC084FC), Color(0xFFFF4D4D),
+            ),
+        )
+    }
+    Box(
+        modifier
+            .size(32.dp)
+            .clip(CircleShape)
+            .background(rainbow)
+            .then(
+                if (selected) Modifier.border(2.dp, MaterialTheme.colorScheme.primary, CircleShape) else Modifier,
+            )
+            .selectable(selected = selected, onClick = onClick, role = Role.RadioButton)
+            .semantics { contentDescription = description },
+        contentAlignment = Alignment.Center,
+    ) {
+        if (selected) {
+            Box(Modifier.size(18.dp).clip(CircleShape).background(color.rgbToColor()))
+        } else {
+            Icon(Icons.Rounded.Add, null, Modifier.size(18.dp), tint = Color.White)
+        }
+    }
+}
+
+/**
+ * 自定义颜色编辑: 十六进制输入 + R/G/B 三个滑条, 任一改动立即回调.
+ */
+@Composable
+private fun DanmakuCustomColorEditor(
+    color: Int,
+    onColorChange: (Int) -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    val scheme = MaterialTheme.colorScheme
+    var hexText by remember { mutableStateOf(color.toRgbHex()) }
+    // 滑条 (或外部) 改了颜色时同步输入框; 用户正在输入的不完整文本不被覆盖
+    LaunchedEffect(color) {
+        if (parseRgbHex(hexText) != color) hexText = color.toRgbHex()
+    }
+    Column(modifier, verticalArrangement = Arrangement.spacedBy(2.dp)) {
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+        ) {
+            Box(
+                Modifier.size(24.dp).clip(CircleShape).background(color.rgbToColor())
+                    .border(1.dp, scheme.outline, CircleShape),
+            )
+            Text("#", style = MaterialTheme.typography.labelLarge, color = scheme.onSurfaceVariant)
+            BasicTextField(
+                value = hexText,
+                onValueChange = { input ->
+                    val filtered = input.filter { it.isDigit() || it.lowercaseChar() in 'a'..'f' }
+                        .take(6).uppercase()
+                    hexText = filtered
+                    parseRgbHex(filtered)?.let(onColorChange)
+                },
+                modifier = Modifier.width(96.dp).testTag(TAG_DANMAKU_CUSTOM_COLOR_HEX),
+                textStyle = MaterialTheme.typography.bodyMedium.copy(
+                    color = scheme.onSurface,
+                    fontFamily = FontFamily.Monospace,
+                ),
+                singleLine = true,
+                cursorBrush = SolidColor(scheme.primary),
+                decorationBox = { inner ->
+                    Box(
+                        Modifier
+                            .border(1.dp, scheme.outline, RoundedCornerShape(8.dp))
+                            .padding(horizontal = 10.dp, vertical = 6.dp),
+                    ) {
+                        if (hexText.isEmpty()) {
+                            Text(
+                                "RRGGBB",
+                                style = MaterialTheme.typography.bodyMedium.copy(fontFamily = FontFamily.Monospace),
+                                color = scheme.onSurfaceVariant.copy(alpha = 0.6f),
+                            )
+                        }
+                        inner()
+                    }
+                },
+            )
+        }
+        CompositionLocalProvider(LocalMinimumInteractiveComponentSize provides 24.dp) {
+            ChannelSlider("R", (color shr 16) and 0xFF, Color(0xFFFF4D4D)) { onColorChange((color and 0x00FFFF) or (it shl 16)) }
+            ChannelSlider("G", (color shr 8) and 0xFF, Color(0xFF3DDC84)) { onColorChange((color and 0xFF00FF) or (it shl 8)) }
+            ChannelSlider("B", color and 0xFF, Color(0xFF5AB4FF)) { onColorChange((color and 0xFFFF00) or it) }
+        }
+    }
+}
+
+@Composable
+private fun ChannelSlider(
+    label: String,
+    value: Int,
+    tint: Color,
+    onValueChange: (Int) -> Unit,
+) {
+    Row(
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(8.dp),
+    ) {
+        Text(
+            label,
+            Modifier.width(12.dp),
+            style = MaterialTheme.typography.labelMedium,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
+        Slider(
+            value = value.toFloat(),
+            onValueChange = { onValueChange(it.roundToInt().coerceIn(0, 255)) },
+            modifier = Modifier.weight(1f).height(28.dp),
+            valueRange = 0f..255f,
+            colors = SliderDefaults.colors(thumbColor = tint, activeTrackColor = tint),
+        )
+        Text(
+            value.toString(),
+            Modifier.width(28.dp),
+            style = MaterialTheme.typography.labelMedium.copy(fontFeatureSettings = "tnum"),
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            textAlign = TextAlign.End,
+        )
     }
 }
 
@@ -421,6 +593,11 @@ private fun DanmakuLocation.displayName(): String = when (this) {
 private fun Int.rgbToColor(): Color = Color(0xFF_00_00_00L or (this.toLong() and 0xFF_FF_FFL))
 
 private fun Int.toRgbHex(): String = (this and 0xFF_FF_FF).toString(16).uppercase().padStart(6, '0')
+
+/**
+ * 解析 6 位十六进制 RGB (不带 #), 不合法返回 null.
+ */
+private fun parseRgbHex(text: String): Int? = if (text.length == 6) text.toIntOrNull(16) else null
 
 /**
  * 在 [background] 上清晰可见的前景色.

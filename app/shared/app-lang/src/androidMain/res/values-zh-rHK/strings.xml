@@ -1172,6 +1172,7 @@
     <string name="danmaku_send_style">彈幕樣式</string>
     <string name="danmaku_send_style_color">顏色</string>
     <string name="danmaku_send_style_location">位置</string>
+    <string name="danmaku_send_style_custom_color">自訂顏色</string>
     <string name="exploration_search_back_to_top">回到頂部</string>
     <string name="exploration_search_results_shown">已顯示 %1$d 個結果</string>
     <string name="exploration_search_sort_match">最佳匹配</string>

@@ -20,6 +20,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.test.assertIsSelected
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.performClick
+import androidx.compose.ui.test.performTextReplacement
 import androidx.compose.ui.unit.dp
 import me.him188.ani.app.data.models.preference.DarkMode
 import me.him188.ani.app.ui.foundation.ProvideCompositionLocalsForPreview
@@ -61,20 +62,48 @@ class DanmakuStylePickerTest {
         onNodeWithTag(danmakuColorSwatchTag(0xFFFFFF)).assertIsSelected()
         onNodeWithTag(danmakuLocationTileTag(DanmakuLocation.NORMAL)).assertIsSelected()
 
-        onNodeWithTag(danmakuColorSwatchTag(0xFE0302)).performClick()
+        onNodeWithTag(danmakuColorSwatchTag(0xFF4D4D)).performClick()
         runOnIdle {
-            assertEquals(DanmakuSendStyle(0xFE0302, DanmakuLocation.NORMAL), style)
+            assertEquals(DanmakuSendStyle(0xFF4D4D, DanmakuLocation.NORMAL), style)
         }
-        onNodeWithTag(danmakuColorSwatchTag(0xFE0302)).assertIsSelected()
+        onNodeWithTag(danmakuColorSwatchTag(0xFF4D4D)).assertIsSelected()
 
         onNodeWithTag(danmakuLocationTileTag(DanmakuLocation.TOP)).performClick()
         runOnIdle {
-            assertEquals(DanmakuSendStyle(0xFE0302, DanmakuLocation.TOP), style)
+            assertEquals(DanmakuSendStyle(0xFF4D4D, DanmakuLocation.TOP), style)
         }
         onNodeWithTag(danmakuLocationTileTag(DanmakuLocation.TOP)).assertIsSelected()
 
         // 选择后弹层保持打开, 方便继续调整
         onNodeWithTag(TAG_DANMAKU_STYLE_PANEL).assertExists()
+    }
+
+    @Test
+    fun `panel - custom color via hex input`() = runAniComposeUiTest {
+        var style by mutableStateOf(DanmakuSendStyle.Default)
+        setContent {
+            ProvideCompositionLocalsForPreview {
+                DanmakuStylePanel(style, onStyleChange = { style = it })
+            }
+        }
+
+        onNodeWithTag(TAG_DANMAKU_CUSTOM_COLOR_HEX).assertDoesNotExist()
+        onNodeWithTag(TAG_DANMAKU_CUSTOM_COLOR_SWATCH).performClick()
+        onNodeWithTag(TAG_DANMAKU_CUSTOM_COLOR_SWATCH).assertIsSelected()
+        // 进入自定义模式不改变颜色
+        runOnIdle { assertEquals(0xFFFFFF, style.color) }
+
+        onNodeWithTag(TAG_DANMAKU_CUSTOM_COLOR_HEX).performTextReplacement("ff00aa")
+        runOnIdle { assertEquals(0xFF00AA, style.color) }
+
+        // 不完整的输入不生效
+        onNodeWithTag(TAG_DANMAKU_CUSTOM_COLOR_HEX).performTextReplacement("12")
+        runOnIdle { assertEquals(0xFF00AA, style.color) }
+
+        // 选回预设后退出自定义模式
+        onNodeWithTag(danmakuColorSwatchTag(0xFF4D4D)).performClick()
+        runOnIdle { assertEquals(0xFF4D4D, style.color) }
+        onNodeWithTag(TAG_DANMAKU_CUSTOM_COLOR_HEX).assertDoesNotExist()
     }
 
     @Test
