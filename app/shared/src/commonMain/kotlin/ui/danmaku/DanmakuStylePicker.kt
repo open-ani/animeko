@@ -36,8 +36,6 @@ import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.Add
 import androidx.compose.material.icons.rounded.Check
-import androidx.compose.material.icons.rounded.VerticalAlignBottom
-import androidx.compose.material.icons.rounded.VerticalAlignTop
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.LocalContentColor
@@ -68,6 +66,7 @@ import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.SolidColor
+import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.luminance
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.semantics.Role
@@ -199,7 +198,8 @@ fun DanmakuStylePicker(
 }
 
 /**
- * 显示当前样式的按钮: 一个当前颜色的圆点, 非滚动位置时叠加一个方向图标. 放在弹幕输入框内部最前面.
+ * 显示当前样式的按钮: 一个迷你屏幕图标, 弹幕条画在当前位置 (与面板里的缩略屏同一套语言), 弹幕条用当前颜色.
+ * 放在弹幕输入框内部最前面.
  */
 @Composable
 fun DanmakuStyleButton(
@@ -217,26 +217,42 @@ fun DanmakuStyleButton(
             .focusProperties { canFocus = false }
             .semantics { contentDescription = description },
     ) {
-        val fill = style.color.rgbToColor()
-        Box(
-            Modifier.size(20.dp)
-                .clip(CircleShape)
-                .background(fill)
-                .border(1.dp, LocalContentColor.current.copy(alpha = 0.6f), CircleShape),
-            contentAlignment = Alignment.Center,
-        ) {
-            when (style.location) {
-                DanmakuLocation.TOP -> Icon(
-                    Icons.Rounded.VerticalAlignTop, null,
-                    Modifier.size(16.dp), tint = contentColorOn(fill),
-                )
+        DanmakuStyleIcon(style, Modifier.size(22.dp, 16.dp))
+    }
+}
 
-                DanmakuLocation.BOTTOM -> Icon(
-                    Icons.Rounded.VerticalAlignBottom, null,
-                    Modifier.size(16.dp), tint = contentColorOn(fill),
-                )
-
-                DanmakuLocation.NORMAL -> {}
+/**
+ * 迷你屏幕: 圆角框 + 当前位置的弹幕条. 框用当前内容色, 弹幕条用 [DanmakuSendStyle.color].
+ */
+@Composable
+private fun DanmakuStyleIcon(style: DanmakuSendStyle, modifier: Modifier = Modifier) {
+    val frameColor = LocalContentColor.current.copy(alpha = 0.7f)
+    val barColor = style.color.rgbToColor()
+    Canvas(modifier) {
+        val stroke = 1.5.dp.toPx()
+        drawRoundRect(
+            color = frameColor,
+            topLeft = Offset(stroke / 2, stroke / 2),
+            size = Size(size.width - stroke, size.height - stroke),
+            cornerRadius = CornerRadius(2.5.dp.toPx()),
+            style = Stroke(stroke),
+        )
+        val barHeight = 2.dp.toPx()
+        val radius = CornerRadius(1.dp.toPx())
+        fun bar(x: Float, y: Float, w: Float, alpha: Float = 1f) = drawRoundRect(
+            color = barColor.copy(alpha = alpha),
+            topLeft = Offset(x.dp.toPx(), y.dp.toPx()),
+            size = Size(w.dp.toPx(), barHeight),
+            cornerRadius = radius,
+        )
+        when (style.location) {
+            DanmakuLocation.TOP -> bar(6f, 3.5f, 10f)
+            DanmakuLocation.BOTTOM -> bar(6f, 10.5f, 10f)
+            // 三条错开的弹幕条, 和面板缩略屏一致
+            DanmakuLocation.NORMAL -> {
+                bar(4f, 3.5f, 7f)
+                bar(9f, 7f, 9f, 0.85f)
+                bar(5.5f, 10.5f, 6f, 0.6f)
             }
         }
     }
