@@ -32,8 +32,6 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.focus.onFocusChanged
-import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -49,7 +47,6 @@ import me.him188.ani.app.videoplayer.ui.playerTextInputFocus
 import me.him188.ani.app.videoplayer.ui.progress.PlayerControllerDefaults
 import me.him188.ani.app.videoplayer.ui.rememberAlwaysOnRequester
 import me.him188.ani.danmaku.api.DanmakuContent
-import me.him188.ani.danmaku.api.DanmakuLocation
 import org.jetbrains.compose.resources.stringResource
 import org.openani.mediamp.MediampPlayer
 
@@ -73,6 +70,8 @@ fun PlayerDanmakuEditor(
             danmakuEditorState.post(it)
         },
         danmakuTextPlaceholder, playerState, videoScaffoldConfig, playerControllerState, modifier, onEscape,
+        style = danmakuEditorState.style,
+        onStyleChange = { danmakuEditorState.updateStyle(it) },
     )
 }
 
@@ -89,8 +88,11 @@ fun PlayerDanmakuEditor(
     playerControllerState: PlayerControllerState,
     modifier: Modifier = Modifier,
     onEscape: (() -> Unit)? = null,
+    style: DanmakuSendStyle = DanmakuSendStyle.Default,
+    onStyleChange: (DanmakuSendStyle) -> Unit = {},
 ) {
     val danmakuEditorRequester = rememberAlwaysOnRequester(playerControllerState, "danmakuEditor")
+    val stylePickerRequester = rememberAlwaysOnRequester(playerControllerState, "danmakuStylePicker")
 
     val playerFocusState = playerControllerState.focusState
 
@@ -98,8 +100,16 @@ fun PlayerDanmakuEditor(
      * 是否设置了暂停
      */
     var didSetPaused by rememberSaveable { mutableStateOf(false) }
-    Row(modifier = modifier) {
+    Row(modifier = modifier, verticalAlignment = Alignment.CenterVertically) {
         val scope = rememberCoroutineScope()
+        DanmakuStylePicker(
+            style = style,
+            onStyleChange = onStyleChange,
+            onExpandedChanged = { expanded ->
+                // 弹层打开期间保持控制器显示
+                if (expanded) stylePickerRequester.request() else stylePickerRequester.cancelRequest()
+            },
+        )
         PlayerDanmakuEditor(
             text = text,
             onTextChange = onTextChange,
@@ -112,8 +122,8 @@ fun PlayerDanmakuEditor(
                         DanmakuContent(
                             playerState.currentPositionMillis.value,
                             text = text,
-                            color = Color.White.toArgb(),
-                            location = DanmakuLocation.NORMAL,
+                            color = style.color,
+                            location = style.location,
                         ),
                     )
                     playerFocusState.preferPlayer()

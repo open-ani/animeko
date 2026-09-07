@@ -69,7 +69,6 @@ import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.platform.LocalUriHandler
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.tooling.preview.PreviewLightDark
@@ -95,6 +94,7 @@ import me.him188.ani.app.ui.comment.CommentReportHost
 import me.him188.ani.app.ui.comment.CommentReportState
 import me.him188.ani.app.ui.comment.CommentState
 import me.him188.ani.app.ui.danmaku.DanmakuEditorState
+import me.him188.ani.app.ui.danmaku.DanmakuStylePanel
 import me.him188.ani.app.ui.danmaku.DummyDanmakuEditor
 import me.him188.ani.app.ui.danmaku.PlayerDanmakuEditor
 import me.him188.ani.app.ui.danmaku.PlayerDanmakuHost
@@ -168,7 +168,6 @@ import me.him188.ani.app.videoplayer.ui.progress.rememberMediaProgressFramePrevi
 import me.him188.ani.app.videoplayer.ui.progress.rememberMediaProgressSliderState
 import me.him188.ani.app.videoplayer.ui.rememberPlayerFullscreenState
 import me.him188.ani.danmaku.api.DanmakuContent
-import me.him188.ani.danmaku.api.DanmakuLocation
 import me.him188.ani.danmaku.ui.DanmakuHostState
 import me.him188.ani.danmaku.ui.DanmakuPresentation
 import me.him188.ani.datasources.api.source.MediaFetchRequest
@@ -341,7 +340,12 @@ private fun EpisodeScreenContent(
                             }
                         },
                         scope,
+                        onStyleChange = { vm.setDanmakuSendStyle(it) },
                     )
+                }
+                LaunchedEffect(danmakuEditorState) {
+                    // 只读取一次初始值. 之后用户的修改由 onStyleChange 持久化, 不再回流, 避免连续点选时闪动.
+                    danmakuEditorState.style = vm.danmakuSendStyleFlow.first()
                 }
 
                 WatchTogetherPopupVisibilityEffect(
@@ -822,8 +826,8 @@ private fun EpisodeScreenContentPhone(
                             DanmakuContent(
                                 vm.player.currentPositionMillis.value,
                                 text = text,
-                                color = Color.White.toArgb(),
-                                location = DanmakuLocation.NORMAL,
+                                color = danmakuEditorState.style.color,
+                                location = danmakuEditorState.style.location,
                             ),
                         )
                         dismiss()
@@ -863,6 +867,11 @@ private fun DetachedDanmakuEditorLayout(
             modifier = Modifier.fillMaxWidth().focusRequester(focusRequester),
             onEscape = onDismiss,
             colors = OutlinedTextFieldDefaults.colors(),
+        )
+        DanmakuStylePanel(
+            style = danmakuEditorState.style,
+            onStyleChange = { danmakuEditorState.updateStyle(it) },
+            modifier = Modifier.fillMaxWidth(),
         )
     }
 }

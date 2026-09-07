@@ -1156,6 +1156,9 @@
     <string name="episode_danmaku_match_select_subject">Select subject</string>
     <string name="episode_danmaku_match_select_episode">Select episode</string>
     <string name="episode_send_danmaku">Send</string>
+    <string name="danmaku_send_style">Danmaku style</string>
+    <string name="danmaku_send_style_color">Color</string>
+    <string name="danmaku_send_style_location">Position</string>
     <string name="exploration_search_back_to_top">Back to top</string>
     <string name="exploration_search_results_shown">%1$d results shown</string>
     <string name="exploration_search_sort_match">Best match</string>
