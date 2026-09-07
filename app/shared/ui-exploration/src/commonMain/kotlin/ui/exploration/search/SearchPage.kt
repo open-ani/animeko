@@ -220,7 +220,7 @@ fun SearchPage(
                     },
                     headers = {
                         item(span = { GridItemSpan(maxLineSpan) }) {
-                                SearchFilterChipsRow(
+                            SearchFilterChipsRow(
                                 state = state.searchFilterState,
                                 leadingContent = {
                                     YearFilterChip(
@@ -230,10 +230,10 @@ fun SearchPage(
                                             onIntent(SearchPageIntent.ChangeYear(year))
                                         },
                                     )
-                                    QuarterFilterChip(
-                                        selectedQuarter = state.query.quarter,
-                                        onSelect = { quarter ->
-                                            onIntent(SearchPageIntent.ChangeQuarter(quarter))
+                                    SeasonFilterChip(
+                                        selectedSeason = state.query.season,
+                                        onSelect = { season ->
+                                            onIntent(SearchPageIntent.ChangeSeason(season))
                                         },
                                         // 季度从属于年份: 未选年份时禁用.
                                         enabled = state.query.year != null,

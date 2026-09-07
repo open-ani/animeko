@@ -13,13 +13,13 @@ import androidx.compose.runtime.Stable
 import androidx.paging.PagingData
 import androidx.paging.cachedIn
 import androidx.paging.map
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.asStateFlow
-import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
@@ -27,14 +27,15 @@ import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
 import me.him188.ani.app.data.models.preference.NsfwMode
 import me.him188.ani.app.data.models.subject.SubjectInfo
-import me.him188.ani.app.domain.episode.GetAnimeSeasonIdsFlowUseCase
 import me.him188.ani.app.data.repository.episode.EpisodeCollectionRepository
-import me.him188.ani.app.data.repository.subject.SubjectSearchHistoryRepository
 import me.him188.ani.app.data.repository.subject.SubjectSearchCompletionRepository
+import me.him188.ani.app.data.repository.subject.SubjectSearchHistoryRepository
 import me.him188.ani.app.data.repository.subject.SubjectSearchRepository
 import me.him188.ani.app.data.repository.user.SettingsRepository
+import me.him188.ani.app.domain.episode.GetAnimeSeasonIdsFlowUseCase
 import me.him188.ani.app.domain.episode.SetEpisodeCollectionTypeUseCase
 import me.him188.ani.app.domain.search.SubjectSearchQuery
+import me.him188.ani.app.domain.search.withYearFilter
 import me.him188.ani.app.ui.exploration.search.SearchPageEffect
 import me.him188.ani.app.ui.exploration.search.SearchPageIntent
 import me.him188.ani.app.ui.exploration.search.SearchPageState
@@ -171,11 +172,17 @@ class SearchViewModel(
             }
 
             is SearchPageIntent.ChangeYear -> {
-                applyQueryAndRefresh(_searchPageState.value.query.copy(year = intent.year))
+                // 切换到具体年份时保留季度; 清至"全部年份"时 withYearFilter 会连带清除季度.
+                applyQueryAndRefresh(_searchPageState.value.query.withYearFilter(intent.year))
             }
 
-            is SearchPageIntent.ChangeQuarter -> {
-                applyQueryAndRefresh(_searchPageState.value.query.copy(quarter = intent.quarter))
+            is SearchPageIntent.ChangeSeason -> {
+                val query = _searchPageState.value.query
+                // 季度从属于年份: 未选年份时仅允许清除季度, 不允许单独设置季度.
+                // UI 已通过禁用 chip 防护, 此处兜底避免异常路径触发 SubjectSearchQuery 的不变量.
+                if (intent.season == null || query.year != null) {
+                    applyQueryAndRefresh(query.copy(season = intent.season))
+                }
             }
 
             is SearchPageIntent.Play -> {

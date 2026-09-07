@@ -15,6 +15,7 @@ import androidx.compose.ui.test.onFirst
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import kotlinx.coroutines.runBlocking
+import me.him188.ani.app.data.models.schedule.AnimeSeason
 import me.him188.ani.app.ui.foundation.ProvideCompositionLocalsForPreview
 import me.him188.ani.app.ui.framework.runAniComposeUiTest
 import me.him188.ani.app.ui.lang.Lang
@@ -65,14 +66,14 @@ class YearFilterChipTest {
     }
 }
 
-class QuarterFilterChipTest {
+class SeasonFilterChipTest {
     @Test
     fun `shows all seasons label when nothing selected`() = runAniComposeUiTest {
         val allSeasonsText = runBlocking { getString(Lang.exploration_search_filter_season_all) }
         setContent {
             ProvideCompositionLocalsForPreview {
-                QuarterFilterChip(
-                    selectedQuarter = null,
+                SeasonFilterChip(
+                    selectedSeason = null,
                     onSelect = {},
                     enabled = true,
                 )
@@ -85,11 +86,11 @@ class QuarterFilterChipTest {
     @Test
     fun `selecting a quarter from dropdown reports callback`() = runAniComposeUiTest {
         val allSeasonsText = runBlocking { getString(Lang.exploration_search_filter_season_all) }
-        var selected: Int? = null
+        var selected: AnimeSeason? = null
         setContent {
             ProvideCompositionLocalsForPreview {
-                QuarterFilterChip(
-                    selectedQuarter = selected,
+                SeasonFilterChip(
+                    selectedSeason = selected,
                     onSelect = { selected = it },
                     enabled = true,
                 )
@@ -100,7 +101,8 @@ class QuarterFilterChipTest {
         onNodeWithText("Q3").performClick()
 
         runOnIdle {
-            assertEquals(3, selected)
+            // Q3 即夏季档 (AnimeSeason.SUMMER.quarterNumber == 3)
+            assertEquals(AnimeSeason.SUMMER, selected)
         }
     }
 }

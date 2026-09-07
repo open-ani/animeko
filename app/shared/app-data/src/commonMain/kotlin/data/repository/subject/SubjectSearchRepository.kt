@@ -19,7 +19,6 @@ import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.flowOn
 import kotlinx.coroutines.withContext
-import me.him188.ani.app.data.models.schedule.AnimeSeason
 import me.him188.ani.app.data.models.schedule.AnimeSeasonId
 import me.him188.ani.app.data.models.schedule.yearMonths
 import me.him188.ani.app.data.network.AniSubjectSearchService
@@ -116,25 +115,6 @@ class SubjectSearchRepository(
             )
         }
 
-        /**
-         * 年份/季度筛选对应的 Bangumi airDates 区间.
-         *
-         * 仅年份: 该年全年. 年份+季度: 该季度三个月. 无年份: null (不限).
-         */
-        private fun SubjectSearchQuery.toBangumiAirDates(): List<String>? {
-            val y = year ?: return null
-            val q = quarter
-            if (q == null) {
-                return listOf(">=" + y + "-01-01", "<" + (y + 1) + "-01-01")
-            }
-            val seasonId = AnimeSeasonId(y, AnimeSeason.fromQuarterNumber(q) ?: return null)
-            val (begin, _, end) = seasonId.yearMonths
-            return listOf(
-                ">=" + begin.first + "-" + begin.second + "-01",
-                "<" + end.first + "-" + end.second + "-31",
-            )
-        }
-
         private fun RatingRange.toBangumiRatings(): List<String> {
             val range = this
             return listOfNotNull(
@@ -179,4 +159,29 @@ class SubjectSearchRepository(
             SubjectSearchField.LIGHT_RELATED_PERSON_INFO,
         )
     }
+}
+
+/**
+ * 年份/季度筛选对应的 Bangumi airDates 区间.
+ *
+ * 仅年份: 该自然年全年. 年份+季度: 该季度覆盖的月份 (如冬季从上年 12 月到本年 2 月).
+ * 无年份: null (不限).
+ *
+ * 上界统一取区间后的下一天 (开区间), 避免 "MM-31" 这类不存在的日期;
+ * 月份统一补零为两位数.
+ */
+internal fun SubjectSearchQuery.toBangumiAirDates(): List<String>? {
+    val y = year ?: return null
+    val q = season
+    if (q == null) {
+        return listOf(">=$y-01-01", "<${y + 1}-01-01")
+    }
+    val (begin, _, end) = AnimeSeasonId(y, q).yearMonths
+    // 季末次月 1 日为开区间上界. 现有 yearMonths 的季末月 ∈ {2, 5, 8, 11}, 次月不跨年;
+    // 若未来某季的末月是 12 月, 上界需改为次年 1 月 (此处假设由测试兜底).
+    fun Int.twoDigits(): String = toString().padStart(2, '0')
+    return listOf(
+        ">=${begin.first}-${begin.second.twoDigits()}-01",
+        "<${end.first}-${(end.second + 1).twoDigits()}-01",
+    )
 }
