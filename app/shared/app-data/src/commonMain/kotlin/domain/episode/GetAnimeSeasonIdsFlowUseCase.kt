@@ -14,14 +14,15 @@ import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.flowOn
 import me.him188.ani.app.data.models.schedule.AnimeSeasonId
-import me.him188.ani.app.data.network.AnimeScheduleService
+import me.him188.ani.app.data.repository.episode.AnimeScheduleRepository
 import me.him188.ani.app.domain.usecase.UseCase
 import kotlin.coroutines.CoroutineContext
 
 /**
- * 提供全部可浏览的季度列表, 按时间降序 (最新在前).
+ * 提供可浏览的季度列表 (按时间降序, 最新在前).
  *
- * 服务端不保证返回顺序, 因此这里统一排序; 调用方取 [List.first] 即最新季度.
+ * 服务端不保证返回顺序, 因此这里统一排序; 调用方可按需使用全部列表 (如搜索页的年份筛选),
+ * 或取 [List.first] 作为最新季度. 数据经 [AnimeScheduleRepository] 获取.
  */
 fun interface GetAnimeSeasonIdsFlowUseCase : UseCase {
     operator fun invoke(): Flow<List<AnimeSeasonId>>
@@ -35,10 +36,10 @@ fun interface GetAnimeSeasonIdsFlowUseCase : UseCase {
 }
 
 class GetAnimeSeasonIdsFlowUseCaseImpl(
-    private val animeScheduleService: AnimeScheduleService,
+    private val animeScheduleRepository: AnimeScheduleRepository,
     private val defaultDispatcher: CoroutineContext = Dispatchers.Default,
 ) : GetAnimeSeasonIdsFlowUseCase {
     override fun invoke(): Flow<List<AnimeSeasonId>> =
-        flow { emit(GetAnimeSeasonIdsFlowUseCase.sorted(animeScheduleService.getSeasonIds())) }
+        flow { emit(GetAnimeSeasonIdsFlowUseCase.sorted(animeScheduleRepository.getSeasonIds())) }
             .flowOn(defaultDispatcher)
 }
