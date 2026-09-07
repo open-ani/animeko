@@ -59,7 +59,7 @@ class DanmakuStylePickerTest {
             waitUntil { onNodeWithTag(TAG_DANMAKU_STYLE_PANEL).exists() }
         }
         onNodeWithTag(danmakuColorSwatchTag(0xFFFFFF)).assertIsSelected()
-        onNodeWithTag(danmakuLocationChipTag(DanmakuLocation.NORMAL)).assertIsSelected()
+        onNodeWithTag(danmakuLocationTileTag(DanmakuLocation.NORMAL)).assertIsSelected()
 
         onNodeWithTag(danmakuColorSwatchTag(0xFE0302)).performClick()
         runOnIdle {
@@ -67,11 +67,11 @@ class DanmakuStylePickerTest {
         }
         onNodeWithTag(danmakuColorSwatchTag(0xFE0302)).assertIsSelected()
 
-        onNodeWithTag(danmakuLocationChipTag(DanmakuLocation.TOP)).performClick()
+        onNodeWithTag(danmakuLocationTileTag(DanmakuLocation.TOP)).performClick()
         runOnIdle {
             assertEquals(DanmakuSendStyle(0xFE0302, DanmakuLocation.TOP), style)
         }
-        onNodeWithTag(danmakuLocationChipTag(DanmakuLocation.TOP)).assertIsSelected()
+        onNodeWithTag(danmakuLocationTileTag(DanmakuLocation.TOP)).assertIsSelected()
 
         // 选择后弹层保持打开, 方便继续调整
         onNodeWithTag(TAG_DANMAKU_STYLE_PANEL).assertExists()
@@ -91,7 +91,7 @@ class DanmakuStylePickerTest {
             runOnIdle { assertEquals(color, style.color) }
         }
         for (location in DanmakuSendColors.Locations) {
-            onNodeWithTag(danmakuLocationChipTag(location)).performClick()
+            onNodeWithTag(danmakuLocationTileTag(location)).performClick()
             runOnIdle { assertEquals(location, style.location) }
         }
     }

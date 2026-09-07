@@ -16,6 +16,8 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.selection.selectable
@@ -25,7 +27,6 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.Check
 import androidx.compose.material.icons.rounded.VerticalAlignBottom
 import androidx.compose.material.icons.rounded.VerticalAlignTop
-import androidx.compose.material3.FilterChip
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.LocalContentColor
@@ -50,6 +51,7 @@ import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Popup
 import me.him188.ani.app.data.models.preference.DanmakuSettings
@@ -119,7 +121,7 @@ object DanmakuSendColors {
 const val TAG_DANMAKU_STYLE_BUTTON = "danmakuStyleButton"
 const val TAG_DANMAKU_STYLE_PANEL = "danmakuStylePanel"
 
-fun danmakuLocationChipTag(location: DanmakuLocation): String = "danmakuLocationChip-${location.name}"
+fun danmakuLocationTileTag(location: DanmakuLocation): String = "danmakuLocationTile-${location.name}"
 fun danmakuColorSwatchTag(color: Int): String = "danmakuColorSwatch-${color.toRgbHex()}"
 
 /**
@@ -233,20 +235,13 @@ fun DanmakuStylePanel(
             style = MaterialTheme.typography.labelLarge,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
         )
-        FlowRow(
-            horizontalArrangement = Arrangement.spacedBy(8.dp),
-            verticalArrangement = Arrangement.spacedBy(4.dp),
-        ) {
+        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             for (location in DanmakuSendColors.Locations) {
-                val selected = style.location == location
-                FilterChip(
-                    selected = selected,
+                DanmakuLocationTile(
+                    location = location,
+                    selected = style.location == location,
                     onClick = { onStyleChange(style.copy(location = location)) },
-                    label = { Text(location.displayName(), maxLines = 1) },
-                    modifier = Modifier.testTag(danmakuLocationChipTag(location)),
-                    leadingIcon = if (selected) {
-                        { Icon(Icons.Rounded.Check, null, Modifier.size(18.dp)) }
-                    } else null,
+                    modifier = Modifier.testTag(danmakuLocationTileTag(location)),
                 )
             }
         }
@@ -271,6 +266,70 @@ fun DanmakuStylePanel(
             }
         }
     }
+}
+
+/**
+ * 位置选项: 一个迷你屏幕, 把弹幕条画在对应位置 (滚动带拖尾), 所见即所得.
+ */
+@Composable
+private fun DanmakuLocationTile(
+    location: DanmakuLocation,
+    selected: Boolean,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    val scheme = MaterialTheme.colorScheme
+    val barColor = if (selected) scheme.primary else scheme.onSurfaceVariant
+    val label = location.displayName()
+    Column(
+        modifier
+            .width(84.dp)
+            .selectable(selected = selected, onClick = onClick, role = Role.RadioButton)
+            .semantics { contentDescription = label },
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.spacedBy(6.dp),
+    ) {
+        Box(
+            Modifier
+                .size(84.dp, 50.dp)
+                .clip(RoundedCornerShape(6.dp))
+                .background(if (selected) scheme.surfaceContainerHighest else scheme.surfaceContainerLowest)
+                .border(
+                    width = if (selected) 2.dp else 1.dp,
+                    color = if (selected) scheme.primary else scheme.outlineVariant,
+                    shape = RoundedCornerShape(6.dp),
+                ),
+        ) {
+            val y = when (location) {
+                DanmakuLocation.TOP -> 8.dp
+                DanmakuLocation.NORMAL -> 23.dp
+                DanmakuLocation.BOTTOM -> 38.dp
+            }
+            DanmakuBar(x = 24.dp, y = y, width = 36.dp, color = barColor)
+            if (location == DanmakuLocation.NORMAL) {
+                // 拖尾: 表示这条弹幕在向左滚动
+                DanmakuBar(x = 10.dp, y = y, width = 22.dp, color = barColor.copy(alpha = 0.55f))
+                DanmakuBar(x = 66.dp, y = y, width = 14.dp, color = barColor.copy(alpha = 0.3f))
+            }
+        }
+        Text(
+            label,
+            style = MaterialTheme.typography.labelMedium,
+            color = if (selected) scheme.onSurface else scheme.onSurfaceVariant,
+            maxLines = 1,
+        )
+    }
+}
+
+@Composable
+private fun DanmakuBar(x: Dp, y: Dp, width: Dp, color: Color) {
+    Box(
+        Modifier
+            .offset(x, y)
+            .size(width, 4.dp)
+            .clip(RoundedCornerShape(2.dp))
+            .background(color),
+    )
 }
 
 @Composable
