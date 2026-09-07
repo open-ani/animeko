@@ -9,12 +9,19 @@
 
 package me.him188.ani.app.ui.danmaku
 
+import androidx.compose.animation.core.LinearEasing
+import androidx.compose.animation.core.animateFloat
+import androidx.compose.animation.core.infiniteRepeatable
+import androidx.compose.animation.core.rememberInfiniteTransition
+import androidx.compose.animation.core.tween
+import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.FlowRow
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.offset
@@ -44,7 +51,11 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.clipToBounds
 import androidx.compose.ui.focus.focusProperties
+import androidx.compose.ui.geometry.CornerRadius
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.luminance
 import androidx.compose.ui.platform.testTag
@@ -300,16 +311,14 @@ private fun DanmakuLocationTile(
                     shape = RoundedCornerShape(6.dp),
                 ),
         ) {
-            val y = when (location) {
-                DanmakuLocation.TOP -> 8.dp
-                DanmakuLocation.NORMAL -> 23.dp
-                DanmakuLocation.BOTTOM -> 38.dp
-            }
-            DanmakuBar(x = 24.dp, y = y, width = 36.dp, color = barColor)
-            if (location == DanmakuLocation.NORMAL) {
-                // 拖尾: 表示这条弹幕在向左滚动
-                DanmakuBar(x = 10.dp, y = y, width = 22.dp, color = barColor.copy(alpha = 0.55f))
-                DanmakuBar(x = 66.dp, y = y, width = 14.dp, color = barColor.copy(alpha = 0.3f))
+            when (location) {
+                DanmakuLocation.TOP -> DanmakuBar(x = 24.dp, y = 8.dp, width = 36.dp, color = barColor)
+                DanmakuLocation.BOTTOM -> DanmakuBar(x = 24.dp, y = 38.dp, width = 36.dp, color = barColor)
+                DanmakuLocation.NORMAL -> ScrollingDanmakuBars(
+                    barColor,
+                    // 留出描边的宽度, 弹幕条出界时被裁在描边内侧
+                    Modifier.fillMaxSize().padding(2.dp).clipToBounds(),
+                )
             }
         }
         Text(
@@ -318,6 +327,44 @@ private fun DanmakuLocationTile(
             color = if (selected) scheme.onSurface else scheme.onSurfaceVariant,
             maxLines = 1,
         )
+    }
+}
+
+/**
+ * 滚动弹幕示例: 三条轨道上错开的弹幕条持续向左滚动, 出界后从右边回来.
+ */
+@Composable
+private fun ScrollingDanmakuBars(color: Color, modifier: Modifier = Modifier) {
+    val transition = rememberInfiniteTransition(label = "scrollingDanmaku")
+    val progress by transition.animateFloat(
+        initialValue = 0f,
+        targetValue = 1f,
+        animationSpec = infiniteRepeatable(tween(durationMillis = 6000, easing = LinearEasing)),
+        label = "progress",
+    )
+    Canvas(modifier) {
+        val width = size.width
+        val barHeight = 4.dp.toPx()
+        val radius = CornerRadius(2.dp.toPx())
+        // (轨道 y, 初始 x, 宽度, 透明度): 每条以自己的周期循环, 位置错开, 看起来像真实的弹幕流
+        val bars = listOf(
+            Triple(7.dp, 12.dp, 30.dp) to 1f,
+            Triple(21.dp, 46.dp, 34.dp) to 0.8f,
+            Triple(35.dp, 26.dp, 24.dp) to 0.6f,
+        )
+        for ((bar, alpha) in bars) {
+            val (y, x0, w) = bar
+            val barWidth = w.toPx()
+            val period = width + barWidth
+            val travelled = progress * period * 1.5f // 6 秒走 1.5 个周期
+            val x = ((x0.toPx() - travelled) % period + period) % period - barWidth
+            drawRoundRect(
+                color = color.copy(alpha = alpha),
+                topLeft = Offset(x, y.toPx()),
+                size = Size(barWidth, barHeight),
+                cornerRadius = radius,
+            )
+        }
     }
 }
 
