@@ -19,9 +19,11 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -142,6 +144,9 @@ object DanmakuSendColors {
         DanmakuLocation.BOTTOM,
     )
 }
+
+/** 颜色色块直径 */
+private val SwatchSize = 32.dp
 
 const val TAG_DANMAKU_STYLE_BUTTON = "danmakuStyleButton"
 const val TAG_DANMAKU_STYLE_PANEL = "danmakuStylePanel"
@@ -329,27 +334,38 @@ fun DanmakuStylePanel(
             style = MaterialTheme.typography.labelLarge,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
         )
-        FlowRow(
-            horizontalArrangement = Arrangement.spacedBy(8.dp),
-            verticalArrangement = Arrangement.spacedBy(8.dp),
-        ) {
-            for (color in DanmakuSendColors.Presets) {
-                DanmakuColorSwatch(
-                    color = color,
-                    selected = !customMode && style.color == color,
-                    onClick = {
-                        onCustomModeChange(false)
-                        onStyleChange(style.copy(color = color))
-                    },
-                    modifier = Modifier.testTag(danmakuColorSwatchTag(color)),
+        // 色块按可用宽度排成网格并铺满整行: 列数取最多能放下的 (最小间距 8dp), 每行 SpaceBetween 撑满,
+        // 这样桌面弹层里 6 列正好和上面的位置缩略屏一样宽, 右边不会空出一截; 手机端更宽则列数更多.
+        // 最后一行不满时用透明占位补齐, 保证各行对齐同一套列.
+        BoxWithConstraints(Modifier.fillMaxWidth()) {
+            val itemCount = DanmakuSendColors.Presets.size + 1
+            val columns = (((maxWidth + 8.dp) / (SwatchSize + 8.dp)).toInt()).coerceIn(1, itemCount)
+            val fillers = (columns - itemCount % columns) % columns
+            FlowRow(
+                Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalArrangement = Arrangement.spacedBy(8.dp),
+                maxItemsInEachRow = columns,
+            ) {
+                for (color in DanmakuSendColors.Presets) {
+                    DanmakuColorSwatch(
+                        color = color,
+                        selected = !customMode && style.color == color,
+                        onClick = {
+                            onCustomModeChange(false)
+                            onStyleChange(style.copy(color = color))
+                        },
+                        modifier = Modifier.testTag(danmakuColorSwatchTag(color)),
+                    )
+                }
+                DanmakuCustomColorSwatch(
+                    color = style.color,
+                    selected = customMode,
+                    onClick = { onCustomModeChange(true) },
+                    modifier = Modifier.testTag(TAG_DANMAKU_CUSTOM_COLOR_SWATCH),
                 )
+                repeat(fillers) { Spacer(Modifier.size(SwatchSize)) }
             }
-            DanmakuCustomColorSwatch(
-                color = style.color,
-                selected = customMode,
-                onClick = { onCustomModeChange(true) },
-                modifier = Modifier.testTag(TAG_DANMAKU_CUSTOM_COLOR_SWATCH),
-            )
         }
         if (customMode) {
             DanmakuCustomColorEditor(
@@ -387,7 +403,7 @@ private fun DanmakuCustomColorSwatch(
     }
     Box(
         modifier
-            .size(32.dp)
+            .size(SwatchSize)
             .clip(CircleShape)
             .background(rainbow)
             .then(
@@ -524,6 +540,8 @@ private fun DanmakuLocationTile(
     Column(
         modifier
             .width(84.dp)
+            // hover / ripple 跟着圆角走, 不然是一块直角矩形
+            .clip(RoundedCornerShape(8.dp))
             // 选项不抢焦点, 弹幕输入框保持聚焦 (不能放在面板整体上, 否则十六进制输入框也无法聚焦)
             .focusProperties { canFocus = false }
             .selectable(selected = selected, onClick = onClick, role = Role.RadioButton)
@@ -621,7 +639,7 @@ private fun DanmakuColorSwatch(
     val description = "#" + color.toRgbHex()
     Box(
         modifier
-            .size(32.dp)
+            .size(SwatchSize)
             .clip(CircleShape)
             .background(fill)
             .border(
