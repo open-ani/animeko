@@ -84,6 +84,7 @@ fun TvAniAppContent(
             dependencies.watchTogetherManager,
             dependencies.settingsRepository,
             dependencies.sessionStateProvider,
+            dependencies.koin,
         )
     }
     LaunchedEffect(togetherViewModel, aniNavigator) {

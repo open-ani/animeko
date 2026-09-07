@@ -35,18 +35,18 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.Check
 import androidx.compose.material.icons.rounded.PlayArrow
 import androidx.compose.material.icons.rounded.Refresh
-import androidx.compose.material.icons.rounded.VideoLibrary
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.produceState
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.ExperimentalComposeUiApi
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusProperties
 import androidx.compose.ui.focus.onFocusChanged
@@ -58,8 +58,8 @@ import androidx.compose.ui.input.key.key
 import androidx.compose.ui.input.key.onPreviewKeyEvent
 import androidx.compose.ui.input.key.type
 import androidx.compose.ui.platform.testTag
-import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.semantics.selected
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.semantics.stateDescription
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -69,13 +69,20 @@ import androidx.tv.material3.LocalContentColor
 import androidx.tv.material3.MaterialTheme
 import androidx.tv.material3.Surface
 import androidx.tv.material3.Text
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.first
-import me.him188.ani.app.ui.foundation.AsyncImage
+import me.him188.ani.app.domain.media.fetch.MediaSourceFetchState
+import me.him188.ani.app.domain.mediasource.web.displayName
+import me.him188.ani.app.ui.lang.Lang
+import me.him188.ani.app.ui.lang.media_selector_web_captcha_unsupported
+import me.him188.ani.app.ui.lang.media_selector_web_rate_limited
+import me.him188.ani.app.ui.lang.media_selector_web_waiting_captcha
 import me.him188.ani.datasources.api.Media
 import me.him188.ani.leanback.ui.foundation.focus.TvFocusKey
 import me.him188.ani.leanback.ui.foundation.focus.rememberTvFocusScope
 import me.him188.ani.leanback.ui.foundation.focus.tvFocusAnchor
 import me.him188.ani.leanback.ui.foundation.focus.tvFocusNavSignal
+import org.jetbrains.compose.resources.stringResource
 
 private enum class SourceFocus : TvFocusKey { Entry, FirstResult }
 
@@ -98,7 +105,7 @@ internal fun TvPlayerSourceDialog(
     containerModifier: Modifier,
     onIntent: (TvEpisodeIntent) -> Boolean,
 ) {
-    val simpleGroups = state.groups.filter { group -> group.items.any { it.excludedReason == null } }
+    val simpleGroups = state.groups.filter { it.showInSimpleMode }
     // Capture the opening selection once: later query updates must not steal focus from the user.
     val entrySelection = remember {
         selected?.mediaId?.let { mediaId ->
@@ -114,9 +121,9 @@ internal fun TvPlayerSourceDialog(
         }
     } ?: -1
     val selectedGroup = dialogState.selectedGroup(state.groups)
-    // Each simple source contributes a header and a channel row, after the retry item.
+    // Each source is one lazy item, including its loading/error state and channel row.
     val resultsState = rememberLazyListState(
-        initialFirstVisibleItemIndex = if (entryGroupIndex >= 0) 1 + entryGroupIndex * 2 else 0,
+        initialFirstVisibleItemIndex = if (entryGroupIndex >= 0) 1 + entryGroupIndex else 0,
     )
     val tabsState = rememberLazyListState()
     val resultFocus = rememberTvFocusScope()
@@ -130,7 +137,7 @@ internal fun TvPlayerSourceDialog(
         }
         entryFocusRequested = true
         entrySelection?.let { dialogState.selectedSourceId = it.first }
-        if (entryGroupIndex >= 0) resultsState.scrollToItem(1 + entryGroupIndex * 2)
+        if (entryGroupIndex >= 0) resultsState.scrollToItem(1 + entryGroupIndex)
         resultFocus.request(SourceFocus.Entry)
     }
     // Removing a focused result can briefly focus a mode tab. Do not treat that fallback as a mode choice.
@@ -248,6 +255,7 @@ internal fun TvPlayerSourceDialog(
                     modifier = Modifier.testTag("tv-source-tabs"),
                 ) {
                     items(state.groups, key = { it.instanceId }) { group ->
+                        val status = rememberSourceStatusText(group)
                         val dimmed = !group.loading &&
                                 (group.failed || group.items.none { it.excludedReason == null })
                         TvSourceTab(
@@ -258,7 +266,7 @@ internal fun TvPlayerSourceDialog(
                                         dialogState.selectedSourceId = group.instanceId
                                     }
                                 }
-                                .semantics { stateDescription = group.status },
+                                .semantics { stateDescription = status },
                             underline = true,
                             dimmed = dimmed,
                             leadingIcon = {
@@ -295,21 +303,17 @@ internal fun TvPlayerSourceDialog(
             ) {
                 // A full-width refresh row is always focusable, including empty/error states.
                 item(key = "retry") {
-                    val status = when {
-                        state.loading -> "查询中…"
-                        dialogState.mode == TvSourceMode.Simple -> "${groups.size} 个数据源"
-                        else -> selectedGroup?.status.orEmpty()
-                    }
-                    TvOptionRow(
-                        title = status,
-                        value = "重新查询",
-                        valueIcon = Icons.Rounded.Refresh,
-                        compact = dialogState.mode == TvSourceMode.Detailed,
-                        modifier = Modifier
-                            .onFocusChanged { if (it.isFocused) restoreResultFocus = false }
-                            .tvFocusAnchor(resultFocus, SourceFocus.FirstResult),
-                    ) {
-                        onIntent(TvEpisodeIntent.RetrySources(if (dialogState.mode == TvSourceMode.Detailed) selectedGroup?.instanceId else null))
+                    val retryModifier = Modifier
+                        .onFocusChanged { if (it.isFocused) restoreResultFocus = false }
+                        .tvFocusAnchor(resultFocus, SourceFocus.FirstResult)
+                    if (dialogState.mode == TvSourceMode.Detailed && selectedGroup != null) {
+                        TvSourceStatusAction(selectedGroup, retryModifier, onIntent)
+                    } else {
+                        TvOptionRow(
+                            title = if (state.loading) "查询中…" else "${groups.size} 个数据源",
+                            value = "重新查询", valueIcon = Icons.Rounded.Refresh,
+                            modifier = retryModifier,
+                        ) { onIntent(TvEpisodeIntent.RetrySources()) }
                     }
                 }
                 if (groups.isEmpty()) item {
@@ -324,60 +328,41 @@ internal fun TvPlayerSourceDialog(
                     )
                 }
                 groups.forEach { group ->
-                    if (dialogState.mode == TvSourceMode.Simple) item(key = "header-${group.instanceId}") {
-                        Row(
-                            Modifier
-                                .fillMaxWidth()
-                                .padding(start = 4.dp, top = 10.dp, bottom = 2.dp, end = 4.dp),
-                            horizontalArrangement = Arrangement.spacedBy(10.dp),
-                            verticalAlignment = Alignment.CenterVertically,
-                        ) {
-                            if (!group.iconUrl.isNullOrBlank()) AsyncImage(
-                                group.iconUrl,
-                                contentDescription = null,
-                                modifier = Modifier
-                                    .size(24.dp)
-                                    .clip(RoundedCornerShape(6.dp)),
-                            ) else Icon(
-                                Icons.Rounded.VideoLibrary,
-                                null,
-                                Modifier.size(24.dp),
-                                tint = TvPlayerSurfaceDefaults.Muted,
-                            )
-                            Text(
-                                group.name,
-                                Modifier.weight(1f),
-                                style = MaterialTheme.typography.titleMedium,
-                                color = TvPlayerSurfaceDefaults.Content,
-                            )
-                            Text(
-                                group.status,
-                                style = MaterialTheme.typography.labelMedium,
-                                color = TvPlayerSurfaceDefaults.Muted,
-                            )
-                        }
-                    }
                     val results =
                         group.items.filter { dialogState.mode == TvSourceMode.Detailed && dialogState.showExcluded || it.excludedReason == null }
-                    if (results.isEmpty()) item(key = "empty-${group.instanceId}") {
-                        TvOptionRow(
-                            if (group.items.isNotEmpty()) "结果已被排除" else group.status,
-                            filled = true,
-                        ) {
-                            onIntent(TvEpisodeIntent.RetrySources(group.instanceId))
-                        }
-                    }
-                    if (dialogState.mode == TvSourceMode.Simple && results.isNotEmpty()) {
-                        item(key = "channels-${group.instanceId}") {
-                            TvSourceChannelRow(
-                                results,
-                                selected?.mediaId,
-                                entryMediaId = entrySelection?.takeIf { it.first == group.instanceId }?.second,
-                                entryAnchorModifier = Modifier.tvFocusAnchor(resultFocus, SourceFocus.Entry),
-                                endOfRowModifier = showDetailedAtRowEnd,
-                            ) { onIntent(TvEpisodeIntent.SelectMedia(it)) }
+                    if (dialogState.mode == TvSourceMode.Simple) {
+                        item(key = "source-${group.instanceId}") {
+                            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                                Row(
+                                    Modifier.fillMaxWidth().padding(horizontal = 4.dp, vertical = 8.dp),
+                                    horizontalArrangement = Arrangement.spacedBy(10.dp),
+                                    verticalAlignment = Alignment.CenterVertically,
+                                ) {
+                                    CompositionLocalProvider(LocalContentColor provides TvPlayerSurfaceDefaults.Content) {
+                                        TvSourceIcon(group.iconUrl, loading = group.loading || group.isResolvingCaptcha)
+                                    }
+                                    Text(group.name, Modifier.weight(1f), style = MaterialTheme.typography.titleMedium, color = TvPlayerSurfaceDefaults.Content)
+                                    if (group.loading) Text(rememberSourceStatusText(group), color = TvPlayerSurfaceDefaults.Muted)
+                                }
+                                if (group.state is MediaSourceFetchState.CaptchaRequired || group.failed || group.state is MediaSourceFetchState.RateLimited) {
+                                    TvSourceStatusAction(group, Modifier, onIntent)
+                                }
+                                if (results.isNotEmpty()) TvSourceChannelRow(
+                                    results,
+                                    selected?.mediaId,
+                                    entryMediaId = entrySelection?.takeIf { it.first == group.instanceId }?.second,
+                                    entryAnchorModifier = Modifier.tvFocusAnchor(resultFocus, SourceFocus.Entry),
+                                    endOfRowModifier = showDetailedAtRowEnd,
+                                ) { onIntent(TvEpisodeIntent.SelectMedia(it)) }
+                            }
                         }
                     } else {
+                        if (results.isEmpty() && group.state is MediaSourceFetchState.Succeed) item {
+                            Text(
+                                if (group.items.isNotEmpty()) "结果已被排除" else "没有找到资源",
+                                color = TvPlayerSurfaceDefaults.Muted, modifier = Modifier.padding(16.dp),
+                            )
+                        }
                         items(results, key = { "${group.instanceId}-${it.media.mediaId}" }) { item ->
                             TvSourceResultCard(item, selected?.mediaId == item.media.mediaId) {
                                 onIntent(TvEpisodeIntent.SelectMedia(item.media))
@@ -387,6 +372,46 @@ internal fun TvPlayerSourceDialog(
                 }
             }
         }
+    }
+}
+
+@Composable
+private fun rememberSourceStatusText(group: TvSourceGroup): String = when (val state = group.state) {
+    MediaSourceFetchState.Idle -> "等待查询"
+    MediaSourceFetchState.Working -> "正在查询…"
+    MediaSourceFetchState.Disabled -> "未启用"
+    is MediaSourceFetchState.CaptchaRequired -> when {
+        !group.isCaptchaSupported -> stringResource(Lang.media_selector_web_captcha_unsupported)
+        group.isResolvingCaptcha -> stringResource(Lang.media_selector_web_waiting_captcha)
+        else -> "需要处理${state.request.kind.displayName()}"
+    }
+    is MediaSourceFetchState.RateLimited -> {
+        val remaining by produceState(((state.retryAt - System.currentTimeMillis()) / 1000).coerceAtLeast(0), state.retryAt) {
+            while (value > 0) {
+                delay(1_000)
+                value = ((state.retryAt - System.currentTimeMillis()) / 1000).coerceAtLeast(0)
+            }
+        }
+        stringResource(Lang.media_selector_web_rate_limited, remaining)
+    }
+    is MediaSourceFetchState.Failed, is MediaSourceFetchState.Abandoned -> "查询失败"
+    is MediaSourceFetchState.Succeed -> if (group.items.isEmpty()) "没有找到资源" else "${group.items.size} 个结果"
+}
+
+@Composable
+private fun TvSourceStatusAction(group: TvSourceGroup, modifier: Modifier, onIntent: (TvEpisodeIntent) -> Boolean) {
+    val captcha = group.state is MediaSourceFetchState.CaptchaRequired
+    TvOptionRow(
+        title = rememberSourceStatusText(group),
+        value = if (captcha) {
+            if (group.isResolvingCaptcha || !group.isCaptchaSupported) "" else "处理验证"
+        } else "重新查询",
+        enabled = !captcha || group.isCaptchaSupported && !group.isResolvingCaptcha,
+        compact = true,
+        modifier = modifier.testTag("tv-source-action-${group.instanceId}"),
+        valueIcon = if (captcha) null else Icons.Rounded.Refresh,
+    ) {
+        onIntent(if (captcha) TvEpisodeIntent.ResolveSourceCaptcha(group.instanceId) else TvEpisodeIntent.RetrySources(group.instanceId))
     }
 }
 

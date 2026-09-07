@@ -13,14 +13,17 @@ import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.flowOf
 import me.him188.ani.app.domain.media.fetch.MediaFetchSession
-import me.him188.ani.app.domain.media.fetch.MediaSourceFetchState
 import me.him188.ani.app.domain.media.selector.MediaExclusionReason
 import me.him188.ani.app.domain.media.selector.MediaSelector
 import me.him188.ani.app.domain.media.selector.UnsafeOriginalMediaAccess
 import me.him188.ani.datasources.api.source.MediaSourceKind
 
 @OptIn(UnsafeOriginalMediaAccess::class)
-internal fun tvSourceGroups(session: MediaFetchSession, selector: MediaSelector): Flow<List<TvSourceGroup>> {
+internal fun tvSourceGroups(
+    session: MediaFetchSession,
+    selector: MediaSelector,
+    captchaSupported: Boolean,
+): Flow<List<TvSourceGroup>> {
     val sources = session.mediaSourceResults.filter { it.kind == MediaSourceKind.WEB }
     if (sources.isEmpty()) return flowOf(emptyList())
     return combine(
@@ -33,17 +36,9 @@ internal fun tvSourceGroups(session: MediaFetchSession, selector: MediaSelector)
                     sourceId = source.mediaSourceId,
                     name = source.sourceInfo.displayName,
                     iconUrl = source.sourceInfo.iconUrl,
-                    status = when (state) {
-                        MediaSourceFetchState.Idle, MediaSourceFetchState.Working -> "正在查询…"
-                        MediaSourceFetchState.Disabled -> "未启用"
-                        is MediaSourceFetchState.CaptchaRequired -> "需要验证"
-                        is MediaSourceFetchState.RateLimited -> "请求过于频繁，请稍后重试"
-                        is MediaSourceFetchState.Failed, is MediaSourceFetchState.Abandoned -> "查询失败"
-                        is MediaSourceFetchState.Succeed -> if (items.isEmpty()) "没有找到资源" else "${items.size} 个结果"
-                    },
-                    loading = state == MediaSourceFetchState.Idle || state == MediaSourceFetchState.Working,
+                    state = state,
                     items = items,
-                    failed = state is MediaSourceFetchState.Failed || state is MediaSourceFetchState.Abandoned,
+                    isCaptchaSupported = captchaSupported,
                 )
             }
         },

@@ -60,8 +60,9 @@ import androidx.compose.ui.input.key.type
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.role
-import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.semantics.selected
+import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.semantics.stateDescription
 import androidx.compose.ui.semantics.toggleableState
 import androidx.compose.ui.state.ToggleableState
 import androidx.compose.ui.text.input.PasswordVisualTransformation
@@ -75,7 +76,13 @@ import androidx.tv.material3.LocalContentColor
 import androidx.tv.material3.MaterialTheme
 import androidx.tv.material3.Surface
 import androidx.tv.material3.Text
+import me.him188.ani.app.ui.watchtogether.stateIconAndText
+import me.him188.ani.app.ui.watchtogether.watchTogetherStatusText
 import me.him188.ani.app.videoplayer.videoenhancement.VideoEnhancementMode
+import me.him188.ani.danmaku.api.DanmakuServiceId
+import me.him188.ani.danmaku.ui.DanmakuConfig
+import me.him188.ani.danmaku.ui.DanmakuConfigRanges
+import me.him188.ani.danmaku.ui.DanmakuStyle
 import me.him188.ani.datasources.api.topic.UnifiedCollectionType
 import me.him188.ani.leanback.ui.foundation.focus.TvFocusKey
 import me.him188.ani.leanback.ui.foundation.focus.rememberTvFocusScope
@@ -87,6 +94,11 @@ import kotlin.math.roundToInt
 private enum class OptionFieldFocus : TvFocusKey { Name, Password, Submit }
 
 internal enum class TvCollectionPrompt { Remove, MarkAllWatched }
+
+internal sealed interface TvDanmakuAdjustment {
+    data class Parameter(val property: TvDanmakuProperty) : TvDanmakuAdjustment
+    data class Timing(val serviceId: DanmakuServiceId) : TvDanmakuAdjustment
+}
 
 @Composable
 internal fun TvOptionRow(
@@ -236,6 +248,32 @@ internal fun Modifier.tvStepKeys(onStep: (Int) -> Unit): Modifier = onPreviewKey
     true
 }
 
+/** Left closes the settings page until the user explicitly enters a value's adjustment. */
+@Composable
+private fun TvDanmakuAdjustmentRow(
+    title: String,
+    value: String,
+    adjusting: Boolean,
+    onAdjustingChange: (Boolean) -> Unit,
+    onStep: (Int) -> Unit,
+    modifier: Modifier = Modifier,
+    onReset: (() -> Unit)? = null,
+) {
+    TvOptionRow(
+        title,
+        value,
+        adjustable = adjusting,
+        valueIcon = if (adjusting) null else Icons.AutoMirrored.Rounded.KeyboardArrowRight,
+        modifier = modifier
+            .onFocusChanged { if (!it.hasFocus && adjusting) onAdjustingChange(false) }
+            .semantics { stateDescription = if (adjusting) "调整中" else "" }
+            .then(if (adjusting) Modifier.tvStepKeys(onStep) else Modifier),
+    ) {
+        if (adjusting) onReset?.invoke()
+        onAdjustingChange(!adjusting)
+    }
+}
+
 @Composable
 internal fun TvOptionTextField(
     value: String,
@@ -344,6 +382,8 @@ internal fun TvInteractivePanel(
     onCollectionPromptChange: (TvCollectionPrompt?) -> Unit,
     confirmLeave: Boolean,
     onConfirmLeaveChange: (Boolean) -> Unit,
+    danmakuAdjustment: TvDanmakuAdjustment?,
+    onDanmakuAdjustmentChange: (TvDanmakuAdjustment?) -> Unit,
     danmakuListModifier: Modifier,
     danmakuMatchModifier: Modifier,
     listState: LazyListState,
@@ -409,12 +449,18 @@ internal fun TvInteractivePanel(
                     items(TvDanmakuProperty.entries) { property ->
                         val config = options.danmakuConfig
                         val (label, value) = when (property) {
-                            TvDanmakuProperty.FontSize -> "字号" to config.style.fontSize.value.roundToInt().toString()
+                            TvDanmakuProperty.FontSize -> "字号" to "${(config.style.fontSize.value / DanmakuStyle.Default.fontSize.value * 100).roundToInt()}%"
                             TvDanmakuProperty.Opacity -> "不透明度" to "${(config.style.alpha * 100).roundToInt()}%"
-                            TvDanmakuProperty.Speed -> "移动速度" to config.speed.roundToInt().toString()
-                            TvDanmakuProperty.Density -> "密度" to "${100 - config.safeSeparation.value.roundToInt()}"
-                            TvDanmakuProperty.Area -> "显示区域" to "${(config.displayArea * 100).roundToInt()}%"
-                            TvDanmakuProperty.Stroke -> "描边" to config.style.strokeWidth.roundToInt().toString()
+                            TvDanmakuProperty.Speed -> "移动速度" to "${(config.speed / DanmakuConfig.Default.speed * 100).roundToInt()}%"
+                            TvDanmakuProperty.Density -> "密度" to when (DanmakuConfigRanges.densityLevel(
+                                config.safeSeparation, DanmakuConfigRanges.densitySeparation(desktop = false),
+                            ).toInt()) {
+                                in 7..10 -> "密集"
+                                in 4..6 -> "适中"
+                                else -> "稀疏"
+                            }
+                            TvDanmakuProperty.Area -> "显示区域" to if (config.displayArea == 0f) "关闭" else "${(config.displayArea * 100).roundToInt()}%"
+                            TvDanmakuProperty.Stroke -> "描边" to "${(config.style.strokeWidth / DanmakuStyle.Default.strokeWidth * 100).roundToInt()}%"
                             TvDanmakuProperty.Weight -> "字重" to config.style.fontWeight.weight.toString()
                             TvDanmakuProperty.Top -> "顶部弹幕" to if (config.enableTop) "开启" else "关闭"
                             TvDanmakuProperty.Bottom -> "底部弹幕" to if (config.enableBottom) "开启" else "关闭"
@@ -428,13 +474,22 @@ internal fun TvInteractivePanel(
                             TvDanmakuProperty.Color -> config.enableColor
                             else -> null
                         }
-                        TvOptionRow(
-                            label, if (checked == null) value else "",
-                            adjustable = checked == null,
-                            checked = checked,
-                            modifier = (if (property == TvDanmakuProperty.FontSize) entryModifier else Modifier)
-                                .tvStepKeys { onIntent(TvEpisodeIntent.AdjustDanmaku(property, it)) },
-                        ) { onIntent(TvEpisodeIntent.AdjustDanmaku(property, 1)) }
+                        if (checked == null) {
+                            val adjustment = TvDanmakuAdjustment.Parameter(property)
+                            TvDanmakuAdjustmentRow(
+                                label, value,
+                                adjusting = danmakuAdjustment == adjustment,
+                                onAdjustingChange = { adjusting -> onDanmakuAdjustmentChange(adjustment.takeIf { adjusting }) },
+                                onStep = { onIntent(TvEpisodeIntent.AdjustDanmaku(property, it)) },
+                                modifier = if (property == TvDanmakuProperty.FontSize) entryModifier else Modifier,
+                            )
+                        } else {
+                            TvOptionRow(
+                                label,
+                                checked = checked,
+                                modifier = Modifier.tvStepKeys { onIntent(TvEpisodeIntent.AdjustDanmaku(property, it)) },
+                            ) { onIntent(TvEpisodeIntent.AdjustDanmaku(property, 1)) }
+                        }
                     }
                     item { TvPlayerSectionLabel("弹幕来源与时间校准") }
                     items(options.danmakuOrigins, key = { "origin-${it.serviceId.value}" }) { origin ->
@@ -449,10 +504,12 @@ internal fun TvInteractivePanel(
                                 modifier = Modifier.padding(horizontal = 14.dp),
                                 style = MaterialTheme.typography.bodySmall,
                             )
-                            TvOptionRow(
+                            val adjustment = TvDanmakuAdjustment.Timing(origin.serviceId)
+                            TvDanmakuAdjustmentRow(
                                 "时间校准", "${origin.shiftMillis / 1000f}s",
-                                adjustable = true,
-                                modifier = Modifier.tvStepKeys {
+                                adjusting = danmakuAdjustment == adjustment,
+                                onAdjustingChange = { adjusting -> onDanmakuAdjustmentChange(adjustment.takeIf { adjusting }) },
+                                onStep = {
                                     onIntent(
                                         TvEpisodeIntent.ShiftDanmakuSource(
                                             origin.serviceId,
@@ -460,9 +517,8 @@ internal fun TvInteractivePanel(
                                         ),
                                     )
                                 },
-                            ) {
-                                onIntent(TvEpisodeIntent.ShiftDanmakuSource(origin.serviceId, null))
-                            }
+                                onReset = { onIntent(TvEpisodeIntent.ShiftDanmakuSource(origin.serviceId, null)) },
+                            )
                         }
                     }
                     item(key = "danmaku-list") {
@@ -567,13 +623,16 @@ internal fun TvInteractivePanel(
                                 modifier = Modifier.padding(8.dp),
                             )
                         }
-                        if (together.watching.isNotBlank()) item {
-                            Text(
-                                together.watching,
-                                style = MaterialTheme.typography.bodySmall,
-                                color = colors.muted,
-                                modifier = Modifier.padding(8.dp),
-                            )
+                        together.playback?.let { playback ->
+                            item {
+                                Text(
+                                    "${playback.subjectName} · 第 ${playback.episodeSort} 集 · ${playback.stateIconAndText().second} · " +
+                                            "${formatTime(playback.positionMillis)} / ${formatTime(playback.durationMillis)}",
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = colors.muted,
+                                    modifier = Modifier.padding(8.dp),
+                                )
+                            }
                         }
                         if (!together.isHost) item {
                             TvOptionRow(
@@ -588,8 +647,18 @@ internal fun TvInteractivePanel(
                                 modifier = if (together.isHost) entryModifier else Modifier,
                             ) { onConfirmLeaveChange(true) }
                         }
-                        items(together.members) {
-                            TvOptionRow(it, onClick = {})
+                        items(together.members, key = { it.userId }) { member ->
+                            Column(Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 10.dp)) {
+                                Text(
+                                    member.nickname + if (member.isSelf) "（我）" else "",
+                                    color = colors.content, style = MaterialTheme.typography.titleSmall,
+                                )
+                                Text(
+                                    (if (member.isHost) "房主" else if (member.following) "跟随房主" else "自由观看") +
+                                            " · " + member.watchTogetherStatusText(),
+                                    color = colors.muted, style = MaterialTheme.typography.bodySmall,
+                                )
+                            }
                         }
                     }
                 }

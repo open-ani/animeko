@@ -13,11 +13,13 @@ import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.NonCancellable
 import kotlinx.coroutines.channels.Channel
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.flatMapLatest
+import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.receiveAsFlow
 import kotlinx.coroutines.flow.stateIn
@@ -36,6 +38,12 @@ import me.him188.ani.app.domain.watchtogether.WatchTogetherEffect
 import me.him188.ani.app.domain.watchtogether.WatchTogetherManager
 import me.him188.ani.app.domain.watchtogether.WatchTogetherState
 import me.him188.ani.app.ui.foundation.AbstractViewModel
+import me.him188.ani.app.ui.user.SelfInfoStateProducer
+import me.him188.ani.app.ui.watchtogether.WatchTogetherMemberPresentation
+import me.him188.ani.app.ui.watchtogether.WatchTogetherPlaybackPresentation
+import me.him188.ani.app.ui.watchtogether.toWatchTogetherMemberPresentation
+import me.him188.ani.app.ui.watchtogether.toWatchTogetherPlaybackPresentation
+import org.koin.core.Koin
 
 data class TvTogetherState(
     val roomName: String = "",
@@ -46,8 +54,8 @@ data class TvTogetherState(
     val following: Boolean = true,
     val requiresLogin: Boolean = false,
     val connection: String = "",
-    val watching: String = "",
-    val members: List<String> = emptyList(),
+    val playback: WatchTogetherPlaybackPresentation? = null,
+    val members: List<WatchTogetherMemberPresentation> = emptyList(),
     val error: String? = null,
 )
 
@@ -69,8 +77,10 @@ class TvWatchTogetherViewModel(
     private val manager: WatchTogetherManager,
     private val settings: SettingsRepository,
     sessionStateProvider: SessionStateProvider,
+    koin: Koin,
 ) : AbstractViewModel() {
     private val form = MutableStateFlow(TvTogetherState())
+    private val selfInfoProducer = SelfInfoStateProducer(flowContext = backgroundScope.coroutineContext, koin = koin)
     private var joinJob: Job? = null
     private val navigation = Channel<TvTogetherNavigation>(Channel.BUFFERED)
     val navigationEvents = navigation.receiveAsFlow()
@@ -80,7 +90,15 @@ class TvWatchTogetherViewModel(
                 state.session.snapshot,
                 state.session.connection,
                 state.session.following,
-            ) { snapshot, connection, following ->
+                selfInfoProducer.flow,
+                flow {
+                    while (true) {
+                        emit(Unit)
+                        delay(1_000)
+                    }
+                },
+            ) { snapshot, connection, following, selfInfo, _ ->
+                val now = state.session.serverClock.now()
                 TvTogetherState(
                     roomName = state.session.roomName,
                     joined = true,
@@ -91,10 +109,9 @@ class TvWatchTogetherViewModel(
                         WatchTogetherConnectionState.Reconnecting -> "正在重新连接…"
                         WatchTogetherConnectionState.DegradedPolling -> "正在重试实时连接，暂时定时同步"
                     },
-                    watching = snapshot.playback?.info?.let { "${it.subjectName} · 第 ${it.episodeSort} 集 · ${if (it.loading == true) "加载中" else if (it.paused) "已暂停" else "播放中"}" }
-                        .orEmpty(),
+                    playback = snapshot.playback?.info?.toWatchTogetherPlaybackPresentation(now),
                     members = snapshot.members.sortedByDescending { it.isHost }.map { member ->
-                        "${if (member.isHost) "房主 · " else ""}${member.nickname} · ${if (member.watching?.loading == true) "加载中" else if (member.watching != null) "观看中" else "等待播放"}"
+                        member.toWatchTogetherMemberPresentation(now, selfInfo.selfInfo?.id?.toString())
                     },
                 )
             }

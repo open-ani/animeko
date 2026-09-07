@@ -14,44 +14,24 @@ import androidx.compose.foundation.focusGroup
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ColumnScope
-import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyListState
-import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.rounded.ArrowBack
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
-import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.drawWithContent
 import androidx.compose.ui.focus.focusProperties
-import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.input.key.Key
-import androidx.compose.ui.input.key.KeyEventType
-import androidx.compose.ui.input.key.key
-import androidx.compose.ui.input.key.onPreviewKeyEvent
-import androidx.compose.ui.input.key.type
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.semantics.paneTitle
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
-import androidx.tv.material3.ClickableSurfaceDefaults
-import androidx.tv.material3.Icon
 import androidx.tv.material3.LocalContentColor
 import androidx.tv.material3.MaterialTheme
-import androidx.tv.material3.Surface
 import androidx.tv.material3.Text
 
 /** Neutral layers keep sidebar content consistent with its opaque black background. */
@@ -70,13 +50,10 @@ private val SidebarColors = TvPlayerSurfaceColors(
 @Composable
 internal fun TvPlayerSidePanel(
     title: String,
-    onBack: () -> Unit,
     trapFocus: Boolean,
     modifier: Modifier = Modifier,
-    backModifier: Modifier = Modifier,
     content: @Composable ColumnScope.() -> Unit,
 ) {
-    var backFocused by remember { mutableStateOf(false) }
     CompositionLocalProvider(
         LocalTvPlayerSurfaceColors provides SidebarColors,
         LocalContentColor provides SidebarColors.content,
@@ -88,33 +65,11 @@ internal fun TvPlayerSidePanel(
                 .padding(start = 16.dp, end = 28.dp, top = 28.dp, bottom = 28.dp)
                 .semantics { paneTitle = title }
                 .testTag("tv-player-sidebar")
-                .focusProperties { onExit = { if (trapFocus) cancelFocus() } }
+                .focusProperties { onExit = { if (trapFocus) cancelFocusChange() } }
                 .focusGroup(),
             verticalArrangement = Arrangement.spacedBy(16.dp),
         ) {
-            Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-                Surface(
-                    onClick = onBack,
-                    modifier = backModifier
-                        .testTag("tv-sidebar-back")
-                        .onFocusChanged { backFocused = it.isFocused }
-                        .onPreviewKeyEvent { event ->
-                            if (!backFocused || event.key != Key.DirectionLeft) return@onPreviewKeyEvent false
-                            if (event.type == KeyEventType.KeyDown && event.nativeKeyEvent.repeatCount == 0) onBack()
-                            true
-                        },
-                    shape = ClickableSurfaceDefaults.shape(CircleShape),
-                    colors = tvPlayerOptionColors(),
-                    scale = ClickableSurfaceDefaults.scale(focusedScale = 1f),
-                ) {
-                    Icon(Icons.AutoMirrored.Rounded.ArrowBack, "返回", Modifier.padding(10.dp).size(20.dp))
-                }
-                Text(
-                    title,
-                    Modifier.padding(start = 10.dp),
-                    style = MaterialTheme.typography.titleLarge,
-                )
-            }
+            Text(title, style = MaterialTheme.typography.titleLarge)
             content()
         }
     }

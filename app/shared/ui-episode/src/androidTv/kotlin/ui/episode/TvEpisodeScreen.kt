@@ -9,16 +9,17 @@
 
 package me.him188.ani.leanback.ui.episode
 
+import android.view.KeyEvent as AndroidKeyEvent
 import androidx.compose.animation.AnimatedVisibility
-import androidx.compose.animation.core.tween
 import androidx.compose.animation.core.animateFloat
+import androidx.compose.animation.core.tween
 import androidx.compose.animation.core.updateTransition
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
-import androidx.compose.animation.slideInVertically
-import androidx.compose.animation.slideOutVertically
 import androidx.compose.animation.slideInHorizontally
+import androidx.compose.animation.slideInVertically
 import androidx.compose.animation.slideOutHorizontally
+import androidx.compose.animation.slideOutVertically
 import androidx.compose.foundation.background
 import androidx.compose.foundation.focusGroup
 import androidx.compose.foundation.focusable
@@ -35,8 +36,8 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.SideEffect
-import androidx.compose.runtime.key
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.key
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberUpdatedState
@@ -70,7 +71,10 @@ import kotlinx.coroutines.flow.first
 import me.him188.ani.app.data.models.episode.EpisodeComment
 import me.him188.ani.app.domain.player.VideoLoadingState
 import me.him188.ani.app.ui.foundation.navigation.BackHandler
+import me.him188.ani.app.ui.subject.episode.video.loading.EpisodeVideoLoadingIndicator
+import me.him188.ani.app.ui.subject.episode.video.loading.shouldShowVideoLoadingIndicator
 import me.him188.ani.app.videoplayer.ui.PlayerStatsOverlay
+import me.him188.ani.datasources.api.topic.FileSize
 import me.him188.ani.datasources.api.topic.UnifiedCollectionType
 import me.him188.ani.leanback.ui.foundation.focus.TV_CONFIRM_KEYS
 import me.him188.ani.leanback.ui.foundation.focus.TvFocusKey
@@ -80,7 +84,6 @@ import me.him188.ani.leanback.ui.foundation.focus.tvFocusExit
 import me.him188.ani.leanback.ui.foundation.focus.tvFocusLink
 import me.him188.ani.leanback.ui.foundation.focus.tvFocusNavSignal
 import org.openani.mediamp.features.AspectRatioMode
-import android.view.KeyEvent as AndroidKeyEvent
 
 /*
  * TV 播放页 (atv-architecture.md §8).
@@ -104,7 +107,7 @@ import android.view.KeyEvent as AndroidKeyEvent
 private enum class TvPlayerFocus : TvFocusKey {
     Root, SeekBar, IconRow, IconRowEntry, SourceDialog,
     PanelHost, PanelEntry,
-    Sidebar, SidebarBack,
+    Sidebar,
     SourceButton, SpeedButton, SubtitleButton, EpisodesButton, DialogHost, DialogEntry,
     DanmakuListButton, DanmakuMatchButton,
     RecommendationsRow, RecommendationsEntry,
@@ -154,6 +157,8 @@ fun TvEpisodeScreen(
     var confirmLeave by rememberSaveable(togetherState.joined, togetherState.roomName) { mutableStateOf(false) }
     var commentDetail by remember(state.activePanel) { mutableStateOf<EpisodeComment?>(null) }
     var commentReturn by remember(state.activePanel) { mutableStateOf<Pair<String, Int>?>(null) }
+    var danmakuAdjustment by remember(state.activePanel, state.dialog) { mutableStateOf<TvDanmakuAdjustment?>(null) }
+    var closingSidebarWithLeft by remember { mutableStateOf(false) }
     val sidebarTransition = updateTransition(state.sidebarVisible, label = "player-sidebar")
     val sidebarProgress by sidebarTransition.animateFloat(transitionSpec = { tween(250) }, label = "player-width") {
         if (it) 1f else 0f
@@ -260,8 +265,38 @@ fun TvEpisodeScreen(
         }
     }
 
+    fun back() {
+        when {
+            !state.sidebarVisible && uiState.options.skipPrompt != null -> onIntent(TvEpisodeIntent.Back)
+            danmakuAdjustment != null -> danmakuAdjustment = null
+            commentDetail != null -> commentDetail = null
+            state.activePanel == TvPlayerPanel.Together && confirmLeave -> confirmLeave = false
+            state.activePanel == TvPlayerPanel.Collection && collectionPrompt != null -> collectionPrompt = null
+            else -> {
+                if (state.activePanel == TvPlayerPanel.Together && togetherState.joining) {
+                    onTogetherIntent(TvTogetherIntent.CancelJoin)
+                }
+                onIntent(TvEpisodeIntent.Back)
+            }
+        }
+    }
+    BackHandler(enabled = state.handlesBack || uiState.options.skipPrompt != null, onBack = ::back)
+
+    val sidebarAtTopLevel = state.sidebarVisible && state.dialog == null && commentDetail == null && danmakuAdjustment == null &&
+            !(state.activePanel == TvPlayerPanel.Together && confirmLeave)
+
     // Ignore navigation into outgoing content until the recommendation transition settles.
     fun handleKey(event: KeyEvent): Boolean {
+        if (event.key == Key.DirectionLeft && (closingSidebarWithLeft || sidebarAtTopLevel)) {
+            if (event.type == KeyEventType.KeyDown && event.repeatCountCompat == 0 && !closingSidebarWithLeft) {
+                closingSidebarWithLeft = true
+                back()
+            } else if (event.type == KeyEventType.KeyUp) {
+                closingSidebarWithLeft = false
+            }
+            // Consume the whole press, including repeats after the panel starts closing.
+            return true
+        }
         val remoteKey = event.key.toTvRemoteKey()
         if (recommendationTransition.isRunning) {
             when (remoteKey) {
@@ -333,19 +368,6 @@ fun TvEpisodeScreen(
         focus.request(EpisodeCardKey(episodes.getOrNull(index)?.episodeId ?: episodes.first().episodeId))
     }
 
-    fun back() {
-        when {
-            uiState.options.skipPrompt != null -> onIntent(TvEpisodeIntent.Back)
-            commentDetail != null -> commentDetail = null
-            state.activePanel == TvPlayerPanel.Together && togetherState.joining -> onTogetherIntent(TvTogetherIntent.CancelJoin)
-            state.activePanel == TvPlayerPanel.Together && confirmLeave -> confirmLeave = false
-            state.activePanel == TvPlayerPanel.Collection && collectionPrompt != null -> collectionPrompt = null
-
-            else -> onIntent(TvEpisodeIntent.Back)
-        }
-    }
-    BackHandler(enabled = state.handlesBack || uiState.options.skipPrompt != null, onBack = ::back)
-
     @Composable
     fun InteractivePanel(panel: TvPlayerPanel, panelModifier: Modifier = Modifier) {
         TvInteractivePanel(
@@ -355,6 +377,8 @@ fun TvEpisodeScreen(
             onCollectionPromptChange = { collectionPrompt = it },
             confirmLeave = confirmLeave,
             onConfirmLeaveChange = { confirmLeave = it },
+            danmakuAdjustment = danmakuAdjustment,
+            onDanmakuAdjustmentChange = { danmakuAdjustment = it },
             danmakuListModifier = Modifier.tvFocusAnchor(focus, TvPlayerFocus.DanmakuListButton),
             danmakuMatchModifier = Modifier.tvFocusAnchor(focus, TvPlayerFocus.DanmakuMatchButton),
             listState = panelListState,
@@ -404,22 +428,21 @@ fun TvEpisodeScreen(
             val sourceError = uiState.sources.error
             val noResults =
                 !uiState.sources.loading && uiState.sources.groups.none { group -> group.items.any { it.excludedReason == null } } && selectedMedia == null
-            if (loading !is VideoLoadingState.Succeed) {
-                Text(
-                    text = sourceError ?: if (noResults) "没有找到可用资源" else when (loading) {
-                        is VideoLoadingState.Failed -> "播放失败"
-                        VideoLoadingState.Initial, VideoLoadingState.ResolvingSource -> "正在取源…"
-                        else -> "加载中…"
-                    },
+            if (shouldShowVideoLoadingIndicator(loading, uiState.isBuffering, uiState.playerError)) {
+                EpisodeVideoLoadingIndicator(
+                    state = loading,
+                    speedProvider = { FileSize.Unspecified },
+                    optimizeForFullscreen = true,
+                    playerError = uiState.playerError,
                     modifier = Modifier
                         .align(Alignment.Center)
                         .background(Color.Black.copy(alpha = 0.55f), RoundedCornerShape(8.dp))
-                        .padding(horizontal = 16.dp, vertical = 10.dp),
-                    style = MaterialTheme.typography.titleMedium,
-                    color = Color.White,
+                        .padding(horizontal = 16.dp, vertical = 10.dp)
+                        .testTag("tv-player-loading"),
+                    textStyle = MaterialTheme.typography.bodyLarge,
                 )
             }
-            if (loadingState is VideoLoadingState.Failed || sourceError != null || noResults) {
+            if (loadingState is VideoLoadingState.Failed || uiState.playerError || sourceError != null || noResults) {
                 Column(
                     Modifier
                         .align(Alignment.Center)
@@ -457,12 +480,20 @@ fun TvEpisodeScreen(
                     },
                     controller = {
                         var stripHadFocus by remember { mutableStateOf(false) }
+                        var nextEpisodeHadFocus by remember { mutableStateOf(false) }
+                        LaunchedEffect(uiState.hasNextEpisode) {
+                            if (!uiState.hasNextEpisode && nextEpisodeHadFocus) {
+                                nextEpisodeHadFocus = false
+                                focus.request(TvPlayerFocus.EpisodesButton)
+                            }
+                        }
                         TvPlayerControlsOverlay(
                             sourceIconUrl = uiState.sources.groups.firstOrNull { it.sourceId == selectedMedia?.mediaSourceId }?.iconUrl,
                             sourceLabel = selectedMedia?.properties?.alliance?.ifBlank { "默认线路" } ?: "选源",
                             positionMillis = positionMillis,
                             durationMillis = uiState.durationMillis,
                             bufferedFraction = bufferedFraction,
+                            hasNextEpisode = uiState.hasNextEpisode,
                             scrubMillis = state.scrubMillis,
                             speedLabel = formatSpeedLabel(playbackSpeed),
                             aspectLabel = when (aspectRatioMode) {
@@ -486,6 +517,9 @@ fun TvEpisodeScreen(
                                 .tvFocusAnchor(focus, TvPlayerFocus.IconRow)
                                 .focusGroup(),
                             nextEpisodeButtonModifier = Modifier
+                                .onFocusChanged {
+                                    if (latestState.hasNextEpisode) nextEpisodeHadFocus = it.isFocused
+                                }
                                 .tvFocusAnchor(focus, TvPlayerFocus.IconRowEntry)
                                 .tvFocusLink(focus, up = TvPlayerFocus.SeekBar),
                             sourceButtonModifier = Modifier.tvFocusAnchor(focus, TvPlayerFocus.SourceButton),
@@ -583,15 +617,11 @@ fun TvEpisodeScreen(
                 key(panel) {
                     val comments =
                         if (panel == TvPlayerPanel.Comments) commentsPager.collectAsLazyPagingItems() else null
-                    val empty = when (panel) {
-                        TvPlayerPanel.Comments -> comments == null || comments.itemCount == 0
-                        else -> false
-                    }
-                    LaunchedEffect(panel) {
-                        if (state.sidebarVisible) {
-                            // Each panel has a fresh list state. Empty/loading panels have no
-                            // LazyColumn to lay out, so requesting focus must not wait for it.
-                            focus.request(if (empty) TvPlayerFocus.SidebarBack else panelEntryKey)
+                    LaunchedEffect(panel, comments?.loadState?.refresh, comments?.itemCount == 0) {
+                        if (state.sidebarVisible && commentDetail == null && !focus.isFocused(TvPlayerFocus.Sidebar)) {
+                            // Empty/loading panels have no focusable content. The request is
+                            // delivered when an item or retry action becomes available.
+                            focus.request(panelEntryKey)
                         }
                     }
                     val danmakuList = state.dialog == TvPlayerDialog.DanmakuList
@@ -601,10 +631,8 @@ fun TvEpisodeScreen(
                             danmakuList -> "弹幕列表"
                             else -> panel.title
                         },
-                        onBack = ::back,
                         trapFocus = state.sidebarVisible && (state.dialog == null || danmakuList),
                         modifier = Modifier.tvFocusAnchor(focus, TvPlayerFocus.Sidebar),
-                        backModifier = Modifier.tvFocusAnchor(focus, TvPlayerFocus.SidebarBack),
                     ) {
                         when {
                             commentDetail != null -> TvCommentDetail(
@@ -614,7 +642,8 @@ fun TvEpisodeScreen(
 
                             danmakuList -> TvDanmakuListDialog(
                                 uiState.panel.danmaku,
-                                Modifier.tvFocusAnchor(focus, TvPlayerFocus.DialogEntry),
+                                focus,
+                                TvPlayerFocus.DialogEntry,
                             )
 
                             panel == TvPlayerPanel.Comments -> TvPlayerComments(
@@ -687,7 +716,7 @@ fun TvEpisodeScreen(
                     }
 
                     TvPlayerDialog.DanmakuMatch -> TvDanmakuMatchPanel(uiState.danmakuMatch, onIntent, entryModifier)
-                    TvPlayerDialog.DanmakuList -> TvDanmakuListDialog(uiState.panel.danmaku, entryModifier)
+                    TvPlayerDialog.DanmakuList -> TvDanmakuListDialog(uiState.panel.danmaku, focus, TvPlayerFocus.DialogEntry)
                 }
             }
         }

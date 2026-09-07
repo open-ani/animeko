@@ -36,6 +36,20 @@ class TvArchitectureTest {
         "me.him188.ani.app.ui.foundation.widgets.LocalToaster",
         "me.him188.ani.app.ui.foundation.navigation.BackHandler",
         "me.him188.ani.app.ui.search.renderLoadErrorToastMessage",
+        // Playback shares semantic mappings and the platform-neutral loading indicator, with TV typography.
+        "me.him188.ani.app.ui.search.renderLoadErrorMessage",
+        "me.him188.ani.app.ui.subject.episode.video.loading.EpisodeVideoLoadingIndicator",
+        "me.him188.ani.app.ui.subject.episode.video.loading.shouldShowVideoLoadingIndicator",
+        "me.him188.ani.app.ui.watchtogether.WatchTogetherMemberPresentation",
+        "me.him188.ani.app.ui.watchtogether.WatchTogetherPlaybackPresentation",
+        "me.him188.ani.app.ui.watchtogether.toWatchTogetherMemberPresentation",
+        "me.him188.ani.app.ui.watchtogether.toWatchTogetherPlaybackPresentation",
+        "me.him188.ani.app.ui.watchtogether.stateIconAndText",
+        "me.him188.ani.app.ui.watchtogether.watchTogetherStatusText",
+        "me.him188.ani.app.ui.lang.Lang",
+        "me.him188.ani.app.ui.lang.media_selector_web_captcha_unsupported",
+        "me.him188.ani.app.ui.lang.media_selector_web_rate_limited",
+        "me.him188.ani.app.ui.lang.media_selector_web_waiting_captcha",
         // v4 (对齐上游 PR#3217) 新增: 侧边栏头像
         "me.him188.ani.app.ui.foundation.avatar.",
         // 时间表状态层复用 (D3: ScheduleViewModel/presentation 数据类; UI composable 仍禁用)

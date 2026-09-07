@@ -21,6 +21,7 @@ kotlin {
             api(projects.app.shared.uiEpisode)
             api(projects.app.shared.uiFoundationTv)
             implementation(projects.app.shared.videoPlayer)
+            api(projects.app.shared.uiWatchtogether)
             implementation(projects.danmaku.danmakuUi)
             implementation(projects.app.shared.pagingCompose)
         }

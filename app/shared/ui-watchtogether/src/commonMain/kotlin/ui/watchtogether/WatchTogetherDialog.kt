@@ -701,7 +701,7 @@ private fun NowPlayingCard(playback: WatchTogetherPlaybackPresentation, modifier
 }
 
 @Composable
-private fun WatchTogetherPlaybackPresentation.stateIconAndText(): Pair<ImageVector, String> = when {
+fun WatchTogetherPlaybackPresentation.stateIconAndText(): Pair<ImageVector, String> = when {
     loading -> Icons.Rounded.Downloading to stringResource(Lang.watch_together_state_loading)
     buffering -> Icons.Rounded.HourglassEmpty to stringResource(Lang.watch_together_state_buffering)
     paused -> Icons.Rounded.Pause to stringResource(Lang.watch_together_state_paused)
@@ -800,7 +800,7 @@ private fun MemberRow(
                 }
             }
             Text(
-                text = member.statusText(),
+                text = member.watchTogetherStatusText(),
                 style = MaterialTheme.typography.bodySmall,
                 color = when {
                     disconnected -> MaterialTheme.colorScheme.error
@@ -913,7 +913,7 @@ private fun HostIdentityRow(modifier: Modifier = Modifier) {
 }
 
 @Composable
-private fun WatchTogetherMemberPresentation.statusText(): String = when (state) {
+fun WatchTogetherMemberPresentation.watchTogetherStatusText(): String = when (state) {
     WatchTogetherMemberPresence.DISCONNECTED -> {
         val minutes = disconnectedMinutes
         if (minutes != null && minutes > 0) {

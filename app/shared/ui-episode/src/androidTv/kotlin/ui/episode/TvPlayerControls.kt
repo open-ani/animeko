@@ -39,6 +39,7 @@ import androidx.compose.material.icons.rounded.Speed
 import androidx.compose.material.icons.rounded.Subtitles
 import androidx.compose.material.icons.rounded.SubtitlesOff
 import androidx.compose.material.icons.rounded.ViewModule
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.key
@@ -62,8 +63,8 @@ import androidx.compose.ui.layout.positionInParent
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.semantics.contentDescription
-import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.semantics.selected
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
@@ -176,6 +177,7 @@ internal fun TvPlayerControlsOverlay(
     positionMillis: Long,
     durationMillis: Long,
     bufferedFraction: Float,
+    hasNextEpisode: Boolean,
     scrubMillis: Long?,
     speedLabel: String,
     aspectLabel: String,
@@ -236,13 +238,14 @@ internal fun TvPlayerControlsOverlay(
                         verticalAlignment = Alignment.CenterVertically,
                         horizontalArrangement = Arrangement.Center,
                     ) {
-                        Box(
+                        if (options.previewAvailable && options.videoConfig.enableFramePreview) Box(
                             Modifier
                                 .width(192.dp)
                                 .height(108.dp)
                                 .shadow(8.dp, RoundedCornerShape(12.dp))
                                 .clip(RoundedCornerShape(12.dp))
-                                .background(TvPlayerSurfaceDefaults.Container),
+                                .background(TvPlayerSurfaceDefaults.Container)
+                                .testTag("tv-seek-preview-frame"),
                         ) {
                             options.preview?.let {
                                 Image(
@@ -252,11 +255,10 @@ internal fun TvPlayerControlsOverlay(
                                     contentScale = ContentScale.Fit,
                                 )
                             }
-                            if (options.preview == null) Text(
-                                if (options.previewLoading) "正在加载预览…" else "暂无画面预览",
-                                modifier = Modifier.align(Alignment.Center),
-                                style = MaterialTheme.typography.bodySmall,
-                                color = Color.LightGray,
+                            if (options.preview == null && options.previewLoading) CircularProgressIndicator(
+                                modifier = Modifier.align(Alignment.Center).size(28.dp).testTag("tv-seek-preview-loading"),
+                                color = Color.White,
+                                strokeWidth = 3.dp,
                             )
                         }
                         Column(Modifier.padding(start = 16.dp)) {
@@ -265,11 +267,11 @@ internal fun TvPlayerControlsOverlay(
                                 color = Color.White,
                                 style = MaterialTheme.typography.titleLarge,
                             )
-                            Text(
-                                "预览位置",
-                                color = TvPlayerSurfaceDefaults.Muted,
-                                style = MaterialTheme.typography.bodySmall,
-                            )
+                            options.chapters.firstOrNull {
+                                scrubMillis in it.offsetMillis..<it.offsetMillis + it.durationMillis
+                            }?.name?.takeIf { it.isNotBlank() }?.let { name ->
+                                Text(name, color = TvPlayerSurfaceDefaults.Muted, style = MaterialTheme.typography.bodySmall)
+                            }
                             Row(Modifier.padding(top = 12.dp), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                                 TvRemoteHint("确认", "跳转")
                                 TvRemoteHint("返回", "取消")
@@ -374,7 +376,7 @@ internal fun TvPlayerControlsOverlay(
                         horizontalArrangement = Arrangement.spacedBy(8.dp),
                         verticalAlignment = Alignment.CenterVertically,
                     ) {
-                        PlayerIconButton(
+                        if (hasNextEpisode) PlayerIconButton(
                             Icons.Rounded.SkipNext,
                             label = "下一集",
                             onClick = onNextEpisode,
@@ -384,7 +386,7 @@ internal fun TvPlayerControlsOverlay(
                             Icons.Rounded.ViewModule,
                             "选集",
                             onEpisodes,
-                            episodesButtonModifier,
+                            episodesButtonModifier.then(if (hasNextEpisode) Modifier else nextEpisodeButtonModifier),
                             showLabel = showButtonLabels,
                         )
                         PlayerLabelButton(

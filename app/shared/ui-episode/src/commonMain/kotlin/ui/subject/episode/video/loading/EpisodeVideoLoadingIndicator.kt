@@ -19,6 +19,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -75,10 +76,7 @@ fun EpisodeVideoLoadingIndicator(
         }
     }.collectAsStateWithLifecycle(null)
 
-    if (state.isBuffering ||
-        state.mediaStatus is MediaStatus.Error ||
-        videoLoadingState !is VideoLoadingState.Succeed
-    ) {
+    if (shouldShowVideoLoadingIndicator(videoLoadingState, state.isBuffering, state.mediaStatus is MediaStatus.Error)) {
         EpisodeVideoLoadingIndicator(
             videoLoadingState,
             speedProvider = {
@@ -91,6 +89,9 @@ fun EpisodeVideoLoadingIndicator(
     }
 }
 
+fun shouldShowVideoLoadingIndicator(state: VideoLoadingState, buffering: Boolean, playerError: Boolean): Boolean =
+    buffering || playerError || state !is VideoLoadingState.Succeed
+
 @Composable
 fun EpisodeVideoLoadingIndicator(
     state: VideoLoadingState,
@@ -98,6 +99,7 @@ fun EpisodeVideoLoadingIndicator(
     optimizeForFullscreen: Boolean,
     playerError: Boolean = false,
     modifier: Modifier = Modifier,
+    textStyle: TextStyle = MaterialTheme.typography.labelLarge,
 ) {
     val playerErrorText = stringResource(Lang.subject_episode_video_loading_player_error)
     val autoSelectingText = stringResource(Lang.subject_episode_video_loading_auto_selecting)
@@ -197,6 +199,7 @@ fun EpisodeVideoLoadingIndicator(
             }
         },
         modifier,
+        textStyle = textStyle,
     )
 }
 

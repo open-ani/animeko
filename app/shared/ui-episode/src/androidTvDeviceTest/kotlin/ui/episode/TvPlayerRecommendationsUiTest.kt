@@ -64,6 +64,10 @@ class TvPlayerRecommendationsUiTest {
         val machine = TvPlayerStateMachine({ TvPlaybackSnapshot(true, 20_000, 60_000) }, commands::add)
         lateinit var backDispatcher: OnBackPressedDispatcher
         var panel by mutableStateOf(TvPlayerPanelState())
+        var episodes by mutableStateOf(listOf(
+            TvStripEpisode(1, "1", "第 1 集", false, isKnownBroadcast = true),
+            TvStripEpisode(2, "2", "第 2 集", false, isKnownBroadcast = true),
+        ))
 
         fun onIntent(intent: TvEpisodeIntent): Boolean {
             if (intent is TvEpisodeIntent.OpenRecommendation) {
@@ -72,6 +76,30 @@ class TvPlayerRecommendationsUiTest {
             }
             return machine.onIntent(intent)
         }
+    }
+
+    @Test
+    fun unavailableNextEpisodeUsesEpisodesAsBottomRowEntry() = runAniComposeUiTest {
+        val fixture = Fixture().apply { episodes = episodes.take(1) }
+        showPlayer(fixture)
+        onNodeWithContentDescription("下一集").assertDoesNotExist()
+        key(Key.DirectionDown)
+        onNodeWithContentDescription("选集").assertIsFocused()
+        key(Key.DirectionDown)
+        onNodeWithTag("tv-recommendations-empty").assertIsFocused()
+        key(Key.DirectionUp)
+        assertControllerHasFocus()
+    }
+
+    @Test
+    fun nextEpisodeBecomingUnavailableKeepsFocusInTheBottomRow() = runAniComposeUiTest {
+        val fixture = Fixture()
+        showPlayer(fixture)
+        key(Key.DirectionDown)
+        onNodeWithContentDescription("下一集").assertIsFocused()
+        runOnIdle { fixture.episodes = fixture.episodes.take(1) }
+        onNodeWithContentDescription("下一集").assertDoesNotExist()
+        onNodeWithContentDescription("选集").assertIsFocused()
     }
 
     @Test
@@ -212,6 +240,8 @@ class TvPlayerRecommendationsUiTest {
                         loadingState = VideoLoadingState.Succeed(false),
                         positionMillis = 20_000,
                         durationMillis = 60_000,
+                        episodes = fixture.episodes,
+                        currentEpisodeId = 1,
                         overlay = overlay,
                         panel = fixture.panel,
                         options = fixture.options,

@@ -10,6 +10,7 @@
 package me.him188.ani.leanback.ui.episode
 
 import androidx.compose.runtime.saveable.SaverScope
+import me.him188.ani.app.domain.media.fetch.MediaSourceFetchState
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertNull
@@ -17,7 +18,7 @@ import kotlin.test.assertTrue
 
 class TvPlayerOptionsTest {
     private val sources = listOf("one", "two", "three").map {
-        TvSourceGroup(it, it, it, null, "完成", false, emptyList())
+        TvSourceGroup(it, it, it, null, MediaSourceFetchState.Succeed(0), emptyList())
     }
 
     @Test

@@ -12,11 +12,8 @@ package me.him188.ani.leanback.ui.episode
 import android.graphics.Bitmap
 import androidx.compose.runtime.Stable
 import androidx.compose.runtime.mutableStateOf
-import androidx.compose.ui.graphics.ImageBitmap
+import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.graphics.asImageBitmap
-import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import androidx.paging.PagingData
 import androidx.paging.cachedIn
 import kotlinx.coroutines.CancellationException
@@ -25,6 +22,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.NonCancellable
 import kotlinx.coroutines.channels.Channel
+import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -53,7 +51,6 @@ import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import me.him188.ani.app.data.models.episode.EpisodeComment
-import me.him188.ani.app.data.models.preference.VideoEnhancementDefaultMode
 import me.him188.ani.app.data.network.AutoSkipRepository
 import me.him188.ani.app.data.network.TmdbImageService
 import me.him188.ani.app.data.network.matchToEpisodes
@@ -75,6 +72,7 @@ import me.him188.ani.app.domain.episode.infoBundleFlow
 import me.him188.ani.app.domain.episode.mediaSelectorFlow
 import me.him188.ani.app.domain.media.fetch.MediaSourceFetchState
 import me.him188.ani.app.domain.media.resolver.MediaResolver
+import me.him188.ani.app.domain.mediasource.web.captcha.SolveOutcome
 import me.him188.ani.app.domain.mediasource.web.captcha.WebSessionManager
 import me.him188.ani.app.domain.player.VideoLoadingState
 import me.him188.ani.app.domain.player.extension.AutoSelectExtension
@@ -92,6 +90,7 @@ import me.him188.ani.app.navigation.SubjectDetailPlaceholder
 import me.him188.ani.app.platform.ContextMP
 import me.him188.ani.app.ui.foundation.AbstractViewModel
 import me.him188.ani.app.videoplayer.ui.androidPlayerStatsFlow
+import me.him188.ani.app.videoplayer.ui.progress.MediaProgressFramePreviewState
 import me.him188.ani.app.videoplayer.ui.progress.subtitleLanguage
 import me.him188.ani.app.videoplayer.videoenhancement.VideoEnhancementMode
 import me.him188.ani.app.videoplayer.videoenhancement.createVideoEnhancementController
@@ -109,6 +108,7 @@ import me.him188.ani.leanback.ui.foundation.TvNavigationEvent
 import me.him188.ani.leanback.ui.foundation.TvNavigationEvents
 import org.koin.core.Koin
 import org.openani.mediamp.ExperimentalMediampApi
+import org.openani.mediamp.MediaStatus
 import org.openani.mediamp.MediampPlayer
 import org.openani.mediamp.MediampPlayerFactory
 import org.openani.mediamp.features.AspectRatioMode
@@ -153,6 +153,7 @@ class TvEpisodeViewModel(
     private val danmakuMatch = MutableStateFlow(TvDanmakuMatchState())
     private var matchingJob: Job? = null
     private val sourceSelection = MutableStateFlow(TvSourceSelectionState())
+    private val resolvingCaptchaSources = MutableStateFlow<Set<String>>(emptySet())
     private val events = Channel<TvEpisodeEvent>(Channel.BUFFERED)
     val actionEvents = events.receiveAsFlow()
     private val episodeStills = MutableStateFlow<Map<Int, String>>(emptyMap())
@@ -250,7 +251,7 @@ class TvEpisodeViewModel(
     /** 选集条条目 (§8.3): 集序号 + 标题 + 已看标记. */
 
     private val episodeStripFlow: StateFlow<List<TvStripEpisode>> =
-        combine(episodeCollectionsFlow, episodeStills) { list, stills ->
+        combine(episodeCollectionsFlow, episodeStills, subjectCollectionFlow) { list, stills, subject ->
             list.map { collection ->
                 val info = collection.episodeInfo
                 TvStripEpisode(
@@ -259,6 +260,7 @@ class TvEpisodeViewModel(
                     title = info.nameCn.ifBlank { info.name },
                     watched = collection.collectionType == UnifiedCollectionType.DONE,
                     stillUrl = stills[collection.episodeId],
+                    isKnownBroadcast = info.isKnownCompleted(subject.recurrence),
                 )
             }
         }
@@ -441,6 +443,7 @@ class TvEpisodeViewModel(
             val index = list.indexOfFirst { it.episodeId == currentEpisodeIdFlow.value }
             if (index == -1) return@launch
             val target = list.getOrNull(index + offset) ?: return@launch
+            if (offset > 0 && !target.episodeInfo.isKnownCompleted(subjectCollectionFlow.first().recurrence)) return@launch
             fetchPlayState.switchEpisode(target.episodeId)
         }
     }
@@ -513,6 +516,8 @@ class TvEpisodeViewModel(
             mediaLabel = label,
             durationMillis = properties?.durationMillis ?: 0,
         )
+    }.combine(player.state) { state, playback ->
+        state.copy(isBuffering = playback.isBuffering, playerError = playback.mediaStatus is MediaStatus.Error)
     }.combine(options) { state, options ->
         state.copy(bufferedFraction = options.first, playbackSpeed = options.second, aspectRatioMode = options.third)
     }.combine(selection) { state, selected ->
@@ -558,7 +563,7 @@ class TvEpisodeViewModel(
             TvEpisodeIntent.OpenLogin -> navigation.emit(TvNavigationEvent.Login)
             TvEpisodeIntent.CancelAutoSkip -> cancelAutoSkip()
             TvEpisodeIntent.Back -> {
-                if (playerOptions.value.skipPrompt != null) cancelAutoSkip()
+                if (playerOptions.value.skipPrompt != null && !interaction.states.value.sidebarVisible) cancelAutoSkip()
                 else if (interaction.states.value.dialog == TvPlayerDialog.DanmakuMatch && danmakuMatch.value.selectedSubject != null) {
                     matchingJob?.cancel()
                     danmakuMatch.update {
@@ -620,15 +625,6 @@ class TvEpisodeViewModel(
 
             is TvEpisodeIntent.SetEnhancement -> {
                 videoEnhancement?.setMode(intent.mode)
-                runAction {
-                    settingsRepository.videoScaffoldConfig.update {
-                        copy(
-                            videoEnhancementDefaultMode = VideoEnhancementDefaultMode.valueOf(
-                                intent.mode.name,
-                            ),
-                        )
-                    }
-                }
             }
 
             is TvEpisodeIntent.ViewportChanged -> videoEnhancement?.setViewportSize(intent.width, intent.height)
@@ -700,6 +696,7 @@ class TvEpisodeViewModel(
             }
 
             is TvEpisodeIntent.RetrySources -> retrySources(intent.instanceId)
+            is TvEpisodeIntent.ResolveSourceCaptcha -> resolveSourceCaptcha(intent.instanceId)
             TvEpisodeIntent.RetryPlayback -> retryPlayback()
             is TvEpisodeIntent.OpenRecommendation -> {
                 val recommendation = intent.recommendation
@@ -776,56 +773,7 @@ class TvEpisodeViewModel(
     }
 
     private fun adjustDanmaku(intent: TvEpisodeIntent.AdjustDanmaku) = runAction {
-        val d = intent.direction.coerceIn(-1, 1)
-        settingsRepository.danmakuConfig.update {
-            when (intent.property) {
-                TvDanmakuProperty.FontSize -> copy(
-                    style = style.copy(
-                        fontSize = (style.fontSize.value + d * 2).coerceIn(
-                            12f,
-                            48f,
-                        ).sp,
-                    ),
-                )
-
-                TvDanmakuProperty.Opacity -> copy(
-                    style = style.copy(
-                        alpha = (style.alpha + d * .05f).coerceIn(
-                            .1f,
-                            1f,
-                        ),
-                    ),
-                )
-
-                TvDanmakuProperty.Speed -> copy(speed = (speed + d * 10).coerceIn(30f, 200f))
-                TvDanmakuProperty.Density -> copy(safeSeparation = (safeSeparation.value - d * 8).coerceIn(0f, 100f).dp)
-                TvDanmakuProperty.Area -> copy(displayArea = (displayArea + d * .1f).coerceIn(.1f, 1f))
-                TvDanmakuProperty.Stroke -> copy(
-                    style = style.copy(
-                        strokeWidth = (style.strokeWidth + d).coerceIn(
-                            0f,
-                            8f,
-                        ),
-                    ),
-                )
-
-                TvDanmakuProperty.Weight -> copy(
-                    style = style.copy(
-                        fontWeight = FontWeight(
-                            (style.fontWeight.weight + d * 100).coerceIn(
-                                100,
-                                900,
-                            ),
-                        ),
-                    ),
-                )
-
-                TvDanmakuProperty.Top -> copy(enableTop = !enableTop)
-                TvDanmakuProperty.Bottom -> copy(enableBottom = !enableBottom)
-                TvDanmakuProperty.Floating -> copy(enableFloating = !enableFloating)
-                TvDanmakuProperty.Color -> copy(enableColor = !enableColor)
-            }
-        }
+        settingsRepository.danmakuConfig.update { adjustForTv(intent.property, intent.direction) }
     }
 
     private fun cancelAutoSkip() {
@@ -878,13 +826,25 @@ class TvEpisodeViewModel(
         } else {
             val source =
                 bundle.mediaFetchSession.mediaSourceResults.find { it.instanceId == instanceId } ?: return@runAction
-            val state = source.state.value
-            if (state is MediaSourceFetchState.CaptchaRequired) webSessionManager.solve(
-                state.request,
-                interactive = true,
-            )
             selectorEpisodeCacheRepository.clearByRequestedSubjectAndSource(subjectId, source.mediaSourceId)
             source.restart()
+        }
+    }
+
+    @OptIn(UnsafeEpisodeSessionApi::class)
+    private fun resolveSourceCaptcha(instanceId: String) = runAction {
+        if (instanceId in resolvingCaptchaSources.value || !webSessionManager.isInteractiveSupported) return@runAction
+        val bundle = fetchPlayState.episodeSessionFlow.value.fetchSelectFlow.filterNotNull().first()
+        val source = bundle.mediaFetchSession.mediaSourceResults.find { it.instanceId == instanceId } ?: return@runAction
+        val request = (source.state.value as? MediaSourceFetchState.CaptchaRequired)?.request ?: return@runAction
+        resolvingCaptchaSources.update { it + instanceId }
+        try {
+            if (webSessionManager.solve(request, interactive = true) == SolveOutcome.Solved) {
+                selectorEpisodeCacheRepository.clearByRequestedSubjectAndSource(subjectId, source.mediaSourceId)
+                source.restart()
+            }
+        } finally {
+            resolvingCaptchaSources.update { it - instanceId }
         }
     }
 
@@ -941,11 +901,13 @@ class TvEpisodeViewModel(
         backgroundScope.launch {
             fetchPlayState.episodeSessionFlow.flatMapLatest { session ->
                 val groupsFlow = session.fetchSelectFlow.flatMapLatest { bundle ->
-                    if (bundle == null) flowOf(null) else tvSourceGroups(bundle.mediaFetchSession, bundle.mediaSelector)
+                    if (bundle == null) flowOf(null) else tvSourceGroups(
+                        bundle.mediaFetchSession, bundle.mediaSelector, webSessionManager.isInteractiveSupported,
+                    )
                 }
-                combine(groupsFlow, session.infoLoadErrorStateFlow) { groups, error ->
+                combine(groupsFlow, session.infoLoadErrorStateFlow, resolvingCaptchaSources) { groups, error, resolving ->
                     TvSourceSelectionState(
-                        groups = groups.orEmpty(),
+                        groups = groups.orEmpty().map { it.copy(isResolvingCaptcha = it.instanceId in resolving) },
                         loading = error == null && (groups == null || groups.any { it.loading }),
                         error = error?.let { "剧集信息加载失败，请重新查询" },
                     )
@@ -1003,41 +965,41 @@ class TvEpisodeViewModel(
 
     private fun observePreview() {
         val feature = player.features[FramePreview] ?: return
-        playerOptions.update { it.copy(previewAvailable = true) }
+        val preview = MediaProgressFramePreviewState(fetchFrame = { position ->
+            try {
+                feature.getPreviewFrame(position, 384, 216)?.let {
+                    Bitmap.createBitmap(it.pixels, it.width, it.height, Bitmap.Config.ARGB_8888).asImageBitmap()
+                }
+            } catch (e: CancellationException) {
+                throw e
+            } catch (_: Exception) {
+                null
+            }
+        })
         backgroundScope.launch(Dispatchers.Main) {
-            player.mediaData.collectLatest {
-                playerOptions.update { it.copy(preview = null, previewLoading = false) }
-                val frames = LinkedHashMap<Long, ImageBitmap>()
-                interaction.states.map { it.scrubMillis }.distinctUntilChanged().collectLatest { position ->
-                    if (position == null) {
-                        playerOptions.update { it.copy(preview = null, previewLoading = false) }
-                        return@collectLatest
-                    }
-                    val key = position / 2_000 * 2_000
-                    val cached = frames[key]
-                    if (cached != null) {
-                        playerOptions.update { it.copy(preview = cached, previewLoading = false) }
-                        return@collectLatest
-                    }
-                    playerOptions.update { it.copy(previewLoading = true) }
-                    delay(70)
-                    try {
-                        val frame = feature.getPreviewFrame(key, 384, 216)
-                        val bitmap = frame?.let {
-                            Bitmap.createBitmap(it.pixels, it.width, it.height, Bitmap.Config.ARGB_8888).asImageBitmap()
+            settingsRepository.videoScaffoldConfig.flow.map { it.enableFramePreview }.distinctUntilChanged()
+                .collectLatest { enabled ->
+                    preview.onMediaChanged()
+                    playerOptions.update { it.copy(previewAvailable = enabled, preview = null, previewLoading = false) }
+                    if (!enabled) return@collectLatest
+                    coroutineScope {
+                        launch {
+                            snapshotFlow { preview.frame to preview.isLoading }.collect { (frame, loading) ->
+                                playerOptions.update { it.copy(preview = frame, previewLoading = loading) }
+                            }
                         }
-                        if (bitmap != null) {
-                            frames[key] = bitmap
-                            if (frames.size > 12) frames.remove(frames.keys.first())
+                        player.mediaData.collectLatest { data ->
+                            preview.onMediaChanged()
+                            if (data == null) return@collectLatest
+                            coroutineScope {
+                                launch { preview.prewarm(player.getCurrentPositionMillis()) }
+                                interaction.states.map { it.scrubMillis }.distinctUntilChanged().collectLatest { position ->
+                                    if (position == null) preview.onPreviewFinished() else preview.requestFrame(position)
+                                }
+                            }
                         }
-                        playerOptions.update { it.copy(preview = bitmap, previewLoading = false) }
-                    } catch (e: CancellationException) {
-                        throw e
-                    } catch (_: Exception) {
-                        playerOptions.update { it.copy(preview = null, previewLoading = false) }
                     }
                 }
-            }
         }
     }
 

@@ -11,6 +11,8 @@ package me.him188.ani.leanback.ui.episode
 
 import androidx.compose.ui.graphics.ImageBitmap
 import me.him188.ani.app.data.models.preference.VideoScaffoldConfig
+import me.him188.ani.app.domain.media.fetch.MediaSourceFetchState
+import me.him188.ani.app.domain.media.fetch.isFailedOrAbandoned
 import me.him188.ani.app.videoplayer.ui.PlayerStatsSnapshot
 import me.him188.ani.app.videoplayer.videoenhancement.VideoEnhancementMode
 import me.him188.ani.danmaku.api.DanmakuServiceId
@@ -28,11 +30,17 @@ data class TvSourceGroup(
     val sourceId: String,
     val name: String,
     val iconUrl: String?,
-    val status: String,
-    val loading: Boolean,
+    val state: MediaSourceFetchState,
     val items: List<TvSourceItem>,
-    val failed: Boolean = false,
-)
+    val isCaptchaSupported: Boolean = true,
+    val isResolvingCaptcha: Boolean = false,
+) {
+    val loading: Boolean get() = state == MediaSourceFetchState.Idle || state == MediaSourceFetchState.Working
+    val failed: Boolean get() = state.isFailedOrAbandoned
+    val showInSimpleMode: Boolean
+        get() = state != MediaSourceFetchState.Disabled &&
+                (state !is MediaSourceFetchState.Succeed || items.any { it.excludedReason == null })
+}
 
 data class TvSourceSelectionState(
     val groups: List<TvSourceGroup> = emptyList(),

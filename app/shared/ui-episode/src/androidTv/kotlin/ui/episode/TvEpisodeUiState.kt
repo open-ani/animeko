@@ -27,7 +27,8 @@ data class TvStripEpisode(
     val sortLabel: String,
     val title: String,
     val watched: Boolean,
-    val stillUrl: String? = null
+    val stillUrl: String? = null,
+    val isKnownBroadcast: Boolean = false,
 )
 
 data class TvPlayerOverlayState(
@@ -56,6 +57,8 @@ data class TvEpisodeUiState(
     val title: TvEpisodeTitle = TvEpisodeTitle(),
     val playbackState: PlaybackState = PlaybackState.READY,
     val loadingState: VideoLoadingState = VideoLoadingState.Initial,
+    val isBuffering: Boolean = false,
+    val playerError: Boolean = false,
     val mediaLabel: String? = null,
     val durationMillis: Long = 0,
     val positionMillis: Long = 0,
@@ -70,7 +73,13 @@ data class TvEpisodeUiState(
     val sources: TvSourceSelectionState = TvSourceSelectionState(),
     val options: TvPlayerOptionsState = TvPlayerOptionsState(),
     val danmakuMatch: TvDanmakuMatchState = TvDanmakuMatchState(),
-)
+) {
+    val hasNextEpisode: Boolean
+        get() {
+            val index = episodes.indexOfFirst { it.episodeId == currentEpisodeId }
+            return index >= 0 && episodes.getOrNull(index + 1)?.isKnownBroadcast == true
+        }
+}
 
 enum class TvRemoteKey { Left, Right, Up, Down, Confirm, Menu, PlayPause, Play, Pause, Next, Previous, Other }
 
@@ -127,6 +136,7 @@ sealed interface TvEpisodeIntent {
     data object MarkAllWatched : TvEpisodeIntent
     data class SetEpisodeWatched(val episodeId: Int, val watched: Boolean) : TvEpisodeIntent
     data class RetrySources(val instanceId: String? = null) : TvEpisodeIntent
+    data class ResolveSourceCaptcha(val instanceId: String) : TvEpisodeIntent
     data object RetryPlayback : TvEpisodeIntent
 }
 

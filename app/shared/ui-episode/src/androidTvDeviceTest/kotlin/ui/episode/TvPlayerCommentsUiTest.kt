@@ -29,12 +29,14 @@ import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.semantics.SemanticsActions
 import androidx.compose.ui.semantics.SemanticsProperties
 import androidx.compose.ui.test.SemanticsMatcher
+import androidx.compose.ui.test.assert
 import androidx.compose.ui.test.assertCountEquals
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.assertIsFocused
 import androidx.compose.ui.test.captureToImage
 import androidx.compose.ui.test.hasAnyAncestor
 import androidx.compose.ui.test.hasTestTag
+import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.onRoot
@@ -44,31 +46,117 @@ import androidx.compose.ui.test.pressKey
 import androidx.compose.ui.text.TextLayoutResult
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.sp
+import androidx.paging.Pager
+import androidx.paging.PagingConfig
 import androidx.paging.PagingData
+import androidx.paging.PagingSource
+import androidx.paging.PagingState
 import androidx.test.platform.app.InstrumentationRegistry
 import com.github.panpf.sketch.Sketch
+import kotlinx.coroutines.CompletableDeferred
+import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.emptyFlow
 import kotlinx.coroutines.flow.flowOf
 import me.him188.ani.app.data.models.UserInfo
 import me.him188.ani.app.data.models.episode.EpisodeComment
 import me.him188.ani.app.data.models.episode.EpisodeCommentSource
 import me.him188.ani.app.domain.player.VideoLoadingState
+import me.him188.ani.app.ui.foundation.LocalSketch
 import me.him188.ani.app.ui.framework.AniComposeUiTest
 import me.him188.ani.app.ui.framework.runAniComposeUiTest
-import me.him188.ani.app.ui.foundation.LocalSketch
 import me.him188.ani.leanback.ui.foundation.theme.AniTvTheme
 import java.io.File
+import java.io.IOException
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
 import kotlin.test.assertTrue
 
 class TvPlayerCommentsUiTest {
-    private class Fixture(val comments: List<EpisodeComment>) {
+    private class Fixture(
+        val comments: List<EpisodeComment>,
+        val pager: Flow<PagingData<EpisodeComment>> = flowOf(PagingData.from(comments)),
+    ) {
         val commands = mutableListOf<TvPlaybackCommand>()
         val machine = TvPlayerStateMachine({ TvPlaybackSnapshot(true, 20_000, 60_000) }, commands::add)
-        val pager = flowOf(PagingData.from(comments))
         lateinit var backDispatcher: OnBackPressedDispatcher
+    }
+
+    @Test
+    fun loadingAndEmptyPanelsCanCloseWithoutAFocusableRoot() = runAniComposeUiTest {
+        val loaded = CompletableDeferred<Unit>()
+        val pager = Pager(PagingConfig(pageSize = 1)) {
+            object : PagingSource<Int, EpisodeComment>() {
+                override fun getRefreshKey(state: PagingState<Int, EpisodeComment>): Int? = null
+                override suspend fun load(params: LoadParams<Int>): LoadResult<Int, EpisodeComment> {
+                    loaded.await()
+                    return LoadResult.Page(emptyList(), null, null)
+                }
+            }
+        }
+        val fixture = Fixture(emptyList(), pager.flow)
+        showPlayer(fixture)
+        key(Key.DirectionUp)
+        key(Key.DirectionRight)
+        key(Key.DirectionCenter)
+        onNodeWithTag("tv-comments-loading").assertIsDisplayed()
+        onNodeWithTag("tv-player-sidebar").assert(SemanticsMatcher.keyNotDefined(SemanticsProperties.Focused))
+        onNodeWithTag("tv-sidebar-back").assertDoesNotExist()
+        runOnIdle { fixture.backDispatcher.onBackPressed() }
+        onNodeWithTag("tv-player-sidebar").assertDoesNotExist()
+        onNodeWithTag("tv-player-chip-Comments").assertIsFocused()
+
+        runOnIdle { loaded.complete(Unit) }
+        key(Key.DirectionCenter)
+        waitUntil(timeoutMillis = 5_000) { onAllNodesWithText("暂无评论").fetchSemanticsNodes().isNotEmpty() }
+        onNodeWithTag("tv-player-sidebar").assert(SemanticsMatcher.keyNotDefined(SemanticsProperties.Focused))
+        onNodeWithTag("tv-sidebar-back").assertDoesNotExist()
+        saveScreenshot("comments-empty-without-back-button")
+        key(Key.DirectionLeft)
+        onNodeWithTag("tv-player-sidebar").assertDoesNotExist()
+        onNodeWithTag("tv-player-chip-Comments").assertIsFocused()
+        assertTrue(fixture.commands.isEmpty())
+    }
+
+    @Test
+    fun failedRefreshCanBeRetriedWithTheRemoteAndAppendShowsLoading() = runAniComposeUiTest {
+        val refreshed = CompletableDeferred<Unit>()
+        val appended = CompletableDeferred<Unit>()
+        var refreshAttempts = 0
+        val pager = Pager(PagingConfig(pageSize = 1, initialLoadSize = 1, enablePlaceholders = false)) {
+            object : PagingSource<Int, EpisodeComment>() {
+                override fun getRefreshKey(state: PagingState<Int, EpisodeComment>): Int? = null
+                override suspend fun load(params: LoadParams<Int>): LoadResult<Int, EpisodeComment> {
+                    if (params.key == null) {
+                        if (++refreshAttempts == 1) return LoadResult.Error(IOException("test network failure"))
+                        refreshed.await()
+                        return LoadResult.Page(listOf(comment("recovered", "重试后加载的评论")), null, 1)
+                    }
+                    appended.await()
+                    return LoadResult.Page(emptyList(), 0, null)
+                }
+            }
+        }
+        val fixture = Fixture(emptyList(), pager.flow)
+        showPlayer(fixture)
+        key(Key.DirectionUp)
+        key(Key.DirectionRight)
+        key(Key.DirectionCenter)
+        waitUntil(timeoutMillis = 5_000) { onAllNodes(hasTestTag("tv-comments-retry")).fetchSemanticsNodes().isNotEmpty() }
+        onNodeWithText("暂无评论").assertDoesNotExist()
+        onNodeWithTag("tv-comments-retry").assertIsFocused()
+        saveScreenshot("comments-refresh-error")
+        key(Key.DirectionCenter)
+        waitUntil(timeoutMillis = 5_000) { refreshAttempts == 2 }
+        onNodeWithTag("tv-comments-loading").assertIsDisplayed()
+        runOnIdle { refreshed.complete(Unit) }
+        waitUntil(timeoutMillis = 5_000) { onAllNodes(hasTestTag("tv-comment-recovered")).fetchSemanticsNodes().isNotEmpty() }
+        onNodeWithTag("tv-comments-retry").assertDoesNotExist()
+        onNodeWithTag("tv-comments-append-loading").assertIsDisplayed()
+        onNodeWithTag("tv-comment-recovered").assertIsFocused()
+        runOnIdle { appended.complete(Unit) }
+        waitUntil(timeoutMillis = 5_000) { onAllNodes(hasTestTag("tv-comments-append-loading")).fetchSemanticsNodes().isEmpty() }
+        assertEquals(2, refreshAttempts)
     }
 
     @Test
@@ -101,8 +189,14 @@ class TvPlayerCommentsUiTest {
                     hasAnyAncestor(hasTestTag("tv-comment-full-text")),
             useUnmergedTree = true,
         ).assertCountEquals(0)
+        key(Key.DirectionLeft)
+        onNodeWithTag("tv-comment-full-text").assertIsFocused()
         runOnIdle { fixture.backDispatcher.onBackPressed() }
         onNodeWithTag("tv-comment-second").assertIsFocused()
+        onNodeWithTag("tv-sidebar-back").assertDoesNotExist()
+        runOnIdle { fixture.backDispatcher.onBackPressed() }
+        onNodeWithTag("tv-player-sidebar").assertDoesNotExist()
+        onNodeWithTag("tv-player-chip-Comments").assertIsFocused()
         assertTrue(fixture.commands.isEmpty())
     }
 
@@ -158,6 +252,10 @@ class TvPlayerCommentsUiTest {
         val mask = preview.spanStyles.last { it.item.background != Color.Unspecified }
         assertEquals(mask.item.color, mask.item.background)
         onNodeWithTag("tv-comment-brief").assertIsFocused()
+        key(Key.DirectionLeft)
+        onNodeWithTag("tv-player-sidebar").assertDoesNotExist()
+        onNodeWithTag("tv-player-chip-Comments").assertIsFocused()
+        assertTrue(fixture.commands.isEmpty())
     }
 
     private fun AniComposeUiTest.showPlayer(fixture: Fixture) {
@@ -199,8 +297,6 @@ class TvPlayerCommentsUiTest {
         key(Key.DirectionRight)
         key(Key.DirectionCenter)
         waitUntil(timeoutMillis = 5_000) { onAllNodesWithComment().fetchSemanticsNodes().isNotEmpty() }
-        // Paging may finish after the sidebar initially gives focus to its back button.
-        if (onNodeWithTag("tv-sidebar-back").fetchSemanticsNode().config[SemanticsProperties.Focused]) key(Key.DirectionDown)
     }
 
     private fun AniComposeUiTest.onAllNodesWithComment() = onAllNodes(
