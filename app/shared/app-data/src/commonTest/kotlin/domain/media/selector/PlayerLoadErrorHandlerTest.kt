@@ -274,6 +274,78 @@ class PlayerLoadErrorHandlerTest {
         assertEquals(setOf(mediaA.mediaId), handler1.blacklist)
     }
 
+    @Test
+    fun `manual choice during player error delay cancels automatic replacement`() = runFetchMediaSelectorTestSuite {
+        initSubject("test")
+        val (_, session, sources) = configureFetchSession { object { val web1 by web { tier = 0 } } }
+        sources.web1.complete(media(kind = WEB, subjectName = initApi.subjectName))
+        testScope().runCurrent()
+        val failed = media(kind = WEB, subjectName = initApi.subjectName)
+        selector.select(failed)
+        val handler = PlayerLoadErrorHandler(getPreferKind = { WEB }, getSourceTiers = { preferenceApi.sourceTiers!! })
+        val job = testScope().launch { handler.handleError(session, selector) }
+        testScope().runCurrent()
+        val manual = media(kind = WEB, subjectName = initApi.subjectName)
+        selector.select(manual)
+        testScope().advanceUntilIdle()
+        assertTrue(job.isCompleted)
+        assertEquals(manual, selector.selected.value)
+    }
+
+    @Test
+    fun `player error does not fall back to BT when WEB candidates are exhausted`() = runFetchMediaSelectorTestSuite {
+        initSubject("test")
+        val (_, session, sources) = configureFetchSession {
+            object {
+                val web1 by web { tier = 0 }
+                val bt1 by bt()
+            }
+        }
+        val failed = media(kind = WEB, subjectName = initApi.subjectName)
+        sources.web1.complete(failed)
+        sources.bt1.complete(media(kind = MediaSourceKind.BitTorrent, subjectName = initApi.subjectName))
+        testScope().runCurrent()
+        selector.select(selector.filteredCandidatesMedia.first().single { it.mediaId == failed.mediaId })
+
+        val handler = PlayerLoadErrorHandler(getPreferKind = { WEB }, getSourceTiers = { preferenceApi.sourceTiers!! })
+        lateinit var job: Job
+        val events = selector.collectEvents {
+            job = testScope().launch { handler.handleError(session, selector) }
+            testScope().advanceUntilIdle()
+        }
+
+        assertTrue(job.isCompleted)
+        assertEquals(failed.mediaId, selector.selected.value?.mediaId)
+        assertEquals(setOf(failed.mediaId), handler.blacklist)
+        events.expectNoEvents()
+    }
+
+    @Test
+    fun `player error skips ready and pending local caches`() = runFetchMediaSelectorTestSuite {
+        initSubject("test")
+        val (_, session, sources) = configureFetchSession {
+            object {
+                val cached by localCache()
+                val pendingCache by localCache()
+                val web1 by web { tier = 0 }
+            }
+        }
+        val failed = media(kind = WEB, subjectName = initApi.subjectName)
+        val replacement = media(kind = WEB, subjectName = initApi.subjectName)
+        sources.web1.complete(failed, replacement)
+        sources.cached.complete(media(kind = MediaSourceKind.LocalCache, subjectName = initApi.subjectName))
+        testScope().runCurrent()
+        selector.select(selector.filteredCandidatesMedia.first().single { it.mediaId == failed.mediaId })
+
+        val handler = PlayerLoadErrorHandler(getPreferKind = { WEB }, getSourceTiers = { preferenceApi.sourceTiers!! })
+        val job = testScope().launch { handler.handleError(session, selector) }
+        testScope().advanceUntilIdle()
+
+        assertTrue(job.isCompleted)
+        assertEquals(replacement.mediaId, selector.selected.value?.mediaId)
+        assertEquals(setOf(failed.mediaId), handler.blacklist)
+    }
+
     context(scope: TestScope)
     private fun testScope(): TestScope = implicit()
 }

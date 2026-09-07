@@ -12,6 +12,7 @@ package me.him188.ani.app.domain.media.selector
 import kotlinx.coroutines.CoroutineStart
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.test.TestScope
@@ -214,6 +215,7 @@ class MediaSelectorAutoSelectUseCaseTest {
         val (_, session, sources) = configureFetchSession {
             object {
                 val cached by localCache()
+                val pendingCache by localCache()
                 val web1 by web { tier = 0 }
             }
         }
@@ -224,6 +226,208 @@ class MediaSelectorAutoSelectUseCaseTest {
         testScope().runCurrent()
 
         assertSelectedSource(sources.cached)
+        job.assertCompleted()
+    }
+
+    @Test
+    fun `ready local cache beats a completed remembered WEB source`() = runFetchMediaSelectorTestSuite {
+        initSubject()
+        preferenceApi.savedUserPreference.value = MediaPreference.Any
+        preferenceApi.mediaSelectorSettings.value = autoSelectSettings()
+        val (_, session, sources) = configureFetchSession {
+            object {
+                val cached by localCache()
+                val web1 by web { tier = 0 }
+            }
+        }
+        preferredWebMediaSource.value = "web1"
+        sources.web1.complete(media(kind = WEB, subjectName = initApi.subjectName))
+        sources.cached.complete(media(kind = LocalCache, subjectName = initApi.subjectName))
+        testScope().runCurrent()
+
+        val job = launchAutoSelect(session)
+        testScope().runCurrent()
+
+        assertSelectedSource(sources.cached)
+        job.assertCompleted()
+    }
+
+    @Test
+    fun `pending local cache blocks ready T0 WEB even after both deadlines`() = runFetchMediaSelectorTestSuite {
+        initSubject()
+        preferenceApi.savedUserPreference.value = MediaPreference.Any
+        preferenceApi.mediaSelectorSettings.value = autoSelectSettings()
+        val (_, session, sources) = configureFetchSession {
+            object {
+                val cached by localCache()
+                val web1 by web { tier = 0 }
+            }
+        }
+
+        val job = launchAutoSelect(session)
+        sources.web1.complete(media(kind = WEB, subjectName = initApi.subjectName))
+        testScope().advanceTimeBy(20.seconds)
+        testScope().runCurrent()
+        assertNull(selector.selected.value)
+        assertFalse(job.isCompleted)
+
+        sources.cached.complete(media(kind = LocalCache, subjectName = initApi.subjectName))
+        testScope().runCurrent()
+
+        assertSelectedSource(sources.cached)
+        job.assertCompleted()
+    }
+
+    @Test
+    fun `pending local cache blocks preferred BT`() = runFetchMediaSelectorTestSuite {
+        initSubject()
+        preferenceApi.savedUserPreference.value = MediaPreference.Any
+        preferenceApi.mediaSelectorSettings.value = autoSelectSettings(preferKind = BitTorrent)
+        val (_, session, sources) = configureFetchSession {
+            object {
+                val cached by localCache()
+                val bt1 by bt()
+            }
+        }
+
+        val job = launchAutoSelect(session)
+        sources.bt1.complete(media(kind = BitTorrent, subjectName = initApi.subjectName))
+        testScope().runCurrent()
+        assertNull(selector.selected.value)
+        assertFalse(job.isCompleted)
+
+        sources.cached.complete(media(kind = LocalCache, subjectName = initApi.subjectName))
+        testScope().runCurrent()
+
+        assertSelectedSource(sources.cached)
+        job.assertCompleted()
+    }
+
+    @Test
+    fun `all cache lookups must miss before selecting the remembered WEB source`() = runFetchMediaSelectorTestSuite {
+        initSubject()
+        preferenceApi.savedUserPreference.value = MediaPreference.Any
+        preferenceApi.mediaSelectorSettings.value = autoSelectSettings()
+        val (_, session, sources) = configureFetchSession {
+            object {
+                val cached1 by localCache()
+                val cached2 by localCache()
+                val web1 by web { tier = 0 }
+                val web2 by web { tier = 2 }
+            }
+        }
+        preferredWebMediaSource.value = "web2"
+
+        val job = launchAutoSelect(session)
+        sources.web1.complete(media(kind = WEB, subjectName = initApi.subjectName))
+        sources.web2.complete(media(kind = WEB, subjectName = initApi.subjectName))
+        sources.cached1.complete(emptyList<Media>())
+        testScope().runCurrent()
+        assertNull(selector.selected.value)
+        assertFalse(job.isCompleted)
+
+        sources.cached2.complete(emptyList<Media>())
+        testScope().runCurrent()
+
+        assertSelectedSource(sources.web2)
+        job.assertCompleted()
+    }
+
+    @Test
+    fun `failed cache lookup releases WEB selection`() = runFetchMediaSelectorTestSuite {
+        initSubject()
+        preferenceApi.savedUserPreference.value = MediaPreference.Any
+        preferenceApi.mediaSelectorSettings.value = autoSelectSettings()
+        val (_, session, sources) = configureFetchSession {
+            object {
+                val cached by localCache()
+                val web1 by web { tier = 0 }
+            }
+        }
+
+        val job = launchAutoSelect(session)
+        sources.web1.complete(media(kind = WEB, subjectName = initApi.subjectName))
+        testScope().runCurrent()
+        assertNull(selector.selected.value)
+
+        sources.cached.result.completeExceptionally(IllegalStateException("Cache lookup failed"))
+        testScope().runCurrent()
+
+        assertSelectedSource(sources.web1)
+        job.assertCompleted()
+    }
+
+    @Test
+    fun `disabled local cache does not block WEB selection`() = runFetchMediaSelectorTestSuite {
+        initSubject()
+        preferenceApi.savedUserPreference.value = MediaPreference.Any
+        preferenceApi.mediaSelectorSettings.value = autoSelectSettings()
+        val (_, session, sources) = configureFetchSession {
+            object {
+                val cached by localCache(enabled = false)
+                val web1 by web { tier = 0 }
+            }
+        }
+
+        val job = launchAutoSelect(session)
+        sources.web1.complete(media(kind = WEB, subjectName = initApi.subjectName))
+        testScope().runCurrent()
+
+        assertSelectedSource(sources.web1)
+        assertEquals(0, sources.cached.fetchCount)
+        job.assertCompleted()
+    }
+
+    @Test
+    fun `WEB deadlines start after local cache lookup misses`() = runFetchMediaSelectorTestSuite {
+        initSubject("Example Series")
+        preferenceApi.savedUserPreference.value = MediaPreference.Any
+        preferenceApi.mediaSelectorSettings.value = autoSelectSettings()
+        val (_, session, sources) = configureFetchSession {
+            object {
+                val cached by localCache()
+                val web1 by web { tier = 0 }
+            }
+        }
+
+        val job = launchAutoSelect(session)
+        sources.web1.complete(media(kind = WEB, subjectName = "Example Series Special"))
+        testScope().advanceTimeBy(10.seconds)
+        sources.cached.complete(emptyList<Media>())
+        testScope().runCurrent()
+
+        testScope().advanceTimeBy(15.seconds)
+        assertNull(selector.selected.value)
+        assertFalse(job.isCompleted)
+        testScope().runCurrent()
+
+        assertSelectedSource(sources.web1)
+        job.assertCompleted()
+    }
+
+    @Test
+    fun `manual selection while cache lookup is pending wins over the cache`() = runFetchMediaSelectorTestSuite {
+        initSubject()
+        preferenceApi.savedUserPreference.value = MediaPreference.Any
+        preferenceApi.mediaSelectorSettings.value = autoSelectSettings()
+        val (_, session, sources) = configureFetchSession {
+            object {
+                val cached by localCache()
+                val web1 by web { tier = 0 }
+            }
+        }
+
+        val job = launchAutoSelect(session)
+        sources.web1.complete(media(kind = WEB, subjectName = initApi.subjectName))
+        testScope().runCurrent()
+        assertNull(selector.selected.value)
+
+        val manual = media(kind = WEB, subjectName = initApi.subjectName)
+        selector.select(manual)
+        sources.cached.complete(media(kind = LocalCache, subjectName = initApi.subjectName))
+        testScope().runCurrent()
+
+        assertEquals(manual, selector.selected.value)
         job.assertCompleted()
     }
 
@@ -282,6 +486,152 @@ class MediaSelectorAutoSelectUseCaseTest {
     }
 
     @Test
+    fun `web preference falls back to BT when no web sources are enabled`() = runFetchMediaSelectorTestSuite {
+        initSubject()
+        preferenceApi.savedUserPreference.value = MediaPreference.Any
+        preferenceApi.mediaSelectorSettings.value = autoSelectSettings()
+
+        val (_, session, sources) = configureFetchSession {
+            object {
+                val bt1 by bt()
+            }
+        }
+
+        val job = launchAutoSelect(session)
+        testScope().runCurrent()
+        assertNull(selector.selected.value)
+        assertFalse(job.isCompleted)
+
+        sources.bt1.complete(media(kind = BitTorrent, subjectName = initApi.subjectName))
+        testScope().runCurrent()
+
+        assertSelectedSource(sources.bt1)
+        job.assertCompleted()
+    }
+
+    @Test
+    fun `web preference falls back to ready BT after all web sources return empty`() = runFetchMediaSelectorTestSuite {
+        initSubject()
+        preferenceApi.savedUserPreference.value = MediaPreference.Any
+        preferenceApi.mediaSelectorSettings.value = autoSelectSettings()
+
+        val (_, session, sources) = configureFetchSession {
+            object {
+                val bt1 by bt()
+                val web1 by web()
+                val web2 by web()
+            }
+        }
+
+        val job = launchAutoSelect(session)
+        sources.bt1.complete(media(kind = BitTorrent, subjectName = initApi.subjectName))
+        sources.web1.complete(emptyList<Media>())
+        testScope().runCurrent()
+        assertNull(selector.selected.value)
+        assertFalse(job.isCompleted)
+
+        sources.web2.complete(emptyList<Media>())
+        testScope().runCurrent()
+
+        assertSelectedSource(sources.bt1)
+        job.assertCompleted()
+    }
+
+    @Test
+    fun `disabled web sources wait for all remaining sources before BT fallback`() = runFetchMediaSelectorTestSuite {
+        initSubject()
+        preferenceApi.savedUserPreference.value = MediaPreference.Any
+        preferenceApi.mediaSelectorSettings.value = autoSelectSettings()
+
+        val (_, session, sources) = configureFetchSession {
+            object {
+                val web1 by web(enabled = false)
+                val bt1 by bt()
+                val bt2 by bt()
+            }
+        }
+
+        val job = launchAutoSelect(session)
+        sources.bt1.complete(media(kind = BitTorrent, subjectName = initApi.subjectName))
+        testScope().advanceTimeBy(15.seconds)
+        testScope().runCurrent()
+        assertNull(selector.selected.value)
+        assertFalse(job.isCompleted)
+
+        sources.bt2.complete(emptyList<Media>())
+        testScope().runCurrent()
+
+        assertSelectedSource(sources.bt1)
+        assertEquals(0, sources.web1.fetchCount)
+        job.assertCompleted()
+    }
+
+    @Test
+    fun `BT fallback is retained when fast web selection is disabled`() = runFetchMediaSelectorTestSuite {
+        initSubject()
+        preferenceApi.savedUserPreference.value = MediaPreference.Any
+        preferenceApi.mediaSelectorSettings.value = autoSelectSettings(fastSelectWebKind = false)
+
+        val (_, session, sources) = configureFetchSession {
+            object {
+                val bt1 by bt()
+                val web1 by web()
+            }
+        }
+
+        val job = launchAutoSelect(session)
+        sources.bt1.complete(media(kind = BitTorrent, subjectName = initApi.subjectName))
+        testScope().runCurrent()
+        assertNull(selector.selected.value)
+        assertFalse(job.isCompleted)
+
+        sources.web1.complete(emptyList<Media>())
+        testScope().runCurrent()
+
+        assertSelectedSource(sources.bt1)
+        job.assertCompleted()
+    }
+
+    @Test
+    fun `ready BT does not bypass the five second exact WEB deadline`() = assertWebDeadline(
+        subjectName = "Example Series", webTier = 1, deadline = 5.seconds,
+        expectedMatch = MatchMetadata.SubjectMatchKind.EXACT,
+    )
+
+    @Test
+    fun `ready BT does not bypass the fifteen second fuzzy WEB deadline`() = assertWebDeadline(
+        subjectName = "Example Series Special", webTier = 0, deadline = 15.seconds,
+        expectedMatch = MatchMetadata.SubjectMatchKind.FUZZY,
+    )
+
+    @Test
+    fun `manual selection while WEB is pending prevents BT fallback`() = runFetchMediaSelectorTestSuite {
+        initSubject()
+        preferenceApi.savedUserPreference.value = MediaPreference.Any
+        preferenceApi.mediaSelectorSettings.value = autoSelectSettings()
+
+        val (_, session, sources) = configureFetchSession {
+            object {
+                val bt1 by bt()
+                val web1 by web()
+            }
+        }
+
+        val job = launchAutoSelect(session)
+        sources.bt1.complete(media(kind = BitTorrent, subjectName = initApi.subjectName))
+        testScope().runCurrent()
+        assertNull(selector.selected.value)
+
+        val manual = media(kind = WEB, subjectName = initApi.subjectName)
+        selector.select(manual)
+        sources.web1.complete(emptyList<Media>())
+        testScope().runCurrent()
+
+        assertEquals(manual, selector.selected.value)
+        job.assertCompleted()
+    }
+
+    @Test
     fun `auto enables last selected disabled source`() = runFetchMediaSelectorTestSuite {
         initSubject()
         preferenceApi.savedUserPreference.value = MediaPreference.Any.copy(mediaSourceId = "web1")
@@ -319,6 +669,39 @@ class MediaSelectorAutoSelectUseCaseTest {
         return scope.launch(start = CoroutineStart.UNDISPATCHED) {
             useCase(session, selector)
         }
+    }
+
+    private fun assertWebDeadline(
+        subjectName: String,
+        webTier: Int,
+        deadline: Duration,
+        expectedMatch: MatchMetadata.SubjectMatchKind,
+    ) = runFetchMediaSelectorTestSuite {
+        initSubject("Example Series")
+        preferenceApi.savedUserPreference.value = MediaPreference.Any
+        preferenceApi.mediaSelectorSettings.value = autoSelectSettings()
+        val (_, session, sources) = configureFetchSession {
+            object {
+                val bt1 by bt()
+                val web1 by web { tier = webTier }
+            }
+        }
+
+        val job = launchAutoSelect(session)
+        sources.bt1.complete(media(kind = BitTorrent, subjectName = initApi.subjectName))
+        sources.web1.complete(media(kind = WEB, subjectName = subjectName))
+        testScope().runCurrent()
+        assertEquals(expectedMatch, selector.filteredCandidates.first()
+            .filterIsInstance<MaybeExcludedMedia.Included>()
+            .single { it.result.kind == WEB }.metadata.subjectMatchKind)
+
+        testScope().advanceTimeBy(deadline)
+        assertNull(selector.selected.value)
+        assertFalse(job.isCompleted)
+
+        testScope().runCurrent()
+        assertSelectedSource(sources.web1)
+        job.assertCompleted()
     }
 
     private fun FetchMediaSelectorTestSuite.createKoin(): Koin {

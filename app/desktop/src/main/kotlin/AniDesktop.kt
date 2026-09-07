@@ -97,6 +97,7 @@ import me.him188.ani.app.ui.foundation.LocalWindowState
 import me.him188.ani.app.ui.foundation.effects.OverrideCaptionButtonAppearance
 import me.him188.ani.app.ui.foundation.ifThen
 import me.him188.ani.app.ui.foundation.layout.LocalPlatformWindow
+import me.him188.ani.app.ui.foundation.layout.LocalSecondaryWindowFrame
 import me.him188.ani.app.ui.foundation.layout.isSystemInFullscreen
 import me.him188.ani.app.ui.foundation.navigation.LocalOnBackPressedDispatcherOwner
 import me.him188.ani.app.ui.foundation.navigation.SkikoOnBackPressedDispatcherOwner
@@ -439,6 +440,7 @@ object AniDesktop {
         }
 
         val navigator = AniNavigator()
+        DesktopMediaTraceCapture.install(koin.koin, coroutineScope)?.start(navigator)
 
         val windowStateRepository = koin.koin.get<WindowStateRepository>()
         val savedWindowStateDeferred = coroutineScope.async {
@@ -573,6 +575,15 @@ object AniDesktop {
                     LocalOnBackPressedDispatcherOwner provides backPressedDispatcherOwner,
                     @OptIn(InternalComposeUiApi::class)
                     LocalSystemTheme provides systemTheme,
+                    // 二级窗口 (图片查看器) 沿用主窗口的自定义外观
+                    LocalSecondaryWindowFrame provides if (isRunningUnderWine()) {
+                        null
+                    } else {
+                        { secondaryWindowState, onCloseRequest, content ->
+                            HandleWindowsWindowProc()
+                            WindowFrame(secondaryWindowState, onCloseRequest, content)
+                        }
+                    },
                 ) {
                     if (isRunningUnderWine()) {
                         MainWindowContent(navigator)

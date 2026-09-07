@@ -101,7 +101,6 @@ kotlin {
         api(projects.utils.logging)
         api(projects.utils.coroutines)
         api(projects.utils.io)
-        api(projects.app.shared.imageViewer)
         api(projects.utils.xml)
         api(projects.utils.bbcode)
         api(projects.danmaku.danmakuApi)

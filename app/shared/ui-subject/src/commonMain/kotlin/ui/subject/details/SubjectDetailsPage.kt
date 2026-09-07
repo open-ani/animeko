@@ -120,7 +120,7 @@ import me.him188.ani.app.ui.foundation.layout.paneHorizontalPadding
 import me.him188.ani.app.ui.foundation.layout.paneVerticalPadding
 import me.him188.ani.app.ui.foundation.layout.plus
 import me.him188.ani.app.ui.foundation.layout.rememberNestedScrollableColumnState
-import me.him188.ani.app.ui.foundation.navigation.BackHandler
+import me.him188.ani.app.ui.foundation.ImageViewerBackHandler
 import me.him188.ani.app.ui.foundation.pagerTabIndicatorOffset
 import me.him188.ani.app.ui.foundation.rememberImageViewerHandler
 import me.him188.ani.app.ui.foundation.stateOf
@@ -315,7 +315,7 @@ private fun SubjectDetailsPage(
 
     // image viewer
     val imageViewer = rememberImageViewerHandler()
-    BackHandler(enabled = imageViewer.viewing.value) { imageViewer.clear() }
+    ImageViewerBackHandler(imageViewer)
 
     val presentation by state.presentation.collectAsStateWithLifecycle()
     val onEpisodeLongClick: (EpisodeListItem) -> Unit = {

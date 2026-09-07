@@ -21,10 +21,8 @@ import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.Stable
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -77,11 +75,6 @@ class EditableSubjectCollectionTypeState(
      * 是否显示 "将所有剧集标记为看过" 对话框
      */
     private val showSetAllEpisodesDoneDialogFlow = MutableStateFlow(false)
-
-    /**
-     * 是否显示下拉菜单, 选择需要修改为的状态
-     */
-    var showDropdown by mutableStateOf(false)
 
     /**
      * [setSelfCollectionType] 的后台任务

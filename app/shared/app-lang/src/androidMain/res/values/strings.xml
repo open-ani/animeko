@@ -834,6 +834,7 @@
     <string name="cache_management_select_all_action">Select all</string>
     <string name="cache_management_deselect_all">Deselect all</string>
     <string name="cache_episode_status_paused">Paused</string>
+    <string name="cache_episode_watched_progress">Watched %1$s</string>
     <string name="cache_management_episode_label">Episode %1$d · %2$s</string>
     <string name="cache_management_more_actions">More Actions</string>
     <string name="cache_management_play">Play</string>
@@ -1376,6 +1377,7 @@
     <string name="person_details_meta">%1$s · collected by %2$s</string>
     <string name="person_details_open_full_page">Open full page</string>
     <string name="person_details_no_comments">No comments yet</string>
+    <string name="person_details_write_comment">Write a comment</string>
     <string name="person_details_person">Person</string>
     <string name="person_details_role_character">Character</string>
     <string name="person_details_role_mecha">Mecha</string>
@@ -1462,6 +1464,19 @@
     <string name="watch_together_resynced_forward">Re-synced with the host (skipped ahead %1$d s)</string>
     <string name="watch_together_resynced_backward">Re-synced with the host (went back %1$d s)</string>
     <string name="watch_together_got_it">Got it</string>
+    <!-- Image viewer -->
+    <string name="image_viewer_window_title">Image</string>
+    <string name="image_viewer_zoom_in">Zoom in</string>
+    <string name="image_viewer_zoom_out">Zoom out</string>
+    <string name="image_viewer_reset_zoom">Fit to window</string>
+    <string name="image_viewer_save">Save image</string>
+    <string name="image_viewer_saved">Image saved</string>
+    <string name="image_viewer_save_failed">Failed to save image</string>
+    <string name="image_viewer_load_failed">Failed to load image</string>
+    <string name="image_viewer_copy">Copy image</string>
+    <string name="image_viewer_copied">Image copied</string>
+    <string name="image_viewer_copy_failed">Failed to copy image</string>
+    <string name="image_viewer_close">Close</string>
 </resources>
 
 <!--@formatter:on-->

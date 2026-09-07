@@ -10,7 +10,6 @@
 package me.him188.ani.app.data.models.person
 
 import androidx.compose.runtime.Immutable
-import kotlin.time.Instant
 import me.him188.ani.app.data.models.subject.CharacterInfo
 import me.him188.ani.app.data.models.subject.CharacterRole
 import me.him188.ani.app.data.models.subject.PersonInfo
@@ -90,17 +89,4 @@ data class CharacterSubjectInfo(
     val subject: PersonSubjectSummary,
     val role: CharacterRole,
     val actors: List<PersonInfo>,
-)
-
-/** 人物/角色的吐槽箱评论 (无评分). */
-@Immutable
-data class PersonCommentInfo(
-    val id: Long,
-    /** Bangumi 用户 id. */
-    val authorId: String?,
-    val authorNickname: String?,
-    val authorAvatarUrl: String?,
-    val content: String,
-    val createdAt: Instant,
-    val replyCount: Int,
 )

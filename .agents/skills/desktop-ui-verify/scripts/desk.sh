@@ -172,7 +172,7 @@ OSA
     # Send one protocol line to the in-app input agent; see input-agent/InputAgent.java.
     # click/press/release/move x y are window-CONTENT points (below title bar; use
     # `inject info` to get the content origin for converting screenshot coordinates).
-    [[ $# -ge 1 ]] || { echo "usage: desk.sh inject click|press|release|move|type|key|info [args...]" >&2; exit 2; }
+    [[ $# -ge 1 ]] || { echo "usage: desk.sh inject click|press|release|move|wheel|type|key|info|resize|windows|window [args...]" >&2; exit 2; }
     port="${ANI_INPUT_AGENT_PORT:-7788}" cmdline="$*" python3 - <<'PY'
 import os, socket, sys
 try:

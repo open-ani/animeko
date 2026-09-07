@@ -26,10 +26,10 @@ import me.him188.ani.app.domain.media.cache.storage.contains
 import me.him188.ani.app.domain.media.fetch.MediaFetchSession
 import me.him188.ani.app.domain.media.fetch.MediaFetcher
 import me.him188.ani.app.domain.media.fetch.MediaSourceFetchResult
+import me.him188.ani.app.domain.media.fetch.awaitCompletion
 import me.him188.ani.app.domain.media.fetch.create
 import me.him188.ani.app.domain.media.selector.MediaSelector
 import me.him188.ani.app.domain.media.selector.MediaSelectorFactory
-import me.him188.ani.app.domain.media.selector.autoSelect
 import me.him188.ani.datasources.api.Media
 import me.him188.ani.datasources.api.MediaCacheMetadata
 import me.him188.ani.datasources.api.source.MediaFetchRequest
@@ -191,7 +191,8 @@ class EpisodeCacheRequesterImpl(
             stageLock.withLock {
                 checkStageLocked()
                 try {
-                    val selected = mediaSelector.autoSelect.awaitCompletedAndSelectDefault(fetchSession)
+                    fetchSession.awaitCompletion()
+                    val selected = mediaSelector.trySelectDefault()
 
                     if (selected != null) {
                         return switchStageLocked {

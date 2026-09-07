@@ -51,7 +51,6 @@ kotlin {
         api(libs.kotlinx.coroutines.core)
         api(projects.danmaku.danmakuApi)
         api(libs.kotlinx.collections.immutable)
-        api(projects.app.shared.imageViewer)
 
         api(libs.compose.lifecycle.viewmodel.compose)
         api(libs.compose.lifecycle.runtime.compose)

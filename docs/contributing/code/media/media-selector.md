@@ -1,5 +1,8 @@
 # MediaSelector
 
+自动选择的实采回归用例、清洗规则和采集命令见
+[实采数据驱动的自动选择回归测试](../../../../app/shared/app-data/src/desktopTest/resources/media-selector-traces/README.md)。
+
 MediaSelector 是用于管理一组 `Media`
 ，通过对其进行过滤、应用用户偏好以及上下文信息，最终选择出单个 `Media` 资源的选择器接口。
 
@@ -145,10 +148,56 @@ Sealed class [`MaybeExcludedMedia`][MaybeExcludedMedia] 表示一个可能被排
 例如 A 源的 channel A/B 为 tier 0、B 源的 channel C 为 tier 1 时，排序为
 `A/channelA、A/channelB → B/channelC`，而不是按数据源整体分块。
 
-快速选择（`MediaSelectorAutoSelect.fastSelectWebSources`）同样按 channel 粒度判定：
+快速选择（`MediaAutoSelector.select` 的 WEB 阶段）同样按 channel 粒度判定：
 只有有效阶级不超过阈值的资源才会被立即选择。
+
+## Web 自动选择
+
+播放自动选择和播放失败换源统一调用 `MediaAutoSelector.select`。
+`MediaSelectorAutoSelectUseCase` 只负责读取配置、subject 偏好及启用上次使用的源；
+`MediaAutoSelector` 在一个执行循环中管理源订阅、阶段、内部纯决策及最终选择。
+配置、阶段与决策类型都归属该类，不再提供 `.autoSelect` 或单独的快速选择入口。
+首次自动选择以本地缓存为最高优先级：已有可用缓存时立即选择，即使记忆的 Web 源也已完成。
+尚无缓存结果时，先等待所有本地缓存查询结束；空结果、失败或禁用均可放行。
+缓存检查期间不会选择 Web 或 BT，也不会开始 Web 的两段计时；用户手动选择仍可结束等待。
+缓存全部未命中后，按番剧记忆的 Web 源优先，并阻塞其他网络源的自动选择。
+记忆源不存在或最终选不出资源后，开始两个截止时间：
+
+| 阶段 | 允许选择 |
+| --- | --- |
+| 0 至第一截止时间（默认 5 秒） | 有效 tier 0 的精确匹配 |
+| 第一截止时间至累计 15 秒 | 所有 tier 的精确匹配 |
+| 累计 15 秒起 | 精确匹配优先；无精确匹配时允许模糊匹配 |
+
+每个阶段都先按匹配等级、再按有效 tier 分组，只在最优组内应用偏好和既有排序。
+精确匹配使用 `SubjectMatchKind.EXACT`，相似度阈值不再决定能否提前选择。
+源列表顺序不能覆盖 tier。所有候选仍需通过既有过滤，并来自成功完成的 Web 源。
+
+源全部提前完成也不能绕过截止时间。
+首次选择在 Web 全部结束且无 Web 候选时，按原有完成条件和偏好尝试已就绪的 BT 资源；
+没有启用的 Web 源（包括全部禁用）时，等待所有剩余源完成后再选择。
+有 Web 候选时，BT 不能绕过两段截止时间提前抢选；没有可选资源时结束。
+15 秒是允许降级的时间，不是查询总超时：仍有源查询且没有候选时继续监听。
+无限等待不进入后续阶段。关闭快速选择时，等待 Web 源全部完成后选择精确结果，
+模糊匹配仍需等待第二截止时间。播放失败换源仍只尝试 Web，两个截止时间均为 1 秒，
+并在最后阶段无结果时返回，保留黑名单且不覆盖等待期间的手动选择。
+
+`MediaAutoSelectSnapshot` 从源状态及对应结果直接计算过滤与偏好候选，
+不读取 UI 候选流的旧回放。源完成时读取 fetcher 已发布的最终结果，再生成决策快照。
+执行循环处理快照和定时器事件，只有它提交选择；提交使用 compare-and-set，且不保存自动选择偏好。
 
 [MediaSelectorFilterSortAlgorithm]: ../../../../app/shared/app-data/src/commonMain/kotlin/domain/media/selector/filter/MediaSelectorFilterSortAlgorithm.kt
 
 [MaybeExcludedMedia]: ../../../../app/shared/app-data/src/commonMain/kotlin/domain/media/selector/MaybeExcludedMedia.kt
 
+## BT 与等待完成的选择
+
+未启用 WEB 阶段时，同一个 `MediaAutoSelector` 执行按完成条件选择：
+
+- 先选本地缓存，未命中时等待缓存查询完成；然后才考虑已完成的记忆 WEB 源及 BT。
+- 等偏好类型的启用源全部完成后，按原有偏好规则选择；没有匹配候选时结束。
+- 偏好类型没有启用的源，或没有类型偏好时，等待所有源完成。
+- 等待 BT 完成不受记忆 WEB 源阻塞，也不使用 WEB 的两段超时。
+
+下载缓存请求只需 `session.awaitCompletion()` 后调用 `mediaSelector.trySelectDefault()`，
+不进入播放自动选择的计时流程。

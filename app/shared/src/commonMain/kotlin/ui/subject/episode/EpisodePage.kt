@@ -101,6 +101,7 @@ import me.him188.ani.app.ui.danmaku.PlayerDanmakuHost
 import me.him188.ani.app.ui.episode.danmaku.MatchingDanmakuDialog
 import me.him188.ani.app.ui.external.placeholder.placeholder
 import me.him188.ani.app.ui.foundation.ImageViewer
+import me.him188.ani.app.ui.foundation.ImageViewerBackHandler
 import me.him188.ani.app.ui.foundation.LocalImageViewerHandler
 import me.him188.ani.app.ui.foundation.LocalIsPreviewing
 import me.him188.ani.app.ui.foundation.LocalPlatform
@@ -236,7 +237,7 @@ private fun EpisodeScreenContent(
 
     // image viewer
     val imageViewer = rememberImageViewerHandler()
-    BackHandler(enabled = imageViewer.viewing.value) { imageViewer.clear() }
+    ImageViewerBackHandler(imageViewer)
 
     val playerState by vm.player.state.collectAsStateWithLifecycle()
     val playbackAutomationSuppressed by vm.playbackAutomationSuppressed.collectAsStateWithLifecycle()

@@ -32,7 +32,9 @@ interface MediaSource {
 [//]: # (TODO: SelectorMediaSource)
 
 
-[//]: # (TODO: MediaFetcher? 考虑状态、错误处理、重试)
+`MediaFetcher` 先将结果写入共享回放缓存，再发布成功或失败等终态。
+完成标记与结果按序通过 `flatMapLatest` 的缓冲区；重试时忽略旧查询的标记，
+因此观察到终态时可以读取该次查询的完整结果（失败时为已收到的部分结果）。
 
 ## 数据源阶级
 
@@ -42,9 +44,9 @@ interface MediaSource {
 为最高阶级。阶级影响 [MediaSelector](media-selector.md) 的两个环节：
 
 - **排序**：有效阶级低的资源排在前面，详见[排序阶段](media-selector.md#排序阶段)；
-- **快速选择**：阶级不超过阈值（目前为 `0`）的 WEB 数据源查询完成后会被立即选择，
+- **快速选择**：阶级不超过阈值（目前为 `0`）的 WEB 数据源查询完成且有精确匹配结果后会被立即选择，
   无需等待其他数据源。超过阈值的数据源只能在等待一段时间后通过兜底逻辑被选择。
-  入口为 `MediaSelectorAutoSelect.fastSelectWebSources`。
+  入口为 `MediaAutoSelector.select` 的 WEB 阶段。
 
 阶级来源于数据源配置 `MediaSourceArguments.tier`，通常由订阅提供；用户未配置时使用回退值
 `MediaSourceTier.Fallback`（`2`）。

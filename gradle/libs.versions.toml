@@ -69,6 +69,7 @@ slf4j = "2.0.16"
 jsoup = "1.18.1" # https://github.com/jhy/jsoup/releases
 snakeyaml = "2.2"
 sketch = "4.6.0" # https://github.com/panpf/sketch/releases
+zoomimage = "1.6.0" # https://github.com/panpf/zoomimage/releases. 需与 sketch 版本匹配
 constraintlayout-compose = "0.6.1"
 antlr-kotlin = "1.0.2"
 diamondedge-logging = "2.0.3" # Only for native. On JVM we use slf4j directly.
@@ -198,6 +199,9 @@ logback-android = { module = "com.github.tony19:logback-android", version = "3.0
 sketch-compose-core = { module = "io.github.panpf.sketch4:sketch-compose-core", version.ref = "sketch" }
 sketch-http-core = { module = "io.github.panpf.sketch4:sketch-http-core", version.ref = "sketch" }
 sketch-svg = { module = "io.github.panpf.sketch4:sketch-svg", version.ref = "sketch" }
+# ZoomImage (与 Sketch 同作者): 手势缩放/滚轮缩放/键盘缩放/大图分块加载
+# https://github.com/panpf/zoomimage
+zoomimage-compose-sketch4-core = { module = "io.github.panpf.zoomimage:zoomimage-compose-sketch4-core", version.ref = "zoomimage" }
 
 # Android Datastore
 datastore = { module = "androidx.datastore:datastore", version.ref = "datastore" }

@@ -10,6 +10,7 @@
 package me.him188.ani.app.domain.player.extension
 
 import androidx.annotation.VisibleForTesting
+import kotlin.time.Duration.Companion.seconds
 import kotlinx.collections.immutable.persistentHashSetOf
 import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.delay
@@ -25,9 +26,9 @@ import kotlinx.coroutines.launch
 import me.him188.ani.app.domain.episode.EpisodeSession
 import me.him188.ani.app.domain.episode.MediaFetchSelectBundle
 import me.him188.ani.app.domain.media.fetch.MediaFetchSession
+import me.him188.ani.app.domain.media.selector.MediaAutoSelector
 import me.him188.ani.app.domain.media.selector.MediaSelector
 import me.him188.ani.app.domain.media.selector.MediaSelectorSourceTiers
-import me.him188.ani.app.domain.media.selector.autoSelect
 import me.him188.ani.app.domain.mediasource.GetMediaSelectorSourceTiersUseCase
 import me.him188.ani.app.domain.player.VideoLoadingState
 import me.him188.ani.app.domain.settings.GetMediaSelectorSettingsFlowUseCase
@@ -38,7 +39,6 @@ import me.him188.ani.utils.logging.logger
 import org.koin.core.Koin
 import org.openani.mediamp.MediaStatus
 import org.openani.mediamp.PlayerState
-import kotlin.time.Duration.Companion.seconds
 
 /**
  * 当播放失败时, 自动切换到下一个可选择的 media.
@@ -165,11 +165,13 @@ internal class PlayerLoadErrorHandler(
         logger.info { "Player errored, automatically switching to next media" }
 
         // 将当前播放的 mediaId 加入黑名单
-        mediaSelector.selected.value?.let {
+        val failedMedia = mediaSelector.selected.value
+        failedMedia?.let {
             blacklistedMediaIds = blacklistedMediaIds.add(it.mediaId) // thread-safe
         }
 
         delay(1.seconds) // 稍等让用户看到播放出错
+        if (mediaSelector.selected.value != failedMedia) return
 
         // Load data in parallel
         val (preferKind, sourceTiers) = combine(
@@ -182,13 +184,20 @@ internal class PlayerLoadErrorHandler(
             return
         }
 
-        val result = mediaSelector.autoSelect.fastSelectWebSources(
+        val result = MediaAutoSelector(mediaSelector).select(
             session,
-            sourceTiers = sourceTiers,
-            overrideUserSelection = true, // Note: 覆盖用户选择
-            blacklistMediaIds = blacklistedMediaIds,
-            // 错误切换不需要等太长时间.
-            lowTierToleranceDuration = 1.seconds,
+            MediaAutoSelector.Config(
+                selectCache = false,
+                blacklist = blacklistedMediaIds,
+                web = MediaAutoSelector.Web(
+                    sourceTiers = sourceTiers,
+                    // 错误切换不需要等太长时间。
+                    exactMatchAfter = 1.seconds,
+                    fuzzyMatchAfter = 1.seconds,
+                    waitForPendingSources = false,
+                ),
+            ),
+            expectedSelection = failedMedia,
         )
         logger.info { "Player errored, automatically switched to next media: $result" }
     }

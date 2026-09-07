@@ -9,33 +9,22 @@
 
 package me.him188.ani.app.ui.subject.episode.comments
 
-import androidx.compose.foundation.layout.imePadding
-import androidx.compose.foundation.layout.navigationBarsPadding
-import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.focus.FocusRequester
-import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.tooling.preview.Preview
-import androidx.compose.ui.unit.dp
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import me.him188.ani.app.domain.comment.CommentSendResult
 import me.him188.ani.app.ui.comment.CommentEditorState
 import me.him188.ani.app.ui.comment.CommentMapperContext
 import me.him188.ani.app.ui.comment.EditComment
+import me.him188.ani.app.ui.comment.EditCommentSheet
 import me.him188.ani.app.ui.comment.EditCommentDefaults
 import me.him188.ani.app.ui.comment.EditCommentSticker
 import me.him188.ani.app.ui.foundation.ProvideCompositionLocalsForPreview
-import me.him188.ani.app.ui.foundation.ifThen
-import me.him188.ani.app.ui.foundation.interaction.rememberImeMaxHeight
 import me.him188.ani.app.ui.foundation.rememberBackgroundScope
-import me.him188.ani.app.ui.foundation.widgets.ModalBottomImeAwareSheet
-import me.him188.ani.app.ui.foundation.widgets.rememberModalBottomImeAwareSheetState
 
 @Composable
 fun EpisodeEditCommentSheet(
@@ -44,35 +33,12 @@ fun EpisodeEditCommentSheet(
     onSendComplete: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    val density = LocalDensity.current
-    val focusRequester = remember { FocusRequester() }
-    val sheetState = rememberModalBottomImeAwareSheetState()
-
-    val contentPadding = 16.dp
-    val imePresentMaxHeight by rememberImeMaxHeight()
-
-    ModalBottomImeAwareSheet(
-        state = sheetState,
+    EditCommentSheet(
+        state = state,
         onDismiss = onDismiss,
-        modifier = Modifier
-            .navigationBarsPadding()
-            .ifThen(!state.showStickerPanel) { imePadding() },
-    ) {
-        EditComment(
-            state = state,
-            onCloseRequest = onDismiss,
-            modifier = modifier
-                .ifThen(state.editExpanded) { statusBarsPadding() }
-                .ifThen(!state.editExpanded) { padding(top = contentPadding) }
-                .padding(contentPadding),
-            stickerPanelHeight = with(density) { imePresentMaxHeight.toDp() },
-            focusRequester = focusRequester,
-            onSendComplete = {
-                sheetState.close()
-                onSendComplete()
-            },
-        )
-    }
+        onSendComplete = onSendComplete,
+        modifier = modifier,
+    )
 }
 
 @Preview

@@ -9,27 +9,6 @@
 
 package me.him188.ani.app.domain.media.fetch
 
-import kotlinx.atomicfu.atomic
-import kotlinx.coroutines.currentCoroutineContext
-import kotlinx.coroutines.flow.asFlow
-import kotlinx.coroutines.flow.first
-import kotlinx.coroutines.flow.toList
-import kotlinx.coroutines.test.runTest
-import me.him188.ani.app.domain.media.TestMediaList
-import me.him188.ani.app.domain.mediasource.web.BlockReason
-import me.him188.ani.app.domain.mediasource.web.BlockedException
-import me.him188.ani.app.domain.mediasource.web.PageExpectation
-import me.him188.ani.app.domain.mediasource.web.SolveRequest
-import me.him188.ani.app.domain.mediasource.web.WebCaptchaKind
-import me.him188.ani.app.domain.mediasource.instance.MediaSourceInstance
-import me.him188.ani.app.domain.mediasource.instance.createTestMediaSourceInstance
-import me.him188.ani.datasources.api.EpisodeSort
-import me.him188.ani.datasources.api.paging.SinglePagePagedSource
-import me.him188.ani.datasources.api.source.MatchKind
-import me.him188.ani.datasources.api.source.MediaFetchRequest
-import me.him188.ani.datasources.api.source.MediaMatch
-import me.him188.ani.datasources.api.source.TestHttpMediaSource
-import me.him188.ani.test.assertCoroutineSuspends
 import kotlin.coroutines.ContinuationInterceptor
 import kotlin.coroutines.EmptyCoroutineContext
 import kotlin.test.Test
@@ -37,6 +16,35 @@ import kotlin.test.assertEquals
 import kotlin.test.assertIs
 import kotlin.test.assertTrue
 import kotlin.test.fail
+import kotlinx.atomicfu.atomic
+import kotlinx.coroutines.CompletableDeferred
+import kotlinx.coroutines.currentCoroutineContext
+import kotlinx.coroutines.flow.asFlow
+import kotlinx.coroutines.flow.collect
+import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.flow
+import kotlinx.coroutines.flow.flowOf
+import kotlinx.coroutines.flow.toList
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.test.UnconfinedTestDispatcher
+import kotlinx.coroutines.test.runTest
+import kotlinx.coroutines.withContext
+import me.him188.ani.app.domain.media.TestMediaList
+import me.him188.ani.app.domain.mediasource.instance.MediaSourceInstance
+import me.him188.ani.app.domain.mediasource.instance.createTestMediaSourceInstance
+import me.him188.ani.app.domain.mediasource.web.BlockReason
+import me.him188.ani.app.domain.mediasource.web.BlockedException
+import me.him188.ani.app.domain.mediasource.web.PageExpectation
+import me.him188.ani.app.domain.mediasource.web.SolveRequest
+import me.him188.ani.app.domain.mediasource.web.WebCaptchaKind
+import me.him188.ani.datasources.api.EpisodeSort
+import me.him188.ani.datasources.api.paging.SinglePagePagedSource
+import me.him188.ani.datasources.api.paging.SizedSource
+import me.him188.ani.datasources.api.source.MatchKind
+import me.him188.ani.datasources.api.source.MediaFetchRequest
+import me.him188.ani.datasources.api.source.MediaMatch
+import me.him188.ani.datasources.api.source.TestHttpMediaSource
+import me.him188.ani.test.assertCoroutineSuspends
 
 /**
  * @see MediaFetcher
@@ -590,6 +598,43 @@ class MediaFetcherTest {
         assertEquals(1, fetchCalled.get())
         res.results.first()
         assertEquals(1, fetchCalled.get())
+    }
+
+    @Test
+    fun `success publishes final replay before terminal state`() = runTest {
+        val session = createFetcher(createTestMediaSourceInstance(TestHttpMediaSource(fetch = {
+            SinglePagePagedSource {
+                TestMediaList.map { MediaMatch(it, MatchKind.EXACT) }.asFlow()
+            }
+        }))).newSession(request1)
+        val source = session.mediaSourceResults.single()
+        backgroundScope.launch { source.results.collect() }
+        withContext(UnconfinedTestDispatcher(testScheduler)) {
+            source.state.first { it is MediaSourceFetchState.Succeed }
+            assertEquals(TestMediaList, source.results.first())
+        }
+    }
+
+    @Test
+    fun `failure retains already published partial results`() = runTest {
+        val failAfterDelivery = CompletableDeferred<Unit>()
+        val session = createFetcher(createTestMediaSourceInstance(TestHttpMediaSource(fetch = {
+            object : SizedSource<MediaMatch> {
+                override val results = flow {
+                    TestMediaList.forEach { emit(MediaMatch(it, MatchKind.EXACT)) }
+                    failAfterDelivery.await()
+                    throw IllegalStateException("failed after emitting results")
+                }
+                override val finished = flowOf(false)
+                override val totalSize = flowOf<Int?>(null)
+            }
+        }))).newSession(request1)
+        val source = session.mediaSourceResults.single()
+        backgroundScope.launch { source.results.collect() }
+        assertEquals(TestMediaList, source.results.first { it.size == TestMediaList.size })
+        failAfterDelivery.complete(Unit)
+        source.state.first { it is MediaSourceFetchState.Failed }
+        assertEquals(TestMediaList, source.results.first())
     }
 
     @Test
