@@ -102,14 +102,6 @@ fun PlayerDanmakuEditor(
     var didSetPaused by rememberSaveable { mutableStateOf(false) }
     Row(modifier = modifier, verticalAlignment = Alignment.CenterVertically) {
         val scope = rememberCoroutineScope()
-        DanmakuStylePicker(
-            style = style,
-            onStyleChange = onStyleChange,
-            onExpandedChanged = { expanded ->
-                // 弹层打开期间保持控制器显示
-                if (expanded) stylePickerRequester.request() else stylePickerRequester.cancelRequest()
-            },
-        )
         PlayerDanmakuEditor(
             text = text,
             onTextChange = onTextChange,
@@ -146,6 +138,17 @@ fun PlayerDanmakuEditor(
             }.weight(1f),
             playerFocusState = playerFocusState,
             onEscape = onEscape,
+            // 样式按钮放在输入框内部的最前面, 表示"这条弹幕的样式"
+            leadingIcon = {
+                DanmakuStylePicker(
+                    style = style,
+                    onStyleChange = onStyleChange,
+                    onExpandedChanged = { expanded ->
+                        // 弹层打开期间保持控制器显示
+                        if (expanded) stylePickerRequester.request() else stylePickerRequester.cancelRequest()
+                    },
+                )
+            },
         )
     }
 }
@@ -162,11 +165,13 @@ fun PlayerDanmakuEditor(
     onEscape: (() -> Unit)? = null,
     colors: TextFieldColors = PlayerControllerDefaults.inVideoDanmakuTextFieldColors(),
     style: TextStyle = MaterialTheme.typography.bodyMedium,
+    leadingIcon: (@Composable () -> Unit)? = null,
 ) {
     PlayerControllerDefaults.DanmakuTextField(
         text,
         onValueChange = onTextChange,
         modifier = modifier.playerTextInputFocus(playerFocusState, onEscape),
+        leadingIcon = leadingIcon,
         onSend = {
             if (text.isEmpty()) return@DanmakuTextField
             onSend(text)

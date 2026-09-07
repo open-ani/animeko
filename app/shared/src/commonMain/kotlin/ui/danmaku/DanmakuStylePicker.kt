@@ -199,7 +199,7 @@ fun DanmakuStylePicker(
 }
 
 /**
- * 显示当前样式的按钮: 一个当前颜色的圆点, 非滚动位置时叠加一个方向图标.
+ * 显示当前样式的按钮: 一个当前颜色的圆点, 非滚动位置时叠加一个方向图标. 放在弹幕输入框内部最前面.
  */
 @Composable
 fun DanmakuStyleButton(
@@ -211,6 +211,7 @@ fun DanmakuStyleButton(
     IconButton(
         onClick = onClick,
         modifier = modifier
+            .size(32.dp)
             .testTag(TAG_DANMAKU_STYLE_BUTTON)
             // 不抢输入框的焦点 (桌面端鼠标点击会请求焦点)
             .focusProperties { canFocus = false }
@@ -218,7 +219,7 @@ fun DanmakuStyleButton(
     ) {
         val fill = style.color.rgbToColor()
         Box(
-            Modifier.size(22.dp)
+            Modifier.size(20.dp)
                 .clip(CircleShape)
                 .background(fill)
                 .border(1.dp, LocalContentColor.current.copy(alpha = 0.6f), CircleShape),

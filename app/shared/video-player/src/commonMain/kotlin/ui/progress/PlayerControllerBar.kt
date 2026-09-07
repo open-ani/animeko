@@ -472,7 +472,13 @@ object PlayerControllerDefaults {
                     singleLine = singleLine,
                     visualTransformation = VisualTransformation.None,
                     interactionSource = interactionSource,
-                    contentPadding = PaddingValues(vertical = 7.dp, horizontal = 16.dp),
+                    contentPadding = PaddingValues(
+                        // 有 leadingIcon 时它自带 48dp 的最小宽度, 文字前不再留 16dp
+                        start = if (leadingIcon != null) 4.dp else 16.dp,
+                        end = 16.dp,
+                        top = 7.dp,
+                        bottom = 7.dp,
+                    ),
                     colors = colors,
                     placeholder = {
                         Row(
