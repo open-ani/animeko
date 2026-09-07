@@ -99,7 +99,8 @@ fun RichText.toUIRichElements(overrideTextSize: Float? = null): List<UIRichEleme
     elements.forEach { e ->
         when (e) {
             is RichElement.Text -> {
-                if (e.value.trim().isNotEmpty()) {
+                // Whitespace between inline tags still separates words in the same paragraph.
+                if (e.value.isNotBlank() || (e.value.isNotEmpty() && annotated.isNotEmpty())) {
                     val align = e.align.toTextAlign()
                     if (align != currentAlign) flushAnnotated()
                     currentAlign = align
@@ -139,7 +140,7 @@ fun RichText.toUIRichElements(overrideTextSize: Float? = null): List<UIRichEleme
 
             is RichElement.Quote -> {
                 flushAnnotated()
-                add(UIRichElement.Quote(e.contents.toUIRichElements()))
+                add(UIRichElement.Quote(e.contents.toUIRichElements(overrideTextSize)))
             }
 
             is RichElement.Image -> {

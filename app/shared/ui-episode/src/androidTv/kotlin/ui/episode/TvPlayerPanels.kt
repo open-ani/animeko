@@ -10,13 +10,8 @@
 package me.him188.ani.leanback.ui.episode
 
 import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.border
-import androidx.compose.foundation.focusable
-import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.verticalScroll
-import androidx.compose.foundation.gestures.scrollBy
-import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.RowScope
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -33,24 +28,9 @@ import androidx.compose.material.icons.rounded.Comment
 import androidx.compose.material.icons.rounded.Groups
 import androidx.compose.material.icons.rounded.Tune
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.rememberCoroutineScope
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.focus.onFocusChanged
-import androidx.compose.ui.input.key.Key
-import androidx.compose.ui.input.key.KeyEventType
-import androidx.compose.ui.input.key.key
-import androidx.compose.ui.input.key.onPreviewKeyEvent
-import androidx.compose.ui.input.key.type
-import androidx.compose.ui.platform.LocalDensity
-import androidx.compose.ui.platform.testTag
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
-import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.paging.LoadState
@@ -59,12 +39,8 @@ import androidx.tv.material3.ClickableSurfaceDefaults
 import androidx.tv.material3.MaterialTheme
 import androidx.tv.material3.Surface
 import androidx.tv.material3.Text
-import kotlinx.coroutines.launch
 import me.him188.ani.app.data.models.episode.EpisodeComment
 import me.him188.ani.danmaku.ui.DanmakuPresentation
-import java.text.SimpleDateFormat
-import java.util.Date
-import java.util.Locale
 
 /**
  * 浮出面板种类与内容宽度 (atv-architecture.md §8.3 功能药丸).
@@ -109,7 +85,7 @@ internal fun TvPlayerComments(
         ) {
             items(comments.itemCount, key = { comments.peek(it)?.stableId ?: "placeholder-$it" }) { index ->
                 comments[index]?.let { comment ->
-                    CommentItem(comment, modifier = anchorFor(index).then(commentAnchor(comment))) {
+                    TvCommentCard(comment, modifier = anchorFor(index).then(commentAnchor(comment))) {
                         onClickComment(comment, index)
                     }
                 }
@@ -192,85 +168,6 @@ private fun PanelItemSurface(
 }
 
 @Composable
-private fun CommentItem(comment: EpisodeComment, modifier: Modifier = Modifier, onClick: () -> Unit) {
-    Surface(
-        onClick = onClick,
-        modifier = modifier.fillMaxWidth(),
-        shape = ClickableSurfaceDefaults.shape(TvPlayerSurfaceDefaults.ItemShape),
-        colors = tvPlayerOptionColors(filled = true),
-        scale = ClickableSurfaceDefaults.scale(focusedScale = 1f),
-    ) {
-        Column(Modifier.padding(horizontal = 12.dp, vertical = 8.dp)) {
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                Text(
-                    comment.author?.nickname?.takeIf { it.isNotBlank() } ?: "匿名",
-                    Modifier.weight(1f),
-                    style = MaterialTheme.typography.labelLarge,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis,
-                )
-                Text(
-                    remember(comment.createdAt) { formatCommentDate(comment.createdAt) },
-                    style = MaterialTheme.typography.labelSmall,
-                )
-            }
-            Text(
-                remember(comment.content) { cleanCommentText(comment.content) },
-                Modifier.padding(top = 4.dp),
-                style = MaterialTheme.typography.bodyMedium,
-                maxLines = 4,
-                overflow = TextOverflow.Ellipsis,
-            )
-            Text("查看全文", style = MaterialTheme.typography.labelSmall, modifier = Modifier.padding(top = 8.dp))
-        }
-    }
-}
-
-/** A single reading focus target; vertical keys scroll the entire text without truncation. */
-@Composable
-internal fun TvCommentDetail(comment: EpisodeComment, modifier: Modifier = Modifier) {
-    val colors = LocalTvPlayerSurfaceColors.current
-    val scroll = rememberScrollState()
-    val scope = rememberCoroutineScope()
-    val step = with(LocalDensity.current) { 96.dp.toPx() }
-    var focused by remember { mutableStateOf(false) }
-    Column(
-        modifier
-            .fillMaxWidth()
-            .onFocusChanged { focused = it.isFocused }
-            .onPreviewKeyEvent { event ->
-                val direction = when (event.key) {
-                    Key.DirectionDown -> if (scroll.canScrollForward) 1 else 0
-                    Key.DirectionUp -> if (scroll.canScrollBackward) -1 else 0
-                    else -> 0
-                }
-                if (direction == 0) false else {
-                    if (event.type == KeyEventType.KeyDown) scope.launch { scroll.scrollBy(step * direction) }
-                    true
-                }
-            }
-            .border(
-                1.dp,
-                if (focused) colors.focusedContainer else Color.Transparent,
-                TvPlayerSurfaceDefaults.ItemShape
-            )
-            .focusable()
-            .verticalScroll(scroll)
-            .padding(16.dp)
-            .testTag("tv-comment-full-text"),
-        verticalArrangement = Arrangement.spacedBy(16.dp),
-    ) {
-        Text(comment.author?.nickname ?: "匿名", style = MaterialTheme.typography.titleMedium, color = colors.content)
-        Text(
-            formatCommentDate(comment.createdAt),
-            style = MaterialTheme.typography.labelMedium,
-            color = colors.muted
-        )
-        Text(cleanCommentText(comment.content), style = MaterialTheme.typography.bodyLarge, color = colors.content)
-    }
-}
-
-@Composable
 private fun DanmakuItem(danmaku: DanmakuPresentation, modifier: Modifier = Modifier) {
     PanelItemSurface(onClick = {}, modifier) {
         Text(
@@ -284,11 +181,3 @@ private fun DanmakuItem(danmaku: DanmakuPresentation, modifier: Modifier = Modif
         )
     }
 }
-
-/** 去掉 BBCode 标记 (评论只读简化展示; 富文本渲染留 M5 之后). */
-private val BBCODE_TAG_REGEX = Regex("""\[/?[a-zA-Z][^\[\]]{0,64}?]""")
-
-private fun cleanCommentText(raw: String): String = raw.replace(BBCODE_TAG_REGEX, "").trim()
-
-private fun formatCommentDate(epochMillis: Long): String =
-    SimpleDateFormat("yyyy-MM-dd", Locale.getDefault()).format(Date(epochMillis))
