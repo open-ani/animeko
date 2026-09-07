@@ -54,9 +54,7 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import me.him188.ani.app.data.models.episode.EpisodeComment
 import me.him188.ani.app.data.models.preference.VideoEnhancementDefaultMode
-import me.him188.ani.app.data.models.subject.RelatedSubjectInfo
 import me.him188.ani.app.data.network.AutoSkipRepository
-import me.him188.ani.app.data.network.BangumiRelatedPeopleService
 import me.him188.ani.app.data.network.TmdbImageService
 import me.him188.ani.app.data.network.matchToEpisodes
 import me.him188.ani.app.data.network.newestAiredDateStringOrNull
@@ -69,6 +67,8 @@ import me.him188.ani.app.domain.danmaku.DanmakuRepository
 import me.him188.ani.app.domain.episode.EpisodeCompletionContext.isKnownCompleted
 import me.him188.ani.app.domain.episode.EpisodeDanmakuLoader
 import me.him188.ani.app.domain.episode.EpisodeFetchSelectPlayState
+import me.him188.ani.app.domain.episode.GetSubjectRecommendationUseCase
+import me.him188.ani.app.domain.episode.SubjectRecommendation
 import me.him188.ani.app.domain.episode.UnsafeEpisodeSessionApi
 import me.him188.ani.app.domain.episode.episodeIdFlow
 import me.him188.ani.app.domain.episode.infoBundleFlow
@@ -88,6 +88,7 @@ import me.him188.ani.app.domain.player.extension.SwitchNextEpisodeExtension
 import me.him188.ani.app.domain.player.extension.WatchTogetherPlayerExtension
 import me.him188.ani.app.domain.settings.GetDanmakuRegexFilterListFlowUseCase
 import me.him188.ani.app.domain.watchtogether.PlaybackAutomationGate
+import me.him188.ani.app.navigation.SubjectDetailPlaceholder
 import me.him188.ani.app.platform.ContextMP
 import me.him188.ani.app.ui.foundation.AbstractViewModel
 import me.him188.ani.app.videoplayer.ui.androidPlayerStatsFlow
@@ -137,7 +138,7 @@ class TvEpisodeViewModel(
     private val settingsRepository: SettingsRepository,
     private val getDanmakuRegexFilterListFlowUseCase: GetDanmakuRegexFilterListFlowUseCase,
     private val episodeCommentRepository: EpisodeCommentRepository,
-    private val bangumiRelatedPeopleService: BangumiRelatedPeopleService,
+    private val getSubjectRecommendations: GetSubjectRecommendationUseCase,
     private val autoSkipRepository: AutoSkipRepository,
     private val tmdbImageService: TmdbImageService,
     private val selectorEpisodeCacheRepository: SelectorMediaSourceEpisodeCacheRepository,
@@ -286,14 +287,15 @@ class TvEpisodeViewModel(
 
     // endregion
 
-    // region 浮出面板数据 (§8.3 面板 ×5: 推荐/Staff/角色为条目级, 评论随当前集, 弹幕为已加载列表)
+    // region 辅助内容: 推荐为条目级, 评论随当前集, 弹幕为已加载列表
 
 
-    private val relatedSubjectsFlow: StateFlow<List<RelatedSubjectInfo>> = bangumiRelatedPeopleService
-        .relatedSubjectsFlow(subjectId)
-        .map { RelatedSubjectInfo.sortList(it) }
+    private val recommendationsFlow: StateFlow<List<SubjectRecommendation>?> = flow<List<SubjectRecommendation>?> {
+        emit(getSubjectRecommendations(subjectId))
+    }
         .catch { emit(emptyList()) }
-        .stateIn(backgroundScope, SharingStarted.WhileSubscribed(5_000), emptyList())
+        // A player's subject does not change. Keep the same recommendation items and focus keys on reopen.
+        .stateIn(backgroundScope, SharingStarted.Lazily, null)
 
     /** 当前集的评论 (只读, §1.2); 切集自动换源. */
     val episodeCommentsPager: Flow<PagingData<EpisodeComment>> = currentEpisodeIdFlow
@@ -476,14 +478,19 @@ class TvEpisodeViewModel(
             }
         }.stateIn(backgroundScope, SharingStarted.WhileSubscribed(5_000), 0L)
 
-    private val panelState =
-        interaction.states.map { it.activePanel to it.dialog }.distinctUntilChanged().flatMapLatest { (panel, dialog) ->
-            when {
-                dialog == TvPlayerDialog.DanmakuList -> danmakuListFlow.map { TvPlayerPanelState(danmaku = it) }
-                panel == TvPlayerPanel.Recommendations -> relatedSubjectsFlow.map { TvPlayerPanelState(relatedSubjects = it) }
-                else -> flowOf(TvPlayerPanelState())
-            }
-        }
+    private val panelState = combine(
+        recommendationsFlow,
+        interaction.states.map { it.dialog == TvPlayerDialog.DanmakuList }.distinctUntilChanged().flatMapLatest {
+            if (it) danmakuListFlow else flowOf(emptyList())
+        },
+    ) { recommendations, danmaku ->
+        // Keep recommendations present while their exit animation is running, and across reopening.
+        TvPlayerPanelState(
+            recommendations = recommendations.orEmpty(),
+            recommendationsLoading = recommendations == null,
+            danmaku = danmaku,
+        )
+    }
     private val options =
         combine(bufferedFractionFlow, playbackSpeedStateFlow, aspectRatioModeFlow) { buffer, speed, aspect ->
             Triple(buffer, speed, aspect)
@@ -547,6 +554,8 @@ class TvEpisodeViewModel(
             }
 
             TvEpisodeIntent.ToggleDanmaku -> runAction { settingsRepository.danmakuEnabled.update { !this } }
+            TvEpisodeIntent.TogglePlayerStats -> playerOptions.update { it.copy(statsVisible = !it.statsVisible) }
+            TvEpisodeIntent.OpenLogin -> navigation.emit(TvNavigationEvent.Login)
             TvEpisodeIntent.CancelAutoSkip -> cancelAutoSkip()
             TvEpisodeIntent.Back -> {
                 if (playerOptions.value.skipPrompt != null) cancelAutoSkip()
@@ -692,7 +701,23 @@ class TvEpisodeViewModel(
 
             is TvEpisodeIntent.RetrySources -> retrySources(intent.instanceId)
             TvEpisodeIntent.RetryPlayback -> retryPlayback()
-            is TvEpisodeIntent.OpenSubject -> navigation.emit(TvNavigationEvent.Subject(intent.subjectId))
+            is TvEpisodeIntent.OpenRecommendation -> {
+                val recommendation = intent.recommendation
+                val targetSubjectId = recommendation.tvNavigationSubjectId
+                if (targetSubjectId != null) {
+                    navigation.emit(
+                        TvNavigationEvent.Subject(
+                            targetSubjectId,
+                            SubjectDetailPlaceholder(
+                                id = targetSubjectId,
+                                name = recommendation.name,
+                                nameCN = recommendation.nameCn.orEmpty(),
+                                coverUrl = recommendation.imageUrl,
+                            ),
+                        ),
+                    )
+                }
+            }
             else -> return interaction.onIntent(intent)
         }
         return true
@@ -967,7 +992,7 @@ class TvEpisodeViewModel(
             }
         }
         backgroundScope.launch {
-            interaction.states.map { it.activePanel == TvPlayerPanel.VideoSettings }.distinctUntilChanged()
+            playerOptions.map { it.statsVisible }.distinctUntilChanged()
                 .collectLatest { visible ->
                     if (visible) androidPlayerStatsFlow(player).collect { stats -> playerOptions.update { it.copy(stats = stats) } }
                 }

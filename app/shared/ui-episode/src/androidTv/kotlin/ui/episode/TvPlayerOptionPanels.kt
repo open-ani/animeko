@@ -25,7 +25,9 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.material.icons.Icons
@@ -107,6 +109,7 @@ internal fun TvOptionRow(
         modifier = modifier
             .fillMaxWidth()
             .semantics {
+                this.selected = selected
                 if (checked != null) {
                     role = Role.Switch
                     toggleableState = if (checked) ToggleableState.On else ToggleableState.Off
@@ -165,6 +168,64 @@ internal fun TvOptionRow(
     }
 }
 
+@Composable
+internal fun TvPlayerDialogSurface(
+    dialog: TvPlayerDialog,
+    title: String,
+    modifier: Modifier = Modifier,
+    subtitle: String? = null,
+    content: @Composable () -> Unit,
+) {
+    if (dialog != TvPlayerDialog.Speed) {
+        TvOptionModal(title, modifier, subtitle, content = content)
+        return
+    }
+    Box(Modifier.fillMaxSize().padding(end = 48.dp, bottom = 150.dp), contentAlignment = Alignment.BottomEnd) {
+        Column(
+            modifier.width(320.dp).heightIn(max = 340.dp)
+                .tvPlayerSurface().padding(16.dp)
+                .testTag("tv-speed-popup")
+                .focusProperties { onExit = { cancelFocus() } }.focusGroup(),
+            verticalArrangement = Arrangement.spacedBy(12.dp),
+        ) {
+            Text(title, style = MaterialTheme.typography.titleMedium, color = TvPlayerSurfaceDefaults.Content)
+            content()
+        }
+    }
+}
+
+@Composable
+internal fun TvSubtitleDialog(
+    options: TvPlayerOptionsState,
+    onIntent: (TvEpisodeIntent) -> Boolean,
+    entryModifier: Modifier,
+) {
+    // Capture the opening selection; later track updates must not steal the user's focus.
+    val entryId = remember { options.selectedSubtitleId?.takeIf { id -> options.subtitles.any { it.id == id } } }
+    val listState = rememberLazyListState(
+        initialFirstVisibleItemIndex = if (entryId == null) 0 else options.subtitles.indexOfFirst { it.id == entryId } + 1,
+    )
+    LazyColumn(state = listState, modifier = Modifier.testTag("tv-subtitle-options")) {
+        item {
+            TvOptionRow(
+                "关闭字幕",
+                modifier = if (entryId == null) entryModifier else Modifier,
+                selected = options.selectedSubtitleId == null,
+            ) { onIntent(TvEpisodeIntent.SelectSubtitle(null)) }
+        }
+        items(options.subtitles, key = { it.id }) { subtitle ->
+            TvOptionRow(
+                subtitle.label,
+                modifier = if (subtitle.id == entryId) entryModifier else Modifier,
+                selected = subtitle.id == options.selectedSubtitleId,
+            ) { onIntent(TvEpisodeIntent.SelectSubtitle(subtitle.id)) }
+        }
+        if (options.subtitles.isEmpty()) item {
+            Text("此资源没有可切换的字幕", color = TvPlayerSurfaceDefaults.Muted, modifier = Modifier.padding(16.dp))
+        }
+    }
+}
+
 internal fun Modifier.tvStepKeys(onStep: (Int) -> Unit): Modifier = onPreviewKeyEvent {
     val direction = when (it.key) {
         Key.DirectionLeft -> -1
@@ -183,6 +244,7 @@ internal fun TvOptionTextField(
     modifier: Modifier = Modifier,
     password: Boolean = false
 ) {
+    val colors = LocalTvPlayerSurfaceColors.current
     var focused by remember { mutableStateOf(false) }
     var editingValue by remember { mutableStateOf(value) }
     var hasLocalEdit by remember { mutableStateOf(false) }
@@ -192,7 +254,7 @@ internal fun TvOptionTextField(
         if (!focused || !hasLocalEdit) editingValue = value
     }
     Column(Modifier.padding(horizontal = 4.dp, vertical = 5.dp)) {
-        Text(label, style = MaterialTheme.typography.labelMedium, color = TvPlayerSurfaceDefaults.Muted)
+        Text(label, style = MaterialTheme.typography.labelMedium, color = colors.muted)
         BasicTextField(
             editingValue,
             {
@@ -207,16 +269,16 @@ internal fun TvOptionTextField(
                     focused = it.hasFocus
                     if (!focused) hasLocalEdit = false
                 }
-                .background(TvPlayerSurfaceDefaults.Raised, TvPlayerSurfaceDefaults.ItemShape)
+                .background(colors.raised, TvPlayerSurfaceDefaults.ItemShape)
                 .border(
                     if (focused) 2.dp else 1.dp,
-                    if (focused) TvPlayerSurfaceDefaults.FocusedContainer else TvPlayerSurfaceDefaults.Outline,
+                    if (focused) colors.focusedContainer else colors.outline,
                     TvPlayerSurfaceDefaults.ItemShape,
                 )
                 .padding(horizontal = 16.dp, vertical = 12.dp),
-            textStyle = MaterialTheme.typography.bodyMedium.copy(color = Color.White),
+            textStyle = MaterialTheme.typography.bodyMedium.copy(color = colors.content),
             singleLine = true,
-            cursorBrush = SolidColor(Color.White),
+            cursorBrush = SolidColor(colors.content),
             visualTransformation = if (password) PasswordVisualTransformation() else VisualTransformation.None,
         )
     }
@@ -284,23 +346,20 @@ internal fun TvInteractivePanel(
     onConfirmLeaveChange: (Boolean) -> Unit,
     danmakuListModifier: Modifier,
     danmakuMatchModifier: Modifier,
+    listState: LazyListState,
     modifier: Modifier = Modifier,
 ) {
     val options = state.options
+    val colors = LocalTvPlayerSurfaceColors.current
     val fields = rememberTvFocusScope()
     fields.Resolver()
-    TvPlayerPanelSurface(
-        title = panel.title,
-        icon = panel.icon,
-        showHeader = panel != TvPlayerPanel.Collection,
-        modifier = modifier
-            .width(panel.width)
-            .heightIn(max = TvPlayerSurfaceDefaults.PanelMaxHeight),
-    ) {
+    val content: @Composable () -> Unit = {
         LazyColumn(
             Modifier
                 .tvFocusNavSignal(fields)
+                .tvPanelScrollEdges(listState, colors.container)
                 .focusGroup(),
+            state = listState,
             contentPadding = PaddingValues(4.dp),
             verticalArrangement = Arrangement.spacedBy(4.dp),
         ) {
@@ -333,7 +392,7 @@ internal fun TvInteractivePanel(
                                 if (type == UnifiedCollectionType.NOT_COLLECTED) "取消收藏" else type.tvLabel(),
                                 enabled = !options.collectionBusy,
                                 compact = true,
-                                modifier = if (type == UnifiedCollectionType.entries.first()) entryModifier else Modifier,
+                                modifier = if (type == options.collectionType) entryModifier else Modifier,
                                 selected = type == options.collectionType,
                             ) {
                                 if (type == UnifiedCollectionType.NOT_COLLECTED) {
@@ -386,7 +445,7 @@ internal fun TvInteractivePanel(
                             ) { onIntent(TvEpisodeIntent.ToggleDanmakuSource(origin.serviceId)) }
                             Text(
                                 origin.match,
-                                color = Color.LightGray,
+                                color = colors.muted,
                                 modifier = Modifier.padding(horizontal = 14.dp),
                                 style = MaterialTheme.typography.bodySmall,
                             )
@@ -406,7 +465,7 @@ internal fun TvInteractivePanel(
                             }
                         }
                     }
-                    item {
+                    item(key = "danmaku-list") {
                         TvOptionRow("弹幕列表", modifier = danmakuListModifier.testTag("tv-danmaku-list-button")) {
                             onIntent(TvEpisodeIntent.OpenDialog(TvPlayerDialog.DanmakuList))
                         }
@@ -431,34 +490,23 @@ internal fun TvInteractivePanel(
                             }
                         }
                     }
-                    item { TvPlayerSectionLabel("播放信息") }
-                    val stats = options.stats
-                    val rows = listOfNotNull(
-                        "播放器" to (stats?.backend ?: "正在读取…"),
-                        stats?.resolution?.let { "分辨率" to it }, stats?.frameRate?.let { "帧率" to "$it fps" },
-                        stats?.videoCodec?.let { "视频解码" to it }, stats?.audioCodec?.let { "音频解码" to it },
-                        stats?.videoBitrate?.let { "视频码率" to "${it / 1000} kbps" },
-                        stats?.realtimeInputBitrate?.let { "带宽估计" to "${it / 1000} kbps" },
-                        stats?.decodedVideoFrames?.let { "已解码帧" to it.toString() },
-                        stats?.droppedVideoFrames?.let { "丢帧" to it.toString() },
-                    )
-                    items(rows) { (label, value) ->
+                    item {
                         TvOptionRow(
-                            label,
-                            value,
-                            modifier = if (options.enhancementMode == null && label == "播放器") entryModifier else Modifier,
-                            onClick = {},
-                        )
+                            "播放信息",
+                            checked = options.statsVisible,
+                            modifier = (if (options.enhancementMode == null) entryModifier else Modifier)
+                                .testTag("tv-player-stats-toggle"),
+                        ) { onIntent(TvEpisodeIntent.TogglePlayerStats) }
                     }
                 }
 
                 TvPlayerPanel.Together -> {
                     if (together.requiresLogin) item {
                         TvOptionRow(
-                            "请先在 TV 首页登录账号",
+                            "登录账号",
+                            supportingText = "登录后即可加入或创建一起看房间",
                             modifier = entryModifier,
-                            onClick = {},
-                        )
+                        ) { onIntent(TvEpisodeIntent.OpenLogin) }
                     }
                     else if (!together.joined) {
                         item {
@@ -499,7 +547,7 @@ internal fun TvInteractivePanel(
                             Text(
                                 "输入相同的房间名称即可一起看。\n房间不存在时将自动创建。",
                                 style = MaterialTheme.typography.bodySmall,
-                                color = Color.LightGray,
+                                color = colors.muted,
                                 modifier = Modifier.padding(8.dp),
                             )
                         }
@@ -515,7 +563,7 @@ internal fun TvInteractivePanel(
                         item {
                             Text(
                                 "${together.roomName} · ${together.connection}",
-                                color = Color.White,
+                                color = colors.content,
                                 modifier = Modifier.padding(8.dp),
                             )
                         }
@@ -523,7 +571,7 @@ internal fun TvInteractivePanel(
                             Text(
                                 together.watching,
                                 style = MaterialTheme.typography.bodySmall,
-                                color = Color.LightGray,
+                                color = colors.muted,
                                 modifier = Modifier.padding(8.dp),
                             )
                         }
@@ -550,6 +598,16 @@ internal fun TvInteractivePanel(
             }
         }
     }
+    if (panel.presentation == TvPlayerPanelPresentation.Sidebar) {
+        Box(modifier.fillMaxSize()) { content() }
+    } else {
+        TvPlayerPanelSurface(
+            title = panel.title,
+            icon = panel.icon,
+            showHeader = panel != TvPlayerPanel.Collection,
+            modifier = modifier.width(panel.width).heightIn(max = TvPlayerSurfaceDefaults.PanelMaxHeight),
+        ) { content() }
+    }
 }
 
 @Composable
@@ -565,7 +623,6 @@ internal fun TvSpeedDialog(state: TvEpisodeUiState, onIntent: (TvEpisodeIntent) 
                 onStep = { onIntent(TvEpisodeIntent.AdjustSpeed(it)) },
             )
         }
-        item { TvPlayerSectionLabel("速度偏好") }
         item {
             TvOptionRow(
                 "记住播放速度",
@@ -609,10 +666,12 @@ private fun TvEnhancementSelector(
                 colors = tvPlayerOptionColors(mode == selectedMode),
                 scale = ClickableSurfaceDefaults.scale(focusedScale = 1f),
             ) {
-                Box(
+                Row(
                     Modifier.fillMaxWidth().heightIn(min = 44.dp).padding(horizontal = 8.dp, vertical = 10.dp),
-                    contentAlignment = Alignment.Center
+                    horizontalArrangement = Arrangement.Center,
+                    verticalAlignment = Alignment.CenterVertically,
                 ) {
+                    if (mode == selectedMode) Icon(Icons.Rounded.Check, "已选择", Modifier.size(16.dp))
                     Text(
                         when (mode) {
                             VideoEnhancementMode.OFF -> "原始画质"

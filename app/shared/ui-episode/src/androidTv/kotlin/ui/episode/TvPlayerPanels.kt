@@ -10,47 +10,57 @@
 package me.him188.ani.leanback.ui.episode
 
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.border
+import androidx.compose.foundation.focusable
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
+import androidx.compose.foundation.gestures.scrollBy
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.RowScope
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyListScope
+import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.lazy.itemsIndexed
-import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.rounded.AutoAwesome
 import androidx.compose.material.icons.rounded.Bookmark
 import androidx.compose.material.icons.rounded.Comment
 import androidx.compose.material.icons.rounded.Groups
-import androidx.compose.material.icons.rounded.HighQuality
-import androidx.compose.material.icons.rounded.Recommend
 import androidx.compose.material.icons.rounded.Tune
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
+import androidx.compose.ui.focus.onFocusChanged
+import androidx.compose.ui.input.key.Key
+import androidx.compose.ui.input.key.KeyEventType
+import androidx.compose.ui.input.key.key
+import androidx.compose.ui.input.key.onPreviewKeyEvent
+import androidx.compose.ui.input.key.type
+import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
-import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.paging.LoadState
 import androidx.paging.compose.LazyPagingItems
 import androidx.tv.material3.ClickableSurfaceDefaults
-import androidx.tv.material3.LocalContentColor
 import androidx.tv.material3.MaterialTheme
 import androidx.tv.material3.Surface
 import androidx.tv.material3.Text
+import kotlinx.coroutines.launch
 import me.him188.ani.app.data.models.episode.EpisodeComment
-import me.him188.ani.app.data.models.subject.RelatedSubjectInfo
-import me.him188.ani.app.data.models.subject.SubjectRelation
-import me.him188.ani.app.ui.foundation.AsyncImage
 import me.him188.ani.danmaku.ui.DanmakuPresentation
 import java.text.SimpleDateFormat
 import java.util.Date
@@ -59,74 +69,54 @@ import java.util.Locale
 /**
  * 浮出面板种类与内容宽度 (atv-architecture.md §8.3 功能药丸).
  */
-enum class TvPlayerPanel(val title: String, val icon: ImageVector, val width: Dp) {
+enum class TvPlayerPanelPresentation { Popup, Sidebar }
+
+enum class TvPlayerPanel(
+    val title: String,
+    val icon: ImageVector,
+    val width: Dp,
+    val presentation: TvPlayerPanelPresentation = TvPlayerPanelPresentation.Popup,
+) {
     Collection("收藏状态", Icons.Rounded.Bookmark, 248.dp),
-    Recommendations("相关推荐", Icons.Rounded.Recommend, 360.dp),
-    Comments("评论", Icons.Rounded.Comment, 400.dp),
-    DanmakuSettings("弹幕设置", Icons.Rounded.Tune, 400.dp),
-    VideoSettings("画质增强", Icons.Rounded.HighQuality, 400.dp),
-    Together("一起看", Icons.Rounded.Groups, 360.dp),
-}
-
-/** 内容面板与交互面板共用实色底、圆角和焦点状态. */
-internal object TvPlayerPanelDefaults {
-    /** 面板最大高度. */
-    val MaxHeight: Dp = TvPlayerSurfaceDefaults.PanelMaxHeight
-
-    /** 内容条目底色. */
-    val ItemContainer: Color = TvPlayerSurfaceDefaults.Raised
-
-    val ItemShape = TvPlayerSurfaceDefaults.ItemShape
+    Comments("评论", Icons.Rounded.Comment, 400.dp, TvPlayerPanelPresentation.Sidebar),
+    DanmakuSettings("弹幕设置", Icons.Rounded.Tune, 400.dp, TvPlayerPanelPresentation.Sidebar),
+    VideoSettings("画质增强", Icons.Rounded.AutoAwesome, 400.dp),
+    Together("一起看", Icons.Rounded.Groups, 360.dp, TvPlayerPanelPresentation.Sidebar),
 }
 
 /**
- * 浮出面板宿主 (§8.3): 锚定对应药丸, 标题固定, 内容独立滚动.
- *
- * 纯视图组件: 焦点接线由 Screen 注入 —— [panelModifier] 挂列表容器 (锚点 + 向下退出回胶囊),
- * [entryAnchorModifier] 挂入口条目 (第一条).
- * 数据为空时展示不可聚焦的占位条, 焦点留在胶囊行.
+ * Sidebar list content. The host supplies independent scroll state and owns navigation.
  */
 @Composable
-internal fun TvPlayerPanelHost(
-    panel: TvPlayerPanel,
-    relatedSubjects: List<RelatedSubjectInfo>,
+internal fun TvPlayerComments(
     comments: LazyPagingItems<EpisodeComment>?,
-    panelModifier: Modifier,
     entryAnchorModifier: Modifier,
-    onClickSubject: (RelatedSubjectInfo) -> Unit,
+    onClickComment: (EpisodeComment, Int) -> Unit,
+    commentAnchor: (EpisodeComment) -> Modifier,
+    listState: LazyListState,
     modifier: Modifier = Modifier,
 ) {
     val listModifier = Modifier.fillMaxWidth()
 
     fun anchorFor(index: Int) = if (index == 0) entryAnchorModifier else Modifier
 
-    TvPlayerPanelSurface(
-        panel.title, panel.icon,
-        modifier
-            .then(panelModifier)
-            .width(panel.width)
-            .heightIn(max = TvPlayerPanelDefaults.MaxHeight),
-    ) {
-        when (panel) {
-            TvPlayerPanel.Recommendations -> PanelList(listModifier, Modifier, empty = relatedSubjects.isEmpty()) {
-                itemsIndexed(relatedSubjects, key = { _, it -> it.subjectId }) { index, subject ->
-                    RelatedSubjectItem(subject, onClick = { onClickSubject(subject) }, modifier = anchorFor(index))
-                }
-            }
-
-            TvPlayerPanel.Comments -> if (comments != null) PanelList(
-                listModifier, Modifier,
-                empty = comments.itemCount == 0,
-                emptyText = if (comments.loadState.refresh is LoadState.Loading) "正在加载评论…" else "暂无评论",
-            ) {
-                items(comments.itemCount) { index ->
-                    comments[index]?.let { comment ->
-                        CommentItem(comment, modifier = anchorFor(index))
+    Column(modifier) {
+        if (comments != null) PanelList(
+            listModifier, Modifier,
+            empty = comments.itemCount == 0,
+            emptyText = if (comments.loadState.refresh is LoadState.Loading) "正在加载评论…" else "暂无评论",
+            state = listState,
+        ) {
+            items(comments.itemCount, key = { comments.peek(it)?.stableId ?: "placeholder-$it" }) { index ->
+                comments[index]?.let { comment ->
+                    CommentItem(comment, modifier = anchorFor(index).then(commentAnchor(comment))) {
+                        onClickComment(comment, index)
                     }
                 }
             }
-
-            else -> Unit // Interactive option panels have their own state/intent-only renderer.
+            if (comments.loadState.append is LoadState.Error) item {
+                TvOptionRow("加载评论失败，重试") { comments.retry() }
+            }
         }
     }
 }
@@ -154,19 +144,23 @@ private fun PanelList(
     empty: Boolean,
     emptyText: String = "暂无内容",
     reverseLayout: Boolean = false,
+    state: LazyListState = rememberLazyListState(),
     content: LazyListScope.() -> Unit,
 ) {
+    val colors = LocalTvPlayerSurfaceColors.current
     if (empty) {
         Text(
             emptyText,
             hostModifier
                 .padding(horizontal = 16.dp, vertical = 20.dp),
             style = MaterialTheme.typography.labelLarge,
-            color = Color.White.copy(alpha = 0.8f),
+            color = colors.muted,
         )
     } else {
         LazyColumn(
-            modifier = hostModifier.then(listModifier),
+            modifier = hostModifier.then(listModifier).tvPanelScrollEdges(state, colors.container),
+            state = state,
+            contentPadding = PaddingValues(vertical = 12.dp, horizontal = 4.dp),
             reverseLayout = reverseLayout,
             verticalArrangement = Arrangement.spacedBy(8.dp),
             content = content,
@@ -184,13 +178,8 @@ private fun PanelItemSurface(
     Surface(
         onClick = onClick,
         modifier = modifier.fillMaxWidth(),
-        shape = ClickableSurfaceDefaults.shape(TvPlayerPanelDefaults.ItemShape),
-        colors = ClickableSurfaceDefaults.colors(
-            containerColor = TvPlayerPanelDefaults.ItemContainer,
-            focusedContainerColor = TvPlayerControlsDefaults.FocusedContainer,
-            contentColor = TvPlayerControlsDefaults.Content,
-            focusedContentColor = TvPlayerControlsDefaults.FocusedContent,
-        ),
+        shape = ClickableSurfaceDefaults.shape(TvPlayerSurfaceDefaults.ItemShape),
+        colors = tvPlayerOptionColors(filled = true),
         scale = ClickableSurfaceDefaults.scale(focusedScale = 1f),
     ) {
         Row(
@@ -203,56 +192,12 @@ private fun PanelItemSurface(
 }
 
 @Composable
-private fun RelatedSubjectItem(
-    subject: RelatedSubjectInfo,
-    onClick: () -> Unit,
-    modifier: Modifier = Modifier,
-) {
-    PanelItemSurface(onClick, modifier) {
-        AsyncImage(
-            model = subject.image,
-            contentDescription = subject.displayName,
-            modifier = Modifier
-                .size(width = 40.dp, height = 56.dp)
-                .clip(RoundedCornerShape(6.dp)),
-            contentScale = ContentScale.Crop,
-        )
-        Column(Modifier.weight(1f)) {
-            Text(
-                subject.displayName,
-                style = MaterialTheme.typography.bodyMedium,
-                maxLines = 2,
-                overflow = TextOverflow.Ellipsis,
-            )
-            subject.relation?.let {
-                Text(
-                    when (it) {
-                        SubjectRelation.SEQUEL -> "续集"
-                        SubjectRelation.PREQUEL -> "前传"
-                        SubjectRelation.DERIVED -> "衍生"
-                        SubjectRelation.SPECIAL -> "番外"
-                    },
-                    Modifier.padding(top = 2.dp),
-                    style = MaterialTheme.typography.labelSmall,
-                    color = LocalContentColor.current.copy(alpha = .7f),
-                )
-            }
-        }
-    }
-}
-
-@Composable
-private fun CommentItem(comment: EpisodeComment, modifier: Modifier = Modifier) {
+private fun CommentItem(comment: EpisodeComment, modifier: Modifier = Modifier, onClick: () -> Unit) {
     Surface(
-        onClick = {},
+        onClick = onClick,
         modifier = modifier.fillMaxWidth(),
-        shape = ClickableSurfaceDefaults.shape(TvPlayerPanelDefaults.ItemShape),
-        colors = ClickableSurfaceDefaults.colors(
-            containerColor = TvPlayerPanelDefaults.ItemContainer,
-            focusedContainerColor = TvPlayerControlsDefaults.FocusedContainer,
-            contentColor = TvPlayerControlsDefaults.Content,
-            focusedContentColor = TvPlayerControlsDefaults.FocusedContent,
-        ),
+        shape = ClickableSurfaceDefaults.shape(TvPlayerSurfaceDefaults.ItemShape),
+        colors = tvPlayerOptionColors(filled = true),
         scale = ClickableSurfaceDefaults.scale(focusedScale = 1f),
     ) {
         Column(Modifier.padding(horizontal = 12.dp, vertical = 8.dp)) {
@@ -276,7 +221,52 @@ private fun CommentItem(comment: EpisodeComment, modifier: Modifier = Modifier) 
                 maxLines = 4,
                 overflow = TextOverflow.Ellipsis,
             )
+            Text("查看全文", style = MaterialTheme.typography.labelSmall, modifier = Modifier.padding(top = 8.dp))
         }
+    }
+}
+
+/** A single reading focus target; vertical keys scroll the entire text without truncation. */
+@Composable
+internal fun TvCommentDetail(comment: EpisodeComment, modifier: Modifier = Modifier) {
+    val colors = LocalTvPlayerSurfaceColors.current
+    val scroll = rememberScrollState()
+    val scope = rememberCoroutineScope()
+    val step = with(LocalDensity.current) { 96.dp.toPx() }
+    var focused by remember { mutableStateOf(false) }
+    Column(
+        modifier
+            .fillMaxWidth()
+            .onFocusChanged { focused = it.isFocused }
+            .onPreviewKeyEvent { event ->
+                val direction = when (event.key) {
+                    Key.DirectionDown -> if (scroll.canScrollForward) 1 else 0
+                    Key.DirectionUp -> if (scroll.canScrollBackward) -1 else 0
+                    else -> 0
+                }
+                if (direction == 0) false else {
+                    if (event.type == KeyEventType.KeyDown) scope.launch { scroll.scrollBy(step * direction) }
+                    true
+                }
+            }
+            .border(
+                1.dp,
+                if (focused) colors.focusedContainer else Color.Transparent,
+                TvPlayerSurfaceDefaults.ItemShape
+            )
+            .focusable()
+            .verticalScroll(scroll)
+            .padding(16.dp)
+            .testTag("tv-comment-full-text"),
+        verticalArrangement = Arrangement.spacedBy(16.dp),
+    ) {
+        Text(comment.author?.nickname ?: "匿名", style = MaterialTheme.typography.titleMedium, color = colors.content)
+        Text(
+            formatCommentDate(comment.createdAt),
+            style = MaterialTheme.typography.labelMedium,
+            color = colors.muted
+        )
+        Text(cleanCommentText(comment.content), style = MaterialTheme.typography.bodyLarge, color = colors.content)
     }
 }
 
@@ -291,8 +281,6 @@ private fun DanmakuItem(danmaku: DanmakuPresentation, modifier: Modifier = Modif
             danmaku.danmaku.text,
             Modifier.weight(1f),
             style = MaterialTheme.typography.bodyMedium,
-            maxLines = 1,
-            overflow = TextOverflow.Ellipsis,
         )
     }
 }

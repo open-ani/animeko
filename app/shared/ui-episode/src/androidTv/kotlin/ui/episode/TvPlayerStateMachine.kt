@@ -41,11 +41,14 @@ internal class TvPlayerStateMachine(
         when (intent) {
             is TvEpisodeIntent.RemoteKey -> return onKey(intent)
             TvEpisodeIntent.Back -> return back()
+            TvEpisodeIntent.OpenRecommendations -> openRecommendations()
+            TvEpisodeIntent.CloseRecommendations -> closeRecommendations()
             TvEpisodeIntent.ToggleEpisodeStrip -> {
                 releaseHeldSpeed()
                 val expanded = !state.value.stripExpanded
                 state.value = state.value.copy(
                     controlsVisible = true,
+                    recommendationsVisible = false,
                     stripExpanded = expanded,
                     activePanel = null,
                     scrubMillis = null,
@@ -63,6 +66,9 @@ internal class TvPlayerStateMachine(
             is TvEpisodeIntent.TogglePanel -> {
                 releaseHeldSpeed()
                 state.value = state.value.copy(
+                    controlsVisible = true,
+                    recommendationsVisible = false,
+                    sourceDialogVisible = false,
                     activePanel = intent.panel.takeUnless { it == state.value.activePanel },
                     scrubMillis = null,
                     stripExpanded = false,
@@ -76,6 +82,7 @@ internal class TvPlayerStateMachine(
                 state.value = state.value.copy(
                     sourceDialogVisible = true,
                     controlsVisible = true,
+                    recommendationsVisible = false,
                     stripExpanded = false,
                     scrubMillis = null,
                     activePanel = null,
@@ -89,6 +96,7 @@ internal class TvPlayerStateMachine(
                 state.value = state.value.copy(
                     dialog = intent.dialog,
                     controlsVisible = true,
+                    recommendationsVisible = false,
                     activePanel = state.value.activePanel.takeIf {
                         intent.dialog == TvPlayerDialog.DanmakuList || intent.dialog == TvPlayerDialog.DanmakuMatch
                     },
@@ -132,6 +140,7 @@ internal class TvPlayerStateMachine(
         releaseHeldSpeed()
         state.value = state.value.copy(
             controlsVisible = true,
+            recommendationsVisible = false,
             sourceDialogVisible = false,
             dialog = null,
             stripExpanded = false,
@@ -152,7 +161,7 @@ internal class TvPlayerStateMachine(
 
     private fun showControls() {
         releaseHeldSpeed()
-        state.value = state.value.copy(controlsVisible = true)
+        state.value = state.value.copy(controlsVisible = true, recommendationsVisible = false)
         bump()
         focus.trySend(TvPlayerFocusRequest.SeekBar)
     }
@@ -161,6 +170,7 @@ internal class TvPlayerStateMachine(
         releaseHeldSpeed()
         state.value = state.value.copy(
             controlsVisible = false,
+            recommendationsVisible = false,
             stripExpanded = false,
             activePanel = null,
             scrubMillis = null,
@@ -183,6 +193,7 @@ internal class TvPlayerStateMachine(
         val base = state.value.scrubMillis ?: playback.positionMillis
         state.value = state.value.copy(
             controlsVisible = true,
+            recommendationsVisible = false,
             scrubMillis = (base + deltaMillis).coerceIn(0, upperBound),
             activePanel = null,
             stripExpanded = false,
@@ -201,6 +212,7 @@ internal class TvPlayerStateMachine(
         when {
             state.value.dialog != null -> closeDialog()
             state.value.sourceDialogVisible -> mediaSelected()
+            state.value.recommendationsVisible -> closeRecommendations()
             state.value.activePanel != null -> {
                 val panel = state.value.activePanel!!
                 state.value = state.value.copy(activePanel = null)
@@ -222,6 +234,28 @@ internal class TvPlayerStateMachine(
             else -> return false
         }
         return true
+    }
+
+    private fun openRecommendations() {
+        releaseHeldSpeed()
+        state.value = state.value.copy(
+            controlsVisible = true,
+            recommendationsVisible = true,
+            stripExpanded = false,
+            activePanel = null,
+            scrubMillis = null,
+            dialog = null,
+            sourceDialogVisible = false,
+        )
+        bump()
+        focus.trySend(TvPlayerFocusRequest.Recommendations)
+    }
+
+    private fun closeRecommendations() {
+        if (!state.value.recommendationsVisible) return
+        state.value = state.value.copy(recommendationsVisible = false)
+        bump()
+        focus.trySend(TvPlayerFocusRequest.SeekBar)
     }
 
     private fun onKey(event: TvEpisodeIntent.RemoteKey): Boolean {
@@ -256,6 +290,20 @@ internal class TvPlayerStateMachine(
             return !event.sourceDialogFocused && key in navigationKeys
         }
         if (state.value.dialog != null) return false
+        if (state.value.recommendationsVisible) {
+            if (isDown) bump()
+            if (key == TvRemoteKey.Up) {
+                if (isNewPress) closeRecommendations()
+                return true
+            }
+            // Do not send navigation to the outgoing controller while the row is entering.
+            return !event.recommendationsFocused && key in navigationKeys
+        }
+        // Until the sidebar has acquired focus, D-pad input must not operate the player behind it.
+        if (state.value.sidebarVisible) {
+            if (isDown) bump()
+            return !event.sidebarFocused && key in navigationKeys
+        }
         if (state.value.scrubMillis != null) {
             when (key) {
                 TvRemoteKey.Left, TvRemoteKey.Right -> if (isDown) moveScrub(if (key == TvRemoteKey.Right) 5_000 else -5_000)
@@ -316,6 +364,10 @@ internal class TvPlayerStateMachine(
         }
         if (event.iconRowFocused && key == TvRemoteKey.Up) {
             if (isNewPress) focus.trySend(TvPlayerFocusRequest.SeekBar)
+            return true
+        }
+        if (event.iconRowFocused && key == TvRemoteKey.Down) {
+            if (isNewPress) openRecommendations()
             return true
         }
         return false

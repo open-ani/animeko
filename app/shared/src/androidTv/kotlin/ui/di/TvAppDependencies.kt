@@ -10,7 +10,6 @@
 package me.him188.ani.leanback.ui.di
 
 import me.him188.ani.app.data.network.AutoSkipRepository
-import me.him188.ani.app.data.network.BangumiRelatedPeopleService
 import me.him188.ani.app.data.network.BangumiSummaryService
 import me.him188.ani.app.data.network.TmdbImageService
 import me.him188.ani.app.data.repository.episode.EpisodeCollectionRepository
@@ -21,6 +20,7 @@ import me.him188.ani.app.data.repository.subject.SubjectSearchRepository
 import me.him188.ani.app.data.repository.user.SettingsRepository
 import me.him188.ani.app.data.repository.user.UserRepository
 import me.him188.ani.app.domain.danmaku.DanmakuRepository
+import me.him188.ani.app.domain.episode.GetSubjectRecommendationUseCase
 import me.him188.ani.app.domain.mediasource.web.captcha.WebSessionManager
 import me.him188.ani.app.domain.session.SessionStateProvider
 import me.him188.ani.app.domain.settings.GetDanmakuRegexFilterListFlowUseCase
@@ -46,7 +46,7 @@ class TvAppDependencies(
     val danmakuRepository: DanmakuRepository,
     val getDanmakuRegexFilterListFlowUseCase: GetDanmakuRegexFilterListFlowUseCase,
     val episodeCommentRepository: EpisodeCommentRepository,
-    val bangumiRelatedPeopleService: BangumiRelatedPeopleService,
+    val getSubjectRecommendations: GetSubjectRecommendationUseCase,
     val autoSkipRepository: AutoSkipRepository,
     val selectorEpisodeCacheRepository: SelectorMediaSourceEpisodeCacheRepository,
     val webSessionManager: WebSessionManager,
@@ -69,7 +69,7 @@ class TvAppDependencies(
             danmakuRepository = koin.get(),
             getDanmakuRegexFilterListFlowUseCase = koin.get(),
             episodeCommentRepository = koin.get(),
-            bangumiRelatedPeopleService = koin.get(),
+            getSubjectRecommendations = koin.get(),
             autoSkipRepository = koin.get(),
             selectorEpisodeCacheRepository = koin.get(),
             webSessionManager = koin.get(),

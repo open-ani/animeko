@@ -58,7 +58,7 @@ internal class TvSourceDialogState(
     }
 }
 
-/** Remember at the player screen so closing and reopening the dialog retains its browsing choices. */
+/** Keep browsing choices in the UI; the dialog resets its mode and entry focus on each opening. */
 @Composable
 internal fun rememberTvSourceDialogState(): TvSourceDialogState =
     rememberSaveable(saver = TvSourceDialogState.Saver) { TvSourceDialogState() }

@@ -310,10 +310,131 @@ class TvPlayerStateMachineTest {
     }
 
     @Test
-    fun `down from operation bar no longer opens episodes`() {
+    fun `sidebar opening blocks stale timeline focus from seeking`() {
         val f = Fixture()
-        assertFalse(f.machine.onIntent(TvEpisodeIntent.RemoteKey(TvRemoteKey.Down, true, 0, 1_000, false, true, false)))
-        assertFalse(f.state.stripExpanded)
+        f.machine.onIntent(TvEpisodeIntent.TogglePanel(TvPlayerPanel.Comments))
+        assertTrue(f.state.sidebarVisible)
+        assertTrue(f.key(TvRemoteKey.Right))
+        assertTrue(f.key(TvRemoteKey.Confirm))
+        assertNull(f.state.scrubMillis)
         assertTrue(f.commands.isEmpty())
+        // Once inside the sidebar, directional keys belong to its list or adjustment controls.
+        assertFalse(
+            f.machine.onIntent(
+                TvEpisodeIntent.RemoteKey(
+                    TvRemoteKey.Right, true, 0, 1_000, false, false, false, sidebarFocused = true,
+                )
+            )
+        )
+        assertTrue(f.commands.isEmpty())
+    }
+
+    @Test
+    fun `sidebar back restores its exact chip and keeps controls visible`() = runBlocking {
+        for (panel in listOf(
+            TvPlayerPanel.Comments,
+            TvPlayerPanel.DanmakuSettings,
+            TvPlayerPanel.Together
+        )) {
+            val f = Fixture()
+            f.machine.onIntent(TvEpisodeIntent.TogglePanel(panel))
+            f.machine.autoHide()
+            assertTrue(f.state.sidebarVisible)
+            assertTrue(f.machine.onIntent(TvEpisodeIntent.Back))
+            assertFalse(f.state.sidebarVisible)
+            assertTrue(f.state.controlsVisible)
+            assertEquals(TvPlayerFocusRequest.PanelChip(panel), f.machine.focusRequests.first())
+            assertTrue(f.commands.isEmpty())
+        }
+    }
+
+    @Test
+    fun `opening a sidebar replaces source dialog and seek preview`() {
+        val f = Fixture()
+        f.key(TvRemoteKey.Right)
+        f.machine.onIntent(TvEpisodeIntent.OpenSourceDialog)
+        f.machine.onIntent(TvEpisodeIntent.TogglePanel(TvPlayerPanel.DanmakuSettings))
+        assertTrue(f.state.sidebarVisible)
+        assertFalse(f.state.sourceDialogVisible)
+        assertNull(f.state.scrubMillis)
+        assertNull(f.state.dialog)
+        assertFalse(f.state.canAutoHide)
+        assertTrue(f.commands.isEmpty())
+    }
+
+    @Test
+    fun `down from operation bar opens recommendations directly`() = runBlocking {
+        val f = Fixture()
+        assertTrue(f.machine.onIntent(TvEpisodeIntent.RemoteKey(TvRemoteKey.Down, true, 0, 1_000, false, true, false)))
+        assertEquals(TvPlayerFocusRequest.Recommendations, f.machine.focusRequests.first())
+        assertFalse(f.state.stripExpanded)
+        assertTrue(f.state.recommendationsVisible)
+        assertTrue(f.commands.isEmpty())
+    }
+
+    @Test
+    fun `recommendations replace controller content and prevent auto hide`() = runBlocking {
+        val f = Fixture()
+        f.machine.onIntent(TvEpisodeIntent.ToggleEpisodeStrip)
+        f.machine.onIntent(TvEpisodeIntent.OpenRecommendations)
+        assertTrue(f.state.recommendationsVisible)
+        assertFalse(f.state.stripExpanded)
+        assertFalse(f.state.sidebarVisible)
+        assertFalse(f.state.canAutoHide)
+        assertEquals(TvPlayerFocusRequest.Recommendations, f.machine.focusRequests.first())
+        f.machine.autoHide()
+        assertTrue(f.state.controlsVisible)
+        assertTrue(f.state.recommendationsVisible)
+        assertTrue(f.commands.isEmpty())
+    }
+
+    @Test
+    fun `up and back leave recommendations and restore timeline focus`() = runBlocking {
+        for (exit in listOf(
+            TvEpisodeIntent.Back,
+            TvEpisodeIntent.CloseRecommendations,
+            TvEpisodeIntent.RemoteKey(TvRemoteKey.Up, true, 0, 1_000, false, false, false, recommendationsFocused = true),
+        )) {
+            val f = Fixture()
+            f.machine.onIntent(TvEpisodeIntent.OpenRecommendations)
+            assertEquals(TvPlayerFocusRequest.Recommendations, f.machine.focusRequests.first())
+            assertTrue(f.machine.onIntent(exit))
+            assertFalse(f.state.recommendationsVisible)
+            assertTrue(f.state.controlsVisible)
+            assertEquals(TvPlayerFocusRequest.SeekBar, f.machine.focusRequests.first())
+            assertTrue(f.commands.isEmpty())
+        }
+    }
+
+    @Test
+    fun `recommendation transition cannot seek or toggle playback through stale controller focus`() {
+        val f = Fixture()
+        f.machine.onIntent(TvEpisodeIntent.OpenRecommendations)
+        for (key in listOf(TvRemoteKey.Left, TvRemoteKey.Right, TvRemoteKey.Confirm)) {
+            assertTrue(f.key(key))
+            assertTrue(f.key(key, down = false))
+        }
+        assertNull(f.state.scrubMillis)
+        assertTrue(f.commands.isEmpty())
+        assertFalse(f.machine.onIntent(
+            TvEpisodeIntent.RemoteKey(TvRemoteKey.Right, true, 0, 1_000, false, false, false, recommendationsFocused = true),
+        ))
+    }
+
+    @Test
+    fun `source panel dialog episode strip and menu replace recommendations`() {
+        for (intent in listOf(
+            TvEpisodeIntent.OpenSourceDialog,
+            TvEpisodeIntent.TogglePanel(TvPlayerPanel.Comments),
+            TvEpisodeIntent.OpenDialog(TvPlayerDialog.Speed),
+            TvEpisodeIntent.ToggleEpisodeStrip,
+            TvEpisodeIntent.RemoteKey(TvRemoteKey.Menu, true, 0, 1_000, false, false, false),
+        )) {
+            val f = Fixture()
+            f.machine.onIntent(TvEpisodeIntent.OpenRecommendations)
+            f.machine.onIntent(intent)
+            assertFalse(f.state.recommendationsVisible)
+            assertTrue(f.state.controlsVisible)
+        }
     }
 }

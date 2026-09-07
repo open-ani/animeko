@@ -25,6 +25,7 @@ sealed interface TvNavigationEvent {
     data class Subject(val subjectId: Int, val placeholder: SubjectDetailPlaceholder? = null) : TvNavigationEvent
     data class Episode(val subjectId: Int, val episodeId: Int) : TvNavigationEvent
     data object LoggedIn : TvNavigationEvent
+    data object Login : TvNavigationEvent
 }
 
 /** A ViewModel-owned queue; navigation is delivered once to the active route. */

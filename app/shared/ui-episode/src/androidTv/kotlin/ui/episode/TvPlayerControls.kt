@@ -9,14 +9,15 @@
 
 package me.him188.ani.leanback.ui.episode
 
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
+import androidx.compose.foundation.focusGroup
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -26,14 +27,13 @@ import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.lazy.LazyRow
-import androidx.compose.foundation.lazy.items
-import androidx.compose.foundation.lazy.rememberLazyListState
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.AspectRatio
 import androidx.compose.material.icons.rounded.DisplaySettings
+import androidx.compose.material.icons.rounded.KeyboardArrowDown
 import androidx.compose.material.icons.rounded.SkipNext
 import androidx.compose.material.icons.rounded.Speed
 import androidx.compose.material.icons.rounded.Subtitles
@@ -41,6 +41,8 @@ import androidx.compose.material.icons.rounded.SubtitlesOff
 import androidx.compose.material.icons.rounded.ViewModule
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.key
+import androidx.compose.runtime.mutableStateMapOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.produceState
 import androidx.compose.runtime.remember
@@ -53,14 +55,19 @@ import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.compositeOver
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.layout.onPlaced
+import androidx.compose.ui.layout.positionInParent
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.semantics.selected
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
+import androidx.tv.material3.Border
 import androidx.tv.material3.ClickableSurfaceDefaults
 import androidx.tv.material3.Icon
 import androidx.tv.material3.MaterialTheme
@@ -86,14 +93,14 @@ internal object TvPlayerControlsDefaults {
     /** 聚焦反色: 内容. */
     val FocusedContent: Color = TvPlayerSurfaceDefaults.FocusedContent
 
-    /** 胶囊底色 (未聚焦). */
-    val CapsuleContainer: Color = TvPlayerSurfaceDefaults.Raised.copy(alpha = .94f)
-
     /** 主内容色. */
     val Content: Color = Color.White
 
     /** 次要内容色. */
     val SecondaryContent: Color = Color.White.copy(alpha = 0.72f)
+
+    /** 浅色内容色. */
+    val TertiaryContent: Color = Color.White.copy(alpha = 0.32f)
 }
 
 @Composable
@@ -113,17 +120,59 @@ private fun TvPlayerClock(modifier: Modifier = Modifier) {
     )
 }
 
+/** 顶部标题和时钟独立于底部控制器/推荐横排的切换. */
+@Composable
+internal fun TvPlayerTitleBar(title: TvEpisodeTitle, modifier: Modifier = Modifier) {
+    Row(
+        modifier
+            .fillMaxWidth()
+            .testTag("tv-player-title-bar")
+            .background(
+                Brush.verticalGradient(
+                    0f to Color.Black.copy(alpha = 0.85f),
+                    .65f to Color.Black.copy(alpha = 0.65f),
+                    1f to Color.Transparent,
+                ),
+            )
+            .padding(
+                start = TvPlayerControlsDefaults.HorizontalPadding,
+                end = TvPlayerControlsDefaults.HorizontalPadding,
+                top = 28.dp,
+                bottom = 40.dp,
+            ),
+    ) {
+        Column(Modifier.weight(1f)) {
+            Text(
+                title.subjectName,
+                style = MaterialTheme.typography.headlineSmall,
+                color = TvPlayerControlsDefaults.Content,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+            )
+            Text(
+                title.episodeLine,
+                Modifier.padding(top = 4.dp),
+                style = MaterialTheme.typography.titleSmall,
+                color = TvPlayerControlsDefaults.SecondaryContent,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+            )
+        }
+        TvPlayerClock(Modifier.padding(start = 24.dp, top = 4.dp))
+    }
+}
+
 /**
- * 播放器控制层 (atv-architecture.md §8.3):
- * 顶部 [标题两行 + 时钟] -> 底部 [选集条/面板/预览 -> 胶囊行 -> 进度条行 -> 图标行].
+ * 播放器底部控制层 (atv-architecture.md §8.3):
+ * 选集条/面板/预览 -> 胶囊行 -> 进度条行 -> 图标行 -> 推荐提示.
  *
  * 纯视图组件: 焦点锚点/按键语义由 Screen 组装成 modifier 注入
  * ([seekBarModifier]/[iconRowModifier], §14.7-2), 本层只画状态.
  */
 @Composable
 internal fun TvPlayerControlsOverlay(
-    title: TvEpisodeTitle,
     sourceIconUrl: String?,
+    sourceLabel: String,
     positionMillis: Long,
     durationMillis: Long,
     bufferedFraction: Float,
@@ -152,59 +201,10 @@ internal fun TvPlayerControlsOverlay(
     panelHost: (@Composable () -> Unit)? = null,
     episodeStrip: (@Composable () -> Unit)? = null,
 ) {
-    Box(modifier.fillMaxSize()) {
-        // Keep the scrim independent of panel height so opening a panel cannot wash out the controls.
-        Box(
-            Modifier
-                .align(Alignment.BottomCenter)
-                .fillMaxWidth()
-                .height(300.dp)
-                .background(
-                    Brush.verticalGradient(
-                        0f to Color.Transparent,
-                        .4f to Color.Black.copy(alpha = .72f),
-                        1f to Color.Black.copy(alpha = .96f),
-                    ),
-                ),
-        )
-        // 顶部 scrim + 标题/时钟
-        Row(
-            Modifier
-                .fillMaxWidth()
-                .background(
-                    Brush.verticalGradient(
-                        0f to Color.Black.copy(alpha = 0.85f),
-                        .65f to Color.Black.copy(alpha = 0.65f),
-                        1f to Color.Transparent,
-                    ),
-                )
-                .padding(
-                    start = TvPlayerControlsDefaults.HorizontalPadding,
-                    end = TvPlayerControlsDefaults.HorizontalPadding,
-                    top = 28.dp,
-                    bottom = 40.dp,
-                ),
-        ) {
-            Column(Modifier.weight(1f)) {
-                Text(
-                    title.subjectName,
-                    style = MaterialTheme.typography.headlineSmall,
-                    color = TvPlayerControlsDefaults.Content,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis,
-                )
-                Text(
-                    title.episodeLine,
-                    Modifier.padding(top = 4.dp),
-                    style = MaterialTheme.typography.titleSmall,
-                    color = TvPlayerControlsDefaults.SecondaryContent,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis,
-                )
-            }
-            TvPlayerClock(Modifier.padding(start = 24.dp, top = 4.dp))
-        }
-
+    BoxWithConstraints(modifier.fillMaxSize()) {
+        // Both control rows collapse to icons together as the player narrows.
+        val showButtonLabels = maxWidth >= 760.dp
+        val chipOffsets = remember { mutableStateMapOf<TvPlayerPanel, Float>() }
         Column(
             Modifier
                 .align(Alignment.BottomCenter)
@@ -213,17 +213,14 @@ internal fun TvPlayerControlsOverlay(
         ) {
             episodeStrip?.invoke()
             Column(Modifier.padding(horizontal = TvPlayerControlsDefaults.HorizontalPadding)) {
-                val capsuleList = rememberLazyListState()
                 val density = LocalDensity.current
-                // Anchor the panel to the visible trigger; clamp the last pills to the safe right edge.
+                // Anchor panels to the laid-out chips in either label mode and keep them within the safe edge.
                 if (panelHost != null && activePanel != null) BoxWithConstraints(
                     Modifier
                         .fillMaxWidth()
                         .padding(bottom = 12.dp),
                 ) {
-                    val triggerOffset =
-                        capsuleList.layoutInfo.visibleItemsInfo.firstOrNull { it.index == activePanel.ordinal }?.offset
-                            ?: 0
+                    val triggerOffset = chipOffsets[activePanel] ?: 0f
                     val start = with(density) { triggerOffset.toDp() }.coerceIn(
                         0.dp,
                         (maxWidth - activePanel.width).coerceAtLeast(0.dp),
@@ -282,23 +279,29 @@ internal fun TvPlayerControlsOverlay(
                 }
 
                 // 功能胶囊行: 确认开/关对应浮出面板
-                LazyRow(
-                    state = capsuleList,
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(4.dp)
+                        .focusGroup()
+                        .testTag("tv-player-chips"),
                     horizontalArrangement = Arrangement.spacedBy(12.dp),
-                    contentPadding = PaddingValues(horizontal = 4.dp, vertical = 4.dp),
+                    verticalAlignment = Alignment.CenterVertically,
                 ) {
-                    items(TvPlayerPanel.entries) { panel ->
+                    for (panel in TvPlayerPanel.entries) key(panel) {
                         CapsuleChipButton(
                             panel = panel,
                             active = activePanel == panel,
                             onClick = { onTogglePanel(panel) },
-                            modifier = capsuleAnchor(panel),
+                            modifier = capsuleAnchor(panel)
+                                .onPlaced { chipOffsets[panel] = it.positionInParent().x }
+                                .testTag("tv-player-chip-${panel.name}"),
                             label = when (panel) {
                                 TvPlayerPanel.Collection -> options.collectionType.tvLabel()
-                                TvPlayerPanel.Recommendations -> "推荐"
                                 TvPlayerPanel.VideoSettings -> "画质增强"
                                 else -> panel.title
                             },
+                            showLabel = showButtonLabels,
                         )
                     }
                 }
@@ -326,7 +329,8 @@ internal fun TvPlayerControlsOverlay(
                             .weight(1f)
                             // 观察者须在 focusable 之前 (onFocusChanged 只观察链上其后的焦点目标)
                             .onFocusChanged { seekBarFocused = it.isFocused }
-                            .then(seekBarModifier),
+                            .then(seekBarModifier)
+                            .testTag("tv-player-seekbar"),
                     ) {
                         TvSeekBar(
                             positionMillis = positionMillis,
@@ -362,6 +366,7 @@ internal fun TvPlayerControlsOverlay(
                 Row(
                     iconRowModifier
                         .fillMaxWidth()
+                        .testTag("tv-player-icon-row")
                         .padding(top = 14.dp),
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
@@ -375,12 +380,19 @@ internal fun TvPlayerControlsOverlay(
                             onClick = onNextEpisode,
                             modifier = nextEpisodeButtonModifier,
                         )
-                        PlayerLabelButton(Icons.Rounded.ViewModule, "选集", onEpisodes, episodesButtonModifier)
+                        PlayerLabelButton(
+                            Icons.Rounded.ViewModule,
+                            "选集",
+                            onEpisodes,
+                            episodesButtonModifier,
+                            showLabel = showButtonLabels,
+                        )
                         PlayerLabelButton(
                             if (options.danmakuEnabled) Icons.Rounded.Subtitles else Icons.Rounded.SubtitlesOff,
                             if (options.danmakuEnabled) "弹幕开" else "弹幕关",
                             onToggleDanmaku,
                             Modifier.testTag("tv-danmaku-toggle"),
+                            showLabel = showButtonLabels,
                         )
                     }
                     Box(Modifier.weight(1f))
@@ -390,33 +402,63 @@ internal fun TvPlayerControlsOverlay(
                     ) {
                         PlayerLabelButton(
                             Icons.Rounded.DisplaySettings,
-                            "选源",
+                            sourceLabel,
                             onClick = onOpenSourceDialog,
                             modifier = sourceButtonModifier.testTag("tv-source-button"),
                             iconContent = { TvSourceIcon(sourceIconUrl, modifier = Modifier.size(20.dp)) },
+                            showLabel = showButtonLabels,
+                            labelMaxWidth = 96.dp,
                         )
                         PlayerLabelButton(
                             Icons.Rounded.Speed,
                             speedLabel,
                             onClick = onOpenSpeed,
                             modifier = speedButtonModifier.testTag("tv-speed-button"),
+                            showLabel = showButtonLabels,
                         )
                         if (options.supportsSubtitles) PlayerLabelButton(
                             Icons.Rounded.Subtitles,
                             "字幕",
                             onSubtitles,
                             subtitleButtonModifier,
+                            showLabel = showButtonLabels,
                         )
-                        PlayerLabelButton(Icons.Rounded.AspectRatio, aspectLabel, onClick = onCycleAspect)
+                        PlayerLabelButton(
+                            Icons.Rounded.AspectRatio,
+                            aspectLabel,
+                            onClick = onCycleAspect,
+                            showLabel = showButtonLabels,
+                        )
                     }
                 }
             }
+        }
 
+        Row(
+            modifier = Modifier
+                .align(Alignment.BottomCenter)
+                .padding(top = 8.dp)
+                .padding(horizontal = 16.dp, vertical = 8.dp)
+                .testTag("tv-recommendations-hint"),
+            horizontalArrangement = Arrangement.spacedBy(6.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Icon(
+                Icons.Rounded.KeyboardArrowDown,
+                contentDescription = null,
+                modifier = Modifier.size(24.dp),
+                tint = TvPlayerControlsDefaults.TertiaryContent,
+            )
+            Text(
+                "显示推荐条目",
+                style = MaterialTheme.typography.labelLarge,
+                color = TvPlayerControlsDefaults.TertiaryContent,
+            )
         }
     }
 }
 
-/** 面板胶囊按钮: 聚焦白底黑内容反色; [active] (面板开着) 时底色提亮一档. */
+/** 描边功能按钮: 聚焦白底黑字; [active] (面板开着) 时强调描边与图标. */
 @Composable
 private fun CapsuleChipButton(
     panel: TvPlayerPanel,
@@ -424,22 +466,31 @@ private fun CapsuleChipButton(
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
     label: String = panel.title,
+    showLabel: Boolean = true,
 ) {
+    val outlineColor =
+        if (active) MaterialTheme.colorScheme.primary else TvPlayerControlsDefaults.Content.copy(alpha = .45f)
     Surface(
         onClick = onClick,
-        modifier = modifier,
+        modifier = modifier.semantics {
+            contentDescription = label
+            selected = active
+        },
         shape = ClickableSurfaceDefaults.shape(CircleShape),
         colors = ClickableSurfaceDefaults.colors(
-            containerColor = if (active) {
-                MaterialTheme.colorScheme.primary.copy(alpha = .22f).compositeOver(TvPlayerSurfaceDefaults.Container)
-            } else {
-                TvPlayerControlsDefaults.CapsuleContainer
-            },
+            containerColor = Color.Transparent,
             focusedContainerColor = TvPlayerControlsDefaults.FocusedContainer,
-            contentColor = TvPlayerControlsDefaults.Content,
+            contentColor = if (active) MaterialTheme.colorScheme.primary else TvPlayerControlsDefaults.Content,
             focusedContentColor = TvPlayerControlsDefaults.FocusedContent,
         ),
-        scale = ClickableSurfaceDefaults.scale(focusedScale = 1.05f),
+        border = ClickableSurfaceDefaults.border(
+            border = Border(BorderStroke(if (active) 2.dp else 1.dp, outlineColor), shape = CircleShape),
+            focusedBorder = Border(
+                BorderStroke(1.dp, TvPlayerControlsDefaults.FocusedContainer),
+                shape = CircleShape,
+            ),
+        ),
+        scale = ClickableSurfaceDefaults.scale(focusedScale = 1f),
     ) {
         Row(
             Modifier
@@ -449,7 +500,7 @@ private fun CapsuleChipButton(
             verticalAlignment = Alignment.CenterVertically,
         ) {
             Icon(panel.icon, contentDescription = null, Modifier.size(18.dp))
-            Text(label, style = MaterialTheme.typography.labelLarge)
+            if (showLabel) Text(label, style = MaterialTheme.typography.labelLarge, maxLines = 1)
         }
     }
 }
@@ -486,10 +537,12 @@ private fun PlayerLabelButton(
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
     iconContent: (@Composable () -> Unit)? = null,
+    showLabel: Boolean = true,
+    labelMaxWidth: Dp = Dp.Infinity,
 ) {
     Surface(
         onClick = onClick,
-        modifier = modifier,
+        modifier = modifier.semantics { contentDescription = text },
         shape = ClickableSurfaceDefaults.shape(CircleShape),
         colors = playerInverseSurfaceColors(),
         scale = ClickableSurfaceDefaults.scale(focusedScale = 1f),
@@ -502,7 +555,13 @@ private fun PlayerLabelButton(
             verticalAlignment = Alignment.CenterVertically,
         ) {
             if (iconContent != null) iconContent() else Icon(icon, contentDescription = null, Modifier.size(20.dp))
-            Text(text, style = MaterialTheme.typography.labelLarge, maxLines = 1)
+            if (showLabel) Text(
+                text,
+                modifier = Modifier.widthIn(max = labelMaxWidth),
+                style = MaterialTheme.typography.labelLarge,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+            )
         }
     }
 }

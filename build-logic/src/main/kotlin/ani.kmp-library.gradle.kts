@@ -9,6 +9,7 @@
 
 @file:OptIn(ExperimentalKotlinGradlePluginApi::class)
 
+import com.android.build.api.dsl.KotlinMultiplatformAndroidDeviceTestCompilation
 import org.jetbrains.kotlin.gradle.ExperimentalKotlinGradlePluginApi
 import org.jetbrains.kotlin.gradle.dsl.KotlinMultiplatformExtension
 import org.jetbrains.kotlin.gradle.plugin.KotlinPlatformType
@@ -67,6 +68,14 @@ configure<KotlinMultiplatformExtension> {
             instrumentationRunnerArguments["runnerBuilder"] = "de.mannodermaus.junit5.AndroidJUnit5Builder"
             instrumentationRunnerArguments["package"] = "me.him188"
             execution = "HOST"
+        }
+
+        compilations.withType<KotlinMultiplatformAndroidDeviceTestCompilation>().configureEach {
+            // kotlin-test can infer the JUnit 4 adapter, which conflicts with our JUnit 5 runner.
+            // Both device-test classpaths inherit this source set's exclusion.
+            configurations.named(defaultSourceSet.implementationConfigurationName) {
+                exclude(group = "org.jetbrains.kotlin", module = "kotlin-test-junit")
+            }
         }
 
         packaging {

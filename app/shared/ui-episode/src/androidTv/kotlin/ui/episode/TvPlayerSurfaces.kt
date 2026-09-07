@@ -23,6 +23,8 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.Immutable
+import androidx.compose.runtime.staticCompositionLocalOf
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.shadow
@@ -51,21 +53,40 @@ internal object TvPlayerSurfaceDefaults {
     val ModalMaxHeight = 460.dp
 }
 
-@Composable
-internal fun tvPlayerOptionColors(selected: Boolean = false, filled: Boolean = false) = ClickableSurfaceDefaults.colors(
-    containerColor = when {
-        selected -> MaterialTheme.colorScheme.primary.copy(alpha = .16f)
-            .compositeOver(TvPlayerSurfaceDefaults.Container)
-
-        filled -> TvPlayerSurfaceDefaults.Raised
-        else -> Color.Transparent
-    },
-    contentColor = TvPlayerSurfaceDefaults.Content,
-    focusedContainerColor = TvPlayerSurfaceDefaults.FocusedContainer,
-    focusedContentColor = TvPlayerSurfaceDefaults.FocusedContent,
-    disabledContainerColor = Color.Transparent,
-    disabledContentColor = TvPlayerSurfaceDefaults.Muted.copy(alpha = .5f),
+/** Shared player controls inherit the palette of their containing surface. */
+@Immutable
+internal data class TvPlayerSurfaceColors(
+    val container: Color = TvPlayerSurfaceDefaults.Container,
+    val raised: Color = TvPlayerSurfaceDefaults.Raised,
+    val content: Color = TvPlayerSurfaceDefaults.Content,
+    val muted: Color = TvPlayerSurfaceDefaults.Muted,
+    val outline: Color = TvPlayerSurfaceDefaults.Outline,
+    val focusedContainer: Color = TvPlayerSurfaceDefaults.FocusedContainer,
+    val focusedContent: Color = TvPlayerSurfaceDefaults.FocusedContent,
+    /** Null retains the theme accent used by floating player panels. */
+    val selectedContainer: Color? = null,
 )
+
+internal val LocalTvPlayerSurfaceColors = staticCompositionLocalOf { TvPlayerSurfaceColors() }
+
+@Composable
+internal fun tvPlayerOptionColors(selected: Boolean = false, filled: Boolean = false) =
+    with(LocalTvPlayerSurfaceColors.current) {
+        ClickableSurfaceDefaults.colors(
+            containerColor = when {
+                selected -> selectedContainer ?: MaterialTheme.colorScheme.primary.copy(alpha = .16f)
+                    .compositeOver(container)
+
+                filled -> raised
+                else -> Color.Transparent
+            },
+            contentColor = content,
+            focusedContainerColor = focusedContainer,
+            focusedContentColor = focusedContent,
+            disabledContainerColor = Color.Transparent,
+            disabledContentColor = muted.copy(alpha = .5f),
+        )
+    }
 
 internal fun Modifier.tvPlayerSurface() = shadow(16.dp, TvPlayerSurfaceDefaults.PanelShape)
     .background(TvPlayerSurfaceDefaults.Container, TvPlayerSurfaceDefaults.PanelShape)
@@ -118,7 +139,7 @@ internal fun TvPlayerSectionLabel(text: String, modifier: Modifier = Modifier) {
         text,
         modifier.padding(start = 16.dp, top = 12.dp, bottom = 4.dp),
         style = MaterialTheme.typography.labelMedium,
-        color = TvPlayerSurfaceDefaults.Muted,
+        color = LocalTvPlayerSurfaceColors.current.muted,
     )
 }
 
@@ -128,7 +149,7 @@ internal fun TvPlayerDivider(modifier: Modifier = Modifier) {
         modifier
             .fillMaxWidth()
             .height(1.dp)
-            .background(TvPlayerSurfaceDefaults.Outline),
+            .background(LocalTvPlayerSurfaceColors.current.outline),
     )
 }
 

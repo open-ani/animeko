@@ -108,6 +108,7 @@ fun TvAniAppContent(
             is TvNavigationEvent.Subject -> aniNavigator.navigateSubjectDetails(event.subjectId, event.placeholder)
             is TvNavigationEvent.Episode -> aniNavigator.navigateEpisodeDetails(event.subjectId, event.episodeId)
             TvNavigationEvent.LoggedIn -> Unit // handled by the Main entry
+            TvNavigationEvent.Login -> aniNavigator.navigateBangumiAuthorize()
         }
     }
     CompositionLocalProvider(LocalNavigator provides aniNavigator) {
@@ -152,7 +153,7 @@ fun TvAniAppContent(
                                 }
 
                                 TvShellContent.Collection -> {
-                                    val viewModel = tvViewModel { TvCollectionViewModel(dependencies.koin) }
+                                    val viewModel = tvViewModel { TvCollectionViewModel() }
                                     TvCollectionRoute(viewModel, onNavigate)
                                 }
 
@@ -181,6 +182,17 @@ fun TvAniAppContent(
                                 }
                             }
                         }
+                    }
+
+                    entry<NavRoutes.BangumiAuthorize> {
+                        val viewModel = tvViewModel { TvLoginViewModel(dependencies.koin) }
+                        TvLoginRoute(
+                            viewModel,
+                            onNavigate = { event ->
+                                if (event == TvNavigationEvent.LoggedIn) aniNavigator.popBackStack()
+                                else onNavigate(event)
+                            }
+                        )
                     }
 
                     entry<NavRoutes.SubjectDetail> { route ->
@@ -213,7 +225,7 @@ fun TvAniAppContent(
                                 settingsRepository = dependencies.settingsRepository,
                                 getDanmakuRegexFilterListFlowUseCase = dependencies.getDanmakuRegexFilterListFlowUseCase,
                                 episodeCommentRepository = dependencies.episodeCommentRepository,
-                                bangumiRelatedPeopleService = dependencies.bangumiRelatedPeopleService,
+                                getSubjectRecommendations = dependencies.getSubjectRecommendations,
                                 autoSkipRepository = dependencies.autoSkipRepository,
                                 tmdbImageService = dependencies.tmdbImageService,
                                 selectorEpisodeCacheRepository = dependencies.selectorEpisodeCacheRepository,
