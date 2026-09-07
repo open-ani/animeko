@@ -17,6 +17,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.test.assertIsFocused
 import androidx.compose.ui.test.assertIsSelected
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.performClick
@@ -93,6 +94,9 @@ class DanmakuStylePickerTest {
         // 进入自定义模式不改变颜色
         runOnIdle { assertEquals(0xFFFFFF, style.color) }
 
+        // 面板设置了 canFocus = false, 十六进制输入框必须能单独获得焦点, 否则实际运行时无法键入
+        onNodeWithTag(TAG_DANMAKU_CUSTOM_COLOR_HEX).performClick()
+        onNodeWithTag(TAG_DANMAKU_CUSTOM_COLOR_HEX).assertIsFocused()
         onNodeWithTag(TAG_DANMAKU_CUSTOM_COLOR_HEX).performTextReplacement("ff00aa")
         runOnIdle { assertEquals(0xFF00AA, style.color) }
 

@@ -52,6 +52,7 @@ import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.Immutable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.key
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
@@ -168,28 +169,40 @@ fun DanmakuStylePicker(
         expanded = value
         onExpandedChanged(value)
     }
+    // 自定义模式提升到这里, 这样弹层因 focusable 变化而重建时不会丢失
+    var customMode by remember { mutableStateOf(style.color !in DanmakuSendColors.Presets) }
 
     Box(modifier, contentAlignment = Alignment.Center) {
         DanmakuStyleButton(style, onClick = { setExpanded(!expanded) })
 
         if (expanded) {
-            Popup(
-                popupPositionProvider = TooltipDefaults.rememberTooltipPositionProvider(
-                    positioning = TooltipAnchorPosition.Above,
-                    spacingBetweenTooltipAndAnchor = 8.dp,
-                ),
-                onDismissRequest = { setExpanded(false) },
-                // 不抢焦点, 这样输入框保持聚焦, 视频也不会因为失焦而恢复播放
-                properties = PlatformPopupProperties(focusable = false, clippingEnabled = false),
-            ) {
-                AniTheme(darkModeOverride = DarkMode.DARK) {
-                    Surface(
-                        Modifier.width(300.dp),
-                        shape = RoundedCornerShape(16.dp),
-                        color = MaterialTheme.colorScheme.surfaceContainerHigh,
-                        shadowElevation = 8.dp,
-                    ) {
-                        DanmakuStylePanel(style, onStyleChange, Modifier.padding(16.dp))
+            // 只选预设时不抢焦点, 弹幕输入框保持聚焦, 视频不会因为失焦而恢复播放;
+            // 展开自定义颜色后需要键入十六进制, 非 focusable 的弹层内文本框拿不到焦点, 此时改为可聚焦.
+            // 桌面端 Popup 不支持运行时切换 focusable, 用 key 重建.
+            key(customMode) {
+                Popup(
+                    popupPositionProvider = TooltipDefaults.rememberTooltipPositionProvider(
+                        positioning = TooltipAnchorPosition.Above,
+                        spacingBetweenTooltipAndAnchor = 8.dp,
+                    ),
+                    onDismissRequest = { setExpanded(false) },
+                    properties = PlatformPopupProperties(focusable = customMode, clippingEnabled = false),
+                ) {
+                    AniTheme(darkModeOverride = DarkMode.DARK) {
+                        Surface(
+                            Modifier.width(300.dp),
+                            shape = RoundedCornerShape(16.dp),
+                            color = MaterialTheme.colorScheme.surfaceContainerHigh,
+                            shadowElevation = 8.dp,
+                        ) {
+                            DanmakuStylePanel(
+                                style,
+                                onStyleChange,
+                                customMode = customMode,
+                                onCustomModeChange = { customMode = it },
+                                modifier = Modifier.padding(16.dp),
+                            )
+                        }
                     }
                 }
             }
@@ -259,7 +272,7 @@ private fun DanmakuStyleIcon(style: DanmakuSendStyle, modifier: Modifier = Modif
 }
 
 /**
- * 弹幕样式选择面板: 位置 (顶部/滚动/底部) 和预设颜色.
+ * 弹幕样式选择面板: 位置 (顶部/滚动/底部), 预设颜色和自定义颜色. 自定义模式的状态由面板自己保存.
  */
 @Composable
 fun DanmakuStylePanel(
@@ -267,11 +280,31 @@ fun DanmakuStylePanel(
     onStyleChange: (DanmakuSendStyle) -> Unit,
     modifier: Modifier = Modifier,
 ) {
+    // 当前颜色不在预设里时, 说明是自定义颜色; 用户点了自定义格之后即使颜色仍等于某个预设, 也保持在自定义模式
+    var customMode by remember { mutableStateOf(style.color !in DanmakuSendColors.Presets) }
+    DanmakuStylePanel(
+        style,
+        onStyleChange,
+        customMode = customMode,
+        onCustomModeChange = { customMode = it },
+        modifier = modifier,
+    )
+}
+
+/**
+ * [DanmakuStylePanel] 的无状态版本, [customMode] 为是否展开自定义颜色编辑区.
+ */
+@Composable
+fun DanmakuStylePanel(
+    style: DanmakuSendStyle,
+    onStyleChange: (DanmakuSendStyle) -> Unit,
+    customMode: Boolean,
+    onCustomModeChange: (Boolean) -> Unit,
+    modifier: Modifier = Modifier,
+) {
     Column(
         modifier
-            .testTag(TAG_DANMAKU_STYLE_PANEL)
-            // 面板内的选项都不抢焦点, 输入框保持聚焦
-            .focusProperties { canFocus = false },
+            .testTag(TAG_DANMAKU_STYLE_PANEL),
         verticalArrangement = Arrangement.spacedBy(8.dp),
     ) {
         Text(
@@ -296,8 +329,6 @@ fun DanmakuStylePanel(
             style = MaterialTheme.typography.labelLarge,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
         )
-        // 当前颜色不在预设里时, 说明是自定义颜色; 用户点了自定义格之后即使颜色仍等于某个预设, 也保持在自定义模式
-        var customMode by remember { mutableStateOf(style.color !in DanmakuSendColors.Presets) }
         FlowRow(
             horizontalArrangement = Arrangement.spacedBy(8.dp),
             verticalArrangement = Arrangement.spacedBy(8.dp),
@@ -307,7 +338,7 @@ fun DanmakuStylePanel(
                     color = color,
                     selected = !customMode && style.color == color,
                     onClick = {
-                        customMode = false
+                        onCustomModeChange(false)
                         onStyleChange(style.copy(color = color))
                     },
                     modifier = Modifier.testTag(danmakuColorSwatchTag(color)),
@@ -316,7 +347,7 @@ fun DanmakuStylePanel(
             DanmakuCustomColorSwatch(
                 color = style.color,
                 selected = customMode,
-                onClick = { customMode = true },
+                onClick = { onCustomModeChange(true) },
                 modifier = Modifier.testTag(TAG_DANMAKU_CUSTOM_COLOR_SWATCH),
             )
         }
@@ -362,6 +393,8 @@ private fun DanmakuCustomColorSwatch(
             .then(
                 if (selected) Modifier.border(2.dp, MaterialTheme.colorScheme.primary, CircleShape) else Modifier,
             )
+            // 选项不抢焦点, 弹幕输入框保持聚焦 (不能放在面板整体上, 否则十六进制输入框也无法聚焦)
+            .focusProperties { canFocus = false }
             .selectable(selected = selected, onClick = onClick, role = Role.RadioButton)
             .semantics { contentDescription = description },
         contentAlignment = Alignment.Center,
@@ -461,7 +494,7 @@ private fun ChannelSlider(
         Slider(
             value = value.toFloat(),
             onValueChange = { onValueChange(it.roundToInt().coerceIn(0, 255)) },
-            modifier = Modifier.weight(1f).height(28.dp),
+            modifier = Modifier.weight(1f).height(28.dp).focusProperties { canFocus = false },
             valueRange = 0f..255f,
             colors = SliderDefaults.colors(thumbColor = tint, activeTrackColor = tint),
         )
@@ -491,6 +524,8 @@ private fun DanmakuLocationTile(
     Column(
         modifier
             .width(84.dp)
+            // 选项不抢焦点, 弹幕输入框保持聚焦 (不能放在面板整体上, 否则十六进制输入框也无法聚焦)
+            .focusProperties { canFocus = false }
             .selectable(selected = selected, onClick = onClick, role = Role.RadioButton)
             .semantics { contentDescription = label },
         horizontalAlignment = Alignment.CenterHorizontally,
@@ -594,6 +629,8 @@ private fun DanmakuColorSwatch(
                 color = if (selected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.outline,
                 shape = CircleShape,
             )
+            // 选项不抢焦点, 弹幕输入框保持聚焦 (不能放在面板整体上, 否则十六进制输入框也无法聚焦)
+            .focusProperties { canFocus = false }
             .selectable(selected = selected, onClick = onClick, role = Role.RadioButton)
             .semantics { contentDescription = description },
         contentAlignment = Alignment.Center,

@@ -36,6 +36,8 @@ import androidx.compose.foundation.lazy.grid.rememberLazyGridState
 import androidx.compose.foundation.pager.HorizontalPager
 import androidx.compose.foundation.pager.PagerState
 import androidx.compose.foundation.pager.rememberPagerState
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.BottomSheetDefaults
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.MaterialTheme
@@ -854,7 +856,11 @@ private fun DetachedDanmakuEditorLayout(
     onDismiss: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    Column(modifier.padding(all = 16.dp), verticalArrangement = Arrangement.spacedBy(16.dp)) {
+    // 展开自定义颜色后内容会超出半高的 bottom sheet, 允许滚动 (sheet 会先展开到全高, 再滚动内容)
+    Column(
+        modifier.verticalScroll(rememberScrollState()).padding(all = 16.dp),
+        verticalArrangement = Arrangement.spacedBy(16.dp),
+    ) {
         Text(stringResource(Lang.episode_send_danmaku), style = MaterialTheme.typography.titleMedium)
         val isSending = danmakuEditorState.isSending.collectAsStateWithLifecycle()
         PlayerDanmakuEditor(
