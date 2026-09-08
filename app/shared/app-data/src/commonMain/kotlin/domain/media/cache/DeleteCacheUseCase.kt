@@ -10,6 +10,7 @@
 package me.him188.ani.app.domain.media.cache
 
 import me.him188.ani.app.domain.danmaku.DanmakuRepository
+import me.him188.ani.app.domain.media.download.MediaDownloadManager
 
 interface DeleteCacheUseCase {
     suspend operator fun invoke(cache: MediaCache)
@@ -24,11 +25,11 @@ interface DeleteCacheByEpisodeIdUseCase {
 }
 
 class DeleteCacheUseCaseImpl(
-    private val mediaCacheManager: MediaCacheManager,
+    private val downloadManager: MediaDownloadManager,
     private val danmakuRepository: DanmakuRepository
 ) : DeleteCacheUseCase {
     override suspend fun invoke(cache: MediaCache) {
-        mediaCacheManager.deleteCache(cache)
+        downloadManager.deleteDownload(cache)
         val subjectId = cache.metadata.subjectId.toIntOrNull()
         val episodeId = cache.metadata.episodeId.toIntOrNull()
         if (subjectId != null && episodeId != null) {
@@ -38,21 +39,21 @@ class DeleteCacheUseCaseImpl(
 }
 
 class DeleteCacheByCacheIdUseCaseImpl(
-    private val mediaCacheManager: MediaCacheManager,
+    private val downloadManager: MediaDownloadManager,
     private val danmakuRepository: DanmakuRepository
 ) : DeleteCacheByCacheIdUseCase {
     override suspend fun invoke(subjectId: Int, episodeId: Int, cacheId: String) {
-        mediaCacheManager.deleteFirstCache { it.cacheId == cacheId }
+        downloadManager.deleteFirstDownload { it.cacheId == cacheId }
         danmakuRepository.deleteDanmakuIfDontNeeded(subjectId, episodeId)
     }
 }
 
 class DeleteCacheByEpisodeIdUseCaseImpl(
-    private val mediaCacheManager: MediaCacheManager,
+    private val downloadManager: MediaDownloadManager,
     private val danmakuRepository: DanmakuRepository
 ) : DeleteCacheByEpisodeIdUseCase {
     override suspend fun invoke(subjectId: Int, episodeId: Int) {
-        mediaCacheManager.deleteFirstCache { it.metadata.episodeId.toIntOrNull() == episodeId }
+        downloadManager.deleteFirstDownload { it.metadata.episodeId.toIntOrNull() == episodeId }
         danmakuRepository.deleteDanmakuIfDontNeeded(subjectId, episodeId)
     }
 }

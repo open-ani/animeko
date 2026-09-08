@@ -16,6 +16,7 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.flowOf
 import me.him188.ani.app.domain.media.cache.engine.TorrentMediaCacheEngine
+import me.him188.ani.app.domain.media.download.MediaDownloadManager
 import me.him188.ani.app.tools.Progress
 import me.him188.ani.app.tools.toProgress
 import me.him188.ani.app.torrent.api.TorrentSession
@@ -224,7 +225,7 @@ interface MediaCache {
     /**
      * 尝试删除此 [MediaCache] 所涉及的文件.
      *
-     * 注意! 你很可能需要使用 [MediaCacheManager.deleteCache]. 因为单独 [MediaCache.closeAndDeleteFiles] 并不会从 storage 中删除.
+     * 注意! 你很可能需要使用 [MediaDownloadManager.deleteDownload]. 因为单独 [MediaCache.closeAndDeleteFiles] 并不会从 storage 中删除.
      *
      * 此函数必须关闭所有使用的资源, 清理潜在的缓存文件, 且不得抛出异常 (除非是 [CancellationException]).
      */

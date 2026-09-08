@@ -21,7 +21,6 @@ import me.him188.ani.app.data.repository.episode.EpisodeCollectionRepository
 import me.him188.ani.app.data.repository.media.EpisodePreferencesRepository
 import me.him188.ani.app.data.repository.subject.SubjectCollectionRepository
 import me.him188.ani.app.domain.media.cache.MediaCache
-import me.him188.ani.app.domain.media.cache.MediaCacheManager
 import me.him188.ani.app.domain.media.cache.engine.MediaCacheEngineKey
 import me.him188.ani.app.domain.media.cache.storage.MediaCacheStorage
 import me.him188.ani.app.domain.media.cache.storage.contains
@@ -42,7 +41,7 @@ class EpisodeDownloadSessionFactory(
     private val preferences: EpisodePreferencesRepository,
     private val sources: MediaSourceManager,
     private val selectors: MediaSelectorFactory,
-    private val caches: MediaCacheManager,
+    private val downloadManager: MediaDownloadManager,
     private val createDownload: CreateEpisodeDownloadUseCase,
 ) {
     fun create(subjectId: Int, scope: CoroutineScope) = AddEpisodeDownloadSession(
@@ -65,28 +64,28 @@ class EpisodeDownloadSessionFactory(
         val selector = selectors.create(subjectId, episodeId, fetchSession.cumulativeResults, scope.coroutineContext)
         scope.launch(start = CoroutineStart.UNDISPATCHED) {
             selector.events.onChangePreference.collect { preference ->
-                caches.backgroundScope.async { preferences.setMediaPreference(subjectId, preference) }.await()
+                downloadManager.backgroundScope.async { preferences.setMediaPreference(subjectId, preference) }.await()
             }
         }
         // Keep an explicitly started search alive while its picker is temporarily hidden.
         scope.launch { fetchSession.cumulativeResults.collect {} }
         return DownloadMediaSelection(request, fetchSession, selector) { media ->
             selectMediaAndSavePreference(selector, media) { preference ->
-                caches.backgroundScope.async { preferences.setMediaPreference(subjectId, preference) }.await()
+                downloadManager.backgroundScope.async { preferences.setMediaPreference(subjectId, preference) }.await()
             }
         }
     }
 
     private suspend fun findReusableDownload(selection: DownloadMediaSelection): ReusableDownload? {
         val request = selection.request
-        val existing = findReusableSeasonDownload(request.episode, caches.listCacheForSubject(request.subject.subjectId).first()) ?: return null
+        val existing = findReusableSeasonDownload(request.episode, downloadManager.downloadsForSubject(request.subject.subjectId).first()) ?: return null
         val media = existing.origin.unwrapCached()
         val storage = availableStorages(media).firstOrNull { it.contains(existing) }
         return ReusableDownload(media, storage)
     }
 
     private suspend fun availableStorages(media: Media): List<MediaCacheStorage> =
-        downloadStoragesFor(media, caches.enabledStorages.first())
+        downloadStoragesFor(media, downloadManager.enabledStorages.first())
 }
 
 /** Capture the selection event before selecting and persist it before submitting the download. */

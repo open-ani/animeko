@@ -3,9 +3,14 @@
 用户主动保存、暂停、继续和删除的视频称为“下载”。`ui-download` 提供下载管理页面；
 `app-data/domain/media/download` 提供添加下载、观察状态和执行操作的业务入口。
 
-底层 `MediaCacheManager`、`MediaCacheStorage` 和 engine 继续负责文件及配置持久化。
-下载页显示已有的持久化记录，包括播放时自动保存的记录。此次 UI 重构不改变存储格式、
-下载 ID 或恢复流程。引擎清理未引用的播放文件时，应保留下载记录引用的文件。
+`MediaDownloadManager` 位于 `domain/media/download`，管理跨存储的持久化视频下载，
+包括手动下载与播放时自动保存的记录。调用方统一使用 `downloadManager`，通过
+`downloadsForSubject`、`downloadStatusForEpisode`、`findFirstDownload` 和 `deleteDownload` 等方法访问下载。
+它是直接注册到依赖注入容器的具体类，生命周期与应用一致。
+
+`MediaCacheStorage`、`MediaCache` 和 engine 是实际存储与传输的底层实现。
+下载管理器不负责播放引擎的临时缓冲；底层存储格式、下载 ID 与恢复流程保持兼容。
+引擎清理未引用的播放文件时，应保留下载记录引用的文件。
 
 ## 模型与职责
 

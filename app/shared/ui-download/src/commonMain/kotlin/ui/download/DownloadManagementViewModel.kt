@@ -24,11 +24,11 @@ import me.him188.ani.app.data.repository.player.EpisodePlayHistoryRepository
 import me.him188.ani.app.data.repository.subject.OfflineSubjectDisplayInfo
 import me.him188.ani.app.data.repository.subject.SubjectCollectionRepository
 import me.him188.ani.app.data.repository.subject.staticSubjectImageLargeUrl
-import me.him188.ani.app.domain.media.cache.MediaCacheManager
 import me.him188.ani.app.domain.media.cache.engine.MediaStats
 import me.him188.ani.app.domain.media.cache.engine.sum
 import me.him188.ani.app.domain.media.cache.storage.MediaCacheStorage
 import me.him188.ani.app.domain.media.download.DownloadOperations
+import me.him188.ani.app.domain.media.download.MediaDownloadManager
 import me.him188.ani.app.domain.media.download.ObserveDownloadsUseCase
 import me.him188.ani.app.ui.download.components.DownloadItem
 import me.him188.ani.app.ui.download.components.SubjectDownloadGroup
@@ -38,7 +38,7 @@ import me.him188.ani.datasources.api.topic.UnifiedCollectionType
 import me.him188.ani.utils.coroutines.sampleWithInitial
 
 class DownloadManagementViewModel(
-    cacheManager: MediaCacheManager,
+    downloadManager: MediaDownloadManager,
     subjects: SubjectCollectionRepository,
     histories: EpisodePlayHistoryRepository,
     observeDownloads: ObserveDownloadsUseCase,
@@ -56,7 +56,7 @@ class DownloadManagementViewModel(
             ) { type, info -> id to SubjectMetadata(type, info) }
         }) { it.toMap() }
     }
-    private val overallStats = cacheManager.enabledStorages.overallStatsFlow().sampleWithInitial(1.seconds)
+    private val overallStats = downloadManager.enabledStorages.overallStatsFlow().sampleWithInitial(1.seconds)
 
     val uiState = combine(downloads, subjectMetadata, histories.flow, overallStats, operationFailures) { downloads, metadata, histories, stats, failures ->
         val historyByEpisode = histories.associateBy { it.episodeId }

@@ -20,13 +20,12 @@ import kotlinx.coroutines.test.runCurrent
 import kotlinx.coroutines.test.runTest
 import me.him188.ani.app.domain.media.cache.DeleteCacheUseCase
 import me.him188.ani.app.domain.media.cache.MediaCache
-import me.him188.ani.app.domain.media.cache.MediaCacheManagerImpl
 import me.him188.ani.app.domain.media.cache.MediaCacheState
 
 class ObserveDownloadsUseCaseTest {
     @Test
     fun `loaded empty list is emitted when there are no storages`() = runTest {
-        val manager = MediaCacheManagerImpl(emptyList(), backgroundScope)
+        val manager = MediaDownloadManager(emptyList(), backgroundScope)
         assertEquals(emptyList(), ObserveDownloadsUseCase(manager)().first())
     }
 
@@ -36,7 +35,7 @@ class ObserveDownloadsUseCaseTest {
         val first = testDownload(1)
         val otherSubject = testDownload(2, subjectId = 2)
         storage.listFlow.value = listOf(first, otherSubject)
-        val observer = ObserveDownloadsUseCase(MediaCacheManagerImpl(listOf(storage), backgroundScope))
+        val observer = ObserveDownloadsUseCase(MediaDownloadManager(listOf(storage), backgroundScope))
         val received = mutableListOf<List<DownloadSnapshot>>()
         val job = backgroundScope.launch { observer(1).toList(received) }
         runCurrent()
@@ -62,7 +61,7 @@ class ObserveDownloadsUseCaseTest {
         val storage = DownloadTestStorage()
         val first = testDownload(1)
         storage.listFlow.value = listOf(first)
-        val manager = MediaCacheManagerImpl(listOf(storage), backgroundScope)
+        val manager = MediaDownloadManager(listOf(storage), backgroundScope)
         val counts = mutableListOf<Int>()
         backgroundScope.launch { first.fileStats.subscriptionCount.toList(counts) }
         val job = backgroundScope.launch { ObserveDownloadsUseCase(manager)().collect {} }
@@ -81,7 +80,7 @@ class ObserveDownloadsUseCaseTest {
         val second = testDownload(2)
         storage.listFlow.value = listOf(first, second)
         val operations = DownloadOperations(
-            MediaCacheManagerImpl(listOf(storage), backgroundScope),
+            MediaDownloadManager(listOf(storage), backgroundScope),
             object : DeleteCacheUseCase {
                 override suspend fun invoke(cache: MediaCache) {
                     if (cache === first) error("permission denied")
@@ -101,7 +100,7 @@ class ObserveDownloadsUseCaseTest {
         val running = testDownload(2)
         storage.listFlow.value = listOf(completed, running)
         val operations = DownloadOperations(
-            MediaCacheManagerImpl(listOf(storage), backgroundScope),
+            MediaDownloadManager(listOf(storage), backgroundScope),
             object : DeleteCacheUseCase { override suspend fun invoke(cache: MediaCache) = Unit },
         )
         operations.execute(setOf(completed.cacheId, running.cacheId), DownloadOperations.Action.Pause)

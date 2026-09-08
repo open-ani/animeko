@@ -31,7 +31,7 @@ import me.him188.ani.app.data.repository.user.UserRepository
 import me.him188.ani.app.domain.foundation.HttpClientProvider
 import me.him188.ani.app.domain.foundation.ScopedHttpClientUserAgent
 import me.him188.ani.app.domain.foundation.get
-import me.him188.ani.app.domain.media.cache.MediaCacheManager
+import me.him188.ani.app.domain.media.download.MediaDownloadManager
 import me.him188.ani.app.domain.mediasource.web.captcha.WebCaptchaDialogHost
 import me.him188.ani.app.domain.mediasource.web.captcha.WebSessionManager
 import me.him188.ani.app.domain.session.SessionState
@@ -78,14 +78,14 @@ class AniAppState(
 class AniAppViewModel : AbstractViewModel(), KoinComponent {
     private val settings: SettingsRepository by inject()
     private val httpClientProvider: HttpClientProvider by inject()
-    private val mediaCacheManager: MediaCacheManager by inject()
+    private val downloadManager: MediaDownloadManager by inject()
     private val webSessionManager: WebSessionManager by inject()
     private val userRepository: UserRepository by inject()
     private val sessionStateProvider: SessionStateProvider by inject()
 
     private val imageLoaderClient = httpClientProvider.get(ScopedHttpClientUserAgent.ANI)
 
-    private val mediaCacheComposablesFlow = mediaCacheManager.enabledStorages
+    private val mediaCacheComposablesFlow = downloadManager.enabledStorages
         .map { storages ->
             storages.map { @Composable { it.engine.ComposeContent() } }
         }

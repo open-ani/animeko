@@ -24,13 +24,13 @@ import kotlin.jvm.JvmInline
  * 数据源只需要支持使用 [MediaFetchRequest] 中的信息, 查询该剧集的所有可下载资源 [Media].
  *
  * [MediaSource] 是一个抽象的来源. 它不一定都是来自网络和 BT, 也可以是本地文件系统.
- * 用户使用缓存功能创建的缓存, 就会存储到缓存管理器 `MediaCacheManager`, 然后能通过一个专门查询本地缓存的 [MediaSource] 查询到.
+ * 用户保存的视频下载由下载管理器 `MediaDownloadManager` 管理, 然后能通过一个专门查询本地下载的 [MediaSource] 查询到.
  *
  * ## [MediaSource] 只负责查询资源 ([Media]) 列表
  *
  * 对于资源的下载, 缓存, 以及播放, 都是由其他模块负责. 具体内容可查看:
  * - 下载过程: `MediaCacheEngine`
- * - 管理缓存列表: `MediaCacheManager`
+ * - 管理下载列表: `MediaDownloadManager`
  * - 解析 [Media] 为可播放的视频数据: `VideoSourceResolver`
  *
  * ## 资源信息

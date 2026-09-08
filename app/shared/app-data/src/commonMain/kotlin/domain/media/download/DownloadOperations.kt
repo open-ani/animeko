@@ -15,7 +15,6 @@ import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import me.him188.ani.app.domain.media.cache.DeleteCacheUseCase
-import me.him188.ani.app.domain.media.cache.MediaCacheManager
 import me.him188.ani.app.domain.media.cache.MediaCacheState
 import me.him188.ani.utils.logging.logger
 
@@ -23,7 +22,7 @@ data class DownloadOperationResult(val failures: Map<String, Throwable>)
 
 /** Resolves IDs at execution time, so commands never rely on a stale row's status. */
 class DownloadOperations(
-    private val caches: MediaCacheManager,
+    private val downloadManager: MediaDownloadManager,
     private val deleteCache: DeleteCacheUseCase,
 ) {
     private val logger = logger<DownloadOperations>()
@@ -31,12 +30,12 @@ class DownloadOperations(
 
     private val mutex = Mutex()
 
-    suspend fun execute(ids: Set<String>, action: Action): DownloadOperationResult = caches.backgroundScope.async {
+    suspend fun execute(ids: Set<String>, action: Action): DownloadOperationResult = downloadManager.backgroundScope.async {
         mutex.withLock {
             val failures = mutableMapOf<String, Throwable>()
             for (id in ids) {
                 try {
-                    val cache = caches.findFirstCache { it.cacheId == id } ?: continue
+                    val cache = downloadManager.findFirstDownload { it.cacheId == id } ?: continue
                     when (action) {
                         Action.Pause -> if (cache.state.first() == MediaCacheState.IN_PROGRESS) cache.pause()
                         Action.Resume -> if (cache.state.first() == MediaCacheState.PAUSED) cache.resume()

@@ -7,7 +7,7 @@
  * https://github.com/open-ani/ani/blob/main/LICENSE
  */
 
-package me.him188.ani.app.domain.media.cache
+package me.him188.ani.app.domain.media.download
 
 import androidx.compose.runtime.Stable
 import kotlinx.coroutines.CoroutineScope
@@ -22,17 +22,25 @@ import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.transformLatest
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.supervisorScope
+import me.him188.ani.app.domain.media.cache.EpisodeCacheStatus
+import me.him188.ani.app.domain.media.cache.MediaCache
+import me.him188.ani.app.domain.media.cache.MediaCacheState
 import me.him188.ani.app.domain.media.cache.storage.MediaCacheStorage
 import me.him188.ani.app.ui.foundation.HasBackgroundScope
 import me.him188.ani.utils.coroutines.flows.flowOfEmptyList
 
-abstract class MediaCacheManager(
+/**
+ * 管理跨存储的持久化视频下载, 包括手动下载与播放时自动保存的下载.
+ *
+ * [MediaCacheStorage] 负责实际下载及文件持久化; 播放引擎的临时缓冲不属于此管理器.
+ */
+class MediaDownloadManager(
     val storagesIncludingDisabled: List<MediaCacheStorage>,
-    final override val backgroundScope: CoroutineScope,
-) : HasBackgroundScope { // available via inject
+    override val backgroundScope: CoroutineScope,
+) : HasBackgroundScope {
     val enabledStorages: Flow<List<MediaCacheStorage>> = flowOf(storagesIncludingDisabled)
 
-    private val cacheListFlow: Flow<List<MediaCache>> by lazy {
+    private val downloadsFlow: Flow<List<MediaCache>> by lazy {
         val flows = storagesIncludingDisabled.map { it.listFlow }
         if (flows.isEmpty()) {
             flowOfEmptyList()
@@ -42,45 +50,45 @@ abstract class MediaCacheManager(
     }
 
     @Stable
-    fun listCacheForSubject(
+    fun downloadsForSubject(
         subjectId: Int,
     ): Flow<List<MediaCache>> {
         val subjectIdString = subjectId.toString()
-        return cacheListFlow.map { list ->
-            list.filter { cache ->
-                cache.metadata.subjectId == subjectIdString
+        return downloadsFlow.map { list ->
+            list.filter { download ->
+                download.metadata.subjectId == subjectIdString
             }
         }
     }
 
     /**
-     * Returns the cache status for the episode, updated lively and sampled for 1000ms.
+     * Observes the aggregate download status of an episode from persisted storage records.
      */
     @Stable
-    fun cacheStatusForEpisode(
+    fun downloadStatusForEpisode(
         subjectId: Int,
         episodeId: Int,
     ): Flow<EpisodeCacheStatus> {
         val subjectIdString = subjectId.toString()
         val episodeIdString = episodeId.toString()
-        return cacheListFlow.transformLatest { list ->
-            var hasAnyCached: MediaCache? = null
-            var hasAnyCaching: MediaCache? = null
+        return downloadsFlow.transformLatest { list ->
+            var completedDownload: MediaCache? = null
+            var pendingDownload: MediaCache? = null
 
-            for (mediaCache in list) {
-                if (mediaCache.metadata.subjectId == subjectIdString && mediaCache.metadata.episodeId == episodeIdString) {
-                    when (mediaCache.state.first()) {
-                        MediaCacheState.COMPLETED -> hasAnyCached = mediaCache
+            for (download in list) {
+                if (download.metadata.subjectId == subjectIdString && download.metadata.episodeId == episodeIdString) {
+                    when (download.state.first()) {
+                        MediaCacheState.COMPLETED -> completedDownload = download
                         MediaCacheState.IN_PROGRESS,
                         MediaCacheState.PAUSED,
-                            -> hasAnyCaching = mediaCache
+                            -> pendingDownload = download
 
                         MediaCacheState.FAILED -> Unit
                     }
                 }
             }
 
-            val target = hasAnyCached ?: hasAnyCaching
+            val target = completedDownload ?: pendingDownload
             if (target == null) {
                 emit(EpisodeCacheStatus.NotCached)
             } else {
@@ -103,16 +111,16 @@ abstract class MediaCacheManager(
         }.flowOn(Dispatchers.Default)
     }
 
-    suspend fun deleteCache(cache: MediaCache): Boolean {
+    suspend fun deleteDownload(download: MediaCache): Boolean {
         for (storage in enabledStorages.first()) {
-            if (storage.delete(cache)) {
+            if (storage.delete(download)) {
                 return true
             }
         }
         return false
     }
 
-    suspend fun deleteFirstCache(filter: (MediaCache) -> Boolean): Boolean {
+    suspend fun deleteFirstDownload(filter: (MediaCache) -> Boolean): Boolean {
         for (storage in enabledStorages.first()) {
             if (storage.deleteFirst(filter)) {
                 return true
@@ -121,7 +129,7 @@ abstract class MediaCacheManager(
         return false
     }
 
-    suspend fun findFirstCache(filter: (MediaCache) -> Boolean): MediaCache? {
+    suspend fun findFirstDownload(filter: (MediaCache) -> Boolean): MediaCache? {
         for (storage in enabledStorages.first()) {
             storage.listFlow.first().find(filter)?.let {
                 return it
@@ -130,32 +138,27 @@ abstract class MediaCacheManager(
         return null
     }
 
-    suspend fun findAllCaches(filter: (MediaCache) -> Boolean): List<MediaCache> {
+    suspend fun findAllDownloads(filter: (MediaCache) -> Boolean): List<MediaCache> {
         val result = mutableListOf<MediaCache>()
         for (storage in enabledStorages.first()) {
-            val caches = storage.listFlow.first().filter(filter)
-            result.addAll(caches)
+            val downloads = storage.listFlow.first().filter(filter)
+            result.addAll(downloads)
         }
         return result
     }
 
-    suspend fun closeAllCaches() = supervisorScope {
+    suspend fun closeDownloads() = supervisorScope {
         for (storage in enabledStorages.first()) {
-            for (mediaCache in storage.listFlow.first()) {
-                launch { mediaCache.close() }
+            for (download in storage.listFlow.first()) {
+                launch { download.close() }
             }
         }
     }
 
     companion object {
         /**
-         * 本地数据源不允许有多个示例. 必须是 Factory:MediaSource:Instance = 1:1:1 的关系.
+         * 本地数据源不允许有多个实例. 必须是 Factory:MediaSource:Instance = 1:1:1 的关系.
          */
         const val LOCAL_FS_MEDIA_SOURCE_ID = "local-file-system"
     }
 }
-
-class MediaCacheManagerImpl(
-    storagesIncludingDisabled: List<MediaCacheStorage>,
-    backgroundScope: CoroutineScope,
-) : MediaCacheManager(storagesIncludingDisabled, backgroundScope)

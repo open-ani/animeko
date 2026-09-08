@@ -15,8 +15,8 @@ import kotlinx.coroutines.flow.first
 import me.him188.ani.app.domain.episode.EpisodeSession
 import me.him188.ani.app.domain.media.cache.DeleteCacheUseCase
 import me.him188.ani.app.domain.media.cache.MediaCache
-import me.him188.ani.app.domain.media.cache.MediaCacheManager
 import me.him188.ani.app.domain.media.cache.engine.MediaCacheEngineKey
+import me.him188.ani.app.domain.media.download.MediaDownloadManager
 import me.him188.ani.app.domain.media.resolver.toEpisodeMetadata
 import me.him188.ani.app.domain.player.VideoLoadingState
 import me.him188.ani.datasources.api.CachedMedia
@@ -41,7 +41,7 @@ class CacheOnBtPlayExtension(
     private val context: PlayerExtensionContext,
     koin: Koin,
 ) : PlayerExtension("CacheOnBtPlay") {
-    private val mediaCacheManager: MediaCacheManager by koin.inject()
+    private val downloadManager: MediaDownloadManager by koin.inject()
     private val deleteCacheUseCase: DeleteCacheUseCase by koin.inject()
 
     private var currentCache: MediaCache? = null
@@ -59,10 +59,10 @@ class CacheOnBtPlayExtension(
 
                         if (state !is VideoLoadingState.Succeed || !state.isBt) return@collectLatest
 
-                        val storage = mediaCacheManager.storagesIncludingDisabled
+                        val storage = downloadManager.storagesIncludingDisabled
                             .find { it.engine.engineKey == MediaCacheEngineKey.Anitorrent }
                         if (storage == null) {
-                            logger.warn { "TorrentMediaCacheEngine is not found in MediaCachedManager." }
+                            logger.warn { "TorrentMediaCacheEngine is not found in MediaDownloadManager." }
                             return@collectLatest
                         }
 

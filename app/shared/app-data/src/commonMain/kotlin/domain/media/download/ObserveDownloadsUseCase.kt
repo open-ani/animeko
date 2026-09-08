@@ -24,7 +24,6 @@ import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import me.him188.ani.app.domain.media.cache.MediaCache
-import me.him188.ani.app.domain.media.cache.MediaCacheManager
 import me.him188.ani.app.domain.media.cache.MediaCacheState
 import me.him188.ani.app.domain.media.cache.engine.MediaCacheEngineKey
 import me.him188.ani.app.tools.Progress
@@ -47,7 +46,7 @@ data class DownloadSnapshot(
 )
 
 /** Each download keeps its progress collector until removed; adding another item does not reset rates. */
-class ObserveDownloadsUseCase(private val cacheManager: MediaCacheManager) {
+class ObserveDownloadsUseCase(private val downloadManager: MediaDownloadManager) {
     operator fun invoke(subjectId: Int? = null): Flow<List<DownloadSnapshot>> = channelFlow {
         val snapshots = MutableStateFlow<Map<String, DownloadSnapshot>>(emptyMap())
         val expectedIds = MutableStateFlow<Set<String>?>(null)
@@ -57,7 +56,7 @@ class ObserveDownloadsUseCase(private val cacheManager: MediaCacheManager) {
                 if (ids == null || !values.keys.containsAll(ids)) null else ids.mapNotNull(values::get)
             }.collect { if (it != null) send(it) }
         }
-        cacheManager.enabledStorages.flatMapLatest { storages ->
+        downloadManager.enabledStorages.flatMapLatest { storages ->
             if (storages.isEmpty()) flowOf(emptyList()) else combine(storages.map { storage ->
                 storage.listFlow.map { entries -> entries.map { it to storage.engine.engineKey } }
             }) { it.toList().flatten() }

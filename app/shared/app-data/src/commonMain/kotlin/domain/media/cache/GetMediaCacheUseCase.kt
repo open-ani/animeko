@@ -9,6 +9,7 @@
 
 package me.him188.ani.app.domain.media.cache
 
+import me.him188.ani.app.domain.media.download.MediaDownloadManager
 import me.him188.ani.app.domain.usecase.UseCase
 
 interface GetMediaCacheUseCase : UseCase {
@@ -16,10 +17,10 @@ interface GetMediaCacheUseCase : UseCase {
 }
 
 class GetMediaCacheUseCaseImpl(
-    private val mediaCacheManager: MediaCacheManager,
+    private val downloadManager: MediaDownloadManager,
 ) : GetMediaCacheUseCase {
     override suspend fun invoke(subjectId: Int, episodeId: Int): List<MediaCache> {
-        return mediaCacheManager.findAllCaches { cache ->
+        return downloadManager.findAllDownloads { cache ->
             cache.metadata.subjectId == subjectId.toString() &&
                     cache.metadata.episodeId == episodeId.toString()
         }

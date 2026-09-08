@@ -36,7 +36,7 @@ import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.map
 import me.him188.ani.app.domain.media.cache.MediaCache
-import me.him188.ani.app.domain.media.cache.MediaCacheManager
+import me.him188.ani.app.domain.media.download.MediaDownloadManager
 import me.him188.ani.app.domain.media.fetch.MediaSourceManager
 import me.him188.ani.app.ui.foundation.AbstractViewModel
 import me.him188.ani.app.ui.foundation.animation.AniAnimatedVisibility
@@ -55,10 +55,10 @@ import org.koin.core.component.inject
 class MediaCacheDetailsPageViewModel(
     private val cacheId: String,
 ) : AbstractViewModel(), KoinComponent {
-    private val cacheManager: MediaCacheManager by inject()
+    private val downloadManager: MediaDownloadManager by inject()
     private val mediaSourceManager: MediaSourceManager by inject()
 
-    private val mediaCacheFlow = cacheManager.enabledStorages.flatMapLatest { storages ->
+    private val mediaCacheFlow = downloadManager.enabledStorages.flatMapLatest { storages ->
         combine(
             storages.map { storage ->
                 storage.listFlow.map { caches ->

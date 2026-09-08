@@ -32,7 +32,7 @@ import me.him188.ani.app.data.repository.media.updateConfig
 import me.him188.ani.app.domain.foundation.HttpClientProvider
 import me.him188.ani.app.domain.foundation.ScopedHttpClientUserAgent
 import me.him188.ani.app.domain.foundation.get
-import me.him188.ani.app.domain.media.cache.MediaCacheManager.Companion.LOCAL_FS_MEDIA_SOURCE_ID
+import me.him188.ani.app.domain.media.download.MediaDownloadManager.Companion.LOCAL_FS_MEDIA_SOURCE_ID
 import me.him188.ani.app.domain.media.selector.MediaSelectorSourceTiers
 import me.him188.ani.app.domain.mediasource.codec.MediaSourceCodecManager
 import me.him188.ani.app.domain.mediasource.codec.getArgumentOrNull

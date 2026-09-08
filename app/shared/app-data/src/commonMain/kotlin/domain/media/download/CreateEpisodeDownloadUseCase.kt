@@ -14,7 +14,6 @@ import kotlinx.coroutines.async
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import me.him188.ani.app.domain.danmaku.DanmakuRepository
-import me.him188.ani.app.domain.media.cache.MediaCacheManager
 import me.him188.ani.app.domain.media.resolver.toEpisodeMetadata
 import me.him188.ani.danmaku.api.provider.DanmakuFetchRequest
 import me.him188.ani.datasources.api.MediaCacheMetadata
@@ -25,17 +24,17 @@ import me.him188.ani.utils.analytics.recordEvent
 
 /** A submitted download belongs to the application even if its originating page is closed. */
 class CreateEpisodeDownloadUseCase(
-    private val cacheManager: MediaCacheManager,
+    private val downloadManager: MediaDownloadManager,
     private val danmakuRepository: DanmakuRepository,
 ) {
     suspend operator fun invoke(target: DownloadTarget) {
-        cacheManager.backgroundScope.async {
+        downloadManager.backgroundScope.async {
             val request = target.selection.request
             val metadata = MediaCacheMetadata(target.selection.fetchSession.request.first())
             val cache = target.storage.cache(target.media, metadata, request.episode.toEpisodeMetadata())
 
             // Persistence is the success boundary. Ancillary work cannot turn a saved download into a failure.
-            cacheManager.backgroundScope.launch {
+            downloadManager.backgroundScope.launch {
                 danmakuRepository.cacheDanmakuIfNeeded(
                     DanmakuFetchRequest(
                         subjectId = request.subject.subjectId,
@@ -53,7 +52,7 @@ class CreateEpisodeDownloadUseCase(
                     ),
                 )
             }
-            cacheManager.backgroundScope.launch {
+            downloadManager.backgroundScope.launch {
                 Analytics.recordEvent(CacheCreate) {
                     put("subject_id", request.subject.subjectId)
                     put("episode_id", request.episode.episodeId)
