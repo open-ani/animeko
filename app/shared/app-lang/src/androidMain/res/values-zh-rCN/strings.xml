@@ -1196,6 +1196,10 @@
     <string name="episode_danmaku_match_select_subject">选择条目</string>
     <string name="episode_danmaku_match_select_episode">选择剧集</string>
     <string name="episode_send_danmaku">发送弹幕</string>
+    <string name="danmaku_send_style">弹幕样式</string>
+    <string name="danmaku_send_style_color">颜色</string>
+    <string name="danmaku_send_style_location">位置</string>
+    <string name="danmaku_send_style_custom_color">自定义颜色</string>
     <string name="exploration_search_back_to_top">回到顶部</string>
     <string name="exploration_search_results_shown">已显示 %1$d 个结果</string>
     <string name="exploration_search_sort_match">最佳匹配</string>

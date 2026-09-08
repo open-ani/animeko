@@ -23,8 +23,25 @@ class DanmakuEditorState(
     private val onPost: suspend (me.him188.ani.danmaku.api.DanmakuContent) -> me.him188.ani.danmaku.api.DanmakuInfo,
     private val onPostSuccess: suspend (me.him188.ani.danmaku.api.DanmakuInfo) -> Unit,
     uiScope: CoroutineScope,
+    initialStyle: DanmakuSendStyle = DanmakuSendStyle.Default,
+    private val onStyleChange: (DanmakuSendStyle) -> Unit = {},
 ) {
     var text: String by mutableStateOf("")
+
+    /**
+     * 发送弹幕使用的样式 (颜色, 位置).
+     *
+     * 直接赋值仅更新本地状态 (用于从设置同步), 不会触发 [onStyleChange]; 用户主动修改请用 [updateStyle].
+     */
+    var style: DanmakuSendStyle by mutableStateOf(initialStyle)
+
+    /**
+     * 用户主动修改样式: 立即更新本地状态, 并通过 [onStyleChange] 通知持久化.
+     */
+    fun updateStyle(style: DanmakuSendStyle) {
+        this.style = style
+        onStyleChange(style)
+    }
 
     private val sendDanmakuTasker = MonoTasker(uiScope)
     val isSending: StateFlow<Boolean> get() = sendDanmakuTasker.isRunning

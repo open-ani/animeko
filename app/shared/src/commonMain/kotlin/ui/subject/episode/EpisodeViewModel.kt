@@ -125,7 +125,9 @@ import me.him188.ani.app.ui.comment.EditCommentSticker
 import me.him188.ani.app.ui.comment.UICommentSource
 import me.him188.ani.app.ui.comment.reportSnapshotText
 import me.him188.ani.app.ui.comment.toDataReason
+import me.him188.ani.app.ui.danmaku.DanmakuSendStyle
 import me.him188.ani.app.ui.danmaku.UIDanmakuEvent
+import me.him188.ani.app.ui.danmaku.toDanmakuSendStyle
 import me.him188.ani.app.ui.episode.PlayingEpisodeSummary
 import me.him188.ani.app.ui.episode.danmaku.MatchingDanmakuPresenter
 import me.him188.ani.app.ui.episode.danmaku.MatchingDanmakuUiState
@@ -1014,6 +1016,20 @@ class EpisodeViewModel(
     suspend fun postDanmaku(danmaku: DanmakuContent): DanmakuInfo {
         return withContext(Dispatchers.Default) {
             danmakuRepository.post(fetchPlayState.getCurrentEpisodeId(), danmaku)
+        }
+    }
+
+    /**
+     * 发送弹幕时使用的样式 (颜色, 位置), 持久化在 [SettingsRepository.danmakuSettings].
+     */
+    val danmakuSendStyleFlow: Flow<DanmakuSendStyle> =
+        settingsRepository.danmakuSettings.flow.map { it.toDanmakuSendStyle() }
+
+    fun setDanmakuSendStyle(style: DanmakuSendStyle) {
+        launchInBackground {
+            settingsRepository.danmakuSettings.update {
+                copy(sendColor = style.color, sendLocation = style.location)
+            }
         }
     }
 
