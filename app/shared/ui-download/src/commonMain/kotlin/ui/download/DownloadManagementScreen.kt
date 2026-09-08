@@ -344,10 +344,10 @@ fun DownloadManagementScreen(
                     pauseEnabled = selectedEntries.any { !it.isFinished && !it.isPaused && !it.isFailed },
                     deleteEnabled = selectedEntries.isNotEmpty(),
                     onResumeSelected = {
-                        selectedEntries.filter { !it.isFinished && it.isPaused }.forEach(onResume)
+                        selectedEntries.forEach(onResume)
                     },
                     onPauseSelected = {
-                        selectedEntries.filter { !it.isFinished && !it.isPaused && !it.isFailed }.forEach(onPause)
+                        selectedEntries.forEach(onPause)
                     },
                     onDeleteSelected = { pendingDeleteEntries = selectedEntries.toList() },
                     windowInsets = windowInsets.only(WindowInsetsSides.Bottom + WindowInsetsSides.Horizontal),
@@ -575,10 +575,10 @@ private fun DefaultDownloadGroupDetailPane(
         return
     }
     val onPauseAll = {
-        group.entries.filter { !it.isFinished && !it.isPaused && !it.isFailed }.forEach(onPause)
+        group.entries.forEach(onPause)
     }
     val onResumeAll = {
-        group.entries.filter { it.isPaused }.forEach(onResume)
+        group.entries.forEach(onResume)
     }
     val rowShape = if (singlePane) RectangleShape else MaterialTheme.shapes.medium
     LazyColumn(

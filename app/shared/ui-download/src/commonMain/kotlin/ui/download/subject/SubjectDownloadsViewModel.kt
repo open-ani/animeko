@@ -99,7 +99,11 @@ class SubjectDownloadsViewModel(
     fun resumeAll() = resumeDownloads(uiState.value.downloads.mapTo(hashSetOf()) { it.id })
 
     private fun execute(ids: Set<String>, action: DownloadOperations.Action) {
-        backgroundScope.launch { operationFailures.value = operations.execute(ids, action).failures.size }
+        val pending = operations.submit(ids, action)
+        backgroundScope.launch {
+            val result = pending.await()
+            operationFailures.update { it + result.failures.size }
+        }
     }
 }
 

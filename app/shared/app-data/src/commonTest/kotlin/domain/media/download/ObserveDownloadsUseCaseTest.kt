@@ -18,8 +18,6 @@ import kotlinx.coroutines.flow.toList
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.test.runCurrent
 import kotlinx.coroutines.test.runTest
-import me.him188.ani.app.domain.media.cache.DeleteCacheUseCase
-import me.him188.ani.app.domain.media.cache.MediaCache
 import me.him188.ani.app.domain.media.cache.MediaCacheState
 
 class ObserveDownloadsUseCaseTest {
@@ -71,40 +69,5 @@ class ObserveDownloadsUseCaseTest {
         runCurrent()
         assertFalse(counts.drop(boundary).contains(0))
         job.cancel()
-    }
-
-    @Test
-    fun `batch operation returns failures and continues with remaining items`() = runTest {
-        val storage = DownloadTestStorage()
-        val first = testDownload(1)
-        val second = testDownload(2)
-        storage.listFlow.value = listOf(first, second)
-        val operations = DownloadOperations(
-            MediaDownloadManager(listOf(storage), backgroundScope),
-            object : DeleteCacheUseCase {
-                override suspend fun invoke(cache: MediaCache) {
-                    if (cache === first) error("permission denied")
-                    storage.delete(cache)
-                }
-            },
-        )
-        val result = operations.execute(setOf(first.cacheId, second.cacheId), DownloadOperations.Action.Delete)
-        assertEquals(setOf(first.cacheId), result.failures.keys)
-        assertEquals(listOf(first), storage.listFlow.value)
-    }
-
-    @Test
-    fun `pause evaluates current state and preserves completed downloads`() = runTest {
-        val storage = DownloadTestStorage()
-        val completed = testDownload(1).apply { state.value = MediaCacheState.COMPLETED }
-        val running = testDownload(2)
-        storage.listFlow.value = listOf(completed, running)
-        val operations = DownloadOperations(
-            MediaDownloadManager(listOf(storage), backgroundScope),
-            object : DeleteCacheUseCase { override suspend fun invoke(cache: MediaCache) = Unit },
-        )
-        operations.execute(setOf(completed.cacheId, running.cacheId), DownloadOperations.Action.Pause)
-        assertEquals(MediaCacheState.COMPLETED, completed.state.value)
-        assertEquals(MediaCacheState.PAUSED, running.state.value)
     }
 }

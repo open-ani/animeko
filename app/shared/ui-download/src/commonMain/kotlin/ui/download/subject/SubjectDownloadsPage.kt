@@ -115,8 +115,8 @@ fun SubjectDownloadsPage(
                     resumeEnabled = selected.any { it.isPaused && !it.isFinished },
                     pauseEnabled = selected.any { !it.isPaused && !it.isFinished && !it.isFailed },
                     deleteEnabled = selected.isNotEmpty(),
-                    onResumeSelected = { actions.resume(selected.filter { it.isPaused && !it.isFinished }.mapTo(hashSetOf()) { it.id }) },
-                    onPauseSelected = { actions.pause(selected.filter { !it.isPaused && !it.isFinished && !it.isFailed }.mapTo(hashSetOf()) { it.id }) },
+                    onResumeSelected = { actions.resume(selected.mapTo(hashSetOf()) { it.id }) },
+                    onPauseSelected = { actions.pause(selected.mapTo(hashSetOf()) { it.id }) },
                     onDeleteSelected = { pendingDeleteIds = selected.mapTo(hashSetOf()) { it.id } },
                     windowInsets = windowInsets.only(WindowInsetsSides.Bottom + WindowInsetsSides.Horizontal),
                 )

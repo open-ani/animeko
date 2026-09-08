@@ -84,8 +84,9 @@ class DownloadManagementViewModel(
     fun dismissOperationError() { operationFailures.value = 0 }
 
     private fun execute(ids: Set<String>, action: DownloadOperations.Action) {
+        val pending = operations.submit(ids, action)
         backgroundScope.launch {
-            val result = operations.execute(ids, action)
+            val result = pending.await()
             operationFailures.update { it + result.failures.size }
         }
     }

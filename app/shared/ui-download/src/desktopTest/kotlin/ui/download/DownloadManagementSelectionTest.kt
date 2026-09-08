@@ -60,7 +60,7 @@ class DownloadManagementSelectionTest {
     )
 
     @Test
-    fun `batch resume, pause and delete selected caches`() = runAniComposeUiTest {
+    fun `batch actions keep all selected ids until download state catches up`() = runAniComposeUiTest {
         val enterSelectionText = runBlocking { getString(Lang.cache_management_enter_selection_mode) }
         val selectAllText = runBlocking { getString(Lang.cache_management_select_all) }
         val selectedCountText = runBlocking { getString(Lang.cache_management_selected_count, episodes.size) }
@@ -95,16 +95,15 @@ class DownloadManagementSelectionTest {
         onNodeWithContentDescription(selectAllText).performClick()
         onNodeWithText(selectedCountText).assertExists()
 
-        // 批量继续: 只作用于已暂停的
+        // UI 状态尚未更新时，连续操作都应提交完整选择范围，由 domain 检查执行时的状态。
         onNodeWithTag(DownloadSelectionToolbarTestTags.RESUME).performClick()
         runOnIdle {
-            assertEquals(setOf(paused.id), resumedIds)
+            assertEquals(episodes.map { it.id }.toSet(), resumedIds)
         }
 
-        // 批量暂停: 只作用于下载中的 (不含已完成/已失败)
         onNodeWithTag(DownloadSelectionToolbarTestTags.PAUSE).performClick()
         runOnIdle {
-            assertEquals(setOf(inProgress.id), pausedIds)
+            assertEquals(episodes.map { it.id }.toSet(), pausedIds)
         }
 
         // 批量删除: 需要确认, 作用于所有选中项, 然后退出多选

@@ -78,6 +78,41 @@ class SubjectDownloadsPageTest {
     }
 
     @Test
+    fun `consecutive batch actions keep selection while displayed states remain unchanged`() = runAniComposeUiTest {
+        val commands = mutableListOf<Pair<String, Set<String>>>()
+        setContent {
+            ProvideCompositionLocalsForPreview {
+                SubjectDownloadsPage(
+                    state = SubjectDownloadsUiState(
+                        title = "Subject",
+                        items = buildSubjectDownloadItems(emptyList(), downloads),
+                        downloads = downloads,
+                        episodesLoading = false,
+                        downloadsLoading = false,
+                    ),
+                    selection = rememberDownloadSelectionState(),
+                    actions = actions(
+                        pause = { commands += "pause" to it },
+                        resume = { commands += "resume" to it },
+                    ),
+                    sourceInfoProvider = createTestMediaSourceInfoProvider(),
+                    onPlay = {},
+                    onViewDetail = null,
+                )
+            }
+        }
+        onNodeWithText(runBlocking { getString(Lang.cache_management_episode_label, finished.sort, finished.displayName) })
+            .performTouchInput { longClick() }
+        onNodeWithText(runBlocking { getString(Lang.cache_management_select_all_action) }).performClick()
+        onNodeWithTag(DownloadSelectionToolbarTestTags.PAUSE).performClick()
+        onNodeWithTag(DownloadSelectionToolbarTestTags.RESUME).performClick()
+        runOnIdle {
+            val ids: Set<String> = downloads.mapTo(hashSetOf()) { it.id }
+            assertEquals(listOf("pause" to ids, "resume" to ids), commands)
+        }
+    }
+
+    @Test
     fun `partial deletion keeps failed item selected and completed deletion exits selection`() = runAniComposeUiTest {
         var currentDownloads by mutableStateOf(downloads)
         var requestedIds: Set<String>? = null
@@ -112,7 +147,9 @@ class SubjectDownloadsPageTest {
 
     private fun actions(
         download: (Int) -> Unit = {},
+        pause: (Set<String>) -> Unit = {},
+        resume: (Set<String>) -> Unit = {},
         delete: (Set<String>) -> Unit = {},
         pauseAll: () -> Unit = {},
-    ) = SubjectDownloadActions(download, {}, {}, {}, delete, pauseAll, {}, {})
+    ) = SubjectDownloadActions(download, {}, pause, resume, delete, pauseAll, {}, {})
 }

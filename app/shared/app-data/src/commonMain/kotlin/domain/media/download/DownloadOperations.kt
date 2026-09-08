@@ -10,17 +10,23 @@
 package me.him188.ani.app.domain.media.download
 
 import kotlinx.coroutines.CancellationException
-import kotlinx.coroutines.async
+import kotlinx.coroutines.CompletableDeferred
+import kotlinx.coroutines.Deferred
+import kotlinx.coroutines.channels.Channel
+import kotlinx.coroutines.currentCoroutineContext
+import kotlinx.coroutines.ensureActive
 import kotlinx.coroutines.flow.first
-import kotlinx.coroutines.sync.Mutex
-import kotlinx.coroutines.sync.withLock
+import kotlinx.coroutines.launch
 import me.him188.ani.app.domain.media.cache.DeleteCacheUseCase
 import me.him188.ani.app.domain.media.cache.MediaCacheState
 import me.him188.ani.utils.logging.logger
 
 data class DownloadOperationResult(val failures: Map<String, Throwable>)
 
-/** Resolves IDs at execution time, so commands never rely on a stale row's status. */
+/**
+ * Accepts commands synchronously and executes them in submission order in the application scope.
+ * Awaiting a result is optional; cancelling the caller does not cancel an accepted command.
+ */
 class DownloadOperations(
     private val downloadManager: MediaDownloadManager,
     private val deleteCache: DeleteCacheUseCase,
@@ -28,27 +34,64 @@ class DownloadOperations(
     private val logger = logger<DownloadOperations>()
     enum class Action { Pause, Resume, Delete }
 
-    private val mutex = Mutex()
+    private data class Command(
+        val ids: Set<String>,
+        val action: Action,
+        val result: CompletableDeferred<DownloadOperationResult>,
+    )
 
-    suspend fun execute(ids: Set<String>, action: Action): DownloadOperationResult = downloadManager.backgroundScope.async {
-        mutex.withLock {
-            val failures = mutableMapOf<String, Throwable>()
-            for (id in ids) {
+    private val commands = Channel<Command>(
+        capacity = Channel.UNLIMITED,
+        onUndeliveredElement = { it.result.cancel() },
+    )
+
+    init {
+        downloadManager.backgroundScope.launch {
+            for (command in commands) {
                 try {
-                    val cache = downloadManager.findFirstDownload { it.cacheId == id } ?: continue
-                    when (action) {
-                        Action.Pause -> if (cache.state.first() == MediaCacheState.IN_PROGRESS) cache.pause()
-                        Action.Resume -> if (cache.state.first() == MediaCacheState.PAUSED) cache.resume()
-                        Action.Delete -> deleteCache(cache)
-                    }
+                    command.result.complete(execute(command.ids, command.action))
                 } catch (e: CancellationException) {
+                    command.result.cancel(e)
+                    // An individual download may cancel its operation while the application stays active.
+                    currentCoroutineContext().ensureActive()
+                } catch (e: Throwable) {
+                    command.result.completeExceptionally(e)
                     throw e
-                } catch (e: Exception) {
-                    logger.warn("Download operation $action failed for $id", e)
-                    failures[id] = e
                 }
             }
-            DownloadOperationResult(failures)
+        }.invokeOnCompletion {
+            // Also release queued results when cancelled before the worker's first dispatch.
+            commands.cancel()
         }
-    }.await()
+    }
+
+    /** Call from the event handler before dispatching any coroutine. IDs are captured at submission. */
+    fun submit(ids: Set<String>, action: Action): Deferred<DownloadOperationResult> {
+        val result = CompletableDeferred<DownloadOperationResult>()
+        val command = Command(ids.toSet(), action, result)
+        if (commands.trySend(command).isFailure) {
+            result.cancel(CancellationException("Download operations have stopped"))
+        }
+        return result
+    }
+
+    private suspend fun execute(ids: Set<String>, action: Action): DownloadOperationResult {
+        val failures = mutableMapOf<String, Throwable>()
+        for (id in ids) {
+            try {
+                val cache = downloadManager.findFirstDownload { it.cacheId == id } ?: continue
+                when (action) {
+                    Action.Pause -> if (cache.state.first() == MediaCacheState.IN_PROGRESS) cache.pause()
+                    Action.Resume -> if (cache.state.first() == MediaCacheState.PAUSED) cache.resume()
+                    Action.Delete -> deleteCache(cache)
+                }
+            } catch (e: CancellationException) {
+                throw e
+            } catch (e: Exception) {
+                logger.warn("Download operation $action failed for $id", e)
+                failures[id] = e
+            }
+        }
+        return DownloadOperationResult(failures)
+    }
 }
