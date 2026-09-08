@@ -148,10 +148,13 @@ internal fun TvPlayerFocusEffects(
     }
 
     var recommendationsWereEmpty by remember { mutableStateOf(uiState.panel.recommendations.isEmpty()) }
-    LaunchedEffect(uiState.panel.recommendations.isEmpty()) {
-        val becameAvailable = recommendationsWereEmpty && uiState.panel.recommendations.isNotEmpty()
+    var recommendationsWereLoading by remember { mutableStateOf(uiState.panel.recommendationsLoading) }
+    LaunchedEffect(uiState.panel.recommendations.isEmpty(), uiState.panel.recommendationsLoading) {
+        val loadingChanged = recommendationsWereLoading != uiState.panel.recommendationsLoading
+        val contentChanged = recommendationsWereEmpty && (uiState.panel.recommendations.isNotEmpty() || loadingChanged)
         recommendationsWereEmpty = uiState.panel.recommendations.isEmpty()
-        if (becameAvailable && latestOverlay.recommendationsVisible) {
+        recommendationsWereLoading = uiState.panel.recommendationsLoading
+        if (contentChanged && latestOverlay.recommendationsVisible) {
             focus.requestPrepared {
                 snapshotFlow { !recommendationTransition.isRunning }.first { it }
                 TvPlayerFocus.RecommendationsEntry.takeIf { latestOverlay.recommendationsVisible }

@@ -9,6 +9,7 @@
 
 package me.him188.ani.leanback.ui.episode
 
+import android.graphics.Bitmap
 import androidx.activity.OnBackPressedDispatcher
 import androidx.activity.compose.LocalOnBackPressedDispatcherOwner
 import androidx.compose.foundation.background
@@ -18,17 +19,21 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.asAndroidBitmap
 import androidx.compose.ui.input.key.Key
 import androidx.compose.ui.semantics.SemanticsProperties
 import androidx.compose.ui.test.SemanticsMatcher
 import androidx.compose.ui.test.assert
+import androidx.compose.ui.test.assertHasNoClickAction
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.assertIsFocused
+import androidx.compose.ui.test.captureToImage
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.onRoot
 import androidx.compose.ui.test.performKeyInput
 import androidx.compose.ui.test.pressKey
+import androidx.test.platform.app.InstrumentationRegistry
 import kotlinx.coroutines.flow.emptyFlow
 import me.him188.ani.app.domain.player.VideoLoadingState
 import me.him188.ani.app.ui.framework.AniComposeUiTest
@@ -45,6 +50,7 @@ import me.him188.ani.danmaku.ui.DanmakuPresentation
 import me.him188.ani.leanback.ui.foundation.theme.AniTvTheme
 import me.him188.ani.leanback.ui.watchtogether.TvTogetherIntent
 import me.him188.ani.leanback.ui.watchtogether.TvTogetherState
+import java.io.File
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertTrue
@@ -163,6 +169,52 @@ class TvPlayerSidebarNavigationUiTest {
         onNodeWithTag("tv-danmaku-list-button").assertIsFocused()
         key(Key.DirectionLeft)
         assertPanelClosed(TvPlayerPanel.DanmakuSettings)
+        assertTrue(fixture.commands.isEmpty())
+    }
+
+    @Test
+    fun loadingDanmakuListTransfersFocusToContentAndStillReturnsToSettings() = runAniComposeUiTest {
+        val fixture = Fixture().apply { panel = TvPlayerPanelState(danmakuLoading = true) }
+        showPlayer(fixture)
+        openDanmakuList()
+        onNodeWithTag("tv-danmaku-list-loading").assertIsDisplayed()
+        onNodeWithTag("tv-danmaku-placeholder-0", useUnmergedTree = true).assertIsFocused().assertHasNoClickAction()
+        onNodeWithTag("tv-danmaku-placeholder-1", useUnmergedTree = true).assertIsDisplayed().assertHasNoClickAction()
+        onNodeWithTag("tv-danmaku-list-empty").assertDoesNotExist()
+        saveScreenshot("danmaku-loading-skeleton")
+        runOnIdle { fixture.backDispatcher.onBackPressed() }
+        onNodeWithTag("tv-danmaku-list-button").assertIsFocused()
+        key(Key.DirectionCenter)
+        onNodeWithTag("tv-danmaku-placeholder-0", useUnmergedTree = true).assertIsFocused()
+        runOnIdle { fixture.panel = TvPlayerPanelState(danmaku = listOf(danmaku(2), danmaku(1))) }
+        onNodeWithText("弹幕 2").assertIsFocused()
+        onNodeWithTag("tv-danmaku-list-loading").assertDoesNotExist()
+        runOnIdle { fixture.panel = fixture.panel.copy(danmakuLoading = true) }
+        onNodeWithText("弹幕 2").assertIsFocused()
+        onNodeWithTag("tv-danmaku-list-loading").assertDoesNotExist()
+        runOnIdle { fixture.backDispatcher.onBackPressed() }
+        onNodeWithTag("tv-danmaku-list-button").assertIsFocused()
+        runOnIdle { fixture.panel = TvPlayerPanelState(danmaku = listOf(danmaku(3))) }
+        onNodeWithTag("tv-danmaku-list-button").assertIsFocused()
+        key(Key.DirectionLeft)
+        assertPanelClosed(TvPlayerPanel.DanmakuSettings)
+        assertTrue(fixture.commands.isEmpty())
+    }
+
+    @Test
+    fun danmakuReloadFromAScrolledListCanFinishEmptyWithoutLosingFocus() = runAniComposeUiTest {
+        val fixture = Fixture().apply { panel = TvPlayerPanelState(danmaku = List(30) { danmaku(100 - it) }) }
+        showPlayer(fixture)
+        openDanmakuList()
+        repeat(15) { key(Key.DirectionUp) }
+        onNodeWithText("弹幕 85").assertIsFocused()
+        runOnIdle { fixture.panel = TvPlayerPanelState(danmakuLoading = true) }
+        onNodeWithTag("tv-danmaku-placeholder-0", useUnmergedTree = true).assertIsFocused()
+        runOnIdle { fixture.panel = TvPlayerPanelState() }
+        onNodeWithTag("tv-danmaku-list-empty").assertIsFocused()
+        onNodeWithTag("tv-danmaku-list-loading").assertDoesNotExist()
+        runOnIdle { fixture.backDispatcher.onBackPressed() }
+        onNodeWithTag("tv-danmaku-list-button").assertIsFocused()
         assertTrue(fixture.commands.isEmpty())
     }
 
@@ -373,5 +425,12 @@ class TvPlayerSidebarNavigationUiTest {
     private fun AniComposeUiTest.key(key: Key) {
         onRoot().performKeyInput { pressKey(key) }
         waitForIdle()
+    }
+
+    private fun AniComposeUiTest.saveScreenshot(name: String) {
+        val bitmap = onRoot().captureToImage().asAndroidBitmap()
+        val context = InstrumentationRegistry.getInstrumentation().targetContext
+        val file = File(context.getExternalFilesDir("screenshots"), "$name.png")
+        file.outputStream().use { check(bitmap.compress(Bitmap.CompressFormat.PNG, 100, it)) }
     }
 }

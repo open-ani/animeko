@@ -458,8 +458,13 @@ class TvEpisodeViewModel(
         }
     }.stateIn(backgroundScope, SharingStarted.WhileSubscribed(5_000), 0L)
 
-    private val panelState = recommendationsFlow.map { recommendations ->
-        TvPlayerPanelState(recommendations = recommendations.orEmpty(), recommendationsLoading = recommendations == null)
+    private val panelState = combine(recommendationsFlow, episodeDanmakuLoader.fetchResults) { recommendations, fetchResults ->
+        TvPlayerPanelState(
+            recommendations = recommendations.orEmpty(),
+            recommendationsLoading = recommendations == null,
+            // Keep the same loading/empty distinction as the shared DanmakuListStateProducer.
+            danmakuLoading = fetchResults.isEmpty(),
+        )
     }
 
     /** Collected only while the UI displays the live list. */
@@ -513,7 +518,11 @@ class TvEpisodeViewModel(
         .stateIn(
             backgroundScope,
             SharingStarted.WhileSubscribed(5_000),
-            TvEpisodeUiState(currentEpisodeId = initialEpisodeId, interaction = playbackInteraction),
+            TvEpisodeUiState(
+                currentEpisodeId = initialEpisodeId,
+                interaction = playbackInteraction,
+                panel = TvPlayerPanelState(recommendationsLoading = true, danmakuLoading = true),
+            ),
         )
 
     fun onIntent(intent: TvEpisodeIntent): Boolean {

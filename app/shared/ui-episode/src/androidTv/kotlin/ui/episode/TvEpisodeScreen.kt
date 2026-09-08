@@ -576,6 +576,7 @@ internal fun TvEpisodeScreen(
 
                             showingDanmakuList -> TvDanmakuListDialog(
                                 danmakuList.collectAsState(emptyList()).value,
+                                uiState.panel.danmakuLoading,
                                 focus,
                                 TvPlayerFocus.DialogEntry,
                             )

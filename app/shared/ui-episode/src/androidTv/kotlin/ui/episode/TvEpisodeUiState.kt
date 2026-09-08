@@ -39,6 +39,7 @@ data class TvPlayerPanelState(
     val recommendations: List<SubjectRecommendation> = emptyList(),
     val danmaku: List<DanmakuPresentation> = emptyList(),
     val recommendationsLoading: Boolean = false,
+    val danmakuLoading: Boolean = false,
 )
 
 data class TvEpisodeUiState(

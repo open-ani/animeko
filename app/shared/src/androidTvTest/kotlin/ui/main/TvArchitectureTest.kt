@@ -32,6 +32,8 @@ class TvArchitectureTest {
         "me.him188.ani.app.ui.foundation.rememberAniSketchInstance",
         "me.him188.ani.app.ui.foundation.AbstractViewModel",
         "me.him188.ani.app.ui.foundation.animation.",
+        // Skeleton drawing/animation is shared infrastructure, independent of phone layouts.
+        "me.him188.ani.app.ui.external.placeholder.",
         "me.him188.ani.app.ui.foundation.widgets.Toaster",
         "me.him188.ani.app.ui.foundation.widgets.LocalToaster",
         "me.him188.ani.app.ui.foundation.navigation.BackHandler",

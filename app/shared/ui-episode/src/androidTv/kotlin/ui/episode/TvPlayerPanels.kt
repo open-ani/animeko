@@ -9,6 +9,7 @@
 
 package me.him188.ani.leanback.ui.episode
 
+import androidx.compose.foundation.focusable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
@@ -16,19 +17,18 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.RowScope
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyListScope
 import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.lazy.rememberLazyListState
+import androidx.compose.foundation.progressSemantics
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.AutoAwesome
 import androidx.compose.material.icons.rounded.Bookmark
 import androidx.compose.material.icons.rounded.Comment
 import androidx.compose.material.icons.rounded.Groups
 import androidx.compose.material.icons.rounded.Tune
-import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -113,7 +113,14 @@ internal fun TvPlayerComments(
     Column(modifier) {
         val refresh = comments?.loadState?.refresh
         if (comments == null || comments.itemCount == 0 && refresh is LoadState.Loading) {
-            TvCommentLoading(Modifier.testTag("tv-comments-loading"))
+            PanelList(
+                listModifier.testTag("tv-comments-loading").progressSemantics(), Modifier,
+                empty = false, state = listState,
+            ) {
+                items(3) { index ->
+                    TvCommentCardPlaceholder(Modifier.testTag("tv-comment-placeholder-$index"))
+                }
+            }
             return@Column
         }
         if (refresh is LoadState.Error) {
@@ -127,27 +134,25 @@ internal fun TvPlayerComments(
             state = listState,
         ) {
             items(comments.itemCount, key = { comments.peek(it)?.stableId ?: "placeholder-$it" }) { index ->
-                comments[index]?.let { comment ->
+                val comment = comments[index]
+                if (comment == null) {
+                    TvCommentCardPlaceholder(Modifier.testTag("tv-comment-placeholder-$index").progressSemantics())
+                } else {
                     TvCommentCard(comment, modifier = (if (refresh is LoadState.Error) Modifier else anchorFor(index)).then(commentAnchor(comment))) {
                         onClickComment(comment, index)
                     }
                 }
             }
             when (val append = comments.loadState.append) {
-                is LoadState.Loading -> item { TvCommentLoading(Modifier.testTag("tv-comments-append-loading")) }
+                is LoadState.Loading -> item {
+                    TvCommentCardPlaceholder(Modifier.testTag("tv-comments-append-loading").progressSemantics())
+                }
                 is LoadState.Error -> item {
                     TvCommentLoadError(append, Modifier.testTag("tv-comments-append-retry"), comments::retry)
                 }
                 else -> Unit
             }
         }
-    }
-}
-
-@Composable
-private fun TvCommentLoading(modifier: Modifier = Modifier) {
-    Row(modifier.fillMaxWidth().padding(20.dp), horizontalArrangement = Arrangement.Center) {
-        CircularProgressIndicator(Modifier.size(28.dp), color = LocalTvOptionColors.current.content, strokeWidth = 3.dp)
     }
 }
 
@@ -166,6 +171,7 @@ private enum class DanmakuListFocus : TvFocusKey { Empty }
 @Composable
 internal fun TvDanmakuListDialog(
     danmakuList: List<DanmakuPresentation>,
+    loading: Boolean,
     focus: TvFocusScope,
     entryKey: TvFocusKey,
 ) {
@@ -187,13 +193,14 @@ internal fun TvDanmakuListDialog(
     val focusBeforeUpdate = focusedKey
     val indexBeforeUpdate = focusedIndex
     val navigationGeneration = focus.userNavGeneration
-    LaunchedEffect(itemKeys) {
+    LaunchedEffect(itemKeys, loading) {
         if (focusBeforeUpdate == null || focus.userNavGeneration != navigationGeneration) return@LaunchedEffect
         val retainedIndex = itemKeys.indexOf((focusBeforeUpdate as? DanmakuItemKey)?.value)
         if (retainedIndex >= 0) {
             focusedIndex = retainedIndex
         } else if (itemKeys.isEmpty()) {
-            focus.request(DanmakuListFocus.Empty)
+            if (loading) listState.scrollToItem(0)
+            if (focus.userNavGeneration == navigationGeneration) focus.request(DanmakuListFocus.Empty)
         } else {
             // Trimming/repopulation can remove the focused row. Keep the user's place
             // inside the list, and compose the replacement before requesting its focus.
@@ -205,18 +212,34 @@ internal fun TvDanmakuListDialog(
         }
     }
     if (danmakuList.isEmpty()) {
-        TvOptionRow(
-            stringResource(Lang.subject_episode_danmaku_list_empty),
-            modifier = Modifier.testTag("tv-danmaku-list-empty").tvFocusAnchor(focus, entryKey)
-                .tvFocusAnchor(focus, DanmakuListFocus.Empty)
-                .onFocusChanged {
-                    if (it.isFocused) {
-                        focusedKey = DanmakuListFocus.Empty
-                        focusedIndex = 0
-                    }
-                },
-            onClick = {},
-        )
+        val entryModifier = Modifier.tvFocusAnchor(focus, entryKey)
+            .tvFocusAnchor(focus, DanmakuListFocus.Empty)
+            .onFocusChanged {
+                if (it.isFocused) {
+                    focusedKey = DanmakuListFocus.Empty
+                    focusedIndex = 0
+                }
+            }
+        if (loading) {
+            PanelList(
+                Modifier.fillMaxWidth().testTag("tv-danmaku-list-loading").progressSemantics(), Modifier,
+                empty = false, reverseLayout = true, state = listState,
+            ) {
+                items(8) { index ->
+                    TvDanmakuItemPlaceholder(
+                        // One temporary content anchor keeps Back inside the list; skeletons have no action.
+                        (if (index == 0) entryModifier.focusable() else Modifier)
+                            .testTag("tv-danmaku-placeholder-$index"),
+                    )
+                }
+            }
+        } else {
+            TvOptionRow(
+                stringResource(Lang.subject_episode_danmaku_list_empty),
+                modifier = entryModifier.testTag("tv-danmaku-list-empty"),
+                onClick = {},
+            )
+        }
     } else {
         PanelList(Modifier.fillMaxWidth(), Modifier, empty = false, reverseLayout = true, state = listState) {
             itemsIndexed(danmakuList, key = { index, _ -> itemKeys[index] }) { index, danmaku ->

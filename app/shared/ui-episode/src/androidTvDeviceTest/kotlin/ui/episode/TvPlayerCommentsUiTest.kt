@@ -29,6 +29,7 @@ import androidx.compose.ui.semantics.SemanticsProperties
 import androidx.compose.ui.test.SemanticsMatcher
 import androidx.compose.ui.test.assert
 import androidx.compose.ui.test.assertCountEquals
+import androidx.compose.ui.test.assertHasNoClickAction
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.assertIsFocused
 import androidx.compose.ui.test.captureToImage
@@ -105,8 +106,12 @@ class TvPlayerCommentsUiTest {
         key(Key.DirectionRight)
         key(Key.DirectionCenter)
         onNodeWithTag("tv-comments-loading").assertIsDisplayed()
+        onNodeWithTag("tv-comment-placeholder-0", useUnmergedTree = true).assertIsDisplayed().assertHasNoClickAction()
+        onNodeWithTag("tv-comment-placeholder-1", useUnmergedTree = true).assertIsDisplayed().assertHasNoClickAction()
+        onNodeWithText(playerTestString(Lang.comment_empty_title)).assertDoesNotExist()
         onNodeWithTag("tv-player-sidebar").assert(SemanticsMatcher.keyNotDefined(SemanticsProperties.Focused))
         onNodeWithTag("tv-sidebar-back").assertDoesNotExist()
+        saveScreenshot("comments-loading-skeleton")
         runOnIdle { fixture.backDispatcher.onBackPressed() }
         onNodeWithTag("tv-player-sidebar").assertDoesNotExist()
         onNodeWithTag("tv-player-chip-Comments").assertIsFocused()
@@ -157,11 +162,48 @@ class TvPlayerCommentsUiTest {
         runOnIdle { refreshed.complete(Unit) }
         waitUntil(timeoutMillis = 5_000) { onAllNodes(hasTestTag("tv-comment-recovered")).fetchSemanticsNodes().isNotEmpty() }
         onNodeWithTag("tv-comments-retry").assertDoesNotExist()
-        onNodeWithTag("tv-comments-append-loading").assertIsDisplayed()
+        onNodeWithTag("tv-comments-append-loading").assertIsDisplayed().assertHasNoClickAction()
         onNodeWithTag("tv-comment-recovered").assertIsFocused()
+        saveScreenshot("comments-append-skeleton")
         runOnIdle { appended.complete(Unit) }
         waitUntil(timeoutMillis = 5_000) { onAllNodes(hasTestTag("tv-comments-append-loading")).fetchSemanticsNodes().isEmpty() }
         assertEquals(2, refreshAttempts)
+    }
+
+    @Test
+    fun pagingPlaceholdersKeepLoadedCommentsVisibleAndFocused() = runAniComposeUiTest {
+        val appended = CompletableDeferred<Unit>()
+        val pager = Pager(PagingConfig(pageSize = 1, initialLoadSize = 1, enablePlaceholders = true)) {
+            object : PagingSource<Int, EpisodeComment>() {
+                override fun getRefreshKey(state: PagingState<Int, EpisodeComment>): Int? = null
+                override suspend fun load(params: LoadParams<Int>): LoadResult<Int, EpisodeComment> {
+                    if (params.key == null) return LoadResult.Page(
+                        listOf(comment("first", "已经加载的评论")), null, 1, itemsBefore = 0, itemsAfter = 1,
+                    )
+                    appended.await()
+                    return LoadResult.Page(
+                        listOf(comment("second", "下一页评论")), 0, null, itemsBefore = 1, itemsAfter = 0,
+                    )
+                }
+            }
+        }
+        val fixture = Fixture(emptyList(), pager.flow)
+        showPlayer(fixture)
+        key(Key.DirectionUp)
+        key(Key.DirectionRight)
+        key(Key.DirectionCenter)
+        waitForText("已经加载的评论")
+        onNodeWithTag("tv-comment-first").assertIsFocused()
+        onNodeWithTag("tv-comment-placeholder-1").assertIsDisplayed().assertHasNoClickAction()
+        runOnIdle { appended.complete(Unit) }
+        waitForText("下一页评论")
+        onNodeWithTag("tv-comment-placeholder-1").assertDoesNotExist()
+        onNodeWithTag("tv-comment-first").assertIsFocused()
+        key(Key.DirectionDown)
+        onNodeWithTag("tv-comment-second").assertIsFocused()
+        key(Key.DirectionLeft)
+        onNodeWithTag("tv-player-chip-Comments").assertIsFocused()
+        assertTrue(fixture.commands.isEmpty())
     }
 
     @Test

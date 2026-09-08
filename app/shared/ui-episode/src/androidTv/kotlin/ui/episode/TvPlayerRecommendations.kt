@@ -19,6 +19,7 @@ import androidx.compose.animation.slideOutVertically
 import androidx.compose.foundation.background
 import androidx.compose.foundation.basicMarquee
 import androidx.compose.foundation.focusGroup
+import androidx.compose.foundation.focusable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -33,6 +34,7 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.itemsIndexed
+import androidx.compose.foundation.progressSemantics
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -57,7 +59,6 @@ import me.him188.ani.app.domain.episode.SubjectRecommendation
 import me.him188.ani.app.ui.foundation.AsyncImage
 import me.him188.ani.app.ui.lang.Lang
 import me.him188.ani.app.ui.lang.subject_episode_recommendations_empty
-import me.him188.ani.app.ui.lang.subject_episode_recommendations_loading
 import me.him188.ani.app.ui.lang.subject_episode_related_recommendations
 import me.him188.ani.app.ui.lang.tv_player_collapse_recommendations
 import me.him188.ani.leanback.ui.foundation.focus.TvFocusDefaults
@@ -150,7 +151,16 @@ internal fun TvPlayerRecommendationsRow(
                     vertical = 12.dp,
                 ),
             ) {
-                if (recommendations.isEmpty()) item(key = "empty") {
+                if (recommendations.isEmpty() && loading) {
+                    items(4, key = { "placeholder-$it" }) { index ->
+                        TvRecommendationCardPlaceholder(
+                            // Keep only the entry card focusable so Up/Back works while loading.
+                            // Data arrival transfers focus to the first real card through the host.
+                            (if (index == 0) entryModifier.progressSemantics().focusable() else Modifier)
+                                .testTag(if (index == 0) "tv-recommendations-loading" else "tv-recommendation-placeholder-$index"),
+                        )
+                    }
+                } else if (recommendations.isEmpty()) item(key = "empty") {
                     Surface(
                         onClick = {},
                         modifier = entryModifier
@@ -162,7 +172,7 @@ internal fun TvPlayerRecommendationsRow(
                         scale = ClickableSurfaceDefaults.scale(focusedScale = 1f),
                     ) {
                         Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                            Text(if (loading) stringResource(Lang.subject_episode_recommendations_loading) else stringResource(Lang.subject_episode_recommendations_empty))
+                            Text(stringResource(Lang.subject_episode_recommendations_empty))
                         }
                     }
                 }

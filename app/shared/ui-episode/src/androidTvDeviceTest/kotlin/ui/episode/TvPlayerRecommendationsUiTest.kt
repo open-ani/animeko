@@ -194,10 +194,20 @@ class TvPlayerRecommendationsUiTest {
         val fixture = Fixture().apply { panel = TvPlayerPanelState(recommendationsLoading = true) }
         showPlayer(fixture)
         openRecommendations()
-        onNodeWithTag("tv-recommendations-empty").assertIsFocused()
-        onNodeWithText(playerTestString(Lang.subject_episode_recommendations_loading)).assertIsDisplayed()
+        onNodeWithTag("tv-recommendations-loading").assertIsFocused().assertHasNoClickAction()
+        onNodeWithTag("tv-recommendation-placeholder-1").assertIsDisplayed().assertHasNoClickAction()
+        onNodeWithText(playerTestString(Lang.subject_episode_recommendations_loading)).assertDoesNotExist()
+        onNodeWithText(playerTestString(Lang.subject_episode_recommendations_empty)).assertDoesNotExist()
+        saveScreenshot("recommendations-loading-skeleton")
+        key(Key.DirectionRight)
+        onNodeWithTag("tv-recommendations-loading").assertIsFocused()
+        key(Key.DirectionUp)
+        assertControllerHasFocus()
+        openRecommendations()
         runOnIdle { fixture.panel = TvPlayerPanelState() }
         onNodeWithText(playerTestString(Lang.subject_episode_recommendations_empty)).assertIsDisplayed()
+        onNodeWithTag("tv-recommendations-empty").assertIsFocused()
+        onNodeWithTag("tv-recommendations-loading").assertDoesNotExist()
         key(Key.DirectionUp)
         assertControllerHasFocus()
         openRecommendations()
@@ -205,6 +215,27 @@ class TvPlayerRecommendationsUiTest {
         runOnIdle { fixture.panel = TvPlayerPanelState(recommendations = listOf(subject)) }
         onNodeWithTag("tv-recommendation-${subject.uniqueId}").assertIsFocused()
         onNodeWithTag("tv-recommendations-empty").assertDoesNotExist()
+    }
+
+    @Test
+    fun recommendationsLoadIntoTheRowWithoutStealingFocusAfterReturn() = runAniComposeUiTest {
+        val fixture = Fixture().apply { panel = TvPlayerPanelState(recommendationsLoading = true) }
+        val subject = recommendation(789)
+        showPlayer(fixture)
+        openRecommendations()
+        runOnIdle { fixture.panel = TvPlayerPanelState(recommendations = listOf(subject)) }
+        onNodeWithTag("tv-recommendation-${subject.uniqueId}").assertIsFocused()
+        onNodeWithTag("tv-recommendations-loading").assertDoesNotExist()
+        runOnIdle { fixture.backDispatcher.onBackPressed() }
+        assertControllerHasFocus()
+
+        runOnIdle { fixture.panel = TvPlayerPanelState(recommendationsLoading = true) }
+        openRecommendations()
+        onNodeWithTag("tv-recommendations-loading").assertIsFocused()
+        runOnIdle { fixture.backDispatcher.onBackPressed() }
+        runOnIdle { fixture.panel = TvPlayerPanelState(recommendations = listOf(subject)) }
+        assertControllerHasFocus()
+        assertTrue(fixture.openedRecommendations.isEmpty())
     }
 
     @Test

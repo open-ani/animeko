@@ -24,6 +24,7 @@ kotlin {
             api(projects.app.shared.uiWatchtogetherTv)
             implementation(projects.danmaku.danmakuUi)
             implementation(projects.app.shared.pagingCompose)
+            implementation(projects.app.shared.placeholder)
         }
     }
     sourceSets.androidHostTest {
