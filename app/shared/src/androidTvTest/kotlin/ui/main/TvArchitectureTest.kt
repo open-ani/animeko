@@ -48,10 +48,13 @@ class TvArchitectureTest {
         "me.him188.ani.app.ui.watchtogether.toWatchTogetherPlaybackPresentation",
         "me.him188.ani.app.ui.watchtogether.stateIconAndText",
         "me.him188.ani.app.ui.watchtogether.watchTogetherStatusText",
-        "me.him188.ani.app.ui.lang.Lang",
-        "me.him188.ani.app.ui.lang.media_selector_web_captcha_unsupported",
-        "me.him188.ani.app.ui.lang.media_selector_web_rate_limited",
-        "me.him188.ani.app.ui.lang.media_selector_web_waiting_captcha",
+        // Shared resources and locale-dependent text mappings contain no phone layouts.
+        "me.him188.ani.app.ui.lang.",
+            "me.him188.ani.app.ui.media.renderSubtitleLanguage",
+        "me.him188.ani.app.ui.media.rememberMediaDetailsStrings",
+        "me.him188.ani.app.ui.media.webCaptchaRequiredMessage",
+        "me.him188.ani.app.ui.episode.danmaku.renderDanmakuServiceId",
+        "me.him188.ani.app.ui.watchtogether.watchTogetherJoinFailureMessage",
         // v4 (对齐上游 PR#3217) 新增: 侧边栏头像
         "me.him188.ani.app.ui.foundation.avatar.",
         // 时间表状态层复用 (D3: ScheduleViewModel/presentation 数据类; UI composable 仍禁用)

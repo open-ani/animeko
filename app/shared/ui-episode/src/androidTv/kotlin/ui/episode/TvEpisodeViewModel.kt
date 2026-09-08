@@ -95,7 +95,6 @@ import me.him188.ani.app.videoplayer.videoenhancement.VideoEnhancementMode
 import me.him188.ani.app.videoplayer.videoenhancement.createVideoEnhancementController
 import me.him188.ani.danmaku.api.DanmakuEvent
 import me.him188.ani.danmaku.api.DanmakuInfo
-import me.him188.ani.danmaku.api.provider.DanmakuMatchMethod
 import me.him188.ani.danmaku.api.provider.MatchingDanmakuProvider
 import me.him188.ani.danmaku.ui.DanmakuConfig
 import me.him188.ani.danmaku.ui.DanmakuHostState
@@ -225,11 +224,8 @@ class TvEpisodeViewModel(
             val episode = bundle.episodeCollectionInfo.episodeInfo
             TvEpisodeTitle(
                 subjectName = bundle.subjectCollectionInfo.subjectInfo.displayName,
-                episodeLine = buildString {
-                    append("第 ${episode.sort} 集")
-                    val name = episode.nameCn.ifBlank { episode.name }
-                    if (name.isNotBlank()) append("  $name")
-                },
+                episodeSort = episode.sort.toString(),
+                episodeName = episode.nameCn.ifBlank { episode.name },
             )
         }
         .stateIn(backgroundScope, SharingStarted.WhileSubscribed(5_000), TvEpisodeTitle("", ""))
@@ -257,7 +253,7 @@ class TvEpisodeViewModel(
                 val info = collection.episodeInfo
                 TvStripEpisode(
                     episodeId = collection.episodeId,
-                    sortLabel = "第 ${info.sort} 集",
+                    sort = info.sort.toString(),
                     title = info.nameCn.ifBlank { info.name },
                     watched = collection.collectionType == UnifiedCollectionType.DONE,
                     stillUrl = stills[collection.episodeId],
@@ -429,7 +425,7 @@ class TvEpisodeViewModel(
 
     private fun switchEpisode(episodeId: Int) {
         if (playbackAutomationGate.suppressed.value) {
-            showMessage("正在跟随房主，请先在一起看面板关闭跟随")
+            showMessage(TvPlayerMessage.FollowingHost)
             return
         }
         backgroundScope.launch { fetchPlayState.switchEpisode(episodeId) }
@@ -438,7 +434,7 @@ class TvEpisodeViewModel(
     /** 上一集 (-1) / 下一集 (+1); 到列表边界则不动 (媒体键 RW/FF, §8.2 全局键). */
     private fun switchToNeighborEpisode(offset: Int) {
         if (playbackAutomationGate.suppressed.value) {
-            showMessage("正在跟随房主，请先在一起看面板关闭跟随")
+            showMessage(TvPlayerMessage.FollowingHost)
             return
         }
         backgroundScope.launch {
@@ -652,7 +648,7 @@ class TvEpisodeViewModel(
                 val results = provider.fetchDanmakuList(subject, episode)
                 episodeDanmakuLoader.overrideResults(state.providerId ?: return@matchAction, results)
                 events.send(TvEpisodeEvent.DanmakuMatched(state.requestId))
-                showMessage("已更新弹幕匹配")
+                showMessage(TvPlayerMessage.DanmakuMatched)
             }
 
             is TvEpisodeIntent.ToggleDanmakuSource -> playerOptions.value.danmakuOrigins.find { it.serviceId == intent.serviceId }
@@ -708,7 +704,7 @@ class TvEpisodeViewModel(
     }
 
     private var messageJob: Job? = null
-    private fun showMessage(message: String) {
+    private fun showMessage(message: TvPlayerMessage) {
         messageJob?.cancel()
         playerOptions.update { it.copy(message = message) }
         messageJob = backgroundScope.launch {
@@ -723,7 +719,7 @@ class TvEpisodeViewModel(
         } catch (e: CancellationException) {
             throw e
         } catch (_: Exception) {
-            showMessage("操作失败，请重试；账号相关操作请确认已经登录")
+            showMessage(TvPlayerMessage.OperationFailed)
         }
     }
 
@@ -738,7 +734,7 @@ class TvEpisodeViewModel(
 
     private fun canControlPlayback(): Boolean {
         if (!playbackAutomationGate.suppressed.value) return true
-        showMessage("正在跟随房主，请先在一起看面板关闭跟随")
+        showMessage(TvPlayerMessage.FollowingHost)
         return false
     }
 
@@ -771,7 +767,7 @@ class TvEpisodeViewModel(
     private fun searchDanmaku() = matchAction { provider ->
         val query = danmakuMatch.value.query.trim()
         if (query.isBlank()) {
-            danmakuMatch.update { it.copy(error = "请输入番剧名称") }
+            danmakuMatch.update { it.copy(error = TvPlayerError.EmptyDanmakuQuery) }
             return@matchAction
         }
         danmakuMatch.update { it.copy(selectedSubject = null, subjects = emptyList(), episodes = emptyList()) }
@@ -792,7 +788,7 @@ class TvEpisodeViewModel(
             } catch (e: CancellationException) {
                 throw e
             } catch (_: Exception) {
-                danmakuMatch.update { it.copy(error = "加载失败，请重试") }
+                danmakuMatch.update { it.copy(error = TvPlayerError.DanmakuSearchFailed) }
             } finally {
                 danmakuMatch.update { it.copy(loading = false) }
             }
@@ -896,7 +892,7 @@ class TvEpisodeViewModel(
                     TvSourceSelectionState(
                         groups = groups.orEmpty().map { it.copy(isResolvingCaptcha = it.instanceId in resolving) },
                         loading = error == null && (groups == null || groups.any { it.loading }),
-                        error = error?.let { "剧集信息加载失败，请重新查询" },
+                        error = error?.let { TvPlayerError.SourceInfoUnavailable },
                     )
                 }
             }.collect { source -> sourceSelection.value = source }
@@ -919,18 +915,11 @@ class TvEpisodeViewModel(
                 playerOptions.update {
                     it.copy(
                         danmakuOrigins = origins.map { origin ->
-                            val match = when (val method = origin.matchInfo.method) {
-                                is DanmakuMatchMethod.Exact -> "${method.subjectTitle} · ${method.episodeTitle}"
-                                is DanmakuMatchMethod.ExactSubjectFuzzyEpisode -> "${method.subjectTitle} · ${method.episodeTitle}（近似匹配）"
-                                is DanmakuMatchMethod.Fuzzy -> "${method.subjectTitle} · ${method.episodeTitle}（近似匹配）"
-                                is DanmakuMatchMethod.ExactId -> "已匹配当前剧集"
-                                DanmakuMatchMethod.NoMatch -> "没有匹配结果"
-                            }
                             TvDanmakuOrigin(
                                 origin.serviceId,
                                 origin.providerId,
-                                origin.serviceId.value,
-                                "$match · ${origin.matchInfo.count} 条弹幕",
+                                origin.matchInfo.method,
+                                origin.matchInfo.count,
                                 origin.config.enabled,
                                 origin.config.shiftMillis,
                                 episodeDanmakuLoader.getInteractiveDanmakuFetcherOrNull(origin.providerId)?.supportsInteractiveMatching == true,
@@ -1012,7 +1001,7 @@ class TvEpisodeViewModel(
                     .mapIndexed { index, offset -> TvChapter(if (index == 0) "OP" else "ED", offset, length) }
                 (chapters.map {
                     TvChapter(
-                        it.name ?: "章节",
+                        it.name,
                         it.offsetMillis,
                         it.durationMillis,
                     )

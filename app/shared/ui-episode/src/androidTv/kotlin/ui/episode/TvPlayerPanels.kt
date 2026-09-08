@@ -51,6 +51,17 @@ import androidx.tv.material3.Surface
 import androidx.tv.material3.Text
 import me.him188.ani.app.data.models.episode.EpisodeComment
 import me.him188.ani.app.domain.foundation.LoadError
+import me.him188.ani.app.ui.lang.Lang
+import me.him188.ani.app.ui.lang.cache_filter_collection_state
+import me.him188.ani.app.ui.lang.comment_empty_title
+import me.him188.ani.app.ui.lang.comment_load_failed
+import me.him188.ani.app.ui.lang.episode_comments
+import me.him188.ani.app.ui.lang.foundation_empty_content
+import me.him188.ani.app.ui.lang.settings_mediasource_retry
+import me.him188.ani.app.ui.lang.subject_episode_danmaku_list_empty
+import me.him188.ani.app.ui.lang.subject_episode_danmaku_settings_title
+import me.him188.ani.app.ui.lang.video_player_video_enhancement
+import me.him188.ani.app.ui.lang.watch_together_title
 import me.him188.ani.app.ui.search.renderLoadErrorMessage
 import me.him188.ani.danmaku.ui.DanmakuPresentation
 import me.him188.ani.leanback.ui.foundation.focus.TvFocusKey
@@ -62,6 +73,8 @@ import me.him188.ani.leanback.ui.foundation.widgets.LocalTvOptionColors
 import me.him188.ani.leanback.ui.foundation.widgets.TvOptionDefaults
 import me.him188.ani.leanback.ui.foundation.widgets.TvOptionRow
 import me.him188.ani.leanback.ui.foundation.widgets.tvOptionSurfaceColors
+import org.jetbrains.compose.resources.StringResource
+import org.jetbrains.compose.resources.stringResource
 
 /**
  * 浮出面板种类与内容宽度 (atv-architecture.md §8.3 功能药丸).
@@ -69,16 +82,16 @@ import me.him188.ani.leanback.ui.foundation.widgets.tvOptionSurfaceColors
 enum class TvPlayerPanelPresentation { Popup, Sidebar }
 
 enum class TvPlayerPanel(
-    val title: String,
+    val titleResource: StringResource,
     val icon: ImageVector,
     val width: Dp,
     val presentation: TvPlayerPanelPresentation = TvPlayerPanelPresentation.Popup,
 ) {
-    Collection("收藏状态", Icons.Rounded.Bookmark, 248.dp),
-    Comments("评论", Icons.Rounded.Comment, 400.dp, TvPlayerPanelPresentation.Sidebar),
-    DanmakuSettings("弹幕设置", Icons.Rounded.Tune, 400.dp, TvPlayerPanelPresentation.Sidebar),
-    VideoSettings("画质增强", Icons.Rounded.AutoAwesome, 400.dp),
-    Together("一起看", Icons.Rounded.Groups, 360.dp, TvPlayerPanelPresentation.Sidebar),
+    Collection(Lang.cache_filter_collection_state, Icons.Rounded.Bookmark, 248.dp),
+    Comments(Lang.episode_comments, Icons.Rounded.Comment, 400.dp, TvPlayerPanelPresentation.Sidebar),
+    DanmakuSettings(Lang.subject_episode_danmaku_settings_title, Icons.Rounded.Tune, 400.dp, TvPlayerPanelPresentation.Sidebar),
+    VideoSettings(Lang.video_player_video_enhancement, Icons.Rounded.AutoAwesome, 400.dp),
+    Together(Lang.watch_together_title, Icons.Rounded.Groups, 360.dp, TvPlayerPanelPresentation.Sidebar),
 }
 
 /**
@@ -110,7 +123,7 @@ internal fun TvPlayerComments(
         PanelList(
             listModifier, Modifier,
             empty = comments.itemCount == 0,
-            emptyText = "暂无评论",
+            emptyText = stringResource(Lang.comment_empty_title),
             state = listState,
         ) {
             items(comments.itemCount, key = { comments.peek(it)?.stableId ?: "placeholder-$it" }) { index ->
@@ -141,7 +154,7 @@ private fun TvCommentLoading(modifier: Modifier = Modifier) {
 @Composable
 private fun TvCommentLoadError(error: LoadState.Error, modifier: Modifier, onRetry: () -> Unit) {
     TvOptionRow(
-        "加载评论失败", value = "重试", modifier = modifier,
+        stringResource(Lang.comment_load_failed), value = stringResource(Lang.settings_mediasource_retry), modifier = modifier,
         supportingText = renderLoadErrorMessage(LoadError.fromException(error.error)),
         onClick = onRetry,
     )
@@ -193,8 +206,8 @@ internal fun TvDanmakuListDialog(
     }
     if (danmakuList.isEmpty()) {
         TvOptionRow(
-            "还没有弹幕",
-            modifier = Modifier.tvFocusAnchor(focus, entryKey)
+            stringResource(Lang.subject_episode_danmaku_list_empty),
+            modifier = Modifier.testTag("tv-danmaku-list-empty").tvFocusAnchor(focus, entryKey)
                 .tvFocusAnchor(focus, DanmakuListFocus.Empty)
                 .onFocusChanged {
                     if (it.isFocused) {
@@ -229,7 +242,7 @@ private fun PanelList(
     listModifier: Modifier,
     hostModifier: Modifier,
     empty: Boolean,
-    emptyText: String = "暂无内容",
+    emptyText: String = stringResource(Lang.foundation_empty_content),
     reverseLayout: Boolean = false,
     state: LazyListState = rememberLazyListState(),
     content: LazyListScope.() -> Unit,

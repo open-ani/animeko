@@ -20,11 +20,15 @@ import me.him188.ani.datasources.api.topic.UnifiedCollectionType
 import org.openani.mediamp.PlaybackState
 import org.openani.mediamp.features.AspectRatioMode
 
-data class TvEpisodeTitle(val subjectName: String = "", val episodeLine: String = "")
+data class TvEpisodeTitle(
+    val subjectName: String = "",
+    val episodeSort: String = "",
+    val episodeName: String = "",
+)
 
 data class TvStripEpisode(
     val episodeId: Int,
-    val sortLabel: String,
+    val sort: String,
     val title: String,
     val watched: Boolean,
     val stillUrl: String? = null,

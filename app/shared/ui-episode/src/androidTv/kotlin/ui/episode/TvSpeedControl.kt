@@ -51,8 +51,11 @@ import androidx.tv.material3.LocalContentColor
 import androidx.tv.material3.MaterialTheme
 import androidx.tv.material3.Surface
 import androidx.tv.material3.Text
+import me.him188.ani.app.ui.lang.Lang
+import me.him188.ani.app.ui.lang.video_player_speed
 import me.him188.ani.leanback.ui.foundation.widgets.TvOptionDefaults
 import me.him188.ani.leanback.ui.foundation.widgets.tvOptionSurfaceColors
+import org.jetbrains.compose.resources.stringResource
 
 private object TvSpeedControlDefaults {
     val ArrowSize = 40.dp
@@ -70,6 +73,7 @@ internal fun TvSpeedControl(
     onStep: (Int) -> Unit,
     modifier: Modifier = Modifier,
 ) {
+    val speedText = stringResource(Lang.video_player_speed)
     var direction by remember { mutableIntStateOf(0) }
     var pressGeneration by remember { mutableIntStateOf(0) }
     val pulse = remember { Animatable(0f) }
@@ -83,7 +87,7 @@ internal fun TvSpeedControl(
         modifier = modifier.fillMaxWidth()
             .testTag("tv-speed-control")
             .semantics {
-                contentDescription = "播放速度"
+                contentDescription = speedText
                 stateDescription = formatSpeedLabel(speed)
             }
             .onFocusChanged { if (!it.isFocused) direction = 0 }

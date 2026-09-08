@@ -27,14 +27,14 @@ import me.him188.ani.app.data.models.preference.MediaSelectorSettings
 import me.him188.ani.app.domain.media.TestMediaList
 import me.him188.ani.app.domain.media.fetch.MediaSourceFetchResult
 import me.him188.ani.app.domain.media.fetch.MediaSourceFetchState
-import me.him188.ani.app.domain.media.fetch.isCaptchaRequired
 import me.him188.ani.app.domain.media.fetch.MediaSourceResultsFilterer
+import me.him188.ani.app.domain.media.fetch.isCaptchaRequired
 import me.him188.ani.app.domain.media.fetch.isDisabled
 import me.him188.ani.app.domain.media.fetch.isFailedOrAbandoned
 import me.him188.ani.app.domain.media.fetch.isRateLimited
 import me.him188.ani.app.domain.media.fetch.isWorking
 import me.him188.ani.app.domain.mediasource.web.SolveRequest
-import me.him188.ani.app.domain.mediasource.web.displayName
+import me.him188.ani.app.domain.mediasource.web.WebCaptchaKind
 import me.him188.ani.datasources.api.Media
 import me.him188.ani.datasources.api.source.MediaSourceInfo
 import me.him188.ani.datasources.api.source.MediaSourceKind
@@ -42,7 +42,6 @@ import me.him188.ani.datasources.mikan.MikanCNMediaSource
 import me.him188.ani.datasources.mikan.MikanMediaSource
 import me.him188.ani.utils.coroutines.flows.flowOfEmptyList
 import me.him188.ani.utils.platform.annotations.TestOnly
-
 
 /**
  * 单个数据源的搜索结果.
@@ -67,7 +66,7 @@ data class MediaSourceResultPresentation(
     val isRateLimited: Boolean get() = state.isRateLimited
     val rateLimitedUntilMillis: Long? get() = (state as? MediaSourceFetchState.RateLimited)?.retryAt
     val captchaRequest: SolveRequest? get() = (state as? MediaSourceFetchState.CaptchaRequired)?.request
-    val captchaMessage: String? get() = captchaRequest?.kind?.let { "需要处理${it.displayName()}" }
+    val captchaKind: WebCaptchaKind? get() = captchaRequest?.kind
 }
 
 /**

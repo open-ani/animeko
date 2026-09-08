@@ -57,6 +57,20 @@ import androidx.tv.material3.LocalContentColor
 import androidx.tv.material3.MaterialTheme
 import androidx.tv.material3.Text
 import me.him188.ani.app.ui.foundation.avatar.AvatarImage
+import me.him188.ani.app.ui.lang.Lang
+import me.him188.ani.app.ui.lang.subject_episode_default_title
+import me.him188.ani.app.ui.lang.watch_together_chip_following
+import me.him188.ani.app.ui.lang.watch_together_chip_free
+import me.him188.ani.app.ui.lang.watch_together_connection_connected
+import me.him188.ani.app.ui.lang.watch_together_connection_degraded
+import me.him188.ani.app.ui.lang.watch_together_connection_reconnecting
+import me.him188.ani.app.ui.lang.watch_together_episode_label
+import me.him188.ani.app.ui.lang.watch_together_host
+import me.him188.ani.app.ui.lang.watch_together_host_empty_self
+import me.him188.ani.app.ui.lang.watch_together_host_idle
+import me.him188.ani.app.ui.lang.watch_together_members_label
+import me.him188.ani.app.ui.lang.watch_together_you
+import me.him188.ani.app.ui.lang.watch_together_you_are_host
 import me.him188.ani.app.ui.watchtogether.WatchTogetherConnectionPresentation
 import me.him188.ani.app.ui.watchtogether.WatchTogetherMemberPresence
 import me.him188.ani.app.ui.watchtogether.WatchTogetherMemberPresentation
@@ -66,6 +80,7 @@ import me.him188.ani.app.ui.watchtogether.watchTogetherStatusText
 import me.him188.ani.leanback.ui.foundation.formatPlaybackTime
 import me.him188.ani.leanback.ui.foundation.widgets.LocalTvOptionColors
 import me.him188.ani.leanback.ui.foundation.widgets.TvOptionDefaults
+import org.jetbrains.compose.resources.stringResource
 import java.lang.Character.toChars
 
 private object TvTogetherColors {
@@ -74,7 +89,7 @@ private object TvTogetherColors {
 }
 
 @Composable
-internal fun TvTogetherIntro(title: String, description: String, icon: ImageVector) {
+internal fun TvTogetherIntro(title: String, description: String?, icon: ImageVector) {
     val colors = LocalTvOptionColors.current
     Row(
         Modifier.fillMaxWidth().padding(vertical = 12.dp),
@@ -88,7 +103,7 @@ internal fun TvTogetherIntro(title: String, description: String, icon: ImageVect
         }
         Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(8.dp)) {
             Text(title, style = MaterialTheme.typography.titleLarge, color = colors.content)
-            Text(description, style = MaterialTheme.typography.bodyMedium, color = colors.muted)
+            if (description != null) Text(description, style = MaterialTheme.typography.bodyMedium, color = colors.muted)
         }
     }
 }
@@ -98,24 +113,28 @@ internal fun TvTogetherRoomHeader(name: String, connection: WatchTogetherConnect
     val colors = LocalTvOptionColors.current
     val connected = connection == WatchTogetherConnectionPresentation.CONNECTED
     val statusColor = if (connected) TvTogetherColors.Connected else TvTogetherColors.Reconnecting
-    Column(Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+    Row(
+        Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(12.dp),
+    ) {
         Text(
-            name, Modifier.basicMarquee().semantics { heading() }.testTag("tv-together-room-name"),
+            name, Modifier.weight(1f).semantics { heading() }.testTag("tv-together-room-name"),
             style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.SemiBold,
-            color = colors.content, maxLines = 1,
+            color = colors.content, maxLines = 1, overflow = TextOverflow.Ellipsis,
         )
         Row(
-            Modifier.semantics(mergeDescendants = true) { liveRegion = LiveRegionMode.Polite },
+            Modifier.semantics(mergeDescendants = true) { liveRegion = LiveRegionMode.Polite }
+                .testTag("tv-together-connection"),
             verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp),
         ) {
             Icon(if (connected) Icons.Rounded.CheckCircle else Icons.Rounded.Sync, null, Modifier.size(16.dp), tint = statusColor)
             Text(
                 when (connection) {
-                    WatchTogetherConnectionPresentation.CONNECTED -> "已连接"
-                    WatchTogetherConnectionPresentation.RECONNECTING -> "正在重新连接…"
-                    WatchTogetherConnectionPresentation.DEGRADED -> "正在重试实时连接，暂时定时同步"
+                    WatchTogetherConnectionPresentation.CONNECTED -> stringResource(Lang.watch_together_connection_connected)
+                    WatchTogetherConnectionPresentation.RECONNECTING -> stringResource(Lang.watch_together_connection_reconnecting)
+                    WatchTogetherConnectionPresentation.DEGRADED -> stringResource(Lang.watch_together_connection_degraded)
                 },
-                style = MaterialTheme.typography.bodySmall, color = statusColor,
+                style = MaterialTheme.typography.bodySmall, color = statusColor, maxLines = 1,
             )
         }
     }
@@ -150,16 +169,16 @@ internal fun TvTogetherPlaybackCard(playback: WatchTogetherPlaybackPresentation?
     TvTogetherReadSurface(modifier.testTag("tv-together-playback"), LocalTvOptionColors.current.raised) { focused ->
         val contentColor = LocalContentColor.current
         if (isHost && playback != null) {
-            Text("你是房主", style = MaterialTheme.typography.labelMedium, color = contentColor.copy(alpha = .8f))
+            Text(stringResource(Lang.watch_together_you_are_host), style = MaterialTheme.typography.labelMedium, color = contentColor.copy(alpha = .8f))
         }
         if (playback == null) {
             Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 Icon(Icons.Rounded.Tv, null, Modifier.size(20.dp))
-                Text(if (isHost) "你是房主" else "等待房主开始播放", style = MaterialTheme.typography.titleMedium)
+                Text(stringResource(if (isHost) Lang.watch_together_you_are_host else Lang.watch_together_host_idle), style = MaterialTheme.typography.titleMedium)
             }
-            Text(
-                if (isHost) "开始播放后，跟随你的成员将同步观看" else "房主还没有播放，稍等一下吧",
-                style = MaterialTheme.typography.bodyMedium, color = contentColor.copy(alpha = .8f),
+            if (isHost) Text(
+                stringResource(Lang.watch_together_host_empty_self),
+                style = MaterialTheme.typography.bodySmall, color = contentColor.copy(alpha = .8f),
             )
         } else {
             Text(
@@ -167,7 +186,8 @@ internal fun TvTogetherPlaybackCard(playback: WatchTogetherPlaybackPresentation?
                 style = MaterialTheme.typography.titleMedium, maxLines = 1, overflow = TextOverflow.Ellipsis,
             )
             Text(
-                listOf("第 ${playback.episodeSort} 集", playback.episodeName).filter { it.isNotBlank() }.joinToString(" · "),
+                if (playback.episodeName.isBlank()) stringResource(Lang.subject_episode_default_title, playback.episodeSort)
+                else stringResource(Lang.watch_together_episode_label, playback.episodeSort, playback.episodeName),
                 style = MaterialTheme.typography.bodyMedium, color = contentColor.copy(alpha = .8f),
                 maxLines = 1, overflow = TextOverflow.Ellipsis,
             )
@@ -208,7 +228,7 @@ internal fun TvTogetherPlaybackCard(playback: WatchTogetherPlaybackPresentation?
 @Composable
 internal fun TvTogetherMembersHeading(count: Int) {
     Text(
-        "房间成员 · $count", Modifier.padding(start = 12.dp, top = 12.dp, bottom = 4.dp).semantics { heading() },
+        stringResource(Lang.watch_together_members_label, count), Modifier.padding(start = 12.dp, top = 12.dp, bottom = 4.dp).semantics { heading() },
         style = MaterialTheme.typography.titleSmall, color = LocalTvOptionColors.current.muted,
     )
 }
@@ -237,16 +257,16 @@ internal fun TvTogetherMemberRow(member: WatchTogetherMemberPresentation, modifi
             Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(4.dp)) {
                 Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                     Text(
-                        member.nickname + if (member.isSelf) "（我）" else "",
+                        listOfNotNull(member.nickname, stringResource(Lang.watch_together_you).takeIf { member.isSelf }).joinToString(" "),
                         Modifier.weight(1f).then(if (focused) Modifier.basicMarquee() else Modifier),
                         style = MaterialTheme.typography.titleMedium,
                         maxLines = 1, overflow = TextOverflow.Ellipsis,
                     )
                     Text(
                         when {
-                            member.isHost -> "房主"
-                            member.following -> "跟随房主"
-                            else -> "自由观看"
+                            member.isHost -> stringResource(Lang.watch_together_host)
+                            member.following -> stringResource(Lang.watch_together_chip_following)
+                            else -> stringResource(Lang.watch_together_chip_free)
                         },
                         style = MaterialTheme.typography.labelMedium, color = color.copy(alpha = .75f), maxLines = 1,
                     )

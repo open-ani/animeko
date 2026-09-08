@@ -48,12 +48,14 @@ import me.him188.ani.app.domain.player.VideoLoadingState
 import me.him188.ani.app.ui.framework.AniComposeUiTest
 import me.him188.ani.app.ui.framework.runAniComposeUiTest
 import me.him188.ani.app.ui.lang.Lang
+import me.him188.ani.app.ui.lang.media_source_results_failed
 import me.him188.ani.app.ui.lang.subject_episode_video_loading_auto_selecting
 import me.him188.ani.app.ui.lang.subject_episode_video_loading_buffering
 import me.him188.ani.app.ui.lang.subject_episode_video_loading_cause_network_error
 import me.him188.ani.app.ui.lang.subject_episode_video_loading_decoding_data
 import me.him188.ani.app.ui.lang.subject_episode_video_loading_player_error
 import me.him188.ani.app.ui.lang.subject_episode_video_loading_resolving_source
+import me.him188.ani.app.ui.lang.watch_together_leave
 import me.him188.ani.app.ui.lang.watch_together_member_offline
 import me.him188.ani.app.ui.lang.watch_together_state_buffering
 import me.him188.ani.app.ui.watchtogether.WatchTogetherMemberPresence
@@ -151,7 +153,7 @@ class TvPlaybackSemanticsUiTest {
         runOnIdle { group = group.copy(isResolvingCaptcha = false, isCaptchaSupported = false) }
         onNodeWithTag("tv-source-action-captcha").assertIsNotEnabled()
         runOnIdle { group = group.copy(state = MediaSourceFetchState.Failed(IllegalStateException(), 1)) }
-        onNodeWithText("查询失败").assertIsDisplayed()
+        onNodeWithText(playerTestString(Lang.media_source_results_failed)).assertIsDisplayed()
     }
 
     @Test
@@ -164,8 +166,8 @@ class TvPlaybackSemanticsUiTest {
                 loadingState = VideoLoadingState.Succeed(false),
             )
         }
-        onNodeWithText("跟随房主").assertIsDisplayed()
-        onNodeWithText("退出房间").assertIsDisplayed()
+        onNodeWithTag("tv-together-follow").assertIsDisplayed()
+        onNodeWithText(playerTestString(Lang.watch_together_leave)).assertIsDisplayed()
         val buffering = WatchTogetherPlaybackPresentation("番剧", "2", "第二集", 20_000, 60_000, false, true, false)
         runOnIdle {
             together = together.copy(

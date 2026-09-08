@@ -55,8 +55,14 @@ import androidx.tv.material3.Surface
 import androidx.tv.material3.Text
 import me.him188.ani.app.domain.episode.SubjectRecommendation
 import me.him188.ani.app.ui.foundation.AsyncImage
+import me.him188.ani.app.ui.lang.Lang
+import me.him188.ani.app.ui.lang.subject_episode_recommendations_empty
+import me.him188.ani.app.ui.lang.subject_episode_recommendations_loading
+import me.him188.ani.app.ui.lang.subject_episode_related_recommendations
+import me.him188.ani.app.ui.lang.tv_player_collapse_recommendations
 import me.him188.ani.leanback.ui.foundation.focus.TvFocusDefaults
 import me.him188.ani.leanback.ui.foundation.widgets.tvOptionSurfaceColors
+import org.jetbrains.compose.resources.stringResource
 
 /** External/ad recommendations stay visible but have no navigation action on TV. */
 internal val SubjectRecommendation.tvNavigationSubjectId: Int?
@@ -128,9 +134,9 @@ internal fun TvPlayerRecommendationsRow(
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically,
             ) {
-                Text("推荐条目", style = MaterialTheme.typography.titleMedium, color = Color.White)
+                Text(stringResource(Lang.subject_episode_related_recommendations), style = MaterialTheme.typography.titleMedium, color = Color.White)
                 Text(
-                    "按上或返回收起",
+                    stringResource(Lang.tv_player_collapse_recommendations),
                     style = MaterialTheme.typography.labelMedium,
                     color = TvPlayerControlsDefaults.SecondaryContent,
                 )
@@ -156,7 +162,7 @@ internal fun TvPlayerRecommendationsRow(
                         scale = ClickableSurfaceDefaults.scale(focusedScale = 1f),
                     ) {
                         Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                            Text(if (loading) "正在加载推荐…" else "暂无推荐条目")
+                            Text(if (loading) stringResource(Lang.subject_episode_recommendations_loading) else stringResource(Lang.subject_episode_recommendations_empty))
                         }
                     }
                 }

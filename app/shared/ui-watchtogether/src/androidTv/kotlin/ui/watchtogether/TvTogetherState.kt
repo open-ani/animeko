@@ -9,6 +9,8 @@
 
 package me.him188.ani.leanback.ui.watchtogether
 
+import me.him188.ani.app.data.network.WatchTogetherJoinFailure
+import me.him188.ani.app.domain.watchtogether.WatchTogetherRoomEndReason
 import me.him188.ani.app.ui.watchtogether.WatchTogetherConnectionPresentation
 import me.him188.ani.app.ui.watchtogether.WatchTogetherMemberPresentation
 import me.him188.ani.app.ui.watchtogether.WatchTogetherPlaybackPresentation
@@ -24,7 +26,7 @@ data class TvTogetherState(
     val connection: WatchTogetherConnectionPresentation = WatchTogetherConnectionPresentation.CONNECTED,
     val playback: WatchTogetherPlaybackPresentation? = null,
     val members: List<WatchTogetherMemberPresentation> = emptyList(),
-    val error: String? = null,
+    val error: TvTogetherError? = null,
 )
 
 sealed interface TvTogetherIntent {
@@ -39,3 +41,11 @@ sealed interface TvTogetherIntent {
 }
 
 data class TvTogetherNavigation(val subjectId: Int, val episodeId: Int, val replacePlayer: Boolean)
+
+sealed interface TvTogetherError {
+    data object EmptyName : TvTogetherError
+    data object Timeout : TvTogetherError
+    data object RejoinFailed : TvTogetherError
+    data class Join(val failure: WatchTogetherJoinFailure?) : TvTogetherError
+    data class Ended(val reason: WatchTogetherRoomEndReason) : TvTogetherError
+}

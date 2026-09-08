@@ -14,10 +14,13 @@ import androidx.compose.foundation.focusGroup
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.IntrinsicSize
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
@@ -44,10 +47,13 @@ import androidx.compose.ui.input.key.KeyEventType
 import androidx.compose.ui.input.key.key
 import androidx.compose.ui.input.key.onPreviewKeyEvent
 import androidx.compose.ui.input.key.type
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.semantics.selected
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.semantics.stateDescription
+import androidx.compose.ui.text.rememberTextMeasurer
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.tv.material3.ClickableSurfaceDefaults
@@ -55,6 +61,15 @@ import androidx.tv.material3.Icon
 import androidx.tv.material3.MaterialTheme
 import androidx.tv.material3.Surface
 import androidx.tv.material3.Text
+import me.him188.ani.app.ui.lang.Lang
+import me.him188.ani.app.ui.lang.settings_player_default_playback_speed
+import me.him188.ani.app.ui.lang.settings_player_long_press_fast_forward_speed
+import me.him188.ani.app.ui.lang.settings_player_remember_playback_speed
+import me.him188.ani.app.ui.lang.tv_player_adjusting
+import me.him188.ani.app.ui.lang.video_player_no_subtitle_tracks
+import me.him188.ani.app.ui.lang.video_player_off
+import me.him188.ani.app.ui.lang.video_player_performance
+import me.him188.ani.app.ui.lang.video_player_quality
 import me.him188.ani.app.videoplayer.videoenhancement.VideoEnhancementMode
 import me.him188.ani.danmaku.api.DanmakuServiceId
 import me.him188.ani.leanback.ui.foundation.layout.tvPanelScrollEdges
@@ -63,6 +78,7 @@ import me.him188.ani.leanback.ui.foundation.widgets.TvOptionDefaults
 import me.him188.ani.leanback.ui.foundation.widgets.TvOptionDivider
 import me.him188.ani.leanback.ui.foundation.widgets.TvOptionRow
 import me.him188.ani.leanback.ui.foundation.widgets.tvOptionSurfaceColors
+import org.jetbrains.compose.resources.stringResource
 
 internal enum class TvCollectionPrompt { Remove, MarkAllWatched }
 
@@ -111,7 +127,7 @@ internal fun TvSubtitleDialog(
     LazyColumn(state = listState, modifier = Modifier.testTag("tv-subtitle-options")) {
         item {
             TvOptionRow(
-                "关闭字幕",
+                stringResource(Lang.video_player_off),
                 modifier = if (entryId == null) entryModifier else Modifier,
                 selected = options.selectedSubtitleId == null,
             ) { onIntent(TvEpisodeIntent.SelectSubtitle(null)) }
@@ -124,7 +140,7 @@ internal fun TvSubtitleDialog(
             ) { onIntent(TvEpisodeIntent.SelectSubtitle(subtitle.id)) }
         }
         if (options.subtitles.isEmpty()) item {
-            Text("此资源没有可切换的字幕", color = TvOptionDefaults.Muted, modifier = Modifier.padding(16.dp))
+            Text(stringResource(Lang.video_player_no_subtitle_tracks), color = TvOptionDefaults.Muted, modifier = Modifier.padding(16.dp))
         }
     }
 }
@@ -150,6 +166,7 @@ internal fun TvDanmakuAdjustmentRow(
     modifier: Modifier = Modifier,
     onReset: (() -> Unit)? = null,
 ) {
+    val adjustingText = stringResource(Lang.tv_player_adjusting)
     TvOptionRow(
         title,
         value,
@@ -157,7 +174,7 @@ internal fun TvDanmakuAdjustmentRow(
         valueIcon = if (adjusting) null else Icons.AutoMirrored.Rounded.KeyboardArrowRight,
         modifier = modifier
             .onFocusChanged { if (!it.hasFocus && adjusting) onAdjustingChange(false) }
-            .semantics { stateDescription = if (adjusting) "调整中" else "" }
+            .semantics { stateDescription = if (adjusting) adjustingText else "" }
             .then(if (adjusting) Modifier.tvStepKeys(onStep) else Modifier),
     ) {
         if (adjusting) onReset?.invoke()
@@ -259,20 +276,20 @@ internal fun TvSpeedDialog(state: TvEpisodeUiState, onIntent: (TvEpisodeIntent) 
         }
         item {
             TvOptionRow(
-                "记住播放速度",
+                stringResource(Lang.settings_player_remember_playback_speed),
                 checked = config.rememberPlaybackSpeed,
             ) { onIntent(TvEpisodeIntent.ToggleRememberSpeed) }
         }
         if (!config.rememberPlaybackSpeed) item {
             TvOptionRow(
-                "默认速度",
+                stringResource(Lang.settings_player_default_playback_speed),
                 "${config.playbackSpeed}x", adjustable = true,
                 modifier = Modifier.tvStepKeys { onIntent(TvEpisodeIntent.SetDefaultSpeed(config.playbackSpeed + it * .25f)) },
             ) {}
         }
         item {
             TvOptionRow(
-                "长按倍速",
+                stringResource(Lang.settings_player_long_press_fast_forward_speed),
                 "${config.fastForwardSpeed}x", adjustable = true,
                 modifier = Modifier.tvStepKeys { onIntent(TvEpisodeIntent.SetHoldSpeed(config.fastForwardSpeed + it * .25f)) },
             ) {}
@@ -286,34 +303,44 @@ internal fun TvEnhancementSelector(
     entryModifier: Modifier,
     onSelect: (VideoEnhancementMode) -> Unit,
 ) {
+    val labels = mapOf(
+        VideoEnhancementMode.OFF to stringResource(Lang.video_player_off),
+        VideoEnhancementMode.PERFORMANCE to stringResource(Lang.video_player_performance),
+        VideoEnhancementMode.QUALITY to stringResource(Lang.video_player_quality),
+    )
+    val textMeasurer = rememberTextMeasurer()
+    val style = MaterialTheme.typography.labelLarge
+    val paddingAndCheck = with(LocalDensity.current) { 32.dp.toPx() }
+    // Share space by each label's longest word; reserve the check in all modes so selection doesn't resize them.
+    val weights = labels.mapValues { (_, label) ->
+        textMeasurer.measure(label, style, softWrap = false).multiParagraph.minIntrinsicWidth + paddingAndCheck
+    }
     Row(
-        Modifier.fillMaxWidth().background(TvOptionDefaults.Raised, CircleShape).padding(4.dp),
+        Modifier.fillMaxWidth().height(IntrinsicSize.Min).background(TvOptionDefaults.Raised, CircleShape).padding(4.dp),
         horizontalArrangement = Arrangement.spacedBy(4.dp),
     ) {
         VideoEnhancementMode.entries.forEach { mode ->
             Surface(
                 onClick = { onSelect(mode) },
-                modifier = Modifier.weight(1f)
+                modifier = Modifier.weight(weights.getValue(mode)).fillMaxHeight()
                     .then(if (mode == selectedMode) entryModifier else Modifier)
+                    .testTag("tv-enhancement-${mode.name}")
                     .semantics { selected = mode == selectedMode },
                 shape = ClickableSurfaceDefaults.shape(CircleShape),
                 colors = tvOptionSurfaceColors(mode == selectedMode),
                 scale = ClickableSurfaceDefaults.scale(focusedScale = 1f),
             ) {
                 Row(
-                    Modifier.fillMaxWidth().heightIn(min = 44.dp).padding(horizontal = 8.dp, vertical = 10.dp),
+                    Modifier.fillMaxWidth().fillMaxHeight().heightIn(min = 44.dp).padding(horizontal = 8.dp, vertical = 10.dp),
                     horizontalArrangement = Arrangement.Center,
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
-                    if (mode == selectedMode) Icon(Icons.Rounded.Check, "已选择", Modifier.size(16.dp))
+                    if (mode == selectedMode) Icon(Icons.Rounded.Check, null, Modifier.size(16.dp))
                     Text(
-                        when (mode) {
-                            VideoEnhancementMode.OFF -> "原始画质"
-                            VideoEnhancementMode.PERFORMANCE -> "性能优先"
-                            VideoEnhancementMode.QUALITY -> "画质优先"
-                        },
+                        labels.getValue(mode),
+                        modifier = Modifier.weight(1f),
                         style = MaterialTheme.typography.labelLarge,
-                        maxLines = 1,
+                        textAlign = TextAlign.Center,
                     )
                 }
             }

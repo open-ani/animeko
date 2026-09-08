@@ -24,8 +24,17 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.key.Key
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.unit.dp
 import androidx.tv.material3.Text
+import me.him188.ani.app.ui.lang.Lang
+import me.him188.ani.app.ui.lang.episode_danmaku_match_back
+import me.him188.ani.app.ui.lang.episode_danmaku_match_no_results
+import me.him188.ani.app.ui.lang.episode_danmaku_match_retry
+import me.him188.ani.app.ui.lang.episode_danmaku_match_searching
+import me.him188.ani.app.ui.lang.episode_danmaku_match_subject_name
+import me.him188.ani.app.ui.lang.exploration_search
+import me.him188.ani.app.ui.lang.foundation_loading
 import me.him188.ani.leanback.ui.foundation.focus.TvFocusKey
 import me.him188.ani.leanback.ui.foundation.focus.rememberTvFocusScope
 import me.him188.ani.leanback.ui.foundation.focus.requestPrepared
@@ -34,6 +43,7 @@ import me.him188.ani.leanback.ui.foundation.focus.tvFocusHotkey
 import me.him188.ani.leanback.ui.foundation.focus.tvFocusNavSignal
 import me.him188.ani.leanback.ui.foundation.widgets.TvOptionRow
 import me.him188.ani.leanback.ui.foundation.widgets.TvOptionTextField
+import org.jetbrains.compose.resources.stringResource
 
 private enum class MatchFocus : TvFocusKey { Search, Submit, EpisodeEntry }
 private data class MatchSubjectKey(val id: String) : TvFocusKey
@@ -75,14 +85,14 @@ internal fun TvDanmakuMatchPanel(
         if (state.selectedSubject == null) {
             item(key = "query") {
                 TvOptionTextField(
-                    state.query, "番剧名称", { onIntent(TvEpisodeIntent.DanmakuQuery(it)) },
-                    entryModifier.tvFocusAnchor(fields, MatchFocus.Search)
+                    state.query, stringResource(Lang.episode_danmaku_match_subject_name), { onIntent(TvEpisodeIntent.DanmakuQuery(it)) },
+                    entryModifier.testTag("tv-danmaku-match-query").tvFocusAnchor(fields, MatchFocus.Search)
                         .tvFocusHotkey(fields, Key.DirectionDown to MatchFocus.Submit),
                 )
             }
             item(key = "search") {
                 TvOptionRow(
-                    if (state.loading) "正在搜索…" else "搜索",
+                    if (state.loading) stringResource(Lang.episode_danmaku_match_searching) else stringResource(Lang.exploration_search),
                     enabled = !state.loading,
                     modifier = Modifier.tvFocusAnchor(fields, MatchFocus.Submit),
                     icon = Icons.Rounded.Search,
@@ -99,24 +109,24 @@ internal fun TvDanmakuMatchPanel(
                 }
             }
             if (state.searched && !state.loading && state.subjects.isEmpty()) item {
-                Text("没有匹配结果，请修改名称后重试", color = Color.LightGray)
+                Text(stringResource(Lang.episode_danmaku_match_no_results), color = Color.LightGray)
             }
         } else {
             item(key = "back") {
-                TvOptionRow("返回番剧列表", modifier = entryModifier.tvFocusAnchor(fields, MatchFocus.EpisodeEntry)) {
+                TvOptionRow(stringResource(Lang.episode_danmaku_match_back), modifier = entryModifier.testTag("tv-danmaku-match-back").tvFocusAnchor(fields, MatchFocus.EpisodeEntry)) {
                     onIntent(TvEpisodeIntent.BackDanmakuMatch)
                 }
             }
             item(key = "subject") { Text(state.selectedSubject.name, color = Color.White) }
-            if (state.loading) item(key = "loading") { Text("正在加载…", color = Color.LightGray) }
+            if (state.loading) item(key = "loading") { Text(stringResource(Lang.foundation_loading), color = Color.LightGray) }
             items(state.episodes, key = { "episode-${it.id}" }) { episode ->
                 TvOptionRow(episode.name, enabled = !state.loading) { onIntent(TvEpisodeIntent.SelectDanmakuEpisode(episode.id)) }
             }
         }
         state.error?.let { error ->
             item(key = "error") {
-                Text(error, color = Color(0xFFFFC5AA))
-                TvOptionRow("重新搜索") {
+                Text(error.text(), color = Color(0xFFFFC5AA))
+                TvOptionRow(stringResource(Lang.episode_danmaku_match_retry)) {
                     returnSubjectId = null
                     onIntent(TvEpisodeIntent.SearchDanmaku)
                 }

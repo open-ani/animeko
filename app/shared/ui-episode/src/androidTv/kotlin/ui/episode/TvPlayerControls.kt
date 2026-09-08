@@ -65,6 +65,7 @@ import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.selected
 import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.text.rememberTextMeasurer
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
@@ -75,9 +76,23 @@ import androidx.tv.material3.MaterialTheme
 import androidx.tv.material3.Surface
 import androidx.tv.material3.Text
 import kotlinx.coroutines.delay
+import me.him188.ani.app.ui.lang.Lang
+import me.him188.ani.app.ui.lang.tv_player_remote_back
+import me.him188.ani.app.ui.lang.tv_player_remote_confirm
+import me.him188.ani.app.ui.lang.tv_player_seek_jump
+import me.him188.ani.app.ui.lang.tv_player_seek_preview
+import me.him188.ani.app.ui.lang.tv_player_show_recommendations
+import me.him188.ani.app.ui.lang.video_player_cancel
+import me.him188.ani.app.ui.lang.video_player_chapter
+import me.him188.ani.app.ui.lang.video_player_danmaku_off
+import me.him188.ani.app.ui.lang.video_player_danmaku_on
+import me.him188.ani.app.ui.lang.video_player_next_episode
+import me.him188.ani.app.ui.lang.video_player_select_episode
+import me.him188.ani.app.ui.lang.video_player_subtitle
 import me.him188.ani.leanback.ui.foundation.formatPlaybackTime
 import me.him188.ani.leanback.ui.foundation.widgets.TvOptionDefaults
 import me.him188.ani.leanback.ui.foundation.widgets.TvSeekBar
+import org.jetbrains.compose.resources.stringResource
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
@@ -105,6 +120,14 @@ internal object TvPlayerControlsDefaults {
     /** 浅色内容色. */
     val TertiaryContent: Color = Color.White.copy(alpha = 0.32f)
 }
+
+private data class PlayerButtonDimensions(val sidePadding: Dp, val iconSize: Dp, val contentSpacing: Dp) {
+    fun widthWithLabel(labelWidth: Dp): Dp = sidePadding * 2 + iconSize + contentSpacing + labelWidth
+}
+
+// Measurement and rendering share the same dimensions so translated labels cannot drift out of bounds.
+private val capsuleDimensions = PlayerButtonDimensions(14.dp, 18.dp, 8.dp)
+private val labelButtonDimensions = PlayerButtonDimensions(12.dp, 20.dp, 6.dp)
 
 @Composable
 private fun TvPlayerClock(modifier: Modifier = Modifier) {
@@ -206,8 +229,33 @@ internal fun TvPlayerControlsOverlay(
     episodeStrip: (@Composable () -> Unit)? = null,
 ) {
     BoxWithConstraints(modifier.fillMaxSize()) {
-        // Both control rows collapse to icons together as the player narrows.
-        val showButtonLabels = maxWidth >= 760.dp
+        val chipLabels = TvPlayerPanel.entries.associateWith { panel ->
+            when (panel) {
+                TvPlayerPanel.Collection -> options.collectionType.tvLabel()
+                else -> panel.title
+            }
+        }
+        val episodesLabel = stringResource(Lang.video_player_select_episode)
+        val danmakuLabel = stringResource(if (options.danmakuEnabled) Lang.video_player_danmaku_on else Lang.video_player_danmaku_off)
+        val subtitleLabel = stringResource(Lang.video_player_subtitle)
+        val textMeasurer = rememberTextMeasurer(cacheSize = 32)
+        val density = LocalDensity.current
+        val labelStyle = MaterialTheme.typography.labelLarge
+        fun labelWidth(label: String): Dp = with(density) {
+            textMeasurer.measure(label, labelStyle, softWrap = false, maxLines = 1).size.width.toDp()
+        }
+        // Use the translated text and current font scale without subcomposing focusable controls.
+        val chipWidth = chipLabels.values.fold(8.dp) { width, label -> width + capsuleDimensions.widthWithLabel(labelWidth(label)) } +
+            12.dp * (chipLabels.size - 1)
+        val leftWidth = labelButtonDimensions.widthWithLabel(labelWidth(episodesLabel)) +
+            labelButtonDimensions.widthWithLabel(labelWidth(danmakuLabel)) + 8.dp +
+            if (hasNextEpisode) 44.dp + 8.dp else 0.dp
+        val rightLabels = listOfNotNull(speedLabel, subtitleLabel.takeIf { options.supportsSubtitles }, aspectLabel)
+        val rightWidth = labelButtonDimensions.widthWithLabel(labelWidth(sourceLabel).coerceAtMost(96.dp)) +
+            rightLabels.fold(0.dp) { width, label -> width + 4.dp + labelButtonDimensions.widthWithLabel(labelWidth(label)) }
+        val availableWidth = maxWidth - TvPlayerControlsDefaults.HorizontalPadding * 2
+        // Both rows collapse together. Keep enough room to separate the two bottom action groups.
+        val showButtonLabels = chipWidth <= availableWidth && leftWidth + 16.dp + rightWidth <= availableWidth
         val chipOffsets = remember { mutableStateMapOf<TvPlayerPanel, Float>() }
         Column(
             Modifier
@@ -217,7 +265,6 @@ internal fun TvPlayerControlsOverlay(
         ) {
             episodeStrip?.invoke()
             Column(Modifier.padding(horizontal = TvPlayerControlsDefaults.HorizontalPadding)) {
-                val density = LocalDensity.current
                 // Anchor panels to the laid-out chips in either label mode and keep them within the safe edge.
                 if (panelHost != null && activePanel != null) BoxWithConstraints(
                     Modifier
@@ -252,7 +299,7 @@ internal fun TvPlayerControlsOverlay(
                             options.preview?.let {
                                 Image(
                                     it,
-                                    contentDescription = "目标位置画面预览",
+                                    contentDescription = stringResource(Lang.tv_player_seek_preview),
                                     modifier = Modifier.fillMaxSize(),
                                     contentScale = ContentScale.Fit,
                                 )
@@ -271,12 +318,13 @@ internal fun TvPlayerControlsOverlay(
                             )
                             options.chapters.firstOrNull {
                                 scrubMillis in it.offsetMillis..<it.offsetMillis + it.durationMillis
-                            }?.name?.takeIf { it.isNotBlank() }?.let { name ->
-                                Text(name, color = TvOptionDefaults.Muted, style = MaterialTheme.typography.bodySmall)
+                            }?.let { chapter ->
+                                val name = chapter.name ?: stringResource(Lang.video_player_chapter)
+                                if (name.isNotBlank()) Text(name, color = TvOptionDefaults.Muted, style = MaterialTheme.typography.bodySmall)
                             }
                             Row(Modifier.padding(top = 12.dp), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                                TvRemoteHint("确认", "跳转")
-                                TvRemoteHint("返回", "取消")
+                                TvRemoteHint(stringResource(Lang.tv_player_remote_confirm), stringResource(Lang.tv_player_seek_jump))
+                                TvRemoteHint(stringResource(Lang.tv_player_remote_back), stringResource(Lang.video_player_cancel))
                             }
                         }
                     }
@@ -300,11 +348,7 @@ internal fun TvPlayerControlsOverlay(
                             modifier = capsuleAnchor(panel)
                                 .onPlaced { chipOffsets[panel] = it.positionInParent().x }
                                 .testTag("tv-player-chip-${panel.name}"),
-                            label = when (panel) {
-                                TvPlayerPanel.Collection -> options.collectionType.tvLabel()
-                                TvPlayerPanel.VideoSettings -> "画质增强"
-                                else -> panel.title
-                            },
+                            label = chipLabels.getValue(panel),
                             showLabel = showButtonLabels,
                         )
                     }
@@ -380,20 +424,20 @@ internal fun TvPlayerControlsOverlay(
                     ) {
                         if (hasNextEpisode) PlayerIconButton(
                             Icons.Rounded.SkipNext,
-                            label = "下一集",
+                            label = stringResource(Lang.video_player_next_episode),
                             onClick = onNextEpisode,
-                            modifier = nextEpisodeButtonModifier,
+                            modifier = nextEpisodeButtonModifier.testTag("tv-next-episode-button"),
                         )
                         PlayerLabelButton(
                             Icons.Rounded.ViewModule,
-                            "选集",
+                            episodesLabel,
                             onEpisodes,
-                            episodesButtonModifier.then(if (hasNextEpisode) Modifier else nextEpisodeButtonModifier),
+                            episodesButtonModifier.then(if (hasNextEpisode) Modifier else nextEpisodeButtonModifier).testTag("tv-episodes-button"),
                             showLabel = showButtonLabels,
                         )
                         PlayerLabelButton(
                             if (options.danmakuEnabled) Icons.Rounded.Subtitles else Icons.Rounded.SubtitlesOff,
-                            if (options.danmakuEnabled) "弹幕开" else "弹幕关",
+                            danmakuLabel,
                             onToggleDanmaku,
                             Modifier.testTag("tv-danmaku-toggle"),
                             showLabel = showButtonLabels,
@@ -409,7 +453,7 @@ internal fun TvPlayerControlsOverlay(
                             sourceLabel,
                             onClick = onOpenSourceDialog,
                             modifier = sourceButtonModifier.testTag("tv-source-button"),
-                            iconContent = { TvSourceIcon(sourceIconUrl, modifier = Modifier.size(20.dp)) },
+                            iconContent = { TvSourceIcon(sourceIconUrl, modifier = Modifier.size(labelButtonDimensions.iconSize)) },
                             showLabel = showButtonLabels,
                             labelMaxWidth = 96.dp,
                         )
@@ -422,15 +466,16 @@ internal fun TvPlayerControlsOverlay(
                         )
                         if (options.supportsSubtitles) PlayerLabelButton(
                             Icons.Rounded.Subtitles,
-                            "字幕",
+                            subtitleLabel,
                             onSubtitles,
-                            subtitleButtonModifier,
+                            subtitleButtonModifier.testTag("tv-subtitles-button"),
                             showLabel = showButtonLabels,
                         )
                         PlayerLabelButton(
                             Icons.Rounded.AspectRatio,
                             aspectLabel,
                             onClick = onCycleAspect,
+                            modifier = Modifier.testTag("tv-aspect-button"),
                             showLabel = showButtonLabels,
                         )
                     }
@@ -454,7 +499,7 @@ internal fun TvPlayerControlsOverlay(
                 tint = TvPlayerControlsDefaults.TertiaryContent,
             )
             Text(
-                "显示推荐条目",
+                stringResource(Lang.tv_player_show_recommendations),
                 style = MaterialTheme.typography.labelLarge,
                 color = TvPlayerControlsDefaults.TertiaryContent,
             )
@@ -499,11 +544,11 @@ private fun CapsuleChipButton(
         Row(
             Modifier
                 .heightIn(min = 40.dp)
-                .padding(horizontal = 14.dp, vertical = 10.dp),
-            horizontalArrangement = Arrangement.spacedBy(8.dp),
+                .padding(horizontal = capsuleDimensions.sidePadding, vertical = 10.dp),
+            horizontalArrangement = Arrangement.spacedBy(capsuleDimensions.contentSpacing),
             verticalAlignment = Alignment.CenterVertically,
         ) {
-            Icon(panel.icon, contentDescription = null, Modifier.size(18.dp))
+            Icon(panel.icon, contentDescription = null, Modifier.size(capsuleDimensions.iconSize))
             if (showLabel) Text(label, style = MaterialTheme.typography.labelLarge, maxLines = 1)
         }
     }
@@ -554,11 +599,11 @@ private fun PlayerLabelButton(
         Row(
             Modifier
                 .heightIn(min = 44.dp)
-                .padding(horizontal = 12.dp, vertical = 10.dp),
-            horizontalArrangement = Arrangement.spacedBy(6.dp),
+                .padding(horizontal = labelButtonDimensions.sidePadding, vertical = 10.dp),
+            horizontalArrangement = Arrangement.spacedBy(labelButtonDimensions.contentSpacing),
             verticalAlignment = Alignment.CenterVertically,
         ) {
-            if (iconContent != null) iconContent() else Icon(icon, contentDescription = null, Modifier.size(20.dp))
+            if (iconContent != null) iconContent() else Icon(icon, contentDescription = null, Modifier.size(labelButtonDimensions.iconSize))
             if (showLabel) Text(
                 text,
                 modifier = Modifier.widthIn(max = labelMaxWidth),

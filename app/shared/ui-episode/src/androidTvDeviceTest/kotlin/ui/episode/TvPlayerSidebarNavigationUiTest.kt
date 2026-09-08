@@ -33,10 +33,13 @@ import kotlinx.coroutines.flow.emptyFlow
 import me.him188.ani.app.domain.player.VideoLoadingState
 import me.him188.ani.app.ui.framework.AniComposeUiTest
 import me.him188.ani.app.ui.framework.runAniComposeUiTest
+import me.him188.ani.app.ui.lang.Lang
+import me.him188.ani.app.ui.lang.tv_player_adjusting
 import me.him188.ani.danmaku.api.DanmakuContent
 import me.him188.ani.danmaku.api.DanmakuInfo
 import me.him188.ani.danmaku.api.DanmakuLocation
 import me.him188.ani.danmaku.api.DanmakuServiceId
+import me.him188.ani.danmaku.api.provider.DanmakuMatchMethod
 import me.him188.ani.danmaku.api.provider.DanmakuProviderId
 import me.him188.ani.danmaku.ui.DanmakuPresentation
 import me.him188.ani.leanback.ui.foundation.theme.AniTvTheme
@@ -69,12 +72,12 @@ class TvPlayerSidebarNavigationUiTest {
         val fixture = Fixture()
         showPlayer(fixture)
         openPanel(TvPlayerPanel.DanmakuSettings)
-        onNodeWithText("字号").assertIsFocused()
+        onNodeWithTag("tv-danmaku-property-FontSize").assertIsFocused()
         runOnIdle { fixture.backDispatcher.onBackPressed() }
         assertPanelClosed(TvPlayerPanel.DanmakuSettings)
 
         key(Key.DirectionCenter)
-        onNodeWithText("字号").assertIsFocused()
+        onNodeWithTag("tv-danmaku-property-FontSize").assertIsFocused()
         key(Key.DirectionLeft)
         assertPanelClosed(TvPlayerPanel.DanmakuSettings)
         assertTrue(fixture.intents.none { it is TvEpisodeIntent.AdjustDanmaku })
@@ -87,8 +90,8 @@ class TvPlayerSidebarNavigationUiTest {
         showPlayer(fixture)
         openPanel(TvPlayerPanel.DanmakuSettings)
         key(Key.DirectionCenter)
-        onNodeWithText("字号").assertIsFocused()
-            .assert(SemanticsMatcher.expectValue(SemanticsProperties.StateDescription, "调整中"))
+        onNodeWithTag("tv-danmaku-property-FontSize").assertIsFocused()
+            .assert(SemanticsMatcher.expectValue(SemanticsProperties.StateDescription, playerTestString(Lang.tv_player_adjusting)))
         key(Key.DirectionLeft)
         key(Key.DirectionRight)
         assertEquals(
@@ -96,7 +99,7 @@ class TvPlayerSidebarNavigationUiTest {
             fixture.intents.filterIsInstance<TvEpisodeIntent.AdjustDanmaku>().map { it.direction },
         )
         runOnIdle { fixture.backDispatcher.onBackPressed() }
-        onNodeWithText("字号").assertIsFocused()
+        onNodeWithTag("tv-danmaku-property-FontSize").assertIsFocused()
             .assert(SemanticsMatcher.expectValue(SemanticsProperties.StateDescription, ""))
         key(Key.DirectionLeft)
         assertPanelClosed(TvPlayerPanel.DanmakuSettings)
@@ -106,13 +109,13 @@ class TvPlayerSidebarNavigationUiTest {
     @Test
     fun timingAdjustmentStillAppliesImmediatelyAndCanReset() = runAniComposeUiTest {
         val origin = TvDanmakuOrigin(
-            DanmakuServiceId("test"), DanmakuProviderId("test"), "测试来源", "已匹配", true, 0, false,
+            DanmakuServiceId("test"), DanmakuProviderId("test"), DanmakuMatchMethod.NoMatch, 0, true, 0, false,
         )
         val fixture = Fixture(options = TvPlayerOptionsState(danmakuOrigins = listOf(origin)))
         showPlayer(fixture)
         openPanel(TvPlayerPanel.DanmakuSettings)
         repeat(TvDanmakuProperty.entries.size + 1) { key(Key.DirectionDown) }
-        onNodeWithText("时间校准").assertIsFocused()
+        onNodeWithTag("tv-danmaku-timing-test").assertIsFocused()
         key(Key.DirectionCenter)
         key(Key.DirectionLeft)
         key(Key.DirectionRight)
@@ -121,7 +124,7 @@ class TvPlayerSidebarNavigationUiTest {
             listOf(-500L, 500L, null),
             fixture.intents.filterIsInstance<TvEpisodeIntent.ShiftDanmakuSource>().map { it.deltaMillis },
         )
-        onNodeWithText("时间校准").assertIsFocused()
+        onNodeWithTag("tv-danmaku-timing-test").assertIsFocused()
         key(Key.DirectionLeft)
         assertPanelClosed(TvPlayerPanel.DanmakuSettings)
         assertTrue(fixture.commands.isEmpty())
@@ -153,9 +156,9 @@ class TvPlayerSidebarNavigationUiTest {
         repeat(TvDanmakuProperty.entries.size) { key(Key.DirectionDown) }
         onNodeWithTag("tv-danmaku-list-button").assertIsFocused()
         key(Key.DirectionCenter)
-        onNodeWithText("还没有弹幕").assertIsFocused()
+        onNodeWithTag("tv-danmaku-list-empty").assertIsFocused()
         key(Key.DirectionLeft)
-        onNodeWithText("还没有弹幕").assertIsFocused()
+        onNodeWithTag("tv-danmaku-list-empty").assertIsFocused()
         runOnIdle { fixture.backDispatcher.onBackPressed() }
         onNodeWithTag("tv-danmaku-list-button").assertIsFocused()
         key(Key.DirectionLeft)
@@ -208,7 +211,7 @@ class TvPlayerSidebarNavigationUiTest {
         runOnIdle { fixture.panel = fixture.panel.copy(danmaku = listOf(danmaku(3), danmaku(1))) }
         onNodeWithText("弹幕 1").assertIsFocused()
         runOnIdle { fixture.panel = fixture.panel.copy(danmaku = emptyList()) }
-        onNodeWithText("还没有弹幕").assertIsFocused()
+        onNodeWithTag("tv-danmaku-list-empty").assertIsFocused()
         runOnIdle { fixture.panel = fixture.panel.copy(danmaku = listOf(danmaku(5), danmaku(4))) }
         onNodeWithText("弹幕 5").assertIsFocused()
         runOnIdle { fixture.panel = fixture.panel.copy(danmaku = listOf(danmaku(7), danmaku(6))) }
@@ -221,7 +224,7 @@ class TvPlayerSidebarNavigationUiTest {
         val fixture = Fixture()
         showPlayer(fixture)
         openDanmakuList()
-        onNodeWithText("还没有弹幕").assertIsFocused()
+        onNodeWithTag("tv-danmaku-list-empty").assertIsFocused()
         runOnIdle { fixture.panel = fixture.panel.copy(danmaku = listOf(danmaku(1))) }
         onNodeWithText("弹幕 1").assertIsFocused()
         runOnIdle { fixture.backDispatcher.onBackPressed() }
@@ -257,11 +260,11 @@ class TvPlayerSidebarNavigationUiTest {
         val fixture = Fixture()
         showPlayer(fixture)
         openPanel(TvPlayerPanel.Together)
-        onNodeWithText("登录账号").assertIsFocused()
+        onNodeWithTag("tv-together-login").assertIsFocused()
         key(Key.DirectionLeft)
         assertPanelClosed(TvPlayerPanel.Together)
         key(Key.DirectionCenter)
-        onNodeWithText("登录账号").assertIsFocused()
+        onNodeWithTag("tv-together-login").assertIsFocused()
         runOnIdle { fixture.backDispatcher.onBackPressed() }
         assertPanelClosed(TvPlayerPanel.Together)
         assertTrue(fixture.intents.none { it == TvEpisodeIntent.OpenLogin })
@@ -275,13 +278,13 @@ class TvPlayerSidebarNavigationUiTest {
         openPanel(TvPlayerPanel.Together)
         onNodeWithTag("tv-together-playback").assertIsFocused()
         key(Key.DirectionDown)
-        onNodeWithText("解散房间").assertIsFocused()
+        onNodeWithTag("tv-together-leave").assertIsFocused()
         key(Key.DirectionCenter)
-        onNodeWithText("留在房间").assertIsFocused()
+        onNodeWithTag("tv-together-stay").assertIsFocused()
         key(Key.DirectionLeft)
-        onNodeWithText("留在房间").assertIsFocused()
+        onNodeWithTag("tv-together-stay").assertIsFocused()
         runOnIdle { fixture.backDispatcher.onBackPressed() }
-        onNodeWithText("解散房间").assertIsFocused()
+        onNodeWithTag("tv-together-leave").assertIsFocused()
         key(Key.DirectionLeft)
         assertPanelClosed(TvPlayerPanel.Together)
         assertTrue(fixture.togetherIntents.none { it == TvTogetherIntent.Leave })
@@ -295,7 +298,7 @@ class TvPlayerSidebarNavigationUiTest {
         openPanel(TvPlayerPanel.Together)
         key(Key.DirectionDown)
         key(Key.DirectionDown)
-        onNodeWithText("取消加入").assertIsFocused()
+        onNodeWithTag("tv-together-submit").assertIsFocused()
         runOnIdle { fixture.backDispatcher.onBackPressed() }
         assertPanelClosed(TvPlayerPanel.Together)
         assertEquals(1, fixture.togetherIntents.count { it == TvTogetherIntent.CancelJoin })

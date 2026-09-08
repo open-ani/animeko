@@ -41,22 +41,41 @@ import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.onRoot
 import androidx.compose.ui.test.performImeAction
 import androidx.compose.ui.test.performKeyInput
+import androidx.compose.ui.test.performSemanticsAction
 import androidx.compose.ui.test.performTextInput
 import androidx.compose.ui.test.pressKey
+import androidx.compose.ui.text.TextLayoutResult
 import androidx.compose.ui.unit.Density
 import androidx.test.platform.app.InstrumentationRegistry
 import kotlinx.coroutines.flow.emptyFlow
+import me.him188.ani.app.data.network.WatchTogetherJoinFailure
 import me.him188.ani.app.domain.player.VideoLoadingState
 import me.him188.ani.app.ui.framework.AniComposeUiTest
 import me.him188.ani.app.ui.framework.runAniComposeUiTest
+import me.him188.ani.app.ui.lang.Lang
+import me.him188.ani.app.ui.lang.watch_together_cancel
+import me.him188.ani.app.ui.lang.watch_together_confirm_disband
+import me.him188.ani.app.ui.lang.watch_together_connection_degraded
+import me.him188.ani.app.ui.lang.watch_together_connection_reconnecting
+import me.him188.ani.app.ui.lang.watch_together_error_wrong_password
+import me.him188.ani.app.ui.lang.watch_together_follow_host_desc
+import me.him188.ani.app.ui.lang.watch_together_host_desc
+import me.him188.ani.app.ui.lang.watch_together_host_idle
+import me.him188.ani.app.ui.lang.watch_together_join
+import me.him188.ani.app.ui.lang.watch_together_join_failed
+import me.him188.ani.app.ui.lang.watch_together_join_subtitle
+import me.him188.ani.app.ui.lang.watch_together_login_description
+import me.him188.ani.app.ui.lang.watch_together_login_required
 import me.him188.ani.app.ui.watchtogether.WatchTogetherConnectionPresentation
 import me.him188.ani.app.ui.watchtogether.WatchTogetherMemberPresence
 import me.him188.ani.app.ui.watchtogether.WatchTogetherMemberPresentation
 import me.him188.ani.app.ui.watchtogether.WatchTogetherPlaybackPresentation
 import me.him188.ani.leanback.ui.foundation.theme.AniTvTheme
+import me.him188.ani.leanback.ui.watchtogether.TvTogetherError
 import me.him188.ani.leanback.ui.watchtogether.TvTogetherIntent
 import me.him188.ani.leanback.ui.watchtogether.TvTogetherState
 import java.io.File
+import kotlin.math.abs
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertTrue
@@ -89,6 +108,7 @@ class TvPlayerTogetherUiTest {
         val fixture = Fixture(TvTogetherState())
         showPlayer(fixture)
         openTogether()
+        onNodeWithText(playerTestString(Lang.watch_together_join_subtitle)).assertIsDisplayed()
         onNodeWithTag("tv-together-name").assertIsFocused().performTextInput("周末放映室")
         key(Key.DirectionDown)
         onNodeWithTag("tv-together-password").assertIsFocused().performTextInput("animeko")
@@ -99,13 +119,15 @@ class TvPlayerTogetherUiTest {
         assertEquals("animeko", fixture.together.password)
         saveScreenshot("join")
         key(Key.DirectionCenter)
-        onNodeWithTag("tv-together-submit").assertIsFocused().assertTextContains("取消加入")
+        onNodeWithTag("tv-together-submit").assertIsFocused().assertTextContains(playerTestString(Lang.watch_together_cancel))
         saveScreenshot("joining")
         key(Key.DirectionCenter)
         assertEquals(1, fixture.intents.count { it == TvTogetherIntent.CancelJoin })
-        runOnIdle { fixture.together = fixture.together.copy(error = "房间密码不正确") }
-        onNodeWithTag("tv-together-error").assertIsDisplayed()
-        onNodeWithTag("tv-together-submit").assertIsFocused().assertTextContains("重新加入")
+        runOnIdle { fixture.together = fixture.together.copy(error = TvTogetherError.Join(WatchTogetherJoinFailure.WRONG_PASSWORD)) }
+        onNodeWithTag("tv-together-error").assertIsDisplayed().assertTextContains(
+            playerTestString(Lang.watch_together_join_failed, playerTestString(Lang.watch_together_error_wrong_password)),
+        )
+        onNodeWithTag("tv-together-submit").assertIsFocused().assertTextContains(playerTestString(Lang.watch_together_join))
         saveScreenshot("join-error")
         key(Key.DirectionUp)
         onNodeWithTag("tv-together-password").assertIsFocused()
@@ -120,6 +142,7 @@ class TvPlayerTogetherUiTest {
         showPlayer(fixture)
         openTogether()
         onNodeWithTag("tv-together-follow").assertIsFocused()
+            .assertTextContains(playerTestString(Lang.watch_together_follow_host_desc))
             .assert(SemanticsMatcher.expectValue(SemanticsProperties.Role, Role.Switch))
             .assert(SemanticsMatcher.expectValue(SemanticsProperties.ToggleableState, ToggleableState.On))
         onNodeWithTag("tv-together-leave").assertIsDisplayed()
@@ -127,6 +150,7 @@ class TvPlayerTogetherUiTest {
         key(Key.DirectionCenter)
         assertEquals(false, fixture.together.following)
         onNodeWithTag("tv-together-follow")
+            .assertTextContains(playerTestString(Lang.watch_together_follow_host_desc))
             .assert(SemanticsMatcher.expectValue(SemanticsProperties.ToggleableState, ToggleableState.Off))
         key(Key.DirectionUp)
         onNodeWithTag("tv-together-playback").assertIsFocused()
@@ -192,7 +216,7 @@ class TvPlayerTogetherUiTest {
         }
         onNodeWithTag("tv-together-playback-loading", useUnmergedTree = true).assertIsDisplayed()
         onNodeWithTag("tv-together-progress", useUnmergedTree = true).assertIsDisplayed()
-        onNodeWithText("正在重新连接…").assertIsDisplayed()
+        onNodeWithText(playerTestString(Lang.watch_together_connection_reconnecting)).assertIsDisplayed()
         runOnIdle {
             fixture.together = fixture.together.copy(
                 playback = null,
@@ -200,8 +224,17 @@ class TvPlayerTogetherUiTest {
                 connection = WatchTogetherConnectionPresentation.DEGRADED,
             )
         }
-        onNodeWithTag("tv-together-playback").assertTextContains("房主还没有播放，稍等一下吧")
-        onNodeWithText("正在重试实时连接，暂时定时同步").assertIsDisplayed()
+        onNodeWithTag("tv-together-playback").assertTextContains(playerTestString(Lang.watch_together_host_idle))
+        onNodeWithText(playerTestString(Lang.watch_together_connection_degraded)).assertIsDisplayed()
+        val name = onNodeWithTag("tv-together-room-name")
+        val layouts = mutableListOf<TextLayoutResult>()
+        name.performSemanticsAction(SemanticsActions.GetTextLayoutResult) { it(layouts) }
+        assertEquals(1, layouts.single().lineCount)
+        assertTrue(layouts.single().isLineEllipsized(0), "Long room names must leave room for connection status")
+        val nameBounds = name.fetchSemanticsNode().boundsInRoot
+        val statusBounds = onNodeWithTag("tv-together-connection").fetchSemanticsNode().boundsInRoot
+        assertTrue(nameBounds.right < statusBounds.left, "Room name must not overlap connection status")
+        assertTrue(abs(nameBounds.center.y - statusBounds.center.y) < 1f, "Room name and status must share a row")
         onNodeWithTag("tv-together-follow").assertIsFocused()
         saveScreenshot("room-idle-reconnecting")
     }
@@ -211,13 +244,19 @@ class TvPlayerTogetherUiTest {
         val fixture = Fixture(room().copy(isHost = true, members = emptyList()))
         showPlayer(fixture)
         openTogether()
-        onNodeWithTag("tv-together-playback").assertIsFocused()
+        val playbackCard = onNodeWithTag("tv-together-playback").assertIsFocused()
+        val hostHint = onNodeWithText(playerTestString(Lang.watch_together_host_desc)).assertIsDisplayed()
+            .assert(SemanticsMatcher.keyNotDefined(SemanticsProperties.Focused))
+        assertTrue(
+            hostHint.fetchSemanticsNode().boundsInRoot.top > playbackCard.fetchSemanticsNode().boundsInRoot.bottom,
+            "Host explanation must sit below the playback card",
+        )
         saveScreenshot("host")
         key(Key.DirectionDown)
         onNodeWithTag("tv-together-leave").assertIsFocused()
         key(Key.DirectionCenter)
-        onNodeWithTag("tv-together-stay").assertIsFocused()
-        onNodeWithText("解散后，所有成员都会离开房间。").assertIsDisplayed()
+        onNodeWithTag("tv-together-stay").assertIsFocused().assertTextContains(playerTestString(Lang.watch_together_cancel))
+        onNodeWithText(playerTestString(Lang.watch_together_confirm_disband)).assertIsDisplayed()
         saveScreenshot("confirm-disband")
         key(Key.DirectionCenter)
         onNodeWithTag("tv-together-leave").assertIsFocused()
@@ -238,7 +277,9 @@ class TvPlayerTogetherUiTest {
         val fixture = Fixture(TvTogetherState(requiresLogin = true))
         showPlayer(fixture)
         openTogether()
-        onNodeWithText("登录账号").assertIsFocused()
+        onNodeWithTag("tv-together-login").assertIsFocused()
+        onNodeWithText(playerTestString(Lang.watch_together_login_required)).assertIsDisplayed()
+        onNodeWithText(playerTestString(Lang.watch_together_login_description)).assertIsDisplayed()
         saveScreenshot("login")
         key(Key.DirectionCenter)
         assertEquals(1, fixture.logins)
@@ -259,7 +300,7 @@ class TvPlayerTogetherUiTest {
         assertTrue(fixture.intents.none { it == TvTogetherIntent.Join })
         key(Key.DirectionCenter)
         assertEquals(1, fixture.intents.count { it == TvTogetherIntent.Join })
-        onNodeWithTag("tv-together-submit").assertIsFocused().assertTextContains("取消加入")
+        onNodeWithTag("tv-together-submit").assertIsFocused().assertTextContains(playerTestString(Lang.watch_together_cancel))
     }
 
     @Test
@@ -294,7 +335,7 @@ class TvPlayerTogetherUiTest {
                     SideEffect { fixture.back = dispatcher }
                     TvEpisodeScreen(
                         uiState = TvEpisodeUiState(
-                            title = TvEpisodeTitle("葬送的芙莉莲", "第 5 集 · 死者的幻影"),
+                            title = TvEpisodeTitle("葬送的芙莉莲", "5", "死者的幻影"),
                             loadingState = VideoLoadingState.Succeed(false),
                             positionMillis = 620_000, durationMillis = 1_440_000,
                         ),

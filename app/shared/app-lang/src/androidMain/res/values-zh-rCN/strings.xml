@@ -1517,6 +1517,13 @@
     <string name="image_viewer_copied">图片已复制</string>
     <string name="image_viewer_copy_failed">复制图片失败</string>
     <string name="image_viewer_close">关闭</string>
+    <!-- Shared playback captcha messages -->
+    <string name="media_captcha_required_message">需要处理%1$s</string>
+    <string name="media_captcha_image">图片验证码</string>
+    <string name="media_captcha_cloudflare">Cloudflare 验证</string>
+    <string name="media_captcha_turnstile">Cloudflare Turnstile 验证</string>
+    <string name="media_captcha_slider">滑动验证</string>
+    <string name="media_captcha_unknown">验证码</string>
 </resources>
 
 <!--@formatter:on-->

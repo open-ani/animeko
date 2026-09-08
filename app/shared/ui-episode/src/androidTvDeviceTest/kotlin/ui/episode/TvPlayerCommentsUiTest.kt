@@ -62,6 +62,12 @@ import me.him188.ani.app.domain.player.VideoLoadingState
 import me.him188.ani.app.ui.foundation.LocalSketch
 import me.him188.ani.app.ui.framework.AniComposeUiTest
 import me.him188.ani.app.ui.framework.runAniComposeUiTest
+import me.him188.ani.app.ui.lang.Lang
+import me.him188.ani.app.ui.lang.comment_empty_title
+import me.him188.ani.app.ui.lang.comment_preview_image
+import me.him188.ani.app.ui.lang.comment_preview_quote
+import me.him188.ani.app.ui.lang.tv_player_scroll_hide_hint
+import me.him188.ani.app.ui.lang.tv_player_scroll_reveal_hint
 import me.him188.ani.leanback.ui.foundation.theme.AniTvTheme
 import me.him188.ani.leanback.ui.watchtogether.TvTogetherState
 import java.io.File
@@ -107,7 +113,7 @@ class TvPlayerCommentsUiTest {
 
         runOnIdle { loaded.complete(Unit) }
         key(Key.DirectionCenter)
-        waitUntil(timeoutMillis = 5_000) { onAllNodesWithText("暂无评论").fetchSemanticsNodes().isNotEmpty() }
+        waitUntil(timeoutMillis = 5_000) { onAllNodesWithText(playerTestString(Lang.comment_empty_title)).fetchSemanticsNodes().isNotEmpty() }
         onNodeWithTag("tv-player-sidebar").assert(SemanticsMatcher.keyNotDefined(SemanticsProperties.Focused))
         onNodeWithTag("tv-sidebar-back").assertDoesNotExist()
         saveScreenshot("comments-empty-without-back-button")
@@ -142,7 +148,7 @@ class TvPlayerCommentsUiTest {
         key(Key.DirectionRight)
         key(Key.DirectionCenter)
         waitUntil(timeoutMillis = 5_000) { onAllNodes(hasTestTag("tv-comments-retry")).fetchSemanticsNodes().isNotEmpty() }
-        onNodeWithText("暂无评论").assertDoesNotExist()
+        onNodeWithText(playerTestString(Lang.comment_empty_title)).assertDoesNotExist()
         onNodeWithTag("tv-comments-retry").assertIsFocused()
         saveScreenshot("comments-refresh-error")
         key(Key.DirectionCenter)
@@ -216,13 +222,13 @@ class TvPlayerCommentsUiTest {
         assertEquals(mask.item.color, mask.item.background)
         assertEquals(18.sp, mask.item.fontSize)
         key(Key.DirectionCenter)
-        onNodeWithText("↑↓ 滚动 · 按确定收起隐藏内容").assertIsDisplayed()
+        onNodeWithText(playerTestString(Lang.tv_player_scroll_hide_hint)).assertIsDisplayed()
         val revealed = textLayout("引用中的").layoutInput.text
         val unmasked = revealed.spanStyles.single { it.start == mask.start && it.end == mask.end }
         assertTrue(unmasked.item.color != unmasked.item.background)
         saveScreenshot("comments-rich-detail")
         key(Key.DirectionCenter)
-        onNodeWithText("↑↓ 滚动 · 按确定显示隐藏内容").assertIsDisplayed()
+        onNodeWithText(playerTestString(Lang.tv_player_scroll_reveal_hint)).assertIsDisplayed()
 
         val reader = onNodeWithTag("tv-comment-full-text")
         val before = reader.fetchSemanticsNode().config[SemanticsProperties.VerticalScrollAxisRange].value()
@@ -244,8 +250,8 @@ class TvPlayerCommentsUiTest {
         openComments()
         waitForText("开头")
         val preview = textLayout("开头").layoutInput.text
-        assertTrue(preview.text.contains("[引用]"))
-        assertTrue(preview.text.contains("[图片]"))
+        assertTrue(preview.text.contains(playerTestString(Lang.comment_preview_quote)))
+        assertTrue(preview.text.contains(playerTestString(Lang.comment_preview_image)))
         assertFalse(preview.text.contains("引用中的剧透"))
         assertFalse(preview.text.contains("file:"))
         val mask = preview.spanStyles.last { it.item.background != Color.Unspecified }
@@ -267,7 +273,7 @@ class TvPlayerCommentsUiTest {
                     SideEffect { fixture.backDispatcher = dispatcher }
                     TvEpisodeScreen(
                         uiState = TvEpisodeUiState(
-                            title = TvEpisodeTitle("测试番剧", "第 1 集"),
+                            title = TvEpisodeTitle("测试番剧", "1"),
                             loadingState = VideoLoadingState.Succeed(false),
                             positionMillis = 20_000,
                             durationMillis = 60_000,

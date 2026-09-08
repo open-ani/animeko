@@ -13,7 +13,6 @@ import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.flowOf
 import me.him188.ani.app.domain.media.fetch.MediaFetchSession
-import me.him188.ani.app.domain.media.selector.MediaExclusionReason
 import me.him188.ani.app.domain.media.selector.MediaSelector
 import me.him188.ani.app.domain.media.selector.UnsafeOriginalMediaAccess
 import me.him188.ani.datasources.api.source.MediaSourceKind
@@ -30,7 +29,7 @@ internal fun tvSourceGroups(
         sources.map { source ->
             combine(source.state, selector.filteredCandidates) { state, candidates ->
                 val items = candidates.filter { it.original.mediaSourceId == source.mediaSourceId }
-                    .map { TvSourceItem(it.original, it.exclusionReason?.tvDescription()) }
+                    .map { TvSourceItem(it.original, it.exclusionReason) }
                 TvSourceGroup(
                     instanceId = source.instanceId,
                     sourceId = source.mediaSourceId,
@@ -43,13 +42,4 @@ internal fun tvSourceGroups(
             }
         },
     ) { it.toList() }
-}
-
-private fun MediaExclusionReason.tvDescription(): String = when (this) {
-    is MediaExclusionReason.SingleEpisodeForCompleteSubject -> "已完结条目的单集资源"
-    MediaExclusionReason.MediaWithoutSubtitle -> "没有字幕"
-    MediaExclusionReason.UnsupportedByPlatformPlayer -> "播放器可能不支持"
-    MediaExclusionReason.FromSequelSeason -> "可能属于续作"
-    MediaExclusionReason.FromSeriesSeason -> "可能属于其他季度"
-    MediaExclusionReason.SubjectNameMismatch -> "条目名称不匹配"
 }

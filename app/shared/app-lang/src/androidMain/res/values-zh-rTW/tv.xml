@@ -1,0 +1,109 @@
+<!--
+  ~ Copyright (C) 2024-2026 OpenAni and contributors.
+  ~
+  ~ 此源代码的使用受 GNU AFFERO GENERAL PUBLIC LICENSE version 3 许可证的约束, 可以在以下链接找到该许可证.
+  ~ Use of this source code is governed by the GNU AGPLv3 license, which can be found at the following link.
+  ~
+  ~ https://github.com/open-ani/ani/blob/main/LICENSE
+  -->
+
+<!--@formatter:off-->
+
+<resources xmlns:xliff="urn:oasis:names:tc:xliff:document:1.2">
+    <!-- Remote control -->
+    <string name="tv_player_seek_preview">目標位置畫面預覽</string>
+    <string name="tv_player_remote_confirm">確認</string>
+    <string name="tv_player_remote_back">返回</string>
+    <string name="tv_player_seek_jump">跳轉</string>
+    <string name="tv_player_show_recommendations">顯示推薦條目</string>
+    <string name="tv_player_collapse_recommendations">按上或返回收起</string>
+    <string name="tv_player_scroll_hint">↑↓ 捲動</string>
+    <string name="tv_player_scroll_reveal_hint">↑↓ 捲動 · 按確定顯示隱藏內容</string>
+    <string name="tv_player_scroll_hide_hint">↑↓ 捲動 · 按確定收起隱藏內容</string>
+    <string name="tv_player_adjusting">調整中</string>
+    <string name="tv_player_following_host_hint">正在跟隨房主，請先在%1$s面板關閉跟隨</string>
+
+    <!-- Playback -->
+    <string name="video_player_danmaku_on">彈幕開</string>
+    <string name="video_player_danmaku_off">彈幕關</string>
+    <string name="video_player_retry">重試播放</string>
+    <string name="video_player_select_another_source">選擇其他資料來源</string>
+    <string name="video_player_fast_forwarding">%1$s 快進中 ▶▶</string>
+    <string name="video_player_no_subtitle_tracks">此資源沒有可切換的字幕</string>
+    <string name="video_player_operation_failed">操作失敗，請重試；帳號相關操作請確認已經登入</string>
+    <string name="video_player_chapter">章節</string>
+    <plurals name="video_player_skip_countdown">
+        <item quantity="one">%1$d 秒後跳過 %2$s</item>
+        <item quantity="other">%1$d 秒後跳過 %2$s</item>
+    </plurals>
+
+    <!-- Episodes and collection -->
+    <string name="subject_episode_actions">劇集操作</string>
+    <string name="subject_episode_play_label">播放 %1$s</string>
+    <string name="subject_collection_remove_confirm_short">確定取消收藏？</string>
+    <string name="subject_collection_keep">保留收藏</string>
+    <string name="subject_collection_change_only">僅修改收藏狀態</string>
+    <string name="subject_collection_mark_all_watched_action">將全部劇集標為已看</string>
+
+    <!-- Recommendations -->
+    <string name="subject_episode_recommendations_loading">正在載入推薦…</string>
+    <string name="subject_episode_recommendations_empty">暫無推薦條目</string>
+
+    <!-- Empty states -->
+    <string name="foundation_empty_content">暫無內容</string>
+    <string name="foundation_loading">正在載入…</string>
+    <string name="foundation_anonymous">匿名</string>
+
+    <!-- Comments -->
+    <string name="comment_read_full">查看全文</string>
+    <string name="comment_full">評論全文</string>
+    <string name="comment_load_failed">載入評論失敗</string>
+    <string name="comment_show_hidden">顯示隱藏內容</string>
+    <string name="comment_hide_hidden">收起隱藏內容</string>
+    <string name="comment_preview_quote">[引用]</string>
+    <string name="comment_preview_image">[圖片]</string>
+
+    <!-- Danmaku -->
+    <string name="episode_danmaku_sources_timing">彈幕來源與時間校準</string>
+    <string name="episode_danmaku_timing">時間校準</string>
+    <string name="episode_danmaku_match_title">配對彈幕</string>
+    <string name="episode_danmaku_match_instructions">搜尋動畫，選擇對應劇集的彈幕</string>
+    <string name="episode_danmaku_match_subject_name">動畫名稱</string>
+    <string name="episode_danmaku_match_searching">正在搜尋…</string>
+    <string name="episode_danmaku_match_no_results">沒有配對結果，請修改名稱後重試</string>
+    <string name="episode_danmaku_match_back">返回動畫列表</string>
+    <string name="episode_danmaku_match_retry">重新搜尋</string>
+    <string name="episode_danmaku_match_empty_query">請輸入動畫名稱</string>
+    <string name="episode_danmaku_match_failed">載入失敗，請重試</string>
+    <string name="episode_danmaku_match_updated">已更新彈幕配對</string>
+    <string name="episode_danmaku_match_approximate">%1$s · %2$s（近似配對）</string>
+    <string name="episode_danmaku_matched_current">已配對目前劇集</string>
+    <string name="episode_danmaku_match_with_count">%1$s · %2$d 條彈幕</string>
+
+    <!-- Sources -->
+    <string name="media_selector_default_line">預設線路</string>
+    <string name="media_selector_select_source_short">選源</string>
+    <string name="media_selector_show_excluded">顯示排除的來源</string>
+    <string name="media_selector_source_count">%1$d 個資料來源</string>
+    <string name="media_selector_query_again">重新查詢</string>
+    <string name="media_selector_querying">正在查詢資料來源…</string>
+    <string name="media_selector_no_online_sources">沒有可用的線上資料來源，請在設定中新增</string>
+    <string name="media_selector_no_lines">沒有找到可用線路</string>
+    <string name="media_selector_results_excluded">結果已被排除</string>
+    <string name="media_selector_no_resources">沒有找到資源</string>
+    <string name="media_selector_waiting_query">等待查詢</string>
+    <string name="media_selector_result_count">%1$d 個結果</string>
+    <string name="media_selector_resource">播放資源</string>
+    <string name="media_selector_exclusion_manual">排除原因：%1$s · 仍可手動選擇</string>
+    <string name="media_selector_exclusion_complete_single_episode">已完結條目的單集資源</string>
+    <string name="media_selector_exclusion_possibly_unsupported">播放器可能不支援</string>
+    <string name="media_selector_exclusion_sequel">可能屬於續作</string>
+    <string name="media_selector_exclusion_other_season">可能屬於其他季度</string>
+    <string name="media_selector_episode_info_failed">劇集資訊載入失敗，請重新查詢</string>
+
+    <!-- Watch together -->
+    <string name="watch_together_leave_explanation">離開後將停止跟隨房主，你可以繼續獨自觀看。</string>
+    <string name="watch_together_invite_helper">把房間名和密碼分享給朋友，即可一起觀看。</string>
+</resources>
+
+<!--@formatter:on-->

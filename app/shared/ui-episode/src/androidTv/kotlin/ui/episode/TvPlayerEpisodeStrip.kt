@@ -44,8 +44,12 @@ import androidx.tv.material3.MaterialTheme
 import androidx.tv.material3.Surface
 import androidx.tv.material3.Text
 import me.him188.ani.app.ui.foundation.AsyncImage
+import me.him188.ani.app.ui.lang.Lang
+import me.him188.ani.app.ui.lang.subject_episode_now_playing
+import me.him188.ani.app.ui.lang.subject_episode_watched
 import me.him188.ani.leanback.ui.foundation.focus.TvFocusDefaults
 import me.him188.ani.leanback.ui.foundation.focus.tvLongPressKey
+import org.jetbrains.compose.resources.stringResource
 
 /** [TvPlayerEpisodeStrip] 默认值 (附录 A: 选集卡 204×114.75dp/播放器, 三态). */
 internal object TvPlayerEpisodeStripDefaults {
@@ -153,7 +157,7 @@ internal fun EpisodeStripCard(
             if (episode.watched && !isCurrent) {
                 Icon(
                     Icons.Rounded.CheckCircle,
-                    contentDescription = "已看",
+                    contentDescription = stringResource(Lang.subject_episode_watched),
                     Modifier
                         .align(Alignment.TopEnd)
                         .padding(8.dp)
@@ -195,7 +199,7 @@ internal fun EpisodeStripCard(
                                 tint = MaterialTheme.colorScheme.onPrimary,
                             )
                             Text(
-                                "正在播放",
+                                stringResource(Lang.subject_episode_now_playing),
                                 style = MaterialTheme.typography.labelSmall,
                                 color = MaterialTheme.colorScheme.onPrimary,
                             )

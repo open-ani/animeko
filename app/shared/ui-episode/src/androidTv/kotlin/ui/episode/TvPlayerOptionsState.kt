@@ -13,17 +13,19 @@ import androidx.compose.ui.graphics.ImageBitmap
 import me.him188.ani.app.data.models.preference.VideoScaffoldConfig
 import me.him188.ani.app.domain.media.fetch.MediaSourceFetchState
 import me.him188.ani.app.domain.media.fetch.isFailedOrAbandoned
+import me.him188.ani.app.domain.media.selector.MediaExclusionReason
 import me.him188.ani.app.videoplayer.ui.PlayerStatsSnapshot
 import me.him188.ani.app.videoplayer.videoenhancement.VideoEnhancementMode
 import me.him188.ani.danmaku.api.DanmakuServiceId
 import me.him188.ani.danmaku.api.provider.DanmakuEpisode
+import me.him188.ani.danmaku.api.provider.DanmakuMatchMethod
 import me.him188.ani.danmaku.api.provider.DanmakuProviderId
 import me.him188.ani.danmaku.api.provider.DanmakuSubject
 import me.him188.ani.danmaku.ui.DanmakuConfig
 import me.him188.ani.datasources.api.Media
 import me.him188.ani.datasources.api.topic.UnifiedCollectionType
 
-data class TvSourceItem(val media: Media, val excludedReason: String? = null)
+data class TvSourceItem(val media: Media, val excludedReason: MediaExclusionReason? = null)
 
 data class TvSourceGroup(
     val instanceId: String,
@@ -45,7 +47,7 @@ data class TvSourceGroup(
 data class TvSourceSelectionState(
     val groups: List<TvSourceGroup> = emptyList(),
     val loading: Boolean = true,
-    val error: String? = null,
+    val error: TvPlayerError? = null,
 )
 
 enum class TvPlayerDialog { Speed, Subtitles, EpisodeActions, DanmakuMatch, DanmakuList }
@@ -55,8 +57,8 @@ enum class TvDanmakuProperty { FontSize, Opacity, Speed, Density, Area, Stroke, 
 data class TvDanmakuOrigin(
     val serviceId: DanmakuServiceId,
     val providerId: DanmakuProviderId,
-    val name: String,
-    val match: String,
+    val match: DanmakuMatchMethod,
+    val count: Int,
     val enabled: Boolean,
     val shiftMillis: Long,
     val canMatch: Boolean,
@@ -72,7 +74,7 @@ data class TvDanmakuMatchState(
     val selectedSubject: DanmakuSubject? = null,
     val episodes: List<DanmakuEpisode> = emptyList(),
     val loading: Boolean = false,
-    val error: String? = null,
+    val error: TvPlayerError? = null,
     val searched: Boolean = false,
 )
 
@@ -93,17 +95,12 @@ data class TvPlayerOptionsState(
     val previewLoading: Boolean = false,
     val chapters: List<TvChapter> = emptyList(),
     val skipPrompt: TvSkipPrompt? = null,
-    val message: String? = null,
+    val message: TvPlayerMessage? = null,
 )
 
-data class TvChapter(val name: String, val offsetMillis: Long, val durationMillis: Long)
-data class TvSkipPrompt(val name: String, val secondsRemaining: Int)
+data class TvChapter(val name: String?, val offsetMillis: Long, val durationMillis: Long)
+data class TvSkipPrompt(val name: String?, val secondsRemaining: Int)
 
-internal fun UnifiedCollectionType.tvLabel(): String = when (this) {
-    UnifiedCollectionType.WISH -> "想看"
-    UnifiedCollectionType.DOING -> "在看"
-    UnifiedCollectionType.DONE -> "看过"
-    UnifiedCollectionType.ON_HOLD -> "搁置"
-    UnifiedCollectionType.DROPPED -> "抛弃"
-    UnifiedCollectionType.NOT_COLLECTED -> "收藏"
-}
+enum class TvPlayerError { SourceInfoUnavailable, EmptyDanmakuQuery, DanmakuSearchFailed }
+
+enum class TvPlayerMessage { FollowingHost, DanmakuMatched, OperationFailed }

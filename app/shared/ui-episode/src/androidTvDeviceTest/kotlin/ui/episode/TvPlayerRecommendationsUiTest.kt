@@ -35,7 +35,6 @@ import androidx.compose.ui.test.captureToImage
 import androidx.compose.ui.test.hasAnyAncestor
 import androidx.compose.ui.test.hasClickAction
 import androidx.compose.ui.test.hasTestTag
-import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.onRoot
@@ -47,6 +46,9 @@ import me.him188.ani.app.domain.episode.SubjectRecommendation
 import me.him188.ani.app.domain.player.VideoLoadingState
 import me.him188.ani.app.ui.framework.AniComposeUiTest
 import me.him188.ani.app.ui.framework.runAniComposeUiTest
+import me.him188.ani.app.ui.lang.Lang
+import me.him188.ani.app.ui.lang.subject_episode_recommendations_empty
+import me.him188.ani.app.ui.lang.subject_episode_recommendations_loading
 import me.him188.ani.leanback.ui.foundation.theme.AniTvTheme
 import me.him188.ani.leanback.ui.watchtogether.TvTogetherState
 import java.io.File
@@ -82,9 +84,9 @@ class TvPlayerRecommendationsUiTest {
     fun unavailableNextEpisodeUsesEpisodesAsBottomRowEntry() = runAniComposeUiTest {
         val fixture = Fixture().apply { episodes = episodes.take(1) }
         showPlayer(fixture)
-        onNodeWithContentDescription("下一集").assertDoesNotExist()
+        onNodeWithTag("tv-next-episode-button").assertDoesNotExist()
         key(Key.DirectionDown)
-        onNodeWithContentDescription("选集").assertIsFocused()
+        onNodeWithTag("tv-episodes-button").assertIsFocused()
         key(Key.DirectionDown)
         onNodeWithTag("tv-recommendations-empty").assertIsFocused()
         key(Key.DirectionUp)
@@ -96,10 +98,10 @@ class TvPlayerRecommendationsUiTest {
         val fixture = Fixture()
         showPlayer(fixture)
         key(Key.DirectionDown)
-        onNodeWithContentDescription("下一集").assertIsFocused()
+        onNodeWithTag("tv-next-episode-button").assertIsFocused()
         runOnIdle { fixture.episodes = fixture.episodes.take(1) }
-        onNodeWithContentDescription("下一集").assertDoesNotExist()
-        onNodeWithContentDescription("选集").assertIsFocused()
+        onNodeWithTag("tv-next-episode-button").assertDoesNotExist()
+        onNodeWithTag("tv-episodes-button").assertIsFocused()
     }
 
     @Test
@@ -116,7 +118,7 @@ class TvPlayerRecommendationsUiTest {
             .assertHasNoClickAction()
             .assert(SemanticsMatcher.keyNotDefined(SemanticsProperties.Focused))
         key(Key.DirectionDown)
-        onNodeWithContentDescription("下一集").assertIsFocused()
+        onNodeWithTag("tv-next-episode-button").assertIsFocused()
         val controllerScreenshot = saveScreenshot("controller-entry")
         val titlePixels = controllerScreenshot.pixelsIn(subjectBounds)
         val backgroundPixels = controllerScreenshot.backgroundPixels()
@@ -151,10 +153,13 @@ class TvPlayerRecommendationsUiTest {
         }
         showPlayer(fixture)
         bottomButtons().assertCountEquals(7)
-        listOf("下一集", "选集", "弹幕开", "选源", "1x", "字幕", "适应").forEachIndexed { index, label ->
+        listOf(
+            "tv-next-episode-button", "tv-episodes-button", "tv-danmaku-toggle", "tv-source-button",
+            "tv-speed-button", "tv-subtitles-button", "tv-aspect-button",
+        ).forEachIndexed { index, tag ->
             key(Key.DirectionDown)
             repeat(index) { key(Key.DirectionRight) }
-            onNodeWithContentDescription(label).assertIsFocused()
+            onNodeWithTag(tag).assertIsFocused()
             assertFalse(fixture.machine.states.value.recommendationsVisible)
             key(Key.DirectionDown)
             onNodeWithTag("tv-recommendation-${fixture.panel.recommendations[0].uniqueId}").assertIsFocused()
@@ -190,9 +195,9 @@ class TvPlayerRecommendationsUiTest {
         showPlayer(fixture)
         openRecommendations()
         onNodeWithTag("tv-recommendations-empty").assertIsFocused()
-        onNodeWithText("正在加载推荐…").assertIsDisplayed()
+        onNodeWithText(playerTestString(Lang.subject_episode_recommendations_loading)).assertIsDisplayed()
         runOnIdle { fixture.panel = TvPlayerPanelState() }
-        onNodeWithText("暂无推荐条目").assertIsDisplayed()
+        onNodeWithText(playerTestString(Lang.subject_episode_recommendations_empty)).assertIsDisplayed()
         key(Key.DirectionUp)
         assertControllerHasFocus()
         openRecommendations()
@@ -235,7 +240,7 @@ class TvPlayerRecommendationsUiTest {
                 SideEffect { fixture.backDispatcher = backDispatcher }
                 TvEpisodeScreen(
                     uiState = TvEpisodeUiState(
-                        title = TvEpisodeTitle("测试番剧", "第 1 集"),
+                        title = TvEpisodeTitle("测试番剧", "1"),
                         loadingState = VideoLoadingState.Succeed(false),
                         positionMillis = 20_000,
                         durationMillis = 60_000,
@@ -266,7 +271,7 @@ class TvPlayerRecommendationsUiTest {
 
     private fun AniComposeUiTest.openRecommendations() {
         key(Key.DirectionDown)
-        onNodeWithContentDescription("下一集").assertIsFocused()
+        onNodeWithTag("tv-next-episode-button").assertIsFocused()
         key(Key.DirectionDown)
     }
 

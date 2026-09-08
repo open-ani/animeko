@@ -1454,7 +1454,7 @@
     <string name="watch_together_you">(me)</string>
     <string name="watch_together_follow_host_desc">Automatically join the episode the host is watching and stay in sync</string>
     <string name="watch_together_host_desc">Your play, pause and seeks are synced to following members</string>
-    <string name="watch_together_host_empty_self">You haven\'t started playing. Once you enter an episode, following members join automatically.</string>
+    <string name="watch_together_host_empty_self">You haven’t started playing. Once you enter an episode, following members join automatically.</string>
     <string name="watch_together_episode_label">Ep %1$s · %2$s</string>
     <string name="watch_together_state_playing">Host playing</string>
     <string name="watch_together_state_paused">Paused</string>
@@ -1477,6 +1477,13 @@
     <string name="image_viewer_copied">Image copied</string>
     <string name="image_viewer_copy_failed">Failed to copy image</string>
     <string name="image_viewer_close">Close</string>
+    <!-- Shared playback captcha messages -->
+    <string name="media_captcha_required_message">Complete %1$s to continue</string>
+    <string name="media_captcha_image">image verification</string>
+    <string name="media_captcha_cloudflare">Cloudflare verification</string>
+    <string name="media_captcha_turnstile">Cloudflare Turnstile verification</string>
+    <string name="media_captcha_slider">slider verification</string>
+    <string name="media_captcha_unknown">verification</string>
 </resources>
 
 <!--@formatter:on-->

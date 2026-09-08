@@ -61,12 +61,23 @@ import kotlinx.coroutines.launch
 import me.him188.ani.app.data.models.episode.EpisodeComment
 import me.him188.ani.app.data.models.episode.EpisodeCommentSource
 import me.him188.ani.app.ui.foundation.avatar.AvatarImage
+import me.him188.ani.app.ui.lang.Lang
+import me.him188.ani.app.ui.lang.comment_hide_hidden
+import me.him188.ani.app.ui.lang.comment_preview_image
+import me.him188.ani.app.ui.lang.comment_preview_quote
+import me.him188.ani.app.ui.lang.comment_read_full
+import me.him188.ani.app.ui.lang.comment_show_hidden
+import me.him188.ani.app.ui.lang.foundation_anonymous
+import me.him188.ani.app.ui.lang.tv_player_scroll_hide_hint
+import me.him188.ani.app.ui.lang.tv_player_scroll_hint
+import me.him188.ani.app.ui.lang.tv_player_scroll_reveal_hint
 import me.him188.ani.app.ui.richtext.RichText
 import me.him188.ani.app.ui.richtext.UIRichElement
 import me.him188.ani.app.ui.richtext.rememberBBCodeRichTextState
 import me.him188.ani.leanback.ui.foundation.focus.TvFocusDefaults
 import me.him188.ani.leanback.ui.foundation.widgets.LocalTvOptionColors
 import me.him188.ani.leanback.ui.foundation.widgets.TvOptionDefaults
+import org.jetbrains.compose.resources.stringResource
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
@@ -76,7 +87,9 @@ import java.util.Locale
 internal fun TvCommentCard(comment: EpisodeComment, modifier: Modifier = Modifier, onClick: () -> Unit) {
     val colors = LocalTvOptionColors.current
     val elements = rememberCommentElements(comment.content)
-    val preview = remember(elements) { elements.toTvCommentPreview() }
+    val quote = stringResource(Lang.comment_preview_quote)
+    val image = stringResource(Lang.comment_preview_image)
+    val preview = remember(elements, quote, image) { elements.toTvCommentPreview(quote, image) }
     Surface(
         onClick = onClick,
         modifier = modifier.fillMaxWidth().testTag("tv-comment-${comment.stableId}"),
@@ -101,7 +114,7 @@ internal fun TvCommentCard(comment: EpisodeComment, modifier: Modifier = Modifie
                 interactionEnabled = false,
             )
             Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-                Text("查看全文", Modifier.weight(1f), style = MaterialTheme.typography.labelMedium, color = colors.muted)
+                Text(stringResource(Lang.comment_read_full), Modifier.weight(1f), style = MaterialTheme.typography.labelMedium, color = colors.muted)
                 Icon(Icons.Rounded.ChevronRight, null, Modifier.size(20.dp), tint = colors.muted)
             }
         }
@@ -118,7 +131,7 @@ internal fun TvCommentDetail(comment: EpisodeComment, modifier: Modifier = Modif
     val visibleElements = remember(elements, revealMaskedText) {
         if (revealMaskedText) elements.revealMaskedText() else elements
     }
-    val maskAction = if (revealMaskedText) "收起隐藏内容" else "显示隐藏内容"
+    val maskAction = if (revealMaskedText) stringResource(Lang.comment_hide_hidden) else stringResource(Lang.comment_show_hidden)
     val scroll = rememberScrollState()
     val scope = rememberCoroutineScope()
     val step = with(LocalDensity.current) { 96.dp.toPx() }
@@ -127,7 +140,10 @@ internal fun TvCommentDetail(comment: EpisodeComment, modifier: Modifier = Modif
     Column(modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(12.dp)) {
         CommentAuthor(comment, Modifier.padding(horizontal = 16.dp))
         Text(
-            if (hasMaskedText) "↑↓ 滚动 · 按确定$maskAction" else "↑↓ 滚动",
+            stringResource(
+                if (!hasMaskedText) Lang.tv_player_scroll_hint
+                else if (revealMaskedText) Lang.tv_player_scroll_hide_hint else Lang.tv_player_scroll_reveal_hint,
+            ),
             Modifier.padding(horizontal = 16.dp),
             style = MaterialTheme.typography.labelMedium,
             color = colors.muted,
@@ -200,7 +216,7 @@ private fun CommentAuthor(comment: EpisodeComment, modifier: Modifier = Modifier
         }
         Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
             Text(
-                comment.author?.nickname?.takeIf { it.isNotBlank() } ?: "匿名",
+                comment.author?.nickname?.takeIf { it.isNotBlank() } ?: stringResource(Lang.foundation_anonymous),
                 style = MaterialTheme.typography.titleSmall,
                 color = colors.content,
                 maxLines = 1,
@@ -232,14 +248,14 @@ private fun rememberCommentElements(content: String): List<UIRichElement> {
 }
 
 /** Bound the whole preview, preserving inline formatting, stickers and spoiler masks. */
-internal fun List<UIRichElement>.toTvCommentPreview(): UIRichElement.AnnotatedText = UIRichElement.AnnotatedText(
+internal fun List<UIRichElement>.toTvCommentPreview(quote: String, image: String): UIRichElement.AnnotatedText = UIRichElement.AnnotatedText(
     slice = flatMap { element ->
         when (element) {
             is UIRichElement.AnnotatedText -> element.slice.map {
                 if (it is UIRichElement.Annotated.Text) it.copy(content = it.content.replace('\n', ' ')) else it
             }
-            is UIRichElement.Quote -> listOf(UIRichElement.Annotated.Text(" [引用] ", size = 18f))
-            is UIRichElement.Image -> listOf(UIRichElement.Annotated.Text(" [图片] ", size = 18f))
+            is UIRichElement.Quote -> listOf(UIRichElement.Annotated.Text(" $quote ", size = 18f))
+            is UIRichElement.Image -> listOf(UIRichElement.Annotated.Text(" $image ", size = 18f))
         }
     },
     maxLine = 3,

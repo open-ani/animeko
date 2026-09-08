@@ -47,6 +47,21 @@ import androidx.compose.ui.unit.dp
 import androidx.tv.material3.MaterialTheme
 import androidx.tv.material3.Text
 import kotlinx.coroutines.launch
+import me.him188.ani.app.ui.lang.Lang
+import me.him188.ani.app.ui.lang.watch_together_cancel
+import me.him188.ani.app.ui.lang.watch_together_confirm_disband
+import me.him188.ani.app.ui.lang.watch_together_host_desc
+import me.him188.ani.app.ui.lang.watch_together_invite_helper
+import me.him188.ani.app.ui.lang.watch_together_join_helper
+import me.him188.ani.app.ui.lang.watch_together_join_subtitle
+import me.him188.ani.app.ui.lang.watch_together_leave
+import me.him188.ani.app.ui.lang.watch_together_leave_explanation
+import me.him188.ani.app.ui.lang.watch_together_login
+import me.him188.ani.app.ui.lang.watch_together_login_description
+import me.him188.ani.app.ui.lang.watch_together_login_required
+import me.him188.ani.app.ui.lang.watch_together_password
+import me.him188.ani.app.ui.lang.watch_together_room_name
+import me.him188.ani.app.ui.lang.watch_together_title
 import me.him188.ani.leanback.ui.foundation.focus.TvFocusKey
 import me.him188.ani.leanback.ui.foundation.focus.rememberTvFocusScope
 import me.him188.ani.leanback.ui.foundation.focus.requestPrepared
@@ -57,6 +72,7 @@ import me.him188.ani.leanback.ui.foundation.layout.tvPanelScrollEdges
 import me.him188.ani.leanback.ui.foundation.widgets.LocalTvOptionColors
 import me.him188.ani.leanback.ui.foundation.widgets.TvOptionDivider
 import me.him188.ani.leanback.ui.foundation.widgets.TvOptionTextField
+import org.jetbrains.compose.resources.stringResource
 
 private enum class TogetherFocus : TvFocusKey { Name, Password, Submit, Playback, Follow, Leave }
 private data class TogetherMemberFocus(val userId: String) : TvFocusKey
@@ -85,13 +101,13 @@ fun TvWatchTogetherPanel(
             listState = listState,
             modifier = modifier,
             footer = {
-                TvTogetherAction("登录账号", modifier = entryModifier, icon = Icons.AutoMirrored.Rounded.Login, onClick = onLogin)
+                TvTogetherAction(stringResource(Lang.watch_together_login), modifier = entryModifier.testTag("tv-together-login"), icon = Icons.AutoMirrored.Rounded.Login, onClick = onLogin)
             },
         ) {
             item {
                 TvTogetherIntro(
-                    "和朋友一起看",
-                    "登录后即可加入或创建房间，和朋友同步观看同一集番剧。",
+                    stringResource(Lang.watch_together_login_required),
+                    stringResource(Lang.watch_together_login_description),
                     Icons.Rounded.Groups,
                 )
             }
@@ -102,7 +118,7 @@ fun TvWatchTogetherPanel(
             listState = listState,
             modifier = modifier.testTag("tv-together-confirmation"),
             footer = {
-                TvTogetherAction("留在房间", modifier = entryModifier.testTag("tv-together-stay")) {
+                TvTogetherAction(stringResource(Lang.watch_together_cancel), modifier = entryModifier.testTag("tv-together-stay")) {
                     onConfirmLeaveChange(false)
                 }
                 TvTogetherLeaveAction(together.isHost, confirm = true) { onTogetherIntent(TvTogetherIntent.Leave) }
@@ -110,8 +126,8 @@ fun TvWatchTogetherPanel(
         ) {
             item {
                 TvTogetherIntro(
-                    if (together.isHost) "要解散这个房间吗？" else "要退出这个房间吗？",
-                    if (together.isHost) "解散后，所有成员都会离开房间。" else "退出后将停止跟随房主，你可以继续独自观看。",
+                    stringResource(if (together.isHost) Lang.watch_together_confirm_disband else Lang.watch_together_leave),
+                    if (together.isHost) null else stringResource(Lang.watch_together_leave_explanation),
                     Icons.AutoMirrored.Rounded.Logout,
                 )
             }
@@ -187,10 +203,9 @@ private fun TvTogetherJoinForm(
         listState,
         modifier.tvFocusNavSignal(focus),
         footer = {
-            together.error?.let { TvTogetherJoinError(it) }
+            together.error?.let { TvTogetherJoinError(it.text()) }
             TvTogetherJoinAction(
                 joining = together.joining,
-                retry = together.error != null,
                 modifier = Modifier.tvFocusAnchor(focus, TogetherFocus.Submit)
                     .onFocusChanged { if (it.isFocused) keyboard?.hide() }
                     .tvFocusHotkey(focus, Key.DirectionUp) { focusField(2, TogetherFocus.Password) },
@@ -198,11 +213,11 @@ private fun TvTogetherJoinForm(
         },
     ) {
         item {
-            TvTogetherIntro("和朋友一起看", "分享房间名称和密码，同步播放、暂停和观看进度。", Icons.Rounded.Groups)
+            TvTogetherIntro(stringResource(Lang.watch_together_title), stringResource(Lang.watch_together_join_subtitle), Icons.Rounded.Groups)
         }
         item {
             TvOptionTextField(
-                together.roomName, "房间名称", { onIntent(TvTogetherIntent.RoomName(it)) },
+                together.roomName, stringResource(Lang.watch_together_room_name), { onIntent(TvTogetherIntent.RoomName(it)) },
                 entryModifier.testTag("tv-together-name")
                     .tvFocusAnchor(focus, TogetherFocus.Name)
                     .tvFocusHotkey(focus, Key.DirectionDown) { focusField(2, TogetherFocus.Password) },
@@ -215,7 +230,7 @@ private fun TvTogetherJoinForm(
         }
         item {
             TvOptionTextField(
-                together.password, "房间密码", { onIntent(TvTogetherIntent.Password(it)) },
+                together.password, stringResource(Lang.watch_together_password), { onIntent(TvTogetherIntent.Password(it)) },
                 Modifier.testTag("tv-together-password")
                     .tvFocusAnchor(focus, TogetherFocus.Password)
                     .tvFocusHotkey(focus, Key.DirectionUp) { focusField(1, TogetherFocus.Name) }
@@ -236,7 +251,7 @@ private fun TvTogetherJoinForm(
         }
         item {
             Text(
-                "输入相同的房间名称即可一起看。房间不存在时将自动创建。",
+                stringResource(Lang.watch_together_join_helper),
                 Modifier.padding(horizontal = 4.dp, vertical = 12.dp),
                 style = MaterialTheme.typography.bodyMedium,
                 color = LocalTvOptionColors.current.muted,
@@ -320,17 +335,25 @@ private fun TvTogetherRoom(
         },
     ) {
         item(key = "playback") {
-            TvTogetherPlaybackCard(
-                together.playback, together.isHost,
-                modifier = (if (together.isHost && !returnToLeave) entryModifier else Modifier)
-                    .tvFocusAnchor(focus, TogetherFocus.Playback)
-                    .then(if (memberIds.isEmpty()) Modifier.tvFocusHotkey(focus, Key.DirectionDown to controlsKey) else Modifier),
-            )
+            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                TvTogetherPlaybackCard(
+                    together.playback, together.isHost,
+                    modifier = (if (together.isHost && !returnToLeave) entryModifier else Modifier)
+                        .tvFocusAnchor(focus, TogetherFocus.Playback)
+                        .then(if (memberIds.isEmpty()) Modifier.tvFocusHotkey(focus, Key.DirectionDown to controlsKey) else Modifier),
+                )
+                if (together.isHost) Text(
+                    stringResource(Lang.watch_together_host_desc),
+                    Modifier.padding(horizontal = 12.dp),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = LocalTvOptionColors.current.muted,
+                )
+            }
         }
         item(key = "members") { TvTogetherMembersHeading(together.members.size) }
         if (memberIds.isEmpty()) item(key = "empty-members") {
             Text(
-                "把房间名称和密码分享给朋友，即可一起观看。",
+                stringResource(Lang.watch_together_invite_helper),
                 Modifier.padding(horizontal = 4.dp),
                 style = MaterialTheme.typography.bodyMedium,
                 color = LocalTvOptionColors.current.muted,

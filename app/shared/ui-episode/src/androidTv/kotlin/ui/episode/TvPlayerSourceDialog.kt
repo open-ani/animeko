@@ -74,11 +74,33 @@ import androidx.tv.material3.Text
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.first
 import me.him188.ani.app.domain.media.fetch.MediaSourceFetchState
-import me.him188.ani.app.domain.mediasource.web.displayName
 import me.him188.ani.app.ui.lang.Lang
+import me.him188.ani.app.ui.lang.media_selector_default_line
+import me.him188.ani.app.ui.lang.media_selector_exclusion_manual
+import me.him188.ani.app.ui.lang.media_selector_no_lines
+import me.him188.ani.app.ui.lang.media_selector_no_online_sources
+import me.him188.ani.app.ui.lang.media_selector_no_resources
+import me.him188.ani.app.ui.lang.media_selector_query_again
+import me.him188.ani.app.ui.lang.media_selector_querying
+import me.him188.ani.app.ui.lang.media_selector_resource
+import me.him188.ani.app.ui.lang.media_selector_result_count
+import me.him188.ani.app.ui.lang.media_selector_results_excluded
+import me.him188.ani.app.ui.lang.media_selector_show_excluded
+import me.him188.ani.app.ui.lang.media_selector_source_count
+import me.him188.ani.app.ui.lang.media_selector_view_detailed_mode
+import me.him188.ani.app.ui.lang.media_selector_view_simple_mode
+import me.him188.ani.app.ui.lang.media_selector_waiting_query
 import me.him188.ani.app.ui.lang.media_selector_web_captcha_unsupported
 import me.him188.ani.app.ui.lang.media_selector_web_rate_limited
 import me.him188.ani.app.ui.lang.media_selector_web_waiting_captcha
+import me.him188.ani.app.ui.lang.media_source_results_failed
+import me.him188.ani.app.ui.lang.media_source_results_searching
+import me.him188.ani.app.ui.lang.media_source_results_verify
+import me.him188.ani.app.ui.lang.settings_framework_not_enabled
+import me.him188.ani.app.ui.lang.subject_episode_now_playing
+import me.him188.ani.app.ui.media.rememberMediaDetailsStrings
+import me.him188.ani.app.ui.media.renderSubtitleLanguage
+import me.him188.ani.app.ui.media.webCaptchaRequiredMessage
 import me.him188.ani.datasources.api.Media
 import me.him188.ani.leanback.ui.foundation.focus.TvFocusKey
 import me.him188.ani.leanback.ui.foundation.focus.rememberTvFocusScope
@@ -230,7 +252,7 @@ internal fun TvPlayerSourceDialog(
                     horizontalArrangement = Arrangement.spacedBy(4.dp),
                 ) {
                     TvSourceTab(
-                        "简单模式",
+                        stringResource(Lang.media_selector_view_simple_mode),
                         dialogState.mode == TvSourceMode.Simple,
                         Modifier
                             .then(
@@ -247,7 +269,7 @@ internal fun TvPlayerSourceDialog(
                             .testTag("tv-source-simple"),
                     ) { dialogState.mode = TvSourceMode.Simple }
                     TvSourceTab(
-                        "详细模式",
+                        stringResource(Lang.media_selector_view_detailed_mode),
                         dialogState.mode == TvSourceMode.Detailed,
                         Modifier
                             .onFocusChanged {
@@ -295,7 +317,7 @@ internal fun TvPlayerSourceDialog(
                     }
                 }
                 TvOptionRow(
-                    "显示排除的源",
+                    stringResource(Lang.media_selector_show_excluded),
                     checked = dialogState.showExcluded,
                     compact = true,
                     modifier = Modifier.testTag("tv-source-excluded"),
@@ -323,18 +345,18 @@ internal fun TvPlayerSourceDialog(
                         TvSourceStatusAction(selectedGroup, retryModifier, onIntent)
                     } else {
                         TvOptionRow(
-                            title = if (state.loading) "查询中…" else "${groups.size} 个数据源",
-                            value = "重新查询", valueIcon = Icons.Rounded.Refresh,
+                            title = if (state.loading) stringResource(Lang.media_source_results_searching) else stringResource(Lang.media_selector_source_count, groups.size),
+                            value = stringResource(Lang.media_selector_query_again), valueIcon = Icons.Rounded.Refresh,
                             modifier = retryModifier,
                         ) { onIntent(TvEpisodeIntent.RetrySources()) }
                     }
                 }
                 if (groups.isEmpty()) item {
                     Text(
-                        state.error ?: when {
-                            state.loading -> "正在查询数据源…"
-                            state.groups.isEmpty() -> "没有可用的在线数据源，请在设置中添加"
-                            else -> "没有找到可用线路"
+                        state.error?.text() ?: when {
+                            state.loading -> stringResource(Lang.media_selector_querying)
+                            state.groups.isEmpty() -> stringResource(Lang.media_selector_no_online_sources)
+                            else -> stringResource(Lang.media_selector_no_lines)
                         },
                         color = TvOptionDefaults.Muted,
                         modifier = Modifier.padding(16.dp),
@@ -372,7 +394,7 @@ internal fun TvPlayerSourceDialog(
                     } else {
                         if (results.isEmpty() && group.state is MediaSourceFetchState.Succeed) item {
                             Text(
-                                if (group.items.isNotEmpty()) "结果已被排除" else "没有找到资源",
+                                if (group.items.isNotEmpty()) stringResource(Lang.media_selector_results_excluded) else stringResource(Lang.media_selector_no_resources),
                                 color = TvOptionDefaults.Muted, modifier = Modifier.padding(16.dp),
                             )
                         }
@@ -390,13 +412,13 @@ internal fun TvPlayerSourceDialog(
 
 @Composable
 private fun rememberSourceStatusText(group: TvSourceGroup): String = when (val state = group.state) {
-    MediaSourceFetchState.Idle -> "等待查询"
-    MediaSourceFetchState.Working -> "正在查询…"
-    MediaSourceFetchState.Disabled -> "未启用"
+    MediaSourceFetchState.Idle -> stringResource(Lang.media_selector_waiting_query)
+    MediaSourceFetchState.Working -> stringResource(Lang.media_source_results_searching)
+    MediaSourceFetchState.Disabled -> stringResource(Lang.settings_framework_not_enabled)
     is MediaSourceFetchState.CaptchaRequired -> when {
         !group.isCaptchaSupported -> stringResource(Lang.media_selector_web_captcha_unsupported)
         group.isResolvingCaptcha -> stringResource(Lang.media_selector_web_waiting_captcha)
-        else -> "需要处理${state.request.kind.displayName()}"
+        else -> webCaptchaRequiredMessage(state.request.kind)
     }
     is MediaSourceFetchState.RateLimited -> {
         val remaining by produceState(((state.retryAt - System.currentTimeMillis()) / 1000).coerceAtLeast(0), state.retryAt) {
@@ -407,8 +429,8 @@ private fun rememberSourceStatusText(group: TvSourceGroup): String = when (val s
         }
         stringResource(Lang.media_selector_web_rate_limited, remaining)
     }
-    is MediaSourceFetchState.Failed, is MediaSourceFetchState.Abandoned -> "查询失败"
-    is MediaSourceFetchState.Succeed -> if (group.items.isEmpty()) "没有找到资源" else "${group.items.size} 个结果"
+    is MediaSourceFetchState.Failed, is MediaSourceFetchState.Abandoned -> stringResource(Lang.media_source_results_failed)
+    is MediaSourceFetchState.Succeed -> if (group.items.isEmpty()) stringResource(Lang.media_selector_no_resources) else stringResource(Lang.media_selector_result_count, group.items.size)
 }
 
 @Composable
@@ -417,8 +439,8 @@ private fun TvSourceStatusAction(group: TvSourceGroup, modifier: Modifier, onInt
     TvOptionRow(
         title = rememberSourceStatusText(group),
         value = if (captcha) {
-            if (group.isResolvingCaptcha || !group.isCaptchaSupported) "" else "处理验证"
-        } else "重新查询",
+            if (group.isResolvingCaptcha || !group.isCaptchaSupported) "" else stringResource(Lang.media_source_results_verify)
+        } else stringResource(Lang.media_selector_query_again),
         enabled = !captcha || group.isCaptchaSupported && !group.isResolvingCaptcha,
         compact = true,
         modifier = modifier.testTag("tv-source-action-${group.instanceId}"),
@@ -475,11 +497,11 @@ private fun TvSourceChannelRow(
                 ) {
                     if (selectedMediaId == item.media.mediaId) Icon(
                         Icons.Rounded.Check,
-                        "正在播放",
+                        stringResource(Lang.subject_episode_now_playing),
                         Modifier.size(18.dp)
                     )
                     Text(
-                        item.media.properties.alliance.ifBlank { "默认线路" },
+                        item.media.properties.alliance.ifBlank { stringResource(Lang.media_selector_default_line) },
                         style = MaterialTheme.typography.labelLarge,
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis,
@@ -568,21 +590,22 @@ private fun TvSourceResultCard(item: TvSourceItem, selected: Boolean, onClick: (
             ) {
                 Icon(
                     if (selected) Icons.Rounded.Check else Icons.Rounded.PlayArrow,
-                    if (selected) "已选择" else null,
+                    null,
                     Modifier.size(20.dp),
                 )
             }
             Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(6.dp)) {
                 Text(
-                    media.originalTitle.ifBlank { media.properties.alliance.ifBlank { "播放资源" } },
+                    media.originalTitle.ifBlank { media.properties.alliance.ifBlank { stringResource(Lang.media_selector_resource) } },
                     style = MaterialTheme.typography.titleSmall,
                     maxLines = 2,
                     overflow = TextOverflow.Ellipsis,
                 )
+                val mediaStrings = rememberMediaDetailsStrings()
                 val info = listOf(
                     media.properties.alliance,
                     media.properties.resolution,
-                    media.properties.subtitleLanguageIds.joinToString(" / "),
+                    media.properties.subtitleLanguageIds.joinToString(" / ") { renderSubtitleLanguage(it, mediaStrings) },
                 ).filter { it.isNotBlank() }.distinct()
                 if (info.isNotEmpty()) FlowRow(
                     horizontalArrangement = Arrangement.spacedBy(8.dp),
@@ -602,7 +625,7 @@ private fun TvSourceResultCard(item: TvSourceItem, selected: Boolean, onClick: (
                 }
                 item.excludedReason?.let {
                     Text(
-                        "排除原因：$it · 仍可手动选择",
+                        stringResource(Lang.media_selector_exclusion_manual, it.description()),
                         style = MaterialTheme.typography.bodySmall,
                     )
                 }

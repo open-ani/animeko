@@ -13,8 +13,11 @@ import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.testTag
+import me.him188.ani.app.ui.lang.Lang
+import me.him188.ani.app.ui.lang.video_player_stats_title
 import me.him188.ani.app.videoplayer.videoenhancement.VideoEnhancementMode
 import me.him188.ani.leanback.ui.foundation.widgets.TvOptionRow
+import org.jetbrains.compose.resources.stringResource
 
 @Composable
 internal fun TvPlayerVideoSettingsPanel(
@@ -36,7 +39,7 @@ internal fun TvPlayerVideoSettingsPanel(
         }
         item {
             TvOptionRow(
-                "播放信息",
+                stringResource(Lang.video_player_stats_title),
                 checked = statsVisible,
                 modifier = (if (enhancementMode == null) entryModifier else Modifier)
                     .testTag("tv-player-stats-toggle"),

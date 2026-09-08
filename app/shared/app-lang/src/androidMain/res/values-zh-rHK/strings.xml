@@ -1490,6 +1490,13 @@
     <string name="image_viewer_copied">圖片已複製</string>
     <string name="image_viewer_copy_failed">複製圖片失敗</string>
     <string name="image_viewer_close">關閉</string>
+    <!-- Shared playback captcha messages -->
+    <string name="media_captcha_required_message">需要處理%1$s</string>
+    <string name="media_captcha_image">圖片驗證碼</string>
+    <string name="media_captcha_cloudflare">Cloudflare 驗證</string>
+    <string name="media_captcha_turnstile">Cloudflare Turnstile 驗證</string>
+    <string name="media_captcha_slider">滑動驗證</string>
+    <string name="media_captcha_unknown">驗證碼</string>
 </resources>
 
 <!--@formatter:on-->

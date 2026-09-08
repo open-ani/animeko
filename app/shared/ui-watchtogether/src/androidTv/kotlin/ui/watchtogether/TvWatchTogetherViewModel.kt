@@ -28,7 +28,6 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import kotlinx.coroutines.withTimeoutOrNull
 import me.him188.ani.app.data.network.WatchTogetherJoinException
-import me.him188.ani.app.data.network.WatchTogetherJoinFailure
 import me.him188.ani.app.data.repository.user.SettingsRepository
 import me.him188.ani.app.domain.session.SessionState
 import me.him188.ani.app.domain.session.SessionStateProvider
@@ -130,12 +129,12 @@ class TvWatchTogetherViewModel(
 
                     is WatchTogetherEffect.RoomEnded -> form.update {
                         it.copy(
-                            error = "房间已结束",
+                            error = TvTogetherError.Ended(effect.reason),
                             password = "",
                         )
                     }
 
-                    WatchTogetherEffect.RejoinFailed -> form.update { it.copy(error = "恢复房间失败，请重新加入") }
+                    WatchTogetherEffect.RejoinFailed -> form.update { it.copy(error = TvTogetherError.RejoinFailed) }
                     WatchTogetherEffect.Rejoined -> form.update { it.copy(error = null) }
                     else -> Unit
                 }
@@ -164,7 +163,7 @@ class TvWatchTogetherViewModel(
             TvTogetherIntent.Join -> {
                 if (joinJob?.isActive == true || uiState.value.joining || uiState.value.requiresLogin) return
                 if (form.value.roomName.isBlank()) {
-                    form.update { it.copy(error = "请输入房间名称") }
+                    form.update { it.copy(error = TvTogetherError.EmptyName) }
                     return
                 }
                 val roomName = form.value.roomName
@@ -177,18 +176,9 @@ class TvWatchTogetherViewModel(
                             manager.state.first { it !is WatchTogetherState.Disabled }
                             manager.join(roomName, password)
                         }
-                        if (result == null) form.update { it.copy(error = "加入超时，请检查网络") }
+                        if (result == null) form.update { it.copy(error = TvTogetherError.Timeout) }
                         result?.onFailure { error ->
-                            val message = when ((error as? WatchTogetherJoinException)?.failure) {
-                                WatchTogetherJoinFailure.WRONG_PASSWORD -> "房间密码不正确"
-                                WatchTogetherJoinFailure.ROOM_FULL -> "房间人数已满"
-                                WatchTogetherJoinFailure.ROOM_CLOSED -> "房间已关闭"
-                                WatchTogetherJoinFailure.INVALID_NAME -> "房间名称不符合要求"
-                                WatchTogetherJoinFailure.INVALID_PASSWORD -> "密码不符合要求"
-                                WatchTogetherJoinFailure.RATE_LIMITED -> "操作过于频繁，请稍后重试"
-                                else -> "加入失败"
-                            }
-                            form.update { it.copy(error = message) }
+                            form.update { it.copy(error = TvTogetherError.Join((error as? WatchTogetherJoinException)?.failure)) }
                         }
                         if (manager.state.value is WatchTogetherState.InRoom) form.update { it.copy(password = "") }
                     } catch (e: CancellationException) {

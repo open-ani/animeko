@@ -25,7 +25,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.key.Key
 import androidx.compose.ui.semantics.SemanticsProperties
 import androidx.compose.ui.test.assertIsFocused
-import androidx.compose.ui.test.hasText
+import androidx.compose.ui.test.hasTestTag
 import androidx.compose.ui.test.isFocused
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
@@ -46,6 +46,7 @@ import me.him188.ani.app.ui.framework.AniComposeUiTest
 import me.him188.ani.app.ui.framework.runAniComposeUiTest
 import me.him188.ani.danmaku.api.DanmakuServiceId
 import me.him188.ani.danmaku.api.provider.DanmakuEpisode
+import me.him188.ani.danmaku.api.provider.DanmakuMatchMethod
 import me.him188.ani.danmaku.api.provider.DanmakuProviderId
 import me.him188.ani.danmaku.api.provider.DanmakuSubject
 import me.him188.ani.leanback.ui.foundation.theme.AniTvTheme
@@ -113,14 +114,14 @@ class TvPlayerFocusRegressionUiTest {
             }
         }
         openPanel(TvPlayerPanel.Together)
-        onNodeWithText("跟随房主").assertIsFocused()
+        onNodeWithTag("tv-together-follow").assertIsFocused()
         key(Key.DirectionDown)
         key(Key.DirectionCenter)
-        onNodeWithText("留在房间").assertIsFocused()
+        onNodeWithTag("tv-together-stay").assertIsFocused()
         runOnIdle { visible = false }
         onNodeWithTag("tv-player-sidebar").assertDoesNotExist()
         runOnIdle { visible = true }
-        onNodeWithText("留在房间").assertIsFocused()
+        onNodeWithTag("tv-together-stay").assertIsFocused()
     }
 
     @Test
@@ -134,7 +135,7 @@ class TvPlayerFocusRegressionUiTest {
         key(Key.DirectionDown)
         onNodeWithText("匹配条目 1").assertIsFocused()
         key(Key.DirectionCenter)
-        onNodeWithText("返回番剧列表").assertIsFocused()
+        onNodeWithTag("tv-danmaku-match-back").assertIsFocused()
     }
 
     @Test
@@ -149,7 +150,7 @@ class TvPlayerFocusRegressionUiTest {
         onNodeWithText("匹配条目 17").assertIsFocused()
         key(Key.DirectionCenter)
         assertTrue(
-            onAllNodes(hasText("返回番剧列表") and isFocused()).fetchSemanticsNodes().size == 1,
+            onAllNodes(hasTestTag("tv-danmaku-match-back") and isFocused()).fetchSemanticsNodes().size == 1,
             "New matching entry unavailable; focused: ${focusSummary()}",
         )
         runOnIdle { fixture.backDispatcher.onBackPressed() }
@@ -164,10 +165,10 @@ class TvPlayerFocusRegressionUiTest {
         showPlayer(fixture)
         openPanel(TvPlayerPanel.DanmakuSettings)
         repeat(TvDanmakuProperty.entries.size + 6) { key(Key.DirectionDown) }
-        onNode(hasText("重新匹配弹幕") and hasText("来源 2")).assertIsFocused()
+        onNodeWithTag("tv-danmaku-rematch-2").assertIsFocused()
         key(Key.DirectionCenter)
         runOnIdle { fixture.backDispatcher.onBackPressed() }
-        onNode(hasText("重新匹配弹幕") and hasText("来源 2")).assertIsFocused()
+        onNodeWithTag("tv-danmaku-rematch-2").assertIsFocused()
         key(Key.DirectionCenter)
         runOnIdle { fixture.options = fixture.options.copy(danmakuOrigins = listOf(origin("1"))) }
         runOnIdle { fixture.backDispatcher.onBackPressed() }
@@ -179,7 +180,7 @@ class TvPlayerFocusRegressionUiTest {
         val fixture = Fixture()
         showPlayer(fixture)
         openPanel(TvPlayerPanel.DanmakuSettings)
-        onNodeWithText("字号").assertIsFocused()
+        onNodeWithTag("tv-danmaku-property-FontSize").assertIsFocused()
         mainClock.autoAdvance = false
         runOnIdle { fixture.backDispatcher.onBackPressed() }
         mainClock.advanceTimeBy(64)
@@ -201,7 +202,7 @@ class TvPlayerFocusRegressionUiTest {
         onNodeWithText("room").assertIsFocused()
         runOnIdle { fixture.together = fixture.together.copy(requiresLogin = true) }
         assertTrue(
-            onAllNodes(hasText("登录账号") and isFocused()).fetchSemanticsNodes().size == 1,
+            onAllNodes(hasTestTag("tv-together-login") and isFocused()).fetchSemanticsNodes().size == 1,
             "Login entry lost focus: ${focusSummary()}",
         )
     }
@@ -270,7 +271,7 @@ class TvPlayerFocusRegressionUiTest {
 
     companion object {
         private fun origin(id: String) = TvDanmakuOrigin(
-            DanmakuServiceId(id), DanmakuProviderId(id), "来源 $id", "已匹配", true, 0, true,
+            DanmakuServiceId(id), DanmakuProviderId(id), DanmakuMatchMethod.NoMatch, 0, true, 0, true,
         )
 
         private fun comment(id: String) = EpisodeComment(

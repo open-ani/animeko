@@ -56,6 +56,7 @@ fun TvOptionRow(
     adjustable: Boolean = false,
     filled: Boolean = false,
     compact: Boolean = false,
+    leadingContent: (@Composable () -> Unit)? = null,
     onClick: () -> Unit,
 ) {
     Surface(
@@ -80,7 +81,8 @@ fun TvOptionRow(
             horizontalArrangement = Arrangement.spacedBy(12.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
-            icon?.let { Icon(it, null, Modifier.size(20.dp)) }
+            if (leadingContent != null) leadingContent()
+            else icon?.let { Icon(it, null, Modifier.size(20.dp)) }
             Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(3.dp)) {
                 Text(title, style = MaterialTheme.typography.titleSmall, maxLines = 2, overflow = TextOverflow.Ellipsis)
                 supportingText?.let {
@@ -100,7 +102,7 @@ fun TvOptionRow(
                 Text(value, style = MaterialTheme.typography.labelLarge)
                 if (adjustable) Icon(Icons.AutoMirrored.Rounded.KeyboardArrowRight, null, Modifier.size(16.dp))
             }
-            if (selected && checked == null) Icon(Icons.Rounded.Check, "已选择", Modifier.size(20.dp))
+            if (selected && checked == null) Icon(Icons.Rounded.Check, null, Modifier.size(20.dp))
             if (checked != null) {
                 val color = LocalContentColor.current
                 Canvas(Modifier.size(36.dp, 20.dp)) {

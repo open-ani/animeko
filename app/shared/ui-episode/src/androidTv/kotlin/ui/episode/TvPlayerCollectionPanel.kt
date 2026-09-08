@@ -17,8 +17,15 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
 import androidx.tv.material3.Text
+import me.him188.ani.app.ui.lang.Lang
+import me.him188.ani.app.ui.lang.subject_collection_change_only
+import me.him188.ani.app.ui.lang.subject_collection_delete
+import me.him188.ani.app.ui.lang.subject_collection_keep
+import me.him188.ani.app.ui.lang.subject_collection_mark_all_watched_action
+import me.him188.ani.app.ui.lang.subject_collection_remove_confirm_short
 import me.him188.ani.datasources.api.topic.UnifiedCollectionType
 import me.him188.ani.leanback.ui.foundation.widgets.TvOptionRow
+import org.jetbrains.compose.resources.stringResource
 
 @Composable
 internal fun TvPlayerCollectionPanel(
@@ -34,29 +41,29 @@ internal fun TvPlayerCollectionPanel(
     TvPlayerOptionPanelLayout(TvPlayerPanel.Collection, listState, modifier) {
         when {
             collectionPrompt == TvCollectionPrompt.Remove -> {
-                item { Text("确定取消收藏？", color = Color.White, modifier = Modifier.padding(10.dp)) }
+                item { Text(stringResource(Lang.subject_collection_remove_confirm_short), color = Color.White, modifier = Modifier.padding(10.dp)) }
                 item {
                     TvOptionRow(
-                        "取消收藏",
+                        stringResource(Lang.subject_collection_delete),
                         modifier = entryModifier,
                     ) { onIntent(TvEpisodeIntent.SetCollection(UnifiedCollectionType.NOT_COLLECTED)) }
                 }
-                item { TvOptionRow("保留收藏") { onCollectionPromptChange(null) } }
+                item { TvOptionRow(stringResource(Lang.subject_collection_keep)) { onCollectionPromptChange(null) } }
             }
 
             collectionPrompt == TvCollectionPrompt.MarkAllWatched -> {
                 item {
                     TvOptionRow(
-                        "将全部剧集标为已看",
+                        stringResource(Lang.subject_collection_mark_all_watched_action),
                         modifier = entryModifier,
                     ) { onIntent(TvEpisodeIntent.MarkAllWatched()) }
                 }
-                item { TvOptionRow("仅修改收藏状态") { onCollectionPromptChange(null) } }
+                item { TvOptionRow(stringResource(Lang.subject_collection_change_only)) { onCollectionPromptChange(null) } }
             }
 
             else -> items(UnifiedCollectionType.entries) { type ->
                 TvOptionRow(
-                    if (type == UnifiedCollectionType.NOT_COLLECTED) "取消收藏" else type.tvLabel(),
+                    if (type == UnifiedCollectionType.NOT_COLLECTED) stringResource(Lang.subject_collection_delete) else type.tvLabel(),
                     enabled = !busy,
                     compact = true,
                     modifier = if (type == collectionType) entryModifier else Modifier,

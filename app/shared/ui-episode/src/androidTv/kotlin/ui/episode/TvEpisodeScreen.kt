@@ -69,9 +69,29 @@ import kotlinx.coroutines.flow.flowOf
 import me.him188.ani.app.data.models.episode.EpisodeComment
 import me.him188.ani.app.domain.player.VideoLoadingState
 import me.him188.ani.app.ui.foundation.navigation.BackHandler
+import me.him188.ani.app.ui.lang.Lang
+import me.him188.ani.app.ui.lang.Res
+import me.him188.ani.app.ui.lang.comment_full
+import me.him188.ani.app.ui.lang.episode_danmaku_match_instructions
+import me.him188.ani.app.ui.lang.episode_danmaku_match_title
+import me.him188.ani.app.ui.lang.media_selector_default_line
+import me.him188.ani.app.ui.lang.media_selector_select_source_short
+import me.him188.ani.app.ui.lang.subject_episode_actions
+import me.him188.ani.app.ui.lang.subject_episode_danmaku_list_title
+import me.him188.ani.app.ui.lang.subject_episode_mark_watched
+import me.him188.ani.app.ui.lang.subject_episode_play_label
+import me.him188.ani.app.ui.lang.subject_episode_unwatch
+import me.him188.ani.app.ui.lang.video_player_chapter
+import me.him188.ani.app.ui.lang.video_player_fast_forwarding
+import me.him188.ani.app.ui.lang.video_player_retry
+import me.him188.ani.app.ui.lang.video_player_select_another_source
+import me.him188.ani.app.ui.lang.video_player_skip_countdown
+import me.him188.ani.app.ui.lang.video_player_speed
+import me.him188.ani.app.ui.lang.video_player_subtitle
 import me.him188.ani.app.ui.subject.episode.video.loading.EpisodeVideoLoadingIndicator
 import me.him188.ani.app.ui.subject.episode.video.loading.shouldShowVideoLoadingIndicator
 import me.him188.ani.app.videoplayer.ui.PlayerStatsOverlay
+import me.him188.ani.app.videoplayer.ui.renderAspectRatioMode
 import me.him188.ani.danmaku.ui.DanmakuPresentation
 import me.him188.ani.datasources.api.topic.FileSize
 import me.him188.ani.leanback.ui.foundation.focus.TV_CONFIRM_KEYS
@@ -86,7 +106,8 @@ import me.him188.ani.leanback.ui.foundation.widgets.TvOptionRow
 import me.him188.ani.leanback.ui.watchtogether.TvTogetherIntent
 import me.him188.ani.leanback.ui.watchtogether.TvTogetherState
 import me.him188.ani.leanback.ui.watchtogether.TvWatchTogetherPanel
-import org.openani.mediamp.features.AspectRatioMode
+import org.jetbrains.compose.resources.pluralStringResource
+import org.jetbrains.compose.resources.stringResource
 import org.openani.mediamp.isPlaying
 import android.view.KeyEvent as AndroidKeyEvent
 
@@ -353,8 +374,8 @@ internal fun TvEpisodeScreen(
                         .padding(top = 105.dp)
                         .width(260.dp),
                 ) {
-                    TvOptionRow("重试播放") { dispatch(TvEpisodeIntent.RetryPlayback()) }
-                    TvOptionRow("选择其他数据源") { onAction(TvPlayerAction.OpenSourceDialog) }
+                    TvOptionRow(stringResource(Lang.video_player_retry)) { dispatch(TvEpisodeIntent.RetryPlayback()) }
+                    TvOptionRow(stringResource(Lang.video_player_select_another_source)) { onAction(TvPlayerAction.OpenSourceDialog) }
                 }
             }
         },
@@ -394,18 +415,14 @@ internal fun TvEpisodeScreen(
                         }
                         TvPlayerControlsOverlay(
                             sourceIconUrl = uiState.sources.groups.firstOrNull { it.sourceId == selectedMedia?.mediaSourceId }?.iconUrl,
-                            sourceLabel = selectedMedia?.properties?.alliance?.ifBlank { "默认线路" } ?: "选源",
+                            sourceLabel = selectedMedia?.properties?.alliance?.ifBlank { stringResource(Lang.media_selector_default_line) } ?: stringResource(Lang.media_selector_select_source_short),
                             positionMillis = positionMillis,
                             durationMillis = uiState.durationMillis,
                             bufferedFraction = bufferedFraction,
                             hasNextEpisode = uiState.hasNextEpisode,
                             scrubMillis = state.scrubMillis,
                             speedLabel = formatSpeedLabel(playbackSpeed),
-                            aspectLabel = when (aspectRatioMode) {
-                                AspectRatioMode.FIT -> "适应"
-                                AspectRatioMode.STRETCH -> "拉伸"
-                                AspectRatioMode.CROP -> "裁剪"
-                            },
+                            aspectLabel = renderAspectRatioMode(aspectRatioMode),
                             activePanel = state.activePanel,
                             options = uiState.options,
                             seekBarModifier = Modifier
@@ -504,7 +521,7 @@ internal fun TvEpisodeScreen(
             // 按住倍速指示
             if (state.speedHolding) {
                 PlayerCenterCapsule(
-                    "${formatSpeedLabel(uiState.options.videoConfig.fastForwardSpeed)} 快进中 ▶▶",
+                    stringResource(Lang.video_player_fast_forwarding, formatSpeedLabel(uiState.options.videoConfig.fastForwardSpeed)),
                     Modifier
                         .align(Alignment.TopCenter)
                         .padding(top = 48.dp),
@@ -543,8 +560,8 @@ internal fun TvEpisodeScreen(
                     val showingDanmakuList = state.dialog == TvPlayerDialog.DanmakuList
                     TvPlayerSidePanel(
                         title = when {
-                            commentDetail != null -> "评论全文"
-                            showingDanmakuList -> "弹幕列表"
+                            commentDetail != null -> stringResource(Lang.comment_full)
+                            showingDanmakuList -> stringResource(Lang.subject_episode_danmaku_list_title)
                             else -> panel.title
                         },
                         trapFocus = state.sidebarVisible && (state.dialog == null || showingDanmakuList),
@@ -597,15 +614,15 @@ internal fun TvEpisodeScreen(
                 TvPlayerDialogSurface(
                     dialog = dialog,
                     when (dialog) {
-                        TvPlayerDialog.Speed -> "播放速度"
-                        TvPlayerDialog.Subtitles -> "字幕"
-                        TvPlayerDialog.EpisodeActions -> "剧集操作"
-                        TvPlayerDialog.DanmakuMatch -> "匹配弹幕"
-                        TvPlayerDialog.DanmakuList -> "弹幕列表"
+                        TvPlayerDialog.Speed -> stringResource(Lang.video_player_speed)
+                        TvPlayerDialog.Subtitles -> stringResource(Lang.video_player_subtitle)
+                        TvPlayerDialog.EpisodeActions -> stringResource(Lang.subject_episode_actions)
+                        TvPlayerDialog.DanmakuMatch -> stringResource(Lang.episode_danmaku_match_title)
+                        TvPlayerDialog.DanmakuList -> stringResource(Lang.subject_episode_danmaku_list_title)
                     },
                     Modifier.tvFocusAnchor(focus, TvPlayerFocus.DialogHost),
                     subtitle = when (dialog) {
-                        TvPlayerDialog.DanmakuMatch -> "搜索番剧，选择对应剧集的弹幕"
+                        TvPlayerDialog.DanmakuMatch -> stringResource(Lang.episode_danmaku_match_instructions)
                         else -> null
                     },
                 ) {
@@ -616,12 +633,12 @@ internal fun TvEpisodeScreen(
                         TvPlayerDialog.EpisodeActions -> {
                             val episode = stripEpisodes.find { it.episodeId == episodeActionId }
                             if (episode != null) {
-                                TvOptionRow("播放 ${episode.sortLabel}", modifier = entryModifier) {
+                                TvOptionRow(stringResource(Lang.subject_episode_play_label, episode.sortLabel), modifier = entryModifier) {
                                     dispatch(
                                         TvEpisodeIntent.SelectEpisode(episode.episodeId),
                                     )
                                 }
-                                TvOptionRow(if (episode.watched) "标记为未看" else "标记为已看") {
+                                TvOptionRow(if (episode.watched) stringResource(Lang.subject_episode_unwatch) else stringResource(Lang.subject_episode_mark_watched)) {
                                     dispatch(
                                         TvEpisodeIntent.SetEpisodeWatched(
                                             episode.episodeId,
@@ -640,7 +657,10 @@ internal fun TvEpisodeScreen(
             }
             uiState.options.skipPrompt?.let { prompt ->
                 PlayerCenterCapsule(
-                    "${prompt.secondsRemaining} 秒后跳过 ${prompt.name}",
+                    pluralStringResource(
+                        Res.plurals.video_player_skip_countdown, prompt.secondsRemaining, prompt.secondsRemaining,
+                        prompt.name ?: stringResource(Lang.video_player_chapter),
+                    ),
                     Modifier
                         .align(Alignment.TopEnd)
                         .padding(top = 100.dp, end = 48.dp)
@@ -649,7 +669,7 @@ internal fun TvEpisodeScreen(
             }
             uiState.options.message?.let { message ->
                 PlayerCenterCapsule(
-                    message,
+                    message.text(),
                     Modifier
                         .align(Alignment.TopCenter)
                         .padding(top = 100.dp),

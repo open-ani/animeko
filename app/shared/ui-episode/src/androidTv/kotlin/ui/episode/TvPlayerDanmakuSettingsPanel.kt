@@ -19,6 +19,27 @@ import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.unit.dp
 import androidx.tv.material3.MaterialTheme
 import androidx.tv.material3.Text
+import me.him188.ani.app.ui.lang.Lang
+import me.him188.ani.app.ui.lang.episode_danmaku_sources_timing
+import me.him188.ani.app.ui.lang.episode_danmaku_timing
+import me.him188.ani.app.ui.lang.subject_episode_danmaku_list_title
+import me.him188.ani.app.ui.lang.subject_episode_danmaku_rematch
+import me.him188.ani.app.ui.lang.subject_episode_video_settings_bottom
+import me.him188.ani.app.ui.lang.subject_episode_video_settings_colorful
+import me.him188.ani.app.ui.lang.subject_episode_video_settings_density
+import me.him188.ani.app.ui.lang.subject_episode_video_settings_density_dense
+import me.him188.ani.app.ui.lang.subject_episode_video_settings_density_medium
+import me.him188.ani.app.ui.lang.subject_episode_video_settings_density_sparse
+import me.him188.ani.app.ui.lang.subject_episode_video_settings_display_area
+import me.him188.ani.app.ui.lang.subject_episode_video_settings_floating
+import me.him188.ani.app.ui.lang.subject_episode_video_settings_font_size
+import me.him188.ani.app.ui.lang.subject_episode_video_settings_font_weight
+import me.him188.ani.app.ui.lang.subject_episode_video_settings_opacity
+import me.him188.ani.app.ui.lang.subject_episode_video_settings_speed
+import me.him188.ani.app.ui.lang.subject_episode_video_settings_stroke_width
+import me.him188.ani.app.ui.lang.subject_episode_video_settings_top
+import me.him188.ani.app.ui.lang.video_player_off
+import me.him188.ani.app.ui.lang.video_player_on
 import me.him188.ani.danmaku.api.DanmakuServiceId
 import me.him188.ani.danmaku.ui.DanmakuConfig
 import me.him188.ani.danmaku.ui.DanmakuConfigRanges
@@ -28,6 +49,7 @@ import me.him188.ani.leanback.ui.foundation.focus.TvFocusScope
 import me.him188.ani.leanback.ui.foundation.focus.tvFocusAnchor
 import me.him188.ani.leanback.ui.foundation.widgets.LocalTvOptionColors
 import me.him188.ani.leanback.ui.foundation.widgets.TvOptionRow
+import org.jetbrains.compose.resources.stringResource
 import kotlin.math.roundToInt
 
 private sealed interface DanmakuSettingsKey : TvFocusKey {
@@ -70,23 +92,23 @@ internal fun TvPlayerDanmakuSettingsPanel(
     TvPlayerOptionPanelLayout(TvPlayerPanel.DanmakuSettings, state.listState, modifier) {
         items(TvDanmakuProperty.entries) { property ->
             val (label, value) = when (property) {
-                TvDanmakuProperty.FontSize -> "字号" to "${(config.style.fontSize.value / DanmakuStyle.Default.fontSize.value * 100).roundToInt()}%"
-                TvDanmakuProperty.Opacity -> "不透明度" to "${(config.style.alpha * 100).roundToInt()}%"
-                TvDanmakuProperty.Speed -> "移动速度" to "${(config.speed / DanmakuConfig.Default.speed * 100).roundToInt()}%"
-                TvDanmakuProperty.Density -> "密度" to when (DanmakuConfigRanges.densityLevel(
+                TvDanmakuProperty.FontSize -> stringResource(Lang.subject_episode_video_settings_font_size) to "${(config.style.fontSize.value / DanmakuStyle.Default.fontSize.value * 100).roundToInt()}%"
+                TvDanmakuProperty.Opacity -> stringResource(Lang.subject_episode_video_settings_opacity) to "${(config.style.alpha * 100).roundToInt()}%"
+                TvDanmakuProperty.Speed -> stringResource(Lang.subject_episode_video_settings_speed) to "${(config.speed / DanmakuConfig.Default.speed * 100).roundToInt()}%"
+                TvDanmakuProperty.Density -> stringResource(Lang.subject_episode_video_settings_density) to when (DanmakuConfigRanges.densityLevel(
                     config.safeSeparation, DanmakuConfigRanges.densitySeparation(desktop = false),
                 ).toInt()) {
-                    in 7..10 -> "密集"
-                    in 4..6 -> "适中"
-                    else -> "稀疏"
+                    in 7..10 -> stringResource(Lang.subject_episode_video_settings_density_dense)
+                    in 4..6 -> stringResource(Lang.subject_episode_video_settings_density_medium)
+                    else -> stringResource(Lang.subject_episode_video_settings_density_sparse)
                 }
-                TvDanmakuProperty.Area -> "显示区域" to if (config.displayArea == 0f) "关闭" else "${(config.displayArea * 100).roundToInt()}%"
-                TvDanmakuProperty.Stroke -> "描边" to "${(config.style.strokeWidth / DanmakuStyle.Default.strokeWidth * 100).roundToInt()}%"
-                TvDanmakuProperty.Weight -> "字重" to config.style.fontWeight.weight.toString()
-                TvDanmakuProperty.Top -> "顶部弹幕" to if (config.enableTop) "开启" else "关闭"
-                TvDanmakuProperty.Bottom -> "底部弹幕" to if (config.enableBottom) "开启" else "关闭"
-                TvDanmakuProperty.Floating -> "滚动弹幕" to if (config.enableFloating) "开启" else "关闭"
-                TvDanmakuProperty.Color -> "彩色弹幕" to if (config.enableColor) "开启" else "关闭"
+                TvDanmakuProperty.Area -> stringResource(Lang.subject_episode_video_settings_display_area) to if (config.displayArea == 0f) stringResource(Lang.video_player_off) else "${(config.displayArea * 100).roundToInt()}%"
+                TvDanmakuProperty.Stroke -> stringResource(Lang.subject_episode_video_settings_stroke_width) to "${(config.style.strokeWidth / DanmakuStyle.Default.strokeWidth * 100).roundToInt()}%"
+                TvDanmakuProperty.Weight -> stringResource(Lang.subject_episode_video_settings_font_weight) to config.style.fontWeight.weight.toString()
+                TvDanmakuProperty.Top -> stringResource(Lang.subject_episode_video_settings_top) to if (config.enableTop) stringResource(Lang.video_player_on) else stringResource(Lang.video_player_off)
+                TvDanmakuProperty.Bottom -> stringResource(Lang.subject_episode_video_settings_bottom) to if (config.enableBottom) stringResource(Lang.video_player_on) else stringResource(Lang.video_player_off)
+                TvDanmakuProperty.Floating -> stringResource(Lang.subject_episode_video_settings_floating) to if (config.enableFloating) stringResource(Lang.video_player_on) else stringResource(Lang.video_player_off)
+                TvDanmakuProperty.Color -> stringResource(Lang.subject_episode_video_settings_colorful) to if (config.enableColor) stringResource(Lang.video_player_on) else stringResource(Lang.video_player_off)
             }
             val checked = when (property) {
                 TvDanmakuProperty.Top -> config.enableTop
@@ -102,7 +124,8 @@ internal fun TvPlayerDanmakuSettingsPanel(
                     adjusting = danmakuAdjustment == adjustment,
                     onAdjustingChange = { adjusting -> onDanmakuAdjustmentChange(adjustment.takeIf { adjusting }) },
                     onStep = { onIntent(TvEpisodeIntent.AdjustDanmaku(property, it)) },
-                    modifier = if (property == TvDanmakuProperty.FontSize) entryModifier else Modifier,
+                    modifier = (if (property == TvDanmakuProperty.FontSize) entryModifier else Modifier)
+                        .testTag("tv-danmaku-property-${property.name}"),
                 )
             } else {
                 TvOptionRow(
@@ -112,7 +135,7 @@ internal fun TvPlayerDanmakuSettingsPanel(
                 ) { onIntent(TvEpisodeIntent.AdjustDanmaku(property, 1)) }
             }
         }
-        item { TvPlayerSectionLabel("弹幕来源与时间校准") }
+        item { TvPlayerSectionLabel(stringResource(Lang.episode_danmaku_sources_timing)) }
         items(origins, key = { "origin-${it.serviceId.value}" }) { origin ->
             Column {
                 TvOptionRow(
@@ -120,14 +143,14 @@ internal fun TvPlayerDanmakuSettingsPanel(
                     checked = origin.enabled,
                 ) { onIntent(TvEpisodeIntent.ToggleDanmakuSource(origin.serviceId)) }
                 Text(
-                    origin.match,
+                    origin.matchDescription,
                     color = colors.muted,
                     modifier = Modifier.padding(horizontal = 14.dp),
                     style = MaterialTheme.typography.bodySmall,
                 )
                 val adjustment = TvDanmakuAdjustment.Timing(origin.serviceId)
                 TvDanmakuAdjustmentRow(
-                    "时间校准", "${origin.shiftMillis / 1000f}s",
+                    stringResource(Lang.episode_danmaku_timing), "${origin.shiftMillis / 1000f}s",
                     adjusting = danmakuAdjustment == adjustment,
                     onAdjustingChange = { adjusting -> onDanmakuAdjustmentChange(adjustment.takeIf { adjusting }) },
                     onStep = {
@@ -139,11 +162,12 @@ internal fun TvPlayerDanmakuSettingsPanel(
                         )
                     },
                     onReset = { onIntent(TvEpisodeIntent.ShiftDanmakuSource(origin.serviceId, null)) },
+                    modifier = Modifier.testTag("tv-danmaku-timing-${origin.serviceId.value}"),
                 )
             }
         }
         item(key = "danmaku-list") {
-            TvOptionRow("弹幕列表", modifier = Modifier.tvFocusAnchor(focus, DanmakuSettingsKey.List).testTag("tv-danmaku-list-button")) {
+            TvOptionRow(stringResource(Lang.subject_episode_danmaku_list_title), modifier = Modifier.tvFocusAnchor(focus, DanmakuSettingsKey.List).testTag("tv-danmaku-list-button")) {
                 onOpenList()
             }
         }
@@ -152,9 +176,10 @@ internal fun TvPlayerDanmakuSettingsPanel(
             key = { "match-${it.serviceId.value}" }
         ) { origin ->
             TvOptionRow(
-                "重新匹配弹幕",
+                stringResource(Lang.subject_episode_danmaku_rematch),
                 value = origin.name,
-                modifier = Modifier.tvFocusAnchor(focus, DanmakuSettingsKey.Match(origin.serviceId)),
+                modifier = Modifier.tvFocusAnchor(focus, DanmakuSettingsKey.Match(origin.serviceId))
+                    .testTag("tv-danmaku-rematch-${origin.serviceId.value}"),
             ) { onMatch(origin) }
         }
     }
