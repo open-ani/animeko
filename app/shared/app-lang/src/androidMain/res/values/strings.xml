@@ -812,7 +812,6 @@
     <string name="cache_subject_delete">Delete</string>
     <string name="cache_subject_cancel">Cancel</string>
     <string name="cache_subject_cache">Download</string>
-    <string name="cache_subject_select_storage">Select Storage Location</string>
     <string name="cache_subject_manage_all">Manage All Downloads</string>
     <string name="cache_unknown">Unknown</string>
     <string name="cache_management_select_item_for_details">Select an item to view download details</string>

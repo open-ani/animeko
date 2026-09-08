@@ -25,8 +25,11 @@ import kotlinx.coroutines.supervisorScope
 import me.him188.ani.app.domain.media.cache.EpisodeCacheStatus
 import me.him188.ani.app.domain.media.cache.MediaCache
 import me.him188.ani.app.domain.media.cache.MediaCacheState
+import me.him188.ani.app.domain.media.cache.engine.MediaCacheEngineKey
 import me.him188.ani.app.domain.media.cache.storage.MediaCacheStorage
 import me.him188.ani.app.ui.foundation.HasBackgroundScope
+import me.him188.ani.datasources.api.Media
+import me.him188.ani.datasources.api.source.MediaSourceKind
 import me.him188.ani.utils.coroutines.flows.flowOfEmptyList
 
 /**
@@ -39,6 +42,16 @@ class MediaDownloadManager(
     override val backgroundScope: CoroutineScope,
 ) : HasBackgroundScope {
     val enabledStorages: Flow<List<MediaCacheStorage>> = flowOf(storagesIncludingDisabled)
+
+    /** Resolves the default download destination in registration order, preserving PikPak routing. */
+    suspend fun defaultStorageFor(media: Media): MediaCacheStorage {
+        val supported = enabledStorages.first().filter { it.engine.supports(media) }
+        // The HTTP engine supports BT media only when PikPak is enabled and can resolve it.
+        if (media.kind == MediaSourceKind.BitTorrent) {
+            supported.firstOrNull { it.engine.engineKey == MediaCacheEngineKey.WebM3u }?.let { return it }
+        }
+        return checkNotNull(supported.firstOrNull()) { "No download storage supports this media" }
+    }
 
     private val downloadsFlow: Flow<List<MediaCache>> by lazy {
         val flows = storagesIncludingDisabled.map { it.listFlow }

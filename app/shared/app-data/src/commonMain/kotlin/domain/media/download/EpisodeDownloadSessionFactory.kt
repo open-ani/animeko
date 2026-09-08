@@ -21,16 +21,12 @@ import me.him188.ani.app.data.repository.episode.EpisodeCollectionRepository
 import me.him188.ani.app.data.repository.media.EpisodePreferencesRepository
 import me.him188.ani.app.data.repository.subject.SubjectCollectionRepository
 import me.him188.ani.app.domain.media.cache.MediaCache
-import me.him188.ani.app.domain.media.cache.engine.MediaCacheEngineKey
-import me.him188.ani.app.domain.media.cache.storage.MediaCacheStorage
-import me.him188.ani.app.domain.media.cache.storage.contains
 import me.him188.ani.app.domain.media.fetch.MediaSourceManager
 import me.him188.ani.app.domain.media.fetch.create
 import me.him188.ani.app.domain.media.selector.MediaSelector
 import me.him188.ani.app.domain.media.selector.MediaSelectorFactory
 import me.him188.ani.datasources.api.Media
 import me.him188.ani.datasources.api.source.MediaFetchRequest
-import me.him188.ani.datasources.api.source.MediaSourceKind
 import me.him188.ani.datasources.api.topic.contains
 import me.him188.ani.datasources.api.topic.isSingleEpisode
 import me.him188.ani.datasources.api.unwrapCached
@@ -47,8 +43,7 @@ class EpisodeDownloadSessionFactory(
     fun create(subjectId: Int, scope: CoroutineScope) = AddEpisodeDownloadSession(
         parentScope = scope,
         prepare = { episodeId, requestScope -> prepare(subjectId, episodeId, requestScope) },
-        findReusableDownload = ::findReusableDownload,
-        availableStorages = ::availableStorages,
+        findReusableMedia = ::findReusableMedia,
         createDownload = { createDownload(it) },
     )
 
@@ -76,16 +71,11 @@ class EpisodeDownloadSessionFactory(
         }
     }
 
-    private suspend fun findReusableDownload(selection: DownloadMediaSelection): ReusableDownload? {
+    private suspend fun findReusableMedia(selection: DownloadMediaSelection): Media? {
         val request = selection.request
         val existing = findReusableSeasonDownload(request.episode, downloadManager.downloadsForSubject(request.subject.subjectId).first()) ?: return null
-        val media = existing.origin.unwrapCached()
-        val storage = availableStorages(media).firstOrNull { it.contains(existing) }
-        return ReusableDownload(media, storage)
+        return existing.origin.unwrapCached()
     }
-
-    private suspend fun availableStorages(media: Media): List<MediaCacheStorage> =
-        downloadStoragesFor(media, downloadManager.enabledStorages.first())
 }
 
 /** Capture the selection event before selecting and persist it before submitting the download. */
@@ -108,11 +98,3 @@ internal fun findReusableSeasonDownload(episode: EpisodeInfo, downloads: List<Me
         range != null && !range.isSingleEpisode() &&
                 (episode.ep?.let { range.contains(it) } == true || range.contains(episode.sort))
     }
-
-internal fun downloadStoragesFor(media: Media, storages: List<MediaCacheStorage>): List<MediaCacheStorage> {
-    val supported = storages.filter { it.engine.supports(media) }
-    // PikPak routes BT resources through the HTTP download engine when enabled.
-    return if (media.kind == MediaSourceKind.BitTorrent && supported.any { it.engine.engineKey == MediaCacheEngineKey.WebM3u }) {
-        supported.filter { it.engine.engineKey == MediaCacheEngineKey.WebM3u }
-    } else supported
-}

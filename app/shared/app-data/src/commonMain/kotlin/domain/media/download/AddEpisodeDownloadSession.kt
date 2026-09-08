@@ -21,7 +21,6 @@ import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import me.him188.ani.app.data.models.episode.EpisodeInfo
 import me.him188.ani.app.data.models.subject.SubjectInfo
-import me.him188.ani.app.domain.media.cache.storage.MediaCacheStorage
 import me.him188.ani.app.domain.media.fetch.MediaFetchSession
 import me.him188.ani.app.domain.media.selector.MediaSelector
 import me.him188.ani.datasources.api.Media
@@ -40,10 +39,7 @@ class DownloadMediaSelection(
 data class DownloadTarget(
     val selection: DownloadMediaSelection,
     val media: Media,
-    val storage: MediaCacheStorage,
 )
-
-data class ReusableDownload(val media: Media, val preferredStorage: MediaCacheStorage?)
 
 sealed interface AddDownloadState {
     data object Idle : AddDownloadState
@@ -58,15 +54,6 @@ sealed interface AddDownloadState {
     data class ChoosingMedia(
         override val requestId: Long,
         val selection: DownloadMediaSelection,
-    ) : Active {
-        override val episodeId get() = selection.request.episode.episodeId
-    }
-
-    data class ChoosingStorage(
-        override val requestId: Long,
-        val selection: DownloadMediaSelection,
-        val media: Media,
-        val storages: List<MediaCacheStorage>,
     ) : Active {
         override val episodeId get() = selection.request.episode.episodeId
     }
@@ -91,8 +78,7 @@ sealed interface AddDownloadState {
 class AddEpisodeDownloadSession(
     parentScope: CoroutineScope,
     private val prepare: suspend (episodeId: Int, scope: CoroutineScope) -> DownloadMediaSelection,
-    private val findReusableDownload: suspend (DownloadMediaSelection) -> ReusableDownload?,
-    private val availableStorages: suspend (Media) -> List<MediaCacheStorage>,
+    private val findReusableMedia: suspend (DownloadMediaSelection) -> Media?,
     private val createDownload: suspend (DownloadTarget) -> Unit,
 ) : AutoCloseable {
     private val logger = logger<AddEpisodeDownloadSession>()
@@ -116,14 +102,13 @@ class AddEpisodeDownloadSession(
         action = child.launch {
             runRequest(requestId, episodeId) {
                 val selection = prepare(episodeId, child)
-                val existing = findReusableDownload(selection)
-                val storages = existing?.let { availableStorages(it.media) }
+                val existing = findReusableMedia(selection)
                 mutex.withLock {
                     if (!isCurrent(requestId)) return@withLock
                     if (existing == null) {
                         mutableState.value = AddDownloadState.ChoosingMedia(requestId, selection)
                     } else {
-                        chooseStorageLocked(requestId, selection, existing.media, storages.orEmpty(), existing.preferredStorage)
+                        submitLocked(requestId, DownloadTarget(selection, existing))
                     }
                 }
             }
@@ -136,27 +121,12 @@ class AddEpisodeDownloadSession(
         action = checkNotNull(requestScope).launch {
             runRequest(requestId, current.episodeId) {
                 current.selection.selectMedia(media)
-                val storages = availableStorages(media)
-                check(storages.isNotEmpty()) { "No download location supports this media" }
                 mutex.withLock {
                     if (!isCurrent(requestId)) return@withLock
-                    chooseStorageLocked(requestId, current.selection, media, storages)
+                    submitLocked(requestId, DownloadTarget(current.selection, media))
                 }
             }
         }
-    }
-
-    suspend fun selectStorage(requestId: Long, storage: MediaCacheStorage) = mutex.withLock {
-        val current = mutableState.value as? AddDownloadState.ChoosingStorage ?: return@withLock
-        if (current.requestId != requestId || storage !in current.storages) return@withLock
-        submitLocked(requestId, DownloadTarget(current.selection, current.media, storage))
-    }
-
-    suspend fun backToMedia(requestId: Long) = mutex.withLock {
-        val current = mutableState.value as? AddDownloadState.ChoosingStorage ?: return@withLock
-        if (current.requestId != requestId) return@withLock
-        current.selection.selector.unselect()
-        mutableState.value = AddDownloadState.ChoosingMedia(requestId, current.selection)
     }
 
     suspend fun cancel(requestId: Long) = mutex.withLock {
@@ -171,22 +141,6 @@ class AddEpisodeDownloadSession(
         if (current.requestId != requestId) return@withLock
         if (current.target != null) submitLocked(requestId, current.target)
         else startLocked(current.episodeId)
-    }
-
-    private fun chooseStorageLocked(
-        requestId: Long,
-        selection: DownloadMediaSelection,
-        media: Media,
-        storages: List<MediaCacheStorage>,
-        preferredStorage: MediaCacheStorage? = null,
-    ) {
-        check(storages.isNotEmpty()) { "No download location supports this media" }
-        val storage = preferredStorage?.takeIf { it in storages } ?: storages.singleOrNull()
-        if (storage != null) {
-            submitLocked(requestId, DownloadTarget(selection, media, storage))
-        } else {
-            mutableState.value = AddDownloadState.ChoosingStorage(requestId, selection, media, storages)
-        }
     }
 
     private fun submitLocked(requestId: Long, target: DownloadTarget) {

@@ -10,9 +10,10 @@
 package me.him188.ani.app.domain.media.download
 
 import kotlin.test.Test
-import kotlin.test.assertEquals
+import kotlin.test.assertFailsWith
 import kotlin.test.assertNull
 import kotlin.test.assertSame
+import kotlinx.coroutines.test.runTest
 import me.him188.ani.app.data.models.episode.EpisodeInfo
 import me.him188.ani.app.domain.media.TestMediaList
 import me.him188.ani.app.domain.media.cache.engine.DummyMediaCacheEngine
@@ -38,15 +39,47 @@ class DownloadSelectionPolicyTest {
     }
 
     @Test
-    fun `BT prefers supported HTTP engine while other media keeps compatible locations`() {
+    fun `default storage prefers supported HTTP engine for BT media`() = runTest {
         val torrent = storage(MediaCacheEngineKey.Anitorrent)
         val web = storage(MediaCacheEngineKey.WebM3u)
         val unsupported = storage(MediaCacheEngineKey.WebM3u, supports = false)
+        val otherWeb = storage(MediaCacheEngineKey.WebM3u)
         val media = TestMediaList.first().copy(kind = MediaSourceKind.BitTorrent)
-        assertEquals(listOf(web), downloadStoragesFor(media, listOf(torrent, web, unsupported)))
-        assertEquals(listOf(torrent), downloadStoragesFor(media, listOf(torrent, unsupported)))
-        assertEquals(listOf(torrent, web), downloadStoragesFor(media.copy(kind = MediaSourceKind.WEB), listOf(torrent, web, unsupported)))
-        assertEquals(emptyList(), downloadStoragesFor(media, listOf(unsupported)))
+        val manager = MediaDownloadManager(listOf(torrent, unsupported, web, otherWeb), backgroundScope)
+
+        assertSame(web, manager.defaultStorageFor(media))
+    }
+
+    @Test
+    fun `default storage uses torrent engine when HTTP cannot handle BT media`() = runTest {
+        val torrent = storage(MediaCacheEngineKey.Anitorrent)
+        val web = storage(MediaCacheEngineKey.WebM3u, supports = false)
+        val manager = MediaDownloadManager(listOf(web, torrent), backgroundScope)
+
+        assertSame(torrent, manager.defaultStorageFor(TestMediaList.first().copy(kind = MediaSourceKind.BitTorrent)))
+    }
+
+    @Test
+    fun `multiple compatible storages use the first registered default`() = runTest {
+        val unsupported = storage(MediaCacheEngineKey.Anitorrent, supports = false)
+        val first = storage(MediaCacheEngineKey.WebM3u)
+        val second = storage(MediaCacheEngineKey.WebM3u)
+        val manager = MediaDownloadManager(listOf(unsupported, first, second), backgroundScope)
+
+        assertSame(first, manager.defaultStorageFor(TestMediaList.first().copy(kind = MediaSourceKind.WEB)))
+    }
+
+    @Test
+    fun `missing compatible storage fails instead of choosing an unsupported engine`() = runTest {
+        val media = TestMediaList.first()
+        val unsupported = storage(MediaCacheEngineKey.WebM3u, supports = false)
+
+        assertFailsWith<IllegalStateException> {
+            MediaDownloadManager(listOf(unsupported), backgroundScope).defaultStorageFor(media)
+        }
+        assertFailsWith<IllegalStateException> {
+            MediaDownloadManager(emptyList(), backgroundScope).defaultStorageFor(media)
+        }
     }
 
     private fun storage(key: MediaCacheEngineKey, supports: Boolean = true) = DownloadTestStorage(

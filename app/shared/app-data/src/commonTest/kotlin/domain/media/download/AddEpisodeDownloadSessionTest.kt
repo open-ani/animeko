@@ -30,7 +30,6 @@ import me.him188.ani.app.data.models.preference.MediaPreference
 import me.him188.ani.app.data.models.preference.MediaSelectorSettings
 import me.him188.ani.app.data.models.subject.SubjectInfo
 import me.him188.ani.app.domain.media.TestMediaList
-import me.him188.ani.app.domain.media.cache.storage.TestMediaCacheStorage
 import me.him188.ani.app.domain.media.fetch.CompletedConditions
 import me.him188.ani.app.domain.media.fetch.MediaFetchSession
 import me.him188.ani.app.domain.media.fetch.MediaSourceFetchResult
@@ -40,7 +39,6 @@ import me.him188.ani.datasources.api.source.MediaFetchRequest
 
 class AddEpisodeDownloadSessionTest {
     private val media = TestMediaList.first()
-    private val storage = TestMediaCacheStorage()
 
     @Test
     fun `manual selections persist preferences before completion including subsequent episodes`() = runTest {
@@ -131,22 +129,27 @@ class AddEpisodeDownloadSessionTest {
     }
 
     @Test
-    fun `back from storage retains the query and unknown storage is ignored`() = runTest {
-        val other = TestMediaCacheStorage()
-        val session = AddEpisodeDownloadSession(backgroundScope, { id, _ -> selection(id) }, { null }, { listOf(storage, other) }, {})
+    fun `manual media selection submits directly after saving its preference`() = runTest {
+        val events = mutableListOf<String>()
+        val prepared = selection(1)
+        val selection = DownloadMediaSelection(prepared.request, prepared.fetchSession, prepared.selector) {
+            assertSame(media, it)
+            events += "preference saved"
+        }
+        var submitted: DownloadTarget? = null
+        val session = session(
+            prepare = { _, _ -> selection },
+            create = { submitted = it; events += "submitted" },
+        )
         session.start(1)
         runCurrent()
         val choosing = assertIs<AddDownloadState.ChoosingMedia>(session.state.value)
         session.selectMedia(choosing.requestId, media)
         runCurrent()
-        session.selectStorage(choosing.requestId, TestMediaCacheStorage())
-        assertIs<AddDownloadState.ChoosingStorage>(session.state.value)
-        session.backToMedia(choosing.requestId)
-        assertSame(choosing.selection, assertIs<AddDownloadState.ChoosingMedia>(session.state.value).selection)
-        session.selectMedia(choosing.requestId, media)
-        runCurrent()
-        session.selectStorage(choosing.requestId, other)
-        runCurrent()
+
+        assertEquals(listOf("preference saved", "submitted"), events)
+        assertSame(selection, submitted?.selection)
+        assertSame(media, submitted?.media)
         assertEquals(AddDownloadState.Idle, session.state.value)
         session.close()
     }
@@ -174,27 +177,12 @@ class AddEpisodeDownloadSessionTest {
         var submitted: DownloadTarget? = null
         val session = AddEpisodeDownloadSession(
             backgroundScope, { id, _ -> selection(id) },
-            { ReusableDownload(media, storage) }, { listOf(storage) }, { submitted = it },
+            { media }, { submitted = it },
         )
         session.start(1)
         runCurrent()
         assertEquals(media, submitted?.media)
         assertEquals(AddDownloadState.Idle, session.state.value)
-        session.close()
-    }
-
-    @Test
-    fun `reused season media remains selected when its original storage is unavailable`() = runTest {
-        val other = TestMediaCacheStorage()
-        val session = AddEpisodeDownloadSession(
-            backgroundScope, { id, _ -> selection(id) },
-            { ReusableDownload(media, null) }, { listOf(storage, other) }, {},
-        )
-        session.start(1)
-        runCurrent()
-        val state = assertIs<AddDownloadState.ChoosingStorage>(session.state.value)
-        assertSame(media, state.media)
-        assertEquals(listOf(storage, other), state.storages)
         session.close()
     }
 
@@ -213,7 +201,7 @@ class AddEpisodeDownloadSessionTest {
     private fun TestScope.session(
         prepare: suspend (Int, CoroutineScope) -> DownloadMediaSelection = { id, _ -> selection(id) },
         create: suspend (DownloadTarget) -> Unit = {},
-    ) = AddEpisodeDownloadSession(backgroundScope, prepare, { null }, { listOf(storage) }, create)
+    ) = AddEpisodeDownloadSession(backgroundScope, prepare, { null }, create)
 
     private fun selection(id: Int): DownloadMediaSelection = DownloadMediaSelection(
         EpisodeDownloadRequest(SubjectInfo.Empty.copy(subjectId = 1), EpisodeInfo.Empty.copy(episodeId = id)),

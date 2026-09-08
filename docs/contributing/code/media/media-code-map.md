@@ -21,7 +21,7 @@
 ## 核心组件与职责
 
 - `MediaDownloadManager`（`app/shared/app-data/.../domain/media/download/MediaDownloadManager.kt`）
-  聚合持久化视频下载、查询剧集下载状态，并将删除与关闭操作交给对应存储。
+  聚合持久化视频下载、查询剧集下载状态、解析新下载的默认存储，并将删除与关闭操作交给对应存储。
   通过 `downloadManager` 注入，下载添加与页面状态的职责见 [下载管理](media-downloads.md)。
 - `MediaSourceManagerImpl`（`app/shared/app-data/.../domain/media/fetch/MediaSourceManager.kt`）
   加载所有 factory，从 `MediaSourceInstanceRepository` 恢复持久化的实例，注入本地缓存数据源，

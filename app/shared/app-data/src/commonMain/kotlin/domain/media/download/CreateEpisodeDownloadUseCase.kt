@@ -31,7 +31,8 @@ class CreateEpisodeDownloadUseCase(
         downloadManager.backgroundScope.async {
             val request = target.selection.request
             val metadata = MediaCacheMetadata(target.selection.fetchSession.request.first())
-            val cache = target.storage.cache(target.media, metadata, request.episode.toEpisodeMetadata())
+            val storage = downloadManager.defaultStorageFor(target.media)
+            val cache = storage.cache(target.media, metadata, request.episode.toEpisodeMetadata())
 
             // Persistence is the success boundary. Ancillary work cannot turn a saved download into a failure.
             downloadManager.backgroundScope.launch {

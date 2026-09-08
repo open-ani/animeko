@@ -9,7 +9,6 @@
 
 package me.him188.ani.app.ui.download.subject
 
-import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.add
 import androidx.compose.foundation.layout.fillMaxHeight
@@ -20,7 +19,6 @@ import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.BottomSheetDefaults
 import androidx.compose.material3.ModalBottomSheet
-import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.rememberModalBottomSheetState
@@ -39,7 +37,6 @@ import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.map
 import me.him188.ani.app.data.models.preference.MediaSelectorSettings
-import me.him188.ani.app.domain.media.cache.storage.MediaCacheStorage
 import me.him188.ani.app.domain.media.download.AddDownloadState
 import me.him188.ani.app.domain.media.download.DownloadMediaSelection
 import me.him188.ani.app.domain.media.fetch.MediaSourceResultsFilterer
@@ -48,7 +45,6 @@ import me.him188.ani.app.ui.foundation.layout.desktopTitleBar
 import me.him188.ani.app.ui.foundation.layout.desktopTitleBarPadding
 import me.him188.ani.app.ui.lang.Lang
 import me.him188.ani.app.ui.lang.cache_subject_cancel
-import me.him188.ani.app.ui.lang.cache_subject_select_storage
 import me.him188.ani.app.ui.lang.downloads_create_failed
 import me.him188.ani.app.ui.lang.settings_mediasource_retry
 import me.him188.ani.app.ui.mediafetch.MediaSelectorView
@@ -68,39 +64,13 @@ internal fun SubjectDownloadRequestDialogs(
     settings: Flow<MediaSelectorSettings>,
     onHide: () -> Unit,
     onSelectMedia: (Long, Media) -> Unit,
-    onSelectStorage: (Long, MediaCacheStorage) -> Unit,
-    onBackToMedia: (Long) -> Unit,
     onRetry: (Long) -> Unit,
     onCancel: (Long) -> Unit,
 ) {
-    val selection = when (state) {
-        is AddDownloadState.ChoosingMedia -> state.selection
-        is AddDownloadState.ChoosingStorage -> state.selection
-        else -> null
-    }
-    if (visible && selection != null) {
-        val requestId = (state as AddDownloadState.Active).requestId
-        key(requestId) {
-            DownloadMediaPicker(selection, sourceInfoProvider, settings, onHide) { onSelectMedia(requestId, it) }
+    if (visible && state is AddDownloadState.ChoosingMedia) {
+        key(state.requestId) {
+            DownloadMediaPicker(state.selection, sourceInfoProvider, settings, onHide) { onSelectMedia(state.requestId, it) }
         }
-    }
-    if (state is AddDownloadState.ChoosingStorage) {
-        AlertDialog(
-            onDismissRequest = { onBackToMedia(state.requestId) },
-            title = { Text(stringResource(Lang.cache_subject_select_storage)) },
-            text = {
-                Column {
-                    state.storages.forEach { storage ->
-                        OutlinedButton(onClick = { onSelectStorage(state.requestId, storage) }) {
-                            Text(storage.cacheMediaSource.info.displayName)
-                        }
-                    }
-                }
-            },
-            confirmButton = {
-                TextButton(onClick = { onBackToMedia(state.requestId) }) { Text(stringResource(Lang.cache_subject_cancel)) }
-            },
-        )
     }
     if (state is AddDownloadState.Failed) {
         AlertDialog(

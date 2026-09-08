@@ -27,7 +27,6 @@ import me.him188.ani.app.data.models.subject.nameCnOrName
 import me.him188.ani.app.data.repository.player.EpisodePlayHistoryRepository
 import me.him188.ani.app.data.repository.subject.SubjectCollectionRepository
 import me.him188.ani.app.data.repository.user.SettingsRepository
-import me.him188.ani.app.domain.media.cache.storage.MediaCacheStorage
 import me.him188.ani.app.domain.media.download.AddDownloadState
 import me.him188.ani.app.domain.media.download.DownloadOperations
 import me.him188.ani.app.domain.media.download.EpisodeDownloadSessionFactory
@@ -89,8 +88,6 @@ class SubjectDownloadsViewModel(
     fun cancelRequest(requestId: Long) { backgroundScope.launch { session.cancel(requestId) } }
     fun retryRequest(requestId: Long) { backgroundScope.launch { session.retry(requestId) } }
     fun selectMedia(requestId: Long, media: Media) { backgroundScope.launch { session.selectMedia(requestId, media) } }
-    fun selectStorage(requestId: Long, storage: MediaCacheStorage) { backgroundScope.launch { session.selectStorage(requestId, storage) } }
-    fun backToMedia(requestId: Long) { backgroundScope.launch { session.backToMedia(requestId) } }
 
     fun pauseDownloads(ids: Set<String>) = execute(ids, DownloadOperations.Action.Pause)
     fun resumeDownloads(ids: Set<String>) = execute(ids, DownloadOperations.Action.Resume)

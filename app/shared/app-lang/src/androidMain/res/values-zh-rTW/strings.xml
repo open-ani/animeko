@@ -814,7 +814,6 @@
     <string name="cache_subject_delete">刪除</string>
     <string name="cache_subject_cancel">取消</string>
     <string name="cache_subject_cache">下載</string>
-    <string name="cache_subject_select_storage">選擇儲存位置</string>
     <string name="cache_subject_manage_all">管理全部下載</string>
     <string name="cache_unknown">未知</string>
     <string name="cache_management_select_item_for_details">選擇一個條目查看具體下載</string>

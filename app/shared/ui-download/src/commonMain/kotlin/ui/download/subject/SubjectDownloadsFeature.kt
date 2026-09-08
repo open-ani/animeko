@@ -71,8 +71,6 @@ internal fun SubjectDownloadsFeature(
         settings = vm.selectorSettings,
         onHide = { pickerVisible = false },
         onSelectMedia = vm::selectMedia,
-        onSelectStorage = vm::selectStorage,
-        onBackToMedia = vm::backToMedia,
         onRetry = vm::retryRequest,
         onCancel = vm::cancelRequest,
     )

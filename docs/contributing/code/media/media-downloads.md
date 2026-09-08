@@ -24,17 +24,21 @@
 ## 添加下载
 
 `EpisodeDownloadSessionFactory` 负责加载条目与剧集信息、创建资源查询和选择器、保存偏好，
-并根据已有季度资源及存储引擎兼容性尝试复用下载资源。
+并根据已有季度资源尝试复用下载资源。
 
-会话阶段为 `Preparing`、`ChoosingMedia`、`ChoosingStorage`、`Submitting`、`Failed`；
+会话阶段为 `Preparing`、`ChoosingMedia`、`Submitting`、`Failed`；
 没有活动请求时为 `Idle`。状态只描述阶段，操作通过会话方法进行。
 
 - 同一功能实例只有一个活动会话。切换剧集会取消旧请求的作用域，包含元数据加载阶段。
-- 每个请求有 `requestId`，资源选择、返回、取消和重试都携带该 ID，过期回调会被忽略。
+- 每个请求有 `requestId`，资源选择、取消和重试都携带该 ID，过期回调会被忽略。
 - 关闭资源弹窗仅隐藏 UI，会话继续保留查询结果；取消请求会释放查询资源。
-- 从存储选择返回资源选择时复用原查询。
 - 手动选择资源时在提交下载前保存其偏好。过滤偏好变化也由会话监听。
 - 提交过程中拒绝重复提交和请求替换；失败后可以重试同一个目标。
+
+选择资源后直接提交下载，不再提供存储选择。会话的 `DownloadTarget` 只包含资源和请求信息，
+`CreateEpisodeDownloadUseCase` 通过 `MediaDownloadManager.defaultStorageFor` 在提交时解析默认存储：
+按注册顺序使用第一个支持该资源的存储；启用且支持该资源的 PikPak HTTP 引擎优先处理 BT 资源。
+手动选源、季度资源复用和失败重试使用同一规则，不沿用旧下载的存储。没有兼容存储时进入可重试的失败状态。
 
 `CreateEpisodeDownloadUseCase` 在应用作用域提交下载。创建调用返回代表存储配置已经持久化，
 并不代表视频已下载完成。弹幕准备和埋点独立执行，不改变持久化成功的结果。

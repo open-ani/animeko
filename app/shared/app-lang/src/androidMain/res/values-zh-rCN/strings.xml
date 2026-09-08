@@ -852,7 +852,6 @@
     <string name="cache_subject_delete">删除</string>
     <string name="cache_subject_cancel">取消</string>
     <string name="cache_subject_cache">下载</string>
-    <string name="cache_subject_select_storage">选择储存位置</string>
     <string name="cache_subject_manage_all">管理全部下载</string>
     <string name="cache_unknown">未知</string>
     <string name="cache_management_select_item_for_details">选择一个条目查看具体下载</string>
