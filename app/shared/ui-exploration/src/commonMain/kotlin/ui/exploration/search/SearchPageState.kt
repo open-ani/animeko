@@ -114,6 +114,17 @@ fun SearchPageState.toggleTagSelection(
     )
 }
 
+fun SearchPageState.clearTagSelection(
+    tag: SearchFilterChipState,
+    tagKinds: List<CanonicalTagKind> = SearchFilterState.DEFAULT_TAG_KINDS,
+): SearchPageState {
+    val updatedTags = query.tags.orEmpty().filterNot { it in tag.values }
+    return withQuery(
+        query.copy(tags = updatedTags),
+        tagKinds = tagKinds,
+    )
+}
+
 fun buildSearchFilterState(
     selectedTags: List<String>,
     tagKinds: List<CanonicalTagKind> = SearchFilterState.DEFAULT_TAG_KINDS,

@@ -197,6 +197,14 @@ private fun renderChipLabel(
     }
 }
 
+@Composable
+internal fun searchFilterGroupLabel(state: SearchFilterChipState): String {
+    return renderChipLabel(
+        state = state.copy(selected = emptyList()),
+        labels = rememberSearchFilterLabels(),
+    )
+}
+
 @Immutable
 private data class SearchFilterLabels(
     val audience: String,

@@ -64,4 +64,52 @@ class SearchPageStateTest {
 
         assertEquals(listOf("百合", value), updated.query.tags)
     }
+
+    @Test
+    fun `clearTagSelection clears one group and preserves other groups`() {
+        val emptyState = createTestSearchPageState(
+            query = SubjectSearchQuery(""),
+            hasActiveSearch = true,
+        )
+        val firstGroup = emptyState.searchFilterState.chips[0]
+        val secondGroup = emptyState.searchFilterState.chips[1]
+        val firstValue = firstGroup.values.first()
+        val secondValue = secondGroup.values.first()
+        val state = createTestSearchPageState(
+            query = SubjectSearchQuery("", tags = listOf(firstValue, secondValue)),
+            hasActiveSearch = true,
+        )
+
+        val updated = state.clearTagSelection(
+            state.searchFilterState.chips.first { it.kind == firstGroup.kind },
+        )
+
+        assertEquals(listOf(secondValue), updated.query.tags)
+        assertTrue(
+            updated.searchFilterState.chips
+                .first { it.kind == firstGroup.kind }
+                .selected
+                .isEmpty(),
+        )
+        assertEquals(
+            listOf(secondValue),
+            updated.searchFilterState.chips.first { it.kind == secondGroup.kind }.selected,
+        )
+    }
+
+    @Test
+    fun `clearTagSelection removes an existing custom group`() {
+        val customTag = "自定义标签"
+        val state = createTestSearchPageState(
+            query = SubjectSearchQuery("", tags = listOf(customTag)),
+            hasActiveSearch = true,
+        )
+
+        val updated = state.clearTagSelection(
+            state.searchFilterState.chips.first { it.kind == null },
+        )
+
+        assertTrue(updated.query.tags.orEmpty().isEmpty())
+        assertTrue(updated.searchFilterState.chips.none { it.kind == null })
+    }
 }
