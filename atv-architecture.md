@@ -36,7 +36,7 @@
 
 | 裁剪能力                   | 当前落点                                                                                                                           |
 |------------------------|--------------------------------------------------------------------------------------------------------------------------------|
-| **视频离线缓存/下载系统**        | `getDisabledMediaCacheKoinModule()` 仍实例化 `MediaCacheManagerImpl`，但存储列表为空；不装配下载器与缓存引擎，无缓存页面。这里不包括图片、元数据、DataStore 等正常持久化        |
+| **视频离线缓存/下载系统**        | `getCommonKoinModule(enableMediaCache = false)` 仍实例化 `MediaCacheManagerImpl`，但存储列表为空；不装配下载器与缓存引擎，无缓存页面。这里不包括图片、元数据、DataStore 等正常持久化        |
 | **BT 源播放**             | torrent 平台绑定留在 `src/default`；TV 解析器没有 torrent/offline 链路，候选弹窗仅列 WEB；共享 classpath 仍可包含 torrent 符号                               |
 | **发送评论**               | 详情页与播放器评论只读；当前 `CommonKoinModule` 没有 `TurnstileState` 绑定。Web 源解析必需的 `CaptchaBrowserFactory`/`ImageCaptchaRecognizer` 则已在 TV 注册 |
 | **Bangumi OAuth 网页授权** | 没有 OAuth 回调清单或 TV 授权界面；仅邮箱 OTP 登录。手机端账号绑定后的服务端同步需在 TV 验收                                                                       |
@@ -74,7 +74,7 @@
 |----------|----------------------------------------------------------------------------------------------------------------------------------------------------------|--------------------------------------------------------------------------------------------------------------|
 | 构建约定     | 应用使用 `ani.android-application`；共享 UI 使用 `ani.kmp-compose`；TV 子模块同样使用 `ani.kmp-compose`，编译父目录下的 TV 文件                                | `app/android/build.gradle.kts`、`app/shared/**/tv/build.gradle.kts`、`build-logic/src/main/kotlin/`                                                |
 | Compose  | CMP 1.11.1 + `kotlin.plugin.compose`，TV 同时使用 Material3 与 tv-material 1.1.0                                                                               | `gradle/libs.versions.toml`、`ui-foundation/src/androidTv`                                                               |
-| DI       | `getCommonKoinModule` / `getTvCommonKoinModule` 共用核心装配，缓存模块分流；`SubjectDetailsStateFactory` 被 TV 复用的详情 VM 实际使用                                            | `app/shared/application/src/commonMain/kotlin/platform/CommonKoinModule.kt`                                  |
+| DI       | `getCommonKoinModule` 统一装配，TV 传入 `enableMediaCache = false`；Repository 注册集中到 `repositoryModules`；`SubjectDetailsStateFactory` 被 TV 复用的详情 VM 实际使用                                            | `app/shared/application/src/commonMain/kotlin/platform/CommonKoinModule.kt`                                  |
 | 页面 VM 创建 | `TvAniAppContent` 统一通过 `tvViewModel { TvXxxViewModel(...) }` 显式构建 10 个 TV VM（含应用作用域的一起看 VM）；Koin 不注册 VM，`Tv*Route` 接收实例并收集状态，`Tv*Screen` 只渲染状态并发送 Intent | `app/shared/src/androidTv/kotlin/ui/main/TvAniAppContent.kt`、各 `Tv*Route.kt`                                                     |
 | 导航       | Navigation 3：`rememberAniBackStack` / `AniNavigator.setBackStack` / `NavDisplay`；只注册 Main、SubjectDetail、EpisodeDetail                                    | `app/shared/src/androidTv/kotlin/ui/main/TvAniAppContent.kt`                                                                     |
 | 播放       | TV 自建 `TvEpisodeViewModel`，复用 `EpisodeFetchSelectPlayState` 与扩展；Android 画面仍是 ExoPlayer + libass                                                          | `ui-episode/src/androidTv/kotlin/ui/episode/TvEpisodeViewModel.kt`、`src/main/kotlin/CommonAndroidModules.kt`                          |
@@ -119,7 +119,7 @@ graph TD
         TVUI[":app:shared:tv + 各 ui-xxx-tv 子模块<br/>编译父目录中的 src/androidTv<br/>主壳/导航 · AniTvTheme · TvFocusDefaults"]
     end
     subgraph 共享["两 flavor 共用的共享模块<br/>(TV 另排除 Firebase/GMS, D1)"]
-        SHARED[":app:shared + :app:shared:application<br/>getCommonKoinModule（手机/desktop 完整版）<br/>getTvCommonKoinModule（TV 门控版·空引擎缓存）"]
+        SHARED[":app:shared + :app:shared:application<br/>getCommonKoinModule<br/>enableMediaCache: 手机/desktop=true，TV=false"]
         DATA[":app:shared:app-data（含 DataStores 桥接, R1 搬迁）"]
         PLAT[":app:shared:app-platform"]
         VP[":app:shared:video-player"]
@@ -136,8 +136,7 @@ graph TD
 ```
 
 手机端感知面：① `:app:shared:application` 的
-`getCommonKoinModule` 内部重构为「核心 + 缓存模块」组合（对外签名与行为不变，desktop/iOS 零感知），并新增 TV 门控入口
-`getTvCommonKoinModule`；② `:app:android` 现有 `src/main` 整体迁入 `src/default`，交集上提回
+`getCommonKoinModule` 保留手机、desktop/iOS 的默认缓存行为，TV 通过 `enableMediaCache = false` 使用空存储；② `:app:android` 现有 `src/main` 整体迁入 `src/default`，交集上提回
 `src/main` 并做 manifest 分层。这是 M0 的重构范围；任务名与产物路径保留。后续共享状态层也有重构，手机行为不回退仍需持续回归（§14.3）。
 
 ---
@@ -201,9 +200,9 @@ TV 不装配 torrent 平台绑定、缓存引擎与 `HttpDownloader`，但会实
 
 **R1 — 装配分流已完成**：
 
-- `getCommonKoinModule` 使用共享核心 + `getMediaCacheKoinModule`；TV 使用核心 +
-  `getDisabledMediaCacheKoinModule`。
-- 空缓存模块绑定 `MediaCacheManagerImpl(storagesIncludingDisabled = emptyList())`，保留公共注入点；启动时
+- `getCommonKoinModule` 统一组合 `useCaseModules`、`repositoryModules` 和 `otherModules`，后两者都接收 `getContext` 与 `coroutineScope`；`otherModules` 额外通过 `enableMediaCache` 控制缓存绑定，默认开启，TV 显式关闭。
+- Repository 注册集中到 `app-data` 的 `RepositoryModules.kt`，服务、管理器及平台装配保留在 `otherModules`，原单例与启动时机保持。
+- 缓存关闭时绑定 `MediaCacheManagerImpl(storagesIncludingDisabled = emptyList())`，保留公共注入点；启动时
   `HttpDownloader` 不存在则跳过初始化，缓存恢复遍历为空。
 - `Context.dataStores` 和平台 SettingsStore 桥接已归位 `app-data`；正常图片/元数据缓存不在视频离线缓存的裁剪范围内。
 
@@ -369,7 +368,7 @@ Material3 通过共享 UI 基建等依赖可用；列表使用标准 `LazyColumn
 
 `TvAniApplication.onCreate` 初始化日志与根协程域，依次装配：
 
-1. `getTvCommonKoinModule`：共享核心 + 空视频缓存存储。
+1. `getCommonKoinModule(enableMediaCache = false)`：共享核心 + 空视频缓存存储。
 2. `getCommonAndroidModules`：共享 Android 权限/HLS/播放器工厂。
 3. `getTvAndroidModules`：Web 解析、验证码、Noop 浏览器与 TV 退出实现。
 4. `startCommonKoinModule`：启动共享后台任务；没有 HTTP 下载器，缓存恢复为空。

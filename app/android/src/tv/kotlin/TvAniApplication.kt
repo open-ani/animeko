@@ -15,7 +15,7 @@ import me.him188.ani.android.getCommonAndroidModules
 import me.him188.ani.app.data.repository.user.SettingsRepository
 import me.him188.ani.app.platform.AndroidLoggingConfigurator
 import me.him188.ani.app.platform.createAppRootCoroutineScope
-import me.him188.ani.app.platform.getTvCommonKoinModule
+import me.him188.ani.app.platform.getCommonKoinModule
 import me.him188.ani.app.platform.startCommonKoinModule
 import me.him188.ani.datasources.api.source.MediaSourceKind
 import me.him188.ani.utils.logging.error
@@ -27,7 +27,7 @@ import org.koin.core.context.startKoin
  * TV variant 的 Application (atv-architecture.md §6.1).
  *
  * 与手机 AniApplication 的差异 (flavor 门控):
- * - getTvCommonKoinModule: 缓存/BT 绑定为空引擎实现 (§1.2 裁剪), 其余装配与手机一致;
+ * - getCommonKoinModule(enableMediaCache = false): 缓存/BT 绑定为空引擎实现 (§1.2 裁剪), 其余装配与手机一致;
  * - 单进程, 无 torrent 服务连接管理;
  * - M0 不接入 Sentry/Firebase (tv classpath 已剔除 firebase, 见 build.gradle.kts).
  */
@@ -50,7 +50,7 @@ class TvAniApplication : Application() {
         val koinApp = startKoin {
             androidContext(this@TvAniApplication)
             // 共享装配 + 空引擎缓存门控 —— TV 无缓存/BT, 选源池自然无 LocalCache 源 (§1.2)
-            modules(getTvCommonKoinModule({ this@TvAniApplication }, scope))
+            modules(getCommonKoinModule({ this@TvAniApplication }, scope, enableMediaCache = false))
             modules(getCommonAndroidModules(scope)) // src/main 交集 (无 torrent 绑定)
             modules(getTvAndroidModules()) // src/tv — Web 解析链 / BrowserNavigator 降级 / AppTerminator
         }.startCommonKoinModule(this@TvAniApplication, scope) // proxy/Session 后台任务; 缓存恢复段判空跳过
