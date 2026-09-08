@@ -19,6 +19,8 @@ import kotlinx.coroutines.cancel
 import me.him188.ani.utils.logging.error
 import me.him188.ani.utils.logging.thisLogger
 import me.him188.ani.utils.logging.trace
+import kotlin.coroutines.CoroutineContext
+import kotlin.coroutines.EmptyCoroutineContext
 
 /**
  * 带有 [backgroundScope], 当 [AbstractViewModel] 被 forget 时自动 close scope 以防资源泄露.
@@ -28,11 +30,17 @@ import me.him188.ani.utils.logging.trace
  *
  * 注意: 通过 androidx `viewModel {}` 取得的实例不会被 remember, [onRemembered] / [init] 永远不会执行 (作用域由 [onCleared] 关闭);
  * 这类 ViewModel 需要在构造时启动的后台收集应放在 Kotlin `init {}` 块里.
+ *
+ * @param backgroundCoroutineContext [backgroundScope] 的额外 context, 默认为空 (使用 `Dispatchers.Default`).
+ * 测试时可传入 `StandardTestDispatcher(testScheduler)`, 让 ViewModel 的全部后台协程 (状态流合并、加载、轮询) 与测试体跑在同一个
+ * 单线程的虚拟时间调度器上, 状态帧的顺序完全确定. 不应传入 [kotlinx.coroutines.Job] (作用域自带 [SupervisorJob]).
  */ // We can't use Android's Viewmodel because it's not available in Desktop platforms. 
-abstract class AbstractViewModel : RememberObserver, ViewModel(), HasBackgroundScope {
+abstract class AbstractViewModel(
+    backgroundCoroutineContext: CoroutineContext = EmptyCoroutineContext,
+) : RememberObserver, ViewModel(), HasBackgroundScope {
     val logger by lazy { thisLogger() }
 
-    private var _backgroundScope = createBackgroundScope()
+    private var _backgroundScope = createBackgroundScope(backgroundCoroutineContext)
     override val backgroundScope: CoroutineScope
         get() {
             return _backgroundScope
@@ -61,9 +69,9 @@ abstract class AbstractViewModel : RememberObserver, ViewModel(), HasBackgroundS
         }
     }
 
-    private fun createBackgroundScope(): CoroutineScope {
+    private fun createBackgroundScope(additionalContext: CoroutineContext): CoroutineScope {
         return CoroutineScope(
-            CoroutineExceptionHandler { coroutineContext, throwable ->
+            additionalContext + CoroutineExceptionHandler { coroutineContext, throwable ->
                 logger.error(throwable) { "Unhandled exception in background scope for viewmodel ${this::class.qualifiedName}, coroutineContext: $coroutineContext" }
             } + SupervisorJob(),
         )
