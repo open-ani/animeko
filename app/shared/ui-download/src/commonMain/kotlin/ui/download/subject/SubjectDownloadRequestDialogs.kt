@@ -37,7 +37,8 @@ import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.map
 import me.him188.ani.app.data.models.preference.MediaSelectorSettings
-import me.him188.ani.app.domain.media.download.AddDownloadState
+import me.him188.ani.app.domain.media.download.AddDownloadsState
+import me.him188.ani.app.domain.media.download.EpisodeDownloadState
 import me.him188.ani.app.domain.media.download.DownloadMediaSelection
 import me.him188.ani.app.domain.media.fetch.MediaSourceResultsFilterer
 import me.him188.ani.app.domain.media.fetch.restart
@@ -58,29 +59,47 @@ import org.jetbrains.compose.resources.stringResource
 
 @Composable
 internal fun SubjectDownloadRequestDialogs(
-    state: AddDownloadState,
+    state: AddDownloadsState,
     visible: Boolean,
     sourceInfoProvider: MediaSourceInfoProvider,
     settings: Flow<MediaSelectorSettings>,
     onHide: () -> Unit,
-    onSelectMedia: (Long, Media) -> Unit,
+    onSelectMedia: (Long, Int, Media) -> Unit,
     onRetry: (Long) -> Unit,
     onCancel: (Long) -> Unit,
 ) {
-    if (visible && state is AddDownloadState.ChoosingMedia) {
-        key(state.requestId) {
-            DownloadMediaPicker(state.selection, sourceInfoProvider, settings, onHide) { onSelectMedia(state.requestId, it) }
+    if (visible && state is AddDownloadsState.Editing) {
+        val entry = state.episodes.entries.singleOrNull()
+        val selection = when (val episode = entry?.value) {
+            is EpisodeDownloadState.ChoosingMedia -> episode.selection
+            is EpisodeDownloadState.SelectingMedia -> episode.selection
+            is EpisodeDownloadState.Ready -> episode.selection
+            else -> null
+        }
+        if (entry != null && selection != null) {
+            key(state.requestId, entry.key) {
+                DownloadMediaPicker(selection, sourceInfoProvider, settings, onHide) {
+                    onSelectMedia(state.requestId, entry.key, it)
+                }
+            }
         }
     }
-    if (state is AddDownloadState.Failed) {
+    val failedRequestId = when (state) {
+        is AddDownloadsState.Editing -> state.requestId.takeIf {
+            state.episodes.values.any { it is EpisodeDownloadState.Failed }
+        }
+        is AddDownloadsState.Completed -> state.requestId.takeIf { state.result.failures.isNotEmpty() }
+        else -> null
+    }
+    if (failedRequestId != null) {
         AlertDialog(
-            onDismissRequest = { onCancel(state.requestId) },
+            onDismissRequest = { onCancel(failedRequestId) },
             text = { Text(stringResource(Lang.downloads_create_failed)) },
             confirmButton = {
-                TextButton(onClick = { onRetry(state.requestId) }) { Text(stringResource(Lang.settings_mediasource_retry)) }
+                TextButton(onClick = { onRetry(failedRequestId) }) { Text(stringResource(Lang.settings_mediasource_retry)) }
             },
             dismissButton = {
-                TextButton(onClick = { onCancel(state.requestId) }) { Text(stringResource(Lang.cache_subject_cancel)) }
+                TextButton(onClick = { onCancel(failedRequestId) }) { Text(stringResource(Lang.cache_subject_cancel)) }
             },
         )
     }

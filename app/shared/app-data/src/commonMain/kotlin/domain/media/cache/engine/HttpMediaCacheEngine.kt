@@ -123,7 +123,9 @@ class HttpMediaCacheEngine(
         if (!supports(origin)) throw UnsupportedOperationException("Media is not supported by this engine $this: ${origin.download}")
 
         logger.info { "Restarting cache '${origin.mediaId}'" }
-        val downloadId = origin.toSafeDownloadId()
+        val downloadId = restoredHttpDownloadId(origin, metadata) {
+            downloader.getState(it) != null || dao.getById(it) != null
+        }
 
         // 注意, getState 一般不会返回 null, 除非 downloader 的 persistent datastore 出问题了 (例如文件损坏).
         if (downloader.getState(downloadId) != null) {
@@ -163,8 +165,7 @@ class HttpMediaCacheEngine(
             }
 
             is UriMediaData -> {
-                // TODO: 用 [Media.mediaId] 当作 DownloadId 好吗?
-                val downloadId = origin.toSafeDownloadId()
+                val downloadId = httpDownloadId(origin, metadata)
                 var options = DownloadOptions(headers = mediaData.headers)
                 if (origin.kind == MediaSourceKind.BitTorrent) {
                     val config = pikpakConfig()
@@ -355,13 +356,8 @@ class HttpMediaCacheEngine(
         dao.deleteById(state.downloadId)
     }
 
-    private fun Media.toSafeDownloadId(): DownloadId {
-        return DownloadId(mediaId.replace(PATH_AFFECTING_CHARS_REGEX, "-"))
-    }
-
     companion object {
         private val logger = logger<HttpMediaCacheEngine>()
-        private val PATH_AFFECTING_CHARS_REGEX = Regex("[\\\\/:*?\"<>|]")
 
         @Deprecated("Use HttpMediaCacheEngine.MEDIA_CACHE_DIR instead")
         const val LEGACY_MEDIA_CACHE_DIR = "web-m3u-cache"

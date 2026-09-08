@@ -37,7 +37,7 @@ sealed interface SubjectDownloadListItem {
 
 @Immutable
 data class DownloadRequestUiState(
-    val episodeId: Int? = null,
+    val episodeIds: Set<Int> = emptySet(),
     val busy: Boolean = false,
     val canCancel: Boolean = false,
 )

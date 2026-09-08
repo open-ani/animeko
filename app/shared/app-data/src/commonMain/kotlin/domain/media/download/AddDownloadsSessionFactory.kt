@@ -31,20 +31,21 @@ import me.him188.ani.datasources.api.topic.contains
 import me.him188.ani.datasources.api.topic.isSingleEpisode
 import me.him188.ani.datasources.api.unwrapCached
 
-class EpisodeDownloadSessionFactory(
+class AddDownloadsSessionFactory(
     private val subjects: SubjectCollectionRepository,
     private val episodes: EpisodeCollectionRepository,
     private val preferences: EpisodePreferencesRepository,
     private val sources: MediaSourceManager,
     private val selectors: MediaSelectorFactory,
     private val downloadManager: MediaDownloadManager,
-    private val createDownload: CreateEpisodeDownloadUseCase,
+    private val submitDownloads: SubmitDownloadsUseCase,
 ) {
-    fun create(subjectId: Int, scope: CoroutineScope) = AddEpisodeDownloadSession(
+    fun create(subjectId: Int, scope: CoroutineScope, submitWhenReady: Boolean = false) = AddDownloadsSession(
         parentScope = scope,
         prepare = { episodeId, requestScope -> prepare(subjectId, episodeId, requestScope) },
         findReusableMedia = ::findReusableMedia,
-        createDownload = { createDownload(it) },
+        submitDownloads = submitDownloads::submit,
+        submitWhenReady = submitWhenReady,
     )
 
     private suspend fun prepare(subjectId: Int, episodeId: Int, scope: CoroutineScope): DownloadMediaSelection {

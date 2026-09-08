@@ -24,7 +24,7 @@ import androidx.lifecycle.ViewModelStoreOwner
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import kotlinx.coroutines.launch
-import me.him188.ani.app.domain.media.download.AddDownloadState
+import me.him188.ani.app.domain.media.download.AddDownloadsState
 import me.him188.ani.app.platform.LocalContext
 import me.him188.ani.app.platform.PermissionManager
 import me.him188.ani.app.ui.lang.Lang
@@ -43,14 +43,14 @@ internal fun SubjectDownloadsFeature(
     val vm = rememberSubjectDownloadsViewModel(subjectId)
     val state by vm.uiState.collectAsStateWithLifecycle()
     val request by vm.requestState.collectAsStateWithLifecycle()
-    val active = request as? AddDownloadState.Active
+    val active = (request as? AddDownloadsState.Active)?.takeUnless { it is AddDownloadsState.Completed }
     var pickerVisible by remember(vm, active?.requestId) { mutableStateOf(true) }
     val context = LocalContext.current
     val uiScope = rememberCoroutineScope()
     val permissionManager = remember { KoinPlatform.getKoin().get<PermissionManager>() }
     val actions = SubjectDownloadActions(
         download = { episodeId ->
-            if (active?.episodeId != episodeId) {
+            if (episodeId !in active?.episodeIds.orEmpty()) {
                 vm.requestDownload(episodeId)
                 uiScope.launch { permissionManager.requestNotificationPermission(context) }
             }

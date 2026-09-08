@@ -117,7 +117,7 @@ fun SubjectDownloadsContent(
                 is SubjectDownloadListItem.Episode -> EpisodeDownloadRow(
                     episode = item.episode,
                     enabled = !selection.inSelection && !(state.request.busy && !state.request.canCancel),
-                    busy = state.request.busy && state.request.episodeId == item.episode.episodeId,
+                    busy = state.request.busy && item.episode.episodeId in state.request.episodeIds,
                     canCancel = state.request.canCancel,
                     onDownload = { actions.download(item.episode.episodeId) },
                     onCancel = actions.cancelRequest,

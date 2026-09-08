@@ -9,7 +9,7 @@
 它是直接注册到依赖注入容器的具体类，生命周期与应用一致。
 
 `MediaCacheStorage`、`MediaCache` 和 engine 是实际存储与传输的底层实现。
-下载管理器不负责播放引擎的临时缓冲；底层存储格式、下载 ID 与恢复流程保持兼容。
+下载管理器不负责播放引擎的临时缓冲；既有存储记录和页面使用的下载 ID 保持兼容。
 引擎清理未引用的播放文件时，应保留下载记录引用的文件。
 
 ## 模型与职责
@@ -19,30 +19,39 @@
 - `DownloadItem`：下载行的不可变展示数据。同一剧集可以对应多个下载项。
 - `SubjectDownloadListItem`：未下载的剧集行或已有下载行，列表由纯函数 `buildSubjectDownloadItems` 组装。
 - `SubjectDownloadsViewModel`：持续组合条目元数据、下载、播放历史和操作状态。
-- `AddEpisodeDownloadSession`：管理当前添加下载会话。
+- `AddDownloadsSession`：管理一个条目的多集查询、选择和确认。
+- `DownloadPlan` / `EpisodeDownloadSpec`：提交时冻结的逐集清单，不持有 selector、Flow 或协程。
+- `SubmitDownloadsUseCase`：在应用作用域接收清单、去重并返回逐集结果。
 
 ## 添加下载
 
-`EpisodeDownloadSessionFactory` 负责加载条目与剧集信息、创建资源查询和选择器、保存偏好，
+`AddDownloadsSessionFactory` 负责加载条目与剧集信息、创建逐集查询和选择器、保存偏好，
 并根据已有季度资源尝试复用下载资源。
 
-会话阶段为 `Preparing`、`ChoosingMedia`、`Submitting`、`Failed`；
-没有活动请求时为 `Idle`。状态只描述阶段，操作通过会话方法进行。
+`AddDownloadsSession` 的阶段为 `Editing`、`Submitting`、`Completed`；没有请求时为 `Idle`。
+编辑状态按剧集保存 `Preparing`、`ChoosingMedia`、`SelectingMedia`、`Ready` 或 `Failed`，
+不再假设一次交互只包含一集。
 
-- 同一功能实例只有一个活动会话。切换剧集会取消旧请求的作用域，包含元数据加载阶段。
-- 每个请求有 `requestId`，资源选择、取消和重试都携带该 ID，过期回调会被忽略。
-- 关闭资源弹窗仅隐藏 UI，会话继续保留查询结果；取消请求会释放查询资源。
-- 手动选择资源时在提交下载前保存其偏好。过滤偏好变化也由会话监听。
-- 提交过程中拒绝重复提交和请求替换；失败后可以重试同一个目标。
+- `start(episodeIds)` 开始一个请求；`setEpisodes(requestId, episodeIds)` 修改选集，保留仍被选中剧集的查询和资源选择，只释放移除的剧集。
+- 每个剧集有独立查询作用域；同时最多准备三个剧集上下文。请求 ID 和作用域身份共同拦截过期回调，包括移除后重新添加同一剧集的情况。
+- `selectMedia(requestId, episodeId, media)` 只更新指定剧集，先保存偏好，再冻结该集的资源和元数据。普通 WEB 资源需要逐集选源；合集可以为不同剧集提供同一个 `Media`。
+- 全部剧集就绪后，`submit(requestId)` 把 `DownloadPlan` 同步交给应用作用域，再释放查询。每个 `EpisodeDownloadSpec` 包含条目、剧集、资源和元数据，执行不再读取查询会话。
+- `Completed` 保留逐集 `Created`、`AlreadyExists` 或 `Failed` 结果。重试仅提交失败项，并与之前成功项合并；准备阶段重试仅重建失败剧集的上下文。
+- 状态转换在短同步锁中完成，查询和持久化在锁外运行。提交过程中拒绝重复确认、替换和取消。
 
-选择资源后直接提交下载，不再提供存储选择。会话的 `DownloadTarget` 只包含资源和请求信息，
-`CreateEpisodeDownloadUseCase` 通过 `MediaDownloadManager.defaultStorageFor` 在提交时解析默认存储：
-按注册顺序使用第一个支持该资源的存储；启用且支持该资源的 PikPak HTTP 引擎优先处理 BT 资源。
-手动选源、季度资源复用和失败重试使用同一规则，不沿用旧下载的存储。没有兼容存储时进入可重试的失败状态。
+当前单集页面启用 `submitWhenReady`，保持选源后直接下载的交互；它使用的是只有一项的清单。
+领域会话已经支持多集编辑和一次确认，批量选集 UI 尚未接入。
 
-`CreateEpisodeDownloadUseCase` 在应用作用域提交下载。创建调用返回代表存储配置已经持久化，
-并不代表视频已下载完成。弹幕准备和埋点独立执行，不改变持久化成功的结果。
-页面关闭会释放其查询和观察任务，已提交的创建操作及下载继续由应用管理。
+`SubmitDownloadsUseCase.submit` 同步接收不可变清单，由应用作用域中的单个消费者按顺序创建。
+执行每一项前按条目、剧集和资源身份检查已有下载，重叠批次不会重复创建同一目标；一项失败不影响后续项。
+关闭页面只取消查询和结果观察，已接收的整份清单继续执行。应用退出会取消在途、排队和后续提交的结果。
+
+`CreateEpisodeDownloadUseCase` 是逐项持久化操作，通过 `MediaDownloadManager.defaultStorageFor` 使用默认存储：
+按注册顺序使用第一个支持资源的存储；启用且支持该资源的 PikPak HTTP 引擎优先处理 BT 资源。
+创建调用返回代表配置已持久化，并不代表视频已下载完成；弹幕准备和埋点不改变持久化成功的结果。
+
+HTTP 新任务按资源 ID、条目 ID 和剧集 ID 生成稳定的 `http-v2-` 标识，合集的不同剧集有独立任务及输出文件。
+恢复时优先查找新标识，找不到则沿用旧的资源 ID 标识，既有下载文件无需改名。
 
 ## 观察与操作
 
@@ -74,6 +83,6 @@ Feature 负责 ViewModel 组装、资源弹窗、通知权限及错误反馈；C
 ./gradlew :app:shared:app-data:desktopTest --tests '*domain.media.download.*' :app:shared:ui-download:desktopTest :app:shared:compileKotlinDesktop
 ```
 
-测试覆盖请求替换、过期回调、重复提交、失败重试、作用域释放、资源复用、下载状态变化、
-命令顺序、操作挂起、调用方取消、应用退出、批量操作、列表映射和页面多选交互。
+测试覆盖多集编辑、查询保留和释放、过期回调、清单快照、重复提交、重叠批次去重、部分失败重试、
+默认存储、HTTP 合集任务隔离及旧下载恢复，以及暂停恢复顺序、应用退出和页面多选交互。
 UI 测试使用合成输入，不需要真实窗口或系统鼠标。

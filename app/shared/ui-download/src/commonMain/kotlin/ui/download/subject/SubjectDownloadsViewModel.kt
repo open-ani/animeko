@@ -27,9 +27,10 @@ import me.him188.ani.app.data.models.subject.nameCnOrName
 import me.him188.ani.app.data.repository.player.EpisodePlayHistoryRepository
 import me.him188.ani.app.data.repository.subject.SubjectCollectionRepository
 import me.him188.ani.app.data.repository.user.SettingsRepository
-import me.him188.ani.app.domain.media.download.AddDownloadState
+import me.him188.ani.app.domain.media.download.AddDownloadsState
+import me.him188.ani.app.domain.media.download.EpisodeDownloadState
 import me.him188.ani.app.domain.media.download.DownloadOperations
-import me.him188.ani.app.domain.media.download.EpisodeDownloadSessionFactory
+import me.him188.ani.app.domain.media.download.AddDownloadsSessionFactory
 import me.him188.ani.app.domain.media.download.ObserveDownloadsUseCase
 import me.him188.ani.app.domain.media.fetch.MediaSourceManager
 import me.him188.ani.app.ui.download.components.toDownloadItem
@@ -44,13 +45,13 @@ class SubjectDownloadsViewModel(
     settings: SettingsRepository,
     sources: MediaSourceManager,
     observeDownloads: ObserveDownloadsUseCase,
-    sessionFactory: EpisodeDownloadSessionFactory,
+    sessionFactory: AddDownloadsSessionFactory,
     private val operations: DownloadOperations,
     coroutineContext: CoroutineContext = EmptyCoroutineContext,
 ) : AbstractViewModel(coroutineContext) {
     private val reload = MutableStateFlow(0)
     private val operationFailures = MutableStateFlow(0)
-    private val session = sessionFactory.create(subjectId, backgroundScope)
+    private val session = sessionFactory.create(subjectId, backgroundScope, submitWhenReady = true)
     val requestState = session.state
     val selectorSettings = settings.mediaSelectorSettings.flow
     val sourceInfoProvider = MediaSourceInfoProvider(sources::infoFlowByMediaSourceId)
@@ -75,19 +76,22 @@ class SubjectDownloadsViewModel(
             downloadsFailed = downloads.failed,
             failedOperationCount = failures,
             request = DownloadRequestUiState(
-                episodeId = (request as? AddDownloadState.Active)?.episodeId,
-                busy = request is AddDownloadState.Preparing || request is AddDownloadState.Submitting,
-                canCancel = request is AddDownloadState.Preparing,
+                episodeIds = (request as? AddDownloadsState.Active)?.episodeIds.orEmpty(),
+                busy = request is AddDownloadsState.Submitting ||
+                        (request as? AddDownloadsState.Editing)?.episodes?.values?.any {
+                            it is EpisodeDownloadState.Preparing || it is EpisodeDownloadState.SelectingMedia
+                        } == true,
+                canCancel = request is AddDownloadsState.Editing,
             ),
         )
     }.stateIn(backgroundScope, SharingStarted.WhileSubscribed(5000), SubjectDownloadsUiState())
 
     fun reload() { reload.update { it + 1 } }
     fun dismissOperationError() { operationFailures.value = 0 }
-    fun requestDownload(episodeId: Int) { backgroundScope.launch { session.start(episodeId) } }
-    fun cancelRequest(requestId: Long) { backgroundScope.launch { session.cancel(requestId) } }
-    fun retryRequest(requestId: Long) { backgroundScope.launch { session.retry(requestId) } }
-    fun selectMedia(requestId: Long, media: Media) { backgroundScope.launch { session.selectMedia(requestId, media) } }
+    fun requestDownload(episodeId: Int) = session.start(setOf(episodeId))
+    fun cancelRequest(requestId: Long) = session.cancel(requestId)
+    fun retryRequest(requestId: Long) = session.retry(requestId)
+    fun selectMedia(requestId: Long, episodeId: Int, media: Media) = session.selectMedia(requestId, episodeId, media)
 
     fun pauseDownloads(ids: Set<String>) = execute(ids, DownloadOperations.Action.Pause)
     fun resumeDownloads(ids: Set<String>) = execute(ids, DownloadOperations.Action.Resume)
