@@ -1172,6 +1172,8 @@
     <string name="exploration_search_filter_character">Character</string>
     <string name="exploration_search_filter_emotion">Emotion</string>
     <string name="exploration_search_filter_genre">Genre</string>
+    <string name="exploration_search_filter_season_all">All Seasons</string>
+    <string name="exploration_search_filter_year_all">All Years</string>
     <string name="exploration_search_filter_rating">Rating</string>
     <string name="exploration_search_filter_region">Region</string>
     <string name="exploration_search_filter_series">Series</string>

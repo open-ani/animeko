@@ -25,6 +25,7 @@ kotlin {
         implementation(projects.app.shared.placeholder)
     }
     sourceSets.commonTest.dependencies {
+        implementation(projects.utils.uiTesting)
     }
     sourceSets.named("jvmTest").dependencies {
         implementation(kotlin("reflect"))

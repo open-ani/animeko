@@ -15,6 +15,8 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.flowOf
+import me.him188.ani.app.data.models.schedule.AnimeSeason
+import me.him188.ani.app.data.models.schedule.AnimeSeasonId
 import me.him188.ani.app.data.models.subject.CanonicalTagKind
 import me.him188.ani.app.domain.search.SearchSort
 import me.him188.ani.app.domain.search.SubjectSearchQuery
@@ -32,6 +34,10 @@ data class SearchPageState(
     val selectedItemIndex: Int,
     val searchHistoryPager: Flow<PagingData<String>>,
     val searchState: SearchState<SubjectPreviewItemInfo>,
+    /**
+     * 可选的浏览季度列表, 按时间降序 (最新在前). 由 ViewModel 从 GetAnimeSeasonIdsFlowUseCase 填充.
+     */
+    val seasons: List<AnimeSeasonId> = emptyList(),
 ) {
     data class EpisodeTarget(
         val subjectId: Int,
@@ -51,6 +57,17 @@ sealed interface SearchPageIntent {
     data object StartInitialSearch : SearchPageIntent
     data class RemoveHistory(val text: String) : SearchPageIntent
     data class ChangeSort(val sort: SearchSort) : SearchPageIntent
+
+    /**
+     * 切换浏览年份; [year] 为 null 表示"全部年份", 同时清除从属的季度筛选.
+     */
+    data class ChangeYear(val year: Int?) : SearchPageIntent
+
+    /**
+     * 切换浏览季度; [season] 为 null 表示"全部季度".
+     * 季度从属于年份, 仅当年份已选中时才有意义 (UI 在未选年份时禁用).
+     */
+    data class ChangeSeason(val season: AnimeSeason?) : SearchPageIntent
     data class SelectResult(
         val index: Int,
         val item: SubjectPreviewItemInfo,
