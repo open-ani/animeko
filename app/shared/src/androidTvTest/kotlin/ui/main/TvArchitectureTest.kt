@@ -181,6 +181,16 @@ class TvArchitectureTest {
 
     // ============ 焦点框架规约 (atv-architecture.md §14.4; 违反 = 运行期焦点 bug) ============
 
+    @Test
+    fun `tv viewmodels must not own focus or player presentation navigation`() {
+        val presentationTypes = Regex(
+            """\b(?:TvFocusScope|FocusRequester|TvPlayerPresentationState|TvPlayerOverlayState|TvPlayerFocusRequest|TvPlayerAction|TvRemoteKey)\b""",
+        )
+        tvScope().files.assertFalse { file ->
+            file.path.endsWith("ViewModel.kt") && presentationTypes.containsMatchIn(file.text)
+        }
+    }
+
     /** 页面持有 TvFocusScope 就必须装解析循环 + 用户交互放弃信号, 否则送焦请求无人消化 / 轮询抢焦点. */
     @Test
     fun `files owning a focus scope must install resolver and nav signal`() {

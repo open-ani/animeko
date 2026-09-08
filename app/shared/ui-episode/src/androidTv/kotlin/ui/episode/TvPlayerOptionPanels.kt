@@ -25,6 +25,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.LazyListScope
 import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
@@ -34,8 +35,6 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.rounded.KeyboardArrowLeft
 import androidx.compose.material.icons.automirrored.rounded.KeyboardArrowRight
 import androidx.compose.material.icons.rounded.Check
-import androidx.compose.material.icons.rounded.Groups
-import androidx.compose.material.icons.rounded.Search
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -76,22 +75,9 @@ import androidx.tv.material3.LocalContentColor
 import androidx.tv.material3.MaterialTheme
 import androidx.tv.material3.Surface
 import androidx.tv.material3.Text
-import me.him188.ani.app.ui.watchtogether.stateIconAndText
-import me.him188.ani.app.ui.watchtogether.watchTogetherStatusText
 import me.him188.ani.app.videoplayer.videoenhancement.VideoEnhancementMode
 import me.him188.ani.danmaku.api.DanmakuServiceId
-import me.him188.ani.danmaku.ui.DanmakuConfig
-import me.him188.ani.danmaku.ui.DanmakuConfigRanges
-import me.him188.ani.danmaku.ui.DanmakuStyle
-import me.him188.ani.datasources.api.topic.UnifiedCollectionType
-import me.him188.ani.leanback.ui.foundation.focus.TvFocusKey
-import me.him188.ani.leanback.ui.foundation.focus.rememberTvFocusScope
-import me.him188.ani.leanback.ui.foundation.focus.tvFocusAnchor
-import me.him188.ani.leanback.ui.foundation.focus.tvFocusHotkey
-import me.him188.ani.leanback.ui.foundation.focus.tvFocusNavSignal
-import kotlin.math.roundToInt
 
-private enum class OptionFieldFocus : TvFocusKey { Name, Password, Submit }
 
 internal enum class TvCollectionPrompt { Remove, MarkAllWatched }
 
@@ -250,7 +236,7 @@ internal fun Modifier.tvStepKeys(onStep: (Int) -> Unit): Modifier = onPreviewKey
 
 /** Left closes the settings page until the user explicitly enters a value's adjustment. */
 @Composable
-private fun TvDanmakuAdjustmentRow(
+internal fun TvDanmakuAdjustmentRow(
     title: String,
     value: String,
     adjusting: Boolean,
@@ -370,312 +356,34 @@ internal fun TvOptionModal(
     }
 }
 
+/** Shared panel chrome and scrolling; callers fill the list with their own content. */
 @Composable
-internal fun TvInteractivePanel(
+internal fun TvPlayerOptionPanelLayout(
     panel: TvPlayerPanel,
-    state: TvEpisodeUiState,
-    together: TvTogetherState,
-    onIntent: (TvEpisodeIntent) -> Boolean,
-    onTogetherIntent: (TvTogetherIntent) -> Unit,
-    entryModifier: Modifier,
-    collectionPrompt: TvCollectionPrompt?,
-    onCollectionPromptChange: (TvCollectionPrompt?) -> Unit,
-    confirmLeave: Boolean,
-    onConfirmLeaveChange: (Boolean) -> Unit,
-    danmakuAdjustment: TvDanmakuAdjustment?,
-    onDanmakuAdjustmentChange: (TvDanmakuAdjustment?) -> Unit,
-    danmakuListModifier: Modifier,
-    danmakuMatchModifier: Modifier,
     listState: LazyListState,
     modifier: Modifier = Modifier,
+    listModifier: Modifier = Modifier,
+    content: LazyListScope.() -> Unit,
 ) {
-    val options = state.options
     val colors = LocalTvPlayerSurfaceColors.current
-    val fields = rememberTvFocusScope()
-    fields.Resolver()
-    val content: @Composable () -> Unit = {
+    val list: @Composable () -> Unit = {
         LazyColumn(
-            Modifier
-                .tvFocusNavSignal(fields)
-                .tvPanelScrollEdges(listState, colors.container)
-                .focusGroup(),
+            listModifier.tvPanelScrollEdges(listState, colors.container).focusGroup(),
             state = listState,
             contentPadding = PaddingValues(4.dp),
             verticalArrangement = Arrangement.spacedBy(4.dp),
-        ) {
-            when (panel) {
-                TvPlayerPanel.Collection -> {
-                    when {
-                        collectionPrompt == TvCollectionPrompt.Remove -> {
-                            item { Text("确定取消收藏？", color = Color.White, modifier = Modifier.padding(10.dp)) }
-                            item {
-                                TvOptionRow(
-                                    "取消收藏",
-                                    modifier = entryModifier,
-                                ) { onIntent(TvEpisodeIntent.SetCollection(UnifiedCollectionType.NOT_COLLECTED)) }
-                            }
-                            item { TvOptionRow("保留收藏") { onCollectionPromptChange(null) } }
-                        }
-
-                        collectionPrompt == TvCollectionPrompt.MarkAllWatched -> {
-                            item {
-                                TvOptionRow(
-                                    "将全部剧集标为已看",
-                                    modifier = entryModifier,
-                                ) { onIntent(TvEpisodeIntent.MarkAllWatched) }
-                            }
-                            item { TvOptionRow("仅修改收藏状态") { onCollectionPromptChange(null) } }
-                        }
-
-                        else -> items(UnifiedCollectionType.entries) { type ->
-                            TvOptionRow(
-                                if (type == UnifiedCollectionType.NOT_COLLECTED) "取消收藏" else type.tvLabel(),
-                                enabled = !options.collectionBusy,
-                                compact = true,
-                                modifier = if (type == options.collectionType) entryModifier else Modifier,
-                                selected = type == options.collectionType,
-                            ) {
-                                if (type == UnifiedCollectionType.NOT_COLLECTED) {
-                                    onCollectionPromptChange(TvCollectionPrompt.Remove)
-                                } else {
-                                    onIntent(TvEpisodeIntent.SetCollection(type))
-                                }
-                            }
-                        }
-                    }
-                }
-
-                TvPlayerPanel.DanmakuSettings -> {
-                    items(TvDanmakuProperty.entries) { property ->
-                        val config = options.danmakuConfig
-                        val (label, value) = when (property) {
-                            TvDanmakuProperty.FontSize -> "字号" to "${(config.style.fontSize.value / DanmakuStyle.Default.fontSize.value * 100).roundToInt()}%"
-                            TvDanmakuProperty.Opacity -> "不透明度" to "${(config.style.alpha * 100).roundToInt()}%"
-                            TvDanmakuProperty.Speed -> "移动速度" to "${(config.speed / DanmakuConfig.Default.speed * 100).roundToInt()}%"
-                            TvDanmakuProperty.Density -> "密度" to when (DanmakuConfigRanges.densityLevel(
-                                config.safeSeparation, DanmakuConfigRanges.densitySeparation(desktop = false),
-                            ).toInt()) {
-                                in 7..10 -> "密集"
-                                in 4..6 -> "适中"
-                                else -> "稀疏"
-                            }
-                            TvDanmakuProperty.Area -> "显示区域" to if (config.displayArea == 0f) "关闭" else "${(config.displayArea * 100).roundToInt()}%"
-                            TvDanmakuProperty.Stroke -> "描边" to "${(config.style.strokeWidth / DanmakuStyle.Default.strokeWidth * 100).roundToInt()}%"
-                            TvDanmakuProperty.Weight -> "字重" to config.style.fontWeight.weight.toString()
-                            TvDanmakuProperty.Top -> "顶部弹幕" to if (config.enableTop) "开启" else "关闭"
-                            TvDanmakuProperty.Bottom -> "底部弹幕" to if (config.enableBottom) "开启" else "关闭"
-                            TvDanmakuProperty.Floating -> "滚动弹幕" to if (config.enableFloating) "开启" else "关闭"
-                            TvDanmakuProperty.Color -> "彩色弹幕" to if (config.enableColor) "开启" else "关闭"
-                        }
-                        val checked = when (property) {
-                            TvDanmakuProperty.Top -> config.enableTop
-                            TvDanmakuProperty.Bottom -> config.enableBottom
-                            TvDanmakuProperty.Floating -> config.enableFloating
-                            TvDanmakuProperty.Color -> config.enableColor
-                            else -> null
-                        }
-                        if (checked == null) {
-                            val adjustment = TvDanmakuAdjustment.Parameter(property)
-                            TvDanmakuAdjustmentRow(
-                                label, value,
-                                adjusting = danmakuAdjustment == adjustment,
-                                onAdjustingChange = { adjusting -> onDanmakuAdjustmentChange(adjustment.takeIf { adjusting }) },
-                                onStep = { onIntent(TvEpisodeIntent.AdjustDanmaku(property, it)) },
-                                modifier = if (property == TvDanmakuProperty.FontSize) entryModifier else Modifier,
-                            )
-                        } else {
-                            TvOptionRow(
-                                label,
-                                checked = checked,
-                                modifier = Modifier.tvStepKeys { onIntent(TvEpisodeIntent.AdjustDanmaku(property, it)) },
-                            ) { onIntent(TvEpisodeIntent.AdjustDanmaku(property, 1)) }
-                        }
-                    }
-                    item { TvPlayerSectionLabel("弹幕来源与时间校准") }
-                    items(options.danmakuOrigins, key = { "origin-${it.serviceId.value}" }) { origin ->
-                        Column {
-                            TvOptionRow(
-                                origin.name,
-                                checked = origin.enabled,
-                            ) { onIntent(TvEpisodeIntent.ToggleDanmakuSource(origin.serviceId)) }
-                            Text(
-                                origin.match,
-                                color = colors.muted,
-                                modifier = Modifier.padding(horizontal = 14.dp),
-                                style = MaterialTheme.typography.bodySmall,
-                            )
-                            val adjustment = TvDanmakuAdjustment.Timing(origin.serviceId)
-                            TvDanmakuAdjustmentRow(
-                                "时间校准", "${origin.shiftMillis / 1000f}s",
-                                adjusting = danmakuAdjustment == adjustment,
-                                onAdjustingChange = { adjusting -> onDanmakuAdjustmentChange(adjustment.takeIf { adjusting }) },
-                                onStep = {
-                                    onIntent(
-                                        TvEpisodeIntent.ShiftDanmakuSource(
-                                            origin.serviceId,
-                                            it * 500L,
-                                        ),
-                                    )
-                                },
-                                onReset = { onIntent(TvEpisodeIntent.ShiftDanmakuSource(origin.serviceId, null)) },
-                            )
-                        }
-                    }
-                    item(key = "danmaku-list") {
-                        TvOptionRow("弹幕列表", modifier = danmakuListModifier.testTag("tv-danmaku-list-button")) {
-                            onIntent(TvEpisodeIntent.OpenDialog(TvPlayerDialog.DanmakuList))
-                        }
-                    }
-                    items(
-                        options.danmakuOrigins.filter { it.canMatch },
-                        key = { "match-${it.serviceId.value}" }
-                    ) { origin ->
-                        TvOptionRow(
-                            "重新匹配弹幕",
-                            value = origin.name,
-                            modifier = if (origin == options.danmakuOrigins.firstOrNull { it.canMatch }) danmakuMatchModifier else Modifier,
-                        ) { onIntent(TvEpisodeIntent.MatchDanmaku(origin.providerId)) }
-                    }
-                }
-
-                TvPlayerPanel.VideoSettings -> {
-                    if (options.enhancementMode != null) {
-                        item {
-                            TvEnhancementSelector(options.enhancementMode, entryModifier) {
-                                onIntent(TvEpisodeIntent.SetEnhancement(it))
-                            }
-                        }
-                    }
-                    item {
-                        TvOptionRow(
-                            "播放信息",
-                            checked = options.statsVisible,
-                            modifier = (if (options.enhancementMode == null) entryModifier else Modifier)
-                                .testTag("tv-player-stats-toggle"),
-                        ) { onIntent(TvEpisodeIntent.TogglePlayerStats) }
-                    }
-                }
-
-                TvPlayerPanel.Together -> {
-                    if (together.requiresLogin) item {
-                        TvOptionRow(
-                            "登录账号",
-                            supportingText = "登录后即可加入或创建一起看房间",
-                            modifier = entryModifier,
-                        ) { onIntent(TvEpisodeIntent.OpenLogin) }
-                    }
-                    else if (!together.joined) {
-                        item {
-                            TvOptionTextField(
-                                together.roomName, "房间名称", { onTogetherIntent(TvTogetherIntent.RoomName(it)) },
-                                entryModifier
-                                    .tvFocusAnchor(fields, OptionFieldFocus.Name)
-                                    .tvFocusHotkey(fields, Key.DirectionDown to OptionFieldFocus.Password),
-                            )
-                        }
-                        item {
-                            TvOptionTextField(
-                                together.password, "房间密码", { onTogetherIntent(TvTogetherIntent.Password(it)) },
-                                Modifier
-                                    .tvFocusAnchor(fields, OptionFieldFocus.Password)
-                                    .tvFocusHotkey(
-                                        fields,
-                                        Key.DirectionUp to OptionFieldFocus.Name,
-                                        Key.DirectionDown to OptionFieldFocus.Submit,
-                                    ),
-                                password = true,
-                            )
-                        }
-                        item {
-                            TvOptionRow(
-                                when {
-                                    together.joining -> "正在加入… · 取消"
-                                    together.error != null -> "重新加入"
-                                    else -> "加入 / 创建房间"
-                                },
-                                modifier = Modifier.tvFocusAnchor(fields, OptionFieldFocus.Submit),
-                                icon = Icons.Rounded.Groups,
-                                filled = true,
-                                supportingText = together.error,
-                            ) { onTogetherIntent(if (together.joining) TvTogetherIntent.CancelJoin else TvTogetherIntent.Join) }
-                        }
-                        item {
-                            Text(
-                                "输入相同的房间名称即可一起看。\n房间不存在时将自动创建。",
-                                style = MaterialTheme.typography.bodySmall,
-                                color = colors.muted,
-                                modifier = Modifier.padding(8.dp),
-                            )
-                        }
-                    } else if (confirmLeave) {
-                        item {
-                            TvOptionRow(
-                                if (together.isHost) "确定解散房间" else "确定退出房间",
-                                modifier = entryModifier,
-                            ) { onTogetherIntent(TvTogetherIntent.Leave) }
-                        }
-                        item { TvOptionRow("留在房间") { onConfirmLeaveChange(false) } }
-                    } else {
-                        item {
-                            Text(
-                                "${together.roomName} · ${together.connection}",
-                                color = colors.content,
-                                modifier = Modifier.padding(8.dp),
-                            )
-                        }
-                        together.playback?.let { playback ->
-                            item {
-                                Text(
-                                    "${playback.subjectName} · 第 ${playback.episodeSort} 集 · ${playback.stateIconAndText().second} · " +
-                                            "${formatTime(playback.positionMillis)} / ${formatTime(playback.durationMillis)}",
-                                    style = MaterialTheme.typography.bodySmall,
-                                    color = colors.muted,
-                                    modifier = Modifier.padding(8.dp),
-                                )
-                            }
-                        }
-                        if (!together.isHost) item {
-                            TvOptionRow(
-                                "跟随房主",
-                                checked = together.following,
-                                modifier = entryModifier,
-                            ) { onTogetherIntent(TvTogetherIntent.ToggleFollowing) }
-                        }
-                        item {
-                            TvOptionRow(
-                                if (together.isHost) "解散房间" else "退出房间",
-                                modifier = if (together.isHost) entryModifier else Modifier,
-                            ) { onConfirmLeaveChange(true) }
-                        }
-                        items(together.members, key = { it.userId }) { member ->
-                            Column(Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 10.dp)) {
-                                Text(
-                                    member.nickname + if (member.isSelf) "（我）" else "",
-                                    color = colors.content, style = MaterialTheme.typography.titleSmall,
-                                )
-                                Text(
-                                    (if (member.isHost) "房主" else if (member.following) "跟随房主" else "自由观看") +
-                                            " · " + member.watchTogetherStatusText(),
-                                    color = colors.muted, style = MaterialTheme.typography.bodySmall,
-                                )
-                            }
-                        }
-                    }
-                }
-
-                else -> Unit
-            }
-        }
+            content = content,
+        )
     }
     if (panel.presentation == TvPlayerPanelPresentation.Sidebar) {
-        Box(modifier.fillMaxSize()) { content() }
+        Box(modifier.fillMaxSize()) { list() }
     } else {
         TvPlayerPanelSurface(
             title = panel.title,
             icon = panel.icon,
             showHeader = panel != TvPlayerPanel.Collection,
             modifier = modifier.width(panel.width).heightIn(max = TvPlayerSurfaceDefaults.PanelMaxHeight),
-        ) { content() }
+        ) { list() }
     }
 }
 
@@ -716,7 +424,7 @@ internal fun TvSpeedDialog(state: TvEpisodeUiState, onIntent: (TvEpisodeIntent) 
 }
 
 @Composable
-private fun TvEnhancementSelector(
+internal fun TvEnhancementSelector(
     selectedMode: VideoEnhancementMode,
     entryModifier: Modifier,
     onSelect: (VideoEnhancementMode) -> Unit,
@@ -749,69 +457,6 @@ private fun TvEnhancementSelector(
                         },
                         style = MaterialTheme.typography.labelLarge,
                         maxLines = 1,
-                    )
-                }
-            }
-        }
-    }
-}
-
-@Composable
-internal fun TvDanmakuMatchPanel(
-    state: TvDanmakuMatchState,
-    onIntent: (TvEpisodeIntent) -> Boolean,
-    entryModifier: Modifier
-) {
-    val fields = rememberTvFocusScope()
-    fields.Resolver()
-    LazyColumn(Modifier.tvFocusNavSignal(fields), verticalArrangement = Arrangement.spacedBy(6.dp)) {
-        if (state.selectedSubject == null) {
-            item {
-                TvOptionTextField(
-                    state.query,
-                    "番剧名称",
-                    { onIntent(TvEpisodeIntent.DanmakuQuery(it)) },
-                    entryModifier.tvFocusHotkey(fields, Key.DirectionDown to OptionFieldFocus.Submit),
-                )
-            }
-            item {
-                TvOptionRow(
-                    if (state.loading) "正在搜索…" else "搜索",
-                    enabled = !state.loading,
-                    modifier = Modifier.tvFocusAnchor(fields, OptionFieldFocus.Submit),
-                    icon = Icons.Rounded.Search,
-                    filled = true,
-                ) { onIntent(TvEpisodeIntent.SearchDanmaku) }
-            }
-            items(state.subjects, key = { it.id }) { subject ->
-                TvOptionRow(subject.name) { onIntent(TvEpisodeIntent.SelectDanmakuSubject(subject.id)) }
-            }
-            if (state.searched && !state.loading && state.subjects.isEmpty()) item {
-                Text(
-                    "没有匹配结果，请修改名称后重试",
-                    color = Color.LightGray,
-                )
-            }
-        } else {
-            item { TvOptionRow("返回番剧列表", modifier = entryModifier) { onIntent(TvEpisodeIntent.Back) } }
-            item { Text(state.selectedSubject.name, color = Color.White) }
-            if (state.loading) item { Text("正在加载…", color = Color.LightGray) }
-            items(state.episodes, key = { it.id }) { episode ->
-                TvOptionRow(episode.name, enabled = !state.loading) {
-                    onIntent(
-                        TvEpisodeIntent.SelectDanmakuEpisode(
-                            episode.id,
-                        ),
-                    )
-                }
-            }
-        }
-        state.error?.let {
-            item {
-                Text(it, color = Color(0xFFFFC5AA))
-                TvOptionRow("重新搜索") {
-                    onIntent(
-                        TvEpisodeIntent.SearchDanmaku,
                     )
                 }
             }

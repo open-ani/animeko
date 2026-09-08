@@ -65,6 +65,7 @@ data class TvDanmakuOrigin(
 data class TvSubtitleOption(val id: String, val label: String)
 
 data class TvDanmakuMatchState(
+    val requestId: Long = 0,
     val providerId: DanmakuProviderId? = null,
     val query: String = "",
     val subjects: List<DanmakuSubject> = emptyList(),
@@ -87,7 +88,6 @@ data class TvPlayerOptionsState(
     val supportsSubtitles: Boolean = false,
     val enhancementMode: VideoEnhancementMode? = null,
     val stats: PlayerStatsSnapshot? = null,
-    val statsVisible: Boolean = false,
     val preview: ImageBitmap? = null,
     val previewAvailable: Boolean = false,
     val previewLoading: Boolean = false,

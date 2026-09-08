@@ -562,7 +562,11 @@ TV 不启动 torrent 服务连接，不初始化 Sentry/Firebase。`SubjectDetai
 
 ### 8.2 当前覆盖层与按键
 
-`TvPlayerStateMachine` 发布不可变覆盖层状态，包括控制层、药丸面板、选集条、预览、长按倍速、选源和设置弹窗。没有另设完整 DETAILS 层。
+`TvPlayerPresentationState` 由 View 通过 `rememberSaveable` 持有，统一管理控制层、推荐横排、药丸面板、选集条、选源、设置弹窗及面板内的确认/详情状态。遥控键和焦点上下文只进入 `TvPlayerAction`；需要改变播放或数据时才派发 `TvEpisodeIntent`。预览位置和长按倍速仍由 VM 的 `TvPlaybackInteractionState` 持有，帧预览与自动跳过读取同一份播放交互状态。预览增量使用播放器的实时位置计算。没有另设完整 DETAILS 层。
+
+`TvPlayerPageLayout` 提供视频、状态提示、底部控制器、标题、指示器、解析器、侧栏和弹层槽位，统一负责侧栏动画及视频缩放。底部沿用 `TvBottomControllerLayout` 的 controller/recommendations 槽位；收藏、弹幕设置、画质设置和一起看分别组合到 `TvPlayerOptionPanelLayout`，每个面板只接收所需数据与回调。
+
+`TvPlayerFocusEffects` 协调跨层焦点。退出动画、Lazy 列表等待/滚动和最终送焦属于同一次可取消的准备；用户开始导航即放弃旧操作。弹幕匹配的两级列表各自保存滚动位置，返回来源使用 `DanmakuServiceId`；评论返回按 ID 查找，已删除时落到相邻项，有缓存数据时不等待 refresh 结束。一起看入口身份包含登录要求，避免登录状态变化后向旧输入框送焦。异步修改携带发起界面的请求标识，结果由 View 核对后决定关闭弹窗或显示后续确认，不影响后来重新打开的界面。
 
 | 状态 / 键          | 当前行为                                                                    |
 |-----------------|-------------------------------------------------------------------------|
@@ -726,10 +730,10 @@ Material3 import 禁令已删除。以上部分规则是源码字符串/前缀�
 | 焦点调度/网格状态 | `TvFocusScopeTest` 7 个单测，覆盖 pending、请求替换、用户取消、附着/焦点记账、网格请求取消，以及异步分类切换时旧网格不得消费送焦请求                                                      |
 | 焦点记忆      | `TvFocusMemoryTest` 9 个单测，覆盖返回认领/激活/迟到恢复/取消/无 ID/清理等状态                                                                                 |
 | 收藏分页      | `TvCollectionPagingTest` 2 个单测，覆盖 mediator 跳过刷新但 Room 仍在加载，以及 source/mediator 加载或失败不得被视为刷新完成                                           |
-| 播放器覆盖层状态机 | `TvPlayerStateMachineTest` 与 `TvPlayerOptionsTest` 覆盖默认预览/提交/取消、边界、长按释放、返回分层、菜单键选源焦点、操作栏上键、弹窗自动隐藏保护、模式/源层级导航及自动跳过取消/迟到规则               |
+| 播放器覆盖层状态机 | `TvPlayerPresentationStateTest` 与 `TvPlayerOptionsTest` 覆盖默认预览/提交/取消、边界、长按释放、返回分层、菜单键选源焦点、操作栏上键、弹窗自动隐藏保护、模式/源层级导航及自动跳过取消/迟到规则               |
 | 详情续播      | 新增 `TvResumeEpisodeTest` 4 个单测，覆盖共享目标优先、目标失效、跳过已看/放弃集、全部看完与空列表                                                                         |
 | 页面/配置接线   | 各 Route 的生命周期/导航、登录并发/错误、配置消费与加载/错误/无结果分支仍需更多集成/UI 回归                                                                                  |
-| 可复用 UI 回归 | TV 模块当前没有交互截图测试；按仓库规范优先使用 `runAniComposeUiTest` 等可复用测试方式，必要时适配 TV 的 Android 库测试入口                                                      |
+| 可复用 UI 回归 | 播放页的 `androidTvDeviceTest` 使用 `runAniComposeUiTest` 和合成遥控键，覆盖评论 BBCode、推荐/控制器切换、选源、侧栏返回与实时弹幕刷新；`TvPlayerFocusRegressionUiTest` 另覆盖退出动画期间导航、匹配层级滚动与返回、原评论/来源消失、登录要求变化及页面重新挂载后的确认页焦点。视频槽使用测试数据，不代替真实播放链路验收 |
 | 原生/设备验证   | 本轮 API 36 TV 模拟器已覆盖系统 IME、遥控器页面导航、已登录收藏五分类/长列表/详情返回、Web 源解析出画、播放控制、手动换源和配置持久化；16 KB 兼容提示与第二集某线路 `NoMatchingFile` 留存，其他设备/ROM 与完整播放矩阵待验 |
 
 单测任务为
@@ -831,7 +835,7 @@ M0 是骨架前置，后续里程碑已有并行实现，**并非 M1–M4 全部
 | flavor / 构建配置     | [build.gradle.kts](app/android/build.gradle.kts)                                                                                                                                                                                                                                                                                                                                                                                                |
 | 平台装配 / 深链缺口       | [TvAndroidModules.kt](app/android/src/tv/kotlin/TvAndroidModules.kt)、[MainActivity.kt](app/android/src/tv/kotlin/MainActivity.kt)                                                                                                                                                                                                                                                                                                               |
 | MVI / VM 装配       | [TvAniAppContent.kt](app/shared/src/androidTv/kotlin/ui/main/TvAniAppContent.kt)、[TvAppDependencies.kt](app/shared/src/androidTv/kotlin/ui/di/TvAppDependencies.kt)、[TvViewModel.kt](app/shared/ui-foundation/src/androidTv/kotlin/ui/foundation/TvViewModel.kt)、[TvNavigation.kt](app/shared/ui-foundation/src/androidTv/kotlin/ui/foundation/TvNavigation.kt) |
-| 播放器 Intent 状态机    | [TvPlayerStateMachine.kt](app/shared/ui-episode/src/androidTv/kotlin/ui/episode/TvPlayerStateMachine.kt)、[TvPlayerStateMachineTest.kt](app/shared/ui-episode/src/androidTvTest/kotlin/ui/episode/TvPlayerStateMachineTest.kt)                                                                                                                                                                                       |
+| 播放器 Intent 状态机    | [TvPlayerPresentationState.kt](app/shared/ui-episode/src/androidTv/kotlin/ui/episode/TvPlayerPresentationState.kt)、[TvPlayerPresentationStateTest.kt](app/shared/ui-episode/src/androidTvTest/kotlin/ui/episode/TvPlayerPresentationStateTest.kt)                                                                                                                                                                                       |
 | Navigation 3 / 主壳 | [TvAniAppContent.kt](app/shared/src/androidTv/kotlin/ui/main/TvAniAppContent.kt)、[TvMainShell.kt](app/shared/src/androidTv/kotlin/ui/main/TvMainShell.kt)                                                                                                                                                                                                                                       |
 | 主题 / 焦点           | [AniTvTheme.kt](app/shared/ui-foundation/src/androidTv/kotlin/ui/foundation/theme/AniTvTheme.kt)、[TvFocusScope.kt](app/shared/ui-foundation/src/androidTv/kotlin/ui/foundation/focus/TvFocusScope.kt)、[TvFocusGrid.kt](app/shared/ui-foundation/src/androidTv/kotlin/ui/foundation/focus/TvFocusGrid.kt)                                                                                        |
 | 探索 / 时间表 / 追番     | [TvExplorationScreen.kt](app/shared/ui-exploration/src/androidTv/kotlin/ui/exploration/TvExplorationScreen.kt)、[TvScheduleScreen.kt](app/shared/ui-exploration/src/androidTv/kotlin/ui/schedule/TvScheduleScreen.kt)、[TvCollectionScreen.kt](app/shared/ui-subject/src/androidTv/kotlin/ui/collection/TvCollectionScreen.kt)                                                                    |

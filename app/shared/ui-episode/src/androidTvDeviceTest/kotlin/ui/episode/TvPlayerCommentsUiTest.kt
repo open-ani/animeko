@@ -18,8 +18,6 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.SideEffect
-import androidx.compose.runtime.collectAsState
-import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -78,7 +76,7 @@ class TvPlayerCommentsUiTest {
         val pager: Flow<PagingData<EpisodeComment>> = flowOf(PagingData.from(comments)),
     ) {
         val commands = mutableListOf<TvPlaybackCommand>()
-        val machine = TvPlayerStateMachine({ TvPlaybackSnapshot(true, 20_000, 60_000) }, commands::add)
+        val machine = TvPlayerPresentationState({ TvPlaybackSnapshot(true, 20_000, 60_000) }, commands::add)
         lateinit var backDispatcher: OnBackPressedDispatcher
     }
 
@@ -264,7 +262,6 @@ class TvPlayerCommentsUiTest {
             DisposableEffect(sketch) { onDispose(sketch::shutdown) }
             CompositionLocalProvider(LocalSketch provides sketch) {
                 AniTvTheme {
-                    val overlay by fixture.machine.states.collectAsState()
                     val dispatcher = checkNotNull(LocalOnBackPressedDispatcherOwner.current).onBackPressedDispatcher
                     SideEffect { fixture.backDispatcher = dispatcher }
                     TvEpisodeScreen(
@@ -273,14 +270,13 @@ class TvPlayerCommentsUiTest {
                             loadingState = VideoLoadingState.Succeed(false),
                             positionMillis = 20_000,
                             durationMillis = 60_000,
-                            overlay = overlay,
                         ),
                         togetherState = TvTogetherState(),
                         onTogetherIntent = {},
                         commentsPager = fixture.pager,
-                        focusRequests = fixture.machine.focusRequests,
+                        presentationState = fixture.machine,
                         actionEvents = emptyFlow(),
-                        onIntent = fixture.machine::onIntent,
+                        onIntent = { true },
                         video = { Box(it.background(Color(0xFF1E2A38))) },
                         resolver = {},
                         danmaku = {},

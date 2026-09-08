@@ -15,7 +15,6 @@ import androidx.activity.compose.LocalOnBackPressedDispatcherOwner
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.runtime.SideEffect
-import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
@@ -61,7 +60,7 @@ class TvPlayerRecommendationsUiTest {
     private class Fixture(val options: TvPlayerOptionsState = TvPlayerOptionsState()) {
         val commands = mutableListOf<TvPlaybackCommand>()
         val openedRecommendations = mutableListOf<SubjectRecommendation>()
-        val machine = TvPlayerStateMachine({ TvPlaybackSnapshot(true, 20_000, 60_000) }, commands::add)
+        val machine = TvPlayerPresentationState({ TvPlaybackSnapshot(true, 20_000, 60_000) }, commands::add)
         lateinit var backDispatcher: OnBackPressedDispatcher
         var panel by mutableStateOf(TvPlayerPanelState())
         var episodes by mutableStateOf(listOf(
@@ -74,7 +73,7 @@ class TvPlayerRecommendationsUiTest {
                 openedRecommendations += intent.recommendation
                 return true
             }
-            return machine.onIntent(intent)
+            return true
         }
     }
 
@@ -231,7 +230,6 @@ class TvPlayerRecommendationsUiTest {
     private fun AniComposeUiTest.showPlayer(fixture: Fixture) {
         setContent {
             AniTvTheme {
-                val overlay by fixture.machine.states.collectAsState()
                 val backDispatcher = checkNotNull(LocalOnBackPressedDispatcherOwner.current).onBackPressedDispatcher
                 SideEffect { fixture.backDispatcher = backDispatcher }
                 TvEpisodeScreen(
@@ -242,14 +240,13 @@ class TvPlayerRecommendationsUiTest {
                         durationMillis = 60_000,
                         episodes = fixture.episodes,
                         currentEpisodeId = 1,
-                        overlay = overlay,
                         panel = fixture.panel,
                         options = fixture.options,
                     ),
                     togetherState = TvTogetherState(),
                     onTogetherIntent = {},
                     commentsPager = emptyFlow(),
-                    focusRequests = fixture.machine.focusRequests,
+                    presentationState = fixture.machine,
                     actionEvents = emptyFlow(),
                     onIntent = fixture::onIntent,
                     video = { Box(it.background(Color(0xFF1E2A38))) },

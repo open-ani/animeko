@@ -14,11 +14,9 @@ import androidx.activity.compose.LocalOnBackPressedDispatcherOwner
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.runtime.SideEffect
-import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
-import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.key.Key
 import androidx.compose.ui.semantics.SemanticsProperties
@@ -54,13 +52,13 @@ class TvPlayerSidebarNavigationUiTest {
         val commands = mutableListOf<TvPlaybackCommand>()
         val intents = mutableListOf<TvEpisodeIntent>()
         val togetherIntents = mutableListOf<TvTogetherIntent>()
-        val machine = TvPlayerStateMachine({ TvPlaybackSnapshot(true, 20_000, 60_000) }, commands::add)
+        val machine = TvPlayerPresentationState({ TvPlaybackSnapshot(true, 20_000, 60_000) }, commands::add)
         var panel by mutableStateOf(TvPlayerPanelState())
         lateinit var backDispatcher: OnBackPressedDispatcher
 
         fun onIntent(intent: TvEpisodeIntent): Boolean {
             intents += intent
-            return machine.onIntent(intent)
+            return true
         }
     }
 
@@ -140,7 +138,6 @@ class TvPlayerSidebarNavigationUiTest {
             keyUp(Key.DirectionLeft)
         }
         assertPanelClosed(TvPlayerPanel.DanmakuSettings)
-        assertEquals(1, fixture.intents.count { it == TvEpisodeIntent.Back })
         assertTrue(fixture.commands.isEmpty())
         key(Key.DirectionLeft)
         onNodeWithTag("tv-player-chip-Comments").assertIsFocused()
@@ -308,7 +305,6 @@ class TvPlayerSidebarNavigationUiTest {
     private fun AniComposeUiTest.showPlayer(fixture: Fixture) {
         setContent {
             AniTvTheme {
-                val overlay by fixture.machine.states.collectAsState()
                 val dispatcher = checkNotNull(LocalOnBackPressedDispatcherOwner.current).onBackPressedDispatcher
                 SideEffect { fixture.backDispatcher = dispatcher }
                 TvEpisodeScreen(
@@ -316,14 +312,13 @@ class TvPlayerSidebarNavigationUiTest {
                         loadingState = VideoLoadingState.Succeed(false),
                         positionMillis = 20_000,
                         durationMillis = 60_000,
-                        overlay = overlay,
                         options = fixture.options,
                         panel = fixture.panel,
                     ),
                     togetherState = fixture.together,
                     onTogetherIntent = fixture.togetherIntents::add,
                     commentsPager = emptyFlow(),
-                    focusRequests = fixture.machine.focusRequests,
+                    presentationState = fixture.machine,
                     actionEvents = emptyFlow(),
                     onIntent = fixture::onIntent,
                     video = { Box(it.background(Color.Black)) },

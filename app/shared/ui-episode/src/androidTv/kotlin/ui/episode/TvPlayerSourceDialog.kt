@@ -63,6 +63,8 @@ import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.semantics.stateDescription
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.tv.material3.ClickableSurfaceDefaults
 import androidx.tv.material3.Icon
 import androidx.tv.material3.LocalContentColor
@@ -128,6 +130,7 @@ internal fun TvPlayerSourceDialog(
     val tabsState = rememberLazyListState()
     val resultFocus = rememberTvFocusScope()
     resultFocus.Resolver()
+    val lifecycle = LocalLifecycleOwner.current.lifecycle
     var entryFocusRequested by remember { mutableStateOf(false) }
     LaunchedEffect(dialogState.mode) {
         if (entryFocusRequested) return@LaunchedEffect
@@ -137,8 +140,11 @@ internal fun TvPlayerSourceDialog(
         }
         entryFocusRequested = true
         entrySelection?.let { dialogState.selectedSourceId = it.first }
-        if (entryGroupIndex >= 0) resultsState.scrollToItem(1 + entryGroupIndex)
-        resultFocus.request(SourceFocus.Entry)
+        resultFocus.requestPrepared {
+            lifecycle.currentStateFlow.first { it.isAtLeast(Lifecycle.State.RESUMED) }
+            if (entryGroupIndex >= 0) resultsState.scrollToItem(1 + entryGroupIndex)
+            SourceFocus.Entry
+        }
     }
     // Removing a focused result can briefly focus a mode tab. Do not treat that fallback as a mode choice.
     var restoreResultFocus by remember { mutableStateOf(false) }
@@ -160,8 +166,10 @@ internal fun TvPlayerSourceDialog(
     }
     LaunchedEffect(dialogState.mode, dialogState.selectedSourceId, dialogState.showExcluded, restoreResultFocus) {
         if (restoreResultFocus) {
-            resultsState.scrollToItem(0)
-            resultFocus.request(SourceFocus.FirstResult)
+            resultFocus.requestPrepared {
+                resultsState.scrollToItem(0)
+                SourceFocus.FirstResult
+            }
         }
     }
     LaunchedEffect(dialogState.mode, selectedGroup?.instanceId) {

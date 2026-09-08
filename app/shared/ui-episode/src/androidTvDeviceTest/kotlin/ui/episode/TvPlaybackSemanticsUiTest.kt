@@ -97,7 +97,7 @@ class TvPlaybackSemanticsUiTest {
         var state by mutableStateOf(TvEpisodeUiState(
             loadingState = VideoLoadingState.Succeed(false),
             durationMillis = 60_000,
-            overlay = TvPlayerOverlayState(scrubMillis = 20_000),
+            interaction = TvPlaybackInteractionState(20_000),
             options = TvPlayerOptionsState(
                 previewAvailable = true, previewLoading = true,
                 chapters = listOf(TvChapter("片头", 0, 30_000)),
@@ -156,10 +156,11 @@ class TvPlaybackSemanticsUiTest {
     @Test
     fun roomControlsRemainAvailableWithoutPlaybackAndOfflineMembersDoNotAppearWatching() = runAniComposeUiTest {
         var together by mutableStateOf(TvTogetherState(joined = true, roomName = "测试房间"))
-        showPlayer(togetherState = { together }) {
+        val presentation = TvPlayerPresentationState({ TvPlaybackSnapshot(false, 20_000, 60_000) }, {})
+        presentation.onAction(TvPlayerAction.TogglePanel(TvPlayerPanel.Together))
+        showPlayer(togetherState = { together }, presentationState = presentation) {
             TvEpisodeUiState(
                 loadingState = VideoLoadingState.Succeed(false),
-                overlay = TvPlayerOverlayState(activePanel = TvPlayerPanel.Together),
             )
         }
         onNodeWithText("跟随房主").assertIsDisplayed()
@@ -215,15 +216,18 @@ class TvPlaybackSemanticsUiTest {
 
     private fun AniComposeUiTest.showPlayer(
         togetherState: () -> TvTogetherState = { TvTogetherState() },
+        presentationState: TvPlayerPresentationState? = null,
         state: () -> TvEpisodeUiState,
     ) {
         setContent {
             AniTvTheme {
+                val uiState = state()
                 TvEpisodeScreen(
-                    uiState = state(), togetherState = togetherState(), onTogetherIntent = {},
-                    commentsPager = emptyFlow(), focusRequests = emptyFlow(), actionEvents = emptyFlow(),
+                    uiState = uiState, togetherState = togetherState(), onTogetherIntent = {},
+                    commentsPager = emptyFlow(), actionEvents = emptyFlow(),
                     onIntent = { true }, video = { Box(it.background(Color(0xFF1E2A38))) }, resolver = {}, danmaku = {},
                     modifier = Modifier.testTag("tv-semantics-test"),
+                    presentationState = presentationState ?: rememberTvPlayerPresentationState(uiState) { true },
                 )
             }
         }

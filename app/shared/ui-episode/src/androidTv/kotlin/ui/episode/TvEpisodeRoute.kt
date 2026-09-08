@@ -12,12 +12,12 @@ package me.him188.ani.leanback.ui.episode
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.compose.LocalLifecycleOwner
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import me.him188.ani.app.videoplayer.ui.VideoPlayer
 import me.him188.ani.leanback.ui.foundation.TvNavigationEffect
 import me.him188.ani.leanback.ui.foundation.TvNavigationEvent
@@ -29,8 +29,8 @@ fun TvEpisodeRoute(
     onNavigate: (TvNavigationEvent) -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    val state by viewModel.uiState.collectAsState()
-    val togetherState by togetherViewModel.uiState.collectAsState()
+    val state by viewModel.uiState.collectAsStateWithLifecycle()
+    val togetherState by togetherViewModel.uiState.collectAsStateWithLifecycle()
     TvNavigationEffect(viewModel.navigationEvents, onNavigate)
     LaunchedEffect(viewModel) { viewModel.onIntent(TvEpisodeIntent.UiReady) }
     val lifecycle = LocalLifecycleOwner.current.lifecycle
@@ -51,7 +51,7 @@ fun TvEpisodeRoute(
         togetherState = togetherState,
         onTogetherIntent = togetherViewModel::onIntent,
         commentsPager = viewModel.episodeCommentsPager,
-        focusRequests = viewModel.focusRequests,
+        danmakuList = viewModel.danmakuListItems,
         actionEvents = viewModel.actionEvents,
         onIntent = viewModel::onIntent,
         video = { VideoPlayer(viewModel.player, it) },
