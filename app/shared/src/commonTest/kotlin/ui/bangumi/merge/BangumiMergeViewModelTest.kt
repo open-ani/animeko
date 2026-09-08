@@ -10,8 +10,6 @@
 package me.him188.ani.app.ui.bangumi.merge
 
 import kotlinx.coroutines.CompletableDeferred
-import kotlinx.coroutines.Deferred
-import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.cancel
 import kotlinx.coroutines.flow.first
@@ -21,8 +19,6 @@ import kotlinx.coroutines.test.TestScope
 import kotlinx.coroutines.test.advanceTimeBy
 import kotlinx.coroutines.test.advanceUntilIdle
 import kotlinx.coroutines.test.runTest
-import kotlinx.coroutines.withContext
-import kotlinx.coroutines.withTimeout
 import me.him188.ani.app.data.models.bangumi.BangumiConflictField
 import me.him188.ani.app.data.models.bangumi.BangumiConflictFieldType
 import me.him188.ani.app.data.models.bangumi.BangumiConflictKey
@@ -47,8 +43,6 @@ import kotlin.test.assertIs
 import kotlin.test.assertNotNull
 import kotlin.test.assertNull
 import kotlin.test.assertTrue
-import kotlin.coroutines.CoroutineContext
-import kotlin.coroutines.EmptyCoroutineContext
 import kotlin.time.Duration
 import kotlin.time.Duration.Companion.milliseconds
 import kotlin.time.Duration.Companion.minutes
@@ -57,7 +51,11 @@ import kotlin.time.Instant
 
 /**
  * 覆盖 [BangumiMergeViewModel]: 加载 / 选择 / 采用较新的 / 全选 / 应用门控 / 提交与剩余状态 / 失败 /
- * 同步未完成 (进行中或从未同步) 时轮询与上限 (轮询协程跑在 runTest 的调度器上, 用虚拟时间驱动) / 作用域取消时提交仍完成.
+ * 同步未完成 (进行中或从未同步) 时轮询与上限 / 作用域取消时提交仍完成.
+ *
+ * ViewModel 的后台作用域与 [BangumiConflictChecker] 都跑在 `runTest` 的调度器上 (单线程, 虚拟时间):
+ * 状态流的合并、加载、提交、轮询和测试体按确定的顺序交替执行, 不涉及真实线程, 断言读到的每一帧都是确定的.
+ * 测试体挂起等待 `uiState` 时, `runTest` 会推进虚拟时间, `delay` / `withTimeoutOrNull` 自动到期.
  */
 @OptIn(TestOnly::class, ExperimentalCoroutinesApi::class)
 class BangumiMergeViewModelTest {
@@ -72,8 +70,11 @@ class BangumiMergeViewModelTest {
 
     private lateinit var checker: BangumiConflictChecker
 
-    private fun startTestKoin(repository: FakeBangumiMergeRepository) {
-        checker = createTestConflictChecker(repository)
+    private fun TestScope.startTestKoin(repository: FakeBangumiMergeRepository) {
+        checker = createTestConflictChecker(
+            repository,
+            parentCoroutineContext = StandardTestDispatcher(testScheduler),
+        )
         startKoin {
             modules(
                 module {
@@ -89,24 +90,14 @@ class BangumiMergeViewModelTest {
      */
     private val viewModels = mutableListOf<BangumiMergeViewModel>()
 
-    private fun newViewModel(
+    private fun TestScope.newViewModel(
         syncPollInterval: Duration = 5.seconds,
         syncPollTimeout: Duration = 10.minutes,
-        pollCoroutineContext: CoroutineContext = EmptyCoroutineContext,
-    ): BangumiMergeViewModel = BangumiMergeViewModel(syncPollInterval, syncPollTimeout, pollCoroutineContext)
-        .also { viewModels += it }
-
-    /**
-     * 轮询协程跑在 runTest 的调度器上: `delay` / `withTimeoutOrNull` 用虚拟时间, 测试体挂起等待时 runTest 会自动推进.
-     */
-    private fun TestScope.newPollingViewModel(
-        syncPollInterval: Duration = 5.seconds,
-        syncPollTimeout: Duration = 10.minutes,
-    ): BangumiMergeViewModel = newViewModel(
+    ): BangumiMergeViewModel = BangumiMergeViewModel(
         syncPollInterval,
         syncPollTimeout,
-        pollCoroutineContext = StandardTestDispatcher(testScheduler),
-    )
+        backgroundCoroutineContext = StandardTestDispatcher(testScheduler),
+    ).also { viewModels += it }
 
     @AfterTest
     fun tearDown() {
@@ -115,15 +106,9 @@ class BangumiMergeViewModelTest {
         stopKoin()
     }
 
-    // 不用 withTimeout: runTest 的虚拟时间会在真实 Default 线程完成前触发超时.
-    // runTest 自带 60s 真实超时兜底.
+    // 加载在测试调度器上完成, 挂起等待即可; runTest 自带 60s 真实超时兜底.
     private suspend fun BangumiMergeViewModel.awaitLoaded(): BangumiMergeUiState =
         uiState.first { !it.isLoading }
-
-    // 在真实线程上等待 (带真实超时): runTest 的虚拟时间会让 withTimeout 立刻触发, 所以切到 Default.
-    private suspend fun <T> awaitReal(deferred: Deferred<T>): T = withContext(Dispatchers.Default) {
-        withTimeout(10.seconds) { deferred.await() }
-    }
 
     private fun testRepository(
         resolveHandler: suspend (List<BangumiConflictResolution>) -> BangumiMergeState = {
@@ -349,8 +334,7 @@ class BangumiMergeViewModelTest {
         assertTrue(resolutions.filterNot { it.subjectId == 2 && it.fieldType == BangumiConflictFieldType.RATING }
             .all { it.side == BangumiMergeSide.BANGUMI })
 
-        // 状态替换为剩余 (空), 选择清空; 服务端返回的剩余状态带同步时间, 不会被当成 "同步中".
-        // 剩余状态先于 isApplying 复位发布, 等两者都到位再断言, 避免读到中间帧.
+        // 状态替换为剩余 (空), 选择清空 (与列表同帧); 服务端返回的剩余状态带同步时间, 不会被当成 "同步中".
         val after = vm.uiState.first { !it.hasConflicts && !it.isApplying }
         assertTrue(after.choices.isEmpty())
         assertFalse(after.isApplying)
@@ -522,7 +506,7 @@ class BangumiMergeViewModelTest {
             },
         )
         startTestKoin(repository)
-        val vm = newPollingViewModel(syncPollInterval = 20.milliseconds)
+        val vm = newViewModel(syncPollInterval = 20.milliseconds)
 
         val loading = vm.awaitLoaded()
         assertTrue(loading.syncInProgress)
@@ -552,7 +536,7 @@ class BangumiMergeViewModelTest {
             },
         )
         startTestKoin(repository)
-        val vm = newPollingViewModel(syncPollInterval = 20.milliseconds)
+        val vm = newViewModel(syncPollInterval = 20.milliseconds)
 
         val unsettled = vm.awaitLoaded()
         assertNull(unsettled.lastSyncedAt)
@@ -572,7 +556,7 @@ class BangumiMergeViewModelTest {
         val repository = FakeBangumiMergeRepository({ BangumiMergeState.Empty })
         startTestKoin(repository)
         // 上限不取间隔的整数倍, 避免最后一次轮询与超时同时到期
-        val vm = newPollingViewModel(syncPollInterval = 10.milliseconds, syncPollTimeout = 75.milliseconds)
+        val vm = newViewModel(syncPollInterval = 10.milliseconds, syncPollTimeout = 75.milliseconds)
 
         assertTrue(vm.awaitLoaded().syncInProgress)
         assertEquals(1, repository.stateCalls)
@@ -604,15 +588,16 @@ class BangumiMergeViewModelTest {
         vm.uiState.first { it.allResolved }
 
         vm.startApply()
-        awaitReal(repository.resolveStarted)
+        repository.resolveStarted.await()
 
         // 离开界面: ViewModel 清除时取消后台作用域, 而请求已经发出.
         vm.backgroundScope.cancel()
         repository.resolveGate!!.complete(Unit)
 
-        // 提交仍然完成, 并触发了冲突数的强制检查 (仓库内的缓存失效也在同一不可取消块内).
-        awaitReal(repository.resolveFinished)
-        awaitReal(repository.summaryRequested)
+        // 提交仍然完成 (NonCancellable 块在已取消的作用域里继续被调度), 并触发了冲突数的强制检查
+        // (仓库内的缓存失效也在同一不可取消块内).
+        repository.resolveFinished.await()
+        repository.summaryRequested.await()
         checker.joinCheck()
         assertEquals(1, repository.resolveCalls.size)
         assertEquals(1, repository.summaryCalls)

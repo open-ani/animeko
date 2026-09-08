@@ -171,14 +171,15 @@ internal val BangumiMergeState.isSyncSettled: Boolean
 /**
  * @param syncPollInterval 服务端全量同步尚未完成时, 静默刷新冲突列表的间隔.
  * @param syncPollTimeout 轮询的时间上限, 超过后停止轮询 (与 [BangumiConflictChecker] 一致), 避免同步失败时无限轮询.
- * @param pollCoroutineContext 轮询协程的额外 context. 测试时传入 `StandardTestDispatcher(testScheduler)` 以用虚拟时间驱动轮询.
+ * @param backgroundCoroutineContext 见 [AbstractViewModel]. 测试时传入 `StandardTestDispatcher(testScheduler)`,
+ * 状态流合并、加载、提交与轮询全部跑在测试的虚拟时间调度器上.
  */
 @Stable
 class BangumiMergeViewModel(
     private val syncPollInterval: Duration = 5.seconds,
     private val syncPollTimeout: Duration = 10.minutes,
-    pollCoroutineContext: CoroutineContext = EmptyCoroutineContext,
-) : AbstractViewModel(), KoinComponent {
+    backgroundCoroutineContext: CoroutineContext = EmptyCoroutineContext,
+) : AbstractViewModel(backgroundCoroutineContext), KoinComponent {
     private val mergeRepository: BangumiMergeRepository by inject()
     private val conflictChecker: BangumiConflictChecker by inject()
 
@@ -191,7 +192,17 @@ class BangumiMergeViewModel(
         ) : LoadState()
     }
 
-    private val loadState = MutableStateFlow<LoadState>(LoadState.Loading)
+    /**
+     * 服务端状态与用户的选择. 二者放在同一个 [MutableStateFlow] 里一次更新:
+     * 选择依附于冲突列表, 列表被替换 (静默刷新 / 提交后的剩余) 时必须与过滤后的选择同帧发布,
+     * 分开两个流更新会让 [uiState] 出现 "新列表 + 旧选择" 的中间帧 (界面闪一下错误的进度, 测试也会读到).
+     */
+    private data class Model(
+        val load: LoadState,
+        val choices: Map<BangumiConflictKey, BangumiMergeSide>,
+    )
+
+    private val model = MutableStateFlow(Model(LoadState.Loading, emptyMap()))
     private val loadTasker = MonoTasker(backgroundScope)
 
     /**
@@ -199,13 +210,12 @@ class BangumiMergeViewModel(
      */
     private val loadStarted = atomic(false)
 
-    private val choices = MutableStateFlow<Map<BangumiConflictKey, BangumiMergeSide>>(emptyMap())
     private val isApplying = MutableStateFlow(false)
     private val applyOutcome = MutableStateFlow<BangumiMergeApplyOutcome?>(null)
 
     val uiState: StateFlow<BangumiMergeUiState> = combine(
-        loadState, choices, isApplying, applyOutcome,
-    ) { load, choices, isApplying, applyOutcome ->
+        model, isApplying, applyOutcome,
+    ) { (load, choices), isApplying, applyOutcome ->
         BangumiMergeUiState(
             isLoading = load is LoadState.Loading,
             loadError = (load as? LoadState.Failed)?.error,
@@ -223,9 +233,9 @@ class BangumiMergeViewModel(
 
     init {
         // 服务端全量同步尚未完成 (进行中, 或从未同步过) 时冲突列表可能不完整, 静默轮询直到同步结束或超时; 用户已做的选择保留.
-        backgroundScope.launch(pollCoroutineContext) {
-            loadState
-                .map { (it as? LoadState.Ready)?.mergeState?.isSyncSettled == false }
+        backgroundScope.launch {
+            model
+                .map { (it.load as? LoadState.Ready)?.mergeState?.isSyncSettled == false }
                 .distinctUntilChanged()
                 .collectLatest { unsettled ->
                     if (!unsettled) return@collectLatest
@@ -241,23 +251,24 @@ class BangumiMergeViewModel(
     }
 
     /**
-     * 重新拉取, 清空已有选择.
+     * 重新拉取, 清空已有选择. 进入加载态与清空选择同帧发布, 不会出现 "旧列表 + 空选择" 的中间帧.
      */
     fun reload() {
-        choices.value = emptyMap()
+        model.update { it.copy(load = LoadState.Loading, choices = emptyMap()) }
         startLoad()
     }
 
     private fun startLoad() {
+        model.update { it.copy(load = LoadState.Loading) }
         loadTasker.launch {
-            loadState.value = LoadState.Loading
-            loadState.value = try {
+            val loaded = try {
                 mergeRepository.getMergeState().toReadyState()
             } catch (e: CancellationException) {
                 throw e
             } catch (e: Exception) {
                 LoadState.Failed(LoadError.fromException(e))
             }
+            model.update { it.copy(load = loaded) }
         }
     }
 
@@ -278,17 +289,21 @@ class BangumiMergeViewModel(
 
     private fun BangumiMergeState.toReadyState() = LoadState.Ready(this, toConflictGroups())
 
+    /**
+     * 用 [ready] 替换服务端状态, 同时去掉已不在列表中的选择 (一次原子更新).
+     */
     private fun replaceReadyState(ready: LoadState.Ready) {
         val remainingKeys = ready.groups.flatMapTo(mutableSetOf()) { it.conflictKeys }
-        loadState.value = ready
-        choices.update { current -> current.filterKeys { it in remainingKeys } }
+        model.update { current ->
+            current.copy(load = ready, choices = current.choices.filterKeys { it in remainingKeys })
+        }
     }
 
     /**
      * 为单个冲突选择一侧.
      */
     fun select(key: BangumiConflictKey, side: BangumiMergeSide) {
-        choices.update { it + (key to side) }
+        model.update { it.copy(choices = it.choices + (key to side)) }
     }
 
     /**
@@ -296,10 +311,10 @@ class BangumiMergeViewModel(
      * 无法确定较新一侧的冲突 (评分行, Bangumi 侧已删除的行) 保持原状.
      */
     fun adoptNewer() {
-        val ready = loadState.value as? LoadState.Ready ?: return
-        choices.update { current ->
-            buildMap {
-                putAll(current)
+        model.update { current ->
+            val ready = current.load as? LoadState.Ready ?: return@update current
+            val newChoices = buildMap {
+                putAll(current.choices)
                 for (group in ready.groups) {
                     for (conflict in group.conflicts) {
                         val newer = conflict.newerSide ?: continue
@@ -307,6 +322,7 @@ class BangumiMergeViewModel(
                     }
                 }
             }
+            current.copy(choices = newChoices)
         }
     }
 
@@ -314,9 +330,9 @@ class BangumiMergeViewModel(
      * 列头 "全选": 为所有冲突选择 [side].
      */
     fun selectAll(side: BangumiMergeSide) {
-        val ready = loadState.value as? LoadState.Ready ?: return
-        choices.update {
-            ready.groups.flatMap { group -> group.conflictKeys }.associateWith { side }
+        model.update { current ->
+            val ready = current.load as? LoadState.Ready ?: return@update current
+            current.copy(choices = ready.groups.flatMap { group -> group.conflictKeys }.associateWith { side })
         }
     }
 
@@ -345,10 +361,10 @@ class BangumiMergeViewModel(
      * 收尾 (仓库内失效本地缓存, 这里触发冲突数检查) 必须完成, 否则收藏页与冲突数会停留在合并前的状态.
      */
     suspend fun apply(): BangumiMergeApplyOutcome? {
-        val ready = loadState.value as? LoadState.Ready ?: return null
+        val (load, currentChoices) = model.value
+        val ready = load as? LoadState.Ready ?: return null
         if (ready.groups.isEmpty()) return null
         val allKeys = ready.groups.flatMap { it.conflictKeys }
-        val currentChoices = choices.value
         if (!allKeys.all { it in currentChoices }) return null
         if (!isApplying.compareAndSet(expect = false, update = true)) return null
         return try {
