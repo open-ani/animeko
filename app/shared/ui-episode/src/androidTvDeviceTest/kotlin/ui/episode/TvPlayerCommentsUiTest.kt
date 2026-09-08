@@ -69,8 +69,13 @@ import me.him188.ani.app.ui.lang.comment_preview_image
 import me.him188.ani.app.ui.lang.comment_preview_quote
 import me.him188.ani.app.ui.lang.tv_player_scroll_hide_hint
 import me.him188.ani.app.ui.lang.tv_player_scroll_reveal_hint
+import me.him188.ani.leanback.ui.episode.presentation.TvPlaybackCommand
+import me.him188.ani.leanback.ui.episode.presentation.TvPlaybackSnapshot
+import me.him188.ani.leanback.ui.episode.presentation.TvPlayerPresentationState
 import me.him188.ani.leanback.ui.foundation.theme.AniTvTheme
 import me.him188.ani.leanback.ui.watchtogether.TvTogetherState
+import org.openani.mediamp.MediaStatus
+import org.openani.mediamp.PlayerState
 import java.io.File
 import java.io.IOException
 import kotlin.test.Test
@@ -84,7 +89,7 @@ class TvPlayerCommentsUiTest {
         val pager: Flow<PagingData<EpisodeComment>> = flowOf(PagingData.from(comments)),
     ) {
         val commands = mutableListOf<TvPlaybackCommand>()
-        val machine = TvPlayerPresentationState({ TvPlaybackSnapshot(true, 20_000, 60_000) }, commands::add)
+        val machine = TvPlayerPresentationState({ TvPlaybackSnapshot(PlayerState(MediaStatus.Ready, true, false), 20_000, 60_000) }, commands::add)
         lateinit var backDispatcher: OnBackPressedDispatcher
     }
 

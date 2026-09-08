@@ -70,10 +70,16 @@ import me.him188.ani.app.ui.watchtogether.WatchTogetherConnectionPresentation
 import me.him188.ani.app.ui.watchtogether.WatchTogetherMemberPresence
 import me.him188.ani.app.ui.watchtogether.WatchTogetherMemberPresentation
 import me.him188.ani.app.ui.watchtogether.WatchTogetherPlaybackPresentation
+import me.him188.ani.leanback.ui.episode.presentation.TvPlaybackCommand
+import me.him188.ani.leanback.ui.episode.presentation.TvPlaybackSnapshot
+import me.him188.ani.leanback.ui.episode.presentation.TvPlayerPanel
+import me.him188.ani.leanback.ui.episode.presentation.TvPlayerPresentationState
 import me.him188.ani.leanback.ui.foundation.theme.AniTvTheme
 import me.him188.ani.leanback.ui.watchtogether.TvTogetherError
 import me.him188.ani.leanback.ui.watchtogether.TvTogetherIntent
 import me.him188.ani.leanback.ui.watchtogether.TvTogetherState
+import org.openani.mediamp.MediaStatus
+import org.openani.mediamp.PlayerState
 import java.io.File
 import kotlin.math.abs
 import kotlin.test.Test
@@ -85,7 +91,7 @@ class TvPlayerTogetherUiTest {
         var together by mutableStateOf(initial)
         val intents = mutableListOf<TvTogetherIntent>()
         val playbackCommands = mutableListOf<TvPlaybackCommand>()
-        val presentation = TvPlayerPresentationState({ TvPlaybackSnapshot(true, 620_000, 1_440_000) }, playbackCommands::add)
+        val presentation = TvPlayerPresentationState({ TvPlaybackSnapshot(PlayerState(MediaStatus.Ready, true, false), 620_000, 1_440_000) }, playbackCommands::add)
         lateinit var back: OnBackPressedDispatcher
         var logins = 0
 

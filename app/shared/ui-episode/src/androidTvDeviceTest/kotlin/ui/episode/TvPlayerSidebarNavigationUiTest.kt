@@ -47,9 +47,17 @@ import me.him188.ani.danmaku.api.DanmakuServiceId
 import me.him188.ani.danmaku.api.provider.DanmakuMatchMethod
 import me.him188.ani.danmaku.api.provider.DanmakuProviderId
 import me.him188.ani.danmaku.ui.DanmakuPresentation
+import me.him188.ani.leanback.ui.episode.danmaku.TvDanmakuOrigin
+import me.him188.ani.leanback.ui.episode.danmaku.TvDanmakuProperty
+import me.him188.ani.leanback.ui.episode.presentation.TvPlaybackCommand
+import me.him188.ani.leanback.ui.episode.presentation.TvPlaybackSnapshot
+import me.him188.ani.leanback.ui.episode.presentation.TvPlayerPanel
+import me.him188.ani.leanback.ui.episode.presentation.TvPlayerPresentationState
 import me.him188.ani.leanback.ui.foundation.theme.AniTvTheme
 import me.him188.ani.leanback.ui.watchtogether.TvTogetherIntent
 import me.him188.ani.leanback.ui.watchtogether.TvTogetherState
+import org.openani.mediamp.MediaStatus
+import org.openani.mediamp.PlayerState
 import java.io.File
 import kotlin.test.Test
 import kotlin.test.assertEquals
@@ -63,7 +71,7 @@ class TvPlayerSidebarNavigationUiTest {
         val commands = mutableListOf<TvPlaybackCommand>()
         val intents = mutableListOf<TvEpisodeIntent>()
         val togetherIntents = mutableListOf<TvTogetherIntent>()
-        val machine = TvPlayerPresentationState({ TvPlaybackSnapshot(true, 20_000, 60_000) }, commands::add)
+        val machine = TvPlayerPresentationState({ TvPlaybackSnapshot(PlayerState(MediaStatus.Ready, true, false), 20_000, 60_000) }, commands::add)
         var panel by mutableStateOf(TvPlayerPanelState())
         lateinit var backDispatcher: OnBackPressedDispatcher
 

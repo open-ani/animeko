@@ -94,6 +94,44 @@ import me.him188.ani.app.videoplayer.ui.PlayerStatsOverlay
 import me.him188.ani.app.videoplayer.ui.renderAspectRatioMode
 import me.him188.ani.danmaku.ui.DanmakuPresentation
 import me.him188.ani.datasources.api.topic.FileSize
+import me.him188.ani.leanback.ui.episode.comments.TvCommentDetail
+import me.him188.ani.leanback.ui.episode.comments.TvPlayerComments
+import me.him188.ani.leanback.ui.episode.components.TvBottomControllerLayout
+import me.him188.ani.leanback.ui.episode.components.TvPlayerDialogSurface
+import me.him188.ani.leanback.ui.episode.components.TvPlayerPageLayout
+import me.him188.ani.leanback.ui.episode.components.TvPlayerSidePanel
+import me.him188.ani.leanback.ui.episode.controls.TvPlayerControlsOverlay
+import me.him188.ani.leanback.ui.episode.controls.TvPlayerEpisodeStrip
+import me.him188.ani.leanback.ui.episode.controls.TvPlayerTitleBar
+import me.him188.ani.leanback.ui.episode.controls.TvSpeedDialog
+import me.him188.ani.leanback.ui.episode.controls.TvSubtitleDialog
+import me.him188.ani.leanback.ui.episode.controls.formatSpeedLabel
+import me.him188.ani.leanback.ui.episode.controls.sortLabel
+import me.him188.ani.leanback.ui.episode.danmaku.TvDanmakuListDialog
+import me.him188.ani.leanback.ui.episode.danmaku.TvDanmakuMatchPanel
+import me.him188.ani.leanback.ui.episode.danmaku.TvDanmakuSettingsPanelState
+import me.him188.ani.leanback.ui.episode.danmaku.TvPlayerDanmakuSettingsPanel
+import me.him188.ani.leanback.ui.episode.presentation.CollectionPanelEntryKey
+import me.him188.ani.leanback.ui.episode.presentation.CommentKey
+import me.him188.ani.leanback.ui.episode.presentation.EpisodeCardKey
+import me.him188.ani.leanback.ui.episode.presentation.PanelChipKey
+import me.him188.ani.leanback.ui.episode.presentation.PanelEntryKey
+import me.him188.ani.leanback.ui.episode.presentation.TogetherPanelEntryKey
+import me.him188.ani.leanback.ui.episode.presentation.TvPlayerAction
+import me.him188.ani.leanback.ui.episode.presentation.TvPlayerDialog
+import me.him188.ani.leanback.ui.episode.presentation.TvPlayerFocus
+import me.him188.ani.leanback.ui.episode.presentation.TvPlayerFocusEffects
+import me.him188.ani.leanback.ui.episode.presentation.TvPlayerPanel
+import me.him188.ani.leanback.ui.episode.presentation.TvPlayerPanelPresentation
+import me.him188.ani.leanback.ui.episode.presentation.TvPlayerPresentationState
+import me.him188.ani.leanback.ui.episode.presentation.TvRemoteKey
+import me.him188.ani.leanback.ui.episode.presentation.rememberTvPlayerPresentationState
+import me.him188.ani.leanback.ui.episode.presentation.title
+import me.him188.ani.leanback.ui.episode.recommendation.TvPlayerRecommendationsRow
+import me.him188.ani.leanback.ui.episode.settings.TvPlayerCollectionPanel
+import me.him188.ani.leanback.ui.episode.settings.TvPlayerVideoSettingsPanel
+import me.him188.ani.leanback.ui.episode.source.TvPlayerSourceDialog
+import me.him188.ani.leanback.ui.episode.source.rememberTvSourceDialogState
 import me.him188.ani.leanback.ui.foundation.focus.TV_CONFIRM_KEYS
 import me.him188.ani.leanback.ui.foundation.focus.rememberTvFocusScope
 import me.him188.ani.leanback.ui.foundation.focus.requestPrepared
@@ -108,7 +146,7 @@ import me.him188.ani.leanback.ui.watchtogether.TvTogetherState
 import me.him188.ani.leanback.ui.watchtogether.TvWatchTogetherPanel
 import org.jetbrains.compose.resources.pluralStringResource
 import org.jetbrains.compose.resources.stringResource
-import org.openani.mediamp.isPlaying
+import org.openani.mediamp.MediaStatus
 import android.view.KeyEvent as AndroidKeyEvent
 
 /*
@@ -187,8 +225,8 @@ internal fun TvEpisodeScreen(
     LaunchedEffect(togetherState.joined, togetherState.roomName) {
         presentationState.roomChanged(togetherState.joined, togetherState.roomName)
     }
-    LaunchedEffect(state.interactionGeneration, state.canAutoHide, uiState.playbackState) {
-        if (state.canAutoHide && uiState.playbackState.isPlaying) {
+    LaunchedEffect(state.interactionGeneration, state.canAutoHide, uiState.playerState.isPlaying) {
+        if (state.canAutoHide && uiState.playerState.isPlaying) {
             delay(5_000)
             presentationState.autoHide()
         }
@@ -350,15 +388,17 @@ internal fun TvEpisodeScreen(
 
             // 取源/加载状态
             val loading = loadingState
+            val playerState = uiState.playerState
+            val playerError = playerState.mediaStatus is MediaStatus.Error
             val sourceError = uiState.sources.error
             val noResults =
                 !uiState.sources.loading && uiState.sources.groups.none { group -> group.items.any { it.excludedReason == null } } && selectedMedia == null
-            if (shouldShowVideoLoadingIndicator(loading, uiState.isBuffering, uiState.playerError)) {
+            if (shouldShowVideoLoadingIndicator(loading, playerState.isBuffering, playerError)) {
                 EpisodeVideoLoadingIndicator(
                     state = loading,
                     speedProvider = { FileSize.Unspecified },
                     optimizeForFullscreen = true,
-                    playerError = uiState.playerError,
+                    playerError = playerError,
                     modifier = Modifier
                         .align(Alignment.Center)
                         .background(Color.Black.copy(alpha = 0.55f), RoundedCornerShape(8.dp))
@@ -367,7 +407,7 @@ internal fun TvEpisodeScreen(
                     textStyle = MaterialTheme.typography.bodyLarge,
                 )
             }
-            if (loadingState is VideoLoadingState.Failed || uiState.playerError || sourceError != null || noResults) {
+            if (loadingState is VideoLoadingState.Failed || playerError || sourceError != null || noResults) {
                 Column(
                     Modifier
                         .align(Alignment.Center)
@@ -690,16 +730,6 @@ private fun PlayerCenterCapsule(text: String, modifier: Modifier = Modifier) {
         style = MaterialTheme.typography.titleSmall,
         color = Color.White,
     )
-}
-
-/** 倍速展示: 1.0 -> "1x", 1.25 -> "1.25x". */
-internal fun formatSpeedLabel(speed: Float): String {
-    val text = if (speed == speed.toLong().toFloat()) {
-        speed.toLong().toString()
-    } else {
-        speed.toString()
-    }
-    return "${text}x"
 }
 
 /** Map Android key codes to the platform-independent player intent vocabulary. */

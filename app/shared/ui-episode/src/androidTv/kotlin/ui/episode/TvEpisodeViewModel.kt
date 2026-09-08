@@ -102,11 +102,21 @@ import me.him188.ani.danmaku.ui.DanmakuPresentation
 import me.him188.ani.danmaku.ui.DanmakuTrackProperties
 import me.him188.ani.datasources.api.Media
 import me.him188.ani.datasources.api.topic.UnifiedCollectionType
+import me.him188.ani.leanback.ui.episode.controls.TvSubtitleOption
+import me.him188.ani.leanback.ui.episode.danmaku.TvDanmakuMatchState
+import me.him188.ani.leanback.ui.episode.danmaku.TvDanmakuOrigin
+import me.him188.ani.leanback.ui.episode.danmaku.TvUIDanmakuEvent
+import me.him188.ani.leanback.ui.episode.danmaku.adjustForTv
+import me.him188.ani.leanback.ui.episode.playback.TvAutoSkipController
+import me.him188.ani.leanback.ui.episode.playback.TvChapter
+import me.him188.ani.leanback.ui.episode.playback.TvPlaybackInteractionState
+import me.him188.ani.leanback.ui.episode.recommendation.tvNavigationSubjectId
+import me.him188.ani.leanback.ui.episode.source.TvSourceSelectionState
+import me.him188.ani.leanback.ui.episode.source.tvSourceGroups
 import me.him188.ani.leanback.ui.foundation.TvNavigationEvent
 import me.him188.ani.leanback.ui.foundation.TvNavigationEvents
 import org.koin.core.Koin
 import org.openani.mediamp.ExperimentalMediampApi
-import org.openani.mediamp.MediaStatus
 import org.openani.mediamp.MediampPlayer
 import org.openani.mediamp.MediampPlayerFactory
 import org.openani.mediamp.features.AspectRatioMode
@@ -116,8 +126,7 @@ import org.openani.mediamp.features.PlaybackSpeed
 import org.openani.mediamp.features.VideoAspectRatio
 import org.openani.mediamp.features.chapters
 import org.openani.mediamp.features.subtitleTracks
-import org.openani.mediamp.isPlaying
-import org.openani.mediamp.togglePause
+import org.openani.mediamp.togglePlayWhenReady
 
 /**
  * TV 播放页薄 VM (atv-architecture.md §8.1): 与手机共用同一套播放编排 (app-data domain),
@@ -414,7 +423,7 @@ class TvEpisodeViewModel(
 
     private fun togglePause() {
         if (!canControlPlayback()) return
-        player.togglePause()
+        player.togglePlayWhenReady()
     }
 
     private fun seekTo(positionMillis: Long) {
@@ -486,7 +495,7 @@ class TvEpisodeViewModel(
         }
     val uiState = combine(
         titleFlow,
-        player.playbackState,
+        player.state,
         videoLoadingState,
         currentMediaLabel,
         player.mediaProperties,
@@ -494,13 +503,11 @@ class TvEpisodeViewModel(
         TvEpisodeUiState(
             title = title,
             interaction = playbackInteraction,
-            playbackState = playback,
+            playerState = playback,
             loadingState = loading,
             mediaLabel = label,
             durationMillis = properties?.durationMillis ?: 0,
         )
-    }.combine(player.state) { state, playback ->
-        state.copy(isBuffering = playback.isBuffering, playerError = playback.mediaStatus is MediaStatus.Error)
     }.combine(options) { state, options ->
         state.copy(bufferedFraction = options.first, playbackSpeed = options.second, aspectRatioMode = options.third)
     }.combine(selection) { state, selected ->
@@ -1032,7 +1039,7 @@ class TvEpisodeViewModel(
                     player.getCurrentPositionMillis(),
                     player.mediaProperties.value?.durationMillis ?: 0L,
                     options.chapters,
-                    options.videoConfig.autoSkipOpEd && player.playbackState.value.isPlaying && !firstEpisode && !playbackAutomationGate.suppressed.value && playbackInteraction.scrubMillis == null,
+                    options.videoConfig.autoSkipOpEd && player.state.value.isPlaying && !firstEpisode && !playbackAutomationGate.suppressed.value && playbackInteraction.scrubMillis == null,
                     onSkip = ::seekTo,
                 )
                 playerOptions.update { it.copy(skipPrompt = prompt) }
@@ -1044,7 +1051,7 @@ class TvEpisodeViewModel(
     init {
         observePlayerOptions()
         backgroundScope.launch(Dispatchers.Main) {
-            player.playbackState.collect { danmakuHostState.setPaused(!it.isPlaying) }
+            player.state.collect { danmakuHostState.setPaused(!it.isPlaying) }
         }
         backgroundScope.launch(Dispatchers.Main) {
             danmakuEventFlow.collect { event ->

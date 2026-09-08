@@ -88,9 +88,19 @@ import me.him188.ani.app.ui.lang.watch_together_join
 import me.him188.ani.app.ui.lang.watch_together_join_failed
 import me.him188.ani.app.ui.lang.watch_together_title
 import me.him188.ani.app.videoplayer.videoenhancement.VideoEnhancementMode
+import me.him188.ani.leanback.ui.episode.playback.TvSkipPrompt
+import me.him188.ani.leanback.ui.episode.presentation.TvPlaybackSnapshot
+import me.him188.ani.leanback.ui.episode.presentation.TvPlayerAction
+import me.him188.ani.leanback.ui.episode.presentation.TvPlayerPanel
+import me.him188.ani.leanback.ui.episode.presentation.TvPlayerPresentationState
+import me.him188.ani.leanback.ui.episode.source.TvSourceGroup
+import me.him188.ani.leanback.ui.episode.source.TvSourceItem
+import me.him188.ani.leanback.ui.episode.source.TvSourceSelectionState
 import me.him188.ani.leanback.ui.foundation.theme.AniTvTheme
 import me.him188.ani.leanback.ui.watchtogether.TvTogetherError
 import me.him188.ani.leanback.ui.watchtogether.TvTogetherState
+import org.openani.mediamp.MediaStatus
+import org.openani.mediamp.PlayerState
 import java.io.File
 import java.util.Locale
 import kotlin.test.Test
@@ -120,7 +130,7 @@ class TvPlayerI18nUiTest {
                 ), emptyList(),
             )), loading = false),
         ))
-        val presentation = TvPlayerPresentationState({ TvPlaybackSnapshot(true, 20_000, 60_000) }, {})
+        val presentation = TvPlayerPresentationState({ TvPlaybackSnapshot(PlayerState(MediaStatus.Ready, true, false), 20_000, 60_000) }, {})
         lateinit var back: OnBackPressedDispatcher
         val comments = flowOf(PagingData.from(listOf(EpisodeComment(
             stableId = "i18n", source = EpisodeCommentSource.BANGUMI,

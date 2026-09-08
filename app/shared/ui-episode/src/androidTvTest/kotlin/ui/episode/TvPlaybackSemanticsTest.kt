@@ -20,6 +20,9 @@ import me.him188.ani.client.models.AniWatchTogetherMember
 import me.him188.ani.client.models.AniWatchTogetherMemberState
 import me.him188.ani.client.models.AniWatchTogetherWatchingInfo
 import me.him188.ani.danmaku.ui.DanmakuConfig
+import me.him188.ani.leanback.ui.episode.danmaku.TvDanmakuProperty
+import me.him188.ani.leanback.ui.episode.danmaku.adjustForTv
+import me.him188.ani.leanback.ui.episode.source.TvSourceGroup
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse

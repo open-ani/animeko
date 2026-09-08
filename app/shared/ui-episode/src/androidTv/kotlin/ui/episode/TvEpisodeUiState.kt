@@ -17,7 +17,11 @@ import me.him188.ani.danmaku.api.provider.DanmakuProviderId
 import me.him188.ani.danmaku.ui.DanmakuPresentation
 import me.him188.ani.datasources.api.Media
 import me.him188.ani.datasources.api.topic.UnifiedCollectionType
-import org.openani.mediamp.PlaybackState
+import me.him188.ani.leanback.ui.episode.danmaku.TvDanmakuMatchState
+import me.him188.ani.leanback.ui.episode.danmaku.TvDanmakuProperty
+import me.him188.ani.leanback.ui.episode.playback.TvPlaybackInteractionState
+import me.him188.ani.leanback.ui.episode.source.TvSourceSelectionState
+import org.openani.mediamp.PlayerState
 import org.openani.mediamp.features.AspectRatioMode
 
 data class TvEpisodeTitle(
@@ -44,10 +48,8 @@ data class TvPlayerPanelState(
 
 data class TvEpisodeUiState(
     val title: TvEpisodeTitle = TvEpisodeTitle(),
-    val playbackState: PlaybackState = PlaybackState.READY,
+    val playerState: PlayerState = PlayerState.Initial,
     val loadingState: VideoLoadingState = VideoLoadingState.Initial,
-    val isBuffering: Boolean = false,
-    val playerError: Boolean = false,
     val mediaLabel: String? = null,
     val durationMillis: Long = 0,
     val positionMillis: Long = 0,

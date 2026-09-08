@@ -62,10 +62,25 @@ import me.him188.ani.app.ui.watchtogether.WatchTogetherMemberPresence
 import me.him188.ani.app.ui.watchtogether.WatchTogetherMemberPresentation
 import me.him188.ani.app.ui.watchtogether.WatchTogetherPlaybackPresentation
 import me.him188.ani.app.videoplayer.ui.progress.MediaProgressFramePreviewState
+import me.him188.ani.leanback.ui.episode.playback.TvChapter
+import me.him188.ani.leanback.ui.episode.playback.TvPlaybackInteractionState
+import me.him188.ani.leanback.ui.episode.presentation.TvPlaybackSnapshot
+import me.him188.ani.leanback.ui.episode.presentation.TvPlayerAction
+import me.him188.ani.leanback.ui.episode.presentation.TvPlayerPanel
+import me.him188.ani.leanback.ui.episode.presentation.TvPlayerPresentationState
+import me.him188.ani.leanback.ui.episode.presentation.rememberTvPlayerPresentationState
+import me.him188.ani.leanback.ui.episode.source.TvPlayerSourceDialog
+import me.him188.ani.leanback.ui.episode.source.TvSourceGroup
+import me.him188.ani.leanback.ui.episode.source.TvSourceSelectionState
+import me.him188.ani.leanback.ui.episode.source.rememberTvSourceDialogState
 import me.him188.ani.leanback.ui.foundation.theme.AniTvTheme
 import me.him188.ani.leanback.ui.watchtogether.TvTogetherState
 import org.jetbrains.compose.resources.StringResource
 import org.jetbrains.compose.resources.getString
+import org.openani.mediamp.MediaStatus
+import org.openani.mediamp.PlaybackErrorCode
+import org.openani.mediamp.PlaybackException
+import org.openani.mediamp.PlayerState
 import java.io.File
 import kotlin.test.Test
 import kotlin.test.assertEquals
@@ -84,15 +99,69 @@ class TvPlaybackSemanticsUiTest {
         assertMessage(Lang.subject_episode_video_loading_resolving_source)
         runOnIdle { state = state.copy(loadingState = VideoLoadingState.DecodingData(false)) }
         assertMessage(Lang.subject_episode_video_loading_decoding_data)
-        runOnIdle { state = state.copy(loadingState = VideoLoadingState.Succeed(false)) }
+        runOnIdle {
+            state = state.copy(
+                loadingState = VideoLoadingState.Succeed(false),
+                playerState = PlayerState(MediaStatus.Ready, true, false),
+            )
+        }
         onNodeWithTag("tv-player-loading").assertDoesNotExist()
-        runOnIdle { state = state.copy(isBuffering = true) }
+        runOnIdle { state = state.copy(playerState = state.playerState.copy(isBuffering = true)) }
         assertMessage(Lang.subject_episode_video_loading_buffering)
         saveScreenshot("tv-buffering")
-        runOnIdle { state = state.copy(isBuffering = false, playerError = true) }
+        runOnIdle {
+            state = state.copy(playerState = PlayerState(
+                MediaStatus.Error(PlaybackException(PlaybackErrorCode.DECODING, "Test decoding failure")), false, false,
+            ))
+        }
         assertMessage(Lang.subject_episode_video_loading_player_error)
-        runOnIdle { state = state.copy(playerError = false, loadingState = VideoLoadingState.NetworkError) }
+        runOnIdle { state = state.copy(playerState = PlayerState.Initial, loadingState = VideoLoadingState.NetworkError) }
         assertMessage(Lang.subject_episode_video_loading_cause_network_error)
+    }
+
+    @Test
+    fun mediaKeysUsePlaybackIntentWhileBuffering() = runAniComposeUiTest {
+        var state by mutableStateOf(TvEpisodeUiState(
+            playerState = PlayerState(MediaStatus.Ready, true, true),
+            loadingState = VideoLoadingState.Succeed(false),
+        ))
+        val toggles = mutableListOf<TvEpisodeIntent>()
+        showPlayer(onIntent = { intent ->
+            if (intent == TvEpisodeIntent.TogglePause) {
+                toggles += intent
+                state = state.copy(playerState = state.playerState.copy(playWhenReady = !state.playerState.playWhenReady))
+            }
+            true
+        }) { state }
+        key(Key.MediaPlay)
+        assertTrue(toggles.isEmpty())
+        key(Key.MediaPause)
+        key(Key.MediaPause)
+        assertEquals(1, toggles.size)
+        assertFalse(state.playerState.playWhenReady)
+        key(Key.MediaPlay)
+        key(Key.MediaPlay)
+        assertEquals(2, toggles.size)
+        assertTrue(state.playerState.playWhenReady)
+    }
+
+    @Test
+    fun autoHideTimerRestartsAfterBufferingEnds() = runAniComposeUiTest {
+        var state by mutableStateOf(TvEpisodeUiState(
+            playerState = PlayerState(MediaStatus.Ready, true, false),
+            loadingState = VideoLoadingState.Succeed(false),
+        ))
+        showPlayer { state }
+        mainClock.autoAdvance = false
+        mainClock.advanceTimeBy(3_000)
+        runOnIdle { state = state.copy(playerState = state.playerState.copy(isBuffering = true)) }
+        mainClock.advanceTimeBy(6_000)
+        onNodeWithTag("tv-player-seekbar").assertIsDisplayed()
+        runOnIdle { state = state.copy(playerState = state.playerState.copy(isBuffering = false)) }
+        mainClock.advanceTimeBy(3_000)
+        onNodeWithTag("tv-player-seekbar").assertIsDisplayed()
+        mainClock.advanceTimeBy(3_000)
+        onNodeWithTag("tv-player-seekbar").assertDoesNotExist()
     }
 
     @Test
@@ -159,7 +228,7 @@ class TvPlaybackSemanticsUiTest {
     @Test
     fun roomControlsRemainAvailableWithoutPlaybackAndOfflineMembersDoNotAppearWatching() = runAniComposeUiTest {
         var together by mutableStateOf(TvTogetherState(joined = true, roomName = "测试房间"))
-        val presentation = TvPlayerPresentationState({ TvPlaybackSnapshot(false, 20_000, 60_000) }, {})
+        val presentation = TvPlayerPresentationState({ TvPlaybackSnapshot(PlayerState.Initial, 20_000, 60_000) }, {})
         presentation.onAction(TvPlayerAction.TogglePanel(TvPlayerPanel.Together))
         showPlayer(togetherState = { together }, presentationState = presentation) {
             TvEpisodeUiState(
@@ -220,6 +289,7 @@ class TvPlaybackSemanticsUiTest {
     private fun AniComposeUiTest.showPlayer(
         togetherState: () -> TvTogetherState = { TvTogetherState() },
         presentationState: TvPlayerPresentationState? = null,
+        onIntent: (TvEpisodeIntent) -> Boolean = { true },
         state: () -> TvEpisodeUiState,
     ) {
         setContent {
@@ -228,9 +298,9 @@ class TvPlaybackSemanticsUiTest {
                 TvEpisodeScreen(
                     uiState = uiState, togetherState = togetherState(), onTogetherIntent = {},
                     commentsPager = emptyFlow(), actionEvents = emptyFlow(),
-                    onIntent = { true }, video = { Box(it.background(Color(0xFF1E2A38))) }, resolver = {}, danmaku = {},
+                    onIntent = onIntent, video = { Box(it.background(Color(0xFF1E2A38))) }, resolver = {}, danmaku = {},
                     modifier = Modifier.testTag("tv-semantics-test"),
-                    presentationState = presentationState ?: rememberTvPlayerPresentationState(uiState) { true },
+                    presentationState = presentationState ?: rememberTvPlayerPresentationState(uiState, onIntent),
                 )
             }
         }

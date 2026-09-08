@@ -85,6 +85,7 @@ TV 子模块沿用统一的 KMP targets，但 TV 文件和专用依赖只加入 
 Compose、SDK、编译选项与 JUnit 配置由约定插件统一提供；父 KMP 模块不接入 TV 目录或专用依赖。
 功能子模块的 Gradle 名称为 `:app:shared:ui-xxx-tv`，目录为 `app/shared/ui-xxx/tv`。
 主壳模块 `:app:shared:tv` 位于 `app/shared/shared-tv`，编译 `app/shared/src/androidTv` 中的代码。
+TV 播放页的功能包划分和状态职责见 [TV 播放页](code/tv-playback.md)。
 
 TV 子模块通过 Gradle 依赖访问原 KMP 模块的公开 API，不能访问其 `internal` 声明。
 原模块的 `androidMain` 继续提供两端需要的 Android `actual` 实现。

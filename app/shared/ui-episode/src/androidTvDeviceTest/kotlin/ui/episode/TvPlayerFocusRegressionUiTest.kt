@@ -49,8 +49,18 @@ import me.him188.ani.danmaku.api.provider.DanmakuEpisode
 import me.him188.ani.danmaku.api.provider.DanmakuMatchMethod
 import me.him188.ani.danmaku.api.provider.DanmakuProviderId
 import me.him188.ani.danmaku.api.provider.DanmakuSubject
+import me.him188.ani.leanback.ui.episode.danmaku.TvDanmakuMatchState
+import me.him188.ani.leanback.ui.episode.danmaku.TvDanmakuOrigin
+import me.him188.ani.leanback.ui.episode.danmaku.TvDanmakuProperty
+import me.him188.ani.leanback.ui.episode.presentation.TvPlaybackSnapshot
+import me.him188.ani.leanback.ui.episode.presentation.TvPlayerAction
+import me.him188.ani.leanback.ui.episode.presentation.TvPlayerDialog
+import me.him188.ani.leanback.ui.episode.presentation.TvPlayerPanel
+import me.him188.ani.leanback.ui.episode.presentation.TvPlayerPresentationState
 import me.him188.ani.leanback.ui.foundation.theme.AniTvTheme
 import me.him188.ani.leanback.ui.watchtogether.TvTogetherState
+import org.openani.mediamp.MediaStatus
+import org.openani.mediamp.PlayerState
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertTrue
@@ -58,7 +68,7 @@ import kotlin.test.assertTrue
 // Regression scenarios for dynamic content and player overlay focus.
 class TvPlayerFocusRegressionUiTest {
     private class Fixture {
-        val machine = TvPlayerPresentationState({ TvPlaybackSnapshot(true, 20_000, 60_000) }, {})
+        val machine = TvPlayerPresentationState({ TvPlaybackSnapshot(PlayerState(MediaStatus.Ready, true, false), 20_000, 60_000) }, {})
         var options by mutableStateOf(TvPlayerOptionsState())
         var matching by mutableStateOf(TvDanmakuMatchState())
         var together by mutableStateOf(TvTogetherState(requiresLogin = true))

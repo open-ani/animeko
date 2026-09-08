@@ -11,72 +11,14 @@ package me.him188.ani.leanback.ui.episode
 
 import androidx.compose.ui.graphics.ImageBitmap
 import me.him188.ani.app.data.models.preference.VideoScaffoldConfig
-import me.him188.ani.app.domain.media.fetch.MediaSourceFetchState
-import me.him188.ani.app.domain.media.fetch.isFailedOrAbandoned
-import me.him188.ani.app.domain.media.selector.MediaExclusionReason
 import me.him188.ani.app.videoplayer.ui.PlayerStatsSnapshot
 import me.him188.ani.app.videoplayer.videoenhancement.VideoEnhancementMode
-import me.him188.ani.danmaku.api.DanmakuServiceId
-import me.him188.ani.danmaku.api.provider.DanmakuEpisode
-import me.him188.ani.danmaku.api.provider.DanmakuMatchMethod
-import me.him188.ani.danmaku.api.provider.DanmakuProviderId
-import me.him188.ani.danmaku.api.provider.DanmakuSubject
 import me.him188.ani.danmaku.ui.DanmakuConfig
-import me.him188.ani.datasources.api.Media
 import me.him188.ani.datasources.api.topic.UnifiedCollectionType
-
-data class TvSourceItem(val media: Media, val excludedReason: MediaExclusionReason? = null)
-
-data class TvSourceGroup(
-    val instanceId: String,
-    val sourceId: String,
-    val name: String,
-    val iconUrl: String?,
-    val state: MediaSourceFetchState,
-    val items: List<TvSourceItem>,
-    val isCaptchaSupported: Boolean = true,
-    val isResolvingCaptcha: Boolean = false,
-) {
-    val loading: Boolean get() = state == MediaSourceFetchState.Idle || state == MediaSourceFetchState.Working
-    val failed: Boolean get() = state.isFailedOrAbandoned
-    val showInSimpleMode: Boolean
-        get() = state != MediaSourceFetchState.Disabled &&
-                (state !is MediaSourceFetchState.Succeed || items.any { it.excludedReason == null })
-}
-
-data class TvSourceSelectionState(
-    val groups: List<TvSourceGroup> = emptyList(),
-    val loading: Boolean = true,
-    val error: TvPlayerError? = null,
-)
-
-enum class TvPlayerDialog { Speed, Subtitles, EpisodeActions, DanmakuMatch, DanmakuList }
-
-enum class TvDanmakuProperty { FontSize, Opacity, Speed, Density, Area, Stroke, Weight, Top, Bottom, Floating, Color }
-
-data class TvDanmakuOrigin(
-    val serviceId: DanmakuServiceId,
-    val providerId: DanmakuProviderId,
-    val match: DanmakuMatchMethod,
-    val count: Int,
-    val enabled: Boolean,
-    val shiftMillis: Long,
-    val canMatch: Boolean,
-)
-
-data class TvSubtitleOption(val id: String, val label: String)
-
-data class TvDanmakuMatchState(
-    val requestId: Long = 0,
-    val providerId: DanmakuProviderId? = null,
-    val query: String = "",
-    val subjects: List<DanmakuSubject> = emptyList(),
-    val selectedSubject: DanmakuSubject? = null,
-    val episodes: List<DanmakuEpisode> = emptyList(),
-    val loading: Boolean = false,
-    val error: TvPlayerError? = null,
-    val searched: Boolean = false,
-)
+import me.him188.ani.leanback.ui.episode.controls.TvSubtitleOption
+import me.him188.ani.leanback.ui.episode.danmaku.TvDanmakuOrigin
+import me.him188.ani.leanback.ui.episode.playback.TvChapter
+import me.him188.ani.leanback.ui.episode.playback.TvSkipPrompt
 
 data class TvPlayerOptionsState(
     val danmakuEnabled: Boolean = true,
@@ -97,9 +39,6 @@ data class TvPlayerOptionsState(
     val skipPrompt: TvSkipPrompt? = null,
     val message: TvPlayerMessage? = null,
 )
-
-data class TvChapter(val name: String?, val offsetMillis: Long, val durationMillis: Long)
-data class TvSkipPrompt(val name: String?, val secondsRemaining: Int)
 
 enum class TvPlayerError { SourceInfoUnavailable, EmptyDanmakuQuery, DanmakuSearchFailed }
 

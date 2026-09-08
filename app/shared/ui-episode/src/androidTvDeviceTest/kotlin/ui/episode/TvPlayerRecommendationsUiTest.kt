@@ -49,8 +49,13 @@ import me.him188.ani.app.ui.framework.runAniComposeUiTest
 import me.him188.ani.app.ui.lang.Lang
 import me.him188.ani.app.ui.lang.subject_episode_recommendations_empty
 import me.him188.ani.app.ui.lang.subject_episode_recommendations_loading
+import me.him188.ani.leanback.ui.episode.presentation.TvPlaybackCommand
+import me.him188.ani.leanback.ui.episode.presentation.TvPlaybackSnapshot
+import me.him188.ani.leanback.ui.episode.presentation.TvPlayerPresentationState
 import me.him188.ani.leanback.ui.foundation.theme.AniTvTheme
 import me.him188.ani.leanback.ui.watchtogether.TvTogetherState
+import org.openani.mediamp.MediaStatus
+import org.openani.mediamp.PlayerState
 import java.io.File
 import kotlin.math.roundToInt
 import kotlin.test.Test
@@ -63,7 +68,7 @@ class TvPlayerRecommendationsUiTest {
     private class Fixture(val options: TvPlayerOptionsState = TvPlayerOptionsState()) {
         val commands = mutableListOf<TvPlaybackCommand>()
         val openedRecommendations = mutableListOf<SubjectRecommendation>()
-        val machine = TvPlayerPresentationState({ TvPlaybackSnapshot(true, 20_000, 60_000) }, commands::add)
+        val machine = TvPlayerPresentationState({ TvPlaybackSnapshot(PlayerState(MediaStatus.Ready, true, false), 20_000, 60_000) }, commands::add)
         lateinit var backDispatcher: OnBackPressedDispatcher
         var panel by mutableStateOf(TvPlayerPanelState())
         var episodes by mutableStateOf(listOf(
