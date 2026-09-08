@@ -26,6 +26,7 @@
     - [MediaSource](code/media/media-source.md)
     - [MediaSelector](code/media/media-selector.md)
     - [缓存](code/media/media-cache.md)
+    - [下载管理](code/media/media-downloads.md)
     - [代码地图](code/media/media-code-map.md)
 - [图片验证码自动识别](code/image-captcha.md)
 

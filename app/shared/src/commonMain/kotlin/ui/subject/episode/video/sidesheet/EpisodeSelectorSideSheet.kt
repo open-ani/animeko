@@ -46,7 +46,7 @@ import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.filter
 import kotlinx.coroutines.flow.first
-import me.him188.ani.app.ui.cache.subject.contentColorForWatchStatus
+import me.him188.ani.app.ui.download.subject.contentColorForWatchStatus
 import me.him188.ani.app.ui.foundation.BackgroundScope
 import me.him188.ani.app.ui.foundation.HasBackgroundScope
 import me.him188.ani.app.ui.foundation.ProvideCompositionLocalsForPreview

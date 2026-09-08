@@ -55,14 +55,13 @@ import me.him188.ani.app.platform.navigation.LocalBrowserNavigator
 import me.him188.ani.app.ui.adaptive.navigation.AniNavigationSuiteDefaults
 import me.him188.ani.app.ui.bangumi.merge.BangumiMergeScreen
 import me.him188.ani.app.ui.bangumi.merge.BangumiMergeViewModel
-import me.him188.ani.app.ui.cache.CacheManagementScreen
-import me.him188.ani.app.ui.cache.CacheManagementViewModel
-import me.him188.ani.app.ui.cache.details.MediaCacheDetailsPageViewModel
-import me.him188.ani.app.ui.cache.details.MediaCacheDetailsScreen
-import me.him188.ani.app.ui.cache.details.MediaDetails
-import me.him188.ani.app.ui.cache.details.MediaDetailsLazyGrid
-import me.him188.ani.app.ui.cache.subject.SubjectCacheScreen
-import me.him188.ani.app.ui.cache.subject.rememberSubjectCacheViewModel
+import me.him188.ani.app.ui.download.DownloadManagementScreen
+import me.him188.ani.app.ui.download.createDownloadManagementViewModel
+import me.him188.ani.app.ui.download.details.MediaCacheDetailsPageViewModel
+import me.him188.ani.app.ui.download.details.MediaCacheDetailsScreen
+import me.him188.ani.app.ui.download.details.MediaDetails
+import me.him188.ani.app.ui.download.details.MediaDetailsLazyGrid
+import me.him188.ani.app.ui.download.subject.SubjectDownloadsScreen
 import me.him188.ani.app.ui.exploration.schedule.ScheduleScreen
 import me.him188.ani.app.ui.exploration.schedule.ScheduleViewModel
 import me.him188.ani.app.ui.foundation.animation.NavigationMotionScheme
@@ -425,8 +424,8 @@ private fun AniAppContentImpl(
             }
             entry<NavRoutes.Caches> { route ->
                 val selfInfo by remember { SelfInfoStateProducer() }.flow.collectAsState(null)
-                CacheManagementScreen(
-                    vm = viewModel { CacheManagementViewModel() },
+                DownloadManagementScreen(
+                    vm = viewModel { createDownloadManagementViewModel() },
                     selfInfo = selfInfo,
                     onPlay = {
                         aniNavigator.navigateEpisodeDetails(it.subjectId, it.episodeId)
@@ -484,12 +483,10 @@ private fun AniAppContentImpl(
                 )
             }
             entry<NavRoutes.SubjectCaches> { route ->
-                // Don't use rememberViewModel to save memory
-                val vm = rememberSubjectCacheViewModel(route.subjectId)
-                SubjectCacheScreen(
-                    vm,
+                SubjectDownloadsScreen(
+                    subjectId = route.subjectId,
                     onPlay = { aniNavigator.navigateEpisodeDetails(it.subjectId, it.episodeId) },
-                    onNavigateCacheDetail = { aniNavigator.navigateCacheDetails(it) },
+                    onNavigateDownloadDetail = { aniNavigator.navigateCacheDetails(it) },
                     modifier = Modifier.fillMaxSize(),
                     windowInsets = windowInsets,
                     navigationIcon = {

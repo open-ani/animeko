@@ -63,11 +63,20 @@ import me.him188.ani.app.domain.settings.GetMediaSelectorSettingsUseCase
 import me.him188.ani.app.domain.settings.GetMediaSelectorSettingsUseCaseImpl
 import me.him188.ani.app.domain.settings.GetVideoScaffoldConfigUseCase
 import me.him188.ani.app.domain.settings.GetVideoScaffoldConfigUseCaseImpl
+import me.him188.ani.app.domain.media.download.CreateEpisodeDownloadUseCase
+import me.him188.ani.app.domain.media.download.DownloadOperations
+import me.him188.ani.app.domain.media.download.EpisodeDownloadSessionFactory
+import me.him188.ani.app.domain.media.download.ObserveDownloadsUseCase
+import me.him188.ani.app.domain.media.selector.MediaSelectorFactory
 import org.koin.core.KoinApplication
 import org.koin.dsl.module
 import org.koin.mp.KoinPlatform
 
 fun KoinApplication.useCaseModules() = module {
+    single { ObserveDownloadsUseCase(get()) }
+    single { CreateEpisodeDownloadUseCase(get(), get()) }
+    single { DownloadOperations(get(), get()) }
+    single { EpisodeDownloadSessionFactory(get(), get(), get(), get(), MediaSelectorFactory.withKoin(koin), get(), get()) }
     single<GetEpisodeCollectionInfoFlowUseCase> { GetEpisodeCollectionInfoFlowUseCaseImpl() }
     single<GetDanmakuRegexFilterListFlowUseCase> { GetDanmakuRegexFilterListFlowUseCaseImpl() }
     single<MediaSelectorAutoSelectUseCase> { MediaSelectorAutoSelectUseCaseImpl() }

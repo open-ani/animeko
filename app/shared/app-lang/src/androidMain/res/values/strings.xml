@@ -510,7 +510,7 @@
     <string name="main_network_check_failed">Failed to connect to the Animeko server. Check your network, or configure a proxy in Settings.</string>
     <string name="main_screen_page_exploration">Explore</string>
     <string name="main_screen_page_collection">Collection</string>
-    <string name="main_screen_page_cache_management">Cache</string>
+    <string name="main_screen_page_cache_management">Downloads</string>
 
     <!-- ThemePreferences -->
     <string name="settings_theme_title">Theme</string>
@@ -623,7 +623,7 @@
     <string name="settings_media_auto_cache_recent_only">Only cache recently watched anime</string>
     <string name="settings_media_auto_cache_count">Cache count</string>
     <string name="settings_media_auto_cache_count_description">Current setting: Only cache the most recent %d anime</string>
-    <string name="settings_media_auto_cache_manage">Manage cached episodes</string>
+    <string name="settings_media_auto_cache_manage">Manage downloads</string>
     <string name="settings_debug_logout">Logout</string>
     <string name="settings_debug_logged_out">Logged out</string>
     <string name="settings_tab_account">Account</string>
@@ -780,9 +780,9 @@
     <string name="subject_episode_long_press_mark_watched">Long press to mark as watched</string>
     <string name="subject_episode_details">Item Details</string>
     <string name="subject_episode_close">Close</string>
-    <string name="subject_episode_cache">Cache</string>
+    <string name="subject_episode_cache">Downloads</string>
     <string name="cache_filter_collection_state">Collection State</string>
-    <string name="cache_filter_cache_type">Cache Type</string>
+    <string name="cache_filter_cache_type">Download Type</string>
     <string name="cache_filter_download_status">Download Status</string>
     <string name="cache_filter_status_downloading">Downloading</string>
     <string name="cache_filter_status_finished">Finished</string>
@@ -808,14 +808,14 @@
     <string name="cache_episode_download_completed">Download Completed</string>
     <string name="cache_episode_download_failed">Download Failed</string>
     <string name="cache_episode_downloading">Downloading</string>
-    <string name="cache_subject_episode_cache">Episode Cache</string>
+    <string name="cache_subject_episode_cache">Episode Downloads</string>
     <string name="cache_subject_delete">Delete</string>
     <string name="cache_subject_cancel">Cancel</string>
-    <string name="cache_subject_cache">Cache</string>
+    <string name="cache_subject_cache">Download</string>
     <string name="cache_subject_select_storage">Select Storage Location</string>
-    <string name="cache_subject_manage_all">Manage All Cache</string>
+    <string name="cache_subject_manage_all">Manage All Downloads</string>
     <string name="cache_unknown">Unknown</string>
-    <string name="cache_management_select_item_for_details">Select an item to view cache details</string>
+    <string name="cache_management_select_item_for_details">Select an item to view download details</string>
     <string name="cache_management_selected_count">%1$d selected</string>
     <string name="cache_management_exit_selection">Exit Selection</string>
     <string name="cache_management_select_all">Select All</string>
@@ -824,8 +824,8 @@
     <string name="cache_management_pause_selected">Pause</string>
     <string name="cache_management_selection_summary">%1$d selected · %2$s in total</string>
     <string name="cache_management_enter_selection_mode">Enter Selection Mode</string>
-    <string name="cache_management_delete_cache_title">Delete Cache</string>
-    <string name="cache_management_delete_cache_confirmation">Deletion cannot be undone. Delete this cache?</string>
+    <string name="cache_management_delete_cache_title">Delete Downloads</string>
+    <string name="cache_management_delete_cache_confirmation">Deletion cannot be undone. Delete this download?</string>
     <string name="cache_management_finished_count">%1$d/%2$d completed</string>
     <string name="cache_management_downloading_count">%1$d downloading</string>
     <string name="cache_subject_pause_all">Pause all</string>
@@ -838,7 +838,7 @@
     <string name="cache_management_episode_label">Episode %1$d · %2$s</string>
     <string name="cache_management_more_actions">More Actions</string>
     <string name="cache_management_play">Play</string>
-    <string name="cache_management_invalid_cache_info">Cache information is invalid and cannot be played</string>
+    <string name="cache_management_invalid_cache_info">Downloads information is invalid and cannot be played</string>
     <string name="cache_management_streaming_not_supported">This resource does not support streaming while downloading. Please wait for the download to finish</string>
     <string name="cache_management_more_info">More Info</string>
     <string name="cache_details_title">Details</string>
@@ -859,7 +859,7 @@
     <string name="cache_details_original_link">Original Link</string>
     <string name="cache_details_file_type">File Type</string>
     <string name="cache_details_original_download_link">Original Download Link</string>
-    <string name="cache_details_local_cache_path">Local Cache Path</string>
+    <string name="cache_details_local_cache_path">Local Downloads Path</string>
     <string name="cache_details_total_segments">Total Segments</string>
     <string name="cache_details_downloader_status">Downloader Internal Status</string>
     <string name="cache_details_external_subtitle">External Subtitle %1$d</string>
@@ -1483,6 +1483,10 @@
     <string name="image_viewer_copied">Image copied</string>
     <string name="image_viewer_copy_failed">Failed to copy image</string>
     <string name="image_viewer_close">Close</string>
+    <string name="downloads_load_failed">Unable to load download information</string>
+    <string name="downloads_empty">No episodes available to download</string>
+    <string name="downloads_create_failed">Unable to add this download. Please retry.</string>
+    <string name="downloads_operation_failed">Unable to update %1$d downloads</string>
 </resources>
 
 <!--@formatter:on-->
