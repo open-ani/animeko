@@ -25,6 +25,7 @@ kotlin {
             implementation(projects.app.shared.uiExplorationTv)
             implementation(projects.app.shared.uiSubjectTv)
             implementation(projects.app.shared.uiEpisodeTv)
+            implementation(projects.app.shared.uiWatchtogetherTv)
             implementation(projects.app.shared.uiOnboardingTv)
             implementation(projects.app.shared.uiSettingsTv)
         }

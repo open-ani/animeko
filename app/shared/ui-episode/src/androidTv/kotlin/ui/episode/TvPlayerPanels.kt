@@ -56,6 +56,12 @@ import me.him188.ani.danmaku.ui.DanmakuPresentation
 import me.him188.ani.leanback.ui.foundation.focus.TvFocusKey
 import me.him188.ani.leanback.ui.foundation.focus.TvFocusScope
 import me.him188.ani.leanback.ui.foundation.focus.tvFocusAnchor
+import me.him188.ani.leanback.ui.foundation.formatPlaybackTime
+import me.him188.ani.leanback.ui.foundation.layout.tvPanelScrollEdges
+import me.him188.ani.leanback.ui.foundation.widgets.LocalTvOptionColors
+import me.him188.ani.leanback.ui.foundation.widgets.TvOptionDefaults
+import me.him188.ani.leanback.ui.foundation.widgets.TvOptionRow
+import me.him188.ani.leanback.ui.foundation.widgets.tvOptionSurfaceColors
 
 /**
  * 浮出面板种类与内容宽度 (atv-architecture.md §8.3 功能药丸).
@@ -128,7 +134,7 @@ internal fun TvPlayerComments(
 @Composable
 private fun TvCommentLoading(modifier: Modifier = Modifier) {
     Row(modifier.fillMaxWidth().padding(20.dp), horizontalArrangement = Arrangement.Center) {
-        CircularProgressIndicator(Modifier.size(28.dp), color = LocalTvPlayerSurfaceColors.current.content, strokeWidth = 3.dp)
+        CircularProgressIndicator(Modifier.size(28.dp), color = LocalTvOptionColors.current.content, strokeWidth = 3.dp)
     }
 }
 
@@ -228,7 +234,7 @@ private fun PanelList(
     state: LazyListState = rememberLazyListState(),
     content: LazyListScope.() -> Unit,
 ) {
-    val colors = LocalTvPlayerSurfaceColors.current
+    val colors = LocalTvOptionColors.current
     if (empty) {
         Text(
             emptyText,
@@ -259,8 +265,8 @@ private fun PanelItemSurface(
     Surface(
         onClick = onClick,
         modifier = modifier.fillMaxWidth(),
-        shape = ClickableSurfaceDefaults.shape(TvPlayerSurfaceDefaults.ItemShape),
-        colors = tvPlayerOptionColors(filled = true),
+        shape = ClickableSurfaceDefaults.shape(TvOptionDefaults.ItemShape),
+        colors = tvOptionSurfaceColors(filled = true),
         scale = ClickableSurfaceDefaults.scale(focusedScale = 1f),
     ) {
         Row(
@@ -276,7 +282,7 @@ private fun PanelItemSurface(
 private fun DanmakuItem(danmaku: DanmakuPresentation, modifier: Modifier = Modifier) {
     PanelItemSurface(onClick = {}, modifier) {
         Text(
-            formatTime(danmaku.danmaku.playTimeMillis),
+            formatPlaybackTime(danmaku.danmaku.playTimeMillis),
             style = MaterialTheme.typography.labelSmall,
         )
         Text(

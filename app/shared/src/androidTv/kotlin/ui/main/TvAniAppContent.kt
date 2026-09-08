@@ -41,8 +41,6 @@ import me.him188.ani.leanback.ui.collection.TvCollectionViewModel
 import me.him188.ani.leanback.ui.di.TvAppDependencies
 import me.him188.ani.leanback.ui.episode.TvEpisodeRoute
 import me.him188.ani.leanback.ui.episode.TvEpisodeViewModel
-import me.him188.ani.leanback.ui.episode.TvTogetherIntent
-import me.him188.ani.leanback.ui.episode.TvWatchTogetherViewModel
 import me.him188.ani.leanback.ui.exploration.TvExplorationRoute
 import me.him188.ani.leanback.ui.exploration.TvExplorationViewModel
 import me.him188.ani.leanback.ui.foundation.TvNavigationEvent
@@ -58,6 +56,8 @@ import me.him188.ani.leanback.ui.settings.TvSettingsRoute
 import me.him188.ani.leanback.ui.settings.TvSettingsViewModel
 import me.him188.ani.leanback.ui.subject.TvSubjectDetailsRoute
 import me.him188.ani.leanback.ui.subject.TvSubjectDetailsViewModel
+import me.him188.ani.leanback.ui.watchtogether.TvTogetherIntent
+import me.him188.ani.leanback.ui.watchtogether.TvWatchTogetherViewModel
 
 /**
  * TV 端根内容: 注册 TV 支持的 [NavRoutes] 子集 (atv-architecture.md §6.3), Navigation 3

@@ -49,6 +49,7 @@ import me.him188.ani.danmaku.api.provider.DanmakuEpisode
 import me.him188.ani.danmaku.api.provider.DanmakuProviderId
 import me.him188.ani.danmaku.api.provider.DanmakuSubject
 import me.him188.ani.leanback.ui.foundation.theme.AniTvTheme
+import me.him188.ani.leanback.ui.watchtogether.TvTogetherState
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertTrue
@@ -115,11 +116,11 @@ class TvPlayerFocusRegressionUiTest {
         onNodeWithText("跟随房主").assertIsFocused()
         key(Key.DirectionDown)
         key(Key.DirectionCenter)
-        onNodeWithText("确定退出房间").assertIsFocused()
+        onNodeWithText("留在房间").assertIsFocused()
         runOnIdle { visible = false }
         onNodeWithTag("tv-player-sidebar").assertDoesNotExist()
         runOnIdle { visible = true }
-        onNodeWithText("确定退出房间").assertIsFocused()
+        onNodeWithText("留在房间").assertIsFocused()
     }
 
     @Test

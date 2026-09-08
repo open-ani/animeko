@@ -41,6 +41,8 @@ class TvArchitectureTest {
         "me.him188.ani.app.ui.subject.episode.video.loading.EpisodeVideoLoadingIndicator",
         "me.him188.ani.app.ui.subject.episode.video.loading.shouldShowVideoLoadingIndicator",
         "me.him188.ani.app.ui.watchtogether.WatchTogetherMemberPresentation",
+        "me.him188.ani.app.ui.watchtogether.WatchTogetherMemberPresence",
+        "me.him188.ani.app.ui.watchtogether.WatchTogetherConnectionPresentation",
         "me.him188.ani.app.ui.watchtogether.WatchTogetherPlaybackPresentation",
         "me.him188.ani.app.ui.watchtogether.toWatchTogetherMemberPresentation",
         "me.him188.ani.app.ui.watchtogether.toWatchTogetherPlaybackPresentation",
@@ -87,7 +89,7 @@ class TvArchitectureTest {
         val tvDirs = (listOf(sharedRoot) + featureModules)
             .map { File(it, "src/androidTv") } + File(repoRoot, "app/android/src/tv")
         val dirs = tvDirs.filter { it.exists() }.map { it.absolutePath }
-        check(dirs.size >= 8) { "TV 源集目录数量异常: $dirs" }
+        check(dirs.size >= 9) { "TV 源集目录数量异常: $dirs" }
         Konsist.scopeFromExternalDirectories(dirs.toSet())
     }
 
@@ -110,6 +112,25 @@ class TvArchitectureTest {
                     it.name.startsWith("me.him188.ani.app.domain.media.cache.engine.") ||
                     it.name.startsWith("me.him188.ani.app.domain.media.cache.storage.")
             }
+        }
+    }
+
+    @Test
+    fun `tv watchtogether must not depend on player ui`() {
+        tvScope().files.assertFalse { file ->
+            file.path.replace('\\', '/').contains("/ui-watchtogether/src/androidTv/") &&
+                file.imports.any { it.name.startsWith("me.him188.ani.leanback.ui.episode.") }
+        }
+    }
+
+    @Test
+    fun `tv foundation must not depend on feature ui`() {
+        tvScope().files.assertFalse { file ->
+            file.path.replace('\\', '/').contains("/ui-foundation/src/androidTv/") &&
+                file.imports.any {
+                    it.name.startsWith("me.him188.ani.leanback.ui.") &&
+                        !it.name.startsWith("me.him188.ani.leanback.ui.foundation.")
+                }
         }
     }
 

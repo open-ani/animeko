@@ -21,35 +21,14 @@ import androidx.compose.runtime.setValue
 import androidx.compose.runtime.snapshotFlow
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.compose.LocalLifecycleOwner
-import kotlinx.coroutines.CoroutineStart
-import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.flow.first
-import kotlinx.coroutines.launch
 import me.him188.ani.datasources.api.topic.UnifiedCollectionType
 import me.him188.ani.leanback.ui.foundation.focus.TvFocusKey
 import me.him188.ani.leanback.ui.foundation.focus.TvFocusScope
-
-/** Navigation cancels preparation as well as an already submitted focus request. */
-internal suspend fun TvFocusScope.requestPrepared(
-    isRelevant: () -> Boolean = { true },
-    prepare: suspend () -> TvFocusKey?,
-) = coroutineScope {
-    val generation = userNavGeneration
-    val preparation = launch(start = CoroutineStart.UNDISPATCHED) {
-        val target = prepare()
-        if (target != null && generation == userNavGeneration && isRelevant()) request(target)
-    }
-    val cancellation = launch {
-        snapshotFlow { userNavGeneration != generation || !isRelevant() }.first { it }
-        preparation.cancel()
-    }
-    try {
-        preparation.join()
-    } finally {
-        cancellation.cancel()
-    }
-}
+import me.him188.ani.leanback.ui.foundation.focus.requestPrepared
+import me.him188.ani.leanback.ui.watchtogether.TvTogetherIntent
+import me.him188.ani.leanback.ui.watchtogether.TvTogetherState
 
 /** 播放页焦点锚点. Root 仅 HIDDEN 态可聚焦 (无焦点持有者按键派发会整体失效). */
 internal enum class TvPlayerFocus : TvFocusKey {

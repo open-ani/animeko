@@ -7,7 +7,7 @@
  * https://github.com/open-ani/ani/blob/main/LICENSE
  */
 
-package me.him188.ani.leanback.ui.episode
+package me.him188.ani.leanback.ui.watchtogether
 
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Job
@@ -39,38 +39,10 @@ import me.him188.ani.app.domain.watchtogether.WatchTogetherManager
 import me.him188.ani.app.domain.watchtogether.WatchTogetherState
 import me.him188.ani.app.ui.foundation.AbstractViewModel
 import me.him188.ani.app.ui.user.SelfInfoStateProducer
-import me.him188.ani.app.ui.watchtogether.WatchTogetherMemberPresentation
-import me.him188.ani.app.ui.watchtogether.WatchTogetherPlaybackPresentation
+import me.him188.ani.app.ui.watchtogether.WatchTogetherConnectionPresentation
 import me.him188.ani.app.ui.watchtogether.toWatchTogetherMemberPresentation
 import me.him188.ani.app.ui.watchtogether.toWatchTogetherPlaybackPresentation
 import org.koin.core.Koin
-
-data class TvTogetherState(
-    val roomName: String = "",
-    val password: String = "",
-    val joining: Boolean = false,
-    val joined: Boolean = false,
-    val isHost: Boolean = false,
-    val following: Boolean = true,
-    val requiresLogin: Boolean = false,
-    val connection: String = "",
-    val playback: WatchTogetherPlaybackPresentation? = null,
-    val members: List<WatchTogetherMemberPresentation> = emptyList(),
-    val error: String? = null,
-)
-
-sealed interface TvTogetherIntent {
-    data object Open : TvTogetherIntent
-    data class RoomName(val value: String) : TvTogetherIntent
-    data class Password(val value: String) : TvTogetherIntent
-    data object Join : TvTogetherIntent
-    data object CancelJoin : TvTogetherIntent
-    data object ToggleFollowing : TvTogetherIntent
-    data object Leave : TvTogetherIntent
-    data class Foreground(val value: Boolean) : TvTogetherIntent
-}
-
-data class TvTogetherNavigation(val subjectId: Int, val episodeId: Int, val replacePlayer: Boolean)
 
 /** App-scoped so room recovery and following continue across TV navigation entries. */
 class TvWatchTogetherViewModel(
@@ -105,9 +77,9 @@ class TvWatchTogetherViewModel(
                     isHost = state.session.isHost,
                     following = following,
                     connection = when (connection) {
-                        WatchTogetherConnectionState.ConnectedSse -> "已连接"
-                        WatchTogetherConnectionState.Reconnecting -> "正在重新连接…"
-                        WatchTogetherConnectionState.DegradedPolling -> "正在重试实时连接，暂时定时同步"
+                        WatchTogetherConnectionState.ConnectedSse -> WatchTogetherConnectionPresentation.CONNECTED
+                        WatchTogetherConnectionState.Reconnecting -> WatchTogetherConnectionPresentation.RECONNECTING
+                        WatchTogetherConnectionState.DegradedPolling -> WatchTogetherConnectionPresentation.DEGRADED
                     },
                     playback = snapshot.playback?.info?.toWatchTogetherPlaybackPresentation(now),
                     members = snapshot.members.sortedByDescending { it.isHost }.map { member ->

@@ -60,7 +60,7 @@
 `app/android` 是出包层，`src/main` 提供 Android 交集，`src/default` 与 `src/tv`
 各自提供入口与平台绑定。原有 10 个独立 TV UI 库按功能整理到 **7 个现有 KMP 模块目录下**：
 `:app:shared` 负责主壳，foundation、exploration、subject、episode、onboarding、settings
-六个共享 UI 模块承载各功能的 `src/androidTv/kotlin`（§4.1）。
+七个共享 UI 模块承载各功能的 `src/androidTv/kotlin`（§4.1）。
 
 每处目录下新增一个 TV KMP Compose 子模块，功能模块位于 `ui-xxx/tv`，主壳位于 `shared-tv`，
 均依赖原 KMP 模块，并编译其 TV 目录。
@@ -158,18 +158,21 @@ graph TD
 | `ui-exploration` | 探索、搜索、时间表 |
 | `ui-subject` | 详情、人物/关联/评价卡片、追番分类网格 |
 | `ui-episode` | 播放 VM、控制层、弹幕、选集、选源与设置面板 |
+| `ui-watchtogether` | 一起看 TV 状态与 VM、房间面板、播放卡、成员列表和加入/退出交互 |
 | `ui-onboarding` | TV 邮箱 OTP 登录 |
 | `ui-settings` | TV 设置子集 |
 
 `androidTv` 和 `androidTvTest` 是目录名，不是 KMP target 或 KotlinSourceSet。
 源码包名为 `me.him188.ani.leanback.ui.*`。每个 TV 子模块依赖原 KMP 模块，访问其公开 API，
 不能访问原模块的 `internal` 声明。原模块的 `androidMain` 继续提供两端需要的 Android `actual` 实现。
-六个功能子模块的 namespace 为 `me.him188.ani.app.leanback.ui.<feature>`，主壳 namespace 为 `me.him188.ani.leanback`。
+七个功能子模块的 namespace 为 `me.him188.ani.app.leanback.ui.<feature>`，主壳 namespace 为 `me.him188.ani.leanback`。
 `tv-material` 位于 `:app:shared:ui-foundation-tv`，TV 测试依赖位于对应子模块的 `androidHostTest`，JUnit 和 Compose 配置由约定插件提供。
 共享 `ExplorationPageViewModel` 已下移到 `ui-exploration/commonMain`，避免功能模块反向依赖 `:app:shared`。
 
 应用继续依赖 `:app:shared`，并通过 `tvImplementation(projects.app.shared.tv)` 仅向 TV flavor
-加入主壳子模块；主壳依赖其余六个 TV 子模块。父 KMP 模块不反向依赖 TV 子模块，避免循环依赖。
+加入主壳子模块；主壳依赖其余七个 TV 子模块。父 KMP 模块不反向依赖 TV 子模块，避免循环依赖。
+`ui-episode-tv` 通过 `ui-watchtogether-tv` 的公开状态、Intent 和面板 API 装配一起看，
+`ui-watchtogether-tv` 只依赖原一起看模块与 `ui-foundation-tv`，不反向依赖播放器。
 
 | 应用源集 | 当前内容 |
 |----------|----------|
@@ -239,11 +242,12 @@ app/
     ├── ui-exploration/src/androidTv/kotlin/ui/{exploration,search,schedule}/
     ├── ui-subject/src/androidTv/kotlin/ui/{subject,collection}/
     ├── ui-episode/src/androidTv/kotlin/ui/episode/
+    ├── ui-watchtogether/src/androidTv/kotlin/ui/watchtogether/
     ├── ui-onboarding/src/androidTv/kotlin/ui/login/
     └── ui-settings/src/androidTv/kotlin/ui/settings/
 ```
 
-六个 `ui-*` 目录下也各有 `tv/build.gradle.kts`，依赖各自原 KMP 模块，编译同级的 TV 目录。
+七个 `ui-*` 目录下也各有 `tv/build.gradle.kts`，依赖各自原 KMP 模块，编译同级的 TV 目录。
 foundation、subject、episode 还各有 `src/androidTvTest/kotlin`，由对应子模块的 `androidHostTest` 编译。
 原有 common/android/desktop/iOS 源集继续保留；TV 包名与手机包名独立，移动目录不改变页面职责与 MVI 边界。
 
@@ -608,12 +612,28 @@ TV 不启动 torrent 服务连接，不初始化 Sentry/Firebase。`SubjectDetai
 
 播放页仅 seek 预览保留确认跳转、返回取消的操作提示；其他控制层、面板、弹窗和状态提示均不展示遥控器说明。
 
+一起看 TV UI、状态和 `TvWatchTogetherViewModel` 位于 `ui-watchtogether/src/androidTv`。
+播放器接入公开的 `TvWatchTogetherPanel`，`TvTogetherPanelLayout` 提供房间标题、滚动内容和固定底部操作的 slots，
+`TvTogetherCards` 渲染播放卡与平整的双行头像成员列表，`TvTogetherActions` 渲染 TV 主次按钮、跟随开关、加入进度和错误提示。
+成员行默认无底色，焦点反色且不缩放；按钮和开关同样沿用 TV 全局无缩放风格。长成员名和状态只在聚焦时跑马灯展示。加入/登录使用主按钮，
+退出使用描边按钮；跟随整行是唯一的开关焦点，尾部 Switch 仅显示选中状态。连接状态使用共享枚举，加载期间隐藏无意义的时长进度，
+保留共享播放和成员状态文案。房主首次进入聚焦播放卡，访客聚焦跟随开关；只读卡可聚焦浏览但没有点击行为。
+成员列表按用户 ID 保留焦点，离开时聚焦相邻成员，清空时回到底部操作，返回内容区前先组合记忆的条目。
+退出确认默认聚焦「留在房间」，取消后回到退出入口；面板根节点不获取焦点，一级页面返回或左键仍直接关闭。
+`ui-episode` 中的 `TvPlayerTogetherUiTest` 保留为播放器集成测试，使用真实 Compose 组件和合成遥控输入覆盖这些交互，
+并导出各状态截图；播放与房间数据由测试提供。
+面板按 TV 布局规范保留右侧 48dp 安全边距，内容与操作区为焦点描边预留 8dp 空间。
+输入法「下一项」移动到密码，「完成」收起输入法并聚焦提交，提交仍须确认；加入期间输入框只读，取消操作持续可用。
+回归覆盖 1.3 倍字号、长成员名、安全边距、输入法导航与开关语义。
+
 弹幕列表实时更新时按来源和弹幕 ID 保持条目标识，插入和重排保留原条目焦点；当前条目被裁剪或替换时按原位置聚焦相邻项，清空/恢复时在空态项和弹幕项之间交接焦点。恢复只响应数据更新，使用统一焦点框架和列表布局事件，用户导航后取消尚未完成的恢复。
 
 本节描述代码实现，设备通过范围与外部服务限制见 §12.2；不能等同全部边界场景已验收。
 
 播放器视觉参照 Android 官方 TV 的 [布局](https://developer.android.com/design/ui/tv/guides/styles/layouts)、[焦点系统](https://developer.android.com/design/ui/tv/guides/styles/focus-system)、[按钮](https://developer.android.com/design/ui/tv/guides/components/buttons) 与 [文字层级](https://developer.android.com/design/ui/tv/guides/styles/typography)：安全边距、实色面板、清晰的主次文字、浅底深色焦点与独立的选中标记。
-`TvPlayerSurfaces.kt` 集中定义共用样式；底部渐变独立于浮出面板高度，避免浅色视频导致控制栏失去对比度。
+`ui-foundation/src/androidTv` 的 `TvOptionSurface`、`TvOptionRow` 与 `TvOptionTextField` 提供共用配色和选项控件；
+`TvFocusPreparation` 与 `tvPanelScrollEdges` 提供滚动前焦点准备和列表边缘提示。
+`TvPlayerSurfaces.kt` 只保留播放器面板外壳；底部渐变独立于浮出面板高度，避免浅色视频导致控制栏失去对比度。
 
 ---
 

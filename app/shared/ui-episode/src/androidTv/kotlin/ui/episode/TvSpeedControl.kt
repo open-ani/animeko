@@ -51,6 +51,8 @@ import androidx.tv.material3.LocalContentColor
 import androidx.tv.material3.MaterialTheme
 import androidx.tv.material3.Surface
 import androidx.tv.material3.Text
+import me.him188.ani.leanback.ui.foundation.widgets.TvOptionDefaults
+import me.him188.ani.leanback.ui.foundation.widgets.tvOptionSurfaceColors
 
 private object TvSpeedControlDefaults {
     val ArrowSize = 40.dp
@@ -98,8 +100,8 @@ internal fun TvSpeedControl(
                 }
                 true
             },
-        colors = tvPlayerOptionColors(filled = true),
-        shape = ClickableSurfaceDefaults.shape(TvPlayerSurfaceDefaults.ItemShape),
+        colors = tvOptionSurfaceColors(filled = true),
+        shape = ClickableSurfaceDefaults.shape(TvOptionDefaults.ItemShape),
         scale = ClickableSurfaceDefaults.scale(focusedScale = 1f),
     ) {
         Row(

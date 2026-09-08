@@ -82,8 +82,13 @@ import me.him188.ani.app.ui.lang.media_selector_web_waiting_captcha
 import me.him188.ani.datasources.api.Media
 import me.him188.ani.leanback.ui.foundation.focus.TvFocusKey
 import me.him188.ani.leanback.ui.foundation.focus.rememberTvFocusScope
+import me.him188.ani.leanback.ui.foundation.focus.requestPrepared
 import me.him188.ani.leanback.ui.foundation.focus.tvFocusAnchor
 import me.him188.ani.leanback.ui.foundation.focus.tvFocusNavSignal
+import me.him188.ani.leanback.ui.foundation.widgets.TvOptionDefaults
+import me.him188.ani.leanback.ui.foundation.widgets.TvOptionDivider
+import me.him188.ani.leanback.ui.foundation.widgets.TvOptionRow
+import me.him188.ani.leanback.ui.foundation.widgets.tvOptionSurfaceColors
 import org.jetbrains.compose.resources.stringResource
 
 private enum class SourceFocus : TvFocusKey { Entry, FirstResult }
@@ -220,7 +225,7 @@ internal fun TvPlayerSourceDialog(
             ) {
                 Row(
                     Modifier
-                        .background(TvPlayerSurfaceDefaults.Raised, CircleShape)
+                        .background(TvOptionDefaults.Raised, CircleShape)
                         .padding(4.dp),
                     horizontalArrangement = Arrangement.spacedBy(4.dp),
                 ) {
@@ -255,7 +260,7 @@ internal fun TvPlayerSourceDialog(
                 }
             }
             if (dialogState.mode == TvSourceMode.Detailed) {
-                TvPlayerDivider()
+                TvOptionDivider()
                 LazyRow(
                     state = tabsState,
                     horizontalArrangement = Arrangement.spacedBy(12.dp),
@@ -298,7 +303,7 @@ internal fun TvPlayerSourceDialog(
                     dialogState.showExcluded = !dialogState.showExcluded
                 }
             }
-            TvPlayerDivider()
+            TvOptionDivider()
             LazyColumn(
                 state = resultsState,
                 modifier = Modifier
@@ -331,7 +336,7 @@ internal fun TvPlayerSourceDialog(
                             state.groups.isEmpty() -> "没有可用的在线数据源，请在设置中添加"
                             else -> "没有找到可用线路"
                         },
-                        color = TvPlayerSurfaceDefaults.Muted,
+                        color = TvOptionDefaults.Muted,
                         modifier = Modifier.padding(16.dp),
                     )
                 }
@@ -346,11 +351,11 @@ internal fun TvPlayerSourceDialog(
                                     horizontalArrangement = Arrangement.spacedBy(10.dp),
                                     verticalAlignment = Alignment.CenterVertically,
                                 ) {
-                                    CompositionLocalProvider(LocalContentColor provides TvPlayerSurfaceDefaults.Content) {
+                                    CompositionLocalProvider(LocalContentColor provides TvOptionDefaults.Content) {
                                         TvSourceIcon(group.iconUrl, loading = group.loading || group.isResolvingCaptcha)
                                     }
-                                    Text(group.name, Modifier.weight(1f), style = MaterialTheme.typography.titleMedium, color = TvPlayerSurfaceDefaults.Content)
-                                    if (group.loading) Text(rememberSourceStatusText(group), color = TvPlayerSurfaceDefaults.Muted)
+                                    Text(group.name, Modifier.weight(1f), style = MaterialTheme.typography.titleMedium, color = TvOptionDefaults.Content)
+                                    if (group.loading) Text(rememberSourceStatusText(group), color = TvOptionDefaults.Muted)
                                 }
                                 if (group.state is MediaSourceFetchState.CaptchaRequired || group.failed || group.state is MediaSourceFetchState.RateLimited) {
                                     TvSourceStatusAction(group, Modifier, onIntent)
@@ -368,7 +373,7 @@ internal fun TvPlayerSourceDialog(
                         if (results.isEmpty() && group.state is MediaSourceFetchState.Succeed) item {
                             Text(
                                 if (group.items.isNotEmpty()) "结果已被排除" else "没有找到资源",
-                                color = TvPlayerSurfaceDefaults.Muted, modifier = Modifier.padding(16.dp),
+                                color = TvOptionDefaults.Muted, modifier = Modifier.padding(16.dp),
                             )
                         }
                         items(results, key = { "${group.instanceId}-${it.media.mediaId}" }) { item ->
@@ -458,9 +463,9 @@ private fun TvSourceChannelRow(
                 colors = if (selectedMediaId == item.media.mediaId) ClickableSurfaceDefaults.colors(
                     containerColor = MaterialTheme.colorScheme.primary,
                     contentColor = MaterialTheme.colorScheme.onPrimary,
-                    focusedContainerColor = TvPlayerSurfaceDefaults.FocusedContainer,
-                    focusedContentColor = TvPlayerSurfaceDefaults.FocusedContent,
-                ) else tvPlayerOptionColors(filled = true),
+                    focusedContainerColor = TvOptionDefaults.FocusedContainer,
+                    focusedContentColor = TvOptionDefaults.FocusedContent,
+                ) else tvOptionSurfaceColors(filled = true),
                 scale = ClickableSurfaceDefaults.scale(focusedScale = 1f),
             ) {
                 Row(
@@ -503,10 +508,10 @@ private fun TvSourceTab(
             shape = ClickableSurfaceDefaults.shape(CircleShape),
             colors = ClickableSurfaceDefaults.colors(
                 containerColor = if (selected) MaterialTheme.colorScheme.primary.copy(alpha = .16f)
-                    .compositeOver(TvPlayerSurfaceDefaults.Container) else Color.Transparent,
-                contentColor = if (selected) MaterialTheme.colorScheme.primary else TvPlayerSurfaceDefaults.Content,
-                focusedContainerColor = TvPlayerSurfaceDefaults.FocusedContainer,
-                focusedContentColor = TvPlayerSurfaceDefaults.FocusedContent,
+                    .compositeOver(TvOptionDefaults.Container) else Color.Transparent,
+                contentColor = if (selected) MaterialTheme.colorScheme.primary else TvOptionDefaults.Content,
+                focusedContainerColor = TvOptionDefaults.FocusedContainer,
+                focusedContentColor = TvOptionDefaults.FocusedContent,
             ),
             scale = ClickableSurfaceDefaults.scale(focusedScale = 1f),
         ) {
@@ -522,8 +527,8 @@ private fun TvSourceTab(
                     maxLines = 1,
                     color = when {
                         !dimmed -> Color.Unspecified
-                        focused -> TvPlayerSurfaceDefaults.FocusedContent.copy(alpha = TvSourceDialogDefaults.DimmedLabelAlpha)
-                        else -> TvPlayerSurfaceDefaults.Content.copy(alpha = TvSourceDialogDefaults.DimmedLabelAlpha)
+                        focused -> TvOptionDefaults.FocusedContent.copy(alpha = TvSourceDialogDefaults.DimmedLabelAlpha)
+                        else -> TvOptionDefaults.Content.copy(alpha = TvSourceDialogDefaults.DimmedLabelAlpha)
                     },
                 )
             }
@@ -546,8 +551,8 @@ private fun TvSourceResultCard(item: TvSourceItem, selected: Boolean, onClick: (
     Surface(
         onClick = onClick,
         modifier = Modifier.fillMaxWidth(),
-        shape = ClickableSurfaceDefaults.shape(TvPlayerSurfaceDefaults.ItemShape),
-        colors = tvPlayerOptionColors(selected, filled = true),
+        shape = ClickableSurfaceDefaults.shape(TvOptionDefaults.ItemShape),
+        colors = tvOptionSurfaceColors(selected, filled = true),
         scale = ClickableSurfaceDefaults.scale(focusedScale = 1f),
     ) {
         Row(

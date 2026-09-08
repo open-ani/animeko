@@ -16,26 +16,24 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.drawWithContent
 import androidx.compose.ui.focus.focusProperties
-import androidx.compose.ui.geometry.Offset
-import androidx.compose.ui.geometry.Size
-import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.semantics.paneTitle
 import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.tv.material3.LocalContentColor
 import androidx.tv.material3.MaterialTheme
 import androidx.tv.material3.Text
+import me.him188.ani.leanback.ui.foundation.widgets.LocalTvOptionColors
+import me.him188.ani.leanback.ui.foundation.widgets.TvOptionColors
 
 /** Neutral layers keep sidebar content consistent with its opaque black background. */
-private val SidebarColors = TvPlayerSurfaceColors(
+private val SidebarColors = TvOptionColors(
     container = Color.Black,
     raised = Color(0xFF181818),
     content = Color(0xFFF2F2F2),
@@ -52,47 +50,26 @@ internal fun TvPlayerSidePanel(
     title: String,
     trapFocus: Boolean,
     modifier: Modifier = Modifier,
+    endPadding: Dp = 28.dp,
     content: @Composable ColumnScope.() -> Unit,
 ) {
     CompositionLocalProvider(
-        LocalTvPlayerSurfaceColors provides SidebarColors,
+        LocalTvOptionColors provides SidebarColors,
         LocalContentColor provides SidebarColors.content,
     ) {
         Column(
             modifier
                 .fillMaxSize()
                 .background(SidebarColors.container)
-                .padding(start = 16.dp, end = 28.dp, top = 28.dp, bottom = 28.dp)
+                .padding(start = 16.dp, end = endPadding, top = 28.dp, bottom = 28.dp)
                 .semantics { paneTitle = title }
                 .testTag("tv-player-sidebar")
                 .focusProperties { onExit = { if (trapFocus) cancelFocusChange() } }
                 .focusGroup(),
             verticalArrangement = Arrangement.spacedBy(16.dp),
         ) {
-            Text(title, style = MaterialTheme.typography.titleLarge)
+            Text(title, Modifier.testTag("tv-player-sidebar-title"), style = MaterialTheme.typography.titleLarge)
             content()
         }
     }
-}
-
-/** Indicates offscreen list content without adding another focus target. */
-internal fun Modifier.tvPanelScrollEdges(
-    state: LazyListState,
-    backgroundColor: Color,
-): Modifier = drawWithContent {
-    drawContent()
-    val edge = 12.dp.toPx().coerceAtMost(size.height / 2)
-    if (state.canScrollBackward) drawRect(
-        Brush.verticalGradient(listOf(backgroundColor, Color.Transparent), endY = edge),
-        size = Size(size.width, edge),
-    )
-    if (state.canScrollForward) drawRect(
-        Brush.verticalGradient(
-            listOf(Color.Transparent, backgroundColor),
-            startY = size.height - edge,
-            endY = size.height,
-        ),
-        topLeft = Offset(0f, size.height - edge),
-        size = Size(size.width, edge),
-    )
 }

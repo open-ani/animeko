@@ -48,6 +48,7 @@ import me.him188.ani.app.domain.player.VideoLoadingState
 import me.him188.ani.app.ui.framework.AniComposeUiTest
 import me.him188.ani.app.ui.framework.runAniComposeUiTest
 import me.him188.ani.leanback.ui.foundation.theme.AniTvTheme
+import me.him188.ani.leanback.ui.watchtogether.TvTogetherState
 import java.io.File
 import kotlin.math.roundToInt
 import kotlin.test.Test

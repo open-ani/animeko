@@ -13,26 +13,16 @@ plugins {
 
 kotlin {
     android {
-        namespace = "me.him188.ani.app.leanback.ui.episode"
+        namespace = "me.him188.ani.app.leanback.ui.watchtogether"
     }
     sourceSets.androidMain {
         kotlin.srcDir("../src/androidTv/kotlin")
         dependencies {
-            api(projects.app.shared.uiEpisode)
+            api(projects.app.shared.uiWatchtogether)
             api(projects.app.shared.uiFoundationTv)
-            implementation(projects.app.shared.videoPlayer)
-            api(projects.app.shared.uiWatchtogetherTv)
-            implementation(projects.danmaku.danmakuUi)
-            implementation(projects.app.shared.pagingCompose)
         }
     }
     sourceSets.androidHostTest {
         kotlin.srcDir("../src/androidTvTest/kotlin")
-    }
-    sourceSets.androidDeviceTest {
-        kotlin.srcDir("../src/androidTvDeviceTest/kotlin")
-        dependencies {
-            implementation(projects.utils.uiTesting)
-        }
     }
 }

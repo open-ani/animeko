@@ -9,9 +9,7 @@
 
 package me.him188.ani.leanback.ui.episode
 
-import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
-import androidx.compose.foundation.border
 import androidx.compose.foundation.focusGroup
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -30,140 +28,47 @@ import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.rounded.KeyboardArrowLeft
 import androidx.compose.material.icons.automirrored.rounded.KeyboardArrowRight
 import androidx.compose.material.icons.rounded.Check
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.ExperimentalComposeUiApi
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.focusProperties
 import androidx.compose.ui.focus.onFocusChanged
-import androidx.compose.ui.geometry.CornerRadius
-import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.SolidColor
-import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.input.key.Key
 import androidx.compose.ui.input.key.KeyEventType
 import androidx.compose.ui.input.key.key
 import androidx.compose.ui.input.key.onPreviewKeyEvent
 import androidx.compose.ui.input.key.type
 import androidx.compose.ui.platform.testTag
-import androidx.compose.ui.semantics.Role
-import androidx.compose.ui.semantics.role
 import androidx.compose.ui.semantics.selected
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.semantics.stateDescription
-import androidx.compose.ui.semantics.toggleableState
-import androidx.compose.ui.state.ToggleableState
-import androidx.compose.ui.text.input.PasswordVisualTransformation
-import androidx.compose.ui.text.input.VisualTransformation
-import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.tv.material3.ClickableSurfaceDefaults
 import androidx.tv.material3.Icon
-import androidx.tv.material3.LocalContentColor
 import androidx.tv.material3.MaterialTheme
 import androidx.tv.material3.Surface
 import androidx.tv.material3.Text
 import me.him188.ani.app.videoplayer.videoenhancement.VideoEnhancementMode
 import me.him188.ani.danmaku.api.DanmakuServiceId
-
+import me.him188.ani.leanback.ui.foundation.layout.tvPanelScrollEdges
+import me.him188.ani.leanback.ui.foundation.widgets.LocalTvOptionColors
+import me.him188.ani.leanback.ui.foundation.widgets.TvOptionDefaults
+import me.him188.ani.leanback.ui.foundation.widgets.TvOptionDivider
+import me.him188.ani.leanback.ui.foundation.widgets.TvOptionRow
+import me.him188.ani.leanback.ui.foundation.widgets.tvOptionSurfaceColors
 
 internal enum class TvCollectionPrompt { Remove, MarkAllWatched }
 
 internal sealed interface TvDanmakuAdjustment {
     data class Parameter(val property: TvDanmakuProperty) : TvDanmakuAdjustment
     data class Timing(val serviceId: DanmakuServiceId) : TvDanmakuAdjustment
-}
-
-@Composable
-internal fun TvOptionRow(
-    title: String,
-    value: String = "",
-    modifier: Modifier = Modifier,
-    selected: Boolean = false,
-    enabled: Boolean = true,
-    checked: Boolean? = null,
-    supportingText: String? = null,
-    icon: ImageVector? = null,
-    valueIcon: ImageVector? = null,
-    adjustable: Boolean = false,
-    filled: Boolean = false,
-    compact: Boolean = false,
-    onClick: () -> Unit,
-) {
-    Surface(
-        onClick = onClick, enabled = enabled,
-        modifier = modifier
-            .fillMaxWidth()
-            .semantics {
-                this.selected = selected
-                if (checked != null) {
-                    role = Role.Switch
-                    toggleableState = if (checked) ToggleableState.On else ToggleableState.Off
-                }
-            },
-        colors = tvPlayerOptionColors(selected, filled),
-        shape = ClickableSurfaceDefaults.shape(TvPlayerSurfaceDefaults.ItemShape),
-        scale = ClickableSurfaceDefaults.scale(focusedScale = 1f),
-    ) {
-        Row(
-            Modifier
-                .heightIn(min = if (compact) 36.dp else 48.dp)
-                .padding(horizontal = 16.dp, vertical = if (compact) 8.dp else 10.dp),
-            horizontalArrangement = Arrangement.spacedBy(12.dp),
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
-            icon?.let { Icon(it, null, Modifier.size(20.dp)) }
-            Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(3.dp)) {
-                Text(title, style = MaterialTheme.typography.titleSmall, maxLines = 2, overflow = TextOverflow.Ellipsis)
-                supportingText?.let {
-                    Text(
-                        it,
-                        style = MaterialTheme.typography.bodySmall,
-                        color = LocalContentColor.current.copy(alpha = .7f),
-                    )
-                }
-            }
-            if (value.isNotEmpty() || adjustable || valueIcon != null) Row(
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(4.dp),
-            ) {
-                valueIcon?.let { Icon(it, null, Modifier.size(20.dp)) }
-                if (adjustable) Icon(Icons.AutoMirrored.Rounded.KeyboardArrowLeft, null, Modifier.size(16.dp))
-                Text(value, style = MaterialTheme.typography.labelLarge)
-                if (adjustable) Icon(Icons.AutoMirrored.Rounded.KeyboardArrowRight, null, Modifier.size(16.dp))
-            }
-            if (selected && checked == null) Icon(Icons.Rounded.Check, "已选择", Modifier.size(20.dp))
-            if (checked != null) {
-                val color = LocalContentColor.current
-                Canvas(Modifier.size(36.dp, 20.dp)) {
-                    drawRoundRect(
-                        color.copy(alpha = if (checked) .45f else .18f),
-                        cornerRadius = CornerRadius(size.height / 2),
-                    )
-                    drawCircle(
-                        color,
-                        radius = size.height / 2 - 3.dp.toPx(),
-                        center = Offset(
-                            if (checked) size.width - size.height / 2 else size.height / 2,
-                            size.height / 2,
-                        ),
-                    )
-                }
-            }
-        }
-    }
 }
 
 @Composable
@@ -186,7 +91,7 @@ internal fun TvPlayerDialogSurface(
                 .focusProperties { onExit = { cancelFocus() } }.focusGroup(),
             verticalArrangement = Arrangement.spacedBy(12.dp),
         ) {
-            Text(title, style = MaterialTheme.typography.titleMedium, color = TvPlayerSurfaceDefaults.Content)
+            Text(title, style = MaterialTheme.typography.titleMedium, color = TvOptionDefaults.Content)
             content()
         }
     }
@@ -219,7 +124,7 @@ internal fun TvSubtitleDialog(
             ) { onIntent(TvEpisodeIntent.SelectSubtitle(subtitle.id)) }
         }
         if (options.subtitles.isEmpty()) item {
-            Text("此资源没有可切换的字幕", color = TvPlayerSurfaceDefaults.Muted, modifier = Modifier.padding(16.dp))
+            Text("此资源没有可切换的字幕", color = TvOptionDefaults.Muted, modifier = Modifier.padding(16.dp))
         }
     }
 }
@@ -261,54 +166,6 @@ internal fun TvDanmakuAdjustmentRow(
 }
 
 @Composable
-internal fun TvOptionTextField(
-    value: String,
-    label: String,
-    onChange: (String) -> Unit,
-    modifier: Modifier = Modifier,
-    password: Boolean = false
-) {
-    val colors = LocalTvPlayerSurfaceColors.current
-    var focused by remember { mutableStateOf(false) }
-    var editingValue by remember { mutableStateOf(value) }
-    var hasLocalEdit by remember { mutableStateOf(false) }
-    // Echo IME edits synchronously; a delayed projection must not replace a newer edit.
-    // The ViewModel still receives every edit and owns validation and submission.
-    LaunchedEffect(value, focused) {
-        if (!focused || !hasLocalEdit) editingValue = value
-    }
-    Column(Modifier.padding(horizontal = 4.dp, vertical = 5.dp)) {
-        Text(label, style = MaterialTheme.typography.labelMedium, color = colors.muted)
-        BasicTextField(
-            editingValue,
-            {
-                editingValue = it
-                hasLocalEdit = true
-                onChange(it)
-            },
-            modifier
-                .fillMaxWidth()
-                .padding(top = 5.dp)
-                .onFocusChanged {
-                    focused = it.hasFocus
-                    if (!focused) hasLocalEdit = false
-                }
-                .background(colors.raised, TvPlayerSurfaceDefaults.ItemShape)
-                .border(
-                    if (focused) 2.dp else 1.dp,
-                    if (focused) colors.focusedContainer else colors.outline,
-                    TvPlayerSurfaceDefaults.ItemShape,
-                )
-                .padding(horizontal = 16.dp, vertical = 12.dp),
-            textStyle = MaterialTheme.typography.bodyMedium.copy(color = colors.content),
-            singleLine = true,
-            cursorBrush = SolidColor(colors.content),
-            visualTransformation = if (password) PasswordVisualTransformation() else VisualTransformation.None,
-        )
-    }
-}
-
-@Composable
 @OptIn(ExperimentalComposeUiApi::class)
 internal fun TvOptionModal(
     title: String,
@@ -339,18 +196,18 @@ internal fun TvOptionModal(
                         title,
                         Modifier.weight(1f),
                         style = MaterialTheme.typography.headlineSmall,
-                        color = TvPlayerSurfaceDefaults.Content,
+                        color = TvOptionDefaults.Content,
                     )
                 }
                 subtitle?.let {
                     Text(
                         it,
                         style = MaterialTheme.typography.bodySmall,
-                        color = TvPlayerSurfaceDefaults.Muted,
+                        color = TvOptionDefaults.Muted,
                     )
                 }
             }
-            TvPlayerDivider()
+            TvOptionDivider()
             Column(Modifier.weight(1f, fill = false), verticalArrangement = Arrangement.spacedBy(8.dp)) { content() }
         }
     }
@@ -365,7 +222,7 @@ internal fun TvPlayerOptionPanelLayout(
     listModifier: Modifier = Modifier,
     content: LazyListScope.() -> Unit,
 ) {
-    val colors = LocalTvPlayerSurfaceColors.current
+    val colors = LocalTvOptionColors.current
     val list: @Composable () -> Unit = {
         LazyColumn(
             listModifier.tvPanelScrollEdges(listState, colors.container).focusGroup(),
@@ -430,7 +287,7 @@ internal fun TvEnhancementSelector(
     onSelect: (VideoEnhancementMode) -> Unit,
 ) {
     Row(
-        Modifier.fillMaxWidth().background(TvPlayerSurfaceDefaults.Raised, CircleShape).padding(4.dp),
+        Modifier.fillMaxWidth().background(TvOptionDefaults.Raised, CircleShape).padding(4.dp),
         horizontalArrangement = Arrangement.spacedBy(4.dp),
     ) {
         VideoEnhancementMode.entries.forEach { mode ->
@@ -440,7 +297,7 @@ internal fun TvEnhancementSelector(
                     .then(if (mode == selectedMode) entryModifier else Modifier)
                     .semantics { selected = mode == selectedMode },
                 shape = ClickableSurfaceDefaults.shape(CircleShape),
-                colors = tvPlayerOptionColors(mode == selectedMode),
+                colors = tvOptionSurfaceColors(mode == selectedMode),
                 scale = ClickableSurfaceDefaults.scale(focusedScale = 1f),
             ) {
                 Row(

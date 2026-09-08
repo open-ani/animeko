@@ -26,6 +26,8 @@ import me.him188.ani.danmaku.ui.DanmakuStyle
 import me.him188.ani.leanback.ui.foundation.focus.TvFocusKey
 import me.him188.ani.leanback.ui.foundation.focus.TvFocusScope
 import me.him188.ani.leanback.ui.foundation.focus.tvFocusAnchor
+import me.him188.ani.leanback.ui.foundation.widgets.LocalTvOptionColors
+import me.him188.ani.leanback.ui.foundation.widgets.TvOptionRow
 import kotlin.math.roundToInt
 
 private sealed interface DanmakuSettingsKey : TvFocusKey {
@@ -64,7 +66,7 @@ internal fun TvPlayerDanmakuSettingsPanel(
     entryModifier: Modifier,
     modifier: Modifier = Modifier,
 ) {
-    val colors = LocalTvPlayerSurfaceColors.current
+    val colors = LocalTvOptionColors.current
     TvPlayerOptionPanelLayout(TvPlayerPanel.DanmakuSettings, state.listState, modifier) {
         items(TvDanmakuProperty.entries) { property ->
             val (label, value) = when (property) {

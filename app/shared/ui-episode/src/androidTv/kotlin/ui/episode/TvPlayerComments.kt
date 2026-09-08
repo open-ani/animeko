@@ -65,6 +65,8 @@ import me.him188.ani.app.ui.richtext.RichText
 import me.him188.ani.app.ui.richtext.UIRichElement
 import me.him188.ani.app.ui.richtext.rememberBBCodeRichTextState
 import me.him188.ani.leanback.ui.foundation.focus.TvFocusDefaults
+import me.him188.ani.leanback.ui.foundation.widgets.LocalTvOptionColors
+import me.him188.ani.leanback.ui.foundation.widgets.TvOptionDefaults
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
@@ -72,13 +74,13 @@ import java.util.Locale
 /** One card is one D-pad target; rich text never competes with the card's primary action. */
 @Composable
 internal fun TvCommentCard(comment: EpisodeComment, modifier: Modifier = Modifier, onClick: () -> Unit) {
-    val colors = LocalTvPlayerSurfaceColors.current
+    val colors = LocalTvOptionColors.current
     val elements = rememberCommentElements(comment.content)
     val preview = remember(elements) { elements.toTvCommentPreview() }
     Surface(
         onClick = onClick,
         modifier = modifier.fillMaxWidth().testTag("tv-comment-${comment.stableId}"),
-        shape = ClickableSurfaceDefaults.shape(TvPlayerSurfaceDefaults.ItemShape),
+        shape = ClickableSurfaceDefaults.shape(TvOptionDefaults.ItemShape),
         // A dark focused surface keeps BBCode links, quotes and masks readable.
         colors = ClickableSurfaceDefaults.colors(
             containerColor = colors.raised,
@@ -86,7 +88,7 @@ internal fun TvCommentCard(comment: EpisodeComment, modifier: Modifier = Modifie
             focusedContainerColor = colors.selectedContainer ?: colors.raised,
             focusedContentColor = colors.content,
         ),
-        border = TvFocusDefaults.clickableCardBorder(TvPlayerSurfaceDefaults.ItemShape),
+        border = TvFocusDefaults.clickableCardBorder(TvOptionDefaults.ItemShape),
         scale = ClickableSurfaceDefaults.scale(focusedScale = TvFocusDefaults.FocusedScale),
     ) {
         Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
@@ -109,7 +111,7 @@ internal fun TvCommentCard(comment: EpisodeComment, modifier: Modifier = Modifie
 /** Keep the reading area as one focus target, including BBCode images and hidden text. */
 @Composable
 internal fun TvCommentDetail(comment: EpisodeComment, modifier: Modifier = Modifier) {
-    val colors = LocalTvPlayerSurfaceColors.current
+    val colors = LocalTvOptionColors.current
     val elements = rememberCommentElements(comment.content)
     val hasMaskedText = remember(elements) { elements.hasMaskedText() }
     var revealMaskedText by remember(comment.stableId, comment.content) { mutableStateOf(false) }
@@ -161,9 +163,9 @@ internal fun TvCommentDetail(comment: EpisodeComment, modifier: Modifier = Modif
                 .border(
                     2.dp,
                     if (focused) MaterialTheme.colorScheme.primary else Color.Transparent,
-                    TvPlayerSurfaceDefaults.ItemShape,
+                    TvOptionDefaults.ItemShape,
                 )
-                .clip(TvPlayerSurfaceDefaults.ItemShape)
+                .clip(TvOptionDefaults.ItemShape)
                 .focusable()
                 .verticalScroll(scroll)
                 .padding(16.dp)
@@ -182,7 +184,7 @@ internal fun TvCommentDetail(comment: EpisodeComment, modifier: Modifier = Modif
 
 @Composable
 private fun CommentAuthor(comment: EpisodeComment, modifier: Modifier = Modifier) {
-    val colors = LocalTvPlayerSurfaceColors.current
+    val colors = LocalTvOptionColors.current
     Row(
         modifier.fillMaxWidth(),
         verticalAlignment = Alignment.CenterVertically,

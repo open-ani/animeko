@@ -75,6 +75,8 @@ import androidx.tv.material3.MaterialTheme
 import androidx.tv.material3.Surface
 import androidx.tv.material3.Text
 import kotlinx.coroutines.delay
+import me.him188.ani.leanback.ui.foundation.formatPlaybackTime
+import me.him188.ani.leanback.ui.foundation.widgets.TvOptionDefaults
 import me.him188.ani.leanback.ui.foundation.widgets.TvSeekBar
 import java.text.SimpleDateFormat
 import java.util.Date
@@ -89,10 +91,10 @@ internal object TvPlayerControlsDefaults {
     val HorizontalPadding: Dp = 48.dp
 
     /** 聚焦反色: 底. */
-    val FocusedContainer: Color = TvPlayerSurfaceDefaults.FocusedContainer
+    val FocusedContainer: Color = TvOptionDefaults.FocusedContainer
 
     /** 聚焦反色: 内容. */
-    val FocusedContent: Color = TvPlayerSurfaceDefaults.FocusedContent
+    val FocusedContent: Color = TvOptionDefaults.FocusedContent
 
     /** 主内容色. */
     val Content: Color = Color.White
@@ -244,7 +246,7 @@ internal fun TvPlayerControlsOverlay(
                                 .height(108.dp)
                                 .shadow(8.dp, RoundedCornerShape(12.dp))
                                 .clip(RoundedCornerShape(12.dp))
-                                .background(TvPlayerSurfaceDefaults.Container)
+                                .background(TvOptionDefaults.Container)
                                 .testTag("tv-seek-preview-frame"),
                         ) {
                             options.preview?.let {
@@ -263,14 +265,14 @@ internal fun TvPlayerControlsOverlay(
                         }
                         Column(Modifier.padding(start = 16.dp)) {
                             Text(
-                                formatTime(scrubMillis),
+                                formatPlaybackTime(scrubMillis),
                                 color = Color.White,
                                 style = MaterialTheme.typography.titleLarge,
                             )
                             options.chapters.firstOrNull {
                                 scrubMillis in it.offsetMillis..<it.offsetMillis + it.durationMillis
                             }?.name?.takeIf { it.isNotBlank() }?.let { name ->
-                                Text(name, color = TvPlayerSurfaceDefaults.Muted, style = MaterialTheme.typography.bodySmall)
+                                Text(name, color = TvOptionDefaults.Muted, style = MaterialTheme.typography.bodySmall)
                             }
                             Row(Modifier.padding(top = 12.dp), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                                 TvRemoteHint("确认", "跳转")
@@ -318,7 +320,7 @@ internal fun TvPlayerControlsOverlay(
                     horizontalArrangement = Arrangement.spacedBy(16.dp),
                 ) {
                     Text(
-                        formatTime(scrubMillis ?: positionMillis),
+                        formatPlaybackTime(scrubMillis ?: positionMillis),
                         style = MaterialTheme.typography.titleSmall,
                         color = if (scrubMillis != null) {
                             MaterialTheme.colorScheme.primary
@@ -358,7 +360,7 @@ internal fun TvPlayerControlsOverlay(
                         }
                     }
                     Text(
-                        formatTime(durationMillis),
+                        formatPlaybackTime(durationMillis),
                         style = MaterialTheme.typography.titleSmall,
                         color = TvPlayerControlsDefaults.Content,
                     )
@@ -575,15 +577,3 @@ internal fun playerInverseSurfaceColors() = ClickableSurfaceDefaults.colors(
     contentColor = TvPlayerControlsDefaults.Content,
     focusedContentColor = TvPlayerControlsDefaults.FocusedContent,
 )
-
-internal fun formatTime(millis: Long): String {
-    val totalSeconds = (millis / 1000).coerceAtLeast(0)
-    val hours = totalSeconds / 3600
-    val minutes = (totalSeconds % 3600) / 60
-    val seconds = totalSeconds % 60
-    return if (hours > 0) {
-        "%d:%02d:%02d".format(hours, minutes, seconds)
-    } else {
-        "%02d:%02d".format(minutes, seconds)
-    }
-}

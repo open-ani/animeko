@@ -76,10 +76,16 @@ import me.him188.ani.danmaku.ui.DanmakuPresentation
 import me.him188.ani.datasources.api.topic.FileSize
 import me.him188.ani.leanback.ui.foundation.focus.TV_CONFIRM_KEYS
 import me.him188.ani.leanback.ui.foundation.focus.rememberTvFocusScope
+import me.him188.ani.leanback.ui.foundation.focus.requestPrepared
 import me.him188.ani.leanback.ui.foundation.focus.tvFocusAnchor
 import me.him188.ani.leanback.ui.foundation.focus.tvFocusExit
 import me.him188.ani.leanback.ui.foundation.focus.tvFocusLink
 import me.him188.ani.leanback.ui.foundation.focus.tvFocusNavSignal
+import me.him188.ani.leanback.ui.foundation.widgets.TvOptionDefaults
+import me.him188.ani.leanback.ui.foundation.widgets.TvOptionRow
+import me.him188.ani.leanback.ui.watchtogether.TvTogetherIntent
+import me.him188.ani.leanback.ui.watchtogether.TvTogetherState
+import me.him188.ani.leanback.ui.watchtogether.TvWatchTogetherPanel
 import org.openani.mediamp.features.AspectRatioMode
 import org.openani.mediamp.isPlaying
 import android.view.KeyEvent as AndroidKeyEvent
@@ -286,7 +292,7 @@ internal fun TvEpisodeScreen(
                 entryModifier = entry,
                 modifier = panelModifier,
             )
-            TvPlayerPanel.Together -> TvPlayerTogetherPanel(
+            TvPlayerPanel.Together -> TvWatchTogetherPanel(
                 together = togetherState,
                 onTogetherIntent = onTogetherIntent,
                 onLogin = { dispatch(TvEpisodeIntent.OpenLogin) },
@@ -543,6 +549,7 @@ internal fun TvEpisodeScreen(
                         },
                         trapFocus = state.sidebarVisible && (state.dialog == null || showingDanmakuList),
                         modifier = Modifier.tvFocusAnchor(focus, TvPlayerFocus.Sidebar),
+                        endPadding = if (panel == TvPlayerPanel.Together) 48.dp else 28.dp,
                     ) {
                         when {
                             commentDetail != null -> TvCommentDetail(
@@ -657,7 +664,7 @@ private fun PlayerCenterCapsule(text: String, modifier: Modifier = Modifier) {
     Text(
         text,
         modifier
-            .background(TvPlayerSurfaceDefaults.Container, RoundedCornerShape(28.dp))
+            .background(TvOptionDefaults.Container, RoundedCornerShape(28.dp))
             .padding(horizontal = 20.dp, vertical = 12.dp),
         style = MaterialTheme.typography.titleSmall,
         color = Color.White,

@@ -56,6 +56,7 @@ import androidx.tv.material3.Text
 import me.him188.ani.app.domain.episode.SubjectRecommendation
 import me.him188.ani.app.ui.foundation.AsyncImage
 import me.him188.ani.leanback.ui.foundation.focus.TvFocusDefaults
+import me.him188.ani.leanback.ui.foundation.widgets.tvOptionSurfaceColors
 
 /** External/ad recommendations stay visible but have no navigation action on TV. */
 internal val SubjectRecommendation.tvNavigationSubjectId: Int?
@@ -151,7 +152,7 @@ internal fun TvPlayerRecommendationsRow(
                             .aspectRatio(16f / 9f)
                             .testTag("tv-recommendations-empty"),
                         shape = ClickableSurfaceDefaults.shape(TvPlayerEpisodeStripDefaults.CardShape),
-                        colors = tvPlayerOptionColors(filled = true),
+                        colors = tvOptionSurfaceColors(filled = true),
                         scale = ClickableSurfaceDefaults.scale(focusedScale = 1f),
                     ) {
                         Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {

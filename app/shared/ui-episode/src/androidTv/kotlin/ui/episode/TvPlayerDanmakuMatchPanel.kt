@@ -28,9 +28,12 @@ import androidx.compose.ui.unit.dp
 import androidx.tv.material3.Text
 import me.him188.ani.leanback.ui.foundation.focus.TvFocusKey
 import me.him188.ani.leanback.ui.foundation.focus.rememberTvFocusScope
+import me.him188.ani.leanback.ui.foundation.focus.requestPrepared
 import me.him188.ani.leanback.ui.foundation.focus.tvFocusAnchor
 import me.him188.ani.leanback.ui.foundation.focus.tvFocusHotkey
 import me.him188.ani.leanback.ui.foundation.focus.tvFocusNavSignal
+import me.him188.ani.leanback.ui.foundation.widgets.TvOptionRow
+import me.him188.ani.leanback.ui.foundation.widgets.TvOptionTextField
 
 private enum class MatchFocus : TvFocusKey { Search, Submit, EpisodeEntry }
 private data class MatchSubjectKey(val id: String) : TvFocusKey

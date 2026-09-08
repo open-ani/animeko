@@ -17,80 +17,33 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.Immutable
-import androidx.compose.runtime.staticCompositionLocalOf
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.shadow
-import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.compositeOver
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
-import androidx.tv.material3.ClickableSurfaceDefaults
 import androidx.tv.material3.Icon
 import androidx.tv.material3.MaterialTheme
 import androidx.tv.material3.Text
+import me.him188.ani.leanback.ui.foundation.widgets.LocalTvOptionColors
+import me.him188.ani.leanback.ui.foundation.widgets.TvOptionDefaults
 
 /** Player surfaces stay legible over both bright and dark video frames. */
 internal object TvPlayerSurfaceDefaults {
-    val Container = Color(0xFF202127)
-    val Raised = Color(0xFF2D2F37)
-    val Content = Color(0xFFF2F2F6)
-    val Muted = Color(0xFFB9BBC6)
-    val Outline = Color.White.copy(alpha = .08f)
-    val FocusedContainer = Color(0xFFF2F2F6)
-    val FocusedContent = Color(0xFF1B1B20)
     val PanelShape = RoundedCornerShape(20.dp)
-    val ItemShape = RoundedCornerShape(12.dp)
     val PanelMaxHeight = 276.dp
     val ModalMaxHeight = 460.dp
 }
 
-/** Shared player controls inherit the palette of their containing surface. */
-@Immutable
-internal data class TvPlayerSurfaceColors(
-    val container: Color = TvPlayerSurfaceDefaults.Container,
-    val raised: Color = TvPlayerSurfaceDefaults.Raised,
-    val content: Color = TvPlayerSurfaceDefaults.Content,
-    val muted: Color = TvPlayerSurfaceDefaults.Muted,
-    val outline: Color = TvPlayerSurfaceDefaults.Outline,
-    val focusedContainer: Color = TvPlayerSurfaceDefaults.FocusedContainer,
-    val focusedContent: Color = TvPlayerSurfaceDefaults.FocusedContent,
-    /** Null retains the theme accent used by floating player panels. */
-    val selectedContainer: Color? = null,
-)
-
-internal val LocalTvPlayerSurfaceColors = staticCompositionLocalOf { TvPlayerSurfaceColors() }
-
-@Composable
-internal fun tvPlayerOptionColors(selected: Boolean = false, filled: Boolean = false) =
-    with(LocalTvPlayerSurfaceColors.current) {
-        ClickableSurfaceDefaults.colors(
-            containerColor = when {
-                selected -> selectedContainer ?: MaterialTheme.colorScheme.primary.copy(alpha = .16f)
-                    .compositeOver(container)
-
-                filled -> raised
-                else -> Color.Transparent
-            },
-            contentColor = content,
-            focusedContainerColor = focusedContainer,
-            focusedContentColor = focusedContent,
-            disabledContainerColor = Color.Transparent,
-            disabledContentColor = muted.copy(alpha = .5f),
-        )
-    }
-
 internal fun Modifier.tvPlayerSurface() = shadow(16.dp, TvPlayerSurfaceDefaults.PanelShape)
-    .background(TvPlayerSurfaceDefaults.Container, TvPlayerSurfaceDefaults.PanelShape)
-    .border(1.dp, TvPlayerSurfaceDefaults.Outline, TvPlayerSurfaceDefaults.PanelShape)
+    .background(TvOptionDefaults.Container, TvPlayerSurfaceDefaults.PanelShape)
+    .border(1.dp, TvOptionDefaults.Outline, TvPlayerSurfaceDefaults.PanelShape)
 
 @Composable
 internal fun TvPlayerPanelSurface(
@@ -123,9 +76,9 @@ internal fun TvPlayerPanelSurface(
                 Icon(icon, null, Modifier.size(18.dp), tint = MaterialTheme.colorScheme.primary)
             }
             Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(3.dp)) {
-                Text(title, style = MaterialTheme.typography.titleMedium, color = TvPlayerSurfaceDefaults.Content)
+                Text(title, style = MaterialTheme.typography.titleMedium, color = TvOptionDefaults.Content)
                 subtitle?.let {
-                    Text(it, style = MaterialTheme.typography.bodySmall, color = TvPlayerSurfaceDefaults.Muted)
+                    Text(it, style = MaterialTheme.typography.bodySmall, color = TvOptionDefaults.Muted)
                 }
             }
         }
@@ -139,17 +92,7 @@ internal fun TvPlayerSectionLabel(text: String, modifier: Modifier = Modifier) {
         text,
         modifier.padding(start = 16.dp, top = 12.dp, bottom = 4.dp),
         style = MaterialTheme.typography.labelMedium,
-        color = LocalTvPlayerSurfaceColors.current.muted,
-    )
-}
-
-@Composable
-internal fun TvPlayerDivider(modifier: Modifier = Modifier) {
-    Box(
-        modifier
-            .fillMaxWidth()
-            .height(1.dp)
-            .background(LocalTvPlayerSurfaceColors.current.outline),
+        color = LocalTvOptionColors.current.muted,
     )
 }
 
@@ -159,14 +102,14 @@ internal fun TvRemoteHint(key: String, action: String, modifier: Modifier = Modi
         Text(
             key,
             Modifier
-                .background(TvPlayerSurfaceDefaults.Raised, RoundedCornerShape(4.dp))
+                .background(TvOptionDefaults.Raised, RoundedCornerShape(4.dp))
                 .padding(horizontal = 5.dp, vertical = 2.dp),
             style = MaterialTheme.typography.labelSmall,
-            color = TvPlayerSurfaceDefaults.Content,
+            color = TvOptionDefaults.Content,
             maxLines = 1,
         )
         Text(
-            action, style = MaterialTheme.typography.bodySmall, color = TvPlayerSurfaceDefaults.Muted,
+            action, style = MaterialTheme.typography.bodySmall, color = TvOptionDefaults.Muted,
             maxLines = 1, overflow = TextOverflow.Ellipsis,
         )
     }

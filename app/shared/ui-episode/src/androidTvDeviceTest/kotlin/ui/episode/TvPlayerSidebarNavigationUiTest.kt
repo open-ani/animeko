@@ -40,6 +40,8 @@ import me.him188.ani.danmaku.api.DanmakuServiceId
 import me.him188.ani.danmaku.api.provider.DanmakuProviderId
 import me.him188.ani.danmaku.ui.DanmakuPresentation
 import me.him188.ani.leanback.ui.foundation.theme.AniTvTheme
+import me.him188.ani.leanback.ui.watchtogether.TvTogetherIntent
+import me.him188.ani.leanback.ui.watchtogether.TvTogetherState
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertTrue
@@ -271,11 +273,13 @@ class TvPlayerSidebarNavigationUiTest {
         val fixture = Fixture(TvTogetherState(joined = true, isHost = true, roomName = "测试房间"))
         showPlayer(fixture)
         openPanel(TvPlayerPanel.Together)
+        onNodeWithTag("tv-together-playback").assertIsFocused()
+        key(Key.DirectionDown)
         onNodeWithText("解散房间").assertIsFocused()
         key(Key.DirectionCenter)
-        onNodeWithText("确定解散房间").assertIsFocused()
+        onNodeWithText("留在房间").assertIsFocused()
         key(Key.DirectionLeft)
-        onNodeWithText("确定解散房间").assertIsFocused()
+        onNodeWithText("留在房间").assertIsFocused()
         runOnIdle { fixture.backDispatcher.onBackPressed() }
         onNodeWithText("解散房间").assertIsFocused()
         key(Key.DirectionLeft)
@@ -291,7 +295,7 @@ class TvPlayerSidebarNavigationUiTest {
         openPanel(TvPlayerPanel.Together)
         key(Key.DirectionDown)
         key(Key.DirectionDown)
-        onNodeWithText("正在加入… · 取消").assertIsFocused()
+        onNodeWithText("取消加入").assertIsFocused()
         runOnIdle { fixture.backDispatcher.onBackPressed() }
         assertPanelClosed(TvPlayerPanel.Together)
         assertEquals(1, fixture.togetherIntents.count { it == TvTogetherIntent.CancelJoin })
