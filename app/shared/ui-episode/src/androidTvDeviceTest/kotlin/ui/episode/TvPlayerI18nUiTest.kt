@@ -248,6 +248,7 @@ class TvPlayerI18nUiTest {
             assertControlBounds()
             screenshot("controls-narrow-en-US")
             openPanel(TvPlayerPanel.Together)
+            assertControlBounds()
             runOnIdle { fixture.together = fixture.together.copy(error = null) }
             assertTextFits(playerTestString(Lang.watch_together_join))
             screenshot("together-large-type-en-US")
@@ -337,13 +338,20 @@ class TvPlayerI18nUiTest {
     }
 
     private fun AniComposeUiTest.assertControlBounds() {
-        val player = onNodeWithTag("tv-i18n-player").fetchSemanticsNode().boundsInRoot
+        val player = onNodeWithTag("tv-player-main").fetchSemanticsNode().boundsInRoot
         val chips = TvPlayerPanel.entries.map { onNodeWithTag("tv-player-chip-${it.name}").fetchSemanticsNode().boundsInRoot }
         chips.forEach { assertTrue(it.width > 0 && it.left >= player.left && it.right <= player.right) }
         chips.zipWithNext().forEach { (first, second) -> assertTrue(first.right <= second.left, "Translated chips overlap") }
-        onNodeWithTag("tv-source-button").assertIsDisplayed()
-        onNodeWithTag("tv-speed-button").assertIsDisplayed()
-        onNodeWithTag("tv-danmaku-toggle").assertIsDisplayed()
+        val buttons = listOf(
+            "tv-play-pause-button", "tv-next-episode-button", "tv-episodes-button", "tv-danmaku-toggle",
+            "tv-source-button", "tv-speed-button", "tv-subtitles-button", "tv-aspect-button",
+        ).map { onNodeWithTag(it).assertIsDisplayed().fetchSemanticsNode().boundsInRoot }
+        val minimumButtonWidth = with(density) { 44.dp.toPx() }
+        buttons.forEach {
+            assertTrue(it.width >= minimumButtonWidth - 1f, "Player button was squeezed: $it")
+            assertTrue(it.left >= player.left && it.right <= player.right)
+        }
+        buttons.zipWithNext().forEach { (first, second) -> assertTrue(first.right <= second.left, "Player controls overlap") }
     }
 
     private fun AniComposeUiTest.assertTextFits(text: String, maxLines: Int = Int.MAX_VALUE) {

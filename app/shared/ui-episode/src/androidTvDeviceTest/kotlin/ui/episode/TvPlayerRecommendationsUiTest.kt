@@ -86,12 +86,12 @@ class TvPlayerRecommendationsUiTest {
     }
 
     @Test
-    fun unavailableNextEpisodeUsesEpisodesAsBottomRowEntry() = runAniComposeUiTest {
+    fun unavailableNextEpisodeKeepsPlayPauseAsBottomRowEntry() = runAniComposeUiTest {
         val fixture = Fixture().apply { episodes = episodes.take(1) }
         showPlayer(fixture)
         onNodeWithTag("tv-next-episode-button").assertDoesNotExist()
         key(Key.DirectionDown)
-        onNodeWithTag("tv-episodes-button").assertIsFocused()
+        onNodeWithTag("tv-play-pause-button").assertIsFocused()
         key(Key.DirectionDown)
         onNodeWithTag("tv-recommendations-empty").assertIsFocused()
         key(Key.DirectionUp)
@@ -99,14 +99,29 @@ class TvPlayerRecommendationsUiTest {
     }
 
     @Test
-    fun nextEpisodeBecomingUnavailableKeepsFocusInTheBottomRow() = runAniComposeUiTest {
+    fun nextEpisodeAvailabilityUpdatesTheSeekBarsDownTarget() = runAniComposeUiTest {
         val fixture = Fixture()
+        val episodes = fixture.episodes
+        fixture.episodes = episodes.take(1)
         showPlayer(fixture)
+        key(Key.DirectionDown)
+        onNodeWithTag("tv-play-pause-button").assertIsFocused()
+        key(Key.DirectionUp)
+        onNodeWithTag("tv-player-seekbar").assertIsFocused()
+        runOnIdle { fixture.episodes = episodes }
+        key(Key.DirectionDown)
+        onNodeWithTag("tv-next-episode-button").assertIsFocused()
+        key(Key.DirectionLeft)
+        onNodeWithTag("tv-play-pause-button").assertIsFocused()
+        key(Key.DirectionUp)
         key(Key.DirectionDown)
         onNodeWithTag("tv-next-episode-button").assertIsFocused()
         runOnIdle { fixture.episodes = fixture.episodes.take(1) }
         onNodeWithTag("tv-next-episode-button").assertDoesNotExist()
-        onNodeWithTag("tv-episodes-button").assertIsFocused()
+        onNodeWithTag("tv-play-pause-button").assertIsFocused()
+        key(Key.DirectionUp)
+        key(Key.DirectionDown)
+        onNodeWithTag("tv-play-pause-button").assertIsFocused()
     }
 
     @Test
@@ -157,12 +172,14 @@ class TvPlayerRecommendationsUiTest {
             panel = TvPlayerPanelState(recommendations = listOf(recommendation(1)))
         }
         showPlayer(fixture)
-        bottomButtons().assertCountEquals(7)
+        bottomButtons().assertCountEquals(8)
         listOf(
-            "tv-next-episode-button", "tv-episodes-button", "tv-danmaku-toggle", "tv-source-button",
+            "tv-play-pause-button", "tv-next-episode-button", "tv-episodes-button", "tv-danmaku-toggle", "tv-source-button",
             "tv-speed-button", "tv-subtitles-button", "tv-aspect-button",
         ).forEachIndexed { index, tag ->
             key(Key.DirectionDown)
+            onNodeWithTag("tv-next-episode-button").assertIsFocused()
+            key(Key.DirectionLeft)
             repeat(index) { key(Key.DirectionRight) }
             onNodeWithTag(tag).assertIsFocused()
             assertFalse(fixture.machine.states.value.recommendationsVisible)

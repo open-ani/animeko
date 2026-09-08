@@ -693,6 +693,8 @@
     <string name="video_player_mute">Mute</string>
     <string name="video_player_volume">Volume</string>
     <string name="video_player_next_episode">Next episode</string>
+    <string name="video_player_play">Play</string>
+    <string name="video_player_pause">Pause</string>
     <string name="video_player_select_episode">Episodes</string>
     <string name="video_player_send">Send</string>
     <string name="video_player_speed">Speed</string>

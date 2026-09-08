@@ -706,6 +706,8 @@
     <string name="video_player_mute">靜音</string>
     <string name="video_player_volume">音量</string>
     <string name="video_player_next_episode">下一集</string>
+    <string name="video_player_play">播放</string>
+    <string name="video_player_pause">暫停</string>
     <string name="video_player_select_episode">選集</string>
     <string name="video_player_send">發送</string>
     <string name="video_player_speed">倍速</string>

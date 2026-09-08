@@ -450,12 +450,13 @@ internal fun TvEpisodeScreen(
                         LaunchedEffect(uiState.hasNextEpisode) {
                             if (!uiState.hasNextEpisode && nextEpisodeHadFocus) {
                                 nextEpisodeHadFocus = false
-                                focus.request(TvPlayerFocus.EpisodesButton)
+                                focus.request(TvPlayerFocus.PlayPauseButton)
                             }
                         }
                         TvPlayerControlsOverlay(
                             sourceIconUrl = uiState.sources.groups.firstOrNull { it.sourceId == selectedMedia?.mediaSourceId }?.iconUrl,
                             sourceLabel = selectedMedia?.properties?.alliance?.ifBlank { stringResource(Lang.media_selector_default_line) } ?: stringResource(Lang.media_selector_select_source_short),
+                            playWhenReady = uiState.playerState.playWhenReady,
                             positionMillis = positionMillis,
                             durationMillis = uiState.durationMillis,
                             bufferedFraction = bufferedFraction,
@@ -467,22 +468,25 @@ internal fun TvEpisodeScreen(
                             options = uiState.options,
                             seekBarModifier = Modifier
                                 .tvFocusAnchor(focus, TvPlayerFocus.SeekBar)
-                                // 显式方向链接: 上达胶囊行首钮, 下达图标行首钮 ——
+                                // 显式方向链接: 上达胶囊行首钮, 下优先下一集, 不可用时到播放暂停。
                                 // 空间搜索会落到不可见的视频/根节点 (§14.4-4 边缘元素显式声明去向)
                                 .tvFocusLink(
                                     focus,
                                     up = PanelChipKey(TvPlayerPanel.Collection),
-                                    down = TvPlayerFocus.IconRowEntry,
+                                    down = if (uiState.hasNextEpisode) TvPlayerFocus.NextEpisodeButton else TvPlayerFocus.PlayPauseButton,
                                 )
                                 .focusable(),
                             iconRowModifier = Modifier
                                 .tvFocusAnchor(focus, TvPlayerFocus.IconRow)
                                 .focusGroup(),
+                            playPauseButtonModifier = Modifier
+                                .tvFocusAnchor(focus, TvPlayerFocus.PlayPauseButton)
+                                .tvFocusLink(focus, up = TvPlayerFocus.SeekBar),
                             nextEpisodeButtonModifier = Modifier
                                 .onFocusChanged {
                                     if (latestState.hasNextEpisode) nextEpisodeHadFocus = it.isFocused
                                 }
-                                .tvFocusAnchor(focus, TvPlayerFocus.IconRowEntry)
+                                .tvFocusAnchor(focus, TvPlayerFocus.NextEpisodeButton)
                                 .tvFocusLink(focus, up = TvPlayerFocus.SeekBar),
                             sourceButtonModifier = Modifier.tvFocusAnchor(focus, TvPlayerFocus.SourceButton),
                             speedButtonModifier = Modifier.tvFocusAnchor(focus, TvPlayerFocus.SpeedButton),
@@ -504,6 +508,7 @@ internal fun TvEpisodeScreen(
                                         }
                                     }
                                 },
+                            onTogglePause = { dispatch(TvEpisodeIntent.TogglePause) },
                             onNextEpisode = { dispatch(TvEpisodeIntent.NextEpisode) },
                             onOpenSourceDialog = { onAction(TvPlayerAction.OpenSourceDialog) },
                             onOpenSpeed = { onAction(TvPlayerAction.OpenDialog(TvPlayerDialog.Speed)) },

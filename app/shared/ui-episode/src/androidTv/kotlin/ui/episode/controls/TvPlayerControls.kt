@@ -34,6 +34,8 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.AspectRatio
 import androidx.compose.material.icons.rounded.DisplaySettings
 import androidx.compose.material.icons.rounded.KeyboardArrowDown
+import androidx.compose.material.icons.rounded.Pause
+import androidx.compose.material.icons.rounded.PlayArrow
 import androidx.compose.material.icons.rounded.SkipNext
 import androidx.compose.material.icons.rounded.Speed
 import androidx.compose.material.icons.rounded.Subtitles
@@ -87,6 +89,8 @@ import me.him188.ani.app.ui.lang.video_player_chapter
 import me.him188.ani.app.ui.lang.video_player_danmaku_off
 import me.him188.ani.app.ui.lang.video_player_danmaku_on
 import me.him188.ani.app.ui.lang.video_player_next_episode
+import me.him188.ani.app.ui.lang.video_player_pause
+import me.him188.ani.app.ui.lang.video_player_play
 import me.him188.ani.app.ui.lang.video_player_select_episode
 import me.him188.ani.app.ui.lang.video_player_subtitle
 import me.him188.ani.leanback.ui.episode.TvEpisodeTitle
@@ -207,6 +211,7 @@ internal fun TvPlayerTitleBar(title: TvEpisodeTitle, modifier: Modifier = Modifi
 internal fun TvPlayerControlsOverlay(
     sourceIconUrl: String?,
     sourceLabel: String,
+    playWhenReady: Boolean,
     positionMillis: Long,
     durationMillis: Long,
     bufferedFraction: Float,
@@ -218,6 +223,7 @@ internal fun TvPlayerControlsOverlay(
     options: TvPlayerOptionsState,
     seekBarModifier: Modifier,
     iconRowModifier: Modifier,
+    playPauseButtonModifier: Modifier,
     nextEpisodeButtonModifier: Modifier,
     sourceButtonModifier: Modifier,
     speedButtonModifier: Modifier,
@@ -225,6 +231,7 @@ internal fun TvPlayerControlsOverlay(
     episodesButtonModifier: Modifier,
     capsuleAnchor: (TvPlayerPanel) -> Modifier,
     onTogglePanel: (TvPlayerPanel) -> Unit,
+    onTogglePause: () -> Unit,
     onNextEpisode: () -> Unit,
     onOpenSourceDialog: () -> Unit,
     onOpenSpeed: () -> Unit,
@@ -255,13 +262,21 @@ internal fun TvPlayerControlsOverlay(
         // Use the translated text and current font scale without subcomposing focusable controls.
         val chipWidth = chipLabels.values.fold(8.dp) { width, label -> width + capsuleDimensions.widthWithLabel(labelWidth(label)) } +
             12.dp * (chipLabels.size - 1)
-        val leftWidth = labelButtonDimensions.widthWithLabel(labelWidth(episodesLabel)) +
+        val leftWidth = 44.dp + 8.dp + labelButtonDimensions.widthWithLabel(labelWidth(episodesLabel)) +
             labelButtonDimensions.widthWithLabel(labelWidth(danmakuLabel)) + 8.dp +
             if (hasNextEpisode) 44.dp + 8.dp else 0.dp
         val rightLabels = listOfNotNull(speedLabel, subtitleLabel.takeIf { options.supportsSubtitles }, aspectLabel)
         val rightWidth = labelButtonDimensions.widthWithLabel(labelWidth(sourceLabel).coerceAtMost(96.dp)) +
             rightLabels.fold(0.dp) { width, label -> width + 4.dp + labelButtonDimensions.widthWithLabel(labelWidth(label)) }
-        val availableWidth = maxWidth - TvPlayerControlsDefaults.HorizontalPadding * 2
+        val leftButtonCount = if (hasNextEpisode) 4 else 3
+        val rightButtonCount = rightLabels.size + 1
+        val compactRowWidth = 44.dp * (leftButtonCount + rightButtonCount) +
+            8.dp * (leftButtonCount - 1) + 4.dp * (rightButtonCount - 1) + 16.dp
+        // A narrow player beside the sidebar still needs room for every 44dp button.
+        val horizontalPadding = TvPlayerControlsDefaults.HorizontalPadding.coerceAtMost(
+            ((maxWidth - compactRowWidth) / 2).coerceAtLeast(16.dp),
+        )
+        val availableWidth = maxWidth - horizontalPadding * 2
         // Both rows collapse together. Keep enough room to separate the two bottom action groups.
         val showButtonLabels = chipWidth <= availableWidth && leftWidth + 16.dp + rightWidth <= availableWidth
         val chipOffsets = remember { mutableStateMapOf<TvPlayerPanel, Float>() }
@@ -272,7 +287,7 @@ internal fun TvPlayerControlsOverlay(
                 .padding(top = 12.dp, bottom = 28.dp),
         ) {
             episodeStrip?.invoke()
-            Column(Modifier.padding(horizontal = TvPlayerControlsDefaults.HorizontalPadding)) {
+            Column(Modifier.padding(horizontal = horizontalPadding)) {
                 // Anchor panels to the laid-out chips in either label mode and keep them within the safe edge.
                 if (panelHost != null && activePanel != null) BoxWithConstraints(
                     Modifier
@@ -418,7 +433,7 @@ internal fun TvPlayerControlsOverlay(
                     )
                 }
 
-                // 图标行: 左组 (下一集/选集/弹幕) · 右组 (数据源/倍速/字幕/画面比例)
+                // 图标行: 左组 (播放暂停/下一集/选集/弹幕) · 右组 (数据源/倍速/字幕/画面比例)
                 Row(
                     iconRowModifier
                         .fillMaxWidth()
@@ -430,6 +445,12 @@ internal fun TvPlayerControlsOverlay(
                         horizontalArrangement = Arrangement.spacedBy(8.dp),
                         verticalAlignment = Alignment.CenterVertically,
                     ) {
+                        PlayerIconButton(
+                            if (playWhenReady) Icons.Rounded.Pause else Icons.Rounded.PlayArrow,
+                            label = stringResource(if (playWhenReady) Lang.video_player_pause else Lang.video_player_play),
+                            onClick = onTogglePause,
+                            modifier = playPauseButtonModifier.testTag("tv-play-pause-button"),
+                        )
                         if (hasNextEpisode) PlayerIconButton(
                             Icons.Rounded.SkipNext,
                             label = stringResource(Lang.video_player_next_episode),
@@ -440,7 +461,7 @@ internal fun TvPlayerControlsOverlay(
                             Icons.Rounded.ViewModule,
                             episodesLabel,
                             onEpisodes,
-                            episodesButtonModifier.then(if (hasNextEpisode) Modifier else nextEpisodeButtonModifier).testTag("tv-episodes-button"),
+                            episodesButtonModifier.testTag("tv-episodes-button"),
                             showLabel = showButtonLabels,
                         )
                         PlayerLabelButton(

@@ -21,6 +21,7 @@ import androidx.compose.ui.graphics.asAndroidBitmap
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.input.key.Key
 import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.test.assertContentDescriptionEquals
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.assertIsFocused
 import androidx.compose.ui.test.assertIsNotEnabled
@@ -55,6 +56,8 @@ import me.him188.ani.app.ui.lang.subject_episode_video_loading_cause_network_err
 import me.him188.ani.app.ui.lang.subject_episode_video_loading_decoding_data
 import me.him188.ani.app.ui.lang.subject_episode_video_loading_player_error
 import me.him188.ani.app.ui.lang.subject_episode_video_loading_resolving_source
+import me.him188.ani.app.ui.lang.video_player_pause
+import me.him188.ani.app.ui.lang.video_player_play
 import me.him188.ani.app.ui.lang.watch_together_leave
 import me.him188.ani.app.ui.lang.watch_together_member_offline
 import me.him188.ani.app.ui.lang.watch_together_state_buffering
@@ -90,6 +93,50 @@ import kotlin.test.assertSame
 import kotlin.test.assertTrue
 
 class TvPlaybackSemanticsUiTest {
+    @Test
+    fun seekBarAndFirstButtonTogglePlaybackAndKeepFocusEvenWhileBuffering() = runAniComposeUiTest {
+        var state by mutableStateOf(TvEpisodeUiState(
+            playerState = PlayerState(MediaStatus.Ready, true, false),
+            loadingState = VideoLoadingState.Succeed(false),
+            durationMillis = 60_000,
+        ))
+        var toggles = 0
+        showPlayer(onIntent = { intent ->
+            if (intent == TvEpisodeIntent.TogglePause) {
+                toggles++
+                state = state.copy(playerState = state.playerState.copy(playWhenReady = !state.playerState.playWhenReady))
+            }
+            true
+        }) { state }
+        val playPause = onNodeWithTag("tv-play-pause-button")
+        val nodeId = playPause.fetchSemanticsNode().id
+        for (buffering in listOf(false, true)) {
+            runOnIdle { state = state.copy(playerState = state.playerState.copy(isBuffering = buffering)) }
+            onNodeWithTag("tv-player-seekbar").assertIsFocused()
+            playPause.assertContentDescriptionEquals(playerTestString(Lang.video_player_pause))
+            key(Key.DirectionCenter)
+            assertFalse(state.playerState.playWhenReady)
+            onNodeWithTag("tv-player-seekbar").assertIsFocused()
+            playPause.assertContentDescriptionEquals(playerTestString(Lang.video_player_play))
+            key(Key.DirectionCenter)
+            assertTrue(state.playerState.playWhenReady)
+            key(Key.DirectionDown)
+            playPause.assertIsFocused().assertContentDescriptionEquals(playerTestString(Lang.video_player_pause))
+            if (!buffering) saveScreenshot("tv-play-pause-playing")
+            key(Key.DirectionCenter)
+            assertFalse(state.playerState.playWhenReady)
+            playPause.assertIsFocused().assertContentDescriptionEquals(playerTestString(Lang.video_player_play))
+            assertEquals(nodeId, playPause.fetchSemanticsNode().id)
+            if (!buffering) saveScreenshot("tv-play-pause-paused")
+            key(Key.DirectionCenter)
+            assertTrue(state.playerState.playWhenReady)
+            playPause.assertIsFocused().assertContentDescriptionEquals(playerTestString(Lang.video_player_pause))
+            key(Key.DirectionUp)
+            onNodeWithTag("tv-player-seekbar").assertIsFocused()
+        }
+        assertEquals(8, toggles)
+    }
+
     @Test
     fun centralIndicatorFollowsSelectionResolutionBufferingAndFailure() = runAniComposeUiTest {
         var state by mutableStateOf(TvEpisodeUiState())

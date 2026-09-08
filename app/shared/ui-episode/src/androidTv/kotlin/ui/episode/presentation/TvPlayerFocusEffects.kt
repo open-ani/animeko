@@ -35,7 +35,7 @@ import me.him188.ani.leanback.ui.watchtogether.TvTogetherState
 
 /** 播放页焦点锚点. Root 仅 HIDDEN 态可聚焦 (无焦点持有者按键派发会整体失效). */
 internal enum class TvPlayerFocus : TvFocusKey {
-    Root, SeekBar, IconRow, IconRowEntry, SourceDialog,
+    Root, SeekBar, IconRow, PlayPauseButton, NextEpisodeButton, SourceDialog,
     PanelHost, PanelEntry,
     Sidebar,
     SourceButton, SpeedButton, SubtitleButton, EpisodesButton, DialogHost, DialogEntry,
