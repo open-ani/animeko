@@ -35,7 +35,6 @@ import me.him188.ani.app.data.models.subject.SubjectInfo
 import me.him188.ani.app.data.network.TmdbImageService
 import me.him188.ani.app.data.network.matchToEpisodes
 import me.him188.ani.app.data.network.newestAiredDateStringOrNull
-import me.him188.ani.app.data.repository.person.PersonDetailsRepository
 import me.him188.ani.app.data.repository.subject.SubjectCollectionRepository
 import me.him188.ani.app.data.repository.subject.SubjectSearchRepository
 import me.him188.ani.app.data.repository.user.SettingsRepository
@@ -63,7 +62,6 @@ class TvSubjectDetailsViewModel(
     private val collectionRepository: SubjectCollectionRepository,
     private val tmdb: TmdbImageService,
     private val setEpisodeCollectionType: SetEpisodeCollectionTypeUseCase,
-    private val peopleRepository: PersonDetailsRepository,
     private val searchRepository: SubjectSearchRepository,
     sessionStateProvider: SessionStateProvider,
     private val settingsRepository: SettingsRepository,
@@ -71,11 +69,9 @@ class TvSubjectDetailsViewModel(
     private val loader = SubjectDetailsStateLoader(factory, backgroundScope)
     private val images = MutableStateFlow(TvSubjectImages())
     private val operation = MutableStateFlow(TvSubjectOperation())
-    private val people = MutableStateFlow(TvPeopleState())
     private val tagResults = MutableStateFlow<TvTagResults?>(null)
     private val reportDraft = MutableStateFlow<TvSubjectReportDraft?>(null)
     private var imagesJob: Job? = null
-    private var peopleJob: Job? = null
     private var operationJob: Job? = null
     private val feedback = Channel<LoadError>(Channel.BUFFERED)
     val errors = feedback.receiveAsFlow()
@@ -147,12 +143,12 @@ class TvSubjectDetailsViewModel(
             next.copy(content = previous.content, refreshing = true)
         } else next.copy(content = replacement ?: previous.content)
     }
-    private val auxiliary = combine(operation, people, tagResults, loggedIn, reportDraft) { action, person, tags, login, draft ->
-        TvSubjectDetailsUiState(operation = action, people = person, tagResults = tags, loggedIn = login, reportDraft = draft)
+    private val auxiliary = combine(operation, tagResults, loggedIn, reportDraft) { action, tags, login, draft ->
+        TvSubjectDetailsUiState(operation = action, tagResults = tags, loggedIn = login, reportDraft = draft)
     }
     val uiState = combine(details, images, auxiliary) { state, pictures, extra ->
         state.copy(
-            images = pictures, operation = extra.operation, people = extra.people,
+            images = pictures, operation = extra.operation,
             tagResults = extra.tagResults, loggedIn = extra.loggedIn,
             reportDraft = extra.reportDraft,
         )
@@ -206,7 +202,8 @@ class TvSubjectDetailsViewModel(
                     })
                 }
             }
-            is TvSubjectDetailsIntent.LoadPerson -> loadPerson(intent.target)
+            is TvSubjectDetailsIntent.OpenCharacter -> navigation.emit(TvNavigationEvent.Character(intent.characterId))
+            is TvSubjectDetailsIntent.OpenStaff -> navigation.emit(TvNavigationEvent.Staff(intent.personId))
             is TvSubjectDetailsIntent.SearchTag -> {
                 val pager = settingsRepository.uiSettings.flow.map { it.searchSettings }.flatMapLatest { settings ->
                     searchRepository.searchSubjects(
@@ -262,29 +259,6 @@ class TvSubjectDetailsViewModel(
         val content = uiState.value.content ?: return
         if (content.episodesLoading || content.episodes.none { it.episodeId == episodeId }) return
         navigation.emit(TvNavigationEvent.Episode(subjectId, episodeId))
-    }
-
-    private fun loadPerson(target: TvPeopleTarget) {
-        peopleJob?.cancel()
-        people.value = TvPeopleState(target = target, loading = true)
-        peopleJob = backgroundScope.launch {
-            try {
-                people.value = if (target.character) {
-                    val item = peopleRepository.characterDetailsFlow(target.id).first()
-                    TvPeopleState(
-                        target, item.character.displayName, item.character.imageLarge, item.summary, item.infobox,
-                        peopleRepository.characterSubjectsPager(target.id).map { it.map { it.subject } }.cachedIn(backgroundScope),
-                    )
-                } else {
-                    val item = peopleRepository.personDetailsFlow(target.id).first()
-                    TvPeopleState(
-                        target, item.person.displayName, item.person.imageLarge, item.person.summary, item.infobox,
-                        peopleRepository.personWorksPager(target.id).map { it.map { it.subject } }.cachedIn(backgroundScope),
-                    )
-                }
-            } catch (e: CancellationException) { throw e }
-            catch (e: Exception) { people.value = TvPeopleState(target = target, error = LoadError.fromException(e)) }
-        }
     }
 
     private fun loadImages() {

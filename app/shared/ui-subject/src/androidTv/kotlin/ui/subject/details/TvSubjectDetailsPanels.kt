@@ -87,7 +87,6 @@ import me.him188.ani.datasources.api.topic.UnifiedCollectionType
 import me.him188.ani.leanback.ui.foundation.focus.tvLongPressKey
 import me.him188.ani.leanback.ui.foundation.widgets.TvOptionRow
 import me.him188.ani.leanback.ui.foundation.widgets.TvOptionDefaults
-import me.him188.ani.leanback.ui.subject.TvPeopleTarget
 import me.him188.ani.leanback.ui.subject.TvSubjectDetailsIntent
 import me.him188.ani.leanback.ui.subject.TvSubjectDetailsUiState
 import me.him188.ani.leanback.ui.subject.collection.TvCollectionPrompt
@@ -262,7 +261,7 @@ internal fun TvSubjectDetailsPanels(
                 entries += TvDetailsPanelEntry("character:${item.character.id}") { modifier ->
                     lists.characters[index]?.let {
                         TvOptionRow(it.character.displayName, supportingText = it.character.actors.joinToString { it.displayName }, modifier = modifier) {
-                            open(TvDetailsPanelKind.Person, "character:${it.character.id}", "character:${it.character.id}")
+                            onIntent(TvSubjectDetailsIntent.OpenCharacter(it.character.id))
                         }
                     }
                 }
@@ -276,37 +275,12 @@ internal fun TvSubjectDetailsPanels(
                 entries += TvDetailsPanelEntry("person:${item.personInfo.id}:${item.position}") { modifier ->
                     lists.staff[index]?.let {
                         TvOptionRow(it.personInfo.displayName, modifier = modifier) {
-                            open(TvDetailsPanelKind.Person, "person:${it.personInfo.id}", "person:${it.personInfo.id}:${it.position}")
+                            onIntent(TvSubjectDetailsIntent.OpenStaff(it.personInfo.id))
                         }
                     }
                 }
             }
             entries += pagingStatus(lists.staff, lists.staff.itemCount == 0)
-        }
-        TvDetailsPanelKind.Person -> {
-            val pieces = panel.argument.split(':')
-            val target = TvPeopleTarget(pieces.last().toInt(), pieces.first() == "character")
-            val person = state.people
-            title = person.title.takeIf { person.target == target && it.isNotEmpty() } ?: stringResource(Lang.subject_details_info)
-            when {
-                person.target != target || person.loading -> paragraph("person-loading", stringResource(Lang.foundation_loading))
-                person.error != null -> {
-                    paragraph("person-error", renderLoadErrorMessage(person.error))
-                    row("person-retry", stringResource(Lang.settings_mediasource_retry)) { onIntent(TvSubjectDetailsIntent.LoadPerson(target)) }
-                }
-                else -> {
-                    if (person.image.isNotBlank()) row("person-image", stringResource(Lang.comment_preview_image)) {
-                        open(TvDetailsPanelKind.Image, person.image, "person-image")
-                    }
-                    paragraph("person-summary", person.summary.ifBlank { stringResource(Lang.subject_details_no_summary) })
-                    if (person.infobox.isNotEmpty()) paragraph("person-info", person.infobox.joinToString("\n") { "${it.key}: ${it.value}" })
-                    person.subjects?.collectAsLazyPagingItems()?.let { items ->
-                        subjectRows(items)
-                        entries += pagingStatus(items, items.itemCount == 0)
-                    }
-                    row("person-original", stringResource(Lang.comment_open_in_bangumi)) { onOpenUrl("https://bgm.tv/${pieces.first()}/${target.id}") }
-                }
-            }
         }
         TvDetailsPanelKind.Tags -> {
             title = stringResource(Lang.subject_details_tags)

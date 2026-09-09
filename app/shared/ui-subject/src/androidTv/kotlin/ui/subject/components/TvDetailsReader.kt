@@ -93,6 +93,17 @@ internal fun List<UIRichElement>.detailsRevealMasks(): List<UIRichElement> = map
     }
 }
 
+/** Conceal spoilers in accessibility text as well as the drawn mask. Reveal uses the original elements. */
+internal fun List<UIRichElement>.detailsRedactMasks(hidden: String): List<UIRichElement> = map {
+    when (it) {
+        is UIRichElement.AnnotatedText -> it.copy(slice = it.slice.map { span ->
+            if (span is UIRichElement.Annotated.Text && span.mask) span.copy(content = hidden, url = null) else span
+        })
+        is UIRichElement.Quote -> it.copy(content = it.content.detailsRedactMasks(hidden))
+        is UIRichElement.Image -> it
+    }
+}
+
 internal fun List<UIRichElement>.detailsLinks(): List<String> = flatMap {
     when (it) {
         is UIRichElement.AnnotatedText -> it.slice.mapNotNull { span ->

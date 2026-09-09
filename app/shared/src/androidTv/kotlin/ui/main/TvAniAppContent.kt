@@ -35,6 +35,7 @@ import me.him188.ani.app.tools.TimeFormatter
 import me.him188.ani.app.navigation.AniNavigator
 import me.him188.ani.app.navigation.LocalNavigator
 import me.him188.ani.app.navigation.MainScreenPage
+import me.him188.ani.app.navigation.PersonDetailRole
 import me.him188.ani.app.navigation.NavRoutes
 import me.him188.ani.app.navigation.findLast
 import me.him188.ani.app.navigation.rememberAniBackStack
@@ -57,6 +58,10 @@ import me.him188.ani.leanback.ui.search.TvSearchViewModel
 import me.him188.ani.leanback.ui.settings.TvSettingsRoute
 import me.him188.ani.leanback.ui.settings.TvSettingsViewModel
 import me.him188.ani.leanback.ui.subject.TvSubjectDetailsRoute
+import me.him188.ani.leanback.ui.subject.person.TvPeopleDetailsRoute
+import me.him188.ani.leanback.ui.subject.person.TvPeopleDetailsViewModel
+import me.him188.ani.leanback.ui.subject.person.TvPeopleKind
+import me.him188.ani.leanback.ui.subject.person.TvPeopleTarget
 import me.him188.ani.leanback.ui.subject.TvSubjectDetailsViewModel
 import me.him188.ani.leanback.ui.watchtogether.TvTogetherIntent
 import me.him188.ani.leanback.ui.watchtogether.TvWatchTogetherViewModel
@@ -110,6 +115,9 @@ fun TvAniAppContent(
         when (event) {
             is TvNavigationEvent.Subject -> aniNavigator.navigateSubjectDetails(event.subjectId, event.placeholder)
             is TvNavigationEvent.Episode -> aniNavigator.navigateEpisodeDetails(event.subjectId, event.episodeId)
+            is TvNavigationEvent.Character -> aniNavigator.navigateCharacterDetails(event.characterId)
+            is TvNavigationEvent.VoiceActor -> aniNavigator.navigate(NavRoutes.PersonDetail(event.personId, PersonDetailRole.VoiceActor))
+            is TvNavigationEvent.Staff -> aniNavigator.navigate(NavRoutes.PersonDetail(event.personId, PersonDetailRole.Staff))
             TvNavigationEvent.LoggedIn -> Unit // handled by the Main entry
             TvNavigationEvent.Login -> aniNavigator.navigateBangumiAuthorize()
         }
@@ -201,6 +209,29 @@ fun TvAniAppContent(
                         )
                     }
 
+                    entry<NavRoutes.CharacterDetail> { route ->
+                        val viewModel = tvViewModel {
+                            TvPeopleDetailsViewModel(
+                                TvPeopleTarget(route.characterId, TvPeopleKind.Character),
+                                dependencies.personDetailsRepository, dependencies.personCommentRepository,
+                                dependencies.commentReportService, dependencies.sessionStateProvider,
+                            )
+                        }
+                        TvPeopleDetailsRoute(viewModel, onNavigate)
+                    }
+                    entry<NavRoutes.PersonDetail> { route ->
+                        val viewModel = tvViewModel {
+                            TvPeopleDetailsViewModel(
+                                TvPeopleTarget(route.personId, when (route.role) {
+                                    PersonDetailRole.VoiceActor -> TvPeopleKind.VoiceActor
+                                    PersonDetailRole.Staff -> TvPeopleKind.Staff
+                                }),
+                                dependencies.personDetailsRepository, dependencies.personCommentRepository,
+                                dependencies.commentReportService, dependencies.sessionStateProvider,
+                            )
+                        }
+                        TvPeopleDetailsRoute(viewModel, onNavigate)
+                    }
                     entry<NavRoutes.SubjectDetail> { route ->
                         val viewModel = tvViewModel(key = "subject-${route.subjectId}") {
                             TvSubjectDetailsViewModel(
@@ -212,7 +243,6 @@ fun TvAniAppContent(
                                 collectionRepository = dependencies.subjectCollectionRepository,
                                 tmdb = dependencies.tmdbImageService,
                                 setEpisodeCollectionType = dependencies.setEpisodeCollectionType,
-                                peopleRepository = dependencies.personDetailsRepository,
                                 searchRepository = dependencies.subjectSearchRepository,
                                 sessionStateProvider = dependencies.sessionStateProvider,
                                 settingsRepository = dependencies.settingsRepository,

@@ -39,8 +39,7 @@ internal fun TvSubjectInformationSection(
 ) {
     Column(
         modifier.fillMaxWidth().semantics(mergeDescendants = true) {}.focusable()
-            .padding(horizontal = TvSubjectDetailsDefaults.HorizontalPadding)
-            .padding(bottom = TvSubjectInformationDefaults.BottomPadding),
+            .padding(horizontal = TvSubjectDetailsDefaults.HorizontalPadding),
         verticalArrangement = Arrangement.spacedBy((16 + 10 * focusProgress).dp),
     ) {
         Text(
@@ -88,7 +87,6 @@ internal fun TvSubjectInformation(info: SubjectInfo, totalEpisodes: Int?, modifi
 }
 
 private object TvSubjectInformationDefaults {
-    val BottomPadding = 192.dp
     val RowSpacing = 18.dp
     val ColumnSpacing = 24.dp
     val LabelWidth = 100.dp

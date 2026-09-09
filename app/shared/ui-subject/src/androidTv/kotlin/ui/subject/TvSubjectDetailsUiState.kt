@@ -11,7 +11,6 @@ package me.him188.ani.leanback.ui.subject
 
 import androidx.paging.PagingData
 import kotlinx.coroutines.flow.Flow
-import me.him188.ani.app.data.models.person.InfoboxRowInfo
 import me.him188.ani.app.data.models.person.PersonSubjectSummary
 import me.him188.ani.app.data.models.subject.RelatedCharacterInfo
 import me.him188.ani.app.data.models.subject.RelatedPersonInfo
@@ -41,7 +40,6 @@ data class TvSubjectDetailsUiState(
     val refreshing: Boolean = false,
     val loggedIn: Boolean? = null,
     val operation: TvSubjectOperation = TvSubjectOperation(),
-    val people: TvPeopleState = TvPeopleState(),
     val tagResults: TvTagResults? = null,
     val reportDraft: TvSubjectReportDraft? = null,
 )
@@ -78,19 +76,6 @@ data class TvSubjectOperation(
     val offerMarkAllWatched: Boolean = false,
 )
 
-data class TvPeopleTarget(val id: Int, val character: Boolean)
-
-data class TvPeopleState(
-    val target: TvPeopleTarget? = null,
-    val title: String = "",
-    val image: String = "",
-    val summary: String = "",
-    val infobox: List<InfoboxRowInfo> = emptyList(),
-    val subjects: Flow<PagingData<PersonSubjectSummary>>? = null,
-    val loading: Boolean = false,
-    val error: LoadError? = null,
-)
-
 data class TvTagResults(val tag: String, val subjects: Flow<PagingData<PersonSubjectSummary>>)
 
 data class TvSubjectReportDraft(val commentId: String, val reason: CommentReportReason)
@@ -105,7 +90,8 @@ sealed interface TvSubjectDetailsIntent {
     data class MarkAllWatched(val requestId: Int) : TvSubjectDetailsIntent
     data class SetScore(val score: Int, val requestId: Int) : TvSubjectDetailsIntent
     data class ToggleEpisode(val episodeId: Int, val requestId: Int) : TvSubjectDetailsIntent
-    data class LoadPerson(val target: TvPeopleTarget) : TvSubjectDetailsIntent
+    data class OpenCharacter(val characterId: Int) : TvSubjectDetailsIntent
+    data class OpenStaff(val personId: Int) : TvSubjectDetailsIntent
     data class SearchTag(val tag: String) : TvSubjectDetailsIntent
     data class Vote(val comment: UIComment, val vote: UICommentVote) : TvSubjectDetailsIntent
     data class ChooseReportReason(val commentId: String, val reason: CommentReportReason) : TvSubjectDetailsIntent

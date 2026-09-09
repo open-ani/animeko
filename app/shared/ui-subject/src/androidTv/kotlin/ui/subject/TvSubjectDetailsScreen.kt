@@ -53,7 +53,6 @@ import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.key.Key
 import androidx.compose.ui.layout.onGloballyPositioned
-import androidx.compose.ui.layout.positionInRoot
 import androidx.compose.ui.platform.LocalWindowInfo
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.testTag
@@ -220,7 +219,9 @@ private fun TvSubjectDetailsContent(
     var informationReturnTarget by rememberSaveable { mutableStateOf<String?>(null) }
     val anchors = remember { TvDetailsScrollAnchors() }
     val defaultSpec = LocalBringIntoViewSpec.current
-    val scrollSpec = remember(scrollState, defaultSpec) { TvDetailsBringIntoViewSpec(anchors, { scrollState.value }, defaultSpec) }
+    val scrollSpec = remember(scrollState, defaultSpec) {
+        TvDetailsBringIntoViewSpec(anchors, { scrollState.value }, defaultSpec) { presentation.lastFocused == "info" }
+    }
     val backdrop = state.images.backdrop?.url ?: details.info.imageLarge
     var backdropImage by remember(backdrop) { mutableStateOf<TvDetailsBackdropImage?>(null) }
     val backdropFadeDistance = with(LocalDensity.current) { TvSubjectDetailsDefaults.BackdropFadeDistance.toPx() }
@@ -334,10 +335,8 @@ private fun TvSubjectDetailsContent(
 
     TvSubjectDetailsPageLayout(
         focus = focus, scrollState = scrollState, bringIntoViewSpec = scrollSpec,
-        scrollContentModifier = Modifier.onGloballyPositioned {
-            anchors.contentTopInRoot = it.positionInRoot().y
-            pageLaidOut = true
-        },
+        scrollContentModifier = Modifier.onGloballyPositioned { pageLaidOut = true },
+        scrollAnchors = anchors,
         backdrop = {
             TvDetailsBackdrop(backdrop, { scrollState.value / backdropFadeDistance },
                 onImageLoaded = { backdropImage = TvDetailsBackdropImage(backdrop, it) })
@@ -434,7 +433,7 @@ private fun TvSubjectDetailsContent(
             rowModifier = rowFocus("characters-row", episodesEntry, staffEntry)
                 .tvFocusHotkey(focus, Key.DirectionUp) { scope.launch { restore(episodesEntry) } }) { item ->
             TvCharacterCard(item, Modifier.anchor("character:${item.character.id}", 1)) {
-                open(TvDetailsPanelKind.Person, "character:${item.character.id}")
+                onIntent(TvSubjectDetailsIntent.OpenCharacter(item.character.id))
             }
         }
         TvDetailsBrowseRow(stringResource(Lang.subject_details_staff), lists.staff, staffState,
@@ -446,7 +445,7 @@ private fun TvSubjectDetailsContent(
             onAll = null,
             rowModifier = rowFocus("staff-row", charactersEntry, relatedEntry)) { item ->
             TvStaffCard(item, Modifier.anchor("staff:${item.personInfo.id}:${item.position}", 1)) {
-                open(TvDetailsPanelKind.Person, "person:${item.personInfo.id}")
+                onIntent(TvSubjectDetailsIntent.OpenStaff(item.personInfo.id))
             }
         }
         TvDetailsBrowseRow(stringResource(Lang.subject_details_related_subjects), lists.related, relatedState,
@@ -459,16 +458,16 @@ private fun TvSubjectDetailsContent(
             TvRelatedSubjectCard(item, { onIntent(TvSubjectDetailsIntent.OpenRelatedSubject(it)) },
                 Modifier.anchor("related:${item.subjectId}", 1))
         }
+        state.error?.let { error ->
+            Text(renderLoadErrorMessage(error), color = MaterialTheme.colorScheme.error,
+                modifier = surroundingContentModifier.padding(48.dp))
+        }
         TvSubjectInformationSection(
             details.info, totalEpisodes = if (details.episodesLoading) null else details.mainEpisodeIds.size,
             focusProgress = informationFocusProgress,
             modifier = Modifier.anchor("info", 1)
                 .tvFocusHotkey(focus, Key.DirectionUp) { scope.launch { restore(informationUpTarget) } },
         )
-        state.error?.let { error ->
-            Text(renderLoadErrorMessage(error), color = MaterialTheme.colorScheme.error,
-                modifier = surroundingContentModifier.padding(48.dp))
-        }
     }
     val panelStateHolder = rememberSaveableStateHolder()
     CompositionLocalProvider(LocalTvDetailsBackdropImage provides backdropImage) {

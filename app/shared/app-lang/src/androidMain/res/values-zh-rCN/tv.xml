@@ -106,6 +106,18 @@
     <!-- Watch together -->
     <string name="watch_together_leave_explanation">离开后将停止跟随房主，你可以继续独自观看。</string>
     <string name="watch_together_invite_helper">把房间名和密码分享给朋友，即可一起观看。</string>
+
+    <!-- TV character, voice actor and staff profiles. -->
+    <string name="people_character_intro">角色介绍</string>
+    <string name="people_voice_actor_intro">声优介绍</string>
+    <string name="people_staff_intro">制作人员介绍</string>
+    <string name="people_discussion">讨论</string>
+    <string name="people_discussion_source">来自用户讨论</string>
+    <string name="people_view_image">查看大图</string>
+    <string name="people_no_information">暂无介绍和基础信息</string>
+    <string name="people_bangumi_unavailable">Bangumi 讨论暂时无法加载</string>
+    <string name="people_career_singer">歌手</string>
+    <string name="people_career_director">导演</string>
 </resources>
 
 <!--@formatter:on-->

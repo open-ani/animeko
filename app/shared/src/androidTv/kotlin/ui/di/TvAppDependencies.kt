@@ -22,6 +22,8 @@ import me.him188.ani.app.data.repository.user.UserRepository
 import me.him188.ani.app.domain.danmaku.DanmakuRepository
 import me.him188.ani.app.domain.episode.GetSubjectRecommendationUseCase
 import me.him188.ani.app.domain.episode.SetEpisodeCollectionTypeUseCase
+import me.him188.ani.app.data.network.AniCommentReportService
+import me.him188.ani.app.data.repository.person.PersonCommentRepository
 import me.him188.ani.app.data.repository.person.PersonDetailsRepository
 import me.him188.ani.app.domain.mediasource.web.captcha.WebSessionManager
 import me.him188.ani.app.domain.session.SessionStateProvider
@@ -57,6 +59,8 @@ class TvAppDependencies(
     val sessionStateProvider: SessionStateProvider,
     val setEpisodeCollectionType: SetEpisodeCollectionTypeUseCase,
     val personDetailsRepository: PersonDetailsRepository,
+    val personCommentRepository: PersonCommentRepository,
+    val commentReportService: AniCommentReportService,
 ) {
     companion object {
         fun fromKoin(koin: Koin): TvAppDependencies = TvAppDependencies(
@@ -82,6 +86,8 @@ class TvAppDependencies(
             sessionStateProvider = koin.get(),
             setEpisodeCollectionType = koin.get(),
             personDetailsRepository = koin.get(),
+            personCommentRepository = koin.get(),
+            commentReportService = koin.get(),
         )
     }
 }

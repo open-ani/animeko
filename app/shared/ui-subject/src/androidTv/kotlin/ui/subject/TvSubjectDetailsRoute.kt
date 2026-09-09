@@ -50,11 +50,6 @@ fun TvSubjectDetailsRoute(
     LaunchedEffect(presentation.panel?.key) {
         val panel = presentation.panel ?: return@LaunchedEffect
         when (panel.kind) {
-            TvDetailsPanelKind.Person -> {
-                val parts = panel.argument.split(':')
-                val target = TvPeopleTarget(parts.last().toInt(), parts.first() == "character")
-                if (state.people.target != target) viewModel.onIntent(TvSubjectDetailsIntent.LoadPerson(target))
-            }
             TvDetailsPanelKind.TagResults -> if (state.tagResults?.tag != panel.argument) {
                 viewModel.onIntent(TvSubjectDetailsIntent.SearchTag(panel.argument))
             }

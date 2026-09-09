@@ -16,6 +16,8 @@ import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
@@ -42,6 +44,7 @@ import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.layout.positionInRoot
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import dev.chrisbanes.haze.HazeState
@@ -64,16 +67,18 @@ internal fun TvSubjectDetailsPageLayout(
     scrollState: ScrollState,
     bringIntoViewSpec: BringIntoViewSpec,
     scrollContentModifier: Modifier,
+    scrollAnchors: TvDetailsScrollAnchors,
     backdrop: @Composable BoxScope.() -> Unit,
     modifier: Modifier = Modifier,
+    overviewHeightFraction: Float = TvSubjectDetailsDefaults.OverviewHeightFraction,
     content: @Composable ColumnScope.(heroHeight: Dp) -> Unit,
 ) {
     BoxWithConstraints(modifier.fillMaxSize().tvFocusNavSignal(focus)) {
-        val heroHeight = maxHeight * TvSubjectDetailsDefaults.OverviewHeightFraction
+        val heroHeight = maxHeight * overviewHeightFraction
         val actionBackdrop = rememberHazeState()
         // Capture only the backdrop, as a sibling of the buttons that sample it.
         Box(Modifier.matchParentSize().hazeSource(actionBackdrop)) { backdrop() }
-        // 首屏回到页顶；人物与关联条目沿用默认纵向策略。
+        // 首屏回到页顶；末节对齐页尾；其余区块沿用默认纵向策略。
         // 横向列表独立使用行首锚点，避免继承外层纵向距离。
         val rowStartPaddingPx = with(LocalDensity.current) { TvSubjectDetailsDefaults.HorizontalPadding.toPx() }
         val rowSpec = remember(rowStartPaddingPx) { TvAnchoredBringIntoViewSpec { rowStartPaddingPx } }
@@ -82,6 +87,7 @@ internal fun TvSubjectDetailsPageLayout(
             LocalTvDetailsActionBackdrop provides actionBackdrop,
         ) {
             Column(scrollContentModifier.fillMaxSize()
+                .onGloballyPositioned { scrollAnchors.contentTopInRoot = it.positionInRoot().y }
                 .graphicsLayer { compositingStrategy = CompositingStrategy.Offscreen }
                 .drawWithContent {
                     drawContent()
@@ -95,6 +101,13 @@ internal fun TvSubjectDetailsPageLayout(
                 CompositionLocalProvider(LocalBringIntoViewSpec provides rowSpec) {
                     content(heroHeight)
                 }
+                // Keep the end space outside the last section's focus and semantics bounds.
+                Box(Modifier.fillMaxWidth().height(TvSubjectDetailsDefaults.EndPadding)
+                    .testTag("tv-details-end-padding")
+                    .onGloballyPositioned {
+                        scrollAnchors.endPaddingBottom = it.positionInRoot().y + it.size.height -
+                                scrollAnchors.contentTopInRoot + scrollState.value
+                    })
             }
         }
     }
@@ -111,6 +124,7 @@ internal fun TvSubjectDetailsPageLayout(
 @Stable
 internal class TvDetailsScrollAnchors {
     var contentTopInRoot by mutableFloatStateOf(0f)
+    var endPaddingBottom by mutableFloatStateOf(Float.NaN)
 
     /** 顶边锚点区块: key -> 锚点在滚动内容里的位置 (区块上边缘 - 内缩量). */
     val sectionTops = mutableStateMapOf<String, Float>()
@@ -139,18 +153,22 @@ internal fun Modifier.tvDetailsScrollSection(
     .onFocusChanged { if (anchors.focusedKeys[key] != it.hasFocus) anchors.focusedKeys[key] = it.hasFocus }
 
 /**
- * 详情页纵向滚动策略: 首屏按顶边锚点。
- * 角色及后续区块不登记纵向锚点, 直接交给页面覆盖前的 [defaultSpec], 保留平台默认行为.
+ * 首屏顶边对齐视口顶边；末节聚焦时，将独立留白的底边对齐视口底边。
+ * 其余区块交给页面覆盖前的 [defaultSpec]，保留平台默认行为。
  */
 @OptIn(ExperimentalFoundationApi::class)
 internal class TvDetailsBringIntoViewSpec(
     private val anchors: TvDetailsScrollAnchors,
     private val scrollOffset: () -> Int,
     private val defaultSpec: BringIntoViewSpec,
+    private val isLastSectionFocused: () -> Boolean,
 ) : BringIntoViewSpec {
     override fun calculateScrollDistance(offset: Float, size: Float, containerSize: Float): Float {
         // 首屏按布局顶边对齐视口。
         anchors.focusedSectionTop()?.let { top -> return top - scrollOffset() }
+        if (isLastSectionFocused() && anchors.endPaddingBottom.isFinite()) {
+            return anchors.endPaddingBottom - scrollOffset() - containerSize
+        }
         return defaultSpec.calculateScrollDistance(offset, size, containerSize)
     }
 }

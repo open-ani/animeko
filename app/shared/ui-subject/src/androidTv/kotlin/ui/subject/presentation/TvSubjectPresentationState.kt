@@ -16,7 +16,7 @@ internal data class TvDetailsKey(val value: String) : TvFocusKey
 
 internal enum class TvDetailsPanelKind {
     Summary, Image, Collection, RemoveCollection, MarkAllWatched, Rating, Episodes,
-    Characters, Staff, Person, Tags, TagResults, Comments, Comment, Report,
+    Characters, Staff, Tags, TagResults, Comments, Comment, Report,
 }
 
 internal data class TvDetailsPanel(

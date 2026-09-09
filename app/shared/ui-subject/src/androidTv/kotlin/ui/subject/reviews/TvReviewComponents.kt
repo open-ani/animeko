@@ -152,7 +152,7 @@ private fun ReviewScore(score: String, compact: Boolean) {
 }
 
 @Composable
-internal fun TvReviewCard(comment: UIComment, modifier: Modifier = Modifier, onClick: () -> Unit) {
+internal fun TvReviewCard(comment: UIComment, modifier: Modifier = Modifier, showRating: Boolean = true, onClick: () -> Unit) {
     val interaction = remember { MutableInteractionSource() }
     val focused by interaction.collectIsFocusedAsState()
     Surface(
@@ -165,7 +165,7 @@ internal fun TvReviewCard(comment: UIComment, modifier: Modifier = Modifier, onC
         Column(Modifier.padding(18.dp), verticalArrangement = Arrangement.spacedBy(14.dp)) {
             Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
                 TvReviewAuthor(comment, Modifier.weight(1f))
-                comment.rating?.takeIf { it in 1..10 }?.let { score ->
+                comment.rating?.takeIf { showRating && it in 1..10 }?.let { score ->
                     Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(3.dp)) {
                         Icon(Icons.Rounded.Star, null, Modifier.size(14.dp), tint = TvReviewDefaults.Accent)
                         Text("$score", style = MaterialTheme.typography.labelMedium.copy(fontSize = 13.sp), color = TvReviewDefaults.Accent,

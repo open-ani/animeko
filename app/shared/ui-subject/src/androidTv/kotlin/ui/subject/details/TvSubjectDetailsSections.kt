@@ -5,7 +5,6 @@
 package me.him188.ani.leanback.ui.subject.details
 
 import androidx.compose.foundation.BorderStroke
-import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.interaction.collectIsFocusedAsState
@@ -21,10 +20,7 @@ import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.widthIn
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.rounded.ArrowForward
-import androidx.compose.material.icons.automirrored.rounded.Subject
 import androidx.compose.material.icons.rounded.PlayArrow
 import androidx.compose.material.icons.rounded.Star
 import androidx.compose.material3.Icon
@@ -40,7 +36,6 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
@@ -49,15 +44,13 @@ import me.him188.ani.app.data.models.subject.SubjectInfo
 import me.him188.ani.app.ui.lang.Lang
 import me.him188.ani.app.ui.lang.foundation_loading
 import me.him188.ani.app.ui.lang.subject_details_no_episodes
-import me.him188.ani.app.ui.lang.subject_details_no_summary
-import me.him188.ani.app.ui.lang.subject_details_show_more
-import me.him188.ani.app.ui.lang.subject_details_summary
 import me.him188.ani.app.ui.subject.AiringLabelState
 import me.him188.ani.app.ui.subject.rememberSubjectStatusStrings
 import me.him188.ani.datasources.api.topic.UnifiedCollectionType
 import me.him188.ani.leanback.ui.foundation.widgets.TvOptionsRow
 import me.him188.ani.leanback.ui.subject.TvSubjectDetailsContentState
 import me.him188.ani.leanback.ui.subject.components.TvSubjectDetailsDefaults
+import me.him188.ani.leanback.ui.subject.components.TvDetailsDescriptionCard
 import org.jetbrains.compose.resources.stringResource
 
 /** Short titles preserve the card/action positions; small viewports can grow vertically. */
@@ -178,41 +171,3 @@ internal fun detailsMainTag(info: SubjectInfo): String? =
     info.tags.getOrNull(1)?.name ?: info.tags.firstOrNull()?.name?.takeUnless { name ->
         name.startsWith(info.airDate.year.toString()) || name.matches(Regex("\\d{4}.*"))
     }
-
-@Composable
-private fun TvDetailsDescriptionCard(summary: String, onClick: () -> Unit, modifier: Modifier, interactive: Boolean) {
-    val interaction = remember { MutableInteractionSource() }
-    val focused by interaction.collectIsFocusedAsState()
-    Surface(
-        modifier = modifier.heightIn(min = TvSubjectDetailsDefaults.DescriptionCardHeight).clickable(
-            interactionSource = interaction, indication = null, enabled = interactive,
-            role = Role.Button, onClick = onClick,
-        ),
-        shape = TvSubjectDetailsDefaults.DescriptionCardShape,
-        color = if (focused) Color.White.copy(alpha = .18f) else Color.Black.copy(alpha = .28f),
-        border = BorderStroke(if (focused) 2.dp else 1.dp, Color.White.copy(alpha = if (focused) .95f else .38f)),
-    ) {
-        Column(Modifier.padding(20.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
-            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                Icon(Icons.AutoMirrored.Rounded.Subject, null, Modifier.size(24.dp), tint = TvSubjectDetailsDefaults.Content)
-                Text(stringResource(Lang.subject_details_summary), Modifier.weight(1f), color = TvSubjectDetailsDefaults.Content,
-                    style = MaterialTheme.typography.titleMedium.copy(fontSize = 16.sp), maxLines = 1)
-                Icon(Icons.AutoMirrored.Rounded.ArrowForward, null,
-                    Modifier.size(24.dp).background(
-                        if (focused) TvSubjectDetailsDefaults.Content else Color.White.copy(alpha = .08f),
-                        CircleShape,
-                    ).padding(4.dp),
-                    tint = if (focused) TvSubjectDetailsDefaults.Background else TvSubjectDetailsDefaults.Content)
-            }
-            Row(verticalAlignment = Alignment.Bottom, horizontalArrangement = Arrangement.spacedBy(4.dp)) {
-                Text(summary.ifBlank { stringResource(Lang.subject_details_no_summary) }, Modifier.weight(1f),
-                    color = TvSubjectDetailsDefaults.Content,
-                    style = MaterialTheme.typography.bodyMedium.copy(fontSize = 14.sp, lineHeight = 20.sp),
-                    maxLines = 2, overflow = TextOverflow.Ellipsis)
-                Text(stringResource(Lang.subject_details_show_more), color = TvSubjectDetailsDefaults.Content,
-                    style = MaterialTheme.typography.bodyMedium.copy(fontSize = 14.sp, lineHeight = 20.sp),
-                    textDecoration = TextDecoration.Underline)
-            }
-        }
-    }
-}

@@ -66,6 +66,7 @@ sealed class NavRoutes : NavKey {
     @Serializable
     data class PersonDetail(
         val personId: Int,
+        val role: PersonDetailRole = PersonDetailRole.Staff,
     ) : NavRoutes()
 
     @Serializable
@@ -116,6 +117,10 @@ sealed class NavRoutes : NavKey {
     @Serializable
     data object BangumiMerge : NavRoutes()
 }
+
+/** Explicit entry identity; a person's asynchronously loaded careers never change their route. */
+@Serializable
+enum class PersonDetailRole { VoiceActor, Staff }
 
 @Serializable
 data class SubjectDetailPlaceholder(

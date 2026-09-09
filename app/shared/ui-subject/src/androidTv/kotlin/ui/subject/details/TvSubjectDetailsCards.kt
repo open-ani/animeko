@@ -167,7 +167,7 @@ internal fun TvStaffCard(info: RelatedPersonInfo, modifier: Modifier = Modifier,
         onClick, modifier, portrait = info.personInfo.type == PersonType.Individual)
 
 @Composable
-private fun TvDetailsPersonCard(
+internal fun TvDetailsPersonCard(
     image: String,
     name: String,
     role: String,

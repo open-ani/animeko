@@ -19,6 +19,7 @@ internal object TvSubjectDetailsDefaults {
     val TitleSize = 40.sp
     val TitleLineHeight = 54.sp
     val OverviewBottomPadding = 24.dp
+    val EndPadding = 192.dp
     val DescriptionCardHeight = 116.dp
     val DescriptionCardShape = RoundedCornerShape(26.dp)
     val ActionHeight = 40.dp

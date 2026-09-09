@@ -736,8 +736,10 @@ class TvSubjectDetailsUiTest {
                 assertEquals(if (section == focused) 26.sp else 16.sp, layouts.single().layoutInput.style.fontSize, section)
             }
         }
-        fun relatedHeadingBrightness(): Float {
-            val pixels = onNodeWithTag("tv-details-related-heading").captureToImage().toPixelMap()
+        fun relatedContentBrightness(): Float {
+            // The heading may be inside the viewport's top fade after returning from the footer.
+            // Sample an unfocused card instead, so neither that fade nor focus colors affect opacity.
+            val pixels = onNodeWithTag("tv-details-related:102").captureToImage().toPixelMap()
             var brightest = 0f
             for (y in 0 until pixels.height) for (x in 0 until pixels.width) {
                 brightest = maxOf(brightest, pixels[x, y].red)
@@ -759,15 +761,15 @@ class TvSubjectDetailsUiTest {
         key(Key.DirectionDown)
         awaitFocus("tv-details-related:101")
         assertHeadings("related")
-        val normalBrightness = relatedHeadingBrightness()
+        val normalBrightness = relatedContentBrightness()
         key(Key.DirectionDown)
         awaitFocus("tv-details-info")
         assertHeadings("info")
-        assertTrue(relatedHeadingBrightness() < normalBrightness * .75f, "Surrounding content must fade while reading information")
+        assertTrue(relatedContentBrightness() < normalBrightness * .75f, "Surrounding content must fade while reading information")
         key(Key.DirectionUp)
         awaitFocus("tv-details-related:101")
         assertHeadings("related")
-        assertTrue(relatedHeadingBrightness() > normalBrightness * .95f, "Surrounding content must recover after focus leaves information")
+        assertTrue(relatedContentBrightness() > normalBrightness * .95f, "Surrounding content must recover after focus leaves information")
         key(Key.DirectionUp)
         awaitFocus("tv-details-staff:1:${PersonPosition.Director}")
         assertHeadings("staff")
@@ -801,6 +803,11 @@ class TvSubjectDetailsUiTest {
             .performSemanticsAction(SemanticsActions.GetTextLayoutResult) { it(headingAfter) }
         assertEquals(16.sp, headingBefore.single().layoutInput.style.fontSize)
         assertEquals(26.sp, headingAfter.single().layoutInput.style.fontSize)
+        assertDetailsEndPaddingAligned("tv-subject-details")
+        val information = onNodeWithTag("tv-details-info").fetchSemanticsNode().boundsInRoot
+        val lastValue = onNodeWithText(details.info.aliases.joinToString(" / "), useUnmergedTree = true)
+            .fetchSemanticsNode().boundsInRoot
+        assertEquals(lastValue.bottom, information.bottom, 1f, "Information must not own the end padding")
         capture("information", "tv-subject-details")
         capture("information-block", "tv-details-info")
         key(Key.DirectionRight)
@@ -1229,6 +1236,7 @@ class TvSubjectDetailsUiTest {
         repeat(5) { key(Key.DirectionDown) }
         awaitFocus("tv-details-info")
         onNodeWithText(content().info.aliases.joinToString(" / "), useUnmergedTree = true).assertIsDisplayed()
+        assertDetailsEndPaddingAligned("tv-subject-details")
         capture("information-large-font", "tv-subject-details")
     }
 

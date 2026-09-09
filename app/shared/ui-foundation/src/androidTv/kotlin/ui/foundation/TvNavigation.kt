@@ -24,6 +24,9 @@ import me.him188.ani.app.navigation.SubjectDetailPlaceholder
 sealed interface TvNavigationEvent {
     data class Subject(val subjectId: Int, val placeholder: SubjectDetailPlaceholder? = null) : TvNavigationEvent
     data class Episode(val subjectId: Int, val episodeId: Int) : TvNavigationEvent
+    data class Character(val characterId: Int) : TvNavigationEvent
+    data class VoiceActor(val personId: Int) : TvNavigationEvent
+    data class Staff(val personId: Int) : TvNavigationEvent
     data object LoggedIn : TvNavigationEvent
     data object Login : TvNavigationEvent
 }
