@@ -21,9 +21,16 @@ kotlin {
             api(projects.app.shared.uiSubject)
             api(projects.app.shared.uiFoundationTv)
             implementation(projects.app.shared.pagingCompose)
+            implementation(projects.app.shared.placeholder)
         }
     }
     sourceSets.androidHostTest {
         kotlin.srcDir("../src/androidTvTest/kotlin")
+    }
+    sourceSets.androidDeviceTest {
+        kotlin.srcDir("../src/androidTvDeviceTest/kotlin")
+        dependencies {
+            implementation(projects.utils.uiTesting)
+        }
     }
 }

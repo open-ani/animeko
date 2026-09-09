@@ -1,5 +1,8 @@
 # TV 播放页
 
+跨页面适用的开发顺序、MVI、slotting、焦点、视觉和验收要求见 [TV 页面开发范式](../tv-development.md)。
+本文只说明播放页的功能组织与实现入口。
+
 TV 播放页位于 `app/shared/ui-episode/src/androidTv/kotlin/ui/episode`，
 由 `:app:shared:ui-episode-tv` 编译。完整包名前缀为 `me.him188.ani.leanback.ui.episode`。
 TV 源集和模块的接线方式见 [KMP 文档](../kmp.md#编译时会发生什么)。
@@ -22,6 +25,15 @@ TV 源集和模块的接线方式见 [KMP 文档](../kmp.md#编译时会发生�
 同一功能的模型、文案映射、组件和骨架放在同一功能包。
 跨功能使用的页面聚合模型保留在根包，视图容器通过 slot 接收内容。
 例如，评论和弹幕共用 `TvPlayerPanelList`，控制器与推荐条目共用 `TvBottomControllerLayout`。
+
+Options 行的 `TvOptionsRow`、`TvOptionChip`、尺寸定义、`TvOptionAnchors` 和 `TvOptionPanel`
+已抽到 `ui-foundation-tv`，详情页也使用这些 API。播放页在行上方显示面板，
+根据按钮的窗口坐标计算位置；页面继续负责业务选项、缩窄后的文字折叠和焦点出口。
+这些面板不创建 `Dialog` / `Popup` 窗口，见 [TV options 与覆盖层](tv-options.md)。
+倍速调节通过 foundation 的 `TvOptionStepper` 实现，与条目评分共用整组焦点、左右调节及箭头按键反馈；播放页仅负责倍速文案、边界和 Intent。
+居中弹窗使用 foundation 的 `TvOptionModal`，与条目 Review 的评论全文共用外观；调用方继续负责内容与返回处理。
+收藏状态列表、删除确认与 Watched 二次确认统一使用 `ui-subject-tv` 的 `collection/TvCollectionOptions`。
+播放页只接入自己的列表、焦点入口和 Intent；所有选项在收藏或全部标记请求期间置灰禁用，保留布局，完成后恢复。
 
 ## 状态与焦点
 

@@ -9,6 +9,7 @@
 
 package me.him188.ani.app.ui.foundation
 
+import androidx.compose.ui.BiasAlignment
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.layout.ContentScale
 import com.github.panpf.sketch.PlatformContext
@@ -19,7 +20,9 @@ import com.github.panpf.sketch.request.ImageRequest
 import com.github.panpf.sketch.request.ImageResult
 import com.github.panpf.sketch.request.LoadState
 import com.github.panpf.sketch.source.DataFrom
+import com.github.panpf.sketch.target.Target
 import com.github.panpf.sketch.transition.CrossfadeTransition
+import com.github.panpf.sketch.transition.Transition
 import io.ktor.client.HttpClient
 import io.ktor.client.engine.mock.MockEngine
 import io.ktor.client.engine.mock.respond
@@ -41,9 +44,15 @@ import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertIs
 import kotlin.test.assertNotNull
+import kotlin.test.assertNull
 import kotlin.test.assertTrue
 
 class AniImageLoaderConfigurationTest {
+    private data object NoTransitionTarget : Target {
+        override fun convertTransition(factory: Transition.Factory): Transition.Factory? =
+            error("Crossfade must not reach the target when explicitly disabled")
+    }
+
     @Test
     fun `default Sketch uses bounded caches and explicit components`() {
         val tempDirectory = SystemPaths.createTempDirectory("ani-sketch-cache-test")
@@ -80,6 +89,35 @@ class AniImageLoaderConfigurationTest {
             sketch.shutdown()
             client.close()
             tempDirectory.deleteRecursively()
+        }
+    }
+
+    @Test
+    fun `explicit crossfade opt out survives global image options`() = runTest {
+        val bytes = encodedRaster(EncodedImageFormat.PNG)
+        val client = HttpClient(MockEngine {
+            respond(bytes, headers = headersOf(HttpHeaders.ContentType, "image/png"))
+        })
+        val sketch = createDefaultSketch(PlatformContext.INSTANCE, client.asScopedHttpClient())
+        try {
+            for (crossfade in listOf(null, false)) {
+                val success = assertIs<ImageResult.Success>(sketch.execute(
+                    ImageRequest(PlatformContext.INSTANCE, "https://example.com/crossfade-$crossfade.png") {
+                        size(7, 5)
+                        configureAniImageCrossfade(crossfade)
+                        downloadCachePolicy(CachePolicy.DISABLED)
+                    },
+                ))
+                val factory = assertNotNull(success.request.transitionFactory)
+                if (crossfade == false) {
+                    assertNull(factory.create(sketch, success.request, NoTransitionTarget, success))
+                } else {
+                    assertIs<CrossfadeTransition.Factory>(factory)
+                }
+            }
+        } finally {
+            sketch.shutdown()
+            client.close()
         }
     }
 
@@ -223,6 +261,31 @@ class AniImageLoaderConfigurationTest {
 
             assertColor(topColor, minRed = 200, maxGreen = 50, maxBlue = 50)
             assertColor(centerColor, maxRed = 50, minGreen = 200, maxBlue = 50)
+        } finally {
+            sketch.shutdown()
+            client.close()
+        }
+    }
+
+    @Test
+    fun `custom crop alignment preserves the original aspect for Compose positioning`() = runTest {
+        val bytes = encodedVerticalBands()
+        val client = HttpClient(MockEngine {
+            respond(content = bytes, headers = headersOf(HttpHeaders.ContentType, "image/png"))
+        })
+        val sketch = createDefaultSketch(PlatformContext.INSTANCE, client.asScopedHttpClient())
+        try {
+            val success = assertIs<ImageResult.Success>(sketch.execute(
+                ImageRequest(PlatformContext.INSTANCE, "https://example.com/biased-crop.png") {
+                    size(100, 100)
+                    configureAniImageRequest(ContentScale.Crop, BiasAlignment(0f, -.5f))
+                    downloadCachePolicy(CachePolicy.DISABLED)
+                    resultCachePolicy(CachePolicy.DISABLED)
+                    memoryCachePolicy(CachePolicy.DISABLED)
+                },
+            ))
+            // All three bands must survive decoding. A square center crop loses the top/bottom.
+            assertEquals(3 * success.image.width, success.image.height)
         } finally {
             sketch.shutdown()
             client.close()

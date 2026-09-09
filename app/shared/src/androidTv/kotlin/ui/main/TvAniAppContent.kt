@@ -30,6 +30,8 @@ import androidx.navigation3.runtime.rememberSaveableStateHolderNavEntryDecorator
 import androidx.navigation3.ui.NavDisplay
 import androidx.tv.material3.Surface
 import me.him188.ani.app.data.models.subject.SubjectInfo
+import me.him188.ani.app.tools.LocalTimeFormatter
+import me.him188.ani.app.tools.TimeFormatter
 import me.him188.ani.app.navigation.AniNavigator
 import me.him188.ani.app.navigation.LocalNavigator
 import me.him188.ani.app.navigation.MainScreenPage
@@ -112,7 +114,10 @@ fun TvAniAppContent(
             TvNavigationEvent.Login -> aniNavigator.navigateBangumiAuthorize()
         }
     }
-    CompositionLocalProvider(LocalNavigator provides aniNavigator) {
+    CompositionLocalProvider(
+        LocalNavigator provides aniNavigator,
+        LocalTimeFormatter provides remember { TimeFormatter() },
+    ) {
         // tv MaterialTheme 不绘制窗口背景, 根部铺一层 Surface (深色 surface + content color)
         Surface(modifier.fillMaxSize()) {
             NavDisplay(
@@ -206,6 +211,11 @@ fun TvAniAppContent(
                                 factory = dependencies.subjectDetailsStateFactory,
                                 collectionRepository = dependencies.subjectCollectionRepository,
                                 tmdb = dependencies.tmdbImageService,
+                                setEpisodeCollectionType = dependencies.setEpisodeCollectionType,
+                                peopleRepository = dependencies.personDetailsRepository,
+                                searchRepository = dependencies.subjectSearchRepository,
+                                sessionStateProvider = dependencies.sessionStateProvider,
+                                settingsRepository = dependencies.settingsRepository,
                             )
                         }
                         TvSubjectDetailsRoute(viewModel, onNavigate)

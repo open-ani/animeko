@@ -23,6 +23,8 @@
     <string name="tv_player_adjusting">Adjusting</string>
     <string name="tv_player_following_host_hint">Following the host. Turn off following in %1$s first.</string>
 
+    <string name="tv_rating_controls_hint">←/→ Adjust rating · OK to submit · Back to cancel</string>
+
     <!-- Playback -->
     <string name="video_player_danmaku_on">Danmaku on</string>
     <string name="video_player_danmaku_off">Danmaku off</string>

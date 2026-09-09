@@ -10,81 +10,19 @@
 package me.him188.ani.leanback.ui.episode.components
 
 import androidx.compose.foundation.background
-import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.shadow
-import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
-import androidx.tv.material3.Icon
 import androidx.tv.material3.MaterialTheme
 import androidx.tv.material3.Text
 import me.him188.ani.leanback.ui.foundation.widgets.LocalTvOptionColors
 import me.him188.ani.leanback.ui.foundation.widgets.TvOptionDefaults
-
-/** Player surfaces stay legible over both bright and dark video frames. */
-internal object TvPlayerSurfaceDefaults {
-    val PanelShape = RoundedCornerShape(20.dp)
-    val PanelMaxHeight = 276.dp
-    val ModalMaxHeight = 460.dp
-}
-
-internal fun Modifier.tvPlayerSurface() = shadow(16.dp, TvPlayerSurfaceDefaults.PanelShape)
-    .background(TvOptionDefaults.Container, TvPlayerSurfaceDefaults.PanelShape)
-    .border(1.dp, TvOptionDefaults.Outline, TvPlayerSurfaceDefaults.PanelShape)
-
-@Composable
-internal fun TvPlayerPanelSurface(
-    title: String,
-    icon: ImageVector,
-    modifier: Modifier = Modifier,
-    subtitle: String? = null,
-    showHeader: Boolean = true,
-    content: @Composable ColumnScope.() -> Unit,
-) {
-    Column(
-        modifier
-            .tvPlayerSurface()
-            .padding(12.dp),
-        verticalArrangement = Arrangement.spacedBy(8.dp),
-    ) {
-        if (showHeader) Row(
-            Modifier
-                .fillMaxWidth()
-                .padding(horizontal = 8.dp, vertical = 4.dp),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(12.dp),
-        ) {
-            Box(
-                Modifier
-                    .size(32.dp)
-                    .background(MaterialTheme.colorScheme.primary.copy(alpha = .12f), CircleShape),
-                contentAlignment = Alignment.Center,
-            ) {
-                Icon(icon, null, Modifier.size(18.dp), tint = MaterialTheme.colorScheme.primary)
-            }
-            Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(3.dp)) {
-                Text(title, style = MaterialTheme.typography.titleMedium, color = TvOptionDefaults.Content)
-                subtitle?.let {
-                    Text(it, style = MaterialTheme.typography.bodySmall, color = TvOptionDefaults.Muted)
-                }
-            }
-        }
-        content()
-    }
-}
 
 @Composable
 internal fun TvPlayerSectionLabel(text: String, modifier: Modifier = Modifier) {

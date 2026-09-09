@@ -23,6 +23,8 @@
     <string name="tv_player_adjusting">调整中</string>
     <string name="tv_player_following_host_hint">正在跟随房主，请先在%1$s面板关闭跟随</string>
 
+    <string name="tv_rating_controls_hint">←/→ 调整评分 · 确认提交 · 返回取消</string>
+
     <!-- Playback -->
     <string name="video_player_danmaku_on">弹幕开</string>
     <string name="video_player_danmaku_off">弹幕关</string>

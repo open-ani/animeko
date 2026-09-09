@@ -103,7 +103,7 @@ import me.him188.ani.app.ui.media.renderSubtitleLanguage
 import me.him188.ani.app.ui.media.webCaptchaRequiredMessage
 import me.him188.ani.datasources.api.Media
 import me.him188.ani.leanback.ui.episode.TvEpisodeIntent
-import me.him188.ani.leanback.ui.episode.components.tvPlayerSurface
+import me.him188.ani.leanback.ui.foundation.widgets.tvOptionPanelSurface
 import me.him188.ani.leanback.ui.episode.text
 import me.him188.ani.leanback.ui.foundation.focus.TvFocusKey
 import me.him188.ani.leanback.ui.foundation.focus.rememberTvFocusScope
@@ -236,7 +236,7 @@ internal fun TvPlayerSourceDialog(
                 .tvFocusNavSignal(resultFocus)
                 .fillMaxWidth(TvSourceDialogDefaults.WidthFraction)
                 .fillMaxHeight()
-                .tvPlayerSurface()
+                .tvOptionPanelSurface()
                 .padding(24.dp)
                 .testTag("tv-source-dialog")
                 .focusProperties { onExit = { cancelFocus() } }

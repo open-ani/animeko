@@ -1010,8 +1010,11 @@
     <string name="subject_details_air_date_format">%1$s/%2$s/%3$s</string>
     <string name="subject_details_rating_summary">#%1$s · %2$s ratings</string>
     <string name="subject_details_reviews_count">%1$s reviews</string>
+    <string name="subject_details_review_title">Review</string>
+    <string name="subject_details_overview">Overview</string>
+    <string name="comment_review_hidden">[Hidden content]</string>
     <string name="subject_details_rate">Rate</string>
-    <string name="subject_details_summary">Summary</string>
+    <string name="subject_details_summary">Description</string>
     <string name="foundation_load_error_network">Network error</string>
     <string name="foundation_load_error_rate_limited">You\'re doing that too fast. Please try again</string>
     <string name="foundation_load_error_service_unavailable">Service unavailable</string>
@@ -1486,6 +1489,18 @@
     <string name="media_captcha_turnstile">Cloudflare Turnstile verification</string>
     <string name="media_captcha_slider">slider verification</string>
     <string name="media_captcha_unknown">verification</string>
+    <string name="subject_details_no_episodes">No episodes available</string>
+    <string name="subject_details_no_summary">No summary available</string>
+    <string name="subject_details_tags">Tags</string>
+    <string name="subject_details_empty">No content available</string>
+    <string name="subject_details_main_episodes">Main episodes</string>
+    <string name="subject_details_other_episodes">Other episodes</string>
+    <string name="subject_details_unrated">Clear rating</string>
+    <string name="subject_details_refresh">Refresh</string>
+    <string name="subject_details_air_month">%1$d/%2$d</string>
+    <string name="subject_details_ratings_count">%1$s ratings</string>
+    <string name="rating_increase">Increase rating</string>
+    <string name="rating_decrease">Decrease rating</string>
 </resources>
 
 <!--@formatter:on-->

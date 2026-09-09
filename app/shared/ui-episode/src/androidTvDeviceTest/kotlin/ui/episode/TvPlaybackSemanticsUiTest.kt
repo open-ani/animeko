@@ -10,8 +10,11 @@
 package me.him188.ani.leanback.ui.episode
 
 import android.graphics.Bitmap
+import androidx.activity.OnBackPressedDispatcher
+import androidx.activity.compose.LocalOnBackPressedDispatcherOwner
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
+import androidx.compose.runtime.SideEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
@@ -25,7 +28,10 @@ import androidx.compose.ui.test.assertContentDescriptionEquals
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.assertIsFocused
 import androidx.compose.ui.test.assertIsNotEnabled
+import androidx.compose.ui.test.assertTextContains
 import androidx.compose.ui.test.captureToImage
+import androidx.compose.ui.test.hasTestTag
+import androidx.compose.ui.test.isFocused
 import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onFirst
 import androidx.compose.ui.test.onNodeWithTag
@@ -69,6 +75,7 @@ import me.him188.ani.leanback.ui.episode.playback.TvChapter
 import me.him188.ani.leanback.ui.episode.playback.TvPlaybackInteractionState
 import me.him188.ani.leanback.ui.episode.presentation.TvPlaybackSnapshot
 import me.him188.ani.leanback.ui.episode.presentation.TvPlayerAction
+import me.him188.ani.leanback.ui.episode.presentation.TvPlayerDialog
 import me.him188.ani.leanback.ui.episode.presentation.TvPlayerPanel
 import me.him188.ani.leanback.ui.episode.presentation.TvPlayerPresentationState
 import me.him188.ani.leanback.ui.episode.presentation.rememberTvPlayerPresentationState
@@ -93,6 +100,45 @@ import kotlin.test.assertSame
 import kotlin.test.assertTrue
 
 class TvPlaybackSemanticsUiTest {
+    @Test
+    fun speedStepperKeepsOneFocusTargetDuringDirectionalAdjustment() = runAniComposeUiTest {
+        var state by mutableStateOf(TvEpisodeUiState(
+            playerState = PlayerState(MediaStatus.Ready, true, false),
+            loadingState = VideoLoadingState.Succeed(false),
+            durationMillis = 60_000,
+            playbackSpeed = 1f,
+        ))
+        val presentation = TvPlayerPresentationState(
+            { TvPlaybackSnapshot(state.playerState, 20_000, 60_000) }, {},
+        )
+        presentation.onAction(TvPlayerAction.OpenDialog(TvPlayerDialog.Speed))
+        val steps = mutableListOf<Int>()
+        lateinit var backDispatcher: OnBackPressedDispatcher
+        showPlayer(presentationState = presentation, onBackDispatcher = { backDispatcher = it }, onIntent = { intent ->
+            if (intent is TvEpisodeIntent.AdjustSpeed) {
+                steps += intent.direction
+                state = state.copy(playbackSpeed = state.playbackSpeed + intent.direction * .25f)
+            }
+            true
+        }) { state }
+        onNodeWithTag("tv-speed-control").assertIsFocused()
+        key(Key.DirectionRight)
+        assertEquals(1.25f, state.playbackSpeed)
+        onNodeWithTag("tv-speed-control").assertIsFocused().assertTextContains("1.25", substring = true)
+        saveScreenshot("tv-speed-shared-stepper")
+        key(Key.DirectionLeft)
+        assertEquals(1f, state.playbackSpeed)
+        assertEquals(listOf(1, -1), steps)
+        onNodeWithTag("tv-speed-control").assertIsFocused()
+        // Android Back is dispatched by the activity, outside Compose's synthetic key input.
+        runOnUiThread { backDispatcher.onBackPressed() }
+        waitForIdle()
+        waitUntil(timeoutMillis = 5_000) {
+            onAllNodes(hasTestTag("tv-speed-button") and isFocused()).fetchSemanticsNodes().isNotEmpty()
+        }
+        onNodeWithTag("tv-speed-button").assertIsFocused()
+    }
+
     @Test
     fun seekBarAndFirstButtonTogglePlaybackAndKeepFocusEvenWhileBuffering() = runAniComposeUiTest {
         var state by mutableStateOf(TvEpisodeUiState(
@@ -337,9 +383,12 @@ class TvPlaybackSemanticsUiTest {
         togetherState: () -> TvTogetherState = { TvTogetherState() },
         presentationState: TvPlayerPresentationState? = null,
         onIntent: (TvEpisodeIntent) -> Boolean = { true },
+        onBackDispatcher: (OnBackPressedDispatcher) -> Unit = {},
         state: () -> TvEpisodeUiState,
     ) {
         setContent {
+            val backDispatcher = checkNotNull(LocalOnBackPressedDispatcherOwner.current).onBackPressedDispatcher
+            SideEffect { onBackDispatcher(backDispatcher) }
             AniTvTheme {
                 val uiState = state()
                 TvEpisodeScreen(

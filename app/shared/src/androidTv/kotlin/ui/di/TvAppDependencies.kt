@@ -21,6 +21,8 @@ import me.him188.ani.app.data.repository.user.SettingsRepository
 import me.him188.ani.app.data.repository.user.UserRepository
 import me.him188.ani.app.domain.danmaku.DanmakuRepository
 import me.him188.ani.app.domain.episode.GetSubjectRecommendationUseCase
+import me.him188.ani.app.domain.episode.SetEpisodeCollectionTypeUseCase
+import me.him188.ani.app.data.repository.person.PersonDetailsRepository
 import me.him188.ani.app.domain.mediasource.web.captcha.WebSessionManager
 import me.him188.ani.app.domain.session.SessionStateProvider
 import me.him188.ani.app.domain.settings.GetDanmakuRegexFilterListFlowUseCase
@@ -53,6 +55,8 @@ class TvAppDependencies(
     val playbackAutomationGate: PlaybackAutomationGate,
     val watchTogetherManager: WatchTogetherManager,
     val sessionStateProvider: SessionStateProvider,
+    val setEpisodeCollectionType: SetEpisodeCollectionTypeUseCase,
+    val personDetailsRepository: PersonDetailsRepository,
 ) {
     companion object {
         fun fromKoin(koin: Koin): TvAppDependencies = TvAppDependencies(
@@ -76,6 +80,8 @@ class TvAppDependencies(
             playbackAutomationGate = koin.get(),
             watchTogetherManager = koin.get(),
             sessionStateProvider = koin.get(),
+            setEpisodeCollectionType = koin.get(),
+            personDetailsRepository = koin.get(),
         )
     }
 }

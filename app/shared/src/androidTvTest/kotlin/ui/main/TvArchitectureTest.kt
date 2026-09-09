@@ -36,6 +36,7 @@ class TvArchitectureTest {
         "me.him188.ani.app.ui.external.placeholder.",
         "me.him188.ani.app.ui.foundation.widgets.Toaster",
         "me.him188.ani.app.ui.foundation.widgets.LocalToaster",
+        "me.him188.ani.app.ui.foundation.widgets.showLoadError",
         "me.him188.ani.app.ui.foundation.navigation.BackHandler",
         "me.him188.ani.app.ui.search.renderLoadErrorToastMessage",
         // Playback shares semantic mappings and the platform-neutral loading indicator, with TV typography.
@@ -52,7 +53,16 @@ class TvArchitectureTest {
         "me.him188.ani.app.ui.watchtogether.watchTogetherStatusText",
         // Shared resources and locale-dependent text mappings contain no phone layouts.
         "me.him188.ani.app.ui.lang.",
-            "me.him188.ani.app.ui.media.renderSubtitleLanguage",
+        "me.him188.ani.app.ui.rating.EditableRatingState",
+        "me.him188.ani.app.ui.rating.RateRequest",
+        // Platform-neutral star glyphs and score descriptions, without the phone rating editor.
+        "me.him188.ani.app.ui.rating.FiveRatingStars",
+        "me.him188.ani.app.ui.rating.rememberRatingScoreLabels",
+        "me.him188.ani.app.ui.rating.renderScoreClass",
+        "me.him188.ani.app.ui.subject.AiringLabelState",
+        "me.him188.ani.app.ui.subject.SubjectProgressState",
+        "me.him188.ani.app.ui.subject.rememberSubjectStatusStrings",
+        "me.him188.ani.app.ui.media.renderSubtitleLanguage",
         "me.him188.ani.app.ui.media.rememberMediaDetailsStrings",
         "me.him188.ani.app.ui.media.webCaptchaRequiredMessage",
         "me.him188.ani.app.ui.episode.danmaku.renderDanmakuServiceId",

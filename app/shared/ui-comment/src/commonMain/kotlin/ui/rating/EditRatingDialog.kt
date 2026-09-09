@@ -347,7 +347,7 @@ private fun TenRatingStars(
     }
 }
 
-private data class RatingScoreLabels(
+data class RatingScoreLabels(
     val terribleCaution: String,
     val veryBad: String,
     val bad: String,
@@ -361,7 +361,7 @@ private data class RatingScoreLabels(
 )
 
 @Composable
-private fun rememberRatingScoreLabels(): RatingScoreLabels = RatingScoreLabels(
+fun rememberRatingScoreLabels(): RatingScoreLabels = RatingScoreLabels(
     terribleCaution = stringResource(Lang.rating_score_class_terrible_caution),
     veryBad = stringResource(Lang.rating_score_class_very_bad),
     bad = stringResource(Lang.rating_score_class_bad),
@@ -375,7 +375,7 @@ private fun rememberRatingScoreLabels(): RatingScoreLabels = RatingScoreLabels(
 )
 
 @Stable
-private fun renderScoreClass(score: Float, labels: RatingScoreLabels): String {
+fun renderScoreClass(score: Float, labels: RatingScoreLabels): String {
     return when (score) {
         in 0f..1f -> labels.terribleCaution
         in 1f..2f -> labels.veryBad

@@ -15,6 +15,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.Immutable
 import androidx.compose.runtime.staticCompositionLocalOf
 import androidx.compose.ui.Modifier
@@ -23,6 +24,8 @@ import androidx.compose.ui.graphics.compositeOver
 import androidx.compose.ui.unit.dp
 import androidx.tv.material3.ClickableSurfaceDefaults
 import androidx.tv.material3.MaterialTheme
+import androidx.compose.material3.LocalContentColor as MaterialContentColor
+import androidx.tv.material3.LocalContentColor as TvContentColor
 
 /** Shared colors and geometry for focusable TV options, independent of their host panel. */
 object TvOptionDefaults {
@@ -51,6 +54,13 @@ data class TvOptionColors(
 )
 
 val LocalTvOptionColors = staticCompositionLocalOf { TvOptionColors() }
+
+/** Both Compose Material families must inherit the foreground of the dark option container. */
+@Composable
+internal fun TvOptionContent(content: @Composable () -> Unit) {
+    val color = LocalTvOptionColors.current.content
+    CompositionLocalProvider(MaterialContentColor provides color, TvContentColor provides color, content = content)
+}
 
 @Composable
 fun tvOptionSurfaceColors(selected: Boolean = false, filled: Boolean = false) =

@@ -29,6 +29,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.tooling.preview.PreviewLightDark
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
@@ -55,6 +56,7 @@ fun RatingHistogram(
     barHeight: Dp = 64.dp,
     barCornerRadius: Dp = 3.dp,
     barSpacing: Dp = 6.dp,
+    labelStyle: TextStyle = MaterialTheme.typography.labelSmall,
 ) {
     val counts = remember(ratingInfo) { IntArray(10) { ratingInfo.count.get(it + 1) } }
     val max = remember(counts) { counts.maxOrNull() ?: 0 }
@@ -93,8 +95,10 @@ fun RatingHistogram(
                     score.toString(),
                     Modifier.weight(1f),
                     color = labelColor,
-                    style = MaterialTheme.typography.labelSmall,
+                    style = labelStyle,
                     textAlign = TextAlign.Center,
+                    maxLines = 1,
+                    softWrap = false,
                 )
             }
         }

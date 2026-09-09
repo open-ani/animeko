@@ -26,7 +26,8 @@ import kotlinx.coroutines.flow.first
 import me.him188.ani.datasources.api.topic.UnifiedCollectionType
 import me.him188.ani.leanback.ui.episode.TvEpisodeUiState
 import me.him188.ani.leanback.ui.episode.danmaku.TvDanmakuSettingsPanelState
-import me.him188.ani.leanback.ui.episode.settings.TvCollectionPrompt
+import me.him188.ani.leanback.ui.subject.collection.TvCollectionPrompt
+import me.him188.ani.leanback.ui.subject.collection.tvCollectionEntryType
 import me.him188.ani.leanback.ui.foundation.focus.TvFocusKey
 import me.him188.ani.leanback.ui.foundation.focus.TvFocusScope
 import me.him188.ani.leanback.ui.foundation.focus.requestPrepared
@@ -172,7 +173,7 @@ internal fun TvPlayerFocusEffects(
         if (state.activePanel != null && !state.sidebarVisible) {
             focus.requestPrepared {
                 if (state.activePanel == TvPlayerPanel.Collection) {
-                    panelListState.scrollToItem(UnifiedCollectionType.entries.indexOf(uiState.options.collectionType))
+                    panelListState.scrollToItem(UnifiedCollectionType.entries.indexOf(uiState.options.collectionType.tvCollectionEntryType))
                 }
                 panelEntryKey
             }

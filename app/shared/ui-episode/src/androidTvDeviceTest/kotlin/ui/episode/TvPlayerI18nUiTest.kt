@@ -37,7 +37,13 @@ import androidx.compose.ui.test.assert
 import androidx.compose.ui.test.assertContentDescriptionEquals
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.assertIsFocused
+import androidx.compose.ui.test.assertIsEnabled
+import androidx.compose.ui.test.assertIsNotEnabled
+import androidx.compose.ui.test.assertCountEquals
 import androidx.compose.ui.test.assertTextContains
+import androidx.compose.ui.test.hasAnyAncestor
+import androidx.compose.ui.test.hasTestTag
+import androidx.compose.ui.test.isFocused
 import androidx.compose.ui.test.captureToImage
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
@@ -88,6 +94,7 @@ import me.him188.ani.app.ui.lang.watch_together_join
 import me.him188.ani.app.ui.lang.watch_together_join_failed
 import me.him188.ani.app.ui.lang.watch_together_title
 import me.him188.ani.app.videoplayer.videoenhancement.VideoEnhancementMode
+import me.him188.ani.datasources.api.topic.UnifiedCollectionType
 import me.him188.ani.leanback.ui.episode.playback.TvSkipPrompt
 import me.him188.ani.leanback.ui.episode.presentation.TvPlaybackSnapshot
 import me.him188.ani.leanback.ui.episode.presentation.TvPlayerAction
@@ -107,6 +114,7 @@ import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
 import kotlin.test.assertTrue
+import kotlin.math.abs
 
 class TvPlayerI18nUiTest {
     private class Fixture(locale: String) {
@@ -143,6 +151,88 @@ class TvPlayerI18nUiTest {
     @Test fun simplifiedChinese() = checkPlayerLocale("zh-CN", "弹幕开")
     @Test fun hongKongChinese() = checkPlayerLocale("zh-HK", "彈幕開")
     @Test fun traditionalChinese() = checkPlayerLocale("zh-TW", "彈幕開")
+
+    @Test fun sharedCollectionOptionsStayAnchoredWhenThePlayerWidthChanges() = withPlayerTestLocale("en-US") {
+        runAniComposeUiTest {
+            val fixture = Fixture("en-US")
+            showPlayer(fixture)
+            onNodeWithTag("tv-player-chip-Collection").performSemanticsAction(SemanticsActions.RequestFocus) { it() }
+            key(Key.DirectionCenter)
+            fun assertPanel() {
+                val chip = onNodeWithTag("tv-player-chip-Collection").fetchSemanticsNode().boundsInRoot
+                val panel = onNodeWithTag("tv-player-option-panel-Collection").assertIsDisplayed().fetchSemanticsNode().boundsInRoot
+                val player = onNodeWithTag("tv-player-main").fetchSemanticsNode().boundsInRoot
+                assertTrue(abs(chip.left - panel.left) <= 1.5f, "Panel should follow the collection chip")
+                assertTrue(panel.bottom < chip.top && panel.left >= player.left && panel.right <= player.right)
+                assertTrue(onAllNodes(isFocused() and hasAnyAncestor(hasTestTag("tv-player-option-panel-Collection")))
+                    .fetchSemanticsNodes().isNotEmpty())
+            }
+            assertPanel()
+            onNodeWithTag("tv-player-collection-collection:WISH").assertIsFocused()
+            onNodeWithTag("tv-player-collection-collection:NOT_COLLECTED").assertDoesNotExist()
+            runOnIdle { fixture.width = 680.dp; fixture.fontScale = 1.3f }
+            assertPanel()
+            screenshot("shared-collection-options")
+            runOnIdle { fixture.back.onBackPressed() }
+            onNodeWithTag("tv-player-chip-Collection").assertIsFocused()
+            onNodeWithTag("tv-player-option-panel-Collection").assertDoesNotExist()
+        }
+    }
+
+    @Test fun collectionAndWatchedConfirmationsUseTheSamePendingOptions() = withPlayerTestLocale("en-US") {
+        runAniComposeUiTest {
+            val fixture = Fixture("en-US")
+            fixture.state = fixture.state.copy(options = fixture.state.options.copy(collectionType = UnifiedCollectionType.DOING))
+            val requests = mutableListOf<TvEpisodeIntent>()
+            showPlayer(fixture) { intent ->
+                if (intent is TvEpisodeIntent.SetCollection || intent is TvEpisodeIntent.MarkAllWatched) {
+                    requests += intent
+                    fixture.state = fixture.state.copy(options = fixture.state.options.copy(collectionBusy = true))
+                }
+                true
+            }
+            fun assertPending(vararg keys: String) {
+                keys.forEach { onNodeWithTag("tv-player-collection-$it").assertIsNotEnabled() }
+                onAllNodes(hasAnyAncestor(hasTestTag("tv-player-option-panel-Collection")) and
+                    SemanticsMatcher.keyIsDefined(SemanticsProperties.ProgressBarRangeInfo)).assertCountEquals(0)
+                val count = requests.size
+                key(Key.DirectionCenter)
+                assertEquals(count, requests.size)
+            }
+            onNodeWithTag("tv-player-chip-Collection").performSemanticsAction(SemanticsActions.RequestFocus) { it() }
+            key(Key.DirectionCenter)
+            onNodeWithTag("tv-player-collection-collection:DOING").assertIsFocused()
+            key(Key.DirectionDown)
+            onNodeWithTag("tv-player-collection-collection:DONE").assertIsFocused()
+            key(Key.DirectionCenter)
+            assertPending(*UnifiedCollectionType.entries.map { "collection:${it.name}" }.toTypedArray())
+            screenshot("collection-pending")
+            runOnIdle {
+                fixture.state = fixture.state.copy(options = fixture.state.options.copy(
+                    collectionType = UnifiedCollectionType.DONE, collectionBusy = false))
+                fixture.presentation.onEvent(TvEpisodeEvent.CollectionChanged(UnifiedCollectionType.DONE,
+                    (requests.last() as TvEpisodeIntent.SetCollection).requestId))
+            }
+            onNodeWithTag("tv-player-collection-mark-all").assertIsFocused().assertIsEnabled()
+            screenshot("collection-watched-prompt")
+            key(Key.DirectionCenter)
+            assertPending("mark-all", "mark-ignore")
+            screenshot("collection-watched-pending")
+            runOnIdle {
+                fixture.state = fixture.state.copy(options = fixture.state.options.copy(collectionBusy = false))
+                fixture.presentation.onEvent(TvEpisodeEvent.AllEpisodesWatched(
+                    (requests.last() as TvEpisodeIntent.MarkAllWatched).requestId))
+            }
+            onNodeWithTag("tv-player-collection-collection:DONE").assertIsFocused().assertIsEnabled()
+            onNodeWithTag("tv-player-collection-collection:NOT_COLLECTED")
+                .performSemanticsAction(SemanticsActions.RequestFocus) { it() }
+            key(Key.DirectionCenter)
+            onNodeWithTag("tv-player-collection-remove-confirm").assertIsFocused()
+            key(Key.DirectionCenter)
+            assertPending("remove-confirm", "remove-cancel")
+            screenshot("collection-remove-pending")
+        }
+    }
 
     private fun checkPlayerLocale(locale: String, expectedDanmaku: String) = withPlayerTestLocale(locale) {
         runAniComposeUiTest {
@@ -308,7 +398,7 @@ class TvPlayerI18nUiTest {
         }
     }
 
-    private fun AniComposeUiTest.showPlayer(fixture: Fixture) {
+    private fun AniComposeUiTest.showPlayer(fixture: Fixture, onIntent: (TvEpisodeIntent) -> Boolean = { true }) {
         // Activity creation can reset the process locale; configure it after the test host exists.
         runOnIdle { LocaleList.setDefault(LocaleList(Locale.forLanguageTag(fixture.locale))) }
         setContent {
@@ -323,7 +413,7 @@ class TvPlayerI18nUiTest {
                     TvEpisodeScreen(
                         uiState = fixture.state, togetherState = fixture.together, onTogetherIntent = {},
                         commentsPager = fixture.comments, presentationState = fixture.presentation, actionEvents = emptyFlow(),
-                        onIntent = { true }, video = { Box(it.background(Color(0xFF1E2A38))) }, resolver = {}, danmaku = {},
+                        onIntent = onIntent, video = { Box(it.background(Color(0xFF1E2A38))) }, resolver = {}, danmaku = {},
                         modifier = Modifier.width(fixture.width).fillMaxHeight().testTag("tv-i18n-player"),
                     )
                 }

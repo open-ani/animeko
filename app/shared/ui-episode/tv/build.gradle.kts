@@ -20,6 +20,7 @@ kotlin {
         dependencies {
             api(projects.app.shared.uiEpisode)
             api(projects.app.shared.uiFoundationTv)
+            implementation(projects.app.shared.uiSubjectTv)
             implementation(projects.app.shared.videoPlayer)
             api(projects.app.shared.uiWatchtogetherTv)
             implementation(projects.danmaku.danmakuUi)

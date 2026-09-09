@@ -681,7 +681,7 @@ class TvEpisodeViewModel(
                 }
 
             is TvEpisodeIntent.SetCollection -> setCollection(intent.type, intent.requestId)
-            is TvEpisodeIntent.MarkAllWatched -> runAction {
+            is TvEpisodeIntent.MarkAllWatched -> collectionAction {
                 episodeCollectionRepository.setAllEpisodesWatched(subjectId)
                 events.send(TvEpisodeEvent.AllEpisodesWatched(intent.requestId))
             }
@@ -754,17 +754,21 @@ class TvEpisodeViewModel(
         return false
     }
 
-    private fun setCollection(type: UnifiedCollectionType, requestId: Long) {
+    private fun setCollection(type: UnifiedCollectionType, requestId: Long) = collectionAction {
+        subjectCollectionRepository.setSubjectCollectionTypeOrDelete(
+            subjectId,
+            type.takeUnless { it == UnifiedCollectionType.NOT_COLLECTED },
+        )
+        playerOptions.update { it.copy(collectionType = type) }
+        events.send(TvEpisodeEvent.CollectionChanged(type, requestId))
+    }
+
+    private fun collectionAction(block: suspend () -> Unit) {
         if (playerOptions.value.collectionBusy) return
         playerOptions.update { it.copy(collectionBusy = true) }
         runAction {
             try {
-                subjectCollectionRepository.setSubjectCollectionTypeOrDelete(
-                    subjectId,
-                    type.takeUnless { it == UnifiedCollectionType.NOT_COLLECTED },
-                )
-                playerOptions.update { it.copy(collectionType = type) }
-                events.send(TvEpisodeEvent.CollectionChanged(type, requestId))
+                block()
             } finally {
                 playerOptions.update { it.copy(collectionBusy = false) }
             }

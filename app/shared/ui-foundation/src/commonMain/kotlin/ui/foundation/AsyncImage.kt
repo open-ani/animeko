@@ -52,6 +52,8 @@ import com.github.panpf.sketch.resize.Scale
 import com.github.panpf.sketch.resize.ScaleDecider
 import com.github.panpf.sketch.state.PainterStateImage
 import com.github.panpf.sketch.state.StateImage
+import com.github.panpf.sketch.target.Target
+import com.github.panpf.sketch.transition.Transition
 import com.github.panpf.sketch.util.Size
 import com.github.panpf.sketch.util.asComposeImageBitmap
 import kotlinx.coroutines.sync.Mutex
@@ -192,11 +194,7 @@ internal fun AniAsyncImage(
             requestSize = requestSize,
         )
 
-        when {
-            crossfade == false -> crossfade(false)
-            crossfadeDurationMillis != null -> crossfade(crossfadeDurationMillis)
-            crossfade == true -> crossfade(true)
-        }
+        configureAniImageCrossfade(crossfade, crossfadeDurationMillis)
     }
 
     ImageLoadStateEffect(state, onLoading, onSuccess, onError)
@@ -216,6 +214,24 @@ internal fun AniAsyncImage(
         filterQuality = filterQuality,
         clipToBounds = clipToBounds,
     )
+}
+
+internal fun ImageRequest.Builder.configureAniImageCrossfade(
+    crossfade: Boolean?,
+    crossfadeDurationMillis: Int? = null,
+) {
+    when {
+        // Sketch's crossfade(false) sets null, which inherits the global crossfade again.
+        crossfade == false -> transitionFactory(NoImageTransitionFactory)
+        crossfadeDurationMillis != null -> crossfade(crossfadeDurationMillis)
+        crossfade == true -> crossfade(true)
+    }
+}
+
+private data object NoImageTransitionFactory : Transition.Factory {
+    override val key: String = "AniNoImageTransition"
+
+    override fun create(sketch: Sketch, request: ImageRequest, target: Target, result: ImageResult): Transition? = null
 }
 
 @Composable
@@ -307,7 +323,15 @@ internal fun ImageRequest.Builder.configureAniImageRequest(
     }
     scale(aniScaleDecider(contentScale, alignment))
     when (contentScale) {
-        ContentScale.Crop -> precision(Precision.SAME_ASPECT_RATIO)
+        ContentScale.Crop -> precision(
+            // Sketch only understands start/center/end crop. Preserve the source aspect
+            // for a custom alignment so Compose can position the crop without losing pixels.
+            if (alignment in listOf(
+                    Alignment.TopStart, Alignment.TopCenter, Alignment.TopEnd,
+                    Alignment.CenterStart, Alignment.Center, Alignment.CenterEnd,
+                    Alignment.BottomStart, Alignment.BottomCenter, Alignment.BottomEnd,
+                )) Precision.SAME_ASPECT_RATIO else Precision.LESS_PIXELS,
+        )
         ContentScale.FillBounds -> precision(Precision.EXACTLY)
     }
 }

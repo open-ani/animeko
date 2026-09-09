@@ -30,7 +30,7 @@ import me.him188.ani.leanback.ui.episode.TvEpisodeIntent
 import me.him188.ani.leanback.ui.episode.TvEpisodeUiState
 import me.him188.ani.leanback.ui.episode.danmaku.TvDanmakuAdjustment
 import me.him188.ani.leanback.ui.episode.playback.TvPlaybackInteractionState
-import me.him188.ani.leanback.ui.episode.settings.TvCollectionPrompt
+import me.him188.ani.leanback.ui.subject.collection.TvCollectionPrompt
 import org.openani.mediamp.PlayerState
 
 internal data class TvPlayerOverlayState(

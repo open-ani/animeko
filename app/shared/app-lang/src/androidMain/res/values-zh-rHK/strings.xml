@@ -1022,7 +1022,10 @@
     <string name="subject_details_next_page">下一頁</string>
     <string name="subject_details_air_date_format">%1$s 年 %2$s 月 %3$s 日</string>
     <string name="subject_details_rating_summary">#%1$s · %2$s 人評分</string>
-    <string name="subject_details_reviews_count">%1$s 條</string>
+    <string name="subject_details_reviews_count">%1$s 條評論</string>
+    <string name="subject_details_review_title">Review</string>
+    <string name="subject_details_overview">總覽</string>
+    <string name="comment_review_hidden">[隱藏內容]</string>
     <string name="subject_details_rate">打分</string>
     <string name="subject_details_summary">簡介</string>
     <string name="foundation_load_error_network">網絡錯誤</string>
@@ -1499,6 +1502,18 @@
     <string name="media_captcha_turnstile">Cloudflare Turnstile 驗證</string>
     <string name="media_captcha_slider">滑動驗證</string>
     <string name="media_captcha_unknown">驗證碼</string>
+    <string name="subject_details_no_episodes">暫無劇集</string>
+    <string name="subject_details_no_summary">暫無簡介</string>
+    <string name="subject_details_tags">標籤</string>
+    <string name="subject_details_empty">暫無內容</string>
+    <string name="subject_details_main_episodes">正片</string>
+    <string name="subject_details_other_episodes">其他劇集</string>
+    <string name="subject_details_unrated">取消評分</string>
+    <string name="subject_details_refresh">重新整理</string>
+    <string name="subject_details_air_month">%1$d 年 %2$d 月</string>
+    <string name="subject_details_ratings_count">%1$s 人評分</string>
+    <string name="rating_increase">提高評分</string>
+    <string name="rating_decrease">降低評分</string>
 </resources>
 
 <!--@formatter:on-->
