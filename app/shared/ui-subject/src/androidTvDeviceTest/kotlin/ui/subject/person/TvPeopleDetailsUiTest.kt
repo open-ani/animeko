@@ -24,6 +24,7 @@ import androidx.compose.ui.semantics.SemanticsActions
 import androidx.compose.ui.semantics.SemanticsProperties
 import androidx.compose.ui.test.SemanticsMatcher
 import androidx.compose.ui.test.assertCountEquals
+import androidx.compose.ui.test.assertHasNoClickAction
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.assertIsFocused
 import androidx.compose.ui.test.captureToImage
@@ -343,6 +344,60 @@ class TvPeopleDetailsUiTest {
         awaitFocus("tv-people-discussion")
         onNodeWithTag("tv-people-section:actors").assertDoesNotExist()
         onNodeWithTag("tv-people-section:works").assertDoesNotExist()
+    }
+
+    @Test fun characterLoadingSkeletonKeepsReaderAndDiscussionFocus() = assertProfileSkeleton(TvPeopleKind.Character)
+    @Test fun voiceActorLoadingSkeletonKeepsItsLayout() = assertProfileSkeleton(TvPeopleKind.VoiceActor)
+    @Test fun staffLoadingSkeletonSupportsNarrowViewportAndLargeText() = assertProfileSkeleton(TvPeopleKind.Staff, 640, 1.3f)
+
+    private fun assertProfileSkeleton(kind: TvPeopleKind, width: Int = 960, fontScale: Float = 1f) = runAniComposeUiTest {
+        fun <T : Any> loadingPage() = PagingData.empty<T>(sourceLoadStates =
+            LoadStates(LoadState.Loading, LoadState.NotLoading(true), LoadState.NotLoading(false)))
+        val ready = state(kind)
+        val comments = MutableStateFlow(loadingPage<UIComment>())
+        var state by mutableStateOf(ready.copy(profile = null, loading = true, comments = comments,
+            subjects = ready.subjects?.let { flowOf(loadingPage<CharacterSubjectInfo>()) },
+            casts = ready.casts?.let { flowOf(loadingPage<PersonCastInfo>()) },
+            works = ready.works?.let { flowOf(loadingPage<PersonWorkInfo>()) }))
+        mount({ state }, width = width, fontScale = fontScale)
+        onNodeWithTag("tv-people-identity-loading").assertIsDisplayed().assertHasNoClickAction()
+        onNodeWithTag("tv-people-portrait-loading").assertIsDisplayed().assertHasNoClickAction()
+        onNodeWithTag("tv-people-discussion-preview-loading", useUnmergedTree = true).assertExists().assertHasNoClickAction()
+        for (card in listOf("tv-people-intro", "tv-people-discussion")) {
+            onAllNodes(SemanticsMatcher.keyIsDefined(SemanticsProperties.Text) and
+                hasAnyAncestor(hasTestTag(card)), useUnmergedTree = true).assertCountEquals(0)
+        }
+        val portrait = onNodeWithTag("tv-people-portrait").fetchSemanticsNode().boundsInRoot
+        val intro = onNodeWithTag("tv-people-intro").fetchSemanticsNode().boundsInRoot
+        val root = onNodeWithTag("tv-people-details").fetchSemanticsNode().boundsInRoot
+        assertTrue(intro.right < portrait.left && portrait.right <= root.right)
+        capture("${kind.name.lowercase()}-loading-skeleton")
+        key(Key.DirectionCenter)
+        awaitFocus("tv-people-reader")
+        onNodeWithTag("tv-people-reader-loading", useUnmergedTree = true).assertExists().assertHasNoClickAction()
+        if (kind == TvPeopleKind.Character) capture("introduction-loading-skeleton")
+        runOnIdle { state = ready.copy(comments = comments) }
+        awaitFocus("tv-people-reader")
+        onNodeWithTag("tv-people-reader-loading", useUnmergedTree = true).assertDoesNotExist()
+        onNodeWithTag("tv-people-biography").assertExists()
+        key(Key.Back)
+        awaitFocus("tv-people-intro")
+        key(Key.DirectionRight); key(Key.DirectionCenter)
+        awaitFocus("tv-people-discussion-status")
+        onNodeWithTag("tv-review-placeholder-0", useUnmergedTree = true).assertIsDisplayed().assertHasNoClickAction()
+        val first = onNodeWithTag("tv-review-placeholder-0", useUnmergedTree = true).fetchSemanticsNode()
+        val viewport = onNodeWithTag("tv-people-discussion-list").fetchSemanticsNode().boundsInRoot
+        assertTrue(first.positionInRoot.y >= viewport.top && first.positionInRoot.y + first.size.height <= viewport.bottom,
+            "The first loading card must stay fully visible")
+        if (kind == TvPeopleKind.Character) capture("discussion-loading-skeleton")
+        runOnIdle { comments.value = page(comments()) }
+        awaitFocus("tv-people-discussion-comment:review-1")
+        key(Key.Back)
+        awaitFocus("tv-people-discussion")
+        // Refreshing an existing profile keeps both its contents and the user's current focus.
+        runOnIdle { state = state.copy(loading = true) }
+        onNodeWithTag("tv-people-identity-loading").assertDoesNotExist()
+        awaitFocus("tv-people-discussion")
     }
 
     @Test fun returningBetweenProfilesRestoresHorizontalAndVerticalPosition() = runAniComposeUiTest {

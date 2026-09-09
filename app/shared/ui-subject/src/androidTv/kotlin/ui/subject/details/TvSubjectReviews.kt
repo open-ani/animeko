@@ -6,6 +6,7 @@ package me.him188.ani.leanback.ui.subject.details
 
 
 import androidx.compose.foundation.ExperimentalFoundationApi
+import androidx.compose.foundation.progressSemantics
 import androidx.compose.foundation.focusable
 import androidx.compose.foundation.gestures.LocalBringIntoViewSpec
 import androidx.compose.foundation.gestures.animateScrollBy
@@ -62,7 +63,6 @@ import me.him188.ani.app.domain.foundation.LoadError
 import me.him188.ani.app.ui.comment.UIComment
 import me.him188.ani.app.ui.lang.Lang
 import me.him188.ani.app.ui.lang.comment_empty_title
-import me.him188.ani.app.ui.lang.foundation_loading
 import me.him188.ani.app.ui.lang.settings_mediasource_retry
 import me.him188.ani.app.ui.lang.subject_details_review_title
 import me.him188.ani.app.ui.lang.subject_details_reviews_count
@@ -84,7 +84,8 @@ import me.him188.ani.leanback.ui.subject.presentation.detailsFocusFallback
 import me.him188.ani.leanback.ui.subject.reviews.TvReviewBringIntoViewSpec
 import me.him188.ani.leanback.ui.subject.reviews.TvReviewCard
 import me.him188.ani.leanback.ui.subject.reviews.TvReviewDefaults
-import me.him188.ani.leanback.ui.subject.reviews.TvReviewLoading
+import me.him188.ani.leanback.ui.subject.reviews.tvReviewLoadingItems
+import me.him188.ani.leanback.ui.subject.reviews.TvReviewPlaceholder
 import me.him188.ani.leanback.ui.subject.reviews.TvReviewOverview
 import me.him188.ani.leanback.ui.subject.reviews.TvReviewScrollbar
 import me.him188.ani.leanback.ui.subject.reviews.tvReviewEdges
@@ -267,7 +268,9 @@ internal fun TvSubjectComments(
                                             TvReviewCard(comment, anchor("review:${comment.stableId}")) { onComment(comment) }
                                         }
                                     }
-                                    if (reviewKeys.isEmpty() || error != null) {
+                                    if (reviewKeys.isEmpty() && error == null && comments.loadState.refresh is LoadState.Loading) {
+                                        tvReviewLoadingItems("review-status") { anchor("review-status").focusable() }
+                                    } else if (reviewKeys.isEmpty() || error != null) {
                                         val key = if (reviewKeys.isEmpty()) "review-status" else "review-retry"
                                         item(key) {
                                             if (error != null) {
@@ -277,8 +280,6 @@ internal fun TvSubjectComments(
                                                     TvDetailsAction(stringResource(Lang.settings_mediasource_retry), Icons.Rounded.Refresh,
                                                         comments::retry, anchor(key))
                                                 }
-                                            } else if (comments.loadState.refresh is LoadState.Loading) {
-                                                TvReviewLoading(anchor(key).focusable())
                                             } else {
                                                 Text(stringResource(Lang.comment_empty_title),
                                                     modifier = anchor(key).fillMaxWidth().padding(vertical = 32.dp).focusable(),
@@ -286,7 +287,7 @@ internal fun TvSubjectComments(
                                             }
                                         }
                                     } else if (comments.loadState.append is LoadState.Loading) {
-                                        item("review-loading") { Text(stringResource(Lang.foundation_loading), color = TvSubjectDetailsDefaults.SecondaryContent) }
+                                        item("review-loading") { TvReviewPlaceholder(Modifier.progressSemantics().testTag("tv-review-append-loading")) }
                                     }
                                 }
                                 TvReviewScrollbar(list, Modifier.align(Alignment.CenterEnd).width(4.dp).fillMaxHeight())

@@ -7,28 +7,32 @@
  * https://github.com/open-ani/ani/blob/main/LICENSE
  */
 
-package me.him188.ani.leanback.ui.episode.components
+package me.him188.ani.leanback.ui.foundation.widgets
 
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.unit.dp
 import me.him188.ani.app.ui.external.placeholder.PlaceholderHighlight
 import me.him188.ani.app.ui.external.placeholder.fade
 import me.him188.ani.app.ui.external.placeholder.placeholder
-import me.him188.ani.leanback.ui.foundation.widgets.LocalTvOptionColors
 
+/** Decorative loading block. The host owns progress semantics and temporary focus, if needed. */
 @Composable
-internal fun TvPlayerPlaceholderBlock(modifier: Modifier, shape: Shape = RoundedCornerShape(4.dp)) {
-    val contentColor = LocalTvOptionColors.current.content
+fun TvPlaceholderBlock(
+    modifier: Modifier,
+    shape: Shape = RoundedCornerShape(4.dp),
+    color: Color = LocalTvOptionColors.current.content,
+) {
     Spacer(
         modifier.placeholder(
             visible = true,
-            color = contentColor.copy(alpha = .12f),
+            color = color.copy(alpha = .12f),
             shape = shape,
-            highlight = { PlaceholderHighlight.fade(contentColor.copy(alpha = .08f)) },
+            highlight = { PlaceholderHighlight.fade(color.copy(alpha = .08f)) },
         ),
     )
 }

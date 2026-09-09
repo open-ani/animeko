@@ -6,12 +6,11 @@ package me.him188.ani.leanback.ui.subject.person.components
 
 import androidx.compose.foundation.focusable
 import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyListState
+import androidx.compose.foundation.progressSemantics
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.Refresh
 import androidx.compose.material3.Text
@@ -23,7 +22,6 @@ import androidx.paging.LoadState
 import androidx.paging.compose.LazyPagingItems
 import me.him188.ani.app.data.models.person.PersonSubjectSummary
 import me.him188.ani.app.domain.foundation.LoadError
-import me.him188.ani.app.ui.external.placeholder.placeholder
 import me.him188.ani.app.ui.lang.Lang
 import me.him188.ani.app.ui.lang.settings_mediasource_retry
 import me.him188.ani.app.ui.search.renderLoadErrorMessage
@@ -40,6 +38,7 @@ internal class TvPeopleSection(
     val loading: Boolean,
     val error: LoadError?,
     val retry: () -> Unit,
+    val placeholder: @Composable (Modifier) -> Unit,
     val content: @Composable (Int, Modifier) -> Unit,
 ) {
     val visible get() = itemKeys.isNotEmpty() || loading || error != null
@@ -54,6 +53,7 @@ internal fun <T : Any> peopleSection(
     id: String,
     title: String,
     items: LazyPagingItems<T>,
+    placeholder: @Composable (Modifier) -> Unit,
     key: (T) -> String,
     content: @Composable (T, Modifier) -> Unit,
 ) = TvPeopleSection(
@@ -61,8 +61,8 @@ internal fun <T : Any> peopleSection(
     items.loadState.refresh is LoadState.Loading || items.loadState.append is LoadState.Loading,
     ((items.loadState.refresh as? LoadState.Error) ?: (items.loadState.append as? LoadState.Error))
         ?.let { LoadError.fromException(it.error) },
-    items::retry,
-) { index, modifier -> items[index]?.let { content(it, modifier) } }
+    items::retry, placeholder,
+) { index, modifier -> items[index]?.let { content(it, modifier) } ?: placeholder(modifier) }
 
 @Composable
 internal fun TvPeopleBrowseSection(
@@ -84,9 +84,12 @@ internal fun TvPeopleBrowseSection(
                     anchor("${section.id}:retry"))
             }
         } else if (section.loading) item("${section.id}:loading") {
-            Row(if (section.itemKeys.isEmpty()) anchor("${section.id}:loading").focusable() else Modifier,
-                horizontalArrangement = Arrangement.spacedBy(20.dp)) {
-                repeat(3) { Box(Modifier.size(124.dp).placeholder(true)) }
+            val focusableEntry = section.itemKeys.isEmpty()
+            Row(if (focusableEntry) Modifier else Modifier.progressSemantics(),
+                horizontalArrangement = Arrangement.spacedBy(TvSubjectDetailsDefaults.RowSpacing)) {
+                repeat(3) { index ->
+                    section.placeholder(if (index == 0 && focusableEntry) anchor("${section.id}:loading").progressSemantics().focusable() else Modifier)
+                }
             }
         }
     }

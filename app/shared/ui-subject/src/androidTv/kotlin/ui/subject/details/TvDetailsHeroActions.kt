@@ -21,6 +21,9 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.progressSemantics
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.Info
@@ -65,6 +68,7 @@ import me.him188.ani.app.ui.lang.rating_requires_collection
 import me.him188.ani.app.ui.lang.subject_details_rate
 import me.him188.ani.datasources.api.topic.UnifiedCollectionType
 import me.him188.ani.leanback.ui.foundation.widgets.TvOptionDefaults
+import me.him188.ani.leanback.ui.foundation.widgets.TvPlaceholderBlock
 import me.him188.ani.leanback.ui.subject.components.LocalTvDetailsActionBackdrop
 import me.him188.ani.leanback.ui.subject.components.TvSubjectDetailsDefaults
 import me.him188.ani.leanback.ui.subject.collection.tvCollectionLabel
@@ -85,6 +89,7 @@ internal fun TvDetailsAction(
     compact: Boolean = false,
     blurBackground: Boolean = false,
     glowOnFocus: Boolean = false,
+    loading: Boolean = false,
 ) {
     val interaction = remember { MutableInteractionSource() }
     val focused by interaction.collectIsFocusedAsState()
@@ -114,6 +119,7 @@ internal fun TvDetailsAction(
     Surface(
         onClick = { if (available && !busy) onClick() },
         modifier = modifier.heightIn(min = TvSubjectDetailsDefaults.ActionHeight)
+            .then(if (loading) Modifier.progressSemantics() else Modifier)
             .semantics { contentDescription = label; selected = active }
             .then(glowModifier),
         shape = TvSubjectDetailsDefaults.ActionShape,
@@ -135,7 +141,8 @@ internal fun TvDetailsAction(
             val iconSize = if (compact) 18.dp else 22.dp
             if (busy) CircularProgressIndicator(Modifier.size(iconSize), color = content, strokeWidth = 2.dp)
             else if (icon != null) Icon(icon, null, Modifier.size(iconSize))
-            if (!iconOnly) Text(label, style = MaterialTheme.typography.titleMedium.copy(fontSize = if (compact) 14.sp else 16.sp),
+            if (loading && !iconOnly) TvPlaceholderBlock(Modifier.width(100.dp).height(16.dp), color = content)
+            else if (!iconOnly) Text(label, style = MaterialTheme.typography.titleMedium.copy(fontSize = if (compact) 14.sp else 16.sp),
                 maxLines = 1, overflow = TextOverflow.Ellipsis)
         }
     }

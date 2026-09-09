@@ -23,6 +23,7 @@ import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.semantics.SemanticsActions
 import androidx.compose.ui.semantics.SemanticsProperties
 import androidx.compose.ui.test.SemanticsMatcher
+import androidx.compose.ui.test.assertHasNoClickAction
 import androidx.compose.ui.test.assertCountEquals
 import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.test.assertIsDisplayed
@@ -321,6 +322,7 @@ class TvSubjectDetailsUiTest {
         val details = content()
         var state by mutableStateOf(TvSubjectDetailsUiState(content = details.copy(episodes = emptyList(), episodesLoading = true)))
         mount({ state })
+        assertTrue(onNodeWithTag("tv-details-play").fetchSemanticsNode().config.contains(SemanticsProperties.ProgressBarRangeInfo))
         key(Key.DirectionDown)
         awaitFocus("tv-details-all-episodes")
         onNodeWithTag("tv-details-episodes-loading").assertIsDisplayed()
@@ -662,6 +664,12 @@ class TvSubjectDetailsUiTest {
         mount({ TvSubjectDetailsUiState(content = details, loggedIn = true) })
         focusAndClick("bgm-rating")
         awaitFocus("tv-details-review-status")
+        onNodeWithTag("tv-review-placeholder-0", useUnmergedTree = true).assertIsDisplayed().assertHasNoClickAction()
+        val first = onNodeWithTag("tv-review-placeholder-0", useUnmergedTree = true).fetchSemanticsNode()
+        val viewport = onNodeWithTag("tv-review-list").fetchSemanticsNode().boundsInRoot
+        assertTrue(first.positionInRoot.y >= viewport.top && first.positionInRoot.y + first.size.height <= viewport.bottom,
+            "The first loading card must stay fully visible")
+        capture("review-loading-skeleton", "tv-reviews-page")
         key(Key.DirectionLeft)
         awaitFocus("tv-details-review-rating")
         runOnIdle {
@@ -1212,6 +1220,60 @@ class TvSubjectDetailsUiTest {
         runOnIdle { state = state.copy(error = LoadError.fromException(IOException("offline"))) }
         awaitFocus("tv-details-retry")
         key(Key.DirectionCenter)
+        awaitFocus("tv-details-play")
+    }
+
+    @Test fun loadingSkeletonSharesHeroGeometryAndHandsFocusToPlay() = runAniComposeUiTest {
+        var state by mutableStateOf(TvSubjectDetailsUiState())
+        val intents = mutableListOf<TvSubjectDetailsIntent>()
+        mount({ state }, { intents += it }, initialTag = "tv-details-loading")
+        onNodeWithTag("tv-details-loading").assertHasNoClickAction()
+        onAllNodes(SemanticsMatcher.keyIsDefined(SemanticsProperties.Text) and
+            hasAnyAncestor(hasTestTag("tv-details-summary-placeholder")), useUnmergedTree = true).assertCountEquals(0)
+        val summary = onNodeWithTag("tv-details-summary-placeholder").assertIsDisplayed().fetchSemanticsNode().boundsInRoot
+        // Compare the visible pill, excluding the surrounding minimum interaction area.
+        val action = onNode(hasTestTag("tv-details-action-placeholder-pill") and
+            hasAnyAncestor(hasTestTag("tv-details-loading")), useUnmergedTree = true).fetchSemanticsNode().boundsInRoot
+        val title = onNodeWithTag("tv-details-title-placeholder").assertIsDisplayed().fetchSemanticsNode().boundsInRoot
+        assertTrue(title.top >= onNodeWithTag("tv-subject-details").fetchSemanticsNode().boundsInRoot.top)
+        capture("initial-skeleton", "tv-subject-details")
+        key(Key.DirectionCenter)
+        assertTrue(intents.isEmpty())
+        runOnIdle { state = TvSubjectDetailsUiState(content = content(), loggedIn = true) }
+        awaitFocus("tv-details-play")
+        onNodeWithTag("tv-details-placeholder").assertDoesNotExist()
+        val loadedSummary = onNodeWithTag("tv-details-summary").fetchSemanticsNode().boundsInRoot
+        val loadedAction = onNodeWithTag("tv-details-play").fetchSemanticsNode().boundsInRoot
+        assertTrue(listOf(summary.left - loadedSummary.left, summary.top - loadedSummary.top,
+            summary.right - loadedSummary.right, summary.bottom - loadedSummary.bottom).all { abs(it) <= 1.5f },
+            "The summary must keep its bounds across loading: $summary vs $loadedSummary")
+        assertEquals(action.top, loadedAction.top)
+        assertEquals(action.left, loadedAction.left)
+    }
+
+    @Test fun loadingRowsUseTheirCardGeometryAndRestoreTheFocusedSection() = runAniComposeUiTest {
+        val loading = LoadStates(LoadState.Loading, LoadState.NotLoading(true), LoadState.NotLoading(false))
+        val characters = MutableStateFlow(PagingData.empty<RelatedCharacterInfo>(sourceLoadStates = loading))
+        val related = MutableStateFlow(PagingData.empty<RelatedSubjectInfo>(sourceLoadStates = loading))
+        val details = content().copy(charactersPager = characters, relatedSubjectsPager = related)
+        mount({ TvSubjectDetailsUiState(content = details, loggedIn = true) })
+        key(Key.DirectionDown); key(Key.DirectionDown)
+        awaitFocus("tv-details-characters-all")
+        onNodeWithTag("tv-details-characters-all").assertHasNoClickAction()
+        val person = onAllNodes(hasTestTag("tv-details-person-placeholder-image") and
+            hasAnyAncestor(hasTestTag("tv-details-characters-loading")), useUnmergedTree = true).fetchSemanticsNodes().first().boundsInRoot
+        assertEquals(person.width, person.height)
+        val work = onAllNodes(hasTestTag("tv-details-media-placeholder-image") and
+            hasAnyAncestor(hasTestTag("tv-details-related-loading")), useUnmergedTree = true).fetchSemanticsNodes().first().size
+        // The related row is below the viewport; its clipped bounds do not describe the image ratio.
+        assertTrue(abs(work.width.toFloat() / work.height - 16f / 9f) < .02f, "Landscape image size: $work")
+        capture("rows-loading-skeleton", "tv-subject-details")
+        runOnIdle { characters.value = completedPage(characters()) }
+        awaitFocus("tv-details-character:1")
+        // An independently loaded row must not take focus from the section just entered.
+        runOnIdle { related.value = completedPage(emptyList()) }
+        awaitFocus("tv-details-character:1")
+        key(Key.Back)
         awaitFocus("tv-details-play")
     }
 

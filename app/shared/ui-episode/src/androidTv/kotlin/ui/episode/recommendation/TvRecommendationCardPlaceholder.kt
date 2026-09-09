@@ -24,7 +24,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.unit.dp
-import me.him188.ani.leanback.ui.episode.components.TvPlayerPlaceholderBlock
+import me.him188.ani.leanback.ui.foundation.widgets.TvPlaceholderBlock
 import me.him188.ani.leanback.ui.episode.controls.TvPlayerEpisodeStripDefaults
 import me.him188.ani.leanback.ui.foundation.focus.TvFocusDefaults
 import me.him188.ani.leanback.ui.foundation.widgets.LocalTvOptionColors
@@ -37,13 +37,13 @@ internal fun TvRecommendationCardPlaceholder(modifier: Modifier = Modifier) {
             .clip(TvPlayerEpisodeStripDefaults.CardShape)
             .background(LocalTvOptionColors.current.raised),
     ) {
-        TvPlayerPlaceholderBlock(Modifier.fillMaxSize(), TvPlayerEpisodeStripDefaults.CardShape)
+        TvPlaceholderBlock(Modifier.fillMaxSize(), TvPlayerEpisodeStripDefaults.CardShape)
         Column(
             Modifier.align(Alignment.BottomStart).fillMaxWidth().padding(12.dp),
             verticalArrangement = Arrangement.spacedBy(6.dp),
         ) {
-            TvPlayerPlaceholderBlock(Modifier.fillMaxWidth(.8f).height(16.dp))
-            TvPlayerPlaceholderBlock(Modifier.fillMaxWidth(.55f).height(12.dp))
+            TvPlaceholderBlock(Modifier.fillMaxWidth(.8f).height(16.dp))
+            TvPlaceholderBlock(Modifier.fillMaxWidth(.55f).height(12.dp))
         }
     }
 }

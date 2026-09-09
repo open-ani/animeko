@@ -10,6 +10,7 @@
 | `TvOptionStepper` | 播放倍速和评分共用的整组调节控件；左右调节，装饰箭头不聚焦，可选确认操作及忙碌输入阻挡 |
 | `TvOptionPanel` / `tvOptionPanelSurface` | 公共面板外观，标题、图标和内容通过参数及 slot 传入 |
 | `TvOptionModal` | 播放页与条目评论全文共用的居中弹窗，可通过 `footer` 固定底部操作区，保留后方页面；调用方管理返回和焦点恢复 |
+| `TvPlaceholderBlock` | 播放页与详情页共享的淡入淡出骨架基础块；尺寸和形状由调用方提供，加载语义和临时焦点由宿主负责 |
 | `TvOptionPanelDefaults` | 248dp 默认宽度、276dp 最大高度、20dp 圆角及锚定间距 |
 | `TvOptionAnchors` / `tvOptionAnchor` | 以稳定业务 key 记录按钮的窗口坐标与尺寸 |
 | `TvAnchoredOptionLayout` | 在覆盖层中按原坐标、原尺寸重绘按钮，把面板放到按钮上方，并约束到可用视口 |

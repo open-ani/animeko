@@ -20,6 +20,7 @@ kotlin {
         dependencies {
             api(projects.app.shared.uiFoundation)
             api(libs.androidx.tv.material)
+            implementation(projects.app.shared.placeholder)
         }
     }
     sourceSets.androidHostTest {

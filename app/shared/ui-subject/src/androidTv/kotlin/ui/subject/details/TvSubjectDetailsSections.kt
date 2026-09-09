@@ -9,14 +9,9 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.interaction.collectIsFocusedAsState
 import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.BoxWithConstraints
-import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.widthIn
@@ -51,6 +46,7 @@ import me.him188.ani.leanback.ui.foundation.widgets.TvOptionsRow
 import me.him188.ani.leanback.ui.subject.TvSubjectDetailsContentState
 import me.him188.ani.leanback.ui.subject.components.TvSubjectDetailsDefaults
 import me.him188.ani.leanback.ui.subject.components.TvDetailsDescriptionCard
+import me.him188.ani.leanback.ui.subject.components.TvDetailsHeroLayout
 import org.jetbrains.compose.resources.stringResource
 
 /** Short titles preserve the card/action positions; small viewports can grow vertically. */
@@ -68,17 +64,12 @@ internal fun TvDetailsHeroSection(
     actionBoundsModifier: (String) -> Modifier,
     modifier: Modifier = Modifier,
 ) {
-    BoxWithConstraints(modifier.fillMaxWidth().padding(horizontal = TvSubjectDetailsDefaults.HorizontalPadding)) {
-        val compact = maxWidth < 600.dp
-        val strings = rememberSubjectStatusStrings()
-        val playLabel = details.progress?.buttonText(strings) ?: stringResource(
-            if (details.episodesLoading) Lang.foundation_loading else Lang.subject_details_no_episodes,
-        )
-        Column(
-            Modifier.fillMaxWidth().heightIn(min = height)
-                .padding(top = 36.dp, bottom = TvSubjectDetailsDefaults.OverviewBottomPadding),
-            verticalArrangement = Arrangement.Bottom,
-        ) {
+    val strings = rememberSubjectStatusStrings()
+    val playLabel = details.progress?.buttonText(strings) ?: stringResource(
+        if (details.episodesLoading) Lang.foundation_loading else Lang.subject_details_no_episodes,
+    )
+    TvDetailsHeroLayout(height, modifier = modifier,
+        identity = { compact ->
             Text(
                 details.info.displayName,
                 Modifier.fillMaxWidth(if (compact) 1f else .62f).testTag("tv-details-title"),
@@ -92,16 +83,19 @@ internal fun TvDetailsHeroSection(
                 overflow = TextOverflow.Ellipsis,
             )
             TvDetailsMetadata(details.info, details.airing, onComments, actionModifier("bgm-rating"), interactive)
-            Spacer(Modifier.height(20.dp))
+        },
+        introduction = { cardModifier ->
             TvDetailsDescriptionCard(
                 details.info.summary, onSummary,
-                actionModifier("summary").fillMaxWidth(if (compact) 1f else .49f),
+                actionModifier("summary").then(cardModifier),
                 interactive = interactive,
             )
-            Spacer(Modifier.height(32.dp))
+        },
+        actions = { compact ->
             TvOptionsRow {
                 TvDetailsAction(playLabel, Icons.Rounded.PlayArrow, onPlay, actionModifier("play"),
-                    available = details.playTargetId != null, blurBackground = true, glowOnFocus = true)
+                    available = details.playTargetId != null, blurBackground = true, glowOnFocus = true,
+                    loading = details.episodesLoading && details.episodes.isEmpty())
                 if (interactive) {
                     TvDetailsCollectionAction(details.collectionType, onCollection, actionModifier("collection"), compact,
                         boundsModifier = actionBoundsModifier("collection"))
@@ -110,8 +104,8 @@ internal fun TvDetailsHeroSection(
                         available = details.collectionType != UnifiedCollectionType.NOT_COLLECTED)
                 }
             }
-        }
-    }
+        },
+    )
 }
 
 @Composable

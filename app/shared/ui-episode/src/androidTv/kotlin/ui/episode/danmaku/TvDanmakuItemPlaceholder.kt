@@ -20,7 +20,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
-import me.him188.ani.leanback.ui.episode.components.TvPlayerPlaceholderBlock
+import me.him188.ani.leanback.ui.foundation.widgets.TvPlaceholderBlock
 import me.him188.ani.leanback.ui.foundation.widgets.LocalTvOptionColors
 import me.him188.ani.leanback.ui.foundation.widgets.TvOptionDefaults
 
@@ -32,7 +32,7 @@ internal fun TvDanmakuItemPlaceholder(modifier: Modifier = Modifier) {
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(12.dp),
     ) {
-        TvPlayerPlaceholderBlock(Modifier.width(40.dp).height(12.dp))
-        TvPlayerPlaceholderBlock(Modifier.weight(1f).height(20.dp))
+        TvPlaceholderBlock(Modifier.width(40.dp).height(12.dp))
+        TvPlaceholderBlock(Modifier.weight(1f).height(20.dp))
     }
 }

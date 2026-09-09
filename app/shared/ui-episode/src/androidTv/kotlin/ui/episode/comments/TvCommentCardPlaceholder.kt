@@ -23,7 +23,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
-import me.him188.ani.leanback.ui.episode.components.TvPlayerPlaceholderBlock
+import me.him188.ani.leanback.ui.foundation.widgets.TvPlaceholderBlock
 import me.him188.ani.leanback.ui.foundation.widgets.LocalTvOptionColors
 import me.him188.ani.leanback.ui.foundation.widgets.TvOptionDefaults
 
@@ -36,17 +36,17 @@ internal fun TvCommentCardPlaceholder(modifier: Modifier = Modifier) {
         verticalArrangement = Arrangement.spacedBy(12.dp),
     ) {
         Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-            TvPlayerPlaceholderBlock(Modifier.size(36.dp), CircleShape)
+            TvPlaceholderBlock(Modifier.size(36.dp), CircleShape)
             Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(6.dp)) {
-                TvPlayerPlaceholderBlock(Modifier.fillMaxWidth(.55f).height(16.dp))
-                TvPlayerPlaceholderBlock(Modifier.fillMaxWidth(.75f).height(12.dp))
+                TvPlaceholderBlock(Modifier.fillMaxWidth(.55f).height(16.dp))
+                TvPlaceholderBlock(Modifier.fillMaxWidth(.75f).height(12.dp))
             }
         }
         Column(Modifier.height(78.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-            TvPlayerPlaceholderBlock(Modifier.fillMaxWidth().height(18.dp))
-            TvPlayerPlaceholderBlock(Modifier.fillMaxWidth().height(18.dp))
-            TvPlayerPlaceholderBlock(Modifier.fillMaxWidth(.7f).height(18.dp))
+            TvPlaceholderBlock(Modifier.fillMaxWidth().height(18.dp))
+            TvPlaceholderBlock(Modifier.fillMaxWidth().height(18.dp))
+            TvPlaceholderBlock(Modifier.fillMaxWidth(.7f).height(18.dp))
         }
-        TvPlayerPlaceholderBlock(Modifier.width(88.dp).height(20.dp))
+        TvPlaceholderBlock(Modifier.width(88.dp).height(20.dp))
     }
 }

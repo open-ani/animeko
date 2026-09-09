@@ -46,6 +46,13 @@ VM 组合 `PersonDetailsRepository`、`PersonCommentRepository` 和共享 `Comme
 提供单个阅读焦点、上下键平滑滚动、边缘渐隐与滚动条。
 人物介绍正文后接基础信息 key/value 表，两部分在同一个 scroll column 中；不生成标签。
 
+首次加载按首屏真实结构展示姓名、原名、元信息、肖像、简介和讨论预览骨架；介绍入口仍可聚焦，
+展开后的正文与信息表同样有骨架。肖像图片请求成功或失败后结束占位，失败恢复缺图图标。
+介绍和讨论卡片的标题、图标、右上箭头、正文及页脚均参与骨架，不保留“显示更多”或“来自用户讨论”等可见文字。
+已有 profile 刷新时保留内容。各列表的 placeholder slot 分别使用圆形人物卡和横版作品卡，
+只有空列表的第一项骨架临时承接焦点，其余骨架为装饰；加载完成后按原焦点上下文交接。
+这些组件和评论列表共用 `TvPlaceholderBlock` 的淡入淡出效果，不用假数据填充文字或添加假按钮。
+
 讨论只有一个 `TvOptionModal`，列表、全文、举报与图片预览在同一表面切换。
 `TvPeopleDiscussion` 只接收讨论专用的只读 `TvPeopleDiscussionState`、评论列表和操作回调；
 局部导航通过 `TvPeopleDiscussionAction` 返回 Screen。页面展示状态、业务 Intent、原文 URL 和
@@ -87,6 +94,7 @@ VM 组合 `PersonDetailsRepository`、`PersonCommentRepository` 和共享 `Comme
 介绍与信息表滚动、列表与全文切换、无额外窗口、遮罩、来源能力、分页失败重试、
 删除/重排、导航返回、大图、加载完成不抢焦点以及大字体布局。
 另验证三类页面末节底部锚定、同一行左右换焦点保持纵向位置，以及作品区块隐藏后的末节判断。
+加载回归覆盖三个入口的 skeleton、窄视口和大字体、介绍层与讨论层加载后的焦点保留、缓存刷新不退回占位。
 
 Android 的 `assertScreenshot` 目前不执行像素比较；测试另行导出 `tv-people-*.png`，
 需从测试 APK 的 external files 目录取出并人工核对。

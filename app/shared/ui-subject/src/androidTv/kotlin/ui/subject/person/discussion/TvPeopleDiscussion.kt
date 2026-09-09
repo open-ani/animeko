@@ -6,6 +6,7 @@ package me.him188.ani.leanback.ui.subject.person.discussion
 
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.ScrollState
+import androidx.compose.foundation.progressSemantics
 import androidx.compose.foundation.focusable
 import androidx.compose.foundation.gestures.LocalBringIntoViewSpec
 import androidx.compose.foundation.gestures.animateScrollBy
@@ -59,7 +60,6 @@ import me.him188.ani.app.ui.lang.Lang
 import me.him188.ani.app.ui.lang.comment_empty_title
 import me.him188.ani.app.ui.lang.comment_review_hidden
 import me.him188.ani.app.ui.lang.foundation_anonymous
-import me.him188.ani.app.ui.lang.foundation_loading
 import me.him188.ani.app.ui.lang.people_bangumi_unavailable
 import me.him188.ani.app.ui.lang.people_discussion
 import me.him188.ani.app.ui.lang.person_details_comments_count
@@ -84,7 +84,8 @@ import me.him188.ani.leanback.ui.subject.presentation.TvDetailsKey
 import me.him188.ani.leanback.ui.subject.presentation.detailsFocusFallback
 import me.him188.ani.leanback.ui.subject.reviews.TvReviewBringIntoViewSpec
 import me.him188.ani.leanback.ui.subject.reviews.TvReviewCard
-import me.him188.ani.leanback.ui.subject.reviews.TvReviewLoading
+import me.him188.ani.leanback.ui.subject.reviews.tvReviewLoadingItems
+import me.him188.ani.leanback.ui.subject.reviews.TvReviewPlaceholder
 import me.him188.ani.leanback.ui.subject.reviews.TvReviewScrollbar
 import me.him188.ani.leanback.ui.subject.reviews.tvReviewEdges
 import org.jetbrains.compose.resources.stringResource
@@ -232,18 +233,19 @@ internal fun TvPeopleDiscussion(
                                         }
                                     }
                                 }
-                                if (itemKeys.isEmpty() || error != null) item(keys.last()) {
+                                if (itemKeys.isEmpty() && error == null && comments.loadState.refresh is LoadState.Loading) {
+                                    tvReviewLoadingItems("status") { anchor("status").focusable() }
+                                } else if (itemKeys.isEmpty() || error != null) item(keys.last()) {
                                     when {
                                         error != null -> Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
                                             Text(renderLoadErrorMessage(LoadError.fromException(error.error)), color = TvSubjectDetailsDefaults.SecondaryContent)
                                             TvDetailsAction(stringResource(Lang.settings_mediasource_retry), Icons.Rounded.Refresh, comments::retry, anchor(keys.last()))
                                         }
-                                        comments.loadState.refresh is LoadState.Loading -> TvReviewLoading(anchor("status").focusable())
                                         else -> Text(stringResource(Lang.comment_empty_title), anchor("status").padding(vertical = 24.dp).focusable(),
                                             color = TvSubjectDetailsDefaults.SecondaryContent)
                                     }
                                 } else if (comments.loadState.append is LoadState.Loading) item("loading") {
-                                    Text(stringResource(Lang.foundation_loading), color = TvSubjectDetailsDefaults.SecondaryContent)
+                                    TvReviewPlaceholder(Modifier.progressSemantics().testTag("tv-people-discussion-append-loading"))
                                 }
                             }
                             TvReviewScrollbar(list, Modifier.align(Alignment.CenterEnd).width(4.dp).fillMaxHeight())

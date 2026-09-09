@@ -16,21 +16,17 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
+import androidx.compose.foundation.progressSemantics
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.ChevronRight
 import androidx.compose.material.icons.rounded.Refresh
-import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -56,6 +52,8 @@ import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.platform.LocalWindowInfo
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
 import me.him188.ani.leanback.ui.subject.details.TvDetailsAction
 import androidx.lifecycle.Lifecycle
@@ -71,7 +69,6 @@ import me.him188.ani.app.data.models.subject.RelatedSubjectInfo
 import me.him188.ani.app.domain.foundation.LoadError
 import me.him188.ani.app.ui.comment.UIComment
 import me.him188.ani.app.ui.comment.CommentOverlayCleanupEffect
-import me.him188.ani.app.ui.external.placeholder.placeholder
 import me.him188.ani.app.ui.lang.Lang
 import me.him188.ani.app.ui.lang.foundation_loading
 import me.him188.ani.app.ui.lang.settings_mediasource_retry
@@ -97,6 +94,9 @@ import me.him188.ani.leanback.ui.subject.components.LocalTvDetailsBackdropImage
 import me.him188.ani.leanback.ui.subject.components.TvDetailsBackdropImage
 import me.him188.ani.leanback.ui.subject.components.TvDetailsBringIntoViewSpec
 import me.him188.ani.leanback.ui.subject.components.TvDetailsBrowseRowLayout
+import me.him188.ani.leanback.ui.subject.components.TvDetailsEpisodePlaceholder
+import me.him188.ani.leanback.ui.subject.components.TvDetailsLandscapePlaceholder
+import me.him188.ani.leanback.ui.subject.components.TvDetailsPersonPlaceholder
 import me.him188.ani.leanback.ui.subject.components.TvDetailsScrollAnchors
 import me.him188.ani.leanback.ui.subject.components.TvSubjectDetailsDefaults
 import me.him188.ani.leanback.ui.subject.components.TvSubjectDetailsPageLayout
@@ -114,6 +114,7 @@ import me.him188.ani.leanback.ui.subject.details.TvEpisodeCard
 import me.him188.ani.leanback.ui.subject.details.TvRelatedSubjectCard
 import me.him188.ani.leanback.ui.subject.details.TvStaffCard
 import me.him188.ani.leanback.ui.subject.details.TvSubjectDetailsPanels
+import me.him188.ani.leanback.ui.subject.details.TvSubjectDetailsPlaceholder
 import me.him188.ani.leanback.ui.subject.details.TvSubjectInformationSection
 import me.him188.ani.leanback.ui.subject.details.TvSubjectComments
 import me.him188.ani.leanback.ui.subject.presentation.TvDetailsKey
@@ -159,20 +160,14 @@ private fun TvDetailsLoadingOrError(error: LoadError?, onRetry: () -> Unit) {
             TvDetailsKey("entry")
         }
     }
-    Column(
-        Modifier.fillMaxSize().tvFocusNavSignal(focus).padding(48.dp)
-            .onGloballyPositioned { laidOut = true },
-        verticalArrangement = Arrangement.spacedBy(24.dp),
-    ) {
-        if (error == null) {
-            Box(Modifier.fillMaxWidth(.55f).height(52.dp).placeholder(true))
-            Box(Modifier.weight(1f).fillMaxWidth().placeholder(true))
-            Row(Modifier.tvFocusAnchor(focus, TvDetailsKey("entry")).focusable().testTag("tv-details-loading"),
-                verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                CircularProgressIndicator(Modifier.size(24.dp))
-                Text(stringResource(Lang.foundation_loading), color = TvSubjectDetailsDefaults.SecondaryContent)
-            }
-        } else {
+    val layoutModifier = Modifier.fillMaxSize().tvFocusNavSignal(focus).onGloballyPositioned { laidOut = true }
+    if (error == null) {
+        val loading = stringResource(Lang.foundation_loading)
+        TvSubjectDetailsPlaceholder(focus,
+            Modifier.tvFocusAnchor(focus, TvDetailsKey("entry")).semantics { contentDescription = loading }
+                .progressSemantics().focusable().testTag("tv-details-loading"), layoutModifier)
+    } else {
+        Column(layoutModifier.padding(48.dp), verticalArrangement = Arrangement.spacedBy(24.dp)) {
             Text(renderLoadErrorMessage(error), color = MaterialTheme.colorScheme.error)
             TvHeroButton(stringResource(Lang.settings_mediasource_retry), Icons.Rounded.Refresh, true,
                 onRetry, {}, Modifier.tvFocusAnchor(focus, TvDetailsKey("entry")).testTag("tv-details-retry"))
@@ -280,6 +275,15 @@ private fun TvSubjectDetailsContent(
             // A replacement Paging flow initially has no items. Wait for its data before
             // choosing a neighbour; this preparation survives subsequent list emissions.
             scope.launch { restore(current, before) }
+        }
+        val loadingSection = when (current) {
+            "characters-all" -> "character"
+            "staffs-all" -> "staff"
+            "relateds-all" -> "related"
+            else -> null
+        }
+        if (presentation.panel == null && loadingSection != null && previousKeys[loadingSection].isNullOrEmpty()) {
+            rowKeys[loadingSection]?.firstOrNull()?.let { key -> scope.launch { restore(key) } }
         }
         previousKeys = rowKeys
     }
@@ -416,8 +420,8 @@ private fun TvSubjectDetailsContent(
             if (details.episodes.isEmpty()) {
                 if (details.episodesLoading) {
                     item("loading") {
-                        Row(Modifier.testTag("tv-details-episodes-loading"), horizontalArrangement = Arrangement.spacedBy(TvSubjectDetailsDefaults.RowSpacing)) {
-                            repeat(3) { Box(Modifier.width(TvSubjectDetailsDefaults.EpisodeCardWidth).aspectRatio(16f / 9f).placeholder(true)) }
+                        Row(Modifier.testTag("tv-details-episodes-loading").progressSemantics(), horizontalArrangement = Arrangement.spacedBy(TvSubjectDetailsDefaults.RowSpacing)) {
+                            repeat(3) { TvDetailsEpisodePlaceholder() }
                         }
                     }
                 } else {
@@ -426,6 +430,7 @@ private fun TvSubjectDetailsContent(
             }
         }
         TvDetailsBrowseRow(stringResource(Lang.subject_details_characters), lists.characters, charactersState,
+            placeholder = { TvDetailsPersonPlaceholder(it) },
             modifier = surroundingContentModifier,
             sectionId = "characters",
             focused = presentation.lastFocused.startsWith("character:") || presentation.lastFocused == "characters-all",
@@ -439,6 +444,7 @@ private fun TvSubjectDetailsContent(
             }
         }
         TvDetailsBrowseRow(stringResource(Lang.subject_details_staff), lists.staff, staffState,
+            placeholder = { TvDetailsPersonPlaceholder(it) },
             modifier = surroundingContentModifier,
             sectionId = "staff",
             focused = presentation.lastFocused.startsWith("staff:") || presentation.lastFocused == "staffs-all",
@@ -451,6 +457,7 @@ private fun TvSubjectDetailsContent(
             }
         }
         TvDetailsBrowseRow(stringResource(Lang.subject_details_related_subjects), lists.related, relatedState,
+            placeholder = { TvDetailsLandscapePlaceholder(it) },
             modifier = surroundingContentModifier,
             sectionId = "related",
             focused = presentation.lastFocused.startsWith("related:") || presentation.lastFocused == "relateds-all",
@@ -532,6 +539,7 @@ private fun <T : Any> TvDetailsBrowseRow(
     limit: Int = Int.MAX_VALUE,
     entryModifier: Modifier,
     onAll: (() -> Unit)?,
+    placeholder: @Composable (Modifier) -> Unit,
     modifier: Modifier = Modifier,
     rowModifier: Modifier = Modifier,
     content: @Composable (T) -> Unit,
@@ -552,11 +560,16 @@ private fun <T : Any> TvDetailsBrowseRow(
                 is UIComment -> item.stableId
                 else -> "placeholder:$index"
             }
-        }) { index -> items[index]?.let { content(it) } }
+        }) { index -> items[index]?.let { content(it) } ?: placeholder(Modifier) }
         if (items.loadState.refresh is LoadState.Loading || items.loadState.append is LoadState.Loading) {
             item("loading") {
-                Row(Modifier.testTag("tv-details-$sectionId-loading"), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                    repeat(3) { Box(Modifier.size(96.dp).placeholder(true)) }
+                val focusableEntry = items.itemCount == 0 && onAll == null
+                Row(Modifier.testTag("tv-details-$sectionId-loading")
+                    .then(if (focusableEntry) Modifier else Modifier.progressSemantics()),
+                    horizontalArrangement = Arrangement.spacedBy(TvSubjectDetailsDefaults.RowSpacing)) {
+                    repeat(3) { index ->
+                        placeholder(if (index == 0 && focusableEntry) entryModifier.progressSemantics().focusable() else Modifier)
+                    }
                 }
             }
         } else if (error != null) {

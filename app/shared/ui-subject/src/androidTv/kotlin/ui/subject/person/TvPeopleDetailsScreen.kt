@@ -11,6 +11,7 @@ import androidx.compose.foundation.gestures.LocalBringIntoViewSpec
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.material.icons.Icons
@@ -82,7 +83,10 @@ import me.him188.ani.leanback.ui.foundation.widgets.TvOptionsRow
 import me.him188.ani.leanback.ui.subject.components.LocalTvDetailsBackdropImage
 import me.him188.ani.leanback.ui.subject.components.TvDetailsBackdrop
 import me.him188.ani.leanback.ui.subject.components.TvDetailsBackdropImage
+import me.him188.ani.leanback.ui.subject.components.TvDetailsActionPlaceholder
 import me.him188.ani.leanback.ui.subject.components.TvDetailsDescriptionCard
+import me.him188.ani.leanback.ui.subject.components.TvDetailsLandscapePlaceholder
+import me.him188.ani.leanback.ui.subject.components.TvDetailsPersonPlaceholder
 import me.him188.ani.leanback.ui.subject.components.TvDetailsBringIntoViewSpec
 import me.him188.ani.leanback.ui.subject.components.TvDetailsFullscreenOverlay
 import me.him188.ani.leanback.ui.subject.components.TvDetailsScrollAnchors
@@ -123,6 +127,7 @@ internal fun TvPeopleDetailsScreen(
 ) {
     val presentation = rememberSaveable(state.target, saver = TvPeoplePresentationState.Saver) { TvPeoplePresentationState() }
     val profile = state.profile
+    val profileLoading = profile == null && state.loading && state.error == null
     val comments = state.comments.collectAsLazyPagingItems()
     val subjects = state.subjects?.collectAsLazyPagingItems()
     val casts = state.casts?.collectAsLazyPagingItems()
@@ -140,19 +145,22 @@ internal fun TvPeopleDetailsScreen(
     val sections = buildList {
         if (state.target.kind == TvPeopleKind.Character) {
             add(TvPeopleSection("actors", stringResource(Lang.person_details_voice_actors), actorItems.map { "actors:${it.id}" },
-                profile == null && state.loading, state.error.takeIf { profile == null }, { onIntent(TvPeopleIntent.Retry) }) { index, itemModifier ->
+                profileLoading, state.error.takeIf { profile == null }, { onIntent(TvPeopleIntent.Retry) },
+                placeholder = { TvDetailsPersonPlaceholder(it) }) { index, itemModifier ->
                 val actor = actorItems[index]
                 TvDetailsPersonCard(actor.imageMedium, actor.displayName, "", {
                     navigate(TvPeopleIntent.OpenPerson(TvPeopleTarget(actor.id, TvPeopleKind.VoiceActor)))
                 }, itemModifier, portrait = actor.type == PersonType.Individual)
             })
             subjects?.let { add(peopleSection("works", stringResource(Lang.person_details_character_subjects), it,
+                placeholder = { TvDetailsLandscapePlaceholder(it) },
                 key = { record -> record.subject.subjectId.toString() }) { record, itemModifier ->
                 TvPeopleWorkCard(record.subject, record.role.nameCn.orEmpty(), itemModifier) { navigate(TvPeopleIntent.OpenSubject(record.subject)) }
             }) }
         }
         if (state.target.kind == TvPeopleKind.VoiceActor) casts?.let {
             add(peopleSection("casts", stringResource(Lang.person_details_casts), it,
+                placeholder = { TvDetailsPersonPlaceholder(it) },
                 key = { record -> "${record.character.id}:${record.subject.subjectId}" }) { record, itemModifier ->
                 TvDetailsPersonCard(record.character.imageMedium, record.character.displayName, record.subject.displayName,
                     { navigate(TvPeopleIntent.OpenPerson(TvPeopleTarget(record.character.id, TvPeopleKind.Character))) }, itemModifier)
@@ -160,6 +168,7 @@ internal fun TvPeopleDetailsScreen(
         }
         if (state.target.kind != TvPeopleKind.Character) works?.let {
             add(peopleSection("works", stringResource(Lang.person_details_works), it,
+                placeholder = { TvDetailsLandscapePlaceholder(it) },
                 key = { record -> record.subject.subjectId.toString() }) { record, itemModifier ->
                 TvPeopleWorkCard(record.subject, record.positions.mapNotNull { position -> position.nameCn }.distinct().joinToString(" · "), itemModifier) {
                     navigate(TvPeopleIntent.OpenSubject(record.subject))
@@ -290,8 +299,8 @@ internal fun TvPeopleDetailsScreen(
             heroModifier = Modifier.tvDetailsScrollSection(anchors, "hero", 0f) { scroll.value },
             backdrop = { TvDetailsBackdrop(profile?.image.orEmpty(), { 1f },
                 onImageLoaded = { backdrop = TvDetailsBackdropImage(profile?.image.orEmpty(), it) }) },
-            identity = { TvPeopleIdentity(state.target.kind, profile) },
-            portrait = { TvPeoplePortrait(profile, it) },
+            identity = { TvPeopleIdentity(state.target.kind, profile, loading = profileLoading) },
+            portrait = { TvPeoplePortrait(profile, it, loading = profileLoading) },
             introduction = { cardModifier ->
                 TvDetailsDescriptionCard(
                     summary = profile?.summary?.takeIf { it.isNotBlank() }
@@ -306,25 +315,27 @@ internal fun TvPeopleDetailsScreen(
                         .tvFocusLink(focus, right = TvDetailsKey("discussion"))
                         .tvFocusHotkey(focus, Key.DirectionDown) { actionEntry?.let(::moveTo) },
                     title = peopleIntroductionTitle(state.target.kind),
+                    loading = profileLoading,
                 )
             },
             discussion = { cardModifier ->
                 val title = stringResource(Lang.people_discussion) + " · " + peopleDiscussionCount(comments, state.bangumiUnavailable)
                 TvPeopleDiscussionPreviewCard(title, stringResource(Lang.people_discussion_source), { presentation.open(TvPeopleOverlay.Discussion) },
                     cardModifier.then(anchor("discussion")).tvFocusLink(focus, left = TvDetailsKey("intro"))
-                        .tvFocusHotkey(focus, Key.DirectionDown) { actionEntry?.let(::moveTo) }) {
+                        .tvFocusHotkey(focus, Key.DirectionDown) { actionEntry?.let(::moveTo) },
+                    loading = preview == null && comments.loadState.refresh is LoadState.Loading) {
                     if (preview != null) {
                         val safePreview = reviewPreview(preview.content.elements, stringResource(Lang.comment_preview_quote),
                             stringResource(Lang.comment_preview_image), stringResource(Lang.comment_review_hidden))
                         RichText(listOf(safePreview), interactionEnabled = false, color = TvSubjectDetailsDefaults.Content,
                             style = MaterialTheme.typography.bodyMedium.copy(fontSize = 15.sp, lineHeight = 21.sp))
-                    } else Text(stringResource(if (comments.loadState.refresh is LoadState.Loading) Lang.foundation_loading
-                        else if (comments.loadState.refresh is LoadState.Error) Lang.settings_mediasource_retry else Lang.person_details_no_comments),
+                    } else Text(stringResource(if (comments.loadState.refresh is LoadState.Error) Lang.settings_mediasource_retry else Lang.person_details_no_comments),
                         style = MaterialTheme.typography.bodyMedium.copy(fontSize = 15.sp, lineHeight = 21.sp))
                 }
             },
             actions = {
                 TvOptionsRow {
+                    if (profileLoading) TvDetailsActionPlaceholder(Modifier.width(156.dp).testTag("tv-people-image-action-loading"))
                     if (!profile?.image.isNullOrBlank()) {
                         TvDetailsAction(stringResource(Lang.people_view_image), Icons.Rounded.Fullscreen,
                             { presentation.open(TvPeopleOverlay.Image) }, anchor("image").tvFocusLink(focus, up = TvDetailsKey("intro"))

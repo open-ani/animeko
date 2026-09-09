@@ -23,6 +23,8 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyListState
+import androidx.compose.foundation.lazy.LazyListScope
+import androidx.compose.foundation.progressSemantics
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
@@ -60,7 +62,6 @@ import me.him188.ani.app.data.models.subject.RatingInfo
 import me.him188.ani.app.tools.formatDateTime
 import me.him188.ani.app.ui.comment.UIComment
 import me.him188.ani.app.ui.comment.UICommentSource
-import me.him188.ani.app.ui.external.placeholder.placeholder
 import me.him188.ani.app.ui.foundation.AsyncImage
 import me.him188.ani.app.ui.lang.Lang
 import me.him188.ani.app.ui.lang.comment_preview_image
@@ -226,12 +227,14 @@ internal fun reviewPreview(elements: List<UIRichElement>, quote: String, image: 
         }
     }, maxLine = 2)
 
-@Composable
-internal fun TvReviewLoading(modifier: Modifier = Modifier) {
-    val loading = stringResource(Lang.foundation_loading)
-    Column(modifier.semantics { contentDescription = loading }, verticalArrangement = Arrangement.spacedBy(TvReviewDefaults.CardGap)) {
-        repeat(3) {
-            Box(Modifier.fillMaxWidth().height(128.dp).clip(TvReviewDefaults.CardShape).placeholder(true))
+/** Separate lazy items let the list center the first card instead of the entire skeleton column. */
+internal fun LazyListScope.tvReviewLoadingItems(entryKey: String, entryModifier: @Composable () -> Modifier) {
+    repeat(3) { index ->
+        item(if (index == 0) entryKey else "$entryKey:placeholder:$index") {
+            val loading = stringResource(Lang.foundation_loading)
+            Box(if (index == 0) entryModifier().progressSemantics().semantics { contentDescription = loading } else Modifier) {
+                TvReviewPlaceholder(Modifier.testTag("tv-review-placeholder-$index"))
+            }
         }
     }
 }
