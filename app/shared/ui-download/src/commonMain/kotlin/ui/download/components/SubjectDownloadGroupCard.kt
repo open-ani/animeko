@@ -44,7 +44,7 @@ import me.him188.ani.datasources.api.topic.FileSize
 import org.jetbrains.compose.resources.stringResource
 
 /**
- * 新设计的条目分组卡片: 封面 + 标题 + "15/28 已完成 · 12.4 GB" + 下载速度 + 进度条 + chevron.
+ * 条目分组卡片: 封面 + 标题 + "15/28 已完成 · 12.4 GB" + 下载速度 + 进度条 + chevron.
  *
  * 用于全局缓存管理页的手机布局和宽屏双栏布局的列表栏.
  * 多选模式下行首显示复选框 (选中该条目的全部缓存).

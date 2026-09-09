@@ -29,17 +29,16 @@
 并根据已有季度资源尝试复用下载资源。
 
 `AddDownloadsSession` 的阶段为 `Editing`、`Submitting`、`Completed`；没有请求时为 `Idle`。
-编辑状态按剧集保存 `Preparing`、`ChoosingMedia`、`SelectingMedia`、`Ready` 或 `Failed`，
-不再假设一次交互只包含一集。
+编辑状态以剧集 ID 为键，分别保存各集的 `Preparing`、`ChoosingMedia`、`SelectingMedia`、`Ready` 或 `Failed` 状态。
 
 - `start(episodeIds)` 开始一个请求；`setEpisodes(requestId, episodeIds)` 修改选集，保留仍被选中剧集的查询和资源选择，只释放移除的剧集。
 - 每个剧集有独立查询作用域；同时最多准备三个剧集上下文。请求 ID 和作用域身份共同拦截过期回调，包括移除后重新添加同一剧集的情况。
 - `selectMedia(requestId, episodeId, media)` 只更新指定剧集，先保存偏好，再冻结该集的资源和元数据。普通 WEB 资源需要逐集选源；合集可以为不同剧集提供同一个 `Media`。
-- 全部剧集就绪后，`submit(requestId)` 把 `DownloadPlan` 同步交给应用作用域，再释放查询。每个 `EpisodeDownloadSpec` 包含条目、剧集、资源和元数据，执行不再读取查询会话。
+- 全部剧集就绪后，`submit(requestId)` 把 `DownloadPlan` 同步交给应用作用域，再释放查询。每个 `EpisodeDownloadSpec` 包含条目、剧集、资源和元数据，执行时读取清单中的快照。
 - `Completed` 保留逐集 `Created`、`AlreadyExists` 或 `Failed` 结果。重试仅提交失败项，并与之前成功项合并；准备阶段重试仅重建失败剧集的上下文。
 - 状态转换在短同步锁中完成，查询和持久化在锁外运行。提交过程中拒绝重复确认、替换和取消。
 
-当前单集页面启用 `submitWhenReady`，保持选源后直接下载的交互；它使用的是只有一项的清单。
+单集页面启用 `submitWhenReady`，选源后直接提交只有一项的清单。
 领域会话已经支持多集编辑和一次确认，批量选集 UI 尚未接入。
 
 `SubmitDownloadsUseCase.submit` 同步接收不可变清单，由应用作用域中的单个消费者按顺序创建。

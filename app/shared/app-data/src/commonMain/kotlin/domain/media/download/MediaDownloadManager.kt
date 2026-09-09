@@ -43,7 +43,7 @@ class MediaDownloadManager(
 ) : HasBackgroundScope {
     val enabledStorages: Flow<List<MediaCacheStorage>> = flowOf(storagesIncludingDisabled)
 
-    /** Resolves the default download destination in registration order, preserving PikPak routing. */
+    /** Selects the first compatible storage in registration order; BT media prioritizes PikPak's HTTP engine. */
     suspend fun defaultStorageFor(media: Media): MediaCacheStorage {
         val supported = enabledStorages.first().filter { it.engine.supports(media) }
         // The HTTP engine supports BT media only when PikPak is enabled and can resolve it.

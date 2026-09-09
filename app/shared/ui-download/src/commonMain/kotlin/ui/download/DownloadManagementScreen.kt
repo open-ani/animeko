@@ -435,7 +435,7 @@ fun DownloadManagementScreen(
                     }
                 }
             },
-            // Bottom 通过 listBottomPadding 应用, 这里不再包含, 避免重复.
+            // 底部间距由 listBottomPadding 应用, 此处仅应用水平间距.
             contentWindowInsets = windowInsets.only(WindowInsetsSides.Horizontal),
             useSharedTransition = false,
             listPanePreferredWidth = preferredListPaneWidth(),

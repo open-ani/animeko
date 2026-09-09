@@ -64,7 +64,7 @@ import me.him188.ani.app.ui.mediafetch.MediaSourceInfoProvider
 import org.jetbrains.compose.resources.stringResource
 
 /**
- * 新设计的剧集缓存行, 用于条目缓存页与全局缓存管理页的详情栏.
+ * 剧集下载行, 用于条目下载页与全局下载管理页的详情栏.
  *
  * - 已完成: 标题 + "1.2 GB · AnimeGarden · 已完成 · 已观看 50.0%" (有观看进度时) + 播放/更多按钮
  * - 下载中: 标题 + "890 MB / 1.3 GB · AnimeGarden" + 暂停/更多按钮 + 进度条 + 速度/百分比

@@ -368,7 +368,7 @@ enum class DownloadStatusFilter {
     Finished,
 }
 
-// 分组卡片布局下按剧集排序无意义, 4.13 移除了剧集升序/降序.
+// 排序作用于条目分组.
 internal enum class DownloadSortOption {
     Newest,
     Oldest,
