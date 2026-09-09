@@ -48,19 +48,12 @@ import me.him188.ani.app.ui.lang.comment_report_submit
 import me.him188.ani.app.ui.lang.comment_report_title
 import me.him188.ani.app.ui.lang.comment_show_hidden
 import me.him188.ani.app.ui.richtext.UIRichElement
-import me.him188.ani.leanback.ui.foundation.focus.TvFocusScope
-import me.him188.ani.leanback.ui.foundation.focus.tvFocusAnchor
-import me.him188.ani.leanback.ui.foundation.focus.tvFocusLink
 import me.him188.ani.leanback.ui.foundation.widgets.TvOptionRow
 import me.him188.ani.leanback.ui.subject.components.TvSubjectDetailsDefaults
 import me.him188.ani.leanback.ui.subject.components.detailsHasMask
 import me.him188.ani.leanback.ui.subject.components.detailsImages
 import me.him188.ani.leanback.ui.subject.components.detailsLinks
 import me.him188.ani.leanback.ui.subject.details.TvDetailsAction
-import me.him188.ani.leanback.ui.subject.person.TvPeopleIntent
-import me.him188.ani.leanback.ui.subject.person.TvPeopleKind
-import me.him188.ani.leanback.ui.subject.person.TvPeopleTarget
-import me.him188.ani.leanback.ui.subject.presentation.TvDetailsKey
 import org.jetbrains.compose.resources.stringResource
 
 private class PeopleCommentAction(val key: String, val label: String, val icon: ImageVector, val selected: Boolean, val onClick: () -> Unit)
@@ -68,12 +61,12 @@ private class PeopleCommentAction(val key: String, val label: String, val icon: 
 @Composable
 internal fun TvPeopleCommentActions(
     comment: UIComment,
-    target: TvPeopleTarget,
     elements: List<UIRichElement>,
     revealed: Boolean,
     onReveal: () -> Unit,
-    focus: TvFocusScope,
-    onIntent: (TvPeopleIntent) -> Unit,
+    actionModifier: (String) -> Modifier,
+    onVote: (UICommentVote) -> Unit,
+    onOpenOriginal: () -> Unit,
     onOpenUrl: (String) -> Unit,
     onReport: () -> Unit,
     onImage: (String) -> Unit,
@@ -84,15 +77,13 @@ internal fun TvPeopleCommentActions(
             if (revealed) Icons.Rounded.VisibilityOff else Icons.Rounded.Visibility, revealed, onReveal))
         if (comment.source == UICommentSource.ANI) {
             add(PeopleCommentAction("like", "${stringResource(Lang.comment_like)} ${comment.likeCount}", Icons.Rounded.ThumbUp,
-                comment.selfVote == UICommentVote.LIKE) { onIntent(TvPeopleIntent.Vote(comment, UICommentVote.LIKE)) })
+                comment.selfVote == UICommentVote.LIKE) { onVote(UICommentVote.LIKE) })
             add(PeopleCommentAction("dislike", stringResource(Lang.comment_dislike), Icons.Rounded.ThumbDown,
-                comment.selfVote == UICommentVote.DISLIKE) { onIntent(TvPeopleIntent.Vote(comment, UICommentVote.DISLIKE)) })
+                comment.selfVote == UICommentVote.DISLIKE) { onVote(UICommentVote.DISLIKE) })
         }
         add(PeopleCommentAction("report", stringResource(Lang.comment_report_title), Icons.Rounded.Flag, false, onReport))
         if (comment.source == UICommentSource.BANGUMI) add(PeopleCommentAction("original", stringResource(Lang.comment_open_in_bangumi),
-            Icons.AutoMirrored.Rounded.Launch, false) {
-            onOpenUrl("https://bgm.tv/${if (target.kind == TvPeopleKind.Character) "character" else "person"}/${target.id}")
-        })
+            Icons.AutoMirrored.Rounded.Launch, false, onOpenOriginal))
         elements.detailsLinks().forEach { url -> add(PeopleCommentAction("link:$url", url, Icons.Rounded.Link, false) { onOpenUrl(url) }) }
         val imageLabel = stringResource(Lang.comment_preview_image)
         elements.detailsImages().forEach { url -> add(PeopleCommentAction("image:$url", imageLabel, Icons.Rounded.Image, false) { onImage(url) }) }
@@ -100,8 +91,7 @@ internal fun TvPeopleCommentActions(
     LazyRow(horizontalArrangement = Arrangement.spacedBy(10.dp), modifier = Modifier.testTag("tv-people-comment-actions")) {
         items(actions, key = { it.key }) { action ->
             TvDetailsAction(action.label, action.icon, action.onClick,
-                Modifier.widthIn(max = 280.dp).tvFocusAnchor(focus, TvDetailsKey("action:${action.key}"))
-                    .tvFocusLink(focus, up = TvDetailsKey("body")).testTag("tv-people-action:${action.key}"),
+                Modifier.widthIn(max = 280.dp).then(actionModifier(action.key)).testTag("tv-people-action:${action.key}"),
                 compact = true, active = action.selected)
         }
     }
@@ -109,13 +99,12 @@ internal fun TvPeopleCommentActions(
 
 @Composable
 internal fun TvPeopleReport(
-    comment: UIComment?,
+    commentId: String?,
     busy: Boolean,
-    requestId: Int,
-    onIntent: (TvPeopleIntent) -> Unit,
+    onSubmit: (CommentReportReason) -> Unit,
     anchor: (String) -> Modifier,
 ) {
-    var reason by rememberSaveable(comment?.stableId) { mutableStateOf(CommentReportReason.SPAM) }
+    var reason by rememberSaveable(commentId) { mutableStateOf(CommentReportReason.SPAM) }
     LazyColumn(verticalArrangement = Arrangement.spacedBy(8.dp)) {
         item("heading") { Text(stringResource(Lang.comment_report_title), color = TvSubjectDetailsDefaults.Content) }
         items(CommentReportReason.entries, key = { it.name }) { option ->
@@ -130,8 +119,8 @@ internal fun TvPeopleReport(
             TvOptionRow(text, selected = reason == option, enabled = !busy, modifier = anchor("reason:${option.name}")) { reason = option }
         }
         item("submit") {
-            TvOptionRow(stringResource(Lang.comment_report_submit), enabled = !busy && comment != null, modifier = anchor("report-submit")) {
-                comment?.let { onIntent(TvPeopleIntent.Report(it, reason, requestId)) }
+            TvOptionRow(stringResource(Lang.comment_report_submit), enabled = !busy && commentId != null, modifier = anchor("report-submit")) {
+                onSubmit(reason)
             }
         }
     }

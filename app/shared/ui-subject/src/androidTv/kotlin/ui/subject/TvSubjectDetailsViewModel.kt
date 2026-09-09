@@ -225,6 +225,7 @@ class TvSubjectDetailsViewModel(
                 if (!requireLogin() || intent.comment.source != UICommentSource.ANI) return
                 currentDetails()?.subjectCommentState?.toggleVote(intent.comment, intent.vote)
             }
+            TvSubjectDetailsIntent.CommentsRefreshed -> currentDetails()?.subjectCommentState?.clearStaleOverlays()
             is TvSubjectDetailsIntent.ChooseReportReason -> {
                 reportDraft.value = TvSubjectReportDraft(intent.commentId, intent.reason)
             }

@@ -50,6 +50,7 @@ import kotlinx.coroutines.launch
 import me.him188.ani.app.data.models.subject.PersonType
 import me.him188.ani.app.data.models.subject.nameCn
 import me.him188.ani.app.ui.foundation.AsyncImage
+import me.him188.ani.app.ui.comment.CommentOverlayCleanupEffect
 import me.him188.ani.app.ui.lang.Lang
 import me.him188.ani.app.ui.lang.comment_preview_image
 import me.him188.ani.app.ui.lang.comment_preview_quote
@@ -99,6 +100,9 @@ import me.him188.ani.leanback.ui.subject.person.components.TvPeopleSection
 import me.him188.ani.leanback.ui.subject.person.components.TvPeopleWorkCard
 import me.him188.ani.leanback.ui.subject.person.components.peopleSection
 import me.him188.ani.leanback.ui.subject.person.discussion.TvPeopleDiscussion
+import me.him188.ani.leanback.ui.subject.person.discussion.TvPeopleDiscussionAction
+import me.him188.ani.leanback.ui.subject.person.discussion.TvPeopleDiscussionPage
+import me.him188.ani.leanback.ui.subject.person.discussion.TvPeopleDiscussionState
 import me.him188.ani.leanback.ui.subject.person.discussion.peopleDiscussionCount
 import me.him188.ani.leanback.ui.subject.person.presentation.TvPeopleOverlay
 import me.him188.ani.leanback.ui.subject.person.presentation.TvPeoplePresentationState
@@ -269,8 +273,11 @@ internal fun TvPeopleDetailsScreen(
     }
     val actionEntry = heroAction ?: sections.firstOrNull()?.let(::sectionEntry)
     val preview = comments.itemCount.takeIf { it > 0 }?.let { comments[0] }
-    LaunchedEffect(comments.loadState.refresh) {
-        if (comments.loadState.refresh is LoadState.NotLoading) onIntent(TvPeopleIntent.CommentsRefreshed)
+    CommentOverlayCleanupEffect(comments) { onIntent(TvPeopleIntent.CommentsRefreshed) }
+    LaunchedEffect(state.reportCompleted) {
+        if (presentation.overlay == TvPeopleOverlay.Discussion && presentation.discussionPage == TvPeopleDiscussionPage.Report) {
+            state.reportCompleted?.let { presentation.back(it) }
+        }
     }
 
     Box(modifier.fillMaxSize().testTag("tv-people-details")) {
@@ -348,7 +355,32 @@ internal fun TvPeopleDetailsScreen(
             when (presentation.overlay) {
                 TvPeopleOverlay.None -> Unit
                 TvPeopleOverlay.Introduction -> TvPeopleIntroduction(state.target.kind, profile, state.loading, state.error, close)
-                TvPeopleOverlay.Discussion -> TvPeopleDiscussion(state, comments, presentation, onIntent, onOpenUrl)
+                TvPeopleOverlay.Discussion -> TvPeopleDiscussion(
+                    state = TvPeopleDiscussionState(
+                        name = profile?.name.orEmpty(), page = presentation.discussionPage,
+                        commentId = presentation.commentId, commentFocus = presentation.commentFocus,
+                        image = presentation.image, generation = generation,
+                        bangumiUnavailable = state.bangumiUnavailable, reportBusy = state.reportBusy,
+                    ),
+                    comments = comments,
+                    commentPresentation = state.commentPresentation,
+                    onAction = { action ->
+                        when (action) {
+                            is TvPeopleDiscussionAction.FocusComment -> presentation.commentFocus = action.key
+                            is TvPeopleDiscussionAction.OpenComment -> presentation.openComment(action.id)
+                            TvPeopleDiscussionAction.ShowReport -> presentation.report()
+                            is TvPeopleDiscussionAction.ShowImage -> presentation.showImage(action.url)
+                            TvPeopleDiscussionAction.Close -> close()
+                        }
+                    },
+                    onVote = { comment, vote -> onIntent(TvPeopleIntent.Vote(comment, vote)) },
+                    onReport = { comment, reason -> onIntent(TvPeopleIntent.Report(comment, reason, generation)) },
+                    onOpenOriginal = {
+                        val type = if (state.target.kind == TvPeopleKind.Character) "character" else "person"
+                        onOpenUrl("https://bgm.tv/$type/${state.target.id}")
+                    },
+                    onOpenUrl = onOpenUrl,
+                )
                 TvPeopleOverlay.Image -> TvDetailsFullscreenOverlay(profile?.image.orEmpty(), close, "people-image") { imageFocus ->
                     Box(Modifier.fillMaxSize().padding(24.dp).tvFocusAnchor(imageFocus, TvDetailsKey("people-image"))
                         .focusable().testTag("tv-people-full-image")) {

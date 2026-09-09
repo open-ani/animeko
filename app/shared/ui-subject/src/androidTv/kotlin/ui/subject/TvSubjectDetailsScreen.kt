@@ -70,6 +70,7 @@ import me.him188.ani.app.data.models.subject.RelatedPersonInfo
 import me.him188.ani.app.data.models.subject.RelatedSubjectInfo
 import me.him188.ani.app.domain.foundation.LoadError
 import me.him188.ani.app.ui.comment.UIComment
+import me.him188.ani.app.ui.comment.CommentOverlayCleanupEffect
 import me.him188.ani.app.ui.external.placeholder.placeholder
 import me.him188.ani.app.ui.lang.Lang
 import me.him188.ani.app.ui.lang.foundation_loading
@@ -194,6 +195,7 @@ private fun TvSubjectDetailsContent(
         details.relatedSubjectsPager.collectAsLazyPagingItems(),
         details.commentsPager.collectAsLazyPagingItems(),
     )
+    CommentOverlayCleanupEffect(lists.comments) { onIntent(TvSubjectDetailsIntent.CommentsRefreshed) }
     val scrollState = rememberScrollState()
     val optionAnchors = rememberTvOptionAnchors()
     val episodesState = rememberLazyListState()

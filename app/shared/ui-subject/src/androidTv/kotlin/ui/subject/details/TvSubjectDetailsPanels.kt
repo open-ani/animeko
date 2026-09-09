@@ -49,6 +49,7 @@ import me.him188.ani.app.ui.lang.Lang
 import me.him188.ani.app.ui.lang.comment_dislike
 import me.him188.ani.app.ui.lang.comment_hide_hidden
 import me.him188.ani.app.ui.lang.comment_like
+import me.him188.ani.app.ui.lang.comment_review_hidden
 import me.him188.ani.app.ui.lang.comment_open_in_bangumi
 import me.him188.ani.app.ui.lang.comment_preview_image
 import me.him188.ani.app.ui.lang.comment_report_reason_harassment
@@ -100,6 +101,7 @@ import me.him188.ani.leanback.ui.subject.components.detailsHasMask
 import me.him188.ani.leanback.ui.subject.components.detailsImages
 import me.him188.ani.leanback.ui.subject.components.detailsLinks
 import me.him188.ani.leanback.ui.subject.components.detailsRevealMasks
+import me.him188.ani.leanback.ui.subject.components.detailsRedactMasks
 import me.him188.ani.leanback.ui.subject.presentation.TvDetailsPanelKind
 import me.him188.ani.leanback.ui.subject.presentation.TvSubjectPresentationState
 import org.jetbrains.compose.resources.stringResource
@@ -326,7 +328,8 @@ internal fun TvSubjectDetailsPanels(
                 } else {
                     title = comment.author?.nickname ?: stringResource(Lang.foundation_anonymous)
                     var reveal by rememberSaveable(comment.stableId) { mutableStateOf(false) }
-                    val elements = if (reveal) comment.content.elements.detailsRevealMasks() else comment.content.elements
+                    val elements = if (reveal) comment.content.elements.detailsRevealMasks()
+                        else comment.content.elements.detailsRedactMasks(stringResource(Lang.comment_review_hidden))
                     entries += TvDetailsPanelEntry("comment-text") { TvDetailsReader(elements, it) }
                     if (elements.detailsHasMask() || reveal) action("reveal",
                         stringResource(if (reveal) Lang.comment_hide_hidden else Lang.comment_show_hidden),

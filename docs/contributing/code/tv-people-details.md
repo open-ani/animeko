@@ -47,11 +47,17 @@ VM 组合 `PersonDetailsRepository`、`PersonCommentRepository` 和共享 `Comme
 人物介绍正文后接基础信息 key/value 表，两部分在同一个 scroll column 中；不生成标签。
 
 讨论只有一个 `TvOptionModal`，列表、全文、举报与图片预览在同一表面切换。
+`TvPeopleDiscussion` 只接收讨论专用的只读 `TvPeopleDiscussionState`、评论列表和操作回调；
+局部导航通过 `TvPeopleDiscussionAction` 返回 Screen。页面展示状态、业务 Intent、原文 URL 和
+举报完成结果的代数检查由 Screen 接线，讨论及操作子组件不接收整页状态或整页 Intent。
 原页面保持组合，由 `tvModalUnderlay` 阻止后台焦点和按键，模态容器截获触摸。
 评论预览复用 `TvReviewCard(showRating = false)`；富文本复用 `RichText`，
 隐藏内容在视觉和无障碍语义中均被遮罩，展开操作才使用原始元素。
 来源能力控制投票和 Bangumi 原文入口；举报使用共享状态，过期提交结果不能关闭新评论。
 来源合并分页结束前显示已加载数量加 `+`；缺失值显示 `—`；部分来源不可用时提示并继续保留下界。
+与条目页共用 `CommentOverlayCleanupEffect` 的回调接口，刷新完成后发出 `CommentsRefreshed`，
+由 VM 调用共享 `CommentState.clearStaleOverlays`；已结算的覆盖被清理，在途投票仍保留。
+人物介绍、讨论、查看图片和职业文案位于四种源语言的共享 `strings.xml`，不放入 `tv.xml`。
 
 ## 焦点与状态
 

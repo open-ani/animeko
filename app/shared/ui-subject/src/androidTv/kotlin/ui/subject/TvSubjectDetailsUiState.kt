@@ -94,6 +94,7 @@ sealed interface TvSubjectDetailsIntent {
     data class OpenStaff(val personId: Int) : TvSubjectDetailsIntent
     data class SearchTag(val tag: String) : TvSubjectDetailsIntent
     data class Vote(val comment: UIComment, val vote: UICommentVote) : TvSubjectDetailsIntent
+    data object CommentsRefreshed : TvSubjectDetailsIntent
     data class ChooseReportReason(val commentId: String, val reason: CommentReportReason) : TvSubjectDetailsIntent
     data class Report(val comment: UIComment, val reason: CommentReportReason, val requestId: Int) : TvSubjectDetailsIntent
 }

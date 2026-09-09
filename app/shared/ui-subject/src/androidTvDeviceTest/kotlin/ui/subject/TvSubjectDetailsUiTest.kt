@@ -513,6 +513,7 @@ class TvSubjectDetailsUiTest {
         awaitFocus("tv-details-review:review-1")
         key(Key.DirectionCenter)
         awaitFocus("tv-details-panel-comment-text")
+        onNodeWithText("隐藏的结局", substring = true, useUnmergedTree = true).assertDoesNotExist()
         val footer = onNodeWithTag("tv-review-actions").assertIsDisplayed().fetchSemanticsNode().boundsInRoot
         val text = onNodeWithTag("tv-details-panel-comment-text").fetchSemanticsNode().boundsInRoot
         assertTrue(text.bottom < footer.top)
@@ -523,6 +524,9 @@ class TvSubjectDetailsUiTest {
         awaitFocus("tv-details-panel-reveal")
         key(Key.DirectionCenter)
         awaitFocus("tv-details-panel-reveal")
+        onNodeWithText("隐藏的结局", substring = true, useUnmergedTree = true).assertExists()
+        key(Key.DirectionCenter)
+        onNodeWithText("隐藏的结局", substring = true, useUnmergedTree = true).assertDoesNotExist()
         capture("review-actions", "tv-details-panel")
         key(Key.DirectionRight)
         awaitFocus("tv-details-panel-report")
@@ -553,6 +557,15 @@ class TvSubjectDetailsUiTest {
         awaitFocus("tv-details-review:review-3")
         val last = onNodeWithTag("tv-details-review:review-3").fetchSemanticsNode().boundsInRoot
         assertTrue(last.bottom <= viewport.bottom && viewport.bottom - last.bottom < viewport.height * .03f)
+    }
+
+    @Test fun commentsRefreshClearsSettledVotesAndKeepsPendingVotes() = runAniComposeUiTest {
+        assertCommentRefreshCleanup { shared, onRefreshed ->
+            val details = reviewContent().copy(commentsPager = shared.list, commentPresentation = shared::withOverlay)
+            mount({ TvSubjectDetailsUiState(content = details, loggedIn = true) }, {
+                if (it == TvSubjectDetailsIntent.CommentsRefreshed) onRefreshed()
+            })
+        }
     }
 
     @Test fun reviewSystemBackRestoresTheReviewBeforeLeavingThePage() = runAniComposeUiTest {
@@ -617,7 +630,8 @@ class TvSubjectDetailsUiTest {
         onNodeWithTag("tv-details-review-rating").assertIsNotEnabled()
         onNodeWithTag("tv-rating-collection-tooltip").assertIsDisplayed()
         key(Key.DirectionCenter)
-        assertTrue(intents.isEmpty())
+        assertTrue(intents.all { it == TvSubjectDetailsIntent.CommentsRefreshed },
+            "An unavailable rating action must not dispatch a user operation")
         onNodeWithTag("tv-details-panel-rating-control").assertDoesNotExist()
         key(Key.DirectionRight)
         awaitFocus("tv-details-review:review-1")

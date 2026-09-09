@@ -77,11 +77,13 @@ import me.him188.ani.app.ui.richtext.UIRichElement
 import me.him188.ani.leanback.ui.foundation.theme.AniTvTheme
 import me.him188.ani.leanback.ui.foundation.focus.tvBackKey
 import me.him188.ani.leanback.ui.subject.assertDetailsEndPaddingAligned
+import me.him188.ani.leanback.ui.subject.assertCommentRefreshCleanup
 import java.io.File
 import java.io.IOException
 import java.util.Locale
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertNotEquals
 import kotlin.test.assertTrue
 
 class TvPeopleDetailsUiTest {
@@ -484,6 +486,62 @@ class TvPeopleDetailsUiTest {
         assertSingleModal()
         onAllNodes(isRoot()).onLast().performKeyInput { keyDown(Key.Back); advanceEventTime(1_000); keyUp(Key.Back) }
         awaitFocus("tv-people-discussion-comment:review-1")
+    }
+
+    @Test fun commentsRefreshClearsSettledVotesAndKeepsPendingVotes() = runAniComposeUiTest {
+        assertCommentRefreshCleanup { shared, onRefreshed ->
+            val state = state(TvPeopleKind.Character).copy(comments = shared.list, commentPresentation = shared::withOverlay)
+            mount({ state }, onIntent = { if (it == TvPeopleIntent.CommentsRefreshed) onRefreshed() })
+        }
+    }
+
+    @Test fun reportCompletionOnlyClosesItsOwnReportAndKeepsModalHistory() = runAniComposeUiTest {
+        var state by mutableStateOf(state(TvPeopleKind.Character))
+        val reports = mutableListOf<TvPeopleIntent.Report>()
+        mount({ state }, onIntent = { intent ->
+            if (intent is TvPeopleIntent.Report) {
+                reports += intent
+                state = state.copy(reportBusy = true)
+            }
+        })
+        fun openReport() {
+            onNodeWithTag("tv-people-action:report").performSemanticsAction(SemanticsActions.RequestFocus) { it() }
+            key(Key.DirectionCenter)
+            awaitFocus("tv-people-discussion-reason:SPAM")
+        }
+        fun submitReport() {
+            repeat(6) { key(Key.DirectionDown) }
+            awaitFocus("tv-people-discussion-report-submit")
+            key(Key.DirectionCenter)
+        }
+        key(Key.DirectionRight); key(Key.DirectionCenter)
+        awaitFocus("tv-people-discussion-comment:review-1")
+        key(Key.DirectionCenter)
+        awaitFocus("tv-people-discussion-body")
+        openReport()
+        submitReport()
+        assertEquals("review-1", reports.single().comment.stableId)
+        key(Key.Back)
+        awaitFocus("tv-people-discussion-body")
+        key(Key.Back)
+        awaitFocus("tv-people-discussion-comment:review-1")
+        key(Key.DirectionDown); key(Key.DirectionCenter)
+        awaitFocus("tv-people-discussion-body")
+        // The previous submit is still running while a new report is opened.
+        openReport()
+        runOnIdle { state = state.copy(reportBusy = false, reportCompleted = reports.first().requestId) }
+        awaitFocus("tv-people-discussion-reason:SPAM")
+        assertSingleModal()
+        submitReport()
+        assertEquals("review-2", reports.last().comment.stableId)
+        assertNotEquals(reports.first().requestId, reports.last().requestId)
+        runOnIdle { state = state.copy(reportBusy = false, reportCompleted = reports.last().requestId) }
+        awaitFocus("tv-people-discussion-body")
+        assertSingleModal()
+        key(Key.Back)
+        awaitFocus("tv-people-discussion-comment:review-2")
+        key(Key.Back)
+        awaitFocus("tv-people-discussion")
     }
 
     private fun AniComposeUiTest.assertSingleModal() {

@@ -10,7 +10,7 @@ import me.him188.ani.app.data.models.subject.PersonType
 import me.him188.ani.app.navigation.NavRoutes
 import me.him188.ani.app.navigation.PersonDetailRole
 import me.him188.ani.leanback.ui.subject.person.discussion.peopleDiscussionCount
-import me.him188.ani.leanback.ui.subject.person.presentation.TvPeopleDiscussionPage
+import me.him188.ani.leanback.ui.subject.person.discussion.TvPeopleDiscussionPage
 import me.him188.ani.leanback.ui.subject.person.presentation.TvPeopleOverlay
 import me.him188.ani.leanback.ui.subject.person.presentation.TvPeoplePresentationState
 import kotlin.test.Test

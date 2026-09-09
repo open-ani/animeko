@@ -10,9 +10,9 @@ import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.saveable.listSaver
 import androidx.compose.runtime.setValue
+import me.him188.ani.leanback.ui.subject.person.discussion.TvPeopleDiscussionPage
 
 internal enum class TvPeopleOverlay { None, Introduction, Discussion, Image }
-internal enum class TvPeopleDiscussionPage { List, Comment, Report, Image }
 
 @Stable
 internal class TvPeoplePresentationState {

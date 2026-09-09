@@ -1398,6 +1398,16 @@
     <string name="person_details_career_writer">作家</string>
     <string name="person_details_career_illustrator">繪師</string>
     <string name="person_details_career_actor">演員</string>
+    <string name="people_character_intro">角色介紹</string>
+    <string name="people_voice_actor_intro">聲優介紹</string>
+    <string name="people_staff_intro">製作人員介紹</string>
+    <string name="people_discussion">討論</string>
+    <string name="people_discussion_source">來自使用者討論</string>
+    <string name="people_view_image">查看大圖</string>
+    <string name="people_no_information">暫無介紹和基本資訊</string>
+    <string name="people_bangumi_unavailable">Bangumi 討論暫時無法載入</string>
+    <string name="people_career_singer">歌手</string>
+    <string name="people_career_director">導演</string>
 
     <!-- 一起看 -->
     <string name="watch_together_title">一起看</string>

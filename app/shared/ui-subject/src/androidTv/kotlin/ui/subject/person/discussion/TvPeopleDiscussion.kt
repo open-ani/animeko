@@ -52,6 +52,8 @@ import me.him188.ani.app.domain.foundation.LoadError
 import me.him188.ani.app.tools.formatDateTime
 import me.him188.ani.app.ui.comment.UIComment
 import me.him188.ani.app.ui.comment.UICommentSource
+import me.him188.ani.app.ui.comment.UICommentVote
+import me.him188.ani.app.ui.comment.CommentReportReason
 import me.him188.ani.app.ui.foundation.AsyncImage
 import me.him188.ani.app.ui.lang.Lang
 import me.him188.ani.app.ui.lang.comment_empty_title
@@ -68,6 +70,7 @@ import me.him188.ani.leanback.ui.foundation.focus.rememberTvFocusScope
 import me.him188.ani.leanback.ui.foundation.focus.requestPrepared
 import me.him188.ani.leanback.ui.foundation.focus.tvFocusAnchor
 import me.him188.ani.leanback.ui.foundation.focus.tvFocusHotkey
+import me.him188.ani.leanback.ui.foundation.focus.tvFocusLink
 import me.him188.ani.leanback.ui.foundation.focus.tvFocusNavSignal
 import me.him188.ani.leanback.ui.foundation.layout.TvModalOverlay
 import me.him188.ani.leanback.ui.foundation.widgets.TvOptionModal
@@ -77,11 +80,6 @@ import me.him188.ani.leanback.ui.subject.components.detailsRevealMasks
 import me.him188.ani.leanback.ui.subject.components.detailsRedactMasks
 import me.him188.ani.leanback.ui.subject.details.TvDetailsAction
 import me.him188.ani.leanback.ui.subject.details.formatCount
-import me.him188.ani.leanback.ui.subject.person.TvPeopleDetailsUiState
-import me.him188.ani.leanback.ui.subject.person.TvPeopleIntent
-import me.him188.ani.leanback.ui.subject.person.presentation.TvPeopleDiscussionPage
-import me.him188.ani.leanback.ui.subject.person.presentation.TvPeopleOverlay
-import me.him188.ani.leanback.ui.subject.person.presentation.TvPeoplePresentationState
 import me.him188.ani.leanback.ui.subject.presentation.TvDetailsKey
 import me.him188.ani.leanback.ui.subject.presentation.detailsFocusFallback
 import me.him188.ani.leanback.ui.subject.reviews.TvReviewBringIntoViewSpec
@@ -105,10 +103,13 @@ internal fun peopleDiscussionCount(loaded: Int, refreshed: Boolean, ended: Boole
 @Composable
 @OptIn(ExperimentalFoundationApi::class)
 internal fun TvPeopleDiscussion(
-    state: TvPeopleDetailsUiState,
+    state: TvPeopleDiscussionState,
     comments: LazyPagingItems<UIComment>,
-    presentation: TvPeoplePresentationState,
-    onIntent: (TvPeopleIntent) -> Unit,
+    commentPresentation: (UIComment) -> UIComment,
+    onAction: (TvPeopleDiscussionAction) -> Unit,
+    onVote: (UIComment, UICommentVote) -> Unit,
+    onReport: (UIComment, CommentReportReason) -> Unit,
+    onOpenOriginal: () -> Unit,
     onOpenUrl: (String) -> Unit,
 ) {
     val focus = rememberTvFocusScope()
@@ -118,8 +119,9 @@ internal fun TvPeopleDiscussion(
     val lifecycle = LocalLifecycleOwner.current.lifecycle
     val window = LocalWindowInfo.current
     var laidOut by remember { mutableStateOf(false) }
-    val page = presentation.discussionPage
-    val generation = presentation.generation
+    val page = state.page
+    val generation = state.generation
+    val currentState by rememberUpdatedState(state)
     var expectedFocus by remember { mutableStateOf<String?>(null) }
     var entryPending by remember { mutableStateOf(true) }
     var entryNavigation by remember { mutableStateOf(focus.userNavGeneration) }
@@ -132,23 +134,23 @@ internal fun TvPeopleDiscussion(
         else -> emptyList()
     }
     val currentKeys by rememberUpdatedState(keys)
-    val readerScroll = rememberSaveable(presentation.commentId, saver = ScrollState.Saver) { ScrollState(0) }
-    var revealed by rememberSaveable(presentation.commentId) { mutableStateOf(false) }
-    val selected = comments.itemSnapshotList.items.find { it.stableId == presentation.commentId }?.let(state.commentPresentation)
+    val readerScroll = rememberSaveable(state.commentId, saver = ScrollState.Saver) { ScrollState(0) }
+    var revealed by rememberSaveable(state.commentId) { mutableStateOf(false) }
+    val selected = comments.itemSnapshotList.items.find { it.stableId == state.commentId }?.let(commentPresentation)
     val hidden = stringResource(Lang.comment_review_hidden)
     val elements = selected?.content?.elements.orEmpty().let {
         if (revealed) it.detailsRevealMasks() else it.detailsRedactMasks(hidden)
     }
 
     suspend fun restore(target: String?, previous: List<String> = emptyList(), animate: Boolean = false) {
-        val expectedGeneration = presentation.generation
-        focus.requestPrepared(isRelevant = { presentation.overlay == TvPeopleOverlay.Discussion && presentation.generation == expectedGeneration }) {
+        val expectedGeneration = currentState.generation
+        focus.requestPrepared(isRelevant = { currentState.generation == expectedGeneration }) {
             lifecycle.currentStateFlow.first { it.isAtLeast(Lifecycle.State.RESUMED) }
             snapshotFlow { laidOut && window.isWindowFocused }.first { it }
-            val key = if (presentation.discussionPage == TvPeopleDiscussionPage.List)
+            val key = if (currentState.page == TvPeopleDiscussionPage.List)
                 detailsFocusFallback(target, previous, currentKeys, "status") else target ?: "body"
             expectedFocus = key
-            if (presentation.discussionPage == TvPeopleDiscussionPage.List) {
+            if (currentState.page == TvPeopleDiscussionPage.List) {
                 val index = currentKeys.indexOf(key)
                 if (index >= 0 && list.layoutInfo.visibleItemsInfo.none { it.key == key }) list.scrollToItem(index)
                 if (animate && index >= 0) {
@@ -170,44 +172,47 @@ internal fun TvPeopleDiscussion(
         entryPending = true
         entryNavigation = focus.userNavGeneration
         restore(when (page) {
-            TvPeopleDiscussionPage.List -> presentation.commentFocus
+            TvPeopleDiscussionPage.List -> state.commentFocus
             TvPeopleDiscussionPage.Report -> "reason:SPAM"
             else -> "body"
         }, previousKeys)
     }
-    val beforeUpdate = presentation.commentFocus
+    val beforeUpdate = state.commentFocus
     LaunchedEffect(keys) {
         if (page == TvPeopleDiscussionPage.List && beforeUpdate != null && beforeUpdate !in keys) restore(beforeUpdate, previousKeys)
         // Preserve the removed comment's old position while its full text is open.
         if (page == TvPeopleDiscussionPage.List || beforeUpdate == null || beforeUpdate in keys) previousKeys = keys
     }
-    LaunchedEffect(state.reportCompleted) {
-        state.reportCompleted?.let { if (page == TvPeopleDiscussionPage.Report) presentation.back(it) }
-    }
     fun anchor(key: String) = Modifier.tvFocusAnchor(focus, TvDetailsKey(key)).onFocusChanged {
         if (it.isFocused && page == TvPeopleDiscussionPage.List) {
             if (entryPending && focus.userNavGeneration == entryNavigation && key != expectedFocus) return@onFocusChanged
             entryPending = false
-            presentation.commentFocus = key
+            onAction(TvPeopleDiscussionAction.FocusComment(key))
         }
     }.testTag("tv-people-discussion-$key")
     fun move(delta: Int) {
-        val index = keys.indexOf(presentation.commentFocus)
+        val index = keys.indexOf(currentState.commentFocus)
         keys.getOrNull(index + delta)?.let { scope.launch { restore(it, animate = true) } }
     }
     val discussionTitle = stringResource(Lang.people_discussion)
     val author = selected?.author?.nickname?.takeIf { it.isNotBlank() } ?: stringResource(Lang.foundation_anonymous)
     val subtitle = if (page == TvPeopleDiscussionPage.List)
-        state.profile?.name.orEmpty() + " · " + stringResource(Lang.person_details_comments_count, peopleDiscussionCount(comments, state.bangumiUnavailable))
+        state.name + " · " + stringResource(Lang.person_details_comments_count, peopleDiscussionCount(comments, state.bangumiUnavailable))
     else selected?.let { (if (it.source == UICommentSource.BANGUMI) "Bangumi" else "Animeko") + " · " + formatDateTime(it.createdAt) }
 
-    TvModalOverlay(onClose = { presentation.back(generation) }, background = {},
+    TvModalOverlay(onClose = { onAction(TvPeopleDiscussionAction.Close) }, background = {},
         modifier = Modifier.tvFocusNavSignal(focus).onGloballyPositioned { laidOut = true }.testTag("tv-people-discussion")) {
         TvOptionModal(if (page == TvPeopleDiscussionPage.List) discussionTitle else author,
             modifier = Modifier.testTag("tv-people-discussion-surface"), subtitle = subtitle,
             footer = if (page == TvPeopleDiscussionPage.Comment && selected != null) ({
-                TvPeopleCommentActions(selected, state.target, elements, revealed, { revealed = !revealed }, focus,
-                    onIntent, onOpenUrl, presentation::report, presentation::showImage)
+                TvPeopleCommentActions(selected, elements, revealed, { revealed = !revealed },
+                    actionModifier = { key ->
+                        Modifier.tvFocusAnchor(focus, TvDetailsKey("action:$key"))
+                            .tvFocusLink(focus, up = TvDetailsKey("body"))
+                    },
+                    onVote = { onVote(selected, it) }, onOpenOriginal = onOpenOriginal, onOpenUrl = onOpenUrl,
+                    onReport = { onAction(TvPeopleDiscussionAction.ShowReport) },
+                    onImage = { onAction(TvPeopleDiscussionAction.ShowImage(it)) })
             }) else null,
         ) {
             when (page) {
@@ -222,8 +227,8 @@ internal fun TvPeopleDiscussion(
                                     .testTag("tv-people-discussion-list")) {
                                 items(comments.itemCount, key = { "comment:${comments.peek(it)?.stableId ?: "placeholder:$it"}" }) { index ->
                                     comments[index]?.let { raw ->
-                                        TvReviewCard(state.commentPresentation(raw), anchor("comment:${raw.stableId}"), showRating = false) {
-                                            presentation.openComment(raw.stableId)
+                                        TvReviewCard(commentPresentation(raw), anchor("comment:${raw.stableId}"), showRating = false) {
+                                            onAction(TvPeopleDiscussionAction.OpenComment(raw.stableId))
                                         }
                                     }
                                 }
@@ -251,9 +256,10 @@ internal fun TvPeopleDiscussion(
                         else RichText(elements, interactionEnabled = false, color = TvSubjectDetailsDefaults.Content)
                     }
                 }
-                TvPeopleDiscussionPage.Report -> TvPeopleReport(selected, state.reportBusy, generation, onIntent, ::anchor)
+                TvPeopleDiscussionPage.Report -> TvPeopleReport(selected?.stableId, state.reportBusy,
+                    onSubmit = { reason -> selected?.let { onReport(it, reason) } }, anchor = ::anchor)
                 TvPeopleDiscussionPage.Image -> Box(anchor("body").fillMaxSize().focusable()) {
-                    AsyncImage(presentation.image, null, Modifier.fillMaxSize(), contentScale = ContentScale.Fit)
+                    AsyncImage(state.image, null, Modifier.fillMaxSize(), contentScale = ContentScale.Fit)
                 }
             }
         }

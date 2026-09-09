@@ -1395,6 +1395,16 @@
     <string name="person_details_career_writer">Writer</string>
     <string name="person_details_career_illustrator">Illustrator</string>
     <string name="person_details_career_actor">Actor</string>
+    <string name="people_character_intro">Character introduction</string>
+    <string name="people_voice_actor_intro">Voice actor introduction</string>
+    <string name="people_staff_intro">Staff introduction</string>
+    <string name="people_discussion">Discussion</string>
+    <string name="people_discussion_source">From user discussions</string>
+    <string name="people_view_image">View image</string>
+    <string name="people_no_information">No introduction or basic information available</string>
+    <string name="people_bangumi_unavailable">Bangumi comments are temporarily unavailable</string>
+    <string name="people_career_singer">Singer</string>
+    <string name="people_career_director">Director</string>
 
     <!-- Watch Together -->
     <string name="watch_together_title">Watch Together</string>

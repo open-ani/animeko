@@ -106,18 +106,6 @@
     <!-- Watch together -->
     <string name="watch_together_leave_explanation">You will stop following the host and can keep watching independently.</string>
     <string name="watch_together_invite_helper">Share the room name and password with friends to watch together.</string>
-
-    <!-- TV character, voice actor and staff profiles. -->
-    <string name="people_character_intro">Character introduction</string>
-    <string name="people_voice_actor_intro">Voice actor introduction</string>
-    <string name="people_staff_intro">Staff introduction</string>
-    <string name="people_discussion">Discussion</string>
-    <string name="people_discussion_source">From user discussions</string>
-    <string name="people_view_image">View image</string>
-    <string name="people_no_information">No introduction or basic information available</string>
-    <string name="people_bangumi_unavailable">Bangumi comments are temporarily unavailable</string>
-    <string name="people_career_singer">Singer</string>
-    <string name="people_career_director">Director</string>
 </resources>
 
 <!--@formatter:on-->
