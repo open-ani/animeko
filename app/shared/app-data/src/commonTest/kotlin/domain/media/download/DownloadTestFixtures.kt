@@ -54,9 +54,9 @@ internal class DownloadTestStorage(
     override val cacheMediaSource: MediaSource get() = error("Not used")
     override val listFlow = MutableStateFlow<List<MediaCache>>(emptyList())
     override val stats = MutableStateFlow(MediaStats.Zero)
-    var create: suspend () -> MediaCache = { error("Not used") }
+    var create: suspend (Media, MediaCacheMetadata, EpisodeMetadata) -> MediaCache = { _, _, _ -> error("Not used") }
     override suspend fun restorePersistedCaches() = Unit
-    override suspend fun cache(media: Media, metadata: MediaCacheMetadata, episodeMetadata: EpisodeMetadata, resume: Boolean) = create()
+    override suspend fun cache(media: Media, metadata: MediaCacheMetadata, episodeMetadata: EpisodeMetadata, resume: Boolean) = create(media, metadata, episodeMetadata)
     override suspend fun deleteFirst(predicate: (MediaCache) -> Boolean): Boolean {
         val selected = listFlow.value.firstOrNull(predicate) ?: return false
         listFlow.value -= selected
@@ -65,26 +65,20 @@ internal class DownloadTestStorage(
     override fun close() = Unit
 }
 
-internal fun testDownloadSpec(id: Int, media: Media = testDownload(id).origin): EpisodeDownloadSpec {
-    val subject = SubjectInfo.Empty.copy(subjectId = 1)
-    val episode = EpisodeInfo.Empty.copy(episodeId = id, sort = EpisodeSort(id), ep = EpisodeSort(id), name = "Episode $id")
-    return EpisodeDownloadSpec(subject, episode, media, MediaCacheMetadata(MediaFetchRequest.create(subject, episode)))
-}
-
-internal fun downloadFor(spec: EpisodeDownloadSpec) = TestMediaCache(
-    CachedMedia(spec.media, "test-storage", ResourceLocation.LocalFile("/download-${spec.episode.episodeId}")),
-    spec.metadata,
+internal fun testDownloadRequest(id: Int) = EpisodeDownloadRequest(
+    SubjectInfo.Empty.copy(subjectId = 1),
+    EpisodeInfo.Empty.copy(episodeId = id, sort = EpisodeSort(id), ep = EpisodeSort(id), name = "Episode $id"),
 )
 
 internal fun testDownloadSelection(
     id: Int,
     requestFlow: Flow<MediaFetchRequest>? = null,
 ): DownloadMediaSelection {
-    val spec = testDownloadSpec(id)
+    val request = testDownloadRequest(id)
     return DownloadMediaSelection(
-        EpisodeDownloadRequest(spec.subject, spec.episode),
+        request,
         object : MediaFetchSession {
-            override val request = requestFlow ?: flowOf(MediaFetchRequest.create(spec.subject, spec.episode))
+            override val request = requestFlow ?: flowOf(MediaFetchRequest.create(request.subject, request.episode))
             override val mediaSourceResults: List<MediaSourceFetchResult> = emptyList()
             override val cumulativeResults = flowOf(TestMediaList)
             override val hasCompleted = flowOf(CompletedConditions.AllCompleted)

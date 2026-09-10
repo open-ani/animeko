@@ -21,7 +21,9 @@ import kotlinx.io.files.Path
 import me.him188.ani.app.data.models.preference.PikPakConfig
 import me.him188.ani.app.data.persistent.database.dao.HttpCacheDownloadStateDao
 import me.him188.ani.app.domain.media.TestMediaList
-import me.him188.ani.app.domain.media.download.testDownloadSpec
+import me.him188.ani.app.domain.media.download.EpisodeDownloadRequest
+import me.him188.ani.app.domain.media.download.testDownloadRequest
+import me.him188.ani.app.domain.media.fetch.create
 import me.him188.ani.app.domain.media.player.data.MediaDataProvider
 import me.him188.ani.app.domain.media.resolver.EpisodeMetadata
 import me.him188.ani.app.domain.media.resolver.MediaResolver
@@ -29,6 +31,7 @@ import me.him188.ani.app.domain.media.resolver.TestUniversalMediaResolver
 import me.him188.ani.app.domain.media.resolver.toEpisodeMetadata
 import me.him188.ani.datasources.api.Media
 import me.him188.ani.datasources.api.MediaCacheMetadata
+import me.him188.ani.datasources.api.source.MediaFetchRequest
 import me.him188.ani.datasources.api.source.MediaSourceKind
 import me.him188.ani.datasources.api.topic.ResourceLocation
 import me.him188.ani.utils.httpdownloader.DownloadId
@@ -50,11 +53,11 @@ class HttpDownloadIdentityTest {
             kind = MediaSourceKind.BitTorrent,
             download = ResourceLocation.MagnetLink("magnet:?xt=urn:btih:season"),
         )
-        val first = testDownloadSpec(1, media)
-        val second = testDownloadSpec(2, media)
-        val firstCache = engine.createCache(media, first.metadata, first.episode.toEpisodeMetadata(), backgroundScope.coroutineContext)
+        val first = testDownloadRequest(1)
+        val second = testDownloadRequest(2)
+        val firstCache = engine.createCache(media, first.metadata(), first.episode.toEpisodeMetadata(), backgroundScope.coroutineContext)
         val firstId = downloader.states.keys.single()
-        val secondCache = engine.createCache(media, second.metadata, second.episode.toEpisodeMetadata(), backgroundScope.coroutineContext)
+        val secondCache = engine.createCache(media, second.metadata(), second.episode.toEpisodeMetadata(), backgroundScope.coroutineContext)
         val secondId = downloader.states.keys.single { it != firstId }
         assertEquals(2, downloader.states.size)
         assertEquals(2, downloader.states.values.map { it.relativeOutputPath }.distinct().size)
@@ -74,37 +77,40 @@ class HttpDownloadIdentityTest {
             kind = MediaSourceKind.WEB,
             download = ResourceLocation.HttpStreamingFile("https://example.com/legacy.mp4"),
         )
-        val spec = testDownloadSpec(1, media)
+        val spec = testDownloadRequest(1)
         val legacyId = DownloadId("source-legacy")
         downloader.downloadWithId(legacyId, "https://example.com/legacy.mp4", DownloadOptions())
-        engine.restore(media, spec.metadata, backgroundScope.coroutineContext)
+        engine.restore(media, spec.metadata(), backgroundScope.coroutineContext)
         assertEquals(legacyId, downloader.resumed.last())
-        engine.createCache(media, spec.metadata, spec.episode.toEpisodeMetadata(), backgroundScope.coroutineContext)
+        engine.createCache(media, spec.metadata(), spec.episode.toEpisodeMetadata(), backgroundScope.coroutineContext)
         val currentId = downloader.states.keys.single { it != legacyId }
-        engine.restore(media, spec.metadata, backgroundScope.coroutineContext)
+        engine.restore(media, spec.metadata(), backgroundScope.coroutineContext)
         assertEquals(currentId, downloader.resumed.last())
         assertTrue(legacyId in downloader.states)
     }
 
     @Test
     fun `identity is stable filesystem safe and distinguishes episodes subjects and media`() = runTest {
-        val first = testDownloadSpec(1)
-        val second = testDownloadSpec(2, first.media)
+        val media = TestMediaList.first()
+        val first = testDownloadRequest(1)
+        val second = testDownloadRequest(2)
         suspend fun createId(media: Media, metadata: MediaCacheMetadata): DownloadId {
             val downloader = FakeDownloader()
             engine(downloader).createCache(media, metadata, first.episode.toEpisodeMetadata(), backgroundScope.coroutineContext)
             return downloader.states.keys.single()
         }
 
-        val id = createId(first.media, first.metadata)
-        assertEquals(id, createId(first.media, first.metadata.copy(creationTime = 0)))
-        assertNotEquals(id, createId(second.media, second.metadata))
-        assertNotEquals(id, createId(first.media, first.metadata.copy(subjectId = "2")))
+        val id = createId(media, first.metadata())
+        assertEquals(id, createId(media, first.metadata().copy(creationTime = 0)))
+        assertNotEquals(id, createId(media, second.metadata()))
+        assertNotEquals(id, createId(media, first.metadata().copy(subjectId = "2")))
         assertTrue(id.value.matches(Regex("http-v2-[0-9a-f]{64}")))
         val slash = TestMediaList.first().copy(mediaId = "source/path")
         val colon = slash.copy(mediaId = "source:path")
-        assertNotEquals(createId(slash, first.metadata), createId(colon, first.metadata))
+        assertNotEquals(createId(slash, first.metadata()), createId(colon, first.metadata()))
     }
+
+    private fun EpisodeDownloadRequest.metadata() = MediaCacheMetadata(MediaFetchRequest.create(subject, episode))
 
     private fun engine(downloader: FakeDownloader) = HttpMediaCacheEngine(
         downloader,

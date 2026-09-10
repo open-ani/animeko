@@ -94,13 +94,13 @@ private fun PauseOrResumeAllTextButton(
     val anyPaused = downloads.any { it.isPaused }
     when {
         anyDownloading -> {
-            TextButton(onClick = onPauseAll, modifier = modifier.testTag(SubjectDownloadsTestTags.PAUSE_ALL)) {
+            TextButton(onClick = onPauseAll, enabled = downloads.none { it.isBusy }, modifier = modifier.testTag(SubjectDownloadsTestTags.PAUSE_ALL)) {
                 Text(stringResource(Lang.cache_subject_pause_all))
             }
         }
 
         anyPaused -> {
-            TextButton(onClick = onResumeAll, modifier = modifier.testTag(SubjectDownloadsTestTags.RESUME_ALL)) {
+            TextButton(onClick = onResumeAll, enabled = downloads.none { it.isBusy }, modifier = modifier.testTag(SubjectDownloadsTestTags.RESUME_ALL)) {
                 Text(stringResource(Lang.cache_subject_resume_all))
             }
         }

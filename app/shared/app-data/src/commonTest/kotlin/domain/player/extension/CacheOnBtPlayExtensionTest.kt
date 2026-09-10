@@ -161,7 +161,7 @@ class CacheOnBtPlayExtensionTest : AbstractPlayerExtensionTest() {
         val testScope = this.childScope()
         val suite = EpisodePlayerTestSuite(this, testScope)
         val storage = RecordingStorage()
-        val manager = MediaDownloadManager(listOf(storage), testScope)
+        val manager = MediaDownloadManager(listOf(storage), testScope, cacheDanmaku = {})
         suite.registerComponent<MediaDownloadManager> { manager }
         suite.registerComponent<GetMediaSelectorSettingsFlowUseCase> {
             GetMediaSelectorSettingsFlowUseCase {

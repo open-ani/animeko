@@ -12,6 +12,8 @@ package me.him188.ani.app.ui.download.subject
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.test.assertIsEnabled
+import androidx.compose.ui.test.assertIsNotEnabled
 import androidx.compose.ui.test.longClick
 import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithTag
@@ -78,21 +80,25 @@ class SubjectDownloadsPageTest {
     }
 
     @Test
-    fun `consecutive batch actions keep selection while displayed states remain unchanged`() = runAniComposeUiTest {
+    fun `busy batch disables actions until the operation finishes`() = runAniComposeUiTest {
+        var currentDownloads by mutableStateOf(downloads)
         val commands = mutableListOf<Pair<String, Set<String>>>()
         setContent {
             ProvideCompositionLocalsForPreview {
                 SubjectDownloadsPage(
                     state = SubjectDownloadsUiState(
                         title = "Subject",
-                        items = buildSubjectDownloadItems(emptyList(), downloads),
-                        downloads = downloads,
+                        items = buildSubjectDownloadItems(emptyList(), currentDownloads),
+                        downloads = currentDownloads,
                         episodesLoading = false,
                         downloadsLoading = false,
                     ),
                     selection = rememberDownloadSelectionState(),
                     actions = actions(
-                        pause = { commands += "pause" to it },
+                        pause = { ids ->
+                            commands += "pause" to ids
+                            currentDownloads = currentDownloads.map { it.copy(isBusy = it.id in ids) }
+                        },
                         resume = { commands += "resume" to it },
                     ),
                     sourceInfoProvider = createTestMediaSourceInfoProvider(),
@@ -105,7 +111,11 @@ class SubjectDownloadsPageTest {
             .performTouchInput { longClick() }
         onNodeWithText(runBlocking { getString(Lang.cache_management_select_all_action) }).performClick()
         onNodeWithTag(DownloadSelectionToolbarTestTags.PAUSE).performClick()
-        onNodeWithTag(DownloadSelectionToolbarTestTags.RESUME).performClick()
+        onNodeWithTag(DownloadSelectionToolbarTestTags.PAUSE).assertIsNotEnabled()
+        onNodeWithTag(DownloadSelectionToolbarTestTags.RESUME).assertIsNotEnabled()
+        onNodeWithTag(DownloadSelectionToolbarTestTags.DELETE).assertIsNotEnabled()
+        runOnIdle { currentDownloads = currentDownloads.map { it.copy(isBusy = false) } }
+        onNodeWithTag(DownloadSelectionToolbarTestTags.RESUME).assertIsEnabled().performClick()
         runOnIdle {
             val ids: Set<String> = downloads.mapTo(hashSetOf()) { it.id }
             assertEquals(listOf("pause" to ids, "resume" to ids), commands)

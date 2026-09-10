@@ -15,6 +15,7 @@ import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.key
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
@@ -24,7 +25,6 @@ import androidx.lifecycle.ViewModelStoreOwner
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import kotlinx.coroutines.launch
-import me.him188.ani.app.domain.media.download.AddDownloadsState
 import me.him188.ani.app.platform.LocalContext
 import me.him188.ani.app.platform.PermissionManager
 import me.him188.ani.app.ui.lang.Lang
@@ -42,21 +42,22 @@ internal fun SubjectDownloadsFeature(
 ) {
     val vm = rememberSubjectDownloadsViewModel(subjectId)
     val state by vm.uiState.collectAsStateWithLifecycle()
-    val request by vm.requestState.collectAsStateWithLifecycle()
-    val active = (request as? AddDownloadsState.Active)?.takeUnless { it is AddDownloadsState.Completed }
-    var pickerVisible by remember(vm, active?.requestId) { mutableStateOf(true) }
+    val session = vm.session.collectAsStateWithLifecycle().value
+    val request = session?.let { key(it) { it.state.collectAsStateWithLifecycle().value } }
+    val active = request?.takeUnless { it.isFinished }
+    var pickerVisible by remember(vm, session) { mutableStateOf(true) }
     val context = LocalContext.current
     val uiScope = rememberCoroutineScope()
     val permissionManager = remember { KoinPlatform.getKoin().get<PermissionManager>() }
     val actions = SubjectDownloadActions(
         download = { episodeId ->
-            if (episodeId !in active?.episodeIds.orEmpty()) {
+            if (active == null) {
                 vm.requestDownload(episodeId)
                 uiScope.launch { permissionManager.requestNotificationPermission(context) }
             }
             pickerVisible = true
         },
-        cancelRequest = { active?.let { vm.cancelRequest(it.requestId) } },
+        cancelRequest = { session?.let(vm::cancelRequest) },
         pause = vm::pauseDownloads,
         resume = vm::resumeDownloads,
         delete = vm::deleteDownloads,
@@ -64,16 +65,19 @@ internal fun SubjectDownloadsFeature(
         resumeAll = vm::resumeAll,
         reload = vm::reload,
     )
-    SubjectDownloadRequestDialogs(
-        state = request,
-        visible = pickerVisible,
-        sourceInfoProvider = vm.sourceInfoProvider,
-        settings = vm.selectorSettings,
-        onHide = { pickerVisible = false },
-        onSelectMedia = vm::selectMedia,
-        onRetry = vm::retryRequest,
-        onCancel = vm::cancelRequest,
-    )
+    session?.let { currentSession ->
+        key(currentSession) {
+            SubjectDownloadRequestDialogs(
+                state = checkNotNull(request),
+                visible = pickerVisible,
+                sourceInfoProvider = vm.sourceInfoProvider,
+                settings = vm.selectorSettings,
+                onHide = { pickerVisible = false },
+                onSelectMedia = { episodeId, media -> vm.selectMedia(currentSession, episodeId, media) },
+                onCancel = { vm.cancelRequest(currentSession) },
+            )
+        }
+    }
     if (state.failedOperationCount > 0) {
         AlertDialog(
             onDismissRequest = vm::dismissOperationError,

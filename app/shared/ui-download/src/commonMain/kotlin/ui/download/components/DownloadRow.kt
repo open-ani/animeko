@@ -99,6 +99,7 @@ fun DownloadRow(
     if (showConfirmDelete) {
         DeleteActionDialog(
             onDismiss = { showConfirmDelete = false },
+            confirmEnabled = !episode.isBusy,
             onConfirm = {
                 onDelete()
                 showConfirmDelete = false
@@ -274,13 +275,13 @@ private fun DownloadPrimaryAction(
         }
 
         episode.isPaused -> {
-            IconButton(onClick = onResume, colors = primaryIconColors) {
+            IconButton(onClick = onResume, enabled = !episode.isBusy, colors = primaryIconColors) {
                 Icon(Icons.Rounded.PlayArrow, stringResource(Lang.cache_episode_resume_download))
             }
         }
 
         !episode.isFailed -> {
-            IconButton(onClick = onPause, colors = primaryIconColors) {
+            IconButton(onClick = onPause, enabled = !episode.isBusy, colors = primaryIconColors) {
                 Icon(Icons.Rounded.Pause, stringResource(Lang.cache_episode_pause_download))
             }
         }

@@ -10,6 +10,7 @@
 package me.him188.ani.app.domain.media.download
 
 import androidx.compose.runtime.Stable
+import kotlin.time.Duration
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
@@ -22,14 +23,22 @@ import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.transformLatest
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.supervisorScope
+import me.him188.ani.app.data.models.episode.EpisodeInfo
+import me.him188.ani.app.data.models.subject.SubjectInfo
 import me.him188.ani.app.domain.media.cache.EpisodeCacheStatus
 import me.him188.ani.app.domain.media.cache.MediaCache
 import me.him188.ani.app.domain.media.cache.MediaCacheState
 import me.him188.ani.app.domain.media.cache.engine.MediaCacheEngineKey
 import me.him188.ani.app.domain.media.cache.storage.MediaCacheStorage
+import me.him188.ani.app.domain.media.resolver.toEpisodeMetadata
 import me.him188.ani.app.ui.foundation.HasBackgroundScope
+import me.him188.ani.danmaku.api.provider.DanmakuFetchRequest
 import me.him188.ani.datasources.api.Media
+import me.him188.ani.datasources.api.MediaCacheMetadata
 import me.him188.ani.datasources.api.source.MediaSourceKind
+import me.him188.ani.utils.analytics.Analytics
+import me.him188.ani.utils.analytics.AnalyticsEvent.Companion.CacheCreate
+import me.him188.ani.utils.analytics.recordEvent
 import me.him188.ani.utils.coroutines.flows.flowOfEmptyList
 
 /**
@@ -40,6 +49,7 @@ import me.him188.ani.utils.coroutines.flows.flowOfEmptyList
 class MediaDownloadManager(
     val storagesIncludingDisabled: List<MediaCacheStorage>,
     override val backgroundScope: CoroutineScope,
+    private val cacheDanmaku: suspend (DanmakuFetchRequest) -> Unit,
 ) : HasBackgroundScope {
     val enabledStorages: Flow<List<MediaCacheStorage>> = flowOf(storagesIncludingDisabled)
 
@@ -51,6 +61,50 @@ class MediaDownloadManager(
             supported.firstOrNull { it.engine.engineKey == MediaCacheEngineKey.WebM3u }?.let { return it }
         }
         return checkNotNull(supported.firstOrNull()) { "No download storage supports this media" }
+    }
+
+    suspend fun createDownload(
+        subject: SubjectInfo,
+        episode: EpisodeInfo,
+        media: Media,
+        metadata: MediaCacheMetadata,
+    ): MediaCache {
+        require(metadata.subjectId == subject.subjectId.toString())
+        require(metadata.episodeId == episode.episodeId.toString())
+        val storage = defaultStorageFor(media)
+        val cache = storage.cache(media, metadata, episode.toEpisodeMetadata())
+
+        // Persistence is the success boundary. Ancillary work cannot turn a saved download into a failure.
+        backgroundScope.launch {
+            cacheDanmaku(
+                DanmakuFetchRequest(
+                    subjectId = subject.subjectId,
+                    subjectPrimaryName = subject.displayName,
+                    subjectNames = subject.allNames,
+                    subjectPublishDate = subject.airDate,
+                    episodeId = episode.episodeId,
+                    episodeSort = episode.sort,
+                    episodeEp = episode.ep,
+                    episodeName = episode.name,
+                    filename = media.originalTitle,
+                    fileSize = cache.fileStats.first().totalSize.inBytes,
+                    fileHash = null,
+                    videoDuration = Duration.ZERO,
+                ),
+            )
+        }
+        backgroundScope.launch {
+            Analytics.recordEvent(CacheCreate) {
+                put("subject_id", subject.subjectId)
+                put("episode_id", episode.episodeId)
+                put("media_source_name", when (media.kind) {
+                    MediaSourceKind.WEB -> "web"
+                    MediaSourceKind.BitTorrent -> "bt"
+                    MediaSourceKind.LocalCache -> null
+                })
+            }
+        }
+        return cache
     }
 
     private val downloadsFlow: Flow<List<MediaCache>> by lazy {

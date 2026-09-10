@@ -45,7 +45,7 @@ class DownloadSelectionPolicyTest {
         val unsupported = storage(MediaCacheEngineKey.WebM3u, supports = false)
         val otherWeb = storage(MediaCacheEngineKey.WebM3u)
         val media = TestMediaList.first().copy(kind = MediaSourceKind.BitTorrent)
-        val manager = MediaDownloadManager(listOf(torrent, unsupported, web, otherWeb), backgroundScope)
+        val manager = MediaDownloadManager(listOf(torrent, unsupported, web, otherWeb), backgroundScope, cacheDanmaku = {})
 
         assertSame(web, manager.defaultStorageFor(media))
     }
@@ -54,7 +54,7 @@ class DownloadSelectionPolicyTest {
     fun `default storage uses torrent engine when HTTP cannot handle BT media`() = runTest {
         val torrent = storage(MediaCacheEngineKey.Anitorrent)
         val web = storage(MediaCacheEngineKey.WebM3u, supports = false)
-        val manager = MediaDownloadManager(listOf(web, torrent), backgroundScope)
+        val manager = MediaDownloadManager(listOf(web, torrent), backgroundScope, cacheDanmaku = {})
 
         assertSame(torrent, manager.defaultStorageFor(TestMediaList.first().copy(kind = MediaSourceKind.BitTorrent)))
     }
@@ -64,7 +64,7 @@ class DownloadSelectionPolicyTest {
         val unsupported = storage(MediaCacheEngineKey.Anitorrent, supports = false)
         val first = storage(MediaCacheEngineKey.WebM3u)
         val second = storage(MediaCacheEngineKey.WebM3u)
-        val manager = MediaDownloadManager(listOf(unsupported, first, second), backgroundScope)
+        val manager = MediaDownloadManager(listOf(unsupported, first, second), backgroundScope, cacheDanmaku = {})
 
         assertSame(first, manager.defaultStorageFor(TestMediaList.first().copy(kind = MediaSourceKind.WEB)))
     }
@@ -75,10 +75,10 @@ class DownloadSelectionPolicyTest {
         val unsupported = storage(MediaCacheEngineKey.WebM3u, supports = false)
 
         assertFailsWith<IllegalStateException> {
-            MediaDownloadManager(listOf(unsupported), backgroundScope).defaultStorageFor(media)
+            MediaDownloadManager(listOf(unsupported), backgroundScope, cacheDanmaku = {}).defaultStorageFor(media)
         }
         assertFailsWith<IllegalStateException> {
-            MediaDownloadManager(emptyList(), backgroundScope).defaultStorageFor(media)
+            MediaDownloadManager(emptyList(), backgroundScope, cacheDanmaku = {}).defaultStorageFor(media)
         }
     }
 

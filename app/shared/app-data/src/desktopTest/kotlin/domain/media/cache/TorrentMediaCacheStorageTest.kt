@@ -10,6 +10,8 @@
 package me.him188.ani.app.domain.media.cache
 
 import androidx.datastore.core.DataStore
+import kotlinx.coroutines.async
+import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
@@ -163,6 +165,18 @@ class TorrentMediaCacheStorageTest : AbstractTorrentMediaCacheEngineTest() {
         assertNotNull(torrentInfoDatabase.get(testMedia.mediaId))
         assertSame(cache, storage.cache(testMedia, mediaCacheMetadata(), resume = false))
         assertSame(cache, storage.listFlow.first().single())
+        assertEquals(1, torrentInfoDatabase.getAll().first().size)
+    }
+
+    @Test
+    fun `concurrent cache calls reuse one persisted record`() = runTest {
+        val storage = createStorage(createEngine(onDownloadStarted = { it.onTorrentChecked() }))
+        val caches = List(6) {
+            async { storage.cache(testMedia, mediaCacheMetadata(), resume = false) }
+        }.awaitAll()
+        caches.forEach { assertSame(caches.first(), it) }
+        assertSame(caches.first(), storage.listFlow.first().single())
+        assertEquals(1, metadataFlow.first().size)
         assertEquals(1, torrentInfoDatabase.getAll().first().size)
     }
 

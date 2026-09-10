@@ -46,6 +46,7 @@ data class DownloadItem(
      * 该缓存来源的数据源 id, 用于展示数据源名称. `null` 表示未知.
      */
     val mediaSourceId: String? = null,
+    val isBusy: Boolean = false,
 ) {
     enum class Playability {
         PLAYABLE,

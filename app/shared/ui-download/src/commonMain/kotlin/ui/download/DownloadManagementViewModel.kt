@@ -45,6 +45,7 @@ class DownloadManagementViewModel(
     private val operations: DownloadOperations,
 ) : AbstractViewModel() {
     private val operationFailures = MutableStateFlow(0)
+    private val operationState = combine(operationFailures, operations.busyIds) { failures, busyIds -> failures to busyIds }
     private val downloads = observeDownloads().shareInBackground()
     private val subjectMetadata = downloads.map { list ->
         list.map { it.metadata.subjectId.toIntOrNull() ?: 0 }.toSet()
@@ -58,11 +59,11 @@ class DownloadManagementViewModel(
     }
     private val overallStats = downloadManager.enabledStorages.overallStatsFlow().sampleWithInitial(1.seconds)
 
-    val uiState = combine(downloads, subjectMetadata, histories.flow, overallStats, operationFailures) { downloads, metadata, histories, stats, failures ->
+    val uiState = combine(downloads, subjectMetadata, histories.flow, overallStats, operationState) { downloads, metadata, histories, stats, (failures, busyIds) ->
         val historyByEpisode = histories.associateBy { it.episodeId }
         val groups = downloads.groupBy { it.metadata.subjectId.toIntOrNull() ?: 0 }.map { (subjectId, snapshots) ->
             val subject = metadata[subjectId]
-            val entries = snapshots.map { it.toDownloadItem(subject?.type, historyByEpisode[it.metadata.episodeId.toIntOrNull()]) }
+            val entries = snapshots.map { it.toDownloadItem(subject?.type, historyByEpisode[it.metadata.episodeId.toIntOrNull()]).copy(isBusy = it.id in busyIds) }
             SubjectDownloadGroup(
                 subjectId = subjectId,
                 subjectName = subject?.info?.displayName ?: entries.first().subjectName,

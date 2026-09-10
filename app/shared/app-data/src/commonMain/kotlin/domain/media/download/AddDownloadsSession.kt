@@ -9,281 +9,172 @@
 
 package me.him188.ani.app.domain.media.download
 
-import kotlinx.atomicfu.locks.SynchronizedObject
-import kotlinx.atomicfu.locks.synchronized
-import kotlinx.collections.immutable.PersistentMap
-import kotlinx.collections.immutable.persistentMapOf
-import kotlinx.collections.immutable.toPersistentMap
-import kotlinx.collections.immutable.toPersistentSet
+import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.Deferred
-import kotlinx.coroutines.Job
-import kotlinx.coroutines.SupervisorJob
-import kotlinx.coroutines.cancel
+import kotlinx.coroutines.CoroutineStart
+import kotlinx.coroutines.async
+import kotlinx.coroutines.cancelChildren
+import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.currentCoroutineContext
 import kotlinx.coroutines.ensureActive
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.first
-import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.sync.Semaphore
-import kotlinx.coroutines.sync.withPermit
 import me.him188.ani.app.data.models.episode.EpisodeInfo
+import me.him188.ani.app.data.models.preference.MediaPreference
 import me.him188.ani.app.data.models.subject.SubjectInfo
+import me.him188.ani.app.data.repository.episode.EpisodeCollectionRepository
+import me.him188.ani.app.data.repository.media.EpisodePreferencesRepository
+import me.him188.ani.app.data.repository.subject.SubjectCollectionRepository
+import me.him188.ani.app.domain.media.cache.MediaCache
 import me.him188.ani.app.domain.media.fetch.MediaFetchSession
+import me.him188.ani.app.domain.media.fetch.MediaSourceManager
+import me.him188.ani.app.domain.media.fetch.create
 import me.him188.ani.app.domain.media.selector.MediaSelector
+import me.him188.ani.app.domain.media.selector.MediaSelectorFactory
 import me.him188.ani.datasources.api.Media
 import me.him188.ani.datasources.api.MediaCacheMetadata
+import me.him188.ani.datasources.api.source.MediaFetchRequest
+import me.him188.ani.datasources.api.topic.contains
+import me.him188.ani.datasources.api.topic.isSingleEpisode
+import me.him188.ani.datasources.api.unwrapCached
 
 data class EpisodeDownloadRequest(val subject: SubjectInfo, val episode: EpisodeInfo)
 
-/** Query resources belong only to the editable session, never to a submitted plan. */
 class DownloadMediaSelection(
     val request: EpisodeDownloadRequest,
     val fetchSession: MediaFetchSession,
     val selector: MediaSelector,
-    val selectMedia: suspend (Media) -> Unit = { selector.select(it) },
 )
 
-sealed interface EpisodeDownloadState {
-    data object Preparing : EpisodeDownloadState
-    data class ChoosingMedia(val selection: DownloadMediaSelection) : EpisodeDownloadState
-    data class SelectingMedia(val selection: DownloadMediaSelection, val media: Media) : EpisodeDownloadState
-    data class Ready(val selection: DownloadMediaSelection, val spec: EpisodeDownloadSpec) : EpisodeDownloadState
-    sealed interface Failed : EpisodeDownloadState {
-        val cause: Throwable
-
-        data class Preparation(override val cause: Throwable) : Failed
-        data class Selection(
-            override val cause: Throwable,
-            val selection: DownloadMediaSelection,
-            val media: Media,
-        ) : Failed
-    }
-}
-
-sealed interface AddDownloadsState {
-    data object Idle : AddDownloadsState
-
-    sealed interface Active : AddDownloadsState {
-        val requestId: Long
-        val episodeIds: Set<Int>
-    }
-
-    data class Editing(
-        override val requestId: Long,
-        val episodes: PersistentMap<Int, EpisodeDownloadState>,
-    ) : Active {
-        override val episodeIds get() = episodes.keys
-        val canSubmit get() = episodes.isNotEmpty() && episodes.values.all { it is EpisodeDownloadState.Ready }
-    }
-
-    data class Submitting(override val requestId: Long, val plan: DownloadPlan) : Active {
-        override val episodeIds get() = plan.items.map { it.episode.episodeId }.toPersistentSet()
-    }
-
-    data class Completed(override val requestId: Long, val result: DownloadSubmissionResult) : Active {
-        override val episodeIds get() = result.items.map { it.spec.episode.episodeId }.toPersistentSet()
-    }
+data class AddDownloadsState(
+    val episodeId: Int? = null,
+    val selection: DownloadMediaSelection? = null,
+    val error: Throwable? = null,
+) {
+    val isFinished get() = episodeId == null || error != null
+    val isBusy get() = !isFinished && selection == null
 }
 
 /**
- * One subject's editable download session. Commands change state synchronously under a short lock;
- * query work runs outside it, with a separate scope per episode. Retained episodes keep their queries.
- * Submission transfers a frozen plan to the application before releasing all query resources.
+ * Processes episodes in input order and stops at the first failure.
+ * Call [run] once, in the same serial context as [selectMedia]. Cancelling its coroutine ends the session.
  */
 class AddDownloadsSession(
-    parentScope: CoroutineScope,
-    private val prepare: suspend (episodeId: Int, scope: CoroutineScope) -> DownloadMediaSelection,
-    private val findReusableMedia: suspend (DownloadMediaSelection) -> Media?,
-    private val submitDownloads: (DownloadPlan) -> Deferred<DownloadSubmissionResult>,
-    private val submitWhenReady: Boolean = false,
-) : AutoCloseable {
-    private val lock = SynchronizedObject()
-    private val scope = CoroutineScope(parentScope.coroutineContext + SupervisorJob(parentScope.coroutineContext[Job]))
-    private val preparationPermits = Semaphore(3)
-    private val mutableState = MutableStateFlow<AddDownloadsState>(AddDownloadsState.Idle)
+    private val subjectId: Int,
+    episodeIds: List<Int>,
+    private val subjects: SubjectCollectionRepository,
+    private val episodes: EpisodeCollectionRepository,
+    private val preferences: EpisodePreferencesRepository,
+    private val sources: MediaSourceManager,
+    private val selectors: MediaSelectorFactory,
+    private val downloadManager: MediaDownloadManager,
+) {
+    private val episodeIds = episodeIds.distinct().also { require(it.isNotEmpty()) }
+    private val mutableState = MutableStateFlow(AddDownloadsState(this.episodeIds.first()))
     val state = mutableState.asStateFlow()
-    private var nextRequestId = 0L
-    private val episodes = mutableMapOf<Int, EpisodeWork>()
+    private var pendingSelection: CompletableDeferred<Media>? = null
 
-    private class EpisodeWork(val scope: CoroutineScope)
-
-    fun start(episodeIds: Set<Int>) = synchronized(lock) {
-        if (!scope.isActive || mutableState.value is AddDownloadsState.Submitting) return
-        require(episodeIds.isNotEmpty())
-        releaseQueriesLocked()
-        val requestId = ++nextRequestId
-        mutableState.value = AddDownloadsState.Editing(requestId, persistentMapOf())
-        setEpisodesLocked(requestId, episodeIds.toSet())
-    }
-
-    fun setEpisodes(requestId: Long, episodeIds: Set<Int>) = synchronized(lock) {
-        val current = mutableState.value as? AddDownloadsState.Editing ?: return
-        if (!scope.isActive || current.requestId != requestId) return
-        require(episodeIds.isNotEmpty())
-        setEpisodesLocked(requestId, episodeIds.toSet())
-    }
-
-    private fun setEpisodesLocked(requestId: Long, episodeIds: Set<Int>) {
-        val current = mutableState.value as AddDownloadsState.Editing
-        val removed = episodes.keys - episodeIds
-        removed.forEach { episodes.remove(it)?.scope?.cancel() }
-        val added = episodeIds - current.episodeIds
-        mutableState.value = current.copy(episodes = episodeIds.associateWith {
-            current.episodes[it] ?: EpisodeDownloadState.Preparing
-        }.toPersistentMap())
-        added.forEach { episodeId ->
-            val work = EpisodeWork(CoroutineScope(scope.coroutineContext + SupervisorJob(scope.coroutineContext[Job])))
-            episodes[episodeId] = work
-            prepareLocked(requestId, episodeId, work)
-        }
-        submitIfReadyLocked()
-    }
-
-    private fun prepareLocked(requestId: Long, episodeId: Int, work: EpisodeWork) {
-        updateEpisodeLocked(requestId, episodeId, work, EpisodeDownloadState.Preparing)
-        work.scope.launch {
-            try {
-                val (selection, reusable) = preparationPermits.withPermit {
-                    val selection = prepare(episodeId, work.scope)
-                    selection to findReusableMedia(selection)
-                }
-                val ready = reusable?.let { EpisodeDownloadState.Ready(selection, selection.snapshot(it)) }
-                synchronized(lock) {
-                    updateEpisodeLocked(requestId, episodeId, work, ready ?: EpisodeDownloadState.ChoosingMedia(selection))
-                    submitIfReadyLocked()
-                }
-            } catch (e: Exception) {
+    suspend fun run() {
+        try {
+            for (episodeId in episodeIds) {
                 currentCoroutineContext().ensureActive()
-                synchronized(lock) { updateEpisodeLocked(requestId, episodeId, work, EpisodeDownloadState.Failed.Preparation(e)) }
-            }
-        }
-    }
-
-    fun selectMedia(requestId: Long, episodeId: Int, media: Media) = synchronized(lock) {
-        val current = mutableState.value as? AddDownloadsState.Editing ?: return
-        if (!scope.isActive || current.requestId != requestId) return
-        val selection = when (val entry = current.episodes[episodeId]) {
-            is EpisodeDownloadState.ChoosingMedia -> entry.selection
-            is EpisodeDownloadState.Ready -> entry.selection
-            else -> return
-        }
-        selectMediaLocked(requestId, episodeId, checkNotNull(episodes[episodeId]), selection, media)
-    }
-
-    private fun selectMediaLocked(
-        requestId: Long,
-        episodeId: Int,
-        work: EpisodeWork,
-        selection: DownloadMediaSelection,
-        media: Media,
-    ) {
-        updateEpisodeLocked(requestId, episodeId, work, EpisodeDownloadState.SelectingMedia(selection, media))
-        work.scope.launch {
-            try {
-                selection.selectMedia(media)
-                val spec = selection.snapshot(media)
-                synchronized(lock) {
-                    updateEpisodeLocked(requestId, episodeId, work, EpisodeDownloadState.Ready(selection, spec))
-                    submitIfReadyLocked()
-                }
-            } catch (e: Exception) {
-                currentCoroutineContext().ensureActive()
-                synchronized(lock) {
-                    updateEpisodeLocked(requestId, episodeId, work, EpisodeDownloadState.Failed.Selection(e, selection, media))
-                }
-            }
-        }
-    }
-
-    fun submit(requestId: Long) = synchronized(lock) {
-        val current = mutableState.value as? AddDownloadsState.Editing ?: return
-        if (!scope.isActive || current.requestId != requestId || !current.canSubmit) return
-        submitLocked(requestId, DownloadPlan(current.episodes.values.map { (it as EpisodeDownloadState.Ready).spec }))
-    }
-
-    private fun submitIfReadyLocked() {
-        val current = mutableState.value as? AddDownloadsState.Editing ?: return
-        if (scope.isActive && submitWhenReady && current.canSubmit) {
-            submitLocked(current.requestId, DownloadPlan(current.episodes.values.map { (it as EpisodeDownloadState.Ready).spec }))
-        }
-    }
-
-    private fun submitLocked(requestId: Long, plan: DownloadPlan, previous: DownloadSubmissionResult? = null) {
-        val pending = submitDownloads(plan)
-        mutableState.value = AddDownloadsState.Submitting(requestId, plan)
-        releaseQueriesLocked()
-        scope.launch {
-            val result = try {
-                pending.await()
-            } catch (e: Exception) {
-                currentCoroutineContext().ensureActive()
-                DownloadSubmissionResult(plan.items.map { DownloadSubmissionItem(it, DownloadSubmissionOutcome.Failed(e)) })
-            }
-            synchronized(lock) {
-                if (scope.isActive && (mutableState.value as? AddDownloadsState.Submitting)?.requestId == requestId) {
-                    mutableState.value = AddDownloadsState.Completed(requestId, previous?.withRetry(result) ?: result)
-                }
-            }
-        }
-    }
-
-    fun retry(requestId: Long): Unit = synchronized(lock) {
-        if (!scope.isActive) return
-        when (val current = mutableState.value) {
-            is AddDownloadsState.Completed -> {
-                if (current.requestId != requestId) return
-                current.result.retryPlan()?.let { submitLocked(requestId, it, current.result) }
-            }
-            is AddDownloadsState.Editing -> {
-                if (current.requestId != requestId) return
-                current.episodes.forEach { (episodeId, state) ->
-                    if (state !is EpisodeDownloadState.Failed) return@forEach
-                    val work = checkNotNull(episodes[episodeId])
-                    if (state is EpisodeDownloadState.Failed.Selection) {
-                        selectMediaLocked(requestId, episodeId, work, state.selection, state.media)
-                    } else {
-                        work.scope.cancel()
-                        val replacement = EpisodeWork(CoroutineScope(scope.coroutineContext + SupervisorJob(scope.coroutineContext[Job])))
-                        episodes[episodeId] = replacement
-                        prepareLocked(requestId, episodeId, replacement)
+                mutableState.value = AddDownloadsState(episodeId)
+                coroutineScope {
+                    try {
+                        val selection = prepare(episodeId, this)
+                        val reusable = findReusableMedia(selection)
+                        val media = reusable ?: run {
+                            val choice = CompletableDeferred<Media>()
+                            pendingSelection = choice
+                            mutableState.value = AddDownloadsState(episodeId, selection)
+                            try {
+                                choice.await()
+                            } finally {
+                                pendingSelection = null
+                            }
+                        }
+                        if (reusable == null) {
+                            selectMediaAndSavePreference(selection.selector, media) { preference ->
+                                downloadManager.backgroundScope.async {
+                                    preferences.setMediaPreference(subjectId, preference)
+                                }.await()
+                            }
+                        }
+                        createDownload(selection, media)
+                    } finally {
+                        coroutineContext.cancelChildren()
                     }
                 }
             }
-            else -> Unit
+            mutableState.value = AddDownloadsState()
+        } catch (e: Exception) {
+            currentCoroutineContext().ensureActive()
+            mutableState.value = AddDownloadsState(mutableState.value.episodeId, error = e)
         }
     }
 
-    fun cancel(requestId: Long) = synchronized(lock) {
-        val current = mutableState.value as? AddDownloadsState.Active ?: return
-        if (current.requestId != requestId || current is AddDownloadsState.Submitting) return
-        releaseQueriesLocked()
-        mutableState.value = AddDownloadsState.Idle
+    fun selectMedia(episodeId: Int, media: Media) {
+        if (mutableState.value.episodeId != episodeId) return
+        val choice = pendingSelection ?: return
+        pendingSelection = null
+        mutableState.value = AddDownloadsState(episodeId)
+        choice.complete(media)
     }
 
-    private fun updateEpisodeLocked(requestId: Long, episodeId: Int, work: EpisodeWork, state: EpisodeDownloadState) {
-        val current = mutableState.value as? AddDownloadsState.Editing ?: return
-        if (scope.isActive && current.requestId == requestId && episodes[episodeId] === work) {
-            mutableState.value = current.copy(episodes = current.episodes.put(episodeId, state))
+    private suspend fun prepare(episodeId: Int, scope: CoroutineScope): DownloadMediaSelection {
+        val request = EpisodeDownloadRequest(
+            subjects.subjectCollectionFlow(subjectId).first().subjectInfo,
+            episodes.episodeCollectionInfoFlow(subjectId, episodeId).first().episodeInfo,
+        )
+        val fetchSession = sources.mediaFetcher.first().newSession(
+            MediaFetchRequest.create(request.subject, request.episode),
+            scope.coroutineContext,
+        )
+        val selector = selectors.create(subjectId, episodeId, fetchSession.cumulativeResults, scope.coroutineContext)
+        scope.launch(start = CoroutineStart.UNDISPATCHED) {
+            selector.events.onChangePreference.collect { preference ->
+                downloadManager.backgroundScope.async { preferences.setMediaPreference(subjectId, preference) }.await()
+            }
         }
+        // Keep an explicitly started search alive while its picker is temporarily hidden.
+        scope.launch { fetchSession.cumulativeResults.collect {} }
+        return DownloadMediaSelection(request, fetchSession, selector)
     }
 
-    private fun releaseQueriesLocked() {
-        episodes.values.forEach { it.scope.cancel() }
-        episodes.clear()
+    private suspend fun findReusableMedia(selection: DownloadMediaSelection): Media? {
+        val request = selection.request
+        val existing = findReusableSeasonDownload(request.episode, downloadManager.downloadsForSubject(request.subject.subjectId).first()) ?: return null
+        return existing.origin.unwrapCached()
     }
 
-    override fun close() = synchronized(lock) {
-        releaseQueriesLocked()
-        scope.cancel()
+    private suspend fun createDownload(selection: DownloadMediaSelection, media: Media) {
+        val request = selection.request
+        val metadata = MediaCacheMetadata(selection.fetchSession.request.first())
+        downloadManager.backgroundScope.async {
+            downloadManager.createDownload(request.subject, request.episode, media, metadata)
+        }.await()
     }
 }
 
-private suspend fun DownloadMediaSelection.snapshot(media: Media): EpisodeDownloadSpec = EpisodeDownloadSpec(
-    request.subject,
-    request.episode,
-    media,
-    MediaCacheMetadata(fetchSession.request.first()),
-)
+/** Capture the selection event before selecting and persist it before submitting the download. */
+internal suspend fun selectMediaAndSavePreference(
+    selector: MediaSelector,
+    media: Media,
+    save: suspend (MediaPreference) -> Unit,
+) = coroutineScope {
+    val preference = async(start = CoroutineStart.UNDISPATCHED) { selector.events.onChangePreference.first() }
+    try {
+        if (selector.select(media)) save(preference.await())
+    } finally {
+        preference.cancel()
+    }
+}
+
+internal fun findReusableSeasonDownload(episode: EpisodeInfo, downloads: List<MediaCache>): MediaCache? =
+    downloads.firstOrNull { download ->
+        val range = download.origin.episodeRange
+        range != null && !range.isSingleEpisode() &&
+                (episode.ep?.let { range.contains(it) } == true || range.contains(episode.sort))
+    }

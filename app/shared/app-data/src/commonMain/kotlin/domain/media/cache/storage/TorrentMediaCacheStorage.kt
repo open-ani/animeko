@@ -130,11 +130,14 @@ class TorrentMediaCacheStorage(
         resume: Boolean
     ): TorrentMediaCacheEngine.TorrentMediaCache {
         return lock.withLock {
-            val cache = super.cache(media, metadata, episodeMetadata, false)
+            val existing = listFlow.value.firstOrNull { isSameMediaAndEpisode(it, media, metadata) }
+            val cache = existing ?: super.cache(media, metadata, episodeMetadata, false)
             check(cache is TorrentMediaCacheEngine.TorrentMediaCache) { "Cache does not implement TorrentMediaCache." }
 
-            statSubscriptionScope.launch {
-                cache.subscribeStats(shareRatioLimitFlow)
+            if (existing == null) {
+                statSubscriptionScope.launch {
+                    cache.subscribeStats(shareRatioLimitFlow)
+                }
             }
 
             cache

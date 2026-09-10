@@ -42,10 +42,7 @@ import me.him188.ani.app.domain.media.cache.DeleteCacheUseCaseImpl
 import me.him188.ani.app.domain.media.cache.GetMediaCacheUseCase
 import me.him188.ani.app.domain.media.cache.GetMediaCacheUseCaseImpl
 import me.him188.ani.app.domain.media.download.AddDownloadsSessionFactory
-import me.him188.ani.app.domain.media.download.CreateEpisodeDownloadUseCase
-import me.him188.ani.app.domain.media.download.DownloadOperations
 import me.him188.ani.app.domain.media.download.ObserveDownloadsUseCase
-import me.him188.ani.app.domain.media.download.SubmitDownloadsUseCase
 import me.him188.ani.app.domain.media.selector.GetPreferredMediaSourceSortingUseCase
 import me.him188.ani.app.domain.media.selector.GetPreferredMediaSourceSortingUseCaseImpl
 import me.him188.ani.app.domain.media.selector.MediaSelectorAutoSelectUseCase
@@ -75,10 +72,7 @@ import org.koin.mp.KoinPlatform
 
 fun KoinApplication.useCaseModules() = module {
     single { ObserveDownloadsUseCase(get()) }
-    single { CreateEpisodeDownloadUseCase(get(), get()) }
-    single { SubmitDownloadsUseCase(get(), get<CreateEpisodeDownloadUseCase>()::invoke) }
-    single { DownloadOperations(get(), get()) }
-    single { AddDownloadsSessionFactory(get(), get(), get(), get(), MediaSelectorFactory.withKoin(koin), get(), get()) }
+    single { AddDownloadsSessionFactory(get(), get(), get(), get(), MediaSelectorFactory.withKoin(koin), get()) }
     single<GetEpisodeCollectionInfoFlowUseCase> { GetEpisodeCollectionInfoFlowUseCaseImpl() }
     single<GetDanmakuRegexFilterListFlowUseCase> { GetDanmakuRegexFilterListFlowUseCaseImpl() }
     single<MediaSelectorAutoSelectUseCase> { MediaSelectorAutoSelectUseCaseImpl() }

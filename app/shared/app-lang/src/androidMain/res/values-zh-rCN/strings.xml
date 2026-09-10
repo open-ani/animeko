@@ -1524,7 +1524,7 @@
     <string name="image_viewer_close">关闭</string>
     <string name="downloads_load_failed">下载信息加载失败</string>
     <string name="downloads_empty">暂无可下载的剧集</string>
-    <string name="downloads_create_failed">添加下载失败，请重试</string>
+    <string name="downloads_create_failed">添加下载失败</string>
     <string name="downloads_operation_failed">%1$d 项下载操作失败</string>
 </resources>
 

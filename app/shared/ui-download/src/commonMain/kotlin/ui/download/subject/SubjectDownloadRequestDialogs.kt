@@ -38,7 +38,6 @@ import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.map
 import me.him188.ani.app.data.models.preference.MediaSelectorSettings
 import me.him188.ani.app.domain.media.download.AddDownloadsState
-import me.him188.ani.app.domain.media.download.EpisodeDownloadState
 import me.him188.ani.app.domain.media.download.DownloadMediaSelection
 import me.him188.ani.app.domain.media.fetch.MediaSourceResultsFilterer
 import me.him188.ani.app.domain.media.fetch.restart
@@ -47,7 +46,6 @@ import me.him188.ani.app.ui.foundation.layout.desktopTitleBarPadding
 import me.him188.ani.app.ui.lang.Lang
 import me.him188.ani.app.ui.lang.cache_subject_cancel
 import me.him188.ani.app.ui.lang.downloads_create_failed
-import me.him188.ani.app.ui.lang.settings_mediasource_retry
 import me.him188.ani.app.ui.mediafetch.MediaSelectorView
 import me.him188.ani.app.ui.mediafetch.MediaSourceInfoProvider
 import me.him188.ani.app.ui.mediafetch.MediaSourceResultListPresentation
@@ -64,42 +62,23 @@ internal fun SubjectDownloadRequestDialogs(
     sourceInfoProvider: MediaSourceInfoProvider,
     settings: Flow<MediaSelectorSettings>,
     onHide: () -> Unit,
-    onSelectMedia: (Long, Int, Media) -> Unit,
-    onRetry: (Long) -> Unit,
-    onCancel: (Long) -> Unit,
+    onSelectMedia: (Int, Media) -> Unit,
+    onCancel: () -> Unit,
 ) {
-    if (visible && state is AddDownloadsState.Editing) {
-        val entry = state.episodes.entries.singleOrNull()
-        val selection = when (val episode = entry?.value) {
-            is EpisodeDownloadState.ChoosingMedia -> episode.selection
-            is EpisodeDownloadState.SelectingMedia -> episode.selection
-            is EpisodeDownloadState.Ready -> episode.selection
-            else -> null
-        }
-        if (entry != null && selection != null) {
-            key(state.requestId, entry.key) {
-                DownloadMediaPicker(selection, sourceInfoProvider, settings, onHide) {
-                    onSelectMedia(state.requestId, entry.key, it)
-                }
+    val selection = state.selection
+    if (visible && selection != null) {
+        key(selection) {
+            DownloadMediaPicker(selection, sourceInfoProvider, settings, onHide) {
+                onSelectMedia(selection.request.episode.episodeId, it)
             }
         }
     }
-    val failedRequestId = when (state) {
-        is AddDownloadsState.Editing -> state.requestId.takeIf {
-            state.episodes.values.any { it is EpisodeDownloadState.Failed }
-        }
-        is AddDownloadsState.Completed -> state.requestId.takeIf { state.result.failures.isNotEmpty() }
-        else -> null
-    }
-    if (failedRequestId != null) {
+    if (state.error != null) {
         AlertDialog(
-            onDismissRequest = { onCancel(failedRequestId) },
+            onDismissRequest = onCancel,
             text = { Text(stringResource(Lang.downloads_create_failed)) },
             confirmButton = {
-                TextButton(onClick = { onRetry(failedRequestId) }) { Text(stringResource(Lang.settings_mediasource_retry)) }
-            },
-            dismissButton = {
-                TextButton(onClick = { onCancel(failedRequestId) }) { Text(stringResource(Lang.cache_subject_cancel)) }
+                TextButton(onClick = onCancel) { Text(stringResource(Lang.cache_subject_cancel)) }
             },
         )
     }

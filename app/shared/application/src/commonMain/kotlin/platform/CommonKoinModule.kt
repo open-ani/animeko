@@ -107,6 +107,7 @@ import me.him188.ani.app.domain.foundation.VersionExpiryFeatureHandler
 import me.him188.ani.app.domain.foundation.VersionExpiryService
 import me.him188.ani.app.domain.foundation.get
 import me.him188.ani.app.domain.foundation.withValue
+import me.him188.ani.app.domain.media.download.DownloadOperations
 import me.him188.ani.app.domain.media.download.MediaDownloadManager
 import me.him188.ani.app.domain.mediasource.web.PageEvaluator
 import me.him188.ani.app.domain.mediasource.web.captcha.BrowserImageCaptchaSolver
@@ -478,6 +479,13 @@ private fun KoinApplication.otherModules(getContext: () -> Context, coroutineSco
     }
 
     // Media
+    single {
+        DownloadOperations(
+            downloadManager = get(),
+            deleteCache = get(),
+            executionScope = CoroutineScope(coroutineScope.coroutineContext + Dispatchers.Main.immediate),
+        )
+    }
     single<MediaDownloadManager> {
         val id = MediaDownloadManager.LOCAL_FS_MEDIA_SOURCE_ID
         val engines = get<TorrentManager>().engines
@@ -532,6 +540,7 @@ private fun KoinApplication.otherModules(getContext: () -> Context, coroutineSco
                 )
             },
             backgroundScope = coroutineScope.childScope(),
+            cacheDanmaku = { get<DanmakuRepository>().cacheDanmakuIfNeeded(it) },
         )
     }
 

@@ -23,7 +23,7 @@ import me.him188.ani.app.domain.media.cache.MediaCacheState
 class ObserveDownloadsUseCaseTest {
     @Test
     fun `loaded empty list is emitted when there are no storages`() = runTest {
-        val manager = MediaDownloadManager(emptyList(), backgroundScope)
+        val manager = MediaDownloadManager(emptyList(), backgroundScope, cacheDanmaku = {})
         assertEquals(emptyList(), ObserveDownloadsUseCase(manager)().first())
     }
 
@@ -33,7 +33,7 @@ class ObserveDownloadsUseCaseTest {
         val first = testDownload(1)
         val otherSubject = testDownload(2, subjectId = 2)
         storage.listFlow.value = listOf(first, otherSubject)
-        val observer = ObserveDownloadsUseCase(MediaDownloadManager(listOf(storage), backgroundScope))
+        val observer = ObserveDownloadsUseCase(MediaDownloadManager(listOf(storage), backgroundScope, cacheDanmaku = {}))
         val received = mutableListOf<List<DownloadSnapshot>>()
         val job = backgroundScope.launch { observer(1).toList(received) }
         runCurrent()
@@ -59,7 +59,7 @@ class ObserveDownloadsUseCaseTest {
         val storage = DownloadTestStorage()
         val first = testDownload(1)
         storage.listFlow.value = listOf(first)
-        val manager = MediaDownloadManager(listOf(storage), backgroundScope)
+        val manager = MediaDownloadManager(listOf(storage), backgroundScope, cacheDanmaku = {})
         val counts = mutableListOf<Int>()
         backgroundScope.launch { first.fileStats.subscriptionCount.toList(counts) }
         val job = backgroundScope.launch { ObserveDownloadsUseCase(manager)().collect {} }

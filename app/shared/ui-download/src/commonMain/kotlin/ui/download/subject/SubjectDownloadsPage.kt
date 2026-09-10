@@ -73,6 +73,7 @@ fun SubjectDownloadsPage(
     pendingDeleteIds?.let { ids ->
         DeleteActionDialog(
             onDismiss = { pendingDeleteIds = null },
+            confirmEnabled = state.downloads.none { it.id in ids && it.isBusy },
             onConfirm = {
                 actions.delete(ids)
                 pendingDeleteIds = null
@@ -112,9 +113,9 @@ fun SubjectDownloadsPage(
         bottomBar = {
             if (selection.inSelection) {
                 DownloadSelectionFloatingToolbar(
-                    resumeEnabled = selected.any { it.isPaused && !it.isFinished },
-                    pauseEnabled = selected.any { !it.isPaused && !it.isFinished && !it.isFailed },
-                    deleteEnabled = selected.isNotEmpty(),
+                    resumeEnabled = selected.none { it.isBusy } && selected.any { it.isPaused && !it.isFinished },
+                    pauseEnabled = selected.none { it.isBusy } && selected.any { !it.isPaused && !it.isFinished && !it.isFailed },
+                    deleteEnabled = selected.isNotEmpty() && selected.none { it.isBusy },
                     onResumeSelected = { actions.resume(selected.mapTo(hashSetOf()) { it.id }) },
                     onPauseSelected = { actions.pause(selected.mapTo(hashSetOf()) { it.id }) },
                     onDeleteSelected = { pendingDeleteIds = selected.mapTo(hashSetOf()) { it.id } },

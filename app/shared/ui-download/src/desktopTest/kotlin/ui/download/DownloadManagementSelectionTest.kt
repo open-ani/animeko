@@ -12,6 +12,8 @@ package me.him188.ani.app.ui.download
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.test.assertIsEnabled
+import androidx.compose.ui.test.assertIsNotEnabled
 import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
@@ -58,6 +60,31 @@ class DownloadManagementSelectionTest {
             ),
         ),
     )
+
+    @Test
+    fun `global selection disables actions while any selected download is busy`() = runAniComposeUiTest {
+        var currentState by mutableStateOf(state.copy(groups = state.groups.map { group ->
+            group.copy(entries = group.entries.map { it.copy(isBusy = it.id == inProgress.id) })
+        }))
+        setContent {
+            ProvideCompositionLocalsForPreview {
+                DownloadManagementScreen(
+                    state = currentState,
+                    selfInfo = null,
+                    onPlay = {}, onResume = {}, onPause = {}, onViewDetail = {}, onDelete = {}, onClickLogin = {},
+                )
+            }
+        }
+        onNodeWithContentDescription(runBlocking { getString(Lang.cache_management_enter_selection_mode) }).performClick()
+        onNodeWithContentDescription(runBlocking { getString(Lang.cache_management_select_all) }).performClick()
+        onNodeWithTag(DownloadSelectionToolbarTestTags.PAUSE).assertIsNotEnabled()
+        onNodeWithTag(DownloadSelectionToolbarTestTags.RESUME).assertIsNotEnabled()
+        onNodeWithTag(DownloadSelectionToolbarTestTags.DELETE).assertIsNotEnabled()
+        runOnIdle { currentState = state }
+        onNodeWithTag(DownloadSelectionToolbarTestTags.PAUSE).assertIsEnabled()
+        onNodeWithTag(DownloadSelectionToolbarTestTags.RESUME).assertIsEnabled()
+        onNodeWithTag(DownloadSelectionToolbarTestTags.DELETE).assertIsEnabled()
+    }
 
     @Test
     fun `batch actions keep all selected ids until download state catches up`() = runAniComposeUiTest {

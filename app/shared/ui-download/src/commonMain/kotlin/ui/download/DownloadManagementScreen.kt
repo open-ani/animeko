@@ -297,6 +297,9 @@ fun DownloadManagementScreen(
     pendingDeleteEntries?.let { entries ->
         DeleteActionDialog(
             onDismiss = { pendingDeleteEntries = null },
+            confirmEnabled = state.groups.flatMap { it.entries }.none { current ->
+                current.isBusy && entries.any { it.id == current.id }
+            },
             onConfirm = {
                 entries.forEach(onDelete)
                 pendingDeleteEntries = null
@@ -340,9 +343,9 @@ fun DownloadManagementScreen(
         bottomBar = {
             AniAnimatedVisibility(selectionState.inSelection) {
                 DownloadSelectionFloatingToolbar(
-                    resumeEnabled = selectedEntries.any { !it.isFinished && it.isPaused },
-                    pauseEnabled = selectedEntries.any { !it.isFinished && !it.isPaused && !it.isFailed },
-                    deleteEnabled = selectedEntries.isNotEmpty(),
+                    resumeEnabled = selectedEntries.none { it.isBusy } && selectedEntries.any { !it.isFinished && it.isPaused },
+                    pauseEnabled = selectedEntries.none { it.isBusy } && selectedEntries.any { !it.isFinished && !it.isPaused && !it.isFailed },
+                    deleteEnabled = selectedEntries.isNotEmpty() && selectedEntries.none { it.isBusy },
                     onResumeSelected = {
                         selectedEntries.forEach(onResume)
                     },
@@ -755,6 +758,7 @@ object DownloadManagementTestTags {
 internal fun DeleteActionDialog(
     onDismiss: () -> Unit,
     onConfirm: () -> Unit,
+    confirmEnabled: Boolean = true,
 ) {
     AlertDialog(
         onDismissRequest = onDismiss,
@@ -764,6 +768,7 @@ internal fun DeleteActionDialog(
         confirmButton = {
             TextButton(
                 onClick = onConfirm,
+                enabled = confirmEnabled,
                 modifier = Modifier.testTag(DownloadManagementTestTags.DELETE_CONFIRM_BUTTON),
             ) { Text(stringResource(Lang.cache_subject_delete), color = MaterialTheme.colorScheme.error) }
         },
@@ -803,6 +808,7 @@ internal fun DownloadActionDropdown(
             if (episode.isPaused) {
                 DropdownMenuItem(
                     text = { Text(resumeDownloadText) },
+                    enabled = !episode.isBusy,
                     leadingIcon = { Icon(Icons.Rounded.Restore, null) },
                     onClick = {
                         onResume()
@@ -812,6 +818,7 @@ internal fun DownloadActionDropdown(
             } else if (!episode.isFailed) {
                 DropdownMenuItem(
                     text = { Text(pauseDownloadText) },
+                    enabled = !episode.isBusy,
                     leadingIcon = { Icon(Icons.Rounded.Pause, null) },
                     onClick = {
                         onPause()
@@ -855,6 +862,7 @@ internal fun DownloadActionDropdown(
 
         DropdownMenuItem(
             text = { Text(stringResource(Lang.cache_subject_delete), color = MaterialTheme.colorScheme.error) },
+            enabled = !episode.isBusy,
             leadingIcon = { Icon(Icons.Rounded.Delete, null, tint = MaterialTheme.colorScheme.error) },
             onClick = {
                 onDelete()

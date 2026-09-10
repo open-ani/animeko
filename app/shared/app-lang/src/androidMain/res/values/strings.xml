@@ -1484,7 +1484,7 @@
     <string name="image_viewer_close">Close</string>
     <string name="downloads_load_failed">Unable to load download information</string>
     <string name="downloads_empty">No episodes available to download</string>
-    <string name="downloads_create_failed">Unable to add this download. Please retry.</string>
+    <string name="downloads_create_failed">Unable to add this download.</string>
     <string name="downloads_operation_failed">Unable to update %1$d downloads</string>
 </resources>
 

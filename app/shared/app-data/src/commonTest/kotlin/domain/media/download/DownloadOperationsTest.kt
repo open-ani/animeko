@@ -9,20 +9,21 @@
 
 package me.him188.ani.app.domain.media.download
 
-import kotlin.coroutines.CoroutineContext
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
 import kotlin.test.assertTrue
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CompletableDeferred
-import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.awaitCancellation
 import kotlinx.coroutines.cancel
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.isActive
+import kotlinx.coroutines.test.StandardTestDispatcher
+import kotlinx.coroutines.test.TestScope
 import kotlinx.coroutines.test.runCurrent
 import kotlinx.coroutines.test.runTest
 import me.him188.ani.app.domain.media.cache.DeleteCacheUseCase
@@ -31,78 +32,80 @@ import me.him188.ani.app.domain.media.cache.MediaCacheState
 
 class DownloadOperationsTest {
     @Test
-    fun `pause then resume follows submission order when background jobs run in reverse`() = runTest {
-        val dispatcher = ReverseDispatcher()
-        val applicationScope = CoroutineScope(
-            backgroundScope.coroutineContext + SupervisorJob(backgroundScope.coroutineContext[Job]) + dispatcher,
-        )
-        val download = testDownload(1)
-        val storage = DownloadTestStorage().apply { listFlow.value = listOf(download) }
-        val operations = DownloadOperations(
-            MediaDownloadManager(listOf(storage), applicationScope),
-            object : DeleteCacheUseCase { override suspend fun invoke(cache: MediaCache) = Unit },
-        )
-
-        try {
-            val pause = operations.submit(setOf(download.cacheId), DownloadOperations.Action.Pause)
-            val resume = operations.submit(setOf(download.cacheId), DownloadOperations.Action.Resume)
-            dispatcher.runAll()
-            pause.await()
-            resume.await()
-
-            assertEquals(MediaCacheState.IN_PROGRESS, download.state.value)
-        } finally {
-            applicationScope.cancel()
-            dispatcher.runAll()
-        }
-    }
-
-    @Test
-    fun `resume waits for a suspended pause even after paused state is visible`() = runTest {
+    fun `busy download rejects repeated actions until its operation finishes`() = runTest {
         val finishPause = CompletableDeferred<Unit>()
-        val calls = mutableListOf<String>()
         val underlying = testDownload(1)
         val download = object : MediaCache by underlying {
             override suspend fun pause() {
-                calls += "pause started"
                 underlying.pause()
                 finishPause.await()
-                calls += "pause finished"
-            }
-
-            override suspend fun resume() {
-                calls += "resume"
-                underlying.resume()
             }
         }
         val operations = operations(backgroundScope, download)
-        val firstPause = operations.submit(setOf(download.cacheId), DownloadOperations.Action.Pause)
+        val pause = operations.submit(setOf(download.cacheId), DownloadOperations.Action.Pause)
         runCurrent()
-        val resume = operations.submit(setOf(download.cacheId), DownloadOperations.Action.Resume)
-        val lastPause = operations.submit(setOf(download.cacheId), DownloadOperations.Action.Pause)
-        runCurrent()
-
         assertEquals(MediaCacheState.PAUSED, underlying.state.value)
-        assertEquals(listOf("pause started"), calls)
-        assertFalse(firstPause.isCompleted)
-        assertFalse(resume.isCompleted)
-        assertFalse(lastPause.isCompleted)
+        assertEquals(setOf(download.cacheId), operations.busyIds.value)
+
+        for (action in DownloadOperations.Action.entries) {
+            val rejected = operations.submit(setOf(download.cacheId), action).await()
+            assertEquals(setOf(download.cacheId), rejected.rejectedIds)
+        }
+        assertFalse(pause.isCompleted)
+        assertEquals(0, underlying.getResumeCalled())
 
         finishPause.complete(Unit)
-        lastPause.await()
-        assertEquals(listOf("pause started", "pause finished", "resume", "pause started", "pause finished"), calls)
-        assertEquals(MediaCacheState.PAUSED, underlying.state.value)
+        assertTrue(pause.await().failures.isEmpty())
+        assertTrue(operations.busyIds.value.isEmpty())
+        operations.submit(setOf(download.cacheId), DownloadOperations.Action.Resume).await()
+        assertEquals(MediaCacheState.IN_PROGRESS, underlying.state.value)
     }
 
     @Test
-    fun `cancelling the caller waiting for a result does not cancel the command`() = runTest {
+    fun `independent downloads execute concurrently within a batch`() = runTest {
+        val finishPause = CompletableDeferred<Unit>()
+        val first = testDownload(1)
+        val blocked = object : MediaCache by first {
+            override suspend fun pause() { finishPause.await(); first.pause() }
+        }
+        val second = testDownload(2)
+        val operations = operations(backgroundScope, blocked, second)
+        val batch = operations.submit(setOf(first.cacheId, second.cacheId), DownloadOperations.Action.Pause)
+        runCurrent()
+
+        assertFalse(batch.isCompleted)
+        assertEquals(MediaCacheState.PAUSED, second.state.value)
+        assertEquals(setOf(first.cacheId), operations.busyIds.value)
+        operations.submit(setOf(second.cacheId), DownloadOperations.Action.Resume).await()
+        assertEquals(MediaCacheState.IN_PROGRESS, second.state.value)
+        finishPause.complete(Unit)
+        assertTrue(batch.await().failures.isEmpty())
+    }
+
+    @Test
+    fun `overlapping batches reject busy targets and execute remaining downloads`() = runTest {
+        val finishPause = CompletableDeferred<Unit>()
+        val first = testDownload(1)
+        val blocked = object : MediaCache by first {
+            override suspend fun pause() { finishPause.await(); first.pause() }
+        }
+        val second = testDownload(2)
+        val operations = operations(backgroundScope, blocked, second)
+        val firstBatch = operations.submit(setOf(first.cacheId), DownloadOperations.Action.Pause)
+        val overlap = operations.submit(setOf(first.cacheId, second.cacheId), DownloadOperations.Action.Pause)
+        val result = overlap.await()
+        assertEquals(setOf(first.cacheId), result.rejectedIds)
+        assertEquals(MediaCacheState.PAUSED, second.state.value)
+        finishPause.complete(Unit)
+        firstBatch.await()
+    }
+
+    @Test
+    fun `cancelling the caller preserves the operation and shared busy state`() = runTest {
         val finishPause = CompletableDeferred<Unit>()
         val underlying = testDownload(1)
         val download = object : MediaCache by underlying {
-            override suspend fun pause() {
-                finishPause.await()
-                underlying.pause()
-            }
+            override suspend fun pause() { finishPause.await(); underlying.pause() }
         }
         val operations = operations(backgroundScope, download)
         val result = operations.submit(setOf(download.cacheId), DownloadOperations.Action.Pause)
@@ -110,27 +113,35 @@ class DownloadOperationsTest {
         runCurrent()
         caller.cancel()
         runCurrent()
-
         assertFalse(result.isCompleted)
+        assertEquals(setOf(download.cacheId), operations.busyIds.value)
+        assertEquals(setOf(download.cacheId), operations.submit(setOf(download.cacheId), DownloadOperations.Action.Delete).await().rejectedIds)
         finishPause.complete(Unit)
         assertTrue(result.await().failures.isEmpty())
-        assertEquals(MediaCacheState.PAUSED, underlying.state.value)
+        assertTrue(operations.busyIds.value.isEmpty())
     }
 
     @Test
-    fun `resume after queued deletion does not resume the removed download`() = runTest {
-        val download = testDownload(1).apply { state.value = MediaCacheState.PAUSED }
+    fun `cancelling the returned result does not interrupt admitted operations`() = runTest {
+        val finishPause = CompletableDeferred<Unit>()
+        val underlying = testDownload(1)
+        val download = object : MediaCache by underlying {
+            override suspend fun pause() { finishPause.await(); underlying.pause() }
+        }
         val operations = operations(backgroundScope, download)
-        val deletion = operations.submit(setOf(download.cacheId), DownloadOperations.Action.Delete)
-        val resume = operations.submit(setOf(download.cacheId), DownloadOperations.Action.Resume)
-
-        assertTrue(deletion.await().failures.isEmpty())
-        assertTrue(resume.await().failures.isEmpty())
-        assertEquals(0, download.getResumeCalled())
+        val result = operations.submit(setOf(download.cacheId), DownloadOperations.Action.Pause)
+        runCurrent()
+        result.cancel()
+        runCurrent()
+        assertEquals(setOf(download.cacheId), operations.busyIds.value)
+        finishPause.complete(Unit)
+        runCurrent()
+        assertEquals(MediaCacheState.PAUSED, underlying.state.value)
+        assertTrue(operations.busyIds.value.isEmpty())
     }
 
     @Test
-    fun `queued command captures ids before selection changes`() = runTest {
+    fun `submission captures ids before selection changes`() = runTest {
         val first = testDownload(1)
         val second = testDownload(2)
         val operations = operations(backgroundScope, first, second)
@@ -138,98 +149,113 @@ class DownloadOperationsTest {
         val result = operations.submit(selected, DownloadOperations.Action.Pause)
         selected.clear()
         selected.add(second.cacheId)
-
         result.await()
         assertEquals(MediaCacheState.PAUSED, first.state.value)
         assertEquals(MediaCacheState.IN_PROGRESS, second.state.value)
     }
 
     @Test
-    fun `application shutdown cancels active queued and subsequent commands`() = runTest {
-        val applicationScope = CoroutineScope(
-            backgroundScope.coroutineContext + SupervisorJob(backgroundScope.coroutineContext[Job]),
+    fun `injected execution scope owns operations independently of the manager scope`() = runTest {
+        val executionScope = CoroutineScope(
+            backgroundScope.coroutineContext + SupervisorJob(backgroundScope.coroutineContext[Job]) +
+                    StandardTestDispatcher(testScheduler),
         )
         val underlying = testDownload(1)
-        var pauseStarted = false
-        var pauseCancelled = false
+        val download = object : MediaCache by underlying {
+            override suspend fun pause() { awaitCancellation() }
+        }
+        val storage = DownloadTestStorage().apply { listFlow.value = listOf(download) }
+        val operations = DownloadOperations(
+            MediaDownloadManager(listOf(storage), backgroundScope, cacheDanmaku = {}),
+            object : DeleteCacheUseCase { override suspend fun invoke(cache: MediaCache) = Unit },
+            executionScope,
+            StandardTestDispatcher(testScheduler),
+        )
+        val result = operations.submit(setOf(download.cacheId), DownloadOperations.Action.Pause)
+        runCurrent()
+        assertEquals(setOf(download.cacheId), operations.busyIds.value)
+        executionScope.cancel()
+        runCurrent()
+        assertTrue(result.isCancelled)
+        assertTrue(operations.busyIds.value.isEmpty())
+        assertTrue(backgroundScope.isActive)
+    }
+
+    @Test
+    fun `application shutdown cancels work and releases busy ids`() = runTest {
+        val applicationScope = CoroutineScope(backgroundScope.coroutineContext + SupervisorJob(backgroundScope.coroutineContext[Job]))
+        val underlying = testDownload(1)
+        var cancelled = false
         val download = object : MediaCache by underlying {
             override suspend fun pause() {
-                pauseStarted = true
-                try {
-                    awaitCancellation()
-                } finally {
-                    pauseCancelled = true
-                }
+                try { awaitCancellation() } finally { cancelled = true }
             }
         }
         val operations = operations(applicationScope, download)
         val active = operations.submit(setOf(download.cacheId), DownloadOperations.Action.Pause)
-        val queued = operations.submit(setOf(download.cacheId), DownloadOperations.Action.Resume)
         runCurrent()
-        assertTrue(pauseStarted)
-
         applicationScope.cancel()
         runCurrent()
-        assertTrue(pauseCancelled)
+        assertTrue(cancelled)
         assertTrue(active.isCancelled)
-        assertTrue(queued.isCancelled)
-        assertTrue(operations.submit(setOf(download.cacheId), DownloadOperations.Action.Resume).isCancelled)
-        assertEquals(0, underlying.getResumeCalled())
+        assertTrue(operations.busyIds.value.isEmpty())
+        val subsequent = operations.submit(setOf(download.cacheId), DownloadOperations.Action.Resume)
+        runCurrent()
+        assertTrue(subsequent.isCancelled)
     }
 
     @Test
-    fun `shutdown before worker starts settles accepted commands`() = runTest {
-        val applicationScope = CoroutineScope(
-            backgroundScope.coroutineContext + SupervisorJob(backgroundScope.coroutineContext[Job]),
-        )
+    fun `shutdown before dispatch does not start work or retain busy ids`() = runTest {
+        val applicationScope = CoroutineScope(backgroundScope.coroutineContext + SupervisorJob(backgroundScope.coroutineContext[Job]))
         val download = testDownload(1)
         val operations = operations(applicationScope, download)
         val result = operations.submit(setOf(download.cacheId), DownloadOperations.Action.Pause)
         applicationScope.cancel()
         runCurrent()
-
         assertTrue(result.isCancelled)
+        assertTrue(operations.busyIds.value.isEmpty())
         assertEquals(MediaCacheState.IN_PROGRESS, download.state.value)
     }
 
     @Test
-    fun `cancellation inside one operation does not stop the application queue`() = runTest {
+    fun `per download cancellation is reported without interrupting other downloads`() = runTest {
         val first = testDownload(1)
         val cancelled = object : MediaCache by first {
             override suspend fun pause() { throw CancellationException("download removed") }
         }
         val second = testDownload(2)
         val operations = operations(backgroundScope, cancelled, second)
-        val cancelledResult = operations.submit(setOf(cancelled.cacheId), DownloadOperations.Action.Pause)
-        val nextResult = operations.submit(setOf(second.cacheId), DownloadOperations.Action.Pause)
-
-        assertTrue(nextResult.await().failures.isEmpty())
-        assertTrue(cancelledResult.isCancelled)
+        val result = operations.submit(setOf(first.cacheId, second.cacheId), DownloadOperations.Action.Pause).await()
+        assertEquals(setOf(first.cacheId), result.failures.keys)
         assertEquals(MediaCacheState.PAUSED, second.state.value)
+        assertTrue(operations.busyIds.value.isEmpty())
     }
 
     @Test
-    fun `batch failure does not stop remaining items or subsequent commands`() = runTest {
+    fun `failed deletion releases busy state and allows retry`() = runTest {
         val storage = DownloadTestStorage()
         val first = testDownload(1)
         val second = testDownload(2)
         storage.listFlow.value = listOf(first, second)
+        var fail = true
         val operations = DownloadOperations(
-            MediaDownloadManager(listOf(storage), backgroundScope),
+            MediaDownloadManager(listOf(storage), backgroundScope, cacheDanmaku = {}),
             object : DeleteCacheUseCase {
                 override suspend fun invoke(cache: MediaCache) {
-                    if (cache === first) error("permission denied")
+                    if (cache === first && fail) error("permission denied")
                     storage.delete(cache)
                 }
             },
+            CoroutineScope(backgroundScope.coroutineContext + StandardTestDispatcher(testScheduler)),
+            StandardTestDispatcher(testScheduler),
         )
-        val deletion = operations.submit(setOf(first.cacheId, second.cacheId), DownloadOperations.Action.Delete)
-        val pause = operations.submit(setOf(first.cacheId), DownloadOperations.Action.Pause)
-
-        assertEquals(setOf(first.cacheId), deletion.await().failures.keys)
-        assertTrue(pause.await().failures.isEmpty())
+        val result = operations.submit(setOf(first.cacheId, second.cacheId), DownloadOperations.Action.Delete).await()
+        assertEquals(setOf(first.cacheId), result.failures.keys)
         assertEquals(listOf(first), storage.listFlow.value)
-        assertEquals(MediaCacheState.PAUSED, first.state.value)
+        assertTrue(operations.busyIds.value.isEmpty())
+        fail = false
+        assertTrue(operations.submit(setOf(first.cacheId), DownloadOperations.Action.Delete).await().failures.isEmpty())
+        assertTrue(storage.listFlow.value.isEmpty())
     }
 
     @Test
@@ -239,7 +265,6 @@ class DownloadOperationsTest {
         val running = testDownload(3)
         val operations = operations(backgroundScope, completed, failed, running)
         val ids = setOf(completed.cacheId, failed.cacheId, running.cacheId)
-
         operations.submit(ids, DownloadOperations.Action.Pause).await()
         assertEquals(MediaCacheState.COMPLETED, completed.state.value)
         assertEquals(MediaCacheState.FAILED, failed.state.value)
@@ -248,21 +273,19 @@ class DownloadOperationsTest {
         assertEquals(MediaCacheState.COMPLETED, completed.state.value)
         assertEquals(MediaCacheState.FAILED, failed.state.value)
         assertEquals(MediaCacheState.IN_PROGRESS, running.state.value)
+        operations.submit(ids, DownloadOperations.Action.Delete).await()
+        assertTrue(operations.submit(ids, DownloadOperations.Action.Resume).await().failures.isEmpty())
     }
 
-    private fun operations(scope: CoroutineScope, vararg downloads: MediaCache): DownloadOperations {
+    private fun TestScope.operations(scope: CoroutineScope, vararg downloads: MediaCache): DownloadOperations {
         val storage = DownloadTestStorage().apply { listFlow.value = downloads.toList() }
         return DownloadOperations(
-            MediaDownloadManager(listOf(storage), scope),
+            MediaDownloadManager(listOf(storage), scope, cacheDanmaku = {}),
             object : DeleteCacheUseCase {
                 override suspend fun invoke(cache: MediaCache) { storage.delete(cache) }
             },
+            CoroutineScope(scope.coroutineContext + StandardTestDispatcher(testScheduler)),
+            StandardTestDispatcher(testScheduler),
         )
-    }
-
-    private class ReverseDispatcher : CoroutineDispatcher() {
-        private val tasks = ArrayDeque<Runnable>()
-        override fun dispatch(context: CoroutineContext, block: Runnable) { tasks.addLast(block) }
-        fun runAll() { while (tasks.isNotEmpty()) tasks.removeLast().run() }
     }
 }
