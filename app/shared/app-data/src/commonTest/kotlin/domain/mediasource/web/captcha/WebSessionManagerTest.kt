@@ -15,6 +15,8 @@ import io.ktor.client.HttpClient
 import io.ktor.client.engine.mock.MockEngine
 import io.ktor.client.engine.mock.respond
 import io.ktor.client.plugins.cookies.HttpCookies
+import io.ktor.client.request.HttpRequestData
+import io.ktor.http.ContentType
 import io.ktor.http.HttpHeaders
 import io.ktor.http.HttpStatusCode
 import io.ktor.http.headersOf
@@ -40,7 +42,12 @@ import me.him188.ani.app.domain.mediasource.web.PageVerdict
 import me.him188.ani.app.domain.mediasource.web.SelectorSearchConfig
 import me.him188.ani.app.domain.mediasource.web.SolveRequest
 import me.him188.ani.app.domain.mediasource.web.WebCaptchaKind
+import me.him188.ani.app.domain.mediasource.web.WebSearchSubjectInfo
+import me.him188.ani.app.domain.mediasource.web.format.SelectedChannelEpisodes
+import me.him188.ani.app.domain.mediasource.web.format.SelectorChannelFormatNoChannel
 import me.him188.ani.app.domain.mediasource.web.format.SelectorSubjectFormatIndexed
+import me.him188.ani.app.domain.mediasource.web.format.SelectorSubjectFormatJsonPathIndexed
+import me.him188.ani.datasources.api.EpisodeSort
 import me.him188.ani.utils.ktor.asScopedHttpClient
 import kotlin.coroutines.EmptyCoroutineContext
 import kotlin.test.Test
@@ -79,18 +86,19 @@ class WebSessionManagerTest {
     private class Fixture(
         scope: TestScope,
         solvers: List<CaptchaSolver> = emptyList(),
-        var httpResponder: (url: String) -> Pair<String, HttpStatusCode> = { "" to HttpStatusCode.OK },
+        contentType: ContentType = ContentType.Text.Html,
+        var httpResponder: (HttpRequestData) -> Pair<String, HttpStatusCode> = { "" to HttpStatusCode.OK },
     ) {
         val factory = FakeCaptchaBrowserFactory()
         val cookieJar = WebSourceCookieJar()
         val identityRegistry = WebSourceIdentityRegistry()
         val client = HttpClient(
             MockEngine { request ->
-                val (content, status) = httpResponder(request.url.toString())
+                val (content, status) = httpResponder(request)
                 respond(
                     content = content,
                     status = status,
-                    headers = headersOf(HttpHeaders.ContentType, "text/html; charset=utf-8"),
+                    headers = headersOf(HttpHeaders.ContentType, "$contentType; charset=utf-8"),
                 )
             },
         ) {
@@ -353,12 +361,81 @@ class WebSessionManagerTest {
     // 直连正常时不碰浏览器
     @Test
     fun `direct http ok does not touch browser`() = runTestExt {
-        val fixture = Fixture(this) { _ -> parseableHtml to HttpStatusCode.OK }
+        val fixture = Fixture(this) { request ->
+            assertEquals(listOf("text/html"), request.headers.getAll(HttpHeaders.Accept))
+            parseableHtml to HttpStatusCode.OK
+        }
 
         val verdict = fixture.manager.fetchPage(searchUrl, expectation)
 
         assertIs<PageVerdict.Ok<*>>(verdict)
         assertEquals(0, fixture.factory.createCount)
+    }
+
+    @Test
+    fun `JSON search negotiates JSON and resolves numeric subject ids without browser`() = runTestExt {
+        val fixture = Fixture(this, contentType = ContentType.Application.Json) { request ->
+            val acceptsJson = request.headers.getAll(HttpHeaders.Accept).orEmpty()
+                .flatMap { it.split(',') }
+                .any { ContentType.parse(it).withoutParameters() == ContentType.Application.Json }
+            if (acceptsJson) {
+                """[{"id":123,"title":"Example Subject"}]""" to HttpStatusCode.OK
+            } else {
+                "JSON response required" to HttpStatusCode.NotAcceptable
+            }
+        }
+        val config = searchConfig.copy(
+            rawBaseUrl = "https://example.com/subjects/",
+            subjectFormatId = SelectorSubjectFormatJsonPathIndexed.id,
+            selectorSubjectFormatJsonPathIndexed = SelectorSubjectFormatJsonPathIndexed.Config(
+                selectNames = "$[*].title",
+                selectLinks = "$[*].id",
+            ),
+        )
+
+        val verdict = fixture.manager.fetchPage(searchUrl, PageExpectation.SearchResults(config))
+        val subject = assertIs<PageVerdict.Ok<List<WebSearchSubjectInfo>>>(verdict).value.single()
+
+        assertEquals("Example Subject", subject.name)
+        assertEquals("123", subject.internalId)
+        assertEquals("https://example.com/subjects/123", subject.fullUrl)
+        assertEquals(0, fixture.factory.createCount)
+    }
+
+    @Test
+    fun `JSON search still accepts and detects HTML captcha pages`() = runTestExt {
+        val fixture = Fixture(this) { request ->
+            assertEquals(
+                listOf("application/json", "text/html; q=0.9"),
+                request.headers.getAll(HttpHeaders.Accept),
+            )
+            challengeHtml to HttpStatusCode.Forbidden
+        }
+        val config = searchConfig.copy(subjectFormatId = SelectorSubjectFormatJsonPathIndexed.id)
+
+        val verdict = fixture.manager.fetchPage(searchUrl, PageExpectation.SearchResults(config))
+
+        assertEquals(BlockReason.Captcha(WebCaptchaKind.Cloudflare), assertIs<PageVerdict.Blocked>(verdict).reason)
+    }
+
+    @Test
+    fun `subject details keep HTML accept with JSON search config`() = runTestExt {
+        val fixture = Fixture(this) { request ->
+            assertEquals(listOf("text/html"), request.headers.getAll(HttpHeaders.Accept))
+            """<html><body><div class="episodes"><a href="/play/123/1">第1集</a></div></body></html>""" to
+                    HttpStatusCode.OK
+        }
+        val config = searchConfig.copy(
+            subjectFormatId = SelectorSubjectFormatJsonPathIndexed.id,
+            selectorChannelFormatNoChannel = SelectorChannelFormatNoChannel.Config(selectEpisodes = ".episodes a"),
+        )
+        val subjectUrl = "https://example.com/subjects/123"
+
+        val verdict = fixture.manager.fetchPage(subjectUrl, PageExpectation.SubjectDetails(config, subjectUrl))
+        val episode = assertIs<PageVerdict.Ok<SelectedChannelEpisodes>>(verdict).value.episodes.single()
+
+        assertEquals(EpisodeSort(1), episode.episodeSortOrEp)
+        assertEquals("https://example.com/play/123/1", episode.playUrl)
     }
 
     // 手动确认 (✓): 以当前页面判决为准

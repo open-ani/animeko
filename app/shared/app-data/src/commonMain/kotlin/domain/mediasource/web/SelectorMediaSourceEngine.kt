@@ -37,7 +37,9 @@ import me.him188.ani.app.domain.mediasource.asCandidate
 import me.him188.ani.app.domain.mediasource.web.format.SelectedChannelEpisodes
 import me.him188.ani.app.domain.mediasource.web.format.SelectorChannelFormat
 import me.him188.ani.app.domain.mediasource.web.format.SelectorFormatConfig
+import me.him188.ani.app.domain.mediasource.web.format.SelectorFormatId
 import me.him188.ani.app.domain.mediasource.web.format.SelectorSubjectFormat
+import me.him188.ani.app.domain.mediasource.web.format.SelectorSubjectFormatA
 import me.him188.ani.datasources.api.DefaultMedia
 import me.him188.ani.datasources.api.EpisodeSort
 import me.him188.ani.datasources.api.Media
@@ -110,6 +112,7 @@ abstract class SelectorMediaSourceEngine {
 
     /**
      * 根据给定信息搜索条目列表.
+     * @param subjectFormatId 搜索结果格式, 用于请求相应的响应类型.
      */
     @Throws(RepositoryException::class, CancellationException::class)
     suspend fun searchSubjects(
@@ -117,6 +120,7 @@ abstract class SelectorMediaSourceEngine {
         subjectName: String,
         useOnlyFirstWord: Boolean,
         removeSpecial: Boolean,
+        subjectFormatId: SelectorFormatId = SelectorSubjectFormatA.id,
     ): SearchSubjectResult {
         val encodedUrl = MediaSourceEngineHelpers.encodeUrlSegment(
             MediaSourceEngineHelpers.getSearchKeyword(subjectName, removeSpecial, useOnlyFirstWord),
@@ -126,7 +130,7 @@ abstract class SelectorMediaSourceEngine {
             searchUrl.replace("{keyword}", encodedUrl),
         )
 
-        return searchImpl(finalUrl)
+        return searchImpl(finalUrl, subjectFormatId)
     }
 
     fun parseSearchResult(
@@ -154,6 +158,7 @@ abstract class SelectorMediaSourceEngine {
     @Throws(RepositoryException::class, CancellationException::class)
     protected abstract suspend fun searchImpl(
         finalUrl: Url,
+        subjectFormatId: SelectorFormatId,
     ): SearchSubjectResult
 
     /**
@@ -404,11 +409,12 @@ class DefaultSelectorMediaSourceEngine(
 ) : SelectorMediaSourceEngine() {
     override suspend fun searchImpl(
         finalUrl: Url,
+        subjectFormatId: SelectorFormatId,
     ): SearchSubjectResult = withContext(ioDispatcher) {
         try {
             client.use {
                 prepareGet(finalUrl) {
-                    accept(ContentType.Text.Html)
+                    acceptSelectorSearch(subjectFormatId)
                 }.execute { response ->
                     when (response.status) {
                         HttpStatusCode.NotFound -> SearchSubjectResult(
