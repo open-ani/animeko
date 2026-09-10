@@ -57,6 +57,8 @@ import me.him188.ani.app.ui.foundation.animation.AniAnimatedVisibility
 import me.him188.ani.app.ui.foundation.animation.LocalAniMotionScheme
 import me.him188.ani.app.ui.foundation.quantizeSliderValue
 import me.him188.ani.app.ui.lang.Lang
+import me.him188.ani.app.ui.lang.settings_app_auto_advance_collection_type
+import me.him188.ani.app.ui.lang.settings_app_auto_advance_collection_type_description
 import me.him188.ani.app.ui.lang.settings_app_close_behavior
 import me.him188.ani.app.ui.lang.settings_app_close_behavior_exit
 import me.him188.ani.app.ui.lang.settings_app_close_behavior_minimize_to_tray
@@ -292,6 +294,22 @@ fun SettingsScope.AppearanceGroup(
     }
 
     Group(title = { Text(stringResource(Lang.settings_app_my_collections)) }, useThinHeader = true) {
+        SwitchItem(
+            checked = uiSettings.myCollections.autoAdvanceCollectionType,
+            onCheckedChange = {
+                state.update(
+                    uiSettings.copy(
+                        myCollections = uiSettings.myCollections.copy(
+                            autoAdvanceCollectionType = it,
+                        ),
+                    ),
+                )
+            },
+            title = { Text(stringResource(Lang.settings_app_auto_advance_collection_type)) },
+            description = {
+                Text(stringResource(Lang.settings_app_auto_advance_collection_type_description))
+            },
+        )
         SwitchItem(
             checked = uiSettings.myCollections.enableListAnimation1,
             onCheckedChange = {

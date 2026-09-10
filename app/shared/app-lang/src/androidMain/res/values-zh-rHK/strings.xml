@@ -212,6 +212,8 @@
     <string name="settings_app_nsfw_display">顯示</string>
     <string name="settings_app_nsfw_content">NSFW 內容</string>
     <string name="settings_app_my_collections">我的追番</string>
+    <string name="settings_app_auto_advance_collection_type">自動推進追番狀態</string>
+    <string name="settings_app_auto_advance_collection_type_description">根據已看劇集自動推進「想看」、「在看」和「看過」狀態</string>
     <string name="settings_app_list_animation">列表滾動動畫</string>
     <string name="settings_app_list_animation_description">如遇到顯示重疊問題，可嘗試關閉</string>
     <string name="settings_app_episode_playback">選集播放</string>

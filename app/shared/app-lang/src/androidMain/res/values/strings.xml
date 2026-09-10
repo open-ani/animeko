@@ -220,6 +220,8 @@
     <string name="settings_app_nsfw_display">Show</string>
     <string name="settings_app_nsfw_content">NSFW content</string>
     <string name="settings_app_my_collections">My followed anime</string>
+    <string name="settings_app_auto_advance_collection_type">Automatically update anime status</string>
+    <string name="settings_app_auto_advance_collection_type_description">Update Wish, Watching, and Watched based on watched episodes</string>
     <string name="settings_app_list_animation">List scrolling animation</string>
     <string name="settings_app_list_animation_description">If there are overlapping display issues, try turning this off</string>
     <string name="settings_app_episode_playback">Episode playback</string>
