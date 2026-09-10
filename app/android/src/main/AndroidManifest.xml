@@ -9,22 +9,16 @@
   ~ https://github.com/open-ani/ani/blob/main/LICENSE
   -->
 
-<manifest xmlns:android="http://schemas.android.com/apk/res/android"
-        xmlns:tools="http://schemas.android.com/tools">
+<!-- 交集 manifest: default (手机) 与 tv 两个 flavor 共用的声明.
+     合并方向为 flavor 增量 -> 本文件 (纯加法, 无 remove 手术).
+     手机专属 (torrent 双服务 / 前台服务权限 / oauth callback / AniApplication) 在 src/default;
+     TV 专属 (leanback / TvAniApplication / banner) 在 src/tv. 见 atv-architecture.md §6.2. -->
+<manifest xmlns:android="http://schemas.android.com/apk/res/android">
 
     <uses-permission android:name="android.permission.INTERNET" />
-    <uses-permission android:name="android.permission.VIBRATE" />
     <uses-permission android:name="android.permission.REQUEST_INSTALL_PACKAGES" />
-    <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
     <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
-    <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
-    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_DATA_SYNC" />
-    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_MEDIA_PLAYBACK" />
     <uses-permission android:name="android.permission.WAKE_LOCK" />
-    <uses-permission
-            android:name="android.permission.WRITE_EXTERNAL_STORAGE"
-            android:maxSdkVersion="28"
-            tools:ignore="ScopedStorage" />
 
     <queries>
         <intent>
@@ -37,7 +31,6 @@
     </queries>
 
     <application
-            android:name="AniApplication"
             android:allowBackup="true"
             android:icon="@mipmap/ic_launcher"
             android:label="@string/app_name"
@@ -46,38 +39,6 @@
             android:supportsRtl="true"
             android:theme="@style/Theme.AppCompat.DayNight.NoActionBar"
             android:usesCleartextTraffic="true">
-
-        <activity
-                android:name=".activity.MainActivity"
-                android:exported="true"
-                android:launchMode="singleTask">
-            <intent-filter>
-                <action android:name="android.intent.action.MAIN" />
-                <category android:name="android.intent.category.LAUNCHER" />
-            </intent-filter>
-
-            <intent-filter android:autoVerify="false">
-                <action android:name="android.intent.action.VIEW" />
-
-                <category android:name="android.intent.category.DEFAULT" />
-                <category android:name="android.intent.category.BROWSABLE" />
-
-                <data
-                        android:host="bangumi-oauth-callback"
-                        android:scheme="ani" />
-            </intent-filter>
-
-            <intent-filter android:autoVerify="false">
-                <action android:name="android.intent.action.VIEW" />
-
-                <category android:name="android.intent.category.DEFAULT" />
-                <category android:name="android.intent.category.BROWSABLE" />
-
-                <data
-                        android:host="subjects"
-                        android:scheme="ani" />
-            </intent-filter>
-        </activity>
 
         <service
                 android:name="androidx.appcompat.app.AppLocalesMetadataHolderService"
@@ -106,23 +67,6 @@
                     android:name="android.support.FILE_PROVIDER_PATHS"
                     android:resource="@xml/file_paths" />
         </provider>
-
-        <service
-                android:name="me.him188.ani.app.domain.torrent.service.AniTorrentServiceApi34"
-                android:description="@string/service_torrent_engine_description"
-                android:enabled="true"
-                android:exported="false"
-                android:foregroundServiceType="mediaPlayback"
-                android:process=":torrent_service"
-                tools:targetApi="34" />
-
-        <service
-                android:name="me.him188.ani.app.domain.torrent.service.AniTorrentServiceApiDefault"
-                android:description="@string/service_torrent_engine_description"
-                android:enabled="true"
-                android:exported="false"
-                android:foregroundServiceType="dataSync"
-                android:process=":torrent_service" />
 
     </application>
 </manifest>

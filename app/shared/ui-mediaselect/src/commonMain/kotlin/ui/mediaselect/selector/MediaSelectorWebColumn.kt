@@ -50,6 +50,7 @@ import androidx.compose.ui.unit.dp
 import kotlinx.coroutines.delay
 import me.him188.ani.app.domain.mediasource.instance.MediaSourceInstance
 import me.him188.ani.app.domain.mediasource.web.SolveRequest
+import me.him188.ani.app.domain.mediasource.web.WebCaptchaKind
 import me.him188.ani.app.ui.foundation.IconButton
 import me.him188.ani.app.ui.foundation.ProvideCompositionLocalsForPreview
 import me.him188.ani.app.ui.foundation.ifThen
@@ -60,12 +61,12 @@ import me.him188.ani.app.ui.lang.media_selector_web_edit_query_prompt
 import me.him188.ani.app.ui.lang.media_selector_web_rate_limited
 import me.him188.ani.app.ui.lang.media_selector_web_waiting_captcha
 import me.him188.ani.app.ui.lang.settings_mediasource_refresh
+import me.him188.ani.app.ui.media.webCaptchaRequiredMessage
 import me.him188.ani.app.ui.mediaselect.common.SourceIcon
 import me.him188.ani.datasources.api.Media
 import me.him188.ani.utils.platform.annotations.TestOnly
 import me.him188.ani.utils.platform.currentTimeMillis
 import org.jetbrains.compose.resources.stringResource
-
 
 data class WebSourceChannel(
     val name: String,
@@ -86,7 +87,6 @@ data class WebSource(
     val isError: Boolean,
     val isPreferred: Boolean,
     val captchaRequest: SolveRequest? = null,
-    val captchaMessage: String? = null,
     val isResolvingCaptcha: Boolean = false,
     /** 限流中: 到达该时间 (epoch millis) 后会自动重试. */
     val rateLimitedUntilMillis: Long? = null,
@@ -94,6 +94,7 @@ data class WebSource(
     val isCaptchaSupported: Boolean = true,
 ) {
     val isCaptchaRequired: Boolean get() = captchaRequest != null
+    val captchaKind: WebCaptchaKind? get() = captchaRequest?.kind
     val isRateLimited: Boolean get() = rateLimitedUntilMillis != null
 }
 
@@ -218,7 +219,7 @@ private fun WebSourceCard(
             if (source.isCaptchaRequired) {
                 if (source.isCaptchaSupported) {
                     Text(
-                        text = if (source.isResolvingCaptcha) waitingCaptchaText else source.captchaMessage.orEmpty(),
+                        text = if (source.isResolvingCaptcha) waitingCaptchaText else source.captchaKind?.let { webCaptchaRequiredMessage(it) }.orEmpty(),
                         color = MaterialTheme.colorScheme.error,
                         style = MaterialTheme.typography.bodySmall,
                         modifier = Modifier

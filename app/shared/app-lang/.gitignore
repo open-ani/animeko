@@ -1,2 +1,3 @@
-src/androidMain/res/values-zh-r*/strings*.xml
-src/androidMain/res/values-zh/strings*.xml
+src/androidMain/res/values-zh/*.xml
+src/androidMain/res/values-zh-rMO/*.xml
+src/androidMain/res/values-zh-rSG/*.xml

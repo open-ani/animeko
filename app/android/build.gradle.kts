@@ -108,6 +108,12 @@ android {
         create("default") {
             dimension = "distribution"
         }
+        create("tv") {
+            // Android TV 形态 (atv-architecture.md D1): 与 default 平级、单维度,
+            // 保证手机任务名 assembleDefaultRelease 与产物路径零变化.
+            dimension = "distribution"
+            applicationIdSuffix = ".leanback"
+        }
     }
     buildFeatures {
         compose = true
@@ -116,8 +122,10 @@ android {
 }
 
 dependencies {
+    // 两个 flavor 共用共享库；TV 对手机页面的访问边界靠约定 + Konsist 维护。
     implementation(projects.app.shared)
     implementation(projects.app.shared.application)
+    "tvImplementation"(projects.app.shared.tv)
 
     implementation(libs.androidx.core.ktx)
     implementation(libs.androidx.appcompat)
@@ -143,4 +151,25 @@ googleServices {
         .let {
             if (it) MissingGoogleServicesStrategy.ERROR else MissingGoogleServicesStrategy.IGNORE
         }
+}
+
+// tv flavor 不接入 Firebase: google-services.json 只含手机包名, 禁用 tv variant 的
+// GoogleServices 任务以避免 "No matching client found" 失败 (atv-architecture.md §10.1).
+tasks.configureEach {
+    if (name.startsWith("processTv") && name.endsWith("GoogleServices")) {
+        enabled = false
+    }
+}
+
+// 同时从 tv variant 的依赖闭包剔除 Firebase/GMS (经 :utils:analytics api 传递进来):
+// TV 端 Analytics 永不初始化, 剔除后 manifest 不再混入 AD_ID/AdServices 权限与 measurement 服务.
+configurations.configureEach {
+    if (name.startsWith("tv") && name.endsWith("Classpath")) {
+        exclude(group = "dev.gitlive", module = "firebase-analytics")
+        exclude(group = "dev.gitlive", module = "firebase-analytics-android")
+        exclude(group = "dev.gitlive", module = "firebase-app")
+        exclude(group = "dev.gitlive", module = "firebase-app-android")
+        exclude(group = "com.google.firebase")
+        exclude(group = "com.google.android.gms")
+    }
 }

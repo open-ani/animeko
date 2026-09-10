@@ -53,6 +53,7 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import me.him188.ani.app.domain.episode.DanmakuFetchResultWithConfig
+import me.him188.ani.app.ui.episode.danmaku.renderDanmakuServiceId
 import me.him188.ani.app.ui.foundation.ProvideCompositionLocalsForPreview
 import me.him188.ani.app.ui.lang.Lang
 import me.him188.ani.app.ui.lang.episode_danmaku_match_change
@@ -62,8 +63,6 @@ import me.him188.ani.app.ui.lang.subject_episode_danmaku_match_exact
 import me.him188.ani.app.ui.lang.subject_episode_danmaku_match_fuzzy
 import me.him188.ani.app.ui.lang.subject_episode_danmaku_match_none
 import me.him188.ani.app.ui.lang.subject_episode_danmaku_match_semi_fuzzy
-import me.him188.ani.app.ui.lang.subject_episode_danmaku_service_bilibili
-import me.him188.ani.app.ui.lang.subject_episode_danmaku_service_dandanplay
 import me.him188.ani.app.ui.lang.subject_episode_danmaku_settings_for
 import me.him188.ani.app.ui.lang.subject_episode_danmaku_time_shift_item
 import me.him188.ani.app.ui.lang.subject_episode_disable
@@ -210,18 +209,6 @@ fun DanmakuSourceCard(
     }
 }
 
-@Composable
-internal fun renderDanmakuServiceId(serviceId: DanmakuServiceId): String = when (serviceId) {
-    DanmakuServiceId.Animeko -> "Animeko"
-    DanmakuServiceId.AcFun -> "AcFun"
-    DanmakuServiceId.Baha -> "Baha"
-    DanmakuServiceId.Bilibili -> stringResource(Lang.subject_episode_danmaku_service_bilibili)
-    DanmakuServiceId.Dandanplay -> stringResource(Lang.subject_episode_danmaku_service_dandanplay)
-    DanmakuServiceId.Tucao -> "Tucao"
-
-    // `else` should not reach in production
-    else -> serviceId.value
-}
 
 internal fun formatDanmakuShiftMillis(shiftMillis: Long): String {
     if (shiftMillis == 0L) return "0 ms"

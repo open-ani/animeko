@@ -97,6 +97,7 @@ import me.him188.ani.app.navigation.LocalNavigator
 import me.him188.ani.app.navigation.SubjectDetailPlaceholder
 import me.him188.ani.app.platform.LocalContext
 import me.him188.ani.app.platform.navigation.LocalBrowserNavigator
+import me.him188.ani.app.ui.episode.danmaku.renderDanmakuServiceId
 import me.him188.ani.app.ui.foundation.ProvideCompositionLocalsForPreview
 import me.him188.ani.app.ui.foundation.animation.AniAnimatedVisibility
 import me.him188.ani.app.ui.foundation.animation.LocalAniMotionScheme
@@ -149,7 +150,6 @@ import me.him188.ani.app.ui.subject.episode.details.components.DanmakuSourceSett
 import me.him188.ani.app.ui.subject.episode.details.components.FavoriteIconButton
 import me.him188.ani.app.ui.subject.episode.details.components.SubjectRecommendationCard
 import me.him188.ani.app.ui.subject.episode.details.components.formatDanmakuShiftMillis
-import me.him188.ani.app.ui.subject.episode.details.components.renderDanmakuServiceId
 import me.him188.ani.app.ui.subject.episode.statistics.DanmakuMatchInfoSummaryBanner
 import me.him188.ani.app.ui.subject.episode.statistics.DanmakuStatistics
 import me.him188.ani.app.ui.subject.episode.statistics.VideoStatistics
@@ -230,7 +230,7 @@ fun EpisodeDetails(
 
     if (state.subjectId != 0) {
         val subjectDetailsState by state.subjectDetailsStateLoader.state
-            .collectAsStateWithLifecycle(SubjectDetailsUIState.Placeholder(state.subjectId))
+            .collectAsStateWithLifecycle()
         if (showSubjectDetails) {
             ModalBottomSheet(
                 { showSubjectDetails = false },
@@ -246,7 +246,7 @@ fun EpisodeDetails(
                     subjectDetailsState,
                     selfInfo,
                     onPlay = onSwitchEpisode,
-                    onLoadErrorRetry = { state.subjectDetailsStateLoader.reload(state.subjectId) },
+                    onLoadErrorRetry = { state.subjectDetailsStateLoader.retry() },
                     onClickTag = onClickTag,
                     onEpisodeCollectionUpdate = onEpisodeCollectionUpdate,
                     showTopBar = false,

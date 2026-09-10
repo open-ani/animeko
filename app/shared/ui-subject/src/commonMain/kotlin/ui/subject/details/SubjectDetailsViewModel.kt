@@ -35,7 +35,7 @@ class SubjectDetailsViewModel(
     val authState = SelfInfoStateProducer(koin = getKoin()).flow
 
     fun reload() {
-        stateLoader.reload(subjectId, placeholder)
+        stateLoader.load(subjectId, placeholder, force = true)
     }
 }
 

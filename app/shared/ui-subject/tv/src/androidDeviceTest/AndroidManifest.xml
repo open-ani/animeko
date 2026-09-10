@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+    <!-- The UI fixture does not exercise the bundled native media libraries. -->
+    <application android:pageSizeCompat="enabled">
+        <activity
+            android:name="androidx.activity.ComponentActivity"
+            android:screenOrientation="landscape"
+            android:theme="@android:style/Theme.Material.NoActionBar.Fullscreen" />
+    </application>
+</manifest>

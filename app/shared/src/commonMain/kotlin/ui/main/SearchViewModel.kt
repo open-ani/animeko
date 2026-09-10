@@ -263,7 +263,7 @@ class SearchViewModel(
 
     fun reloadCurrentSubjectDetails() {
         val curr = currentPreviewingSubject ?: return
-        subjectDetailsStateLoader.reload(curr.subjectId, curr)
+        subjectDetailsStateLoader.load(curr.subjectId, curr, force = true)
     }
 
     private fun updateQuery(query: SubjectSearchQuery, submit: Boolean) {
@@ -329,7 +329,7 @@ class SearchViewModel(
     }
 
     private fun viewSubjectDetails(previewItem: SubjectPreviewItemInfo) {
-        subjectDetailsStateLoader.clear()
+        // load 自动取消在途任务, 不需要先 clear
         subjectDetailsStateLoader.load(
             previewItem.subjectId,
             placeholder = SubjectInfo.createPlaceholder(
