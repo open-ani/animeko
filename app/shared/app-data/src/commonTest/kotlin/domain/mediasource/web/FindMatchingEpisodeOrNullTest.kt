@@ -57,4 +57,47 @@ class FindMatchingEpisodeOrNullTest {
         val episodes = listOf(episode("线路1", 1), episode("线路1", 2))
         assertNull(episodes.findMatchingEpisodeOrNull(EpisodeSort(99), null, null))
     }
+
+    /**
+     * 剧场版的条目页把同一部作品的不同配音列成多条, 名称只有画质与语言, 集号解析不出来.
+     * 实测 https://www.yinghua2.com 的「铃芽之旅」: 9 条线路里 5 条是这种命名.
+     */
+    @Test
+    fun `findMatchingEpisodeOrNull matches a whole work label as first episode`() {
+        val episodes = listOf(
+            WebSearchEpisodeInfo("线路1", "HD高清国语版", EpisodeSort("HD高清国语版"), MOVIE_URL),
+            WebSearchEpisodeInfo("线路1", "HD高清原声版", EpisodeSort("HD高清原声版"), MOVIE_URL),
+        )
+        assertEquals(episodes[0], episodes.findMatchingEpisodeOrNull(EpisodeSort(1), EpisodeSort(1), null))
+        assertNull(episodes.findMatchingEpisodeOrNull(EpisodeSort(5), EpisodeSort(5), null))
+    }
+
+    @Test
+    fun `findMatchingEpisodeOrNull does not treat a title or a full season entry as first episode`() {
+        val episodes = listOf(
+            WebSearchEpisodeInfo("线路1", "剧场版01", EpisodeSort("剧场版01"), MOVIE_URL),
+            WebSearchEpisodeInfo("线路1", "全集", EpisodeSort("全集"), MOVIE_URL),
+        )
+        assertNull(episodes.findMatchingEpisodeOrNull(EpisodeSort(1), EpisodeSort(1), null))
+    }
+
+    @Test
+    fun `findMatchingEpisodeOrNull keeps a parsed sort`() {
+        // 站点给了集号就以它为准
+        val episodes = listOf(WebSearchEpisodeInfo("线路1", "HD中字 第03集", EpisodeSort(3), MOVIE_URL))
+        assertNull(episodes.findMatchingEpisodeOrNull(EpisodeSort(1), EpisodeSort(1), null))
+        assertEquals(episodes[0], episodes.findMatchingEpisodeOrNull(EpisodeSort(3), EpisodeSort(3), null))
+    }
+
+    @Test
+    fun `findMatchingEpisodeOrNull keeps a match that already worked`() {
+        // 站点把集号写成了与请求完全相同的怪字符串: 本来就能按相等匹配上, 替换判据不能把它弄丢
+        val weird = EpisodeSort("HD中字")
+        val episodes = listOf(WebSearchEpisodeInfo("线路1", "HD中字", weird, MOVIE_URL))
+        assertEquals(episodes[0], episodes.findMatchingEpisodeOrNull(weird, null, null))
+    }
+
+    private companion object {
+        private const val MOVIE_URL = "https://example.com/movie"
+    }
 }
