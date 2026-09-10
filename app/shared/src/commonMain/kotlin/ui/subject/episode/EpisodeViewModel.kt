@@ -97,6 +97,7 @@ import me.him188.ani.app.domain.mediasource.GetPreferredWebMediaSourceUseCase
 import me.him188.ani.app.domain.mediasource.instance.GetMediaSourceInstancesUseCase
 import me.him188.ani.app.domain.mediasource.web.captcha.WebSessionManager
 import me.him188.ani.app.domain.player.CacheProgressProvider
+import me.him188.ani.app.domain.player.VideoLoadingState
 import me.him188.ani.app.domain.player.extension.AnalyticsExtension
 import me.him188.ani.app.domain.player.extension.AutoSelectExtension
 import me.him188.ani.app.domain.player.extension.CacheOnBtPlayExtension
@@ -372,6 +373,18 @@ class EpisodeViewModel(
     )
 
     val mediaResolver: MediaResolver get() = fetchPlayState.playerSession.mediaResolver
+
+    /**
+     * 资源里没有匹配到本集时可供用户挑选的文件, 空表示不需要挑.
+     */
+    val noMatchingFileCandidatesFlow: Flow<List<String>> =
+        fetchPlayState.playerSession.videoLoadingState.map {
+            (it as? VideoLoadingState.NoMatchingFile)?.filesInTorrent.orEmpty()
+        }
+
+    fun selectTorrentFile(pathInTorrent: String) {
+        launchInBackground { fetchPlayState.selectTorrentFile(pathInTorrent) }
+    }
 
     // region Subject and episode data info flows
     @UnsafeEpisodeSessionApi

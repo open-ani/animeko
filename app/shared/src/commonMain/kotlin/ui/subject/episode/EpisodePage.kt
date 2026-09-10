@@ -351,6 +351,25 @@ private fun EpisodeScreenContent(
                     sidebarVisible = vm.sidebarVisible,
                 )
 
+                val noMatchingFileCandidates by vm.noMatchingFileCandidatesFlow
+                    .collectAsStateWithLifecycle(emptyList())
+                // 关掉对话框不改变加载状态 (还是「未匹配到文件」), 所以要单独记一个「这次不挑了」.
+                // 键里要带剧集: 同一个整季包的两个 SP 给出的文件清单逐项相同, 只按清单记会把上一集的
+                // 「不挑了」带到下一集, 下一集就只剩「未找到本集」而没有对话框.
+                var noMatchingFileDialogDismissed by remember(page.episodePresentation.episodeId, noMatchingFileCandidates) {
+                    mutableStateOf(false)
+                }
+                if (noMatchingFileCandidates.isNotEmpty() && !noMatchingFileDialogDismissed) {
+                    NoMatchingFileDialog(
+                        files = noMatchingFileCandidates,
+                        onSelect = { path ->
+                            noMatchingFileDialogDismissed = true
+                            vm.selectTorrentFile(path)
+                        },
+                        onDismissRequest = { noMatchingFileDialogDismissed = true },
+                    )
+                }
+
                 page.matchingDanmakuUiState?.let { uiState ->
                     MatchingDanmakuDialog(
                         onDismissRequest = { vm.cancelMatchingDanmaku() },

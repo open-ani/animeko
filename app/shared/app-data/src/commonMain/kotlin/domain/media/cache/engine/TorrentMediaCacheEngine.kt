@@ -42,6 +42,7 @@ import me.him188.ani.app.domain.media.cache.MediaCache
 import me.him188.ani.app.domain.media.cache.MediaCacheState
 import me.him188.ani.app.domain.media.cache.storage.MediaSaveDirProvider
 import me.him188.ani.app.domain.media.resolver.EpisodeMetadata
+import me.him188.ani.app.domain.media.resolver.TorrentFileOverrideStore
 import me.him188.ani.app.domain.media.resolver.TorrentMediaResolver
 import me.him188.ani.app.domain.torrent.TorrentEngine
 import me.him188.ani.app.tools.toProgress
@@ -96,6 +97,7 @@ class TorrentMediaCacheEngine(
     val flowDispatcher: CoroutineContext = Dispatchers.Default,
     private val baseSaveDirProvider: MediaSaveDirProvider,
     private val onDownloadStarted: suspend (session: TorrentSession) -> Unit = {},
+    private val fileOverrideStore: TorrentFileOverrideStore = TorrentFileOverrideStore.Default,
 ) : MediaCacheEngine, AutoCloseable {
     companion object {
         private val logger = logger<TorrentMediaCacheEngine>()
@@ -452,6 +454,7 @@ class TorrentMediaCacheEngine(
                                     EncodedTorrentInfo.createRaw(data),
                                     metadata,
                                     coroutineContext,
+                                    origin.mediaId,
                                 ),
                             ).apply {
                                 resume()
@@ -467,7 +470,9 @@ class TorrentMediaCacheEngine(
             TorrentMediaCache(
                 origin = origin,
                 metadata = metadata,
-                fileHandle = getFileHandle(EncodedTorrentInfo.createRaw(data), metadata, parentContext),
+                fileHandle = getFileHandle(
+                    EncodedTorrentInfo.createRaw(data), metadata, parentContext, origin.mediaId,
+                ),
             )
         }
     }
@@ -476,6 +481,7 @@ class TorrentMediaCacheEngine(
         encoded: EncodedTorrentInfo,
         metadata: MediaCacheMetadata,
         parentContext: CoroutineContext,
+        mediaId: String,
     ): FileHandle {
         val downloader = torrentEngine.getDownloader()
         val res = kotlinx.coroutines.withTimeoutOrNull(30_000) {
@@ -484,13 +490,17 @@ class TorrentMediaCacheEngine(
             onDownloadStarted(session)
 
             val files = session.getFiles()
-            val selectedFile = TorrentMediaResolver.selectVideoFileEntry(
-                files,
-                { fileName },
-                listOf(metadata.episodeName),
-                episodeSort = metadata.episodeSort,
-                episodeEp = metadata.episodeEp,
-            )
+            // 用户挑过文件就用他挑的, 不再匹配. 本次会话内的选择先落在内存里 (挑的那一刻这条记录
+            // 可能还不存在), 已经落到记录上的写在 metadata.pathInTorrent.
+            val selectedFile = (fileOverrideStore.get(mediaId, metadata.episodeSort) ?: metadata.pathInTorrent)
+                ?.let { path -> files.firstOrNull { it.pathInTorrent == path } }
+                ?: TorrentMediaResolver.selectVideoFileEntry(
+                    files,
+                    { pathInTorrent },
+                    listOf(metadata.episodeName),
+                    episodeSort = metadata.episodeSort,
+                    episodeEp = metadata.episodeEp,
+                )
 
             if (selectedFile == null) {
                 logger.error {
@@ -526,6 +536,12 @@ class TorrentMediaCacheEngine(
         parentContext: CoroutineContext
     ): TorrentMediaCache {
         if (!supports(origin)) throw UnsupportedOperationException("Media is not supported by this engine $this: ${origin.download}")
+        // 用户挑过文件之后才会走到这里, 把选择写进 metadata, 存下来的记录从一开始就是对的.
+        // 放在这里而不是调用方, 是因为调用方不该知道种子内部有哪些文件.
+        @Suppress("NAME_SHADOWING")
+        val metadata = fileOverrideStore.get(origin.mediaId, metadata.episodeSort)
+            ?.let { metadata.copy(pathInTorrent = it) }
+            ?: metadata
         // 创建缓存需要保证 torrent engine 一直可用, 所以 getFileHandle 直接启动协程创建好缓存.
         @OptIn(EnsureTorrentEngineIsAccessible::class)
         engineAccess.withServiceRequest("TorrentMediaCacheEngine#$this-createCache:${origin.mediaId}") {
@@ -552,7 +568,7 @@ class TorrentMediaCacheEngine(
             return TorrentMediaCache(
                 origin = origin,
                 metadata = metadata,
-                fileHandle = getFileHandle(data, metadata, parentContext),
+                fileHandle = getFileHandle(data, metadata, parentContext, origin.mediaId),
             )
         }
     }
