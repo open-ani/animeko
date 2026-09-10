@@ -220,6 +220,7 @@ fun EpisodeDetails(
     modifier: Modifier = Modifier,
     contentPadding: PaddingValues = PaddingValues(horizontal = 16.dp, vertical = 16.dp),
     danmakuListState: DanmakuListState? = null,
+    hideSelectorOnSelect: Boolean = true,
 ) {
     var showSubjectDetails by rememberSaveable {
         mutableStateOf(false)
@@ -410,7 +411,9 @@ fun EpisodeDetails(
                                 stickyHeaderBackgroundColor = BottomSheetDefaults.ContainerColor,
                                 onClickItem = {
                                     mediaSelectorState.select(it)
-                                    showMediaSelector = false
+                                    if (hideSelectorOnSelect) {
+                                        showMediaSelector = false
+                                    }
                                 },
                                 scrollable = true,
                             )
@@ -444,7 +447,9 @@ fun EpisodeDetails(
                             stickyHeaderBackgroundColor = BottomSheetDefaults.ContainerColor,
                             onClickItem = {
                                 mediaSelectorState.select(it)
-                                showMediaSelector = false
+                                if (hideSelectorOnSelect) {
+                                    showMediaSelector = false
+                                }
                             },
                             scrollable = sheetState.targetValue == SheetValue.Expanded,
                         )
