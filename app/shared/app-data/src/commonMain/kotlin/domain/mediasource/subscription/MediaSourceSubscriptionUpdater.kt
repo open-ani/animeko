@@ -34,14 +34,24 @@ import me.him188.ani.utils.platform.Uuid
 import me.him188.ani.utils.platform.currentTimeMillis
 import kotlin.coroutines.cancellation.CancellationException
 import kotlin.time.Duration
+import kotlin.time.Duration.Companion.hours
 import kotlin.time.Duration.Companion.milliseconds
+import kotlin.time.Duration.Companion.minutes
+import kotlin.time.Duration.Companion.seconds
 
 class MediaSourceSubscriptionUpdater(
     private val subscriptions: MediaSourceSubscriptionRepository,
     private val mediaSourceManager: MediaSourceManager,
     private val codecManager: MediaSourceCodecManager,
     private val requester: MediaSourceSubscriptionRequester,
+    private val getCurrentTimeMillis: () -> Long = { currentTimeMillis() },
 ) {
+    /**
+     * 每个订阅连续失败的次数, 只存在于内存中.
+     * 进程重启一般意味着网络环境已经变了, 所以重启后从头开始退避, 立即重试一次.
+     */
+    private val consecutiveFailures = mutableMapOf<String, Int>()
+
     /**
      * @param force to ignore lastUpdated time
      * @return delay duration to check next time
@@ -49,16 +59,28 @@ class MediaSourceSubscriptionUpdater(
     suspend fun updateAllOutdated(force: Boolean = false): Duration {
         logger.info { "MediaSourceSubscriptionUpdater.updateAllOutdated" }
         val subscriptions = subscriptions.flow.first()
-        val currentTimeMillis = currentTimeMillis()
+        val currentTimeMillis = getCurrentTimeMillis()
+
+        var nextDelay: Duration? = null
+        fun proposeNextDelay(duration: Duration) {
+            nextDelay = nextDelay?.coerceAtMost(duration) ?: duration
+        }
 
         for (subscription in subscriptions) {
+            // 上次失败时用短得多的重试间隔: 冷启动时设备网络往往还没就绪, 按 updatePeriod 等待意味着
+            // 这期间一个订阅数据源都没有
+            val period = failureRetryPeriodOrNull(subscription) ?: subscription.updatePeriod
+
             fun shouldUpdate(): Boolean {
                 if (force) return true
                 if (subscription.lastUpdated == null) return true
-                return (currentTimeMillis - subscription.lastUpdated.timeMillis).milliseconds > subscription.updatePeriod
+                return (currentTimeMillis - subscription.lastUpdated.timeMillis).milliseconds > period
             }
 
             if (!shouldUpdate()) {
+                val elapsed = (currentTimeMillis - (subscription.lastUpdated?.timeMillis ?: currentTimeMillis))
+                    .milliseconds
+                proposeNextDelay((period - elapsed).coerceAtLeast(Duration.ZERO))
                 continue
             }
 
@@ -76,9 +98,10 @@ class MediaSourceSubscriptionUpdater(
                 }
             }
 
-            try {
+            val success = try {
                 val count = updateSubscription(subscription)
                 setResult(count)
+                true
             } catch (e: CancellationException) {
                 throw e
             } catch (e: RepositoryException) {
@@ -104,13 +127,43 @@ class MediaSourceSubscriptionUpdater(
                     is RepositoryRequestError ->
                         setResult(null, UpdateError(e.localizedMessage, null))
                 }
+                false
             } catch (e: Exception) {
                 logger.error(e) { "Failed to update subscription ${subscription.url}" }
                 setResult(null, UpdateError(e.toString(), null))
+                false
+            }
+
+            if (success) {
+                consecutiveFailures.remove(subscription.subscriptionId)
+                proposeNextDelay(subscription.updatePeriod)
+            } else {
+                val failures = consecutiveFailures.increment(subscription.subscriptionId)
+                val retryPeriod = failureRetryPeriod(failures, subscription.updatePeriod)
+                logger.info {
+                    "Failed to update subscription ${subscription.url} ($failures consecutive failures), " +
+                            "retrying in $retryPeriod"
+                }
+                proposeNextDelay(retryPeriod)
             }
         }
 
-        return subscriptions.minOf { subscription -> subscription.updatePeriod }
+        return nextDelay
+            ?: subscriptions.minOfOrNull { subscription -> subscription.updatePeriod }
+            ?: DEFAULT_UPDATE_PERIOD
+    }
+
+    /**
+     * 若这个订阅上次更新是失败的, 返回本次应当采用的 (短) 重试间隔; 上次成功或从未更新过则返回 `null`.
+     */
+    private fun failureRetryPeriodOrNull(subscription: MediaSourceSubscription): Duration? {
+        val lastUpdated = subscription.lastUpdated ?: return null
+        if (lastUpdated.mediaSourceCount != null) return null // 上次成功
+        return failureRetryPeriod(
+            // 进程刚启动时内存里没有计数, 但持久化的状态说明至少失败过一次, 按第一次重试算
+            consecutiveFailures[subscription.subscriptionId] ?: 1,
+            subscription.updatePeriod,
+        )
     }
 
     data class ExistingArgument(
@@ -207,6 +260,26 @@ class MediaSourceSubscriptionUpdater(
 
     private companion object {
         private val logger = logger<MediaSourceSubscriptionUpdater>()
+
+        private val DEFAULT_UPDATE_PERIOD = 1.hours
+
+        /**
+         * 更新失败后的重试间隔, 按连续失败次数递增. 超出这个表之后就一直用最后一项.
+         *
+         * 头几次很短: 最常见的失败原因是启动头几秒网络还没就绪.
+         */
+        private val FAILURE_RETRY_PERIODS = listOf(15.seconds, 30.seconds, 1.minutes, 5.minutes, 15.minutes)
+
+        /**
+         * @param consecutiveFailures 已经连续失败了几次 (至少 1 次)
+         */
+        fun failureRetryPeriod(consecutiveFailures: Int, updatePeriod: Duration): Duration =
+            FAILURE_RETRY_PERIODS[(consecutiveFailures - 1).coerceIn(0, FAILURE_RETRY_PERIODS.lastIndex)]
+                // 正常间隔本身就比重试间隔还短时 (用户自己调过), 没必要更频繁
+                .coerceAtMost(updatePeriod)
+
+        fun MutableMap<String, Int>.increment(key: String): Int =
+            ((this[key] ?: 0) + 1).also { this[key] = it }
 
         fun calculateDiff(newArguments: List<NewArgument>, existing: List<ExistingArgument>): Diff {
             val removed = existing.filter { (save, local) ->
