@@ -550,7 +550,7 @@
     <string name="main_network_check_failed">无法连接到 Animeko 服务器, 请检查网络, 或在设置中配置代理</string>
     <string name="main_screen_page_exploration">探索</string>
     <string name="main_screen_page_collection">追番</string>
-    <string name="main_screen_page_cache_management">缓存</string>
+    <string name="main_screen_page_cache_management">下载</string>
 
     <!-- ThemePreferences -->
     <string name="settings_theme_title">主题</string>
@@ -663,7 +663,7 @@
     <string name="settings_media_auto_cache_recent_only">仅缓存最近看过的番剧</string>
     <string name="settings_media_auto_cache_count">缓存数量</string>
     <string name="settings_media_auto_cache_count_description">当前设置: 仅缓存最近看过的 %d 部番剧</string>
-    <string name="settings_media_auto_cache_manage">管理已缓存的剧集</string>
+    <string name="settings_media_auto_cache_manage">管理下载</string>
     <string name="settings_debug_logout">退出登录</string>
     <string name="settings_debug_logged_out">已退出登录</string>
     <string name="settings_tab_account">账号</string>
@@ -820,9 +820,9 @@
     <string name="subject_episode_long_press_mark_watched">长按还可以标记为已看</string>
     <string name="subject_episode_details">条目详情</string>
     <string name="subject_episode_close">关闭</string>
-    <string name="subject_episode_cache">缓存</string>
+    <string name="subject_episode_cache">下载</string>
     <string name="cache_filter_collection_state">收藏状态</string>
-    <string name="cache_filter_cache_type">缓存类型</string>
+    <string name="cache_filter_cache_type">下载类型</string>
     <string name="cache_filter_download_status">下载状态</string>
     <string name="cache_filter_status_downloading">下载中</string>
     <string name="cache_filter_status_finished">已完成</string>
@@ -848,14 +848,13 @@
     <string name="cache_episode_download_completed">下载完成</string>
     <string name="cache_episode_download_failed">下载失败</string>
     <string name="cache_episode_downloading">下载中</string>
-    <string name="cache_subject_episode_cache">单集缓存</string>
+    <string name="cache_subject_episode_cache">单集下载</string>
     <string name="cache_subject_delete">删除</string>
     <string name="cache_subject_cancel">取消</string>
-    <string name="cache_subject_cache">缓存</string>
-    <string name="cache_subject_select_storage">选择储存位置</string>
-    <string name="cache_subject_manage_all">管理全部缓存</string>
+    <string name="cache_subject_cache">下载</string>
+    <string name="cache_subject_manage_all">管理全部下载</string>
     <string name="cache_unknown">未知</string>
-    <string name="cache_management_select_item_for_details">选择一个条目查看具体缓存</string>
+    <string name="cache_management_select_item_for_details">选择一个条目查看具体下载</string>
     <string name="cache_management_selected_count">已选 %1$d</string>
     <string name="cache_management_exit_selection">退出选择</string>
     <string name="cache_management_select_all">选择所有</string>
@@ -864,7 +863,7 @@
     <string name="cache_management_pause_selected">暂停</string>
     <string name="cache_management_selection_summary">已选 %1$d 项 · 共 %2$s</string>
     <string name="cache_management_enter_selection_mode">进入选择模式</string>
-    <string name="cache_management_delete_cache_title">删除缓存</string>
+    <string name="cache_management_delete_cache_title">删除下载</string>
     <string name="cache_management_delete_cache_confirmation">删除后不可恢复，确认删除吗？</string>
     <string name="cache_management_finished_count">%1$d/%2$d 已完成</string>
     <string name="cache_management_downloading_count">%1$d 个下载中</string>
@@ -878,7 +877,7 @@
     <string name="cache_management_episode_label">第%1$d话 · %2$s</string>
     <string name="cache_management_more_actions">更多操作</string>
     <string name="cache_management_play">播放</string>
-    <string name="cache_management_invalid_cache_info">缓存信息无效，无法播放</string>
+    <string name="cache_management_invalid_cache_info">下载信息无效，无法播放</string>
     <string name="cache_management_streaming_not_supported">此资源不支持边下边播，请等待下载完成</string>
     <string name="cache_management_more_info">更多信息</string>
     <string name="cache_details_title">详情</string>
@@ -899,7 +898,7 @@
     <string name="cache_details_original_link">原始链接</string>
     <string name="cache_details_file_type">文件类型</string>
     <string name="cache_details_original_download_link">原始下载链接</string>
-    <string name="cache_details_local_cache_path">本地缓存路径</string>
+    <string name="cache_details_local_cache_path">本地下载路径</string>
     <string name="cache_details_total_segments">总片段数</string>
     <string name="cache_details_downloader_status">下载器内部状态</string>
     <string name="cache_details_external_subtitle">外挂字幕 %1$d</string>
@@ -1523,6 +1522,10 @@
     <string name="image_viewer_copied">图片已复制</string>
     <string name="image_viewer_copy_failed">复制图片失败</string>
     <string name="image_viewer_close">关闭</string>
+    <string name="downloads_load_failed">下载信息加载失败</string>
+    <string name="downloads_empty">暂无可下载的剧集</string>
+    <string name="downloads_create_failed">添加下载失败，请重试</string>
+    <string name="downloads_operation_failed">%1$d 项下载操作失败</string>
 </resources>
 
 <!--@formatter:on-->

@@ -19,8 +19,10 @@ import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
+import kotlinx.io.Buffer
 import kotlinx.io.files.Path
 import kotlinx.io.files.SystemFileSystem
+import kotlinx.io.writeString
 import me.him188.ani.app.data.persistent.database.dao.HttpCacheDownloadStateDao
 import me.him188.ani.app.data.models.preference.PikPakConfig
 import me.him188.ani.app.domain.media.cache.MediaCache
@@ -47,12 +49,14 @@ import me.him188.ani.utils.httpdownloader.DownloadState
 import me.him188.ani.utils.httpdownloader.DownloadStatus
 import me.him188.ani.utils.httpdownloader.HttpDownloader
 import me.him188.ani.utils.httpdownloader.MediaType
+import me.him188.ani.utils.io.DigestAlgorithm
 import me.him188.ani.utils.io.absolutePath
 import me.him188.ani.utils.io.actualSize
 import me.him188.ani.utils.io.delete
 import me.him188.ani.utils.io.deleteRecursively
 import me.him188.ani.utils.io.exists
 import me.him188.ani.utils.io.inSystem
+import me.him188.ani.utils.io.readAndDigest
 import me.him188.ani.utils.logging.error
 import me.him188.ani.utils.logging.info
 import me.him188.ani.utils.logging.logger
@@ -123,7 +127,7 @@ class HttpMediaCacheEngine(
         if (!supports(origin)) throw UnsupportedOperationException("Media is not supported by this engine $this: ${origin.download}")
 
         logger.info { "Restarting cache '${origin.mediaId}'" }
-        val downloadId = origin.toSafeDownloadId()
+        val downloadId = restoredHttpDownloadId(origin, metadata)
 
         // 注意, getState 一般不会返回 null, 除非 downloader 的 persistent datastore 出问题了 (例如文件损坏).
         if (downloader.getState(downloadId) != null) {
@@ -163,8 +167,7 @@ class HttpMediaCacheEngine(
             }
 
             is UriMediaData -> {
-                // TODO: 用 [Media.mediaId] 当作 DownloadId 好吗?
-                val downloadId = origin.toSafeDownloadId()
+                val downloadId = httpDownloadId(origin, metadata)
                 var options = DownloadOptions(headers = mediaData.headers)
                 if (origin.kind == MediaSourceKind.BitTorrent) {
                     val config = pikpakConfig()
@@ -190,6 +193,21 @@ class HttpMediaCacheEngine(
                 )
             }
         }
+    }
+
+    /** Different episodes of a season resource must never share an HTTP task or output file. */
+    private fun httpDownloadId(media: Media, metadata: MediaCacheMetadata): DownloadId {
+        val identity = listOf(media.mediaId, metadata.subjectId, metadata.episodeId)
+            .joinToString("") { "${it.length}:$it" }
+        val digest = Buffer().apply { writeString(identity) }.readAndDigest(DigestAlgorithm.SHA256).toHexString()
+        return DownloadId("http-v2-$digest")
+    }
+
+    /** Existing persisted records keep their legacy task and file names; new downloads always use v2. */
+    private suspend fun restoredHttpDownloadId(media: Media, metadata: MediaCacheMetadata): DownloadId {
+        val current = httpDownloadId(media, metadata)
+        if (downloader.getState(current) != null || dao.getById(current) != null) return current
+        return DownloadId(media.mediaId.replace(Regex("[\\\\/:*?\"<>|]"), "-"))
     }
 
     override suspend fun deleteUnusedCaches(all: List<MediaCache>) {
@@ -355,13 +373,8 @@ class HttpMediaCacheEngine(
         dao.deleteById(state.downloadId)
     }
 
-    private fun Media.toSafeDownloadId(): DownloadId {
-        return DownloadId(mediaId.replace(PATH_AFFECTING_CHARS_REGEX, "-"))
-    }
-
     companion object {
         private val logger = logger<HttpMediaCacheEngine>()
-        private val PATH_AFFECTING_CHARS_REGEX = Regex("[\\\\/:*?\"<>|]")
 
         @Deprecated("Use HttpMediaCacheEngine.MEDIA_CACHE_DIR instead")
         const val LEGACY_MEDIA_CACHE_DIR = "web-m3u-cache"

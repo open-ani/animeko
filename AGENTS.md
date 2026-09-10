@@ -8,6 +8,7 @@ Additional requirements:
 
 - You should add imports, instead of using fully qualified names in code.
 - For Android Instrumented tests, you can just use `@Test`, no need to write `@RunWith` to the class.
+- 注释和文档应直接描述当前设计、职责、行为与约束，不要用“不再…”“改为…”“新设计…”等措辞叙述开发过程，也不要记录未上线方案、被纠正的错误假设或对话历史。只有在解释兼容性或迁移逻辑确有必要时，才说明已发布版本的历史行为。
 
 ## UI Verification
 

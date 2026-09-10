@@ -107,6 +107,7 @@ import me.him188.ani.app.domain.foundation.VersionExpiryFeatureHandler
 import me.him188.ani.app.domain.foundation.VersionExpiryService
 import me.him188.ani.app.domain.foundation.get
 import me.him188.ani.app.domain.foundation.withValue
+import me.him188.ani.app.domain.media.download.MediaDownloadManager
 import me.him188.ani.app.domain.mediasource.web.PageEvaluator
 import me.him188.ani.app.domain.mediasource.web.captcha.BrowserImageCaptchaSolver
 import me.him188.ani.app.domain.mediasource.web.captcha.CaptchaBrowserFactory
@@ -116,8 +117,6 @@ import me.him188.ani.app.domain.mediasource.web.captcha.MacCmsImageCaptchaSolver
 import me.him188.ani.app.domain.mediasource.web.captcha.WebSessionManager
 import me.him188.ani.app.domain.mediasource.web.captcha.WebSourceCookieJar
 import me.him188.ani.app.domain.mediasource.web.captcha.WebSourceIdentityRegistry
-import me.him188.ani.app.domain.media.cache.MediaCacheManager
-import me.him188.ani.app.domain.media.cache.MediaCacheManagerImpl
 import me.him188.ani.app.domain.media.cache.engine.HttpMediaCacheEngine
 import me.him188.ani.app.domain.media.cache.engine.KtorPersistentHttpDownloader
 import me.him188.ani.app.domain.media.cache.engine.MediaCacheEngineKey
@@ -378,7 +377,7 @@ private fun KoinApplication.otherModules(getContext: () -> Context, coroutineSco
     single<EpisodeProgressRepository> {
         EpisodeProgressRepository(
             episodeCollectionRepository = get(),
-            cacheManager = get(),
+            downloadManager = get(),
         )
     }
     single<EpisodeScreenshotRepository> { WhatslinkEpisodeScreenshotRepository() }
@@ -479,12 +478,12 @@ private fun KoinApplication.otherModules(getContext: () -> Context, coroutineSco
     }
 
     // Media
-    single<MediaCacheManager> {
-        val id = MediaCacheManager.LOCAL_FS_MEDIA_SOURCE_ID
+    single<MediaDownloadManager> {
+        val id = MediaDownloadManager.LOCAL_FS_MEDIA_SOURCE_ID
         val engines = get<TorrentManager>().engines
         val metadataStore = getContext().dataStores.mediaCacheMetadataStore
 
-        MediaCacheManagerImpl(
+        MediaDownloadManager(
             storagesIncludingDisabled = buildList(capacity = engines.size) {
                 /*if (currentAniBuildConfig.isDebug) {
                     // 注意, 这个必须要在第一个, 见 [DefaultTorrentManager.engines] 注释
@@ -543,7 +542,7 @@ private fun KoinApplication.otherModules(getContext: () -> Context, coroutineSco
     single<MediaSourceManager> {
         MediaSourceManagerImpl(
             additionalSources = {
-                get<MediaCacheManager>().storagesIncludingDisabled.map { it.cacheMediaSource }
+                get<MediaDownloadManager>().storagesIncludingDisabled.map { it.cacheMediaSource }
             },
         )
     }
@@ -589,7 +588,7 @@ fun KoinApplication.startCommonKoinModule(
 
     coroutineScope.launch {
         koin.get<HttpDownloader>().init() // restore http download states first
-        val manager = koin.get<MediaCacheManager>()
+        val manager = koin.get<MediaDownloadManager>()
         for (storage in manager.storagesIncludingDisabled) {
             storage.restorePersistedCaches()
         }

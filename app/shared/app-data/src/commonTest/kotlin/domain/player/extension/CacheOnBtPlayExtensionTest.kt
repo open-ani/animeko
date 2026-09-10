@@ -34,13 +34,12 @@ import me.him188.ani.app.domain.episode.mediaSelectorFlow
 import me.him188.ani.app.domain.media.TestMediaList
 import me.him188.ani.app.domain.media.cache.DeleteCacheUseCase
 import me.him188.ani.app.domain.media.cache.MediaCache
-import me.him188.ani.app.domain.media.cache.MediaCacheManager
-import me.him188.ani.app.domain.media.cache.MediaCacheManagerImpl
 import me.him188.ani.app.domain.media.cache.TestMediaCache
 import me.him188.ani.app.domain.media.cache.engine.DummyMediaCacheEngine
 import me.him188.ani.app.domain.media.cache.engine.MediaCacheEngineKey
 import me.him188.ani.app.domain.media.cache.engine.MediaStats
 import me.him188.ani.app.domain.media.cache.storage.MediaCacheStorage
+import me.him188.ani.app.domain.media.download.MediaDownloadManager
 import me.him188.ani.app.domain.media.player.data.MediaDataProvider
 import me.him188.ani.app.domain.media.resolver.EpisodeMetadata
 import me.him188.ani.app.domain.media.resolver.MediaResolver
@@ -101,7 +100,7 @@ class CacheOnBtPlayExtensionTest : AbstractPlayerExtensionTest() {
     }
 
     private inner class RecordingStorage : MediaCacheStorage {
-        override val mediaSourceId = MediaCacheManager.LOCAL_FS_MEDIA_SOURCE_ID
+        override val mediaSourceId = MediaDownloadManager.LOCAL_FS_MEDIA_SOURCE_ID
         override val cacheMediaSource: MediaSource get() = throw UnsupportedOperationException()
         override val engine = DummyMediaCacheEngine(mediaSourceId, engineKey = MediaCacheEngineKey.Anitorrent)
         override val listFlow = MutableStateFlow<List<MediaCache>>(emptyList())
@@ -162,8 +161,8 @@ class CacheOnBtPlayExtensionTest : AbstractPlayerExtensionTest() {
         val testScope = this.childScope()
         val suite = EpisodePlayerTestSuite(this, testScope)
         val storage = RecordingStorage()
-        val manager = MediaCacheManagerImpl(listOf(storage), testScope)
-        suite.registerComponent<MediaCacheManager> { manager }
+        val manager = MediaDownloadManager(listOf(storage), testScope)
+        suite.registerComponent<MediaDownloadManager> { manager }
         suite.registerComponent<GetMediaSelectorSettingsFlowUseCase> {
             GetMediaSelectorSettingsFlowUseCase {
                 MutableStateFlow(
@@ -183,7 +182,7 @@ class CacheOnBtPlayExtensionTest : AbstractPlayerExtensionTest() {
         suite.registerComponent<DeleteCacheUseCase> {
             object : DeleteCacheUseCase {
                 override suspend fun invoke(cache: MediaCache) {
-                    manager.deleteCache(cache)
+                    manager.deleteDownload(cache)
                 }
             }
         }

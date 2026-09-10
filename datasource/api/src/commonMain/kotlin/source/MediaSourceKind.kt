@@ -30,7 +30,7 @@ enum class MediaSourceKind {
     BitTorrent,
 
     /**
-     * 本地视频缓存. 只表示那些通过 `MediaCacheManager` 缓存的视频.
+     * 本地视频下载. 只表示那些由 `MediaDownloadManager` 管理的视频.
      *
      * 该类型的资源总是会显示, 忽略一切过滤条件.
      */

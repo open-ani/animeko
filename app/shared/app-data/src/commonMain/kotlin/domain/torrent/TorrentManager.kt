@@ -85,7 +85,7 @@ class DefaultTorrentManager(
 
     override val engines: List<TorrentEngine> by lazy {
         // 注意, 是故意只启用一个下载器的, 因为每个下载器都会创建一个 DirectoryMediaCacheStorage
-        // 并且使用相同的 mediaSourceId: MediaCacheManager.LOCAL_FS_MEDIA_SOURCE_ID.
+        // 并且使用相同的 mediaSourceId: MediaDownloadManager.LOCAL_FS_MEDIA_SOURCE_ID.
         // 搜索数据源时会使用 mediaSourceId 作为 map key, 导致总是只会用一个 storage.
         // 
         // 如果要支持多个, 需要考虑将所有 storage 合并成一个 MediaSource.

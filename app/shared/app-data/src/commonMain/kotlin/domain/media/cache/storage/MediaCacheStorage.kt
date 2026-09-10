@@ -19,11 +19,11 @@ import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.map
 import kotlinx.serialization.Serializable
 import me.him188.ani.app.domain.media.cache.MediaCache
-import me.him188.ani.app.domain.media.cache.MediaCacheManager
 import me.him188.ani.app.domain.media.cache.engine.DummyMediaCacheEngine
 import me.him188.ani.app.domain.media.cache.engine.MediaCacheEngine
 import me.him188.ani.app.domain.media.cache.engine.MediaCacheEngineKey
 import me.him188.ani.app.domain.media.cache.engine.MediaStats
+import me.him188.ani.app.domain.media.download.MediaDownloadManager
 import me.him188.ani.app.domain.media.fetch.MediaFetcher
 import me.him188.ani.app.domain.media.resolver.EpisodeMetadata
 import me.him188.ani.datasources.api.CachedMedia
@@ -199,7 +199,7 @@ class MediaCacheStorageSource(
 
 class TestMediaCacheStorage : MediaCacheStorage {
     override val mediaSourceId: String
-        get() = MediaCacheManager.LOCAL_FS_MEDIA_SOURCE_ID
+        get() = MediaDownloadManager.LOCAL_FS_MEDIA_SOURCE_ID
     override val cacheMediaSource: MediaSource
         get() = throw UnsupportedOperationException()
     override val engine: MediaCacheEngine = DummyMediaCacheEngine(mediaSourceId)
