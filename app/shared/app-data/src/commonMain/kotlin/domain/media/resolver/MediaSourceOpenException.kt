@@ -39,4 +39,12 @@ class MediaSourceOpenException(
     val reason: OpenFailures,
     extraMessage: String = "",
     override val cause: Throwable? = null,
+    /**
+     * [OpenFailures.NO_MATCHING_FILE] 时资源里可供选择的文件, 元素是
+     * [me.him188.ani.app.torrent.api.files.TorrentFileEntry.pathInTorrent].
+     *
+     * 只放视频文件, 且顺序与匹配时的候选顺序一致: 这是一份「让用户挑一个来播」的清单, 字幕和
+     * 说明文件放进去只会让人在几十行里找视频. 其他失败原因下为空.
+     */
+    val filesInTorrent: List<String> = emptyList(),
 ) : Exception("Failed to open video due to $reason. $extraMessage", cause)

@@ -138,7 +138,7 @@ fun VideoLoadingSummary(
                 }
 
                 when (state) {
-                    VideoLoadingState.NoMatchingFile -> Text(noMatchingFileText)
+                    is VideoLoadingState.NoMatchingFile -> Text(noMatchingFileText)
                     VideoLoadingState.ResolutionTimedOut -> Text(resolutionTimedOutText)
                     VideoLoadingState.UnsupportedMedia -> Text(unsupportedMediaText)
                     is VideoLoadingState.UnknownError -> {

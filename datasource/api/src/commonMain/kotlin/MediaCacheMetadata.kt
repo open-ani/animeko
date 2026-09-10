@@ -61,6 +61,16 @@ data class MediaCacheMetadata(
      */
     val autoCached: Boolean = false,
 
+    /**
+     * 这条记录要播放的种子内文件, 即 `TorrentFileEntry.pathInTorrent`.
+     *
+     * 自动匹配不到本集时由用户指定. 整季包的每一集各有各的选择, 所以记在这条记录上,
+     * 而不是记在按 mediaId 索引的种子级信息里.
+     *
+     * `null` 表示没有指定, 由自动匹配决定. 旧记录反序列化后就是 `null`.
+     */
+    val pathInTorrent: String? = null,
+
     @Transient @Suppress("unused") private val _primaryConstructorMarker: Byte = 0, // avoid compiler error
 ) {
     constructor(

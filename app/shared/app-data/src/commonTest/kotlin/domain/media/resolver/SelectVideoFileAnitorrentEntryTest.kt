@@ -21,6 +21,7 @@ import me.him188.ani.test.runDynamicTests
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertNotNull
+import kotlin.test.assertNull
 
 class SelectVideoFileAnitorrentEntryTest {
     private val json = Json { ignoreUnknownKeys = true }
@@ -331,7 +332,7 @@ class SelectVideoFileAnitorrentEntryTest {
     )
 
     @TestFactory
-    fun `select normal 01 over PV if no match`() = runDynamicTests(
+    fun `no match in a pack selects nothing`() = runDynamicTests(
         listOf(
             "[DBD-Raws][未来日记][01][1080P][BDRip][HEVC-10bit][FLACx2].mkv",
             "[DBD-Raws][未来日记][PV][01][1080P][BDRip][HEVC-10bit][FLAC].mkv",
@@ -343,17 +344,27 @@ class SelectVideoFileAnitorrentEntryTest {
                     list,
                     { this },
                     episodeTitles = listOf("未来日记"),
+                    // 08 落在 [1080P] 里面, 数字兜底要求完整的一段数字, 不能撞上.
                     episodeSort = EpisodeSort("08"),
                     episodeEp = null,
                 )
-                assertEquals(
-                    "[DBD-Raws][未来日记][01][1080P][BDRip][HEVC-10bit][FLACx2].mkv",
-                    selected,
-                    message = list.toString(),
-                )
+                assertNull(selected, message = list.toString())
             }
         },
     )
+
+    @Test
+    fun `no match in a single-file torrent selects that file`() {
+        val selected = TorrentMediaResolver.selectVideoFileEntry(
+            // 文件名里既没有标题也没有集数, 只能靠「种子里只有这一个视频」来定
+            listOf("video.mkv", "readme.txt"),
+            { this },
+            episodeTitles = listOf("未来日记"),
+            episodeSort = EpisodeSort("07"),
+            episodeEp = null,
+        )
+        assertEquals("video.mkv", selected)
+    }
 
     @Test
     fun `select of full path`() {

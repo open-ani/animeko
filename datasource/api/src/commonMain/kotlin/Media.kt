@@ -207,6 +207,11 @@ class CachedMedia(
 data class MediaCacheProperties(
     val totalSegments: Int? = null,
     val httpDownloaderStatus: String? = null,
+    /**
+     * 种子内的相对路径, 已经确定是这个 media 要播放的文件. 已有缓存记录的整季包在查询阶段就选好了文件,
+     * 播放时不必再选一次.
+     */
+    val pathInTorrent: String? = null,
 )
 
 /**
