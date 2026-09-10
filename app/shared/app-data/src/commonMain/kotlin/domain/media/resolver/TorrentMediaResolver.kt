@@ -100,6 +100,8 @@ class TorrentMediaResolver(
             setOf(
                 Regex("""\[SP[0-9]*\]"""),
                 Regex("""\[OVA[0-9]*\]"""),
+                // S00 是特典, 集数常与正片相同 (S00E04 与 S03E04)
+                Regex("""S00E[0-9]+""", RegexOption.IGNORE_CASE),
                 // SP 和 OVA 要放到前面, 因为用户可能就是要看这个
                 Regex("""PV[0-9]*"""),
                 Regex("""NCOP[0-9]*"""),

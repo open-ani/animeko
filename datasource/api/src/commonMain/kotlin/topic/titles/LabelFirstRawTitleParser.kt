@@ -254,6 +254,12 @@ class LabelFirstRawTitleParser : RawTitleParser() {
 
             seasonEpisodePattern.matchEntire(original)?.let { result ->
                 // TODO: consider season
+                // S00 是特典, 不是正片第 xx 集
+                if (result.groupValues[1].toIntOrNull() == 0) {
+                    val number = result.groupValues[2].toIntOrNull()
+                        ?: return EpisodeRange.single(EpisodeSort(result.groupValues[2]))
+                    return EpisodeRange.single(EpisodeSort(number, EpisodeType.SP))
+                }
                 return EpisodeRange.single(EpisodeSort(result.groupValues[2]))
             }
 
