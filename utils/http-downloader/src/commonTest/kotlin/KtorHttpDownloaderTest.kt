@@ -18,7 +18,10 @@ import io.ktor.client.request.HttpResponseData
 import io.ktor.http.HttpHeaders
 import io.ktor.http.HttpStatusCode
 import io.ktor.http.headersOf
+import io.ktor.utils.io.ByteReadChannel
 import io.ktor.utils.io.core.readAvailable
+import io.ktor.utils.io.writeByteArray
+import io.ktor.utils.io.writer
 import kotlinx.collections.immutable.persistentMapOf
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.CoroutineStart
@@ -75,6 +78,7 @@ class KtorHttpDownloaderTest {
     private var lastFfmpegArgs: List<String>? = null
     private var lastInputPlaylistContent: String? = null
     private var forceFfmpegFailure = false
+    private var partFileBytesWhenBodySent = -1L
 
     // We use this to track how many times a given URL has been requested.
     // This allows us to simulate "fails first time, succeeds second time", etc.
@@ -100,6 +104,7 @@ class KtorHttpDownloaderTest {
         lastFfmpegArgs = null
         lastInputPlaylistContent = null
         forceFfmpegFailure = false
+        partFileBytesWhenBodySent = -1L
 
         // Create mock client with preset responses
         mockClient = HttpClient(MockEngine) {
@@ -218,6 +223,33 @@ class KtorHttpDownloaderTest {
                             )
                         }
 
+                        "https://example.com/streaming-no-range.mp4" -> {
+                            // A server that does not support range requests and streams its body
+                            // lazily, like a real video CDN. The downloader must consume the body
+                            // as a stream; it must not buffer the whole file in memory first.
+                            if (request.headers[HttpHeaders.Range] != null) {
+                                // Range probe: answer 200 so that range support is not detected,
+                                // which makes the downloader create one single unbounded segment.
+                                respond(
+                                    content = ByteArray(1),
+                                    status = HttpStatusCode.OK,
+                                    headers = headersOf(
+                                        HttpHeaders.ContentType to listOf("video/mp4"),
+                                        HttpHeaders.ContentLength to listOf("$STREAMING_FILE_SIZE"),
+                                    ),
+                                )
+                            } else {
+                                respond(
+                                    content = lazilyProducedBody(),
+                                    status = HttpStatusCode.OK,
+                                    headers = headersOf(
+                                        HttpHeaders.ContentType to listOf("video/mp4"),
+                                        HttpHeaders.ContentLength to listOf("$STREAMING_FILE_SIZE"),
+                                    ),
+                                )
+                            }
+                        }
+
                         "https://example.com/unstable-playlist1.m3u8" -> {
                             // Fails the first time (attempt==1 => 500), succeeds second time => return a valid playlist
                             if (currentAttempt == 0) {
@@ -334,6 +366,27 @@ class KtorHttpDownloaderTest {
                 return FFmpegResult(exitCode = 0)
             }
         }
+    }
+
+    /**
+     * Produces [STREAMING_FILE_SIZE] bytes chunk by chunk, and records in
+     * [partFileBytesWhenBodySent] how many bytes the downloader had already flushed to its
+     * `.part` file by the time the whole body had been handed to the client.
+     *
+     * A streaming consumer writes to disk while the body is still arriving, so the recorded value
+     * is > 0. A consumer that buffers the whole response in memory first has not even created the
+     * `.part` file at that point, so the recorded value stays 0.
+     */
+    private fun lazilyProducedBody(): ByteReadChannel {
+        val chunk = ByteArray(STREAMING_CHUNK_SIZE) { it.toByte() }
+        return CoroutineScope(testDispatcher + SupervisorJob()).writer {
+            repeat((STREAMING_FILE_SIZE / STREAMING_CHUNK_SIZE).toInt()) {
+                channel.writeByteArray(chunk)
+                channel.flush()
+            }
+            partFileBytesWhenBodySent =
+                fileSystem.metadataOrNull(Path("$tempDir/segments_streaming-no-range/0.part"))?.size ?: 0L
+        }.channel
     }
 
     // Helper to handle MP4 partial or full
@@ -994,6 +1047,29 @@ class KtorHttpDownloaderTest {
     }
 
     @Test
+    fun `download - segment body is streamed to disk instead of buffered in memory`() = testScope.runTest {
+        val downloadId = downloader.downloadWithId(
+            url = "https://example.com/streaming-no-range.mp4",
+            downloadId = DownloadId("streaming-no-range"),
+        )?.downloadId
+        assertNotNull(downloadId)
+        downloader.joinDownload(downloadId)
+
+        assertEquals(DownloadStatus.COMPLETED, downloader.getState(downloadId)?.status)
+        assertEquals(
+            STREAMING_FILE_SIZE,
+            fileSystem.metadata(Path("$tempDir/streaming-no-range.mp4")).size,
+        )
+
+        assertNotEquals(-1L, partFileBytesWhenBodySent, "The streaming body was never produced.")
+        assertTrue(
+            partFileBytesWhenBodySent > 0,
+            "The whole response body was buffered in memory before anything was written to disk. " +
+                    "A single allocation of the full file size OOMs on large videos.",
+        )
+    }
+
+    @Test
     fun `download - should create multiple segments for mp4 file`() = testScope.runTest {
         // Set a small max concurrent segments value to ensure multiple segments are created
         val options = DownloadOptions(maxConcurrentSegments = 3)
@@ -1406,6 +1482,10 @@ class KtorHttpDownloaderTest {
         // File sizes for testing regular media files
         private const val MP4_FILE_SIZE = 10 * 1024 * 1024L // 10MB
         private const val MKV_FILE_SIZE = 15 * 1024 * 1024L // 15MB
+
+        // A body streamed chunk by chunk, used to assert that responses are not fully buffered.
+        private const val STREAMING_CHUNK_SIZE = 64 * 1024 // 64KB
+        private const val STREAMING_FILE_SIZE = 4 * 1024 * 1024L // 4MB
     }
 
     private class TestClock(private val scheduler: TestCoroutineScheduler) : Clock {
