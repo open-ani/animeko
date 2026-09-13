@@ -21,8 +21,6 @@ import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.onStart
-import kotlinx.coroutines.flow.update
-import kotlinx.coroutines.launch
 import me.him188.ani.app.data.repository.player.EpisodePlayHistoryRepository
 import me.him188.ani.app.data.repository.subject.OfflineSubjectDisplayInfo
 import me.him188.ani.app.data.repository.subject.SubjectCollectionRepository
@@ -48,11 +46,11 @@ class DownloadManagementViewModel(
     downloadManager: MediaDownloadManager,
     subjects: SubjectCollectionRepository,
     histories: EpisodePlayHistoryRepository,
-    private val operations: DownloadOperations,
+    operations: DownloadOperations,
     private val presenters: SubjectDownloadsPresenterFactory,
     coroutineContext: CoroutineContext = EmptyCoroutineContext,
 ) : AbstractViewModel(coroutineContext) {
-    private val operationFailures = MutableStateFlow(0)
+    private val operationRunner = DownloadOperationRunner(operations, backgroundScope)
 
     private val currentSubjectPresenter = MutableStateFlow<SubjectDownloadsPresenter?>(null)
 
@@ -94,7 +92,7 @@ class DownloadManagementViewModel(
         }
     private val overallStats = downloadManager.overallStats.sampleWithInitial(1.seconds)
 
-    val uiState = combine(downloads, subjectMetadata, histories.flow, overallStats, operationFailures) { downloads, metadata, histories, stats, failures ->
+    val uiState = combine(downloads, subjectMetadata, histories.flow, overallStats) { downloads, metadata, histories, stats ->
         val historyByEpisode = histories.associateBy { it.episodeId }
         val groups = downloads.groupBy { it.metadata.subjectId.toIntOrNull() ?: 0 }.map { (subjectId, snapshots) ->
             val subject = metadata[subjectId]
@@ -115,28 +113,19 @@ class DownloadManagementViewModel(
             compareByDescending<SubjectDownloadGroup> { it.hasUnfinished }
                 .thenByDescending { it.entries.maxOfOrNull { entry -> entry.creationTime ?: 0 } },
         )
-        DownloadManagementUiState(stats, groups, isLoading = false, failedOperationCount = failures)
+        DownloadManagementUiState(stats, groups, isLoading = false)
     }.stateInBackground(DownloadManagementUiState.Placeholder)
 
-    fun pauseDownload(item: DownloadItem) = execute(setOf(item.id), DownloadOperation.Pause)
-    fun resumeDownload(item: DownloadItem) = execute(setOf(item.id), DownloadOperation.Resume)
-    fun deleteDownload(item: DownloadItem) = execute(setOf(item.id), DownloadOperation.Delete)
-
-    fun dismissOperationError() {
-        operationFailures.value = 0
-    }
+    fun pauseDownload(item: DownloadItem) = operationRunner.run(setOf(item.id), DownloadOperation.Pause)
+    fun resumeDownload(item: DownloadItem) = operationRunner.run(setOf(item.id), DownloadOperation.Resume)
+    fun deleteDownload(item: DownloadItem) = operationRunner.run(setOf(item.id), DownloadOperation.Delete)
 
     /**
-     * 因忙碌被拒绝的下载不计入失败.
+     * 批量操作累计的失败数, [dismissOperationFailures] 后归零.
      */
-    private fun execute(ids: Set<String>, operation: DownloadOperation) {
-        if (ids.isEmpty()) return
-        val pending = operations.submit(ids, operation)
-        backgroundScope.launch {
-            val failures = pending.await().failures.size
-            if (failures > 0) operationFailures.update { it + failures }
-        }
-    }
+    val operationFailures: StateFlow<Int> get() = operationRunner.failedCount
+
+    fun dismissOperationFailures() = operationRunner.dismissFailures()
 
     private data class SubjectMetadata(val type: UnifiedCollectionType?, val info: OfflineSubjectDisplayInfo?)
 }

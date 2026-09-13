@@ -140,7 +140,6 @@ data class DownloadManagementUiState(
     val overallStats: MediaStats,
     val groups: List<SubjectDownloadGroup>,
     val isLoading: Boolean = false,
-    val failedOperationCount: Int = 0,
 ) {
     internal val entries = groups.flatMap { it.entries }
 
@@ -174,11 +173,12 @@ fun DownloadManagementScreen(
     windowInsets: WindowInsets = AniWindowInsets.forPageContent(),
 ) {
     val state by vm.uiState.collectAsStateWithLifecycle()
-    if (state.failedOperationCount > 0) {
+    val failedOperations by vm.operationFailures.collectAsStateWithLifecycle()
+    if (failedOperations > 0) {
         AlertDialog(
-            onDismissRequest = vm::dismissOperationError,
-            text = { Text(stringResource(Lang.downloads_operation_failed, state.failedOperationCount)) },
-            confirmButton = { TextButton(onClick = vm::dismissOperationError) { Text(stringResource(Lang.cache_subject_cancel)) } },
+            onDismissRequest = vm::dismissOperationFailures,
+            text = { Text(stringResource(Lang.downloads_operation_failed, failedOperations)) },
+            confirmButton = { TextButton(onClick = vm::dismissOperationFailures) { Text(stringResource(Lang.cache_subject_cancel)) } },
         )
     }
     DownloadManagementScreen(

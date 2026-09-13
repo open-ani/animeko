@@ -181,7 +181,7 @@ class SubjectDownloadsPresenterTest {
     }
 
     @Test
-    fun `operation failures are counted and rejected operations are not`() = withFixture {
+    fun `operation failures are counted and skipped submissions are not`() = withFixture {
         val failing = object : MediaCache by testDownloadCache(1) {
             override suspend fun pause() = throw IllegalStateException("pause failed")
         }
@@ -198,12 +198,12 @@ class SubjectDownloadsPresenterTest {
         awaitState { it.downloads.size == 3 }
 
         presenter.pauseDownloads(setOf(failing.cacheId, normal.cacheId))
-        awaitState { it.failedOperationCount == 1 }
+        presenter.operationFailures.first { it == 1 }
         assertEquals(MediaCacheState.PAUSED, normal.state.value)
-        presenter.dismissOperationError()
-        awaitState { it.failedOperationCount == 0 }
+        presenter.dismissOperationFailures()
+        assertEquals(0, presenter.operationFailures.value)
 
-        // 第一次暂停占用操作槽, 第二次因忙碌被拒绝: 不会再调用 pause, 也不计入失败.
+        // 第一次暂停排队后, 第二次提交被跳过: 不会再调用 pause, 也不计入失败.
         presenter.pauseDownloads(setOf(blocked.cacheId))
         runCurrent()
         presenter.pauseDownloads(setOf(blocked.cacheId))
@@ -211,11 +211,11 @@ class SubjectDownloadsPresenterTest {
         gate.complete(Unit)
         awaitState { state -> state.downloads.none { it.isBusy } }
         assertEquals(1, pauseCalls)
-        assertEquals(0, presenter.uiState.value.failedOperationCount)
+        assertEquals(0, presenter.operationFailures.value)
 
         deleteCache.failure = IllegalStateException("delete failed")
         presenter.deleteDownloads(setOf(normal.cacheId))
-        awaitState { it.failedOperationCount == 1 }
+        presenter.operationFailures.first { it == 1 }
         assertEquals(3, storage.listFlow.value.size)
     }
 
@@ -228,7 +228,7 @@ class SubjectDownloadsPresenterTest {
         awaitState { state -> state.downloads.all { it.isPaused } }
         presenter.resumeAll()
         awaitState { state -> state.downloads.all { it.status == DownloadStatus.IN_PROGRESS } }
-        assertEquals(0, presenter.uiState.value.failedOperationCount)
+        assertEquals(0, presenter.operationFailures.value)
     }
 
     @Test
@@ -240,7 +240,7 @@ class SubjectDownloadsPresenterTest {
         presenter.resumeAll()
         assertEquals(0, pendingOperationCount)
         runCurrent()
-        assertEquals(0, presenter.uiState.value.failedOperationCount)
+        assertEquals(0, presenter.operationFailures.value)
     }
 
     @Test

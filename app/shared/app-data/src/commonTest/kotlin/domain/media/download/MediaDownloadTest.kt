@@ -16,7 +16,6 @@ import kotlin.test.assertFalse
 import kotlin.test.assertNull
 import kotlin.test.assertTrue
 import kotlin.time.Duration.Companion.seconds
-import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.CoroutineStart
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.toList
@@ -86,51 +85,34 @@ class MediaDownloadTest {
     }
 
     @Test
-    fun `operation is visible while running and rejects concurrent operations`() = runTest {
-        val cache = testDownload(1)
-        val gate = CompletableDeferred<Unit>()
-        cache.onPause = { gate.await() }
-        val download = download(cache)
+    fun `claim marks the download busy until released and rejects a second claim`() = runTest {
+        val download = download(testDownload(1))
         assertNull(download.operation.value)
 
-        val pausing = launch { download.pause() }
-        runCurrent()
+        assertTrue(download.claim(DownloadOperation.Pause))
+        assertEquals(DownloadOperation.Pause, download.operation.value)
+        assertFalse(download.claim(DownloadOperation.Resume))
         assertEquals(DownloadOperation.Pause, download.operation.value)
 
-        val busy = assertFailsWith<DownloadBusyException> { download.resume() }
-        assertEquals(download.id, busy.downloadId)
-        assertEquals(DownloadOperation.Pause, busy.current)
-        assertEquals(DownloadOperation.Resume, busy.requested)
-        assertFailsWith<DownloadBusyException> { download.withOperation(DownloadOperation.Delete) {} }
-        assertEquals(0, cache.resumeCalls)
-        assertFalse(pausing.isCompleted)
-
-        gate.complete(Unit)
-        runCurrent()
-        assertTrue(pausing.isCompleted)
+        download.release()
         assertNull(download.operation.value)
-        assertEquals(MediaCacheState.PAUSED, cache.state.value)
-
-        download.resume()
-        assertEquals(1, cache.resumeCalls)
-        assertEquals(MediaCacheState.IN_PROGRESS, cache.state.value)
+        assertTrue(download.claim(DownloadOperation.Delete))
+        assertEquals(DownloadOperation.Delete, download.operation.value)
     }
 
     @Test
-    fun `failing operation releases the slot`() = runTest {
+    fun `failing pause propagates and leaves the state unchanged`() = runTest {
         val cache = testDownload(1)
         cache.onPause = { error("engine failure") }
         val download = download(cache)
 
         val failure = assertFailsWith<IllegalStateException> { download.pause() }
         assertEquals("engine failure", failure.message)
-        assertNull(download.operation.value)
         assertEquals(MediaCacheState.IN_PROGRESS, cache.state.value)
 
         cache.onPause = {}
         download.pause()
         assertEquals(MediaCacheState.PAUSED, cache.state.value)
-        assertNull(download.operation.value)
     }
 
     @Test
@@ -167,9 +149,7 @@ class MediaDownloadTest {
         assertEquals(cache.fileStats.value.downloadProgress, received.last().progress)
 
         // 操作与状态的变化立即反映.
-        val gate = CompletableDeferred<Unit>()
-        cache.onPause = { gate.await() }
-        val pausing = launch { download.pause() }
+        assertTrue(download.claim(DownloadOperation.Pause))
         runCurrent()
         received.last().let {
             assertEquals(DownloadOperation.Pause, it.operation)
@@ -177,9 +157,9 @@ class MediaDownloadTest {
             assertEquals(MediaCacheState.IN_PROGRESS, it.status)
         }
 
-        gate.complete(Unit)
+        download.pause()
+        download.release()
         runCurrent()
-        assertTrue(pausing.isCompleted)
         received.last().let {
             assertNull(it.operation)
             assertFalse(it.isBusy)

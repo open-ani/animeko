@@ -18,8 +18,6 @@ import kotlin.test.assertNull
 import kotlin.test.assertSame
 import kotlin.test.assertTrue
 import kotlin.time.Duration.Companion.seconds
-import kotlinx.coroutines.CompletableDeferred
-import kotlinx.coroutines.async
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.first
@@ -463,31 +461,18 @@ class MediaDownloadManagerTest {
     // delete
 
     @Test
-    fun `delete occupies the delete slot until the storage finishes`() = runTest {
+    fun `delete removes the record through its storage and reports a missing record`() = runTest {
         val storage = DownloadTestStorage()
         val cache = testDownload(1)
         storage.listFlow.value = listOf(cache)
-        val gate = CompletableDeferred<Unit>()
-        storage.onDelete = { gate.await() }
         val manager = manager(storage)
         runCurrent()
         val download = assertNotNull(manager.findDownload(cache.cacheId))
 
-        val deletion = async { manager.delete(download) }
-        runCurrent()
-        assertEquals(DownloadOperation.Delete, download.operation.value)
-        assertFailsWith<DownloadBusyException> { download.pause() }
-        assertFailsWith<DownloadBusyException> { manager.deleteDownload(cache) }
-        assertEquals(0, cache.pauseCalls)
-        assertFalse(deletion.isCompleted)
-
-        gate.complete(Unit)
-        runCurrent()
-        assertTrue(deletion.await())
-        assertNull(download.operation.value)
+        assertTrue(manager.delete(download))
         assertEquals(emptyList(), storage.listFlow.value)
-
         assertFalse(manager.delete(download))
+        assertFalse(manager.deleteDownload(cache))
     }
 
     @Test
@@ -510,14 +495,12 @@ class MediaDownloadManagerTest {
         storage.listFlow.value = listOf(cache)
         val manager = manager(storage)
         runCurrent()
-        val download = assertNotNull(manager.downloadOf(cache))
-        // 记录存储执行删除时该下载正在执行的操作.
-        val operations = mutableListOf<DownloadOperation?>()
-        storage.onDelete = { operations += download.operation.value }
+        assertNotNull(manager.downloadOf(cache))
+        val deleted = mutableListOf<MediaCache>()
+        storage.onDelete = { deleted += it }
 
         assertTrue(manager.deleteDownload(cache))
-        assertEquals<List<DownloadOperation?>>(listOf(DownloadOperation.Delete), operations)
-        assertNull(download.operation.value)
+        assertEquals<List<MediaCache>>(listOf(cache), deleted)
         assertEquals(emptyList(), storage.listFlow.value)
     }
 }

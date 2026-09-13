@@ -48,7 +48,7 @@ class DownloadOperationsTest {
     }
 
     /**
-     * 删除用例把记录交给 [MediaDownloadManager.deleteDownload], 因此删除与暂停、继续共享同一个操作槽.
+     * 删除用例把记录交给 [MediaDownloadManager.deleteDownload].
      */
     private fun TestScope.harness(
         vararg caches: MediaCache,
@@ -71,6 +71,9 @@ class DownloadOperationsTest {
     private fun TestScope.executionScope(): CoroutineScope =
         CoroutineScope(backgroundScope.coroutineContext + SupervisorJob(backgroundScope.coroutineContext.job))
 
+    /**
+     * 让 [cache] 的暂停挂起, 直到返回的门被完成.
+     */
     private fun gated(cache: DownloadTestCache): CompletableDeferred<Unit> {
         val gate = CompletableDeferred<Unit>()
         cache.onPause = { gate.await() }
@@ -78,7 +81,59 @@ class DownloadOperationsTest {
     }
 
     @Test
-    fun `busy download rejects repeated operations until its operation finishes`() = runTest {
+    fun `downloads in a batch execute one at a time in submission order`() = runTest {
+        val first = testDownload(1)
+        val second = testDownload(2)
+        val firstGate = gated(first)
+        val secondGate = gated(second)
+        val harness = harness(first, second)
+
+        val batch = harness.operations.submit(setOf(first.cacheId, second.cacheId), DownloadOperation.Pause)
+        // 提交时两条都标记为忙碌, 但只有第一条开始执行.
+        assertEquals(DownloadOperation.Pause, harness.download(first).operation.value)
+        assertEquals(DownloadOperation.Pause, harness.download(second).operation.value)
+        runCurrent()
+        assertEquals(1, first.pauseCalls)
+        assertEquals(0, second.pauseCalls)
+        assertFalse(batch.isCompleted)
+
+        firstGate.complete(Unit)
+        runCurrent()
+        assertEquals(MediaCacheState.PAUSED, first.state.value)
+        assertNull(harness.download(first).operation.value)
+        assertEquals(1, second.pauseCalls)
+        assertEquals(DownloadOperation.Pause, harness.download(second).operation.value)
+        assertFalse(batch.isCompleted)
+
+        secondGate.complete(Unit)
+        assertEquals(emptyMap(), batch.await())
+        assertEquals(MediaCacheState.PAUSED, second.state.value)
+        assertNull(harness.download(second).operation.value)
+    }
+
+    @Test
+    fun `later batches wait for the running batch`() = runTest {
+        val first = testDownload(1)
+        val gate = gated(first)
+        val second = testDownload(2)
+        val harness = harness(first, second)
+
+        val firstBatch = harness.operations.submit(setOf(first.cacheId), DownloadOperation.Pause)
+        val secondBatch = harness.operations.submit(setOf(second.cacheId), DownloadOperation.Pause)
+        runCurrent()
+        assertEquals(DownloadOperation.Pause, harness.download(second).operation.value)
+        assertEquals(0, second.pauseCalls)
+        assertFalse(secondBatch.isCompleted)
+
+        gate.complete(Unit)
+        assertEquals(emptyMap(), firstBatch.await())
+        assertEquals(emptyMap(), secondBatch.await())
+        assertEquals(MediaCacheState.PAUSED, first.state.value)
+        assertEquals(MediaCacheState.PAUSED, second.state.value)
+    }
+
+    @Test
+    fun `queued download is skipped by later submissions until its operation finishes`() = runTest {
         val cache = testDownload(1)
         val gate = gated(cache)
         val harness = harness(cache)
@@ -88,9 +143,7 @@ class DownloadOperationsTest {
         assertEquals(DownloadOperation.Pause, download.operation.value)
 
         for (operation in DownloadOperation.entries) {
-            val result = harness.operations.submit(setOf(cache.cacheId), operation).await()
-            assertEquals(setOf(cache.cacheId), result.rejected)
-            assertTrue(result.failures.isEmpty())
+            assertEquals(emptyMap(), harness.operations.submit(setOf(cache.cacheId), operation).await())
         }
         assertFalse(pause.isCompleted)
         assertEquals(1, cache.pauseCalls)
@@ -98,78 +151,21 @@ class DownloadOperationsTest {
         assertEquals(listOf(cache), harness.storage.listFlow.value)
 
         gate.complete(Unit)
-        assertEquals(DownloadOperationResult(), pause.await())
+        assertEquals(emptyMap(), pause.await())
         assertNull(download.operation.value)
         assertEquals(MediaCacheState.PAUSED, cache.state.value)
 
-        assertEquals(DownloadOperationResult(), harness.operations.submit(setOf(cache.cacheId), DownloadOperation.Resume).await())
+        assertEquals(emptyMap(), harness.operations.submit(setOf(cache.cacheId), DownloadOperation.Resume).await())
         assertEquals(MediaCacheState.IN_PROGRESS, cache.state.value)
     }
 
     @Test
-    fun `independent downloads execute concurrently within a batch`() = runTest {
-        val first = testDownload(1)
-        val second = testDownload(2)
-        val firstStarted = CompletableDeferred<Unit>()
-        val secondStarted = CompletableDeferred<Unit>()
-        val firstGate = CompletableDeferred<Unit>()
-        val secondGate = CompletableDeferred<Unit>()
-        first.onPause = {
-            firstStarted.complete(Unit)
-            firstGate.await()
-        }
-        second.onPause = {
-            secondStarted.complete(Unit)
-            secondGate.await()
-        }
-        val harness = harness(first, second)
-
-        val batch = harness.operations.submit(setOf(first.cacheId, second.cacheId), DownloadOperation.Pause)
-        runCurrent()
-        assertTrue(firstStarted.isCompleted)
-        assertTrue(secondStarted.isCompleted)
-        assertFalse(batch.isCompleted)
-        assertEquals(DownloadOperation.Pause, harness.download(first).operation.value)
-        assertEquals(DownloadOperation.Pause, harness.download(second).operation.value)
-
-        secondGate.complete(Unit)
-        runCurrent()
-        assertEquals(MediaCacheState.PAUSED, second.state.value)
-        assertNull(harness.download(second).operation.value)
-        assertFalse(batch.isCompleted)
-
-        firstGate.complete(Unit)
-        assertEquals(DownloadOperationResult(), batch.await())
-        assertEquals(MediaCacheState.PAUSED, first.state.value)
-    }
-
-    @Test
-    fun `overlapping batches reject busy targets and execute the remaining downloads`() = runTest {
-        val first = testDownload(1)
-        val gate = gated(first)
-        val second = testDownload(2)
-        val harness = harness(first, second)
-
-        val firstBatch = harness.operations.submit(setOf(first.cacheId), DownloadOperation.Pause)
-        val overlap = harness.operations.submit(setOf(first.cacheId, second.cacheId), DownloadOperation.Pause)
-        val result = overlap.await()
-        assertEquals(setOf(first.cacheId), result.rejected)
-        assertTrue(result.failures.isEmpty())
-        assertEquals(MediaCacheState.PAUSED, second.state.value)
-        assertFalse(firstBatch.isCompleted)
-
-        gate.complete(Unit)
-        assertEquals(DownloadOperationResult(), firstBatch.await())
-        assertEquals(MediaCacheState.PAUSED, first.state.value)
-    }
-
-    @Test
-    fun `cancelling the caller preserves the operation and its busy state`() = runTest {
+    fun `cancelling the caller keeps the operation running`() = runTest {
         val cache = testDownload(1)
         val gate = gated(cache)
         val harness = harness(cache)
 
-        lateinit var result: Deferred<DownloadOperationResult>
+        lateinit var result: Deferred<Map<String, Throwable>>
         val caller = launch {
             result = harness.operations.submit(setOf(cache.cacheId), DownloadOperation.Pause)
             result.await()
@@ -182,19 +178,15 @@ class DownloadOperationsTest {
         runCurrent()
         assertFalse(result.isCompleted)
         assertEquals(DownloadOperation.Pause, download.operation.value)
-        assertEquals(
-            setOf(cache.cacheId),
-            harness.operations.submit(setOf(cache.cacheId), DownloadOperation.Delete).await().rejected,
-        )
 
         gate.complete(Unit)
-        assertEquals(DownloadOperationResult(), result.await())
+        assertEquals(emptyMap(), result.await())
         assertNull(download.operation.value)
         assertEquals(MediaCacheState.PAUSED, cache.state.value)
     }
 
     @Test
-    fun `cancelling the returned result does not interrupt admitted operations`() = runTest {
+    fun `cancelling the returned result does not interrupt the operation`() = runTest {
         val cache = testDownload(1)
         val gate = gated(cache)
         val harness = harness(cache)
@@ -226,42 +218,46 @@ class DownloadOperationsTest {
         val result = harness.operations.submit(selected, DownloadOperation.Pause)
         selected.clear()
         selected.add(second.cacheId)
-        assertEquals(DownloadOperationResult(), result.await())
+        assertEquals(emptyMap(), result.await())
         assertEquals(MediaCacheState.PAUSED, first.state.value)
         assertEquals(MediaCacheState.IN_PROGRESS, second.state.value)
     }
 
     @Test
-    fun `cancelling the execution scope cancels operations and releases their slots`() = runTest {
+    fun `cancelling the execution scope cancels the running operation and releases queued downloads`() = runTest {
         val executionScope = executionScope()
-        val cache = testDownload(1)
+        val first = testDownload(1)
+        val second = testDownload(2)
         var cancelled = false
-        cache.onPause = {
+        first.onPause = {
             try {
                 awaitCancellation()
             } finally {
                 cancelled = true
             }
         }
-        val harness = harness(cache, executionScope = executionScope)
+        val harness = harness(first, second, executionScope = executionScope)
 
-        val result = harness.operations.submit(setOf(cache.cacheId), DownloadOperation.Pause)
+        val result = harness.operations.submit(setOf(first.cacheId, second.cacheId), DownloadOperation.Pause)
         runCurrent()
-        val download = harness.download(cache)
-        assertEquals(DownloadOperation.Pause, download.operation.value)
+        assertEquals(DownloadOperation.Pause, harness.download(first).operation.value)
+        assertEquals(DownloadOperation.Pause, harness.download(second).operation.value)
 
         executionScope.cancel()
         runCurrent()
         assertTrue(cancelled)
         assertTrue(result.isCancelled)
-        assertNull(download.operation.value)
-        assertEquals(MediaCacheState.IN_PROGRESS, cache.state.value)
+        assertNull(harness.download(first).operation.value)
+        assertNull(harness.download(second).operation.value)
+        assertEquals(0, second.pauseCalls)
+        assertEquals(MediaCacheState.IN_PROGRESS, first.state.value)
         assertTrue(backgroundScope.isActive)
 
-        val subsequent = harness.operations.submit(setOf(cache.cacheId), DownloadOperation.Resume)
+        // 执行器已停止: 之后的提交立即取消并且不留下忙碌标记.
+        val subsequent = harness.operations.submit(setOf(first.cacheId), DownloadOperation.Resume)
         runCurrent()
         assertTrue(subsequent.isCancelled)
-        assertNull(download.operation.value)
+        assertNull(harness.download(first).operation.value)
     }
 
     @Test
@@ -272,9 +268,8 @@ class DownloadOperationsTest {
         val harness = harness(first, second)
 
         val result = harness.operations.submit(setOf(first.cacheId, second.cacheId), DownloadOperation.Pause).await()
-        assertEquals(setOf(first.cacheId), result.failures.keys)
-        assertIs<CancellationException>(result.failures.getValue(first.cacheId))
-        assertTrue(result.rejected.isEmpty())
+        assertEquals(setOf(first.cacheId), result.keys)
+        assertIs<CancellationException>(result.getValue(first.cacheId))
         assertEquals(MediaCacheState.IN_PROGRESS, first.state.value)
         assertEquals(MediaCacheState.PAUSED, second.state.value)
         assertNull(harness.download(first).operation.value)
@@ -282,7 +277,7 @@ class DownloadOperationsTest {
     }
 
     @Test
-    fun `failed deletion releases the slot and allows retry`() = runTest {
+    fun `failed deletion releases the download and allows retry`() = runTest {
         val first = testDownload(1)
         val second = testDownload(2)
         val harness = harness(first, second)
@@ -290,15 +285,14 @@ class DownloadOperationsTest {
         harness.storage.onDelete = { if (it === first && fail) error("permission denied") }
 
         val result = harness.operations.submit(setOf(first.cacheId, second.cacheId), DownloadOperation.Delete).await()
-        assertEquals(setOf(first.cacheId), result.failures.keys)
-        assertEquals("permission denied", assertNotNull(result.failures[first.cacheId]).message)
-        assertTrue(result.rejected.isEmpty())
+        assertEquals(setOf(first.cacheId), result.keys)
+        assertEquals("permission denied", assertNotNull(result[first.cacheId]).message)
         assertEquals(listOf(first), harness.storage.listFlow.value)
         runCurrent()
         assertNull(harness.download(first).operation.value)
 
         fail = false
-        assertEquals(DownloadOperationResult(), harness.operations.submit(setOf(first.cacheId), DownloadOperation.Delete).await())
+        assertEquals(emptyMap(), harness.operations.submit(setOf(first.cacheId), DownloadOperation.Delete).await())
         assertEquals(emptyList(), harness.storage.listFlow.value)
         assertEquals(listOf(first, second, first), harness.deleted)
     }
@@ -311,7 +305,7 @@ class DownloadOperationsTest {
         val harness = harness(completed, failed, running)
         val ids = setOf(completed.cacheId, failed.cacheId, running.cacheId)
 
-        assertEquals(DownloadOperationResult(), harness.operations.submit(ids, DownloadOperation.Pause).await())
+        assertEquals(emptyMap(), harness.operations.submit(ids, DownloadOperation.Pause).await())
         assertEquals(MediaCacheState.COMPLETED, completed.state.value)
         assertEquals(MediaCacheState.FAILED, failed.state.value)
         assertEquals(MediaCacheState.PAUSED, running.state.value)
@@ -319,7 +313,7 @@ class DownloadOperationsTest {
         assertEquals(0, failed.pauseCalls)
         assertEquals(1, running.pauseCalls)
 
-        assertEquals(DownloadOperationResult(), harness.operations.submit(ids, DownloadOperation.Resume).await())
+        assertEquals(emptyMap(), harness.operations.submit(ids, DownloadOperation.Resume).await())
         assertEquals(MediaCacheState.COMPLETED, completed.state.value)
         assertEquals(MediaCacheState.FAILED, failed.state.value)
         assertEquals(MediaCacheState.IN_PROGRESS, running.state.value)
@@ -327,17 +321,19 @@ class DownloadOperationsTest {
         assertEquals(0, failed.resumeCalls)
         assertEquals(1, running.resumeCalls)
 
-        assertEquals(DownloadOperationResult(), harness.operations.submit(ids, DownloadOperation.Delete).await())
+        assertEquals(emptyMap(), harness.operations.submit(ids, DownloadOperation.Delete).await())
         assertEquals(emptyList(), harness.storage.listFlow.value)
         runCurrent()
-        assertEquals(DownloadOperationResult(), harness.operations.submit(ids, DownloadOperation.Resume).await())
+        assertEquals(emptyMap(), harness.operations.submit(ids, DownloadOperation.Resume).await())
         assertEquals(1, running.resumeCalls)
     }
 
     @Test
-    fun `empty submission completes with an empty result`() = runTest {
+    fun `empty submission completes immediately`() = runTest {
         val harness = harness()
-        assertEquals(DownloadOperationResult(), harness.operations.submit(emptySet(), DownloadOperation.Pause).await())
+        val result = harness.operations.submit(emptySet(), DownloadOperation.Pause)
+        assertTrue(result.isCompleted)
+        assertEquals(emptyMap(), result.await())
     }
 
     @Test
@@ -345,11 +341,10 @@ class DownloadOperationsTest {
         val running = testDownload(1)
         val harness = harness(running)
 
-        val result = harness.operations.submit(setOf(running.cacheId, "missing"), DownloadOperation.Pause).await()
-        assertEquals(DownloadOperationResult(), result)
+        assertEquals(emptyMap(), harness.operations.submit(setOf(running.cacheId, "missing"), DownloadOperation.Pause).await())
         assertEquals(MediaCacheState.PAUSED, running.state.value)
 
-        assertEquals(DownloadOperationResult(), harness.operations.submit(setOf("missing"), DownloadOperation.Delete).await())
+        assertEquals(emptyMap(), harness.operations.submit(setOf("missing"), DownloadOperation.Delete).await())
         assertEquals(emptyList(), harness.deleted)
     }
 
@@ -358,7 +353,7 @@ class DownloadOperationsTest {
         val cache = testDownload(1)
         val harness = harness(cache)
 
-        assertEquals(DownloadOperationResult(), harness.operations.submit(setOf(cache.cacheId), DownloadOperation.Delete).await())
+        assertEquals(emptyMap(), harness.operations.submit(setOf(cache.cacheId), DownloadOperation.Delete).await())
         assertSame(cache, harness.deleted.single())
         assertEquals(emptyList(), harness.storage.listFlow.value)
     }

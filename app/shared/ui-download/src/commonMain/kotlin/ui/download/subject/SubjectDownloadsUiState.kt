@@ -52,6 +52,5 @@ data class SubjectDownloadsUiState(
     val downloadsLoading: Boolean = true,
     val episodesFailed: Boolean = false,
     val downloadsFailed: Boolean = false,
-    val failedOperationCount: Int = 0,
     val request: DownloadRequestUiState = DownloadRequestUiState(),
 )

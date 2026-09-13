@@ -16,7 +16,6 @@ import me.him188.ani.app.domain.episode.EpisodeSession
 import me.him188.ani.app.domain.media.cache.DeleteCacheUseCase
 import me.him188.ani.app.domain.media.cache.MediaCache
 import me.him188.ani.app.domain.media.cache.engine.MediaCacheEngineKey
-import me.him188.ani.app.domain.media.download.DownloadBusyException
 import me.him188.ani.app.domain.media.download.MediaDownloadManager
 import me.him188.ani.app.domain.media.resolver.toEpisodeMetadata
 import me.him188.ani.app.domain.player.VideoLoadingState
@@ -95,18 +94,14 @@ class CacheOnBtPlayExtension(
     }
 
     /**
-     * 删除尚未开始传输的自动下载; 该记录正被下载页操作时 ([DownloadBusyException]) 放弃清理.
+     * 删除尚未开始传输的自动下载.
      */
     private suspend fun deleteCurrentAutoSelectedIfNotStarted() {
         val cache = currentCache ?: return
         val progress = cache.fileStats.first().downloadedBytes.inBytes
         if (progress == 0L) {
             logger.info { "Auto-cached media ${cache.metadata} hasn't started downloading, deleting it." }
-            try {
-                deleteCacheUseCase(cache)
-            } catch (e: DownloadBusyException) {
-                logger.info { "Auto-cached media ${cache.metadata} is busy with ${e.current}, leaving it to that operation." }
-            }
+            deleteCacheUseCase(cache)
         }
         currentCache = null
     }

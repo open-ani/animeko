@@ -28,8 +28,7 @@
   最后一个订阅者离开 5 秒后停止计算，再次订阅时立即重放最近的快照。
   列表增删导致观察者重新订阅时，上游的速度统计不会重置。
   底层统计流抛出异常时，快照变为失败状态并保持列表可用；下一次从无订阅者到有订阅者时重新收集上游。
-- `operation`：操作槽。`pause`、`resume` 与 `MediaDownloadManager.delete` 互斥，
-  同一下载正在执行操作时，新操作抛出 `DownloadBusyException`。
+- `operation`：已排队或正在执行的操作，由 `DownloadOperations` 维护，供页面显示忙碌。
   `pause` 只暂停进行中的下载，`resume` 只继续已暂停的下载，其他状态下不做任何事。
 
 管理器的其他入口：`downloadStatusForEpisode` 直接由记录的状态与文件统计汇总某一集的状态，不计算速度，
@@ -66,12 +65,14 @@ BT 资源在 PikPak 已启用且能解析时优先经 HTTP 引擎下载。
 页面通过 `MediaDownloadManager.snapshots` 观察下载，把 `DownloadSnapshot` 映射为列表项，
 `operation` 非空的项显示为忙碌并禁用相关按钮。
 
-[DownloadOperations][operations] 在应用作用域执行暂停、继续与删除。
-`submit(ids, operation)` 在提交时固定目标集合，不同下载并发执行；
-忙碌的下载进入结果的 `rejected`，抛出异常的进入 `failures`，已不存在的被忽略。
-返回的 `Deferred` 只用于汇总结果：页面关闭或停止等待都不会中断已提交的操作。
-页面把 `failures` 的数量累计到失败弹窗，`rejected` 不计入。
+[DownloadOperations][operations] 在应用作用域串行执行暂停、继续与删除：同一时刻只有一个操作在执行，
+批次按提交顺序排队。`submit(ids, operation)` 在提交时固定目标集合并把它们标记为忙碌，
+已不存在的 id 被忽略，已在排队或执行中的下载被跳过（页面已为忙碌的项禁用按钮）。
+返回的 `Deferred` 给出执行时抛出异常的下载：页面关闭或停止等待都不会中断已提交的操作。
 删除经由 `DeleteCacheUseCase`，它在删除记录后清理不再需要的弹幕缓存。
+
+页面通过 `DownloadOperationRunner` 提交操作并累计失败数，失败提示由页面单独收集这个计数显示，
+用户关闭提示后归零；它独立于页面状态流，页面关闭后不再统计。
 
 ## 页面接入
 

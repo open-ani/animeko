@@ -52,15 +52,6 @@ enum class DownloadOperation {
 }
 
 /**
- * 下载正在执行 [current] 时收到了 [requested].
- */
-class DownloadBusyException(
-    val downloadId: String,
-    val current: DownloadOperation,
-    val requested: DownloadOperation,
-) : IllegalStateException("Download $downloadId is busy with $current and cannot $requested")
-
-/**
  * 下载某一时刻的不可变快照.
  */
 data class DownloadSnapshot(
@@ -77,7 +68,7 @@ data class DownloadSnapshot(
     val mediaSourceId: String,
     val engineKey: MediaCacheEngineKey,
     /**
-     * 正在执行的操作, `null` 表示空闲.
+     * 已排队或正在执行的操作, `null` 表示空闲.
      */
     val operation: DownloadOperation?,
 ) {
@@ -86,8 +77,6 @@ data class DownloadSnapshot(
 
 /**
  * 一个持久化的视频下载, 与 [MediaCache] 一一对应, 由 [MediaDownloadManager] 创建并保持实例稳定.
- *
- * [pause], [resume] 与 [MediaDownloadManager.delete] 互斥, 忙碌时抛出 [DownloadBusyException].
  */
 class MediaDownload internal constructor(
     val cache: MediaCache,
@@ -101,12 +90,12 @@ class MediaDownload internal constructor(
 
     private val scope = sharingScope.childScope()
 
-    private val currentOperation = MutableStateFlow<DownloadOperation?>(null)
+    private val queuedOperation = MutableStateFlow<DownloadOperation?>(null)
 
     /**
-     * 正在执行的操作, `null` 表示空闲.
+     * 已排队或正在执行的操作, `null` 表示空闲. 由 [DownloadOperations] 通过 [claim] 与 [release] 维护.
      */
-    val operation: StateFlow<DownloadOperation?> = currentOperation.asStateFlow()
+    val operation: StateFlow<DownloadOperation?> = queuedOperation.asStateFlow()
 
     /**
      * 共享的快照流: 进度与速度每秒最多更新一次, 状态、可播放性与操作立即反映; 最后一个订阅者离开 5 秒后停止.
@@ -122,7 +111,7 @@ class MediaDownload internal constructor(
             val transfer = combine(fileStats, downloadSpeed) { stats, speed -> stats to speed }
                 .sampleWithInitial(1.seconds)
             emitAll(
-                combine(transfer, cache.state, cache.canPlay, currentOperation) { (stats, speed), state, canPlay, operation ->
+                combine(transfer, cache.state, cache.canPlay, queuedOperation) { (stats, speed), state, canPlay, operation ->
                     DownloadSnapshot(
                         id = id,
                         metadata = metadata,
@@ -152,7 +141,7 @@ class MediaDownload internal constructor(
                 canPlay = false,
                 mediaSourceId = origin.mediaSourceId,
                 engineKey = engineKey,
-                operation = currentOperation.value,
+                operation = queuedOperation.value,
             ),
         )
     }.distinctUntilChanged()
@@ -160,34 +149,25 @@ class MediaDownload internal constructor(
 
     /**
      * 只暂停 [MediaCacheState.IN_PROGRESS] 的下载.
-     * @throws DownloadBusyException
      */
-    suspend fun pause() = withOperation(DownloadOperation.Pause) {
+    suspend fun pause() {
         if (cache.state.first() == MediaCacheState.IN_PROGRESS) cache.pause()
     }
 
     /**
      * 只继续 [MediaCacheState.PAUSED] 的下载.
-     * @throws DownloadBusyException
      */
-    suspend fun resume() = withOperation(DownloadOperation.Resume) {
+    suspend fun resume() {
         if (cache.state.first() == MediaCacheState.PAUSED) cache.resume()
     }
 
     /**
-     * 占用操作槽执行 [block], 忙碌时抛出 [DownloadBusyException].
+     * 把 [operation] 标记为已排队. 已有操作排队或执行中时返回 `false`.
      */
-    internal suspend fun <T> withOperation(operation: DownloadOperation, block: suspend () -> T): T {
-        while (true) {
-            val current = currentOperation.value
-            if (current != null) throw DownloadBusyException(id, current, operation)
-            if (currentOperation.compareAndSet(null, operation)) break
-        }
-        try {
-            return block()
-        } finally {
-            currentOperation.value = null
-        }
+    internal fun claim(operation: DownloadOperation): Boolean = queuedOperation.compareAndSet(null, operation)
+
+    internal fun release() {
+        queuedOperation.value = null
     }
 
     /**

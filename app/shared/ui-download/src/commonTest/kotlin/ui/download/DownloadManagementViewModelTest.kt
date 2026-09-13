@@ -119,8 +119,8 @@ class DownloadManagementViewModelTest {
         vm.pauseDownload(item)
         awaitState { it.entries.single().isBusy }
         gate.complete(Unit)
-        val idle = awaitState { !it.entries.single().isBusy }
-        assertEquals(0, idle.failedOperationCount)
+        awaitState { !it.entries.single().isBusy }
+        assertEquals(0, vm.operationFailures.value)
     }
 
     @Test
@@ -148,13 +148,13 @@ class DownloadManagementViewModelTest {
         val item = awaitState { it.entries.size == 1 }.entries.single()
 
         vm.pauseDownload(item)
-        awaitState { it.failedOperationCount == 1 }
-        vm.dismissOperationError()
-        awaitState { it.failedOperationCount == 0 }
+        vm.operationFailures.first { it == 1 }
+        vm.dismissOperationFailures()
+        assertEquals(0, vm.operationFailures.value)
 
         deleteCache.failure = IllegalStateException("delete failed")
         vm.deleteDownload(item)
-        awaitState { it.failedOperationCount == 1 }
+        vm.operationFailures.first { it == 1 }
         assertEquals(1, storage.listFlow.value.size)
     }
 

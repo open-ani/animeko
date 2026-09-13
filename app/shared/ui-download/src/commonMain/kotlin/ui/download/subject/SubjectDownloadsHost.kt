@@ -41,6 +41,7 @@ internal fun SubjectDownloadsHost(
 ) {
     val state by presenter.uiState.collectAsStateWithLifecycle()
     val request by presenter.requestDialogs.collectAsStateWithLifecycle()
+    val failedOperations by presenter.operationFailures.collectAsStateWithLifecycle()
     var pickerVisible by remember(presenter, request) { mutableStateOf(true) }
     val context = LocalContext.current
     val uiScope = rememberCoroutineScope()
@@ -73,11 +74,11 @@ internal fun SubjectDownloadsHost(
             )
         }
     }
-    if (state.failedOperationCount > 0) {
+    if (failedOperations > 0) {
         AlertDialog(
-            onDismissRequest = presenter::dismissOperationError,
-            text = { Text(stringResource(Lang.downloads_operation_failed, state.failedOperationCount)) },
-            confirmButton = { TextButton(onClick = presenter::dismissOperationError) { Text(stringResource(Lang.cache_subject_cancel)) } },
+            onDismissRequest = presenter::dismissOperationFailures,
+            text = { Text(stringResource(Lang.downloads_operation_failed, failedOperations)) },
+            confirmButton = { TextButton(onClick = presenter::dismissOperationFailures) { Text(stringResource(Lang.cache_subject_cancel)) } },
         )
     }
     content(state, actions, presenter.sourceInfoProvider)

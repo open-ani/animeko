@@ -26,7 +26,6 @@ import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.flow.updateAndGet
-import kotlinx.coroutines.launch
 import me.him188.ani.app.data.models.subject.SubjectCollectionInfo
 import me.him188.ani.app.data.models.subject.nameCnOrName
 import me.him188.ani.app.data.repository.player.EpisodePlayHistoryRepository
@@ -40,6 +39,7 @@ import me.him188.ani.app.domain.media.download.DownloadRequestState
 import me.him188.ani.app.domain.media.download.DownloadSnapshot
 import me.him188.ani.app.domain.media.download.MediaDownloadManager
 import me.him188.ani.app.domain.media.fetch.MediaSourceManager
+import me.him188.ani.app.ui.download.DownloadOperationRunner
 import me.him188.ani.app.ui.download.components.toDownloadItem
 import me.him188.ani.app.ui.mediafetch.MediaSourceInfoProvider
 import me.him188.ani.datasources.api.Media
@@ -59,11 +59,11 @@ class SubjectDownloadsPresenter(
     sources: MediaSourceManager,
     downloadManager: MediaDownloadManager,
     private val sessionFactory: DownloadRequestSessionFactory,
-    private val operations: DownloadOperations,
+    operations: DownloadOperations,
 ) : AutoCloseable {
     private val scope = parentScope.childScope()
     private val reloadCount = MutableStateFlow(0)
-    private val operationFailures = MutableStateFlow(0)
+    private val operationRunner = DownloadOperationRunner(operations, scope)
     private val session = MutableStateFlow<DownloadRequestSession?>(null)
     private val requestState: Flow<DownloadRequestState?> = session.flatMapLatest { it?.state ?: flowOf(null) }
 
@@ -80,7 +80,7 @@ class SubjectDownloadsPresenter(
     private val downloads = reloadCount.flatMapLatest { downloadManager.snapshots(subjectId).asLoadState(downloadsLoad) }
 
     val uiState: StateFlow<SubjectDownloadsUiState> =
-        combine(subject, downloads, histories.flow, operationFailures, requestState) { subject, downloads, histories, failures, request ->
+        combine(subject, downloads, histories.flow, requestState) { subject, downloads, histories, request ->
             val info = subject.value
             val historyByEpisode = histories.associateBy { it.episodeId }
             val items = downloads.value.orEmpty().map { snapshot ->
@@ -96,7 +96,6 @@ class SubjectDownloadsPresenter(
                 downloadsLoading = downloads.loading,
                 episodesFailed = subject.failed,
                 downloadsFailed = downloads.failed,
-                failedOperationCount = failures,
                 request = request.toRequestUiState(),
             )
         }.stateIn(scope, SharingStarted.WhileSubscribed(5000), SubjectDownloadsUiState())
@@ -122,9 +121,12 @@ class SubjectDownloadsPresenter(
         reloadCount.update { it + 1 }
     }
 
-    fun dismissOperationError() {
-        operationFailures.value = 0
-    }
+    /**
+     * 批量操作累计的失败数, [dismissOperationFailures] 后归零.
+     */
+    val operationFailures: StateFlow<Int> get() = operationRunner.failedCount
+
+    fun dismissOperationFailures() = operationRunner.dismissFailures()
 
     /**
      * 正在等待其他剧集选源时取消该会话并为本集重新开启; 正在等待本集选源、准备或持久化时不做任何事.
@@ -155,23 +157,11 @@ class SubjectDownloadsPresenter(
         session.value?.select(episodeId, media)
     }
 
-    fun pauseDownloads(ids: Set<String>) = execute(ids, DownloadOperation.Pause)
-    fun resumeDownloads(ids: Set<String>) = execute(ids, DownloadOperation.Resume)
-    fun deleteDownloads(ids: Set<String>) = execute(ids, DownloadOperation.Delete)
+    fun pauseDownloads(ids: Set<String>) = operationRunner.run(ids, DownloadOperation.Pause)
+    fun resumeDownloads(ids: Set<String>) = operationRunner.run(ids, DownloadOperation.Resume)
+    fun deleteDownloads(ids: Set<String>) = operationRunner.run(ids, DownloadOperation.Delete)
     fun pauseAll() = pauseDownloads(uiState.value.downloads.mapTo(hashSetOf()) { it.id })
     fun resumeAll() = resumeDownloads(uiState.value.downloads.mapTo(hashSetOf()) { it.id })
-
-    /**
-     * 因忙碌被拒绝的下载不计入失败.
-     */
-    private fun execute(ids: Set<String>, operation: DownloadOperation) {
-        if (ids.isEmpty()) return
-        val pending = operations.submit(ids, operation)
-        scope.launch {
-            val failures = pending.await().failures.size
-            if (failures > 0) operationFailures.update { it + failures }
-        }
-    }
 
     val isClosed: Boolean get() = !scope.isActive
 

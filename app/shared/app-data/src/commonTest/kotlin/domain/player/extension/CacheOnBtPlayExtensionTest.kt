@@ -39,8 +39,6 @@ import me.him188.ani.app.domain.media.cache.engine.DummyMediaCacheEngine
 import me.him188.ani.app.domain.media.cache.engine.MediaCacheEngineKey
 import me.him188.ani.app.domain.media.cache.engine.MediaStats
 import me.him188.ani.app.domain.media.cache.storage.MediaCacheStorage
-import me.him188.ani.app.domain.media.download.DownloadBusyException
-import me.him188.ani.app.domain.media.download.DownloadOperation
 import me.him188.ani.app.domain.media.download.MediaDownloadManager
 import me.him188.ani.app.domain.media.player.data.MediaDataProvider
 import me.him188.ani.app.domain.media.resolver.EpisodeMetadata
@@ -272,66 +270,6 @@ class CacheOnBtPlayExtensionTest : AbstractPlayerExtensionTest() {
         state.mediaSelectorFlow.filterNotNull().first().select(webMedia)
         advanceUntilIdle()
         assertEquals(0, storage.listFlow.value.size)
-        scope.cancel()
-    }
-
-    @Test
-    fun busyAutoCacheIsLeftToTheOtherOperation() = runTest {
-        val bt = CompletableDeferred<List<Media>>()
-        val web = CompletableDeferred<List<Media>>()
-        var deleteAttempts = 0
-        val context = createCase(
-            deleteCache = {
-                object : DeleteCacheUseCase {
-                    override suspend fun invoke(cache: MediaCache) {
-                        deleteAttempts++
-                        throw DownloadBusyException(cache.cacheId, DownloadOperation.Delete, DownloadOperation.Delete)
-                    }
-                }
-            },
-        ) { _, builder ->
-            builder.mediaSources.add(
-                createTestMediaSourceInstance(
-                    TestHttpMediaSource(
-                        "bt",
-                        kind = MediaSourceKind.BitTorrent,
-                        fetch = {
-                            SinglePagePagedSource {
-                                bt.await().map { MediaMatch(it, MatchKind.EXACT) }.asFlow()
-                            }
-                        },
-                    ),
-                ),
-            )
-            builder.mediaSources.add(
-                createTestMediaSourceInstance(
-                    TestHttpMediaSource(
-                        "web",
-                        kind = MediaSourceKind.WEB,
-                        fetch = {
-                            SinglePagePagedSource {
-                                web.await().map { MediaMatch(it, MatchKind.EXACT) }.asFlow()
-                            }
-                        },
-                    ),
-                ),
-            )
-        }
-        val (scope, suite, state, storage) = context
-        startFetcher(state, scope)
-        val btMedia = suite.mediaSelectorTestBuilder.createMedia("bt", kind = MediaSourceKind.BitTorrent)
-        val webMedia = suite.mediaSelectorTestBuilder.createMedia("web", kind = MediaSourceKind.WEB)
-        bt.complete(listOf(btMedia))
-        web.complete(listOf(webMedia))
-        state.mediaSelectorFlow.filterNotNull().first().select(btMedia)
-        advanceUntilIdle()
-        assertEquals(1, storage.listFlow.value.size)
-
-        // 该记录正被下载页操作: 自动清理放弃, 记录保留, 切换资源不受影响.
-        state.mediaSelectorFlow.filterNotNull().first().select(webMedia)
-        advanceUntilIdle()
-        assertEquals(1, deleteAttempts)
-        assertEquals(1, storage.listFlow.value.size)
         scope.cancel()
     }
 

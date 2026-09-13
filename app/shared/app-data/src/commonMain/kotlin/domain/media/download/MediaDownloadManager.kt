@@ -162,14 +162,11 @@ class MediaDownloadManager(
 
     /**
      * 返回 `false` 表示记录已不存在.
-     * @throws DownloadBusyException
      */
-    suspend fun delete(download: MediaDownload): Boolean =
-        download.withOperation(DownloadOperation.Delete) { download.storage.delete(download.cache) }
+    suspend fun delete(download: MediaDownload): Boolean = download.storage.delete(download.cache)
 
     /**
      * 记录尚未出现在 [downloads] 中时直接交给各存储处理.
-     * @throws DownloadBusyException
      */
     suspend fun deleteDownload(cache: MediaCache): Boolean {
         downloadOf(cache)?.let { return delete(it) }

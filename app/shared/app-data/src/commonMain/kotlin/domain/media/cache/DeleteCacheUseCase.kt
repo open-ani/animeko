@@ -10,16 +10,12 @@
 package me.him188.ani.app.domain.media.cache
 
 import me.him188.ani.app.domain.danmaku.DanmakuRepository
-import me.him188.ani.app.domain.media.download.DownloadBusyException
 import me.him188.ani.app.domain.media.download.MediaDownloadManager
 
 /**
  * 删除下载记录与文件, 并清理不再需要的弹幕缓存.
  */
 interface DeleteCacheUseCase {
-    /**
-     * @throws DownloadBusyException 该下载正在执行其他操作
-     */
     suspend operator fun invoke(cache: MediaCache)
 }
 
