@@ -20,7 +20,7 @@ import me.him188.ani.app.ui.foundation.layout.AniWindowInsets
 
 @Composable
 fun SubjectDownloadsScreen(
-    subjectId: Int,
+    vm: SubjectDownloadsViewModel,
     onPlay: (DownloadItem) -> Unit,
     onNavigateDownloadDetail: (String) -> Unit,
     modifier: Modifier = Modifier,
@@ -28,7 +28,7 @@ fun SubjectDownloadsScreen(
     navigationIcon: @Composable () -> Unit = {},
 ) {
     val selection = rememberDownloadSelectionState()
-    SubjectDownloadsFeature(subjectId) { state, actions, sourceInfo ->
+    SubjectDownloadsHost(vm.presenter) { state, actions, sourceInfo ->
         SubjectDownloadsPage(
             state = state,
             selection = selection,

@@ -16,6 +16,7 @@ import me.him188.ani.app.domain.episode.EpisodeSession
 import me.him188.ani.app.domain.media.cache.DeleteCacheUseCase
 import me.him188.ani.app.domain.media.cache.MediaCache
 import me.him188.ani.app.domain.media.cache.engine.MediaCacheEngineKey
+import me.him188.ani.app.domain.media.download.DownloadBusyException
 import me.him188.ani.app.domain.media.download.MediaDownloadManager
 import me.him188.ani.app.domain.media.resolver.toEpisodeMetadata
 import me.him188.ani.app.domain.player.VideoLoadingState
@@ -59,7 +60,7 @@ class CacheOnBtPlayExtension(
 
                         if (state !is VideoLoadingState.Succeed || !state.isBt) return@collectLatest
 
-                        val storage = downloadManager.storagesIncludingDisabled
+                        val storage = downloadManager.storages
                             .find { it.engine.engineKey == MediaCacheEngineKey.Anitorrent }
                         if (storage == null) {
                             logger.warn { "TorrentMediaCacheEngine is not found in MediaDownloadManager." }
@@ -75,7 +76,7 @@ class CacheOnBtPlayExtension(
 
                         val metadata =
                             MediaCacheMetadata(bundle.mediaFetchSession.request.first(), autoCached = true)
-                        val cache = storage.cache(media, metadata, episodeMetadata, resume = true)
+                        val cache = downloadManager.createDownload(media, metadata, episodeMetadata, storage)
                         if (cache.metadata.autoCached) {
                             currentCache = cache
                         }
@@ -93,12 +94,19 @@ class CacheOnBtPlayExtension(
         deleteCurrentAutoSelectedIfNotStarted()
     }
 
+    /**
+     * 删除尚未开始传输的自动下载; 该记录正被下载页操作时 ([DownloadBusyException]) 放弃清理.
+     */
     private suspend fun deleteCurrentAutoSelectedIfNotStarted() {
         val cache = currentCache ?: return
         val progress = cache.fileStats.first().downloadedBytes.inBytes
         if (progress == 0L) {
             logger.info { "Auto-cached media ${cache.metadata} hasn't started downloading, deleting it." }
-            deleteCacheUseCase(cache)
+            try {
+                deleteCacheUseCase(cache)
+            } catch (e: DownloadBusyException) {
+                logger.info { "Auto-cached media ${cache.metadata} is busy with ${e.current}, leaving it to that operation." }
+            }
         }
         currentCache = null
     }

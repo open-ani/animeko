@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2024-2025 OpenAni and contributors.
+ * Copyright (C) 2024-2026 OpenAni and contributors.
  *
  * 此源代码的使用受 GNU AFFERO GENERAL PUBLIC LICENSE version 3 许可证的约束, 可以在以下链接找到该许可证.
  * Use of this source code is governed by the GNU AGPLv3 license, which can be found at the following link.
@@ -10,18 +10,17 @@
 package me.him188.ani.app.domain.media.cache
 
 import me.him188.ani.app.domain.danmaku.DanmakuRepository
+import me.him188.ani.app.domain.media.download.DownloadBusyException
 import me.him188.ani.app.domain.media.download.MediaDownloadManager
 
+/**
+ * 删除下载记录与文件, 并清理不再需要的弹幕缓存.
+ */
 interface DeleteCacheUseCase {
+    /**
+     * @throws DownloadBusyException 该下载正在执行其他操作
+     */
     suspend operator fun invoke(cache: MediaCache)
-}
-
-interface DeleteCacheByCacheIdUseCase {
-    suspend operator fun invoke(subjectId: Int, episodeId: Int, cacheId: String)
-}
-
-interface DeleteCacheByEpisodeIdUseCase {
-    suspend operator fun invoke(subjectId: Int, episodeId: Int)
 }
 
 class DeleteCacheUseCaseImpl(
@@ -35,25 +34,5 @@ class DeleteCacheUseCaseImpl(
         if (subjectId != null && episodeId != null) {
             danmakuRepository.deleteDanmakuIfDontNeeded(subjectId, episodeId)
         }
-    }
-}
-
-class DeleteCacheByCacheIdUseCaseImpl(
-    private val downloadManager: MediaDownloadManager,
-    private val danmakuRepository: DanmakuRepository
-) : DeleteCacheByCacheIdUseCase {
-    override suspend fun invoke(subjectId: Int, episodeId: Int, cacheId: String) {
-        downloadManager.deleteFirstDownload { it.cacheId == cacheId }
-        danmakuRepository.deleteDanmakuIfDontNeeded(subjectId, episodeId)
-    }
-}
-
-class DeleteCacheByEpisodeIdUseCaseImpl(
-    private val downloadManager: MediaDownloadManager,
-    private val danmakuRepository: DanmakuRepository
-) : DeleteCacheByEpisodeIdUseCase {
-    override suspend fun invoke(subjectId: Int, episodeId: Int) {
-        downloadManager.deleteFirstDownload { it.metadata.episodeId.toIntOrNull() == episodeId }
-        danmakuRepository.deleteDanmakuIfDontNeeded(subjectId, episodeId)
     }
 }

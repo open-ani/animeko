@@ -58,17 +58,9 @@ class MediaCacheDetailsPageViewModel(
     private val downloadManager: MediaDownloadManager by inject()
     private val mediaSourceManager: MediaSourceManager by inject()
 
-    private val mediaCacheFlow = downloadManager.enabledStorages.flatMapLatest { storages ->
-        combine(
-            storages.map { storage ->
-                storage.listFlow.map { caches ->
-                    caches.find { it.cacheId == cacheId }
-                }
-            },
-        ) { results ->
-            results.firstNotNullOfOrNull { it }
-        }
-    }.shareInBackground()
+    private val mediaCacheFlow = downloadManager.downloads
+        .map { list -> list.firstOrNull { it.id == cacheId }?.cache }
+        .shareInBackground()
 
     private val sourceInfoFlow
         get() = mediaCacheFlow

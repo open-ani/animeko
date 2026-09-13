@@ -6,60 +6,100 @@
 | 位置 | 职责 |
 | --- | --- |
 | `ui-download` 模块 | 展示下载状态，管理页面选择，转发用户操作。 |
-| `domain/media/download` 包 | 管理选源过程、创建下载、汇总进度，以及执行暂停、继续和删除。 |
+| `domain/media/download` 包 | 下载实体与管理器，添加下载的选源会话，批量暂停、继续和删除。 |
 | `domain/media/cache` 包 | 持久化下载记录，通过下载引擎执行传输和文件操作。 |
 
-[MediaDownloadManager][manager] 是业务层访问底层存储的统一入口，负责跨存储查询和默认存储选择。
-它与应用同生命周期，供下载页面和播放时自动保存视频的逻辑共同使用。
+## 实体与管理器
+
+[MediaDownloadManager][manager] 与应用同生命周期，聚合所有 `MediaCacheStorage` 的记录。
+它为每条底层 `MediaCache` 记录维持一个稳定的 [MediaDownload][download] 实例：存储的记录实例不变时，
+对应的 `MediaDownload` 实例也不变；记录被删除或被存储替换后，对应实例被关闭并释放其共享协程。
+多个存储持有相同 id 的记录时，只保留注册顺序靠前的一个。
+
+`snapshots(subjectId?)` 与 `downloadsForSubject` 在每个存储都给出首个记录列表后才输出；
+`downloads` 是供同步读取的 `StateFlow`，在此之前为空列表。存储在应用启动时异步恢复持久化记录，
+恢复完成前它们给出的列表可能为空，因此启动阶段的空列表不代表没有下载。
+`findCaches` 直接读取各存储的当前记录，与刚完成的创建或删除保持一致，供弹幕缓存策略等同步判断使用。
+
+`MediaDownload` 提供两样东西：
+
+- `snapshot`：共享的热流，包含状态、进度、大小、平均速度、可播放性和正在执行的操作。
+  进度与速度每秒最多更新一次；状态、可播放性与操作的变化立即反映。
+  最后一个订阅者离开 5 秒后停止计算，再次订阅时立即重放最近的快照。
+  列表增删导致观察者重新订阅时，上游的速度统计不会重置。
+  底层统计流抛出异常时，快照变为失败状态并保持列表可用；下一次从无订阅者到有订阅者时重新收集上游。
+- `operation`：操作槽。`pause`、`resume` 与 `MediaDownloadManager.delete` 互斥，
+  同一下载正在执行操作时，新操作抛出 `DownloadBusyException`。
+  `pause` 只暂停进行中的下载，`resume` 只继续已暂停的下载，其他状态下不做任何事。
+
+管理器的其他入口：`downloadStatusForEpisode` 直接由记录的状态与文件统计汇总某一集的状态，不计算速度，
+供剧集列表和收藏进度使用；`overallStats` 汇总各存储的传输统计；
+`createDownload` 在指定存储中持久化记录：任一存储已有同一资源同一剧集的记录时直接返回该记录，
+默认存储由 `defaultStorageFor` 决定：按注册顺序取第一个支持该资源的存储，
+BT 资源在 PikPak 已启用且能解析时优先经 HTTP 引擎下载。
+播放 BT 资源时自动保存的下载（`CacheOnBtPlayExtension`）显式指定 Anitorrent 存储；
+该记录正被下载页操作时，播放器放弃对它的自动清理。
 
 ## 添加下载
 
-[AddDownloadsSession][session] 按传入的剧集顺序执行：查询资源、等待用户选源、保存选择偏好、创建下载。
-一集创建成功后才处理下一集。可复用的合集资源直接用于创建对应剧集的下载。
-任何一步失败都会结束流程并显示错误，已经创建的下载保留。
+[DownloadRequestSession][session] 为一个条目的若干剧集添加下载，按传入顺序处理，一集持久化完成后才处理下一集。
+每集依次经过以下状态：
 
-会话只维护当前剧集、待选源数据和错误。每次添加创建独立实例，UI 回调绑定该实例。
-ViewModel 启动协程调用 `session.run()`，并在同一串行上下文中转发选源操作。取消该协程会结束会话。
-每集的资源查询作用域在该集处理结束时释放。
+1. `Preparing`：从条目收藏信息中取得条目与剧集信息，并检查本条目已有的下载。
+   若已有 `episodeRange` 覆盖本集的合集资源（包括本会话刚创建的），直接复用它，不再选源。
+2. `AwaitingSelection`：创建查询会话与选源器，等待用户通过 `select` 选定资源。
+   查询在此期间持续进行，与选源弹窗是否可见无关。
+3. `Creating`：选中资源并保存选源偏好（含弹窗内对字幕组、分辨率等的修改），
+   然后通过 [AddDownloadUseCase][add] 持久化。持久化在应用作用域执行，
+   会话在此期间被取消时这一集仍会完成，只是不再处理后续剧集。
 
-`AddDownloadsSessionFactory` 负责组装依赖。Session 直接查询仓库、使用选源器，
-在创建下载前捕获条目、剧集、资源和元数据，并在应用作用域中调用 `MediaDownloadManager.createDownload`，等待该集持久化完成。
-关闭会话会取消查询、停止等待和后续剧集的处理；已经交给应用作用域的那次创建继续执行。
+任何一步失败都以 `Finished(error)` 结束会话，已经创建的下载保留。`cancel` 取消查询、停止等待并跳过剩余剧集。
+`select` 只接受当前正在等待选源的那一集。`select` 与 `cancel` 可在任意线程调用。
+会话由 `DownloadRequestSessionFactory` 创建并随传入的父作用域取消；页面 ViewModel 用自己的作用域创建会话，
+离开页面即取消尚未选源的请求。
 
-manager 选择默认存储，由存储在锁内查重和持久化，成功后在后台保存弹幕并记录统计事件。
-创建成功包括复用已有记录；后续传输进度由下载引擎提供。
-当前页面传入单集，批量选集 UI 尚未接入。
+`AddDownloadUseCase` 是用户发起添加的提交步骤：持久化成功即视为添加成功，弹幕缓存与统计事件在后台进行，
+其失败不影响结果。
 
 ## 已有下载：观察与操作
 
-[ObserveDownloadsUseCase][observe] 将底层下载整理为 `Flow<List<DownloadSnapshot>>`，
-供 ViewModel 组合剧集信息和观看记录。每个下载独立收集进度，列表增删不会重置其他下载的速度统计。
-首次收到全部下载项的状态后才输出列表，因此空列表表示已加载且没有下载。
+页面通过 `MediaDownloadManager.snapshots` 观察下载，把 `DownloadSnapshot` 映射为列表项，
+`operation` 非空的项显示为忙碌并禁用相关按钮。
 
-[DownloadOperations][operations] 在应用作用域执行暂停、继续和删除，按下载 ID 防止重复操作。
-应用组装层提供与应用同生命周期的串行作用域，用于登记和清理 `busyIds`，实际操作在后台执行。
-同一下载忙时拒绝新的操作，不同下载可以并行。
-`submit` 返回逐项错误和被拒绝的 ID；页面关闭或停止等待结果，不会取消已开始的操作。
+[DownloadOperations][operations] 在应用作用域执行暂停、继续与删除。
+`submit(ids, operation)` 在提交时固定目标集合，不同下载并发执行；
+忙碌的下载进入结果的 `rejected`，抛出异常的进入 `failures`，已不存在的被忽略。
+返回的 `Deferred` 只用于汇总结果：页面关闭或停止等待都不会中断已提交的操作。
+页面把 `failures` 的数量累计到失败弹窗，`rejected` 不计入。
+删除经由 `DeleteCacheUseCase`，它在删除记录后清理不再需要的弹幕缓存。
 
-页面订阅共享的 `busyIds`，将对应下载标记为忙碌，并禁用单项和相关批量操作按钮。
-重新进入页面也使用这份忙碌状态。批量操作提交选中 ID，由执行者根据实际状态判断能否操作；
-单项失败会释放其忙碌状态，其余项继续执行。
+## 页面接入
 
-## 页面复用与存储规则
+一个条目的下载页状态与操作封装在 [SubjectDownloadsPresenter][presenter] 中，它不是 ViewModel：
+由持有页面的 ViewModel 创建，生命周期由 `close` 显式结束。独立的条目下载页的 `SubjectDownloadsViewModel`
+随导航条目存活，在存续期间持有一个实例；全局页的 `DownloadManagementViewModel` 通过 `selectSubject`
+随详情栏所选条目切换实例，切换时关闭上一个实例并取消其进行中的选源会话；新实例在下一帧才就绪，
+详情栏在此期间显示与新实例首个状态一致的加载态（`SubjectDownloadsDetailPane(presenter = null)`），不会闪现旧条目或空占位。两个页面的 ViewModel 都随导航条目存活，
+旋转屏幕、切换底部标签或前进到详情页再返回，进行中的选源请求都保留。
 
-条目下载页和全局页的详情栏共用 `SubjectDownloadsFeature`，统一组装 ViewModel、选源弹窗、权限提示和错误反馈。
-[SubjectDownloadsViewModel][view-model] 负责组合展示数据，`SubjectDownloadsContent` 负责渲染和上报事件。
+条目下载页和全局页的详情栏共用 `SubjectDownloadsHost(presenter)`，统一挂接状态、选源弹窗、权限提示和错误反馈。
+presenter 持有当前会话并把会话状态映射为页面状态：
+
+- `Preparing` 与 `Creating` 显示为忙碌，此时其他剧集的下载按钮不可用；`AwaitingSelection` 不算忙碌，
+  行内仍显示下载按钮，点击可重新展示被隐藏的弹窗。
+- `AwaitingSelection` 对应选源弹窗；`Finished(error)` 对应添加失败的提示；取消或完成后不显示任何弹窗。
+- 正在等待其他剧集选源时请求新的剧集，会取消当前会话并为新剧集开启会话；正在准备或持久化时忽略新的请求。
+  只有真正开启了新会话时才申请通知权限。
+- 条目信息与下载列表在页面重新订阅时保留上一次的值，只有用户主动重新加载时才回到加载中。
+
+`DownloadManagementViewModel` 观察全部下载，按条目分组并结合本地收藏信息展示。
 多选范围由各自页面持有：条目页限定本条目，全局页可以跨条目选择。
 
-下载统一使用默认存储：按注册顺序选择支持该资源的存储；BT 资源优先使用已启用且能够解析资源的 PikPak HTTP 引擎。
-HTTP 任务标识包含资源、条目和剧集 ID，保证合集中的各集有独立任务和输出文件。
-已有记录的标识兼容处理封装在 `HttpMediaCacheEngine` 内。
-
-可从 ViewModel 的操作入口开始阅读，再沿调用进入选源会话或下载操作。
 资源查询与筛选的细节见[选源](media-selector.md)，底层存储见[媒体缓存](media-cache.md)。
 
-[view-model]: ../../../../app/shared/ui-download/src/commonMain/kotlin/ui/download/subject/SubjectDownloadsViewModel.kt
-[session]: ../../../../app/shared/app-data/src/commonMain/kotlin/domain/media/download/AddDownloadsSession.kt
 [manager]: ../../../../app/shared/app-data/src/commonMain/kotlin/domain/media/download/MediaDownloadManager.kt
-[observe]: ../../../../app/shared/app-data/src/commonMain/kotlin/domain/media/download/ObserveDownloadsUseCase.kt
+[download]: ../../../../app/shared/app-data/src/commonMain/kotlin/domain/media/download/MediaDownload.kt
+[session]: ../../../../app/shared/app-data/src/commonMain/kotlin/domain/media/download/DownloadRequestSession.kt
+[add]: ../../../../app/shared/app-data/src/commonMain/kotlin/domain/media/download/AddDownloadUseCase.kt
 [operations]: ../../../../app/shared/app-data/src/commonMain/kotlin/domain/media/download/DownloadOperations.kt
+[presenter]: ../../../../app/shared/ui-download/src/commonMain/kotlin/ui/download/subject/SubjectDownloadsPresenter.kt

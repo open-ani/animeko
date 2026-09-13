@@ -36,6 +36,7 @@ import me.him188.ani.app.ui.lang.cache_management_episode_label
 import me.him188.ani.app.ui.lang.cache_management_select_all_action
 import me.him188.ani.app.ui.lang.cache_management_selected_count
 import me.him188.ani.app.ui.lang.cache_subject_cache
+import me.him188.ani.app.ui.lang.cache_subject_cancel
 import me.him188.ani.app.ui.lang.cache_subject_pause_all
 import me.him188.ani.app.ui.mediafetch.createTestMediaSourceInfoProvider
 import me.him188.ani.datasources.api.EpisodeSort
@@ -77,6 +78,32 @@ class SubjectDownloadsPageTest {
         onNodeWithContentDescription(runBlocking { getString(Lang.cache_subject_cache) }).performClick()
         onNodeWithText(runBlocking { getString(Lang.cache_subject_pause_all) }).performClick()
         runOnIdle { assertEquals(4, requested); assertEquals(true, pauseAll) }
+    }
+
+    @Test
+    fun `busy request disables download buttons of other episodes`() = runAniComposeUiTest {
+        val other = EpisodeDownloadItem(5, EpisodeSort(5), "Episode 5", UnifiedCollectionType.DOING, true)
+        setContent {
+            ProvideCompositionLocalsForPreview {
+                SubjectDownloadsPage(
+                    state = SubjectDownloadsUiState(
+                        title = "Subject",
+                        items = buildSubjectDownloadItems(listOf(episode, other), emptyList()),
+                        episodesLoading = false,
+                        downloadsLoading = false,
+                        request = DownloadRequestUiState(episodeIds = setOf(episode.episodeId), busy = true, canCancel = true),
+                    ),
+                    selection = rememberDownloadSelectionState(),
+                    actions = actions(),
+                    sourceInfoProvider = createTestMediaSourceInfoProvider(),
+                    onPlay = {},
+                    onViewDetail = null,
+                )
+            }
+        }
+        // 正在处理的剧集显示可用的取消按钮, 其他剧集的下载按钮置灰.
+        onNodeWithContentDescription(runBlocking { getString(Lang.cache_subject_cancel) }).assertIsEnabled()
+        onNodeWithContentDescription(runBlocking { getString(Lang.cache_subject_cache) }).assertIsNotEnabled()
     }
 
     @Test

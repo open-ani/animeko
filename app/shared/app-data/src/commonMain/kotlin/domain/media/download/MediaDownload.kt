@@ -1,0 +1,206 @@
+/*
+ * Copyright (C) 2024-2026 OpenAni and contributors.
+ *
+ * 此源代码的使用受 GNU AFFERO GENERAL PUBLIC LICENSE version 3 许可证的约束, 可以在以下链接找到该许可证.
+ * Use of this source code is governed by the GNU AGPLv3 license, which can be found at the following link.
+ *
+ * https://github.com/open-ani/ani/blob/main/LICENSE
+ */
+
+package me.him188.ani.app.domain.media.download
+
+import kotlin.time.Duration.Companion.seconds
+import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.cancel
+import kotlinx.coroutines.coroutineScope
+import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.SharingStarted
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.catch
+import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.emitAll
+import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.flow
+import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.flow.shareIn
+import me.him188.ani.app.domain.media.cache.MediaCache
+import me.him188.ani.app.domain.media.cache.MediaCacheState
+import me.him188.ani.app.domain.media.cache.engine.MediaCacheEngineKey
+import me.him188.ani.app.domain.media.cache.storage.MediaCacheStorage
+import me.him188.ani.app.tools.Progress
+import me.him188.ani.app.torrent.api.files.averageRate
+import me.him188.ani.datasources.api.Media
+import me.him188.ani.datasources.api.MediaCacheMetadata
+import me.him188.ani.datasources.api.topic.FileSize
+import me.him188.ani.datasources.api.topic.FileSize.Companion.bytes
+import me.him188.ani.utils.coroutines.childScope
+import me.him188.ani.utils.coroutines.sampleWithInitial
+import me.him188.ani.utils.logging.logger
+import me.him188.ani.utils.logging.warn
+
+/**
+ * 对单个下载执行的操作.
+ */
+enum class DownloadOperation {
+    Pause,
+    Resume,
+    Delete,
+}
+
+/**
+ * 下载正在执行 [current] 时收到了 [requested].
+ */
+class DownloadBusyException(
+    val downloadId: String,
+    val current: DownloadOperation,
+    val requested: DownloadOperation,
+) : IllegalStateException("Download $downloadId is busy with $current and cannot $requested")
+
+/**
+ * 下载某一时刻的不可变快照.
+ */
+data class DownloadSnapshot(
+    val id: String,
+    val metadata: MediaCacheMetadata,
+    val status: MediaCacheState,
+    val progress: Progress,
+    val totalSize: FileSize,
+    /**
+     * 每秒字节数.
+     */
+    val downloadSpeed: FileSize,
+    val canPlay: Boolean,
+    val mediaSourceId: String,
+    val engineKey: MediaCacheEngineKey,
+    /**
+     * 正在执行的操作, `null` 表示空闲.
+     */
+    val operation: DownloadOperation?,
+) {
+    val isBusy: Boolean get() = operation != null
+}
+
+/**
+ * 一个持久化的视频下载, 与 [MediaCache] 一一对应, 由 [MediaDownloadManager] 创建并保持实例稳定.
+ *
+ * [pause], [resume] 与 [MediaDownloadManager.delete] 互斥, 忙碌时抛出 [DownloadBusyException].
+ */
+class MediaDownload internal constructor(
+    val cache: MediaCache,
+    val storage: MediaCacheStorage,
+    sharingScope: CoroutineScope,
+) {
+    val id: String = cache.cacheId
+    val metadata: MediaCacheMetadata get() = cache.metadata
+    val origin: Media get() = cache.origin
+    val engineKey: MediaCacheEngineKey get() = storage.engine.engineKey
+
+    private val scope = sharingScope.childScope()
+
+    private val currentOperation = MutableStateFlow<DownloadOperation?>(null)
+
+    /**
+     * 正在执行的操作, `null` 表示空闲.
+     */
+    val operation: StateFlow<DownloadOperation?> = currentOperation.asStateFlow()
+
+    /**
+     * 共享的快照流: 进度与速度每秒最多更新一次, 状态、可播放性与操作立即反映; 最后一个订阅者离开 5 秒后停止.
+     * 上游抛出异常时发出 [MediaCacheState.FAILED] 快照, 下次重新订阅时重试.
+     */
+    val snapshot: Flow<DownloadSnapshot> = flow {
+        coroutineScope {
+            // 文件统计只订阅一次.
+            val fileStats = cache.fileStats.shareIn(this, SharingStarted.Lazily, replay = 1)
+            val downloadSpeed = fileStats
+                .map { stats -> stats.downloadedBytes.takeUnless { it.isUnspecified }?.inBytes ?: 0L }
+                .averageRate()
+            val transfer = combine(fileStats, downloadSpeed) { stats, speed -> stats to speed }
+                .sampleWithInitial(1.seconds)
+            emitAll(
+                combine(transfer, cache.state, cache.canPlay, currentOperation) { (stats, speed), state, canPlay, operation ->
+                    DownloadSnapshot(
+                        id = id,
+                        metadata = metadata,
+                        status = state,
+                        progress = stats.downloadProgress,
+                        totalSize = stats.totalSize,
+                        downloadSpeed = speed.bytes,
+                        canPlay = canPlay,
+                        mediaSourceId = origin.mediaSourceId,
+                        engineKey = engineKey,
+                        operation = operation,
+                    )
+                },
+            )
+        }
+    }.catch { e ->
+        if (e is CancellationException) throw e
+        logger.warn(e) { "Snapshot of download $id failed, reporting it as FAILED" }
+        emit(
+            DownloadSnapshot(
+                id = id,
+                metadata = metadata,
+                status = MediaCacheState.FAILED,
+                progress = Progress.Unspecified,
+                totalSize = FileSize.Unspecified,
+                downloadSpeed = FileSize.Unspecified,
+                canPlay = false,
+                mediaSourceId = origin.mediaSourceId,
+                engineKey = engineKey,
+                operation = currentOperation.value,
+            ),
+        )
+    }.distinctUntilChanged()
+        .shareIn(scope, SharingStarted.WhileSubscribed(stopTimeoutMillis = SNAPSHOT_STOP_TIMEOUT_MILLIS), replay = 1)
+
+    /**
+     * 只暂停 [MediaCacheState.IN_PROGRESS] 的下载.
+     * @throws DownloadBusyException
+     */
+    suspend fun pause() = withOperation(DownloadOperation.Pause) {
+        if (cache.state.first() == MediaCacheState.IN_PROGRESS) cache.pause()
+    }
+
+    /**
+     * 只继续 [MediaCacheState.PAUSED] 的下载.
+     * @throws DownloadBusyException
+     */
+    suspend fun resume() = withOperation(DownloadOperation.Resume) {
+        if (cache.state.first() == MediaCacheState.PAUSED) cache.resume()
+    }
+
+    /**
+     * 占用操作槽执行 [block], 忙碌时抛出 [DownloadBusyException].
+     */
+    internal suspend fun <T> withOperation(operation: DownloadOperation, block: suspend () -> T): T {
+        while (true) {
+            val current = currentOperation.value
+            if (current != null) throw DownloadBusyException(id, current, operation)
+            if (currentOperation.compareAndSet(null, operation)) break
+        }
+        try {
+            return block()
+        } finally {
+            currentOperation.value = null
+        }
+    }
+
+    /**
+     * 释放快照共享协程, 记录离开 [MediaDownloadManager.downloads] 时由管理器调用.
+     */
+    internal fun close() {
+        scope.cancel()
+    }
+
+    override fun toString(): String = "MediaDownload(id=$id, engine=${engineKey.key})"
+
+    private companion object {
+        private const val SNAPSHOT_STOP_TIMEOUT_MILLIS = 5_000L
+        private val logger = logger<MediaDownload>()
+    }
+}

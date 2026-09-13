@@ -18,7 +18,10 @@ internal fun SubjectCollectionInfo.downloadEpisodes(): List<EpisodeDownloadItem>
     EpisodeDownloadItem(it.episodeId, it.episodeInfo.sort, it.episodeInfo.displayName, it.collectionType, it.episodeInfo.isKnownCompleted(recurrence))
 }
 
-/** Also retains downloads whose episode metadata is absent or still loading. */
+/**
+ * 把条目的剧集与下载合并为页面列表项, 按剧集序号排序: 有下载的剧集显示其全部下载, 其余剧集显示可发起下载的剧集行.
+ * 不属于 [episodes] 中任何剧集的下载 (剧集信息缺失或仍在加载) 也保留在列表中.
+ */
 fun buildSubjectDownloadItems(
     episodes: List<EpisodeDownloadItem>,
     downloads: List<DownloadItem>,

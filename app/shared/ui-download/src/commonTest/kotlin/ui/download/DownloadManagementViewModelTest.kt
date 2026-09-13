@@ -11,115 +11,217 @@ package me.him188.ani.app.ui.download
 
 import kotlin.test.Test
 import kotlin.test.assertEquals
-import kotlinx.coroutines.flow.Flow
-import kotlinx.coroutines.flow.MutableStateFlow
-import kotlinx.coroutines.flow.take
-import kotlinx.coroutines.flow.toList
+import kotlin.test.assertSame
+import kotlin.test.assertNotNull
+import me.him188.ani.app.ui.download.subject.SubjectDownloadsPresenterFactory
+import me.him188.ani.app.domain.media.download.DownloadRequestSessionFactory
+import kotlin.test.assertFalse
+import kotlin.test.assertNull
+import kotlin.test.assertTrue
+import kotlinx.coroutines.CompletableDeferred
+import kotlinx.coroutines.cancel
+import kotlinx.coroutines.flow.collect
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.test.StandardTestDispatcher
+import kotlinx.coroutines.test.TestScope
+import kotlinx.coroutines.test.runTest
+import me.him188.ani.app.data.repository.subject.OfflineSubjectDisplayInfo
+import me.him188.ani.app.data.repository.subject.staticSubjectImageLargeUrl
 import me.him188.ani.app.domain.media.cache.MediaCache
-import me.him188.ani.app.domain.media.cache.engine.DummyMediaCacheEngine
+import me.him188.ani.app.domain.media.cache.MediaCacheState
 import me.him188.ani.app.domain.media.cache.engine.MediaStats
-import me.him188.ani.app.domain.media.cache.storage.MediaCacheStorage
-import me.him188.ani.app.ui.framework.runComposeStateTest
-import me.him188.ani.datasources.api.MediaCacheMetadata
-import me.him188.ani.datasources.api.source.MediaSource
+import me.him188.ani.app.domain.media.download.DownloadOperations
+import me.him188.ani.app.domain.media.download.MediaDownloadManager
+import me.him188.ani.app.ui.download.components.DownloadStatus
 import me.him188.ani.datasources.api.topic.FileSize.Companion.bytes
+import me.him188.ani.datasources.api.topic.UnifiedCollectionType
 
 class DownloadManagementViewModelTest {
     @Test
-    fun `overall stats should sum storage stats`() = runComposeStateTest {
-        val storage1 = TestStorage(
-            MediaStats(
-                uploaded = 300L.bytes,
-                downloaded = 1200L.bytes,
-                uploadSpeed = 10L.bytes,
-                downloadSpeed = 50L.bytes,
-            ),
+    fun `downloads are grouped by subject with offline info and fallbacks`() = withFixture {
+        storage.listFlow.value = listOf(
+            testDownloadCache(1, subjectId = 1, creationTime = 100),
+            testDownloadCache(2, subjectId = 1, creationTime = 200),
+            testDownloadCache(5, subjectId = 2, creationTime = 50),
         )
-        val storage2 = TestStorage(
-            MediaStats(
-                uploaded = 100L.bytes,
-                downloaded = 800L.bytes,
-                uploadSpeed = 5L.bytes,
-                downloadSpeed = 20L.bytes,
-            ),
-        )
+        subjects.collectionTypes[1] = UnifiedCollectionType.DOING
+        subjects.displayInfos[1] = OfflineSubjectDisplayInfo(1, "Subject One", "https://img/1", 12)
 
-        val stats = MutableStateFlow(listOf<MediaCacheStorage>(storage1, storage2))
-            .overallStatsFlow()
-            .take(1)
-            .toList()
-            .single()
+        assertTrue(vm.uiState.value.isLoading)
+        val state = awaitState { state -> state.groups.any { it.subjectName == "Subject One" } }
+        assertFalse(state.isLoading)
+        assertEquals(listOf(1, 2), state.groups.map { it.subjectId })
 
-        assertEquals(2000L.bytes, stats.downloaded)
-        assertEquals(400L.bytes, stats.uploaded)
-        assertEquals(70L.bytes, stats.downloadSpeed)
-        assertEquals(15L.bytes, stats.uploadSpeed)
+        val known = state.groups.first { it.subjectId == 1 }
+        assertEquals(UnifiedCollectionType.DOING, known.collectionType)
+        assertEquals("https://img/1", known.imageUrl)
+        assertEquals(12, known.totalEpisodeCount)
+        assertEquals(listOf(1, 2), known.entries.map { it.episodeId })
+        assertTrue(known.entries.all { it.subjectCollectionType == UnifiedCollectionType.DOING })
+
+        val unknown = state.groups.first { it.subjectId == 2 }
+        assertEquals("Subject 2", unknown.subjectName)
+        assertNull(unknown.collectionType)
+        assertEquals(staticSubjectImageLargeUrl(2), unknown.imageUrl)
+        assertNull(unknown.totalEpisodeCount)
+        assertEquals(listOf(5), unknown.entries.map { it.episodeId })
     }
 
     @Test
-    fun `overall stats should update when storage stats change`() = runComposeStateTest {
-        val storage1Stats = MutableStateFlow(
-            MediaStats(
-                uploaded = 300L.bytes,
-                downloaded = 1200L.bytes,
-                uploadSpeed = 10L.bytes,
-                downloadSpeed = 50L.bytes,
-            ),
+    fun `groups with unfinished downloads come first and then newest creation time`() = withFixture {
+        val downloading = testDownloadCache(5, subjectId = 2, creationTime = 50)
+        storage.listFlow.value = listOf(
+            testDownloadCache(1, subjectId = 1, creationTime = 100, state = MediaCacheState.COMPLETED),
+            testDownloadCache(2, subjectId = 1, creationTime = 200, state = MediaCacheState.COMPLETED),
+            downloading,
+            testDownloadCache(7, subjectId = 3, creationTime = 300, state = MediaCacheState.COMPLETED),
         )
-        val storage2Stats = MutableStateFlow(
-            MediaStats(
-                uploaded = 100L.bytes,
-                downloaded = 800L.bytes,
-                uploadSpeed = 5L.bytes,
-                downloadSpeed = 20L.bytes,
-            ),
+        val initial = awaitState { it.groups.size == 3 }
+        assertEquals(listOf(2, 3, 1), initial.groups.map { it.subjectId })
+
+        downloading.state.value = MediaCacheState.COMPLETED
+        val finished = awaitState { state -> state.groups.all { !it.hasUnfinished } }
+        assertEquals(listOf(3, 1, 2), finished.groups.map { it.subjectId })
+    }
+
+    @Test
+    fun `overall stats sum storage stats and follow updates`() = runTest {
+        val first = FakeDownloadStorage(MediaStats(uploaded = 300L.bytes, downloaded = 1200L.bytes, uploadSpeed = 10L.bytes, downloadSpeed = 50L.bytes))
+        val second = FakeDownloadStorage(MediaStats(uploaded = 100L.bytes, downloaded = 800L.bytes, uploadSpeed = 5L.bytes, downloadSpeed = 20L.bytes))
+        val fixture = Fixture(this, listOf(first, second))
+        try {
+            val initial = fixture.awaitState { it.overallStats.downloaded == 2000L.bytes }
+            assertEquals(400L.bytes, initial.overallStats.uploaded)
+            assertEquals(70L.bytes, initial.overallStats.downloadSpeed)
+            assertEquals(15L.bytes, initial.overallStats.uploadSpeed)
+            assertTrue(initial.groups.isEmpty())
+            assertFalse(initial.isLoading)
+
+            first.stats.value = MediaStats(uploaded = 300L.bytes, downloaded = 1500L.bytes, uploadSpeed = 10L.bytes, downloadSpeed = 50L.bytes)
+            fixture.awaitState { it.overallStats.downloaded == 2300L.bytes }
+        } finally {
+            fixture.close()
+        }
+    }
+
+    @Test
+    fun `download is busy while its operation runs and is idle afterwards`() = withFixture {
+        val gate = CompletableDeferred<Unit>()
+        storage.listFlow.value = listOf(
+            object : MediaCache by testDownloadCache(1) {
+                override suspend fun pause() = gate.await()
+            },
         )
-        val storages = MutableStateFlow(
-            listOf<MediaCacheStorage>(TestStorage(storage1Stats), TestStorage(storage2Stats)),
+        val item = awaitState { it.entries.size == 1 }.entries.single()
+        assertFalse(item.isBusy)
+
+        vm.pauseDownload(item)
+        awaitState { it.entries.single().isBusy }
+        gate.complete(Unit)
+        val idle = awaitState { !it.entries.single().isBusy }
+        assertEquals(0, idle.failedOperationCount)
+    }
+
+    @Test
+    fun `pause resume and delete are applied to the download`() = withFixture {
+        val cache = testDownloadCache(1)
+        storage.listFlow.value = listOf(cache)
+        val item = awaitState { it.entries.size == 1 }.entries.single()
+
+        vm.pauseDownload(item)
+        awaitState { it.entries.single().status == DownloadStatus.PAUSED }
+        vm.resumeDownload(item)
+        awaitState { it.entries.single().status == DownloadStatus.IN_PROGRESS }
+        vm.deleteDownload(item)
+        awaitState { it.groups.isEmpty() }
+        assertTrue(storage.listFlow.value.isEmpty())
+    }
+
+    @Test
+    fun `failed operations are counted and can be dismissed`() = withFixture {
+        storage.listFlow.value = listOf(
+            object : MediaCache by testDownloadCache(1) {
+                override suspend fun pause() = throw IllegalStateException("pause failed")
+            },
+        )
+        val item = awaitState { it.entries.size == 1 }.entries.single()
+
+        vm.pauseDownload(item)
+        awaitState { it.failedOperationCount == 1 }
+        vm.dismissOperationError()
+        awaitState { it.failedOperationCount == 0 }
+
+        deleteCache.failure = IllegalStateException("delete failed")
+        vm.deleteDownload(item)
+        awaitState { it.failedOperationCount == 1 }
+        assertEquals(1, storage.listFlow.value.size)
+    }
+
+    @Test
+    fun `selecting a subject keeps one presenter and closes the previous one`() = withFixture {
+        assertNull(vm.subjectPresenter.value)
+
+        vm.selectSubject(1)
+        val first = assertNotNull(vm.subjectPresenter.value)
+        assertEquals(1, first.subjectId)
+        assertFalse(first.isClosed)
+
+        // 相同条目不重建.
+        vm.selectSubject(1)
+        assertSame(first, vm.subjectPresenter.value)
+
+        // 切换条目关闭上一个实例.
+        vm.selectSubject(2)
+        val second = assertNotNull(vm.subjectPresenter.value)
+        assertEquals(2, second.subjectId)
+        assertTrue(first.isClosed)
+        assertFalse(second.isClosed)
+
+        vm.selectSubject(null)
+        assertNull(vm.subjectPresenter.value)
+        assertTrue(second.isClosed)
+    }
+
+    private class Fixture(testScope: TestScope, storages: List<FakeDownloadStorage>) {
+        val storage: FakeDownloadStorage = storages.first()
+        val downloadManager = MediaDownloadManager(storages, testScope.backgroundScope)
+        val deleteCache = FakeDeleteCacheUseCase(downloadManager)
+        val operations = DownloadOperations(downloadManager, deleteCache, testScope.backgroundScope)
+        val subjects = FakeSubjectCollectionRepository()
+        val histories = FakeEpisodePlayHistoryRepository()
+        val presenters = SubjectDownloadsPresenterFactory(
+            subjects, histories, FakeSettingsRepository(), FakeMediaSourceManager(), downloadManager,
+            DownloadRequestSessionFactory(
+                subjects, FakeEpisodePreferencesRepository(), FakeMediaSourceManager(), fakeMediaSelectorFactory(),
+                downloadManager, FakeAddDownloadUseCase(storage),
+            ),
+            operations,
+        )
+        val vm = DownloadManagementViewModel(
+            downloadManager, subjects, histories, operations, presenters,
+            StandardTestDispatcher(testScope.testScheduler),
         )
 
-        val emissions = mutableListOf<MediaStats>()
-        val job = launch {
-            storages.overallStatsFlow().take(2).toList(emissions)
+        init {
+            // 保持订阅, 让 uiState 在整个测试期间持续更新.
+            testScope.backgroundScope.launch { vm.uiState.collect() }
         }
 
-        testScheduler.runCurrent()
-        storages.value = listOf(TestStorage(storage1Stats))
-        testScheduler.runCurrent()
-        job.join()
+        suspend fun awaitState(predicate: (DownloadManagementUiState) -> Boolean): DownloadManagementUiState =
+            vm.uiState.first(predicate)
 
-        assertEquals(2, emissions.size)
-        assertEquals(2000L.bytes, emissions[0].downloaded)
-        assertEquals(1200L.bytes, emissions[1].downloaded)
-        assertEquals(400L.bytes, emissions[0].uploaded)
-        assertEquals(300L.bytes, emissions[1].uploaded)
+        fun close() {
+            vm.backgroundScope.cancel()
+        }
     }
-}
 
-private class TestStorage(
-    override val stats: Flow<MediaStats>,
-) : MediaCacheStorage {
-    constructor(initialStats: MediaStats) : this(MutableStateFlow(initialStats))
-
-    override val mediaSourceId: String = "test"
-    override val cacheMediaSource: MediaSource
-        get() = error("unused")
-    override val engine = DummyMediaCacheEngine(mediaSourceId)
-    override val listFlow = MutableStateFlow<List<MediaCache>>(emptyList())
-
-    override suspend fun restorePersistedCaches() = Unit
-
-    override suspend fun cache(
-        media: me.him188.ani.datasources.api.Media,
-        metadata: MediaCacheMetadata,
-        episodeMetadata: me.him188.ani.app.domain.media.resolver.EpisodeMetadata,
-        resume: Boolean,
-    ): MediaCache = error("unused")
-
-    override suspend fun delete(cache: MediaCache): Boolean = false
-
-    override suspend fun deleteFirst(predicate: (MediaCache) -> Boolean): Boolean = false
-
-    override fun close() = Unit
+    private fun withFixture(block: suspend Fixture.() -> Unit) = runTest {
+        val fixture = Fixture(this, listOf(FakeDownloadStorage()))
+        try {
+            fixture.block()
+        } finally {
+            fixture.close()
+        }
+    }
 }

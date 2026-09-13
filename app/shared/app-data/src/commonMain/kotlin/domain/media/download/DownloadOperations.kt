@@ -9,79 +9,82 @@
 
 package me.him188.ani.app.domain.media.download
 
-import kotlinx.coroutines.CoroutineDispatcher
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.CoroutineStart
 import kotlinx.coroutines.Deferred
-import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.currentCoroutineContext
 import kotlinx.coroutines.ensureActive
-import kotlinx.coroutines.flow.MutableStateFlow
-import kotlinx.coroutines.flow.asStateFlow
-import kotlinx.coroutines.flow.first
-import kotlinx.coroutines.withContext
 import me.him188.ani.app.domain.media.cache.DeleteCacheUseCase
-import me.him188.ani.app.domain.media.cache.MediaCacheState
 import me.him188.ani.utils.logging.logger
+import me.him188.ani.utils.logging.warn
 
+/**
+ * 提交时已不存在的下载被忽略, 不计入任何集合.
+ */
 data class DownloadOperationResult(
-    val failures: Map<String, Throwable>,
-    val rejectedIds: Set<String> = emptySet(),
+    /**
+     * 执行时抛出异常的下载.
+     */
+    val failures: Map<String, Throwable> = emptyMap(),
+    /**
+     * 提交时正忙而被拒绝的下载.
+     */
+    val rejected: Set<String> = emptySet(),
 )
 
 /**
- * Runs independent downloads concurrently; each download accepts only one operation at a time.
- * [executionScope] owns accepted operations and must provide a serial dispatcher for admission and busy state.
+ * 在应用作用域执行暂停、继续与删除: 不同下载并发, 同一下载忙碌时拒绝. 页面关闭不会中断已提交的操作.
  */
 class DownloadOperations(
     private val downloadManager: MediaDownloadManager,
     private val deleteCache: DeleteCacheUseCase,
     private val executionScope: CoroutineScope,
-    private val workerDispatcher: CoroutineDispatcher = Dispatchers.Default,
 ) {
-    private val logger = logger<DownloadOperations>()
-    private val mutableBusyIds = MutableStateFlow<Set<String>>(emptySet())
-    val busyIds = mutableBusyIds.asStateFlow()
-
-    enum class Action { Pause, Resume, Delete }
-
-    /** Admission and busy state updates run in [executionScope], independently of the caller. */
-    fun submit(ids: Set<String>, action: Action): Deferred<DownloadOperationResult> {
-        val targets = ids.toSet()
+    /**
+     * 目标集合在提交时确定. 取消返回的 [Deferred] 只停止等待, 操作继续执行.
+     */
+    fun submit(ids: Set<String>, operation: DownloadOperation): Deferred<DownloadOperationResult> {
+        // 直接挂在 executionScope 下, 取消汇总协程不影响它们.
+        val tasks = ids.map { id -> executionScope.async { id to execute(id, operation) } }
         return executionScope.async {
-            val rejected = targets.intersect(mutableBusyIds.value)
-            val accepted = targets - rejected
-            mutableBusyIds.value += accepted
-            val tasks = accepted.map { id ->
-                // Enter finally before dispatching work so cancellation always releases the ID.
-                executionScope.async(start = CoroutineStart.UNDISPATCHED) {
-                    try {
-                        withContext(workerDispatcher) { execute(id, action) }
-                        id to null
-                    } catch (e: Exception) {
-                        currentCoroutineContext().ensureActive()
-                        logger.warn("Download operation $action failed for $id", e)
-                        id to e
-                    } finally {
-                        mutableBusyIds.value -= id
-                    }
-                }
-            }
+            val outcomes = tasks.awaitAll()
             DownloadOperationResult(
-                tasks.awaitAll().mapNotNull { (id, error) -> error?.let { id to it } }.toMap(),
-                rejectedIds = rejected,
+                failures = outcomes.mapNotNull { (id, outcome) -> (outcome as? Outcome.Failed)?.let { id to it.cause } }.toMap(),
+                rejected = outcomes.mapNotNullTo(hashSetOf()) { (id, outcome) -> id.takeIf { outcome == Outcome.Rejected } },
             )
         }
     }
 
-    private suspend fun execute(id: String, action: Action) {
-        val cache = downloadManager.findFirstDownload { it.cacheId == id } ?: return
-        when (action) {
-            Action.Pause -> if (cache.state.first() == MediaCacheState.IN_PROGRESS) cache.pause()
-            Action.Resume -> if (cache.state.first() == MediaCacheState.PAUSED) cache.resume()
-            Action.Delete -> deleteCache(cache)
+    private suspend fun execute(id: String, operation: DownloadOperation): Outcome {
+        val download = downloadManager.findDownload(id) ?: return Outcome.Done
+        return try {
+            when (operation) {
+                DownloadOperation.Pause -> download.pause()
+                DownloadOperation.Resume -> download.resume()
+                DownloadOperation.Delete -> deleteCache(download.cache)
+            }
+            Outcome.Done
+        } catch (_: DownloadBusyException) {
+            Outcome.Rejected
+        } catch (e: CancellationException) {
+            // 执行器被取消时向上传播, 单个下载内部的取消只算该项失败.
+            currentCoroutineContext().ensureActive()
+            Outcome.Failed(e)
+        } catch (e: Exception) {
+            logger.warn(e) { "Download operation $operation failed for $id" }
+            Outcome.Failed(e)
         }
+    }
+
+    private sealed interface Outcome {
+        data object Done : Outcome
+        data object Rejected : Outcome
+        data class Failed(val cause: Throwable) : Outcome
+    }
+
+    private companion object {
+        private val logger = logger<DownloadOperations>()
     }
 }

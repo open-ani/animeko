@@ -254,7 +254,7 @@ class UserCollectionsViewModelTest {
         )
         val episodeProgressRepository = EpisodeProgressRepository(
             episodeCollectionRepository,
-            MediaDownloadManager(emptyList(), fixtureScope, cacheDanmaku = {}),
+            MediaDownloadManager(emptyList(), fixtureScope),
         )
         startKoin {
             modules(

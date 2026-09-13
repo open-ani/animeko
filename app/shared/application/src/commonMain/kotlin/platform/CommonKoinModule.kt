@@ -483,7 +483,7 @@ private fun KoinApplication.otherModules(getContext: () -> Context, coroutineSco
         DownloadOperations(
             downloadManager = get(),
             deleteCache = get(),
-            executionScope = CoroutineScope(coroutineScope.coroutineContext + Dispatchers.Main.immediate),
+            executionScope = coroutineScope.childScope(),
         )
     }
     single<MediaDownloadManager> {
@@ -492,7 +492,7 @@ private fun KoinApplication.otherModules(getContext: () -> Context, coroutineSco
         val metadataStore = getContext().dataStores.mediaCacheMetadataStore
 
         MediaDownloadManager(
-            storagesIncludingDisabled = buildList(capacity = engines.size) {
+            storages = buildList(capacity = engines.size) {
                 /*if (currentAniBuildConfig.isDebug) {
                     // 注意, 这个必须要在第一个, 见 [DefaultTorrentManager.engines] 注释
                     add(
@@ -540,7 +540,6 @@ private fun KoinApplication.otherModules(getContext: () -> Context, coroutineSco
                 )
             },
             backgroundScope = coroutineScope.childScope(),
-            cacheDanmaku = { get<DanmakuRepository>().cacheDanmakuIfNeeded(it) },
         )
     }
 
@@ -551,7 +550,7 @@ private fun KoinApplication.otherModules(getContext: () -> Context, coroutineSco
     single<MediaSourceManager> {
         MediaSourceManagerImpl(
             additionalSources = {
-                get<MediaDownloadManager>().storagesIncludingDisabled.map { it.cacheMediaSource }
+                get<MediaDownloadManager>().storages.map { it.cacheMediaSource }
             },
         )
     }
@@ -598,7 +597,7 @@ fun KoinApplication.startCommonKoinModule(
     coroutineScope.launch {
         koin.get<HttpDownloader>().init() // restore http download states first
         val manager = koin.get<MediaDownloadManager>()
-        for (storage in manager.storagesIncludingDisabled) {
+        for (storage in manager.storages) {
             storage.restorePersistedCaches()
         }
     }

@@ -39,6 +39,7 @@ object SubjectDownloadsTestTags {
     const val SUMMARY_ROW = "subject_downloads_summary"
     const val PAUSE_ALL = "subject_downloads_pause_all"
     const val RESUME_ALL = "subject_downloads_resume_all"
+    const val LOADING = "subject_downloads_loading"
 }
 
 @Composable

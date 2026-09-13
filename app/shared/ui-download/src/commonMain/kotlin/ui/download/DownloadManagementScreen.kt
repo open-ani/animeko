@@ -194,11 +194,15 @@ fun DownloadManagementScreen(
         navigationIcon = navigationIcon,
         windowInsets = windowInsets,
         detailPaneContent = { group, selectionState ->
+            // 详情栏展示的条目由 ViewModel 持有, 切换条目时上一条目的状态与选源会话随之关闭.
+            LaunchedEffect(group?.subjectId) { vm.selectSubject(group?.subjectId) }
+            val presenter by vm.subjectPresenter.collectAsStateWithLifecycle()
             if (group == null) {
                 EmptyDetailPanePlaceholder(Modifier.fillMaxSize())
             } else {
                 SubjectDownloadsDetailPane(
-                    subjectId = group.subjectId,
+                    // 切换条目后实例要到下一帧才就绪, 期间显示加载态而不是旧条目或空占位.
+                    presenter = presenter?.takeIf { it.subjectId == group.subjectId },
                     selectionState = selectionState,
                     onPlay = onPlay,
                     onViewDetail = { onNavigateCacheDetail(it.id) },

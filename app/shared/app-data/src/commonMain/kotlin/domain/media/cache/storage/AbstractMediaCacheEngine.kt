@@ -187,8 +187,9 @@ abstract class AbstractDataStoreMediaCacheStorage(
         listFlow.update { minus(cache) }
         restoredLocalFileMediaCacheIds.update { minus(cache.origin.mediaId) }
         withContext(Dispatchers.IO_) {
+            // 多个存储共用同一个 datastore, 只删除本引擎的记录, 其他引擎的同资源同剧集记录保留.
             datastore.updateData { list ->
-                list.filterNot { isSameMediaAndEpisode(cache, it) }
+                list.filterNot { it.engine == engine.engineKey && isSameMediaAndEpisode(cache, it) }
             }
         }
         cache.closeAndDeleteFiles()

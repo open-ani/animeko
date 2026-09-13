@@ -9,9 +9,12 @@
 
 package me.him188.ani.app.ui.download
 
+import kotlin.coroutines.CoroutineContext
+import kotlin.coroutines.EmptyCoroutineContext
 import kotlin.time.Duration.Companion.seconds
-import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.flatMapLatest
@@ -24,46 +27,81 @@ import me.him188.ani.app.data.repository.player.EpisodePlayHistoryRepository
 import me.him188.ani.app.data.repository.subject.OfflineSubjectDisplayInfo
 import me.him188.ani.app.data.repository.subject.SubjectCollectionRepository
 import me.him188.ani.app.data.repository.subject.staticSubjectImageLargeUrl
-import me.him188.ani.app.domain.media.cache.engine.MediaStats
-import me.him188.ani.app.domain.media.cache.engine.sum
-import me.him188.ani.app.domain.media.cache.storage.MediaCacheStorage
+import me.him188.ani.app.domain.media.download.DownloadOperation
 import me.him188.ani.app.domain.media.download.DownloadOperations
 import me.him188.ani.app.domain.media.download.MediaDownloadManager
-import me.him188.ani.app.domain.media.download.ObserveDownloadsUseCase
 import me.him188.ani.app.ui.download.components.DownloadItem
 import me.him188.ani.app.ui.download.components.SubjectDownloadGroup
 import me.him188.ani.app.ui.download.components.toDownloadItem
+import me.him188.ani.app.ui.download.subject.SubjectDownloadsPresenter
+import me.him188.ani.app.ui.download.subject.SubjectDownloadsPresenterFactory
 import me.him188.ani.app.ui.foundation.AbstractViewModel
 import me.him188.ani.datasources.api.topic.UnifiedCollectionType
 import me.him188.ani.utils.coroutines.sampleWithInitial
 
+/**
+ * 全局下载管理页面: 所有存储中的下载按条目分组展示.
+ *
+ * @param coroutineContext [backgroundScope] 的额外 context, 测试时传入测试调度器.
+ */
 class DownloadManagementViewModel(
     downloadManager: MediaDownloadManager,
     subjects: SubjectCollectionRepository,
     histories: EpisodePlayHistoryRepository,
-    observeDownloads: ObserveDownloadsUseCase,
     private val operations: DownloadOperations,
-) : AbstractViewModel() {
+    private val presenters: SubjectDownloadsPresenterFactory,
+    coroutineContext: CoroutineContext = EmptyCoroutineContext,
+) : AbstractViewModel(coroutineContext) {
     private val operationFailures = MutableStateFlow(0)
-    private val operationState = combine(operationFailures, operations.busyIds) { failures, busyIds -> failures to busyIds }
-    private val downloads = observeDownloads().shareInBackground()
-    private val subjectMetadata = downloads.map { list ->
-        list.map { it.metadata.subjectId.toIntOrNull() ?: 0 }.toSet()
-    }.distinctUntilChanged().flatMapLatest { ids ->
-        if (ids.isEmpty()) flowOf(emptyMap()) else combine(ids.map { id ->
-            combine(
-                subjects.getSubjectCollectionTypeOffline(id).onStart { emit(null) },
-                subjects.getSubjectDisplayInfoOffline(id).onStart { emit(null) },
-            ) { type, info -> id to SubjectMetadata(type, info) }
-        }) { it.toMap() }
-    }
-    private val overallStats = downloadManager.enabledStorages.overallStatsFlow().sampleWithInitial(1.seconds)
 
-    val uiState = combine(downloads, subjectMetadata, histories.flow, overallStats, operationState) { downloads, metadata, histories, stats, (failures, busyIds) ->
+    private val currentSubjectPresenter = MutableStateFlow<SubjectDownloadsPresenter?>(null)
+
+    /**
+     * 详情栏展示的条目, `null` 表示未展示.
+     */
+    val subjectPresenter: StateFlow<SubjectDownloadsPresenter?> = currentSubjectPresenter.asStateFlow()
+
+    /**
+     * 上一条目的实例被关闭, 其选源会话随之取消; 相同条目不做任何事.
+     */
+    fun selectSubject(subjectId: Int?) {
+        val previous = currentSubjectPresenter.value
+        if (previous?.subjectId == subjectId) return
+        currentSubjectPresenter.value = subjectId?.let { presenters.create(it, backgroundScope) }
+        previous?.close()
+    }
+    private val downloads = downloadManager.snapshots().shareInBackground()
+
+    /**
+     * 数据库返回前以 `null` 占位, 列表不必等待条目信息.
+     */
+    private val subjectMetadata = downloads
+        .map { list -> list.mapTo(hashSetOf()) { it.metadata.subjectId.toIntOrNull() ?: 0 } }
+        .distinctUntilChanged()
+        .flatMapLatest { ids ->
+            if (ids.isEmpty()) {
+                flowOf(emptyMap())
+            } else {
+                combine(
+                    ids.map { id ->
+                        combine(
+                            subjects.getSubjectCollectionTypeOffline(id).onStart { emit(null) },
+                            subjects.getSubjectDisplayInfoOffline(id).onStart { emit(null) },
+                        ) { type, info -> id to SubjectMetadata(type, info) }
+                    },
+                ) { it.toMap() }
+            }
+        }
+    private val overallStats = downloadManager.overallStats.sampleWithInitial(1.seconds)
+
+    val uiState = combine(downloads, subjectMetadata, histories.flow, overallStats, operationFailures) { downloads, metadata, histories, stats, failures ->
         val historyByEpisode = histories.associateBy { it.episodeId }
         val groups = downloads.groupBy { it.metadata.subjectId.toIntOrNull() ?: 0 }.map { (subjectId, snapshots) ->
             val subject = metadata[subjectId]
-            val entries = snapshots.map { it.toDownloadItem(subject?.type, historyByEpisode[it.metadata.episodeId.toIntOrNull()]).copy(isBusy = it.id in busyIds) }
+            val entries = snapshots.map { snapshot ->
+                val history = snapshot.metadata.episodeId.toIntOrNull()?.let { historyByEpisode[it] }
+                snapshot.toDownloadItem(subject?.type, history)
+            }
             SubjectDownloadGroup(
                 subjectId = subjectId,
                 subjectName = subject?.info?.displayName ?: entries.first().subjectName,
@@ -73,34 +111,32 @@ class DownloadManagementViewModel(
                 totalEpisodeCount = subject?.info?.totalEpisodes?.takeIf { it > 0 },
             )
         }.sortedWith(
-            compareByDescending<SubjectDownloadGroup> { it.entries.any { entry -> !entry.isFinished } }
+            // 有未完成下载的条目在前, 其余按最新一条下载的创建时间降序.
+            compareByDescending<SubjectDownloadGroup> { it.hasUnfinished }
                 .thenByDescending { it.entries.maxOfOrNull { entry -> entry.creationTime ?: 0 } },
         )
         DownloadManagementUiState(stats, groups, isLoading = false, failedOperationCount = failures)
     }.stateInBackground(DownloadManagementUiState.Placeholder)
 
-    fun pauseDownload(item: DownloadItem) = execute(setOf(item.id), DownloadOperations.Action.Pause)
-    fun resumeDownload(item: DownloadItem) = execute(setOf(item.id), DownloadOperations.Action.Resume)
-    fun deleteDownload(item: DownloadItem) = execute(setOf(item.id), DownloadOperations.Action.Delete)
-    fun dismissOperationError() { operationFailures.value = 0 }
+    fun pauseDownload(item: DownloadItem) = execute(setOf(item.id), DownloadOperation.Pause)
+    fun resumeDownload(item: DownloadItem) = execute(setOf(item.id), DownloadOperation.Resume)
+    fun deleteDownload(item: DownloadItem) = execute(setOf(item.id), DownloadOperation.Delete)
 
-    private fun execute(ids: Set<String>, action: DownloadOperations.Action) {
-        val pending = operations.submit(ids, action)
+    fun dismissOperationError() {
+        operationFailures.value = 0
+    }
+
+    /**
+     * 因忙碌被拒绝的下载不计入失败.
+     */
+    private fun execute(ids: Set<String>, operation: DownloadOperation) {
+        if (ids.isEmpty()) return
+        val pending = operations.submit(ids, operation)
         backgroundScope.launch {
-            val result = pending.await()
-            operationFailures.update { it + result.failures.size }
+            val failures = pending.await().failures.size
+            if (failures > 0) operationFailures.update { it + failures }
         }
     }
 
     private data class SubjectMetadata(val type: UnifiedCollectionType?, val info: OfflineSubjectDisplayInfo?)
-}
-
-internal fun Flow<List<MediaCacheStorage>>.overallStatsFlow(): Flow<MediaStats> {
-    return flatMapLatest { storages ->
-        if (storages.isEmpty()) {
-            flowOf(MediaStats.Zero)
-        } else {
-            storages.map { it.stats }.sum()
-        }
-    }
 }

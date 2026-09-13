@@ -16,6 +16,9 @@ import me.him188.ani.app.tools.Progress
 import me.him188.ani.app.tools.toProgress
 import me.him188.ani.datasources.api.topic.UnifiedCollectionType
 
+/**
+ * 条目或剧集 id 无法解析为整数的项不可播放.
+ */
 internal fun DownloadSnapshot.toDownloadItem(
     collectionType: UnifiedCollectionType?,
     history: EpisodeHistory?,
@@ -40,7 +43,8 @@ internal fun DownloadSnapshot.toDownloadItem(
             !canPlay -> DownloadItem.Playability.STREAMING_NOT_SUPPORTED
             else -> DownloadItem.Playability.PLAYABLE
         },
-        mediaSourceId = sourceId,
+        mediaSourceId = mediaSourceId,
+        isBusy = isBusy,
     )
 }
 

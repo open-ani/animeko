@@ -37,6 +37,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.graphics.RectangleShape
 import androidx.compose.ui.graphics.Shape
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import me.him188.ani.app.ui.download.components.DownloadItem
@@ -66,7 +67,14 @@ class SubjectDownloadActions(
     val pauseAll: () -> Unit,
     val resumeAll: () -> Unit,
     val reload: () -> Unit,
-)
+) {
+    companion object {
+        /**
+         * 所有操作都不做任何事, 供没有 presenter 的加载态使用.
+         */
+        val None = SubjectDownloadActions({}, {}, {}, {}, {}, {}, {}, {})
+    }
+}
 
 @Composable
 fun SubjectDownloadsContent(
@@ -99,7 +107,7 @@ fun SubjectDownloadsContent(
         if (state.episodesLoading || state.downloadsLoading) {
             item(key = "loading", span = { GridItemSpan(maxLineSpan) }) {
                 Box(Modifier.fillMaxWidth().padding(16.dp), contentAlignment = Alignment.Center) {
-                    CircularProgressIndicator(Modifier.size(24.dp))
+                    CircularProgressIndicator(Modifier.size(24.dp).testTag(SubjectDownloadsTestTags.LOADING))
                 }
             }
         } else if (state.items.isEmpty() && !state.episodesFailed && !state.downloadsFailed) {
@@ -116,7 +124,8 @@ fun SubjectDownloadsContent(
             when (item) {
                 is SubjectDownloadListItem.Episode -> EpisodeDownloadRow(
                     episode = item.episode,
-                    enabled = !selection.inSelection && !(state.request.busy && !state.request.canCancel),
+                    // 会话正在准备或持久化时, 其他剧集的请求会被忽略, 因此它们的下载按钮置灰.
+                    enabled = !selection.inSelection && !(state.request.busy && item.episode.episodeId !in state.request.episodeIds),
                     busy = state.request.busy && item.episode.episodeId in state.request.episodeIds,
                     canCancel = state.request.canCancel,
                     onDownload = { actions.download(item.episode.episodeId) },

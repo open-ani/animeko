@@ -57,6 +57,7 @@ import me.him188.ani.app.ui.bangumi.merge.BangumiMergeScreen
 import me.him188.ani.app.ui.bangumi.merge.BangumiMergeViewModel
 import me.him188.ani.app.ui.download.DownloadManagementScreen
 import me.him188.ani.app.ui.download.createDownloadManagementViewModel
+import me.him188.ani.app.ui.download.createSubjectDownloadsViewModel
 import me.him188.ani.app.ui.download.details.MediaCacheDetailsPageViewModel
 import me.him188.ani.app.ui.download.details.MediaCacheDetailsScreen
 import me.him188.ani.app.ui.download.details.MediaDetails
@@ -484,7 +485,7 @@ private fun AniAppContentImpl(
             }
             entry<NavRoutes.SubjectCaches> { route ->
                 SubjectDownloadsScreen(
-                    subjectId = route.subjectId,
+                    vm = viewModel(key = route.toString()) { createSubjectDownloadsViewModel(route.subjectId) },
                     onPlay = { aniNavigator.navigateEpisodeDetails(it.subjectId, it.episodeId) },
                     onNavigateDownloadDetail = { aniNavigator.navigateCacheDetails(it) },
                     modifier = Modifier.fillMaxSize(),

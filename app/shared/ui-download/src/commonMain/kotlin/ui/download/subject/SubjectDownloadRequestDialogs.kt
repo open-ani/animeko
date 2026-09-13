@@ -37,9 +37,9 @@ import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.map
 import me.him188.ani.app.data.models.preference.MediaSelectorSettings
-import me.him188.ani.app.domain.media.download.AddDownloadsState
-import me.him188.ani.app.domain.media.download.DownloadMediaSelection
 import me.him188.ani.app.domain.media.fetch.MediaSourceResultsFilterer
+import me.him188.ani.app.domain.media.fetch.MediaFetchSession
+import me.him188.ani.app.domain.media.selector.MediaSelector
 import me.him188.ani.app.domain.media.fetch.restart
 import me.him188.ani.app.ui.foundation.layout.desktopTitleBar
 import me.him188.ani.app.ui.foundation.layout.desktopTitleBarPadding
@@ -55,9 +55,20 @@ import me.him188.ani.app.ui.mediafetch.rememberMediaSelectorState
 import me.him188.ani.datasources.api.Media
 import org.jetbrains.compose.resources.stringResource
 
+data class DownloadRequestDialogState(
+    val selection: DownloadMediaPickerState? = null,
+    val failed: Boolean = false,
+)
+
+class DownloadMediaPickerState(
+    val episodeId: Int,
+    val fetchSession: MediaFetchSession,
+    val selector: MediaSelector,
+)
+
 @Composable
 internal fun SubjectDownloadRequestDialogs(
-    state: AddDownloadsState,
+    state: DownloadRequestDialogState,
     visible: Boolean,
     sourceInfoProvider: MediaSourceInfoProvider,
     settings: Flow<MediaSelectorSettings>,
@@ -69,11 +80,11 @@ internal fun SubjectDownloadRequestDialogs(
     if (visible && selection != null) {
         key(selection) {
             DownloadMediaPicker(selection, sourceInfoProvider, settings, onHide) {
-                onSelectMedia(selection.request.episode.episodeId, it)
+                onSelectMedia(selection.episodeId, it)
             }
         }
     }
-    if (state.error != null) {
+    if (state.failed) {
         AlertDialog(
             onDismissRequest = onCancel,
             text = { Text(stringResource(Lang.downloads_create_failed)) },
@@ -86,7 +97,7 @@ internal fun SubjectDownloadRequestDialogs(
 
 @Composable
 private fun DownloadMediaPicker(
-    selection: DownloadMediaSelection,
+    selection: DownloadMediaPickerState,
     sourceInfoProvider: MediaSourceInfoProvider,
     settings: Flow<MediaSelectorSettings>,
     onDismiss: () -> Unit,

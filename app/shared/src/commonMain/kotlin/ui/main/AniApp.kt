@@ -23,6 +23,7 @@ import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.take
 import me.him188.ani.app.data.models.preference.ThemeSettings
@@ -85,10 +86,9 @@ class AniAppViewModel : AbstractViewModel(), KoinComponent {
 
     private val imageLoaderClient = httpClientProvider.get(ScopedHttpClientUserAgent.ANI)
 
-    private val mediaCacheComposablesFlow = downloadManager.enabledStorages
-        .map { storages ->
-            storages.map { @Composable { it.engine.ComposeContent() } }
-        }
+    private val mediaCacheComposablesFlow = flowOf(
+        downloadManager.storages.map { @Composable { it.engine.ComposeContent() } },
+    )
 
     val browserNavigator by inject<BrowserNavigator>()
 

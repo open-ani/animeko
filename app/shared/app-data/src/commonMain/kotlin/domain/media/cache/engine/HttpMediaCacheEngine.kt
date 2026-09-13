@@ -195,7 +195,9 @@ class HttpMediaCacheEngine(
         }
     }
 
-    /** Different episodes of a season resource must never share an HTTP task or output file. */
+    /**
+     * 新建任务的标识, 由 mediaId, subjectId 与 episodeId 共同决定: 合集资源经 PikPak 下载时各集有独立的任务与文件.
+     */
     private fun httpDownloadId(media: Media, metadata: MediaCacheMetadata): DownloadId {
         val identity = listOf(media.mediaId, metadata.subjectId, metadata.episodeId)
             .joinToString("") { "${it.length}:$it" }
@@ -203,11 +205,13 @@ class HttpMediaCacheEngine(
         return DownloadId("http-v2-$digest")
     }
 
-    /** Existing persisted records keep their legacy task and file names; new downloads always use v2. */
+    /**
+     * 恢复记录时的任务标识: 优先 [httpDownloadId]; downloader 与 [dao] 中都没有时回退到 [toSafeDownloadId], 以匹配旧记录.
+     */
     private suspend fun restoredHttpDownloadId(media: Media, metadata: MediaCacheMetadata): DownloadId {
         val current = httpDownloadId(media, metadata)
         if (downloader.getState(current) != null || dao.getById(current) != null) return current
-        return DownloadId(media.mediaId.replace(Regex("[\\\\/:*?\"<>|]"), "-"))
+        return media.toSafeDownloadId()
     }
 
     override suspend fun deleteUnusedCaches(all: List<MediaCache>) {
@@ -373,8 +377,16 @@ class HttpMediaCacheEngine(
         dao.deleteById(state.downloadId)
     }
 
+    /**
+     * 仅由 mediaId 派生的旧标识, 只用于 [restoredHttpDownloadId] 的回退匹配.
+     */
+    private fun Media.toSafeDownloadId(): DownloadId {
+        return DownloadId(mediaId.replace(PATH_AFFECTING_CHARS_REGEX, "-"))
+    }
+
     companion object {
         private val logger = logger<HttpMediaCacheEngine>()
+        private val PATH_AFFECTING_CHARS_REGEX = Regex("[\\\\/:*?\"<>|]")
 
         @Deprecated("Use HttpMediaCacheEngine.MEDIA_CACHE_DIR instead")
         const val LEGACY_MEDIA_CACHE_DIR = "web-m3u-cache"
