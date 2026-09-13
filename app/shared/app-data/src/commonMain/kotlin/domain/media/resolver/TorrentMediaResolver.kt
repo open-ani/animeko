@@ -335,8 +335,7 @@ class TorrentMediaDataProvider(
                 }
             }
 
-            // 预算只为回退而存在. 没有可回退的引擎时 (anitorrent 在 Windows ARM64 上不可用) 提前放弃是纯损失:
-            // 实测一次磁力解析要二十秒, 播放器在十五秒上报错, 五秒后云端其实已经就绪, 而那个结果没有人接.
+            // 超时预算用于及时切换到备用引擎。没有备用引擎时继续等待云端，避免丢弃仍可完成的解析。
             if (fallback == null) {
                 openCloud()
             } else {

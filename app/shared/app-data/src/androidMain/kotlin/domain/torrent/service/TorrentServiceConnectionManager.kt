@@ -27,6 +27,7 @@ import kotlinx.atomicfu.locks.SynchronizedObject
 import kotlinx.collections.immutable.persistentListOf
 import kotlinx.coroutines.DelicateCoroutinesApi
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.collect
@@ -38,7 +39,6 @@ import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.newSingleThreadContext
 import kotlinx.coroutines.withContext
-import me.him188.ani.app.data.persistent.database.dao.TorrentCacheInfoDao
 import me.him188.ani.app.data.persistent.database.dao.TorrentCacheInfoEntity
 import me.him188.ani.app.domain.media.cache.engine.TorrentEngineAccess
 import me.him188.ani.app.domain.media.cache.engine.UnsafeTorrentEngineAccessApi
@@ -75,7 +75,8 @@ import kotlin.coroutines.CoroutineContext
  */
 class TorrentServiceConnectionManager(
     context: Context,
-    private val torrentCacheInfoDao: StateFlow<TorrentCacheInfoDao?>,
+    // Only rows the service must download; PikPak runs in-process and is filtered out by the caller.
+    private val serviceCacheEntitiesFlow: StateFlow<Flow<List<TorrentCacheInfoEntity>>?>,
     private val mediaCacheBaseSaveDirFlow: StateFlow<File?>,
     startServiceImpl: () -> ComponentName?,
     private val stopServiceImpl: () -> Unit,
@@ -166,8 +167,8 @@ class TorrentServiceConnectionManager(
     private fun startObserveServiceLifecycle() {
         scope.launch {
             combine(
-                torrentCacheInfoDao.flatMapLatest {
-                    it?.getAll()?.map(::allTorrentMediaCacheCompleted) ?: emptyFlow()
+                serviceCacheEntitiesFlow.flatMapLatest {
+                    it?.map(::allTorrentMediaCacheCompleted) ?: emptyFlow()
                 },
                 requestQueue.map { it.isNotEmpty() },
                 isServiceConnected,

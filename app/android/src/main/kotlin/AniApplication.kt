@@ -21,17 +21,21 @@ import dev.gitlive.firebase.analytics.analytics
 import dev.gitlive.firebase.initialize
 import io.ktor.client.engine.okhttp.OkHttp
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
 import me.him188.ani.android.activity.MainActivity
 import me.him188.ani.android.provider.ExternalContentProviderFactoryImpl
+import me.him188.ani.app.data.persistent.dataStores
 import me.him188.ani.app.data.persistent.database.AniDatabase
-import me.him188.ani.app.data.persistent.database.dao.TorrentCacheInfoDao
+import me.him188.ani.app.data.persistent.database.dao.TorrentCacheInfoEntity
 import me.him188.ani.app.data.repository.user.SettingsRepository
 import me.him188.ani.app.data.repository.user.UserRepository
+import me.him188.ani.app.domain.media.cache.engine.MediaCacheEngineKey
 import me.him188.ani.app.domain.media.cache.storage.MediaSaveDirProvider
 import me.him188.ani.app.domain.torrent.service.AniTorrentService
 import me.him188.ani.app.domain.torrent.service.TorrentServiceConnectionManager
@@ -115,11 +119,11 @@ class AniApplication : Application() {
 
         val scope = createAppRootCoroutineScope()
 
-        val torrentCacheDao: MutableStateFlow<TorrentCacheInfoDao?> = MutableStateFlow(null)
+        val anitorrentCacheEntities: MutableStateFlow<Flow<List<TorrentCacheInfoEntity>>?> = MutableStateFlow(null)
         val mediaCacheBaseSaveDir: MutableStateFlow<File?> = MutableStateFlow(null)
         val connectionManager = TorrentServiceConnectionManager(
             this,
-            torrentCacheInfoDao = torrentCacheDao,
+            serviceCacheEntitiesFlow = anitorrentCacheEntities,
             mediaCacheBaseSaveDirFlow = mediaCacheBaseSaveDir,
             startServiceImpl = ::startAniTorrentService,
             stopServiceImpl = ::stopService,
@@ -177,7 +181,14 @@ class AniApplication : Application() {
             }
         }
 
-        torrentCacheDao.value = koin.get<AniDatabase>().torrentCacheInfoDao()
+        // torrent_cache rows carry no engine; MediaCacheSave.engine says which engine owns a media.
+        val anitorrentMediaIds = dataStores.mediaCacheMetadataStore.data.map { saves ->
+            saves.filter { it.engine == MediaCacheEngineKey.Anitorrent }.map { it.origin.mediaId }.toSet()
+        }
+        anitorrentCacheEntities.value = combine(
+            koin.get<AniDatabase>().torrentCacheInfoDao().getAll(),
+            anitorrentMediaIds,
+        ) { entities, ids -> entities.filter { it.mediaId in ids } }
         mediaCacheBaseSaveDir.value = File(koin.get<MediaSaveDirProvider>().saveDir)
         connectionManager.launchCheckLoop()
 
