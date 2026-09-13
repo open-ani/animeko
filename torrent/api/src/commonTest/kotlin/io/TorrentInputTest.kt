@@ -18,15 +18,18 @@ import me.him188.ani.app.torrent.api.pieces.last
 import me.him188.ani.app.torrent.readAllBytes
 import me.him188.ani.app.torrent.readBytes
 import me.him188.ani.app.torrent.readExactBytes
-import org.junit.jupiter.api.AfterEach
-import org.junit.jupiter.api.DynamicTest
-import org.junit.jupiter.api.TestFactory
-import org.junit.jupiter.api.io.TempDir
-import java.io.File
-import java.io.RandomAccessFile
+import me.him188.ani.test.TestFactory
+import me.him188.ani.test.dynamicTest
+import me.him188.ani.test.runDynamicTests
+import me.him188.ani.utils.io.SystemPaths
+import me.him188.ani.utils.io.createTempDirectory
+import me.him188.ani.utils.io.length
+import me.him188.ani.utils.io.resolve
+import me.him188.ani.utils.io.writeText
 import kotlin.math.absoluteValue
 import kotlin.random.Random
 import kotlin.random.nextLong
+import kotlin.test.AfterTest
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFailsWith
@@ -64,7 +67,7 @@ internal sealed class TorrentInputTest {
             logicalPieces.last().state = (PieceState.FINISHED)
             input.seekTo(logicalPieces.last().dataStartOffset - 1000 + 2)
             input.readBytes().run {
-                assertEquals("Lorem Ipsum.", String(this))
+                assertEquals("Lorem Ipsum.", this.decodeToString())
                 assertEquals(sampleTextByteArray.size % 16 - 2, size)
             }
         }
@@ -81,20 +84,16 @@ internal sealed class TorrentInputTest {
 //            logicalPieces.dropLast(1).last().state = (PieceState.FINISHED)
 //            input.seek(logicalPieces.dropLast(1).last().offset - 1000 + 2)
 //            input.readBytes().run {
-//                assertEquals("Lorem Ipsum.", String(this))
+//                assertEquals("Lorem Ipsum.", this.decodeToString())
 //                assertEquals(sampleTextByteArray.size % 16 - 2, size)
 //            }
 //        }
 //    }
 
-    @TempDir
-    lateinit var tempDir: File
-
     protected abstract val logicalPieces: MutablePieceList
 
     private val tempFile by lazy {
-        tempDir.resolve("test.txt").apply {
-            parentFile!!.mkdirs()
+        SystemPaths.createTempDirectory("torrentInputTest").resolve("test.txt").apply {
             writeText(sampleText)
         }
     }
@@ -115,7 +114,7 @@ internal sealed class TorrentInputTest {
         }
     }
 
-    @AfterEach
+    @AfterTest
     fun afterTest() {
         input.close()
     }
@@ -135,7 +134,7 @@ internal sealed class TorrentInputTest {
         logicalPieces.first().state = (PieceState.FINISHED)
         input.readBytes().run {
             assertEquals(16, size)
-            assertEquals("Lorem Ipsum is s", String(this))
+            assertEquals("Lorem Ipsum is s", this.decodeToString())
         }
         assertEquals(16L, input.position)
     }
@@ -150,7 +149,7 @@ internal sealed class TorrentInputTest {
 //        }
 //        file.readBytes().run {
 //            assertEquals(16, size)
-//            assertEquals("Lorem Ipsum is s", String(this))
+//            assertEquals("Lorem Ipsum is s", this.decodeToString())
 //        }
 //        assertEquals(16L, file.offset)
 //    }
@@ -202,7 +201,7 @@ internal sealed class TorrentInputTest {
         input.readBytes().run {
             assertEquals(16, size)
             assertEquals(16L..<32L, input.bufferedOffsetRange)
-            assertEquals("imply dummy text", String(this))
+            assertEquals("imply dummy text", this.decodeToString())
         }
     }
 
@@ -213,7 +212,7 @@ internal sealed class TorrentInputTest {
         assertEquals(17L, input.position)
         input.readBytes().run {
             assertEquals(16L..<32L, input.bufferedOffsetRange)
-            assertEquals("mply dummy text", String(this))
+            assertEquals("mply dummy text", this.decodeToString())
         }
     }
 
@@ -225,7 +224,7 @@ internal sealed class TorrentInputTest {
         assertEquals(17L, input.position)
         input.readBytes().run {
             assertEquals(0L..<32L, input.bufferedOffsetRange)
-            assertEquals("mply dummy text", String(this))
+            assertEquals("mply dummy text", this.decodeToString())
         }
     }
 
@@ -237,12 +236,12 @@ internal sealed class TorrentInputTest {
         assertEquals(17L, input.position)
         input.readBytes().run {
             assertEquals(0L..<32L, input.bufferedOffsetRange)
-            assertEquals("mply dummy text", String(this))
+            assertEquals("mply dummy text", this.decodeToString())
         }
         input.seekTo(0)
         input.readBytes().run {
             assertEquals(0L..<32L, input.bufferedOffsetRange)
-            assertEquals("Lorem Ipsum is simply dummy text", String(this))
+            assertEquals("Lorem Ipsum is simply dummy text", this.decodeToString())
         }
     }
 
@@ -405,32 +404,34 @@ internal sealed class TorrentInputTest {
     }
 
     @TestFactory
-    fun `reuse buffer from previous end`() = (20L..60L step 4).map { index ->
-        DynamicTest.dynamicTest("$index") {
-            with(logicalPieces) {
-                for (logicalPiece in logicalPieces.asSequence()) {
-                    logicalPiece.state = PieceState.FINISHED
+    fun `reuse buffer from previous end`() = runDynamicTests(
+        (20L..60L step 4).map { index ->
+            dynamicTest("$index") {
+                with(logicalPieces) {
+                    for (logicalPiece in logicalPieces.asSequence()) {
+                        logicalPiece.state = PieceState.FINISHED
+                    }
                 }
+                // buffer size is 20
+
+                input.seekTo(30)
+                assertEquals(1, input.read(ByteArray(1))) // fill buffer
+                assertEquals(30 - bufferSize..<30L + bufferSize, input.bufferedOffsetRange)
+                // 10..<50
+
+                input.seekTo(index)
+                input.prepareBuffer()
+                assertEquals(index - bufferSize..<index + bufferSize, input.bufferedOffsetRange)
+                // 40..<80, first 10 was reused from previous buffer
+
+                assertEquals(sampleText.substring(index.toInt()).take(10), input.readExactBytes(10).decodeToString())
+                assertEquals(sampleText.substring(index.toInt() + 10), input.readAllBytes().decodeToString())
+
+                input.seekTo(0)
+                assertEquals(sampleText, input.readAllBytes().decodeToString())
             }
-            // buffer size is 20
-
-            input.seekTo(30)
-            assertEquals(1, input.read(ByteArray(1))) // fill buffer
-            assertEquals(30 - bufferSize..<30L + bufferSize, input.bufferedOffsetRange)
-            // 10..<50
-
-            input.seekTo(index)
-            input.prepareBuffer()
-            assertEquals(index - bufferSize..<index + bufferSize, input.bufferedOffsetRange)
-            // 40..<80, first 10 was reused from previous buffer
-
-            assertEquals(sampleText.substring(index.toInt()).take(10), input.readExactBytes(10).decodeToString())
-            assertEquals(sampleText.substring(index.toInt() + 10), input.readAllBytes().decodeToString())
-
-            input.seekTo(0)
-            assertEquals(sampleText, input.readAllBytes().decodeToString())
-        }
-    }
+        },
+    )
 
     @Test
     fun `buffer when piece not ready  then ready and re-buffer`() = runTest {
