@@ -9,128 +9,57 @@
 
 package me.him188.ani.torrent.pikpak
 
+import io.github.nihildigit.pikpak.Session
 import kotlinx.coroutines.test.runTest
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertFailsWith
 import kotlin.test.assertNull
 
-/**
- * Unit tests for [PikPakSessionStoreAdapter] — the bridge between the SDK's
- * [io.github.nihildigit.pikpak.SessionStore] contract and whatever persists
- * the user's refresh token (typically `PikPakConfig` via DataStore).
- *
- * Pure, no SDK networking: the adapter's job is plain read/write indirection
- * plus a small synthesis step on load().
- */
 class PikPakSessionStoreAdapterTest {
-
-    private class FakeStore(var refreshToken: String = "") {
-        val adapter = PikPakSessionStoreAdapter(
-            readRefreshToken = { refreshToken },
-            writeRefreshToken = { refreshToken = it },
+    @Test
+    fun `restored sessions force token refresh and clearing does not signal signin`() = runTest {
+        var token = ""
+        val savedTokens = mutableListOf<String>()
+        val store = PikPakSessionStoreAdapter(
+            readRefreshToken = { token }, writeRefreshToken = { _, value -> token = value },
+            onSessionSaved = { savedTokens += token },
         )
+        val account = "user@example.com"
+        assertNull(store.load(account))
+        store.save(account, Session("access", "refresh", "subject", 9999))
+        assertEquals(listOf("refresh"), savedTokens)
+        assertEquals(Session("", "refresh", "", 0), store.load(account))
+        store.clear(account)
+        assertNull(store.load(account))
+        assertEquals(listOf("refresh"), savedTokens)
     }
 
     @Test
-    fun `load returns null when no refresh token persisted`() = runTest {
-        val store = FakeStore(refreshToken = "")
-        assertNull(store.adapter.load("user@example.com"))
-    }
-
-    @Test
-    fun `load synthesises a stale session when a refresh token exists`() = runTest {
-        val store = FakeStore(refreshToken = "rt-abc")
-        val session = store.adapter.load("user@example.com")
-        assertEquals("rt-abc", session?.refreshToken)
-        // We only persist the refresh token; the rest must be blanked/stale
-        // so the SDK immediately goes through its refresh path.
-        assertEquals("", session?.accessToken)
-        assertEquals("", session?.sub)
-        assertEquals(0L, session?.expiresAt)
-    }
-
-    @Test
-    fun `save writes back the refresh token of the session`() = runTest {
-        val store = FakeStore(refreshToken = "old")
-        store.adapter.save(
-            account = "user@example.com",
-            session = io.github.nihildigit.pikpak.Session(
-                accessToken = "at",
-                refreshToken = "rt-new",
-                sub = "sub-id",
-                expiresAt = 9999L,
-            ),
+    fun `tokens are read and written for the requesting account`() = runTest {
+        val tokens = mutableMapOf("old" to "old-token", "new" to "new-token")
+        val store = PikPakSessionStoreAdapter(
+            readRefreshToken = { tokens[it].orEmpty() },
+            writeRefreshToken = { account, token -> tokens[account] = token },
         )
-        // Only refreshToken is persisted; the other fields are discarded on purpose.
-        assertEquals("rt-new", store.refreshToken)
+        store.save("old", Session("access", "refreshed-old", "subject", 9999))
+        assertEquals("new-token", store.load("new")?.refreshToken)
+        store.clear("old")
+        assertNull(store.load("old"))
+        assertEquals("new-token", store.load("new")?.refreshToken)
     }
 
     @Test
-    fun `clear wipes the refresh token`() = runTest {
-        val store = FakeStore(refreshToken = "rt-abc")
-        store.adapter.clear("user@example.com")
-        assertEquals("", store.refreshToken)
-    }
-
-    @Test
-    fun `load after clear returns null`() = runTest {
-        val store = FakeStore(refreshToken = "rt-abc")
-        store.adapter.clear("user@example.com")
-        assertNull(store.adapter.load("user@example.com"))
-    }
-
-    @Test
-    fun `load after save round-trips the refresh token`() = runTest {
-        val store = FakeStore()
-        store.adapter.save(
-            account = "user@example.com",
-            session = io.github.nihildigit.pikpak.Session(
-                accessToken = "ignored",
-                refreshToken = "rt-42",
-                sub = "sub",
-                expiresAt = 123L,
-            ),
+    fun `failed persistence must not signal a saved session`() = runTest {
+        var notified = false
+        val store = PikPakSessionStoreAdapter(
+            readRefreshToken = { "" },
+            writeRefreshToken = { _, _ -> error("disk unavailable") },
+            onSessionSaved = { notified = true },
         )
-        val loaded = store.adapter.load("user@example.com")
-        assertEquals("rt-42", loaded?.refreshToken)
-    }
-
-    @Test
-    fun `save fires onSessionSaved so the platform can drop the plaintext password`() = runTest {
-        var refreshToken = ""
-        var cleared = 0
-        val adapter = PikPakSessionStoreAdapter(
-            readRefreshToken = { refreshToken },
-            writeRefreshToken = { refreshToken = it },
-            onSessionSaved = { cleared++ },
-        )
-        adapter.save(
-            account = "user@example.com",
-            session = io.github.nihildigit.pikpak.Session(
-                accessToken = "at",
-                refreshToken = "rt-new",
-                sub = "sub",
-                expiresAt = 1L,
-            ),
-        )
-        assertEquals(1, cleared)
-        assertEquals("rt-new", refreshToken)
-    }
-
-    @Test
-    fun `clear does not fire onSessionSaved`() = runTest {
-        var refreshToken = "rt-existing"
-        var cleared = 0
-        val adapter = PikPakSessionStoreAdapter(
-            readRefreshToken = { refreshToken },
-            writeRefreshToken = { refreshToken = it },
-            onSessionSaved = { cleared++ },
-        )
-        // clear() runs when the SDK decides the current refresh token is no
-        // longer usable. Wiping the password here would strand the user —
-        // the next signin would fail because nothing knows the password.
-        adapter.clear("user@example.com")
-        assertEquals(0, cleared)
-        assertEquals("", refreshToken)
+        assertFailsWith<IllegalStateException> {
+            store.save("user@example.com", Session("access", "refresh", "subject", 9999))
+        }
+        assertEquals(false, notified)
     }
 }
