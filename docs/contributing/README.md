@@ -21,6 +21,8 @@
 
 ## 开发文档
 
+- [TV 页面开发范式](tv-development.md)（AI 辅助整理）：共享端复用、MVI、slotting、焦点、视觉、i18n 与验收
+    - [TV 播放页](code/tv-playback.md)：功能包划分与实现入口
 - [条目系统](code/subjects.md)
 - [Media Framework](code/media-framework.md)
     - [MediaSource](code/media/media-source.md)

@@ -75,6 +75,7 @@ class EditableSubjectCollectionTypeState(
      * 是否显示 "将所有剧集标记为看过" 对话框
      */
     private val showSetAllEpisodesDoneDialogFlow = MutableStateFlow(false)
+    val shouldOfferMarkAllWatched: Boolean get() = showSetAllEpisodesDoneDialogFlow.value
 
     /**
      * [setSelfCollectionType] 的后台任务
@@ -125,8 +126,12 @@ class EditableSubjectCollectionTypeState(
     }
 
     fun setAllEpisodesWatched() {
-        backgroundScope.launch { onSetAllEpisodesWatched() }
+        backgroundScope.launch { setAllEpisodesWatchedAwait() }
     }
+
+    suspend fun setAllEpisodesWatchedAwait(): LoadError? = setAllEpisodesWatchedTasker.async {
+        LoadError.runAndWrapOrThrowCancellation { onSetAllEpisodesWatched() }
+    }.await()
 
     fun dismissSetAllEpisodesDoneDialog() {
         showSetAllEpisodesDoneDialogFlow.value = false
@@ -175,6 +180,8 @@ fun EditableSubjectCollectionTypeButton(
 fun EditableSubjectCollectionTypeDialogsHost(
     state: EditableSubjectCollectionTypeState,
 ) {
+    val scope = rememberCoroutineScope()
+    val toaster = LocalToaster.current
     // 同时设置所有剧集为看过
     val presentation by state.presentationFlow.collectAsStateWithLifecycle()
     if (presentation.showSetAllEpisodesDoneDialog) {
@@ -182,8 +189,11 @@ fun EditableSubjectCollectionTypeDialogsHost(
             onDismissRequest = { state.dismissSetAllEpisodesDoneDialog() },
             isWorking = presentation.isSetAllEpisodesWatchedWorking,
             onConfirm = {
-                state.setAllEpisodesWatched()
-                state.dismissSetAllEpisodesDoneDialog()
+                scope.launch {
+                    val error = state.setAllEpisodesWatchedAwait()
+                    if (error == null) state.dismissSetAllEpisodesDoneDialog()
+                    else toaster.showLoadError(error)
+                }
             },
         )
     }
@@ -201,7 +211,7 @@ private fun SetAllEpisodeDoneDialog(
         icon = { Icon(Icons.Rounded.TaskAlt, null) },
         text = { Text(stringResource(Lang.subject_collection_set_all_episodes_watched)) },
         confirmButton = {
-            TextButton(onConfirm) { Text(stringResource(Lang.subject_collection_set)) }
+            TextButton(onConfirm, enabled = !isWorking) { Text(stringResource(Lang.subject_collection_set)) }
 
             if (isWorking) {
                 CircularProgressIndicator(Modifier.padding(start = 8.dp).size(24.dp))

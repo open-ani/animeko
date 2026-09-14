@@ -29,6 +29,7 @@ import me.him188.ani.app.data.models.subject.SubjectInfo
 import me.him188.ani.app.data.models.subject.TestSelfRatingInfo
 import me.him188.ani.app.data.models.subject.TestSubjectInfo
 import me.him188.ani.app.tools.MonoTasker
+import me.him188.ani.app.domain.foundation.LoadError
 import me.him188.ani.app.ui.lang.Lang
 import me.him188.ani.app.ui.lang.rating_requires_collection
 import me.him188.ani.app.ui.lang.settings_mediasource_close
@@ -82,6 +83,22 @@ class EditableRatingState(
 
     private val tasker = MonoTasker(backgroundScope)
     val isUpdatingRating get() = tasker.isRunning
+
+    /** Score-only clients preserve the existing review and its visibility. */
+    suspend fun updateScore(score: Int): LoadError? {
+        require(score in 0..10)
+        check(isCollected())
+        return tasker.async {
+            LoadError.runAndWrapOrThrowCancellation {
+                onRate(RateRequest(score, selfRatingInfo.comment.orEmpty(), selfRatingInfo.isPrivate))
+                Analytics.recordEvent(RatingSubmit) {
+                    put("score", score)
+                    subjectId?.let { put("subject_id", it) }
+                }
+            }
+        }.await()
+    }
+
     fun updateRating(rateRequest: RateRequest) {
         tasker.launch {
             onRate(rateRequest)

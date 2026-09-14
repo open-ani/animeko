@@ -46,7 +46,6 @@ import me.him188.ani.app.domain.media.selector.isPerfectMatch
 import me.him188.ani.app.domain.mediasource.web.captcha.SolveOutcome
 import me.him188.ani.app.domain.mediasource.web.captcha.WebSessionManager
 import me.him188.ani.app.domain.mediasource.web.captcha.createTestWebSessionManager
-import me.him188.ani.app.domain.mediasource.web.displayName
 import me.him188.ani.app.domain.usecase.GlobalKoin
 import me.him188.ani.app.ui.foundation.rememberBackgroundScope
 import me.him188.ani.app.ui.mediaselect.selector.WebSource
@@ -328,7 +327,6 @@ class MediaSelectorState(
                     isError = state.isFailedOrAbandoned,
                     isPreferred = source.mediaSourceId == preferred,
                     captchaRequest = captchaRequest,
-                    captchaMessage = captchaRequest?.kind?.let { "需要处理${it.displayName()}" },
                     isResolvingCaptcha = source.instanceId in resolvingCaptchaInstanceIds,
                     rateLimitedUntilMillis = rateLimitedUntil,
                     isCaptchaSupported = webSessionManager.isInteractiveSupported,

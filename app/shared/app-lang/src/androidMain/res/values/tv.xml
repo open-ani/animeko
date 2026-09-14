@@ -1,0 +1,111 @@
+<!--
+  ~ Copyright (C) 2024-2026 OpenAni and contributors.
+  ~
+  ~ 此源代码的使用受 GNU AFFERO GENERAL PUBLIC LICENSE version 3 许可证的约束, 可以在以下链接找到该许可证.
+  ~ Use of this source code is governed by the GNU AGPLv3 license, which can be found at the following link.
+  ~
+  ~ https://github.com/open-ani/ani/blob/main/LICENSE
+  -->
+
+<!--@formatter:off-->
+
+<resources xmlns:xliff="urn:oasis:names:tc:xliff:document:1.2">
+    <!-- Remote control -->
+    <string name="tv_player_seek_preview">Preview at the selected position</string>
+    <string name="tv_player_remote_confirm">OK</string>
+    <string name="tv_player_remote_back">Back</string>
+    <string name="tv_player_seek_jump">Seek</string>
+    <string name="tv_player_show_recommendations">Show recommendations</string>
+    <string name="tv_player_collapse_recommendations">Up or Back to close</string>
+    <string name="tv_player_scroll_hint">↑↓ Scroll</string>
+    <string name="tv_player_scroll_reveal_hint">↑↓ Scroll · OK to show hidden content</string>
+    <string name="tv_player_scroll_hide_hint">↑↓ Scroll · OK to hide content again</string>
+    <string name="tv_player_adjusting">Adjusting</string>
+    <string name="tv_player_following_host_hint">Following the host. Turn off following in %1$s first.</string>
+
+    <string name="tv_rating_controls_hint">←/→ Adjust rating · OK to submit · Back to cancel</string>
+
+    <!-- Playback -->
+    <string name="video_player_danmaku_on">Danmaku on</string>
+    <string name="video_player_danmaku_off">Danmaku off</string>
+    <string name="video_player_retry">Retry playback</string>
+    <string name="video_player_select_another_source">Choose another source</string>
+    <string name="video_player_fast_forwarding">Fast forwarding at %1$s ▶▶</string>
+    <string name="video_player_no_subtitle_tracks">No switchable subtitles in this resource</string>
+    <string name="video_player_operation_failed">Operation failed. Try again, and make sure you are signed in for account actions.</string>
+    <string name="video_player_chapter">Chapter</string>
+    <plurals name="video_player_skip_countdown">
+        <item quantity="one">Skip %2$s in %1$d second</item>
+        <item quantity="other">Skip %2$s in %1$d seconds</item>
+    </plurals>
+
+    <!-- Episodes and collection -->
+    <string name="subject_episode_actions">Episode actions</string>
+    <string name="subject_episode_play_label">Play %1$s</string>
+    <string name="subject_collection_remove_confirm_short">Unfollow this anime?</string>
+    <string name="subject_collection_keep">Keep following</string>
+    <string name="subject_collection_change_only">Only change collection status</string>
+    <string name="subject_collection_mark_all_watched_action">Mark all episodes watched</string>
+
+    <!-- Recommendations -->
+    <string name="subject_episode_recommendations_loading">Loading recommendations…</string>
+    <string name="subject_episode_recommendations_empty">No recommendations</string>
+
+    <!-- Empty states -->
+    <string name="foundation_empty_content">No content</string>
+    <string name="foundation_loading">Loading…</string>
+    <string name="foundation_anonymous">Anonymous</string>
+
+    <!-- Comments -->
+    <string name="comment_read_full">Read full comment</string>
+    <string name="comment_full">Full comment</string>
+    <string name="comment_load_failed">Could not load comments</string>
+    <string name="comment_show_hidden">Show hidden content</string>
+    <string name="comment_hide_hidden">Hide content again</string>
+    <string name="comment_preview_quote">[Quote]</string>
+    <string name="comment_preview_image">[Image]</string>
+
+    <!-- Danmaku -->
+    <string name="episode_danmaku_sources_timing">Danmaku sources and timing</string>
+    <string name="episode_danmaku_timing">Timing adjustment</string>
+    <string name="episode_danmaku_match_title">Match danmaku</string>
+    <string name="episode_danmaku_match_instructions">Search for an anime and select the matching episode</string>
+    <string name="episode_danmaku_match_subject_name">Anime name</string>
+    <string name="episode_danmaku_match_searching">Searching…</string>
+    <string name="episode_danmaku_match_no_results">No matches. Change the name and try again.</string>
+    <string name="episode_danmaku_match_back">Back to anime results</string>
+    <string name="episode_danmaku_match_retry">Search again</string>
+    <string name="episode_danmaku_match_empty_query">Enter an anime name</string>
+    <string name="episode_danmaku_match_failed">Could not load results. Try again.</string>
+    <string name="episode_danmaku_match_updated">Danmaku match updated</string>
+    <string name="episode_danmaku_match_approximate">%1$s · %2$s (approximate match)</string>
+    <string name="episode_danmaku_matched_current">Matched to this episode</string>
+    <string name="episode_danmaku_match_with_count">%1$s · Danmaku: %2$d</string>
+
+    <!-- Sources -->
+    <string name="media_selector_default_line">Default line</string>
+    <string name="media_selector_select_source_short">Source</string>
+    <string name="media_selector_show_excluded">Show excluded sources</string>
+    <string name="media_selector_source_count">Data sources: %1$d</string>
+    <string name="media_selector_query_again">Search again</string>
+    <string name="media_selector_querying">Searching sources…</string>
+    <string name="media_selector_no_online_sources">No online sources available. Add one in Settings.</string>
+    <string name="media_selector_no_lines">No available lines found</string>
+    <string name="media_selector_results_excluded">Results were excluded</string>
+    <string name="media_selector_no_resources">No resources found</string>
+    <string name="media_selector_waiting_query">Waiting to search</string>
+    <string name="media_selector_result_count">Results: %1$d</string>
+    <string name="media_selector_resource">Playback resource</string>
+    <string name="media_selector_exclusion_manual">Excluded: %1$s · You can still select it manually</string>
+    <string name="media_selector_exclusion_complete_single_episode">Single-episode resource for a completed anime</string>
+    <string name="media_selector_exclusion_possibly_unsupported">The player may not support this resource</string>
+    <string name="media_selector_exclusion_sequel">May belong to a sequel</string>
+    <string name="media_selector_exclusion_other_season">May belong to another season</string>
+    <string name="media_selector_episode_info_failed">Could not load episode information. Search again.</string>
+
+    <!-- Watch together -->
+    <string name="watch_together_leave_explanation">You will stop following the host and can keep watching independently.</string>
+    <string name="watch_together_invite_helper">Share the room name and password with friends to watch together.</string>
+</resources>
+
+<!--@formatter:on-->

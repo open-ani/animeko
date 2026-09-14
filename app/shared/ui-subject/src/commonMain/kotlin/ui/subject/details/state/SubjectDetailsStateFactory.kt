@@ -250,7 +250,8 @@ class DefaultSubjectDetailsStateFactory : SubjectDetailsStateFactory, KoinCompon
             )
         }
 
-        val comments = bangumiCommentRepository.subjectCommentsPager(subjectId)
+        val commentsCount = MutableStateFlow<Int?>(null)
+        val comments = bangumiCommentRepository.subjectCommentsPager(subjectId) { commentsCount.value = it }
             .map { page ->
                 page.map { it.parseToUIComment() }
             }
@@ -258,7 +259,7 @@ class DefaultSubjectDetailsStateFactory : SubjectDetailsStateFactory, KoinCompon
 
         val subjectCommentState = CommentState(
             list = comments,
-            countState = stateOf(null),
+            countState = commentsCount.produceState(null, this),
             onSubmitCommentReaction = { _, _, _ -> },
             backgroundScope = this,
             onSubmitCommentVote = { comment, vote ->
@@ -294,11 +295,6 @@ class DefaultSubjectDetailsStateFactory : SubjectDetailsStateFactory, KoinCompon
 //            }
 //            .stateIn(this, SharingStarted.Eagerly, null)
 //
-        val loadingState = LoadStates(
-            refresh = LoadState.Loading,
-            prepend = LoadState.NotLoading(false),
-            append = LoadState.NotLoading(false),
-        )
 
 //        val relatedCharactersFlow = bangumiRelatedPeopleService.relatedCharactersFlow(subjectId)
 //            .onEach {
@@ -335,10 +331,13 @@ class DefaultSubjectDetailsStateFactory : SubjectDetailsStateFactory, KoinCompon
                 subjectProgressInfoState,
             ),
             staffPager = relatedPersonsFlow
+                .filterNotNull()
                 .map {
                     PagingData.from(
-                        it ?: emptyList(),
-                        sourceLoadStates = loadingState,
+                        it,
+                        sourceLoadStates = LoadStates(
+                            LoadState.NotLoading(true), LoadState.NotLoading(true), LoadState.NotLoading(true),
+                        ),
                     )
                 }
                 .cachedIn(this),
@@ -350,16 +349,24 @@ class DefaultSubjectDetailsStateFactory : SubjectDetailsStateFactory, KoinCompon
                 .map { PagingData.from(it) }
                 .cachedIn(this),
             totalStaffCountState = totalStaffCountState,
-            charactersPager = relatedCharactersFlow.map {
+            charactersPager = relatedCharactersFlow.filterNotNull().map {
                 PagingData.from(
-                    it ?: emptyList(),
-                    sourceLoadStates = loadingState,
+                    it,
+                    sourceLoadStates = LoadStates(
+                        LoadState.NotLoading(true), LoadState.NotLoading(true), LoadState.NotLoading(true),
+                    ),
                 )
             }.cachedIn(this),
             totalCharactersCountState = totalCharactersCountState,
             relatedSubjectsPager = bangumiRelatedPeopleService.relatedSubjectsFlow(subjectId)
                 .map {
-                    PagingData.from(it)
+                    // This response contains the complete list; no further pages will arrive.
+                    PagingData.from(
+                        it,
+                        sourceLoadStates = LoadStates(
+                            LoadState.NotLoading(true), LoadState.NotLoading(true), LoadState.NotLoading(true),
+                        ),
+                    )
                 }
                 .cachedIn(this),
             exposedCharactersPager = relatedCharactersFlow

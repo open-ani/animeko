@@ -706,6 +706,8 @@
     <string name="video_player_mute">靜音</string>
     <string name="video_player_volume">音量</string>
     <string name="video_player_next_episode">下一集</string>
+    <string name="video_player_play">播放</string>
+    <string name="video_player_pause">暫停</string>
     <string name="video_player_select_episode">選集</string>
     <string name="video_player_send">發送</string>
     <string name="video_player_speed">倍速</string>
@@ -1020,7 +1022,10 @@
     <string name="subject_details_next_page">下一頁</string>
     <string name="subject_details_air_date_format">%1$s 年 %2$s 月 %3$s 日</string>
     <string name="subject_details_rating_summary">#%1$s · %2$s 人評分</string>
-    <string name="subject_details_reviews_count">%1$s 條</string>
+    <string name="subject_details_reviews_count">%1$s 條評論</string>
+    <string name="subject_details_review_title">Review</string>
+    <string name="subject_details_overview">總覽</string>
+    <string name="comment_review_hidden">[隱藏內容]</string>
     <string name="subject_details_rate">打分</string>
     <string name="subject_details_summary">簡介</string>
     <string name="foundation_load_error_network">網絡錯誤</string>
@@ -1409,6 +1414,16 @@
     <string name="person_details_career_writer">作家</string>
     <string name="person_details_career_illustrator">繪師</string>
     <string name="person_details_career_actor">演員</string>
+    <string name="people_character_intro">角色介紹</string>
+    <string name="people_voice_actor_intro">聲優介紹</string>
+    <string name="people_staff_intro">製作人員介紹</string>
+    <string name="people_discussion">討論</string>
+    <string name="people_discussion_source">來自使用者討論</string>
+    <string name="people_view_image">查看大圖</string>
+    <string name="people_no_information">暫無介紹和基本資訊</string>
+    <string name="people_bangumi_unavailable">Bangumi 討論暫時無法載入</string>
+    <string name="people_career_singer">歌手</string>
+    <string name="people_career_director">導演</string>
 
     <!-- 一齐睇 -->
     <string name="watch_together_title">一齐睇</string>
@@ -1496,6 +1511,25 @@
     <string name="image_viewer_copied">圖片已複製</string>
     <string name="image_viewer_copy_failed">複製圖片失敗</string>
     <string name="image_viewer_close">關閉</string>
+    <!-- Shared playback captcha messages -->
+    <string name="media_captcha_required_message">需要處理%1$s</string>
+    <string name="media_captcha_image">圖片驗證碼</string>
+    <string name="media_captcha_cloudflare">Cloudflare 驗證</string>
+    <string name="media_captcha_turnstile">Cloudflare Turnstile 驗證</string>
+    <string name="media_captcha_slider">滑動驗證</string>
+    <string name="media_captcha_unknown">驗證碼</string>
+    <string name="subject_details_no_episodes">暫無劇集</string>
+    <string name="subject_details_no_summary">暫無簡介</string>
+    <string name="subject_details_tags">標籤</string>
+    <string name="subject_details_empty">暫無內容</string>
+    <string name="subject_details_main_episodes">正片</string>
+    <string name="subject_details_other_episodes">其他劇集</string>
+    <string name="subject_details_unrated">取消評分</string>
+    <string name="subject_details_refresh">重新整理</string>
+    <string name="subject_details_air_month">%1$d 年 %2$d 月</string>
+    <string name="subject_details_ratings_count">%1$s 人評分</string>
+    <string name="rating_increase">提高評分</string>
+    <string name="rating_decrease">降低評分</string>
 </resources>
 
 <!--@formatter:on-->

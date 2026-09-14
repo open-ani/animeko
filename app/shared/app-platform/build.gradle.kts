@@ -23,6 +23,7 @@ val aniAuthServerUrlDebug =
 val aniAuthServerUrlRelease = getPropertyOrNull("ani.auth.server.url.release") ?: "https://auth.myani.org"
 val dandanplayAppId = getPropertyOrNull("ani.dandanplay.app.id") ?: ""
 val dandanplayAppSecret = getPropertyOrNull("ani.dandanplay.app.secret") ?: ""
+val tmdbApiToken = getPropertyOrNull("ani.tmdb.api.token") ?: ""
 val sentryDsn = getPropertyOrNull("ani.sentry.dsn") ?: ""
 val analyticsKey = getPropertyOrNull("ani.analytics.key") ?: ""
 val overrideAniApiServer = getPropertyOrNull("ani.api.server")?.takeIf { it.isNotBlank() }
@@ -123,6 +124,7 @@ buildConfig {
         )
         stringField("dandanplayAppId", dandanplayAppId)
         stringField("dandanplayAppSecret", dandanplayAppSecret)
+        stringField("tmdbApiToken", tmdbApiToken)
         stringField("sentryDsn", sentryDsn)
         stringField("overrideAniApiServer", overrideAniApiServer ?: "")
         stringField("distroChannel", distroChannel)
@@ -136,6 +138,7 @@ buildConfig {
         expressionField("isDebug", "me.him188.ani.buildconfig.AndroidBuildConfig.DEBUG")
         stringField("dandanplayAppId", dandanplayAppId)
         stringField("dandanplayAppSecret", dandanplayAppSecret)
+        stringField("tmdbApiToken", tmdbApiToken)
         stringField("sentryDsn", sentryDsn)
         stringField("overrideAniApiServer", overrideAniApiServer ?: "")
         stringField("distroChannel", distroChannel)
@@ -150,6 +153,7 @@ buildConfig {
             booleanField("isDebug", false)
             stringField("dandanplayAppId", dandanplayAppId)
             stringField("dandanplayAppSecret", dandanplayAppSecret)
+            stringField("tmdbApiToken", tmdbApiToken)
             stringField("sentryDsn", sentryDsn)
 
             val sentryEnabled = (getPropertyOrNull("ani.sentry.ios") ?: "true").toBooleanStrict()
