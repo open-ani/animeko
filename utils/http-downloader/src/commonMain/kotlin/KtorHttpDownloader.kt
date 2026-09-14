@@ -865,18 +865,22 @@ open class KtorHttpDownloader(
         logger.info { "Downloading segment index=${segmentInfo.index}, range=(${segmentInfo.rangeStart}-${segmentInfo.rangeEnd})" }
 
         return httpGet(segmentInfo.url, finalOptions) { statement ->
-            val response = statement.execute()
-            val segmentPath = baseSaveDir.resolve(segmentInfo.relativeTempFilePath)
-            withContext(ioDispatcher) {
-                fileSystem.createDirectories(
-                    segmentPath.parent ?: error("Parent dir not found for segmentInfo: $segmentInfo"),
-                )
-            }
+            // 必须使用流式的 execute { }: 无参数的 execute() 会把整个 response body 读进一个
+            // ByteArray. 当服务器不支持 range 请求时 segment 没有大小上限, 一个几百 MB 的视频
+            // 会直接撑爆堆内存.
+            statement.execute { response ->
+                val segmentPath = baseSaveDir.resolve(segmentInfo.relativeTempFilePath)
+                withContext(ioDispatcher) {
+                    fileSystem.createDirectories(
+                        segmentPath.parent ?: error("Parent dir not found for segmentInfo: $segmentInfo"),
+                    )
+                }
 
-            val channel = response.bodyAsChannel()
-            val byteSize = copyChannelToFile(channel, segmentPath)
-            byteSize.also {
-                logger.info { "Segment index=${segmentInfo.index} downloaded, size=$it" }
+                val channel = response.bodyAsChannel()
+                val byteSize = copyChannelToFile(channel, segmentPath)
+                byteSize.also {
+                    logger.info { "Segment index=${segmentInfo.index} downloaded, size=$it" }
+                }
             }
         }
     }
