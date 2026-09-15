@@ -55,6 +55,7 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.withContext
 import me.him188.ani.app.data.models.preference.DarkMode
+import me.him188.ani.app.data.models.preference.DebugSettings
 import me.him188.ani.app.data.models.preference.UISettings
 import me.him188.ani.app.data.persistent.database.BundledSqliteInterpositionGuard
 import me.him188.ani.app.data.repository.SavedWindowState
@@ -109,6 +110,7 @@ import me.him188.ani.app.ui.foundation.widgets.ToastViewModel
 import me.him188.ani.app.ui.foundation.widgets.Toaster
 import me.him188.ani.app.ui.main.AniApp
 import me.him188.ani.app.ui.main.AniAppContent
+import me.him188.ani.app.ui.update.DropInstallPackageHost
 import me.him188.ani.desktop.generated.resources.Res
 import me.him188.ani.desktop.generated.resources.a_round
 import me.him188.ani.utils.analytics.Analytics
@@ -586,7 +588,7 @@ object AniDesktop {
                     },
                 ) {
                     if (isRunningUnderWine()) {
-                        MainWindowContent(navigator)
+                        MainWindowContent(navigator, settingsRepository)
                     } else {
                         HandleWindowsWindowProc()
                         if (platform.isWindows()) {
@@ -610,7 +612,7 @@ object AniDesktop {
                                 )
                             },
                         ) {
-                            MainWindowContent(navigator)
+                            MainWindowContent(navigator, settingsRepository)
                         }
                     }
                 }
@@ -657,7 +659,10 @@ object AniDesktop {
 
 @OptIn(InternalComposeUiApi::class)
 @Composable
-private fun FrameWindowScope.MainWindowContent(aniNavigator: AniNavigator) {
+private fun FrameWindowScope.MainWindowContent(
+    aniNavigator: AniNavigator,
+    settingsRepository: SettingsRepository,
+) {
     AniApp {
         val themeSettings = LocalThemeSettings.current
         val titleBarThemeController = LocalTitleBarThemeController.current
@@ -705,7 +710,15 @@ private fun FrameWindowScope.MainWindowContent(aniNavigator: AniNavigator) {
                     LocalContextMenuRepresentation provides DesktopContextMenuRepresentation,
                 ) {
                     Box(Modifier.padding(all = paddingByWindowSize)) {
-                        AniAppContent(aniNavigator)
+                        // 开发者功能: 将安装包拖入窗口以安装测试版本
+                        val installPackageOnDrop by remember(settingsRepository) {
+                            settingsRepository.debugSettings.flow
+                                .map { it.enabled && it.installPackageOnDrop }
+                                .distinctUntilChanged()
+                        }.collectAsStateWithLifecycle(DebugSettings.Default.installPackageOnDrop)
+                        DropInstallPackageHost(enabled = installPackageOnDrop, Modifier.fillMaxSize()) {
+                            AniAppContent(aniNavigator)
+                        }
                         Toast({ showing }, { Text(content) })
                     }
                 }
