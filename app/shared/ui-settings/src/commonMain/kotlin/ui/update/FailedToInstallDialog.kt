@@ -15,6 +15,8 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.testTag
 import kotlinx.coroutines.launch
 import me.him188.ani.app.platform.LocalContext
 import me.him188.ani.app.tools.update.UpdateInstaller
@@ -25,6 +27,7 @@ import me.him188.ani.app.ui.lang.settings_update_manual_install_open_failed
 import me.him188.ani.app.ui.lang.settings_update_manual_install_package_not_found
 import me.him188.ani.app.ui.lang.settings_update_manual_install_title
 import me.him188.ani.app.ui.lang.settings_update_manual_install_view_package
+import me.him188.ani.utils.io.SystemPath
 import me.him188.ani.utils.io.absolutePath
 import org.jetbrains.compose.resources.getString
 import org.jetbrains.compose.resources.stringResource
@@ -36,6 +39,22 @@ fun FailedToInstallDialog(
     onDismissRequest: () -> Unit,
     state: AppUpdateState,
 ) {
+    FailedToInstallDialog(
+        message,
+        onDismissRequest,
+        file = (state as? AppUpdateState.Downloaded)?.file,
+    )
+}
+
+/**
+ * 自动安装失败的提示. [file] 为安装失败的安装包, 用户可以打开它手动安装; 为 `null` 表示安装包已不存在.
+ */
+@Composable
+fun FailedToInstallDialog(
+    message: String,
+    onDismissRequest: () -> Unit,
+    file: SystemPath?,
+) {
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
     val toaster = LocalToaster.current
@@ -45,7 +64,6 @@ fun FailedToInstallDialog(
             Button(
                 onClick = {
                     scope.launch {
-                        val file = (state as? AppUpdateState.Downloaded)?.file
                         if (file == null) {
                             toaster.toast(getString(Lang.settings_update_manual_install_package_not_found))
                             return@launch
@@ -66,9 +84,16 @@ fun FailedToInstallDialog(
             ) { Text(stringResource(Lang.settings_update_manual_install_view_package)) }
         },
         dismissButton = {
-            TextButton(onDismissRequest) { Text(stringResource(Lang.settings_update_manual_install_cancel)) }
+            TextButton(
+                onDismissRequest,
+                modifier = Modifier.testTag(FailedToInstallDialogTestTags.DISMISS_BUTTON),
+            ) { Text(stringResource(Lang.settings_update_manual_install_cancel)) }
         },
         title = { Text(stringResource(Lang.settings_update_manual_install_title)) },
         text = { Text(message) },
     )
+}
+
+object FailedToInstallDialogTestTags {
+    const val DISMISS_BUTTON = "failed_to_install_dialog_dismiss"
 }
