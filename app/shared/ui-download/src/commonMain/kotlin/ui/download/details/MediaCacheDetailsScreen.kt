@@ -31,6 +31,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import kotlin.time.Duration.Companion.seconds
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.flowOf
@@ -46,6 +47,7 @@ import me.him188.ani.app.ui.foundation.theme.AniThemeDefaults
 import me.him188.ani.app.ui.lang.Lang
 import me.him188.ani.app.ui.lang.cache_details_title
 import me.him188.ani.datasources.api.source.MediaSourceInfo
+import me.him188.ani.utils.coroutines.sampleWithInitial
 import me.him188.ani.utils.logging.logger
 import org.jetbrains.compose.resources.stringResource
 import org.koin.core.component.KoinComponent
@@ -69,10 +71,21 @@ class MediaCacheDetailsPageViewModel(
                 media?.mediaSourceId?.let { mediaSourceManager.infoFlowByMediaSourceId(it) } ?: flowOf(null)
             }
 
+    /**
+     * 下载器区块每秒刷新一次, 与静态的资源详情分开计算.
+     */
+    private val downloaderFlow = mediaCacheFlow.flatMapLatest { cache ->
+        if (cache == null) return@flatMapLatest flowOf(null)
+        combine(cache.state, cache.sessionStats, cache.downloaderStatus) { state, stats, status ->
+            DownloaderDetails(state, stats, status)
+        }.sampleWithInitial(1.seconds)
+    }
+
     val screenStateFlow =
         combine(sourceInfoFlow, mediaCacheFlow) { sourceInfo, mediaCache ->
             createMediaCacheDetailsScreenState(mediaCache, sourceInfo)
-        }.stateInBackground(MediaCacheDetailsScreenState(null))
+        }.combine(downloaderFlow) { state, downloader -> state.copy(downloader = downloader) }
+            .stateInBackground(MediaCacheDetailsScreenState(null))
 }
 
 internal suspend fun createMediaCacheDetailsScreenState(
@@ -86,6 +99,7 @@ internal suspend fun createMediaCacheDetailsScreenState(
 
 data class MediaCacheDetailsScreenState(
     val details: MediaDetails?, // null for placeholder
+    val downloader: DownloaderDetails? = null,
 )
 
 @Composable
@@ -149,6 +163,7 @@ fun MediaCacheDetailsScreen(
                         MediaDetailsLazyGrid(
                             it,
                             Modifier.fillMaxHeight(),
+                            downloader = state.downloader,
                         )
                     }
                 }

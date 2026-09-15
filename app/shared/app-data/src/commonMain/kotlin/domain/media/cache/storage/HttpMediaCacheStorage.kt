@@ -19,6 +19,7 @@ import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
 import me.him188.ani.app.data.persistent.database.dao.HttpCacheDownloadStateDao
+import me.him188.ani.app.domain.media.cache.DownloaderStatus
 import me.him188.ani.app.domain.media.cache.MediaCache
 import me.him188.ani.app.domain.media.cache.MediaCacheState
 import me.him188.ani.app.domain.media.cache.engine.MediaCacheEngine
@@ -140,6 +141,10 @@ private class PendingHttpMediaCache(
 
     override val sessionStats: Flow<MediaCache.SessionStats> = delegate.flatMapLatest {
         it?.sessionStats ?: flowOf(MediaCache.SessionStats.Unspecified)
+    }
+
+    override val downloaderStatus: Flow<DownloaderStatus?> = delegate.flatMapLatest {
+        it?.downloaderStatus ?: flowOf(null)
     }
 
     suspend fun attach(cache: MediaCache, resume: Boolean) {

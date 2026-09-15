@@ -57,7 +57,6 @@ import me.him188.ani.app.ui.lang.Lang
 import me.him188.ani.app.ui.lang.cache_details_browse_file
 import me.him188.ani.app.ui.lang.cache_details_copied
 import me.him188.ani.app.ui.lang.cache_details_copy
-import me.him188.ani.app.ui.lang.cache_details_downloader_status
 import me.him188.ani.app.ui.lang.cache_details_episode_range
 import me.him188.ani.app.ui.lang.cache_details_external_subtitle
 import me.him188.ani.app.ui.lang.cache_details_file_size
@@ -74,7 +73,6 @@ import me.him188.ani.app.ui.lang.cache_details_source_local
 import me.him188.ani.app.ui.lang.cache_details_source_online
 import me.him188.ani.app.ui.lang.cache_details_subtitle_group
 import me.him188.ani.app.ui.lang.cache_details_subtitle_language
-import me.him188.ani.app.ui.lang.cache_details_total_segments
 import me.him188.ani.app.ui.lang.cache_unknown
 import me.him188.ani.app.ui.media.MediaDetailsRenderer
 import me.him188.ani.app.ui.media.rememberMediaDetailsStrings
@@ -119,8 +117,6 @@ data class MediaDetails(
      */
     val localCacheFilePath: Path?,
     val extraFiles: MediaExtraFiles,
-    val totalSegments: Int? = null,
-    val downloaderStatus: String? = null,
     val sourceInfo: MediaSourceInfo?,
 ) {
     val isUrlLegal = originalUrl.startsWith("http://", ignoreCase = true)
@@ -176,8 +172,6 @@ data class MediaDetails(
                 contentDownloadUri = contentDownloadUri,
                 localCacheFilePath = localCacheFilePath,
                 extraFiles = originalMedia.extraFiles,
-                totalSegments = cachedMedia?.cacheProperties?.totalSegments,
-                downloaderStatus = cachedMedia?.cacheProperties?.httpDownloaderStatus,
                 sourceInfo = sourceInfo,
             )
         }
@@ -189,6 +183,7 @@ fun MediaDetailsLazyGrid(
     details: MediaDetails,
     modifier: Modifier = Modifier,
     showSourceInfo: Boolean = true,
+    downloader: DownloaderDetails? = null,
 ) {
     val uriHandler = LocalUriHandler.current
     val clipboard = LocalClipboard.current
@@ -437,27 +432,8 @@ fun MediaDetailsLazyGrid(
                 )
             }
         }
-        if (details.totalSegments != null) {
-            item {
-                ListItem(
-                    headlineContent = { Text(stringResource(Lang.cache_details_total_segments)) },
-                    leadingContent = placeholderLeadingContent,
-                    supportingContent = {
-                        Text(details.totalSegments.toString(), maxLines = 1, overflow = TextOverflow.Ellipsis)
-                    },
-                )
-            }
-        }
-        if (details.downloaderStatus != null) {
-            item {
-                ListItem(
-                    headlineContent = { Text(stringResource(Lang.cache_details_downloader_status)) },
-                    leadingContent = placeholderLeadingContent,
-                    supportingContent = {
-                        Text(details.downloaderStatus, maxLines = 1, overflow = TextOverflow.Ellipsis)
-                    },
-                )
-            }
+        if (downloader != null) {
+            downloaderDetailsItems(downloader, unknownText)
         }
         details.extraFiles.subtitles.forEachIndexed { index, subtitle ->
             item {

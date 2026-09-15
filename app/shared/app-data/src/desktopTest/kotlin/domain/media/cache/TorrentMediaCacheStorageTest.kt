@@ -24,6 +24,7 @@ import me.him188.ani.app.domain.media.cache.storage.TorrentMediaCacheStorage
 import me.him188.ani.app.domain.media.createTestDefaultMedia
 import me.him188.ani.app.domain.media.createTestMediaProperties
 import me.him188.ani.app.domain.media.resolver.EpisodeMetadata
+import me.him188.ani.app.torrent.api.TorrentHandleState
 import me.him188.ani.datasources.api.DefaultMedia
 import me.him188.ani.datasources.api.EpisodeSort
 import me.him188.ani.datasources.api.MediaCacheMetadata
@@ -98,6 +99,44 @@ class TorrentMediaCacheStorageTest : AbstractTorrentMediaCacheEngineTest() {
         episodeEp = EpisodeSort("02"),
         episodeName = "测试剧集",
     )
+
+    ///////////////////////////////////////////////////////////////////////////
+    // downloader status
+    ///////////////////////////////////////////////////////////////////////////
+
+    @Test
+    fun `downloader status reports the engine state and connected peers`() = runTest {
+        val storage = createStorage(createEngine(onDownloadStarted = { it.onTorrentChecked() }))
+        val cache = storage.cache(testMedia, mediaCacheMetadata(), resume = false)
+        assertEquals(
+            DownloaderStatus.Torrent(
+                serviceConnected = true,
+                startup = DownloaderStatus.TorrentStartup.STARTED,
+                state = TorrentHandleState.DOWNLOADING,
+                connectedPeers = 0,
+                seeds = 0,
+            ),
+            cache.downloaderStatus.first(),
+        )
+    }
+
+    @Test
+    fun `downloader status reports startup timeout when torrent info never arrives`() = runTest {
+        // 引擎从不报告种子信息, 启动阶段在虚拟时间中超时.
+        val storage = createStorage(createEngine())
+        val cache = storage.cache(testMedia, mediaCacheMetadata(), resume = false)
+        assertEquals(
+            DownloaderStatus.Torrent(
+                serviceConnected = true,
+                startup = DownloaderStatus.TorrentStartup.TIMED_OUT,
+                state = null,
+                connectedPeers = 0,
+                seeds = 0,
+            ),
+            cache.downloaderStatus.first(),
+        )
+        assertEquals(MediaCacheState.FAILED, cache.state.first())
+    }
 
     ///////////////////////////////////////////////////////////////////////////
     // simple create, restore, find
