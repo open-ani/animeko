@@ -23,7 +23,6 @@ import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import me.him188.ani.app.ui.download.components.DownloadItem
-import me.him188.ani.app.ui.external.placeholder.placeholder
 import me.him188.ani.app.ui.lang.Lang
 import me.him188.ani.app.ui.lang.cache_management_downloading_count
 import me.him188.ani.app.ui.lang.cache_management_finished_count
@@ -173,7 +172,7 @@ fun SubjectDownloadsHeader(
             // 两个文本均可收缩, 长条目名不会把汇总和按钮挤出屏幕.
             Text(
                 title.orEmpty(),
-                Modifier.weight(1f, fill = false).placeholder(title == null),
+                Modifier.weight(1f, fill = false),
                 style = MaterialTheme.typography.titleMedium,
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis,

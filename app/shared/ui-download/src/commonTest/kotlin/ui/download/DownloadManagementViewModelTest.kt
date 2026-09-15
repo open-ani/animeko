@@ -162,9 +162,10 @@ class DownloadManagementViewModelTest {
     fun `selecting a subject keeps one presenter and closes the previous one`() = withFixture {
         assertNull(vm.subjectPresenter.value)
 
-        vm.selectSubject(1)
+        vm.selectSubject(1, "Known name")
         val first = assertNotNull(vm.subjectPresenter.value)
         assertEquals(1, first.subjectId)
+        assertEquals("Known name", first.uiState.value.title)
         assertFalse(first.isClosed)
 
         // 相同条目不重建.

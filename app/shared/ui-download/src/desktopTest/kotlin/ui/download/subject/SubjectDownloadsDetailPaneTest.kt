@@ -27,6 +27,7 @@ class SubjectDownloadsDetailPaneTest {
             ProvideCompositionLocalsForPreview {
                 SubjectDownloadsDetailPane(
                     presenter = null,
+                    loadingTitle = "Loading subject",
                     selectionState = rememberDownloadSelectionState(),
                     onPlay = {},
                     onViewDetail = null,
@@ -34,6 +35,7 @@ class SubjectDownloadsDetailPaneTest {
             }
         }
         onNodeWithTag(SubjectDownloadsTestTags.LOADING).assertExists()
+        onNodeWithText("Loading subject").assertExists()
         onNodeWithText(runBlocking { getString(Lang.downloads_empty) }).assertDoesNotExist()
     }
 }

@@ -49,6 +49,8 @@ import me.him188.ani.utils.coroutines.childScope
  * 一个条目的下载页状态与操作, 同一时刻至多持有一个 [DownloadRequestSession].
  *
  * 由页面 ViewModel 创建, [close] 取消其作用域与进行中的选源会话; 已交给应用作用域的持久化与批量操作不受影响.
+ *
+ * @param initialTitle 已知的条目名, 在条目信息加载完成前作为标题.
  */
 class SubjectDownloadsPresenter(
     val subjectId: Int,
@@ -60,6 +62,7 @@ class SubjectDownloadsPresenter(
     downloadManager: MediaDownloadManager,
     private val sessionFactory: DownloadRequestSessionFactory,
     operations: DownloadOperations,
+    initialTitle: String? = null,
 ) : AutoCloseable {
     private val scope = parentScope.childScope()
     private val reloadCount = MutableStateFlow(0)
@@ -88,7 +91,7 @@ class SubjectDownloadsPresenter(
                 snapshot.toDownloadItem(info?.collectionType, history)
             }
             SubjectDownloadsUiState(
-                title = info?.subjectInfo?.nameCnOrName,
+                title = info?.subjectInfo?.nameCnOrName ?: initialTitle,
                 items = buildSubjectDownloadItems(info?.downloadEpisodes().orEmpty(), items),
                 downloads = items,
                 totalEpisodes = info?.episodes?.size,
@@ -98,7 +101,7 @@ class SubjectDownloadsPresenter(
                 downloadsFailed = downloads.failed,
                 request = request.toRequestUiState(),
             )
-        }.stateIn(scope, SharingStarted.WhileSubscribed(5000), SubjectDownloadsUiState())
+        }.stateIn(scope, SharingStarted.WhileSubscribed(5000), SubjectDownloadsUiState(title = initialTitle))
 
     /**
      * 同一个等待选源状态始终对应同一个 [DownloadMediaPickerState], 供 UI 作为 key; 离开该状态后清空.
@@ -226,7 +229,9 @@ class SubjectDownloadsPresenterFactory(
     private val sessionFactory: DownloadRequestSessionFactory,
     private val operations: DownloadOperations,
 ) {
-    fun create(subjectId: Int, parentScope: CoroutineScope): SubjectDownloadsPresenter = SubjectDownloadsPresenter(
-        subjectId, parentScope, subjects, histories, settings, sources, downloadManager, sessionFactory, operations,
-    )
+    fun create(subjectId: Int, parentScope: CoroutineScope, initialTitle: String? = null): SubjectDownloadsPresenter =
+        SubjectDownloadsPresenter(
+            subjectId, parentScope, subjects, histories, settings, sources, downloadManager, sessionFactory, operations,
+            initialTitle,
+        )
 }

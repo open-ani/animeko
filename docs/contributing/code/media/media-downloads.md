@@ -80,7 +80,8 @@ BT 资源在 PikPak 已启用且能解析时优先经 HTTP 引擎下载。
 由持有页面的 ViewModel 创建，生命周期由 `close` 显式结束。独立的条目下载页的 `SubjectDownloadsViewModel`
 随导航条目存活，在存续期间持有一个实例；全局页的 `DownloadManagementViewModel` 通过 `selectSubject`
 随详情栏所选条目切换实例，切换时关闭上一个实例并取消其进行中的选源会话；新实例在下一帧才就绪，
-详情栏在此期间显示与新实例首个状态一致的加载态（`SubjectDownloadsDetailPane(presenter = null)`），不会闪现旧条目或空占位。两个页面的 ViewModel 都随导航条目存活，
+详情栏在此期间显示与新实例首个状态一致的加载态（`SubjectDownloadsDetailPane(presenter = null)`），不会闪现旧条目或空占位。
+全局页把分组里已知的条目名作为初始标题传给实例，标题不经历加载状态；条目信息加载完成后换成正式名称。两个页面的 ViewModel 都随导航条目存活，
 旋转屏幕、切换底部标签或前进到详情页再返回，进行中的选源请求都保留。
 
 条目下载页和全局页的详情栏共用 `SubjectDownloadsHost(presenter)`，统一挂接状态、选源弹窗、权限提示和错误反馈。

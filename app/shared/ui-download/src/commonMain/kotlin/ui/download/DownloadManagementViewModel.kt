@@ -61,11 +61,12 @@ class DownloadManagementViewModel(
 
     /**
      * 上一条目的实例被关闭, 其选源会话随之取消; 相同条目不做任何事.
+     * @param subjectName 已知的条目名, 在条目信息加载完成前作为标题
      */
-    fun selectSubject(subjectId: Int?) {
+    fun selectSubject(subjectId: Int?, subjectName: String? = null) {
         val previous = currentSubjectPresenter.value
         if (previous?.subjectId == subjectId) return
-        currentSubjectPresenter.value = subjectId?.let { presenters.create(it, backgroundScope) }
+        currentSubjectPresenter.value = subjectId?.let { presenters.create(it, backgroundScope, subjectName) }
         previous?.close()
     }
     private val downloads = downloadManager.snapshots().shareInBackground()

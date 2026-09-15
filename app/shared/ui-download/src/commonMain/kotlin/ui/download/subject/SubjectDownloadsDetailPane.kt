@@ -21,11 +21,12 @@ import me.him188.ani.app.ui.download.components.DownloadSelectionState
 import me.him188.ani.app.ui.mediafetch.MediaSourceInfoProvider
 
 /**
- * [presenter] 为 `null` 时显示加载态, 与实例就绪后的首个状态一致; 全局页切换条目时用它填补实例创建前的那一帧.
+ * [presenter] 为 `null` 时显示以 [loadingTitle] 为标题的加载态, 与实例就绪后的首个状态一致; 全局页切换条目时用它填补实例创建前的那一帧.
  */
 @Composable
 fun SubjectDownloadsDetailPane(
     presenter: SubjectDownloadsPresenter?,
+    loadingTitle: String?,
     selectionState: DownloadSelectionState,
     onPlay: (DownloadItem) -> Unit,
     onViewDetail: ((DownloadItem) -> Unit)?,
@@ -35,7 +36,7 @@ fun SubjectDownloadsDetailPane(
 ) {
     if (presenter == null) {
         SubjectDownloadsDetailPaneContent(
-            state = SubjectDownloadsUiState(),
+            state = SubjectDownloadsUiState(title = loadingTitle),
             actions = SubjectDownloadActions.None,
             sourceInfoProvider = remember { MediaSourceInfoProvider(getSourceInfoFlow = { flowOf(null) }) },
             selectionState = selectionState,

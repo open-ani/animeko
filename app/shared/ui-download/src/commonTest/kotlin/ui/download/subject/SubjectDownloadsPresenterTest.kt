@@ -91,6 +91,20 @@ class SubjectDownloadsPresenterTest {
     }
 
     @Test
+    fun `initial title is shown until the subject loads`() = withFixture(initialTitle = "Known name") {
+        assertEquals("Known name", presenter.uiState.value.title)
+        val loaded = awaitState { !it.episodesLoading }
+        assertEquals("中文条目名称", loaded.title)
+    }
+
+    @Test
+    fun `initial title is kept when the subject fails to load`() = withFixture(initialTitle = "Known name") {
+        subjects.collectionFailure = IllegalStateException("subject failed")
+        val failed = awaitState { it.episodesFailed }
+        assertEquals("Known name", failed.title)
+    }
+
+    @Test
     fun `subject failure marks episodes failed and reload recovers`() = withFixture {
         subjects.collectionFailure = IllegalStateException("subject failed")
         val failed = awaitState { it.episodesFailed && !it.downloadsLoading }
@@ -314,7 +328,7 @@ class SubjectDownloadsPresenterTest {
     /**
      * @param subscribe 是否在整个测试期间保持订阅 [SubjectDownloadsPresenter.uiState] 与 [SubjectDownloadsPresenter.requestDialogs].
      */
-    private class Fixture(private val testScope: TestScope, subscribe: Boolean) {
+    private class Fixture(private val testScope: TestScope, subscribe: Boolean, initialTitle: String?) {
         val storage = FakeDownloadStorage()
         val downloadManager = MediaDownloadManager(listOf(storage), testScope.backgroundScope)
         val deleteCache = FakeDeleteCacheUseCase(downloadManager)
@@ -348,6 +362,7 @@ class SubjectDownloadsPresenterTest {
             downloadManager = downloadManager,
             sessionFactory = sessionFactory,
             operations = operations,
+            initialTitle = initialTitle,
         )
 
         init {
@@ -379,8 +394,8 @@ class SubjectDownloadsPresenterTest {
         }
     }
 
-    private fun withFixture(subscribe: Boolean = true, block: suspend Fixture.() -> Unit) = runTest {
-        val fixture = Fixture(this, subscribe)
+    private fun withFixture(subscribe: Boolean = true, initialTitle: String? = null, block: suspend Fixture.() -> Unit) = runTest {
+        val fixture = Fixture(this, subscribe, initialTitle)
         try {
             fixture.block()
         } finally {
