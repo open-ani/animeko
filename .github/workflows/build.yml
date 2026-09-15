@@ -36,7 +36,14 @@ jobs:
     - id: 'step-2'
       run: 'cp ".github/workflows/build.yml" ".github/workflows/build.yml-check.yml" '
     - id: 'step-3'
-      run: '.github/workflows/src.main.kts'
+      run: |-
+        for attempt in 1 2 3; do
+          if .github/workflows/src.main.kts; then exit 0; fi
+          echo "::warning::Workflow generation failed on attempt $attempt, retrying"
+          rm -rf ~/.m2/repository/io/github/typesafegithub
+          sleep 30
+        done
+        exit 1
     - id: 'step-4'
       run: 'python .github/workflows/check_yaml_equivalence.py .github/workflows/build.yml .github/workflows/build.yml-check.yml'
   build_github-windows-2022:

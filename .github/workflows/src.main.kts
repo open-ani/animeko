@@ -821,8 +821,17 @@ fun WorkflowBuilder.addConsistencyCheckJob(filename: String) {
         run(
             command = """cp "$originalPath" "$backupPath" """,
         )
+        // 脚本依赖偶尔在 Maven Central 解析失败; 失败会在本地仓库留下 "absent" 标记, 重试前需要清掉.
         run(
-            command = ".github/workflows/${__FILE__.name}",
+            command = """
+                for attempt in 1 2 3; do
+                  if .github/workflows/${__FILE__.name}; then exit 0; fi
+                  echo "::warning::Workflow generation failed on attempt ${'$'}attempt, retrying"
+                  rm -rf ~/.m2/repository/io/github/typesafegithub
+                  sleep 30
+                done
+                exit 1
+            """.trimIndent(),
         )
         run(command = "python .github/workflows/check_yaml_equivalence.py $originalPath $backupPath")
     }
