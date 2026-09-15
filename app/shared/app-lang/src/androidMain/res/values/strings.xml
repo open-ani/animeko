@@ -1348,6 +1348,7 @@
     <string name="subject_episode_video_loading_resolving_source">Resolving resource link\nThis usually finishes in a few seconds. Otherwise, try switching resources</string>
     <string name="subject_episode_video_loading_decoding_data">Resource resolved. Preparing video</string>
     <string name="subject_episode_video_loading_decoding_bt">Resolving magnet link or querying metadata\nThis usually finishes in a few seconds. Otherwise, try switching resources or cache first</string>
+    <string name="subject_episode_video_loading_decoding_cloud">Preparing the cloud file\nThis usually finishes in a few seconds</string>
     <string name="subject_episode_video_loading_buffering">Buffering</string>
     <string name="subject_episode_video_loading_buffering_bt_too_long">Initial BT buffering may take longer. Please wait 30 seconds</string>
     <string name="subject_episode_video_loading_buffering_bt_no_speed_try_switch">If speed stays at zero, try switching resources</string>

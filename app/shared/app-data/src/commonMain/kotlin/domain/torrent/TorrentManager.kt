@@ -39,7 +39,8 @@ enum class TorrentEngineType(
     val id: String,
 ) {
     Anitorrent("anitorrent"),
-    RemoteAnitorrent("anitorrent")
+    RemoteAnitorrent("anitorrent"),
+    PikPak("pikpak")
 }
 
 /**
@@ -53,6 +54,7 @@ class DefaultTorrentManager(
     subscriptionRepository: PeerFilterSubscriptionRepository,
     meteredNetworkDetector: MeteredNetworkDetector,
     baseSaveDir: () -> SystemPath,
+    private val pikpak: TorrentEngine? = null,
 ) : TorrentManager {
     private val scope = parentCoroutineContext.childScope()
     private val logger = logger<DefaultTorrentManager>()
@@ -84,13 +86,10 @@ class DefaultTorrentManager(
     }
 
     override val engines: List<TorrentEngine> by lazy {
-        // 注意, 是故意只启用一个下载器的, 因为每个下载器都会创建一个 DirectoryMediaCacheStorage
-        // 并且使用相同的 mediaSourceId: MediaDownloadManager.LOCAL_FS_MEDIA_SOURCE_ID.
-        // 搜索数据源时会使用 mediaSourceId 作为 map key, 导致总是只会用一个 storage.
-        // 
-        // 如果要支持多个, 需要考虑将所有 storage 合并成一个 MediaSource.
-
-        listOf(anitorrent)
+        // 每个引擎都会创建一个 storage, 而它们共用 MediaDownloadManager.LOCAL_FS_MEDIA_SOURCE_ID.
+        // 同一个种子若在两个引擎里各缓存一次, 产生的 CachedMedia id 相同, MediaFetcher 的 distinctBy 会丢掉一个.
+        // 因此这里可以同时启用两个引擎: 一个 media 只会被其中一个引擎缓存, id 不会撞车. 见 selectTorrentStorage.
+        listOfNotNull(pikpak, anitorrent)
     }
 
     companion object {
@@ -102,6 +101,7 @@ class DefaultTorrentManager(
             meteredNetworkDetector: MeteredNetworkDetector,
             baseSaveDir: () -> SystemPath,
             torrentEngineFactory: TorrentEngineFactory = LocalAnitorrentEngineFactory,
+            pikpak: TorrentEngine? = null,
         ): DefaultTorrentManager {
             return DefaultTorrentManager(
                 parentCoroutineContext = parentCoroutineContext,
@@ -111,6 +111,7 @@ class DefaultTorrentManager(
                 meteredNetworkDetector = meteredNetworkDetector,
                 subscriptionRepository = subscriptionRepository,
                 baseSaveDir = baseSaveDir,
+                pikpak = pikpak,
             )
         }
     }

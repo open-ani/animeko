@@ -42,10 +42,12 @@ import kotlin.coroutines.EmptyCoroutineContext
 import java.io.File
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertFalse
 import kotlin.test.assertIs
 import kotlin.test.assertNotNull
 import kotlin.test.assertNull
 import kotlin.test.assertSame
+import kotlin.test.assertTrue
 import kotlin.time.Duration
 import kotlin.time.Duration.Companion.seconds
 
@@ -79,6 +81,19 @@ class TorrentMediaCacheStorageTest : AbstractTorrentMediaCacheEngineTest() {
         } finally {
             cleanup()
         }
+    }
+
+    @Test
+    fun `persisted ownership is available before cache restoration`() = runTest {
+        metadataStore.updateData {
+            listOf(MediaCacheSave(testMedia, mediaCacheMetadata(), CacheEngineKey))
+        }
+        val disabled = UnsupportedTorrentEngine(createTestAnitorrentEngine(coroutineContext))
+        val storage = createStorage(createEngine(engine = disabled))
+
+        assertTrue(storage.listFlow.value.isEmpty())
+        assertTrue(storage.hasRecordForMedia(testMedia.mediaId))
+        assertFalse(storage.hasRecordForMedia("unrelated-media"))
     }
 
     @Test

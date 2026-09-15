@@ -63,6 +63,9 @@ abstract class AbstractDataStoreMediaCacheStorage(
                 .sortedBy { it.origin.mediaId } // consistent stable order
         }
 
+    override suspend fun hasRecordForMedia(mediaId: String): Boolean =
+        metadataFlow.first().any { it.origin.mediaId == mediaId }
+
     /**
      * 已经恢复的 [LocalFileMediaCache], 不会重复恢复.
      */

@@ -1388,6 +1388,7 @@
     <string name="subject_episode_video_loading_resolving_source">正在解析资源链接\n通常几秒内完成，否则请切换数据源</string>
     <string name="subject_episode_video_loading_decoding_data">资源解析成功, 正在准备视频</string>
     <string name="subject_episode_video_loading_decoding_bt">正在解析磁力链或查询元数据\n通常几秒内完成, 否则请尝试切换数据源或先缓存再看</string>
+    <string name="subject_episode_video_loading_decoding_cloud">正在准备云盘文件\n通常几秒内完成</string>
     <string name="subject_episode_video_loading_buffering">正在缓冲</string>
     <string name="subject_episode_video_loading_buffering_bt_too_long">BT 初始缓冲耗时稍长, 请耐心等待 30 秒</string>
     <string name="subject_episode_video_loading_buffering_bt_no_speed_try_switch">若持续没有速度, 可尝试切换数据源</string>

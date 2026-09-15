@@ -11,6 +11,8 @@ package me.him188.ani.app.domain.media.player.data
 
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
+import me.him188.ani.app.domain.media.cache.engine.MediaCacheEngineKey
+import me.him188.ani.app.torrent.api.TorrentSession
 import me.him188.ani.app.torrent.api.files.TorrentFileHandle
 import me.him188.ani.app.torrent.api.files.averageRate
 import org.openani.mediamp.ExperimentalMediampApi
@@ -23,11 +25,15 @@ import kotlin.coroutines.CoroutineContext
 class TorrentMediaData(
     private val handle: TorrentFileHandle,
     private val onClose: () -> Unit,
+    val engineKey: MediaCacheEngineKey? = null,
     override val extraFiles: MediaExtraFiles = MediaExtraFiles.EMPTY,
     override val options: List<String> = emptyList(),
+    val session: TorrentSession? = null,
 ) : SeekableInputMediaData, DownloadingMediaData, FileMediaData {
     private inline val entry get() = handle.entry
     override val filename: String get() = entry.fileName
+
+    val pathInTorrent: String get() = entry.pathInTorrent
     override val uri: String get() = "torrent://dummy/${entry.fileName}"
 
     override fun fileLength(): Long = entry.length

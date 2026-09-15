@@ -34,10 +34,12 @@
 管理器的其他入口：`downloadStatusForEpisode` 直接由记录的状态与文件统计汇总某一集的状态，不计算速度，
 供剧集列表和收藏进度使用；`overallStats` 汇总各存储的传输统计；
 `createDownload` 在指定存储中持久化记录：任一存储已有同一资源同一剧集的记录时直接返回该记录，
-默认存储由 `defaultStorageFor` 决定：按注册顺序取第一个支持该资源的存储，
-BT 资源在 PikPak 已启用且能解析时优先经 HTTP 引擎下载。
-播放 BT 资源时自动保存的下载（`CacheOnBtPlayExtension`）显式指定 Anitorrent 存储；
-该记录正被下载页操作时，播放器放弃对它的自动清理。
+默认存储由 `defaultStorageFor` 决定：按注册顺序取第一个支持该资源的存储；
+BT 资源由 `selectTorrentStorage` 决定，一个种子只归一个引擎：已有该种子任一集记录的存储优先，
+其次是正在播放它的引擎，最后是偏好（PikPak 能提供该种子时选它，否则 Anitorrent）。
+种子归属以持久化记录为准；所属引擎不可用时，添加该种子的下载失败，已有记录保留。
+播放 BT 资源时自动保存的下载（`CacheOnBtPlayExtension`）走同一选择，并把实际播放的引擎作为提示；
+自动保存的记录在切集时保留，用户在下载页继续它即转为持久下载。
 
 ## 添加下载
 

@@ -64,6 +64,7 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.map
 import me.him188.ani.app.data.models.preference.DarkMode
 import me.him188.ani.app.data.models.preference.VideoScaffoldConfig
+import me.him188.ani.app.domain.media.cache.engine.MediaCacheEngineKey
 import me.him188.ani.app.domain.media.player.ChunkState
 import me.him188.ani.app.domain.media.player.MediaCacheProgressInfo
 import me.him188.ani.app.domain.media.player.staticMediaCacheProgressState
@@ -907,7 +908,7 @@ private fun PreviewVideoScaffoldImpl(
         danmakuHost = {},
         danmakuEnabled = danmakuEnabled,
         onToggleDanmaku = { danmakuEnabled = !danmakuEnabled },
-        videoLoadingStateFlow = MutableStateFlow(VideoLoadingState.Succeed(isBt = true)),
+        videoLoadingStateFlow = MutableStateFlow(VideoLoadingState.Succeed(MediaCacheEngineKey.Anitorrent)),
         fullscreenState = fullscreenState,
         danmakuEditor = {
             val (value, onValueChange) = remember { mutableStateOf("") }

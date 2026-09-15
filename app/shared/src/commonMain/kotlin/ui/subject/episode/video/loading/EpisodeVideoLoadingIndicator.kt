@@ -26,6 +26,7 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.filterNotNull
 import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.flowOf
+import me.him188.ani.app.domain.media.cache.engine.MediaCacheEngineKey
 import me.him188.ani.app.domain.media.player.data.DownloadingMediaData
 import me.him188.ani.app.domain.player.VideoLoadingState
 import me.him188.ani.app.ui.foundation.ProvideCompositionLocalsForPreview
@@ -43,6 +44,7 @@ import me.him188.ani.app.ui.lang.subject_episode_video_loading_cause_resolution_
 import me.him188.ani.app.ui.lang.subject_episode_video_loading_cause_unknown_error
 import me.him188.ani.app.ui.lang.subject_episode_video_loading_cause_unsupported_media
 import me.him188.ani.app.ui.lang.subject_episode_video_loading_decoding_bt
+import me.him188.ani.app.ui.lang.subject_episode_video_loading_decoding_cloud
 import me.him188.ani.app.ui.lang.subject_episode_video_loading_decoding_data
 import me.him188.ani.app.ui.lang.subject_episode_video_loading_failed_prefix
 import me.him188.ani.app.ui.lang.subject_episode_video_loading_player_error
@@ -104,6 +106,7 @@ fun EpisodeVideoLoadingIndicator(
     val resolvingSourceText = stringResource(Lang.subject_episode_video_loading_resolving_source)
     val decodingDataText = stringResource(Lang.subject_episode_video_loading_decoding_data)
     val decodingBtText = stringResource(Lang.subject_episode_video_loading_decoding_bt)
+    val decodingCloudText = stringResource(Lang.subject_episode_video_loading_decoding_cloud)
     val bufferingText = stringResource(Lang.subject_episode_video_loading_buffering)
     val bufferingBtTooLongText = stringResource(Lang.subject_episode_video_loading_buffering_bt_too_long)
     val bufferingNoSpeedTrySwitchText =
@@ -138,11 +141,12 @@ fun EpisodeVideoLoadingIndicator(
                 }
 
                 is VideoLoadingState.DecodingData -> {
+                    val engineKey = state.engineKey
                     TextWithBorder(
-                        if (!state.isBt) {
-                            decodingDataText
-                        } else {
-                            decodingBtText
+                        when {
+                            engineKey == null -> decodingDataText
+                            engineKey.isCloud -> decodingCloudText
+                            else -> decodingBtText
                         },
                         textAlign = TextAlign.Center,
                     )
@@ -172,7 +176,9 @@ fun EpisodeVideoLoadingIndicator(
 
                                 if (tooLong) {
                                     appendLine()
-                                    if (state.isBt) {
+                                    // 云盘和 WEB 一样是按需取流, 没有找节点这一步要解释, 用通用文案.
+                                    val engineKey = state.engineKey
+                                    if (engineKey != null && !engineKey.isCloud) {
                                         append(bufferingBtTooLongText)
                                         appendLine()
                                         append(bufferingNoSpeedTrySwitchText)
@@ -259,14 +265,14 @@ private fun PreviewEpisodeVideoLoadingIndicator2() {
 private fun PreviewEpisodeVideoLoadingIndicator5() {
     ProvideCompositionLocalsForPreview {
         EpisodeVideoLoadingIndicator(
-            VideoLoadingState.DecodingData(true),
+            VideoLoadingState.DecodingData(MediaCacheEngineKey.Anitorrent),
             speedProvider = { 0.3.bytes },
             optimizeForFullscreen = false,
         )
     }
 }
 
-private fun successState() = VideoLoadingState.Succeed(isBt = true)
+private fun successState() = VideoLoadingState.Succeed(MediaCacheEngineKey.Anitorrent)
 
 @Preview(name = "Buffering")
 @Composable

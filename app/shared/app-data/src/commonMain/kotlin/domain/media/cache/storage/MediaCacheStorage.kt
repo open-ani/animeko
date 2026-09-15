@@ -79,6 +79,10 @@ interface MediaCacheStorage : AutoCloseable {
      */
     val listFlow: Flow<List<MediaCache>>
 
+    /** Whether this storage owns a record, including persisted records awaiting restoration. */
+    suspend fun hasRecordForMedia(mediaId: String): Boolean =
+        listFlow.first().any { it.origin.mediaId == mediaId }
+
     /**
      * 重新加载那些上次 APP 运行时保存在本地的缓存.
      *
@@ -238,4 +242,3 @@ class TestMediaCacheStorage : MediaCacheStorage {
     override fun close() {
     }
 }
-
