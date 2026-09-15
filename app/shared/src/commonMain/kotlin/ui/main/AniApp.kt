@@ -23,6 +23,7 @@ import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.take
 import me.him188.ani.app.data.models.preference.ThemeSettings
@@ -31,7 +32,7 @@ import me.him188.ani.app.data.repository.user.UserRepository
 import me.him188.ani.app.domain.foundation.HttpClientProvider
 import me.him188.ani.app.domain.foundation.ScopedHttpClientUserAgent
 import me.him188.ani.app.domain.foundation.get
-import me.him188.ani.app.domain.media.cache.MediaCacheManager
+import me.him188.ani.app.domain.media.download.MediaDownloadManager
 import me.him188.ani.app.domain.mediasource.web.captcha.WebCaptchaDialogHost
 import me.him188.ani.app.domain.mediasource.web.captcha.WebSessionManager
 import me.him188.ani.app.domain.session.SessionState
@@ -78,17 +79,16 @@ class AniAppState(
 class AniAppViewModel : AbstractViewModel(), KoinComponent {
     private val settings: SettingsRepository by inject()
     private val httpClientProvider: HttpClientProvider by inject()
-    private val mediaCacheManager: MediaCacheManager by inject()
+    private val downloadManager: MediaDownloadManager by inject()
     private val webSessionManager: WebSessionManager by inject()
     private val userRepository: UserRepository by inject()
     private val sessionStateProvider: SessionStateProvider by inject()
 
     private val imageLoaderClient = httpClientProvider.get(ScopedHttpClientUserAgent.ANI)
 
-    private val mediaCacheComposablesFlow = mediaCacheManager.enabledStorages
-        .map { storages ->
-            storages.map { @Composable { it.engine.ComposeContent() } }
-        }
+    private val mediaCacheComposablesFlow = flowOf(
+        downloadManager.storages.map { @Composable { it.engine.ComposeContent() } },
+    )
 
     val browserNavigator by inject<BrowserNavigator>()
 

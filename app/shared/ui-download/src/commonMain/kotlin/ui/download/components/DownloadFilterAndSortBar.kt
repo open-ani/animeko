@@ -1,0 +1,413 @@
+/*
+ * Copyright (C) 2024-2026 OpenAni and contributors.
+ *
+ * 此源代码的使用受 GNU AFFERO GENERAL PUBLIC LICENSE version 3 许可证的约束, 可以在以下链接找到该许可证.
+ * Use of this source code is governed by the GNU AGPLv3 license, which can be found at the following link.
+ *
+ * https://github.com/open-ani/ani/blob/main/LICENSE
+ */
+
+package me.him188.ani.app.ui.download.components
+
+import androidx.compose.foundation.horizontalScroll
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.rounded.Sort
+import androidx.compose.material.icons.filled.FilterList
+import androidx.compose.material.icons.rounded.Check
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
+import androidx.compose.material3.FilterChip
+import androidx.compose.material3.FilterChipDefaults
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
+import androidx.compose.material3.IconButtonDefaults
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Surface
+import androidx.compose.material3.Text
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.Stable
+import androidx.compose.runtime.derivedStateOf
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.Saver
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.unit.dp
+import me.him188.ani.app.domain.media.cache.engine.MediaCacheEngineKey
+import me.him188.ani.app.ui.lang.Lang
+import me.him188.ani.app.ui.lang.cache_filter_cache_type
+import me.him188.ani.app.ui.lang.cache_filter_collection_doing
+import me.him188.ani.app.ui.lang.cache_filter_collection_done
+import me.him188.ani.app.ui.lang.cache_filter_collection_dropped
+import me.him188.ani.app.ui.lang.cache_filter_collection_not_collected
+import me.him188.ani.app.ui.lang.cache_filter_collection_on_hold
+import me.him188.ani.app.ui.lang.cache_filter_collection_state
+import me.him188.ani.app.ui.lang.cache_filter_collection_wish
+import me.him188.ani.app.ui.lang.cache_filter_download_status
+import me.him188.ani.app.ui.lang.cache_filter_sort
+import me.him188.ani.app.ui.lang.cache_filter_sort_newest
+import me.him188.ani.app.ui.lang.cache_filter_sort_oldest
+import me.him188.ani.app.ui.lang.cache_filter_sort_subject_asc
+import me.him188.ani.app.ui.lang.cache_filter_sort_subject_desc
+import me.him188.ani.app.ui.lang.cache_filter_status_downloading
+import me.him188.ani.app.ui.lang.cache_filter_status_finished
+import me.him188.ani.datasources.api.topic.UnifiedCollectionType
+import org.jetbrains.compose.resources.stringResource
+
+@Stable
+internal class DownloadFilterAndSortState {
+    var selectedCollectionType by mutableStateOf<UnifiedCollectionType?>(null)
+    var selectedEngineKey by mutableStateOf<MediaCacheEngineKey?>(null)
+    var selectedStatus by mutableStateOf<DownloadStatusFilter?>(null)
+    var sortOption by mutableStateOf(DownloadSortOption.Newest)
+
+    private fun matchesFilters(entry: DownloadItem): Boolean {
+        return (selectedCollectionType == null || (entry.subjectCollectionType
+            ?: UnifiedCollectionType.NOT_COLLECTED) == selectedCollectionType) &&
+                (selectedEngineKey == null || entry.engineKey == selectedEngineKey) &&
+                (selectedStatus == null || entry.statusFilter == selectedStatus)
+    }
+
+    /**
+     * 设计稿: 筛选先过滤剧集再重组分组.
+     *
+     * 过滤各分组中不符合条件的剧集, 移除空分组, 再按 [sortOption] 排序分组.
+     */
+    @Composable
+    fun applyFilterAndSortGrouped(groups: List<SubjectDownloadGroup>): List<SubjectDownloadGroup> {
+        val result by remember(groups) {
+            derivedStateOf {
+                val filtered = groups.mapNotNull { group ->
+                    val entries = group.entries.filter { matchesFilters(it) }
+                    when {
+                        entries.isEmpty() -> null
+                        entries.size == group.entries.size -> group
+                        else -> group.copy(entries = entries)
+                    }
+                }
+
+                when (sortOption) {
+                    DownloadSortOption.Newest -> filtered.sortedByDescending { group ->
+                        group.entries.maxOfOrNull { it.creationTime ?: Long.MIN_VALUE } ?: Long.MIN_VALUE
+                    }
+
+                    DownloadSortOption.Oldest -> filtered.sortedBy { group ->
+                        group.entries.minOfOrNull { it.creationTime ?: Long.MAX_VALUE } ?: Long.MAX_VALUE
+                    }
+
+                    DownloadSortOption.SubjectAsc -> filtered.sortedBy { it.subjectName }
+                    DownloadSortOption.SubjectDesc -> filtered.sortedByDescending { it.subjectName }
+                }
+            }
+        }
+        return result
+    }
+
+    companion object {
+        val TheSaver = Saver<DownloadFilterAndSortState, String>(
+            save = { state ->
+                buildString {
+                    append(state.selectedCollectionType?.ordinal ?: "-1")
+                    append(",")
+                    append(state.selectedEngineKey?.key ?: "")
+                    append(",")
+                    append(state.selectedStatus?.ordinal ?: "-1")
+                    append(",")
+                    append(state.sortOption.ordinal)
+                }
+            },
+            restore = { restored ->
+                val parts = restored.split(",")
+                DownloadFilterAndSortState().apply {
+                    selectedCollectionType =
+                        parts.getOrNull(0)?.toIntOrNull()?.let { ord ->
+                            UnifiedCollectionType.entries.getOrNull(ord)
+                        }
+                    selectedEngineKey =
+                        parts.getOrNull(1)?.takeIf { it.isNotEmpty() }?.let { key ->
+                            MediaCacheEngineKey(key)
+                        }
+                    selectedStatus =
+                        parts.getOrNull(2)?.toIntOrNull()?.let { ord ->
+                            DownloadStatusFilter.entries.getOrNull(ord)
+                        }
+                    sortOption =
+                        parts.getOrNull(3)?.toIntOrNull()?.let { ord ->
+                            DownloadSortOption.entries.getOrNull(ord)
+                        } ?: DownloadSortOption.Newest
+                }
+            },
+        )
+    }
+}
+
+@Composable
+internal fun rememberDownloadFilterAndSortState(): DownloadFilterAndSortState {
+    return rememberSaveable(saver = DownloadFilterAndSortState.TheSaver) {
+        DownloadFilterAndSortState()
+    }
+}
+
+@Composable
+internal fun DownloadFilterAndSortBar(
+    state: DownloadFilterAndSortState = rememberDownloadFilterAndSortState(),
+    mediaCacheEngineOptions: List<MediaCacheEngineKey>,
+    modifier: Modifier = Modifier,
+    containerColor: Color,
+) {
+
+    Surface(color = containerColor) {
+        Row(
+            modifier,
+            horizontalArrangement = Arrangement.spacedBy(12.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            DownloadFilterRow(
+                selectedCollectionType = state.selectedCollectionType,
+                onCollectionTypeChange = { state.selectedCollectionType = it },
+                selectedEngine = state.selectedEngineKey,
+                engineOptions = mediaCacheEngineOptions,
+                onEngineChange = { state.selectedEngineKey = it },
+                selectedStatus = state.selectedStatus,
+                onStatusChange = { state.selectedStatus = it },
+                modifier = Modifier.weight(1f),
+            )
+
+            SortMenuButton(
+                sortOption = state.sortOption,
+                onSortOptionChange = { state.sortOption = it },
+            )
+        }
+    }
+}
+
+@Composable
+private fun DownloadFilterRow(
+    selectedCollectionType: UnifiedCollectionType?,
+    onCollectionTypeChange: (UnifiedCollectionType?) -> Unit,
+    selectedEngine: MediaCacheEngineKey?,
+    engineOptions: List<MediaCacheEngineKey>,
+    onEngineChange: (MediaCacheEngineKey?) -> Unit,
+    selectedStatus: DownloadStatusFilter?,
+    onStatusChange: (DownloadStatusFilter?) -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    Row(
+        modifier
+            .fillMaxWidth()
+            .horizontalScroll(rememberScrollState()),
+        horizontalArrangement = Arrangement.spacedBy(8.dp),
+    ) {
+        CollectionFilterChip(selectedCollectionType, onCollectionTypeChange)
+        EngineFilterChip(selectedEngine, engineOptions, onEngineChange)
+        StatusFilterChip(selectedStatus, onStatusChange)
+    }
+}
+
+@Composable
+private fun CollectionFilterChip(
+    selected: UnifiedCollectionType?,
+    onChange: (UnifiedCollectionType?) -> Unit,
+) {
+    FilterPill(
+        label = stringResource(Lang.cache_filter_collection_state),
+        selectedLabel = selected?.let { renderCollectionType(it) },
+        isSelected = selected != null,
+        onClick = { isSelected ->
+            if (isSelected) onChange(null)
+        },
+    ) { onDismiss ->
+        UnifiedCollectionType.entries.forEach { option ->
+            DropdownMenuItem(
+                text = { Text(renderCollectionType(option)) },
+                onClick = {
+                    onChange(option)
+                    onDismiss()
+                },
+            )
+        }
+    }
+}
+
+@Composable
+private fun EngineFilterChip(
+    selected: MediaCacheEngineKey?,
+    options: List<MediaCacheEngineKey>,
+    onChange: (MediaCacheEngineKey?) -> Unit,
+) {
+    FilterPill(
+        label = stringResource(Lang.cache_filter_cache_type),
+        selectedLabel = selected?.let { renderEngineKey(it) },
+        isSelected = selected != null,
+        enabled = options.isNotEmpty(),
+        onClick = { isSelected ->
+            if (isSelected) onChange(null)
+        },
+    ) { onDismiss ->
+        options.forEach { option ->
+            DropdownMenuItem(
+                text = { Text(renderEngineKey(option)) },
+                onClick = {
+                    onChange(option)
+                    onDismiss()
+                },
+            )
+        }
+    }
+}
+
+@Composable
+private fun StatusFilterChip(
+    selected: DownloadStatusFilter?,
+    onChange: (DownloadStatusFilter?) -> Unit,
+) {
+    FilterPill(
+        label = stringResource(Lang.cache_filter_download_status),
+        selectedLabel = selected?.let { renderStatusFilter(it) },
+        isSelected = selected != null,
+        onClick = { isSelected ->
+            if (isSelected) onChange(null)
+        },
+    ) { onDismiss ->
+        DownloadStatusFilter.entries.forEach { option ->
+            DropdownMenuItem(
+                text = { Text(renderStatusFilter(option)) },
+                onClick = {
+                    onChange(option)
+                    onDismiss()
+                },
+            )
+        }
+    }
+}
+
+@Composable
+private fun FilterPill(
+    label: String,
+    selectedLabel: String?,
+    isSelected: Boolean,
+    enabled: Boolean = true,
+    onClick: (isSelected: Boolean) -> Unit,
+    dropdownContent: @Composable (onDismiss: () -> Unit) -> Unit,
+) {
+    var showMenu by remember { mutableStateOf(false) }
+    Box {
+        FilterChip(
+            selected = isSelected,
+            onClick = {
+                if (!enabled) return@FilterChip
+                if (isSelected) {
+                    onClick(true)
+                } else {
+                    showMenu = true
+                }
+            },
+            label = { Text(selectedLabel ?: label) },
+            trailingIcon = if (isSelected) {
+                {
+                    Icon(Icons.Default.FilterList, null)
+                }
+            } else null,
+            // 设计稿: 圆角矩形 (8dp) 而非全圆角.
+            shape = MaterialTheme.shapes.small,
+            colors = FilterChipDefaults.filterChipColors(),
+            enabled = enabled,
+        )
+        DropdownMenu(expanded = showMenu, onDismissRequest = { showMenu = false }) {
+            dropdownContent { showMenu = false }
+        }
+    }
+}
+
+@Composable
+private fun SortMenuButton(
+    sortOption: DownloadSortOption,
+    onSortOptionChange: (DownloadSortOption) -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    var showSortMenu by remember { mutableStateOf(false) }
+    Box(modifier) {
+        IconButton(
+            onClick = { showSortMenu = true },
+            shape = CircleShape,
+            colors = IconButtonDefaults.iconButtonColors(),
+        ) {
+            Icon(Icons.AutoMirrored.Rounded.Sort, stringResource(Lang.cache_filter_sort))
+        }
+        DropdownMenu(expanded = showSortMenu, onDismissRequest = { showSortMenu = false }) {
+            DownloadSortOption.entries.forEach { option ->
+                DropdownMenuItem(
+                    text = { Text(renderSortOption(option)) },
+                    trailingIcon = {
+                        if (option == sortOption) {
+                            Icon(Icons.Rounded.Check, null)
+                        }
+                    },
+                    onClick = {
+                        onSortOptionChange(option)
+                        showSortMenu = false
+                    },
+                )
+            }
+        }
+    }
+}
+
+enum class DownloadStatusFilter {
+    Downloading,
+    Finished,
+}
+
+// 排序作用于条目分组.
+internal enum class DownloadSortOption {
+    Newest,
+    Oldest,
+    SubjectAsc,
+    SubjectDesc,
+}
+
+@Composable
+private fun renderStatusFilter(type: DownloadStatusFilter): String {
+    return when (type) {
+        DownloadStatusFilter.Downloading -> stringResource(Lang.cache_filter_status_downloading)
+        DownloadStatusFilter.Finished -> stringResource(Lang.cache_filter_status_finished)
+    }
+}
+
+@Composable
+private fun renderSortOption(option: DownloadSortOption): String {
+    return when (option) {
+        DownloadSortOption.Newest -> stringResource(Lang.cache_filter_sort_newest)
+        DownloadSortOption.Oldest -> stringResource(Lang.cache_filter_sort_oldest)
+        DownloadSortOption.SubjectAsc -> stringResource(Lang.cache_filter_sort_subject_asc)
+        DownloadSortOption.SubjectDesc -> stringResource(Lang.cache_filter_sort_subject_desc)
+    }
+}
+
+@Composable
+private fun renderCollectionType(type: UnifiedCollectionType): String {
+    return when (type) {
+        UnifiedCollectionType.WISH -> stringResource(Lang.cache_filter_collection_wish)
+        UnifiedCollectionType.DOING -> stringResource(Lang.cache_filter_collection_doing)
+        UnifiedCollectionType.DONE -> stringResource(Lang.cache_filter_collection_done)
+        UnifiedCollectionType.ON_HOLD -> stringResource(Lang.cache_filter_collection_on_hold)
+        UnifiedCollectionType.DROPPED -> stringResource(Lang.cache_filter_collection_dropped)
+        UnifiedCollectionType.NOT_COLLECTED -> stringResource(Lang.cache_filter_collection_not_collected)
+    }
+}
+
+private fun renderEngineKey(key: MediaCacheEngineKey): String = when (key) {
+    MediaCacheEngineKey.Anitorrent -> "BT"
+    MediaCacheEngineKey.WebM3u -> "Web"
+    else -> key.key
+}

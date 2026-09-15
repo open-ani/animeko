@@ -72,8 +72,9 @@ import me.him188.ani.app.ui.adaptive.navigation.AniNavigationSuite
 import me.him188.ani.app.ui.adaptive.navigation.AniNavigationSuiteDefaults
 import me.him188.ani.app.ui.adaptive.navigation.AniNavigationSuiteLayout
 import me.him188.ani.app.ui.bangumi.merge.BangumiConflictNotifier
-import me.him188.ani.app.ui.cache.CacheManagementScreen
-import me.him188.ani.app.ui.cache.CacheManagementViewModel
+import me.him188.ani.app.ui.download.DownloadManagementScreen
+import me.him188.ani.app.ui.download.DownloadManagementViewModel
+import me.him188.ani.app.ui.download.createDownloadManagementViewModel
 import me.him188.ani.app.ui.exploration.ExplorationScreen
 import me.him188.ani.app.ui.foundation.LocalPlatform
 import me.him188.ani.app.ui.foundation.animation.LocalAniMotionScheme
@@ -162,7 +163,7 @@ private fun MainScreenContent(
 ) {
     val explorationPageViewModel = viewModel { ExplorationPageViewModel() }
     val userCollectionsViewModel = viewModel<UserCollectionsViewModel> { UserCollectionsViewModel() }
-    val cacheManagementViewModel = viewModel { CacheManagementViewModel() }
+    val downloadManagementViewModel = viewModel { createDownloadManagementViewModel() }
 
     var showAccountSettingsPopup: Boolean by remember { mutableStateOf(false) }
     val profileViewModel = viewModel { ProfileViewModel() }
@@ -182,7 +183,7 @@ private fun MainScreenContent(
             onLogin = { showAccountSettingsPopup = true },
             explorationPageViewModel = explorationPageViewModel,
             userCollectionsViewModel = userCollectionsViewModel,
-            cacheManagementViewModel = cacheManagementViewModel,
+            downloadManagementViewModel = downloadManagementViewModel,
             modifier = modifier,
             navigationLayoutType = navigationLayoutType,
         )
@@ -222,7 +223,7 @@ private fun MainScreenNavigationLayout(
     onLogin: () -> Unit,
     explorationPageViewModel: ExplorationPageViewModel,
     userCollectionsViewModel: UserCollectionsViewModel,
-    cacheManagementViewModel: CacheManagementViewModel,
+    downloadManagementViewModel: DownloadManagementViewModel,
     modifier: Modifier = Modifier,
     navigationLayoutType: NavigationSuiteType = AniNavigationSuiteDefaults.calculateLayoutType(
         currentWindowAdaptiveInfo1(),
@@ -289,7 +290,7 @@ private fun MainScreenNavigationLayout(
                                         userCollectionsViewModel.state.scrollToTop()
 
                                     MainScreenPage.CacheManagement -> {
-                                        // cacheManagementViewModel.lazyGridState.animateScrollToItem(0)
+                                        // downloadManagementViewModel.lazyGridState.animateScrollToItem(0)
                                     }
                                 }
                             }
@@ -364,8 +365,8 @@ private fun MainScreenNavigationLayout(
                     }
 
                     MainScreenPage.CacheManagement -> {
-                        CacheManagementScreen(
-                            cacheManagementViewModel,
+                        DownloadManagementScreen(
+                            downloadManagementViewModel,
                             selfInfo = selfInfo,
                             onPlay = { navigator.navigateEpisodeDetails(it.subjectId, it.episodeId) },
                             onNavigateCacheDetail = { navigator.navigateCacheDetails(it) },

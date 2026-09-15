@@ -89,7 +89,7 @@ import me.him188.ani.app.domain.episode.infoLoadErrorFlow
 import me.him188.ani.app.domain.episode.mediaSelectorFlow
 import me.him188.ani.app.domain.foundation.LoadError
 import me.him188.ani.app.domain.media.cache.EpisodeCacheStatus
-import me.him188.ani.app.domain.media.cache.MediaCacheManager
+import me.him188.ani.app.domain.media.download.MediaDownloadManager
 import me.him188.ani.app.domain.media.fetch.MediaSourceManager
 import me.him188.ani.app.domain.media.fetch.MediaSourceResultsFilterer
 import me.him188.ani.app.domain.media.resolver.MediaResolver
@@ -278,7 +278,7 @@ class EpisodeViewModel(
     // region dependencies
     private val playerStateFactory: MediampPlayerFactory<*> by inject()
     private val episodeCollectionRepository: EpisodeCollectionRepository by inject()
-    private val mediaCacheManager: MediaCacheManager by inject()
+    private val downloadManager: MediaDownloadManager by inject()
     private val danmakuRepository: DanmakuRepository by inject()
     private val settingsRepository: SettingsRepository by inject()
     private val danmakuRegexFilterRepository: DanmakuRegexFilterRepository by inject()
@@ -538,7 +538,7 @@ class EpisodeViewModel(
             }
             combine(
                 list.map { collection ->
-                    mediaCacheManager.cacheStatusForEpisode(subjectId, collection.episodeId).map {
+                    downloadManager.downloadStatusForEpisode(subjectId, collection.episodeId).map {
                         collection.episodeId to it
                     }
                 },

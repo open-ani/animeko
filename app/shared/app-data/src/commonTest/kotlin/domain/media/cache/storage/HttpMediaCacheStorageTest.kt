@@ -10,10 +10,13 @@
 package me.him188.ani.app.domain.media.cache.storage
 
 import kotlinx.coroutines.CompletableDeferred
+import kotlinx.coroutines.async
+import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.test.TestScope
 import kotlinx.coroutines.test.runCurrent
 import kotlinx.coroutines.test.runTest
 import me.him188.ani.app.data.persistent.MemoryDataStore
@@ -26,6 +29,7 @@ import me.him188.ani.app.domain.media.cache.engine.MediaCacheEngineKey
 import me.him188.ani.app.domain.media.cache.engine.MediaStats
 import me.him188.ani.app.domain.media.createTestDefaultMedia
 import me.him188.ani.app.domain.media.createTestMediaProperties
+import me.him188.ani.app.domain.media.download.MediaDownloadManager
 import me.him188.ani.app.domain.media.resolver.EpisodeMetadata
 import me.him188.ani.datasources.api.CachedMedia
 import me.him188.ani.datasources.api.EpisodeSort
@@ -43,8 +47,89 @@ import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
 import kotlin.test.assertSame
+import kotlin.test.assertTrue
 
 class HttpMediaCacheStorageTest {
+    @Test
+    fun `overlapping creation calls wait for persistence and reuse the same download`() = runTest {
+        verifyOverlappingSubmissions(failCreation = false)
+    }
+
+    @Test
+    fun `overlapping creation calls report creation failure instead of accepting a placeholder`() = runTest {
+        verifyOverlappingSubmissions(failCreation = true)
+    }
+
+    private suspend fun TestScope.verifyOverlappingSubmissions(failCreation: Boolean) {
+        val gate = CompletableDeferred<Unit>()
+        val store = MemoryDataStore<List<MediaCacheSave>>(emptyList())
+        val engine = DelayedHttpCacheEngine(gate, failCreation)
+        val storage = HttpMediaCacheStorage(
+            mediaSourceId = "local-file-system",
+            store = store,
+            dao = FakeHttpCacheDownloadStateDao,
+            httpEngine = engine,
+            displayName = "Test HTTP Storage",
+            parentCoroutineContext = backgroundScope.coroutineContext,
+        )
+        try {
+            val manager = MediaDownloadManager(listOf(storage), backgroundScope)
+            val first = async {
+                runCatching { manager.createDownload(testMedia(), testMetadata(), testEpisodeMetadata()) }
+            }
+            runCurrent()
+            assertEquals(1, storage.listFlow.value.size)
+            val second = async {
+                runCatching { manager.createDownload(testMedia(), testMetadata(), testEpisodeMetadata()) }
+            }
+            runCurrent()
+            assertFalse(first.isCompleted)
+            assertFalse(second.isCompleted)
+            assertTrue(store.data.first().isEmpty())
+
+            gate.complete(Unit)
+            val outcomes = awaitAll(first, second)
+            if (failCreation) {
+                outcomes.forEach { assertTrue(it.isFailure) }
+                assertTrue(store.data.first().isEmpty())
+                assertTrue(storage.listFlow.value.isEmpty())
+            } else {
+                val ids = outcomes.map { it.getOrThrow().cacheId }
+                assertEquals(ids[0], ids[1])
+                assertEquals(1, engine.createCalls)
+                assertEquals(1, store.data.first().size)
+                assertEquals(1, storage.listFlow.value.size)
+            }
+        } finally {
+            storage.close()
+        }
+    }
+
+    @Test
+    fun `deleting a record keeps records of other engines in the shared datastore`() = runTest {
+        val foreign = MediaCacheSave(testMedia(), testMetadata(), MediaCacheEngineKey.Anitorrent)
+        val store = MemoryDataStore<List<MediaCacheSave>>(listOf(foreign))
+        val storage = HttpMediaCacheStorage(
+            mediaSourceId = "local-file-system",
+            store = store,
+            dao = FakeHttpCacheDownloadStateDao,
+            httpEngine = DelayedHttpCacheEngine(CompletableDeferred(Unit)),
+            displayName = "Test HTTP Storage",
+            parentCoroutineContext = backgroundScope.coroutineContext,
+        )
+        try {
+            val cache = storage.cache(testMedia(), testMetadata(), testEpisodeMetadata())
+            runCurrent()
+            assertEquals(2, store.data.first().size)
+
+            assertTrue(storage.delete(cache))
+            assertEquals(listOf(foreign), store.data.first())
+            assertTrue(storage.listFlow.value.isEmpty())
+        } finally {
+            storage.close()
+        }
+    }
+
     @Test
     fun `cache shows placeholder before slow engine creation completes`() = runTest {
         val createGate = CompletableDeferred<Unit>()
@@ -65,7 +150,7 @@ class HttpMediaCacheStorageTest {
             storage.cache(
                 media = media,
                 metadata = metadata,
-                episodeMetadata = EpisodeMetadata("Episode 1", EpisodeSort(1), EpisodeSort(1)),
+                episodeMetadata = testEpisodeMetadata(),
                 resume = false,
             )
         }
@@ -93,7 +178,11 @@ class HttpMediaCacheStorageTest {
 
 private class DelayedHttpCacheEngine(
     private val createGate: CompletableDeferred<Unit>,
+    private val failCreation: Boolean = false,
 ) : MediaCacheEngine {
+    var createCalls = 0
+        private set
+
     override val engineKey: MediaCacheEngineKey = MediaCacheEngineKey.WebM3u
     override val stats: Flow<MediaStats> = flowOf(MediaStats.Zero)
 
@@ -111,7 +200,9 @@ private class DelayedHttpCacheEngine(
         episodeMetadata: EpisodeMetadata,
         parentContext: CoroutineContext,
     ): MediaCache {
+        createCalls++
         createGate.await()
+        check(!failCreation) { "creation failed" }
         return TestMediaCache(
             media = CachedMedia(
                 origin = origin,
@@ -155,6 +246,10 @@ private fun testMedia(): Media {
         location = MediaSourceLocation.Online,
         kind = MediaSourceKind.WEB,
     )
+}
+
+private fun testEpisodeMetadata(): EpisodeMetadata {
+    return EpisodeMetadata("Episode 1", EpisodeSort(1), EpisodeSort(1))
 }
 
 private fun testMetadata(): MediaCacheMetadata {
