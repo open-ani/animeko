@@ -58,7 +58,9 @@ import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.PathEffect
+import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.graphics.luminance
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
@@ -98,6 +100,8 @@ import me.him188.ani.utils.io.inSystem
 import me.him188.ani.utils.io.length
 import me.him188.ani.utils.io.name
 import org.jetbrains.compose.resources.stringResource
+import kotlin.math.PI
+import kotlin.math.roundToInt
 
 /**
  * 正在拖入窗口的内容, 用于在松手前展示提示.
@@ -356,7 +360,8 @@ fun DropInstallPackageHost(
 private val DropCardCornerRadius = 28.dp
 
 /**
- * 拖入期间覆盖在窗口内容之上的提示: 压暗背景, 居中一张虚线边框的卡片, 没有持续动效.
+ * 拖入期间覆盖在窗口内容之上的提示: 一层蒙版 (深色主题压暗, 浅色主题提亮, 让卡片边缘不与蒙版形成双重边),
+ * 居中一张虚线边框的卡片, 没有持续动效.
  */
 @Composable
 internal fun DropInstallPackageOverlay(
@@ -382,10 +387,12 @@ internal fun DropInstallPackageOverlay(
         stringResource(Lang.settings_debug_install_package_drop_meta, currentVersion)
     }
 
+    val isDark = colors.surface.luminance() < 0.5f
+    val scrimColor = if (isDark) colors.scrim.copy(alpha = 0.72f) else colors.surface.copy(alpha = 0.8f)
     Box(
         modifier
             .fillMaxSize()
-            .background(colors.scrim.copy(alpha = 0.72f))
+            .background(scrimColor)
             .testTag(DropInstallPackageTestTags.OVERLAY),
         contentAlignment = Alignment.Center,
     ) {
@@ -464,7 +471,8 @@ internal fun DropInstallPackageOverlay(
 }
 
 /**
- * 在内容之上绘制一圈虚线圆角边框, 边框完全落在自身范围内.
+ * 在内容之上绘制一圈圆头虚线的圆角边框, 边框完全落在自身范围内.
+ * 虚线长度按周长取整, 首尾相接处不会出现半截虚线.
  */
 private fun Modifier.dashedBorder(
     color: Color,
@@ -475,14 +483,21 @@ private fun Modifier.dashedBorder(
     drawContent()
     val strokeWidth = width.toPx()
     val inset = strokeWidth / 2
+    val rectSize = Size(size.width - strokeWidth, size.height - strokeWidth)
+    val radius = (cornerRadius.toPx() - inset).coerceAtLeast(0f)
+    val perimeter = 2 * (rectSize.width + rectSize.height) - 8 * radius + 2 * PI.toFloat() * radius
+    val segments = (perimeter / (2 * dash.toPx())).roundToInt().coerceAtLeast(1)
+    val segment = perimeter / (2 * segments)
     drawRoundRect(
         color = color,
         topLeft = Offset(inset, inset),
-        size = Size(size.width - strokeWidth, size.height - strokeWidth),
-        cornerRadius = CornerRadius(cornerRadius.toPx() - inset),
+        size = rectSize,
+        cornerRadius = CornerRadius(radius),
         style = Stroke(
             width = strokeWidth,
-            pathEffect = PathEffect.dashPathEffect(floatArrayOf(dash.toPx(), dash.toPx())),
+            cap = StrokeCap.Round,
+            // 圆头会让每段各向外延伸半个线宽, 相应缩短实线并加长间隔, 保持视觉上等分
+            pathEffect = PathEffect.dashPathEffect(floatArrayOf(segment - strokeWidth, segment + strokeWidth)),
         ),
     )
 }
