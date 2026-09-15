@@ -95,6 +95,7 @@ import me.him188.ani.app.tools.update.UpdateInstaller
 import me.him188.ani.app.torrent.anitorrent.AnitorrentLibraryLoader
 import me.him188.ani.app.ui.foundation.LocalPlatform
 import me.him188.ani.app.ui.foundation.LocalWindowState
+import me.him188.ani.app.ui.foundation.WindowDropHost
 import me.him188.ani.app.ui.foundation.effects.OverrideCaptionButtonAppearance
 import me.him188.ani.app.ui.foundation.ifThen
 import me.him188.ani.app.ui.foundation.layout.LocalPlatformWindow
@@ -110,7 +111,9 @@ import me.him188.ani.app.ui.foundation.widgets.ToastViewModel
 import me.him188.ani.app.ui.foundation.widgets.Toaster
 import me.him188.ani.app.ui.main.AniApp
 import me.him188.ani.app.ui.main.AniAppContent
-import me.him188.ani.app.ui.update.DropInstallPackageHost
+import me.him188.ani.app.ui.update.InstallPackageDropDialogs
+import me.him188.ani.app.ui.update.rememberDropInstallPackageState
+import me.him188.ani.app.ui.update.rememberInstallPackageDropHandler
 import me.him188.ani.desktop.generated.resources.Res
 import me.him188.ani.desktop.generated.resources.a_round
 import me.him188.ani.utils.analytics.Analytics
@@ -710,15 +713,24 @@ private fun FrameWindowScope.MainWindowContent(
                     LocalContextMenuRepresentation provides DesktopContextMenuRepresentation,
                 ) {
                     Box(Modifier.padding(all = paddingByWindowSize)) {
-                        // 开发者功能: 将安装包拖入窗口以安装测试版本
+                        // 主窗口级拖放: 各功能以 WindowDropHandler 接入, 按顺序第一个接管的生效
                         val installPackageOnDrop by remember(settingsRepository) {
                             settingsRepository.debugSettings.flow
                                 .map { it.enabled && it.installPackageOnDrop }
                                 .distinctUntilChanged()
                         }.collectAsStateWithLifecycle(DebugSettings.Default.installPackageOnDrop)
-                        DropInstallPackageHost(enabled = installPackageOnDrop, Modifier.fillMaxSize()) {
+                        val installPackageState = rememberDropInstallPackageState()
+                        val installPackageHandler = rememberInstallPackageDropHandler(installPackageState)
+                        WindowDropHost(
+                            handlers = listOfNotNull(
+                                // 开发者功能: 将安装包拖入窗口以安装测试版本
+                                installPackageHandler.takeIf { installPackageOnDrop },
+                            ),
+                            Modifier.fillMaxSize(),
+                        ) {
                             AniAppContent(aniNavigator)
                         }
+                        InstallPackageDropDialogs(installPackageState)
                         Toast({ showing }, { Text(content) })
                     }
                 }

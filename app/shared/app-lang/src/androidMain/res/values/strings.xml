@@ -97,10 +97,11 @@
     <string name="settings_debug_install_package_drop_title">Release to install</string>
     <string name="settings_debug_install_package_drop_unknown_name">Installer package</string>
     <string name="settings_debug_install_package_drop_meta">Ani will quit, replace the current %1$s and restart automatically</string>
-    <string name="settings_debug_install_package_drop_unsupported_title">Unsupported file</string>
-    <string name="settings_debug_install_package_drop_unsupported_meta">Only %1$s packages are supported. Nothing happens if you release now</string>
+    <string name="settings_debug_install_package_drop_supported_hint">%1$s packages</string>
     <string name="settings_debug_install_package_drop_badge">Developer feature · Drop installer package to install</string>
     <string name="settings_debug_install_package_confirm_new_version">New version</string>
+    <string name="window_drop_unsupported_title">Unsupported file</string>
+    <string name="window_drop_unsupported_description">Only %1$s are supported. Nothing happens if you release now</string>
     <string name="settings_help_qq">QQ</string>
     <string name="settings_help_telegram">Telegram</string>
     <string name="settings_help_github">GitHub</string>

@@ -129,24 +129,15 @@ class DropInstallPackageStateTest {
     }
 
     @Test
-    fun `drag preview classifies the dragged content`() {
+    fun `finds the first installable package in a file list`() {
         val state = DropInstallPackageState(FakeInstaller())
 
-        state.onDragStarted(DragAndDropContent.FileList(listOf(Path("/downloads/notes.txt"), Path("/downloads/ani.dmg"))))
-        assertEquals(DraggingPackage.Installable(Path("/downloads/ani.dmg").inSystem), state.dragging)
-
-        state.onDragStarted(DragAndDropContent.FileList(listOf(Path("/downloads/readme.txt"), Path("/downloads/ani.exe"))))
-        assertEquals(DraggingPackage.Unsupported("readme.txt"), state.dragging)
-
-        state.onDragStarted(null)
-        assertEquals(DraggingPackage.Unknown, state.dragging)
-
-        state.onDragStarted(DragAndDropContent.PlainText("hello"))
-        assertNull(state.dragging)
-
-        state.onDragStarted(DragAndDropContent.FileList(listOf(Path("/downloads/ani.zip"))))
-        state.onDragEnded()
-        assertNull(state.dragging)
+        assertEquals(
+            Path("/downloads/Ani-4.0.0.DMG").inSystem,
+            state.findInstallablePackage(listOf(Path("/downloads/notes.txt"), Path("/downloads/Ani-4.0.0.DMG"), Path("/downloads/b.zip"))),
+        )
+        assertNull(state.findInstallablePackage(listOf(Path("/downloads/notes.txt"))))
+        assertNull(state.findInstallablePackage(emptyList()))
     }
 
     @Test
@@ -178,8 +169,6 @@ class DropInstallPackageStateTest {
             state.offer(DragAndDropContent.FileList(listOf(Path("/downloads/other.dmg")))),
         )
         assertNull(state.pendingPackage)
-        state.onDragStarted(DragAndDropContent.FileList(listOf(Path("/downloads/other.dmg"))))
-        assertNull(state.dragging)
 
         finishInstallation.complete(Unit)
         installation.await()

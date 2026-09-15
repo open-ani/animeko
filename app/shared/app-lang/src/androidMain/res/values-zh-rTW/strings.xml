@@ -80,10 +80,11 @@
     <string name="settings_debug_install_package_drop_title">鬆手以安裝</string>
     <string name="settings_debug_install_package_drop_unknown_name">安裝包</string>
     <string name="settings_debug_install_package_drop_meta">Ani 將退出，覆蓋目前 %1$s 後自動重啟</string>
-    <string name="settings_debug_install_package_drop_unsupported_title">不支援的檔案</string>
-    <string name="settings_debug_install_package_drop_unsupported_meta">僅支援 %1$s 安裝包，鬆手後不會有任何操作</string>
+    <string name="settings_debug_install_package_drop_supported_hint">%1$s 安裝包</string>
     <string name="settings_debug_install_package_drop_badge">開發者功能 · 拖曳安裝包以安裝</string>
     <string name="settings_debug_install_package_confirm_new_version">新版本</string>
+    <string name="window_drop_unsupported_title">不支援的檔案</string>
+    <string name="window_drop_unsupported_description">僅支援%1$s，鬆手後不會有任何操作</string>
     <string name="settings_help_qq">QQ</string>
     <string name="settings_help_telegram">Telegram</string>
     <string name="settings_help_github">GitHub</string>

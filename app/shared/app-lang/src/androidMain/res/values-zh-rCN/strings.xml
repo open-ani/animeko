@@ -97,10 +97,11 @@
     <string name="settings_debug_install_package_drop_title">松手以安装</string>
     <string name="settings_debug_install_package_drop_unknown_name">安装包</string>
     <string name="settings_debug_install_package_drop_meta">Ani 将退出，覆盖当前 %1$s 后自动重启</string>
-    <string name="settings_debug_install_package_drop_unsupported_title">不支持的文件</string>
-    <string name="settings_debug_install_package_drop_unsupported_meta">仅支持 %1$s 安装包，松手后不会有任何操作</string>
+    <string name="settings_debug_install_package_drop_supported_hint">%1$s 安装包</string>
     <string name="settings_debug_install_package_drop_badge">开发者功能 · 拖拽安装包以安装</string>
     <string name="settings_debug_install_package_confirm_new_version">新版本</string>
+    <string name="window_drop_unsupported_title">不支持的文件</string>
+    <string name="window_drop_unsupported_description">仅支持%1$s，松手后不会有任何操作</string>
     <string name="settings_help_qq">QQ</string>
     <string name="settings_help_telegram">Telegram</string>
     <string name="settings_help_github">GitHub</string>
