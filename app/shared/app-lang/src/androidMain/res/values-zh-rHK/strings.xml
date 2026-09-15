@@ -888,6 +888,9 @@
     <string name="cache_details_http_state_initializing">正在初始化</string>
     <string name="cache_details_http_state_merging">正在合併片段</string>
     <string name="cache_details_http_state_canceled">已取消</string>
+    <string name="cache_details_http_state_resolving">正在解析影片網址</string>
+    <string name="cache_details_last_error">最近錯誤</string>
+    <string name="cache_details_last_error_summary">第 %1$d/%2$d 次嘗試失敗：%3$s</string>
     <string name="cache_details_transfer">傳輸</string>
     <string name="cache_details_transfer_summary">%1$s / %2$s · ↓ %3$s · ↑ %4$s</string>
     <string name="cache_details_peers">節點</string>

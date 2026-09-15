@@ -144,7 +144,7 @@ private class PendingHttpMediaCache(
     }
 
     override val downloaderStatus: Flow<DownloaderStatus?> = delegate.flatMapLatest {
-        it?.downloaderStatus ?: flowOf(null)
+        it?.downloaderStatus ?: flowOf(DownloaderStatus.Resolving)
     }
 
     suspend fun attach(cache: MediaCache, resume: Boolean) {

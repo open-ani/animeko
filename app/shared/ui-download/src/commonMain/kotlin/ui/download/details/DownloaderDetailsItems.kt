@@ -37,6 +37,9 @@ import me.him188.ani.app.ui.lang.cache_details_error
 import me.him188.ani.app.ui.lang.cache_details_http_state_canceled
 import me.him188.ani.app.ui.lang.cache_details_http_state_initializing
 import me.him188.ani.app.ui.lang.cache_details_http_state_merging
+import me.him188.ani.app.ui.lang.cache_details_http_state_resolving
+import me.him188.ani.app.ui.lang.cache_details_last_error
+import me.him188.ani.app.ui.lang.cache_details_last_error_summary
 import me.him188.ani.app.ui.lang.cache_details_peers
 import me.him188.ani.app.ui.lang.cache_details_peers_none
 import me.him188.ani.app.ui.lang.cache_details_peers_summary
@@ -59,7 +62,7 @@ import me.him188.ani.utils.httpdownloader.DownloadStatus
 import org.jetbrains.compose.resources.stringResource
 
 /**
- * 下载器区块: 下载状态与引擎细节、传输统计, 以及 BT 的节点数或 HTTP 的分片进度与错误.
+ * 下载器区块: 下载状态与引擎细节、传输统计, 以及 BT 的节点数或 HTTP 的分片进度、重试中的最近失败与最终错误.
  */
 internal fun LazyGridScope.downloaderDetailsItems(details: DownloaderDetails, unknownText: String) {
     item {
@@ -121,6 +124,29 @@ internal fun LazyGridScope.downloaderDetailsItems(details: DownloaderDetails, un
                     )
                 }
             }
+            val lastFailure = status.lastSegmentFailure
+            if (lastFailure != null) {
+                item {
+                    ListItem(
+                        headlineContent = { Text(stringResource(Lang.cache_details_last_error)) },
+                        leadingContent = { Icon(Icons.Rounded.ErrorOutline, contentDescription = null) },
+                        supportingContent = {
+                            SelectionContainer {
+                                Text(
+                                    stringResource(
+                                        Lang.cache_details_last_error_summary,
+                                        lastFailure.attempt,
+                                        lastFailure.maxAttempts,
+                                        lastFailure.message,
+                                    ),
+                                    maxLines = 3,
+                                    overflow = TextOverflow.Ellipsis,
+                                )
+                            }
+                        },
+                    )
+                }
+            }
             val error = status.error
             if (error != null) {
                 item {
@@ -137,7 +163,7 @@ internal fun LazyGridScope.downloaderDetailsItems(details: DownloaderDetails, un
             }
         }
 
-        null -> Unit
+        DownloaderStatus.Resolving, null -> Unit
     }
 }
 
@@ -176,6 +202,7 @@ private fun downloadStateText(details: DownloaderDetails): String {
             DownloadStatus.DOWNLOADING, DownloadStatus.PAUSED, DownloadStatus.COMPLETED, DownloadStatus.FAILED -> null
         }
 
+        DownloaderStatus.Resolving -> Lang.cache_details_http_state_resolving
         null -> null
     }
     return if (detail == null) base else "$base · ${stringResource(detail)}"

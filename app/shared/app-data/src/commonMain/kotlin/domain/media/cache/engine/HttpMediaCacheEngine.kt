@@ -270,6 +270,7 @@ class HttpMediaCacheEngine(
                 error = it.error,
                 downloadedSegments = it.downloadedSegments,
                 totalSegments = it.totalSegments,
+                lastSegmentFailure = it.lastSegmentFailure,
             )
         }
 
@@ -406,11 +407,11 @@ class HttpMediaCacheEngine(
 
 internal fun DownloadStatus.toMediaCacheState(): MediaCacheState {
     return when (this) {
+        DownloadStatus.INITIALIZING,
         DownloadStatus.DOWNLOADING,
         DownloadStatus.MERGING,
             -> MediaCacheState.IN_PROGRESS
 
-        DownloadStatus.INITIALIZING,
         DownloadStatus.PAUSED,
             -> MediaCacheState.PAUSED
 

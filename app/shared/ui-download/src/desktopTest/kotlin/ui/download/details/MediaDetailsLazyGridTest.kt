@@ -19,6 +19,8 @@ import me.him188.ani.app.torrent.api.TorrentHandleState
 import me.him188.ani.app.ui.foundation.ProvideCompositionLocalsForPreview
 import me.him188.ani.app.ui.framework.runAniComposeUiTest
 import me.him188.ani.app.ui.lang.Lang
+import me.him188.ani.app.ui.lang.cache_details_http_state_resolving
+import me.him188.ani.app.ui.lang.cache_details_last_error_summary
 import me.him188.ani.app.ui.lang.cache_details_peers_none
 import me.him188.ani.app.ui.lang.cache_details_peers_summary
 import me.him188.ani.app.ui.lang.cache_details_segments
@@ -28,6 +30,7 @@ import me.him188.ani.app.ui.lang.cache_details_torrent_state_checking_files
 import me.him188.ani.utils.httpdownloader.DownloadError
 import me.him188.ani.utils.httpdownloader.DownloadErrorCode
 import me.him188.ani.utils.httpdownloader.DownloadStatus
+import me.him188.ani.utils.httpdownloader.SegmentFailure
 import me.him188.ani.utils.platform.annotations.TestOnly
 import org.jetbrains.compose.resources.getString
 
@@ -81,6 +84,54 @@ class MediaDetailsLazyGridTest {
         }
         onNodeWithText(runBlocking { getString(Lang.cache_details_state_downloading) }).assertExists()
         onNodeWithText(runBlocking { getString(Lang.cache_details_peers_summary, 5, 2) }).assertExists()
+    }
+
+    @Test
+    fun `resolving placeholder explains the pending web download`() = runAniComposeUiTest {
+        setContent {
+            ProvideCompositionLocalsForPreview {
+                MediaDetailsLazyGrid(
+                    TestMediaDetails,
+                    downloader = DownloaderDetails(
+                        cacheState = MediaCacheState.IN_PROGRESS,
+                        stats = MediaCache.SessionStats.Unspecified,
+                        status = DownloaderStatus.Resolving,
+                    ),
+                )
+            }
+        }
+        val downloading = runBlocking { getString(Lang.cache_details_state_downloading) }
+        val resolving = runBlocking { getString(Lang.cache_details_http_state_resolving) }
+        onNodeWithText("$downloading · $resolving").assertExists()
+    }
+
+    @Test
+    fun `http retry shows the last segment failure`() = runAniComposeUiTest {
+        setContent {
+            ProvideCompositionLocalsForPreview {
+                MediaDetailsLazyGrid(
+                    TestMediaDetails,
+                    downloader = DownloaderDetails(
+                        cacheState = MediaCacheState.IN_PROGRESS,
+                        stats = MediaCache.SessionStats.Unspecified,
+                        status = DownloaderStatus.Http(
+                            status = DownloadStatus.DOWNLOADING,
+                            error = null,
+                            downloadedSegments = 0,
+                            totalSegments = 8,
+                            lastSegmentFailure = SegmentFailure(
+                                segmentIndex = 0,
+                                attempt = 3,
+                                maxAttempts = 100,
+                                message = "HTTP 403 Forbidden",
+                                timestampMillis = 0,
+                            ),
+                        ),
+                    ),
+                )
+            }
+        }
+        onNodeWithText(runBlocking { getString(Lang.cache_details_last_error_summary, 3, 100, "HTTP 403 Forbidden") }).assertExists()
     }
 
     @Test

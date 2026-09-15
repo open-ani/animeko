@@ -9,6 +9,7 @@
 
 package me.him188.ani.app.domain.media.cache.engine
 
+import me.him188.ani.app.domain.media.cache.MediaCacheState
 import me.him188.ani.app.tools.Progress
 import me.him188.ani.app.tools.toProgress
 import me.him188.ani.utils.httpdownloader.DownloadId
@@ -70,6 +71,17 @@ class HttpMediaCacheEngineProgressTest {
         ).toHttpCacheProgress()
 
         assertEquals(1f.toProgress(), progress)
+    }
+
+    @Test
+    fun `initializing and merging count as in progress`() {
+        assertEquals(MediaCacheState.IN_PROGRESS, DownloadStatus.INITIALIZING.toMediaCacheState())
+        assertEquals(MediaCacheState.IN_PROGRESS, DownloadStatus.DOWNLOADING.toMediaCacheState())
+        assertEquals(MediaCacheState.IN_PROGRESS, DownloadStatus.MERGING.toMediaCacheState())
+        assertEquals(MediaCacheState.PAUSED, DownloadStatus.PAUSED.toMediaCacheState())
+        assertEquals(MediaCacheState.FAILED, DownloadStatus.FAILED.toMediaCacheState())
+        assertEquals(MediaCacheState.FAILED, DownloadStatus.CANCELED.toMediaCacheState())
+        assertEquals(MediaCacheState.COMPLETED, DownloadStatus.COMPLETED.toMediaCacheState())
     }
 
     private fun testProgress(

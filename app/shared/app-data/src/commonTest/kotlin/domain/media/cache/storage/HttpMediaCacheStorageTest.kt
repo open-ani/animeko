@@ -47,7 +47,6 @@ import kotlin.coroutines.CoroutineContext
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
-import kotlin.test.assertNull
 import kotlin.test.assertSame
 import kotlin.test.assertTrue
 
@@ -166,7 +165,7 @@ class HttpMediaCacheStorageTest {
         assertEquals(MediaCache.FileStats.Unspecified, pending.fileStats.first())
         assertEquals(MediaCache.SessionStats.Unspecified, pending.sessionStats.first())
         assertFalse(pending.canPlay.first())
-        assertNull(pending.downloaderStatus.first())
+        assertEquals(DownloaderStatus.Resolving, pending.downloaderStatus.first())
         assertEquals(emptyList(), metadataStore.data.first())
 
         createGate.complete(Unit)

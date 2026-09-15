@@ -875,6 +875,9 @@
     <string name="cache_details_http_state_initializing">Initializing</string>
     <string name="cache_details_http_state_merging">Merging segments</string>
     <string name="cache_details_http_state_canceled">Canceled</string>
+    <string name="cache_details_http_state_resolving">Resolving video URL</string>
+    <string name="cache_details_last_error">Last error</string>
+    <string name="cache_details_last_error_summary">Attempt %1$d of %2$d failed: %3$s</string>
     <string name="cache_details_transfer">Transfer</string>
     <string name="cache_details_transfer_summary">%1$s / %2$s · ↓ %3$s · ↑ %4$s</string>
     <string name="cache_details_peers">Peers</string>
