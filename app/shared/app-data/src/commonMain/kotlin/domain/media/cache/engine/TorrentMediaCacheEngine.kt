@@ -20,6 +20,7 @@ import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.collect
+import kotlinx.coroutines.flow.catch
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.filterNotNull
@@ -30,6 +31,7 @@ import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.flowOn
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.shareIn
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import kotlinx.io.IOException
@@ -37,6 +39,7 @@ import kotlinx.io.files.FileNotFoundException
 import kotlinx.io.files.Path
 import me.him188.ani.app.data.persistent.database.dao.TorrentCacheInfoDao
 import me.him188.ani.app.data.persistent.database.dao.TorrentCacheInfoEntity
+import me.him188.ani.app.domain.media.cache.DownloaderStatus
 import me.him188.ani.app.domain.media.cache.LocalFileMediaCache
 import me.him188.ani.app.domain.media.cache.MediaCache
 import me.him188.ani.app.domain.media.cache.MediaCacheState
@@ -75,6 +78,7 @@ import me.him188.ani.utils.logging.warn
 import me.him188.ani.utils.platform.currentTimeMillis
 import kotlin.coroutines.CoroutineContext
 import kotlin.time.Duration.Companion.minutes
+import kotlin.time.Duration.Companion.seconds
 
 
 //private const val EXTRA_TORRENT_CACHE_FILE =
@@ -104,6 +108,7 @@ class TorrentMediaCacheEngine(
         private val unspecifiedFileSizeFlow = flowOf(FileSize.Unspecified)
 
         const val LEGACY_MEDIA_CACHE_DIR = "torrent-caches"
+        private val DOWNLOADER_STATUS_INTERVAL = 1.seconds
     }
 
     val isServiceConnected = engineAccess.isServiceConnected
@@ -187,6 +192,40 @@ class TorrentMediaCacheEngine(
                     )
                 }
         }.flowOn(flowDispatcher)
+
+        override val downloaderStatus: Flow<DownloaderStatus?> =
+            combine(isServiceConnected, fileHandle.state) { connected, handleState -> connected to handleState }
+                .flatMapLatest { (connected, handleState) ->
+                    val startup = when {
+                        handleState == null -> DownloaderStatus.TorrentStartup.TIMED_OUT
+                        handleState.handle == null -> DownloaderStatus.TorrentStartup.NO_MATCHING_FILE
+                        else -> DownloaderStatus.TorrentStartup.STARTED
+                    }
+                    if (!connected || handleState?.handle == null) {
+                        return@flatMapLatest flowOf(DownloaderStatus.Torrent(connected, startup, null, 0, 0))
+                    }
+                    // 节点与任务状态只能主动查询, 有订阅者时每秒刷新.
+                    val session = handleState.session
+                    flow {
+                        while (true) {
+                            val peers = session.getPeers()
+                            emit(
+                                DownloaderStatus.Torrent(
+                                    serviceConnected = true,
+                                    startup = startup,
+                                    state = session.getState(),
+                                    connectedPeers = peers.size,
+                                    seeds = peers.count { it.progress >= 1f },
+                                ),
+                            )
+                            delay(DOWNLOADER_STATUS_INTERVAL)
+                        }
+                    }.catch { e ->
+                        // 任务在查询期间被关闭时停止刷新, 保留最后一次结果.
+                        if (e is CancellationException) throw e
+                        logger.warn(e) { "Failed to query downloader status of ${origin.mediaId}" }
+                    }
+                }.flowOn(flowDispatcher)
 
         override val state: Flow<MediaCacheState> =
             combine(desiredState, fileHandle.state, fileStats) { currentState, handleState, stats ->

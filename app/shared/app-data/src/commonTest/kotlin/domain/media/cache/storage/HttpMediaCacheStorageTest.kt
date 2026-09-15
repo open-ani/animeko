@@ -21,6 +21,7 @@ import kotlinx.coroutines.test.runCurrent
 import kotlinx.coroutines.test.runTest
 import me.him188.ani.app.data.persistent.MemoryDataStore
 import me.him188.ani.app.data.persistent.database.dao.HttpCacheDownloadStateDao
+import me.him188.ani.app.domain.media.cache.DownloaderStatus
 import me.him188.ani.app.domain.media.cache.MediaCache
 import me.him188.ani.app.domain.media.cache.MediaCacheState
 import me.him188.ani.app.domain.media.cache.TestMediaCache
@@ -164,6 +165,7 @@ class HttpMediaCacheStorageTest {
         assertEquals(MediaCache.FileStats.Unspecified, pending.fileStats.first())
         assertEquals(MediaCache.SessionStats.Unspecified, pending.sessionStats.first())
         assertFalse(pending.canPlay.first())
+        assertEquals(DownloaderStatus.Resolving, pending.downloaderStatus.first())
         assertEquals(emptyList(), metadataStore.data.first())
 
         createGate.complete(Unit)
@@ -173,6 +175,8 @@ class HttpMediaCacheStorageTest {
         val saved = metadataStore.data.first().single()
         assertEquals(media.mediaId, saved.origin.mediaId)
         assertEquals(metadata, saved.metadata)
+        // 引擎创建完成后, 占位记录转发引擎的诊断信息.
+        assertEquals(DelayedHttpCacheEngine.DOWNLOADER_STATUS, pending.downloaderStatus.first())
     }
 }
 
@@ -203,13 +207,24 @@ private class DelayedHttpCacheEngine(
         createCalls++
         createGate.await()
         check(!failCreation) { "creation failed" }
-        return TestMediaCache(
+        return object : TestMediaCache(
             media = CachedMedia(
                 origin = origin,
                 cacheMediaSourceId = "local-file-system",
                 download = ResourceLocation.LocalFile("/tmp/${origin.mediaId}.mp4"),
             ),
             metadata = metadata,
+        ) {
+            override val downloaderStatus: Flow<DownloaderStatus?> = flowOf(DOWNLOADER_STATUS)
+        }
+    }
+
+    companion object {
+        val DOWNLOADER_STATUS = DownloaderStatus.Http(
+            status = DownloadStatus.DOWNLOADING,
+            error = null,
+            downloadedSegments = 1,
+            totalSegments = 4,
         )
     }
 

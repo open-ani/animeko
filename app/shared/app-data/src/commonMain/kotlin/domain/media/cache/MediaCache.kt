@@ -66,6 +66,12 @@ interface MediaCache {
         get() = flowOf(true)
 
     /**
+     * 引擎的内部状态, 供详情页诊断. 不提供诊断信息的实现为 `null`.
+     */
+    val downloaderStatus: Flow<DownloaderStatus?>
+        get() = flowOf(null)
+
+    /**
      * Returns the [CachedMedia] instance for this cache.
      * The instance is cached so this function will immediately return the cached instance after the first successful call.
      */

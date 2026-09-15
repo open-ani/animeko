@@ -33,6 +33,7 @@ import kotlinx.coroutines.withTimeout
 import me.him188.ani.app.torrent.anitorrent.DisposableTaskQueue
 import me.him188.ani.app.torrent.api.TorrentSession
 import me.him188.ani.app.torrent.api.files.AbstractTorrentFileEntry
+import me.him188.ani.app.torrent.api.TorrentHandleState
 import me.him188.ani.app.torrent.api.files.FilePriority
 import me.him188.ani.app.torrent.api.files.TorrentFileEntry
 import me.him188.ani.app.torrent.api.files.TorrentFileHandle
@@ -505,6 +506,8 @@ class AnitorrentDownloadSession(
     override suspend fun getFiles(): List<TorrentFileEntry> = this.actualTorrentInfo.await().entries
 
     override fun getPeers() = handle.getPeers()
+
+    override fun getState(): TorrentHandleState? = handle.getState()
 
     @Volatile
     private var closed = false
