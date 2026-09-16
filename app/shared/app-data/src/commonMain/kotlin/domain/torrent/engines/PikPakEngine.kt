@@ -14,6 +14,7 @@ import kotlinx.coroutines.cancel
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.job
 import kotlinx.coroutines.sync.Mutex
@@ -58,6 +59,10 @@ class PikPakEngine(
 
     override val isSupported: Boolean
         get() = config.value.enabled && credentials.value != null
+
+    val availability: StateFlow<Boolean> = combine(config, credentials) { cfg, creds ->
+        cfg.enabled && creds != null
+    }.stateIn(scope, SharingStarted.Eagerly, isSupported)
 
     @OptIn(UnsafeScopedHttpClientApi::class)
     private val httpClient = client.borrowForever().client

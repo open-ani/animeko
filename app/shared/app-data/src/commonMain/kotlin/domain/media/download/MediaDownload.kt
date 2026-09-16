@@ -65,8 +65,6 @@ data class DownloadSnapshot(
      */
     val downloadSpeed: FileSize,
     val canPlay: Boolean,
-    /** 见 [MediaCache.followsPlaybackOnly]. */
-    val followsPlaybackOnly: Boolean,
     val mediaSourceId: String,
     val engineKey: MediaCacheEngineKey,
     /**
@@ -117,9 +115,8 @@ class MediaDownload internal constructor(
                     transfer,
                     cache.state,
                     cache.canPlay,
-                    cache.followsPlaybackOnly,
                     queuedOperation,
-                ) { (stats, speed), state, canPlay, followsPlayback, operation ->
+                ) { (stats, speed), state, canPlay, operation ->
                     DownloadSnapshot(
                         id = id,
                         metadata = metadata,
@@ -128,7 +125,6 @@ class MediaDownload internal constructor(
                         totalSize = stats.totalSize,
                         downloadSpeed = speed.bytes,
                         canPlay = canPlay,
-                        followsPlaybackOnly = followsPlayback,
                         mediaSourceId = origin.mediaSourceId,
                         engineKey = engineKey,
                         operation = operation,
@@ -148,8 +144,6 @@ class MediaDownload internal constructor(
                 totalSize = FileSize.Unspecified,
                 downloadSpeed = FileSize.Unspecified,
                 canPlay = false,
-                // 出错的记录一律列出来: 这里读不到它本来的取值, 而藏起一个失败的东西比多显示一条更糟.
-                followsPlaybackOnly = false,
                 mediaSourceId = origin.mediaSourceId,
                 engineKey = engineKey,
                 operation = queuedOperation.value,

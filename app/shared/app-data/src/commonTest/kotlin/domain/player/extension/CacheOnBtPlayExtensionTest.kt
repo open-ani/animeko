@@ -405,6 +405,38 @@ class CacheOnBtPlayExtensionTest : AbstractPlayerExtensionTest() {
     }
 
     @Test
+    fun allUnstartedAutoCachesAreDeletedAfterSwitchingSources() = runTest {
+        val results = CompletableDeferred<List<Media>>()
+        val context = createCase(
+            resolver = ConfigurableResolver { FakeTorrentBackedMediaDataProvider() },
+        ) { _, builder ->
+            builder.mediaSources.add(
+                createTestMediaSourceInstance(
+                    TestHttpMediaSource("bt", kind = MediaSourceKind.BitTorrent, fetch = {
+                        SinglePagePagedSource { results.await().map { MediaMatch(it, MatchKind.EXACT) }.asFlow() }
+                    }),
+                ),
+            )
+        }
+        val (scope, suite, state, storage) = context
+        startFetcher(state, scope)
+        val first = suite.mediaSelectorTestBuilder.createMedia("bt", kind = MediaSourceKind.BitTorrent)
+        val second = first.copy(mediaId = "bt.2", download = ResourceLocation.MagnetLink("magnet:?xt=urn:btih:2"))
+        results.complete(listOf(first, second))
+        val selector = state.mediaSelectorFlow.filterNotNull().first()
+        selector.select(first)
+        advanceUntilIdle()
+        selector.select(second)
+        advanceUntilIdle()
+        assertEquals(2, storage.listFlow.value.size)
+
+        state.switchEpisode(1000)
+        advanceUntilIdle()
+        assertEquals(0, storage.listFlow.value.size)
+        scope.cancel()
+    }
+
+    @Test
     fun keepCacheWhenProgress() = runTest {
         val bt = CompletableDeferred<List<Media>>()
         val web = CompletableDeferred<List<Media>>()
@@ -581,12 +613,15 @@ class CacheOnBtPlayExtensionTest : AbstractPlayerExtensionTest() {
         scope.cancel()
     }
 
+    /**
+     * 云盘引擎按需取流, 记录不会取任何数据; 留下它只会让它以「本地缓存」的身份赢下选源.
+     */
     @Test
-    fun autoCacheOnPikPak() = runTest {
+    fun noAutoCacheOnPikPak() = runTest {
         val (scope, storage) = runPikPakPlayback()
 
-        assertEquals(1, storage.cacheCalls)
-        assertEquals(storage.lastMetadata.autoCached, true)
+        assertEquals(0, storage.cacheCalls)
+        assertEquals(0, storage.listFlow.value.size)
         scope.cancel()
     }
 

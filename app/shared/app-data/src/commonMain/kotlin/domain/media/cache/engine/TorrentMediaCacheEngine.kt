@@ -113,8 +113,6 @@ class TorrentMediaCacheEngine(
      * 同一 media 下还剩哪些记录, 否则会连带删掉其他集的 torrent_cache 行和文件.
      */
     internal val metadataStore: DataStore<List<MediaCacheSave>>,
-    // PikPak auto-cache records remember a playable selection without downloading the whole file.
-    private val fullDownloadForAutoCaches: Boolean = true,
     private val onDownloadStarted: suspend (session: TorrentSession) -> Unit = {},
 ) : MediaCacheEngine, AutoCloseable {
     companion object {
@@ -246,11 +244,6 @@ class TorrentMediaCacheEngine(
                 }
         }.flowOn(flowDispatcher)
 
-        private val downloadsFully: Flow<Boolean> =
-            metadataFlow.map { !it.autoCached || fullDownloadForAutoCaches }
-
-        override val followsPlaybackOnly: Flow<Boolean> = downloadsFully.map { !it }
-
         override val downloaderStatus: Flow<DownloaderStatus?> = if (engineKey.isCloud) {
             fileHandle.entry.flatMapLatest { entry ->
                 entry?.error ?: flowOf(null)
@@ -293,11 +286,11 @@ class TorrentMediaCacheEngine(
         }
 
         override val state: Flow<MediaCacheState> =
-            combine(desiredState, fileHandle.state, fileStats, downloadsFully) { currentState, handleState, stats, full ->
+            combine(desiredState, fileHandle.state, fileStats) { currentState, handleState, stats ->
                 when {
                     handleState == null -> MediaCacheState.FAILED
                     stats.isDownloadFinished -> MediaCacheState.COMPLETED
-                    currentState == MediaCacheState.PAUSED || !full -> MediaCacheState.PAUSED
+                    currentState == MediaCacheState.PAUSED -> MediaCacheState.PAUSED
                     else -> MediaCacheState.IN_PROGRESS
                 }
             }.flowOn(flowDispatcher)
@@ -316,10 +309,6 @@ class TorrentMediaCacheEngine(
         override suspend fun resume() {
             if (isDeleted.value) return
             desiredState.value = MediaCacheState.IN_PROGRESS
-            if (!downloadsFully.first()) {
-                logger.info { "Cache ${origin.mediaId} follows playback, not raising file priority." }
-                return
-            }
             val file = fileHandle.handle.first()
             logger.info { "Resuming file: $file" }
             file?.resume(FilePriority.NORMAL)

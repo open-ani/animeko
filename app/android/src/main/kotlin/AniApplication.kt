@@ -38,6 +38,7 @@ import me.him188.ani.app.data.repository.user.UserRepository
 import me.him188.ani.app.domain.media.cache.engine.MediaCacheEngineKey
 import me.him188.ani.app.domain.media.cache.storage.MediaSaveDirProvider
 import me.him188.ani.app.domain.torrent.service.AniTorrentService
+import me.him188.ani.app.domain.torrent.service.PikPakCacheServiceController
 import me.him188.ani.app.domain.torrent.service.TorrentServiceConnectionManager
 import me.him188.ani.app.platform.AndroidLoggingConfigurator
 import me.him188.ani.app.platform.AppStartupTasks
@@ -191,6 +192,15 @@ class AniApplication : Application() {
         ) { entities, ids -> entities.filter { it.mediaId in ids } }
         mediaCacheBaseSaveDir.value = File(koin.get<MediaSaveDirProvider>().saveDir)
         connectionManager.launchCheckLoop()
+
+        // The BT service above runs in :torrent_service and does nothing for this process, so PikPak
+        // caches get their own foreground service here.
+        PikPakCacheServiceController(
+            context = this,
+            downloadManager = koin.get(),
+            processLifecycle = ProcessLifecycleOwner.get().lifecycle,
+            scope = scope,
+        ).start()
 
         runBlocking { analyticsInitializer.join() }
         ExternalContentProviderFactoryImpl.initializeApp(this)

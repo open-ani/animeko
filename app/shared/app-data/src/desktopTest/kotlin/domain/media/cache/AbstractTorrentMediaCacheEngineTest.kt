@@ -95,7 +95,6 @@ abstract class AbstractTorrentMediaCacheEngineTest {
 
     protected fun TestScope.createEngine(
         engine: TorrentEngine = createTestAnitorrentEngine(coroutineContext),
-        fullDownloadForAutoCaches: Boolean = true,
         onDownloadStarted: suspend (session: AnitorrentDownloadSession) -> Unit = {},
     ): TorrentMediaCacheEngine {
         this.coroutineContext.job.invokeOnCompletion {
@@ -112,7 +111,6 @@ abstract class AbstractTorrentMediaCacheEngineTest {
                 override val saveDir: String = dir.absolutePath
             },
             metadataStore = metadataStore,
-            fullDownloadForAutoCaches = fullDownloadForAutoCaches,
             onDownloadStarted = { onDownloadStarted(it as AnitorrentDownloadSession) },
         ).also { cacheEngine = it }
     }

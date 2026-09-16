@@ -12,6 +12,8 @@ package me.him188.ani.app.domain.player.extension
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.flow.filterNotNull
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.NonCancellable
+import kotlinx.coroutines.withContext
 import me.him188.ani.app.domain.episode.EpisodeSession
 import me.him188.ani.app.domain.media.cache.DeleteCacheUseCase
 import me.him188.ani.app.domain.media.cache.MediaCache
@@ -41,7 +43,7 @@ class CacheOnBtPlayExtension(
     private val downloadManager: MediaDownloadManager by koin.inject()
     private val deleteCacheUseCase: DeleteCacheUseCase by koin.inject()
 
-    private var currentCache: MediaCache? = null
+    private val autoCaches = mutableSetOf<MediaCache>()
 
     override fun onStart(episodeSession: EpisodeSession, backgroundTaskScope: ExtensionBackgroundTaskScope) {
         backgroundTaskScope.launch("CacheOnBtPlay") {
@@ -74,12 +76,19 @@ class CacheOnBtPlayExtension(
                             logger.warn { "No cache storage supports $media, skipping auto cache." }
                             return@collectLatest
                         }
+                        if (storage.engine.engineKey.isCloud) {
+                            // A cloud record would fetch nothing: the stream is served on demand. It would
+                            // still count as a local cache in media selection and win over a real completed
+                            // download of the same episode from another torrent.
+                            logger.info { "Playback runs on ${storage.engine.engineKey}, no auto cache needed." }
+                            return@collectLatest
+                        }
                         logger.info { "Auto cache BitTorrent media on play with ${storage.engine.engineKey}: $media" }
 
                         val metadata = MediaCacheMetadata(request, autoCached = true)
                         val cache = downloadManager.createDownload(media, metadata, episodeMetadata, storage)
                         if (cache.metadata.autoCached) {
-                            currentCache = cache
+                            autoCaches += cache
                         }
                     }
                 }
@@ -88,29 +97,24 @@ class CacheOnBtPlayExtension(
     }
 
     override suspend fun onBeforeSwitchEpisode(newEpisodeId: Int) {
-        deleteCurrentAutoSelectedIfNotStarted()
+        deleteUnstartedAutoCaches()
     }
 
     override suspend fun onClose() {
-        deleteCurrentAutoSelectedIfNotStarted()
+        deleteUnstartedAutoCaches()
     }
 
     /**
      * 删除尚未开始传输的自动下载.
-     *
-     * 云盘引擎的自动记录不主动下载, 进度恒为零, 留下来只会堆在下载页. 删掉它之后下次下载要重新走一次
-     * canServe 探测选引擎, 而探测对同一个磁力链是幂等的, 只有 PikPak 自身不可用时才会给出别的答案.
      */
-    private suspend fun deleteCurrentAutoSelectedIfNotStarted() {
-        val cache = currentCache ?: return
-        currentCache = null
-        // 用户在播放期间点了下载时, TorrentMediaCacheStorage.cache 会复用这条记录并清掉 autoCached,
-        // 而这里仍然指向它. 云盘引擎的记录此时一个字节都没有, 只看进度会把用户刚添加的下载删掉.
-        if (!cache.metadata.autoCached) return
-        val progress = cache.fileStats.first().downloadedBytes.inBytes
-        if (progress == 0L) {
-            logger.info { "Auto-cached media ${cache.metadata} hasn't started downloading, deleting it." }
-            deleteCacheUseCase(cache)
+    private suspend fun deleteUnstartedAutoCaches() = withContext(NonCancellable) {
+        // 同集切源产生的记录在切集或退出时统一清理; 用户转正的下载和已有进度的记录保留.
+        for (cache in autoCaches.toList()) {
+            if (cache.metadata.autoCached && cache.fileStats.first().downloadedBytes.inBytes == 0L) {
+                logger.info { "Auto-cached media ${cache.metadata} hasn't started downloading, deleting it." }
+                deleteCacheUseCase(cache)
+            }
+            autoCaches -= cache
         }
     }
 

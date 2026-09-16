@@ -84,9 +84,7 @@ class MediaDownloadManager(
      */
     fun snapshots(subjectId: Int? = null): Flow<List<DownloadSnapshot>> {
         val source = if (subjectId == null) loadedDownloads else downloadsForSubject(subjectId)
-        // 用户显式添加下载会清掉 autoCached, 那条记录随之出现在这里.
         return source.flatMapLatest { it.combineSnapshots() }
-            .map { list -> list.filterNot { it.followsPlaybackOnly } }
             .distinctUntilChanged()
     }
 
@@ -110,16 +108,9 @@ class MediaDownloadManager(
                 if (matching.isEmpty()) {
                     flowOf(EpisodeCacheStatus.NotCached)
                 } else {
-                    // 跟随播放的记录停在 PAUSED 且进度为零, 计入的话这一集会显示成「缓存中 0%」,
-                    // 而它根本没有在取数据.
                     combine(
-                        matching.map { download ->
-                            combine(
-                                download.cache.episodeProgress(),
-                                download.cache.followsPlaybackOnly,
-                            ) { progress, followsPlayback -> progress.takeUnless { followsPlayback } }
-                        },
-                    ) { progresses -> progresses.filterNotNull().toTypedArray().toEpisodeCacheStatus() }
+                        matching.map { download -> download.cache.episodeProgress() },
+                    ) { progresses -> progresses.toEpisodeCacheStatus() }
                 }
             }
             .distinctUntilChanged()

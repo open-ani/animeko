@@ -16,6 +16,9 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.buffer
+import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.produceIn
 import kotlinx.coroutines.launch
@@ -44,6 +47,7 @@ class TorrentMediaCacheStorage(
     private val shareRatioLimitFlow: Flow<Float>,
     private val displayName: String,
     parentCoroutineContext: CoroutineContext = EmptyCoroutineContext,
+    engineAvailability: Flow<Boolean> = flowOf(true),
 ) : AbstractDataStoreMediaCacheStorage(
     mediaSourceId, store, torrentEngine, displayName, parentCoroutineContext,
 ) {
@@ -68,18 +72,24 @@ class TorrentMediaCacheStorage(
         }
 
         scope.launch(start = CoroutineStart.UNDISPATCHED) {
-            val serviceConnected = torrentEngine.isServiceConnected.buffer(Channel.RENDEZVOUS).produceIn(this)
+            var previousConnection: Boolean? = null
+            val serviceConnected = combine(torrentEngine.isServiceConnected, engineAvailability) { connected, available ->
+                connected to available
+            }.distinctUntilChanged().buffer(Channel.RENDEZVOUS).produceIn(this)
 
             while (true) {
                 select<Unit> {
                     // 如果在 APP 启动时 serviceConnected 状态变了, 忽略处理
                     serviceConnected.onReceive {
+                        val connectionUnchanged = previousConnection == it.first
+                        previousConnection = it.first
+                        if (!it.second) return@onReceive
                         if (!startupRestored.isCompleted) {
                             logger.warn { "Startup torrent cache restoration is not completed, skip restore on service connected." }
                             return@onReceive
                         }
                         logger.debug { "Refreshing torrent caches on service connection changed, connected: $it." }
-                        refreshCache()
+                        if (connectionUnchanged) restoreMissingCaches() else refreshCache()
                     }
 
                     requestStartupRestore.onReceive {
@@ -95,6 +105,16 @@ class TorrentMediaCacheStorage(
 
     override suspend fun restorePersistedCaches() {
         requestStartupRestore.send(Unit)
+    }
+
+    private suspend fun restoreMissingCaches() = lock.withLock {
+        // 可用性恢复只补回缺失记录, 已有下载继续使用其文件句柄和统计订阅.
+        for (save in metadataFlow.first()) {
+            if (listFlow.value.any { isSameMediaAndEpisode(it, save) }) continue
+            restoreFile(save.origin, save.metadata) { cache ->
+                listFlow.value = listFlow.value + cache
+            }
+        }
     }
 
     override suspend fun refreshCache(): List<MediaCache> {
@@ -173,8 +193,8 @@ class TorrentMediaCacheStorage(
             cache
         }.also {
             when {
-                // 普通 resume() 见记录仍标着 autoCached 会直接返回, 用户会看到添加成功却什么都没发生.
-                // 只有显式添加才转正, 启动恢复一类的 resume 不能把跟随播放的记录变成完整下载.
+                // 显式添加必须清掉 autoCached, 否则播放结束时这条记录会被当作自动记录一并删除,
+                // 用户看到添加成功而下载消失. 启动恢复一类的 resume 不走这条路.
                 promoting -> it.resumeByUser()
                 resume -> it.resume()
             }
