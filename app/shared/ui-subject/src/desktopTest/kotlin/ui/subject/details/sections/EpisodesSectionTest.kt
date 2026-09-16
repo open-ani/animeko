@@ -24,7 +24,8 @@ import androidx.compose.ui.unit.dp
 import me.him188.ani.app.ui.foundation.ProvideCompositionLocalsForPreview
 import me.him188.ani.app.ui.framework.runAniComposeUiTest
 import me.him188.ani.app.ui.subject.episode.list.EPISODE_STILL_TAG
-import me.him188.ani.app.ui.subject.episode.list.EPISODE_WATCHED_TOGGLE_TAG
+import me.him188.ani.app.ui.subject.episode.list.EPISODE_PROGRESS_TAG
+import me.him188.ani.app.ui.subject.episode.list.EPISODE_WATCHED_BADGE_TAG
 import me.him188.ani.app.ui.subject.episode.list.EpisodeListItem
 import me.him188.ani.app.ui.subject.episode.list.TestEpisodeStillUrl
 import me.him188.ani.app.ui.subject.episode.list.createTestEpisodeListItem
@@ -140,14 +141,14 @@ class EpisodesSectionTest {
     }
 
     @Test
-    fun `watched toggle click toggles without triggering the cell click`() = runAniComposeUiTest {
+    fun `done cell shows the watched badge and badge click toggles without cell click`() = runAniComposeUiTest {
         var clickCount = 0
         var toggleCount = 0
 
         setContent {
             ProvideCompositionLocalsForPreview {
                 EpisodeGridCell(
-                    item = stillItem(imageMedium = TestEpisodeStillUrl),
+                    item = stillItem(imageMedium = TestEpisodeStillUrl, collectionType = UnifiedCollectionType.DONE, playProgress = 0.5f),
                     isPlaying = false,
                     onClick = { clickCount++ },
                     onLongClick = { toggleCount++ },
@@ -157,7 +158,8 @@ class EpisodesSectionTest {
             }
         }
 
-        onNodeWithTag(EPISODE_WATCHED_TOGGLE_TAG, useUnmergedTree = true).assertIsDisplayed().performClick()
+        onNodeWithTag(EPISODE_PROGRESS_TAG, useUnmergedTree = true).assertDoesNotExist()
+        onNodeWithTag(EPISODE_WATCHED_BADGE_TAG, useUnmergedTree = true).assertIsDisplayed().performClick()
         runOnIdle {
             assertEquals(0, clickCount)
             assertEquals(1, toggleCount)
@@ -165,23 +167,41 @@ class EpisodesSectionTest {
     }
 
     @Test
-    fun `watched toggle is shown on cells without stills`() = runAniComposeUiTest {
-        var toggleCount = 0
+    fun `unfinished cell with play record shows progress bar without badge`() = runAniComposeUiTest {
         setContent {
             ProvideCompositionLocalsForPreview {
                 EpisodeGridCell(
-                    item = stillItem(imageMedium = null),
+                    item = stillItem(imageMedium = null, playProgress = 0.4f),
                     isPlaying = false,
                     onClick = {},
-                    onLongClick = { toggleCount++ },
+                    onLongClick = {},
                     modifier = Modifier.width(128.dp),
                     height = 72.dp,
                 )
             }
         }
 
-        onNodeWithTag(EPISODE_WATCHED_TOGGLE_TAG, useUnmergedTree = true).assertIsDisplayed().performClick()
-        runOnIdle { assertEquals(1, toggleCount) }
+        onNodeWithTag(EPISODE_PROGRESS_TAG, useUnmergedTree = true).assertIsDisplayed()
+        onNodeWithTag(EPISODE_WATCHED_BADGE_TAG, useUnmergedTree = true).assertDoesNotExist()
+    }
+
+    @Test
+    fun `never played cell shows neither badge nor progress bar`() = runAniComposeUiTest {
+        setContent {
+            ProvideCompositionLocalsForPreview {
+                EpisodeGridCell(
+                    item = stillItem(imageMedium = TestEpisodeStillUrl),
+                    isPlaying = false,
+                    onClick = {},
+                    onLongClick = {},
+                    modifier = Modifier.width(128.dp),
+                    height = 72.dp,
+                )
+            }
+        }
+
+        onNodeWithTag(EPISODE_PROGRESS_TAG, useUnmergedTree = true).assertDoesNotExist()
+        onNodeWithTag(EPISODE_WATCHED_BADGE_TAG, useUnmergedTree = true).assertDoesNotExist()
     }
 
     @Test
@@ -209,13 +229,16 @@ class EpisodesSectionTest {
         imageMedium: String?,
         episodeId: Int = 13,
         sort: Int = 13,
+        collectionType: UnifiedCollectionType = UnifiedCollectionType.WISH,
+        playProgress: Float? = null,
     ): EpisodeListItem = createTestEpisodeListItem(
         sort = EpisodeSort(sort),
         episodeId = episodeId,
         nameCn = "第三话",
-        collectionType = UnifiedCollectionType.WISH,
+        collectionType = collectionType,
         isBroadcast = true,
         imageMedium = imageMedium,
+        playProgress = playProgress,
     )
 }
 

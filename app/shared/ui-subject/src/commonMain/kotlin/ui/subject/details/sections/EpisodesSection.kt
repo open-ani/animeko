@@ -61,8 +61,10 @@ import me.him188.ani.app.ui.subject.details.components.EpisodePaging
 import me.him188.ani.app.ui.subject.episode.list.EpisodeCellLabel
 import me.him188.ani.app.ui.subject.episode.list.EpisodeListItem
 import me.him188.ani.app.ui.subject.episode.list.EpisodeStillBackground
+import me.him188.ani.app.ui.subject.episode.list.EpisodePlayProgressBar
 import me.him188.ani.app.ui.subject.episode.list.EpisodeStillDefaults
-import me.him188.ani.app.ui.subject.episode.list.EpisodeWatchedToggle
+import me.him188.ani.app.ui.subject.episode.list.EpisodeWatchedBadge
+import me.him188.ani.datasources.api.topic.UnifiedCollectionType
 import org.jetbrains.compose.resources.stringResource
 
 /**
@@ -74,10 +76,14 @@ import org.jetbrains.compose.resources.stringResource
  * - 集名: 已看→onSurfaceVariant@60%, 未看→onSurfaceVariant
  *
  * 布局: 集号与集名并排成一行 ([EpisodeCellLabel]) 贴在单元格左下角, 上方留给剧照画面; 无图时同样的位置, 混合覆盖的一排单元格文字对齐.
- * 右上角是已看状态图标 ([EpisodeWatchedToggle]), 点击它与长按单元格一样触发 [onLongClick] 切换已看.
+ *
+ * 观看状态:
+ * - 已看完 (DONE): 右上角「已看完」角标 ([EpisodeWatchedBadge]), 点击它与长按单元格一样触发 [onLongClick] 取消已看
+ * - 未看完但有播放记录 ([EpisodeListItem.playProgress] 非空): 底边显示上次播放进度 ([EpisodePlayProgressBar])
+ * - 从未播放: 不显示角标与进度条
  *
  * 有剧照 ([EpisodeListItem.imageMedium] 非空且 [showImage]) 时剧照铺满单元格作背景 ([EpisodeStillBackground]),
- * 文字改用深色配色前景 ([EpisodeStillDefaults], 已看→70%, 集名→85%), 播放中用 primary 描边与蒙层表示; 单元格尺寸与无图时一致.
+ * 剧照亮度不随观看状态变化, 文字改用深色配色前景 ([EpisodeStillDefaults], 集名→85%), 播放中用 primary 描边与蒙层表示; 单元格尺寸与无图时一致.
  */
 @Composable
 fun EpisodeGridCell(
@@ -90,8 +96,12 @@ fun EpisodeGridCell(
     showImage: Boolean = true,
 ) {
     val isWatched = item.isDoneOrDropped
+    val isDone = item.collectionType == UnifiedCollectionType.DONE
+    val playProgress = item.playProgress
     val interactionSource = remember { MutableInteractionSource() }
     val still = item.imageMedium?.takeIf { showImage }
+    // 播放中且有剧照时的描边宽度, 进度条按它内缩
+    val stillBorder = if (still != null && isPlaying) 2.dp else 0.dp
     val containerColor = when {
         isPlaying -> MaterialTheme.colorScheme.primaryContainer
         isWatched -> MaterialTheme.colorScheme.surfaceContainerLow
@@ -99,13 +109,13 @@ fun EpisodeGridCell(
     }
     val dimmed = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f)
     val sortColor = when {
-        still != null -> if (isWatched) EpisodeStillDefaults.watchedContentColor else EpisodeStillDefaults.contentColor
+        still != null -> EpisodeStillDefaults.contentColor
         isPlaying -> MaterialTheme.colorScheme.primary
         isWatched -> dimmed
         else -> LocalContentColor.current
     }
     val nameColor = when {
-        still != null -> if (isWatched) EpisodeStillDefaults.watchedContentColor else EpisodeStillDefaults.secondaryContentColor
+        still != null -> EpisodeStillDefaults.secondaryContentColor
         isWatched -> dimmed
         else -> MaterialTheme.colorScheme.onSurfaceVariant
     }
@@ -126,13 +136,12 @@ fun EpisodeGridCell(
             ),
         shape = RoundedCornerShape(12.dp),
         color = containerColor,
-        border = if (still != null && isPlaying) BorderStroke(2.dp, MaterialTheme.colorScheme.primary) else null,
+        border = if (still != null && isPlaying) BorderStroke(stillBorder, MaterialTheme.colorScheme.primary) else null,
     ) {
         Box {
             if (still != null) {
                 EpisodeStillBackground(
                     imageUrl = still,
-                    dimmed = isWatched,
                     highlighted = isPlaying,
                     modifier = Modifier.matchParentSize(),
                 )
@@ -164,12 +173,22 @@ fun EpisodeGridCell(
                     null
                 },
             )
-            EpisodeWatchedToggle(
-                isWatched = isWatched,
-                onToggle = onLongClick,
-                tint = nameColor,
-                modifier = Modifier.align(Alignment.TopEnd).padding(4.dp),
-            )
+            if (isDone) {
+                EpisodeWatchedBadge(
+                    onStill = still != null,
+                    onClick = onLongClick,
+                    modifier = Modifier.align(Alignment.TopEnd).padding(6.dp),
+                )
+            } else if (playProgress != null) {
+                EpisodePlayProgressBar(
+                    progress = playProgress,
+                    onStill = still != null,
+                    // 播放中的有图卡片有 primary 描边, 进度条缩到描边内侧, 不被盖住
+                    modifier = Modifier
+                        .align(Alignment.BottomCenter)
+                        .padding(start = stillBorder, end = stillBorder, bottom = stillBorder),
+                )
+            }
         }
     }
 }

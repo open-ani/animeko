@@ -79,10 +79,13 @@ class EpisodeCarouselState(
     internal val gridState: LazyGridState = LazyGridState(),
     backgroundScope: CoroutineScope,
     groupsState: State<List<PaginatedGroup<EpisodeCollectionInfo>>>? = null,
+    /** 上次播放进度 `0..1`, 没有播放记录时为 `null`. 见 [playProgress]. */
+    playProgress: (EpisodeCollectionInfo) -> Float? = { null },
 ) {
     val episodes by episodes
     val playingEpisode by playingEpisode
     val groups by (groupsState ?: mutableStateOf(emptyList()))
+    private val playProgressOf: (EpisodeCollectionInfo) -> Float? = playProgress
 
     val size get() = episodes.size
 
@@ -110,6 +113,10 @@ class EpisodeCarouselState(
     internal fun cacheStatus(episode: EpisodeCollectionInfo): EpisodeCacheStatus {
         return this.cacheStatus.invoke(episode)
     }
+
+    /** 上次播放进度 `0..1`, 没有播放记录时为 `null`; 未看完且非空时卡片底边显示进度条. */
+    @Stable
+    internal fun playProgress(episode: EpisodeCollectionInfo): Float? = playProgressOf(episode)
 
     private val setCollectionTypeTasker = MonoTasker(backgroundScope)
     val isSettingCollectionType get() = setCollectionTypeTasker.isRunning

@@ -10,16 +10,15 @@
 package me.him188.ani.app.ui.subject.episode.list
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.selection.toggleable
-import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.outlined.CheckCircle
-import androidx.compose.material.icons.rounded.CheckCircle
-import androidx.compose.material3.Icon
+import androidx.compose.foundation.layout.fillMaxHeight
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -39,8 +38,8 @@ import me.him188.ani.app.ui.foundation.AsyncImage
 import me.him188.ani.app.ui.foundation.theme.LocalDarkOnSurface
 import me.him188.ani.app.ui.foundation.theme.appColorScheme
 import me.him188.ani.app.ui.lang.Lang
-import me.him188.ani.app.ui.lang.subject_episode_mark_watched
 import me.him188.ani.app.ui.lang.subject_episode_unwatch
+import me.him188.ani.app.ui.lang.subject_episode_watched_badge
 import org.jetbrains.compose.resources.stringResource
 
 /**
@@ -57,18 +56,16 @@ private val episodeStillBrush = Brush.verticalGradient(
 
 /**
  * 剧集卡片的剧照背景: 剧照裁切铺满, 上面盖一层与首页轮播相同的遮罩 ([episodeStillBrush]),
- * 画面上半部分不受影响, 只把底部一行文字所在的区域压暗.
+ * 画面上半部分不受影响, 只把底部一行文字所在的区域压暗. 剧照亮度不随观看状态变化, 已看由角标表示.
  *
  * 由各处剧集卡片 (详情页网格、播放页横向卡片与选集面板) 共用, 放在卡片 `Box` 的最底层并 `matchParentSize()`.
  * 图片尚未加载或加载失败时只剩遮罩盖在卡片底色上, 文字依然可读, 卡片尺寸与外观保持稳定.
  *
- * @param dimmed 已看 (DONE/DROPPED) 时压暗剧照, 对应无图卡片的 60% 文字变暗规则.
  * @param highlighted 播放中时叠加一层 primary 蒙层.
  */
 @Composable
 fun EpisodeStillBackground(
     imageUrl: String,
-    dimmed: Boolean,
     highlighted: Boolean,
     modifier: Modifier = Modifier,
 ) {
@@ -78,7 +75,6 @@ fun EpisodeStillBackground(
             contentDescription = null,
             Modifier.matchParentSize(),
             contentScale = ContentScale.Crop,
-            alpha = if (dimmed) 0.6f else 1f,
         )
         if (highlighted) {
             Box(Modifier.matchParentSize().background(MaterialTheme.colorScheme.primary.copy(alpha = 0.2f)))
@@ -126,36 +122,64 @@ fun EpisodeCellLabel(
 }
 
 /**
- * 剧集卡片右上角的已看状态图标: 已看为实心对勾, 未看为空心对勾. 点击切换已看状态, 效果与长按卡片相同;
- * 点击在图标上消费, 不会触发卡片本身的点击. 图标直接画在剧照或卡片底色上, 没有额外的底.
+ * 剧集卡片右上角的「已看完」文字角标, 只在剧集收藏状态为 DONE 时显示.
+ * 点击取消已看, 效果与长按卡片相同; 点击在角标上消费, 不会触发卡片本身的点击.
+ *
+ * @param onStill 是否叠在剧照上: 是则半透明黑底白字, 否则用主题的 secondaryContainer 配色.
  */
 @Composable
-fun EpisodeWatchedToggle(
-    isWatched: Boolean,
-    onToggle: () -> Unit,
-    tint: Color,
+fun EpisodeWatchedBadge(
+    onStill: Boolean,
+    onClick: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    val label = stringResource(if (isWatched) Lang.subject_episode_unwatch else Lang.subject_episode_mark_watched)
+    val containerColor = if (onStill) Color.Black.copy(alpha = 0.55f) else MaterialTheme.colorScheme.secondaryContainer
+    val contentColor = if (onStill) Color.White else MaterialTheme.colorScheme.onSecondaryContainer
+    Text(
+        stringResource(Lang.subject_episode_watched_badge),
+        modifier
+            .clip(RoundedCornerShape(6.dp))
+            .background(containerColor)
+            .clickable(role = Role.Button, onClickLabel = stringResource(Lang.subject_episode_unwatch), onClick = onClick)
+            .padding(horizontal = 6.dp, vertical = 2.dp)
+            .testTag(EPISODE_WATCHED_BADGE_TAG),
+        color = contentColor,
+        style = MaterialTheme.typography.labelSmall,
+        maxLines = 1,
+    )
+}
+
+/**
+ * 剧集卡片底边的上次播放进度条: 全宽轨道, 按 [progress] (`0..1`) 填充 primary 色.
+ * 只在剧集未看完且有播放记录时显示, 见 [EpisodeListItem.playProgress].
+ *
+ * @param onStill 是否叠在剧照上, 决定轨道颜色.
+ */
+@Composable
+fun EpisodePlayProgressBar(
+    progress: Float,
+    onStill: Boolean,
+    modifier: Modifier = Modifier,
+) {
+    val trackColor = if (onStill) Color.White.copy(alpha = 0.3f) else MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.2f)
     Box(
         modifier
-            .size(28.dp)
-            .clip(CircleShape)
-            .toggleable(value = isWatched, role = Role.Checkbox, onValueChange = { onToggle() })
-            .testTag(EPISODE_WATCHED_TOGGLE_TAG),
-        contentAlignment = Alignment.Center,
+            .fillMaxWidth()
+            .height(3.dp)
+            .background(trackColor)
+            .testTag(EPISODE_PROGRESS_TAG),
     ) {
-        Icon(
-            if (isWatched) Icons.Rounded.CheckCircle else Icons.Outlined.CheckCircle,
-            contentDescription = label,
-            Modifier.size(18.dp),
-            tint = tint,
+        Box(
+            Modifier
+                .fillMaxWidth(progress.coerceIn(0f, 1f))
+                .fillMaxHeight()
+                .background(MaterialTheme.colorScheme.primary),
         )
     }
 }
 
 /**
- * 有剧照的剧集卡片上的文字颜色. 与首页轮播一致, 恒定取深色配色的前景色, 不随当前明暗变化.
+ * 有剧照的剧集卡片上的文字颜色. 与首页轮播一致, 恒定取深色配色的前景色, 不随当前明暗与观看状态变化.
  */
 object EpisodeStillDefaults {
     /** 集号等主要文字. */
@@ -170,15 +194,13 @@ object EpisodeStillDefaults {
     val secondaryContentColor: Color
         @Composable
         get() = contentColor.copy(alpha = 0.85f)
-
-    /** 已看剧集的全部文字. */
-    val watchedContentColor: Color
-        @Composable
-        get() = contentColor.copy(alpha = 0.7f)
 }
 
 /** [EpisodeStillBackground] 根节点的 test tag, 用于断言卡片是否显示了剧照. */
 const val EPISODE_STILL_TAG: String = "episode_still"
 
-/** [EpisodeWatchedToggle] 根节点的 test tag. */
-const val EPISODE_WATCHED_TOGGLE_TAG: String = "episode_watched_toggle"
+/** [EpisodeWatchedBadge] 的 test tag. */
+const val EPISODE_WATCHED_BADGE_TAG: String = "episode_watched_badge"
+
+/** [EpisodePlayProgressBar] 的 test tag. */
+const val EPISODE_PROGRESS_TAG: String = "episode_play_progress"

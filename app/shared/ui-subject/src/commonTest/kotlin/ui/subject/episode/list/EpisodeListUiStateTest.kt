@@ -76,6 +76,19 @@ class EpisodeListUiStateTest {
     }
 
     @Test
+    fun `from attaches play progress by episode id`() {
+        val collection = createTestSubjectCollection(
+            1,
+            listOf(episode(1, PackedDate.Invalid), episode(2, PackedDate.Invalid)),
+            UnifiedCollectionType.DOING,
+        )
+        val state = EpisodeListUiState.from(collection, now, playProgress = mapOf(2 to 0.4f))
+        assertEquals(null, state.mainEpisodes[0].playProgress)
+        assertEquals(0.4f, state.mainEpisodes[1].playProgress)
+        assertEquals(null, EpisodeListUiState.from(collection, now).mainEpisodes[1].playProgress)
+    }
+
+    @Test
     fun `blank air date with recurrence is not broadcast`() {
         assertFalse(EpisodeListUiState.isEpisodeBroadcast(recurrence, PackedDate.Invalid, now))
         assertFalse(uiState(recurrence, now, episode(1, PackedDate.Invalid)).mainEpisodes.single().isBroadcast)

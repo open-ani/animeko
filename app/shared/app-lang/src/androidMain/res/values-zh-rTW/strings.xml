@@ -798,6 +798,7 @@
     <string name="subject_episode_watched">已看過</string>
     <string name="subject_episode_dropped">已拋棄</string>
     <string name="subject_episode_mark_watched">看過</string>
+    <string name="subject_episode_watched_badge">已看完</string>
     <string name="subject_episode_select_play">選集播放</string>
     <string name="subject_episode_long_press_mark_watched">長按還可以標記為已看</string>
     <string name="subject_episode_details">條目詳情</string>

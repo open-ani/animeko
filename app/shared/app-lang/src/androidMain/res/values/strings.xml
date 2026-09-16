@@ -796,6 +796,7 @@
     <string name="subject_episode_watched">Watched</string>
     <string name="subject_episode_dropped">Dropped</string>
     <string name="subject_episode_mark_watched">Mark Watched</string>
+    <string name="subject_episode_watched_badge">Watched</string>
     <string name="subject_episode_select_play">Episode Selection</string>
     <string name="subject_episode_long_press_mark_watched">Long press to mark as watched</string>
     <string name="subject_episode_details">Item Details</string>

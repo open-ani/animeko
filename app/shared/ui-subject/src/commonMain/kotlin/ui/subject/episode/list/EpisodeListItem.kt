@@ -36,6 +36,11 @@ data class EpisodeListItem(
     val imageMedium: String? = null,
     /** TMDB 原尺寸剧照直链, 见 [me.him188.ani.app.data.models.episode.EpisodeInfo.imageLarge]. */
     val imageLarge: String? = null,
+    /**
+     * 上次播放进度 `0..1`, 来自本地播放记录 (见 [me.him188.ani.app.data.models.player.playProgressByEpisodeId]);
+     * 没有播放过时为 `null`. 未看完且非空时卡片底边显示进度条.
+     */
+    val playProgress: Float? = null,
 ) {
     val isDoneOrDropped: Boolean =
         collectionType == UnifiedCollectionType.DONE || collectionType == UnifiedCollectionType.DROPPED
@@ -48,6 +53,7 @@ data class EpisodeListItem(
             collection: EpisodeCollectionInfo,
             isBroadcast: Boolean,
 //            cacheStatus: EpisodeCacheStatus?,
+            playProgress: Float? = null,
         ): EpisodeListItem {
             return EpisodeListItem(
                 episodeId = collection.episodeId,
@@ -61,6 +67,7 @@ data class EpisodeListItem(
                 isBroadcast = isBroadcast,
                 imageMedium = collection.episodeInfo.imageMedium,
                 imageLarge = collection.episodeInfo.imageLarge,
+                playProgress = playProgress,
             )
         }
     }
@@ -79,6 +86,7 @@ fun createTestEpisodeListItem(
     isBroadcast: Boolean = random.nextBoolean(),
     imageMedium: String? = null,
     imageLarge: String? = null,
+    playProgress: Float? = null,
 ): EpisodeListItem {
     return EpisodeListItem(
         episodeId,
@@ -91,6 +99,7 @@ fun createTestEpisodeListItem(
         isBroadcast,
         imageMedium,
         imageLarge,
+        playProgress,
     )
 }
 

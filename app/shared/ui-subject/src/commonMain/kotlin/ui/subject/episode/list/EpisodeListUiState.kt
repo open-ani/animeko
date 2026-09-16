@@ -29,14 +29,19 @@ data class EpisodeListUiState(
     val isPlaceholder: Boolean = false,
 ) {
     companion object {
+        /**
+         * @param playProgress 按剧集 id 索引的上次播放进度, 见 [EpisodeListItem.playProgress].
+         */
         fun from(
             collection: SubjectCollectionInfo,
             currentTime: Instant,
+            playProgress: Map<Int, Float> = emptyMap(),
         ): EpisodeListUiState {
             val (mainEpisodes, otherEpisodes) = collection.episodes.map { episode ->
                 EpisodeListItem.from(
                     episode,
                     isBroadcast = isEpisodeBroadcast(collection.recurrence, episode.episodeInfo.airDate, currentTime),
+                    playProgress = playProgress[episode.episodeId],
                 )
             }.partition {
                 it.sort is EpisodeSort.Normal

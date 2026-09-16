@@ -15,6 +15,7 @@ import androidx.paging.LoadStates
 import androidx.paging.PagingData
 import androidx.paging.cachedIn
 import androidx.paging.map
+import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.awaitCancellation
@@ -27,6 +28,8 @@ import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.collect
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.emptyFlow
 import kotlinx.coroutines.flow.filterNotNull
 import kotlinx.coroutines.flow.firstOrNull
@@ -47,10 +50,12 @@ import me.him188.ani.app.data.network.BangumiRelatedPeopleService
 import me.him188.ani.app.data.repository.episode.BangumiCommentRepository
 import me.him188.ani.app.data.repository.episode.EpisodeCollectionRepository
 import me.him188.ani.app.data.repository.episode.EpisodeProgressRepository
+import me.him188.ani.app.data.repository.player.EpisodePlayHistoryRepository
 import me.him188.ani.app.data.repository.subject.SetSubjectCollectionTypeOrDeleteUseCase
 import me.him188.ani.app.data.repository.subject.SubjectCollectionRepository
 import me.him188.ani.app.data.repository.subject.SubjectRelationsRepository
 import me.him188.ani.app.data.models.comment.CommentReportTargetType
+import me.him188.ani.app.data.models.player.playProgressByEpisodeId
 import me.him188.ani.app.data.network.AniCommentReportService
 import me.him188.ani.app.ui.comment.CommentMapperContext.parseToUIComment
 import me.him188.ani.app.ui.comment.CommentMapperContext.toCommentVoteValue
@@ -97,6 +102,7 @@ class DefaultSubjectDetailsStateFactory : SubjectDetailsStateFactory, KoinCompon
     private val subjectCollectionRepository: SubjectCollectionRepository by inject()
     private val episodeProgressRepository: EpisodeProgressRepository by inject()
     private val episodeCollectionRepository: EpisodeCollectionRepository by inject()
+    private val episodePlayHistoryRepository: EpisodePlayHistoryRepository by inject()
     private val bangumiRelatedPeopleService: BangumiRelatedPeopleService by inject()
     private val subjectRelationsRepository: SubjectRelationsRepository by inject()
     private val bangumiCommentRepository: BangumiCommentRepository by inject()
@@ -325,6 +331,14 @@ class DefaultSubjectDetailsStateFactory : SubjectDetailsStateFactory, KoinCompon
             }
         }
 
+        // 只订阅本条目剧集的播放记录, 换算成按剧集 id 索引的进度
+        @OptIn(ExperimentalCoroutinesApi::class)
+        val playProgressFlow = subjectCollectionFlow
+            .map { collection -> collection.episodes.map { it.episodeId } }
+            .distinctUntilChanged()
+            .flatMapLatest { episodeIds -> episodePlayHistoryRepository.flowByEpisodeIds(episodeIds) }
+            .map { it.playProgressByEpisodeId() }
+
         val state = SubjectDetailsState(
             subjectId = subjectInfo.subjectId,
             info = subjectInfo,
@@ -372,12 +386,16 @@ class DefaultSubjectDetailsStateFactory : SubjectDetailsStateFactory, KoinCompon
             subjectProgressState = subjectProgressState,
             subjectCommentState = subjectCommentState,
             subjectCommentReportState = subjectCommentReportState,
-            presentation = combine(minuteTicker, subjectCollectionFlow) { _, collection ->
+            presentation = combine(
+                minuteTicker,
+                subjectCollectionFlow,
+                playProgressFlow,
+            ) { _, collection, playProgress ->
                 val now = Clock.System.now()
                 SubjectDetailsPresentation(
                     subjectId = subjectId,
                     displayName = collection.subjectInfo.displayName,
-                    EpisodeListUiState.from(collection, now),
+                    EpisodeListUiState.from(collection, now, playProgress),
                 )
             }.stateIn(
                 this, SharingStarted.WhileSubscribed(5000),

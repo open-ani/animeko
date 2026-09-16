@@ -22,6 +22,7 @@ import kotlinx.coroutines.flow.filterNotNull
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.flowOf
+import kotlinx.coroutines.flow.map
 import me.him188.ani.app.data.models.bangumi.BangumiSyncState
 import me.him188.ani.app.data.models.danmaku.DanmakuFilterConfig
 import me.him188.ani.app.data.models.episode.EpisodeCollectionInfo
@@ -247,6 +248,8 @@ internal fun testSubjectCollection(subjectId: Int = 1, episodeCount: Int = 3): S
 internal class FakeEpisodePlayHistoryRepository : EpisodePlayHistoryRepository {
     override val flow = MutableStateFlow<List<EpisodeHistory>>(emptyList())
     override val allHistoriesFlow: Flow<List<EpisodeHistory>> get() = flow
+    override fun flowByEpisodeIds(episodeIds: Collection<Int>): Flow<List<EpisodeHistory>> =
+        flow.map { histories -> histories.filter { it.episodeId in episodeIds } }
     override val pendingOpsFlow: Flow<List<PlaybackHistoryPendingOp>> get() = throw UnsupportedOperationException()
     override val lastSyncAtMillisFlow: Flow<Long> get() = throw UnsupportedOperationException()
     override suspend fun clear() = throw UnsupportedOperationException()
