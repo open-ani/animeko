@@ -54,6 +54,7 @@ import me.him188.ani.app.ui.subject.episode.details.EpisodeCarouselState
 import me.him188.ani.app.ui.subject.episode.list.EpisodeCellLabel
 import me.him188.ani.app.ui.subject.episode.list.EpisodeStillBackground
 import me.him188.ani.app.ui.subject.episode.list.EpisodeStillDefaults
+import me.him188.ani.app.ui.subject.episode.list.EpisodeWatchedToggle
 import me.him188.ani.app.ui.subject.episode.details.PreviewEpisodeCollections
 import me.him188.ani.datasources.api.topic.UnifiedCollectionType
 import me.him188.ani.datasources.api.topic.isDoneOrDropped
@@ -160,6 +161,7 @@ private fun PreviewEpisodeGrid() = ProvideCompositionLocalsForPreview {
  * ## 布局特性
  * - **固定高度**：80dp，适合网格布局
  * - **单行文字**：编号和标题并排一行 ([EpisodeCellLabel]) 贴在左下角，上方留给剧照画面
+ * - **已看图标**：右上角 [EpisodeWatchedToggle]，点击与长按一样触发 [onLongClick] 切换已看
  * - **文字截断**：标题过长时显示省略号
  */
 @Composable
@@ -235,6 +237,13 @@ private fun EpisodeGridItem(
                 } else {
                     null
                 },
+            )
+            EpisodeWatchedToggle(
+                isWatched = isWatched,
+                onToggle = onLongClick,
+                tint = nameColor,
+                onStill = still != null,
+                modifier = Modifier.align(Alignment.TopEnd).padding(4.dp),
             )
         }
     }

@@ -24,6 +24,7 @@ import androidx.compose.ui.unit.dp
 import me.him188.ani.app.ui.foundation.ProvideCompositionLocalsForPreview
 import me.him188.ani.app.ui.framework.runAniComposeUiTest
 import me.him188.ani.app.ui.subject.episode.list.EPISODE_STILL_TAG
+import me.him188.ani.app.ui.subject.episode.list.EPISODE_WATCHED_TOGGLE_TAG
 import me.him188.ani.app.ui.subject.episode.list.EpisodeListItem
 import me.him188.ani.app.ui.subject.episode.list.TestEpisodeStillUrl
 import me.him188.ani.app.ui.subject.episode.list.createTestEpisodeListItem
@@ -136,6 +137,51 @@ class EpisodesSectionTest {
 
         onNodeWithTag(EPISODE_STILL_TAG, useUnmergedTree = true).assertDoesNotExist()
         onNodeWithText("13", useUnmergedTree = true).assertIsDisplayed()
+    }
+
+    @Test
+    fun `watched toggle click toggles without triggering the cell click`() = runAniComposeUiTest {
+        var clickCount = 0
+        var toggleCount = 0
+
+        setContent {
+            ProvideCompositionLocalsForPreview {
+                EpisodeGridCell(
+                    item = stillItem(imageMedium = TestEpisodeStillUrl),
+                    isPlaying = false,
+                    onClick = { clickCount++ },
+                    onLongClick = { toggleCount++ },
+                    modifier = Modifier.testTag(EPISODE_CELL_TAG).width(128.dp),
+                    height = 72.dp,
+                )
+            }
+        }
+
+        onNodeWithTag(EPISODE_WATCHED_TOGGLE_TAG, useUnmergedTree = true).assertIsDisplayed().performClick()
+        runOnIdle {
+            assertEquals(0, clickCount)
+            assertEquals(1, toggleCount)
+        }
+    }
+
+    @Test
+    fun `watched toggle is shown on cells without stills`() = runAniComposeUiTest {
+        var toggleCount = 0
+        setContent {
+            ProvideCompositionLocalsForPreview {
+                EpisodeGridCell(
+                    item = stillItem(imageMedium = null),
+                    isPlaying = false,
+                    onClick = {},
+                    onLongClick = { toggleCount++ },
+                    modifier = Modifier.width(128.dp),
+                    height = 72.dp,
+                )
+            }
+        }
+
+        onNodeWithTag(EPISODE_WATCHED_TOGGLE_TAG, useUnmergedTree = true).assertIsDisplayed().performClick()
+        runOnIdle { assertEquals(1, toggleCount) }
     }
 
     @Test

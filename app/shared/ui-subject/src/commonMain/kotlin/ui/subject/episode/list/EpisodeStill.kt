@@ -13,22 +13,35 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.selection.toggleable
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.outlined.CheckCircle
+import androidx.compose.material.icons.rounded.CheckCircle
+import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.Stable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.isSpecified
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import me.him188.ani.app.ui.foundation.AsyncImage
 import me.him188.ani.app.ui.foundation.theme.LocalDarkOnSurface
 import me.him188.ani.app.ui.foundation.theme.appColorScheme
+import me.him188.ani.app.ui.lang.Lang
+import me.him188.ani.app.ui.lang.subject_episode_mark_watched
+import me.him188.ani.app.ui.lang.subject_episode_unwatch
+import org.jetbrains.compose.resources.stringResource
 
 /**
  * 与首页轮播 (`CarouselItem`) 相同的遮罩: 上半部分完全透明, 只在底部文字所在区域渐变到深色.
@@ -113,6 +126,39 @@ fun EpisodeCellLabel(
 }
 
 /**
+ * 剧集卡片右上角的已看状态图标: 已看为实心对勾, 未看为空心对勾. 点击切换已看状态, 效果与长按卡片相同;
+ * 点击在图标上消费, 不会触发卡片本身的点击.
+ *
+ * @param onStill 是否叠在剧照上. 是则加一层半透明黑色圆底, 让浅色图标在亮画面上也可见.
+ */
+@Composable
+fun EpisodeWatchedToggle(
+    isWatched: Boolean,
+    onToggle: () -> Unit,
+    tint: Color,
+    onStill: Boolean,
+    modifier: Modifier = Modifier,
+) {
+    val label = stringResource(if (isWatched) Lang.subject_episode_unwatch else Lang.subject_episode_mark_watched)
+    Box(
+        modifier
+            .size(28.dp)
+            .clip(CircleShape)
+            .then(if (onStill) Modifier.background(Color.Black.copy(alpha = 0.3f)) else Modifier)
+            .toggleable(value = isWatched, role = Role.Checkbox, onValueChange = { onToggle() })
+            .testTag(EPISODE_WATCHED_TOGGLE_TAG),
+        contentAlignment = Alignment.Center,
+    ) {
+        Icon(
+            if (isWatched) Icons.Rounded.CheckCircle else Icons.Outlined.CheckCircle,
+            contentDescription = label,
+            Modifier.size(18.dp),
+            tint = tint,
+        )
+    }
+}
+
+/**
  * 有剧照的剧集卡片上的文字颜色. 与首页轮播一致, 恒定取深色配色的前景色, 不随当前明暗变化.
  */
 object EpisodeStillDefaults {
@@ -137,3 +183,6 @@ object EpisodeStillDefaults {
 
 /** [EpisodeStillBackground] 根节点的 test tag, 用于断言卡片是否显示了剧照. */
 const val EPISODE_STILL_TAG: String = "episode_still"
+
+/** [EpisodeWatchedToggle] 根节点的 test tag. */
+const val EPISODE_WATCHED_TOGGLE_TAG: String = "episode_watched_toggle"

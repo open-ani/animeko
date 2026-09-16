@@ -62,6 +62,7 @@ import me.him188.ani.app.ui.subject.episode.list.EpisodeCellLabel
 import me.him188.ani.app.ui.subject.episode.list.EpisodeListItem
 import me.him188.ani.app.ui.subject.episode.list.EpisodeStillBackground
 import me.him188.ani.app.ui.subject.episode.list.EpisodeStillDefaults
+import me.him188.ani.app.ui.subject.episode.list.EpisodeWatchedToggle
 import org.jetbrains.compose.resources.stringResource
 
 /**
@@ -73,6 +74,7 @@ import org.jetbrains.compose.resources.stringResource
  * - 集名: 已看→onSurfaceVariant@60%, 未看→onSurfaceVariant
  *
  * 布局: 集号与集名并排成一行 ([EpisodeCellLabel]) 贴在单元格左下角, 上方留给剧照画面; 无图时同样的位置, 混合覆盖的一排单元格文字对齐.
+ * 右上角是已看状态图标 ([EpisodeWatchedToggle]), 点击它与长按单元格一样触发 [onLongClick] 切换已看.
  *
  * 有剧照 ([EpisodeListItem.imageMedium] 非空且 [showImage]) 时剧照铺满单元格作背景 ([EpisodeStillBackground]),
  * 文字改用深色配色前景 ([EpisodeStillDefaults], 已看→70%, 集名→85%), 播放中用 primary 描边与蒙层表示; 单元格尺寸与无图时一致.
@@ -161,6 +163,13 @@ fun EpisodeGridCell(
                 } else {
                     null
                 },
+            )
+            EpisodeWatchedToggle(
+                isWatched = isWatched,
+                onToggle = onLongClick,
+                tint = nameColor,
+                onStill = still != null,
+                modifier = Modifier.align(Alignment.TopEnd).padding(4.dp),
             )
         }
     }

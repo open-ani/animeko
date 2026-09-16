@@ -97,6 +97,7 @@ import me.him188.ani.app.ui.subject.createTestAiringLabelState
 import me.him188.ani.app.ui.subject.episode.details.components.EpisodeGrid
 import me.him188.ani.app.ui.subject.episode.list.EpisodeCellLabel
 import me.him188.ani.app.ui.subject.episode.list.EpisodeStillBackground
+import me.him188.ani.app.ui.subject.episode.list.EpisodeWatchedToggle
 import me.him188.ani.app.ui.subject.episode.list.EpisodeStillDefaults
 import me.him188.ani.app.ui.subject.episode.details.components.PaginatedEpisodeList
 import me.him188.ani.datasources.api.topic.UnifiedCollectionType
@@ -422,7 +423,8 @@ private fun NarrowEpisodeListSection(
 /**
  * 剧集卡片组件，用于移动端横向滚动列表中显示单个剧集。
  *
- * 卡片 72dp 高、16:9，集号与集名并排成一行 ([EpisodeCellLabel]) 贴在左下角，上方留给剧照画面。
+ * 卡片 72dp 高、16:9，集号与集名并排成一行 ([EpisodeCellLabel]) 贴在左下角，上方留给剧照画面；
+ * 右上角是已看状态图标 ([EpisodeWatchedToggle])，点击它与长按卡片一样触发 [onLongClick] 切换已看。
  * 根据剧集的播放和观看状态显示不同的视觉效果。
  * 有剧照 (且 [showImage]) 时剧照作背景 ([EpisodeStillBackground])，文字改用深色配色前景 ([EpisodeStillDefaults])，播放中用 primary 描边表示；尺寸与有无图无关。
  */
@@ -499,6 +501,13 @@ private fun EpisodeCard(
                 } else {
                     null
                 },
+            )
+            EpisodeWatchedToggle(
+                isWatched = isWatched,
+                onToggle = onLongClick,
+                tint = nameColor,
+                onStill = still != null,
+                modifier = Modifier.align(Alignment.TopEnd).padding(4.dp),
             )
         }
     }
