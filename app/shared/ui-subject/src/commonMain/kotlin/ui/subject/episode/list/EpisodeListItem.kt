@@ -32,6 +32,10 @@ data class EpisodeListItem(
      * 是否已经开播了
      */
     val isBroadcast: Boolean,
+    /** TMDB 剧照 (宽 300px) 直链, 见 [me.him188.ani.app.data.models.episode.EpisodeInfo.imageMedium]. */
+    val imageMedium: String? = null,
+    /** TMDB 原尺寸剧照直链, 见 [me.him188.ani.app.data.models.episode.EpisodeInfo.imageLarge]. */
+    val imageLarge: String? = null,
 ) {
     val isDoneOrDropped: Boolean =
         collectionType == UnifiedCollectionType.DONE || collectionType == UnifiedCollectionType.DROPPED
@@ -55,6 +59,8 @@ data class EpisodeListItem(
 //                cacheStatus = cacheStatus,
 //                airTime = collection.episodeInfo.airDate.toLocalDateOrNull()?,
                 isBroadcast = isBroadcast,
+                imageMedium = collection.episodeInfo.imageMedium,
+                imageLarge = collection.episodeInfo.imageLarge,
             )
         }
     }
@@ -71,6 +77,8 @@ fun createTestEpisodeListItem(
     collectionType: UnifiedCollectionType = UnifiedCollectionType.entries.random(random),
 //    cacheStatus: EpisodeCacheStatus? = EpisodeCacheStatus.randomOrNull(random),
     isBroadcast: Boolean = random.nextBoolean(),
+    imageMedium: String? = null,
+    imageLarge: String? = null,
 ): EpisodeListItem {
     return EpisodeListItem(
         episodeId,
@@ -81,5 +89,11 @@ fun createTestEpisodeListItem(
         collectionType,
 //        cacheStatus,
         isBroadcast,
+        imageMedium,
+        imageLarge,
     )
 }
+
+/** 预览与测试用的剧照地址. 预览环境的图片加载器对任何 URL 都画同一张占位图. */
+@TestOnly
+const val TestEpisodeStillUrl: String = "https://static.myani.org/tmdb/preview/still.jpg"

@@ -9,6 +9,7 @@
 
 package me.him188.ani.app.ui.subject.episode.details.components
 
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.LocalIndication
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
@@ -50,11 +51,14 @@ import androidx.compose.ui.unit.dp
 import me.him188.ani.app.data.models.episode.EpisodeCollectionInfo
 import me.him188.ani.app.data.models.episode.displayName
 import me.him188.ani.app.domain.media.cache.EpisodeCacheStatus
+import me.him188.ani.app.ui.foundation.LocalEpisodeProgressSettings
 import me.him188.ani.app.ui.foundation.LongClickProgressFill
 import me.him188.ani.app.ui.foundation.ProvideCompositionLocalsForPreview
 import me.him188.ani.app.ui.foundation.icons.PlayingIcon
 import me.him188.ani.app.ui.foundation.layout.plus
 import me.him188.ani.app.ui.subject.episode.details.EpisodeCarouselState
+import me.him188.ani.app.ui.subject.episode.list.EpisodeStillBackground
+import me.him188.ani.app.ui.subject.episode.list.EpisodeStillDefaults
 import me.him188.ani.app.ui.subject.episode.details.PreviewEpisodeCollections
 import me.him188.ani.datasources.api.topic.UnifiedCollectionType
 import me.him188.ani.datasources.api.topic.isDoneOrDropped
@@ -71,6 +75,7 @@ fun EpisodeGrid(
     onEpisodeClick: (EpisodeCollectionInfo) -> Unit,
     modifier: Modifier = Modifier,
     isVisible: Boolean = true,
+    showImages: Boolean = LocalEpisodeProgressSettings.current.showEpisodeImages,
 ) {
     val gridState = rememberLazyGridState()
     
@@ -109,7 +114,8 @@ fun EpisodeGrid(
                         UnifiedCollectionType.DONE
                     }
                     episodeCarouselState.setCollectionType(episode, newType)
-                }
+                },
+                showImage = showImages,
             )
         }
     }
@@ -166,10 +172,23 @@ private fun EpisodeGridItem(
     onClick: () -> Unit,
     onLongClick: () -> Unit,
     modifier: Modifier = Modifier,
+    showImage: Boolean = true,
 ) {
     val isWatched = episode.collectionType.isDoneOrDropped()
     val interactionSource = remember { MutableInteractionSource() }
-    
+    val still = episode.episodeInfo.imageMedium?.takeIf { showImage }
+    val sortColor = when {
+        still != null -> if (isWatched) EpisodeStillDefaults.watchedContentColor else EpisodeStillDefaults.contentColor
+        isPlaying -> MaterialTheme.colorScheme.primary
+        isWatched -> MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f)
+        else -> LocalContentColor.current
+    }
+    val nameColor = when {
+        still != null -> if (isWatched) EpisodeStillDefaults.watchedContentColor else EpisodeStillDefaults.secondaryContentColor
+        isWatched -> MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f)
+        else -> MaterialTheme.colorScheme.onSurfaceVariant
+    }
+
     Card(
         colors = CardDefaults.cardColors(
             containerColor = if (isPlaying) {
@@ -180,6 +199,7 @@ private fun EpisodeGridItem(
                 MaterialTheme.colorScheme.surfaceContainerHigh
             },
         ),
+        border = if (still != null && isPlaying) BorderStroke(2.dp, MaterialTheme.colorScheme.primary) else null,
         modifier = modifier
             .fillMaxWidth()
             .height(72.dp)
@@ -191,6 +211,14 @@ private fun EpisodeGridItem(
             ),
     ) {
         Box(Modifier.fillMaxSize()) {
+            if (still != null) {
+                EpisodeStillBackground(
+                    imageUrl = still,
+                    dimmed = isWatched,
+                    highlighted = isPlaying,
+                    modifier = Modifier.matchParentSize(),
+                )
+            }
             LongClickProgressFill(
                 interactionSource = interactionSource,
                 color = MaterialTheme.colorScheme.primary.copy(alpha = 0.14f),
@@ -212,13 +240,7 @@ private fun EpisodeGridItem(
                     Text(
                         "${episode.episodeInfo.sort}",
                         style = MaterialTheme.typography.titleSmall,
-                        color = if (isPlaying) {
-                            MaterialTheme.colorScheme.primary
-                        } else if (isWatched) {
-                            MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f)
-                        } else {
-                            LocalContentColor.current
-                        },
+                        color = sortColor,
                     )
                 }
                 Text(
@@ -226,11 +248,7 @@ private fun EpisodeGridItem(
                     style = MaterialTheme.typography.bodySmall,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis,
-                    color = if (isWatched) {
-                        MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f)
-                    } else {
-                        MaterialTheme.colorScheme.onSurfaceVariant
-                    },
+                    color = nameColor,
                 )
             }
         }

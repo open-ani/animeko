@@ -68,6 +68,12 @@ data class EpisodeCollectionEntity(
     val sortNumber: Float, // see #1256
     val ep: EpisodeSort? = null,
 
+    /** TMDB 剧照 (宽 300px) 的公开直链, 见 [me.him188.ani.app.data.models.episode.EpisodeInfo.imageMedium]. */
+    val imageMedium: String? = null,
+
+    /** TMDB 原尺寸剧照的公开直链, 见 [me.him188.ani.app.data.models.episode.EpisodeInfo.imageLarge]. */
+    val imageLarge: String? = null,
+
     val selfCollectionType: UnifiedCollectionType,
 
     /**

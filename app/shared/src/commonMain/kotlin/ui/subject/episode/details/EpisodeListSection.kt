@@ -12,6 +12,7 @@ package me.him188.ani.app.ui.subject.episode.details
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.expandVertically
 import androidx.compose.animation.shrinkVertically
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.LocalIndication
 import androidx.compose.foundation.background
 import androidx.compose.foundation.combinedClickable
@@ -77,6 +78,7 @@ import kotlinx.coroutines.launch
 import me.him188.ani.app.data.models.episode.EpisodeCollectionInfo
 import me.him188.ani.app.data.models.episode.displayName
 import me.him188.ani.app.domain.media.cache.EpisodeCacheStatus
+import me.him188.ani.app.ui.foundation.LocalEpisodeProgressSettings
 import me.him188.ani.app.ui.foundation.LongClickProgressFill
 import me.him188.ani.app.ui.foundation.ProvideCompositionLocalsForPreview
 import me.him188.ani.app.ui.foundation.icons.PlayingIcon
@@ -93,6 +95,8 @@ import me.him188.ani.app.ui.subject.AiringLabel
 import me.him188.ani.app.ui.subject.AiringLabelState
 import me.him188.ani.app.ui.subject.createTestAiringLabelState
 import me.him188.ani.app.ui.subject.episode.details.components.EpisodeGrid
+import me.him188.ani.app.ui.subject.episode.list.EpisodeStillBackground
+import me.him188.ani.app.ui.subject.episode.list.EpisodeStillDefaults
 import me.him188.ani.app.ui.subject.episode.details.components.PaginatedEpisodeList
 import me.him188.ani.datasources.api.topic.UnifiedCollectionType
 import me.him188.ani.datasources.api.topic.isDoneOrDropped
@@ -285,6 +289,7 @@ private fun NarrowEpisodeListSection(
     val coroutineScope = rememberCoroutineScope()
     val horizontalListState = rememberLazyListState()
     var hasInitialScrolled by remember { mutableStateOf(false) }
+    val showImages = LocalEpisodeProgressSettings.current.showEpisodeImages
 
     Column(modifier.padding(horizontal = 16.dp)) {
         // 标题行
@@ -377,6 +382,7 @@ private fun NarrowEpisodeListSection(
                         }
                         episodeCarouselState.setCollectionType(episode, newType)
                     },
+                    showImage = showImages,
                 )
             }
         }
@@ -405,6 +411,7 @@ private fun NarrowEpisodeListSection(
                         showBottomSheet = false
                     },
                     isVisible = true,
+                    showImages = showImages,
                 )
             }
         }
@@ -416,6 +423,7 @@ private fun NarrowEpisodeListSection(
  *
  * 显示为紧凑的卡片式布局，包含剧集编号、标题和状态指示器。
  * 根据剧集的播放和观看状态显示不同的视觉效果。
+ * 有剧照 (且 [showImage]) 时剧照作背景 ([EpisodeStillBackground])，文字改为白色，播放中用 primary 描边表示；尺寸与有无图无关。
  */
 @Composable
 private fun EpisodeCard(
@@ -424,9 +432,22 @@ private fun EpisodeCard(
     onClick: () -> Unit,
     onLongClick: () -> Unit,
     modifier: Modifier = Modifier,
+    showImage: Boolean = true,
 ) {
     val isWatched = episode.collectionType.isDoneOrDropped()
     val interactionSource = remember { MutableInteractionSource() }
+    val still = episode.episodeInfo.imageMedium?.takeIf { showImage }
+    val sortColor = when {
+        still != null -> if (isWatched) EpisodeStillDefaults.watchedContentColor else EpisodeStillDefaults.contentColor
+        isPlaying -> MaterialTheme.colorScheme.primary
+        isWatched -> MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f)
+        else -> LocalContentColor.current
+    }
+    val nameColor = when {
+        still != null -> if (isWatched) EpisodeStillDefaults.watchedContentColor else EpisodeStillDefaults.secondaryContentColor
+        isWatched -> MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f)
+        else -> MaterialTheme.colorScheme.onSurfaceVariant
+    }
 
     Card(
         colors = CardDefaults.cardColors(
@@ -438,6 +459,7 @@ private fun EpisodeCard(
                 MaterialTheme.colorScheme.surfaceContainer
             },
         ),
+        border = if (still != null && isPlaying) BorderStroke(2.dp, MaterialTheme.colorScheme.primary) else null,
         modifier = modifier
             .height(64.dp)
             .aspectRatio(16f / 10)
@@ -449,6 +471,14 @@ private fun EpisodeCard(
             ),
     ) {
         Box(Modifier.fillMaxSize()) {
+            if (still != null) {
+                EpisodeStillBackground(
+                    imageUrl = still,
+                    dimmed = isWatched,
+                    highlighted = isPlaying,
+                    modifier = Modifier.matchParentSize(),
+                )
+            }
             LongClickProgressFill(
                 interactionSource = interactionSource,
                 color = MaterialTheme.colorScheme.primary.copy(alpha = 0.14f),
@@ -470,13 +500,7 @@ private fun EpisodeCard(
                         Text(
                             episode.episodeInfo.sort.toString(),
                             style = MaterialTheme.typography.labelLarge,
-                            color = if (isPlaying) {
-                                MaterialTheme.colorScheme.primary
-                            } else if (isWatched) {
-                                MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f)
-                            } else {
-                                LocalContentColor.current
-                            },
+                            color = sortColor,
                         )
                     }
                     Spacer(Modifier.height(4.dp))
@@ -485,11 +509,7 @@ private fun EpisodeCard(
                         style = MaterialTheme.typography.bodySmall,
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis,
-                        color = if (isWatched) {
-                            MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f)
-                        } else {
-                            MaterialTheme.colorScheme.onSurfaceVariant
-                        },
+                        color = nameColor,
                     )
                 }
             }

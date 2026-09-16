@@ -56,6 +56,26 @@ class EpisodeListUiStateTest {
     }
 
     @Test
+    fun `from copies still urls onto list items`() {
+        val episode = EpisodeCollectionInfo(
+            episodeInfo = EpisodeInfo(
+                episodeId = 1,
+                type = EpisodeType.MainStory,
+                sort = EpisodeSort(1),
+                imageMedium = "https://static.example/tmdb/w300/a.jpg",
+                imageLarge = "https://static.example/tmdb/original/a.jpg",
+            ),
+            collectionType = UnifiedCollectionType.WISH,
+        )
+
+        val item = uiState(null, now, episode).mainEpisodes.single()
+
+        assertEquals("https://static.example/tmdb/w300/a.jpg", item.imageMedium)
+        assertEquals("https://static.example/tmdb/original/a.jpg", item.imageLarge)
+        assertEquals(null, uiState(null, now, episode.copy(episodeInfo = episode.episodeInfo.copy(imageMedium = null))).mainEpisodes.single().imageMedium)
+    }
+
+    @Test
     fun `blank air date with recurrence is not broadcast`() {
         assertFalse(EpisodeListUiState.isEpisodeBroadcast(recurrence, PackedDate.Invalid, now))
         assertFalse(uiState(recurrence, now, episode(1, PackedDate.Invalid)).mainEpisodes.single().isBroadcast)

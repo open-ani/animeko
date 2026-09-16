@@ -9,6 +9,7 @@
 
 package me.him188.ani.app.ui.subject.details.sections
 
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.LocalIndication
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
@@ -49,6 +50,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.rounded.KeyboardArrowLeft
 import androidx.compose.material.icons.automirrored.rounded.KeyboardArrowRight
 import androidx.compose.material.icons.rounded.GraphicEq
+import me.him188.ani.app.ui.foundation.LocalEpisodeProgressSettings
 import me.him188.ani.app.ui.foundation.LongClickProgressFill
 import me.him188.ani.app.ui.lang.Lang
 import me.him188.ani.app.ui.lang.subject_details_next_page
@@ -57,6 +59,8 @@ import me.him188.ani.app.ui.lang.subject_episode_mark_watched
 import me.him188.ani.app.ui.lang.subject_episode_unwatch
 import me.him188.ani.app.ui.subject.details.components.EpisodePaging
 import me.him188.ani.app.ui.subject.episode.list.EpisodeListItem
+import me.him188.ani.app.ui.subject.episode.list.EpisodeStillBackground
+import me.him188.ani.app.ui.subject.episode.list.EpisodeStillDefaults
 import org.jetbrains.compose.resources.stringResource
 
 /**
@@ -66,6 +70,9 @@ import org.jetbrains.compose.resources.stringResource
  * - 容器: 播放中→primaryContainer, 已看(DONE/DROPPED)→surfaceContainerLow, 未看→surfaceContainerHigh
  * - 集号: 播放中→primary, 已看→onSurfaceVariant@60%, 未看→onSurface(LocalContentColor)
  * - 集名: 已看→onSurfaceVariant@60%, 未看→onSurfaceVariant
+ *
+ * 有剧照 ([EpisodeListItem.imageMedium] 非空且 [showImage]) 时剧照铺满单元格作背景 ([EpisodeStillBackground]),
+ * 文字改为白色 (已看→白@70%, 集名→白@85%), 播放中用 primary 描边与蒙层表示; 单元格尺寸与无图时一致.
  */
 @Composable
 fun EpisodeGridCell(
@@ -75,9 +82,11 @@ fun EpisodeGridCell(
     onLongClick: () -> Unit,
     modifier: Modifier = Modifier,
     height: Dp = 72.dp,
+    showImage: Boolean = true,
 ) {
     val isWatched = item.isDoneOrDropped
     val interactionSource = remember { MutableInteractionSource() }
+    val still = item.imageMedium?.takeIf { showImage }
     val containerColor = when {
         isPlaying -> MaterialTheme.colorScheme.primaryContainer
         isWatched -> MaterialTheme.colorScheme.surfaceContainerLow
@@ -85,11 +94,16 @@ fun EpisodeGridCell(
     }
     val dimmed = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f)
     val sortColor = when {
+        still != null -> if (isWatched) EpisodeStillDefaults.watchedContentColor else EpisodeStillDefaults.contentColor
         isPlaying -> MaterialTheme.colorScheme.primary
         isWatched -> dimmed
         else -> LocalContentColor.current
     }
-    val nameColor = if (isWatched) dimmed else MaterialTheme.colorScheme.onSurfaceVariant
+    val nameColor = when {
+        still != null -> if (isWatched) EpisodeStillDefaults.watchedContentColor else EpisodeStillDefaults.secondaryContentColor
+        isWatched -> dimmed
+        else -> MaterialTheme.colorScheme.onSurfaceVariant
+    }
     val longClickLabel = stringResource(
         if (isWatched) Lang.subject_episode_unwatch else Lang.subject_episode_mark_watched,
     )
@@ -107,8 +121,17 @@ fun EpisodeGridCell(
             ),
         shape = RoundedCornerShape(12.dp),
         color = containerColor,
+        border = if (still != null && isPlaying) BorderStroke(2.dp, MaterialTheme.colorScheme.primary) else null,
     ) {
         Box {
+            if (still != null) {
+                EpisodeStillBackground(
+                    imageUrl = still,
+                    dimmed = isWatched,
+                    highlighted = isPlaying,
+                    modifier = Modifier.matchParentSize(),
+                )
+            }
             LongClickProgressFill(
                 interactionSource = interactionSource,
                 color = MaterialTheme.colorScheme.primary.copy(alpha = 0.14f),
@@ -165,6 +188,7 @@ fun PagedEpisodesGrid(
     cellSpacing: Dp = 12.dp,
     rowsPerPage: Int = 2,
     header: @Composable (pager: (@Composable () -> Unit)?) -> Unit = { it?.invoke() },
+    showImages: Boolean = LocalEpisodeProgressSettings.current.showEpisodeImages,
 ) {
     BoxWithConstraints(modifier) {
         val columns = remember(maxWidth, cellMinWidth, cellSpacing) {
@@ -209,6 +233,7 @@ fun PagedEpisodesGrid(
                             onClick = { onEpisodeClick(item) },
                             onLongClick = { onEpisodeLongClick(item) },
                             modifier = Modifier.weight(1f),
+                            showImage = showImages,
                         )
                     }
                     // 补齐末行空位, 保持等宽
@@ -272,6 +297,7 @@ fun EpisodesRow(
     cellHeight: Dp = 64.dp,
     cellSpacing: Dp = 10.dp,
     contentPadding: PaddingValues = PaddingValues(horizontal = 16.dp),
+    showImages: Boolean = LocalEpisodeProgressSettings.current.showEpisodeImages,
 ) {
     val listState = rememberLazyListState()
     val currentIndex = remember(episodes, currentEpisodeId) {
@@ -294,6 +320,7 @@ fun EpisodesRow(
                 onLongClick = { onEpisodeLongClick(item) },
                 modifier = Modifier.width(cellWidth),
                 height = cellHeight,
+                showImage = showImages,
             )
         }
     }

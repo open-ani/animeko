@@ -278,6 +278,8 @@ fun EpisodeCollectionInfo.toEntity(
         sort = episodeInfo.sort,
         sortNumber = episodeInfo.sort.number ?: Float.MAX_VALUE,
         ep = episodeInfo.ep,
+        imageMedium = episodeInfo.imageMedium,
+        imageLarge = episodeInfo.imageLarge,
         selfCollectionType = collectionType,
         lastFetched = lastFetched,
     )
@@ -306,6 +308,8 @@ private fun EpisodeCollectionEntity.toEpisodeInfo(): EpisodeInfo {
         desc = this.desc,
         sort = this.sort,
         ep = this.ep,
+        imageMedium = this.imageMedium,
+        imageLarge = this.imageLarge,
     )
 }
 
@@ -320,5 +324,7 @@ private fun AniEpisodeCollection.toEpisodeInfo(): EpisodeInfo {
         desc = this.description,
         sort = EpisodeSort(BigNum(this.sort), this.type.toEpisodeType()),
         ep = this.ep?.let { EpisodeSort(BigNum(it), this.type.toEpisodeType()) },
+        imageMedium = this.imageMedium,
+        imageLarge = this.imageLarge,
     )
 }

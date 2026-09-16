@@ -228,6 +228,8 @@
     <string name="settings_acknowledgements_mikan_description">新番 BT 资源索引</string>
     <string name="settings_acknowledgements_dmhy">动漫花园</string>
     <string name="settings_acknowledgements_dmhy_description">BT 资源分享社区</string>
+    <string name="settings_acknowledgements_tmdb">TMDB</string>
+    <string name="settings_acknowledgements_tmdb_description">剧集剧照数据。本产品使用 TMDB API，但未经 TMDB 认可或认证。</string>
     <string name="settings_acknowledgements_oss_licenses">开源许可</string>
     <string name="settings_acknowledgements_oss_licenses_description">本应用使用的开源库及其许可证</string>
     <string name="settings_oss_licenses_homepage">主页</string>
@@ -250,6 +252,8 @@
     <string name="settings_app_episode_playback">选集播放</string>
     <string name="settings_app_light_up_mode">点亮模式</string>
     <string name="settings_app_light_up_mode_description">高亮已经看过的剧集，而不是将要看的剧集</string>
+    <string name="settings_app_episode_images">剧集剧照</string>
+    <string name="settings_app_episode_images_description">在选集列表中显示来自 TMDB 的剧集剧照（仅部分番剧提供）</string>
     <string name="settings_app_language">语言</string>
     <string name="settings_app_language_system">系统语言</string>
     <string name="settings_app_language_restart">重启软件生效</string>

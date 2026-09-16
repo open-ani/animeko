@@ -88,7 +88,7 @@ val TestEpisodeListUiStateVeryLong
         subjectTitle = "测试标题",
         mainEpisodes = buildList {
             repeat(100) {
-                add(createTestEpisodeListItem(EpisodeSort(it + 1)))
+                add(createTestEpisodeListItem(EpisodeSort(it + 1), imageMedium = testEpisodeStillUrlOrNull(it)))
             }
         },
         otherEpisodes = TestEpisodeListItems.take(2)
@@ -99,6 +99,10 @@ val TestEpisodeListUiStateVeryLong
 val TestEpisodeListItems
     get() = buildList {
         repeat(12) {
-            add(createTestEpisodeListItem(EpisodeSort(it + 1)))
+            add(createTestEpisodeListItem(EpisodeSort(it + 1), imageMedium = testEpisodeStillUrlOrNull(it)))
         }
     }
+
+/** 每三集里两集带剧照, 让预览与测试同时覆盖有图和无图的单元格. */
+@TestOnly
+private fun testEpisodeStillUrlOrNull(index: Int): String? = if (index % 3 != 2) TestEpisodeStillUrl else null
