@@ -22,6 +22,7 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
@@ -43,7 +44,6 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.rememberVectorPainter
 import androidx.compose.ui.semantics.Role
-import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.material.icons.Icons
@@ -58,6 +58,7 @@ import me.him188.ani.app.ui.lang.subject_details_prev_page
 import me.him188.ani.app.ui.lang.subject_episode_mark_watched
 import me.him188.ani.app.ui.lang.subject_episode_unwatch
 import me.him188.ani.app.ui.subject.details.components.EpisodePaging
+import me.him188.ani.app.ui.subject.episode.list.EpisodeCellLabel
 import me.him188.ani.app.ui.subject.episode.list.EpisodeListItem
 import me.him188.ani.app.ui.subject.episode.list.EpisodeStillBackground
 import me.him188.ani.app.ui.subject.episode.list.EpisodeStillDefaults
@@ -71,8 +72,10 @@ import org.jetbrains.compose.resources.stringResource
  * - 集号: 播放中→primary, 已看→onSurfaceVariant@60%, 未看→onSurface(LocalContentColor)
  * - 集名: 已看→onSurfaceVariant@60%, 未看→onSurfaceVariant
  *
+ * 布局: 集号与集名并排成一行 ([EpisodeCellLabel]) 贴在单元格左下角, 上方留给剧照画面; 无图时同样的位置, 混合覆盖的一排单元格文字对齐.
+ *
  * 有剧照 ([EpisodeListItem.imageMedium] 非空且 [showImage]) 时剧照铺满单元格作背景 ([EpisodeStillBackground]),
- * 文字改为白色 (已看→白@70%, 集名→白@85%), 播放中用 primary 描边与蒙层表示; 单元格尺寸与无图时一致.
+ * 文字改用深色配色前景 ([EpisodeStillDefaults], 已看→70%, 集名→85%), 播放中用 primary 描边与蒙层表示; 单元格尺寸与无图时一致.
  */
 @Composable
 fun EpisodeGridCell(
@@ -81,7 +84,7 @@ fun EpisodeGridCell(
     onClick: () -> Unit,
     onLongClick: () -> Unit,
     modifier: Modifier = Modifier,
-    height: Dp = 72.dp,
+    height: Dp = 80.dp,
     showImage: Boolean = true,
 ) {
     val isWatched = item.isDoneOrDropped
@@ -137,35 +140,28 @@ fun EpisodeGridCell(
                 color = MaterialTheme.colorScheme.primary.copy(alpha = 0.14f),
                 modifier = Modifier.matchParentSize(),
             )
-            Column(
-                Modifier.fillMaxWidth().padding(8.dp),
-                verticalArrangement = Arrangement.spacedBy(4.dp),
-            ) {
-                Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(2.dp)) {
-                    if (isPlaying) {
+            EpisodeCellLabel(
+                sort = item.sort.toString(),
+                name = item.nameCn.ifBlank { item.name },
+                sortColor = sortColor,
+                nameColor = nameColor,
+                modifier = Modifier
+                    .align(Alignment.BottomStart)
+                    .fillMaxWidth()
+                    .padding(horizontal = 10.dp, vertical = 6.dp),
+                playingIndicator = if (isPlaying) {
+                    {
                         Icon(
                             rememberVectorPainter(Icons.Rounded.GraphicEq),
                             contentDescription = null,
-                            Modifier.height(16.dp).width(16.dp),
+                            Modifier.size(16.dp),
                             tint = sortColor,
                         )
                     }
-                    Text(
-                        item.sort.toString(),
-                        color = sortColor,
-                        style = MaterialTheme.typography.titleSmall,
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis,
-                    )
-                }
-                Text(
-                    item.nameCn.ifBlank { item.name },
-                    color = nameColor,
-                    style = MaterialTheme.typography.bodySmall,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis,
-                )
-            }
+                } else {
+                    null
+                },
+            )
         }
     }
 }
@@ -184,7 +180,7 @@ fun PagedEpisodesGrid(
     onEpisodeClick: (EpisodeListItem) -> Unit,
     onEpisodeLongClick: (EpisodeListItem) -> Unit,
     modifier: Modifier = Modifier,
-    cellMinWidth: Dp = 96.dp,
+    cellMinWidth: Dp = 128.dp,
     cellSpacing: Dp = 12.dp,
     rowsPerPage: Int = 2,
     header: @Composable (pager: (@Composable () -> Unit)?) -> Unit = { it?.invoke() },
@@ -284,7 +280,7 @@ private fun EpisodePager(
 /**
  * 手机 (compact) 选集: LazyRow 横滑不分页, 自动滚至当前集.
  *
- * 单元尺寸对齐 Figma `EpisodeCard` (1594:1024): 高 64, 约 16:10.
+ * 单元 128×72 (16:9), 与 TMDB 剧照比例一致, 裁切最少.
  */
 @Composable
 fun EpisodesRow(
@@ -293,8 +289,8 @@ fun EpisodesRow(
     onEpisodeClick: (EpisodeListItem) -> Unit,
     onEpisodeLongClick: (EpisodeListItem) -> Unit,
     modifier: Modifier = Modifier,
-    cellWidth: Dp = 104.dp,
-    cellHeight: Dp = 64.dp,
+    cellWidth: Dp = 128.dp,
+    cellHeight: Dp = 72.dp,
     cellSpacing: Dp = 10.dp,
     contentPadding: PaddingValues = PaddingValues(horizontal = 16.dp),
     showImages: Boolean = LocalEpisodeProgressSettings.current.showEpisodeImages,

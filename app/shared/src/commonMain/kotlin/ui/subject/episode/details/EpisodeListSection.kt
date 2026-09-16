@@ -95,6 +95,7 @@ import me.him188.ani.app.ui.subject.AiringLabel
 import me.him188.ani.app.ui.subject.AiringLabelState
 import me.him188.ani.app.ui.subject.createTestAiringLabelState
 import me.him188.ani.app.ui.subject.episode.details.components.EpisodeGrid
+import me.him188.ani.app.ui.subject.episode.list.EpisodeCellLabel
 import me.him188.ani.app.ui.subject.episode.list.EpisodeStillBackground
 import me.him188.ani.app.ui.subject.episode.list.EpisodeStillDefaults
 import me.him188.ani.app.ui.subject.episode.details.components.PaginatedEpisodeList
@@ -421,9 +422,9 @@ private fun NarrowEpisodeListSection(
 /**
  * 剧集卡片组件，用于移动端横向滚动列表中显示单个剧集。
  *
- * 显示为紧凑的卡片式布局，包含剧集编号、标题和状态指示器。
+ * 卡片 72dp 高、16:9，集号与集名并排成一行 ([EpisodeCellLabel]) 贴在左下角，上方留给剧照画面。
  * 根据剧集的播放和观看状态显示不同的视觉效果。
- * 有剧照 (且 [showImage]) 时剧照作背景 ([EpisodeStillBackground])，文字改为白色，播放中用 primary 描边表示；尺寸与有无图无关。
+ * 有剧照 (且 [showImage]) 时剧照作背景 ([EpisodeStillBackground])，文字改用深色配色前景 ([EpisodeStillDefaults])，播放中用 primary 描边表示；尺寸与有无图无关。
  */
 @Composable
 private fun EpisodeCard(
@@ -461,8 +462,8 @@ private fun EpisodeCard(
         ),
         border = if (still != null && isPlaying) BorderStroke(2.dp, MaterialTheme.colorScheme.primary) else null,
         modifier = modifier
-            .height(64.dp)
-            .aspectRatio(16f / 10)
+            .height(72.dp)
+            .aspectRatio(16f / 9)
             .combinedClickable(
                 interactionSource = interactionSource,
                 indication = LocalIndication.current,
@@ -484,35 +485,21 @@ private fun EpisodeCard(
                 color = MaterialTheme.colorScheme.primary.copy(alpha = 0.14f),
                 modifier = Modifier.matchParentSize(),
             )
-            Box(
-                modifier = Modifier.fillMaxSize().padding(horizontal = 12.dp, vertical = 8.dp),
-            ) {
-                Column(
-                    modifier = Modifier.align(Alignment.CenterStart),
-                ) {
-                    Row(
-                        verticalAlignment = Alignment.CenterVertically,
-                    ) {
-                        if (isPlaying) {
-                            PlayingIcon(width = 20.dp, height = 12.dp)
-                            Spacer(Modifier.width(4.dp))
-                        }
-                        Text(
-                            episode.episodeInfo.sort.toString(),
-                            style = MaterialTheme.typography.labelLarge,
-                            color = sortColor,
-                        )
-                    }
-                    Spacer(Modifier.height(4.dp))
-                    Text(
-                        episode.episodeInfo.displayName,
-                        style = MaterialTheme.typography.bodySmall,
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis,
-                        color = nameColor,
-                    )
-                }
-            }
+            EpisodeCellLabel(
+                sort = episode.episodeInfo.sort.toString(),
+                name = episode.episodeInfo.displayName,
+                sortColor = sortColor,
+                nameColor = nameColor,
+                modifier = Modifier
+                    .align(Alignment.BottomStart)
+                    .fillMaxWidth()
+                    .padding(horizontal = 10.dp, vertical = 6.dp),
+                playingIndicator = if (isPlaying) {
+                    { PlayingIcon(width = 20.dp, height = 12.dp, color = sortColor) }
+                } else {
+                    null
+                },
+            )
         }
     }
 }

@@ -15,10 +15,7 @@ import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
-import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.asPaddingValues
 import androidx.compose.foundation.layout.fillMaxSize
@@ -27,7 +24,6 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.navigationBars
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
@@ -37,7 +33,6 @@ import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.LocalContentColor
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
-import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.mutableStateOf
@@ -45,7 +40,6 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.PreviewLightDark
 import androidx.compose.ui.unit.dp
 import me.him188.ani.app.data.models.episode.EpisodeCollectionInfo
@@ -57,6 +51,7 @@ import me.him188.ani.app.ui.foundation.ProvideCompositionLocalsForPreview
 import me.him188.ani.app.ui.foundation.icons.PlayingIcon
 import me.him188.ani.app.ui.foundation.layout.plus
 import me.him188.ani.app.ui.subject.episode.details.EpisodeCarouselState
+import me.him188.ani.app.ui.subject.episode.list.EpisodeCellLabel
 import me.him188.ani.app.ui.subject.episode.list.EpisodeStillBackground
 import me.him188.ani.app.ui.subject.episode.list.EpisodeStillDefaults
 import me.him188.ani.app.ui.subject.episode.details.PreviewEpisodeCollections
@@ -91,7 +86,7 @@ fun EpisodeGrid(
     }
     
     LazyVerticalGrid(
-        columns = GridCells.Adaptive(minSize = 128.dp),
+        columns = GridCells.Adaptive(minSize = 144.dp),
         state = gridState,
         verticalArrangement = Arrangement.spacedBy(8.dp),
         horizontalArrangement = Arrangement.spacedBy(8.dp),
@@ -146,7 +141,7 @@ private fun PreviewEpisodeGrid() = ProvideCompositionLocalsForPreview {
 /**
  * 剧集网格项组件，用于网格布局中的单个剧集显示。
  * 
- * 与EpisodeCard相比，该组件采用更紧凑的垂直布局，适合网格环境下的显示。
+ * 与EpisodeCard布局相同，但宽度随网格列宽伸展。
  * 支持与其他剧集组件相同的状态显示和交互行为。
  * 
  * @param episode 剧集收藏信息，包含剧集详情和收藏状态
@@ -160,9 +155,11 @@ private fun PreviewEpisodeGrid() = ProvideCompositionLocalsForPreview {
  * - **已观看**：半透明背景，淡化文字颜色
  * - **未观看**：正常背景和文字颜色
  * 
+ * - **有剧照** (且 [showImage])：剧照作背景 ([EpisodeStillBackground])，文字改用深色配色前景 ([EpisodeStillDefaults])，播放中用 primary 描边表示
+ * 
  * ## 布局特性
- * - **固定高度**：72dp，适合网格布局
- * - **垂直布局**：编号和标题垂直排列，节省水平空间
+ * - **固定高度**：80dp，适合网格布局
+ * - **单行文字**：编号和标题并排一行 ([EpisodeCellLabel]) 贴在左下角，上方留给剧照画面
  * - **文字截断**：标题过长时显示省略号
  */
 @Composable
@@ -202,7 +199,7 @@ private fun EpisodeGridItem(
         border = if (still != null && isPlaying) BorderStroke(2.dp, MaterialTheme.colorScheme.primary) else null,
         modifier = modifier
             .fillMaxWidth()
-            .height(72.dp)
+            .height(80.dp)
             .combinedClickable(
                 interactionSource = interactionSource,
                 indication = LocalIndication.current,
@@ -224,33 +221,21 @@ private fun EpisodeGridItem(
                 color = MaterialTheme.colorScheme.primary.copy(alpha = 0.14f),
                 modifier = Modifier.matchParentSize(),
             )
-            Column(
+            EpisodeCellLabel(
+                sort = episode.episodeInfo.sort.toString(),
+                name = episode.episodeInfo.displayName,
+                sortColor = sortColor,
+                nameColor = nameColor,
                 modifier = Modifier
-                    .padding(8.dp)
-                    .fillMaxWidth(),
-                verticalArrangement = Arrangement.spacedBy(2.dp),
-            ) {
-                Row(
-                    verticalAlignment = Alignment.CenterVertically,
-                ) {
-                    if (isPlaying) {
-                        PlayingIcon()
-                        Spacer(Modifier.width(4.dp))
-                    }
-                    Text(
-                        "${episode.episodeInfo.sort}",
-                        style = MaterialTheme.typography.titleSmall,
-                        color = sortColor,
-                    )
-                }
-                Text(
-                    episode.episodeInfo.displayName,
-                    style = MaterialTheme.typography.bodySmall,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis,
-                    color = nameColor,
-                )
-            }
+                    .align(Alignment.BottomStart)
+                    .fillMaxWidth()
+                    .padding(horizontal = 10.dp, vertical = 6.dp),
+                playingIndicator = if (isPlaying) {
+                    { PlayingIcon(width = 20.dp, height = 12.dp, color = sortColor) }
+                } else {
+                    null
+                },
+            )
         }
     }
 }
