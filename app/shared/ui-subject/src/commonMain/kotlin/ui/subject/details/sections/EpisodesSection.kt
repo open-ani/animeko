@@ -168,7 +168,6 @@ fun EpisodeGridCell(
                 isWatched = isWatched,
                 onToggle = onLongClick,
                 tint = nameColor,
-                onStill = still != null,
                 modifier = Modifier.align(Alignment.TopEnd).padding(4.dp),
             )
         }

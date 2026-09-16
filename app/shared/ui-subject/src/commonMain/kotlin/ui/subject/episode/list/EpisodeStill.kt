@@ -127,16 +127,13 @@ fun EpisodeCellLabel(
 
 /**
  * 剧集卡片右上角的已看状态图标: 已看为实心对勾, 未看为空心对勾. 点击切换已看状态, 效果与长按卡片相同;
- * 点击在图标上消费, 不会触发卡片本身的点击.
- *
- * @param onStill 是否叠在剧照上. 是则加一层半透明黑色圆底, 让浅色图标在亮画面上也可见.
+ * 点击在图标上消费, 不会触发卡片本身的点击. 图标直接画在剧照或卡片底色上, 没有额外的底.
  */
 @Composable
 fun EpisodeWatchedToggle(
     isWatched: Boolean,
     onToggle: () -> Unit,
     tint: Color,
-    onStill: Boolean,
     modifier: Modifier = Modifier,
 ) {
     val label = stringResource(if (isWatched) Lang.subject_episode_unwatch else Lang.subject_episode_mark_watched)
@@ -144,7 +141,6 @@ fun EpisodeWatchedToggle(
         modifier
             .size(28.dp)
             .clip(CircleShape)
-            .then(if (onStill) Modifier.background(Color.Black.copy(alpha = 0.3f)) else Modifier)
             .toggleable(value = isWatched, role = Role.Checkbox, onValueChange = { onToggle() })
             .testTag(EPISODE_WATCHED_TOGGLE_TAG),
         contentAlignment = Alignment.Center,
