@@ -1551,6 +1551,10 @@
     <string name="subject_details_ratings_count">%1$s 人评分</string>
     <string name="rating_increase">提高评分</string>
     <string name="rating_decrease">降低评分</string>
+    <string name="exploration_subject_details">番剧详情</string>
+    <string name="exploration_for_you">为你推荐</string>
+    <string name="exploration_loading">正在加载…</string>
+    <string name="exploration_load_failed">加载失败，请重试</string>
 </resources>
 
 <!--@formatter:on-->

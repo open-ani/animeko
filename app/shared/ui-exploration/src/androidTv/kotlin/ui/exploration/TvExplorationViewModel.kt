@@ -9,6 +9,7 @@
 
 package me.him188.ani.leanback.ui.exploration
 
+import androidx.paging.compose.launchAsLazyPagingItemsIn
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Deferred
 import kotlinx.coroutines.async
@@ -25,7 +26,6 @@ import kotlinx.coroutines.sync.Semaphore
 import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.sync.withPermit
 import me.him188.ani.app.data.models.subject.SubjectCollectionInfo
-import me.him188.ani.app.data.network.BangumiSummaryService
 import me.him188.ani.app.data.network.TmdbImageService
 import me.him188.ani.app.data.network.newestAiredDateStringOrNull
 import me.him188.ani.app.data.repository.subject.SubjectCollectionRepository
@@ -39,8 +39,11 @@ class TvExplorationViewModel(
     koin: Koin,
     private val collectionRepository: SubjectCollectionRepository,
     private val tmdb: TmdbImageService,
-    private val summaryService: BangumiSummaryService,
 ) : ExplorationPageViewModel(koin) {
+    // Keep the presented pages across route changes, like the shared trending pager.
+    // Recreating an empty presenter briefly removes the first row and shifts the saved viewport.
+    val recommendations = explorationPageState.recommendationPager.launchAsLazyPagingItemsIn(backgroundScope)
+    val followed = explorationPageState.followedSubjectsPager.launchAsLazyPagingItemsIn(backgroundScope)
     private val media = MutableStateFlow(TvSubjectMediaUiState())
     val mediaState = media.asStateFlow()
     private val hero = MutableStateFlow<TvHeroSubject?>(null)
@@ -55,12 +58,8 @@ class TvExplorationViewModel(
         backgroundScope.launch {
             hero.filterNotNull().collectLatest { target ->
                 if (target.subjectId !in media.value.infoCache) delay(300)
-                val info = loadInfo(target.subjectId) ?: return@collectLatest
+                loadInfo(target.subjectId) ?: return@collectLatest
                 loadBackdrop(target.subjectId)
-                if (info.subjectInfo.summary.isBlank() && target.subjectId !in media.value.summaryFallbackCache) {
-                    val summary = loadOrNull { summaryService.getSummary(target.subjectId) }.orEmpty()
-                    media.update { it.copy(summaryFallbackCache = it.summaryFallbackCache + (target.subjectId to summary)) }
-                }
             }
         }
     }
@@ -71,20 +70,27 @@ class TvExplorationViewModel(
             is TvExplorationIntent.CardVisible -> {
                 intent.collection?.let { info ->
                     media.update { current ->
-                        if (info.subjectId in current.infoCache) current
+                        if (current.infoCache[info.subjectId] == info) current
                         else current.copy(infoCache = current.infoCache + (info.subjectId to info))
                     }
                 }
                 backgroundScope.launch { loadBackdrop(intent.subjectId) }
             }
-            is TvExplorationIntent.OpenSubject -> navigation.emit(TvNavigationEvent.Subject(
-                intent.subject.subjectId,
-                SubjectDetailPlaceholder(
-                    id = intent.subject.subjectId,
-                    nameCN = intent.subject.title,
-                    coverUrl = intent.subject.imageUrl,
+
+            is TvExplorationIntent.OpenSubject -> navigation.emit(
+                TvNavigationEvent.Subject(
+                    intent.subject.subjectId,
+                    SubjectDetailPlaceholder(
+                        id = intent.subject.subjectId,
+                        nameCN = intent.subject.title,
+                        coverUrl = intent.subject.imageUrl,
+                    ),
                 ),
-            ))
+            )
+
+            is TvExplorationIntent.ContinueWatching -> navigation.emit(
+                TvNavigationEvent.Episode(intent.subject.subjectId, intent.episodeId),
+            )
         }
     }
 
@@ -110,7 +116,11 @@ class TvExplorationViewModel(
                         val info = loadInfo(id)
                         val url = info?.let {
                             loadOrNull {
-                                tmdb.getBackdropUrl(id, it.subjectInfo.name, activeAsOfDate = it.episodes.newestAiredDateStringOrNull())
+                                tmdb.getBackdropUrl(
+                                    id,
+                                    it.subjectInfo.name,
+                                    activeAsOfDate = it.episodes.newestAiredDateStringOrNull(),
+                                )
                             }
                         }
                         media.update { it.copy(backdropCache = it.backdropCache + (id to url)) }

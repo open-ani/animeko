@@ -10,10 +10,9 @@
 package me.him188.ani.leanback.ui.exploration
 
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
-import androidx.paging.compose.collectAsLazyPagingItems
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.paging.compose.collectWithLifecycle
 import me.him188.ani.leanback.ui.foundation.TvNavigationEffect
 import me.him188.ani.leanback.ui.foundation.TvNavigationEvent
@@ -26,9 +25,9 @@ fun TvExplorationRoute(
 ) {
     val page = viewModel.explorationPageState
     val trends = page.trendingSubjectInfoPager.collectWithLifecycle()
-    val recommendations = page.recommendationPager.collectAsLazyPagingItems()
-    val followed = page.followedSubjectsPager.collectAsLazyPagingItems()
-    val media by viewModel.mediaState.collectAsState()
+    val recommendations = viewModel.recommendations.collectWithLifecycle()
+    val followed = viewModel.followed.collectWithLifecycle()
+    val media by viewModel.mediaState.collectAsStateWithLifecycle()
     TvNavigationEffect(viewModel.navigationEvents, onNavigate)
     TvExplorationScreen(trends, recommendations, followed, media, viewModel::onIntent, modifier)
 }

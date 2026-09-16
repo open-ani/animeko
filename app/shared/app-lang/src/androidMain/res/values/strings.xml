@@ -1511,6 +1511,10 @@
     <string name="subject_details_ratings_count">%1$s ratings</string>
     <string name="rating_increase">Increase rating</string>
     <string name="rating_decrease">Decrease rating</string>
+    <string name="exploration_subject_details">Anime details</string>
+    <string name="exploration_for_you">For you</string>
+    <string name="exploration_loading">Loading…</string>
+    <string name="exploration_load_failed">Unable to load. Please try again.</string>
 </resources>
 
 <!--@formatter:on-->

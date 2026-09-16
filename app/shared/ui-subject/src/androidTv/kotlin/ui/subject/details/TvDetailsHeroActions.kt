@@ -1,6 +1,10 @@
 /*
- * Copyright (C) 2026 OpenAni and contributors.
- * Use of this source code is governed by the GNU AGPLv3 license.
+ * Copyright (C) 2024-2026 OpenAni and contributors.
+ *
+ * 此源代码的使用受 GNU AFFERO GENERAL PUBLIC LICENSE version 3 许可证的约束, 可以在以下链接找到该许可证.
+ * Use of this source code is governed by the GNU AGPLv3 license, which can be found at the following link.
+ *
+ * https://github.com/open-ani/ani/blob/main/LICENSE
  */
 package me.him188.ani.leanback.ui.subject.details
 
@@ -18,13 +22,13 @@ import androidx.compose.foundation.interaction.collectIsFocusedAsState
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.progressSemantics
 import androidx.compose.foundation.layout.widthIn
+import androidx.compose.foundation.progressSemantics
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.Info
 import androidx.compose.material.icons.rounded.Bookmark
@@ -39,8 +43,8 @@ import androidx.compose.material3.TooltipDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.setValue
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.dropShadow
@@ -48,13 +52,13 @@ import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.shadow.Shadow
 import androidx.compose.ui.graphics.vector.ImageVector
-import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.disabled
-import androidx.compose.ui.semantics.stateDescription
 import androidx.compose.ui.semantics.selected
 import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.semantics.stateDescription
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -63,20 +67,20 @@ import androidx.compose.ui.window.PopupProperties
 import dev.chrisbanes.haze.HazeTint
 import dev.chrisbanes.haze.hazeEffect
 import me.him188.ani.app.ui.lang.Lang
-import me.him188.ani.app.ui.lang.rating_self_score
 import me.him188.ani.app.ui.lang.rating_requires_collection
+import me.him188.ani.app.ui.lang.rating_self_score
 import me.him188.ani.app.ui.lang.subject_details_rate
 import me.him188.ani.datasources.api.topic.UnifiedCollectionType
 import me.him188.ani.leanback.ui.foundation.widgets.TvOptionDefaults
 import me.him188.ani.leanback.ui.foundation.widgets.TvPlaceholderBlock
+import me.him188.ani.leanback.ui.subject.collection.tvCollectionLabel
 import me.him188.ani.leanback.ui.subject.components.LocalTvDetailsActionBackdrop
 import me.him188.ani.leanback.ui.subject.components.TvSubjectDetailsDefaults
-import me.him188.ani.leanback.ui.subject.collection.tvCollectionLabel
 import org.jetbrains.compose.resources.stringResource
 
 /** A neutral, inverse-focus pill. Busy actions keep the same focus node. */
 @Composable
-internal fun TvDetailsAction(
+fun TvDetailsAction(
     label: String,
     icon: ImageVector? = null,
     onClick: () -> Unit,
@@ -142,8 +146,10 @@ internal fun TvDetailsAction(
             if (busy) CircularProgressIndicator(Modifier.size(iconSize), color = content, strokeWidth = 2.dp)
             else if (icon != null) Icon(icon, null, Modifier.size(iconSize))
             if (loading && !iconOnly) TvPlaceholderBlock(Modifier.width(100.dp).height(16.dp), color = content)
-            else if (!iconOnly) Text(label, style = MaterialTheme.typography.titleMedium.copy(fontSize = if (compact) 14.sp else 16.sp),
-                maxLines = 1, overflow = TextOverflow.Ellipsis)
+            else if (!iconOnly) Text(
+                label, style = MaterialTheme.typography.titleMedium.copy(fontSize = if (compact) 14.sp else 16.sp),
+                maxLines = 1, overflow = TextOverflow.Ellipsis,
+            )
         }
     }
 }
@@ -153,8 +159,10 @@ internal fun TvDetailsCollectionAction(
     type: UnifiedCollectionType, onClick: () -> Unit, modifier: Modifier, compact: Boolean, active: Boolean = false,
     boundsModifier: Modifier = Modifier,
 ) {
-    TvDetailsAction(type.tvCollectionLabel(), Icons.Rounded.Bookmark, onClick, modifier,
-        iconOnly = compact, active = active, boundsModifier = boundsModifier, blurBackground = true)
+    TvDetailsAction(
+        type.tvCollectionLabel(), Icons.Rounded.Bookmark, onClick, modifier,
+        iconOnly = compact, active = active, boundsModifier = boundsModifier, blurBackground = true,
+    )
 }
 
 @Composable

@@ -31,6 +31,8 @@ import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
@@ -81,11 +83,16 @@ fun TvLandscapeCard(
     width: Dp? = TvLandscapeCardDefaults.Width,
     /** 标题上方的一行小字 (如继续观看进度「继续 · 第 3 话」); null 不显示. */
     overline: String? = null,
+    /** Image-only browsing rows move all visible text into their surrounding hero. */
+    showTitle: Boolean = true,
+    onLongClick: (() -> Unit)? = null,
 ) {
     var selfFocused by remember { mutableStateOf(false) }
     Surface(
         onClick = onClick,
+        onLongClick = onLongClick,
         modifier = modifier
+            .then(if (showTitle) Modifier else Modifier.semantics { contentDescription = title })
             .then(if (width != null) Modifier.width(width) else Modifier)
             .tvFocusMemorable(memoryId)
             .onFocusChanged {
@@ -113,12 +120,12 @@ fun TvLandscapeCard(
             if (imageUrl != null) {
                 AsyncImage(
                     model = imageUrl,
-                    contentDescription = title,
+                    contentDescription = title.takeIf { showTitle },
                     modifier = Modifier.fillMaxSize(),
                     contentScale = ContentScale.Crop,
                 )
             }
-            Column(
+            if (showTitle) Column(
                 Modifier
                     .align(Alignment.BottomStart)
                     .fillMaxWidth()

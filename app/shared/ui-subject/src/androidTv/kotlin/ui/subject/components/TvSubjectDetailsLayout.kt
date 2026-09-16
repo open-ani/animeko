@@ -1,6 +1,10 @@
 /*
- * Copyright (C) 2026 OpenAni and contributors.
- * Use of this source code is governed by the GNU AGPLv3 license.
+ * Copyright (C) 2024-2026 OpenAni and contributors.
+ *
+ * 此源代码的使用受 GNU AFFERO GENERAL PUBLIC LICENSE version 3 许可证的约束, 可以在以下链接找到该许可证.
+ * Use of this source code is governed by the GNU AGPLv3 license, which can be found at the following link.
+ *
+ * https://github.com/open-ani/ani/blob/main/LICENSE
  */
 package me.him188.ani.leanback.ui.subject.components
 
@@ -28,18 +32,18 @@ import androidx.compose.runtime.mutableStateMapOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.staticCompositionLocalOf
-import androidx.compose.ui.Modifier
 import androidx.compose.ui.BiasAlignment
+import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.blur
 import androidx.compose.ui.draw.drawWithContent
+import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.BlendMode
-import androidx.compose.ui.graphics.CompositingStrategy
-import androidx.compose.ui.graphics.graphicsLayer
-import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.CompositingStrategy
 import androidx.compose.ui.graphics.ImageBitmap
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.layout.positionInRoot
@@ -86,28 +90,32 @@ internal fun TvSubjectDetailsPageLayout(
             LocalBringIntoViewSpec provides bringIntoViewSpec,
             LocalTvDetailsActionBackdrop provides actionBackdrop,
         ) {
-            Column(scrollContentModifier.fillMaxSize()
-                .onGloballyPositioned { scrollAnchors.contentTopInRoot = it.positionInRoot().y }
-                .graphicsLayer { compositingStrategy = CompositingStrategy.Offscreen }
-                .drawWithContent {
-                    drawContent()
-                    val fade = 48.dp.toPx()
-                    if (scrollState.value > 0) drawRect(
-                        Brush.verticalGradient(0f to Color.Transparent, 1f to Color.Black, endY = fade),
-                        size = Size(size.width, fade), blendMode = BlendMode.DstIn,
-                    )
-                }
-                .verticalScroll(scrollState)) {
+            Column(
+                scrollContentModifier.fillMaxSize()
+                    .onGloballyPositioned { scrollAnchors.contentTopInRoot = it.positionInRoot().y }
+                    .graphicsLayer { compositingStrategy = CompositingStrategy.Offscreen }
+                    .drawWithContent {
+                        drawContent()
+                        val fade = 48.dp.toPx()
+                        if (scrollState.value > 0) drawRect(
+                            Brush.verticalGradient(0f to Color.Transparent, 1f to Color.Black, endY = fade),
+                            size = Size(size.width, fade), blendMode = BlendMode.DstIn,
+                        )
+                    }
+                    .verticalScroll(scrollState),
+            ) {
                 CompositionLocalProvider(LocalBringIntoViewSpec provides rowSpec) {
                     content(heroHeight)
                 }
                 // Keep the end space outside the last section's focus and semantics bounds.
-                Box(Modifier.fillMaxWidth().height(TvSubjectDetailsDefaults.EndPadding)
-                    .testTag("tv-details-end-padding")
-                    .onGloballyPositioned {
-                        scrollAnchors.endPaddingBottom = it.positionInRoot().y + it.size.height -
-                                scrollAnchors.contentTopInRoot + scrollState.value
-                    })
+                Box(
+                    Modifier.fillMaxWidth().height(TvSubjectDetailsDefaults.EndPadding)
+                        .testTag("tv-details-end-padding")
+                        .onGloballyPositioned {
+                            scrollAnchors.endPaddingBottom = it.positionInRoot().y + it.size.height -
+                                    scrollAnchors.contentTopInRoot + scrollState.value
+                        },
+                )
             }
         }
     }
@@ -179,24 +187,27 @@ internal data class TvDetailsBackdropImage(val url: String, val bitmap: ImageBit
 internal val LocalTvDetailsBackdropImage = staticCompositionLocalOf<TvDetailsBackdropImage?> { null }
 
 /** Only the overview actions sample this page's backdrop; overlays already have their own blur. */
-internal val LocalTvDetailsActionBackdrop = staticCompositionLocalOf<HazeState?> { null }
+val LocalTvDetailsActionBackdrop = staticCompositionLocalOf<HazeState?> { null }
 
 /** 全屏背景：左侧和底部线性遮罩，随页面滚动增强模糊与压暗。 */
 @Composable
-internal fun TvDetailsBackdrop(
+fun TvDetailsBackdrop(
     url: String,
     blurProgress: () -> Float,
     modifier: Modifier = Modifier,
     crossfade: Boolean? = null,
     onImageLoaded: ((ImageBitmap) -> Unit)? = null,
+    onImageError: (() -> Unit)? = null,
 ) {
     val progress = blurProgress().coerceIn(0f, 1f)
     val loadedImage = LocalTvDetailsBackdropImage.current?.takeIf { it.url == url }?.bitmap
     Box(modifier.fillMaxSize().background(TvSubjectDetailsDefaults.Background)) {
         val imageModifier = Modifier.fillMaxSize().blur(TvSubjectDetailsDefaults.ReaderBlurRadius * progress)
         if (loadedImage != null) {
-            Image(loadedImage, contentDescription = null, imageModifier,
-                contentScale = ContentScale.Crop, alignment = BiasAlignment(0f, -.5f))
+            Image(
+                loadedImage, contentDescription = null, imageModifier,
+                contentScale = ContentScale.Crop, alignment = BiasAlignment(0f, -.5f),
+            )
         } else {
             AsyncImage(
                 url, contentDescription = null, imageModifier,
@@ -204,21 +215,26 @@ internal fun TvDetailsBackdrop(
                 alignment = BiasAlignment(0f, -.5f),
                 crossfade = crossfade,
                 onSuccess = { result -> result.bitmap?.let { onImageLoaded?.invoke(it) } },
+                onError = { onImageError?.invoke() },
             )
         }
         Box(Modifier.fillMaxSize().background(Color.Black.copy(alpha = .35f + .20f * progress)))
-        Box(Modifier.fillMaxSize().background(
-            Brush.horizontalGradient(
-                0f to Color.Black.copy(alpha = .60f),
-                .55f to Color.Black.copy(alpha = .16f),
-                1f to Color.Transparent,
+        Box(
+            Modifier.fillMaxSize().background(
+                Brush.horizontalGradient(
+                    0f to Color.Black.copy(alpha = .60f),
+                    .55f to Color.Black.copy(alpha = .16f),
+                    1f to Color.Transparent,
+                ),
             ),
-        ))
-        Box(Modifier.fillMaxSize().background(
-            Brush.verticalGradient(
-                .45f to Color.Transparent,
-                1f to Color.Black.copy(alpha = .42f),
+        )
+        Box(
+            Modifier.fillMaxSize().background(
+                Brush.verticalGradient(
+                    .45f to Color.Transparent,
+                    1f to Color.Black.copy(alpha = .42f),
+                ),
             ),
-        ))
+        )
     }
 }

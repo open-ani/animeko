@@ -30,15 +30,15 @@ import androidx.navigation3.runtime.rememberSaveableStateHolderNavEntryDecorator
 import androidx.navigation3.ui.NavDisplay
 import androidx.tv.material3.Surface
 import me.him188.ani.app.data.models.subject.SubjectInfo
-import me.him188.ani.app.tools.LocalTimeFormatter
-import me.him188.ani.app.tools.TimeFormatter
 import me.him188.ani.app.navigation.AniNavigator
 import me.him188.ani.app.navigation.LocalNavigator
 import me.him188.ani.app.navigation.MainScreenPage
-import me.him188.ani.app.navigation.PersonDetailRole
 import me.him188.ani.app.navigation.NavRoutes
+import me.him188.ani.app.navigation.PersonDetailRole
 import me.him188.ani.app.navigation.findLast
 import me.him188.ani.app.navigation.rememberAniBackStack
+import me.him188.ani.app.tools.LocalTimeFormatter
+import me.him188.ani.app.tools.TimeFormatter
 import me.him188.ani.leanback.ui.collection.TvCollectionRoute
 import me.him188.ani.leanback.ui.collection.TvCollectionViewModel
 import me.him188.ani.leanback.ui.di.TvAppDependencies
@@ -58,11 +58,11 @@ import me.him188.ani.leanback.ui.search.TvSearchViewModel
 import me.him188.ani.leanback.ui.settings.TvSettingsRoute
 import me.him188.ani.leanback.ui.settings.TvSettingsViewModel
 import me.him188.ani.leanback.ui.subject.TvSubjectDetailsRoute
+import me.him188.ani.leanback.ui.subject.TvSubjectDetailsViewModel
 import me.him188.ani.leanback.ui.subject.person.TvPeopleDetailsRoute
 import me.him188.ani.leanback.ui.subject.person.TvPeopleDetailsViewModel
 import me.him188.ani.leanback.ui.subject.person.TvPeopleKind
 import me.him188.ani.leanback.ui.subject.person.TvPeopleTarget
-import me.him188.ani.leanback.ui.subject.TvSubjectDetailsViewModel
 import me.him188.ani.leanback.ui.watchtogether.TvTogetherIntent
 import me.him188.ani.leanback.ui.watchtogether.TvWatchTogetherViewModel
 
@@ -116,8 +116,20 @@ fun TvAniAppContent(
             is TvNavigationEvent.Subject -> aniNavigator.navigateSubjectDetails(event.subjectId, event.placeholder)
             is TvNavigationEvent.Episode -> aniNavigator.navigateEpisodeDetails(event.subjectId, event.episodeId)
             is TvNavigationEvent.Character -> aniNavigator.navigateCharacterDetails(event.characterId)
-            is TvNavigationEvent.VoiceActor -> aniNavigator.navigate(NavRoutes.PersonDetail(event.personId, PersonDetailRole.VoiceActor))
-            is TvNavigationEvent.Staff -> aniNavigator.navigate(NavRoutes.PersonDetail(event.personId, PersonDetailRole.Staff))
+            is TvNavigationEvent.VoiceActor -> aniNavigator.navigate(
+                NavRoutes.PersonDetail(
+                    event.personId,
+                    PersonDetailRole.VoiceActor,
+                ),
+            )
+
+            is TvNavigationEvent.Staff -> aniNavigator.navigate(
+                NavRoutes.PersonDetail(
+                    event.personId,
+                    PersonDetailRole.Staff,
+                ),
+            )
+
             TvNavigationEvent.LoggedIn -> Unit // handled by the Main entry
             TvNavigationEvent.Login -> aniNavigator.navigateBangumiAuthorize()
         }
@@ -155,7 +167,6 @@ fun TvAniAppContent(
                                             koin = dependencies.koin,
                                             collectionRepository = dependencies.subjectCollectionRepository,
                                             tmdb = dependencies.tmdbImageService,
-                                            summaryService = dependencies.bangumiSummaryService,
                                         )
                                     }
                                     TvExplorationRoute(viewModel, onNavigate)
@@ -205,7 +216,7 @@ fun TvAniAppContent(
                             onNavigate = { event ->
                                 if (event == TvNavigationEvent.LoggedIn) aniNavigator.popBackStack()
                                 else onNavigate(event)
-                            }
+                            },
                         )
                     }
 
@@ -222,10 +233,13 @@ fun TvAniAppContent(
                     entry<NavRoutes.PersonDetail> { route ->
                         val viewModel = tvViewModel {
                             TvPeopleDetailsViewModel(
-                                TvPeopleTarget(route.personId, when (route.role) {
-                                    PersonDetailRole.VoiceActor -> TvPeopleKind.VoiceActor
-                                    PersonDetailRole.Staff -> TvPeopleKind.Staff
-                                }),
+                                TvPeopleTarget(
+                                    route.personId,
+                                    when (route.role) {
+                                        PersonDetailRole.VoiceActor -> TvPeopleKind.VoiceActor
+                                        PersonDetailRole.Staff -> TvPeopleKind.Staff
+                                    },
+                                ),
                                 dependencies.personDetailsRepository, dependencies.personCommentRepository,
                                 dependencies.commentReportService, dependencies.sessionStateProvider,
                             )

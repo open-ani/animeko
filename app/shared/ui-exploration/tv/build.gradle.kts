@@ -20,10 +20,17 @@ kotlin {
         dependencies {
             api(projects.app.shared.uiExploration)
             api(projects.app.shared.uiFoundationTv)
+            implementation(projects.app.shared.uiSubjectTv)
             implementation(projects.app.shared.pagingCompose)
         }
     }
     sourceSets.androidHostTest {
         kotlin.srcDir("../src/androidTvTest/kotlin")
+    }
+    sourceSets.androidDeviceTest {
+        kotlin.srcDir("../src/androidTvDeviceTest/kotlin")
+        dependencies {
+            implementation(projects.utils.uiTesting)
+        }
     }
 }

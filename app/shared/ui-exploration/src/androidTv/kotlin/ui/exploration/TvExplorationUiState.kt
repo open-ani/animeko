@@ -15,7 +15,6 @@ import me.him188.ani.app.data.models.subject.SubjectCollectionInfo
 data class TvSubjectMediaUiState(
     val infoCache: Map<Int, SubjectCollectionInfo> = emptyMap(),
     val backdropCache: Map<Int, String?> = emptyMap(),
-    val summaryFallbackCache: Map<Int, String> = emptyMap(),
 )
 
 data class TvHeroSubject(val subjectId: Int, val title: String, val imageUrl: String)
@@ -24,4 +23,5 @@ sealed interface TvExplorationIntent {
     data class ShowHero(val subject: TvHeroSubject) : TvExplorationIntent
     data class CardVisible(val subjectId: Int, val collection: SubjectCollectionInfo? = null) : TvExplorationIntent
     data class OpenSubject(val subject: TvHeroSubject) : TvExplorationIntent
+    data class ContinueWatching(val subject: TvHeroSubject, val episodeId: Int) : TvExplorationIntent
 }
