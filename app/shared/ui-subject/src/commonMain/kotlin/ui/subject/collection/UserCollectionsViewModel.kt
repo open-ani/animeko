@@ -27,6 +27,7 @@ import me.him188.ani.app.data.repository.episode.EpisodeProgressRepository
 import me.him188.ani.app.data.repository.subject.SetSubjectCollectionTypeOrDeleteUseCase
 import me.him188.ani.app.data.repository.subject.SubjectCollectionRepository
 import me.him188.ani.app.data.repository.user.SettingsRepository
+import me.him188.ani.app.domain.episode.SetEpisodeCollectionTypeUseCase
 import me.him188.ani.app.domain.foundation.LoadError
 import me.him188.ani.app.domain.session.SessionEvent
 import me.him188.ani.app.domain.session.SessionStateProvider
@@ -56,6 +57,7 @@ class UserCollectionsViewModel : AbstractViewModel(), KoinComponent {
     private val settingsRepository: SettingsRepository by inject()
     private val sessionStateProvider: SessionStateProvider by inject()
     private val setSubjectCollectionTypeOrDeleteUseCase: SetSubjectCollectionTypeOrDeleteUseCase by inject()
+    private val setEpisodeCollectionTypeUseCase: SetEpisodeCollectionTypeUseCase by inject()
 
     val lazyGridState = LazyGridState()
 
@@ -137,7 +139,7 @@ class UserCollectionsViewModel : AbstractViewModel(), KoinComponent {
         episodeId: Int,
         collectionType: UnifiedCollectionType
     ): LoadError? = LoadError.runAndWrapOrThrowCancellation {
-        episodeCollectionRepository.setEpisodeCollectionType(
+        setEpisodeCollectionTypeUseCase(
             subjectId,
             episodeId,
             collectionType.toggleCollected(),
