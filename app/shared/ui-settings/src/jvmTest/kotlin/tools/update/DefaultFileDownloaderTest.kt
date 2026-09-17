@@ -291,10 +291,6 @@ class DefaultFileDownloaderTest {
         tempDir.deleteRecursively()
     }
 
-    /**
-     * 每次下载尝试的进度上报协程必须随该次尝试结束.
-     * 否则多次尝试 (重试或切换备用地址) 后, 多个上报协程会轮流把各自的旧进度写入 [DefaultFileDownloader.progress].
-     */
     @Test
     fun `progress reporter does not outlive download attempt`() = testApplication {
         setupRouting()

@@ -255,8 +255,6 @@ class DefaultFileDownloader(
                         val buffer = ByteArray(DEFAULT_BUFFER_SIZE)
 
                         if (length != null) {
-                            // 必须显式在本次尝试的 scope 内启动: `client.use` 的 receiver HttpClient 也是 CoroutineScope,
-                            // 裸 `launch` 会解析到它, 使上报协程的生命周期跟随 client 而不是本次下载.
                             this@cancellableCoroutineScope.launch {
                                 while (isActive) {
                                     delay(1.seconds)
