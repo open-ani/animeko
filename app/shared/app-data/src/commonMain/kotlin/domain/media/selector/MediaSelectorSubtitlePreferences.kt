@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2024 OpenAni and contributors.
+ * Copyright (C) 2024-2026 OpenAni and contributors.
  *
  * 此源代码的使用受 GNU AFFERO GENERAL PUBLIC LICENSE version 3 许可证的约束, 可以在以下链接找到该许可证.
  * Use of this source code is governed by the GNU AGPLv3 license, which can be found at the following link.
@@ -48,28 +48,8 @@ value class MediaSelectorSubtitlePreferences(
         fun forPlatform(platform: Platform = currentPlatform()): MediaSelectorSubtitlePreferences {
             // 对于缺陷列表, 查看 https://github.com/open-ani/ani/issues/615
             val map = when (platform) {
-                // TODO: check linux MediaSelectorSubtitlePreferences
-                is Platform.MacOS -> ImmutableEnumMap<SubtitleKind, _> {
-                    when (it) {
-                        SubtitleKind.EMBEDDED -> NORMAL
-                        SubtitleKind.CLOSED -> HIDE
-                        SubtitleKind.EXTERNAL_PROVIDED -> NORMAL
-                        SubtitleKind.EXTERNAL_DISCOVER -> HIDE
-                        SubtitleKind.CLOSED_OR_EXTERNAL_DISCOVER -> HIDE
-                    }
-                }
-
-                is Platform.Windows -> ImmutableEnumMap<SubtitleKind, _> {
-                    when (it) {
-                        SubtitleKind.EMBEDDED -> NORMAL
-                        SubtitleKind.CLOSED -> NORMAL
-                        SubtitleKind.EXTERNAL_PROVIDED -> NORMAL
-                        SubtitleKind.EXTERNAL_DISCOVER -> HIDE
-                        SubtitleKind.CLOSED_OR_EXTERNAL_DISCOVER -> NORMAL
-                    }
-                }
-
-                is Platform.Linux -> ImmutableEnumMap<SubtitleKind, _> {
+                // 桌面端 mpv 支持内封字幕; 未提供文件的外挂字幕仍无法加载.
+                is Platform.MacOS, is Platform.Windows, is Platform.Linux -> ImmutableEnumMap<SubtitleKind, _> {
                     when (it) {
                         SubtitleKind.EMBEDDED -> NORMAL
                         SubtitleKind.CLOSED -> NORMAL

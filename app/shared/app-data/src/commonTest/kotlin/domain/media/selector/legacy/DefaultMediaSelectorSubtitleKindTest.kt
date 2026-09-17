@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2024-2025 OpenAni and contributors.
+ * Copyright (C) 2024-2026 OpenAni and contributors.
  *
  * 此源代码的使用受 GNU AFFERO GENERAL PUBLIC LICENSE version 3 许可证的约束, 可以在以下链接找到该许可证.
  * Use of this source code is governed by the GNU AGPLv3 license, which can be found at the following link.
@@ -114,35 +114,7 @@ class DefaultMediaSelectorSubtitleKindTest : AbstractDefaultMediaSelectorTest() 
 sealed class DefaultMediaSelectorSubtitleKindPlatformTest(
     platform: Platform
 ) : AbstractDefaultMediaSelectorTest() {
-    class MacOS : DefaultMediaSelectorSubtitleKindPlatformTest(Platform.MacOS(Arch.AARCH64)) {
-        @Test
-        fun `does not select CLOSED_OR_EXTERNAL_DISCOVER`() = runTest {
-            val target: DefaultMedia
-            addMedia(
-                media(alliance = "字幕组1", subtitleKind = SubtitleKind.CLOSED_OR_EXTERNAL_DISCOVER),
-                media(alliance = "字幕组2").also { target = it },
-                media(alliance = "字幕组3"),
-                media(alliance = "字幕组4"),
-                media(alliance = "字幕组5"),
-            )
-            savedDefaultPreference.value = DEFAULT_PREFERENCE
-            assertEquals(target, selector.trySelectDefault())
-        }
-
-        @Test
-        fun `does not select CLOSED`() = runTest {
-            val target: DefaultMedia
-            addMedia(
-                media(alliance = "字幕组1", subtitleKind = SubtitleKind.CLOSED),
-                media(alliance = "字幕组2").also { target = it },
-                media(alliance = "字幕组3"),
-                media(alliance = "字幕组4"),
-                media(alliance = "字幕组5"),
-            )
-            savedDefaultPreference.value = DEFAULT_PREFERENCE
-            assertEquals(target, selector.trySelectDefault())
-        }
-    }
+    class MacOS : DefaultMediaSelectorSubtitleKindPlatformTest(Platform.MacOS(Arch.AARCH64))
 
     class Windows : DefaultMediaSelectorSubtitleKindPlatformTest(Platform.Windows(Arch.X86_64))
     class Android : DefaultMediaSelectorSubtitleKindPlatformTest(Platform.Android(Arch.ARMV8A))

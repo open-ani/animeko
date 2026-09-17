@@ -177,6 +177,7 @@ fun getAndroidModules(
             saveDir = saveDir,
             mediaResolver = get<MediaResolver>(),
             pikpakConfig = { pikpakConfig.value },
+            offlineDownloadEngine = get(),
         )
     }
 

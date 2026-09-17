@@ -11,21 +11,30 @@ package me.him188.ani.app.domain.media.cache.engine
 
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.test.runTest
 import kotlinx.io.files.Path
 import me.him188.ani.app.data.models.preference.PikPakConfig
 import me.him188.ani.app.data.persistent.database.dao.HttpCacheDownloadStateDao
 import me.him188.ani.app.domain.media.TestMediaList
+import me.him188.ani.app.domain.media.download.DownloadTestStorage
+import me.him188.ani.app.domain.media.download.MediaDownloadManager
+import me.him188.ani.app.domain.media.download.testDownloadEngine
 import me.him188.ani.app.domain.media.player.data.MediaDataProvider
 import me.him188.ani.app.domain.media.resolver.EpisodeMetadata
+import me.him188.ani.app.domain.media.resolver.MediaResolutionException
 import me.him188.ani.app.domain.media.resolver.MediaResolver
+import me.him188.ani.app.domain.media.resolver.ResolutionFailures
 import me.him188.ani.app.domain.media.resolver.TestUniversalMediaResolver
 import me.him188.ani.datasources.api.EpisodeSort
 import me.him188.ani.datasources.api.Media
 import me.him188.ani.datasources.api.MediaCacheMetadata
 import me.him188.ani.datasources.api.source.MediaSourceKind
 import me.him188.ani.datasources.api.topic.ResourceLocation
+import me.him188.ani.torrent.offline.OfflineDownloadAuthException
+import me.him188.ani.torrent.offline.OfflineDownloadEngine
+import me.him188.ani.torrent.offline.ResolvedMedia
 import me.him188.ani.utils.httpdownloader.DownloadId
 import me.him188.ani.utils.httpdownloader.DownloadOptions
 import me.him188.ani.utils.httpdownloader.DownloadProgress
@@ -37,14 +46,16 @@ import org.openani.mediamp.source.MediaExtraFiles
 import org.openani.mediamp.source.UriMediaData
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertFailsWith
+import kotlin.test.assertFalse
 import kotlin.test.assertNotEquals
+import kotlin.test.assertSame
 import kotlin.test.assertTrue
 
 /**
- * 验证 [HttpMediaCacheEngine] 为 HTTP 任务分配的标识: 同一资源的不同剧集拥有各自的任务与输出文件,
- * 恢复记录时优先匹配含剧集信息的标识, 其次匹配仅由 mediaId 派生的标识.
+ * 验证 HTTP 缓存的云端解析边界、剧集任务标识与持久化恢复.
  */
-class HttpDownloadIdentityTest {
+class HttpMediaCacheEngineTest {
     @Test
     fun `season episodes create different HTTP files and deleting one keeps the other`() = runTest {
         val downloader = FakeDownloader()
@@ -126,6 +137,91 @@ class HttpDownloadIdentityTest {
         assertNotEquals(createId(slash, testMetadata(1)), createId(colon, testMetadata(1)))
     }
 
+    @Test
+    fun `BT caching requires an available cloud engine even when playback supports torrents`() {
+        val offline = FakeOfflineEngine()
+        val engine = engine(FakeDownloader(), offline)
+        for (location in listOf(
+            ResourceLocation.MagnetLink("magnet:?xt=urn:btih:test"),
+            ResourceLocation.HttpTorrentFile("https://example.com/test.torrent"),
+        )) {
+            val media = TestMediaList.first().copy(kind = MediaSourceKind.BitTorrent, download = location)
+            offline.isSupported.value = false
+            assertFalse(engine.supports(media))
+            offline.isSupported.value = true
+            assertTrue(engine.supports(media))
+            assertFalse(engine(FakeDownloader(), offlineEngine = null).supports(media))
+            assertFalse(engine(FakeDownloader(), offline) { PikPakConfig.Default }.supports(media))
+        }
+    }
+
+    @Test
+    fun `download manager uses local BT when cloud credentials are unavailable`() = runTest {
+        val offline = FakeOfflineEngine()
+        val http = DownloadTestStorage(engine(FakeDownloader(), offline))
+        val torrent = DownloadTestStorage(testDownloadEngine(MediaCacheEngineKey("torrent")))
+        val manager = MediaDownloadManager(listOf(torrent, http), backgroundScope)
+        for (location in listOf(
+            ResourceLocation.MagnetLink("magnet:?xt=urn:btih:test"),
+            ResourceLocation.HttpTorrentFile("https://example.com/test.torrent"),
+        )) {
+            val media = TestMediaList.first().copy(kind = MediaSourceKind.BitTorrent, download = location)
+            offline.isSupported.value = false
+            assertSame(torrent, manager.defaultStorageFor(media))
+            offline.isSupported.value = true
+            assertSame(http, manager.defaultStorageFor(media))
+        }
+    }
+
+    @Test
+    fun `cloud failure surfaces its cause without opening local BT playback`() = runTest {
+        val failure = OfflineDownloadAuthException("expired credentials")
+        val downloader = FakeDownloader()
+        val engine = engine(downloader, FakeOfflineEngine(failure))
+        val media = TestMediaList.first().copy(
+            kind = MediaSourceKind.BitTorrent,
+            download = ResourceLocation.MagnetLink("magnet:?xt=urn:btih:test"),
+        )
+        val thrown = assertFailsWith<MediaResolutionException> {
+            engine.createCache(media, testMetadata(1), testEpisodeMetadata(1), backgroundScope.coroutineContext)
+        }
+        assertEquals(ResolutionFailures.ENGINE_ERROR, thrown.reason)
+        assertSame(failure, thrown.cause)
+        assertTrue(downloader.states.isEmpty())
+    }
+
+    @Test
+    fun `HTTP caching does not require a cloud engine`() = runTest {
+        val downloader = FakeDownloader()
+        val engine = engine(downloader, offlineEngine = null) { PikPakConfig.Default }
+        val media = TestMediaList.first().copy(
+            kind = MediaSourceKind.WEB,
+            download = ResourceLocation.HttpStreamingFile("https://example.com/video.mp4"),
+        )
+        assertTrue(engine.supports(media))
+        engine.createCache(media, testMetadata(1), testEpisodeMetadata(1), backgroundScope.coroutineContext)
+        assertEquals(1, downloader.states.size)
+    }
+
+    @Test
+    fun `stored cloud downloads restore without cloud credentials or re-resolution`() = runTest {
+        val downloader = FakeDownloader()
+        val media = TestMediaList.first().copy(
+            kind = MediaSourceKind.BitTorrent,
+            download = ResourceLocation.MagnetLink("magnet:?xt=urn:btih:test"),
+        )
+        val metadata = testMetadata(1)
+        engine(downloader).createCache(media, metadata, testEpisodeMetadata(1), backgroundScope.coroutineContext)
+        val downloadId = downloader.states.keys.single()
+        val unavailable = engine(downloader, offlineEngine = null) { PikPakConfig.Default }
+        assertFalse(unavailable.supports(media))
+        assertTrue(unavailable.restore(media, metadata, backgroundScope.coroutineContext) != null)
+        assertEquals(listOf(downloadId), downloader.resumed)
+        downloader.persistedOnly += downloadId
+        assertTrue(unavailable.restore(media, metadata, backgroundScope.coroutineContext) != null)
+        assertEquals(listOf(downloadId), downloader.recreated)
+    }
+
     private fun testMetadata(episodeId: Int, subjectId: Int = 1) = MediaCacheMetadata(
         subjectId = subjectId.toString(),
         episodeId = episodeId.toString(),
@@ -138,15 +234,21 @@ class HttpDownloadIdentityTest {
     private fun testEpisodeMetadata(episodeId: Int) =
         EpisodeMetadata("Episode $episodeId", EpisodeSort(episodeId), EpisodeSort(episodeId))
 
-    private fun engine(downloader: FakeDownloader) = HttpMediaCacheEngine(
+    private fun engine(
+        downloader: FakeDownloader,
+        offlineEngine: OfflineDownloadEngine? = FakeOfflineEngine(),
+        pikpakConfig: () -> PikPakConfig = { PikPakConfig.Default.copy(enabled = true) },
+    ) = HttpMediaCacheEngine(
         downloader,
         Path("/unused-test-downloads"),
         object : MediaResolver by TestUniversalMediaResolver {
-            override suspend fun resolve(media: Media, episode: EpisodeMetadata): MediaDataProvider<*> =
-                object : MediaDataProvider<UriMediaData> {
+            override suspend fun resolve(media: Media, episode: EpisodeMetadata): MediaDataProvider<*> {
+                check(media.kind != MediaSourceKind.BitTorrent) { "HTTP caching must not call the BT playback resolver" }
+                return object : MediaDataProvider<UriMediaData> {
                     override val extraFiles = MediaExtraFiles.EMPTY
                     override suspend fun open(scopeForCleanup: CoroutineScope) = UriMediaData("https://example.com/${episode.sort}.mp4")
                 }
+            }
         },
         "test-storage",
         object : HttpCacheDownloadStateDao {
@@ -166,7 +268,8 @@ class HttpDownloadIdentityTest {
 
             override suspend fun getById(id: DownloadId) = downloader.persisted[id]
         },
-        pikpakConfig = { PikPakConfig.Default.copy(enabled = true) },
+        pikpakConfig = pikpakConfig,
+        offlineDownloadEngine = offlineEngine,
     )
 }
 
@@ -212,4 +315,17 @@ private class FakeDownloader : HttpDownloader {
     override suspend fun getState(downloadId: DownloadId) = states[downloadId]?.takeUnless { downloadId in persistedOnly }
     override suspend fun getAllStates() = states.values.toList()
     override fun close() = Unit
+}
+
+private class FakeOfflineEngine(private val failure: Throwable? = null) : OfflineDownloadEngine {
+    override val id = "test"
+    override val displayName = "Test"
+    override val isSupported = MutableStateFlow(true)
+
+    override suspend fun resolve(uri: String, pickVideoFile: (List<String>) -> String?): ResolvedMedia {
+        failure?.let { throw it }
+        val files = listOf("Subject - 01.mp4", "Subject - 02.mp4")
+        val file = checkNotNull(pickVideoFile(files))
+        return ResolvedMedia("https://example.com/${files.indexOf(file) + 1}.mp4", fileName = file)
+    }
 }

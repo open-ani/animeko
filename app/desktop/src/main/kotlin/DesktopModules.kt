@@ -148,6 +148,7 @@ fun getDesktopModules(getContext: () -> DesktopContext, scope: CoroutineScope) =
             saveDir = saveDir.toKtPath(),
             mediaResolver = get<MediaResolver>(),
             pikpakConfig = { pikpakConfig.value },
+            offlineDownloadEngine = get(),
         )
     }
 

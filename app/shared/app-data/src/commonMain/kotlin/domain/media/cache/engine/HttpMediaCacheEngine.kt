@@ -30,6 +30,7 @@ import me.him188.ani.app.domain.media.cache.MediaCache
 import me.him188.ani.app.domain.media.cache.MediaCacheState
 import me.him188.ani.app.domain.media.resolver.EpisodeMetadata
 import me.him188.ani.app.domain.media.resolver.MediaResolver
+import me.him188.ani.app.domain.media.resolver.OfflineDownloadMediaResolver
 import me.him188.ani.app.tools.Progress
 import me.him188.ani.app.tools.toProgress
 import me.him188.ani.app.torrent.api.files.averageRate
@@ -42,6 +43,7 @@ import me.him188.ani.datasources.api.source.MediaSourceKind
 import me.him188.ani.datasources.api.topic.FileSize
 import me.him188.ani.datasources.api.topic.FileSize.Companion.bytes
 import me.him188.ani.datasources.api.topic.ResourceLocation
+import me.him188.ani.torrent.offline.OfflineDownloadEngine
 import me.him188.ani.utils.coroutines.IO_
 import me.him188.ani.utils.httpdownloader.DownloadId
 import me.him188.ani.utils.httpdownloader.DownloadOptions
@@ -73,7 +75,11 @@ class HttpMediaCacheEngine(
     private val mediaSourceId: String,
     private val dao: HttpCacheDownloadStateDao,
     private val pikpakConfig: () -> PikPakConfig = { PikPakConfig.Default },
+    offlineDownloadEngine: OfflineDownloadEngine? = null,
 ) : MediaCacheEngine {
+    // HTTP 缓存只接受云端直链, 不能使用播放链中的本地 BT 回退.
+    private val offlineMediaResolver = offlineDownloadEngine?.let { OfflineDownloadMediaResolver(it) }
+
     override val engineKey: MediaCacheEngineKey = MediaCacheEngineKey.WebM3u
 
     override val stats: Flow<MediaStats> = run {
@@ -105,7 +111,7 @@ class HttpMediaCacheEngine(
             is ResourceLocation.HttpStreamingFile -> mediaResolver.supports(media)
             is ResourceLocation.HttpTorrentFile,
             is ResourceLocation.MagnetLink,
-                -> pikpakConfig().enabled && mediaResolver.supports(media)
+                -> pikpakConfig().enabled && offlineMediaResolver?.supports(media) == true
 
             is ResourceLocation.LocalFile,
                 -> {
@@ -125,7 +131,10 @@ class HttpMediaCacheEngine(
         metadata: MediaCacheMetadata,
         parentContext: CoroutineContext,
     ): MediaCache? {
-        if (!supports(origin)) throw UnsupportedOperationException("Media is not supported by this engine $this: ${origin.download}")
+        // 已持久化的 HTTP 下载使用保存的 URL 恢复, 不依赖云端账号当前是否可用.
+        if (origin is CachedMedia || origin.download is ResourceLocation.LocalFile) {
+            throw UnsupportedOperationException("Media is not supported by this engine $this: ${origin.download}")
+        }
 
         logger.info { "Restarting cache '${origin.mediaId}'" }
         val downloadId = restoredHttpDownloadId(origin, metadata)
@@ -160,7 +169,11 @@ class HttpMediaCacheEngine(
     ): MediaCache {
         if (!supports(origin)) throw UnsupportedOperationException("Media is not supported by this engine $this: ${origin.download}")
 
-        val mediaDataProvider = mediaResolver.resolve(origin, episodeMetadata)
+        val resolver = when (origin.download) {
+            is ResourceLocation.MagnetLink, is ResourceLocation.HttpTorrentFile -> checkNotNull(offlineMediaResolver)
+            else -> mediaResolver
+        }
+        val mediaDataProvider = resolver.resolve(origin, episodeMetadata)
         when (val mediaData = mediaDataProvider.open(CoroutineScope(parentContext))) {
             is SeekableInputMediaData -> {
                 // This should not happen.
