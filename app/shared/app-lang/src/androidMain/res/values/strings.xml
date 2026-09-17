@@ -223,6 +223,8 @@
     <string name="settings_acknowledgements_mikan_description">Anime torrent index</string>
     <string name="settings_acknowledgements_dmhy">DMHY</string>
     <string name="settings_acknowledgements_dmhy_description">Anime torrent community</string>
+    <string name="settings_acknowledgements_tmdb">TMDB</string>
+    <string name="settings_acknowledgements_tmdb_description">Episode stills. This product uses the TMDB API but is not endorsed or certified by TMDB.</string>
     <string name="settings_acknowledgements_oss_licenses">Open source licenses</string>
     <string name="settings_acknowledgements_oss_licenses_description">Open source libraries used by this app and their licenses</string>
     <string name="settings_oss_licenses_homepage">Homepage</string>
@@ -241,6 +243,8 @@
     <string name="settings_app_episode_playback">Episode playback</string>
     <string name="settings_app_light_up_mode">Highlighting mode</string>
     <string name="settings_app_light_up_mode_description">Highlight the episodes that have already been watched, instead of the ones about to be watched</string>
+    <string name="settings_app_episode_images">Episode stills</string>
+    <string name="settings_app_episode_images_description">Show episode still images from TMDB in episode lists (available for some anime only)</string>
     <string name="settings_app_language">Language</string>
     <string name="settings_app_language_system">System language</string>
     <string name="settings_app_language_restart">Restart to take effect</string>
@@ -792,6 +796,7 @@
     <string name="subject_episode_watched">Watched</string>
     <string name="subject_episode_dropped">Dropped</string>
     <string name="subject_episode_mark_watched">Mark Watched</string>
+    <string name="subject_episode_watched_badge">Watched</string>
     <string name="subject_episode_select_play">Episode Selection</string>
     <string name="subject_episode_long_press_mark_watched">Long press to mark as watched</string>
     <string name="subject_episode_details">Item Details</string>

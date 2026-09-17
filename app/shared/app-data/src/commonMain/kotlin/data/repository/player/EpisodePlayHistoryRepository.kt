@@ -12,6 +12,7 @@ package me.him188.ani.app.data.repository.player
 import androidx.datastore.core.DataStore
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
@@ -68,6 +69,12 @@ sealed class PlaybackHistoryPendingOp {
 interface EpisodePlayHistoryRepository {
     val flow: Flow<List<EpisodeHistory>>
     val allHistoriesFlow: Flow<List<EpisodeHistory>>
+
+    /**
+     * 只订阅 [episodeIds] 这些剧集的未删除记录, 供剧集列表显示播放进度; [episodeIds] 为空时恒为空列表.
+     * 与 [flow] 不同, 不会把全部记录读进内存.
+     */
+    fun flowByEpisodeIds(episodeIds: Collection<Int>): Flow<List<EpisodeHistory>>
     val pendingOpsFlow: Flow<List<PlaybackHistoryPendingOp>>
     val lastSyncAtMillisFlow: Flow<Long>
 
@@ -113,6 +120,12 @@ class EpisodePlayHistoryRepositoryImpl(
     }
     override val flow: Flow<List<EpisodeHistory>> = playbackHistoryDao.activeRecordsFlow().map { records ->
         records.map { it.toEpisodeHistory() }
+    }
+    override fun flowByEpisodeIds(episodeIds: Collection<Int>): Flow<List<EpisodeHistory>> {
+        if (episodeIds.isEmpty()) return flowOf(emptyList())
+        return playbackHistoryDao.activeRecordsFlowByEpisodeIds(episodeIds).map { records ->
+            records.map { it.toEpisodeHistory() }
+        }
     }
     override val pendingOpsFlow: Flow<List<PlaybackHistoryPendingOp>> = playbackHistoryDao.pendingOpsFlow().map { ops ->
         ops.map { it.toPendingOp() }

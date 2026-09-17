@@ -124,6 +124,8 @@ data class SearchSettings(
 @Immutable
 data class EpisodeProgressSettings(
     val theme: EpisodeListProgressTheme = EpisodeListProgressTheme.Default,
+    /** 在选集列表中显示 TMDB 剧照 (仅部分番剧提供). */
+    val showEpisodeImages: Boolean = true,
 ) {
     companion object {
         @Stable

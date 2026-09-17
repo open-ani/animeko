@@ -62,6 +62,7 @@ import me.him188.ani.app.data.models.preference.parseMpvOptions
 import me.him188.ani.app.data.models.subject.SubjectInfo
 import me.him188.ani.app.data.models.subject.SubjectProgressInfo
 import me.him188.ani.app.data.models.subject.nameCnOrName
+import me.him188.ani.app.data.models.player.playProgressByEpisodeId
 import me.him188.ani.app.data.network.AniCommentReportService
 import me.him188.ani.app.data.network.AutoSkipRepository
 import me.him188.ani.app.data.repository.RepositoryServiceUnavailableException
@@ -69,6 +70,7 @@ import me.him188.ani.app.data.repository.episode.EpisodeCollectionRepository
 import me.him188.ani.app.data.repository.episode.EpisodeCommentRepository
 import me.him188.ani.app.data.repository.media.SelectorMediaSourceEpisodeCacheRepository
 import me.him188.ani.app.data.repository.player.DanmakuRegexFilterRepository
+import me.him188.ani.app.data.repository.player.EpisodePlayHistoryRepository
 import me.him188.ani.app.data.repository.subject.SetSubjectCollectionTypeOrDeleteUseCase
 import me.him188.ani.app.data.repository.user.SettingsRepository
 import me.him188.ani.app.domain.comment.PostCommentUseCase
@@ -282,6 +284,7 @@ class EpisodeViewModel(
     private val danmakuRepository: DanmakuRepository by inject()
     private val settingsRepository: SettingsRepository by inject()
     private val danmakuRegexFilterRepository: DanmakuRegexFilterRepository by inject()
+    private val episodePlayHistoryRepository: EpisodePlayHistoryRepository by inject()
     private val mediaSourceManager: MediaSourceManager by inject()
     private val episodeCommentRepository: EpisodeCommentRepository by inject()
     private val commentReportService: AniCommentReportService by inject()
@@ -547,9 +550,18 @@ class EpisodeViewModel(
             }
         }.produceState(emptyList())
 
+        // 只订阅本条目剧集的播放记录, 换算成按剧集 id 索引的进度
+        val playProgressByEpisodeId by episodeCollectionsFlow
+            .map { list -> list.map { it.episodeId } }
+            .distinctUntilChanged()
+            .flatMapLatest { episodeIds -> episodePlayHistoryRepository.flowByEpisodeIds(episodeIds) }
+            .map { it.playProgressByEpisodeId() }
+            .produceState(emptyMap())
+
         val collectionButtonEnabled = MutableStateFlow(false)
         EpisodeCarouselState(
             episodes = episodeCollectionsFlow.produceState(emptyList()),
+            playProgress = { playProgressByEpisodeId[it.episodeId] },
             playingEpisode = episodeIdFlow.combine(episodeCollectionsFlow) { id, collections ->
                 collections.firstOrNull { it.episodeId == id }
             }.produceState(null),
