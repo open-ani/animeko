@@ -82,6 +82,28 @@
 8. `PlayerSession.loadMedia(...)` 通过 `MediaResolver.resolve(...)` 解析，打开得到的
    `MediaDataProvider`，然后调用 `player.setMediaData(...)`。
 
+### 播放拖入的本地文件（桌面端）
+
+在播放页将本地视频文件拖入窗口，可以不经过数据源选择，直接在当前剧集播放该文件：
+
+1. `EpisodeVideoDropHandler`（`app/shared/src/commonMain/.../ui/subject/episode/`）是播放页的
+   `WindowDropHandler`，由 `EpisodeScreenContent` 通过 `WindowDropHandlerEffect` 注册到主窗口的
+   `WindowDropHost`，只在播放页处于组合中时生效。
+2. 松手后 `EpisodeViewModel.playDroppedFile` 用 `DroppedFileMedia.create(...)` 构造一个
+   `download = ResourceLocation.LocalFile` 的 `Media`，并调用 `MediaSelector.selectTemporarily(...)`。
+3. 之后与上面的第 7、8 步相同：`LoadMediaOnSelectExtension` 监听到 `selected` 变化，
+   由 `LocalFileMediaResolver` 解析并播放。
+
+注意：
+
+- 这个 `Media` 不来自任何数据源，不在候选列表中；`mediaSourceId` 固定为
+  `DroppedFileMedia.MEDIA_SOURCE_ID`，可用 `DroppedFileMedia.isDroppedFile(...)` 判断。
+- `selectTemporarily` 不更新偏好，也不广播 `onChangePreference` / `onPreferWebSource`，因此只对当前
+  `EpisodeSession` 有效；切换剧集会创建新的 `MediaSelector`，照常自动选择。
+- 已有选择时 `MediaAutoSelector` 不会覆盖它；用户仍可在数据源选择器中换回其他资源。
+- 拖入的文件播放失败时保留报错：`PlayerLoadErrorHandler.handleError` 不会为它自动换源，也不会拉黑它。
+- 跳过 OP/ED 的上报（`EpisodeViewModel.onClickSkipOpEd`）会忽略拖入的文件。
+
 ## 过滤与选择
 
 - 过滤/排序主实现：`MediaSelectorFilterSortAlgorithm`。算法细节见

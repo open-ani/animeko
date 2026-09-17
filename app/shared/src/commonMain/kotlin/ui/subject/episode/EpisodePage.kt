@@ -108,6 +108,7 @@ import me.him188.ani.app.ui.foundation.LocalImageViewerHandler
 import me.him188.ani.app.ui.foundation.LocalIsPreviewing
 import me.him188.ani.app.ui.foundation.LocalPlatform
 import me.him188.ani.app.ui.foundation.ProvideCompositionLocalsForPreview
+import me.him188.ani.app.ui.foundation.WindowDropHandlerEffect
 import me.him188.ani.app.ui.foundation.animation.AniAnimatedVisibility
 import me.him188.ani.app.ui.foundation.effects.DarkStatusBarAppearance
 import me.him188.ani.app.ui.foundation.effects.OnLifecycleEvent
@@ -270,6 +271,9 @@ private fun EpisodeScreenContent(
     DisplayModeEffect(vm.videoScaffoldConfig)
 
     VideoNotifEffect(vm)
+
+    // 将本地视频文件拖入窗口, 即在当前剧集播放该文件
+    WindowDropHandlerEffect(rememberEpisodeVideoDropHandler { vm.playDroppedFile(it) })
 
     DarkStatusBarAppearance()
 
