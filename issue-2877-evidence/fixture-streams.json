@@ -1,0 +1,22 @@
+{
+    "programs": [
+
+    ],
+    "stream_groups": [
+
+    ],
+    "streams": [
+        {
+            "codec_name": "hevc",
+            "profile": "Main 10",
+            "pix_fmt": "yuv420p10le"
+        },
+        {
+            "codec_name": "aac",
+            "profile": "LC"
+        },
+        {
+            "codec_name": "subrip"
+        }
+    ]
+}
