@@ -19,6 +19,8 @@ import kotlinx.coroutines.test.TestScope
 import kotlinx.coroutines.test.advanceTimeBy
 import kotlinx.coroutines.test.advanceUntilIdle
 import kotlinx.coroutines.test.runCurrent
+import kotlinx.io.files.Path
+import me.him188.ani.app.domain.media.DroppedFileMedia
 import me.him188.ani.app.domain.media.selector.testFramework.collectEvents
 import me.him188.ani.app.domain.media.selector.testFramework.runFetchMediaSelectorTestSuite
 import me.him188.ani.app.domain.media.selector.testFramework.runSimpleMediaSelectorTestSuite
@@ -27,6 +29,7 @@ import me.him188.ani.app.domain.player.extension.PlayerLoadErrorHandler
 import me.him188.ani.datasources.api.source.MediaSourceKind
 import me.him188.ani.datasources.api.source.MediaSourceKind.WEB
 import me.him188.ani.test.DisabledOnNative
+import me.him188.ani.utils.io.inSystem
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
@@ -83,6 +86,37 @@ class PlayerLoadErrorHandlerTest {
         assertTrue(job.isCompleted)
         assertEquals(mediaB.mediaId, selector.selected.value?.mediaId)
         assertEquals(setOf(mediaA.mediaId), handler.blacklist)
+    }
+
+    @Test
+    fun `拖入的本地文件播放失败不换源也不拉黑`() = runFetchMediaSelectorTestSuite {
+        initSubject("test")
+        val (_, session, sources) = configureFetchSession {
+            object {
+                val webA by web { tier = 0 }
+            }
+        }
+        // 有可以立即换到的 WEB media, 且 preferKind 为 WEB: 对普通 media 而言满足全部换源条件
+        sources.webA.complete(media(kind = WEB, subjectName = initApi.subjectName))
+        testScope().runCurrent()
+
+        val dropped = DroppedFileMedia.create(Path("/videos/episode-01.mkv").inSystem)
+        selector.selectTemporarily(dropped)
+
+        val handler = PlayerLoadErrorHandler(
+            getPreferKind = { MediaSourceKind.WEB },
+            getSourceTiers = { preferenceApi.sourceTiers!! },
+        )
+        val collected = selector.collectEvents {
+            val job = testScope().launch { handler.handleError(session, selector) }
+            testScope().advanceTimeBy(10.seconds)
+            testScope().runCurrent()
+            assertTrue(job.isCompleted)
+        }
+
+        collected.expectNoEvents()
+        assertEquals(dropped, selector.selected.value)
+        assertTrue(handler.blacklist.isEmpty())
     }
 
     @Test

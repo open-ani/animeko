@@ -113,6 +113,8 @@ open class TestMediaSelector(
         return true
     }
 
+    override suspend fun selectTemporarily(candidate: Media): Boolean = select(candidate)
+
     override fun unselect() {
         this.selected.value = null
     }

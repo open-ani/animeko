@@ -85,6 +85,10 @@
     <string name="settings_debug_install_package_confirm_new_version">新版本</string>
     <string name="window_drop_unsupported_title">不支援的檔案</string>
     <string name="window_drop_unsupported_description">僅支援%1$s，鬆手後不會有任何操作</string>
+    <string name="episode_drop_video_title">鬆手以播放</string>
+    <string name="episode_drop_video_unknown_name">影片檔案</string>
+    <string name="episode_drop_video_description">立即在目前劇集播放此檔案，僅本次播放有效</string>
+    <string name="episode_drop_video_supported_hint">影片檔案</string>
     <string name="settings_help_qq">QQ</string>
     <string name="settings_help_telegram">Telegram</string>
     <string name="settings_help_github">GitHub</string>
@@ -1131,6 +1135,7 @@
     <string name="media_selector_summary_auto_selecting">正在自動選擇資料來源</string>
     <string name="media_selector_summary_select_source">請選擇資料來源</string>
     <string name="media_selector_summary_source">資料來源</string>
+    <string name="media_selector_summary_dropped_file">本機檔案</string>
     <string name="media_selector_summary_searched">已查找：</string>
     <string name="media_source_results_searching">正在查詢</string>
     <string name="media_source_results_searched">已查詢</string>

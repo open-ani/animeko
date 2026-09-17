@@ -102,6 +102,10 @@
     <string name="settings_debug_install_package_confirm_new_version">New version</string>
     <string name="window_drop_unsupported_title">Unsupported file</string>
     <string name="window_drop_unsupported_description">Only %1$s are supported. Nothing happens if you release now</string>
+    <string name="episode_drop_video_title">Release to play</string>
+    <string name="episode_drop_video_unknown_name">Video file</string>
+    <string name="episode_drop_video_description">Plays this file for the current episode right away. Applies to this playback only</string>
+    <string name="episode_drop_video_supported_hint">video files</string>
     <string name="settings_help_qq">QQ</string>
     <string name="settings_help_telegram">Telegram</string>
     <string name="settings_help_github">GitHub</string>
@@ -1118,6 +1122,7 @@
     <string name="media_selector_summary_auto_selecting">Automatically selecting a data source</string>
     <string name="media_selector_summary_select_source">Please select a data source</string>
     <string name="media_selector_summary_source">Data source</string>
+    <string name="media_selector_summary_dropped_file">Local file</string>
     <string name="media_selector_summary_searched">Searched:</string>
     <string name="media_source_results_searching">Searching</string>
     <string name="media_source_results_searched">Searched</string>

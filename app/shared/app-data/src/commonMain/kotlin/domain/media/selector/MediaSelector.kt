@@ -26,6 +26,7 @@ import kotlinx.coroutines.withContext
 import me.him188.ani.app.data.models.preference.MediaPreference
 import me.him188.ani.app.data.models.preference.MediaPreference.Companion.ANY_FILTER
 import me.him188.ani.app.data.models.preference.MediaSelectorSettings
+import me.him188.ani.app.domain.media.DroppedFileMedia
 import me.him188.ani.app.domain.media.selector.filter.MediaSelectorFilterSortAlgorithm
 import me.him188.ani.datasources.api.Media
 import me.him188.ani.datasources.api.isLocalCache
@@ -199,6 +200,17 @@ interface MediaSelector {
      * @return 当成功将 [selected] 更新为 [candidate] 时返回 `true`. 当 [selected] 已经是 [candidate] 时返回 `false`.
      */
     suspend fun select(candidate: Media): Boolean
+
+    /**
+     * 选择一个 [Media], 只对本次会话有效: 与 [select] 一样更新 [selected] 并广播 [MediaSelectorEvents.onSelect],
+     * 优先级同样高于任何其他的选择, 但不会更新偏好, 也不会广播 [MediaSelectorEvents.onChangePreference]
+     * 和 [MediaSelectorEvents.onPreferWebSource], 因此不影响之后的自动选择.
+     *
+     * 用于播放不来自任何数据源的资源, 例如用户拖入播放页的本地文件 ([DroppedFileMedia]).
+     *
+     * @return 当成功将 [selected] 更新为 [candidate] 时返回 `true`. 当 [selected] 已经是 [candidate] 时返回 `false`.
+     */
+    suspend fun selectTemporarily(candidate: Media): Boolean
 
     /**
      * 清除当前的选择, 不会更新配置
@@ -466,6 +478,10 @@ class DefaultMediaSelector(
 
     override suspend fun select(candidate: Media): Boolean {
         return selectImpl(candidate, updatePreference = true)
+    }
+
+    override suspend fun selectTemporarily(candidate: Media): Boolean {
+        return selectImpl(candidate, updatePreference = false)
     }
 
     /**

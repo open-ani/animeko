@@ -713,7 +713,8 @@ private fun FrameWindowScope.MainWindowContent(
                     LocalContextMenuRepresentation provides DesktopContextMenuRepresentation,
                 ) {
                     Box(Modifier.padding(all = paddingByWindowSize)) {
-                        // 主窗口级拖放: 各功能以 WindowDropHandler 接入, 按顺序第一个接管的生效
+                        // 主窗口级拖放: 各功能以 WindowDropHandler 接入, 按顺序第一个接管的生效.
+                        // 页面自己的处理者 (例如播放页拖入视频文件) 由页面通过 WindowDropHandlerEffect 注册, 优先于这里的
                         val installPackageOnDrop by remember(settingsRepository) {
                             settingsRepository.debugSettings.flow
                                 .map { it.enabled && it.installPackageOnDrop }
