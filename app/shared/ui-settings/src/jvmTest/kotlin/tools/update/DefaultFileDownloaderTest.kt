@@ -20,6 +20,7 @@ import io.ktor.server.testing.testApplication
 import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.takeWhile
+import kotlinx.coroutines.job
 import kotlinx.coroutines.launch
 import me.him188.ani.utils.io.inSystem
 import me.him188.ani.utils.io.toKtPath
@@ -287,6 +288,32 @@ class DefaultFileDownloaderTest {
 
         // Clean up
         targetFile.delete()
+        tempDir.deleteRecursively()
+    }
+
+    @Test
+    fun `progress reporter does not outlive download attempt`() = testApplication {
+        setupRouting()
+        val client = createClient {
+            expectSuccess = true
+            install(HttpTimeout)
+        }
+        val downloader = DefaultFileDownloader(client.asScopedHttpClient())
+        val tempDir = createTempDirectory(prefix = "file-downloader-test").toFile()
+
+        val succeeded = downloader.download(
+            alternativeUrls = listOf("/file"),
+            filenameProvider = { "test-file-reporter.txt" },
+            saveDir = tempDir.toKtPath().inSystem,
+        )
+        assertNotNull(succeeded)
+
+        assertEquals(
+            emptyList(),
+            client.coroutineContext.job.children.filter { it.isActive }.toList(),
+            "No coroutine should be left running in the HttpClient scope after download.",
+        )
+
         tempDir.deleteRecursively()
     }
 
