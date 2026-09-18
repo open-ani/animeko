@@ -172,11 +172,6 @@ data class MatrixInstance(
      */
     val uploadApk: Boolean,
     val runAndroidInstrumentedTests: Boolean = uploadApk,
-    /**
-     * 打包 Android device test 的 APK 但不运行. commonTest 会一并编进这个 APK, 借此检查它们能被 dex,
-     * 例如测试名只含 DEX 允许的字符. 有一台机器是 true 就行
-     */
-    val assembleAndroidDeviceTests: Boolean = false,
     val uploadIpa: Boolean = false,
     /**
      * Compose for Desktop 的 resource 标识符, e.g. `windows-x64`
@@ -450,8 +445,7 @@ run {
     val ghUbuntu2404 = MatrixInstance(
         runner = Runner.GithubUbuntu2404,
         uploadApk = true,
-        runAndroidInstrumentedTests = false,
-        assembleAndroidDeviceTests = true,
+        runAndroidInstrumentedTests = true,
         composeResourceTriple = "linux-x64",
         runTests = true,
         uploadDesktopInstallers = true,
@@ -497,7 +491,7 @@ run {
     val selfMac15 = MatrixInstance(
         runner = Runner.SelfHostedMacOS15,
         uploadApk = false, // upload arm64-v8a once finished
-        runAndroidInstrumentedTests = true,
+        runAndroidInstrumentedTests = false,
         composeResourceTriple = "macos-arm64",
         uploadDesktopInstallers = false,
         enableIos = true,
@@ -580,7 +574,6 @@ fun getBuildJobBody(matrix: MatrixInstance): JobBuilder<BuildJobOutputs>.() -> U
         if (!matrix.isUbuntu) {
             gradleCheck() // save time
         }
-        assembleAndroidDeviceTests()
         androidConnectedTests()
 
         cleanupTempFiles()
@@ -1770,15 +1763,6 @@ class WithMatrix(
         }
     }
 
-    fun JobBuilder<*>.assembleAndroidDeviceTests() {
-        if (!matrix.assembleAndroidDeviceTests) return
-        runGradle(
-            name = "Assemble Android Device Tests",
-            tasks = arrayOf("assembleAndroidDeviceTest"),
-            maxAttempts = 2,
-        )
-    }
-
     fun JobBuilder<*>.androidConnectedTests() {
         if (matrix.runAndroidInstrumentedTests && matrix.isUnix) {
             if (matrix.isUbuntu) {
@@ -1791,12 +1775,10 @@ class WithMatrix(
                 """.trimIndent(),
                 )
             }
+            // 先打包 device test 的 APK. commonTest 会一并编进去, 测试名不能 dex 之类的问题在启动模拟器之前就能暴露.
             runGradle(
                 name = "Build Android Instrumented Tests",
-                tasks = arrayOf(
-                    "compileAndroidDeviceTest",
-                    "\"-Pandroid.min.sdk=30\"",
-                ),
+                tasks = arrayOf("assembleAndroidDeviceTest"),
                 maxAttempts = 3,
             )
             for (arch in listOfNotNull(
@@ -1804,8 +1786,7 @@ class WithMatrix(
                 if (matrix.arch == Arch.AARCH64) AndroidEmulatorRunner.Arch.Arm64V8a else null,
                 if (matrix.arch == Arch.X64) AndroidEmulatorRunner.Arch.X8664 else null,
             )) {
-                // 30 is min for instrumented test (because we have spaces in func names), 
-                // 35 is our targetSdk
+                // 在 API 30 和 targetSdk 两个版本上各跑一遍
                 for (apiLevel in listOf(30, 36)) {
                     uses(
                         name = "Android Instrumented Test (api=$apiLevel, arch=${arch.stringValue})",
@@ -1813,10 +1794,12 @@ class WithMatrix(
                             apiLevel = apiLevel.toString(),
                             arch = arch,
                             script = buildString {
-                                append("./gradlew connectedDeviceTest \"-Pandroid.min.sdk=30\" ")
+                                // --continue: 一个模块失败也把其余模块的测试跑完, 最后统一报告.
+                                append("./gradlew connectedDeviceTest --continue ")
                                 append(matrix.gradleArgs)
+                                // 结束 crashpad_handler 后要以 Gradle 的退出码退出, 否则测试失败不会让步骤失败.
                                 // https://github.com/ReactiveCircus/android-emulator-runner/issues/385#issuecomment-2492035091
-                                append(" && killall -INT crashpad_handler || true")
+                                append("; status=\$?; killall -INT crashpad_handler || true; exit \$status")
                             },
                             emulatorBootTimeout = 1800,
                         ),
