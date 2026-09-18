@@ -960,6 +960,17 @@ jobs:
         if-no-files-found: 'error'
         overwrite: 'true'
       if: '${{ steps.step-55.outcome == ''failure'' }}'
+    - id: 'step-57'
+      name: 'Assemble Android Device Tests (Attempt #1)'
+      continue-on-error: true
+      timeout-minutes: 180
+      run: './gradlew assembleAndroidDeviceTest "--scan" "-Porg.gradle.daemon.idletimeout=60000" "-Dfile.encoding=UTF-8" "-Dorg.gradle.jvmargs=-Xmx8g -Dkotlin.daemon.jvm.options=-Xmx6g" "-Dkotlin.daemon.jvm.options=-Xmx6g"'
+    - id: 'step-58'
+      name: 'Assemble Android Device Tests (Attempt #2)'
+      continue-on-error: false
+      timeout-minutes: 180
+      run: './gradlew assembleAndroidDeviceTest "--scan" "-Porg.gradle.daemon.idletimeout=60000" "-Dfile.encoding=UTF-8" "-Dorg.gradle.jvmargs=-Xmx8g -Dkotlin.daemon.jvm.options=-Xmx6g" "-Dkotlin.daemon.jvm.options=-Xmx6g"'
+      if: '${{ steps.step-57.outcome == ''failure'' }}'
   build_github-macos-15-intel:
     name: 'Build (macOS 15 x86_64 (GitHub))'
     runs-on:

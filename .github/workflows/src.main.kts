@@ -172,6 +172,11 @@ data class MatrixInstance(
      */
     val uploadApk: Boolean,
     val runAndroidInstrumentedTests: Boolean = uploadApk,
+    /**
+     * 打包 Android device test 的 APK 但不运行. commonTest 会一并编进这个 APK, 借此检查它们能被 dex,
+     * 例如测试名只含 DEX 允许的字符. 有一台机器是 true 就行
+     */
+    val assembleAndroidDeviceTests: Boolean = false,
     val uploadIpa: Boolean = false,
     /**
      * Compose for Desktop 的 resource 标识符, e.g. `windows-x64`
@@ -446,6 +451,7 @@ run {
         runner = Runner.GithubUbuntu2404,
         uploadApk = true,
         runAndroidInstrumentedTests = false,
+        assembleAndroidDeviceTests = true,
         composeResourceTriple = "linux-x64",
         runTests = true,
         uploadDesktopInstallers = true,
@@ -574,6 +580,7 @@ fun getBuildJobBody(matrix: MatrixInstance): JobBuilder<BuildJobOutputs>.() -> U
         if (!matrix.isUbuntu) {
             gradleCheck() // save time
         }
+        assembleAndroidDeviceTests()
         androidConnectedTests()
 
         cleanupTempFiles()
@@ -1761,6 +1768,15 @@ class WithMatrix(
                 timeoutMinutes = 180,
             )
         }
+    }
+
+    fun JobBuilder<*>.assembleAndroidDeviceTests() {
+        if (!matrix.assembleAndroidDeviceTests) return
+        runGradle(
+            name = "Assemble Android Device Tests",
+            tasks = arrayOf("assembleAndroidDeviceTest"),
+            maxAttempts = 2,
+        )
     }
 
     fun JobBuilder<*>.androidConnectedTests() {
