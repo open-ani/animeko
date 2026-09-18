@@ -1775,10 +1775,14 @@ class WithMatrix(
                 """.trimIndent(),
                 )
             }
-            // 先打包 device test 的 APK. commonTest 会一并编进去, 测试名不能 dex 之类的问题在启动模拟器之前就能暴露.
+            // device test 以 minSdk 30 构建: 测试函数内的局部类会以带空格的测试名命名, DEX 040 (API 30) 起才允许类名含空格.
+            // 先打包 APK, 测试名不能 dex 之类的问题在启动模拟器之前就能暴露.
             runGradle(
                 name = "Build Android Instrumented Tests",
-                tasks = arrayOf("assembleAndroidDeviceTest"),
+                tasks = arrayOf(
+                    "assembleAndroidDeviceTest",
+                    "\"-Pandroid.min.sdk=30\"",
+                ),
                 maxAttempts = 3,
             )
             for (arch in listOfNotNull(
@@ -1786,7 +1790,7 @@ class WithMatrix(
                 if (matrix.arch == Arch.AARCH64) AndroidEmulatorRunner.Arch.Arm64V8a else null,
                 if (matrix.arch == Arch.X64) AndroidEmulatorRunner.Arch.X8664 else null,
             )) {
-                // 在 API 30 和 targetSdk 两个版本上各跑一遍
+                // 在 minSdk 30 和 targetSdk 两个版本上各跑一遍
                 for (apiLevel in listOf(30, 36)) {
                     uses(
                         name = "Android Instrumented Test (api=$apiLevel, arch=${arch.stringValue})",
@@ -1795,7 +1799,7 @@ class WithMatrix(
                             arch = arch,
                             script = buildString {
                                 // --continue: 一个模块失败也把其余模块的测试跑完, 最后统一报告.
-                                append("./gradlew connectedDeviceTest --continue ")
+                                append("./gradlew connectedDeviceTest --continue \"-Pandroid.min.sdk=30\" ")
                                 append(matrix.gradleArgs)
                                 // 结束 crashpad_handler 后要以 Gradle 的退出码退出, 否则测试失败不会让步骤失败.
                                 // https://github.com/ReactiveCircus/android-emulator-runner/issues/385#issuecomment-2492035091
