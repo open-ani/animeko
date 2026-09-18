@@ -10,6 +10,7 @@
 package me.him188.ani.app.domain.media.download
 
 import me.him188.ani.app.data.models.episode.EpisodeInfo
+import me.him188.ani.datasources.api.EpisodeType
 import me.him188.ani.datasources.api.Media
 import me.him188.ani.datasources.api.topic.contains
 import me.him188.ani.datasources.api.topic.isSingleEpisode
@@ -73,6 +74,8 @@ val EpisodeDownloadPlan.mediaOrNull: Media?
  * 6. 否则 [EpisodeDownloadPlan.Uncovered].
  *
  * 只要候选中有资源覆盖某集, 该集就总是可下载: 预览时可下载的集, 确认时无论勾选了哪些集都仍然可下载.
+ *
+ * 特别篇只按 sort 精确匹配, 不用 ep, 也不视为被只知道整季的合集覆盖.
  *
  * @param episodes 要规划的集; 返回的 map 保持此顺序.
  * @param candidates 同一 (数据源, 字幕组 / 线路) 组内的条目级候选, 已按选择器排序, 不含本地缓存.
@@ -156,7 +159,13 @@ private fun Media.isPack(): Boolean = episodeRange?.let { !it.isSingleEpisode() 
 
 private fun Media.isSingle(): Boolean = episodeRange?.isSingleEpisode() == true
 
+/**
+ * 本篇按 sort 或 ep 匹配, 只知道整季的合集也算覆盖; 特别篇只按 sort 精确匹配:
+ * 序号相同的本篇资源 (如 "01" 之于 SP01) 与整季合集都不算覆盖, 否则批量下载会把本篇当作特别篇下载.
+ */
 private fun Media.covers(episode: EpisodeInfo): Boolean {
     val range = episodeRange ?: return false
-    return range.contains(episode.sort) || (episode.ep?.let { range.contains(it) } == true)
+    val mainStory = episode.type == EpisodeType.MainStory
+    if (range.contains(episode.sort, allowSeason = mainStory, allowSpecial = false)) return true
+    return mainStory && episode.ep?.let { range.contains(it, allowSeason = false, allowSpecial = false) } == true
 }

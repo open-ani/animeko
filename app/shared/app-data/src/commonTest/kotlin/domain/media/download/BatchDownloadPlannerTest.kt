@@ -14,6 +14,7 @@ package me.him188.ani.app.domain.media.download
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import me.him188.ani.datasources.api.EpisodeSort
+import me.him188.ani.datasources.api.EpisodeType
 import me.him188.ani.datasources.api.topic.EpisodeRange
 import me.him188.ani.utils.platform.annotations.TestOnly
 
@@ -110,6 +111,20 @@ class BatchDownloadPlannerTest {
         val episode = requestTestEpisode(13).copy(sort = EpisodeSort(13), ep = EpisodeSort(1))
         val plan = planBatchDownload(listOf(episode), listOf(single1), emptyList())
         assertEquals(EpisodeDownloadPlan.Create(single1), plan.getValue(13))
+    }
+
+    @Test
+    fun `specials are only covered by resources with the same special sort`() {
+        val sp1 = requestTestEpisode(21).copy(type = EpisodeType.SP, sort = EpisodeSort("SP1"), ep = EpisodeSort(1))
+        val spMedia = requestTestMedia(400, EpisodeRange.single(EpisodeSort("SP1")))
+        assertEquals(
+            EpisodeDownloadPlan.Uncovered,
+            planBatchDownload(listOf(sp1), listOf(single1, season, pack1to6), emptyList()).getValue(21),
+        )
+        assertEquals(
+            EpisodeDownloadPlan.Create(spMedia),
+            planBatchDownload(listOf(sp1), listOf(single1, spMedia), emptyList()).getValue(21),
+        )
     }
 
     @Test
