@@ -79,6 +79,19 @@ annotation class UnsafeOriginalMediaAccess
 
 sealed class MediaExclusionReason {
     /**
+     * 资源的剧集范围 [Media.episodeRange] 不包含当前剧集: 既不含 [EpisodeInfo.sort], 也不含 [EpisodeInfo.ep].
+     * 剧集范围未知 (`null`) 的资源同样排除.
+     *
+     * 数据源返回条目下的全部资源, 属于其他集的资源在这里排除. 这是第 0 条规则, 先于本地缓存的豁免:
+     * 缓存数据源返回本条目的全部缓存记录, 其他集的记录不能被自动选中.
+     *
+     * UI 不在 "显示已被排除的资源" 中列出此原因, 否则每集都会看到整季的资源.
+     *
+     * @see MediaSelector.subjectCandidates
+     */
+    data class EpisodeMismatch(val episodeRange: EpisodeRange?) : MediaExclusionReason()
+
+    /**
      * 完结番隐藏单集资源
      * @see MediaSelectorContext.subjectFinished
      * @see me.him188.ani.app.data.models.preference.MediaSelectorSettings.hideSingleEpisodeForCompleted

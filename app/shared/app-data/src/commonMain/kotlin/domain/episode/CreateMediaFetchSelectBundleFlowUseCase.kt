@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2024-2025 OpenAni and contributors.
+ * Copyright (C) 2024-2026 OpenAni and contributors.
  *
  * 此源代码的使用受 GNU AFFERO GENERAL PUBLIC LICENSE version 3 许可证的约束, 可以在以下链接找到该许可证.
  * Use of this source code is governed by the GNU AGPLv3 license, which can be found at the following link.
@@ -55,6 +55,15 @@ fun interface CreateMediaFetchSelectBundleFlowUseCase : UseCase {
     operator fun invoke(
         subjectEpisodeInfoBundleFlow: Flow<SubjectEpisodeInfoBundle?>,
     ): Flow<MediaFetchSelectBundle?>
+
+    /**
+     * 与 [invoke] 相同, 但查询会话由 [fetchSessions] 提供, 同一条目的各集共用一个会话.
+     * 默认实现忽略 [fetchSessions].
+     */
+    operator fun invoke(
+        subjectEpisodeInfoBundleFlow: Flow<SubjectEpisodeInfoBundle?>,
+        fetchSessions: SubjectMediaFetchSessions,
+    ): Flow<MediaFetchSelectBundle?> = invoke(subjectEpisodeInfoBundleFlow)
 }
 
 class CreateMediaFetchSelectBundleFlowUseCaseImpl(
@@ -66,6 +75,20 @@ class CreateMediaFetchSelectBundleFlowUseCaseImpl(
 
     override fun invoke(
         subjectEpisodeInfoBundleFlow: Flow<SubjectEpisodeInfoBundle?>
+    ): Flow<MediaFetchSelectBundle?> = createBundleFlow(subjectEpisodeInfoBundleFlow) { request ->
+        mediaSourceManager.createFetchFetchSession(flowOf(request))
+    }
+
+    override fun invoke(
+        subjectEpisodeInfoBundleFlow: Flow<SubjectEpisodeInfoBundle?>,
+        fetchSessions: SubjectMediaFetchSessions,
+    ): Flow<MediaFetchSelectBundle?> = createBundleFlow(subjectEpisodeInfoBundleFlow) { request ->
+        fetchSessions.get(request)
+    }
+
+    private fun createBundleFlow(
+        subjectEpisodeInfoBundleFlow: Flow<SubjectEpisodeInfoBundle?>,
+        createFetchSession: suspend (MediaFetchRequest) -> MediaFetchSession,
     ): Flow<MediaFetchSelectBundle?> {
         val bundleDistinct = subjectEpisodeInfoBundleFlow
             .distinctUntilChangedBy { bundle ->
@@ -89,6 +112,9 @@ class CreateMediaFetchSelectBundleFlowUseCaseImpl(
 
                         bundle.seriesInfo,
                         bundle.subjectCompleted,
+
+                        // 剧集列表变化 (例如新集开播) 时重建查询
+                        bundle.subjectCollectionInfo.episodes.map { it.episodeId },
                     )
                 }
             }
@@ -96,21 +122,22 @@ class CreateMediaFetchSelectBundleFlowUseCaseImpl(
         // 刚开始是 `null`
         val fetchRequestFlow: Flow<MediaFetchSession?> = bundleDistinct
             // 为什么要 `filterNotNull`:
-            // 如果本地有缓存, 我们会优先读取缓存, bundle 会不是 null. 如果缓存有过期, 此时会同时发起网络查询. 
-            // 如果加载发生网络错误, 然后用户点击 "重试", bundle 会变为 `null`. 
-            // 然而即使进行了网络查询, 新的数据很有可能跟旧的数据是一样的, 就没有必要重新查询. 
+            // 如果本地有缓存, 我们会优先读取缓存, bundle 会不是 null. 如果缓存有过期, 此时会同时发起网络查询.
+            // 如果加载发生网络错误, 然后用户点击 "重试", bundle 会变为 `null`.
+            // 然而即使进行了网络查询, 新的数据很有可能跟旧的数据是一样的, 就没有必要重新查询.
             // 所以我们总是等待一个 not null SubjectEpisodeInfoBundle 比较.
             .filterNotNull()
             .map { bundle ->
                 MediaFetchRequest.create(
                     bundle.subjectCollectionInfo.subjectInfo,
                     bundle.episodeCollectionInfo.episodeInfo,
+                    episodes = bundle.subjectCollectionInfo.episodes.map { it.episodeInfo },
                 )
             }
             .distinctUntilChanged() // very important to avoid re-query
             .mapLatest { req ->
                 logger.info { "MediaFetchRequest changed. Creating MediaFetchSession for reqeust: $req" }
-                mediaSourceManager.createFetchFetchSession(flowOf(req))
+                createFetchSession(req)
             }
             .onStart<MediaFetchSession?> { emit(null) }
 

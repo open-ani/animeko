@@ -75,12 +75,12 @@ fun MediaFetchRequestEditorDialog(
         confirmButton = {
             TextButton(
                 {
-                    editingRequest.toMediaFetchRequestOrNull()?.let {
+                    editingRequest.toMediaFetchRequestOrNull(fetchRequest.episodes)?.let {
                         onDismissRequestWrapped()
                         onFetchRequestChange(it)
                     } ?: toaster.toast(invalidRequestText)
                 },
-                enabled = editingRequest.toMediaFetchRequestOrNull() != null,
+                enabled = editingRequest.toMediaFetchRequestOrNull(fetchRequest.episodes) != null,
             ) {
                 Text(saveAndRefreshText)
             }

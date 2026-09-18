@@ -896,6 +896,9 @@ class EpisodeViewModel(
         val mediaSourceResultsFlow = MediaSourceResultListPresenter(
             filteredSourceResults,
             getPreferredWebMediaSource(subjectId),
+            includedMediaFlow = episodeSession.fetchSelectFlow.flatMapLatest {
+                it?.mediaSelector?.filteredCandidatesMedia ?: flowOfEmptyList()
+            },
         ).presentationFlow
             .shareIn(this, SharingStarted.Lazily, replay = 1)
 

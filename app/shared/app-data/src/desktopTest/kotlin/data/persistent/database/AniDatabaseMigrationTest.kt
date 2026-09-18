@@ -27,7 +27,7 @@ import kotlin.test.assertTrue
  * AniDatabase 迁移测试 (infra#10, P0#18).
  *
  * 生产迁移链 (CommonKoinModule): 1..15 destructive, 16 起走
- * AutoMigration 16→17→18→19, 手动 [MIGRATION_19_20], AutoMigration 20→21→22→23.
+ * AutoMigration 16→17→18→19, 手动 [MIGRATION_19_20], AutoMigration 20→21→22→23→24.
  *
  * [MigrationTestHelper] 从 `schemas/<db fqn>/<version>.json` 建旧版本库,
  * runMigrationsAndValidate 会把迁移后的实际 schema 与目标版本 json 逐表逐列校验.
@@ -156,6 +156,39 @@ class AniDatabaseMigrationTest {
                 assertTrue(statement.isNull(0))
                 assertTrue(statement.isNull(1))
                 assertEquals("第1集", statement.getText(2))
+            }
+        }
+    }
+
+    @Test
+    fun `MIG-07 v23到v24的AutoMigration新建torrent_cache_episode表且保留旧的torrent_cache行`() {
+        val helper = createHelper()
+        helper.createDatabase(23).use { connection ->
+            connection.execSQL(
+                "INSERT INTO `torrent_cache` (`mediaId`, `torrentData`, `relativeDir`, `completed`, `pathInTorrent`, " +
+                        "`downloadSize`, `uploadSize`) VALUES ('dmhy.1', X'00', 'dir', 1, 'a.mkv', 100, 20)",
+            )
+        }
+        helper.runMigrationsAndValidate(24, emptyList()).use { connection ->
+            assertContains(connection.tableNames(), "torrent_cache_episode")
+            val columns = connection.columnNames("torrent_cache_episode")
+            assertEquals(
+                setOf("mediaId", "episodeId", "completed", "pathInTorrent", "downloadSize", "uploadSize"),
+                columns,
+            )
+            connection.prepare(
+                "SELECT `relativeDir`, `completed`, `pathInTorrent`, `downloadSize` FROM `torrent_cache` WHERE `mediaId` = 'dmhy.1'",
+            ).use { statement ->
+                // 旧行保留, 其完成状态与文件路径供恢复时按记录的剧集迁移到剧集行
+                assertTrue(statement.step())
+                assertEquals("dir", statement.getText(0))
+                assertEquals(1L, statement.getLong(1))
+                assertEquals("a.mkv", statement.getText(2))
+                assertEquals(100L, statement.getLong(3))
+            }
+            connection.prepare("SELECT COUNT(*) FROM `torrent_cache_episode`").use { statement ->
+                assertTrue(statement.step())
+                assertEquals(0L, statement.getLong(0))
             }
         }
     }

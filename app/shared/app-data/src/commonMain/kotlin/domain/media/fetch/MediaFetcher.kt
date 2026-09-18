@@ -119,11 +119,14 @@ interface MediaFetcher {
 
 /**
  * 根据 [SubjectInfo] 和 [EpisodeInfo] 创建一个 [MediaFetchRequest].
- * @see createFlow
+ *
+ * @param episode 当前剧集, 仅作提示.
+ * @param episodes 条目的全部剧集, 按剧集顺序; 数据源用它做序号映射与缓存陈旧判定.
  */
 fun MediaFetchRequest.Companion.create(
     subject: SubjectInfo,
     episode: EpisodeInfo,
+    episodes: List<EpisodeInfo> = emptyList(),
 ): MediaFetchRequest {
     return MediaFetchRequest(
         subjectId = subject.subjectId.toString(),
@@ -133,6 +136,15 @@ fun MediaFetchRequest.Companion.create(
         episodeSort = episode.sort,
         episodeName = episode.displayName,
         episodeEp = episode.ep,
+        episodes = episodes.map {
+            MediaFetchRequest.Episode(
+                episodeId = it.episodeId.toString(),
+                sort = it.sort,
+                ep = it.ep,
+                name = it.displayName,
+                airDate = it.airDate,
+            )
+        },
     )
 }
 

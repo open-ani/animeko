@@ -287,7 +287,7 @@ class MediaSelectorFilterCharacterizationTest {
     }
 
     @Test
-    fun `FILT-02 完结番 BT episodeRange 为 null 也被排除`() = runSimpleMediaSelectorTestSuite(
+    fun `FILT-02 BT episodeRange 为 null 视为不匹配当前集`() = runSimpleMediaSelectorTestSuite(
         buildTest = {
             initSubject("孤独摇滚")
             mediaApi.addMedia(
@@ -306,11 +306,11 @@ class MediaSelectorFilterCharacterizationTest {
             )
         },
     ) {
-        // PINNED: FILT-02
+        // 第 0 条先于完结番隐藏单集: 无法解析集数的资源按不匹配当前集排除.
         assertMedias {
             single().assert(
                 included = false,
-                exclusionReason = MediaExclusionReason.SingleEpisodeForCompleteSubject(episodeRange = null),
+                exclusionReason = MediaExclusionReason.EpisodeMismatch(episodeRange = null),
             )
         }
     }

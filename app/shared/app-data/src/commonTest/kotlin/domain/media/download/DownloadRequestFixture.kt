@@ -22,9 +22,11 @@ import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.awaitCancellation
 import kotlinx.coroutines.cancelAndJoin
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.flowOf
+import kotlinx.coroutines.flow.shareIn
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.test.TestScope
 import kotlinx.coroutines.test.UnconfinedTestDispatcher
@@ -148,6 +150,13 @@ internal class DownloadRequestFixture(
     /**
      * 已开始查询的剧集, 按顺序.
      */
+    /**
+     * 每集查询返回的资源. 默认把 [TestMediaList] 的每个资源都收窄为只含当前集, 使选源后直接创建下载而不进入选集.
+     */
+    var mediaListFor: (episodeId: Int) -> List<Media> = { episodeId ->
+        TestMediaList.map { it.copy(episodeRange = EpisodeRange.single(EpisodeSort(episodeId))) }
+    }
+
     val queried = mutableListOf<Int>()
 
     /**
@@ -360,7 +369,8 @@ internal class DownloadRequestFixture(
     }
 
     /**
-     * 查询立即返回 [TestMediaList], 之后保持运行直到被取消, 以便观察查询是否被释放.
+     * 查询立即返回 [mediaListFor] 的结果, 之后保持运行直到被取消, 以便观察查询是否被释放.
+     * 结果与真实会话一样在订阅者之间共享: 首个订阅者到来时开始查询, 最后一个订阅者离开时释放.
      */
     private inner class FetchSession(override val request: Flow<MediaFetchRequest>) : MediaFetchSession {
         override val mediaSourceResults: List<MediaSourceFetchResult> = emptyList()
@@ -369,12 +379,12 @@ internal class DownloadRequestFixture(
             val episodeId = request.first().episodeId.toInt()
             queried += episodeId
             try {
-                emit(TestMediaList)
+                emit(mediaListFor(episodeId))
                 awaitCancellation()
             } finally {
                 released += episodeId
             }
-        }
+        }.shareIn(testScope.backgroundScope, SharingStarted.WhileSubscribed(), replay = 1)
 
         override val hasCompleted: Flow<CompletedConditions> = flowOf(CompletedConditions.AllCompleted)
 
