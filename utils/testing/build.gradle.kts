@@ -17,7 +17,9 @@ kotlin {
     }
     sourceSets.commonMain {
         dependencies {
-            api(kotlin("test-annotations-common", libs.versions.kotlin.get()))
+            // commonMain 用到 kotlin.test.Test. gradle.properties 关闭了 kotlin.test.infer.jvm.variant,
+            // KGP 不会自动补上 kotlin-test, 因此显式声明; JVM 上的 JUnit 5 集成由 jvmMain 的 kotlin-test-junit5 提供.
+            api(kotlin("test", libs.versions.kotlin.get()))
             api(libs.kotlinx.coroutines.test)
             api(projects.utils.coroutines)
         }
