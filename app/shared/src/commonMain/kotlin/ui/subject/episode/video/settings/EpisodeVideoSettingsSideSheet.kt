@@ -16,6 +16,7 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
@@ -28,12 +29,22 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.runtime.compositionLocalOf
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
 import me.him188.ani.app.ui.foundation.text.ProvideTextStyleContentColor
+
+/**
+ * [SideSheetLayout] 根布局应用的窗口 insets, 默认 `null` 表示使用 [BottomSheetDefaults.windowInsets].
+ *
+ * 注意 [BottomSheetDefaults.windowInsets] 即使在全屏隐藏系统栏时顶部也非零 (systemBarsForVisualComponents).
+ * 当 sheet 不接触屏幕顶部 (例如折叠屏悬停模式的下半屏面板区) 时, 应由外层提供零 insets,
+ * 否则 sheet 顶部会被向下推一个状态栏高度, 导致遮挡不住其上方区域.
+ */
+val LocalSideSheetRootWindowInsets = compositionLocalOf<WindowInsets?> { null }
 
 @Composable
 fun SideSheetLayout(
@@ -50,7 +61,7 @@ fun SideSheetLayout(
 
     BoxWithConstraints(
         Modifier.fillMaxSize()
-            .windowInsetsPadding(BottomSheetDefaults.windowInsets)
+            .windowInsetsPadding(LocalSideSheetRootWindowInsets.current ?: BottomSheetDefaults.windowInsets)
             .clickable(
                 onClick = onDismissRequest,
                 interactionSource = remember { MutableInteractionSource() },

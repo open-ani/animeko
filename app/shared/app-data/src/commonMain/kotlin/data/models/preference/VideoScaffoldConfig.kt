@@ -14,6 +14,8 @@ import androidx.compose.runtime.Stable
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.Transient
 import me.him188.ani.utils.platform.annotations.SerializationOnly
+import me.him188.ani.utils.platform.currentPlatform
+import me.him188.ani.utils.platform.isAndroid
 import kotlin.time.Duration
 import kotlin.time.Duration.Companion.seconds
 
@@ -153,6 +155,12 @@ data class VideoScaffoldConfig @SerializationOnly constructor(
      * @since 4.11
      */
     val playerVolume: PlayerVolume = PlayerVolume(1f, false),
+    /**
+     * 折叠屏悬停模式: 竖屏全屏播放时, 半折叠 (铰链夹角不超过 160°) 后上半屏播放视频, 下半屏显示播放控制器.
+     *
+     * 仅在 Android 折叠屏设备上有效. 非 Android 平台不显示该设置项且恒为关闭.
+     */
+    val enableHoverMode: Boolean = currentPlatform().isAndroid(),
     // WARNING: if you add new property here, review Companion properties.
     @Suppress("PropertyName") @Transient val _placeholder: Int = 0,
 ) {
@@ -235,6 +243,7 @@ data class VideoScaffoldConfig @SerializationOnly constructor(
             autoSwitchMediaOnPlayerError = false,
             enableHighQualityAudioTimeStretch = false,
             enableExperimentalHlsSegmentFiltering = false,
+            enableHoverMode = false,
         )
     }
 

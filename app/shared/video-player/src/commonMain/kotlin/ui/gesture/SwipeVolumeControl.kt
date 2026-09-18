@@ -107,6 +107,48 @@ fun Modifier.swipeLevelControlWithIndicator(
     },
 )
 
+/**
+ * 竖滑调节亮度并显示亮度指示器.
+ */
+fun Modifier.swipeBrightnessControlWithIndicator(
+    controller: LevelController,
+    stepSize: Dp,
+    indicatorState: GestureIndicatorState,
+    enabled: Boolean = true,
+    step: Float = 0.01f,
+): Modifier = swipeLevelControlWithIndicator(
+    controller = controller,
+    stepSize = stepSize,
+    orientation = Orientation.Vertical,
+    indicatorState = indicatorState,
+    enabled = enabled,
+    step = step,
+    setup = {
+        indicatorState.state = GestureIndicatorState.State.BRIGHTNESS
+    },
+)
+
+/**
+ * 竖滑调节音量并显示音量指示器.
+ */
+fun Modifier.swipeVolumeControlWithIndicator(
+    controller: LevelController,
+    stepSize: Dp,
+    indicatorState: GestureIndicatorState,
+    enabled: Boolean = true,
+    step: Float = 0.05f,
+): Modifier = swipeLevelControlWithIndicator(
+    controller = controller,
+    stepSize = stepSize,
+    orientation = Orientation.Vertical,
+    indicatorState = indicatorState,
+    enabled = enabled,
+    step = step,
+    setup = {
+        indicatorState.state = GestureIndicatorState.State.VOLUME
+    },
+)
+
 fun Modifier.swipeLevelControl(
     controller: LevelController,
     stepSize: Dp,

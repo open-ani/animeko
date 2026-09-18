@@ -10,6 +10,8 @@
 package me.him188.ani.app.data.models.preference
 
 import me.him188.ani.app.data.persistent.DataStoreJson
+import me.him188.ani.utils.platform.currentPlatform
+import me.him188.ani.utils.platform.isAndroid
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFailsWith
@@ -35,6 +37,26 @@ class VideoScaffoldConfigTest {
         )
 
         assertEquals(VideoEnhancementDefaultMode.QUALITY, decoded.videoEnhancementDefaultMode)
+    }
+
+    @Test
+    fun `missing hover mode field uses platform default`() {
+        val config = DataStoreJson.decodeFromString(VideoScaffoldConfig.serializer(), "{}")
+
+        // 默认仅 Android 开启
+        assertEquals(currentPlatform().isAndroid(), config.enableHoverMode)
+    }
+
+    @Test
+    fun `hover mode survives serialization`() {
+        val config = VideoScaffoldConfig.Default.copy(enableHoverMode = !currentPlatform().isAndroid())
+
+        val decoded = DataStoreJson.decodeFromString(
+            VideoScaffoldConfig.serializer(),
+            DataStoreJson.encodeToString(VideoScaffoldConfig.serializer(), config),
+        )
+
+        assertEquals(config.enableHoverMode, decoded.enableHoverMode)
     }
 
     @Test

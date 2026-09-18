@@ -19,7 +19,12 @@ import platform.UIKit.setNeedsUpdateOfHomeIndicatorAutoHidden
 import platform.darwin.dispatch_async
 import platform.darwin.dispatch_get_main_queue
 
-actual suspend fun Context.setRequestFullScreen(window: PlatformWindowMP, fullscreen: Boolean) {
+// lockLandscape 仅 Android 使用, iOS 无折叠屏设备, 忽略.
+actual suspend fun Context.setRequestFullScreen(
+    window: PlatformWindowMP,
+    fullscreen: Boolean,
+    lockLandscape: Boolean,
+) {
     ensureMainThread {
         SwiftBridge.setDeviceOrientation(window.uiViewController, fullscreen)
 

@@ -57,6 +57,7 @@ import androidx.compose.runtime.Immutable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.SideEffect
 import androidx.compose.runtime.Stable
+import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableIntStateOf
@@ -137,6 +138,13 @@ class GestureIndicatorState {
 
     internal var visible: Boolean by mutableStateOf(false)
     internal var state: State? by mutableStateOf(null)
+
+    /**
+     * 是否正在竖滑调节音量或亮度. 调节期间应禁用同区域的横滑 seek.
+     */
+    val isAdjustingLevel: Boolean by derivedStateOf {
+        visible && (state == VOLUME || state == BRIGHTNESS)
+    }
     internal var progressValue: Float by mutableFloatStateOf(0f)
     internal var deltaSeconds: Int by mutableIntStateOf(0)
     internal var seekCancelled: Boolean by mutableStateOf(false)
@@ -609,8 +617,7 @@ fun PlayerGestureHost(
             GestureIndicator(indicatorState, swipeSeekerState = seekerState)
         }
         val maxHeight = maxHeight
-        val adjustingVolumeOrBrightness =
-            indicatorState.visible && (indicatorState.state == VOLUME || indicatorState.state == BRIGHTNESS)
+        val adjustingVolumeOrBrightness = indicatorState.isAdjustingLevel
         val adjustingForwardOrBackward =
             indicatorState.visible && (indicatorState.state == FAST_FORWARD || indicatorState.state == FAST_BACKWARD)
 
@@ -809,16 +816,12 @@ fun PlayerGestureHost(
                         // 挂载看能力 (桌面没有 BrightnessManager, 传进来是 NoOp), 是否响应看 enabled;
                         // 分开之后切换输入方式后的第一次滑动不会因为修饰符尚未挂上而丢失
                         .ifThen(brightnessController !== NoOpLevelController) {
-                            swipeLevelControlWithIndicator(
+                            swipeBrightnessControlWithIndicator(
                                 brightnessController,
                                 ((maxHeight - 100.dp) / 40).coerceAtLeast(2.dp),
-                                Orientation.Vertical,
                                 indicatorState,
                                 enabled = swipeGesturesEnabled && !seekerState.isSeeking && !adjustingForwardOrBackward,
                                 step = 0.01f,
-                                setup = {
-                                    indicatorState.state = BRIGHTNESS
-                                },
                             )
                         }
                         .weight(1f)
@@ -841,16 +844,12 @@ fun PlayerGestureHost(
                 Box(
                     Modifier
                         .ifThen(audioController !== NoOpLevelController) {
-                            swipeLevelControlWithIndicator(
+                            swipeVolumeControlWithIndicator(
                                 audioController,
                                 ((maxHeight - 100.dp) / 40).coerceAtLeast(2.dp),
-                                Orientation.Vertical,
                                 indicatorState,
                                 enabled = swipeGesturesEnabled && !seekerState.isSeeking && !adjustingForwardOrBackward,
                                 step = 0.05f,
-                                setup = {
-                                    indicatorState.state = VOLUME
-                                },
                             )
                         }
                         .weight(1f)

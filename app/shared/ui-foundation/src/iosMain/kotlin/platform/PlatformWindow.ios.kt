@@ -35,6 +35,12 @@ actual class PlatformWindow(
 
     actual val isExactlyMaximized: Boolean get() = false
 
+    actual val isFoldable: Boolean get() = false
+
+    actual val isInMultiWindowMode: Boolean get() = false
+
+    actual val hingeAngle: Float? get() = null
+
     internal fun register() {
         // Start listening to device orientation changes
         UIDevice.currentDevice.beginGeneratingDeviceOrientationNotifications()

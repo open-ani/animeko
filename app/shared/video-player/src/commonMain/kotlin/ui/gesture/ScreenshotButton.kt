@@ -9,6 +9,7 @@
 
 package me.him188.ani.app.videoplayer.ui.gesture
 
+import androidx.compose.foundation.layout.Box
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.PhotoCamera
 import androidx.compose.material3.Icon
@@ -22,18 +23,25 @@ import androidx.compose.ui.graphics.Color
 @Composable
 fun ScreenshotButton(
     onClick: () -> Unit,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    bordered: Boolean = true,
 ) {
-    PlayerFloatingButtonBox(
-        modifier = modifier,
-        content = {
-            IconButton(onClick) {
-                val color = Color.White
-                CompositionLocalProvider(LocalContentColor provides color) {
-                    Icon(Icons.Rounded.PhotoCamera, contentDescription = "Lock screen")
-                }
+    val content: @Composable () -> Unit = {
+        IconButton(onClick) {
+            val color = Color.White
+            CompositionLocalProvider(LocalContentColor provides color) {
+                Icon(Icons.Rounded.PhotoCamera, contentDescription = "Lock screen")
             }
-        },
-    )
+        }
+    }
+    // 悬停模式下半屏的控制面板中不需要浮动按钮的边框背景
+    if (bordered) {
+        PlayerFloatingButtonBox(
+            modifier = modifier,
+            content = content,
+        )
+    } else {
+        Box(modifier) { content() }
+    }
 }
 

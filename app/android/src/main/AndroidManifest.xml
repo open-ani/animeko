@@ -50,7 +50,8 @@
         <activity
                 android:name=".activity.MainActivity"
                 android:exported="true"
-                android:launchMode="singleTask">
+                android:launchMode="singleTask"
+                android:configChanges="orientation|screenSize|screenLayout|smallestScreenSize|keyboardHidden">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
                 <category android:name="android.intent.category.LAUNCHER" />

@@ -64,6 +64,12 @@ actual open class PlatformWindow(
 
     actual val deviceOrientation: DeviceOrientation = DeviceOrientation.LANDSCAPE
 
+    actual val isFoldable: Boolean get() = false
+
+    actual val isInMultiWindowMode: Boolean get() = false
+
+    actual val hingeAngle: Float? get() = null
+
     internal fun onWindowsUndecoratedFullscreenStateChange(newState: Boolean) {
         isWindowsUndecoratedFullscreen = newState
     }

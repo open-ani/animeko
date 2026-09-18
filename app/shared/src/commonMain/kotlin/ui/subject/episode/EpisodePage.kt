@@ -87,6 +87,7 @@ import me.him188.ani.app.data.models.preference.DarkMode
 import me.him188.ani.app.data.models.preference.VideoScaffoldConfig
 import me.him188.ani.app.domain.comment.CommentContext
 import me.him188.ani.app.navigation.LocalNavigator
+import me.him188.ani.app.platform.DeviceOrientation
 import me.him188.ani.app.platform.LocalContext
 import me.him188.ani.app.platform.features.StreamType
 import me.him188.ani.app.platform.features.getComponentAccessors
@@ -235,6 +236,8 @@ private fun EpisodeScreenContent(
 
     val fullscreenState = rememberEpisodeFullscreenState(vm)
     BackHandler(enabled = fullscreenState.isFullscreen) { fullscreenState.request(false) }
+
+    FoldableFullscreenOrientationEffect(vm)
 
     // image viewer
     val imageViewer = rememberImageViewerHandler()
@@ -956,17 +959,44 @@ private fun rememberEpisodeFullscreenState(vm: EpisodeViewModel): PlayerFullscre
         isFullscreen = { vm.isFullscreen },
         onRequest = { fullscreen ->
             scope.launch {
+                // 折叠屏悬停模式: 进入全屏时不锁定横屏, 保持当前方向以便竖屏下半折叠进入悬停模式;
+                // 但完全折叠 (例如已合盖切换到外屏) 时仍恢复横屏锁定. isFoldable 仅在 Android 折叠屏设备上为 true.
+                val lockLandscape = !(vm.videoScaffoldConfig.enableHoverMode && window.isFoldable)
+                        || window.hingeAngle?.let { it <= HOVER_MODE_MIN_HINGE_ANGLE_DEGREES } == true
                 // 进入是「先改状态再改窗口」, 退出是「先改窗口再改状态」, 与规范化之前的行为保持一致
                 if (fullscreen) {
                     vm.isFullscreen = true
-                    context.setRequestFullScreen(window, true)
+                    context.setRequestFullScreen(window, true, lockLandscape)
                 } else {
-                    context.setRequestFullScreen(window, false)
+                    context.setRequestFullScreen(window, false, lockLandscape)
                     vm.isFullscreen = false
                 }
             }
         },
     )
+}
+
+/**
+ * 折叠屏全屏期间的屏幕方向跟随: 全屏中铰链夹角变化时,
+ * 完全折叠 (夹角不超过 [HOVER_MODE_MIN_HINGE_ANGLE_DEGREES]) 恢复横屏锁定, 重新打开后解除锁定.
+ *
+ * 仅在折叠屏设备且悬停模式开启时生效, 其他情况不注册任何监听.
+ */
+@Composable
+private fun FoldableFullscreenOrientationEffect(vm: EpisodeViewModel) {
+    val context by rememberUpdatedState(LocalContext.current)
+    val window = LocalPlatformWindow.current
+    val hoverModeEnabled = vm.videoScaffoldConfig.enableHoverMode && window.isFoldable
+    if (!hoverModeEnabled) return
+
+    val fullyClosed by remember(window) {
+        derivedStateOf { window.hingeAngle?.let { it <= HOVER_MODE_MIN_HINGE_ANGLE_DEGREES } == true }
+    }
+    LaunchedEffect(vm.isFullscreen, fullyClosed) {
+        if (vm.isFullscreen) {
+            context.setRequestFullScreen(window, true, lockLandscape = fullyClosed)
+        }
+    }
 }
 
 @Composable
@@ -1015,6 +1045,20 @@ private fun EpisodeVideo(
     }
     val scope = rememberCoroutineScope()
 
+    // 悬停模式: 折叠屏设备竖屏全屏播放时, 铰链半折叠后上半屏播放视频, 下半屏显示播放控制器.
+    // isFoldable 仅在 Android 折叠屏设备上为 true, 其他平台这里恒为 false.
+    // 完全折叠 (夹角不超过最小阈值) 或处于多窗口模式 (小窗/分屏) 时都不算悬停.
+    val hoverMode by remember(window) {
+        derivedStateOf {
+            vm.isFullscreen
+                    && vm.videoScaffoldConfig.enableHoverMode
+                    && window.isFoldable
+                    && !window.isInMultiWindowMode
+                    && window.deviceOrientation == DeviceOrientation.PORTRAIT
+                    && window.hingeAngle?.let { it.isHingeAngleInHoverModeRange } == true
+        }
+    }
+
     // 必须在 UI 里, 跟随 context 变化. 否则 #958
     val platformComponents by remember {
         derivedStateOf {
@@ -1026,6 +1070,7 @@ private fun EpisodeVideo(
     EpisodeVideoImpl(
         vm.player,
         expanded = expanded,
+        hoverMode = hoverMode,
         hasNextEpisode = vm.episodeSelectorState.hasNextEpisode,
         onClickNextEpisode = { vm.episodeSelectorState.selectNext() },
         playerControllerState = playerControllerState,

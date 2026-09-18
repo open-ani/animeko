@@ -12,6 +12,10 @@ package me.him188.ani.app.platform
 import android.app.Activity
 import android.content.ComponentCallbacks
 import android.content.res.Configuration
+import android.hardware.Sensor
+import android.hardware.SensorEvent
+import android.hardware.SensorEventListener
+import android.hardware.SensorManager
 import android.os.Build
 import android.view.View
 import android.view.WindowInsets
@@ -26,14 +30,26 @@ import androidx.core.view.ViewCompat
 import androidx.core.view.WindowInsetsCompat
 
 
-actual class PlatformWindow(
+actual class PlatformWindow private constructor(
     initialDeviceOrientation: DeviceOrientation,
-    initialUndecoratedFullscreen: Boolean
+    initialUndecoratedFullscreen: Boolean,
+    private val sensorManager: SensorManager?,
+    private val activity: Activity?,
 ) {
     constructor(context: Context) : this(
         initialDeviceOrientation = context.resources.configuration.deviceOrientation,
         initialUndecoratedFullscreen = isInFullscreenMode(context),
+        sensorManager = context.getSystemService(Context.SENSOR_SERVICE) as? SensorManager,
+        activity = context.findActivity(),
     )
+
+    // Sensor.TYPE_HINGE_ANGLE 自 API 30 起存在, 更低版本的设备上没有折叠屏, 视为非折叠屏.
+    private val hingeAngleSensor: Sensor? =
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+            sensorManager?.getDefaultSensor(Sensor.TYPE_HINGE_ANGLE)
+        } else {
+            null
+        }
 
     actual val isExactlyMaximized: Boolean get() = false
 
@@ -42,6 +58,23 @@ actual class PlatformWindow(
 
     private var _isUndecoratedFullscreen: Boolean by mutableStateOf(initialUndecoratedFullscreen)
     actual val isUndecoratedFullscreen: Boolean get() = _isUndecoratedFullscreen
+
+    actual val isFoldable: Boolean get() = hingeAngleSensor != null
+
+    private var _isInMultiWindowMode: Boolean by mutableStateOf(activity?.isInMultiWindowMode == true)
+    actual val isInMultiWindowMode: Boolean get() = _isInMultiWindowMode
+
+    private var _hingeAngle: Float? by mutableStateOf(null)
+    actual val hingeAngle: Float? get() = _hingeAngle
+
+    private val hingeAngleListener = object : SensorEventListener {
+        override fun onSensorChanged(event: SensorEvent) {
+            _hingeAngle = event.values[0]
+        }
+
+        override fun onAccuracyChanged(sensor: Sensor?, accuracy: Int) {
+        }
+    }
 
     private val insetListener = View.OnApplyWindowInsetsListener { _, insets ->
         @Suppress("DEPRECATION")
@@ -69,6 +102,8 @@ actual class PlatformWindow(
 
         override fun onConfigurationChanged(newConfig: Configuration) {
             _deviceOrientation = newConfig.deviceOrientation
+            // 进入/退出小窗与分屏也会触发配置变化, 这里一并刷新
+            _isInMultiWindowMode = activity?.isInMultiWindowMode == true
         }
     }
 
@@ -88,6 +123,10 @@ actual class PlatformWindow(
 
         //register resource change listener
         context.registerComponentCallbacks(configurationListener)
+
+        hingeAngleSensor?.let { sensor ->
+            sensorManager?.registerListener(hingeAngleListener, sensor, SensorManager.SENSOR_DELAY_NORMAL)
+        }
     }
 
     internal fun dispose(context: Context) {
@@ -99,6 +138,10 @@ actual class PlatformWindow(
             ViewCompat.setOnApplyWindowInsetsListener(decorView, null)
         }
         context.unregisterComponentCallbacks(configurationListener)
+
+        if (hingeAngleSensor != null) {
+            sensorManager?.unregisterListener(hingeAngleListener)
+        }
     }
 
     actual fun maximize() {

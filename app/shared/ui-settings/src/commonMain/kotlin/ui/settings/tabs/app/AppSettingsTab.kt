@@ -55,6 +55,7 @@ import me.him188.ani.app.ui.foundation.LocalPlatform
 import me.him188.ani.app.ui.foundation.SteppedSlider
 import me.him188.ani.app.ui.foundation.animation.AniAnimatedVisibility
 import me.him188.ani.app.ui.foundation.animation.LocalAniMotionScheme
+import me.him188.ani.app.ui.foundation.layout.LocalPlatformWindow
 import me.him188.ani.app.ui.foundation.quantizeSliderValue
 import me.him188.ani.app.ui.lang.Lang
 import me.him188.ani.app.ui.lang.settings_app_close_behavior
@@ -98,6 +99,8 @@ import me.him188.ani.app.ui.lang.settings_player_fullscreen_button
 import me.him188.ani.app.ui.lang.settings_player_fullscreen_button_description
 import me.him188.ani.app.ui.lang.settings_player_fullscreen_only_in_controller
 import me.him188.ani.app.ui.lang.settings_player_hide_selector_on_select
+import me.him188.ani.app.ui.lang.settings_player_hover_mode
+import me.him188.ani.app.ui.lang.settings_player_hover_mode_description
 import me.him188.ani.app.ui.lang.settings_player_long_press_fast_forward_speed
 import me.him188.ani.app.ui.lang.settings_player_long_press_fast_forward_speed_description
 import me.him188.ani.app.ui.lang.settings_player_op_ed_skip_duration
@@ -519,6 +522,19 @@ fun SettingsScope.PlayerGroup(
             },
         )
         HorizontalDividerItem()
+        if (LocalPlatform.current.isAndroid()) {
+            // 非 Android 平台不显示该设置项; 非折叠屏设备上开关无效 (禁用).
+            SwitchItem(
+                checked = config.enableHoverMode,
+                onCheckedChange = {
+                    videoScaffoldConfig.update(config.copy(enableHoverMode = it))
+                },
+                title = { Text(stringResource(Lang.settings_player_hover_mode)) },
+                description = { Text(stringResource(Lang.settings_player_hover_mode_description)) },
+                enabled = LocalPlatformWindow.current.isFoldable,
+            )
+            HorizontalDividerItem()
+        }
         SwitchItem(
             danmakuFilterConfig.value.enableRegexFilter,
             onCheckedChange = {

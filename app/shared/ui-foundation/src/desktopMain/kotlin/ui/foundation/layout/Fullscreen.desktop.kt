@@ -15,7 +15,8 @@ import me.him188.ani.app.platform.checkIsDesktop
 import me.him188.ani.app.platform.window.WindowUtils
 
 
-actual suspend fun Context.setRequestFullScreen(window: PlatformWindow, fullscreen: Boolean) {
+// lockLandscape 仅 Android 使用, 桌面端本就不锁定方向, 忽略.
+actual suspend fun Context.setRequestFullScreen(window: PlatformWindow, fullscreen: Boolean, lockLandscape: Boolean) {
     checkIsDesktop()
 //    extraWindowProperties.undecorated = fullscreen // Exception in thread "main" java.awt.IllegalComponentStateException: The frame is displayable.
 

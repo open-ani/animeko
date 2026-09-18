@@ -24,6 +24,21 @@ expect class PlatformWindow {
     val deviceOrientation: DeviceOrientation
 
     /**
+     * 设备是否为折叠屏 (具有铰链角度传感器). 非折叠屏设备恒为 `false`.
+     */
+    val isFoldable: Boolean
+
+    /**
+     * 当前是否处于多窗口模式 (小窗/分屏). 非 Android 平台恒为 `false`.
+     */
+    val isInMultiWindowMode: Boolean
+
+    /**
+     * 当前铰链夹角, 单位为度, 180 表示完全展开. 设备无铰链角度传感器时恒为 `null`.
+     */
+    val hingeAngle: Float?
+
+    /**
      * 将窗口最大化. 注意, 这不是全屏.
      *
      * 仅在桌面端有效.

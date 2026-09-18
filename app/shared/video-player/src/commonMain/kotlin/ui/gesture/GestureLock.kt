@@ -50,7 +50,8 @@ const val TAG_GESTURE_LOCK = "GestureLock"
 fun GestureLock(
     isLocked: Boolean,
     onClick: () -> Unit,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    bordered: Boolean = true,
 ) {
 //    val background = MaterialTheme.colorScheme.onSurface
 //    SmallFloatingActionButton(
@@ -66,12 +67,7 @@ fun GestureLock(
 //            }
 //        }
 //    }
-    Surface(
-        modifier.testTag(TAG_GESTURE_LOCK),
-        shape = RoundedCornerShape(16.dp),
-        color = MaterialTheme.colorScheme.background.copy(0.05f),
-        border = BorderStroke(0.5.dp, MaterialTheme.colorScheme.outline.slightlyWeaken()),
-    ) {
+    val iconButton: @Composable () -> Unit = {
         IconButton(onClick) {
             val color = if (isLocked) {
                 MaterialTheme.colorScheme.primary
@@ -85,6 +81,21 @@ fun GestureLock(
                     Icon(Icons.Outlined.LockOpen, contentDescription = "Lock screen")
                 }
             }
+        }
+    }
+    // 悬停模式下半屏的控制面板中不需要浮动按钮的边框背景
+    if (bordered) {
+        Surface(
+            modifier.testTag(TAG_GESTURE_LOCK),
+            shape = RoundedCornerShape(16.dp),
+            color = MaterialTheme.colorScheme.background.copy(0.05f),
+            border = BorderStroke(0.5.dp, MaterialTheme.colorScheme.outline.slightlyWeaken()),
+        ) {
+            iconButton()
+        }
+    } else {
+        Box(modifier.testTag(TAG_GESTURE_LOCK)) {
+            iconButton()
         }
     }
 //    Surface(

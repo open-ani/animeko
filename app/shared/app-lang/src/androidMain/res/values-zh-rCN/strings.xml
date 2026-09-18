@@ -298,6 +298,8 @@
     <string name="settings_player_fullscreen_button_description">总是显示播放器右下角的切换全屏按钮，方便切换</string>
     <string name="settings_player_video_enhancement_default">默认画质增强模式</string>
     <string name="settings_player_video_enhancement_default_description">设置每次进入播放器时使用的画质增强档位</string>
+    <string name="settings_player_hover_mode">悬停模式</string>
+    <string name="settings_player_hover_mode_description">竖屏全屏播放，且将设备半折后，上半屏播放视频，下半屏显示播放控制器</string>
     <string name="settings_player_frame_preview">显示进度条画面预览</string>
     <string name="settings_player_frame_preview_description">悬停或拖动进度条时，显示目标位置的视频画面</string>
     <string name="settings_player_enable_regex_filter">启用正则弹幕过滤器</string>

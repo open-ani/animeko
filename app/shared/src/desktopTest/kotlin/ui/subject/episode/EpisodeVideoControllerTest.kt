@@ -10,6 +10,7 @@
 package me.him188.ani.app.ui.subject.episode
 
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
@@ -32,10 +33,13 @@ import androidx.compose.ui.test.assertIsFocused
 import androidx.compose.ui.test.assertIsNotFocused
 import androidx.compose.ui.test.assertTextEquals
 import androidx.compose.ui.test.click
+import androidx.compose.ui.test.doubleClick
+import androidx.compose.ui.test.getUnclippedBoundsInRoot
 import androidx.compose.ui.test.isRoot
 import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.filterToOne
 import androidx.compose.ui.test.hasSetTextAction
+import androidx.compose.ui.unit.dp
 import androidx.compose.ui.test.onChildren
 import androidx.compose.ui.test.onFirst
 import androidx.compose.ui.test.onNodeWithContentDescription
@@ -77,6 +81,7 @@ import me.him188.ani.app.ui.subject.episode.video.components.EpisodeVideoSideShe
 import me.him188.ani.app.ui.subject.episode.video.components.EpisodeVideoSideSheets
 import me.him188.ani.app.ui.subject.episode.video.components.FloatingFullscreenSwitchButton
 import me.him188.ani.app.ui.subject.episode.video.components.SideSheets
+import me.him188.ani.app.ui.subject.episode.video.settings.LocalSideSheetRootWindowInsets
 import me.him188.ani.app.ui.subject.episode.video.sidesheet.DanmakuRegexFilterSettings
 import me.him188.ani.app.ui.subject.episode.video.sidesheet.EpisodeSelectorSheet
 import me.him188.ani.app.ui.subject.episode.video.sidesheet.MediaSelectorSheet
@@ -93,6 +98,7 @@ import me.him188.ani.app.videoplayer.ui.VideoAspectRatioControllerState
 import me.him188.ani.app.videoplayer.ui.gesture.GestureFamily
 import me.him188.ani.app.videoplayer.ui.gesture.LevelController
 import me.him188.ani.app.videoplayer.ui.gesture.NoOpLevelController
+import me.him188.ani.app.videoplayer.ui.gesture.TAG_GESTURE_LOCK
 import me.him188.ani.app.videoplayer.ui.gesture.VIDEO_GESTURE_MOUSE_MOVE_SHOW_CONTROLLER_DURATION
 import me.him188.ani.app.videoplayer.ui.gesture.VIDEO_GESTURE_TOUCH_SHOW_CONTROLLER_DURATION
 import me.him188.ani.app.videoplayer.ui.gesture.gestureFamilyOf
@@ -220,6 +226,8 @@ class EpisodeVideoControllerTest {
         get() = onNodeWithTag(TAG_FULL_SCREEN_BUTTON, useUnmergedTree = true)
     private val SemanticsNodeInteractionsProvider.videoGestureHost
         get() = onNodeWithTag("VideoGestureHost", useUnmergedTree = true)
+    private val SemanticsNodeInteractionsProvider.hoverModeGestureArea
+        get() = onNodeWithTag(TAG_HOVER_MODE_GESTURE_AREA, useUnmergedTree = true)
     private val SemanticsNodeInteractionsProvider.mediaProgressIndicatorText: SemanticsNodeInteraction
         get() = onNodeWithTag(TAG_MEDIA_PROGRESS_INDICATOR_TEXT, useUnmergedTree = true)
 
@@ -230,6 +238,7 @@ class EpisodeVideoControllerTest {
         playerControllerState: PlayerControllerState = controllerState,
         onToggleDanmaku: () -> Unit = {},
         audioController: LevelController = NoOpLevelController,
+        brightnessController: LevelController = NoOpLevelController,
         playbackSpeed: PlaybackSpeed = NoOpPlaybackSpeedController,
         onCommitPlaybackSpeed: (Float) -> Unit = {},
         opEdSkipDuration: Duration = 85.seconds,
@@ -238,6 +247,7 @@ class EpisodeVideoControllerTest {
         showDanmakuEditor: () -> Boolean = { true },
         onEditorEscape: (() -> Unit)? = null,
         expanded: Boolean = true,
+        hoverMode: Boolean = false,
         fullscreenState: PlayerFullscreenState = remember(expanded) { TestFullscreenState(expanded) },
         framePreview: MediaProgressFramePreviewState? = null,
         cacheChunkState: ChunkState = ChunkState.NONE,
@@ -265,6 +275,7 @@ class EpisodeVideoControllerTest {
                 EpisodeVideoImpl(
                     playerState = playerState,
                     expanded = expanded,
+                    hoverMode = hoverMode,
                     hasNextEpisode = true,
                     onClickNextEpisode = {},
                     playerControllerState = playerControllerState,
@@ -308,7 +319,7 @@ class EpisodeVideoControllerTest {
                     cacheProgressInfoFlow = cacheProgressInfoFlow,
                     framePreview = framePreview,
                     audioController = audioController,
-                    brightnessController = NoOpLevelController,
+                    brightnessController = brightnessController,
                     playbackSpeedControllerState = remember(playbackSpeed) {
                         PlaybackSpeedControllerState(
                             playbackSpeed = playbackSpeed,
@@ -620,6 +631,365 @@ class EpisodeVideoControllerTest {
             mainClock.advanceTimeUntil(timeoutMillis = WAIT_TIMEOUT) { topBar.doesNotExist() }
             waitUntil(timeoutMillis = WAIT_TIMEOUT) { topBar.doesNotExist() }
             assertEquals(NORMAL_INVISIBLE, controllerState.visibility)
+        }
+    }
+
+    /**
+     * 悬停模式: 下半屏控制器面板与正常全屏一样随控制器显隐 —— 未操作自动隐藏,
+     * 隐藏后下半屏变为手势区; 单击下半屏或上半屏均可恢复显示面板.
+     */
+    @Test
+    fun `hover mode - panel auto hides and tap restores`() = runAniComposeUiTest {
+        setContent {
+            Player(GestureFamily.TOUCH, hoverMode = true)
+        }
+        // 控制器隐藏时, 上半屏顶栏与下半屏面板都隐藏, 下半屏只剩手势区
+        runOnIdle {
+            assertEquals(NORMAL_INVISIBLE, controllerState.visibility)
+        }
+        topBar.assertDoesNotExist()
+        fullScreenButton.assertDoesNotExist()
+        danmakuEditor.assertDoesNotExist()
+        hoverModeGestureArea.assertExists()
+
+        val root = onAllNodes(isRoot()).onFirst()
+        val rootBounds = root.getUnclippedBoundsInRoot()
+        val midY = rootBounds.top + (rootBounds.bottom - rootBounds.top) / 2
+        mainClock.autoAdvance = false
+
+        // 单击下半屏手势区 (根节点中央已属于下半屏): 恢复显示面板与覆盖层顶栏
+        root.performTouchInput { click(center.copy(y = center.y + center.y / 2)) }
+        runOnIdle {
+            mainClock.advanceTimeBy(1000L)
+            waitUntil(timeoutMillis = WAIT_TIMEOUT) { topBar.exists() }
+            assertEquals(NORMAL_VISIBLE, controllerState.visibility)
+        }
+        fullScreenButton.assertExists()
+        danmakuEditor.assertExists()
+
+        // 面板完全占用下半屏, 视频手势区与顶栏在上半屏
+        assertTrue(
+            fullScreenButton.getUnclippedBoundsInRoot().top >= midY,
+            "悬停模式控制器面板应完全位于下半屏",
+        )
+        assertTrue(
+            videoGestureHost.getUnclippedBoundsInRoot().bottom <= midY,
+            "悬停模式视频区域应完全位于上半屏",
+        )
+        assertTrue(
+            topBar.getUnclippedBoundsInRoot().bottom <= midY,
+            "悬停模式顶栏应位于上半屏",
+        )
+
+        // 未操作一段时间后自动隐藏 (与正常全屏相同的逻辑)
+        runOnIdle {
+            mainClock.advanceTimeUntil(timeoutMillis = WAIT_TIMEOUT) {
+                controllerState.visibility == NORMAL_INVISIBLE
+            }
+            mainClock.advanceTimeBy(1000L) // 等待面板渐隐动画完成
+        }
+        fullScreenButton.assertDoesNotExist()
+        hoverModeGestureArea.assertExists()
+
+        // 单击上半屏视频同样恢复显示面板
+        root.performTouchInput { click(center.copy(y = center.y / 2)) }
+        runOnIdle {
+            mainClock.advanceTimeBy(1000L)
+            waitUntil(timeoutMillis = WAIT_TIMEOUT) { fullScreenButton.exists() }
+            assertEquals(NORMAL_VISIBLE, controllerState.visibility)
+        }
+    }
+
+    /**
+     * 悬停模式: 面板隐藏时下半屏只响应快捷手势 —— 横滑快进, 双击暂停/恢复;
+     * 这些手势不会把面板唤醒.
+     */
+    @Test
+    fun `hover mode - hidden panel area handles quick gestures`() = runAniComposeUiTest {
+        lateinit var playerState: TestMediampPlayer
+        setContent {
+            Player(GestureFamily.TOUCH, hoverMode = true, onPlayerStateCreated = { playerState = it })
+        }
+        runOnIdle {
+            // Media is loaded paused by Player (the v1 test's PAUSED baseline).
+            assertEquals(MediaStatus.Ready, playerState.state.value.mediaStatus)
+            assertFalse(playerState.state.value.playWhenReady)
+            assertEquals(NORMAL_INVISIBLE, controllerState.visibility)
+        }
+        hoverModeGestureArea.assertExists()
+
+        val root = onAllNodes(isRoot()).onFirst()
+        mainClock.autoAdvance = false
+
+        // 横滑下半屏: 快进. 滑动期间与松手后都不显示面板
+        root.performTouchInput {
+            down(Offset(width / 4f, height * 0.75f))
+            moveBy(Offset(width / 2f, 0f))
+        }
+        runOnIdle {
+            mainClock.advanceTimeBy(1000L)
+            assertEquals(NORMAL_INVISIBLE, controllerState.visibility)
+            fullScreenButton.assertDoesNotExist()
+        }
+        // 松手执行 seek (播放器命令必须在机器线程 (UI 线程) 上派发)
+        runOnUiThread {
+            root.performTouchInput { up() }
+        }
+        runOnIdle {
+            mainClock.advanceTimeBy(1000L)
+            assertEquals(NORMAL_INVISIBLE, controllerState.visibility)
+            // 从 0 快进了约半屏 (满屏 97 秒)
+            assertTrue(
+                playerState.currentPositionMillis.value in 30_000..60_000,
+                "横滑下半屏应快进, actual=${playerState.currentPositionMillis.value}",
+            )
+        }
+
+        // 双击下半屏: 暂停/恢复, 不显示面板
+        runOnUiThread {
+            root.performTouchInput { doubleClick(Offset(width / 2f, height * 0.75f)) }
+        }
+        runOnIdle {
+            mainClock.advanceTimeBy(1000L)
+            assertTrue(playerState.state.value.playWhenReady)
+            assertEquals(NORMAL_INVISIBLE, controllerState.visibility)
+        }
+    }
+
+    /**
+     * 悬停模式: 面板隐藏时下半屏右侧竖滑调节音量, 左侧竖滑调节亮度, 与上半屏手势一致;
+     * 调节不会把面板唤醒.
+     */
+    @Test
+    fun `hover mode - hidden panel area adjusts volume and brightness`() = runAniComposeUiTest {
+        val audioController = TestLevelController(0.5f)
+        val brightnessController = TestLevelController(0.5f)
+        setContent {
+            Player(
+                GestureFamily.TOUCH,
+                hoverMode = true,
+                audioController = audioController,
+                brightnessController = brightnessController,
+            )
+        }
+        runOnIdle {
+            assertEquals(NORMAL_INVISIBLE, controllerState.visibility)
+        }
+        hoverModeGestureArea.assertExists()
+
+        val root = onAllNodes(isRoot()).onFirst()
+        mainClock.autoAdvance = false
+
+        // 右侧上滑: 调高音量
+        root.performTouchInput {
+            down(Offset(width * 0.8f, height * 0.9f))
+            moveBy(Offset(0f, -height * 0.15f))
+            up()
+        }
+        runOnIdle {
+            mainClock.advanceTimeBy(1000L)
+            assertTrue(audioController.level > 0.5f, "右侧上滑应调高音量, actual=${audioController.level}")
+            assertEquals(NORMAL_INVISIBLE, controllerState.visibility)
+        }
+
+        // 左侧下滑: 调低亮度
+        root.performTouchInput {
+            down(Offset(width * 0.2f, height * 0.65f))
+            moveBy(Offset(0f, height * 0.15f))
+            up()
+        }
+        runOnIdle {
+            mainClock.advanceTimeBy(1000L)
+            assertTrue(brightnessController.level < 0.5f, "左侧下滑应调低亮度, actual=${brightnessController.level}")
+            assertEquals(NORMAL_INVISIBLE, controllerState.visibility)
+        }
+    }
+
+    /**
+     * 悬停模式: 面板显示时点击其空白处隐藏控制器 (与正常全屏一致), 面板上的按钮不受影响.
+     */
+    @Test
+    fun `hover mode - panel blank area click hides panel`() = runAniComposeUiTest {
+        var danmakuToggleCount = 0
+        setContent {
+            Player(GestureFamily.TOUCH, hoverMode = true, onToggleDanmaku = { danmakuToggleCount++ })
+        }
+        val root = onAllNodes(isRoot()).onFirst()
+        mainClock.autoAdvance = false
+
+        // 单击下半屏手势区显示面板
+        root.performTouchInput { click(Offset(width / 2f, height * 0.75f)) }
+        runOnIdle {
+            mainClock.advanceTimeBy(1000L)
+            waitUntil(timeoutMillis = WAIT_TIMEOUT) { fullScreenButton.exists() }
+            assertEquals(NORMAL_VISIBLE, controllerState.visibility)
+        }
+
+        // 点击面板空白处 (左侧, 避开居中的播放按钮): 隐藏控制器
+        root.performTouchInput { click(Offset(width / 4f, height * 0.75f)) }
+        runOnIdle {
+            mainClock.advanceTimeBy(1000L)
+            waitUntil(timeoutMillis = WAIT_TIMEOUT) { fullScreenButton.doesNotExist() }
+            assertEquals(NORMAL_INVISIBLE, controllerState.visibility)
+        }
+        hoverModeGestureArea.assertExists()
+
+        // 面板上的按钮不受影响: 恢复显示后点击弹幕开关正常触发, 且不会误隐藏面板
+        root.performTouchInput { click(Offset(width / 2f, height * 0.75f)) }
+        runOnIdle {
+            mainClock.advanceTimeBy(1000L)
+            waitUntil(timeoutMillis = WAIT_TIMEOUT) { fullScreenButton.exists() }
+        }
+        danmakuIconButton.performClick()
+        runOnIdle {
+            mainClock.advanceTimeBy(1000L)
+            assertEquals(1, danmakuToggleCount)
+            assertEquals(NORMAL_VISIBLE, controllerState.visibility)
+        }
+    }
+
+    /**
+     * 悬停模式: 锁定后下半屏仅显示锁定按钮, 不响应其他手势; 锁定按钮与正常全屏一样
+     * 无操作自动隐藏, 单击下半屏重新显示; 点击锁定按钮解锁后恢复正常.
+     */
+    @Test
+    fun `hover mode - locked shows only lock button and ignores gestures`() = runAniComposeUiTest {
+        lateinit var playerState: TestMediampPlayer
+        setContent {
+            Player(GestureFamily.TOUCH, hoverMode = true, onPlayerStateCreated = { playerState = it })
+        }
+        val root = onAllNodes(isRoot()).onFirst()
+        val lockButton = onNodeWithTag(TAG_GESTURE_LOCK, useUnmergedTree = true)
+        mainClock.autoAdvance = false
+
+        // 显示面板后按下锁定按钮
+        root.performTouchInput { click(Offset(width / 2f, height * 0.75f)) }
+        runOnIdle {
+            mainClock.advanceTimeBy(1000L)
+            waitUntil(timeoutMillis = WAIT_TIMEOUT) { fullScreenButton.exists() }
+        }
+        lockButton.performTouchInput { click() }
+        runOnIdle {
+            mainClock.advanceTimeBy(1000L)
+        }
+
+        // 锁定后仅显示锁定按钮: 面板其余内容与顶栏消失, 锁定按钮仍在下半屏
+        lockButton.assertExists()
+        fullScreenButton.assertDoesNotExist()
+        danmakuEditor.assertDoesNotExist()
+        topBar.assertDoesNotExist()
+        hoverModeGestureArea.assertDoesNotExist()
+        val rootBounds = root.getUnclippedBoundsInRoot()
+        val midY = rootBounds.top + (rootBounds.bottom - rootBounds.top) / 2
+        assertTrue(
+            lockButton.getUnclippedBoundsInRoot().top >= midY,
+            "锁定按钮应位于下半屏",
+        )
+
+        // 不响应手势: 横滑不快进
+        root.performTouchInput {
+            down(Offset(width / 4f, height * 0.75f))
+            moveBy(Offset(width / 2f, 0f))
+        }
+        runOnUiThread {
+            root.performTouchInput { up() }
+        }
+        runOnIdle {
+            mainClock.advanceTimeBy(1000L)
+            assertEquals(0L, playerState.currentPositionMillis.value)
+            fullScreenButton.assertDoesNotExist()
+        }
+
+        // 与正常全屏锁定一致: 无操作自动隐藏锁定按钮
+        runOnIdle {
+            mainClock.advanceTimeUntil(timeoutMillis = WAIT_TIMEOUT) {
+                controllerState.visibility == NORMAL_INVISIBLE
+            }
+            mainClock.advanceTimeBy(1000L) // 等待锁定按钮渐隐动画完成
+        }
+        lockButton.assertDoesNotExist()
+
+        // 单击下半屏重新显示锁定按钮, 仍不显示面板其余内容
+        root.performTouchInput { click(Offset(width / 2f, height * 0.75f)) }
+        runOnIdle {
+            mainClock.advanceTimeBy(1000L)
+            waitUntil(timeoutMillis = WAIT_TIMEOUT) { lockButton.exists() }
+        }
+        fullScreenButton.assertDoesNotExist()
+        danmakuEditor.assertDoesNotExist()
+        assertEquals(0L, playerState.currentPositionMillis.value)
+
+        // 点击锁定按钮解锁: 下半屏恢复显示控制器面板
+        lockButton.performTouchInput { click() }
+        runOnIdle {
+            mainClock.advanceTimeBy(1000L)
+            waitUntil(timeoutMillis = WAIT_TIMEOUT) { fullScreenButton.exists() }
+            assertEquals(NORMAL_VISIBLE, controllerState.visibility)
+        }
+    }
+
+    /**
+     * 悬停模式下打开侧边窗口时, 窗口应覆盖下半屏面板的整个高度 (包括顶部右侧的截图/锁定/快进按钮行).
+     *
+     * 这里给 [LocalSideSheetRootWindowInsets] 注入非零值, 模拟真机全屏下 systemBarsForVisualComponents
+     * 始终非零的窗口 insets (SideSheetLayout 默认会把 sheet 顶部向下推一个状态栏高度).
+     */
+    @Test
+    fun `hover mode - side sheet covers the whole panel`() = runAniComposeUiTest {
+        setContent {
+            CompositionLocalProvider(LocalSideSheetRootWindowInsets provides WindowInsets(top = 48.dp)) {
+                Player(GestureFamily.TOUCH, hoverMode = true)
+            }
+        }
+        // 固定面板显示: 面板会随控制器显隐自动隐藏, 而面板按钮是打开窗口的入口
+        runOnIdle {
+            controllerState.setRequestAlwaysOn(this@EpisodeVideoControllerTest, true)
+        }
+        val rootBounds = onAllNodes(isRoot()).onFirst().getUnclippedBoundsInRoot()
+        val midY = rootBounds.top + (rootBounds.bottom - rootBounds.top) / 2
+
+        // 打开数据源窗口 (按钮在下半屏面板的顶部右侧行)
+        onNodeWithTag(TAG_SHOW_MEDIA_SELECTOR, useUnmergedTree = true).performClick()
+        val sheet = onNodeWithTag(TAG_MEDIA_SELECTOR_SHEET, useUnmergedTree = true)
+        waitUntil(timeoutMillis = WAIT_TIMEOUT) { sheet.exists() }
+
+        val sheetBounds = sheet.getUnclippedBoundsInRoot()
+        assertEquals(midY, sheetBounds.top, "侧边窗口顶部应与面板顶部 (屏幕中线) 对齐")
+        assertEquals(rootBounds.bottom, sheetBounds.bottom, "侧边窗口底部应与屏幕底部对齐")
+    }
+
+    /**
+     * 悬停模式下打开侧边窗口时, 下半屏面板的按钮被窗口遮挡不可点击;
+     * 点击窗口外区域关闭窗口后, 按钮恢复可用.
+     */
+    @Test
+    fun `hover mode - side sheet blocks panel buttons until closed`() = runAniComposeUiTest {
+        var danmakuToggleCount = 0
+        setContent {
+            Player(GestureFamily.TOUCH, hoverMode = true, onToggleDanmaku = { danmakuToggleCount++ })
+        }
+        // 固定面板显示: 面板会随控制器显隐自动隐藏, 而面板按钮是打开窗口的入口
+        runOnIdle {
+            controllerState.setRequestAlwaysOn(this@EpisodeVideoControllerTest, true)
+        }
+
+        // 打开数据源窗口 (按钮在下半屏面板的顶部右侧行)
+        onNodeWithTag(TAG_SHOW_MEDIA_SELECTOR, useUnmergedTree = true).performClick()
+        val sheet = onNodeWithTag(TAG_MEDIA_SELECTOR_SHEET, useUnmergedTree = true)
+        waitUntil(timeoutMillis = WAIT_TIMEOUT) { sheet.exists() }
+
+        // 窗口打开期间, 点击面板按钮的位置不会触发按钮, 而是落在窗口遮罩上关闭窗口
+        // (弹幕开关在面板左侧, 位于窗口左侧的遮罩区域)
+        danmakuIconButton.performClick()
+        runOnIdle {
+            assertEquals(0, danmakuToggleCount, "侧边窗口打开期间面板按钮应被遮挡")
+        }
+        waitUntil(timeoutMillis = WAIT_TIMEOUT) { !sheet.exists() }
+
+        // 关闭窗口后按钮恢复可用
+        danmakuIconButton.performClick()
+        runOnIdle {
+            assertEquals(1, danmakuToggleCount)
         }
     }
 
