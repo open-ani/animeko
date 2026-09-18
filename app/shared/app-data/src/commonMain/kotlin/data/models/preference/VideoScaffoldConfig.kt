@@ -75,6 +75,10 @@ data class VideoScaffoldConfig @SerializationOnly constructor(
      */
     val autoFullscreenOnLandscapeMode: Boolean = false,
     /**
+     * 设备半折叠时使用悬停布局.
+     */
+    val enableFoldableHoverMode: Boolean = true,
+    /**
      * 自动连播
      */
     val autoPlayNext: Boolean = true,
@@ -230,6 +234,7 @@ data class VideoScaffoldConfig @SerializationOnly constructor(
             autoMarkDone = false,
             hideSelectorOnSelect = false,
             autoFullscreenOnLandscapeMode = false,
+            enableFoldableHoverMode = false,
             autoPlayNext = false,
             autoSkipOpEd = false,
             autoSwitchMediaOnPlayerError = false,

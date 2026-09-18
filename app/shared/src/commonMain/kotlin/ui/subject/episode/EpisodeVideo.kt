@@ -245,6 +245,7 @@ internal fun EpisodeVideoImpl(
         LocalActiveInputSource.current.current,
         LocalPlatform.current.mouseFamily,
     ),
+    enableFoldableHoverMode: Boolean = true,
     fastForwardSpeed: Float = 3f,
     contentWindowInsets: WindowInsets = WindowInsets(0.dp),
 ) {
@@ -277,7 +278,9 @@ internal fun EpisodeVideoImpl(
 
     AniTheme(darkModeOverride = DarkMode.DARK) {
         val progressSliderColors = MediaProgressSliderDefaults.colors()
-        val scaffoldLayout = if (expanded && currentWindowAdaptiveInfo1().windowPosture.isTabletop) {
+        val scaffoldLayout = if (
+            enableFoldableHoverMode && expanded && currentWindowAdaptiveInfo1().windowPosture.isTabletop
+        ) {
             VideoScaffoldLayout.VerticalSplit
         } else {
             VideoScaffoldLayout.Overlay
