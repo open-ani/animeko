@@ -117,6 +117,7 @@ fun VideoScaffold(
         modifier.then(if (expanded) Modifier.fillMaxHeight() else Modifier.fillMaxWidth()),
         contentAlignment = Alignment.Center,
     ) { // 16:9 box
+        val scaffoldHeight = maxHeight
         Box(
             Modifier
                 .then(
@@ -127,6 +128,7 @@ fun VideoScaffold(
                     },
                 ),
         ) {
+            val verticalSplit = layout == VideoScaffoldLayout.VerticalSplit
             val mediaPaneModifier = when (layout) {
                 VideoScaffoldLayout.Overlay -> Modifier.matchParentSize()
                 VideoScaffoldLayout.VerticalSplit -> Modifier
@@ -134,14 +136,17 @@ fun VideoScaffold(
                     .fillMaxHeight(0.5f)
                     .align(Alignment.TopCenter)
             }
+            val controllerPaneModifier = when (layout) {
+                VideoScaffoldLayout.Overlay -> Modifier.matchParentSize()
+                VideoScaffoldLayout.VerticalSplit -> Modifier
+                    .fillMaxWidth()
+                    .fillMaxHeight(0.5f)
+                    .align(Alignment.BottomCenter)
+            }
 
-            if (layout == VideoScaffoldLayout.VerticalSplit) {
+            if (verticalSplit) {
                 Box(
-                    Modifier
-                        .fillMaxWidth()
-                        .fillMaxHeight(0.5f)
-                        .align(Alignment.BottomCenter)
-                        .background(Color.Black),
+                    controllerPaneModifier.background(Color.Black),
                 )
             }
 
@@ -243,32 +248,49 @@ fun VideoScaffold(
 
                     Box(Modifier.weight(1f, fill = true).fillMaxWidth())
 
-                    Column {
+                    Column(
+                        Modifier.then(
+                            if (verticalSplit) {
+                                Modifier.fillMaxWidth().height(scaffoldHeight / 2)
+                            } else {
+                                Modifier
+                            },
+                        ),
+                        verticalArrangement = Arrangement.Bottom,
+                    ) {
                         // 底部控制栏: 播放/暂停, 进度条, 切换全屏
                         AniAnimatedVisibility(
                             visible = controllerVisibility.bottomBar,
+                            modifier = if (verticalSplit) Modifier.fillMaxSize() else Modifier,
                             enter = enterTransition,
                             exit = exitTransition,
                         ) {
                             val alwaysOnRequester = rememberAlwaysOnRequester(controllerState, "bottomBar")
                             Column(
                                 Modifier
-                                    .hoverToRequestAlwaysOn(alwaysOnRequester)
-                                    .pointerInput(Unit) {
-                                        awaitEachGesture {
-                                            val event = awaitPointerEvent()
-                                            if (event.changes.all { it.pressed }) {
-                                                //点击 bottom bar 里的按钮时 请求 always on
-                                                alwaysOnRequester.request()
-                                            }
-                                            var releaseEvent = awaitPointerEvent()
-                                            while (releaseEvent.changes.any { it.pressed }) {
-                                                releaseEvent = awaitPointerEvent()
-                                            }
-                                            alwaysOnRequester.cancelRequest()
-                                        }
-                                    }
-                                    .fillMaxWidth()
+                                    .then(
+                                        if (verticalSplit) {
+                                            Modifier
+                                        } else {
+                                            Modifier
+                                                .hoverToRequestAlwaysOn(alwaysOnRequester)
+                                                .pointerInput(Unit) {
+                                                    awaitEachGesture {
+                                                        val event = awaitPointerEvent()
+                                                        if (event.changes.all { it.pressed }) {
+                                                            //点击 bottom bar 里的按钮时 请求 always on
+                                                            alwaysOnRequester.request()
+                                                        }
+                                                        var releaseEvent = awaitPointerEvent()
+                                                        while (releaseEvent.changes.any { it.pressed }) {
+                                                            releaseEvent = awaitPointerEvent()
+                                                        }
+                                                        alwaysOnRequester.cancelRequest()
+                                                    }
+                                                }
+                                        },
+                                    )
+                                    .then(if (verticalSplit) Modifier.fillMaxSize() else Modifier.fillMaxWidth())
                                     .background(
                                         Brush.verticalGradient(
                                             0f to Color.Transparent,
@@ -277,9 +299,11 @@ fun VideoScaffold(
                                         ),
                                     ),
                             ) {
-                                Spacer(Modifier.height(if (expanded) 12.dp else 6.dp))
+                                if (!verticalSplit) {
+                                    Spacer(Modifier.height(if (expanded) 12.dp else 6.dp))
+                                }
                                 Row(
-                                    Modifier.fillMaxWidth()
+                                    Modifier.then(if (verticalSplit) Modifier.fillMaxSize() else Modifier.fillMaxWidth())
                                         .windowInsetsPadding(contentWindowInsets.only(WindowInsetsSides.Horizontal + WindowInsetsSides.Bottom)),
                                     verticalAlignment = Alignment.CenterVertically,
                                 ) {
@@ -323,12 +347,14 @@ fun VideoScaffold(
                 }
             }
             Column(
-                mediaPaneModifier.background(Color.Transparent)
+                controllerPaneModifier.background(Color.Transparent)
                     .windowInsetsPadding(contentWindowInsets.only(WindowInsetsSides.End)),
             ) {
                 Box(Modifier.weight(1f, fill = true).fillMaxWidth()) {
                     Column(
-                        Modifier.padding(end = 16.dp).align(Alignment.CenterEnd),
+                        Modifier
+                            .padding(end = 16.dp)
+                            .align(Alignment.CenterEnd),
                         verticalArrangement = Arrangement.spacedBy(8.dp),
                     ) {
                         AniAnimatedVisibility(

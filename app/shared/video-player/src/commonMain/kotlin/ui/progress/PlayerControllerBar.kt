@@ -24,6 +24,8 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.RowScope
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
@@ -808,6 +810,8 @@ object PlayerControllerDefaults {
  * @param expanded Whether the controller bar is expanded.
  * If `true`, the [progressIndicator] and [progressSlider] will be shown on a separate row above. The bottom row will contain a [danmakuEditor].
  * If `false`, the entire bar will be only one row. [danmakuEditor] will be ignored.
+ * @param topActions Actions shown at the top end of the [PlayerControllerBarLayout.VerticalSplit] layout.
+ * @param layout 控制器内容在可用空间内的排列方式.
  * @param sliderOnly Whether to keep only [progressSlider] visible without replacing its composition.
  */
 @Composable
@@ -818,9 +822,25 @@ fun PlayerControllerBar(
     danmakuEditor: @Composable RowScope.() -> Unit,
     endActions: @Composable RowScope.() -> Unit,
     expanded: Boolean,
+    topActions: @Composable RowScope.() -> Unit = {},
+    layout: PlayerControllerBarLayout = PlayerControllerBarLayout.Standard,
     sliderOnly: Boolean = false,
     modifier: Modifier = Modifier,
 ) {
+    if (layout == PlayerControllerBarLayout.VerticalSplit) {
+        VerticalSplitPlayerControllerBar(
+            startActions = startActions,
+            progressIndicator = progressIndicator,
+            progressSlider = progressSlider,
+            danmakuEditor = danmakuEditor,
+            endActions = endActions,
+            topActions = topActions,
+            sliderOnly = sliderOnly,
+            modifier = modifier,
+        )
+        return
+    }
+
     Column(
         modifier
             .clickable(remember { MutableInteractionSource() }, null, onClick = {}) // Consume touch event
@@ -880,6 +900,70 @@ fun PlayerControllerBar(
                 verticalAlignment = Alignment.CenterVertically,
             ) {
                 endActions()
+            }
+        }
+    }
+}
+
+enum class PlayerControllerBarLayout {
+    Standard,
+    VerticalSplit,
+}
+
+@Composable
+private fun VerticalSplitPlayerControllerBar(
+    startActions: @Composable RowScope.() -> Unit,
+    progressIndicator: @Composable RowScope.() -> Unit,
+    progressSlider: @Composable RowScope.() -> Unit,
+    danmakuEditor: @Composable RowScope.() -> Unit,
+    endActions: @Composable RowScope.() -> Unit,
+    topActions: @Composable RowScope.() -> Unit,
+    sliderOnly: Boolean,
+    modifier: Modifier,
+) {
+    Column(
+        modifier
+            .fillMaxSize()
+            .padding(horizontal = 16.dp, vertical = 12.dp),
+    ) {
+        Row(
+            Modifier.fillMaxWidth().keepLayoutWhenHidden(sliderOnly),
+            horizontalArrangement = Arrangement.End,
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            topActions()
+        }
+        Row(
+            Modifier.fillMaxWidth().weight(1f).keepLayoutWhenHidden(sliderOnly),
+            horizontalArrangement = Arrangement.spacedBy(16.dp, Alignment.CenterHorizontally),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            startActions()
+        }
+        Row(
+            Modifier.fillMaxWidth().padding(bottom = 12.dp).keepLayoutWhenHidden(sliderOnly),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            ProvideTextStyle(MaterialTheme.typography.labelSmall) {
+                danmakuEditor()
+            }
+        }
+        ProvideTextStyle(MaterialTheme.typography.labelMedium) {
+            Row(
+                Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                progressSlider()
+            }
+            Row(
+                Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                progressIndicator()
+                Spacer(Modifier.weight(1f))
+                Row(Modifier.keepLayoutWhenHidden(sliderOnly)) {
+                    endActions()
+                }
             }
         }
     }

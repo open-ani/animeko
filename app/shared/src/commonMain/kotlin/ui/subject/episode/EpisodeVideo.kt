@@ -18,6 +18,7 @@ import androidx.compose.foundation.layout.RowScope
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.rounded.OpenInNew
 import androidx.compose.material.icons.outlined.Analytics
@@ -155,6 +156,7 @@ import me.him188.ani.app.videoplayer.ui.progress.MediaProgressFramePreviewState
 import me.him188.ani.app.videoplayer.ui.progress.MediaProgressIndicatorText
 import me.him188.ani.app.videoplayer.ui.progress.MediaProgressSliderDefaults
 import me.him188.ani.app.videoplayer.ui.progress.PlayerControllerBar
+import me.him188.ani.app.videoplayer.ui.progress.PlayerControllerBarLayout
 import me.him188.ani.app.videoplayer.ui.progress.PlayerControllerDefaults
 import me.him188.ani.app.videoplayer.ui.progress.PlayerControllerDefaults.SpeedSwitcher
 import me.him188.ani.app.videoplayer.ui.progress.PlayerControllerDefaults.VideoAspectRatioSelector
@@ -280,6 +282,27 @@ internal fun EpisodeVideoImpl(
         } else {
             VideoScaffoldLayout.Overlay
         }
+        val verticalSplit = scaffoldLayout == VideoScaffoldLayout.VerticalSplit
+        val topBarActions: @Composable RowScope.() -> Unit = {
+            EpisodeVideoTopBarActions(
+                playerState = playerState,
+                expanded = expanded,
+                opEdSkipDuration = opEdSkipDuration,
+                onClickSkipOpEd = onClickSkipOpEd,
+                sheetsController = sheetsController,
+                shareData = shareData,
+                onClickCache = onClickCache,
+                onClickWatchTogether = watchTogetherPlayerController::toggle,
+                playerControllerState = playerControllerState,
+                videoEnhancement = videoEnhancement,
+                sidebarVisible = sidebarVisible,
+                onToggleSidebar = onToggleSidebar,
+                playerStatsVisible = showPlayerStats,
+                onTogglePlayerStats = { showPlayerStats = !showPlayerStats },
+                alwaysOnTop = alwaysOnTop,
+                onToggleAlwaysOnTop = onToggleAlwaysOnTop,
+            )
+        }
         VideoScaffold(
             expanded = expanded,
             layout = scaffoldLayout,
@@ -300,24 +323,9 @@ internal fun EpisodeVideoImpl(
                             null
                         },
                         actions = {
-                            EpisodeVideoTopBarActions(
-                                playerState = playerState,
-                                expanded = expanded,
-                                opEdSkipDuration = opEdSkipDuration,
-                                onClickSkipOpEd = onClickSkipOpEd,
-                                sheetsController = sheetsController,
-                                shareData = shareData,
-                                onClickCache = onClickCache,
-                                onClickWatchTogether = watchTogetherPlayerController::toggle,
-                                playerControllerState = playerControllerState,
-                                videoEnhancement = videoEnhancement,
-                                sidebarVisible = sidebarVisible,
-                                onToggleSidebar = onToggleSidebar,
-                                playerStatsVisible = showPlayerStats,
-                                onTogglePlayerStats = { showPlayerStats = !showPlayerStats },
-                                alwaysOnTop = alwaysOnTop,
-                                onToggleAlwaysOnTop = onToggleAlwaysOnTop,
-                            )
+                            if (!verticalSplit) {
+                                topBarActions()
+                            }
                         },
                         // VideoScaffold already applies top/horizontal insets around the top bar.
                         // Passing the same insets into TopAppBar duplicates the status-bar padding on iOS portrait.
@@ -466,20 +474,30 @@ internal fun EpisodeVideoImpl(
                     startActions = {
                         val playWhenReady by remember(playerState) { playerState.state.map { it.playWhenReady } }
                             .collectAsStateWithLifecycle(false)
+                        val primaryActionModifier = if (verticalSplit) {
+                            val nextActionOffset = if (hasNextEpisode && expanded) 36.dp else 0.dp
+                            Modifier.offset(x = nextActionOffset).size(56.dp)
+                        } else {
+                            Modifier
+                        }
                         PlayerControllerDefaults.PlaybackIcon(
                             isPlaying = { playWhenReady },
                             onClick = { playerState.togglePlayWhenReady() },
+                            modifier = primaryActionModifier,
                         )
 
                         if (hasNextEpisode && expanded) {
                             PlayerControllerDefaults.NextEpisodeIcon(
                                 onClick = onClickNextEpisode,
+                                modifier = primaryActionModifier,
                             )
                         }
-                        PlayerControllerDefaults.DanmakuIcon(
-                            danmakuEnabled,
-                            onClick = { onToggleDanmaku() },
-                        )
+                        if (!verticalSplit) {
+                            PlayerControllerDefaults.DanmakuIcon(
+                                danmakuEnabled,
+                                onClick = { onToggleDanmaku() },
+                            )
+                        }
 
                         val audioLevelController = audioController as? MediampAudioLevelController
                         // 用「有没有鼠标」而不是「此刻在用鼠标」: 后者会让这个常驻控件随输入方式反复显隐.
@@ -487,7 +505,7 @@ internal fun EpisodeVideoImpl(
                             LocalPlatform.current,
                             LocalActiveInputSource.current.hasSeenMouse,
                         )
-                        if (expanded && audioLevelController != null && hasMouse) {
+                        if (!verticalSplit && expanded && audioLevelController != null && hasMouse) {
                             val level by audioLevelController.levelFlow.collectAsState()
                             val isMute by audioLevelController.muteFlow.collectAsState()
 
@@ -521,7 +539,15 @@ internal fun EpisodeVideoImpl(
                             touchSeekState = touchSeekState,
                         )
                     },
-                    danmakuEditor = danmakuEditor,
+                    danmakuEditor = {
+                        if (verticalSplit) {
+                            PlayerControllerDefaults.DanmakuIcon(
+                                danmakuEnabled,
+                                onClick = { onToggleDanmaku() },
+                            )
+                        }
+                        danmakuEditor()
+                    },
                     endActions = {
                         if (expanded) {
                             PlayerControllerDefaults.SelectEpisodeIcon(
@@ -565,6 +591,12 @@ internal fun EpisodeVideoImpl(
                         PlayerControllerDefaults.FullscreenIcon(fullscreenState)
                     },
                     expanded = expanded,
+                    topActions = topBarActions,
+                    layout = if (verticalSplit) {
+                        PlayerControllerBarLayout.VerticalSplit
+                    } else {
+                        PlayerControllerBarLayout.Standard
+                    },
                     sliderOnly = playerControllerState.visibility == ControllerVisibility.InlineSliderOnly,
                 )
             },
