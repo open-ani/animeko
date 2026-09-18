@@ -32,7 +32,7 @@ class PikPakResumeDataTest {
         PikPakFileMeta(index = 0, pathInTorrent = path, gcid = gcid, length = length)
 
     @Test
-    fun `the gcid survives a round trip, because it is the only lasting identity`() {
+    fun `the gcid survives a round trip because it is the only lasting identity`() {
         val dir = SystemPaths.createTempDirectory("pikpak-meta")
         val resume = PikPakResumeData(dir)
         val original = meta(
@@ -54,7 +54,7 @@ class PikPakResumeDataTest {
     }
 
     @Test
-    fun `a version 3 meta reads as absent, so its file ids are never used`() {
+    fun `a version 3 meta reads as absent so its file ids are never used`() {
         val dir = SystemPaths.createTempDirectory("pikpak-meta-v3")
         dir.resolve(PikPakTorrentMeta.FILE_NAME).writeText(
             """

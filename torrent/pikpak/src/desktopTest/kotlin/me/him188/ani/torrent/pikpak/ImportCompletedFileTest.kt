@@ -97,7 +97,7 @@ class ImportCompletedFileTest {
     }
 
     @Test
-    fun `a partial file restores as partial progress, not as complete`() = runBlocking {
+    fun `a partial file restores as partial progress rather than as complete`() = runBlocking {
         val temp = SystemPaths.createTempDirectory("pikpak-partial")
         val root = temp.resolve("pikpak")
         val content = ByteArray(PikPakFileEntry.PIECE_SIZE.toInt() * 3)
@@ -153,7 +153,7 @@ class ImportCompletedFileTest {
     }
 
     @Test
-    fun `an imported episode is filled out from the cloud, not taken for the whole pack`() = runBlocking {
+    fun `an imported episode is filled out from the cloud rather than taken for the whole pack`() = runBlocking {
         val temp = SystemPaths.createTempDirectory("pikpak-import-partial-index")
         val root = temp.resolve("pikpak")
         val imported = ByteArray(4096) { it.toByte() }

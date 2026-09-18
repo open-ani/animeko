@@ -73,7 +73,7 @@ class HybridSeekableInputBufferingTest {
     }
 
     @Test
-    fun `a run of one-byte reads costs one cloud read per window, not one per byte`() {
+    fun `a run of one-byte reads costs one cloud read per window rather than one per byte`() {
         val size = 8 * pieceSize
         val content = ByteArray(size.toInt()) { (it * 31 % 251).toByte() }
         val absent = SystemPaths.createTempDirectory("pikpak-buffered-stream").resolve("absent.mkv")

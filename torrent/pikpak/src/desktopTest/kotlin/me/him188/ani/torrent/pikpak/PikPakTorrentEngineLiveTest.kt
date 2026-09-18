@@ -59,7 +59,7 @@ class PikPakTorrentEngineLiveTest {
     }
 
     @Test
-    fun `read through the engine, verify against the SDK, then restore from disk`() = runBlocking {
+    fun `read through the engine then verify against the SDK and restore from disk`() = runBlocking {
         val username = System.getenv("PIKPAK_USERNAME")
         val password = System.getenv("PIKPAK_PASSWORD")
         if (username.isNullOrEmpty() || password.isNullOrEmpty()) {
