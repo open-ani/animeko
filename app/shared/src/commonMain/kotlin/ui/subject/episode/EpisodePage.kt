@@ -951,6 +951,7 @@ fun EpisodeScreenContentPhoneScaffold(
 private fun rememberEpisodeFullscreenState(vm: EpisodeViewModel): PlayerFullscreenState {
     val context by rememberUpdatedState(LocalContext.current)
     val window = LocalPlatformWindow.current
+    val hasFoldingFeature = currentWindowAdaptiveInfo1().windowPosture.hingeList.isNotEmpty()
     val scope = rememberCoroutineScope()
     return rememberPlayerFullscreenState(
         isFullscreen = { vm.isFullscreen },
@@ -959,7 +960,7 @@ private fun rememberEpisodeFullscreenState(vm: EpisodeViewModel): PlayerFullscre
                 // 进入是「先改状态再改窗口」, 退出是「先改窗口再改状态」, 与规范化之前的行为保持一致
                 if (fullscreen) {
                     vm.isFullscreen = true
-                    context.setRequestFullScreen(window, true)
+                    context.setRequestFullScreen(window, true, lockLandscape = !hasFoldingFeature)
                 } else {
                     context.setRequestFullScreen(window, false)
                     vm.isFullscreen = false

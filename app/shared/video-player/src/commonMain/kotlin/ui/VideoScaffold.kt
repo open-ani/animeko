@@ -76,11 +76,13 @@ import me.him188.ani.app.videoplayer.ui.top.PlayerTopBar
  * @param rhsBar 右侧控制栏, 锁定手势等.
  * @param bottomBar [PlayerControllerBar]
  * @param expanded 当前是否处于全屏模式. 全屏时此框架会 [Modifier.fillMaxSize], 否则会限制为一个 16:9 的框.
+ * @param layout 播放器内容与控制器的空间布局.
  */
 @Composable
 fun VideoScaffold(
     expanded: Boolean,
     modifier: Modifier = Modifier,
+    layout: VideoScaffoldLayout = VideoScaffoldLayout.Overlay,
     contentWindowInsets: WindowInsets = WindowInsets.safeContent, // TODO: 目前只对部分元素有效
     maintainAspectRatio: Boolean = !expanded,
     controllerState: PlayerControllerState,
@@ -125,10 +127,26 @@ fun VideoScaffold(
                     },
                 ),
         ) {
+            val mediaPaneModifier = when (layout) {
+                VideoScaffoldLayout.Overlay -> Modifier.matchParentSize()
+                VideoScaffoldLayout.VerticalSplit -> Modifier
+                    .fillMaxWidth()
+                    .fillMaxHeight(0.5f)
+                    .align(Alignment.TopCenter)
+            }
+
+            if (layout == VideoScaffoldLayout.VerticalSplit) {
+                Box(
+                    Modifier
+                        .fillMaxWidth()
+                        .fillMaxHeight(0.5f)
+                        .align(Alignment.BottomCenter)
+                        .background(Color.Black),
+                )
+            }
+
             Box(
-                Modifier
-                    .background(Color.Transparent)
-                    .matchParentSize(), // no window insets for video
+                mediaPaneModifier.background(Color.Transparent), // no window insets for video
             ) {
                 video()
                 Box(Modifier.matchParentSize()) // 防止点击事件传播到 video 里
@@ -136,8 +154,7 @@ fun VideoScaffold(
 
             // 弹幕
             Box(
-                Modifier
-                    .matchParentSize()
+                mediaPaneModifier
                     .fillMaxWidth()
                     .padding(vertical = 8.dp)
                     .windowInsetsPadding(contentWindowInsets.only(WindowInsetsSides.Vertical)),
@@ -148,12 +165,13 @@ fun VideoScaffold(
             }
 
             // 控制手势
+            // 分屏布局中手势层仍覆盖整个播放器, 使控制器隐藏时下半区也能响应交互.
             BoxWithConstraints(Modifier.matchParentSize(), contentAlignment = Alignment.Center) {
                 gestureHost()
             }
 
             Box(
-                Modifier.matchParentSize()
+                mediaPaneModifier
                     .windowInsetsPadding(contentWindowInsets.only(WindowInsetsSides.Horizontal + WindowInsetsSides.Top))
                     .padding(12.dp),
                 contentAlignment = Alignment.TopStart,
@@ -305,7 +323,7 @@ fun VideoScaffold(
                 }
             }
             Column(
-                Modifier.fillMaxSize().background(Color.Transparent)
+                mediaPaneModifier.background(Color.Transparent)
                     .windowInsetsPadding(contentWindowInsets.only(WindowInsetsSides.End)),
             ) {
                 Box(Modifier.weight(1f, fill = true).fillMaxWidth()) {
@@ -334,7 +352,7 @@ fun VideoScaffold(
             }
 
             Box(Modifier.matchParentSize()) {
-                Column(Modifier.windowInsetsPadding(contentWindowInsets)) {
+                Column(mediaPaneModifier.windowInsetsPadding(contentWindowInsets)) {
                     Box(Modifier.weight(0.5f))
                     Row(
                         Modifier.weight(0.5f),
@@ -346,7 +364,7 @@ fun VideoScaffold(
             }
             // 悬浮消息, 例如正在缓冲
             Box(
-                Modifier.matchParentSize().windowInsetsPadding(contentWindowInsets),
+                mediaPaneModifier.windowInsetsPadding(contentWindowInsets),
                 contentAlignment = Alignment.Center,
             ) {
                 ProvideTextStyle(MaterialTheme.typography.labelSmall) {
@@ -357,7 +375,7 @@ fun VideoScaffold(
             }
             // FramePreview popup for compact layout
             Box(
-                Modifier.matchParentSize(),
+                mediaPaneModifier,
                 contentAlignment = Alignment.Center,
             ) {
                 framePreviewOverlay()
@@ -368,6 +386,12 @@ fun VideoScaffold(
             }
         }
     }
+}
+
+/** Defines how media layers and the existing controller slots share the player bounds. */
+enum class VideoScaffoldLayout {
+    Overlay,
+    VerticalSplit,
 }
 
 internal fun Modifier.keepLayoutWhenHidden(hidden: Boolean): Modifier {

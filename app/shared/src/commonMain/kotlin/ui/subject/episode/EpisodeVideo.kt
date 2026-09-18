@@ -86,6 +86,7 @@ import me.him188.ani.app.ui.foundation.icons.SubtitleGear
 import me.him188.ani.app.ui.foundation.ifThen
 import me.him188.ani.app.ui.foundation.input.LocalActiveInputSource
 import me.him188.ani.app.ui.foundation.interaction.WindowDragArea
+import me.him188.ani.app.ui.foundation.layout.currentWindowAdaptiveInfo1
 import me.him188.ani.app.ui.foundation.rememberDebugSettingsViewModel
 import me.him188.ani.app.ui.foundation.theme.AniTheme
 import me.him188.ani.app.ui.lang.Lang
@@ -133,6 +134,7 @@ import me.him188.ani.app.videoplayer.ui.PlayerStatsOverlay
 import me.him188.ani.app.videoplayer.ui.VideoAspectRatioControllerState
 import me.him188.ani.app.videoplayer.ui.VideoPlayer
 import me.him188.ani.app.videoplayer.ui.VideoScaffold
+import me.him188.ani.app.videoplayer.ui.VideoScaffoldLayout
 import me.him188.ani.app.videoplayer.ui.VideoSideSheetsController
 import me.him188.ani.app.videoplayer.ui.gesture.GestureFamily
 import me.him188.ani.app.videoplayer.ui.gesture.GestureIndicatorState
@@ -273,8 +275,14 @@ internal fun EpisodeVideoImpl(
 
     AniTheme(darkModeOverride = DarkMode.DARK) {
         val progressSliderColors = MediaProgressSliderDefaults.colors()
+        val scaffoldLayout = if (expanded && currentWindowAdaptiveInfo1().windowPosture.isTabletop) {
+            VideoScaffoldLayout.VerticalSplit
+        } else {
+            VideoScaffoldLayout.Overlay
+        }
         VideoScaffold(
             expanded = expanded,
+            layout = scaffoldLayout,
             modifier = modifier
                 .hoverable(videoInteractionSource)
                 .cursorVisibility(showCursor),

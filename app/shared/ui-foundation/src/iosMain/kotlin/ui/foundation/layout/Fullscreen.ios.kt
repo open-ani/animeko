@@ -19,7 +19,11 @@ import platform.UIKit.setNeedsUpdateOfHomeIndicatorAutoHidden
 import platform.darwin.dispatch_async
 import platform.darwin.dispatch_get_main_queue
 
-actual suspend fun Context.setRequestFullScreen(window: PlatformWindowMP, fullscreen: Boolean) {
+actual suspend fun Context.setRequestFullScreen(
+    window: PlatformWindowMP,
+    fullscreen: Boolean,
+    lockLandscape: Boolean,
+) {
     ensureMainThread {
         SwiftBridge.setDeviceOrientation(window.uiViewController, fullscreen)
 
