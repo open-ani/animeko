@@ -50,10 +50,6 @@ kotlin {
         // layer on top. See https://github.com/NihilDigit/pikpak-kotlin.
         api("io.github.nihildigit:pikpak-kotlin:0.4.3")
     }
-    sourceSets.commonTest.dependencies {
-        // kotlin-test + kotlinx-coroutines-test come in transitively from
-        // :utils:testing (injected by ani.kmp-library).
-    }
     sourceSets.getByName("desktopTest").dependencies {
         // Mock engine drives PikPakKtorAbiCompatTest, which forces the SDK's
         // Ktor companion-object accesses (HttpMethod.Post, ContentType.*, ...)
