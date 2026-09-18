@@ -90,6 +90,9 @@
     <string name="settings_debug_dev_builds_token">GitHub Token</string>
     <string name="settings_debug_dev_builds_token_description">下載 GitHub Actions 產物需要 token。Fine-grained token 需要 Actions 讀取權限，classic token 需要 public_repo 範圍。查詢列表不需要 token，但有速率限制。</string>
     <string name="settings_debug_dev_builds_token_placeholder">github_pat_… 或 ghp_…</string>
+    <string name="settings_debug_dev_builds_token_set">已設定 token</string>
+    <string name="settings_debug_dev_builds_token_not_set">未設定 token</string>
+    <string name="settings_debug_dev_builds_token_save">儲存</string>
     <string name="settings_debug_dev_builds_artifact">安裝包：%1$s</string>
     <string name="settings_debug_dev_builds_current_version">目前版本：%1$s</string>
     <string name="settings_debug_dev_builds_manual_install_hint">目前平台不支援自動安裝。下載完成後會在檔案管理器中顯示安裝包，請手動安裝。</string>

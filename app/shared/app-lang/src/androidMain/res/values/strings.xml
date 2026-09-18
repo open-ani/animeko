@@ -107,6 +107,9 @@
     <string name="settings_debug_dev_builds_token">GitHub token</string>
     <string name="settings_debug_dev_builds_token_description">Downloading GitHub Actions artifacts requires a token. A fine-grained token needs Actions read access; a classic token needs the public_repo scope. Listing works without a token but is rate limited.</string>
     <string name="settings_debug_dev_builds_token_placeholder">github_pat_… or ghp_…</string>
+    <string name="settings_debug_dev_builds_token_set">Token set</string>
+    <string name="settings_debug_dev_builds_token_not_set">Token not set</string>
+    <string name="settings_debug_dev_builds_token_save">Save</string>
     <string name="settings_debug_dev_builds_artifact">Package: %1$s</string>
     <string name="settings_debug_dev_builds_current_version">Current version: %1$s</string>
     <string name="settings_debug_dev_builds_manual_install_hint">Automatic installation is not supported on this platform. The package will be downloaded and shown in the file manager for manual installation.</string>

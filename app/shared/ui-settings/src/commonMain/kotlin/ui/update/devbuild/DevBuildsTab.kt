@@ -13,10 +13,10 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.ExperimentalLayoutApi
-import androidx.compose.foundation.layout.FlowRow
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.CircleShape
@@ -24,6 +24,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.rounded.Key
 import androidx.compose.material.icons.rounded.Refresh
 import androidx.compose.material.icons.rounded.Visibility
 import androidx.compose.material.icons.rounded.VisibilityOff
@@ -31,6 +32,7 @@ import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.FilledTonalButton
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.LinearProgressIndicator
@@ -49,9 +51,7 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.platform.LocalUriHandler
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.font.FontFamily
@@ -107,6 +107,9 @@ import me.him188.ani.app.ui.lang.settings_debug_dev_builds_status_success
 import me.him188.ani.app.ui.lang.settings_debug_dev_builds_token
 import me.him188.ani.app.ui.lang.settings_debug_dev_builds_token_description
 import me.him188.ani.app.ui.lang.settings_debug_dev_builds_token_placeholder
+import me.him188.ani.app.ui.lang.settings_debug_dev_builds_token_not_set
+import me.him188.ani.app.ui.lang.settings_debug_dev_builds_token_save
+import me.him188.ani.app.ui.lang.settings_debug_dev_builds_token_set
 import me.him188.ani.app.ui.lang.settings_debug_dev_builds_unauthorized
 import me.him188.ani.app.ui.lang.settings_debug_dev_builds_unsupported_platform
 import me.him188.ani.app.ui.update.FailedToInstallDialog
@@ -116,7 +119,9 @@ import org.jetbrains.compose.resources.stringResource
 
 object DevBuildsTestTags {
     const val REFRESH_BUTTON = "dev_builds_refresh"
+    const val TOKEN_BUTTON = "dev_builds_token_button"
     const val TOKEN_FIELD = "dev_builds_token"
+    const val TOKEN_SAVE_BUTTON = "dev_builds_token_save"
     const val RETRY_BUTTON = "dev_builds_retry"
 
     /**
@@ -192,7 +197,7 @@ fun DevBuildsTabContent(
 
     // 列表最多几十项, 不需要懒加载; 由外层的设置页容器提供滚动
     Column(
-        modifier.padding(horizontal = 16.dp, vertical = 8.dp),
+        modifier.padding(horizontal = 16.dp, vertical = 4.dp),
         verticalArrangement = Arrangement.spacedBy(8.dp),
     ) {
         DevBuildsHeader(
@@ -216,20 +221,27 @@ fun DevBuildsTabContent(
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
                 } else {
-                    for (commit in list.commits) {
-                        key(commit.sha) {
-                            DevBuildCommitCard(
-                                commit = commit,
-                                isCurrent = state.isCurrentCommit(commit),
-                                supportsAutomaticInstall = state.spec.kind.supportsAutomaticInstall,
-                                installState = installState,
-                                timeFormatter = timeFormatter,
-                                onClickInstall = { pendingInstall = commit },
-                                onClickCancel = state::cancelInstall,
-                                onClick = {
-                                    uriHandler.openUri(commit.build?.htmlUrl?.ifBlank { null } ?: commit.htmlUrl)
-                                },
-                            )
+                    Surface(shape = RoundedCornerShape(12.dp), color = MaterialTheme.colorScheme.surfaceContainer) {
+                        Column {
+                            list.commits.forEachIndexed { index, commit ->
+                                key(commit.sha) {
+                                    if (index > 0) {
+                                        HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
+                                    }
+                                    DevBuildCommitRow(
+                                        commit = commit,
+                                        isCurrent = state.isCurrentCommit(commit),
+                                        supportsAutomaticInstall = state.spec.kind.supportsAutomaticInstall,
+                                        installState = installState,
+                                        timeFormatter = timeFormatter,
+                                        onClickInstall = { pendingInstall = commit },
+                                        onClickCancel = state::cancelInstall,
+                                        onClick = {
+                                            uriHandler.openUri(commit.build?.htmlUrl?.ifBlank { null } ?: commit.htmlUrl)
+                                        },
+                                    )
+                                }
+                            }
                         }
                     }
                 }
@@ -286,34 +298,25 @@ private fun DevBuildsHeader(
     onRefresh: () -> Unit,
 ) {
     val colors = MaterialTheme.colorScheme
-    Surface(shape = RoundedCornerShape(16.dp), color = colors.surfaceContainer) {
-        Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
-            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
-                    Text(
-                        stringResource(Lang.settings_debug_dev_builds_current_version, currentVersion),
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = colors.onSurface,
-                    )
-                    Text(
-                        stringResource(Lang.settings_debug_dev_builds_artifact, spec.artifactNames.joinToString(" / ")),
-                        style = MaterialTheme.typography.bodySmall,
-                        color = colors.onSurfaceVariant,
-                    )
-                }
-                if (isRefreshing) {
-                    Box(Modifier.size(48.dp), contentAlignment = Alignment.Center) {
-                        CircularProgressIndicator(Modifier.size(24.dp), strokeWidth = 2.dp)
-                    }
-                } else {
-                    IconButton(onRefresh, Modifier.testTag(DevBuildsTestTags.REFRESH_BUTTON)) {
-                        Icon(
-                            Icons.Rounded.Refresh,
-                            contentDescription = stringResource(Lang.settings_debug_dev_builds_refresh),
-                        )
-                    }
-                }
-            }
+    var editingToken by remember { mutableStateOf(false) }
+    Row(
+        Modifier.fillMaxWidth().padding(start = 4.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(4.dp),
+    ) {
+        Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
+            Text(
+                listOf(
+                    stringResource(Lang.settings_debug_dev_builds_current_version, currentVersion),
+                    stringResource(Lang.settings_debug_dev_builds_artifact, spec.artifactNames.joinToString(" / ")),
+                    stringResource(
+                        if (token.isBlank()) Lang.settings_debug_dev_builds_token_not_set
+                        else Lang.settings_debug_dev_builds_token_set,
+                    ),
+                ).joinToString(" · "),
+                style = MaterialTheme.typography.bodySmall,
+                color = colors.onSurfaceVariant,
+            )
             if (!spec.kind.supportsAutomaticInstall) {
                 Text(
                     stringResource(Lang.settings_debug_dev_builds_manual_install_hint),
@@ -321,59 +324,83 @@ private fun DevBuildsHeader(
                     color = colors.onSurfaceVariant,
                 )
             }
-            GitHubTokenField(token, onTokenChange)
-            Text(
-                stringResource(Lang.settings_debug_dev_builds_token_description),
-                style = MaterialTheme.typography.bodySmall,
-                color = colors.onSurfaceVariant,
-            )
         }
+        IconButton({ editingToken = true }, Modifier.testTag(DevBuildsTestTags.TOKEN_BUTTON)) {
+            Icon(Icons.Rounded.Key, contentDescription = stringResource(Lang.settings_debug_dev_builds_token))
+        }
+        if (isRefreshing) {
+            Box(Modifier.size(40.dp), contentAlignment = Alignment.Center) {
+                CircularProgressIndicator(Modifier.size(20.dp), strokeWidth = 2.dp)
+            }
+        } else {
+            IconButton(onRefresh, Modifier.testTag(DevBuildsTestTags.REFRESH_BUTTON)) {
+                Icon(
+                    Icons.Rounded.Refresh,
+                    contentDescription = stringResource(Lang.settings_debug_dev_builds_refresh),
+                )
+            }
+        }
+    }
+    if (editingToken) {
+        GitHubTokenDialog(
+            token = token,
+            onConfirm = {
+                onTokenChange(it)
+                editingToken = false
+            },
+            onDismissRequest = { editingToken = false },
+        )
     }
 }
 
-/**
- * 编辑期间保留本地草稿, 失焦或按下完成时才提交, 避免异步保存回流覆盖正在输入的内容.
- */
 @Composable
-private fun GitHubTokenField(
+private fun GitHubTokenDialog(
     token: String,
-    onTokenChange: (String) -> Unit,
+    onConfirm: (String) -> Unit,
+    onDismissRequest: () -> Unit,
 ) {
     var draft by remember { mutableStateOf(token) }
-    var focused by remember { mutableStateOf(false) }
     var visible by remember { mutableStateOf(false) }
-    LaunchedEffect(token) {
-        if (!focused) draft = token
-    }
-    val focusManager = LocalFocusManager.current
-    OutlinedTextField(
-        value = draft,
-        onValueChange = { draft = it },
-        modifier = Modifier
-            .fillMaxWidth()
-            .testTag(DevBuildsTestTags.TOKEN_FIELD)
-            .onFocusChanged { focusState ->
-                if (focused && !focusState.isFocused && draft != token) {
-                    onTokenChange(draft)
-                }
-                focused = focusState.isFocused
-            },
-        label = { Text(stringResource(Lang.settings_debug_dev_builds_token)) },
-        placeholder = { Text(stringResource(Lang.settings_debug_dev_builds_token_placeholder)) },
-        trailingIcon = {
-            IconButton({ visible = !visible }) {
-                Icon(if (visible) Icons.Rounded.VisibilityOff else Icons.Rounded.Visibility, contentDescription = null)
+    AlertDialog(
+        onDismissRequest = onDismissRequest,
+        confirmButton = {
+            TextButton({ onConfirm(draft.trim()) }, Modifier.testTag(DevBuildsTestTags.TOKEN_SAVE_BUTTON)) {
+                Text(stringResource(Lang.settings_debug_dev_builds_token_save))
             }
         },
-        visualTransformation = if (visible) VisualTransformation.None else PasswordVisualTransformation(),
-        keyboardOptions = KeyboardOptions(imeAction = ImeAction.Done),
-        keyboardActions = KeyboardActions(
-            onDone = {
-                if (draft != token) onTokenChange(draft)
-                focusManager.clearFocus()
-            },
-        ),
-        singleLine = true,
+        dismissButton = {
+            TextButton(onDismissRequest) {
+                Text(stringResource(Lang.settings_debug_dev_builds_cancel))
+            }
+        },
+        title = { Text(stringResource(Lang.settings_debug_dev_builds_token)) },
+        text = {
+            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                OutlinedTextField(
+                    value = draft,
+                    onValueChange = { draft = it },
+                    modifier = Modifier.fillMaxWidth().testTag(DevBuildsTestTags.TOKEN_FIELD),
+                    placeholder = { Text(stringResource(Lang.settings_debug_dev_builds_token_placeholder)) },
+                    trailingIcon = {
+                        IconButton({ visible = !visible }) {
+                            Icon(
+                                if (visible) Icons.Rounded.VisibilityOff else Icons.Rounded.Visibility,
+                                contentDescription = null,
+                            )
+                        }
+                    },
+                    visualTransformation = if (visible) VisualTransformation.None else PasswordVisualTransformation(),
+                    keyboardOptions = KeyboardOptions(imeAction = ImeAction.Done),
+                    keyboardActions = KeyboardActions(onDone = { onConfirm(draft.trim()) }),
+                    singleLine = true,
+                )
+                Text(
+                    stringResource(Lang.settings_debug_dev_builds_token_description),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            }
+        },
     )
 }
 
@@ -418,9 +445,8 @@ private fun installFailureMessage(failure: DevBuildInstallFailure, kind: DevBuil
     is DevBuildInstallFailure.Error -> loadErrorMessage(failure.throwable)
 }
 
-@OptIn(ExperimentalLayoutApi::class)
 @Composable
-private fun DevBuildCommitCard(
+private fun DevBuildCommitRow(
     commit: DevBuildCommit,
     isCurrent: Boolean,
     supportsAutomaticInstall: Boolean,
@@ -440,109 +466,109 @@ private fun DevBuildCommitCard(
         )
     }
 
-    Surface(
+    Column(
         Modifier
             .fillMaxWidth()
-            .testTag(DevBuildsTestTags.COMMIT_PREFIX + commit.sha),
-        shape = RoundedCornerShape(16.dp),
-        color = colors.surfaceContainer,
+            .testTag(DevBuildsTestTags.COMMIT_PREFIX + commit.sha)
+            .clickable(onClick = onClick)
+            .padding(start = 12.dp, end = 8.dp, top = 6.dp, bottom = 6.dp),
+        verticalArrangement = Arrangement.spacedBy(4.dp),
     ) {
-        Column(
-            Modifier
-                .clickable(onClick = onClick)
-                .padding(horizontal = 16.dp, vertical = 12.dp),
-            verticalArrangement = Arrangement.spacedBy(8.dp),
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
         ) {
-            FlowRow(
-                horizontalArrangement = Arrangement.spacedBy(8.dp),
-                verticalArrangement = Arrangement.spacedBy(4.dp),
-                itemVerticalAlignment = Alignment.CenterVertically,
-            ) {
+            Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
                 Text(
-                    commit.shortSha,
-                    style = MaterialTheme.typography.labelLarge,
-                    fontFamily = FontFamily.Monospace,
-                    fontWeight = FontWeight.SemiBold,
+                    commit.title,
+                    style = MaterialTheme.typography.bodyMedium,
                     color = colors.onSurface,
-                )
-                BuildStatusChip(commit.build?.status)
-                if (isCurrent) {
-                    Chip(
-                        stringResource(Lang.settings_debug_dev_builds_running),
-                        colors.secondaryContainer,
-                        colors.onSecondaryContainer,
-                    )
-                }
-            }
-            Text(
-                commit.title,
-                style = MaterialTheme.typography.bodyMedium,
-                color = colors.onSurface,
-                maxLines = 2,
-                overflow = TextOverflow.Ellipsis,
-            )
-            Row(
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(12.dp),
-            ) {
-                Text(
-                    (meta + listOf(
-                        commit.artifact?.let {
-                            stringResource(Lang.settings_debug_dev_builds_package_available, it.sizeInBytes.bytes.toString())
-                        } ?: stringResource(Lang.settings_debug_dev_builds_package_unavailable),
-                    )).joinToString(" · "),
-                    Modifier.weight(1f),
-                    style = MaterialTheme.typography.bodySmall,
-                    color = colors.onSurfaceVariant,
-                    maxLines = 2,
+                    maxLines = 1,
                     overflow = TextOverflow.Ellipsis,
                 )
-                if (busy != null) {
-                    TextButton(
-                        onClickCancel,
-                        Modifier.testTag(DevBuildsTestTags.CANCEL_BUTTON_PREFIX + commit.sha),
-                    ) {
-                        Text(stringResource(Lang.settings_debug_dev_builds_cancel), maxLines = 1)
-                    }
-                } else {
-                    FilledTonalButton(
-                        onClickInstall,
-                        Modifier.testTag(DevBuildsTestTags.INSTALL_BUTTON_PREFIX + commit.sha),
-                        enabled = commit.artifact != null && !anyBusy,
-                    ) {
-                        Text(
-                            stringResource(
-                                if (supportsAutomaticInstall) Lang.settings_debug_dev_builds_install
-                                else Lang.settings_debug_dev_builds_download,
-                            ),
-                            maxLines = 1,
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(6.dp),
+                ) {
+                    Text(
+                        commit.shortSha,
+                        style = MaterialTheme.typography.labelSmall,
+                        fontFamily = FontFamily.Monospace,
+                        fontWeight = FontWeight.SemiBold,
+                        color = colors.onSurfaceVariant,
+                    )
+                    BuildStatusChip(commit.build?.status)
+                    if (isCurrent) {
+                        Chip(
+                            stringResource(Lang.settings_debug_dev_builds_running),
+                            colors.secondaryContainer,
+                            colors.onSecondaryContainer,
                         )
                     }
+                    Text(
+                        (meta + listOf(
+                            commit.artifact?.let {
+                                stringResource(
+                                    Lang.settings_debug_dev_builds_package_available,
+                                    it.sizeInBytes.bytes.toString(),
+                                )
+                            } ?: stringResource(Lang.settings_debug_dev_builds_package_unavailable),
+                        )).joinToString(" · "),
+                        Modifier.weight(1f, fill = false),
+                        style = MaterialTheme.typography.bodySmall,
+                        color = colors.onSurfaceVariant,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                    )
                 }
             }
             if (busy != null) {
-                Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                    val progress = (busy as? DevBuildInstallState.Downloading)?.progress
-                    if (progress != null) {
-                        LinearProgressIndicator({ progress }, Modifier.fillMaxWidth())
-                    } else {
-                        LinearProgressIndicator(Modifier.fillMaxWidth())
-                    }
+                TextButton(
+                    onClickCancel,
+                    Modifier.height(32.dp).testTag(DevBuildsTestTags.CANCEL_BUTTON_PREFIX + commit.sha),
+                    contentPadding = PaddingValues(horizontal = 12.dp),
+                ) {
+                    Text(stringResource(Lang.settings_debug_dev_builds_cancel), maxLines = 1)
+                }
+            } else {
+                FilledTonalButton(
+                    onClickInstall,
+                    Modifier.height(32.dp).testTag(DevBuildsTestTags.INSTALL_BUTTON_PREFIX + commit.sha),
+                    enabled = commit.artifact != null && !anyBusy,
+                    contentPadding = PaddingValues(horizontal = 12.dp),
+                ) {
                     Text(
-                        when (busy) {
-                            is DevBuildInstallState.Downloading -> stringResource(
-                                Lang.settings_debug_dev_builds_downloading,
-                                busy.downloadedBytes.bytes.toString(),
-                                busy.totalBytes?.bytes?.toString() ?: "?",
-                            )
-
-                            is DevBuildInstallState.Extracting -> stringResource(Lang.settings_debug_dev_builds_extracting)
-                            is DevBuildInstallState.Installing -> stringResource(Lang.settings_debug_dev_builds_installing)
-                        },
-                        style = MaterialTheme.typography.bodySmall,
-                        color = colors.onSurfaceVariant,
+                        stringResource(
+                            if (supportsAutomaticInstall) Lang.settings_debug_dev_builds_install
+                            else Lang.settings_debug_dev_builds_download,
+                        ),
+                        maxLines = 1,
                     )
                 }
+            }
+        }
+        if (busy != null) {
+            Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                val progress = (busy as? DevBuildInstallState.Downloading)?.progress
+                if (progress != null) {
+                    LinearProgressIndicator({ progress }, Modifier.fillMaxWidth())
+                } else {
+                    LinearProgressIndicator(Modifier.fillMaxWidth())
+                }
+                Text(
+                    when (busy) {
+                        is DevBuildInstallState.Downloading -> stringResource(
+                            Lang.settings_debug_dev_builds_downloading,
+                            busy.downloadedBytes.bytes.toString(),
+                            busy.totalBytes?.bytes?.toString() ?: "?",
+                        )
+
+                        is DevBuildInstallState.Extracting -> stringResource(Lang.settings_debug_dev_builds_extracting)
+                        is DevBuildInstallState.Installing -> stringResource(Lang.settings_debug_dev_builds_installing)
+                    },
+                    style = MaterialTheme.typography.bodySmall,
+                    color = colors.onSurfaceVariant,
+                )
             }
         }
     }
@@ -602,7 +628,7 @@ private fun Chip(text: String, containerColor: Color, contentColor: Color) {
     Surface(shape = CircleShape, color = containerColor, contentColor = contentColor) {
         Text(
             text,
-            Modifier.padding(horizontal = 10.dp, vertical = 3.dp),
+            Modifier.padding(horizontal = 6.dp, vertical = 1.dp),
             style = MaterialTheme.typography.labelSmall,
             maxLines = 1,
         )
