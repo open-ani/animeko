@@ -207,6 +207,7 @@ class CachedMedia(
 data class MediaCacheProperties(
     val totalSegments: Int? = null,
     val httpDownloaderStatus: String? = null,
+    val pathInTorrent: String? = null,
 )
 
 /**

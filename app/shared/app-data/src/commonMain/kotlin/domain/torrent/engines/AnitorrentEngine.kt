@@ -36,7 +36,7 @@ class AnitorrentEngine(
     config: Flow<AnitorrentConfig>,
     client: ScopedHttpClient,
     peerFilterSettings: Flow<PeerFilterSettings>,
-    private val saveDir: SystemPath,
+    override val saveDir: SystemPath,
     parentCoroutineContext: CoroutineContext,
     private val anitorrentFactory: TorrentDownloaderFactory = AnitorrentDownloaderFactory()
 ) : AbstractTorrentEngine<AnitorrentTorrentDownloader<*, *>, AnitorrentConfig>(

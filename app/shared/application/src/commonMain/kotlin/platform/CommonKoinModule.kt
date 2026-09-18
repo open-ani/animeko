@@ -519,6 +519,7 @@ private fun KoinApplication.otherModules(getContext: () -> Context, coroutineSco
                                 engineAccess = get(),
                                 dao = database.torrentCacheInfoDao(),
                                 baseSaveDirProvider = get(),
+                                metadataStore = metadataStore,
                             ),
                             displayName = "LocalTorrent",
                             parentCoroutineContext = coroutineScope.childScopeContext(),

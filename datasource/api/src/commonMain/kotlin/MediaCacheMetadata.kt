@@ -60,7 +60,9 @@ data class MediaCacheMetadata(
      * @see [CacheOnBtPlayExtension]
      */
     val autoCached: Boolean = false,
-
+    // File choice and completion belong to each episode; season-pack records share one torrent row.
+    val pathInTorrent: String? = null,
+    val completed: Boolean = false,
     @Transient @Suppress("unused") private val _primaryConstructorMarker: Byte = 0, // avoid compiler error
 ) {
     constructor(

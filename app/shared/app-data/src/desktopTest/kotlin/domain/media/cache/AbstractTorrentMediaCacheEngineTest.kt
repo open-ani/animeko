@@ -9,14 +9,17 @@
 
 package me.him188.ani.app.domain.media.cache
 
+import androidx.datastore.core.DataStore
 import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.job
 import kotlinx.coroutines.test.TestScope
 import me.him188.ani.app.data.models.preference.AnitorrentConfig
+import me.him188.ani.app.data.persistent.MemoryDataStore
 import me.him188.ani.app.data.persistent.database.dao.createMemoryTorrentCacheInfoDao
 import me.him188.ani.app.domain.media.cache.engine.AlwaysUseTorrentEngineAccess
 import me.him188.ani.app.domain.media.cache.engine.MediaCacheEngineKey
 import me.him188.ani.app.domain.media.cache.engine.TorrentMediaCacheEngine
+import me.him188.ani.app.domain.media.cache.storage.MediaCacheSave
 import me.him188.ani.app.domain.media.cache.storage.MediaSaveDirProvider
 import me.him188.ani.app.domain.media.createTestDefaultMedia
 import me.him188.ani.app.domain.media.createTestMediaProperties
@@ -47,8 +50,13 @@ abstract class AbstractTorrentMediaCacheEngineTest {
     }
 
     @TempDir
-    private lateinit var dir: File
+    protected lateinit var dir: File
     protected val torrentInfoDatabase = createMemoryTorrentCacheInfoDao()
+
+    /**
+     * 引擎与存储必须共用同一份记录, 由 fixture 持有以保证两边拿到的是同一个实例.
+     */
+    protected val metadataStore: DataStore<List<MediaCacheSave>> = MemoryDataStore(emptyList())
 
     protected lateinit var cacheEngine: TorrentMediaCacheEngine
     protected lateinit var torrentEngine: TorrentEngine
@@ -87,6 +95,7 @@ abstract class AbstractTorrentMediaCacheEngineTest {
 
     protected fun TestScope.createEngine(
         engine: TorrentEngine = createTestAnitorrentEngine(coroutineContext),
+        fullDownloadForAutoCaches: Boolean = true,
         onDownloadStarted: suspend (session: AnitorrentDownloadSession) -> Unit = {},
     ): TorrentMediaCacheEngine {
         this.coroutineContext.job.invokeOnCompletion {
@@ -102,6 +111,8 @@ abstract class AbstractTorrentMediaCacheEngineTest {
             baseSaveDirProvider = object : MediaSaveDirProvider {
                 override val saveDir: String = dir.absolutePath
             },
+            metadataStore = metadataStore,
+            fullDownloadForAutoCaches = fullDownloadForAutoCaches,
             onDownloadStarted = { onDownloadStarted(it as AnitorrentDownloadSession) },
         ).also { cacheEngine = it }
     }

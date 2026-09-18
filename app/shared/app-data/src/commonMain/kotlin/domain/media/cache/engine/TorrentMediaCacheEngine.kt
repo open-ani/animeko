@@ -9,6 +9,7 @@
 
 package me.him188.ani.app.domain.media.cache.engine
 
+import androidx.datastore.core.DataStore
 import kotlinx.atomicfu.locks.SynchronizedObject
 import kotlinx.atomicfu.locks.synchronized
 import kotlinx.coroutines.CancellationException
@@ -23,6 +24,7 @@ import kotlinx.coroutines.flow.collect
 import kotlinx.coroutines.flow.catch
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.filterNotNull
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.flatMapLatest
@@ -33,6 +35,8 @@ import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.shareIn
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
 import kotlinx.io.IOException
 import kotlinx.io.files.FileNotFoundException
@@ -43,6 +47,7 @@ import me.him188.ani.app.domain.media.cache.DownloaderStatus
 import me.him188.ani.app.domain.media.cache.LocalFileMediaCache
 import me.him188.ani.app.domain.media.cache.MediaCache
 import me.him188.ani.app.domain.media.cache.MediaCacheState
+import me.him188.ani.app.domain.media.cache.storage.MediaCacheSave
 import me.him188.ani.app.domain.media.cache.storage.MediaSaveDirProvider
 import me.him188.ani.app.domain.media.resolver.EpisodeMetadata
 import me.him188.ani.app.domain.media.resolver.TorrentMediaResolver
@@ -57,9 +62,11 @@ import me.him188.ani.app.torrent.api.files.isFinished
 import me.him188.ani.datasources.api.CachedMedia
 import me.him188.ani.datasources.api.Media
 import me.him188.ani.datasources.api.MediaCacheMetadata
+import me.him188.ani.datasources.api.MediaCacheProperties
 import me.him188.ani.datasources.api.topic.FileSize
 import me.him188.ani.datasources.api.topic.FileSize.Companion.bytes
 import me.him188.ani.datasources.api.topic.ResourceLocation
+import me.him188.ani.torrent.pikpak.PartialListing
 import me.him188.ani.utils.coroutines.IO_
 import me.him188.ani.utils.io.SystemPath
 import me.him188.ani.utils.io.absolutePath
@@ -99,6 +106,15 @@ class TorrentMediaCacheEngine(
     private val dao: TorrentCacheInfoDao,
     val flowDispatcher: CoroutineContext = Dispatchers.Default,
     private val baseSaveDirProvider: MediaSaveDirProvider,
+    /**
+     * 持久化的缓存记录, 与使用本引擎的 [me.him188.ani.app.domain.media.cache.storage.MediaCacheStorage] 是同一个.
+     *
+     * 季度合集的每一集是一条独立记录, 共用同一个 torrent 行与可能同一个文件. 删除一条记录时必须知道
+     * 同一 media 下还剩哪些记录, 否则会连带删掉其他集的 torrent_cache 行和文件.
+     */
+    internal val metadataStore: DataStore<List<MediaCacheSave>>,
+    // PikPak auto-cache records remember a playable selection without downloading the whole file.
+    private val fullDownloadForAutoCaches: Boolean = true,
     private val onDownloadStarted: suspend (session: TorrentSession) -> Unit = {},
 ) : MediaCacheEngine, AutoCloseable {
     companion object {
@@ -112,6 +128,14 @@ class TorrentMediaCacheEngine(
     }
 
     val isServiceConnected = engineAccess.isServiceConnected
+
+    /**
+     * 同一 media 下本引擎还持有的记录. 删除流程先从 store 移除被删记录再关闭缓存, 所以这里读到的是删除后仍存活的记录.
+     */
+    private suspend fun remainingRecordsOfMedia(mediaId: String): List<MediaCacheMetadata> =
+        metadataStore.data.first()
+            .filter { it.engine == engineKey && it.origin.mediaId == mediaId }
+            .map { it.metadata }
 
     class FileHandle(val state: Flow<State?>) {
         val handle = state.map { it?.handle } // single emit
@@ -131,9 +155,34 @@ class TorrentMediaCacheEngine(
 
     inner class TorrentMediaCache(
         override val origin: Media,
-        override val metadata: MediaCacheMetadata, // 注意, 我们不能写 check 检查这些属性, 因为可能会有旧版本的数据
+        initialMetadata: MediaCacheMetadata,
         val fileHandle: FileHandle
     ) : MediaCache, SynchronizedObject() {
+        private val metadataFlow = MutableStateFlow(initialMetadata)
+        override val metadata: MediaCacheMetadata get() = metadataFlow.value
+
+        /**
+         * 实例由本引擎创建, 创建方拿不到持久化入口, 因此只能由持有本实例的
+         * [me.him188.ani.app.domain.media.cache.storage.TorrentMediaCacheStorage] 在拿到实例后赋值.
+         *
+         * 不赋值时 [metadata] 的变化只存在于内存: 下载完成、[resumeByUser] 的转正都不会写回 store,
+         * 重启后记录回到旧状态.
+         */
+        var onMetadataUpdated: (suspend (MediaCacheMetadata) -> Unit)? = null
+
+        private val metadataUpdateLock = Mutex()
+
+        private suspend fun updateMetadata(transform: (MediaCacheMetadata) -> MediaCacheMetadata) {
+            metadataUpdateLock.withLock {
+                val current = metadataFlow.value
+                val updated = transform(current)
+                if (updated != current) {
+                    metadataFlow.value = updated
+                    onMetadataUpdated?.invoke(updated)
+                }
+            }
+        }
+
         private val desiredState = MutableStateFlow(
             MediaCacheState.IN_PROGRESS,
         )
@@ -160,6 +209,10 @@ class TorrentMediaCacheEngine(
                         origin,
                         mediaSourceId,
                         download = origin.download,
+                        cacheProperties = MediaCacheProperties(
+                            pathInTorrent = metadata.pathInTorrent
+                                ?: fileHandle.entry.first()?.pathInTorrent,
+                        ),
                     )
                 }
             }
@@ -193,7 +246,18 @@ class TorrentMediaCacheEngine(
                 }
         }.flowOn(flowDispatcher)
 
-        override val downloaderStatus: Flow<DownloaderStatus?> =
+        private val downloadsFully: Flow<Boolean> =
+            metadataFlow.map { !it.autoCached || fullDownloadForAutoCaches }
+
+        override val followsPlaybackOnly: Flow<Boolean> = downloadsFully.map { !it }
+
+        override val downloaderStatus: Flow<DownloaderStatus?> = if (engineKey.isCloud) {
+            fileHandle.entry.flatMapLatest { entry ->
+                entry?.error ?: flowOf(null)
+            }.map { error ->
+                DownloaderStatus.Cloud(errorMessage = error?.let { it.message ?: it::class.simpleName })
+            }.flowOn(flowDispatcher)
+        } else {
             combine(isServiceConnected, fileHandle.state) { connected, handleState -> connected to handleState }
                 .flatMapLatest { (connected, handleState) ->
                     val startup = when {
@@ -226,13 +290,14 @@ class TorrentMediaCacheEngine(
                         logger.warn(e) { "Failed to query downloader status of ${origin.mediaId}" }
                     }
                 }.flowOn(flowDispatcher)
+        }
 
         override val state: Flow<MediaCacheState> =
-            combine(desiredState, fileHandle.state, fileStats) { currentState, handleState, stats ->
+            combine(desiredState, fileHandle.state, fileStats, downloadsFully) { currentState, handleState, stats, full ->
                 when {
                     handleState == null -> MediaCacheState.FAILED
                     stats.isDownloadFinished -> MediaCacheState.COMPLETED
-                    currentState == MediaCacheState.PAUSED -> MediaCacheState.PAUSED
+                    currentState == MediaCacheState.PAUSED || !full -> MediaCacheState.PAUSED
                     else -> MediaCacheState.IN_PROGRESS
                 }
             }.flowOn(flowDispatcher)
@@ -250,10 +315,21 @@ class TorrentMediaCacheEngine(
 
         override suspend fun resume() {
             if (isDeleted.value) return
-            val file = fileHandle.handle.first()
             desiredState.value = MediaCacheState.IN_PROGRESS
+            if (!downloadsFully.first()) {
+                logger.info { "Cache ${origin.mediaId} follows playback, not raising file priority." }
+                return
+            }
+            val file = fileHandle.handle.first()
             logger.info { "Resuming file: $file" }
             file?.resume(FilePriority.NORMAL)
+        }
+
+        // User intent promotes an automatic record to a full download; lifecycle resume must not do this.
+        override suspend fun resumeByUser() {
+            if (isDeleted.value) return
+            updateMetadata { it.copy(autoCached = false) }
+            resume()
         }
 
         override val isDeleted: MutableStateFlow<Boolean> = MutableStateFlow(false)
@@ -266,6 +342,10 @@ class TorrentMediaCacheEngine(
                 isDeleted.value = true
             }
 
+            val remaining = remainingRecordsOfMedia(origin.mediaId)
+
+            val fileStillInUse = remaining.any { it.pathInTorrent != null && it.pathInTorrent == metadata.pathInTorrent }
+
             // 只需要在删除缓存的时候 torrent engine 可用, 不需要保证一直可用
             @OptIn(EnsureTorrentEngineIsAccessible::class)
             val handle =
@@ -275,11 +355,19 @@ class TorrentMediaCacheEngine(
                         // did not even selected a file
                         logger.info { "Deleting torrent cache: No file selected" }
                         close()
+                        deleteRowIfLastRecord(remaining)
                         return
                     }
 
                     logger.info { "Closing TorrentCache" }
                     close()
+
+                    if (fileStillInUse) {
+                        logger.info { "Another record still plays ${metadata.pathInTorrent}, keeping the file" }
+                        handle.close()
+                        deleteRowIfLastRecord(remaining)
+                        return
+                    }
 
                     logger.info { "Closing torrent file handle" }
                     handle.closeAndDelete()
@@ -303,6 +391,16 @@ class TorrentMediaCacheEngine(
                 } else {
                     logger.info { "Torrent cache does not exist, ignoring: $file" }
                 }
+            }
+            deleteRowIfLastRecord(remaining)
+        }
+
+        private suspend fun deleteRowIfLastRecord(remaining: List<MediaCacheMetadata>) {
+            if (remaining.isNotEmpty()) {
+                logger.info {
+                    "${remaining.size} record(s) of ${origin.mediaId} remain, keeping torrent_cache row"
+                }
+                return
             }
             dao.deleteByMediaId(origin.mediaId)
         }
@@ -332,13 +430,20 @@ class TorrentMediaCacheEngine(
                     val entity = dao.get(origin.mediaId)
                         ?: error("No entity with id ${origin.mediaId} exists while subscribing cache.")
 
-                    val finished = entity.completed || // metadata 已记录 true 表示已完成
+                    val finished = metadata.completed ||
                             (entryFileStats.isDownloadFinished && currentShareRatio >= currentShareRatioLimit) // 统计判断达到条件也是完成
 
                     // 无论如何都先更新一次数据
+                    updateMetadata {
+                        it.copy(
+                            completed = finished,
+                            pathInTorrent = if (finished) fileEntry.pathInTorrent else it.pathInTorrent,
+                        )
+                    }
+
                     dao.upsert(
                         entity.copy(
-                            completed = finished,
+                            completed = entity.completed || finished,
                             pathInTorrent = fileEntry.pathInTorrent,
                             downloadSize = entryFileStats.downloadedBytes,
                             uploadSize = sessionStats.uploadedBytes,
@@ -390,9 +495,13 @@ class TorrentMediaCacheEngine(
                                 // 如果距离上次上传活动大于 10 分钟, 直接更新 metadata
                             }
 
+                            updateMetadata {
+                                it.copy(completed = true, pathInTorrent = fileEntry.pathInTorrent)
+                            }
                             dao.upsert(
                                 entity.copy(
                                     completed = true,
+                                    pathInTorrent = fileEntry.pathInTorrent,
                                     downloadSize = fileStats.downloadedBytes,
                                     uploadSize = sessionStats.uploadedBytes,
                                 ),
@@ -404,7 +513,7 @@ class TorrentMediaCacheEngine(
                                 collect()
                             } catch (ex: CancellationException) {
                                 logger.debug { "Stat subscription of cache task ${origin.mediaId} is cancelled." }
-                                throw ex // re-throw it. 
+                                throw ex // re-throw it.
                             }
                         }
                     }
@@ -461,6 +570,7 @@ class TorrentMediaCacheEngine(
         .flowOn(flowDispatcher)
 
     override fun supports(media: Media): Boolean {
+        if (!torrentEngine.isSupported) return false
         return media.download is ResourceLocation.HttpTorrentFile
                 || media.download is ResourceLocation.MagnetLink
     }
@@ -471,44 +581,108 @@ class TorrentMediaCacheEngine(
         metadata: MediaCacheMetadata,
         parentContext: CoroutineContext
     ): MediaCache? {
-        if (!supports(origin)) throw UnsupportedOperationException("Media is not supported by this engine $this: ${origin.download}")
-        val data = dao.get(origin.mediaId)?.torrentData ?: return null
+        val entity = dao.get(origin.mediaId) ?: kotlin.run {
+            logger.warn { "No torrent_cache row for ${origin.mediaId}, cannot restore cache: $metadata" }
+            return null
+        }
+        val data = entity.torrentData
 
-        val localFile = origin.resolveCompletedFromDataStore()
+        // Completed files remain usable after the engine is disabled or credentials are removed.
+        val localFile = origin.resolveCompletedFromDataStore(metadata, entity)
         if (localFile != null) {
-            return LocalFileMediaCache(origin, metadata, localFile) {
+            return LocalFileMediaCache(origin, metadata, localFile) { file ->
                 @OptIn(DelicateCoroutinesApi::class)
                 GlobalScope.launch {
-                    // 如果想删除 LocalFileMediaCache 类型的缓存, 需要启动 torrent engine 删除.
-                    // 启动后马上恢复这个缓存并删除, 这个操作需要保证 torrent engine 可用, 删除完成后释放 torrent engine 可用性.
-                    @OptIn(EnsureTorrentEngineIsAccessible::class)
-                    engineAccess
-                        .withServiceRequest("LocalFileMediaCache#$this-closeAndDeleteFiles:${origin.mediaId}") {
-                            TorrentMediaCache(
-                                origin = origin,
-                                metadata = metadata,
-                                fileHandle = getFileHandle(
-                                    EncodedTorrentInfo.createRaw(data),
-                                    metadata,
-                                    coroutineContext,
-                                ),
-                            ).apply {
-                                resume()
-                                closeAndDeleteFiles()
-                            }
+                    try {
+                        if (!torrentEngine.isSupported) {
+                            deleteCompletedLocalFile(origin.mediaId, metadata, file)
+                            return@launch
                         }
+
+                        // 如果想删除 LocalFileMediaCache 类型的缓存, 需要启动 torrent engine 删除.
+                        // 启动后马上恢复这个缓存并删除, 这个操作需要保证 torrent engine 可用, 删除完成后释放 torrent engine 可用性.
+                        @OptIn(EnsureTorrentEngineIsAccessible::class)
+                        engineAccess
+                            .withServiceRequest("LocalFileMediaCache#$this-closeAndDeleteFiles:${origin.mediaId}") {
+                                TorrentMediaCache(
+                                    origin = origin,
+                                    initialMetadata = metadata,
+                                    fileHandle = getFileHandle(
+                                        EncodedTorrentInfo.createRaw(data),
+                                        metadata,
+                                        coroutineContext,
+                                    ),
+                                ).apply {
+                                    resume()
+                                    closeAndDeleteFiles()
+                                }
+                            }
+                    } catch (e: CancellationException) {
+                        throw e
+                    } catch (e: Throwable) {
+                        logger.error(e) { "Failed to delete local cache of ${origin.mediaId}" }
+                    }
                 }
             }
         }
+
+        if (!supports(origin)) throw UnsupportedOperationException("Media is not supported by this engine $this: ${origin.download}")
 
         @OptIn(EnsureTorrentEngineIsAccessible::class)
         return engineAccess.withServiceRequest("TorrentMediaCacheEngine#$this-restore:${origin.mediaId}") {
             TorrentMediaCache(
                 origin = origin,
-                metadata = metadata,
+                initialMetadata = metadata,
                 fileHandle = getFileHandle(EncodedTorrentInfo.createRaw(data), metadata, parentContext),
             )
         }
+    }
+
+    /**
+     * Records written before per-episode completion tracking have no [MediaCacheMetadata.pathInTorrent];
+     * the torrent row is their only source of completion and file choice.
+     *
+     * Only the caller knows whether the media has a single record: the row describes the torrent, so for a
+     * season pack it would wrongly mark every episode as completed with the same file.
+     */
+    suspend fun backfillFromTorrentRow(mediaId: String, metadata: MediaCacheMetadata): MediaCacheMetadata {
+        if (metadata.pathInTorrent != null) return metadata
+        val entity = dao.get(mediaId) ?: return metadata
+        return metadata.copy(
+            completed = entity.completed,
+            pathInTorrent = entity.pathInTorrent.takeIf { it.isNotEmpty() },
+        )
+    }
+
+    private suspend fun deleteCompletedLocalFile(
+        mediaId: String,
+        metadata: MediaCacheMetadata,
+        file: SystemPath,
+    ) {
+        val remaining = remainingRecordsOfMedia(mediaId)
+        val fileStillInUse = remaining.any { it.pathInTorrent != null && it.pathInTorrent == metadata.pathInTorrent }
+        if (fileStillInUse) {
+            logger.info { "Another record still plays ${metadata.pathInTorrent}, keeping the file" }
+        } else {
+            withContext(Dispatchers.IO_) {
+                if (!file.exists()) {
+                    logger.info { "Torrent cache does not exist, ignoring: $file" }
+                    return@withContext
+                }
+                logger.info { "Deleting torrent cache without the engine: $file" }
+                try {
+                    file.delete()
+                } catch (_: FileNotFoundException) {
+                } catch (e: IOException) {
+                    logger.warn("Failed to delete cache file $file", e)
+                }
+            }
+        }
+        if (remaining.isNotEmpty()) {
+            logger.info { "${remaining.size} record(s) of $mediaId remain, keeping torrent_cache row" }
+            return
+        }
+        dao.deleteByMediaId(mediaId)
     }
 
     private suspend fun getFileHandle(
@@ -523,13 +697,17 @@ class TorrentMediaCacheEngine(
             onDownloadStarted(session)
 
             val files = session.getFiles()
-            val selectedFile = TorrentMediaResolver.selectVideoFileEntry(
-                files,
-                { fileName },
-                listOf(metadata.episodeName),
-                episodeSort = metadata.episodeSort,
-                episodeEp = metadata.episodeEp,
-            )
+
+            val selectedFile = metadata.pathInTorrent
+                ?.let { path -> files.firstOrNull { it.pathInTorrent == path } }
+                ?: TorrentMediaResolver.selectVideoFileEntry(
+                    files,
+                    { fileName },
+                    listOf(metadata.episodeName),
+                    episodeSort = metadata.episodeSort,
+                    episodeEp = metadata.episodeEp,
+                    listingComplete = (session as? PartialListing)?.listingComplete ?: true,
+                )
 
             if (selectedFile == null) {
                 logger.error {
@@ -590,7 +768,7 @@ class TorrentMediaCacheEngine(
 
             return TorrentMediaCache(
                 origin = origin,
-                metadata = metadata,
+                initialMetadata = metadata,
                 fileHandle = getFileHandle(data, metadata, parentContext),
             )
         }
@@ -598,6 +776,15 @@ class TorrentMediaCacheEngine(
 
     @OptIn(ExperimentalStdlibApi::class)
     override suspend fun deleteUnusedCaches(all: List<MediaCache>) {
+        if (!withContext(Dispatchers.IO_) { torrentEngine.saveDir.exists() }) {
+            logger.debug { "$mediaSourceId: engine save dir does not exist, skipping cache pruning." }
+            return
+        }
+        if (!torrentEngine.isSupported) {
+            logger.debug { "$mediaSourceId: engine is not supported, skipping cache pruning." }
+            return
+        }
+
         // 只需要在删除缓存的时候 torrent engine 可用, 不需要保证一直可用
         @OptIn(EnsureTorrentEngineIsAccessible::class)
         engineAccess.withServiceRequest("TorrentMediaCacheEngine#$this-deleteUnusedCaches") {
@@ -626,11 +813,13 @@ class TorrentMediaCacheEngine(
         torrentEngine.close()
     }
 
-    private suspend fun Media.resolveCompletedFromDataStore(): SystemPath? {
-        val entity = dao.get(mediaId) ?: return null
-
-        if (!entity.completed) return null
-        val pathInTorrent = entity.pathInTorrent.takeIf { it.isNotEmpty() } ?: return null
+    // Completion and file choice belong to each episode record, not the shared torrent row.
+    private fun Media.resolveCompletedFromDataStore(
+        metadata: MediaCacheMetadata,
+        entity: TorrentCacheInfoEntity,
+    ): SystemPath? {
+        if (!metadata.completed) return null
+        val pathInTorrent = metadata.pathInTorrent?.takeIf { it.isNotEmpty() } ?: return null
 
         val file = Path(baseSaveDirProvider.saveDir, entity.relativeDir).resolve(pathInTorrent).inSystem
         if (!file.exists() || file.isDirectory()) {

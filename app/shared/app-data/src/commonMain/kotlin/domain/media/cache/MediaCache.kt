@@ -62,6 +62,15 @@ interface MediaCache {
 
     val state: Flow<MediaCacheState>
 
+    /**
+     * 这条记录只跟随播放, 不会自行取数据, 因此不是下载任务, 展示下载与缓存状态的地方都应跳过它.
+     *
+     * 云盘引擎的自动记录如此: 片子解析成功后随时可取, 播放不需要本地副本. [resumeByUser] 清掉
+     * [MediaCacheMetadata.autoCached] 之后它变为 `false`.
+     */
+    val followsPlaybackOnly: Flow<Boolean>
+        get() = flowOf(false)
+
     val canPlay: Flow<Boolean>
         get() = flowOf(true)
 
@@ -222,6 +231,9 @@ interface MediaCache {
      * 若当前状态不支持恢复, 例如已经被删除, 则忽略本次请求, 不会抛出异常.
      */
     suspend fun resume()
+
+    // Explicit user intent can promote an automatic playback record to a persistent download.
+    suspend fun resumeByUser() = resume()
 
     /**
      * 该缓存的文件是否已经被删除. 删除后不可恢复.
