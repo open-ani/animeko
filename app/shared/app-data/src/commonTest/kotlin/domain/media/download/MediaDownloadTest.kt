@@ -116,7 +116,7 @@ class MediaDownloadTest {
     }
 
     @Test
-    fun `snapshot reflects state, file stats, playability and operation`() = runTest {
+    fun `snapshot reflects state and file stats and playability and operation`() = runTest {
         val cache = testDownload(1)
         cache.fileStats.value = MediaCache.FileStats(totalSize = 100.bytes, downloadedBytes = 25.bytes)
         val storage = DownloadTestStorage()

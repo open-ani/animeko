@@ -11,6 +11,7 @@ import org.gradle.api.JavaVersion
 import org.gradle.api.Project
 import org.gradle.api.artifacts.VersionCatalog
 import org.gradle.api.artifacts.VersionCatalogsExtension
+import org.gradle.api.artifacts.component.ModuleComponentIdentifier
 import org.gradle.api.plugins.JavaPluginExtension
 import org.gradle.api.tasks.compile.JavaCompile
 import org.gradle.api.tasks.testing.Test
@@ -220,6 +221,20 @@ fun Project.configureEncoding() {
 fun Project.configureKotlinTestSettings() {
     tasks.withType(Test::class).configureEach {
         useJUnitPlatform()
+    }
+
+    // 本项目的 JVM 测试统一使用 JUnit 5, 下面给各测试源集显式声明了 kotlin-test-junit5.
+    // AGP 的 KMP 插件对 Android device test 固定请求 kotlin-test 的 JUnit 4 实现 (kotlin-test-junit).
+    // 两者提供同一个 capability, 同时出现在一个 classpath 时依赖解析会失败.
+    // device test 由 android-junit5 按 JUnit 5 运行, 因此冲突时选 kotlin-test-junit5.
+    configurations.configureEach {
+        resolutionStrategy.capabilitiesResolution
+            .withCapability("org.jetbrains.kotlin:kotlin-test-framework-impl") {
+                candidates
+                    .firstOrNull { (it.id as? ModuleComponentIdentifier)?.module == "kotlin-test-junit5" }
+                    ?.let { select(it) }
+                because("JVM tests in this project run on JUnit 5")
+            }
     }
 
     val libs = versionCatalogLibs()
