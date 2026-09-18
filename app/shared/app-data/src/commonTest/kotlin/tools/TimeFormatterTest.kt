@@ -13,7 +13,6 @@ import kotlinx.datetime.LocalDateTime
 import kotlinx.datetime.TimeZone
 import kotlinx.datetime.format.char
 import kotlinx.datetime.toInstant
-import kotlinx.datetime.toLocalDateTime
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.time.Instant
@@ -94,9 +93,11 @@ class TimeFormatterTest {
 
     @Test
     fun testUsingFormatter() {
-        val timestamp = Instant.parse("2019-12-30T10:00:00Z")
-            .toLocalDateTime(TimeZone.UTC)
-            .toInstant(TimeZone.currentSystemDefault())
-        assertEquals("2019-12-30 10:00:00", timeFormatter.format(timestamp))
+        // 超出相对时间的窗口后, 按系统时区输出完整日期时间.
+        // 取距 now 12 天的本地时间: 任何时区偏移 (-12h..+14h) 下与 now 的差都超过 2 天, 一定走这个分支;
+        // 期望值用同一个系统时区往返得到, 因此与运行机器的时区无关.
+        val local = LocalDateTime(2019, 12, 20, 10, 0, 0)
+        val timestamp = local.toInstant(TimeZone.currentSystemDefault())
+        assertEquals("2019-12-20 10:00:00", timeFormatter.format(timestamp))
     }
 }
