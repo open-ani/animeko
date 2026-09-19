@@ -249,6 +249,9 @@
     <string name="settings_app_light_up_mode_description">Highlight the episodes that have already been watched, instead of the ones about to be watched</string>
     <string name="settings_app_episode_images">Episode stills</string>
     <string name="settings_app_episode_images_description">Show episode still images from TMDB in episode lists (available for some anime only)</string>
+    <string name="settings_app_subject_title">Anime title</string>
+    <string name="settings_app_use_original_title">Show original title</string>
+    <string name="settings_app_use_original_title_description">Prefer the original title (usually Japanese) over the Chinese title in anime lists and details</string>
     <string name="settings_app_language">Language</string>
     <string name="settings_app_language_system">System language</string>
     <string name="settings_app_language_restart">Restart to take effect</string>

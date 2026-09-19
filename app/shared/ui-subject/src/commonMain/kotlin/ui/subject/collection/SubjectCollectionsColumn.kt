@@ -67,8 +67,10 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import me.him188.ani.app.data.models.subject.SubjectCollectionInfo
 import me.him188.ani.app.data.models.subject.TestSubjectCollections
 import me.him188.ani.app.data.models.subject.TestSubjectProgressInfos
+import me.him188.ani.app.data.models.subject.preferredDisplayName
 import me.him188.ani.app.domain.foundation.LoadError
 import me.him188.ani.app.ui.foundation.AsyncImage
+import me.him188.ani.app.ui.foundation.LocalSubjectAppearanceSettings
 import me.him188.ani.app.ui.foundation.ProvideCompositionLocalsForPreview
 import me.him188.ani.app.ui.foundation.animation.LocalAniMotionScheme
 import me.him188.ani.app.ui.foundation.ifThen
@@ -240,7 +242,7 @@ private fun SubjectCollectionItemContent(
             verticalAlignment = Alignment.CenterVertically,
         ) {
             Text(
-                item.subjectInfo.displayName,
+                item.subjectInfo.preferredDisplayName(LocalSubjectAppearanceSettings.current.useOriginalTitle),
                 style = MaterialTheme.typography.titleMedium,
                 overflow = TextOverflow.Ellipsis,
                 maxLines = 1,

@@ -335,6 +335,21 @@ fun SettingsScope.AppearanceGroup(
             description = { Text(stringResource(Lang.settings_app_episode_images_description)) },
         )
     }
+
+    Group(title = { Text(stringResource(Lang.settings_app_subject_title)) }, useThinHeader = true) {
+        SwitchItem(
+            checked = uiSettings.subjectAppearance.useOriginalTitle,
+            onCheckedChange = {
+                state.update(
+                    uiSettings.copy(
+                        subjectAppearance = uiSettings.subjectAppearance.copy(useOriginalTitle = it),
+                    ),
+                )
+            },
+            title = { Text(stringResource(Lang.settings_app_use_original_title)) },
+            description = { Text(stringResource(Lang.settings_app_use_original_title_description)) },
+        )
+    }
 }
 
 @Stable
