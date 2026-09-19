@@ -25,6 +25,8 @@ import me.him188.ani.utils.logging.info
 import me.him188.ani.utils.logging.logger
 import me.him188.ani.utils.logging.warn
 import org.koin.core.Koin
+import me.him188.ani.app.domain.media.fetch.create
+import me.him188.ani.datasources.api.source.MediaFetchRequest
 
 /**
  * Automatically create a cache task when playback is handed to the local
@@ -49,7 +51,8 @@ class CacheOnBtPlayExtension(
     override fun onStart(episodeSession: EpisodeSession, backgroundTaskScope: ExtensionBackgroundTaskScope) {
         backgroundTaskScope.launch("CacheOnBtPlay") {
             context.sessionFlow.collectLatest { session ->
-                val episodeMetadata = session.infoBundleFlow.filterNotNull().first().episodeInfo.toEpisodeMetadata()
+                val info = session.infoBundleFlow.filterNotNull().first()
+                val episodeMetadata = info.episodeInfo.toEpisodeMetadata()
 
                 session.fetchSelectFlow.collectLatest fsf@{ bundle ->
                     if (bundle == null) return@fsf
@@ -74,7 +77,8 @@ class CacheOnBtPlayExtension(
                         logger.info { "Auto cache BitTorrent media on play: $media" }
 
                         val metadata =
-                            MediaCacheMetadata(bundle.mediaFetchSession.request.first(), autoCached = true)
+                            // 查询会话按条目共用, 其请求中的当前剧集是首次打开的那一集; 记录要用本集自己的信息.
+                            MediaCacheMetadata(MediaFetchRequest.create(info.subjectInfo, info.episodeInfo), autoCached = true)
                         val cache = downloadManager.createDownload(media, metadata, episodeMetadata, storage)
                         if (cache.metadata.autoCached) {
                             currentCache = cache
