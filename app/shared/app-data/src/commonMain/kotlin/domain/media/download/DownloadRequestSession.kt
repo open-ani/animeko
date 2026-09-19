@@ -279,7 +279,8 @@ class DownloadRequestSession internal constructor(
             create(subject, target, media, pendingNow)
             handled += target.episodeId
         }
-        return handled
+        // 发起下载的那一集已有记录时不在这一批里, 也算处理完, 否则会反复回到选源
+        return handled + episodeId
     }
 
     private suspend fun existingDownloads(): List<ExistingDownload> =
@@ -335,11 +336,11 @@ class DownloadRequestSession internal constructor(
                 val preview = planBatchDownload(episodes, group, existing, pinned = chosen, pinnedEpisodeId = episodeId)
                 val options = episodes.map { it.toOption(preview.getValue(it.episodeId), isCurrent = it.episodeId == episodeId) }
 
-                // 该线路只覆盖当前这一话时不需要选集, 与单集下载相同.
+                // 该线路只覆盖当前这一话时不需要选集, 与单集下载相同; 这一话已有记录时什么都不创建.
                 if (options.none { !it.isCurrent && it.availability == DownloadEpisodeOption.Availability.AVAILABLE }) {
                     mutableState.value = DownloadRequestState.Creating(episodeId, pending)
                     selectAndSavePreference(selector, chosen, latestPreference)
-                    return@coroutineScope listOf(episode to chosen)
+                    return@coroutineScope listOfNotNull(preview.getValue(episodeId).mediaOrNull?.let { episode to it })
                 }
 
                 val decision = CompletableDeferred<Set<Int>?>()

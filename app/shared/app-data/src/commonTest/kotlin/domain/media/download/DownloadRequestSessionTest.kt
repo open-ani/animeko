@@ -437,6 +437,26 @@ class DownloadRequestSessionTest {
     }
 
     @Test
+    fun `current episode already downloaded is skipped without looping`() = withFixture {
+        useBatchMediaList()
+        storage.listFlow.value = listOf(requestTestCache(requestTestMedia(1), subjectId = subject.subjectId, episodeId = 1))
+        testScope.runCurrent()
+        val session = create(listOf(1, 2))
+        session.start()
+        testScope.runCurrent()
+        assertTrue(session.select(1, requestTestMedia(1)))
+        testScope.runCurrent()
+        val selecting = assertIs<DownloadRequestState.SelectingEpisodes>(session.state.value)
+        assertEquals(DownloadEpisodeOption.Availability.ALREADY_DOWNLOADED, selecting.options[0].availability)
+        assertTrue(session.confirmEpisodes(emptySet()))
+        testScope.runCurrent()
+
+        assertEquals(2, assertIs<DownloadRequestState.AwaitingSelection>(session.state.value).episodeId)
+        assertTrue(created.isEmpty())
+        assertEquals(listOf(1, 2), queried)
+    }
+
+    @Test
     fun `already downloaded and uncovered episodes are reported in the options`() = withFixture {
         val single1 = requestTestMedia(1)
         val pack = requestTestMedia(100, EpisodeRange.range(1, 3))
