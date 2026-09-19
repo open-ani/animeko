@@ -13,7 +13,7 @@ kotlinx-collections-immutable = "0.4.0" # https://github.com/Kotlin/kotlinx.coll
 ### ANDROIDX ###
 androidx-annotation = "1.9.1"
 androidx-media3 = "1.9.0" # https://developer.android.com/jetpack/androidx/releases/media3
-androidx-lifecycle = "2.11.0-beta01" # https://developer.android.com/jetpack/androidx/releases/lifecycle
+androidx-lifecycle = "2.11.0" # https://developer.android.com/jetpack/androidx/releases/lifecycle
 paging = "3.4.1" # https://developer.android.com/jetpack/androidx/releases/paging
 datastore = "1.2.0" # https://developer.android.com/jetpack/androidx/releases/datastore
 ksp = "2.3.10" # https://github.com/google/ksp/releases
@@ -37,21 +37,21 @@ compose-multiplatform = "1.12.0"
 compose-hot-reload = "1.2.0" # https://github.com/JetBrains/compose-hot-reload/releases
 
 # JetBrains compose libraries. Follow the release notes for main Compose Multiplatform for versoins.
-compose-lifecycle = "2.11.0-beta01"
-compose-navigation = "2.9.2"
+compose-lifecycle = "2.11.0"
+compose-navigation = "2.10.0-alpha02"
 # Navigation 3. navigation3-runtime 由 Google 直接发布 KMP 构件, 只有 UI 部分是 JetBrains 移植的.
-compose-navigation3-ui = "1.1.1"
-androidx-navigation3-runtime = "1.1.1"
+compose-navigation3-ui = "1.2.0-alpha02"
+androidx-navigation3-runtime = "1.2.0-alpha04"
 compose-material = "1.7.3"
-compose-material3 = "1.11.0-alpha07"
-compose-material3-adaptive = "1.3.0-alpha07"
+compose-material3 = "1.12.0-alpha03"
+compose-material3-adaptive = "1.3.0-beta02"
 compose-window-core = "1.5.1" # used dynamically, don't remove
 
 # Jetpack Compose libraries. Use the exact version mentioned from Compose Multiplatfrom release notes.
 # https://developer.android.com/jetpack/androidx/releases/compose-material3
-jetpack-compose-material3 = "1.5.0-alpha17"
-jetpack-compose = "1.11.2"
-androidx-compose-material3-adaptive = "1.3.0-alpha10"
+jetpack-compose-material3 = "1.5.0-alpha22"
+jetpack-compose = "1.12.0"
+androidx-compose-material3-adaptive = "1.3.0-beta02"
 
 ### OTHERS ###
 
