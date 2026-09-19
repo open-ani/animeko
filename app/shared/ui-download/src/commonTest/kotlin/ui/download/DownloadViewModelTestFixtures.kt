@@ -372,6 +372,7 @@ internal fun fakeMediaSelectorFactory(): MediaSelectorFactory = object : MediaSe
         episodeId: Int,
         mediaList: Flow<List<Media>>,
         flowCoroutineContext: CoroutineContext,
+        fetchRequest: Flow<MediaFetchRequest>?,
     ): MediaSelector = DefaultMediaSelector(
         mediaSelectorContextNotCached = flowOf(MediaSelectorContext.EmptyForPreview),
         mediaListNotCached = mediaList,

@@ -427,10 +427,11 @@ class MediaSourceMediaFetcher(
 
         private val overrideFetchRequest = MutableStateFlow<MediaFetchRequest?>(null)
 
-        override val request: Flow<MediaFetchRequest> =
+        override val latestRequest: Flow<MediaFetchRequest> =
             combine(initialFetchRequest, overrideFetchRequest) { initial, override ->
                 override ?: initial
-            }.take(1) // 否则会一直显示加载
+            }
+        override val request: Flow<MediaFetchRequest> = latestRequest.take(1) // 否则会一直显示加载
 
         override val mediaSourceResults: List<MediaSourceFetchResult> = mediaSources
             .filter {
@@ -556,4 +557,28 @@ private sealed interface FetchUpdate {
     data class Completed(val state: MediaSourceFetchState.Completed) : FetchUpdate {
         override val generation: Int get() = state.id
     }
+}
+
+/**
+ * 把请求里的当前剧集换成 [episode], 其余字段 (条目名等) 不变. 查询会话按条目共用时, 请求里的当前剧集是创建会话的那一集.
+ * 请求的当前剧集已是 [episode] 时原样返回, 用户在编辑器里改过的集数保留.
+ */
+fun MediaFetchRequest.withCurrentEpisode(episode: EpisodeInfo): MediaFetchRequest {
+    if (episodeId == episode.episodeId.toString()) return this
+    return copy(
+        episodeId = episode.episodeId.toString(),
+        episodeSort = episode.sort,
+        episodeName = episode.displayName,
+        episodeEp = episode.ep,
+    )
+}
+
+/**
+ * 用户在查询请求编辑器里改了当前集的集数时, 选择器按改后的集数匹配 (站点集数与 Bangumi 对不上时的修正手段).
+ * 请求里的集数只对请求指向的那一集生效 (查询会话按条目共用).
+ */
+fun EpisodeInfo.withRequestedNumbers(request: MediaFetchRequest): EpisodeInfo {
+    if (request.episodeId != episodeId.toString()) return this
+    if (request.episodeSort == sort && request.episodeEp == ep) return this
+    return copy(sort = request.episodeSort, ep = request.episodeEp)
 }

@@ -37,6 +37,7 @@ import me.him188.ani.utils.platform.collections.tupleOf
 import org.koin.core.component.KoinComponent
 import org.koin.core.component.inject
 import kotlin.coroutines.CoroutineContext
+import me.him188.ani.app.domain.media.fetch.withRequestedNumbers
 
 /**
  * A use case that constructs [MediaFetchSelectBundle]s according to [MediaFetchRequest] or [SubjectEpisodeInfoBundle].
@@ -156,7 +157,7 @@ class CreateMediaFetchSelectBundleFlowUseCaseImpl(
                     },
                     flowOf(bundle.seriesInfo ?: SubjectSeriesInfo.Fallback),
                     flowOf(bundle.subjectInfo),
-                    flowOf(bundle.episodeInfo),
+                    fetchSession.latestRequest.map { bundle.episodeInfo.withRequestedNumbers(it) },
                     mediaSourceManager.mediaSourceTiersFlow(), // only access local settings
                 ).flow,
                 fetchSession.cumulativeResults,

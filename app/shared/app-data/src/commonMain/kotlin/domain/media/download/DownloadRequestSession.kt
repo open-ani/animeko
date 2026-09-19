@@ -313,7 +313,7 @@ class DownloadRequestSession internal constructor(
         existing: List<ExistingDownload>,
     ): List<Pair<EpisodeInfo, Media>> = coroutineScope {
         val fetchSession = sources.createFetchFetchSession(flowOf(MediaFetchRequest.create(subject, episode, episodes)))
-        val selector = selectors.create(subjectId, episodeId, fetchSession.cumulativeResults)
+        val selector = selectors.create(subjectId, episodeId, fetchSession.cumulativeResults, fetchRequest = fetchSession.latestRequest)
         // 保持查询进行, 与弹窗是否可见无关.
         launch { fetchSession.cumulativeResults.collect() }
         // 记录弹窗内的偏好变更, 确定资源后一并保存.

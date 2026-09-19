@@ -208,6 +208,7 @@ import org.openani.mediamp.metadata.Chapter
 import kotlin.time.Duration.Companion.milliseconds
 import kotlin.time.Duration.Companion.minutes
 import kotlin.time.Duration.Companion.seconds
+import me.him188.ani.app.domain.media.fetch.withCurrentEpisode
 
 
 private const val OP_ED_AUTO_SKIP_BASE_SAMPLE_INTERVAL_MILLIS = 1_000L
@@ -1014,7 +1015,10 @@ class EpisodeViewModel(
                 matchingDanmakuUiState = matchingDanmaku?.copy(
                     initialQuery = subjectEpisodeBundle?.subjectInfo?.nameCnOrName ?: "",
                 ),
-                fetchRequest = fetchSelect?.mediaFetchSession?.request?.first(),
+                // 查询会话按条目共用, 其请求里的当前剧集是首次打开的那一集; 编辑器展示并提交本集
+                fetchRequest = fetchSelect?.mediaFetchSession?.latestRequest?.first()?.let { request ->
+                    subjectEpisodeBundle?.episodeInfo?.let { request.withCurrentEpisode(it) } ?: request
+                },
                 shareData = shareData,
             )
         }

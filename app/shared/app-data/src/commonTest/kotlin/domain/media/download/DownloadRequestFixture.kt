@@ -397,6 +397,7 @@ internal class DownloadRequestFixture(
             episodeId: Int,
             mediaList: Flow<List<Media>>,
             flowCoroutineContext: CoroutineContext,
+            fetchRequest: Flow<MediaFetchRequest>?,
         ): MediaSelector {
             currentEpisodeId = episodeId
             return DefaultMediaSelector(

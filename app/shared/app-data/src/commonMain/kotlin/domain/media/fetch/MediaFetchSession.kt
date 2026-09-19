@@ -35,6 +35,11 @@ interface MediaFetchSession {
     val request: Flow<MediaFetchRequest>
 
     /**
+     * 当前生效的查询请求, 随 [setFetchRequest] 更新; [request] 只发出首个值.
+     */
+    val latestRequest: Flow<MediaFetchRequest> get() = request
+
+    /**
      * 从各个数据源获取的结果
      */
     val mediaSourceResults: List<MediaSourceFetchResult> // dev notes: see implementation of [MediaSource]s for the IDs.
