@@ -764,13 +764,14 @@
     <string name="login_other_methods">其他登录方式</string>
 
     <!-- OAuth -->
-    <string name="oauth_bangumi_authorize_title">授权 Bangumi 登录</string>
     <string name="oauth_bangumi_description">授权 Bangumi 账号，可以同步你的观看记录到 Bangumi 或便捷登录 Ani</string>
-    <string name="oauth_bangumi_bind_account">绑定 Bangumi 账号</string>
-    <string name="oauth_bangumi_sign_in_or_sign_up">登录 / 注册</string>
-    <string name="oauth_bangumi_waiting_result">正在等待结果</string>
-    <string name="oauth_bangumi_authorized">已授权</string>
-    <string name="oauth_bangumi_cancel">取消</string>
+    <string name="oauth_authorize_title">授权 %1$s 登录</string>
+    <string name="oauth_bind_account">绑定 %1$s 账号</string>
+    <string name="oauth_github_description">使用 GitHub 账号登录 Ani。Ani 只会读取你的公开资料，不申请任何权限。</string>
+    <string name="oauth_sign_in_or_sign_up">登录 / 注册</string>
+    <string name="oauth_waiting_result">正在等待结果</string>
+    <string name="oauth_authorized">已授权</string>
+    <string name="oauth_cancel">取消</string>
     <string name="oauth_bangumi_help_title">帮助</string>
     <string name="oauth_bangumi_help_bangumi_desc">Bangumi 是什么</string>
     <string name="oauth_bangumi_help_website_blocked">浏览器提示网站被屏蔽或禁止访问</string>
@@ -1095,6 +1096,7 @@
     <string name="settings_account_profile_not_bound">未绑定</string>
     <string name="settings_account_profile_unbind">解绑</string>
     <string name="settings_account_profile_unbind_bangumi_confirmation">确定要解绑 Bangumi 吗？解绑后将不再同步观看记录到 Bangumi。解绑后可以重新绑定。</string>
+    <string name="settings_account_profile_unbind_confirmation">确定要解绑 %1$s 吗？解绑后可以重新绑定。</string>
     <string name="settings_account_profile_select_avatar">选择头像</string>
     <string name="settings_account_profile_done">完成</string>
     <string name="settings_account_profile_upload_avatar">上传头像</string>

@@ -724,13 +724,14 @@
     <string name="login_other_methods">Other sign-in methods</string>
 
     <!-- OAuth -->
-    <string name="oauth_bangumi_authorize_title">Authorize Bangumi Sign-In</string>
     <string name="oauth_bangumi_description">Authorize your Bangumi account to sync your watch history to Bangumi or sign in to Ani more conveniently.</string>
-    <string name="oauth_bangumi_bind_account">Bind Bangumi Account</string>
-    <string name="oauth_bangumi_sign_in_or_sign_up">Sign In / Sign Up</string>
-    <string name="oauth_bangumi_waiting_result">Waiting for result</string>
-    <string name="oauth_bangumi_authorized">Authorized</string>
-    <string name="oauth_bangumi_cancel">Cancel</string>
+    <string name="oauth_authorize_title">Authorize %1$s Sign-In</string>
+    <string name="oauth_bind_account">Bind %1$s Account</string>
+    <string name="oauth_github_description">Sign in to Ani with your GitHub account. Ani only reads your public profile and does not request any permission.</string>
+    <string name="oauth_sign_in_or_sign_up">Sign In / Sign Up</string>
+    <string name="oauth_waiting_result">Waiting for result</string>
+    <string name="oauth_authorized">Authorized</string>
+    <string name="oauth_cancel">Cancel</string>
     <string name="oauth_bangumi_help_title">Help</string>
     <string name="oauth_bangumi_help_bangumi_desc">What is Bangumi?</string>
     <string name="oauth_bangumi_help_website_blocked">The browser says the website is blocked or inaccessible</string>
@@ -1055,6 +1056,7 @@
     <string name="settings_account_profile_not_bound">Not Bound</string>
     <string name="settings_account_profile_unbind">Unbind</string>
     <string name="settings_account_profile_unbind_bangumi_confirmation">Unbind Bangumi? Watch history will no longer sync to Bangumi. You can bind it again later.</string>
+    <string name="settings_account_profile_unbind_confirmation">Unbind %1$s? You can bind it again later.</string>
     <string name="settings_account_profile_select_avatar">Select Avatar</string>
     <string name="settings_account_profile_done">Done</string>
     <string name="settings_account_profile_upload_avatar">Upload Avatar</string>

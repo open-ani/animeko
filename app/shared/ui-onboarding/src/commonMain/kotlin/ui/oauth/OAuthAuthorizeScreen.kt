@@ -16,15 +16,16 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import kotlinx.coroutines.launch
+import me.him188.ani.app.domain.session.auth.OAuthPlatform
 import me.him188.ani.app.platform.LocalContext
 import me.him188.ani.app.platform.navigation.rememberAsyncBrowserNavigator
-import me.him188.ani.app.ui.login.EmailLoginScreenLayout
 import me.him188.ani.app.ui.lang.*
+import me.him188.ani.app.ui.login.EmailLoginScreenLayout
 import org.jetbrains.compose.resources.*
 
 @Composable
-fun BangumiAuthorizeScreen(
-    vm: BangumiAuthorizeViewModel,
+fun OAuthAuthorizeScreen(
+    vm: OAuthAuthorizeViewModel,
     onNavigateBack: () -> Unit,
     onNavigateSettings: () -> Unit,
     onAuthorizeSuccess: () -> Unit,
@@ -41,7 +42,8 @@ fun BangumiAuthorizeScreen(
         }
     }
 
-    BangumiAuthorizeScreen(
+    OAuthAuthorizeScreen(
+        platform = vm.platform,
         state = state,
         onClickAuthorize = {
             scope.launch {
@@ -63,7 +65,8 @@ fun BangumiAuthorizeScreen(
 }
 
 @Composable
-internal fun BangumiAuthorizeScreen(
+internal fun OAuthAuthorizeScreen(
+    platform: OAuthPlatform,
     state: AuthState,
     onClickAuthorize: () -> Unit,
     onCancelAuthorize: () -> Unit,
@@ -72,13 +75,13 @@ internal fun BangumiAuthorizeScreen(
     contactActions: @Composable () -> Unit,
 ) {
     EmailLoginScreenLayout(
-        onBangumiLoginClick = {},
+        onThirdPartyLoginClick = {},
         onNavigateSettings = onNavigateSettings,
         onNavigateBack = onNavigateBack,
-        title = { Text(stringResource(Lang.oauth_bangumi_authorize_title)) },
-        showThirdPartyLogin = false,
+        title = { Text(stringResource(Lang.oauth_authorize_title, platform.displayName)) },
     ) { scrollState ->
-        BangumiAuthorizeLayout(
+        OAuthAuthorizeLayout(
+            platform = platform,
             authorizeState = state,
             contactActions = contactActions,
             onClickAuthorize = onClickAuthorize,
