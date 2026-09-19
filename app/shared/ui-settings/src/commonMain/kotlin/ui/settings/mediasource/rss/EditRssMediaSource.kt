@@ -33,6 +33,8 @@ import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.adaptive.layout.ListDetailPaneScaffold
 import androidx.compose.material3.adaptive.layout.ListDetailPaneScaffoldRole
 import androidx.compose.material3.adaptive.layout.PaneAdaptedValue
+import androidx.compose.material3.adaptive.layout.ThreePaneScaffoldDestinationItem
+import androidx.compose.material3.adaptive.layout.ThreePaneScaffoldValue
 import androidx.compose.material3.adaptive.navigation.ThreePaneScaffoldNavigator
 import androidx.compose.material3.adaptive.navigation.rememberListDetailPaneScaffoldNavigator
 import androidx.compose.runtime.Composable
@@ -69,8 +71,8 @@ import me.him188.ani.app.ui.foundation.interaction.WindowDragArea
 import me.him188.ani.app.ui.foundation.layout.ListDetailAnimatedPane
 import me.him188.ani.app.ui.foundation.layout.PaddingValuesSides
 import me.him188.ani.app.ui.foundation.layout.ThreePaneScaffoldValueConverter.ExtraPaneForNestedDetails
-import me.him188.ani.app.ui.foundation.layout.convert
 import me.him188.ani.app.ui.foundation.layout.currentWindowAdaptiveInfo1
+import me.him188.ani.app.ui.foundation.layout.isWidthCompact
 import me.him188.ani.app.ui.foundation.layout.isWidthAtLeastMedium
 import me.him188.ani.app.ui.foundation.layout.only
 import me.him188.ani.app.ui.foundation.layout.panePadding
@@ -188,7 +190,11 @@ fun EditRssMediaSourceScreen(
     testState: RssTestPaneState,
     mediaDetailsColumn: @Composable (Media) -> Unit,
     modifier: Modifier = Modifier,
-    navigator: ThreePaneScaffoldNavigator<*> = rememberListDetailPaneScaffoldNavigator(),
+    navigator: ThreePaneScaffoldNavigator<*> = rememberListDetailPaneScaffoldNavigator<Any?>(
+        initialDestinationHistory = listOf(
+            ThreePaneScaffoldDestinationItem(ListDetailPaneScaffoldRole.List),
+        ),
+    ),
     windowInsets: WindowInsets = ScaffoldDefaults.contentWindowInsets,
     navigationIcon: @Composable () -> Unit = {},
 ) {
@@ -233,7 +239,7 @@ fun EditRssMediaSourceScreen(
                     colors = AniThemeDefaults.topAppBarColors(),
                     windowInsets = windowInsets.only(WindowInsetsSides.Horizontal + WindowInsetsSides.Top),
                     actions = {
-                        if (navigator.scaffoldValue[ListDetailPaneScaffoldRole.Detail] == PaneAdaptedValue.Hidden) {
+                        if (currentWindowAdaptiveInfo1().isWidthCompact && navigator.currentDestination?.pane != ListDetailPaneScaffoldRole.Detail) {
                             TextButton(
                                 onClick = {
                                     coroutineScope.launch(start = CoroutineStart.UNDISPATCHED) {
@@ -277,9 +283,25 @@ fun EditRssMediaSourceScreen(
 
         val panePadding = currentWindowAdaptiveInfo1().windowSizeClass.panePadding
         val panePaddingVertical = panePadding.only(PaddingValuesSides.Vertical)
+        val scaffoldValue: ThreePaneScaffoldValue = if (navigator.currentDestination?.pane == ListDetailPaneScaffoldRole.Extra) {
+            ExtraPaneForNestedDetails.convert(navigator.scaffoldValue)
+        } else {
+            navigator.scaffoldValue
+        }
+            .let { value: ThreePaneScaffoldValue ->
+                if (navigator.currentDestination?.pane != ListDetailPaneScaffoldRole.Extra || testState.viewingItem == null) {
+                    ThreePaneScaffoldValue(
+                        primary = value.primary,
+                        secondary = value.secondary,
+                        tertiary = PaneAdaptedValue.Hidden,
+                    )
+                } else {
+                    value
+                }
+            }
         ListDetailPaneScaffold(
             navigator.scaffoldDirective,
-            navigator.scaffoldValue.convert(ExtraPaneForNestedDetails),
+            scaffoldValue,
             listPane = {
                 ListDetailAnimatedPane {
                     RssEditPane(
