@@ -10,6 +10,7 @@
 package me.him188.ani.app.data.models.recommend
 
 import me.him188.ani.app.data.models.subject.TestFollowedSubjectInfos
+import me.him188.ani.app.data.models.subject.preferredDisplayName as subjectPreferredDisplayName
 import me.him188.ani.app.data.models.subject.subjectInfo
 import me.him188.ani.utils.platform.annotations.TestOnly
 
@@ -24,7 +25,7 @@ data class RecommendedSubjectInfo(
 ) : RecommendedItemInfo()
 
 /**
- * 根据用户偏好选择的显示名称, 与 [me.him188.ani.app.data.models.subject.preferredDisplayName] 同一约定.
+ * 根据用户偏好选择的显示名称, 与 [subjectPreferredDisplayName] 同一约定.
  */
 fun RecommendedSubjectInfo.preferredDisplayName(useOriginalTitle: Boolean): String =
     if (useOriginalTitle) name.ifBlank { nameCn } else nameCn.ifBlank { name }
