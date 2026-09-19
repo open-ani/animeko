@@ -341,6 +341,8 @@ class ScheduleViewModelTest {
             // 响应没到, 一直是占位状态
             assertTrue(vm.presentationFlow.value.isPlaceholder)
             assertEquals(day2, vm.presentationFlow.value.days.today())
+            // observed 由另一个协程收集, 与这里没有同步; StateFlow 会合并状态, 所以在放行响应之前先等它记录到占位状态
+            awaitReal { observed.first { list -> list.any { it.isPlaceholder && it.days.today() == day2 } } }
 
             day2Response.complete(Unit)
             val presentation = awaitReal {
@@ -364,7 +366,7 @@ class ScheduleViewModelTest {
             assertEquals(presentation.days, vm.pageState.days)
 
             // 观察到的每一个状态里, 表头和列内容都一致 (从来没有 "表头是 day2, 内容还是 day1"); 占位状态先于加载完成的状态
-            val all = observed.value
+            val all = awaitReal { observed.first { list -> list.any { !it.isPlaceholder && it.days.today() == day2 } } }
             all.forEach(::assertColumnsMatchDays)
             val firstDay2Loading = all.indexOfFirst { it.isPlaceholder && it.days.today() == day2 }
             val firstDay2Loaded = all.indexOfFirst { !it.isPlaceholder && it.days.today() == day2 }
