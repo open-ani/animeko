@@ -30,6 +30,7 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import me.him188.ani.app.domain.episode.SubjectRecommendation
 import me.him188.ani.app.ui.foundation.AsyncImage
+import me.him188.ani.app.ui.foundation.LocalSubjectAppearanceSettings
 import me.him188.ani.app.ui.foundation.ProvideCompositionLocalsForPreview
 import me.him188.ani.utils.platform.annotations.TestOnly
 
@@ -62,8 +63,15 @@ fun SubjectRecommendationCard(
                 Modifier.heightIn(min = 78.dp).weight(1f),
                 verticalArrangement = Arrangement.SpaceBetween,
             ) {
+                val useOriginalTitle = LocalSubjectAppearanceSettings.current.useOriginalTitle
                 Text(
-                    remember(item) { item.nameCn.takeIf { !it.isNullOrBlank() } ?: item.name },
+                    remember(item, useOriginalTitle) {
+                        if (useOriginalTitle) {
+                            item.name.ifBlank { item.nameCn.orEmpty() }
+                        } else {
+                            item.nameCn.takeIf { !it.isNullOrBlank() } ?: item.name
+                        }
+                    },
                     style = MaterialTheme.typography.bodyMedium,
                     maxLines = 2,
                     overflow = TextOverflow.Ellipsis,

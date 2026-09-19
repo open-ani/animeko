@@ -18,9 +18,16 @@ sealed class RecommendedItemInfo
 data class RecommendedSubjectInfo(
     val bangumiId: Int,
     val nameCn: String,
+    /** 条目原名 (通常为日文), 供"显示原名"设置开启时使用. */
+    val name: String,
     val imageLarge: String,
 ) : RecommendedItemInfo()
 
+/**
+ * 根据用户偏好选择的显示名称, 与 [me.him188.ani.app.data.models.subject.preferredDisplayName] 同一约定.
+ */
+fun RecommendedSubjectInfo.preferredDisplayName(useOriginalTitle: Boolean): String =
+    if (useOriginalTitle) name.ifBlank { nameCn } else nameCn.ifBlank { name }
 
 val RecommendedItemInfo.id: Any
     get() = when (this) {
@@ -38,6 +45,7 @@ val TestRecommendedItemInfos: List<RecommendedItemInfo>
         RecommendedSubjectInfo(
             bangumiId = it.subjectInfo.subjectId,
             nameCn = it.subjectInfo.nameCn,
+            name = it.subjectInfo.name,
             imageLarge = it.subjectInfo.imageLarge,
         )
     }
