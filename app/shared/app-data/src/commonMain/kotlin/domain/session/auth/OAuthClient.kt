@@ -10,11 +10,14 @@
 package me.him188.ani.app.domain.session.auth
 
 import io.ktor.client.plugins.ClientRequestException
+import io.ktor.client.statement.bodyAsText
 import io.ktor.http.HttpStatusCode
 import me.him188.ani.app.data.repository.RepositoryException
+import me.him188.ani.app.data.repository.RepositoryRequestError
 import me.him188.ani.app.domain.session.AccessTokenPair
 import me.him188.ani.app.domain.session.SessionStateProvider
 import me.him188.ani.client.apis.BangumiAniApi
+import me.him188.ani.client.apis.OAuthAniApi
 import me.him188.ani.client.models.AniUserAuthRoutingLoginResponse
 import me.him188.ani.utils.ktor.ApiInvoker
 import me.him188.ani.utils.platform.Platform
@@ -44,6 +47,7 @@ interface OAuthClient {
      * 获取 OAuth 绑定或登录结果, 此结果将直接用于登录 ani 用户.
      *
      * @return null 表示还没有结果.
+     * @throws me.him188.ani.app.data.repository.RepositoryRequestError 绑定模式下 (HTTP 409), 该第三方账号是另一个用户的唯一登录方式. 消息可以直接展示给用户.
      * @throws me.him188.ani.app.data.repository.RepositoryException
      * @throws IllegalArgumentException requestId 为空
      */
@@ -110,6 +114,57 @@ class BangumiOAuthClient(
         } catch (ex: ClientRequestException) {
             when (ex.response.status) {
                 HttpStatusCode.TooEarly -> return null
+                HttpStatusCode.Conflict -> throw RepositoryRequestError(ex.response.bodyAsText(), cause = ex)
+                else -> throw RepositoryException.wrapOrThrowCancellation(ex)
+            }
+        } catch (e: Throwable) {
+            throw RepositoryException.wrapOrThrowCancellation(e)
+        }
+    }
+}
+
+/**
+ * 通过服务端的通用第三方登录接口 (`/users/oauth/{provider}/...`) 登录或绑定 [provider]. 除 Bangumi 外的平台都使用这个实现.
+ */
+class ExternalOAuthClient(
+    private val provider: OAuthPlatform,
+    private val oauthApi: ApiInvoker<OAuthAniApi>,
+    private val platform: Platform = currentPlatform(),
+) : OAuthClient {
+    override suspend fun getOAuthRegisterLink(requestId: String): String {
+        require(requestId.isNotBlank()) { "requestId must not be blank or empty" }
+        return try {
+            oauthApi.invoke {
+                startLogin(provider.id, requestId, platform.name.lowercase(), platform.arch.displayName.lowercase()).body()
+            }.url
+        } catch (e: Throwable) {
+            throw RepositoryException.wrapOrThrowCancellation(e)
+        }
+    }
+
+    override suspend fun getOAuthBindLink(requestId: String): String {
+        require(requestId.isNotBlank()) { "requestId must not be blank or empty" }
+        return try {
+            oauthApi.invoke {
+                startBind(provider.id, requestId, platform.name.lowercase(), platform.arch.displayName.lowercase()).body()
+            }.url
+        } catch (e: Throwable) {
+            throw RepositoryException.wrapOrThrowCancellation(e)
+        }
+    }
+
+    /**
+     * @throws RepositoryRequestError 绑定模式下 (HTTP 409), 该第三方账号是另一个用户的唯一登录方式. 消息可以直接展示给用户.
+     */
+    override suspend fun getResult(requestId: String): OAuthResult? {
+        require(requestId.isNotBlank()) { "requestId must not be blank or empty" }
+
+        try {
+            return oauthApi.invoke { getResult(requestId).body() }.toOAuthResult()
+        } catch (ex: ClientRequestException) {
+            when (ex.response.status) {
+                HttpStatusCode.TooEarly -> return null
+                HttpStatusCode.Conflict -> throw RepositoryRequestError(ex.response.bodyAsText(), cause = ex)
                 else -> throw RepositoryException.wrapOrThrowCancellation(ex)
             }
         } catch (e: Throwable) {

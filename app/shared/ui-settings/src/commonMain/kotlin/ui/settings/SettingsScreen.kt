@@ -96,6 +96,7 @@ import dev.chrisbanes.haze.rememberHazeState
 import kotlinx.coroutines.CoroutineStart
 import kotlinx.coroutines.launch
 import kotlinx.serialization.Serializable
+import me.him188.ani.app.domain.session.auth.OAuthPlatform
 import me.him188.ani.app.platform.LocalContext
 import me.him188.ani.app.platform.navigation.rememberAsyncBrowserNavigator
 import me.him188.ani.app.ui.adaptive.AniListDetailPaneScaffold
@@ -124,8 +125,8 @@ import me.him188.ani.app.ui.lang.Lang
 import me.him188.ani.app.ui.lang.acknowledgements
 import me.him188.ani.app.ui.lang.developer_list
 import me.him188.ani.app.ui.lang.settings
-import me.him188.ani.app.ui.lang.settings_acknowledgements_oss_licenses
 import me.him188.ani.app.ui.lang.settings_account_bangumi_sync_title
+import me.him188.ani.app.ui.lang.settings_acknowledgements_oss_licenses
 import me.him188.ani.app.ui.lang.settings_category_app_ui
 import me.him188.ani.app.ui.lang.settings_category_data_playback
 import me.him188.ani.app.ui.lang.settings_category_network_storage
@@ -166,8 +167,8 @@ import me.him188.ani.app.ui.settings.tabs.log.LogTab
 import me.him188.ani.app.ui.settings.tabs.media.BackupSettings
 import me.him188.ani.app.ui.settings.tabs.media.CacheDirectoryGroup
 import me.him188.ani.app.ui.settings.tabs.media.MediaSelectionGroup
-import me.him188.ani.app.ui.settings.tabs.media.TorrentEngineGroup
 import me.him188.ani.app.ui.settings.tabs.media.PikPakAcceleratorGroup
+import me.him188.ani.app.ui.settings.tabs.media.TorrentEngineGroup
 import me.him188.ani.app.ui.settings.tabs.media.source.MediaSourceGroup
 import me.him188.ani.app.ui.settings.tabs.media.source.MediaSourceSelectionActions
 import me.him188.ani.app.ui.settings.tabs.media.source.MediaSourceSubscriptionGroup
@@ -189,7 +190,7 @@ typealias SettingsTab = me.him188.ani.app.navigation.SettingsTab
 fun SettingsScreen(
     vm: SettingsViewModel,
     onNavigateToEmailLogin: () -> Unit,
-    onNavigateToBangumiOAuth: () -> Unit,
+    onNavigateToOAuth: (OAuthPlatform) -> Unit,
     loadOpenSourceLibrariesJsons: suspend () -> List<ByteArray>,
     modifier: Modifier = Modifier,
     initialTab: SettingsTab? = null,
@@ -348,7 +349,7 @@ fun SettingsScreen(
                                 onNavigateToBangumiSync = {
                                     navigateTo(DetailPaneRoutes.BangumiSync)
                                 },
-                                onNavigateToBangumiOAuth = onNavigateToBangumiOAuth,
+                                onNavigateToOAuth = onNavigateToOAuth,
                             )
 
                             SettingsTab.APPEARANCE -> AppearanceGroup(vm.uiSettings)
