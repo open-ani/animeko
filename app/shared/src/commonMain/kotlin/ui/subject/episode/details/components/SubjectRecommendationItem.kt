@@ -29,6 +29,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import me.him188.ani.app.domain.episode.SubjectRecommendation
+import me.him188.ani.app.domain.episode.preferredDisplayName
 import me.him188.ani.app.ui.foundation.AsyncImage
 import me.him188.ani.app.ui.foundation.LocalSubjectAppearanceSettings
 import me.him188.ani.app.ui.foundation.ProvideCompositionLocalsForPreview
@@ -65,13 +66,7 @@ fun SubjectRecommendationCard(
             ) {
                 val useOriginalTitle = LocalSubjectAppearanceSettings.current.useOriginalTitle
                 Text(
-                    remember(item, useOriginalTitle) {
-                        if (useOriginalTitle) {
-                            item.name.ifBlank { item.nameCn.orEmpty() }
-                        } else {
-                            item.nameCn.takeIf { !it.isNullOrBlank() } ?: item.name
-                        }
-                    },
+                    remember(item, useOriginalTitle) { item.preferredDisplayName(useOriginalTitle) },
                     style = MaterialTheme.typography.bodyMedium,
                     maxLines = 2,
                     overflow = TextOverflow.Ellipsis,

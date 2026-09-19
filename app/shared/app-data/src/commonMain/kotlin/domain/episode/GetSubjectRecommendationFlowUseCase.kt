@@ -26,6 +26,17 @@ class SubjectRecommendation(
     val uniqueId: String = Uuid.randomString()
 }
 
+/**
+ * 根据用户偏好选择的显示名称, 与 [me.him188.ani.app.data.models.subject.preferredDisplayName] 同一约定.
+ * @param useOriginalTitle 为 `true` 时优先显示原名 ([SubjectRecommendation.name]).
+ */
+fun SubjectRecommendation.preferredDisplayName(useOriginalTitle: Boolean): String =
+    if (useOriginalTitle) {
+        name.ifBlank { nameCn.orEmpty() }
+    } else {
+        nameCn.takeIf { !it.isNullOrBlank() } ?: name
+    }
+
 fun interface GetSubjectRecommendationUseCase : UseCase {
     suspend operator fun invoke(subjectId: Int): List<SubjectRecommendation>
 }
