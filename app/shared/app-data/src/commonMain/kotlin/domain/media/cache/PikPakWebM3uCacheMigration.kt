@@ -15,6 +15,7 @@ import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.withContext
 import kotlinx.io.files.Path
 import me.him188.ani.app.data.persistent.database.dao.HttpCacheDownloadStateDao
+import me.him188.ani.app.data.persistent.database.dao.TorrentCacheEpisodeEntity
 import me.him188.ani.app.data.persistent.database.dao.TorrentCacheInfoDao
 import me.him188.ani.app.data.persistent.database.dao.TorrentCacheInfoEntity
 import me.him188.ani.app.domain.media.cache.engine.HttpMediaCacheEngine
@@ -108,15 +109,22 @@ class PikPakWebM3uCacheMigration(
                 if (save.origin.mediaId in discardedIds) return@mapNotNull null
                 val result = migrated[save.origin.mediaId] ?: return@mapNotNull save
 
-                save.copy(
-                    engine = MediaCacheEngineKey.PikPak,
-                    metadata = if (result.complete) {
-                        save.metadata.copy(completed = true, pathInTorrent = result.pathInTorrent)
-                    } else {
-                        save.metadata.copy(completed = false)
-                    },
-                )
+                save.copy(engine = MediaCacheEngineKey.PikPak)
             }
+        }
+
+        // Completion lives on the episode row; without it the engine would re-derive the file from the
+        // title and re-download an import that is already complete.
+        for (save in singles) {
+            val result = migrated[save.origin.mediaId] ?: continue
+            torrentDao.upsertEpisode(
+                TorrentCacheEpisodeEntity(
+                    mediaId = save.origin.mediaId,
+                    episodeId = save.metadata.episodeId,
+                    completed = result.complete,
+                    pathInTorrent = if (result.complete) result.pathInTorrent else "",
+                ),
+            )
         }
 
         // Metadata is the migration commit point; retain HTTP rows until it is persisted for crash recovery.

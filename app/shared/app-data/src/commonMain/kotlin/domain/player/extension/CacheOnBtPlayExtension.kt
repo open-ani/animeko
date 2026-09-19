@@ -19,6 +19,7 @@ import me.him188.ani.app.domain.media.cache.DeleteCacheUseCase
 import me.him188.ani.app.domain.media.cache.MediaCache
 import me.him188.ani.app.domain.media.download.MediaDownloadManager
 import me.him188.ani.app.domain.media.download.selectTorrentStorage
+import me.him188.ani.app.domain.media.fetch.create
 import me.him188.ani.app.domain.media.resolver.toEpisodeMetadata
 import me.him188.ani.app.domain.player.VideoLoadingState
 import me.him188.ani.datasources.api.CachedMedia
@@ -48,7 +49,8 @@ class CacheOnBtPlayExtension(
     override fun onStart(episodeSession: EpisodeSession, backgroundTaskScope: ExtensionBackgroundTaskScope) {
         backgroundTaskScope.launch("CacheOnBtPlay") {
             context.sessionFlow.collectLatest { session ->
-                val episodeMetadata = session.infoBundleFlow.filterNotNull().first().episodeInfo.toEpisodeMetadata()
+                val info = session.infoBundleFlow.filterNotNull().first()
+                val episodeMetadata = info.episodeInfo.toEpisodeMetadata()
 
                 session.fetchSelectFlow.collectLatest fsf@{ bundle ->
                     if (bundle == null) return@fsf
@@ -85,7 +87,9 @@ class CacheOnBtPlayExtension(
                         }
                         logger.info { "Auto cache BitTorrent media on play with ${storage.engine.engineKey}: $media" }
 
-                        val metadata = MediaCacheMetadata(request, autoCached = true)
+                        val metadata =
+                            // 查询会话按条目共用, 其请求中的当前剧集是首次打开的那一集; 记录要用本集自己的信息.
+                            MediaCacheMetadata(MediaFetchRequest.create(info.subjectInfo, info.episodeInfo), autoCached = true)
                         val cache = downloadManager.createDownload(media, metadata, episodeMetadata, storage)
                         if (cache.metadata.autoCached) {
                             autoCaches += cache

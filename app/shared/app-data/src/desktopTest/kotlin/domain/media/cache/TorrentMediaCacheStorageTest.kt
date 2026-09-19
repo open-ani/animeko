@@ -20,6 +20,7 @@ import kotlinx.coroutines.flow.toList
 import kotlinx.coroutines.test.TestScope
 import kotlinx.coroutines.test.advanceUntilIdle
 import kotlinx.coroutines.test.runCurrent
+import me.him188.ani.app.data.persistent.database.dao.TorrentCacheEpisodeEntity
 import me.him188.ani.app.domain.media.cache.engine.TorrentMediaCacheEngine
 import me.him188.ani.app.domain.media.cache.storage.MediaCacheSave
 import me.him188.ani.app.domain.media.cache.storage.TorrentMediaCacheStorage
@@ -170,21 +171,14 @@ class TorrentMediaCacheStorageTest : AbstractTorrentMediaCacheEngineTest() {
         val path = assertNotNull(ep1.fileHandle.entry.first()).pathInTorrent
         val row = assertNotNull(torrentInfoDatabase.get(testMedia.mediaId))
 
-        torrentInfoDatabase.upsert(row.copy(completed = true, pathInTorrent = path))
         File(dir, row.relativeDir).resolve(path).apply {
             parentFile.mkdirs()
             writeText("x")
         }
 
-        metadataStore.updateData { list ->
-            list.map { save ->
-                if (save.metadata.episodeId == "1") {
-                    save.copy(metadata = save.metadata.copy(completed = true, pathInTorrent = path))
-                } else {
-                    save
-                }
-            }
-        }
+        torrentInfoDatabase.upsertEpisode(
+            TorrentCacheEpisodeEntity(testMedia.mediaId, episodeId = "1", completed = true, pathInTorrent = path),
+        )
         storage.close()
 
         val restored = createStorage(createEngine(onDownloadStarted = { it.onTorrentChecked() }))
@@ -204,13 +198,13 @@ class TorrentMediaCacheStorageTest : AbstractTorrentMediaCacheEngineTest() {
         val path = assertNotNull(cache.fileHandle.entry.first()).pathInTorrent
         val row = assertNotNull(torrentInfoDatabase.get(testMedia.mediaId))
 
-        // Before this version only the row knew: the record itself has no pathInTorrent.
+        // Before this version only the torrent row knew, and there was no episode record at all.
         torrentInfoDatabase.upsert(row.copy(completed = true, pathInTorrent = path))
+        torrentInfoDatabase.deleteEpisode(testMedia.mediaId, "1")
         File(dir, row.relativeDir).resolve(path).apply {
             parentFile.mkdirs()
             writeText("x")
         }
-        assertNull(metadataStore.data.first().single().metadata.pathInTorrent)
         storage.close()
 
         val restored = createStorage(createEngine(onDownloadStarted = { it.onTorrentChecked() }))
@@ -218,9 +212,9 @@ class TorrentMediaCacheStorageTest : AbstractTorrentMediaCacheEngineTest() {
 
         assertIs<LocalFileMediaCache>(restored.listFlow.first { it.isNotEmpty() }.single())
 
-        val save = metadataStore.data.first().single()
-        assertEquals(true, save.metadata.completed)
-        assertEquals(path, save.metadata.pathInTorrent)
+        val record = assertNotNull(torrentInfoDatabase.getEpisode(testMedia.mediaId, "1"))
+        assertEquals(true, record.completed)
+        assertEquals(path, record.pathInTorrent)
     }
 
     @Test
@@ -235,9 +229,9 @@ class TorrentMediaCacheStorageTest : AbstractTorrentMediaCacheEngineTest() {
             parentFile.mkdirs()
             writeText("x")
         }
-        metadataStore.updateData { list ->
-            list.map { save -> save.copy(metadata = save.metadata.copy(completed = true, pathInTorrent = path)) }
-        }
+        torrentInfoDatabase.upsertEpisode(
+            TorrentCacheEpisodeEntity(testMedia.mediaId, episodeId = "1", completed = true, pathInTorrent = path),
+        )
         storage.close()
 
         val disabled = UnsupportedTorrentEngine(createTestAnitorrentEngine(coroutineContext))

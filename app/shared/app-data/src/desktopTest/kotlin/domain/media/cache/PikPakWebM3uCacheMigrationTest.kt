@@ -71,7 +71,7 @@ class PikPakWebM3uCacheMigrationTest {
     @Test
     fun `a completed entry carries its file identity into the metadata`() = runTest {
         val fileName = "01.mkv"
-        val store = MemoryDataStore(listOf(save(metadata(completed =false))))
+        val store = MemoryDataStore(listOf(save(metadata())))
         val httpDao = FakeHttpCacheDownloadStateDao(
             downloadState(fileName, DownloadStatus.COMPLETED).also { writeLegacyFile(fileName) },
         )
@@ -80,14 +80,15 @@ class PikPakWebM3uCacheMigrationTest {
 
         val saved = store.data.first().single()
         assertEquals(MediaCacheEngineKey.PikPak, saved.engine)
-        assertTrue(saved.metadata.completed)
-        assertEquals(fileName, saved.metadata.pathInTorrent)
+        val record = assertNotNull(episodeRecord())
+        assertTrue(record.completed)
+        assertEquals(fileName, record.pathInTorrent)
     }
 
     @Test
     fun `an incomplete entry is not marked completed`() = runTest {
         val fileName = "01.mkv"
-        val store = MemoryDataStore(listOf(save(metadata(completed =true))))
+        val store = MemoryDataStore(listOf(save(metadata())))
         val httpDao = FakeHttpCacheDownloadStateDao(
             downloadState(fileName, DownloadStatus.PAUSED).also { writeLegacyFile(fileName) },
         )
@@ -96,8 +97,9 @@ class PikPakWebM3uCacheMigrationTest {
 
         val saved = store.data.first().single()
         assertEquals(MediaCacheEngineKey.PikPak, saved.engine)
-        assertEquals(false, saved.metadata.completed)
-        assertNull(saved.metadata.pathInTorrent)
+        val record = assertNotNull(episodeRecord())
+        assertEquals(false, record.completed)
+        assertEquals("", record.pathInTorrent)
     }
 
     @Test
@@ -106,7 +108,7 @@ class PikPakWebM3uCacheMigrationTest {
         // Path-affecting characters are rewritten before the id is stored, so a migration that
         // used the raw mediaId would miss the row entirely.
         val dirty = media.copy(mediaId = "pikpak:1/2?3")
-        val store = MemoryDataStore(listOf(save(metadata(completed = false)).copy(origin = dirty)))
+        val store = MemoryDataStore(listOf(save(metadata()).copy(origin = dirty)))
         val httpDao = FakeHttpCacheDownloadStateDao(
             downloadState(fileName, DownloadStatus.COMPLETED)
                 .copy(downloadId = dirty.toSafeDownloadId())
@@ -117,17 +119,18 @@ class PikPakWebM3uCacheMigrationTest {
 
         val saved = store.data.first().single()
         assertEquals(MediaCacheEngineKey.PikPak, saved.engine)
-        assertTrue(saved.metadata.completed)
-        assertEquals(fileName, saved.metadata.pathInTorrent)
+        val record = assertNotNull(torrentDao.getEpisode(dirty.mediaId, "1"))
+        assertTrue(record.completed)
+        assertEquals(fileName, record.pathInTorrent)
         assertNull(httpDao.getById(dirty.toSafeDownloadId()))
     }
 
     @Test
     fun `a media anitorrent owns is discarded, leaving its torrent row untouched`() = runTest {
         val fileName = "01.mkv"
-        val anitorrent = save(metadata(completed = false, episodeId = "2"))
+        val anitorrent = save(metadata(episodeId = "2"))
             .copy(engine = MediaCacheEngineKey.Anitorrent)
-        val store = MemoryDataStore(listOf(save(metadata(completed = false)), anitorrent))
+        val store = MemoryDataStore(listOf(save(metadata()), anitorrent))
         val httpDao = FakeHttpCacheDownloadStateDao(
             downloadState(fileName, DownloadStatus.COMPLETED).also { writeLegacyFile(fileName) },
         )
@@ -145,7 +148,7 @@ class PikPakWebM3uCacheMigrationTest {
     @Test
     fun `an unfinished record does not adopt a file the engine already holds`() = runTest {
         val fileName = "01.mkv"
-        val store = MemoryDataStore(listOf(save(metadata(completed = false))))
+        val store = MemoryDataStore(listOf(save(metadata())))
         // The legacy download never finished and its output file is gone, but the PikPak engine has since
         // downloaded the same file on its own.
         val httpDao = FakeHttpCacheDownloadStateDao(downloadState(fileName, DownloadStatus.PAUSED))
@@ -158,8 +161,9 @@ class PikPakWebM3uCacheMigrationTest {
 
         val saved = store.data.first().single()
         assertEquals(MediaCacheEngineKey.PikPak, saved.engine)
-        assertEquals(false, saved.metadata.completed)
-        assertNull(saved.metadata.pathInTorrent)
+        val record = assertNotNull(episodeRecord())
+        assertEquals(false, record.completed)
+        assertEquals("", record.pathInTorrent)
     }
 
     @Test
@@ -167,8 +171,8 @@ class PikPakWebM3uCacheMigrationTest {
         val fileName = "season.mkv"
         val store = MemoryDataStore(
             listOf(
-                save(metadata(completed = false, episodeId = "1")),
-                save(metadata(completed = false, episodeId = "2")),
+                save(metadata(episodeId = "1")),
+                save(metadata(episodeId = "2")),
             ),
         )
         val httpDao = FakeHttpCacheDownloadStateDao(
@@ -191,12 +195,12 @@ class PikPakWebM3uCacheMigrationTest {
 
     @Test
     fun `a pack keeps the torrent row another engine still references`() = runTest {
-        val anitorrent = save(metadata(completed = false, episodeId = "3"))
+        val anitorrent = save(metadata(episodeId = "3"))
             .copy(engine = MediaCacheEngineKey.Anitorrent)
         val store = MemoryDataStore(
             listOf(
-                save(metadata(completed = false, episodeId = "1")),
-                save(metadata(completed = false, episodeId = "2")),
+                save(metadata(episodeId = "1")),
+                save(metadata(episodeId = "2")),
                 anitorrent,
             ),
         )
@@ -215,9 +219,9 @@ class PikPakWebM3uCacheMigrationTest {
         val packMedia = media.copy(mediaId = "pikpak.pack")
         val store = MemoryDataStore(
             listOf(
-                save(metadata(completed = false)),
-                save(metadata(completed = false, episodeId = "1")).copy(origin = packMedia),
-                save(metadata(completed = false, episodeId = "2")).copy(origin = packMedia),
+                save(metadata()),
+                save(metadata(episodeId = "1")).copy(origin = packMedia),
+                save(metadata(episodeId = "2")).copy(origin = packMedia),
             ),
         )
         val httpDao = FakeHttpCacheDownloadStateDao(
@@ -229,16 +233,17 @@ class PikPakWebM3uCacheMigrationTest {
         val saved = store.data.first().single()
         assertEquals(media.mediaId, saved.origin.mediaId)
         assertEquals(MediaCacheEngineKey.PikPak, saved.engine)
-        assertTrue(saved.metadata.completed)
-        assertEquals(fileName, saved.metadata.pathInTorrent)
+        val record = assertNotNull(episodeRecord())
+        assertTrue(record.completed)
+        assertEquals(fileName, record.pathInTorrent)
     }
 
     @Test
     fun `discarding again after an interrupted run converges`() = runTest {
         val fileName = "season.mkv"
         val packSaves = listOf(
-            save(metadata(completed = false, episodeId = "1")),
-            save(metadata(completed = false, episodeId = "2")),
+            save(metadata(episodeId = "1")),
+            save(metadata(episodeId = "2")),
         )
         val store = MemoryDataStore(packSaves)
         val httpDao = FakeHttpCacheDownloadStateDao(
@@ -276,14 +281,15 @@ class PikPakWebM3uCacheMigrationTest {
         engine = MediaCacheEngineKey.WebM3u,
     )
 
-    private fun metadata(completed: Boolean, episodeId: String = "1") = MediaCacheMetadata(
+    private fun metadata(episodeId: String = "1") = MediaCacheMetadata(
         subjectId = "1",
         episodeId = episodeId,
         subjectNames = emptyList(),
         episodeSort = EpisodeSort(episodeId),
         episodeName = "",
-        completed = completed,
     )
+
+    private suspend fun episodeRecord(episodeId: String = "1") = torrentDao.getEpisode(media.mediaId, episodeId)
 
     private fun legacyDir() = File(dir, HttpMediaCacheEngine.MEDIA_CACHE_DIR)
 

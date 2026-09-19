@@ -39,6 +39,7 @@ import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.newSingleThreadContext
 import kotlinx.coroutines.withContext
+import me.him188.ani.app.data.persistent.database.dao.TorrentCacheEpisodeEntity
 import me.him188.ani.app.data.persistent.database.dao.TorrentCacheInfoEntity
 import me.him188.ani.app.domain.media.cache.engine.TorrentEngineAccess
 import me.him188.ani.app.domain.media.cache.engine.UnsafeTorrentEngineAccessApi
@@ -76,7 +77,8 @@ import kotlin.coroutines.CoroutineContext
 class TorrentServiceConnectionManager(
     context: Context,
     // Only rows the service must download; PikPak runs in-process and is filtered out by the caller.
-    private val serviceCacheEntitiesFlow: StateFlow<Flow<List<TorrentCacheInfoEntity>>?>,
+    private val serviceTorrentsFlow: StateFlow<Flow<List<TorrentCacheInfoEntity>>?>,
+    private val serviceEpisodesFlow: StateFlow<Flow<List<TorrentCacheEpisodeEntity>>?>,
     private val mediaCacheBaseSaveDirFlow: StateFlow<File?>,
     startServiceImpl: () -> ComponentName?,
     private val stopServiceImpl: () -> Unit,
@@ -167,8 +169,9 @@ class TorrentServiceConnectionManager(
     private fun startObserveServiceLifecycle() {
         scope.launch {
             combine(
-                serviceCacheEntitiesFlow.flatMapLatest {
-                    it?.map(::allTorrentMediaCacheCompleted) ?: emptyFlow()
+                combine(serviceTorrentsFlow, serviceEpisodesFlow, ::Pair).flatMapLatest { (torrents, episodes) ->
+                    if (torrents == null || episodes == null) emptyFlow()
+                    else combine(torrents, episodes, ::allTorrentMediaCacheCompleted)
                 },
                 requestQueue.map { it.isNotEmpty() },
                 isServiceConnected,
@@ -205,20 +208,34 @@ class TorrentServiceConnectionManager(
 
     /**
      * Check if all torrent media cache is completed. If not, the service will be kept alive.
+     *
+     * 按剧集记录判断; 尚无剧集记录的种子行沿用已发布版本按资源记录的完成状态.
      */
-    private fun allTorrentMediaCacheCompleted(list: List<TorrentCacheInfoEntity>): Boolean {
+    private fun allTorrentMediaCacheCompleted(
+        torrents: List<TorrentCacheInfoEntity>,
+        episodes: List<TorrentCacheEpisodeEntity>,
+    ): Boolean {
         val baseSaveDir = mediaCacheBaseSaveDirFlow.value ?: return true
-        list.forEach { entity ->
-            if (!entity.completed) return false
-            val pathInTorrent = entity.pathInTorrent.takeIf { it.isNotEmpty() } ?: return false
-
-            val file = File(baseSaveDir, entity.relativeDir).resolve(pathInTorrent)
-            if (!file.exists() || file.isDirectory()) {
-                return false
+        val episodesByMedia = episodes.groupBy { it.mediaId }
+        torrents.forEach { torrent ->
+            val records = episodesByMedia[torrent.mediaId]
+            if (records == null) {
+                if (!isFileCompleted(baseSaveDir, torrent.relativeDir, torrent.completed, torrent.pathInTorrent)) return false
+                return@forEach
+            }
+            records.forEach { record ->
+                if (!isFileCompleted(baseSaveDir, torrent.relativeDir, record.completed, record.pathInTorrent)) return false
             }
         }
 
         return true
+    }
+
+    private fun isFileCompleted(baseSaveDir: File, relativeDir: String, completed: Boolean, pathInTorrent: String): Boolean {
+        if (!completed) return false
+        if (pathInTorrent.isEmpty()) return false
+        val file = File(baseSaveDir, relativeDir).resolve(pathInTorrent)
+        return file.exists() && !file.isDirectory()
     }
 
     private fun onServiceDisconnected() {

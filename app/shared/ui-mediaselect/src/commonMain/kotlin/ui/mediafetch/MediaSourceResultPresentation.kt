@@ -22,6 +22,7 @@ import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.flowOf
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.launch
 import me.him188.ani.app.data.models.preference.MediaSelectorSettings
 import me.him188.ani.app.domain.media.TestMediaList
@@ -90,9 +91,14 @@ data class MediaSourceResultListPresentation(
     }
 }
 
+/**
+ * @param includedMediaFlow 通过选择器过滤的资源 ([me.him188.ani.app.domain.media.selector.MediaSelector.filteredCandidatesMedia]).
+ * 提供时, 每个数据源卡片的计数是该源通过过滤 (属于当前剧集等) 的资源数; 为 `null` 时计数为该源返回的全部资源数.
+ */
 class MediaSourceResultListPresenter(
     resultListFlow: Flow<List<MediaSourceFetchResult>>,
     preferredWebMediaSourceIdFlow: Flow<String?> = flowOf(null),
+    includedMediaFlow: Flow<List<Media>>? = null,
 ) {
     val presentationFlow: Flow<List<MediaSourceResultPresentation>> = resultListFlow
         .combine(preferredWebMediaSourceIdFlow) { list, preferredWebMediaSourceId ->
@@ -100,10 +106,13 @@ class MediaSourceResultListPresenter(
         }
         .flatMapLatest { (list, preferred) ->
             val flows = list.map { source ->
-                combine(source.state, source.results) { state, results ->
+                val countFlow = includedMediaFlow
+                    ?.map { included -> included.count { it.mediaSourceId == source.mediaSourceId } }
+                    ?: source.results.map { it.size }
+                combine(source.state, countFlow) { state, count ->
                     source.toPresentation(
                         state,
-                        results.size,
+                        count,
                         source.mediaSourceId == preferred,
                     )
                 }

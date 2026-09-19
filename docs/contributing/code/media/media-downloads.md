@@ -50,14 +50,28 @@ PikPak 恢复可用时，存储补回尚未恢复的记录，已有下载保留�
 
 1. `Preparing`：从条目收藏信息中取得条目与剧集信息，并检查本条目已有的下载。
    若已有 `episodeRange` 覆盖本集的合集资源（包括本会话刚创建的），直接复用它，不再选源。
-2. `AwaitingSelection`：创建查询会话与选源器，等待用户通过 `select` 选定资源。
+2. `AwaitingSelection`：创建条目级查询会话与选源器，等待用户通过 `select` 选定资源。
    查询在此期间持续进行，与选源弹窗是否可见无关。
-3. `Creating`：选中资源并保存选源偏好（含弹窗内对字幕组、分辨率等的修改），
-   然后通过 [AddDownloadUseCase][add] 持久化。持久化在应用作用域执行，
-   会话在此期间被取消时这一集仍会完成，只是不再处理后续剧集。
+3. `SelectingEpisodes`：选定资源后，取选源器 `subjectCandidates` 中与所选资源同一线路
+   （数据源 + 字幕组）的条目级候选，用 [planBatchDownload][planner] 为条目的每一集预览处置，
+   得到每集的可下载 / 已下载 / 未匹配状态与将使用的资源标题（`DownloadEpisodeOption`）。
+   该线路只覆盖当前这一话时跳过此步。用户通过 `confirmEpisodes` 勾选要一并下载的集，
+   或通过 `backToSelection` 回到选源；两者都不重新查询。
+4. `Creating`：选中资源并保存选源偏好（含弹窗内对字幕组、分辨率等的修改），
+   然后按确认的集合重新规划，为发起下载的那一集及勾选的每一集依次通过 [AddDownloadUseCase][add] 持久化，
+   一集一条记录；同一合集的多集共用同一个下载会话。持久化在应用作用域执行，
+   会话在此期间被取消时正在持久化的这一集仍会完成，只是不再处理后续剧集。
+   批量创建的集从待处理列表中移除，不再单独选源。
+
+[planBatchDownload][planner] 是纯函数：已有记录的集标记为已下载；已有合集覆盖的集复用该合集；
+用户点选的资源固定给发起下载的那一集，它是合集时也覆盖其包含的其他集；其余的集在同线路候选中做贪心集合覆盖，
+每轮取覆盖最多未处置集的合集（已知集数的合集优先于只知道整季的），合集至少覆盖两集才压倒单集，多个合集可以拼接；
+剩下的集取第一个覆盖它的单集资源，没有单集时才用合集；都没有则为未匹配。
+只要候选中有资源覆盖某集，该集就总是可下载，与勾选了哪些集无关。
 
 任何一步失败都以 `Finished(error)` 结束会话，已经创建的下载保留。`cancel` 取消查询、停止等待并跳过剩余剧集。
-`select` 只接受当前正在等待选源的那一集。`select` 与 `cancel` 可在任意线程调用。
+`select` 只接受当前正在等待选源的那一集；`confirmEpisodes` 与 `backToSelection` 只在选集时有效。
+这些方法可在任意线程调用。
 会话由 `DownloadRequestSessionFactory` 创建并随传入的父作用域取消；页面 ViewModel 用自己的作用域创建会话，
 离开页面即取消尚未选源的请求。
 
@@ -91,10 +105,13 @@ PikPak 恢复可用时，存储补回尚未恢复的记录，已有下载保留�
 条目下载页和全局页的详情栏共用 `SubjectDownloadsHost(presenter)`，统一挂接状态、选源弹窗、权限提示和错误反馈。
 presenter 持有当前会话并把会话状态映射为页面状态：
 
-- `Preparing` 与 `Creating` 显示为忙碌，此时其他剧集的下载按钮不可用；`AwaitingSelection` 不算忙碌，
-  行内仍显示下载按钮，点击可重新展示被隐藏的弹窗。
-- `AwaitingSelection` 对应选源弹窗；`Finished(error)` 对应添加失败的提示；取消或完成后不显示任何弹窗。
-- 正在等待其他剧集选源时请求新的剧集，会取消当前会话并为新剧集开启会话；正在准备或持久化时忽略新的请求。
+- `Preparing` 与 `Creating` 显示为忙碌，此时其他剧集的下载按钮不可用；`AwaitingSelection` 与
+  `SelectingEpisodes` 不算忙碌，行内仍显示下载按钮，点击可重新展示被隐藏的弹窗。
+- `AwaitingSelection` 与 `SelectingEpisodes` 共用同一个底部弹窗（`DownloadMediaPickerState` 以查询会话为准，
+  两步之间保持同一实例），分别显示选源视图与选集视图（`DownloadEpisodePicker`）。
+  选集视图列出条目的全部剧集，可下载的集可勾选，默认勾选本话及之后，并提供仅本话 / 本话及之后 / 全部的快捷选择；
+  已下载与未匹配的集不可勾选。`Finished(error)` 对应添加失败的提示；取消或完成后不显示任何弹窗。
+- 正在等待其他剧集选源或选集时请求新的剧集，会取消当前会话并为新剧集开启会话；正在准备或持久化时忽略新的请求。
   只有真正开启了新会话时才申请通知权限。
 - 条目信息与下载列表在页面重新订阅时保留上一次的值，只有用户主动重新加载时才回到加载中。
 
@@ -106,6 +123,7 @@ presenter 持有当前会话并把会话状态映射为页面状态：
 [manager]: ../../../../app/shared/app-data/src/commonMain/kotlin/domain/media/download/MediaDownloadManager.kt
 [download]: ../../../../app/shared/app-data/src/commonMain/kotlin/domain/media/download/MediaDownload.kt
 [session]: ../../../../app/shared/app-data/src/commonMain/kotlin/domain/media/download/DownloadRequestSession.kt
+[planner]: ../../../../app/shared/app-data/src/commonMain/kotlin/domain/media/download/BatchDownloadPlanner.kt
 [add]: ../../../../app/shared/app-data/src/commonMain/kotlin/domain/media/download/AddDownloadUseCase.kt
 [operations]: ../../../../app/shared/app-data/src/commonMain/kotlin/domain/media/download/DownloadOperations.kt
 [presenter]: ../../../../app/shared/ui-download/src/commonMain/kotlin/ui/download/subject/SubjectDownloadsPresenter.kt

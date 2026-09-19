@@ -130,6 +130,7 @@ import me.him188.ani.app.ui.lang.settings_category_app_ui
 import me.him188.ani.app.ui.lang.settings_category_data_playback
 import me.him188.ani.app.ui.lang.settings_category_network_storage
 import me.him188.ani.app.ui.lang.settings_category_others
+import me.him188.ani.app.ui.lang.settings_debug_dev_builds
 import me.him188.ani.app.ui.lang.settings_debug_mode_enabled
 import me.him188.ani.app.ui.lang.settings_tab_about
 import me.him188.ani.app.ui.lang.settings_tab_account
@@ -174,6 +175,7 @@ import me.him188.ani.app.ui.settings.tabs.media.source.rememberMediaSourceSelect
 import me.him188.ani.app.ui.settings.tabs.network.ConfigureProxyGroup
 import me.him188.ani.app.ui.settings.tabs.network.ServerSelectionGroup
 import me.him188.ani.app.ui.settings.tabs.theme.ThemeGroup
+import me.him188.ani.app.ui.update.devbuild.DevBuildsTab
 import me.him188.ani.utils.platform.hasScrollingBug
 import org.jetbrains.compose.resources.getString
 import org.jetbrains.compose.resources.stringResource
@@ -332,6 +334,9 @@ fun SettingsScreen(
                     SettingsTab.DEBUG -> DebugTab(
                         vm.debugSettingsState,
                         tabModifier,
+                        onNavigateToDevBuilds = {
+                            navigateTo(DetailPaneRoutes.DevBuilds)
+                        },
                     )
 
                     else -> SettingsTab(
@@ -811,6 +816,27 @@ internal fun SettingsPageLayout(
                             }
                         }
                     }
+                    entry<DetailPaneRoutes.DevBuilds> {
+                        DetailPaneRoute(
+                            topAppBar = {
+                                AniTopAppBar(
+                                    title = { AniTopAppBarDefaults.Title(stringResource(Lang.settings_debug_dev_builds)) },
+                                    navigationIcon = {
+                                        BackNavigationIconButton(navigateUp)
+                                    },
+                                    colors = topAppBarColors,
+                                    windowInsets = topAppBarWindowInsets,
+                                    size = topAppBarSize,
+                                    scrollBehavior = detailPaneTopAppBarScrollBehavior,
+                                )
+                            },
+                            detailPaneTopAppBarScrollBehavior,
+                        ) {
+                            RouteContent {
+                                DevBuildsTab(Modifier.fillMaxSize())
+                            }
+                        }
+                    }
                     },
                 )
             }
@@ -935,6 +961,9 @@ sealed class DetailPaneRoutes : NavKey {
 
     @Serializable
     data object BangumiSync : DetailPaneRoutes()
+
+    @Serializable
+    data object DevBuilds : DetailPaneRoutes()
 }
 
 private val DetailPaneBackStackSaver: Saver<SnapshotStateList<DetailPaneRoutes>, Any> = listSaver(
@@ -950,6 +979,7 @@ private val DetailPaneBackStackSaver: Saver<SnapshotStateList<DetailPaneRoutes>,
                     "OpenSourceLicenses" -> DetailPaneRoutes.OpenSourceLicenses
                     "Developers" -> DetailPaneRoutes.Developers
                     "BangumiSync" -> DetailPaneRoutes.BangumiSync
+                    "DevBuilds" -> DetailPaneRoutes.DevBuilds
                     else -> DetailPaneRoutes.Main
                 }
             }.toMutableStateList()

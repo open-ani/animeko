@@ -28,6 +28,7 @@ import kotlinx.coroutines.withTimeoutOrNull
 import me.him188.ani.app.data.models.preference.MediaPreference
 import me.him188.ani.app.data.repository.user.SettingsRepository
 import me.him188.ani.app.domain.episode.CreateMediaFetchSelectBundleFlowUseCase
+import me.him188.ani.app.domain.episode.SubjectMediaFetchSessions
 import me.him188.ani.app.domain.episode.MediaFetchSelectBundle
 import me.him188.ani.app.domain.episode.SubjectEpisodeInfoBundle
 import me.him188.ani.app.domain.media.fetch.MediaSourceFetchState
@@ -61,7 +62,16 @@ class MediaSelectionTraceRecorder(
     fun decorate(delegate: CreateMediaFetchSelectBundleFlowUseCase): CreateMediaFetchSelectBundleFlowUseCase =
         object : CreateMediaFetchSelectBundleFlowUseCase {
             override fun invoke(subjectEpisodeInfoBundleFlow: Flow<SubjectEpisodeInfoBundle?>): Flow<MediaFetchSelectBundle?> =
-                delegate(subjectEpisodeInfoBundleFlow).transformLatest { bundle ->
+                delegate(subjectEpisodeInfoBundleFlow).recording()
+
+            override fun invoke(
+                subjectEpisodeInfoBundleFlow: Flow<SubjectEpisodeInfoBundle?>,
+                fetchSessions: SubjectMediaFetchSessions,
+            ): Flow<MediaFetchSelectBundle?> =
+                delegate(subjectEpisodeInfoBundleFlow, fetchSessions).recording()
+
+            private fun Flow<MediaFetchSelectBundle?>.recording(): Flow<MediaFetchSelectBundle?> =
+                transformLatest { bundle ->
                     coroutineScope {
                         if (bundle != null) launch(start = CoroutineStart.UNDISPATCHED) {
                             try {

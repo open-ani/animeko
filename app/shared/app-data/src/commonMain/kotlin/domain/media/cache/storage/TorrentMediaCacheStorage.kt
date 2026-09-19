@@ -124,29 +124,13 @@ class TorrentMediaCacheStorage(
         }
     }
 
-    /**
-     * The torrent row describes the whole torrent, so it may only fill in a record that is the media's
-     * only one. A season pack's other episodes keep their own (empty) completion state and restore
-     * through the engine.
-     */
-    private suspend fun backfillLegacyMetadata(origin: Media, metadata: MediaCacheMetadata): MediaCacheMetadata {
-        if (metadata.pathInTorrent != null) return metadata
-        val recordCount = metadataFlow.first().count { it.origin.mediaId == origin.mediaId }
-        if (recordCount != 1) return metadata
-        return torrentEngine.backfillFromTorrentRow(origin.mediaId, metadata)
-    }
-
     override suspend fun restoreFile(
         origin: Media,
         metadata: MediaCacheMetadata,
         reportRecovered: suspend (MediaCache) -> Unit,
     ): MediaCache? = withContext(Dispatchers.IO_) {
         try {
-            val upgraded = backfillLegacyMetadata(origin, metadata)
-            val cache = super.restoreFile(origin, upgraded, reportRecovered)
-            if (cache != null && upgraded != metadata) {
-                persistMetadata(cache, upgraded)
-            }
+            val cache = super.restoreFile(origin, metadata, reportRecovered)
 
             when (cache) {
                 is TorrentMediaCacheEngine.TorrentMediaCache -> {

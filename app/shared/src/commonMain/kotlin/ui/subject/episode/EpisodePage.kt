@@ -19,6 +19,7 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.WindowInsetsSides
+import androidx.compose.foundation.layout.displayCutout
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -500,7 +501,7 @@ private fun EpisodeScreenTabletVeryWide(
                 modifier = Modifier.weight(1f).fillMaxHeight(),
                 maintainAspectRatio = false,
                 windowInsets = if (vm.isFullscreen) {
-                    windowInsets
+                    fullscreenVideoWindowInsets(windowInsets)
                 } else {
                     // 非全屏右边还有东西
                     // Consider #1923 平板横屏模式下播放器底栏和导航栏重合
@@ -704,7 +705,7 @@ private fun EpisodeScreenContentPhone(
 ) {
     var showDanmakuEditor by rememberSaveable { mutableStateOf(false) }
     val toaster = LocalToaster.current
-    val videoWindowInsets = windowInsets
+    val defaultVideoWindowInsets = windowInsets
         .union(WindowInsets.desktopTitleBar)
         .run {
             // iOS 上的 top window insets 没有被正确消耗, 手动排除 top insets
@@ -714,7 +715,12 @@ private fun EpisodeScreenContentPhone(
                 only(WindowInsetsSides.Top + WindowInsetsSides.Horizontal)
             }
         }
-    val columnInsets = videoWindowInsets.only(WindowInsetsSides.Horizontal)
+    val videoWindowInsets = if (vm.isFullscreen) {
+        fullscreenVideoWindowInsets(defaultVideoWindowInsets)
+    } else {
+        defaultVideoWindowInsets
+    }
+    val columnInsets = defaultVideoWindowInsets.only(WindowInsetsSides.Horizontal)
 
     EpisodeScreenContentPhoneScaffold(
         videoOnly = vm.isFullscreen,
@@ -942,6 +948,24 @@ fun EpisodeScreenContentPhoneScaffold(
                 }
             }
         }
+    }
+}
+
+/**
+ * 全屏播放时传给播放器控件的 window insets.
+ *
+ * iOS 横屏下 [WindowInsets.systemBars] 会把刘海宽度对称地报告在左右两侧, 并且还带有顶部和 home indicator 的高度,
+ * 直接使用会让控件离屏幕边缘过远. 全屏时只需要避开真正有刘海 (前置摄像头) 的那一侧:
+ * Compose 在 iOS 上的 [WindowInsets.displayCutout] 只包含摄像头所在的那一侧.
+ *
+ * 其他平台保持 [default] 不变.
+ */
+@Composable
+private fun fullscreenVideoWindowInsets(default: WindowInsets): WindowInsets {
+    return if (LocalPlatform.current.isIos()) {
+        WindowInsets.displayCutout.only(WindowInsetsSides.Horizontal)
+    } else {
+        default
     }
 }
 

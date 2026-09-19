@@ -70,9 +70,8 @@ MediaSelector 主要包含以下四个阶段：
 在整个[资源查询-选择-播放流程](../media-framework.md#资源查询-选择-播放流程)中，资源主要是在
 `MediaSelector` 环节过滤和排序。
 
-> 这里说“主要是”，是因为 `MediaSource` 自身可以进行一些过滤操作。但是这只会进行一些非常保守的过滤。
-> 而且让 `Source` 自己过滤的效果并不好，[#492](https://github.com/open-ani/animeko/issues/492)
-> 可能会将所有过滤算法移入 MediaSelector 阶段。
+> 这里说“主要是”，是因为 `MediaSource` 自身可以进行一些非常保守的过滤（例如按条目名）。
+> 数据源返回整个条目的资源，不按当前剧集裁剪；按剧集筛选是 `MediaSelector` 的第 0 条规则。
 
 > [!TIP]
 >
@@ -128,6 +127,14 @@ Sealed class [`MaybeExcludedMedia`][MaybeExcludedMedia] 表示一个可能被排
 ### 过滤规则列表
 
 参考代码中 [`MediaSelectorFilterSortAlgorithm.filterMediaList`][MediaSelectorFilterSortAlgorithm]。
+
+第 0 条规则是**当前剧集匹配**：`episodeRange` 包含当前剧集的 `sort` 或 `ep` 才保留，
+否则以 `MediaExclusionReason.EpisodeMismatch` 排除；`episodeRange` 为 `null`（无法解析集数）也视为不匹配。
+条目名以 OVA 结尾的条目额外接受 `OVA` 类型的特别篇。它先于本地缓存豁免，
+否则看第 2 话时会自动选中第 1 话的缓存。选源 UI 不把这类排除展示在“显示被排除的资源”中。
+
+`MediaSelector.subjectCandidates` 跳过第 0 条规则、保留其余规则与排序，
+提供整个条目的候选，供[批量下载](media-downloads.md#添加下载)按线路规划各集的资源。
 
 ## 排序阶段
 

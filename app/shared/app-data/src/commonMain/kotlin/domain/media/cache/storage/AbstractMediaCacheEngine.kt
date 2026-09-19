@@ -67,14 +67,10 @@ abstract class AbstractDataStoreMediaCacheStorage(
         metadataFlow.first().any { it.origin.mediaId == mediaId }
 
     /**
-     * 已经恢复的 [LocalFileMediaCache], 不会重复恢复.
+     * 已经恢复的 [LocalFileMediaCache] 的 [MediaCache.cacheId], 不会重复恢复.
+     * 同一合集的多条记录共用 [Media.mediaId], 所以不能按资源 id 记.
      */
     protected val restoredLocalFileMediaCacheIds = MutableStateFlow(persistentListOf<String>())
-
-    protected fun recordKey(mediaId: String, metadata: MediaCacheMetadata): String =
-        "$mediaId/${metadata.subjectId}/${metadata.episodeId}"
-
-    private fun recordKey(cache: MediaCache): String = recordKey(cache.origin.mediaId, cache.metadata)
 
     open suspend fun refreshCache(): List<MediaCache> {
         val allRecovered = MutableStateFlow(persistentListOf<MediaCache>())
@@ -84,7 +80,7 @@ abstract class AbstractDataStoreMediaCacheStorage(
 
         supervisorScope {
             metadataFlowSnapshot.forEach { (origin, metadata, _) ->
-                if (recordKey(origin.mediaId, metadata) in restoredLocalFileMediaCacheIds.value) return@forEach
+                if (MediaCache.calculateCacheId(origin.mediaId, metadata) in restoredLocalFileMediaCacheIds.value) return@forEach
 
                 semaphore.acquire()
                 @OptIn(DelicateCoroutinesApi::class)
@@ -92,7 +88,7 @@ abstract class AbstractDataStoreMediaCacheStorage(
                     try {
                         restoreFile(origin, metadata) {
                             if (it is LocalFileMediaCache) {
-                                restoredLocalFileMediaCacheIds.update { plus(recordKey(it)) }
+                                restoredLocalFileMediaCacheIds.update { plus(it.cacheId) }
                             }
                             allRecovered.update { plus(it) }
                         }
@@ -106,7 +102,7 @@ abstract class AbstractDataStoreMediaCacheStorage(
         // 新 restore 的加上 list 中已经有的 LocalFileMediaCache
         listFlow.update {
             allRecovered.value +
-                    listFlow.value.filter { recordKey(it) in restoredLocalFileMediaCacheIds.value }
+                    listFlow.value.filter { it.cacheId in restoredLocalFileMediaCacheIds.value }
         }
         return allRecovered.value
     }
@@ -211,7 +207,7 @@ abstract class AbstractDataStoreMediaCacheStorage(
     override suspend fun deleteFirst(predicate: (MediaCache) -> Boolean): Boolean {
         val cache = listFlow.value.firstOrNull(predicate) ?: return false
         listFlow.update { minus(cache) }
-        restoredLocalFileMediaCacheIds.update { minus(recordKey(cache)) }
+        restoredLocalFileMediaCacheIds.update { minus(cache.cacheId) }
         withContext(Dispatchers.IO_) {
             // 多个存储共用同一个 datastore, 只删除本引擎的记录, 其他引擎的同资源同剧集记录保留.
             datastore.updateData { list ->

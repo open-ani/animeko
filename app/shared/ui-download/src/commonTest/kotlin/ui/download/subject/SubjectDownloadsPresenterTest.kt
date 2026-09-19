@@ -53,6 +53,7 @@ import me.him188.ani.app.ui.download.components.DownloadStatus
 import me.him188.ani.app.ui.download.fakeMediaSelectorFactory
 import me.him188.ani.app.ui.download.testDownloadCache
 import me.him188.ani.app.ui.download.testSubjectCollection
+import me.him188.ani.datasources.api.topic.EpisodeRange
 import me.him188.ani.datasources.api.topic.UnifiedCollectionType
 import me.him188.ani.utils.platform.annotations.TestOnly
 
@@ -323,6 +324,57 @@ class SubjectDownloadsPresenterTest {
         subjects.collection.value = collection
         val reloaded = awaitState { !it.episodesLoading && !it.downloadsLoading }
         assertEquals("中文条目名称", reloaded.title)
+    }
+
+    @Test
+    fun `episode picker follows the session and keeps the media picker`() = withFixture {
+        val pack = TestMediaList.first().copy(mediaId = "pack", episodeRange = EpisodeRange.range(1, 3))
+        fetcher.mediaListFor = { listOf(media, pack) }
+        assertTrue(presenter.requestDownload(1))
+        val picker = assertNotNull(awaitDialogs { it?.selection != null }?.selection)
+
+        presenter.selectMedia(1, media)
+        val selecting = assertNotNull(awaitDialogs { it?.episodePicker != null })
+        assertSame(picker, selecting.selection)
+        val episodePicker = assertNotNull(selecting.episodePicker)
+        assertEquals(1, episodePicker.episodeId)
+        assertSame(media, episodePicker.chosen)
+        assertEquals(listOf(1, 2, 3), episodePicker.options.map { it.episodeId })
+        assertEquals(listOf(true, false, false), episodePicker.options.map { it.isCurrent })
+        val awaiting = awaitState { !it.request.busy }
+        assertEquals(DownloadRequestUiState(episodeIds = setOf(1), busy = false, canCancel = true), awaiting.request)
+        // 选集期间再次请求同一集不会重建会话.
+        assertFalse(presenter.requestDownload(1))
+
+        presenter.backToMediaSelection()
+        val back = assertNotNull(awaitDialogs { it?.episodePicker == null && it?.selection != null })
+        assertSame(picker, back.selection)
+
+        presenter.selectMedia(1, media)
+        awaitDialogs { it?.episodePicker != null }
+        presenter.confirmEpisodes(setOf(2))
+        val finished = awaitState { state -> !state.request.canCancel && state.downloads.size == 2 }
+        assertEquals(DownloadRequestUiState(), finished.request)
+        assertNull(awaitDialogs { it == null })
+        assertEquals(listOf(1, 2), addDownload.createdEpisodeIds)
+    }
+
+    @Test
+    fun `requesting another episode while selecting episodes cancels the previous session`() = withFixture {
+        val pack = TestMediaList.first().copy(mediaId = "pack", episodeRange = EpisodeRange.range(1, 3))
+        fetcher.mediaListFor = { listOf(media, pack) }
+        assertTrue(presenter.requestDownload(1))
+        awaitDialogs { it?.selection?.episodeId == 1 }
+        presenter.selectMedia(1, media)
+        awaitDialogs { it?.episodePicker != null }
+
+        assertTrue(presenter.requestDownload(2))
+        val dialogs = assertNotNull(awaitDialogs { it?.selection?.episodeId == 2 })
+        assertNull(dialogs.episodePicker)
+        runCurrent()
+        assertEquals(setOf(1), fetcher.releasedEpisodeIds)
+        assertEquals(setOf(2), presenter.uiState.value.request.episodeIds)
+        assertTrue(addDownload.createdEpisodeIds.isEmpty())
     }
 
     /**

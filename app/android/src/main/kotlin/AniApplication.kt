@@ -32,6 +32,7 @@ import me.him188.ani.android.activity.MainActivity
 import me.him188.ani.android.provider.ExternalContentProviderFactoryImpl
 import me.him188.ani.app.data.persistent.dataStores
 import me.him188.ani.app.data.persistent.database.AniDatabase
+import me.him188.ani.app.data.persistent.database.dao.TorrentCacheEpisodeEntity
 import me.him188.ani.app.data.persistent.database.dao.TorrentCacheInfoEntity
 import me.him188.ani.app.data.repository.user.SettingsRepository
 import me.him188.ani.app.data.repository.user.UserRepository
@@ -120,11 +121,13 @@ class AniApplication : Application() {
 
         val scope = createAppRootCoroutineScope()
 
-        val anitorrentCacheEntities: MutableStateFlow<Flow<List<TorrentCacheInfoEntity>>?> = MutableStateFlow(null)
+        val anitorrentTorrents: MutableStateFlow<Flow<List<TorrentCacheInfoEntity>>?> = MutableStateFlow(null)
+        val anitorrentEpisodes: MutableStateFlow<Flow<List<TorrentCacheEpisodeEntity>>?> = MutableStateFlow(null)
         val mediaCacheBaseSaveDir: MutableStateFlow<File?> = MutableStateFlow(null)
         val connectionManager = TorrentServiceConnectionManager(
             this,
-            serviceCacheEntitiesFlow = anitorrentCacheEntities,
+            serviceTorrentsFlow = anitorrentTorrents,
+            serviceEpisodesFlow = anitorrentEpisodes,
             mediaCacheBaseSaveDirFlow = mediaCacheBaseSaveDir,
             startServiceImpl = ::startAniTorrentService,
             stopServiceImpl = ::stopService,
@@ -186,8 +189,13 @@ class AniApplication : Application() {
         val anitorrentMediaIds = dataStores.mediaCacheMetadataStore.data.map { saves ->
             saves.filter { it.engine == MediaCacheEngineKey.Anitorrent }.map { it.origin.mediaId }.toSet()
         }
-        anitorrentCacheEntities.value = combine(
-            koin.get<AniDatabase>().torrentCacheInfoDao().getAll(),
+        val torrentCacheInfoDao = koin.get<AniDatabase>().torrentCacheInfoDao()
+        anitorrentTorrents.value = combine(
+            torrentCacheInfoDao.getAll(),
+            anitorrentMediaIds,
+        ) { entities, ids -> entities.filter { it.mediaId in ids } }
+        anitorrentEpisodes.value = combine(
+            torrentCacheInfoDao.getAllEpisodes(),
             anitorrentMediaIds,
         ) { entities, ids -> entities.filter { it.mediaId in ids } }
         mediaCacheBaseSaveDir.value = File(koin.get<MediaSaveDirProvider>().saveDir)
