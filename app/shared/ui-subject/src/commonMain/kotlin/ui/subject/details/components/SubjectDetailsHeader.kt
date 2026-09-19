@@ -47,8 +47,10 @@ import me.him188.ani.app.data.models.subject.SubjectInfo
 import me.him188.ani.app.data.models.subject.SubjectProgressInfo
 import me.him188.ani.app.data.models.subject.TestCoverImage
 import me.him188.ani.app.data.models.subject.TestSubjectInfo
+import me.him188.ani.app.data.models.subject.preferredDisplayName
 import me.him188.ani.app.ui.foundation.AniImageLoadSuccess
 import me.him188.ani.app.ui.foundation.AsyncImage
+import me.him188.ani.app.ui.foundation.LocalSubjectAppearanceSettings
 import me.him188.ani.app.ui.foundation.ProvideCompositionLocalsForPreview
 import me.him188.ani.app.ui.foundation.ifThen
 import me.him188.ani.app.ui.foundation.layout.currentWindowAdaptiveInfo1
@@ -85,12 +87,15 @@ internal fun SubjectDetailsHeader(
     modifier: Modifier = Modifier,
     onClickCover: (() -> Unit)? = null,
 ) {
+    val useOriginalTitle = LocalSubjectAppearanceSettings.current.useOriginalTitle
+    val primaryTitle = info?.preferredDisplayName(useOriginalTitle) ?: ""
+    val secondaryTitle = if (useOriginalTitle) info?.displayName else info?.name
     if (currentWindowAdaptiveInfo1().isWidthAtLeastMedium) {
         SubjectDetailsHeaderWide(
             coverImageUrl = coverImageUrl,
             title = {
                 Text(
-                    info?.displayName ?: "",
+                    primaryTitle,
                     /*Modifier.useSharedTransitionScope { modifier, animatedVisibilityScope ->
                         modifier.sharedElement(
                             rememberSharedContentState(SharedTransitionKeys.subjectTitle(info.subjectId)),
@@ -113,8 +118,8 @@ internal fun SubjectDetailsHeader(
     } else {
         SubjectDetailsHeaderCompact(
             coverImageUrl = coverImageUrl,
-            title = { Text(info?.displayName ?: "") },
-            subtitle = { Text(info?.name ?: "") },
+            title = { Text(primaryTitle) },
+            subtitle = { Text(secondaryTitle ?: "") },
             seasonTags = { seasonTags() },
             collectionData = collectionData,
             collectionAction = collectionAction,

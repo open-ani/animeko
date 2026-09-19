@@ -15,6 +15,9 @@ class RelatedSubjectInfo(
 ) {
     val displayName get() = nameCn.ifBlank { name } ?: nameCn
 
+    fun preferredDisplayName(useOriginalTitle: Boolean): String =
+        if (useOriginalTitle) name?.ifBlank { nameCn } ?: nameCn else displayName
+
     companion object {
         fun sortList(subjectList: List<RelatedSubjectInfo>): List<RelatedSubjectInfo> {
             return subjectList.sortedByDescending {

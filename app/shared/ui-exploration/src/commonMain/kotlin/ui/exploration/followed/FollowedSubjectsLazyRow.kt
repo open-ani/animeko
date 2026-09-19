@@ -50,9 +50,11 @@ import me.him188.ani.app.data.models.preference.NsfwMode
 import me.him188.ani.app.data.models.subject.FollowedSubjectInfo
 import me.him188.ani.app.data.models.subject.TestFollowedSubjectInfos
 import me.him188.ani.app.data.models.subject.hasNewEpisodeToPlay
+import me.him188.ani.app.data.models.subject.preferredDisplayName
 import me.him188.ani.app.data.models.subject.subjectInfo
 import me.him188.ani.app.ui.external.placeholder.placeholder
 import me.him188.ani.app.ui.foundation.AsyncImage
+import me.him188.ani.app.ui.foundation.LocalSubjectAppearanceSettings
 import me.him188.ani.app.ui.foundation.ProvideCompositionLocalsForPreview
 import me.him188.ani.app.ui.foundation.layout.BasicCarouselItem
 import me.him188.ani.app.ui.foundation.layout.CarouselItemDefaults
@@ -186,8 +188,9 @@ private fun FollowedSubjectItem(
     shape: Shape,
     modifier: Modifier = Modifier,
 ) {
+    val useOriginalTitle = LocalSubjectAppearanceSettings.current.useOriginalTitle
     BasicCarouselItem(
-        label = { CarouselItemDefaults.Text(item?.subjectInfo?.displayName ?: "") },
+        label = { CarouselItemDefaults.Text(item?.subjectInfo?.preferredDisplayName(useOriginalTitle) ?: "") },
         modifier.placeholder(item == null, shape = shape),
         supportingText = {
             if (item != null) {
@@ -215,7 +218,7 @@ private fun FollowedSubjectItem(
                 AsyncImage(
                     item.subjectInfo.imageLarge,
                     modifier = Modifier.size(imageSize),
-                    contentDescription = item.subjectInfo.displayName,
+                    contentDescription = item.subjectInfo.preferredDisplayName(useOriginalTitle),
                     contentScale = ContentScale.Crop,
                 )
             }

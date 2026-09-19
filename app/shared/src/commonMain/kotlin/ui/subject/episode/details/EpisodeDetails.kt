@@ -84,9 +84,10 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
-import me.him188.ani.app.data.models.episode.displayName
+import me.him188.ani.app.data.models.episode.preferredDisplayName
 import me.him188.ani.app.data.models.subject.SubjectInfo
 import me.him188.ani.app.data.models.subject.Tag
+import me.him188.ani.app.data.models.subject.preferredDisplayName
 import me.him188.ani.app.domain.danmaku.DanmakuLoadingState
 import me.him188.ani.app.domain.episode.SetEpisodeCollectionTypeRequest
 import me.him188.ani.app.domain.episode.SubjectRecommendation
@@ -97,6 +98,7 @@ import me.him188.ani.app.navigation.LocalNavigator
 import me.him188.ani.app.navigation.SubjectDetailPlaceholder
 import me.him188.ani.app.platform.LocalContext
 import me.him188.ani.app.platform.navigation.LocalBrowserNavigator
+import me.him188.ani.app.ui.foundation.LocalSubjectAppearanceSettings
 import me.him188.ani.app.ui.foundation.ProvideCompositionLocalsForPreview
 import me.him188.ani.app.ui.foundation.animation.AniAnimatedVisibility
 import me.him188.ani.app.ui.foundation.animation.LocalAniMotionScheme
@@ -181,8 +183,6 @@ class EpisodeDetailsState(
     val subjectId by derivedStateOf { subject.subjectId }
 //    var subjectDetailsState by mutableStateOf<SubjectDetailsState?>(null)
 //    val subjectDetailsStateError: SearchProblem
-
-    val subjectTitle by derivedStateOf { subject.displayName }
 
     var showEpisodes: Boolean by mutableStateOf(false)
 }
@@ -274,7 +274,7 @@ fun EpisodeDetails(
         subjectTitle = {
             Row {
                 Text(
-                    state.subjectTitle,
+                    state.subjectInfo.value.preferredDisplayName(LocalSubjectAppearanceSettings.current.useOriginalTitle),
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis,
                 )
@@ -291,7 +291,8 @@ fun EpisodeDetails(
                         verticalAlignment = Alignment.CenterVertically,
                     ) {
                         Text(
-                            "${it.episodeInfo.sort}  ${it.episodeInfo.displayName}",
+                            "${it.episodeInfo.sort}  " +
+                                it.episodeInfo.preferredDisplayName(LocalSubjectAppearanceSettings.current.useOriginalTitle),
                             Modifier.weight(1f),
                             style = MaterialTheme.typography.bodyLarge,
                             color = MaterialTheme.colorScheme.onSurfaceVariant,

@@ -76,6 +76,9 @@ import me.him188.ani.app.ui.lang.settings_app_nsfw_content
 import me.him188.ani.app.ui.lang.settings_app_nsfw_display
 import me.him188.ani.app.ui.lang.settings_app_nsfw_hide
 import me.him188.ani.app.ui.lang.settings_app_search
+import me.him188.ani.app.ui.lang.settings_app_subject_title
+import me.him188.ani.app.ui.lang.settings_app_use_original_title
+import me.him188.ani.app.ui.lang.settings_app_use_original_title_description
 import me.him188.ani.app.ui.lang.settings_app_language_system
 import me.him188.ani.app.ui.lang.settings_player
 import me.him188.ani.app.ui.lang.settings_player_audio_time_stretch
@@ -333,6 +336,21 @@ fun SettingsScope.AppearanceGroup(
             },
             title = { Text(stringResource(Lang.settings_app_episode_images)) },
             description = { Text(stringResource(Lang.settings_app_episode_images_description)) },
+        )
+    }
+
+    Group(title = { Text(stringResource(Lang.settings_app_subject_title)) }, useThinHeader = true) {
+        SwitchItem(
+            checked = uiSettings.subjectAppearance.useOriginalTitle,
+            onCheckedChange = {
+                state.update(
+                    uiSettings.copy(
+                        subjectAppearance = uiSettings.subjectAppearance.copy(useOriginalTitle = it),
+                    ),
+                )
+            },
+            title = { Text(stringResource(Lang.settings_app_use_original_title)) },
+            description = { Text(stringResource(Lang.settings_app_use_original_title_description)) },
         )
     }
 }

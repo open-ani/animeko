@@ -12,13 +12,40 @@ package me.him188.ani.app.ui.download.subject
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertIs
+import me.him188.ani.app.data.models.episode.EpisodeCollectionInfo
+import me.him188.ani.app.data.models.episode.EpisodeInfo
+import me.him188.ani.app.data.models.subject.createTestSubjectCollection
 import me.him188.ani.app.ui.download.components.createTestDownloadItem
 import me.him188.ani.datasources.api.EpisodeSort
+import me.him188.ani.datasources.api.EpisodeType
 import me.him188.ani.datasources.api.topic.UnifiedCollectionType
 import me.him188.ani.utils.platform.annotations.TestOnly
 
 @OptIn(TestOnly::class)
 class SubjectDownloadsPresentationTest {
+    @Test
+    fun `downloadEpisodes carries both the Chinese and original episode name`() {
+        val collection = createTestSubjectCollection(
+            1,
+            listOf(
+                EpisodeCollectionInfo(
+                    episodeInfo = EpisodeInfo(
+                        episodeId = 1,
+                        type = EpisodeType.MainStory,
+                        sort = EpisodeSort(1),
+                        name = "転がる岩、君に朝が降る",
+                        nameCn = "滚石与朝阳",
+                    ),
+                    collectionType = UnifiedCollectionType.WISH,
+                ),
+            ),
+            UnifiedCollectionType.DOING,
+        )
+        val item = collection.downloadEpisodes().single()
+        assertEquals("滚石与朝阳", item.title)
+        assertEquals("転がる岩、君に朝が降る", item.originalTitle)
+    }
+
     @Test
     fun `multiple downloads of one episode retain separate identities and are deduplicated`() {
         val first = createTestDownloadItem(1).copy(id = "first")

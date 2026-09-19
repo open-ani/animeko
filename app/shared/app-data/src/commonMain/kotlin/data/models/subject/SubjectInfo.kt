@@ -151,6 +151,16 @@ data class SubjectInfo(
 @Stable
 val SubjectInfo.nameCnOrName get() = nameCn.takeIf { it.isNotBlank() } ?: name
 
+@Stable
+val SubjectInfo.nameOrNameCn get() = name.ifBlank { nameCn }
+
+/**
+ * 根据用户偏好选择的显示名称.
+ * @param useOriginalTitle 为 `true` 时优先显示原名 ([name]), 为 `false` 时行为与 [displayName] 一致.
+ */
+fun SubjectInfo.preferredDisplayName(useOriginalTitle: Boolean): String =
+    if (useOriginalTitle) nameOrNameCn else displayName
+
 fun SubjectInfo.toNavPlaceholder(): SubjectDetailPlaceholder {
     return SubjectDetailPlaceholder(subjectId, name, nameCn, imageLarge)
 }

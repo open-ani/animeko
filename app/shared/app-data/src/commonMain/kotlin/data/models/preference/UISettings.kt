@@ -46,6 +46,7 @@ data class UISettings(
     val myCollections: MyCollectionsSettings = MyCollectionsSettings.Default,
     val searchSettings: SearchSettings = SearchSettings.Default,
     val episodeProgress: EpisodeProgressSettings = EpisodeProgressSettings.Default,
+    val subjectAppearance: SubjectAppearanceSettings = SubjectAppearanceSettings.Default,
     val desktopCloseBehavior: DesktopCloseBehavior = DesktopCloseBehavior.EXIT,
     @Suppress("PropertyName") @Transient val _placeholder: Int = 0,
 ) {
@@ -87,6 +88,18 @@ data class MyCollectionsSettings(
     companion object {
         @Stable
         val Default = MyCollectionsSettings()
+    }
+}
+
+@Serializable
+@Immutable
+data class SubjectAppearanceSettings(
+    /** 优先显示条目原名 (通常为日文), 而非 Bangumi 简体中文名. */
+    val useOriginalTitle: Boolean = false,
+) {
+    companion object {
+        @Stable
+        val Default = SubjectAppearanceSettings()
     }
 }
 

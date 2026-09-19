@@ -29,8 +29,10 @@ import me.him188.ani.app.data.models.subject.SubjectAiringKind
 import me.him188.ani.app.data.models.subject.SubjectInfo
 import me.him188.ani.app.data.models.subject.kind
 import me.him188.ani.app.data.models.subject.nameCnOrName
+import me.him188.ani.app.data.models.subject.nameOrNameCn
 import me.him188.ani.app.data.network.LightRelatedCharacterInfo
 import me.him188.ani.app.data.network.LightRelatedPersonInfo
+import me.him188.ani.app.ui.foundation.LocalSubjectAppearanceSettings
 import me.him188.ani.app.ui.foundation.ProvideCompositionLocalsForPreview
 import me.him188.ani.app.ui.foundation.layout.currentWindowAdaptiveInfo1
 import me.him188.ani.app.ui.foundation.layout.paneVerticalPadding
@@ -61,6 +63,8 @@ class SubjectPreviewItemInfo(
      * 隐藏此条目. 用于 workaround bangumi 搜出来不满足条件的条目
      */
     val hide: Boolean = false,
+    /** 条目原名 (通常为日文), 供"显示原名"设置开启时使用; 默认与 [title] 相同. */
+    val originalTitle: String = title,
 ) {
     companion object {
         /**
@@ -152,6 +156,7 @@ class SubjectPreviewItemInfo(
                 nsfw = subjectInfo.nsfw,
                 nsfwMode = if (subjectInfo.nsfw) nsfwModeSettings else NsfwMode.DISPLAY,
                 hide = hide,
+                originalTitle = subjectInfo.nameOrNameCn,
             )
         }
 
@@ -221,7 +226,8 @@ fun SubjectPreviewItem(
         SubjectItemDefaults.Image(info.imageUrl)
     },
     title: @Composable (Int) -> Unit = { maxLines ->
-        Text(info.title, maxLines = maxLines)
+        val useOriginalTitle = LocalSubjectAppearanceSettings.current.useOriginalTitle
+        Text(if (useOriginalTitle) info.originalTitle else info.title, maxLines = maxLines)
     },
 ) {
     SubjectItemLayout(

@@ -570,6 +570,7 @@ private fun AniAppContentImpl(
                             it.subjectId,
                             placeholder = SubjectDetailPlaceholder(
                                 id = it.subjectId,
+                                name = it.subjectOriginalTitle,
                                 nameCN = it.subjectTitle,
                                 coverUrl = it.imageUrl,
                             ),
