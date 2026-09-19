@@ -253,8 +253,16 @@ class LabelFirstRawTitleParser : RawTitleParser() {
             }
 
             seasonEpisodePattern.matchEntire(original)?.let { result ->
-                // TODO: consider season
-                return EpisodeRange.single(EpisodeSort(result.groupValues[2]))
+                // 季号 0 是 Plex 与 Sonarr 一类工具给特别篇的约定: S00E01 是第一个 SP, 不是第一集.
+                // 当成正片会让整季包里的 S00E01 抢在 S01E01 前面被选中, 第一集放出来是 SP.
+                // 其他季号仍只看集号, 季与番剧条目的对应关系这里判断不了.
+                val episode = result.groupValues[2]
+                val sort = if (result.groupValues[1].toIntOrNull() == 0) {
+                    EpisodeSort(episode.toInt(), EpisodeType.SP)
+                } else {
+                    EpisodeSort(episode)
+                }
+                return EpisodeRange.single(sort)
             }
 
             seasonPattern.matchEntire(original)?.let { result ->

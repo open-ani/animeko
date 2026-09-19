@@ -105,6 +105,11 @@ interface MediaCacheStorage : AutoCloseable {
     ): MediaCache
 
     /**
+     * 改写一条已有记录的 metadata, 返回按新 metadata 重新打开的记录. 没有这条记录时返回 `null`.
+     */
+    suspend fun updateMetadata(cache: MediaCache, metadata: MediaCacheMetadata): MediaCache?
+
+    /**
      * Delete the cache if it exists.
      * @return `true` if a cache was deleted, `false` if there wasn't such a cache.
      */
@@ -217,6 +222,10 @@ class TestMediaCacheStorage : MediaCacheStorage {
         episodeMetadata: EpisodeMetadata,
         resume: Boolean
     ): MediaCache {
+        throw UnsupportedOperationException()
+    }
+
+    override suspend fun updateMetadata(cache: MediaCache, metadata: MediaCacheMetadata): MediaCache {
         throw UnsupportedOperationException()
     }
 

@@ -52,7 +52,14 @@ sealed interface VideoLoadingState {
      * 不支持的媒体, 或者说是未启用支持该媒体的 [MediaResolver]
      */
     data object UnsupportedMedia : Failed()
-    data object NoMatchingFile : Failed()
+
+    /**
+     * @param filesInTorrent 资源里可供用户挑选的文件. BT 资源匹配失败时非空, 其他情况 (例如 Web
+     * 数据源没有匹配到资源) 为空.
+     */
+    data class NoMatchingFile(
+        val filesInTorrent: List<String> = emptyList(),
+    ) : Failed()
     data class UnknownError(
         val cause: Throwable,
     ) : Failed()

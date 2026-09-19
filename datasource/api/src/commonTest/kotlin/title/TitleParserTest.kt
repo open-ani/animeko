@@ -113,4 +113,14 @@ class TitleParserTest : PatternBasedTitleParserTestSuite() {
         assertEquals("", r.subtitleLanguages.sortedBy { it.id }.joinToString { it.id })
         assertEquals("1080P", r.resolution.toString())
     }
+
+    // 季号 0 是特别篇. 解析成正片 01 会让整季包里的 S00E01 在 S01E01 之前被当作第一集选中.
+    @Test
+    fun `S00E01 is a special, not episode 1`() {
+        val r = parse("Bocchi the Rock 2022 S00E01-[1080p][BDRIP][x265.OPUS].mkv")
+        assertEquals(
+            me.him188.ani.datasources.api.EpisodeSort(1, me.him188.ani.datasources.api.EpisodeType.SP),
+            r.episodeRange!!.knownSorts.single(),
+        )
+    }
 }

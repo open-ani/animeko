@@ -102,6 +102,40 @@ abstract class AbstractDataStoreMediaCacheStorage(
         return allRecovered.value
     }
 
+    /**
+     * 改写一条已有记录的 metadata, 并让内存里的那条记录按新 metadata 重新打开文件.
+     *
+     * 没有写成 delete + create: [deleteFirst] 会 [MediaCache.closeAndDeleteFiles], 而整季包的数据文件
+     * 是包内各集记录共用的, 删掉会把别的剧集已经下好的内容一起删掉. 这里只关闭旧记录, 不动磁盘,
+     * 再走一次 [restoreFile] —— 恢复本来就是「按 metadata 打开文件」, 正是需要的动作.
+     */
+    override suspend fun updateMetadata(cache: MediaCache, metadata: MediaCacheMetadata): MediaCache? {
+        val existing = listFlow.value.firstOrNull { isSameMediaAndEpisode(it, cache.origin, cache.metadata) }
+            ?: return null
+
+        withContext(Dispatchers.IO_) {
+            datastore.updateData { list ->
+                list.map { save ->
+                    if (isSameMediaAndEpisode(existing, save)) save.copy(metadata = metadata) else save
+                }
+            }
+        }
+
+        listFlow.update { minus(existing) }
+        restoredLocalFileMediaCacheIds.update { minus(existing.origin.mediaId) }
+        existing.close()
+
+        val restored = restoreFile(existing.origin, metadata) {
+            if (it is LocalFileMediaCache) {
+                restoredLocalFileMediaCacheIds.update { plus(it.origin.mediaId) }
+            }
+        }
+        if (restored != null) {
+            listFlow.update { plus(restored) }
+        }
+        return restored
+    }
+
     open suspend fun restoreFile(
         origin: Media,
         metadata: MediaCacheMetadata,

@@ -36,7 +36,9 @@ import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
 import me.him188.ani.app.data.repository.media.SelectorMediaSourceEpisodeCacheRepository
 import me.him188.ani.app.domain.foundation.LoadError
+import me.him188.ani.app.domain.media.cache.MediaCacheManager
 import me.him188.ani.app.domain.media.fetch.MediaFetchSession
+import me.him188.ani.app.domain.media.resolver.TorrentFileOverrideStore
 import me.him188.ani.app.domain.media.resolver.toEpisodeMetadata
 import me.him188.ani.app.domain.media.selector.MediaSelector
 import me.him188.ani.app.domain.player.ExtensionException
@@ -46,6 +48,9 @@ import me.him188.ani.app.domain.player.extension.ExtensionBackgroundTaskScope
 import me.him188.ani.app.domain.player.extension.PlayerExtension
 import me.him188.ani.app.domain.player.extension.PlayerExtensionEvent
 import me.him188.ani.app.domain.usecase.GlobalKoin
+import me.him188.ani.datasources.api.CachedMedia
+import me.him188.ani.datasources.api.Media
+import me.him188.ani.datasources.api.source.MediaFetchRequest
 import me.him188.ani.utils.analytics.Analytics
 import me.him188.ani.utils.analytics.AnalyticsEvent.Companion.EpisodeSwitch
 import me.him188.ani.utils.logging.info
@@ -92,6 +97,8 @@ class EpisodeFetchSelectPlayState(
     }
 
     private val selectorCacheRepo by koin.inject<SelectorMediaSourceEpisodeCacheRepository>()
+    private val torrentFileOverrideStore = TorrentFileOverrideStore.Default
+    private val mediaCacheManager by koin.inject<MediaCacheManager>()
 
     private val _episodeSessionFlow = MutableStateFlow(
         newEpisodeSession(initialEpisodeId),
@@ -203,6 +210,53 @@ class EpisodeFetchSelectPlayState(
         backgroundScope.coroutineContext,
         sharingStarted,
     )
+
+    /**
+     * 自动匹配不到本集的文件时, 用户从资源的文件清单里挑一个, 用它重新播放当前 media.
+     *
+     * 选择记在 [TorrentFileOverrideStore] 里, 下面重新 [PlayerSession.loadMedia] 时由
+     * `TorrentMediaResolver` 读走.
+     *
+     * 持久化分两种情况. 本集已经有缓存记录 (上次播错也会留下一条) 时, 记录不会被重新建立, 得在这里
+     * 改写它的 metadata; 还没有记录时什么都不用做, `CacheOnBtPlayExtension` 播放成功后会建一条,
+     * 建立时 `TorrentMediaCacheEngine.createCache` 会把选择写进去.
+     *
+     * 在 [backgroundScope] 里加载: 调用方通常是 UI 的一次点击, 它的协程随对话框关闭就没了.
+     */
+    suspend fun selectTorrentFile(pathInTorrent: String) {
+        val session = episodeSessionFlow.value
+        val fetchSelect = session.fetchSelectFlow.filterNotNull().first()
+        val media = fetchSelect.mediaSelector.selected.first() ?: return
+        val request = fetchSelect.mediaFetchSession.request.first()
+        val episodeMetadata = session.infoBundleFlow.filterNotNull().first()
+            .episodeInfo.toEpisodeMetadata()
+
+        torrentFileOverrideStore.put(media, episodeMetadata.sort, pathInTorrent)
+        persistTorrentFileChoice(media, request, pathInTorrent)
+        backgroundScope.launch {
+            playerSession.loadMedia(media, episodeMetadata)
+        }.join()
+    }
+
+    private suspend fun persistTorrentFileChoice(
+        media: Media,
+        request: MediaFetchRequest,
+        pathInTorrent: String,
+    ) {
+        // 整季包在选择器里可能以 CachedMedia 出现, 记录是按原始 media 的 mediaId 建的.
+        val originMediaId = (media as? CachedMedia)?.origin?.mediaId ?: media.mediaId
+        for (storage in mediaCacheManager.storagesIncludingDisabled) {
+            val cache = storage.listFlow.first().firstOrNull {
+                it.origin.mediaId == originMediaId &&
+                        it.metadata.subjectId == request.subjectId &&
+                        it.metadata.episodeId == request.episodeId
+            } ?: continue
+
+            if (cache.metadata.pathInTorrent == pathInTorrent) return
+            storage.updateMetadata(cache, cache.metadata.copy(pathInTorrent = pathInTorrent))
+            return
+        }
+    }
 
     private val uiReady = CompletableDeferred<Unit>()
 

@@ -213,7 +213,7 @@ private fun renderCause(cause: VideoLoadingState.Failed, labels: VideoLoadingCau
     is VideoLoadingState.ResolutionTimedOut -> labels.resolutionTimedOut
     is VideoLoadingState.UnknownError -> labels.unknownError
     is VideoLoadingState.UnsupportedMedia -> labels.unsupportedMedia
-    VideoLoadingState.NoMatchingFile -> labels.noMatchingFile
+    is VideoLoadingState.NoMatchingFile -> labels.noMatchingFile
     VideoLoadingState.Cancelled -> labels.cancelled
     VideoLoadingState.NetworkError -> labels.networkError
 }

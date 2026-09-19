@@ -121,7 +121,7 @@ class PlayerSession(
                 )
             }
             _videoLoadingStateFlow.value = when (e.reason) {
-                OpenFailures.NO_MATCHING_FILE -> VideoLoadingState.NoMatchingFile
+                OpenFailures.NO_MATCHING_FILE -> VideoLoadingState.NoMatchingFile(e.filesInTorrent)
                 OpenFailures.UNSUPPORTED_VIDEO_SOURCE -> VideoLoadingState.UnsupportedMedia
                 OpenFailures.ENGINE_DISABLED -> VideoLoadingState.UnsupportedMedia
             }
@@ -137,7 +137,7 @@ class PlayerSession(
                 ResolutionFailures.FETCH_TIMEOUT -> VideoLoadingState.ResolutionTimedOut
                 ResolutionFailures.ENGINE_ERROR -> VideoLoadingState.UnknownError(e)
                 ResolutionFailures.NETWORK_ERROR -> VideoLoadingState.NetworkError
-                ResolutionFailures.NO_MATCHING_RESOURCE -> VideoLoadingState.NoMatchingFile
+                ResolutionFailures.NO_MATCHING_RESOURCE -> VideoLoadingState.NoMatchingFile()
             }
             stopPlayback()
         } catch (e: CancellationException) { // 切换数据源 (含 MediaLoadCancellationException)
