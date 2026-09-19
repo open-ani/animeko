@@ -27,6 +27,7 @@ import kotlinx.coroutines.test.runCurrent
 import kotlinx.coroutines.test.runTest
 import me.him188.ani.app.domain.media.TestMediaList
 import me.him188.ani.datasources.api.EpisodeSort
+import me.him188.ani.datasources.api.PackedDate
 import me.him188.ani.datasources.api.topic.EpisodeRange
 import me.him188.ani.utils.platform.annotations.TestOnly
 
@@ -492,6 +493,35 @@ class DownloadRequestSessionTest {
         // 其他集只有别的字幕组、别的数据源的合集能覆盖: 不在线路上, 与单集下载相同, 不进入选集
         assertEquals(DownloadRequestState.Finished(), session.state.value)
         assertEquals(listOf(1), created.map { it.episodeId })
+    }
+
+    @Test
+    fun `unaired episodes are unmatched even when a season pack covers them`() = withFixture {
+        useBatchMediaList()
+        subject = requestTestSubject(episodeIds = 1..3).let { collection ->
+            collection.copy(
+                episodes = collection.episodes.map { ep ->
+                    if (ep.episodeInfo.episodeId == 3) ep.copy(episodeInfo = ep.episodeInfo.copy(airDate = PackedDate(2999, 1, 1))) else ep
+                },
+            )
+        }
+        val session = create(listOf(1))
+        session.start()
+        testScope.runCurrent()
+        assertTrue(session.select(1, requestTestMedia(1)))
+        testScope.runCurrent()
+        val options = assertIs<DownloadRequestState.SelectingEpisodes>(session.state.value).options
+        assertEquals(
+            listOf(
+                DownloadEpisodeOption.Availability.AVAILABLE,
+                DownloadEpisodeOption.Availability.AVAILABLE,
+                DownloadEpisodeOption.Availability.UNMATCHED,
+            ),
+            options.map { it.availability },
+        )
+        assertTrue(session.confirmEpisodes(setOf(2, 3)))
+        testScope.runCurrent()
+        assertEquals(listOf(1, 2), created.map { it.episodeId })
     }
 
     @Test

@@ -66,8 +66,9 @@ val EpisodeDownloadPlan.mediaOrNull: Media?
  *
  * 对每一集依次判定:
  * 1. 已有本集的记录 → [EpisodeDownloadPlan.AlreadyDownloaded];
- * 2. 已有下载里剧集范围覆盖本集的合集 → [EpisodeDownloadPlan.Reuse];
- * 3. 用户点选的 [pinned] 固定给 [pinnedEpisodeId]; 它是合集时, 它覆盖的其他集也用它;
+ * 2. 用户点选的 [pinned] 固定给 [pinnedEpisodeId] (它已有覆盖它的合集时也用点选的);
+ * 3. 已有下载里已知集数且覆盖本集的合集 → [EpisodeDownloadPlan.Reuse]; [pinned] 是已知集数的合集时, 它覆盖的其他集也用它
+ *    (只知道整季的合集未必真含其他集, 只固定给 [pinnedEpisodeId]);
  * 4. 候选中的合集做贪心集合覆盖: 每轮取覆盖最多未处置集的合集, 已知集数的合集优先于只知道整季的;
  *    合集至少覆盖两个未处置的集才压倒单集. 多个合集可以拼接;
  * 5. 否则取候选中第一个覆盖本集的单集资源; 没有单集时取覆盖本集的合集, 已知集数的优先;
@@ -90,12 +91,17 @@ fun planBatchDownload(
 ): Map<Int, EpisodeDownloadPlan> {
     val plan = HashMap<Int, EpisodeDownloadPlan>(episodes.size)
     val downloadedIds = existing.mapTo(HashSet()) { it.episodeId }
-    val existingPacks = existing.map { it.origin }.filter { it.isPack() }.distinctBy { it.mediaId }
+    // 只知道整季的已有合集未必真含其他集, 不复用; 用户为某集点选它时只建那一集 (见下方 pinned)
+    val existingPacks = existing.map { it.origin }.filter { it.isPack() && it.episodeRange?.isKnown == true }.distinctBy { it.mediaId }
     val uncovered = ArrayList<EpisodeInfo>(episodes.size)
 
     for (episode in episodes) {
         if (episode.episodeId in downloadedIds) {
             plan[episode.episodeId] = EpisodeDownloadPlan.AlreadyDownloaded
+            continue
+        }
+        if (pinned != null && episode.episodeId == pinnedEpisodeId) {
+            plan[episode.episodeId] = EpisodeDownloadPlan.Create(pinned)
             continue
         }
         val reusable = existingPacks.firstOrNull { it.covers(episode) }
@@ -106,9 +112,9 @@ fun planBatchDownload(
         }
     }
 
-    if (pinned != null) {
+    if (pinned != null && pinned.isPack() && pinned.episodeRange?.isKnown == true) {
         uncovered.removeAll { episode ->
-            val use = episode.episodeId == pinnedEpisodeId || (pinned.isPack() && pinned.covers(episode))
+            val use = pinned.covers(episode)
             if (use) plan[episode.episodeId] = EpisodeDownloadPlan.Create(pinned)
             use
         }

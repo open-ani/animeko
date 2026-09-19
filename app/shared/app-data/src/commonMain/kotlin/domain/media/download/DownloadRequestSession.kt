@@ -44,6 +44,7 @@ import me.him188.ani.app.domain.media.selector.MediaSelectorFactory
 import me.him188.ani.datasources.api.EpisodeSort
 import me.him188.ani.datasources.api.Media
 import me.him188.ani.datasources.api.MediaCacheMetadata
+import me.him188.ani.datasources.api.PackedDate
 import me.him188.ani.datasources.api.isLocalCache
 import me.him188.ani.datasources.api.source.MediaFetchRequest
 import me.him188.ani.datasources.api.source.MediaSourceKind
@@ -266,9 +267,12 @@ class DownloadRequestSession internal constructor(
         val episode = episodes.firstOrNull { it.episodeId == episodeId }
             ?: throw NoSuchElementException("Episode $episodeId is not in subject $subjectId")
         val existing = existingDownloads()
-        findReusableSeasonMedia(episode, existing.map { it.origin })?.let { media ->
-            createAll(subject, listOf(episode to media), pending)
-            return setOf(episodeId)
+        // 还没上映的集不复用已有合集: 整季合集会把它算作覆盖, 但种子里还没有对应文件, 会建出永远下载不到的记录.
+        if (episode.isAired()) {
+            findReusableSeasonMedia(episode, existing.map { it.origin })?.let { media ->
+                createAll(subject, listOf(episode to media), pending)
+                return setOf(episodeId)
+            }
         }
 
         val batch = awaitSelection(episodeId, pending, subject, episode, episodes, existing)
@@ -351,8 +355,12 @@ class DownloadRequestSession internal constructor(
                 val group = selector.subjectCandidates.first()
                     .mapNotNull { it.result }
                     .filter { !it.isLocalCache() && it.isSameLineAs(chosen, chosenNames, subject.allNames) }
-                val preview = planBatchDownload(episodes, group, existing, pinned = chosen, pinnedEpisodeId = episodeId)
-                val options = episodes.map { it.toOption(preview.getValue(it.episodeId), isCurrent = it.episodeId == episodeId) }
+                // 还没上映的集 (发起下载的那一集除外) 不规划: 整季合集会把它们算作覆盖, 但种子里还没有对应文件.
+                val plannable = episodes.filter { it.episodeId == episodeId || it.isAired() }
+                val preview = planBatchDownload(plannable, group, existing, pinned = chosen, pinnedEpisodeId = episodeId)
+                val options = episodes.map {
+                    it.toOption(preview[it.episodeId] ?: EpisodeDownloadPlan.Uncovered, isCurrent = it.episodeId == episodeId)
+                }
 
                 // 该线路只覆盖当前这一话时不需要选集, 与单集下载相同; 这一话已有记录时什么都不创建.
                 if (options.none { !it.isCurrent && it.availability == DownloadEpisodeOption.Availability.AVAILABLE }) {
@@ -368,7 +376,7 @@ class DownloadRequestSession internal constructor(
                 val picked = decision.await() ?: continue // 返回选源
 
                 // 确认时只按所选集规划, 合集与单集的取舍可能与预览不同.
-                val targets = listOf(episode) + episodes.filter { it.episodeId != episodeId && it.episodeId in picked }
+                val targets = listOf(episode) + plannable.filter { it.episodeId != episodeId && it.episodeId in picked }
                 val plan = planBatchDownload(targets, group, existing, pinned = chosen, pinnedEpisodeId = episodeId)
                 val batch = targets.mapNotNull { target ->
                     plan.getValue(target.episodeId).mediaOrNull?.let { target to it }
@@ -423,6 +431,8 @@ class DownloadRequestSession internal constructor(
 
     private companion object {
         private val logger = logger<DownloadRequestSession>()
+
+        private fun EpisodeInfo.isAired(): Boolean = !airDate.isValid || airDate <= PackedDate.now()
         private val PREFERENCE_BROADCAST_TIMEOUT = 5.seconds
     }
 }

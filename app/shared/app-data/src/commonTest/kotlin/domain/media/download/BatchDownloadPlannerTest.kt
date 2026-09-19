@@ -75,6 +75,23 @@ class BatchDownloadPlannerTest {
     }
 
     @Test
+    fun `a pinned season-only pack is used for the pinned episode only`() {
+        val plan = planBatchDownload(episodes.take(3), listOf(season, single2), emptyList(), pinned = season, pinnedEpisodeId = 1)
+        assertEquals(EpisodeDownloadPlan.Create(season), plan.getValue(1))
+        assertEquals(EpisodeDownloadPlan.Create(single2), plan.getValue(2))
+        // 只知道整季的合集未必真含第 3 集
+        assertEquals(EpisodeDownloadPlan.Uncovered, plan.getValue(3))
+    }
+
+    @Test
+    fun `an existing season-only pack is not reused for other episodes`() {
+        val plan = planBatchDownload(episodes.take(3), listOf(single2), listOf(ExistingDownload(season, 1)))
+        assertEquals(EpisodeDownloadPlan.AlreadyDownloaded, plan.getValue(1))
+        assertEquals(EpisodeDownloadPlan.Create(single2), plan.getValue(2))
+        assertEquals(EpisodeDownloadPlan.Uncovered, plan.getValue(3))
+    }
+
+    @Test
     fun `packs are combined greedily and beat singles when covering two or more episodes`() {
         val plan = planBatchDownload(episodes, listOf(single1, single2, pack1to3, pack4to6), emptyList())
         for (id in 1..3) assertEquals(EpisodeDownloadPlan.Create(pack1to3), plan.getValue(id), "episode $id")
