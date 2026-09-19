@@ -52,7 +52,7 @@ class PlayerDownloadSpeedTest {
     }
 
     @Test
-    fun `uri media follows the player's network stats`() = runTest {
+    fun `uri media follows the network stats of the player`() = runTest {
         val player = createPlayer()
         player.setMediaData(UriMediaData("https://example.com/video.m3u8"))
         advanceUntilIdle()
