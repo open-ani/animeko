@@ -25,5 +25,5 @@ class SkikoOnBackPressedDispatcherOwner(
 /**
  * 没有任何启用的 [BackHandler] 时, 返回等价于退出当前页面.
  */
-fun popBackStackDispatcher(aniNavigator: AniNavigator): OnBackPressedDispatcher =
+private fun popBackStackDispatcher(aniNavigator: AniNavigator): OnBackPressedDispatcher =
     OnBackPressedDispatcher(fallback = { aniNavigator.popBackStack() })

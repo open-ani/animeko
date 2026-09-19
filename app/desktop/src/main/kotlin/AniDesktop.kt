@@ -102,9 +102,9 @@ import me.him188.ani.app.ui.foundation.layout.LocalPlatformWindow
 import me.him188.ani.app.ui.foundation.layout.LocalSecondaryWindowFrame
 import me.him188.ani.app.ui.foundation.layout.isSystemInFullscreen
 import me.him188.ani.app.ui.foundation.navigation.LocalOnBackPressedDispatcherOwner
+import me.him188.ani.app.ui.foundation.navigation.OnBackPressedDispatcher
 import me.him188.ani.app.ui.foundation.navigation.SkikoOnBackPressedDispatcherOwner
 import me.him188.ani.app.ui.foundation.navigation.handleBackKeyEvent
-import me.him188.ani.app.ui.foundation.navigation.popBackStackDispatcher
 import me.him188.ani.app.ui.foundation.theme.AniThemeDefaults
 import me.him188.ani.app.ui.foundation.theme.LocalThemeSettings
 import me.him188.ani.app.ui.foundation.widgets.LocalToaster
@@ -520,7 +520,10 @@ object AniDesktop {
                 onExit = exitApplicationSavingWindowState,
             )
 
-            val backPressedDispatcher = remember(navigator) { popBackStackDispatcher(navigator) }
+            // 没有任何启用的 BackHandler 时, 返回等价于退出当前页面
+            val backPressedDispatcher = remember(navigator) {
+                OnBackPressedDispatcher(fallback = { navigator.popBackStack() })
+            }
             Window(
                 visible = !trayState.isWindowHiddenToTray,
                 onCloseRequest = {
