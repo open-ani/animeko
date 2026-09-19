@@ -24,6 +24,21 @@ interface MediaSource {
 特别支持的数据源只是实现 `MediaSource` 接口以接入对应平台，本文不赘述。
 下面我们将着重了解 `SelectorMediaSource` 和 `RssMediaSource`。
 
+### 特别数据源的播放阶段能力
+
+通用 `MediaSource` 接口仍然只负责通过 `fetch(...)` 查询 `Media`。
+部分特别支持的数据源具体实现可以额外提供服务端专属的播放能力。
+这些能力不属于通用 `MediaSource` 接口，也不应进入通用查询或选择流程。
+
+例如，`JellyfinMediaSource` 继承的
+`BaseJellyfinMediaSource.createPlaybackPlan(...)` 会在播放阶段协商 Jellyfin
+`PlaybackInfo`，`stopActiveEncoding(...)` 会停止不再使用的服务端转码。它们仅由
+`JellyfinMediaResolver` 和 Jellyfin 专属播放控制器使用；
+其他数据源仍走通用 Resolver 和播放器生命周期。
+
+`JellyfinMediaDataProvider` 本身只保存打开资源所需的位置和服务信息；每次打开返回的
+`JellyfinPlaybackPlan` 由当前 Jellyfin 播放句柄持有，不存放在通用 `MediaDataProvider` 中。
+
 ### `SelectorMediaSource`
 
 `SelectorMediaSource` 会根据配置，使用 [CSS Selector][CSS Selector] 和正则表达式，从 HTML

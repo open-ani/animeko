@@ -67,6 +67,7 @@ import me.him188.ani.app.data.models.preference.VideoScaffoldConfig
 import me.him188.ani.app.domain.media.player.ChunkState
 import me.him188.ani.app.domain.media.player.MediaCacheProgressInfo
 import me.him188.ani.app.domain.media.player.staticMediaCacheProgressState
+import me.him188.ani.app.domain.media.resolver.JellyfinPlaybackQualityState
 import me.him188.ani.app.domain.player.VideoLoadingState
 import me.him188.ani.app.tools.rememberUiMonoTasker
 import me.him188.ani.app.ui.episode.share.MediaShareData
@@ -86,6 +87,8 @@ import me.him188.ani.app.ui.foundation.icons.SubtitleGear
 import me.him188.ani.app.ui.foundation.ifThen
 import me.him188.ani.app.ui.foundation.input.LocalActiveInputSource
 import me.him188.ani.app.ui.foundation.interaction.WindowDragArea
+import me.him188.ani.app.ui.foundation.layout.currentWindowAdaptiveInfo1
+import me.him188.ani.app.ui.foundation.layout.isWidthAtLeastMedium
 import me.him188.ani.app.ui.foundation.rememberDebugSettingsViewModel
 import me.him188.ani.app.ui.foundation.theme.AniTheme
 import me.him188.ani.app.ui.lang.Lang
@@ -99,6 +102,9 @@ import me.him188.ani.app.ui.lang.subject_episode_fast_forward_seconds
 import me.him188.ani.app.ui.lang.subject_episode_more_options
 import me.him188.ani.app.ui.lang.subject_episode_preview_mode
 import me.him188.ani.app.ui.lang.subject_episode_select_media_source
+import me.him188.ani.app.ui.lang.video_player_auto
+import me.him188.ani.app.ui.lang.video_player_original_quality
+import me.him188.ani.app.ui.lang.video_player_playback_bitrate
 import me.him188.ani.app.ui.lang.video_player_stats_title_hide
 import me.him188.ani.app.ui.lang.video_player_stats_title_show
 import me.him188.ani.app.ui.lang.video_player_video_enhancement
@@ -169,6 +175,8 @@ import me.him188.ani.app.videoplayer.ui.top.PlayerTopBar
 import me.him188.ani.app.videoplayer.ui.top.SystemTime
 import me.him188.ani.app.videoplayer.videoenhancement.VideoEnhancementController
 import me.him188.ani.app.videoplayer.videoenhancement.VideoEnhancementMode
+import me.him188.ani.datasources.jellyfin.JellyfinPlaybackQuality
+import me.him188.ani.datasources.jellyfin.JellyfinPlaybackQualityMode
 import me.him188.ani.utils.platform.annotations.TestOnly
 import me.him188.ani.utils.platform.isAndroid
 import me.him188.ani.utils.platform.isDesktop
@@ -188,6 +196,10 @@ internal const val TAG_SHOW_MEDIA_SELECTOR = "ShowMediaSelector"
 internal const val TAG_VIDEO_ENHANCEMENT = "VideoEnhancement"
 internal const val TAG_SHOW_SETTINGS = "ShowSettings"
 internal const val TAG_COLLAPSE_SIDEBAR = "collapseSidebar"
+internal const val TAG_EPISODE_VIDEO_MORE = "EpisodeVideoMore"
+internal const val TAG_JELLYFIN_QUALITY_TEXT_BUTTON = "JellyfinQualityTextButton"
+internal const val TAG_JELLYFIN_QUALITY_DROPDOWN_MENU = "JellyfinQualityDropdownMenu"
+internal const val TAG_JELLYFIN_QUALITY_MORE_ITEM = "JellyfinQualityMoreItem"
 internal const val TAG_WATCH_TOGETHER_MENU_ITEM = "WatchTogetherMenuItem"
 
 internal const val TAG_MEDIA_SELECTOR_SHEET = "MediaSelectorSheet"
@@ -204,6 +216,8 @@ internal fun EpisodeVideoImpl(
     expanded: Boolean,
     hasNextEpisode: Boolean,
     onClickNextEpisode: () -> Unit,
+    jellyfinPlaybackQualityState: JellyfinPlaybackQualityState? = null,
+    onSelectJellyfinPlaybackQuality: (JellyfinPlaybackQuality) -> Unit = {},
     playerControllerState: PlayerControllerState,
     opEdSkipDuration: Duration = DEFAULT_OP_ED_SKIP_DURATION,
     onClickSkipOpEd: (currentPositionMillis: Long) -> Unit = {
@@ -251,6 +265,8 @@ internal fun EpisodeVideoImpl(
     val sheetsController = rememberVideoSideSheetsController<EpisodeVideoSideSheetPage>()
     val anySideSheetVisible by sheetsController.hasPageAsState()
     val previewModeText = stringResource(Lang.subject_episode_preview_mode)
+    val showJellyfinQualityInBottomBar =
+        expanded && (LocalPlatform.current.isDesktop() || currentWindowAdaptiveInfo1().isWidthAtLeastMedium)
     val watchTogetherPlayerController = LocalWatchTogetherPlayerController.current
 
     // auto hide cursor
@@ -309,6 +325,9 @@ internal fun EpisodeVideoImpl(
                                 onTogglePlayerStats = { showPlayerStats = !showPlayerStats },
                                 alwaysOnTop = alwaysOnTop,
                                 onToggleAlwaysOnTop = onToggleAlwaysOnTop,
+                                jellyfinPlaybackQualityState = jellyfinPlaybackQualityState,
+                                onSelectJellyfinPlaybackQuality = onSelectJellyfinPlaybackQuality,
+                                showJellyfinQualityInBottomBar = showJellyfinQualityInBottomBar,
                             )
                         },
                         // VideoScaffold already applies top/horizontal insets around the top bar.
@@ -530,6 +549,14 @@ internal fun EpisodeVideoImpl(
                                 PlayerControllerDefaults.SubtitleSwitcher(it)
                             }
 
+                            if (showJellyfinQualityInBottomBar && jellyfinPlaybackQualityState != null) {
+                                JellyfinQualitySwitcher(
+                                    state = jellyfinPlaybackQualityState,
+                                    onSelect = onSelectJellyfinPlaybackQuality,
+                                    playerControllerState = playerControllerState,
+                                )
+                            }
+
                             val videoAspectRatioAlwaysOnRequester =
                                 rememberAlwaysOnRequester(playerControllerState, "videoAspectRatioSelector")
                             videoAspectRatioControllerState?.also { controller ->
@@ -635,13 +662,20 @@ private fun EpisodeVideoTopBarActions(
     onTogglePlayerStats: () -> Unit,
     alwaysOnTop: Boolean = false,
     onToggleAlwaysOnTop: (() -> Unit)? = null,
+    jellyfinPlaybackQualityState: JellyfinPlaybackQualityState? = null,
+    onSelectJellyfinPlaybackQuality: (JellyfinPlaybackQuality) -> Unit = {},
+    showJellyfinQualityInBottomBar: Boolean = false,
 ) {
     var showShareDropdown by rememberSaveable { mutableStateOf(false) }
     var showMoreDropdown by rememberSaveable { mutableStateOf(false) }
+    var showQualityDropdown by rememberSaveable { mutableStateOf(false) }
     var showVideoEnhancementDropdown by rememberSaveable { mutableStateOf(false) }
 
     val dropdownAlwaysOnRequester = rememberAlwaysOnRequester(playerControllerState, "topBarExternalActions")
-    val isExternalDropdownVisible = showShareDropdown || showMoreDropdown || showVideoEnhancementDropdown
+    val isExternalDropdownVisible = showShareDropdown ||
+        showMoreDropdown ||
+        showVideoEnhancementDropdown ||
+        (showQualityDropdown && jellyfinPlaybackQualityState != null)
     val skipDurationSeconds = opEdSkipDuration.inWholeSeconds
 
     val fastForwardSecondsText = stringResource(Lang.subject_episode_fast_forward_seconds, skipDurationSeconds)
@@ -731,7 +765,10 @@ private fun EpisodeVideoTopBarActions(
     }
 
     Box {
-        IconButton({ showMoreDropdown = true }) {
+        IconButton(
+            onClick = { showMoreDropdown = true },
+            modifier = Modifier.testTag(TAG_EPISODE_VIDEO_MORE),
+        ) {
             Icon(Icons.Rounded.MoreVert, contentDescription = moreOptionsText)
         }
         DropdownMenu(
@@ -786,6 +823,26 @@ private fun EpisodeVideoTopBarActions(
                 },
                 leadingIcon = { Icon(Icons.Outlined.Analytics, null) },
             )
+            if (!showJellyfinQualityInBottomBar && jellyfinPlaybackQualityState != null) {
+                DropdownMenuItem(
+                    text = {
+                        Column {
+                            Text(stringResource(Lang.video_player_playback_bitrate))
+                            Text(
+                                jellyfinQualityLabel(jellyfinPlaybackQualityState.selected),
+                                style = MaterialTheme.typography.labelSmall,
+                            )
+                        }
+                    },
+                    onClick = {
+                        showMoreDropdown = false
+                        showQualityDropdown = true
+                    },
+                    enabled = !jellyfinPlaybackQualityState.isSwitching,
+                    leadingIcon = { Icon(Icons.Rounded.DisplaySettings, null) },
+                    modifier = Modifier.testTag(TAG_JELLYFIN_QUALITY_MORE_ITEM),
+                )
+            }
             DropdownMenuItem(
                 text = { Text(externalLinksText) },
                 onClick = {
@@ -802,6 +859,35 @@ private fun EpisodeVideoTopBarActions(
                 },
                 leadingIcon = { Icon(Icons.Rounded.Download, null) },
             )
+        }
+        val qualityState = jellyfinPlaybackQualityState
+        DropdownMenu(
+            expanded = showQualityDropdown && qualityState != null,
+            onDismissRequest = { showQualityDropdown = false },
+            modifier = Modifier.testTag(TAG_JELLYFIN_QUALITY_DROPDOWN_MENU),
+        ) {
+            qualityState?.options?.forEach { quality ->
+                DropdownMenuItem(
+                    text = {
+                        Text(
+                            text = jellyfinQualityLabel(
+                                quality,
+                                autoBitrate = qualityState.selectedAutoBitrate,
+                            ),
+                            color = if (quality == qualityState.selected) {
+                                MaterialTheme.colorScheme.primary
+                            } else {
+                                MaterialTheme.colorScheme.onSurface
+                            },
+                        )
+                    },
+                    onClick = {
+                        showQualityDropdown = false
+                        onSelectJellyfinPlaybackQuality(quality)
+                    },
+                    enabled = !qualityState.isSwitching,
+                )
+            }
         }
         ShareEpisodeDropdown(
             shareData,
@@ -828,6 +914,88 @@ private fun EpisodeVideoTopBarActions(
                 Icon(AniIcons.RightPanelOpen, contentDescription = expandSidebarText)
             }
         }
+    }
+}
+
+@Composable
+private fun JellyfinQualitySwitcher(
+    state: JellyfinPlaybackQualityState,
+    onSelect: (JellyfinPlaybackQuality) -> Unit,
+    playerControllerState: PlayerControllerState,
+) {
+    val alwaysOnRequester = rememberAlwaysOnRequester(playerControllerState, "jellyfinQualitySwitcher")
+    DisposableEffect(alwaysOnRequester) {
+        onDispose {
+            alwaysOnRequester.cancelRequest()
+        }
+    }
+    PlayerControllerDefaults.OptionsSwitcher(
+        value = state.selected,
+        onValueChange = onSelect,
+        optionsProvider = { state.options },
+        renderValue = { quality ->
+            Text(
+                jellyfinQualityLabel(
+                    quality,
+                    autoBitrate = state.selectedAutoBitrate,
+                ),
+            )
+        },
+        renderValueExposed = { quality ->
+            Text(
+                jellyfinQualityLabel(quality) + if (state.isSwitching) "…" else "",
+                maxLines = 1,
+            )
+        },
+        enabled = !state.isSwitching,
+        textButtonTestTag = TAG_JELLYFIN_QUALITY_TEXT_BUTTON,
+        dropdownMenuTestTag = TAG_JELLYFIN_QUALITY_DROPDOWN_MENU,
+        onExpandedChanged = { expanded ->
+            if (expanded) {
+                alwaysOnRequester.request()
+            } else {
+                alwaysOnRequester.cancelRequest()
+            }
+        },
+    )
+}
+
+private val JellyfinPlaybackQualityState.selectedAutoBitrate: Int?
+    get() = effectiveMaxBitrate.takeIf {
+        selected.mode == JellyfinPlaybackQualityMode.AUTO
+    }
+
+@Composable
+private fun jellyfinQualityLabel(
+    quality: JellyfinPlaybackQuality,
+    autoBitrate: Int? = null,
+): String {
+    return when (quality.mode) {
+        JellyfinPlaybackQualityMode.AUTO -> buildString {
+            append(stringResource(Lang.video_player_auto))
+            autoBitrate?.let {
+                append(" · ")
+                append(formatBitrate(it))
+            }
+        }
+
+        JellyfinPlaybackQualityMode.ORIGINAL ->
+            stringResource(Lang.video_player_original_quality)
+
+        JellyfinPlaybackQualityMode.FIXED ->
+            formatBitrate(checkNotNull(quality.maxBitrate))
+    }
+}
+
+private fun formatBitrate(bitrate: Int): String {
+    if (bitrate < 1_000_000) {
+        return "${bitrate / 1_000} Kbps"
+    }
+    val tenths = bitrate / 100_000
+    return if (tenths % 10 == 0) {
+        "${tenths / 10} Mbps"
+    } else {
+        "${tenths / 10}.${tenths % 10} Mbps"
     }
 }
 
