@@ -19,7 +19,6 @@ import me.him188.ani.app.domain.media.fetch.MediaFetchSession
 import me.him188.ani.app.domain.media.fetch.MediaSourceFetchState
 import me.him188.ani.app.domain.media.fetch.isFailedOrAbandoned
 import me.him188.ani.datasources.api.source.MediaFetchRequest
-import me.him188.ani.datasources.api.source.isSameSubjectQuery
 
 /**
  * 播放页持有的条目级查询会话: 同一条目的各集共用一个 [MediaFetchSession], 切集只重建选择器.

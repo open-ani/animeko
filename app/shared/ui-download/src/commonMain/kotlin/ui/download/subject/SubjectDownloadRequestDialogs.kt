@@ -115,7 +115,7 @@ class DownloadEpisodePickerState(
     val options: List<DownloadEpisodeOption>,
 )
 
-object DownloadEpisodePickerTestTags {
+internal object DownloadEpisodePickerTestTags {
     const val ROOT = "download_episode_picker"
     const val BACK = "download_episode_picker_back"
     const val ONLY_CURRENT = "download_episode_picker_only_current"

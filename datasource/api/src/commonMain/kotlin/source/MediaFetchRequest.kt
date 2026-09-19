@@ -80,6 +80,16 @@ data class MediaFetchRequest(
     val episodes: List<Episode> = emptyList(),
 ) {
     /**
+     * 两个请求是否查询同一个条目: 条目 ID, 名称与剧集列表相同, 忽略仅作提示的当前剧集字段.
+     * 条目级查询会话可以在满足此条件的请求之间共用.
+     */
+    fun isSameSubjectQuery(other: MediaFetchRequest): Boolean =
+        subjectId == other.subjectId &&
+                subjectNameCN == other.subjectNameCN &&
+                subjectNames == other.subjectNames &&
+                episodes == other.episodes
+
+    /**
      * 条目的一集.
      */
     @Serializable
@@ -119,17 +129,6 @@ fun MediaFetchRequest.toStringMultiline() = buildString {
     append("episodeName").append(": ").append(episodeName).appendLine()
     append("episodeEp").append(": ").append(episodeEp).appendLine()
     append("episodes").append(": ").append(episodes.size).appendLine()
-}
-
-/**
- * 两个请求是否查询同一个条目: 条目 ID, 名称与剧集列表相同, 忽略仅作提示的当前剧集字段.
- * 条目级查询会话可以在满足此条件的请求之间共用.
- */
-fun MediaFetchRequest.isSameSubjectQuery(other: MediaFetchRequest): Boolean {
-    return subjectId == other.subjectId &&
-            subjectNameCN == other.subjectNameCN &&
-            subjectNames == other.subjectNames &&
-            episodes == other.episodes
 }
 
 /**

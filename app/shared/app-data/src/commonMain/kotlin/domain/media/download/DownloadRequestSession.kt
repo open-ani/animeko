@@ -48,9 +48,6 @@ import me.him188.ani.datasources.api.PackedDate
 import me.him188.ani.datasources.api.isLocalCache
 import me.him188.ani.datasources.api.source.MediaFetchRequest
 import me.him188.ani.datasources.api.source.MediaSourceKind
-import me.him188.ani.datasources.api.topic.contains
-import me.him188.ani.datasources.api.topic.isSingleEpisode
-import me.him188.ani.datasources.api.unwrapCached
 import me.him188.ani.utils.coroutines.childScope
 import me.him188.ani.utils.logging.logger
 import me.him188.ani.utils.logging.warn
@@ -269,7 +266,7 @@ class DownloadRequestSession internal constructor(
         val existing = existingDownloads()
         // 还没上映的集不复用已有合集: 整季合集会把它算作覆盖, 但种子里还没有对应文件, 会建出永远下载不到的记录.
         if (episode.isAired()) {
-            findReusableSeasonMedia(episode, existing.map { it.origin })?.let { media ->
+            BatchDownloadPlanner.findReusableSeasonMedia(episode, existing.map { it.origin })?.let { media ->
                 createAll(subject, listOf(episode to media), pending)
                 return setOf(episodeId)
             }
@@ -357,7 +354,7 @@ class DownloadRequestSession internal constructor(
                     .filter { !it.isLocalCache() && it.isSameLineAs(chosen, chosenNames, subject.allNames) }
                 // 还没上映的集 (发起下载的那一集除外) 不规划: 整季合集会把它们算作覆盖, 但种子里还没有对应文件.
                 val plannable = episodes.filter { it.episodeId == episodeId || it.isAired() }
-                val preview = planBatchDownload(plannable, group, existing, pinned = chosen, pinnedEpisodeId = episodeId)
+                val preview = BatchDownloadPlanner.plan(plannable, group, existing, pinned = chosen, pinnedEpisodeId = episodeId)
                 val options = episodes.map {
                     it.toOption(preview[it.episodeId] ?: EpisodeDownloadPlan.Uncovered, isCurrent = it.episodeId == episodeId)
                 }
@@ -377,7 +374,7 @@ class DownloadRequestSession internal constructor(
 
                 // 确认时只按所选集规划, 合集与单集的取舍可能与预览不同.
                 val targets = listOf(episode) + plannable.filter { it.episodeId != episodeId && it.episodeId in picked }
-                val plan = planBatchDownload(targets, group, existing, pinned = chosen, pinnedEpisodeId = episodeId)
+                val plan = BatchDownloadPlanner.plan(targets, group, existing, pinned = chosen, pinnedEpisodeId = episodeId)
                 val batch = targets.mapNotNull { target ->
                     plan.getValue(target.episodeId).mediaOrNull?.let { target to it }
                 }
@@ -458,13 +455,3 @@ class DownloadRequestSessionFactory(
             parentScope,
         )
 }
-
-/**
- * 在 [candidates] 中寻找 [Media.episodeRange] 覆盖 [episode] 的合集资源, 单集资源不复用.
- */
-internal fun findReusableSeasonMedia(episode: EpisodeInfo, candidates: List<Media>): Media? =
-    candidates.firstOrNull { media ->
-        val range = media.episodeRange ?: return@firstOrNull false
-        !range.isSingleEpisode() &&
-                (episode.ep?.let { range.contains(it) } == true || range.contains(episode.sort))
-    }?.unwrapCached()

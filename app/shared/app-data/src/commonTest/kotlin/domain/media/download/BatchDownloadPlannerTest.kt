@@ -29,13 +29,13 @@ class BatchDownloadPlannerTest {
 
     @Test
     fun `result keeps the input episode order`() {
-        val plan = planBatchDownload(episodes.reversed(), listOf(pack1to6), emptyList())
+        val plan = BatchDownloadPlanner.plan(episodes.reversed(), listOf(pack1to6), emptyList())
         assertEquals((6 downTo 1).toList(), plan.keys.toList())
     }
 
     @Test
     fun `already downloaded episodes are not planned again`() {
-        val plan = planBatchDownload(
+        val plan = BatchDownloadPlanner.plan(
             episodes.take(2), listOf(single1, single2),
             existing = listOf(ExistingDownload(single1, episodeId = 1)),
         )
@@ -45,7 +45,7 @@ class BatchDownloadPlannerTest {
 
     @Test
     fun `existing pack covering an episode is reused before any candidate`() {
-        val plan = planBatchDownload(
+        val plan = BatchDownloadPlanner.plan(
             episodes.take(3), listOf(single1, single2, pack1to3),
             existing = listOf(ExistingDownload(pack1to6, episodeId = 4)),
         )
@@ -56,7 +56,7 @@ class BatchDownloadPlannerTest {
 
     @Test
     fun `pinned single is used for its episode only`() {
-        val plan = planBatchDownload(
+        val plan = BatchDownloadPlanner.plan(
             episodes.take(2), listOf(single2, pack1to6), emptyList(),
             pinned = single1, pinnedEpisodeId = 1,
         )
@@ -66,7 +66,7 @@ class BatchDownloadPlannerTest {
 
     @Test
     fun `pinned pack also covers the other episodes it contains`() {
-        val plan = planBatchDownload(
+        val plan = BatchDownloadPlanner.plan(
             episodes, listOf(single1, single2, pack4to6), emptyList(),
             pinned = pack1to3, pinnedEpisodeId = 2,
         )
@@ -76,7 +76,7 @@ class BatchDownloadPlannerTest {
 
     @Test
     fun `a pinned season-only pack is used for the pinned episode only`() {
-        val plan = planBatchDownload(episodes.take(3), listOf(season, single2), emptyList(), pinned = season, pinnedEpisodeId = 1)
+        val plan = BatchDownloadPlanner.plan(episodes.take(3), listOf(season, single2), emptyList(), pinned = season, pinnedEpisodeId = 1)
         assertEquals(EpisodeDownloadPlan.Create(season), plan.getValue(1))
         assertEquals(EpisodeDownloadPlan.Create(single2), plan.getValue(2))
         // 只知道整季的合集未必真含第 3 集
@@ -85,7 +85,7 @@ class BatchDownloadPlannerTest {
 
     @Test
     fun `an existing season-only pack is not reused for other episodes`() {
-        val plan = planBatchDownload(episodes.take(3), listOf(single2), listOf(ExistingDownload(season, 1)))
+        val plan = BatchDownloadPlanner.plan(episodes.take(3), listOf(single2), listOf(ExistingDownload(season, 1)))
         assertEquals(EpisodeDownloadPlan.AlreadyDownloaded, plan.getValue(1))
         assertEquals(EpisodeDownloadPlan.Create(single2), plan.getValue(2))
         assertEquals(EpisodeDownloadPlan.Uncovered, plan.getValue(3))
@@ -93,40 +93,40 @@ class BatchDownloadPlannerTest {
 
     @Test
     fun `packs are combined greedily and beat singles when covering two or more episodes`() {
-        val plan = planBatchDownload(episodes, listOf(single1, single2, pack1to3, pack4to6), emptyList())
+        val plan = BatchDownloadPlanner.plan(episodes, listOf(single1, single2, pack1to3, pack4to6), emptyList())
         for (id in 1..3) assertEquals(EpisodeDownloadPlan.Create(pack1to3), plan.getValue(id), "episode $id")
         for (id in 4..6) assertEquals(EpisodeDownloadPlan.Create(pack4to6), plan.getValue(id), "episode $id")
     }
 
     @Test
     fun `larger pack wins over smaller packs`() {
-        val plan = planBatchDownload(episodes, listOf(pack1to3, pack1to6, pack4to6), emptyList())
+        val plan = BatchDownloadPlanner.plan(episodes, listOf(pack1to3, pack1to6, pack4to6), emptyList())
         for (id in 1..6) assertEquals(EpisodeDownloadPlan.Create(pack1to6), plan.getValue(id), "episode $id")
     }
 
     @Test
     fun `pack with known episodes beats a season pack even when covering fewer`() {
-        val plan = planBatchDownload(episodes, listOf(season, pack1to3), emptyList())
+        val plan = BatchDownloadPlanner.plan(episodes, listOf(season, pack1to3), emptyList())
         for (id in 1..3) assertEquals(EpisodeDownloadPlan.Create(pack1to3), plan.getValue(id), "episode $id")
         for (id in 4..6) assertEquals(EpisodeDownloadPlan.Create(season), plan.getValue(id), "episode $id")
     }
 
     @Test
     fun `single is preferred over a pack that would cover only one remaining episode`() {
-        val plan = planBatchDownload(episodes.take(1), listOf(pack1to3, single1), emptyList())
+        val plan = BatchDownloadPlanner.plan(episodes.take(1), listOf(pack1to3, single1), emptyList())
         assertEquals(EpisodeDownloadPlan.Create(single1), plan.getValue(1))
     }
 
     @Test
     fun `pack is still used for a lone episode without a single`() {
-        val plan = planBatchDownload(episodes.take(1), listOf(season, pack1to3), emptyList())
+        val plan = BatchDownloadPlanner.plan(episodes.take(1), listOf(season, pack1to3), emptyList())
         assertEquals(EpisodeDownloadPlan.Create(pack1to3), plan.getValue(1))
     }
 
     @Test
     fun `episodes matched by ep instead of sort are covered`() {
         val episode = requestTestEpisode(13).copy(sort = EpisodeSort(13), ep = EpisodeSort(1))
-        val plan = planBatchDownload(listOf(episode), listOf(single1), emptyList())
+        val plan = BatchDownloadPlanner.plan(listOf(episode), listOf(single1), emptyList())
         assertEquals(EpisodeDownloadPlan.Create(single1), plan.getValue(13))
     }
 
@@ -136,18 +136,18 @@ class BatchDownloadPlannerTest {
         val spMedia = requestTestMedia(400, EpisodeRange.single(EpisodeSort("SP1")))
         assertEquals(
             EpisodeDownloadPlan.Uncovered,
-            planBatchDownload(listOf(sp1), listOf(single1, season, pack1to6), emptyList()).getValue(21),
+            BatchDownloadPlanner.plan(listOf(sp1), listOf(single1, season, pack1to6), emptyList()).getValue(21),
         )
         assertEquals(
             EpisodeDownloadPlan.Create(spMedia),
-            planBatchDownload(listOf(sp1), listOf(single1, spMedia), emptyList()).getValue(21),
+            BatchDownloadPlanner.plan(listOf(sp1), listOf(single1, spMedia), emptyList()).getValue(21),
         )
     }
 
     @Test
     fun `episodes nobody covers are uncovered`() {
         val unparsed = requestTestMedia(300, range = null)
-        val plan = planBatchDownload(episodes.take(3), listOf(single1, unparsed), emptyList())
+        val plan = BatchDownloadPlanner.plan(episodes.take(3), listOf(single1, unparsed), emptyList())
         assertEquals(EpisodeDownloadPlan.Create(single1), plan.getValue(1))
         assertEquals(EpisodeDownloadPlan.Uncovered, plan.getValue(2))
         assertEquals(EpisodeDownloadPlan.Uncovered, plan.getValue(3))
@@ -156,8 +156,8 @@ class BatchDownloadPlannerTest {
     @Test
     fun `availability is stable between previewing all episodes and confirming a subset`() {
         val candidates = listOf(single1, pack1to6)
-        val preview = planBatchDownload(episodes, candidates, emptyList(), pinned = single1, pinnedEpisodeId = 1)
-        val confirmed = planBatchDownload(
+        val preview = BatchDownloadPlanner.plan(episodes, candidates, emptyList(), pinned = single1, pinnedEpisodeId = 1)
+        val confirmed = BatchDownloadPlanner.plan(
             listOf(episodes[0], episodes[3]), candidates, emptyList(), pinned = single1, pinnedEpisodeId = 1,
         )
         assertEquals(EpisodeDownloadPlan.Create(pack1to6), preview.getValue(4))

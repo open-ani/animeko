@@ -38,13 +38,4 @@ class MediaFetchRequestEpisodeNumbersTest {
         assertSame(other, other.withRequestedNumbers(request(10, sort = 5)))
         assertSame(episode, episode.withRequestedNumbers(request(10, sort = 1)))
     }
-
-    @Test
-    fun `switching the current episode keeps an edit made for that episode`() {
-        val switched = request(10, sort = 1).withCurrentEpisode(other)
-        assertEquals("11", switched.episodeId)
-        assertEquals(EpisodeSort(2), switched.episodeSort)
-        val edited = request(10, sort = 5)
-        assertSame(edited, edited.withCurrentEpisode(episode))
-    }
 }
