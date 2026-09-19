@@ -41,6 +41,7 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.paging.compose.collectAsLazyPagingItems
 import me.him188.ani.app.navigation.LocalNavigator
 import me.him188.ani.app.ui.foundation.ImageViewer
+import me.him188.ani.app.ui.foundation.ImageViewerBackHandler
 import me.him188.ani.app.ui.foundation.ImageViewerHandler
 import me.him188.ani.app.ui.foundation.rememberImageViewerHandler
 import me.him188.ani.app.ui.foundation.widgets.ModalSideSheet
@@ -111,6 +112,11 @@ private fun PeoplePreviewSideSheet(
         state = state,
         shape = RoundedCornerShape(topStart = 16.dp, bottomStart = 16.dp),
         containerColor = MaterialTheme.colorScheme.surfaceContainerLow,
+        // 必须放在 sheet (Dialog) 内, 否则覆盖层会被 Dialog 挡住; 用 overlay 让移动端的查看器覆盖整个窗口而不只是 sheet
+        overlay = {
+            ImageViewer(imageViewer) { imageViewer.clear() }
+            ImageViewerBackHandler(imageViewer)
+        },
     ) {
         when (target) {
             is PeoplePreviewTarget.Person -> PersonPreviewContent(
@@ -133,8 +139,6 @@ private fun PeoplePreviewSideSheet(
                 onDismissRequest = { state.close() },
             )
         }
-        // 必须放在 sheet (Dialog) 内, 否则覆盖层会被 Dialog 挡住
-        ImageViewer(imageViewer) { imageViewer.clear() }
     }
 }
 
