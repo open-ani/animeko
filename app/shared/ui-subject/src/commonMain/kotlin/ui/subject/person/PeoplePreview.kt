@@ -40,6 +40,9 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.paging.compose.collectAsLazyPagingItems
 import me.him188.ani.app.navigation.LocalNavigator
+import me.him188.ani.app.ui.foundation.ImageViewer
+import me.him188.ani.app.ui.foundation.ImageViewerHandler
+import me.him188.ani.app.ui.foundation.rememberImageViewerHandler
 import me.him188.ani.app.ui.foundation.widgets.ModalSideSheet
 import me.him188.ani.app.ui.foundation.widgets.rememberModalSideSheetState
 import me.him188.ani.app.ui.lang.Lang
@@ -101,6 +104,7 @@ private fun PeoplePreviewSideSheet(
 ) {
     val navigator = LocalNavigator.current
     val state = rememberModalSideSheetState()
+    val imageViewer = rememberImageViewerHandler()
     ModalSideSheet(
         onDismiss = onDismissRequest,
         modifier = Modifier.width(412.dp),
@@ -111,6 +115,7 @@ private fun PeoplePreviewSideSheet(
         when (target) {
             is PeoplePreviewTarget.Person -> PersonPreviewContent(
                 target.personId,
+                imageViewer,
                 onOpenFullPage = {
                     onDismissRequest()
                     navigator.navigatePersonDetails(target.personId)
@@ -120,6 +125,7 @@ private fun PeoplePreviewSideSheet(
 
             is PeoplePreviewTarget.Character -> CharacterPreviewContent(
                 target.characterId,
+                imageViewer,
                 onOpenFullPage = {
                     onDismissRequest()
                     navigator.navigateCharacterDetails(target.characterId)
@@ -127,12 +133,15 @@ private fun PeoplePreviewSideSheet(
                 onDismissRequest = { state.close() },
             )
         }
+        // 必须放在 sheet (Dialog) 内, 否则覆盖层会被 Dialog 挡住
+        ImageViewer(imageViewer) { imageViewer.clear() }
     }
 }
 
 @Composable
 private fun PersonPreviewContent(
     personId: Int,
+    imageViewer: ImageViewerHandler,
     onOpenFullPage: () -> Unit,
     onDismissRequest: () -> Unit,
 ) {
@@ -151,6 +160,7 @@ private fun PersonPreviewContent(
                 modifier = Modifier.padding(horizontal = 16.dp).padding(bottom = 16.dp),
                 // 预览内点击跳转前先关闭预览
                 navigation = rememberPeopleDetailsNavigation(onBeforeNavigate = onDismissRequest),
+                imageViewer = imageViewer,
             )
         }
     }
@@ -159,6 +169,7 @@ private fun PersonPreviewContent(
 @Composable
 private fun CharacterPreviewContent(
     characterId: Int,
+    imageViewer: ImageViewerHandler,
     onOpenFullPage: () -> Unit,
     onDismissRequest: () -> Unit,
 ) {
@@ -178,6 +189,7 @@ private fun CharacterPreviewContent(
                 modifier = Modifier.padding(horizontal = 16.dp).padding(bottom = 16.dp),
                 // 预览内点击跳转前先关闭预览
                 navigation = rememberPeopleDetailsNavigation(onBeforeNavigate = onDismissRequest),
+                imageViewer = imageViewer,
             )
         }
     }
