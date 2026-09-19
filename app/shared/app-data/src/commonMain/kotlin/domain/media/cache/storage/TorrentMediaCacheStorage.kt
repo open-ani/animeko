@@ -16,6 +16,10 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.buffer
+import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.flowOf
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.produceIn
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.selects.select
@@ -43,7 +47,10 @@ class TorrentMediaCacheStorage(
     private val shareRatioLimitFlow: Flow<Float>,
     private val displayName: String,
     parentCoroutineContext: CoroutineContext = EmptyCoroutineContext,
-) : AbstractDataStoreMediaCacheStorage(mediaSourceId, store, torrentEngine, displayName, parentCoroutineContext) {
+    engineAvailability: Flow<Boolean> = flowOf(true),
+) : AbstractDataStoreMediaCacheStorage(
+    mediaSourceId, store, torrentEngine, displayName, parentCoroutineContext,
+) {
     private val statSubscriptionScope = RestartableCoroutineScope(scope.coroutineContext)
 
     /**
@@ -56,21 +63,33 @@ class TorrentMediaCacheStorage(
      */
     private val requestStartupRestore = Channel<Unit>(Channel.CONFLATED)
 
+    private val startupRestored = CompletableDeferred<Unit>()
+
     init {
+        // 引擎判断「删掉这条记录后同一 media 还剩哪些集」时直接读 store, 读的必须是本存储写入的那一份.
+        check(store === torrentEngine.metadataStore) {
+            "TorrentMediaCacheStorage and its TorrentMediaCacheEngine must share one metadata store."
+        }
+
         scope.launch(start = CoroutineStart.UNDISPATCHED) {
-            val startupRestored = CompletableDeferred<Unit>()
-            val serviceConnected = torrentEngine.isServiceConnected.buffer(Channel.RENDEZVOUS).produceIn(this)
+            var previousConnection: Boolean? = null
+            val serviceConnected = combine(torrentEngine.isServiceConnected, engineAvailability) { connected, available ->
+                connected to available
+            }.distinctUntilChanged().buffer(Channel.RENDEZVOUS).produceIn(this)
 
             while (true) {
                 select<Unit> {
                     // 如果在 APP 启动时 serviceConnected 状态变了, 忽略处理
                     serviceConnected.onReceive {
+                        val connectionUnchanged = previousConnection == it.first
+                        previousConnection = it.first
+                        if (!it.second) return@onReceive
                         if (!startupRestored.isCompleted) {
                             logger.warn { "Startup torrent cache restoration is not completed, skip restore on service connected." }
                             return@onReceive
                         }
                         logger.debug { "Refreshing torrent caches on service connection changed, connected: $it." }
-                        refreshCache()
+                        if (connectionUnchanged) restoreMissingCaches() else refreshCache()
                     }
 
                     requestStartupRestore.onReceive {
@@ -86,6 +105,16 @@ class TorrentMediaCacheStorage(
 
     override suspend fun restorePersistedCaches() {
         requestStartupRestore.send(Unit)
+    }
+
+    private suspend fun restoreMissingCaches() = lock.withLock {
+        // 可用性恢复只补回缺失记录, 已有下载继续使用其文件句柄和统计订阅.
+        for (save in metadataFlow.first()) {
+            if (listFlow.value.any { isSameMediaAndEpisode(it, save) }) continue
+            restoreFile(save.origin, save.metadata) { cache ->
+                listFlow.value = listFlow.value + cache
+            }
+        }
     }
 
     override suspend fun refreshCache(): List<MediaCache> {
@@ -106,6 +135,7 @@ class TorrentMediaCacheStorage(
             when (cache) {
                 is TorrentMediaCacheEngine.TorrentMediaCache -> {
                     logger.info { "Cache resumed: $cache, subscribe to media cache stats." }
+                    cache.onMetadataUpdated = { persistMetadata(cache, it) }
                     statSubscriptionScope.launch {
                         cache.subscribeStats(shareRatioLimitFlow)
                     }
@@ -129,13 +159,16 @@ class TorrentMediaCacheStorage(
         episodeMetadata: EpisodeMetadata,
         resume: Boolean
     ): TorrentMediaCacheEngine.TorrentMediaCache {
+        var promoting = false
         return lock.withLock {
             // 已存在同一资源同一剧集的记录时直接复用; 统计订阅只对新建的记录进行, 避免同一记录被重复订阅.
             val existing = listFlow.value.firstOrNull { isSameMediaAndEpisode(it, media, metadata) }
+            promoting = existing != null && existing.metadata.autoCached && !metadata.autoCached
             val cache = existing ?: super.cache(media, metadata, episodeMetadata, false)
             check(cache is TorrentMediaCacheEngine.TorrentMediaCache) { "Cache does not implement TorrentMediaCache." }
 
             if (existing == null) {
+                cache.onMetadataUpdated = { persistMetadata(cache, it) }
                 statSubscriptionScope.launch {
                     cache.subscribeStats(shareRatioLimitFlow)
                 }
@@ -143,8 +176,11 @@ class TorrentMediaCacheStorage(
 
             cache
         }.also {
-            if (resume) {
-                it.resume()
+            when {
+                // 显式添加必须清掉 autoCached, 否则播放结束时这条记录会被当作自动记录一并删除,
+                // 用户看到添加成功而下载消失. 启动恢复一类的 resume 不走这条路.
+                promoting -> it.resumeByUser()
+                resume -> it.resume()
             }
         }
     }

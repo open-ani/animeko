@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="pikpak_cache_service_name">Animeko 雲端硬碟快取</string>
+    <string name="pikpak_cache_service_title_idle">雲端硬碟快取服務正在執行</string>
+    <string name="pikpak_cache_service_title_working">正在快取 %1$d 個資源</string>
+    <string name="pikpak_cache_service_content">下載：%1$s</string>
+    <string name="pikpak_cache_service_pause_all">全部暫停</string>
+</resources>

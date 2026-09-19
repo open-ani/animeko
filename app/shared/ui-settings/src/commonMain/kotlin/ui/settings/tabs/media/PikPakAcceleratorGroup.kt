@@ -9,44 +9,49 @@
 
 package me.him188.ani.app.ui.settings.tabs.media
 
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Column
 import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.input.PasswordVisualTransformation
-import kotlinx.coroutines.launch
 import me.him188.ani.app.data.models.preference.MediaSelectorSettings
 import me.him188.ani.app.data.models.preference.PikPakConfig
 import me.him188.ani.app.ui.foundation.animation.AniAnimatedVisibility
 import me.him188.ani.app.ui.lang.Lang
 import me.him188.ani.app.ui.lang.settings_pikpak_description
-import me.him188.ani.app.ui.lang.settings_pikpak_download_concurrency_description
-import me.him188.ani.app.ui.lang.settings_pikpak_download_concurrency_title
+import me.him188.ani.app.ui.lang.settings_pikpak_drive_usage_failed
+import me.him188.ani.app.ui.lang.settings_pikpak_drive_usage_idle
+import me.him188.ani.app.ui.lang.settings_pikpak_drive_usage_low
+import me.him188.ani.app.ui.lang.settings_pikpak_drive_usage_signed_out
+import me.him188.ani.app.ui.lang.settings_pikpak_drive_usage_title
+import me.him188.ani.app.ui.lang.settings_pikpak_drive_usage_value
 import me.him188.ani.app.ui.lang.settings_pikpak_enabled
+import me.him188.ani.app.ui.lang.settings_pikpak_legacy_delete
+import me.him188.ani.app.ui.lang.settings_pikpak_legacy_failed
+import me.him188.ani.app.ui.lang.settings_pikpak_legacy_keep
+import me.him188.ani.app.ui.lang.settings_pikpak_legacy_message
+import me.him188.ani.app.ui.lang.settings_pikpak_legacy_title
 import me.him188.ani.app.ui.lang.settings_pikpak_password
 import me.him188.ani.app.ui.lang.settings_pikpak_password_description
 import me.him188.ani.app.ui.lang.settings_pikpak_password_hidden
-import me.him188.ani.app.ui.lang.settings_pikpak_queue_description
-import me.him188.ani.app.ui.lang.settings_pikpak_queue_title
-import me.him188.ani.app.ui.lang.settings_pikpak_queue_unlimited
 import me.him188.ani.app.ui.lang.settings_pikpak_recommend_apply
 import me.him188.ani.app.ui.lang.settings_pikpak_recommend_dismiss
 import me.him188.ani.app.ui.lang.settings_pikpak_recommend_message
 import me.him188.ani.app.ui.lang.settings_pikpak_recommend_title
-import me.him188.ani.app.ui.lang.settings_pikpak_test_connection
 import me.him188.ani.app.ui.lang.settings_pikpak_username
 import me.him188.ani.app.ui.lang.settings_pikpak_username_placeholder
-import me.him188.ani.app.ui.settings.framework.ConnectionTester
 import me.him188.ani.app.ui.settings.framework.ConnectionTesterResultIndicator
 import me.him188.ani.app.ui.settings.framework.SettingsState
 import me.him188.ani.app.ui.settings.framework.components.SettingsScope
-import me.him188.ani.app.ui.settings.framework.components.SliderItem
 import me.him188.ani.app.ui.settings.framework.components.SwitchItem
 import me.him188.ani.app.ui.settings.framework.components.TextFieldItem
 import me.him188.ani.app.ui.settings.framework.components.TextItem
@@ -57,11 +62,15 @@ import org.jetbrains.compose.resources.stringResource
 internal fun SettingsScope.PikPakAcceleratorGroup(
     state: SettingsState<PikPakConfig>,
     mediaSelectorSettings: SettingsState<MediaSelectorSettings>,
-    connectionTester: ConnectionTester,
+    driveUsageState: PikPakDriveUsageState,
+    legacyNoticeState: PikPakLegacyNoticeState,
 ) {
     val config by state
     var showRecommendDialog by remember { mutableStateOf(false) }
-    val scope = rememberCoroutineScope()
+
+    if (config.enabled && !config.legacyNoticeAnswered) {
+        LaunchedEffect(Unit) { legacyNoticeState.check() }
+    }
 
     Group(
         title = { Text("PikPak") },
@@ -145,59 +154,7 @@ internal fun SettingsScope.PikPakAcceleratorGroup(
                     },
                 )
 
-                val queueLength = config.slotQueueLength.coerceIn(1, PikPakConfig.SLOT_QUEUE_UNLIMITED)
-                SliderItem(
-                    value = queueLength.toFloat(),
-                    onValueChange = { raw ->
-                        val rounded = raw.toInt().coerceIn(1, PikPakConfig.SLOT_QUEUE_UNLIMITED)
-                        if (rounded != config.slotQueueLength) {
-                            state.update(config.copy(slotQueueLength = rounded))
-                        }
-                    },
-                    title = { Text(stringResource(Lang.settings_pikpak_queue_title)) },
-                    description = { Text(stringResource(Lang.settings_pikpak_queue_description)) },
-                    valueRange = 1f..PikPakConfig.SLOT_QUEUE_UNLIMITED.toFloat(),
-                    steps = PikPakConfig.SLOT_QUEUE_UNLIMITED - 2,
-                    valueLabel = {
-                        Text(
-                            if (queueLength >= PikPakConfig.SLOT_QUEUE_UNLIMITED) stringResource(Lang.settings_pikpak_queue_unlimited)
-                            else queueLength.toString(),
-                        )
-                    },
-                )
-
-                val downloadConcurrency = config.downloadConcurrency.coerceIn(
-                    PikPakConfig.MIN_DOWNLOAD_CONCURRENCY,
-                    PikPakConfig.MAX_DOWNLOAD_CONCURRENCY,
-                )
-                SliderItem(
-                    value = downloadConcurrency.toFloat(),
-                    onValueChange = { raw ->
-                        val rounded = raw.toInt().coerceIn(
-                            PikPakConfig.MIN_DOWNLOAD_CONCURRENCY,
-                            PikPakConfig.MAX_DOWNLOAD_CONCURRENCY,
-                        )
-                        if (rounded != config.downloadConcurrency) {
-                            state.update(config.copy(downloadConcurrency = rounded))
-                        }
-                    },
-                    title = { Text(stringResource(Lang.settings_pikpak_download_concurrency_title)) },
-                    description = { Text(stringResource(Lang.settings_pikpak_download_concurrency_description)) },
-                    valueRange = PikPakConfig.MIN_DOWNLOAD_CONCURRENCY.toFloat()..
-                            PikPakConfig.MAX_DOWNLOAD_CONCURRENCY.toFloat(),
-                    steps = PikPakConfig.MAX_DOWNLOAD_CONCURRENCY - PikPakConfig.MIN_DOWNLOAD_CONCURRENCY - 1,
-                    valueLabel = { Text(downloadConcurrency.toString()) },
-                )
-
-                TextItem(
-                    title = { Text(stringResource(Lang.settings_pikpak_test_connection)) },
-                    action = {
-                        ConnectionTesterResultIndicator(connectionTester, showTime = true)
-                    },
-                    onClick = {
-                        scope.launch { connectionTester.test() }
-                    },
-                )
+                PikPakDriveUsageItems(driveUsageState)
             }
         }
     }
@@ -226,6 +183,90 @@ internal fun SettingsScope.PikPakAcceleratorGroup(
             },
         )
     }
+
+    if (legacyNoticeState.items.isNotEmpty()) {
+        val markAnswered = { state.update(state.value.copy(legacyNoticeAnswered = true)) }
+        AlertDialog(
+            onDismissRequest = {},
+            title = { Text(stringResource(Lang.settings_pikpak_legacy_title)) },
+            text = {
+                Column {
+                    Text(
+                        stringResource(
+                            Lang.settings_pikpak_legacy_message,
+                            legacyNoticeState.items.size,
+                        ),
+                    )
+                    legacyNoticeState.error?.let {
+                        Text(
+                            stringResource(Lang.settings_pikpak_legacy_failed, it),
+                            color = MaterialTheme.colorScheme.error,
+                        )
+                    }
+                }
+            },
+            confirmButton = {
+                TextButton(
+                    enabled = !legacyNoticeState.deleting,
+                    onClick = { legacyNoticeState.deleteAll(markAnswered) },
+                ) {
+                    Text(stringResource(Lang.settings_pikpak_legacy_delete))
+                }
+            },
+            dismissButton = {
+                TextButton(
+                    enabled = !legacyNoticeState.deleting,
+                    onClick = { legacyNoticeState.keep(markAnswered) },
+                ) {
+                    Text(stringResource(Lang.settings_pikpak_legacy_keep))
+                }
+            },
+        )
+    }
+}
+
+@Composable
+private fun SettingsScope.PikPakDriveUsageItems(
+    state: PikPakDriveUsageState,
+) {
+    TextItem(
+        modifier = Modifier.clickable(onClick = { state.check() }),
+        title = { Text(stringResource(Lang.settings_pikpak_drive_usage_title)) },
+        description = {
+            when (val presentation = state.presentation) {
+                PikPakDriveUsagePresentation.Idle ->
+                    Text(stringResource(Lang.settings_pikpak_drive_usage_idle))
+
+                PikPakDriveUsagePresentation.SignedOut ->
+                    Text(stringResource(Lang.settings_pikpak_drive_usage_signed_out))
+
+                is PikPakDriveUsagePresentation.Failed ->
+                    Text(
+                        stringResource(Lang.settings_pikpak_drive_usage_failed, presentation.message),
+                        color = MaterialTheme.colorScheme.error,
+                    )
+
+                is PikPakDriveUsagePresentation.Loaded -> Column {
+                    Text(
+                        stringResource(
+                            Lang.settings_pikpak_drive_usage_value,
+                            presentation.used.toString(),
+                            presentation.limit.toString(),
+                        ),
+                    )
+                    if (presentation.freeSpaceLow) {
+                        Text(
+                            stringResource(Lang.settings_pikpak_drive_usage_low),
+                            color = MaterialTheme.colorScheme.error,
+                        )
+                    }
+                }
+            }
+        },
+        action = {
+            ConnectionTesterResultIndicator(state.tester, showTime = true, showIdle = false)
+        },
+    )
 }
 
 private fun isSelectorAlignedForCloudOffline(s: MediaSelectorSettings): Boolean =

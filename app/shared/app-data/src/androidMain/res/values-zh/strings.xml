@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="pikpak_cache_service_name">Animeko 云盘缓存</string>
+    <string name="pikpak_cache_service_title_idle">云盘缓存服务正在运行</string>
+    <string name="pikpak_cache_service_title_working">正在缓存 %1$d 个资源</string>
+    <string name="pikpak_cache_service_content">下载：%1$s</string>
+    <string name="pikpak_cache_service_pause_all">暂停全部</string>
+</resources>

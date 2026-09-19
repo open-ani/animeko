@@ -46,14 +46,22 @@ expect fun getPlatformKtorEngine(): HttpClientEngineFactory<*>
  * Note: 尽可能使用 `HttpClientProvider` 来共享 [HttpClient] 实例. 因为每个实例都潜在地会有一个线程池.
  */
 fun createDefaultHttpClient(
+    installBrowserUserAgent: Boolean = true,
+    // 自己解析 JSON、自己重试的 SDK 要的是一个不带这两个插件的客户端. ContentNegotiation 会加上
+    // Accept 头, PikPak 的 CDN 用 406 回应; HttpRequestRetry 会包住 SDK 的重试循环, 并可能在 SDK
+    // 重试前耗尽调用方的超时预算.
+    installRetry: Boolean = true,
+    installContentNegotiation: Boolean = true,
     clientConfig: HttpClientConfig<*>.() -> Unit = {},
 ): HttpClient = HttpClient(getPlatformKtorEngine()) {
-    install(HttpRequestRetry) {
-        maxRetries = 1
-        delayMillis { 1000 }
-        retryIf { cause, response ->
-            // 只重试网络异常
-            cause is IOException
+    if (installRetry) {
+        install(HttpRequestRetry) {
+            maxRetries = 1
+            delayMillis { 1000 }
+            retryIf { cause, response ->
+                // 只重试网络异常
+                cause is IOException
+            }
         }
     }
     install(HttpCookies)
@@ -62,17 +70,21 @@ fun createDefaultHttpClient(
         connectTimeoutMillis = 30_000
         socketTimeoutMillis = 30_000
     }
-    BrowserUserAgent()
-    install(ContentNegotiation) {
-        val xmlConverter = getXmlConverter()
-        json(
-            Json {
-                ignoreUnknownKeys = true
-                isLenient = true
-            },
-        )
-        register(ContentType.Text.Html, xmlConverter)
-        register(ContentType.Text.Xml, xmlConverter)
+    if (installBrowserUserAgent) {
+        BrowserUserAgent()
+    }
+    if (installContentNegotiation) {
+        install(ContentNegotiation) {
+            val xmlConverter = getXmlConverter()
+            json(
+                Json {
+                    ignoreUnknownKeys = true
+                    isLenient = true
+                },
+            )
+            register(ContentType.Text.Html, xmlConverter)
+            register(ContentType.Text.Xml, xmlConverter)
+        }
     }
     followRedirects = true
     install(HttpRedirect) {

@@ -14,15 +14,12 @@ import android.os.Environment
 import android.widget.Toast
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
-import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.runBlocking
 import kotlinx.io.files.Path
 import me.him188.ani.android.navigation.AndroidBrowserNavigator
 import me.him188.ani.android.provider.ExternalContentProviderFactoryImpl
-import me.him188.ani.app.data.models.preference.PikPakConfig
 import me.him188.ani.app.data.persistent.database.AniDatabase
 import me.him188.ani.app.data.repository.user.SettingsRepository
 import me.him188.ani.app.domain.foundation.HttpClientProvider
@@ -40,8 +37,6 @@ import me.him188.ani.app.domain.media.resolver.AndroidWebMediaResolver
 import me.him188.ani.app.domain.media.resolver.HttpStreamingMediaResolver
 import me.him188.ani.app.domain.media.resolver.LocalFileMediaResolver
 import me.him188.ani.app.domain.media.resolver.MediaResolver
-import me.him188.ani.app.domain.media.resolver.OfflineDownloadMediaResolver
-import me.him188.ani.app.domain.media.resolver.TorrentMediaResolver
 import me.him188.ani.app.domain.mediasource.web.AndroidOnnxImageCaptchaRecognizer
 import me.him188.ani.app.domain.mediasource.web.captcha.AndroidCaptchaBrowserFactory
 import me.him188.ani.app.domain.mediasource.web.captcha.CaptchaBrowserFactory
@@ -51,6 +46,7 @@ import me.him188.ani.app.domain.settings.ProxyProvider
 import me.him188.ani.app.domain.torrent.DefaultTorrentManager
 import me.him188.ani.app.domain.torrent.IRemoteAniTorrentEngine
 import me.him188.ani.app.domain.torrent.RemoteAnitorrentEngineFactory
+import me.him188.ani.app.domain.torrent.engines.PikPakEngine
 import me.him188.ani.app.domain.torrent.TorrentManager
 import me.him188.ani.app.domain.torrent.service.AniTorrentService
 import me.him188.ani.app.domain.torrent.service.TorrentServiceConnection
@@ -64,14 +60,11 @@ import me.him188.ani.app.platform.ContextMP
 import me.him188.ani.app.platform.PermissionManager
 import me.him188.ani.app.platform.files
 import me.him188.ani.app.platform.findActivity
+import me.him188.ani.app.platform.torrentMediaResolvers
 import me.him188.ani.app.tools.update.AndroidUpdateInstaller
 import me.him188.ani.app.tools.update.UpdateInstaller
 import me.him188.ani.app.ui.exprovider.ExternalContentProviderFactory
 import me.him188.ani.app.videoplayer.media.LibassExoPlayerMediampPlayerFactory
-import me.him188.ani.torrent.offline.OfflineDownloadEngine
-import me.him188.ani.torrent.pikpak.PikPakCredentials
-import me.him188.ani.torrent.pikpak.PikPakOfflineDownloadEngine
-import me.him188.ani.torrent.pikpak.PikPakSessionStoreAdapter
 import me.him188.ani.utils.httpdownloader.HttpDownloader
 import me.him188.ani.utils.io.absolutePath
 import me.him188.ani.utils.io.deleteRecursively
@@ -158,14 +151,12 @@ fun getAndroidModules(
             get(),
             baseSaveDir = { Path(saveDir).inSystem },
             RemoteAnitorrentEngineFactory(get(), get(), get<ProxyProvider>().proxy),
+            pikpak = get<PikPakEngine>(),
         )
     }
 
     single<HttpMediaCacheEngine> {
         val logger = logger<TorrentManager>()
-        val pikpakConfig = get<SettingsRepository>().pikpakConfig.flow
-            .stateIn(coroutineScope, SharingStarted.Eagerly, PikPakConfig.Default)
-
         val saveDir = get<MediaSaveDirProvider>().saveDir
             .let { Path(it).resolve(HttpMediaCacheEngine.MEDIA_CACHE_DIR) }
         logger.info { "HttpMediaCacheEngine base save directory: $saveDir" }
@@ -176,7 +167,6 @@ fun getAndroidModules(
             downloader = get<HttpDownloader>(),
             saveDir = saveDir,
             mediaResolver = get<MediaResolver>(),
-            pikpakConfig = { pikpakConfig.value },
         )
     }
 
@@ -193,49 +183,9 @@ fun getAndroidModules(
         MediampPlayerFactoryLoader.first()
     }
 
-    single<OfflineDownloadEngine> {
-        val settings = get<SettingsRepository>()
-        val configState = settings.pikpakConfig.flow
-            .stateIn(coroutineScope, SharingStarted.Eagerly, initialValue = PikPakConfig.Default)
-        val credentialsFlow = configState
-            .map { cfg ->
-                if (cfg.enabled && cfg.username.isNotEmpty() &&
-                    (cfg.password.isNotEmpty() || cfg.refreshToken.isNotEmpty())
-                ) {
-                    PikPakCredentials(cfg.username, cfg.password)
-                } else null
-            }
-            .stateIn(coroutineScope, SharingStarted.Eagerly, initialValue = null)
-        val sessionStore = PikPakSessionStoreAdapter(
-            readRefreshToken = { configState.value.refreshToken },
-            writeRefreshToken = { rt ->
-                settings.pikpakConfig.update { copy(refreshToken = rt) }
-            },
-            // PikPakConfig.password stays on disk obscured (AES-CTR with a
-            // hardcoded key, the same approach as `rclone obscure`; see
-            // ObscuredStringSerializer). We need to keep it because a
-            // server-side revoke of the refresh token would otherwise leave
-            // the engine with no recovery path — Test and playback would
-            // silently fail until the user re-typed the password.
-            // PikPakAcceleratorGroup never echoes the stored value back to
-            // the password field, so the obscured copy is what the eyedrop
-            // attacker would see.
-            onSessionSaved = {},
-        )
-        PikPakOfflineDownloadEngine(
-            scopedHttpClient = get<HttpClientProvider>().get(ScopedHttpClientUserAgent.ANI),
-            credentials = credentialsFlow,
-            scope = coroutineScope,
-            sessionStore = sessionStore,
-            slotQueueLength = { configState.value.slotQueueLength },
-        )
-    }
     factory<MediaResolver> {
-        val torrentResolvers = get<TorrentManager>().engines.map { TorrentMediaResolver(it, get()) }
-        val btFallback = MediaResolver.from(torrentResolvers)
         MediaResolver.from(
-            listOf<MediaResolver>(OfflineDownloadMediaResolver(get(), fallback = btFallback))
-                .plus(torrentResolvers)
+            torrentMediaResolvers(get<TorrentManager>().engines, get())
                 .plus(LocalFileMediaResolver())
                 .plus(HttpStreamingMediaResolver())
                 .plus(

@@ -29,7 +29,6 @@ import kotlinx.coroutines.flow.stateIn
 import me.him188.ani.app.domain.media.cache.EpisodeCacheStatus
 import me.him188.ani.app.domain.media.cache.MediaCache
 import me.him188.ani.app.domain.media.cache.MediaCacheState
-import me.him188.ani.app.domain.media.cache.engine.MediaCacheEngineKey
 import me.him188.ani.app.domain.media.cache.engine.MediaStats
 import me.him188.ani.app.domain.media.cache.engine.sum
 import me.him188.ani.app.domain.media.cache.storage.MediaCacheStorage
@@ -86,6 +85,7 @@ class MediaDownloadManager(
     fun snapshots(subjectId: Int? = null): Flow<List<DownloadSnapshot>> {
         val source = if (subjectId == null) loadedDownloads else downloadsForSubject(subjectId)
         return source.flatMapLatest { it.combineSnapshots() }
+            .distinctUntilChanged()
     }
 
     /**
@@ -108,7 +108,9 @@ class MediaDownloadManager(
                 if (matching.isEmpty()) {
                     flowOf(EpisodeCacheStatus.NotCached)
                 } else {
-                    combine(matching.map { it.cache.episodeProgress() }) { it.toEpisodeCacheStatus() }
+                    combine(
+                        matching.map { download -> download.cache.episodeProgress() },
+                    ) { progresses -> progresses.toEpisodeCacheStatus() }
                 }
             }
             .distinctUntilChanged()
@@ -116,27 +118,30 @@ class MediaDownloadManager(
     }
 
     /**
-     * 按注册顺序取第一个支持该资源的存储; BT 资源在 PikPak 引擎可用时优先经它下载.
+     * 按注册顺序取第一个支持该资源的存储; BT 资源由 [selectTorrentStorage] 决定, 一个种子只归一个引擎.
      * @throws UnsupportedOperationException 没有存储支持该资源
      */
-    fun defaultStorageFor(media: Media): MediaCacheStorage {
-        val supported = storages.filter { it.engine.supports(media) }
-        if (media.kind == MediaSourceKind.BitTorrent) {
-            supported.firstOrNull { it.engine.engineKey == MediaCacheEngineKey.WebM3u }?.let { return it }
+    suspend fun defaultStorageFor(media: Media): MediaCacheStorage {
+        val storage = if (media.kind == MediaSourceKind.BitTorrent) {
+            selectTorrentStorage(storages, media)
+        } else {
+            storages.firstOrNull { it.engine.supports(media) }
         }
-        return supported.firstOrNull()
+        return storage
             ?: throw UnsupportedOperationException("No download storage supports media ${media.mediaId}")
     }
 
     /**
      * 在 [storage] 中创建并持久化下载; 任一存储已有同一资源同一集的记录时直接返回该记录. 传输由引擎异步进行.
+     * @param storage 为 `null` 时取 [defaultStorageFor]; 默认参数不能调用 suspend 函数.
      */
     suspend fun createDownload(
         media: Media,
         metadata: MediaCacheMetadata,
         episodeMetadata: EpisodeMetadata,
-        storage: MediaCacheStorage = defaultStorageFor(media),
+        storage: MediaCacheStorage? = null,
     ): MediaCache {
+        val storage = storage ?: defaultStorageFor(media)
         for (other in storages) {
             if (other === storage) continue
             other.listFlow.first().firstOrNull { it.isSameMediaAndEpisode(media, metadata) }?.let { return it }

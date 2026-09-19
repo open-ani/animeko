@@ -10,12 +10,9 @@
 package me.him188.ani.app.desktop
 
 import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
-import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.runBlocking
-import me.him188.ani.app.data.models.preference.PikPakConfig
 import me.him188.ani.app.data.persistent.dataStores
 import me.him188.ani.app.data.persistent.database.AniDatabase
 import me.him188.ani.app.data.repository.WindowStateRepository
@@ -36,8 +33,6 @@ import me.him188.ani.app.domain.media.resolver.DesktopWebMediaResolver
 import me.him188.ani.app.domain.media.resolver.HttpStreamingMediaResolver
 import me.him188.ani.app.domain.media.resolver.LocalFileMediaResolver
 import me.him188.ani.app.domain.media.resolver.MediaResolver
-import me.him188.ani.app.domain.media.resolver.OfflineDownloadMediaResolver
-import me.him188.ani.app.domain.media.resolver.TorrentMediaResolver
 import me.him188.ani.app.domain.mediasource.web.DesktopOnnxImageCaptchaRecognizer
 import me.him188.ani.app.domain.mediasource.web.captcha.CaptchaBrowserFactory
 import me.him188.ani.app.domain.mediasource.web.captcha.DesktopCaptchaBrowserFactory
@@ -46,6 +41,7 @@ import me.him188.ani.app.domain.mediasource.web.captcha.WebSessionManager
 import me.him188.ani.app.domain.torrent.DefaultTorrentManager
 import me.him188.ani.app.domain.torrent.TorrentEngine
 import me.him188.ani.app.domain.torrent.TorrentManager
+import me.him188.ani.app.domain.torrent.engines.PikPakEngine
 import me.him188.ani.app.navigation.BrowserNavigator
 import me.him188.ani.app.navigation.DesktopBrowserNavigator
 import me.him188.ani.app.platform.AppTerminator
@@ -54,12 +50,9 @@ import me.him188.ani.app.platform.DesktopContext
 import me.him188.ani.app.platform.GrantedPermissionManager
 import me.him188.ani.app.platform.PermissionManager
 import me.him188.ani.app.platform.files
+import me.him188.ani.app.platform.torrentMediaResolvers
 import me.him188.ani.app.tools.update.DesktopUpdateInstaller
 import me.him188.ani.app.tools.update.UpdateInstaller
-import me.him188.ani.torrent.offline.OfflineDownloadEngine
-import me.him188.ani.torrent.pikpak.PikPakCredentials
-import me.him188.ani.torrent.pikpak.PikPakOfflineDownloadEngine
-import me.him188.ani.torrent.pikpak.PikPakSessionStoreAdapter
 import me.him188.ani.utils.httpdownloader.HttpDownloader
 import me.him188.ani.utils.io.absolutePath
 import me.him188.ani.utils.io.inSystem
@@ -119,7 +112,7 @@ fun getDesktopModules(getContext: () -> DesktopContext, scope: CoroutineScope) =
             // No Windows ARM64 anitorrent runtime is published; match iOS by exposing no local torrent engine.
             logger<TorrentManager>().info { "Anitorrent is disabled on Windows ARM64" }
             return@single object : TorrentManager {
-                override val engines: List<TorrentEngine> = emptyList()
+                override val engines: List<TorrentEngine> = listOf(get<PikPakEngine>())
             }
         }
 
@@ -133,12 +126,11 @@ fun getDesktopModules(getContext: () -> DesktopContext, scope: CoroutineScope) =
             get(),
             get(),
             baseSaveDir = { Path(saveDir).toKtPath().inSystem },
+            pikpak = get<PikPakEngine>(),
         )
     }
     single<HttpMediaCacheEngine> {
         val saveDir = Path(get<MediaSaveDirProvider>().saveDir).resolve(HttpMediaCacheEngine.MEDIA_CACHE_DIR)
-        val pikpakConfig = get<SettingsRepository>().pikpakConfig.flow
-            .stateIn(scope, SharingStarted.Eagerly, PikPakConfig.Default)
         logger<TorrentManager>().info { "HttpMediaCacheEngine base save dir: $saveDir" }
 
         HttpMediaCacheEngine(
@@ -147,7 +139,6 @@ fun getDesktopModules(getContext: () -> DesktopContext, scope: CoroutineScope) =
             downloader = get<HttpDownloader>(),
             saveDir = saveDir.toKtPath(),
             mediaResolver = get<MediaResolver>(),
-            pikpakConfig = { pikpakConfig.value },
         )
     }
 
@@ -160,56 +151,9 @@ fun getDesktopModules(getContext: () -> DesktopContext, scope: CoroutineScope) =
     single<CaptchaBrowserFactory> { DesktopCaptchaBrowserFactory() }
     single<ImageCaptchaRecognizer> { DesktopOnnxImageCaptchaRecognizer() }
     single<HlsPlaybackPreparer> { PlatformHlsPlaybackPreparer(get()) }
-    single<OfflineDownloadEngine> {
-        val settings = get<SettingsRepository>()
-        val configState = settings.pikpakConfig.flow
-            .stateIn(scope, SharingStarted.Eagerly, initialValue = PikPakConfig.Default)
-        // Credentials are "usable" when we have a password to sign in with
-        // *or* a previously-persisted refresh token — either way the SDK
-        // has something to authenticate with.
-        val credentialsFlow = configState
-            .map { cfg ->
-                if (cfg.enabled && cfg.username.isNotEmpty() &&
-                    (cfg.password.isNotEmpty() || cfg.refreshToken.isNotEmpty())
-                ) {
-                    PikPakCredentials(cfg.username, cfg.password)
-                } else null
-            }
-            .stateIn(scope, SharingStarted.Eagerly, initialValue = null)
-        val sessionStore = PikPakSessionStoreAdapter(
-            readRefreshToken = { configState.value.refreshToken },
-            writeRefreshToken = { rt ->
-                settings.pikpakConfig.update { copy(refreshToken = rt) }
-            },
-            // PikPakConfig.password stays on disk obscured (AES-CTR with a
-            // hardcoded key, the same approach as `rclone obscure`; see
-            // ObscuredStringSerializer). We need to keep it because a
-            // server-side revoke of the refresh token would otherwise leave
-            // the engine with no recovery path — Test and playback would
-            // silently fail until the user re-typed the password.
-            // PikPakAcceleratorGroup never echoes the stored value back to
-            // the password field, so the obscured copy is what the eyedrop
-            // attacker would see.
-            onSessionSaved = {},
-        )
-        PikPakOfflineDownloadEngine(
-            scopedHttpClient = get<HttpClientProvider>().get(ScopedHttpClientUserAgent.ANI),
-            credentials = credentialsFlow,
-            scope = scope,
-            sessionStore = sessionStore,
-            slotQueueLength = { configState.value.slotQueueLength },
-        )
-    }
     factory<MediaResolver> {
-        val torrentResolvers = get<TorrentManager>().engines.map { TorrentMediaResolver(it, get()) }
-        // Hand PikPak the local-BT resolvers as its fallback so a failing
-        // PikPak (auth/network/limit) doesn't lock the user out of BT
-        // playback. The fallback is still listed in the chain below for the
-        // PikPak-disabled case.
-        val btFallback = MediaResolver.from(torrentResolvers)
         MediaResolver.from(
-            listOf<MediaResolver>(OfflineDownloadMediaResolver(get(), fallback = btFallback))
-                .plus(torrentResolvers)
+            torrentMediaResolvers(get<TorrentManager>().engines, get())
                 .plus(LocalFileMediaResolver())
                 .plus(HttpStreamingMediaResolver())
                 .plus(

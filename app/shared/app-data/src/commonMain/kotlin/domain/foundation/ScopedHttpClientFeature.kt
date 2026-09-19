@@ -118,13 +118,17 @@ object UserAgentFeatureHandler :
         when (value) {
             ScopedHttpClientUserAgent.ANI -> config.userAgent(getAniUserAgent())
             ScopedHttpClientUserAgent.BROWSER -> config.BrowserUserAgent()
+
+            ScopedHttpClientUserAgent.NONE -> {}
         }
     }
 }
 
 enum class ScopedHttpClientUserAgent {
     ANI,
-    BROWSER
+    BROWSER,
+    // The SDK supplies its own User-Agent; the plugin appends another value and breaks PikPak captcha.
+    NONE
 }
 
 // endregion
