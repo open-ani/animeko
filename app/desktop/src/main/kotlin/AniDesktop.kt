@@ -27,9 +27,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.InternalComposeUiApi
-import androidx.compose.ui.LocalSystemTheme
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.SystemTheme
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.DpSize
 import androidx.compose.ui.unit.dp
@@ -104,7 +102,9 @@ import me.him188.ani.app.ui.foundation.layout.isSystemInFullscreen
 import me.him188.ani.app.ui.foundation.navigation.LocalOnBackPressedDispatcherOwner
 import me.him188.ani.app.ui.foundation.navigation.SkikoOnBackPressedDispatcherOwner
 import me.him188.ani.app.ui.foundation.theme.AniThemeDefaults
+import me.him188.ani.app.ui.foundation.theme.LocalSystemDarkThemeOverride
 import me.him188.ani.app.ui.foundation.theme.LocalThemeSettings
+import me.him188.ani.app.ui.foundation.theme.isSystemInDarkThemeDetected
 import me.him188.ani.app.ui.foundation.widgets.LocalToaster
 import me.him188.ani.app.ui.foundation.widgets.Toast
 import me.him188.ani.app.ui.foundation.widgets.ToastViewModel
@@ -556,7 +556,7 @@ object AniDesktop {
                     }
                 }
 
-                val systemTheme by systemThemeDetector.current.collectAsStateWithLifecycle()
+                val systemIsDark by systemThemeDetector.isDark.collectAsStateWithLifecycle()
                 val platform = LocalPlatform.current
                 // We need layout hit test owner to do hit test on windows.
                 val layoutHitTestOwner = if (platform.isWindows()) {
@@ -578,8 +578,7 @@ object AniDesktop {
                         )
                     },
                     LocalOnBackPressedDispatcherOwner provides backPressedDispatcherOwner,
-                    @OptIn(InternalComposeUiApi::class)
-                    LocalSystemTheme provides systemTheme,
+                    LocalSystemDarkThemeOverride provides systemIsDark,
                     // 二级窗口 (图片查看器) 沿用主窗口的自定义外观
                     LocalSecondaryWindowFrame provides if (isRunningUnderWine()) {
                         null
@@ -669,12 +668,12 @@ private fun FrameWindowScope.MainWindowContent(
     AniApp {
         val themeSettings = LocalThemeSettings.current
         val titleBarThemeController = LocalTitleBarThemeController.current
-        val systemTheme = LocalSystemTheme.current
+        val systemIsDark = isSystemInDarkThemeDetected()
         val navContainerColor = AniThemeDefaults.navigationContainerColor
 
-        val isTitleBarDark = remember(themeSettings, systemTheme) {
+        val isTitleBarDark = remember(themeSettings, systemIsDark) {
             when (themeSettings.darkMode) {
-                DarkMode.AUTO -> systemTheme == SystemTheme.Dark
+                DarkMode.AUTO -> systemIsDark
                 DarkMode.LIGHT -> false
                 DarkMode.DARK -> true
             }
