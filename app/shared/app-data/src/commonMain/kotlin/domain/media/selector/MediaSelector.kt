@@ -729,6 +729,8 @@ class DefaultMediaSelector(
 
     override suspend fun trySelectCached(): Media? {
         if (selected.value != null) return null
+        // 剧集信息未加载时不筛剧集, 整个条目的缓存都在候选中, 不能选.
+        if (!mediaSelectorContext.first().hasEpisode) return null
         // 只选未被排除的缓存: 缓存只会因为不属于当前剧集 (MediaExclusionReason.EpisodeMismatch) 而被排除.
         // 尽量选择满足用户偏好的缓存, 否则再随便挑一个缓存.
         fun List<MaybeExcludedMedia>.firstCachedOrNull(): Media? =

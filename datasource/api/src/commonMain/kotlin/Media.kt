@@ -206,7 +206,7 @@ class CachedMedia(
     /**
      * 该缓存记录所属剧集的 ID. 提供时参与 [mediaId], 以区分同一合集资源的多条记录.
      */
-    cacheEpisodeId: String? = null,
+    val cacheEpisodeId: String? = null,
 ) : Media by origin {
     override val mediaId: String = buildString {
         append(cacheMediaSourceId).append(':').append(origin.mediaId)

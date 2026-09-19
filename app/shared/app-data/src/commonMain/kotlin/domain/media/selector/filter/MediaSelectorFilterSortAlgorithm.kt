@@ -9,7 +9,6 @@
 
 package me.him188.ani.app.domain.media.selector.filter
 
-import me.him188.ani.app.data.models.episode.EpisodeInfo
 import me.him188.ani.app.data.models.preference.MediaPreference
 import me.him188.ani.app.data.models.preference.MediaPreference.Companion.ANY_FILTER
 import me.him188.ani.app.data.models.preference.MediaSelectorSettings
@@ -36,6 +35,8 @@ import me.him188.ani.datasources.api.topic.EpisodeRange
 import me.him188.ani.datasources.api.topic.contains
 import me.him188.ani.datasources.api.topic.isSingleEpisode
 import me.him188.ani.utils.coroutines.flows.sequenceOfEmptyString
+import me.him188.ani.datasources.api.CachedMedia
+import me.him188.ani.app.data.models.episode.displayName
 
 /**
  * [me.him188.ani.app.domain.media.selector.MediaSelector] 的过滤和排序算法实现
@@ -79,7 +80,7 @@ class MediaSelectorFilterSortAlgorithm {
         val subjectInfo = context.subjectInfo?.takeIf { info ->
             info != SubjectInfo.Empty && info.allNames.any { it.isNotBlank() }
         }
-        val episodeInfo = context.episodeInfo.takeIf { it != EpisodeInfo.Empty }
+        val episodeInfo = context.episodeInfo.takeIf { context.hasEpisode }
 
         val mediaListFilterContext = if (subjectInfo != null && episodeInfo != null) {
             MediaListFilterContext(
@@ -92,8 +93,10 @@ class MediaSelectorFilterSortAlgorithm {
 
         val episodeMatch = if (matchEpisode && episodeInfo != null) {
             EpisodeMatch(
+                episodeId = episodeInfo.episodeId,
                 sort = episodeInfo.sort,
                 ep = episodeInfo.ep,
+                name = episodeInfo.displayName,
                 // OVA 条目在网页源上通常与正篇在同一页面, 剧集名为 "OVA" 或 "OVA2", 无法对应到条目的集数.
                 acceptOva = context.subjectInfo?.allNames.orEmpty().any { it.matches(REGEX_OVA_TAILING) },
             )
@@ -105,18 +108,35 @@ class MediaSelectorFilterSortAlgorithm {
     }
 
     /**
-     * 当前剧集的匹配条件.
+     * 当前剧集的匹配条件: 剧集范围包含 sort 或 ep; 特别篇等非正片的资源常常解析不出序号, 标题包含剧集名也算匹配 (#1738).
+     * 数据源的资源允许特别篇按序号匹配同号的正片 (站点常把特别篇按正片连续编号);
+     * 本地缓存记录的剧集是确定的: 记录了剧集 ID 就按 ID 匹配, 否则只按记录的那一集精确匹配, 免得看 SP01 时自动选中第 01 话的缓存.
      */
     private class EpisodeMatch(
+        private val episodeId: Int,
         private val sort: EpisodeSort,
         private val ep: EpisodeSort?,
+        name: String,
         private val acceptOva: Boolean,
     ) {
-        fun matches(range: EpisodeRange?): Boolean {
-            if (range == null) return false
-            if (range.contains(sort)) return true
-            if (ep != null && range.contains(ep)) return true
-            if (acceptOva && range.knownSorts.any { it is EpisodeSort.Special && it.type == EpisodeType.OVA }) return true
+        // 太短的名字 (如 "OP", "ED") 会匹配到所有含 NCOP 之类字样的资源, 不用
+        private val nameForSpecial: String? = name.trim().takeIf { sort !is EpisodeSort.Normal && it.length >= MIN_SPECIAL_NAME_LENGTH }
+
+        fun matches(media: Media): Boolean {
+            val range = media.episodeRange
+            if (media.isLocalCache()) {
+                val cacheEpisodeId = (media as? CachedMedia)?.cacheEpisodeId
+                if (!cacheEpisodeId.isNullOrEmpty() && episodeId != 0) return cacheEpisodeId == episodeId.toString()
+                return range != null && (
+                        range.contains(sort, allowSeason = false, allowSpecial = false) ||
+                                (ep != null && range.contains(ep, allowSeason = false, allowSpecial = false)))
+            }
+            if (range != null) {
+                if (range.contains(sort)) return true
+                if (ep != null && range.contains(ep)) return true
+                if (acceptOva && range.knownSorts.any { it is EpisodeSort.Special && it.type == EpisodeType.OVA }) return true
+            }
+            if (nameForSpecial != null && MediaListFilters.specialContains(media.originalTitle, nameForSpecial)) return true
             return false
         }
     }
@@ -159,7 +179,7 @@ class MediaSelectorFilterSortAlgorithm {
         fun exclude(reason: MediaExclusionReason): MaybeExcludedMedia = MaybeExcludedMedia.Excluded(media, reason)
 
         // 第 0 条: 先于本地缓存豁免, 否则看第 2 话时会自动选中第 1 话的缓存.
-        if (episodeMatch != null && !episodeMatch.matches(media.episodeRange)) {
+        if (episodeMatch != null && !episodeMatch.matches(media)) {
             return exclude(MediaExclusionReason.EpisodeMismatch(media.episodeRange))
         }
 
@@ -432,3 +452,8 @@ class MediaSelectorFilterSortAlgorithm {
         }
     }
 }
+
+/**
+ * 特别篇按剧集名匹配资源标题时剧集名的最短长度.
+ */
+private const val MIN_SPECIAL_NAME_LENGTH = 3

@@ -24,6 +24,9 @@ import me.him188.ani.test.DisabledOnNative
 import me.him188.ani.test.TestContainer
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import me.him188.ani.datasources.api.CachedMedia
+import me.him188.ani.datasources.api.EpisodeType
+import me.him188.ani.app.domain.media.selector.MediaExclusionReason
 
 @TestContainer
 @DisabledOnNative // TODO: ContextParameters crashes on Native
@@ -400,4 +403,78 @@ class MediaSelectorFilterCharacterizationTest {
             )
         }
     }
+
+    @Test
+    fun `FILT-00 非正片按剧集名匹配`() = runSimpleMediaSelectorTestSuite(
+        buildTest = {
+            initSubject("孤独摇滚") {
+                episodeSort = EpisodeSort("SP1")
+                episodeEp = null
+                episodeName = "BOCCHI STATION"
+            }
+            mediaApi.addMedia(
+                media(sourceId = "web", kind = MediaSourceKind.WEB, subjectName = "孤独摇滚", originalTitle = "孤独摇滚 ABEMA特別番組 BOCCHI STATION", episodeRange = EpisodeRange.single(EpisodeSort("SP"))),
+                media(sourceId = "web", kind = MediaSourceKind.WEB, subjectName = "孤独摇滚", originalTitle = "孤独摇滚 02", episodeRange = EpisodeRange.single(EpisodeSort(2))),
+            )
+        },
+    ) {
+        assertMedias {
+            onSingle(episodeRange = EpisodeRange.single(EpisodeSort("SP"))).assert(included = true)
+            onSingle(episodeRange = EpisodeRange.single(EpisodeSort(2))).assert(
+                included = false,
+                exclusionReason = MediaExclusionReason.EpisodeMismatch(EpisodeRange.single(EpisodeSort(2))),
+            )
+        }
+    }
+
+    @Test
+    fun `FILT-00 特别篇不匹配同号正片的本地缓存`() = runSimpleMediaSelectorTestSuite(
+        buildTest = {
+            initSubject("孤独摇滚") {
+                episodeSort = EpisodeSort(1, EpisodeType.SP)
+                episodeEp = null
+                episodeName = "OVA"
+            }
+            mediaApi.addMedia(
+                // 合集缓存的标题含 "OVA", 名称规则对缓存不生效
+                media(kind = MediaSourceKind.LocalCache, location = MediaSourceLocation.Local, subjectName = "孤独摇滚", originalTitle = "[字幕组] 孤独摇滚 01-12 + OVA", episodeRange = EpisodeRange.single(EpisodeSort(1))),
+                media(kind = MediaSourceKind.LocalCache, location = MediaSourceLocation.Local, subjectName = "孤独摇滚", episodeRange = EpisodeRange.single(EpisodeSort(1, EpisodeType.SP))),
+            )
+        },
+    ) {
+        assertMedias {
+            onSingle(episodeRange = EpisodeRange.single(EpisodeSort(1))).assert(
+                included = false,
+                exclusionReason = MediaExclusionReason.EpisodeMismatch(EpisodeRange.single(EpisodeSort(1))),
+            )
+            onSingle(episodeRange = EpisodeRange.single(EpisodeSort(1, EpisodeType.SP))).assert(included = true)
+        }
+    }
+
+    @Test
+    fun `FILT-00 记录了剧集 ID 的缓存按 ID 匹配`() = runSimpleMediaSelectorTestSuite(
+        buildTest = {
+            initSubject("孤独摇滚") {
+                episodeId = 10
+                episodeSort = EpisodeSort(1)
+            }
+            fun cache(id: String, sort: Int) = CachedMedia(
+                origin = media(subjectName = "孤独摇滚", episodeRange = EpisodeRange.single(EpisodeSort(sort))),
+                cacheMediaSourceId = "cache",
+                download = ResourceLocation.LocalFile("/cache/$id"),
+                cacheEpisodeId = id,
+            )
+            mediaApi.addMedia(cache("10", sort = 5), cache("11", sort = 1))
+        },
+    ) {
+        assertMedias {
+            // 剧集 ID 相同即使记录的集数被条目改动也匹配; 集数相同但剧集 ID 不同不匹配
+            onSingle(episodeRange = EpisodeRange.single(EpisodeSort(5))).assert(included = true)
+            onSingle(episodeRange = EpisodeRange.single(EpisodeSort(1))).assert(
+                included = false,
+                exclusionReason = MediaExclusionReason.EpisodeMismatch(EpisodeRange.single(EpisodeSort(1))),
+            )
+        }
+    }
+
 }

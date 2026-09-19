@@ -61,6 +61,7 @@ import kotlin.coroutines.ContinuationInterceptor
 import kotlin.coroutines.CoroutineContext
 import kotlin.jvm.JvmName
 import kotlin.random.Random
+import me.him188.ani.datasources.api.Media
 
 /**
  * DSL for testing [me.him188.ani.app.domain.media.selector.DefaultMediaSelector].
@@ -82,8 +83,10 @@ sealed class MediaSelectorTestSuite {
         lateinit var subjectName: String
         var aliases: MutableList<String> = mutableListOf()
         var seriesInfo: SubjectSeriesInfo = SubjectSeriesInfo.Fallback
+        var episodeId: Int = 0
         var episodeSort: EpisodeSort = EpisodeSort(1)
-        var episodeEp: EpisodeSort = EpisodeSort(1)
+        var episodeEp: EpisodeSort? = EpisodeSort(1)
+        var episodeName: String = ""
 
         fun aliases(vararg aliases: String) {
             this.aliases.addAll(aliases)
@@ -115,7 +118,7 @@ sealed class MediaSelectorTestSuite {
                 nameCn = init.subjectName,
                 aliases = init.aliases.toList(),
             ),
-            episodeInfo = EpisodeInfo.Empty.copy(sort = init.episodeSort, ep = init.episodeEp),
+            episodeInfo = EpisodeInfo.Empty.copy(episodeId = init.episodeId, sort = init.episodeSort, ep = init.episodeEp, name = init.episodeName),
             subjectSeriesInfo = init.seriesInfo,
         )
         preferenceApi.mediaSelectorSettings.value = MediaSelectorSettings.Default
@@ -309,9 +312,9 @@ class SimpleMediaSelectorTestSuite(
     val mediaApi = MediaApi()
 
     inner class MediaApi {
-        val mediaList: MutableStateFlow<MutableList<DefaultMedia>> = MutableStateFlow(mutableListOf())
+        val mediaList: MutableStateFlow<MutableList<Media>> = MutableStateFlow(mutableListOf())
 
-        fun addMedia(vararg media: DefaultMedia) {
+        fun addMedia(vararg media: Media) {
             mediaList.value.addAll(media)
         }
 
