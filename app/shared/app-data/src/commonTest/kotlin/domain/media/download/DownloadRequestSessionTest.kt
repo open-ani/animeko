@@ -479,6 +479,22 @@ class DownloadRequestSessionTest {
     }
 
     @Test
+    fun `candidates from another fansub or source are not on the line`() = withFixture {
+        val single1 = requestTestMedia(1)
+        val otherGroup = requestTestMedia(100, EpisodeRange.range(1, 6)).run { copy(properties = properties.copy(alliance = "其他组")) }
+        val otherSource = requestTestMedia(101, EpisodeRange.range(1, 6)).copy(mediaSourceId = "other-source")
+        mediaListFor = { listOf(single1, otherGroup, otherSource) }
+        val session = create(listOf(1))
+        session.start()
+        testScope.runCurrent()
+        assertTrue(session.select(1, single1))
+        testScope.runCurrent()
+        // 其他集只有别的字幕组、别的数据源的合集能覆盖: 不在线路上, 与单集下载相同, 不进入选集
+        assertEquals(DownloadRequestState.Finished(), session.state.value)
+        assertEquals(listOf(1), created.map { it.episodeId })
+    }
+
+    @Test
     fun `already downloaded and uncovered episodes are reported in the options`() = withFixture {
         val single1 = requestTestMedia(1)
         val pack = requestTestMedia(100, EpisodeRange.range(1, 3))

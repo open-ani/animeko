@@ -345,10 +345,12 @@ class DownloadRequestSession internal constructor(
                     DownloadRequestState.AwaitingSelection(episodeId, pending, fetchSession, selector, choice)
                 val chosen = choice.await()
 
-                // 同一线路 (数据源 + 字幕组) 的条目级候选; 预览按全部集规划.
+                // 同一线路 (数据源 + 字幕组 + 条目名) 的条目级候选; 预览按全部集规划.
+                // BT 源的结果不按条目名过滤, 同字幕组的其他条目 (如 "坂本日常" 之于 "日常") 靠标题里的条目名与所选资源或条目一致排除.
+                val chosenNames = chosen.lineSubjectNames()
                 val group = selector.subjectCandidates.first()
                     .mapNotNull { it.result }
-                    .filter { !it.isLocalCache() && it.isSameLineAs(chosen) }
+                    .filter { !it.isLocalCache() && it.isSameLineAs(chosen, chosenNames, subject.allNames) }
                 val preview = planBatchDownload(episodes, group, existing, pinned = chosen, pinnedEpisodeId = episodeId)
                 val options = episodes.map { it.toOption(preview.getValue(it.episodeId), isCurrent = it.episodeId == episodeId) }
 
@@ -422,9 +424,6 @@ class DownloadRequestSession internal constructor(
     private companion object {
         private val logger = logger<DownloadRequestSession>()
         private val PREFERENCE_BROADCAST_TIMEOUT = 5.seconds
-
-        private fun Media.isSameLineAs(other: Media): Boolean =
-            mediaSourceId == other.mediaSourceId && properties.alliance == other.properties.alliance
     }
 }
 
