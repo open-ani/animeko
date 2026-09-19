@@ -101,17 +101,16 @@ fun OAuthAuthorizeLayout(
                 OAuthPlatformIcon(platform, Modifier.fillMaxSize())
             }
             Column {
-                Column(
-                    modifier = Modifier
-                        .fillMaxWidth(),
-                ) {
-                    Text(
-                        when (platform) {
-                            OAuthPlatform.BANGUMI -> stringResource(Lang.oauth_bangumi_description)
-                            OAuthPlatform.GITHUB -> stringResource(Lang.oauth_github_description)
-                        },
-                        style = MaterialTheme.typography.titleMedium,
-                    )
+                if (platform == OAuthPlatform.BANGUMI) {
+                    Column(
+                        modifier = Modifier
+                            .fillMaxWidth(),
+                    ) {
+                        Text(
+                            stringResource(Lang.oauth_bangumi_description),
+                            style = MaterialTheme.typography.titleMedium,
+                        )
+                    }
                 }
                 Column(
                     modifier = Modifier

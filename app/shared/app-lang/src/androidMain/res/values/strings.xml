@@ -727,7 +727,6 @@
     <string name="oauth_bangumi_description">Authorize your Bangumi account to sync your watch history to Bangumi or sign in to Ani more conveniently.</string>
     <string name="oauth_authorize_title">Authorize %1$s Sign-In</string>
     <string name="oauth_bind_account">Bind %1$s Account</string>
-    <string name="oauth_github_description">Sign in to Ani with your GitHub account. Ani only reads your public profile and does not request any permission.</string>
     <string name="oauth_sign_in_or_sign_up">Sign In / Sign Up</string>
     <string name="oauth_waiting_result">Waiting for result</string>
     <string name="oauth_authorized">Authorized</string>

@@ -15,6 +15,7 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import me.him188.ani.app.domain.session.auth.OAuthPlatform
 import me.him188.ani.app.platform.LocalContext
@@ -42,20 +43,27 @@ fun OAuthAuthorizeScreen(
         }
     }
 
+    suspend fun startOAuth(currentState: AuthState) {
+        if (currentState is AuthState.AwaitingResult) return
+        vm.doOAuth(
+            currentState is AuthState.NoAniAccount || (currentState is AuthState.Failed && !currentState.loggedIn),
+        ) {
+            browserNavigator.openBrowser(context, it)
+        }
+    }
+
+    if (vm.platform.startsAuthorizationImmediately) {
+        LaunchedEffect(vm) {
+            // 等到真实的登录状态 (而不是 collectAsState 的初始值) 才能决定是注册还是绑定
+            startOAuth(vm.state.first { it is AuthState.Idle })
+        }
+    }
+
     OAuthAuthorizeScreen(
         platform = vm.platform,
         state = state,
         onClickAuthorize = {
-            scope.launch {
-                val currentState = state
-                if (currentState is AuthState.AwaitingResult) return@launch
-
-                vm.doOAuth(
-                    state is AuthState.NoAniAccount || (currentState is AuthState.Failed && !currentState.loggedIn),
-                ) {
-                    browserNavigator.openBrowser(context, it)
-                }
-            }
+            scope.launch { startOAuth(state) }
         },
         onCancelAuthorize = { vm.cancelCurrentOAuth() },
         onNavigateSettings = onNavigateSettings,
@@ -90,3 +98,10 @@ internal fun OAuthAuthorizeScreen(
         )
     }
 }
+
+/**
+ * 进入页面就打开浏览器开始授权, 不需要用户再点一次. 页面只用于展示等待、失败与取消.
+ * Bangumi 例外: 它的说明与帮助问答对不熟悉 Bangumi 的用户有用, 保留手动开始.
+ */
+private val OAuthPlatform.startsAuthorizationImmediately: Boolean
+    get() = this != OAuthPlatform.BANGUMI

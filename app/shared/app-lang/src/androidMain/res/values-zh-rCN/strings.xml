@@ -767,7 +767,6 @@
     <string name="oauth_bangumi_description">授权 Bangumi 账号，可以同步你的观看记录到 Bangumi 或便捷登录 Ani</string>
     <string name="oauth_authorize_title">授权 %1$s 登录</string>
     <string name="oauth_bind_account">绑定 %1$s 账号</string>
-    <string name="oauth_github_description">使用 GitHub 账号登录 Ani。Ani 只会读取你的公开资料，不申请任何权限。</string>
     <string name="oauth_sign_in_or_sign_up">登录 / 注册</string>
     <string name="oauth_waiting_result">正在等待结果</string>
     <string name="oauth_authorized">已授权</string>
