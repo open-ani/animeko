@@ -40,6 +40,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
 import me.him188.ani.app.data.models.preference.EpisodeListProgressTheme
+import me.him188.ani.app.ui.foundation.LocalSubjectAppearanceSettings
 import me.him188.ani.app.ui.foundation.ProvideCompositionLocalsForPreview
 import me.him188.ani.app.ui.foundation.lists.ScrollStateVerticalScrollbar
 import me.him188.ani.app.ui.foundation.lists.hasScrollableContent
@@ -75,7 +76,8 @@ fun EpisodeListDialog(
 
                     Row(Modifier.padding(top = 8.dp)) {
                         ProvideTextStyle(MaterialTheme.typography.bodyLarge) {
-                            Text(state.subjectTitle)
+                            val useOriginalTitle = LocalSubjectAppearanceSettings.current.useOriginalTitle
+                            Text(if (useOriginalTitle) state.subjectOriginalTitle else state.subjectTitle)
                         }
                     }
 

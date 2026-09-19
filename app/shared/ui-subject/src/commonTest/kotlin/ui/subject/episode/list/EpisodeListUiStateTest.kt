@@ -128,6 +128,15 @@ class EpisodeListUiStateTest {
     }
 
     @Test
+    fun `from sets subjectTitle and subjectOriginalTitle from the subject's name and nameCn`() {
+        val collection = createTestSubjectCollection(1, listOf(episode(1, PackedDate.Invalid)), UnifiedCollectionType.DOING)
+            .let { it.copy(subjectInfo = it.subjectInfo.copy(name = "ぼっち・ざ・ろっく！", nameCn = "孤独摇滚！")) }
+        val state = EpisodeListUiState.from(collection, now)
+        assertEquals("孤独摇滚！", state.subjectTitle)
+        assertEquals("ぼっち・ざ・ろっく！", state.subjectOriginalTitle)
+    }
+
+    @Test
     fun `from applies the rule per episode and sorts by sort`() {
         val state = uiState(
             recurrence, now,

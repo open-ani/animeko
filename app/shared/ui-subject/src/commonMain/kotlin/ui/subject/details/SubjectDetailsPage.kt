@@ -95,6 +95,7 @@ import me.him188.ani.app.data.models.subject.SubjectInfo
 import me.him188.ani.app.data.models.subject.SubjectProgressInfo
 import me.him188.ani.app.data.models.subject.Tag
 import me.him188.ani.app.data.models.subject.TestSubjectInfo
+import me.him188.ani.app.data.models.subject.preferredDisplayName
 import me.him188.ani.app.domain.episode.SetEpisodeCollectionTypeRequest
 import me.him188.ani.app.domain.foundation.LoadError
 import me.him188.ani.app.navigation.LocalNavigator
@@ -121,6 +122,7 @@ import me.him188.ani.app.ui.foundation.layout.paneVerticalPadding
 import me.him188.ani.app.ui.foundation.layout.plus
 import me.him188.ani.app.ui.foundation.layout.rememberNestedScrollableColumnState
 import me.him188.ani.app.ui.foundation.ImageViewerBackHandler
+import me.him188.ani.app.ui.foundation.LocalSubjectAppearanceSettings
 import me.him188.ani.app.ui.foundation.pagerTabIndicatorOffset
 import me.him188.ani.app.ui.foundation.rememberImageViewerHandler
 import me.him188.ani.app.ui.foundation.stateOf
@@ -851,8 +853,9 @@ fun SubjectDetailsSingleColumnPage(
                                 WindowDragArea {
                                     TopAppBar(
                                         title = {
+                                            val useOriginalTitle = LocalSubjectAppearanceSettings.current.useOriginalTitle
                                             Text(
-                                                info?.displayName ?: "",
+                                                info?.preferredDisplayName(useOriginalTitle) ?: "",
                                                 maxLines = 1,
                                                 overflow = TextOverflow.Ellipsis,
                                             )
