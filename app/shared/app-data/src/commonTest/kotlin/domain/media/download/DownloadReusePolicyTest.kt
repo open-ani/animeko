@@ -26,36 +26,36 @@ class DownloadReusePolicyTest {
 
     @Test
     fun `season range covering ep is reused`() {
-        assertSame(season, findReusableSeasonMedia(episode, listOf(single, unknown, season)))
+        assertSame(season, BatchDownloadPlanner.findReusableSeasonMedia(episode, listOf(single, unknown, season)))
     }
 
     @Test
     fun `season range covering sort is reused`() {
-        assertSame(season, findReusableSeasonMedia(episode.copy(sort = EpisodeSort(2), ep = null), listOf(season)))
+        assertSame(season, BatchDownloadPlanner.findReusableSeasonMedia(episode.copy(sort = EpisodeSort(2), ep = null), listOf(season)))
     }
 
     @Test
     fun `season range covering neither sort nor ep is not reused`() {
-        assertNull(findReusableSeasonMedia(episode.copy(ep = null), listOf(season)))
+        assertNull(BatchDownloadPlanner.findReusableSeasonMedia(episode.copy(ep = null), listOf(season)))
     }
 
     @Test
     fun `whole season pack covers every episode`() {
         val pack = requestTestMedia(4, EpisodeRange.season(1))
-        assertSame(pack, findReusableSeasonMedia(episode.copy(ep = null), listOf(pack)))
+        assertSame(pack, BatchDownloadPlanner.findReusableSeasonMedia(episode.copy(ep = null), listOf(pack)))
     }
 
     @Test
     fun `single episode media is never reused`() {
         val degenerateRange = requestTestMedia(5, EpisodeRange.range(EpisodeSort(2), EpisodeSort(2)))
-        assertNull(findReusableSeasonMedia(episode, listOf(single, degenerateRange, unknown)))
-        assertNull(findReusableSeasonMedia(episode, emptyList()))
+        assertNull(BatchDownloadPlanner.findReusableSeasonMedia(episode, listOf(single, degenerateRange, unknown)))
+        assertNull(BatchDownloadPlanner.findReusableSeasonMedia(episode, emptyList()))
     }
 
     @Test
     fun `cached media is unwrapped to its origin and the first match wins`() {
         val cached = requestTestCache(season, subjectId = 1, episodeId = 1).media
         val later = requestTestMedia(6, EpisodeRange.range(EpisodeSort(1), EpisodeSort(24)))
-        assertSame(season, findReusableSeasonMedia(episode, listOf(single, cached, later)))
+        assertSame(season, BatchDownloadPlanner.findReusableSeasonMedia(episode, listOf(single, cached, later)))
     }
 }

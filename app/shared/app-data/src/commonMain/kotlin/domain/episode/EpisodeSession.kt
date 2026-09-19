@@ -47,6 +47,7 @@ import kotlin.coroutines.CoroutineContext
  *
  * @param subjectId 当前所管理的番剧或节目主体 ID。
  * @param episodeId 当前 session 管理的 episode ID，与本会话的生命周期强绑定。
+ * @param fetchSessions 条目级查询会话, 各集共用; 为 `null` 时每个 session 自行创建查询会话.
  */
 class EpisodeSession(
     subjectId: Int,
@@ -54,6 +55,7 @@ class EpisodeSession(
     koin: Koin,
     parentCoroutineContext: CoroutineContext,
     sharingStarted: SharingStarted = SharingStarted.WhileSubscribed(),
+    fetchSessions: SubjectMediaFetchSessions? = null,
 ) {
     private val createMediaFetchSelectBundleFlowUseCase: CreateMediaFetchSelectBundleFlowUseCase by koin.inject()
 
@@ -97,8 +99,10 @@ class EpisodeSession(
      *
      * This flow does not produce errors.
      */
-    val fetchSelectFlow = createMediaFetchSelectBundleFlowUseCase(infoBundleFlow)
-        .shareIn(sessionScope, sharingStarted, replay = 1)
+    val fetchSelectFlow = (
+            if (fetchSessions == null) createMediaFetchSelectBundleFlowUseCase(infoBundleFlow)
+            else createMediaFetchSelectBundleFlowUseCase(infoBundleFlow, fetchSessions)
+            ).shareIn(sessionScope, sharingStarted, replay = 1)
     // TODO: 2025/1/4 test fetchSelectFlow changes only when infoBundleFlow's value equality changes 
 
     /**

@@ -34,6 +34,7 @@ import me.him188.ani.app.domain.mediasource.web.captcha.SolveOutcome
 import me.him188.ani.app.domain.mediasource.web.captcha.WebSessionManager
 import me.him188.ani.datasources.api.DefaultMedia
 import me.him188.ani.datasources.api.EpisodeSort
+import me.him188.ani.datasources.api.PackedDate
 import me.him188.ani.datasources.api.matcher.WebVideoMatcher
 import me.him188.ani.datasources.api.matcher.WebVideoMatcherContext
 import me.him188.ani.datasources.api.matcher.WebVideoMatcherProvider
@@ -118,8 +119,6 @@ class SelectorMediaSource(
 ) : HttpMediaSource(), WebVideoMatcherProvider {
     companion object {
         val FactoryId = FactoryId("web-selector")
-
-        private val REGEX_OVA_TAILING = Regex(".+OVA\\s*\\d*$", RegexOption.IGNORE_CASE)
 
         /**
          * 按 cookie 名称合并多组 cookies: 后面列表中的同名 cookie 覆盖前面的, 顺序为名称首次出现的顺序.
@@ -278,8 +277,8 @@ class SelectorMediaSource(
     /**
      * 尝试从 [repository] 缓存中构建搜索结果.
      *
-     * 仅当缓存的条目页面剧集列表中能找到 [query] 请求的剧集时才命中, 否则返回 `null` 走完整搜索
-     * (页面可能已更新, 例如刚开播的新集在缓存里还没有).
+     * 仅当缓存的条目页面剧集列表中能找到 [SelectorSearchQuery.freshnessProbe] (请求里已上映的最新一集, 未知时为当前剧集)
+     * 时才命中, 否则返回 `null` 走完整搜索 (页面可能已更新, 例如刚开播的新集在缓存里还没有).
      */
     private suspend fun EngineType.searchFromCacheOrNull(
         searchConfig: SelectorSearchConfig,
@@ -297,10 +296,12 @@ class SelectorMediaSource(
             return null
         }
 
+        val probe = query.freshnessProbe
+            ?: SelectorEpisodeProbe(query.episodeSort, query.episodeEp, query.episodeName)
         return buildList {
             for (cache in caches) {
                 val episodes = cache.webEpisodeInfos
-                if (episodes.findMatchingEpisodeOrNull(query.episodeSort, query.episodeEp, query.episodeName) == null) {
+                if (episodes.findMatchingEpisodeOrNull(probe.episodeSort, probe.episodeEp, probe.episodeName) == null) {
                     continue
                 }
                 addAll(
@@ -310,7 +311,7 @@ class SelectorMediaSource(
                         query,
                         mediaSourceId,
                         subjectName = cache.webSubjectInfo.name,
-                    ).filteredList,
+                    ).originalList,
                 )
             }
         }.takeIf(List<DefaultMedia>::isNotEmpty)
@@ -401,7 +402,7 @@ class SelectorMediaSource(
                         query,
                         mediaSourceId,
                         subjectName = subjectInfo.name,
-                    ).filteredList,
+                    ).originalList,
                 )
             }
         }
@@ -409,6 +410,9 @@ class SelectorMediaSource(
 
     override suspend fun fetch(query: MediaFetchRequest): SizedSource<MediaMatch> {
         val allSubjectNames = query.subjectNames.toSet()
+        val freshnessProbe = query.latestAiredEpisode()?.let {
+            SelectorEpisodeProbe(episodeSort = it.sort, episodeEp = it.ep, episodeName = it.name)
+        }
 
         return query.subjectNames
             .take(searchConfig.searchUseSubjectNamesCount.coerceAtLeast(1))
@@ -418,12 +422,11 @@ class SelectorMediaSource(
                         searchConfig,
                         SelectorSearchQuery(
                             subjectName = name,
-                            // Web 源的 OVA 通常和正篇在一个页面, 修改请求 epSort 为 OVA 可以搜高 OVA 条目.
-                            episodeSort = if (name.matches(REGEX_OVA_TAILING)) EpisodeSort("OVA") else
-                                query.episodeSort,
+                            episodeSort = query.episodeSort,
                             allSubjectNames = allSubjectNames,
                             episodeEp = query.episodeEp,
                             episodeName = query.episodeName,
+                            freshnessProbe = freshnessProbe,
                         ),
                         mediaSourceId,
                         query.subjectId.toIntOrNull(),
@@ -432,6 +435,16 @@ class SelectorMediaSource(
                     MediaMatch(it, MatchKind.FUZZY)
                 }
             }.flattenConcat(searchConfig.requestInterval)
+    }
+
+    /**
+     * 请求中已上映的最新一集正片. 剧集上映日期全部未知时为 `null`.
+     */
+    private fun MediaFetchRequest.latestAiredEpisode(): MediaFetchRequest.Episode? {
+        val today = PackedDate.now()
+        return episodes.asSequence()
+            .filter { it.sort is EpisodeSort.Normal && it.airDate.isValid && it.airDate <= today }
+            .maxByOrNull { it.sort }
     }
 
     override val matcher: WebVideoMatcher by lazy {

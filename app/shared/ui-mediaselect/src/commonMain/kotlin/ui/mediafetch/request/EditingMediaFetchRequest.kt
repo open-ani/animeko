@@ -71,7 +71,12 @@ fun MediaFetchRequest.toEditingMediaFetchRequest(): EditingMediaFetchRequest {
     )
 }
 
-fun EditingMediaFetchRequest.toMediaFetchRequestOrNull(): MediaFetchRequest? {
+/**
+ * @param episodes 条目的全部剧集, 编辑器不展示, 沿用原请求的.
+ */
+fun EditingMediaFetchRequest.toMediaFetchRequestOrNull(
+    episodes: List<MediaFetchRequest.Episode> = emptyList(),
+): MediaFetchRequest? {
     return MediaFetchRequest(
         subjectId = subjectId.toIntOrNull()?.toString() ?: return null, // ensure valid
         episodeId = episodeId.toIntOrNull()?.toString() ?: return null,
@@ -80,6 +85,7 @@ fun EditingMediaFetchRequest.toMediaFetchRequestOrNull(): MediaFetchRequest? {
         episodeSort = EpisodeSort(episodeSort),
         episodeName = episodeName,
         episodeEp = EpisodeSort(episodeEp),
+        episodes = episodes,
     )
 }
 

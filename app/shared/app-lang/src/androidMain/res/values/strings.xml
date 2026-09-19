@@ -1138,6 +1138,7 @@
     <string name="media_selector_item_unsupported_playback">Unsupported playback</string>
     <string name="media_selector_item_season_mismatch">Season mismatch</string>
     <string name="media_selector_item_subject_title_mismatch">Title mismatch</string>
+    <string name="media_selector_item_episode_mismatch">Episode mismatch</string>
     <string name="mediafetch_request_editor_invalid_request">Invalid request. Please check it</string>
     <string name="mediafetch_request_editor_save_and_refresh">Save and refresh</string>
     <string name="mediafetch_request_editor_title">Edit request</string>
@@ -1583,6 +1584,16 @@
     <string name="downloads_empty">No episodes available to download</string>
     <string name="downloads_create_failed">Unable to add this download.</string>
     <string name="downloads_operation_failed">Unable to update %1$d downloads</string>
+    <string name="downloads_episode_picker_title">Select episodes</string>
+    <string name="downloads_episode_picker_line">Line: %1$s</string>
+    <string name="downloads_episode_picker_only_current">This episode only</string>
+    <string name="downloads_episode_picker_from_current">This episode onwards</string>
+    <string name="downloads_episode_picker_all">All</string>
+    <string name="downloads_episode_picker_downloaded">Downloaded</string>
+    <string name="downloads_episode_picker_unmatched">No matching resource</string>
+    <string name="downloads_episode_picker_current">Current</string>
+    <string name="downloads_episode_picker_selected_count">%1$d episodes selected</string>
+    <string name="downloads_episode_picker_back">Back</string>
 </resources>
 
 <!--@formatter:on-->
