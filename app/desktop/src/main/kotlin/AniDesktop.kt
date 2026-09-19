@@ -103,6 +103,8 @@ import me.him188.ani.app.ui.foundation.layout.LocalSecondaryWindowFrame
 import me.him188.ani.app.ui.foundation.layout.isSystemInFullscreen
 import me.him188.ani.app.ui.foundation.navigation.LocalOnBackPressedDispatcherOwner
 import me.him188.ani.app.ui.foundation.navigation.SkikoOnBackPressedDispatcherOwner
+import me.him188.ani.app.ui.foundation.navigation.handleBackKeyEvent
+import me.him188.ani.app.ui.foundation.navigation.popBackStackDispatcher
 import me.him188.ani.app.ui.foundation.theme.AniThemeDefaults
 import me.him188.ani.app.ui.foundation.theme.LocalThemeSettings
 import me.him188.ani.app.ui.foundation.widgets.LocalToaster
@@ -518,6 +520,7 @@ object AniDesktop {
                 onExit = exitApplicationSavingWindowState,
             )
 
+            val backPressedDispatcher = remember(navigator) { popBackStackDispatcher(navigator) }
             Window(
                 visible = !trayState.isWindowHiddenToTray,
                 onCloseRequest = {
@@ -530,12 +533,16 @@ object AniDesktop {
                 title = "Ani",
                 icon = appIcon,
                 alwaysOnTop = alwaysOnTopState.value,
+                // 只在没有任何节点消费按键时才会走到这里 (通常是没有焦点, 例如侧边栏关闭后清除了焦点).
+                // 不接管的话, Compose Desktop 会把这个 Escape 直接交给 Navigation 3 出栈,
+                // 绕过播放页全屏等 BackHandler, 表现为「全屏按 ESC 返回了上一页」.
+                onKeyEvent = { event -> handleBackKeyEvent(event, backPressedDispatcher::onBackPressed) },
             ) {
                 // In dev mode this enables hot reload,
                 // In release mode this just executes the content
                 val lifecycleOwner = LocalLifecycleOwner.current
-                val backPressedDispatcherOwner = remember {
-                    SkikoOnBackPressedDispatcherOwner(navigator, lifecycleOwner)
+                val backPressedDispatcherOwner = remember(backPressedDispatcher, lifecycleOwner) {
+                    SkikoOnBackPressedDispatcherOwner(backPressedDispatcher, lifecycleOwner)
                 }
 
                 DisposableEffect(Unit) {
