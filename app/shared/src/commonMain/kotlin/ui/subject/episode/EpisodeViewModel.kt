@@ -56,6 +56,7 @@ import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.withContext
 import me.him188.ani.app.data.models.comment.CommentReportTargetType
 import me.him188.ani.app.data.models.episode.displayName
+import me.him188.ani.app.data.models.episode.nameOrNameCn
 import me.him188.ani.app.data.models.episode.renderEpisodeEp
 import me.him188.ani.app.data.models.preference.VideoEnhancementDefaultMode
 import me.him188.ani.app.data.models.preference.VideoScaffoldConfig
@@ -63,6 +64,7 @@ import me.him188.ani.app.data.models.preference.parseMpvOptions
 import me.him188.ani.app.data.models.subject.SubjectInfo
 import me.him188.ani.app.data.models.subject.SubjectProgressInfo
 import me.him188.ani.app.data.models.subject.nameCnOrName
+import me.him188.ani.app.data.models.subject.nameOrNameCn
 import me.him188.ani.app.data.models.player.playProgressByEpisodeId
 import me.him188.ani.app.data.network.AniCommentReportService
 import me.him188.ani.app.data.network.AutoSkipRepository
@@ -999,6 +1001,8 @@ class EpisodeViewModel(
                         episodeSort = subjectEpisodeBundle.episodeInfo.sort,
                         episodeName = subjectEpisodeBundle.episodeInfo.displayName,
                         subjectName = subjectEpisodeBundle.subjectInfo.displayName,
+                        episodeOriginalName = subjectEpisodeBundle.episodeInfo.nameOrNameCn,
+                        subjectOriginalName = subjectEpisodeBundle.subjectInfo.nameOrNameCn,
                         subjectTags = listOf(), // todo: tags, see figma
                         subjectCoverUrl = subjectEpisodeBundle.subjectInfo.imageLarge,
                         rating = subjectEpisodeBundle.subjectInfo.ratingInfo,
