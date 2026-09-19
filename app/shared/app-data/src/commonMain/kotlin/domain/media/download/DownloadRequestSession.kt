@@ -267,37 +267,53 @@ class DownloadRequestSession internal constructor(
             ?: throw NoSuchElementException("Episode $episodeId is not in subject $subjectId")
         val existing = existingDownloads()
         findReusableSeasonMedia(episode, existing.map { it.origin })?.let { media ->
-            create(subject, episode, media, pending)
+            createAll(subject, listOf(episode to media), pending)
             return setOf(episodeId)
         }
 
         val batch = awaitSelection(episodeId, pending, subject, episode, episodes, existing)
-        val batchIds = batch.map { (target, _) -> target.episodeId }
-        val handled = mutableSetOf<Int>()
-        for ((target, media) in batch) {
-            val pendingNow = batchIds.filter { it !in handled } + pending.filter { it !in batchIds }
-            create(subject, target, media, pendingNow)
-            handled += target.episodeId
-        }
         // 发起下载的那一集已有记录时不在这一批里, 也算处理完, 否则会反复回到选源
-        return handled + episodeId
+        return createAll(subject, batch, pending) + episodeId
+    }
+
+    /**
+     * 会话结束后状态保持 [DownloadRequestState.Finished]: 交给应用作用域的持久化在取消后仍在进行, 它的状态写入被忽略.
+     */
+    private fun setStateUnlessFinished(state: DownloadRequestState) {
+        mutableState.update { if (it is DownloadRequestState.Finished) it else state }
+    }
+
+    /**
+     * 依次持久化 [batch]. 整批交给应用作用域, 会话在此期间被取消 (如离开页面) 时已确认的这一批仍会全部完成;
+     * 某一集失败时停止, 失败不取消应用作用域.
+     *
+     * @return 已创建记录的集
+     */
+    private suspend fun createAll(
+        subject: SubjectInfo,
+        batch: List<Pair<EpisodeInfo, Media>>,
+        pending: List<Int>,
+    ): Set<Int> {
+        val batchIds = batch.map { (target, _) -> target.episodeId }
+        return downloadManager.backgroundScope.async {
+            runCatching {
+                val handled = mutableSetOf<Int>()
+                for ((target, media) in batch) {
+                    val pendingNow = batchIds.filter { it !in handled } + pending.filter { it !in batchIds }
+                    setStateUnlessFinished(DownloadRequestState.Creating(target.episodeId, pendingNow))
+                    addDownload(subject, target, media, MediaCacheMetadata(MediaFetchRequest.create(subject, target)))
+                    created += ExistingDownload(media, target.episodeId)
+                    handled += target.episodeId
+                }
+                handled
+            }
+        }.await().getOrThrow()
     }
 
     private suspend fun existingDownloads(): List<ExistingDownload> =
         downloadManager.downloadsForSubject(subjectId).first().mapNotNull { download ->
             download.metadata.episodeId.toIntOrNull()?.let { ExistingDownload(download.origin, it) }
         } + created
-
-    private suspend fun create(subject: SubjectInfo, episode: EpisodeInfo, media: Media, pending: List<Int>) {
-        mutableState.value = DownloadRequestState.Creating(episode.episodeId, pending)
-        val metadata = MediaCacheMetadata(MediaFetchRequest.create(subject, episode))
-        // 持久化交给应用作用域, 会话取消时这一集仍会完成; 结果以 Result 传回, 失败不取消应用作用域.
-        downloadManager.backgroundScope
-            .async { runCatching { addDownload(subject, episode, media, metadata) } }
-            .await()
-            .getOrThrow()
-        created += ExistingDownload(media, episode.episodeId)
-    }
 
     /**
      * 查询并等待用户选源与选集.

@@ -457,6 +457,28 @@ class DownloadRequestSessionTest {
     }
 
     @Test
+    fun `cancel during batch creation keeps the finished state and completes the batch`() = withFixture {
+        useBatchMediaList()
+        createGate = CompletableDeferred()
+        val session = create(listOf(1))
+        session.start()
+        testScope.runCurrent()
+        assertTrue(session.select(1, requestTestMedia(1)))
+        testScope.runCurrent()
+        assertTrue(session.confirmEpisodes(setOf(2, 3)))
+        testScope.runCurrent()
+        assertIs<DownloadRequestState.Creating>(session.state.value)
+
+        session.cancel()
+        assertEquals(DownloadRequestState.Finished(), session.state.value)
+        createGate!!.complete(Unit)
+        testScope.runCurrent()
+        // 交给应用作用域的整批仍会完成, 且不把状态改回 Creating
+        assertEquals(DownloadRequestState.Finished(), session.state.value)
+        assertEquals(listOf(1, 2, 3), created.map { it.episodeId })
+    }
+
+    @Test
     fun `already downloaded and uncovered episodes are reported in the options`() = withFixture {
         val single1 = requestTestMedia(1)
         val pack = requestTestMedia(100, EpisodeRange.range(1, 3))
