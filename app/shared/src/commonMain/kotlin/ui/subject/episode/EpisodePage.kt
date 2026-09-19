@@ -979,6 +979,8 @@ private fun fullscreenVideoWindowInsets(default: WindowInsets): WindowInsets {
 private fun rememberEpisodeFullscreenState(vm: EpisodeViewModel): PlayerFullscreenState {
     val context by rememberUpdatedState(LocalContext.current)
     val window = LocalPlatformWindow.current
+    val hasFoldingFeature = currentWindowAdaptiveInfo1().windowPosture.hingeList.isNotEmpty()
+    val keepFoldableOrientation = vm.videoScaffoldConfig.enableFoldableHoverMode && hasFoldingFeature
     val scope = rememberCoroutineScope()
     return rememberPlayerFullscreenState(
         isFullscreen = { vm.isFullscreen },
@@ -987,7 +989,7 @@ private fun rememberEpisodeFullscreenState(vm: EpisodeViewModel): PlayerFullscre
                 // 进入是「先改状态再改窗口」, 退出是「先改窗口再改状态」, 与规范化之前的行为保持一致
                 if (fullscreen) {
                     vm.isFullscreen = true
-                    context.setRequestFullScreen(window, true)
+                    context.setRequestFullScreen(window, true, lockLandscape = !keepFoldableOrientation)
                 } else {
                     context.setRequestFullScreen(window, false)
                     vm.isFullscreen = false
@@ -1223,6 +1225,7 @@ private fun EpisodeVideo(
             .then(if (expanded) Modifier.fillMaxSize() else Modifier.statusBarsPadding()),
         maintainAspectRatio = maintainAspectRatio,
         contentWindowInsets = windowInsets,
+        enableFoldableHoverMode = vm.videoScaffoldConfig.enableFoldableHoverMode,
         fastForwardSpeed = vm.videoScaffoldConfig.fastForwardSpeed,
     )
 }
