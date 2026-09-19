@@ -16,23 +16,26 @@ import java.awt.datatransfer.DataFlavor
 import java.io.File
 import java.io.IOException
 
+/**
+ * 文件列表优先于文本: 从文件管理器拖入的文件可能同时提供文本形式的路径, 应当按文件处理.
+ */
 @Suppress("UNCHECKED_CAST")
 actual fun processDragAndDropEventImpl(event: DragAndDropEvent): DragAndDropContent {
     val transferable = event.awtTransferable
-
-    if (transferable.isDataFlavorSupported(DataFlavor.stringFlavor)) {
-        try {
-            val data = transferable.getTransferData(DataFlavor.stringFlavor) as String
-            return DragAndDropContent.PlainText(data)
-        } catch (_: IOException) {
-            // This flavor type of data is not available
-        }
-    }
 
     if (transferable.isDataFlavorSupported(DataFlavor.javaFileListFlavor)) {
         try {
             val data = transferable.getTransferData(DataFlavor.javaFileListFlavor) as List<File>
             return DragAndDropContent.FileList(data.map { Path(it.absolutePath) })
+        } catch (_: IOException) {
+            // This flavor type of data is not available
+        }
+    }
+
+    if (transferable.isDataFlavorSupported(DataFlavor.stringFlavor)) {
+        try {
+            val data = transferable.getTransferData(DataFlavor.stringFlavor) as String
+            return DragAndDropContent.PlainText(data)
         } catch (_: IOException) {
             // This flavor type of data is not available
         }

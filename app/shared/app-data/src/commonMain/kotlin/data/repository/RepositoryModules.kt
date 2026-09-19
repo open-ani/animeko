@@ -204,7 +204,7 @@ fun KoinApplication.repositoryModules(
     single<EpisodeProgressRepository> {
         EpisodeProgressRepository(
             episodeCollectionRepository = get(),
-            cacheManager = get(),
+            downloadManager = get(),
         )
     }
 

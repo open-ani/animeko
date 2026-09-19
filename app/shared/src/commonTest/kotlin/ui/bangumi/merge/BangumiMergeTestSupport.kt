@@ -25,6 +25,8 @@ import me.him188.ani.app.data.repository.subject.OfflineSubjectDisplayInfo
 import me.him188.ani.app.data.repository.subject.SubjectCollectionRepository
 import me.him188.ani.app.domain.bangumi.BangumiConflictChecker
 import me.him188.ani.datasources.api.topic.UnifiedCollectionType
+import kotlin.coroutines.CoroutineContext
+import kotlin.coroutines.EmptyCoroutineContext
 import kotlin.time.Instant
 
 /**
@@ -155,12 +157,17 @@ internal class StubSubjectCollectionRepository : SubjectCollectionRepository() {
 
 /**
  * 用 [repository] 构造一个真实的 [BangumiConflictChecker] (固定时钟, 不轮询).
+ *
+ * @param parentCoroutineContext 后台检查协程的 context. 传入 `StandardTestDispatcher(testScheduler)` 可让检查跑在测试的调度器上
+ * (不要传入 `TestScope` 的 `Job`, 否则 `runTest` 会等待检查协程结束).
  */
 internal fun createTestConflictChecker(
     repository: BangumiMergeRepository,
     getCurrentTimeMillis: () -> Long = { 1_000_000L },
+    parentCoroutineContext: CoroutineContext = EmptyCoroutineContext,
 ): BangumiConflictChecker = BangumiConflictChecker(
     mergeRepository = repository,
     subjectCollectionRepository = StubSubjectCollectionRepository(),
+    parentCoroutineContext = parentCoroutineContext,
     getCurrentTimeMillis = getCurrentTimeMillis,
 )

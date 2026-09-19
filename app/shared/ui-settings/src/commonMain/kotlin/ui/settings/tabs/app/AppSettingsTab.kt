@@ -63,6 +63,8 @@ import me.him188.ani.app.ui.lang.settings_app_close_behavior_minimize_to_tray
 import me.him188.ani.app.ui.lang.settings_app_episode_playback
 import me.him188.ani.app.ui.lang.settings_app_initial_page
 import me.him188.ani.app.ui.lang.settings_app_initial_page_description
+import me.him188.ani.app.ui.lang.settings_app_episode_images
+import me.him188.ani.app.ui.lang.settings_app_episode_images_description
 import me.him188.ani.app.ui.lang.settings_app_light_up_mode
 import me.him188.ani.app.ui.lang.settings_app_light_up_mode_description
 import me.him188.ani.app.ui.lang.settings_app_list_animation
@@ -323,6 +325,14 @@ fun SettingsScope.AppearanceGroup(
             },
             title = { Text(stringResource(Lang.settings_app_light_up_mode)) },
             description = { Text(stringResource(Lang.settings_app_light_up_mode_description)) },
+        )
+        SwitchItem(
+            checked = episode.showEpisodeImages,
+            onCheckedChange = {
+                state.update(uiSettings.copy(episodeProgress = episode.copy(showEpisodeImages = it)))
+            },
+            title = { Text(stringResource(Lang.settings_app_episode_images)) },
+            description = { Text(stringResource(Lang.settings_app_episode_images_description)) },
         )
     }
 }

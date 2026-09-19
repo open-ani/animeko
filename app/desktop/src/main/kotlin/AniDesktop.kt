@@ -55,6 +55,7 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.withContext
 import me.him188.ani.app.data.models.preference.DarkMode
+import me.him188.ani.app.data.models.preference.DebugSettings
 import me.him188.ani.app.data.models.preference.UISettings
 import me.him188.ani.app.data.persistent.database.BundledSqliteInterpositionGuard
 import me.him188.ani.app.data.repository.SavedWindowState
@@ -94,6 +95,7 @@ import me.him188.ani.app.tools.update.UpdateInstaller
 import me.him188.ani.app.torrent.anitorrent.AnitorrentLibraryLoader
 import me.him188.ani.app.ui.foundation.LocalPlatform
 import me.him188.ani.app.ui.foundation.LocalWindowState
+import me.him188.ani.app.ui.foundation.WindowDropHost
 import me.him188.ani.app.ui.foundation.effects.OverrideCaptionButtonAppearance
 import me.him188.ani.app.ui.foundation.ifThen
 import me.him188.ani.app.ui.foundation.layout.LocalPlatformWindow
@@ -109,6 +111,9 @@ import me.him188.ani.app.ui.foundation.widgets.ToastViewModel
 import me.him188.ani.app.ui.foundation.widgets.Toaster
 import me.him188.ani.app.ui.main.AniApp
 import me.him188.ani.app.ui.main.AniAppContent
+import me.him188.ani.app.ui.update.InstallPackageDropDialogs
+import me.him188.ani.app.ui.update.rememberDropInstallPackageState
+import me.him188.ani.app.ui.update.rememberInstallPackageDropHandler
 import me.him188.ani.desktop.generated.resources.Res
 import me.him188.ani.desktop.generated.resources.a_round
 import me.him188.ani.utils.analytics.Analytics
@@ -586,7 +591,7 @@ object AniDesktop {
                     },
                 ) {
                     if (isRunningUnderWine()) {
-                        MainWindowContent(navigator)
+                        MainWindowContent(navigator, settingsRepository)
                     } else {
                         HandleWindowsWindowProc()
                         if (platform.isWindows()) {
@@ -610,7 +615,7 @@ object AniDesktop {
                                 )
                             },
                         ) {
-                            MainWindowContent(navigator)
+                            MainWindowContent(navigator, settingsRepository)
                         }
                     }
                 }
@@ -657,7 +662,10 @@ object AniDesktop {
 
 @OptIn(InternalComposeUiApi::class)
 @Composable
-private fun FrameWindowScope.MainWindowContent(aniNavigator: AniNavigator) {
+private fun FrameWindowScope.MainWindowContent(
+    aniNavigator: AniNavigator,
+    settingsRepository: SettingsRepository,
+) {
     AniApp {
         val themeSettings = LocalThemeSettings.current
         val titleBarThemeController = LocalTitleBarThemeController.current
@@ -705,7 +713,25 @@ private fun FrameWindowScope.MainWindowContent(aniNavigator: AniNavigator) {
                     LocalContextMenuRepresentation provides DesktopContextMenuRepresentation,
                 ) {
                     Box(Modifier.padding(all = paddingByWindowSize)) {
-                        AniAppContent(aniNavigator)
+                        // 主窗口级拖放: 各功能以 WindowDropHandler 接入, 按顺序第一个接管的生效.
+                        // 页面自己的处理者 (例如播放页拖入视频文件) 由页面通过 WindowDropHandlerEffect 注册, 优先于这里的
+                        val installPackageOnDrop by remember(settingsRepository) {
+                            settingsRepository.debugSettings.flow
+                                .map { it.enabled && it.installPackageOnDrop }
+                                .distinctUntilChanged()
+                        }.collectAsStateWithLifecycle(DebugSettings.Default.installPackageOnDrop)
+                        val installPackageState = rememberDropInstallPackageState()
+                        val installPackageHandler = rememberInstallPackageDropHandler(installPackageState)
+                        WindowDropHost(
+                            handlers = listOfNotNull(
+                                // 开发者功能: 将安装包拖入窗口以安装测试版本
+                                installPackageHandler.takeIf { installPackageOnDrop },
+                            ),
+                            Modifier.fillMaxSize(),
+                        ) {
+                            AniAppContent(aniNavigator)
+                        }
+                        InstallPackageDropDialogs(installPackageState)
                         Toast({ showing }, { Text(content) })
                     }
                 }

@@ -13,6 +13,7 @@ import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.flowOf
 import me.him188.ani.app.domain.media.fetch.MediaFetchSession
+import me.him188.ani.app.domain.media.selector.MediaExclusionReason
 import me.him188.ani.app.domain.media.selector.MediaSelector
 import me.him188.ani.app.domain.media.selector.UnsafeOriginalMediaAccess
 import me.him188.ani.datasources.api.source.MediaSourceKind
@@ -29,6 +30,7 @@ internal fun tvSourceGroups(
         sources.map { source ->
             combine(source.state, selector.filteredCandidates) { state, candidates ->
                 val items = candidates.filter { it.original.mediaSourceId == source.mediaSourceId }
+                    .filterNot { it.exclusionReason is MediaExclusionReason.EpisodeMismatch }
                     .map { TvSourceItem(it.original, it.exclusionReason) }
                 TvSourceGroup(
                     instanceId = source.instanceId,

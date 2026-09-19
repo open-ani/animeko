@@ -39,6 +39,7 @@ import me.him188.ani.app.domain.media.fetch.isFailedOrAbandoned
 import me.him188.ani.app.domain.media.fetch.isWorking
 import me.him188.ani.app.domain.media.selector.DefaultMediaSelector
 import me.him188.ani.app.domain.media.selector.MaybeExcludedMedia
+import me.him188.ani.app.domain.media.selector.MediaExclusionReason
 import me.him188.ani.app.domain.media.selector.MediaPreferenceItem
 import me.him188.ani.app.domain.media.selector.MediaSelector
 import me.him188.ani.app.domain.media.selector.MediaSelectorContext
@@ -191,11 +192,14 @@ class MediaSelectorState(
         subtitleLanguageId.presentationFlow,
         mediaSource.presentationFlow,
         createWebSourcesFlow(),
-    ) { filteredCandidatesMedia, preferredCandidates, selected, alliance, resolution, subtitleLanguageId, mediaSource, webSources ->
-        val (groupsExcluded, groupsIncluded) = MediaGrouper.buildGroups(preferredCandidates).partition { it.isExcluded }
+    ) { filteredCandidates, preferredCandidates, selected, alliance, resolution, subtitleLanguageId, mediaSource, webSources ->
+        // 属于其他集的资源不展示, 否则每集都会看到整季的资源.
+        val visibleCandidates = filteredCandidates.filterNot { it.exclusionReason is MediaExclusionReason.EpisodeMismatch }
+        val visiblePreferred = preferredCandidates.filterNot { it.exclusionReason is MediaExclusionReason.EpisodeMismatch }
+        val (groupsExcluded, groupsIncluded) = MediaGrouper.buildGroups(visiblePreferred).partition { it.isExcluded }
         Presentation(
-            filteredCandidatesMedia,
-            preferredCandidates.mapNotNull { it.result },
+            visibleCandidates,
+            visiblePreferred.mapNotNull { it.result },
             groupsIncluded,
             groupsExcluded,
             selected,
@@ -294,7 +298,8 @@ class MediaSelectorState(
         delayToOvercomeCacheIssue: Boolean,
         resolvingCaptchaInstanceIds: Set<String>,
     ) = source.state.combine(preferredWebMediaSource) { a, b -> a to b }.map { (state, preferred) ->
-        val channels = myMediaList.map { media ->
+        // 每条线路一个芯片: 同一线路的多个资源取排序靠前的一个.
+        val channels = myMediaList.distinctBy { it.properties.alliance }.map { media ->
             WebSourceChannel(media.properties.alliance, original = media)
         }.toList()
         val captchaRequest = (state as? MediaSourceFetchState.CaptchaRequired)?.request

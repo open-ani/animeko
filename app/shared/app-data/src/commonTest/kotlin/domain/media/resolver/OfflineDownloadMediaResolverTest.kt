@@ -208,7 +208,7 @@ class OfflineDownloadMediaResolverTest {
     }
 
     @Test
-    fun `resolve - without fallback, engine failure surfaces as MediaResolutionException`() = runTest {
+    fun `resolve - engine failure without fallback surfaces as MediaResolutionException`() = runTest {
         val engine = FakeEngine(
             isSupported = true,
             resolveThrows = IOException("no proxy"),
@@ -222,7 +222,7 @@ class OfflineDownloadMediaResolverTest {
     }
 
     @Test
-    fun `resolve - fallback that doesn't support the media falls back to MediaResolutionException`() = runTest {
+    fun `resolve - fallback that does not support the media falls back to MediaResolutionException`() = runTest {
         val engine = FakeEngine(
             isSupported = true,
             resolveThrows = OfflineDownloadRejectedException("dead torrent"),

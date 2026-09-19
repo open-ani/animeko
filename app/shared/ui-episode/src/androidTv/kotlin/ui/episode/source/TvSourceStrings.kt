@@ -16,12 +16,14 @@ import me.him188.ani.app.ui.lang.media_selector_exclusion_complete_single_episod
 import me.him188.ani.app.ui.lang.media_selector_exclusion_other_season
 import me.him188.ani.app.ui.lang.media_selector_exclusion_possibly_unsupported
 import me.him188.ani.app.ui.lang.media_selector_exclusion_sequel
+import me.him188.ani.app.ui.lang.media_selector_item_episode_mismatch
 import me.him188.ani.app.ui.lang.media_selector_item_no_subtitle
 import me.him188.ani.app.ui.lang.media_selector_item_subject_title_mismatch
 import org.jetbrains.compose.resources.stringResource
 
 @Composable
 internal fun MediaExclusionReason.description(): String = stringResource(when (this) {
+    is MediaExclusionReason.EpisodeMismatch -> Lang.media_selector_item_episode_mismatch
     is MediaExclusionReason.SingleEpisodeForCompleteSubject -> Lang.media_selector_exclusion_complete_single_episode
     MediaExclusionReason.MediaWithoutSubtitle -> Lang.media_selector_item_no_subtitle
     MediaExclusionReason.UnsupportedByPlatformPlayer -> Lang.media_selector_exclusion_possibly_unsupported

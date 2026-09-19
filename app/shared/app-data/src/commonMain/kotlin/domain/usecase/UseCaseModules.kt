@@ -21,6 +21,8 @@ import me.him188.ani.app.domain.episode.CreateMediaFetchSelectBundleFlowUseCase
 import me.him188.ani.app.domain.episode.CreateMediaFetchSelectBundleFlowUseCaseImpl
 import me.him188.ani.app.domain.episode.GetAnimeScheduleFlowUseCase
 import me.him188.ani.app.domain.episode.GetAnimeScheduleFlowUseCaseImpl
+import me.him188.ani.app.domain.episode.GetAnimeSeasonIdsFlowUseCase
+import me.him188.ani.app.domain.episode.GetAnimeSeasonIdsFlowUseCaseImpl
 import me.him188.ani.app.domain.episode.GetEpisodeCollectionInfoFlowUseCase
 import me.him188.ani.app.domain.episode.GetEpisodeCollectionInfoFlowUseCaseImpl
 import me.him188.ani.app.domain.episode.GetEpisodeCollectionTypeUseCase
@@ -31,20 +33,21 @@ import me.him188.ani.app.domain.episode.GetSubjectRecommendationUseCase
 import me.him188.ani.app.domain.episode.GetSubjectRecommendationUseCaseImpl
 import me.him188.ani.app.domain.episode.SetEpisodeCollectionTypeUseCase
 import me.him188.ani.app.domain.episode.SetEpisodeCollectionTypeUseCaseImpl
-import me.him188.ani.app.domain.media.cache.DeleteCacheByCacheIdUseCase
-import me.him188.ani.app.domain.media.cache.DeleteCacheByCacheIdUseCaseImpl
-import me.him188.ani.app.domain.media.cache.DeleteCacheByEpisodeIdUseCase
-import me.him188.ani.app.domain.media.cache.DeleteCacheByEpisodeIdUseCaseImpl
+import me.him188.ani.app.domain.danmaku.DanmakuRepository
 import me.him188.ani.app.domain.media.cache.DeleteCacheUseCase
 import me.him188.ani.app.domain.media.cache.DeleteCacheUseCaseImpl
 import me.him188.ani.app.domain.media.cache.GetMediaCacheUseCase
 import me.him188.ani.app.domain.media.cache.GetMediaCacheUseCaseImpl
+import me.him188.ani.app.domain.media.download.AddDownloadUseCase
+import me.him188.ani.app.domain.media.download.AddDownloadUseCaseImpl
+import me.him188.ani.app.domain.media.download.DownloadRequestSessionFactory
 import me.him188.ani.app.domain.media.selector.GetPreferredMediaSourceSortingUseCase
 import me.him188.ani.app.domain.media.selector.GetPreferredMediaSourceSortingUseCaseImpl
 import me.him188.ani.app.domain.media.selector.MediaSelectorAutoSelectUseCase
 import me.him188.ani.app.domain.media.selector.MediaSelectorAutoSelectUseCaseImpl
 import me.him188.ani.app.domain.media.selector.MediaSelectorEventSavePreferenceUseCase
 import me.him188.ani.app.domain.media.selector.MediaSelectorEventSavePreferenceUseCaseImpl
+import me.him188.ani.app.domain.media.selector.MediaSelectorFactory
 import me.him188.ani.app.domain.mediasource.GetMediaSelectorSourceTiersUseCase
 import me.him188.ani.app.domain.mediasource.GetMediaSelectorSourceTiersUseCaseImpl
 import me.him188.ani.app.domain.mediasource.GetPreferredWebMediaSourceUseCase
@@ -79,6 +82,8 @@ fun KoinApplication.useCaseModules() = module {
     single<SetEpisodeCollectionTypeUseCase> { SetEpisodeCollectionTypeUseCaseImpl(koin) }
     single<GetEpisodeCollectionTypeUseCase> { GetEpisodeCollectionTypeUseCaseImpl(koin) }
     single<GetAnimeScheduleFlowUseCase> { GetAnimeScheduleFlowUseCaseImpl(get()) }
+    single<GetAnimeSeasonIdsFlowUseCase> { GetAnimeSeasonIdsFlowUseCaseImpl(get()) }
+    // 上游(人物评论服务)将 PostCommentUseCase 改为双依赖,保留上游版本
     single<PostCommentUseCase> { PostCommentUseCaseImpl(get(), get()) }
     single<GetPreferredMediaSourceSortingUseCase> { GetPreferredMediaSourceSortingUseCaseImpl(get()) }
     single<GetMediaSelectorSourceTiersUseCase> { GetMediaSelectorSourceTiersUseCaseImpl(get()) }
@@ -88,8 +93,10 @@ fun KoinApplication.useCaseModules() = module {
     single<GetSubjectRecommendationUseCase> { GetSubjectRecommendationUseCaseImpl(get()) }
     single<GetMediaCacheUseCase> { GetMediaCacheUseCaseImpl(get()) }
     single<DeleteCacheUseCase> { DeleteCacheUseCaseImpl(get(), get()) }
-    single<DeleteCacheByCacheIdUseCase> { DeleteCacheByCacheIdUseCaseImpl(get(), get()) }
-    single<DeleteCacheByEpisodeIdUseCase> { DeleteCacheByEpisodeIdUseCaseImpl(get(), get()) }
+    single<AddDownloadUseCase> {
+        AddDownloadUseCaseImpl(get(), cacheDanmaku = { get<DanmakuRepository>().cacheDanmakuIfNeeded(it) })
+    }
+    single { DownloadRequestSessionFactory(get(), get(), get(), MediaSelectorFactory.withKoin(koin), get(), get()) }
     single<GetPreferredWebMediaSourceUseCase> { GetPreferredWebMediaSourceUseCaseImpl(get()) }
     single<SetPreferredWebMediaSourceUseCase> { SetPreferredWebMediaSourceUseCaseImpl(get()) }
 }

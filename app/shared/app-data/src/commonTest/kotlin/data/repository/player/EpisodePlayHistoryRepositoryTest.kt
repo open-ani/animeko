@@ -74,6 +74,19 @@ class EpisodePlayHistoryRepositoryTest {
     }
 
     @Test
+    fun `flowByEpisodeIds returns only requested active records`() = runTest {
+        val repository = createRepository()
+        repository.saveOrUpdate(episodeId = 1, positionMillis = 10, durationMillis = 100)
+        repository.saveOrUpdate(episodeId = 2, positionMillis = 20, durationMillis = 100)
+        repository.saveOrUpdate(episodeId = 3, positionMillis = 30, durationMillis = 100)
+        repository.remove(2)
+
+        assertEquals(listOf(1), repository.flowByEpisodeIds(listOf(1, 2)).first().map { it.episodeId })
+        assertEquals(listOf(3), repository.flowByEpisodeIds(listOf(3, 99)).first().map { it.episodeId })
+        assertEquals(emptyList(), repository.flowByEpisodeIds(emptyList()).first())
+    }
+
+    @Test
     fun `successive saves keep only the latest pending op for each episode`() = runTest {
         val repository = createRepository()
 

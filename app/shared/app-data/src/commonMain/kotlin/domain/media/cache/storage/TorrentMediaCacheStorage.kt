@@ -130,11 +130,15 @@ class TorrentMediaCacheStorage(
         resume: Boolean
     ): TorrentMediaCacheEngine.TorrentMediaCache {
         return lock.withLock {
-            val cache = super.cache(media, metadata, episodeMetadata, false)
+            // 已存在同一资源同一剧集的记录时直接复用; 统计订阅只对新建的记录进行, 避免同一记录被重复订阅.
+            val existing = listFlow.value.firstOrNull { isSameMediaAndEpisode(it, media, metadata) }
+            val cache = existing ?: super.cache(media, metadata, episodeMetadata, false)
             check(cache is TorrentMediaCacheEngine.TorrentMediaCache) { "Cache does not implement TorrentMediaCache." }
 
-            statSubscriptionScope.launch {
-                cache.subscribeStats(shareRatioLimitFlow)
+            if (existing == null) {
+                statSubscriptionScope.launch {
+                    cache.subscribeStats(shareRatioLimitFlow)
+                }
             }
 
             cache

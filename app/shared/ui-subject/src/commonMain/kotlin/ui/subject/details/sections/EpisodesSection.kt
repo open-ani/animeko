@@ -9,6 +9,7 @@
 
 package me.him188.ani.app.ui.subject.details.sections
 
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.LocalIndication
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
@@ -21,6 +22,7 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
@@ -42,13 +44,13 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.rememberVectorPainter
 import androidx.compose.ui.semantics.Role
-import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.rounded.KeyboardArrowLeft
 import androidx.compose.material.icons.automirrored.rounded.KeyboardArrowRight
 import androidx.compose.material.icons.rounded.GraphicEq
+import me.him188.ani.app.ui.foundation.LocalEpisodeProgressSettings
 import me.him188.ani.app.ui.foundation.LongClickProgressFill
 import me.him188.ani.app.ui.lang.Lang
 import me.him188.ani.app.ui.lang.subject_details_next_page
@@ -56,7 +58,13 @@ import me.him188.ani.app.ui.lang.subject_details_prev_page
 import me.him188.ani.app.ui.lang.subject_episode_mark_watched
 import me.him188.ani.app.ui.lang.subject_episode_unwatch
 import me.him188.ani.app.ui.subject.details.components.EpisodePaging
+import me.him188.ani.app.ui.subject.episode.list.EpisodeCellLabel
 import me.him188.ani.app.ui.subject.episode.list.EpisodeListItem
+import me.him188.ani.app.ui.subject.episode.list.EpisodeStillBackground
+import me.him188.ani.app.ui.subject.episode.list.EpisodePlayProgressBar
+import me.him188.ani.app.ui.subject.episode.list.EpisodeStillDefaults
+import me.him188.ani.app.ui.subject.episode.list.EpisodeWatchedBadge
+import me.him188.ani.datasources.api.topic.UnifiedCollectionType
 import org.jetbrains.compose.resources.stringResource
 
 /**
@@ -66,6 +74,16 @@ import org.jetbrains.compose.resources.stringResource
  * - 容器: 播放中→primaryContainer, 已看(DONE/DROPPED)→surfaceContainerLow, 未看→surfaceContainerHigh
  * - 集号: 播放中→primary, 已看→onSurfaceVariant@60%, 未看→onSurface(LocalContentColor)
  * - 集名: 已看→onSurfaceVariant@60%, 未看→onSurfaceVariant
+ *
+ * 布局: 集号与集名并排成一行 ([EpisodeCellLabel]) 贴在单元格左下角, 上方留给剧照画面; 无图时同样的位置, 混合覆盖的一排单元格文字对齐.
+ *
+ * 观看状态:
+ * - 已看完 (DONE): 右上角「已看完」角标 ([EpisodeWatchedBadge]), 点击它与长按单元格一样触发 [onLongClick] 取消已看
+ * - 未看完但有播放记录 ([EpisodeListItem.playProgress] 非空): 底边显示上次播放进度 ([EpisodePlayProgressBar])
+ * - 从未播放: 不显示角标与进度条
+ *
+ * 有剧照 ([EpisodeListItem.imageMedium] 非空且 [showImage]) 时剧照铺满单元格作背景 ([EpisodeStillBackground]),
+ * 剧照亮度不随观看状态变化, 文字改用深色配色前景 ([EpisodeStillDefaults], 集名→85%), 播放中用 primary 描边与蒙层表示; 单元格尺寸与无图时一致.
  */
 @Composable
 fun EpisodeGridCell(
@@ -74,10 +92,16 @@ fun EpisodeGridCell(
     onClick: () -> Unit,
     onLongClick: () -> Unit,
     modifier: Modifier = Modifier,
-    height: Dp = 72.dp,
+    height: Dp = 80.dp,
+    showImage: Boolean = true,
 ) {
     val isWatched = item.isDoneOrDropped
+    val isDone = item.collectionType == UnifiedCollectionType.DONE
+    val playProgress = item.playProgress
     val interactionSource = remember { MutableInteractionSource() }
+    val still = item.imageMedium?.takeIf { showImage }
+    // 播放中且有剧照时的描边宽度, 进度条按它内缩
+    val stillBorder = if (still != null && isPlaying) 2.dp else 0.dp
     val containerColor = when {
         isPlaying -> MaterialTheme.colorScheme.primaryContainer
         isWatched -> MaterialTheme.colorScheme.surfaceContainerLow
@@ -85,11 +109,16 @@ fun EpisodeGridCell(
     }
     val dimmed = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f)
     val sortColor = when {
+        still != null -> EpisodeStillDefaults.contentColor
         isPlaying -> MaterialTheme.colorScheme.primary
         isWatched -> dimmed
         else -> LocalContentColor.current
     }
-    val nameColor = if (isWatched) dimmed else MaterialTheme.colorScheme.onSurfaceVariant
+    val nameColor = when {
+        still != null -> EpisodeStillDefaults.secondaryContentColor
+        isWatched -> dimmed
+        else -> MaterialTheme.colorScheme.onSurfaceVariant
+    }
     val longClickLabel = stringResource(
         if (isWatched) Lang.subject_episode_unwatch else Lang.subject_episode_mark_watched,
     )
@@ -107,40 +136,57 @@ fun EpisodeGridCell(
             ),
         shape = RoundedCornerShape(12.dp),
         color = containerColor,
+        border = if (still != null && isPlaying) BorderStroke(stillBorder, MaterialTheme.colorScheme.primary) else null,
     ) {
         Box {
+            if (still != null) {
+                EpisodeStillBackground(
+                    imageUrl = still,
+                    highlighted = isPlaying,
+                    modifier = Modifier.matchParentSize(),
+                )
+            }
             LongClickProgressFill(
                 interactionSource = interactionSource,
                 color = MaterialTheme.colorScheme.primary.copy(alpha = 0.14f),
                 modifier = Modifier.matchParentSize(),
             )
-            Column(
-                Modifier.fillMaxWidth().padding(8.dp),
-                verticalArrangement = Arrangement.spacedBy(4.dp),
-            ) {
-                Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(2.dp)) {
-                    if (isPlaying) {
+            EpisodeCellLabel(
+                sort = item.sort.toString(),
+                name = item.nameCn.ifBlank { item.name },
+                sortColor = sortColor,
+                nameColor = nameColor,
+                modifier = Modifier
+                    .align(Alignment.BottomStart)
+                    .fillMaxWidth()
+                    .padding(horizontal = 10.dp, vertical = 6.dp),
+                playingIndicator = if (isPlaying) {
+                    {
                         Icon(
                             rememberVectorPainter(Icons.Rounded.GraphicEq),
                             contentDescription = null,
-                            Modifier.height(16.dp).width(16.dp),
+                            Modifier.size(16.dp),
                             tint = sortColor,
                         )
                     }
-                    Text(
-                        item.sort.toString(),
-                        color = sortColor,
-                        style = MaterialTheme.typography.titleSmall,
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis,
-                    )
-                }
-                Text(
-                    item.nameCn.ifBlank { item.name },
-                    color = nameColor,
-                    style = MaterialTheme.typography.bodySmall,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis,
+                } else {
+                    null
+                },
+            )
+            if (isDone) {
+                EpisodeWatchedBadge(
+                    onStill = still != null,
+                    onClick = onLongClick,
+                    modifier = Modifier.align(Alignment.TopEnd).padding(6.dp),
+                )
+            } else if (playProgress != null) {
+                EpisodePlayProgressBar(
+                    progress = playProgress,
+                    onStill = still != null,
+                    // 播放中的有图卡片有 primary 描边, 进度条缩到描边内侧, 不被盖住
+                    modifier = Modifier
+                        .align(Alignment.BottomCenter)
+                        .padding(start = stillBorder, end = stillBorder, bottom = stillBorder),
                 )
             }
         }
@@ -161,10 +207,11 @@ fun PagedEpisodesGrid(
     onEpisodeClick: (EpisodeListItem) -> Unit,
     onEpisodeLongClick: (EpisodeListItem) -> Unit,
     modifier: Modifier = Modifier,
-    cellMinWidth: Dp = 96.dp,
+    cellMinWidth: Dp = 128.dp,
     cellSpacing: Dp = 12.dp,
     rowsPerPage: Int = 2,
     header: @Composable (pager: (@Composable () -> Unit)?) -> Unit = { it?.invoke() },
+    showImages: Boolean = LocalEpisodeProgressSettings.current.showEpisodeImages,
 ) {
     BoxWithConstraints(modifier) {
         val columns = remember(maxWidth, cellMinWidth, cellSpacing) {
@@ -209,6 +256,7 @@ fun PagedEpisodesGrid(
                             onClick = { onEpisodeClick(item) },
                             onLongClick = { onEpisodeLongClick(item) },
                             modifier = Modifier.weight(1f),
+                            showImage = showImages,
                         )
                     }
                     // 补齐末行空位, 保持等宽
@@ -259,7 +307,7 @@ private fun EpisodePager(
 /**
  * 手机 (compact) 选集: LazyRow 横滑不分页, 自动滚至当前集.
  *
- * 单元尺寸对齐 Figma `EpisodeCard` (1594:1024): 高 64, 约 16:10.
+ * 单元 128×72 (16:9), 与 TMDB 剧照比例一致, 裁切最少.
  */
 @Composable
 fun EpisodesRow(
@@ -268,10 +316,11 @@ fun EpisodesRow(
     onEpisodeClick: (EpisodeListItem) -> Unit,
     onEpisodeLongClick: (EpisodeListItem) -> Unit,
     modifier: Modifier = Modifier,
-    cellWidth: Dp = 104.dp,
-    cellHeight: Dp = 64.dp,
+    cellWidth: Dp = 128.dp,
+    cellHeight: Dp = 72.dp,
     cellSpacing: Dp = 10.dp,
     contentPadding: PaddingValues = PaddingValues(horizontal = 16.dp),
+    showImages: Boolean = LocalEpisodeProgressSettings.current.showEpisodeImages,
 ) {
     val listState = rememberLazyListState()
     val currentIndex = remember(episodes, currentEpisodeId) {
@@ -294,6 +343,7 @@ fun EpisodesRow(
                 onLongClick = { onEpisodeLongClick(item) },
                 modifier = Modifier.width(cellWidth),
                 height = cellHeight,
+                showImage = showImages,
             )
         }
     }

@@ -34,7 +34,9 @@ import androidx.compose.ui.test.assertTextEquals
 import androidx.compose.ui.test.click
 import androidx.compose.ui.test.isRoot
 import androidx.compose.ui.test.onAllNodesWithText
-import androidx.compose.ui.test.onChild
+import androidx.compose.ui.test.filterToOne
+import androidx.compose.ui.test.hasSetTextAction
+import androidx.compose.ui.test.onChildren
 import androidx.compose.ui.test.onFirst
 import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithTag
@@ -203,6 +205,12 @@ class EpisodeVideoControllerTest {
         get() = onNodeWithTag(TAG_PROGRESS_SLIDER, useUnmergedTree = true)
     private val SemanticsNodeInteractionsProvider.danmakuEditor
         get() = onNodeWithTag(TAG_DANMAKU_EDITOR, useUnmergedTree = true)
+
+    /**
+     * 弹幕编辑器里的文本输入框 (编辑器行里还有样式选择按钮).
+     */
+    private val SemanticsNodeInteractionsProvider.danmakuEditorTextField
+        get() = danmakuEditor.onChildren().filterToOne(hasSetTextAction())
     private val SemanticsNodeInteractionsProvider.danmakuIconButton
         get() = onNodeWithTag(TAG_DANMAKU_ICON_BUTTON, useUnmergedTree = true)
     private val SemanticsNodeInteractionsProvider.player
@@ -1032,7 +1040,7 @@ class EpisodeVideoControllerTest {
 
         videoGestureHost.assertIsFocused()
         danmakuEditor.performClick()
-        danmakuEditor.onChild().assertIsFocused()
+        danmakuEditorTextField.assertIsFocused()
         danmakuEditor.performKeyInput {
             pressKey(Key.B)
             pressKey(Key.Spacebar)
@@ -1087,7 +1095,7 @@ class EpisodeVideoControllerTest {
         }
 
         danmakuEditor.performClick()
-        danmakuEditor.onChild().assertIsFocused()
+        danmakuEditorTextField.assertIsFocused()
         danmakuEditor.performKeyInput {
             pressKey(Key.Tab)
         }
@@ -1134,7 +1142,7 @@ class EpisodeVideoControllerTest {
             waitForIdle()
 
             danmakuEditor.performClick()
-            danmakuEditor.onChild().assertIsFocused()
+            danmakuEditorTextField.assertIsFocused()
             danmakuEditor.performKeyInput {
                 pressKey(Key.Escape)
             }
@@ -1169,7 +1177,7 @@ class EpisodeVideoControllerTest {
 
         videoGestureHost.assertIsFocused()
         danmakuEditor.performClick()
-        danmakuEditor.onChild().assertIsFocused()
+        danmakuEditorTextField.assertIsFocused()
 
         videoGestureHost.slightlyMoveFromCenterToRight()
         waitForIdle()
@@ -1197,7 +1205,7 @@ class EpisodeVideoControllerTest {
         }
 
         danmakuEditor.performClick()
-        danmakuEditor.onChild().assertIsFocused()
+        danmakuEditorTextField.assertIsFocused()
         runOnIdle {
             showDanmakuEditor = false
         }
@@ -1322,7 +1330,7 @@ class EpisodeVideoControllerTest {
 
         videoGestureHost.assertIsFocused()
         danmakuEditor.performClick()
-        danmakuEditor.onChild().assertIsFocused()
+        danmakuEditorTextField.assertIsFocused()
 
         videoGestureHost.slightlyMoveFromCenterToRight()
         waitForIdle()
@@ -1366,15 +1374,15 @@ class EpisodeVideoControllerTest {
         waitForIdle()
 
         danmakuEditor.performClick()
-        danmakuEditor.onChild().assertIsFocused()
+        danmakuEditorTextField.assertIsFocused()
 
         fullScreenButton.performClick()
         waitForIdle()
-        danmakuEditor.onChild().assertIsNotFocused()
+        danmakuEditorTextField.assertIsNotFocused()
 
         fullScreenButton.performClick()
         waitForIdle()
-        danmakuEditor.onChild().assertIsNotFocused()
+        danmakuEditorTextField.assertIsNotFocused()
     }
 
     private fun AniComposeUiTest.testClickAndWaitForHide() {

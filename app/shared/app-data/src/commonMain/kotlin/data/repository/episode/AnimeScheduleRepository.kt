@@ -16,6 +16,7 @@ import kotlinx.coroutines.flow.flowOn
 import kotlinx.coroutines.flow.mapLatest
 import kotlinx.datetime.LocalDate
 import kotlinx.datetime.TimeZone
+import me.him188.ani.app.data.models.schedule.AnimeSeasonId
 import me.him188.ani.app.data.models.subject.LightEpisodeInfo
 import me.him188.ani.app.data.models.subject.LightSubjectInfo
 import me.him188.ani.app.data.models.subject.SubjectRecurrence
@@ -51,6 +52,11 @@ class AnimeScheduleRepository(
             kotlinx.coroutines.delay(updatePeriod)
         }
     }
+
+    /**
+     * 获取可浏览的季度列表 (服务端不保证顺序).
+     */
+    suspend fun getSeasonIds(): List<AnimeSeasonId> = animeScheduleService.getSeasonIds()
 
     suspend fun getSubjectRecurrence(subjectId: Int): SubjectRecurrence? {
         try {

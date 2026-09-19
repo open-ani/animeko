@@ -216,7 +216,12 @@ data class MatrixInstance(
     }
 
     @Suppress("unused")
-    val gradleArgs = buildList {
+    val gradleArgs: String = gradleArgsWith(gradleHeap, kotlinCompilerHeap)
+
+    /**
+     * 与 [gradleArgs] 相同, 但可以指定堆大小. 例如在模拟器旁边跑测试时给 Gradle 更小的堆.
+     */
+    fun gradleArgsWith(gradleHeap: String, kotlinCompilerHeap: String): String = buildList {
 
         /**
          * Windows 上必须 quote, Unix 上 quote 或不 quote 都行. 所以我们统一 quote.
@@ -445,7 +450,7 @@ run {
     val ghUbuntu2404 = MatrixInstance(
         runner = Runner.GithubUbuntu2404,
         uploadApk = true,
-        runAndroidInstrumentedTests = false,
+        runAndroidInstrumentedTests = true,
         composeResourceTriple = "linux-x64",
         runTests = true,
         uploadDesktopInstallers = true,
@@ -491,7 +496,7 @@ run {
     val selfMac15 = MatrixInstance(
         runner = Runner.SelfHostedMacOS15,
         uploadApk = false, // upload arm64-v8a once finished
-        runAndroidInstrumentedTests = true,
+        runAndroidInstrumentedTests = false,
         composeResourceTriple = "macos-arm64",
         uploadDesktopInstallers = false,
         enableIos = true,
@@ -821,8 +826,17 @@ fun WorkflowBuilder.addConsistencyCheckJob(filename: String) {
         run(
             command = """cp "$originalPath" "$backupPath" """,
         )
+        // 脚本依赖偶尔在 Maven Central 解析失败; 失败会在本地仓库留下 "absent" 标记, 重试前需要清掉.
         run(
-            command = ".github/workflows/${__FILE__.name}",
+            command = """
+                for attempt in 1 2 3; do
+                  if .github/workflows/${__FILE__.name}; then exit 0; fi
+                  echo "::warning::Workflow generation failed on attempt ${'$'}attempt, retrying"
+                  rm -rf ~/.m2/repository/io/github/typesafegithub
+                  sleep 30
+                done
+                exit 1
+            """.trimIndent(),
         )
         run(command = "python .github/workflows/check_yaml_equivalence.py $originalPath $backupPath")
     }
@@ -1783,10 +1797,12 @@ class WithMatrix(
                 """.trimIndent(),
                 )
             }
+            // device test 以 minSdk 30 构建: 测试函数内的局部类会以带空格的测试名命名, DEX 040 (API 30) 起才允许类名含空格.
+            // 先打包 APK, 测试名不能 dex 之类的问题在启动模拟器之前就能暴露.
             runGradle(
                 name = "Build Android Instrumented Tests",
                 tasks = arrayOf(
-                    "compileAndroidDeviceTest",
+                    "assembleAndroidDeviceTest",
                     "\"-Pandroid.min.sdk=30\"",
                 ),
                 maxAttempts = 3,
@@ -1796,21 +1812,47 @@ class WithMatrix(
                 if (matrix.arch == Arch.AARCH64) AndroidEmulatorRunner.Arch.Arm64V8a else null,
                 if (matrix.arch == Arch.X64) AndroidEmulatorRunner.Arch.X8664 else null,
             )) {
-                // 30 is min for instrumented test (because we have spaces in func names), 
-                // 35 is our targetSdk
+                // 在 minSdk 30 和 targetSdk 两个版本上各跑一遍
                 for (apiLevel in listOf(30, 36)) {
+                    if (!matrix.selfHosted) {
+                        // GitHub 托管的机器只有 16 GB 内存, 模拟器要和 Gradle 一起跑.
+                        // 先停掉打包阶段留下的 Gradle/Kotlin daemon, 并记录内存与磁盘余量便于排查.
+                        run(
+                            name = "Stop Gradle daemons before emulator (api=$apiLevel)",
+                            command = """
+                                ./gradlew --stop
+                                pkill -f KotlinCompileDaemon || true
+                                free -h
+                                df -h .
+                            """.trimIndent(),
+                        )
+                    }
                     uses(
                         name = "Android Instrumented Test (api=$apiLevel, arch=${arch.stringValue})",
                         action = AndroidEmulatorRunner(
                             apiLevel = apiLevel.toString(),
                             arch = arch,
+                            ramSize = "2048M",
                             script = buildString {
-                                append("./gradlew connectedDeviceTest \"-Pandroid.min.sdk=30\" ")
-                                append(matrix.gradleArgs)
+                                // --continue: 一个模块失败也把其余模块的测试跑完, 最后统一报告.
+                                append("./gradlew connectedDeviceTest --continue \"-Pandroid.min.sdk=30\" ")
+                                // 测试 APK 已在上一步打包好, 这里 Gradle 只负责安装和运行, 用小堆给模拟器留内存.
+                                append(matrix.gradleArgsWith(gradleHeap = "3g", kotlinCompilerHeap = "2g"))
+                                // 结束 crashpad_handler 后要以 Gradle 的退出码退出, 否则测试失败不会让步骤失败.
                                 // https://github.com/ReactiveCircus/android-emulator-runner/issues/385#issuecomment-2492035091
-                                append(" && killall -INT crashpad_handler || true")
+                                append("; status=\$?; killall -INT crashpad_handler || true; exit \$status")
                             },
                             emulatorBootTimeout = 1800,
+                        ),
+                    )
+                    uses(
+                        name = "Upload Android Instrumented Test Reports (api=$apiLevel, arch=${arch.stringValue})",
+                        `if` = "always()",
+                        action = UploadArtifact(
+                            name = "android-device-test-reports-api$apiLevel-${arch.stringValue}",
+                            path_Untyped = "**/build/reports/androidTests/**\n**/build/outputs/androidTest-results/**",
+                            ifNoFilesFound = UploadArtifact.BehaviorIfNoFilesFound.Ignore,
+                            overwrite = true,
                         ),
                     )
                     if (!matrix.runner.isSelfHosted && matrix.isUnix) {

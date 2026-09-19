@@ -222,6 +222,23 @@ fun SearchPage(
                         item(span = { GridItemSpan(maxLineSpan) }) {
                             SearchFilterChipsRow(
                                 state = state.searchFilterState,
+                                leadingContent = {
+                                    YearFilterChip(
+                                        years = state.seasons.map { it.year }.distinct(),
+                                        selectedYear = state.query.year,
+                                        onSelect = { year ->
+                                            onIntent(SearchPageIntent.ChangeYear(year))
+                                        },
+                                    )
+                                    SeasonFilterChip(
+                                        selectedSeason = state.query.season,
+                                        onSelect = { season ->
+                                            onIntent(SearchPageIntent.ChangeSeason(season))
+                                        },
+                                        // 季度从属于年份: 未选年份时禁用.
+                                        enabled = state.query.year != null,
+                                    )
+                                },
                                 onClickItemText = { chip, value ->
                                     val updatedQuery = state.toggleTagSelection(
                                         tag = chip,

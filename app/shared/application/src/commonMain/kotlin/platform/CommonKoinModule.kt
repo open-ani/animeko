@@ -75,6 +75,8 @@ import me.him188.ani.app.domain.foundation.VersionExpiryFeatureHandler
 import me.him188.ani.app.domain.foundation.VersionExpiryService
 import me.him188.ani.app.domain.foundation.get
 import me.him188.ani.app.domain.foundation.withValue
+import me.him188.ani.app.domain.media.download.DownloadOperations
+import me.him188.ani.app.domain.media.download.MediaDownloadManager
 import me.him188.ani.app.domain.mediasource.web.PageEvaluator
 import me.him188.ani.app.domain.mediasource.web.captcha.BrowserImageCaptchaSolver
 import me.him188.ani.app.domain.mediasource.web.captcha.CaptchaBrowserFactory
@@ -84,8 +86,6 @@ import me.him188.ani.app.domain.mediasource.web.captcha.MacCmsImageCaptchaSolver
 import me.him188.ani.app.domain.mediasource.web.captcha.WebSessionManager
 import me.him188.ani.app.domain.mediasource.web.captcha.WebSourceCookieJar
 import me.him188.ani.app.domain.mediasource.web.captcha.WebSourceIdentityRegistry
-import me.him188.ani.app.domain.media.cache.MediaCacheManager
-import me.him188.ani.app.domain.media.cache.MediaCacheManagerImpl
 import me.him188.ani.app.domain.media.cache.engine.HttpMediaCacheEngine
 import me.him188.ani.app.domain.media.cache.engine.KtorPersistentHttpDownloader
 import me.him188.ani.app.domain.media.cache.engine.MediaCacheEngineKey
@@ -133,7 +133,7 @@ private val Scope.aniApiProvider get() = get<AniApiProvider>()
 /**
  * 各端共享的 Koin 装配，默认包含完整缓存/BT 模块。
  *
- * [enableMediaCache] 为 false 时只绑定空存储的 [MediaCacheManager]，不注册 [HttpDownloader]。
+ * [enableMediaCache] 为 false 时只绑定空存储的 [MediaDownloadManager]，不注册 [HttpDownloader]。
  */
 fun KoinApplication.getCommonKoinModule(
     getContext: () -> Context,
@@ -324,6 +324,14 @@ private fun KoinApplication.otherModules(
             .build()
     }
 
+    single {
+        DownloadOperations(
+            downloadManager = get(),
+            deleteCache = get(),
+            executionScope = coroutineScope.childScope(),
+        )
+    }
+
     if (enableMediaCache) {
         single<HttpDownloader> {
             KtorPersistentHttpDownloader(
@@ -336,13 +344,13 @@ private fun KoinApplication.otherModules(
             )
         }
 
-        single<MediaCacheManager> {
-            val id = MediaCacheManager.LOCAL_FS_MEDIA_SOURCE_ID
+        single<MediaDownloadManager> {
+            val id = MediaDownloadManager.LOCAL_FS_MEDIA_SOURCE_ID
             val engines = get<TorrentManager>().engines
             val metadataStore = getContext().dataStores.mediaCacheMetadataStore
 
-            MediaCacheManagerImpl(
-                storagesIncludingDisabled = buildList(capacity = engines.size) {
+            MediaDownloadManager(
+                storages = buildList(capacity = engines.size) {
                     /*if (currentAniBuildConfig.isDebug) {
                         // 注意, 这个必须要在第一个, 见 [DefaultTorrentManager.engines] 注释
                         add(
@@ -393,9 +401,9 @@ private fun KoinApplication.otherModules(
             )
         }
     } else {
-        single<MediaCacheManager> {
-            MediaCacheManagerImpl(
-                storagesIncludingDisabled = emptyList(),
+        single<MediaDownloadManager> {
+            MediaDownloadManager(
+                storages = emptyList(),
                 backgroundScope = coroutineScope.childScope(),
             )
         }
@@ -408,7 +416,7 @@ private fun KoinApplication.otherModules(
     single<MediaSourceManager> {
         MediaSourceManagerImpl(
             additionalSources = {
-                get<MediaCacheManager>().storagesIncludingDisabled.map { it.cacheMediaSource }
+                get<MediaDownloadManager>().storages.map { it.cacheMediaSource }
             },
         )
     }
@@ -447,10 +455,10 @@ fun KoinApplication.startCommonKoinModule(
     // Now, the proxy settings is ready. Other components can use http clients.
 
     coroutineScope.launch {
-        // TV 不装配缓存模块: HttpDownloader 无绑定时跳过; 空引擎 MediaCacheManager 的循环自然为空.
+        // TV 不装配缓存模块: HttpDownloader 无绑定时跳过; 空引擎 MediaDownloadManager 的循环自然为空.
         koin.getOrNull<HttpDownloader>()?.init() // restore http download states first
-        koin.getOrNull<MediaCacheManager>()?.let { manager ->
-            for (storage in manager.storagesIncludingDisabled) {
+        koin.getOrNull<MediaDownloadManager>()?.let { manager ->
+            for (storage in manager.storages) {
                 storage.restorePersistedCaches()
             }
         }
