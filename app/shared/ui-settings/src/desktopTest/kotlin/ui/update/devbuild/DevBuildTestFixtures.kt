@@ -18,6 +18,12 @@ import io.ktor.client.request.HttpResponseData
 import io.ktor.http.HttpHeaders
 import io.ktor.http.HttpStatusCode
 import io.ktor.http.headersOf
+import kotlinx.serialization.json.Json
+import kotlinx.serialization.json.JsonArray
+import kotlinx.serialization.json.JsonObject
+import kotlinx.serialization.json.jsonArray
+import kotlinx.serialization.json.jsonObject
+import kotlinx.serialization.json.jsonPrimitive
 import me.him188.ani.app.platform.Context
 import me.him188.ani.app.tools.update.InstallationResult
 import me.him188.ani.app.tools.update.UpdateInstaller
@@ -78,6 +84,66 @@ internal fun artifactsJson(name: String) = """
 }
 """
 
+/**
+ * PR [number] 的 head 是 [headSha], 分支所在仓库为 [headRepo] (`null` 表示 fork 已删除).
+ */
+internal fun pullRequestJson(
+    number: Int,
+    headSha: String,
+    headRepo: String? = "open-ani/animeko",
+    title: String = "feat: pr title",
+) = """
+{
+  "number": $number,
+  "title": "$title",
+  "html_url": "https://github.com/open-ani/animeko/pull/$number",
+  "head": {"sha": "$headSha", "ref": "feat/x", "repo": ${headRepo?.let { """{"full_name": "$it"}""" } ?: "null"}}
+}
+"""
+
+private val fixtureJson = Json { ignoreUnknownKeys = true }
+
+private fun JsonArray.filterObjects(predicate: (JsonObject) -> Boolean): JsonArray =
+    JsonArray(filter { predicate(it.jsonObject) })
+
+private fun JsonObject.string(key: String): String? = this[key]?.jsonPrimitive?.content
+
+/**
+ * 从 [COMMITS_JSON] 中按 sha 前缀取出一个 commit, 没有时返回 `null`.
+ */
+internal fun commitJsonOrNull(shaPrefix: String): String? =
+    fixtureJson.parseToJsonElement(COMMITS_JSON).jsonArray
+        .firstOrNull { it.jsonObject.string("sha")?.startsWith(shaPrefix) == true }
+        ?.toString()
+
+/**
+ * [RUNS_JSON] 中 head 为 [sha] 的运行记录.
+ */
+internal fun runsJsonForSha(sha: String): String {
+    val runs = fixtureJson.parseToJsonElement(RUNS_JSON).jsonObject["workflow_runs"]!!.jsonArray
+        .filterObjects { it.string("head_sha") == sha }
+    return """{"total_count": ${runs.size}, "workflow_runs": $runs}"""
+}
+
+internal fun runJsonOrNull(id: Long): String? =
+    fixtureJson.parseToJsonElement(RUNS_JSON).jsonObject["workflow_runs"]!!.jsonArray
+        .firstOrNull { it.jsonObject.string("id") == id.toString() }
+        ?.toString()
+
+/**
+ * [artifactsJson] 中属于运行 [runId] 的 artifacts.
+ */
+internal fun artifactsJsonForRun(name: String, runId: Long): String {
+    val artifacts = fixtureJson.parseToJsonElement(artifactsJson(name)).jsonObject["artifacts"]!!.jsonArray
+        .filterObjects { it["workflow_run"]?.jsonObject?.string("id") == runId.toString() }
+    return """{"total_count": ${artifacts.size}, "artifacts": $artifacts}"""
+}
+
+internal fun artifactJsonOrNull(name: String, id: Long): String? =
+    fixtureJson.parseToJsonElement(artifactsJson(name)).jsonObject["artifacts"]!!.jsonArray
+        .firstOrNull { it.jsonObject.string("id") == id.toString() }
+        ?.toString()
+
 internal fun zipBytes(vararg entries: Pair<String, ByteArray>): ByteArray {
     val out = ByteArrayOutputStream()
     ZipOutputStream(out).use { zip ->
@@ -104,7 +170,8 @@ internal fun gitHubMockClient(
 }
 
 /**
- * 模拟完整的 GitHub 交互: 列表接口返回固定数据, artifact 10 的下载重定向到 [downloadUrl], 该地址返回 [archive].
+ * 模拟完整的 GitHub 交互: 列表和单项查询接口返回 [COMMITS_JSON], [RUNS_JSON] 和 [artifactsJson] 中的固定数据,
+ * PR 42 的 head 是 [SHA_A]; artifact 10 的下载重定向到 [downloadUrl], 该地址返回 [archive].
  */
 internal fun fullGitHubMockClient(
     artifactName: String,
@@ -136,13 +203,40 @@ internal fun fullGitHubMockHandler(
         }
 
         path.endsWith("/commits") -> respondJson(COMMITS_JSON)
-        path.endsWith("/runs") -> respondJson(RUNS_JSON)
+        path.endsWith("/runs") -> {
+            val headSha = url.parameters["head_sha"]
+            respondJson(if (headSha == null) RUNS_JSON else runsJsonForSha(headSha))
+        }
+
         path.endsWith("/actions/artifacts") -> {
             if (url.parameters["name"] == artifactName) respondJson(artifactsJson(artifactName))
             else respondJson("""{"total_count": 0, "artifacts": []}""")
         }
 
-        else -> error("Unexpected request: $url")
+        else -> {
+            val notFound = """{"message": "Not Found"}"""
+            val singleCommit = Regex("/commits/([0-9a-f]+)$").find(path)
+            val runArtifacts = Regex("/actions/runs/(\\d+)/artifacts$").find(path)
+            val singleRun = Regex("/actions/runs/(\\d+)$").find(path)
+            val singleArtifact = Regex("/actions/artifacts/(\\d+)$").find(path)
+            val pull = Regex("/pulls/(\\d+)$").find(path)
+            when {
+                singleCommit != null -> commitJsonOrNull(singleCommit.groupValues[1])
+                    ?.let { respondJson(it) } ?: respondJson(notFound, HttpStatusCode.NotFound)
+
+                runArtifacts != null -> respondJson(artifactsJsonForRun(artifactName, runArtifacts.groupValues[1].toLong()))
+                singleRun != null -> runJsonOrNull(singleRun.groupValues[1].toLong())
+                    ?.let { respondJson(it) } ?: respondJson(notFound, HttpStatusCode.NotFound)
+
+                singleArtifact != null -> artifactJsonOrNull(artifactName, singleArtifact.groupValues[1].toLong())
+                    ?.let { respondJson(it) } ?: respondJson(notFound, HttpStatusCode.NotFound)
+
+                pull != null -> if (pull.groupValues[1] == "42") respondJson(pullRequestJson(42, SHA_A))
+                else respondJson(notFound, HttpStatusCode.NotFound)
+
+                else -> error("Unexpected request: $url")
+            }
+        }
     }
 }
 

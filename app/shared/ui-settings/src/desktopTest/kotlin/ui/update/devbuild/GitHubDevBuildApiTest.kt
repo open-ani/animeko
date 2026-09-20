@@ -152,4 +152,57 @@ class GitHubDevBuildApiTest {
             dir.deleteRecursively()
         }
     }
+
+    @Test
+    fun `download follows relative and absolute redirects and rejects loops`() = runTest {
+        val content = byteArrayOf(1, 2, 3)
+        val visited = mutableListOf<String>()
+        val client = gitHubMockClient { request ->
+            visited += request.url.toString()
+            when (request.url.encodedPath) {
+                "/start" -> respond("", HttpStatusCode.MovedPermanently, headersOf(HttpHeaders.Location, "/next?x=1"))
+                "/next" -> respond(
+                    "",
+                    HttpStatusCode.Found,
+                    headersOf(HttpHeaders.Location, "https://objects.example.com/final"),
+                )
+
+                "/final" -> respond(content, HttpStatusCode.OK, headersOf(HttpHeaders.ContentLength, "3"))
+                "/loop" -> respond("", HttpStatusCode.Found, headersOf(HttpHeaders.Location, "/loop"))
+                else -> error("Unexpected request: ${request.url}")
+            }
+        }
+        val dir = SystemPaths.createTempDirectory("dev-build-api-test")
+        try {
+            val target = dir.resolve("a.dmg")
+            GitHubDevBuildApi(client).downloadFile("https://github.com/start", target)
+            assertContentEquals(content, target.readBytes())
+            assertEquals(
+                listOf("https://github.com/start", "https://github.com/next?x=1", "https://objects.example.com/final"),
+                visited,
+            )
+
+            assertFailsWith<GitHubApiException> {
+                GitHubDevBuildApi(client).downloadFile("https://github.com/loop", dir.resolve("b.dmg"))
+            }
+        } finally {
+            dir.deleteRecursively()
+        }
+    }
+
+    @Test
+    fun `fetches single commit, pull request, run and artifact`() = runTest {
+        val client = fullGitHubMockClient("ani-macos-dmg-aarch64", zipBytes())
+        val api = GitHubDevBuildApi(client)
+
+        assertEquals(SHA_A, api.getCommit(null, SHA_A.take(7)).sha)
+        val pr = api.getPullRequest(null, 42)
+        assertEquals(SHA_A, pr.head.sha)
+        assertEquals("open-ani/animeko", pr.head.repo?.fullName)
+        assertEquals(listOf(200L, 100L), api.listWorkflowRunsForCommit(null, SHA_A).map { it.id })
+        assertEquals("success", api.getWorkflowRun(null, 200).conclusion)
+        assertEquals(listOf(11L, 10L), api.listRunArtifacts(null, 200).map { it.id })
+        assertEquals("ani-macos-dmg-aarch64", api.getArtifact(null, 10).name)
+        assertTrue(assertFailsWith<GitHubApiException> { api.getArtifact(null, 999) }.isNotFound)
+    }
 }
