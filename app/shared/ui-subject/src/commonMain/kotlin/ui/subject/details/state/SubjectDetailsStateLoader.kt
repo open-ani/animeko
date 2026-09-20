@@ -24,7 +24,7 @@ import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import me.him188.ani.app.data.models.subject.SubjectInfo
 import me.him188.ani.app.domain.foundation.LoadError
-import me.him188.ani.app.ui.subject.details.SubjectDetailsUIState
+import me.him188.ani.app.ui.subject.details.SubjectDetailsLoadState
 import me.him188.ani.utils.platform.annotations.TestOnly
 
 /**
@@ -55,17 +55,17 @@ class SubjectDetailsStateLoader(
      * 换条目或重新加载时取消上一个, 其余时候持续收集, 数据库里的更新 (例如播放页标记看过) 才能一直传到页面上.
      */
     @OptIn(ExperimentalCoroutinesApi::class)
-    val state: StateFlow<SubjectDetailsUIState?> = request
+    val state: StateFlow<SubjectDetailsLoadState?> = request
         .flatMapLatest { req ->
             if (req == null) return@flatMapLatest flowOf(null)
             flow {
-                emit(SubjectDetailsUIState.Placeholder(req.subjectId, req.placeholder))
+                emit(SubjectDetailsLoadState.Placeholder(req.subjectId, req.placeholder))
                 emitAll(
                     subjectDetailsStateFactory.create(req.subjectId, req.placeholder)
-                        .map { SubjectDetailsUIState.Ok(it.subjectId, it) },
+                        .map { SubjectDetailsLoadState.Ok(it.subjectId, it) },
                 )
             }.catch { e ->
-                emit(SubjectDetailsUIState.Err(req.subjectId, req.placeholder, LoadError.fromException(e)))
+                emit(SubjectDetailsLoadState.Err(req.subjectId, req.placeholder, LoadError.fromException(e)))
             }
         }
         .stateIn(backgroundScope, SharingStarted.Eagerly, null)
@@ -79,7 +79,7 @@ class SubjectDetailsStateLoader(
         subjectId: Int,
         placeholder: SubjectInfo? = null
     ) {
-        if (request.value?.subjectId == subjectId && state.value !is SubjectDetailsUIState.Err) {
+        if (request.value?.subjectId == subjectId && state.value !is SubjectDetailsLoadState.Err) {
             return
         }
         request.value = Request(subjectId, placeholder, nextAttempt())
