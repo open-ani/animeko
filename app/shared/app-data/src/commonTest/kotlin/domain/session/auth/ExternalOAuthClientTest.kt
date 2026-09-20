@@ -69,7 +69,7 @@ class ExternalOAuthClientTest {
     """.trimIndent()
 
     @Test
-    fun `register link uses the provider's login route with request id and platform`() = runTest {
+    fun `register link uses the login route of the provider with request id and platform`() = runTest {
         val server = Server { json("""{"url":"https://github.com/login/oauth/authorize?state=s"}""") }
         val client = ExternalOAuthClient(OAuthPlatform.GITHUB, server.api)
 
@@ -84,7 +84,7 @@ class ExternalOAuthClientTest {
     }
 
     @Test
-    fun `bind link uses the provider's bind route`() = runTest {
+    fun `bind link uses the bind route of the provider`() = runTest {
         val server = Server { json("""{"url":"https://github.com/login/oauth/authorize?state=b"}""") }
 
         val url = ExternalOAuthClient(OAuthPlatform.GITHUB, server.api).getOAuthBindLink("req-2")
@@ -125,7 +125,7 @@ class ExternalOAuthClientTest {
     }
 
     @Test
-    fun `conflict is surfaced with the server's message for the user`() = runTest {
+    fun `conflict is surfaced with the message of the server for the user`() = runTest {
         val message = "这个 github 账号是另一个 Animeko 账号的唯一登录方式"
         val server = Server { text(message, HttpStatusCode.Conflict) }
 

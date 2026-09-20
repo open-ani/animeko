@@ -15,7 +15,7 @@ import kotlin.test.assertNull
 
 class OAuthPlatformTest {
     @Test
-    fun `ids match the server's provider ids`() {
+    fun `ids match the provider ids of the server`() {
         assertEquals(OAuthPlatform.BANGUMI, OAuthPlatform.fromId("bangumi"))
         assertEquals(OAuthPlatform.GITHUB, OAuthPlatform.fromId("github"))
     }
