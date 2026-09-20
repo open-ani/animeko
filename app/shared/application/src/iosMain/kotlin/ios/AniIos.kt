@@ -46,7 +46,7 @@ import me.him188.ani.app.domain.media.cache.storage.MediaSaveDirProvider
 import me.him188.ani.app.domain.media.download.MediaDownloadManager
 import me.him188.ani.app.domain.media.fetch.MediaSourceManager
 import me.him188.ani.app.domain.media.hls.HlsPlaybackPreparer
-import me.him188.ani.app.domain.media.hls.NoopHlsPlaybackPreparer
+import me.him188.ani.app.domain.media.hls.PlatformHlsPlaybackPreparer
 import me.him188.ani.app.domain.media.resolver.HttpStreamingMediaResolver
 import me.him188.ani.app.domain.media.resolver.IosWebMediaResolver
 import me.him188.ani.app.domain.media.resolver.LocalFileUriMediaResolver
@@ -310,10 +310,7 @@ fun getIosModules(
     single<MediampPlayerFactory<*>> {
         AniAVKitMediampPlayerFactory()
     }
-    // TODO(#3039): Add an iOS HLS playback preparer after the AVKit/localhost proxy path
-    // can be tested on macOS or iOS hardware. The JVM preparer uses java.net and is only
-    // registered by Android/Desktop modules, so iOS intentionally falls back to no-op for now.
-    single<HlsPlaybackPreparer> { NoopHlsPlaybackPreparer }
+    single<HlsPlaybackPreparer> { PlatformHlsPlaybackPreparer(get()) }
     single<MediaSaveDirProvider> {
         object : MediaSaveDirProvider {
             override val saveDir: String

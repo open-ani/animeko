@@ -37,7 +37,9 @@ import kotlin.test.assertTrue
  * ANI_HLS_REAL_PLAYER=1 ./gradlew :app:shared:app-data:desktopTest --tests '*RealPlayerHlsProxyValidationTest'
  * ```
  */
-class RealPlayerHlsProxyValidationTest {
+abstract class AbstractRealPlayerHlsProxyValidationTest internal constructor(
+    private val serverFactory: HlsProxyServerFactory,
+) {
     private val enabled = System.getenv("ANI_HLS_REAL_PLAYER") == "1"
     private val ffmpeg = findExecutable("ffmpeg")
     private val ffprobe = findExecutable("ffprobe")
@@ -50,7 +52,10 @@ class RealPlayerHlsProxyValidationTest {
         val scope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
         val provider = DefaultHttpClientProvider(NoProxyProvider, scope)
         try {
-            Fixture(origin, PlatformHlsPlaybackPreparer(provider)).block()
+            Fixture(
+                origin,
+                PlatformHlsPlaybackPreparer(provider, PlatformHlsPlaybackPreparer.DEFAULT_SEGMENT_CACHE_MAX_BYTES, serverFactory),
+            ).block()
         } finally {
             provider.forceReleaseAll()
             scope.cancel()
@@ -215,3 +220,8 @@ class RealPlayerHlsProxyValidationTest {
         return dirs.map { File(it, name) }.firstOrNull { it.canExecute() }?.absolutePath
     }
 }
+
+class RealPlayerHlsProxyValidationTest : AbstractRealPlayerHlsProxyValidationTest(PlatformHlsProxyServerFactory)
+
+/** iOS 使用的 socket 实现, 用真实的 ffmpeg / mpv 验证. */
+class KtorNetworkRealPlayerHlsProxyValidationTest : AbstractRealPlayerHlsProxyValidationTest(KtorNetworkHlsProxyServer.Factory)
