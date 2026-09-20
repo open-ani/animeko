@@ -208,6 +208,7 @@ import org.openani.mediamp.features.chapters
 import org.openani.mediamp.metadata.Chapter
 import kotlin.time.Duration.Companion.milliseconds
 import kotlin.time.Duration.Companion.seconds
+import me.him188.ani.app.data.models.episode.EpisodeInfo
 
 
 private const val OP_ED_AUTO_SKIP_BASE_SAMPLE_INTERVAL_MILLIS = 1_000L
@@ -878,6 +879,9 @@ class EpisodeViewModel(
         val mediaSourceResultsFlow = MediaSourceResultListPresenter(
             filteredSourceResults,
             getPreferredWebMediaSource(subjectId),
+            includedMediaFlow = episodeSession.fetchSelectFlow.flatMapLatest {
+                it?.mediaSelector?.filteredCandidatesMedia ?: flowOfEmptyList()
+            },
         ).presentationFlow
             .shareIn(this, SharingStarted.Lazily, replay = 1)
 
@@ -993,7 +997,10 @@ class EpisodeViewModel(
                 matchingDanmakuUiState = matchingDanmaku?.copy(
                     initialQuery = subjectEpisodeBundle?.subjectInfo?.nameCnOrName ?: "",
                 ),
-                fetchRequest = fetchSelect?.mediaFetchSession?.request?.first(),
+                // 查询会话按条目共用, 其请求里的当前剧集是首次打开的那一集; 编辑器展示并提交本集
+                fetchRequest = fetchSelect?.mediaFetchSession?.latestRequest?.first()?.let { request ->
+                    subjectEpisodeBundle?.episodeInfo?.let { request.withCurrentEpisode(it) } ?: request
+                },
                 shareData = shareData,
             )
         }
@@ -1261,4 +1268,18 @@ class EpisodeViewModel(
 
         applyMpvOptions(parseMpvOptions(config))
     }
+}
+
+/**
+ * 把请求里的当前剧集换成 [episode], 其余字段 (条目名等) 不变. 查询会话按条目共用时, 请求里的当前剧集是创建会话的那一集.
+ * 请求的当前剧集已是 [episode] 时原样返回, 用户在编辑器里改过的集数保留.
+ */
+private fun MediaFetchRequest.withCurrentEpisode(episode: EpisodeInfo): MediaFetchRequest {
+    if (episodeId == episode.episodeId.toString()) return this
+    return copy(
+        episodeId = episode.episodeId.toString(),
+        episodeSort = episode.sort,
+        episodeName = episode.displayName,
+        episodeEp = episode.ep,
+    )
 }

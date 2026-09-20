@@ -36,18 +36,17 @@ import me.him188.ani.app.data.models.subject.TestSubjectInfo
 import me.him188.ani.app.ui.comment.createTestCommentState
 import me.him188.ani.app.ui.foundation.IMAGE_VIEWER_TEST_TAG
 import me.him188.ani.app.ui.foundation.ProvideCompositionLocalsForPreview
-import me.him188.ani.app.ui.foundation.stateOf
 import me.him188.ani.app.ui.framework.runOnSwingEdt
-import me.him188.ani.app.ui.rating.createTestEditableRatingState
 import me.him188.ani.app.ui.search.createTestPager
-import me.him188.ani.app.ui.subject.collection.components.createTestEditableSubjectCollectionTypeState
-import me.him188.ani.app.ui.subject.collection.progress.createTestSubjectProgressState
-import me.him188.ani.app.ui.subject.createTestAiringLabelState
 import me.him188.ani.app.ui.subject.details.components.SUBJECT_COVER_IMAGE_TEST_TAG
-import me.him188.ani.app.ui.subject.details.state.SubjectDetailsPresentation
+import me.him188.ani.app.ui.subject.details.state.SubjectDetailsUiState
 import me.him188.ani.app.ui.subject.details.state.SubjectDetailsState
 import me.him188.ani.app.ui.subject.episode.list.TestEpisodeListUiState
 import me.him188.ani.app.ui.user.TestSelfInfoUiState
+import me.him188.ani.app.data.models.subject.TestSubjectProgressInfos
+import me.him188.ani.app.ui.subject.TestSubjectAiringInfo
+import me.him188.ani.app.ui.rating.TestEditableRatingUiState
+import me.him188.ani.app.ui.subject.collection.components.EditableSubjectCollectionTypeState
 import me.him188.ani.datasources.api.topic.UnifiedCollectionType
 import me.him188.ani.utils.platform.annotations.TestOnly
 import org.jetbrains.skia.EncodedImageFormat
@@ -83,31 +82,27 @@ class SubjectDetailsImageViewerTest {
         return SubjectDetailsState(
             subjectId = info.subjectId,
             info = info,
-            selfCollectionTypeState = stateOf(UnifiedCollectionType.DOING),
-            airingLabelState = createTestAiringLabelState(),
             charactersPager = createTestPager(characters),
             exposedCharactersPager = createTestPager(characters),
-            totalCharactersCountState = stateOf(characters.size),
             staffPager = createTestPager(TestSubjectStaffInfo),
             exposedStaffPager = createTestPager(TestSubjectStaffInfo),
-            totalStaffCountState = stateOf(TestSubjectStaffInfo.size),
             relatedSubjectsPager = createTestPager(TestRelatedSubjects),
-            editableSubjectCollectionTypeState = createTestEditableSubjectCollectionTypeState(
-                MutableStateFlow(UnifiedCollectionType.DOING),
-                scope,
-            ),
-            editableRatingState = createTestEditableRatingState(
-                subjectInfo,
-                selfRatingInfo = TestSelfRatingInfo,
-                backgroundScope = scope,
-            ),
-            subjectProgressState = createTestSubjectProgressState(),
             subjectCommentState = createTestCommentState(scope),
-            presentation = MutableStateFlow(
-                SubjectDetailsPresentation(
+            uiState = MutableStateFlow(
+                SubjectDetailsUiState(
                     subjectId = info.subjectId,
                     displayName = info.displayName,
+                    selfCollectionType = UnifiedCollectionType.DOING,
+                    airingInfo = TestSubjectAiringInfo,
+                    progressInfo = TestSubjectProgressInfos.ContinueWatching2,
                     episodeListUiState = TestEpisodeListUiState,
+                    totalStaffCount = TestSubjectStaffInfo.size,
+                    totalCharactersCount = characters.size,
+                    collectionTypeEdit = EditableSubjectCollectionTypeState.Presentation.Placeholder.copy(
+                        selfCollectionType = UnifiedCollectionType.DOING,
+                        isPlaceholder = false,
+                    ),
+                    rating = TestEditableRatingUiState,
                     isPlaceholder = false,
                 ),
             ),
@@ -125,7 +120,7 @@ class SubjectDetailsImageViewerTest {
                     CompositionLocalProvider(LocalDensity provides Density(1f)) {
                         val scope = rememberCoroutineScope()
                         val state = remember {
-                            testStateWithImages(scope).let { SubjectDetailsUIState.Ok(it.subjectId, it) }
+                            testStateWithImages(scope).let { SubjectDetailsLoadState.Ok(it.subjectId, it) }
                         }
                         SubjectDetailsScreen(
                             state,

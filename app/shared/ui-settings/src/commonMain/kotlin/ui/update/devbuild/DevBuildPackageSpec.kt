@@ -14,7 +14,7 @@ import me.him188.ani.utils.platform.Arch
 import me.him188.ani.utils.platform.Platform
 
 /**
- * Build workflow 在 main 分支的每个 commit 上传的安装包 artifact 中, 当前平台可用的那些, 以及从 artifact zip 中取出安装包的方式.
+ * Build workflow 在每个 commit 上传的安装包 artifact 中, 当前平台可用的那些, 以及从 artifact zip 中取出安装包的方式.
  *
  * artifact 名称与 `.github/workflows/src.main.kts` 中 `ArtifactNames` 及 Android APK 的上传步骤保持一致.
  */
@@ -25,10 +25,22 @@ data class DevBuildPackageSpec(
      */
     val artifactNames: List<String>,
     val kind: DevBuildPackageKind,
+    /**
+     * [artifactNames] 都不存在时退而求其次的 debug 包名称, 靠前的优先. 只有 Android 有:
+     * pull_request 事件触发的构建 (来自 fork 的 PR 只有这种) 没有签名密钥, 不产生 release APK.
+     */
+    val debugArtifactNames: List<String> = emptyList(),
 ) {
     init {
         require(artifactNames.isNotEmpty()) { "artifactNames must not be empty" }
     }
+
+    /**
+     * 所有可用的 artifact 名称, 按优先级排序: 先 [artifactNames] 再 [debugArtifactNames].
+     */
+    val candidateArtifactNames: List<String> get() = artifactNames + debugArtifactNames
+
+    fun isDebugArtifact(name: String): Boolean = name in debugArtifactNames
 
     /**
      * 下载到本地后安装包的文件名.
@@ -82,6 +94,7 @@ data class DevBuildPackageSpec(
                 DevBuildPackageSpec(
                     listOf("ani-android-$abi-release", "ani-android-universal-release"),
                     DevBuildPackageKind.ANDROID_APK,
+                    debugArtifactNames = listOf("ani-android-$abi-debug", "ani-android-universal-debug"),
                 )
             }
 

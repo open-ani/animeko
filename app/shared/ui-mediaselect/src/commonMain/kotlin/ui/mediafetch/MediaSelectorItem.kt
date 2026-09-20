@@ -58,6 +58,7 @@ import me.him188.ani.app.ui.foundation.setClipEntryText
 import me.him188.ani.app.ui.foundation.widgets.LocalToaster
 import me.him188.ani.app.ui.lang.Lang
 import me.him188.ani.app.ui.lang.cache_unknown
+import me.him188.ani.app.ui.lang.media_selector_item_episode_mismatch
 import me.him188.ani.app.ui.lang.media_selector_item_no_subtitle
 import me.him188.ani.app.ui.lang.media_selector_item_season_mismatch
 import me.him188.ani.app.ui.lang.media_selector_item_single_episode_resource
@@ -100,6 +101,7 @@ internal fun MediaSelectorItem(
     val unsupportedPlaybackText = stringResource(Lang.media_selector_item_unsupported_playback)
     val seasonMismatchText = stringResource(Lang.media_selector_item_season_mismatch)
     val subjectTitleMismatchText = stringResource(Lang.media_selector_item_subject_title_mismatch)
+    val episodeMismatchText = stringResource(Lang.media_selector_item_episode_mismatch)
 
     // Determine the reason text, if any
     val reasonText = group.exclusionReason?.let { reason ->
@@ -107,6 +109,7 @@ internal fun MediaSelectorItem(
             reason.toString()
         } else {
             when (reason) {
+                is MediaExclusionReason.EpisodeMismatch -> episodeMismatchText
                 MediaExclusionReason.MediaWithoutSubtitle -> noSubtitleText
                 is MediaExclusionReason.SingleEpisodeForCompleteSubject -> singleEpisodeResourceText
                 MediaExclusionReason.UnsupportedByPlatformPlayer -> unsupportedPlaybackText

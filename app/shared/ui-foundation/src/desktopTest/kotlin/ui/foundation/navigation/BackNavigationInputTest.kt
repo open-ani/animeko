@@ -16,6 +16,10 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.input.key.Key
+import androidx.compose.ui.input.key.KeyEventType
+import androidx.compose.ui.input.key.key
+import androidx.compose.ui.input.key.onKeyEvent
+import androidx.compose.ui.input.key.type
 import androidx.compose.ui.input.pointer.PointerButton
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.test.MouseButton
@@ -76,6 +80,43 @@ class BackNavigationInputTest {
 
         runOnIdle {
             assertEquals(1, backCount)
+        }
+    }
+
+    /**
+     * 子组件 (或在 key down 时就关闭的子窗口, 例如图片查看器窗口) 消费了 Escape 的 key down 后,
+     * 只剩 key up 冒泡上来, 不能触发返回.
+     */
+    @Test
+    fun `escape key up without seeing key down does not invoke callback`() = runAniComposeUiTest {
+        var backCount = 0
+        val focusRequester = FocusRequester()
+        setContent {
+            Box(
+                Modifier
+                    .size(100.dp)
+                    .onBackNavigationInput { backCount++ },
+            ) {
+                Box(
+                    Modifier
+                        .size(50.dp)
+                        .onKeyEvent { it.key == Key.Escape && it.type == KeyEventType.KeyDown }
+                        .focusRequester(focusRequester)
+                        .focusable()
+                        .testTag("child"),
+                )
+            }
+        }
+        runOnIdle {
+            focusRequester.requestFocus()
+        }
+
+        onNodeWithTag("child")
+            .assertIsFocused()
+            .performKeyInput { pressKey(Key.Escape) }
+
+        runOnIdle {
+            assertEquals(0, backCount)
         }
     }
 

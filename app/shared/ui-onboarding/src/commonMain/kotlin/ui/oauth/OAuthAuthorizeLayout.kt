@@ -54,14 +54,14 @@ import androidx.compose.ui.unit.dp
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import me.him188.ani.app.domain.foundation.LoadError
+import me.him188.ani.app.domain.session.auth.OAuthPlatform
 import me.him188.ani.app.ui.foundation.animation.AniAnimatedVisibility
 import me.him188.ani.app.ui.foundation.animation.AniMotionScheme
 import me.him188.ani.app.ui.foundation.animation.AnimatedVisibilityMotionScheme
 import me.him188.ani.app.ui.foundation.animation.LocalAniMotionScheme
-import me.him188.ani.app.ui.foundation.icons.BangumiNext
-import me.him188.ani.app.ui.foundation.icons.BangumiNextIconColor
-import me.him188.ani.app.ui.lang.*
+import me.him188.ani.app.ui.foundation.icons.OAuthPlatformIcon
 import me.him188.ani.app.ui.foundation.widgets.HeroIcon
+import me.him188.ani.app.ui.lang.*
 import me.him188.ani.app.ui.search.renderLoadErrorMessage
 import me.him188.ani.app.ui.settings.SettingsTab
 import me.him188.ani.app.ui.settings.framework.components.SettingsScope
@@ -82,7 +82,8 @@ sealed interface AuthState {
 }
 
 @Composable
-fun BangumiAuthorizeLayout(
+fun OAuthAuthorizeLayout(
+    platform: OAuthPlatform,
     authorizeState: AuthState,
     contactActions: @Composable () -> Unit,
     onClickAuthorize: () -> Unit,
@@ -97,22 +98,19 @@ fun BangumiAuthorizeLayout(
             verticalArrangement = Arrangement.spacedBy(SettingsScope.itemVerticalSpacing),
         ) {
             HeroIcon {
-                Icon(
-                    imageVector = Icons.Default.BangumiNext,
-                    contentDescription = null,
-                    modifier = Modifier.fillMaxSize(),
-                    tint = BangumiNextIconColor,
-                )
+                OAuthPlatformIcon(platform, Modifier.fillMaxSize())
             }
             Column {
-                Column(
-                    modifier = Modifier
-                        .fillMaxWidth(),
-                ) {
-                    Text(
-                        stringResource(Lang.oauth_bangumi_description),
-                        style = MaterialTheme.typography.titleMedium,
-                    )
+                if (platform == OAuthPlatform.BANGUMI) {
+                    Column(
+                        modifier = Modifier
+                            .fillMaxWidth(),
+                    ) {
+                        Text(
+                            stringResource(Lang.oauth_bangumi_description),
+                            style = MaterialTheme.typography.titleMedium,
+                        )
+                    }
                 }
                 Column(
                     modifier = Modifier
@@ -120,6 +118,7 @@ fun BangumiAuthorizeLayout(
                         .fillMaxWidth(),
                 ) {
                     AuthorizeButton(
+                        platform,
                         authorizeState,
                         onClick = onClickAuthorize,
                         onClickCancel = onCancelAuthorize,
@@ -134,11 +133,13 @@ fun BangumiAuthorizeLayout(
                     )
                 }
             }
-            AuthorizeHelpQA(
-                contactActions = contactActions,
-                scrollState = scrollState,
-                Modifier.padding(top = 36.dp),
-            )
+            if (platform == OAuthPlatform.BANGUMI) {
+                AuthorizeHelpQA(
+                    contactActions = contactActions,
+                    scrollState = scrollState,
+                    Modifier.padding(top = 36.dp),
+                )
+            }
         }
     }
 }
@@ -147,6 +148,7 @@ fun BangumiAuthorizeLayout(
 @OptIn(ExperimentalMaterial3ExpressiveApi::class)
 @Composable
 private fun AuthorizeButton(
+    platform: OAuthPlatform,
     authorizeState: AuthState,
     onClick: () -> Unit,
     onClickCancel: () -> Unit,
@@ -160,11 +162,11 @@ private fun AuthorizeButton(
             ) {
                 when (it) {
                     is AuthState.LoggedInAni -> {
-                        Text(stringResource(Lang.oauth_bangumi_bind_account))
+                        Text(stringResource(Lang.oauth_bind_account, platform.displayName))
                     }
 
                     is AuthState.Idle, is AuthState.Failed -> {
-                        Text(stringResource(Lang.oauth_bangumi_sign_in_or_sign_up))
+                        Text(stringResource(Lang.oauth_sign_in_or_sign_up))
                     }
 
                     is AuthState.AwaitingResult -> {
@@ -176,12 +178,12 @@ private fun AuthorizeButton(
                                 modifier = Modifier.size(16.dp),
                                 strokeWidth = 3.dp,
                             )
-                            Text(stringResource(Lang.oauth_bangumi_waiting_result))
+                            Text(stringResource(Lang.oauth_waiting_result))
                         }
                     }
 
                     is AuthState.Success -> {
-                        Text(stringResource(Lang.oauth_bangumi_authorized))
+                        Text(stringResource(Lang.oauth_authorized))
                     }
                 }
             }
@@ -216,7 +218,7 @@ private fun AuthorizeButton(
         ) {
             FilledTonalButton(
                 onClick = onClickCancel,
-                content = { Text(stringResource(Lang.oauth_bangumi_cancel)) },
+                content = { Text(stringResource(Lang.oauth_cancel)) },
                 shape = SplitButtonDefaults.trailingButtonShapesFor(48.dp).shape,
             )
         }

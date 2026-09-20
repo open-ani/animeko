@@ -83,9 +83,9 @@
     <string name="settings_debug_install_package_drop_supported_hint">%1$s 安裝包</string>
     <string name="settings_debug_install_package_drop_badge">開發者功能 · 拖曳安裝包以安裝</string>
     <string name="settings_debug_install_package_confirm_new_version">新版本</string>
-    <string name="settings_debug_dev_builds">main 分支構建</string>
-    <string name="settings_debug_dev_builds_install_commit">安裝 main 分支的指定 commit</string>
-    <string name="settings_debug_dev_builds_install_commit_description">列出 main 分支最近的 commits 及其 CI 構建狀態，可下載 CI 為目前平台構建的安裝包並安裝</string>
+    <string name="settings_debug_dev_builds">CI 構建</string>
+    <string name="settings_debug_dev_builds_install_commit">安裝指定 commit、PR 或安裝包</string>
+    <string name="settings_debug_dev_builds_install_commit_description">列出 main 分支最近的 commits 及其 CI 構建狀態，也可貼上 commit、PR、artifact 連結或安裝包網址，下載 CI 為目前平台構建的安裝包並安裝</string>
     <string name="settings_debug_dev_builds_unsupported_platform">CI 沒有為目前平台產生可安裝的安裝包</string>
     <string name="settings_debug_dev_builds_token">GitHub Token</string>
     <string name="settings_debug_dev_builds_token_description">下載 GitHub Actions 產物需要 token。Fine-grained token 需要 Actions 讀取權限，classic token 需要 public_repo 範圍。查詢列表不需要 token，但有速率限制。</string>
@@ -130,6 +130,22 @@
     <string name="settings_debug_dev_builds_manual_message">已儲存到 %1$s。請用它取代目前的 AppImage 並重新啟動。</string>
     <string name="settings_debug_dev_builds_manual_reveal">開啟所在位置</string>
     <string name="settings_debug_dev_builds_close">關閉</string>
+    <string name="settings_debug_dev_builds_lookup_label">安裝指定版本</string>
+    <string name="settings_debug_dev_builds_lookup_placeholder">commit、PR 或 artifact 連結，commit sha，或安裝包網址</string>
+    <string name="settings_debug_dev_builds_lookup_description">支援 %1$s 的 commit、PR、workflow 執行或 artifact 連結，commit sha，以及 .%2$s 安裝包的直連。PR 使用其分支最新一次構建，沒有 release 包時改用 debug 包。</string>
+    <string name="settings_debug_dev_builds_lookup">查詢</string>
+    <string name="settings_debug_dev_builds_lookup_clear">清除</string>
+    <string name="settings_debug_dev_builds_lookup_unrecognized">無法識別的輸入。請貼上 %1$s 的 commit、PR、workflow 執行或 artifact 連結，commit sha，或 .%2$s 安裝包的直連</string>
+    <string name="settings_debug_dev_builds_lookup_unsupported_package">%1$s 不是目前平台的 .%2$s 安裝包</string>
+    <string name="settings_debug_dev_builds_lookup_artifact_mismatch">artifact %1$s 不是目前平台的安裝包，需要：%2$s</string>
+    <string name="settings_debug_dev_builds_lookup_not_found">GitHub 上找不到</string>
+    <string name="settings_debug_dev_builds_lookup_failed">查詢失敗：%1$s</string>
+    <string name="settings_debug_dev_builds_pull_request">PR #%1$s</string>
+    <string name="settings_debug_dev_builds_from_fork">來自 fork</string>
+    <string name="settings_debug_dev_builds_debug_package">Debug 包</string>
+    <string name="settings_debug_dev_builds_confirm_title_package">安裝這個安裝包？</string>
+    <string name="settings_debug_dev_builds_confirm_message_android_debug">將下載 %1$s（%2$s），然後開啟系統安裝器。APK 使用調試金鑰簽名，不能覆蓋安裝到正式版本上。</string>
+    <string name="settings_debug_dev_builds_size_unknown">大小未知</string>
     <string name="window_drop_unsupported_title">不支援的檔案</string>
     <string name="window_drop_unsupported_description">僅支援%1$s，鬆手後不會有任何操作</string>
     <string name="episode_drop_video_title">鬆手以播放</string>
@@ -151,6 +167,17 @@
     <string name="settings_about_icon_description">Animeko Icon</string>
     <string name="settings_about_app_name">Animeko</string>
     <string name="settings_about_app_description">集找番、追番、看番的一站式彈幕追番平台</string>
+    <string name="settings_about_build_info">構建資訊</string>
+    <string name="settings_build_info_branch">分支</string>
+    <string name="settings_build_info_commit">Commit</string>
+    <string name="settings_build_info_commit_time">提交時間</string>
+    <string name="settings_build_info_build_type">構建類型</string>
+    <string name="settings_build_info_distro_channel">發行渠道</string>
+    <string name="settings_build_info_platform">平台</string>
+    <string name="settings_build_info_unknown">未知</string>
+    <string name="settings_build_info_open_commit">在 GitHub 上查看</string>
+    <string name="settings_build_info_copy_all">複製全部</string>
+    <string name="settings_build_info_copied">已複製</string>
 
     <!-- DevelopersTab -->
     <string name="settings_developers_main_contributors">主要貢獻者</string>
@@ -737,13 +764,13 @@
     <string name="login_other_methods">其他登入方式</string>
 
     <!-- OAuth -->
-    <string name="oauth_bangumi_authorize_title">授權 Bangumi 登入</string>
     <string name="oauth_bangumi_description">授權 Bangumi 賬戶後，可以同步你的觀看記錄到 Bangumi，或更方便地登入 Ani。</string>
-    <string name="oauth_bangumi_bind_account">綁定 Bangumi 賬戶</string>
-    <string name="oauth_bangumi_sign_in_or_sign_up">登入 / 註冊</string>
-    <string name="oauth_bangumi_waiting_result">正在等待結果</string>
-    <string name="oauth_bangumi_authorized">已授權</string>
-    <string name="oauth_bangumi_cancel">取消</string>
+    <string name="oauth_authorize_title">授權 %1$s 登入</string>
+    <string name="oauth_bind_account">綁定 %1$s 賬戶</string>
+    <string name="oauth_sign_in_or_sign_up">登入 / 註冊</string>
+    <string name="oauth_waiting_result">正在等待結果</string>
+    <string name="oauth_authorized">已授權</string>
+    <string name="oauth_cancel">取消</string>
     <string name="oauth_bangumi_help_title">幫助</string>
     <string name="oauth_bangumi_help_bangumi_desc">Bangumi 是甚麼</string>
     <string name="oauth_bangumi_help_website_blocked">瀏覽器提示網站被屏蔽或禁止訪問</string>
@@ -1068,6 +1095,7 @@
     <string name="settings_account_profile_not_bound">未綁定</string>
     <string name="settings_account_profile_unbind">解除綁定</string>
     <string name="settings_account_profile_unbind_bangumi_confirmation">確定要解除綁定 Bangumi 嗎？解除綁定後將不再同步觀看記錄到 Bangumi。之後可以重新綁定。</string>
+    <string name="settings_account_profile_unbind_confirmation">確定要解除綁定 %1$s 嗎？解除綁定後可以重新綁定。</string>
     <string name="settings_account_profile_select_avatar">選擇頭像</string>
     <string name="settings_account_profile_done">完成</string>
     <string name="settings_account_profile_upload_avatar">上傳頭像</string>
@@ -1151,6 +1179,7 @@
     <string name="media_selector_item_unsupported_playback">不支援播放</string>
     <string name="media_selector_item_season_mismatch">季度不相符</string>
     <string name="media_selector_item_subject_title_mismatch">條目標題不相符</string>
+    <string name="media_selector_item_episode_mismatch">劇集不相符</string>
     <string name="mediafetch_request_editor_invalid_request">請求無效，請檢查</string>
     <string name="mediafetch_request_editor_save_and_refresh">儲存並重新整理</string>
     <string name="mediafetch_request_editor_title">編輯查詢請求</string>
@@ -1596,6 +1625,16 @@
     <string name="downloads_empty">暫無可下載的劇集</string>
     <string name="downloads_create_failed">新增下載失敗</string>
     <string name="downloads_operation_failed">%1$d 項下載操作失敗</string>
+    <string name="downloads_episode_picker_title">選擇集數</string>
+    <string name="downloads_episode_picker_line">線路: %1$s</string>
+    <string name="downloads_episode_picker_only_current">僅本話</string>
+    <string name="downloads_episode_picker_from_current">本話及之後</string>
+    <string name="downloads_episode_picker_all">全部</string>
+    <string name="downloads_episode_picker_downloaded">已下載</string>
+    <string name="downloads_episode_picker_unmatched">未符合的資源</string>
+    <string name="downloads_episode_picker_current">目前</string>
+    <string name="downloads_episode_picker_selected_count">已選 %1$d 集</string>
+    <string name="downloads_episode_picker_back">返回</string>
 </resources>
 
 <!--@formatter:on-->

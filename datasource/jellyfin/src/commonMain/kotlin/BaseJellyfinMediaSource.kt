@@ -43,7 +43,6 @@ import me.him188.ani.datasources.api.source.MediaFetchRequest
 import me.him188.ani.datasources.api.source.MediaMatch
 import me.him188.ani.datasources.api.source.MediaSourceKind
 import me.him188.ani.datasources.api.source.MediaSourceLocation
-import me.him188.ani.datasources.api.source.matches
 import me.him188.ani.datasources.api.topic.EpisodeRange
 import me.him188.ani.datasources.api.topic.FileSize
 import me.him188.ani.datasources.api.topic.ResourceLocation
@@ -105,17 +104,14 @@ abstract class BaseJellyfinMediaSource(
         return SinglePagePagedSource {
             val matches = findBySubjectNames(query)
             val authorization = getAuthorization()
-            val retainedMatches = matches
-                .mapNotNull { matchedItem ->
-                    matchedItem.toMediaMatch(query, authorization.accessToken)
-                        ?.let { matchedItem to it }
-                }
-                .filter { (_, match) -> match.matches(query) != false }
+            val retainedMatches = matches.filter {
+                it.toMediaMatch(query, authorization.accessToken) != null
+            }
 
-            val chaptersByItemId = fetchChapters(retainedMatches.map { (matchedItem) -> matchedItem.item })
+            val chaptersByItemId = fetchChapters(retainedMatches.map { it.item })
             val currentAuthorization = getCachedAuthorization() ?: authorization
             retainedMatches
-                .mapNotNull { (matchedItem) ->
+                .mapNotNull { matchedItem ->
                     val match = matchedItem.toMediaMatch(query, currentAuthorization.accessToken)
                         ?: return@mapNotNull null
                     val chapters = chaptersByItemId[matchedItem.item.Id]
@@ -161,9 +157,10 @@ abstract class BaseJellyfinMediaSource(
     }
 
     /**
-     * Tries all known subject names and their season-less variants in order, but stops once an
-     * exact Jellyfin title yields the requested episode. Results from non-exact title matches are
-     * retained as a fallback.
+     * Tries all known subject names and their season-less variants in order, but stops once a
+     * container (series or season) backed by Bangumi provider ids has been enumerated, as its
+     * episodes then cover the whole subject. Results from other title matches are retained as a fallback,
+     * see [preferVerified].
      */
     private suspend fun findBySubjectNames(query: MediaFetchRequest): List<MatchedItem> {
         val fallbackMatches = linkedMapOf<String, MatchedItem>()
@@ -208,15 +205,24 @@ abstract class BaseJellyfinMediaSource(
                 }
             }
 
-            val exactIdMatches = fallbackMatches.values.filter {
-                it.confidence == BangumiMatchConfidence.EPISODE
-            }
-            if (exactIdMatches.isNotEmpty()) {
-                return exactIdMatches
+            if (fallbackMatches.values.any { it.confidence != BangumiMatchConfidence.NONE && it.fromContainer }) {
+                return fallbackMatches.values.preferVerified()
             }
         }
 
-        return fallbackMatches.values.sortedByDescending { it.confidence }
+        return fallbackMatches.values.preferVerified()
+    }
+
+    /**
+     * Matches backed by Bangumi provider ids supersede title-only guesses: once any item is verified, only
+     * verified items and the other episodes of their containers are kept, so an unrelated library entry
+     * sharing a title does not contribute its episodes.
+     */
+    private fun Collection<MatchedItem>.preferVerified(): List<MatchedItem> {
+        val verifiedContainers = filter { it.confidence != BangumiMatchConfidence.NONE }
+            .mapTo(HashSet()) { it.containerId }
+        val kept = if (verifiedContainers.isEmpty()) this else filter { it.containerId in verifiedContainers }
+        return kept.sortedByDescending { it.confidence }
     }
 
     private suspend fun searchByTitle(subjectName: String): List<Item> {
@@ -342,6 +348,7 @@ abstract class BaseJellyfinMediaSource(
                                                 RequestedItem(
                                                     item = item,
                                                     inheritedSubjectMatch = inheritedSubjectMatch,
+                                                    fromContainer = true,
                                                 ),
                                             )
                                         }
@@ -367,7 +374,7 @@ abstract class BaseJellyfinMediaSource(
                                         else -> item.matchesTargetSeason(targetSeason)
                                     }
                                 }
-                                .map { RequestedItem(it, inheritedSubjectMatch = false) }
+                                .map { RequestedItem(it, inheritedSubjectMatch = false, fromContainer = true) }
                         }
                     }
 
@@ -383,6 +390,7 @@ abstract class BaseJellyfinMediaSource(
                                     item = it,
                                     inheritedSubjectMatch =
                                         containerSubjectMatch == ProviderIdMatch.MATCH,
+                                    fromContainer = true,
                                 )
                             }
                     }
@@ -391,6 +399,7 @@ abstract class BaseJellyfinMediaSource(
                         RequestedItem(
                             item = candidate,
                             inheritedSubjectMatch = containerSubjectMatch == ProviderIdMatch.MATCH,
+                            fromContainer = false,
                         ),
                     )
 
@@ -399,23 +408,16 @@ abstract class BaseJellyfinMediaSource(
 
                 requestedItems.forEach itemLoop@ { requestedItem ->
                     val item = requestedItem.item
-                    if (
-                        item.episodeIdMatch(query) != ProviderIdMatch.MATCH &&
-                        !item.matchesEpisodeNumber(query)
-                    ) {
-                        return@itemLoop
-                    }
-
                     val confidence = item.bangumiMatchConfidence(
                         query = query,
                         inheritedSubjectMatch = requestedItem.inheritedSubjectMatch,
                     ) ?: return@itemLoop
-                    add(MatchedItem(item, confidence))
+                    add(MatchedItem(item, confidence, requestedItem.fromContainer, containerId = candidate.Id))
                 }
             }
         }.groupBy { it.item.Id }
             .values
-            .map { matches -> matches.maxBy { it.confidence } }
+            .map { matches -> matches.maxWith(compareBy({ it.confidence }, { it.fromContainer })) }
             .sortedByDescending { it.confidence }
     }
 
@@ -460,19 +462,11 @@ abstract class BaseJellyfinMediaSource(
         }
     }
 
-    private fun Item.matchesEpisodeNumber(query: MediaFetchRequest): Boolean {
-        return when (Type) {
-            TYPE_EPISODE -> {
-                val indexNumber = IndexNumber ?: return false
-                val episodeSort = EpisodeSort(indexNumber)
-                episodeSort == query.episodeSort || episodeSort == query.episodeEp
-            }
-
-            TYPE_MOVIE -> true
-            else -> false
-        }
-    }
-
+    /**
+     * Episode number in the subject: the Bangumi episode in [MediaFetchRequest.episodes] with the item's
+     * Bangumi episode provider id wins; without that mapping, the current episode's number is used when
+     * the item's provider id identifies it and Jellyfin's own number is stale; otherwise Jellyfin's number.
+     */
     private fun MatchedItem.toMediaMatch(
         query: MediaFetchRequest,
         accessToken: String,
@@ -481,14 +475,17 @@ abstract class BaseJellyfinMediaSource(
             TYPE_EPISODE -> {
                 val indexNumber = IndexNumber ?: return null
                 val jellyfinEpisodeSort = EpisodeSort(indexNumber)
-                val selectedEpisodeSort = if (
+                val mappedEpisode = providerId(PROVIDER_ID_BANGUMI)?.let { id ->
+                    query.episodes.firstOrNull { it.episodeId == id }
+                }
+                val selectedEpisodeSort = when {
+                    mappedEpisode != null -> mappedEpisode.ep ?: mappedEpisode.sort
+
                     confidence == BangumiMatchConfidence.EPISODE &&
-                    jellyfinEpisodeSort != query.episodeSort &&
-                    jellyfinEpisodeSort != query.episodeEp
-                ) {
-                    query.episodeEp ?: query.episodeSort
-                } else {
-                    jellyfinEpisodeSort
+                            jellyfinEpisodeSort != query.episodeSort &&
+                            jellyfinEpisodeSort != query.episodeEp -> query.episodeEp ?: query.episodeSort
+
+                    else -> jellyfinEpisodeSort
                 }
                 "$indexNumber $Name" to EpisodeRange.single(selectedEpisodeSort)
             }
@@ -523,7 +520,7 @@ abstract class BaseJellyfinMediaSource(
                 location = MediaSourceLocation.Lan,
                 kind = MediaSourceKind.WEB,
             ),
-            kind = if (confidence == BangumiMatchConfidence.EPISODE) {
+            kind = if (confidence != BangumiMatchConfidence.NONE) {
                 MatchKind.EXACT
             } else {
                 MatchKind.FUZZY
@@ -960,11 +957,21 @@ private enum class BangumiMatchConfidence {
 private data class MatchedItem(
     val item: Item,
     val confidence: BangumiMatchConfidence,
+    /**
+     * Enumerated from a series or season, so the container's other episodes were fetched too.
+     */
+    val fromContainer: Boolean,
+    /**
+     * Id of the search result this item came from: the series or season it was enumerated from,
+     * or the item itself when it was a direct hit.
+     */
+    val containerId: String,
 )
 
 private data class RequestedItem(
     val item: Item,
     val inheritedSubjectMatch: Boolean,
+    val fromContainer: Boolean,
 )
 
 private data class MatchedSeason(

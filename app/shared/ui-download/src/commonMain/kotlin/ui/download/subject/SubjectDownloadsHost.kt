@@ -14,7 +14,6 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.key
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
@@ -62,17 +61,17 @@ internal fun SubjectDownloadsHost(
         reload = presenter::reload,
     )
     request?.let { dialogState ->
-        key(dialogState) {
-            SubjectDownloadRequestDialogs(
-                state = dialogState,
-                visible = pickerVisible,
-                sourceInfoProvider = presenter.sourceInfoProvider,
-                settings = presenter.selectorSettings,
-                onHide = { pickerVisible = false },
-                onSelectMedia = presenter::selectMedia,
-                onCancel = presenter::cancelRequest,
-            )
-        }
+        SubjectDownloadRequestDialogs(
+            state = dialogState,
+            visible = pickerVisible,
+            sourceInfoProvider = presenter.sourceInfoProvider,
+            settings = presenter.selectorSettings,
+            onHide = { pickerVisible = false },
+            onSelectMedia = presenter::selectMedia,
+            onConfirmEpisodes = presenter::confirmEpisodes,
+            onBackToMediaSelection = presenter::backToMediaSelection,
+            onCancel = presenter::cancelRequest,
+        )
     }
     if (failedOperations > 0) {
         AlertDialog(

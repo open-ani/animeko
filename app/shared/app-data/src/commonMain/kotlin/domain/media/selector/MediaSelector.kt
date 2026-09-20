@@ -143,6 +143,14 @@ interface MediaSelector {
     val filteredCandidatesMedia: Flow<List<Media>>
 
     /**
+     * 搜索到的全部的列表, 经过了除 [MediaExclusionReason.EpisodeMismatch] 外的全部筛选,
+     * 即不按当前剧集裁剪的条目级候选, 顺序与 [filteredCandidates] 相同. 供批量下载规划使用.
+     *
+     * @see MediaSelectorFilterSortAlgorithm.filterMediaListForSubject
+     */
+    val subjectCandidates: Flow<List<MaybeExcludedMedia>>
+
+    /**
      * 用户的偏好字幕组设置
      */
     val alliance: MediaPreferenceItem<String>
@@ -359,15 +367,28 @@ class DefaultMediaSelector(
     private val mediaSelectorSettings = mediaSelectorSettings.cached()
     private val mediaSelectorContext = mediaSelectorContextNotCached.cached()
 
+    // cache 是必要的, 当 newPreferences 变更的时候不能重新加载 media list (网络)
+    private val mediaList = mediaListNotCached.cached()
+
     @OptIn(UnsafeOriginalMediaAccess::class)
     override val filteredCandidates: Flow<List<MaybeExcludedMedia>> = combine(
-        mediaListNotCached.cached(), // cache 是必要的, 当 newPreferences 变更的时候不能重新加载 media list (网络)
+        mediaList,
         savedDefaultPreference, // 只需要使用 default, 因为目前不能覆盖生肉设置
         // 如果依赖 merged pref, 会产生循环依赖 (mediaList -> mediaPreferenceItem -> newPreferences -> mediaList)
         this.mediaSelectorSettings,
         this.mediaSelectorContext,
     ) { list, pref, settings, context ->
         algorithm.filterMediaList(list, pref, settings, context)
+            .let { algorithm.sortMediaList(it, settings, context) }
+    }.cached()
+
+    override val subjectCandidates: Flow<List<MaybeExcludedMedia>> = combine(
+        mediaList,
+        savedDefaultPreference,
+        this.mediaSelectorSettings,
+        this.mediaSelectorContext,
+    ) { list, pref, settings, context ->
+        algorithm.filterMediaListForSubject(list, pref, settings, context)
             .let { algorithm.sortMediaList(it, settings, context) }
     }.cached()
 
@@ -706,15 +727,18 @@ class DefaultMediaSelector(
         }
     }
 
-    @OptIn(UnsafeOriginalMediaAccess::class)
     override suspend fun trySelectCached(): Media? {
         if (selected.value != null) return null
-        // 不管这个 media 能不能播放, 只要缓存了就行. 所以我们直接使用 `MaybeExcludedMedia.original`
-
+        // 剧集信息未加载时不筛剧集, 整个条目的缓存都在候选中, 不能选.
+        if (!mediaSelectorContext.first().hasEpisode) return null
+        // 只选未被排除的缓存: 缓存只会因为不属于当前剧集 (MediaExclusionReason.EpisodeMismatch) 而被排除.
         // 尽量选择满足用户偏好的缓存, 否则再随便挑一个缓存.
-        val cached = preferredCandidates.first().firstOrNull { it.original.isLocalCache() }
-            ?: filteredCandidates.first().firstOrNull { it.original.isLocalCache() } ?: return null
-        return selectDefault(cached.original)
+        fun List<MaybeExcludedMedia>.firstCachedOrNull(): Media? =
+            firstNotNullOfOrNull { candidate -> candidate.result?.takeIf { it.isLocalCache() } }
+
+        val cached = preferredCandidates.first().firstCachedOrNull()
+            ?: filteredCandidates.first().firstCachedOrNull() ?: return null
+        return selectDefault(cached)
     }
 
     override suspend fun removePreferencesUntilFirstCandidate() {

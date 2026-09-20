@@ -56,6 +56,7 @@ import me.him188.ani.app.ui.subject.details.sections.SubjectSummarySection
 import me.him188.ani.app.ui.subject.details.sections.SubjectTagsSection
 import me.him188.ani.app.ui.subject.details.sections.ViewAllSheet
 import me.him188.ani.app.ui.subject.details.state.SubjectDetailsState
+import me.him188.ani.app.ui.subject.details.state.rememberAiringLabelState
 import me.him188.ani.app.ui.subject.episode.list.EpisodeListItem
 import org.jetbrains.compose.resources.stringResource
 
@@ -79,16 +80,16 @@ internal fun CompactDetailsTabContent(
     contentPadding: PaddingValues = PaddingValues(0.dp),
     horizontalPadding: Dp = 16.dp,
 ) {
-    val presentation by state.presentation.collectAsStateWithLifecycle()
-    val episodes = presentation.episodeListUiState.mainEpisodes
+    val uiState by state.uiState.collectAsStateWithLifecycle()
+    val episodes = uiState.episodeListUiState.mainEpisodes
     val currentEpisodeId = remember(episodes) { episodes.firstOrNull { !it.isDoneOrDropped }?.episodeId }
 
     val exposedCharacters = state.exposedCharactersPager.collectAsLazyPagingItemsWithLifecycle()
     val allCharacters = state.charactersPager.collectAsLazyPagingItemsWithLifecycle()
-    val totalCharactersCount by state.totalCharactersCountState
+    val totalCharactersCount = uiState.totalCharactersCount
     val exposedStaff = state.exposedStaffPager.collectAsLazyPagingItemsWithLifecycle()
     val allStaff = state.staffPager.collectAsLazyPagingItemsWithLifecycle()
-    val totalStaffCount by state.totalStaffCountState
+    val totalStaffCount = uiState.totalStaffCount
     val related = state.relatedSubjectsPager.collectAsLazyPagingItemsWithLifecycle()
 
     val horizontalPaddingValues = PaddingValues(horizontal = horizontalPadding)
@@ -113,7 +114,7 @@ internal fun CompactDetailsTabContent(
                         SectionHeaderCacheButton(onClickCache, showLabel = false)
                         SectionHeaderActionButton(onShowEpisodeList) {
                             AiringLabel(
-                                state.airingLabelState,
+                                uiState.rememberAiringLabelState(),
                                 style = LocalTextStyle.current,
                                 progressColor = MaterialTheme.colorScheme.primary,
                             )

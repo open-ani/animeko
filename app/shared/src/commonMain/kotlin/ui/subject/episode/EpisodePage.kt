@@ -10,7 +10,6 @@
 package me.him188.ani.app.ui.subject.episode
 
 import androidx.compose.foundation.background
-import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
@@ -134,6 +133,7 @@ import me.him188.ani.app.ui.foundation.pagerTabIndicatorOffset
 import me.him188.ani.app.ui.foundation.rememberImageViewerHandler
 import me.him188.ani.app.ui.foundation.theme.AniTheme
 import me.him188.ani.app.ui.foundation.theme.LocalThemeSettings
+import me.him188.ani.app.ui.foundation.theme.isSystemInDarkThemeDetected
 import me.him188.ani.app.ui.foundation.theme.weaken
 import me.him188.ani.app.ui.foundation.widgets.LocalToaster
 import me.him188.ani.app.ui.foundation.widgets.showLoadError
@@ -529,7 +529,7 @@ private fun EpisodeScreenTabletVeryWide(
                 val themeSettings = LocalThemeSettings.current
                 val isEpPageDarkTheme = when {
                     themeSettings.alwaysDarkInEpisodePage -> true
-                    themeSettings.darkMode == DarkMode.AUTO -> isSystemInDarkTheme()
+                    themeSettings.darkMode == DarkMode.AUTO -> isSystemInDarkThemeDetected()
                     else -> themeSettings.darkMode == DarkMode.DARK
                 }
                 // 如果当前不是 dark theme 并且 是安卓平台 并且 没有设置播放页始终使用暗色主题，则加一个渐变色避免看不清状态栏

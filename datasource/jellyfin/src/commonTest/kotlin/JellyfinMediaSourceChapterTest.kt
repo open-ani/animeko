@@ -35,6 +35,7 @@ import me.him188.ani.datasources.api.MediaChapter
 import me.him188.ani.datasources.api.MediaChapterKind
 import me.him188.ani.datasources.api.source.MediaFetchRequest
 import me.him188.ani.datasources.api.source.MediaSourceConfig
+import me.him188.ani.datasources.api.topic.EpisodeRange
 import me.him188.ani.datasources.api.topic.ResourceLocation
 import me.him188.ani.utils.ktor.asScopedHttpClient
 import kotlin.test.Test
@@ -45,6 +46,40 @@ import kotlin.test.assertNotNull
 import kotlin.test.assertTrue
 
 class JellyfinMediaSourceChapterTest {
+    @Test
+    fun `chapter enrichment includes every episode in the subject`() = runTest {
+        val requestedIds = mutableSetOf<String>()
+        val episodeItems = (1..2).joinToString(",") { number ->
+            """
+            {
+              "Id": "episode-$number", "Type": "Episode", "Name": "Episode $number",
+              "SeriesName": "Test Anime", "IndexNumber": $number
+            }
+            """.trimIndent()
+        }
+        val source = createSource { request ->
+            when {
+                request.url.encodedPath == "/Items" -> respondJson("""{"Items":[$episodeItems]}""")
+                request.url.encodedPath.startsWith("/MediaSegments/") -> {
+                    requestedIds += request.url.encodedPath.substringAfterLast('/')
+                    respondJson(INTRO_AND_OUTRO)
+                }
+
+                else -> respondJson("{}", HttpStatusCode.NotFound)
+            }
+        }
+
+        val matches = source.fetch(query()).results.toList().associateBy { it.media.mediaId }
+
+        assertEquals(setOf("episode-1", "episode-2"), matches.keys)
+        assertEquals(matches.keys, requestedIds)
+        for (number in 1..2) {
+            val media = matches.getValue("episode-$number").media
+            assertEquals(EpisodeRange.single(EpisodeSort(number)), media.episodeRange)
+            assertEquals(listOf(OPENING, ENDING), media.extraFiles.chapters)
+        }
+    }
+
     @Test
     fun `native opening survives plugin network failure`() = runTest {
         var pluginRequested = false
