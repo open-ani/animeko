@@ -168,6 +168,8 @@ import me.him188.ani.app.ui.subject.details.layout.SubjectDetailsMultiColumnPlac
 import me.him188.ani.app.ui.subject.details.sections.SubjectCommentsSheet
 import me.him188.ani.app.ui.subject.details.state.SubjectDetailsState
 import me.him188.ani.app.ui.subject.details.state.createTestSubjectDetailsState
+import me.him188.ani.app.ui.subject.details.state.rememberAiringLabelState
+import me.him188.ani.app.ui.subject.details.state.rememberSubjectProgressState
 import me.him188.ani.app.ui.subject.episode.list.EpisodeListDialog
 import me.him188.ani.app.ui.subject.episode.list.EpisodeListItem
 import me.him188.ani.app.ui.subject.person.PeoplePreviewHost
@@ -225,7 +227,7 @@ fun SubjectDetailsScreen(
 
 @Composable
 fun SubjectDetailsScreen(
-    state: SubjectDetailsUIState?,
+    state: SubjectDetailsLoadState?,
     selfInfo: SelfInfoUiState,
     onPlay: (episodeId: Int) -> Unit,
     onLoadErrorRetry: () -> Unit,
@@ -248,7 +250,7 @@ fun SubjectDetailsScreen(
     BoxWithConstraints(modifier) {
         val layoutParams = SubjectDetailsLayoutParams.calculate(maxWidth)
         when (state) {
-            null, is SubjectDetailsUIState.Placeholder -> PlaceholderSubjectDetailsPage(
+            null, is SubjectDetailsLoadState.Placeholder -> PlaceholderSubjectDetailsPage(
                 state?.subjectInfo,
                 layoutParams,
                 Modifier,
@@ -258,7 +260,7 @@ fun SubjectDetailsScreen(
                 onClickOpenExternal,
             )
 
-            is SubjectDetailsUIState.Ok -> SubjectDetailsPage(
+            is SubjectDetailsLoadState.Ok -> SubjectDetailsPage(
                 state.value,
                 selfInfo,
                 layoutParams,
@@ -274,7 +276,7 @@ fun SubjectDetailsScreen(
                 onClickOpenExternal,
             )
 
-            is SubjectDetailsUIState.Err -> ErrorSubjectDetailsPage(
+            is SubjectDetailsLoadState.Err -> ErrorSubjectDetailsPage(
                 state.placeholder,
                 error = state.error,
                 onRetry = onLoadErrorRetry,
@@ -320,11 +322,11 @@ private fun SubjectDetailsPage(
     val imageViewer = rememberImageViewerHandler()
     ImageViewerBackHandler(imageViewer)
 
-    val presentation by state.presentation.collectAsStateWithLifecycle()
+    val uiState by state.uiState.collectAsStateWithLifecycle()
     val onEpisodeLongClick: (EpisodeListItem) -> Unit = {
         onEpisodeCollectionUpdate(
             SetEpisodeCollectionTypeRequest(
-                presentation.subjectId,
+                uiState.subjectId,
                 it.episodeId,
                 it.collectionType.toggleCollected(),
             ),
@@ -347,7 +349,7 @@ private fun SubjectDetailsPage(
     val onClickCover: (() -> Unit)? = coverImageUrl?.let { url -> { imageViewer.viewImage(url) } }
     // Bangumi 源评价的 "在 Bangumi 打开" 菜单项
     val onOpenCommentOriginal = { _: UIComment ->
-        browserNavigator.openUri("https://bgm.tv/subject/${presentation.subjectId}")
+        browserNavigator.openUri("https://bgm.tv/subject/${uiState.subjectId}")
     }
 
     val themeSettings = LocalThemeSettings.current
@@ -370,10 +372,10 @@ private fun SubjectDetailsPage(
     ) {
         if (showSelectEpisode) {
             EpisodeListDialog(
-                presentation.episodeListUiState,
+                uiState.episodeListUiState,
                 onDismissRequest = { showSelectEpisode = false },
-                { navigator.navigateSubjectCaches(presentation.subjectId) },
-                { navigator.navigateEpisodeDetails(presentation.subjectId, it.episodeId) },
+                { navigator.navigateSubjectCaches(uiState.subjectId) },
+                { navigator.navigateEpisodeDetails(uiState.subjectId, it.episodeId) },
                 onEpisodeLongClick,
             )
         }
@@ -408,7 +410,7 @@ private fun SubjectDetailsPage(
                     onClickTag = onClickTag,
                     onClickLogin = onClickLogin,
                     onShowComments = { showComments = true },
-                    onClickCache = { navigator.navigateSubjectCaches(presentation.subjectId) },
+                    onClickCache = { navigator.navigateSubjectCaches(uiState.subjectId) },
                     modifier = modifier,
                     showTopBar = showTopBar,
                     windowInsets = windowInsets,
@@ -432,7 +434,7 @@ private fun SubjectDetailsPage(
             seasonTags = {
                 SubjectDetailsDefaults.SeasonTag(
                     airDate = state.info?.airDate ?: PackedDate.Invalid,
-                    airingLabelState = state.airingLabelState,
+                    airingLabelState = uiState.rememberAiringLabelState(),
                 )
             },
             collectionData = {
@@ -452,7 +454,7 @@ private fun SubjectDetailsPage(
             },
             selectEpisodeButton = {
                 SubjectDetailsDefaults.SelectEpisodeButtons(
-                    state.subjectProgressState,
+                    uiState.rememberSubjectProgressState(),
                     onShowEpisodeList = { showSelectEpisode = true },
                     onPlay = onPlay,
                 )
@@ -503,7 +505,7 @@ private fun SubjectDetailsPage(
                         onEpisodeLongClick = onEpisodeLongClick,
                         onClickTag = onClickTag,
                         onShowEpisodeList = { showSelectEpisode = true },
-                        onClickCache = { navigator.navigateSubjectCaches(presentation.subjectId) },
+                        onClickCache = { navigator.navigateSubjectCaches(uiState.subjectId) },
                         modifier = Modifier
                             .nestedScrollWorkaround(state.detailsTabLazyListState),
                         listState = state.detailsTabLazyListState,
@@ -1122,7 +1124,7 @@ enum class SubjectDetailsTab {
 /**
  * UI state of the subject details page.
  */
-sealed interface SubjectDetailsUIState {
+sealed interface SubjectDetailsLoadState {
     val subjectId: Int
 
     /**
@@ -1132,7 +1134,7 @@ sealed interface SubjectDetailsUIState {
     data class Placeholder(
         override val subjectId: Int,
         val subjectInfo: SubjectInfo? = null
-    ) : SubjectDetailsUIState
+    ) : SubjectDetailsLoadState
 
     /**
      * Content ready.
@@ -1140,7 +1142,7 @@ sealed interface SubjectDetailsUIState {
     class Ok(
         override val subjectId: Int,
         val value: SubjectDetailsState
-    ) : SubjectDetailsUIState
+    ) : SubjectDetailsLoadState
 
     /**
      * Load error, if preview subject info is available, it will also show.
@@ -1149,7 +1151,7 @@ sealed interface SubjectDetailsUIState {
         override val subjectId: Int,
         val placeholder: SubjectInfo?,
         val error: LoadError
-    ) : SubjectDetailsUIState
+    ) : SubjectDetailsLoadState
 }
 
 @Stable
@@ -1170,7 +1172,7 @@ internal fun PreviewSubjectDetails() = ProvideCompositionLocalsForPreview {
     val scope = rememberCoroutineScope()
     val state = remember {
         createTestSubjectDetailsState(scope)
-            .let { SubjectDetailsUIState.Ok(it.subjectId, it) }
+            .let { SubjectDetailsLoadState.Ok(it.subjectId, it) }
     }
     PreviewSubjectDetailsScreen(
         state,
@@ -1183,7 +1185,7 @@ internal fun PreviewSubjectDetails() = ProvideCompositionLocalsForPreview {
 @Composable
 internal fun PreviewPlaceholderSubjectDetails() = ProvideCompositionLocalsForPreview {
     val state = remember {
-        SubjectDetailsUIState.Placeholder(TestSubjectInfo.subjectId, TestSubjectInfo)
+        SubjectDetailsLoadState.Placeholder(TestSubjectInfo.subjectId, TestSubjectInfo)
     }
     PreviewSubjectDetailsScreen(
         state,
@@ -1197,7 +1199,7 @@ internal fun PreviewPlaceholderSubjectDetails() = ProvideCompositionLocalsForPre
 @Composable
 internal fun PreviewErrorSubjectDetails() = ProvideCompositionLocalsForPreview {
     val state = remember {
-        SubjectDetailsUIState.Err(TestSubjectInfo.subjectId, TestSubjectInfo, LoadError.NetworkError)
+        SubjectDetailsLoadState.Err(TestSubjectInfo.subjectId, TestSubjectInfo, LoadError.NetworkError)
     }
     PreviewSubjectDetailsScreen(
         state,
@@ -1207,7 +1209,7 @@ internal fun PreviewErrorSubjectDetails() = ProvideCompositionLocalsForPreview {
 @TestOnly
 @Composable
 private fun PreviewSubjectDetailsScreen(
-    state: SubjectDetailsUIState,
+    state: SubjectDetailsLoadState,
     modifier: Modifier = Modifier
 ) {
     SubjectDetailsScreen(
