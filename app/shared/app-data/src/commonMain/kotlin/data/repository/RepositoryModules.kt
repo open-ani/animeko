@@ -33,6 +33,7 @@ fun KoinApplication.repositoryModules(dataStores: PlatformDataStoreManager) = mo
             aniApiProvider.userAuthApi,
             aniApiProvider.userProfileApi,
             aniApiProvider.bangumiApi,
+            aniApiProvider.oauthApi,
             get(),
         )
     }

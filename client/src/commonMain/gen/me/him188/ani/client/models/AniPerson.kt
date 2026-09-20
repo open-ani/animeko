@@ -31,7 +31,7 @@ import kotlinx.serialization.encoding.*
  * @param type
  * @param imageLarge
  * @param imageMedium
- * @param summary
+ * @param summary 人物简介. 仅人物详情 (`/v2/persons/{id}`) 和角色详情 (`/v2/characters/{id}`) 返回; 条目的 staff/characters 列表中恒为空字符串.
  * @param infobox
  */
 @Serializable
@@ -50,6 +50,7 @@ data class AniPerson (
 
     @SerialName(value = "imageMedium") @Required val imageMedium: kotlin.String,
 
+    /* 人物简介. 仅人物详情 (`/v2/persons/{id}`) 和角色详情 (`/v2/characters/{id}`) 返回; 条目的 staff/characters 列表中恒为空字符串. */
     @SerialName(value = "summary") @Required val summary: kotlin.String,
 
     @SerialName(value = "infobox") val infobox: AniInfobox? = null
