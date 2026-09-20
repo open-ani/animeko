@@ -197,8 +197,9 @@ fun SubjectDetailsScreen(
     val toaster = LocalToaster.current
     val scope = rememberCoroutineScope()
 
+    // 每次进入组合 (含从播放页返回) 只是"确保已加载"; reload 会重新加载并闪一下占位, 只用于加载失败后重试.
     LaunchedEffect(Unit) {
-        vm.reload()
+        vm.load()
     }
 
     SubjectDetailsScreen(

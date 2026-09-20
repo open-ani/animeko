@@ -45,6 +45,11 @@ data class MediaSelectorContext(
     val episodeInfo: EpisodeInfo?,
     val mediaSourceTiers: MediaSelectorSourceTiers?,
 ) {
+    /**
+     * 当前剧集已知. 未知时按剧集筛选的规则不生效, 整个条目的缓存都在候选中, 不能自动选缓存.
+     */
+    val hasEpisode: Boolean get() = episodeInfo != null && episodeInfo != EpisodeInfo.Empty
+
     fun allFieldsLoaded() = subjectFinished != null
             && mediaSourcePrecedence != null
             && subtitlePreferences != null

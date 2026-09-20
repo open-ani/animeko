@@ -960,6 +960,105 @@ jobs:
         if-no-files-found: 'error'
         overwrite: 'true'
       if: '${{ steps.step-55.outcome == ''failure'' }}'
+    - id: 'step-57'
+      name: 'Enable KVM'
+      run: |-
+        echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
+        sudo udevadm control --reload-rules
+        sudo udevadm trigger --name-match=kvm
+    - id: 'step-58'
+      name: 'Build Android Instrumented Tests (Attempt #1)'
+      continue-on-error: true
+      timeout-minutes: 180
+      run: './gradlew assembleAndroidDeviceTest "-Pandroid.min.sdk=30" "--scan" "-Porg.gradle.daemon.idletimeout=60000" "-Dfile.encoding=UTF-8" "-Dorg.gradle.jvmargs=-Xmx8g -Dkotlin.daemon.jvm.options=-Xmx6g" "-Dkotlin.daemon.jvm.options=-Xmx6g"'
+    - id: 'step-59'
+      name: 'Build Android Instrumented Tests (Attempt #2)'
+      continue-on-error: true
+      timeout-minutes: 180
+      run: './gradlew assembleAndroidDeviceTest "-Pandroid.min.sdk=30" "--scan" "-Porg.gradle.daemon.idletimeout=60000" "-Dfile.encoding=UTF-8" "-Dorg.gradle.jvmargs=-Xmx8g -Dkotlin.daemon.jvm.options=-Xmx6g" "-Dkotlin.daemon.jvm.options=-Xmx6g"'
+      if: '${{ steps.step-58.outcome == ''failure'' }}'
+    - id: 'step-60'
+      name: 'Build Android Instrumented Tests (Attempt #3)'
+      continue-on-error: false
+      timeout-minutes: 180
+      run: './gradlew assembleAndroidDeviceTest "-Pandroid.min.sdk=30" "--scan" "-Porg.gradle.daemon.idletimeout=60000" "-Dfile.encoding=UTF-8" "-Dorg.gradle.jvmargs=-Xmx8g -Dkotlin.daemon.jvm.options=-Xmx6g" "-Dkotlin.daemon.jvm.options=-Xmx6g"'
+      if: '${{ steps.step-59.outcome == ''failure'' }}'
+    - id: 'step-61'
+      name: 'Stop Gradle daemons before emulator (api=30)'
+      run: |-
+        ./gradlew --stop
+        pkill -f KotlinCompileDaemon || true
+        free -h
+        df -h .
+    - id: 'step-62'
+      name: 'Android Instrumented Test (api=30, arch=x86_64)'
+      uses: 'reactivecircus/android-emulator-runner@v2.35.0'
+      with:
+        api-level: '30'
+        arch: 'x86_64'
+        ram-size: '2048M'
+        emulator-boot-timeout: '1800'
+        script: './gradlew connectedDeviceTest --continue "-Pandroid.min.sdk=30" "--scan" "-Porg.gradle.daemon.idletimeout=60000" "-Dfile.encoding=UTF-8" "-Dorg.gradle.jvmargs=-Xmx3g -Dkotlin.daemon.jvm.options=-Xmx2g" "-Dkotlin.daemon.jvm.options=-Xmx2g"; status=$?; killall -INT crashpad_handler || true; exit $status'
+    - id: 'step-63'
+      name: 'Upload Android Instrumented Test Reports (api=30, arch=x86_64)'
+      uses: 'actions/upload-artifact@v4'
+      with:
+        name: 'android-device-test-reports-api30-x86_64'
+        path: |-
+          **/build/reports/androidTests/**
+          **/build/outputs/androidTest-results/**
+        if-no-files-found: 'ignore'
+        overwrite: 'true'
+      if: 'always()'
+    - id: 'step-64'
+      name: 'Uninstall emulators'
+      run: |
+        sdkmanager --uninstall $(sdkmanager --list | grep emulator | awk '{print $1}')
+    - id: 'step-65'
+      name: 'Remove AVD'
+      run: |-
+        echo "Removing Emulator binaries..."
+        rm -rf $ANDROID_HOME/emulator
+        echo "Removing System Images..."
+        rm -rf $ANDROID_HOME/system-images
+    - id: 'step-66'
+      name: 'Stop Gradle daemons before emulator (api=36)'
+      run: |-
+        ./gradlew --stop
+        pkill -f KotlinCompileDaemon || true
+        free -h
+        df -h .
+    - id: 'step-67'
+      name: 'Android Instrumented Test (api=36, arch=x86_64)'
+      uses: 'reactivecircus/android-emulator-runner@v2.35.0'
+      with:
+        api-level: '36'
+        arch: 'x86_64'
+        ram-size: '2048M'
+        emulator-boot-timeout: '1800'
+        script: './gradlew connectedDeviceTest --continue "-Pandroid.min.sdk=30" "--scan" "-Porg.gradle.daemon.idletimeout=60000" "-Dfile.encoding=UTF-8" "-Dorg.gradle.jvmargs=-Xmx3g -Dkotlin.daemon.jvm.options=-Xmx2g" "-Dkotlin.daemon.jvm.options=-Xmx2g"; status=$?; killall -INT crashpad_handler || true; exit $status'
+    - id: 'step-68'
+      name: 'Upload Android Instrumented Test Reports (api=36, arch=x86_64)'
+      uses: 'actions/upload-artifact@v4'
+      with:
+        name: 'android-device-test-reports-api36-x86_64'
+        path: |-
+          **/build/reports/androidTests/**
+          **/build/outputs/androidTest-results/**
+        if-no-files-found: 'ignore'
+        overwrite: 'true'
+      if: 'always()'
+    - id: 'step-69'
+      name: 'Uninstall emulators'
+      run: |
+        sdkmanager --uninstall $(sdkmanager --list | grep emulator | awk '{print $1}')
+    - id: 'step-70'
+      name: 'Remove AVD'
+      run: |-
+        echo "Removing Emulator binaries..."
+        rm -rf $ANDROID_HOME/emulator
+        echo "Removing System Images..."
+        rm -rf $ANDROID_HOME/system-images
   build_github-macos-15-intel:
     name: 'Build (macOS 15 x86_64 (GitHub))'
     runs-on:
@@ -1534,39 +1633,6 @@ jobs:
       run: './gradlew testAndroidHostTest "--scan" "-Porg.gradle.daemon.idletimeout=60000" "-Dfile.encoding=UTF-8" "-Dorg.gradle.jvmargs=-Xmx12g -Dkotlin.daemon.jvm.options=-Xmx20g" "-Dkotlin.daemon.jvm.options=-Xmx20g" "--parallel"'
       if: '${{ steps.step-41.outcome == ''failure'' }}'
     - id: 'step-43'
-      name: 'Build Android Instrumented Tests (Attempt #1)'
-      continue-on-error: true
-      timeout-minutes: 180
-      run: './gradlew compileAndroidDeviceTest "-Pandroid.min.sdk=30" "--scan" "-Porg.gradle.daemon.idletimeout=60000" "-Dfile.encoding=UTF-8" "-Dorg.gradle.jvmargs=-Xmx12g -Dkotlin.daemon.jvm.options=-Xmx20g" "-Dkotlin.daemon.jvm.options=-Xmx20g" "--parallel"'
-    - id: 'step-44'
-      name: 'Build Android Instrumented Tests (Attempt #2)'
-      continue-on-error: true
-      timeout-minutes: 180
-      run: './gradlew compileAndroidDeviceTest "-Pandroid.min.sdk=30" "--scan" "-Porg.gradle.daemon.idletimeout=60000" "-Dfile.encoding=UTF-8" "-Dorg.gradle.jvmargs=-Xmx12g -Dkotlin.daemon.jvm.options=-Xmx20g" "-Dkotlin.daemon.jvm.options=-Xmx20g" "--parallel"'
-      if: '${{ steps.step-43.outcome == ''failure'' }}'
-    - id: 'step-45'
-      name: 'Build Android Instrumented Tests (Attempt #3)'
-      continue-on-error: false
-      timeout-minutes: 180
-      run: './gradlew compileAndroidDeviceTest "-Pandroid.min.sdk=30" "--scan" "-Porg.gradle.daemon.idletimeout=60000" "-Dfile.encoding=UTF-8" "-Dorg.gradle.jvmargs=-Xmx12g -Dkotlin.daemon.jvm.options=-Xmx20g" "-Dkotlin.daemon.jvm.options=-Xmx20g" "--parallel"'
-      if: '${{ steps.step-44.outcome == ''failure'' }}'
-    - id: 'step-46'
-      name: 'Android Instrumented Test (api=30, arch=arm64-v8a)'
-      uses: 'reactivecircus/android-emulator-runner@v2.35.0'
-      with:
-        api-level: '30'
-        arch: 'arm64-v8a'
-        emulator-boot-timeout: '1800'
-        script: './gradlew connectedDeviceTest "-Pandroid.min.sdk=30" "--scan" "-Porg.gradle.daemon.idletimeout=60000" "-Dfile.encoding=UTF-8" "-Dorg.gradle.jvmargs=-Xmx12g -Dkotlin.daemon.jvm.options=-Xmx20g" "-Dkotlin.daemon.jvm.options=-Xmx20g" "--parallel" && killall -INT crashpad_handler || true'
-    - id: 'step-47'
-      name: 'Android Instrumented Test (api=36, arch=arm64-v8a)'
-      uses: 'reactivecircus/android-emulator-runner@v2.35.0'
-      with:
-        api-level: '36'
-        arch: 'arm64-v8a'
-        emulator-boot-timeout: '1800'
-        script: './gradlew connectedDeviceTest "-Pandroid.min.sdk=30" "--scan" "-Porg.gradle.daemon.idletimeout=60000" "-Dfile.encoding=UTF-8" "-Dorg.gradle.jvmargs=-Xmx12g -Dkotlin.daemon.jvm.options=-Xmx20g" "-Dkotlin.daemon.jvm.options=-Xmx20g" "--parallel" && killall -INT crashpad_handler || true'
-    - id: 'step-48'
       name: 'Cleanup temp files'
       continue-on-error: true
       run: 'chmod +x ./ci-helper/cleanup-temp-files-macos.sh && ./ci-helper/cleanup-temp-files-macos.sh'

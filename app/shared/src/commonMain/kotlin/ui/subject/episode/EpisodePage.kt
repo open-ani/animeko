@@ -10,7 +10,6 @@
 package me.him188.ani.app.ui.subject.episode
 
 import androidx.compose.foundation.background
-import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
@@ -19,6 +18,7 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.WindowInsetsSides
+import androidx.compose.foundation.layout.displayCutout
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -134,6 +134,7 @@ import me.him188.ani.app.ui.foundation.pagerTabIndicatorOffset
 import me.him188.ani.app.ui.foundation.rememberImageViewerHandler
 import me.him188.ani.app.ui.foundation.theme.AniTheme
 import me.him188.ani.app.ui.foundation.theme.LocalThemeSettings
+import me.him188.ani.app.ui.foundation.theme.isSystemInDarkThemeDetected
 import me.him188.ani.app.ui.foundation.theme.weaken
 import me.him188.ani.app.ui.foundation.widgets.LocalToaster
 import me.him188.ani.app.ui.foundation.widgets.showLoadError
@@ -501,7 +502,7 @@ private fun EpisodeScreenTabletVeryWide(
                 modifier = Modifier.weight(1f).fillMaxHeight(),
                 maintainAspectRatio = false,
                 windowInsets = if (vm.isFullscreen) {
-                    windowInsets
+                    fullscreenVideoWindowInsets(windowInsets)
                 } else {
                     // 非全屏右边还有东西
                     // Consider #1923 平板横屏模式下播放器底栏和导航栏重合
@@ -529,7 +530,7 @@ private fun EpisodeScreenTabletVeryWide(
                 val themeSettings = LocalThemeSettings.current
                 val isEpPageDarkTheme = when {
                     themeSettings.alwaysDarkInEpisodePage -> true
-                    themeSettings.darkMode == DarkMode.AUTO -> isSystemInDarkTheme()
+                    themeSettings.darkMode == DarkMode.AUTO -> isSystemInDarkThemeDetected()
                     else -> themeSettings.darkMode == DarkMode.DARK
                 }
                 // 如果当前不是 dark theme 并且 是安卓平台 并且 没有设置播放页始终使用暗色主题，则加一个渐变色避免看不清状态栏
@@ -705,7 +706,7 @@ private fun EpisodeScreenContentPhone(
 ) {
     var showDanmakuEditor by rememberSaveable { mutableStateOf(false) }
     val toaster = LocalToaster.current
-    val videoWindowInsets = windowInsets
+    val defaultVideoWindowInsets = windowInsets
         .union(WindowInsets.desktopTitleBar)
         .run {
             // iOS 上的 top window insets 没有被正确消耗, 手动排除 top insets
@@ -715,7 +716,12 @@ private fun EpisodeScreenContentPhone(
                 only(WindowInsetsSides.Top + WindowInsetsSides.Horizontal)
             }
         }
-    val columnInsets = videoWindowInsets.only(WindowInsetsSides.Horizontal)
+    val videoWindowInsets = if (vm.isFullscreen) {
+        fullscreenVideoWindowInsets(defaultVideoWindowInsets)
+    } else {
+        defaultVideoWindowInsets
+    }
+    val columnInsets = defaultVideoWindowInsets.only(WindowInsetsSides.Horizontal)
 
     EpisodeScreenContentPhoneScaffold(
         videoOnly = vm.isFullscreen,
@@ -943,6 +949,24 @@ fun EpisodeScreenContentPhoneScaffold(
                 }
             }
         }
+    }
+}
+
+/**
+ * 全屏播放时传给播放器控件的 window insets.
+ *
+ * iOS 横屏下 [WindowInsets.systemBars] 会把刘海宽度对称地报告在左右两侧, 并且还带有顶部和 home indicator 的高度,
+ * 直接使用会让控件离屏幕边缘过远. 全屏时只需要避开真正有刘海 (前置摄像头) 的那一侧:
+ * Compose 在 iOS 上的 [WindowInsets.displayCutout] 只包含摄像头所在的那一侧.
+ *
+ * 其他平台保持 [default] 不变.
+ */
+@Composable
+private fun fullscreenVideoWindowInsets(default: WindowInsets): WindowInsets {
+    return if (LocalPlatform.current.isIos()) {
+        WindowInsets.displayCutout.only(WindowInsetsSides.Horizontal)
+    } else {
+        default
     }
 }
 

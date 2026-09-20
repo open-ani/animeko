@@ -23,6 +23,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.Stable
+import androidx.compose.runtime.key
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -70,12 +71,16 @@ fun EpisodeStillBackground(
     modifier: Modifier = Modifier,
 ) {
     Box(modifier.testTag(EPISODE_STILL_TAG)) {
-        AsyncImage(
-            imageUrl,
-            contentDescription = null,
-            Modifier.matchParentSize(),
-            contentScale = ContentScale.Crop,
-        )
+        // 卡片可能被按位置复用 (如详情页翻页网格), 此时 imageUrl 会原地变化. Sketch 在没有 placeholder 时
+        // 会一直保留上一张图直到新图加载完成 (加载失败则永远保留), 导致显示其他剧集的剧照. 按 URL 重建以立即清掉旧图.
+        key(imageUrl) {
+            AsyncImage(
+                imageUrl,
+                contentDescription = null,
+                Modifier.matchParentSize(),
+                contentScale = ContentScale.Crop,
+            )
+        }
         if (highlighted) {
             Box(Modifier.matchParentSize().background(MaterialTheme.colorScheme.primary.copy(alpha = 0.2f)))
         }
