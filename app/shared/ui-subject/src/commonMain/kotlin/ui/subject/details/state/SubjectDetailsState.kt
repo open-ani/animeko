@@ -36,7 +36,7 @@ import me.him188.ani.datasources.api.topic.UnifiedCollectionType
 /**
  * 条目详情页 UI 状态.
  *
- * 随条目数据变化的展示内容都在 [presentation] 里, 页面只订阅这一个 flow;
+ * 随条目数据变化的展示内容都在 [uiState] 里, 页面只订阅这一个 flow;
  * 其余是分页数据源和带交互的子状态 (收藏类型编辑、评分、评论).
  */
 @Stable
@@ -54,9 +54,9 @@ class SubjectDetailsState(
     val editableRatingState: EditableRatingState,
     val subjectCommentState: CommentState,
     /**
-     * 页面展示内容. 数据未加载时为 [SubjectDetailsPresentation.Placeholder].
+     * 页面展示内容. 数据未加载时为 [SubjectDetailsUiState.Placeholder].
      */
-    val presentation: StateFlow<SubjectDetailsPresentation>,
+    val uiState: StateFlow<SubjectDetailsUiState>,
     val subjectCommentReportState: CommentReportState? = null,
 ) {
     val detailsTabLazyListState = LazyListState()
@@ -69,7 +69,7 @@ class SubjectDetailsState(
  * 所有字段来自同一次 `combine`, 因此彼此一致: 不会出现头部已经显示看过、选集却还是未看的情况.
  */
 @Immutable
-data class SubjectDetailsPresentation(
+data class SubjectDetailsUiState(
     val subjectId: Int,
     val displayName: String,
     val selfCollectionType: UnifiedCollectionType,
@@ -87,7 +87,7 @@ data class SubjectDetailsPresentation(
     val selfCollected: Boolean get() = selfCollectionType != UnifiedCollectionType.NOT_COLLECTED
 
     companion object {
-        val Placeholder = SubjectDetailsPresentation(
+        val Placeholder = SubjectDetailsUiState(
             subjectId = 0,
             displayName = "",
             selfCollectionType = UnifiedCollectionType.NOT_COLLECTED,
@@ -105,7 +105,7 @@ data class SubjectDetailsPresentation(
  * 供 [me.him188.ani.app.ui.subject.AiringLabel] 使用的适配: 该组件仍以 [AiringLabelState] 为参数 (收藏页、播放页也在用).
  */
 @Composable
-fun SubjectDetailsPresentation.rememberAiringLabelState(): AiringLabelState {
+fun SubjectDetailsUiState.rememberAiringLabelState(): AiringLabelState {
     val airingInfo = airingInfo
     val progressInfo = progressInfo
     return remember(airingInfo, progressInfo) { AiringLabelState(airingInfo, progressInfo) }
@@ -115,7 +115,7 @@ fun SubjectDetailsPresentation.rememberAiringLabelState(): AiringLabelState {
  * 供播放按钮使用的适配, 见 [rememberAiringLabelState].
  */
 @Composable
-fun SubjectDetailsPresentation.rememberSubjectProgressState(): SubjectProgressState {
+fun SubjectDetailsUiState.rememberSubjectProgressState(): SubjectProgressState {
     val progressInfo = progressInfo
     return remember(progressInfo) { SubjectProgressState(progressInfo) }
 }

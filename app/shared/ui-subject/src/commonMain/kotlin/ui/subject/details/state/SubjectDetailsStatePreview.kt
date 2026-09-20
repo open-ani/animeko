@@ -53,8 +53,8 @@ fun createTestSubjectDetailsState(
             backgroundScope = backgroundScope,
         ),
         subjectCommentState = createTestCommentState(backgroundScope),
-        presentation = MutableStateFlow(
-            SubjectDetailsPresentation(
+        uiState = MutableStateFlow(
+            SubjectDetailsUiState(
                 subjectId = TestSubjectInfo.subjectId,
                 displayName = TestSubjectInfo.displayName,
                 selfCollectionType = UnifiedCollectionType.WISH,

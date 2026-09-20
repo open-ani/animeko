@@ -295,7 +295,7 @@ class DefaultSubjectDetailsStateFactory : SubjectDetailsStateFactory, KoinCompon
             subjectCommentState = subjectCommentState,
             subjectCommentReportState = subjectCommentReportState,
             // 页面展示内容只从这一处派生, 每分钟重算一次以跟上日期变化 (播出状态、未开播判断)
-            presentation = combine(
+            uiState = combine(
                 minuteTicker,
                 subjectCollectionFlow,
                 playProgressFlow,
@@ -303,7 +303,7 @@ class DefaultSubjectDetailsStateFactory : SubjectDetailsStateFactory, KoinCompon
                 relatedCharactersFlow,
             ) { _, collection, playProgress, persons, characters ->
                 val now = Clock.System.now()
-                SubjectDetailsPresentation(
+                SubjectDetailsUiState(
                     subjectId = subjectId,
                     displayName = collection.subjectInfo.displayName,
                     selfCollectionType = collection.collectionType,
@@ -318,7 +318,7 @@ class DefaultSubjectDetailsStateFactory : SubjectDetailsStateFactory, KoinCompon
                 )
             }.stateIn(
                 this, SharingStarted.WhileSubscribed(5000),
-                SubjectDetailsPresentation.Placeholder.copy(subjectId = subjectId),
+                SubjectDetailsUiState.Placeholder.copy(subjectId = subjectId),
             ),
         )
         return state

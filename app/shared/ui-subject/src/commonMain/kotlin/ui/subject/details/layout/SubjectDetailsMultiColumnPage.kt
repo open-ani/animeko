@@ -108,7 +108,7 @@ import me.him188.ani.app.ui.subject.details.sections.SubjectRatingSummary
 import me.him188.ani.app.ui.subject.details.sections.SubjectSummarySection
 import me.him188.ani.app.ui.subject.details.sections.SubjectTagsSection
 import me.him188.ani.app.ui.subject.details.state.SubjectDetailsState
-import me.him188.ani.app.ui.subject.details.state.SubjectDetailsPresentation
+import me.him188.ani.app.ui.subject.details.state.SubjectDetailsUiState
 import me.him188.ani.app.ui.subject.details.state.rememberAiringLabelState
 import me.him188.ani.app.ui.subject.details.state.rememberSubjectProgressState
 import me.him188.ani.app.ui.subject.episode.list.EpisodeListItem
@@ -143,17 +143,17 @@ internal fun SubjectDetailsMultiColumnPage(
     onClickCover: (() -> Unit)? = null,
 ) {
     val info = state.info ?: return
-    val presentation by state.presentation.collectAsStateWithLifecycle()
-    val episodes = presentation.episodeListUiState.mainEpisodes
+    val uiState by state.uiState.collectAsStateWithLifecycle()
+    val episodes = uiState.episodeListUiState.mainEpisodes
     // "当前/下一集": 第一集未看(非 DONE/DROPPED)者, 用于选集高亮与初始分页页.
     val currentEpisodeId = remember(episodes) { episodes.firstOrNull { !it.isDoneOrDropped }?.episodeId }
 
     val exposedCharacters = state.exposedCharactersPager.collectAsLazyPagingItemsWithLifecycle()
     val allCharacters = state.charactersPager.collectAsLazyPagingItemsWithLifecycle()
-    val totalCharactersCount = presentation.totalCharactersCount
+    val totalCharactersCount = uiState.totalCharactersCount
     val exposedStaff = state.exposedStaffPager.collectAsLazyPagingItemsWithLifecycle()
     val allStaff = state.staffPager.collectAsLazyPagingItemsWithLifecycle()
-    val totalStaffCount = presentation.totalStaffCount
+    val totalStaffCount = uiState.totalStaffCount
     val related = state.relatedSubjectsPager.collectAsLazyPagingItemsWithLifecycle()
     val comments = state.subjectCommentState.list.collectAsLazyPagingItemsWithLifecycle()
     val commentCount = state.subjectCommentState.count
@@ -186,7 +186,7 @@ internal fun SubjectDetailsMultiColumnPage(
         // 左侧信息栏
         SubjectSidebar(
             state = state,
-            presentation = presentation,
+            uiState = uiState,
             info = info,
             selfInfo = selfInfo,
             mainEpisodeCount = episodes.size,
@@ -205,7 +205,7 @@ internal fun SubjectDetailsMultiColumnPage(
             Modifier.weight(1f),
             verticalArrangement = Arrangement.spacedBy(layoutParams.sectionSpacing),
         ) {
-            SubjectTitleBlock(info, presentation)
+            SubjectTitleBlock(info, uiState)
             if (layoutParams.kind != SubjectDetailsPaneKind.EXPANDED) {
                 SubjectRatingRow(state, showHistogram = layoutParams.showInlineRatingHistogram)
             }
@@ -227,7 +227,7 @@ internal fun SubjectDetailsMultiColumnPage(
                             // 分页时分页控件替代集数文案; 不足一页时恢复 (定稿 1610:1003)
                             pager?.invoke() ?: ProvideContentColor(MaterialTheme.colorScheme.onSurfaceVariant) {
                                 AiringLabel(
-                                    presentation.rememberAiringLabelState(),
+                                    uiState.rememberAiringLabelState(),
                                     style = MaterialTheme.typography.bodyMedium,
                                     progressColor = MaterialTheme.colorScheme.onSurfaceVariant,
                                 )
@@ -466,7 +466,7 @@ internal fun SubjectDetailsMultiColumnPlaceholder(
 @Composable
 private fun SubjectSidebar(
     state: SubjectDetailsState,
-    presentation: SubjectDetailsPresentation,
+    uiState: SubjectDetailsUiState,
     info: SubjectInfo,
     selfInfo: SelfInfoUiState,
     mainEpisodeCount: Int,
@@ -494,8 +494,8 @@ private fun SubjectSidebar(
         )
         // 播放按钮 (定稿: 全宽 Filled; 无选集列表小按钮, 选集操作走中栏网格)
         SubjectProgressButton(
-            presentation.rememberSubjectProgressState(),
-            onPlay = { presentation.progressInfo?.nextEpisodeIdToPlay?.let(onPlay) },
+            uiState.rememberSubjectProgressState(),
+            onPlay = { uiState.progressInfo?.nextEpisodeIdToPlay?.let(onPlay) },
             Modifier.fillMaxWidth(),
         )
         // 收藏 (定稿: 全宽 Tonal)
@@ -526,7 +526,7 @@ private fun SubjectSidebar(
 }
 
 @Composable
-private fun SubjectTitleBlock(info: SubjectInfo, presentation: SubjectDetailsPresentation) {
+private fun SubjectTitleBlock(info: SubjectInfo, uiState: SubjectDetailsUiState) {
     Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
         Text(
             info.displayName,
@@ -555,7 +555,7 @@ private fun SubjectTitleBlock(info: SubjectInfo, presentation: SubjectDetailsPre
             )
             Text("·", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
             AiringLabel(
-                presentation.rememberAiringLabelState(),
+                uiState.rememberAiringLabelState(),
                 style = MaterialTheme.typography.bodyMedium,
                 progressColor = MaterialTheme.colorScheme.onSurfaceVariant,
             )

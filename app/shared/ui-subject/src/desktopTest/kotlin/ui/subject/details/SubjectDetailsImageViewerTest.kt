@@ -41,7 +41,7 @@ import me.him188.ani.app.ui.rating.createTestEditableRatingState
 import me.him188.ani.app.ui.search.createTestPager
 import me.him188.ani.app.ui.subject.collection.components.createTestEditableSubjectCollectionTypeState
 import me.him188.ani.app.ui.subject.details.components.SUBJECT_COVER_IMAGE_TEST_TAG
-import me.him188.ani.app.ui.subject.details.state.SubjectDetailsPresentation
+import me.him188.ani.app.ui.subject.details.state.SubjectDetailsUiState
 import me.him188.ani.app.ui.subject.details.state.SubjectDetailsState
 import me.him188.ani.app.ui.subject.episode.list.TestEpisodeListUiState
 import me.him188.ani.app.ui.user.TestSelfInfoUiState
@@ -97,8 +97,8 @@ class SubjectDetailsImageViewerTest {
                 backgroundScope = scope,
             ),
             subjectCommentState = createTestCommentState(scope),
-            presentation = MutableStateFlow(
-                SubjectDetailsPresentation(
+            uiState = MutableStateFlow(
+                SubjectDetailsUiState(
                     subjectId = info.subjectId,
                     displayName = info.displayName,
                     selfCollectionType = UnifiedCollectionType.DOING,
@@ -124,7 +124,7 @@ class SubjectDetailsImageViewerTest {
                     CompositionLocalProvider(LocalDensity provides Density(1f)) {
                         val scope = rememberCoroutineScope()
                         val state = remember {
-                            testStateWithImages(scope).let { SubjectDetailsUIState.Ok(it.subjectId, it) }
+                            testStateWithImages(scope).let { SubjectDetailsLoadState.Ok(it.subjectId, it) }
                         }
                         SubjectDetailsScreen(
                             state,

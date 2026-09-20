@@ -32,7 +32,7 @@ import me.him188.ani.app.ui.foundation.ProvideCompositionLocalsForPreview
 import me.him188.ani.app.ui.rating.createTestEditableRatingState
 import me.him188.ani.app.ui.search.createTestPager
 import me.him188.ani.app.ui.subject.collection.components.createTestEditableSubjectCollectionTypeState
-import me.him188.ani.app.ui.subject.details.state.SubjectDetailsPresentation
+import me.him188.ani.app.ui.subject.details.state.SubjectDetailsUiState
 import me.him188.ani.app.ui.subject.details.state.SubjectDetailsState
 import me.him188.ani.app.ui.subject.episode.list.TestEpisodeListUiState
 import me.him188.ani.app.ui.user.TestSelfInfoUiState
@@ -79,8 +79,8 @@ class SubjectDetailsScreenshotTest {
                 backgroundScope = scope,
             ),
             subjectCommentState = createTestCommentState(scope),
-            presentation = MutableStateFlow(
-                SubjectDetailsPresentation(
+            uiState = MutableStateFlow(
+                SubjectDetailsUiState(
                     subjectId = TestSubjectInfo.subjectId,
                     displayName = TestSubjectInfo.displayName,
                     selfCollectionType = UnifiedCollectionType.DOING,
@@ -102,7 +102,7 @@ class SubjectDetailsScreenshotTest {
                     CompositionLocalProvider(LocalDensity provides Density(1f)) {
                         val scope = rememberCoroutineScope()
                         val state = remember {
-                            richTestState(scope).let { SubjectDetailsUIState.Ok(it.subjectId, it) }
+                            richTestState(scope).let { SubjectDetailsLoadState.Ok(it.subjectId, it) }
                         }
                         SubjectDetailsScreen(
                             state,
