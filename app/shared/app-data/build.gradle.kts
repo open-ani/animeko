@@ -72,6 +72,7 @@ kotlin {
 
         implementation(libs.koin.core)
         implementation(libs.atomicfu)
+        implementation(libs.ktor.network) // HLS 本地代理 (iOS)
     }
     sourceSets.commonTest.dependencies {
         implementation(projects.utils.uiTesting)

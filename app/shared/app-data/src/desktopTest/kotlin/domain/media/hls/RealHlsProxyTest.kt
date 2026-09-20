@@ -54,7 +54,9 @@ import kotlin.test.fail
  *
  * 夹具时间轴: `vod` 96 秒, 3 秒一片 (seg000..seg031); 其余变体 60 秒, 6 秒一片.
  */
-class RealHlsProxyTest {
+abstract class AbstractRealHlsProxyTest internal constructor(
+    private val serverFactory: HlsProxyServerFactory,
+) {
     private class Fixture(
         val origin: HlsFixtureOrigin,
         val preparer: PlatformHlsPlaybackPreparer,
@@ -69,7 +71,7 @@ class RealHlsProxyTest {
         val scope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
         val provider = DefaultHttpClientProvider(NoProxyProvider, scope)
         try {
-            Fixture(origin, PlatformHlsPlaybackPreparer(provider, segmentCacheMaxBytes), scope).block()
+            Fixture(origin, PlatformHlsPlaybackPreparer(provider, segmentCacheMaxBytes, serverFactory), scope).block()
         } finally {
             provider.forceReleaseAll()
             scope.cancel()
@@ -708,3 +710,9 @@ class RealHlsProxyTest {
     @Suppress("unused")
     private fun neverCalled(): Nothing = fail("unreachable")
 }
+
+/** Android 和桌面端实际使用的 socket 实现. */
+class RealHlsProxyTest : AbstractRealHlsProxyTest(PlatformHlsProxyServerFactory)
+
+/** iOS 使用的 socket 实现 ([KtorNetworkHlsProxyServer]). 它本身与平台无关, 在这里用同一套真实夹具验证. */
+class KtorNetworkRealHlsProxyTest : AbstractRealHlsProxyTest(KtorNetworkHlsProxyServer.Factory)

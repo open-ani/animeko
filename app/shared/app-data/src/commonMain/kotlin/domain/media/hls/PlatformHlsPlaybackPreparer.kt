@@ -20,6 +20,9 @@ import io.ktor.http.HttpHeaders
 import io.ktor.http.contentLength
 import io.ktor.http.contentType
 import io.ktor.utils.io.readAvailable
+import kotlinx.atomicfu.atomic
+import kotlinx.atomicfu.locks.SynchronizedObject
+import kotlinx.atomicfu.locks.synchronized
 import kotlinx.coroutines.CoroutineName
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -31,7 +34,7 @@ import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.runBlocking
+import kotlinx.io.IOException
 import me.him188.ani.app.domain.foundation.HttpClientProvider
 import me.him188.ani.app.domain.foundation.ScopedHttpClientUserAgent
 import me.him188.ani.app.domain.foundation.get
@@ -44,21 +47,7 @@ import me.him188.ani.utils.httpdownloader.m3u.M3u8Playlist
 import me.him188.ani.utils.logging.info
 import me.him188.ani.utils.logging.warn
 import org.openani.mediamp.source.UriMediaData
-import java.io.BufferedReader
-import java.io.IOException
-import java.io.InputStreamReader
-import java.io.OutputStream
-import java.net.InetAddress
-import java.net.ServerSocket
-import java.net.Socket
-import java.net.SocketException
-import java.net.URI
-import java.nio.charset.StandardCharsets
-import java.util.concurrent.ConcurrentHashMap
-import java.util.concurrent.atomic.AtomicBoolean
-import java.util.concurrent.atomic.AtomicInteger
-import java.util.concurrent.atomic.AtomicReference
-import kotlin.concurrent.thread
+import kotlin.concurrent.Volatile
 import kotlin.coroutines.cancellation.CancellationException
 import kotlin.math.roundToLong
 
@@ -69,14 +58,22 @@ import kotlin.math.roundToLong
  * - [HlsPlaybackOptions.proxySegments]: 把媒体分片的地址也改写到本地, 由本地转发. 这样才能在播放器之外
  *   提前下载指定时间范围的分片 ([HlsPlaybackProxySession.setPrefetchRange]), 供自动跳过 OP/ED 后立即续播.
  *   只对点播 (含 `#EXT-X-ENDLIST`) 且不使用 `#EXT-X-BYTERANGE` 的播放列表启用.
+ *
+ * 逻辑与平台无关, 只有 socket 部分由各平台的 [HlsProxyServer] 提供.
  */
-class PlatformHlsPlaybackPreparer(
+class PlatformHlsPlaybackPreparer internal constructor(
     private val httpClientProvider: HttpClientProvider,
-    /**
-     * 预缓存分片的内存缓存上限. 正在被预缓存请求引用的分片不会被淘汰.
-     */
-    private val segmentCacheMaxBytes: Long = DEFAULT_SEGMENT_CACHE_MAX_BYTES,
+    private val segmentCacheMaxBytes: Long,
+    private val serverFactory: HlsProxyServerFactory,
 ) : HlsPlaybackPreparer {
+    /**
+     * @param segmentCacheMaxBytes 预缓存分片的内存缓存上限. 正在被预缓存请求引用的分片不会被淘汰.
+     */
+    constructor(
+        httpClientProvider: HttpClientProvider,
+        segmentCacheMaxBytes: Long = DEFAULT_SEGMENT_CACHE_MAX_BYTES,
+    ) : this(httpClientProvider, segmentCacheMaxBytes, PlatformHlsProxyServerFactory)
+
     override suspend fun prepare(data: UriMediaData, options: HlsPlaybackOptions): HlsPlaybackPreparerResult {
         if (!options.isEnabled) {
             return HlsPlaybackPreparerResult(data)
@@ -84,14 +81,13 @@ class PlatformHlsPlaybackPreparer(
         if (!data.uri.isCandidateHlsUri()) {
             return HlsPlaybackPreparerResult(data)
         }
-        val requestedUri = runCatching { URI(data.uri) }.getOrNull() ?: return HlsPlaybackPreparerResult(data)
-        var baseUri = requestedUri
+        var baseUri = data.uri
         val manifest = try {
             httpClientProvider.get(ScopedHttpClientUserAgent.BROWSER).use {
                 val response = get(data.uri) {
                     data.headers.forEach { (name, value) -> header(name, value) }
                 }
-                baseUri = runCatching { URI(response.call.request.url.toString()) }.getOrDefault(requestedUri)
+                baseUri = response.call.request.url.toString()
                 response.bodyAsText()
             }
         } catch (e: CancellationException) {
@@ -108,6 +104,7 @@ class PlatformHlsPlaybackPreparer(
                 httpClientProvider = httpClientProvider,
                 options = options,
                 segmentCacheMaxBytes = segmentCacheMaxBytes,
+                serverFactory = serverFactory,
             )
         } catch (e: CancellationException) {
             throw e
@@ -135,29 +132,33 @@ private class LocalHlsProxySession private constructor(
     private val httpClientProvider: HttpClientProvider,
     private val options: HlsPlaybackOptions,
     segmentCacheMaxBytes: Long,
+    private val server: HlsProxyServer,
 ) : HlsPlaybackProxySession {
-    private val closed = AtomicBoolean(false)
-    private val serverSocket = ServerSocket(0, 50, InetAddress.getByName("127.0.0.1"))
-    private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO_ + CoroutineName("HlsProxy-${serverSocket.localPort}"))
-    private val nextRouteId = AtomicInteger(1)
+    private val closed = atomic(false)
+    private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO_ + CoroutineName("HlsProxy-${server.port}"))
+
+    /** 保护 [nextRouteId], [playlistRoutes] 和 [segmentRoutes]: 播放器会并发请求多个播放列表. */
+    private val routesLock = SynchronizedObject()
+    private var nextRouteId = 1
 
     /** `/playlist/N.m3u8` -> 远端播放列表 */
-    private val playlistRoutes = ConcurrentHashMap<String, URI>()
+    private val playlistRoutes = HashMap<String, String>()
 
     /** `/segment/N` -> 分片 */
-    private val segmentRoutes = ConcurrentHashMap<String, ProxiedSegment>()
+    private val segmentRoutes = HashMap<String, ProxiedSegment>()
 
     /** 最近一次提供给播放器的、分片已代理的媒体播放列表. 预缓存以它的时间轴为准. */
-    private val activePlaylist = AtomicReference<ProxiedPlaylist?>(null)
+    @Volatile
+    private var activePlaylist: ProxiedPlaylist? = null
 
     private lateinit var initialContent: String
 
-    val playlistUri: String = "http://127.0.0.1:${serverSocket.localPort}/playlist.m3u8"
+    val playlistUri: String = "http://127.0.0.1:${server.port}/playlist.m3u8"
 
     // ---------- 预缓存 ----------
 
     private val segmentCache = SegmentCache(maxBytes = segmentCacheMaxBytes)
-    private val prefetchLock = Any()
+    private val prefetchLock = SynchronizedObject()
     private var requestedPrefetchRange: MediaTimeRange? = null
     private var prefetchJob: Job? = null
 
@@ -188,8 +189,8 @@ private class LocalHlsProxySession private constructor(
 
     private fun restartPrefetchLocked() {
         val range = requestedPrefetchRange
-        val playlist = activePlaylist.get()
-        val targets = if (range == null || playlist == null || closed.get()) {
+        val playlist = activePlaylist
+        val targets = if (range == null || playlist == null || closed.value) {
             emptyList()
         } else {
             playlist.segments.filter { it.timeRange.overlaps(range) }
@@ -257,182 +258,119 @@ private class LocalHlsProxySession private constructor(
 
     // ---------- HTTP 服务 ----------
 
-    private val acceptThread = thread(
-        name = "HlsProxy-${serverSocket.localPort}",
-        isDaemon = true,
-        start = false,
-    ) {
-        while (!closed.get()) {
-            val socket = try {
-                serverSocket.accept()
-            } catch (e: SocketException) {
-                if (!closed.get()) logger.warn(e) { "Failed to accept HLS proxy connection" }
-                continue
-            } catch (e: IOException) {
-                logger.warn(e) { "Failed to accept HLS proxy connection" }
-                continue
-            }
-            thread(name = "HlsProxy-${serverSocket.localPort}-conn", isDaemon = true) {
-                socket.use { handleConnection(it) }
-            }
-        }
-    }
-
-    private fun handleConnection(socket: Socket) {
-        try {
-            val request = readRequest(socket) ?: return
-            socket.getOutputStream().use { output ->
-                try {
-                    respond(request, output)
-                } catch (e: SocketException) {
-                    // 播放器提前断开 (如 seek), 属正常情况
-                } catch (e: IOException) {
-                    logger.warn(e) { "Failed to serve HLS proxy request ${request.path}" }
-                }
-                runCatching { output.flush() }
-            }
-        } catch (e: IOException) {
-            if (!closed.get()) logger.warn(e) { "Failed to serve HLS proxy request" }
-        }
-    }
-
-    private class Request(val path: String, val headers: Map<String, String>)
-
-    private fun readRequest(socket: Socket): Request? {
-        val reader = BufferedReader(InputStreamReader(socket.getInputStream(), StandardCharsets.US_ASCII))
-        val requestLine = reader.readLine() ?: return null
-        val headers = LinkedHashMap<String, String>()
-        while (true) {
-            val line = reader.readLine() ?: break
-            if (line.isEmpty()) break
-            val colon = line.indexOf(':')
-            if (colon > 0) {
-                headers[line.substring(0, colon).trim().lowercase()] = line.substring(colon + 1).trim()
-            }
-        }
-        val path = requestLine
-            .substringAfter(" ", missingDelimiterValue = "")
-            .substringBefore(" ", missingDelimiterValue = "")
-            .substringBefore("?")
-            .ifEmpty { "/playlist.m3u8" }
-        return Request(path, headers)
-    }
-
-    private fun respond(request: Request, output: OutputStream) {
+    private suspend fun respond(request: HlsProxyRequest, output: HlsProxyResponseSink) {
         val path = request.path
-        val segment = segmentRoutes[path]
+        val segment = synchronized(routesLock) { segmentRoutes[path] }
         if (segment != null) {
             serveSegment(segment, request, output)
             return
         }
-        val content = runCatching {
+        val content = try {
             playlistContentFor(path)
-        }.getOrElse { e ->
+        } catch (e: CancellationException) {
+            throw e
+        } catch (e: Throwable) {
             logger.warn(e) { "Failed to prepare HLS playlist proxy response" }
             null
         }
         if (content == null) {
-            output.write(errorResponseHeader(502, "Bad Gateway").toByteArray(StandardCharsets.US_ASCII))
+            output.write(errorResponseHeader(502, "Bad Gateway").encodeToByteArray())
         } else {
-            val bytes = content.toByteArray(StandardCharsets.UTF_8)
-            output.write(playlistResponseHeader(bytes.size).toByteArray(StandardCharsets.US_ASCII))
+            val bytes = content.encodeToByteArray()
+            output.write(playlistResponseHeader(bytes.size).encodeToByteArray())
             output.write(bytes)
         }
     }
 
-    private fun playlistContentFor(path: String): String? {
+    private suspend fun playlistContentFor(path: String): String? {
         if (path == "/playlist.m3u8") {
             return initialContent
         }
-        val remoteUri = playlistRoutes[path] ?: return null
-        val remoteContent = fetchRemotePlaylist(remoteUri) ?: return null
-        return remoteContent.toLocalPlaylist().content
+        val remoteUri = synchronized(routesLock) { playlistRoutes[path] } ?: return null
+        return fetchRemotePlaylist(remoteUri).toLocalPlaylist().content
     }
 
-    private fun fetchRemotePlaylist(uri: URI): RemotePlaylist? {
-        return runBlocking {
-            httpClientProvider.get(ScopedHttpClientUserAgent.BROWSER).use {
-                val response = get(uri.toString()) {
-                    this@LocalHlsProxySession.headers.forEach { (name, value) -> header(name, value) }
-                }
-                val finalUri = runCatching { URI(response.call.request.url.toString()) }.getOrDefault(uri)
-                RemotePlaylist(response.bodyAsText(), finalUri)
+    private suspend fun fetchRemotePlaylist(uri: String): RemotePlaylist {
+        return httpClientProvider.get(ScopedHttpClientUserAgent.BROWSER).use {
+            val response = get(uri) {
+                this@LocalHlsProxySession.headers.forEach { (name, value) -> header(name, value) }
             }
+            RemotePlaylist(response.bodyAsText(), response.call.request.url.toString())
         }
     }
 
     /**
      * 提供分片: 已预缓存的直接从内存返回, 否则从远端流式转发 (不缓存).
      */
-    private fun serveSegment(segment: ProxiedSegment, request: Request, output: OutputStream) {
-        val cached = segmentCache.getCompleted(segment.remoteUri) ?: runBlocking { segmentCache.awaitInFlight(segment.remoteUri) }
+    private suspend fun serveSegment(segment: ProxiedSegment, request: HlsProxyRequest, output: HlsProxyResponseSink) {
+        val cached = segmentCache.getCompleted(segment.remoteUri) ?: segmentCache.awaitInFlight(segment.remoteUri)
         if (cached != null) {
             serveBytes(cached, request.headers["range"], output)
             return
         }
         var headersWritten = false
         try {
-            runBlocking {
-                httpClientProvider.get(ScopedHttpClientUserAgent.BROWSER).use {
-                    prepareGet(segment.remoteUri) {
-                        // 源站的错误状态原样转发给播放器, 由播放器决定重试策略
-                        expectSuccess = false
-                        this@LocalHlsProxySession.headers.forEach { (name, value) -> header(name, value) }
-                        request.headers["range"]?.let { header(HttpHeaders.Range, it) }
-                    }.execute { response ->
-                        val contentLength = response.contentLength()
-                        val header = buildString {
-                            append("HTTP/1.1 ").append(response.status.value).append(' ').append(response.status.description).append("\r\n")
-                            append("Content-Type: ").append(response.contentType()?.toString() ?: DEFAULT_SEGMENT_CONTENT_TYPE).append("\r\n")
-                            response.headers[HttpHeaders.ContentRange]?.let { append("Content-Range: ").append(it).append("\r\n") }
-                            response.headers[HttpHeaders.AcceptRanges]?.let { append("Accept-Ranges: ").append(it).append("\r\n") }
-                            if (contentLength != null) {
-                                append("Content-Length: ").append(contentLength).append("\r\n")
-                            } else {
-                                append("Transfer-Encoding: chunked\r\n")
-                            }
-                            append("Cache-Control: no-store\r\n")
-                            append("Connection: close\r\n")
-                            append("\r\n")
+            httpClientProvider.get(ScopedHttpClientUserAgent.BROWSER).use {
+                prepareGet(segment.remoteUri) {
+                    // 源站的错误状态原样转发给播放器, 由播放器决定重试策略
+                    expectSuccess = false
+                    this@LocalHlsProxySession.headers.forEach { (name, value) -> header(name, value) }
+                    request.headers["range"]?.let { header(HttpHeaders.Range, it) }
+                }.execute { response ->
+                    val contentLength = response.contentLength()
+                    val header = buildString {
+                        append("HTTP/1.1 ").append(response.status.value).append(' ').append(response.status.description).append("\r\n")
+                        append("Content-Type: ").append(response.contentType()?.toString() ?: DEFAULT_SEGMENT_CONTENT_TYPE).append("\r\n")
+                        response.headers[HttpHeaders.ContentRange]?.let { append("Content-Range: ").append(it).append("\r\n") }
+                        response.headers[HttpHeaders.AcceptRanges]?.let { append("Accept-Ranges: ").append(it).append("\r\n") }
+                        if (contentLength != null) {
+                            append("Content-Length: ").append(contentLength).append("\r\n")
+                        } else {
+                            append("Transfer-Encoding: chunked\r\n")
                         }
-                        headersWritten = true
-                        output.write(header.toByteArray(StandardCharsets.US_ASCII))
-                        val channel = response.bodyAsChannel()
-                        val buffer = ByteArray(64 * 1024)
-                        while (true) {
-                            val read = channel.readAvailable(buffer, 0, buffer.size)
-                            if (read < 0) break
-                            if (read == 0) continue
-                            if (contentLength != null) {
-                                output.write(buffer, 0, read)
-                            } else {
-                                output.write(Integer.toHexString(read).toByteArray(StandardCharsets.US_ASCII))
-                                output.write(CRLF)
-                                output.write(buffer, 0, read)
-                                output.write(CRLF)
-                            }
+                        append("Cache-Control: no-store\r\n")
+                        append("Connection: close\r\n")
+                        append("\r\n")
+                    }
+                    headersWritten = true
+                    output.write(header.encodeToByteArray())
+                    val channel = response.bodyAsChannel()
+                    val buffer = ByteArray(64 * 1024)
+                    while (true) {
+                        val read = channel.readAvailable(buffer, 0, buffer.size)
+                        if (read < 0) break
+                        if (read == 0) continue
+                        if (contentLength != null) {
+                            output.write(buffer, 0, read)
+                        } else {
+                            output.write(read.toString(16).encodeToByteArray())
+                            output.write(CRLF)
+                            output.write(buffer, 0, read)
+                            output.write(CRLF)
                         }
-                        if (contentLength == null) {
-                            output.write("0\r\n\r\n".toByteArray(StandardCharsets.US_ASCII))
-                        }
+                    }
+                    if (contentLength == null) {
+                        output.write("0\r\n\r\n".encodeToByteArray())
                     }
                 }
             }
+        } catch (e: CancellationException) {
+            throw e
         } catch (e: Throwable) {
             // 连接源站失败等: 若还没开始写响应, 回一个 502, 让播放器按加载失败处理; 已经在写正文则只能断开
             if (!headersWritten) {
                 logger.warn(e) { "Failed to proxy HLS segment ${segment.remoteUri}" }
-                output.write(errorResponseHeader(502, "Bad Gateway").toByteArray(StandardCharsets.US_ASCII))
+                output.write(errorResponseHeader(502, "Bad Gateway").encodeToByteArray())
             } else {
                 throw e
             }
         }
     }
 
-    private fun serveBytes(bytes: ByteArray, rangeHeader: String?, output: OutputStream) {
+    private suspend fun serveBytes(bytes: ByteArray, rangeHeader: String?, output: HlsProxyResponseSink) {
         val range = rangeHeader?.let { parseByteRange(it, bytes.size.toLong()) }
         if (rangeHeader != null && range == null) {
-            output.write(errorResponseHeader(416, "Range Not Satisfiable").toByteArray(StandardCharsets.US_ASCII))
+            output.write(errorResponseHeader(416, "Range Not Satisfiable").encodeToByteArray())
             return
         }
         val start = range?.first ?: 0L
@@ -452,28 +390,28 @@ private class LocalHlsProxySession private constructor(
             append("Connection: close\r\n")
             append("\r\n")
         }
-        output.write(header.toByteArray(StandardCharsets.US_ASCII))
+        output.write(header.encodeToByteArray())
         output.write(bytes, start.toInt(), length)
     }
 
     override fun close() {
         if (closed.compareAndSet(false, true)) {
             scope.cancel()
-            serverSocket.close()
+            server.close()
             segmentCache.clear()
         }
     }
 
     // ---------- 播放列表改写 ----------
 
-    private class RemotePlaylist(val content: String, val baseUri: URI)
+    private class RemotePlaylist(val content: String, val baseUri: String)
     private class LocalPlaylist(val content: String)
 
     /**
      * 把远端播放列表处理成给播放器的版本: 主播放列表把各变体指向本地路由; 媒体播放列表按需过滤广告并代理分片.
      */
     private fun RemotePlaylist.toLocalPlaylist(): LocalPlaylist {
-        val filterResult = HlsManifestFilter.filter(content, baseUri.toString())
+        val filterResult = HlsManifestFilter.filter(content, baseUri)
         if (options.filterSegments) {
             logger.info { "HLS filter result $baseUri is ${filterResult.status}, reason: ${filterResult.reason}, removed groups: ${filterResult.removedGroups}" }
         }
@@ -492,11 +430,11 @@ private class LocalHlsProxySession private constructor(
     /**
      * 媒体播放列表: 分片地址改到本地 (可代理时) 或改为绝对地址.
      */
-    private fun rewriteMediaPlaylist(content: String, baseUri: URI): String {
+    private fun rewriteMediaPlaylist(content: String, baseUri: String): String {
         if (!options.proxySegments) {
             return content.rewriteMediaPlaylistUris(baseUri)
         }
-        val playlist = runCatching { DefaultM3u8Parser.parse(content, baseUri.toString()) }.getOrNull()
+        val playlist = runCatching { DefaultM3u8Parser.parse(content, baseUri) }.getOrNull()
         val eligible = playlist is M3u8Playlist.MediaPlaylist &&
                 playlist.isEndlist &&
                 playlist.segments.isNotEmpty() &&
@@ -513,20 +451,22 @@ private class LocalHlsProxySession private constructor(
 
         val proxied = ArrayList<ProxiedSegment>(playlist.segments.size)
         var cursorMillis = 0L
-        for ((index, segment) in playlist.segments.withIndex()) {
-            val durationMillis = (segment.duration.toDouble() * 1000).roundToLong().coerceAtLeast(0L)
-            val remoteUri = baseUri.resolveIfRelative(segment.uri)
-            // 保留原分片的扩展名: 新版 FFmpeg (mpv 的解复用器) 会拒绝扩展名不在白名单内的分片地址
-            val route = "/segment/${nextRouteId.getAndIncrement()}${segmentExtension(remoteUri)}"
-            val item = ProxiedSegment(
-                index = index,
-                route = route,
-                remoteUri = remoteUri,
-                timeRange = MediaTimeRange(cursorMillis, cursorMillis + durationMillis),
-            )
-            proxied += item
-            segmentRoutes[route] = item
-            cursorMillis += durationMillis
+        synchronized(routesLock) {
+            for ((index, segment) in playlist.segments.withIndex()) {
+                val durationMillis = (segment.duration.toDouble() * 1000).roundToLong().coerceAtLeast(0L)
+                val remoteUri = resolveHlsUri(baseUri, segment.uri)
+                // 保留原分片的扩展名: 新版 FFmpeg (mpv 的解复用器) 会拒绝扩展名不在白名单内的分片地址
+                val route = "/segment/${nextRouteId++}${segmentExtension(remoteUri)}"
+                val item = ProxiedSegment(
+                    index = index,
+                    route = route,
+                    remoteUri = remoteUri,
+                    timeRange = MediaTimeRange(cursorMillis, cursorMillis + durationMillis),
+                )
+                proxied += item
+                segmentRoutes[route] = item
+                cursorMillis += durationMillis
+            }
         }
         var segmentCursor = 0
         val rewritten = content.lineSequence().joinToString("\n") { line ->
@@ -534,46 +474,47 @@ private class LocalHlsProxySession private constructor(
                 line.isBlank() -> line
                 line.startsWith("#") -> {
                     line.replace(URI_ATTRIBUTE_REGEX) { match ->
-                        match.groupValues[1] + baseUri.resolveIfRelative(match.groupValues[2]) + match.groupValues[3]
+                        match.groupValues[1] + resolveHlsUri(baseUri, match.groupValues[2]) + match.groupValues[3]
                     }
                 }
 
-                else -> "http://127.0.0.1:${serverSocket.localPort}${proxied[segmentCursor++].route}"
+                else -> "http://127.0.0.1:${server.port}${proxied[segmentCursor++].route}"
             }
         } + if (content.endsWith('\n')) "\n" else ""
 
-        activePlaylist.set(ProxiedPlaylist(proxied))
+        activePlaylist = ProxiedPlaylist(proxied)
         onActivePlaylistChanged()
         return rewritten
     }
 
-    private fun String.rewriteMasterPlaylistUris(baseUri: URI): String {
+    private fun String.rewriteMasterPlaylistUris(baseUri: String): String {
         return lineSequence().joinToString("\n") { line ->
             when {
                 line.startsWith("#EXT-X-MEDIA") || line.startsWith("#EXT-X-I-FRAME-STREAM-INF") -> {
                     line.replace(URI_ATTRIBUTE_REGEX) { match ->
-                        val uri = baseUri.resolveIfRelative(match.groupValues[2])
+                        val uri = resolveHlsUri(baseUri, match.groupValues[2])
                         match.groupValues[1] + localPlaylistUri(uri) + match.groupValues[3]
                     }
                 }
 
                 line.startsWith("#") -> {
                     line.replace(URI_ATTRIBUTE_REGEX) { match ->
-                        val uri = baseUri.resolveIfRelative(match.groupValues[2])
+                        val uri = resolveHlsUri(baseUri, match.groupValues[2])
                         match.groupValues[1] + uri + match.groupValues[3]
                     }
                 }
 
                 line.isBlank() -> line
-                else -> localPlaylistUri(baseUri.resolveIfRelative(line))
+                else -> localPlaylistUri(resolveHlsUri(baseUri, line))
             }
         } + if (endsWith('\n')) "\n" else ""
     }
 
     private fun localPlaylistUri(remoteUri: String): String {
-        val route = "/playlist/${nextRouteId.getAndIncrement()}.m3u8"
-        playlistRoutes[route] = URI(remoteUri)
-        return "http://127.0.0.1:${serverSocket.localPort}$route"
+        val route = synchronized(routesLock) {
+            "/playlist/${nextRouteId++}.m3u8".also { playlistRoutes[it] = remoteUri }
+        }
+        return "http://127.0.0.1:${server.port}$route"
     }
 
     private class ProxiedSegment(
@@ -587,30 +528,31 @@ private class LocalHlsProxySession private constructor(
 
     companion object {
         private const val DEFAULT_SEGMENT_CONTENT_TYPE = "video/mp2t"
-        private val CRLF = "\r\n".toByteArray(StandardCharsets.US_ASCII)
+        private val CRLF = "\r\n".encodeToByteArray()
 
         /**
          * @return `null` 表示这个播放列表不需要代理 (例如只开了广告过滤但没有可过滤的内容), 应直接播放原地址.
          */
-        fun createOrNull(
+        suspend fun createOrNull(
             manifest: String,
-            baseUri: URI,
+            baseUri: String,
             headers: Map<String, String>,
             httpClientProvider: HttpClientProvider,
             options: HlsPlaybackOptions,
             segmentCacheMaxBytes: Long,
+            serverFactory: HlsProxyServerFactory,
         ): LocalHlsProxySession? {
-            val filterResult = HlsManifestFilter.filter(manifest, baseUri.toString())
+            val filterResult = HlsManifestFilter.filter(manifest, baseUri)
             logger.info { "HLS prepare filter result $baseUri is ${filterResult.status}, reason: ${filterResult.reason}, removed groups: ${filterResult.removedGroups}" }
             val isMaster = filterResult.status == HlsManifestFilterStatus.Unsupported && filterResult.reason == "master_playlist"
             val isFiltered = options.filterSegments && filterResult.status == HlsManifestFilterStatus.Filtered
             val needsProxy = isMaster || isFiltered || (options.proxySegments && manifest.isProxyableMediaPlaylist(baseUri))
             if (!needsProxy) return null
 
-            val session = LocalHlsProxySession(headers, httpClientProvider, options, segmentCacheMaxBytes)
+            val session = LocalHlsProxySession(headers, httpClientProvider, options, segmentCacheMaxBytes, serverFactory.create())
             try {
                 session.initialContent = with(session) { RemotePlaylist(manifest, baseUri).toLocalPlaylist().content }
-                session.acceptThread.start()
+                session.server.start { request, sink -> session.respond(request, sink) }
             } catch (e: Throwable) {
                 session.close()
                 throw e
@@ -618,8 +560,8 @@ private class LocalHlsProxySession private constructor(
             return session
         }
 
-        private fun String.isProxyableMediaPlaylist(baseUri: URI): Boolean {
-            val playlist = runCatching { DefaultM3u8Parser.parse(this, baseUri.toString()) }.getOrNull()
+        private fun String.isProxyableMediaPlaylist(baseUri: String): Boolean {
+            val playlist = runCatching { DefaultM3u8Parser.parse(this, baseUri) }.getOrNull()
             return playlist is M3u8Playlist.MediaPlaylist &&
                     playlist.isEndlist &&
                     playlist.segments.isNotEmpty() &&
@@ -636,19 +578,28 @@ private class SegmentCache(private val maxBytes: Long) {
         val bytes: ByteArray? get() = if (deferred.isCompleted && !deferred.isCancelled) deferred.getCompleted() else null
     }
 
-    private val lock = Any()
-    private val entries = LinkedHashMap<String, Entry>(16, 0.75f, true)
+    private val lock = SynchronizedObject()
+
+    /** 按最近使用排序, 最久未使用的在最前. 见 [touchLocked]. */
+    private val entries = LinkedHashMap<String, Entry>()
     private var pinned: Set<String> = emptySet()
     private var totalBytes = 0L
 
     fun pin(uris: List<String>) = synchronized(lock) { pinned = uris.toSet() }
 
-    fun isComplete(uri: String): Boolean = synchronized(lock) { entries[uri]?.bytes != null }
+    /** 取出 [uri] 并标记为最近使用. */
+    private fun touchLocked(uri: String): Entry? {
+        val entry = entries.remove(uri) ?: return null
+        entries[uri] = entry
+        return entry
+    }
 
-    fun getCompleted(uri: String): ByteArray? = synchronized(lock) { entries[uri]?.bytes }
+    fun isComplete(uri: String): Boolean = synchronized(lock) { touchLocked(uri)?.bytes != null }
+
+    fun getCompleted(uri: String): ByteArray? = synchronized(lock) { touchLocked(uri)?.bytes }
 
     suspend fun awaitInFlight(uri: String): ByteArray? {
-        val deferred = synchronized(lock) { entries[uri]?.deferred } ?: return null
+        val deferred = synchronized(lock) { touchLocked(uri)?.deferred } ?: return null
         return runCatching { deferred.await() }.getOrNull()
     }
 
@@ -656,7 +607,7 @@ private class SegmentCache(private val maxBytes: Long) {
     suspend fun getOrDownload(uri: String, download: suspend () -> ByteArray): ByteArray {
         while (true) {
             val (entry, owner) = synchronized(lock) {
-                val existing = entries[uri]
+                val existing = touchLocked(uri)
                 if (existing != null && !existing.deferred.isCancelled) {
                     existing to false
                 } else {
@@ -685,7 +636,8 @@ private class SegmentCache(private val maxBytes: Long) {
             } catch (e: Throwable) {
                 synchronized(lock) {
                     if (entries[uri] === entry) entries.remove(uri)
-                    entry.deferred.cancel(CancellationException("download failed", e))
+                    // Deferred.cancel 要的是 kotlinx 的类型; 它和标准库的那个在公共元数据编译里不是同一个类型
+                    entry.deferred.cancel(kotlinx.coroutines.CancellationException("download failed", e))
                 }
                 throw e
             }
@@ -714,23 +666,22 @@ private class SegmentCache(private val maxBytes: Long) {
 private val logger = me.him188.ani.utils.logging.logger<PlatformHlsPlaybackPreparer>()
 
 private fun String.isCandidateHlsUri(): Boolean {
-    val uri = runCatching { URI(this) }.getOrNull() ?: return false
-    val scheme = uri.scheme?.lowercase()
+    val scheme = substringBefore("://", missingDelimiterValue = "").lowercase()
     return (scheme == "http" || scheme == "https") && lowercase().contains(".m3u8")
 }
 
-private fun String.rewriteMediaPlaylistUris(baseUri: URI): String {
+private fun String.rewriteMediaPlaylistUris(baseUri: String): String {
     return lineSequence().joinToString("\n") { line ->
         when {
             line.isBlank() -> line
             line.startsWith("#") -> {
                 line.replace(URI_ATTRIBUTE_REGEX) { match ->
                     val uri = match.groupValues[2]
-                    match.groupValues[1] + baseUri.resolveIfRelative(uri) + match.groupValues[3]
+                    match.groupValues[1] + resolveHlsUri(baseUri, uri) + match.groupValues[3]
                 }
             }
 
-            else -> baseUri.resolveIfRelative(line)
+            else -> resolveHlsUri(baseUri, line)
         }
     } + if (endsWith('\n')) "\n" else ""
 }
@@ -742,11 +693,6 @@ private fun segmentExtension(remoteUri: String): String {
     val fileName = remoteUri.substringBefore('?').substringBefore('#').substringAfterLast('/')
     val extension = fileName.substringAfterLast('.', missingDelimiterValue = "")
     return if (extension.length in 1..5 && extension.all { it.isLetterOrDigit() }) ".$extension" else ".ts"
-}
-
-private fun URI.resolveIfRelative(uri: String): String {
-    val parsed = runCatching { URI(uri) }.getOrNull() ?: return uri
-    return if (parsed.isAbsolute) uri else resolve(parsed).toString()
 }
 
 /**
