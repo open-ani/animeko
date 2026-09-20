@@ -506,6 +506,35 @@ class RealHlsProxyTest {
     }
 
     @Test
+    fun `clearing the request lets the in-flight segment finish for the player but starts no new ones`() = withFixture {
+        // 自动跳过发生时请求会被清除, 而正在下载的那个分片往往就是播放器跳过去后马上要的 (在限速的真实 App 里观察到:
+        // 直接取消导致播放器把快下完的分片从头重下了一遍).
+        origin.segmentLatencyMillis = 600
+        val result = prepare("/hls/vod/index.m3u8")
+        val session = result.session()
+        try {
+            val uris = text(httpGet(result.data.uri)).segmentUris()
+            session.setPrefetchRange(MediaTimeRange(30_000, 39_000)) // seg010, seg011, seg012
+            Thread.sleep(150) // seg010 正在下载
+            session.setPrefetchRange(null)
+            assertEquals(emptyList(), session.prefetchProgress.first())
+
+            // 播放器跳过来请求 seg010: 直接等正在进行的下载, 不再访问源站
+            val response = httpGet(uris[10])
+            assertEquals(200, response.status)
+            assertContentEquals(origin.bytesOf("/hls/vod/seg010.ts"), response.body)
+            assertEquals(1, origin.count("/hls/vod/seg010.ts"), "in-flight segment must not be downloaded twice")
+
+            // 后面的分片不应再被预缓存
+            Thread.sleep(1_000)
+            assertEquals(0, origin.count("/hls/vod/seg011.ts"))
+            assertEquals(0, origin.count("/hls/vod/seg012.ts"))
+        } finally {
+            session.close()
+        }
+    }
+
+    @Test
     fun `cancelling prefetch clears progress but keeps cached segments`() = withFixture {
         val result = prepare("/hls/vod/index.m3u8")
         val session = result.session()

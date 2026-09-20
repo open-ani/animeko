@@ -9,6 +9,12 @@
 
 package me.him188.ani.app.domain.media.player.prefetch
 
+import me.him188.ani.app.torrent.api.pieces.PieceList
+import me.him188.ani.app.torrent.api.pieces.PieceState
+import me.him188.ani.app.torrent.api.pieces.asSequence
+import me.him188.ani.app.torrent.api.pieces.first
+import me.him188.ani.app.torrent.api.pieces.isEmpty
+
 /**
  * 把媒体时间范围按平均码率线性换算为 BT 文件内的字节范围 (相对文件开头, 闭区间).
  *
@@ -34,3 +40,18 @@ internal fun estimateTorrentByteRange(
 }
 
 internal const val TORRENT_PREFETCH_MARGIN_MILLIS: Long = 10_000
+
+/**
+ * 文件内 [byteRange] (相对文件开头, 闭区间) 覆盖的 piece 是否都已下载完成.
+ *
+ * 文件起点落在第一个 piece 内部, 这里近似认为文件从第一个 piece 的开头开始, 误差不超过一个 piece, 对 "是否缓冲好" 的判断足够.
+ */
+internal fun PieceList.isFileByteRangeFinished(byteRange: LongRange): Boolean {
+    if (isEmpty()) return false
+    val base = first().dataStartOffset
+    val start = base + byteRange.first
+    val endInclusive = base + byteRange.last
+    return asSequence()
+        .filter { it.dataEndOffset > start && it.dataStartOffset <= endInclusive }
+        .all { it.state == PieceState.FINISHED }
+}

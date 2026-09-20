@@ -163,6 +163,10 @@ private class LocalHlsProxySession private constructor(
 
     /** 当前预缓存任务针对的分片地址, 用于判断新的请求是否与正在进行的完全相同. */
     private var prefetchTargetUris: List<String> = emptyList()
+
+    /** 请求已被清除: 正在下载的分片继续下完, 但不再开始新的. */
+    @Volatile
+    private var prefetchStopRequested = false
     private val prefetchProgressFlow = MutableStateFlow<List<PrefetchSegmentInfo>>(emptyList())
 
     override val prefetchProgress: Flow<List<PrefetchSegmentInfo>> get() = prefetchProgressFlow
@@ -196,13 +200,18 @@ private class LocalHlsProxySession private constructor(
         if (targetUris.isNotEmpty() && targetUris == prefetchTargetUris && prefetchJob?.isActive == true) {
             return
         }
-        prefetchJob?.cancel()
-        prefetchJob = null
-        prefetchTargetUris = targetUris
         if (targets.isEmpty()) {
+            // 请求被清除. 最常见的原因是播放器已经跳到了预缓存的位置, 此时正在下载的那个分片很可能就是它马上要的:
+            // 让这一片下完 (播放器的请求会直接等它, 见 serveSegment), 只是不再开始新的. 直接取消的话播放器得从头重下.
+            prefetchStopRequested = true
+            prefetchTargetUris = emptyList()
             prefetchProgressFlow.value = emptyList()
             return
         }
+        prefetchJob?.cancel()
+        prefetchJob = null
+        prefetchStopRequested = false
+        prefetchTargetUris = targetUris
         range!!
         logger.info { "HLS prefetch $range -> segments ${targets.first().index}..${targets.last().index}" }
         segmentCache.pin(targets.map { it.remoteUri })
@@ -212,6 +221,7 @@ private class LocalHlsProxySession private constructor(
         }
         prefetchJob = scope.launch {
             for (segment in targets) {
+                if (prefetchStopRequested) break
                 if (segmentCache.isComplete(segment.remoteUri)) continue
                 val success = try {
                     segmentCache.getOrDownload(segment.remoteUri) { downloadSegment(segment.remoteUri) }

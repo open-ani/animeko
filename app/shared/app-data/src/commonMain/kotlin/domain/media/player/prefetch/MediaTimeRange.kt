@@ -35,3 +35,16 @@ data class PrefetchSegmentInfo(
     val range: MediaTimeRange,
     val state: ChunkState,
 )
+
+/**
+ * 一次预缓存请求.
+ *
+ * @property range 希望提前缓存的范围, 通常是即将自动跳过的章节结束后的一小段.
+ * @property requireBufferedUntilMillis 启动预缓存的前提: 从当前播放位置到这个位置 (通常是章节开头) 的内容必须已经缓冲好.
+ *   预缓存会与正常播放分享带宽. 满足这个前提时, 播放器之后要下载的都是即将被跳过的内容, 分走带宽不会影响观看;
+ *   不满足 (网络慢, 缓冲跟不上) 时宁可不预缓存, 也不能让预缓存造成卡顿.
+ */
+data class MediaPrefetchRequest(
+    val range: MediaTimeRange,
+    val requireBufferedUntilMillis: Long,
+)

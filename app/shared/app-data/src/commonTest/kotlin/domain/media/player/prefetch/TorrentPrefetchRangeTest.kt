@@ -9,9 +9,13 @@
 
 package me.him188.ani.app.domain.media.player.prefetch
 
+import me.him188.ani.app.torrent.api.pieces.PieceList
+import me.him188.ani.app.torrent.api.pieces.PieceState
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertNull
+import kotlin.test.assertTrue
+import kotlin.test.assertFalse
 
 class TorrentPrefetchRangeTest {
     @Test
@@ -49,5 +53,27 @@ class TorrentPrefetchRangeTest {
         assertNull(estimateTorrentByteRange(MediaTimeRange(0, 1000), durationMillis = 0, fileLength = 1000))
         assertNull(estimateTorrentByteRange(MediaTimeRange(0, 1000), durationMillis = 1000, fileLength = 0))
         assertNull(estimateTorrentByteRange(MediaTimeRange(200_000, 210_000), durationMillis = 100_000, fileLength = 1000, marginMillis = 0))
+    }
+
+    // 10 个 piece, 每个 100 字节; 文件数据从全局偏移 1000 开始
+    private fun pieces(vararg finished: Int): PieceList =
+        PieceList.create(numPieces = 10, initialDataOffset = 1000) { 100 }.apply {
+            finished.forEach { getByPieceIndex(it).state = PieceState.FINISHED }
+        }
+
+    @Test
+    fun `byte range is finished only when every overlapping piece is finished`() {
+        // 文件内 [150, 349] 覆盖 piece 1, 2, 3
+        assertTrue(pieces(1, 2, 3).isFileByteRangeFinished(150L..349L))
+        assertFalse(pieces(1, 3).isFileByteRangeFinished(150L..349L))
+        assertFalse(pieces().isFileByteRangeFinished(150L..349L))
+        // 范围之外的 piece 不影响结果
+        assertTrue(pieces(0).isFileByteRangeFinished(0L..99L))
+        assertFalse(pieces(1).isFileByteRangeFinished(0L..99L))
+    }
+
+    @Test
+    fun `empty piece list is never finished`() {
+        assertFalse(PieceList.Empty.isFileByteRangeFinished(0L..10L))
     }
 }

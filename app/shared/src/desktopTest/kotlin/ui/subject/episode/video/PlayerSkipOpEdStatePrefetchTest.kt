@@ -10,6 +10,7 @@
 package me.him188.ani.app.ui.subject.episode.video
 
 import androidx.compose.runtime.mutableStateOf
+import me.him188.ani.app.domain.media.player.prefetch.MediaPrefetchRequest
 import me.him188.ani.app.domain.media.player.prefetch.MediaTimeRange
 import org.openani.mediamp.InternalMediampApi
 import org.openani.mediamp.metadata.Chapter
@@ -34,21 +35,22 @@ class PlayerSkipOpEdStatePrefetchTest {
     fun `no prefetch far before the chapter`() {
         val state = createState()
         state.update(120_000 - PlayerSkipOpEdState.PREFETCH_LEAD_MILLIS - 1_000)
-        assertNull(state.prefetchRange)
+        assertNull(state.prefetchRequest)
     }
 
     @Test
     fun `prefetch covers 30s after chapter end from lead time until chapter end`() {
         val state = createState()
-        val expected = MediaTimeRange(210_000, 240_000)
+        // 缓存 OP 结束后的 30 秒, 前提是 OP 开头 (120s) 之前的内容已缓冲好
+        val expected = MediaPrefetchRequest(MediaTimeRange(210_000, 240_000), requireBufferedUntilMillis = 120_000)
         state.update(120_000 - PlayerSkipOpEdState.PREFETCH_LEAD_MILLIS)
-        assertEquals(expected, state.prefetchRange)
+        assertEquals(expected, state.prefetchRequest)
         state.update(150_000) // 章节内
-        assertEquals(expected, state.prefetchRange)
+        assertEquals(expected, state.prefetchRequest)
         state.update(209_999)
-        assertEquals(expected, state.prefetchRange)
+        assertEquals(expected, state.prefetchRequest)
         state.update(210_000) // 章节结束
-        assertNull(state.prefetchRange)
+        assertNull(state.prefetchRequest)
     }
 
     @Test
@@ -63,27 +65,27 @@ class PlayerSkipOpEdStatePrefetchTest {
         state.update(120_000) // 到达章节开头, 自动跳过
         assertEquals(210_000, skippedTo)
         state.update(210_000)
-        assertNull(state.prefetchRange)
+        assertNull(state.prefetchRequest)
 
         // 用户拖回 OP 之前: 同一章节不会再自动跳过, 也就不需要预缓存
         state.update(100_000)
-        assertNull(state.prefetchRange)
+        assertNull(state.prefetchRequest)
     }
 
     @Test
     fun `cancelling the skip also cancels prefetch`() {
         val state = createState()
         state.update(116_000) // 提示窗口内 (章节开头前 5 秒)
-        assertEquals(MediaTimeRange(210_000, 240_000), state.prefetchRange)
+        assertEquals(MediaPrefetchRequest(MediaTimeRange(210_000, 240_000), 120_000), state.prefetchRequest)
         state.cancelSkipOpEd()
         state.update(117_000)
-        assertNull(state.prefetchRange)
+        assertNull(state.prefetchRequest)
     }
 
     @Test
     fun `non op ed chapters do not trigger prefetch`() {
         val state = createState(listOf(Chapter("Ch 1", durationMillis = 600_000, offsetMillis = 0)))
         state.update(10_000)
-        assertNull(state.prefetchRange)
+        assertNull(state.prefetchRequest)
     }
 }

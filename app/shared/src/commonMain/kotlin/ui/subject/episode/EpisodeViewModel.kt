@@ -1190,7 +1190,7 @@ class EpisodeViewModel(
                 .collectLatest { enabled ->
                     val prefetchController = fetchPlayState.playerSession.prefetchController
                     if (!enabled) {
-                        prefetchController.setPrefetchRange(null)
+                        prefetchController.setPrefetchRequest(null)
                         return@collectLatest
                     }
 
@@ -1219,9 +1219,9 @@ class EpisodeViewModel(
                         if (skipAllowed) {
                             playerSkipOpEdState.update(pos)
                             // 即将自动跳过时, 提前缓存跳转目标处的数据, 跳过后可立即续播
-                            prefetchController.setPrefetchRange(playerSkipOpEdState.prefetchRange)
+                            prefetchController.setPrefetchRequest(playerSkipOpEdState.prefetchRequest)
                         } else {
-                            prefetchController.setPrefetchRange(null)
+                            prefetchController.setPrefetchRequest(null)
                         }
                     }.collect()
                 }
