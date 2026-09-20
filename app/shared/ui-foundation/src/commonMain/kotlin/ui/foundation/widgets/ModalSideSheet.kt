@@ -16,6 +16,7 @@ import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxScope
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.imePadding
@@ -72,6 +73,7 @@ enum class SheetSide { Start, End }
  * The sheet animates in from [side] and blocks interaction with underlying content using a scrim.
  *
  * @param onDismiss Called when the sheet has been completely dismissed.
+ * @param overlay 覆盖整个窗口 (而不只是 sheet) 的内容, 绘制在 sheet 之上, 不随 sheet 滑动. 例如全屏图片查看器.
  */
 @Composable
 fun ModalSideSheet(
@@ -89,6 +91,7 @@ fun ModalSideSheet(
     contentColor: Color = contentColorFor(containerColor),
     tonalElevation: Dp = 0.dp,
     scrimColor: Color = DrawerDefaults.scrimColor,
+    overlay: @Composable BoxScope.() -> Unit = {},
     content: @Composable () -> Unit,
 ) {
     val scope = rememberCoroutineScope()
@@ -158,6 +161,7 @@ fun ModalSideSheet(
             ) {
                 Box { content() }
             }
+            overlay()
         }
     }
 }

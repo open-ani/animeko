@@ -11,26 +11,25 @@ package me.him188.ani.app.ui.subject.details.state
 
 import androidx.compose.runtime.Stable
 import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
-import kotlinx.coroutines.flow.collectLatest
+import kotlinx.coroutines.flow.catch
+import kotlinx.coroutines.flow.emitAll
+import kotlinx.coroutines.flow.flatMapLatest
+import kotlinx.coroutines.flow.flow
+import kotlinx.coroutines.flow.flowOf
+import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.flow.stateIn
 import me.him188.ani.app.data.models.subject.SubjectInfo
 import me.him188.ani.app.domain.foundation.LoadError
-import me.him188.ani.app.tools.MonoTasker
 import me.him188.ani.app.ui.subject.details.SubjectDetailsUIState
 import me.him188.ani.utils.platform.annotations.TestOnly
-import kotlin.coroutines.cancellation.CancellationException
 
 /**
- * 条目详情状态的加载壳: 把 [SubjectDetailsStateFactory] 的冷流装进
- * [SubjectDetailsUIState] 三态 (Placeholder/Ok/Err) 并管理加载任务的生命周期.
- *
- * 设计约定:
- * - [state] **恒非空**: 未加载过 = [SubjectDetailsUIState.Placeholder] (subjectId = 0).
- *   消费者只需处理三态, 不再有 "null 或 Placeholder" 的双份空态.
- * - [load] 是唯一入口: 同一条目已加载完成时默认跳过, 强制刷新传 [force]; 新任务自动
- *   取消在途任务 (MonoTasker), 调用方不需要先 [clear].
- * - 失败重试用 [retry]: 目标条目已记录在 [SubjectDetailsUIState.Err] 里, 调用方不必复述参数.
+ * 按需加载条目详情. [state] 由当前请求的条目派生, 只要 loader 所在的 scope 活着, 当前条目的 [SubjectDetailsState] 就一直在更新.
+ * 未加载时为 subjectId = 0 的 [SubjectDetailsUIState.Placeholder]; 失败可通过 [retry] 重试.
  *
  * @see SubjectDetailsState
  */
@@ -39,55 +38,72 @@ class SubjectDetailsStateLoader(
     private val subjectDetailsStateFactory: SubjectDetailsStateFactory,
     backgroundScope: CoroutineScope,
 ) {
-    private val tasker = MonoTasker(backgroundScope)
+    /**
+     * @param attempt 让同一条目的重新加载也能触发 [flatMapLatest].
+     */
+    private data class Request(
+        val subjectId: Int,
+        val placeholder: SubjectInfo?,
+        val attempt: Int,
+    )
 
-    private val _state = MutableStateFlow<SubjectDetailsUIState>(Idle)
-    val state: StateFlow<SubjectDetailsUIState> = _state
+    private val request = MutableStateFlow<Request?>(null)
 
     /**
-     * 加载 [subjectId] 的详情. 该条目已加载完成时不重复加载 (除非 [force]);
-     * 在途任务 (无论哪个条目) 会被新任务取消.
+     * 当前请求的加载状态. 没有请求时为 subjectId = 0 的占位状态.
+     *
+     * [SubjectDetailsState] 内部的 flow 都跑在加载它的协程里, 因此这里用 [flatMapLatest] 让它与请求绑定:
+     * 换条目或重新加载时取消上一个, 其余时候持续收集, 数据库里的更新 (例如播放页标记看过) 才能一直传到页面上.
+     */
+    @OptIn(ExperimentalCoroutinesApi::class)
+    val state: StateFlow<SubjectDetailsUIState> = request
+        .flatMapLatest { req ->
+            if (req == null) return@flatMapLatest flowOf(Idle)
+            flow<SubjectDetailsUIState> {
+                emit(SubjectDetailsUIState.Placeholder(req.subjectId, req.placeholder))
+                emitAll(
+                    subjectDetailsStateFactory.create(req.subjectId, req.placeholder)
+                        .map { SubjectDetailsUIState.Ok(it.subjectId, it) },
+                )
+            }.catch { e ->
+                emit(SubjectDetailsUIState.Err(req.subjectId, req.placeholder, LoadError.fromException(e)))
+            }
+        }
+        .stateIn(backgroundScope, SharingStarted.Eagerly, Idle)
+
+    /**
+     * 确保 [subjectId] 已加载. 已在加载或已加载完成时跳过, 上次加载失败则重试; [force] 强制重新加载.
+     *
+     * 从播放页等返回时会再次调用, 此时不应该重新加载: 页面的内容会闪一下占位, 角色/制作人员/评论等请求也会全部重发.
      */
     fun load(
         subjectId: Int,
         placeholder: SubjectInfo? = null,
         force: Boolean = false,
     ) {
-        val current = _state.value
-        if (!force && current is SubjectDetailsUIState.Ok && current.value.info?.subjectId == subjectId) {
-            return // 已经加载完成了
+        if (!force && request.value?.subjectId == subjectId && state.value !is SubjectDetailsUIState.Err) {
+            return
         }
-        tasker.launch {
-            _state.value = SubjectDetailsUIState.Placeholder(subjectId, placeholder)
-            try {
-                subjectDetailsStateFactory.create(subjectId, placeholder)
-                    .collectLatest {
-                        _state.value = SubjectDetailsUIState.Ok(it.subjectId, it)
-                    }
-            } catch (e: CancellationException) {
-                throw e
-            } catch (e: Exception) {
-                _state.value = SubjectDetailsUIState.Err(subjectId, placeholder, LoadError.fromException(e))
-            }
-        }
+        request.value = Request(subjectId, placeholder, nextAttempt())
     }
 
     /** 加载失败后的原地重试: 目标条目取自当前 [SubjectDetailsUIState.Err], 非错误态时无操作. */
     fun retry() {
-        val err = _state.value as? SubjectDetailsUIState.Err ?: return
+        val err = state.value as? SubjectDetailsUIState.Err ?: return
         load(err.subjectId, err.placeholder, force = true)
     }
 
-    /** 取消在途加载并清空状态 (回到未加载占位). 之前的实现只取消不清态, 旧条目数据会残留. */
+    /** 取消加载并回到未加载占位状态. */
     fun clear() {
-        tasker.cancel()
-        _state.value = Idle
+        request.value = null
     }
 
     private companion object {
         /** 未加载任何条目时的占位 (subjectId = 0 不对应真实条目). */
         private val Idle = SubjectDetailsUIState.Placeholder(subjectId = 0)
     }
+
+    private fun nextAttempt(): Int = (request.value?.attempt ?: 0) + 1
 }
 
 @TestOnly

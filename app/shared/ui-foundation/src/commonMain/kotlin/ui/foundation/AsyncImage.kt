@@ -38,6 +38,7 @@ import com.github.panpf.sketch.asBitmapOrNull
 import com.github.panpf.sketch.cache.CachePolicy
 import com.github.panpf.sketch.cache.DiskCache
 import com.github.panpf.sketch.cache.MemoryCache
+import com.github.panpf.sketch.cache.internal.LruMemoryCache
 import com.github.panpf.sketch.decode.supportSvg
 import com.github.panpf.sketch.painter.asEquitable
 import com.github.panpf.sketch.rememberAsyncImagePainter
@@ -72,6 +73,7 @@ import com.github.panpf.sketch.AsyncImage as SketchAsyncImage
 
 private const val MEBIBYTE = 1024L * 1024L
 private const val IMAGE_DOWNLOAD_CACHE_SIZE = 100L * MEBIBYTE
+private const val IMAGE_MEMORY_CACHE_SIZE = 10L * MEBIBYTE
 private const val ANI_IMAGE_CACHE_DIRECTORY = "image-cache"
 
 val LocalSketch = staticCompositionLocalOf<Sketch> {
@@ -414,7 +416,8 @@ internal fun createDefaultSketch(
     cacheDirectory: Path? = null,
 ): Sketch = Sketch.Builder(context).apply {
     componentLoaderEnabled(false)
-    memoryCache(DisabledMemoryCache)
+    // 小容量 LRU: 让刚显示过的图片 (翻页、列表滚回、页面返回) 无需重新读盘解码即可立即显示.
+    memoryCache(LruMemoryCache(IMAGE_MEMORY_CACHE_SIZE))
     downloadCacheOptions(
         DiskCache.Options(
             directory = cacheDirectory?.resolve("download"),
@@ -429,7 +432,7 @@ internal fun createDefaultSketch(
     globalImageOptions(
         ImageOptions {
             downloadCachePolicy(CachePolicy.ENABLED)
-            memoryCachePolicy(CachePolicy.DISABLED)
+            memoryCachePolicy(CachePolicy.ENABLED)
             // Result cache re-encodes transformed images. Keep the original bytes in the LRU
             // download cache instead so disk caching cannot reduce image quality.
             resultCachePolicy(CachePolicy.DISABLED)
@@ -442,7 +445,7 @@ internal fun createDefaultSketch(
     }
 }.build()
 
-/** Prevents requests from retaining decoded images while the download disk cache stays enabled. */
+/** Keeps the network-free preview loader from retaining decoded images. */
 private data object DisabledMemoryCache : MemoryCache {
     private val mutex = Mutex()
 
