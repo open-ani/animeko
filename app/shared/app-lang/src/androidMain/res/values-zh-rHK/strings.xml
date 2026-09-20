@@ -1107,7 +1107,7 @@
     <string name="settings_account_developer_valid_until">有效期至 %1$s。下個月會自動重新判定，無需再次申請。</string>
     <string name="settings_account_developer_apply">申請認證</string>
     <string name="settings_account_developer_apply_limit">每天可申請 1 次，每週最多 3 次</string>
-    <string name="settings_account_developer_next_apply_at">%1$s 後可再次申請</string>
+    <string name="settings_account_developer_next_apply_at">下次可申請：%1$s</string>
     <string name="settings_account_developer_last_result">上次申請</string>
     <string name="settings_account_developer_result_rejected">未通過</string>
     <string name="settings_account_developer_result_failed">伺服器暫時無法完成判定，請稍後重新申請。本次不計入申請次數</string>

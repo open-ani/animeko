@@ -1134,7 +1134,7 @@
     <string name="settings_account_developer_valid_until">有效期至 %1$s。下个月会自动重新判定，无需再次申请。</string>
     <string name="settings_account_developer_apply">申请认证</string>
     <string name="settings_account_developer_apply_limit">每天可申请 1 次，每周最多 3 次</string>
-    <string name="settings_account_developer_next_apply_at">%1$s 后可再次申请</string>
+    <string name="settings_account_developer_next_apply_at">下次可申请：%1$s</string>
     <string name="settings_account_developer_last_result">上次申请</string>
     <string name="settings_account_developer_result_rejected">未通过</string>
     <string name="settings_account_developer_result_failed">服务器暂时无法完成判定，请稍后重新申请。本次不计入申请次数</string>

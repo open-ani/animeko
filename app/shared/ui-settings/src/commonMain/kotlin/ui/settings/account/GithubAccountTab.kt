@@ -32,6 +32,8 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import kotlinx.datetime.TimeZone
+import kotlinx.datetime.toLocalDateTime
 import me.him188.ani.app.data.repository.user.DeveloperVerificationInfo
 import me.him188.ani.app.data.repository.user.DeveloperVerificationRepository
 import me.him188.ani.app.data.repository.user.DeveloperVerificationRequestStatus
@@ -67,6 +69,7 @@ import org.jetbrains.compose.resources.stringResource
 import org.koin.core.component.KoinComponent
 import org.koin.core.component.inject
 import kotlin.time.Duration.Companion.seconds
+import kotlin.time.Instant
 
 @Immutable
 data class GithubAccountUiState(
@@ -249,10 +252,7 @@ private fun SettingsScope.DeveloperVerificationItems(
             TextItem(
                 title = {
                     Text(
-                        stringResource(
-                            Lang.settings_account_developer_valid_until,
-                            formatDateTime(validUntil, showTime = false),
-                        ),
+                        stringResource(Lang.settings_account_developer_valid_until, formatDate(validUntil)),
                         style = MaterialTheme.typography.bodyMedium,
                     )
                 },
@@ -302,3 +302,9 @@ private fun SettingsScope.DeveloperVerificationItems(
         modifier = Modifier.testTag("developerVerification-limit"),
     )
 }
+
+/**
+ * `yyyy-MM-dd`. 有效期只需要精确到天, 而且总是在未来, 不适合用相对时间.
+ */
+private fun formatDate(timestampMillis: Long): String =
+    Instant.fromEpochMilliseconds(timestampMillis).toLocalDateTime(TimeZone.currentSystemDefault()).date.toString()

@@ -1094,7 +1094,7 @@
     <string name="settings_account_developer_valid_until">Valid until %1$s. It is re-checked automatically next month, no need to apply again.</string>
     <string name="settings_account_developer_apply">Apply</string>
     <string name="settings_account_developer_apply_limit">You can apply once a day and up to 3 times a week</string>
-    <string name="settings_account_developer_next_apply_at">You can apply again after %1$s</string>
+    <string name="settings_account_developer_next_apply_at">Next application: %1$s</string>
     <string name="settings_account_developer_last_result">Last application</string>
     <string name="settings_account_developer_result_rejected">Not approved</string>
     <string name="settings_account_developer_result_failed">The server could not finish the review. Please apply again later; this attempt is not counted</string>
