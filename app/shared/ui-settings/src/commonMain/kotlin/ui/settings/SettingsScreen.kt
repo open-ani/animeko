@@ -124,6 +124,7 @@ import me.him188.ani.app.ui.foundation.widgets.LocalToaster
 import me.him188.ani.app.ui.lang.Lang
 import me.him188.ani.app.ui.lang.acknowledgements
 import me.him188.ani.app.ui.lang.developer_list
+import me.him188.ani.app.ui.lang.settings_about_build_info
 import me.him188.ani.app.ui.lang.settings
 import me.him188.ani.app.ui.lang.settings_account_bangumi_sync_title
 import me.him188.ani.app.ui.lang.settings_acknowledgements_oss_licenses
@@ -157,6 +158,8 @@ import me.him188.ani.app.ui.settings.tabs.AniHelperDestination
 import me.him188.ani.app.ui.settings.tabs.DebugTab
 import me.him188.ani.app.ui.settings.tabs.about.AboutTab
 import me.him188.ani.app.ui.settings.tabs.about.AcknowledgementsTab
+import me.him188.ani.app.ui.settings.tabs.about.BuildInfo
+import me.him188.ani.app.ui.settings.tabs.about.BuildInfoTab
 import me.him188.ani.app.ui.settings.tabs.about.DevelopersTab
 import me.him188.ani.app.ui.settings.tabs.about.OpenSourceLibrariesTab
 import me.him188.ani.app.ui.settings.tabs.app.AppearanceGroup
@@ -309,6 +312,9 @@ fun SettingsScreen(
                                     toaster.toast(getString(Lang.settings_debug_mode_enabled))
                                 }
                             }
+                        },
+                        onClickBuildInfo = {
+                            navigateTo(DetailPaneRoutes.BuildInfo)
                         },
                         onClickReleaseNotes = {
                             browserNavigator.openBrowser(
@@ -795,6 +801,27 @@ internal fun SettingsPageLayout(
                             }
                         }
                     }
+                    entry<DetailPaneRoutes.BuildInfo> {
+                        DetailPaneRoute(
+                            topAppBar = {
+                                AniTopAppBar(
+                                    title = { AniTopAppBarDefaults.Title(stringResource(Lang.settings_about_build_info)) },
+                                    navigationIcon = {
+                                        BackNavigationIconButton(navigateUp)
+                                    },
+                                    colors = topAppBarColors,
+                                    windowInsets = topAppBarWindowInsets,
+                                    size = topAppBarSize,
+                                    scrollBehavior = detailPaneTopAppBarScrollBehavior,
+                                )
+                            },
+                            detailPaneTopAppBarScrollBehavior,
+                        ) {
+                            RouteContent {
+                                BuildInfoTab(remember { BuildInfo.current() }, Modifier.fillMaxSize())
+                            }
+                        }
+                    }
                     entry<DetailPaneRoutes.BangumiSync> {
                         DetailPaneRoute(
                             topAppBar = {
@@ -960,6 +987,9 @@ sealed class DetailPaneRoutes : NavKey {
     data object Developers : DetailPaneRoutes()
 
     @Serializable
+    data object BuildInfo : DetailPaneRoutes()
+
+    @Serializable
     data object BangumiSync : DetailPaneRoutes()
 
     @Serializable
@@ -978,6 +1008,7 @@ private val DetailPaneBackStackSaver: Saver<SnapshotStateList<DetailPaneRoutes>,
                     "Acknowledgements" -> DetailPaneRoutes.Acknowledgements
                     "OpenSourceLicenses" -> DetailPaneRoutes.OpenSourceLicenses
                     "Developers" -> DetailPaneRoutes.Developers
+                    "BuildInfo" -> DetailPaneRoutes.BuildInfo
                     "BangumiSync" -> DetailPaneRoutes.BangumiSync
                     "DevBuilds" -> DetailPaneRoutes.DevBuilds
                     else -> DetailPaneRoutes.Main

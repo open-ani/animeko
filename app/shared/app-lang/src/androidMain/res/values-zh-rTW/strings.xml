@@ -167,6 +167,17 @@
     <string name="settings_about_icon_description">Animeko Icon</string>
     <string name="settings_about_app_name">Animeko</string>
     <string name="settings_about_app_description">集找番、追番、看番的一站式彈幕追番平台</string>
+    <string name="settings_about_build_info">建置資訊</string>
+    <string name="settings_build_info_branch">分支</string>
+    <string name="settings_build_info_commit">Commit</string>
+    <string name="settings_build_info_commit_time">提交時間</string>
+    <string name="settings_build_info_build_type">建置類型</string>
+    <string name="settings_build_info_distro_channel">發行管道</string>
+    <string name="settings_build_info_platform">平台</string>
+    <string name="settings_build_info_unknown">未知</string>
+    <string name="settings_build_info_open_commit">在 GitHub 上檢視</string>
+    <string name="settings_build_info_copy_all">複製全部</string>
+    <string name="settings_build_info_copied">已複製</string>
 
     <!-- DevelopersTab -->
     <string name="settings_developers_main_contributors">主要貢獻者</string>
