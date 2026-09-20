@@ -13,7 +13,7 @@ import androidx.compose.runtime.Immutable
 import kotlin.time.Instant
 
 /**
- * main 分支上的一个 commit, 及其 Build workflow 的运行结果和当前平台的安装包.
+ * 仓库里的一个 commit, 及其 Build workflow 的运行结果和当前平台的安装包.
  */
 @Immutable
 data class DevBuildCommit(
@@ -85,9 +85,24 @@ data class DevBuildArtifact(
 )
 
 /**
+ * 用户输入 PR 链接时, 解析出的 PR 信息. 安装的是 PR 分支最新 commit ([DevBuildCommit]) 的构建.
+ *
+ * @param isFromFork PR 分支来自 fork 仓库. 这种 PR 只有 pull_request 事件触发的构建, Android 没有 release 包.
+ */
+@Immutable
+data class DevBuildPullRequest(
+    val number: Int,
+    val title: String,
+    val htmlUrl: String,
+    val headRef: String,
+    val isFromFork: Boolean,
+)
+
+/**
  * 将 GitHub 返回的 commits, workflow runs 和 artifacts 按 commit sha 合并.
  *
- * 同一个 commit 有多条运行记录时取最新的 (id 最大); artifact 按 [DevBuildPackageSpec.artifactNames] 的顺序优先, 同名取最新且未过期的.
+ * 同一个 commit 有多条运行记录时取最新的 (id 最大); artifact 按 [DevBuildPackageSpec.candidateArtifactNames] 的顺序优先,
+ * 同名取最新且未过期的.
  * 结果保持 [commits] 的顺序.
  */
 fun buildDevBuildCommits(
@@ -98,13 +113,15 @@ fun buildDevBuildCommits(
 ): List<DevBuildCommit> {
     val runBySha = runs.groupBy { it.headSha }.mapValues { (_, list) -> list.maxBy { it.id } }
     val artifactsBySha = artifacts
-        .filter { !it.expired && it.workflowRun != null && it.name in spec.artifactNames }
+        .filter { !it.expired && it.workflowRun != null && it.name in spec.candidateArtifactNames }
         .groupBy { it.workflowRun!!.headSha }
 
     return commits.map { commit ->
         val run = runBySha[commit.sha]
         val artifact = artifactsBySha[commit.sha]
-            ?.sortedWith(compareBy<GitHubArtifact> { spec.artifactNames.indexOf(it.name) }.thenByDescending { it.id })
+            ?.sortedWith(
+                compareBy<GitHubArtifact> { spec.candidateArtifactNames.indexOf(it.name) }.thenByDescending { it.id },
+            )
             ?.firstOrNull()
         DevBuildCommit(
             sha = commit.sha,
