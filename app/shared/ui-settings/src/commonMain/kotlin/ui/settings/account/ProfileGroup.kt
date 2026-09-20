@@ -130,6 +130,7 @@ fun SettingsScope.ProfileGroup(
     onNavigateToEmail: () -> Unit,
     onNavigateToBangumiSync: () -> Unit,
     onNavigateToOAuth: (OAuthPlatform) -> Unit,
+    onNavigateToGithubAccount: () -> Unit,
     vm: ProfileViewModel = viewModel<ProfileViewModel> { ProfileViewModel() },
     modifier: Modifier = Modifier
 ) {
@@ -157,6 +158,7 @@ fun SettingsScope.ProfileGroup(
             }
         },
         onExternalAccountClick = onNavigateToOAuth,
+        onGithubAccountClick = onNavigateToGithubAccount,
         onAvatarUpload = {
             vm.uploadAvatar(it)
         },
@@ -199,6 +201,10 @@ internal fun SettingsScope.ProfileGroupImpl(
      * 点击未绑定的第三方平台, 前往绑定
      */
     onExternalAccountClick: (OAuthPlatform) -> Unit,
+    /**
+     * 点击已绑定的 GitHub 账号, 前往该账号的详情页 (开发者认证). 其他平台的已绑定账号不可点击
+     */
+    onGithubAccountClick: () -> Unit,
     /**
      * 参数为平台 ID
      */
@@ -323,9 +329,15 @@ internal fun SettingsScope.ProfileGroupImpl(
                             title = { Text(platform.displayName) },
                             description = { Text(account?.username ?: notBoundText) },
                             icon = { OAuthPlatformIcon(platform, Modifier.size(24.dp)) },
-                            onClick = if (account == null) {
-                                { onExternalAccountClick(platform) }
-                            } else null,
+                            onClick = when {
+                                account == null -> {
+                                    { onExternalAccountClick(platform) }
+                                }
+
+                                platform == OAuthPlatform.GITHUB -> onGithubAccountClick
+
+                                else -> null
+                            },
                             action = if (account != null) {
                                 {
                                     TextButton(
