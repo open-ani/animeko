@@ -15,7 +15,7 @@ import kotlin.test.assertEquals
 
 class SubjectPresentationTest {
     @Test
-    fun `toPresentation sets title and originalTitle from displayName and name`() {
+    fun `toPresentation_sets_title_and_originalTitle_from_displayName_and_name`() {
         val info = SubjectInfo.Empty.copy(name = "ぼっち・ざ・ろっく！", nameCn = "孤独摇滚！")
         val presentation = info.toPresentation()
         assertEquals("孤独摇滚！", presentation.title)
@@ -23,7 +23,7 @@ class SubjectPresentationTest {
     }
 
     @Test
-    fun `originalTitle falls back to title when name is blank`() {
+    fun `originalTitle_falls_back_to_title_when_name_is_blank`() {
         val info = SubjectInfo.Empty.copy(name = "", nameCn = "孤独摇滚！")
         val presentation = info.toPresentation()
         assertEquals("孤独摇滚！", presentation.title)

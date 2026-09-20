@@ -23,14 +23,14 @@ class EpisodePresentationTest {
     )
 
     @Test
-    fun `toPresentation sets title and originalTitle from displayName and name`() {
+    fun `toPresentation_sets_title_and_originalTitle_from_displayName_and_name`() {
         val presentation = episode("Bocchi the Rock!", "孤独摇滚！").toPresentation(recurrence = null)
         assertEquals("孤独摇滚！", presentation.title)
         assertEquals("Bocchi the Rock!", presentation.originalTitle)
     }
 
     @Test
-    fun `originalTitle falls back to title when name is blank`() {
+    fun `originalTitle_falls_back_to_title_when_name_is_blank`() {
         val presentation = episode("", "孤独摇滚！").toPresentation(recurrence = null)
         assertEquals("孤独摇滚！", presentation.title)
         assertEquals("孤独摇滚！", presentation.originalTitle)

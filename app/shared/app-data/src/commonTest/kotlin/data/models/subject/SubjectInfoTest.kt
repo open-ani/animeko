@@ -20,29 +20,29 @@ class SubjectInfoTest {
         SubjectInfo.Empty.copy(name = name, nameCn = nameCn)
 
     @Test
-    fun `nameOrNameCn prefers original name`() {
+    fun `nameOrNameCn_prefers_original_name`() {
         assertEquals("ぼっち・ざ・ろっく！", subject(name = "ぼっち・ざ・ろっく！", nameCn = "孤独摇滚！").nameOrNameCn)
     }
 
     @Test
-    fun `nameOrNameCn falls back to nameCn when name is blank`() {
+    fun `nameOrNameCn_falls_back_to_nameCn_when_name_is_blank`() {
         assertEquals("孤独摇滚！", subject(name = "", nameCn = "孤独摇滚！").nameOrNameCn)
     }
 
     @Test
-    fun `preferredDisplayName_with_useOriginalTitle=true_returns_nameOrNameCn`() {
+    fun `preferredDisplayName_with_useOriginalTitleTrue_returns_nameOrNameCn`() {
         val info = subject(name = "ぼっち・ざ・ろっく！", nameCn = "孤独摇滚！")
         assertEquals(info.nameOrNameCn, info.preferredDisplayName(useOriginalTitle = true))
     }
 
     @Test
-    fun `preferredDisplayName_with_useOriginalTitle=false_returns_displayName`() {
+    fun `preferredDisplayName_with_useOriginalTitleFalse_returns_displayName`() {
         val info = subject(name = "ぼっち・ざ・ろっく！", nameCn = "孤独摇滚！")
         assertEquals(info.displayName, info.preferredDisplayName(useOriginalTitle = false))
     }
 
     @Test
-    fun `preferredDisplayName_with_useOriginalTitle=true_falls_back_to_nameCn_when_name_is_blank`() {
+    fun `preferredDisplayName_with_useOriginalTitleTrue_falls_back_to_nameCn_when_name_is_blank`() {
         val info = subject(name = "", nameCn = "孤独摇滚！")
         assertEquals("孤独摇滚！", info.preferredDisplayName(useOriginalTitle = true))
     }
