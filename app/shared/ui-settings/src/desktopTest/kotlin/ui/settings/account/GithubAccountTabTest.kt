@@ -28,7 +28,6 @@ class GithubAccountTabTest {
     private class Callbacks {
         var applies = 0
         var retries = 0
-        val openedUrls = mutableListOf<String>()
     }
 
     private fun info(
@@ -58,7 +57,6 @@ class GithubAccountTabTest {
                     GithubAccountUiState(username = "octocat", verification = verification, loadFailed = loadFailed),
                     onApply = { callbacks.applies++ },
                     onRetry = { callbacks.retries++ },
-                    onOpenUrl = { callbacks.openedUrls += it },
                     isApplying = false,
                 )
             }
@@ -88,15 +86,17 @@ class GithubAccountTabTest {
     }
 
     @Test
-    fun `rejected request shows the reason and blocks applying until the limit resets`() = runAniComposeUiTest {
+    fun `rejected request hides the server's reason and blocks applying until the limit resets`() = runAniComposeUiTest {
         render(
             info(
-                latestRequest = request(DeveloperVerificationRequestStatus.REJECTED, message = "没有找到已合并的 PR"),
+                latestRequest = request(DeveloperVerificationRequestStatus.REJECTED, message = "PR #20: 仅修复了拼写"),
                 nextApplyAt = 1_790_086_400_000,
             ),
         )
 
-        onNodeWithText("没有找到已合并的 PR").assertIsDisplayed()
+        // 只告知暂未通过, 不展示对用户 PR 的评价
+        onNodeWithTag("developerVerification-lastResult").assertIsDisplayed()
+        onNodeWithText("仅修复了拼写", substring = true).assertDoesNotExist()
         onNodeWithTag("developerVerification-apply").assertIsNotEnabled()
         onNodeWithTag("developerVerification-limit").assertIsDisplayed()
     }
