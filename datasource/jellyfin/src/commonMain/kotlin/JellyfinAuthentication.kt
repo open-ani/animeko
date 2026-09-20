@@ -18,6 +18,7 @@ import io.ktor.http.ContentType
 import io.ktor.http.HttpHeaders
 import io.ktor.http.HttpStatusCode
 import io.ktor.http.contentType
+import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import kotlinx.serialization.SerialName
@@ -38,16 +39,18 @@ internal class JellyfinPasswordAuthenticator(
     private val client: ScopedHttpClient,
 ) {
     private val sessionMutex = Mutex()
-    private var session: JellyfinLoginSession? = null
+    private val session = MutableStateFlow<JellyfinLoginSession?>(null)
+
+    val cachedSession: JellyfinLoginSession? get() = session.value
 
     suspend fun getSession(): JellyfinLoginSession = sessionMutex.withLock {
-        session ?: authenticate().also { session = it }
+        session.value ?: authenticate().also { session.value = it }
     }
 
     suspend fun invalidate(accessToken: String) {
         sessionMutex.withLock {
-            if (session?.accessToken == accessToken) {
-                session = null
+            if (session.value?.accessToken == accessToken) {
+                session.value = null
             }
         }
     }

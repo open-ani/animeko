@@ -76,6 +76,9 @@ abstract class BaseJellyfinMediaSource(
 
     protected abstract suspend fun getAuthorization(): Authorization
 
+    /** Reads a cached authorization without waiting for login or starting a network request. */
+    protected open fun getCachedAuthorization(): Authorization? = null
+
     /**
      * Invalidates [authorization] after the server rejects it.
      *
@@ -110,7 +113,7 @@ abstract class BaseJellyfinMediaSource(
                 .filter { (_, match) -> match.matches(query) != false }
 
             val chaptersByItemId = fetchChapters(retainedMatches.map { (matchedItem) -> matchedItem.item })
-            val currentAuthorization = getAuthorization()
+            val currentAuthorization = getCachedAuthorization() ?: authorization
             retainedMatches
                 .mapNotNull { (matchedItem) ->
                     val match = matchedItem.toMediaMatch(query, currentAuthorization.accessToken)
@@ -136,23 +139,25 @@ abstract class BaseJellyfinMediaSource(
     }
 
     private suspend fun fetchChapters(items: List<Item>): Map<String, List<MediaChapter>> {
-        return withTimeoutOrNull(CHAPTER_ENRICHMENT_TIMEOUT_MILLIS) {
+        // Each child owns its chapter list. Read the results after all children finish or are cancelled.
+        val chaptersByItem = items.map { it to it.toEmbeddedChapters().toMutableList() }
+        withTimeoutOrNull(CHAPTER_ENRICHMENT_TIMEOUT_MILLIS) {
             val semaphore = Semaphore(CHAPTER_ENRICHMENT_CONCURRENCY)
-            items.map { item ->
+            chaptersByItem.map { (item, chapters) ->
                 async {
-                    item.Id to semaphore.withPermit {
+                    semaphore.withPermit {
                         try {
-                            fetchChaptersAndSegments(item)
+                            fetchChaptersAndSegments(item.Id, chapters)
                         } catch (e: CancellationException) {
                             throw e
                         } catch (e: Exception) {
                             logger.warn(e) { "Failed to fetch chapters for item ${item.Id}" }
-                            item.toEmbeddedChapters()
                         }
                     }
                 }
-            }.awaitAll().toMap()
-        }.orEmpty()
+            }.awaitAll()
+        }
+        return chaptersByItem.associate { (item, chapters) -> item.Id to chapters.toList() }
     }
 
     /**
@@ -548,12 +553,10 @@ abstract class BaseJellyfinMediaSource(
         return "$baseUrl/Videos/$itemId/$itemId/Subtitles/$index/0/Stream.$codec"
     }
 
-    private suspend fun fetchChaptersAndSegments(item: Item): List<MediaChapter> {
-        val itemId = item.Id
-
+    private suspend fun fetchChaptersAndSegments(itemId: String, chapters: MutableList<MediaChapter>) {
         // 1. Try Jellyfin 10.10+ native MediaSegments API
         val nativeSegments = fallbackOnFailure { doGetMediaSegments(itemId) }
-        val segments = nativeSegments?.Items.orEmpty().mapNotNull { segment ->
+        chapters += nativeSegments?.Items.orEmpty().mapNotNull { segment ->
             val kind = when (segment.Type.lowercase()) {
                 "intro" -> MediaChapterKind.OPENING
                 "outro" -> MediaChapterKind.ENDING
@@ -568,38 +571,36 @@ abstract class BaseJellyfinMediaSource(
                 offsetMillis = offsetMillis,
                 kind = kind,
             )
-        }.toMutableList()
+        }
 
         // 2. Fill missing segment types from the Intro Skipper plugin.
-        if (segments.none { it.kind == MediaChapterKind.OPENING } ||
-            segments.none { it.kind == MediaChapterKind.ENDING }
+        if (chapters.none { it.kind == MediaChapterKind.OPENING } ||
+            chapters.none { it.kind == MediaChapterKind.ENDING }
         ) {
             val pluginSegments = fallbackOnFailure { doGetIntroSkipperSegments(itemId) }
             pluginSegments?.toMediaChapters()?.forEach { chapter ->
-                if (segments.none { it.kind == chapter.kind }) {
-                    segments += chapter
+                if (chapters.none { it.kind == chapter.kind }) {
+                    chapters += chapter
                 }
             }
         }
 
         // 3. Fall back to the legacy Intro Skipper API for any still-missing type.
-        if (segments.none { it.kind == MediaChapterKind.OPENING }) {
+        if (chapters.none { it.kind == MediaChapterKind.OPENING }) {
             fallbackOnFailure { doGetIntroTimestamps(itemId) }
                 ?.toMediaChapter(MediaChapterKind.OPENING)
-                ?.let(segments::add)
+                ?.let(chapters::add)
         }
-        if (segments.none { it.kind == MediaChapterKind.ENDING }) {
-            val opening = segments.firstOrNull { it.kind == MediaChapterKind.OPENING }
+        if (chapters.none { it.kind == MediaChapterKind.ENDING }) {
+            val opening = chapters.firstOrNull { it.kind == MediaChapterKind.OPENING }
             fallbackOnFailure { doGetIntroTimestamps(itemId, mode = "Credits") }
                 ?.toMediaChapter(MediaChapterKind.ENDING)
                 // Old plugin versions may ignore mode=Credits and return the intro again.
                 ?.takeIf { credits ->
                     opening == null || credits.offsetMillis >= opening.offsetMillis + opening.durationMillis
                 }
-                ?.let(segments::add)
+                ?.let(chapters::add)
         }
-
-        return item.toEmbeddedChapters() + segments
     }
 
     // Their explicit kind prevents embedded chapters from being mistaken for OP/ED while still
