@@ -52,6 +52,35 @@ class PlayerSkipOpEdStatePrefetchTest {
     }
 
     @Test
+    fun `no prefetch once the chapter has been skipped and the user seeks back`() {
+        var skippedTo = -1L
+        val state = PlayerSkipOpEdState(
+            chapters = mutableStateOf(listOf(op)),
+            onSkip = { skippedTo = it },
+            videoLength = mutableStateOf(24.minutes),
+        )
+        state.update(119_500) // 进入提示窗口
+        state.update(120_000) // 到达章节开头, 自动跳过
+        assertEquals(210_000, skippedTo)
+        state.update(210_000)
+        assertNull(state.prefetchRange)
+
+        // 用户拖回 OP 之前: 同一章节不会再自动跳过, 也就不需要预缓存
+        state.update(100_000)
+        assertNull(state.prefetchRange)
+    }
+
+    @Test
+    fun `cancelling the skip also cancels prefetch`() {
+        val state = createState()
+        state.update(116_000) // 提示窗口内 (章节开头前 5 秒)
+        assertEquals(MediaTimeRange(210_000, 240_000), state.prefetchRange)
+        state.cancelSkipOpEd()
+        state.update(117_000)
+        assertNull(state.prefetchRange)
+    }
+
+    @Test
     fun `non op ed chapters do not trigger prefetch`() {
         val state = createState(listOf(Chapter("Ch 1", durationMillis = 600_000, offsetMillis = 0)))
         state.update(10_000)

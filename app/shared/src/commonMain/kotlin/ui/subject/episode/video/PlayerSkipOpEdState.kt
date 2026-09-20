@@ -92,7 +92,8 @@ class PlayerSkipOpEdState(
         val upcoming = opEdChapters.firstOrNull {
             val start = it.chapter.offsetMillis
             val end = start + it.chapter.durationMillis
-            currentPos >= start - PREFETCH_LEAD_MILLIS && currentPos < end
+            // 已经跳过过, 或用户取消了跳过的章节不会再自动跳过, 不必为它预缓存
+            !it.skipped && currentPos >= start - PREFETCH_LEAD_MILLIS && currentPos < end
         } ?: return null
         val end = upcoming.chapter.offsetMillis + upcoming.chapter.durationMillis
         return MediaTimeRange(end, end + PREFETCH_DURATION_MILLIS)

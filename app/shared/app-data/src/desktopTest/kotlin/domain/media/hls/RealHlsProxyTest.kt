@@ -466,6 +466,46 @@ class RealHlsProxyTest {
     }
 
     @Test
+    fun `re-requesting the playlist while prefetch is in flight does not stall it`() = withFixture {
+        // 真实播放器会重复请求同一个变体播放列表. 早期实现每次都重启预缓存, 被取消的下载会连带让新任务退出,
+        // 预缓存从此停摆, 进度一直停在 DOWNLOADING (在真实 App 里发现).
+        origin.segmentLatencyMillis = 300
+        val result = prepare("/hls/master.m3u8")
+        val session = result.session()
+        try {
+            val variants = text(httpGet(result.data.uri)).segmentUris()
+            httpGet(variants[0])
+            session.setPrefetchRange(MediaTimeRange(30_000, 45_000)) // seg010..seg014
+            repeat(5) {
+                Thread.sleep(60)
+                httpGet(variants[0]) // 播放列表被再次请求, 下载正在进行中
+            }
+            val done = session.awaitAllDone(5)
+            assertEquals((10..14).map { vodRange(it) }, done.map { it.range })
+            for (index in 10..14) assertEquals(1, origin.count("/hls/vod/seg%03d.ts".format(index)), "seg $index downloaded once")
+        } finally {
+            session.close()
+        }
+    }
+
+    @Test
+    fun `changing the range while a download is in flight still completes the new range`() = withFixture {
+        origin.segmentLatencyMillis = 300
+        val result = prepare("/hls/vod/index.m3u8")
+        val session = result.session()
+        try {
+            httpGet(result.data.uri)
+            session.setPrefetchRange(MediaTimeRange(30_000, 39_000)) // seg010..seg012
+            Thread.sleep(100) // seg010 正在下载
+            session.setPrefetchRange(MediaTimeRange(30_000, 36_000)) // 目标变了: seg010, seg011; 与被取消的任务共用 seg010
+            val done = session.awaitAllDone(2)
+            assertEquals(listOf(vodRange(10), vodRange(11)), done.map { it.range })
+        } finally {
+            session.close()
+        }
+    }
+
+    @Test
     fun `cancelling prefetch clears progress but keeps cached segments`() = withFixture {
         val result = prepare("/hls/vod/index.m3u8")
         val session = result.session()

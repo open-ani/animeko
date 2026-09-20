@@ -26,6 +26,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
+import kotlinx.coroutines.ensureActive
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.update
@@ -159,6 +160,9 @@ private class LocalHlsProxySession private constructor(
     private val prefetchLock = Any()
     private var requestedPrefetchRange: MediaTimeRange? = null
     private var prefetchJob: Job? = null
+
+    /** 当前预缓存任务针对的分片地址, 用于判断新的请求是否与正在进行的完全相同. */
+    private var prefetchTargetUris: List<String> = emptyList()
     private val prefetchProgressFlow = MutableStateFlow<List<PrefetchSegmentInfo>>(emptyList())
 
     override val prefetchProgress: Flow<List<PrefetchSegmentInfo>> get() = prefetchProgressFlow
@@ -179,19 +183,27 @@ private class LocalHlsProxySession private constructor(
     }
 
     private fun restartPrefetchLocked() {
-        prefetchJob?.cancel()
-        prefetchJob = null
         val range = requestedPrefetchRange
         val playlist = activePlaylist.get()
-        if (range == null || playlist == null || closed.get()) {
-            prefetchProgressFlow.value = emptyList()
+        val targets = if (range == null || playlist == null || closed.get()) {
+            emptyList()
+        } else {
+            playlist.segments.filter { it.timeRange.overlaps(range) }
+        }
+        val targetUris = targets.map { it.remoteUri }
+        // 播放器会重复请求同一个播放列表 (每次都会走到这里). 目标分片没变时保留正在进行的任务,
+        // 否则会反复取消重下, 白白浪费已经下载了一半的分片.
+        if (targetUris.isNotEmpty() && targetUris == prefetchTargetUris && prefetchJob?.isActive == true) {
             return
         }
-        val targets = playlist.segments.filter { it.timeRange.overlaps(range) }
+        prefetchJob?.cancel()
+        prefetchJob = null
+        prefetchTargetUris = targetUris
         if (targets.isEmpty()) {
             prefetchProgressFlow.value = emptyList()
             return
         }
+        range!!
         logger.info { "HLS prefetch $range -> segments ${targets.first().index}..${targets.last().index}" }
         segmentCache.pin(targets.map { it.remoteUri })
         prefetchProgressFlow.value = targets.map { segment ->
@@ -632,31 +644,41 @@ private class SegmentCache(private val maxBytes: Long) {
 
     @OptIn(kotlinx.coroutines.ExperimentalCoroutinesApi::class)
     suspend fun getOrDownload(uri: String, download: suspend () -> ByteArray): ByteArray {
-        val (entry, owner) = synchronized(lock) {
-            val existing = entries[uri]
-            if (existing != null && !existing.deferred.isCancelled) {
-                existing to false
-            } else {
-                val created = Entry(kotlinx.coroutines.CompletableDeferred())
-                entries[uri] = created
-                created to true
+        while (true) {
+            val (entry, owner) = synchronized(lock) {
+                val existing = entries[uri]
+                if (existing != null && !existing.deferred.isCancelled) {
+                    existing to false
+                } else {
+                    val created = Entry(kotlinx.coroutines.CompletableDeferred())
+                    entries[uri] = created
+                    created to true
+                }
             }
-        }
-        if (!owner) return entry.deferred.await()
-        try {
-            val bytes = download()
-            synchronized(lock) {
-                totalBytes += bytes.size
-                entry.deferred.complete(bytes)
-                evictLocked()
+            if (!owner) {
+                try {
+                    return entry.deferred.await()
+                } catch (e: CancellationException) {
+                    // 要区分 "我被取消了" 和 "正在下载它的那个任务被取消/失败了". 后者不是我的取消, 由我接手重新下载.
+                    kotlinx.coroutines.currentCoroutineContext().ensureActive()
+                    continue
+                }
             }
-            return bytes
-        } catch (e: Throwable) {
-            synchronized(lock) {
-                entries.remove(uri)
-                entry.deferred.cancel(CancellationException("download failed", e))
+            try {
+                val bytes = download()
+                synchronized(lock) {
+                    totalBytes += bytes.size
+                    entry.deferred.complete(bytes)
+                    evictLocked()
+                }
+                return bytes
+            } catch (e: Throwable) {
+                synchronized(lock) {
+                    if (entries[uri] === entry) entries.remove(uri)
+                    entry.deferred.cancel(CancellationException("download failed", e))
+                }
+                throw e
             }
-            throw e
         }
     }
 
