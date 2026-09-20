@@ -168,6 +168,17 @@
     <string name="settings_about_icon_description">Animeko Icon</string>
     <string name="settings_about_app_name">Animeko</string>
     <string name="settings_about_app_description">A one-stop platform for searching, following, and watching anime with bullet comments</string>
+    <string name="settings_about_build_info">Build info</string>
+    <string name="settings_build_info_branch">Branch</string>
+    <string name="settings_build_info_commit">Commit</string>
+    <string name="settings_build_info_commit_time">Commit time</string>
+    <string name="settings_build_info_build_type">Build type</string>
+    <string name="settings_build_info_distro_channel">Distribution channel</string>
+    <string name="settings_build_info_platform">Platform</string>
+    <string name="settings_build_info_unknown">Unknown</string>
+    <string name="settings_build_info_open_commit">View commit on GitHub</string>
+    <string name="settings_build_info_copy_all">Copy all</string>
+    <string name="settings_build_info_copied">Copied</string>
     <string name="settings_developers_main_contributors">Main contributors</string>
     <string name="settings_developers_project_initiator">Project initiator</string>
     <string name="settings_developers_daily_maintenance">Daily maintenance</string>
