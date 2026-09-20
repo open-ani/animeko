@@ -39,6 +39,7 @@ import androidx.compose.ui.input.key.key
 import androidx.compose.ui.input.key.type
 import androidx.compose.ui.input.pointer.PointerEventPass
 import androidx.compose.ui.input.pointer.PointerEventType
+import androidx.compose.ui.input.pointer.PointerType
 import androidx.compose.ui.input.pointer.SuspendingPointerInputModifierNode
 import androidx.compose.ui.input.pointer.isCtrlPressed
 import androidx.compose.ui.input.pointer.isMetaPressed
@@ -340,12 +341,17 @@ private class ImageDragOutNode(
             SuspendingPointerInputModifierNode {
                 awaitEachGesture {
                     val down = awaitFirstDown(requireUnconsumed = false, pass = PointerEventPass.Initial)
+                    // Mouse only. AWT runs the OS drag in a nested message loop on the toolkit thread
+                    // that waits for a mouse button release; a finger never sends one, so native touch
+                    // messages (including the pinch that started this) queue up until it gives up.
+                    if (down.type != PointerType.Mouse) return@awaitEachGesture
                     if (exported == null || !zoomable.isAtFitScale()) return@awaitEachGesture
                     val slop = viewConfiguration.touchSlop
                     while (true) {
                         val event = awaitPointerEvent(PointerEventPass.Initial)
                         val change = event.changes.firstOrNull { it.id == down.id } ?: break
                         if (!change.pressed) break
+                        if (event.changes.count { it.pressed } > 1) break
                         if ((change.position - down.position).getDistance() > slop) {
                             change.consume()
                             source.requestDragAndDropTransfer(change.position)
