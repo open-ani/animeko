@@ -22,13 +22,11 @@ internal val DEFAULT_OP_ED_SKIP_DURATION = VideoScaffoldConfig.Default.opEdSkipD
 
 @Stable
 class PlayerSkipOpEdState(
-    chapters: State<List<Chapter>>,
+    private val chapters: State<List<Chapter>>,
     private val onSkip: (targetMillis: Long) -> Unit,
 ) {
     private var currentChapter: CurrentChapter? by mutableStateOf(null)
-    private val opEdChapters by derivedStateOf {
-        chapters.value.map { CurrentChapter(chapter = it, false) }
-    }
+    private var opEdChapters = emptyList<CurrentChapter>()
 
     val skipped: Boolean by derivedStateOf {
         currentChapter?.skipped ?: false
@@ -50,22 +48,22 @@ class PlayerSkipOpEdState(
      * 并且如果[currentPos]在章节开头的位置，根据[skipped]跳过该章节
      */
     fun update(currentPos: Long) {
+        // 同一章节保留跳过状态；离开候选列表的章节不保留状态。
+        opEdChapters = chapters.value.map { chapter ->
+            opEdChapters.find {
+                it.chapter.name == chapter.name &&
+                        it.chapter.offsetMillis == chapter.offsetMillis &&
+                        it.chapter.durationMillis == chapter.durationMillis
+            } ?: CurrentChapter(chapter, false)
+        }
         // 在显示跳过提示范围
         val candidate = opEdChapters.find {
             it.chapter.offsetMillis in currentPos - 1000..currentPos + 5000
         }
-        currentChapter = when {
-            candidate == null -> {
-                currentChapter?.skipped = true
-                null
-            }
-
-            candidate.chapter == currentChapter?.chapter -> candidate.also {
-                it.skipped = currentChapter?.skipped == true
-            }
-
-            else -> candidate
+        if (candidate == null) {
+            currentChapter?.skipped = true
         }
+        currentChapter = candidate
         // 在跳过 OP/ED 范围
         currentChapter?.takeIf { it.chapter.offsetMillis in currentPos - 1000..currentPos }?.run {
             if (skipped) return@run

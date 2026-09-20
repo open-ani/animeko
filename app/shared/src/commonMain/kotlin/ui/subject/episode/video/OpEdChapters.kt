@@ -95,10 +95,23 @@ internal fun selectSkipChapters(
     mediaChapters: List<MediaChapter>,
     fallback: List<Chapter>,
 ): List<Chapter> {
-    return mediaChapters
-        .filter { it.kind != MediaChapterKind.CHAPTER }
-        .map { it.toChapter() }
-        .ifEmpty { fallback }
+    val explicit = mediaChapters.filter { it.kind != MediaChapterKind.CHAPTER }
+    if (explicit.isEmpty()) return fallback
+
+    val remainingFallback = fallback.filter { chapter ->
+        // AutoSkip 的两个时间点分别标为 OP 和 ED；其他候选按时间区间去重。
+        val kind = when (chapter.name) {
+            "OP" -> MediaChapterKind.OPENING
+            "ED" -> MediaChapterKind.ENDING
+            else -> null
+        }
+        explicit.none { marker ->
+            marker.kind == kind ||
+                    (marker.offsetMillis < chapter.offsetMillis + chapter.durationMillis &&
+                            chapter.offsetMillis < marker.offsetMillis + marker.durationMillis)
+        }
+    }
+    return (explicit.map { it.toChapter() } + remainingFallback).sortedBy { it.offsetMillis }
 }
 
 @OptIn(InternalMediampApi::class)
