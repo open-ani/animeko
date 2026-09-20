@@ -16,6 +16,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import me.him188.ani.app.data.models.preference.VideoScaffoldConfig
+import me.him188.ani.app.domain.media.player.prefetch.MediaTimeRange
 import org.openani.mediamp.metadata.Chapter
 import kotlin.time.Duration
 import kotlin.time.Duration.Companion.milliseconds
@@ -46,6 +47,15 @@ class PlayerSkipOpEdState(
         currentChapter != null && !skipped
     }
 
+    /**
+     * 即将被自动跳过的 OP/ED 结束后, 应提前缓存的时间范围; 当前没有需要预缓存的章节时为 `null`.
+     *
+     * 从章节开始前 [PREFETCH_LEAD_MILLIS] 起到章节结束为止有效, 范围为章节结束后的 [PREFETCH_DURATION_MILLIS],
+     * 这样跳过后播放器能立即从已缓存的数据续播. 由 [update] 维护.
+     */
+    var prefetchRange: MediaTimeRange? by mutableStateOf(null)
+        private set
+
     fun cancelSkipOpEd() {
         currentChapter?.skipped = true
     }
@@ -58,6 +68,7 @@ class PlayerSkipOpEdState(
      * 并且如果[currentPos]在章节开头的位置，根据[skipped]跳过该章节
      */
     fun update(currentPos: Long) {
+        prefetchRange = computePrefetchRange(currentPos)
         if (opEdChapters.isEmpty()) return
         // 在显示跳过提示范围
         opEdChapters.find { it.chapter.offsetMillis in currentPos - 1000..currentPos + 5000 }?.let {
@@ -75,6 +86,24 @@ class PlayerSkipOpEdState(
             skipped = true
             currentChapter = null
         }
+    }
+
+    private fun computePrefetchRange(currentPos: Long): MediaTimeRange? {
+        val upcoming = opEdChapters.firstOrNull {
+            val start = it.chapter.offsetMillis
+            val end = start + it.chapter.durationMillis
+            currentPos >= start - PREFETCH_LEAD_MILLIS && currentPos < end
+        } ?: return null
+        val end = upcoming.chapter.offsetMillis + upcoming.chapter.durationMillis
+        return MediaTimeRange(end, end + PREFETCH_DURATION_MILLIS)
+    }
+
+    companion object {
+        /** 提前多久开始预缓存跳过目标. */
+        const val PREFETCH_LEAD_MILLIS: Long = 60_000
+
+        /** 预缓存跳过目标之后多长的内容. */
+        const val PREFETCH_DURATION_MILLIS: Long = 30_000
     }
 }
 

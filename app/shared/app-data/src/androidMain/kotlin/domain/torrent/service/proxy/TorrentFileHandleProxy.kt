@@ -37,6 +37,10 @@ class TorrentFileHandleProxy(
         delegate.pause()
     }
 
+    override fun setPrefetchRange(start: Long, endInclusive: Long) {
+        delegate.setPrefetchRange(if (start < 0) null else start..endInclusive)
+    }
+
     override fun close() {
         scope.launch {
             delegate.close()

@@ -44,6 +44,7 @@ import me.him188.ani.app.torrent.api.pieces.PieceList
 import me.him188.ani.app.torrent.api.pieces.PiecePriorities
 import me.him188.ani.app.torrent.api.pieces.PieceState
 import me.him188.ani.app.torrent.api.pieces.TorrentDownloadController
+import me.him188.ani.app.torrent.api.pieces.asSequence
 import me.him188.ani.app.torrent.api.pieces.count
 import me.him188.ani.app.torrent.api.pieces.first
 import me.him188.ani.app.torrent.api.pieces.isEmpty
@@ -198,9 +199,31 @@ class AnitorrentDownloadSession(
                 handle.resume()
             }
 
+            override fun setPrefetchRangeImpl(byteRange: LongRange?) {
+                val pieceIndices = if (byteRange == null) emptyList() else piecesInFileRange(byteRange)
+                logger.info { "[$handleId][TorrentDownloadControl] Prefetch $relativePath range $byteRange -> pieces $pieceIndices" }
+                controller.setPrefetchPieces(pieceIndices)
+            }
+
             override suspend fun closeAndDelete() {
                 close()
                 withContext(Dispatchers.IO_) { deleteEntireTorrentIfNotInUse() }
+            }
+        }
+
+        /**
+         * 文件内 [byteRange] (相对文件开头, 闭区间) 覆盖的 pieceIndex, 按顺序.
+         */
+        fun piecesInFileRange(byteRange: LongRange): List<Int> {
+            if (length <= 0L) return emptyList()
+            val start = byteRange.first.coerceIn(0L, length - 1) + offset
+            val endInclusive = byteRange.last.coerceIn(0L, length - 1) + offset
+            if (endInclusive < start) return emptyList()
+            return with(pieces) {
+                pieces.asSequence()
+                    .filter { it.dataEndOffset > start && it.dataStartOffset <= endInclusive }
+                    .map { it.pieceIndex }
+                    .toList()
             }
         }
 
