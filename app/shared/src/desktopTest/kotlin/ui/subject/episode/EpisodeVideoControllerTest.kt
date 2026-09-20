@@ -550,6 +550,7 @@ class EpisodeVideoControllerTest {
         runOnIdle {
             isFullscreen = false
         }
+        settleFrame()
         waitUntil(timeoutMillis = WAIT_TIMEOUT) {
             watchTogetherPlayerController.isDraggablePopupVisible
         }
@@ -558,6 +559,7 @@ class EpisodeVideoControllerTest {
             isExpandedLayout = true
             sidebarVisible = false
         }
+        settleFrame()
         waitUntil(timeoutMillis = WAIT_TIMEOUT) {
             !watchTogetherPlayerController.isDraggablePopupVisible
         }
@@ -565,6 +567,7 @@ class EpisodeVideoControllerTest {
         runOnIdle {
             sidebarVisible = true
         }
+        settleFrame()
         waitUntil(timeoutMillis = WAIT_TIMEOUT) {
             watchTogetherPlayerController.isDraggablePopupVisible
         }
@@ -1810,6 +1813,7 @@ class EpisodeVideoControllerTest {
             }
         }
         waitForIdle()
+        settleFrame()
 
         runOnIdle {
             waitUntil(timeoutMillis = WAIT_TIMEOUT) { onNodeWithText("00:47 / 01:40").exists() }
@@ -1865,6 +1869,7 @@ class EpisodeVideoControllerTest {
                 }
             }
 
+            settleFrame()
             runOnIdle {
                 waitUntil(timeoutMillis = WAIT_TIMEOUT) { onNodeWithText("00:48 / 01:40").exists() }
                 assertEquals(NORMAL_VISIBLE, controllerState.visibility)
@@ -1872,6 +1877,7 @@ class EpisodeVideoControllerTest {
 
             currentPositionMillis += 5000L // 播放 5 秒
 
+            settleFrame()
             runOnIdle {
                 waitUntil(timeoutMillis = WAIT_TIMEOUT) { onNodeWithText("00:53 / 01:40").exists() }
                 assertEquals(NORMAL_VISIBLE, controllerState.visibility)
@@ -1903,6 +1909,7 @@ class EpisodeVideoControllerTest {
         progressSlider.performTouchInput {
             moveTo(playerBounds.topLeft + Offset(1f, 1f) - sliderBounds.topLeft)
         }
+        settleFrame()
         runOnIdle {
             waitUntil(timeoutMillis = WAIT_TIMEOUT) {
                 onNodeWithText("Release to cancel").exists()
@@ -1925,6 +1932,7 @@ class EpisodeVideoControllerTest {
         progressSlider.performTouchInput {
             moveTo(playerBounds.topLeft + Offset(1f, 1f) - sliderBounds.topLeft)
         }
+        settleFrame()
         runOnIdle {
             waitUntil(timeoutMillis = WAIT_TIMEOUT) {
                 onNodeWithText("Release to cancel").exists()
@@ -2031,7 +2039,7 @@ class EpisodeVideoControllerTest {
             gestureFamily = GestureFamily.TOUCH,
             openSideSheet = { onNodeWithTag(TAG_SHOW_MEDIA_SELECTOR).performClick() },
             waitForSideSheetOpen = { waitUntil(timeoutMillis = WAIT_TIMEOUT) { onNodeWithTag(TAG_MEDIA_SELECTOR_SHEET).exists() } },
-            waitForSideSheetClose = { waitUntil(timeoutMillis = WAIT_TIMEOUT) { onNodeWithTag(TAG_MEDIA_SELECTOR_SHEET).doesNotExist() } },
+            waitForSideSheetClose = { waitUntilFrames { onNodeWithTag(TAG_MEDIA_SELECTOR_SHEET).doesNotExist() } },
         )
     }
 
@@ -2041,7 +2049,7 @@ class EpisodeVideoControllerTest {
             gestureFamily = GestureFamily.TOUCH,
             openSideSheet = { onNodeWithTag(TAG_SELECT_EPISODE_ICON_BUTTON).performClick() },
             waitForSideSheetOpen = { waitUntil(timeoutMillis = WAIT_TIMEOUT) { onNodeWithTag(TAG_EPISODE_SELECTOR_SHEET).exists() } },
-            waitForSideSheetClose = { waitUntil(timeoutMillis = WAIT_TIMEOUT) { onNodeWithTag(TAG_EPISODE_SELECTOR_SHEET).doesNotExist() } },
+            waitForSideSheetClose = { waitUntilFrames { onNodeWithTag(TAG_EPISODE_SELECTOR_SHEET).doesNotExist() } },
         )
     }
 
@@ -2133,12 +2141,30 @@ class EpisodeVideoControllerTest {
         testMoveMouseAndWaitForHide()
     }
 
+    /**
+     * `mainClock.autoAdvance = false` 时 `waitUntil` 不推进帧时钟, 触发状态变化后先推进一帧,
+     * 让重组与布局完成, 再等待条件.
+     */
+    private fun AniComposeUiTest.settleFrame() = mainClock.advanceTimeByFrame()
+
+    /**
+     * 同 [settleFrame], 但条件要等动画完成 (如面板关闭) 才满足时, 每次轮询前推进一帧, 直到条件满足或超时.
+     */
+    private fun AniComposeUiTest.waitUntilFrames(timeoutMillis: Long = WAIT_TIMEOUT, condition: () -> Boolean) {
+        val deadline = System.currentTimeMillis() + timeoutMillis
+        while (!condition()) {
+            check(System.currentTimeMillis() < deadline) { "Condition still not satisfied after $timeoutMillis ms" }
+            mainClock.advanceTimeByFrame()
+        }
+    }
+
     private fun AniComposeUiTest.testMoveMouseAndWaitForHide() {
         // 移动鼠标来显示控制器
         runOnIdle {
             mainClock.autoAdvance = false // 三秒后会自动隐藏, 这里不能让他自动前进时间
             player.slightlyMoveFromCenterToRight()
         }
+        settleFrame()
         runOnIdle {
             waitUntil(timeoutMillis = WAIT_TIMEOUT) { topBar.exists() }
             assertEquals(
@@ -2240,10 +2266,12 @@ class EpisodeVideoControllerTest {
             performGesture = {
                 openSideSheet()
                 waitForIdle()
+                settleFrame()
                 root.performMouseInput {
                     moveTo(centerRight)
                 }
                 waitForIdle()
+                settleFrame()
                 waitForSideSheetOpen()
                 runOnIdle {
                     assertEquals(true, controllerState.alwaysOn)
@@ -2263,6 +2291,7 @@ class EpisodeVideoControllerTest {
             // 关闭面板后移动鼠标, 触发控制器的自动隐藏计时.
             root.slightlyMoveFromCenterToRight()
         }
+        settleFrame()
         runOnIdle {
             waitForSideSheetClose()
             assertEquals(false, controllerState.alwaysOn)
@@ -2285,7 +2314,7 @@ class EpisodeVideoControllerTest {
             gestureFamily = GestureFamily.MOUSE,
             openSideSheet = { onNodeWithTag(TAG_SHOW_MEDIA_SELECTOR).performClick() },
             waitForSideSheetOpen = { waitUntil(timeoutMillis = WAIT_TIMEOUT) { onNodeWithTag(TAG_MEDIA_SELECTOR_SHEET).exists() } },
-            waitForSideSheetClose = { waitUntil(timeoutMillis = WAIT_TIMEOUT) { onNodeWithTag(TAG_MEDIA_SELECTOR_SHEET).doesNotExist() } },
+            waitForSideSheetClose = { waitUntilFrames { onNodeWithTag(TAG_MEDIA_SELECTOR_SHEET).doesNotExist() } },
         )
     }
 
@@ -2295,7 +2324,7 @@ class EpisodeVideoControllerTest {
             gestureFamily = GestureFamily.MOUSE,
             openSideSheet = { onNodeWithTag(TAG_SELECT_EPISODE_ICON_BUTTON).performClick() },
             waitForSideSheetOpen = { waitUntil(timeoutMillis = WAIT_TIMEOUT) { onNodeWithTag(TAG_EPISODE_SELECTOR_SHEET).exists() } },
-            waitForSideSheetClose = { waitUntil(timeoutMillis = WAIT_TIMEOUT) { onNodeWithTag(TAG_EPISODE_SELECTOR_SHEET).doesNotExist() } },
+            waitForSideSheetClose = { waitUntilFrames { onNodeWithTag(TAG_EPISODE_SELECTOR_SHEET).doesNotExist() } },
         )
     }
 

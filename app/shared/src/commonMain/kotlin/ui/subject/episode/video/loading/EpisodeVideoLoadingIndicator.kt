@@ -23,12 +23,9 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import kotlinx.coroutines.delay
-import kotlinx.coroutines.flow.filterNotNull
-import kotlinx.coroutines.flow.flatMapLatest
-import kotlinx.coroutines.flow.flowOf
 import me.him188.ani.app.domain.media.cache.engine.MediaCacheEngineKey
-import me.him188.ani.app.domain.media.player.data.DownloadingMediaData
 import me.him188.ani.app.domain.player.VideoLoadingState
+import me.him188.ani.app.domain.player.downloadSpeedFlow
 import me.him188.ani.app.ui.foundation.ProvideCompositionLocalsForPreview
 import me.him188.ani.app.ui.foundation.TextWithBorder
 import me.him188.ani.app.ui.lang.Lang
@@ -68,14 +65,8 @@ fun EpisodeVideoLoadingIndicator(
     val state by playerState.state.collectAsStateWithLifecycle()
 
     val speed by remember(playerState) {
-        playerState.mediaData.filterNotNull().flatMapLatest { video ->
-            if (video is DownloadingMediaData) {
-                video.networkStats
-            } else {
-                flowOf(null)
-            }
-        }
-    }.collectAsStateWithLifecycle(null)
+        playerState.downloadSpeedFlow()
+    }.collectAsStateWithLifecycle(FileSize.Unspecified)
 
     if (state.isBuffering ||
         state.mediaStatus is MediaStatus.Error ||
@@ -83,9 +74,7 @@ fun EpisodeVideoLoadingIndicator(
     ) {
         EpisodeVideoLoadingIndicator(
             videoLoadingState,
-            speedProvider = {
-                speed?.downloadSpeed?.bytes ?: FileSize.Unspecified
-            },
+            speedProvider = { speed },
             optimizeForFullscreen = optimizeForFullscreen,
             playerError = state.mediaStatus is MediaStatus.Error,
             modifier = modifier,
