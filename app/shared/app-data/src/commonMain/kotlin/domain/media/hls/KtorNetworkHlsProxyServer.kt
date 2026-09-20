@@ -20,7 +20,6 @@ import io.ktor.utils.io.ByteWriteChannel
 import io.ktor.utils.io.readUTF8Line
 import io.ktor.utils.io.writeFully
 import kotlinx.atomicfu.atomic
-import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineName
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -34,6 +33,7 @@ import me.him188.ani.utils.coroutines.IO_
 import me.him188.ani.utils.logging.logger
 import me.him188.ani.utils.logging.warn
 import kotlin.concurrent.Volatile
+import kotlin.coroutines.cancellation.CancellationException
 import kotlin.time.Duration.Companion.seconds
 
 /**

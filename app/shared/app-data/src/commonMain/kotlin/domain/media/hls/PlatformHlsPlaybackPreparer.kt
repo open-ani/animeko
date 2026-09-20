@@ -23,7 +23,6 @@ import io.ktor.utils.io.readAvailable
 import kotlinx.atomicfu.atomic
 import kotlinx.atomicfu.locks.SynchronizedObject
 import kotlinx.atomicfu.locks.synchronized
-import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineName
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -49,6 +48,7 @@ import me.him188.ani.utils.logging.info
 import me.him188.ani.utils.logging.warn
 import org.openani.mediamp.source.UriMediaData
 import kotlin.concurrent.Volatile
+import kotlin.coroutines.cancellation.CancellationException
 import kotlin.math.roundToLong
 
 /**
@@ -636,7 +636,8 @@ private class SegmentCache(private val maxBytes: Long) {
             } catch (e: Throwable) {
                 synchronized(lock) {
                     if (entries[uri] === entry) entries.remove(uri)
-                    entry.deferred.cancel(CancellationException("download failed", e))
+                    // Deferred.cancel 要的是 kotlinx 的类型; 它和标准库的那个在公共元数据编译里不是同一个类型
+                    entry.deferred.cancel(kotlinx.coroutines.CancellationException("download failed", e))
                 }
                 throw e
             }
