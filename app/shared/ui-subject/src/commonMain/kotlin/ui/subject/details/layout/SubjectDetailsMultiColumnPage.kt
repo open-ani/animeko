@@ -85,7 +85,6 @@ import me.him188.ani.app.ui.lang.subject_details_login_to_collect
 import me.him188.ani.app.ui.lang.subject_details_rate
 import me.him188.ani.app.ui.lang.subject_details_rating
 import me.him188.ani.app.ui.lang.subject_details_related_subjects
-import me.him188.ani.app.ui.rating.EditableRatingState
 import me.him188.ani.app.ui.subject.AiringLabel
 import me.him188.ani.app.ui.subject.collection.components.EditableSubjectCollectionTypeButton
 import me.him188.ani.app.ui.subject.collection.progress.SubjectProgressButton
@@ -261,13 +260,13 @@ internal fun SubjectDetailsMultiColumnPage(
             ) {
                 RailCard {
                     SectionHeader(stringResource(Lang.subject_details_rating)) {
-                        EditRatingButton(state.editableRatingState)
+                        EditRatingButton(uiState.rating.selfRatingInfo.score, onClick = { state.requestEditRating() })
                     }
                     SubjectRatingSummary(
                         info.ratingInfo,
                         Modifier.padding(top = 8.dp),
                         scoreStyle = MaterialTheme.typography.headlineMedium,
-                        onClick = { state.editableRatingState.requestEdit() },
+                        onClick = { state.requestEditRating() },
                     )
                     RatingHistogram(info.ratingInfo, Modifier.padding(top = 16.dp))
                 }
@@ -505,7 +504,8 @@ private fun SubjectSidebar(
             }
         } else {
             EditableSubjectCollectionTypeButton(
-                state.editableSubjectCollectionTypeState,
+                uiState.collectionTypeEdit,
+                state,
                 Modifier.fillMaxWidth(),
             )
         }
@@ -575,7 +575,7 @@ private fun SubjectRatingRow(state: SubjectDetailsState, showHistogram: Boolean)
     ) {
         SubjectRatingSummary(
             info.ratingInfo,
-            onClick = { state.editableRatingState.requestEdit() },
+            onClick = { state.requestEditRating() },
         )
         if (showHistogram) {
             Spacer(Modifier.weight(1f))
@@ -591,14 +591,13 @@ private val RATING_HISTOGRAM_WIDTH = 274.dp
  * (复用手机版同款 [Lang.rating_self_score] 文案); 点击打开评分编辑.
  */
 @Composable
-private fun EditRatingButton(editableRatingState: EditableRatingState) {
-    TextButton({ editableRatingState.requestEdit() }) {
+private fun EditRatingButton(selfScore: Int, onClick: () -> Unit) {
+    TextButton(onClick) {
         Icon(
             Icons.Rounded.StarOutline,
             contentDescription = null,
             Modifier.size(18.dp),
         )
-        val selfScore = editableRatingState.selfRatingInfo.score
         Text(
             if (selfScore > 0) {
                 stringResource(Lang.rating_self_score, selfScore)

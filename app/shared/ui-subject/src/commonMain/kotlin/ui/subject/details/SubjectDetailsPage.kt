@@ -88,8 +88,6 @@ import com.kmpalette.rememberPaletteState
 import dev.chrisbanes.haze.rememberHazeState
 import kotlinx.coroutines.launch
 import kotlinx.serialization.Serializable
-import me.him188.ani.app.data.models.subject.RatingInfo
-import me.him188.ani.app.data.models.subject.SelfRatingInfo
 import me.him188.ani.app.data.models.subject.SubjectCollectionStats
 import me.him188.ani.app.data.models.subject.SubjectInfo
 import me.him188.ani.app.data.models.subject.SubjectProgressInfo
@@ -145,7 +143,8 @@ import me.him188.ani.app.ui.lang.subject_details_tab_discussions
 import me.him188.ani.app.ui.lang.subject_details_write_review
 import me.him188.ani.app.ui.rating.EditableRating
 import me.him188.ani.app.ui.rating.EditableRatingDialogsHost
-import me.him188.ani.app.ui.rating.EditableRatingState
+import me.him188.ani.app.ui.rating.EditableRatingActions
+import me.him188.ani.app.ui.rating.EditableRatingUiState
 import me.him188.ani.app.ui.richtext.RichTextDefaults
 import me.him188.ani.app.ui.search.LoadErrorCard
 import me.him188.ani.app.ui.subject.AiringLabelState
@@ -385,13 +384,13 @@ private fun SubjectDetailsPage(
             // 双栏 / 三栏: 全新自适应布局 (复用现有 SubjectDetailsState 数据).
             // 桌面无"评价" tab, 完整评论流与"写评价"从评价预览/热门评价卡进入.
             var showComments by rememberSaveable { mutableStateOf(false) }
-            EditableRatingDialogsHost(state.editableRatingState)
+            EditableRatingDialogsHost(uiState.rating, state)
             if (showComments) {
                 SubjectCommentsSheet(
                     state = state.subjectCommentState,
                     onClickUrl = onClickCommentUrl,
                     onClickImage = onClickCommentImage,
-                    onClickWriteReview = { state.editableRatingState.requestEdit() },
+                    onClickWriteReview = { state.requestEditRating() },
                     onDismissRequest = { showComments = false },
                     reportState = state.subjectCommentReportState,
                     onOpenOriginal = onOpenCommentOriginal,
@@ -444,11 +443,11 @@ private fun SubjectDetailsPage(
                         Text(stringResource(Lang.subject_details_login_to_collect))
                     }
                 } else {
-                    EditableSubjectCollectionTypeButton(state.editableSubjectCollectionTypeState)
+                    EditableSubjectCollectionTypeButton(uiState.collectionTypeEdit, state)
                 }
             },
             rating = {
-                EditableRating(state.editableRatingState)
+                EditableRating(uiState.rating, state)
             },
             selectEpisodeButton = {
                 SubjectDetailsDefaults.SelectEpisodeButtons(
@@ -473,7 +472,7 @@ private fun SubjectDetailsPage(
                             icon = {
                                 Icon(Icons.Rounded.AddComment, null)
                             },
-                            onClick = { state.editableRatingState.requestEdit() },
+                            onClick = { state.requestEditRating() },
                             expanded = !nestedScrollableColumnState.isHeaderScrolledOut,
                         )
                     }
@@ -592,18 +591,9 @@ private fun PlaceholderSubjectDetailsPage(
             ) { Text(stringResource(Lang.subject_details_login_to_collect)) }
         },
         rating = {
-            val scope = rememberCoroutineScope()
             EditableRating(
-                remember {
-                    EditableRatingState(
-                        stateOf(RatingInfo.Empty),
-                        stateOf(SelfRatingInfo.Empty),
-                        stateOf(false),
-                        { false },
-                        { },
-                        scope,
-                    )
-                },
+                EditableRatingUiState.Placeholder,
+                EditableRatingActions.Noop,
                 modifier = Modifier.placeholder(true),
             )
         },

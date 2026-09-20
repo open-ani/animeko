@@ -59,10 +59,11 @@ import me.him188.ani.app.ui.comment.CommentState
 import me.him188.ani.app.ui.comment.UICommentSource
 import me.him188.ani.app.ui.comment.reportSnapshotText
 import me.him188.ani.app.ui.comment.toDataReason
-import me.him188.ani.app.ui.foundation.produceState
 import me.him188.ani.app.ui.foundation.stateOf
-import me.him188.ani.app.ui.rating.EditableRatingState
+import me.him188.ani.app.ui.rating.EditableRatingActions
+import me.him188.ani.app.ui.rating.RatingEditController
 import me.him188.ani.app.ui.subject.collection.components.EditableSubjectCollectionTypeState
+import me.him188.ani.app.ui.subject.collection.components.SubjectCollectionTypeEditActions
 import me.him188.ani.app.ui.subject.details.updateRating
 import me.him188.ani.app.ui.subject.episode.list.EpisodeListUiState
 import me.him188.ani.datasources.api.PackedDate
@@ -168,17 +169,13 @@ class DefaultSubjectDetailsStateFactory : SubjectDetailsStateFactory, KoinCompon
             this,
         )
 
-        val editableRatingState = EditableRatingState(
-            ratingInfo = stateOf(subjectInfo.ratingInfo),
-            selfRatingInfo = subjectCollectionFlow.map { it.selfRatingInfo }
-                .produceState(SelfRatingInfo.Empty, this),
-            enableEdit = subjectCollectionFlow
-                .map { it.collectionType != UnifiedCollectionType.NOT_COLLECTED }
-                .produceState(false, this),
+        val ratingEditController = RatingEditController(
             isCollected = {
-                val collection =
-                    subjectCollectionFlow.replayCache.firstOrNull() ?: return@EditableRatingState false
+                val collection = subjectCollectionFlow.replayCache.firstOrNull() ?: return@RatingEditController false
                 collection.collectionType != UnifiedCollectionType.NOT_COLLECTED
+            },
+            currentSelfRating = {
+                subjectCollectionFlow.replayCache.firstOrNull()?.selfRatingInfo ?: SelfRatingInfo.Empty
             },
             onRate = { request ->
                 subjectCollectionRepository.updateRating(
@@ -189,6 +186,15 @@ class DefaultSubjectDetailsStateFactory : SubjectDetailsStateFactory, KoinCompon
             this,
             subjectId,
         )
+        val ratingUiStateFlow = ratingEditController.uiStateFlow(
+            ratingInfo = subjectInfo.ratingInfo,
+            selfRatingInfo = subjectCollectionFlow.map { it.selfRatingInfo },
+            enableEdit = subjectCollectionFlow.map { it.collectionType != UnifiedCollectionType.NOT_COLLECTED },
+        )
+
+        val actions = object : SubjectDetailsActions,
+            SubjectCollectionTypeEditActions by editableSubjectCollectionTypeState,
+            EditableRatingActions by ratingEditController {}
 
 
         val comments = bangumiCommentRepository.subjectCommentsPager(subjectId)
@@ -290,18 +296,19 @@ class DefaultSubjectDetailsStateFactory : SubjectDetailsStateFactory, KoinCompon
                 .map { it.computeExposed() }
                 .map { PagingData.from(it) }
                 .cachedIn(this),
-            editableSubjectCollectionTypeState = editableSubjectCollectionTypeState,
-            editableRatingState = editableRatingState,
             subjectCommentState = subjectCommentState,
             subjectCommentReportState = subjectCommentReportState,
+            actions = actions,
             // 页面展示内容只从这一处派生, 每分钟重算一次以跟上日期变化 (播出状态、未开播判断)
             uiState = combine(
                 minuteTicker,
                 subjectCollectionFlow,
                 playProgressFlow,
-                relatedPersonsFlow,
-                relatedCharactersFlow,
-            ) { _, collection, playProgress, persons, characters ->
+                combine(relatedPersonsFlow, relatedCharactersFlow) { persons, characters ->
+                    persons?.size to characters?.size
+                },
+                combine(editableSubjectCollectionTypeState.presentationFlow, ratingUiStateFlow) { c, r -> c to r },
+            ) { _, collection, playProgress, (staffCount, charactersCount), (collectionTypeEdit, rating) ->
                 val now = Clock.System.now()
                 SubjectDetailsUiState(
                     subjectId = subjectId,
@@ -313,8 +320,10 @@ class DefaultSubjectDetailsStateFactory : SubjectDetailsStateFactory, KoinCompon
                         recurrence = collection.recurrence,
                     ),
                     episodeListUiState = EpisodeListUiState.from(collection, now, playProgress),
-                    totalStaffCount = persons?.size,
-                    totalCharactersCount = characters?.size,
+                    totalStaffCount = staffCount,
+                    totalCharactersCount = charactersCount,
+                    collectionTypeEdit = collectionTypeEdit,
+                    rating = rating,
                 )
             }.stateIn(
                 this, SharingStarted.WhileSubscribed(5000),

@@ -114,7 +114,7 @@ internal fun groupThousands(n: Int): String {
  *
  * 用于双栏/三栏中栏评分行与三栏右栏"评分"卡.
  *
- * @param onClick 非 null 时整块可点击 (打开评分编辑, 见 `EditableRatingState.requestEdit`).
+ * @param onClick 非 null 时整块可点击 (打开评分编辑, 见 `SubjectDetailsActions.requestEditRating`).
  */
 @Composable
 fun SubjectRatingSummary(
