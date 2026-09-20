@@ -56,6 +56,7 @@ import me.him188.ani.app.ui.subject.details.sections.SubjectSummarySection
 import me.him188.ani.app.ui.subject.details.sections.SubjectTagsSection
 import me.him188.ani.app.ui.subject.details.sections.ViewAllSheet
 import me.him188.ani.app.ui.subject.details.state.SubjectDetailsState
+import me.him188.ani.app.ui.subject.details.state.rememberAiringLabelState
 import me.him188.ani.app.ui.subject.episode.list.EpisodeListItem
 import org.jetbrains.compose.resources.stringResource
 
@@ -85,10 +86,10 @@ internal fun CompactDetailsTabContent(
 
     val exposedCharacters = state.exposedCharactersPager.collectAsLazyPagingItemsWithLifecycle()
     val allCharacters = state.charactersPager.collectAsLazyPagingItemsWithLifecycle()
-    val totalCharactersCount by state.totalCharactersCountState
+    val totalCharactersCount = presentation.totalCharactersCount
     val exposedStaff = state.exposedStaffPager.collectAsLazyPagingItemsWithLifecycle()
     val allStaff = state.staffPager.collectAsLazyPagingItemsWithLifecycle()
-    val totalStaffCount by state.totalStaffCountState
+    val totalStaffCount = presentation.totalStaffCount
     val related = state.relatedSubjectsPager.collectAsLazyPagingItemsWithLifecycle()
 
     val horizontalPaddingValues = PaddingValues(horizontal = horizontalPadding)
@@ -113,7 +114,7 @@ internal fun CompactDetailsTabContent(
                         SectionHeaderCacheButton(onClickCache, showLabel = false)
                         SectionHeaderActionButton(onShowEpisodeList) {
                             AiringLabel(
-                                state.airingLabelState,
+                                presentation.rememberAiringLabelState(),
                                 style = LocalTextStyle.current,
                                 progressColor = MaterialTheme.colorScheme.primary,
                             )

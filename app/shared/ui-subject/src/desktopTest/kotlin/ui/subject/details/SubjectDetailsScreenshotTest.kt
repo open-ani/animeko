@@ -29,16 +29,15 @@ import me.him188.ani.app.data.models.subject.TestSubjectCollections
 import me.him188.ani.app.data.models.subject.TestSubjectInfo
 import me.him188.ani.app.ui.comment.createTestCommentState
 import me.him188.ani.app.ui.foundation.ProvideCompositionLocalsForPreview
-import me.him188.ani.app.ui.foundation.stateOf
 import me.him188.ani.app.ui.rating.createTestEditableRatingState
 import me.him188.ani.app.ui.search.createTestPager
 import me.him188.ani.app.ui.subject.collection.components.createTestEditableSubjectCollectionTypeState
-import me.him188.ani.app.ui.subject.collection.progress.createTestSubjectProgressState
-import me.him188.ani.app.ui.subject.createTestAiringLabelState
 import me.him188.ani.app.ui.subject.details.state.SubjectDetailsPresentation
 import me.him188.ani.app.ui.subject.details.state.SubjectDetailsState
 import me.him188.ani.app.ui.subject.episode.list.TestEpisodeListUiState
 import me.him188.ani.app.ui.user.TestSelfInfoUiState
+import me.him188.ani.app.data.models.subject.TestSubjectProgressInfos
+import me.him188.ani.app.ui.subject.TestSubjectAiringInfo
 import me.him188.ani.datasources.api.topic.UnifiedCollectionType
 import me.him188.ani.utils.platform.annotations.TestOnly
 import org.jetbrains.skia.EncodedImageFormat
@@ -65,14 +64,10 @@ class SubjectDetailsScreenshotTest {
         return SubjectDetailsState(
             subjectId = TestSubjectInfo.subjectId,
             info = TestSubjectInfo,
-            selfCollectionTypeState = stateOf(UnifiedCollectionType.DOING),
-            airingLabelState = createTestAiringLabelState(),
             charactersPager = createTestPager(TestSubjectCharacterList),
             exposedCharactersPager = createTestPager(TestSubjectCharacterList.take(8)),
-            totalCharactersCountState = stateOf(TestSubjectCharacterList.size),
             staffPager = createTestPager(TestSubjectStaffInfo),
             exposedStaffPager = createTestPager(TestSubjectStaffInfo.take(10)),
-            totalStaffCountState = stateOf(TestSubjectStaffInfo.size),
             relatedSubjectsPager = createTestPager(TestRelatedSubjects),
             editableSubjectCollectionTypeState = createTestEditableSubjectCollectionTypeState(
                 MutableStateFlow(UnifiedCollectionType.DOING),
@@ -83,13 +78,17 @@ class SubjectDetailsScreenshotTest {
                 selfRatingInfo = TestSelfRatingInfo,
                 backgroundScope = scope,
             ),
-            subjectProgressState = createTestSubjectProgressState(),
             subjectCommentState = createTestCommentState(scope),
             presentation = MutableStateFlow(
                 SubjectDetailsPresentation(
                     subjectId = TestSubjectInfo.subjectId,
                     displayName = TestSubjectInfo.displayName,
+                    selfCollectionType = UnifiedCollectionType.DOING,
+                    airingInfo = TestSubjectAiringInfo,
+                    progressInfo = TestSubjectProgressInfos.ContinueWatching2,
                     episodeListUiState = TestEpisodeListUiState,
+                    totalStaffCount = TestSubjectStaffInfo.size,
+                    totalCharactersCount = TestSubjectCharacterList.size,
                     isPlaceholder = false,
                 ),
             ),

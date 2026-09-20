@@ -166,6 +166,8 @@ import me.him188.ani.app.ui.subject.details.layout.SubjectDetailsMultiColumnPlac
 import me.him188.ani.app.ui.subject.details.sections.SubjectCommentsSheet
 import me.him188.ani.app.ui.subject.details.state.SubjectDetailsState
 import me.him188.ani.app.ui.subject.details.state.createTestSubjectDetailsState
+import me.him188.ani.app.ui.subject.details.state.rememberAiringLabelState
+import me.him188.ani.app.ui.subject.details.state.rememberSubjectProgressState
 import me.him188.ani.app.ui.subject.episode.list.EpisodeListDialog
 import me.him188.ani.app.ui.subject.episode.list.EpisodeListItem
 import me.him188.ani.app.ui.subject.person.PeoplePreviewHost
@@ -430,7 +432,7 @@ private fun SubjectDetailsPage(
             seasonTags = {
                 SubjectDetailsDefaults.SeasonTag(
                     airDate = state.info?.airDate ?: PackedDate.Invalid,
-                    airingLabelState = state.airingLabelState,
+                    airingLabelState = presentation.rememberAiringLabelState(),
                 )
             },
             collectionData = {
@@ -450,7 +452,7 @@ private fun SubjectDetailsPage(
             },
             selectEpisodeButton = {
                 SubjectDetailsDefaults.SelectEpisodeButtons(
-                    state.subjectProgressState,
+                    presentation.rememberSubjectProgressState(),
                     onShowEpisodeList = { showSelectEpisode = true },
                     onPlay = onPlay,
                 )
