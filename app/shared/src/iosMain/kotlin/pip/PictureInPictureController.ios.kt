@@ -36,8 +36,10 @@ import platform.Foundation.NSKeyValueObservingOptionInitial
 import platform.Foundation.NSKeyValueObservingOptionNew
 import platform.Foundation.NSKeyValueObservingOptions
 import platform.Foundation.NSKeyValueObservingProtocol
+import platform.Foundation.NSNotificationCenter
 import platform.Foundation.addObserver
 import platform.Foundation.removeObserver
+import platform.UIKit.UIApplicationDidBecomeActiveNotification
 import platform.darwin.NSObject
 import platform.darwin.dispatch_async
 import platform.darwin.dispatch_get_main_queue
@@ -112,6 +114,16 @@ private class IosPictureInPictureController(
     ) {
         refreshPossible()
     }
+    
+    private val foregroundObserver: Any =
+        NSNotificationCenter.defaultCenter.addObserverForName(
+            UIApplicationDidBecomeActiveNotification, null, null,
+            usingBlock = {
+                if (pipController.isPictureInPictureActive()) {
+                    pipController.stopPictureInPicture()
+                }
+            },
+        )
 
     private fun refreshPossible() {
         _isPictureInPicturePossible.value = pipController.isPictureInPicturePossible()
@@ -130,8 +142,16 @@ private class IosPictureInPictureController(
         }
     }
 
+    override fun exitPictureInPicture() {
+        // 系统动画把 AVPlayerLayer 从小窗收回原位, 同一 AVPlayer 不中断播放
+        if (pipController.isPictureInPictureActive()) {
+            pipController.stopPictureInPicture()
+        }
+    }
+
     fun dispose() {
         scope.cancel()
+        NSNotificationCenter.defaultCenter.removeObserver(foregroundObserver)
         pipController.removeObserver(possibleObserver, KEY_IS_PICTURE_IN_PICTURE_POSSIBLE)
         pipController.delegate = null
     }

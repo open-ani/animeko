@@ -24,8 +24,7 @@ import org.openani.mediamp.MediampPlayer
  *
  * 使用 [LocalPictureInPictureController] 获取当前控制器; 默认值为 [NoOpPictureInPictureController]
  * (不支持的平台或播放器).
- *
- * 设计文档: docs/dev/picture-in-picture.md
+ * 
  */
 @Stable
 interface PictureInPictureController {
@@ -59,6 +58,15 @@ interface PictureInPictureController {
      * 立即进入小窗 (控制栏手动入口). 仅在 [isPictureInPicturePossible] 为 true 时调用.
      */
     fun enterPictureInPicture()
+
+    /**
+     * 退出小窗, 让小窗内容还原到应用内原播放位置 (同一播放器, 不中断播放).
+     *
+     * 默认不做事: Android 没有以编程方式退出小窗的公开 API (用户点击小窗即可还原);
+     * iOS 在用户回到应用时系统不会自动收起小窗, 需要页面在此时调用本方法.
+     */
+    fun exitPictureInPicture() {
+    }
 }
 
 /**
