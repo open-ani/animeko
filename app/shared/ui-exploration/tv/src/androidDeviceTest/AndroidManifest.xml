@@ -7,7 +7,18 @@
   ~ https://github.com/open-ani/ani/blob/main/LICENSE
   -->
 
-<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+        xmlns:tools="http://schemas.android.com/tools">
+
+
+    <!-- TV 界面的 UI 测试按电视的显示规格 (960×540dp) 运行, 见 TvDisplayRunListener. -->
+    <instrumentation
+            android:name="androidx.test.runner.AndroidJUnitRunner"
+            tools:node="merge">
+        <meta-data
+                android:name="listener"
+                android:value="me.him188.ani.app.ui.framework.TvDisplayRunListener" />
+    </instrumentation>
 
     <application android:pageSizeCompat="enabled">
         <activity

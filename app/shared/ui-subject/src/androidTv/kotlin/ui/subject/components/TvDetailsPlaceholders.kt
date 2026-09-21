@@ -16,7 +16,6 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.material3.minimumInteractiveComponentSize
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -78,10 +77,10 @@ internal fun TvDetailsEpisodePlaceholder(modifier: Modifier = Modifier) {
     }
 }
 
-/** Match the real action's minimum interaction area as well as its visible pill. */
+/** Same height as the real action, whose pill is its whole layout area. */
 @Composable
 internal fun TvDetailsActionPlaceholder(modifier: Modifier = Modifier) {
-    Box(modifier.minimumInteractiveComponentSize(), contentAlignment = Alignment.Center) {
+    Box(modifier) {
         TvPlaceholderBlock(Modifier.fillMaxWidth().height(TvSubjectDetailsDefaults.ActionHeight)
             .testTag("tv-details-action-placeholder-pill"), TvSubjectDetailsDefaults.ActionShape)
     }

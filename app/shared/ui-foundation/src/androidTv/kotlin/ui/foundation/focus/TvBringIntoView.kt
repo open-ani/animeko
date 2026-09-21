@@ -11,6 +11,7 @@ package me.him188.ani.leanback.ui.foundation.focus
 
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.gestures.BringIntoViewSpec
+import kotlin.math.abs
 
 /*
  * 焦点驱动滚动 (BringIntoView) 的策略原语 (atv-architecture.md §14.4-9).
@@ -32,3 +33,22 @@ class TvAnchoredBringIntoViewSpec(private val leadingReservePx: () -> Float = { 
     override fun calculateScrollDistance(offset: Float, size: Float, containerSize: Float): Float =
         offset - leadingReservePx()
 }
+
+/**
+ * 枢轴式策略: 聚焦项的前缘滚到容器 30% 处; 剩余空间放不下聚焦项时, 改为让其后缘贴住容器后缘.
+ *
+ * 与 Compose 在声明了 leanback 特性的设备上使用的默认策略一致. 由 TV 主题显式提供,
+ * 未声明 leanback 的设备 (部分电视盒子、手机系统镜像的模拟器) 上的滚动行为因此与电视相同.
+ */
+@OptIn(ExperimentalFoundationApi::class)
+object TvPivotBringIntoViewSpec : BringIntoViewSpec {
+    private const val PARENT_FRACTION = 0.3f
+
+    override fun calculateScrollDistance(offset: Float, size: Float, containerSize: Float): Float {
+        val itemSize = abs(size)
+        val pivot = PARENT_FRACTION * containerSize
+        val target = if (itemSize <= containerSize && containerSize - pivot < itemSize) containerSize - itemSize else pivot
+        return offset - target
+    }
+}
+

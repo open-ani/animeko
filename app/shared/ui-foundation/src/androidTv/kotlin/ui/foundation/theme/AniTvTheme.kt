@@ -9,12 +9,15 @@
 
 package me.him188.ani.leanback.ui.foundation.theme
 
+import androidx.compose.foundation.gestures.LocalBringIntoViewSpec
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.remember
 import androidx.compose.ui.graphics.Color
 import androidx.tv.material3.MaterialTheme
 import com.materialkolor.PaletteStyle
 import com.materialkolor.dynamicColorScheme
+import me.him188.ani.leanback.ui.foundation.focus.TvPivotBringIntoViewSpec
 
 object AniTvThemeDefaults {
     /** 与手机端 [me.him188.ani.app.data.models.preference.ThemeSettings] 默认种子色一致. */
@@ -42,9 +45,8 @@ fun AniTvTheme(
     )
     val tvColorScheme = remember(m3ColorScheme) { m3ColorScheme.toTvColorScheme() }
     androidx.compose.material3.MaterialTheme(colorScheme = m3ColorScheme) {
-        MaterialTheme(
-            colorScheme = tvColorScheme,
-            content = content,
-        )
+        MaterialTheme(colorScheme = tvColorScheme) {
+            CompositionLocalProvider(LocalBringIntoViewSpec provides TvPivotBringIntoViewSpec, content = content)
+        }
     }
 }
