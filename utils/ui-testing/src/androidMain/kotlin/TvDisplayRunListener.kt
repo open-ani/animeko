@@ -10,6 +10,7 @@
 package me.him188.ani.app.ui.framework
 
 import android.os.ParcelFileDescriptor
+import android.util.Log
 import androidx.test.platform.app.InstrumentationRegistry
 import org.junit.runner.Description
 import org.junit.runner.Result
@@ -20,6 +21,7 @@ import org.junit.runner.notification.RunListener
  * 运行结束后还原.
  *
  * TV 界面的 UI 测试按电视的显示规格断言布局与焦点, 而测试设备可能是任意尺寸的手机模拟器.
+ * 系统最多把显示放大到物理尺寸的 2 倍, 因此设备的物理屏幕至少要有 960×540.
  *
  * 在模块的 `androidDeviceTest/AndroidManifest.xml` 中注册:
  * ```xml
@@ -39,6 +41,14 @@ class TvDisplayRunListener : RunListener() {
             if (maxOf(metrics.widthPixels, metrics.heightPixels) == WIDTH_PX && metrics.densityDpi == DENSITY_DPI) return
             Thread.sleep(100)
         }
+        // 系统最多把显示放大到物理尺寸的 2 倍, 物理屏幕小于 960x540 的设备达不到电视规格.
+        val metrics = InstrumentationRegistry.getInstrumentation().targetContext.resources.displayMetrics
+        Log.e(
+            "TvDisplayRunListener",
+            "Display is ${metrics.widthPixels}x${metrics.heightPixels} @ ${metrics.densityDpi}dpi instead of " +
+                    "${WIDTH_PX}x$HEIGHT_PX @ ${DENSITY_DPI}dpi. TV UI tests need a device whose physical screen " +
+                    "is at least ${WIDTH_PX / 2}x${HEIGHT_PX / 2}.",
+        )
     }
 
     override fun testRunFinished(result: Result?) {

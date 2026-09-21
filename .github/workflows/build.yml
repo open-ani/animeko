@@ -1111,6 +1111,7 @@ jobs:
       with:
         api-level: '30'
         arch: 'x86_64'
+        profile: 'pixel_2'
         ram-size: '2048M'
         emulator-boot-timeout: '1800'
         script: './gradlew connectedDeviceTest --continue "-Pandroid.min.sdk=30" "--scan" "-Porg.gradle.daemon.idletimeout=60000" "-Dfile.encoding=UTF-8" "-Dorg.gradle.jvmargs=-Xmx3g -Dkotlin.daemon.jvm.options=-Xmx2g" "-Dkotlin.daemon.jvm.options=-Xmx2g"; status=$?; killall -INT crashpad_handler || true; exit $status'
@@ -1149,6 +1150,7 @@ jobs:
       with:
         api-level: '36'
         arch: 'x86_64'
+        profile: 'pixel_2'
         ram-size: '2048M'
         emulator-boot-timeout: '1800'
         script: './gradlew connectedDeviceTest --continue "-Pandroid.min.sdk=30" "--scan" "-Porg.gradle.daemon.idletimeout=60000" "-Dfile.encoding=UTF-8" "-Dorg.gradle.jvmargs=-Xmx3g -Dkotlin.daemon.jvm.options=-Xmx2g" "-Dkotlin.daemon.jvm.options=-Xmx2g"; status=$?; killall -INT crashpad_handler || true; exit $status'
