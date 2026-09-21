@@ -9,6 +9,8 @@
 
 package me.him188.ani.app.ui.subject.relations
 
+import androidx.compose.foundation.ScrollState
+import androidx.compose.foundation.gestures.animateScrollBy
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
@@ -40,17 +42,25 @@ import androidx.compose.runtime.Immutable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.input.pointer.PointerEventPass
+import androidx.compose.ui.input.pointer.PointerEventType
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import kotlinx.coroutines.launch
 import me.him188.ani.app.data.models.subject.SubjectRelationGraph
 import me.him188.ani.app.data.models.subject.SubjectRelationGraphSubject
 import me.him188.ani.app.ui.adaptive.AniTopAppBar
+import me.him188.ani.app.ui.adaptive.HorizontalScrollControlScaffoldOnDesktop
+import me.him188.ani.app.ui.foundation.HorizontalScrollControlState
+import me.him188.ani.app.ui.foundation.rememberHorizontalScrollControlState
 import me.him188.ani.app.ui.foundation.theme.AniThemeDefaults
 import me.him188.ani.app.ui.lang.Lang
 import me.him188.ani.app.ui.lang.subject_relation_graph_summary
@@ -238,49 +248,91 @@ internal fun SubjectRelationGraphRow(
         val index = (presentation.currentMainIndex - 1).coerceAtLeast(0)
         horizontalScrollState.scrollTo(with(density) { (WIDE_COLUMN_WIDTH * index).roundToPx() })
     }
-    Column(modifier.verticalScroll(rememberScrollState()).padding(bottom = 24.dp)) {
+    val verticalScrollState = rememberScrollState()
+    val scope = rememberCoroutineScope()
+    Column(
+        modifier
+            .verticalWheelScrollsHorizontally(horizontalScrollState, verticalScrollState)
+            .verticalScroll(verticalScrollState)
+            .padding(bottom = 24.dp),
+    ) {
         SubjectRelationGraphHeader(
             presentation,
             Modifier.padding(start = horizontalPadding, end = horizontalPadding, top = 4.dp, bottom = 24.dp),
         )
-        Row(Modifier.horizontalScroll(horizontalScrollState).padding(horizontal = horizontalPadding)) {
-            val largeStyle = SubjectRelationGraphDefaults.mainNodeStyle(isMinor = false, large = true)
-            val colors = SubjectRelationGraphDefaults.timelineColors()
-            graph.mainline.forEachIndexed { index, node ->
-                Column(Modifier.width(WIDE_COLUMN_WIDTH)) {
-                    // 次要条目的卡片较矮, 底部对齐, 使所有列的时间线在同一高度
-                    Box(Modifier.height(largeStyle.height).padding(end = 24.dp), Alignment.BottomStart) {
-                        SubjectRelationGraphMainNodeCard(
-                            node,
-                            ordinal = presentation.ordinals[index],
-                            isCurrent = node.subject.subjectId == graph.subjectId,
-                            style = SubjectRelationGraphDefaults.mainNodeStyle(node.isMinor, large = true),
-                            onClick = { onClickSubject(node.subject) },
-                            Modifier.fillMaxWidth(),
+        // 桌面端鼠标没有横向滚轮, 悬停时显示左右翻页按钮
+        HorizontalScrollControlScaffoldOnDesktop(
+            rememberHorizontalScrollControlState(horizontalScrollState) { direction ->
+                val distance = with(density) { (WIDE_COLUMN_WIDTH * 2).toPx() }
+                scope.launch {
+                    horizontalScrollState.animateScrollBy(
+                        if (direction == HorizontalScrollControlState.Direction.BACKWARD) -distance else distance,
+                    )
+                }
+            },
+        ) {
+            Row(Modifier.horizontalScroll(horizontalScrollState).padding(horizontal = horizontalPadding)) {
+                val largeStyle = SubjectRelationGraphDefaults.mainNodeStyle(isMinor = false, large = true)
+                val colors = SubjectRelationGraphDefaults.timelineColors()
+                graph.mainline.forEachIndexed { index, node ->
+                    Column(Modifier.width(WIDE_COLUMN_WIDTH)) {
+                        // 次要条目的卡片较矮, 底部对齐, 使所有列的时间线在同一高度
+                        Box(Modifier.height(largeStyle.height).padding(end = 24.dp), Alignment.BottomStart) {
+                            SubjectRelationGraphMainNodeCard(
+                                node,
+                                ordinal = presentation.ordinals[index],
+                                isCurrent = node.subject.subjectId == graph.subjectId,
+                                style = SubjectRelationGraphDefaults.mainNodeStyle(node.isMinor, large = true),
+                                onClick = { onClickSubject(node.subject) },
+                                Modifier.fillMaxWidth(),
+                            )
+                        }
+                        Spacer(
+                            Modifier.fillMaxWidth().height(48.dp).timelineHorizontal(
+                                colors = colors,
+                                dotCenterX = 20.dp,
+                                dot = timelineDot(presentation, index),
+                                lineBefore = timelineLine(presentation, index, before = true),
+                                lineAfter = timelineLine(presentation, index, before = false),
+                            ),
+                        )
+                        SubjectRelationGraphBranchList(
+                            node.branches,
+                            currentSubjectId = graph.subjectId,
+                            collapsible = false,
+                            onClick = onClickSubject,
+                            Modifier.padding(end = 24.dp),
+                            lineStart = 19.dp,
                         )
                     }
-                    Spacer(
-                        Modifier.fillMaxWidth().height(48.dp).timelineHorizontal(
-                            colors = colors,
-                            dotCenterX = 20.dp,
-                            dot = timelineDot(presentation, index),
-                            lineBefore = timelineLine(presentation, index, before = true),
-                            lineAfter = timelineLine(presentation, index, before = false),
-                        ),
-                    )
-                    SubjectRelationGraphBranchList(
-                        node.branches,
-                        currentSubjectId = graph.subjectId,
-                        collapsible = false,
-                        onClick = onClickSubject,
-                        Modifier.padding(end = 24.dp),
-                        lineStart = 19.dp,
-                    )
                 }
             }
         }
         if (graph.truncated) {
             TruncatedHint(Modifier.padding(horizontal = horizontalPadding).padding(top = 24.dp))
+        }
+    }
+}
+
+/**
+ * 页面的主轴是横向的, 而鼠标通常只有纵向滚轮: 当页面在滚轮方向上无法纵向滚动时, 用纵向滚轮横向滚动时间线.
+ */
+private fun Modifier.verticalWheelScrollsHorizontally(
+    horizontalScrollState: ScrollState,
+    verticalScrollState: ScrollState,
+): Modifier = pointerInput(horizontalScrollState, verticalScrollState) {
+    awaitPointerEventScope {
+        while (true) {
+            val event = awaitPointerEvent(PointerEventPass.Initial)
+            if (event.type != PointerEventType.Scroll) continue
+            val change = event.changes.firstOrNull() ?: continue
+            val delta = change.scrollDelta
+            if (delta.x != 0f || delta.y == 0f) continue
+            val canScrollVertically =
+                if (delta.y > 0) verticalScrollState.canScrollForward else verticalScrollState.canScrollBackward
+            if (canScrollVertically) continue
+            horizontalScrollState.dispatchRawDelta(delta.y * WHEEL_SCROLL_STEP.toPx())
+            change.consume()
         }
     }
 }
@@ -343,3 +395,4 @@ private fun TruncatedHint(modifier: Modifier = Modifier) {
 
 private val WIDE_LAYOUT_MIN_WIDTH = 600.dp
 private val WIDE_COLUMN_WIDTH = 320.dp
+private val WHEEL_SCROLL_STEP = 64.dp

@@ -11,11 +11,15 @@ package me.him188.ani.app.ui.subject.relations
 
 import androidx.compose.foundation.layout.width
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.test.ExperimentalTestApi
 import androidx.compose.ui.test.assertCountEquals
+import androidx.compose.ui.test.assertIsDisplayed
+import androidx.compose.ui.test.assertIsNotDisplayed
 import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
+import androidx.compose.ui.test.performMouseInput
 import androidx.compose.ui.test.performScrollTo
 import androidx.compose.ui.test.performScrollToIndex
 import androidx.compose.ui.unit.Dp
@@ -33,7 +37,7 @@ import kotlin.test.BeforeTest
 import kotlin.test.Test
 import kotlin.test.assertEquals
 
-@OptIn(TestOnly::class)
+@OptIn(TestOnly::class, ExperimentalTestApi::class)
 class SubjectRelationGraphScreenTest {
     private val clicked = mutableListOf<SubjectRelationGraphSubject>()
     private val originalLocale = Locale.getDefault()
@@ -114,6 +118,17 @@ class SubjectRelationGraphScreenTest {
         // 当前条目的前一部显示在顶部, 更早的条目需要向上滚动
         onNodeWithText("鬼灭之刃 无限列车篇").assertExists()
         onNodeWithText("鬼灭之刃 兄妹的羁绊").assertDoesNotExist()
+    }
+
+    @Test
+    fun `wide - vertical mouse wheel scrolls the timeline horizontally`() = runAniComposeUiTest {
+        setContent(TestSubjectRelationGraphs.Kimetsu, width = 1280.dp)
+        onNodeWithText("鬼灭之刃 兄妹的羁绊").assertIsNotDisplayed() // 打开时已滚动到当前条目
+        onNodeWithTag(SUBJECT_RELATION_GRAPH_TEST_TAG).performMouseInput {
+            moveTo(center)
+            repeat(60) { scroll(-3f) }
+        }
+        onNodeWithText("鬼灭之刃 兄妹的羁绊").assertIsDisplayed()
     }
 
     @Test
