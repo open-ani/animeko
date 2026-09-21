@@ -94,11 +94,13 @@ import me.him188.ani.app.ui.subject.details.components.RatingHistogram
 import me.him188.ani.app.ui.subject.details.components.SUBJECT_COVER_IMAGE_TEST_TAG
 import me.him188.ani.app.ui.subject.details.components.RelatedSubjectsGrid
 import me.him188.ani.app.ui.subject.details.components.rememberNavigateToRelatedSubject
+import me.him188.ani.app.ui.subject.details.components.rememberNavigateToRelationGraph
 import me.him188.ani.app.ui.subject.details.sections.CharactersSection
 import me.him188.ani.app.ui.subject.details.sections.HotReviewsCardContent
 import me.him188.ani.app.ui.subject.details.sections.PagedEpisodesGrid
 import me.him188.ani.app.ui.subject.details.sections.ReviewsPreviewSection
 import me.him188.ani.app.ui.subject.details.sections.SectionHeader
+import me.him188.ani.app.ui.subject.details.sections.SectionHeaderRelationGraphButton
 import me.him188.ani.app.ui.subject.details.sections.SectionHeaderCacheButton
 import me.him188.ani.app.ui.subject.details.sections.StaffSection
 import me.him188.ani.app.ui.subject.details.sections.SubjectCollectionStatsRow
@@ -245,7 +247,7 @@ internal fun SubjectDetailsMultiColumnPage(
                 )
             }
             if (related.itemCount > 0) {
-                SubjectRelatedBlock(related)
+                SubjectRelatedBlock(state.subjectId, related)
             }
             if (!layoutParams.showRail) {
                 ReviewsPreviewSection(comments, commentCount, onShowAll = onShowComments)
@@ -610,9 +612,11 @@ private fun EditRatingButton(selfScore: Int, onClick: () -> Unit) {
 }
 
 @Composable
-private fun SubjectRelatedBlock(related: LazyPagingItems<RelatedSubjectInfo>) {
+private fun SubjectRelatedBlock(subjectId: Int, related: LazyPagingItems<RelatedSubjectInfo>) {
     Column(verticalArrangement = Arrangement.spacedBy(14.dp)) {
-        SectionHeader(stringResource(Lang.subject_details_related_subjects))
+        SectionHeader(stringResource(Lang.subject_details_related_subjects)) {
+            SectionHeaderRelationGraphButton(rememberNavigateToRelationGraph(subjectId))
+        }
         RelatedSubjectsGrid(related, onClick = rememberNavigateToRelatedSubject())
     }
 }
