@@ -14,6 +14,7 @@ import me.him188.ani.client.apis.BangumiAniApi
 import me.him188.ani.client.apis.CharactersAniApi
 import me.him188.ani.client.apis.CommentsAniApi
 import me.him188.ani.client.apis.DanmakuAniApi
+import me.him188.ani.client.apis.DeveloperVerificationAniApi
 import me.him188.ani.client.apis.EpisodesAniApi
 import me.him188.ani.client.apis.HomeAniApi
 import me.him188.ani.client.apis.OAuthAniApi
@@ -40,6 +41,7 @@ class AniApiProvider(
     val trendsApi = ApiInvoker(client) { TrendsAniApi(baseurl, it) }
     val scheduleApi = ApiInvoker(client) { ScheduleAniApi(baseurl, it) }
     val oauthApi = ApiInvoker(client) { OAuthAniApi(baseurl, it) }
+    val developerVerificationApi = ApiInvoker(client) { DeveloperVerificationAniApi(baseurl, it) }
     val homeApi = ApiInvoker(client) { HomeAniApi(baseurl, it) }
     val subjectRelationsApi = ApiInvoker(client) { SubjectRelationsAniApi(baseurl, it) }
     val danmakuApi = ApiInvoker(client) { DanmakuAniApi(baseurl, it) }
