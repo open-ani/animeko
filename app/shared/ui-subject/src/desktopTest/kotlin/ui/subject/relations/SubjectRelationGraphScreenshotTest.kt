@@ -72,7 +72,7 @@ class SubjectRelationGraphScreenshotTest {
     }
 
     @Test
-    fun compactReZero() = capture(TestSubjectRelationGraphs.ReZero, 390, 1500, "relation-graph-compact-rezero")
+    fun compactReZero() = capture(TestSubjectRelationGraphs.ReZero, 390, 1900, "relation-graph-compact-rezero")
 
     @Test
     fun compactFromOva() =
@@ -80,19 +80,19 @@ class SubjectRelationGraphScreenshotTest {
 
     @Test
     fun compactKimetsuDark() =
-        capture(TestSubjectRelationGraphs.Kimetsu, 390, 1700, "relation-graph-compact-kimetsu-dark", isDark = true)
+        capture(TestSubjectRelationGraphs.Kimetsu, 390, 1900, "relation-graph-compact-kimetsu-dark", isDark = true)
 
     @Test
-    fun compactRailgun() = capture(TestSubjectRelationGraphs.Railgun, 390, 900, "relation-graph-compact-railgun")
+    fun compactRailgun() = capture(TestSubjectRelationGraphs.Railgun, 390, 1000, "relation-graph-compact-railgun")
 
     @Test
-    fun compactCollapsed() =
-        capture(TestSubjectRelationGraphs.manyBranches(6), 390, 800, "relation-graph-compact-collapsed")
-
-    @Test
-    fun wideReZero() = capture(TestSubjectRelationGraphs.ReZero, 1280, 720, "relation-graph-wide-rezero")
+    fun wideReZeroDark() =
+        capture(TestSubjectRelationGraphs.ReZero, 1280, 800, "relation-graph-wide-rezero-dark", isDark = true)
 
     @Test
     fun wideKimetsuDark() =
-        capture(TestSubjectRelationGraphs.Kimetsu, 1280, 600, "relation-graph-wide-kimetsu-dark", isDark = true)
+        capture(TestSubjectRelationGraphs.Kimetsu, 1280, 840, "relation-graph-wide-kimetsu-dark", isDark = true)
+
+    @Test
+    fun wideKimetsuLight() = capture(TestSubjectRelationGraphs.Kimetsu, 1280, 840, "relation-graph-wide-kimetsu-light")
 }

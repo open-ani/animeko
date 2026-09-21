@@ -14,7 +14,7 @@ import me.him188.ani.datasources.api.PackedDate
 import me.him188.ani.datasources.api.topic.UnifiedCollectionType
 
 /**
- * 一个条目所在系列的关系图. 以主线故事为骨架, 番外和衍生等挂载在对应的主线条目下.
+ * 一个条目所在系列的关系图. 以主线故事为骨架: 主线上只有正片和剧场版, 其他相关条目列在对应的主线条目下.
  */
 @Immutable
 data class SubjectRelationGraph(
@@ -23,7 +23,7 @@ data class SubjectRelationGraph(
      */
     val subjectId: Int,
     /**
-     * 按故事顺序排列的主线条目
+     * 按故事顺序排列的主线条目. 如果系列有正片, 第一个一定是正片.
      */
     val mainline: List<SubjectRelationGraphMainNode>,
     /**
@@ -39,11 +39,15 @@ data class SubjectRelationGraph(
 data class SubjectRelationGraphMainNode(
     val subject: SubjectRelationGraphSubject,
     /**
-     * 主线上的剧场版, 短篇等次要条目. 显示为较小的节点.
+     * 主线上的剧场版. 不计入 "第几部".
      */
-    val isMinor: Boolean,
+    val isMovie: Boolean,
     /**
-     * 挂载在此条目下的番外, 衍生, 以及此条目的原作 ([SubjectRelation.MAIN_STORY]), 按放送日期排序
+     * 列在此条目下的相关条目, 依次为:
+     * - 主线上的特别篇, 总集篇, 短篇等次要条目 ([SubjectRelation.PREQUEL], [SubjectRelation.SEQUEL]
+     *   或 [SubjectRelation.COMPILATION]), 按故事顺序;
+     * - 此条目的原作 ([SubjectRelation.MAIN_STORY]);
+     * - 总集篇, 番外和衍生, 按放送日期.
      */
     val branches: List<SubjectRelationGraphBranch>,
 )
@@ -52,7 +56,7 @@ data class SubjectRelationGraphMainNode(
 data class SubjectRelationGraphBranch(
     val subject: SubjectRelationGraphSubject,
     /**
-     * 相对于所挂载主线条目的关系. `null` 表示其他类型.
+     * 相对于所属主线条目的关系. `null` 表示其他类型.
      */
     val relation: SubjectRelation?,
 )

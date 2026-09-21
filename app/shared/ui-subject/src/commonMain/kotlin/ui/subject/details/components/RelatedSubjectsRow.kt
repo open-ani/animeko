@@ -43,6 +43,7 @@ import me.him188.ani.app.platform.currentAniBuildConfig
 import me.him188.ani.app.ui.foundation.AsyncImage
 import me.him188.ani.app.ui.foundation.ProvideCompositionLocalsForPreview
 import me.him188.ani.app.ui.lang.Lang
+import me.him188.ani.app.ui.lang.subject_details_relation_compilation
 import me.him188.ani.app.ui.lang.subject_details_relation_derived
 import me.him188.ani.app.ui.lang.subject_details_relation_main_story
 import me.him188.ani.app.ui.lang.subject_details_relation_prequel
@@ -180,6 +181,7 @@ internal fun renderSubjectRelation(relation: SubjectRelation): String = when (re
     SubjectRelation.DERIVED -> stringResource(Lang.subject_details_relation_derived)
     SubjectRelation.SPECIAL -> stringResource(Lang.subject_details_relation_special)
     SubjectRelation.MAIN_STORY -> stringResource(Lang.subject_details_relation_main_story)
+    SubjectRelation.COMPILATION -> stringResource(Lang.subject_details_relation_compilation)
 }
 
 @OptIn(TestOnly::class)

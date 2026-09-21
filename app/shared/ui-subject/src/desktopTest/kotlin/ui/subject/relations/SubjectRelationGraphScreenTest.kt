@@ -11,6 +11,7 @@ package me.him188.ani.app.ui.subject.relations
 
 import androidx.compose.foundation.layout.width
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.semantics.SemanticsActions
 import androidx.compose.ui.test.ExperimentalTestApi
 import androidx.compose.ui.test.assertCountEquals
 import androidx.compose.ui.test.assertIsDisplayed
@@ -22,6 +23,7 @@ import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performMouseInput
 import androidx.compose.ui.test.performScrollTo
 import androidx.compose.ui.test.performScrollToIndex
+import androidx.compose.ui.test.performSemanticsAction
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import me.him188.ani.app.data.models.subject.SubjectRelationGraph
@@ -69,7 +71,7 @@ class SubjectRelationGraphScreenTest {
     @Test
     fun `compact - shows series summary and marks the current subject`() = runAniComposeUiTest {
         setContent(TestSubjectRelationGraphs.ReZero)
-        onNodeWithText("7 in main story · 7 specials and spin-offs").assertExists()
+        onNodeWithText("7 in main story · 8 related").assertExists()
         onNodeWithText("Part 2 · Current").assertExists()
         onNodeWithText("Part 1").assertExists()
         onAllNodesWithText("Part 1 · Current").assertCountEquals(0)
@@ -78,9 +80,11 @@ class SubjectRelationGraphScreenTest {
     @Test
     fun `compact - clicking a main node or a branch opens that subject`() = runAniComposeUiTest {
         setContent(TestSubjectRelationGraphs.ReZero)
-        onNodeWithText("Re：从零开始的异世界生活 第二季 后半部分").performClick()
         onNodeWithText("Re：从零开始的休息时间2").performClick()
-        assertEquals(listOf(316247, 310194), clicked.map { it.subjectId })
+        // 第 0 项是标题, 第 3 项是第三部
+        onNodeWithTag(SUBJECT_RELATION_GRAPH_TEST_TAG).performScrollToIndex(3)
+        onNodeWithText("Re：从零开始的异世界生活 第二季 后半部分").performClick()
+        assertEquals(listOf(310194, 316247), clicked.map { it.subjectId })
     }
 
     @Test
@@ -103,12 +107,23 @@ class SubjectRelationGraphScreenTest {
     }
 
     @Test
-    fun `wide - all branches are expanded`() = runAniComposeUiTest {
+    fun `wide - branches beyond four are collapsed until expanded`() = runAniComposeUiTest {
         setContent(TestSubjectRelationGraphs.manyBranches(5), width = 1280.dp)
+        onNodeWithText("番外 4").assertExists()
+        onNodeWithText("番外 5").assertDoesNotExist()
+        // 按钮在测试窗口的可视范围之下, 而 performScrollTo 只会滚动最近的 (横向) 容器, 因此直接触发点击语义
+        onNodeWithText("1 more").performSemanticsAction(SemanticsActions.OnClick)
         onNodeWithText("番外 5").assertExists()
-        onNodeWithText("2 more").assertDoesNotExist()
         onNodeWithText("第二季").performScrollTo().performClick()
         assertEquals(listOf(2), clicked.map { it.subjectId })
+    }
+
+    @Test
+    fun `series name is removed from branch names`() = runAniComposeUiTest {
+        setContent(TestSubjectRelationGraphs.ReZero)
+        onNodeWithText("雪之回忆").assertExists()
+        // 不是以完整的系列名开头, 保持原样
+        onNodeWithText("Re：从零开始的休息时间").assertExists()
     }
 
     @Test
@@ -116,29 +131,33 @@ class SubjectRelationGraphScreenTest {
         setContent(TestSubjectRelationGraphs.Kimetsu)
         onNodeWithText("Part 2 · Current").assertExists()
         // 当前条目的前一部显示在顶部, 更早的条目需要向上滚动
-        onNodeWithText("鬼灭之刃 无限列车篇").assertExists()
-        onNodeWithText("鬼灭之刃 兄妹的羁绊").assertDoesNotExist()
+        onNodeWithText("剧场版 鬼灭之刃 无限列车篇").assertExists()
+        onNodeWithText("兄妹的羁绊").assertDoesNotExist()
     }
 
     @Test
     fun `wide - vertical mouse wheel scrolls the timeline horizontally`() = runAniComposeUiTest {
-        setContent(TestSubjectRelationGraphs.Kimetsu, width = 1280.dp)
-        onNodeWithText("鬼灭之刃 兄妹的羁绊").assertIsNotDisplayed() // 打开时已滚动到当前条目
+        // 从第四部进入, 打开时时间线已经滚动到后面
+        setContent(TestSubjectRelationGraphs.Kimetsu.copy(subjectId = 441939), width = 1280.dp)
+        onNodeWithText("兄妹的羁绊").assertIsNotDisplayed()
         onNodeWithTag(SUBJECT_RELATION_GRAPH_TEST_TAG).performMouseInput {
             moveTo(center)
             repeat(60) { scroll(-3f) }
         }
-        onNodeWithText("鬼灭之刃 兄妹的羁绊").assertIsDisplayed()
+        onNodeWithText("兄妹的羁绊").assertIsDisplayed()
     }
 
     @Test
-    fun `minor main nodes have no ordinal`() = runAniComposeUiTest {
+    fun `movies on the mainline have no ordinal and compilations are listed under seasons`() = runAniComposeUiTest {
         setContent(TestSubjectRelationGraphs.Kimetsu)
         onNodeWithTag(SUBJECT_RELATION_GRAPH_TEST_TAG).performScrollToIndex(0)
-        // 第一部之前有一部剧场版, 它不计入 "第几部"
-        onNodeWithText("鬼灭之刃 兄妹的羁绊").assertExists()
         onNodeWithText("Part 1").assertExists()
-        onAllNodesWithText("Part 5").assertCountEquals(0)
+        // 剧场版形式的总集篇不在主线上, 而是第一部下的一行
+        onNodeWithText("兄妹的羁绊").assertExists()
+        onNodeWithText("Compilation · 2019").assertExists()
+        // 主线有 4 部正片和 4 部剧场版, 剧场版不计入 "第几部"
+        onNodeWithText("4 in main story", substring = true).assertDoesNotExist()
+        onNodeWithText("8 in main story · 11 related").assertExists()
     }
 
     @Test

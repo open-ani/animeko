@@ -1151,13 +1151,13 @@
     <string name="subject_details_relation_derived">衍生</string>
     <string name="subject_details_relation_special">番外篇</string>
     <string name="subject_details_relation_main_story">主線故事</string>
+    <string name="subject_details_relation_compilation">總集篇</string>
     <string name="subject_relation_graph_title">系列關係圖</string>
     <string name="subject_relation_graph_entry">關係圖</string>
-    <string name="subject_relation_graph_summary">主線 %1$d 部 · 番外與衍生 %2$d 部</string>
+    <string name="subject_relation_graph_summary">主線 %1$d 部 · 其他 %2$d 部</string>
     <string name="subject_relation_graph_summary_main_only">主線 %1$d 部</string>
     <string name="subject_relation_graph_ordinal">第 %1$d 部</string>
-    <string name="subject_relation_graph_ordinal_current">第 %1$d 部 · 目前</string>
-    <string name="subject_relation_graph_current">目前</string>
+    <string name="subject_relation_graph_label_current">%1$s · 目前</string>
     <string name="subject_relation_graph_show_more">其餘 %1$d 部</string>
     <string name="subject_relation_graph_show_less">收起</string>
     <string name="subject_relation_graph_truncated">系列過大，僅顯示部分條目</string>

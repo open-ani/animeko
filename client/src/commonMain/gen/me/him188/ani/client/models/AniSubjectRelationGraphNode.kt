@@ -31,6 +31,7 @@ import kotlinx.serialization.encoding.*
  * @param imageLarge
  * @param airDate
  * @param episodeCount
+ * @param compilation
  * @param role
  * @param platform
  * @param attachTo
@@ -51,6 +52,8 @@ data class AniSubjectRelationGraphNode (
     @SerialName(value = "airDate") @Required val airDate: kotlin.String,
 
     @SerialName(value = "episodeCount") @Required val episodeCount: kotlin.Int,
+
+    @SerialName(value = "compilation") @Required val compilation: kotlin.Boolean,
 
     @SerialName(value = "role") @Required val role: AniSubjectRelationGraphNodeRole,
 

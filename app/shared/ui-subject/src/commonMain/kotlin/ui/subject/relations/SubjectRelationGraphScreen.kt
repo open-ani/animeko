@@ -12,6 +12,7 @@ package me.him188.ani.app.ui.subject.relations
 import androidx.compose.foundation.ScrollState
 import androidx.compose.foundation.gestures.animateScrollBy
 import androidx.compose.foundation.horizontalScroll
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
@@ -33,6 +34,7 @@ import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
@@ -50,6 +52,7 @@ import androidx.compose.ui.input.pointer.PointerEventType
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
@@ -157,14 +160,14 @@ internal class SubjectRelationGraphPresentation(
     }
 
     /**
-     * 每个主线条目是 "第几部". 次要条目不计数, 为 `null`.
+     * 每个主线条目是 "第几部". 剧场版不计数, 为 `null`.
      */
     val ordinals: List<Int?> = run {
         var count = 0
-        graph.mainline.map { if (it.isMinor) null else ++count }
+        graph.mainline.map { if (it.isMovie) null else ++count }
     }
 
-    val seriesName: String = (graph.mainline.firstOrNull { !it.isMinor } ?: graph.mainline.firstOrNull())
+    val seriesName: String = (graph.mainline.firstOrNull { !it.isMovie } ?: graph.mainline.firstOrNull())
         ?.subject?.displayName.orEmpty()
 
     /** 时间线走到 [index] 处是否已经经过用户查看的条目 */
@@ -192,34 +195,35 @@ internal fun SubjectRelationGraphColumn(
             SubjectRelationGraphHeader(presentation, Modifier.padding(start = 4.dp, top = 4.dp, bottom = 16.dp))
         }
         itemsIndexed(graph.mainline, key = { _, node -> node.subject.subjectId }) { index, node ->
-            val style = SubjectRelationGraphDefaults.mainNodeStyle(node.isMinor, large = false)
             val colors = SubjectRelationGraphDefaults.timelineColors()
             Row(
                 Modifier.fillMaxWidth().timelineVertical(
                     colors = colors,
-                    dotCenterY = style.height / 2,
+                    // 圆点对齐海报的垂直中心
+                    dotCenterY = SubjectRelationGraphDefaults.CompactCardPadding +
+                            SubjectRelationGraphDefaults.CompactPosterHeight / 2,
                     dot = timelineDot(presentation, index),
                     lineBefore = timelineLine(presentation, index, before = true),
                     lineAfter = timelineLine(presentation, index, before = false),
                 ),
             ) {
                 Spacer(Modifier.width(32.dp))
-                Column(Modifier.weight(1f).padding(bottom = 20.dp)) {
-                    SubjectRelationGraphMainNodeCard(
+                Column(Modifier.weight(1f).padding(bottom = 16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    SubjectRelationGraphCompactCard(
                         node,
                         ordinal = presentation.ordinals[index],
                         isCurrent = node.subject.subjectId == graph.subjectId,
-                        style = style,
                         onClick = { onClickSubject(node.subject) },
                         Modifier.fillMaxWidth(),
                     )
                     SubjectRelationGraphBranchList(
                         node.branches,
                         currentSubjectId = graph.subjectId,
-                        collapsible = true,
+                        seriesName = presentation.seriesName,
+                        collapsedCount = SubjectRelationGraphDefaults.COLLAPSED_BRANCH_COUNT_COMPACT,
+                        nameMaxLines = 1,
                         onClick = onClickSubject,
-                        Modifier.padding(top = 8.dp),
-                        lineStart = 20.dp,
+                        Modifier.padding(horizontal = 8.dp),
                     )
                 }
             }
@@ -231,7 +235,7 @@ internal fun SubjectRelationGraphColumn(
 }
 
 /**
- * 横向时间线, 适合平板和桌面. 主线条目在上排, 分支挂在各自的主线条目下方并全部展开.
+ * 横向时间线, 适合平板和桌面. 时间轴在上方, 每个主线条目是一列: 年份, 大海报, 以及它的相关条目列表.
  */
 @Composable
 internal fun SubjectRelationGraphRow(
@@ -263,7 +267,7 @@ internal fun SubjectRelationGraphRow(
         // 桌面端鼠标没有横向滚轮, 悬停时显示左右翻页按钮
         HorizontalScrollControlScaffoldOnDesktop(
             rememberHorizontalScrollControlState(horizontalScrollState) { direction ->
-                val distance = with(density) { (WIDE_COLUMN_WIDTH * 2).toPx() }
+                val distance = with(density) { (WIDE_COLUMN_WIDTH * 3).toPx() }
                 scope.launch {
                     horizontalScrollState.animateScrollBy(
                         if (direction == HorizontalScrollControlState.Direction.BACKWARD) -distance else distance,
@@ -272,38 +276,52 @@ internal fun SubjectRelationGraphRow(
             },
         ) {
             Row(Modifier.horizontalScroll(horizontalScrollState).padding(horizontal = horizontalPadding)) {
-                val largeStyle = SubjectRelationGraphDefaults.mainNodeStyle(isMinor = false, large = true)
                 val colors = SubjectRelationGraphDefaults.timelineColors()
                 graph.mainline.forEachIndexed { index, node ->
+                    val isCurrent = index == presentation.currentMainIndex
                     Column(Modifier.width(WIDE_COLUMN_WIDTH)) {
-                        // 次要条目的卡片较矮, 底部对齐, 使所有列的时间线在同一高度
-                        Box(Modifier.height(largeStyle.height).padding(end = 24.dp), Alignment.BottomStart) {
-                            SubjectRelationGraphMainNodeCard(
-                                node,
-                                ordinal = presentation.ordinals[index],
-                                isCurrent = node.subject.subjectId == graph.subjectId,
-                                style = SubjectRelationGraphDefaults.mainNodeStyle(node.isMinor, large = true),
-                                onClick = { onClickSubject(node.subject) },
-                                Modifier.fillMaxWidth(),
-                            )
-                        }
+                        Text(
+                            renderYear(node.subject).orEmpty(),
+                            Modifier.padding(start = 2.dp),
+                            style = MaterialTheme.typography.labelLarge,
+                            fontWeight = FontWeight.Bold,
+                            color = if (isCurrent) {
+                                MaterialTheme.colorScheme.primary
+                            } else {
+                                MaterialTheme.colorScheme.onSurfaceVariant
+                            },
+                        )
                         Spacer(
-                            Modifier.fillMaxWidth().height(48.dp).timelineHorizontal(
+                            Modifier.fillMaxWidth().height(28.dp).timelineHorizontal(
                                 colors = colors,
-                                dotCenterX = 20.dp,
+                                dotCenterX = 14.dp,
                                 dot = timelineDot(presentation, index),
                                 lineBefore = timelineLine(presentation, index, before = true),
                                 lineAfter = timelineLine(presentation, index, before = false),
                             ),
                         )
-                        SubjectRelationGraphBranchList(
-                            node.branches,
-                            currentSubjectId = graph.subjectId,
-                            collapsible = false,
-                            onClick = onClickSubject,
-                            Modifier.padding(end = 24.dp),
-                            lineStart = 19.dp,
-                        )
+                        Column(
+                            Modifier.padding(end = WIDE_COLUMN_WIDTH - SubjectRelationGraphDefaults.PosterWidth),
+                            verticalArrangement = Arrangement.spacedBy(10.dp),
+                        ) {
+                            SubjectRelationGraphPoster(
+                                node,
+                                ordinal = presentation.ordinals[index],
+                                isCurrent = node.subject.subjectId == graph.subjectId,
+                                onClick = { onClickSubject(node.subject) },
+                            )
+                            if (node.branches.isNotEmpty()) {
+                                HorizontalDivider()
+                                SubjectRelationGraphBranchList(
+                                    node.branches,
+                                    currentSubjectId = graph.subjectId,
+                                    seriesName = presentation.seriesName,
+                                    collapsedCount = SubjectRelationGraphDefaults.COLLAPSED_BRANCH_COUNT_WIDE,
+                                    nameMaxLines = 2,
+                                    onClick = onClickSubject,
+                                )
+                            }
+                        }
                     }
                 }
             }
@@ -337,13 +355,10 @@ private fun Modifier.verticalWheelScrollsHorizontally(
     }
 }
 
-private fun timelineDot(presentation: SubjectRelationGraphPresentation, index: Int): TimelineDot {
-    val node = presentation.graph.mainline[index]
-    return when {
-        index == presentation.currentMainIndex -> TimelineDot.CURRENT
-        !presentation.isReached(index) -> if (node.isMinor) TimelineDot.UPCOMING_SMALL else TimelineDot.UPCOMING
-        else -> if (node.isMinor) TimelineDot.REACHED_SMALL else TimelineDot.REACHED
-    }
+private fun timelineDot(presentation: SubjectRelationGraphPresentation, index: Int): TimelineDot = when {
+    index == presentation.currentMainIndex -> TimelineDot.CURRENT
+    presentation.isReached(index) -> TimelineDot.REACHED
+    else -> TimelineDot.UPCOMING
 }
 
 private fun timelineLine(
@@ -366,7 +381,8 @@ private fun SubjectRelationGraphHeader(
     Column(modifier) {
         Text(
             presentation.seriesName,
-            style = MaterialTheme.typography.titleLarge,
+            style = MaterialTheme.typography.headlineMedium,
+            fontWeight = FontWeight.Bold,
             maxLines = 1,
             overflow = TextOverflow.Ellipsis,
         )
@@ -394,5 +410,5 @@ private fun TruncatedHint(modifier: Modifier = Modifier) {
 }
 
 private val WIDE_LAYOUT_MIN_WIDTH = 600.dp
-private val WIDE_COLUMN_WIDTH = 320.dp
+private val WIDE_COLUMN_WIDTH = 204.dp
 private val WHEEL_SCROLL_STEP = 64.dp

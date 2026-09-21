@@ -78,19 +78,54 @@ internal fun AniSubjectRelationGraph.toSubjectRelationGraph(
         collectionType = collectionTypes[id.toInt()] ?: UnifiedCollectionType.NOT_COLLECTED,
     )
 
-    // 服务器保证 nodes 中的分支已按挂载点和放送日期排序
-    val branches = nodes.filter { it.role == AniSubjectRelationGraphNodeRole.SIDE }.groupBy { it.attachTo }
     val nodesById = nodes.associateBy { it.id }
+    val mainNodes = mainline.mapNotNull { nodesById[it] }
+    val firstMajorIndex = mainNodes.indexOfFirst { it.role == AniSubjectRelationGraphNodeRole.MAIN }
+
+    // 主线上只显示正片, 以及第一部正片之后的剧场版 (剧场版形式的总集篇除外).
+    // 其他次要条目 (特别篇, 总集篇, 短篇, 以及排在第一部正片之前的条目) 列在它之前最近的正片下.
+    fun isDisplayed(index: Int, node: AniSubjectRelationGraphNode): Boolean = when {
+        firstMajorIndex == -1 -> true
+        node.role == AniSubjectRelationGraphNodeRole.MAIN -> true
+        else -> index > firstMajorIndex && node.platform == PLATFORM_MOVIE && !node.compilation
+    }
+
+    /** 未显示在主线上的条目 -> 它所属的正片 */
+    val ownerOf = mutableMapOf<Long, Long>()
+    val foldedUnder = mutableMapOf<Long, MutableList<SubjectRelationGraphBranch>>()
+    var lastMajor: AniSubjectRelationGraphNode? = mainNodes.getOrNull(firstMajorIndex)
+    mainNodes.forEachIndexed { index, node ->
+        if (node.role == AniSubjectRelationGraphNodeRole.MAIN) lastMajor = node
+        if (isDisplayed(index, node)) return@forEachIndexed
+        val owner = lastMajor ?: return@forEachIndexed
+        ownerOf[node.id] = owner.id
+        foldedUnder.getOrPut(owner.id) { mutableListOf() }.add(
+            SubjectRelationGraphBranch(
+                node.toSubject(),
+                when {
+                    node.compilation -> SubjectRelation.COMPILATION
+                    index < firstMajorIndex -> SubjectRelation.PREQUEL
+                    else -> SubjectRelation.SEQUEL
+                },
+            ),
+        )
+    }
+
+    // 服务器保证 nodes 中的分支已按挂载点和放送日期排序
+    val sideNodes = nodes.filter { it.role == AniSubjectRelationGraphNodeRole.SIDE }
+        .groupBy { node -> node.attachTo?.let { ownerOf[it] ?: it } }
+
     return SubjectRelationGraph(
         subjectId = subjectId.toInt(),
-        mainline = mainline.mapNotNull { nodesById[it] }.map { node ->
+        mainline = mainNodes.filterIndexed { index, node -> isDisplayed(index, node) }.map { node ->
             SubjectRelationGraphMainNode(
                 subject = node.toSubject(),
-                isMinor = node.role == AniSubjectRelationGraphNodeRole.MAIN_MINOR,
-                branches = branches[node.id].orEmpty().map { branch ->
+                isMovie = node.role != AniSubjectRelationGraphNodeRole.MAIN,
+                branches = foldedUnder[node.id].orEmpty() + sideNodes[node.id].orEmpty().map { branch ->
                     SubjectRelationGraphBranch(
                         subject = branch.toSubject(),
                         relation = when (branch.relation) {
+                            4 -> SubjectRelation.COMPILATION
                             6 -> SubjectRelation.SPECIAL
                             11 -> SubjectRelation.DERIVED
                             12 -> SubjectRelation.MAIN_STORY
@@ -103,3 +138,5 @@ internal fun AniSubjectRelationGraph.toSubjectRelationGraph(
         truncated = truncated,
     )
 }
+
+private const val PLATFORM_MOVIE = 3

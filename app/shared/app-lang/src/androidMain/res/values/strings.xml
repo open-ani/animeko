@@ -1148,13 +1148,13 @@
     <string name="subject_details_relation_derived">Spin-off</string>
     <string name="subject_details_relation_special">Special</string>
     <string name="subject_details_relation_main_story">Main story</string>
+    <string name="subject_details_relation_compilation">Compilation</string>
     <string name="subject_relation_graph_title">Series graph</string>
     <string name="subject_relation_graph_entry">Graph</string>
-    <string name="subject_relation_graph_summary">%1$d in main story · %2$d specials and spin-offs</string>
+    <string name="subject_relation_graph_summary">%1$d in main story · %2$d related</string>
     <string name="subject_relation_graph_summary_main_only">%1$d in main story</string>
     <string name="subject_relation_graph_ordinal">Part %1$d</string>
-    <string name="subject_relation_graph_ordinal_current">Part %1$d · Current</string>
-    <string name="subject_relation_graph_current">Current</string>
+    <string name="subject_relation_graph_label_current">%1$s · Current</string>
     <string name="subject_relation_graph_show_more">%1$d more</string>
     <string name="subject_relation_graph_show_less">Show less</string>
     <string name="subject_relation_graph_truncated">This series is too large. Only part of it is shown.</string>
