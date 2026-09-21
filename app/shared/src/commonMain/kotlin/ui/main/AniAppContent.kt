@@ -101,6 +101,8 @@ import me.him188.ani.app.ui.subject.person.CharacterDetailsScreen
 import me.him188.ani.app.ui.subject.person.CharacterDetailsViewModel
 import me.him188.ani.app.ui.subject.person.PersonDetailsScreen
 import me.him188.ani.app.ui.subject.person.PersonDetailsViewModel
+import me.him188.ani.app.ui.subject.relations.SubjectRelationGraphScreen
+import me.him188.ani.app.ui.subject.relations.SubjectRelationGraphViewModel
 import me.him188.ani.app.ui.user.SelfInfoStateProducer
 import me.him188.ani.app.ui.watchtogether.LocalWatchTogetherPlayerController
 import me.him188.ani.app.ui.watchtogether.WatchTogetherOverlayHost
@@ -453,6 +455,25 @@ private fun AniAppContentImpl(
                     },
                     Modifier.fillMaxSize(),
                     windowInsets = windowInsets,
+                )
+            }
+            entry<NavRoutes.SubjectRelationGraph> { route ->
+                val vm = viewModel<SubjectRelationGraphViewModel>(key = "subject-relation-graph-${route.subjectId}") {
+                    SubjectRelationGraphViewModel(route.subjectId)
+                }
+                SubjectRelationGraphScreen(
+                    vm,
+                    onClickSubject = {
+                        aniNavigator.navigateSubjectDetails(
+                            it.subjectId,
+                            SubjectDetailPlaceholder(it.subjectId, it.name, it.nameCn, it.image),
+                        )
+                    },
+                    Modifier.fillMaxSize(),
+                    windowInsets = windowInsets,
+                    navigationIcon = {
+                        BackNavigationIconButton({ aniNavigator.popBackStack(route, inclusive = true) })
+                    },
                 )
             }
             entry<NavRoutes.PersonDetail> { route ->

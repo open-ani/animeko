@@ -1097,6 +1097,7 @@
     <string name="settings_account_developer_status_pending">Under review, this usually takes a few minutes</string>
     <string name="settings_account_developer_status_unavailable">Developer certification is not available on this server</string>
     <string name="settings_account_developer_valid_until">Valid until %1$s. It is re-evaluated automatically before it expires, no need to apply again.</string>
+    <string name="settings_account_developer_outstanding_contributor">Thank you for your outstanding contributions to Animeko. Your developer status is valid long-term.</string>
     <string name="settings_account_developer_apply">Apply</string>
     <string name="settings_account_developer_apply_limit">You can apply once a day and up to 3 times a week</string>
     <string name="settings_account_developer_next_apply_at">Next application: %1$s</string>
@@ -1148,6 +1149,19 @@
     <string name="subject_details_relation_sequel">Sequel</string>
     <string name="subject_details_relation_derived">Spin-off</string>
     <string name="subject_details_relation_special">Special</string>
+    <string name="subject_details_relation_main_story">Main story</string>
+    <string name="subject_details_relation_compilation">Compilation</string>
+    <string name="subject_relation_graph_title">Series graph</string>
+    <string name="subject_relation_graph_entry">Graph</string>
+    <string name="subject_relation_graph_summary">%1$d in main story · %2$d related</string>
+    <string name="subject_relation_graph_summary_main_only">%1$d in main story</string>
+    <string name="subject_relation_graph_ordinal">Part %1$d</string>
+    <string name="subject_relation_graph_label_current">%1$s · Current</string>
+    <string name="subject_relation_graph_show_more">%1$d more</string>
+    <string name="subject_relation_graph_show_less">Show less</string>
+    <string name="subject_relation_graph_truncated">This series is too large. Only part of it is shown.</string>
+    <string name="subject_relation_graph_episodes">%1$d eps</string>
+    <string name="subject_relation_graph_platform_movie">Movie</string>
     <string name="subject_details_prev_page">Previous page</string>
     <string name="subject_details_next_page">Next page</string>
     <string name="subject_details_air_date_format">%1$s/%2$s/%3$s</string>

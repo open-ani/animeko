@@ -46,6 +46,7 @@ import me.him188.ani.app.data.repository.subject.DefaultSubjectRelationsReposito
 import me.him188.ani.app.data.repository.subject.FollowedSubjectsRepository
 import me.him188.ani.app.data.repository.subject.SubjectCollectionRepository
 import me.him188.ani.app.data.repository.subject.SubjectCollectionRepositoryImpl
+import me.him188.ani.app.data.repository.subject.SubjectRelationGraphRepository
 import me.him188.ani.app.data.repository.subject.SubjectRelationsRepository
 import me.him188.ani.app.data.repository.subject.SubjectSearchCompletionRepository
 import me.him188.ani.app.data.repository.subject.SubjectSearchHistoryRepository
@@ -178,6 +179,9 @@ fun KoinApplication.repositoryModules(
             subjectCollectionRepository = get(),
             aniSubjectRelationIndexService = get(),
         )
+    }
+    single<SubjectRelationGraphRepository> {
+        SubjectRelationGraphRepository(aniApiProvider.subjectApi, database.subjectCollection())
     }
 
     single<PersonDetailsRepository> {

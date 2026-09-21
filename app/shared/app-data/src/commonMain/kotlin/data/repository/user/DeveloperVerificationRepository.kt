@@ -42,8 +42,13 @@ data class DeveloperVerificationInfo(
     val isDeveloper: Boolean,
     /**
      * 开发者身份的有效期 (毫秒时间戳). 到期时服务器自动重新判定, 用户无需再申请.
+     * 长期有效 ([isOutstandingContributor]) 时为 `null`.
      */
     val validUntil: Long?,
+    /**
+     * 开发者身份是作为卓越贡献者 (服务器维护的名单) 申请得到的: 申请后直接通过, 长期有效, 没有有效期.
+     */
+    val isOutstandingContributor: Boolean = false,
     val latestRequest: DeveloperVerificationRequestInfo?,
     /**
      * 因申请频率限制而不能申请时, 最早可以再次申请的时间 (毫秒时间戳)
@@ -98,6 +103,7 @@ private fun AniDeveloperVerificationState.toInfo() = DeveloperVerificationInfo(
     enabled = enabled,
     isDeveloper = isDeveloper,
     validUntil = validUntil,
+    isOutstandingContributor = outstandingContributor,
     latestRequest = latestRequest?.let {
         DeveloperVerificationRequestInfo(
             status = when (it.status) {

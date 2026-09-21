@@ -1137,6 +1137,7 @@
     <string name="settings_account_developer_status_pending">正在审核，通常需要几分钟</string>
     <string name="settings_account_developer_status_unavailable">当前服务器未开放开发者认证</string>
     <string name="settings_account_developer_valid_until">有效期至 %1$s。到期前会自动重新评估，无需再次申请。</string>
+    <string name="settings_account_developer_outstanding_contributor">感谢你对 Animeko 的卓越贡献。你的开发者身份长期有效。</string>
     <string name="settings_account_developer_apply">申请认证</string>
     <string name="settings_account_developer_apply_limit">每天可申请 1 次，每周最多 3 次</string>
     <string name="settings_account_developer_next_apply_at">下次可申请：%1$s</string>
@@ -1188,6 +1189,19 @@
     <string name="subject_details_relation_sequel">续集</string>
     <string name="subject_details_relation_derived">衍生</string>
     <string name="subject_details_relation_special">番外篇</string>
+    <string name="subject_details_relation_main_story">主线故事</string>
+    <string name="subject_details_relation_compilation">总集篇</string>
+    <string name="subject_relation_graph_title">系列关系图</string>
+    <string name="subject_relation_graph_entry">关系图</string>
+    <string name="subject_relation_graph_summary">主线 %1$d 部 · 其他 %2$d 部</string>
+    <string name="subject_relation_graph_summary_main_only">主线 %1$d 部</string>
+    <string name="subject_relation_graph_ordinal">第 %1$d 部</string>
+    <string name="subject_relation_graph_label_current">%1$s · 当前</string>
+    <string name="subject_relation_graph_show_more">其余 %1$d 部</string>
+    <string name="subject_relation_graph_show_less">收起</string>
+    <string name="subject_relation_graph_truncated">系列过大，仅显示部分条目</string>
+    <string name="subject_relation_graph_episodes">%1$d 话</string>
+    <string name="subject_relation_graph_platform_movie">剧场版</string>
     <string name="subject_details_prev_page">上一页</string>
     <string name="subject_details_next_page">下一页</string>
     <string name="subject_details_air_date_format">%1$s 年 %2$s 月 %3$s 日</string>

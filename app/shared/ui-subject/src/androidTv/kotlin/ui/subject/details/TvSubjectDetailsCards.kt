@@ -52,7 +52,9 @@ import me.him188.ani.app.data.models.subject.SubjectRelation
 import me.him188.ani.app.data.models.subject.nameCn
 import me.him188.ani.app.ui.foundation.AsyncImage
 import me.him188.ani.app.ui.lang.Lang
+import me.him188.ani.app.ui.lang.subject_details_relation_compilation
 import me.him188.ani.app.ui.lang.subject_details_relation_derived
+import me.him188.ani.app.ui.lang.subject_details_relation_main_story
 import me.him188.ani.app.ui.lang.subject_details_relation_prequel
 import me.him188.ani.app.ui.lang.subject_details_relation_sequel
 import me.him188.ani.app.ui.lang.subject_details_relation_special
@@ -225,4 +227,6 @@ internal fun renderSubjectRelation(relation: SubjectRelation): String =
         SubjectRelation.SEQUEL -> stringResource(Lang.subject_details_relation_sequel)
         SubjectRelation.DERIVED -> stringResource(Lang.subject_details_relation_derived)
         SubjectRelation.SPECIAL -> stringResource(Lang.subject_details_relation_special)
+        SubjectRelation.MAIN_STORY -> stringResource(Lang.subject_details_relation_main_story)
+        SubjectRelation.COMPILATION -> stringResource(Lang.subject_details_relation_compilation)
     }

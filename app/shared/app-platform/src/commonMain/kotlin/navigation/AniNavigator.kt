@@ -79,6 +79,10 @@ interface AniNavigator {
         navigate(NavRoutes.SubjectDetail(subjectId, placeholder))
     }
 
+    fun navigateSubjectRelationGraph(subjectId: Int) {
+        navigate(NavRoutes.SubjectRelationGraph(subjectId))
+    }
+
     fun navigateSubjectCaches(subjectId: Int) {
         navigate(NavRoutes.SubjectCaches(subjectId))
     }
