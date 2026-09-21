@@ -11,4 +11,8 @@ package me.him188.ani.leanback.ui.main
 
 import me.him188.ani.app.data.models.user.SelfInfo
 
-data class TvMainUiState(val selfInfo: SelfInfo? = null)
+data class TvMainUiState(
+    val selfInfo: SelfInfo? = null,
+    /** null 表示正在恢复会话，头像入口等待登录状态确定后再响应。 */
+    val isLoggedIn: Boolean? = selfInfo != null,
+)

@@ -153,7 +153,7 @@ fun TvAniAppContent(
                     entry<NavRoutes.Main> {
                         var shellContent by rememberSaveable { mutableStateOf(TvShellContent.Exploration) }
                         val mainViewModel = tvViewModel {
-                            TvMainViewModel(dependencies.userRepository)
+                            TvMainViewModel(dependencies.userRepository, dependencies.sessionStateProvider)
                         }
                         TvMainRoute(
                             mainViewModel,

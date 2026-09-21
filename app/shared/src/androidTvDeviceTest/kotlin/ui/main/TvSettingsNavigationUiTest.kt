@@ -71,6 +71,7 @@ class TvSettingsNavigationUiTest {
                             TvMainShell(
                                 TvMainUiState(), page, { page = it },
                                 onOpenSettings = { stack.add(NavRoutes.Settings()) },
+                                onLogout = {},
                                 focusMemory = memory,
                             ) {
                                 val focus = rememberTvFocusScope()

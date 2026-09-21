@@ -28,7 +28,9 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.outlined.Logout
 import androidx.compose.material.icons.outlined.AccountCircle
+import androidx.compose.material.icons.rounded.Person
 import androidx.compose.material3.Icon
 import androidx.compose.material3.LocalContentColor
 import androidx.compose.material3.MaterialTheme
@@ -55,12 +57,18 @@ import androidx.compose.ui.input.key.KeyEventType
 import androidx.compose.ui.input.key.key
 import androidx.compose.ui.input.key.onPreviewKeyEvent
 import androidx.compose.ui.input.key.type
+import androidx.compose.ui.layout.Layout
 import androidx.compose.ui.platform.LocalFocusManager
+import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
 import me.him188.ani.app.data.models.user.SelfInfo
 import me.him188.ani.app.ui.foundation.avatar.AvatarImage
 import me.him188.ani.app.ui.lang.Lang
 import me.him188.ani.app.ui.lang.login_sign_in
+import me.him188.ani.app.ui.lang.settings_account_popup_logout
+import me.him188.ani.app.ui.lang.settings_tab_account
 import me.him188.ani.leanback.ui.foundation.focus.tvFocusEnterGate
 import org.jetbrains.compose.resources.stringResource
 
@@ -81,6 +89,8 @@ object TvNavigationRailDefaults {
 
     /** 单个图标按钮 (聚焦反色方块 / 头像) 的边长. */
     val ItemSize = 32.dp
+
+    val ItemSpacing = 8.dp
 
     /** 图标按钮聚焦方块的圆角. */
     val ItemCornerRadius = 6.dp
@@ -115,7 +125,8 @@ data class TvNavRailItem(
 /**
  * TV 可展开左侧导航栏.
  *
- * @param selfInfo 头像用户信息; null 表示未登录 (显示默认人物图标).
+ * @param selfInfo 头像用户信息；资料未加载时显示默认人物图标。
+ * @param isLoggedIn 会话的登录状态，独立于头像资料的加载状态。
  * @param showAvatar false 时保留头像槽位的等高占位, 使其余按钮位置不变.
  * @param onExitFocus 非 null 时: 条目上按返回键/右键调用它并吞掉按键 (如详情页把焦点送回
  *   Hero 播放按钮); null 时不拦截.
@@ -139,10 +150,20 @@ fun TvNavigationSideRail(
      * 壳传"恢复进入侧边栏前的焦点"实现, 让点击当前页条目回到原位而非几何最近节点.
      */
     returnFocusToContent: (() -> Unit)? = null,
+    onLogoutClick: (() -> Unit)? = null,
+    avatarModifier: Modifier = Modifier,
+    logoutModifier: Modifier = Modifier,
+    /** 确认弹窗显示期间保留账号操作入口，关闭后可恢复焦点。 */
+    keepAccountActionsVisible: Boolean = false,
+    isLoggedIn: Boolean = selfInfo != null,
+    /** 账号弹窗关闭后的具体入口；不参与普通导航条目的请求器绑定。 */
+    accountRestoreFocus: FocusRequester? = null,
 ) {
     var expanded by remember { mutableStateOf(false) }
+    var accountActionsVisible by remember { mutableStateOf(false) }
+    val railExpanded = expanded || keepAccountActionsVisible
     Box(modifier.fillMaxHeight(), contentAlignment = Alignment.CenterStart) {
-        AnimatedVisibility(expanded, enter = fadeIn(), exit = fadeOut()) {
+        AnimatedVisibility(railExpanded, enter = fadeIn(), exit = fadeOut()) {
             // 展开底衬: 纯色面板 + 右缘多色标平滑羽化融入内容 (消除竖向明暗切线)
             val panelColor = scrimColor ?: tvShellBackgroundColor()
             Box(
@@ -165,29 +186,66 @@ fun TvNavigationSideRail(
         val entryIndex = items.indexOfFirst { it.restoreFocus }.takeIf { it >= 0 }
             ?: items.indexOfFirst { it.selected }.takeIf { it >= 0 }
             ?: items.indexOfFirst { it.defaultFocus }
-        Column(
-            Modifier
-                .onFocusChanged { expanded = it.hasFocus }
-                .tvFocusEnterGate(entry = enterFocusResolved)
+        Layout(
+            modifier = Modifier.fillMaxHeight()
+                .onFocusChanged {
+                    expanded = it.hasFocus
+                    if (!it.hasFocus && !keepAccountActionsVisible) accountActionsVisible = false
+                }
+                .tvFocusEnterGate(entry = accountRestoreFocus ?: enterFocusResolved)
                 .padding(start = 16.dp),
-            verticalArrangement = Arrangement.spacedBy(8.dp),
-        ) {
-            if (showAvatar) {
-                TvRailAvatar(selfInfo, expanded, onExitFocus, onAvatarClick)
-            } else {
-                Box(Modifier.size(TvNavigationRailDefaults.ItemSize))
-            }
-            for ((index, item) in items.withIndex()) {
-                TvRailIconItem(
-                    icon = item.icon,
-                    label = item.label,
-                    expanded = expanded,
-                    onExitFocus = onExitFocus,
-                    focusRequester = if (index == entryIndex) enterFocusResolved else item.focusRequester,
-                    keepFocusOnClick = item.keepFocusOnClick,
-                    returnFocusToContent = returnFocusToContent,
-                    onClick = item.onClick,
-                )
+            content = {
+                Column(verticalArrangement = Arrangement.spacedBy(TvNavigationRailDefaults.ItemSpacing)) {
+                    if (showAvatar) {
+                        TvRailAvatar(
+                            selfInfo, isLoggedIn, railExpanded, onExitFocus, onAvatarClick,
+                            avatarModifier.testTag("tv-navigation-avatar").onFocusChanged {
+                                if (it.isFocused) accountActionsVisible = true
+                            },
+                        )
+                    } else {
+                        Box(Modifier.size(TvNavigationRailDefaults.ItemSize))
+                    }
+                    for ((index, item) in items.withIndex()) {
+                        TvRailIconItem(
+                            icon = item.icon,
+                            label = item.label,
+                            expanded = railExpanded,
+                            onExitFocus = onExitFocus,
+                            focusRequester = if (index == entryIndex) enterFocusResolved else item.focusRequester,
+                            keepFocusOnClick = item.keepFocusOnClick,
+                            returnFocusToContent = returnFocusToContent,
+                            onClick = item.onClick,
+                            modifier = Modifier.onFocusChanged {
+                                if (it.isFocused) accountActionsVisible = false
+                            },
+                        )
+                    }
+                }
+                if (showAvatar && isLoggedIn && onLogoutClick != null && (accountActionsVisible || keepAccountActionsVisible)) {
+                    TvRailIconItem(
+                        icon = Icons.AutoMirrored.Outlined.Logout,
+                        label = stringResource(Lang.settings_account_popup_logout),
+                        expanded = railExpanded,
+                        onExitFocus = onExitFocus,
+                        focusRequester = null,
+                        keepFocusOnClick = true,
+                        returnFocusToContent = returnFocusToContent,
+                        onClick = onLogoutClick,
+                        modifier = logoutModifier.testTag("tv-navigation-logout"),
+                    )
+                }
+            },
+        ) { measurables, constraints ->
+            val childConstraints = constraints.copy(minWidth = 0, minHeight = 0)
+            val navigation = measurables[0].measure(childConstraints)
+            val logout = measurables.getOrNull(1)?.measure(childConstraints)
+            val height = constraints.maxHeight
+            val navigationY = (height - navigation.height) / 2
+            // 主导航独立居中；账号操作占用头像上方的空白，不参与主导航的位置计算。
+            layout(maxOf(navigation.width, logout?.width ?: 0), height) {
+                navigation.placeRelative(0, navigationY)
+                logout?.placeRelative(0, navigationY - logout.height - TvNavigationRailDefaults.ItemSpacing.roundToPx())
             }
         }
     }
@@ -247,58 +305,64 @@ private fun Modifier.railExitKeys(onExitFocus: (() -> Unit)?): Modifier {
 @Composable
 private fun TvRailAvatar(
     selfInfo: SelfInfo?,
+    loggedIn: Boolean,
     expanded: Boolean,
     onExitFocus: (() -> Unit)?,
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    val loggedIn = selfInfo != null
     var avatarFocused by remember { mutableStateOf(false) }
+    val label = if (loggedIn) {
+        selfInfo?.nickname?.takeIf { it.isNotBlank() } ?: stringResource(Lang.settings_tab_account)
+    } else {
+        stringResource(Lang.login_sign_in)
+    }
     // 聚焦高亮: 已登录画圆环 (头像是圆的), 未登录用图标块反色底
     val focusHighlight by animateColorAsState(
         if (avatarFocused) MaterialTheme.colorScheme.primary else Color.Transparent,
     )
     Row(
-        modifier,
+        modifier
+            .onFocusChanged { avatarFocused = it.isFocused }
+            .railExitKeys(onExitFocus)
+            .semantics { contentDescription = label }
+            .clickable(
+                interactionSource = remember { MutableInteractionSource() },
+                indication = null,
+                onClick = { if (!loggedIn) onClick() },
+            ),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(16.dp),
     ) {
         if (loggedIn) {
             Box(
                 Modifier.size(TvNavigationRailDefaults.ItemSize)
-                    .onFocusChanged { avatarFocused = it.isFocused }
-                    .railExitKeys(onExitFocus)
-                    .clickable(
-                        interactionSource = remember { MutableInteractionSource() },
-                        indication = null,
-                        onClick = onClick,
-                    )
                     .border(2.dp, focusHighlight, CircleShape),
                 contentAlignment = Alignment.Center,
             ) {
                 // 照片比高亮框略小并居中, 使聚焦圆环成为其外圈
-                AvatarImage(
-                    url = selfInfo?.avatarUrl,
-                    modifier = Modifier.size(TvNavigationRailDefaults.AvatarImageSize).clip(CircleShape),
-                )
+                if (selfInfo?.avatarUrl == null) {
+                    Icon(
+                        Icons.Rounded.Person, null,
+                        Modifier.size(TvNavigationRailDefaults.AvatarImageSize),
+                        tint = MaterialTheme.colorScheme.onSurface,
+                    )
+                } else {
+                    AvatarImage(
+                        url = selfInfo.avatarUrl,
+                        modifier = Modifier.size(TvNavigationRailDefaults.AvatarImageSize).clip(CircleShape),
+                    )
+                }
             }
         } else {
             TvRailGlyphBox(
                 focused = avatarFocused,
                 icon = Icons.Outlined.AccountCircle,
-                modifier = Modifier
-                    .onFocusChanged { avatarFocused = it.isFocused }
-                    .railExitKeys(onExitFocus)
-                    .clickable(
-                        interactionSource = remember { MutableInteractionSource() },
-                        indication = null,
-                        onClick = onClick,
-                    ),
             )
         }
         if (expanded) {
             Text(
-                selfInfo?.nickname?.takeIf { it.isNotBlank() } ?: stringResource(Lang.login_sign_in),
+                label,
                 color = MaterialTheme.colorScheme.onSurface,
                 style = MaterialTheme.typography.labelMedium,
                 softWrap = false,

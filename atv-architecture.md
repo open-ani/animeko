@@ -40,7 +40,7 @@
 | **BT 源播放**             | torrent 平台绑定留在 `src/default`；TV 解析器没有 torrent/offline 链路，候选弹窗仅列 WEB；共享 classpath 仍可包含 torrent 符号                               |
 | **发送评论**               | 详情页与播放器评论只读；当前 `CommonKoinModule` 没有 `TurnstileState` 绑定。Web 源解析必需的 `CaptchaBrowserFactory`/`ImageCaptchaRecognizer` 则已在 TV 注册 |
 | **Bangumi OAuth 网页授权** | 没有 OAuth 回调清单或 TV 授权界面；仅邮箱 OTP 登录。手机端账号绑定后的服务端同步需在 TV 验收                                                                       |
-| **编辑个人资料**             | TV 没有编辑入口；侧边栏显示账号头像/昵称，点击进入登录页，尚无独立账号管理页                                                                                       |
+| **编辑个人资料**             | TV 没有编辑入口；侧边栏头像在未登录时进入登录页，已登录时聚焦显示上方的退出登录项，经确认后退出；无独立账号管理页 |
 
 **架构边界**：
 

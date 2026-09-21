@@ -10,9 +10,12 @@
 package me.him188.ani.leanback.ui.main
 
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import me.him188.ani.app.ui.foundation.widgets.LocalToaster
+import me.him188.ani.app.ui.foundation.widgets.showLoadError
 import me.him188.ani.leanback.ui.foundation.focus.TvFocusMemory
 
 @Composable
@@ -25,6 +28,19 @@ fun TvMainRoute(
     focusMemory: TvFocusMemory? = null,
     pageContent: @Composable (TvShellContent) -> Unit,
 ) {
-    val state by viewModel.uiState.collectAsState()
-    TvMainShell(state, content, onContentChange, onOpenSettings, modifier, focusMemory, pageContent)
+    val state by viewModel.uiState.collectAsStateWithLifecycle()
+    val toaster = LocalToaster.current
+    LaunchedEffect(viewModel, toaster) {
+        viewModel.logoutErrors.collect { toaster.showLoadError(it) }
+    }
+    TvMainShell(
+        uiState = state,
+        content = content,
+        onContentChange = onContentChange,
+        onOpenSettings = onOpenSettings,
+        onLogout = { viewModel.onIntent(TvMainIntent.Logout) },
+        modifier = modifier,
+        focusMemory = focusMemory,
+        pageContent = pageContent,
+    )
 }
