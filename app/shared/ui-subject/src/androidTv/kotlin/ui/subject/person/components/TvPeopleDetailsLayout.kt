@@ -2,7 +2,7 @@
  * Copyright (C) 2026 OpenAni and contributors.
  * Use of this source code is governed by the GNU AGPLv3 license.
  */
-package me.him188.ani.leanback.ui.subject.person.components
+package me.him188.ani.tv.ui.subject.person.components
 
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.ScrollState
@@ -24,10 +24,10 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.unit.dp
-import me.him188.ani.leanback.ui.foundation.focus.TvFocusScope
-import me.him188.ani.leanback.ui.subject.components.TvDetailsScrollAnchors
-import me.him188.ani.leanback.ui.subject.components.TvSubjectDetailsDefaults
-import me.him188.ani.leanback.ui.subject.components.TvSubjectDetailsPageLayout
+import me.him188.ani.tv.ui.foundation.focus.TvFocusScope
+import me.him188.ani.tv.ui.subject.components.TvDetailsScrollAnchors
+import me.him188.ani.tv.ui.subject.components.TvSubjectDetailsDefaults
+import me.him188.ani.tv.ui.subject.components.TvSubjectDetailsPageLayout
 
 internal object TvPeopleDefaults {
     const val HeroHeightFraction = .74f

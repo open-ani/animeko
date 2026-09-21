@@ -7,7 +7,7 @@
  * https://github.com/open-ani/ani/blob/main/LICENSE
  */
 
-package me.him188.ani.leanback.ui.episode
+package me.him188.ani.tv.ui.episode
 
 import android.graphics.Bitmap
 import androidx.activity.OnBackPressedDispatcher
@@ -71,20 +71,20 @@ import me.him188.ani.app.ui.watchtogether.WatchTogetherMemberPresence
 import me.him188.ani.app.ui.watchtogether.WatchTogetherMemberPresentation
 import me.him188.ani.app.ui.watchtogether.WatchTogetherPlaybackPresentation
 import me.him188.ani.app.videoplayer.ui.progress.MediaProgressFramePreviewState
-import me.him188.ani.leanback.ui.episode.playback.TvChapter
-import me.him188.ani.leanback.ui.episode.playback.TvPlaybackInteractionState
-import me.him188.ani.leanback.ui.episode.presentation.TvPlaybackSnapshot
-import me.him188.ani.leanback.ui.episode.presentation.TvPlayerAction
-import me.him188.ani.leanback.ui.episode.presentation.TvPlayerDialog
-import me.him188.ani.leanback.ui.episode.presentation.TvPlayerPanel
-import me.him188.ani.leanback.ui.episode.presentation.TvPlayerPresentationState
-import me.him188.ani.leanback.ui.episode.presentation.rememberTvPlayerPresentationState
-import me.him188.ani.leanback.ui.episode.source.TvPlayerSourceDialog
-import me.him188.ani.leanback.ui.episode.source.TvSourceGroup
-import me.him188.ani.leanback.ui.episode.source.TvSourceSelectionState
-import me.him188.ani.leanback.ui.episode.source.rememberTvSourceDialogState
-import me.him188.ani.leanback.ui.foundation.theme.AniTvTheme
-import me.him188.ani.leanback.ui.watchtogether.TvTogetherState
+import me.him188.ani.tv.ui.episode.playback.TvChapter
+import me.him188.ani.tv.ui.episode.playback.TvPlaybackInteractionState
+import me.him188.ani.tv.ui.episode.presentation.TvPlaybackSnapshot
+import me.him188.ani.tv.ui.episode.presentation.TvPlayerAction
+import me.him188.ani.tv.ui.episode.presentation.TvPlayerDialog
+import me.him188.ani.tv.ui.episode.presentation.TvPlayerPanel
+import me.him188.ani.tv.ui.episode.presentation.TvPlayerPresentationState
+import me.him188.ani.tv.ui.episode.presentation.rememberTvPlayerPresentationState
+import me.him188.ani.tv.ui.episode.source.TvPlayerSourceDialog
+import me.him188.ani.tv.ui.episode.source.TvSourceGroup
+import me.him188.ani.tv.ui.episode.source.TvSourceSelectionState
+import me.him188.ani.tv.ui.episode.source.rememberTvSourceDialogState
+import me.him188.ani.tv.ui.foundation.theme.AniTvTheme
+import me.him188.ani.tv.ui.watchtogether.TvTogetherState
 import org.jetbrains.compose.resources.StringResource
 import org.jetbrains.compose.resources.getString
 import org.openani.mediamp.MediaStatus

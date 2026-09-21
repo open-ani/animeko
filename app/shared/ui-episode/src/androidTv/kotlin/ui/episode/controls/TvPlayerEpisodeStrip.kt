@@ -7,7 +7,7 @@
  * https://github.com/open-ani/ani/blob/main/LICENSE
  */
 
-package me.him188.ani.leanback.ui.episode.controls
+package me.him188.ani.tv.ui.episode.controls
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
@@ -52,10 +52,10 @@ import me.him188.ani.app.ui.foundation.AsyncImage
 import me.him188.ani.app.ui.lang.Lang
 import me.him188.ani.app.ui.lang.subject_episode_now_playing
 import me.him188.ani.app.ui.lang.subject_episode_watched
-import me.him188.ani.leanback.ui.episode.TvStripEpisode
-import me.him188.ani.leanback.ui.foundation.focus.TvFocusDefaults
-import me.him188.ani.leanback.ui.foundation.focus.tvCardFocusBorder
-import me.him188.ani.leanback.ui.foundation.focus.tvLongPressKey
+import me.him188.ani.tv.ui.episode.TvStripEpisode
+import me.him188.ani.tv.ui.foundation.focus.TvFocusDefaults
+import me.him188.ani.tv.ui.foundation.focus.tvCardFocusBorder
+import me.him188.ani.tv.ui.foundation.focus.tvLongPressKey
 import org.jetbrains.compose.resources.stringResource
 
 /** [TvPlayerEpisodeStrip] 默认值 (附录 A: 选集卡 204×114.75dp/播放器, 三态). */
@@ -74,7 +74,7 @@ internal object TvPlayerEpisodeStripDefaults {
 }
 
 /**
- * 播放器选集条 (atv-architecture.md §8.3): 功能药丸上方横向剧照卡列表, 三态 =
+ * 播放器选集条: 功能药丸上方横向剧照卡列表, 三态 =
  * 正在播放 (primary 徽标) / 已看 (对勾) / 未看. 优先展示 TMDB 独立分集剧照.
  *
  * 纯视图组件: 展开/收起与焦点接线由 Screen 注入 ([stripModifier]/[cardModifier], §14.7-2).

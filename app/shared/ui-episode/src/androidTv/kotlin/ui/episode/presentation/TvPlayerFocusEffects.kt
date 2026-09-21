@@ -7,7 +7,7 @@
  * https://github.com/open-ani/ani/blob/main/LICENSE
  */
 
-package me.him188.ani.leanback.ui.episode.presentation
+package me.him188.ani.tv.ui.episode.presentation
 
 import androidx.compose.animation.core.Transition
 import androidx.compose.foundation.lazy.LazyListState
@@ -24,15 +24,15 @@ import androidx.lifecycle.compose.LocalLifecycleOwner
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.flow.first
 import me.him188.ani.datasources.api.topic.UnifiedCollectionType
-import me.him188.ani.leanback.ui.episode.TvEpisodeUiState
-import me.him188.ani.leanback.ui.episode.danmaku.TvDanmakuSettingsPanelState
-import me.him188.ani.leanback.ui.subject.collection.TvCollectionPrompt
-import me.him188.ani.leanback.ui.subject.collection.tvCollectionEntryType
-import me.him188.ani.leanback.ui.foundation.focus.TvFocusKey
-import me.him188.ani.leanback.ui.foundation.focus.TvFocusScope
-import me.him188.ani.leanback.ui.foundation.focus.requestPrepared
-import me.him188.ani.leanback.ui.watchtogether.TvTogetherIntent
-import me.him188.ani.leanback.ui.watchtogether.TvTogetherState
+import me.him188.ani.tv.ui.episode.TvEpisodeUiState
+import me.him188.ani.tv.ui.episode.danmaku.TvDanmakuSettingsPanelState
+import me.him188.ani.tv.ui.subject.collection.TvCollectionPrompt
+import me.him188.ani.tv.ui.subject.collection.tvCollectionEntryType
+import me.him188.ani.tv.ui.foundation.focus.TvFocusKey
+import me.him188.ani.tv.ui.foundation.focus.TvFocusScope
+import me.him188.ani.tv.ui.foundation.focus.requestPrepared
+import me.him188.ani.tv.ui.watchtogether.TvTogetherIntent
+import me.him188.ani.tv.ui.watchtogether.TvTogetherState
 
 /** 播放页焦点锚点. Root 仅 HIDDEN 态可聚焦 (无焦点持有者按键派发会整体失效). */
 internal enum class TvPlayerFocus : TvFocusKey {

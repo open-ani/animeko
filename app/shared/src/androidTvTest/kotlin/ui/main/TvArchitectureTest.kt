@@ -7,7 +7,7 @@
  * https://github.com/open-ani/ani/blob/main/LICENSE
  */
 
-package me.him188.ani.leanback.ui.main
+package me.him188.ani.tv.ui.main
 
 import com.lemonappdev.konsist.api.Konsist
 import com.lemonappdev.konsist.api.verify.assertFalse
@@ -15,7 +15,7 @@ import java.io.File
 import kotlin.test.Test
 
 /**
- * TV 约定边界守护 (atv-architecture.md §4.2/§11.1).
+ * TV 约定边界守护.
  *
  * D1 放弃编译期隔离后, 手机 UI 树对 tv variant 完整可见 —— 本测试是「TV 不调用手机 UI」
  * 约定的主要机械守护: 禁止 TV 代码 import 手机 UI 树 (白名单基建除外).
@@ -146,7 +146,7 @@ class TvArchitectureTest {
     fun `tv watchtogether must not depend on player ui`() {
         tvScope().files.assertFalse { file ->
             file.path.replace('\\', '/').contains("/ui-watchtogether/src/androidTv/") &&
-                file.imports.any { it.name.startsWith("me.him188.ani.leanback.ui.episode.") }
+                file.imports.any { it.name.startsWith("me.him188.ani.tv.ui.episode.") }
         }
     }
 
@@ -155,8 +155,8 @@ class TvArchitectureTest {
         tvScope().files.assertFalse { file ->
             file.path.replace('\\', '/').contains("/ui-foundation/src/androidTv/") &&
                 file.imports.any {
-                    it.name.startsWith("me.him188.ani.leanback.ui.") &&
-                        !it.name.startsWith("me.him188.ani.leanback.ui.foundation.")
+                    it.name.startsWith("me.him188.ani.tv.ui.") &&
+                        !it.name.startsWith("me.him188.ani.tv.ui.foundation.")
                 }
         }
     }
@@ -227,7 +227,7 @@ class TvArchitectureTest {
         }
     }
 
-    // ============ 焦点框架规约 (atv-architecture.md §14.4; 违反 = 运行期焦点 bug) ============
+    // ============ 焦点框架规约 (违反 = 运行期焦点 bug) ============
 
     @Test
     fun `tv viewmodels must not own focus or player presentation navigation`() {

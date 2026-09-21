@@ -2,7 +2,7 @@
  * Copyright (C) 2026 OpenAni and contributors.
  * Use of this source code is governed by the GNU AGPLv3 license.
  */
-package me.him188.ani.leanback.ui.settings
+package me.him188.ani.tv.ui.settings
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -60,15 +60,15 @@ import me.him188.ani.app.ui.lang.settings_playback_speed_max
 import me.him188.ani.app.ui.lang.settings_playback_speed_min
 import me.him188.ani.app.ui.lang.settings_player_playback_speed_range_description
 import me.him188.ani.app.ui.lang.settings_media_source_save_button
-import me.him188.ani.leanback.ui.foundation.focus.TvFocusKey
-import me.him188.ani.leanback.ui.foundation.focus.TvFocusScope
-import me.him188.ani.leanback.ui.foundation.focus.tvFocusAnchor
-import me.him188.ani.leanback.ui.foundation.focus.tvFocusHotkey
-import me.him188.ani.leanback.ui.foundation.layout.TvModalOverlay
-import me.him188.ani.leanback.ui.foundation.widgets.LocalTvOptionColors
-import me.him188.ani.leanback.ui.foundation.widgets.TvOptionModal
-import me.him188.ani.leanback.ui.foundation.widgets.TvOptionRow
-import me.him188.ani.leanback.ui.foundation.widgets.TvOptionStepper
+import me.him188.ani.tv.ui.foundation.focus.TvFocusKey
+import me.him188.ani.tv.ui.foundation.focus.TvFocusScope
+import me.him188.ani.tv.ui.foundation.focus.tvFocusAnchor
+import me.him188.ani.tv.ui.foundation.focus.tvFocusHotkey
+import me.him188.ani.tv.ui.foundation.layout.TvModalOverlay
+import me.him188.ani.tv.ui.foundation.widgets.LocalTvOptionColors
+import me.him188.ani.tv.ui.foundation.widgets.TvOptionModal
+import me.him188.ani.tv.ui.foundation.widgets.TvOptionRow
+import me.him188.ani.tv.ui.foundation.widgets.TvOptionStepper
 import org.jetbrains.compose.resources.stringResource
 
 internal fun editorKey(id: String) = TvFocusKey("settings-editor-$id")

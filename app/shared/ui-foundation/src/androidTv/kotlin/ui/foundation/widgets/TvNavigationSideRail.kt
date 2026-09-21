@@ -7,7 +7,7 @@
  * https://github.com/open-ani/ani/blob/main/LICENSE
  */
 
-package me.him188.ani.leanback.ui.foundation.widgets
+package me.him188.ani.tv.ui.foundation.widgets
 
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.animateColorAsState
@@ -69,7 +69,7 @@ import me.him188.ani.app.ui.lang.Lang
 import me.him188.ani.app.ui.lang.login_sign_in
 import me.him188.ani.app.ui.lang.settings_account_popup_logout
 import me.him188.ani.app.ui.lang.settings_tab_account
-import me.him188.ani.leanback.ui.foundation.focus.tvFocusEnterGate
+import me.him188.ani.tv.ui.foundation.focus.tvFocusEnterGate
 import org.jetbrains.compose.resources.stringResource
 
 /*

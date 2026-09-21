@@ -7,7 +7,7 @@
  * https://github.com/open-ani/ani/blob/main/LICENSE
  */
 
-package me.him188.ani.leanback.ui.foundation.widgets
+package me.him188.ani.tv.ui.foundation.widgets
 
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -26,7 +26,7 @@ import androidx.tv.material3.SurfaceDefaults
 import androidx.tv.material3.Text
 
 /**
- * TV 文本输入框 (atv-architecture.md §5.3): BasicTextField + tv Surface 壳, 配合系统软键盘.
+ * TV 文本输入框: BasicTextField + tv Surface 壳, 配合系统软键盘.
  */
 @Composable
 fun TvTextField(

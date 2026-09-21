@@ -2,7 +2,7 @@
  * Copyright (C) 2026 OpenAni and contributors.
  * Use of this source code is governed by the GNU AGPLv3 license.
  */
-package me.him188.ani.leanback.ui.subject.person
+package me.him188.ani.tv.ui.subject.person
 
 import android.graphics.Bitmap
 import android.os.LocaleList
@@ -75,10 +75,10 @@ import me.him188.ani.app.ui.framework.AniComposeUiTest
 import me.him188.ani.app.ui.framework.assertScreenshot
 import me.him188.ani.app.ui.framework.runAniComposeUiTest
 import me.him188.ani.app.ui.richtext.UIRichElement
-import me.him188.ani.leanback.ui.foundation.theme.AniTvTheme
-import me.him188.ani.leanback.ui.foundation.focus.tvBackKey
-import me.him188.ani.leanback.ui.subject.assertDetailsEndPaddingAligned
-import me.him188.ani.leanback.ui.subject.assertCommentRefreshCleanup
+import me.him188.ani.tv.ui.foundation.theme.AniTvTheme
+import me.him188.ani.tv.ui.foundation.focus.tvBackKey
+import me.him188.ani.tv.ui.subject.assertDetailsEndPaddingAligned
+import me.him188.ani.tv.ui.subject.assertCommentRefreshCleanup
 import java.io.File
 import java.io.IOException
 import java.util.Locale

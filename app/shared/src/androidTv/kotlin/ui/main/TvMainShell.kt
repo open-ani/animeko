@@ -7,7 +7,7 @@
  * https://github.com/open-ani/ani/blob/main/LICENSE
  */
 
-package me.him188.ani.leanback.ui.main
+package me.him188.ani.tv.ui.main
 
 import androidx.activity.compose.BackHandler
 import androidx.compose.animation.AnimatedContent
@@ -53,18 +53,18 @@ import me.him188.ani.app.ui.lang.exploration_search
 import me.him188.ani.app.ui.lang.main_screen_page_collection
 import me.him188.ani.app.ui.lang.main_screen_page_exploration
 import me.him188.ani.app.ui.lang.settings
-import me.him188.ani.leanback.ui.foundation.focus.LocalTvFocusMemory
-import me.him188.ani.leanback.ui.foundation.focus.TvFocusKey
-import me.him188.ani.leanback.ui.foundation.focus.TvFocusMemory
-import me.him188.ani.leanback.ui.foundation.focus.rememberTvFocusScope
-import me.him188.ani.leanback.ui.foundation.focus.tvFocusAnchor
-import me.him188.ani.leanback.ui.foundation.focus.tvFocusHotkeyToggle
-import me.him188.ani.leanback.ui.foundation.focus.tvFocusNavSignal
-import me.him188.ani.leanback.ui.foundation.layout.tvModalUnderlay
-import me.him188.ani.leanback.ui.foundation.widgets.TvNavRailItem
-import me.him188.ani.leanback.ui.foundation.widgets.TvNavigationRailDefaults
-import me.him188.ani.leanback.ui.foundation.widgets.TvNavigationSideRail
-import me.him188.ani.leanback.ui.foundation.widgets.tvShellBackgroundColor
+import me.him188.ani.tv.ui.foundation.focus.LocalTvFocusMemory
+import me.him188.ani.tv.ui.foundation.focus.TvFocusKey
+import me.him188.ani.tv.ui.foundation.focus.TvFocusMemory
+import me.him188.ani.tv.ui.foundation.focus.rememberTvFocusScope
+import me.him188.ani.tv.ui.foundation.focus.tvFocusAnchor
+import me.him188.ani.tv.ui.foundation.focus.tvFocusHotkeyToggle
+import me.him188.ani.tv.ui.foundation.focus.tvFocusNavSignal
+import me.him188.ani.tv.ui.foundation.layout.tvModalUnderlay
+import me.him188.ani.tv.ui.foundation.widgets.TvNavRailItem
+import me.him188.ani.tv.ui.foundation.widgets.TvNavigationRailDefaults
+import me.him188.ani.tv.ui.foundation.widgets.TvNavigationSideRail
+import me.him188.ani.tv.ui.foundation.widgets.tvShellBackgroundColor
 import org.jetbrains.compose.resources.stringResource
 
 enum class TvShellContent { Search, Exploration, Schedule, Collection, Login }

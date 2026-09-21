@@ -7,7 +7,7 @@
  * https://github.com/open-ani/ani/blob/main/LICENSE
  */
 
-package me.him188.ani.android.leanback
+package me.him188.ani.android.tv
 
 import android.app.Activity
 import kotlinx.coroutines.Dispatchers
@@ -33,7 +33,7 @@ import org.koin.dsl.module
 import kotlin.system.exitProcess
 
 /**
- * TV flavor 专属平台绑定 (atv-architecture.md §4.3-R2 / §6.1).
+ * TV flavor 专属平台绑定.
  *
  * 按 §1.2 裁剪, torrent/缓存链路与 UpdateInstaller (D8 暂缓) 不注册.
  * Captcha 浏览器/识别器**需要**注册 —— 它们是 Web 数据源解析链 (WebSessionManager) 的依赖,

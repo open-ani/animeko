@@ -7,14 +7,14 @@
  * https://github.com/open-ani/ani/blob/main/LICENSE
  */
 
-package me.him188.ani.leanback.ui.foundation.focus
+package me.him188.ani.tv.ui.foundation.focus
 
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.gestures.BringIntoViewSpec
 import kotlin.math.abs
 
 /*
- * 焦点驱动滚动 (BringIntoView) 的策略原语 (atv-architecture.md §14.4-9).
+ * 焦点驱动滚动 (BringIntoView) 的策略原语.
  *
  * Compose 在 Android TV 上的平台默认 LocalBringIntoViewSpec 是 **pivot 30%**: 可滚动容器里的节点
  * 一聚焦, 前缘就被滚到容器 30% 处, 与是否已可见无关 —— 它会把整屏 hero 滚掉半屏、把锚定行滚到

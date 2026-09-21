@@ -2,7 +2,7 @@
  * Copyright (C) 2026 OpenAni and contributors.
  * Use of this source code is governed by the GNU AGPLv3 license.
  */
-package me.him188.ani.leanback.ui.subject.person.components
+package me.him188.ani.tv.ui.subject.person.components
 
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
@@ -50,14 +50,14 @@ import me.him188.ani.app.ui.foundation.AsyncImage
 import me.him188.ani.app.ui.lang.Lang
 import me.him188.ani.app.ui.lang.foundation_loading
 import me.him188.ani.app.ui.lang.person_details_meta
-import me.him188.ani.leanback.ui.foundation.widgets.TvPlaceholderBlock
-import me.him188.ani.leanback.ui.subject.components.TvDetailsTextPlaceholder
-import me.him188.ani.leanback.ui.subject.components.TvSubjectDetailsDefaults
-import me.him188.ani.leanback.ui.subject.details.formatCount
-import me.him188.ani.leanback.ui.subject.person.TvPeopleKind
-import me.him188.ani.leanback.ui.subject.person.TvPeopleProfile
-import me.him188.ani.leanback.ui.subject.person.peopleKindLabel
-import me.him188.ani.leanback.ui.subject.person.peopleMetadata
+import me.him188.ani.tv.ui.foundation.widgets.TvPlaceholderBlock
+import me.him188.ani.tv.ui.subject.components.TvDetailsTextPlaceholder
+import me.him188.ani.tv.ui.subject.components.TvSubjectDetailsDefaults
+import me.him188.ani.tv.ui.subject.details.formatCount
+import me.him188.ani.tv.ui.subject.person.TvPeopleKind
+import me.him188.ani.tv.ui.subject.person.TvPeopleProfile
+import me.him188.ani.tv.ui.subject.person.peopleKindLabel
+import me.him188.ani.tv.ui.subject.person.peopleMetadata
 import org.jetbrains.compose.resources.stringResource
 
 @Composable

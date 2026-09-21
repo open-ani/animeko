@@ -7,7 +7,7 @@
  * https://github.com/open-ani/ani/blob/main/LICENSE
  */
 
-package me.him188.ani.leanback.ui.watchtogether
+package me.him188.ani.tv.ui.watchtogether
 
 import androidx.compose.foundation.focusGroup
 import androidx.compose.foundation.layout.Arrangement
@@ -62,16 +62,16 @@ import me.him188.ani.app.ui.lang.watch_together_login_required
 import me.him188.ani.app.ui.lang.watch_together_password
 import me.him188.ani.app.ui.lang.watch_together_room_name
 import me.him188.ani.app.ui.lang.watch_together_title
-import me.him188.ani.leanback.ui.foundation.focus.TvFocusKey
-import me.him188.ani.leanback.ui.foundation.focus.rememberTvFocusScope
-import me.him188.ani.leanback.ui.foundation.focus.requestPrepared
-import me.him188.ani.leanback.ui.foundation.focus.tvFocusAnchor
-import me.him188.ani.leanback.ui.foundation.focus.tvFocusHotkey
-import me.him188.ani.leanback.ui.foundation.focus.tvFocusNavSignal
-import me.him188.ani.leanback.ui.foundation.layout.tvPanelScrollEdges
-import me.him188.ani.leanback.ui.foundation.widgets.LocalTvOptionColors
-import me.him188.ani.leanback.ui.foundation.widgets.TvOptionDivider
-import me.him188.ani.leanback.ui.foundation.widgets.TvOptionTextField
+import me.him188.ani.tv.ui.foundation.focus.TvFocusKey
+import me.him188.ani.tv.ui.foundation.focus.rememberTvFocusScope
+import me.him188.ani.tv.ui.foundation.focus.requestPrepared
+import me.him188.ani.tv.ui.foundation.focus.tvFocusAnchor
+import me.him188.ani.tv.ui.foundation.focus.tvFocusHotkey
+import me.him188.ani.tv.ui.foundation.focus.tvFocusNavSignal
+import me.him188.ani.tv.ui.foundation.layout.tvPanelScrollEdges
+import me.him188.ani.tv.ui.foundation.widgets.LocalTvOptionColors
+import me.him188.ani.tv.ui.foundation.widgets.TvOptionDivider
+import me.him188.ani.tv.ui.foundation.widgets.TvOptionTextField
 import org.jetbrains.compose.resources.stringResource
 
 private enum class TogetherFocus : TvFocusKey { Name, Password, Submit, Playback, Follow, Leave }

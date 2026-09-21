@@ -6,7 +6,7 @@
  *
  * https://github.com/open-ani/ani/blob/main/LICENSE
  */
-package me.him188.ani.leanback.ui.exploration
+package me.him188.ani.tv.ui.exploration
 
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
@@ -73,15 +73,15 @@ import me.him188.ani.app.ui.lang.Lang
 import me.him188.ani.app.ui.lang.exploration_continue_watching
 import me.him188.ani.app.ui.lang.exploration_for_you
 import me.him188.ani.app.ui.lang.exploration_trending
-import me.him188.ani.leanback.ui.foundation.focus.TvFocusKey
-import me.him188.ani.leanback.ui.foundation.focus.TvFocusDefaults
-import me.him188.ani.leanback.ui.foundation.focus.tvCardFocusBorder
-import me.him188.ani.leanback.ui.foundation.focus.TvFocusScope
-import me.him188.ani.leanback.ui.foundation.focus.requestPrepared
-import me.him188.ani.leanback.ui.foundation.focus.tvFocusAnchor
-import me.him188.ani.leanback.ui.foundation.focus.tvFocusMemorable
-import me.him188.ani.leanback.ui.foundation.widgets.TvLandscapeCard
-import me.him188.ani.leanback.ui.foundation.widgets.TvLandscapeCardDefaults
+import me.him188.ani.tv.ui.foundation.focus.TvFocusKey
+import me.him188.ani.tv.ui.foundation.focus.TvFocusDefaults
+import me.him188.ani.tv.ui.foundation.focus.tvCardFocusBorder
+import me.him188.ani.tv.ui.foundation.focus.TvFocusScope
+import me.him188.ani.tv.ui.foundation.focus.requestPrepared
+import me.him188.ani.tv.ui.foundation.focus.tvFocusAnchor
+import me.him188.ani.tv.ui.foundation.focus.tvFocusMemorable
+import me.him188.ani.tv.ui.foundation.widgets.TvLandscapeCard
+import me.him188.ani.tv.ui.foundation.widgets.TvLandscapeCardDefaults
 import org.jetbrains.compose.resources.StringResource
 import org.jetbrains.compose.resources.stringResource
 

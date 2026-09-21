@@ -112,7 +112,7 @@ object ReleaseArtifactNames {
 
     fun androidApp(fullVersion: String, arch: String): String = "$appName-$fullVersion-$arch.apk"
 
-    // TV APK 独立命名, 避免与手机 arch 资产冲突 (atv-architecture.md §10.2)
+    // TV APK 独立命名, 避免与手机 arch 资产冲突
     fun androidTvApp(fullVersion: String, arch: String): String = "$appName-tv-$fullVersion-$arch.apk"
 
     fun androidAppQr(fullVersion: String, arch: String, server: String): String =

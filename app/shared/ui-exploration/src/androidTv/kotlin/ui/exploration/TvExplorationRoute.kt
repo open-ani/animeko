@@ -7,15 +7,15 @@
  * https://github.com/open-ani/ani/blob/main/LICENSE
  */
 
-package me.him188.ani.leanback.ui.exploration
+package me.him188.ani.tv.ui.exploration
 
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.paging.compose.collectWithLifecycle
-import me.him188.ani.leanback.ui.foundation.TvNavigationEffect
-import me.him188.ani.leanback.ui.foundation.TvNavigationEvent
+import me.him188.ani.tv.ui.foundation.TvNavigationEffect
+import me.him188.ani.tv.ui.foundation.TvNavigationEvent
 
 @Composable
 fun TvExplorationRoute(

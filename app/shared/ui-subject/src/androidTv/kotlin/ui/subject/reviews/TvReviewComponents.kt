@@ -2,7 +2,7 @@
  * Copyright (C) 2026 OpenAni and contributors.
  * Use of this source code is governed by the GNU AGPLv3 license.
  */
-package me.him188.ani.leanback.ui.subject.reviews
+package me.him188.ani.tv.ui.subject.reviews
 
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.Canvas
@@ -78,10 +78,10 @@ import me.him188.ani.app.ui.rating.FiveRatingStars
 import me.him188.ani.app.ui.richtext.RichText
 import me.him188.ani.app.ui.richtext.UIRichElement
 import me.him188.ani.app.ui.subject.details.components.RatingHistogram
-import me.him188.ani.leanback.ui.subject.components.TvSubjectDetailsDefaults
-import me.him188.ani.leanback.ui.foundation.focus.TvFocusDefaults
-import me.him188.ani.leanback.ui.foundation.focus.tvCardFocusBorder
-import me.him188.ani.leanback.ui.subject.details.formatCount
+import me.him188.ani.tv.ui.subject.components.TvSubjectDetailsDefaults
+import me.him188.ani.tv.ui.foundation.focus.TvFocusDefaults
+import me.him188.ani.tv.ui.foundation.focus.tvCardFocusBorder
+import me.him188.ani.tv.ui.subject.details.formatCount
 import org.jetbrains.compose.resources.stringResource
 import kotlin.math.roundToInt
 

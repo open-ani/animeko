@@ -7,7 +7,7 @@
  * https://github.com/open-ani/ani/blob/main/LICENSE
  */
 
-package me.him188.ani.leanback.ui.episode.components
+package me.him188.ani.tv.ui.episode.components
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.focusGroup
@@ -29,8 +29,8 @@ import androidx.compose.ui.unit.dp
 import androidx.tv.material3.LocalContentColor
 import androidx.tv.material3.MaterialTheme
 import androidx.tv.material3.Text
-import me.him188.ani.leanback.ui.foundation.widgets.LocalTvOptionColors
-import me.him188.ani.leanback.ui.foundation.widgets.TvOptionColors
+import me.him188.ani.tv.ui.foundation.widgets.LocalTvOptionColors
+import me.him188.ani.tv.ui.foundation.widgets.TvOptionColors
 
 /** Neutral layers keep sidebar content consistent with its opaque black background. */
 private val SidebarColors = TvOptionColors(

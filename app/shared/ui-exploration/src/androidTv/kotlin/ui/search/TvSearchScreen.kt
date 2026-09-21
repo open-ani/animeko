@@ -7,7 +7,7 @@
  * https://github.com/open-ani/ani/blob/main/LICENSE
  */
 
-package me.him188.ani.leanback.ui.search
+package me.him188.ani.tv.ui.search
 
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -36,14 +36,14 @@ import androidx.tv.material3.SurfaceDefaults
 import androidx.tv.material3.Text
 import me.him188.ani.app.data.models.preference.NsfwMode
 import me.him188.ani.app.data.network.BatchSubjectDetails
-import me.him188.ani.leanback.ui.foundation.focus.TvFocusKey
-import me.him188.ani.leanback.ui.foundation.focus.TvFocusScope
-import me.him188.ani.leanback.ui.foundation.focus.rememberTvFocusScope
-import me.him188.ani.leanback.ui.foundation.focus.tvFocusAnchor
-import me.him188.ani.leanback.ui.foundation.focus.tvFocusHotkey
-import me.him188.ani.leanback.ui.foundation.focus.tvFocusNavSignal
-import me.him188.ani.leanback.ui.foundation.widgets.TvPageDefaults
-import me.him188.ani.leanback.ui.foundation.widgets.TvPosterCard
+import me.him188.ani.tv.ui.foundation.focus.TvFocusKey
+import me.him188.ani.tv.ui.foundation.focus.TvFocusScope
+import me.him188.ani.tv.ui.foundation.focus.rememberTvFocusScope
+import me.him188.ani.tv.ui.foundation.focus.tvFocusAnchor
+import me.him188.ani.tv.ui.foundation.focus.tvFocusHotkey
+import me.him188.ani.tv.ui.foundation.focus.tvFocusNavSignal
+import me.him188.ani.tv.ui.foundation.widgets.TvPageDefaults
+import me.him188.ani.tv.ui.foundation.widgets.TvPosterCard
 
 /** 搜索页焦点锚点 (统一焦点框架, 见 ui-foundation-tv/focus). */
 private enum class TvSearchFocus : TvFocusKey {
@@ -53,7 +53,7 @@ private enum class TvSearchFocus : TvFocusKey {
 }
 
 /**
- * TV 搜索页 (atv-architecture.md §7.3, M2 精简版):
+ * TV 搜索页 (M2 精简版):
  * 顶部输入框 (系统软键盘, ImeAction.Search 提交) + 结果网格. 历史/补全/筛选 M3 补.
  */
 @Composable

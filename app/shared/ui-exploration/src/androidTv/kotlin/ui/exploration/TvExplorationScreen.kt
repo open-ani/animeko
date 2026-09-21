@@ -6,7 +6,7 @@
  *
  * https://github.com/open-ani/ani/blob/main/LICENSE
  */
-package me.him188.ani.leanback.ui.exploration
+package me.him188.ani.tv.ui.exploration
 
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
@@ -73,14 +73,14 @@ import me.him188.ani.app.data.models.recommend.RecommendedItemInfo
 import me.him188.ani.app.data.models.subject.FollowedSubjectInfo
 import me.him188.ani.app.data.models.trending.TrendingSubjectInfo
 import me.him188.ani.app.ui.foundation.navigation.BackHandler
-import me.him188.ani.leanback.ui.foundation.widgets.TvLandscapeCardDefaults
-import me.him188.ani.leanback.ui.foundation.focus.TvFocusKey
-import me.him188.ani.leanback.ui.foundation.focus.TvFocusScope
-import me.him188.ani.leanback.ui.foundation.focus.rememberTvFocusScope
-import me.him188.ani.leanback.ui.foundation.focus.requestPrepared
-import me.him188.ani.leanback.ui.foundation.focus.tvFocusAnchor
-import me.him188.ani.leanback.ui.foundation.focus.tvFocusNavSignal
-import me.him188.ani.leanback.ui.subject.components.LocalTvDetailsActionBackdrop
+import me.him188.ani.tv.ui.foundation.widgets.TvLandscapeCardDefaults
+import me.him188.ani.tv.ui.foundation.focus.TvFocusKey
+import me.him188.ani.tv.ui.foundation.focus.TvFocusScope
+import me.him188.ani.tv.ui.foundation.focus.rememberTvFocusScope
+import me.him188.ani.tv.ui.foundation.focus.requestPrepared
+import me.him188.ani.tv.ui.foundation.focus.tvFocusAnchor
+import me.him188.ani.tv.ui.foundation.focus.tvFocusNavSignal
+import me.him188.ani.tv.ui.subject.components.LocalTvDetailsActionBackdrop
 
 internal enum class TvExplorationFocus : TvFocusKey { Details, FeedStatus }
 

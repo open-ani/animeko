@@ -298,7 +298,7 @@ private fun KoinApplication.otherModules(
     }
 
     single<AnimeScheduleService> { AnimeScheduleService(get<AniApiProvider>().scheduleApi) }
-    // TV 横版 backdrop / 分集剧照; 未配置 ani.tmdb.api.token 时自动关闭 (atv-architecture.md §4.3-R3)
+    // TV 横版 backdrop / 分集剧照; 未配置 ani.tmdb.api.token 时自动关闭
     single<BangumiSummaryService> { BangumiSummaryService(get()) }
 
     single<UpdateManager> {

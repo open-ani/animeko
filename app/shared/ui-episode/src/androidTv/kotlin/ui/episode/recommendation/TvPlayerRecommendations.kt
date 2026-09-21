@@ -7,7 +7,7 @@
  * https://github.com/open-ani/ani/blob/main/LICENSE
  */
 
-package me.him188.ani.leanback.ui.episode.recommendation
+package me.him188.ani.tv.ui.episode.recommendation
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.basicMarquee
@@ -54,11 +54,11 @@ import me.him188.ani.app.ui.lang.Lang
 import me.him188.ani.app.ui.lang.subject_episode_recommendations_empty
 import me.him188.ani.app.ui.lang.subject_episode_related_recommendations
 import me.him188.ani.app.ui.lang.tv_player_collapse_recommendations
-import me.him188.ani.leanback.ui.episode.controls.TvPlayerControlsDefaults
-import me.him188.ani.leanback.ui.episode.controls.TvPlayerEpisodeStripDefaults
-import me.him188.ani.leanback.ui.foundation.focus.TvFocusDefaults
-import me.him188.ani.leanback.ui.foundation.focus.tvCardFocusBorder
-import me.him188.ani.leanback.ui.foundation.widgets.tvOptionSurfaceColors
+import me.him188.ani.tv.ui.episode.controls.TvPlayerControlsDefaults
+import me.him188.ani.tv.ui.episode.controls.TvPlayerEpisodeStripDefaults
+import me.him188.ani.tv.ui.foundation.focus.TvFocusDefaults
+import me.him188.ani.tv.ui.foundation.focus.tvCardFocusBorder
+import me.him188.ani.tv.ui.foundation.widgets.tvOptionSurfaceColors
 import org.jetbrains.compose.resources.stringResource
 
 /** External/ad recommendations stay visible but have no navigation action on TV. */

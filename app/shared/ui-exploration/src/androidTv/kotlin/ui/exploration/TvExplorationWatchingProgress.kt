@@ -6,7 +6,7 @@
  *
  * https://github.com/open-ani/ani/blob/main/LICENSE
  */
-package me.him188.ani.leanback.ui.exploration
+package me.him188.ani.tv.ui.exploration
 
 import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.animateFloatAsState
@@ -67,7 +67,7 @@ import me.him188.ani.app.ui.lang.subject_progress_episode_counts_on_air
 import me.him188.ani.app.ui.subject.AiringLabelState
 import me.him188.ani.datasources.api.EpisodeType
 import me.him188.ani.datasources.api.topic.UnifiedCollectionType
-import me.him188.ani.leanback.ui.subject.details.TvDetailsAiringInfo
+import me.him188.ani.tv.ui.subject.details.TvDetailsAiringInfo
 import org.jetbrains.compose.resources.stringResource
 import kotlin.math.PI
 import kotlin.math.floor

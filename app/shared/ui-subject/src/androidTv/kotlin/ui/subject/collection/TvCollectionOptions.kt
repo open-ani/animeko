@@ -2,7 +2,7 @@
  * Copyright (C) 2026 OpenAni and contributors.
  * Use of this source code is governed by the GNU AGPLv3 license.
  */
-package me.him188.ani.leanback.ui.subject.collection
+package me.him188.ani.tv.ui.subject.collection
 
 import androidx.compose.foundation.layout.padding
 import androidx.compose.runtime.Composable
@@ -22,8 +22,8 @@ import me.him188.ani.app.ui.lang.subject_collection_on_hold
 import me.him188.ani.app.ui.lang.subject_collection_remove_confirm_short
 import me.him188.ani.app.ui.lang.subject_collection_wish
 import me.him188.ani.datasources.api.topic.UnifiedCollectionType
-import me.him188.ani.leanback.ui.foundation.widgets.TvOptionDefaults
-import me.him188.ani.leanback.ui.foundation.widgets.TvOptionRow
+import me.him188.ani.tv.ui.foundation.widgets.TvOptionDefaults
+import me.him188.ani.tv.ui.foundation.widgets.TvOptionRow
 import org.jetbrains.compose.resources.stringResource
 
 enum class TvCollectionPrompt { Remove, MarkAllWatched }

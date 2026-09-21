@@ -2,7 +2,7 @@
  * Copyright (C) 2026 OpenAni and contributors.
  * Use of this source code is governed by the GNU AGPLv3 license.
  */
-package me.him188.ani.leanback.ui.subject
+package me.him188.ani.tv.ui.subject
 
 import android.graphics.Bitmap
 import android.view.KeyEvent as AndroidKeyEvent
@@ -96,11 +96,11 @@ import me.him188.ani.app.ui.subject.episode.list.EpisodeListItem
 import me.him188.ani.datasources.api.EpisodeSort
 import me.him188.ani.datasources.api.PackedDate
 import me.him188.ani.datasources.api.topic.UnifiedCollectionType
-import me.him188.ani.leanback.ui.foundation.theme.AniTvTheme
-import me.him188.ani.leanback.ui.foundation.widgets.TvOptionDefaults
-import me.him188.ani.leanback.ui.subject.components.TvSubjectDetailsDefaults
-import me.him188.ani.leanback.ui.subject.components.LocalTvDetailsBackdropImage
-import me.him188.ani.leanback.ui.subject.components.TvDetailsBackdropImage
+import me.him188.ani.tv.ui.foundation.theme.AniTvTheme
+import me.him188.ani.tv.ui.foundation.widgets.TvOptionDefaults
+import me.him188.ani.tv.ui.subject.components.TvSubjectDetailsDefaults
+import me.him188.ani.tv.ui.subject.components.LocalTvDetailsBackdropImage
+import me.him188.ani.tv.ui.subject.components.TvDetailsBackdropImage
 import me.him188.ani.utils.platform.annotations.TestOnly
 import java.io.File
 import java.io.IOException

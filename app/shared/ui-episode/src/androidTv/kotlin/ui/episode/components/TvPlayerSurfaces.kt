@@ -7,7 +7,7 @@
  * https://github.com/open-ani/ani/blob/main/LICENSE
  */
 
-package me.him188.ani.leanback.ui.episode.components
+package me.him188.ani.tv.ui.episode.components
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
@@ -21,8 +21,8 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.tv.material3.MaterialTheme
 import androidx.tv.material3.Text
-import me.him188.ani.leanback.ui.foundation.widgets.LocalTvOptionColors
-import me.him188.ani.leanback.ui.foundation.widgets.TvOptionDefaults
+import me.him188.ani.tv.ui.foundation.widgets.LocalTvOptionColors
+import me.him188.ani.tv.ui.foundation.widgets.TvOptionDefaults
 
 @Composable
 internal fun TvPlayerSectionLabel(text: String, modifier: Modifier = Modifier) {

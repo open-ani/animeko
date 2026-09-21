@@ -7,7 +7,7 @@
  * https://github.com/open-ani/ani/blob/main/LICENSE
  */
 
-package me.him188.ani.leanback.ui.foundation.widgets
+package me.him188.ani.tv.ui.foundation.widgets
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.basicMarquee
@@ -41,9 +41,9 @@ import androidx.tv.material3.MaterialTheme
 import androidx.tv.material3.Surface
 import androidx.tv.material3.Text
 import me.him188.ani.app.ui.foundation.AsyncImage
-import me.him188.ani.leanback.ui.foundation.focus.TvFocusDefaults
-import me.him188.ani.leanback.ui.foundation.focus.tvCardFocusBorder
-import me.him188.ani.leanback.ui.foundation.focus.tvFocusMemorable
+import me.him188.ani.tv.ui.foundation.focus.TvFocusDefaults
+import me.him188.ani.tv.ui.foundation.focus.tvCardFocusBorder
+import me.him188.ani.tv.ui.foundation.focus.tvFocusMemorable
 
 /** [TvLandscapeCard] 默认值 (Prime Video 实测: 卡宽≈屏宽 20%, 16:9, 间距≈16dp, 4 卡整 + 1 卡半露). */
 object TvLandscapeCardDefaults {

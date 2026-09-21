@@ -2,14 +2,14 @@
  * Copyright (C) 2024-2026 OpenAni and contributors.
  * Use of this source code is governed by the GNU AGPLv3 license.
  */
-package me.him188.ani.leanback.ui.episode.controls
+package me.him188.ani.tv.ui.episode.controls
 
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.testTag
 import me.him188.ani.app.ui.lang.Lang
 import me.him188.ani.app.ui.lang.video_player_speed
-import me.him188.ani.leanback.ui.foundation.widgets.TvOptionStepper
+import me.him188.ani.tv.ui.foundation.widgets.TvOptionStepper
 import org.jetbrains.compose.resources.stringResource
 
 @Composable

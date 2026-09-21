@@ -6,7 +6,7 @@
  *
  * https://github.com/open-ani/ani/blob/main/LICENSE
  */
-package me.him188.ani.leanback.ui.subject.components
+package me.him188.ani.tv.ui.subject.components
 
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.ui.graphics.Color

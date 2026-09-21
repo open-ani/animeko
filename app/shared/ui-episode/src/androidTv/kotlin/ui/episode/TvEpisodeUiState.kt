@@ -7,7 +7,7 @@
  * https://github.com/open-ani/ani/blob/main/LICENSE
  */
 
-package me.him188.ani.leanback.ui.episode
+package me.him188.ani.tv.ui.episode
 
 import me.him188.ani.app.domain.episode.SubjectRecommendation
 import me.him188.ani.app.domain.player.VideoLoadingState
@@ -17,10 +17,10 @@ import me.him188.ani.danmaku.api.provider.DanmakuProviderId
 import me.him188.ani.danmaku.ui.DanmakuPresentation
 import me.him188.ani.datasources.api.Media
 import me.him188.ani.datasources.api.topic.UnifiedCollectionType
-import me.him188.ani.leanback.ui.episode.danmaku.TvDanmakuMatchState
-import me.him188.ani.leanback.ui.episode.danmaku.TvDanmakuProperty
-import me.him188.ani.leanback.ui.episode.playback.TvPlaybackInteractionState
-import me.him188.ani.leanback.ui.episode.source.TvSourceSelectionState
+import me.him188.ani.tv.ui.episode.danmaku.TvDanmakuMatchState
+import me.him188.ani.tv.ui.episode.danmaku.TvDanmakuProperty
+import me.him188.ani.tv.ui.episode.playback.TvPlaybackInteractionState
+import me.him188.ani.tv.ui.episode.source.TvSourceSelectionState
 import org.openani.mediamp.PlayerState
 import org.openani.mediamp.features.AspectRatioMode
 

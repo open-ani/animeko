@@ -2,7 +2,7 @@
  * Copyright (C) 2026 OpenAni and contributors.
  * Use of this source code is governed by the GNU AGPLv3 license.
  */
-package me.him188.ani.leanback.ui.subject.person
+package me.him188.ani.tv.ui.subject.person
 
 import androidx.compose.runtime.Composable
 import me.him188.ani.app.ui.lang.Lang

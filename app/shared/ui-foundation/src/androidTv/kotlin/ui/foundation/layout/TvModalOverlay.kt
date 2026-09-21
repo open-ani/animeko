@@ -2,7 +2,7 @@
  * Copyright (C) 2026 OpenAni and contributors.
  * Use of this source code is governed by the GNU AGPLv3 license.
  */
-package me.him188.ani.leanback.ui.foundation.layout
+package me.him188.ani.tv.ui.foundation.layout
 
 import androidx.activity.compose.BackHandler
 import androidx.compose.animation.core.Animatable
@@ -22,8 +22,8 @@ import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.key.onPreviewKeyEvent
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.semantics.clearAndSetSemantics
-import me.him188.ani.leanback.ui.foundation.focus.consumeHeldConfirmKey
-import me.him188.ani.leanback.ui.foundation.focus.tvBackKey
+import me.him188.ani.tv.ui.foundation.focus.consumeHeldConfirmKey
+import me.him188.ani.tv.ui.foundation.focus.tvBackKey
 
 /** A modal layer in the current Compose window. Focus and pointer input stay above the underlay. */
 @Composable

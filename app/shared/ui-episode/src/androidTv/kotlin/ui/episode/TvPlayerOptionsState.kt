@@ -7,7 +7,7 @@
  * https://github.com/open-ani/ani/blob/main/LICENSE
  */
 
-package me.him188.ani.leanback.ui.episode
+package me.him188.ani.tv.ui.episode
 
 import androidx.compose.ui.graphics.ImageBitmap
 import me.him188.ani.app.data.models.preference.VideoScaffoldConfig
@@ -15,10 +15,10 @@ import me.him188.ani.app.videoplayer.ui.PlayerStatsSnapshot
 import me.him188.ani.app.videoplayer.videoenhancement.VideoEnhancementMode
 import me.him188.ani.danmaku.ui.DanmakuConfig
 import me.him188.ani.datasources.api.topic.UnifiedCollectionType
-import me.him188.ani.leanback.ui.episode.controls.TvSubtitleOption
-import me.him188.ani.leanback.ui.episode.danmaku.TvDanmakuOrigin
-import me.him188.ani.leanback.ui.episode.playback.TvChapter
-import me.him188.ani.leanback.ui.episode.playback.TvSkipPrompt
+import me.him188.ani.tv.ui.episode.controls.TvSubtitleOption
+import me.him188.ani.tv.ui.episode.danmaku.TvDanmakuOrigin
+import me.him188.ani.tv.ui.episode.playback.TvChapter
+import me.him188.ani.tv.ui.episode.playback.TvSkipPrompt
 
 data class TvPlayerOptionsState(
     val danmakuEnabled: Boolean = true,

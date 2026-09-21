@@ -2,7 +2,7 @@
  * Copyright (C) 2026 OpenAni and contributors.
  * Use of this source code is governed by the GNU AGPLv3 license.
  */
-package me.him188.ani.leanback.ui.subject.components
+package me.him188.ani.tv.ui.subject.components
 
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
@@ -43,7 +43,7 @@ import me.him188.ani.app.ui.lang.foundation_loading
 import me.him188.ani.app.ui.lang.subject_details_no_summary
 import me.him188.ani.app.ui.lang.subject_details_show_more
 import me.him188.ani.app.ui.lang.subject_details_summary
-import me.him188.ani.leanback.ui.foundation.widgets.TvPlaceholderBlock
+import me.him188.ani.tv.ui.foundation.widgets.TvPlaceholderBlock
 import org.jetbrains.compose.resources.stringResource
 
 /** Shared introduction entry for subjects, characters, voice actors and staff. */

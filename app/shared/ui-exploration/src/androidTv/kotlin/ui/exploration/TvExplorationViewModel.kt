@@ -7,7 +7,7 @@
  * https://github.com/open-ani/ani/blob/main/LICENSE
  */
 
-package me.him188.ani.leanback.ui.exploration
+package me.him188.ani.tv.ui.exploration
 
 import androidx.paging.compose.launchAsLazyPagingItemsIn
 import kotlinx.coroutines.CancellationException
@@ -27,8 +27,8 @@ import me.him188.ani.app.data.models.subject.SubjectCollectionInfo
 import me.him188.ani.app.data.repository.subject.SubjectCollectionRepository
 import me.him188.ani.app.navigation.SubjectDetailPlaceholder
 import me.him188.ani.app.ui.exploration.ExplorationPageViewModel
-import me.him188.ani.leanback.ui.foundation.TvNavigationEvent
-import me.him188.ani.leanback.ui.foundation.TvNavigationEvents
+import me.him188.ani.tv.ui.foundation.TvNavigationEvent
+import me.him188.ani.tv.ui.foundation.TvNavigationEvents
 import org.koin.core.Koin
 
 class TvExplorationViewModel(

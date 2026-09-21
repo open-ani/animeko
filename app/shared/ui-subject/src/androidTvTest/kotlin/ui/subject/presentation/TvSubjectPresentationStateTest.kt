@@ -1,4 +1,4 @@
-package me.him188.ani.leanback.ui.subject.presentation
+package me.him188.ani.tv.ui.subject.presentation
 
 import kotlin.test.Test
 import kotlin.test.assertEquals

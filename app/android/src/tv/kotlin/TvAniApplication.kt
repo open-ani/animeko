@@ -7,7 +7,7 @@
  * https://github.com/open-ani/ani/blob/main/LICENSE
  */
 
-package me.him188.ani.android.leanback
+package me.him188.ani.android.tv
 
 import android.app.Application
 import kotlinx.coroutines.launch
@@ -24,7 +24,7 @@ import org.koin.android.ext.koin.androidContext
 import org.koin.core.context.startKoin
 
 /**
- * TV variant 的 Application (atv-architecture.md §6.1).
+ * TV variant 的 Application.
  *
  * 与手机 AniApplication 的差异 (flavor 门控):
  * - getCommonKoinModule(enableMediaCache = false): 缓存/BT 绑定为空引擎实现 (§1.2 裁剪), 其余装配与手机一致;

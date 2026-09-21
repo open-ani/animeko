@@ -7,7 +7,7 @@
  * https://github.com/open-ani/ani/blob/main/LICENSE
  */
 
-package me.him188.ani.android.leanback
+package me.him188.ani.android.tv
 
 import android.os.Bundle
 import android.widget.Toast
@@ -29,13 +29,13 @@ import me.him188.ani.app.ui.foundation.LocalSketch
 import me.him188.ani.app.ui.foundation.rememberAniSketchInstance
 import me.him188.ani.app.ui.foundation.widgets.LocalToaster
 import me.him188.ani.app.ui.foundation.widgets.Toaster
-import me.him188.ani.leanback.ui.di.TvAppDependencies
-import me.him188.ani.leanback.ui.foundation.theme.TvApplicationTheme
-import me.him188.ani.leanback.ui.main.TvAniAppContent
+import me.him188.ani.tv.ui.di.TvAppDependencies
+import me.him188.ani.tv.ui.foundation.theme.TvApplicationTheme
+import me.him188.ani.tv.ui.main.TvAniAppContent
 import org.koin.android.ext.android.getKoin
 
 /**
- * TV 单 Activity (atv-architecture.md §6.2): 横屏 (manifest 声明)、singleTask、Compose 全屏.
+ * TV 单 Activity: 横屏 (manifest 声明)、singleTask、Compose 全屏.
  *
  * M2: handleStartIntent 解析 `ani://subjects/<id>` deep link -> navigateSubjectDetails.
  */

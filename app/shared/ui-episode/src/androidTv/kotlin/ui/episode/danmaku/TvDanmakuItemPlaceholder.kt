@@ -7,7 +7,7 @@
  * https://github.com/open-ani/ani/blob/main/LICENSE
  */
 
-package me.him188.ani.leanback.ui.episode.danmaku
+package me.him188.ani.tv.ui.episode.danmaku
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
@@ -20,9 +20,9 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
-import me.him188.ani.leanback.ui.foundation.widgets.TvPlaceholderBlock
-import me.him188.ani.leanback.ui.foundation.widgets.LocalTvOptionColors
-import me.him188.ani.leanback.ui.foundation.widgets.TvOptionDefaults
+import me.him188.ani.tv.ui.foundation.widgets.TvPlaceholderBlock
+import me.him188.ani.tv.ui.foundation.widgets.LocalTvOptionColors
+import me.him188.ani.tv.ui.foundation.widgets.TvOptionDefaults
 
 @Composable
 internal fun TvDanmakuItemPlaceholder(modifier: Modifier = Modifier) {

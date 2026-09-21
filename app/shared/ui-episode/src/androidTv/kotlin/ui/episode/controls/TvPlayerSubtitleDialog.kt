@@ -7,7 +7,7 @@
  * https://github.com/open-ani/ani/blob/main/LICENSE
  */
 
-package me.him188.ani.leanback.ui.episode.controls
+package me.him188.ani.tv.ui.episode.controls
 
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
@@ -24,10 +24,10 @@ import androidx.tv.material3.Text
 import me.him188.ani.app.ui.lang.Lang
 import me.him188.ani.app.ui.lang.video_player_no_subtitle_tracks
 import me.him188.ani.app.ui.lang.video_player_off
-import me.him188.ani.leanback.ui.episode.TvEpisodeIntent
-import me.him188.ani.leanback.ui.episode.TvPlayerOptionsState
-import me.him188.ani.leanback.ui.foundation.widgets.TvOptionDefaults
-import me.him188.ani.leanback.ui.foundation.widgets.TvOptionRow
+import me.him188.ani.tv.ui.episode.TvEpisodeIntent
+import me.him188.ani.tv.ui.episode.TvPlayerOptionsState
+import me.him188.ani.tv.ui.foundation.widgets.TvOptionDefaults
+import me.him188.ani.tv.ui.foundation.widgets.TvOptionRow
 import org.jetbrains.compose.resources.stringResource
 
 @Composable

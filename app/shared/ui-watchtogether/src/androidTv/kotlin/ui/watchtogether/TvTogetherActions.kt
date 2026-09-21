@@ -7,7 +7,7 @@
  * https://github.com/open-ani/ani/blob/main/LICENSE
  */
 
-package me.him188.ani.leanback.ui.watchtogether
+package me.him188.ani.tv.ui.watchtogether
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
@@ -43,9 +43,9 @@ import me.him188.ani.app.ui.lang.watch_together_follow_host_desc
 import me.him188.ani.app.ui.lang.watch_together_join
 import me.him188.ani.app.ui.lang.watch_together_joining
 import me.him188.ani.app.ui.lang.watch_together_leave
-import me.him188.ani.leanback.ui.foundation.widgets.LocalTvOptionColors
-import me.him188.ani.leanback.ui.foundation.widgets.TvOptionDefaults
-import me.him188.ani.leanback.ui.foundation.widgets.TvOptionRow
+import me.him188.ani.tv.ui.foundation.widgets.LocalTvOptionColors
+import me.him188.ani.tv.ui.foundation.widgets.TvOptionDefaults
+import me.him188.ani.tv.ui.foundation.widgets.TvOptionRow
 import org.jetbrains.compose.resources.stringResource
 
 /** One stable TV button across join/retry/cancel states, so progress never removes its focus anchor. */

@@ -7,7 +7,7 @@
  * https://github.com/open-ani/ani/blob/main/LICENSE
  */
 
-package me.him188.ani.leanback.ui.episode.presentation
+package me.him188.ani.tv.ui.episode.presentation
 
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.AutoAwesome
@@ -33,7 +33,7 @@ internal val TvPlayerPanel.title: String
     @Composable get() = stringResource(titleResource)
 
 /**
- * 浮出面板种类与内容宽度 (atv-architecture.md §8.3 功能药丸).
+ * 浮出面板种类与内容宽度 (功能药丸).
  */
 enum class TvPlayerPanelPresentation { Popup, Sidebar }
 

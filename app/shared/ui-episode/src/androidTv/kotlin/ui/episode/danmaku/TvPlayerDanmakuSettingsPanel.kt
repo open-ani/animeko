@@ -7,7 +7,7 @@
  * https://github.com/open-ani/ani/blob/main/LICENSE
  */
 
-package me.him188.ani.leanback.ui.episode.danmaku
+package me.him188.ani.tv.ui.episode.danmaku
 
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.padding
@@ -44,16 +44,16 @@ import me.him188.ani.danmaku.api.DanmakuServiceId
 import me.him188.ani.danmaku.ui.DanmakuConfig
 import me.him188.ani.danmaku.ui.DanmakuConfigRanges
 import me.him188.ani.danmaku.ui.DanmakuStyle
-import me.him188.ani.leanback.ui.episode.TvEpisodeIntent
-import me.him188.ani.leanback.ui.episode.components.TvPlayerOptionPanelLayout
-import me.him188.ani.leanback.ui.episode.components.TvPlayerSectionLabel
-import me.him188.ani.leanback.ui.episode.components.tvStepKeys
-import me.him188.ani.leanback.ui.episode.presentation.TvPlayerPanel
-import me.him188.ani.leanback.ui.foundation.focus.TvFocusKey
-import me.him188.ani.leanback.ui.foundation.focus.TvFocusScope
-import me.him188.ani.leanback.ui.foundation.focus.tvFocusAnchor
-import me.him188.ani.leanback.ui.foundation.widgets.LocalTvOptionColors
-import me.him188.ani.leanback.ui.foundation.widgets.TvOptionRow
+import me.him188.ani.tv.ui.episode.TvEpisodeIntent
+import me.him188.ani.tv.ui.episode.components.TvPlayerOptionPanelLayout
+import me.him188.ani.tv.ui.episode.components.TvPlayerSectionLabel
+import me.him188.ani.tv.ui.episode.components.tvStepKeys
+import me.him188.ani.tv.ui.episode.presentation.TvPlayerPanel
+import me.him188.ani.tv.ui.foundation.focus.TvFocusKey
+import me.him188.ani.tv.ui.foundation.focus.TvFocusScope
+import me.him188.ani.tv.ui.foundation.focus.tvFocusAnchor
+import me.him188.ani.tv.ui.foundation.widgets.LocalTvOptionColors
+import me.him188.ani.tv.ui.foundation.widgets.TvOptionRow
 import org.jetbrains.compose.resources.stringResource
 import kotlin.math.roundToInt
 

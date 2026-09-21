@@ -7,7 +7,7 @@
  * https://github.com/open-ani/ani/blob/main/LICENSE
  */
 
-package me.him188.ani.leanback.ui.collection
+package me.him188.ani.tv.ui.collection
 
 import androidx.paging.CombinedLoadStates
 import androidx.paging.LoadState

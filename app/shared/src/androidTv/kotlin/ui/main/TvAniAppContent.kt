@@ -7,7 +7,7 @@
  * https://github.com/open-ani/ani/blob/main/LICENSE
  */
 
-package me.him188.ani.leanback.ui.main
+package me.him188.ani.tv.ui.main
 
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.runtime.Composable
@@ -39,36 +39,36 @@ import me.him188.ani.app.navigation.findLast
 import me.him188.ani.app.navigation.rememberAniBackStack
 import me.him188.ani.app.tools.LocalTimeFormatter
 import me.him188.ani.app.tools.TimeFormatter
-import me.him188.ani.leanback.ui.collection.TvCollectionRoute
-import me.him188.ani.leanback.ui.collection.TvCollectionViewModel
-import me.him188.ani.leanback.ui.di.TvAppDependencies
-import me.him188.ani.leanback.ui.episode.TvEpisodeRoute
-import me.him188.ani.leanback.ui.episode.TvEpisodeViewModel
-import me.him188.ani.leanback.ui.exploration.TvExplorationRoute
-import me.him188.ani.leanback.ui.exploration.TvExplorationViewModel
-import me.him188.ani.leanback.ui.foundation.TvNavigationEvent
-import me.him188.ani.leanback.ui.foundation.focus.TvFocusMemory
-import me.him188.ani.leanback.ui.foundation.tvViewModel
-import me.him188.ani.leanback.ui.login.TvLoginRoute
-import me.him188.ani.leanback.ui.login.TvLoginViewModel
-import me.him188.ani.leanback.ui.schedule.TvScheduleRoute
-import me.him188.ani.leanback.ui.schedule.TvScheduleViewModel
-import me.him188.ani.leanback.ui.search.TvSearchRoute
-import me.him188.ani.leanback.ui.search.TvSearchViewModel
-import me.him188.ani.leanback.ui.settings.TvSettingsRoute
-import me.him188.ani.leanback.ui.settings.TvSettingsViewModel
+import me.him188.ani.tv.ui.collection.TvCollectionRoute
+import me.him188.ani.tv.ui.collection.TvCollectionViewModel
+import me.him188.ani.tv.ui.di.TvAppDependencies
+import me.him188.ani.tv.ui.episode.TvEpisodeRoute
+import me.him188.ani.tv.ui.episode.TvEpisodeViewModel
+import me.him188.ani.tv.ui.exploration.TvExplorationRoute
+import me.him188.ani.tv.ui.exploration.TvExplorationViewModel
+import me.him188.ani.tv.ui.foundation.TvNavigationEvent
+import me.him188.ani.tv.ui.foundation.focus.TvFocusMemory
+import me.him188.ani.tv.ui.foundation.tvViewModel
+import me.him188.ani.tv.ui.login.TvLoginRoute
+import me.him188.ani.tv.ui.login.TvLoginViewModel
+import me.him188.ani.tv.ui.schedule.TvScheduleRoute
+import me.him188.ani.tv.ui.schedule.TvScheduleViewModel
+import me.him188.ani.tv.ui.search.TvSearchRoute
+import me.him188.ani.tv.ui.search.TvSearchViewModel
+import me.him188.ani.tv.ui.settings.TvSettingsRoute
+import me.him188.ani.tv.ui.settings.TvSettingsViewModel
 import me.him188.ani.app.shared.loadOpenSourceLibrariesJsons
-import me.him188.ani.leanback.ui.subject.TvSubjectDetailsRoute
-import me.him188.ani.leanback.ui.subject.TvSubjectDetailsViewModel
-import me.him188.ani.leanback.ui.subject.person.TvPeopleDetailsRoute
-import me.him188.ani.leanback.ui.subject.person.TvPeopleDetailsViewModel
-import me.him188.ani.leanback.ui.subject.person.TvPeopleKind
-import me.him188.ani.leanback.ui.subject.person.TvPeopleTarget
-import me.him188.ani.leanback.ui.watchtogether.TvTogetherIntent
-import me.him188.ani.leanback.ui.watchtogether.TvWatchTogetherViewModel
+import me.him188.ani.tv.ui.subject.TvSubjectDetailsRoute
+import me.him188.ani.tv.ui.subject.TvSubjectDetailsViewModel
+import me.him188.ani.tv.ui.subject.person.TvPeopleDetailsRoute
+import me.him188.ani.tv.ui.subject.person.TvPeopleDetailsViewModel
+import me.him188.ani.tv.ui.subject.person.TvPeopleKind
+import me.him188.ani.tv.ui.subject.person.TvPeopleTarget
+import me.him188.ani.tv.ui.watchtogether.TvTogetherIntent
+import me.him188.ani.tv.ui.watchtogether.TvWatchTogetherViewModel
 
 /**
- * TV 端根内容: 注册 TV 支持的 [NavRoutes] 子集 (atv-architecture.md §6.3), Navigation 3
+ * TV 端根内容: 注册 TV 支持的 [NavRoutes] 子集, Navigation 3
  * backStack 模型 (接线同手机 AniAppContent).
  *
  * 所有 TV ViewModel 只在这里通过 tvViewModel 显式构造, 生命周期归属所在导航条目.

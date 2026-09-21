@@ -7,7 +7,7 @@
  * https://github.com/open-ani/ani/blob/main/LICENSE
  */
 
-package me.him188.ani.leanback.ui.episode
+package me.him188.ani.tv.ui.episode
 
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.tween
@@ -94,63 +94,63 @@ import me.him188.ani.app.videoplayer.ui.PlayerStatsOverlay
 import me.him188.ani.app.videoplayer.ui.renderAspectRatioMode
 import me.him188.ani.danmaku.ui.DanmakuPresentation
 import me.him188.ani.datasources.api.topic.FileSize
-import me.him188.ani.leanback.ui.episode.comments.TvCommentDetail
-import me.him188.ani.leanback.ui.episode.comments.TvPlayerComments
-import me.him188.ani.leanback.ui.episode.components.TvBottomControllerLayout
-import me.him188.ani.leanback.ui.episode.components.TvPlayerDialogSurface
-import me.him188.ani.leanback.ui.episode.components.TvPlayerPageLayout
-import me.him188.ani.leanback.ui.episode.components.TvPlayerSidePanel
-import me.him188.ani.leanback.ui.episode.controls.TvPlayerControlsOverlay
-import me.him188.ani.leanback.ui.episode.controls.TvPlayerEpisodeStrip
-import me.him188.ani.leanback.ui.episode.controls.TvPlayerTitleBar
-import me.him188.ani.leanback.ui.episode.controls.TvSpeedDialog
-import me.him188.ani.leanback.ui.episode.controls.TvSubtitleDialog
-import me.him188.ani.leanback.ui.episode.controls.formatSpeedLabel
-import me.him188.ani.leanback.ui.episode.controls.sortLabel
-import me.him188.ani.leanback.ui.episode.danmaku.TvDanmakuListDialog
-import me.him188.ani.leanback.ui.episode.danmaku.TvDanmakuMatchPanel
-import me.him188.ani.leanback.ui.episode.danmaku.TvDanmakuSettingsPanelState
-import me.him188.ani.leanback.ui.episode.danmaku.TvPlayerDanmakuSettingsPanel
-import me.him188.ani.leanback.ui.episode.presentation.CollectionPanelEntryKey
-import me.him188.ani.leanback.ui.episode.presentation.CommentKey
-import me.him188.ani.leanback.ui.episode.presentation.EpisodeCardKey
-import me.him188.ani.leanback.ui.episode.presentation.PanelChipKey
-import me.him188.ani.leanback.ui.episode.presentation.PanelEntryKey
-import me.him188.ani.leanback.ui.episode.presentation.TogetherPanelEntryKey
-import me.him188.ani.leanback.ui.episode.presentation.TvPlayerAction
-import me.him188.ani.leanback.ui.episode.presentation.TvPlayerDialog
-import me.him188.ani.leanback.ui.episode.presentation.TvPlayerFocus
-import me.him188.ani.leanback.ui.episode.presentation.TvPlayerFocusEffects
-import me.him188.ani.leanback.ui.episode.presentation.TvPlayerPanel
-import me.him188.ani.leanback.ui.episode.presentation.TvPlayerPanelPresentation
-import me.him188.ani.leanback.ui.episode.presentation.TvPlayerPresentationState
-import me.him188.ani.leanback.ui.episode.presentation.TvRemoteKey
-import me.him188.ani.leanback.ui.episode.presentation.rememberTvPlayerPresentationState
-import me.him188.ani.leanback.ui.episode.presentation.title
-import me.him188.ani.leanback.ui.episode.recommendation.TvPlayerRecommendationsRow
-import me.him188.ani.leanback.ui.episode.settings.TvPlayerCollectionPanel
-import me.him188.ani.leanback.ui.episode.settings.TvPlayerVideoSettingsPanel
-import me.him188.ani.leanback.ui.episode.source.TvPlayerSourceDialog
-import me.him188.ani.leanback.ui.episode.source.rememberTvSourceDialogState
-import me.him188.ani.leanback.ui.foundation.focus.TV_CONFIRM_KEYS
-import me.him188.ani.leanback.ui.foundation.focus.rememberTvFocusScope
-import me.him188.ani.leanback.ui.foundation.focus.requestPrepared
-import me.him188.ani.leanback.ui.foundation.focus.tvFocusAnchor
-import me.him188.ani.leanback.ui.foundation.focus.tvFocusExit
-import me.him188.ani.leanback.ui.foundation.focus.tvFocusLink
-import me.him188.ani.leanback.ui.foundation.focus.tvFocusNavSignal
-import me.him188.ani.leanback.ui.foundation.widgets.TvOptionDefaults
-import me.him188.ani.leanback.ui.foundation.widgets.TvOptionRow
-import me.him188.ani.leanback.ui.watchtogether.TvTogetherIntent
-import me.him188.ani.leanback.ui.watchtogether.TvTogetherState
-import me.him188.ani.leanback.ui.watchtogether.TvWatchTogetherPanel
+import me.him188.ani.tv.ui.episode.comments.TvCommentDetail
+import me.him188.ani.tv.ui.episode.comments.TvPlayerComments
+import me.him188.ani.tv.ui.episode.components.TvBottomControllerLayout
+import me.him188.ani.tv.ui.episode.components.TvPlayerDialogSurface
+import me.him188.ani.tv.ui.episode.components.TvPlayerPageLayout
+import me.him188.ani.tv.ui.episode.components.TvPlayerSidePanel
+import me.him188.ani.tv.ui.episode.controls.TvPlayerControlsOverlay
+import me.him188.ani.tv.ui.episode.controls.TvPlayerEpisodeStrip
+import me.him188.ani.tv.ui.episode.controls.TvPlayerTitleBar
+import me.him188.ani.tv.ui.episode.controls.TvSpeedDialog
+import me.him188.ani.tv.ui.episode.controls.TvSubtitleDialog
+import me.him188.ani.tv.ui.episode.controls.formatSpeedLabel
+import me.him188.ani.tv.ui.episode.controls.sortLabel
+import me.him188.ani.tv.ui.episode.danmaku.TvDanmakuListDialog
+import me.him188.ani.tv.ui.episode.danmaku.TvDanmakuMatchPanel
+import me.him188.ani.tv.ui.episode.danmaku.TvDanmakuSettingsPanelState
+import me.him188.ani.tv.ui.episode.danmaku.TvPlayerDanmakuSettingsPanel
+import me.him188.ani.tv.ui.episode.presentation.CollectionPanelEntryKey
+import me.him188.ani.tv.ui.episode.presentation.CommentKey
+import me.him188.ani.tv.ui.episode.presentation.EpisodeCardKey
+import me.him188.ani.tv.ui.episode.presentation.PanelChipKey
+import me.him188.ani.tv.ui.episode.presentation.PanelEntryKey
+import me.him188.ani.tv.ui.episode.presentation.TogetherPanelEntryKey
+import me.him188.ani.tv.ui.episode.presentation.TvPlayerAction
+import me.him188.ani.tv.ui.episode.presentation.TvPlayerDialog
+import me.him188.ani.tv.ui.episode.presentation.TvPlayerFocus
+import me.him188.ani.tv.ui.episode.presentation.TvPlayerFocusEffects
+import me.him188.ani.tv.ui.episode.presentation.TvPlayerPanel
+import me.him188.ani.tv.ui.episode.presentation.TvPlayerPanelPresentation
+import me.him188.ani.tv.ui.episode.presentation.TvPlayerPresentationState
+import me.him188.ani.tv.ui.episode.presentation.TvRemoteKey
+import me.him188.ani.tv.ui.episode.presentation.rememberTvPlayerPresentationState
+import me.him188.ani.tv.ui.episode.presentation.title
+import me.him188.ani.tv.ui.episode.recommendation.TvPlayerRecommendationsRow
+import me.him188.ani.tv.ui.episode.settings.TvPlayerCollectionPanel
+import me.him188.ani.tv.ui.episode.settings.TvPlayerVideoSettingsPanel
+import me.him188.ani.tv.ui.episode.source.TvPlayerSourceDialog
+import me.him188.ani.tv.ui.episode.source.rememberTvSourceDialogState
+import me.him188.ani.tv.ui.foundation.focus.TV_CONFIRM_KEYS
+import me.him188.ani.tv.ui.foundation.focus.rememberTvFocusScope
+import me.him188.ani.tv.ui.foundation.focus.requestPrepared
+import me.him188.ani.tv.ui.foundation.focus.tvFocusAnchor
+import me.him188.ani.tv.ui.foundation.focus.tvFocusExit
+import me.him188.ani.tv.ui.foundation.focus.tvFocusLink
+import me.him188.ani.tv.ui.foundation.focus.tvFocusNavSignal
+import me.him188.ani.tv.ui.foundation.widgets.TvOptionDefaults
+import me.him188.ani.tv.ui.foundation.widgets.TvOptionRow
+import me.him188.ani.tv.ui.watchtogether.TvTogetherIntent
+import me.him188.ani.tv.ui.watchtogether.TvTogetherState
+import me.him188.ani.tv.ui.watchtogether.TvWatchTogetherPanel
 import org.jetbrains.compose.resources.pluralStringResource
 import org.jetbrains.compose.resources.stringResource
 import org.openani.mediamp.MediaStatus
 import android.view.KeyEvent as AndroidKeyEvent
 
 /*
- * TV 播放页 (atv-architecture.md §8).
+ * TV 播放页.
  *
  * 覆盖层状态机 (§8.2, PR 语义 1:1):
  *   HIDDEN (纯视频) | CONTROLS (控制层)   正交子态: 选集条展开 · 拖拽预览 (scrub) ·

@@ -7,7 +7,7 @@
  * https://github.com/open-ani/ani/blob/main/LICENSE
  */
 
-package me.him188.ani.leanback.ui.episode
+package me.him188.ani.tv.ui.episode
 
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
@@ -19,10 +19,10 @@ import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import me.him188.ani.app.videoplayer.ui.VideoPlayer
-import me.him188.ani.leanback.ui.episode.danmaku.TvPlayerDanmakuHost
-import me.him188.ani.leanback.ui.foundation.TvNavigationEffect
-import me.him188.ani.leanback.ui.foundation.TvNavigationEvent
-import me.him188.ani.leanback.ui.watchtogether.TvWatchTogetherViewModel
+import me.him188.ani.tv.ui.episode.danmaku.TvPlayerDanmakuHost
+import me.him188.ani.tv.ui.foundation.TvNavigationEffect
+import me.him188.ani.tv.ui.foundation.TvNavigationEvent
+import me.him188.ani.tv.ui.watchtogether.TvWatchTogetherViewModel
 
 @Composable
 fun TvEpisodeRoute(

@@ -7,7 +7,7 @@
  * https://github.com/open-ani/ani/blob/main/LICENSE
  */
 
-package me.him188.ani.leanback.ui.main
+package me.him188.ani.tv.ui.main
 
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.channels.Channel

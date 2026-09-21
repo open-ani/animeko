@@ -1763,12 +1763,12 @@ jobs:
       name: 'Test Android TV (Attempt #1)'
       continue-on-error: true
       timeout-minutes: 180
-      run: './gradlew :app:shared:tv:testAndroidHostTest --tests ''me.him188.ani.leanback.*'' :app:shared:ui-foundation-tv:testAndroidHostTest --tests ''me.him188.ani.leanback.*'' :app:shared:ui-episode-tv:testAndroidHostTest --tests ''me.him188.ani.leanback.*'' :app:shared:ui-subject-tv:testAndroidHostTest --tests ''me.him188.ani.leanback.*'' "--scan" "-Porg.gradle.daemon.idletimeout=60000" "-Dfile.encoding=UTF-8" "-Dorg.gradle.jvmargs=-Xmx8g -Dkotlin.daemon.jvm.options=-Xmx6g" "-Dkotlin.daemon.jvm.options=-Xmx6g"'
+      run: './gradlew :app:shared:tv:testAndroidHostTest --tests ''me.him188.ani.tv.*'' :app:shared:ui-foundation-tv:testAndroidHostTest --tests ''me.him188.ani.tv.*'' :app:shared:ui-episode-tv:testAndroidHostTest --tests ''me.him188.ani.tv.*'' :app:shared:ui-subject-tv:testAndroidHostTest --tests ''me.him188.ani.tv.*'' "--scan" "-Porg.gradle.daemon.idletimeout=60000" "-Dfile.encoding=UTF-8" "-Dorg.gradle.jvmargs=-Xmx8g -Dkotlin.daemon.jvm.options=-Xmx6g" "-Dkotlin.daemon.jvm.options=-Xmx6g"'
     - id: 'step-26'
       name: 'Test Android TV (Attempt #2)'
       continue-on-error: false
       timeout-minutes: 180
-      run: './gradlew :app:shared:tv:testAndroidHostTest --tests ''me.him188.ani.leanback.*'' :app:shared:ui-foundation-tv:testAndroidHostTest --tests ''me.him188.ani.leanback.*'' :app:shared:ui-episode-tv:testAndroidHostTest --tests ''me.him188.ani.leanback.*'' :app:shared:ui-subject-tv:testAndroidHostTest --tests ''me.him188.ani.leanback.*'' "--scan" "-Porg.gradle.daemon.idletimeout=60000" "-Dfile.encoding=UTF-8" "-Dorg.gradle.jvmargs=-Xmx8g -Dkotlin.daemon.jvm.options=-Xmx6g" "-Dkotlin.daemon.jvm.options=-Xmx6g"'
+      run: './gradlew :app:shared:tv:testAndroidHostTest --tests ''me.him188.ani.tv.*'' :app:shared:ui-foundation-tv:testAndroidHostTest --tests ''me.him188.ani.tv.*'' :app:shared:ui-episode-tv:testAndroidHostTest --tests ''me.him188.ani.tv.*'' :app:shared:ui-subject-tv:testAndroidHostTest --tests ''me.him188.ani.tv.*'' "--scan" "-Porg.gradle.daemon.idletimeout=60000" "-Dfile.encoding=UTF-8" "-Dorg.gradle.jvmargs=-Xmx8g -Dkotlin.daemon.jvm.options=-Xmx6g" "-Dkotlin.daemon.jvm.options=-Xmx6g"'
       if: '${{ steps.step-25.outcome == ''failure'' }}'
     - id: 'step-27'
       name: 'Upload Android Debug APK arm64-v8a (Attempt #1)'

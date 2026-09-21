@@ -7,7 +7,7 @@
  * https://github.com/open-ani/ani/blob/main/LICENSE
  */
 
-package me.him188.ani.leanback.ui.foundation.focus
+package me.him188.ani.tv.ui.foundation.focus
 
 import androidx.compose.runtime.snapshotFlow
 import kotlinx.coroutines.CoroutineStart

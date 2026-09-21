@@ -7,14 +7,14 @@
  * https://github.com/open-ani/ani/blob/main/LICENSE
  */
 
-package me.him188.ani.leanback.ui.episode.danmaku
+package me.him188.ani.tv.ui.episode.danmaku
 
 import me.him188.ani.danmaku.api.DanmakuServiceId
 import me.him188.ani.danmaku.api.provider.DanmakuEpisode
 import me.him188.ani.danmaku.api.provider.DanmakuMatchMethod
 import me.him188.ani.danmaku.api.provider.DanmakuProviderId
 import me.him188.ani.danmaku.api.provider.DanmakuSubject
-import me.him188.ani.leanback.ui.episode.TvPlayerError
+import me.him188.ani.tv.ui.episode.TvPlayerError
 
 internal sealed interface TvDanmakuAdjustment {
     data class Parameter(val property: TvDanmakuProperty) : TvDanmakuAdjustment

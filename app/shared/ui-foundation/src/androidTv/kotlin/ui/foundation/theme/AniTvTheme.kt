@@ -7,7 +7,7 @@
  * https://github.com/open-ani/ani/blob/main/LICENSE
  */
 
-package me.him188.ani.leanback.ui.foundation.theme
+package me.him188.ani.tv.ui.foundation.theme
 
 import androidx.compose.foundation.gestures.LocalBringIntoViewSpec
 import androidx.compose.runtime.Composable
@@ -17,7 +17,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.tv.material3.MaterialTheme
 import com.materialkolor.PaletteStyle
 import com.materialkolor.dynamicColorScheme
-import me.him188.ani.leanback.ui.foundation.focus.TvPivotBringIntoViewSpec
+import me.him188.ani.tv.ui.foundation.focus.TvPivotBringIntoViewSpec
 
 object AniTvThemeDefaults {
     /** 与手机端 [me.him188.ani.app.data.models.preference.ThemeSettings] 默认种子色一致. */
@@ -26,7 +26,7 @@ object AniTvThemeDefaults {
 
 /**
  * TV 端主题: 复用 materialkolor 由种子色生成 m3 配色 (与手机同一算法, 品牌一致).
- * TV 固定深色 (atv-architecture.md D6).
+ * TV 固定深色.
  *
  * 同时 provide material3 与 tv-material 两套 MaterialTheme:
  * 新基建 (对齐上游 PR 的自研焦点组件) 读 material3 的 colorScheme,

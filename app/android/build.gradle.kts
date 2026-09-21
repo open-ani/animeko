@@ -109,10 +109,10 @@ android {
             dimension = "distribution"
         }
         create("tv") {
-            // Android TV 形态 (atv-architecture.md D1): 与 default 平级、单维度,
+            // Android TV 形态: 与 default 平级、单维度,
             // 保证手机任务名 assembleDefaultRelease 与产物路径零变化.
             dimension = "distribution"
-            applicationIdSuffix = ".leanback"
+            applicationIdSuffix = ".tv"
         }
     }
     buildFeatures {
@@ -154,7 +154,7 @@ googleServices {
 }
 
 // tv flavor 不接入 Firebase: google-services.json 只含手机包名, 禁用 tv variant 的
-// GoogleServices 任务以避免 "No matching client found" 失败 (atv-architecture.md §10.1).
+// GoogleServices 任务以避免 "No matching client found" 失败.
 tasks.configureEach {
     if (name.startsWith("processTv") && name.endsWith("GoogleServices")) {
         enabled = false

@@ -2,7 +2,7 @@
  * Copyright (C) 2026 OpenAni and contributors.
  * Use of this source code is governed by the GNU AGPLv3 license.
  */
-package me.him188.ani.leanback.ui.foundation.layout
+package me.him188.ani.tv.ui.foundation.layout
 
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
@@ -22,7 +22,7 @@ import androidx.compose.ui.layout.positionInWindow
 import androidx.compose.ui.unit.Constraints
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.toSize
-import me.him188.ani.leanback.ui.foundation.widgets.TvOptionPanelDefaults
+import me.him188.ani.tv.ui.foundation.widgets.TvOptionPanelDefaults
 import kotlin.math.roundToInt
 
 /** Window coordinates allow a button and its overlay to live under different layout parents. */

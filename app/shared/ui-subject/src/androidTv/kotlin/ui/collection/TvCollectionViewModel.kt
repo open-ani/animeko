@@ -7,7 +7,7 @@
  * https://github.com/open-ani/ani/blob/main/LICENSE
  */
 
-package me.him188.ani.leanback.ui.collection
+package me.him188.ani.tv.ui.collection
 
 import androidx.compose.runtime.snapshotFlow
 import kotlinx.coroutines.flow.SharingStarted
@@ -16,8 +16,8 @@ import kotlinx.coroutines.flow.stateIn
 import me.him188.ani.app.navigation.SubjectDetailPlaceholder
 import me.him188.ani.app.ui.subject.collection.COLLECTION_TABS_SORTED
 import me.him188.ani.app.ui.subject.collection.UserCollectionsViewModel
-import me.him188.ani.leanback.ui.foundation.TvNavigationEvent
-import me.him188.ani.leanback.ui.foundation.TvNavigationEvents
+import me.him188.ani.tv.ui.foundation.TvNavigationEvent
+import me.him188.ani.tv.ui.foundation.TvNavigationEvents
 
 class TvCollectionViewModel : UserCollectionsViewModel() {
     private val navigation = TvNavigationEvents()

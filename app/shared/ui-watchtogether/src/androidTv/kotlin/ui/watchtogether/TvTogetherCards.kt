@@ -7,7 +7,7 @@
  * https://github.com/open-ani/ani/blob/main/LICENSE
  */
 
-package me.him188.ani.leanback.ui.watchtogether
+package me.him188.ani.tv.ui.watchtogether
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.basicMarquee
@@ -77,9 +77,9 @@ import me.him188.ani.app.ui.watchtogether.WatchTogetherMemberPresentation
 import me.him188.ani.app.ui.watchtogether.WatchTogetherPlaybackPresentation
 import me.him188.ani.app.ui.watchtogether.stateIconAndText
 import me.him188.ani.app.ui.watchtogether.watchTogetherStatusText
-import me.him188.ani.leanback.ui.foundation.formatPlaybackTime
-import me.him188.ani.leanback.ui.foundation.widgets.LocalTvOptionColors
-import me.him188.ani.leanback.ui.foundation.widgets.TvOptionDefaults
+import me.him188.ani.tv.ui.foundation.formatPlaybackTime
+import me.him188.ani.tv.ui.foundation.widgets.LocalTvOptionColors
+import me.him188.ani.tv.ui.foundation.widgets.TvOptionDefaults
 import org.jetbrains.compose.resources.stringResource
 import java.lang.Character.toChars
 

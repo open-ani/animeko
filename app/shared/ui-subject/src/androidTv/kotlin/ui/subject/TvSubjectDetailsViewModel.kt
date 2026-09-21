@@ -2,7 +2,7 @@
  * Copyright (C) 2024-2026 OpenAni and contributors.
  * Use of this source code is governed by the GNU AGPLv3 license.
  */
-package me.him188.ani.leanback.ui.subject
+package me.him188.ani.tv.ui.subject
 
 import androidx.compose.runtime.snapshotFlow
 import androidx.paging.PagingData
@@ -49,8 +49,8 @@ import me.him188.ani.app.ui.subject.details.state.SubjectDetailsStateFactory
 import me.him188.ani.app.ui.subject.details.state.SubjectDetailsStateLoader
 import me.him188.ani.app.ui.subject.episode.list.EpisodeListItem
 import me.him188.ani.datasources.api.topic.toggleCollected
-import me.him188.ani.leanback.ui.foundation.TvNavigationEvent
-import me.him188.ani.leanback.ui.foundation.TvNavigationEvents
+import me.him188.ani.tv.ui.foundation.TvNavigationEvent
+import me.him188.ani.tv.ui.foundation.TvNavigationEvents
 
 class TvSubjectDetailsViewModel(
     private val subjectId: Int,

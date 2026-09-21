@@ -2,7 +2,7 @@
  * Copyright (C) 2026 OpenAni and contributors.
  * Use of this source code is governed by the GNU AGPLv3 license.
  */
-package me.him188.ani.leanback.ui.subject.components
+package me.him188.ani.tv.ui.subject.components
 
 import androidx.compose.foundation.border
 import androidx.compose.foundation.focusable
@@ -34,8 +34,8 @@ import androidx.compose.ui.unit.sp
 import kotlinx.coroutines.launch
 import me.him188.ani.app.ui.richtext.RichText
 import me.him188.ani.app.ui.richtext.UIRichElement
-import me.him188.ani.leanback.ui.foundation.focus.TvFocusDefaults
-import me.him188.ani.leanback.ui.foundation.widgets.TvOptionDefaults
+import me.him188.ani.tv.ui.foundation.focus.TvFocusDefaults
+import me.him188.ani.tv.ui.foundation.widgets.TvOptionDefaults
 
 @Composable
 internal fun TvDetailsReader(elements: List<UIRichElement>, modifier: Modifier = Modifier) {

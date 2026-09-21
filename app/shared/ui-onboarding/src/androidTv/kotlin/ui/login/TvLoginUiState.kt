@@ -7,7 +7,7 @@
  * https://github.com/open-ani/ani/blob/main/LICENSE
  */
 
-package me.him188.ani.leanback.ui.login
+package me.him188.ani.tv.ui.login
 
 enum class TvLoginStep { Email, Otp }
 

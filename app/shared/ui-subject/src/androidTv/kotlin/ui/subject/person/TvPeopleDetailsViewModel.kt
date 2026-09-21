@@ -2,7 +2,7 @@
  * Copyright (C) 2026 OpenAni and contributors.
  * Use of this source code is governed by the GNU AGPLv3 license.
  */
-package me.him188.ani.leanback.ui.subject.person
+package me.him188.ani.tv.ui.subject.person
 
 import androidx.compose.runtime.mutableStateOf
 import androidx.paging.cachedIn
@@ -36,8 +36,8 @@ import me.him188.ani.app.ui.comment.UICommentSource
 import me.him188.ani.app.ui.comment.reportSnapshotText
 import me.him188.ani.app.ui.comment.toDataReason
 import me.him188.ani.app.ui.foundation.AbstractViewModel
-import me.him188.ani.leanback.ui.foundation.TvNavigationEvent
-import me.him188.ani.leanback.ui.foundation.TvNavigationEvents
+import me.him188.ani.tv.ui.foundation.TvNavigationEvent
+import me.him188.ani.tv.ui.foundation.TvNavigationEvents
 
 /** One instance per navigation entry, including separate entries for a person's two roles. */
 class TvPeopleDetailsViewModel(

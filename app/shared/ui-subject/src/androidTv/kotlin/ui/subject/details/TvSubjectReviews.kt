@@ -2,7 +2,7 @@
  * Copyright (C) 2026 OpenAni and contributors.
  * Use of this source code is governed by the GNU AGPLv3 license.
  */
-package me.him188.ani.leanback.ui.subject.details
+package me.him188.ani.tv.ui.subject.details
 
 
 import androidx.compose.foundation.ExperimentalFoundationApi
@@ -68,27 +68,27 @@ import me.him188.ani.app.ui.lang.subject_details_review_title
 import me.him188.ani.app.ui.lang.subject_details_reviews_count
 import me.him188.ani.app.ui.search.renderLoadErrorMessage
 import me.him188.ani.datasources.api.topic.UnifiedCollectionType
-import me.him188.ani.leanback.ui.foundation.focus.rememberTvFocusScope
-import me.him188.ani.leanback.ui.foundation.focus.requestPrepared
-import me.him188.ani.leanback.ui.foundation.focus.tvFocusAnchor
-import me.him188.ani.leanback.ui.foundation.focus.tvFocusHotkey
-import me.him188.ani.leanback.ui.foundation.focus.tvFocusNavSignal
-import me.him188.ani.leanback.ui.foundation.layout.TvModalOverlay
-import me.him188.ani.leanback.ui.foundation.layout.tvModalUnderlay
-import me.him188.ani.leanback.ui.subject.TvSubjectDetailsContentState
-import me.him188.ani.leanback.ui.subject.components.TvDetailsBackdrop
-import me.him188.ani.leanback.ui.subject.components.TvSubjectDetailsDefaults
-import me.him188.ani.leanback.ui.subject.presentation.TvDetailsKey
-import me.him188.ani.leanback.ui.subject.presentation.TvDetailsPanel
-import me.him188.ani.leanback.ui.subject.presentation.detailsFocusFallback
-import me.him188.ani.leanback.ui.subject.reviews.TvReviewBringIntoViewSpec
-import me.him188.ani.leanback.ui.subject.reviews.TvReviewCard
-import me.him188.ani.leanback.ui.subject.reviews.TvReviewDefaults
-import me.him188.ani.leanback.ui.subject.reviews.tvReviewLoadingItems
-import me.him188.ani.leanback.ui.subject.reviews.TvReviewPlaceholder
-import me.him188.ani.leanback.ui.subject.reviews.TvReviewOverview
-import me.him188.ani.leanback.ui.subject.reviews.TvReviewScrollbar
-import me.him188.ani.leanback.ui.subject.reviews.tvReviewEdges
+import me.him188.ani.tv.ui.foundation.focus.rememberTvFocusScope
+import me.him188.ani.tv.ui.foundation.focus.requestPrepared
+import me.him188.ani.tv.ui.foundation.focus.tvFocusAnchor
+import me.him188.ani.tv.ui.foundation.focus.tvFocusHotkey
+import me.him188.ani.tv.ui.foundation.focus.tvFocusNavSignal
+import me.him188.ani.tv.ui.foundation.layout.TvModalOverlay
+import me.him188.ani.tv.ui.foundation.layout.tvModalUnderlay
+import me.him188.ani.tv.ui.subject.TvSubjectDetailsContentState
+import me.him188.ani.tv.ui.subject.components.TvDetailsBackdrop
+import me.him188.ani.tv.ui.subject.components.TvSubjectDetailsDefaults
+import me.him188.ani.tv.ui.subject.presentation.TvDetailsKey
+import me.him188.ani.tv.ui.subject.presentation.TvDetailsPanel
+import me.him188.ani.tv.ui.subject.presentation.detailsFocusFallback
+import me.him188.ani.tv.ui.subject.reviews.TvReviewBringIntoViewSpec
+import me.him188.ani.tv.ui.subject.reviews.TvReviewCard
+import me.him188.ani.tv.ui.subject.reviews.TvReviewDefaults
+import me.him188.ani.tv.ui.subject.reviews.tvReviewLoadingItems
+import me.him188.ani.tv.ui.subject.reviews.TvReviewPlaceholder
+import me.him188.ani.tv.ui.subject.reviews.TvReviewOverview
+import me.him188.ani.tv.ui.subject.reviews.TvReviewScrollbar
+import me.him188.ani.tv.ui.subject.reviews.tvReviewEdges
 import org.jetbrains.compose.resources.stringResource
 
 /** Fixed overview and an independently paged review list, retained beneath nested overlays. */

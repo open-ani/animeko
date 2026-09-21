@@ -7,13 +7,13 @@
  * https://github.com/open-ani/ani/blob/main/LICENSE
  */
 
-package me.him188.ani.leanback.ui.episode.source
+package me.him188.ani.tv.ui.episode.source
 
 import me.him188.ani.app.domain.media.fetch.MediaSourceFetchState
 import me.him188.ani.app.domain.media.fetch.isFailedOrAbandoned
 import me.him188.ani.app.domain.media.selector.MediaExclusionReason
 import me.him188.ani.datasources.api.Media
-import me.him188.ani.leanback.ui.episode.TvPlayerError
+import me.him188.ani.tv.ui.episode.TvPlayerError
 
 data class TvSourceItem(val media: Media, val excludedReason: MediaExclusionReason? = null)
 

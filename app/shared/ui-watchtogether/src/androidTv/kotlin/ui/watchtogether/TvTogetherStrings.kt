@@ -7,7 +7,7 @@
  * https://github.com/open-ani/ani/blob/main/LICENSE
  */
 
-package me.him188.ani.leanback.ui.watchtogether
+package me.him188.ani.tv.ui.watchtogether
 
 import androidx.compose.runtime.Composable
 import me.him188.ani.app.data.network.WatchTogetherJoinFailure

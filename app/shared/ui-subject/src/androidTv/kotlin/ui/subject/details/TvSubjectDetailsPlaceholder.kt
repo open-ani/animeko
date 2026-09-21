@@ -2,7 +2,7 @@
  * Copyright (C) 2026 OpenAni and contributors.
  * Use of this source code is governed by the GNU AGPLv3 license.
  */
-package me.him188.ani.leanback.ui.subject.details
+package me.him188.ani.tv.ui.subject.details
 
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.gestures.LocalBringIntoViewSpec
@@ -21,19 +21,19 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import me.him188.ani.app.ui.lang.Lang
 import me.him188.ani.app.ui.lang.subject_details_episodes
-import me.him188.ani.leanback.ui.foundation.focus.TvFocusScope
-import me.him188.ani.leanback.ui.foundation.widgets.TvOptionsRow
-import me.him188.ani.leanback.ui.subject.components.TvDetailsActionPlaceholder
-import me.him188.ani.leanback.ui.subject.components.TvDetailsBringIntoViewSpec
-import me.him188.ani.leanback.ui.subject.components.TvDetailsBrowseRowLayout
-import me.him188.ani.leanback.ui.subject.components.TvDetailsDescriptionCard
-import me.him188.ani.leanback.ui.subject.components.TvDetailsEpisodePlaceholder
-import me.him188.ani.leanback.ui.subject.components.TvDetailsHeroLayout
-import me.him188.ani.leanback.ui.subject.components.TvDetailsScrollAnchors
-import me.him188.ani.leanback.ui.subject.components.TvDetailsTextPlaceholder
-import me.him188.ani.leanback.ui.subject.components.TvSubjectDetailsDefaults
-import me.him188.ani.leanback.ui.subject.components.TvSubjectDetailsPageLayout
-import me.him188.ani.leanback.ui.subject.components.tvDetailsScrollSection
+import me.him188.ani.tv.ui.foundation.focus.TvFocusScope
+import me.him188.ani.tv.ui.foundation.widgets.TvOptionsRow
+import me.him188.ani.tv.ui.subject.components.TvDetailsActionPlaceholder
+import me.him188.ani.tv.ui.subject.components.TvDetailsBringIntoViewSpec
+import me.him188.ani.tv.ui.subject.components.TvDetailsBrowseRowLayout
+import me.him188.ani.tv.ui.subject.components.TvDetailsDescriptionCard
+import me.him188.ani.tv.ui.subject.components.TvDetailsEpisodePlaceholder
+import me.him188.ani.tv.ui.subject.components.TvDetailsHeroLayout
+import me.him188.ani.tv.ui.subject.components.TvDetailsScrollAnchors
+import me.him188.ani.tv.ui.subject.components.TvDetailsTextPlaceholder
+import me.him188.ani.tv.ui.subject.components.TvSubjectDetailsDefaults
+import me.him188.ani.tv.ui.subject.components.TvSubjectDetailsPageLayout
+import me.him188.ani.tv.ui.subject.components.tvDetailsScrollSection
 import org.jetbrains.compose.resources.stringResource
 
 @OptIn(ExperimentalFoundationApi::class)

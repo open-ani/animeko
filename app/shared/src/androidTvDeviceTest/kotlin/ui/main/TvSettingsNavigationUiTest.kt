@@ -2,7 +2,7 @@
  * Copyright (C) 2026 OpenAni and contributors.
  * Use of this source code is governed by the GNU AGPLv3 license.
  */
-package me.him188.ani.leanback.ui.main
+package me.him188.ani.tv.ui.main
 
 import androidx.activity.OnBackPressedDispatcher
 import androidx.activity.compose.LocalOnBackPressedDispatcherOwner
@@ -39,15 +39,15 @@ import me.him188.ani.app.data.models.preference.ThemeSettings
 import me.him188.ani.app.navigation.NavRoutes
 import me.him188.ani.app.ui.framework.AniComposeUiTest
 import me.him188.ani.app.ui.framework.runAniComposeUiTest
-import me.him188.ani.leanback.ui.foundation.focus.TvFocusKey
-import me.him188.ani.leanback.ui.foundation.focus.TvFocusMemory
-import me.him188.ani.leanback.ui.foundation.focus.rememberTvFocusScope
-import me.him188.ani.leanback.ui.foundation.focus.tvFocusAnchor
-import me.him188.ani.leanback.ui.foundation.focus.tvFocusMemorable
-import me.him188.ani.leanback.ui.foundation.theme.TvApplicationTheme
-import me.him188.ani.leanback.ui.foundation.widgets.TvOptionRow
-import me.him188.ani.leanback.ui.settings.TvSettingsScreen
-import me.him188.ani.leanback.ui.settings.TvSettingsUiState
+import me.him188.ani.tv.ui.foundation.focus.TvFocusKey
+import me.him188.ani.tv.ui.foundation.focus.TvFocusMemory
+import me.him188.ani.tv.ui.foundation.focus.rememberTvFocusScope
+import me.him188.ani.tv.ui.foundation.focus.tvFocusAnchor
+import me.him188.ani.tv.ui.foundation.focus.tvFocusMemorable
+import me.him188.ani.tv.ui.foundation.theme.TvApplicationTheme
+import me.him188.ani.tv.ui.foundation.widgets.TvOptionRow
+import me.him188.ani.tv.ui.settings.TvSettingsScreen
+import me.him188.ani.tv.ui.settings.TvSettingsUiState
 
 class TvSettingsNavigationUiTest {
     @Test

@@ -2,7 +2,7 @@
  * Copyright (C) 2026 OpenAni and contributors.
  * Use of this source code is governed by the GNU AGPLv3 license.
  */
-package me.him188.ani.leanback.ui.settings
+package me.him188.ani.tv.ui.settings
 
 import android.graphics.Bitmap
 import android.os.LocaleList
@@ -57,8 +57,8 @@ import me.him188.ani.app.platform.findActivity
 import me.him188.ani.app.ui.framework.AniComposeUiTest
 import me.him188.ani.app.ui.framework.assertScreenshot
 import me.him188.ani.app.ui.framework.runAniComposeUiTest
-import me.him188.ani.leanback.ui.foundation.theme.TvApplicationTheme
-import me.him188.ani.leanback.ui.foundation.widgets.tvShellBackgroundColor
+import me.him188.ani.tv.ui.foundation.theme.TvApplicationTheme
+import me.him188.ani.tv.ui.foundation.widgets.tvShellBackgroundColor
 
 class TvSettingsUiTest {
     private var state by mutableStateOf(TvSettingsUiState(loaded = true))

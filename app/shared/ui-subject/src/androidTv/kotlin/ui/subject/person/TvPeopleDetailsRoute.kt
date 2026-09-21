@@ -2,7 +2,7 @@
  * Copyright (C) 2026 OpenAni and contributors.
  * Use of this source code is governed by the GNU AGPLv3 license.
  */
-package me.him188.ani.leanback.ui.subject.person
+package me.him188.ani.tv.ui.subject.person
 
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -16,8 +16,8 @@ import me.him188.ani.app.ui.lang.Lang
 import me.him188.ani.app.ui.lang.foundation_richtext_external_app_link_warning_prefix
 import me.him188.ani.app.ui.lang.foundation_richtext_open_failed_prefix
 import me.him188.ani.app.ui.richtext.RichTextDefaults
-import me.him188.ani.leanback.ui.foundation.TvNavigationEffect
-import me.him188.ani.leanback.ui.foundation.TvNavigationEvent
+import me.him188.ani.tv.ui.foundation.TvNavigationEffect
+import me.him188.ani.tv.ui.foundation.TvNavigationEvent
 import org.jetbrains.compose.resources.stringResource
 
 @Composable

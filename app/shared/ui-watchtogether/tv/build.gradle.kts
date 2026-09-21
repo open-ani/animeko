@@ -13,7 +13,7 @@ plugins {
 
 kotlin {
     android {
-        namespace = "me.him188.ani.app.leanback.ui.watchtogether"
+        namespace = "me.him188.ani.app.tv.ui.watchtogether"
     }
     sourceSets.androidMain {
         kotlin.srcDir("../src/androidTv/kotlin")

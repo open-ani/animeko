@@ -28,7 +28,7 @@ import org.openani.mediamp.exoplayer.compose.ExoPlayerMediampPlayerSurfaceProvid
  * `default` (手机) 与 `tv` 两个 flavor 共用的 Android 平台绑定.
  *
  * 本文件位于交集源集 `src/main` —— 按 variant 各编译一次, 引用任一 flavor 专属符号会打挂另一个
- * variant 的编译, 交集纯净性由编译器守护 (atv-architecture.md §4.3-R2).
+ * variant 的编译, 交集纯净性由编译器守护.
  *
  * flavor 专属绑定 (torrent/缓存链路、BrowserNavigator、Captcha、UpdateInstaller、MediaResolver、
  * AppTerminator 等) 分别位于 `src/default` 的 [getAndroidModules] 与 `src/tv` 的 TvAndroidModules.

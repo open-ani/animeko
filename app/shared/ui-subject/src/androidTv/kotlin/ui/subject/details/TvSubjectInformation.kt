@@ -2,7 +2,7 @@
  * Copyright (C) 2026 OpenAni and contributors.
  * Use of this source code is governed by the GNU AGPLv3 license.
  */
-package me.him188.ani.leanback.ui.subject.details
+package me.him188.ani.tv.ui.subject.details
 
 import androidx.compose.foundation.focusable
 import androidx.compose.foundation.layout.Arrangement
@@ -26,7 +26,7 @@ import me.him188.ani.app.ui.lang.subject_details_air_date_format
 import me.him188.ani.app.ui.lang.subject_details_aliases
 import me.him188.ani.app.ui.lang.subject_details_info
 import me.him188.ani.app.ui.lang.subject_details_total_episodes
-import me.him188.ani.leanback.ui.subject.components.TvSubjectDetailsDefaults
+import me.him188.ani.tv.ui.subject.components.TvSubjectDetailsDefaults
 import org.jetbrains.compose.resources.stringResource
 
 /** One reading target; its heading follows section focus without adding a card decoration. */

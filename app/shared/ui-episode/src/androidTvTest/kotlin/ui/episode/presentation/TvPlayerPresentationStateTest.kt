@@ -7,16 +7,16 @@
  * https://github.com/open-ani/ani/blob/main/LICENSE
  */
 
-package me.him188.ani.leanback.ui.episode.presentation
+package me.him188.ani.tv.ui.episode.presentation
 
 import androidx.compose.runtime.saveable.SaverScope
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.runBlocking
 import me.him188.ani.datasources.api.topic.UnifiedCollectionType
-import me.him188.ani.leanback.ui.episode.TvEpisodeEvent
-import me.him188.ani.leanback.ui.episode.TvEpisodeIntent
-import me.him188.ani.leanback.ui.episode.playback.TvPlaybackInteractionState
-import me.him188.ani.leanback.ui.subject.collection.TvCollectionPrompt
+import me.him188.ani.tv.ui.episode.TvEpisodeEvent
+import me.him188.ani.tv.ui.episode.TvEpisodeIntent
+import me.him188.ani.tv.ui.episode.playback.TvPlaybackInteractionState
+import me.him188.ani.tv.ui.subject.collection.TvCollectionPrompt
 import org.openani.mediamp.MediaStatus
 import org.openani.mediamp.PlayerState
 import kotlin.test.Test

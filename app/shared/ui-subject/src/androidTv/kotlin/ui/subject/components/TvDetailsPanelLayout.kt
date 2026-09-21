@@ -2,7 +2,7 @@
  * Copyright (C) 2026 OpenAni and contributors.
  * Use of this source code is governed by the GNU AGPLv3 license.
  */
-package me.him188.ani.leanback.ui.subject.components
+package me.him188.ani.tv.ui.subject.components
 
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -39,19 +39,19 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.compose.LocalLifecycleOwner
 import kotlinx.coroutines.flow.first
-import me.him188.ani.leanback.ui.foundation.focus.rememberTvFocusScope
-import me.him188.ani.leanback.ui.foundation.focus.requestPrepared
-import me.him188.ani.leanback.ui.foundation.focus.tvFocusAnchor
-import me.him188.ani.leanback.ui.foundation.focus.tvFocusExit
-import me.him188.ani.leanback.ui.foundation.focus.tvFocusHotkey
-import me.him188.ani.leanback.ui.foundation.focus.tvFocusLink
-import me.him188.ani.leanback.ui.foundation.focus.tvFocusNavSignal
-import me.him188.ani.leanback.ui.foundation.layout.TvAnchoredOptionLayout
-import me.him188.ani.leanback.ui.foundation.layout.TvModalOverlay
-import me.him188.ani.leanback.ui.foundation.widgets.TvOptionPanel
-import me.him188.ani.leanback.ui.foundation.widgets.TvOptionModal
-import me.him188.ani.leanback.ui.subject.presentation.TvDetailsKey
-import me.him188.ani.leanback.ui.subject.presentation.detailsFocusFallback
+import me.him188.ani.tv.ui.foundation.focus.rememberTvFocusScope
+import me.him188.ani.tv.ui.foundation.focus.requestPrepared
+import me.him188.ani.tv.ui.foundation.focus.tvFocusAnchor
+import me.him188.ani.tv.ui.foundation.focus.tvFocusExit
+import me.him188.ani.tv.ui.foundation.focus.tvFocusHotkey
+import me.him188.ani.tv.ui.foundation.focus.tvFocusLink
+import me.him188.ani.tv.ui.foundation.focus.tvFocusNavSignal
+import me.him188.ani.tv.ui.foundation.layout.TvAnchoredOptionLayout
+import me.him188.ani.tv.ui.foundation.layout.TvModalOverlay
+import me.him188.ani.tv.ui.foundation.widgets.TvOptionPanel
+import me.him188.ani.tv.ui.foundation.widgets.TvOptionModal
+import me.him188.ani.tv.ui.subject.presentation.TvDetailsKey
+import me.him188.ani.tv.ui.subject.presentation.detailsFocusFallback
 
 internal class TvDetailsPanelEntry(
     val key: String,

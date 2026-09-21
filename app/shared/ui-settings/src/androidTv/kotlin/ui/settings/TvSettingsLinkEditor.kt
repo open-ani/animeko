@@ -2,7 +2,7 @@
  * Copyright (C) 2026 OpenAni and contributors.
  * Use of this source code is governed by the GNU AGPLv3 license.
  */
-package me.him188.ani.leanback.ui.settings
+package me.him188.ani.tv.ui.settings
 
 import android.net.Uri
 import androidx.compose.foundation.Canvas
@@ -33,9 +33,9 @@ import kotlin.math.floor
 import me.him188.ani.app.ui.lang.Lang
 import me.him188.ani.app.ui.lang.tv_settings_open_on_tv
 import me.him188.ani.app.ui.lang.tv_settings_scan_link
-import me.him188.ani.leanback.ui.foundation.focus.TvFocusScope
-import me.him188.ani.leanback.ui.foundation.focus.tvFocusAnchor
-import me.him188.ani.leanback.ui.foundation.widgets.TvOptionModal
+import me.him188.ani.tv.ui.foundation.focus.TvFocusScope
+import me.him188.ani.tv.ui.foundation.focus.tvFocusAnchor
+import me.him188.ani.tv.ui.foundation.widgets.TvOptionModal
 import org.jetbrains.compose.resources.stringResource
 
 @Composable

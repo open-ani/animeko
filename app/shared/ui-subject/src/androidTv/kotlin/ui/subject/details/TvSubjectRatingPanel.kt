@@ -2,7 +2,7 @@
  * Copyright (C) 2026 OpenAni and contributors.
  * Use of this source code is governed by the GNU AGPLv3 license.
  */
-package me.him188.ani.leanback.ui.subject.details
+package me.him188.ani.tv.ui.subject.details
 
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -38,14 +38,14 @@ import me.him188.ani.app.ui.rating.FiveRatingStars
 import me.him188.ani.app.ui.rating.rememberRatingScoreLabels
 import me.him188.ani.app.ui.rating.renderScoreClass
 import me.him188.ani.app.ui.search.renderLoadErrorMessage
-import me.him188.ani.leanback.ui.foundation.focus.tvFocusAnchor
-import me.him188.ani.leanback.ui.foundation.focus.tvFocusLink
-import me.him188.ani.leanback.ui.foundation.layout.TvAnchoredOptionLayout
-import me.him188.ani.leanback.ui.foundation.widgets.TvOptionPanel
-import me.him188.ani.leanback.ui.foundation.widgets.TvOptionStepper
-import me.him188.ani.leanback.ui.subject.components.TvDetailsFullscreenOverlay
-import me.him188.ani.leanback.ui.subject.components.TvSubjectDetailsDefaults
-import me.him188.ani.leanback.ui.subject.presentation.TvDetailsKey
+import me.him188.ani.tv.ui.foundation.focus.tvFocusAnchor
+import me.him188.ani.tv.ui.foundation.focus.tvFocusLink
+import me.him188.ani.tv.ui.foundation.layout.TvAnchoredOptionLayout
+import me.him188.ani.tv.ui.foundation.widgets.TvOptionPanel
+import me.him188.ani.tv.ui.foundation.widgets.TvOptionStepper
+import me.him188.ani.tv.ui.subject.components.TvDetailsFullscreenOverlay
+import me.him188.ani.tv.ui.subject.components.TvSubjectDetailsDefaults
+import me.him188.ani.tv.ui.subject.presentation.TvDetailsKey
 import org.jetbrains.compose.resources.stringResource
 import kotlin.math.roundToInt
 

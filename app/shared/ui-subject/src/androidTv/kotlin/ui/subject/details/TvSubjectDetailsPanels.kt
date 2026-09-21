@@ -2,7 +2,7 @@
  * Copyright (C) 2026 OpenAni and contributors.
  * Use of this source code is governed by the GNU AGPLv3 license.
  */
-package me.him188.ani.leanback.ui.subject.details
+package me.him188.ani.tv.ui.subject.details
 
 import androidx.compose.foundation.focusable
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -85,25 +85,25 @@ import me.him188.ani.app.ui.lang.subject_episode_long_press_mark_watched
 import me.him188.ani.app.ui.lang.subject_episode_watched
 import me.him188.ani.app.ui.search.renderLoadErrorMessage
 import me.him188.ani.datasources.api.topic.UnifiedCollectionType
-import me.him188.ani.leanback.ui.foundation.focus.tvLongPressKey
-import me.him188.ani.leanback.ui.foundation.widgets.TvOptionRow
-import me.him188.ani.leanback.ui.foundation.widgets.TvOptionDefaults
-import me.him188.ani.leanback.ui.subject.TvSubjectDetailsIntent
-import me.him188.ani.leanback.ui.subject.TvSubjectDetailsUiState
-import me.him188.ani.leanback.ui.subject.collection.TvCollectionPrompt
-import me.him188.ani.leanback.ui.subject.collection.tvCollectionOptions
-import me.him188.ani.leanback.ui.subject.components.TvDetailsPanelEntry
-import me.him188.ani.leanback.ui.subject.components.TvDetailsPanelLayout
-import me.him188.ani.leanback.ui.subject.components.TvDetailsReader
-import me.him188.ani.leanback.ui.subject.components.TvSubjectDetailsDefaults
-import me.him188.ani.leanback.ui.subject.components.asDetailsText
-import me.him188.ani.leanback.ui.subject.components.detailsHasMask
-import me.him188.ani.leanback.ui.subject.components.detailsImages
-import me.him188.ani.leanback.ui.subject.components.detailsLinks
-import me.him188.ani.leanback.ui.subject.components.detailsRevealMasks
-import me.him188.ani.leanback.ui.subject.components.detailsRedactMasks
-import me.him188.ani.leanback.ui.subject.presentation.TvDetailsPanelKind
-import me.him188.ani.leanback.ui.subject.presentation.TvSubjectPresentationState
+import me.him188.ani.tv.ui.foundation.focus.tvLongPressKey
+import me.him188.ani.tv.ui.foundation.widgets.TvOptionRow
+import me.him188.ani.tv.ui.foundation.widgets.TvOptionDefaults
+import me.him188.ani.tv.ui.subject.TvSubjectDetailsIntent
+import me.him188.ani.tv.ui.subject.TvSubjectDetailsUiState
+import me.him188.ani.tv.ui.subject.collection.TvCollectionPrompt
+import me.him188.ani.tv.ui.subject.collection.tvCollectionOptions
+import me.him188.ani.tv.ui.subject.components.TvDetailsPanelEntry
+import me.him188.ani.tv.ui.subject.components.TvDetailsPanelLayout
+import me.him188.ani.tv.ui.subject.components.TvDetailsReader
+import me.him188.ani.tv.ui.subject.components.TvSubjectDetailsDefaults
+import me.him188.ani.tv.ui.subject.components.asDetailsText
+import me.him188.ani.tv.ui.subject.components.detailsHasMask
+import me.him188.ani.tv.ui.subject.components.detailsImages
+import me.him188.ani.tv.ui.subject.components.detailsLinks
+import me.him188.ani.tv.ui.subject.components.detailsRevealMasks
+import me.him188.ani.tv.ui.subject.components.detailsRedactMasks
+import me.him188.ani.tv.ui.subject.presentation.TvDetailsPanelKind
+import me.him188.ani.tv.ui.subject.presentation.TvSubjectPresentationState
 import org.jetbrains.compose.resources.stringResource
 
 internal class TvDetailsLists(

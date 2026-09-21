@@ -2,7 +2,7 @@
  * Copyright (C) 2026 OpenAni and contributors.
  * Use of this source code is governed by the GNU AGPLv3 license.
  */
-package me.him188.ani.leanback.ui.exploration
+package me.him188.ani.tv.ui.exploration
 
 import android.graphics.Bitmap
 import androidx.compose.foundation.layout.Box
@@ -31,7 +31,7 @@ import me.him188.ani.app.ui.framework.runAniComposeUiTest
 import me.him188.ani.datasources.api.EpisodeSort
 import me.him188.ani.datasources.api.EpisodeType
 import me.him188.ani.datasources.api.topic.UnifiedCollectionType
-import me.him188.ani.leanback.ui.foundation.theme.AniTvTheme
+import me.him188.ani.tv.ui.foundation.theme.AniTvTheme
 import me.him188.ani.utils.platform.annotations.TestOnly
 
 @OptIn(TestOnly::class)

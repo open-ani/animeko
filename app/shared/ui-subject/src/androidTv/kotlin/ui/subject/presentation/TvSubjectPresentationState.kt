@@ -2,7 +2,7 @@
  * Copyright (C) 2026 OpenAni and contributors.
  * Use of this source code is governed by the GNU AGPLv3 license.
  */
-package me.him188.ani.leanback.ui.subject.presentation
+package me.him188.ani.tv.ui.subject.presentation
 
 import androidx.compose.runtime.Stable
 import androidx.compose.runtime.getValue
@@ -10,7 +10,7 @@ import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.saveable.listSaver
 import androidx.compose.runtime.setValue
-import me.him188.ani.leanback.ui.foundation.focus.TvFocusKey
+import me.him188.ani.tv.ui.foundation.focus.TvFocusKey
 
 internal data class TvDetailsKey(val value: String) : TvFocusKey
 

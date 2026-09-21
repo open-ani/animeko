@@ -12,7 +12,7 @@
 <!-- 交集 manifest: default (手机) 与 tv 两个 flavor 共用的声明.
      合并方向为 flavor 增量 -> 本文件 (纯加法, 无 remove 手术).
      手机专属 (torrent 双服务 / 前台服务权限 / oauth callback / AniApplication) 在 src/default;
-     TV 专属 (leanback / TvAniApplication / banner) 在 src/tv. 见 atv-architecture.md §6.2. -->
+     TV 专属 (leanback / TvAniApplication / banner) 在 src/tv. -->
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
 
     <uses-permission android:name="android.permission.INTERNET" />

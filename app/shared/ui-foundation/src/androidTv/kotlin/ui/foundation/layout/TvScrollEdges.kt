@@ -7,7 +7,7 @@
  * https://github.com/open-ani/ani/blob/main/LICENSE
  */
 
-package me.him188.ani.leanback.ui.foundation.layout
+package me.him188.ani.tv.ui.foundation.layout
 
 import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.ui.Modifier

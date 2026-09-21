@@ -2,7 +2,7 @@
  * Copyright (C) 2026 OpenAni and contributors.
  * Use of this source code is governed by the GNU AGPLv3 license.
  */
-package me.him188.ani.leanback.ui.subject.details
+package me.him188.ani.tv.ui.subject.details
 
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -33,14 +33,14 @@ import androidx.compose.ui.unit.sp
 import me.him188.ani.app.ui.lang.Lang
 import me.him188.ani.app.ui.lang.subject_details_no_summary
 import me.him188.ani.app.ui.lang.subject_details_summary
-import me.him188.ani.leanback.ui.foundation.focus.tvFocusAnchor
-import me.him188.ani.leanback.ui.foundation.focus.tvFocusExit
-import me.him188.ani.leanback.ui.foundation.focus.tvFocusLink
-import me.him188.ani.leanback.ui.subject.TvSubjectDetailsContentState
-import me.him188.ani.leanback.ui.subject.components.TvDetailsReadingArea
-import me.him188.ani.leanback.ui.subject.components.TvDetailsFullscreenOverlay
-import me.him188.ani.leanback.ui.subject.components.TvSubjectDetailsDefaults
-import me.him188.ani.leanback.ui.subject.presentation.TvDetailsKey
+import me.him188.ani.tv.ui.foundation.focus.tvFocusAnchor
+import me.him188.ani.tv.ui.foundation.focus.tvFocusExit
+import me.him188.ani.tv.ui.foundation.focus.tvFocusLink
+import me.him188.ani.tv.ui.subject.TvSubjectDetailsContentState
+import me.him188.ani.tv.ui.subject.components.TvDetailsReadingArea
+import me.him188.ani.tv.ui.subject.components.TvDetailsFullscreenOverlay
+import me.him188.ani.tv.ui.subject.components.TvSubjectDetailsDefaults
+import me.him188.ani.tv.ui.subject.presentation.TvDetailsKey
 import org.jetbrains.compose.resources.stringResource
 
 @Composable

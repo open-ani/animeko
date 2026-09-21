@@ -7,7 +7,7 @@
  * https://github.com/open-ani/ani/blob/main/LICENSE
  */
 
-package me.him188.ani.leanback.ui.episode.components
+package me.him188.ani.tv.ui.episode.components
 
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.Transition

@@ -7,7 +7,7 @@
  * https://github.com/open-ani/ani/blob/main/LICENSE
  */
 
-package me.him188.ani.leanback.ui.episode.settings
+package me.him188.ani.tv.ui.episode.settings
 
 import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.lazy.items
@@ -15,11 +15,11 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.testTag
 import me.him188.ani.datasources.api.topic.UnifiedCollectionType
-import me.him188.ani.leanback.ui.episode.TvEpisodeIntent
-import me.him188.ani.leanback.ui.episode.components.TvPlayerOptionPanelLayout
-import me.him188.ani.leanback.ui.episode.presentation.TvPlayerPanel
-import me.him188.ani.leanback.ui.subject.collection.TvCollectionPrompt
-import me.him188.ani.leanback.ui.subject.collection.tvCollectionOptions
+import me.him188.ani.tv.ui.episode.TvEpisodeIntent
+import me.him188.ani.tv.ui.episode.components.TvPlayerOptionPanelLayout
+import me.him188.ani.tv.ui.episode.presentation.TvPlayerPanel
+import me.him188.ani.tv.ui.subject.collection.TvCollectionPrompt
+import me.him188.ani.tv.ui.subject.collection.tvCollectionOptions
 
 @Composable
 internal fun TvPlayerCollectionPanel(

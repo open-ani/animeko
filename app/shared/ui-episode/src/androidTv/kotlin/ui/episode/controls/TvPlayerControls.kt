@@ -7,7 +7,7 @@
  * https://github.com/open-ani/ani/blob/main/LICENSE
  */
 
-package me.him188.ani.leanback.ui.episode.controls
+package me.him188.ani.tv.ui.episode.controls
 
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.Image
@@ -88,27 +88,27 @@ import me.him188.ani.app.ui.lang.video_player_pause
 import me.him188.ani.app.ui.lang.video_player_play
 import me.him188.ani.app.ui.lang.video_player_select_episode
 import me.him188.ani.app.ui.lang.video_player_subtitle
-import me.him188.ani.leanback.ui.episode.TvEpisodeTitle
-import me.him188.ani.leanback.ui.episode.TvPlayerOptionsState
-import me.him188.ani.leanback.ui.episode.components.TvRemoteHint
-import me.him188.ani.leanback.ui.episode.presentation.TvPlayerPanel
-import me.him188.ani.leanback.ui.episode.presentation.title
-import me.him188.ani.leanback.ui.subject.collection.tvCollectionLabel
-import me.him188.ani.leanback.ui.episode.source.TvSourceIcon
-import me.him188.ani.leanback.ui.foundation.formatPlaybackTime
-import me.him188.ani.leanback.ui.foundation.layout.rememberTvOptionAnchors
-import me.him188.ani.leanback.ui.foundation.layout.tvOptionAnchor
-import me.him188.ani.leanback.ui.foundation.widgets.TvOptionButtonDimensions
-import me.him188.ani.leanback.ui.foundation.widgets.TvOptionChip
-import me.him188.ani.leanback.ui.foundation.widgets.TvOptionDefaults
-import me.him188.ani.leanback.ui.foundation.widgets.TvOptionPanelDefaults
-import me.him188.ani.leanback.ui.foundation.widgets.TvOptionsRow
-import me.him188.ani.leanback.ui.foundation.widgets.TvOptionsRowDefaults
-import me.him188.ani.leanback.ui.foundation.widgets.TvSeekBar
+import me.him188.ani.tv.ui.episode.TvEpisodeTitle
+import me.him188.ani.tv.ui.episode.TvPlayerOptionsState
+import me.him188.ani.tv.ui.episode.components.TvRemoteHint
+import me.him188.ani.tv.ui.episode.presentation.TvPlayerPanel
+import me.him188.ani.tv.ui.episode.presentation.title
+import me.him188.ani.tv.ui.subject.collection.tvCollectionLabel
+import me.him188.ani.tv.ui.episode.source.TvSourceIcon
+import me.him188.ani.tv.ui.foundation.formatPlaybackTime
+import me.him188.ani.tv.ui.foundation.layout.rememberTvOptionAnchors
+import me.him188.ani.tv.ui.foundation.layout.tvOptionAnchor
+import me.him188.ani.tv.ui.foundation.widgets.TvOptionButtonDimensions
+import me.him188.ani.tv.ui.foundation.widgets.TvOptionChip
+import me.him188.ani.tv.ui.foundation.widgets.TvOptionDefaults
+import me.him188.ani.tv.ui.foundation.widgets.TvOptionPanelDefaults
+import me.him188.ani.tv.ui.foundation.widgets.TvOptionsRow
+import me.him188.ani.tv.ui.foundation.widgets.TvOptionsRowDefaults
+import me.him188.ani.tv.ui.foundation.widgets.TvSeekBar
 import org.jetbrains.compose.resources.stringResource
 
 /**
- * 播放器控制层样式 (atv-architecture.md §8.3 / 附录 A):
+ * 播放器控制层样式:
  * 固定高度的底部黑渐变; 播放器系焦点视觉 = 浅底深色内容整块反色.
  */
 internal object TvPlayerControlsDefaults {
@@ -193,7 +193,7 @@ internal fun TvPlayerTitleBar(title: TvEpisodeTitle, modifier: Modifier = Modifi
 }
 
 /**
- * 播放器底部控制层 (atv-architecture.md §8.3):
+ * 播放器底部控制层:
  * 选集条/面板/预览 -> 胶囊行 -> 进度条行 -> 图标行 -> 推荐提示.
  *
  * 纯视图组件: 焦点锚点/按键语义由 Screen 组装成 modifier 注入

@@ -7,7 +7,7 @@
  * https://github.com/open-ani/ani/blob/main/LICENSE
  */
 
-package me.him188.ani.leanback.ui.episode
+package me.him188.ani.tv.ui.episode
 
 import android.graphics.Bitmap
 import android.net.Uri
@@ -69,11 +69,11 @@ import me.him188.ani.app.ui.lang.comment_preview_image
 import me.him188.ani.app.ui.lang.comment_preview_quote
 import me.him188.ani.app.ui.lang.tv_player_scroll_hide_hint
 import me.him188.ani.app.ui.lang.tv_player_scroll_reveal_hint
-import me.him188.ani.leanback.ui.episode.presentation.TvPlaybackCommand
-import me.him188.ani.leanback.ui.episode.presentation.TvPlaybackSnapshot
-import me.him188.ani.leanback.ui.episode.presentation.TvPlayerPresentationState
-import me.him188.ani.leanback.ui.foundation.theme.AniTvTheme
-import me.him188.ani.leanback.ui.watchtogether.TvTogetherState
+import me.him188.ani.tv.ui.episode.presentation.TvPlaybackCommand
+import me.him188.ani.tv.ui.episode.presentation.TvPlaybackSnapshot
+import me.him188.ani.tv.ui.episode.presentation.TvPlayerPresentationState
+import me.him188.ani.tv.ui.foundation.theme.AniTvTheme
+import me.him188.ani.tv.ui.watchtogether.TvTogetherState
 import org.openani.mediamp.MediaStatus
 import org.openani.mediamp.PlayerState
 import java.io.File

@@ -7,7 +7,7 @@
  * https://github.com/open-ani/ani/blob/main/LICENSE
  */
 
-package me.him188.ani.leanback.ui.subject.details
+package me.him188.ani.tv.ui.subject.details
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -59,12 +59,12 @@ import me.him188.ani.app.ui.lang.subject_details_relation_prequel
 import me.him188.ani.app.ui.lang.subject_details_relation_sequel
 import me.him188.ani.app.ui.lang.subject_details_relation_special
 import me.him188.ani.app.ui.subject.episode.list.EpisodeListItem
-import me.him188.ani.leanback.ui.foundation.focus.TvFocusDefaults
-import me.him188.ani.leanback.ui.foundation.focus.tvCardFocusBorder
-import me.him188.ani.leanback.ui.foundation.focus.tvLongPressKey
-import me.him188.ani.leanback.ui.foundation.widgets.TvLandscapeCard
-import me.him188.ani.leanback.ui.foundation.widgets.TvPosterCardDefaults
-import me.him188.ani.leanback.ui.subject.components.TvSubjectDetailsDefaults
+import me.him188.ani.tv.ui.foundation.focus.TvFocusDefaults
+import me.him188.ani.tv.ui.foundation.focus.tvCardFocusBorder
+import me.him188.ani.tv.ui.foundation.focus.tvLongPressKey
+import me.him188.ani.tv.ui.foundation.widgets.TvLandscapeCard
+import me.him188.ani.tv.ui.foundation.widgets.TvPosterCardDefaults
+import me.him188.ani.tv.ui.subject.components.TvSubjectDetailsDefaults
 import org.jetbrains.compose.resources.stringResource
 
 /*

@@ -2,7 +2,7 @@
  * Copyright (C) 2026 OpenAni and contributors.
  * Use of this source code is governed by the GNU AGPLv3 license.
  */
-package me.him188.ani.leanback.ui.subject.person.discussion
+package me.him188.ani.tv.ui.subject.person.discussion
 
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.widthIn
@@ -48,12 +48,12 @@ import me.him188.ani.app.ui.lang.comment_report_submit
 import me.him188.ani.app.ui.lang.comment_report_title
 import me.him188.ani.app.ui.lang.comment_show_hidden
 import me.him188.ani.app.ui.richtext.UIRichElement
-import me.him188.ani.leanback.ui.foundation.widgets.TvOptionRow
-import me.him188.ani.leanback.ui.subject.components.TvSubjectDetailsDefaults
-import me.him188.ani.leanback.ui.subject.components.detailsHasMask
-import me.him188.ani.leanback.ui.subject.components.detailsImages
-import me.him188.ani.leanback.ui.subject.components.detailsLinks
-import me.him188.ani.leanback.ui.subject.details.TvDetailsAction
+import me.him188.ani.tv.ui.foundation.widgets.TvOptionRow
+import me.him188.ani.tv.ui.subject.components.TvSubjectDetailsDefaults
+import me.him188.ani.tv.ui.subject.components.detailsHasMask
+import me.him188.ani.tv.ui.subject.components.detailsImages
+import me.him188.ani.tv.ui.subject.components.detailsLinks
+import me.him188.ani.tv.ui.subject.details.TvDetailsAction
 import org.jetbrains.compose.resources.stringResource
 
 private class PeopleCommentAction(val key: String, val label: String, val icon: ImageVector, val selected: Boolean, val onClick: () -> Unit)

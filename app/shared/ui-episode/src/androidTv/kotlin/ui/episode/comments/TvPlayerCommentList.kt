@@ -7,7 +7,7 @@
  * https://github.com/open-ani/ani/blob/main/LICENSE
  */
 
-package me.him188.ani.leanback.ui.episode.comments
+package me.him188.ani.tv.ui.episode.comments
 
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -25,8 +25,8 @@ import me.him188.ani.app.ui.lang.comment_empty_title
 import me.him188.ani.app.ui.lang.comment_load_failed
 import me.him188.ani.app.ui.lang.settings_mediasource_retry
 import me.him188.ani.app.ui.search.renderLoadErrorMessage
-import me.him188.ani.leanback.ui.episode.components.TvPlayerPanelList
-import me.him188.ani.leanback.ui.foundation.widgets.TvOptionRow
+import me.him188.ani.tv.ui.episode.components.TvPlayerPanelList
+import me.him188.ani.tv.ui.foundation.widgets.TvOptionRow
 import org.jetbrains.compose.resources.stringResource
 
 /**

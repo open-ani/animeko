@@ -13,7 +13,7 @@ plugins {
 
 kotlin {
     android {
-        namespace = "me.him188.ani.app.leanback.ui.onboarding"
+        namespace = "me.him188.ani.app.tv.ui.onboarding"
     }
     sourceSets.androidMain {
         kotlin.srcDir("../src/androidTv/kotlin")

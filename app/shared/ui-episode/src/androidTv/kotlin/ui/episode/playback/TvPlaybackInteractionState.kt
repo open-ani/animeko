@@ -7,7 +7,7 @@
  * https://github.com/open-ani/ani/blob/main/LICENSE
  */
 
-package me.him188.ani.leanback.ui.episode.playback
+package me.him188.ani.tv.ui.episode.playback
 
 import androidx.compose.runtime.Stable
 import androidx.compose.runtime.getValue

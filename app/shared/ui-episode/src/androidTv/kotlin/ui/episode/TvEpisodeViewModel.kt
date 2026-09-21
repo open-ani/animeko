@@ -7,7 +7,7 @@
  * https://github.com/open-ani/ani/blob/main/LICENSE
  */
 
-package me.him188.ani.leanback.ui.episode
+package me.him188.ani.tv.ui.episode
 
 import android.graphics.Bitmap
 import androidx.compose.runtime.Stable
@@ -99,19 +99,19 @@ import me.him188.ani.danmaku.ui.DanmakuPresentation
 import me.him188.ani.danmaku.ui.DanmakuTrackProperties
 import me.him188.ani.datasources.api.Media
 import me.him188.ani.datasources.api.topic.UnifiedCollectionType
-import me.him188.ani.leanback.ui.episode.controls.TvSubtitleOption
-import me.him188.ani.leanback.ui.episode.danmaku.TvDanmakuMatchState
-import me.him188.ani.leanback.ui.episode.danmaku.TvDanmakuOrigin
-import me.him188.ani.leanback.ui.episode.danmaku.TvUIDanmakuEvent
-import me.him188.ani.leanback.ui.episode.danmaku.adjustForTv
-import me.him188.ani.leanback.ui.episode.playback.TvAutoSkipController
-import me.him188.ani.leanback.ui.episode.playback.TvChapter
-import me.him188.ani.leanback.ui.episode.playback.TvPlaybackInteractionState
-import me.him188.ani.leanback.ui.episode.recommendation.tvNavigationSubjectId
-import me.him188.ani.leanback.ui.episode.source.TvSourceSelectionState
-import me.him188.ani.leanback.ui.episode.source.tvSourceGroups
-import me.him188.ani.leanback.ui.foundation.TvNavigationEvent
-import me.him188.ani.leanback.ui.foundation.TvNavigationEvents
+import me.him188.ani.tv.ui.episode.controls.TvSubtitleOption
+import me.him188.ani.tv.ui.episode.danmaku.TvDanmakuMatchState
+import me.him188.ani.tv.ui.episode.danmaku.TvDanmakuOrigin
+import me.him188.ani.tv.ui.episode.danmaku.TvUIDanmakuEvent
+import me.him188.ani.tv.ui.episode.danmaku.adjustForTv
+import me.him188.ani.tv.ui.episode.playback.TvAutoSkipController
+import me.him188.ani.tv.ui.episode.playback.TvChapter
+import me.him188.ani.tv.ui.episode.playback.TvPlaybackInteractionState
+import me.him188.ani.tv.ui.episode.recommendation.tvNavigationSubjectId
+import me.him188.ani.tv.ui.episode.source.TvSourceSelectionState
+import me.him188.ani.tv.ui.episode.source.tvSourceGroups
+import me.him188.ani.tv.ui.foundation.TvNavigationEvent
+import me.him188.ani.tv.ui.foundation.TvNavigationEvents
 import org.koin.core.Koin
 import org.openani.mediamp.ExperimentalMediampApi
 import org.openani.mediamp.MediampPlayer
@@ -126,7 +126,7 @@ import org.openani.mediamp.features.subtitleTracks
 import org.openani.mediamp.togglePlayWhenReady
 
 /**
- * TV 播放页薄 VM (atv-architecture.md §8.1): 与手机共用同一套播放编排 (app-data domain),
+ * TV 播放页薄 VM: 与手机共用同一套播放编排 (app-data domain),
  * 播放、弹幕、选源及一起看的操作决策均在此处处理, UI 只消费状态并发送 Intent.
  */
 @Stable
@@ -355,7 +355,7 @@ class TvEpisodeViewModel(
 
     // endregion
 
-    // region 弹幕 (接线拷自手机 EpisodeViewModel, atv-architecture.md §8.3)
+    // region 弹幕 (接线拷自手机 EpisodeViewModel)
 
     @OptIn(UnsafeEpisodeSessionApi::class)
     private val episodeDanmakuLoader = EpisodeDanmakuLoader(

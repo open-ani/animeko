@@ -7,11 +7,11 @@
  * https://github.com/open-ani/ani/blob/main/LICENSE
  */
 
-package me.him188.ani.leanback.ui.schedule
+package me.him188.ani.tv.ui.schedule
 
 import me.him188.ani.app.ui.exploration.schedule.ScheduleViewModel
-import me.him188.ani.leanback.ui.foundation.TvNavigationEvent
-import me.him188.ani.leanback.ui.foundation.TvNavigationEvents
+import me.him188.ani.tv.ui.foundation.TvNavigationEvent
+import me.him188.ani.tv.ui.foundation.TvNavigationEvents
 import org.koin.core.Koin
 
 sealed interface TvScheduleIntent {

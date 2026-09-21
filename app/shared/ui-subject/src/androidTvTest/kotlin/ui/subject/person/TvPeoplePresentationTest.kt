@@ -2,17 +2,17 @@
  * Copyright (C) 2026 OpenAni and contributors.
  * Use of this source code is governed by the GNU AGPLv3 license.
  */
-package me.him188.ani.leanback.ui.subject.person
+package me.him188.ani.tv.ui.subject.person
 
 import me.him188.ani.app.data.models.person.PersonDetailsInfo
 import me.him188.ani.app.data.models.subject.PersonInfo
 import me.him188.ani.app.data.models.subject.PersonType
 import me.him188.ani.app.navigation.NavRoutes
 import me.him188.ani.app.navigation.PersonDetailRole
-import me.him188.ani.leanback.ui.subject.person.discussion.peopleDiscussionCount
-import me.him188.ani.leanback.ui.subject.person.discussion.TvPeopleDiscussionPage
-import me.him188.ani.leanback.ui.subject.person.presentation.TvPeopleOverlay
-import me.him188.ani.leanback.ui.subject.person.presentation.TvPeoplePresentationState
+import me.him188.ani.tv.ui.subject.person.discussion.peopleDiscussionCount
+import me.him188.ani.tv.ui.subject.person.discussion.TvPeopleDiscussionPage
+import me.him188.ani.tv.ui.subject.person.presentation.TvPeopleOverlay
+import me.him188.ani.tv.ui.subject.person.presentation.TvPeoplePresentationState
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse

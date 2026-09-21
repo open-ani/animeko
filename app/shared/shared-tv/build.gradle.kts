@@ -11,11 +11,11 @@ plugins {
     id("ani.kmp-compose")
 }
 
-group = "me.him188.ani.leanback"
+group = "me.him188.ani.tv"
 
 kotlin {
     android {
-        namespace = "me.him188.ani.leanback"
+        namespace = "me.him188.ani.tv"
     }
     sourceSets.androidMain {
         kotlin.srcDir("../src/androidTv/kotlin")

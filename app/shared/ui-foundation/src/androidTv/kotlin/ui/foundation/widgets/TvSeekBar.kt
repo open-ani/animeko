@@ -7,7 +7,7 @@
  * https://github.com/open-ani/ani/blob/main/LICENSE
  */
 
-package me.him188.ani.leanback.ui.foundation.widgets
+package me.him188.ani.tv.ui.foundation.widgets
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
@@ -27,7 +27,7 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.tv.material3.MaterialTheme
 
-/** [TvSeekBar] 默认值 (atv-architecture.md §8.3: 6dp 轨、缓冲/已播分色、聚焦圆点). */
+/** [TvSeekBar] 默认值 (6dp 轨、缓冲/已播分色、聚焦圆点). */
 object TvSeekBarDefaults {
     /** 轨道高度. */
     val TrackHeight: Dp = 6.dp
@@ -50,7 +50,7 @@ object TvSeekBarDefaults {
 }
 
 /**
- * TV 播放器进度条 (atv-architecture.md §8.3): 整行单焦点组件的**纯视觉**部分 ——
+ * TV 播放器进度条: 整行单焦点组件的**纯视觉**部分 ——
  * 6dp 轨 + 缓冲段/已播段分色 + 聚焦圆点; 拖拽预览 (scrub) 时圆点脱离播放位置移动.
  *
  * 按键/聚焦语义由调用方 (播放页根部按键路由) 持有, 本组件只按状态绘制:

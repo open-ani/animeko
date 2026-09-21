@@ -6,7 +6,7 @@
  *
  * https://github.com/open-ani/ani/blob/main/LICENSE
  */
-package me.him188.ani.leanback.ui.subject.details
+package me.him188.ani.tv.ui.subject.details
 
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.ContentTransform
@@ -55,12 +55,12 @@ import me.him188.ani.app.ui.lang.subject_details_no_episodes
 import me.him188.ani.app.ui.subject.AiringLabelState
 import me.him188.ani.app.ui.subject.rememberSubjectStatusStrings
 import me.him188.ani.datasources.api.topic.UnifiedCollectionType
-import me.him188.ani.leanback.ui.foundation.widgets.TvOptionsRow
-import me.him188.ani.leanback.ui.subject.TvSubjectDetailsContentState
-import me.him188.ani.leanback.ui.subject.components.TvDetailsDescriptionCard
-import me.him188.ani.leanback.ui.subject.components.TvDetailsHeroLayout
-import me.him188.ani.leanback.ui.subject.components.TvDetailsTextPlaceholder
-import me.him188.ani.leanback.ui.subject.components.TvSubjectDetailsDefaults
+import me.him188.ani.tv.ui.foundation.widgets.TvOptionsRow
+import me.him188.ani.tv.ui.subject.TvSubjectDetailsContentState
+import me.him188.ani.tv.ui.subject.components.TvDetailsDescriptionCard
+import me.him188.ani.tv.ui.subject.components.TvDetailsHeroLayout
+import me.him188.ani.tv.ui.subject.components.TvDetailsTextPlaceholder
+import me.him188.ani.tv.ui.subject.components.TvSubjectDetailsDefaults
 import org.jetbrains.compose.resources.stringResource
 
 /** Short titles preserve the card/action positions; small viewports can grow vertically. */

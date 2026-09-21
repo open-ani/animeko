@@ -7,7 +7,7 @@
  * https://github.com/open-ani/ani/blob/main/LICENSE
  */
 
-package me.him188.ani.leanback.ui.episode
+package me.him188.ani.tv.ui.episode
 
 import androidx.compose.ui.unit.dp
 import me.him188.ani.app.domain.media.fetch.MediaSourceFetchState
@@ -20,9 +20,9 @@ import me.him188.ani.client.models.AniWatchTogetherMember
 import me.him188.ani.client.models.AniWatchTogetherMemberState
 import me.him188.ani.client.models.AniWatchTogetherWatchingInfo
 import me.him188.ani.danmaku.ui.DanmakuConfig
-import me.him188.ani.leanback.ui.episode.danmaku.TvDanmakuProperty
-import me.him188.ani.leanback.ui.episode.danmaku.adjustForTv
-import me.him188.ani.leanback.ui.episode.source.TvSourceGroup
+import me.him188.ani.tv.ui.episode.danmaku.TvDanmakuProperty
+import me.him188.ani.tv.ui.episode.danmaku.adjustForTv
+import me.him188.ani.tv.ui.episode.source.TvSourceGroup
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse

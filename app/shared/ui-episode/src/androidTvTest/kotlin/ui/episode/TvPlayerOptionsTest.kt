@@ -7,16 +7,16 @@
  * https://github.com/open-ani/ani/blob/main/LICENSE
  */
 
-package me.him188.ani.leanback.ui.episode
+package me.him188.ani.tv.ui.episode
 
 import androidx.compose.runtime.saveable.SaverScope
 import me.him188.ani.app.domain.media.fetch.MediaSourceFetchState
-import me.him188.ani.leanback.ui.episode.playback.TvAutoSkipController
-import me.him188.ani.leanback.ui.episode.playback.TvChapter
-import me.him188.ani.leanback.ui.episode.playback.TvSkipPrompt
-import me.him188.ani.leanback.ui.episode.source.TvSourceDialogState
-import me.him188.ani.leanback.ui.episode.source.TvSourceGroup
-import me.him188.ani.leanback.ui.episode.source.TvSourceMode
+import me.him188.ani.tv.ui.episode.playback.TvAutoSkipController
+import me.him188.ani.tv.ui.episode.playback.TvChapter
+import me.him188.ani.tv.ui.episode.playback.TvSkipPrompt
+import me.him188.ani.tv.ui.episode.source.TvSourceDialogState
+import me.him188.ani.tv.ui.episode.source.TvSourceGroup
+import me.him188.ani.tv.ui.episode.source.TvSourceMode
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertNull

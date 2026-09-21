@@ -7,13 +7,13 @@
  * https://github.com/open-ani/ani/blob/main/LICENSE
  */
 
-package me.him188.ani.leanback.ui.episode.controls
+package me.him188.ani.tv.ui.episode.controls
 
 import androidx.compose.runtime.Composable
 import me.him188.ani.app.ui.lang.Lang
 import me.him188.ani.app.ui.lang.subject_episode_default_title
-import me.him188.ani.leanback.ui.episode.TvEpisodeTitle
-import me.him188.ani.leanback.ui.episode.TvStripEpisode
+import me.him188.ani.tv.ui.episode.TvEpisodeTitle
+import me.him188.ani.tv.ui.episode.TvStripEpisode
 import org.jetbrains.compose.resources.stringResource
 
 /** 倍速展示: 1.0 -> "1x", 1.25 -> "1.25x". */

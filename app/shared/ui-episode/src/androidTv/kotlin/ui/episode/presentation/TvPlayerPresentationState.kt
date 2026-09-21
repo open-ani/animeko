@@ -7,7 +7,7 @@
  * https://github.com/open-ani/ani/blob/main/LICENSE
  */
 
-package me.him188.ani.leanback.ui.episode.presentation
+package me.him188.ani.tv.ui.episode.presentation
 
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.Stable
@@ -25,12 +25,12 @@ import kotlinx.coroutines.flow.receiveAsFlow
 import me.him188.ani.app.data.models.episode.EpisodeComment
 import me.him188.ani.danmaku.api.DanmakuServiceId
 import me.him188.ani.datasources.api.topic.UnifiedCollectionType
-import me.him188.ani.leanback.ui.episode.TvEpisodeEvent
-import me.him188.ani.leanback.ui.episode.TvEpisodeIntent
-import me.him188.ani.leanback.ui.episode.TvEpisodeUiState
-import me.him188.ani.leanback.ui.episode.danmaku.TvDanmakuAdjustment
-import me.him188.ani.leanback.ui.episode.playback.TvPlaybackInteractionState
-import me.him188.ani.leanback.ui.subject.collection.TvCollectionPrompt
+import me.him188.ani.tv.ui.episode.TvEpisodeEvent
+import me.him188.ani.tv.ui.episode.TvEpisodeIntent
+import me.him188.ani.tv.ui.episode.TvEpisodeUiState
+import me.him188.ani.tv.ui.episode.danmaku.TvDanmakuAdjustment
+import me.him188.ani.tv.ui.episode.playback.TvPlaybackInteractionState
+import me.him188.ani.tv.ui.subject.collection.TvCollectionPrompt
 import org.openani.mediamp.PlayerState
 
 internal data class TvPlayerOverlayState(

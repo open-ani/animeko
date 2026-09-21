@@ -7,7 +7,7 @@
  * https://github.com/open-ani/ani/blob/main/LICENSE
  */
 
-package me.him188.ani.leanback.ui.login
+package me.him188.ani.tv.ui.login
 
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -32,16 +32,16 @@ import androidx.compose.ui.input.key.Key
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
-import me.him188.ani.leanback.ui.foundation.focus.TvFocusKey
-import me.him188.ani.leanback.ui.foundation.focus.TvFocusScope
-import me.him188.ani.leanback.ui.foundation.focus.rememberTvFocusScope
-import me.him188.ani.leanback.ui.foundation.focus.tvFocusAnchor
-import me.him188.ani.leanback.ui.foundation.focus.tvFocusHotkey
-import me.him188.ani.leanback.ui.foundation.focus.tvFocusNavSignal
-import me.him188.ani.leanback.ui.foundation.widgets.TvHeroButton
-import me.him188.ani.leanback.ui.foundation.widgets.TvTextField
-import me.him188.ani.leanback.ui.foundation.widgets.tvHeroContentColor
-import me.him188.ani.leanback.ui.foundation.widgets.tvHeroSecondaryContentColor
+import me.him188.ani.tv.ui.foundation.focus.TvFocusKey
+import me.him188.ani.tv.ui.foundation.focus.TvFocusScope
+import me.him188.ani.tv.ui.foundation.focus.rememberTvFocusScope
+import me.him188.ani.tv.ui.foundation.focus.tvFocusAnchor
+import me.him188.ani.tv.ui.foundation.focus.tvFocusHotkey
+import me.him188.ani.tv.ui.foundation.focus.tvFocusNavSignal
+import me.him188.ani.tv.ui.foundation.widgets.TvHeroButton
+import me.him188.ani.tv.ui.foundation.widgets.TvTextField
+import me.him188.ani.tv.ui.foundation.widgets.tvHeroContentColor
+import me.him188.ani.tv.ui.foundation.widgets.tvHeroSecondaryContentColor
 
 /** 登录页焦点锚点 (统一焦点框架, 见 ui-foundation-tv/focus). */
 private enum class TvLoginFocus : TvFocusKey {

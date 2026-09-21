@@ -7,7 +7,7 @@
  * https://github.com/open-ani/ani/blob/main/LICENSE
  */
 
-package me.him188.ani.leanback.ui.subject
+package me.him188.ani.tv.ui.subject
 
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -22,10 +22,10 @@ import me.him188.ani.app.ui.lang.Lang
 import me.him188.ani.app.ui.lang.foundation_richtext_external_app_link_warning_prefix
 import me.him188.ani.app.ui.lang.foundation_richtext_open_failed_prefix
 import me.him188.ani.app.ui.richtext.RichTextDefaults
-import me.him188.ani.leanback.ui.foundation.TvNavigationEffect
-import me.him188.ani.leanback.ui.foundation.TvNavigationEvent
-import me.him188.ani.leanback.ui.subject.presentation.TvDetailsPanelKind
-import me.him188.ani.leanback.ui.subject.presentation.TvSubjectPresentationState
+import me.him188.ani.tv.ui.foundation.TvNavigationEffect
+import me.him188.ani.tv.ui.foundation.TvNavigationEvent
+import me.him188.ani.tv.ui.subject.presentation.TvDetailsPanelKind
+import me.him188.ani.tv.ui.subject.presentation.TvSubjectPresentationState
 import org.jetbrains.compose.resources.stringResource
 
 @Composable

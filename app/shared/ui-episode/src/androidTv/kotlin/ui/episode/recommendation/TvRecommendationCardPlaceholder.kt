@@ -7,7 +7,7 @@
  * https://github.com/open-ani/ani/blob/main/LICENSE
  */
 
-package me.him188.ani.leanback.ui.episode.recommendation
+package me.him188.ani.tv.ui.episode.recommendation
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
@@ -24,10 +24,10 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.unit.dp
-import me.him188.ani.leanback.ui.foundation.widgets.TvPlaceholderBlock
-import me.him188.ani.leanback.ui.episode.controls.TvPlayerEpisodeStripDefaults
-import me.him188.ani.leanback.ui.foundation.focus.TvFocusDefaults
-import me.him188.ani.leanback.ui.foundation.widgets.LocalTvOptionColors
+import me.him188.ani.tv.ui.foundation.widgets.TvPlaceholderBlock
+import me.him188.ani.tv.ui.episode.controls.TvPlayerEpisodeStripDefaults
+import me.him188.ani.tv.ui.foundation.focus.TvFocusDefaults
+import me.him188.ani.tv.ui.foundation.widgets.LocalTvOptionColors
 
 @Composable
 internal fun TvRecommendationCardPlaceholder(modifier: Modifier = Modifier) {

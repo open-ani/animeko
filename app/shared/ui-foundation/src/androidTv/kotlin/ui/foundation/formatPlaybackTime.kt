@@ -7,7 +7,7 @@
  * https://github.com/open-ani/ani/blob/main/LICENSE
  */
 
-package me.him188.ani.leanback.ui.foundation
+package me.him188.ani.tv.ui.foundation
 
 /** Shared playback, preview and room timestamps use mm:ss, or h:mm:ss for long media. */
 fun formatPlaybackTime(millis: Long): String {

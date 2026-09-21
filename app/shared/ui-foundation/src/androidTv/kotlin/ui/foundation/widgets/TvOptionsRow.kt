@@ -2,7 +2,7 @@
  * Copyright (C) 2026 OpenAni and contributors.
  * Use of this source code is governed by the GNU AGPLv3 license.
  */
-package me.him188.ani.leanback.ui.foundation.widgets
+package me.him188.ani.tv.ui.foundation.widgets
 
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.focusGroup
@@ -43,7 +43,7 @@ import androidx.tv.material3.Icon
 import androidx.tv.material3.MaterialTheme
 import androidx.tv.material3.Surface
 import androidx.tv.material3.Text
-import me.him188.ani.leanback.ui.foundation.layout.TvOptionAnchors
+import me.him188.ani.tv.ui.foundation.layout.TvOptionAnchors
 
 @Immutable
 data class TvOptionButtonDimensions(val sidePadding: Dp, val iconSize: Dp, val contentSpacing: Dp) {

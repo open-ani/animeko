@@ -2,7 +2,7 @@
  * Copyright (C) 2026 OpenAni and contributors.
  * Use of this source code is governed by the GNU AGPLv3 license.
  */
-package me.him188.ani.leanback.ui.settings
+package me.him188.ani.tv.ui.settings
 
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -34,11 +34,11 @@ import me.him188.ani.app.ui.lang.settings_priority_reorder_done
 import me.him188.ani.app.ui.lang.settings_priority_selected_description
 import me.him188.ani.app.ui.lang.tv_settings_moving_hint
 import me.him188.ani.app.ui.lang.tv_settings_reorder_hint
-import me.him188.ani.leanback.ui.foundation.focus.TvFocusScope
-import me.him188.ani.leanback.ui.foundation.focus.tvFocusAnchor
-import me.him188.ani.leanback.ui.foundation.layout.TvModalOverlay
-import me.him188.ani.leanback.ui.foundation.widgets.TvOptionModal
-import me.him188.ani.leanback.ui.foundation.widgets.TvOptionRow
+import me.him188.ani.tv.ui.foundation.focus.TvFocusScope
+import me.him188.ani.tv.ui.foundation.focus.tvFocusAnchor
+import me.him188.ani.tv.ui.foundation.layout.TvModalOverlay
+import me.him188.ani.tv.ui.foundation.widgets.TvOptionModal
+import me.him188.ani.tv.ui.foundation.widgets.TvOptionRow
 import org.jetbrains.compose.resources.stringResource
 
 /** Selection and order are drafts until Save. Moving uses the axis of the visible list. */

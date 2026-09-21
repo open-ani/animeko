@@ -2,7 +2,7 @@
  * Copyright (C) 2026 OpenAni and contributors.
  * Use of this source code is governed by the GNU AGPLv3 license.
  */
-package me.him188.ani.leanback.ui.settings
+package me.him188.ani.tv.ui.settings
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
@@ -24,7 +24,7 @@ import androidx.tv.material3.MaterialTheme
 import androidx.tv.material3.Text
 import me.him188.ani.app.ui.lang.Lang
 import me.him188.ani.app.ui.lang.settings
-import me.him188.ani.leanback.ui.foundation.widgets.tvShellBackgroundColor
+import me.him188.ani.tv.ui.foundation.widgets.tvShellBackgroundColor
 import org.jetbrains.compose.resources.stringResource
 
 internal object TvSettingsDefaults {

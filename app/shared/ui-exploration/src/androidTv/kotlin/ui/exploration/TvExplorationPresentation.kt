@@ -6,7 +6,7 @@
  *
  * https://github.com/open-ani/ani/blob/main/LICENSE
  */
-package me.him188.ani.leanback.ui.exploration
+package me.him188.ani.tv.ui.exploration
 
 import androidx.compose.animation.ContentTransform
 import androidx.compose.animation.core.CubicBezierEasing
@@ -41,7 +41,7 @@ internal fun nextFeaturedSubjectId(ids: List<Int>, currentId: Int?, direction: I
     return ids[(current + direction.mod(ids.size)).mod(ids.size)]
 }
 
-/** Resource and card-model values from launcherx 1.0.877433387; see google-tv-home-reference.md. */
+/** Resource and card-model values from launcherx 1.0.877433387. */
 internal object TvExplorationDefaults {
     val Background = Color(0xFF0E0E0F)
     val Content = Color(0xFFE8EAED)

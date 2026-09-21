@@ -2,7 +2,7 @@
  * Copyright (C) 2026 OpenAni and contributors.
  * Use of this source code is governed by the GNU AGPLv3 license.
  */
-package me.him188.ani.leanback.ui.subject.person.components
+package me.him188.ani.tv.ui.subject.person.components
 
 import androidx.compose.foundation.focusable
 import androidx.compose.foundation.layout.Arrangement
@@ -25,10 +25,10 @@ import me.him188.ani.app.domain.foundation.LoadError
 import me.him188.ani.app.ui.lang.Lang
 import me.him188.ani.app.ui.lang.settings_mediasource_retry
 import me.him188.ani.app.ui.search.renderLoadErrorMessage
-import me.him188.ani.leanback.ui.foundation.widgets.TvLandscapeCard
-import me.him188.ani.leanback.ui.subject.components.TvDetailsBrowseRowLayout
-import me.him188.ani.leanback.ui.subject.components.TvSubjectDetailsDefaults
-import me.him188.ani.leanback.ui.subject.details.TvDetailsAction
+import me.him188.ani.tv.ui.foundation.widgets.TvLandscapeCard
+import me.him188.ani.tv.ui.subject.components.TvDetailsBrowseRowLayout
+import me.him188.ani.tv.ui.subject.components.TvSubjectDetailsDefaults
+import me.him188.ani.tv.ui.subject.details.TvDetailsAction
 import org.jetbrains.compose.resources.stringResource
 
 internal class TvPeopleSection(

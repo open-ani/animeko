@@ -7,7 +7,7 @@
  * https://github.com/open-ani/ani/blob/main/LICENSE
  */
 
-package me.him188.ani.leanback.ui.foundation.widgets
+package me.him188.ani.tv.ui.foundation.widgets
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.basicMarquee
@@ -43,11 +43,11 @@ import androidx.tv.material3.Surface
 import androidx.tv.material3.Text
 import me.him188.ani.app.ui.foundation.AsyncImage
 import me.him188.ani.app.ui.foundation.effects.blurEffect
-import me.him188.ani.leanback.ui.foundation.focus.TvFocusDefaults
-import me.him188.ani.leanback.ui.foundation.focus.tvCardFocusBorder
-import me.him188.ani.leanback.ui.foundation.focus.tvFocusMemorable
+import me.him188.ani.tv.ui.foundation.focus.TvFocusDefaults
+import me.him188.ani.tv.ui.foundation.focus.tvCardFocusBorder
+import me.him188.ani.tv.ui.foundation.focus.tvFocusMemorable
 
-/** [TvPosterCard] 默认值 (atv-architecture.md 附录 A: 海报卡 112dp/0.72/圆角 8/间距 10). */
+/** [TvPosterCard] 默认值 (海报卡 112dp/0.72/圆角 8/间距 10). */
 object TvPosterCardDefaults {
     /** 卡片宽度 (探索/追番/搜索页统一规格). */
     val Width: Dp = 112.dp
@@ -60,7 +60,7 @@ object TvPosterCardDefaults {
 }
 
 /**
- * 竖版海报卡 (atv-architecture.md §5.2 / 附录 A):
+ * 竖版海报卡:
  * 图片使用共享焦点描边和留白，无缩放；标题位于图片下方。
  */
 @Composable

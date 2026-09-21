@@ -7,7 +7,7 @@
  * https://github.com/open-ani/ani/blob/main/LICENSE
  */
 
-package me.him188.ani.leanback.ui.schedule
+package me.him188.ani.tv.ui.schedule
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -57,19 +57,19 @@ import me.him188.ani.app.ui.exploration.schedule.ScheduleDay
 import me.him188.ani.app.ui.exploration.schedule.SchedulePagePresentation
 import me.him188.ani.app.ui.foundation.AsyncImage
 import me.him188.ani.datasources.api.EpisodeSort
-import me.him188.ani.leanback.ui.foundation.focus.TvFocusDefaults
-import me.him188.ani.leanback.ui.foundation.focus.tvCardFocusBorder
-import me.him188.ani.leanback.ui.foundation.focus.LocalTvFocusMemory
-import me.him188.ani.leanback.ui.foundation.focus.TvFocusKey
-import me.him188.ani.leanback.ui.foundation.focus.TvFocusScope
-import me.him188.ani.leanback.ui.foundation.focus.rememberTvFocusScope
-import me.him188.ani.leanback.ui.foundation.focus.tvFocusAnchor
-import me.him188.ani.leanback.ui.foundation.focus.tvFocusMemorable
-import me.him188.ani.leanback.ui.foundation.focus.tvFocusNavSignal
-import me.him188.ani.leanback.ui.foundation.widgets.TvHeroButton
-import me.him188.ani.leanback.ui.foundation.widgets.TvPageDefaults
-import me.him188.ani.leanback.ui.foundation.widgets.tvHeroContentColor
-import me.him188.ani.leanback.ui.foundation.widgets.tvHeroSecondaryContentColor
+import me.him188.ani.tv.ui.foundation.focus.TvFocusDefaults
+import me.him188.ani.tv.ui.foundation.focus.tvCardFocusBorder
+import me.him188.ani.tv.ui.foundation.focus.LocalTvFocusMemory
+import me.him188.ani.tv.ui.foundation.focus.TvFocusKey
+import me.him188.ani.tv.ui.foundation.focus.TvFocusScope
+import me.him188.ani.tv.ui.foundation.focus.rememberTvFocusScope
+import me.him188.ani.tv.ui.foundation.focus.tvFocusAnchor
+import me.him188.ani.tv.ui.foundation.focus.tvFocusMemorable
+import me.him188.ani.tv.ui.foundation.focus.tvFocusNavSignal
+import me.him188.ani.tv.ui.foundation.widgets.TvHeroButton
+import me.him188.ani.tv.ui.foundation.widgets.TvPageDefaults
+import me.him188.ani.tv.ui.foundation.widgets.tvHeroContentColor
+import me.him188.ani.tv.ui.foundation.widgets.tvHeroSecondaryContentColor
 
 /** 时间表焦点锚点 (统一焦点框架, 见 ui-foundation-tv/focus). */
 private sealed interface TvScheduleFocus : TvFocusKey {
@@ -79,7 +79,7 @@ private sealed interface TvScheduleFocus : TvFocusKey {
 }
 
 /*
- * TV 新番时间表: 手机端 ScheduleScreen 宽屏 (Medium) 布局的搬运 (atv-architecture.md §7.2) ——
+ * TV 新番时间表: 手机端 ScheduleScreen 宽屏 (Medium) 布局的搬运 ——
  * 多天并排的固定宽列 (360dp) 横向排列, 列头为「M/d + 周几」(今天主题色 + 圆头分隔线),
  * 每列一条时间线列表 (时间行 / 56dp 封面 / 标题 / 集数副行 / 当前时间指示器 / 占位骨架).
  * 数据复用手机 ScheduleViewModel，视口由页面的可保存 LazyListState 持有。

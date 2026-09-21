@@ -6,7 +6,7 @@
  *
  * https://github.com/open-ani/ani/blob/main/LICENSE
  */
-package me.him188.ani.leanback.ui.subject.details
+package me.him188.ani.tv.ui.subject.details
 
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.MutableTransitionState
@@ -72,11 +72,11 @@ import me.him188.ani.app.ui.lang.rating_requires_collection
 import me.him188.ani.app.ui.lang.rating_self_score
 import me.him188.ani.app.ui.lang.subject_details_rate
 import me.him188.ani.datasources.api.topic.UnifiedCollectionType
-import me.him188.ani.leanback.ui.foundation.widgets.TvOptionDefaults
-import me.him188.ani.leanback.ui.foundation.widgets.TvPlaceholderBlock
-import me.him188.ani.leanback.ui.subject.collection.tvCollectionLabel
-import me.him188.ani.leanback.ui.subject.components.LocalTvDetailsActionBackdrop
-import me.him188.ani.leanback.ui.subject.components.TvSubjectDetailsDefaults
+import me.him188.ani.tv.ui.foundation.widgets.TvOptionDefaults
+import me.him188.ani.tv.ui.foundation.widgets.TvPlaceholderBlock
+import me.him188.ani.tv.ui.subject.collection.tvCollectionLabel
+import me.him188.ani.tv.ui.subject.components.LocalTvDetailsActionBackdrop
+import me.him188.ani.tv.ui.subject.components.TvSubjectDetailsDefaults
 import org.jetbrains.compose.resources.stringResource
 
 /** A neutral, inverse-focus pill. Busy actions keep the same focus node. */

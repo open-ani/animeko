@@ -7,7 +7,7 @@
  * https://github.com/open-ani/ani/blob/main/LICENSE
  */
 
-package me.him188.ani.leanback.ui.episode.presentation
+package me.him188.ani.tv.ui.episode.presentation
 
 
 enum class TvPlayerDialog { Speed, Subtitles, EpisodeActions, DanmakuMatch, DanmakuList }

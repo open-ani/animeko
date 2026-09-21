@@ -6,7 +6,7 @@
  *
  * https://github.com/open-ani/ani/blob/main/LICENSE
  */
-package me.him188.ani.leanback.ui.exploration
+package me.him188.ani.tv.ui.exploration
 
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.AnimatedVisibility
@@ -72,10 +72,10 @@ import me.him188.ani.app.ui.lang.subject_details_empty
 import me.him188.ani.app.ui.subject.SubjectProgressState
 import me.him188.ani.app.ui.subject.AiringLabelState
 import me.him188.ani.app.ui.subject.rememberSubjectStatusStrings
-import me.him188.ani.leanback.ui.foundation.focus.tvFocusMemorable
-import me.him188.ani.leanback.ui.subject.details.TvDetailsMetadata
-import me.him188.ani.leanback.ui.subject.details.TvDetailsActionVisual
-import me.him188.ani.leanback.ui.subject.details.TvDetailsTitle
+import me.him188.ani.tv.ui.foundation.focus.tvFocusMemorable
+import me.him188.ani.tv.ui.subject.details.TvDetailsMetadata
+import me.him188.ani.tv.ui.subject.details.TvDetailsActionVisual
+import me.him188.ani.tv.ui.subject.details.TvDetailsTitle
 import org.jetbrains.compose.resources.stringResource
 
 /** Featured pages share one translation for their title, metadata, summary and action. */

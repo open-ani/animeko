@@ -7,7 +7,7 @@
  * https://github.com/open-ani/ani/blob/main/LICENSE
  */
 
-package me.him188.ani.leanback.ui.login
+package me.him188.ani.tv.ui.login
 
 import kotlin.time.Clock
 import kotlinx.coroutines.CancellationException
@@ -23,8 +23,8 @@ import kotlinx.coroutines.sync.Mutex
 import me.him188.ani.app.data.repository.RepositoryRateLimitedException
 import me.him188.ani.app.data.repository.user.UserRepository
 import me.him188.ani.app.ui.login.EmailLoginViewModel
-import me.him188.ani.leanback.ui.foundation.TvNavigationEvent
-import me.him188.ani.leanback.ui.foundation.TvNavigationEvents
+import me.him188.ani.tv.ui.foundation.TvNavigationEvent
+import me.him188.ani.tv.ui.foundation.TvNavigationEvents
 import org.koin.core.Koin
 
 /** Reuses the shared OTP session; request ownership and TV step transitions live here. */

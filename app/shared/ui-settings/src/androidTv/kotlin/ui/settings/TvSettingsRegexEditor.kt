@@ -2,7 +2,7 @@
  * Copyright (C) 2026 OpenAni and contributors.
  * Use of this source code is governed by the GNU AGPLv3 license.
  */
-package me.him188.ani.leanback.ui.settings
+package me.him188.ani.tv.ui.settings
 
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Row
@@ -31,12 +31,12 @@ import me.him188.ani.app.ui.lang.settings_danmaku_regex_expression
 import me.him188.ani.app.ui.lang.settings_danmaku_regex_invalid
 import me.him188.ani.app.ui.lang.settings_danmaku_rule_enabled
 import me.him188.ani.app.ui.lang.settings_media_source_subscription_delete
-import me.him188.ani.leanback.ui.foundation.focus.TvFocusScope
-import me.him188.ani.leanback.ui.foundation.focus.tvFocusAnchor
-import me.him188.ani.leanback.ui.foundation.focus.tvFocusHotkey
-import me.him188.ani.leanback.ui.foundation.layout.TvModalOverlay
-import me.him188.ani.leanback.ui.foundation.widgets.TvOptionModal
-import me.him188.ani.leanback.ui.foundation.widgets.TvOptionRow
+import me.him188.ani.tv.ui.foundation.focus.TvFocusScope
+import me.him188.ani.tv.ui.foundation.focus.tvFocusAnchor
+import me.him188.ani.tv.ui.foundation.focus.tvFocusHotkey
+import me.him188.ani.tv.ui.foundation.layout.TvModalOverlay
+import me.him188.ani.tv.ui.foundation.widgets.TvOptionModal
+import me.him188.ani.tv.ui.foundation.widgets.TvOptionRow
 import org.jetbrains.compose.resources.stringResource
 
 @Composable

@@ -2,7 +2,7 @@
  * Copyright (C) 2026 OpenAni and contributors.
  * Use of this source code is governed by the GNU AGPLv3 license.
  */
-package me.him188.ani.leanback.ui.foundation.theme
+package me.him188.ani.tv.ui.foundation.theme
 
 import android.content.res.Configuration
 import android.content.res.Resources

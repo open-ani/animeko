@@ -2,7 +2,7 @@
  * Copyright (C) 2026 OpenAni and contributors.
  * Use of this source code is governed by the GNU AGPLv3 license.
  */
-package me.him188.ani.leanback.ui.subject.person.discussion
+package me.him188.ani.tv.ui.subject.person.discussion
 
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.ScrollState
@@ -66,28 +66,28 @@ import me.him188.ani.app.ui.lang.person_details_comments_count
 import me.him188.ani.app.ui.lang.settings_mediasource_retry
 import me.him188.ani.app.ui.richtext.RichText
 import me.him188.ani.app.ui.search.renderLoadErrorMessage
-import me.him188.ani.leanback.ui.foundation.focus.rememberTvFocusScope
-import me.him188.ani.leanback.ui.foundation.focus.requestPrepared
-import me.him188.ani.leanback.ui.foundation.focus.tvFocusAnchor
-import me.him188.ani.leanback.ui.foundation.focus.tvFocusHotkey
-import me.him188.ani.leanback.ui.foundation.focus.tvFocusLink
-import me.him188.ani.leanback.ui.foundation.focus.tvFocusNavSignal
-import me.him188.ani.leanback.ui.foundation.layout.TvModalOverlay
-import me.him188.ani.leanback.ui.foundation.widgets.TvOptionModal
-import me.him188.ani.leanback.ui.subject.components.TvDetailsReadingArea
-import me.him188.ani.leanback.ui.subject.components.TvSubjectDetailsDefaults
-import me.him188.ani.leanback.ui.subject.components.detailsRevealMasks
-import me.him188.ani.leanback.ui.subject.components.detailsRedactMasks
-import me.him188.ani.leanback.ui.subject.details.TvDetailsAction
-import me.him188.ani.leanback.ui.subject.details.formatCount
-import me.him188.ani.leanback.ui.subject.presentation.TvDetailsKey
-import me.him188.ani.leanback.ui.subject.presentation.detailsFocusFallback
-import me.him188.ani.leanback.ui.subject.reviews.TvReviewBringIntoViewSpec
-import me.him188.ani.leanback.ui.subject.reviews.TvReviewCard
-import me.him188.ani.leanback.ui.subject.reviews.tvReviewLoadingItems
-import me.him188.ani.leanback.ui.subject.reviews.TvReviewPlaceholder
-import me.him188.ani.leanback.ui.subject.reviews.TvReviewScrollbar
-import me.him188.ani.leanback.ui.subject.reviews.tvReviewEdges
+import me.him188.ani.tv.ui.foundation.focus.rememberTvFocusScope
+import me.him188.ani.tv.ui.foundation.focus.requestPrepared
+import me.him188.ani.tv.ui.foundation.focus.tvFocusAnchor
+import me.him188.ani.tv.ui.foundation.focus.tvFocusHotkey
+import me.him188.ani.tv.ui.foundation.focus.tvFocusLink
+import me.him188.ani.tv.ui.foundation.focus.tvFocusNavSignal
+import me.him188.ani.tv.ui.foundation.layout.TvModalOverlay
+import me.him188.ani.tv.ui.foundation.widgets.TvOptionModal
+import me.him188.ani.tv.ui.subject.components.TvDetailsReadingArea
+import me.him188.ani.tv.ui.subject.components.TvSubjectDetailsDefaults
+import me.him188.ani.tv.ui.subject.components.detailsRevealMasks
+import me.him188.ani.tv.ui.subject.components.detailsRedactMasks
+import me.him188.ani.tv.ui.subject.details.TvDetailsAction
+import me.him188.ani.tv.ui.subject.details.formatCount
+import me.him188.ani.tv.ui.subject.presentation.TvDetailsKey
+import me.him188.ani.tv.ui.subject.presentation.detailsFocusFallback
+import me.him188.ani.tv.ui.subject.reviews.TvReviewBringIntoViewSpec
+import me.him188.ani.tv.ui.subject.reviews.TvReviewCard
+import me.him188.ani.tv.ui.subject.reviews.tvReviewLoadingItems
+import me.him188.ani.tv.ui.subject.reviews.TvReviewPlaceholder
+import me.him188.ani.tv.ui.subject.reviews.TvReviewScrollbar
+import me.him188.ani.tv.ui.subject.reviews.tvReviewEdges
 import org.jetbrains.compose.resources.stringResource
 
 internal fun peopleDiscussionCount(items: LazyPagingItems<UIComment>, incomplete: Boolean = false): String =

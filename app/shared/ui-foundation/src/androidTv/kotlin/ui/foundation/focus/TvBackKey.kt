@@ -2,7 +2,7 @@
  * Copyright (C) 2026 OpenAni and contributors.
  * Use of this source code is governed by the GNU AGPLv3 license.
  */
-package me.him188.ani.leanback.ui.foundation.focus
+package me.him188.ani.tv.ui.foundation.focus
 
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf

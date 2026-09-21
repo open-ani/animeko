@@ -7,14 +7,14 @@
  * https://github.com/open-ani/ani/blob/main/LICENSE
  */
 
-package me.him188.ani.leanback.ui.foundation.theme
+package me.him188.ani.tv.ui.foundation.theme
 
 import androidx.tv.material3.darkColorScheme
 
 /**
  * m3 ColorScheme -> tv-material ColorScheme 逐字段映射.
  *
- * tv ColorScheme 比 m3 多 border/borderVariant, 取 outline/outlineVariant (atv-architecture.md §5.5).
+ * tv ColorScheme 比 m3 多 border/borderVariant, 取 outline/outlineVariant.
  * 本文件是 TV 代码中唯一允许 import `androidx.compose.material3` 的位置 (色板类型桥接).
  */
 fun androidx.compose.material3.ColorScheme.toTvColorScheme(): androidx.tv.material3.ColorScheme =

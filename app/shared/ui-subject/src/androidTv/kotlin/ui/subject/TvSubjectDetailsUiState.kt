@@ -7,7 +7,7 @@
  * https://github.com/open-ani/ani/blob/main/LICENSE
  */
 
-package me.him188.ani.leanback.ui.subject
+package me.him188.ani.tv.ui.subject
 
 import androidx.paging.PagingData
 import kotlinx.coroutines.flow.Flow

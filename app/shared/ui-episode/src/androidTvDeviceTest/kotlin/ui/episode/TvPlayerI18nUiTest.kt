@@ -7,7 +7,7 @@
  * https://github.com/open-ani/ani/blob/main/LICENSE
  */
 
-package me.him188.ani.leanback.ui.episode
+package me.him188.ani.tv.ui.episode
 
 import android.content.res.Configuration
 import android.graphics.Bitmap
@@ -95,17 +95,17 @@ import me.him188.ani.app.ui.lang.watch_together_join_failed
 import me.him188.ani.app.ui.lang.watch_together_title
 import me.him188.ani.app.videoplayer.videoenhancement.VideoEnhancementMode
 import me.him188.ani.datasources.api.topic.UnifiedCollectionType
-import me.him188.ani.leanback.ui.episode.playback.TvSkipPrompt
-import me.him188.ani.leanback.ui.episode.presentation.TvPlaybackSnapshot
-import me.him188.ani.leanback.ui.episode.presentation.TvPlayerAction
-import me.him188.ani.leanback.ui.episode.presentation.TvPlayerPanel
-import me.him188.ani.leanback.ui.episode.presentation.TvPlayerPresentationState
-import me.him188.ani.leanback.ui.episode.source.TvSourceGroup
-import me.him188.ani.leanback.ui.episode.source.TvSourceItem
-import me.him188.ani.leanback.ui.episode.source.TvSourceSelectionState
-import me.him188.ani.leanback.ui.foundation.theme.AniTvTheme
-import me.him188.ani.leanback.ui.watchtogether.TvTogetherError
-import me.him188.ani.leanback.ui.watchtogether.TvTogetherState
+import me.him188.ani.tv.ui.episode.playback.TvSkipPrompt
+import me.him188.ani.tv.ui.episode.presentation.TvPlaybackSnapshot
+import me.him188.ani.tv.ui.episode.presentation.TvPlayerAction
+import me.him188.ani.tv.ui.episode.presentation.TvPlayerPanel
+import me.him188.ani.tv.ui.episode.presentation.TvPlayerPresentationState
+import me.him188.ani.tv.ui.episode.source.TvSourceGroup
+import me.him188.ani.tv.ui.episode.source.TvSourceItem
+import me.him188.ani.tv.ui.episode.source.TvSourceSelectionState
+import me.him188.ani.tv.ui.foundation.theme.AniTvTheme
+import me.him188.ani.tv.ui.watchtogether.TvTogetherError
+import me.him188.ani.tv.ui.watchtogether.TvTogetherState
 import org.openani.mediamp.MediaStatus
 import org.openani.mediamp.PlayerState
 import java.io.File

@@ -7,7 +7,7 @@
  * https://github.com/open-ani/ani/blob/main/LICENSE
  */
 
-package me.him188.ani.leanback.ui.episode.components
+package me.him188.ani.tv.ui.episode.components
 
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.PaddingValues
@@ -23,8 +23,8 @@ import androidx.tv.material3.MaterialTheme
 import androidx.tv.material3.Text
 import me.him188.ani.app.ui.lang.Lang
 import me.him188.ani.app.ui.lang.foundation_empty_content
-import me.him188.ani.leanback.ui.foundation.layout.tvPanelScrollEdges
-import me.him188.ani.leanback.ui.foundation.widgets.LocalTvOptionColors
+import me.him188.ani.tv.ui.foundation.layout.tvPanelScrollEdges
+import me.him188.ani.tv.ui.foundation.widgets.LocalTvOptionColors
 import org.jetbrains.compose.resources.stringResource
 
 @Composable

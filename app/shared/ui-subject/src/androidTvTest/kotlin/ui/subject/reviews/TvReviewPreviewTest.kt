@@ -2,7 +2,7 @@
  * Copyright (C) 2026 OpenAni and contributors.
  * Use of this source code is governed by the GNU AGPLv3 license.
  */
-package me.him188.ani.leanback.ui.subject.reviews
+package me.him188.ani.tv.ui.subject.reviews
 
 import me.him188.ani.app.ui.richtext.UIRichElement
 import kotlin.test.Test

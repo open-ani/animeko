@@ -7,7 +7,7 @@
  * https://github.com/open-ani/ani/blob/main/LICENSE
  */
 
-package me.him188.ani.leanback.ui.foundation.layout
+package me.him188.ani.tv.ui.foundation.layout
 
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxScope
@@ -18,8 +18,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 
 /**
- * TV 页面统一骨架: overscan 安全边距 (水平 48dp = PR 侧栏收起宽/内容左缘, 垂直 27dp),
- * 见 atv-architecture.md §7 与附录 B (overscan).
+ * TV 页面统一骨架: overscan 安全边距 (水平 48dp = PR 侧栏收起宽/内容左缘, 垂直 27dp).
  */
 @Composable
 fun TvScreenScaffold(

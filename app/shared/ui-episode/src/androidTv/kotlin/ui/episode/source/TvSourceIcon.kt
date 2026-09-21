@@ -7,7 +7,7 @@
  * https://github.com/open-ani/ani/blob/main/LICENSE
  */
 
-package me.him188.ani.leanback.ui.episode.source
+package me.him188.ani.tv.ui.episode.source
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box

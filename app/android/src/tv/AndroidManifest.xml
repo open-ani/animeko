@@ -9,8 +9,8 @@
   ~ https://github.com/open-ani/ani/blob/main/LICENSE
   -->
 
-<!-- tv flavor 增量 manifest, 与 src/main 交集做加法合并 (atv-architecture.md §6.2).
-     模块 namespace 为 me.him188.ani, TV 源集包为 me.him188.ani.android.leanback, 因此类名写全限定.
+<!-- tv flavor 增量 manifest, 与 src/main 交集做加法合并.
+     模块 namespace 为 me.him188.ani, TV 源集包为 me.him188.ani.android.tv, 因此类名写全限定.
      合并结果不含任何 <service> (BT 已裁剪, 单进程) 与 oauth callback (网页 OAuth 已裁剪). -->
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
 
@@ -24,11 +24,11 @@
 
     <!-- android:name / banner 覆写 main 交集的 <application> (flavor 增量优先级更高) -->
     <application
-            android:name=".leanback.TvAniApplication"
+            android:name=".tv.TvAniApplication"
             android:banner="@drawable/tv_banner">
 
         <activity
-                android:name=".leanback.MainActivity"
+                android:name=".tv.MainActivity"
                 android:exported="true"
                 android:launchMode="singleTask"
                 android:screenOrientation="landscape">

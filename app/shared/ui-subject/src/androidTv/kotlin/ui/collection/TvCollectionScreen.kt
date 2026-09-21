@@ -7,7 +7,7 @@
  * https://github.com/open-ani/ani/blob/main/LICENSE
  */
 
-package me.him188.ani.leanback.ui.collection
+package me.him188.ani.tv.ui.collection
 
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.layout.Arrangement
@@ -43,19 +43,19 @@ import me.him188.ani.app.data.models.subject.SubjectCollectionCounts
 import me.him188.ani.app.data.models.subject.SubjectCollectionInfo
 import me.him188.ani.app.ui.subject.collection.COLLECTION_TABS_SORTED
 import me.him188.ani.datasources.api.topic.UnifiedCollectionType
-import me.him188.ani.leanback.ui.foundation.focus.TvFocusKey
-import me.him188.ani.leanback.ui.foundation.focus.TvFocusScope
-import me.him188.ani.leanback.ui.foundation.focus.TvGridFocusState
-import me.him188.ani.leanback.ui.foundation.focus.rememberTvFocusScope
-import me.him188.ani.leanback.ui.foundation.focus.rememberTvGridFocus
-import me.him188.ani.leanback.ui.foundation.focus.tvFocusAnchor
-import me.him188.ani.leanback.ui.foundation.focus.tvFocusExit
-import me.him188.ani.leanback.ui.foundation.focus.tvFocusHotkey
-import me.him188.ani.leanback.ui.foundation.focus.tvFocusNavSignal
-import me.him188.ani.leanback.ui.foundation.focus.tvGridEdgeSwitchKeys
-import me.him188.ani.leanback.ui.foundation.focus.tvGridFocusItem
-import me.him188.ani.leanback.ui.foundation.widgets.TvPageDefaults
-import me.him188.ani.leanback.ui.foundation.widgets.TvPosterCard
+import me.him188.ani.tv.ui.foundation.focus.TvFocusKey
+import me.him188.ani.tv.ui.foundation.focus.TvFocusScope
+import me.him188.ani.tv.ui.foundation.focus.TvGridFocusState
+import me.him188.ani.tv.ui.foundation.focus.rememberTvFocusScope
+import me.him188.ani.tv.ui.foundation.focus.rememberTvGridFocus
+import me.him188.ani.tv.ui.foundation.focus.tvFocusAnchor
+import me.him188.ani.tv.ui.foundation.focus.tvFocusExit
+import me.him188.ani.tv.ui.foundation.focus.tvFocusHotkey
+import me.him188.ani.tv.ui.foundation.focus.tvFocusNavSignal
+import me.him188.ani.tv.ui.foundation.focus.tvGridEdgeSwitchKeys
+import me.him188.ani.tv.ui.foundation.focus.tvGridFocusItem
+import me.him188.ani.tv.ui.foundation.widgets.TvPageDefaults
+import me.him188.ani.tv.ui.foundation.widgets.TvPosterCard
 
 /** 追番页焦点锚点 (统一焦点框架, 见 ui-foundation-tv/focus). */
 private enum class TvCollectionFocus : TvFocusKey {
@@ -65,7 +65,7 @@ private enum class TvCollectionFocus : TvFocusKey {
 }
 
 /**
- * TV 追番页 (atv-architecture.md §7.4):
+ * TV 追番页:
  * 顶部 TabRow (聚焦即选中 + 数量角标) + Adaptive 网格.
  *
  * 状态层复用手机 UserCollectionsViewModel/UserCollectionsState (D3): 每 tab 独立缓存的

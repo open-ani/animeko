@@ -1639,7 +1639,7 @@ class WithMatrix(
                 tasks = buildList {
                     for (module in listOf(":app:shared:tv", ":app:shared:ui-foundation-tv", ":app:shared:ui-episode-tv", ":app:shared:ui-subject-tv")) {
                         add("$module:testAndroidHostTest")
-                        add("--tests 'me.him188.ani.leanback.*'")
+                        add("--tests 'me.him188.ani.tv.*'")
                     }
                 }.toTypedArray(),
             )
