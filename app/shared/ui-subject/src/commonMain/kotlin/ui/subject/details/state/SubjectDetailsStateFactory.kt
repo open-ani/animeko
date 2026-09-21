@@ -9,7 +9,6 @@
 
 package me.him188.ani.app.ui.subject.details.state
 
-import androidx.compose.runtime.mutableStateOf
 import androidx.paging.LoadState
 import androidx.paging.LoadStates
 import androidx.paging.PagingData
@@ -25,7 +24,6 @@ import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.flow.SharingStarted
-import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.collect
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.distinctUntilChanged
@@ -36,11 +34,9 @@ import kotlinx.coroutines.flow.firstOrNull
 import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.flowOn
 import kotlinx.coroutines.flow.map
-import kotlinx.coroutines.flow.onEach
 import kotlinx.coroutines.flow.shareIn
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.transformLatest
-import kotlinx.coroutines.withContext
 import me.him188.ani.app.data.models.subject.RelatedCharacterInfo
 import me.him188.ani.app.data.models.subject.SelfRatingInfo
 import me.him188.ani.app.data.models.subject.SubjectCollectionInfo
@@ -49,7 +45,6 @@ import me.him188.ani.app.data.models.subject.SubjectProgressInfo
 import me.him188.ani.app.data.network.BangumiRelatedPeopleService
 import me.him188.ani.app.data.repository.episode.BangumiCommentRepository
 import me.him188.ani.app.data.repository.episode.EpisodeCollectionRepository
-import me.him188.ani.app.data.repository.episode.EpisodeProgressRepository
 import me.him188.ani.app.data.repository.player.EpisodePlayHistoryRepository
 import me.him188.ani.app.data.repository.subject.SetSubjectCollectionTypeOrDeleteUseCase
 import me.him188.ani.app.data.repository.subject.SubjectCollectionRepository
@@ -64,13 +59,11 @@ import me.him188.ani.app.ui.comment.CommentState
 import me.him188.ani.app.ui.comment.UICommentSource
 import me.him188.ani.app.ui.comment.reportSnapshotText
 import me.him188.ani.app.ui.comment.toDataReason
-import me.him188.ani.app.ui.foundation.produceState
 import me.him188.ani.app.ui.foundation.stateOf
-import me.him188.ani.app.ui.rating.EditableRatingState
-import me.him188.ani.app.ui.subject.AiringLabelState
-import me.him188.ani.app.ui.subject.SubjectProgressState
+import me.him188.ani.app.ui.rating.EditableRatingActions
+import me.him188.ani.app.ui.rating.RatingEditController
 import me.him188.ani.app.ui.subject.collection.components.EditableSubjectCollectionTypeState
-import me.him188.ani.app.ui.subject.collection.progress.SubjectProgressStateFactory
+import me.him188.ani.app.ui.subject.collection.components.SubjectCollectionTypeEditActions
 import me.him188.ani.app.ui.subject.details.updateRating
 import me.him188.ani.app.ui.subject.episode.list.EpisodeListUiState
 import me.him188.ani.datasources.api.PackedDate
@@ -100,7 +93,6 @@ interface SubjectDetailsStateFactory {
 
 class DefaultSubjectDetailsStateFactory : SubjectDetailsStateFactory, KoinComponent {
     private val subjectCollectionRepository: SubjectCollectionRepository by inject()
-    private val episodeProgressRepository: EpisodeProgressRepository by inject()
     private val episodeCollectionRepository: EpisodeCollectionRepository by inject()
     private val episodePlayHistoryRepository: EpisodePlayHistoryRepository by inject()
     private val bangumiRelatedPeopleService: BangumiRelatedPeopleService by inject()
@@ -113,22 +105,12 @@ class DefaultSubjectDetailsStateFactory : SubjectDetailsStateFactory, KoinCompon
         subjectInfoFlow: Flow<SubjectInfo>
     ): Flow<SubjectDetailsState> = flow {
         coroutineScope {
-            val subjectProgressStateFactory = createSubjectProgressStateFactory()
-
-
             subjectInfoFlow.transformLatest { subjectInfo ->
                 coroutineScope {
                     val subjectCollectionFlow = subjectCollectionRepository.subjectCollectionFlow(subjectInfo.subjectId)
                         .shareIn(this, started = SharingStarted.Eagerly, replay = 1)
 
-                    emit(
-                        createImpl(
-                            subjectInfo,
-                            subjectCollectionFlow,
-                            subjectCollectionFlow.map { it.collectionType }.stateIn(this),
-                            subjectProgressStateFactory,
-                        ),
-                    )
+                    emit(createImpl(subjectInfo, subjectCollectionFlow))
                     awaitCancellation()
                 }
             }.collect()
@@ -140,66 +122,34 @@ class DefaultSubjectDetailsStateFactory : SubjectDetailsStateFactory, KoinCompon
         subjectInfo: SubjectInfo,
     ): Flow<SubjectDetailsState> = flow {
         coroutineScope {
-            val subjectProgressStateFactory = createSubjectProgressStateFactory()
             val subjectCollectionFlow = subjectCollectionRepository.subjectCollectionFlow(subjectInfo.subjectId)
                 .shareIn(this, started = SharingStarted.Eagerly, replay = 1)
 
-            emit(
-                createImpl(
-                    subjectInfo,
-                    subjectCollectionFlow,
-                    subjectCollectionFlow.map { it.collectionType }.stateIn(this),
-                    subjectProgressStateFactory,
-                ),
-            )
+            emit(createImpl(subjectInfo, subjectCollectionFlow))
             awaitCancellation()
         }
     }
 
     override fun create(subjectId: Int, placeholder: SubjectInfo?): Flow<SubjectDetailsState> = flow {
         coroutineScope {
-            val subjectProgressStateFactory = createSubjectProgressStateFactory()
             val subjectCollectionInfoFlow = subjectCollectionRepository.subjectCollectionFlow(subjectId)
                 .stateIn(this)
 
-            emit(
-                createImpl(
-                    subjectCollectionInfoFlow.value.subjectInfo,
-                    subjectCollectionInfoFlow,
-                    subjectCollectionInfoFlow.map { it.collectionType }.stateIn(this),
-                    subjectProgressStateFactory,
-                ),
-            )
+            emit(createImpl(subjectCollectionInfoFlow.value.subjectInfo, subjectCollectionInfoFlow))
 
             awaitCancellation()
         }
     }
 
     override fun create(subjectCollectionInfo: SubjectCollectionInfo, scope: CoroutineScope): SubjectDetailsState {
-        val subjectProgressStateFactory = createSubjectProgressStateFactory()
-
         val subjectCollectionInfoFlow = MutableStateFlow(subjectCollectionInfo)
-        return scope.createImpl(
-            subjectCollectionInfoFlow.value.subjectInfo,
-            subjectCollectionInfoFlow,
-            MutableStateFlow(subjectCollectionInfo.collectionType),
-            subjectProgressStateFactory,
-        )
+        return scope.createImpl(subjectCollectionInfoFlow.value.subjectInfo, subjectCollectionInfoFlow)
     }
-
-    private fun createSubjectProgressStateFactory() = SubjectProgressStateFactory(
-        episodeProgressRepository,
-    )
 
     private fun CoroutineScope.createImpl(
         subjectInfo: SubjectInfo,
         subjectCollectionFlow: SharedFlow<SubjectCollectionInfo>,
-        selfCollectionTypeStateFlow: StateFlow<UnifiedCollectionType>,
-        subjectProgressStateFactory: SubjectProgressStateFactory
     ): SubjectDetailsState {
-        val totalStaffCountState = mutableStateOf<Int?>(null)
-        val totalCharactersCountState = mutableStateOf<Int?>(null)
-
         val subjectId = subjectInfo.subjectId
         val editableSubjectCollectionTypeState = EditableSubjectCollectionTypeState(
             selfCollectionTypeFlow = subjectCollectionFlow
@@ -219,17 +169,13 @@ class DefaultSubjectDetailsStateFactory : SubjectDetailsStateFactory, KoinCompon
             this,
         )
 
-        val editableRatingState = EditableRatingState(
-            ratingInfo = stateOf(subjectInfo.ratingInfo),
-            selfRatingInfo = subjectCollectionFlow.map { it.selfRatingInfo }
-                .produceState(SelfRatingInfo.Empty, this),
-            enableEdit = subjectCollectionFlow
-                .map { it.collectionType != UnifiedCollectionType.NOT_COLLECTED }
-                .produceState(false, this),
+        val ratingEditController = RatingEditController(
             isCollected = {
-                val collection =
-                    subjectCollectionFlow.replayCache.firstOrNull() ?: return@EditableRatingState false
+                val collection = subjectCollectionFlow.replayCache.firstOrNull() ?: return@RatingEditController false
                 collection.collectionType != UnifiedCollectionType.NOT_COLLECTED
+            },
+            currentSelfRating = {
+                subjectCollectionFlow.replayCache.firstOrNull()?.selfRatingInfo ?: SelfRatingInfo.Empty
             },
             onRate = { request ->
                 subjectCollectionRepository.updateRating(
@@ -240,21 +186,16 @@ class DefaultSubjectDetailsStateFactory : SubjectDetailsStateFactory, KoinCompon
             this,
             subjectId,
         )
+        val ratingUiStateFlow = ratingEditController.uiStateFlow(
+            ratingInfo = subjectInfo.ratingInfo,
+            selfRatingInfo = subjectCollectionFlow.map { it.selfRatingInfo },
+            enableEdit = subjectCollectionFlow.map { it.collectionType != UnifiedCollectionType.NOT_COLLECTED },
+        )
 
+        val actions = object : SubjectDetailsActions,
+            SubjectCollectionTypeEditActions by editableSubjectCollectionTypeState,
+            EditableRatingActions by ratingEditController {}
 
-        val subjectProgressInfoState =
-            subjectCollectionFlow.map { info ->
-                SubjectProgressInfo.compute(
-                    info.subjectInfo, info.episodes, PackedDate.now(),
-                    recurrence = info.recurrence,
-                )
-            }.produceState(null, this)
-
-        val subjectProgressState = subjectProgressStateFactory.run {
-            SubjectProgressState(
-                subjectProgressInfoState,
-            )
-        }
 
         val comments = bangumiCommentRepository.subjectCommentsPager(subjectId)
             .map { page ->
@@ -294,34 +235,16 @@ class DefaultSubjectDetailsStateFactory : SubjectDetailsStateFactory, KoinCompon
             backgroundScope = this,
         )
 
-//        val relatedPersonsFlow = bangumiRelatedPeopleService.relatedPersonsFlow(subjectId)
-//            .onEach {
-//                withContext(Dispatchers.Main) { totalStaffCountState.value = it.size }
-//            }
-//            .stateIn(this, SharingStarted.Eagerly, null)
-//
         val loadingState = LoadStates(
             refresh = LoadState.Loading,
             prepend = LoadState.NotLoading(false),
             append = LoadState.NotLoading(false),
         )
 
-//        val relatedCharactersFlow = bangumiRelatedPeopleService.relatedCharactersFlow(subjectId)
-//            .onEach {
-//                withContext(Dispatchers.Main) { totalCharactersCountState.value = it.size }
-//            }
-//            .stateIn(this, SharingStarted.Eagerly, null)
-
         val relatedPersonsFlow = subjectRelationsRepository.subjectRelatedPersonsFlow(subjectId)
-            .onEach {
-                withContext(Dispatchers.Main) { totalStaffCountState.value = it.size }
-            }
             .stateIn(this, SharingStarted.Eagerly, null)
 
         val relatedCharactersFlow = subjectRelationsRepository.subjectRelatedCharactersFlow(subjectId)
-            .onEach {
-                withContext(Dispatchers.Main) { totalCharactersCountState.value = it.size }
-            }
             .stateIn(this, SharingStarted.Eagerly, null)
 
         val minuteTicker = flow {
@@ -342,12 +265,6 @@ class DefaultSubjectDetailsStateFactory : SubjectDetailsStateFactory, KoinCompon
         val state = SubjectDetailsState(
             subjectId = subjectInfo.subjectId,
             info = subjectInfo,
-            selfCollectionTypeState = selfCollectionTypeStateFlow
-                .produceState(scope = this),
-            airingLabelState = AiringLabelState(
-                subjectCollectionFlow.map { it.airingInfo }.produceState(null, scope = this),
-                subjectProgressInfoState,
-            ),
             staffPager = relatedPersonsFlow
                 .map {
                     PagingData.from(
@@ -363,14 +280,12 @@ class DefaultSubjectDetailsStateFactory : SubjectDetailsStateFactory, KoinCompon
                 }
                 .map { PagingData.from(it) }
                 .cachedIn(this),
-            totalStaffCountState = totalStaffCountState,
             charactersPager = relatedCharactersFlow.map {
                 PagingData.from(
                     it ?: emptyList(),
                     sourceLoadStates = loadingState,
                 )
             }.cachedIn(this),
-            totalCharactersCountState = totalCharactersCountState,
             relatedSubjectsPager = bangumiRelatedPeopleService.relatedSubjectsFlow(subjectId)
                 .map {
                     PagingData.from(it)
@@ -381,25 +296,38 @@ class DefaultSubjectDetailsStateFactory : SubjectDetailsStateFactory, KoinCompon
                 .map { it.computeExposed() }
                 .map { PagingData.from(it) }
                 .cachedIn(this),
-            editableSubjectCollectionTypeState = editableSubjectCollectionTypeState,
-            editableRatingState = editableRatingState,
-            subjectProgressState = subjectProgressState,
             subjectCommentState = subjectCommentState,
             subjectCommentReportState = subjectCommentReportState,
-            presentation = combine(
+            actions = actions,
+            // 页面展示内容只从这一处派生, 每分钟重算一次以跟上日期变化 (播出状态、未开播判断)
+            uiState = combine(
                 minuteTicker,
                 subjectCollectionFlow,
                 playProgressFlow,
-            ) { _, collection, playProgress ->
+                combine(relatedPersonsFlow, relatedCharactersFlow) { persons, characters ->
+                    persons?.size to characters?.size
+                },
+                combine(editableSubjectCollectionTypeState.presentationFlow, ratingUiStateFlow) { c, r -> c to r },
+            ) { _, collection, playProgress, (staffCount, charactersCount), (collectionTypeEdit, rating) ->
                 val now = Clock.System.now()
-                SubjectDetailsPresentation(
+                SubjectDetailsUiState(
                     subjectId = subjectId,
                     displayName = collection.subjectInfo.displayName,
-                    EpisodeListUiState.from(collection, now, playProgress),
+                    selfCollectionType = collection.collectionType,
+                    airingInfo = collection.airingInfo,
+                    progressInfo = SubjectProgressInfo.compute(
+                        collection.subjectInfo, collection.episodes, PackedDate.now(),
+                        recurrence = collection.recurrence,
+                    ),
+                    episodeListUiState = EpisodeListUiState.from(collection, now, playProgress),
+                    totalStaffCount = staffCount,
+                    totalCharactersCount = charactersCount,
+                    collectionTypeEdit = collectionTypeEdit,
+                    rating = rating,
                 )
             }.stateIn(
                 this, SharingStarted.WhileSubscribed(5000),
-                SubjectDetailsPresentation.Placeholder.copy(subjectId = subjectId),
+                SubjectDetailsUiState.Placeholder.copy(subjectId = subjectId),
             ),
         )
         return state
@@ -411,62 +339,6 @@ class TestSubjectDetailsStateFactory : SubjectDetailsStateFactory {
     @TestOnly
     override fun create(subjectInfoFlow: Flow<SubjectInfo>): Flow<SubjectDetailsState> {
         return emptyFlow()
-//        return flowOf(
-//            SubjectDetailsState(
-//                info = SubjectInfo.Empty,
-//                selfCollectionTypeState = stateOf(UnifiedCollectionType.WISH),
-//                airingLabelState = createTestAiringLabelState(),
-//                staffPager = flowOf(PagingData.empty()),
-//                totalStaffCountState = stateOf(null),
-//                charactersPager = flowOf(PagingData.empty()),
-//                totalCharactersCountState = stateOf(null),
-//                relatedSubjectsPager = flowOf(PagingData.empty()),
-//                episodeListState = EpisodeListState(
-//                    subjectId = stateOf(0),
-//                    theme = stateOf(EpisodeListProgressTheme.Default),
-//                    episodeProgressInfoList = stateOf(emptyList()),
-//                    onSetEpisodeWatched = {},
-//                    backgroundScope = CoroutineScope(Dispatchers.Default),
-//                ),
-//                authState = AuthState(
-//                    state = produceState(null, CoroutineScope(Dispatchers.Default)),
-//                    launchAuthorize = {},
-//                    retry = {},
-//                    CoroutineScope(Dispatchers.Default),
-//                ),
-//                editableSubjectCollectionTypeState = EditableSubjectCollectionTypeState(
-//                    selfCollectionType = produceState(
-//                        UnifiedCollectionType.NOT_COLLECTED,
-//                        CoroutineScope(Dispatchers.Default),
-//                    ),
-//                    hasAnyUnwatched = { true },
-//                    onSetSelfCollectionType = {},
-//                    onSetAllEpisodesWatched = {},
-//                    CoroutineScope(Dispatchers.Default),
-//                ),
-//                editableRatingState = EditableRatingState(
-//                    ratingInfo = stateOf(null),
-//                    selfRatingInfo = produceState(SelfRatingInfo.Empty, CoroutineScope(Dispatchers.Default)),
-//                    enableEdit = produceState(false, CoroutineScope(Dispatchers.Default)),
-//                    isCollected = { false },
-//                    onRate = {},
-//                    CoroutineScope(Dispatchers.Default),
-//                ),
-//                subjectProgressState = SubjectProgressState(
-//                    subjectProgressInfoState = stateOf(null),
-//                    episodeProgressInfoList = produceState(emptyList(), CoroutineScope(Dispatchers.Default)),
-//                ),
-//                subjectCommentState = CommentState(
-//                    sourceVersion = produceState(null, CoroutineScope(Dispatchers.Default)),
-//                    list = produceState(emptyList(), CoroutineScope(Dispatchers.Default)),
-//                    hasMore = produceState(true, CoroutineScope(Dispatchers.Default)),
-//                    onReload = {},
-//                    onLoadMore = {},
-//                    onSubmitCommentReaction = { _, _, _ -> },
-//                    CoroutineScope(Dispatchers.Default),
-//                ),
-//            ),
-//        )
     }
 
     override fun create(subjectInfo: SubjectInfo): Flow<SubjectDetailsState> {

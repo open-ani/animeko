@@ -105,9 +105,9 @@
     <string name="settings_debug_install_package_drop_supported_hint">%1$s 安装包</string>
     <string name="settings_debug_install_package_drop_badge">开发者功能 · 拖拽安装包以安装</string>
     <string name="settings_debug_install_package_confirm_new_version">新版本</string>
-    <string name="settings_debug_dev_builds">main 分支构建</string>
-    <string name="settings_debug_dev_builds_install_commit">安装 main 分支的指定 commit</string>
-    <string name="settings_debug_dev_builds_install_commit_description">列出 main 分支最近的 commits 及其 CI 构建状态，可下载 CI 为当前平台构建的安装包并安装</string>
+    <string name="settings_debug_dev_builds">CI 构建</string>
+    <string name="settings_debug_dev_builds_install_commit">安装指定 commit、PR 或安装包</string>
+    <string name="settings_debug_dev_builds_install_commit_description">列出 main 分支最近的 commits 及其 CI 构建状态，也可粘贴 commit、PR、artifact 链接或安装包地址，下载 CI 为当前平台构建的安装包并安装</string>
     <string name="settings_debug_dev_builds_unsupported_platform">CI 没有为当前平台生成可安装的安装包</string>
     <string name="settings_debug_dev_builds_token">GitHub Token</string>
     <string name="settings_debug_dev_builds_token_description">下载 GitHub Actions 产物需要 token。Fine-grained token 需要 Actions 读取权限，classic token 需要 public_repo 范围。查询列表不需要 token，但有速率限制。</string>
@@ -152,6 +152,22 @@
     <string name="settings_debug_dev_builds_manual_message">已保存到 %1$s。请用它替换当前的 AppImage 并重新启动。</string>
     <string name="settings_debug_dev_builds_manual_reveal">打开所在位置</string>
     <string name="settings_debug_dev_builds_close">关闭</string>
+    <string name="settings_debug_dev_builds_lookup_label">安装指定版本</string>
+    <string name="settings_debug_dev_builds_lookup_placeholder">commit、PR 或 artifact 链接，commit sha，或安装包地址</string>
+    <string name="settings_debug_dev_builds_lookup_description">支持 %1$s 的 commit、PR、workflow 运行或 artifact 链接，commit sha，以及 .%2$s 安装包的直链。PR 使用其分支最新一次构建，没有 release 包时退而使用 debug 包。</string>
+    <string name="settings_debug_dev_builds_lookup">查询</string>
+    <string name="settings_debug_dev_builds_lookup_clear">清除</string>
+    <string name="settings_debug_dev_builds_lookup_unrecognized">无法识别的输入。请粘贴 %1$s 的 commit、PR、workflow 运行或 artifact 链接，commit sha，或 .%2$s 安装包的直链</string>
+    <string name="settings_debug_dev_builds_lookup_unsupported_package">%1$s 不是当前平台的 .%2$s 安装包</string>
+    <string name="settings_debug_dev_builds_lookup_artifact_mismatch">artifact %1$s 不是当前平台的安装包，需要：%2$s</string>
+    <string name="settings_debug_dev_builds_lookup_not_found">GitHub 上找不到</string>
+    <string name="settings_debug_dev_builds_lookup_failed">查询失败：%1$s</string>
+    <string name="settings_debug_dev_builds_pull_request">PR #%1$s</string>
+    <string name="settings_debug_dev_builds_from_fork">来自 fork</string>
+    <string name="settings_debug_dev_builds_debug_package">Debug 包</string>
+    <string name="settings_debug_dev_builds_confirm_title_package">安装这个安装包？</string>
+    <string name="settings_debug_dev_builds_confirm_message_android_debug">将下载 %1$s（%2$s），然后打开系统安装器。APK 使用调试密钥签名，不能覆盖安装到正式版本上。</string>
+    <string name="settings_debug_dev_builds_size_unknown">大小未知</string>
     <string name="window_drop_unsupported_title">不支持的文件</string>
     <string name="window_drop_unsupported_description">仅支持%1$s，松手后不会有任何操作</string>
     <string name="episode_drop_video_title">松手以播放</string>
@@ -173,6 +189,17 @@
     <string name="settings_about_icon_description">Animeko Icon</string>
     <string name="settings_about_app_name">Animeko</string>
     <string name="settings_about_app_description">集找番、追番、看番的一站式弹幕追番平台</string>
+    <string name="settings_about_build_info">构建信息</string>
+    <string name="settings_build_info_branch">分支</string>
+    <string name="settings_build_info_commit">Commit</string>
+    <string name="settings_build_info_commit_time">提交时间</string>
+    <string name="settings_build_info_build_type">构建类型</string>
+    <string name="settings_build_info_distro_channel">分发渠道</string>
+    <string name="settings_build_info_platform">平台</string>
+    <string name="settings_build_info_unknown">未知</string>
+    <string name="settings_build_info_open_commit">在 GitHub 上查看</string>
+    <string name="settings_build_info_copy_all">复制全部</string>
+    <string name="settings_build_info_copied">已复制</string>
 
     <!-- DevelopersTab -->
     <string name="settings_developers_main_contributors">主要贡献者</string>
@@ -769,13 +796,13 @@
     <string name="login_other_methods">其他登录方式</string>
 
     <!-- OAuth -->
-    <string name="oauth_bangumi_authorize_title">授权 Bangumi 登录</string>
     <string name="oauth_bangumi_description">授权 Bangumi 账号，可以同步你的观看记录到 Bangumi 或便捷登录 Ani</string>
-    <string name="oauth_bangumi_bind_account">绑定 Bangumi 账号</string>
-    <string name="oauth_bangumi_sign_in_or_sign_up">登录 / 注册</string>
-    <string name="oauth_bangumi_waiting_result">正在等待结果</string>
-    <string name="oauth_bangumi_authorized">已授权</string>
-    <string name="oauth_bangumi_cancel">取消</string>
+    <string name="oauth_authorize_title">授权 %1$s 登录</string>
+    <string name="oauth_bind_account">绑定 %1$s 账号</string>
+    <string name="oauth_sign_in_or_sign_up">登录 / 注册</string>
+    <string name="oauth_waiting_result">正在等待结果</string>
+    <string name="oauth_authorized">已授权</string>
+    <string name="oauth_cancel">取消</string>
     <string name="oauth_bangumi_help_title">帮助</string>
     <string name="oauth_bangumi_help_bangumi_desc">Bangumi 是什么</string>
     <string name="oauth_bangumi_help_website_blocked">浏览器提示网站被屏蔽或禁止访问</string>
@@ -1100,6 +1127,7 @@
     <string name="settings_account_profile_not_bound">未绑定</string>
     <string name="settings_account_profile_unbind">解绑</string>
     <string name="settings_account_profile_unbind_bangumi_confirmation">确定要解绑 Bangumi 吗？解绑后将不再同步观看记录到 Bangumi。解绑后可以重新绑定。</string>
+    <string name="settings_account_profile_unbind_confirmation">确定要解绑 %1$s 吗？解绑后可以重新绑定。</string>
     <string name="settings_account_profile_select_avatar">选择头像</string>
     <string name="settings_account_profile_done">完成</string>
     <string name="settings_account_profile_upload_avatar">上传头像</string>

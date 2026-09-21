@@ -10,6 +10,7 @@
 package me.him188.ani.app.domain.episode
 
 import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.flow.first
@@ -17,8 +18,10 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.withContext
+import me.him188.ani.app.domain.media.hls.HlsPlaybackOptions
 import me.him188.ani.app.domain.media.hls.HlsPlaybackPreparer
 import me.him188.ani.app.domain.media.hls.HlsPlaybackProxySession
+import me.him188.ani.app.domain.media.player.prefetch.MediaPrefetchController
 import me.him188.ani.app.domain.media.fetch.MediaFetchSession
 import me.him188.ani.app.domain.media.player.data.TorrentMediaData
 import me.him188.ani.app.domain.media.resolver.EpisodeMetadata
@@ -58,13 +61,28 @@ class MediaFetchSelectBundle(
 class PlayerSession(
     val player: MediampPlayer,
     koin: Koin,
+    backgroundScope: CoroutineScope,
     private val mainDispatcher: CoroutineContext = Dispatchers.Main.immediate,
 ) {
     val mediaResolver: MediaResolver by koin.inject()
     private val hlsPlaybackPreparer: HlsPlaybackPreparer by koin.inject()
     private val getVideoScaffoldConfigUseCase: GetVideoScaffoldConfigUseCase by koin.inject()
 
-    private var hlsPlaybackProxySession: HlsPlaybackProxySession? = null
+    private val hlsPlaybackProxySessionFlow = MutableStateFlow<HlsPlaybackProxySession?>(null)
+    private var hlsPlaybackProxySession: HlsPlaybackProxySession?
+        get() = hlsPlaybackProxySessionFlow.value
+        set(value) {
+            hlsPlaybackProxySessionFlow.value = value
+        }
+
+    /**
+     * 提前缓存指定时间范围的媒体数据 (如自动跳过 OP 后的位置), 见 [MediaPrefetchController].
+     */
+    val prefetchController: MediaPrefetchController = MediaPrefetchController(
+        player,
+        hlsPlaybackProxySessionFlow,
+        backgroundScope,
+    )
 
     private val _videoLoadingStateFlow: MutableStateFlow<VideoLoadingState> =
         MutableStateFlow(VideoLoadingState.Initial)
@@ -183,14 +201,16 @@ class PlayerSession(
         if (data !is UriMediaData) {
             return PreparedMediaData(data)
         }
-        val enabled = getVideoScaffoldConfigUseCase
-            .invoke()
-            .first()
-            .enableExperimentalHlsSegmentFiltering
-        if (!enabled) {
+        val config = getVideoScaffoldConfigUseCase.invoke().first()
+        val options = HlsPlaybackOptions(
+            filterSegments = config.enableExperimentalHlsSegmentFiltering,
+            // 自动跳过 OP/ED 需要提前缓存跳转目标处的分片, 这要求分片经由本地代理
+            proxySegments = config.autoSkipOpEd,
+        )
+        if (!options.isEnabled) {
             return PreparedMediaData(data)
         }
-        val result = hlsPlaybackPreparer.prepare(data)
+        val result = hlsPlaybackPreparer.prepare(data, options)
         return PreparedMediaData(result.data, result.session)
     }
 

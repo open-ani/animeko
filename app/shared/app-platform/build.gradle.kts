@@ -29,6 +29,9 @@ val overrideAniApiServer = getPropertyOrNull("ani.api.server")?.takeIf { it.isNo
 
 val distroChannel = getPropertyOrNull("ani.distro.channel") ?: "default"
 
+// 构建时的 git 分支 / commit, 在 "关于 > 构建信息" 里展示. 见 build-logic 的 git.kt.
+val currentGitInfo = gitInfo.get()
+
 kotlin {
     android {
         namespace = "me.him188.ani.app.platform"
@@ -115,6 +118,12 @@ buildConfig {
         booleanField("analyticsEnabled", enableFirebase)
     }
 
+    fun BuildConfigPlatform.gitFields() {
+        stringField("gitBranch", currentGitInfo.branch)
+        stringField("gitCommitSha", currentGitInfo.commitSha)
+        stringField("gitCommitTime", currentGitInfo.commitTime)
+    }
+
     platform("desktop") {
         stringField("versionName", project.version.toString())
         expressionField(
@@ -126,6 +135,7 @@ buildConfig {
         stringField("sentryDsn", sentryDsn)
         stringField("overrideAniApiServer", overrideAniApiServer ?: "")
         stringField("distroChannel", distroChannel)
+        gitFields()
 
         firebaseFields()
     }
@@ -139,6 +149,7 @@ buildConfig {
         stringField("sentryDsn", sentryDsn)
         stringField("overrideAniApiServer", overrideAniApiServer ?: "")
         stringField("distroChannel", distroChannel)
+        gitFields()
 
         booleanField("analyticsEnabled", enableFirebase)
     }
@@ -156,6 +167,7 @@ buildConfig {
             booleanField("sentryEnabled", sentryEnabled)
             stringField("overrideAniApiServer", overrideAniApiServer ?: "")
             stringField("distroChannel", distroChannel)
+            gitFields()
 
             firebaseFields()
         }

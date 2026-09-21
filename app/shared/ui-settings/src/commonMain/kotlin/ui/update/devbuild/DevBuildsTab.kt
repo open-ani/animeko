@@ -24,8 +24,10 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.rounded.Close
 import androidx.compose.material.icons.rounded.Key
 import androidx.compose.material.icons.rounded.Refresh
+import androidx.compose.material.icons.rounded.Search
 import androidx.compose.material.icons.rounded.Visibility
 import androidx.compose.material.icons.rounded.VisibilityOff
 import androidx.compose.material3.AlertDialog
@@ -58,6 +60,7 @@ import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.PasswordVisualTransformation
+import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -74,29 +77,45 @@ import me.him188.ani.app.ui.lang.settings_debug_dev_builds_close
 import me.him188.ani.app.ui.lang.settings_debug_dev_builds_confirm_download
 import me.him188.ani.app.ui.lang.settings_debug_dev_builds_confirm_install
 import me.him188.ani.app.ui.lang.settings_debug_dev_builds_confirm_message_android
+import me.him188.ani.app.ui.lang.settings_debug_dev_builds_confirm_message_android_debug
 import me.him188.ani.app.ui.lang.settings_debug_dev_builds_confirm_message_desktop
 import me.him188.ani.app.ui.lang.settings_debug_dev_builds_confirm_message_manual
 import me.him188.ani.app.ui.lang.settings_debug_dev_builds_confirm_title
+import me.him188.ani.app.ui.lang.settings_debug_dev_builds_confirm_title_package
 import me.him188.ani.app.ui.lang.settings_debug_dev_builds_current_version
+import me.him188.ani.app.ui.lang.settings_debug_dev_builds_debug_package
 import me.him188.ani.app.ui.lang.settings_debug_dev_builds_download
 import me.him188.ani.app.ui.lang.settings_debug_dev_builds_downloading
 import me.him188.ani.app.ui.lang.settings_debug_dev_builds_empty
 import me.him188.ani.app.ui.lang.settings_debug_dev_builds_extracting
 import me.him188.ani.app.ui.lang.settings_debug_dev_builds_failure_package_not_found
 import me.him188.ani.app.ui.lang.settings_debug_dev_builds_failure_token_required
+import me.him188.ani.app.ui.lang.settings_debug_dev_builds_from_fork
 import me.him188.ani.app.ui.lang.settings_debug_dev_builds_install
 import me.him188.ani.app.ui.lang.settings_debug_dev_builds_installing
 import me.him188.ani.app.ui.lang.settings_debug_dev_builds_load_failed
+import me.him188.ani.app.ui.lang.settings_debug_dev_builds_lookup
+import me.him188.ani.app.ui.lang.settings_debug_dev_builds_lookup_artifact_mismatch
+import me.him188.ani.app.ui.lang.settings_debug_dev_builds_lookup_clear
+import me.him188.ani.app.ui.lang.settings_debug_dev_builds_lookup_description
+import me.him188.ani.app.ui.lang.settings_debug_dev_builds_lookup_failed
+import me.him188.ani.app.ui.lang.settings_debug_dev_builds_lookup_label
+import me.him188.ani.app.ui.lang.settings_debug_dev_builds_lookup_not_found
+import me.him188.ani.app.ui.lang.settings_debug_dev_builds_lookup_placeholder
+import me.him188.ani.app.ui.lang.settings_debug_dev_builds_lookup_unrecognized
+import me.him188.ani.app.ui.lang.settings_debug_dev_builds_lookup_unsupported_package
 import me.him188.ani.app.ui.lang.settings_debug_dev_builds_manual_install_hint
 import me.him188.ani.app.ui.lang.settings_debug_dev_builds_manual_message
 import me.him188.ani.app.ui.lang.settings_debug_dev_builds_manual_reveal
 import me.him188.ani.app.ui.lang.settings_debug_dev_builds_manual_title
 import me.him188.ani.app.ui.lang.settings_debug_dev_builds_package_available
 import me.him188.ani.app.ui.lang.settings_debug_dev_builds_package_unavailable
+import me.him188.ani.app.ui.lang.settings_debug_dev_builds_pull_request
 import me.him188.ani.app.ui.lang.settings_debug_dev_builds_rate_limited
 import me.him188.ani.app.ui.lang.settings_debug_dev_builds_refresh
 import me.him188.ani.app.ui.lang.settings_debug_dev_builds_retry
 import me.him188.ani.app.ui.lang.settings_debug_dev_builds_running
+import me.him188.ani.app.ui.lang.settings_debug_dev_builds_size_unknown
 import me.him188.ani.app.ui.lang.settings_debug_dev_builds_status_cancelled
 import me.him188.ani.app.ui.lang.settings_debug_dev_builds_status_failure
 import me.him188.ani.app.ui.lang.settings_debug_dev_builds_status_in_progress
@@ -115,6 +134,7 @@ import me.him188.ani.app.ui.lang.settings_debug_dev_builds_unsupported_platform
 import me.him188.ani.app.ui.update.FailedToInstallDialog
 import me.him188.ani.datasources.api.topic.FileSize.Companion.bytes
 import me.him188.ani.utils.io.absolutePath
+import org.jetbrains.compose.resources.StringResource
 import org.jetbrains.compose.resources.stringResource
 
 object DevBuildsTestTags {
@@ -140,10 +160,22 @@ object DevBuildsTestTags {
     const val CANCEL_BUTTON_PREFIX = "dev_builds_cancel_"
     const val CONFIRM_BUTTON = "dev_builds_confirm"
     const val CONFIRM_CANCEL_BUTTON = "dev_builds_confirm_cancel"
+    const val LOOKUP_FIELD = "dev_builds_lookup"
+    const val LOOKUP_BUTTON = "dev_builds_lookup_button"
+    const val LOOKUP_CLEAR_BUTTON = "dev_builds_lookup_clear"
+
+    /**
+     * 查询结果卡片, 内含 [COMMIT_PREFIX] 或 [PACKAGE_ROW] 行
+     */
+    const val LOOKUP_RESULT = "dev_builds_lookup_result"
+    const val LOOKUP_ERROR = "dev_builds_lookup_error"
+    const val PACKAGE_ROW = "dev_builds_package"
+    const val PACKAGE_INSTALL_BUTTON = "dev_builds_package_install"
+    const val PACKAGE_CANCEL_BUTTON = "dev_builds_package_cancel"
 }
 
 /**
- * 开发者功能「安装 main 分支的指定 commit」页面.
+ * 开发者功能「安装指定版本」页面: 输入框查询任意 commit / PR / artifact / 安装包直链, 以及 main 分支最近 commits 的列表.
  */
 @Composable
 fun DevBuildsTab(
@@ -188,12 +220,13 @@ fun DevBuildsTabContent(
     }
     val listState by state.listState.collectAsStateWithLifecycle()
     val isRefreshing by state.isRefreshing.collectAsStateWithLifecycle()
+    val lookupState by state.lookupState.collectAsStateWithLifecycle()
     val installState by state.installState.collectAsStateWithLifecycle()
     val context = LocalContext.current
     val uriHandler = LocalUriHandler.current
     val scope = rememberCoroutineScope()
     val timeFormatter = remember { TimeFormatter() }
-    var pendingInstall by remember { mutableStateOf<DevBuildCommit?>(null) }
+    var pendingInstall by remember { mutableStateOf<PendingInstall?>(null) }
 
     // 列表最多几十项, 不需要懒加载; 由外层的设置页容器提供滚动
     Column(
@@ -207,6 +240,14 @@ fun DevBuildsTabContent(
             onTokenChange = onTokenChange,
             isRefreshing = isRefreshing,
             onRefresh = state::refresh,
+        )
+        DevBuildLookupSection(
+            state = state,
+            lookupState = lookupState,
+            installState = installState,
+            timeFormatter = timeFormatter,
+            onClickInstallCommit = { pendingInstall = PendingInstall.Commit(it) },
+            onClickInstallPackage = { url, fileName -> pendingInstall = PendingInstall.Package(url, fileName) },
         )
         when (val list = listState) {
             DevBuildListState.Idle -> {}
@@ -234,7 +275,7 @@ fun DevBuildsTabContent(
                                         supportsAutomaticInstall = state.spec.kind.supportsAutomaticInstall,
                                         installState = installState,
                                         timeFormatter = timeFormatter,
-                                        onClickInstall = { pendingInstall = commit },
+                                        onClickInstall = { pendingInstall = PendingInstall.Commit(commit) },
                                         onClickCancel = state::cancelInstall,
                                         onClick = {
                                             uriHandler.openUri(commit.build?.htmlUrl?.ifBlank { null } ?: commit.htmlUrl)
@@ -249,13 +290,16 @@ fun DevBuildsTabContent(
         }
     }
 
-    pendingInstall?.let { commit ->
+    pendingInstall?.let { pending ->
         ConfirmInstallDevBuildDialog(
-            commit = commit,
-            kind = state.spec.kind,
+            pending = pending,
+            spec = state.spec,
             onConfirm = {
                 pendingInstall = null
-                state.install(commit, context)
+                when (pending) {
+                    is PendingInstall.Commit -> state.install(pending.commit, context)
+                    is PendingInstall.Package -> state.installPackage(pending.url, pending.fileName, context)
+                }
             },
             onDismissRequest = { pendingInstall = null },
         )
@@ -285,6 +329,190 @@ fun DevBuildsTabContent(
         )
 
         else -> {}
+    }
+}
+
+/**
+ * 用户点击安装后, 等待确认的目标.
+ */
+private sealed interface PendingInstall {
+    data class Commit(val commit: DevBuildCommit) : PendingInstall
+    data class Package(val url: String, val fileName: String) : PendingInstall
+}
+
+@Composable
+private fun DevBuildLookupSection(
+    state: DevBuildsState,
+    lookupState: DevBuildLookupState,
+    installState: DevBuildInstallState,
+    timeFormatter: TimeFormatter,
+    onClickInstallCommit: (DevBuildCommit) -> Unit,
+    onClickInstallPackage: (url: String, fileName: String) -> Unit,
+) {
+    val colors = MaterialTheme.colorScheme
+    val uriHandler = LocalUriHandler.current
+    var input by remember { mutableStateOf("") }
+    val submit = { if (input.isNotBlank()) state.lookup(input) }
+
+    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+        OutlinedTextField(
+            value = input,
+            onValueChange = { input = it },
+            modifier = Modifier.fillMaxWidth().testTag(DevBuildsTestTags.LOOKUP_FIELD),
+            label = { Text(stringResource(Lang.settings_debug_dev_builds_lookup_label)) },
+            placeholder = { Text(stringResource(Lang.settings_debug_dev_builds_lookup_placeholder), maxLines = 1) },
+            trailingIcon = {
+                Row {
+                    if (input.isNotEmpty() || lookupState !is DevBuildLookupState.Idle) {
+                        IconButton(
+                            {
+                                input = ""
+                                state.clearLookup()
+                            },
+                            Modifier.testTag(DevBuildsTestTags.LOOKUP_CLEAR_BUTTON),
+                        ) {
+                            Icon(
+                                Icons.Rounded.Close,
+                                contentDescription = stringResource(Lang.settings_debug_dev_builds_lookup_clear),
+                            )
+                        }
+                    }
+                    if (lookupState is DevBuildLookupState.Loading) {
+                        Box(Modifier.size(48.dp), contentAlignment = Alignment.Center) {
+                            CircularProgressIndicator(Modifier.size(20.dp), strokeWidth = 2.dp)
+                        }
+                    } else {
+                        IconButton(
+                            submit,
+                            Modifier.testTag(DevBuildsTestTags.LOOKUP_BUTTON),
+                            enabled = input.isNotBlank(),
+                        ) {
+                            Icon(
+                                Icons.Rounded.Search,
+                                contentDescription = stringResource(Lang.settings_debug_dev_builds_lookup),
+                            )
+                        }
+                    }
+                }
+            },
+            supportingText = {
+                Text(
+                    stringResource(
+                        Lang.settings_debug_dev_builds_lookup_description,
+                        state.repository,
+                        state.spec.kind.packageExtension,
+                    ),
+                )
+            },
+            isError = lookupState is DevBuildLookupState.Failed,
+            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Uri, imeAction = ImeAction.Search),
+            keyboardActions = KeyboardActions(onSearch = { submit() }),
+            singleLine = true,
+        )
+        when (lookupState) {
+            DevBuildLookupState.Idle, DevBuildLookupState.Loading -> {}
+            is DevBuildLookupState.Failed -> Text(
+                lookupFailureMessage(lookupState.failure, state.repository, state.spec),
+                Modifier.padding(horizontal = 16.dp).testTag(DevBuildsTestTags.LOOKUP_ERROR),
+                style = MaterialTheme.typography.bodySmall,
+                color = colors.error,
+            )
+
+            is DevBuildLookupState.Resolved -> Surface(
+                Modifier.fillMaxWidth().testTag(DevBuildsTestTags.LOOKUP_RESULT),
+                shape = RoundedCornerShape(12.dp),
+                color = colors.surfaceContainerHigh,
+            ) {
+                when (val result = lookupState.result) {
+                    is DevBuildLookupResult.Commit -> Column {
+                        result.pullRequest?.let { pr ->
+                            PullRequestRow(pr, onClick = { uriHandler.openUri(pr.htmlUrl) })
+                            HorizontalDivider(color = colors.outlineVariant)
+                        }
+                        DevBuildCommitRow(
+                            commit = result.commit,
+                            isCurrent = state.isCurrentCommit(result.commit),
+                            isDebugPackage = result.commit.artifact?.let { state.spec.isDebugArtifact(it.name) } == true,
+                            supportsAutomaticInstall = state.spec.kind.supportsAutomaticInstall,
+                            installState = installState,
+                            timeFormatter = timeFormatter,
+                            onClickInstall = { onClickInstallCommit(result.commit) },
+                            onClickCancel = state::cancelInstall,
+                            onClick = {
+                                uriHandler.openUri(
+                                    result.commit.build?.htmlUrl?.ifBlank { null } ?: result.commit.htmlUrl,
+                                )
+                            },
+                        )
+                    }
+
+                    is DevBuildLookupResult.Package -> DevBuildPackageRow(
+                        url = result.url,
+                        fileName = result.fileName,
+                        supportsAutomaticInstall = state.spec.kind.supportsAutomaticInstall,
+                        installState = installState,
+                        onClickInstall = { onClickInstallPackage(result.url, result.fileName) },
+                        onClickCancel = state::cancelInstall,
+                    )
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun PullRequestRow(pr: DevBuildPullRequest, onClick: () -> Unit) {
+    val colors = MaterialTheme.colorScheme
+    Row(
+        Modifier
+            .fillMaxWidth()
+            .clickable(onClick = onClick)
+            .padding(start = 12.dp, end = 12.dp, top = 6.dp, bottom = 6.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(6.dp),
+    ) {
+        Text(
+            stringResource(Lang.settings_debug_dev_builds_pull_request, pr.number.toString()),
+            style = MaterialTheme.typography.labelSmall,
+            fontWeight = FontWeight.SemiBold,
+            color = colors.onSurfaceVariant,
+        )
+        if (pr.isFromFork) {
+            Chip(stringResource(Lang.settings_debug_dev_builds_from_fork), colors.surfaceVariant, colors.onSurfaceVariant)
+        }
+        Text(
+            listOf(pr.title, pr.headRef).filter { it.isNotBlank() }.joinToString(" · "),
+            Modifier.weight(1f),
+            style = MaterialTheme.typography.bodySmall,
+            color = colors.onSurfaceVariant,
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis,
+        )
+    }
+}
+
+@Composable
+private fun lookupFailureMessage(
+    failure: DevBuildLookupFailure,
+    repository: String,
+    spec: DevBuildPackageSpec,
+): String = when (failure) {
+    DevBuildLookupFailure.Unrecognized ->
+        stringResource(Lang.settings_debug_dev_builds_lookup_unrecognized, repository, spec.kind.packageExtension)
+
+    is DevBuildLookupFailure.UnsupportedPackage ->
+        stringResource(Lang.settings_debug_dev_builds_lookup_unsupported_package, failure.fileName, spec.kind.packageExtension)
+
+    is DevBuildLookupFailure.ArtifactNotForPlatform -> stringResource(
+        Lang.settings_debug_dev_builds_lookup_artifact_mismatch,
+        failure.artifactName,
+        spec.candidateArtifactNames.joinToString(" / "),
+    )
+
+    is DevBuildLookupFailure.Error -> {
+        val e = failure.throwable
+        if (e is GitHubApiException && e.isNotFound) stringResource(Lang.settings_debug_dev_builds_lookup_not_found)
+        else stringResource(Lang.settings_debug_dev_builds_lookup_failed, loadErrorMessage(e))
     }
 }
 
@@ -455,9 +683,10 @@ private fun DevBuildCommitRow(
     onClickInstall: () -> Unit,
     onClickCancel: () -> Unit,
     onClick: () -> Unit,
+    isDebugPackage: Boolean = false,
 ) {
     val colors = MaterialTheme.colorScheme
-    val busy = (installState as? DevBuildInstallState.Busy)?.takeIf { it.commit.sha == commit.sha }
+    val busy = (installState as? DevBuildInstallState.Busy)?.takeIf { it.target.key == commit.sha }
     val anyBusy = installState is DevBuildInstallState.Busy
     val meta = remember(commit, timeFormatter) {
         listOfNotNull(
@@ -505,6 +734,13 @@ private fun DevBuildCommitRow(
                             colors.onSecondaryContainer,
                         )
                     }
+                    if (isDebugPackage) {
+                        Chip(
+                            stringResource(Lang.settings_debug_dev_builds_debug_package),
+                            colors.tertiaryContainer,
+                            colors.onTertiaryContainer,
+                        )
+                    }
                     Text(
                         (meta + listOf(
                             commit.artifact?.let {
@@ -522,55 +758,139 @@ private fun DevBuildCommitRow(
                     )
                 }
             }
-            if (busy != null) {
-                TextButton(
-                    onClickCancel,
-                    Modifier.height(32.dp).testTag(DevBuildsTestTags.CANCEL_BUTTON_PREFIX + commit.sha),
-                    contentPadding = PaddingValues(horizontal = 12.dp),
-                ) {
-                    Text(stringResource(Lang.settings_debug_dev_builds_cancel), maxLines = 1)
-                }
-            } else {
-                FilledTonalButton(
-                    onClickInstall,
-                    Modifier.height(32.dp).testTag(DevBuildsTestTags.INSTALL_BUTTON_PREFIX + commit.sha),
-                    enabled = commit.artifact != null && !anyBusy,
-                    contentPadding = PaddingValues(horizontal = 12.dp),
-                ) {
-                    Text(
-                        stringResource(
-                            if (supportsAutomaticInstall) Lang.settings_debug_dev_builds_install
-                            else Lang.settings_debug_dev_builds_download,
-                        ),
-                        maxLines = 1,
-                    )
-                }
-            }
+            InstallOrCancelButton(
+                busy = busy != null,
+                enabled = commit.artifact != null && !anyBusy,
+                supportsAutomaticInstall = supportsAutomaticInstall,
+                onClickInstall = onClickInstall,
+                onClickCancel = onClickCancel,
+                installTag = DevBuildsTestTags.INSTALL_BUTTON_PREFIX + commit.sha,
+                cancelTag = DevBuildsTestTags.CANCEL_BUTTON_PREFIX + commit.sha,
+            )
         }
         if (busy != null) {
-            Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                val progress = (busy as? DevBuildInstallState.Downloading)?.progress
-                if (progress != null) {
-                    LinearProgressIndicator({ progress }, Modifier.fillMaxWidth())
-                } else {
-                    LinearProgressIndicator(Modifier.fillMaxWidth())
-                }
-                Text(
-                    when (busy) {
-                        is DevBuildInstallState.Downloading -> stringResource(
-                            Lang.settings_debug_dev_builds_downloading,
-                            busy.downloadedBytes.bytes.toString(),
-                            busy.totalBytes?.bytes?.toString() ?: "?",
-                        )
+            InstallProgress(busy)
+        }
+    }
+}
 
-                        is DevBuildInstallState.Extracting -> stringResource(Lang.settings_debug_dev_builds_extracting)
-                        is DevBuildInstallState.Installing -> stringResource(Lang.settings_debug_dev_builds_installing)
-                    },
+/**
+ * 安装包直链的查询结果行: 文件名, 地址, 安装按钮和进度.
+ */
+@Composable
+private fun DevBuildPackageRow(
+    url: String,
+    fileName: String,
+    supportsAutomaticInstall: Boolean,
+    installState: DevBuildInstallState,
+    onClickInstall: () -> Unit,
+    onClickCancel: () -> Unit,
+) {
+    val colors = MaterialTheme.colorScheme
+    val busy = (installState as? DevBuildInstallState.Busy)?.takeIf { it.target.key == url }
+    val anyBusy = installState is DevBuildInstallState.Busy
+    Column(
+        Modifier
+            .fillMaxWidth()
+            .testTag(DevBuildsTestTags.PACKAGE_ROW)
+            .padding(start = 12.dp, end = 8.dp, top = 6.dp, bottom = 6.dp),
+        verticalArrangement = Arrangement.spacedBy(4.dp),
+    ) {
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+        ) {
+            Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                Text(
+                    fileName,
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = colors.onSurface,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                )
+                Text(
+                    url,
                     style = MaterialTheme.typography.bodySmall,
                     color = colors.onSurfaceVariant,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
                 )
             }
+            InstallOrCancelButton(
+                busy = busy != null,
+                enabled = !anyBusy,
+                supportsAutomaticInstall = supportsAutomaticInstall,
+                onClickInstall = onClickInstall,
+                onClickCancel = onClickCancel,
+                installTag = DevBuildsTestTags.PACKAGE_INSTALL_BUTTON,
+                cancelTag = DevBuildsTestTags.PACKAGE_CANCEL_BUTTON,
+            )
         }
+        if (busy != null) {
+            InstallProgress(busy)
+        }
+    }
+}
+
+@Composable
+private fun InstallOrCancelButton(
+    busy: Boolean,
+    enabled: Boolean,
+    supportsAutomaticInstall: Boolean,
+    onClickInstall: () -> Unit,
+    onClickCancel: () -> Unit,
+    installTag: String,
+    cancelTag: String,
+) {
+    if (busy) {
+        TextButton(
+            onClickCancel,
+            Modifier.height(32.dp).testTag(cancelTag),
+            contentPadding = PaddingValues(horizontal = 12.dp),
+        ) {
+            Text(stringResource(Lang.settings_debug_dev_builds_cancel), maxLines = 1)
+        }
+    } else {
+        FilledTonalButton(
+            onClickInstall,
+            Modifier.height(32.dp).testTag(installTag),
+            enabled = enabled,
+            contentPadding = PaddingValues(horizontal = 12.dp),
+        ) {
+            Text(
+                stringResource(
+                    if (supportsAutomaticInstall) Lang.settings_debug_dev_builds_install
+                    else Lang.settings_debug_dev_builds_download,
+                ),
+                maxLines = 1,
+            )
+        }
+    }
+}
+
+@Composable
+private fun InstallProgress(busy: DevBuildInstallState.Busy) {
+    Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+        val progress = (busy as? DevBuildInstallState.Downloading)?.progress
+        if (progress != null) {
+            LinearProgressIndicator({ progress }, Modifier.fillMaxWidth())
+        } else {
+            LinearProgressIndicator(Modifier.fillMaxWidth())
+        }
+        Text(
+            when (busy) {
+                is DevBuildInstallState.Downloading -> stringResource(
+                    Lang.settings_debug_dev_builds_downloading,
+                    busy.downloadedBytes.bytes.toString(),
+                    busy.totalBytes?.bytes?.toString() ?: "?",
+                )
+
+                is DevBuildInstallState.Extracting -> stringResource(Lang.settings_debug_dev_builds_extracting)
+                is DevBuildInstallState.Installing -> stringResource(Lang.settings_debug_dev_builds_installing)
+            },
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
     }
 }
 
@@ -637,17 +957,46 @@ private fun Chip(text: String, containerColor: Color, contentColor: Color) {
 
 @Composable
 private fun ConfirmInstallDevBuildDialog(
-    commit: DevBuildCommit,
-    kind: DevBuildPackageKind,
+    pending: PendingInstall,
+    spec: DevBuildPackageSpec,
     onConfirm: () -> Unit,
     onDismissRequest: () -> Unit,
 ) {
-    val artifact = commit.artifact ?: return
+    val kind = spec.kind
+    val label: String
+    val title: String
+    val packageName: String
+    val sizeText: String
+    val dialogTitle: StringResource
+    val isDebugPackage: Boolean
+    when (pending) {
+        is PendingInstall.Commit -> {
+            val artifact = pending.commit.artifact ?: return
+            label = pending.commit.shortSha
+            title = pending.commit.title
+            packageName = artifact.name
+            sizeText = artifact.sizeInBytes.bytes.toString()
+            dialogTitle = Lang.settings_debug_dev_builds_confirm_title
+            isDebugPackage = spec.isDebugArtifact(artifact.name)
+        }
+
+        is PendingInstall.Package -> {
+            label = pending.fileName
+            title = pending.url
+            packageName = pending.fileName
+            sizeText = stringResource(Lang.settings_debug_dev_builds_size_unknown)
+            dialogTitle = Lang.settings_debug_dev_builds_confirm_title_package
+            isDebugPackage = false
+        }
+    }
     val message = when (kind) {
         DevBuildPackageKind.WINDOWS_PORTABLE_ZIP, DevBuildPackageKind.MACOS_DMG ->
             Lang.settings_debug_dev_builds_confirm_message_desktop
 
-        DevBuildPackageKind.ANDROID_APK -> Lang.settings_debug_dev_builds_confirm_message_android
+        DevBuildPackageKind.ANDROID_APK ->
+            if (isDebugPackage) Lang.settings_debug_dev_builds_confirm_message_android_debug
+            else Lang.settings_debug_dev_builds_confirm_message_android
+
         DevBuildPackageKind.LINUX_APPIMAGE -> Lang.settings_debug_dev_builds_confirm_message_manual
     }
     AlertDialog(
@@ -667,25 +1016,28 @@ private fun ConfirmInstallDevBuildDialog(
                 Text(stringResource(Lang.settings_debug_dev_builds_cancel))
             }
         },
-        title = { Text(stringResource(Lang.settings_debug_dev_builds_confirm_title)) },
+        title = { Text(stringResource(dialogTitle)) },
         text = {
             Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
                     Text(
-                        commit.shortSha,
+                        label,
+                        Modifier.weight(1f, fill = false),
                         style = MaterialTheme.typography.titleSmall,
                         fontFamily = FontFamily.Monospace,
                         fontWeight = FontWeight.SemiBold,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
                     )
                     Text(
-                        commit.title,
+                        title,
                         Modifier.weight(1f),
                         style = MaterialTheme.typography.bodyMedium,
                         maxLines = 2,
                         overflow = TextOverflow.Ellipsis,
                     )
                 }
-                Text(stringResource(message, artifact.name, artifact.sizeInBytes.bytes.toString()))
+                Text(stringResource(message, packageName, sizeText))
             }
         },
     )

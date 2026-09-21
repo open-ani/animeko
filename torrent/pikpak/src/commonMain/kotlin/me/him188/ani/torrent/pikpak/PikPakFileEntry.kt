@@ -150,6 +150,12 @@ internal class PikPakFileEntry(
             beginFetchingIfWanted()
         }
 
+        // Playback reads the cloud file through HybridSeekableInput with on-demand range
+        // requests, so a seek to the prefetch target costs one request and there is no piece
+        // queue to reorder. The hint only matters for peer-based engines.
+        override fun setPrefetchRangeImpl(byteRange: LongRange?) {
+        }
+
         override suspend fun closeImpl() {
             openHandles.update { (it - 1).coerceAtLeast(0) }
             onHandleCountChanged()
