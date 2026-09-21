@@ -107,7 +107,7 @@ internal fun WebSearchEpisodeInfo.matchingEpisodeSort(
  * 判据是"去掉画质与语言词之后什么都不剩", 所以带作品名的 "铃芽之旅（普通话版）"、带集号的
  * "剧场版01" (那要靠站点自己的集号正则)、表示整季的 "全集" 都不算.
  */
-internal fun isWholeWorkLabel(name: String): Boolean {
+private fun isWholeWorkLabel(name: String): Boolean {
     if (name.isBlank()) return false
     return name.replace(WHOLE_WORK_LABEL_TOKENS, "")
         .none { it !in WHOLE_WORK_LABEL_SEPARATORS }
