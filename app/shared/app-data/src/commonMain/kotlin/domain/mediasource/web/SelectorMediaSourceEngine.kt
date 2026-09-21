@@ -222,7 +222,7 @@ abstract class SelectorMediaSourceEngine {
         val parser = LabelFirstRawTitleParser()
         val originalMediaList = episodes.mapNotNull { info ->
             val subtitleLanguages = guessSubtitleLanguages(info, parser)
-            info.episodeSortOrEp ?: return@mapNotNull null
+            val episodeSort = info.matchingEpisodeSort(query.episodeSort, query.episodeEp) ?: return@mapNotNull null
             DefaultMedia(
                 mediaId = buildString {
                     append(mediaSourceId)
@@ -237,7 +237,7 @@ abstract class SelectorMediaSourceEngine {
                     }
                     append(info.name)
                     append("-")
-                    append(info.episodeSortOrEp)
+                    append(episodeSort)
                 },
                 mediaSourceId = mediaSourceId,
                 originalUrl = info.playUrl,
@@ -259,7 +259,7 @@ abstract class SelectorMediaSourceEngine {
                     size = FileSize.Unspecified,
                     subtitleKind = SubtitleKind.EMBEDDED,
                 ),
-                episodeRange = EpisodeRange.single(info.episodeSortOrEp),
+                episodeRange = EpisodeRange.single(episodeSort),
                 location = MediaSourceLocation.Online,
                 kind = MediaSourceKind.WEB,
             )
