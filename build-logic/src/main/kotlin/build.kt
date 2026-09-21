@@ -263,12 +263,6 @@ fun Project.configureKotlinTestSettings() {
                         runtimeOnly(libs.getLibrary("junit5-android-test-runner"))
                     }
                 }
-
-            sourceSets.matching { it.name == "commonTest" }.configureEach {
-                dependencies {
-                    implementation(kotlin("test-annotations-common"))?.because(b)
-                }
-            }
         }
     }
 }

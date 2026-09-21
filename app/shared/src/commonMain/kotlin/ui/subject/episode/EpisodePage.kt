@@ -67,6 +67,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.drawWithContent
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.graphics.Brush
@@ -87,6 +88,10 @@ import me.him188.ani.app.data.models.preference.DarkMode
 import me.him188.ani.app.data.models.preference.VideoScaffoldConfig
 import me.him188.ani.app.domain.comment.CommentContext
 import me.him188.ani.app.navigation.LocalNavigator
+import me.him188.ani.app.pip.LocalPictureInPictureController
+import me.him188.ani.app.pip.PictureInPictureController
+import me.him188.ani.app.pip.rememberPictureInPictureController
+import me.him188.ani.app.pip.shouldAutoEnterPictureInPicture
 import me.him188.ani.app.platform.LocalContext
 import me.him188.ani.app.platform.features.StreamType
 import me.him188.ani.app.platform.features.getComponentAccessors
@@ -266,7 +271,13 @@ private fun EpisodeScreenContent(
         }
     }
 
-    AutoPauseEffect(vm, enabled = !playbackAutomationSuppressed)
+    val pictureInPictureController = rememberPictureInPictureController(vm.player)
+
+    AutoPauseEffect(
+        vm,
+        enabled = !playbackAutomationSuppressed,
+        pictureInPictureController = pictureInPictureController,
+    )
     DisplayModeEffect(vm.videoScaffoldConfig)
 
     VideoNotifEffect(vm)
@@ -379,7 +390,10 @@ private fun EpisodeScreenContent(
                     )
                 }
 
-                CompositionLocalProvider(LocalImageViewerHandler provides imageViewer) {
+                CompositionLocalProvider(
+                    LocalImageViewerHandler provides imageViewer,
+                    LocalPictureInPictureController provides pictureInPictureController,
+                ) {
                     when {
                         showExpandedUI ->
                             EpisodeScreenTabletVeryWide(
@@ -1023,6 +1037,10 @@ private fun EpisodeVideo(
     }
     val fullscreenState = rememberEpisodeFullscreenState(vm)
 
+    val pictureInPictureController = LocalPictureInPictureController.current
+    val isInPictureInPicture by pictureInPictureController.isInPictureInPicture.collectAsStateWithLifecycle()
+    PictureInPicturePolicyEffect(vm, pictureInPictureController)
+
     EpisodeVideoImpl(
         vm.player,
         expanded = expanded,
@@ -1042,7 +1060,15 @@ private fun EpisodeVideo(
             )
         },
         danmakuHost = {
-            PlayerDanmakuHost(vm.player, danmakuHostState, vm.uiDanmakuEventFlow)
+            PlayerDanmakuHost(
+                vm.player, danmakuHostState, vm.uiDanmakuEventFlow,
+                modifier = Modifier.drawWithContent {
+                    // 小窗模式不绘制弹幕; host 保持组合并由 forcePaused 冻结,
+                    // 事件收集不中断, 退出小窗后弹幕从冻结位置无缝恢复
+                    if (!isInPictureInPicture) drawContent()
+                },
+                forcePaused = isInPictureInPicture,
+            )
         },
         danmakuEnabled = page.danmakuEnabled,
         onToggleDanmaku = { vm.setDanmakuEnabled(!page.danmakuEnabled) },
@@ -1196,6 +1222,8 @@ private fun EpisodeVideo(
         maintainAspectRatio = maintainAspectRatio,
         contentWindowInsets = windowInsets,
         fastForwardSpeed = vm.videoScaffoldConfig.fastForwardSpeed,
+        pictureInPictureController = pictureInPictureController,
+        isInPictureInPicture = isInPictureInPicture,
     )
 }
 
@@ -1251,14 +1279,32 @@ private fun EpisodeCommentColumn(
  * 切后台自动暂停
  */
 @Composable
-private fun AutoPauseEffect(viewModel: EpisodeViewModel, enabled: Boolean) {
+private fun AutoPauseEffect(
+    viewModel: EpisodeViewModel,
+    enabled: Boolean,
+    pictureInPictureController: PictureInPictureController,
+) {
     var pausedVideo by rememberSaveable { mutableStateOf(true) } // live after configuration change
     if (LocalIsPreviewing.current || !enabled) return
 
+    val backgroundBehavior = viewModel.videoScaffoldConfig.backgroundBehavior
     val autoPauseTasker = rememberUiMonoTasker()
     OnLifecycleEvent {
         if (it == Lifecycle.Event.ON_STOP) {
-            if (viewModel.player.state.value.playWhenReady) {
+            if (pictureInPictureController.isInPictureInPicture.value) {
+                // 小窗模式下 Activity 仍然可见, 不暂停.
+                // 系统正常情况下进入小窗只派发 ON_PAUSE 而不派发 ON_STOP, 此处显式防御 OEM 差异与未来改动.
+                return@OnLifecycleEvent
+            }
+            val state = viewModel.player.state.value
+            if (shouldAutoEnterPictureInPicture(backgroundBehavior, state.playWhenReady)) {
+                // iOS 上 ON_STOP 与小窗启动存在竞态 (ON_STOP 可能先于小窗 delegate 回调),
+                // 而 iOS 仅在播放中自动进入小窗 —— 这里的暂停会把小窗扼杀在启动前.
+                // 策略允许自动进入时信任系统: 进入小窗或后台续播都不应暂停.
+                pausedVideo = false
+                return@OnLifecycleEvent
+            }
+            if (state.playWhenReady) {
                 pausedVideo = true
                 autoPauseTasker.launch {
                     // #160, 切换全屏时视频会暂停半秒
@@ -1274,6 +1320,52 @@ private fun AutoPauseEffect(viewModel: EpisodeViewModel, enabled: Boolean) {
                 viewModel.player.play() // 切回前台自动恢复, 当且仅当之前是自动暂停的
             }
             pausedVideo = false
+        }
+    }
+}
+
+/**
+ * 画中画策略: 由设置、播放状态与视频宽高比决定是否允许"上滑回桌面自动进入小窗",
+ * 并在视频 UI 退出组合时撤销策略 (宽高比传 null 表示不设置比例).
+ *
+ * 宽高比变化 (如 HLS 码率切换) 必须刷新, 否则小窗比例不对. 暂停状态不自动进入,
+ * 由 [shouldAutoEnterPictureInPicture] 决定.
+ */
+@Composable
+private fun PictureInPicturePolicyEffect(
+    vm: EpisodeViewModel,
+    pictureInPictureController: PictureInPictureController,
+) {
+    if (!pictureInPictureController.isSupported) return
+
+    val backgroundBehavior = vm.videoScaffoldConfig.backgroundBehavior
+    val playerState by vm.player.state.collectAsStateWithLifecycle()
+    val mediaProperties by vm.player.mediaProperties.collectAsStateWithLifecycle(null)
+
+    LaunchedEffect(
+        pictureInPictureController,
+        backgroundBehavior,
+        playerState.playWhenReady,
+        mediaProperties?.videoWidth,
+        mediaProperties?.videoHeight,
+    ) {
+        pictureInPictureController.updatePolicy(
+            autoEnterEnabled = shouldAutoEnterPictureInPicture(
+                backgroundBehavior,
+                playWhenReady = playerState.playWhenReady,
+            ),
+            aspectWidth = mediaProperties?.videoWidth,
+            aspectHeight = mediaProperties?.videoHeight,
+        )
+    }
+
+    DisposableEffect(pictureInPictureController) {
+        onDispose {
+            pictureInPictureController.updatePolicy(
+                autoEnterEnabled = false,
+                aspectWidth = null,
+                aspectHeight = null,
+            )
         }
     }
 }

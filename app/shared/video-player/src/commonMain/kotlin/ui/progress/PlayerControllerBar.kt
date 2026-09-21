@@ -43,6 +43,7 @@ import androidx.compose.material.icons.automirrored.rounded.VolumeUp
 import androidx.compose.material.icons.rounded.Fullscreen
 import androidx.compose.material.icons.rounded.FullscreenExit
 import androidx.compose.material.icons.rounded.Pause
+import androidx.compose.material.icons.rounded.PictureInPicture
 import androidx.compose.material.icons.rounded.PlayArrow
 import androidx.compose.material.icons.rounded.SkipNext
 import androidx.compose.material.icons.rounded.Subtitles
@@ -128,6 +129,7 @@ import me.him188.ani.app.ui.lang.video_player_danmaku_placeholder_8
 import me.him188.ani.app.ui.lang.video_player_danmaku_placeholder_9
 import me.him188.ani.app.ui.lang.video_player_disable_danmaku
 import me.him188.ani.app.ui.lang.video_player_enable_danmaku
+import me.him188.ani.app.ui.lang.video_player_enter_picture_in_picture
 import me.him188.ani.app.ui.lang.video_player_mute
 import me.him188.ani.app.ui.lang.video_player_next_episode
 import me.him188.ani.app.ui.lang.video_player_select_episode
@@ -153,6 +155,7 @@ const val TAG_SPEED_SWITCHER_DROPDOWN_MENU = "SpeedSwitcherDropdownMenu"
 const val TAG_SPEED_SWITCHER_SLIDER = "SpeedSwitcherSlider"
 const val TAG_SPEED_SWITCHER_VALUE_INDICATOR = "SpeedSwitcherValueIndicator"
 const val TAG_DANMAKU_ICON_BUTTON = "DanmakuIconButton"
+const val TAG_PICTURE_IN_PICTURE_BUTTON = "PictureInPictureButton"
 const val TAG_VIDEO_ASPECT_RATIO_SELECTOR_TEXT_BUTTON = "VideoAspectRatioTextButton"
 const val TAG_VIDEO_ASPECT_RATIO_SELECTOR_DROPDOWN_MENU = "VideoAspectRatioDropdownMenu"
 
@@ -199,6 +202,27 @@ object PlayerControllerDefaults {
             } else {
                 Icon(Icons.Rounded.SubtitlesOff, contentDescription = stringResource(Lang.video_player_enable_danmaku))
             }
+        }
+    }
+
+    /**
+     * 进入系统画中画小窗. 仅移动端显示; 不支持的平台由调用方隐藏.
+     */
+    @Composable
+    fun PictureInPictureIcon(
+        enabled: Boolean,
+        onClick: () -> Unit,
+        modifier: Modifier = Modifier,
+    ) {
+        IconButton(
+            onClick = onClick,
+            enabled = enabled,
+            modifier = modifier.testTag(TAG_PICTURE_IN_PICTURE_BUTTON),
+        ) {
+            Icon(
+                Icons.Rounded.PictureInPicture,
+                contentDescription = stringResource(Lang.video_player_enter_picture_in_picture),
+            )
         }
     }
 

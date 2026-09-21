@@ -113,6 +113,9 @@ import platform.UIKit.NSLayoutConstraint
 import platform.UIKit.UIViewController
 import platform.UIKit.addChildViewController
 import platform.UIKit.didMoveToParentViewController
+import platform.AVFAudio.AVAudioSession
+import platform.AVFAudio.AVAudioSessionCategoryPlayback
+import platform.AVFAudio.setActive
 
 class AniIosApplication(
     val context: IosContext,
@@ -137,6 +140,16 @@ fun startIosApp(): AniIosApplication {
     AppStartupTasks.printVersions()
     IosLoggingConfigurator.configure(context.files.logsDir.path, SystemFileSystem)
     initializeIosFfmpegRuntime()
+
+    // 画中画/后台播放需要 playback 音频会话, 必须在任何播放开始前激活.
+    // (原为音量管理器 IosAudioManager 的懒加载副作用, 时序不可靠)
+    @OptIn(kotlinx.cinterop.ExperimentalForeignApi::class)
+    fun activateAudioSession() {
+        val session = AVAudioSession.sharedInstance()
+        session.setCategory(AVAudioSessionCategoryPlayback, error = null)
+        session.setActive(true, withOptions = 0uL, error = null)
+    }
+    activateAudioSession()
     startupTimeMonitor.mark(StepName.Logging)
 
     val koin = startKoin {

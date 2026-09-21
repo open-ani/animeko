@@ -273,6 +273,11 @@
     <string name="settings_player_hide_selector_on_select">選擇數據源後自動關閉彈窗</string>
     <string name="settings_player_auto_fullscreen_on_landscape">旋轉螢幕時自動全螢幕</string>
     <string name="settings_player_auto_play_next">自動連播</string>
+    <string name="settings_player_background_behavior">切換到其他應用程式時</string>
+    <string name="settings_player_background_behavior_description">播放中離開應用程式時，自動以小窗繼續播放</string>
+    <string name="settings_player_background_behavior_auto_pip">小窗繼續播放</string>
+    <string name="settings_player_background_behavior_pause">暫停播放</string>
+    <string name="settings_player_background_behavior_background_playback">背景繼續播放</string>
     <string name="settings_player_audio_time_stretch">高品質音訊變速（WSOLA）</string>
     <string name="settings_player_audio_time_stretch_description">變速時提供更好的音質；如遇爆音或音訊損壞可關閉</string>
     <string name="settings_player_auto_skip_op_ed">自動跳過 OP 和 ED</string>
@@ -703,6 +708,9 @@
     <string name="video_player_subtitle">字幕</string>
     <string name="video_player_disable_danmaku">禁用彈幕</string>
     <string name="video_player_enable_danmaku">啟用彈幕</string>
+    <string name="video_player_enter_picture_in_picture">小窗播放</string>
+    <string name="video_player_pip_action_play">播放</string>
+    <string name="video_player_pip_action_pause">暫停</string>
     <string name="video_player_mute">靜音</string>
     <string name="video_player_volume">音量</string>
     <string name="video_player_next_episode">下一集</string>
