@@ -31,6 +31,7 @@ class ProfileGroupExternalAccountsTest {
     private class Callbacks {
         val bindClicks = mutableListOf<OAuthPlatform>()
         val unbinds = mutableListOf<String>()
+        var githubAccountClicks = 0
     }
 
     private fun selfInfo(vararg accounts: ExternalAccount) = SelfInfo(
@@ -66,6 +67,7 @@ class ProfileGroupExternalAccountsTest {
                         onBangumiClick = {},
                         onUnbindBangumi = {},
                         onExternalAccountClick = { callbacks.bindClicks += it },
+                        onGithubAccountClick = { callbacks.githubAccountClicks++ },
                         onUnbindExternalAccount = { callbacks.unbinds += it },
                     )
                 }
@@ -92,6 +94,18 @@ class ProfileGroupExternalAccountsTest {
     }
 
     @Test
+    fun `bound github account navigates to its details when clicked`() = runAniComposeUiTest {
+        val callbacks = Callbacks()
+        render(state(selfInfo(ExternalAccount("github", "octocat")), listOf(OAuthPlatform.GITHUB)), callbacks)
+
+        onNodeWithTag("externalAccount-github").assertIsDisplayed().performClick()
+        waitForIdle()
+
+        assertEquals(1, callbacks.githubAccountClicks)
+        assertEquals(emptyList(), callbacks.bindClicks)
+    }
+
+    @Test
     fun `enabled but unbound platform navigates to binding when clicked`() = runAniComposeUiTest {
         val callbacks = Callbacks()
         render(state(selfInfo(), listOf(OAuthPlatform.GITHUB)), callbacks)
@@ -101,6 +115,7 @@ class ProfileGroupExternalAccountsTest {
         waitForIdle()
 
         assertEquals(listOf(OAuthPlatform.GITHUB), callbacks.bindClicks)
+        assertEquals(0, callbacks.githubAccountClicks)
     }
 
     @Test

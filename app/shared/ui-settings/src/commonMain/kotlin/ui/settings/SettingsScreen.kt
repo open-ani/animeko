@@ -127,6 +127,7 @@ import me.him188.ani.app.ui.lang.developer_list
 import me.him188.ani.app.ui.lang.settings_about_build_info
 import me.him188.ani.app.ui.lang.settings
 import me.him188.ani.app.ui.lang.settings_account_bangumi_sync_title
+import me.him188.ani.app.ui.lang.settings_account_github_title
 import me.him188.ani.app.ui.lang.settings_acknowledgements_oss_licenses
 import me.him188.ani.app.ui.lang.settings_category_app_ui
 import me.him188.ani.app.ui.lang.settings_category_data_playback
@@ -150,6 +151,7 @@ import me.him188.ani.app.ui.lang.settings_tab_storage
 import me.him188.ani.app.ui.lang.settings_tab_theme
 import me.him188.ani.app.ui.lang.settings_tab_update
 import me.him188.ani.app.ui.settings.account.BangumiSyncTab
+import me.him188.ani.app.ui.settings.account.GithubAccountTab
 import me.him188.ani.app.ui.settings.account.ProfileGroup
 import me.him188.ani.app.ui.settings.account.SelfInfoBanner
 import me.him188.ani.app.ui.settings.framework.components.SettingsScope
@@ -356,6 +358,9 @@ fun SettingsScreen(
                                     navigateTo(DetailPaneRoutes.BangumiSync)
                                 },
                                 onNavigateToOAuth = onNavigateToOAuth,
+                                onNavigateToGithubAccount = {
+                                    navigateTo(DetailPaneRoutes.GithubAccount)
+                                },
                             )
 
                             SettingsTab.APPEARANCE -> AppearanceGroup(vm.uiSettings)
@@ -844,6 +849,27 @@ internal fun SettingsPageLayout(
                             }
                         }
                     }
+                    entry<DetailPaneRoutes.GithubAccount> {
+                        DetailPaneRoute(
+                            topAppBar = {
+                                AniTopAppBar(
+                                    title = { AniTopAppBarDefaults.Title(stringResource(Lang.settings_account_github_title)) },
+                                    navigationIcon = {
+                                        BackNavigationIconButton(navigateUp)
+                                    },
+                                    colors = topAppBarColors,
+                                    windowInsets = topAppBarWindowInsets,
+                                    size = topAppBarSize,
+                                    scrollBehavior = detailPaneTopAppBarScrollBehavior,
+                                )
+                            },
+                            detailPaneTopAppBarScrollBehavior,
+                        ) {
+                            RouteContent {
+                                GithubAccountTab()
+                            }
+                        }
+                    }
                     entry<DetailPaneRoutes.DevBuilds> {
                         DetailPaneRoute(
                             topAppBar = {
@@ -994,6 +1020,9 @@ sealed class DetailPaneRoutes : NavKey {
     data object BangumiSync : DetailPaneRoutes()
 
     @Serializable
+    data object GithubAccount : DetailPaneRoutes()
+
+    @Serializable
     data object DevBuilds : DetailPaneRoutes()
 }
 
@@ -1011,6 +1040,7 @@ private val DetailPaneBackStackSaver: Saver<SnapshotStateList<DetailPaneRoutes>,
                     "Developers" -> DetailPaneRoutes.Developers
                     "BuildInfo" -> DetailPaneRoutes.BuildInfo
                     "BangumiSync" -> DetailPaneRoutes.BangumiSync
+                    "GithubAccount" -> DetailPaneRoutes.GithubAccount
                     "DevBuilds" -> DetailPaneRoutes.DevBuilds
                     else -> DetailPaneRoutes.Main
                 }
