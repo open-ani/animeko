@@ -75,6 +75,7 @@ import me.him188.ani.app.data.repository.subject.FollowedSubjectsRepository
 import me.him188.ani.app.data.repository.subject.SubjectCollectionRepository
 import me.him188.ani.app.data.repository.subject.SubjectCollectionRepositoryImpl
 import me.him188.ani.app.data.repository.subject.SubjectSearchCompletionRepository
+import me.him188.ani.app.data.repository.subject.SubjectRelationGraphRepository
 import me.him188.ani.app.data.repository.subject.SubjectRelationsRepository
 import me.him188.ani.app.data.repository.subject.SubjectSearchHistoryRepository
 import me.him188.ani.app.data.repository.subject.SubjectSearchRepository
@@ -340,6 +341,9 @@ private fun KoinApplication.otherModules(getContext: () -> Context, coroutineSco
             subjectCollectionRepository = get(),
             aniSubjectRelationIndexService = get(),
         )
+    }
+    single<SubjectRelationGraphRepository> {
+        SubjectRelationGraphRepository(get<AniApiProvider>().subjectApi, database.subjectCollection())
     }
 
     // Data layer network services

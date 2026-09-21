@@ -68,6 +68,14 @@ sealed class NavRoutes : NavKey {
         val placeholder: SubjectDetailPlaceholder? = null,
     ) : NavRoutes()
 
+    /**
+     * 条目所在系列的关系图
+     */
+    @Serializable
+    data class SubjectRelationGraph(
+        val subjectId: Int,
+    ) : NavRoutes()
+
     @Serializable
     data class PersonDetail(
         val personId: Int,

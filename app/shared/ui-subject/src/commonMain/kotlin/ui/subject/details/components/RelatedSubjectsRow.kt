@@ -44,6 +44,7 @@ import me.him188.ani.app.ui.foundation.AsyncImage
 import me.him188.ani.app.ui.foundation.ProvideCompositionLocalsForPreview
 import me.him188.ani.app.ui.lang.Lang
 import me.him188.ani.app.ui.lang.subject_details_relation_derived
+import me.him188.ani.app.ui.lang.subject_details_relation_main_story
 import me.him188.ani.app.ui.lang.subject_details_relation_prequel
 import me.him188.ani.app.ui.lang.subject_details_relation_sequel
 import me.him188.ani.app.ui.lang.subject_details_relation_special
@@ -163,12 +164,22 @@ fun rememberNavigateToRelatedSubject(): (RelatedSubjectInfo) -> Unit {
     }
 }
 
+/** 点击 "关系图" -> 打开 [subjectId] 所在系列的关系图. */
 @Composable
-private fun renderSubjectRelation(relation: SubjectRelation): String = when (relation) {
+fun rememberNavigateToRelationGraph(subjectId: Int): () -> Unit {
+    val navigator = LocalNavigator.current
+    return remember(navigator, subjectId) {
+        { navigator.navigateSubjectRelationGraph(subjectId) }
+    }
+}
+
+@Composable
+internal fun renderSubjectRelation(relation: SubjectRelation): String = when (relation) {
     SubjectRelation.PREQUEL -> stringResource(Lang.subject_details_relation_prequel)
     SubjectRelation.SEQUEL -> stringResource(Lang.subject_details_relation_sequel)
     SubjectRelation.DERIVED -> stringResource(Lang.subject_details_relation_derived)
     SubjectRelation.SPECIAL -> stringResource(Lang.subject_details_relation_special)
+    SubjectRelation.MAIN_STORY -> stringResource(Lang.subject_details_relation_main_story)
 }
 
 @OptIn(TestOnly::class)

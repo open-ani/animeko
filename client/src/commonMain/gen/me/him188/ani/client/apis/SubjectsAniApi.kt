@@ -30,6 +30,7 @@ import me.him188.ani.client.models.AniRelatedSubject
 import me.him188.ani.client.models.AniSubjectCollection
 import me.him188.ani.client.models.AniSubjectCollectionCountStats
 import me.him188.ani.client.models.AniSubjectRecommendation
+import me.him188.ani.client.models.AniSubjectRelationGraph
 import me.him188.ani.client.models.AniSubjectReviewsResponse
 import me.him188.ani.client.models.AniSubjectSearchField
 import me.him188.ani.client.models.AniSubjectSearchSortBy
@@ -460,6 +461,39 @@ open class SubjectsAniApi : ApiClient {
             override fun deserialize(decoder: Decoder) = GetSubjectRecommendationsResponse(serializer.deserialize(decoder))
         }
     }
+
+    /**
+     * 获取条目所在系列的关系图. 主线为前传/续集链, 番外和衍生挂载在对应的主线条目下, 最多包含 100 个条目
+     * 获取条目所在系列的关系图. 主线为前传/续集链, 番外和衍生挂载在对应的主线条目下, 最多包含 100 个条目
+     * @param subjectId
+     * @return AniSubjectRelationGraph
+     */
+    @Suppress("UNCHECKED_CAST")
+    open suspend fun getSubjectRelationGraph(subjectId: kotlin.Long): HttpResponse<AniSubjectRelationGraph> {
+
+        val localVariableAuthNames = listOf<String>("auth-jwt")
+
+        val localVariableBody =
+            io.ktor.client.utils.EmptyContent
+
+        val localVariableQuery = mutableMapOf<String, List<String>>()
+        val localVariableHeaders = mutableMapOf<String, String>()
+
+        val localVariableConfig = RequestConfig<kotlin.Any?>(
+            RequestMethod.GET,
+            "/v2/subjects/{subjectId}/relation-graph".replace("{" + "subjectId" + "}", "$subjectId"),
+            query = localVariableQuery,
+            headers = localVariableHeaders,
+            requiresAuthentication = true,
+        )
+
+        return request(
+            localVariableConfig,
+            localVariableBody,
+            localVariableAuthNames
+        ).wrap()
+    }
+
 
     /**
      * 获取条目评价, 混合 Bangumi 评价和 Ani 本地评价.
