@@ -248,6 +248,7 @@ private class FakeCloudEntry(
         override val entry: TorrentFileEntry get() = this@FakeCloudEntry
         override fun resume(priority: FilePriority) {}
         override fun pause() {}
+        override fun setPrefetchRange(byteRange: LongRange?) {}
         override suspend fun close() { closedHandles++ }
         override suspend fun closeAndDelete() = close()
     }
