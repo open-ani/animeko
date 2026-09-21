@@ -1135,6 +1135,7 @@
     <string name="settings_account_developer_status_pending">正在审核，通常需要几分钟</string>
     <string name="settings_account_developer_status_unavailable">当前服务器未开放开发者认证</string>
     <string name="settings_account_developer_valid_until">有效期至 %1$s。到期前会自动重新评估，无需再次申请。</string>
+    <string name="settings_account_developer_outstanding_contributor">感谢你对 Animeko 的卓越贡献。你的开发者身份长期有效。</string>
     <string name="settings_account_developer_apply">申请认证</string>
     <string name="settings_account_developer_apply_limit">每天可申请 1 次，每周最多 3 次</string>
     <string name="settings_account_developer_next_apply_at">下次可申请：%1$s</string>

@@ -1095,6 +1095,7 @@
     <string name="settings_account_developer_status_pending">Under review, this usually takes a few minutes</string>
     <string name="settings_account_developer_status_unavailable">Developer certification is not available on this server</string>
     <string name="settings_account_developer_valid_until">Valid until %1$s. It is re-evaluated automatically before it expires, no need to apply again.</string>
+    <string name="settings_account_developer_outstanding_contributor">Thank you for your outstanding contributions to Animeko. Your developer status is valid long-term.</string>
     <string name="settings_account_developer_apply">Apply</string>
     <string name="settings_account_developer_apply_limit">You can apply once a day and up to 3 times a week</string>
     <string name="settings_account_developer_next_apply_at">Next application: %1$s</string>
