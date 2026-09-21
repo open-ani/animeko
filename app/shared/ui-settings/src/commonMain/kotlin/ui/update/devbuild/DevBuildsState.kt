@@ -41,11 +41,13 @@ import me.him188.ani.utils.platform.annotations.TestOnly
 import kotlin.coroutines.cancellation.CancellationException
 
 /**
- * 开发者功能「安装 main 分支的指定 commit」的状态.
+ * 开发者功能「安装指定版本」的状态.
  *
  * [refresh] 从 GitHub 拉取 main 分支最新的 commits, Build workflow 的运行结果, 以及当前平台的安装包 artifact, 合并为 [listState].
- * [install] 下载所选 commit 的 artifact, 取出安装包, 然后交给安装器; 桌面端安装成功会退出当前进程并由外部更新程序重启,
- * Android 会拉起系统安装器. 不支持自动安装的平台 (Linux) 下载完成后进入 [DevBuildInstallState.ReadyForManualInstall].
+ * [lookup] 解析用户粘贴的 commit / PR / workflow 运行 / artifact 链接或安装包直链, 结果放入 [lookupState] 供用户确认后安装.
+ * [install] 下载所选 commit 的 artifact, 取出安装包, 然后交给安装器; [installPackage] 直接下载安装包.
+ * 桌面端安装成功会退出当前进程并由外部更新程序重启, Android 会拉起系统安装器.
+ * 不支持自动安装的平台 (Linux) 下载完成后进入 [DevBuildInstallState.ReadyForManualInstall].
  *
  * @param saveDir 专用于存放本功能下载的文件的目录, 每次安装前会清空.
  * @param getToken 读取用户配置的 GitHub token, 空字符串表示未设置.
@@ -67,6 +69,11 @@ class DevBuildsState(
      */
     val currentCommitShortSha: String? = parseMainBranchShortSha(currentVersionName)
 
+    /**
+     * 输入框支持的 GitHub 仓库, `owner/name`.
+     */
+    val repository: String get() = api.repository
+
     private val _listState = MutableStateFlow<DevBuildListState>(DevBuildListState.Idle)
     val listState: StateFlow<DevBuildListState> = _listState.asStateFlow()
 
@@ -76,6 +83,11 @@ class DevBuildsState(
      * 是否正在拉取列表. 拉取期间保留上一次的 [listState].
      */
     val isRefreshing: StateFlow<Boolean> get() = refreshTasker.isRunning
+
+    private val _lookupState = MutableStateFlow<DevBuildLookupState>(DevBuildLookupState.Idle)
+    val lookupState: StateFlow<DevBuildLookupState> = _lookupState.asStateFlow()
+
+    private val lookupTasker = MonoTasker(backgroundScope)
 
     private val _installState = MutableStateFlow<DevBuildInstallState>(DevBuildInstallState.Idle)
     val installState: StateFlow<DevBuildInstallState> = _installState.asStateFlow()
@@ -110,36 +122,162 @@ class DevBuildsState(
     }
 
     /**
+     * 解析并查询用户输入的 [text], 见 [parseDevBuildInput]. 取消上一次未完成的查询.
+     */
+    fun lookup(text: String) {
+        lookupTasker.launch {
+            val input = parseDevBuildInput(text, repository)
+            if (input == null) {
+                _lookupState.value = DevBuildLookupState.Failed(DevBuildLookupFailure.Unrecognized)
+                return@launch
+            }
+            _lookupState.value = DevBuildLookupState.Loading
+            try {
+                _lookupState.value = resolve(input, getToken().trim().ifEmpty { null })
+            } catch (e: CancellationException) {
+                throw e
+            } catch (e: Throwable) {
+                logger.error(e) { "Failed to look up dev build for input: $text" }
+                _lookupState.value = DevBuildLookupState.Failed(DevBuildLookupFailure.Error(e))
+            }
+        }
+    }
+
+    private suspend fun resolve(input: DevBuildInput, token: String?): DevBuildLookupState = when (input) {
+        is DevBuildInput.Commit -> DevBuildLookupState.Resolved(
+            DevBuildLookupResult.Commit(resolveCommit(token, api.getCommit(token, input.sha))),
+        )
+
+        is DevBuildInput.PullRequest -> {
+            val pr = api.getPullRequest(token, input.number)
+            DevBuildLookupState.Resolved(
+                DevBuildLookupResult.Commit(
+                    commit = resolveCommit(token, api.getCommit(token, pr.head.sha)),
+                    pullRequest = DevBuildPullRequest(
+                        number = pr.number,
+                        title = pr.title,
+                        htmlUrl = pr.htmlUrl,
+                        headRef = pr.head.ref,
+                        isFromFork = pr.head.repo?.fullName?.equals(repository, ignoreCase = true) != true,
+                    ),
+                ),
+            )
+        }
+
+        is DevBuildInput.WorkflowRun -> {
+            val run = api.getWorkflowRun(token, input.runId)
+            val (commit, artifacts) = coroutineScope {
+                val commit = async { api.getCommit(token, run.headSha) }
+                val artifacts = async { api.listRunArtifacts(token, run.id) }
+                commit.await() to artifacts.await()
+            }
+            DevBuildLookupState.Resolved(
+                DevBuildLookupResult.Commit(buildDevBuildCommits(listOf(commit), listOf(run), artifacts, spec).single()),
+            )
+        }
+
+        is DevBuildInput.Artifact -> {
+            val artifact = api.getArtifact(token, input.artifactId)
+            if (artifact.name !in spec.candidateArtifactNames) {
+                DevBuildLookupState.Failed(DevBuildLookupFailure.ArtifactNotForPlatform(artifact.name))
+            } else {
+                val runRef = artifact.workflowRun
+                    ?: throw IllegalStateException("Artifact ${artifact.id} has no workflow run")
+                val (commit, run) = coroutineScope {
+                    val commit = async { api.getCommit(token, runRef.headSha) }
+                    val run = async { api.getWorkflowRun(token, runRef.id) }
+                    commit.await() to run.await()
+                }
+                DevBuildLookupState.Resolved(
+                    DevBuildLookupResult.Commit(
+                        buildDevBuildCommits(listOf(commit), listOf(run), listOf(artifact), spec).single(),
+                    ),
+                )
+            }
+        }
+
+        is DevBuildInput.PackageUrl -> {
+            if (input.fileName.substringAfterLast('.').equals(spec.kind.packageExtension, ignoreCase = true)) {
+                DevBuildLookupState.Resolved(DevBuildLookupResult.Package(input.url, input.fileName))
+            } else {
+                DevBuildLookupState.Failed(DevBuildLookupFailure.UnsupportedPackage(input.fileName))
+            }
+        }
+    }
+
+    /**
+     * 查询 [commit] 的所有 Build workflow 运行记录及其 artifacts, 合并为 [DevBuildCommit].
+     * 同一个 commit 可能同时有 push 和 pull_request 事件触发的运行, artifact 在所有运行中按 [DevBuildPackageSpec.candidateArtifactNames] 择优.
+     */
+    private suspend fun resolveCommit(token: String?, commit: GitHubCommit): DevBuildCommit {
+        val runs = api.listWorkflowRunsForCommit(token, commit.sha)
+        val artifacts = coroutineScope {
+            runs.map { run -> async { api.listRunArtifacts(token, run.id) } }.awaitAll().flatten()
+        }
+        return buildDevBuildCommits(listOf(commit), runs, artifacts, spec).single()
+    }
+
+    fun clearLookup() {
+        lookupTasker.cancel()
+        _lookupState.value = DevBuildLookupState.Idle
+    }
+
+    /**
      * 下载并安装 [commit] 的安装包. [commit] 没有安装包时忽略. 已有安装任务在进行时忽略.
      */
     fun install(commit: DevBuildCommit, context: ContextMP) {
         val artifact = commit.artifact ?: return
+        launchInstall(DevBuildInstallTarget.of(commit), context) { target ->
+            val token = getToken().trim()
+            if (token.isEmpty()) throw TokenRequiredException()
+            _installState.value = DevBuildInstallState.Downloading(target, 0, artifact.sizeInBytes)
+            val downloadUrl = api.resolveArtifactDownloadUrl(token, artifact.archiveDownloadUrl)
+
+            prepareSaveDir()
+            val archive = saveDir.resolve("${artifact.name}-${commit.shortSha}.zip")
+            api.downloadFile(downloadUrl, archive) { downloaded, total ->
+                _installState.value = DevBuildInstallState.Downloading(target, downloaded, total ?: artifact.sizeInBytes)
+            }
+
+            _installState.value = DevBuildInstallState.Extracting(target)
+            extractPackage(archive, saveDir.resolve(spec.packageFileName(commit.shortSha)))
+        }
+    }
+
+    /**
+     * 下载 [url] 处的安装包并安装. [fileName] 用作本地文件名, 必须带有当前平台的安装包扩展名. 已有安装任务在进行时忽略.
+     */
+    fun installPackage(url: String, fileName: String, context: ContextMP) {
+        launchInstall(DevBuildInstallTarget.of(url, fileName), context) { target ->
+            _installState.value = DevBuildInstallState.Downloading(target, 0, null)
+            prepareSaveDir()
+            val file = saveDir.resolve(fileName)
+            api.downloadFile(url, file) { downloaded, total ->
+                _installState.value = DevBuildInstallState.Downloading(target, downloaded, total)
+            }
+            if (spec.kind == DevBuildPackageKind.LINUX_APPIMAGE) {
+                markExecutable(file)
+            }
+            file
+        }
+    }
+
+    /**
+     * @param preparePackage 下载并返回可交给安装器的安装包, 期间自行更新 [installState] 的进度.
+     */
+    private fun launchInstall(
+        target: DevBuildInstallTarget,
+        context: ContextMP,
+        preparePackage: suspend (DevBuildInstallTarget) -> SystemPath,
+    ) {
         if (installTasker.isRunning.value) return
         installTasker.launch {
             try {
-                val token = getToken().trim()
-                if (token.isEmpty()) {
-                    _installState.value = DevBuildInstallState.Failed(commit, DevBuildInstallFailure.TokenRequired, null)
-                    return@launch
-                }
-                _installState.value = DevBuildInstallState.Downloading(commit, 0, artifact.sizeInBytes)
-                val downloadUrl = api.resolveArtifactDownloadUrl(token, artifact.archiveDownloadUrl)
-
-                withContext(Dispatchers.IO_) {
-                    saveDir.deleteRecursively()
-                    saveDir.createDirectories()
-                }
-                val archive = saveDir.resolve("${artifact.name}-${commit.shortSha}.zip")
-                api.downloadFile(downloadUrl, archive) { downloaded, total ->
-                    _installState.value = DevBuildInstallState.Downloading(commit, downloaded, total ?: artifact.sizeInBytes)
-                }
-
-                _installState.value = DevBuildInstallState.Extracting(commit)
-                val file = preparePackage(archive, commit)
+                val file = preparePackage(target)
                 logger.info { "Dev build package ready: $file" }
 
                 if (spec.kind.supportsAutomaticInstall) {
-                    _installState.value = DevBuildInstallState.Installing(commit)
+                    _installState.value = DevBuildInstallState.Installing(target)
                     val result = withContext(installDispatcher) {
                         installer.install(file, packageUrls = emptyList(), context = context)
                     }
@@ -147,32 +285,40 @@ class DevBuildsState(
                         // 桌面端此时进程即将退出; Android 已拉起系统安装器
                         InstallationResult.Succeed -> DevBuildInstallState.Idle
                         is InstallationResult.Failed -> DevBuildInstallState.Failed(
-                            commit,
+                            target,
                             DevBuildInstallFailure.Installer(result),
                             file,
                         )
                     }
                 } else {
-                    _installState.value = DevBuildInstallState.ReadyForManualInstall(commit, file)
+                    _installState.value = DevBuildInstallState.ReadyForManualInstall(target, file)
                 }
             } catch (e: CancellationException) {
                 _installState.value = DevBuildInstallState.Idle
                 throw e
+            } catch (e: TokenRequiredException) {
+                _installState.value = DevBuildInstallState.Failed(target, DevBuildInstallFailure.TokenRequired, null)
             } catch (e: DevBuildPackageNotFoundException) {
                 logger.error(e) { "Dev build artifact does not contain a package" }
-                _installState.value = DevBuildInstallState.Failed(commit, DevBuildInstallFailure.PackageNotFound, null)
+                _installState.value = DevBuildInstallState.Failed(target, DevBuildInstallFailure.PackageNotFound, null)
             } catch (e: Throwable) {
-                logger.error(e) { "Failed to install dev build ${commit.shortSha}" }
-                _installState.value = DevBuildInstallState.Failed(commit, DevBuildInstallFailure.Error(e), null)
+                logger.error(e) { "Failed to install dev build ${target.label}" }
+                _installState.value = DevBuildInstallState.Failed(target, DevBuildInstallFailure.Error(e), null)
             }
         }
     }
 
+    private suspend fun prepareSaveDir() {
+        withContext(Dispatchers.IO_) {
+            saveDir.deleteRecursively()
+            saveDir.createDirectories()
+        }
+    }
+
     /**
-     * 从 artifact zip [archive] 得到可交给安装器的安装包. 成功后 [archive] 不再存在.
+     * 从 artifact zip [archive] 得到可交给安装器的安装包 [target]. 成功后 [archive] 不再存在.
      */
-    private suspend fun preparePackage(archive: SystemPath, commit: DevBuildCommit): SystemPath {
-        val target = saveDir.resolve(spec.packageFileName(commit.shortSha))
+    private suspend fun extractPackage(archive: SystemPath, target: SystemPath): SystemPath {
         val kind = spec.kind
         if (!kind.extractsFromArchive) {
             withContext(Dispatchers.IO_) { archive.moveTo(target) }
@@ -218,13 +364,16 @@ class DevBuildsState(
         installer.openForManualInstallation(file, context)
 
     /**
-     * 等待进行中的刷新和安装任务结束.
+     * 等待进行中的刷新, 查询和安装任务结束.
      */
     @TestOnly
     suspend fun joinTasks() {
         refreshTasker.join()
+        lookupTasker.join()
         installTasker.join()
     }
+
+    private class TokenRequiredException : Exception()
 
     private companion object {
         val logger = logger<DevBuildsState>()
@@ -247,6 +396,87 @@ sealed interface DevBuildListState {
 }
 
 @Stable
+sealed interface DevBuildLookupState {
+    @Immutable
+    data object Idle : DevBuildLookupState
+
+    @Immutable
+    data object Loading : DevBuildLookupState
+
+    @Immutable
+    data class Resolved(val result: DevBuildLookupResult) : DevBuildLookupState
+
+    @Immutable
+    data class Failed(val failure: DevBuildLookupFailure) : DevBuildLookupState
+}
+
+/**
+ * 用户输入解析并查询后得到的待安装版本.
+ */
+@Stable
+sealed interface DevBuildLookupResult {
+    /**
+     * 输入对应到仓库里的一个 commit. [commit] 没有安装包时 (构建未完成或失败) 不能安装, 但仍显示其构建状态.
+     *
+     * @param pullRequest 输入是 PR 链接时的 PR 信息, [commit] 是该 PR 分支最新的 commit.
+     */
+    @Immutable
+    data class Commit(
+        val commit: DevBuildCommit,
+        val pullRequest: DevBuildPullRequest? = null,
+    ) : DevBuildLookupResult
+
+    /**
+     * 输入是安装包的直接下载地址.
+     */
+    @Immutable
+    data class Package(val url: String, val fileName: String) : DevBuildLookupResult
+}
+
+@Stable
+sealed interface DevBuildLookupFailure {
+    /**
+     * 输入不是支持的链接或 sha.
+     */
+    @Immutable
+    data object Unrecognized : DevBuildLookupFailure
+
+    /**
+     * 安装包直链的扩展名不是当前平台的安装包.
+     */
+    @Immutable
+    data class UnsupportedPackage(val fileName: String) : DevBuildLookupFailure
+
+    /**
+     * 输入的 artifact 不是当前平台的安装包.
+     */
+    @Immutable
+    data class ArtifactNotForPlatform(val artifactName: String) : DevBuildLookupFailure
+
+    @Immutable
+    data class Error(val throwable: Throwable) : DevBuildLookupFailure
+}
+
+/**
+ * 一次安装的目标, 用于在 UI 上标识进行中或失败的安装.
+ *
+ * @param key 唯一标识, 用于匹配列表中的条目: commit sha 或安装包地址.
+ * @param label 短标识: commit 短 sha 或安装包文件名.
+ * @param title commit 标题或安装包地址.
+ */
+@Immutable
+data class DevBuildInstallTarget(
+    val key: String,
+    val label: String,
+    val title: String,
+) {
+    companion object {
+        fun of(commit: DevBuildCommit) = DevBuildInstallTarget(commit.sha, commit.shortSha, commit.title)
+        fun of(url: String, fileName: String) = DevBuildInstallTarget(url, fileName, url)
+    }
+}
+
+@Stable
 sealed interface DevBuildInstallState {
     @Immutable
     data object Idle : DevBuildInstallState
@@ -255,12 +485,12 @@ sealed interface DevBuildInstallState {
      * 正在下载, 解压或安装, 可以取消.
      */
     sealed interface Busy : DevBuildInstallState {
-        val commit: DevBuildCommit
+        val target: DevBuildInstallTarget
     }
 
     @Immutable
     data class Downloading(
-        override val commit: DevBuildCommit,
+        override val target: DevBuildInstallTarget,
         val downloadedBytes: Long,
         /**
          * `null` 表示大小未知
@@ -275,17 +505,17 @@ sealed interface DevBuildInstallState {
     }
 
     @Immutable
-    data class Extracting(override val commit: DevBuildCommit) : Busy
+    data class Extracting(override val target: DevBuildInstallTarget) : Busy
 
     @Immutable
-    data class Installing(override val commit: DevBuildCommit) : Busy
+    data class Installing(override val target: DevBuildInstallTarget) : Busy
 
     /**
      * 安装包已下载到 [file], 当前平台不支持自动安装, 等待用户手动安装.
      */
     @Immutable
     data class ReadyForManualInstall(
-        val commit: DevBuildCommit,
+        val target: DevBuildInstallTarget,
         val file: SystemPath,
     ) : DevBuildInstallState
 
@@ -294,7 +524,7 @@ sealed interface DevBuildInstallState {
      */
     @Immutable
     data class Failed(
-        val commit: DevBuildCommit,
+        val target: DevBuildInstallTarget,
         val failure: DevBuildInstallFailure,
         val file: SystemPath?,
     ) : DevBuildInstallState

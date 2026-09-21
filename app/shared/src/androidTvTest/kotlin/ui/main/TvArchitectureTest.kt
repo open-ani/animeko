@@ -53,7 +53,6 @@ class TvArchitectureTest {
         "me.him188.ani.app.ui.watchtogether.watchTogetherStatusText",
         // Shared resources and locale-dependent text mappings contain no phone layouts.
         "me.him188.ani.app.ui.lang.",
-        "me.him188.ani.app.ui.rating.EditableRatingState",
         "me.him188.ani.app.ui.rating.RateRequest",
         // Platform-neutral star glyphs and score descriptions, without the phone rating editor.
         "me.him188.ani.app.ui.rating.FiveRatingStars",

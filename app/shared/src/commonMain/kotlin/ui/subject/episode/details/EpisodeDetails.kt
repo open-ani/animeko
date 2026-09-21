@@ -140,7 +140,6 @@ import me.him188.ani.app.ui.subject.collection.components.EditableSubjectCollect
 import me.him188.ani.app.ui.subject.collection.components.rememberTestEditableSubjectCollectionTypeState
 import me.him188.ani.app.ui.subject.createTestAiringLabelState
 import me.him188.ani.app.ui.subject.details.SubjectDetailsScreen
-import me.him188.ani.app.ui.subject.details.SubjectDetailsUIState
 import me.him188.ani.app.ui.subject.details.state.SubjectDetailsStateLoader
 import me.him188.ani.app.ui.subject.details.state.createTestSubjectDetailsLoader
 import me.him188.ani.app.ui.subject.episode.EpisodePageLoadError

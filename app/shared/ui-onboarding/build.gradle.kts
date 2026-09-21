@@ -24,6 +24,10 @@ kotlin {
         implementation(libs.compose.components.resources)
         implementation(projects.utils.logging)
     }
+    sourceSets.commonTest.dependencies {
+        implementation(libs.kotlinx.coroutines.test)
+        implementation(projects.utils.uiTesting)
+    }
     sourceSets.androidMain.dependencies {
     }
     sourceSets.desktopMain.dependencies {

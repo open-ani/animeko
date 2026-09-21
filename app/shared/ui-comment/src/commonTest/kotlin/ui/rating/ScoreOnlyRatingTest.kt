@@ -4,9 +4,7 @@
  */
 package me.him188.ani.app.ui.rating
 
-import androidx.compose.runtime.mutableStateOf
 import kotlinx.coroutines.test.runTest
-import me.him188.ani.app.data.models.subject.RatingInfo
 import me.him188.ani.app.data.models.subject.SelfRatingInfo
 import kotlin.test.Test
 import kotlin.test.assertEquals
@@ -17,22 +15,17 @@ import kotlin.test.assertTrue
 class ScoreOnlyRatingTest {
     @Test fun changingOrClearingScorePreservesExistingReviewAndPrivacy() = runTest {
         val submitted = mutableListOf<RateRequest>()
-        val state = EditableRatingState(
-            mutableStateOf(RatingInfo.Empty),
-            mutableStateOf(SelfRatingInfo(7, "Existing review [mask]spoiler[/mask]", emptyList(), true)),
-            mutableStateOf(true), { true }, { submitted += it }, backgroundScope,
-        )
-        assertNull(state.updateScore(9))
-        assertNull(state.updateScore(0))
+        val rating = SelfRatingInfo(7, "Existing review [mask]spoiler[/mask]", emptyList(), true)
+        val controller = RatingEditController({ true }, { rating }, { submitted += it }, backgroundScope)
+        assertNull(controller.updateScore(9))
+        assertNull(controller.updateScore(0))
         assertEquals(listOf(9, 0), submitted.map { it.score })
         assertTrue(submitted.all { it.comment == "Existing review [mask]spoiler[/mask]" && it.isPrivate })
     }
 
-    @Test fun failedScoreSubmissionReturnsAnErrorWithoutChangingCurrentRating() = runTest {
+    @Test fun failedScoreSubmissionReturnsAnError() = runTest {
         val rating = SelfRatingInfo(7, null, emptyList(), false)
-        val state = EditableRatingState(mutableStateOf(RatingInfo.Empty), mutableStateOf(rating),
-            mutableStateOf(true), { true }, { error("offline") }, backgroundScope)
-        assertNotNull(state.updateScore(8))
-        assertEquals(rating, state.selfRatingInfo)
+        val controller = RatingEditController({ true }, { rating }, { error("offline") }, backgroundScope)
+        assertNotNull(controller.updateScore(8))
     }
 }

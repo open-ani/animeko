@@ -30,7 +30,6 @@ import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import me.him188.ani.app.data.models.person.PersonSubjectSummary
 import me.him188.ani.app.data.models.preference.NsfwMode
-import me.him188.ani.app.data.models.subject.SelfRatingInfo
 import me.him188.ani.app.data.models.subject.SubjectInfo
 import me.him188.ani.app.data.network.TmdbImageService
 import me.him188.ani.app.data.network.matchToEpisodes
@@ -45,12 +44,13 @@ import me.him188.ani.app.domain.session.SessionState
 import me.him188.ani.app.domain.session.SessionStateProvider
 import me.him188.ani.app.ui.comment.UICommentSource
 import me.him188.ani.app.ui.foundation.AbstractViewModel
-import me.him188.ani.app.ui.subject.details.SubjectDetailsUIState
+import me.him188.ani.app.ui.subject.AiringLabelState
+import me.him188.ani.app.ui.subject.SubjectProgressState
+import me.him188.ani.app.ui.subject.details.SubjectDetailsLoadState
 import me.him188.ani.app.ui.subject.details.state.SubjectDetailsState
 import me.him188.ani.app.ui.subject.details.state.SubjectDetailsStateFactory
 import me.him188.ani.app.ui.subject.details.state.SubjectDetailsStateLoader
 import me.him188.ani.app.ui.subject.episode.list.EpisodeListItem
-import me.him188.ani.datasources.api.topic.UnifiedCollectionType
 import me.him188.ani.datasources.api.topic.toggleCollected
 import me.him188.ani.leanback.ui.foundation.TvNavigationEvent
 import me.him188.ani.leanback.ui.foundation.TvNavigationEvents
@@ -83,7 +83,7 @@ class TvSubjectDetailsViewModel(
     // Keep paging consumers mounted across loader refreshes. Paging retains the current
     // generation until the replacement has data, including lazy item/focus identities.
     private fun <T : Any> pager(select: (SubjectDetailsState) -> Flow<PagingData<T>>) = loader.state
-        .filterIsInstance<SubjectDetailsUIState.Ok>()
+        .filterIsInstance<SubjectDetailsLoadState.Ok>()
         .flatMapLatest { select(it.value) }
         .cachedIn(backgroundScope)
 
@@ -94,44 +94,35 @@ class TvSubjectDetailsViewModel(
 
     private val details = loader.state.flatMapLatest { loaded ->
         when (loaded) {
-            is SubjectDetailsUIState.Placeholder -> flowOf(TvSubjectDetailsUiState(refreshing = true))
-            is SubjectDetailsUIState.Err -> flowOf(TvSubjectDetailsUiState(error = loaded.error))
-            is SubjectDetailsUIState.Ok -> {
+            is SubjectDetailsLoadState.Placeholder -> flowOf(TvSubjectDetailsUiState(refreshing = true))
+            is SubjectDetailsLoadState.Err -> flowOf(TvSubjectDetailsUiState(error = loaded.error))
+            is SubjectDetailsLoadState.Ok -> {
                 val shared = loaded.value
-                combine(shared.presentation, snapshotFlow {
-                    DetailSnapshot(
-                        shared.subjectProgressState.episodeIdToPlay,
-                        shared.totalCharactersCountState.value,
-                        shared.totalStaffCountState.value,
-                        shared.subjectCommentState.count,
-                        shared.selfCollectionType,
-                        shared.editableRatingState.selfRatingInfo,
-                    )
-                }) { presentation, snapshot ->
-                    val episodeList = presentation.episodeListUiState
+                combine(shared.uiState, snapshotFlow { shared.subjectCommentState.count }) { ui, commentCount ->
+                    val episodeList = ui.episodeListUiState
                     val episodes = episodeList.mainEpisodes + episodeList.otherEpisodes
                     TvSubjectDetailsUiState(content = TvSubjectDetailsContentState(
                         info = shared.info ?: SubjectInfo.Empty,
                         episodes = episodes,
-                        episodesLoading = presentation.isPlaceholder || episodeList.isPlaceholder,
-                        playTargetId = selectTvResumeEpisode(snapshot.resumeEpisodeId, episodes),
+                        episodesLoading = ui.isPlaceholder || episodeList.isPlaceholder,
+                        playTargetId = selectTvResumeEpisode(ui.progressInfo?.nextEpisodeIdToPlay, episodes),
                         watchedCount = episodes.count { it.isDoneOrDropped },
                         exposedCharactersPager = shared.exposedCharactersPager,
-                        totalCharactersCount = snapshot.charactersCount,
+                        totalCharactersCount = ui.totalCharactersCount,
                         exposedStaffPager = shared.exposedStaffPager,
-                        totalStaffCount = snapshot.staffCount,
+                        totalStaffCount = ui.totalStaffCount,
                         relatedSubjectsPager = relatedPager,
                         commentsPager = commentsPager,
-                        commentCount = snapshot.commentCount,
-                        collectionType = snapshot.collectionType,
-                        selfRating = snapshot.rating,
+                        commentCount = commentCount,
+                        collectionType = ui.selfCollectionType,
+                        selfRating = ui.rating.selfRatingInfo,
                         mainEpisodeIds = episodeList.mainEpisodes.mapTo(mutableSetOf()) { it.episodeId },
                         charactersPager = charactersPager,
                         staffPager = staffPager,
                         commentPresentation = shared.subjectCommentState::withOverlay,
                         canReport = shared.subjectCommentReportState != null,
-                        airing = shared.airingLabelState,
-                        progress = shared.subjectProgressState,
+                        airing = AiringLabelState(ui.airingInfo, ui.progressInfo),
+                        progress = SubjectProgressState(ui.progressInfo),
                     ))
                 }
             }
@@ -159,7 +150,7 @@ class TvSubjectDetailsViewModel(
         loadImages()
         backgroundScope.launch {
             loader.state.collectLatest { state ->
-                if (state !is SubjectDetailsUIState.Ok) return@collectLatest
+                if (state !is SubjectDetailsLoadState.Ok) return@collectLatest
                 coroutineScope {
                     launch { state.value.subjectCommentState.actionSubmitFailures.collect { feedback.send(LoadError.fromException(it)) } }
                     launch { state.value.subjectCommentState.commentLoadFailures.collect { feedback.send(LoadError.fromException(it)) } }
@@ -181,18 +172,17 @@ class TvSubjectDetailsViewModel(
             is TvSubjectDetailsIntent.PlayEpisode -> playEpisode(intent.episodeId)
             is TvSubjectDetailsIntent.OpenRelatedSubject -> navigation.emit(TvNavigationEvent.Subject(intent.subjectId))
             is TvSubjectDetailsIntent.SetCollection -> perform(intent.requestId) { shared ->
-                val state = shared.editableSubjectCollectionTypeState
-                val error = state.setSelfCollectionType(intent.type)
-                val offer = error == null && state.shouldOfferMarkAllWatched
-                state.dismissSetAllEpisodesDoneDialog()
+                val error = shared.setSelfCollectionType(intent.type)
+                val offer = error == null && shared.shouldOfferMarkAllWatched
+                shared.dismissSetAllEpisodesDoneDialog()
                 TvSubjectOperation(error = error, offerMarkAllWatched = offer)
             }
             is TvSubjectDetailsIntent.MarkAllWatched -> perform(intent.requestId) {
-                TvSubjectOperation(error = it.editableSubjectCollectionTypeState.setAllEpisodesWatchedAwait())
+                TvSubjectOperation(error = it.setAllEpisodesWatchedAwait())
             }
             is TvSubjectDetailsIntent.SetScore -> {
-                if (intent.score !in 0..10 || currentDetails()?.editableRatingState?.enableEdit != true) return
-                perform(intent.requestId) { TvSubjectOperation(error = it.editableRatingState.updateScore(intent.score)) }
+                if (intent.score !in 0..10 || currentDetails()?.uiState?.value?.rating?.enableEdit != true) return
+                perform(intent.requestId) { TvSubjectOperation(error = it.updateScore(intent.score)) }
             }
             is TvSubjectDetailsIntent.ToggleEpisode -> {
                 val episode = uiState.value.content?.episodes?.find { it.episodeId == intent.episodeId } ?: return
@@ -237,7 +227,7 @@ class TvSubjectDetailsViewModel(
         }
     }
 
-    private fun currentDetails(): SubjectDetailsState? = (loader.state.value as? SubjectDetailsUIState.Ok)?.value
+    private fun currentDetails(): SubjectDetailsState? = (loader.state.value as? SubjectDetailsLoadState.Ok)?.value
 
     private fun requireLogin(): Boolean {
         if (loggedIn.value == false) navigation.emit(TvNavigationEvent.Login)
@@ -284,12 +274,6 @@ class TvSubjectDetailsViewModel(
     private suspend fun <T> loadOrNull(block: suspend () -> T): T? = try { block() }
     catch (e: CancellationException) { throw e }
     catch (e: Exception) { null }
-
-    private data class DetailSnapshot(
-        val resumeEpisodeId: Int?, val charactersCount: Int?, val staffCount: Int?, val commentCount: Int?,
-        val collectionType: UnifiedCollectionType,
-        val rating: SelfRatingInfo,
-    )
 }
 
 internal fun selectTvResumeEpisode(resumeEpisodeId: Int?, episodes: List<EpisodeListItem>): Int? =

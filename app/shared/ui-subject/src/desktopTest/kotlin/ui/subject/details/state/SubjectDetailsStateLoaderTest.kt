@@ -25,7 +25,7 @@ import kotlinx.coroutines.test.setMain
 import me.him188.ani.app.data.models.subject.SubjectCollectionInfo
 import me.him188.ani.app.data.models.subject.SubjectInfo
 import me.him188.ani.app.data.models.subject.TestSubjectInfo
-import me.him188.ani.app.ui.subject.details.SubjectDetailsUIState
+import me.him188.ani.app.ui.subject.details.SubjectDetailsLoadState
 import me.him188.ani.utils.platform.annotations.TestOnly
 import kotlin.test.AfterTest
 import kotlin.test.BeforeTest
@@ -89,12 +89,12 @@ class SubjectDetailsStateLoaderTest {
     fun `load emits ok`() = runTest(UnconfinedTestDispatcher()) {
         val factory = RecordingFactory()
         val loader = SubjectDetailsStateLoader(factory, backgroundScope)
-        assertEquals(0, assertIs<SubjectDetailsUIState.Placeholder>(loader.state.value).subjectId)
+        assertEquals(0, assertIs<SubjectDetailsLoadState.Placeholder>(loader.state.value).subjectId)
 
         loader.load(subjectId)
 
         assertEquals(1, factory.createCount)
-        assertIs<SubjectDetailsUIState.Ok>(loader.state.value)
+        assertIs<SubjectDetailsLoadState.Ok>(loader.state.value)
         assertTrue(factory.scopes.single().isActive)
     }
 
@@ -104,7 +104,7 @@ class SubjectDetailsStateLoaderTest {
         val loader = SubjectDetailsStateLoader(factory, backgroundScope)
 
         loader.load(subjectId)
-        val first = assertIs<SubjectDetailsUIState.Ok>(loader.state.value)
+        val first = assertIs<SubjectDetailsLoadState.Ok>(loader.state.value)
 
         // 从播放页返回时会再次 load, 不能重新加载, 也不能停止更新
         loader.load(subjectId)
@@ -120,16 +120,16 @@ class SubjectDetailsStateLoaderTest {
         val loader = SubjectDetailsStateLoader(factory, backgroundScope)
 
         loader.load(subjectId)
-        val first = assertIs<SubjectDetailsUIState.Ok>(loader.state.value)
+        val first = assertIs<SubjectDetailsLoadState.Ok>(loader.state.value)
 
         loader.clear()
-        assertEquals(0, assertIs<SubjectDetailsUIState.Placeholder>(loader.state.value).subjectId)
+        assertEquals(0, assertIs<SubjectDetailsLoadState.Placeholder>(loader.state.value).subjectId)
         assertFalse(factory.scopes[0].isActive)
 
         loader.load(subjectId)
 
         assertEquals(2, factory.createCount)
-        val second = assertIs<SubjectDetailsUIState.Ok>(loader.state.value)
+        val second = assertIs<SubjectDetailsLoadState.Ok>(loader.state.value)
         assertNotSame(first, second)
         assertTrue(factory.scopes[1].isActive)
     }
@@ -140,12 +140,12 @@ class SubjectDetailsStateLoaderTest {
         val loader = SubjectDetailsStateLoader(factory, backgroundScope)
 
         loader.load(subjectId)
-        val first = assertIs<SubjectDetailsUIState.Ok>(loader.state.value)
+        val first = assertIs<SubjectDetailsLoadState.Ok>(loader.state.value)
 
         loader.load(subjectId, force = true)
 
         assertEquals(2, factory.createCount)
-        val second = assertIs<SubjectDetailsUIState.Ok>(loader.state.value)
+        val second = assertIs<SubjectDetailsLoadState.Ok>(loader.state.value)
         assertNotSame(first, second)
         assertFalse(factory.scopes[0].isActive)
         assertTrue(factory.scopes[1].isActive)
@@ -157,7 +157,7 @@ class SubjectDetailsStateLoaderTest {
         val loader = SubjectDetailsStateLoader(factory, backgroundScope)
 
         loader.load(subjectId)
-        assertIs<SubjectDetailsUIState.Ok>(loader.state.value)
+        assertIs<SubjectDetailsLoadState.Ok>(loader.state.value)
 
         loader.load(subjectId + 1)
 
@@ -173,12 +173,12 @@ class SubjectDetailsStateLoaderTest {
 
         factory.failNextWith = IllegalStateException("network")
         loader.load(subjectId)
-        assertIs<SubjectDetailsUIState.Err>(loader.state.value)
+        assertIs<SubjectDetailsLoadState.Err>(loader.state.value)
 
         loader.load(subjectId)
 
         assertEquals(2, factory.createCount)
-        assertIs<SubjectDetailsUIState.Ok>(loader.state.value)
+        assertIs<SubjectDetailsLoadState.Ok>(loader.state.value)
         assertTrue(factory.scopes.single().isActive)
     }
 }

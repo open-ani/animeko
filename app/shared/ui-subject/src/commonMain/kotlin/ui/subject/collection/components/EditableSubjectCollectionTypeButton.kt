@@ -45,6 +45,40 @@ import me.him188.ani.utils.platform.annotations.TestOnly
 import org.jetbrains.compose.resources.*
 import kotlin.coroutines.cancellation.CancellationException
 
+/**
+ * 编辑条目收藏类型的交互. 由 [EditableSubjectCollectionTypeState] 实现, 也可由页面状态委托实现.
+ */
+interface SubjectCollectionTypeEditActions {
+    /**
+     * @return 失败原因, 成功为 `null`.
+     */
+    suspend fun setSelfCollectionType(new: UnifiedCollectionType): LoadError?
+
+    /**
+     * [setSelfCollectionType] 成功后是否应该询问 "同时设置所有剧集为看过".
+     * 供不使用 [EditableSubjectCollectionTypeDialogsHost] 的界面 (例如 TV) 在设置完成后同步读取.
+     */
+    val shouldOfferMarkAllWatched: Boolean
+
+    fun setAllEpisodesWatched()
+
+    /**
+     * 等待完成的 [setAllEpisodesWatched].
+     *
+     * @return 失败原因, 成功为 `null`.
+     */
+    suspend fun setAllEpisodesWatchedAwait(): LoadError?
+    fun dismissSetAllEpisodesDoneDialog()
+
+    companion object Noop : SubjectCollectionTypeEditActions {
+        override suspend fun setSelfCollectionType(new: UnifiedCollectionType): LoadError? = null
+        override val shouldOfferMarkAllWatched: Boolean get() = false
+        override fun setAllEpisodesWatched() {}
+        override suspend fun setAllEpisodesWatchedAwait(): LoadError? = null
+        override fun dismissSetAllEpisodesDoneDialog() {}
+    }
+}
+
 @Stable
 class EditableSubjectCollectionTypeState(
     selfCollectionTypeFlow: Flow<UnifiedCollectionType>,
@@ -52,7 +86,7 @@ class EditableSubjectCollectionTypeState(
     private val onSetSelfCollectionType: suspend (UnifiedCollectionType) -> Unit,
     private val onSetAllEpisodesWatched: suspend () -> Unit,
     private val backgroundScope: CoroutineScope,
-) {
+) : SubjectCollectionTypeEditActions {
     data class Presentation(
         val selfCollectionType: UnifiedCollectionType,
         val isSetSelfCollectionTypeWorking: Boolean,
@@ -75,7 +109,7 @@ class EditableSubjectCollectionTypeState(
      * 是否显示 "将所有剧集标记为看过" 对话框
      */
     private val showSetAllEpisodesDoneDialogFlow = MutableStateFlow(false)
-    val shouldOfferMarkAllWatched: Boolean get() = showSetAllEpisodesDoneDialogFlow.value
+    override val shouldOfferMarkAllWatched: Boolean get() = showSetAllEpisodesDoneDialogFlow.value
 
     /**
      * [setSelfCollectionType] 的后台任务
@@ -109,7 +143,7 @@ class EditableSubjectCollectionTypeState(
             initialValue = Presentation.Placeholder,
         )
 
-    suspend fun setSelfCollectionType(new: UnifiedCollectionType): LoadError? {
+    override suspend fun setSelfCollectionType(new: UnifiedCollectionType): LoadError? {
         return setSelfCollectionTypeTasker.async {
             try {
                 onSetSelfCollectionType(new)
@@ -125,15 +159,15 @@ class EditableSubjectCollectionTypeState(
         }.await()
     }
 
-    fun setAllEpisodesWatched() {
+    override fun setAllEpisodesWatched() {
         backgroundScope.launch { setAllEpisodesWatchedAwait() }
     }
 
-    suspend fun setAllEpisodesWatchedAwait(): LoadError? = setAllEpisodesWatchedTasker.async {
+    override suspend fun setAllEpisodesWatchedAwait(): LoadError? = setAllEpisodesWatchedTasker.async {
         LoadError.runAndWrapOrThrowCancellation { onSetAllEpisodesWatched() }
     }.await()
 
-    fun dismissSetAllEpisodesDoneDialog() {
+    override fun dismissSetAllEpisodesDoneDialog() {
         showSetAllEpisodesDoneDialogFlow.value = false
     }
 }
@@ -147,11 +181,23 @@ fun EditableSubjectCollectionTypeButton(
     state: EditableSubjectCollectionTypeState,
     modifier: Modifier = Modifier,
 ) {
-    // 同时设置所有剧集为看过
-    EditableSubjectCollectionTypeDialogsHost(state)
+    val presentation by state.presentationFlow.collectAsStateWithLifecycle()
+    EditableSubjectCollectionTypeButton(presentation, state, modifier)
+}
 
-    val presentation by state.presentationFlow
-        .collectAsStateWithLifecycle()
+/**
+ * 展示当前收藏状态的按钮, 点击弹出 [EditCollectionTypeDropDown]; 自带 [EditableSubjectCollectionTypeDialogsHost].
+ *
+ * 展示数据与动作分离的版本, 供页面级 UiState 使用.
+ */
+@Composable
+fun EditableSubjectCollectionTypeButton(
+    presentation: EditableSubjectCollectionTypeState.Presentation,
+    actions: SubjectCollectionTypeEditActions,
+    modifier: Modifier = Modifier,
+) {
+    // 同时设置所有剧集为看过
+    EditableSubjectCollectionTypeDialogsHost(presentation, actions)
 
     val scope = rememberCoroutineScope()
     val toaster = LocalToaster.current
@@ -160,7 +206,7 @@ fun EditableSubjectCollectionTypeButton(
         presentation.selfCollectionType,
         onEdit = {
             scope.launch {
-                val error = state.setSelfCollectionType(it)
+                val error = actions.setSelfCollectionType(it)
                 error?.let(toaster::showLoadError)
             }
         },
@@ -180,18 +226,28 @@ fun EditableSubjectCollectionTypeButton(
 fun EditableSubjectCollectionTypeDialogsHost(
     state: EditableSubjectCollectionTypeState,
 ) {
+    val presentation by state.presentationFlow.collectAsStateWithLifecycle()
+    EditableSubjectCollectionTypeDialogsHost(presentation, state)
+}
+
+/**
+ * "同时设置所有剧集为看过" 对话框, 展示数据与动作分离的版本.
+ */
+@Composable
+fun EditableSubjectCollectionTypeDialogsHost(
+    presentation: EditableSubjectCollectionTypeState.Presentation,
+    actions: SubjectCollectionTypeEditActions,
+) {
     val scope = rememberCoroutineScope()
     val toaster = LocalToaster.current
-    // 同时设置所有剧集为看过
-    val presentation by state.presentationFlow.collectAsStateWithLifecycle()
     if (presentation.showSetAllEpisodesDoneDialog) {
         SetAllEpisodeDoneDialog(
-            onDismissRequest = { state.dismissSetAllEpisodesDoneDialog() },
+            onDismissRequest = { actions.dismissSetAllEpisodesDoneDialog() },
             isWorking = presentation.isSetAllEpisodesWatchedWorking,
             onConfirm = {
                 scope.launch {
-                    val error = state.setAllEpisodesWatchedAwait()
-                    if (error == null) state.dismissSetAllEpisodesDoneDialog()
+                    val error = actions.setAllEpisodesWatchedAwait()
+                    if (error == null) actions.dismissSetAllEpisodesDoneDialog()
                     else toaster.showLoadError(error)
                 }
             },

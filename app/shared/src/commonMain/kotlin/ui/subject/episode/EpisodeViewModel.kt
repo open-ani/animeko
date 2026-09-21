@@ -421,6 +421,7 @@ class EpisodeViewModel(
 
     val cacheProgressInfoFlow = CacheProgressProvider(
         player, backgroundScope,
+        prefetchProgress = fetchPlayState.playerSession.prefetchController.prefetchProgress,
     ).cacheProgressInfoFlow
 
     /**
@@ -1187,7 +1188,11 @@ class EpisodeViewModel(
                 .distinctUntilChanged()
                 .debounce(1000)
                 .collectLatest { enabled ->
-                    if (!enabled) return@collectLatest
+                    val prefetchController = fetchPlayState.playerSession.prefetchController
+                    if (!enabled) {
+                        prefetchController.setPrefetchRequest(null)
+                        return@collectLatest
+                    }
 
                     // 根据当前倍速调整采样间隔, 使其在媒体时间线上对应一秒.
                     val positionSamples = player.features[PlaybackSpeed]?.let { playbackSpeed ->
@@ -1209,8 +1214,15 @@ class EpisodeViewModel(
                         episodeCollectionsFlow,
                     ) { pos, id, collections ->
                         // 不止一集并且当前是第一集时不跳过
-                        if (collections.size > 1 && collections.getOrNull(0)?.episodeId == id) return@combine
-                        if (!playbackAutomationGate.suppressed.value) playerSkipOpEdState.update(pos)
+                        val skipAllowed = !(collections.size > 1 && collections.getOrNull(0)?.episodeId == id) &&
+                                !playbackAutomationGate.suppressed.value
+                        if (skipAllowed) {
+                            playerSkipOpEdState.update(pos)
+                            // 即将自动跳过时, 提前缓存跳转目标处的数据, 跳过后可立即续播
+                            prefetchController.setPrefetchRequest(playerSkipOpEdState.prefetchRequest)
+                        } else {
+                            prefetchController.setPrefetchRequest(null)
+                        }
                     }.collect()
                 }
         }

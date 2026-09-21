@@ -51,6 +51,8 @@ import me.him188.ani.app.data.repository.subject.SubjectSearchCompletionReposito
 import me.him188.ani.app.data.repository.subject.SubjectSearchHistoryRepository
 import me.him188.ani.app.data.repository.subject.SubjectSearchRepository
 import me.him188.ani.app.data.repository.torrent.peer.PeerFilterSubscriptionRepository
+import me.him188.ani.app.data.repository.user.DefaultDeveloperVerificationRepository
+import me.him188.ani.app.data.repository.user.DeveloperVerificationRepository
 import me.him188.ani.app.data.repository.user.PreferencesRepositoryImpl
 import me.him188.ani.app.data.repository.user.SettingsRepository
 import me.him188.ani.app.data.repository.user.TokenRepository
@@ -85,8 +87,12 @@ fun KoinApplication.repositoryModules(
             aniApiProvider.userAuthApi,
             aniApiProvider.userProfileApi,
             aniApiProvider.bangumiApi,
+            aniApiProvider.oauthApi,
             get(),
         )
+    }
+    single<DeveloperVerificationRepository> {
+        DefaultDeveloperVerificationRepository(aniApiProvider.developerVerificationApi)
     }
     single<BangumiSyncCommandRepository> {
         BangumiSyncCommandRepository(

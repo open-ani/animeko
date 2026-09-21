@@ -32,6 +32,25 @@ interface AniBuildConfig {
 
     val distroChannel: String
 
+    /**
+     * 构建时所在的 git 分支名, 如 `main`. CI 里 PR 构建为 PR 的源分支, tag 构建为 tag 名.
+     * 无法获取 (源码包构建, 或没有 git) 时为空.
+     */
+    val gitBranch: String
+        get() = ""
+
+    /**
+     * 构建时 HEAD 的完整 commit sha (40 位十六进制). 无法获取时为空.
+     */
+    val gitCommitSha: String
+        get() = ""
+
+    /**
+     * HEAD commit 的提交时间, ISO-8601, 如 `2026-09-20T12:00:00+08:00`. 无法获取时为空.
+     */
+    val gitCommitTime: String
+        get() = ""
+
     val sentryEnabled: Boolean
         get() = true
     val analyticsEnabled: Boolean

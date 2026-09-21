@@ -145,8 +145,15 @@ interface AniNavigator {
         navigate(NavRoutes.EmailLoginStart)
     }
 
+    /**
+     * @param provider 平台 ID, 见 `OAuthPlatform.id`
+     */
+    fun navigateOAuthAuthorize(provider: String) {
+        navigate(NavRoutes.OAuthAuthorize(provider))
+    }
+
     fun navigateBangumiAuthorize() {
-        navigate(NavRoutes.BangumiAuthorize)
+        navigateOAuthAuthorize("bangumi")
     }
 
     fun navigatePlaybackHistorySyncStatus() {

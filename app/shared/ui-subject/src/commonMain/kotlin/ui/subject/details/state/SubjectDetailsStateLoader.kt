@@ -24,12 +24,12 @@ import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import me.him188.ani.app.data.models.subject.SubjectInfo
 import me.him188.ani.app.domain.foundation.LoadError
-import me.him188.ani.app.ui.subject.details.SubjectDetailsUIState
+import me.him188.ani.app.ui.subject.details.SubjectDetailsLoadState
 import me.him188.ani.utils.platform.annotations.TestOnly
 
 /**
  * 按需加载条目详情. [state] 由当前请求的条目派生, 只要 loader 所在的 scope 活着, 当前条目的 [SubjectDetailsState] 就一直在更新.
- * 未加载时为 subjectId = 0 的 [SubjectDetailsUIState.Placeholder]; 失败可通过 [retry] 重试.
+ * 未加载时为 subjectId = 0 的 [SubjectDetailsLoadState.Placeholder]; 失败可通过 [retry] 重试.
  *
  * @see SubjectDetailsState
  */
@@ -56,17 +56,17 @@ class SubjectDetailsStateLoader(
      * 换条目或重新加载时取消上一个, 其余时候持续收集, 数据库里的更新 (例如播放页标记看过) 才能一直传到页面上.
      */
     @OptIn(ExperimentalCoroutinesApi::class)
-    val state: StateFlow<SubjectDetailsUIState> = request
+    val state: StateFlow<SubjectDetailsLoadState> = request
         .flatMapLatest { req ->
             if (req == null) return@flatMapLatest flowOf(Idle)
-            flow<SubjectDetailsUIState> {
-                emit(SubjectDetailsUIState.Placeholder(req.subjectId, req.placeholder))
+            flow<SubjectDetailsLoadState> {
+                emit(SubjectDetailsLoadState.Placeholder(req.subjectId, req.placeholder))
                 emitAll(
                     subjectDetailsStateFactory.create(req.subjectId, req.placeholder)
-                        .map { SubjectDetailsUIState.Ok(it.subjectId, it) },
+                        .map { SubjectDetailsLoadState.Ok(it.subjectId, it) },
                 )
             }.catch { e ->
-                emit(SubjectDetailsUIState.Err(req.subjectId, req.placeholder, LoadError.fromException(e)))
+                emit(SubjectDetailsLoadState.Err(req.subjectId, req.placeholder, LoadError.fromException(e)))
             }
         }
         .stateIn(backgroundScope, SharingStarted.Eagerly, Idle)
@@ -81,15 +81,15 @@ class SubjectDetailsStateLoader(
         placeholder: SubjectInfo? = null,
         force: Boolean = false,
     ) {
-        if (!force && request.value?.subjectId == subjectId && state.value !is SubjectDetailsUIState.Err) {
+        if (!force && request.value?.subjectId == subjectId && state.value !is SubjectDetailsLoadState.Err) {
             return
         }
         request.value = Request(subjectId, placeholder, nextAttempt())
     }
 
-    /** 加载失败后的原地重试: 目标条目取自当前 [SubjectDetailsUIState.Err], 非错误态时无操作. */
+    /** 加载失败后的原地重试: 目标条目取自当前 [SubjectDetailsLoadState.Err], 非错误态时无操作. */
     fun retry() {
-        val err = state.value as? SubjectDetailsUIState.Err ?: return
+        val err = state.value as? SubjectDetailsLoadState.Err ?: return
         load(err.subjectId, err.placeholder, force = true)
     }
 
@@ -100,7 +100,7 @@ class SubjectDetailsStateLoader(
 
     private companion object {
         /** 未加载任何条目时的占位 (subjectId = 0 不对应真实条目). */
-        private val Idle = SubjectDetailsUIState.Placeholder(subjectId = 0)
+        private val Idle = SubjectDetailsLoadState.Placeholder(subjectId = 0)
     }
 
     private fun nextAttempt(): Int = (request.value?.attempt ?: 0) + 1

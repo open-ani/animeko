@@ -222,7 +222,7 @@ fun TvAniAppContent(
                     }
 
 
-                    entry<NavRoutes.BangumiAuthorize> {
+                    entry<NavRoutes.OAuthAuthorize> {
                         val viewModel = tvViewModel { TvLoginViewModel(dependencies.koin) }
                         TvLoginRoute(
                             viewModel,
