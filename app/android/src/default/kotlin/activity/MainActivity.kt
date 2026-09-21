@@ -28,6 +28,7 @@ import androidx.lifecycle.lifecycleScope
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import me.him188.ani.android.BuildConfig
+import me.him188.ani.app.data.repository.user.QrLoginRepository
 import me.him188.ani.app.navigation.AniNavigator
 import me.him188.ani.app.platform.AniComponentActivity
 import me.him188.ani.app.platform.rememberPlatformWindow
@@ -58,18 +59,29 @@ class MainActivity : AniComponentActivity() {
     private fun handleStartIntent(intent: Intent) {
         val data = intent.data ?: return
         if (data.scheme != "ani") return
-        if (data.host == "subjects") {
-            val id = data.pathSegments.getOrNull(0)?.toIntOrNull() ?: return
-            lifecycleScope.launch {
-                try {
-                    if (!aniNavigator.isBackStackReady()) {
-                        aniNavigator.awaitBackStack()
-                        delay(1000) // 等待初始化好, 否则跳转可能无效
-                    }
-                    aniNavigator.navigateSubjectDetails(id, placeholder = null)
-                } catch (e: Exception) {
-                    logger.error(e) { "Failed to navigate to subject details" }
+        when (data.host) {
+            "subjects" -> {
+                val id = data.pathSegments.getOrNull(0)?.toIntOrNull() ?: return
+                navigateWhenReady("subject details") { navigateSubjectDetails(id, placeholder = null) }
+            }
+
+            "qr-login" -> {
+                val requestId = QrLoginRepository.parseRequestId(data.toString()) ?: return
+                navigateWhenReady("QR login confirm") { navigateQrLoginConfirm(requestId) }
+            }
+        }
+    }
+
+    private fun navigateWhenReady(destination: String, action: AniNavigator.() -> Unit) {
+        lifecycleScope.launch {
+            try {
+                if (!aniNavigator.isBackStackReady()) {
+                    aniNavigator.awaitBackStack()
+                    delay(1000) // 等待初始化好, 否则跳转可能无效
                 }
+                aniNavigator.action()
+            } catch (e: Exception) {
+                logger.error(e) { "Failed to navigate to $destination" }
             }
         }
     }

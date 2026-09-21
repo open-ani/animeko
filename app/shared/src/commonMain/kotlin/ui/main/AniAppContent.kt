@@ -80,6 +80,10 @@ import me.him188.ani.app.ui.login.EmailLoginVerifyScreen
 import me.him188.ani.app.ui.login.EmailLoginViewModel
 import me.him188.ani.app.ui.oauth.OAuthAuthorizeScreen
 import me.him188.ani.app.ui.oauth.OAuthAuthorizeViewModel
+import me.him188.ani.app.ui.qrlogin.QrLoginConfirmScreen
+import me.him188.ani.app.ui.qrlogin.QrLoginConfirmViewModel
+import me.him188.ani.app.ui.qrlogin.QrLoginScanScreen
+import me.him188.ani.app.ui.qrlogin.isQrCodeScannerSupported
 import me.him188.ani.app.ui.playback.PlaybackHistoryScreen
 import me.him188.ani.app.ui.playback.PlaybackHistorySyncStatusScreen
 import me.him188.ani.app.ui.playback.PlaybackHistoryViewModel
@@ -245,6 +249,29 @@ private fun AniAppContentImpl(
                     },
                 )
             }
+            entry<NavRoutes.QrLoginScan> { route ->
+                QrLoginScanScreen(
+                    onScanned = { requestId ->
+                        // 确认页取代扫码页: 从确认页返回时不再回到相机
+                        aniNavigator.popBackStack(route, true)
+                        aniNavigator.navigateQrLoginConfirm(requestId)
+                    },
+                    onNavigateBack = { aniNavigator.popBackStack(route, true) },
+                )
+            }
+            entry<NavRoutes.QrLoginConfirm> { route ->
+                val vm = viewModel<QrLoginConfirmViewModel>(key = route.requestId) {
+                    QrLoginConfirmViewModel.create(route.requestId)
+                }
+                QrLoginConfirmScreen(
+                    vm,
+                    onNavigateBack = { aniNavigator.popBackStack(route, true) },
+                    onNavigateLogin = {
+                        aniNavigator.popBackStack(route, true)
+                        aniNavigator.navigateLogin()
+                    },
+                )
+            }
             entry<NavRoutes.Main> { route ->
                 val navigationLayoutType =
                     AniNavigationSuiteDefaults.calculateLayoutType(
@@ -360,6 +387,9 @@ private fun AniAppContentImpl(
                     loadOpenSourceLibrariesJsons = ::loadOpenSourceLibrariesJsons,
                     Modifier.fillMaxSize(),
                     route.tab,
+                    onNavigateToQrLogin = if (isQrCodeScannerSupported) {
+                        { aniNavigator.navigateQrLoginScan() }
+                    } else null,
                     navigationIcon = {
                         BackNavigationIconButton(
                             {

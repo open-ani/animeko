@@ -1709,6 +1709,32 @@
     <string name="downloads_episode_picker_current">目前</string>
     <string name="downloads_episode_picker_selected_count">已選 %1$d 集</string>
     <string name="downloads_episode_picker_back">返回</string>
+    <string name="qr_login_title">掃碼登入</string>
+    <string name="qr_login_settings_description">在電視等裝置上登入此帳號</string>
+    <string name="qr_login_scan_hint">對準電視上的二維碼</string>
+    <string name="qr_login_scan_invalid">這不是 Animeko 登入二維碼</string>
+    <string name="qr_login_scan_torch">電筒</string>
+    <string name="qr_login_camera_permission">需要相機權限才能掃碼</string>
+    <string name="qr_login_camera_permission_grant">允許使用相機</string>
+    <string name="qr_login_confirm_title">確認登入</string>
+    <string name="qr_login_confirm_headline">在新裝置上登入?</string>
+    <string name="qr_login_confirm_as">將以 %1$s 的身份登入以下裝置</string>
+    <string name="qr_login_confirm_as_current">將以你的帳號登入以下裝置</string>
+    <string name="qr_login_confirm_unknown_device">未知裝置</string>
+    <string name="qr_login_confirm_device_requesting">正在請求登入</string>
+    <string name="qr_login_confirm_warning">只在你本人正看著這台裝置時確認。不要掃描他人發來的登入二維碼。</string>
+    <string name="qr_login_confirm_approve">確認登入</string>
+    <string name="qr_login_confirm_reject">拒絕</string>
+    <string name="qr_login_approved_title">已登入</string>
+    <string name="qr_login_approved_description">%1$s 已登入你的帳號, 可以放下手機了</string>
+    <string name="qr_login_rejected_title">已拒絕登入</string>
+    <string name="qr_login_expired">二維碼已過期, 請在電視上重新載入後再試</string>
+    <string name="qr_login_already_handled">這個二維碼已被使用</string>
+    <string name="qr_login_requires_login">請先在此裝置上登入 Animeko</string>
+    <string name="qr_login_failed">操作失敗, 請檢查網絡後再試</string>
+    <string name="qr_login_retry">重試</string>
+    <string name="qr_login_done">完成</string>
+    <string name="qr_login_close">關閉</string>
 </resources>
 
 <!--@formatter:on-->

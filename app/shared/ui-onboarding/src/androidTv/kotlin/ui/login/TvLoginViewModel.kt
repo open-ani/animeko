@@ -9,26 +9,40 @@
 
 package me.him188.ani.tv.ui.login
 
+import android.os.Build
 import kotlin.time.Clock
 import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.flow
+import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.flow.onEach
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.sync.Mutex
 import me.him188.ani.app.data.repository.RepositoryRateLimitedException
+import me.him188.ani.app.data.repository.user.QrLoginRepository
 import me.him188.ani.app.data.repository.user.UserRepository
+import me.him188.ani.app.domain.session.auth.QrLoginPoller
+import me.him188.ani.app.domain.session.auth.QrLoginProgress
 import me.him188.ani.app.ui.login.EmailLoginViewModel
 import me.him188.ani.tv.ui.foundation.TvNavigationEvent
 import me.him188.ani.tv.ui.foundation.TvNavigationEvents
 import org.koin.core.Koin
 
 /** Reuses the shared OTP session; request ownership and TV step transitions live here. */
-class TvLoginViewModel(koin: Koin, private val clock: Clock = Clock.System) : EmailLoginViewModel(koin) {
+@OptIn(ExperimentalCoroutinesApi::class)
+class TvLoginViewModel(
+    koin: Koin,
+    private val clock: Clock = Clock.System,
+    deviceName: String = "${Build.MANUFACTURER} ${Build.MODEL}".trim(),
+) : EmailLoginViewModel(koin) {
+    private val qrLoginPoller = QrLoginPoller(koin.get<QrLoginRepository>(), deviceName)
     private val fields = MutableStateFlow(TvLoginUiState())
     private val requestMutex = Mutex()
     private val navigation = TvNavigationEvents()
@@ -40,11 +54,19 @@ class TvLoginViewModel(koin: Koin, private val clock: Clock = Clock.System) : Em
             delay(1_000)
         }
     }
-    val uiState = combine(state, fields, ticker) { login, fields, now ->
+
+    // 只在登录页可见 (uiState 被收集) 时轮询; 每次 RefreshQr 重新开始.
+    private val qrRefreshes = MutableStateFlow(0)
+    private val qr = qrRefreshes.flatMapLatest { qrLoginPoller.run() }
+        .onEach { if (it == QrLoginProgress.Approved) navigation.emit(TvNavigationEvent.LoggedIn) }
+        .map { it.toUiState() }
+
+    val uiState = combine(state, fields, ticker, qr) { login, fields, now, qr ->
         fields.copy(
             email = login.email,
             isExistingAccount = login.isExistingAccount,
             resendRemainSec = (login.nextResendTime - now).inWholeSeconds.coerceAtLeast(0),
+            qr = qr,
         )
     }.stateIn(backgroundScope, SharingStarted.WhileSubscribed(5_000), TvLoginUiState())
 
@@ -57,6 +79,7 @@ class TvLoginViewModel(koin: Koin, private val clock: Clock = Clock.System) : Em
             TvLoginIntent.ReenterEmail -> if (!fields.value.busy) {
                 fields.update { it.copy(step = TvLoginStep.Email, otp = "", error = null) }
             }
+            TvLoginIntent.RefreshQr -> qrRefreshes.update { it + 1 }
             TvLoginIntent.SendOtp -> request(sending = true) {
                 sendEmailOtp()
                 fields.update { it.copy(step = TvLoginStep.Otp, otp = "") }
@@ -94,4 +117,13 @@ class TvLoginViewModel(koin: Koin, private val clock: Clock = Clock.System) : Em
             }
         }
     }
+}
+
+private fun QrLoginProgress.toUiState(): TvQrLoginUiState = when (this) {
+    QrLoginProgress.Loading -> TvQrLoginUiState.Loading
+    is QrLoginProgress.Waiting -> TvQrLoginUiState.Waiting(qrContent, remaining.inWholeSeconds)
+    is QrLoginProgress.Scanned -> TvQrLoginUiState.Scanned(qrContent, nickname)
+    QrLoginProgress.Approved -> TvQrLoginUiState.Success
+    QrLoginProgress.Rejected -> TvQrLoginUiState.Invalid(TvQrLoginUiState.Invalid.Reason.Rejected)
+    is QrLoginProgress.Failed -> TvQrLoginUiState.Invalid(TvQrLoginUiState.Invalid.Reason.Failed)
 }

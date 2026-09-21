@@ -25,6 +25,8 @@ import androidx.compose.ui.window.ComposeUIViewController
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
@@ -58,6 +60,7 @@ import me.him188.ani.app.domain.mediasource.web.captcha.ImageCaptchaRecognizer
 import me.him188.ani.app.domain.mediasource.web.captcha.UnsupportedCaptchaBrowserFactory
 import me.him188.ani.app.domain.torrent.DefaultTorrentManager
 import me.him188.ani.app.domain.torrent.TorrentManager
+import me.him188.ani.app.data.repository.user.QrLoginRepository
 import me.him188.ani.app.navigation.AniNavigator
 import me.him188.ani.app.navigation.BrowserNavigator
 import me.him188.ani.app.navigation.IosBrowserNavigator
@@ -117,8 +120,28 @@ import platform.UIKit.didMoveToParentViewController
 class AniIosApplication(
     val context: IosContext,
     val aniNavigator: AniNavigator,
-    val onBackPressedDispatcherOwner: SkikoOnBackPressedDispatcherOwner
-)
+    val onBackPressedDispatcherOwner: SkikoOnBackPressedDispatcherOwner,
+    private val scope: CoroutineScope,
+) {
+    /**
+     * 处理打开 App 的 `ani://` 链接. 由 Swift 的 `onOpenURL` 调用.
+     *
+     * @return 是否识别了这个链接
+     */
+    @Suppress("unused") // used in Swift
+    fun openUrl(url: String): Boolean {
+        // 扫码登录: 系统相机扫描电视上的二维码后, 网页跳转到 ani://qr-login?requestId=...
+        val qrLoginRequestId = QrLoginRepository.parseRequestId(url) ?: return false
+        scope.launch(Dispatchers.Main) {
+            if (!aniNavigator.isBackStackReady()) {
+                aniNavigator.awaitBackStack()
+                delay(1000) // 等待初始化好, 否则跳转可能无效
+            }
+            aniNavigator.navigateQrLoginConfirm(qrLoginRequestId)
+        }
+        return true
+    }
+}
 
 // Called from Swift
 @Suppress("unused")
@@ -192,6 +215,7 @@ fun startIosApp(): AniIosApplication {
         context = context,
         aniNavigator = aniNavigator,
         onBackPressedDispatcherOwner = onBackPressedDispatcherOwner,
+        scope = scope,
     )
 }
 

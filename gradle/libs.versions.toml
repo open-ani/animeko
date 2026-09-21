@@ -24,6 +24,7 @@ s3 = "2.42.14"
 sentry-kotlin-multiplatform = "0.11.0"
 sqlite = "2.6.1"
 androidx-activity = "1.12.4"
+androidx-camera = "1.4.2" # https://developer.android.com/jetpack/androidx/releases/camera
 androidx-core = "1.17.0"
 stability-analyzer = "0.12.0"
 google-gms-google-services = "4.4.2"
@@ -266,6 +267,9 @@ androidx-compose-ui-test-manifest = { module = "androidx.compose.ui:ui-test-mani
 androidx-core-ktx = { module = "androidx.core:core-ktx", version.ref = "androidx-core" }
 androidx-activity-compose = { module = "androidx.activity:activity-compose", version.ref = "androidx-activity" }
 androidx-activity-ktx = { module = "androidx.activity:activity-ktx", version.ref = "androidx-activity" }
+androidx-camera-camera2 = { module = "androidx.camera:camera-camera2", version.ref = "androidx-camera" }
+androidx-camera-lifecycle = { module = "androidx.camera:camera-lifecycle", version.ref = "androidx-camera" }
+androidx-camera-view = { module = "androidx.camera:camera-view", version.ref = "androidx-camera" }
 androidx-appcompat = { module = "androidx.appcompat:appcompat", version = "1.7.0" }
 androidx-tv-material = { module = "androidx.tv:tv-material", version = "1.1.0" } # Compose for TV (tv-material3), 仅 :app:android tv flavor 使用
 konsist = { module = "com.lemonappdev:konsist", version = "0.17.3" } # TV 约定边界守护

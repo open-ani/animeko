@@ -53,8 +53,10 @@ import me.him188.ani.app.data.repository.subject.SubjectSearchHistoryRepository
 import me.him188.ani.app.data.repository.subject.SubjectSearchRepository
 import me.him188.ani.app.data.repository.torrent.peer.PeerFilterSubscriptionRepository
 import me.him188.ani.app.data.repository.user.DefaultDeveloperVerificationRepository
+import me.him188.ani.app.data.repository.user.DefaultQrLoginRepository
 import me.him188.ani.app.data.repository.user.DeveloperVerificationRepository
 import me.him188.ani.app.data.repository.user.PreferencesRepositoryImpl
+import me.him188.ani.app.data.repository.user.QrLoginRepository
 import me.him188.ani.app.data.repository.user.SettingsRepository
 import me.him188.ani.app.data.repository.user.TokenRepository
 import me.him188.ani.app.data.repository.user.UserRepository
@@ -92,6 +94,7 @@ fun KoinApplication.repositoryModules(
             get(),
         )
     }
+    single<QrLoginRepository> { DefaultQrLoginRepository(aniApiProvider.qrLoginApi, get()) }
     single<DeveloperVerificationRepository> {
         DefaultDeveloperVerificationRepository(aniApiProvider.developerVerificationApi)
     }

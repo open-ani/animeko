@@ -115,6 +115,19 @@
     <string name="tv_settings_scan_link">使用手機掃碼開啟此頁面</string>
     <string name="tv_exploration_more_details">更多詳情</string>
     <string name="tv_nav_schedule">時間表</string>
+    <string name="tv_login_or">或</string>
+    <string name="tv_login_qr_title">手機掃碼登入</string>
+    <string name="tv_login_qr_hint">用手機 Animeko 的「掃碼登入」或系統相機掃描</string>
+    <string name="tv_login_qr_expires_in">二維碼將在 %1$s 後更新</string>
+    <string name="tv_login_qr_content_description">登入二維碼</string>
+    <string name="tv_login_qr_loading">正在載入二維碼…</string>
+    <string name="tv_login_qr_scanned">已掃碼</string>
+    <string name="tv_login_qr_scanned_hint">請在手機上點擊「確認登入」</string>
+    <string name="tv_login_qr_scanned_account">帳號: %1$s</string>
+    <string name="tv_login_qr_success">登入成功</string>
+    <string name="tv_login_qr_rejected">已在手機上拒絕</string>
+    <string name="tv_login_qr_failed">二維碼載入失敗, 請檢查網絡</string>
+    <string name="tv_login_qr_refresh">重新載入二維碼</string>
 </resources>
 
 <!--@formatter:on-->
