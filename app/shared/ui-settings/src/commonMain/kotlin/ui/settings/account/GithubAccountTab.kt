@@ -21,16 +21,14 @@ import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.Info
-import androidx.compose.material.icons.rounded.Block
 import androidx.compose.material.icons.rounded.Check
-import androidx.compose.material.icons.rounded.Close
 import androidx.compose.material.icons.rounded.ErrorOutline
+import androidx.compose.material.icons.rounded.Schedule
 import androidx.compose.material.icons.rounded.Verified
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
-import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.LocalContentColor
 import androidx.compose.material3.MaterialTheme
@@ -78,9 +76,6 @@ import me.him188.ani.app.ui.lang.settings_account_developer_description
 import me.him188.ani.app.ui.lang.settings_account_developer_group
 import me.him188.ani.app.ui.lang.settings_account_developer_load_failed
 import me.him188.ani.app.ui.lang.settings_account_developer_next_apply_at
-import me.him188.ani.app.ui.lang.settings_account_developer_requirement_code
-import me.him188.ani.app.ui.lang.settings_account_developer_requirement_docs
-import me.him188.ani.app.ui.lang.settings_account_developer_requirement_merged
 import me.him188.ani.app.ui.lang.settings_account_developer_result_failed
 import me.him188.ani.app.ui.lang.settings_account_developer_result_failed_title
 import me.him188.ani.app.ui.lang.settings_account_developer_result_rejected
@@ -275,7 +270,7 @@ private fun AccountHero(username: String?) {
 private enum class CertificationStatus { NOT_CERTIFIED, PENDING, CERTIFIED }
 
 /**
- * 说明开发者认证是什么: 标题, 当前状态, 认证条件与权益. [status] 为 `null` 时不显示状态.
+ * 说明开发者认证是什么: 标题, 当前状态, 一句简介与权益. 不列出具体的评审规则. [status] 为 `null` 时不显示状态.
  */
 @Composable
 private fun DeveloperCertificationCard(status: CertificationStatus?) {
@@ -298,15 +293,9 @@ private fun DeveloperCertificationCard(status: CertificationStatus?) {
                 style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
-            Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                Requirement(met = true, stringResource(Lang.settings_account_developer_requirement_merged))
-                Requirement(met = true, stringResource(Lang.settings_account_developer_requirement_code))
-                Requirement(met = false, stringResource(Lang.settings_account_developer_requirement_docs))
-            }
-            HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Icon(
-                    Icons.Rounded.Block, null,
+                    Icons.Rounded.Check, null,
                     Modifier.size(20.dp),
                     tint = MaterialTheme.colorScheme.primary,
                 )
@@ -320,47 +309,29 @@ private fun DeveloperCertificationCard(status: CertificationStatus?) {
     }
 }
 
+/**
+ * 当前状态的标注: 图标 + 文字, 没有底色和边框, 以免看起来像可以点击的按钮或 chip.
+ */
 @Composable
 private fun StatusBadge(status: CertificationStatus) {
     val colors = MaterialTheme.colorScheme
-    val (container, content, text) = when (status) {
+    val (icon, color, text) = when (status) {
         CertificationStatus.CERTIFIED ->
-            Triple(colors.primary, colors.onPrimary, Lang.settings_account_developer_badge_certified)
+            Triple(Icons.Rounded.Verified, colors.primary, Lang.settings_account_developer_badge_certified)
 
         CertificationStatus.PENDING ->
-            Triple(colors.tertiaryContainer, colors.onTertiaryContainer, Lang.settings_account_developer_badge_pending)
+            Triple(Icons.Rounded.Schedule, colors.tertiary, Lang.settings_account_developer_badge_pending)
 
         CertificationStatus.NOT_CERTIFIED ->
-            Triple(colors.surfaceContainerHighest, colors.onSurfaceVariant, Lang.settings_account_developer_status_not_certified)
+            Triple(null, colors.onSurfaceVariant, Lang.settings_account_developer_status_not_certified)
     }
-    Surface(
-        shape = CircleShape,
-        color = container,
-        contentColor = content,
-        modifier = Modifier.testTag("developerVerification-status"),
+    Row(
+        Modifier.testTag("developerVerification-status"),
+        horizontalArrangement = Arrangement.spacedBy(6.dp),
+        verticalAlignment = Alignment.CenterVertically,
     ) {
-        Text(
-            stringResource(text),
-            Modifier.padding(horizontal = 12.dp, vertical = 6.dp),
-            style = MaterialTheme.typography.labelLarge,
-        )
-    }
-}
-
-@Composable
-private fun Requirement(met: Boolean, text: String) {
-    Row { // 图标与第一行文字对齐: 文字可能换行
-        Icon(
-            if (met) Icons.Rounded.Check else Icons.Rounded.Close, null,
-            Modifier.size(20.dp),
-            tint = if (met) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.outline,
-        )
-        Text(
-            text,
-            Modifier.padding(start = 12.dp),
-            style = MaterialTheme.typography.bodyMedium,
-            color = if (met) MaterialTheme.colorScheme.onSurface else MaterialTheme.colorScheme.onSurfaceVariant,
-        )
+        if (icon != null) Icon(icon, null, Modifier.size(18.dp), tint = color)
+        Text(stringResource(text), style = MaterialTheme.typography.labelLarge, color = color)
     }
 }
 
