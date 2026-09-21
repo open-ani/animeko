@@ -72,7 +72,6 @@ import me.him188.ani.app.ui.foundation.layout.ListDetailAnimatedPane
 import me.him188.ani.app.ui.foundation.layout.PaddingValuesSides
 import me.him188.ani.app.ui.foundation.layout.ThreePaneScaffoldValueConverter.ExtraPaneForNestedDetails
 import me.him188.ani.app.ui.foundation.layout.currentWindowAdaptiveInfo1
-import me.him188.ani.app.ui.foundation.layout.isWidthCompact
 import me.him188.ani.app.ui.foundation.layout.isWidthAtLeastMedium
 import me.him188.ani.app.ui.foundation.layout.only
 import me.him188.ani.app.ui.foundation.layout.panePadding
@@ -239,7 +238,7 @@ fun EditRssMediaSourceScreen(
                     colors = AniThemeDefaults.topAppBarColors(),
                     windowInsets = windowInsets.only(WindowInsetsSides.Horizontal + WindowInsetsSides.Top),
                     actions = {
-                        if (currentWindowAdaptiveInfo1().isWidthCompact && navigator.currentDestination?.pane != ListDetailPaneScaffoldRole.Detail) {
+                        if (navigator.scaffoldValue[ListDetailPaneScaffoldRole.Detail] == PaneAdaptedValue.Hidden) {
                             TextButton(
                                 onClick = {
                                     coroutineScope.launch(start = CoroutineStart.UNDISPATCHED) {
