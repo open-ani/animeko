@@ -79,6 +79,10 @@ interface AniNavigator {
         navigate(NavRoutes.SubjectDetail(subjectId, placeholder))
     }
 
+    fun navigateSubjectRelationGraph(subjectId: Int) {
+        navigate(NavRoutes.SubjectRelationGraph(subjectId))
+    }
+
     fun navigateSubjectCaches(subjectId: Int) {
         navigate(NavRoutes.SubjectCaches(subjectId))
     }
@@ -145,8 +149,15 @@ interface AniNavigator {
         navigate(NavRoutes.EmailLoginStart)
     }
 
+    /**
+     * @param provider 平台 ID, 见 `OAuthPlatform.id`
+     */
+    fun navigateOAuthAuthorize(provider: String) {
+        navigate(NavRoutes.OAuthAuthorize(provider))
+    }
+
     fun navigateBangumiAuthorize() {
-        navigate(NavRoutes.BangumiAuthorize)
+        navigateOAuthAuthorize("bangumi")
     }
 
     fun navigatePlaybackHistorySyncStatus() {

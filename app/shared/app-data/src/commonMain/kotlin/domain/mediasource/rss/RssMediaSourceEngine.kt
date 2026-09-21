@@ -58,8 +58,15 @@ abstract class RssMediaSourceEngine {
         val query: RssSearchQuery,
         val document: Document?,
         val channel: RssChannel?,
+        /**
+         * 通过 [RssSearchConfig] 过滤 (如当前剧集) 的资源, 供数据源编辑器的测试功能展示. `null` 表示未找到.
+         */
         val matchedMediaList: List<Media>?, // null means not found
         val error: Throwable? = null, // ClientRequestException
+        /**
+         * 该页的全部资源, 不按当前剧集过滤; [RssMediaSource.fetch] 返回它. `null` 表示未找到.
+         */
+        val allMediaList: List<Media>? = matchedMediaList,
     )
 
     /**
@@ -232,13 +239,9 @@ class DefaultRssMediaSourceEngine(
 
             val filters = config.createFilters()
 
-            val items = with(query.toFilterContext()) {
-                channel.items.mapNotNull { rssItem ->
-                    convertItemToMedia(rssItem, mediaSourceId)
-                        ?.takeIf { media ->
-                            filters.applyOn(media.asCandidate())
-                        }
-                }
+            val allItems = channel.items.mapNotNull { rssItem -> convertItemToMedia(rssItem, mediaSourceId) }
+            val matchedItems = with(query.toFilterContext()) {
+                allItems.filter { media -> filters.applyOn(media.asCandidate()) }
             }
 
             Result(
@@ -246,7 +249,8 @@ class DefaultRssMediaSourceEngine(
                 query,
                 document,
                 channel,
-                items,
+                matchedItems,
+                allMediaList = allItems,
             )
         } catch (e: Exception) {
             throw RepositoryException.wrapOrThrowCancellation(e)

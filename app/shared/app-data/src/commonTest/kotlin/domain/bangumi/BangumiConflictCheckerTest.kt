@@ -215,7 +215,7 @@ class BangumiConflictCheckerTest {
     // region 节流
 
     @Test
-    fun `CHECK-04 间隔内重复 startCheck 不重复检查, 超过间隔后重新检查`() = runTest {
+    fun `CHECK-04 间隔内重复 startCheck 不重复检查 超过间隔后重新检查`() = runTest {
         var time = 1_000_000L
         val repository = FakeMergeRepository { summary() }
         val checker = createChecker(repository, getCurrentTimeMillis = { time }, checkInterval = 1.hours)
@@ -238,7 +238,7 @@ class BangumiConflictCheckerTest {
     }
 
     @Test
-    fun `CHECK-05 节流中的 check 不请求服务端, 直接返回上次结果`() = runTest {
+    fun `CHECK-05 节流中的 check 不请求服务端 直接返回上次结果`() = runTest {
         val repository = FakeMergeRepository { summary(conflictCount = 5) }
         val checker = createChecker(repository)
 
@@ -335,7 +335,7 @@ class BangumiConflictCheckerTest {
     // region 同步进行中轮询
 
     @Test
-    fun `CHECK-10 syncInProgress 时按间隔轮询直到完成, 只发布最终结果`() = runTest {
+    fun `CHECK-10 syncInProgress 时按间隔轮询直到完成 只发布最终结果`() = runTest {
         var inProgressRemaining = 2
         val repository = FakeMergeRepository {
             if (inProgressRemaining > 0) {
@@ -374,7 +374,7 @@ class BangumiConflictCheckerTest {
     }
 
     @Test
-    fun `CHECK-11 lastSyncedAt 为 null (从未同步) 时轮询直到有同步时间`() = runTest {
+    fun `CHECK-11 lastSyncedAt 为 null 即从未同步时轮询直到有同步时间`() = runTest {
         var synced = false
         val repository = FakeMergeRepository {
             if (synced) summary(conflictCount = 2) else summary(conflictCount = 0, lastSyncedAt = null)
@@ -403,7 +403,7 @@ class BangumiConflictCheckerTest {
     }
 
     @Test
-    fun `CHECK-12 轮询超时后采用最后一次摘要并消耗节流, 但不失效缓存`() = runTest {
+    fun `CHECK-12 轮询超时后采用最后一次摘要并消耗节流 但不失效缓存`() = runTest {
         val repository = FakeMergeRepository { summary(conflictCount = 2, syncInProgress = true) }
         val subjectRepository = RecordingSubjectCollectionRepository()
         val checker = createChecker(repository, subjectRepository, syncPollInterval = 5.seconds, syncPollTimeout = 32.seconds)
@@ -425,7 +425,7 @@ class BangumiConflictCheckerTest {
     }
 
     @Test
-    fun `CHECK-13 轮询途中失败返回 null 且不发布, 不消耗节流`() = runTest {
+    fun `CHECK-13 轮询途中失败返回 null 且不发布 不消耗节流`() = runTest {
         var n = 0
         val repository = FakeMergeRepository {
             when (++n) {
@@ -508,7 +508,7 @@ class BangumiConflictCheckerTest {
     }
 
     @Test
-    fun `CHECK-16 clearConflicts 只清空计数, 保留同步时间与节流`() = runTest {
+    fun `CHECK-16 clearConflicts 只清空计数 保留同步时间与节流`() = runTest {
         val repository = FakeMergeRepository { summary(conflictCount = 3) }
         val checker = createChecker(repository)
 
@@ -529,7 +529,7 @@ class BangumiConflictCheckerTest {
     // region 缓存失效
 
     @Test
-    fun `CHECK-17 已知同步时间变化时使收藏缓存失效, 不变时不失效`() = runTest {
+    fun `CHECK-17 已知同步时间变化时使收藏缓存失效 不变时不失效`() = runTest {
         var current: Instant? = syncedAt
         val repository = FakeMergeRepository { summary(conflictCount = 1, lastSyncedAt = current) }
         val subjectRepository = RecordingSubjectCollectionRepository()
@@ -556,7 +556,7 @@ class BangumiConflictCheckerTest {
     }
 
     @Test
-    fun `CHECK-18 reset 后再次检查视同冷启动 - 已完成的摘要不失效, 观察到同步后完成才失效`() = runTest {
+    fun `CHECK-18 reset 后再次检查视同冷启动 - 已完成的摘要不失效 观察到同步后完成才失效`() = runTest {
         var inProgress = false
         val repository = FakeMergeRepository { summary(syncInProgress = inProgress) }
         val subjectRepository = RecordingSubjectCollectionRepository()
@@ -624,7 +624,7 @@ class BangumiConflictCheckerTest {
     }
 
     @Test
-    fun `CHECK-24 首次绑定 - 本次检查观察到从未同步 (lastSyncedAt 为 null) 后完成, 失效缓存一次`() = runTest {
+    fun `CHECK-24 首次绑定 - 本次检查观察到从未同步即 lastSyncedAt 为 null 后完成 失效缓存一次`() = runTest {
         var synced = false
         val repository = FakeMergeRepository {
             if (synced) summary(conflictCount = 2) else summary(conflictCount = 0, lastSyncedAt = null)
@@ -650,7 +650,7 @@ class BangumiConflictCheckerTest {
     }
 
     @Test
-    fun `CHECK-25 首次绑定轮询超时不失效, 之后的检查看到同步完成才失效一次`() = runTest {
+    fun `CHECK-25 首次绑定轮询超时不失效 之后的检查看到同步完成才失效一次`() = runTest {
         var synced = false
         val repository = FakeMergeRepository {
             if (synced) summary(conflictCount = 2) else summary(conflictCount = 0, lastSyncedAt = null, syncInProgress = true)
@@ -678,7 +678,7 @@ class BangumiConflictCheckerTest {
     }
 
     @Test
-    fun `CHECK-26 轮询中被 force 重启, 新检查看到同步完成时失效一次`() = runTest {
+    fun `CHECK-26 轮询中被 force 重启 新检查看到同步完成时失效一次`() = runTest {
         var inProgress = true
         val repository = FakeMergeRepository {
             if (inProgress) summary(conflictCount = 0, lastSyncedAt = null, syncInProgress = true) else summary(conflictCount = 3)
@@ -729,7 +729,7 @@ class BangumiConflictCheckerTest {
     // region 并发与取消
 
     @Test
-    fun `CHECK-20 后台检查进行中时非 force startCheck 不重复启动, force 则取消重来`() = runTest {
+    fun `CHECK-20 后台检查进行中时非 force startCheck 不重复启动 force 则取消重来`() = runTest {
         val gate = CompletableDeferred<Unit>()
         var cancelled = 0
         val repository = FakeMergeRepository {
@@ -764,7 +764,7 @@ class BangumiConflictCheckerTest {
     }
 
     @Test
-    fun `CHECK-21 并发 check 串行执行, 后者被节流`() = runTest {
+    fun `CHECK-21 并发 check 串行执行 后者被节流`() = runTest {
         val gate = CompletableDeferred<Unit>()
         val repository = FakeMergeRepository {
             gate.await()
@@ -788,7 +788,7 @@ class BangumiConflictCheckerTest {
     }
 
     @Test
-    fun `CHECK-22 调用方取消 check 时传播取消, 不算失败也不消耗节流`() = runTest {
+    fun `CHECK-22 调用方取消 check 时传播取消 不算失败也不消耗节流`() = runTest {
         val gate = CompletableDeferred<Unit>()
         val repository = FakeMergeRepository {
             gate.await()

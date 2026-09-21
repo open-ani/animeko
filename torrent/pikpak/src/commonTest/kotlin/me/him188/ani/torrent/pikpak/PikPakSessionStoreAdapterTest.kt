@@ -50,7 +50,7 @@ class PikPakSessionStoreAdapterTest {
     }
 
     @Test
-    fun `save writes back the session's refresh token`() = runTest {
+    fun `save writes back the refresh token of the session`() = runTest {
         val store = FakeStore(refreshToken = "old")
         store.adapter.save(
             account = "user@example.com",

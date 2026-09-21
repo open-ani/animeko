@@ -25,7 +25,25 @@ data class SelfInfo(
     val avatarUrl: String?,
     val bangumiUsername: String?,
     val isBangumiSessionValid: Boolean? = null,
+    /**
+     * 绑定的其他第三方账号 (GitHub 等), 不含 Bangumi.
+     */
+    val externalAccounts: List<ExternalAccount> = emptyList(),
 )
+
+/**
+ * 绑定的第三方账号.
+ */
+@Serializable
+data class ExternalAccount(
+    /**
+     * 平台 ID, 见 [me.him188.ani.app.domain.session.auth.OAuthPlatform.id]. 可能是客户端不认识的平台.
+     */
+    val provider: String,
+    val username: String?,
+)
+
+fun SelfInfo.externalAccount(provider: String): ExternalAccount? = externalAccounts.firstOrNull { it.provider == provider }
 
 data class SelfInfoDisplay(
     val title: String,

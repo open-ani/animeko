@@ -193,6 +193,13 @@ abstract class AbstractTorrentFileEntry(
             requestPriority(null)
         }
 
+        final override fun setPrefetchRange(byteRange: LongRange?) {
+            if (closed) return
+            setPrefetchRangeImpl(byteRange)
+        }
+
+        protected abstract fun setPrefetchRangeImpl(byteRange: LongRange?)
+
         protected fun checkClosed() {
             if (closed) throw IllegalStateException(
                 "Attempting to pause but TorrentFile has already been closed: $fileName",

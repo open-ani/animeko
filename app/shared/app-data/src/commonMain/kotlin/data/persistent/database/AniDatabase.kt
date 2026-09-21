@@ -45,6 +45,7 @@ import me.him188.ani.app.data.persistent.database.dao.SubjectCollectionDao
 import me.him188.ani.app.data.persistent.database.dao.SubjectCollectionEntity
 import me.him188.ani.app.data.persistent.database.dao.SubjectRelationsDao
 import me.him188.ani.app.data.persistent.database.dao.SubjectReviewDao
+import me.him188.ani.app.data.persistent.database.dao.TorrentCacheEpisodeEntity
 import me.him188.ani.app.data.persistent.database.dao.TorrentCacheInfoDao
 import me.him188.ani.app.data.persistent.database.dao.TorrentCacheInfoEntity
 import me.him188.ani.app.data.persistent.database.dao.WebSearchSessionCacheDao
@@ -78,6 +79,7 @@ import me.him188.ani.utils.httpdownloader.DownloadState
         WebSearchSessionCacheEntity::class,
 
         TorrentCacheInfoEntity::class,
+        TorrentCacheEpisodeEntity::class,
         DownloadState::class,
         DanmakuEntity::class,
 
@@ -85,7 +87,7 @@ import me.him188.ani.utils.httpdownloader.DownloadState
         PlaybackHistoryRecordEntity::class,
         PlaybackHistoryPendingOpEntity::class,
     ],
-    version = 22,
+    version = 24,
     autoMigrations = [
         AutoMigration(from = 1, to = 2, spec = Migrations.Migration_1_2::class),
         AutoMigration(from = 2, to = 3, spec = Migrations.Migration_2_3::class),
@@ -107,6 +109,8 @@ import me.him188.ani.utils.httpdownloader.DownloadState
         AutoMigration(from = 18, to = 19, spec = Migrations.Migration_18_19::class),
         AutoMigration(from = 20, to = 21, spec = Migrations.Migration_20_21::class),
         AutoMigration(from = 21, to = 22, spec = Migrations.Migration_21_22::class),
+        AutoMigration(from = 22, to = 23, spec = Migrations.Migration_22_23::class),
+        AutoMigration(from = 23, to = 24, spec = Migrations.Migration_23_24::class),
     ],
     exportSchema = true,
 )
@@ -393,6 +397,23 @@ internal object Migrations {
     @DeleteTable("web_search_episode")
     @DeleteTable("web_search_subject")
     class Migration_21_22 : AutoMigrationSpec {
+        override fun onPostMigrate(connection: SQLiteConnection) {
+        }
+    }
+
+    /**
+     * Added [EpisodeCollectionEntity.imageMedium] and [EpisodeCollectionEntity.imageLarge] (TMDB 剧照直链, 可空).
+     */
+    class Migration_22_23 : AutoMigrationSpec {
+        override fun onPostMigrate(connection: SQLiteConnection) {
+        }
+    }
+
+    /**
+     * Added [TorrentCacheEpisodeEntity]: BT 缓存按 (资源, 剧集) 记录完成状态与文件路径.
+     * `torrent_cache` 中原有的按资源记录的列保留, 供尚无剧集记录的旧数据回退读取.
+     */
+    class Migration_23_24 : AutoMigrationSpec {
         override fun onPostMigrate(connection: SQLiteConnection) {
         }
     }

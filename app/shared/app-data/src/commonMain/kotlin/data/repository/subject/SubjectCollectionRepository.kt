@@ -922,6 +922,8 @@ fun AniEpisodeCollection.toEntity1(
         sort = EpisodeSort(BigNum(sort), type.toEpisodeType()),
         ep = ep?.let { EpisodeSort(BigNum(it), type.toEpisodeType()) },
         sortNumber = sort.toFloatOrNull() ?: 0f,
+        imageMedium = imageMedium,
+        imageLarge = imageLarge,
         selfCollectionType = collectionType.toUnifiedCollectionType(),
         lastFetched = lastFetched,
     )

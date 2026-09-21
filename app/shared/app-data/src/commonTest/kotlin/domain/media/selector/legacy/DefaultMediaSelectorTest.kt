@@ -397,6 +397,8 @@ class DefaultMediaSelectorTest : AbstractDefaultMediaSelectorTest() {
 
     @Test
     fun `select cached`() = runTest {
+        // 剧集未知时不选缓存 (整个条目的缓存都在候选中)
+        mediaSelectorContext.value = createMediaSelectorContextFromEmpty(episodeInfo = EpisodeInfo.Companion.Empty.copy(sort = EpisodeSort(1)))
         val target: DefaultMedia
         addMedia(
             media(alliance = "字幕组1", subtitleLanguages = listOf("CHS")),
@@ -471,6 +473,8 @@ class DefaultMediaSelectorTest : AbstractDefaultMediaSelectorTest() {
 
     @Test
     fun `can select cached raw`() = runTest {
+        // 剧集未知时不选缓存 (整个条目的缓存都在候选中)
+        mediaSelectorContext.value = createMediaSelectorContextFromEmpty(episodeInfo = EpisodeInfo.Companion.Empty.copy(sort = EpisodeSort(1)))
         val target: DefaultMedia
         savedDefaultPreference.value = DEFAULT_PREFERENCE.copy(
             alliance = "字幕组2",
@@ -1488,6 +1492,8 @@ class DefaultMediaSelectorTest : AbstractDefaultMediaSelectorTest() {
 
     @Test
     fun `event trySelectCached`() = runTest {
+        // 剧集未知时不选缓存 (整个条目的缓存都在候选中)
+        mediaSelectorContext.value = createMediaSelectorContextFromEmpty(episodeInfo = EpisodeInfo.Companion.Empty.copy(sort = EpisodeSort(1)))
         savedUserPreference.value = MediaPreference.Companion.Empty
         savedDefaultPreference.value = MediaPreference.Companion.Empty
         val target = media(

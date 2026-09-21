@@ -28,6 +28,7 @@ import kotlinx.coroutines.CoroutineStart
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.sync.withLock
@@ -1282,58 +1283,7 @@ class KtorHttpDownloaderTest {
      */
     @Test
     fun `download - partial segment failure - recovers on second attempt`() = testScope.runTest {
-        // Single-segment playlist => only "unstable-segment1.ts"
-        val singleSegmentPlaylist = """
-            #EXTM3U
-            #EXT-X-TARGETDURATION:5
-            #EXT-X-MEDIA-SEQUENCE:0
-            #EXTINF:4.0,
-            https://example.com/unstable-segment1.ts
-            #EXT-X-ENDLIST
-        """.trimIndent()
-
-        // We will trick the engine by storing the content into the attempts map:
-        // We can just handle it in-place: "https://example.com/unstable-single.m3u8".
-        attempts["https://example.com/unstable-single.m3u8"] = 0  // reset attempts
-
-        // Register the single-segment playlist as well
-        val originalHandler = (mockClient.engine as MockEngine).config.requestHandlers.first()
-        (mockClient.engine as MockEngine).config.requestHandlers.clear()
-        (mockClient.engine as MockEngine).config.addHandler { request ->
-            val urlString = request.url.toString()
-            val currentAttempt = attempts.getValue(urlString)
-            attempts[urlString] = currentAttempt + 1
-
-            when (urlString) {
-                "https://example.com/unstable-single.m3u8" -> {
-                    respond(
-                        content = singleSegmentPlaylist,
-                        status = HttpStatusCode.OK,
-                        headers = headersOf(HttpHeaders.ContentType, "application/vnd.apple.mpegurl"),
-                    )
-                }
-
-                "https://example.com/unstable-segment1.ts" -> {
-                    // first attempt => fail, subsequent => success
-                    if (currentAttempt == 0) {
-                        respond("Internal server error", HttpStatusCode.InternalServerError)
-                    } else {
-                        val bytes = ByteArray(512) { it.toByte() }
-                        respond(
-                            content = bytes,
-                            status = HttpStatusCode.OK,
-                            headers = headersOf(HttpHeaders.ContentType, "video/mp2t"),
-                        )
-                    }
-                }
-
-                else -> {
-                    // fall back to original handler for other requests (if any)
-                    originalHandler.invoke(this, request)
-                }
-            }
-        }
-
+        registerSingleUnstableSegmentPlaylist()
         val options = DownloadOptions(
             maxConcurrentSegments = 1,
             maxRetriesPerSegment = 2,
@@ -1357,6 +1307,79 @@ class KtorHttpDownloaderTest {
         assertTrue(fileSystem.exists(Path("$tempDir/unstable-single.mp4")), "Output file should exist")
         val size = fileSystem.metadata(Path("$tempDir/unstable-single.mp4")).size
         assertEquals(512, size, "File should contain the final recovered segment")
+    }
+
+
+    /**
+     * 只含 "unstable-segment1.ts" 的播放列表 "unstable-single.m3u8": 该分片首次请求返回 500, 之后成功.
+     */
+    private fun registerSingleUnstableSegmentPlaylist() {
+        val singleSegmentPlaylist = """
+            #EXTM3U
+            #EXT-X-TARGETDURATION:5
+            #EXT-X-MEDIA-SEQUENCE:0
+            #EXTINF:4.0,
+            https://example.com/unstable-segment1.ts
+            #EXT-X-ENDLIST
+        """.trimIndent()
+        attempts["https://example.com/unstable-single.m3u8"] = 0
+        val originalHandler = (mockClient.engine as MockEngine).config.requestHandlers.first()
+        (mockClient.engine as MockEngine).config.requestHandlers.clear()
+        (mockClient.engine as MockEngine).config.addHandler { request ->
+            val urlString = request.url.toString()
+            val currentAttempt = attempts.getValue(urlString)
+            attempts[urlString] = currentAttempt + 1
+            when (urlString) {
+                "https://example.com/unstable-single.m3u8" -> {
+                    respond(
+                        content = singleSegmentPlaylist,
+                        status = HttpStatusCode.OK,
+                        headers = headersOf(HttpHeaders.ContentType, "application/vnd.apple.mpegurl"),
+                    )
+                }
+
+                "https://example.com/unstable-segment1.ts" -> {
+                    if (currentAttempt == 0) {
+                        respond("Internal server error", HttpStatusCode.InternalServerError)
+                    } else {
+                        val bytes = ByteArray(512) { it.toByte() }
+                        respond(
+                            content = bytes,
+                            status = HttpStatusCode.OK,
+                            headers = headersOf(HttpHeaders.ContentType, "video/mp2t"),
+                        )
+                    }
+                }
+
+                else -> originalHandler.invoke(this, request)
+            }
+        }
+    }
+
+    @Test
+    fun `progress reports the last segment failure while retrying and clears it once the segment succeeds`() = testScope.runTest {
+        registerSingleUnstableSegmentPlaylist()
+        val progress = mutableListOf<DownloadProgress>()
+        val collectJob = launch(start = CoroutineStart.UNDISPATCHED) {
+            downloader.progressFlow.collect { progress += it }
+        }
+        val downloadId = downloader.downloadWithId(
+            url = "https://example.com/unstable-single.m3u8",
+            downloadId = DownloadId("unstable-single-failure"),
+            options = DownloadOptions(maxConcurrentSegments = 1, maxRetriesPerSegment = 3, baseRetryDelayMillis = 10),
+        )?.downloadId
+        assertNotNull(downloadId)
+        downloader.joinDownload(downloadId)
+        collectJob.cancel()
+
+        val failure = assertNotNull(progress.firstNotNullOfOrNull { it.lastSegmentFailure })
+        assertNotNull(failure.segmentIndex)
+        assertEquals(1, failure.attempt)
+        assertEquals(3, failure.maxAttempts)
+        assertTrue(failure.message.contains("500"), failure.message)
+        assertEquals(DownloadStatus.COMPLETED, progress.last().status)
+        assertNull(progress.last().lastSegmentFailure)
+        assertNull(downloader.getProgressFlow(downloadId).first().lastSegmentFailure)
     }
 
     companion object {

@@ -38,11 +38,11 @@ import androidx.lifecycle.viewmodel.navigation3.rememberViewModelStoreNavEntryDe
 import androidx.navigation3.runtime.entryProvider
 import androidx.navigation3.runtime.rememberSaveableStateHolderNavEntryDecorator
 import androidx.navigation3.ui.NavDisplay
-import me.him188.ani.app.shared.Res
 import me.him188.ani.app.data.models.subject.SubjectInfo
 import me.him188.ani.app.domain.mediasource.rss.RssMediaSource
 import me.him188.ani.app.domain.mediasource.web.SelectorMediaSource
 import me.him188.ani.app.domain.search.SubjectSearchQuery
+import me.him188.ani.app.domain.session.auth.OAuthPlatform
 import me.him188.ani.app.navigation.AniNavigator
 import me.him188.ani.app.navigation.LocalNavigator
 import me.him188.ani.app.navigation.MainScreenPage
@@ -52,6 +52,7 @@ import me.him188.ani.app.navigation.SubjectDetailPlaceholder
 import me.him188.ani.app.navigation.rememberAniBackStack
 import me.him188.ani.app.platform.LocalContext
 import me.him188.ani.app.platform.navigation.LocalBrowserNavigator
+import me.him188.ani.app.shared.Res
 import me.him188.ani.app.ui.adaptive.navigation.AniNavigationSuiteDefaults
 import me.him188.ani.app.ui.bangumi.merge.BangumiMergeScreen
 import me.him188.ani.app.ui.bangumi.merge.BangumiMergeViewModel
@@ -77,8 +78,8 @@ import me.him188.ani.app.ui.lang.main_network_check_failed
 import me.him188.ani.app.ui.login.EmailLoginStartScreen
 import me.him188.ani.app.ui.login.EmailLoginVerifyScreen
 import me.him188.ani.app.ui.login.EmailLoginViewModel
-import me.him188.ani.app.ui.oauth.BangumiAuthorizeScreen
-import me.him188.ani.app.ui.oauth.BangumiAuthorizeViewModel
+import me.him188.ani.app.ui.oauth.OAuthAuthorizeScreen
+import me.him188.ani.app.ui.oauth.OAuthAuthorizeViewModel
 import me.him188.ani.app.ui.playback.PlaybackHistoryScreen
 import me.him188.ani.app.ui.playback.PlaybackHistorySyncStatusScreen
 import me.him188.ani.app.ui.playback.PlaybackHistoryViewModel
@@ -100,6 +101,8 @@ import me.him188.ani.app.ui.subject.person.CharacterDetailsScreen
 import me.him188.ani.app.ui.subject.person.CharacterDetailsViewModel
 import me.him188.ani.app.ui.subject.person.PersonDetailsScreen
 import me.him188.ani.app.ui.subject.person.PersonDetailsViewModel
+import me.him188.ani.app.ui.subject.relations.SubjectRelationGraphScreen
+import me.him188.ani.app.ui.subject.relations.SubjectRelationGraphViewModel
 import me.him188.ani.app.ui.user.SelfInfoStateProducer
 import me.him188.ani.app.ui.watchtogether.LocalWatchTogetherPlayerController
 import me.him188.ani.app.ui.watchtogether.WatchTogetherOverlayHost
@@ -191,8 +194,8 @@ private fun AniAppContentImpl(
                     onOtpSent = {
                         aniNavigator.navigateEmailLoginVerify()
                     },
-                    onBangumiLoginClick = {
-                        aniNavigator.navigateBangumiAuthorize()
+                    onThirdPartyLoginClick = {
+                        aniNavigator.navigateOAuthAuthorize(it.id)
                     },
                     onNavigateSettings = {
                         aniNavigator.navigateSettings()
@@ -208,8 +211,8 @@ private fun AniAppContentImpl(
                     onSuccess = {
                         aniNavigator.popBackOrNavigateToMain(mainSceneInitialPage)
                     },
-                    onBangumiLoginClick = {
-                        aniNavigator.navigateBangumiAuthorize()
+                    onThirdPartyLoginClick = {
+                        aniNavigator.navigateOAuthAuthorize(it.id)
                     },
                     onNavigateSettings = {
                         aniNavigator.navigateSettings()
@@ -220,12 +223,14 @@ private fun AniAppContentImpl(
                     vm = emailLoginViewModel,
                 )
             }
-            entry<NavRoutes.BangumiAuthorize> {
-                val vm = viewModel<BangumiAuthorizeViewModel> { BangumiAuthorizeViewModel() }
-                BangumiAuthorizeScreen(
+            entry<NavRoutes.OAuthAuthorize> { route ->
+                // 未知平台 (例如旧版本保存的导航状态) 回退到 Bangumi
+                val platform = OAuthPlatform.fromId(route.provider) ?: OAuthPlatform.BANGUMI
+                val vm = viewModel<OAuthAuthorizeViewModel>(key = platform.id) { OAuthAuthorizeViewModel(platform) }
+                OAuthAuthorizeScreen(
                     vm,
                     onNavigateBack = {
-                        aniNavigator.popBackStack(NavRoutes.BangumiAuthorize, true)
+                        aniNavigator.popBackStack(route, true)
                     },
                     onNavigateSettings = {
                         aniNavigator.navigateSettings()
@@ -234,7 +239,7 @@ private fun AniAppContentImpl(
                         AniContactList()
                     },
                     onAuthorizeSuccess = {
-                        aniNavigator.popBackStack(NavRoutes.BangumiAuthorize, true)
+                        aniNavigator.popBackStack(route, true)
                         aniNavigator.popBackStack(NavRoutes.EmailLoginVerify, true)
                         aniNavigator.popBackStack(NavRoutes.EmailLoginStart, true)
                     },
@@ -351,7 +356,7 @@ private fun AniAppContentImpl(
                         SettingsViewModel()
                     },
                     onNavigateToEmailLogin = { aniNavigator.navigateEmailLoginStart() },
-                    onNavigateToBangumiOAuth = { aniNavigator.navigateBangumiAuthorize() },
+                    onNavigateToOAuth = { aniNavigator.navigateOAuthAuthorize(it.id) },
                     loadOpenSourceLibrariesJsons = {
                         listOf(
                             Res.readBytes("files/aboutlibraries.json"),
@@ -455,6 +460,25 @@ private fun AniAppContentImpl(
                     },
                     Modifier.fillMaxSize(),
                     windowInsets = windowInsets,
+                )
+            }
+            entry<NavRoutes.SubjectRelationGraph> { route ->
+                val vm = viewModel<SubjectRelationGraphViewModel>(key = "subject-relation-graph-${route.subjectId}") {
+                    SubjectRelationGraphViewModel(route.subjectId)
+                }
+                SubjectRelationGraphScreen(
+                    vm,
+                    onClickSubject = {
+                        aniNavigator.navigateSubjectDetails(
+                            it.subjectId,
+                            SubjectDetailPlaceholder(it.subjectId, it.name, it.nameCn, it.image),
+                        )
+                    },
+                    Modifier.fillMaxSize(),
+                    windowInsets = windowInsets,
+                    navigationIcon = {
+                        BackNavigationIconButton({ aniNavigator.popBackStack(route, inclusive = true) })
+                    },
                 )
             }
             entry<NavRoutes.PersonDetail> { route ->

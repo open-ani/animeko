@@ -349,7 +349,7 @@ class DownloadOperationsTest {
     }
 
     @Test
-    fun `delete hands the download's cache to the delete use case`() = runTest {
+    fun `delete hands the cache of the download to the delete use case`() = runTest {
         val cache = testDownload(1)
         val harness = harness(cache)
 

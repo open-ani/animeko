@@ -114,10 +114,50 @@ class TorrentDownloadController(
      * 是否所有 normal piece 都下载完了, 如果都下载完了就不再处理
      */
     private var allNormalPieceDownloaded = false
-    
+
+    /**
+     * 预缓存的 pieceIndex, 由 [setPrefetchPieces] 设置. 用于在即将跳转到某个位置 (如跳过 OP 后) 前提前下载那里的数据.
+     *
+     * 优先级排在当前下载窗口 [downloadingNormalPieces] 之后, 因此不会拖慢当前播放位置的下载. 下载完成后从列表移除.
+     */
+    private val prefetchPieces = mutableListOf<Int>()
+
+    /**
+     * 是否正在为当前播放位置下载该 piece. 注意这不包括 [prefetchPieces]: seek 到预缓存区域时仍需 [seekTo] 移动下载窗口,
+     * 否则窗口不会跟随到新位置.
+     */
     fun isDownloading(pieceIndex: Int): Boolean = synchronized(this) {
         return downloadingNormalPieces.contains(pieceIndex) ||
                 highPieces.contains(pieceIndex)
+    }
+
+    /**
+     * 设置预缓存的 pieces, 替换之前的设置. 传入空列表取消预缓存.
+     *
+     * 已经下载完成的以及不属于此文件的 piece 会被忽略. 若最终列表与当前相同, 不会重新下发优先级.
+     */
+    fun setPrefetchPieces(pieceIndices: List<Int>) = synchronized(this) {
+        val filtered = pieceIndices.filter { index ->
+            index in bodyPieceIndexRange &&
+                    with(pieces) { pieces.getByPieceIndex(index).state } != PieceState.FINISHED
+        }.distinct()
+        if (filtered == prefetchPieces) return@synchronized
+        prefetchPieces.clear()
+        prefetchPieces.addAll(filtered)
+        if (normalPieces.isEmpty()) return@synchronized
+        publishPriorities()
+    }
+
+    /**
+     * 下发当前的优先级: 首尾 metadata 为高优先级, 然后是下载窗口, 最后是不在窗口内的预缓存 piece.
+     */
+    private fun publishPriorities() {
+        val normal = if (prefetchPieces.isEmpty()) {
+            downloadingNormalPieces
+        } else {
+            downloadingNormalPieces + prefetchPieces.filter { it !in downloadingNormalPieces }
+        }
+        priorities.downloadOnly(highPieces, normal)
     }
 
     fun resume() = synchronized(this) {
@@ -137,7 +177,7 @@ class TorrentDownloadController(
         val coercedBodyPieceIndex = pieceIndex.coerceIn(bodyPieceIndexRange)
         downloadingNormalPieces.clear()
         fillNormalPieceWindow(coercedBodyPieceIndex.indexInNormalPieceList)
-        priorities.downloadOnly(highPieces, downloadingNormalPieces)
+        publishPriorities()
     }
 
     /**
@@ -158,9 +198,12 @@ class TorrentDownloadController(
     fun onPieceDownloaded(pieceIndex: Int) = synchronized(this) {
         // 完成了首尾 metadata 的 piece, 不移动窗口
         if (highPieces.isNotEmpty() && highPieces.remove(pieceIndex)) {
-            priorities.downloadOnly(highPieces, downloadingNormalPieces)
+            publishPriorities()
             return@synchronized
         }
+
+        // 预缓存的 piece 下载完了, 从列表移除. 它可能同时也在窗口内, 下面继续按窗口处理.
+        val wasPrefetch = prefetchPieces.remove(pieceIndex)
 
         // (1) normal piece 是空的, 不关 normal piece 的事情, 不处理 window
         // (2) 所有 normal piece 都下载完了, 不处理 window
@@ -170,6 +213,7 @@ class TorrentDownloadController(
 
         // (3) 下载完了窗口之外的 piece, 不关 window 内的 piece 的事, 不处理 window
         if (!downloadingNormalPieces.remove(pieceIndex)) {
+            if (wasPrefetch) publishPriorities()
             return@synchronized
         }
 
@@ -207,7 +251,7 @@ class TorrentDownloadController(
             }
         }
 
-        priorities.downloadOnly(highPieces, downloadingNormalPieces)
+        publishPriorities()
     }
 
     /**

@@ -10,8 +10,8 @@
 
 请在代码和讨论中精确使用以下术语：
 
-- `MediaSource` = 资源提供商。它只负责根据 `MediaFetchRequest` 查询某一剧集的 `Media`。见
-  `datasource/api/src/commonMain/kotlin/source/MediaSource.kt`。
+- `MediaSource` = 资源提供商。它只负责根据 `MediaFetchRequest` 查询一个条目的全部 `Media`，
+  不按当前剧集裁剪。见 `datasource/api/src/commonMain/kotlin/source/MediaSource.kt`。
 - `Media` = 数据源返回的一个可播放/可缓存资源，携带 `download`、`episodeRange`、`properties`、
   `kind` 等属性。见 `datasource/api/src/commonMain/kotlin/Media.kt`。
 - `MediaSourceFactory` = 数据源类型/模板。它根据 `MediaSourceConfig` 创建具体的 `MediaSource` 实例。
@@ -70,17 +70,42 @@
 ## 单个剧集的播放时序
 
 1. `EpisodeSession.fetchSelectFlow` 由 `CreateMediaFetchSelectBundleFlowUseCaseImpl` 创建。
-2. 它根据条目/剧集信息构建 `MediaFetchRequest`。
-3. `MediaSourceManager.createFetchFetchSession(...)` 创建 `MediaFetchSession`。
+2. 它根据条目信息、条目的全部剧集和当前剧集构建 `MediaFetchRequest`。
+3. 播放页的 `EpisodeFetchSelectPlayState` 持有条目级的 `SubjectMediaFetchSessions`：
+   条目级请求相同（`isSameSubjectQuery`）时切集复用同一个 `MediaFetchSession`，只重建选择器，
+   并对失败或被中途取消的数据源重试一次；否则通过 `MediaSourceManager.createFetchFetchSession(...)`
+   创建新会话。会话由播放页作用域持续订阅，不随剧集作用域取消。
 4. `MediaSourceMediaFetcher` 并发调用每个启用实例的 `instance.source.fetch(...)`，
    合并进 `cumulativeResults`。
-5. `DefaultMediaSelector` 对查询到的 `Media` 过滤、排序、选择。
+5. `DefaultMediaSelector` 对查询到的 `Media` 过滤（先按当前剧集）、排序、选择。
 6. `MediaSelectorAutoSelectUseCaseImpl` 准备配置并启用上次使用的源，调用
    `MediaAutoSelector.select`；后者统一处理缓存、记忆源、WEB 两段超时或 BT 完成条件。
 7. `EpisodeFetchSelectPlayState.LoadMediaOnSelectExtension` 监听 `mediaSelector.selected` 并调用
    `PlayerSession.loadMedia(...)`。
 8. `PlayerSession.loadMedia(...)` 通过 `MediaResolver.resolve(...)` 解析，打开得到的
    `MediaDataProvider`，然后调用 `player.setMediaData(...)`。
+
+### 播放拖入的本地文件（桌面端）
+
+在播放页将本地视频文件拖入窗口，可以不经过数据源选择，直接在当前剧集播放该文件：
+
+1. `EpisodeVideoDropHandler`（`app/shared/src/commonMain/.../ui/subject/episode/`）是播放页的
+   `WindowDropHandler`，由 `EpisodeScreenContent` 通过 `WindowDropHandlerEffect` 注册到主窗口的
+   `WindowDropHost`，只在播放页处于组合中时生效。
+2. 松手后 `EpisodeViewModel.playDroppedFile` 用 `DroppedFileMedia.create(...)` 构造一个
+   `download = ResourceLocation.LocalFile` 的 `Media`，并调用 `MediaSelector.selectTemporarily(...)`。
+3. 之后与上面的第 7、8 步相同：`LoadMediaOnSelectExtension` 监听到 `selected` 变化，
+   由 `LocalFileMediaResolver` 解析并播放。
+
+注意：
+
+- 这个 `Media` 不来自任何数据源，不在候选列表中；`mediaSourceId` 固定为
+  `DroppedFileMedia.MEDIA_SOURCE_ID`，可用 `DroppedFileMedia.isDroppedFile(...)` 判断。
+- `selectTemporarily` 不更新偏好，也不广播 `onChangePreference` / `onPreferWebSource`，因此只对当前
+  `EpisodeSession` 有效；切换剧集会创建新的 `MediaSelector`，照常自动选择。
+- 已有选择时 `MediaAutoSelector` 不会覆盖它；用户仍可在数据源选择器中换回其他资源。
+- 拖入的文件播放失败时保留报错：`PlayerLoadErrorHandler.handleError` 不会为它自动换源，也不会拉黑它。
+- 跳过 OP/ED 的上报（`EpisodeViewModel.onClickSkipOpEd`）会忽略拖入的文件。
 
 ## 过滤与选择
 
@@ -96,7 +121,8 @@
   `MediaAutoSelector` 按资源的有效 tier 限制即时选择，并在后续阶段先按精确匹配、
   再按 tier 排序；只在最优组内应用偏好。
 - 查询结果并不天然“正确”；数据源实现应尽量返回准确的 `episodeRange`，`MediaSelector`
-  只是在其上做额外的过滤和排序。
+  只是在其上做额外的过滤和排序。数据源返回整个条目的资源，`MediaSelector` 的第 0 条规则
+  按当前剧集筛选；不筛选剧集的条目级候选通过 `MediaSelector.subjectCandidates` 提供给批量下载。
 
 ## 播放时使用的 Resolver
 

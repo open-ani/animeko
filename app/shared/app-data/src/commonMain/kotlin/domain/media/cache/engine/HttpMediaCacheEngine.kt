@@ -25,6 +25,7 @@ import kotlinx.io.files.SystemFileSystem
 import kotlinx.io.writeString
 import me.him188.ani.app.data.persistent.database.dao.HttpCacheDownloadStateDao
 import me.him188.ani.app.data.models.preference.PikPakConfig
+import me.him188.ani.app.domain.media.cache.DownloaderStatus
 import me.him188.ani.app.domain.media.cache.MediaCache
 import me.him188.ani.app.domain.media.cache.MediaCacheState
 import me.him188.ani.app.domain.media.resolver.EpisodeMetadata
@@ -263,6 +264,16 @@ class HttpMediaCacheEngine(
                 downloadProgress = it.toHttpCacheProgress(),
             )
         }
+        override val downloaderStatus: Flow<DownloaderStatus?> = downloader.getProgressFlow(downloadId).map {
+            DownloaderStatus.Http(
+                status = it.status,
+                error = it.error,
+                downloadedSegments = it.downloadedSegments,
+                totalSegments = it.totalSegments,
+                lastSegmentFailure = it.lastSegmentFailure,
+            )
+        }
+
         override val sessionStats: Flow<MediaCache.SessionStats> = run {
             val downloadSpeedFlow = fileStats.map { it.downloadedBytes.inBytes }.averageRate()
 
@@ -396,11 +407,11 @@ class HttpMediaCacheEngine(
 
 internal fun DownloadStatus.toMediaCacheState(): MediaCacheState {
     return when (this) {
+        DownloadStatus.INITIALIZING,
         DownloadStatus.DOWNLOADING,
         DownloadStatus.MERGING,
             -> MediaCacheState.IN_PROGRESS
 
-        DownloadStatus.INITIALIZING,
         DownloadStatus.PAUSED,
             -> MediaCacheState.PAUSED
 

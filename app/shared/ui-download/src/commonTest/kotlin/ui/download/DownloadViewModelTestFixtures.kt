@@ -22,6 +22,7 @@ import kotlinx.coroutines.flow.filterNotNull
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.flowOf
+import kotlinx.coroutines.flow.map
 import me.him188.ani.app.data.models.bangumi.BangumiSyncState
 import me.him188.ani.app.data.models.danmaku.DanmakuFilterConfig
 import me.him188.ani.app.data.models.episode.EpisodeCollectionInfo
@@ -247,6 +248,8 @@ internal fun testSubjectCollection(subjectId: Int = 1, episodeCount: Int = 3): S
 internal class FakeEpisodePlayHistoryRepository : EpisodePlayHistoryRepository {
     override val flow = MutableStateFlow<List<EpisodeHistory>>(emptyList())
     override val allHistoriesFlow: Flow<List<EpisodeHistory>> get() = flow
+    override fun flowByEpisodeIds(episodeIds: Collection<Int>): Flow<List<EpisodeHistory>> =
+        flow.map { histories -> histories.filter { it.episodeId in episodeIds } }
     override val pendingOpsFlow: Flow<List<PlaybackHistoryPendingOp>> get() = throw UnsupportedOperationException()
     override val lastSyncAtMillisFlow: Flow<Long> get() = throw UnsupportedOperationException()
     override suspend fun clear() = throw UnsupportedOperationException()
@@ -306,12 +309,19 @@ internal class FakeSettingsRepository : SettingsRepository {
 }
 
 /**
- * 每个查询会话立即返回 [TestMediaList]. 持续订阅结果的查询被取消时, 把剧集 id 记入 [releasedEpisodeIds];
+ * 每个查询会话立即返回 [mediaListFor] 的结果. 持续订阅结果的查询被取消时, 把剧集 id 记入 [releasedEpisodeIds];
  * 只取首个结果的订阅 (如选择器内部的查询) 不计入.
  */
 @OptIn(TestOnly::class)
 internal class FakeMediaFetcher : MediaFetcher {
     val releasedEpisodeIds = mutableSetOf<Int>()
+
+    /**
+     * 每集查询返回的资源. 默认把 [TestMediaList] 的每个资源都收窄为只含当前集, 使选源后直接创建下载而不进入选集.
+     */
+    var mediaListFor: (episodeId: Int) -> List<Media> = { episodeId ->
+        TestMediaList.map { it.copy(episodeRange = EpisodeRange.single(EpisodeSort(episodeId))) }
+    }
 
     override fun newSession(requestLazy: Flow<MediaFetchRequest>, flowContext: CoroutineContext): MediaFetchSession =
         object : MediaFetchSession {
@@ -319,7 +329,7 @@ internal class FakeMediaFetcher : MediaFetcher {
             override val mediaSourceResults: List<MediaSourceFetchResult> = emptyList()
             override val cumulativeResults: Flow<List<Media>> = flow {
                 val episodeId = requestLazy.first().episodeId.toInt()
-                emit(TestMediaList)
+                emit(mediaListFor(episodeId))
                 try {
                     awaitCancellation()
                 } finally {
@@ -362,6 +372,7 @@ internal fun fakeMediaSelectorFactory(): MediaSelectorFactory = object : MediaSe
         episodeId: Int,
         mediaList: Flow<List<Media>>,
         flowCoroutineContext: CoroutineContext,
+        fetchRequest: Flow<MediaFetchRequest>?,
     ): MediaSelector = DefaultMediaSelector(
         mediaSelectorContextNotCached = flowOf(MediaSelectorContext.EmptyForPreview),
         mediaListNotCached = mediaList,

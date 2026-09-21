@@ -56,7 +56,7 @@ ani.build.framework=true
 
 ## 运行测试版应用
 
-参考 [testing](testing.md)。
+参考[运行和调试 APP](running.md)。
 
 ## 运行测试
 

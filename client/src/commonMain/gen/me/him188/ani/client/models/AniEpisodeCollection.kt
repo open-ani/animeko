@@ -32,11 +32,13 @@ import kotlinx.serialization.encoding.*
  * @param type
  * @param name
  * @param nameCn
- * @param description
+ * @param description 剧集简介. 仅单个剧集接口返回; 条目详情与收藏列表内嵌的剧集中恒为空字符串.
  * @param ep 保证是数字 (Decimal128)
  * @param airdate
  * @param disc
  * @param duration
+ * @param imageMedium 剧集截图 (TMDB still, 宽 300px), 直接可用的公开 URL. 没有可用图片时为 null.
+ * @param imageLarge 剧集截图 (TMDB still, 原图). 没有可用图片时为 null.
  * @param collectionType
  */
 @Serializable
@@ -56,6 +58,7 @@ data class AniEpisodeCollection (
 
     @SerialName(value = "nameCn") @Required val nameCn: kotlin.String,
 
+    /* 剧集简介. 仅单个剧集接口返回; 条目详情与收藏列表内嵌的剧集中恒为空字符串. */
     @SerialName(value = "description") @Required val description: kotlin.String,
 
     /* 保证是数字 (Decimal128) */
@@ -66,6 +69,12 @@ data class AniEpisodeCollection (
     @SerialName(value = "disc") val disc: kotlin.Int? = null,
 
     @SerialName(value = "duration") val duration: kotlin.String? = null,
+
+    /* 剧集截图 (TMDB still, 宽 300px), 直接可用的公开 URL. 没有可用图片时为 null. */
+    @SerialName(value = "imageMedium") val imageMedium: kotlin.String? = null,
+
+    /* 剧集截图 (TMDB still, 原图). 没有可用图片时为 null. */
+    @SerialName(value = "imageLarge") val imageLarge: kotlin.String? = null,
 
     @SerialName(value = "collectionType") val collectionType: AniEpisodeCollectionType? = null
 

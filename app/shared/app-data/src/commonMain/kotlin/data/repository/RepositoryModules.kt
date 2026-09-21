@@ -14,6 +14,8 @@ import me.him188.ani.app.data.persistent.PlatformDataStoreManager
 import me.him188.ani.app.data.repository.subject.BangumiMergeRepository
 import me.him188.ani.app.data.repository.subject.BangumiSyncCommandRepository
 import me.him188.ani.app.data.repository.subject.DefaultBangumiMergeRepository
+import me.him188.ani.app.data.repository.user.DefaultDeveloperVerificationRepository
+import me.him188.ani.app.data.repository.user.DeveloperVerificationRepository
 import me.him188.ani.app.data.repository.user.UserRepository
 import me.him188.ani.app.domain.bangumi.BangumiConflictChecker
 import org.koin.core.KoinApplication
@@ -33,8 +35,12 @@ fun KoinApplication.repositoryModules(dataStores: PlatformDataStoreManager) = mo
             aniApiProvider.userAuthApi,
             aniApiProvider.userProfileApi,
             aniApiProvider.bangumiApi,
+            aniApiProvider.oauthApi,
             get(),
         )
+    }
+    single<DeveloperVerificationRepository> {
+        DefaultDeveloperVerificationRepository(aniApiProvider.developerVerificationApi)
     }
     single<BangumiSyncCommandRepository> {
         BangumiSyncCommandRepository(

@@ -45,12 +45,9 @@ import me.him188.ani.datasources.api.topic.FileSize.Companion.bytes
 import me.him188.ani.datasources.api.topic.ResourceLocation
 import me.him188.ani.datasources.api.topic.Topic
 import me.him188.ani.datasources.api.topic.TopicCategory
-import me.him188.ani.datasources.api.topic.TopicCriteria
-import me.him188.ani.datasources.api.topic.matches
 import me.him188.ani.datasources.api.topic.titles.RawTitleParser
 import me.him188.ani.datasources.api.topic.titles.parse
 import me.him188.ani.datasources.api.topic.titles.toTopicDetails
-import me.him188.ani.datasources.api.topic.toTopicCriteria
 import me.him188.ani.utils.ktor.ScopedHttpClient
 import me.him188.ani.utils.ktor.toSource
 import me.him188.ani.utils.logging.warn
@@ -197,7 +194,7 @@ abstract class AbstractMikanMediaSource(
             parameter("searchstr", query.subjectNameCN?.take(10))
         }
         return resp.body<ByteReadChannel>().toSource().use {
-            parseRssTopicList(Xml.parse(it, baseUrl), query.toTopicCriteria(), allowEpMatch = false, baseUrl)
+            parseRssTopicList(Xml.parse(it, baseUrl), baseUrl)
         }.map {
             MediaMatch(it.toOnlineMedia(mediaSourceId), MatchKind.FUZZY)
         }
@@ -228,7 +225,7 @@ abstract class AbstractMikanMediaSource(
 
         // https://mikanani.me/RSS/Bangumi?bangumiId=3060
         return client.prepareGet("$baseUrl/RSS/Bangumi?bangumiId=$subjectId").body<ByteReadChannel>().toSource().use {
-            parseRssTopicList(Xml.parse(it, baseUrl), request.toTopicCriteria(), allowEpMatch = true, baseUrl = baseUrl)
+            parseRssTopicList(Xml.parse(it, baseUrl), baseUrl = baseUrl)
         }.map {
             MediaMatch(it.toOnlineMedia(mediaSourceId), MatchKind.EXACT)
         }
@@ -315,12 +312,9 @@ abstract class AbstractMikanMediaSource(
 
         fun parseRssTopicList(
             document: Document,
-            criteria: TopicCriteria,
-            allowEpMatch: Boolean,
             baseUrl: String,
         ): List<Topic> {
             return parseDocument(document, linkRegex = linkRegex, baseUrl = baseUrl)
-                .filter { criteria.matches(it, allowEpMatch = allowEpMatch) }
         }
 
 

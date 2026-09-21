@@ -118,7 +118,7 @@ private fun Stat(
 }
 
 @Stable
-private fun renderFileSize(size: FileSize): String {
+internal fun renderFileSize(size: FileSize): String {
     if (size == FileSize.Unspecified) {
         return ""
     }
@@ -126,7 +126,7 @@ private fun renderFileSize(size: FileSize): String {
 }
 
 @Stable
-private fun renderSpeed(speed: FileSize): String {
+internal fun renderSpeed(speed: FileSize): String {
     if (speed == FileSize.Unspecified) {
         return ""
     }
