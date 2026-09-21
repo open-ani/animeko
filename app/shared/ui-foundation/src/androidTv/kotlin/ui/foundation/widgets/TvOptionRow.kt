@@ -11,17 +11,26 @@ package me.him188.ani.leanback.ui.foundation.widgets
 
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.rounded.KeyboardArrowLeft
 import androidx.compose.material.icons.automirrored.rounded.KeyboardArrowRight
 import androidx.compose.material.icons.rounded.Check
+import androidx.compose.material.icons.rounded.CheckBox
+import androidx.compose.material.icons.rounded.CheckBoxOutlineBlank
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
+import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.CornerRadius
@@ -50,6 +59,7 @@ fun TvOptionRow(
     selected: Boolean = false,
     enabled: Boolean = true,
     checked: Boolean? = null,
+    toggleRole: Role = Role.Switch,
     supportingText: String? = null,
     icon: ImageVector? = null,
     valueIcon: ImageVector? = null,
@@ -57,67 +67,79 @@ fun TvOptionRow(
     filled: Boolean = false,
     compact: Boolean = false,
     leadingContent: (@Composable () -> Unit)? = null,
+    trailingIcon: ImageVector? = null,
+    showSelectionIndicator: Boolean = true,
     onClick: () -> Unit,
 ) {
+    var focused by remember { mutableStateOf(false) }
     Surface(
         onClick = onClick, enabled = enabled,
         modifier = modifier
+            .onFocusChanged { focused = it.isFocused }
             .fillMaxWidth()
             .semantics {
                 this.selected = selected
                 if (checked != null) {
-                    role = Role.Switch
+                    role = toggleRole
                     toggleableState = if (checked) ToggleableState.On else ToggleableState.Off
                 }
             },
-        colors = tvOptionSurfaceColors(selected, filled),
+        colors = tvOptionSurfaceColors(selected, filled, focused),
         shape = ClickableSurfaceDefaults.shape(TvOptionDefaults.ItemShape),
         scale = ClickableSurfaceDefaults.scale(focusedScale = 1f),
     ) {
-        Row(
-            Modifier
-                .heightIn(min = if (compact) 36.dp else 48.dp)
-                .padding(horizontal = 16.dp, vertical = if (compact) 8.dp else 10.dp),
-            horizontalArrangement = Arrangement.spacedBy(12.dp),
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
-            if (leadingContent != null) leadingContent()
-            else icon?.let { Icon(it, null, Modifier.size(20.dp)) }
-            Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(3.dp)) {
-                Text(title, style = MaterialTheme.typography.titleSmall, maxLines = 2, overflow = TextOverflow.Ellipsis)
-                supportingText?.let {
-                    Text(
-                        it,
-                        style = MaterialTheme.typography.bodySmall,
-                        color = LocalContentColor.current.copy(alpha = .7f),
-                    )
-                }
-            }
-            if (value.isNotEmpty() || adjustable || valueIcon != null) Row(
+        BoxWithConstraints {
+            val valueMaxWidth = maxWidth * .4f
+            Row(
+                Modifier
+                    .heightIn(min = if (compact) 36.dp else 48.dp)
+                    .padding(horizontal = 16.dp, vertical = if (compact) 8.dp else 10.dp),
+                horizontalArrangement = Arrangement.spacedBy(12.dp),
                 verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(4.dp),
             ) {
-                valueIcon?.let { Icon(it, null, Modifier.size(20.dp)) }
-                if (adjustable) Icon(Icons.AutoMirrored.Rounded.KeyboardArrowLeft, null, Modifier.size(16.dp))
-                Text(value, style = MaterialTheme.typography.labelLarge)
-                if (adjustable) Icon(Icons.AutoMirrored.Rounded.KeyboardArrowRight, null, Modifier.size(16.dp))
-            }
-            if (selected && checked == null) Icon(Icons.Rounded.Check, null, Modifier.size(20.dp))
-            if (checked != null) {
-                val color = LocalContentColor.current
-                Canvas(Modifier.size(36.dp, 20.dp)) {
-                    drawRoundRect(
-                        color.copy(alpha = if (checked) .45f else .18f),
-                        cornerRadius = CornerRadius(size.height / 2),
-                    )
-                    drawCircle(
-                        color,
-                        radius = size.height / 2 - 3.dp.toPx(),
-                        center = Offset(
-                            if (checked) size.width - size.height / 2 else size.height / 2,
-                            size.height / 2,
-                        ),
-                    )
+                if (leadingContent != null) leadingContent()
+                else icon?.let { Icon(it, null, Modifier.size(20.dp)) }
+                Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(3.dp)) {
+                    Text(title, style = MaterialTheme.typography.titleSmall, maxLines = 2, overflow = TextOverflow.Ellipsis)
+                    supportingText?.let {
+                        Text(
+                            it,
+                            style = MaterialTheme.typography.bodySmall,
+                            color = LocalContentColor.current.copy(alpha = .7f),
+                        )
+                    }
+                }
+                if (value.isNotEmpty() || adjustable || valueIcon != null) Row(
+                    Modifier.widthIn(max = valueMaxWidth),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(4.dp),
+                ) {
+                    valueIcon?.let { Icon(it, null, Modifier.size(20.dp)) }
+                    if (adjustable) Icon(Icons.AutoMirrored.Rounded.KeyboardArrowLeft, null, Modifier.size(16.dp))
+                    if (value.isNotEmpty()) Text(value, Modifier.weight(1f, fill = false), style = MaterialTheme.typography.labelLarge,
+                        maxLines = 2, overflow = TextOverflow.Ellipsis)
+                    if (adjustable) Icon(Icons.AutoMirrored.Rounded.KeyboardArrowRight, null, Modifier.size(16.dp))
+                }
+                if (selected && checked == null && showSelectionIndicator) Icon(Icons.Rounded.Check, null, Modifier.size(20.dp))
+                trailingIcon?.let { Icon(it, null, Modifier.size(20.dp)) }
+                if (checked != null && toggleRole == Role.Checkbox) {
+                    Icon(if (checked) Icons.Rounded.CheckBox else Icons.Rounded.CheckBoxOutlineBlank, null, Modifier.size(24.dp))
+                } else if (checked != null) {
+                    val color = LocalContentColor.current
+                    Canvas(Modifier.size(36.dp, 20.dp)) {
+                        drawRoundRect(
+                            color.copy(alpha = if (checked) .45f else .18f),
+                            cornerRadius = CornerRadius(size.height / 2),
+                        )
+                        drawCircle(
+                            color,
+                            radius = size.height / 2 - 3.dp.toPx(),
+                            center = Offset(
+                                if (checked) size.width - size.height / 2 else size.height / 2,
+                                size.height / 2,
+                            ),
+                        )
+                    }
                 }
             }
         }

@@ -9,9 +9,14 @@
 
 package me.him188.ani.leanback.ui.search
 
+import me.him188.ani.app.data.models.preference.NsfwMode
 import me.him188.ani.app.data.network.BatchSubjectDetails
 
-data class TvSearchUiState(val keywords: String = "", val hasSearched: Boolean = false)
+data class TvSearchUiState(
+    val keywords: String = "",
+    val hasSearched: Boolean = false,
+    val nsfwMode: NsfwMode = NsfwMode.BLUR,
+)
 
 sealed interface TvSearchIntent {
     data class ChangeKeywords(val value: String) : TvSearchIntent

@@ -10,6 +10,7 @@ package me.him188.ani.leanback.ui.exploration
 
 import androidx.compose.animation.Crossfade
 import androidx.compose.animation.animateColorAsState
+import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
@@ -21,6 +22,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.BiasAlignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.drawWithCache
 import androidx.compose.ui.geometry.Offset
@@ -28,62 +30,91 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.semantics.stateDescription
 import com.kmpalette.color
 import com.kmpalette.rememberPaletteState
-import me.him188.ani.leanback.ui.subject.components.TvDetailsBackdrop
+import me.him188.ani.app.ui.foundation.AsyncImage
 
-/** The backdrop stays fixed in the viewport; artwork and cover glow only change opacity. */
 @Composable
 internal fun TvExplorationBackdrop(
     hero: TvHeroSubject?,
     scrollProgress: () -> Float,
+    expanded: Boolean,
     modifier: Modifier = Modifier,
 ) {
     val currentUrl by rememberUpdatedState(hero?.imageUrl)
-    var glowTarget by remember { mutableStateOf(TvExplorationDefaults.Background) }
-    val glow by animateColorAsState(glowTarget, tween(450), label = "exploration-cover-glow")
+    var glowTarget by remember { mutableStateOf(Color(0xFF35455B)) }
+    val glow by animateColorAsState(glowTarget, tween(400, easing = ExplorationFocusEasing), label = "home-backdrop-color")
+    val scale by animateFloatAsState(
+        if (expanded) 1f else 1.1f, tween(400, easing = ExplorationFocusEasing), label = "home-backdrop-scale",
+    )
     Box(modifier.fillMaxSize().background(TvExplorationDefaults.Background)) {
         Box(
             Modifier.fillMaxSize().testTag("tv-exploration-glow")
                 .semantics { stateDescription = scrollProgress().toString() }
-                .graphicsLayer { alpha = scrollProgress().coerceIn(0f, 1f) }
                 .drawWithCache {
-                    val upper = Brush.radialGradient(
-                        listOf(glow.copy(alpha = .40f), Color.Transparent),
-                        center = Offset(size.width * .65f, 0f), radius = size.width * .85f,
+                    val wash = Brush.radialGradient(
+                        listOf(glow.copy(alpha = .12f), Color.Transparent),
+                        center = Offset(size.width * .70f, size.height * .25f), radius = size.width * .85f,
                     )
-                    val lower = Brush.radialGradient(
-                        listOf(glow.copy(alpha = .15f), Color.Transparent),
-                        center = Offset(0f, size.height), radius = size.width * .7f,
-                    )
-                    onDrawBehind { drawRect(upper); drawRect(lower) }
+                    onDrawBehind { drawRect(wash) }
                 },
         )
         Crossfade(
             hero,
             Modifier.fillMaxSize().graphicsLayer { alpha = 1f - scrollProgress().coerceIn(0f, 1f) },
-            animationSpec = tween(TvExplorationDefaults.BackdropFadeMillis), label = "exploration-backdrop",
+            animationSpec = tween(TvExplorationDefaults.BackdropFadeMillis, easing = ExplorationFocusEasing),
+            label = "home-backdrop",
         ) { subject ->
-            val imageUrl = subject?.imageUrl.orEmpty()
-            var bitmap by remember(imageUrl) { mutableStateOf<ImageBitmap?>(null) }
+            val url = subject?.imageUrl.orEmpty()
+            var bitmap by remember(url) { mutableStateOf<ImageBitmap?>(null) }
             val palette = rememberPaletteState()
             LaunchedEffect(bitmap) { bitmap?.let { palette.generate(it) } }
-            LaunchedEffect(palette.palette, imageUrl) {
-                if (imageUrl == currentUrl) {
-                    val colors = palette.palette
-                    val color = colors?.vibrantSwatch?.color ?: colors?.dominantSwatch?.color
-                    if (color != null) glowTarget = color
+            LaunchedEffect(palette.palette, url) {
+                if (url == currentUrl) {
+                    (palette.palette?.darkVibrantSwatch?.color ?: palette.palette?.dominantSwatch?.color)
+                        ?.let { glowTarget = it }
                 }
             }
-            TvDetailsBackdrop(
-                imageUrl, blurProgress = { 0f }, crossfade = false,
-                modifier = Modifier.testTag("tv-exploration-backdrop-${subject?.subjectId}"),
-                onImageLoaded = { bitmap = it },
-                onImageError = { if (imageUrl == currentUrl) glowTarget = TvExplorationDefaults.Background },
-            )
+            Box(Modifier.fillMaxSize().testTag("tv-exploration-backdrop-${subject?.subjectId}")) {
+                AsyncImage(
+                    url, null, Modifier.fillMaxSize().graphicsLayer { scaleX = scale; scaleY = scale },
+                    contentScale = ContentScale.Crop, alignment = BiasAlignment(0f, -.5f), crossfade = false,
+                    onSuccess = { bitmap = it.bitmap },
+                )
+                Box(
+                    Modifier.fillMaxSize().background(
+                        Brush.horizontalGradient(
+                            0f to TvExplorationDefaults.Background,
+                            .18f to TvExplorationDefaults.Background.copy(alpha = .95f),
+                            .45f to TvExplorationDefaults.Background.copy(alpha = .60f),
+                            .72f to Color.Transparent,
+                        ),
+                    ),
+                )
+                Box(
+                    Modifier.fillMaxSize().background(
+                        Brush.verticalGradient(
+                            0f to TvExplorationDefaults.Background.copy(alpha = .1f),
+                            .4f to Color.Transparent,
+                            .78f to TvExplorationDefaults.Background.copy(alpha = .8f),
+                            1f to TvExplorationDefaults.Background,
+                        ),
+                    ),
+                )
+            }
         }
+        Box(
+            Modifier.fillMaxSize().drawWithCache {
+                val halo = Brush.radialGradient(
+                    listOf(glow.copy(alpha = .10f), Color.Transparent),
+                    center = Offset(size.width * .12f, size.height * .6f), radius = size.width * .32f,
+                )
+                onDrawBehind { drawRect(halo) }
+            },
+        )
     }
 }

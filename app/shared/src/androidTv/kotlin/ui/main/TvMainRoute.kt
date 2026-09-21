@@ -20,10 +20,11 @@ fun TvMainRoute(
     viewModel: TvMainViewModel,
     content: TvShellContent,
     onContentChange: (TvShellContent) -> Unit,
+    onOpenSettings: () -> Unit,
     modifier: Modifier = Modifier,
     focusMemory: TvFocusMemory? = null,
     pageContent: @Composable (TvShellContent) -> Unit,
 ) {
     val state by viewModel.uiState.collectAsState()
-    TvMainShell(state, content, onContentChange, modifier, focusMemory, pageContent)
+    TvMainShell(state, content, onContentChange, onOpenSettings, modifier, focusMemory, pageContent)
 }

@@ -9,54 +9,39 @@
 
 package me.him188.ani.leanback.ui.foundation.focus
 
-import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.border
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.Composable
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
-import androidx.tv.material3.Border
-import androidx.tv.material3.ClickableSurfaceBorder
-import androidx.tv.material3.ClickableSurfaceDefaults
-import androidx.tv.material3.Glow
 import androidx.tv.material3.MaterialTheme
 
 /**
- * TV 焦点视觉的唯一出口 (atv-architecture.md D7):
- * PR#3217 实机验证的「色圈 + 留白、无缩放」风格. 如需切回官方缩放风格, 改这一处即可.
+ * TV 列表卡片使用主题色描边、固定留白和无缩放的焦点反馈。
  */
 object TvFocusDefaults {
-    /** 无缩放; 官方风格为 1.05f. */
+    /** 聚焦和按下保持原有尺寸。 */
     const val FocusedScale: Float = 1f
 
     /** 聚焦描边宽度 (主题主色). */
     val RingWidth: Dp = 2.5.dp
 
-    /** 描边与内容之间的留白 (聚焦时露出底色形成"色圈+留白"); 内容常驻按此内缩防跳动. */
-    val RingInset: Dp = 3.dp
+    /** 描边内缘与卡片内容之间的空隙。 */
+    val RingGap: Dp = 2.dp
 
-    /** 描边圆角 (= 内容圆角 8 + [RingInset] 3). */
-    val RingCornerRadius: Dp = 11.dp
+    /** 常驻预留描边和空隙，焦点变化不影响图片大小及布局。 */
+    val RingInset: Dp = RingWidth + RingGap
 
-    /** 海报卡聚焦描边: [RingWidth] primary @ [RingCornerRadius], 内容常驻内缩 [RingInset]. */
-    @Composable
-    fun cardBorder(): Border = Border(
-        border = BorderStroke(RingWidth, MaterialTheme.colorScheme.primary),
-        inset = RingInset,
-        shape = RoundedCornerShape(RingCornerRadius),
-    )
-
-    /** 不使用 glow. */
-    fun cardGlow(): Glow = Glow.None
-
-    /** [cardBorder] 的 tv Surface(clickable) 包装. */
-    @Composable
-    fun clickableCardBorder(shape: Shape = RoundedCornerShape(RingCornerRadius)): ClickableSurfaceBorder =
-        ClickableSurfaceDefaults.border(
-            focusedBorder = Border(
-                border = BorderStroke(RingWidth, MaterialTheme.colorScheme.primary),
-                inset = RingInset,
-                shape = shape,
-            ),
-        )
+    /** 内容圆角 8dp 的卡片所使用的描边外圆角。 */
+    val RingCornerRadius: Dp = 8.dp + RingInset
 }
+
+/** Draw inside the reserved frame; callers inset their content by [TvFocusDefaults.RingInset]. */
+@Composable
+fun Modifier.tvCardFocusBorder(
+    focused: Boolean,
+    shape: Shape = RoundedCornerShape(TvFocusDefaults.RingCornerRadius),
+): Modifier = border(TvFocusDefaults.RingWidth, if (focused) MaterialTheme.colorScheme.primary else Color.Transparent, shape)

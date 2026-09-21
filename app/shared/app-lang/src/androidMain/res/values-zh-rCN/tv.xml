@@ -106,6 +106,15 @@
     <!-- Watch together -->
     <string name="watch_together_leave_explanation">离开后将停止跟随房主，你可以继续独自观看。</string>
     <string name="watch_together_invite_helper">把房间名和密码分享给朋友，即可一起观看。</string>
+    <string name="tv_settings_sources_description">查看数据源并管理启用状态。</string>
+    <string name="tv_settings_subscriptions_description">订阅开关会同时启用或禁用所属数据源；也可以单独调整每个数据源。</string>
+    <string name="tv_settings_subscription_sources_count">%1$d 个数据源</string>
+    <string name="tv_settings_reorder_hint">↑↓ 选择项目 · 确认开始移动 · 返回完成排序</string>
+    <string name="tv_settings_moving_hint">↑↓ 移动 · 确认放置 · 返回取消本次移动</string>
+    <string name="tv_settings_open_on_tv">在电视上打开</string>
+    <string name="tv_settings_scan_link">使用手机扫码打开此页面</string>
+    <string name="tv_exploration_more_details">更多详情</string>
+    <string name="tv_nav_schedule">时间表</string>
 </resources>
 
 <!--@formatter:on-->

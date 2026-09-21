@@ -38,9 +38,12 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.text.SpanStyle
+import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.LineHeightStyle
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.TextUnit
 import androidx.compose.ui.unit.dp
@@ -112,7 +115,7 @@ internal fun TvDetailsHeroSection(
     )
 }
 
-/** Shared subject hero. Exploration omits the introduction and supplies its own action/progress slots. */
+/** Subject hero with identity, introduction and action slots; title and metadata components are shared with exploration. */
 @Composable
 fun TvDetailsHero(
     info: SubjectInfo,
@@ -156,18 +159,8 @@ fun TvDetailsHero(
                             lines = 1, fontSize = 16.sp, lineHeight = 30.sp,
                         )
                     } else {
-                        val titleStyle = MaterialTheme.typography.displaySmall.copy(
-                            fontSize = fontSize, lineHeight = reservedLineHeight, fontWeight = FontWeight.Normal,
-                        )
-                        Text(
-                            subject.displayName, textModifier, color = TvSubjectDetailsDefaults.Content,
-                            style = if (titleMinLines > 1) titleStyle.copy(
-                                lineHeightStyle = LineHeightStyle(
-                                    LineHeightStyle.Alignment.Center,
-                                    LineHeightStyle.Trim.None,
-                                ),
-                            ) else titleStyle,
-                            minLines = titleMinLines, maxLines = 2, overflow = TextOverflow.Ellipsis,
+                        TvDetailsTitle(
+                            subject.displayName, textModifier, fontSize, reservedLineHeight, titleMinLines,
                         )
                         TvDetailsMetadata(subject, airing, onComments ?: {}, scoreModifier, onComments != null)
                     }
@@ -185,19 +178,39 @@ fun TvDetailsHero(
 }
 
 @Composable
-private fun TvDetailsMetadata(
+fun TvDetailsTitle(
+    text: String,
+    modifier: Modifier = Modifier,
+    fontSize: TextUnit = TvSubjectDetailsDefaults.TitleSize,
+    lineHeight: TextUnit = TvSubjectDetailsDefaults.TitleLineHeight,
+    minLines: Int = 1,
+) {
+    val style = MaterialTheme.typography.displaySmall.copy(
+        fontSize = fontSize, lineHeight = lineHeight, fontWeight = FontWeight.Normal,
+    )
+    Text(
+        text, modifier, color = TvSubjectDetailsDefaults.Content,
+        style = if (minLines > 1) style.copy(
+            lineHeightStyle = LineHeightStyle(LineHeightStyle.Alignment.Center, LineHeightStyle.Trim.None),
+        ) else style,
+        minLines = minLines, maxLines = 2, overflow = TextOverflow.Ellipsis,
+    )
+}
+
+@Composable
+fun TvDetailsMetadata(
     info: SubjectInfo,
     airing: AiringLabelState?,
-    onComments: () -> Unit,
-    scoreModifier: Modifier,
-    interactive: Boolean,
+    onComments: () -> Unit = {},
+    scoreModifier: Modifier = Modifier,
+    interactive: Boolean = false,
+    modifier: Modifier = Modifier,
 ) {
-    val strings = rememberSubjectStatusStrings()
     val style = MaterialTheme.typography.bodyLarge.copy(fontSize = 16.sp)
     val interaction = remember { MutableInteractionSource() }
     val focused by interaction.collectIsFocusedAsState()
     FlowRow(
-        Modifier.testTag("tv-details-metadata"),
+        modifier.testTag("tv-details-metadata"),
         horizontalArrangement = Arrangement.spacedBy(16.dp),
         verticalArrangement = Arrangement.spacedBy(8.dp),
         itemVerticalAlignment = Alignment.CenterVertically,
@@ -235,18 +248,29 @@ private fun TvDetailsMetadata(
             color = TvSubjectDetailsDefaults.SecondaryContent,
             style = style,
         )
-        val progress = airing?.progressText(strings)
-        val total = airing?.totalEpisodesText(strings)
-        Row {
-            if (progress != null) Text(
-                progress, style = style,
-                color = if (airing.highlightProgress) MaterialTheme.colorScheme.primary else TvSubjectDetailsDefaults.SecondaryContent,
-            )
-            if (total != null) Text(
-                (if (progress != null) " · " else "") + total,
-                style = style, color = TvSubjectDetailsDefaults.SecondaryContent,
-            )
-        }
+        if (airing != null) TvDetailsAiringInfo(airing)
+    }
+}
+
+@Composable
+fun TvDetailsAiringInfo(airing: AiringLabelState, modifier: Modifier = Modifier) {
+    val strings = rememberSubjectStatusStrings()
+    val style = MaterialTheme.typography.bodyLarge.copy(fontSize = 16.sp)
+    val progress = airing.progressText(strings)
+    val total = airing.totalEpisodesText(strings)
+    Row(modifier) {
+        Text(
+            buildAnnotatedString {
+                if (progress != null) withStyle(SpanStyle(
+                    color = if (airing.highlightProgress) MaterialTheme.colorScheme.primary else TvSubjectDetailsDefaults.SecondaryContent,
+                )) { append(progress) }
+                if (total != null) {
+                    if (progress != null) append(" · ")
+                    append(total)
+                }
+            },
+            style = style, color = TvSubjectDetailsDefaults.SecondaryContent, maxLines = 1, overflow = TextOverflow.Ellipsis,
+        )
     }
 }
 

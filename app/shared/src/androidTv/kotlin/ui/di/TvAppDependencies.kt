@@ -14,10 +14,13 @@ import me.him188.ani.app.data.network.BangumiSummaryService
 import me.him188.ani.app.data.network.TmdbImageService
 import me.him188.ani.app.data.repository.episode.EpisodeCollectionRepository
 import me.him188.ani.app.data.repository.episode.EpisodeCommentRepository
+import me.him188.ani.app.data.repository.media.MediaSourceSubscriptionRepository
 import me.him188.ani.app.data.repository.media.SelectorMediaSourceEpisodeCacheRepository
 import me.him188.ani.app.data.repository.subject.SubjectCollectionRepository
 import me.him188.ani.app.data.repository.subject.SubjectSearchRepository
 import me.him188.ani.app.data.repository.user.SettingsRepository
+import me.him188.ani.app.data.repository.player.DanmakuRegexFilterRepository
+import me.him188.ani.app.domain.media.fetch.MediaSourceManager
 import me.him188.ani.app.data.repository.user.UserRepository
 import me.him188.ani.app.domain.danmaku.DanmakuRepository
 import me.him188.ani.app.domain.episode.GetSubjectRecommendationUseCase
@@ -42,6 +45,9 @@ class TvAppDependencies(
     val subjectCollectionRepository: SubjectCollectionRepository,
     val tmdbImageService: TmdbImageService,
     val bangumiSummaryService: BangumiSummaryService,
+    val danmakuRegexFilterRepository: DanmakuRegexFilterRepository,
+    val mediaSourceManager: MediaSourceManager,
+    val mediaSourceSubscriptionRepository: MediaSourceSubscriptionRepository,
     val subjectSearchRepository: SubjectSearchRepository,
     val settingsRepository: SettingsRepository,
     val subjectDetailsStateFactory: SubjectDetailsStateFactory,
@@ -68,6 +74,9 @@ class TvAppDependencies(
             userRepository = koin.get(),
             subjectCollectionRepository = koin.get(),
             tmdbImageService = koin.get(),
+            danmakuRegexFilterRepository = koin.get(),
+            mediaSourceManager = koin.get(),
+            mediaSourceSubscriptionRepository = koin.get(),
             bangumiSummaryService = koin.get(),
             subjectSearchRepository = koin.get(),
             settingsRepository = koin.get(),

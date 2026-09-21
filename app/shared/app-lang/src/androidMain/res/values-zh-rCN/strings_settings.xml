@@ -1,0 +1,26 @@
+<resources>
+    <string name="settings_option_enabled">已启用</string>
+    <string name="settings_option_disabled">已停用</string>
+    <string name="settings_load_failed">设置加载失败，请重试</string>
+    <string name="settings_save_failed">设置保存失败，请重试</string>
+    <string name="settings_playback_speed_min">最低倍速</string>
+    <string name="settings_playback_speed_max">最高倍速</string>
+    <string name="settings_appearance_description">语言、内容显示与搜索</string>
+    <string name="settings_player_description">播放行为、画质与弹幕过滤</string>
+    <string name="settings_player_group_playback">播放行为</string>
+    <string name="settings_player_group_picture">画质与倍速</string>
+    <string name="settings_player_group_danmaku">弹幕与过滤</string>
+    <string name="settings_player_group_playback_description">自动连播、跳过片头片尾与观看进度</string>
+    <string name="settings_player_group_picture_description">画质增强、进度预览与播放倍速</string>
+    <string name="settings_player_group_danmaku_description">弹幕显示、刷新率与过滤规则</string>
+    <string name="settings_player_group_advanced_description">实验功能与全屏行为</string>
+    <string name="settings_priority_reorder">调整优先级</string>
+    <string name="settings_priority_reorder_done">完成排序</string>
+    <string name="settings_priority_selected_description">勾选参与选源的项目，排在前面的优先。</string>
+    <string name="settings_priority_position">优先级 %1$d</string>
+    <string name="settings_danmaku_rule_enabled">启用此规则</string>
+    <string name="settings_danmaku_delete_rule_title">删除这条规则？</string>
+    <string name="settings_danmaku_delete_rule_description">这条过滤规则将被删除，无法撤销。</string>
+    <string name="settings_import">导入</string>
+    <string name="settings_search_visibility_description">仅影响搜索结果。</string>
+</resources>

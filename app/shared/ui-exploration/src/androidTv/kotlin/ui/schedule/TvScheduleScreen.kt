@@ -10,7 +10,6 @@
 package me.him188.ani.leanback.ui.schedule
 
 import androidx.compose.foundation.background
-import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.gestures.BringIntoViewSpec
@@ -39,8 +38,8 @@ import androidx.compose.material.icons.rounded.Refresh
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -59,6 +58,7 @@ import me.him188.ani.app.ui.exploration.schedule.SchedulePagePresentation
 import me.him188.ani.app.ui.foundation.AsyncImage
 import me.him188.ani.datasources.api.EpisodeSort
 import me.him188.ani.leanback.ui.foundation.focus.TvFocusDefaults
+import me.him188.ani.leanback.ui.foundation.focus.tvCardFocusBorder
 import me.him188.ani.leanback.ui.foundation.focus.LocalTvFocusMemory
 import me.him188.ani.leanback.ui.foundation.focus.TvFocusKey
 import me.him188.ani.leanback.ui.foundation.focus.TvFocusScope
@@ -295,15 +295,7 @@ private fun TvScheduleItem(
         Box(
             Modifier
                 .fillMaxWidth()
-                .then(
-                    if (focused) {
-                        Modifier.border(
-                            TvFocusDefaults.RingWidth,
-                            MaterialTheme.colorScheme.primary,
-                            RoundedCornerShape(TvScheduleDefaults.ItemCornerRadius + TvFocusDefaults.RingInset),
-                        )
-                    } else Modifier,
-                ),
+                .tvCardFocusBorder(focused, RoundedCornerShape(TvScheduleDefaults.ItemCornerRadius + TvFocusDefaults.RingInset)),
         ) {
             Row(
                 Modifier

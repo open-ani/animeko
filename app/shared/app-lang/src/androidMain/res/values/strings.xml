@@ -1242,6 +1242,8 @@
     <string name="subject_progress_updates_on">Updates %1$s</string>
     <string name="subject_progress_watched">Watched %1$s</string>
     <string name="subject_progress_unknown">Unknown</string>
+    <string name="subject_progress_episode_counts">%1$s watched / %2$s total</string>
+    <string name="subject_progress_episode_counts_on_air">%1$s watched / %2$s aired / %3$s total</string>
     <string name="subject_airing_upcoming">Not yet aired</string>
     <string name="subject_airing_on_air">On air</string>
     <string name="subject_airing_on_air_to">Up to %1$s</string>

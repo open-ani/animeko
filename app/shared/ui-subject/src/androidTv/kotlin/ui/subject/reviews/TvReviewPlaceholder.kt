@@ -19,13 +19,14 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
+import me.him188.ani.leanback.ui.foundation.focus.TvFocusDefaults
 import me.him188.ani.leanback.ui.foundation.widgets.TvPlaceholderBlock
 import me.him188.ani.leanback.ui.subject.components.TvDetailsTextPlaceholder
 
 /** Same author, metadata and two preview lines as TvReviewCard, without a click target. */
 @Composable
 internal fun TvReviewPlaceholder(modifier: Modifier = Modifier) {
-    Surface(modifier.fillMaxWidth(), shape = TvReviewDefaults.CardShape, color = Color.Black.copy(alpha = .16f),
+    Surface(modifier.fillMaxWidth().padding(TvFocusDefaults.RingInset), shape = TvReviewDefaults.CardShape, color = Color.Black.copy(alpha = .16f),
         border = BorderStroke(1.dp, Color.White.copy(alpha = .18f))) {
         Column(Modifier.padding(18.dp), verticalArrangement = Arrangement.spacedBy(14.dp)) {
             Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {

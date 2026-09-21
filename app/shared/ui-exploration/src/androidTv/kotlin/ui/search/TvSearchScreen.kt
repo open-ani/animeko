@@ -34,6 +34,7 @@ import androidx.tv.material3.MaterialTheme
 import androidx.tv.material3.Surface
 import androidx.tv.material3.SurfaceDefaults
 import androidx.tv.material3.Text
+import me.him188.ani.app.data.models.preference.NsfwMode
 import me.him188.ani.app.data.network.BatchSubjectDetails
 import me.him188.ani.leanback.ui.foundation.focus.TvFocusKey
 import me.him188.ani.leanback.ui.foundation.focus.TvFocusScope
@@ -88,7 +89,7 @@ fun TvSearchScreen(
         when {
             !state.hasSearched -> TvSearchCenteredHint("输入关键词, 按软键盘搜索键开始")
             results.itemCount == 0 -> TvSearchCenteredHint("没有找到相关番剧")
-            else -> TvSearchResultsGrid(results, { onIntent(TvSearchIntent.OpenSubject(it)) }, focus)
+            else -> TvSearchResultsGrid(results, { onIntent(TvSearchIntent.OpenSubject(it)) }, focus, nsfwMode = state.nsfwMode)
         }
     }
 }
@@ -178,6 +179,7 @@ private fun TvSearchResultsGrid(
     onClickSubject: (BatchSubjectDetails) -> Unit,
     focus: TvFocusScope,
     modifier: Modifier = Modifier,
+    nsfwMode: NsfwMode = NsfwMode.BLUR,
 ) {
     LazyVerticalGrid(
         columns = GridCells.Adaptive(TvPageDefaults.PosterGridCellMinWidth),
@@ -191,6 +193,7 @@ private fun TvSearchResultsGrid(
             TvPosterCard(
                 imageUrl = details.subjectInfo.imageLarge,
                 title = details.subjectInfo.displayName,
+                obscureImage = details.subjectInfo.nsfw && nsfwMode == NsfwMode.BLUR,
                 onClick = { onClickSubject(details) },
                 memoryId = "search-${details.subjectInfo.subjectId}",
                 modifier = if (index == 0) Modifier.tvFocusAnchor(focus, TvSearchFocus.FirstResult) else Modifier,

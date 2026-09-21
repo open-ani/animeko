@@ -180,6 +180,7 @@ TV 页面通常不额外摆放屏幕返回按钮；必要的“取消”操作�
 这是项目视觉约定，不是 Google 禁止缩放。参见 [官方焦点系统](https://developer.android.com/design/ui/tv/guides/styles/focus-system)。
 
 - 使用 `AniTvTheme`、现有 TV 卡片/操作行和 `TvFocusDefaults`。Material3 与 tv-material 都可使用，选组件后仍需正确接入项目主题和焦点协议。
+- 列表卡片的描边由 `tvCardFocusBorder` 绘制：2.5dp 主题色边框、2dp 内容间隙，内外圆角同心，圆形头像保持圆形。内容常驻内缩 `TvFocusDefaults.RingInset`，焦点和按下不改变布局尺寸；图片下方的标题位于图片描边之外。
 - 明确区分默认、聚焦、按下、选中、禁用和忙碌；聚焦不自动等于业务选中，只有页面明确设计为“聚焦即切换”时例外。
 - 黑色面板要同时适配标题、次要文字、图标、分隔线、错误、骨架和聚焦反色后的内容颜色，使用对应容器的颜色体系。
 - 组件参数归入 `XxxDefaults`；可供调用方调整的尺寸和颜色暴露为参数，内部细节保留在组件内。不要到处复制魔数。

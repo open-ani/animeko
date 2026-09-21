@@ -59,7 +59,10 @@ import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.unit.dp
 import me.him188.ani.app.data.models.user.SelfInfo
 import me.him188.ani.app.ui.foundation.avatar.AvatarImage
+import me.him188.ani.app.ui.lang.Lang
+import me.him188.ani.app.ui.lang.login_sign_in
 import me.him188.ani.leanback.ui.foundation.focus.tvFocusEnterGate
+import org.jetbrains.compose.resources.stringResource
 
 /*
  * TV 可展开左侧导航栏. 布局/交互对齐上游 PR#3217 的 TvNavigationSideRail:
@@ -102,7 +105,9 @@ data class TvNavRailItem(
      */
     val selected: Boolean = false,
     val focusRequester: FocusRequester? = null,
-    /** true 时点击后不清焦点 (就地开弹窗的条目需要留住焦点). */
+    /** Explicit route-return target, taking precedence over the current page and default entry. */
+    val restoreFocus: Boolean = false,
+    /** true 时由调用方负责焦点转移，适用于独立页面导航或就地打开弹窗。 */
     val keepFocusOnClick: Boolean = false,
     val onClick: () -> Unit,
 )
@@ -153,9 +158,12 @@ fun TvNavigationSideRail(
             )
         }
         // 进入门控 (统一焦点框架的组件级重载): 只有"按左"或编程式聚焦 (全局菜单键) 能进,
-        // 上/下/右的空间搜索一律取消; 进入落点 = selected (当前页) 条目, 回退 defaultFocus
-        val enterFocusResolved = enterFocus ?: remember { FocusRequester() }
-        val entryIndex = items.indexOfFirst { it.selected }.takeIf { it >= 0 }
+        // 上/下/右的空间搜索一律取消; 优先恢复路由入口，否则落当前页或默认条目。
+        val defaultEnterFocus = remember { FocusRequester() }
+        val restoringItem = items.firstOrNull { it.restoreFocus }
+        val enterFocusResolved = enterFocus ?: restoringItem?.focusRequester ?: defaultEnterFocus
+        val entryIndex = items.indexOfFirst { it.restoreFocus }.takeIf { it >= 0 }
+            ?: items.indexOfFirst { it.selected }.takeIf { it >= 0 }
             ?: items.indexOfFirst { it.defaultFocus }
         Column(
             Modifier
@@ -290,7 +298,7 @@ private fun TvRailAvatar(
         }
         if (expanded) {
             Text(
-                selfInfo?.nickname?.takeIf { it.isNotBlank() } ?: "登录",
+                selfInfo?.nickname?.takeIf { it.isNotBlank() } ?: stringResource(Lang.login_sign_in),
                 color = MaterialTheme.colorScheme.onSurface,
                 style = MaterialTheme.typography.labelMedium,
                 softWrap = false,

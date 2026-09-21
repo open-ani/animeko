@@ -57,6 +57,7 @@ import me.him188.ani.leanback.ui.search.TvSearchRoute
 import me.him188.ani.leanback.ui.search.TvSearchViewModel
 import me.him188.ani.leanback.ui.settings.TvSettingsRoute
 import me.him188.ani.leanback.ui.settings.TvSettingsViewModel
+import me.him188.ani.app.shared.loadOpenSourceLibrariesJsons
 import me.him188.ani.leanback.ui.subject.TvSubjectDetailsRoute
 import me.him188.ani.leanback.ui.subject.TvSubjectDetailsViewModel
 import me.him188.ani.leanback.ui.subject.person.TvPeopleDetailsRoute
@@ -158,6 +159,7 @@ fun TvAniAppContent(
                             mainViewModel,
                             content = shellContent,
                             onContentChange = { shellContent = it },
+                            onOpenSettings = { aniNavigator.navigateSettings() },
                             focusMemory = shellFocusMemory,
                         ) { content ->
                             when (content) {
@@ -184,7 +186,9 @@ fun TvAniAppContent(
 
                                 TvShellContent.Search -> {
                                     val viewModel =
-                                        tvViewModel { TvSearchViewModel(dependencies.subjectSearchRepository) }
+                                        tvViewModel {
+                                            TvSearchViewModel(dependencies.subjectSearchRepository, dependencies.settingsRepository)
+                                        }
                                     TvSearchRoute(viewModel, onNavigate)
                                 }
 
@@ -201,13 +205,22 @@ fun TvAniAppContent(
                                     )
                                 }
 
-                                TvShellContent.Settings -> {
-                                    val viewModel = tvViewModel { TvSettingsViewModel(dependencies.settingsRepository) }
-                                    TvSettingsRoute(viewModel)
-                                }
                             }
                         }
                     }
+                    entry<NavRoutes.Settings> {
+                        val viewModel = tvViewModel {
+                            TvSettingsViewModel(
+                                dependencies.settingsRepository,
+                                dependencies.danmakuRegexFilterRepository,
+                                dependencies.mediaSourceManager,
+                                dependencies.mediaSourceSubscriptionRepository,
+                                loadLibraries = ::loadOpenSourceLibrariesJsons,
+                            )
+                        }
+                        TvSettingsRoute(viewModel)
+                    }
+
 
                     entry<NavRoutes.BangumiAuthorize> {
                         val viewModel = tvViewModel { TvLoginViewModel(dependencies.koin) }

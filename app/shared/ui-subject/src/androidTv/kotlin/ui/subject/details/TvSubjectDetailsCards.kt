@@ -9,12 +9,9 @@
 
 package me.him188.ani.leanback.ui.subject.details
 
-import androidx.compose.foundation.LocalIndication
 import androidx.compose.foundation.background
-import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
-import androidx.compose.foundation.interaction.collectIsFocusedAsState
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -22,12 +19,10 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.Person
 import androidx.compose.material3.Icon
@@ -35,11 +30,14 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.setValue
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
@@ -60,11 +58,10 @@ import me.him188.ani.app.ui.lang.subject_details_relation_sequel
 import me.him188.ani.app.ui.lang.subject_details_relation_special
 import me.him188.ani.app.ui.subject.episode.list.EpisodeListItem
 import me.him188.ani.leanback.ui.foundation.focus.TvFocusDefaults
+import me.him188.ani.leanback.ui.foundation.focus.tvCardFocusBorder
 import me.him188.ani.leanback.ui.foundation.focus.tvLongPressKey
 import me.him188.ani.leanback.ui.foundation.widgets.TvLandscapeCard
 import me.him188.ani.leanback.ui.foundation.widgets.TvPosterCardDefaults
-import me.him188.ani.leanback.ui.foundation.widgets.tvHeroContentColor
-import me.him188.ani.leanback.ui.foundation.widgets.tvHeroSecondaryContentColor
 import me.him188.ani.leanback.ui.subject.components.TvSubjectDetailsDefaults
 import org.jetbrains.compose.resources.stringResource
 
@@ -84,25 +81,18 @@ internal fun TvEpisodeCard(
 ) {
     val watched = episode.isDoneOrDropped
     val interactionSource = remember { MutableInteractionSource() }
-    val focused by interactionSource.collectIsFocusedAsState()
+    var focused by remember { mutableStateOf(false) }
 
     Box(
         modifier
             .width(TvSubjectDetailsDefaults.EpisodeCardWidth)
             .aspectRatio(16f / 9f)
-            .then(
-                if (focused) {
-                    Modifier.border(
-                        TvFocusDefaults.RingWidth,
-                        MaterialTheme.colorScheme.primary,
-                        RoundedCornerShape(TvFocusDefaults.RingCornerRadius),
-                    )
-                } else Modifier,
-            )
+            .onFocusChanged { focused = it.isFocused }
+            .tvCardFocusBorder(focused)
             .tvLongPressKey(onLongPress = onLongClick, onShortPress = onClick)
             .clickable(
                 interactionSource = interactionSource,
-                indication = LocalIndication.current,
+                indication = null,
                 onClick = onClick,
             ),
     ) {
@@ -176,15 +166,16 @@ internal fun TvDetailsPersonCard(
     portrait: Boolean = true,
 ) {
     val interaction = remember { MutableInteractionSource() }
-    val focused by interaction.collectIsFocusedAsState()
+    var focused by remember { mutableStateOf(false) }
     Column(
         modifier.width(TvSubjectDetailsDefaults.PersonCardWidth)
+            .onFocusChanged { focused = it.isFocused }
             .clickable(interactionSource = interaction, indication = null, onClick = onClick),
         horizontalAlignment = Alignment.CenterHorizontally,
     ) {
         Box(
             Modifier.size(TvSubjectDetailsDefaults.PersonCardWidth)
-                .then(if (focused) Modifier.border(TvFocusDefaults.RingWidth, MaterialTheme.colorScheme.primary, CircleShape) else Modifier)
+                .tvCardFocusBorder(focused, CircleShape)
                 .padding(TvFocusDefaults.RingInset)
                 .clip(CircleShape).background(Color(0xFF202124)),
             contentAlignment = Alignment.Center,

@@ -9,71 +9,58 @@
 package me.him188.ani.leanback.ui.exploration
 
 import androidx.compose.animation.ContentTransform
+import androidx.compose.animation.core.CubicBezierEasing
+import androidx.compose.animation.core.Easing
 import androidx.compose.animation.core.tween
-import androidx.compose.animation.fadeIn
-import androidx.compose.animation.fadeOut
 import androidx.compose.animation.slideInHorizontally
 import androidx.compose.animation.slideOutHorizontally
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
-import me.him188.ani.app.data.models.subject.SubjectCollectionInfo
-import me.him188.ani.datasources.api.EpisodeType
-import me.him188.ani.datasources.api.topic.UnifiedCollectionType
-import me.him188.ani.leanback.ui.subject.components.TvSubjectDetailsDefaults
+import kotlin.math.PI
+import kotlin.math.cos
 
 internal enum class TvExplorationArea { Featured, ContinueWatching, Recommendations }
 
-/** Only the hero's foreground slides; zero direction is a first-row crossfade. */
-internal fun explorationHeroContentTransform(direction: Int): ContentTransform = ContentTransform(
-    targetContentEnter = fadeIn(tween(TvExplorationDefaults.BackdropFadeMillis)) +
-            slideInHorizontally(tween(TvExplorationDefaults.BackdropFadeMillis)) { direction * it / 8 },
-    initialContentExit = fadeOut(tween(TvExplorationDefaults.BackdropFadeMillis)) +
-            slideOutHorizontally(tween(TvExplorationDefaults.BackdropFadeMillis)) { -direction * it / 8 },
+internal val ExplorationPanelEasing = Easing { ((1.0 - cos(PI * it)) / 2.0).toFloat() }
+internal val ExplorationFocusEasing = CubicBezierEasing(.2f, .1f, 0f, 1f)
+internal val ExplorationScrollEasing = Easing {
+    val remaining = it - 1f
+    remaining * remaining * remaining * remaining * remaining + 1f
+}
+
+internal fun explorationHeroContentTransform(direction: Int, pageWidth: Int): ContentTransform = ContentTransform(
+    targetContentEnter = slideInHorizontally(tween(500, easing = ExplorationScrollEasing)) { direction * pageWidth },
+    initialContentExit = slideOutHorizontally(tween(500, easing = ExplorationScrollEasing)) { -direction * pageWidth },
     sizeTransform = null,
 )
 
-/** The carousel keeps a business identity when a new trending page arrives. */
+/** Keep the selected business identity when a new page or ordering arrives. */
 internal fun nextFeaturedSubjectId(ids: List<Int>, currentId: Int?, direction: Int): Int? {
     if (ids.isEmpty()) return null
     val current = ids.indexOf(currentId).coerceAtLeast(0)
     return ids[(current + direction.mod(ids.size)).mod(ids.size)]
 }
 
-internal data class TvWatchedEpisodeProgress(val watched: Int, val total: Int) {
-    val fraction: Float get() = if (total > 0) (watched.toFloat() / total).coerceIn(0f, 1f) else 0f
-}
-
-/** Count completed main episodes, rather than treating the last episode number as a count. */
-internal fun watchedEpisodeProgress(collection: SubjectCollectionInfo): TvWatchedEpisodeProgress {
-    val episodes = collection.episodes.filter { it.episodeInfo.type == EpisodeType.MainStory }
-    return TvWatchedEpisodeProgress(
-        watched = episodes.count { it.collectionType == UnifiedCollectionType.DONE },
-        total = maxOf(collection.airingInfo.mainEpisodeCount, episodes.size),
-    )
-}
-
+/** Resource and card-model values from launcherx 1.0.877433387; see google-tv-home-reference.md. */
 internal object TvExplorationDefaults {
-    val Background = TvSubjectDetailsDefaults.Background
-    val Content = TvSubjectDetailsDefaults.Content
-    val SecondaryContent = TvSubjectDetailsDefaults.SecondaryContent
-
-    // The main shell already reserves 48dp for its collapsed navigation rail.
-    val StartPadding = 24.dp
-    val EndPadding = 32.dp
-    val HeroTopPadding = 48.dp
-    val HeroCompactTopPadding = 28.dp
-    val CompactTitleSize = 30.sp
-    val RowHeaderHeight = 38.dp
-    val RowAnchorInset = 76.dp
-    val RowGap = 20.dp
-    val ContinueCardWidth = TvSubjectDetailsDefaults.RelatedCardWidth
-    val CardSpacing = 18.dp
+    val Background = Color(0xFF0E0E0F)
+    val Content = Color(0xFFE8EAED)
+    val SecondaryContent = Color(0xFFBDC1C6)
+    // The existing shell reserves 48dp; content aligns with Google's 58dp screen keyline.
+    val StartPadding = 10.dp
+    val EndPadding = 56.dp
+    val HeroFeaturedExtraSpace = 147.dp
+    val PreviewDescriptionWidth = 432.dp
+    val WatchingProgressHeight = 20.dp
+    val ImmersiveCardWidth = 153.dp
+    val ImmersiveCardHeight = 86.dp
+    val CardSpacing = 20.dp
+    val RowAnchorInset = 64.dp
+    val RowGap = 12.dp
     val FadingEdgeHeight = 24.dp
-    const val HeroExpandedFraction = .66f
-    const val HeroCollapsedFraction = .52f
-    const val HeroTransitionMillis = 350
-    const val BackdropFadeMillis = 400
-    const val BackdropDebounceMillis = 180L
-    const val CarouselMaxItems = 10
-    const val CarouselAutoAdvanceMillis = 6000
+    const val HeroTransitionMillis = 250
+    const val WatchingProgressTransitionMillis = 400
+    const val BackdropFadeMillis = 750
+    const val CarouselVisibleIndicators = 5
+    const val CarouselAutoAdvanceMillis = 12000
 }

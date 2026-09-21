@@ -17,8 +17,8 @@ import androidx.compose.animation.fadeOut
 import androidx.compose.animation.slideInVertically
 import androidx.compose.animation.slideOutVertically
 import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
-import androidx.compose.foundation.interaction.collectIsFocusedAsState
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Row
@@ -55,6 +55,7 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.disabled
 import androidx.compose.ui.semantics.selected
 import androidx.compose.ui.semantics.semantics
@@ -96,7 +97,38 @@ fun TvDetailsAction(
     loading: Boolean = false,
 ) {
     val interaction = remember { MutableInteractionSource() }
-    val focused by interaction.collectIsFocusedAsState()
+    var focused by remember { mutableStateOf(false) }
+    TvDetailsActionVisual(
+        label, focused,
+        modifier.onFocusChanged { focused = it.isFocused }
+            .then(if (loading) Modifier.progressSemantics() else Modifier)
+            .semantics { contentDescription = label; selected = active }
+            .clickable(interactionSource = interaction, indication = null, role = Role.Button) {
+                if (available && !busy) onClick()
+            },
+        icon = icon, iconOnly = iconOnly, busy = busy, available = available, active = active,
+        boundsModifier = boundsModifier, compact = compact, blurBackground = blurBackground,
+        glowOnFocus = glowOnFocus, loading = loading,
+    )
+}
+
+/** Shared pill rendering; a moving hero can keep its input target outside the animated content. */
+@Composable
+fun TvDetailsActionVisual(
+    label: String,
+    focused: Boolean,
+    modifier: Modifier = Modifier,
+    icon: ImageVector? = null,
+    iconOnly: Boolean = false,
+    busy: Boolean = false,
+    available: Boolean = true,
+    active: Boolean = false,
+    boundsModifier: Modifier = Modifier,
+    compact: Boolean = false,
+    blurBackground: Boolean = false,
+    glowOnFocus: Boolean = false,
+    loading: Boolean = false,
+) {
     val content = if (focused) Color(0xFF282629) else TvSubjectDetailsDefaults.Content
     val hazeState = LocalTvDetailsActionBackdrop.current.takeIf { blurBackground }
     val backdropModifier = if (hazeState != null) Modifier.hazeEffect(hazeState) {
@@ -121,10 +153,7 @@ fun TvDetailsAction(
         ),
     ) else Modifier
     Surface(
-        onClick = { if (available && !busy) onClick() },
         modifier = modifier.heightIn(min = TvSubjectDetailsDefaults.ActionHeight)
-            .then(if (loading) Modifier.progressSemantics() else Modifier)
-            .semantics { contentDescription = label; selected = active }
             .then(glowModifier),
         shape = TvSubjectDetailsDefaults.ActionShape,
         color = when {
@@ -134,7 +163,6 @@ fun TvDetailsAction(
         },
         border = if (active && !focused) BorderStroke(1.dp, Color.White.copy(alpha = .65f)) else null,
         contentColor = content.copy(alpha = if (available) 1f else .55f),
-        interactionSource = interaction,
     ) {
         Row(
             boundsModifier.then(backdropModifier)

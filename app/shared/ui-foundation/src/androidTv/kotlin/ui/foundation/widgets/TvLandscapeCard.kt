@@ -42,6 +42,7 @@ import androidx.tv.material3.Surface
 import androidx.tv.material3.Text
 import me.him188.ani.app.ui.foundation.AsyncImage
 import me.him188.ani.leanback.ui.foundation.focus.TvFocusDefaults
+import me.him188.ani.leanback.ui.foundation.focus.tvCardFocusBorder
 import me.him188.ani.leanback.ui.foundation.focus.tvFocusMemorable
 
 /** [TvLandscapeCard] 默认值 (Prime Video 实测: 卡宽≈屏宽 20%, 16:9, 间距≈16dp, 4 卡整 + 1 卡半露). */
@@ -55,7 +56,7 @@ object TvLandscapeCardDefaults {
     /** 同行卡片间距. */
     val Spacing: Dp = 16.dp
 
-    /** 图圆角 (= 聚焦描边圆角 11 - 留白 3, 同海报卡). */
+    /** 与海报和选集图片共用的内容圆角。 */
     val ImageShape = RoundedCornerShape(8.dp)
 
     /** 无图/加载中的底色. */
@@ -68,7 +69,7 @@ object TvLandscapeCardDefaults {
 /**
  * 横版 16:9 条目卡 (探索页 Prime 式行列表): TMDB backdrop 横图 (缺图时退化为海报裁切),
  * 卡内底部渐变遮罩上叠 [overline 小字 +] 标题 (横图无片名, 与 Prime 的 key art 不同, 必须自绘标题);
- * 聚焦 2.5dp primary 描边 @ 圆角 11dp, 内容常驻内缩 3dp, 无缩放 (TvFocusDefaults), 标题跑马灯.
+ * 焦点描边和留白由 TvFocusDefaults 统一，无缩放，标题聚焦时跑马灯。
  */
 @Composable
 fun TvLandscapeCard(
@@ -95,6 +96,7 @@ fun TvLandscapeCard(
             .then(if (showTitle) Modifier else Modifier.semantics { contentDescription = title })
             .then(if (width != null) Modifier.width(width) else Modifier)
             .tvFocusMemorable(memoryId)
+            .tvCardFocusBorder(selfFocused)
             .onFocusChanged {
                 selfFocused = it.isFocused
                 if (it.isFocused) onFocused()
@@ -106,8 +108,7 @@ fun TvLandscapeCard(
             contentColor = Color.White,
             focusedContentColor = Color.White,
         ),
-        scale = ClickableSurfaceDefaults.scale(focusedScale = TvFocusDefaults.FocusedScale),
-        border = TvFocusDefaults.clickableCardBorder(),
+        scale = ClickableSurfaceDefaults.scale(focusedScale = TvFocusDefaults.FocusedScale, pressedScale = 1f),
     ) {
         Box(
             Modifier

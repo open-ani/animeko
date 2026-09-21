@@ -9,21 +9,27 @@
 
 package me.him188.ani.leanback.ui.foundation.widgets
 
+import androidx.compose.foundation.background
 import androidx.compose.foundation.basicMarquee
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.outlined.VisibilityOff
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.setValue
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.BlurredEdgeTreatment
+import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
@@ -31,11 +37,14 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.tv.material3.ClickableSurfaceDefaults
+import androidx.tv.material3.Icon
 import androidx.tv.material3.MaterialTheme
 import androidx.tv.material3.Surface
 import androidx.tv.material3.Text
 import me.him188.ani.app.ui.foundation.AsyncImage
+import me.him188.ani.app.ui.foundation.effects.blurEffect
 import me.him188.ani.leanback.ui.foundation.focus.TvFocusDefaults
+import me.him188.ani.leanback.ui.foundation.focus.tvCardFocusBorder
 import me.him188.ani.leanback.ui.foundation.focus.tvFocusMemorable
 
 /** [TvPosterCard] 默认值 (atv-architecture.md 附录 A: 海报卡 112dp/0.72/圆角 8/间距 10). */
@@ -46,13 +55,13 @@ object TvPosterCardDefaults {
     /** 竖版封面宽高比 (与详情页封面一致). */
     const val CoverRatio: Float = 0.72f
 
-    /** 封面图圆角 (= 聚焦描边圆角 11 - 留白 3, 见 [TvFocusDefaults]). */
+    /** 封面内容圆角，描边在图片外侧预留的空间绘制。 */
     val ImageShape = RoundedCornerShape(8.dp)
 }
 
 /**
  * 竖版海报卡 (atv-architecture.md §5.2 / 附录 A):
- * 聚焦 2.5dp primary 描边 @ 圆角 11dp, 内容常驻内缩 3dp, 无缩放, 图圆角 8dp.
+ * 图片使用共享焦点描边和留白，无缩放；标题位于图片下方。
  */
 @Composable
 fun TvPosterCard(
@@ -67,6 +76,7 @@ fun TvPosterCard(
     width: Dp? = TvPosterCardDefaults.Width,
     /** 参考版探索页卡片行为纯图, 标题只在网格页展示 */
     showTitle: Boolean = true,
+    obscureImage: Boolean = false,
 ) {
     var selfFocused by remember { mutableStateOf(false) }
     Surface(
@@ -85,25 +95,37 @@ fun TvPosterCard(
             contentColor = MaterialTheme.colorScheme.onSurface,
             focusedContentColor = MaterialTheme.colorScheme.onSurface,
         ),
-        scale = ClickableSurfaceDefaults.scale(focusedScale = TvFocusDefaults.FocusedScale),
-        border = TvFocusDefaults.clickableCardBorder(),
+        scale = ClickableSurfaceDefaults.scale(focusedScale = TvFocusDefaults.FocusedScale, pressedScale = 1f),
     ) {
-        Column(Modifier.padding(TvFocusDefaults.RingInset)) {
-            AsyncImage(
-                model = imageUrl,
-                contentDescription = title,
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .aspectRatio(TvPosterCardDefaults.CoverRatio)
-                    .clip(TvPosterCardDefaults.ImageShape),
-                contentScale = ContentScale.Crop,
-            )
+        Column {
+            Box(Modifier.tvCardFocusBorder(selfFocused).padding(TvFocusDefaults.RingInset)) {
+                val imageModifier = Modifier.fillMaxWidth().aspectRatio(TvPosterCardDefaults.CoverRatio)
+                    .clip(TvPosterCardDefaults.ImageShape)
+                if (obscureImage) Box(
+                    imageModifier.background(MaterialTheme.colorScheme.surfaceVariant),
+                    contentAlignment = Alignment.Center,
+                ) {
+                    AsyncImage(
+                        model = imageUrl,
+                        contentDescription = null,
+                        modifier = imageModifier.blurEffect(12.dp, BlurredEdgeTreatment.Unbounded).alpha(.6f),
+                        contentScale = ContentScale.Crop,
+                    )
+                    Icon(Icons.Outlined.VisibilityOff, null)
+                } else AsyncImage(
+                    model = imageUrl,
+                    contentDescription = title,
+                    modifier = imageModifier,
+                    contentScale = ContentScale.Crop,
+                )
+            }
             if (showTitle) {
                 Text(
                     title,
                     Modifier
                         .fillMaxWidth()
-                        .padding(top = 6.dp, start = 2.dp, end = 2.dp, bottom = 2.dp)
+                        .padding(horizontal = TvFocusDefaults.RingInset + 2.dp)
+                        .padding(top = 6.dp, bottom = 2.dp)
                         .then(
                             // 聚焦时跑马灯滚动: 完整标题信息优先 (失焦即停)
                             if (selfFocused) Modifier.basicMarquee(iterations = Int.MAX_VALUE) else Modifier,

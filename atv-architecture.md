@@ -100,7 +100,7 @@
 | D2 | UI / 焦点技术    | Material3 + 存量 tv-material 1.1.0 + 标准 foundation lazy；使用统一事件驱动 `TvFocusScope`，滚动采用显式 `BringIntoViewSpec`            |
 | D3 | 状态复用         | 优先复用共享 VM/状态对象；搜索、设置、播放保留 TV VM。视图层独立，禁止借白名单直接复用手机页面                                                                |
 | D4 | DI           | 共享核心 + flavor 缓存门控。TV 使用空存储 `MediaCacheManagerImpl`，不注册下载器/缓存引擎/torrent 平台绑定；详情状态工厂已被 TV 使用，当前无 `TurnstileState` 绑定 |
-| D5 | 导航           | 复用 `AniNavigator` / `NavRoutes` 的 Navigation 3 back stack；三个路由入口，六种主壳内容。深链只有 manifest 声明，Activity 解析待接              |
+| D5 | 导航           | 复用 `AniNavigator` / `NavRoutes` 的 Navigation 3 back stack；设置由独立路由承载，主页保留五种内容。深链只有 manifest 声明，Activity 解析待接              |
 | D6 | 主题           | `AniTvTheme(seedColor)` 固定深色、非 AMOLED，默认 `#4F378B`；materialkolor 生成配色并同时提供两套 MaterialTheme。未订阅 `ThemeSettings`      |
 | D7 | 焦点视觉         | `TvFocusDefaults` 集中定义 2.5dp 描边、3dp 间隙、11dp 圆角、无缩放；Hero 按钮和播放器控件使用各自反色样式                                            |
 | D8 | 应用内更新        | 按维护者指示暂缓；当前只显示版本，没有更新按钮、安装器或 Release 二维码。服务端 `android-tv` 支持属于恢复开发的前置条件                                             |
@@ -411,12 +411,15 @@ TV 不启动 torrent 服务连接，不初始化 Sentry/Firebase。`SubjectDetai
 
 | NavRoutes       | TV 落点                                                                                                                 |
 |-----------------|-----------------------------------------------------------------------------------------------------------------------|
-| `Main`          | `TvMainShell`；壳内保存 Search / Exploration / Schedule / Collection / Login / Settings 六种内容状态，当前未消费 Main 的 initialPage 参数 |
+| `Main`          | `TvMainShell`；壳内保存 Search / Exploration / Schedule / Collection / Login 五种内容状态，当前未消费 Main 的 initialPage 参数 |
+| `Settings`      | `TvSettingsRoute`，独立全屏设置；返回恢复原主页内容和设置入口焦点 |
+| `BangumiAuthorize` | `TvLoginRoute`，独立登录入口 |
+| `CharacterDetail` / `PersonDetail` | `TvPeopleDetailsRoute`，人物与角色详情 |
 | `SubjectDetail` | `TvSubjectDetailsRoute` + TV VM/视图，VM 复用共享状态加载器；可跳播放页与关联条目                                                            |
 | `EpisodeDetail` | `TvEpisodeViewModel` + TV 播放页；推荐面板可跳详情                                                                                |
 
-搜索、时间表、设置、邮箱两步登录是**主壳内部内容**，没有各自独立 NavRoutes entry；
-`Welcome`、缓存、OAuth 等也没有注册。当前没有首启「登录或跳过 + 主题确认」流程。
+搜索、时间表与主侧栏的登录内容在主壳内切换；设置通过 `NavRoutes.Settings` 打开。
+`Welcome`、缓存等没有注册。当前没有首启「登录或跳过 + 主题确认」流程。
 `ani://subjects/<id>` 解析仍待接入。
 
 ### 6.4 主壳 `TvMainShell`

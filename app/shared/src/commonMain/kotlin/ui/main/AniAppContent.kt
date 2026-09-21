@@ -38,7 +38,7 @@ import androidx.lifecycle.viewmodel.navigation3.rememberViewModelStoreNavEntryDe
 import androidx.navigation3.runtime.entryProvider
 import androidx.navigation3.runtime.rememberSaveableStateHolderNavEntryDecorator
 import androidx.navigation3.ui.NavDisplay
-import me.him188.ani.app.shared.Res
+import me.him188.ani.app.shared.loadOpenSourceLibrariesJsons
 import me.him188.ani.app.data.models.subject.SubjectInfo
 import me.him188.ani.app.domain.mediasource.rss.RssMediaSource
 import me.him188.ani.app.domain.mediasource.web.SelectorMediaSource
@@ -352,12 +352,7 @@ private fun AniAppContentImpl(
                     },
                     onNavigateToEmailLogin = { aniNavigator.navigateEmailLoginStart() },
                     onNavigateToBangumiOAuth = { aniNavigator.navigateBangumiAuthorize() },
-                    loadOpenSourceLibrariesJsons = {
-                        listOf(
-                            Res.readBytes("files/aboutlibraries.json"),
-                            Res.readBytes("files/additional_libraries.json"),
-                        )
-                    },
+                    loadOpenSourceLibrariesJsons = ::loadOpenSourceLibrariesJsons,
                     Modifier.fillMaxSize(),
                     route.tab,
                     navigationIcon = {

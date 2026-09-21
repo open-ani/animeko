@@ -63,17 +63,18 @@ internal fun TvOptionContent(content: @Composable () -> Unit) {
 }
 
 @Composable
-fun tvOptionSurfaceColors(selected: Boolean = false, filled: Boolean = false) =
+fun tvOptionSurfaceColors(selected: Boolean = false, filled: Boolean = false, focused: Boolean = false) =
     with(LocalTvOptionColors.current) {
         ClickableSurfaceDefaults.colors(
             containerColor = when {
+                focused -> focusedContainer
                 selected -> selectedContainer ?: MaterialTheme.colorScheme.primary.copy(alpha = .16f)
                     .compositeOver(container)
 
                 filled -> raised
                 else -> Color.Transparent
             },
-            contentColor = content,
+            contentColor = if (focused) focusedContent else content,
             focusedContainerColor = focusedContainer,
             focusedContentColor = focusedContent,
             disabledContainerColor = Color.Transparent,

@@ -15,12 +15,12 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.focusGroup
 import androidx.compose.foundation.gestures.BringIntoViewSpec
 import androidx.compose.foundation.gestures.LocalBringIntoViewSpec
-import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyListScope
@@ -40,15 +40,12 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
-import androidx.compose.ui.ExperimentalComposeUiApi
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.drawWithContent
+import androidx.compose.ui.draw.clipToBounds
 import androidx.compose.ui.focus.focusProperties
 import androidx.compose.ui.focus.onFocusChanged
-import androidx.compose.ui.graphics.BlendMode
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.CompositingStrategy
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.key.Key
 import androidx.compose.ui.input.key.KeyEventType
@@ -56,6 +53,7 @@ import androidx.compose.ui.input.key.key
 import androidx.compose.ui.input.key.onPreviewKeyEvent
 import androidx.compose.ui.input.key.type
 import androidx.compose.ui.layout.onGloballyPositioned
+import androidx.compose.ui.platform.LocalAccessibilityManager
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.semantics.semantics
@@ -64,33 +62,31 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.compose.LocalLifecycleOwner
-import androidx.paging.LoadState
-import androidx.paging.compose.LazyPagingItems
 import dev.chrisbanes.haze.hazeSource
 import dev.chrisbanes.haze.rememberHazeState
+import androidx.paging.LoadState
+import androidx.paging.compose.LazyPagingItems
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
-import me.him188.ani.app.data.models.recommend.RecommendedItemInfo
 import me.him188.ani.app.data.models.recommend.RecommendedSubjectInfo
+import me.him188.ani.app.data.models.recommend.RecommendedItemInfo
 import me.him188.ani.app.data.models.subject.FollowedSubjectInfo
-import me.him188.ani.app.data.models.subject.subjectInfo
 import me.him188.ani.app.data.models.trending.TrendingSubjectInfo
 import me.him188.ani.app.ui.foundation.navigation.BackHandler
+import me.him188.ani.leanback.ui.foundation.widgets.TvLandscapeCardDefaults
 import me.him188.ani.leanback.ui.foundation.focus.TvFocusKey
 import me.him188.ani.leanback.ui.foundation.focus.TvFocusScope
 import me.him188.ani.leanback.ui.foundation.focus.rememberTvFocusScope
 import me.him188.ani.leanback.ui.foundation.focus.requestPrepared
 import me.him188.ani.leanback.ui.foundation.focus.tvFocusAnchor
 import me.him188.ani.leanback.ui.foundation.focus.tvFocusNavSignal
-import me.him188.ani.leanback.ui.foundation.widgets.TvLandscapeCardDefaults
-import androidx.tv.material3.MaterialTheme as TvMaterialTheme
+import me.him188.ani.leanback.ui.subject.components.LocalTvDetailsActionBackdrop
 
-private enum class TvExplorationFocus : TvFocusKey { Details, FeedStatus }
+internal enum class TvExplorationFocus : TvFocusKey { Details, FeedStatus }
 
-/** Featured → immersive first row → ordinary whole-page browsing, all in one scroll container. */
+@OptIn(ExperimentalFoundationApi::class)
 @Composable
-@OptIn(ExperimentalComposeUiApi::class)
-fun TvExplorationScreen(
+internal fun TvExplorationScreen(
     trendsPager: LazyPagingItems<TrendingSubjectInfo>,
     recommendations: LazyPagingItems<RecommendedItemInfo>,
     followed: LazyPagingItems<FollowedSubjectInfo>,
@@ -98,77 +94,117 @@ fun TvExplorationScreen(
     onIntent: (TvExplorationIntent) -> Unit,
     modifier: Modifier = Modifier,
 ) {
+    BoxWithConstraints(modifier.fillMaxSize()) {
+        val rowWidth = maxWidth - TvExplorationDefaults.StartPadding - TvExplorationDefaults.EndPadding
+        val columns = ((rowWidth + TvLandscapeCardDefaults.Spacing) /
+                (TvLandscapeCardDefaults.Width + TvLandscapeCardDefaults.Spacing)).toInt().coerceAtLeast(1)
+        TvExplorationContent(trendsPager, recommendations, followed, media, onIntent, columns)
+    }
+}
+
+@OptIn(ExperimentalFoundationApi::class)
+@Composable
+private fun TvExplorationContent(
+    trendsPager: LazyPagingItems<TrendingSubjectInfo>,
+    recommendations: LazyPagingItems<RecommendedItemInfo>,
+    followed: LazyPagingItems<FollowedSubjectInfo>,
+    media: TvSubjectMediaUiState,
+    onIntent: (TvExplorationIntent) -> Unit,
+    columns: Int,
+) {
     val scope = rememberCoroutineScope()
     val focus = rememberTvFocusScope()
     focus.Resolver()
-    // Lazy items attach during measurement, before they can receive focus.
-    var pagePlaced by remember { mutableStateOf(false) }
     val columnState = rememberLazyListState()
     val followedRowState = rememberLazyListState()
-    val hazeState = rememberHazeState()
+    var pagePlaced by remember { mutableStateOf(false) }
+    var pageFocused by remember { mutableStateOf(false) }
+    var detailsFocused by remember { mutableStateOf(false) }
+    var footerFocused by remember { mutableStateOf(false) }
     var area by rememberSaveable { mutableStateOf(TvExplorationArea.Featured) }
     var carouselId by rememberSaveable { mutableStateOf<Int?>(null) }
-    var carouselDirection by remember { mutableIntStateOf(1) }
     var focusedSubjectId by rememberSaveable { mutableStateOf<Int?>(null) }
     var lastFollowedId by rememberSaveable { mutableStateOf<Int?>(null) }
-    if (pagePlaced) focus.InitialFocus(
-        focusedSubjectId?.takeIf { area != TvExplorationArea.Featured }?.let { TvExplorationCardKey(area, it) }
-            ?: TvExplorationFocus.Details,
-    )
-    var detailsFocused by remember { mutableStateOf(false) }
-    var pageFocused by remember { mutableStateOf(false) }
-    var footerFocused by remember { mutableStateOf(false) }
+    var lastRecommendationId by rememberSaveable { mutableStateOf<Int?>(null) }
+    var carouselDirection by remember { mutableIntStateOf(1) }
+    var preparingFocus by remember { mutableStateOf(false) }
+    var preparationId by remember { mutableIntStateOf(0) }
     val heldCarouselKeys = remember { mutableSetOf<Key>() }
-    val pageLifecycle = LocalLifecycleOwner.current.lifecycle
-    val lifecycle by pageLifecycle.currentStateFlow.collectAsState()
+    val lifecycle = LocalLifecycleOwner.current.lifecycle
+    val lifecycleState by lifecycle.currentStateFlow.collectAsState()
     val density = LocalDensity.current
-
-    val carouselItems = (0 until minOf(trendsPager.itemCount, TvExplorationDefaults.CarouselMaxItems))
+    val accessibility = LocalAccessibilityManager.current
+    val carouselItems = (0 until trendsPager.itemCount)
         .mapNotNull { trendsPager.peek(it) }.distinctBy { it.bangumiId }
     val carouselIds = carouselItems.map { it.bangumiId }
     val selectedIndex = carouselIds.indexOf(carouselId).coerceAtLeast(0)
-    val selected = carouselItems.getOrNull(selectedIndex)
+    val featuredSubject = carouselItems.getOrNull(selectedIndex)
+        ?.let { TvHeroSubject(it.bangumiId, it.nameCn, it.imageLarge) }
     LaunchedEffect(carouselIds) { if (carouselId !in carouselIds) carouselId = carouselIds.firstOrNull() }
-
-    LaunchedEffect(detailsFocused, carouselId, carouselIds, lifecycle) {
-        if (!detailsFocused || carouselIds.size < 2 || !lifecycle.isAtLeast(Lifecycle.State.RESUMED)) return@LaunchedEffect
-        delay(TvExplorationDefaults.CarouselAutoAdvanceMillis.toLong())
+    LaunchedEffect(detailsFocused, carouselId, carouselIds, lifecycleState) {
+        if (!detailsFocused || carouselIds.size < 2 || !lifecycleState.isAtLeast(Lifecycle.State.RESUMED)) return@LaunchedEffect
+        val interval = accessibility?.calculateRecommendedTimeoutMillis(
+            TvExplorationDefaults.CarouselAutoAdvanceMillis.toLong(), containsText = true, containsControls = true,
+        ) ?: TvExplorationDefaults.CarouselAutoAdvanceMillis.toLong()
+        delay(interval)
         carouselDirection = 1
         carouselId = nextFeaturedSubjectId(carouselIds, carouselId, 1)
     }
-
-    val focusedSubject = when (area) {
+    LaunchedEffect(carouselId, trendsPager.itemCount) {
+        val index = (0 until trendsPager.itemCount).firstOrNull { trendsPager.peek(it)?.bangumiId == carouselId }
+        if (index != null) trendsPager[index]
+    }
+    val recommendationIndices = (0 until recommendations.itemCount)
+        .filter { recommendations.peek(it) is RecommendedSubjectInfo }
+    val rows = buildList {
+        if (followed.itemCount > 0) add(TvExplorationRow.ContinueWatching(followed))
+        repeat((recommendationIndices.size + columns - 1) / columns) {
+            add(TvExplorationRow.RecommendationGrid(recommendations, recommendationIndices, it, columns))
+        }
+    }
+    val currentRows by rememberUpdatedState(rows)
+    val currentArea by rememberUpdatedState(area)
+    val currentSubjectId by rememberUpdatedState(focusedSubjectId)
+    fun rememberedId(row: TvExplorationRow) = when (row.area) {
+        TvExplorationArea.ContinueWatching -> lastFollowedId
+        TvExplorationArea.Recommendations -> lastRecommendationId
         TvExplorationArea.Featured -> null
-        TvExplorationArea.ContinueWatching -> followed.itemSnapshotList.items
-            .firstOrNull { it.subjectInfo.subjectId == focusedSubjectId }?.subjectInfo
-            ?.let { TvHeroSubject(it.subjectId, it.displayName, it.imageLarge) }
-
-        TvExplorationArea.Recommendations -> recommendations.itemSnapshotList.items
-            .filterIsInstance<RecommendedSubjectInfo>().firstOrNull { it.bangumiId == focusedSubjectId }
-            ?.let { TvHeroSubject(it.bangumiId, it.nameCn, it.imageLarge) }
     }
-    val featuredSubject = selected?.let { TvHeroSubject(it.bangumiId, it.nameCn, it.imageLarge) }
-    val heroSubject = focusedSubject ?: featuredSubject
+    val firstRow = rows.firstOrNull() as? TvExplorationRow.ContinueWatching
+    val previewIndex = firstRow?.let { it.indexOfSubject(rememberedId(it)).coerceAtLeast(0) } ?: 0
+    val previewCard = firstRow?.card(previewIndex)
+    val previewSubject = previewCard?.subject
+    val previewFollowed = firstRow?.items?.peek(previewIndex)
+    val activeRow = rows.firstOrNull { it.area == area && it.indexOfSubject(focusedSubjectId) >= 0 }
+    val focusedCard = activeRow?.card(activeRow.indexOfSubject(focusedSubjectId))
     val expanded = area == TvExplorationArea.Featured
-    // Pages without Continue Watching retain the featured height and scroll it away directly.
-    val compact = !expanded && followed.itemCount > 0
     val expandProgress by animateFloatAsState(
-        if (compact) 0f else 1f,
-        tween(TvExplorationDefaults.HeroTransitionMillis), label = "exploration-hero-transition",
+        if (expanded || firstRow == null) 1f else 0f,
+        tween(TvExplorationDefaults.HeroTransitionMillis, easing = ExplorationPanelEasing),
+        label = "home-featured-space",
     )
-    val heightFraction = TvExplorationDefaults.HeroCollapsedFraction +
-            (TvExplorationDefaults.HeroExpandedFraction - TvExplorationDefaults.HeroCollapsedFraction) * expandProgress
-
+    val heroSubject = if (expanded) featuredSubject else focusedCard?.subject ?: previewSubject
     LaunchedEffect(heroSubject) { heroSubject?.let { onIntent(TvExplorationIntent.ShowHero(it)) } }
-    var backdropSubject by remember { mutableStateOf(heroSubject) }
-    LaunchedEffect(heroSubject) {
-        if (backdropSubject != null && !expanded) delay(TvExplorationDefaults.BackdropDebounceMillis)
-        backdropSubject = heroSubject
-    }
+    val backdropSubject = heroSubject
     val backdropUrl = backdropSubject?.let { media.backdropCache[it.subjectId] ?: it.imageUrl }
+    if (pagePlaced) focus.InitialFocus(
+        if (footerFocused) TvExplorationFocus.FeedStatus
+        else focusedSubjectId?.takeIf { !expanded }?.let { TvExplorationCardKey(area, it) }
+            ?: TvExplorationFocus.Details,
+    )
+    val footerState = when {
+        recommendations.loadState.refresh is LoadState.Error -> recommendations.loadState.refresh
+        recommendations.loadState.append is LoadState.Error -> recommendations.loadState.append
+        followed.loadState.refresh is LoadState.Error -> followed.loadState.refresh
+        followed.loadState.append is LoadState.Error -> followed.loadState.append
+        recommendations.itemCount == 0 -> recommendations.loadState.refresh
+        recommendations.loadState.append is LoadState.Loading -> recommendations.loadState.append
+        else -> null
+    }
 
     fun returnToHero() {
         area = TvExplorationArea.Featured
+        footerFocused = false
         scope.launch {
             focus.requestPrepared(isRelevant = { area == TvExplorationArea.Featured }) {
                 columnState.animateScrollToItem(0)
@@ -176,225 +212,199 @@ fun TvExplorationScreen(
             }
         }
     }
-    BackHandler(enabled = pageFocused && area != TvExplorationArea.Featured) { returnToHero() }
-
-    BoxWithConstraints(
-        modifier.fillMaxSize().testTag("tv-exploration")
-            .onGloballyPositioned { pagePlaced = true }
-            .onFocusChanged { pageFocused = it.hasFocus }
-            // Navigation can attempt spatial focus during its return animation. Read the lifecycle
-            // directly so the RESUMED focus request does not wait for the next recomposition.
-            .focusProperties {
-                onEnter = { if (!pageLifecycle.currentState.isAtLeast(Lifecycle.State.RESUMED)) cancelFocus() }
-            }
-            .focusGroup().semantics { stateDescription = area.name },
-    ) {
-        val rowWidth = maxWidth - TvExplorationDefaults.StartPadding - TvExplorationDefaults.EndPadding
-        val columns = ((rowWidth + TvLandscapeCardDefaults.Spacing) /
-                (TvLandscapeCardDefaults.Width + TvLandscapeCardDefaults.Spacing)).toInt().coerceAtLeast(1)
-        val rows = buildList {
-            if (followed.itemCount > 0) add(TvExplorationRow.ContinueWatching(followed))
-            repeat((recommendations.itemCount + columns - 1) / columns) {
-                add(TvExplorationRow.RecommendationGrid(recommendations, it, columns))
+    fun navigateToFooter() {
+        if (footerState == null) return
+        scope.launch {
+            focus.requestPrepared {
+                columnState.animateScrollToItem(currentRows.size + 1, -with(density) { 64.dp.roundToPx() })
+                TvExplorationFocus.FeedStatus
             }
         }
-        val currentRows by rememberUpdatedState(rows)
-        val currentArea by rememberUpdatedState(area)
-        val currentSubjectId by rememberUpdatedState(focusedSubjectId)
-        val currentFooterFocused by rememberUpdatedState(footerFocused)
-        val footerState = when {
-            recommendations.loadState.refresh is LoadState.Error -> recommendations.loadState.refresh
-            recommendations.loadState.append is LoadState.Error -> recommendations.loadState.append
-            followed.loadState.refresh is LoadState.Error -> followed.loadState.refresh
-            followed.loadState.append is LoadState.Error -> followed.loadState.append
-            recommendations.itemCount == 0 -> recommendations.loadState.refresh
-            recommendations.loadState.append is LoadState.Loading -> recommendations.loadState.append
-            else -> null
+    }
+    fun navigateToRow(target: Int, column: Int? = null, subjectId: Int? = null) {
+        if (target < 0) { returnToHero(); return }
+        val row = currentRows.getOrNull(target) ?: run { navigateToFooter(); return }
+        val index = when {
+            subjectId != null -> row.indexOfSubject(subjectId).coerceAtLeast(0)
+            row is TvExplorationRow.RecommendationGrid && column != null -> column.coerceAtMost(row.count - 1)
+            else -> row.indexOfSubject(rememberedId(row)).coerceAtLeast(0)
         }
-
-        fun navigateToFooter() {
-            if (footerState == null) return
-            scope.launch {
-                focus.requestPrepared {
-                    columnState.animateScrollToItem(currentRows.size + 1)
-                    TvExplorationFocus.FeedStatus
-                }
-            }
-        }
-
-        fun navigateToRow(target: Int, fromIndex: Int) {
-            val row = currentRows.getOrNull(target) ?: run { navigateToFooter(); return }
-            val index =
-                if (row is TvExplorationRow.ContinueWatching) row.indexOfSubject(lastFollowedId).coerceAtLeast(0)
-                else fromIndex.coerceIn(0, (row.count - 1).coerceAtLeast(0))
-            val id = row.subjectIdAt(index) ?: return
-            scope.launch {
+        val id = row.subjectIdAt(index) ?: return
+        val transaction = ++preparationId
+        preparingFocus = true
+        scope.launch {
+            try {
                 focus.requestPrepared(isRelevant = { currentRows.any { it.area == row.area && it.indexOfSubject(id) >= 0 } }) {
-                    val destination = currentRows.firstOrNull { it.area == row.area && it.indexOfSubject(id) >= 0 }
-                        ?: return@requestPrepared null
-                    if (destination is TvExplorationRow.ContinueWatching) {
-                        if (columnState.firstVisibleItemIndex != 0 || columnState.firstVisibleItemScrollOffset != 0) {
-                            columnState.animateScrollToItem(0)
+                    val destinationIndex = currentRows.indexOfFirst { it.area == row.area && it.indexOfSubject(id) >= 0 }
+                    if (!focus.isAnchorAttached(TvExplorationCardKey(row.area, id))) {
+                        if (row is TvExplorationRow.ContinueWatching) columnState.animateScrollToItem(0)
+                        else columnState.animateScrollToItem(
+                            destinationIndex + 1, -with(density) { TvExplorationDefaults.RowAnchorInset.roundToPx() },
+                        )
+                        if (row is TvExplorationRow.ContinueWatching &&
+                            followedRowState.layoutInfo.visibleItemsInfo.none { it.key == id }) {
+                            followedRowState.scrollToItem(index)
                         }
-                        if (followedRowState.layoutInfo.visibleItemsInfo.none { it.key == id }) {
-                            followedRowState.scrollToItem(destination.indexOfSubject(id))
-                        }
-                    } else {
-                        val inset = with(density) {
-                            ((if (destination.hasTitle) TvExplorationDefaults.RowHeaderHeight else 0.dp) -
-                                    TvExplorationDefaults.RowAnchorInset).roundToPx()
-                        }
-                        columnState.animateScrollToItem(currentRows.indexOf(destination) + 1, inset)
                     }
                     TvExplorationCardKey(row.area, id)
                 }
+            } finally {
+                if (transaction == preparationId) preparingFocus = false
             }
         }
-
-        LaunchedEffect(rows.firstOrNull()?.key) {
-            if (area == TvExplorationArea.Featured) columnState.scrollToItem(0)
+    }
+    BackHandler(enabled = pageFocused && !expanded) { returnToHero() }
+    val cardBeforeUpdate = focusedSubjectId?.let { TvExplorationCardKey(area, it) }
+    val cardWasFocused = cardBeforeUpdate?.let(focus::isFocused) == true
+    val rowsIdentity = rows.map { row -> row.area to (0 until row.count).map(row::subjectIdAt) }
+    LaunchedEffect(rowsIdentity) {
+        if (expanded || footerFocused || !cardWasFocused) return@LaunchedEffect
+        val previous = cardBeforeUpdate ?: return@LaunchedEffect
+        val row = currentRows.firstOrNull { it.area == previous.area && it.indexOfSubject(previous.subjectId) >= 0 }
+        if (row == null) {
+            if (currentRows.isEmpty()) returnToHero()
+            else navigateToRow(currentRows.indexOfFirst { it.area == previous.area }.coerceAtLeast(0))
+        } else if (!focus.isFocused(previous)) {
+            navigateToRow(currentRows.indexOf(row), subjectId = previous.subjectId)
         }
-        // A removed collection or refreshed grid must not leave focus on a recycled card.
-        val followedIds = followed.itemSnapshotList.items.map { it.subjectInfo.subjectId }
-        val recommendationIds =
-            recommendations.itemSnapshotList.items.filterIsInstance<RecommendedSubjectInfo>().map { it.bangumiId }
-        val cardWasFocused = focusedSubjectId?.let { focus.isFocused(TvExplorationCardKey(area, it)) } == true
-        LaunchedEffect(followedIds, recommendationIds) {
-            if (!cardWasFocused || focusedSubjectId == null || footerFocused || area == TvExplorationArea.Featured) return@LaunchedEffect
-            val ids = if (area == TvExplorationArea.ContinueWatching) followedIds else recommendationIds
-            if (focusedSubjectId !in ids) {
-                val destination = rows.indexOfFirst { it.area == area }.takeIf { it >= 0 } ?: 0
-                if (rows.isEmpty()) returnToHero() else navigateToRow(destination, 0)
+    }
+    LaunchedEffect(footerState) {
+        if (footerFocused && footerState == null) {
+            footerFocused = false
+            if (currentRows.isEmpty()) returnToHero()
+            else navigateToRow(currentRows.indexOfFirst { it.area == TvExplorationArea.Recommendations }.coerceAtLeast(0))
+        }
+    }
+    LaunchedEffect(area, focusedSubjectId, footerFocused) {
+        if (expanded || footerFocused || preparingFocus) return@LaunchedEffect
+        val index = currentRows.indexOfFirst { it.area == area && it.indexOfSubject(focusedSubjectId) >= 0 }
+        if (index < 0) return@LaunchedEffect
+        if (currentRows[index] is TvExplorationRow.ContinueWatching) columnState.animateScrollToItem(0)
+        else columnState.animateScrollToItem(
+            index + 1, -with(density) { TvExplorationDefaults.RowAnchorInset.roundToPx() },
+        )
+    }
+    val scrollProgress by remember(columnState, density) {
+        derivedStateOf {
+            val hero = columnState.layoutInfo.visibleItemsInfo.firstOrNull { it.key == "hero" }
+            if (hero == null) if (columnState.firstVisibleItemIndex > 0) 1f else 0f
+            else {
+                val distance = hero.size - with(density) { TvExplorationDefaults.RowAnchorInset.toPx() }
+                (-hero.offset / distance.coerceAtLeast(1f)).coerceIn(0f, 1f)
             }
         }
-        val footerWasFocused = focus.isFocused(TvExplorationFocus.FeedStatus)
-        LaunchedEffect(footerState) {
-            if (footerFocused && footerState == null) {
-                footerFocused = false
-                if (footerWasFocused) {
-                    if (rows.isEmpty()) returnToHero() else navigateToRow(rows.lastIndex, 0)
-                }
+    }
+    BoxWithConstraints(
+        Modifier.fillMaxSize().testTag("tv-exploration")
+            .onGloballyPositioned { pagePlaced = true }
+            .onFocusChanged { pageFocused = it.hasFocus }
+            .focusProperties {
+                onEnter = { if (!lifecycle.currentState.isAtLeast(Lifecycle.State.RESUMED)) cancelFocus() }
             }
-        }
-        val scrollProgress by remember(columnState) {
-            derivedStateOf {
-                val hero = columnState.layoutInfo.visibleItemsInfo.firstOrNull { it.key == "hero" }
-                if (hero == null) {
-                    if (columnState.firstVisibleItemIndex > 0) 1f else 0f
-                } else (-hero.offset.toFloat() / hero.size.coerceAtLeast(1)).coerceIn(0f, 1f)
-            }
-        }
-        TvMaterialTheme(colorScheme = TvMaterialTheme.colorScheme.copy(primary = TvExplorationDefaults.Content)) {
-            TvExplorationPageLayout(
-                viewportHeight = maxHeight, heroHeight = maxHeight * heightFraction,
-                columnState = columnState, focus = focus,
-                anchoredAtHero = { currentArea == TvExplorationArea.Featured || currentArea == TvExplorationArea.ContinueWatching },
-                focusedRow = {
-                    if (currentFooterFocused) null else currentRows.firstOrNull {
-                        it.area == currentArea && it.indexOfSubject(
-                            currentSubjectId,
-                        ) >= 0
-                    }
-                },
-                backdrop = {
-                    TvExplorationBackdrop(
-                        backdropSubject?.copy(imageUrl = backdropUrl.orEmpty()),
-                        { scrollProgress }, it.testTag("tv-exploration-backdrop").hazeSource(hazeState),
-                    )
-                },
-                hero = { heroModifier, minimumHeight ->
-                    TvExplorationHero(
-                        heroSubject, heroSubject?.let { media.infoCache[it.subjectId] },
-                        followedSubject = followed.itemSnapshotList.items.firstOrNull {
-                            area == TvExplorationArea.ContinueWatching && it.subjectInfo.subjectId == focusedSubjectId
-                        },
-                        loadState = trendsPager.loadState.refresh,
-                        expanded = expanded, expandProgress = expandProgress,
-                        minimumHeight = minimumHeight,
-                        slideDirection = if (expanded) carouselDirection else 0,
-                        carouselSize = carouselIds.size, carouselIndex = selectedIndex,
-                        hazeState = hazeState,
-                        onClickDetails = {
-                            if (featuredSubject != null) onIntent(TvExplorationIntent.OpenSubject(featuredSubject))
-                            else if (trendsPager.loadState.refresh is LoadState.Error) trendsPager.retry()
-                            else if (trendsPager.loadState.refresh is LoadState.NotLoading) trendsPager.refresh()
-                        },
-                        onButtonFocusChanged = {
-                            detailsFocused = it
-                            if (it) {
-                                area = TvExplorationArea.Featured; footerFocused = false
-                            } else heldCarouselKeys.clear()
-                        },
-                        modifier = heroModifier,
-                        buttonModifier = Modifier.then(
-                            if (expanded) Modifier.tvFocusAnchor(
-                                focus,
-                                TvExplorationFocus.Details,
-                            ) else Modifier,
-                        )
-                            .onPreviewKeyEvent { event ->
-                                when (event.key) {
-                                    Key.DirectionLeft, Key.DirectionRight -> {
-                                        if (event.type == KeyEventType.KeyUp) heldCarouselKeys.remove(event.key)
-                                        else if (event.type == KeyEventType.KeyDown && heldCarouselKeys.add(event.key)) {
-                                            carouselDirection = if (event.key == Key.DirectionRight) 1 else -1
-                                            carouselId = nextFeaturedSubjectId(
-                                                carouselIds, carouselId,
-                                                carouselDirection,
-                                            )
-                                        }
-                                        true
-                                    }
-
-                                    Key.DirectionDown -> {
-                                        if (event.type == KeyEventType.KeyDown) navigateToRow(0, 0)
-                                        true
-                                    }
-
-                                    else -> false
-                                }
-                            },
-                    )
-                },
-            ) {
-                itemsIndexed(rows, key = { _, row -> row.key }) { index, row ->
-                    TvExplorationRowItem(
-                        row, media, onIntent, focus, followedRowState, focusedSubjectId,
-                        onCardFocused = { targetRow, subject ->
-                            area = targetRow.area
-                            footerFocused = false
-                            focusedSubjectId = subject.subjectId
-                            if (targetRow is TvExplorationRow.ContinueWatching) lastFollowedId = subject.subjectId
-                        },
-                        onNavigateVertical = { delta, from ->
-                            if (index + delta < 0) returnToHero() else navigateToRow(index + delta, from)
-                        },
-                        modifier = Modifier.padding(start = TvExplorationDefaults.StartPadding),
-                    )
-                }
-                if (footerState != null) item("feed-status") {
-                    TvExplorationFeedStatus(
-                        footerState,
-                        onRetry = {
-                            if (recommendations.loadState.hasError) recommendations.retry() else recommendations.refresh()
-                            if (followed.loadState.hasError) followed.retry()
-                        },
-                        modifier = Modifier.tvFocusAnchor(focus, TvExplorationFocus.FeedStatus)
-                            .onFocusChanged {
-                                if (it.isFocused) {
-                                    area = TvExplorationArea.Recommendations; footerFocused = true
-                                }
-                            }
-                            .onPreviewKeyEvent {
-                                if (it.key == Key.DirectionUp) {
-                                    if (it.type == KeyEventType.KeyDown) {
-                                        if (rows.isEmpty()) returnToHero() else navigateToRow(rows.lastIndex, 0)
+            .focusGroup().semantics { stateDescription = area.name },
+    ) {
+        val collapsedHeight = (maxHeight - 226.dp).coerceAtLeast(230.dp)
+        val heroHeight = collapsedHeight + TvExplorationDefaults.HeroFeaturedExtraSpace * expandProgress
+        val measuredHeroHeight by rememberUpdatedState(with(density) { heroHeight.roundToPx() })
+        val currentPreparingFocus by rememberUpdatedState(preparingFocus)
+        TvExplorationPageLayout(
+            viewportHeight = maxHeight, columnState = columnState, focus = focus,
+            anchoredAtHero = { currentArea == TvExplorationArea.Featured || currentArea == TvExplorationArea.ContinueWatching },
+            focusedRow = { currentRows.firstOrNull { it.area == currentArea && it.indexOfSubject(currentSubjectId) >= 0 } },
+            measuredHeroHeight = { measuredHeroHeight },
+            preparingFocus = { currentPreparingFocus },
+            backdrop = {
+                TvExplorationBackdrop(
+                    backdropSubject?.copy(imageUrl = backdropUrl.orEmpty()),
+                    { scrollProgress }, expanded, it.testTag("tv-exploration-backdrop"),
+                )
+            },
+            hero = { heroModifier ->
+                TvExplorationHero(
+                    featuredSubject, featuredSubject?.let { media.infoCache[it.subjectId] },
+                    previewSubject, previewSubject?.let { media.infoCache[it.subjectId] } ?: previewCard?.collection,
+                    previewFollowed, trendsPager.loadState.refresh,
+                    expanded, expandProgress, collapsedHeight, carouselDirection, carouselIds.size, selectedIndex,
+                    previewVisible = area == TvExplorationArea.ContinueWatching && !footerFocused,
+                    animateProgress = area == TvExplorationArea.ContinueWatching && pageFocused &&
+                        lifecycleState.isAtLeast(Lifecycle.State.RESUMED) && scrollProgress < 1f,
+                    onClickDetails = {
+                        if (featuredSubject != null) onIntent(TvExplorationIntent.OpenSubject(featuredSubject))
+                        else if (trendsPager.loadState.refresh is LoadState.Error) trendsPager.retry()
+                        else if (trendsPager.loadState.refresh is LoadState.NotLoading) trendsPager.refresh()
+                    },
+                    onButtonFocusChanged = {
+                        detailsFocused = it
+                        if (it) { area = TvExplorationArea.Featured; footerFocused = false }
+                        else heldCarouselKeys.clear()
+                    },
+                    modifier = heroModifier,
+                    buttonModifier = Modifier.tvFocusAnchor(focus, TvExplorationFocus.Details)
+                        .onPreviewKeyEvent { event ->
+                            when (event.key) {
+                                Key.DirectionLeft, Key.DirectionRight -> {
+                                    if (event.type == KeyEventType.KeyUp) heldCarouselKeys.remove(event.key)
+                                    else if (event.type == KeyEventType.KeyDown && heldCarouselKeys.add(event.key)) {
+                                        carouselDirection = if (event.key == Key.DirectionRight) 1 else -1
+                                        carouselId = nextFeaturedSubjectId(carouselIds, carouselId, carouselDirection)
                                     }
                                     true
-                                } else it.key == Key.DirectionDown
-                            },
-                    )
-                }
+                                }
+                                Key.DirectionDown -> {
+                                    if (event.type == KeyEventType.KeyDown) navigateToRow(0)
+                                    true
+                                }
+                                else -> false
+                            }
+                        },
+                )
+            },
+        ) {
+            itemsIndexed(rows, key = { _, row -> row.key }) { index, row ->
+                val selectedRow = rows.indexOfFirst { it.area == area && it.indexOfSubject(focusedSubjectId) >= 0 }
+                val rowAlpha by animateFloatAsState(
+                    when {
+                        expanded -> .6f
+                        index == selectedRow -> 1f
+                        index < selectedRow || footerFocused -> .2f
+                        else -> .6f
+                    },
+                    tween(250, easing = ExplorationPanelEasing), label = "home-row-emphasis",
+                )
+                TvExplorationRowItem(
+                    row, immersive = row is TvExplorationRow.ContinueWatching, selected = !footerFocused && area == row.area,
+                    featuredProgress = expandProgress, media, onIntent, focus, followedRowState,
+                    focusedSubjectId = currentSubjectId,
+                    onCardFocused = { target, subject ->
+                        area = target.area; footerFocused = false; focusedSubjectId = subject.subjectId
+                        when (target.area) {
+                            TvExplorationArea.ContinueWatching -> lastFollowedId = subject.subjectId
+                            TvExplorationArea.Recommendations -> lastRecommendationId = subject.subjectId
+                            TvExplorationArea.Featured -> Unit
+                        }
+                    },
+                    onNavigateVertical = { delta, column -> navigateToRow(index + delta, column) },
+                    modifier = Modifier.padding(bottom = TvExplorationDefaults.RowGap).graphicsLayer { alpha = rowAlpha },
+                )
+            }
+            if (footerState != null) item("feed-status") {
+                TvExplorationFeedStatus(
+                    footerState,
+                    onRetry = {
+                        if (recommendations.loadState.hasError) recommendations.retry() else recommendations.refresh()
+                        if (followed.loadState.hasError) followed.retry()
+                    },
+                    modifier = Modifier.tvFocusAnchor(focus, TvExplorationFocus.FeedStatus)
+                        .onFocusChanged { if (it.isFocused) { footerFocused = true; area = TvExplorationArea.Recommendations } }
+                        .onPreviewKeyEvent {
+                            if (it.key == Key.DirectionUp) {
+                                if (it.type == KeyEventType.KeyDown) {
+                                    if (rows.isEmpty()) returnToHero() else navigateToRow(rows.lastIndex)
+                                }
+                                true
+                            } else false
+                        },
+                )
             }
         }
     }
@@ -403,30 +413,43 @@ fun TvExplorationScreen(
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
 private fun TvExplorationPageLayout(
-    viewportHeight: Dp, heroHeight: Dp, columnState: LazyListState, focus: TvFocusScope,
-    anchoredAtHero: () -> Boolean, focusedRow: () -> TvExplorationRow?,
-    backdrop: @Composable (Modifier) -> Unit, hero: @Composable (Modifier, Dp) -> Unit,
+    viewportHeight: Dp,
+    columnState: LazyListState,
+    focus: TvFocusScope,
+    anchoredAtHero: () -> Boolean,
+    focusedRow: () -> TvExplorationRow?,
+    measuredHeroHeight: () -> Int,
+    preparingFocus: () -> Boolean,
+    backdrop: @Composable (Modifier) -> Unit,
+    hero: @Composable (Modifier) -> Unit,
     rows: LazyListScope.() -> Unit,
 ) {
     val density = LocalDensity.current
     val scrollSpec = remember(columnState, density) {
         TvExplorationBringIntoViewSpec(
-            columnState, anchoredAtHero, focusedRow,
-            with(density) { TvExplorationDefaults.RowHeaderHeight.toPx() },
+            columnState, anchoredAtHero, focusedRow, measuredHeroHeight, preparingFocus,
             with(density) { TvExplorationDefaults.RowAnchorInset.toPx() },
         )
     }
-    Box(Modifier.fillMaxSize().background(TvExplorationDefaults.Background).tvFocusNavSignal(focus)) {
-        backdrop(Modifier.fillMaxSize())
-        CompositionLocalProvider(LocalBringIntoViewSpec provides scrollSpec) {
+    Box(
+        Modifier.fillMaxSize().clipToBounds()
+            .background(TvExplorationDefaults.Background).tvFocusNavSignal(focus),
+    ) {
+        val actionBackdrop = rememberHazeState()
+        backdrop(Modifier.fillMaxSize().hazeSource(actionBackdrop))
+        CompositionLocalProvider(LocalBringIntoViewSpec provides scrollSpec, LocalTvDetailsActionBackdrop provides actionBackdrop) {
             LazyColumn(
-                Modifier.fillMaxSize().verticalFadingEdges(columnState).testTag("tv-exploration-scroll"),
+                Modifier.fillMaxSize().testTag("tv-exploration-scroll"),
                 state = columnState, contentPadding = PaddingValues(bottom = viewportHeight),
-                verticalArrangement = Arrangement.spacedBy(TvExplorationDefaults.RowGap),
             ) {
-                item("hero") { hero(Modifier.fillMaxWidth(), heroHeight) }
+                item("hero") { hero(Modifier.fillMaxWidth()) }
                 rows()
             }
+            if (columnState.canScrollBackward) Box(
+                Modifier.fillMaxWidth().height(TvExplorationDefaults.FadingEdgeHeight).background(
+                    Brush.verticalGradient(listOf(TvExplorationDefaults.Background, Color.Transparent)),
+                ),
+            )
         }
     }
 }
@@ -436,35 +459,19 @@ internal class TvExplorationBringIntoViewSpec(
     private val columnState: LazyListState,
     private val anchoredAtHero: () -> Boolean,
     private val focusedRow: () -> TvExplorationRow?,
-    private val headerHeightPx: Float,
+    private val measuredHeroHeight: () -> Int,
+    private val preparingFocus: () -> Boolean,
     private val anchorInsetPx: Float,
 ) : BringIntoViewSpec {
     override fun calculateScrollDistance(offset: Float, size: Float, containerSize: Float): Float {
+        // During preparation the old focused descendant must not pull the viewport back.
+        if (preparingFocus()) return 0f
+        val visible = columnState.layoutInfo.visibleItemsInfo
         if (anchoredAtHero()) {
-            return columnState.layoutInfo.visibleItemsInfo.firstOrNull { it.key == "hero" }?.offset?.toFloat() ?: 0f
+            visible.firstOrNull { it.key == "hero" }?.let { return it.offset.toFloat() }
+            return visible.firstOrNull { it.index == 1 }?.let { (it.offset - measuredHeroHeight()).toFloat() } ?: 0f
         }
-        val row = focusedRow()
-        val layout = columnState.layoutInfo.visibleItemsInfo.firstOrNull { it.key == row?.key }
-        val cardTop = if (layout != null) layout.offset + if (row?.hasTitle == true) headerHeightPx else 0f else offset
-        return cardTop - anchorInsetPx
+        val row = visible.firstOrNull { it.key == focusedRow()?.key } ?: return 0f
+        return row.offset - anchorInsetPx
     }
-}
-
-private fun Modifier.verticalFadingEdges(state: LazyListState): Modifier = graphicsLayer {
-    compositingStrategy = CompositingStrategy.Offscreen
-}.drawWithContent {
-    drawContent()
-    val height = TvExplorationDefaults.FadingEdgeHeight.toPx()
-    if (state.canScrollBackward) drawRect(
-        Brush.verticalGradient(listOf(Color.Black, Color.Transparent), 0f, height),
-        blendMode = BlendMode.DstOut,
-    )
-    if (state.canScrollForward) drawRect(
-        Brush.verticalGradient(
-            listOf(Color.Transparent, Color.Black),
-            size.height - height,
-            size.height,
-        ),
-        blendMode = BlendMode.DstOut,
-    )
 }

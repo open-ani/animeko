@@ -29,9 +29,14 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.CheckCircle
 import androidx.compose.material.icons.rounded.PlayArrow
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
@@ -49,6 +54,7 @@ import me.him188.ani.app.ui.lang.subject_episode_now_playing
 import me.him188.ani.app.ui.lang.subject_episode_watched
 import me.him188.ani.leanback.ui.episode.TvStripEpisode
 import me.him188.ani.leanback.ui.foundation.focus.TvFocusDefaults
+import me.him188.ani.leanback.ui.foundation.focus.tvCardFocusBorder
 import me.him188.ani.leanback.ui.foundation.focus.tvLongPressKey
 import org.jetbrains.compose.resources.stringResource
 
@@ -114,12 +120,15 @@ internal fun EpisodeStripCard(
     modifier: Modifier = Modifier,
     onLongClick: () -> Unit,
 ) {
+    var focused by remember { mutableStateOf(false) }
     Surface(
         onClick = onClick,
         modifier = modifier
             .tvLongPressKey(onLongClick, onClick)
             .width(TvPlayerEpisodeStripDefaults.CardWidth)
-            .aspectRatio(16f / 9f),
+            .aspectRatio(16f / 9f)
+            .onFocusChanged { focused = it.isFocused }
+            .tvCardFocusBorder(focused),
         shape = ClickableSurfaceDefaults.shape(RoundedCornerShape(TvFocusDefaults.RingCornerRadius)),
         colors = ClickableSurfaceDefaults.colors(
             containerColor = Color.Transparent,
@@ -127,8 +136,7 @@ internal fun EpisodeStripCard(
             contentColor = Color.White,
             focusedContentColor = Color.White,
         ),
-        scale = ClickableSurfaceDefaults.scale(focusedScale = TvFocusDefaults.FocusedScale),
-        border = TvFocusDefaults.clickableCardBorder(),
+        scale = ClickableSurfaceDefaults.scale(focusedScale = TvFocusDefaults.FocusedScale, pressedScale = 1f),
     ) {
         Box(
             Modifier

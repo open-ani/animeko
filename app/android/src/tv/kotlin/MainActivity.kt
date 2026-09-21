@@ -15,7 +15,11 @@ import androidx.activity.SystemBarStyle
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import me.him188.ani.app.data.models.preference.ThemeSettings
+import me.him188.ani.app.data.models.preference.UISettings
 import me.him188.ani.app.domain.foundation.HttpClientProvider
 import me.him188.ani.app.domain.foundation.ScopedHttpClientUserAgent
 import me.him188.ani.app.domain.foundation.get
@@ -26,7 +30,7 @@ import me.him188.ani.app.ui.foundation.rememberAniSketchInstance
 import me.him188.ani.app.ui.foundation.widgets.LocalToaster
 import me.him188.ani.app.ui.foundation.widgets.Toaster
 import me.him188.ani.leanback.ui.di.TvAppDependencies
-import me.him188.ani.leanback.ui.foundation.theme.AniTvTheme
+import me.him188.ani.leanback.ui.foundation.theme.TvApplicationTheme
 import me.him188.ani.leanback.ui.main.TvAniAppContent
 import org.koin.android.ext.android.getKoin
 
@@ -49,8 +53,12 @@ class MainActivity : AniComponentActivity() {
         // Resolve application services before entering composition.
         val dependencies = TvAppDependencies.fromKoin(getKoin())
         val imageLoaderClient = getKoin().get<HttpClientProvider>().get(ScopedHttpClientUserAgent.ANI)
+        val themeSettings = dependencies.settingsRepository.themeSettings.flow
+        val uiSettings = dependencies.settingsRepository.uiSettings.flow
         setContent {
-            AniTvTheme {
+            val theme by themeSettings.collectAsStateWithLifecycle(ThemeSettings.Default)
+            val appearance by uiSettings.collectAsStateWithLifecycle(UISettings.Default)
+            TvApplicationTheme(theme.seedColor, appearance.appLanguage?.toLanguageTag()) {
                 // 与手机 AniApp 同款 Sketch 装配 (§5.6; main 已从 coil 迁移至 sketch)
                 val sketch = rememberAniSketchInstance(imageLoaderClient)
                 val toaster = remember {

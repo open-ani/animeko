@@ -1,4 +1,5 @@
 [versions]
+zxing = "3.5.4"
 kotlin = "2.4.10"
 android-gradle-plugin = "9.1.1"
 
@@ -126,6 +127,7 @@ compose-stability-analyzer = { id = "com.github.skydoves.compose.stability.analy
 aboutlibraries = { id = "com.mikepenz.aboutlibraries.plugin", version.ref = "aboutlibraries" }
 
 [libraries]
+zxing-core = { module = "com.google.zxing:core", version.ref = "zxing" }
 # Plugin libraries for build-logic.
 android-gradle-plugin = { module = "com.android.tools.build:gradle", version.ref = "android-gradle-plugin" }
 android-kotlin-multiplatform-library-gradle-plugin = { module = "com.android.kotlin.multiplatform.library:com.android.kotlin.multiplatform.library.gradle.plugin", version.ref = "android-gradle-plugin" }

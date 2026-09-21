@@ -10,7 +10,6 @@ import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.gestures.BringIntoViewSpec
 import androidx.compose.foundation.background
 import androidx.compose.foundation.interaction.MutableInteractionSource
-import androidx.compose.foundation.interaction.collectIsFocusedAsState
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
@@ -36,10 +35,13 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.setValue
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.drawWithContent
 import androidx.compose.ui.geometry.CornerRadius
@@ -77,6 +79,8 @@ import me.him188.ani.app.ui.richtext.RichText
 import me.him188.ani.app.ui.richtext.UIRichElement
 import me.him188.ani.app.ui.subject.details.components.RatingHistogram
 import me.him188.ani.leanback.ui.subject.components.TvSubjectDetailsDefaults
+import me.him188.ani.leanback.ui.foundation.focus.TvFocusDefaults
+import me.him188.ani.leanback.ui.foundation.focus.tvCardFocusBorder
 import me.him188.ani.leanback.ui.subject.details.formatCount
 import org.jetbrains.compose.resources.stringResource
 import kotlin.math.roundToInt
@@ -155,13 +159,15 @@ private fun ReviewScore(score: String, compact: Boolean) {
 @Composable
 internal fun TvReviewCard(comment: UIComment, modifier: Modifier = Modifier, showRating: Boolean = true, onClick: () -> Unit) {
     val interaction = remember { MutableInteractionSource() }
-    val focused by interaction.collectIsFocusedAsState()
+    var focused by remember { mutableStateOf(false) }
     Surface(
-        onClick, modifier.fillMaxWidth(), interactionSource = interaction,
+        onClick, modifier.fillMaxWidth().onFocusChanged { focused = it.isFocused }
+            .tvCardFocusBorder(focused, RoundedCornerShape(20.dp + TvFocusDefaults.RingInset))
+            .padding(TvFocusDefaults.RingInset), interactionSource = interaction,
         shape = TvReviewDefaults.CardShape,
         color = if (focused) Color.White.copy(alpha = .12f) else Color.Black.copy(alpha = .16f),
         contentColor = TvSubjectDetailsDefaults.Content,
-        border = BorderStroke(if (focused) 2.dp else 1.dp, Color.White.copy(alpha = if (focused) .95f else .18f)),
+        border = if (focused) null else BorderStroke(1.dp, Color.White.copy(alpha = .18f)),
     ) {
         Column(Modifier.padding(18.dp), verticalArrangement = Arrangement.spacedBy(14.dp)) {
             Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {

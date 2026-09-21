@@ -24,6 +24,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.ChevronRight
@@ -75,6 +76,7 @@ import me.him188.ani.app.ui.richtext.RichText
 import me.him188.ani.app.ui.richtext.UIRichElement
 import me.him188.ani.app.ui.richtext.rememberBBCodeRichTextState
 import me.him188.ani.leanback.ui.foundation.focus.TvFocusDefaults
+import me.him188.ani.leanback.ui.foundation.focus.tvCardFocusBorder
 import me.him188.ani.leanback.ui.foundation.widgets.LocalTvOptionColors
 import me.him188.ani.leanback.ui.foundation.widgets.TvOptionDefaults
 import org.jetbrains.compose.resources.stringResource
@@ -85,6 +87,7 @@ import java.util.Locale
 /** One card is one D-pad target; rich text never competes with the card's primary action. */
 @Composable
 internal fun TvCommentCard(comment: EpisodeComment, modifier: Modifier = Modifier, onClick: () -> Unit) {
+    var focused by remember { mutableStateOf(false) }
     val colors = LocalTvOptionColors.current
     val elements = rememberCommentElements(comment.content)
     val quote = stringResource(Lang.comment_preview_quote)
@@ -92,7 +95,10 @@ internal fun TvCommentCard(comment: EpisodeComment, modifier: Modifier = Modifie
     val preview = remember(elements, quote, image) { elements.toTvCommentPreview(quote, image) }
     Surface(
         onClick = onClick,
-        modifier = modifier.fillMaxWidth().testTag("tv-comment-${comment.stableId}"),
+        modifier = modifier.fillMaxWidth().testTag("tv-comment-${comment.stableId}")
+            .onFocusChanged { focused = it.isFocused }
+            .tvCardFocusBorder(focused, RoundedCornerShape(12.dp + TvFocusDefaults.RingInset))
+            .padding(TvFocusDefaults.RingInset),
         shape = ClickableSurfaceDefaults.shape(TvOptionDefaults.ItemShape),
         // A dark focused surface keeps BBCode links, quotes and masks readable.
         colors = ClickableSurfaceDefaults.colors(
@@ -101,8 +107,7 @@ internal fun TvCommentCard(comment: EpisodeComment, modifier: Modifier = Modifie
             focusedContainerColor = colors.selectedContainer ?: colors.raised,
             focusedContentColor = colors.content,
         ),
-        border = TvFocusDefaults.clickableCardBorder(TvOptionDefaults.ItemShape),
-        scale = ClickableSurfaceDefaults.scale(focusedScale = TvFocusDefaults.FocusedScale),
+        scale = ClickableSurfaceDefaults.scale(focusedScale = TvFocusDefaults.FocusedScale, pressedScale = 1f),
     ) {
         Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
             CommentAuthor(comment)

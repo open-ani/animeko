@@ -27,6 +27,7 @@ import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.progressSemantics
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -56,6 +57,7 @@ import me.him188.ani.app.ui.lang.tv_player_collapse_recommendations
 import me.him188.ani.leanback.ui.episode.controls.TvPlayerControlsDefaults
 import me.him188.ani.leanback.ui.episode.controls.TvPlayerEpisodeStripDefaults
 import me.him188.ani.leanback.ui.foundation.focus.TvFocusDefaults
+import me.him188.ani.leanback.ui.foundation.focus.tvCardFocusBorder
 import me.him188.ani.leanback.ui.foundation.widgets.tvOptionSurfaceColors
 import org.jetbrains.compose.resources.stringResource
 
@@ -152,16 +154,16 @@ private fun RecommendationStripCard(
             .width(TvPlayerEpisodeStripDefaults.CardWidth)
             .aspectRatio(16f / 9f)
             .testTag("tv-recommendation-${recommendation.uniqueId}")
-            .onFocusChanged { selfFocused = it.isFocused },
-        shape = ClickableSurfaceDefaults.shape(TvPlayerEpisodeStripDefaults.CardShape),
+            .onFocusChanged { selfFocused = it.isFocused }
+            .tvCardFocusBorder(selfFocused),
+        shape = ClickableSurfaceDefaults.shape(RoundedCornerShape(TvFocusDefaults.RingCornerRadius)),
         colors = ClickableSurfaceDefaults.colors(
             containerColor = Color.Transparent,
             focusedContainerColor = Color.Transparent,
             contentColor = Color.White,
             focusedContentColor = Color.White,
         ),
-        scale = ClickableSurfaceDefaults.scale(focusedScale = TvFocusDefaults.FocusedScale),
-        border = TvFocusDefaults.clickableCardBorder(),
+        scale = ClickableSurfaceDefaults.scale(focusedScale = TvFocusDefaults.FocusedScale, pressedScale = 1f),
     ) {
         Box(
             Modifier.padding(TvFocusDefaults.RingInset).fillMaxSize()

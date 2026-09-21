@@ -27,6 +27,7 @@ import androidx.compose.material.icons.rounded.TravelExplore
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.SideEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -43,7 +44,14 @@ import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.input.InputMode
 import androidx.compose.ui.input.key.Key
 import androidx.compose.ui.platform.LocalInputModeManager
+import androidx.compose.ui.platform.testTag
 import kotlinx.coroutines.flow.drop
+import me.him188.ani.app.ui.lang.Lang
+import me.him188.ani.app.ui.lang.tv_nav_schedule
+import me.him188.ani.app.ui.lang.exploration_search
+import me.him188.ani.app.ui.lang.main_screen_page_collection
+import me.him188.ani.app.ui.lang.main_screen_page_exploration
+import me.him188.ani.app.ui.lang.settings
 import me.him188.ani.leanback.ui.foundation.focus.LocalTvFocusMemory
 import me.him188.ani.leanback.ui.foundation.focus.TvFocusKey
 import me.him188.ani.leanback.ui.foundation.focus.TvFocusMemory
@@ -54,13 +62,15 @@ import me.him188.ani.leanback.ui.foundation.widgets.TvNavRailItem
 import me.him188.ani.leanback.ui.foundation.widgets.TvNavigationRailDefaults
 import me.him188.ani.leanback.ui.foundation.widgets.TvNavigationSideRail
 import me.him188.ani.leanback.ui.foundation.widgets.tvShellBackgroundColor
+import org.jetbrains.compose.resources.stringResource
 
-enum class TvShellContent { Search, Exploration, Schedule, Collection, Login, Settings }
+enum class TvShellContent { Search, Exploration, Schedule, Collection, Login }
 
 /** 主壳焦点锚点 (统一焦点框架, 见 ui-foundation-tv/focus). */
 private enum class TvShellFocus : TvFocusKey {
     /** 侧边栏进入落点 ("探索"条目); 菜单键从任意位置直达. */
     Rail,
+    Settings,
 }
 
 /**
@@ -74,6 +84,7 @@ fun TvMainShell(
     uiState: TvMainUiState,
     content: TvShellContent,
     onContentChange: (TvShellContent) -> Unit,
+    onOpenSettings: () -> Unit,
     modifier: Modifier = Modifier,
     /** 焦点记忆; 调用方在 NavHost 之上创建传入使其跨 route 存活 (进详情页返回恢复焦点用). */
     focusMemory: TvFocusMemory? = null,
@@ -106,6 +117,10 @@ fun TvMainShell(
     val contentFocus = remember { FocusRequester() }
     val memory = focusMemory ?: remember { TvFocusMemory() }
     memory.ArmOnRouteReturn() // route 重建 (从详情页等返回) 时装填跨 route 恢复目标
+    val settingsFocus = remember { FocusRequester() }
+    if (memory.pendingRestoreId == TvShellFocus.Settings) {
+        SideEffect { memory.claimRestore(TvShellFocus.Settings, settingsFocus) }
+    }
     // 内容 tab **真实变化**时才清记忆: 首启 (含 route 返回重组) 不清 —— 否则刚 arm 的
     // 跨 route 恢复目标与认领会被摧毁 (事件驱动版实测事故)
     LaunchedEffect(Unit) {
@@ -120,6 +135,7 @@ fun TvMainShell(
     var railHasFocus by remember { mutableStateOf(false) }
     val restoreContentFocus: () -> Unit = remember(contentFocus, memory) {
         {
+            if (memory.lastId == TvShellFocus.Settings) memory.clear()
             if (!memory.restore()) runCatching { contentFocus.requestFocus() }
             Unit
         }
@@ -129,6 +145,7 @@ fun TvMainShell(
     Box(
         modifier
             .fillMaxSize()
+            .testTag("tv-main-shell")
             .background(tvShellBackgroundColor())
             .tvFocusHotkeyToggle(
                 focus, Key.Menu, TvShellFocus.Rail,
@@ -160,30 +177,36 @@ fun TvMainShell(
             // selected = 当前页条目: 进入侧边栏 (按左/菜单键) 焦点落到它上, 而不是固定落"探索"
             items = listOf(
                 TvNavRailItem(
-                    Icons.Rounded.Search, "搜索",
+                    Icons.Rounded.Search, stringResource(Lang.exploration_search),
                     selected = content == TvShellContent.Search,
                 ) { onContentChange(TvShellContent.Search) },
                 TvNavRailItem(
-                    Icons.Rounded.TravelExplore, "探索", defaultFocus = true,
+                    Icons.Rounded.TravelExplore, stringResource(Lang.main_screen_page_exploration), defaultFocus = true,
                     selected = content == TvShellContent.Exploration,
                 ) { onContentChange(TvShellContent.Exploration) },
                 TvNavRailItem(
-                    Icons.Rounded.CalendarMonth, "时间表",
+                    Icons.Rounded.CalendarMonth, stringResource(Lang.tv_nav_schedule),
                     selected = content == TvShellContent.Schedule,
                 ) { onContentChange(TvShellContent.Schedule) },
                 TvNavRailItem(
-                    Icons.Rounded.Star, "追番",
+                    Icons.Rounded.Star, stringResource(Lang.main_screen_page_collection),
                     selected = content == TvShellContent.Collection,
                 ) { onContentChange(TvShellContent.Collection) },
                 TvNavRailItem(
-                    Icons.Rounded.Settings, "设置",
-                    selected = content == TvShellContent.Settings,
-                ) { onContentChange(TvShellContent.Settings) },
+                    Icons.Rounded.Settings, stringResource(Lang.settings),
+                    focusRequester = settingsFocus,
+                    restoreFocus = memory.pendingRestoreId == TvShellFocus.Settings,
+                    keepFocusOnClick = true,
+                ) {
+                    memory.reportFocused(settingsFocus, TvShellFocus.Settings)
+                    onOpenSettings()
+                },
             ),
             // Rail 锚点挂容器而非条目: requestFocus 经进入门控落到当前页条目, 而
             // hasFocus 对整个子树上报到位 —— 否则 request(Rail) 的解析轮询永远等不到
             // 确认, 烧满全部轮询期间会把用户点击后移入内容区的焦点一次次抢回 (实测)
             modifier = Modifier
+                .testTag("tv-main-navigation")
                 .align(Alignment.CenterStart)
                 .tvFocusAnchor(focus, TvShellFocus.Rail)
                 .onFocusChanged { railHasFocus = it.hasFocus },

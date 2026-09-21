@@ -1282,6 +1282,8 @@
     <string name="subject_progress_updates_on">%1$s更新</string>
     <string name="subject_progress_watched">看过 %1$s</string>
     <string name="subject_progress_unknown">未知</string>
+    <string name="subject_progress_episode_counts">已看 %1$s / 共 %2$s 集</string>
+    <string name="subject_progress_episode_counts_on_air">已看 %1$s / 已播 %2$s / 共 %3$s 集</string>
     <string name="subject_airing_upcoming">未开播</string>
     <string name="subject_airing_on_air">连载中</string>
     <string name="subject_airing_on_air_to">连载至 %1$s</string>

@@ -106,6 +106,15 @@
     <!-- Watch together -->
     <string name="watch_together_leave_explanation">You will stop following the host and can keep watching independently.</string>
     <string name="watch_together_invite_helper">Share the room name and password with friends to watch together.</string>
+    <string name="tv_settings_sources_description">View sources and manage their availability.</string>
+    <string name="tv_settings_subscriptions_description">Enabling or disabling a subscription also switches all its sources. Individual sources can be switched separately.</string>
+    <string name="tv_settings_subscription_sources_count">%1$d data sources</string>
+    <string name="tv_settings_reorder_hint">↑↓ Choose an item · Select to move · Back finishes reordering</string>
+    <string name="tv_settings_moving_hint">↑↓ Move · Select to confirm position · Back cancels this move</string>
+    <string name="tv_settings_open_on_tv">Open on this TV</string>
+    <string name="tv_settings_scan_link">Scan with your phone to open this page</string>
+    <string name="tv_exploration_more_details">More details</string>
+    <string name="tv_nav_schedule">Schedule</string>
 </resources>
 
 <!--@formatter:on-->
