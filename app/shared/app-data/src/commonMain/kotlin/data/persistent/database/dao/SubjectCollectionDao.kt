@@ -145,6 +145,19 @@ interface SubjectCollectionDao {
     @Query("""DELETE FROM subject_collection WHERE subjectId = :subjectId""")
     suspend fun delete(subjectId: Int)
 
+    /**
+     * 删除多个条目的本地缓存. 剧集缓存 ([EpisodeCollectionEntity]) 会级联删除.
+     */
+    @Query("""DELETE FROM subject_collection WHERE subjectId IN (:subjectIds)""")
+    suspend fun deleteByIds(subjectIds: List<Int>)
+
+    /**
+     * 将所有条目的 [SubjectCollectionEntity.lastFetched] 置 0, 使所有本地缓存视为已过期,
+     * 下次进入收藏页 (分页刷新) 或条目页时会从服务端重新拉取. 不删除本地数据.
+     */
+    @Query("""UPDATE subject_collection SET lastFetched = 0""")
+    suspend fun resetAllLastFetched()
+
     @Query("""DELETE FROM subject_collection WHERE collectionType = :type""")
     suspend fun deleteAll(type: UnifiedCollectionType)
 

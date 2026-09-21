@@ -19,10 +19,13 @@ import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
+import kotlinx.io.Buffer
 import kotlinx.io.files.Path
 import kotlinx.io.files.SystemFileSystem
+import kotlinx.io.writeString
 import me.him188.ani.app.data.persistent.database.dao.HttpCacheDownloadStateDao
 import me.him188.ani.app.data.models.preference.PikPakConfig
+import me.him188.ani.app.domain.media.cache.DownloaderStatus
 import me.him188.ani.app.domain.media.cache.MediaCache
 import me.him188.ani.app.domain.media.cache.MediaCacheState
 import me.him188.ani.app.domain.media.resolver.EpisodeMetadata
@@ -47,12 +50,14 @@ import me.him188.ani.utils.httpdownloader.DownloadState
 import me.him188.ani.utils.httpdownloader.DownloadStatus
 import me.him188.ani.utils.httpdownloader.HttpDownloader
 import me.him188.ani.utils.httpdownloader.MediaType
+import me.him188.ani.utils.io.DigestAlgorithm
 import me.him188.ani.utils.io.absolutePath
 import me.him188.ani.utils.io.actualSize
 import me.him188.ani.utils.io.delete
 import me.him188.ani.utils.io.deleteRecursively
 import me.him188.ani.utils.io.exists
 import me.him188.ani.utils.io.inSystem
+import me.him188.ani.utils.io.readAndDigest
 import me.him188.ani.utils.logging.error
 import me.him188.ani.utils.logging.info
 import me.him188.ani.utils.logging.logger
@@ -123,7 +128,7 @@ class HttpMediaCacheEngine(
         if (!supports(origin)) throw UnsupportedOperationException("Media is not supported by this engine $this: ${origin.download}")
 
         logger.info { "Restarting cache '${origin.mediaId}'" }
-        val downloadId = origin.toSafeDownloadId()
+        val downloadId = restoredHttpDownloadId(origin, metadata)
 
         // 注意, getState 一般不会返回 null, 除非 downloader 的 persistent datastore 出问题了 (例如文件损坏).
         if (downloader.getState(downloadId) != null) {
@@ -163,8 +168,7 @@ class HttpMediaCacheEngine(
             }
 
             is UriMediaData -> {
-                // TODO: 用 [Media.mediaId] 当作 DownloadId 好吗?
-                val downloadId = origin.toSafeDownloadId()
+                val downloadId = httpDownloadId(origin, metadata)
                 var options = DownloadOptions(headers = mediaData.headers)
                 if (origin.kind == MediaSourceKind.BitTorrent) {
                     val config = pikpakConfig()
@@ -190,6 +194,25 @@ class HttpMediaCacheEngine(
                 )
             }
         }
+    }
+
+    /**
+     * 新建任务的标识, 由 mediaId, subjectId 与 episodeId 共同决定: 合集资源经 PikPak 下载时各集有独立的任务与文件.
+     */
+    private fun httpDownloadId(media: Media, metadata: MediaCacheMetadata): DownloadId {
+        val identity = listOf(media.mediaId, metadata.subjectId, metadata.episodeId)
+            .joinToString("") { "${it.length}:$it" }
+        val digest = Buffer().apply { writeString(identity) }.readAndDigest(DigestAlgorithm.SHA256).toHexString()
+        return DownloadId("http-v2-$digest")
+    }
+
+    /**
+     * 恢复记录时的任务标识: 优先 [httpDownloadId]; downloader 与 [dao] 中都没有时回退到 [toSafeDownloadId], 以匹配旧记录.
+     */
+    private suspend fun restoredHttpDownloadId(media: Media, metadata: MediaCacheMetadata): DownloadId {
+        val current = httpDownloadId(media, metadata)
+        if (downloader.getState(current) != null || dao.getById(current) != null) return current
+        return media.toSafeDownloadId()
     }
 
     override suspend fun deleteUnusedCaches(all: List<MediaCache>) {
@@ -241,6 +264,16 @@ class HttpMediaCacheEngine(
                 downloadProgress = it.toHttpCacheProgress(),
             )
         }
+        override val downloaderStatus: Flow<DownloaderStatus?> = downloader.getProgressFlow(downloadId).map {
+            DownloaderStatus.Http(
+                status = it.status,
+                error = it.error,
+                downloadedSegments = it.downloadedSegments,
+                totalSegments = it.totalSegments,
+                lastSegmentFailure = it.lastSegmentFailure,
+            )
+        }
+
         override val sessionStats: Flow<MediaCache.SessionStats> = run {
             val downloadSpeedFlow = fileStats.map { it.downloadedBytes.inBytes }.averageRate()
 
@@ -355,6 +388,9 @@ class HttpMediaCacheEngine(
         dao.deleteById(state.downloadId)
     }
 
+    /**
+     * 仅由 mediaId 派生的旧标识, 只用于 [restoredHttpDownloadId] 的回退匹配.
+     */
     private fun Media.toSafeDownloadId(): DownloadId {
         return DownloadId(mediaId.replace(PATH_AFFECTING_CHARS_REGEX, "-"))
     }
@@ -371,11 +407,11 @@ class HttpMediaCacheEngine(
 
 internal fun DownloadStatus.toMediaCacheState(): MediaCacheState {
     return when (this) {
+        DownloadStatus.INITIALIZING,
         DownloadStatus.DOWNLOADING,
         DownloadStatus.MERGING,
             -> MediaCacheState.IN_PROGRESS
 
-        DownloadStatus.INITIALIZING,
         DownloadStatus.PAUSED,
             -> MediaCacheState.PAUSED
 

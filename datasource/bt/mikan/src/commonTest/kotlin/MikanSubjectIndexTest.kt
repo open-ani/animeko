@@ -1,6 +1,5 @@
 package me.him188.ani.datasources.mikan
 
-import me.him188.ani.datasources.api.topic.TopicCriteria
 import me.him188.ani.test.readTestResourceAsString
 import me.him188.ani.utils.xml.Xml
 import kotlin.test.Test
@@ -35,8 +34,6 @@ class MikanSubjectIndexTest {
             Xml.parse(
                 readTestResourceAsString("/mikan-subject-rss-无职转生.txt"),
             ),
-            TopicCriteria.ANY,
-            allowEpMatch = false, // doesn't matter
             "",
         )
         assertEquals(318, list.size)

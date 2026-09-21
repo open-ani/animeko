@@ -42,7 +42,7 @@ import kotlin.test.assertTrue
 
 /**
  * @suppress 已弃用, 新的 test 使用 [me.him188.ani.app.domain.media.selector.testFramework.TestMediaFetchSessionBuilder].
- * @see me.him188.ani.app.domain.media.selector.MediaSelectorAutoSelect
+ * @see me.him188.ani.app.domain.media.selector.MediaSelector
  */
 @Deprecated(MediaSelectorDeprecationMessage)
 class DefaultMediaSelectorTest : AbstractDefaultMediaSelectorTest() {
@@ -397,6 +397,8 @@ class DefaultMediaSelectorTest : AbstractDefaultMediaSelectorTest() {
 
     @Test
     fun `select cached`() = runTest {
+        // 剧集未知时不选缓存 (整个条目的缓存都在候选中)
+        mediaSelectorContext.value = createMediaSelectorContextFromEmpty(episodeInfo = EpisodeInfo.Companion.Empty.copy(sort = EpisodeSort(1)))
         val target: DefaultMedia
         addMedia(
             media(alliance = "字幕组1", subtitleLanguages = listOf("CHS")),
@@ -471,6 +473,8 @@ class DefaultMediaSelectorTest : AbstractDefaultMediaSelectorTest() {
 
     @Test
     fun `can select cached raw`() = runTest {
+        // 剧集未知时不选缓存 (整个条目的缓存都在候选中)
+        mediaSelectorContext.value = createMediaSelectorContextFromEmpty(episodeInfo = EpisodeInfo.Companion.Empty.copy(sort = EpisodeSort(1)))
         val target: DefaultMedia
         savedDefaultPreference.value = DEFAULT_PREFERENCE.copy(
             alliance = "字幕组2",
@@ -1488,6 +1492,8 @@ class DefaultMediaSelectorTest : AbstractDefaultMediaSelectorTest() {
 
     @Test
     fun `event trySelectCached`() = runTest {
+        // 剧集未知时不选缓存 (整个条目的缓存都在候选中)
+        mediaSelectorContext.value = createMediaSelectorContextFromEmpty(episodeInfo = EpisodeInfo.Companion.Empty.copy(sort = EpisodeSort(1)))
         savedUserPreference.value = MediaPreference.Companion.Empty
         savedDefaultPreference.value = MediaPreference.Companion.Empty
         val target = media(

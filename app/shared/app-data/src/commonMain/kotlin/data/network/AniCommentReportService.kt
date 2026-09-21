@@ -67,6 +67,8 @@ open class AniCommentReportService(
 private fun CommentReportTargetType.toAniCommentReportTargetType(): AniCommentReportTargetType = when (this) {
     CommentReportTargetType.EPISODE_COMMENT -> AniCommentReportTargetType.EPISODE_COMMENT
     CommentReportTargetType.SUBJECT_REVIEW -> AniCommentReportTargetType.SUBJECT_REVIEW
+    CommentReportTargetType.PERSON_COMMENT -> AniCommentReportTargetType.PERSON_COMMENT
+    CommentReportTargetType.CHARACTER_COMMENT -> AniCommentReportTargetType.CHARACTER_COMMENT
 }
 
 private fun CommentReportReason.toAniCommentReportReason(): AniCommentReportReason = when (this) {

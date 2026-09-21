@@ -26,6 +26,7 @@ import kotlinx.io.files.SystemFileSystem
 import me.him188.ani.app.data.network.AniApiProvider
 import me.him188.ani.app.data.network.AniCommentReportService
 import me.him188.ani.app.data.network.AniEpisodeCommentService
+import me.him188.ani.app.data.network.AniPersonCommentService
 import me.him188.ani.app.data.network.AniSubjectRelationIndexService
 import me.him188.ani.app.data.network.AniSubjectSearchService
 import me.him188.ani.app.data.network.AnimeScheduleService
@@ -66,6 +67,7 @@ import me.him188.ani.app.data.repository.player.EpisodePlayHistoryRepositoryImpl
 import me.him188.ani.app.data.repository.player.EpisodeScreenshotRepository
 import me.him188.ani.app.data.repository.player.PlaybackHistorySyncer
 import me.him188.ani.app.data.repository.player.WhatslinkEpisodeScreenshotRepository
+import me.him188.ani.app.data.repository.person.PersonCommentRepository
 import me.him188.ani.app.data.repository.person.PersonDetailsRepository
 import me.him188.ani.app.data.repository.repositoryModules
 import me.him188.ani.app.data.repository.subject.DefaultSubjectRelationsRepository
@@ -73,6 +75,7 @@ import me.him188.ani.app.data.repository.subject.FollowedSubjectsRepository
 import me.him188.ani.app.data.repository.subject.SubjectCollectionRepository
 import me.him188.ani.app.data.repository.subject.SubjectCollectionRepositoryImpl
 import me.him188.ani.app.data.repository.subject.SubjectSearchCompletionRepository
+import me.him188.ani.app.data.repository.subject.SubjectRelationGraphRepository
 import me.him188.ani.app.data.repository.subject.SubjectRelationsRepository
 import me.him188.ani.app.data.repository.subject.SubjectSearchHistoryRepository
 import me.him188.ani.app.data.repository.subject.SubjectSearchRepository
@@ -105,6 +108,8 @@ import me.him188.ani.app.domain.foundation.VersionExpiryFeatureHandler
 import me.him188.ani.app.domain.foundation.VersionExpiryService
 import me.him188.ani.app.domain.foundation.get
 import me.him188.ani.app.domain.foundation.withValue
+import me.him188.ani.app.domain.media.download.DownloadOperations
+import me.him188.ani.app.domain.media.download.MediaDownloadManager
 import me.him188.ani.app.domain.mediasource.web.PageEvaluator
 import me.him188.ani.app.domain.mediasource.web.captcha.BrowserImageCaptchaSolver
 import me.him188.ani.app.domain.mediasource.web.captcha.CaptchaBrowserFactory
@@ -114,8 +119,6 @@ import me.him188.ani.app.domain.mediasource.web.captcha.MacCmsImageCaptchaSolver
 import me.him188.ani.app.domain.mediasource.web.captcha.WebSessionManager
 import me.him188.ani.app.domain.mediasource.web.captcha.WebSourceCookieJar
 import me.him188.ani.app.domain.mediasource.web.captcha.WebSourceIdentityRegistry
-import me.him188.ani.app.domain.media.cache.MediaCacheManager
-import me.him188.ani.app.domain.media.cache.MediaCacheManagerImpl
 import me.him188.ani.app.domain.media.cache.engine.HttpMediaCacheEngine
 import me.him188.ani.app.domain.media.cache.engine.KtorPersistentHttpDownloader
 import me.him188.ani.app.domain.media.cache.engine.MediaCacheEngineKey
@@ -207,7 +210,7 @@ private fun KoinApplication.otherModules(getContext: () -> Context, coroutineSco
             ),
         )
     }
-    // Web 数据源验证码处理 (docs/dev/media/web-captcha.md)
+    // Web 数据源验证码处理 (docs/contributing/code/media/web-captcha.md)
     single<WebSourceCookieJar> { WebSourceCookieJar() }
     single<WebSourceIdentityRegistry> { WebSourceIdentityRegistry() }
     single<WebSessionManager> {
@@ -339,6 +342,9 @@ private fun KoinApplication.otherModules(getContext: () -> Context, coroutineSco
             aniSubjectRelationIndexService = get(),
         )
     }
+    single<SubjectRelationGraphRepository> {
+        SubjectRelationGraphRepository(get<AniApiProvider>().subjectApi, database.subjectCollection())
+    }
 
     // Data layer network services
     single<SubjectService> {
@@ -376,7 +382,7 @@ private fun KoinApplication.otherModules(getContext: () -> Context, coroutineSco
     single<EpisodeProgressRepository> {
         EpisodeProgressRepository(
             episodeCollectionRepository = get(),
-            cacheManager = get(),
+            downloadManager = get(),
         )
     }
     single<EpisodeScreenshotRepository> { WhatslinkEpisodeScreenshotRepository() }
@@ -384,6 +390,13 @@ private fun KoinApplication.otherModules(getContext: () -> Context, coroutineSco
     single<AniEpisodeCommentService> { AniEpisodeCommentService(get<AniApiProvider>().episodesApi) }
     single<AniCommentReportService> { AniCommentReportService(get<AniApiProvider>().commentsApi) }
     single<EpisodeCommentRepository> { EpisodeCommentRepository(aniCommentService = get()) }
+    single<AniPersonCommentService> {
+        AniPersonCommentService(
+            personsApi = get<AniApiProvider>().personsApi,
+            charactersApi = get<AniApiProvider>().charactersApi,
+        )
+    }
+    single<PersonCommentRepository> { PersonCommentRepository(aniCommentService = get()) }
     single<MediaSourceInstanceRepository> {
         MediaSourceInstanceRepositoryImpl(getContext().dataStores.mediaSourceSaveStore)
     }
@@ -470,13 +483,20 @@ private fun KoinApplication.otherModules(getContext: () -> Context, coroutineSco
     }
 
     // Media
-    single<MediaCacheManager> {
-        val id = MediaCacheManager.LOCAL_FS_MEDIA_SOURCE_ID
+    single {
+        DownloadOperations(
+            downloadManager = get(),
+            deleteCache = get(),
+            executionScope = coroutineScope.childScope(),
+        )
+    }
+    single<MediaDownloadManager> {
+        val id = MediaDownloadManager.LOCAL_FS_MEDIA_SOURCE_ID
         val engines = get<TorrentManager>().engines
         val metadataStore = getContext().dataStores.mediaCacheMetadataStore
 
-        MediaCacheManagerImpl(
-            storagesIncludingDisabled = buildList(capacity = engines.size) {
+        MediaDownloadManager(
+            storages = buildList(capacity = engines.size) {
                 /*if (currentAniBuildConfig.isDebug) {
                     // 注意, 这个必须要在第一个, 见 [DefaultTorrentManager.engines] 注释
                     add(
@@ -534,7 +554,7 @@ private fun KoinApplication.otherModules(getContext: () -> Context, coroutineSco
     single<MediaSourceManager> {
         MediaSourceManagerImpl(
             additionalSources = {
-                get<MediaCacheManager>().storagesIncludingDisabled.map { it.cacheMediaSource }
+                get<MediaDownloadManager>().storages.map { it.cacheMediaSource }
             },
         )
     }
@@ -580,8 +600,8 @@ fun KoinApplication.startCommonKoinModule(
 
     coroutineScope.launch {
         koin.get<HttpDownloader>().init() // restore http download states first
-        val manager = koin.get<MediaCacheManager>()
-        for (storage in manager.storagesIncludingDisabled) {
+        val manager = koin.get<MediaDownloadManager>()
+        for (storage in manager.storages) {
             storage.restorePersistedCaches()
         }
     }

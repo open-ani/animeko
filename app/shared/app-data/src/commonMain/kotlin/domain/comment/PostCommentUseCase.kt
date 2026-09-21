@@ -13,6 +13,7 @@ import androidx.compose.runtime.Immutable
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import me.him188.ani.app.data.network.AniEpisodeCommentService
+import me.him188.ani.app.data.network.AniPersonCommentService
 import me.him188.ani.app.data.repository.RepositoryException
 import me.him188.ani.app.data.repository.RepositoryUnknownException
 import me.him188.ani.app.domain.usecase.UseCase
@@ -26,6 +27,7 @@ interface PostCommentUseCase : UseCase {
 
 class PostCommentUseCaseImpl(
     private val commentService: AniEpisodeCommentService,
+    private val personCommentService: AniPersonCommentService,
     private val context: CoroutineContext = Dispatchers.Main,
 ) : PostCommentUseCase {
     private val logger = logger<PostCommentUseCase>()
@@ -33,7 +35,18 @@ class PostCommentUseCaseImpl(
     override suspend operator fun invoke(context: CommentContext, content: String): CommentSendResult {
         try {
             withContext(this.context) {
-                commentService.postEpisodeComment(context, content)
+                when (context) {
+                    is CommentContext.Episode, is CommentContext.EpisodeReply ->
+                        commentService.postEpisodeComment(context, content)
+
+                    is CommentContext.PersonComment ->
+                        personCommentService.createComment(context.target, content)
+
+                    is CommentContext.PersonCommentReply ->
+                        personCommentService.createReply(context.target, context.commentId, content)
+
+                    is CommentContext.SubjectReview -> error("SubjectReview is not posted through PostCommentUseCase")
+                }
             }
             return CommentSendResult.Ok
         } catch (e: Exception) {
@@ -71,6 +84,6 @@ private suspend fun AniEpisodeCommentService.postEpisodeComment(
         is CommentContext.EpisodeReply ->
             createEpisodeReply(context.episodeId, context.commentId, content)
 
-        is CommentContext.SubjectReview -> error("unreachable on postEpisodeComment")
+        else -> error("unreachable on postEpisodeComment: $context")
     }
 }

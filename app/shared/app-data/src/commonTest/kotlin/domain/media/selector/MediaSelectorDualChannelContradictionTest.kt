@@ -118,7 +118,7 @@ class MediaSelectorDualChannelContradictionTest {
     }
 
     @Test
-    fun `MIG-DUAL-02 JSON偏好web1无结果时Room偏好web2有结果自动选择彻底不发生`() = runFetchMediaSelectorTestSuite {
+    fun `MIG-DUAL-02 JSON偏好web1无结果时仍可在精确匹配阶段选择web2`() = runFetchMediaSelectorTestSuite {
         initSubject()
         preferenceApi.savedUserPreference.value = MediaPreference.Any.copy(mediaSourceId = "web1")
         preferenceApi.mediaSelectorSettings.value = autoSelectSettings()
@@ -141,9 +141,13 @@ class MediaSelectorDualChannelContradictionTest {
         sources.web1.complete(emptyList<Media>())
         testScope().runCurrent()
 
-        // PINNED: MIG-DUAL-02 JSON 偏好源空手时 clause④ 的 trySelectDefault 只看 preferredCandidates
-        // (被 mediaSourceId=web1 滤成空), 以 null 终结编排; Room 偏好源的结果被彻底忽略
+        // Remembered-source selection respects the existing JSON preference. Once it fails,
+        // exact fallback may relax that preference without a separate completion clause cancelling it.
         assertNull(selector.selected.value)
+        assertFalse(job.isCompleted)
+        testScope().advanceTimeBy(5.seconds)
+        testScope().runCurrent()
+        assertSelectedSource(sources.web2)
         job.assertCompleted()
     }
 

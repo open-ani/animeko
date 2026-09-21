@@ -66,6 +66,12 @@ dependencies {
     implementation(libs.snakeyaml)
 }
 
+dependencies {
+    testImplementation(kotlin("test-junit5"))
+    testImplementation(libs.junit5.jupiter.api)
+    testRuntimeOnly(libs.junit5.jupiter.engine)
+}
 
-
-
+tasks.withType<Test>().configureEach {
+    useJUnitPlatform()
+}

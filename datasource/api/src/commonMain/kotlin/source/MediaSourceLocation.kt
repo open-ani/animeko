@@ -30,7 +30,8 @@ sealed class MediaSourceLocation {
     data object Local : MediaSourceLocation()
 
     companion object {
-        val entries = listOf(Online, Lan, Local)
+        // A subclass can initialize the superclass before its own INSTANCE is assigned on JVM.
+        val entries get() = listOf(Online, Lan, Local)
     }
 
     internal object AsStringSerializer : KSerializer<MediaSourceLocation> {

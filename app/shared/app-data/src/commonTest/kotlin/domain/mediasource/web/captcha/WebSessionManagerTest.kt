@@ -53,7 +53,7 @@ import kotlin.time.Duration.Companion.minutes
 
 /**
  * [WebSessionManager] 的 commonTest 覆盖, 用 [FakeCaptchaBrowser] (脚本化页面) 与 ktor MockEngine.
- * 用例编号对应 docs/dev/media/web-captcha.md "测试" 一节.
+ * 用例编号对应 docs/contributing/code/media/web-captcha.md "测试" 一节.
  */
 class WebSessionManagerTest {
     private val searchConfig = SelectorSearchConfig(
@@ -119,6 +119,7 @@ class WebSessionManagerTest {
         )
     }
 
+    // 关键用例 9: 自动 solver 交出的已验证页只交给精确同 URL 的下一次请求, 只消费一次, 且会过期
     @Test
     fun `auto solver hands verified page to exact next fetch without duplicate http request`() = runTestExt {
         var httpRequestCount = 0
@@ -209,7 +210,7 @@ class WebSessionManagerTest {
         }
     }
 
-    // 关键用例 8 (v1): 空 solver 列表 → solve(auto) 立即失败, 不创建浏览器
+    // 关键用例 8: 无可用 solver → solve(auto) 立即失败, 不创建浏览器
     @Test
     fun `auto solve with empty solvers fails immediately without browser`() = runTestExt {
         val fixture = Fixture(this)

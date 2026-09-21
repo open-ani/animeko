@@ -39,6 +39,8 @@ import me.him188.ani.app.ui.subject.collection.progress.SubjectProgressStateFact
 import me.him188.ani.datasources.api.topic.UnifiedCollectionType
 import me.him188.ani.datasources.api.topic.isDoneOrDropped
 import me.him188.ani.datasources.api.topic.toggleCollected
+import me.him188.ani.utils.coroutines.flows.FlowRestarter
+import me.him188.ani.utils.coroutines.flows.restartable
 import me.him188.ani.utils.logging.info
 import org.koin.core.component.KoinComponent
 import org.koin.core.component.inject
@@ -68,13 +70,50 @@ class UserCollectionsViewModel : AbstractViewModel(), KoinComponent {
     private val fullSyncTasker = MonoTasker(backgroundScope)
     val fullSyncState: MutableStateFlow<BangumiSyncState?> = MutableStateFlow(null)
 
+    /**
+     * 重启各类型收藏数量流 (tab 标题的数量). 数量只在登录时拉取一次, 缓存失效 / 换账号后要重新拉取, 否则标题与刷新后的列表对不上.
+     */
+    private val countsRestarter = FlowRestarter()
+
     val state = UserCollectionsState(
         startSearch = { subjectCollectionRepository.subjectCollectionsPager(it) },
-        collectionCountsState = subjectCollectionRepository.subjectCollectionCountsFlow().produceState(null),
+        collectionCountsState = subjectCollectionRepository.subjectCollectionCountsFlow()
+            .restartable(countsRestarter)
+            .produceState(null),
         subjectProgressStateFactory,
         createEditableSubjectCollectionTypeState = { createEditableSubjectCollectionTypeState(it) },
         backgroundScope,
     )
+
+    // 必须用 Kotlin init 块而不是 AbstractViewModel.init(): 后者只在实例被 compose remember 时 (onRemembered) 调用,
+    // 而本 ViewModel 由 androidx viewModel {} 取得, 不会被 remember, init() 永远不会执行.
+    // 放在 state 之后, 保证收集回调里用到的 state 已初始化 (backgroundScope 由父类构造器创建, 可用).
+    init {
+        launchInBackground {
+            sessionStateProvider.eventFlow.filter { it is SessionEvent.NewLogin }.collectLatest {
+                logger.info { "登录信息变更, 清空缓存" }
+                // 如果有变更登录, 清空缓存
+                refreshCollections()
+            }
+        }
+
+        launchInBackground {
+            // 服务端改写了收藏 (解决 Bangumi 冲突 / 全量同步自动合并) 后本地缓存被失效:
+            // 已创建的分页器不会自动重新拉取 (只在创建时判断是否刷新), 这里重建它, 并重新拉取数量.
+            subjectCollectionRepository.collectionsInvalidated.collect {
+                logger.info { "收藏缓存已失效, 刷新列表" }
+                refreshCollections()
+            }
+        }
+    }
+
+    /**
+     * 重建收藏列表分页器 (从服务端刷新) 并重新拉取各类型的收藏数量.
+     */
+    private fun refreshCollections() {
+        state.refresh()
+        countsRestarter.restart()
+    }
 
     private fun createEditableSubjectCollectionTypeState(collection: SubjectCollectionInfo): EditableSubjectCollectionTypeState =
         // 必须不能有后台持续任务
@@ -92,35 +131,6 @@ class UserCollectionsViewModel : AbstractViewModel(), KoinComponent {
             },
             backgroundScope,
         )
-
-    override fun init() {
-//        // 获取第一页, 得到数量
-//        // 不要太快, 测试到的如果全并行就会导致 "在看" 没有数据, 不清楚是哪边问题.
-//        launchInBackground {
-//            // 按实用顺序加载
-//            listOf(
-//                UnifiedCollectionType.DOING,
-//                UnifiedCollectionType.WISH,
-//                UnifiedCollectionType.ON_HOLD,
-//                UnifiedCollectionType.DONE,
-//                UnifiedCollectionType.DROPPED,
-//            ).forEach { type ->
-//                collectionsByType(type).cache.let { cache ->
-//                    if (cache.getCachedData().isEmpty()) {
-//                        cache.requestMore()
-//                    }
-//                }
-//            }
-//        }
-
-        launchInBackground {
-            sessionStateProvider.eventFlow.filter { it is SessionEvent.NewLogin }.collectLatest {
-                logger.info { "登录信息变更, 清空缓存" }
-                // 如果有变更登录, 清空缓存
-                state.refresh()
-            }
-        }
-    }
 
     suspend fun toggleEpisodeCollection(
         subjectId: Int,

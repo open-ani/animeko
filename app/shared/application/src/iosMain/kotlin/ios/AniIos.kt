@@ -39,14 +39,14 @@ import me.him188.ani.app.data.repository.user.UserRepository
 import me.him188.ani.app.domain.foundation.HttpClientProvider
 import me.him188.ani.app.domain.foundation.ScopedHttpClientUserAgent
 import me.him188.ani.app.domain.foundation.get
-import me.him188.ani.app.domain.media.cache.MediaCacheManager
 import me.him188.ani.app.domain.media.cache.engine.AlwaysUseTorrentEngineAccess
 import me.him188.ani.app.domain.media.cache.engine.HttpMediaCacheEngine
 import me.him188.ani.app.domain.media.cache.engine.TorrentEngineAccess
 import me.him188.ani.app.domain.media.cache.storage.MediaSaveDirProvider
+import me.him188.ani.app.domain.media.download.MediaDownloadManager
 import me.him188.ani.app.domain.media.fetch.MediaSourceManager
 import me.him188.ani.app.domain.media.hls.HlsPlaybackPreparer
-import me.him188.ani.app.domain.media.hls.NoopHlsPlaybackPreparer
+import me.him188.ani.app.domain.media.hls.PlatformHlsPlaybackPreparer
 import me.him188.ani.app.domain.media.resolver.HttpStreamingMediaResolver
 import me.him188.ani.app.domain.media.resolver.IosWebMediaResolver
 import me.him188.ani.app.domain.media.resolver.LocalFileUriMediaResolver
@@ -88,6 +88,7 @@ import me.him188.ani.app.ui.foundation.widgets.ToastViewModel
 import me.him188.ani.app.ui.foundation.widgets.Toaster
 import me.him188.ani.app.ui.main.AniApp
 import me.him188.ani.app.ui.main.AniAppContent
+import me.him188.ani.app.videoplayer.player.AniAVKitMediampPlayerFactory
 import me.him188.ani.torrent.offline.OfflineDownloadEngine
 import me.him188.ani.torrent.pikpak.PikPakCredentials
 import me.him188.ani.torrent.pikpak.PikPakOfflineDownloadEngine
@@ -105,7 +106,6 @@ import me.him188.ani.utils.platform.annotations.TestOnly
 import org.koin.core.context.startKoin
 import org.koin.dsl.module
 import org.openani.mediamp.MediampPlayerFactory
-import org.openani.mediamp.avkit.AVKitMediampPlayerFactory
 import org.openani.mediamp.ffmpeg.FFmpegKit
 import platform.Foundation.NSBundle
 import platform.Foundation.NSFileManager
@@ -300,7 +300,7 @@ fun getIosModules(
         @Suppress("DEPRECATION")
         HttpMediaCacheEngine(
             dao = get<AniDatabase>().httpCacheDownloadStateDao(),
-            mediaSourceId = MediaCacheManager.LOCAL_FS_MEDIA_SOURCE_ID,
+            mediaSourceId = MediaDownloadManager.LOCAL_FS_MEDIA_SOURCE_ID,
             downloader = get<HttpDownloader>(),
             saveDir = context.files.defaultMediaCacheBaseDir
                 .resolve(HttpMediaCacheEngine.MEDIA_CACHE_DIR).path,
@@ -308,12 +308,9 @@ fun getIosModules(
         )
     }
     single<MediampPlayerFactory<*>> {
-        AVKitMediampPlayerFactory()
+        AniAVKitMediampPlayerFactory()
     }
-    // TODO(#3039): Add an iOS HLS playback preparer after the AVKit/localhost proxy path
-    // can be tested on macOS or iOS hardware. The JVM preparer uses java.net and is only
-    // registered by Android/Desktop modules, so iOS intentionally falls back to no-op for now.
-    single<HlsPlaybackPreparer> { NoopHlsPlaybackPreparer }
+    single<HlsPlaybackPreparer> { PlatformHlsPlaybackPreparer(get()) }
     single<MediaSaveDirProvider> {
         object : MediaSaveDirProvider {
             override val saveDir: String

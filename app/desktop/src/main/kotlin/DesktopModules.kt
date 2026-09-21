@@ -24,11 +24,11 @@ import me.him188.ani.app.data.repository.user.SettingsRepository
 import me.him188.ani.app.domain.foundation.HttpClientProvider
 import me.him188.ani.app.domain.foundation.ScopedHttpClientUserAgent
 import me.him188.ani.app.domain.foundation.get
-import me.him188.ani.app.domain.media.cache.MediaCacheManager
 import me.him188.ani.app.domain.media.cache.engine.AlwaysUseTorrentEngineAccess
 import me.him188.ani.app.domain.media.cache.engine.HttpMediaCacheEngine
 import me.him188.ani.app.domain.media.cache.engine.TorrentEngineAccess
 import me.him188.ani.app.domain.media.cache.storage.MediaSaveDirProvider
+import me.him188.ani.app.domain.media.download.MediaDownloadManager
 import me.him188.ani.app.domain.media.fetch.MediaSourceManager
 import me.him188.ani.app.domain.media.hls.HlsPlaybackPreparer
 import me.him188.ani.app.domain.media.hls.PlatformHlsPlaybackPreparer
@@ -56,6 +56,7 @@ import me.him188.ani.app.platform.PermissionManager
 import me.him188.ani.app.platform.files
 import me.him188.ani.app.tools.update.DesktopUpdateInstaller
 import me.him188.ani.app.tools.update.UpdateInstaller
+import me.him188.ani.app.videoplayer.player.AniMpvMediampPlayerFactory
 import me.him188.ani.torrent.offline.OfflineDownloadEngine
 import me.him188.ani.torrent.pikpak.PikPakCredentials
 import me.him188.ani.torrent.pikpak.PikPakOfflineDownloadEngine
@@ -73,7 +74,6 @@ import org.koin.dsl.module
 import org.openani.mediamp.MediampPlayerFactory
 import org.openani.mediamp.MediampPlayerFactoryLoader
 import org.openani.mediamp.compose.MediampPlayerSurfaceProviderLoader
-import org.openani.mediamp.mpv.MpvMediampPlayerFactory
 import org.openani.mediamp.mpv.compose.MpvMediampPlayerSurfaceProvider
 import java.io.File
 import kotlin.io.path.Path
@@ -143,7 +143,7 @@ fun getDesktopModules(getContext: () -> DesktopContext, scope: CoroutineScope) =
 
         HttpMediaCacheEngine(
             dao = get<AniDatabase>().httpCacheDownloadStateDao(),
-            mediaSourceId = MediaCacheManager.LOCAL_FS_MEDIA_SOURCE_ID,
+            mediaSourceId = MediaDownloadManager.LOCAL_FS_MEDIA_SOURCE_ID,
             downloader = get<HttpDownloader>(),
             saveDir = saveDir.toKtPath(),
             mediaResolver = get<MediaResolver>(),
@@ -152,7 +152,7 @@ fun getDesktopModules(getContext: () -> DesktopContext, scope: CoroutineScope) =
     }
 
     single<MediampPlayerFactory<*>> {
-        MediampPlayerFactoryLoader.register(MpvMediampPlayerFactory())
+        MediampPlayerFactoryLoader.register(AniMpvMediampPlayerFactory())
         MediampPlayerSurfaceProviderLoader.register(MpvMediampPlayerSurfaceProvider())
         MediampPlayerFactoryLoader.first()
     }

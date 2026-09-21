@@ -23,15 +23,17 @@ import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.take
+import me.him188.ani.app.data.models.preference.EpisodeProgressSettings
 import me.him188.ani.app.data.models.preference.ThemeSettings
 import me.him188.ani.app.data.repository.user.SettingsRepository
 import me.him188.ani.app.data.repository.user.UserRepository
 import me.him188.ani.app.domain.foundation.HttpClientProvider
 import me.him188.ani.app.domain.foundation.ScopedHttpClientUserAgent
 import me.him188.ani.app.domain.foundation.get
-import me.him188.ani.app.domain.media.cache.MediaCacheManager
+import me.him188.ani.app.domain.media.download.MediaDownloadManager
 import me.him188.ani.app.domain.mediasource.web.captcha.WebCaptchaDialogHost
 import me.him188.ani.app.domain.mediasource.web.captcha.WebSessionManager
 import me.him188.ani.app.domain.session.SessionState
@@ -44,6 +46,7 @@ import me.him188.ani.app.tools.TimeFormatter
 import me.him188.ani.app.ui.foundation.AbstractViewModel
 import me.him188.ani.app.ui.foundation.LocalPlatform
 import me.him188.ani.app.ui.foundation.LocalPlatformFontFamily
+import me.him188.ani.app.ui.foundation.LocalEpisodeProgressSettings
 import me.him188.ani.app.ui.foundation.LocalSketch
 import me.him188.ani.app.ui.foundation.ifThen
 import me.him188.ani.app.ui.foundation.input.ActiveInputSourceState
@@ -71,24 +74,24 @@ class AniAppState(
     val themeSettings: ThemeSettings,
     val imageLoaderClient: ScopedHttpClient,
     val overlayComposables: List<@Composable () -> Unit>,
-    val platformFont: String?
+    val platformFont: String?,
+    val episodeProgressSettings: EpisodeProgressSettings,
 )
 
 @Stable
 class AniAppViewModel : AbstractViewModel(), KoinComponent {
     private val settings: SettingsRepository by inject()
     private val httpClientProvider: HttpClientProvider by inject()
-    private val mediaCacheManager: MediaCacheManager by inject()
+    private val downloadManager: MediaDownloadManager by inject()
     private val webSessionManager: WebSessionManager by inject()
     private val userRepository: UserRepository by inject()
     private val sessionStateProvider: SessionStateProvider by inject()
 
     private val imageLoaderClient = httpClientProvider.get(ScopedHttpClientUserAgent.ANI)
 
-    private val mediaCacheComposablesFlow = mediaCacheManager.enabledStorages
-        .map { storages ->
-            storages.map { @Composable { it.engine.ComposeContent() } }
-        }
+    private val mediaCacheComposablesFlow = flowOf(
+        downloadManager.storages.map { @Composable { it.engine.ComposeContent() } },
+    )
 
     val browserNavigator by inject<BrowserNavigator>()
 
@@ -117,6 +120,7 @@ class AniAppViewModel : AbstractViewModel(), KoinComponent {
             if (currentPlatform() is Platform.Windows && uiSettings.appLanguage == LocaleZhCN) {
                 "Microsoft YaHei UI"
             } else null,
+            uiSettings.episodeProgress,
         )
     }.shareInBackground(
         started = SharingStarted.Eagerly,
@@ -142,6 +146,7 @@ fun AniApp(
         LocalSketch provides rememberAniSketchInstance(appState.imageLoaderClient),
         LocalTimeFormatter provides remember { TimeFormatter() },
         LocalThemeSettings provides appState.themeSettings,
+        LocalEpisodeProgressSettings provides appState.episodeProgressSettings,
         LocalPlatformFontFamily provides rememberPlatformFontFamily(appState.platformFont),
         LocalActiveInputSource provides remember { ActiveInputSourceState() },
     ) {

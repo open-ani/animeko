@@ -2,13 +2,20 @@
 
 数据源 `MediaSource` 是*资源*（[Media][Media]）的提供商。
 
-`MediaSource` 主要提供函数 `fetch`，负责查询[剧集](../subjects.md#剧集)的资源：
+`MediaSource` 主要提供函数 `fetch`，负责查询一个[条目](../subjects.md)的资源：
 
 ```kotlin
 interface MediaSource {
     suspend fun fetch(query: MediaFetchRequest): SizedSource<MediaMatch> // 可以理解为返回 List<Media>
 }
 ```
+
+查询以条目为单位。`MediaFetchRequest` 携带条目名称与 ID、条目的全部剧集（`episodes`）以及当前剧集的提示；
+数据源返回该条目在本源能找到的全部资源：每一集的单集资源、每条线路（字幕组）以及合集，
+不按当前剧集裁剪。按当前剧集筛选由 [MediaSelector](media-selector.md) 完成。
+数据源须让每个资源的 `episodeRange` 尽量准确，并保证同一资源的 `mediaId` 在多次查询间稳定，
+这样播放页切集只需重建选择器，下载可以为多集复用同一次查询。
+`MatchKind.EXACT` 表示通过条目 ID 定位到了条目，`FUZZY` 表示由关键字搜索得到。
 
 ## 数据源类型
 
@@ -32,7 +39,9 @@ interface MediaSource {
 [//]: # (TODO: SelectorMediaSource)
 
 
-[//]: # (TODO: MediaFetcher? 考虑状态、错误处理、重试)
+`MediaFetcher` 先将结果写入共享回放缓存，再发布成功或失败等终态。
+完成标记与结果按序通过 `flatMapLatest` 的缓冲区；重试时忽略旧查询的标记，
+因此观察到终态时可以读取该次查询的完整结果（失败时为已收到的部分结果）。
 
 ## 数据源阶级
 
@@ -42,9 +51,9 @@ interface MediaSource {
 为最高阶级。阶级影响 [MediaSelector](media-selector.md) 的两个环节：
 
 - **排序**：有效阶级低的资源排在前面，详见[排序阶段](media-selector.md#排序阶段)；
-- **快速选择**：阶级不超过阈值（目前为 `0`）的 WEB 数据源查询完成后会被立即选择，
+- **快速选择**：阶级不超过阈值（目前为 `0`）的 WEB 数据源查询完成且有精确匹配结果后会被立即选择，
   无需等待其他数据源。超过阈值的数据源只能在等待一段时间后通过兜底逻辑被选择。
-  入口为 `MediaSelectorAutoSelect.fastSelectWebSources`。
+  入口为 `MediaAutoSelector.select` 的 WEB 阶段。
 
 阶级来源于数据源配置 `MediaSourceArguments.tier`，通常由订阅提供；用户未配置时使用回退值
 `MediaSourceTier.Fallback`（`2`）。

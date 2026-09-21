@@ -38,7 +38,10 @@ data class AiringScheduleItemPresentation(
 
     val subjectCollectionType: UnifiedCollectionType,
     val dayOfWeek: DayOfWeek,
-    val time: LocalTime,
+    /**
+     * 放送时刻. `null` 表示时间未定 (只知道放送日期), 界面显示 "时间未定", 并排在当天所有已知时间的项目之后.
+     */
+    val time: LocalTime?,
 )
 
 @Immutable
@@ -106,7 +109,8 @@ val TestAiringScheduleItemPresentations
                         episodeName = "Episode 1",
                         subjectCollectionType = UnifiedCollectionType.entries[i % UnifiedCollectionType.entries.size],
                         dayOfWeek = DayOfWeek.entries[i % DayOfWeek.entries.size],
-                        time = LocalTime(i % 24, 0),
+                        // 每隔几个放一个时间未定的项目, 预览里能看到 "时间未定" 的样式
+                        time = if (i % 11 == 10) null else LocalTime(i % 24, 0),
                     ),
                 )
 
@@ -115,16 +119,20 @@ val TestAiringScheduleItemPresentations
     }
 
 /**
+ * 时间未定 (`time == null`) 的项目排在已知时间的项目之后.
+ */
+private val testPresentationComparator =
+    compareBy<AiringScheduleItemPresentation, LocalTime?>(nullsLast()) { it.time }
+        .thenBy { it.subjectTitle }
+
+/**
  * @see TestSchedulePageData
  */
 @TestOnly
 val TestAiringScheduleItemPresentationData: ImmutableEnumMap<DayOfWeek, List<AiringScheduleItemPresentation>>
     get() = ImmutableEnumMap<DayOfWeek, List<AiringScheduleItemPresentation>> { day ->
         TestAiringScheduleItemPresentations.filter { it.dayOfWeek == day }
-            .sortedWith(
-                compareBy<AiringScheduleItemPresentation> { it.time }
-                    .thenBy { it.subjectTitle },
-            )
+            .sortedWith(testPresentationComparator)
     }
 
 
@@ -133,10 +141,7 @@ val TestSchedulePageData: List<AiringSchedule>
     get() {
         val currentTime = LocalTime(12, 0)
         val list = TestAiringScheduleItemPresentations.filter { it.dayOfWeek == DayOfWeek.MONDAY }
-            .sortedWith(
-                compareBy<AiringScheduleItemPresentation> { it.time }
-                    .thenBy { it.subjectTitle },
-            )
+            .sortedWith(testPresentationComparator)
 
 
         return ScheduleDay.generateForRecentTwoWeeks(LocalDate(2025, 12, 10)).map {
@@ -148,6 +153,7 @@ val TestSchedulePageData: List<AiringSchedule>
     }
 
 fun EpisodeWithAiringTime.toPresentation(timeZone: TimeZone): AiringScheduleItemPresentation {
+    // 时间未定时 airingTime 是放送日期在 timeZone 的 00:00, 日期仍然可用, 只是不显示时刻.
     val dateTime = airingTime.toLocalDateTime(timeZone)
     // Return the item
     return AiringScheduleItemPresentation(
@@ -160,21 +166,27 @@ fun EpisodeWithAiringTime.toPresentation(timeZone: TimeZone): AiringScheduleItem
         episodeName = episode.displayName,
         subjectCollectionType = UnifiedCollectionType.NOT_COLLECTED,
         dayOfWeek = dateTime.dayOfWeek,
-        time = dateTime.time,
+        time = if (timeKnown) dateTime.time else null,
     )
 }
 
 object SchedulePageDataHelper {
     val OFFSET_DAYS_RANGE = GetAnimeScheduleFlowUseCase.OFFSET_DAYS_RANGE
 
+    /**
+     * 把一天的项目转换为列表项:
+     * - 已知时间的项目按时间升序 (稳定排序, 同一时间保持输入顺序), 只有与上一项时间不同的项目显示时间;
+     * - [addIndicator] 时, 在最后一个 `time <= currentTime` 的项目之后插入当前时间指示器;
+     * - 时间未定 (`time == null`) 的项目保持输入顺序, 追加在所有已知时间的项目和指示器之后, 只有第一个显示 "时间未定".
+     */
     fun toColumnItems(
         list: List<AiringScheduleItemPresentation>,
         addIndicator: Boolean,
         currentTime: LocalTime,
     ): List<AiringScheduleColumnItem> {
-        @Suppress("NAME_SHADOWING")
-        val list = list.sortedBy { it.time }
-        val insertionIndex = list.indexOfLast { it.time <= currentTime }
+        val (timed, timeUnknown) = list.partition { it.time != null }
+        val sortedTimed = timed.sortedBy { it.time }
+        val insertionIndex = sortedTimed.indexOfLast { checkNotNull(it.time) <= currentTime }
         return buildList(capacity = list.size + 1) {
             var previousTime: LocalTime? = null
             val handleItem = { itemPresentation: AiringScheduleItemPresentation ->
@@ -188,7 +200,7 @@ object SchedulePageDataHelper {
                 )
             }
 
-            for (itemPresentation in list.subList(0, insertionIndex + 1)) {
+            for (itemPresentation in sortedTimed.subList(0, insertionIndex + 1)) {
                 handleItem(itemPresentation)
             }
             if (addIndicator) {
@@ -199,8 +211,16 @@ object SchedulePageDataHelper {
                     ),
                 )
             }
-            for (itemPresentation in list.subList(insertionIndex + 1, list.size)) {
+            for (itemPresentation in sortedTimed.subList(insertionIndex + 1, sortedTimed.size)) {
                 handleItem(itemPresentation)
+            }
+            timeUnknown.forEachIndexed { index, itemPresentation ->
+                add(
+                    AiringScheduleColumnItem.Data(
+                        item = itemPresentation,
+                        showTime = index == 0,
+                    ),
+                )
             }
         }
     }

@@ -51,7 +51,7 @@ class DmhyPagedSourceImpl(
                 originalLink = topic.link,
             )
         }.filter {
-            query.matches(it, allowEpMatch = false)
+            query.allowAny || query.matches(it, allowEpMatch = false)
         }
         if (results.none()) {
             noMorePages()

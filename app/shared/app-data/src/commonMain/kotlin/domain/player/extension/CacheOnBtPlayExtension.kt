@@ -15,8 +15,8 @@ import kotlinx.coroutines.flow.first
 import me.him188.ani.app.domain.episode.EpisodeSession
 import me.him188.ani.app.domain.media.cache.DeleteCacheUseCase
 import me.him188.ani.app.domain.media.cache.MediaCache
-import me.him188.ani.app.domain.media.cache.MediaCacheManager
 import me.him188.ani.app.domain.media.cache.engine.MediaCacheEngineKey
+import me.him188.ani.app.domain.media.download.MediaDownloadManager
 import me.him188.ani.app.domain.media.resolver.toEpisodeMetadata
 import me.him188.ani.app.domain.player.VideoLoadingState
 import me.him188.ani.datasources.api.CachedMedia
@@ -25,6 +25,8 @@ import me.him188.ani.utils.logging.info
 import me.him188.ani.utils.logging.logger
 import me.him188.ani.utils.logging.warn
 import org.koin.core.Koin
+import me.him188.ani.app.domain.media.fetch.create
+import me.him188.ani.datasources.api.source.MediaFetchRequest
 
 /**
  * Automatically create a cache task when playback is handed to the local
@@ -41,7 +43,7 @@ class CacheOnBtPlayExtension(
     private val context: PlayerExtensionContext,
     koin: Koin,
 ) : PlayerExtension("CacheOnBtPlay") {
-    private val mediaCacheManager: MediaCacheManager by koin.inject()
+    private val downloadManager: MediaDownloadManager by koin.inject()
     private val deleteCacheUseCase: DeleteCacheUseCase by koin.inject()
 
     private var currentCache: MediaCache? = null
@@ -49,7 +51,8 @@ class CacheOnBtPlayExtension(
     override fun onStart(episodeSession: EpisodeSession, backgroundTaskScope: ExtensionBackgroundTaskScope) {
         backgroundTaskScope.launch("CacheOnBtPlay") {
             context.sessionFlow.collectLatest { session ->
-                val episodeMetadata = session.infoBundleFlow.filterNotNull().first().episodeInfo.toEpisodeMetadata()
+                val info = session.infoBundleFlow.filterNotNull().first()
+                val episodeMetadata = info.episodeInfo.toEpisodeMetadata()
 
                 session.fetchSelectFlow.collectLatest fsf@{ bundle ->
                     if (bundle == null) return@fsf
@@ -59,10 +62,10 @@ class CacheOnBtPlayExtension(
 
                         if (state !is VideoLoadingState.Succeed || !state.isBt) return@collectLatest
 
-                        val storage = mediaCacheManager.storagesIncludingDisabled
+                        val storage = downloadManager.storages
                             .find { it.engine.engineKey == MediaCacheEngineKey.Anitorrent }
                         if (storage == null) {
-                            logger.warn { "TorrentMediaCacheEngine is not found in MediaCachedManager." }
+                            logger.warn { "TorrentMediaCacheEngine is not found in MediaDownloadManager." }
                             return@collectLatest
                         }
 
@@ -74,8 +77,9 @@ class CacheOnBtPlayExtension(
                         logger.info { "Auto cache BitTorrent media on play: $media" }
 
                         val metadata =
-                            MediaCacheMetadata(bundle.mediaFetchSession.request.first(), autoCached = true)
-                        val cache = storage.cache(media, metadata, episodeMetadata, resume = true)
+                            // 查询会话按条目共用, 其请求中的当前剧集是首次打开的那一集; 记录要用本集自己的信息.
+                            MediaCacheMetadata(MediaFetchRequest.create(info.subjectInfo, info.episodeInfo), autoCached = true)
+                        val cache = downloadManager.createDownload(media, metadata, episodeMetadata, storage)
                         if (cache.metadata.autoCached) {
                             currentCache = cache
                         }
@@ -93,6 +97,9 @@ class CacheOnBtPlayExtension(
         deleteCurrentAutoSelectedIfNotStarted()
     }
 
+    /**
+     * 删除尚未开始传输的自动下载.
+     */
     private suspend fun deleteCurrentAutoSelectedIfNotStarted() {
         val cache = currentCache ?: return
         val progress = cache.fileStats.first().downloadedBytes.inBytes

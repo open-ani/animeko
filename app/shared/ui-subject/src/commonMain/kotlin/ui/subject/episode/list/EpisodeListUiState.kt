@@ -10,10 +10,13 @@
 package me.him188.ani.app.ui.subject.episode.list
 
 import androidx.compose.runtime.Immutable
-import kotlinx.datetime.TimeZone
 import me.him188.ani.app.data.models.subject.SubjectCollectionInfo
+import me.him188.ani.app.data.models.subject.SubjectRecurrence
+import me.him188.ani.app.domain.episode.EpisodeCompletionContext
+import me.him188.ani.app.domain.episode.EpisodeCompletionContext.mapAirDate
 import me.him188.ani.datasources.api.EpisodeSort
 import me.him188.ani.datasources.api.EpisodeType
+import me.him188.ani.datasources.api.PackedDate
 import me.him188.ani.utils.platform.annotations.TestOnly
 import me.him188.ani.utils.serialization.BigNum
 import kotlin.time.Instant
@@ -26,19 +29,19 @@ data class EpisodeListUiState(
     val isPlaceholder: Boolean = false,
 ) {
     companion object {
+        /**
+         * @param playProgress 按剧集 id 索引的上次播放进度, 见 [EpisodeListItem.playProgress].
+         */
         fun from(
             collection: SubjectCollectionInfo,
             currentTime: Instant,
-            zone: TimeZone = TimeZone.currentSystemDefault()
+            playProgress: Map<Int, Float> = emptyMap(),
         ): EpisodeListUiState {
             val (mainEpisodes, otherEpisodes) = collection.episodes.map { episode ->
                 EpisodeListItem.from(
                     episode,
-                    isBroadcast = collection.recurrence?.isEpisodeBroadcast(
-                        episode.episodeInfo.airDate,
-                        currentTime,
-                        zone,
-                    ) ?: true, // 注意, 没有 recurrence 时需要为 true. 因为完结番没有 recurrence.
+                    isBroadcast = isEpisodeBroadcast(collection.recurrence, episode.episodeInfo.airDate, currentTime),
+                    playProgress = playProgress[episode.episodeId],
                 )
             }.partition {
                 it.sort is EpisodeSort.Normal
@@ -50,6 +53,21 @@ data class EpisodeListUiState(
                 otherEpisodes = otherEpisodes.sortedBy { it.sort },
             )
         }
+
+        /**
+         * 剧集列表的 "未开播" 着色规则.
+         *
+         * - 能算出播出时刻 (见 [EpisodeCompletionContext.mapAirDate]) 时, 以 [currentTime] 是否已到达该时刻为准;
+         * - 算不出时 (剧集没有上映日期): 有 [recurrence] 说明条目仍在连载, 没有日期的剧集视为未开播;
+         *   没有 [recurrence] 时保持显示为已开播.
+         *
+         * 注意 [recurrence] 为 `null` 只表示 bangumi-data 没有该条目的 `broadcast` 信息, 与是否完结无关 (完结番同样保留 `broadcast`).
+         */
+        fun isEpisodeBroadcast(
+            recurrence: SubjectRecurrence?,
+            airDate: PackedDate,
+            currentTime: Instant,
+        ): Boolean = recurrence.mapAirDate(airDate)?.let { it <= currentTime } ?: (recurrence == null)
 
         val Placeholder = EpisodeListUiState(
             subjectTitle = "",
@@ -75,7 +93,7 @@ val TestEpisodeListUiStateVeryLong
         subjectTitle = "测试标题",
         mainEpisodes = buildList {
             repeat(100) {
-                add(createTestEpisodeListItem(EpisodeSort(it + 1)))
+                add(createTestEpisodeListItem(EpisodeSort(it + 1), imageMedium = testEpisodeStillUrlOrNull(it)))
             }
         },
         otherEpisodes = TestEpisodeListItems.take(2)
@@ -86,6 +104,10 @@ val TestEpisodeListUiStateVeryLong
 val TestEpisodeListItems
     get() = buildList {
         repeat(12) {
-            add(createTestEpisodeListItem(EpisodeSort(it + 1)))
+            add(createTestEpisodeListItem(EpisodeSort(it + 1), imageMedium = testEpisodeStillUrlOrNull(it)))
         }
     }
+
+/** 每三集里两集带剧照, 让预览与测试同时覆盖有图和无图的单元格. */
+@TestOnly
+private fun testEpisodeStillUrlOrNull(index: Int): String? = if (index % 3 != 2) TestEpisodeStillUrl else null

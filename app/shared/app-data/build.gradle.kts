@@ -72,6 +72,7 @@ kotlin {
 
         implementation(libs.koin.core)
         implementation(libs.atomicfu)
+        implementation(libs.ktor.network) // HLS 本地代理 (iOS)
     }
     sourceSets.commonTest.dependencies {
         implementation(projects.utils.uiTesting)
@@ -94,7 +95,13 @@ kotlin {
             }
         }
     }
+    sourceSets.getByName("androidDeviceTest").dependencies {
+        // 用真实 ExoPlayer 验证 HLS 本地代理 (ExoPlayerHlsProxyDeviceTest)
+        implementation(libs.androidx.media3.exoplayer)
+        implementation(libs.androidx.media3.exoplayer.hls)
+    }
     sourceSets.desktopTest {
+        // 与 Android 设备测试共用测试素材 (验证码样本, HLS 夹具等)
         resources.srcDir("src/androidDeviceTest/assets")
         dependencies {
             implementation("androidx.room:room-testing:${libs.versions.room.get()}")

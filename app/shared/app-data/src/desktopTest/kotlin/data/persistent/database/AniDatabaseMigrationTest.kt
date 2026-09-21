@@ -27,7 +27,7 @@ import kotlin.test.assertTrue
  * AniDatabase 迁移测试 (infra#10, P0#18).
  *
  * 生产迁移链 (CommonKoinModule): 1..15 destructive, 16 起走
- * AutoMigration 16→17→18→19, 手动 [MIGRATION_19_20], AutoMigration 20→21→22.
+ * AutoMigration 16→17→18→19, 手动 [MIGRATION_19_20], AutoMigration 20→21→22→23→24.
  *
  * [MigrationTestHelper] 从 `schemas/<db fqn>/<version>.json` 建旧版本库,
  * runMigrationsAndValidate 会把迁移后的实际 schema 与目标版本 json 逐表逐列校验.
@@ -125,6 +125,75 @@ class AniDatabaseMigrationTest {
     }
 
     @Test
+    fun `MIG-06 v22到v23的AutoMigration为episode_collection增加剧照列且旧行为NULL`() {
+        val helper = createHelper()
+        helper.createDatabase(22).use { connection ->
+            connection.execSQL(
+                "INSERT INTO `subject_collection` (`subjectId`, `name`, `nameCn`, `summary`, `nsfw`, `imageLarge`, " +
+                        "`totalEpisodes`, `airDate`, `aliases`, `tags`, `completeDate`, `collectionType`, " +
+                        "`collection_stats_wish`, `collection_stats_doing`, `collection_stats_done`, `collection_stats_onHold`, " +
+                        "`collection_stats_dropped`, `rating_rank`, `rating_total`, `rating_score`, `rating_count_s1`, " +
+                        "`rating_count_s2`, `rating_count_s3`, `rating_count_s4`, `rating_count_s5`, `rating_count_s6`, " +
+                        "`rating_count_s7`, `rating_count_s8`, `rating_count_s9`, `rating_count_s10`, `self_rating_score`, " +
+                        "`self_rating_tags`, `self_rating_isPrivate`) VALUES (1, 'n', 'cn', '', 0, '', 12, 0, X'5B5D', X'5B5D', 0, " +
+                        "'DOING', 0, 0, 0, 0, 0, 0, 0, '0', 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, X'5B5D', 0)",
+            )
+            connection.execSQL(
+                "INSERT INTO `episode_collection` (`subjectId`, `episodeId`, `episodeType`, `name`, `nameCn`, `airDate`, " +
+                        "`comment`, `desc`, `sort`, `sortNumber`, `ep`, `selfCollectionType`, `lastFetched`) " +
+                        "VALUES (1, 10, NULL, 'ep', '第1集', 0, 0, '', '1', 1.0, NULL, 'WISH', 0)",
+            )
+        }
+        helper.runMigrationsAndValidate(23, emptyList()).use { connection ->
+            val columns = connection.columnNames("episode_collection")
+            assertContains(columns, "imageMedium")
+            assertContains(columns, "imageLarge")
+            connection.prepare(
+                "SELECT `imageMedium`, `imageLarge`, `nameCn` FROM `episode_collection` WHERE `episodeId` = 10",
+            ).use { statement ->
+                assertTrue(statement.step())
+                // 旧行没有剧照, 新列为 NULL, 其余数据保留
+                assertTrue(statement.isNull(0))
+                assertTrue(statement.isNull(1))
+                assertEquals("第1集", statement.getText(2))
+            }
+        }
+    }
+
+    @Test
+    fun `MIG-07 v23到v24的AutoMigration新建torrent_cache_episode表且保留旧的torrent_cache行`() {
+        val helper = createHelper()
+        helper.createDatabase(23).use { connection ->
+            connection.execSQL(
+                "INSERT INTO `torrent_cache` (`mediaId`, `torrentData`, `relativeDir`, `completed`, `pathInTorrent`, " +
+                        "`downloadSize`, `uploadSize`) VALUES ('dmhy.1', X'00', 'dir', 1, 'a.mkv', 100, 20)",
+            )
+        }
+        helper.runMigrationsAndValidate(24, emptyList()).use { connection ->
+            assertContains(connection.tableNames(), "torrent_cache_episode")
+            val columns = connection.columnNames("torrent_cache_episode")
+            assertEquals(
+                setOf("mediaId", "episodeId", "completed", "pathInTorrent", "downloadSize", "uploadSize"),
+                columns,
+            )
+            connection.prepare(
+                "SELECT `relativeDir`, `completed`, `pathInTorrent`, `downloadSize` FROM `torrent_cache` WHERE `mediaId` = 'dmhy.1'",
+            ).use { statement ->
+                // 旧行保留, 其完成状态与文件路径供恢复时按记录的剧集迁移到剧集行
+                assertTrue(statement.step())
+                assertEquals("dir", statement.getText(0))
+                assertEquals(1L, statement.getLong(1))
+                assertEquals("a.mkv", statement.getText(2))
+                assertEquals(100L, statement.getLong(3))
+            }
+            connection.prepare("SELECT COUNT(*) FROM `torrent_cache_episode`").use { statement ->
+                assertTrue(statement.step())
+                assertEquals(0L, statement.getLong(0))
+            }
+        }
+    }
+
+    @Test
     fun `MIG-04 缺失手动19-20迁移时从v16迁移到v21失败`() {
         val helper = createHelper()
         helper.createDatabase(16).use {}
@@ -133,6 +202,15 @@ class AniDatabaseMigrationTest {
         }
         assertContains(exception.message.orEmpty(), "A migration from 16 to 21 was required but not found")
     }
+
+    private fun SQLiteConnection.columnNames(table: String): Set<String> =
+        prepare("PRAGMA table_info(`$table`)").use { statement ->
+            buildSet {
+                while (statement.step()) {
+                    add(statement.getText(1))
+                }
+            }
+        }
 
     private fun SQLiteConnection.tableNames(): Set<String> =
         prepare("SELECT `name` FROM sqlite_master WHERE `type` = 'table'").use { statement ->

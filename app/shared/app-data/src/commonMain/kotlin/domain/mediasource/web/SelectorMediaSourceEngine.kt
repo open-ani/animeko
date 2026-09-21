@@ -62,10 +62,26 @@ import kotlin.coroutines.cancellation.CancellationException
 
 /**
  * For [SelectorMediaSourceEngine.selectMedia]
+ *
+ * [episodeSort], [episodeEp] 与 [episodeName] 是发起查询时的当前剧集, 只用于数据源编辑器的测试功能按集过滤.
  */
 data class SelectorSearchQuery(
     val subjectName: String,
     val allSubjectNames: Set<String>,
+    val episodeSort: EpisodeSort,
+    val episodeEp: EpisodeSort?,
+    val episodeName: String?,
+    /**
+     * 用于判断缓存的条目页面是否陈旧的剧集: 页面包含这一集才算命中. 为 `null` 时以当前剧集判断.
+     */
+    val freshnessProbe: SelectorEpisodeProbe? = null,
+)
+
+/**
+ * 判断缓存的条目页面是否包含某一集时使用的剧集信息.
+ * @see SelectorSearchQuery.freshnessProbe
+ */
+data class SelectorEpisodeProbe(
     val episodeSort: EpisodeSort,
     val episodeEp: EpisodeSort?,
     val episodeName: String?,

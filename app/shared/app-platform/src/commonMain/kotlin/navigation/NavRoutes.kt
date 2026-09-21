@@ -38,8 +38,13 @@ sealed class NavRoutes : NavKey {
         val requestSearchFocus: Boolean = false,
     ) : NavRoutes()
 
+    /**
+     * 第三方账号登录 / 绑定页.
+     *
+     * @param provider 平台 ID, 见 `OAuthPlatform.id`
+     */
     @Serializable
-    data object BangumiAuthorize : NavRoutes()
+    data class OAuthAuthorize(val provider: String) : NavRoutes()
 
     @Serializable
     data class Settings(
@@ -61,6 +66,14 @@ sealed class NavRoutes : NavKey {
     data class SubjectDetail(
         val subjectId: Int,
         val placeholder: SubjectDetailPlaceholder? = null,
+    ) : NavRoutes()
+
+    /**
+     * 条目所在系列的关系图
+     */
+    @Serializable
+    data class SubjectRelationGraph(
+        val subjectId: Int,
     ) : NavRoutes()
 
     @Serializable
@@ -109,6 +122,12 @@ sealed class NavRoutes : NavKey {
 
     @Serializable
     data object PlaybackHistorySyncStatus : NavRoutes()
+
+    /**
+     * 合并收藏: 处理 Animeko 与 Bangumi 两侧的收藏冲突.
+     */
+    @Serializable
+    data object BangumiMerge : NavRoutes()
 }
 
 @Serializable

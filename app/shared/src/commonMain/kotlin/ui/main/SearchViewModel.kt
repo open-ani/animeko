@@ -13,6 +13,7 @@ import androidx.compose.runtime.Stable
 import androidx.paging.PagingData
 import androidx.paging.cachedIn
 import androidx.paging.map
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -27,12 +28,14 @@ import kotlinx.coroutines.flow.update
 import me.him188.ani.app.data.models.preference.NsfwMode
 import me.him188.ani.app.data.models.subject.SubjectInfo
 import me.him188.ani.app.data.repository.episode.EpisodeCollectionRepository
-import me.him188.ani.app.data.repository.subject.SubjectSearchHistoryRepository
 import me.him188.ani.app.data.repository.subject.SubjectSearchCompletionRepository
+import me.him188.ani.app.data.repository.subject.SubjectSearchHistoryRepository
 import me.him188.ani.app.data.repository.subject.SubjectSearchRepository
 import me.him188.ani.app.data.repository.user.SettingsRepository
+import me.him188.ani.app.domain.episode.GetAnimeSeasonIdsFlowUseCase
 import me.him188.ani.app.domain.episode.SetEpisodeCollectionTypeUseCase
 import me.him188.ani.app.domain.search.SubjectSearchQuery
+import me.him188.ani.app.domain.search.withYearFilter
 import me.him188.ani.app.ui.exploration.search.SearchPageEffect
 import me.him188.ani.app.ui.exploration.search.SearchPageIntent
 import me.him188.ani.app.ui.exploration.search.SearchPageState
@@ -62,6 +65,7 @@ class SearchViewModel(
     private val subjectSearchRepository: SubjectSearchRepository by inject()
     private val subjectDetailsStateFactory: SubjectDetailsStateFactory by inject()
     private val settingsRepository: SettingsRepository by inject()
+    private val getAnimeSeasonIdsFlowUseCase: GetAnimeSeasonIdsFlowUseCase by inject()
     val setEpisodeCollectionType: SetEpisodeCollectionTypeUseCase by inject()
 
     private val initialQuery = initialSearchQuery.normalized()
@@ -133,6 +137,20 @@ class SearchViewModel(
     private var currentPreviewingSubject: SubjectInfo? = null
     private var initialSearchQueryStarted = false
 
+    init {
+        // 拉取可浏览的季度列表, 供番剧索引的季度筛选使用.
+        launchInBackground {
+            try {
+                val seasons = getAnimeSeasonIdsFlowUseCase().first()
+                updateSearchPageState { it.copy(seasons = seasons) }
+            } catch (e: CancellationException) {
+                throw e
+            } catch (e: Exception) {
+                // 季度列表加载失败: 静默降级, 年份下拉为空 (仅"全部年份"可选), 不影响搜索主功能.
+            }
+        }
+    }
+
     fun suggestionsPager(query: String): Flow<PagingData<String>> {
         return subjectSearchCompletionRepository.completionsFlow(query.trim())
     }
@@ -151,6 +169,20 @@ class SearchViewModel(
 
             is SearchPageIntent.ChangeSort -> {
                 refreshSearch(_searchPageState.value.query.copy(sort = intent.sort))
+            }
+
+            is SearchPageIntent.ChangeYear -> {
+                // 切换到具体年份时保留季度; 清至"全部年份"时 withYearFilter 会连带清除季度.
+                applyQueryAndRefresh(_searchPageState.value.query.withYearFilter(intent.year))
+            }
+
+            is SearchPageIntent.ChangeSeason -> {
+                val query = _searchPageState.value.query
+                // 季度从属于年份: 未选年份时仅允许清除季度, 不允许单独设置季度.
+                // UI 已通过禁用 chip 防护, 此处兜底避免异常路径触发 SubjectSearchQuery 的不变量.
+                if (intent.season == null || query.year != null) {
+                    applyQueryAndRefresh(query.copy(season = intent.season))
+                }
             }
 
             is SearchPageIntent.Play -> {
@@ -256,6 +288,20 @@ class SearchViewModel(
         }
     }
 
+    /**
+     * 更新 query 并视筛选条件触发或清空搜索.
+     */
+    private fun applyQueryAndRefresh(query: SubjectSearchQuery) {
+        if (query.shouldTriggerSearch()) {
+            refreshSearch(query)
+        } else {
+            // 没有任何筛选条件: 回到未搜索状态, 展示历史/建议.
+            updateQueryState(query)
+            clearSearchResults()
+            updateSearchPageState { it.copy(hasActiveSearch = false) }
+        }
+    }
+
     private fun refreshSearch(query: SubjectSearchQuery) {
         val normalizedQuery = query.normalized()
         updateQueryState(normalizedQuery)
@@ -313,7 +359,7 @@ class SearchViewModel(
 private fun SubjectSearchQuery.shouldTriggerSearch(): Boolean {
     return keywords.isNotEmpty() ||
             !tags.isNullOrEmpty() ||
-            season != null ||
+            year != null ||
             rating != null ||
             nsfw != null
 }

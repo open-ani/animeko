@@ -172,13 +172,16 @@ OSA
     # Send one protocol line to the in-app input agent; see input-agent/InputAgent.java.
     # click/press/release/move x y are window-CONTENT points (below title bar; use
     # `inject info` to get the content origin for converting screenshot coordinates).
-    [[ $# -ge 1 ]] || { echo "usage: desk.sh inject click|press|release|move|type|key|info [args...]" >&2; exit 2; }
+    [[ $# -ge 1 ]] || { echo "usage: desk.sh inject click|press|release|move|wheel|type|key|info|resize|windows|window|dragenter|dragover|drop|dragexit [args...]" >&2; exit 2; }
     port="${ANI_INPUT_AGENT_PORT:-7788}" cmdline="$*" python3 - <<'PY'
 import os, socket, sys
 try:
     s = socket.create_connection(("127.0.0.1", int(os.environ["port"])), timeout=5)
 except OSError as e:
     sys.exit(f"cannot reach input agent on port {os.environ['port']} ({e}); run desk.sh agent-attach and relaunch the app")
+# The agent replies once the AWT event thread has run the command; the thread can be busy
+# for several seconds (e.g. while a screen initializes), so wait longer than the connect timeout.
+s.settimeout(60)
 f = s.makefile("rw")
 f.write(os.environ["cmdline"] + "\n"); f.flush()
 print(f.readline().strip())
@@ -220,6 +223,8 @@ click/type/key/screenshot need macOS Accessibility permission for the terminal r
   agent-attach [app]          compile the input agent and register it in the .app cfg (next launch)
   inject <cmd> [args]         injected input via the in-app agent: click/press/release/move <x> <y>
                               (window-CONTENT points), type <text>, key <awt-keycode>, info.
+                              External file drag-and-drop: dragenter <x> <y> <path>[|<path>...],
+                              dragover <x> <y>, drop <x> <y>, dragexit.
                               PREFERRED over click/type: no cursor move, no focus steal, works
                               in background, no Accessibility permission needed.
   quit [process]              quit the app (graceful, then pkill)

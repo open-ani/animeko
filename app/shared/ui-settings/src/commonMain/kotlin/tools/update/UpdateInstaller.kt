@@ -15,6 +15,7 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import me.him188.ani.app.platform.ContextMP
 import me.him188.ani.utils.io.SystemPath
+import me.him188.ani.utils.io.extension
 import kotlin.coroutines.cancellation.CancellationException
 
 /**
@@ -25,6 +26,19 @@ import kotlin.coroutines.cancellation.CancellationException
  * - macOS：打开 dmg 让系统去安装，需要用户手动拖拽一下
  */
 interface UpdateInstaller {
+    /**
+     * 当前平台可由 [install] 直接安装的本地安装包扩展名 (小写, 不含点).
+     *
+     * 为空表示不支持安装本地安装包, 例如 Linux 只能通过 AppImage 差分更新安装.
+     */
+    val installablePackageExtensions: Set<String> get() = emptySet()
+
+    /**
+     * [file] 是否为当前平台可由 [install] 直接安装的本地安装包. 仅根据扩展名判断, 不校验文件内容.
+     */
+    fun isInstallablePackage(file: SystemPath): Boolean =
+        file.extension.lowercase() in installablePackageExtensions
+
     /**
      * 返回安装前需要下载的文件地址.
      *

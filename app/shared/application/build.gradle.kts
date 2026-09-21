@@ -33,6 +33,10 @@ kotlin {
     sourceSets.commonTest.dependencies {
         implementation(projects.utils.uiTesting)
     }
+    sourceSets.androidMain.dependencies {
+        // FileKit 的非 Compose 对话框 (图片查看器保存) 需要在 Activity 里初始化
+        implementation(libs.filekit.dialogs)
+    }
     sourceSets.iosMain.dependencies {
         implementation(libs.mediamp.ffmpeg)
     }

@@ -41,12 +41,16 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.Stable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.AndroidUiModes.UI_MODE_NIGHT_YES
 import androidx.compose.ui.tooling.preview.AndroidUiModes.UI_MODE_TYPE_NORMAL
@@ -226,6 +230,8 @@ private fun SubjectCollectionItemContent(
     playButton: @Composable () -> Unit,
     modifier: Modifier = Modifier,
 ) {
+    var showEditCollectionTypeMenu by remember { mutableStateOf(false) }
+
     Column(modifier) {
         // 标题和右上角菜单
         Row(
@@ -243,13 +249,18 @@ private fun SubjectCollectionItemContent(
 
             Box {
                 IconButton(
-                    { editableSubjectCollectionTypeState.showDropdown = true },
-                    Modifier.fillMaxHeight().padding(),
+                    { showEditCollectionTypeMenu = true },
+                    Modifier.fillMaxHeight().padding().testTag(SubjectCollectionItemTestTags.MoreButton),
                 ) {
                     Icon(Icons.Outlined.MoreVert, null, Modifier.size(24.dp))
                 }
 
-                EditCollectionTypeDropDown(editableSubjectCollectionTypeState)
+                EditCollectionTypeDropDown(
+                    editableSubjectCollectionTypeState,
+                    expanded = showEditCollectionTypeMenu,
+                    onDismissRequest = { showEditCollectionTypeMenu = false },
+                    modifier = Modifier.testTag(SubjectCollectionItemTestTags.EditCollectionTypeMenu),
+                )
             }
         }
 
@@ -283,6 +294,11 @@ private fun SubjectCollectionItemContent(
             Box(Modifier.width(IntrinsicSize.Min)) { playButton() }
         }
     }
+}
+
+object SubjectCollectionItemTestTags {
+    const val MoreButton = "SubjectCollectionItemMoreButton"
+    const val EditCollectionTypeMenu = "SubjectCollectionItemEditCollectionTypeMenu"
 }
 
 

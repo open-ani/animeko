@@ -10,7 +10,6 @@
 package me.him188.ani.app.ui.subject.episode
 
 import androidx.compose.foundation.background
-import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
@@ -19,6 +18,7 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.WindowInsetsSides
+import androidx.compose.foundation.layout.displayCutout
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -36,6 +36,8 @@ import androidx.compose.foundation.lazy.grid.rememberLazyGridState
 import androidx.compose.foundation.pager.HorizontalPager
 import androidx.compose.foundation.pager.PagerState
 import androidx.compose.foundation.pager.rememberPagerState
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.BottomSheetDefaults
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.MaterialTheme
@@ -69,7 +71,6 @@ import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.platform.LocalUriHandler
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.tooling.preview.PreviewLightDark
@@ -95,16 +96,19 @@ import me.him188.ani.app.ui.comment.CommentReportHost
 import me.him188.ani.app.ui.comment.CommentReportState
 import me.him188.ani.app.ui.comment.CommentState
 import me.him188.ani.app.ui.danmaku.DanmakuEditorState
+import me.him188.ani.app.ui.danmaku.DanmakuStylePanel
 import me.him188.ani.app.ui.danmaku.DummyDanmakuEditor
 import me.him188.ani.app.ui.danmaku.PlayerDanmakuEditor
 import me.him188.ani.app.ui.danmaku.PlayerDanmakuHost
 import me.him188.ani.app.ui.episode.danmaku.MatchingDanmakuDialog
 import me.him188.ani.app.ui.external.placeholder.placeholder
 import me.him188.ani.app.ui.foundation.ImageViewer
+import me.him188.ani.app.ui.foundation.ImageViewerBackHandler
 import me.him188.ani.app.ui.foundation.LocalImageViewerHandler
 import me.him188.ani.app.ui.foundation.LocalIsPreviewing
 import me.him188.ani.app.ui.foundation.LocalPlatform
 import me.him188.ani.app.ui.foundation.ProvideCompositionLocalsForPreview
+import me.him188.ani.app.ui.foundation.WindowDropHandlerEffect
 import me.him188.ani.app.ui.foundation.animation.AniAnimatedVisibility
 import me.him188.ani.app.ui.foundation.effects.DarkStatusBarAppearance
 import me.him188.ani.app.ui.foundation.effects.OnLifecycleEvent
@@ -129,6 +133,7 @@ import me.him188.ani.app.ui.foundation.pagerTabIndicatorOffset
 import me.him188.ani.app.ui.foundation.rememberImageViewerHandler
 import me.him188.ani.app.ui.foundation.theme.AniTheme
 import me.him188.ani.app.ui.foundation.theme.LocalThemeSettings
+import me.him188.ani.app.ui.foundation.theme.isSystemInDarkThemeDetected
 import me.him188.ani.app.ui.foundation.theme.weaken
 import me.him188.ani.app.ui.foundation.widgets.LocalToaster
 import me.him188.ani.app.ui.foundation.widgets.showLoadError
@@ -167,7 +172,6 @@ import me.him188.ani.app.videoplayer.ui.progress.rememberMediaProgressFramePrevi
 import me.him188.ani.app.videoplayer.ui.progress.rememberMediaProgressSliderState
 import me.him188.ani.app.videoplayer.ui.rememberPlayerFullscreenState
 import me.him188.ani.danmaku.api.DanmakuContent
-import me.him188.ani.danmaku.api.DanmakuLocation
 import me.him188.ani.danmaku.ui.DanmakuHostState
 import me.him188.ani.danmaku.ui.DanmakuPresentation
 import me.him188.ani.datasources.api.source.MediaFetchRequest
@@ -236,7 +240,7 @@ private fun EpisodeScreenContent(
 
     // image viewer
     val imageViewer = rememberImageViewerHandler()
-    BackHandler(enabled = imageViewer.viewing.value) { imageViewer.clear() }
+    ImageViewerBackHandler(imageViewer)
 
     val playerState by vm.player.state.collectAsStateWithLifecycle()
     val playbackAutomationSuppressed by vm.playbackAutomationSuppressed.collectAsStateWithLifecycle()
@@ -268,6 +272,9 @@ private fun EpisodeScreenContent(
     DisplayModeEffect(vm.videoScaffoldConfig)
 
     VideoNotifEffect(vm)
+
+    // 将本地视频文件拖入窗口, 即在当前剧集播放该文件
+    WindowDropHandlerEffect(rememberEpisodeVideoDropHandler { vm.playDroppedFile(it) })
 
     DarkStatusBarAppearance()
 
@@ -340,7 +347,12 @@ private fun EpisodeScreenContent(
                             }
                         },
                         scope,
+                        onStyleChange = { vm.setDanmakuSendStyle(it) },
                     )
+                }
+                LaunchedEffect(danmakuEditorState) {
+                    // 只读取一次初始值. 之后用户的修改由 onStyleChange 持久化, 不再回流, 避免连续点选时闪动.
+                    danmakuEditorState.style = vm.danmakuSendStyleFlow.first()
                 }
 
                 WatchTogetherPopupVisibilityEffect(
@@ -489,7 +501,7 @@ private fun EpisodeScreenTabletVeryWide(
                 modifier = Modifier.weight(1f).fillMaxHeight(),
                 maintainAspectRatio = false,
                 windowInsets = if (vm.isFullscreen) {
-                    windowInsets
+                    fullscreenVideoWindowInsets(windowInsets)
                 } else {
                     // 非全屏右边还有东西
                     // Consider #1923 平板横屏模式下播放器底栏和导航栏重合
@@ -517,7 +529,7 @@ private fun EpisodeScreenTabletVeryWide(
                 val themeSettings = LocalThemeSettings.current
                 val isEpPageDarkTheme = when {
                     themeSettings.alwaysDarkInEpisodePage -> true
-                    themeSettings.darkMode == DarkMode.AUTO -> isSystemInDarkTheme()
+                    themeSettings.darkMode == DarkMode.AUTO -> isSystemInDarkThemeDetected()
                     else -> themeSettings.darkMode == DarkMode.DARK
                 }
                 // 如果当前不是 dark theme 并且 是安卓平台 并且 没有设置播放页始终使用暗色主题，则加一个渐变色避免看不清状态栏
@@ -693,7 +705,7 @@ private fun EpisodeScreenContentPhone(
 ) {
     var showDanmakuEditor by rememberSaveable { mutableStateOf(false) }
     val toaster = LocalToaster.current
-    val videoWindowInsets = windowInsets
+    val defaultVideoWindowInsets = windowInsets
         .union(WindowInsets.desktopTitleBar)
         .run {
             // iOS 上的 top window insets 没有被正确消耗, 手动排除 top insets
@@ -703,7 +715,12 @@ private fun EpisodeScreenContentPhone(
                 only(WindowInsetsSides.Top + WindowInsetsSides.Horizontal)
             }
         }
-    val columnInsets = videoWindowInsets.only(WindowInsetsSides.Horizontal)
+    val videoWindowInsets = if (vm.isFullscreen) {
+        fullscreenVideoWindowInsets(defaultVideoWindowInsets)
+    } else {
+        defaultVideoWindowInsets
+    }
+    val columnInsets = defaultVideoWindowInsets.only(WindowInsetsSides.Horizontal)
 
     EpisodeScreenContentPhoneScaffold(
         videoOnly = vm.isFullscreen,
@@ -821,8 +838,8 @@ private fun EpisodeScreenContentPhone(
                             DanmakuContent(
                                 vm.player.currentPositionMillis.value,
                                 text = text,
-                                color = Color.White.toArgb(),
-                                location = DanmakuLocation.NORMAL,
+                                color = danmakuEditorState.style.color,
+                                location = danmakuEditorState.style.location,
                             ),
                         )
                         dismiss()
@@ -849,7 +866,11 @@ private fun DetachedDanmakuEditorLayout(
     onDismiss: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    Column(modifier.padding(all = 16.dp), verticalArrangement = Arrangement.spacedBy(16.dp)) {
+    // 展开自定义颜色后内容会超出半高的 bottom sheet, 允许滚动 (sheet 会先展开到全高, 再滚动内容)
+    Column(
+        modifier.verticalScroll(rememberScrollState()).padding(all = 16.dp),
+        verticalArrangement = Arrangement.spacedBy(16.dp),
+    ) {
         Text(stringResource(Lang.episode_send_danmaku), style = MaterialTheme.typography.titleMedium)
         val isSending = danmakuEditorState.isSending.collectAsStateWithLifecycle()
         PlayerDanmakuEditor(
@@ -862,6 +883,11 @@ private fun DetachedDanmakuEditorLayout(
             modifier = Modifier.fillMaxWidth().focusRequester(focusRequester),
             onEscape = onDismiss,
             colors = OutlinedTextFieldDefaults.colors(),
+        )
+        DanmakuStylePanel(
+            style = danmakuEditorState.style,
+            onStyleChange = { danmakuEditorState.updateStyle(it) },
+            modifier = Modifier.fillMaxWidth(),
         )
     }
 }
@@ -922,6 +948,24 @@ fun EpisodeScreenContentPhoneScaffold(
                 }
             }
         }
+    }
+}
+
+/**
+ * 全屏播放时传给播放器控件的 window insets.
+ *
+ * iOS 横屏下 [WindowInsets.systemBars] 会把刘海宽度对称地报告在左右两侧, 并且还带有顶部和 home indicator 的高度,
+ * 直接使用会让控件离屏幕边缘过远. 全屏时只需要避开真正有刘海 (前置摄像头) 的那一侧:
+ * Compose 在 iOS 上的 [WindowInsets.displayCutout] 只包含摄像头所在的那一侧.
+ *
+ * 其他平台保持 [default] 不变.
+ */
+@Composable
+private fun fullscreenVideoWindowInsets(default: WindowInsets): WindowInsets {
+    return if (LocalPlatform.current.isIos()) {
+        WindowInsets.displayCutout.only(WindowInsetsSides.Horizontal)
+    } else {
+        default
     }
 }
 

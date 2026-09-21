@@ -545,7 +545,7 @@ fun MediaProgressSlider(
                         }
                         val total = state.totalDurationMillis
                         if (total <= 0) return@collectLatest
-                        // BT 源只预览已下载完成的区域, 避免抢占播放位置的下载优先级.
+                        // 只预览已缓存的区域: BT 源避免抢占播放位置的下载优先级, 在线源避免额外的网络请求.
                         if (!cacheProgressInfoFlow().isPositionCached(positionMillis.toFloat() / total)) {
                             return@collectLatest
                         }
@@ -876,7 +876,7 @@ private fun PreviewFrameAndTimeTextContent() = ProvideCompositionLocalsForPrevie
 /**
  * 判断进度条上 [ratio] (0..1) 处的内容是否已缓存完成.
  *
- * 无缓存信息 (null) 或空信息 (非 BT 源) 视为可用.
+ * 无缓存信息 (null) 或空信息 (如本地文件) 视为可用.
  */
 internal fun MediaCacheProgressInfo?.isPositionCached(ratio: Float): Boolean {
     if (this == null || isEmpty()) return true

@@ -70,7 +70,7 @@ import kotlinx.serialization.Serializable
 import me.him188.ani.app.data.models.preference.MediaPreference
 import me.him188.ani.app.data.models.preference.MediaSelectorSettings
 import me.him188.ani.app.domain.media.TestMediaList
-import me.him188.ani.app.domain.media.cache.MediaCacheManager
+import me.him188.ani.app.domain.media.download.MediaDownloadManager
 import me.him188.ani.app.domain.media.selector.DefaultMediaSelector
 import me.him188.ani.app.domain.media.selector.MaybeExcludedMedia
 import me.him188.ani.app.domain.media.selector.MediaExclusionReason
@@ -442,7 +442,7 @@ internal val previewMediaList = TestMediaList.run {
     listOf(
         CachedMedia(
             origin = this[0],
-            cacheMediaSourceId = MediaCacheManager.LOCAL_FS_MEDIA_SOURCE_ID,
+            cacheMediaSourceId = MediaDownloadManager.LOCAL_FS_MEDIA_SOURCE_ID,
             download = ResourceLocation.LocalFile("file://test.txt"),
         ),
     ) + this
@@ -485,7 +485,7 @@ private fun rememberTestMediaSelectorPresentation(previewMediaList: List<Media>,
                 listOf(
                     CachedMedia(
                         origin = previewMediaList[0],
-                        cacheMediaSourceId = MediaCacheManager.LOCAL_FS_MEDIA_SOURCE_ID,
+                        cacheMediaSourceId = MediaDownloadManager.LOCAL_FS_MEDIA_SOURCE_ID,
                         download = ResourceLocation.LocalFile("file://test.txt"),
                     ),
                 ) + previewMediaList,

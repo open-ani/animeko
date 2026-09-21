@@ -44,11 +44,13 @@ import me.him188.ani.app.ui.foundation.widgets.showLoadError
 import me.him188.ani.utils.platform.annotations.TestOnly
 
 /**
- * 条目评价列表. 也被人物/角色评论复用 (人物评论无评分, 全部只读).
+ * 条目评价列表. 也被人物/角色评论复用 (人物评论无评分; Ani 源的人物评论可回复/贴纸回应).
  *
  * @param onOpenOriginal 在来源平台打开原始评论, 只对 [UICommentSource.BANGUMI] 来源的评论生效.
  * @param reportState 举报状态. `null` 时隐藏举报入口. 弹层与结果提示由页面级的
  *   [me.him188.ani.app.ui.comment.CommentReportHost] 渲染, 调用方需在 sheet 外层挂一个.
+ * @param onClickReply 点击评论回复, 只对可回复 ([UIComment.canReply]) 的 [UICommentSource.ANI] 评论生效. `null` 表示不支持回复 (条目评价).
+ * @param onToggleReaction 贴纸回应, 只对 [UICommentSource.ANI] 评论生效. `null` 时隐藏贴纸入口.
  */
 @Composable
 fun SubjectDetailsDefaults.SubjectCommentColumn(
@@ -58,6 +60,8 @@ fun SubjectDetailsDefaults.SubjectCommentColumn(
     modifier: Modifier = Modifier,
     reportState: CommentReportState? = null,
     onOpenOriginal: ((UIComment) -> Unit)? = null,
+    onClickReply: ((UIComment) -> Unit)? = null,
+    onToggleReaction: ((UIComment, String) -> Unit)? = null,
     showRating: Boolean = true,
     connectedScrollState: ConnectedScrollState? = null,
     gridState: LazyGridState = rememberLazyGridState(),
@@ -91,7 +95,9 @@ fun SubjectDetailsDefaults.SubjectCommentColumn(
                 onClickUrl = onClickUrl,
                 onClickImage = onClickImage,
                 showRating = showRating,
+                onClickReply = onClickReply,
                 onToggleVote = { c, vote -> state.toggleVote(c, vote) },
+                onToggleReaction = if (commentWithOverlay.source == UICommentSource.ANI) onToggleReaction else null,
                 menu = CommentMenuHandlers(
                     onOpenOriginal = if (commentWithOverlay.source == UICommentSource.BANGUMI) {
                         onOpenOriginal

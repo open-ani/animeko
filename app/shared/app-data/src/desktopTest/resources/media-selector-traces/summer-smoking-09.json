@@ -1,0 +1,3158 @@
+{
+  "formatVersion": 1,
+  "provenance": {
+    "capturedAt": "2026-09-05T19:56:20.531439Z",
+    "applicationVersion": "4.9.0-dev",
+    "acquisition": "desktop-playback",
+    "searchCacheCleared": true,
+    "rawSha256": "6e13b78f8fd704a65372254c7569a034c2286ccf26efd92581392fd26b748bb4",
+    "rawBytes": 3698308,
+    "rawFrameCount": 56
+  },
+  "request": {
+    "subjectId": "571784",
+    "episodeId": "1699268",
+    "subjectNameCN": "在超市后门吸烟的二人",
+    "subjectNames": [
+      "在超市后门吸烟的二人",
+      "スーパーの裏でヤニ吸うふたり",
+      "躲在超市后门抽烟的两人",
+      "Super no Ura de Yani Suu Futari",
+      "Smoking Behind the Supermarket with You"
+    ],
+    "episodeSort": {
+      "type": "me.him188.ani.datasources.api.EpisodeSort.Normal",
+      "number": 9.0
+    },
+    "episodeName": "スーパーの裏で触れるひとり",
+    "episodeEp": {
+      "type": "me.him188.ani.datasources.api.EpisodeSort.Normal",
+      "number": 9.0
+    }
+  },
+  "preferredSourceId": null,
+  "durationMillis": 45006,
+  "sources": [
+    {
+      "id": "local-file-system",
+      "name": "LocalTorrent",
+      "kind": "LocalCache"
+    },
+    {
+      "id": "local-file-system",
+      "name": "LocalWebM3u",
+      "kind": "LocalCache"
+    },
+    {
+      "id": "mikan-mikanime-tv",
+      "name": "蜜柑计划 (CN)",
+      "kind": "BitTorrent"
+    },
+    {
+      "id": "dmhy",
+      "name": "動漫花園",
+      "kind": "BitTorrent"
+    },
+    {
+      "id": "e0fa1500-ba3e-4767-b108-cc6f241b5559",
+      "name": "nyaa.land",
+      "kind": "BitTorrent"
+    },
+    {
+      "id": "2355e16c-8737-42ea-aa58-140251822359",
+      "name": "AnimeGarden",
+      "kind": "BitTorrent"
+    },
+    {
+      "id": "02953f1e-fbfd-438b-b3bf-c4dad6a346d4",
+      "name": "稀饭动漫",
+      "kind": "WEB"
+    },
+    {
+      "id": "c03f162b-a5c0-442c-8834-060ae87669a4",
+      "name": "girigiri愛動漫",
+      "kind": "WEB"
+    },
+    {
+      "id": "9bbbef46-7372-4199-853c-95b348113cb6",
+      "name": "嘀嗒影视",
+      "kind": "WEB"
+    },
+    {
+      "id": "104d2594-4202-4bcc-b4da-9b03d99558e2",
+      "name": "叽哔动漫",
+      "kind": "WEB"
+    },
+    {
+      "id": "2406da2f-695c-4cea-869b-fd7ca8aa3a9f",
+      "name": "E-ACG",
+      "kind": "WEB"
+    },
+    {
+      "id": "474f8053-6293-4472-9816-86e802db7776",
+      "name": "森之屋动漫",
+      "kind": "WEB"
+    },
+    {
+      "id": "ca0aa9a3-ab41-414e-a4d6-b15411551cf3",
+      "name": "风车影视",
+      "kind": "WEB"
+    },
+    {
+      "id": "419b2d59-be72-436c-9c28-6960bcb9809a",
+      "name": "去看吧",
+      "kind": "WEB"
+    },
+    {
+      "id": "1b96801a-2fa9-4ac8-be97-5258da3f44d7",
+      "name": "海星动漫",
+      "kind": "WEB"
+    },
+    {
+      "id": "8d036176-2614-4f2c-9e12-2f56af69619f",
+      "name": "樱花动漫",
+      "kind": "WEB"
+    },
+    {
+      "id": "bf067292-2d24-4dca-aac4-d53808700b03",
+      "name": "嘀哩嘀哩",
+      "kind": "WEB"
+    },
+    {
+      "id": "5d8ce041-086c-4075-8a6c-e9957ec1241c",
+      "name": "新优酷",
+      "kind": "WEB"
+    },
+    {
+      "id": "577f82d8-a01c-45a3-862a-9de2643e2b8f",
+      "name": "番茄动漫",
+      "kind": "WEB"
+    },
+    {
+      "id": "c7c80227-2175-4985-ac2c-5343dd0fa489",
+      "name": "hanime1_1080p",
+      "kind": "WEB"
+    },
+    {
+      "id": "0147498a-84da-4be7-b780-378b03234070",
+      "name": "hanime1_720p",
+      "kind": "WEB"
+    },
+    {
+      "id": "ff888bd2-fc1c-4aa3-be29-d302d84b1588",
+      "name": "wedm",
+      "kind": "WEB"
+    },
+    {
+      "id": "257d123e-9441-424b-924e-abf3e4cef14b",
+      "name": "影视森林",
+      "kind": "WEB"
+    },
+    {
+      "id": "7642d509-20b1-4dd3-b40a-87a344cb12f9",
+      "name": "热播之家",
+      "kind": "WEB"
+    }
+  ],
+  "initial": {
+    "context": {
+      "subjectFinished": null,
+      "sourcePrecedence": null,
+      "subtitlePreferences": null,
+      "series": null,
+      "subject": null,
+      "episode": null,
+      "sourceTiers": null,
+      "channelTiers": null
+    },
+    "settings": {
+      "showDisabled": true,
+      "hideSingleEpisodeForCompleted": true,
+      "preferSeasons": true,
+      "autoEnableLastSelected": true,
+      "preferKind": "WEB",
+      "fastSelectWebKind": true,
+      "fastSelectWebLowTierToleranceDuration": "PT5S",
+      "enableImageCaptchaAutoSolve": true,
+      "webSearchCacheTtl": "PT6H"
+    },
+    "preference": {
+      "alliance": null,
+      "alliancePatterns": null,
+      "resolution": null,
+      "fallbackResolutions": [
+        "2160P",
+        "1440P",
+        "1080P",
+        "720P"
+      ],
+      "subtitleLanguageId": null,
+      "fallbackSubtitleLanguageIds": [
+        "CHS",
+        "CHT"
+      ],
+      "showWithoutSubtitle": false,
+      "mediaSourceId": null,
+      "fallbackMediaSourceIds": null
+    },
+    "defaultPreference": {
+      "alliance": null,
+      "alliancePatterns": null,
+      "resolution": null,
+      "fallbackResolutions": [
+        "2160P",
+        "1440P",
+        "1080P",
+        "720P"
+      ],
+      "subtitleLanguageId": null,
+      "fallbackSubtitleLanguageIds": [
+        "CHS",
+        "CHT"
+      ],
+      "showWithoutSubtitle": false,
+      "mediaSourceId": null,
+      "fallbackMediaSourceIds": null
+    }
+  },
+  "media": [
+    {
+      "mediaId": "media-438ae1ea75f7188be7822c39",
+      "mediaSourceId": "9bbbef46-7372-4199-853c-95b348113cb6",
+      "originalUrl": "https://fixture.invalid/media-438ae1ea75f7188be7822c39",
+      "download": {
+        "type": "me.him188.ani.datasources.api.topic.ResourceLocation.HttpStreamingFile",
+        "uri": "https://fixture.invalid/media-438ae1ea75f7188be7822c39"
+      },
+      "originalTitle": "躲在超市后门抽烟的两人 9",
+      "publishedTime": 0,
+      "properties": {
+        "subjectName": "躲在超市后门抽烟的两人",
+        "episodeName": "9",
+        "subtitleLanguageIds": [
+          "CHS"
+        ],
+        "resolution": "1080P",
+        "alliance": "超清B",
+        "size": -9223372036854775808,
+        "subtitleKind": "EMBEDDED"
+      },
+      "episodeRange": {
+        "type": "me.him188.ani.datasources.api.topic.EpisodeRange.Single",
+        "value": {
+          "type": "me.him188.ani.datasources.api.EpisodeSort.Normal",
+          "number": 9.0
+        }
+      },
+      "extraFiles": {
+        "subtitles": []
+      },
+      "location": "ONLINE",
+      "kind": "WEB"
+    },
+    {
+      "mediaId": "media-f0eb787fe96cb0224aa49442",
+      "mediaSourceId": "9bbbef46-7372-4199-853c-95b348113cb6",
+      "originalUrl": "https://fixture.invalid/media-f0eb787fe96cb0224aa49442",
+      "download": {
+        "type": "me.him188.ani.datasources.api.topic.ResourceLocation.HttpStreamingFile",
+        "uri": "https://fixture.invalid/media-f0eb787fe96cb0224aa49442"
+      },
+      "originalTitle": "躲在超市后门抽烟的两人 第09集",
+      "publishedTime": 0,
+      "properties": {
+        "subjectName": "躲在超市后门抽烟的两人",
+        "episodeName": "第09集",
+        "subtitleLanguageIds": [
+          "CHS"
+        ],
+        "resolution": "1080P",
+        "alliance": "超清C",
+        "size": -9223372036854775808,
+        "subtitleKind": "EMBEDDED"
+      },
+      "episodeRange": {
+        "type": "me.him188.ani.datasources.api.topic.EpisodeRange.Single",
+        "value": {
+          "type": "me.him188.ani.datasources.api.EpisodeSort.Normal",
+          "number": 9.0
+        }
+      },
+      "extraFiles": {
+        "subtitles": []
+      },
+      "location": "ONLINE",
+      "kind": "WEB"
+    },
+    {
+      "mediaId": "media-a3c7d09afd66c403c97c3c97",
+      "mediaSourceId": "9bbbef46-7372-4199-853c-95b348113cb6",
+      "originalUrl": "https://fixture.invalid/media-a3c7d09afd66c403c97c3c97",
+      "download": {
+        "type": "me.him188.ani.datasources.api.topic.ResourceLocation.HttpStreamingFile",
+        "uri": "https://fixture.invalid/media-a3c7d09afd66c403c97c3c97"
+      },
+      "originalTitle": "躲在超市后门抽烟的两人 9",
+      "publishedTime": 0,
+      "properties": {
+        "subjectName": "躲在超市后门抽烟的两人",
+        "episodeName": "9",
+        "subtitleLanguageIds": [
+          "CHS"
+        ],
+        "resolution": "1080P",
+        "alliance": "超清K",
+        "size": -9223372036854775808,
+        "subtitleKind": "EMBEDDED"
+      },
+      "episodeRange": {
+        "type": "me.him188.ani.datasources.api.topic.EpisodeRange.Single",
+        "value": {
+          "type": "me.him188.ani.datasources.api.EpisodeSort.Normal",
+          "number": 9.0
+        }
+      },
+      "extraFiles": {
+        "subtitles": []
+      },
+      "location": "ONLINE",
+      "kind": "WEB"
+    },
+    {
+      "mediaId": "media-d266728c9566ab3a7b97d9b8",
+      "mediaSourceId": "474f8053-6293-4472-9816-86e802db7776",
+      "originalUrl": "https://fixture.invalid/media-d266728c9566ab3a7b97d9b8",
+      "download": {
+        "type": "me.him188.ani.datasources.api.topic.ResourceLocation.HttpStreamingFile",
+        "uri": "https://fixture.invalid/media-d266728c9566ab3a7b97d9b8"
+      },
+      "originalTitle": "躲在超市后门抽烟的两人 第09集",
+      "publishedTime": 0,
+      "properties": {
+        "subjectName": "躲在超市后门抽烟的两人",
+        "episodeName": "第09集",
+        "subtitleLanguageIds": [
+          "CHS"
+        ],
+        "resolution": "1080P",
+        "alliance": "HD",
+        "size": -9223372036854775808,
+        "subtitleKind": "EMBEDDED"
+      },
+      "episodeRange": {
+        "type": "me.him188.ani.datasources.api.topic.EpisodeRange.Single",
+        "value": {
+          "type": "me.him188.ani.datasources.api.EpisodeSort.Normal",
+          "number": 9.0
+        }
+      },
+      "extraFiles": {
+        "subtitles": []
+      },
+      "location": "ONLINE",
+      "kind": "WEB"
+    },
+    {
+      "mediaId": "media-96203175b9f834ea74a4759e",
+      "mediaSourceId": "1b96801a-2fa9-4ac8-be97-5258da3f44d7",
+      "originalUrl": "https://fixture.invalid/media-96203175b9f834ea74a4759e",
+      "download": {
+        "type": "me.him188.ani.datasources.api.topic.ResourceLocation.HttpStreamingFile",
+        "uri": "https://fixture.invalid/media-96203175b9f834ea74a4759e"
+      },
+      "originalTitle": "在超市后门吸烟的二人 第9集",
+      "publishedTime": 0,
+      "properties": {
+        "subjectName": "在超市后门吸烟的二人",
+        "episodeName": "第9集",
+        "subtitleLanguageIds": [
+          "CHS"
+        ],
+        "resolution": "1080P",
+        "alliance": "播放Ⅰ",
+        "size": -9223372036854775808,
+        "subtitleKind": "EMBEDDED"
+      },
+      "episodeRange": {
+        "type": "me.him188.ani.datasources.api.topic.EpisodeRange.Single",
+        "value": {
+          "type": "me.him188.ani.datasources.api.EpisodeSort.Normal",
+          "number": 9.0
+        }
+      },
+      "extraFiles": {
+        "subtitles": []
+      },
+      "location": "ONLINE",
+      "kind": "WEB"
+    },
+    {
+      "mediaId": "media-2dc9d0c08c4a3dbcbd89e818",
+      "mediaSourceId": "1b96801a-2fa9-4ac8-be97-5258da3f44d7",
+      "originalUrl": "https://fixture.invalid/media-2dc9d0c08c4a3dbcbd89e818",
+      "download": {
+        "type": "me.him188.ani.datasources.api.topic.ResourceLocation.HttpStreamingFile",
+        "uri": "https://fixture.invalid/media-2dc9d0c08c4a3dbcbd89e818"
+      },
+      "originalTitle": "在超市后门吸烟的二人 第9集",
+      "publishedTime": 0,
+      "properties": {
+        "subjectName": "在超市后门吸烟的二人",
+        "episodeName": "第9集",
+        "subtitleLanguageIds": [
+          "CHS"
+        ],
+        "resolution": "1080P",
+        "alliance": "播放Ⅱ",
+        "size": -9223372036854775808,
+        "subtitleKind": "EMBEDDED"
+      },
+      "episodeRange": {
+        "type": "me.him188.ani.datasources.api.topic.EpisodeRange.Single",
+        "value": {
+          "type": "me.him188.ani.datasources.api.EpisodeSort.Normal",
+          "number": 9.0
+        }
+      },
+      "extraFiles": {
+        "subtitles": []
+      },
+      "location": "ONLINE",
+      "kind": "WEB"
+    },
+    {
+      "mediaId": "media-0dd33da6d854f147b00da9bf",
+      "mediaSourceId": "1b96801a-2fa9-4ac8-be97-5258da3f44d7",
+      "originalUrl": "https://fixture.invalid/media-0dd33da6d854f147b00da9bf",
+      "download": {
+        "type": "me.him188.ani.datasources.api.topic.ResourceLocation.HttpStreamingFile",
+        "uri": "https://fixture.invalid/media-0dd33da6d854f147b00da9bf"
+      },
+      "originalTitle": "在超市后门吸烟的二人 第9集",
+      "publishedTime": 0,
+      "properties": {
+        "subjectName": "在超市后门吸烟的二人",
+        "episodeName": "第9集",
+        "subtitleLanguageIds": [
+          "CHS"
+        ],
+        "resolution": "1080P",
+        "alliance": "播放Ⅲ",
+        "size": -9223372036854775808,
+        "subtitleKind": "EMBEDDED"
+      },
+      "episodeRange": {
+        "type": "me.him188.ani.datasources.api.topic.EpisodeRange.Single",
+        "value": {
+          "type": "me.him188.ani.datasources.api.EpisodeSort.Normal",
+          "number": 9.0
+        }
+      },
+      "extraFiles": {
+        "subtitles": []
+      },
+      "location": "ONLINE",
+      "kind": "WEB"
+    },
+    {
+      "mediaId": "media-365f4d8e5a450df3dd37bbf6",
+      "mediaSourceId": "1b96801a-2fa9-4ac8-be97-5258da3f44d7",
+      "originalUrl": "https://fixture.invalid/media-365f4d8e5a450df3dd37bbf6",
+      "download": {
+        "type": "me.him188.ani.datasources.api.topic.ResourceLocation.HttpStreamingFile",
+        "uri": "https://fixture.invalid/media-365f4d8e5a450df3dd37bbf6"
+      },
+      "originalTitle": "在超市后门吸烟的二人 第9集",
+      "publishedTime": 0,
+      "properties": {
+        "subjectName": "在超市后门吸烟的二人",
+        "episodeName": "第9集",
+        "subtitleLanguageIds": [
+          "CHS"
+        ],
+        "resolution": "1080P",
+        "alliance": "播放Ⅳ",
+        "size": -9223372036854775808,
+        "subtitleKind": "EMBEDDED"
+      },
+      "episodeRange": {
+        "type": "me.him188.ani.datasources.api.topic.EpisodeRange.Single",
+        "value": {
+          "type": "me.him188.ani.datasources.api.EpisodeSort.Normal",
+          "number": 9.0
+        }
+      },
+      "extraFiles": {
+        "subtitles": []
+      },
+      "location": "ONLINE",
+      "kind": "WEB"
+    },
+    {
+      "mediaId": "media-e9d0156520751870b904d6e8",
+      "mediaSourceId": "1b96801a-2fa9-4ac8-be97-5258da3f44d7",
+      "originalUrl": "https://fixture.invalid/media-e9d0156520751870b904d6e8",
+      "download": {
+        "type": "me.him188.ani.datasources.api.topic.ResourceLocation.HttpStreamingFile",
+        "uri": "https://fixture.invalid/media-e9d0156520751870b904d6e8"
+      },
+      "originalTitle": "在超市后门吸烟的二人 第9集",
+      "publishedTime": 0,
+      "properties": {
+        "subjectName": "在超市后门吸烟的二人",
+        "episodeName": "第9集",
+        "subtitleLanguageIds": [
+          "CHS"
+        ],
+        "resolution": "1080P",
+        "alliance": "播放Ⅴ",
+        "size": -9223372036854775808,
+        "subtitleKind": "EMBEDDED"
+      },
+      "episodeRange": {
+        "type": "me.him188.ani.datasources.api.topic.EpisodeRange.Single",
+        "value": {
+          "type": "me.him188.ani.datasources.api.EpisodeSort.Normal",
+          "number": 9.0
+        }
+      },
+      "extraFiles": {
+        "subtitles": []
+      },
+      "location": "ONLINE",
+      "kind": "WEB"
+    },
+    {
+      "mediaId": "media-83d94082031032738bc18a92",
+      "mediaSourceId": "1b96801a-2fa9-4ac8-be97-5258da3f44d7",
+      "originalUrl": "https://fixture.invalid/media-83d94082031032738bc18a92",
+      "download": {
+        "type": "me.him188.ani.datasources.api.topic.ResourceLocation.HttpStreamingFile",
+        "uri": "https://fixture.invalid/media-83d94082031032738bc18a92"
+      },
+      "originalTitle": "在超市后门吸烟的二人 第9集",
+      "publishedTime": 0,
+      "properties": {
+        "subjectName": "在超市后门吸烟的二人",
+        "episodeName": "第9集",
+        "subtitleLanguageIds": [
+          "CHS"
+        ],
+        "resolution": "1080P",
+        "alliance": "播放Ⅵ",
+        "size": -9223372036854775808,
+        "subtitleKind": "EMBEDDED"
+      },
+      "episodeRange": {
+        "type": "me.him188.ani.datasources.api.topic.EpisodeRange.Single",
+        "value": {
+          "type": "me.him188.ani.datasources.api.EpisodeSort.Normal",
+          "number": 9.0
+        }
+      },
+      "extraFiles": {
+        "subtitles": []
+      },
+      "location": "ONLINE",
+      "kind": "WEB"
+    },
+    {
+      "mediaId": "media-cea184e47895e06c4c5ab720",
+      "mediaSourceId": "dmhy",
+      "originalUrl": "https://fixture.invalid/media-cea184e47895e06c4c5ab720",
+      "download": {
+        "type": "me.him188.ani.datasources.api.topic.ResourceLocation.HttpStreamingFile",
+        "uri": "https://fixture.invalid/media-cea184e47895e06c4c5ab720"
+      },
+      "originalTitle": "[LoliHouse] 在超市后门吸烟的二人 / 躲在超市后门抽烟的两人 / Super no Ura de Yani Suu Futari - 09 [WebRip 1080p HEVC-10bit AAC][简繁内封字幕]",
+      "publishedTime": 1788625800000,
+      "properties": {
+        "subjectName": null,
+        "episodeName": null,
+        "subtitleLanguageIds": [
+          "CHS",
+          "CHT"
+        ],
+        "resolution": "1080P",
+        "alliance": "LoliHouse",
+        "size": 319605952,
+        "subtitleKind": "CLOSED"
+      },
+      "episodeRange": {
+        "type": "me.him188.ani.datasources.api.topic.EpisodeRange.Single",
+        "value": {
+          "type": "me.him188.ani.datasources.api.EpisodeSort.Normal",
+          "number": 9.0
+        }
+      },
+      "extraFiles": {
+        "subtitles": []
+      },
+      "location": "ONLINE",
+      "kind": "BitTorrent"
+    },
+    {
+      "mediaId": "media-24642bbf5e12d016c7ac0604",
+      "mediaSourceId": "dmhy",
+      "originalUrl": "https://fixture.invalid/media-24642bbf5e12d016c7ac0604",
+      "download": {
+        "type": "me.him188.ani.datasources.api.topic.ResourceLocation.HttpStreamingFile",
+        "uri": "https://fixture.invalid/media-24642bbf5e12d016c7ac0604"
+      },
+      "originalTitle": "[7³ACG] 躲在超市后门抽烟的两人/Super no Ura de Yani Suu Futari S01 | 01-12 [简繁字幕] WEBRip 1080p AV1 AAC 2.0 (Abema先行播放版)",
+      "publishedTime": 1781280120000,
+      "properties": {
+        "subjectName": null,
+        "episodeName": null,
+        "subtitleLanguageIds": [
+          "CHS",
+          "CHT"
+        ],
+        "resolution": "1080P",
+        "alliance": "简繁字幕",
+        "size": 2684354560,
+        "subtitleKind": "CLOSED"
+      },
+      "episodeRange": {
+        "type": "me.him188.ani.datasources.api.topic.EpisodeRange.Range",
+        "start": {
+          "type": "me.him188.ani.datasources.api.EpisodeSort.Normal",
+          "number": 1.0
+        },
+        "end": {
+          "type": "me.him188.ani.datasources.api.EpisodeSort.Normal",
+          "number": 12.0
+        }
+      },
+      "extraFiles": {
+        "subtitles": []
+      },
+      "location": "ONLINE",
+      "kind": "BitTorrent"
+    },
+    {
+      "mediaId": "media-6fc1d5525c9c8d90cd68e49c",
+      "mediaSourceId": "bf067292-2d24-4dca-aac4-d53808700b03",
+      "originalUrl": "https://fixture.invalid/media-6fc1d5525c9c8d90cd68e49c",
+      "download": {
+        "type": "me.him188.ani.datasources.api.topic.ResourceLocation.HttpStreamingFile",
+        "uri": "https://fixture.invalid/media-6fc1d5525c9c8d90cd68e49c"
+      },
+      "originalTitle": "在超市后门吸烟的二人 第9集",
+      "publishedTime": 0,
+      "properties": {
+        "subjectName": "在超市后门吸烟的二人",
+        "episodeName": "第9集",
+        "subtitleLanguageIds": [
+          "CHS"
+        ],
+        "resolution": "1080P",
+        "alliance": "在线",
+        "size": -9223372036854775808,
+        "subtitleKind": "EMBEDDED"
+      },
+      "episodeRange": {
+        "type": "me.him188.ani.datasources.api.topic.EpisodeRange.Single",
+        "value": {
+          "type": "me.him188.ani.datasources.api.EpisodeSort.Normal",
+          "number": 9.0
+        }
+      },
+      "extraFiles": {
+        "subtitles": []
+      },
+      "location": "ONLINE",
+      "kind": "WEB"
+    },
+    {
+      "mediaId": "media-99db70057b9ef068758d398e",
+      "mediaSourceId": "dmhy",
+      "originalUrl": "https://fixture.invalid/media-99db70057b9ef068758d398e",
+      "download": {
+        "type": "me.him188.ani.datasources.api.topic.ResourceLocation.HttpStreamingFile",
+        "uri": "https://fixture.invalid/media-99db70057b9ef068758d398e"
+      },
+      "originalTitle": "[LoliHouse] 在超市后门吸烟的二人 / Super no Ura de Yani Suu Futari [01-12 先行版合集][WebRip 1080p HEVC-10bit AAC][无字幕]",
+      "publishedTime": 1781097900000,
+      "properties": {
+        "subjectName": null,
+        "episodeName": null,
+        "subtitleLanguageIds": [],
+        "resolution": "1080P",
+        "alliance": "LoliHouse",
+        "size": 2899102976,
+        "subtitleKind": null
+      },
+      "episodeRange": {
+        "type": "me.him188.ani.datasources.api.topic.EpisodeRange.Range",
+        "start": {
+          "type": "me.him188.ani.datasources.api.EpisodeSort.Normal",
+          "number": 1.0
+        },
+        "end": {
+          "type": "me.him188.ani.datasources.api.EpisodeSort.Normal",
+          "number": 12.0
+        }
+      },
+      "extraFiles": {
+        "subtitles": []
+      },
+      "location": "ONLINE",
+      "kind": "BitTorrent"
+    },
+    {
+      "mediaId": "media-6acdff97ded3df132a779540",
+      "mediaSourceId": "ff888bd2-fc1c-4aa3-be29-d302d84b1588",
+      "originalUrl": "https://fixture.invalid/media-6acdff97ded3df132a779540",
+      "download": {
+        "type": "me.him188.ani.datasources.api.topic.ResourceLocation.HttpStreamingFile",
+        "uri": "https://fixture.invalid/media-6acdff97ded3df132a779540"
+      },
+      "originalTitle": "躲在超市后门抽烟的两人 第09集",
+      "publishedTime": 0,
+      "properties": {
+        "subjectName": "躲在超市后门抽烟的两人",
+        "episodeName": "第09集",
+        "subtitleLanguageIds": [
+          "CHS"
+        ],
+        "resolution": "1080P",
+        "alliance": "非凡资源M3U",
+        "size": -9223372036854775808,
+        "subtitleKind": "EMBEDDED"
+      },
+      "episodeRange": {
+        "type": "me.him188.ani.datasources.api.topic.EpisodeRange.Single",
+        "value": {
+          "type": "me.him188.ani.datasources.api.EpisodeSort.Normal",
+          "number": 9.0
+        }
+      },
+      "extraFiles": {
+        "subtitles": []
+      },
+      "location": "ONLINE",
+      "kind": "WEB"
+    },
+    {
+      "mediaId": "media-313e4ddec0d4893c9b365fcd",
+      "mediaSourceId": "2406da2f-695c-4cea-869b-fd7ca8aa3a9f",
+      "originalUrl": "https://fixture.invalid/media-313e4ddec0d4893c9b365fcd",
+      "download": {
+        "type": "me.him188.ani.datasources.api.topic.ResourceLocation.HttpStreamingFile",
+        "uri": "https://fixture.invalid/media-313e4ddec0d4893c9b365fcd"
+      },
+      "originalTitle": "躲在超市后门抽烟的两人 第09集",
+      "publishedTime": 0,
+      "properties": {
+        "subjectName": "躲在超市后门抽烟的两人",
+        "episodeName": "第09集",
+        "subtitleLanguageIds": [
+          "CHS"
+        ],
+        "resolution": "1080P",
+        "alliance": "线路3",
+        "size": -9223372036854775808,
+        "subtitleKind": "EMBEDDED"
+      },
+      "episodeRange": {
+        "type": "me.him188.ani.datasources.api.topic.EpisodeRange.Single",
+        "value": {
+          "type": "me.him188.ani.datasources.api.EpisodeSort.Normal",
+          "number": 9.0
+        }
+      },
+      "extraFiles": {
+        "subtitles": []
+      },
+      "location": "ONLINE",
+      "kind": "WEB"
+    },
+    {
+      "mediaId": "media-ab50b06bd3fda5be1e7bf975",
+      "mediaSourceId": "2406da2f-695c-4cea-869b-fd7ca8aa3a9f",
+      "originalUrl": "https://fixture.invalid/media-ab50b06bd3fda5be1e7bf975",
+      "download": {
+        "type": "me.him188.ani.datasources.api.topic.ResourceLocation.HttpStreamingFile",
+        "uri": "https://fixture.invalid/media-ab50b06bd3fda5be1e7bf975"
+      },
+      "originalTitle": "躲在超市后门抽烟的两人 第09集",
+      "publishedTime": 0,
+      "properties": {
+        "subjectName": "躲在超市后门抽烟的两人",
+        "episodeName": "第09集",
+        "subtitleLanguageIds": [
+          "CHS"
+        ],
+        "resolution": "1080P",
+        "alliance": "EDD动漫",
+        "size": -9223372036854775808,
+        "subtitleKind": "EMBEDDED"
+      },
+      "episodeRange": {
+        "type": "me.him188.ani.datasources.api.topic.EpisodeRange.Single",
+        "value": {
+          "type": "me.him188.ani.datasources.api.EpisodeSort.Normal",
+          "number": 9.0
+        }
+      },
+      "extraFiles": {
+        "subtitles": []
+      },
+      "location": "ONLINE",
+      "kind": "WEB"
+    },
+    {
+      "mediaId": "media-0e3b53672fea21e590152509",
+      "mediaSourceId": "2406da2f-695c-4cea-869b-fd7ca8aa3a9f",
+      "originalUrl": "https://fixture.invalid/media-0e3b53672fea21e590152509",
+      "download": {
+        "type": "me.him188.ani.datasources.api.topic.ResourceLocation.HttpStreamingFile",
+        "uri": "https://fixture.invalid/media-0e3b53672fea21e590152509"
+      },
+      "originalTitle": "躲在超市后门抽烟的两人 第9集",
+      "publishedTime": 0,
+      "properties": {
+        "subjectName": "躲在超市后门抽烟的两人",
+        "episodeName": "第9集",
+        "subtitleLanguageIds": [
+          "CHS"
+        ],
+        "resolution": "1080P",
+        "alliance": "极速在线",
+        "size": -9223372036854775808,
+        "subtitleKind": "EMBEDDED"
+      },
+      "episodeRange": {
+        "type": "me.him188.ani.datasources.api.topic.EpisodeRange.Single",
+        "value": {
+          "type": "me.him188.ani.datasources.api.EpisodeSort.Normal",
+          "number": 9.0
+        }
+      },
+      "extraFiles": {
+        "subtitles": []
+      },
+      "location": "ONLINE",
+      "kind": "WEB"
+    },
+    {
+      "mediaId": "media-3ddc5d52b45b49671b2092bc",
+      "mediaSourceId": "2406da2f-695c-4cea-869b-fd7ca8aa3a9f",
+      "originalUrl": "https://fixture.invalid/media-3ddc5d52b45b49671b2092bc",
+      "download": {
+        "type": "me.him188.ani.datasources.api.topic.ResourceLocation.HttpStreamingFile",
+        "uri": "https://fixture.invalid/media-3ddc5d52b45b49671b2092bc"
+      },
+      "originalTitle": "躲在超市后门抽烟的两人 第9集",
+      "publishedTime": 0,
+      "properties": {
+        "subjectName": "躲在超市后门抽烟的两人",
+        "episodeName": "第9集",
+        "subtitleLanguageIds": [
+          "CHS"
+        ],
+        "resolution": "1080P",
+        "alliance": "海外专线",
+        "size": -9223372036854775808,
+        "subtitleKind": "EMBEDDED"
+      },
+      "episodeRange": {
+        "type": "me.him188.ani.datasources.api.topic.EpisodeRange.Single",
+        "value": {
+          "type": "me.him188.ani.datasources.api.EpisodeSort.Normal",
+          "number": 9.0
+        }
+      },
+      "extraFiles": {
+        "subtitles": []
+      },
+      "location": "ONLINE",
+      "kind": "WEB"
+    },
+    {
+      "mediaId": "media-db8465f95b3697ce0506a5ef",
+      "mediaSourceId": "2406da2f-695c-4cea-869b-fd7ca8aa3a9f",
+      "originalUrl": "https://fixture.invalid/media-db8465f95b3697ce0506a5ef",
+      "download": {
+        "type": "me.him188.ani.datasources.api.topic.ResourceLocation.HttpStreamingFile",
+        "uri": "https://fixture.invalid/media-db8465f95b3697ce0506a5ef"
+      },
+      "originalTitle": "躲在超市后门抽烟的两人 第09集",
+      "publishedTime": 0,
+      "properties": {
+        "subjectName": "躲在超市后门抽烟的两人",
+        "episodeName": "第09集",
+        "subtitleLanguageIds": [
+          "CHS"
+        ],
+        "resolution": "1080P",
+        "alliance": "高清在线",
+        "size": -9223372036854775808,
+        "subtitleKind": "EMBEDDED"
+      },
+      "episodeRange": {
+        "type": "me.him188.ani.datasources.api.topic.EpisodeRange.Single",
+        "value": {
+          "type": "me.him188.ani.datasources.api.EpisodeSort.Normal",
+          "number": 9.0
+        }
+      },
+      "extraFiles": {
+        "subtitles": []
+      },
+      "location": "ONLINE",
+      "kind": "WEB"
+    },
+    {
+      "mediaId": "media-48a1e8ffab0f02acf8193c2f",
+      "mediaSourceId": "2355e16c-8737-42ea-aa58-140251822359",
+      "originalUrl": "https://fixture.invalid/media-48a1e8ffab0f02acf8193c2f",
+      "download": {
+        "type": "me.him188.ani.datasources.api.topic.ResourceLocation.HttpStreamingFile",
+        "uri": "https://fixture.invalid/media-48a1e8ffab0f02acf8193c2f"
+      },
+      "originalTitle": "[LoliHouse] 在超市后门吸烟的二人 / 躲在超市后门抽烟的两人 / Super no Ura de Yani Suu Futari - 09 [WebRip 1080p HEVC-10bit AAC][简繁内封字幕]",
+      "publishedTime": 1788593400000,
+      "properties": {
+        "subjectName": null,
+        "episodeName": null,
+        "subtitleLanguageIds": [
+          "CHS",
+          "CHT"
+        ],
+        "resolution": "1080P",
+        "alliance": "LoliHouse",
+        "size": 319605760,
+        "subtitleKind": "CLOSED"
+      },
+      "episodeRange": {
+        "type": "me.him188.ani.datasources.api.topic.EpisodeRange.Single",
+        "value": {
+          "type": "me.him188.ani.datasources.api.EpisodeSort.Normal",
+          "number": 9.0
+        }
+      },
+      "extraFiles": {
+        "subtitles": []
+      },
+      "location": "ONLINE",
+      "kind": "BitTorrent"
+    },
+    {
+      "mediaId": "media-cefaef7a39df473d1e37a7ba",
+      "mediaSourceId": "2355e16c-8737-42ea-aa58-140251822359",
+      "originalUrl": "https://fixture.invalid/media-cefaef7a39df473d1e37a7ba",
+      "download": {
+        "type": "me.him188.ani.datasources.api.topic.ResourceLocation.HttpStreamingFile",
+        "uri": "https://fixture.invalid/media-cefaef7a39df473d1e37a7ba"
+      },
+      "originalTitle": "[黒ネズミたち] 躲在超市後門抽菸的兩人 / Super no Ura de Yani Suu Futari - 09 (CR 1920x1080 AVC AAC MKV)",
+      "publishedTime": 1788418871000,
+      "properties": {
+        "subjectName": null,
+        "episodeName": null,
+        "subtitleLanguageIds": [],
+        "resolution": "1080P",
+        "alliance": "黒ネズミたち",
+        "size": 1105953792,
+        "subtitleKind": null
+      },
+      "episodeRange": {
+        "type": "me.him188.ani.datasources.api.topic.EpisodeRange.Single",
+        "value": {
+          "type": "me.him188.ani.datasources.api.EpisodeSort.Normal",
+          "number": 9.0
+        }
+      },
+      "extraFiles": {
+        "subtitles": []
+      },
+      "location": "ONLINE",
+      "kind": "BitTorrent"
+    },
+    {
+      "mediaId": "media-c17e7cb423c199a335e64b7c",
+      "mediaSourceId": "2355e16c-8737-42ea-aa58-140251822359",
+      "originalUrl": "https://fixture.invalid/media-c17e7cb423c199a335e64b7c",
+      "download": {
+        "type": "me.him188.ani.datasources.api.topic.ResourceLocation.HttpStreamingFile",
+        "uri": "https://fixture.invalid/media-c17e7cb423c199a335e64b7c"
+      },
+      "originalTitle": "[黒ネズミたち] 躲在超市後門抽菸的兩人 / Super no Ura de Yani Suu Futari - 09 (ABEMA 1920x1080 AVC AAC MKV)",
+      "publishedTime": 1788418854000,
+      "properties": {
+        "subjectName": null,
+        "episodeName": null,
+        "subtitleLanguageIds": [],
+        "resolution": "1080P",
+        "alliance": "黒ネズミたち",
+        "size": 787878912,
+        "subtitleKind": null
+      },
+      "episodeRange": {
+        "type": "me.him188.ani.datasources.api.topic.EpisodeRange.Single",
+        "value": {
+          "type": "me.him188.ani.datasources.api.EpisodeSort.Normal",
+          "number": 9.0
+        }
+      },
+      "extraFiles": {
+        "subtitles": []
+      },
+      "location": "ONLINE",
+      "kind": "BitTorrent"
+    },
+    {
+      "mediaId": "media-7683ca4b57cbe14d6e44972c",
+      "mediaSourceId": "2355e16c-8737-42ea-aa58-140251822359",
+      "originalUrl": "https://fixture.invalid/media-7683ca4b57cbe14d6e44972c",
+      "download": {
+        "type": "me.him188.ani.datasources.api.topic.ResourceLocation.HttpStreamingFile",
+        "uri": "https://fixture.invalid/media-7683ca4b57cbe14d6e44972c"
+      },
+      "originalTitle": "[黒ネズミたち] 躲在超市後門抽菸的兩人 / Super no Ura de Yani Suu Futari - 09 (ABEMA 1920x1080 AVC AAC MKV)",
+      "publishedTime": 1781837429000,
+      "properties": {
+        "subjectName": null,
+        "episodeName": null,
+        "subtitleLanguageIds": [],
+        "resolution": "1080P",
+        "alliance": "黒ネズミたち",
+        "size": 294282240,
+        "subtitleKind": null
+      },
+      "episodeRange": {
+        "type": "me.him188.ani.datasources.api.topic.EpisodeRange.Single",
+        "value": {
+          "type": "me.him188.ani.datasources.api.EpisodeSort.Normal",
+          "number": 9.0
+        }
+      },
+      "extraFiles": {
+        "subtitles": []
+      },
+      "location": "ONLINE",
+      "kind": "BitTorrent"
+    },
+    {
+      "mediaId": "media-bfa1e679a19e59b94856b556",
+      "mediaSourceId": "104d2594-4202-4bcc-b4da-9b03d99558e2",
+      "originalUrl": "https://fixture.invalid/media-bfa1e679a19e59b94856b556",
+      "download": {
+        "type": "me.him188.ani.datasources.api.topic.ResourceLocation.HttpStreamingFile",
+        "uri": "https://fixture.invalid/media-bfa1e679a19e59b94856b556"
+      },
+      "originalTitle": "躲在超市后门抽烟的两人 第9集",
+      "publishedTime": 0,
+      "properties": {
+        "subjectName": "躲在超市后门抽烟的两人",
+        "episodeName": "第9集",
+        "subtitleLanguageIds": [
+          "CHS"
+        ],
+        "resolution": "1080P",
+        "alliance": "叽哔3线",
+        "size": -9223372036854775808,
+        "subtitleKind": "EMBEDDED"
+      },
+      "episodeRange": {
+        "type": "me.him188.ani.datasources.api.topic.EpisodeRange.Single",
+        "value": {
+          "type": "me.him188.ani.datasources.api.EpisodeSort.Normal",
+          "number": 9.0
+        }
+      },
+      "extraFiles": {
+        "subtitles": []
+      },
+      "location": "ONLINE",
+      "kind": "WEB"
+    },
+    {
+      "mediaId": "media-baade21e997d50f37a1edbaf",
+      "mediaSourceId": "104d2594-4202-4bcc-b4da-9b03d99558e2",
+      "originalUrl": "https://fixture.invalid/media-baade21e997d50f37a1edbaf",
+      "download": {
+        "type": "me.him188.ani.datasources.api.topic.ResourceLocation.HttpStreamingFile",
+        "uri": "https://fixture.invalid/media-baade21e997d50f37a1edbaf"
+      },
+      "originalTitle": "躲在超市后门抽烟的两人 第9集",
+      "publishedTime": 0,
+      "properties": {
+        "subjectName": "躲在超市后门抽烟的两人",
+        "episodeName": "第9集",
+        "subtitleLanguageIds": [
+          "CHS"
+        ],
+        "resolution": "1080P",
+        "alliance": "叽哔1线",
+        "size": -9223372036854775808,
+        "subtitleKind": "EMBEDDED"
+      },
+      "episodeRange": {
+        "type": "me.him188.ani.datasources.api.topic.EpisodeRange.Single",
+        "value": {
+          "type": "me.him188.ani.datasources.api.EpisodeSort.Normal",
+          "number": 9.0
+        }
+      },
+      "extraFiles": {
+        "subtitles": []
+      },
+      "location": "ONLINE",
+      "kind": "WEB"
+    },
+    {
+      "mediaId": "media-95945d41407073ebad2e4b68",
+      "mediaSourceId": "104d2594-4202-4bcc-b4da-9b03d99558e2",
+      "originalUrl": "https://fixture.invalid/media-95945d41407073ebad2e4b68",
+      "download": {
+        "type": "me.him188.ani.datasources.api.topic.ResourceLocation.HttpStreamingFile",
+        "uri": "https://fixture.invalid/media-95945d41407073ebad2e4b68"
+      },
+      "originalTitle": "躲在超市后门抽烟的两人 第09集",
+      "publishedTime": 0,
+      "properties": {
+        "subjectName": "躲在超市后门抽烟的两人",
+        "episodeName": "第09集",
+        "subtitleLanguageIds": [
+          "CHS"
+        ],
+        "resolution": "1080P",
+        "alliance": "无尽③",
+        "size": -9223372036854775808,
+        "subtitleKind": "EMBEDDED"
+      },
+      "episodeRange": {
+        "type": "me.him188.ani.datasources.api.topic.EpisodeRange.Single",
+        "value": {
+          "type": "me.him188.ani.datasources.api.EpisodeSort.Normal",
+          "number": 9.0
+        }
+      },
+      "extraFiles": {
+        "subtitles": []
+      },
+      "location": "ONLINE",
+      "kind": "WEB"
+    },
+    {
+      "mediaId": "media-f626707511615781e2ca3bdb",
+      "mediaSourceId": "104d2594-4202-4bcc-b4da-9b03d99558e2",
+      "originalUrl": "https://fixture.invalid/media-f626707511615781e2ca3bdb",
+      "download": {
+        "type": "me.him188.ani.datasources.api.topic.ResourceLocation.HttpStreamingFile",
+        "uri": "https://fixture.invalid/media-f626707511615781e2ca3bdb"
+      },
+      "originalTitle": "躲在超市后门抽烟的两人 第9集",
+      "publishedTime": 0,
+      "properties": {
+        "subjectName": "躲在超市后门抽烟的两人",
+        "episodeName": "第9集",
+        "subtitleLanguageIds": [
+          "CHS"
+        ],
+        "resolution": "1080P",
+        "alliance": "叽哔4线",
+        "size": -9223372036854775808,
+        "subtitleKind": "EMBEDDED"
+      },
+      "episodeRange": {
+        "type": "me.him188.ani.datasources.api.topic.EpisodeRange.Single",
+        "value": {
+          "type": "me.him188.ani.datasources.api.EpisodeSort.Normal",
+          "number": 9.0
+        }
+      },
+      "extraFiles": {
+        "subtitles": []
+      },
+      "location": "ONLINE",
+      "kind": "WEB"
+    },
+    {
+      "mediaId": "media-54d472d2dad0d5297cb59c02",
+      "mediaSourceId": "02953f1e-fbfd-438b-b3bf-c4dad6a346d4",
+      "originalUrl": "https://fixture.invalid/media-54d472d2dad0d5297cb59c02",
+      "download": {
+        "type": "me.him188.ani.datasources.api.topic.ResourceLocation.HttpStreamingFile",
+        "uri": "https://fixture.invalid/media-54d472d2dad0d5297cb59c02"
+      },
+      "originalTitle": "在超市后门吸烟的二人 第09集",
+      "publishedTime": 0,
+      "properties": {
+        "subjectName": "在超市后门吸烟的二人",
+        "episodeName": "第09集",
+        "subtitleLanguageIds": [
+          "CHS"
+        ],
+        "resolution": "1080P",
+        "alliance": "新番主线①",
+        "size": -9223372036854775808,
+        "subtitleKind": "EMBEDDED"
+      },
+      "episodeRange": {
+        "type": "me.him188.ani.datasources.api.topic.EpisodeRange.Single",
+        "value": {
+          "type": "me.him188.ani.datasources.api.EpisodeSort.Normal",
+          "number": 9.0
+        }
+      },
+      "extraFiles": {
+        "subtitles": []
+      },
+      "location": "ONLINE",
+      "kind": "WEB"
+    },
+    {
+      "mediaId": "media-3b99122156a24d380a6dbf45",
+      "mediaSourceId": "02953f1e-fbfd-438b-b3bf-c4dad6a346d4",
+      "originalUrl": "https://fixture.invalid/media-3b99122156a24d380a6dbf45",
+      "download": {
+        "type": "me.him188.ani.datasources.api.topic.ResourceLocation.HttpStreamingFile",
+        "uri": "https://fixture.invalid/media-3b99122156a24d380a6dbf45"
+      },
+      "originalTitle": "在超市后门吸烟的二人 第09集",
+      "publishedTime": 0,
+      "properties": {
+        "subjectName": "在超市后门吸烟的二人",
+        "episodeName": "第09集",
+        "subtitleLanguageIds": [
+          "CHS"
+        ],
+        "resolution": "1080P",
+        "alliance": "新番主线②",
+        "size": -9223372036854775808,
+        "subtitleKind": "EMBEDDED"
+      },
+      "episodeRange": {
+        "type": "me.him188.ani.datasources.api.topic.EpisodeRange.Single",
+        "value": {
+          "type": "me.him188.ani.datasources.api.EpisodeSort.Normal",
+          "number": 9.0
+        }
+      },
+      "extraFiles": {
+        "subtitles": []
+      },
+      "location": "ONLINE",
+      "kind": "WEB"
+    },
+    {
+      "mediaId": "media-2351bd997fbf23a5e846bd6b",
+      "mediaSourceId": "02953f1e-fbfd-438b-b3bf-c4dad6a346d4",
+      "originalUrl": "https://fixture.invalid/media-2351bd997fbf23a5e846bd6b",
+      "download": {
+        "type": "me.him188.ani.datasources.api.topic.ResourceLocation.HttpStreamingFile",
+        "uri": "https://fixture.invalid/media-2351bd997fbf23a5e846bd6b"
+      },
+      "originalTitle": "在超市后门吸烟的二人 第09集",
+      "publishedTime": 0,
+      "properties": {
+        "subjectName": "在超市后门吸烟的二人",
+        "episodeName": "第09集",
+        "subtitleLanguageIds": [
+          "CHS"
+        ],
+        "resolution": "1080P",
+        "alliance": "备用①",
+        "size": -9223372036854775808,
+        "subtitleKind": "EMBEDDED"
+      },
+      "episodeRange": {
+        "type": "me.him188.ani.datasources.api.topic.EpisodeRange.Single",
+        "value": {
+          "type": "me.him188.ani.datasources.api.EpisodeSort.Normal",
+          "number": 9.0
+        }
+      },
+      "extraFiles": {
+        "subtitles": []
+      },
+      "location": "ONLINE",
+      "kind": "WEB"
+    },
+    {
+      "mediaId": "media-975eb9db0610d282478e5517",
+      "mediaSourceId": "419b2d59-be72-436c-9c28-6960bcb9809a",
+      "originalUrl": "https://fixture.invalid/media-975eb9db0610d282478e5517",
+      "download": {
+        "type": "me.him188.ani.datasources.api.topic.ResourceLocation.HttpStreamingFile",
+        "uri": "https://fixture.invalid/media-975eb9db0610d282478e5517"
+      },
+      "originalTitle": "躲在超市后门抽烟的两人 第09集",
+      "publishedTime": 0,
+      "properties": {
+        "subjectName": "躲在超市后门抽烟的两人",
+        "episodeName": "第09集",
+        "subtitleLanguageIds": [
+          "CHS"
+        ],
+        "resolution": "1080P",
+        "alliance": "线路3",
+        "size": -9223372036854775808,
+        "subtitleKind": "EMBEDDED"
+      },
+      "episodeRange": {
+        "type": "me.him188.ani.datasources.api.topic.EpisodeRange.Single",
+        "value": {
+          "type": "me.him188.ani.datasources.api.EpisodeSort.Normal",
+          "number": 9.0
+        }
+      },
+      "extraFiles": {
+        "subtitles": []
+      },
+      "location": "ONLINE",
+      "kind": "WEB"
+    },
+    {
+      "mediaId": "media-66dc5c841547a650ed570638",
+      "mediaSourceId": "419b2d59-be72-436c-9c28-6960bcb9809a",
+      "originalUrl": "https://fixture.invalid/media-66dc5c841547a650ed570638",
+      "download": {
+        "type": "me.him188.ani.datasources.api.topic.ResourceLocation.HttpStreamingFile",
+        "uri": "https://fixture.invalid/media-66dc5c841547a650ed570638"
+      },
+      "originalTitle": "躲在超市后门抽烟的两人 第09集",
+      "publishedTime": 0,
+      "properties": {
+        "subjectName": "躲在超市后门抽烟的两人",
+        "episodeName": "第09集",
+        "subtitleLanguageIds": [
+          "CHS"
+        ],
+        "resolution": "1080P",
+        "alliance": "EDD",
+        "size": -9223372036854775808,
+        "subtitleKind": "EMBEDDED"
+      },
+      "episodeRange": {
+        "type": "me.him188.ani.datasources.api.topic.EpisodeRange.Single",
+        "value": {
+          "type": "me.him188.ani.datasources.api.EpisodeSort.Normal",
+          "number": 9.0
+        }
+      },
+      "extraFiles": {
+        "subtitles": []
+      },
+      "location": "ONLINE",
+      "kind": "WEB"
+    },
+    {
+      "mediaId": "media-58a11dac829d2e690ee90068",
+      "mediaSourceId": "419b2d59-be72-436c-9c28-6960bcb9809a",
+      "originalUrl": "https://fixture.invalid/media-58a11dac829d2e690ee90068",
+      "download": {
+        "type": "me.him188.ani.datasources.api.topic.ResourceLocation.HttpStreamingFile",
+        "uri": "https://fixture.invalid/media-58a11dac829d2e690ee90068"
+      },
+      "originalTitle": "躲在超市后门抽烟的两人 第9集",
+      "publishedTime": 0,
+      "properties": {
+        "subjectName": "躲在超市后门抽烟的两人",
+        "episodeName": "第9集",
+        "subtitleLanguageIds": [
+          "CHS"
+        ],
+        "resolution": "1080P",
+        "alliance": "极速在线",
+        "size": -9223372036854775808,
+        "subtitleKind": "EMBEDDED"
+      },
+      "episodeRange": {
+        "type": "me.him188.ani.datasources.api.topic.EpisodeRange.Single",
+        "value": {
+          "type": "me.him188.ani.datasources.api.EpisodeSort.Normal",
+          "number": 9.0
+        }
+      },
+      "extraFiles": {
+        "subtitles": []
+      },
+      "location": "ONLINE",
+      "kind": "WEB"
+    },
+    {
+      "mediaId": "media-5d36fcfbdf1700efb1b8585d",
+      "mediaSourceId": "419b2d59-be72-436c-9c28-6960bcb9809a",
+      "originalUrl": "https://fixture.invalid/media-5d36fcfbdf1700efb1b8585d",
+      "download": {
+        "type": "me.him188.ani.datasources.api.topic.ResourceLocation.HttpStreamingFile",
+        "uri": "https://fixture.invalid/media-5d36fcfbdf1700efb1b8585d"
+      },
+      "originalTitle": "躲在超市后门抽烟的两人 第9集",
+      "publishedTime": 0,
+      "properties": {
+        "subjectName": "躲在超市后门抽烟的两人",
+        "episodeName": "第9集",
+        "subtitleLanguageIds": [
+          "CHS"
+        ],
+        "resolution": "1080P",
+        "alliance": "海外专线",
+        "size": -9223372036854775808,
+        "subtitleKind": "EMBEDDED"
+      },
+      "episodeRange": {
+        "type": "me.him188.ani.datasources.api.topic.EpisodeRange.Single",
+        "value": {
+          "type": "me.him188.ani.datasources.api.EpisodeSort.Normal",
+          "number": 9.0
+        }
+      },
+      "extraFiles": {
+        "subtitles": []
+      },
+      "location": "ONLINE",
+      "kind": "WEB"
+    },
+    {
+      "mediaId": "media-8444ad1621a72f4a4cd3a7f2",
+      "mediaSourceId": "419b2d59-be72-436c-9c28-6960bcb9809a",
+      "originalUrl": "https://fixture.invalid/media-8444ad1621a72f4a4cd3a7f2",
+      "download": {
+        "type": "me.him188.ani.datasources.api.topic.ResourceLocation.HttpStreamingFile",
+        "uri": "https://fixture.invalid/media-8444ad1621a72f4a4cd3a7f2"
+      },
+      "originalTitle": "躲在超市后门抽烟的两人 第09集",
+      "publishedTime": 0,
+      "properties": {
+        "subjectName": "躲在超市后门抽烟的两人",
+        "episodeName": "第09集",
+        "subtitleLanguageIds": [
+          "CHS"
+        ],
+        "resolution": "1080P",
+        "alliance": "高清在线",
+        "size": -9223372036854775808,
+        "subtitleKind": "EMBEDDED"
+      },
+      "episodeRange": {
+        "type": "me.him188.ani.datasources.api.topic.EpisodeRange.Single",
+        "value": {
+          "type": "me.him188.ani.datasources.api.EpisodeSort.Normal",
+          "number": 9.0
+        }
+      },
+      "extraFiles": {
+        "subtitles": []
+      },
+      "location": "ONLINE",
+      "kind": "WEB"
+    },
+    {
+      "mediaId": "media-c9009ba8f2466d0e056d478b",
+      "mediaSourceId": "577f82d8-a01c-45a3-862a-9de2643e2b8f",
+      "originalUrl": "https://fixture.invalid/media-c9009ba8f2466d0e056d478b",
+      "download": {
+        "type": "me.him188.ani.datasources.api.topic.ResourceLocation.HttpStreamingFile",
+        "uri": "https://fixture.invalid/media-c9009ba8f2466d0e056d478b"
+      },
+      "originalTitle": "躲在超市后门抽烟的两人 第9集",
+      "publishedTime": 0,
+      "properties": {
+        "subjectName": "躲在超市后门抽烟的两人",
+        "episodeName": "第9集",
+        "subtitleLanguageIds": [
+          "CHS"
+        ],
+        "resolution": "720P",
+        "alliance": "新浪资源2",
+        "size": -9223372036854775808,
+        "subtitleKind": "EMBEDDED"
+      },
+      "episodeRange": {
+        "type": "me.him188.ani.datasources.api.topic.EpisodeRange.Single",
+        "value": {
+          "type": "me.him188.ani.datasources.api.EpisodeSort.Normal",
+          "number": 9.0
+        }
+      },
+      "extraFiles": {
+        "subtitles": []
+      },
+      "location": "ONLINE",
+      "kind": "WEB"
+    },
+    {
+      "mediaId": "media-92c8bc504d007ec74fb44f0c",
+      "mediaSourceId": "577f82d8-a01c-45a3-862a-9de2643e2b8f",
+      "originalUrl": "https://fixture.invalid/media-92c8bc504d007ec74fb44f0c",
+      "download": {
+        "type": "me.him188.ani.datasources.api.topic.ResourceLocation.HttpStreamingFile",
+        "uri": "https://fixture.invalid/media-92c8bc504d007ec74fb44f0c"
+      },
+      "originalTitle": "躲在超市后门抽烟的两人 第9集",
+      "publishedTime": 0,
+      "properties": {
+        "subjectName": "躲在超市后门抽烟的两人",
+        "episodeName": "第9集",
+        "subtitleLanguageIds": [
+          "CHS"
+        ],
+        "resolution": "720P",
+        "alliance": "番茄1线",
+        "size": -9223372036854775808,
+        "subtitleKind": "EMBEDDED"
+      },
+      "episodeRange": {
+        "type": "me.him188.ani.datasources.api.topic.EpisodeRange.Single",
+        "value": {
+          "type": "me.him188.ani.datasources.api.EpisodeSort.Normal",
+          "number": 9.0
+        }
+      },
+      "extraFiles": {
+        "subtitles": []
+      },
+      "location": "ONLINE",
+      "kind": "WEB"
+    },
+    {
+      "mediaId": "media-f5eb83c8c25a410968e18e97",
+      "mediaSourceId": "577f82d8-a01c-45a3-862a-9de2643e2b8f",
+      "originalUrl": "https://fixture.invalid/media-f5eb83c8c25a410968e18e97",
+      "download": {
+        "type": "me.him188.ani.datasources.api.topic.ResourceLocation.HttpStreamingFile",
+        "uri": "https://fixture.invalid/media-f5eb83c8c25a410968e18e97"
+      },
+      "originalTitle": "躲在超市后门抽烟的两人 第09集",
+      "publishedTime": 0,
+      "properties": {
+        "subjectName": "躲在超市后门抽烟的两人",
+        "episodeName": "第09集",
+        "subtitleLanguageIds": [
+          "CHS"
+        ],
+        "resolution": "720P",
+        "alliance": "无尽③",
+        "size": -9223372036854775808,
+        "subtitleKind": "EMBEDDED"
+      },
+      "episodeRange": {
+        "type": "me.him188.ani.datasources.api.topic.EpisodeRange.Single",
+        "value": {
+          "type": "me.him188.ani.datasources.api.EpisodeSort.Normal",
+          "number": 9.0
+        }
+      },
+      "extraFiles": {
+        "subtitles": []
+      },
+      "location": "ONLINE",
+      "kind": "WEB"
+    },
+    {
+      "mediaId": "media-aeef9dfc1c0fc450edd49cce",
+      "mediaSourceId": "577f82d8-a01c-45a3-862a-9de2643e2b8f",
+      "originalUrl": "https://fixture.invalid/media-aeef9dfc1c0fc450edd49cce",
+      "download": {
+        "type": "me.him188.ani.datasources.api.topic.ResourceLocation.HttpStreamingFile",
+        "uri": "https://fixture.invalid/media-aeef9dfc1c0fc450edd49cce"
+      },
+      "originalTitle": "躲在超市后门抽烟的两人 第9集",
+      "publishedTime": 0,
+      "properties": {
+        "subjectName": "躲在超市后门抽烟的两人",
+        "episodeName": "第9集",
+        "subtitleLanguageIds": [
+          "CHS"
+        ],
+        "resolution": "720P",
+        "alliance": "速播资源1",
+        "size": -9223372036854775808,
+        "subtitleKind": "EMBEDDED"
+      },
+      "episodeRange": {
+        "type": "me.him188.ani.datasources.api.topic.EpisodeRange.Single",
+        "value": {
+          "type": "me.him188.ani.datasources.api.EpisodeSort.Normal",
+          "number": 9.0
+        }
+      },
+      "extraFiles": {
+        "subtitles": []
+      },
+      "location": "ONLINE",
+      "kind": "WEB"
+    },
+    {
+      "mediaId": "media-4481aec51afbb3d308ef1075",
+      "mediaSourceId": "8d036176-2614-4f2c-9e12-2f56af69619f",
+      "originalUrl": "https://fixture.invalid/media-4481aec51afbb3d308ef1075",
+      "download": {
+        "type": "me.him188.ani.datasources.api.topic.ResourceLocation.HttpStreamingFile",
+        "uri": "https://fixture.invalid/media-4481aec51afbb3d308ef1075"
+      },
+      "originalTitle": "躲在超市后门抽烟的两人 第09集",
+      "publishedTime": 0,
+      "properties": {
+        "subjectName": "躲在超市后门抽烟的两人",
+        "episodeName": "第09集",
+        "subtitleLanguageIds": [
+          "CHS"
+        ],
+        "resolution": "1080P",
+        "alliance": "线路1",
+        "size": -9223372036854775808,
+        "subtitleKind": "EMBEDDED"
+      },
+      "episodeRange": {
+        "type": "me.him188.ani.datasources.api.topic.EpisodeRange.Single",
+        "value": {
+          "type": "me.him188.ani.datasources.api.EpisodeSort.Normal",
+          "number": 9.0
+        }
+      },
+      "extraFiles": {
+        "subtitles": []
+      },
+      "location": "ONLINE",
+      "kind": "WEB"
+    },
+    {
+      "mediaId": "media-067e779d33b445856bfd057c",
+      "mediaSourceId": "8d036176-2614-4f2c-9e12-2f56af69619f",
+      "originalUrl": "https://fixture.invalid/media-067e779d33b445856bfd057c",
+      "download": {
+        "type": "me.him188.ani.datasources.api.topic.ResourceLocation.HttpStreamingFile",
+        "uri": "https://fixture.invalid/media-067e779d33b445856bfd057c"
+      },
+      "originalTitle": "躲在超市后门抽烟的两人 第09集",
+      "publishedTime": 0,
+      "properties": {
+        "subjectName": "躲在超市后门抽烟的两人",
+        "episodeName": "第09集",
+        "subtitleLanguageIds": [
+          "CHS"
+        ],
+        "resolution": "1080P",
+        "alliance": "线路2",
+        "size": -9223372036854775808,
+        "subtitleKind": "EMBEDDED"
+      },
+      "episodeRange": {
+        "type": "me.him188.ani.datasources.api.topic.EpisodeRange.Single",
+        "value": {
+          "type": "me.him188.ani.datasources.api.EpisodeSort.Normal",
+          "number": 9.0
+        }
+      },
+      "extraFiles": {
+        "subtitles": []
+      },
+      "location": "ONLINE",
+      "kind": "WEB"
+    },
+    {
+      "mediaId": "media-fcbcff5c62047f42aa274e1b",
+      "mediaSourceId": "8d036176-2614-4f2c-9e12-2f56af69619f",
+      "originalUrl": "https://fixture.invalid/media-fcbcff5c62047f42aa274e1b",
+      "download": {
+        "type": "me.him188.ani.datasources.api.topic.ResourceLocation.HttpStreamingFile",
+        "uri": "https://fixture.invalid/media-fcbcff5c62047f42aa274e1b"
+      },
+      "originalTitle": "躲在超市后门抽烟的两人 第9集",
+      "publishedTime": 0,
+      "properties": {
+        "subjectName": "躲在超市后门抽烟的两人",
+        "episodeName": "第9集",
+        "subtitleLanguageIds": [
+          "CHS"
+        ],
+        "resolution": "1080P",
+        "alliance": "线路3",
+        "size": -9223372036854775808,
+        "subtitleKind": "EMBEDDED"
+      },
+      "episodeRange": {
+        "type": "me.him188.ani.datasources.api.topic.EpisodeRange.Single",
+        "value": {
+          "type": "me.him188.ani.datasources.api.EpisodeSort.Normal",
+          "number": 9.0
+        }
+      },
+      "extraFiles": {
+        "subtitles": []
+      },
+      "location": "ONLINE",
+      "kind": "WEB"
+    },
+    {
+      "mediaId": "media-44030742883fe8bd3eae96a7",
+      "mediaSourceId": "8d036176-2614-4f2c-9e12-2f56af69619f",
+      "originalUrl": "https://fixture.invalid/media-44030742883fe8bd3eae96a7",
+      "download": {
+        "type": "me.him188.ani.datasources.api.topic.ResourceLocation.HttpStreamingFile",
+        "uri": "https://fixture.invalid/media-44030742883fe8bd3eae96a7"
+      },
+      "originalTitle": "躲在超市后门抽烟的两人 第09集",
+      "publishedTime": 0,
+      "properties": {
+        "subjectName": "躲在超市后门抽烟的两人",
+        "episodeName": "第09集",
+        "subtitleLanguageIds": [
+          "CHS"
+        ],
+        "resolution": "1080P",
+        "alliance": "5线",
+        "size": -9223372036854775808,
+        "subtitleKind": "EMBEDDED"
+      },
+      "episodeRange": {
+        "type": "me.him188.ani.datasources.api.topic.EpisodeRange.Single",
+        "value": {
+          "type": "me.him188.ani.datasources.api.EpisodeSort.Normal",
+          "number": 9.0
+        }
+      },
+      "extraFiles": {
+        "subtitles": []
+      },
+      "location": "ONLINE",
+      "kind": "WEB"
+    },
+    {
+      "mediaId": "media-505f90adce955977e5e7b1ab",
+      "mediaSourceId": "8d036176-2614-4f2c-9e12-2f56af69619f",
+      "originalUrl": "https://fixture.invalid/media-505f90adce955977e5e7b1ab",
+      "download": {
+        "type": "me.him188.ani.datasources.api.topic.ResourceLocation.HttpStreamingFile",
+        "uri": "https://fixture.invalid/media-505f90adce955977e5e7b1ab"
+      },
+      "originalTitle": "躲在超市后门抽烟的两人 第09集",
+      "publishedTime": 0,
+      "properties": {
+        "subjectName": "躲在超市后门抽烟的两人",
+        "episodeName": "第09集",
+        "subtitleLanguageIds": [
+          "CHS"
+        ],
+        "resolution": "1080P",
+        "alliance": "线路8",
+        "size": -9223372036854775808,
+        "subtitleKind": "EMBEDDED"
+      },
+      "episodeRange": {
+        "type": "me.him188.ani.datasources.api.topic.EpisodeRange.Single",
+        "value": {
+          "type": "me.him188.ani.datasources.api.EpisodeSort.Normal",
+          "number": 9.0
+        }
+      },
+      "extraFiles": {
+        "subtitles": []
+      },
+      "location": "ONLINE",
+      "kind": "WEB"
+    },
+    {
+      "mediaId": "media-09b6167ebb8d5dd73524f914",
+      "mediaSourceId": "8d036176-2614-4f2c-9e12-2f56af69619f",
+      "originalUrl": "https://fixture.invalid/media-09b6167ebb8d5dd73524f914",
+      "download": {
+        "type": "me.him188.ani.datasources.api.topic.ResourceLocation.HttpStreamingFile",
+        "uri": "https://fixture.invalid/media-09b6167ebb8d5dd73524f914"
+      },
+      "originalTitle": "躲在超市后门抽烟的两人 第09集",
+      "publishedTime": 0,
+      "properties": {
+        "subjectName": "躲在超市后门抽烟的两人",
+        "episodeName": "第09集",
+        "subtitleLanguageIds": [
+          "CHS"
+        ],
+        "resolution": "1080P",
+        "alliance": "线路9",
+        "size": -9223372036854775808,
+        "subtitleKind": "EMBEDDED"
+      },
+      "episodeRange": {
+        "type": "me.him188.ani.datasources.api.topic.EpisodeRange.Single",
+        "value": {
+          "type": "me.him188.ani.datasources.api.EpisodeSort.Normal",
+          "number": 9.0
+        }
+      },
+      "extraFiles": {
+        "subtitles": []
+      },
+      "location": "ONLINE",
+      "kind": "WEB"
+    },
+    {
+      "mediaId": "media-a1b0ad35fb5a3d920c561955",
+      "mediaSourceId": "8d036176-2614-4f2c-9e12-2f56af69619f",
+      "originalUrl": "https://fixture.invalid/media-a1b0ad35fb5a3d920c561955",
+      "download": {
+        "type": "me.him188.ani.datasources.api.topic.ResourceLocation.HttpStreamingFile",
+        "uri": "https://fixture.invalid/media-a1b0ad35fb5a3d920c561955"
+      },
+      "originalTitle": "躲在超市后门抽烟的两人 第09集",
+      "publishedTime": 0,
+      "properties": {
+        "subjectName": "躲在超市后门抽烟的两人",
+        "episodeName": "第09集",
+        "subtitleLanguageIds": [
+          "CHS"
+        ],
+        "resolution": "1080P",
+        "alliance": "线路10",
+        "size": -9223372036854775808,
+        "subtitleKind": "EMBEDDED"
+      },
+      "episodeRange": {
+        "type": "me.him188.ani.datasources.api.topic.EpisodeRange.Single",
+        "value": {
+          "type": "me.him188.ani.datasources.api.EpisodeSort.Normal",
+          "number": 9.0
+        }
+      },
+      "extraFiles": {
+        "subtitles": []
+      },
+      "location": "ONLINE",
+      "kind": "WEB"
+    },
+    {
+      "mediaId": "media-d96e9b6cab3b3612f2cbbcea",
+      "mediaSourceId": "8d036176-2614-4f2c-9e12-2f56af69619f",
+      "originalUrl": "https://fixture.invalid/media-d96e9b6cab3b3612f2cbbcea",
+      "download": {
+        "type": "me.him188.ani.datasources.api.topic.ResourceLocation.HttpStreamingFile",
+        "uri": "https://fixture.invalid/media-d96e9b6cab3b3612f2cbbcea"
+      },
+      "originalTitle": "躲在超市后门抽烟的两人 第9集",
+      "publishedTime": 0,
+      "properties": {
+        "subjectName": "躲在超市后门抽烟的两人",
+        "episodeName": "第9集",
+        "subtitleLanguageIds": [
+          "CHS"
+        ],
+        "resolution": "1080P",
+        "alliance": "线路12",
+        "size": -9223372036854775808,
+        "subtitleKind": "EMBEDDED"
+      },
+      "episodeRange": {
+        "type": "me.him188.ani.datasources.api.topic.EpisodeRange.Single",
+        "value": {
+          "type": "me.him188.ani.datasources.api.EpisodeSort.Normal",
+          "number": 9.0
+        }
+      },
+      "extraFiles": {
+        "subtitles": []
+      },
+      "location": "ONLINE",
+      "kind": "WEB"
+    },
+    {
+      "mediaId": "media-9aab207f0b333f7231025121",
+      "mediaSourceId": "7642d509-20b1-4dd3-b40a-87a344cb12f9",
+      "originalUrl": "https://fixture.invalid/media-9aab207f0b333f7231025121",
+      "download": {
+        "type": "me.him188.ani.datasources.api.topic.ResourceLocation.HttpStreamingFile",
+        "uri": "https://fixture.invalid/media-9aab207f0b333f7231025121"
+      },
+      "originalTitle": "躲在超市后门抽烟的两人 9",
+      "publishedTime": 0,
+      "properties": {
+        "subjectName": "躲在超市后门抽烟的两人",
+        "episodeName": "9",
+        "subtitleLanguageIds": [
+          "CHS"
+        ],
+        "resolution": "1080P",
+        "alliance": "蓝光B",
+        "size": -9223372036854775808,
+        "subtitleKind": "EMBEDDED"
+      },
+      "episodeRange": {
+        "type": "me.him188.ani.datasources.api.topic.EpisodeRange.Single",
+        "value": {
+          "type": "me.him188.ani.datasources.api.EpisodeSort.Normal",
+          "number": 9.0
+        }
+      },
+      "extraFiles": {
+        "subtitles": []
+      },
+      "location": "ONLINE",
+      "kind": "WEB"
+    },
+    {
+      "mediaId": "media-4f4b12fb0bc6dd1bd8a964df",
+      "mediaSourceId": "7642d509-20b1-4dd3-b40a-87a344cb12f9",
+      "originalUrl": "https://fixture.invalid/media-4f4b12fb0bc6dd1bd8a964df",
+      "download": {
+        "type": "me.him188.ani.datasources.api.topic.ResourceLocation.HttpStreamingFile",
+        "uri": "https://fixture.invalid/media-4f4b12fb0bc6dd1bd8a964df"
+      },
+      "originalTitle": "躲在超市后门抽烟的两人 第09集",
+      "publishedTime": 0,
+      "properties": {
+        "subjectName": "躲在超市后门抽烟的两人",
+        "episodeName": "第09集",
+        "subtitleLanguageIds": [
+          "CHS"
+        ],
+        "resolution": "1080P",
+        "alliance": "蓝光C",
+        "size": -9223372036854775808,
+        "subtitleKind": "EMBEDDED"
+      },
+      "episodeRange": {
+        "type": "me.him188.ani.datasources.api.topic.EpisodeRange.Single",
+        "value": {
+          "type": "me.him188.ani.datasources.api.EpisodeSort.Normal",
+          "number": 9.0
+        }
+      },
+      "extraFiles": {
+        "subtitles": []
+      },
+      "location": "ONLINE",
+      "kind": "WEB"
+    },
+    {
+      "mediaId": "media-f4c1573719ed735fff9827d0",
+      "mediaSourceId": "7642d509-20b1-4dd3-b40a-87a344cb12f9",
+      "originalUrl": "https://fixture.invalid/media-f4c1573719ed735fff9827d0",
+      "download": {
+        "type": "me.him188.ani.datasources.api.topic.ResourceLocation.HttpStreamingFile",
+        "uri": "https://fixture.invalid/media-f4c1573719ed735fff9827d0"
+      },
+      "originalTitle": "躲在超市后门抽烟的两人 9",
+      "publishedTime": 0,
+      "properties": {
+        "subjectName": "躲在超市后门抽烟的两人",
+        "episodeName": "9",
+        "subtitleLanguageIds": [
+          "CHS"
+        ],
+        "resolution": "1080P",
+        "alliance": "蓝光K",
+        "size": -9223372036854775808,
+        "subtitleKind": "EMBEDDED"
+      },
+      "episodeRange": {
+        "type": "me.him188.ani.datasources.api.topic.EpisodeRange.Single",
+        "value": {
+          "type": "me.him188.ani.datasources.api.EpisodeSort.Normal",
+          "number": 9.0
+        }
+      },
+      "extraFiles": {
+        "subtitles": []
+      },
+      "location": "ONLINE",
+      "kind": "WEB"
+    },
+    {
+      "mediaId": "media-d616bb4cce23a38d88b3cc84",
+      "mediaSourceId": "mikan-mikanime-tv",
+      "originalUrl": "https://fixture.invalid/media-d616bb4cce23a38d88b3cc84",
+      "download": {
+        "type": "me.him188.ani.datasources.api.topic.ResourceLocation.HttpStreamingFile",
+        "uri": "https://fixture.invalid/media-d616bb4cce23a38d88b3cc84"
+      },
+      "originalTitle": "[LoliHouse] 在超市后门吸烟的二人 / 躲在超市后门抽烟的两人 / Super no Ura de Yani Suu Futari - 09 [WebRip 1080p HEVC-10bit AAC][简繁内封字幕]",
+      "publishedTime": 1788625800000,
+      "properties": {
+        "subjectName": null,
+        "episodeName": null,
+        "subtitleLanguageIds": [
+          "CHS",
+          "CHT"
+        ],
+        "resolution": "1080P",
+        "alliance": "LoliHouse",
+        "size": 319605952,
+        "subtitleKind": "CLOSED"
+      },
+      "episodeRange": {
+        "type": "me.him188.ani.datasources.api.topic.EpisodeRange.Single",
+        "value": {
+          "type": "me.him188.ani.datasources.api.EpisodeSort.Normal",
+          "number": 9.0
+        }
+      },
+      "extraFiles": {
+        "subtitles": []
+      },
+      "location": "ONLINE",
+      "kind": "BitTorrent"
+    },
+    {
+      "mediaId": "media-797190d3afd73b70b1fe16b2",
+      "mediaSourceId": "mikan-mikanime-tv",
+      "originalUrl": "https://fixture.invalid/media-797190d3afd73b70b1fe16b2",
+      "download": {
+        "type": "me.him188.ani.datasources.api.topic.ResourceLocation.HttpStreamingFile",
+        "uri": "https://fixture.invalid/media-797190d3afd73b70b1fe16b2"
+      },
+      "originalTitle": "[黒ネズミたち] 躲在超市后门抽烟的两人 / Super no Ura de Yani Suu Futari - 09 (CR 1920x1080 AVC AAC MKV)",
+      "publishedTime": 1788451270729,
+      "properties": {
+        "subjectName": null,
+        "episodeName": null,
+        "subtitleLanguageIds": [],
+        "resolution": "1080P",
+        "alliance": "黒ネズミたち",
+        "size": 1030330752,
+        "subtitleKind": null
+      },
+      "episodeRange": {
+        "type": "me.him188.ani.datasources.api.topic.EpisodeRange.Single",
+        "value": {
+          "type": "me.him188.ani.datasources.api.EpisodeSort.Normal",
+          "number": 9.0
+        }
+      },
+      "extraFiles": {
+        "subtitles": []
+      },
+      "location": "ONLINE",
+      "kind": "BitTorrent"
+    },
+    {
+      "mediaId": "media-886440ee4640cfb9965f6726",
+      "mediaSourceId": "mikan-mikanime-tv",
+      "originalUrl": "https://fixture.invalid/media-886440ee4640cfb9965f6726",
+      "download": {
+        "type": "me.him188.ani.datasources.api.topic.ResourceLocation.HttpStreamingFile",
+        "uri": "https://fixture.invalid/media-886440ee4640cfb9965f6726"
+      },
+      "originalTitle": "[黒ネズミたち] 躲在超市后门抽烟的两人 / Super no Ura de Yani Suu Futari - 09 (ABEMA 1920x1080 AVC AAC MKV)",
+      "publishedTime": 1788451254628,
+      "properties": {
+        "subjectName": null,
+        "episodeName": null,
+        "subtitleLanguageIds": [],
+        "resolution": "1080P",
+        "alliance": "黒ネズミたち",
+        "size": 751409536,
+        "subtitleKind": null
+      },
+      "episodeRange": {
+        "type": "me.him188.ani.datasources.api.topic.EpisodeRange.Single",
+        "value": {
+          "type": "me.him188.ani.datasources.api.EpisodeSort.Normal",
+          "number": 9.0
+        }
+      },
+      "extraFiles": {
+        "subtitles": []
+      },
+      "location": "ONLINE",
+      "kind": "BitTorrent"
+    },
+    {
+      "mediaId": "media-66e556e2926a5186c73d8a43",
+      "mediaSourceId": "mikan-mikanime-tv",
+      "originalUrl": "https://fixture.invalid/media-66e556e2926a5186c73d8a43",
+      "download": {
+        "type": "me.him188.ani.datasources.api.topic.ResourceLocation.HttpStreamingFile",
+        "uri": "https://fixture.invalid/media-66e556e2926a5186c73d8a43"
+      },
+      "originalTitle": "[7³ACG] 躲在超市后门抽烟的两人/Super no Ura de Yani Suu Futari S01 | 01-12 [简繁字幕] WEBRip 1080p AV1 AAC 2.0 (Abema先行播放版)",
+      "publishedTime": 1781792202253,
+      "properties": {
+        "subjectName": null,
+        "episodeName": null,
+        "subtitleLanguageIds": [
+          "CHS",
+          "CHT"
+        ],
+        "resolution": "1080P",
+        "alliance": "7³ACG",
+        "size": 2684354560,
+        "subtitleKind": "CLOSED"
+      },
+      "episodeRange": {
+        "type": "me.him188.ani.datasources.api.topic.EpisodeRange.Range",
+        "start": {
+          "type": "me.him188.ani.datasources.api.EpisodeSort.Normal",
+          "number": 1.0
+        },
+        "end": {
+          "type": "me.him188.ani.datasources.api.EpisodeSort.Normal",
+          "number": 12.0
+        }
+      },
+      "extraFiles": {
+        "subtitles": []
+      },
+      "location": "ONLINE",
+      "kind": "BitTorrent"
+    }
+  ],
+  "events": [
+    {
+      "elapsedMillis": 10,
+      "sources": [
+        {
+          "source": 0,
+          "state": "Succeed",
+          "generation": 0,
+          "media": []
+        },
+        {
+          "source": 1,
+          "state": "Succeed",
+          "generation": 0,
+          "media": []
+        },
+        {
+          "source": 2,
+          "state": "Working",
+          "generation": null,
+          "media": []
+        },
+        {
+          "source": 3,
+          "state": "Working",
+          "generation": null,
+          "media": []
+        },
+        {
+          "source": 4,
+          "state": "Working",
+          "generation": null,
+          "media": []
+        },
+        {
+          "source": 5,
+          "state": "Working",
+          "generation": null,
+          "media": []
+        },
+        {
+          "source": 6,
+          "state": "Working",
+          "generation": null,
+          "media": []
+        },
+        {
+          "source": 7,
+          "state": "Working",
+          "generation": null,
+          "media": []
+        },
+        {
+          "source": 8,
+          "state": "Working",
+          "generation": null,
+          "media": []
+        },
+        {
+          "source": 9,
+          "state": "Working",
+          "generation": null,
+          "media": []
+        },
+        {
+          "source": 10,
+          "state": "Working",
+          "generation": null,
+          "media": []
+        },
+        {
+          "source": 11,
+          "state": "Working",
+          "generation": null,
+          "media": []
+        },
+        {
+          "source": 12,
+          "state": "Working",
+          "generation": null,
+          "media": []
+        },
+        {
+          "source": 13,
+          "state": "Working",
+          "generation": null,
+          "media": []
+        },
+        {
+          "source": 14,
+          "state": "Working",
+          "generation": null,
+          "media": []
+        },
+        {
+          "source": 15,
+          "state": "Working",
+          "generation": null,
+          "media": []
+        },
+        {
+          "source": 16,
+          "state": "Working",
+          "generation": null,
+          "media": []
+        },
+        {
+          "source": 17,
+          "state": "Working",
+          "generation": null,
+          "media": []
+        },
+        {
+          "source": 18,
+          "state": "Working",
+          "generation": null,
+          "media": []
+        },
+        {
+          "source": 19,
+          "state": "Working",
+          "generation": null,
+          "media": []
+        },
+        {
+          "source": 20,
+          "state": "Working",
+          "generation": null,
+          "media": []
+        },
+        {
+          "source": 21,
+          "state": "Working",
+          "generation": null,
+          "media": []
+        },
+        {
+          "source": 22,
+          "state": "Working",
+          "generation": null,
+          "media": []
+        },
+        {
+          "source": 23,
+          "state": "Working",
+          "generation": null,
+          "media": []
+        }
+      ],
+      "selectedMediaId": null
+    },
+    {
+      "elapsedMillis": 10,
+      "sources": [],
+      "selectedMediaId": null,
+      "context": {
+        "subjectFinished": false,
+        "sourcePrecedence": [
+          "local-file-system",
+          "local-file-system",
+          "mikan-mikanime-tv",
+          "dmhy",
+          "e0fa1500-ba3e-4767-b108-cc6f241b5559",
+          "2355e16c-8737-42ea-aa58-140251822359",
+          "02953f1e-fbfd-438b-b3bf-c4dad6a346d4",
+          "c03f162b-a5c0-442c-8834-060ae87669a4",
+          "9bbbef46-7372-4199-853c-95b348113cb6",
+          "104d2594-4202-4bcc-b4da-9b03d99558e2",
+          "2406da2f-695c-4cea-869b-fd7ca8aa3a9f",
+          "474f8053-6293-4472-9816-86e802db7776",
+          "ca0aa9a3-ab41-414e-a4d6-b15411551cf3",
+          "419b2d59-be72-436c-9c28-6960bcb9809a",
+          "1b96801a-2fa9-4ac8-be97-5258da3f44d7",
+          "8d036176-2614-4f2c-9e12-2f56af69619f",
+          "bf067292-2d24-4dca-aac4-d53808700b03",
+          "5d8ce041-086c-4075-8a6c-e9957ec1241c",
+          "577f82d8-a01c-45a3-862a-9de2643e2b8f",
+          "c7c80227-2175-4985-ac2c-5343dd0fa489",
+          "0147498a-84da-4be7-b780-378b03234070",
+          "ff888bd2-fc1c-4aa3-be29-d302d84b1588",
+          "257d123e-9441-424b-924e-abf3e4cef14b",
+          "7642d509-20b1-4dd3-b40a-87a344cb12f9"
+        ],
+        "subtitlePreferences": {
+          "EMBEDDED": "NORMAL",
+          "CLOSED": "HIDE",
+          "EXTERNAL_PROVIDED": "NORMAL",
+          "EXTERNAL_DISCOVER": "HIDE",
+          "CLOSED_OR_EXTERNAL_DISCOVER": "HIDE"
+        },
+        "series": null,
+        "subject": {
+          "id": 571784,
+          "name": "スーパーの裏でヤニ吸うふたり",
+          "nameCn": "在超市后门吸烟的二人",
+          "aliases": [
+            "躲在超市后门抽烟的两人",
+            "Super no Ura de Yani Suu Futari",
+            "Smoking Behind the Supermarket with You"
+          ]
+        },
+        "episode": {
+          "episodeId": 1699268,
+          "type": "MainStory",
+          "name": "スーパーの裏で触れるひとり",
+          "nameCn": "",
+          "airDate": 132778243,
+          "comment": 0,
+          "desc": "",
+          "sort": {
+            "type": "me.him188.ani.datasources.api.EpisodeSort.Normal",
+            "number": 9.0
+          },
+          "ep": {
+            "type": "me.him188.ani.datasources.api.EpisodeSort.Normal",
+            "number": 9.0
+          }
+        },
+        "sourceTiers": null,
+        "channelTiers": null
+      }
+    },
+    {
+      "elapsedMillis": 10,
+      "sources": [],
+      "selectedMediaId": null,
+      "context": {
+        "subjectFinished": false,
+        "sourcePrecedence": [
+          "local-file-system",
+          "local-file-system",
+          "mikan-mikanime-tv",
+          "dmhy",
+          "e0fa1500-ba3e-4767-b108-cc6f241b5559",
+          "2355e16c-8737-42ea-aa58-140251822359",
+          "02953f1e-fbfd-438b-b3bf-c4dad6a346d4",
+          "c03f162b-a5c0-442c-8834-060ae87669a4",
+          "9bbbef46-7372-4199-853c-95b348113cb6",
+          "104d2594-4202-4bcc-b4da-9b03d99558e2",
+          "2406da2f-695c-4cea-869b-fd7ca8aa3a9f",
+          "474f8053-6293-4472-9816-86e802db7776",
+          "ca0aa9a3-ab41-414e-a4d6-b15411551cf3",
+          "419b2d59-be72-436c-9c28-6960bcb9809a",
+          "1b96801a-2fa9-4ac8-be97-5258da3f44d7",
+          "8d036176-2614-4f2c-9e12-2f56af69619f",
+          "bf067292-2d24-4dca-aac4-d53808700b03",
+          "5d8ce041-086c-4075-8a6c-e9957ec1241c",
+          "577f82d8-a01c-45a3-862a-9de2643e2b8f",
+          "c7c80227-2175-4985-ac2c-5343dd0fa489",
+          "0147498a-84da-4be7-b780-378b03234070",
+          "ff888bd2-fc1c-4aa3-be29-d302d84b1588",
+          "257d123e-9441-424b-924e-abf3e4cef14b",
+          "7642d509-20b1-4dd3-b40a-87a344cb12f9"
+        ],
+        "subtitlePreferences": {
+          "EMBEDDED": "NORMAL",
+          "CLOSED": "HIDE",
+          "EXTERNAL_PROVIDED": "NORMAL",
+          "EXTERNAL_DISCOVER": "HIDE",
+          "CLOSED_OR_EXTERNAL_DISCOVER": "HIDE"
+        },
+        "series": {
+          "seasonSort": 1,
+          "sequelNames": [],
+          "otherNames": []
+        },
+        "subject": {
+          "id": 571784,
+          "name": "スーパーの裏でヤニ吸うふたり",
+          "nameCn": "在超市后门吸烟的二人",
+          "aliases": [
+            "躲在超市后门抽烟的两人",
+            "Super no Ura de Yani Suu Futari",
+            "Smoking Behind the Supermarket with You"
+          ]
+        },
+        "episode": {
+          "episodeId": 1699268,
+          "type": "MainStory",
+          "name": "スーパーの裏で触れるひとり",
+          "nameCn": "",
+          "airDate": 132778243,
+          "comment": 0,
+          "desc": "",
+          "sort": {
+            "type": "me.him188.ani.datasources.api.EpisodeSort.Normal",
+            "number": 9.0
+          },
+          "ep": {
+            "type": "me.him188.ani.datasources.api.EpisodeSort.Normal",
+            "number": 9.0
+          }
+        },
+        "sourceTiers": null,
+        "channelTiers": null
+      }
+    },
+    {
+      "elapsedMillis": 11,
+      "sources": [],
+      "selectedMediaId": null,
+      "context": {
+        "subjectFinished": false,
+        "sourcePrecedence": [
+          "local-file-system",
+          "local-file-system",
+          "mikan-mikanime-tv",
+          "dmhy",
+          "e0fa1500-ba3e-4767-b108-cc6f241b5559",
+          "2355e16c-8737-42ea-aa58-140251822359",
+          "02953f1e-fbfd-438b-b3bf-c4dad6a346d4",
+          "c03f162b-a5c0-442c-8834-060ae87669a4",
+          "9bbbef46-7372-4199-853c-95b348113cb6",
+          "104d2594-4202-4bcc-b4da-9b03d99558e2",
+          "2406da2f-695c-4cea-869b-fd7ca8aa3a9f",
+          "474f8053-6293-4472-9816-86e802db7776",
+          "ca0aa9a3-ab41-414e-a4d6-b15411551cf3",
+          "419b2d59-be72-436c-9c28-6960bcb9809a",
+          "1b96801a-2fa9-4ac8-be97-5258da3f44d7",
+          "8d036176-2614-4f2c-9e12-2f56af69619f",
+          "bf067292-2d24-4dca-aac4-d53808700b03",
+          "5d8ce041-086c-4075-8a6c-e9957ec1241c",
+          "577f82d8-a01c-45a3-862a-9de2643e2b8f",
+          "c7c80227-2175-4985-ac2c-5343dd0fa489",
+          "0147498a-84da-4be7-b780-378b03234070",
+          "ff888bd2-fc1c-4aa3-be29-d302d84b1588",
+          "257d123e-9441-424b-924e-abf3e4cef14b",
+          "7642d509-20b1-4dd3-b40a-87a344cb12f9"
+        ],
+        "subtitlePreferences": {
+          "EMBEDDED": "NORMAL",
+          "CLOSED": "HIDE",
+          "EXTERNAL_PROVIDED": "NORMAL",
+          "EXTERNAL_DISCOVER": "HIDE",
+          "CLOSED_OR_EXTERNAL_DISCOVER": "HIDE"
+        },
+        "series": {
+          "seasonSort": 1,
+          "sequelNames": [],
+          "otherNames": []
+        },
+        "subject": {
+          "id": 571784,
+          "name": "スーパーの裏でヤニ吸うふたり",
+          "nameCn": "在超市后门吸烟的二人",
+          "aliases": [
+            "躲在超市后门抽烟的两人",
+            "Super no Ura de Yani Suu Futari",
+            "Smoking Behind the Supermarket with You"
+          ]
+        },
+        "episode": {
+          "episodeId": 1699268,
+          "type": "MainStory",
+          "name": "スーパーの裏で触れるひとり",
+          "nameCn": "",
+          "airDate": 132778243,
+          "comment": 0,
+          "desc": "",
+          "sort": {
+            "type": "me.him188.ani.datasources.api.EpisodeSort.Normal",
+            "number": 9.0
+          },
+          "ep": {
+            "type": "me.him188.ani.datasources.api.EpisodeSort.Normal",
+            "number": 9.0
+          }
+        },
+        "sourceTiers": {
+          "local-file-system": 2,
+          "mikan-mikanime-tv": 2,
+          "dmhy": 2,
+          "e0fa1500-ba3e-4767-b108-cc6f241b5559": 2,
+          "2355e16c-8737-42ea-aa58-140251822359": 2,
+          "02953f1e-fbfd-438b-b3bf-c4dad6a346d4": 0,
+          "c03f162b-a5c0-442c-8834-060ae87669a4": 0,
+          "9bbbef46-7372-4199-853c-95b348113cb6": 1,
+          "104d2594-4202-4bcc-b4da-9b03d99558e2": 3,
+          "2406da2f-695c-4cea-869b-fd7ca8aa3a9f": 3,
+          "474f8053-6293-4472-9816-86e802db7776": 3,
+          "ca0aa9a3-ab41-414e-a4d6-b15411551cf3": 3,
+          "419b2d59-be72-436c-9c28-6960bcb9809a": 3,
+          "1b96801a-2fa9-4ac8-be97-5258da3f44d7": 4,
+          "8d036176-2614-4f2c-9e12-2f56af69619f": 4,
+          "bf067292-2d24-4dca-aac4-d53808700b03": 4,
+          "5d8ce041-086c-4075-8a6c-e9957ec1241c": 4,
+          "577f82d8-a01c-45a3-862a-9de2643e2b8f": 4,
+          "c7c80227-2175-4985-ac2c-5343dd0fa489": 4,
+          "0147498a-84da-4be7-b780-378b03234070": 4,
+          "ff888bd2-fc1c-4aa3-be29-d302d84b1588": 4,
+          "257d123e-9441-424b-924e-abf3e4cef14b": 4,
+          "7642d509-20b1-4dd3-b40a-87a344cb12f9": 4
+        },
+        "channelTiers": {
+          "02953f1e-fbfd-438b-b3bf-c4dad6a346d4": {
+            "新番主线②": 0,
+            "新番主线①": 0,
+            "旧番主线①": 1,
+            "备用①": 6
+          },
+          "c03f162b-a5c0-442c-8834-060ae87669a4": {
+            "简中": 1,
+            "繁中": 2,
+            "杜比": 6
+          },
+          "9bbbef46-7372-4199-853c-95b348113cb6": {
+            "超清A": 0,
+            "超清C": 0,
+            "超清G": 5,
+            "超清E": 6,
+            "超清K": 6
+          },
+          "104d2594-4202-4bcc-b4da-9b03d99558e2": {
+            "叽哔1线": 5,
+            "叽哔3线": 5,
+            "叽哔4线": 5,
+            "叽哔2线": 6,
+            "无尽③": 6
+          },
+          "2406da2f-695c-4cea-869b-fd7ca8aa3a9f": {
+            "172": 6,
+            "EDD动漫": 1,
+            "线路13": 1,
+            "高清在线": 1,
+            "极速在线": 4,
+            "海外专线": 4,
+            "线路3(若黑屏用手机)": 5,
+            "线路4": 5,
+            "看吧③": 6,
+            "看吧④": 6,
+            "看吧⑤": 6,
+            "看吧备用": 6
+          },
+          "474f8053-6293-4472-9816-86e802db7776": {
+            "HD": 5
+          },
+          "ca0aa9a3-ab41-414e-a4d6-b15411551cf3": {
+            "动漫大全": 1,
+            "备用②": 5,
+            "备用③": 5,
+            "线路③": 5,
+            "B站": 6,
+            "优酷": 6,
+            "备用①": 6,
+            "奇异": 6,
+            "线路①": 6,
+            "线路②": 6,
+            "腾讯": 6,
+            "芒果": 6
+          },
+          "419b2d59-be72-436c-9c28-6960bcb9809a": {
+            "172": 6,
+            "线路13": 1,
+            "线路3": 1,
+            "高清在线": 1,
+            "EDD": 2,
+            "线路4": 3,
+            "极速在线": 5,
+            "海外专线": 5,
+            "看吧③": 6,
+            "看吧④": 6,
+            "看吧⑤": 6,
+            "看吧备用": 6
+          },
+          "1b96801a-2fa9-4ac8-be97-5258da3f44d7": {
+            "播放Ⅱ": 1,
+            "播放Ⅲ": 1,
+            "播放Ⅳ": 5,
+            "播放Ⅵ": 5,
+            "播放Ⅰ": 6,
+            "播放Ⅴ": 6
+          },
+          "8d036176-2614-4f2c-9e12-2f56af69619f": {
+            "线路10": 1,
+            "线路6": 1,
+            "5线": 2,
+            "线路1": 2,
+            "线路12": 5,
+            "线路2": 5,
+            "线路3": 5,
+            "线路8": 5,
+            "主线": 6,
+            "线路4": 6,
+            "线路9": 6
+          },
+          "bf067292-2d24-4dca-aac4-d53808700b03": {
+            "在线": 6
+          },
+          "5d8ce041-086c-4075-8a6c-e9957ec1241c": {
+            "MD1": 1,
+            "MD4": 1,
+            "线路3": 2,
+            "线路1": 5,
+            "MD2": 6,
+            "MD5": 6,
+            "线路2": 6
+          },
+          "577f82d8-a01c-45a3-862a-9de2643e2b8f": {
+            "新浪资源2": 5,
+            "番茄1线": 5,
+            "速播资源1": 5,
+            "无尽③": 6,
+            "极速在线": 6,
+            "番茄2线": 6
+          },
+          "ff888bd2-fc1c-4aa3-be29-d302d84b1588": {
+            "第一线路": 1,
+            "云播①号": 6,
+            "备用线路": 6,
+            "最新可用线路": 6,
+            "非凡资源M3U": 6
+          },
+          "7642d509-20b1-4dd3-b40a-87a344cb12f9": {
+            "4K蓝光": 6,
+            "蓝光A": 6,
+            "蓝光C": 6,
+            "蓝光E": 6,
+            "蓝光G": 6,
+            "蓝光K": 6
+          }
+        }
+      }
+    },
+    {
+      "elapsedMillis": 175,
+      "sources": [
+        {
+          "source": 20,
+          "state": "CaptchaRequired",
+          "generation": 0,
+          "media": []
+        }
+      ],
+      "selectedMediaId": null
+    },
+    {
+      "elapsedMillis": 270,
+      "sources": [
+        {
+          "source": 22,
+          "state": "CaptchaRequired",
+          "generation": 0,
+          "media": []
+        }
+      ],
+      "selectedMediaId": null
+    },
+    {
+      "elapsedMillis": 535,
+      "sources": [
+        {
+          "source": 4,
+          "state": "Failed",
+          "generation": 0,
+          "media": []
+        }
+      ],
+      "selectedMediaId": null
+    },
+    {
+      "elapsedMillis": 599,
+      "sources": [
+        {
+          "source": 12,
+          "state": "Succeed",
+          "generation": 0,
+          "media": []
+        }
+      ],
+      "selectedMediaId": null
+    },
+    {
+      "elapsedMillis": 628,
+      "sources": [
+        {
+          "source": 7,
+          "state": "Succeed",
+          "generation": 0,
+          "media": []
+        }
+      ],
+      "selectedMediaId": null
+    },
+    {
+      "elapsedMillis": 821,
+      "sources": [
+        {
+          "source": 8,
+          "state": "Succeed",
+          "generation": 0,
+          "media": [
+            0,
+            1,
+            2
+          ]
+        }
+      ],
+      "selectedMediaId": null
+    },
+    {
+      "elapsedMillis": 821,
+      "sources": [],
+      "selectedMediaId": "media-f0eb787fe96cb0224aa49442"
+    },
+    {
+      "elapsedMillis": 849,
+      "sources": [
+        {
+          "source": 11,
+          "state": "Succeed",
+          "generation": 0,
+          "media": [
+            3
+          ]
+        }
+      ],
+      "selectedMediaId": "media-f0eb787fe96cb0224aa49442"
+    },
+    {
+      "elapsedMillis": 861,
+      "sources": [
+        {
+          "source": 14,
+          "state": "Succeed",
+          "generation": 0,
+          "media": [
+            4,
+            5,
+            6,
+            7,
+            8,
+            9
+          ]
+        }
+      ],
+      "selectedMediaId": "media-f0eb787fe96cb0224aa49442"
+    },
+    {
+      "elapsedMillis": 862,
+      "sources": [
+        {
+          "source": 3,
+          "state": "Working",
+          "generation": null,
+          "media": [
+            10,
+            11
+          ]
+        }
+      ],
+      "selectedMediaId": "media-f0eb787fe96cb0224aa49442"
+    },
+    {
+      "elapsedMillis": 950,
+      "sources": [
+        {
+          "source": 16,
+          "state": "Working",
+          "generation": null,
+          "media": [
+            12
+          ]
+        }
+      ],
+      "selectedMediaId": "media-f0eb787fe96cb0224aa49442"
+    },
+    {
+      "elapsedMillis": 951,
+      "sources": [
+        {
+          "source": 16,
+          "state": "Succeed",
+          "generation": 0,
+          "media": [
+            12
+          ]
+        }
+      ],
+      "selectedMediaId": "media-f0eb787fe96cb0224aa49442"
+    },
+    {
+      "elapsedMillis": 969,
+      "sources": [
+        {
+          "source": 3,
+          "state": "Working",
+          "generation": null,
+          "media": [
+            10,
+            11,
+            13
+          ]
+        }
+      ],
+      "selectedMediaId": "media-f0eb787fe96cb0224aa49442"
+    },
+    {
+      "elapsedMillis": 982,
+      "sources": [
+        {
+          "source": 21,
+          "state": "Working",
+          "generation": null,
+          "media": [
+            14
+          ]
+        }
+      ],
+      "selectedMediaId": "media-f0eb787fe96cb0224aa49442"
+    },
+    {
+      "elapsedMillis": 983,
+      "sources": [
+        {
+          "source": 21,
+          "state": "Succeed",
+          "generation": 0,
+          "media": [
+            14
+          ]
+        }
+      ],
+      "selectedMediaId": "media-f0eb787fe96cb0224aa49442"
+    },
+    {
+      "elapsedMillis": 1122,
+      "sources": [
+        {
+          "source": 10,
+          "state": "Working",
+          "generation": null,
+          "media": [
+            15
+          ]
+        }
+      ],
+      "selectedMediaId": "media-f0eb787fe96cb0224aa49442"
+    },
+    {
+      "elapsedMillis": 1126,
+      "sources": [
+        {
+          "source": 10,
+          "state": "Succeed",
+          "generation": 0,
+          "media": [
+            15,
+            16,
+            17,
+            18,
+            19
+          ]
+        }
+      ],
+      "selectedMediaId": "media-f0eb787fe96cb0224aa49442"
+    },
+    {
+      "elapsedMillis": 1177,
+      "sources": [
+        {
+          "source": 5,
+          "state": "Working",
+          "generation": null,
+          "media": [
+            20
+          ]
+        }
+      ],
+      "selectedMediaId": "media-f0eb787fe96cb0224aa49442"
+    },
+    {
+      "elapsedMillis": 1207,
+      "sources": [
+        {
+          "source": 19,
+          "state": "CaptchaRequired",
+          "generation": 0,
+          "media": []
+        }
+      ],
+      "selectedMediaId": "media-f0eb787fe96cb0224aa49442"
+    },
+    {
+      "elapsedMillis": 1247,
+      "sources": [
+        {
+          "source": 5,
+          "state": "Working",
+          "generation": null,
+          "media": [
+            20,
+            21,
+            22
+          ]
+        }
+      ],
+      "selectedMediaId": "media-f0eb787fe96cb0224aa49442"
+    },
+    {
+      "elapsedMillis": 1247,
+      "sources": [
+        {
+          "source": 5,
+          "state": "Succeed",
+          "generation": 0,
+          "media": [
+            20,
+            21,
+            22,
+            23
+          ]
+        }
+      ],
+      "selectedMediaId": "media-f0eb787fe96cb0224aa49442"
+    },
+    {
+      "elapsedMillis": 1362,
+      "sources": [
+        {
+          "source": 3,
+          "state": "Succeed",
+          "generation": 0,
+          "media": [
+            10,
+            11,
+            13
+          ]
+        }
+      ],
+      "selectedMediaId": "media-f0eb787fe96cb0224aa49442"
+    },
+    {
+      "elapsedMillis": 1368,
+      "sources": [
+        {
+          "source": 9,
+          "state": "Working",
+          "generation": null,
+          "media": [
+            24
+          ]
+        }
+      ],
+      "selectedMediaId": "media-f0eb787fe96cb0224aa49442"
+    },
+    {
+      "elapsedMillis": 1369,
+      "sources": [
+        {
+          "source": 9,
+          "state": "Succeed",
+          "generation": 0,
+          "media": [
+            24,
+            25,
+            26,
+            27
+          ]
+        }
+      ],
+      "selectedMediaId": "media-f0eb787fe96cb0224aa49442"
+    },
+    {
+      "elapsedMillis": 1558,
+      "sources": [
+        {
+          "source": 6,
+          "state": "Working",
+          "generation": null,
+          "media": [
+            28
+          ]
+        }
+      ],
+      "selectedMediaId": "media-f0eb787fe96cb0224aa49442"
+    },
+    {
+      "elapsedMillis": 1559,
+      "sources": [
+        {
+          "source": 6,
+          "state": "Succeed",
+          "generation": 0,
+          "media": [
+            28,
+            29,
+            30
+          ]
+        }
+      ],
+      "selectedMediaId": "media-f0eb787fe96cb0224aa49442"
+    },
+    {
+      "elapsedMillis": 1658,
+      "sources": [
+        {
+          "source": 13,
+          "state": "Working",
+          "generation": null,
+          "media": [
+            31
+          ]
+        }
+      ],
+      "selectedMediaId": "media-f0eb787fe96cb0224aa49442"
+    },
+    {
+      "elapsedMillis": 1660,
+      "sources": [
+        {
+          "source": 13,
+          "state": "Succeed",
+          "generation": 0,
+          "media": [
+            31,
+            32,
+            33,
+            34,
+            35
+          ]
+        }
+      ],
+      "selectedMediaId": "media-f0eb787fe96cb0224aa49442"
+    },
+    {
+      "elapsedMillis": 1711,
+      "sources": [
+        {
+          "source": 18,
+          "state": "Working",
+          "generation": null,
+          "media": [
+            36
+          ]
+        }
+      ],
+      "selectedMediaId": "media-f0eb787fe96cb0224aa49442"
+    },
+    {
+      "elapsedMillis": 1713,
+      "sources": [
+        {
+          "source": 18,
+          "state": "Succeed",
+          "generation": 0,
+          "media": [
+            36,
+            37,
+            38,
+            39
+          ]
+        }
+      ],
+      "selectedMediaId": "media-f0eb787fe96cb0224aa49442"
+    },
+    {
+      "elapsedMillis": 2372,
+      "sources": [
+        {
+          "source": 15,
+          "state": "Succeed",
+          "generation": 0,
+          "media": [
+            40,
+            41,
+            42,
+            43,
+            44,
+            45,
+            46,
+            47
+          ]
+        }
+      ],
+      "selectedMediaId": "media-f0eb787fe96cb0224aa49442"
+    },
+    {
+      "elapsedMillis": 2575,
+      "sources": [
+        {
+          "source": 23,
+          "state": "Succeed",
+          "generation": 0,
+          "media": [
+            48,
+            49,
+            50
+          ]
+        }
+      ],
+      "selectedMediaId": "media-f0eb787fe96cb0224aa49442"
+    },
+    {
+      "elapsedMillis": 5346,
+      "sources": [
+        {
+          "source": 17,
+          "state": "RateLimited",
+          "generation": 0,
+          "media": []
+        }
+      ],
+      "selectedMediaId": "media-f0eb787fe96cb0224aa49442"
+    },
+    {
+      "elapsedMillis": 9699,
+      "sources": [
+        {
+          "source": 2,
+          "state": "Succeed",
+          "generation": 0,
+          "media": [
+            51,
+            52,
+            53,
+            54
+          ]
+        }
+      ],
+      "selectedMediaId": "media-f0eb787fe96cb0224aa49442"
+    },
+    {
+      "elapsedMillis": 9888,
+      "sources": [],
+      "selectedMediaId": "media-54d472d2dad0d5297cb59c02"
+    },
+    {
+      "elapsedMillis": 35353,
+      "sources": [
+        {
+          "source": 17,
+          "state": "Idle",
+          "generation": null,
+          "media": []
+        }
+      ],
+      "selectedMediaId": "media-54d472d2dad0d5297cb59c02"
+    },
+    {
+      "elapsedMillis": 35357,
+      "sources": [
+        {
+          "source": 17,
+          "state": "Working",
+          "generation": null,
+          "media": []
+        }
+      ],
+      "selectedMediaId": "media-54d472d2dad0d5297cb59c02"
+    },
+    {
+      "elapsedMillis": 40980,
+      "sources": [
+        {
+          "source": 17,
+          "state": "RateLimited",
+          "generation": 1,
+          "media": []
+        }
+      ],
+      "selectedMediaId": "media-54d472d2dad0d5297cb59c02"
+    }
+  ]
+}

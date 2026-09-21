@@ -38,6 +38,8 @@ import org.jetbrains.compose.resources.*
 @Composable
 fun EditCollectionTypeDropDown(
     state: EditableSubjectCollectionTypeState,
+    expanded: Boolean,
+    onDismissRequest: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     val presentation by state.presentationFlow.collectAsStateWithLifecycle()
@@ -46,10 +48,9 @@ fun EditCollectionTypeDropDown(
 
     EditCollectionTypeDropDown(
         currentType = presentation.selfCollectionType,
-        expanded = state.showDropdown,
-        onDismissRequest = { state.showDropdown = false },
+        expanded = expanded,
+        onDismissRequest = onDismissRequest,
         onClick = {
-            state.showDropdown = false
             scope.launch {
                 val error = state.setSelfCollectionType(it.type)
                 if (error != null) {

@@ -12,16 +12,31 @@ import java.lang.instrument.Instrumentation;
  * frontmost visible Frame):
  *   click <x> <y>
  *   rightclick <x> <y>  (BUTTON3 with popup trigger, e.g. for context menus)
- *   press <x> <y>     (mouse down only)
+ *   press <x> <y>     (mouse down only; following `move`s are delivered as drags until `release`)
  *   release <x> <y>
  *   move <x> <y>
+ *   wheel <x> <y> <dy> [dx] [ctrl]  (mouse wheel / trackpad scroll at x,y; dy>0 scrolls down;
+ *                      pass `ctrl` to hold Ctrl, e.g. for Ctrl+wheel zoom)
  *   type <text>
  *   key <awt-keycode>
  *   info              (frame bounds, content-area screen origin and size)
+ *   resize <w> <h>    (set the target Frame's outer size in points; no Accessibility needed)
+ *   windows           (list visible Frames: index, focused flag, title)
+ *   window <title|index>  (route following commands to that Frame instead of the focused one;
+ *                      `window -` clears the selection)
+ *   dragenter <x> <y> <path>[|<path>...]  (start an external file drag over x,y, as if files were
+ *                      dragged in from the OS file manager; the drag stays active until `drop`
+ *                      or `dragexit`, so the app's drag-hover UI can be captured in between)
+ *   dragover <x> <y>  (move the active file drag)
+ *   drop <x> <y>      (release the active file drag at x,y)
+ *   dragexit          (cancel the active file drag)
  * Replies "ok <detail>" or "err <detail>" per line.
  */
 public final class InputAgent {
+    private static volatile Instrumentation instrumentation;
+
     public static void premain(String args, Instrumentation inst) {
+        instrumentation = inst;
         int port = 7788;
         try { port = Integer.parseInt(args.trim()); } catch (Exception ignored) {}
         final int p = port;
@@ -56,6 +71,28 @@ public final class InputAgent {
     static String handle(String line) throws Exception {
         String[] a = line.split("\\s+", 2);
         if (a.length == 0 || a[0].isEmpty()) return "err empty";
+        if (a[0].equals("windows")) {
+            StringBuilder sb = new StringBuilder("ok");
+            int i = 0;
+            for (Frame f : Frame.getFrames()) {
+                if (!f.isVisible()) continue;
+                sb.append(" [").append(i++).append(f.isFocused() ? "*" : "").append(" '").append(f.getTitle()).append("']");
+            }
+            return sb.toString();
+        }
+        if (a[0].equals("window")) {
+            String sel = a.length > 1 ? a[1].trim() : "-";
+            if (sel.equals("-")) { selectedFrame = null; return "ok selection cleared"; }
+            int i = 0;
+            for (Frame f : Frame.getFrames()) {
+                if (!f.isVisible()) continue;
+                if (String.valueOf(i++).equals(sel) || f.getTitle().contains(sel)) {
+                    selectedFrame = f;
+                    return "ok selected '" + f.getTitle() + "'";
+                }
+            }
+            return "err no visible frame matching " + sel;
+        }
         Frame frame = targetFrame();
         if (frame == null) return "err no visible frame";
         switch (a[0]) {
@@ -64,10 +101,34 @@ public final class InputAgent {
                 int x = Integer.parseInt(xy[0]), y = Integer.parseInt(xy[1]);
                 return mouse(frame, a[0], x, y);
             }
+            case "wheel": {
+                String[] p = a[1].split("\\s+");
+                int x = Integer.parseInt(p[0]), y = Integer.parseInt(p[1]);
+                double dy = Double.parseDouble(p[2]);
+                double dx = p.length > 3 && !p[3].equals("ctrl") ? Double.parseDouble(p[3]) : 0;
+                boolean ctrl = java.util.Arrays.asList(p).contains("ctrl");
+                return wheel(frame, x, y, dx, dy, ctrl);
+            }
             case "type":
                 return type(frame, a.length > 1 ? a[1] : "");
             case "key":
                 return key(frame, Integer.parseInt(a[1]));
+            case "resize": {
+                String[] wh = a[1].split("\\s+");
+                int w = Integer.parseInt(wh[0]), h = Integer.parseInt(wh[1]);
+                EventQueue.invokeAndWait(() -> frame.setSize(w, h));
+                return "ok resized to " + w + "x" + h;
+            }
+            case "dragenter": {
+                String[] p = a[1].split("\\s+", 3);
+                return dragEnter(frame, Integer.parseInt(p[0]), Integer.parseInt(p[1]), p[2]);
+            }
+            case "dragover": case "drop": {
+                String[] xy = a[1].split("\\s+");
+                return dragMoveOrDrop(frame, a[0], Integer.parseInt(xy[0]), Integer.parseInt(xy[1]));
+            }
+            case "dragexit":
+                return dragExit();
             case "info": {
                 final String[] r = new String[1];
                 EventQueue.invokeAndWait(() -> {
@@ -85,8 +146,12 @@ public final class InputAgent {
     }
 
     private static volatile Component lastMouseTarget;
+    private static volatile Frame selectedFrame;
+    private static volatile boolean button1Down;
 
     static Frame targetFrame() {
+        Frame selected = selectedFrame;
+        if (selected != null && selected.isVisible()) return selected;
         Frame focused = null, visible = null;
         for (Frame f : Frame.getFrames()) {
             if (!f.isVisible()) continue;
@@ -111,23 +176,211 @@ public final class InputAgent {
             long when = System.currentTimeMillis();
             EventQueue q = Toolkit.getDefaultToolkit().getSystemEventQueue();
             if (kind.equals("move")) {
-                q.postEvent(new MouseEvent(target, MouseEvent.MOUSE_MOVED, when, 0, p.x, p.y, 0, false));
+                // While button 1 is held, AWT (and Compose) expect MOUSE_DRAGGED, not MOUSE_MOVED.
+                if (button1Down) {
+                    q.postEvent(new MouseEvent(target, MouseEvent.MOUSE_DRAGGED, when, MouseEvent.BUTTON1_DOWN_MASK, p.x, p.y, 0, false, MouseEvent.BUTTON1));
+                } else {
+                    q.postEvent(new MouseEvent(target, MouseEvent.MOUSE_MOVED, when, 0, p.x, p.y, 0, false));
+                }
             } else if (kind.equals("rightclick")) {
                 // macOS convention: popup trigger fires on press
                 q.postEvent(new MouseEvent(target, MouseEvent.MOUSE_PRESSED, when, MouseEvent.BUTTON3_DOWN_MASK, p.x, p.y, 1, true, MouseEvent.BUTTON3));
                 q.postEvent(new MouseEvent(target, MouseEvent.MOUSE_RELEASED, when + 20, 0, p.x, p.y, 1, false, MouseEvent.BUTTON3));
                 q.postEvent(new MouseEvent(target, MouseEvent.MOUSE_CLICKED, when + 20, 0, p.x, p.y, 1, false, MouseEvent.BUTTON3));
             } else {
-                if (!kind.equals("release"))
-                    q.postEvent(new MouseEvent(target, MouseEvent.MOUSE_PRESSED, when, 0, p.x, p.y, 1, false, MouseEvent.BUTTON1));
+                if (!kind.equals("release")) {
+                    q.postEvent(new MouseEvent(target, MouseEvent.MOUSE_PRESSED, when, MouseEvent.BUTTON1_DOWN_MASK, p.x, p.y, 1, false, MouseEvent.BUTTON1));
+                    button1Down = true;
+                }
                 if (!kind.equals("press")) {
                     q.postEvent(new MouseEvent(target, MouseEvent.MOUSE_RELEASED, when + 20, 0, p.x, p.y, 1, false, MouseEvent.BUTTON1));
-                    q.postEvent(new MouseEvent(target, MouseEvent.MOUSE_CLICKED, when + 20, 0, p.x, p.y, 1, false, MouseEvent.BUTTON1));
+                    if (!kind.equals("release"))
+                        q.postEvent(new MouseEvent(target, MouseEvent.MOUSE_CLICKED, when + 20, 0, p.x, p.y, 1, false, MouseEvent.BUTTON1));
+                    button1Down = false;
                 }
             }
             lastMouseTarget = target;
             result[0] = "ok " + kind + " " + x + "," + y + " -> " + target.getClass().getName();
         });
+        return result[0];
+    }
+
+    static String wheel(Frame frame, int x, int y, double dx, double dy, boolean ctrl) throws Exception {
+        final String[] result = new String[1];
+        EventQueue.invokeAndWait(() -> {
+            Container content = contentOf(frame);
+            Component target = javax.swing.SwingUtilities.getDeepestComponentAt(content, x, y);
+            if (target == null) { result[0] = "err nothing at " + x + "," + y; return; }
+            // AWT does not bubble mouse events, so deliver to the nearest ancestor that actually
+            // listens for wheel events (Skiko registers it on the layer, not on the canvas child).
+            while (target.getMouseWheelListeners().length == 0 && target.getParent() != null && target != content) {
+                target = target.getParent();
+            }
+            Point p = javax.swing.SwingUtilities.convertPoint(content, x, y, target);
+            EventQueue q = Toolkit.getDefaultToolkit().getSystemEventQueue();
+            int modifiers = ctrl ? java.awt.event.InputEvent.CTRL_DOWN_MASK : 0;
+            long when = System.currentTimeMillis();
+            // Horizontal scrolling is delivered by AWT as a wheel event with Shift held.
+            if (dx != 0) {
+                q.postEvent(new java.awt.event.MouseWheelEvent(target, MouseEvent.MOUSE_WHEEL, when, modifiers | java.awt.event.InputEvent.SHIFT_DOWN_MASK,
+                        p.x, p.y, 0, 0, 0, false, java.awt.event.MouseWheelEvent.WHEEL_UNIT_SCROLL, 1, (int) Math.round(dx), dx));
+            }
+            if (dy != 0) {
+                q.postEvent(new java.awt.event.MouseWheelEvent(target, MouseEvent.MOUSE_WHEEL, when, modifiers,
+                        p.x, p.y, 0, 0, 0, false, java.awt.event.MouseWheelEvent.WHEEL_UNIT_SCROLL, 1, (int) Math.round(dy), dy));
+            }
+            lastMouseTarget = target;
+            result[0] = "ok wheel " + x + "," + y + " dx=" + dx + " dy=" + dy + (ctrl ? " ctrl" : "") + " -> " + target.getClass().getName();
+        });
+        return result[0];
+    }
+
+    // ---- External file drag-and-drop ----
+    // An OS file drag never produces AWT mouse events: the native peer calls the component's
+    // java.awt.dnd.DropTarget directly. We do the same, in-process. The events carry our own
+    // DropTargetContextPeer, which is where AWT reads the dragged Transferable from, so the app
+    // sees a regular javaFileListFlavor drag and runs its real drop handling.
+
+    private static volatile java.awt.dnd.DropTarget activeDropTarget;
+
+    static final class FileListTransferable implements java.awt.datatransfer.Transferable {
+        final java.util.List<java.io.File> files;
+        FileListTransferable(java.util.List<java.io.File> files) { this.files = files; }
+        public java.awt.datatransfer.DataFlavor[] getTransferDataFlavors() {
+            return new java.awt.datatransfer.DataFlavor[]{java.awt.datatransfer.DataFlavor.javaFileListFlavor};
+        }
+        public boolean isDataFlavorSupported(java.awt.datatransfer.DataFlavor flavor) {
+            return java.awt.datatransfer.DataFlavor.javaFileListFlavor.equals(flavor);
+        }
+        public Object getTransferData(java.awt.datatransfer.DataFlavor flavor) throws java.awt.datatransfer.UnsupportedFlavorException {
+            if (!isDataFlavorSupported(flavor)) throw new java.awt.datatransfer.UnsupportedFlavorException(flavor);
+            return files;
+        }
+    }
+
+    // java.awt.dnd.peer is not exported to application code, so the peer is a dynamic proxy
+    // of the interface instead of a compiled implementation.
+    static Object fakeDropPeer(java.awt.dnd.DropTarget dropTarget, java.awt.datatransfer.Transferable transferable) throws Exception {
+        Class<?> peerInterface = Class.forName("java.awt.dnd.peer.DropTargetContextPeer");
+        final int[] targetActions = {java.awt.dnd.DnDConstants.ACTION_COPY};
+        return java.lang.reflect.Proxy.newProxyInstance(InputAgent.class.getClassLoader(), new Class<?>[]{peerInterface}, (proxy, method, args) -> {
+            switch (method.getName()) {
+                case "setTargetActions": targetActions[0] = (Integer) args[0]; return null;
+                case "getTargetActions": return targetActions[0];
+                case "getDropTarget": return dropTarget;
+                case "getTransferDataFlavors": return transferable.getTransferDataFlavors();
+                case "getTransferable": return transferable;
+                case "isTransferableJVMLocal": return false;
+                case "hashCode": return System.identityHashCode(proxy);
+                case "equals": return proxy == args[0];
+                case "toString": return "InputAgent.fakeDropPeer";
+                default: return null; // acceptDrag, rejectDrag, acceptDrop, rejectDrop, dropComplete
+            }
+        });
+    }
+
+    // DropTargetContext keeps its peer and a cached Transferable proxy in private fields.
+    static void setDropPeer(java.awt.dnd.DropTargetContext context, Object peer) throws Exception {
+        Instrumentation inst = instrumentation;
+        if (inst != null) {
+            Module awt = java.awt.dnd.DropTargetContext.class.getModule();
+            inst.redefineModule(awt, java.util.Set.of(), java.util.Map.of(),
+                    java.util.Map.of("java.awt.dnd", java.util.Set.of(InputAgent.class.getModule())),
+                    java.util.Set.of(), java.util.Map.of());
+        }
+        java.lang.reflect.Field peerField = java.awt.dnd.DropTargetContext.class.getDeclaredField("dropTargetContextPeer");
+        peerField.setAccessible(true);
+        peerField.set(context, peer);
+        java.lang.reflect.Field cache = java.awt.dnd.DropTargetContext.class.getDeclaredField("transferable");
+        cache.setAccessible(true);
+        cache.set(context, null);
+    }
+
+    static final int DRAG_ACTIONS = java.awt.dnd.DnDConstants.ACTION_COPY_OR_MOVE | java.awt.dnd.DnDConstants.ACTION_LINK;
+
+    static String dragEnter(Frame frame, int x, int y, String paths) throws Exception {
+        java.util.List<java.io.File> files = new java.util.ArrayList<>();
+        for (String path : paths.split("\\|")) {
+            if (!path.trim().isEmpty()) files.add(new java.io.File(path.trim()));
+        }
+        if (files.isEmpty()) return "err no files";
+        final String[] result = new String[1];
+        final Exception[] failure = new Exception[1];
+        EventQueue.invokeAndWait(() -> {
+            try {
+                Container content = contentOf(frame);
+                Component c = javax.swing.SwingUtilities.getDeepestComponentAt(content, x, y);
+                while (c != null && c.getDropTarget() == null) c = c.getParent();
+                if (c == null) { result[0] = "err no component with a DropTarget at " + x + "," + y; return; }
+                java.awt.dnd.DropTarget target = c.getDropTarget();
+                if (!target.isActive()) { result[0] = "err DropTarget is inactive"; return; }
+                if (activeDropTarget != null) { result[0] = "err a drag is already active; drop or dragexit first"; return; }
+                setDropPeer(target.getDropTargetContext(), fakeDropPeer(target, new FileListTransferable(files)));
+                Point p = javax.swing.SwingUtilities.convertPoint(content, x, y, c);
+                target.dragEnter(new java.awt.dnd.DropTargetDragEvent(target.getDropTargetContext(), p,
+                        java.awt.dnd.DnDConstants.ACTION_COPY, DRAG_ACTIONS));
+                activeDropTarget = target;
+                // The OS follows dragEnter with a stream of dragOver events; toolkits such as
+                // Compose resolve the hovered drop target only on dragOver.
+                target.dragOver(new java.awt.dnd.DropTargetDragEvent(target.getDropTargetContext(), p,
+                        java.awt.dnd.DnDConstants.ACTION_COPY, DRAG_ACTIONS));
+                result[0] = "ok dragenter " + files.size() + " file(s) at " + x + "," + y + " -> " + c.getClass().getName();
+            } catch (Exception e) {
+                failure[0] = e;
+            }
+        });
+        if (failure[0] != null) throw failure[0];
+        return result[0];
+    }
+
+    static String dragMoveOrDrop(Frame frame, String kind, int x, int y) throws Exception {
+        final String[] result = new String[1];
+        final Exception[] failure = new Exception[1];
+        EventQueue.invokeAndWait(() -> {
+            try {
+                java.awt.dnd.DropTarget target = activeDropTarget;
+                if (target == null) { result[0] = "err no active drag; dragenter first"; return; }
+                Point p = javax.swing.SwingUtilities.convertPoint(contentOf(frame), x, y, target.getComponent());
+                // A real drop is always preceded by a dragOver at the drop location.
+                target.dragOver(new java.awt.dnd.DropTargetDragEvent(target.getDropTargetContext(), p,
+                        java.awt.dnd.DnDConstants.ACTION_COPY, DRAG_ACTIONS));
+                if (kind.equals("drop")) {
+                    try {
+                        target.drop(new java.awt.dnd.DropTargetDropEvent(target.getDropTargetContext(), p,
+                                java.awt.dnd.DnDConstants.ACTION_COPY, DRAG_ACTIONS, false));
+                    } finally {
+                        activeDropTarget = null;
+                        setDropPeer(target.getDropTargetContext(), null);
+                    }
+                }
+                result[0] = "ok " + kind + " " + x + "," + y;
+            } catch (Exception e) {
+                failure[0] = e;
+            }
+        });
+        if (failure[0] != null) throw failure[0];
+        return result[0];
+    }
+
+    static String dragExit() throws Exception {
+        final String[] result = new String[1];
+        final Exception[] failure = new Exception[1];
+        EventQueue.invokeAndWait(() -> {
+            try {
+                java.awt.dnd.DropTarget target = activeDropTarget;
+                if (target == null) { result[0] = "err no active drag"; return; }
+                try {
+                    target.dragExit(new java.awt.dnd.DropTargetEvent(target.getDropTargetContext()));
+                } finally {
+                    activeDropTarget = null;
+                    setDropPeer(target.getDropTargetContext(), null);
+                }
+                result[0] = "ok dragexit";
+            } catch (Exception e) {
+                failure[0] = e;
+            }
+        });
+        if (failure[0] != null) throw failure[0];
         return result[0];
     }
 

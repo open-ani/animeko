@@ -33,6 +33,9 @@ kotlin {
         api(libs.sketch.compose.core)
         implementation(libs.sketch.http.core)
         implementation(libs.sketch.svg)
+        api(libs.zoomimage.compose.sketch4.core)
+        implementation(libs.filekit.dialogs)
+        implementation(libs.filekit.dialogs.compose)
 
         implementation(libs.compose.components.resources)
         api(libs.compose.lifecycle.viewmodel.compose)

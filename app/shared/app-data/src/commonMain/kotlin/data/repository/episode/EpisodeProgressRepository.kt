@@ -17,13 +17,13 @@ import kotlinx.coroutines.flow.flowOn
 import kotlinx.coroutines.flow.map
 import me.him188.ani.app.data.models.episode.EpisodeProgressInfo
 import me.him188.ani.app.data.repository.Repository
-import me.him188.ani.app.domain.media.cache.MediaCacheManager
+import me.him188.ani.app.domain.media.download.MediaDownloadManager
 import me.him188.ani.utils.coroutines.flows.flowOfEmptyList
 import kotlin.coroutines.CoroutineContext
 
 class EpisodeProgressRepository(
     private val episodeCollectionRepository: EpisodeCollectionRepository,
-    private val cacheManager: MediaCacheManager,
+    private val downloadManager: MediaDownloadManager,
     defaultDispatcher: CoroutineContext = Dispatchers.Default,
 ) : Repository(defaultDispatcher) {
     fun subjectEpisodeProgressesInfoFlow(subjectId: Int): Flow<List<EpisodeProgressInfo>> {
@@ -33,7 +33,7 @@ class EpisodeProgressRepository(
             }
             combine(
                 list.map { info ->
-                    cacheManager.cacheStatusForEpisode(subjectId, episodeId = info.episodeInfo.episodeId)
+                    downloadManager.downloadStatusForEpisode(subjectId, episodeId = info.episodeInfo.episodeId)
                         .map { cache ->
                             EpisodeProgressInfo(info.episodeInfo, info.collectionType, cache)
                         }

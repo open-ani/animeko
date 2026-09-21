@@ -311,9 +311,9 @@ class MediaSelectorSourceTierAutoSelectTest {
     private fun FetchMediaSelectorTestSuite.createFastSelectFlow(
         session: MediaFetchSession,
     ): Flow<Media?> = suspend {
-        selector.autoSelect.fastSelectWebSources(
+        MediaAutoSelector(selector).select(
             session,
-            sourceTiers = preferenceApi.sourceTiers!!,
+            MediaAutoSelector.Config(web = MediaAutoSelector.Web(preferenceApi.sourceTiers!!)),
         )
     }.asFlow()
 
