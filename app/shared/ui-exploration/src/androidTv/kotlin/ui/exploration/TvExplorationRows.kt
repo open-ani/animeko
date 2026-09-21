@@ -130,8 +130,6 @@ internal sealed class TvExplorationRow(val key: String, val area: TvExplorationA
 
 }
 
-internal fun tmdbBackdropCardUrl(url: String): String = url.replace("/t/p/w1280/", "/t/p/w780/")
-
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
 internal fun TvExplorationRowItem(
@@ -211,7 +209,7 @@ internal fun TvExplorationRowItem(
                             onIntent(TvExplorationIntent.CardVisible(subject.subjectId))
                         }
                         TvLandscapeCard(
-                            imageUrl = media.backdropCache[subject.subjectId]?.let(::tmdbBackdropCardUrl) ?: subject.imageUrl,
+                            imageUrl = media.backdropCache[subject.subjectId] ?: subject.imageUrl,
                             title = subject.title, width = null,
                             onClick = { onIntent(TvExplorationIntent.OpenSubject(subject)) },
                             onFocused = { onCardFocused(row, subject) },
@@ -276,7 +274,7 @@ internal fun TvExplorationRowItem(
                     }
                     HomePoster(
                         card = card,
-                        imageUrl = media.backdropCache[subject.subjectId]?.let(::tmdbBackdropCardUrl) ?: subject.imageUrl,
+                        imageUrl = media.backdropCache[subject.subjectId] ?: subject.imageUrl,
                         onClick = {
                             val episodeId = card.episodeId
                             if (episodeId != null) onIntent(TvExplorationIntent.ContinueWatching(subject, episodeId))

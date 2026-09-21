@@ -51,9 +51,6 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import me.him188.ani.app.data.models.episode.EpisodeComment
 import me.him188.ani.app.data.network.AutoSkipRepository
-import me.him188.ani.app.data.network.TmdbImageService
-import me.him188.ani.app.data.network.matchToEpisodes
-import me.him188.ani.app.data.network.newestAiredDateStringOrNull
 import me.him188.ani.app.data.repository.episode.EpisodeCollectionRepository
 import me.him188.ani.app.data.repository.episode.EpisodeCommentRepository
 import me.him188.ani.app.data.repository.media.SelectorMediaSourceEpisodeCacheRepository
@@ -147,7 +144,6 @@ class TvEpisodeViewModel(
     private val episodeCommentRepository: EpisodeCommentRepository,
     private val getSubjectRecommendations: GetSubjectRecommendationUseCase,
     private val autoSkipRepository: AutoSkipRepository,
-    private val tmdbImageService: TmdbImageService,
     private val selectorEpisodeCacheRepository: SelectorMediaSourceEpisodeCacheRepository,
     private val webSessionManager: WebSessionManager,
     private val playbackAutomationGate: PlaybackAutomationGate,
@@ -165,7 +161,6 @@ class TvEpisodeViewModel(
     private val resolvingCaptchaSources = MutableStateFlow<Set<String>>(emptySet())
     private val events = Channel<TvEpisodeEvent>(Channel.BUFFERED)
     val actionEvents = events.receiveAsFlow()
-    private val episodeStills = MutableStateFlow<Map<Int, String>>(emptyMap())
     private val playbackSpeedOverride = MutableStateFlow<Float?>(null)
     private val playbackSpeedFlow: Flow<Float> =
         combine(settingsRepository.videoScaffoldConfig.flow, playbackSpeedOverride) { config, override ->
@@ -257,7 +252,7 @@ class TvEpisodeViewModel(
     /** 选集条条目 (§8.3): 集序号 + 标题 + 已看标记. */
 
     private val episodeStripFlow: StateFlow<List<TvStripEpisode>> =
-        combine(episodeCollectionsFlow, episodeStills, subjectCollectionFlow) { list, stills, subject ->
+        combine(episodeCollectionsFlow, subjectCollectionFlow) { list, subject ->
             list.map { collection ->
                 val info = collection.episodeInfo
                 TvStripEpisode(
@@ -265,7 +260,7 @@ class TvEpisodeViewModel(
                     sort = info.sort.toString(),
                     title = info.nameCn.ifBlank { info.name },
                     watched = collection.collectionType == UnifiedCollectionType.DONE,
-                    stillUrl = stills[collection.episodeId],
+                    stillUrl = info.imageLarge,
                     isKnownBroadcast = info.isKnownCompleted(subject.recurrence),
                 )
             }
@@ -883,23 +878,6 @@ class TvEpisodeViewModel(
         }
         backgroundScope.launch {
             subjectCollectionFlow.collect { collection -> playerOptions.update { it.copy(collectionType = collection.collectionType) } }
-        }
-        backgroundScope.launch {
-            try {
-                val collection = subjectCollectionFlow.first()
-                val stills = tmdbImageService.getEpisodeStills(
-                    subjectId,
-                    collection.subjectInfo.name,
-                    "zh-CN",
-                    newestWantedAirDate = collection.episodes.newestAiredDateStringOrNull(),
-                )
-                    .matchToEpisodes(collection.episodes).mapNotNull { (id, media) -> media.stillUrl?.let { id to it } }
-                    .toMap()
-                episodeStills.value = stills
-            } catch (e: CancellationException) {
-                throw e
-            } catch (_: Exception) { /* Titles remain usable without artwork. */
-            }
         }
         backgroundScope.launch {
             fetchPlayState.episodeSessionFlow.flatMapLatest { session ->

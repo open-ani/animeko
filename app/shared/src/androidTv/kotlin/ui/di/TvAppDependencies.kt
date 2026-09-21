@@ -11,7 +11,6 @@ package me.him188.ani.leanback.ui.di
 
 import me.him188.ani.app.data.network.AutoSkipRepository
 import me.him188.ani.app.data.network.BangumiSummaryService
-import me.him188.ani.app.data.network.TmdbImageService
 import me.him188.ani.app.data.repository.episode.EpisodeCollectionRepository
 import me.him188.ani.app.data.repository.episode.EpisodeCommentRepository
 import me.him188.ani.app.data.repository.media.MediaSourceSubscriptionRepository
@@ -43,7 +42,6 @@ class TvAppDependencies(
     val koin: Koin,
     val userRepository: UserRepository,
     val subjectCollectionRepository: SubjectCollectionRepository,
-    val tmdbImageService: TmdbImageService,
     val bangumiSummaryService: BangumiSummaryService,
     val danmakuRegexFilterRepository: DanmakuRegexFilterRepository,
     val mediaSourceManager: MediaSourceManager,
@@ -73,7 +71,6 @@ class TvAppDependencies(
             koin = koin,
             userRepository = koin.get(),
             subjectCollectionRepository = koin.get(),
-            tmdbImageService = koin.get(),
             danmakuRegexFilterRepository = koin.get(),
             mediaSourceManager = koin.get(),
             mediaSourceSubscriptionRepository = koin.get(),

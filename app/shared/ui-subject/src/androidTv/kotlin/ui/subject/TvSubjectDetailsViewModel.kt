@@ -31,9 +31,6 @@ import kotlinx.coroutines.launch
 import me.him188.ani.app.data.models.person.PersonSubjectSummary
 import me.him188.ani.app.data.models.preference.NsfwMode
 import me.him188.ani.app.data.models.subject.SubjectInfo
-import me.him188.ani.app.data.network.TmdbImageService
-import me.him188.ani.app.data.network.matchToEpisodes
-import me.him188.ani.app.data.network.newestAiredDateStringOrNull
 import me.him188.ani.app.data.repository.subject.SubjectCollectionRepository
 import me.him188.ani.app.data.repository.subject.SubjectSearchRepository
 import me.him188.ani.app.data.repository.user.SettingsRepository
@@ -60,7 +57,6 @@ class TvSubjectDetailsViewModel(
     private val placeholder: SubjectInfo?,
     factory: SubjectDetailsStateFactory,
     private val collectionRepository: SubjectCollectionRepository,
-    private val tmdb: TmdbImageService,
     private val setEpisodeCollectionType: SetEpisodeCollectionTypeUseCase,
     private val searchRepository: SubjectSearchRepository,
     sessionStateProvider: SessionStateProvider,
@@ -260,14 +256,11 @@ class TvSubjectDetailsViewModel(
                 images.update { it.copy(backdrop = TvBackdropState(null)) }
                 return@launch
             }
-            val newest = collection.episodes.newestAiredDateStringOrNull()
-            val backdrop = loadOrNull { tmdb.getBackdropUrl(subjectId, collection.subjectInfo.name, activeAsOfDate = newest) }
-            images.update { it.copy(backdrop = TvBackdropState(backdrop)) }
-            val stills = loadOrNull {
-                tmdb.getEpisodeStills(subjectId, collection.subjectInfo.name, "zh-CN", newestWantedAirDate = newest)
-                    .matchToEpisodes(collection.episodes).mapNotNull { (id, media) -> media.stillUrl?.let { id to it } }.toMap()
-            }.orEmpty()
-            images.update { it.copy(episodeStills = stills) }
+            val backdrop = collection.subjectInfo.tmdbArt?.primaryBackdrop?.medium
+            val stills = collection.episodes.mapNotNull { episode ->
+                episode.episodeInfo.imageLarge?.let { episode.episodeId to it }
+            }.toMap()
+            images.update { it.copy(backdrop = TvBackdropState(backdrop), episodeStills = stills) }
         }
     }
 

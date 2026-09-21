@@ -22,12 +22,8 @@ import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.sync.Mutex
-import kotlinx.coroutines.sync.Semaphore
 import kotlinx.coroutines.sync.withLock
-import kotlinx.coroutines.sync.withPermit
 import me.him188.ani.app.data.models.subject.SubjectCollectionInfo
-import me.him188.ani.app.data.network.TmdbImageService
-import me.him188.ani.app.data.network.newestAiredDateStringOrNull
 import me.him188.ani.app.data.repository.subject.SubjectCollectionRepository
 import me.him188.ani.app.navigation.SubjectDetailPlaceholder
 import me.him188.ani.app.ui.exploration.ExplorationPageViewModel
@@ -38,7 +34,6 @@ import org.koin.core.Koin
 class TvExplorationViewModel(
     koin: Koin,
     private val collectionRepository: SubjectCollectionRepository,
-    private val tmdb: TmdbImageService,
 ) : ExplorationPageViewModel(koin) {
     // Keep the presented pages across route changes, like the shared trending pager.
     // Recreating an empty presenter briefly removes the first row and shifts the saved viewport.
@@ -50,9 +45,7 @@ class TvExplorationViewModel(
     private val navigation = TvNavigationEvents()
     val navigationEvents = navigation.events
     private val requestsMutex = Mutex()
-    private val backdropGate = Semaphore(3)
     private val infoRequests = mutableMapOf<Int, Deferred<SubjectCollectionInfo?>>()
-    private val backdropRequests = mutableMapOf<Int, Deferred<String?>>()
 
     init {
         backgroundScope.launch {
@@ -107,28 +100,11 @@ class TvExplorationViewModel(
         }.await()
     }
 
-    private suspend fun loadBackdrop(id: Int): String? {
-        if (id in media.value.backdropCache) return media.value.backdropCache[id]
-        return requestsMutex.withLock {
-            backdropRequests.getOrPut(id) {
-                backgroundScope.async {
-                    backdropGate.withPermit {
-                        val info = loadInfo(id)
-                        val url = info?.let {
-                            loadOrNull {
-                                tmdb.getBackdropUrl(
-                                    id,
-                                    it.subjectInfo.name,
-                                    activeAsOfDate = it.episodes.newestAiredDateStringOrNull(),
-                                )
-                            }
-                        }
-                        media.update { it.copy(backdropCache = it.backdropCache + (id to url)) }
-                        url
-                    }
-                }
-            }
-        }.await()
+    private suspend fun loadBackdrop(id: Int) {
+        if (id in media.value.backdropCache) return
+        val info = loadInfo(id) ?: return
+        val url = info.subjectInfo.tmdbArt?.primaryBackdrop?.medium
+        media.update { it.copy(backdropCache = it.backdropCache + (id to url)) }
     }
 
     private suspend fun <T> loadOrNull(block: suspend () -> T): T? = try {

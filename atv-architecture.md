@@ -79,7 +79,7 @@
 | 导航       | Navigation 3：`rememberAniBackStack` / `AniNavigator.setBackStack` / `NavDisplay`；只注册 Main、SubjectDetail、EpisodeDetail                                    | `app/shared/src/androidTv/kotlin/ui/main/TvAniAppContent.kt`                                                                     |
 | 播放       | TV 自建 `TvEpisodeViewModel`，复用 `EpisodeFetchSelectPlayState` 与扩展；Android 画面仍是 ExoPlayer + libass                                                          | `ui-episode/src/androidTv/kotlin/ui/episode/TvEpisodeViewModel.kt`、`src/main/kotlin/CommonAndroidModules.kt`                          |
 | 图片       | 已迁移到 Sketch 4.6.0：`MainActivity` 提供 `LocalSketch`，页面继续使用共享 `AsyncImage`                                                                                  | `src/tv/kotlin/MainActivity.kt`、共享 `ui-foundation/.../AsyncImage.kt`                                         |
-| TMDB/简介  | `TmdbImageService`、`TmdbEpisodeMatcher`、`BangumiSummaryService`、`StaleRefreshGate` 已存在；探索与详情已消费部分能力                                                      | `app/shared/app-data/src/commonMain/kotlin/data/network/`                                                    |
+| TMDB/简介  | TMDB 图片由 Ani 服务端镜像后随条目/剧集下发（`SubjectInfo.tmdbArt`、`EpisodeInfo.imageLarge`），客户端不直连 TMDB；`BangumiSummaryService` 提供简介兜底                                                      | `app/shared/app-data/src/commonMain/kotlin/data/`                                                    |
 | 文案       | 可以复用 `app-lang`，但当前 TV 页面仍有大量中文字符串常量，不能视为 TV 多语言整理已完成                                                                                                    | `app/shared/**/src/androidTv/`                                                                              |
 | 清单       | 三层拆分已落地；TV 无 torrent 服务，但交集保留禁用的 `AppLocalesMetadataHolderService`，不能写作「无任何 service」                                                                     | `app/android/src/{main,default,tv}/AndroidManifest.xml`                                                      |
 | 发布       | 双包构建、TV workflow artifact 与 `uploadAndroidTvApk` 配置均在；本次未核验远端发布运行结果                                                                                      | `.github/workflows/src.main.kts`、`ci-helper/build.gradle.kts`、`build-logic/src/main/kotlin/ciHelperTasks.kt` |
@@ -219,8 +219,8 @@ TV Toast 已在 `MainActivity` 中实现并通过 `LocalToaster` 提供，不是
 
 **R3 — 数据能力已落地，消费范围仍有差异**：
 
-`TmdbImageService`、`TmdbEpisodeMatcher`、`BangumiSummaryService`、`StaleRefreshGate` 均已位于
-`app-data`，TMDB/简介服务已注册到公共 Koin。探索使用横图和简介兜底，详情使用横图和分集剧照；播放器选集条也已接入分集剧照。共享
+TMDB 横幅与分集剧照是服务端镜像后的公开直链，随 `SubjectCollectionInfo` 从公共数据层取得；`BangumiSummaryService` 位于
+`app-data` 并已注册到公共 Koin。探索使用横图和简介兜底，详情使用横图和分集剧照；播放器选集条也已接入分集剧照。共享
 `SubjectDetailsStateLoader` 等状态层也已为复用调整，因此后续改动并非全部局限于 TV 目录。
 
 M0 旧记录称手机合并清单与基线 78 个元素语义等价；这是历史验收记录。当前源码核对只能确认结构与配置，手机行为不回退和完整 APK 构建仍应按 §11/§14 回归。
@@ -505,7 +505,7 @@ TV 不启动 torrent 服务连接，不初始化 Sentry/Firebase。`SubjectDetai
 |-------|------------------------------------------------------------------------------------------------------------------|
 | 状态    | TV VM 复用共享加载器的 Placeholder / Err / Ok；`Retry` 重载详情及图片，`Resume` 优先采用共享进度目标，再回退未看/首集；UI 不选择播放目标                    |
 | 信息层   | Google TV 式全屏背景及线性遮罩、两行标题、BGM 评分/主标签/yyyy-MM/共享连载状态；半宽简介卡片；播放/收藏/评分三个胶囊按钮；下方为圆形角色、圆形 Staff 和横版关联条目 |
-| 图片    | TMDB backdrop + `getEpisodeStills` / `matchToEpisodes` 已接；选集卡优先分集剧照，缺图回退 backdrop/海报。backdrop 用未解析/有图/无图三态避免进页闪替 |
+| 图片    | 横幅取 `SubjectInfo.tmdbArt` 的首选 backdrop，分集剧照取 `EpisodeInfo.imageLarge`；选集卡优先分集剧照，缺图回退 backdrop/海报。backdrop 用未解析/有图/无图三态避免进页闪替 |
 | 简介 | 全屏 Description 阅读页：固定标题、标签横排、长文上下渐隐及滚动条，正文后显示放送开始、正片话数和别名；选集仍由播放页提供 |
 | 初始焦点  | 播放按钮槽位常驻；`InitialFocus` 等 RESUMED；下方区块在首次播放钮聚焦或 RESUMED 后才组合                                                     |
 | 当前滚动  | Hero 顶边 = 0；角色、制作人员、关联条目沿用平台默认纵向滚动；内层横向列表独立采用行首 + 58dp 锚定；背景随滚动压暗和模糊 |
@@ -658,7 +658,7 @@ TV 不启动 torrent 服务连接，不初始化 Sentry/Firebase。`SubjectDetai
 | 页面状态      | 探索/追番/时间表/详情/登录的共享 VM 或状态；搜索与设置通过 TV VM 访问仓库                                      |
 | 会话/配置/持久化 | SessionManager、UserRepository、SettingsRepository、DataStore、Room；TV 与手机应用数据目录独立    |
 | 导航        | app-platform 中 Navigation 3 版 AniNavigator、NavRoutes、back stack                   |
-| 图片与详情     | Sketch AsyncImage、TMDB 横图/分集剧照匹配、BangumiSummaryService 简介兜底                       |
+| 图片与详情     | Sketch AsyncImage、服务端下发的 TMDB 横图/分集剧照、BangumiSummaryService 简介兜底                       |
 
 视频缓存管理器保留空存储实例以满足注入；torrent、离线下载和手机页面视图不接入 TV 运行链路。共享状态工厂属于实际复用范围。
 
@@ -666,9 +666,8 @@ TV 不启动 torrent 服务连接，不初始化 Sentry/Firebase。`SubjectDetai
 
 | 能力                                        | 当前情况                                                    |
 |-------------------------------------------|---------------------------------------------------------|
-| `TmdbImageService` / `TmdbEpisodeMatcher` | 已在 app-data，包含持久化图片信息与分集匹配；探索横图、详情横图/剧照、播放器选集条剧照均已消费 |
+| `SubjectInfo.tmdbArt` / `EpisodeInfo.imageLarge` | 服务端镜像的 TMDB 图片直链，随条目缓存持久化；探索横图、详情横图/剧照、播放器选集条剧照均已消费 |
 | `BangumiSummaryService`                   | 已注册公共 Koin，探索 Hero 空简介兜底已用；不能据此推断每个 TV 页面都用了兜底          |
-| `StaleRefreshGate`                        | 已存在并用于 TMDB 刷新控制，不再是 R3 待新增项                            |
 | 低端设备降级                                    | TV 主题/布局没有设备分档接线；禁用复杂过渡、弹幕密度分档等仍待实现与测量                  |
 | 配置消费                                      | 弹幕总开关、自动跳 OP/ED、倍速和增强模式已接入 TV VM；完整全局设置 UI 仍待补齐         |
 
@@ -688,7 +687,7 @@ TV 不启动 torrent 服务连接，不初始化 Sentry/Firebase。`SubjectDetai
 IDE 直接选择相应的 Build Variant。Release 与 install 任务同样按 flavor 选择，
 APK 仍输出到 `outputs/apk/{default,tv}/{debug,release}`。
 
-TMDB 需 `local.properties` 的 `ani.tmdb.api.token`；图片回归需核验设备上的实际图片来源。
+TMDB 图片来自服务端，条目未映射到 TMDB 或图片尚未镜像时为空；图片回归需核验设备上的实际图片来源。
 仅构建成功或看到 Bangumi 回退图不能判为 TMDB 通过。
 
 ### 10.2 CI 与上传配置
@@ -776,7 +775,7 @@ Material3 import 禁令已删除。以上部分规则是源码字符串/前缀�
 - 冷启动到探索首帧 ≤2.5s（中端盒子）仍是目标，未在本次取得测量结果。
 - 当前共享图片加载器是 Sketch，`createDefaultSketch` 使用
   `DisabledMemoryCache` 与磁盘缓存，旧「Coil 内存缓存 10MB」描述已失效。
-- 探索 backdrop 使用 TMDB w1280，卡片降到 w780；详情剧照消费原 URL，不能把图片服务提供降档函数等同所有消费端都已使用。
+- 探索与详情的 backdrop 使用服务端镜像的 w1280（`TmdbImage.medium`），分集剧照消费原尺寸 URL（`EpisodeInfo.imageLarge`）；卡片尺寸的降档由图片加载库按目标尺寸完成。
 - 低端机弹幕密度、复杂过渡降级和 4K 设备内存/合成表现尚需实现或测量；不把未执行的性能预算写成达标结果。
 
 ---
@@ -884,7 +883,7 @@ M0 是骨架前置，后续里程碑已有并行实现，**并非 M1–M4 全部
 | 3  | 焦点/滚动在不同设备上的差异    | 已用附着/快照/生命周期事件修复一批竞态；仍需不同 API/ROM、空数据、慢加载、IME 和连发回归，禁止回退轮询/延时方案 |
 | 4  | 更新与外链入口不完整        | 更新暂缓；浏览器仍 Noop，Release 二维码与深链解析均未接入                             |
 | 5  | import 约定的机械守护不完整 | 共享手机 UI 可见，现有白名单含包前缀；需收窄或增加符号级检查，不能把当前 Konsist 等同编译期隔离          |
-| 6  | TMDB 图片与资源退化      | 需要配置访问令牌和网络通路；探索/详情有缺图回退，但各消费端降档、代理场景和解码内存仍待验证                  |
+| 6  | TMDB 图片与资源退化      | 依赖服务端镜像覆盖率与 CDN 通路；探索/详情有缺图回退，但各消费端降档、代理场景和解码内存仍待验证                  |
 | 7  | 发布配置与成功分发不同       | 当前可确认双包构建/上传配置；正式发布成功、安装升级与签名一致性需在实际流水线与设备验证                    |
 | 8  | 产品范围预期            | 发布说明明确 TV 纯在线播放；缓存/BT 等属于裁剪，不作为未完成项；低端设备优化属于待办                  |
 | 9  | 单维度混用形态与发行渠道      | 目前 `default/tv` 可满足双包；未来新增商店渠道时再评估拆维度，保留手机任务兼容要求                |
@@ -1010,8 +1009,7 @@ M0 是骨架前置，后续里程碑已有并行实现，**并非 M1–M4 全部
    `:app:shared:ui-foundation-tv:testAndroidHostTest --tests 'me.him188.ani.leanback.*'`，行为与设备回归按改动范围补齐。
 3. **分层提交**：每个 commit 独立可编译，按里程碑/功能切分。
 4. 应用内更新按维护者指示暂缓（服务端 `android-tv` 支持就绪前 TV 端保持关闭）。
-5. 构建环境：需设置 `ANDROID_HOME`；TMDB 需 `local.properties` 配
-   `ani.tmdb.api.token`（未配置全链路静默退化）。TMDB 图片回归需在设备上核对图片来源与独立分集剧照。
+5. 构建环境：需设置 `ANDROID_HOME`。TMDB 图片回归需在设备上核对图片来源与独立分集剧照。
 
 ### 14.7 代码组织与风格
 

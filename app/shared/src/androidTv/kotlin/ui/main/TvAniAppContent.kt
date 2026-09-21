@@ -168,7 +168,6 @@ fun TvAniAppContent(
                                         TvExplorationViewModel(
                                             koin = dependencies.koin,
                                             collectionRepository = dependencies.subjectCollectionRepository,
-                                            tmdb = dependencies.tmdbImageService,
                                         )
                                     }
                                     TvExplorationRoute(viewModel, onNavigate)
@@ -268,7 +267,6 @@ fun TvAniAppContent(
                                 },
                                 factory = dependencies.subjectDetailsStateFactory,
                                 collectionRepository = dependencies.subjectCollectionRepository,
-                                tmdb = dependencies.tmdbImageService,
                                 setEpisodeCollectionType = dependencies.setEpisodeCollectionType,
                                 searchRepository = dependencies.subjectSearchRepository,
                                 sessionStateProvider = dependencies.sessionStateProvider,
@@ -295,7 +293,6 @@ fun TvAniAppContent(
                                 episodeCommentRepository = dependencies.episodeCommentRepository,
                                 getSubjectRecommendations = dependencies.getSubjectRecommendations,
                                 autoSkipRepository = dependencies.autoSkipRepository,
-                                tmdbImageService = dependencies.tmdbImageService,
                                 selectorEpisodeCacheRepository = dependencies.selectorEpisodeCacheRepository,
                                 webSessionManager = dependencies.webSessionManager,
                                 playbackAutomationGate = dependencies.playbackAutomationGate,

@@ -28,6 +28,7 @@ import me.him188.ani.app.data.models.subject.RatingInfo
 import me.him188.ani.app.data.models.subject.SelfRatingInfo
 import me.him188.ani.app.data.models.subject.SubjectCollectionStats
 import me.him188.ani.app.data.models.subject.SubjectInfo
+import me.him188.ani.app.data.models.subject.SubjectTmdbArt
 import me.him188.ani.app.data.models.subject.Tag
 import me.him188.ani.app.data.persistent.database.ProtoConverters
 import me.him188.ani.datasources.api.PackedDate
@@ -84,6 +85,12 @@ data class SubjectCollectionEntity(
      */
     @Embedded(prefix = "relations_")
     val relations: SubjectRelations = SubjectRelations.Empty,
+
+    /**
+     * @see SubjectInfo.tmdbArt
+     */
+    @field:TypeConverters(ProtoConverters.SubjectTmdbArtConverter::class)
+    val tmdbArt: SubjectTmdbArt? = null,
 
     /**
      * 此条目最后被修改的时间 (如修改收藏状态). 与服务器同步.

@@ -31,7 +31,6 @@ import me.him188.ani.app.data.network.AniSubjectRelationIndexService
 import me.him188.ani.app.data.network.AniSubjectSearchService
 import me.him188.ani.app.data.network.AnimeScheduleService
 import me.him188.ani.app.data.network.BangumiSummaryService
-import me.him188.ani.app.data.network.TmdbImageService
 import me.him188.ani.app.data.network.BangumiBangumiCommentServiceImpl
 import me.him188.ani.app.data.network.BangumiCommentService
 import me.him188.ani.app.data.network.BangumiRelatedPeopleService
@@ -300,7 +299,6 @@ private fun KoinApplication.otherModules(
 
     single<AnimeScheduleService> { AnimeScheduleService(get<AniApiProvider>().scheduleApi) }
     // TV 横版 backdrop / 分集剧照; 未配置 ani.tmdb.api.token 时自动关闭 (atv-architecture.md §4.3-R3)
-    single<TmdbImageService> { TmdbImageService(get(), getContext().dataStores.tmdbImageCacheStore) }
     single<BangumiSummaryService> { BangumiSummaryService(get()) }
 
     single<UpdateManager> {
