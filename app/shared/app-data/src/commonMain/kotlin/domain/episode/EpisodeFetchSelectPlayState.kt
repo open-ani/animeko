@@ -117,6 +117,7 @@ class EpisodeFetchSelectPlayState(
     val playerSession = PlayerSession(
         player,
         koin,
+        backgroundScope,
         mainDispatcher,
     )
 
