@@ -40,7 +40,10 @@ class SubjectRelationGraphRepository(
     defaultDispatcher: CoroutineContext = Dispatchers.Default,
 ) : Repository(defaultDispatcher) {
     /**
-     * 获取 [subjectId] 所在系列的关系图. 图的结构由服务器计算, 只请求一次; 收藏状态来自本地缓存, 会随收藏变化更新.
+     * 获取 [subjectId] 所在系列的关系图. 图的结构由服务器计算, 只请求一次.
+     *
+     * 本地缓存只包含用户打开过或在收藏列表中加载过的条目, 无法区分 "未收藏" 和 "未缓存", 因此收藏状态以服务器随图返回的为基础,
+     * 本地缓存中有记录的条目以本地为准, 并随收藏变化更新.
      */
     fun subjectRelationGraphFlow(subjectId: Int): Flow<SubjectRelationGraph> = flow {
         val graph = try {
@@ -48,16 +51,22 @@ class SubjectRelationGraphRepository(
         } catch (e: Exception) {
             throw RepositoryException.wrapOrThrowCancellation(e)
         }
+        // 本地记录消失说明用户在此期间取消了收藏, 此时不能回退到服务器在请求时返回的状态
+        val seenLocally = mutableSetOf<Int>()
         emitAll(
             subjectCollectionDao.filterByIds(graph.nodes.mapToIntArray { it.id.toInt() }).map { collections ->
-                graph.toSubjectRelationGraph(
-                    collections.associate { it.subjectId to it.collectionType },
-                )
+                val local = collections.associate { it.subjectId to it.collectionType }
+                val removed = (seenLocally - local.keys).associateWith { UnifiedCollectionType.NOT_COLLECTED }
+                seenLocally += local.keys
+                graph.toSubjectRelationGraph(local + removed)
             },
         )
     }.flowOn(defaultDispatcher)
 }
 
+/**
+ * @param collectionTypes 覆盖服务器返回的收藏状态. 不在其中的条目使用服务器返回的.
+ */
 internal fun AniSubjectRelationGraph.toSubjectRelationGraph(
     collectionTypes: Map<Int, UnifiedCollectionType>,
 ): SubjectRelationGraph {
@@ -75,7 +84,7 @@ internal fun AniSubjectRelationGraph.toSubjectRelationGraph(
             else -> null
         },
         episodeCount = episodeCount,
-        collectionType = collectionTypes[id.toInt()] ?: UnifiedCollectionType.NOT_COLLECTED,
+        collectionType = collectionTypes[id.toInt()] ?: collectionType.toUnifiedCollectionType(),
     )
 
     val nodesById = nodes.associateBy { it.id }

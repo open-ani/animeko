@@ -12,6 +12,7 @@ package me.him188.ani.app.data.repository.subject
 import kotlinx.serialization.json.Json
 import me.him188.ani.app.data.models.subject.SubjectRelation
 import me.him188.ani.app.data.models.subject.SubjectRelationGraphPlatform
+import me.him188.ani.client.models.AniCollectionType
 import me.him188.ani.client.models.AniSubjectRelationGraph
 import me.him188.ani.client.models.AniSubjectRelationGraphNodeRole
 import me.him188.ani.datasources.api.PackedDate
@@ -101,6 +102,38 @@ class SubjectRelationGraphMappingTest {
 
         // 尚未公布放送日期
         assertEquals(PackedDate.Invalid, graph.mainline[3].subject.airDate)
+    }
+
+    @Test
+    fun `collection types from server are used for subjects without local overrides`() {
+        val graph = railgun.copy(
+            nodes = railgun.nodes.map {
+                when (it.id) {
+                    2585L -> it.copy(collectionType = AniCollectionType.DONE)
+                    51928L -> it.copy(collectionType = AniCollectionType.DONE)
+                    98371L -> it.copy(collectionType = AniCollectionType.WISH)
+                    else -> it
+                }
+            },
+        ).toSubjectRelationGraph(
+            mapOf(
+                51928 to UnifiedCollectionType.DOING,
+                98371 to UnifiedCollectionType.NOT_COLLECTED, // 请求之后在本地取消了收藏
+            ),
+        )
+        assertEquals(
+            listOf(
+                UnifiedCollectionType.DONE,
+                UnifiedCollectionType.DOING,
+                UnifiedCollectionType.NOT_COLLECTED,
+                UnifiedCollectionType.NOT_COLLECTED,
+            ),
+            graph.mainline.map { it.subject.collectionType },
+        )
+        assertEquals(
+            listOf(UnifiedCollectionType.NOT_COLLECTED, UnifiedCollectionType.NOT_COLLECTED),
+            graph.mainline[0].branches.map { it.subject.collectionType },
+        )
     }
 
     @Test

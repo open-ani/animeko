@@ -16,6 +16,7 @@
 
 package me.him188.ani.client.models
 
+import me.him188.ani.client.models.AniCollectionType
 import me.him188.ani.client.models.AniSubjectRelationGraphNodeRole
 
 import kotlinx.serialization.*
@@ -36,6 +37,7 @@ import kotlinx.serialization.encoding.*
  * @param platform
  * @param attachTo
  * @param relation
+ * @param collectionType
  */
 @Serializable
 
@@ -61,7 +63,9 @@ data class AniSubjectRelationGraphNode (
 
     @SerialName(value = "attachTo") val attachTo: kotlin.Long? = null,
 
-    @SerialName(value = "relation") val relation: kotlin.Int? = null
+    @SerialName(value = "relation") val relation: kotlin.Int? = null,
+
+    @SerialName(value = "collectionType") val collectionType: AniCollectionType? = null
 
 ) {
 
