@@ -48,7 +48,7 @@ class QrLoginPollerTest {
         QrLoginPoller(repository, deviceName = "TV", timeSource = testScheduler.timeSource, pollInterval = 2.seconds)
 
     @Test
-    fun `counts down, reports the scan, then finishes when approved`() = runTest {
+    fun `counts down and reports the scan then finishes when approved`() = runTest {
         val repository = FakeRepository(
             mutableListOf(
                 { QrLoginPollResult.Pending },
