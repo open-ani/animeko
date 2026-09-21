@@ -201,6 +201,10 @@ fun SettingsScreen(
     initialTab: SettingsTab? = null,
     windowInsets: WindowInsets = AniWindowInsets.forColumnPageContent(),
     navigationIcon: @Composable () -> Unit = {},
+    /**
+     * 前往扫码登录其他设备. 为 `null` (当前平台不能扫码) 时不显示入口
+     */
+    onNavigateToQrLogin: (() -> Unit)? = null,
 ) {
     val navigator: ThreePaneScaffoldNavigator<Nothing?> = rememberListDetailPaneScaffoldNavigator(
         initialDestinationHistory = buildList {
@@ -361,6 +365,7 @@ fun SettingsScreen(
                                 onNavigateToGithubAccount = {
                                     navigateTo(DetailPaneRoutes.GithubAccount)
                                 },
+                                onNavigateToQrLogin = onNavigateToQrLogin,
                             )
 
                             SettingsTab.APPEARANCE -> AppearanceGroup(vm.uiSettings)

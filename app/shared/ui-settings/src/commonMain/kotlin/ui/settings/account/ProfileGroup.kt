@@ -27,6 +27,7 @@ import androidx.compose.foundation.text.selection.SelectionContainer
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.Edit
 import androidx.compose.material.icons.rounded.ErrorOutline
+import androidx.compose.material.icons.rounded.QrCodeScanner
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
@@ -83,6 +84,8 @@ import me.him188.ani.app.ui.foundation.rememberAsyncHandler
 import me.him188.ani.app.ui.foundation.rememberDragAndDropState
 import me.him188.ani.app.ui.foundation.widgets.HeroIcon
 import me.him188.ani.app.ui.lang.Lang
+import me.him188.ani.app.ui.lang.qr_login_settings_description
+import me.him188.ani.app.ui.lang.qr_login_title
 import me.him188.ani.app.ui.lang.settings_account_profile_avatar_invalid_format
 import me.him188.ani.app.ui.lang.settings_account_profile_avatar_size_exceeded
 import me.him188.ani.app.ui.lang.settings_account_profile_bind
@@ -132,7 +135,11 @@ fun SettingsScope.ProfileGroup(
     onNavigateToOAuth: (OAuthPlatform) -> Unit,
     onNavigateToGithubAccount: () -> Unit,
     vm: ProfileViewModel = viewModel<ProfileViewModel> { ProfileViewModel() },
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    /**
+     * 前往扫码登录其他设备. 为 `null` (当前平台不能扫码) 时不显示入口
+     */
+    onNavigateToQrLogin: (() -> Unit)? = null,
 ) {
     val state by vm.stateFlow.collectAsStateWithLifecycle(initialValue = AccountSettingsState.Empty)
     val asyncHandler = rememberAsyncHandler()
@@ -159,6 +166,7 @@ fun SettingsScope.ProfileGroup(
         },
         onExternalAccountClick = onNavigateToOAuth,
         onGithubAccountClick = onNavigateToGithubAccount,
+        onQrLoginClick = onNavigateToQrLogin,
         onAvatarUpload = {
             vm.uploadAvatar(it)
         },
@@ -210,6 +218,10 @@ internal fun SettingsScope.ProfileGroupImpl(
      */
     onUnbindExternalAccount: (provider: String) -> Unit,
     modifier: Modifier = Modifier,
+    /**
+     * 点击 "扫码登录", 为其他设备 (例如电视) 登录当前账号. 为 `null` 时不显示. 未登录时也不显示
+     */
+    onQrLoginClick: (() -> Unit)? = null,
     windowSizeClass: WindowSizeClass = currentWindowAdaptiveInfo1().windowSizeClass,
 ) {
     var showLogoutDialog by remember { mutableStateOf(false) }
@@ -303,6 +315,16 @@ internal fun SettingsScope.ProfileGroupImpl(
                     description = { Text(userIdText) },
                     modifier = Modifier.placeholder(isPlaceholder),
                 )
+
+                if (onQrLoginClick != null && currentState.isSessionValid == true) {
+                    TextItem(
+                        title = { Text(stringResource(Lang.qr_login_title)) },
+                        description = { Text(stringResource(Lang.qr_login_settings_description)) },
+                        icon = { Icon(Icons.Rounded.QrCodeScanner, null) },
+                        onClick = onQrLoginClick,
+                        modifier = Modifier.testTag("qrLogin"),
+                    )
+                }
 
                 Group(title = { Text(thirdPartyAccountsText) }) {
                     TextItem(

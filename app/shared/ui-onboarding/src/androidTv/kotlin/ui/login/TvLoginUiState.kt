@@ -19,7 +19,21 @@ data class TvLoginUiState(
     val error: String? = null,
     val resendRemainSec: Long = 0,
     val isExistingAccount: Boolean? = null,
+    val qr: TvQrLoginUiState = TvQrLoginUiState.Loading,
 )
+
+/** 登录页二维码区域的状态. 二维码过期时自动换新, 只有 [Invalid] 需要用户手动刷新. */
+sealed interface TvQrLoginUiState {
+    data object Loading : TvQrLoginUiState
+    data class Waiting(val qrContent: String, val remainSec: Long) : TvQrLoginUiState
+
+    /** 已扫码, 等待用户在手机上确认. */
+    data class Scanned(val qrContent: String, val nickname: String?) : TvQrLoginUiState
+    data object Success : TvQrLoginUiState
+    data class Invalid(val reason: Reason) : TvQrLoginUiState {
+        enum class Reason { Rejected, Failed }
+    }
+}
 
 sealed interface TvLoginIntent {
     data class ChangeEmail(val value: String) : TvLoginIntent
@@ -27,4 +41,5 @@ sealed interface TvLoginIntent {
     data object SendOtp : TvLoginIntent
     data object SubmitOtp : TvLoginIntent
     data object ReenterEmail : TvLoginIntent
+    data object RefreshQr : TvLoginIntent
 }

@@ -46,6 +46,20 @@ sealed class NavRoutes : NavKey {
     @Serializable
     data class OAuthAuthorize(val provider: String) : NavRoutes()
 
+    /**
+     * 扫描其他设备 (例如电视) 上的登录二维码.
+     */
+    @Serializable
+    data object QrLoginScan : NavRoutes()
+
+    /**
+     * 确认为其他设备登录当前账号.
+     *
+     * @param requestId 扫码登录会话的 ID, 来自二维码或 `ani://qr-login` 链接
+     */
+    @Serializable
+    data class QrLoginConfirm(val requestId: String) : NavRoutes()
+
     @Serializable
     data class Settings(
         /**

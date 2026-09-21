@@ -15,6 +15,14 @@
         xmlns:tools="http://schemas.android.com/tools">
 
     <uses-permission android:name="android.permission.VIBRATE" />
+    <!-- 扫码登录. 相机不是必需的: 没有相机的设备 (平板, Chromebook) 仍可安装 -->
+    <uses-permission android:name="android.permission.CAMERA" />
+    <uses-feature
+            android:name="android.hardware.camera"
+            android:required="false" />
+    <uses-feature
+            android:name="android.hardware.camera.autofocus"
+            android:required="false" />
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE_DATA_SYNC" />
@@ -54,6 +62,18 @@
 
                 <data
                         android:host="subjects"
+                        android:scheme="ani" />
+            </intent-filter>
+
+            <!-- 扫码登录: 系统相机扫描电视上的二维码后, 网页跳转到 ani://qr-login?requestId=... -->
+            <intent-filter android:autoVerify="false">
+                <action android:name="android.intent.action.VIEW" />
+
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+
+                <data
+                        android:host="qr-login"
                         android:scheme="ani" />
             </intent-filter>
         </activity>

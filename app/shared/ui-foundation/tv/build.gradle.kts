@@ -21,6 +21,7 @@ kotlin {
             api(projects.app.shared.uiFoundation)
             api(libs.androidx.tv.material)
             implementation(projects.app.shared.placeholder)
+            implementation(libs.zxing.core)
         }
     }
     sourceSets.androidHostTest {

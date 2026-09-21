@@ -1696,6 +1696,32 @@
     <string name="downloads_episode_picker_current">Current</string>
     <string name="downloads_episode_picker_selected_count">%1$d episodes selected</string>
     <string name="downloads_episode_picker_back">Back</string>
+    <string name="qr_login_title">Scan to sign in</string>
+    <string name="qr_login_settings_description">Sign in to this account on a TV or another device</string>
+    <string name="qr_login_scan_hint">Point the camera at the QR code on your TV</string>
+    <string name="qr_login_scan_invalid">This is not an Animeko sign-in QR code</string>
+    <string name="qr_login_scan_torch">Flashlight</string>
+    <string name="qr_login_camera_permission">Camera access is needed to scan the QR code</string>
+    <string name="qr_login_camera_permission_grant">Allow camera access</string>
+    <string name="qr_login_confirm_title">Confirm sign-in</string>
+    <string name="qr_login_confirm_headline">Sign in on a new device?</string>
+    <string name="qr_login_confirm_as">The device below will be signed in as %1$s</string>
+    <string name="qr_login_confirm_as_current">The device below will be signed in to your account</string>
+    <string name="qr_login_confirm_unknown_device">Unknown device</string>
+    <string name="qr_login_confirm_device_requesting">Requesting to sign in</string>
+    <string name="qr_login_confirm_warning">Only confirm if you are looking at this device right now. Never scan a sign-in QR code that someone sent you.</string>
+    <string name="qr_login_confirm_approve">Confirm sign-in</string>
+    <string name="qr_login_confirm_reject">Decline</string>
+    <string name="qr_login_approved_title">Signed in</string>
+    <string name="qr_login_approved_description">%1$s is now signed in to your account. You can put your phone down.</string>
+    <string name="qr_login_rejected_title">Sign-in declined</string>
+    <string name="qr_login_expired">This QR code has expired. Refresh it on the TV and try again.</string>
+    <string name="qr_login_already_handled">This QR code has already been used</string>
+    <string name="qr_login_requires_login">Sign in to Animeko on this device first</string>
+    <string name="qr_login_failed">Something went wrong. Check your network and try again.</string>
+    <string name="qr_login_retry">Retry</string>
+    <string name="qr_login_done">Done</string>
+    <string name="qr_login_close">Close</string>
 </resources>
 
 <!--@formatter:on-->

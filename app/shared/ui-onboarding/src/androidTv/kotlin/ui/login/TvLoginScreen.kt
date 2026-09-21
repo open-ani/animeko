@@ -10,13 +10,16 @@
 package me.him188.ani.tv.ui.login
 
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.RowScope
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
@@ -25,13 +28,17 @@ import androidx.compose.material.icons.rounded.Done
 import androidx.compose.material.icons.rounded.Undo
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
+import androidx.compose.material3.VerticalDivider
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.input.key.Key
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
+import me.him188.ani.app.ui.lang.Lang
+import me.him188.ani.app.ui.lang.tv_login_or
 import me.him188.ani.tv.ui.foundation.focus.TvFocusKey
 import me.him188.ani.tv.ui.foundation.focus.TvFocusScope
 import me.him188.ani.tv.ui.foundation.focus.rememberTvFocusScope
@@ -42,12 +49,16 @@ import me.him188.ani.tv.ui.foundation.widgets.TvHeroButton
 import me.him188.ani.tv.ui.foundation.widgets.TvTextField
 import me.him188.ani.tv.ui.foundation.widgets.tvHeroContentColor
 import me.him188.ani.tv.ui.foundation.widgets.tvHeroSecondaryContentColor
+import org.jetbrains.compose.resources.stringResource
 
 /** 登录页焦点锚点 (统一焦点框架, 见 ui-foundation-tv/focus). */
 private enum class TvLoginFocus : TvFocusKey {
     /** 当前步骤的输入框 (进入各步骤时的初始焦点). */
     Field,
     Submit,
+
+    /** 二维码失效时出现的刷新按钮. */
+    RefreshQr,
 }
 
 /**
@@ -67,7 +78,27 @@ fun TvLoginScreen(
     focus.Resolver()
     LaunchedEffect(step) { focus.request(TvLoginFocus.Field) }
 
-    TvLoginPageLayout(focus = focus, modifier = modifier) {
+    // 空间搜索从左侧按钮向右会落到更宽的输入框上, 所以刷新按钮出现时, 给按钮行最右的按钮显式指定向右的去向.
+    val toQrRefresh = if (uiState.qr is TvQrLoginUiState.Invalid) {
+        Modifier.tvFocusHotkey(focus, Key.DirectionRight to TvLoginFocus.RefreshQr)
+    } else Modifier
+
+    TvLoginPageLayout(
+        focus = focus,
+        modifier = modifier,
+        qrPanel = {
+            TvQrLoginPanel(
+                uiState.qr,
+                onRefresh = {
+                    // 刷新按钮随即消失, 先把焦点交还给左侧, 否则焦点丢失后遥控器无法继续操作
+                    focus.request(TvLoginFocus.Submit)
+                    onIntent(TvLoginIntent.RefreshQr)
+                },
+                refreshButtonModifier = Modifier.tvFocusAnchor(focus, TvLoginFocus.RefreshQr)
+                    .tvFocusHotkey(focus, Key.DirectionLeft to TvLoginFocus.Submit),
+            )
+        },
+    ) {
         when (step) {
             TvLoginStep.Email -> TvLoginStepSection(
                 title = "登录 Animeko",
@@ -76,7 +107,7 @@ fun TvLoginScreen(
                     TvTextField(
                         value = uiState.email,
                         onValueChange = { onIntent(TvLoginIntent.ChangeEmail(it)) },
-                        modifier = Modifier.fillMaxWidth(0.55f)
+                        modifier = Modifier.fillMaxWidth(0.85f)
                             .tvFocusAnchor(focus, TvLoginFocus.Field)
                             .tvFocusHotkey(focus, Key.DirectionDown to TvLoginFocus.Submit),
                         placeholder = "邮箱地址",
@@ -98,7 +129,7 @@ fun TvLoginScreen(
                         filled = true,
                         onClick = { onIntent(TvLoginIntent.SendOtp) },
                         onFocused = {},
-                        modifier = Modifier.tvFocusAnchor(focus, TvLoginFocus.Submit),
+                        modifier = Modifier.tvFocusAnchor(focus, TvLoginFocus.Submit).then(toQrRefresh),
                     )
                 },
             )
@@ -119,7 +150,7 @@ fun TvLoginScreen(
                         TvTextField(
                             value = otp,
                             onValueChange = { onIntent(TvLoginIntent.ChangeOtp(it)) },
-                            modifier = Modifier.fillMaxWidth(0.35f)
+                            modifier = Modifier.fillMaxWidth(0.55f)
                                 .tvFocusAnchor(focus, TvLoginFocus.Field)
                                 .tvFocusHotkey(focus, Key.DirectionDown to TvLoginFocus.Submit),
                             placeholder = "6 位验证码",
@@ -147,6 +178,7 @@ fun TvLoginScreen(
                                 onIntent(TvLoginIntent.ReenterEmail)
                             },
                             onFocused = {},
+                            modifier = toQrRefresh,
                         )
                     },
                 )
@@ -165,23 +197,46 @@ fun TvLoginScreen(
 }
 
 /**
- * 登录页骨架 (对齐手机 EmailLoginScreenLayout 的 slot 模式):
- * 统一焦点接线 + 垂直居中列, [content] 填充当前步骤区块与错误提示.
+ * 登录页骨架: 左侧是邮箱登录的步骤区块 ([content], 垂直居中列, slot 模式对齐手机 EmailLoginScreenLayout),
+ * 右侧常驻 [qrPanel]. 两种登录方式同时可用, 扫码不需要遥控器操作, 所以焦点默认留在左侧.
  */
 @Composable
 private fun TvLoginPageLayout(
     focus: TvFocusScope,
     modifier: Modifier = Modifier,
+    qrPanel: @Composable () -> Unit,
     content: @Composable ColumnScope.() -> Unit,
 ) {
-    Column(
+    Row(
         modifier
             .fillMaxSize()
             .tvFocusNavSignal(focus)
             .padding(horizontal = TvLoginDefaults.HorizontalPadding),
-        verticalArrangement = Arrangement.Center,
-        content = content,
-    )
+        horizontalArrangement = Arrangement.spacedBy(TvLoginDefaults.ColumnSpacing),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Column(Modifier.weight(1f), verticalArrangement = Arrangement.Center, content = content)
+        TvLoginMethodDivider(Modifier.fillMaxHeight(0.6f))
+        Box(Modifier.width(TvLoginDefaults.QrPanelWidth), contentAlignment = Alignment.Center) { qrPanel() }
+    }
+}
+
+/** 两种登录方式之间的竖向分隔: 线 · "或" · 线. */
+@Composable
+private fun TvLoginMethodDivider(modifier: Modifier = Modifier) {
+    Column(
+        modifier,
+        verticalArrangement = Arrangement.spacedBy(10.dp),
+        horizontalAlignment = Alignment.CenterHorizontally,
+    ) {
+        VerticalDivider(Modifier.weight(1f))
+        Text(
+            stringResource(Lang.tv_login_or),
+            style = MaterialTheme.typography.bodyMedium,
+            color = tvHeroSecondaryContentColor(),
+        )
+        VerticalDivider(Modifier.weight(1f))
+    }
 }
 
 /**
@@ -214,4 +269,8 @@ private fun TvLoginStepSection(
 private object TvLoginDefaults {
     /** 内容水平留白 (= overscan 安全边距 48). */
     val HorizontalPadding = 48.dp
+
+    /** 邮箱区 / 分隔 / 扫码区之间的间距. */
+    val ColumnSpacing = 40.dp
+    val QrPanelWidth = 300.dp
 }
