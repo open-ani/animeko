@@ -1,0 +1,35 @@
+09-22 14:15:49.258 13876 14276 W Codec2Client: query -- param skipped: index = 1342179345.
+09-22 14:15:49.258 13876 14276 W Codec2Client: query -- param skipped: index = 2415921170.
+09-22 14:15:49.258 13876 14276 W Codec2Client: query -- param skipped: index = 1610614798.
+09-22 14:15:49.259 13876 13876 I AssHandler: onVideoSizeChanged: width = 0, height = 0
+09-22 14:15:49.277 13876 14127 D MediaCodec: keep callback message for reclaim
+09-22 14:15:49.277 13876 14286 I CCodecConfig: query failed after returning 21 values (BAD_INDEX)
+09-22 14:15:49.277 13876 14286 W Codec2Client: query -- param skipped: index = 1342179345.
+09-22 14:15:49.277 13876 14286 W Codec2Client: query -- param skipped: index = 2415921170.
+09-22 14:15:49.277 13876 14286 W Codec2Client: query -- param skipped: index = 1610614798.
+09-22 14:15:49.278 13876 14276 D SurfaceUtils: connecting to surface 0xb40000721f7d0960, reason connectToSurface
+09-22 14:15:49.278 13876 14276 I MediaCodec: [c2.goldfish.h264.decoder] setting surface generation to 14209026
+09-22 14:15:49.278 13876 14276 D SurfaceUtils: disconnecting from surface 0xb40000721f7d0960, reason connectToSurface(reconnect)
+09-22 14:15:49.279 13876 14276 D SurfaceUtils: connecting to surface 0xb40000721f7d0950, reason connectToSurface(reconnect-with-listener)
+09-22 14:15:49.279 13876 14276 D SurfaceUtils: legacy buffer drop disabled: target sdk (37)
+09-22 14:15:49.279 13876 14276 D Codec2-OutputBufferQueue: remote graphic buffer migration 0/0
+09-22 14:15:49.279 13876 14276 D Codec2Client: setOutputSurface -- failed to set consumer usage (6/BAD_INDEX)
+09-22 14:15:49.279 13876 14276 D Codec2Client: setOutputSurface -- generation=14209026 consumer usage=0x900
+09-22 14:15:49.280 13876 14276 D Codec2Client: Surface configure completed
+09-22 14:15:49.280 13876 14276 D SurfaceUtils: disconnecting from surface 0xb40000721f8018d0, reason disconnectFromSurface
+09-22 14:15:49.283 13876 14276 D CCodecBufferChannel: [c2.goldfish.h264.decoder#286] MediaCodec discarded an unknown buffer
+09-22 14:15:49.283 13876 14276 D CCodecBufferChannel: [c2.goldfish.h264.decoder#286] MediaCodec discarded an unknown buffer
+09-22 14:15:49.283 13876 14276 D CCodecBufferChannel: [c2.goldfish.h264.decoder#286] MediaCodec discarded an unknown buffer
+09-22 14:15:49.283 13876 14276 D CCodecBufferChannel: [c2.goldfish.h264.decoder#286] MediaCodec discarded an unknown buffer
+09-22 14:15:49.284 13876 14692 I hw-BpHwBinder: onLastStrongRef automatically unlinking death recipients
+09-22 14:15:49.285 13876 14276 D SurfaceUtils: disconnecting from surface 0xb40000721f7d0960, reason disconnectFromSurface
+09-22 14:15:49.286 13876 14286 D CCodecBufferChannel: [c2.android.aac.decoder#300] MediaCodec discarded an unknown buffer
+09-22 14:15:49.286 13876 14286 D CCodecBufferChannel: [c2.android.aac.decoder#300] MediaCodec discarded an unknown buffer
+09-22 14:15:49.286 13876 14286 D CCodecBufferChannel: [c2.android.aac.decoder#300] MediaCodec discarded an unknown buffer
+09-22 14:15:49.286 13876 14286 D CCodecBufferChannel: [c2.android.aac.decoder#300] MediaCodec discarded an unknown buffer
+09-22 14:15:49.286 13876 14286 I hw-BpHwBinder: onLastStrongRef automatically unlinking death recipients
+09-22 14:15:50.159 13876 13902 I app.domain.player.extension.PlayerLoadErrorHandler: Player errored, automatically switched to next media: null
+09-22 14:15:50.159 13876 13902 I app.domain.player.extension.PlayerLoadErrorHandler: 
+09-22 14:15:55.061 13876 14280 D BufferPoolAccessor2.0: bufferpool2 0xb40000717f7dfeb8 : 0(0 size) total buffers - 0(0 size) used buffers - 6091/6104 (recycle/alloc) - 23/6090 (fetch/transfer)
+09-22 14:15:55.062 13876 14280 D BufferPoolAccessor2.0: bufferpool2 0xb40000717f7fa398 : 0(0 size) total buffers - 0(0 size) used buffers - 3396/3404 (recycle/alloc) - 35/3392 (fetch/transfer)
+09-22 14:15:55.062 13876 14280 D BufferPoolAccessor2.0: evictor expired: 2, evicted: 2

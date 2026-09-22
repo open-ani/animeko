@@ -1,0 +1,36 @@
+iOS 26.4 / iPhone 17 Pro
+Uncaught Kotlin exception: kotlin.NullPointerException
+    at 0   application                         0x1155a0753        kfun:kotlin.Throwable#<init>(){} + 75 
+    at 1   application                         0x11559a597        kfun:kotlin.Exception#<init>(){} + 67 
+    at 2   application                         0x11559a757        kfun:kotlin.RuntimeException#<init>(){} + 67 
+    at 3   application                         0x11559a917        kfun:kotlin.NullPointerException#<init>(){} + 67 
+    at 4   application                         0x1155cade7        ThrowNullPointerException + 127 
+    at 5   application                         0x115173ab3        kfun:me.him188.ani.app.pip.IosPictureInPictureController.<init>#internal + 1183 
+    at 6   application                         0x115173287        kfun:me.him188.ani.app.pip#rememberPictureInPictureController(org.openani.mediamp.MediampPlayer;androidx.compose.runtime.Composer?;kotlin.Int){}me.him188.ani.app.pip.PictureInPictureController + 2211 
+    at 7   application                         0x114f96383        kfun:me.him188.ani.app.ui.subject.episode.EpisodeScreenContent#internal + 8823 
+    at 8   application                         0x114fb8b0b        kfun:me.him188.ani.app.ui.subject.episode.EpisodeScreenContent$2.invoke#internal + 331 
+
+iOS 18.2 / iPhone 16 Pro
+Uncaught Kotlin exception: kotlin.NullPointerException
+    at 0   application                         0x1158ec753        kfun:kotlin.Throwable#<init>(){} + 75 
+    at 1   application                         0x1158e6597        kfun:kotlin.Exception#<init>(){} + 67 
+    at 2   application                         0x1158e6757        kfun:kotlin.RuntimeException#<init>(){} + 67 
+    at 3   application                         0x1158e6917        kfun:kotlin.NullPointerException#<init>(){} + 67 
+    at 4   application                         0x115916de7        ThrowNullPointerException + 127 
+    at 5   application                         0x1154bfab3        kfun:me.him188.ani.app.pip.IosPictureInPictureController.<init>#internal + 1183 
+    at 6   application                         0x1154bf287        kfun:me.him188.ani.app.pip#rememberPictureInPictureController(org.openani.mediamp.MediampPlayer;androidx.compose.runtime.Composer?;kotlin.Int){}me.him188.ani.app.pip.PictureInPictureController + 2211 
+    at 7   application                         0x1152e2383        kfun:me.him188.ani.app.ui.subject.episode.EpisodeScreenContent#internal + 8823 
+    at 8   application                         0x115304b0b        kfun:me.him188.ani.app.ui.subject.episode.EpisodeScreenContent$2.invoke#internal + 331 
+
+iOS 26.4 support query
+(lldb) expr -l objc++ -- (BOOL)[(Class)objc_getClass("AVPictureInPictureController") isPictureInPictureSupported]
+(BOOL) $0 = NO
+
+iOS 18.2 support query
+(lldb) expr -l objc++ -- (BOOL)[(Class)objc_getClass("AVPictureInPictureController") isPictureInPictureSupported]
+(BOOL) $0 = NO
+
+Symbolicated IosPictureInPictureController.<init> + 1183:
+app/shared/src/iosMain/kotlin/pip/PictureInPictureController.ios.kt:92
+
+Local Xcode AVKit SDK header: when isPictureInPictureSupported is NO, all initializers return nil; initWithPlayerLayer is nullable.
