@@ -628,7 +628,7 @@ class TvExplorationUiTest {
         key(Key.DirectionDown)
         awaitFocus("tv-exploration-followed-11")
         settle()
-        val empty = progressBitmap()
+        val empty = awaitStableProgressBitmap()
         settle(480)
         assertTrue(empty.sameAs(progressBitmap()), "An empty progress bar should remain static")
         key(Key.DirectionRight)
@@ -649,7 +649,7 @@ class TvExplorationUiTest {
         key(Key.DirectionDown)
         awaitFocus("tv-exploration-followed-11")
         settle()
-        val before = progressBitmap()
+        val before = awaitStableProgressBitmap()
         settle(480)
         assertTrue(before.sameAs(progressBitmap()), "System animation settings should also control the custom particles")
         onNodeWithTag("tv-exploration-followed-11").assertIsFocused()
@@ -657,6 +657,22 @@ class TvExplorationUiTest {
 
     private fun AniComposeUiTest.progressBitmap() =
         onNodeWithTag("tv-exploration-watching-progress").captureToImage().asAndroidBitmap()
+
+    /**
+     * 进度条下方是经 Sketch 异步加载的背景图, 它按真实时钟加载, 不受测试时钟控制;
+     * 等到连续两次截图一致, 之后的像素比较才只反映进度条自身的变化.
+     */
+    private fun AniComposeUiTest.awaitStableProgressBitmap(): Bitmap {
+        var last = progressBitmap()
+        val deadline = System.currentTimeMillis() + 5_000
+        while (System.currentTimeMillis() < deadline) {
+            Thread.sleep(200)
+            val next = progressBitmap()
+            if (last.sameAs(next)) return next
+            last = next
+        }
+        throw AssertionError("The progress bar kept changing without the test clock advancing")
+    }
 
     @Test
     fun continuePreviewExpandsVerticallyAndCanReverseWithoutChangingTextSize() = runAniComposeUiTest {
