@@ -21,7 +21,11 @@ import kotlin.jvm.JvmInline
  * failures are reported as [TrackingProviderException].
  */
 interface TrackingProvider {
+    /** Stable identity and user-facing metadata. UI resources remain in the presentation layer. */
+    val info: TrackingProviderInfo
+
     val id: TrackingProviderId
+        get() = info.id
 
     suspend fun searchAnime(query: String): List<TrackingMedia>
 
@@ -33,6 +37,17 @@ interface TrackingProvider {
 
     /** Deletes the remote list entry. This does not delete Animeko's local binding. */
     suspend fun deleteListEntry(mediaId: TrackingMediaId)
+}
+
+data class TrackingProviderInfo(
+    val id: TrackingProviderId,
+    val displayName: String,
+    val websiteUrl: String,
+) {
+    init {
+        require(displayName.isNotBlank()) { "Tracking provider display name must not be blank" }
+        require(websiteUrl.isNotBlank()) { "Tracking provider website URL must not be blank" }
+    }
 }
 
 @JvmInline
@@ -53,6 +68,7 @@ value class TrackingMediaId(val value: String) {
 data class TrackingMedia(
     val id: TrackingMediaId,
     val title: String,
+    val siteUrl: String,
     val coverImageUrl: String?,
     val totalEpisodes: Int?,
 )

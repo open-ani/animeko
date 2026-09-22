@@ -20,6 +20,9 @@ class TrackingProviderContractTest {
         val provider: TrackingProvider = InMemoryTrackingProvider()
         val media = provider.searchAnime("Frieren").single()
 
+        assertEquals("Test Tracker", provider.info.displayName)
+        assertEquals("https://tracker.example", provider.info.websiteUrl)
+        assertEquals("https://tracker.example/anime/1", media.siteUrl)
         assertNull(provider.getAnime(media.id)?.listEntry)
 
         val saved = provider.saveListEntry(
@@ -52,11 +55,16 @@ class TrackingProviderContractTest {
 }
 
 private class InMemoryTrackingProvider : TrackingProvider {
-    override val id = TrackingProviderId("test")
+    override val info = TrackingProviderInfo(
+        id = TrackingProviderId("test"),
+        displayName = "Test Tracker",
+        websiteUrl = "https://tracker.example",
+    )
 
     private val media = TrackingMedia(
         id = TrackingMediaId("1"),
         title = "Frieren: Beyond Journey's End",
+        siteUrl = "https://tracker.example/anime/1",
         coverImageUrl = null,
         totalEpisodes = 28,
     )
