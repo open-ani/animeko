@@ -45,6 +45,10 @@ data class SubjectInfo(
     val nsfw: Boolean,
     val imageLarge: String,
     /**
+     * 列表用封面地址, 服务端下发的缩略图. 只有来自条目收藏接口的数据才有, 其他来源为空; 展示时用 [listCoverUrl].
+     */
+    val imageThumb: String = "",
+    /**
      * 总集数, 0 表示未知.
      */
     @Deprecated("This includes all MainStory/OVA/SP while the app only supports MainStory")
@@ -154,6 +158,12 @@ data class SubjectInfo(
 
 @Stable
 val SubjectInfo.nameCnOrName get() = nameCn.takeIf { it.isNotBlank() } ?: name
+
+/**
+ * 列表和卡片里显示的封面: 优先缩略图, 没有时用原图.
+ */
+@Stable
+val SubjectInfo.listCoverUrl: String get() = imageThumb.ifEmpty { imageLarge }
 
 @Stable
 val SubjectInfo.nameOrNameCn get() = name.ifBlank { nameCn }
