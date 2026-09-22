@@ -47,6 +47,7 @@ import androidx.compose.runtime.Stable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.key
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
@@ -348,17 +349,20 @@ internal fun EpisodeVideoImpl(
                     // Save the status bar height to offset the video player
                     val statusBarHeight by rememberStatusBarHeightAsState()
 
-                    VideoPlayer(
-                        playerState,
-                        Modifier
-                            .ifThen(statusBarHeight != 0.dp) {
-                                offset(x = -statusBarHeight / 2, y = 0.dp)
-                            }
-                            .onSizeChanged {
-                                videoEnhancement?.setViewportSize(it.width, it.height)
-                            }
-                            .matchParentSize(),
-                    )
+                    // Reattach the native video surface when its pane changes so paused frames use the current bounds.
+                    key(verticalSplit) {
+                        VideoPlayer(
+                            playerState,
+                            Modifier
+                                .ifThen(statusBarHeight != 0.dp) {
+                                    offset(x = -statusBarHeight / 2, y = 0.dp)
+                                }
+                                .onSizeChanged {
+                                    videoEnhancement?.setViewportSize(it.width, it.height)
+                                }
+                                .matchParentSize(),
+                        )
+                    }
                 }
             },
             danmakuHost = {
