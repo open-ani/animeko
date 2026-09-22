@@ -10,6 +10,8 @@
 package me.him188.ani.app.domain.media.cache
 
 import androidx.datastore.core.DataStore
+import kotlinx.coroutines.async
+import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
@@ -22,6 +24,7 @@ import me.him188.ani.app.domain.media.cache.storage.TorrentMediaCacheStorage
 import me.him188.ani.app.domain.media.createTestDefaultMedia
 import me.him188.ani.app.domain.media.createTestMediaProperties
 import me.him188.ani.app.domain.media.resolver.EpisodeMetadata
+import me.him188.ani.app.torrent.api.TorrentHandleState
 import me.him188.ani.datasources.api.DefaultMedia
 import me.him188.ani.datasources.api.EpisodeSort
 import me.him188.ani.datasources.api.MediaCacheMetadata
@@ -98,6 +101,44 @@ class TorrentMediaCacheStorageTest : AbstractTorrentMediaCacheEngineTest() {
     )
 
     ///////////////////////////////////////////////////////////////////////////
+    // downloader status
+    ///////////////////////////////////////////////////////////////////////////
+
+    @Test
+    fun `downloader status reports the engine state and connected peers`() = runTest {
+        val storage = createStorage(createEngine(onDownloadStarted = { it.onTorrentChecked() }))
+        val cache = storage.cache(testMedia, mediaCacheMetadata(), resume = false)
+        assertEquals(
+            DownloaderStatus.Torrent(
+                serviceConnected = true,
+                startup = DownloaderStatus.TorrentStartup.STARTED,
+                state = TorrentHandleState.DOWNLOADING,
+                connectedPeers = 0,
+                seeds = 0,
+            ),
+            cache.downloaderStatus.first(),
+        )
+    }
+
+    @Test
+    fun `downloader status reports startup timeout when torrent info never arrives`() = runTest {
+        // 引擎从不报告种子信息, 启动阶段在虚拟时间中超时.
+        val storage = createStorage(createEngine())
+        val cache = storage.cache(testMedia, mediaCacheMetadata(), resume = false)
+        assertEquals(
+            DownloaderStatus.Torrent(
+                serviceConnected = true,
+                startup = DownloaderStatus.TorrentStartup.TIMED_OUT,
+                state = null,
+                connectedPeers = 0,
+                seeds = 0,
+            ),
+            cache.downloaderStatus.first(),
+        )
+        assertEquals(MediaCacheState.FAILED, cache.state.first())
+    }
+
+    ///////////////////////////////////////////////////////////////////////////
     // simple create, restore, find
     ///////////////////////////////////////////////////////////////////////////
 
@@ -163,6 +204,18 @@ class TorrentMediaCacheStorageTest : AbstractTorrentMediaCacheEngineTest() {
         assertNotNull(torrentInfoDatabase.get(testMedia.mediaId))
         assertSame(cache, storage.cache(testMedia, mediaCacheMetadata(), resume = false))
         assertSame(cache, storage.listFlow.first().single())
+        assertEquals(1, torrentInfoDatabase.getAll().first().size)
+    }
+
+    @Test
+    fun `concurrent cache calls reuse one persisted record`() = runTest {
+        val storage = createStorage(createEngine(onDownloadStarted = { it.onTorrentChecked() }))
+        val caches = List(6) {
+            async { storage.cache(testMedia, mediaCacheMetadata(), resume = false) }
+        }.awaitAll()
+        caches.forEach { assertSame(caches.first(), it) }
+        assertSame(caches.first(), storage.listFlow.first().single())
+        assertEquals(1, metadataFlow.first().size)
         assertEquals(1, torrentInfoDatabase.getAll().first().size)
     }
 

@@ -17,20 +17,20 @@ import me.him188.ani.datasources.api.paging.SizedSource
 import kotlin.jvm.JvmInline
 
 /**
- * 一个查询单个剧集的可下载的资源 [Media] 的服务, 称为数据源 [MediaSource].
+ * 一个查询条目的可下载的资源 [Media] 的服务, 称为数据源 [MediaSource].
  *
  * 数据源不提供条目数据, 而是依赖条目服务 (即 Bangumi) 提供的条目数据.
  * 数据源的查询 [fetch] 可以拿到包含条目信息的 [MediaFetchRequest].
- * 数据源只需要支持使用 [MediaFetchRequest] 中的信息, 查询该剧集的所有可下载资源 [Media].
+ * 数据源只需要支持使用 [MediaFetchRequest] 中的信息, 查询该条目在此源上的所有可下载资源 [Media].
  *
  * [MediaSource] 是一个抽象的来源. 它不一定都是来自网络和 BT, 也可以是本地文件系统.
- * 用户使用缓存功能创建的缓存, 就会存储到缓存管理器 `MediaCacheManager`, 然后能通过一个专门查询本地缓存的 [MediaSource] 查询到.
+ * 用户保存的视频下载由下载管理器 `MediaDownloadManager` 管理, 然后能通过一个专门查询本地下载的 [MediaSource] 查询到.
  *
  * ## [MediaSource] 只负责查询资源 ([Media]) 列表
  *
  * 对于资源的下载, 缓存, 以及播放, 都是由其他模块负责. 具体内容可查看:
  * - 下载过程: `MediaCacheEngine`
- * - 管理缓存列表: `MediaCacheManager`
+ * - 管理下载列表: `MediaDownloadManager`
  * - 解析 [Media] 为可播放的视频数据: `VideoSourceResolver`
  *
  * ## 资源信息
@@ -94,22 +94,30 @@ interface MediaSource : AutoCloseable {
     suspend fun checkConnection(): ConnectionStatus
 
     /**
-     * 使用 [MediaFetchRequest] 中的信息, 尽可能多地查询一个剧集的所有可下载的资源, 返回一个分页的资源列表.
+     * 使用 [MediaFetchRequest] 中的信息, 尽可能多地查询一个**条目**在此源上的所有可下载的资源, 返回一个分页的资源列表.
      *
-     * 数据源应当尽可能*精准*地返回结果:
-     * - 对于**完全**肯定匹配的资源, 标记为 [MatchKind.EXACT].
-     * - 对于**完全**肯定不不配的资源, 需要剔除.
-     * - 对于无法 100% 区分的, 则应当返回, 并标记为 [MatchKind.FUZZY].
+     * 一次查询的结果供该条目的所有剧集使用: 播放页切集与批量下载都不会为每一集重新查询. 数据源承诺三件事:
      *
-     * ## 数据源选择的实现细节
+     * ### 完整性
+     * 返回该条目的所有集, 所有线路 / 字幕组, 单集与合集资源, 不得按请求中的当前剧集 ([MediaFetchRequest.episodeSort] 等) 剔除.
+     * 按集裁剪由数据源选择器 `MediaSelector` 完成. 数据源仍应剔除**完全**肯定属于其他条目的资源.
      *
-     * ### 数据源需要负责区分剧集的正确性
-     * 若请求 [MediaFetchRequest.episodeSort] 为 "01", 但 [fetch] 返回 "02", 该剧集**不会**被后续流程自动剔除, 它会被原封不动地展示给用户.
+     * ### [Media.episodeRange] 准确
+     * 单集资源为 [me.him188.ani.datasources.api.topic.EpisodeRange.single], 已知集数的合集为
+     * [me.him188.ani.datasources.api.topic.EpisodeRange.range], 只知道是整季时才用
+     * [me.him188.ani.datasources.api.topic.EpisodeRange.season]. 解析不出剧集时保留 `null`, 不要猜测为请求中的当前剧集.
+     * 选择器只会向用户展示剧集范围包含当前剧集的资源, 范围为 `null` 的资源不会被展示.
      *
-     * 所有 [fetch] 返回的资源, 都将会被数据源选择器 `MediaSelector` 接收并能够显示.
-     * 但需要注意数据源选择系统有一系列过滤选项 (APP 设置中 "播放与缓存" 的 "高级设置")
+     * ### [Media.mediaId] 稳定
+     * 同一资源在多次查询之间返回相同的 id, id 不包含请求信息. 下载去重与已下载合集的复用依赖它.
      *
-     * 当用户关闭设置中的所有自动过滤选项时, 将能够看到所有 [fetch] 返回的资源.
+     * ## 匹配等级
+     *
+     * - 通过条目 ID 精确定位到条目的结果, 标记为 [MatchKind.EXACT].
+     * - 通过关键字搜索得到, 无法 100% 确定属于该条目的结果, 标记为 [MatchKind.FUZZY].
+     *
+     * 所有 [fetch] 返回的资源, 都将会被数据源选择器 `MediaSelector` 接收.
+     * 数据源选择系统有一系列过滤选项 (APP 设置中 "播放与缓存" 的 "高级设置"), 例如隐藏生肉.
      *
      * @throws kotlinx.io.IOException
      * @throws kotlin.coroutines.cancellation.CancellationException

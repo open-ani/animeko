@@ -12,6 +12,7 @@ package me.him188.ani.app.ui.settings.tabs
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalClipboard
@@ -24,13 +25,20 @@ import me.him188.ani.app.data.repository.user.UserRepository
 import me.him188.ani.app.domain.session.SessionManager
 import me.him188.ani.app.domain.usecase.GlobalKoin
 import me.him188.ani.app.platform.MeteredNetworkDetector
+import me.him188.ani.app.tools.update.UpdateInstaller
 import me.him188.ani.app.ui.foundation.LocalPlatform
 import me.him188.ani.app.ui.foundation.setClipEntryText
 import me.him188.ani.app.ui.foundation.widgets.LocalToaster
 import me.him188.ani.app.ui.lang.Lang
 import me.him188.ani.app.ui.lang.settings_debug_copied
+import me.him188.ani.app.ui.lang.settings_debug_dev_builds
+import me.him188.ani.app.ui.lang.settings_debug_dev_builds_install_commit
+import me.him188.ani.app.ui.lang.settings_debug_dev_builds_install_commit_description
 import me.him188.ani.app.ui.lang.settings_debug_episodes
 import me.him188.ani.app.ui.lang.settings_debug_get_ani_token
+import me.him188.ani.app.ui.lang.settings_debug_install_package
+import me.him188.ani.app.ui.lang.settings_debug_install_package_on_drop
+import me.him188.ani.app.ui.lang.settings_debug_install_package_on_drop_description
 import me.him188.ani.app.ui.lang.settings_debug_logged_out
 import me.him188.ani.app.ui.lang.settings_debug_logout
 import me.him188.ani.app.ui.lang.settings_debug_metered_network
@@ -44,6 +52,8 @@ import me.him188.ani.app.ui.settings.SettingsTab
 import me.him188.ani.app.ui.settings.framework.SettingsState
 import me.him188.ani.app.ui.settings.framework.components.SwitchItem
 import me.him188.ani.app.ui.settings.framework.components.TextItem
+import me.him188.ani.app.ui.update.devbuild.DevBuildPackageSpec
+import me.him188.ani.utils.platform.isDesktop
 import org.jetbrains.compose.resources.getString
 import org.jetbrains.compose.resources.stringResource
 import org.koin.mp.KoinPlatform
@@ -52,7 +62,8 @@ import org.koin.mp.KoinPlatform
 fun DebugTab(
     debugSettingsState: SettingsState<DebugSettings>,
     modifier: Modifier = Modifier,
-    onDisableDebugMode: () -> Unit = {}
+    onDisableDebugMode: () -> Unit = {},
+    onNavigateToDevBuilds: () -> Unit = {},
 ) {
     val debugSettings by debugSettingsState
     val toaster = LocalToaster.current
@@ -86,6 +97,37 @@ fun DebugTab(
                 title = { Text(stringResource(Lang.settings_debug_show_all_episodes)) },
                 description = { Text(stringResource(Lang.settings_debug_show_all_episodes_description)) },
             )
+        }
+        val installablePackageExtensions = remember { GlobalKoin.get<UpdateInstaller>().installablePackageExtensions }
+        if (LocalPlatform.current.isDesktop() && installablePackageExtensions.isNotEmpty()) {
+            Group(title = { Text(stringResource(Lang.settings_debug_install_package)) }, useThinHeader = true) {
+                SwitchItem(
+                    checked = debugSettings.installPackageOnDrop,
+                    onCheckedChange = { checked ->
+                        debugSettingsState.update(debugSettings.copy(installPackageOnDrop = checked))
+                    },
+                    title = { Text(stringResource(Lang.settings_debug_install_package_on_drop)) },
+                    description = {
+                        Text(
+                            stringResource(
+                                Lang.settings_debug_install_package_on_drop_description,
+                                installablePackageExtensions.joinToString(", "),
+                            ),
+                        )
+                    },
+                )
+            }
+        }
+        val platform = LocalPlatform.current
+        val supportsDevBuilds = remember(platform) { DevBuildPackageSpec.forPlatform(platform) != null }
+        if (supportsDevBuilds) {
+            Group(title = { Text(stringResource(Lang.settings_debug_dev_builds)) }, useThinHeader = true) {
+                TextItem(
+                    title = { Text(stringResource(Lang.settings_debug_dev_builds_install_commit)) },
+                    description = { Text(stringResource(Lang.settings_debug_dev_builds_install_commit_description)) },
+                    onClick = onNavigateToDevBuilds,
+                )
+            }
         }
         Group(title = { Text(stringResource(Lang.settings_debug_metered_network)) }, useThinHeader = true) {
             TextItem {

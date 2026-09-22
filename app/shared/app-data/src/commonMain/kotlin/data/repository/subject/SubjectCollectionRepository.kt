@@ -58,7 +58,9 @@ import me.him188.ani.app.data.models.subject.SubjectCollectionStats
 import me.him188.ani.app.data.models.subject.SubjectInfo
 import me.him188.ani.app.data.models.subject.SubjectProgressInfo
 import me.him188.ani.app.data.models.subject.SubjectRecurrence
+import me.him188.ani.app.data.models.subject.SubjectTmdbArt
 import me.him188.ani.app.data.models.subject.Tag
+import me.him188.ani.app.data.models.subject.TmdbImage
 import me.him188.ani.app.data.network.EpisodeService
 import me.him188.ani.app.data.network.SubjectService
 import me.him188.ani.app.data.persistent.database.dao.EpisodeCollectionDao
@@ -89,6 +91,8 @@ import me.him188.ani.client.models.AniSelfRatingInfo
 import me.him188.ani.client.models.AniSubjectCollection
 import me.him188.ani.client.models.AniSubjectRelations
 import me.him188.ani.client.models.AniTag
+import me.him188.ani.client.models.AniTmdbImage
+import me.him188.ani.client.models.AniTmdbSubjectArt
 import me.him188.ani.client.models.AniUpdateSubjectCollectionRequest
 import me.him188.ani.datasources.api.EpisodeSort
 import me.him188.ani.datasources.api.EpisodeType
@@ -715,6 +719,7 @@ private fun SubjectCollectionEntity.toSubjectInfo(): SubjectInfo {
         ratingInfo = ratingInfo,
         collectionStats = collectionStats,
         completeDate = completeDate,
+        tmdbArt = tmdbArt,
     )
 }
 
@@ -840,12 +845,21 @@ fun AniSubjectCollection.toEntity(
         collectionType = collectionType.toUnifiedCollectionType(),
         recurrence = airingInfo?.recurrence?.toSubjectRecurrence(),
         relations = relations.toSubjectRelationsEntity(),
+        tmdbArt = tmdbArt?.toSubjectTmdbArt(),
         lastUpdated = updatedAt?.let { Instant.parse(it) }?.toEpochMilliseconds() ?: 0,
         lastFetched = lastFetched,
         cachedStaffUpdated = 0,
         cachedCharactersUpdated = 0,
     )
 }
+
+private fun AniTmdbSubjectArt.toSubjectTmdbArt(): SubjectTmdbArt = SubjectTmdbArt(
+    backdrops = backdrops.map { it.toTmdbImage() },
+    posters = posters.mapValues { it.value.toTmdbImage() },
+    logos = logos.mapValues { it.value.toTmdbImage() },
+)
+
+private fun AniTmdbImage.toTmdbImage(): TmdbImage = TmdbImage(medium = medium, large = large, vector = vector)
 
 /**
  * 条目大封面的静态 CDN 地址. 不依赖本地数据库, 可用于本地无记录时的兜底展示.
@@ -922,6 +936,8 @@ fun AniEpisodeCollection.toEntity1(
         sort = EpisodeSort(BigNum(sort), type.toEpisodeType()),
         ep = ep?.let { EpisodeSort(BigNum(it), type.toEpisodeType()) },
         sortNumber = sort.toFloatOrNull() ?: 0f,
+        imageMedium = imageMedium,
+        imageLarge = imageLarge,
         selfCollectionType = collectionType.toUnifiedCollectionType(),
         lastFetched = lastFetched,
     )

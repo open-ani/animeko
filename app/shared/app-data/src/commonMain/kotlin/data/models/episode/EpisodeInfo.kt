@@ -43,6 +43,10 @@ data class EpisodeInfo(
     val sort: EpisodeSort = EpisodeSort(""),
     /** 条目内的集数, 从`1`开始。非本篇剧集的此字段无意义 */
     val ep: EpisodeSort? = null,
+    /** TMDB 剧照 (宽 300px, 16:9) 的公开 CDN 直链. 没有剧照时为 `null`. */
+    val imageMedium: String? = null,
+    /** TMDB 原尺寸剧照 (通常 1920×1080) 的公开 CDN 直链. 没有剧照时为 `null`. */
+    val imageLarge: String? = null,
 //    /** 服务器解析的时长，无法解析时为 `0` */
 //    val durationSeconds: Int? = null
 ) {

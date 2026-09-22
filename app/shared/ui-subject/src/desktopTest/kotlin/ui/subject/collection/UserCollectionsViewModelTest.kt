@@ -68,7 +68,7 @@ import me.him188.ani.app.data.repository.subject.OfflineSubjectDisplayInfo
 import me.him188.ani.app.data.repository.subject.SubjectCollectionRepository
 import me.him188.ani.app.data.repository.user.Settings
 import me.him188.ani.app.data.repository.user.SettingsRepository
-import me.him188.ani.app.domain.media.cache.MediaCacheManager
+import me.him188.ani.app.domain.media.download.MediaDownloadManager
 import me.him188.ani.app.domain.session.SessionEvent
 import me.him188.ani.app.domain.session.SessionState
 import me.him188.ani.app.domain.session.SessionStateProvider
@@ -254,7 +254,7 @@ class UserCollectionsViewModelTest {
         )
         val episodeProgressRepository = EpisodeProgressRepository(
             episodeCollectionRepository,
-            object : MediaCacheManager(emptyList(), fixtureScope) {},
+            MediaDownloadManager(emptyList(), fixtureScope),
         )
         startKoin {
             modules(

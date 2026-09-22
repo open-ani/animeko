@@ -39,7 +39,7 @@ class LocalSeasonNumberingTest {
 
     @Test
     fun `matching series provider id permits local numbering with specials`() = runTest {
-        assertSeasonSelection(seriesName = "Yuru Camp", seriesProviderId = "123")
+        assertSeasonSelection(seriesName = "Yuru Camp", seriesProviderId = "123", expectedKind = MatchKind.EXACT)
     }
 
     @Test
@@ -98,6 +98,7 @@ class LocalSeasonNumberingTest {
         episodeProviderIds: String = "{}",
         expectedSeasons: List<Int> = listOf(1),
         expectedEpisodeSeasons: List<Int> = expectedSeasons,
+        expectedKind: MatchKind = MatchKind.FUZZY,
     ) {
         val seasonItems = seasons.joinToString(",") { season ->
             """
@@ -173,7 +174,7 @@ class LocalSeasonNumberingTest {
                 val context = "${factory.factoryId}: $subjectName / $seriesName / $seasons"
                 assertEquals(expectedEpisodeSeasons.map { "episode-$it-1" }, result.map { it.media.mediaId }, context)
                 assertEquals(expectedSeasons, requestedSeasons.distinct(), context)
-                assertTrue(result.all { it.kind == MatchKind.FUZZY }, context)
+                assertTrue(result.all { it.kind == expectedKind }, context)
             } finally {
                 client.close()
             }

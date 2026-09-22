@@ -58,6 +58,9 @@ class MediaProgressFramePreviewState(
     var frame: ImageBitmap? by mutableStateOf(null)
         private set
 
+    var isLoading: Boolean by mutableStateOf(false)
+        private set
+
     private var frameGridKey = Long.MIN_VALUE
     private val cache = androidx.collection.LruCache<Long, ImageBitmap>(cacheSize)
 
@@ -68,7 +71,7 @@ class MediaProgressFramePreviewState(
      * 请求加载 [positionMillis] 处的帧. 预期在 `collectLatest` 中调用: 拖动到新位置时旧请求会被取消.
      * 缓存命中立即显示; 加载成功前保留上一帧, 避免闪烁.
      */
-    internal suspend fun requestFrame(positionMillis: Long) {
+    suspend fun requestFrame(positionMillis: Long) {
         val key = gridKeyOf(positionMillis)
         if (key == frameGridKey && frame != null) return
         cache[key]?.let {
@@ -76,11 +79,16 @@ class MediaProgressFramePreviewState(
             frameGridKey = key
             return
         }
-        delay(debounceMillis) // debounce: 快速滑动时, 更新的位置会取消本次请求
-        val newFrame = fetchFrame(alignToGrid(key, positionMillis)) ?: return
-        cache.put(key, newFrame)
-        frame = newFrame
-        frameGridKey = key
+        isLoading = true
+        try {
+            delay(debounceMillis) // debounce: 快速滑动时, 更新的位置会取消本次请求
+            val newFrame = fetchFrame(alignToGrid(key, positionMillis)) ?: return
+            cache.put(key, newFrame)
+            frame = newFrame
+            frameGridKey = key
+        } finally {
+            isLoading = false
+        }
     }
 
     /**
@@ -100,8 +108,9 @@ class MediaProgressFramePreviewState(
     /**
      * 预览结束 (浮窗隐藏) 时清空当前帧, 避免下次悬浮时先显示过期位置的帧. 缓存保留.
      */
-    internal fun onPreviewFinished() {
+    fun onPreviewFinished() {
         frame = null
+        isLoading = false
         frameGridKey = Long.MIN_VALUE
     }
 
@@ -111,6 +120,7 @@ class MediaProgressFramePreviewState(
     fun onMediaChanged() {
         cache.evictAll()
         frame = null
+        isLoading = false
         frameGridKey = Long.MIN_VALUE
     }
 }

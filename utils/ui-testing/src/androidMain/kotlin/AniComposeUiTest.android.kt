@@ -57,7 +57,7 @@ actual fun runAniComposeUiTest(effectContext: CoroutineContext, testBody: AniCom
         testThread.interrupt()
     }
 
-    runComposeUiTest {
+    runComposeUiTest(effectContext = effectContext) {
         try {
             testBody()
         } catch (e: InterruptedException) {

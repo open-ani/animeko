@@ -37,7 +37,9 @@ import me.him188.ani.app.domain.mediasource.asCandidate
 import me.him188.ani.app.domain.mediasource.web.format.SelectedChannelEpisodes
 import me.him188.ani.app.domain.mediasource.web.format.SelectorChannelFormat
 import me.him188.ani.app.domain.mediasource.web.format.SelectorFormatConfig
+import me.him188.ani.app.domain.mediasource.web.format.SelectorFormatId
 import me.him188.ani.app.domain.mediasource.web.format.SelectorSubjectFormat
+import me.him188.ani.app.domain.mediasource.web.format.SelectorSubjectFormatA
 import me.him188.ani.datasources.api.DefaultMedia
 import me.him188.ani.datasources.api.EpisodeSort
 import me.him188.ani.datasources.api.Media
@@ -62,10 +64,26 @@ import kotlin.coroutines.cancellation.CancellationException
 
 /**
  * For [SelectorMediaSourceEngine.selectMedia]
+ *
+ * [episodeSort], [episodeEp] 与 [episodeName] 是发起查询时的当前剧集, 只用于数据源编辑器的测试功能按集过滤.
  */
 data class SelectorSearchQuery(
     val subjectName: String,
     val allSubjectNames: Set<String>,
+    val episodeSort: EpisodeSort,
+    val episodeEp: EpisodeSort?,
+    val episodeName: String?,
+    /**
+     * 用于判断缓存的条目页面是否陈旧的剧集: 页面包含这一集才算命中. 为 `null` 时以当前剧集判断.
+     */
+    val freshnessProbe: SelectorEpisodeProbe? = null,
+)
+
+/**
+ * 判断缓存的条目页面是否包含某一集时使用的剧集信息.
+ * @see SelectorSearchQuery.freshnessProbe
+ */
+data class SelectorEpisodeProbe(
     val episodeSort: EpisodeSort,
     val episodeEp: EpisodeSort?,
     val episodeName: String?,
@@ -110,6 +128,7 @@ abstract class SelectorMediaSourceEngine {
 
     /**
      * 根据给定信息搜索条目列表.
+     * @param subjectFormatId 搜索结果格式, 用于请求相应的响应类型.
      */
     @Throws(RepositoryException::class, CancellationException::class)
     suspend fun searchSubjects(
@@ -117,6 +136,7 @@ abstract class SelectorMediaSourceEngine {
         subjectName: String,
         useOnlyFirstWord: Boolean,
         removeSpecial: Boolean,
+        subjectFormatId: SelectorFormatId = SelectorSubjectFormatA.id,
     ): SearchSubjectResult {
         val encodedUrl = MediaSourceEngineHelpers.encodeUrlSegment(
             MediaSourceEngineHelpers.getSearchKeyword(subjectName, removeSpecial, useOnlyFirstWord),
@@ -126,7 +146,7 @@ abstract class SelectorMediaSourceEngine {
             searchUrl.replace("{keyword}", encodedUrl),
         )
 
-        return searchImpl(finalUrl)
+        return searchImpl(finalUrl, subjectFormatId)
     }
 
     fun parseSearchResult(
@@ -154,6 +174,7 @@ abstract class SelectorMediaSourceEngine {
     @Throws(RepositoryException::class, CancellationException::class)
     protected abstract suspend fun searchImpl(
         finalUrl: Url,
+        subjectFormatId: SelectorFormatId,
     ): SearchSubjectResult
 
     /**
@@ -206,7 +227,7 @@ abstract class SelectorMediaSourceEngine {
         val parser = LabelFirstRawTitleParser()
         val originalMediaList = episodes.mapNotNull { info ->
             val subtitleLanguages = guessSubtitleLanguages(info, parser)
-            info.episodeSortOrEp ?: return@mapNotNull null
+            val episodeSort = info.matchingEpisodeSort(query.episodeSort, query.episodeEp) ?: return@mapNotNull null
             DefaultMedia(
                 mediaId = buildString {
                     append(mediaSourceId)
@@ -221,7 +242,7 @@ abstract class SelectorMediaSourceEngine {
                     }
                     append(info.name)
                     append("-")
-                    append(info.episodeSortOrEp)
+                    append(episodeSort)
                 },
                 mediaSourceId = mediaSourceId,
                 originalUrl = info.playUrl,
@@ -243,7 +264,7 @@ abstract class SelectorMediaSourceEngine {
                     size = FileSize.Unspecified,
                     subtitleKind = SubtitleKind.EMBEDDED,
                 ),
-                episodeRange = EpisodeRange.single(info.episodeSortOrEp),
+                episodeRange = EpisodeRange.single(episodeSort),
                 location = MediaSourceLocation.Online,
                 kind = MediaSourceKind.WEB,
             )
@@ -404,11 +425,12 @@ class DefaultSelectorMediaSourceEngine(
 ) : SelectorMediaSourceEngine() {
     override suspend fun searchImpl(
         finalUrl: Url,
+        subjectFormatId: SelectorFormatId,
     ): SearchSubjectResult = withContext(ioDispatcher) {
         try {
             client.use {
                 prepareGet(finalUrl) {
-                    accept(ContentType.Text.Html)
+                    acceptSelectorSearch(subjectFormatId)
                 }.execute { response ->
                     when (response.status) {
                         HttpStatusCode.NotFound -> SearchSubjectResult(

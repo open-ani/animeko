@@ -13,11 +13,17 @@ import androidx.lifecycle.LifecycleOwner
 import me.him188.ani.app.navigation.AniNavigator
 
 class SkikoOnBackPressedDispatcherOwner(
-    private val aniNavigator: AniNavigator, lifecycleOwner: LifecycleOwner,
+    override val onBackPressedDispatcher: OnBackPressedDispatcher,
+    lifecycleOwner: LifecycleOwner,
 ) : OnBackPressedDispatcherOwner, LifecycleOwner by lifecycleOwner {
-    override val onBackPressedDispatcher: OnBackPressedDispatcher = OnBackPressedDispatcher(
-        fallback = {
-            aniNavigator.popBackStack()
-        },
+    constructor(aniNavigator: AniNavigator, lifecycleOwner: LifecycleOwner) : this(
+        popBackStackDispatcher(aniNavigator),
+        lifecycleOwner,
     )
 }
+
+/**
+ * 没有任何启用的 [BackHandler] 时, 返回等价于退出当前页面.
+ */
+private fun popBackStackDispatcher(aniNavigator: AniNavigator): OnBackPressedDispatcher =
+    OnBackPressedDispatcher(fallback = { aniNavigator.popBackStack() })

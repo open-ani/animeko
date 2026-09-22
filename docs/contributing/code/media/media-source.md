@@ -2,13 +2,20 @@
 
 数据源 `MediaSource` 是*资源*（[Media][Media]）的提供商。
 
-`MediaSource` 主要提供函数 `fetch`，负责查询[剧集](../subjects.md#剧集)的资源：
+`MediaSource` 主要提供函数 `fetch`，负责查询一个[条目](../subjects.md)的资源：
 
 ```kotlin
 interface MediaSource {
     suspend fun fetch(query: MediaFetchRequest): SizedSource<MediaMatch> // 可以理解为返回 List<Media>
 }
 ```
+
+查询以条目为单位。`MediaFetchRequest` 携带条目名称与 ID、条目的全部剧集（`episodes`）以及当前剧集的提示；
+数据源返回该条目在本源能找到的全部资源：每一集的单集资源、每条线路（字幕组）以及合集，
+不按当前剧集裁剪。按当前剧集筛选由 [MediaSelector](media-selector.md) 完成。
+数据源须让每个资源的 `episodeRange` 尽量准确，并保证同一资源的 `mediaId` 在多次查询间稳定，
+这样播放页切集只需重建选择器，下载可以为多集复用同一次查询。
+`MatchKind.EXACT` 表示通过条目 ID 定位到了条目，`FUZZY` 表示由关键字搜索得到。
 
 ## 数据源类型
 
@@ -86,6 +93,15 @@ interface MediaSource {
 
 新增字段对旧版本客户端向后兼容：解码器开启了 `ignoreUnknownKeys`，旧客户端会忽略
 `channelTiers` 并继续使用数据源级阶级。
+
+## 订阅启用状态
+
+`MediaSourceSubscription.enabled` 持久化订阅的启用状态，默认值为 `true`。
+禁用的订阅不参与自动或手动刷新。TV 设置中的订阅开关同时批量启用或禁用该订阅的所有数据源，
+单个数据源仍可独立调整启用状态，不改变所属订阅状态。
+
+`MediaSourceSubscriptionUpdater` 在订阅仓库事务之外下载订阅，在事务内检查当前启用状态并应用数据源差异。
+订阅开关与差异应用共用仓库的串行更新边界，确保下载期间禁用订阅后不会应用过期响应。
 
 ## 扩展数据源支持
 

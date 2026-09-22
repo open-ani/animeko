@@ -255,7 +255,7 @@ class DefaultFileDownloader(
                         val buffer = ByteArray(DEFAULT_BUFFER_SIZE)
 
                         if (length != null) {
-                            launch {
+                            this@cancellableCoroutineScope.launch {
                                 while (isActive) {
                                     delay(1.seconds)
                                     _progress.value = downloaded.value.value.toFloat() / length

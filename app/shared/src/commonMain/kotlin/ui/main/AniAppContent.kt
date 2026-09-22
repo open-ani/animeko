@@ -38,11 +38,11 @@ import androidx.lifecycle.viewmodel.navigation3.rememberViewModelStoreNavEntryDe
 import androidx.navigation3.runtime.entryProvider
 import androidx.navigation3.runtime.rememberSaveableStateHolderNavEntryDecorator
 import androidx.navigation3.ui.NavDisplay
-import me.him188.ani.app.shared.Res
 import me.him188.ani.app.data.models.subject.SubjectInfo
 import me.him188.ani.app.domain.mediasource.rss.RssMediaSource
 import me.him188.ani.app.domain.mediasource.web.SelectorMediaSource
 import me.him188.ani.app.domain.search.SubjectSearchQuery
+import me.him188.ani.app.domain.session.auth.OAuthPlatform
 import me.him188.ani.app.navigation.AniNavigator
 import me.him188.ani.app.navigation.LocalNavigator
 import me.him188.ani.app.navigation.MainScreenPage
@@ -52,17 +52,18 @@ import me.him188.ani.app.navigation.SubjectDetailPlaceholder
 import me.him188.ani.app.navigation.rememberAniBackStack
 import me.him188.ani.app.platform.LocalContext
 import me.him188.ani.app.platform.navigation.LocalBrowserNavigator
+import me.him188.ani.app.shared.loadOpenSourceLibrariesJsons
 import me.him188.ani.app.ui.adaptive.navigation.AniNavigationSuiteDefaults
 import me.him188.ani.app.ui.bangumi.merge.BangumiMergeScreen
 import me.him188.ani.app.ui.bangumi.merge.BangumiMergeViewModel
-import me.him188.ani.app.ui.cache.CacheManagementScreen
-import me.him188.ani.app.ui.cache.CacheManagementViewModel
-import me.him188.ani.app.ui.cache.details.MediaCacheDetailsPageViewModel
-import me.him188.ani.app.ui.cache.details.MediaCacheDetailsScreen
-import me.him188.ani.app.ui.cache.details.MediaDetails
-import me.him188.ani.app.ui.cache.details.MediaDetailsLazyGrid
-import me.him188.ani.app.ui.cache.subject.SubjectCacheScreen
-import me.him188.ani.app.ui.cache.subject.rememberSubjectCacheViewModel
+import me.him188.ani.app.ui.download.DownloadManagementScreen
+import me.him188.ani.app.ui.download.createDownloadManagementViewModel
+import me.him188.ani.app.ui.download.createSubjectDownloadsViewModel
+import me.him188.ani.app.ui.download.details.MediaCacheDetailsPageViewModel
+import me.him188.ani.app.ui.download.details.MediaCacheDetailsScreen
+import me.him188.ani.app.ui.download.details.MediaDetails
+import me.him188.ani.app.ui.download.details.MediaDetailsLazyGrid
+import me.him188.ani.app.ui.download.subject.SubjectDownloadsScreen
 import me.him188.ani.app.ui.exploration.schedule.ScheduleScreen
 import me.him188.ani.app.ui.exploration.schedule.ScheduleViewModel
 import me.him188.ani.app.ui.foundation.animation.NavigationMotionScheme
@@ -77,8 +78,12 @@ import me.him188.ani.app.ui.lang.main_network_check_failed
 import me.him188.ani.app.ui.login.EmailLoginStartScreen
 import me.him188.ani.app.ui.login.EmailLoginVerifyScreen
 import me.him188.ani.app.ui.login.EmailLoginViewModel
-import me.him188.ani.app.ui.oauth.BangumiAuthorizeScreen
-import me.him188.ani.app.ui.oauth.BangumiAuthorizeViewModel
+import me.him188.ani.app.ui.oauth.OAuthAuthorizeScreen
+import me.him188.ani.app.ui.oauth.OAuthAuthorizeViewModel
+import me.him188.ani.app.ui.qrlogin.QrLoginConfirmScreen
+import me.him188.ani.app.ui.qrlogin.QrLoginConfirmViewModel
+import me.him188.ani.app.ui.qrlogin.QrLoginScanScreen
+import me.him188.ani.app.ui.qrlogin.isQrCodeScannerSupported
 import me.him188.ani.app.ui.playback.PlaybackHistoryScreen
 import me.him188.ani.app.ui.playback.PlaybackHistorySyncStatusScreen
 import me.him188.ani.app.ui.playback.PlaybackHistoryViewModel
@@ -100,6 +105,8 @@ import me.him188.ani.app.ui.subject.person.CharacterDetailsScreen
 import me.him188.ani.app.ui.subject.person.CharacterDetailsViewModel
 import me.him188.ani.app.ui.subject.person.PersonDetailsScreen
 import me.him188.ani.app.ui.subject.person.PersonDetailsViewModel
+import me.him188.ani.app.ui.subject.relations.SubjectRelationGraphScreen
+import me.him188.ani.app.ui.subject.relations.SubjectRelationGraphViewModel
 import me.him188.ani.app.ui.user.SelfInfoStateProducer
 import me.him188.ani.app.ui.watchtogether.LocalWatchTogetherPlayerController
 import me.him188.ani.app.ui.watchtogether.WatchTogetherOverlayHost
@@ -191,8 +198,8 @@ private fun AniAppContentImpl(
                     onOtpSent = {
                         aniNavigator.navigateEmailLoginVerify()
                     },
-                    onBangumiLoginClick = {
-                        aniNavigator.navigateBangumiAuthorize()
+                    onThirdPartyLoginClick = {
+                        aniNavigator.navigateOAuthAuthorize(it.id)
                     },
                     onNavigateSettings = {
                         aniNavigator.navigateSettings()
@@ -208,8 +215,8 @@ private fun AniAppContentImpl(
                     onSuccess = {
                         aniNavigator.popBackOrNavigateToMain(mainSceneInitialPage)
                     },
-                    onBangumiLoginClick = {
-                        aniNavigator.navigateBangumiAuthorize()
+                    onThirdPartyLoginClick = {
+                        aniNavigator.navigateOAuthAuthorize(it.id)
                     },
                     onNavigateSettings = {
                         aniNavigator.navigateSettings()
@@ -220,12 +227,14 @@ private fun AniAppContentImpl(
                     vm = emailLoginViewModel,
                 )
             }
-            entry<NavRoutes.BangumiAuthorize> {
-                val vm = viewModel<BangumiAuthorizeViewModel> { BangumiAuthorizeViewModel() }
-                BangumiAuthorizeScreen(
+            entry<NavRoutes.OAuthAuthorize> { route ->
+                // 未知平台 (例如旧版本保存的导航状态) 回退到 Bangumi
+                val platform = OAuthPlatform.fromId(route.provider) ?: OAuthPlatform.BANGUMI
+                val vm = viewModel<OAuthAuthorizeViewModel>(key = platform.id) { OAuthAuthorizeViewModel(platform) }
+                OAuthAuthorizeScreen(
                     vm,
                     onNavigateBack = {
-                        aniNavigator.popBackStack(NavRoutes.BangumiAuthorize, true)
+                        aniNavigator.popBackStack(route, true)
                     },
                     onNavigateSettings = {
                         aniNavigator.navigateSettings()
@@ -234,9 +243,32 @@ private fun AniAppContentImpl(
                         AniContactList()
                     },
                     onAuthorizeSuccess = {
-                        aniNavigator.popBackStack(NavRoutes.BangumiAuthorize, true)
+                        aniNavigator.popBackStack(route, true)
                         aniNavigator.popBackStack(NavRoutes.EmailLoginVerify, true)
                         aniNavigator.popBackStack(NavRoutes.EmailLoginStart, true)
+                    },
+                )
+            }
+            entry<NavRoutes.QrLoginScan> { route ->
+                QrLoginScanScreen(
+                    onScanned = { requestId ->
+                        // 确认页取代扫码页: 从确认页返回时不再回到相机
+                        aniNavigator.popBackStack(route, true)
+                        aniNavigator.navigateQrLoginConfirm(requestId)
+                    },
+                    onNavigateBack = { aniNavigator.popBackStack(route, true) },
+                )
+            }
+            entry<NavRoutes.QrLoginConfirm> { route ->
+                val vm = viewModel<QrLoginConfirmViewModel>(key = route.requestId) {
+                    QrLoginConfirmViewModel.create(route.requestId)
+                }
+                QrLoginConfirmScreen(
+                    vm,
+                    onNavigateBack = { aniNavigator.popBackStack(route, true) },
+                    onNavigateLogin = {
+                        aniNavigator.popBackStack(route, true)
+                        aniNavigator.navigateLogin()
                     },
                 )
             }
@@ -351,15 +383,13 @@ private fun AniAppContentImpl(
                         SettingsViewModel()
                     },
                     onNavigateToEmailLogin = { aniNavigator.navigateEmailLoginStart() },
-                    onNavigateToBangumiOAuth = { aniNavigator.navigateBangumiAuthorize() },
-                    loadOpenSourceLibrariesJsons = {
-                        listOf(
-                            Res.readBytes("files/aboutlibraries.json"),
-                            Res.readBytes("files/additional_libraries.json"),
-                        )
-                    },
+                    onNavigateToOAuth = { aniNavigator.navigateOAuthAuthorize(it.id) },
+                    loadOpenSourceLibrariesJsons = ::loadOpenSourceLibrariesJsons,
                     Modifier.fillMaxSize(),
                     route.tab,
+                    onNavigateToQrLogin = if (isQrCodeScannerSupported) {
+                        { aniNavigator.navigateQrLoginScan() }
+                    } else null,
                     navigationIcon = {
                         BackNavigationIconButton(
                             {
@@ -425,8 +455,8 @@ private fun AniAppContentImpl(
             }
             entry<NavRoutes.Caches> { route ->
                 val selfInfo by remember { SelfInfoStateProducer() }.flow.collectAsState(null)
-                CacheManagementScreen(
-                    vm = viewModel { CacheManagementViewModel() },
+                DownloadManagementScreen(
+                    vm = viewModel { createDownloadManagementViewModel() },
                     selfInfo = selfInfo,
                     onPlay = {
                         aniNavigator.navigateEpisodeDetails(it.subjectId, it.episodeId)
@@ -457,6 +487,25 @@ private fun AniAppContentImpl(
                     windowInsets = windowInsets,
                 )
             }
+            entry<NavRoutes.SubjectRelationGraph> { route ->
+                val vm = viewModel<SubjectRelationGraphViewModel>(key = "subject-relation-graph-${route.subjectId}") {
+                    SubjectRelationGraphViewModel(route.subjectId)
+                }
+                SubjectRelationGraphScreen(
+                    vm,
+                    onClickSubject = {
+                        aniNavigator.navigateSubjectDetails(
+                            it.subjectId,
+                            SubjectDetailPlaceholder(it.subjectId, it.name, it.nameCn, it.image),
+                        )
+                    },
+                    Modifier.fillMaxSize(),
+                    windowInsets = windowInsets,
+                    navigationIcon = {
+                        BackNavigationIconButton({ aniNavigator.popBackStack(route, inclusive = true) })
+                    },
+                )
+            }
             entry<NavRoutes.PersonDetail> { route ->
                 val vm = viewModel<PersonDetailsViewModel>(key = "person-${route.personId}") {
                     PersonDetailsViewModel(route.personId)
@@ -484,12 +533,10 @@ private fun AniAppContentImpl(
                 )
             }
             entry<NavRoutes.SubjectCaches> { route ->
-                // Don't use rememberViewModel to save memory
-                val vm = rememberSubjectCacheViewModel(route.subjectId)
-                SubjectCacheScreen(
-                    vm,
+                SubjectDownloadsScreen(
+                    vm = viewModel(key = route.toString()) { createSubjectDownloadsViewModel(route.subjectId) },
                     onPlay = { aniNavigator.navigateEpisodeDetails(it.subjectId, it.episodeId) },
-                    onNavigateCacheDetail = { aniNavigator.navigateCacheDetails(it) },
+                    onNavigateDownloadDetail = { aniNavigator.navigateCacheDetails(it) },
                     modifier = Modifier.fillMaxSize(),
                     windowInsets = windowInsets,
                     navigationIcon = {

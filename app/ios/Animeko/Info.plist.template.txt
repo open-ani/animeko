@@ -50,6 +50,8 @@
 	</array>
 	<key>CADisableMinimumFrameDurationOnPhone</key>
 	<true/>
+	<key>NSCameraUsageDescription</key>
+	<string>Animeko uses the camera to scan the sign-in QR code shown on your TV.</string>
 	<key>CFBundleURLTypes</key>
 	<array>
 		<dict>

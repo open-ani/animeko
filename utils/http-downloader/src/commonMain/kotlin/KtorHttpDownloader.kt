@@ -33,6 +33,8 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.filterNotNull
+import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.map
@@ -110,11 +112,16 @@ open class KtorHttpDownloader(
     )
     override val progressFlow: Flow<DownloadProgress> = _progressFlow.asSharedFlow()
 
+    /**
+     * 各任务最近一次分片或密钥下载失败的重试信息. 只在内存中保留, 分片成功或任务停止时清除.
+     */
+    private val segmentFailures = MutableStateFlow(persistentMapOf<DownloadId, SegmentFailure>())
+
     override fun getProgressFlow(downloadId: DownloadId): Flow<DownloadProgress> {
-        return downloadStatesFlow
-            .mapNotNull { states ->
-                states.firstOrNull { it.downloadId == downloadId }?.let(::createProgress)
-            }
+        return combine(downloadStatesFlow, segmentFailures) { states, failures ->
+            states.firstOrNull { it.downloadId == downloadId }?.let { createProgress(it, failures[downloadId]) }
+        }
+            .filterNotNull()
             .distinctUntilChanged()
     }
 
@@ -218,6 +225,7 @@ open class KtorHttpDownloader(
                 logger.info { "Downloading segments for $downloadId" }
                 downloadSegments(downloadId, options)
 
+                clearSegmentFailure(downloadId)
                 updateState(downloadId) {
                     it.copy(status = MERGING, timestamp = clock.now().toEpochMilliseconds())
                 }
@@ -246,6 +254,7 @@ open class KtorHttpDownloader(
                         timestamp = clock.now().toEpochMilliseconds(),
                     )
                 }
+                clearSegmentFailure(downloadId)
                 emitProgress(downloadId)
             }
         }
@@ -379,6 +388,7 @@ open class KtorHttpDownloader(
             }
             onUpdateDownloadStatus(downloadId, PAUSED)
         }
+        clearSegmentFailure(downloadId)
         emitProgress(downloadId)
         return true
     }
@@ -429,6 +439,7 @@ open class KtorHttpDownloader(
                 )
             }
         }
+        clearSegmentFailure(downloadId)
         onUpdateDownloadStatus(downloadId, CANCELED)
         emitProgress(downloadId)
         return true
@@ -460,6 +471,7 @@ open class KtorHttpDownloader(
         }
         val allIds = stateMutex.withLock { _downloadStatesFlow.value.keys.toList() }
         allIds.forEach {
+            clearSegmentFailure(it)
             onUpdateDownloadStatus(it, CANCELED)
             emitProgress(it)
         }
@@ -491,6 +503,7 @@ open class KtorHttpDownloader(
             }
         }
 
+        clearSegmentFailure(downloadId)
         deleteDownloadArtifacts(removedState)
         onRemoveDownload(downloadId)
         return true
@@ -526,6 +539,7 @@ open class KtorHttpDownloader(
                 }
             }
             _downloadStatesFlow.update { clear() }
+            segmentFailures.update { clear() }
             onRemoveAllDownloads()
         }
         scope.cancel()
@@ -652,6 +666,9 @@ open class KtorHttpDownloader(
             val keyBytes = withRetry(
                 maxRetries = requestOptions.maxRetriesPerSegment,
                 baseDelayMillis = requestOptions.baseRetryDelayMillis,
+                onFailure = { attempt, error ->
+                    recordSegmentFailure(snapshot.downloadId, null, attempt, requestOptions.maxRetriesPerSegment, error)
+                },
             ) {
                 httpGet(encryption.keyUri, requestOptions) { it.body<ByteArray>() }
             }
@@ -944,6 +961,9 @@ open class KtorHttpDownloader(
                         val newSize = withRetry(
                             maxRetries = options.maxRetriesPerSegment,
                             baseDelayMillis = options.baseRetryDelayMillis,
+                            onFailure = { attempt, error ->
+                                recordSegmentFailure(downloadId, seg.index, attempt, options.maxRetriesPerSegment, error)
+                            },
                         ) {
                             downloadSingleSegment(seg, requestOptions)
                         }
@@ -965,6 +985,7 @@ open class KtorHttpDownloader(
             }
             old.copy(downloadedBytes = old.downloadedBytes + byteSize, segments = updatedSegments)
         }
+        clearSegmentFailure(downloadId)
         emitProgress(downloadId)
     }
 
@@ -1108,7 +1129,10 @@ open class KtorHttpDownloader(
         }
     }
 
-    private fun createProgress(st: DownloadState): DownloadProgress {
+    private fun createProgress(
+        st: DownloadState,
+        lastSegmentFailure: SegmentFailure? = segmentFailures.value[st.downloadId],
+    ): DownloadProgress {
         val downloadedSegments = st.segments.count { it.isDownloaded }
         return DownloadProgress(
             downloadId = st.downloadId,
@@ -1121,7 +1145,30 @@ open class KtorHttpDownloader(
                 .coerceAtLeast(st.downloadedBytes),
             status = st.status,
             error = st.error,
+            lastSegmentFailure = lastSegmentFailure,
         )
+    }
+
+    private suspend fun recordSegmentFailure(
+        downloadId: DownloadId,
+        segmentIndex: Int?,
+        attempt: Int,
+        maxAttempts: Int,
+        error: Throwable,
+    ) {
+        val failure = SegmentFailure(
+            segmentIndex = segmentIndex,
+            attempt = attempt,
+            maxAttempts = maxAttempts,
+            message = error.toString(),
+            timestampMillis = clock.now().toEpochMilliseconds(),
+        )
+        segmentFailures.update { put(downloadId, failure) }
+        emitProgress(downloadId)
+    }
+
+    private fun clearSegmentFailure(downloadId: DownloadId) {
+        segmentFailures.update { remove(downloadId) }
     }
 
     protected suspend inline fun <R> httpGet(url: String, options: DownloadOptions, block: (HttpStatement) -> R): R {
@@ -1150,6 +1197,7 @@ open class KtorHttpDownloader(
     private suspend fun <T> withRetry(
         maxRetries: Int,
         baseDelayMillis: Long,
+        onFailure: suspend (attempt: Int, error: Throwable) -> Unit = { _, _ -> },
         block: suspend () -> T
     ): T {
         var attempt = 1
@@ -1161,6 +1209,7 @@ open class KtorHttpDownloader(
                 // Always rethrow cancellation
                 throw ce
             } catch (ex: Throwable) {
+                onFailure(attempt, ex)
                 if (attempt >= maxRetries) {
                     logger.info {
                         "Segment download failed after $attempt/$maxRetries attempts; no more retries. " +

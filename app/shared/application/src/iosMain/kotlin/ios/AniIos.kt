@@ -25,6 +25,8 @@ import androidx.compose.ui.window.ComposeUIViewController
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
@@ -39,14 +41,14 @@ import me.him188.ani.app.data.repository.user.UserRepository
 import me.him188.ani.app.domain.foundation.HttpClientProvider
 import me.him188.ani.app.domain.foundation.ScopedHttpClientUserAgent
 import me.him188.ani.app.domain.foundation.get
-import me.him188.ani.app.domain.media.cache.MediaCacheManager
 import me.him188.ani.app.domain.media.cache.engine.AlwaysUseTorrentEngineAccess
 import me.him188.ani.app.domain.media.cache.engine.HttpMediaCacheEngine
 import me.him188.ani.app.domain.media.cache.engine.TorrentEngineAccess
 import me.him188.ani.app.domain.media.cache.storage.MediaSaveDirProvider
+import me.him188.ani.app.domain.media.download.MediaDownloadManager
 import me.him188.ani.app.domain.media.fetch.MediaSourceManager
 import me.him188.ani.app.domain.media.hls.HlsPlaybackPreparer
-import me.him188.ani.app.domain.media.hls.NoopHlsPlaybackPreparer
+import me.him188.ani.app.domain.media.hls.PlatformHlsPlaybackPreparer
 import me.him188.ani.app.domain.media.resolver.HttpStreamingMediaResolver
 import me.him188.ani.app.domain.media.resolver.IosWebMediaResolver
 import me.him188.ani.app.domain.media.resolver.LocalFileUriMediaResolver
@@ -58,6 +60,7 @@ import me.him188.ani.app.domain.mediasource.web.captcha.ImageCaptchaRecognizer
 import me.him188.ani.app.domain.mediasource.web.captcha.UnsupportedCaptchaBrowserFactory
 import me.him188.ani.app.domain.torrent.DefaultTorrentManager
 import me.him188.ani.app.domain.torrent.TorrentManager
+import me.him188.ani.app.data.repository.user.QrLoginRepository
 import me.him188.ani.app.navigation.AniNavigator
 import me.him188.ani.app.navigation.BrowserNavigator
 import me.him188.ani.app.navigation.IosBrowserNavigator
@@ -88,6 +91,7 @@ import me.him188.ani.app.ui.foundation.widgets.ToastViewModel
 import me.him188.ani.app.ui.foundation.widgets.Toaster
 import me.him188.ani.app.ui.main.AniApp
 import me.him188.ani.app.ui.main.AniAppContent
+import me.him188.ani.app.videoplayer.player.AniAVKitMediampPlayerFactory
 import me.him188.ani.torrent.offline.OfflineDownloadEngine
 import me.him188.ani.torrent.pikpak.PikPakCredentials
 import me.him188.ani.torrent.pikpak.PikPakOfflineDownloadEngine
@@ -105,7 +109,6 @@ import me.him188.ani.utils.platform.annotations.TestOnly
 import org.koin.core.context.startKoin
 import org.koin.dsl.module
 import org.openani.mediamp.MediampPlayerFactory
-import org.openani.mediamp.avkit.AVKitMediampPlayerFactory
 import org.openani.mediamp.ffmpeg.FFmpegKit
 import platform.Foundation.NSBundle
 import platform.Foundation.NSFileManager
@@ -120,8 +123,28 @@ import platform.AVFAudio.setActive
 class AniIosApplication(
     val context: IosContext,
     val aniNavigator: AniNavigator,
-    val onBackPressedDispatcherOwner: SkikoOnBackPressedDispatcherOwner
-)
+    val onBackPressedDispatcherOwner: SkikoOnBackPressedDispatcherOwner,
+    private val scope: CoroutineScope,
+) {
+    /**
+     * 处理打开 App 的 `ani://` 链接. 由 Swift 的 `onOpenURL` 调用.
+     *
+     * @return 是否识别了这个链接
+     */
+    @Suppress("unused") // used in Swift
+    fun openUrl(url: String): Boolean {
+        // 扫码登录: 系统相机扫描电视上的二维码后, 网页跳转到 ani://qr-login?requestId=...
+        val qrLoginRequestId = QrLoginRepository.parseRequestId(url) ?: return false
+        scope.launch(Dispatchers.Main) {
+            if (!aniNavigator.isBackStackReady()) {
+                aniNavigator.awaitBackStack()
+                delay(1000) // 等待初始化好, 否则跳转可能无效
+            }
+            aniNavigator.navigateQrLoginConfirm(qrLoginRequestId)
+        }
+        return true
+    }
+}
 
 // Called from Swift
 @Suppress("unused")
@@ -205,6 +228,7 @@ fun startIosApp(): AniIosApplication {
         context = context,
         aniNavigator = aniNavigator,
         onBackPressedDispatcherOwner = onBackPressedDispatcherOwner,
+        scope = scope,
     )
 }
 
@@ -313,7 +337,7 @@ fun getIosModules(
         @Suppress("DEPRECATION")
         HttpMediaCacheEngine(
             dao = get<AniDatabase>().httpCacheDownloadStateDao(),
-            mediaSourceId = MediaCacheManager.LOCAL_FS_MEDIA_SOURCE_ID,
+            mediaSourceId = MediaDownloadManager.LOCAL_FS_MEDIA_SOURCE_ID,
             downloader = get<HttpDownloader>(),
             saveDir = context.files.defaultMediaCacheBaseDir
                 .resolve(HttpMediaCacheEngine.MEDIA_CACHE_DIR).path,
@@ -321,12 +345,9 @@ fun getIosModules(
         )
     }
     single<MediampPlayerFactory<*>> {
-        AVKitMediampPlayerFactory()
+        AniAVKitMediampPlayerFactory()
     }
-    // TODO(#3039): Add an iOS HLS playback preparer after the AVKit/localhost proxy path
-    // can be tested on macOS or iOS hardware. The JVM preparer uses java.net and is only
-    // registered by Android/Desktop modules, so iOS intentionally falls back to no-op for now.
-    single<HlsPlaybackPreparer> { NoopHlsPlaybackPreparer }
+    single<HlsPlaybackPreparer> { PlatformHlsPlaybackPreparer(get()) }
     single<MediaSaveDirProvider> {
         object : MediaSaveDirProvider {
             override val saveDir: String

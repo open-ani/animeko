@@ -79,6 +79,10 @@ data class SubjectInfo(
      */
     @Deprecated("Removed, because we always have episodes now")
     val completeDate: PackedDate,
+    /**
+     * TMDB 的横幅、海报与标题 Logo. 条目没有映射到 TMDB 或图片尚未同步时为 `null`.
+     */
+    val tmdbArt: SubjectTmdbArt? = null,
 ) {
     override fun toString(): String {
         return "SubjectInfo(subjectId=$subjectId, nameCn='$nameCn')"

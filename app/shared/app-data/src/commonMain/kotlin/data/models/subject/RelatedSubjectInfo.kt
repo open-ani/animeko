@@ -50,4 +50,14 @@ enum class SubjectRelation {
      * 对应 Bangumi "番外篇". 例如 OAD
      */
     SPECIAL,
+
+    /**
+     * 对应 Bangumi "主线故事", 即番外篇和衍生作品所依附的原作
+     */
+    MAIN_STORY,
+
+    /**
+     * 对应 Bangumi "总集篇", 包括剧场版形式的总集篇
+     */
+    COMPILATION,
 }

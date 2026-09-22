@@ -11,7 +11,10 @@ import org.gradle.api.JavaVersion
 import org.gradle.api.Project
 import org.gradle.api.artifacts.VersionCatalog
 import org.gradle.api.artifacts.VersionCatalogsExtension
+import org.gradle.api.artifacts.component.ModuleComponentIdentifier
 import org.gradle.api.plugins.JavaPluginExtension
+import org.gradle.api.services.BuildService
+import org.gradle.api.services.BuildServiceParameters
 import org.gradle.api.tasks.compile.JavaCompile
 import org.gradle.api.tasks.testing.Test
 import org.gradle.jvm.toolchain.JavaLanguageVersion
@@ -211,6 +214,26 @@ fun Project.configureJvmTarget() {
     }
 }
 
+/**
+ * 占用一台 Android 设备的凭据, 见 [runConnectedDeviceTestsExclusively].
+ */
+abstract class ConnectedDeviceTestLock : BuildService<BuildServiceParameters.None>
+
+/**
+ * 让所有模块的 instrumented test 任务 (`connected*Test`) 逐个运行.
+ *
+ * 各模块的测试共用同一台设备. Gradle 会并行执行不同项目的任务 (启用 configuration cache 后默认如此),
+ * 多个测试 APK 同时运行时, 各自的 Activity 会互相抢占窗口焦点, 依赖焦点的 UI 测试因此失败.
+ */
+fun Project.runConnectedDeviceTestsExclusively() {
+    val lock = gradle.sharedServices.registerIfAbsent("connectedDeviceTestLock", ConnectedDeviceTestLock::class.java) {
+        maxParallelUsages.set(1)
+    }
+    tasks.matching { it.name.startsWith("connected") && it.name.endsWith("Test") }.configureEach {
+        usesService(lock)
+    }
+}
+
 fun Project.configureEncoding() {
     tasks.withType(JavaCompile::class.java).configureEach {
         options.encoding = "UTF8"
@@ -220,6 +243,20 @@ fun Project.configureEncoding() {
 fun Project.configureKotlinTestSettings() {
     tasks.withType(Test::class).configureEach {
         useJUnitPlatform()
+    }
+
+    // 本项目的 JVM 测试统一使用 JUnit 5, 下面给各测试源集显式声明了 kotlin-test-junit5.
+    // AGP 的 KMP 插件对 Android device test 固定请求 kotlin-test 的 JUnit 4 实现 (kotlin-test-junit).
+    // 两者提供同一个 capability, 同时出现在一个 classpath 时依赖解析会失败.
+    // device test 由 android-junit5 按 JUnit 5 运行, 因此冲突时选 kotlin-test-junit5.
+    configurations.configureEach {
+        resolutionStrategy.capabilitiesResolution
+            .withCapability("org.jetbrains.kotlin:kotlin-test-framework-impl") {
+                candidates
+                    .firstOrNull { (it.id as? ModuleComponentIdentifier)?.module == "kotlin-test-junit5" }
+                    ?.let { select(it) }
+                because("JVM tests in this project run on JUnit 5")
+            }
     }
 
     val libs = versionCatalogLibs()

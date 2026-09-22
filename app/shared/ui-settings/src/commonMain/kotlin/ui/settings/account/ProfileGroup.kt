@@ -27,6 +27,7 @@ import androidx.compose.foundation.text.selection.SelectionContainer
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.Edit
 import androidx.compose.material.icons.rounded.ErrorOutline
+import androidx.compose.material.icons.rounded.QrCodeScanner
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
@@ -53,6 +54,7 @@ import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.IntSize
@@ -64,6 +66,7 @@ import io.github.vinceglb.filekit.PlatformFile
 import io.github.vinceglb.filekit.dialogs.FileKitType
 import io.github.vinceglb.filekit.dialogs.compose.rememberFilePickerLauncher
 import io.github.vinceglb.filekit.readBytes
+import me.him188.ani.app.domain.session.auth.OAuthPlatform
 import me.him188.ani.app.ui.external.placeholder.placeholder
 import me.him188.ani.app.ui.foundation.CropRect
 import me.him188.ani.app.ui.foundation.DragAndDropContent
@@ -73,6 +76,7 @@ import me.him188.ani.app.ui.foundation.avatar.AvatarImage
 import me.him188.ani.app.ui.foundation.cropImageToSquare
 import me.him188.ani.app.ui.foundation.decodeImageBitmap
 import me.him188.ani.app.ui.foundation.icons.BangumiNext
+import me.him188.ani.app.ui.foundation.icons.OAuthPlatformIcon
 import me.him188.ani.app.ui.foundation.layout.currentWindowAdaptiveInfo1
 import me.him188.ani.app.ui.foundation.layout.isHeightAtLeastExpanded
 import me.him188.ani.app.ui.foundation.layout.isWidthCompact
@@ -80,6 +84,8 @@ import me.him188.ani.app.ui.foundation.rememberAsyncHandler
 import me.him188.ani.app.ui.foundation.rememberDragAndDropState
 import me.him188.ani.app.ui.foundation.widgets.HeroIcon
 import me.him188.ani.app.ui.lang.Lang
+import me.him188.ani.app.ui.lang.qr_login_settings_description
+import me.him188.ani.app.ui.lang.qr_login_title
 import me.him188.ani.app.ui.lang.settings_account_profile_avatar_invalid_format
 import me.him188.ani.app.ui.lang.settings_account_profile_avatar_size_exceeded
 import me.him188.ani.app.ui.lang.settings_account_profile_bind
@@ -92,13 +98,13 @@ import me.him188.ani.app.ui.lang.settings_account_profile_nickname
 import me.him188.ani.app.ui.lang.settings_account_profile_nickname_hint
 import me.him188.ani.app.ui.lang.settings_account_profile_not_bound
 import me.him188.ani.app.ui.lang.settings_account_profile_not_set
-import me.him188.ani.app.ui.lang.settings_account_profile_select_avatar
 import me.him188.ani.app.ui.lang.settings_account_profile_select_file
 import me.him188.ani.app.ui.lang.settings_account_profile_select_file_description
 import me.him188.ani.app.ui.lang.settings_account_profile_select_file_description_desktop
 import me.him188.ani.app.ui.lang.settings_account_profile_third_party_accounts
 import me.him188.ani.app.ui.lang.settings_account_profile_unbind
 import me.him188.ani.app.ui.lang.settings_account_profile_unbind_bangumi_confirmation
+import me.him188.ani.app.ui.lang.settings_account_profile_unbind_confirmation
 import me.him188.ani.app.ui.lang.settings_account_profile_upload_avatar
 import me.him188.ani.app.ui.lang.settings_account_profile_uploading_avatar
 import me.him188.ani.app.ui.lang.settings_account_profile_user_id
@@ -126,9 +132,14 @@ private sealed interface CropDragMode {
 fun SettingsScope.ProfileGroup(
     onNavigateToEmail: () -> Unit,
     onNavigateToBangumiSync: () -> Unit,
-    onNavigateToBangumiOAuth: () -> Unit,
+    onNavigateToOAuth: (OAuthPlatform) -> Unit,
+    onNavigateToGithubAccount: () -> Unit,
     vm: ProfileViewModel = viewModel<ProfileViewModel> { ProfileViewModel() },
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    /**
+     * 前往扫码登录其他设备. 为 `null` (当前平台不能扫码) 时不显示入口
+     */
+    onNavigateToQrLogin: (() -> Unit)? = null,
 ) {
     val state by vm.stateFlow.collectAsStateWithLifecycle(initialValue = AccountSettingsState.Empty)
     val asyncHandler = rememberAsyncHandler()
@@ -148,11 +159,14 @@ fun SettingsScope.ProfileGroup(
         onNavigateToEmail = onNavigateToEmail,
         onBangumiClick = {
             if (state.selfInfo.selfInfo?.bangumiUsername.isNullOrEmpty()) {
-                onNavigateToBangumiOAuth()
+                onNavigateToOAuth(OAuthPlatform.BANGUMI)
             } else {
                 onNavigateToBangumiSync()
             }
         },
+        onExternalAccountClick = onNavigateToOAuth,
+        onGithubAccountClick = onNavigateToGithubAccount,
+        onQrLoginClick = onNavigateToQrLogin,
         onAvatarUpload = {
             vm.uploadAvatar(it)
         },
@@ -165,6 +179,11 @@ fun SettingsScope.ProfileGroup(
         onUnbindBangumi = {
             asyncHandler.launch {
                 vm.unbindBangumi()
+            }
+        },
+        onUnbindExternalAccount = { provider ->
+            asyncHandler.launch {
+                vm.unbindExternalAccount(provider)
             }
         },
         modifier = modifier,
@@ -186,11 +205,29 @@ internal fun SettingsScope.ProfileGroupImpl(
     onNavigateToEmail: () -> Unit,
     onBangumiClick: () -> Unit,
     onUnbindBangumi: () -> Unit,
+    /**
+     * 点击未绑定的第三方平台, 前往绑定
+     */
+    onExternalAccountClick: (OAuthPlatform) -> Unit,
+    /**
+     * 点击已绑定的 GitHub 账号, 前往该账号的详情页 (开发者认证). 其他平台的已绑定账号不可点击
+     */
+    onGithubAccountClick: () -> Unit,
+    /**
+     * 参数为平台 ID
+     */
+    onUnbindExternalAccount: (provider: String) -> Unit,
     modifier: Modifier = Modifier,
+    /**
+     * 点击 "扫码登录", 为其他设备 (例如电视) 登录当前账号. 为 `null` 时不显示. 未登录时也不显示
+     */
+    onQrLoginClick: (() -> Unit)? = null,
     windowSizeClass: WindowSizeClass = currentWindowAdaptiveInfo1().windowSizeClass,
 ) {
     var showLogoutDialog by remember { mutableStateOf(false) }
     var showUnbindBangumiDialog by remember { mutableStateOf(false) }
+    // 待确认解绑的第三方平台 ID
+    var unbindingExternalProvider by remember { mutableStateOf<String?>(null) }
 
     val currentInfo = state.selfInfo.selfInfo
     val currentState by rememberUpdatedState(state.selfInfo)
@@ -279,6 +316,16 @@ internal fun SettingsScope.ProfileGroupImpl(
                     modifier = Modifier.placeholder(isPlaceholder),
                 )
 
+                if (onQrLoginClick != null && currentState.isSessionValid == true) {
+                    TextItem(
+                        title = { Text(stringResource(Lang.qr_login_title)) },
+                        description = { Text(stringResource(Lang.qr_login_settings_description)) },
+                        icon = { Icon(Icons.Rounded.QrCodeScanner, null) },
+                        onClick = onQrLoginClick,
+                        modifier = Modifier.testTag("qrLogin"),
+                    )
+                }
+
                 Group(title = { Text(thirdPartyAccountsText) }) {
                     TextItem(
                         title = { Text("Bangumi") },
@@ -294,6 +341,50 @@ internal fun SettingsScope.ProfileGroupImpl(
                         } else null,
                         modifier = Modifier.placeholder(isPlaceholder),
                     )
+                    // 服务端已启用的平台, 以及已绑定但服务端已关闭的平台 (仍可解绑)
+                    val boundAccounts = currentInfo?.externalAccounts.orEmpty()
+                    val knownPlatforms = (state.externalPlatforms + boundAccounts.mapNotNull { OAuthPlatform.fromId(it.provider) })
+                        .distinct().filter { it != OAuthPlatform.BANGUMI }
+                    for (platform in knownPlatforms) {
+                        val account = boundAccounts.firstOrNull { it.provider == platform.id }
+                        TextItem(
+                            title = { Text(platform.displayName) },
+                            description = { Text(account?.username ?: notBoundText) },
+                            icon = { OAuthPlatformIcon(platform, Modifier.size(24.dp)) },
+                            onClick = when {
+                                account == null -> {
+                                    { onExternalAccountClick(platform) }
+                                }
+
+                                platform == OAuthPlatform.GITHUB -> onGithubAccountClick
+
+                                else -> null
+                            },
+                            action = if (account != null) {
+                                {
+                                    TextButton(
+                                        onClick = { unbindingExternalProvider = platform.id },
+                                        modifier = Modifier.testTag("externalAccount-${platform.id}-unbind"),
+                                    ) { Text(unbindText) }
+                                }
+                            } else null,
+                            modifier = Modifier.placeholder(isPlaceholder).testTag("externalAccount-${platform.id}"),
+                        )
+                    }
+                    // 客户端不认识的平台 (新版本服务端增加的): 只能解绑
+                    for (account in boundAccounts.filter { OAuthPlatform.fromId(it.provider) == null }) {
+                        TextItem(
+                            title = { Text(account.provider) },
+                            description = { Text(account.username ?: notBoundText) },
+                            action = {
+                                TextButton(
+                                    onClick = { unbindingExternalProvider = account.provider },
+                                    modifier = Modifier.testTag("externalAccount-${account.provider}-unbind"),
+                                ) { Text(unbindText) }
+                            },
+                            modifier = Modifier.placeholder(isPlaceholder).testTag("externalAccount-${account.provider}"),
+                        )
+                    }
                 }
             }
         }
@@ -319,6 +410,17 @@ internal fun SettingsScope.ProfileGroupImpl(
         )
     }
 
+    unbindingExternalProvider?.let { provider ->
+        UnbindExternalAccountDialog(
+            platformName = OAuthPlatform.fromId(provider)?.displayName ?: provider,
+            onConfirm = {
+                onUnbindExternalAccount(provider)
+                unbindingExternalProvider = null
+            },
+            onCancel = { unbindingExternalProvider = null },
+        )
+    }
+
     if (showUploadAvatarDialog) {
         val asyncHandler = rememberAsyncHandler()
         UploadAvatarDialog(
@@ -340,6 +442,28 @@ internal fun SettingsScope.ProfileGroupImpl(
             modifier = Modifier.padding(8.dp),
         )
     }
+}
+
+@Composable
+private fun UnbindExternalAccountDialog(
+    platformName: String,
+    onConfirm: () -> Unit,
+    onCancel: () -> Unit,
+) {
+    AlertDialog(
+        onCancel,
+        text = { Text(stringResource(Lang.settings_account_profile_unbind_confirmation, platformName)) },
+        confirmButton = {
+            TextButton(onConfirm, Modifier.testTag("unbindExternalAccountConfirm")) {
+                Text(stringResource(Lang.settings_account_profile_unbind), color = MaterialTheme.colorScheme.error)
+            }
+        },
+        dismissButton = {
+            TextButton(onCancel) {
+                Text(stringResource(Lang.subject_collection_cancel))
+            }
+        },
+    )
 }
 
 @Composable
