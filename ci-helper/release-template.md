@@ -103,7 +103,7 @@ $RELEASE_NOTES
 |                  | 下载                                               | 常见问题                                        |
 |------------------|--------------------------------------------------|---------------------------------------------|
 | 安卓 手机/平板         | [主线][cf-android] / [备线][ghproxy-android]         |                                             |
-| 安卓 电视            | [主线][cf-android-tv] / [备线][ghproxy-android-tv]   | 遥控器操作; 支持用已登录的手机扫码登录                        |
+| 安卓 电视            | [主线][cf-android-tv] / [备线][ghproxy-android-tv]   |                                             |
 | iOS              | [主线][cf-ios] / [备线][ghproxy-ios]                 | 需要[自签][iOS 自签]                                  |
 | Windows          | [主线][cf-win-x64] / [备线][ghproxy-win-x64]         | 1. 目录不要有中文或者空格 <br/> 2. [显示异常][Windows下字体与背景颜色异常解决方案] |
 | Windows (ARM64)  | [主线][cf-win-aarch64] / [备线][ghproxy-win-aarch64] | 同 Windows                                                             |
