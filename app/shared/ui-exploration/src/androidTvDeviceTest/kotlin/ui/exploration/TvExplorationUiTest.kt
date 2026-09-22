@@ -169,13 +169,15 @@ class TvExplorationUiTest {
         fontScale: Float = 1f,
         trendingCount: Int = 3,
         collectionTransform: (SubjectCollectionInfo) -> SubjectCollectionInfo = { it },
+        poster: Boolean = true,
     ) {
         mainClock.autoAdvance = false
         val context = InstrumentationRegistry.getInstrumentation().targetContext
         val file = File(context.cacheDir, "tv-exploration-poster.jpg")
         InstrumentationRegistry.getInstrumentation().context.assets.open(file.name)
             .use { input -> file.outputStream().use { input.copyTo(it) } }
-        val image = file.toURI().toString()
+        // 海报经 Sketch 按真实时钟异步加载; 比较像素是否静止的测试不放海报, 免得加载完成的那一帧混进比较.
+        val image = if (poster) file.toURI().toString() else ""
         val sketch = Sketch.Builder(context).build()
         val timeFormatter = TimeFormatter()
         val focusMemory = TvFocusMemory()
@@ -617,7 +619,7 @@ class TvExplorationUiTest {
 
     @Test
     fun zeroWatchedProgressIsStaticAndFullProgressFillsTheCapsule() = runAniComposeUiTest {
-        mount(collectionTransform = { info ->
+        mount(poster = false, collectionTransform = { info ->
             info.copy(
                 airingInfo = info.airingInfo.copy(kind = SubjectAiringKind.COMPLETED),
                 episodes = info.episodes.map {
@@ -645,7 +647,7 @@ class TvExplorationUiTest {
     fun disabledSystemMotionKeepsChargingParticlesStatic() = runAniComposeUiTest(
         effectContext = object : MotionDurationScale { override val scaleFactor = 0f },
     ) {
-        mount()
+        mount(poster = false)
         key(Key.DirectionDown)
         awaitFocus("tv-exploration-followed-11")
         settle()
@@ -659,16 +661,18 @@ class TvExplorationUiTest {
         onNodeWithTag("tv-exploration-watching-progress").captureToImage().asAndroidBitmap()
 
     /**
-     * 进度条下方是经 Sketch 异步加载的背景图, 它按真实时钟加载, 不受测试时钟控制;
-     * 等到连续两次截图一致, 之后的像素比较才只反映进度条自身的变化.
+     * 慢模拟器上一帧可能要 100 ms 以上, 而测试时钟之外的绘制 (如图片加载) 不受 [settle] 控制;
+     * 等到连续三次相隔 300 ms 的截图一致, 之后的像素比较才只反映进度条自身的变化.
      */
     private fun AniComposeUiTest.awaitStableProgressBitmap(): Bitmap {
         var last = progressBitmap()
-        val deadline = System.currentTimeMillis() + 5_000
+        var stableCaptures = 0
+        val deadline = System.currentTimeMillis() + 8_000
         while (System.currentTimeMillis() < deadline) {
-            Thread.sleep(200)
+            Thread.sleep(300)
             val next = progressBitmap()
-            if (last.sameAs(next)) return next
+            stableCaptures = if (last.sameAs(next)) stableCaptures + 1 else 0
+            if (stableCaptures >= 2) return next
             last = next
         }
         throw AssertionError("The progress bar kept changing without the test clock advancing")
