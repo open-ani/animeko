@@ -94,7 +94,7 @@ import me.him188.ani.tv.ui.subject.components.LocalTvDetailsBackdropImage
 import me.him188.ani.tv.ui.subject.components.TvDetailsBackdropImage
 import me.him188.ani.tv.ui.subject.components.TvDetailsBringIntoViewSpec
 import me.him188.ani.tv.ui.subject.components.TvDetailsBrowseRowLayout
-import me.him188.ani.tv.ui.subject.components.TvDetailsEpisodePlaceholder
+import me.him188.ani.tv.ui.subject.components.tvDetailsEpisodePlaceholders
 import me.him188.ani.tv.ui.subject.components.TvDetailsLandscapePlaceholder
 import me.him188.ani.tv.ui.subject.components.TvDetailsPersonPlaceholder
 import me.him188.ani.tv.ui.subject.components.TvDetailsScrollAnchors
@@ -277,6 +277,7 @@ private fun TvSubjectDetailsContent(
             scope.launch { restore(current, before) }
         }
         val loadingSection = when (current) {
+            "all-episodes" -> "episode"
             "characters-all" -> "character"
             "staffs-all" -> "staff"
             "relateds-all" -> "related"
@@ -405,6 +406,7 @@ private fun TvSubjectDetailsContent(
                             scope.launch { restore(if (episodeKeys.isEmpty()) charactersEntry else episodesEntry) }
                         },
                     iconOnly = true,
+                    loading = details.episodesLoading && details.episodes.isEmpty(),
                 )
             },
         ) {
@@ -419,11 +421,7 @@ private fun TvSubjectDetailsContent(
             }
             if (details.episodes.isEmpty()) {
                 if (details.episodesLoading) {
-                    item("loading") {
-                        Row(Modifier.testTag("tv-details-episodes-loading").progressSemantics(), horizontalArrangement = Arrangement.spacedBy(TvSubjectDetailsDefaults.RowSpacing)) {
-                            repeat(3) { TvDetailsEpisodePlaceholder() }
-                        }
-                    }
+                    tvDetailsEpisodePlaceholders()
                 } else {
                     item("empty") { Text(stringResource(Lang.subject_details_no_episodes), color = TvSubjectDetailsDefaults.SecondaryContent) }
                 }

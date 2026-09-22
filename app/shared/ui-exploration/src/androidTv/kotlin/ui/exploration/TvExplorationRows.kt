@@ -99,6 +99,14 @@ internal sealed class TvExplorationRow(val key: String, val area: TvExplorationA
     fun subjectIdAt(index: Int) = card(index)?.subject?.subjectId
     fun indexOfSubject(id: Int?) = (0 until count).firstOrNull { subjectIdAt(it) == id } ?: -1
 
+    class Loading(area: TvExplorationArea, val columns: Int) : TvExplorationRow(
+        if (area == TvExplorationArea.ContinueWatching) "followed" else "rec-0", area,
+        if (area == TvExplorationArea.ContinueWatching) Lang.exploration_continue_watching else Lang.exploration_for_you,
+    ) {
+        override val count = 0
+        override fun card(index: Int, load: Boolean): TvHomeCard? = null
+    }
+
     class ContinueWatching(val items: LazyPagingItems<FollowedSubjectInfo>) :
         TvExplorationRow("followed", TvExplorationArea.ContinueWatching, Lang.exploration_continue_watching) {
         override val count get() = items.itemCount
@@ -146,6 +154,10 @@ internal fun TvExplorationRowItem(
     onNavigateVertical: (Int, Int) -> Unit,
     modifier: Modifier = Modifier,
 ) {
+    if (row is TvExplorationRow.Loading) {
+        TvExplorationRowPlaceholder(row.area == TvExplorationArea.ContinueWatching, row.columns, modifier)
+        return
+    }
     val scope = rememberCoroutineScope()
     val density = LocalDensity.current
     val emphasis by animateFloatAsState(

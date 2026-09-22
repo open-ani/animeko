@@ -15,6 +15,8 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.lazy.LazyListScope
+import androidx.compose.foundation.progressSemantics
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
@@ -74,6 +76,12 @@ internal fun TvDetailsEpisodePlaceholder(modifier: Modifier = Modifier) {
     Box(modifier.width(TvSubjectDetailsDefaults.EpisodeCardWidth)
         .aspectRatio(TvLandscapeCardDefaults.AspectRatio).padding(TvFocusDefaults.RingInset)) {
         TvDetailsMediaPlaceholder(Modifier.fillMaxSize())
+    }
+}
+
+internal fun LazyListScope.tvDetailsEpisodePlaceholders() {
+    items(4, key = { "episode-loading-$it" }) { index ->
+        TvDetailsEpisodePlaceholder(Modifier.testTag("tv-details-episode-placeholder-$index").progressSemantics())
     }
 }
 

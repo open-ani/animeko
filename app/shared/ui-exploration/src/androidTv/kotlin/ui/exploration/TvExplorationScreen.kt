@@ -165,6 +165,12 @@ private fun TvExplorationContent(
         .filter { recommendations.peek(it) is RecommendedSubjectInfo }
     val rows = buildList {
         if (followed.itemCount > 0) add(TvExplorationRow.ContinueWatching(followed))
+        else if (followed.loadState.refresh is LoadState.Loading) {
+            add(TvExplorationRow.Loading(TvExplorationArea.ContinueWatching, columns))
+        }
+        if (recommendations.itemCount == 0 && recommendations.loadState.refresh is LoadState.Loading) {
+            add(TvExplorationRow.Loading(TvExplorationArea.Recommendations, columns))
+        }
         repeat((recommendationIndices.size + columns - 1) / columns) {
             add(TvExplorationRow.RecommendationGrid(recommendations, recommendationIndices, it, columns))
         }
@@ -228,9 +234,13 @@ private fun TvExplorationContent(
             }
         }
     }
-    fun navigateToRow(target: Int, column: Int? = null, subjectId: Int? = null) {
+    fun navigateToRow(target: Int, column: Int? = null, subjectId: Int? = null, direction: Int = 1) {
         if (target < 0) { returnToHero(); return }
         val row = currentRows.getOrNull(target) ?: run { navigateToFooter(); return }
+        if (row is TvExplorationRow.Loading) {
+            navigateToRow(target + direction, column, subjectId, direction)
+            return
+        }
         val index = when {
             subjectId != null -> row.indexOfSubject(subjectId).coerceAtLeast(0)
             row is TvExplorationRow.RecommendationGrid && column != null -> column.coerceAtMost(row.count - 1)
@@ -391,7 +401,7 @@ private fun TvExplorationContent(
                             TvExplorationArea.Featured -> Unit
                         }
                     },
-                    onNavigateVertical = { delta, column -> navigateToRow(index + delta, column) },
+                    onNavigateVertical = { delta, column -> navigateToRow(index + delta, column, direction = delta) },
                     modifier = Modifier.padding(bottom = TvExplorationDefaults.RowGap).graphicsLayer { alpha = rowAlpha },
                 )
             }
@@ -407,7 +417,7 @@ private fun TvExplorationContent(
                         .onPreviewKeyEvent {
                             if (it.key == Key.DirectionUp) {
                                 if (it.type == KeyEventType.KeyDown) {
-                                    if (rows.isEmpty()) returnToHero() else navigateToRow(rows.lastIndex)
+                                    if (rows.isEmpty()) returnToHero() else navigateToRow(rows.lastIndex, direction = -1)
                                 }
                                 true
                             } else false

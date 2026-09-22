@@ -329,7 +329,7 @@ class TvSubjectDetailsUiTest {
         assertTrue(onNodeWithTag("tv-details-play").fetchSemanticsNode().config.contains(SemanticsProperties.ProgressBarRangeInfo))
         key(Key.DirectionDown)
         awaitFocus("tv-details-all-episodes")
-        onNodeWithTag("tv-details-episodes-loading").assertIsDisplayed()
+        onNodeWithTag("tv-details-episode-placeholder-0").assertIsDisplayed().assertHasNoClickAction()
         key(Key.DirectionDown)
         awaitFocus("tv-details-character:1")
         runOnIdle { state = state.copy(content = details) }
@@ -338,7 +338,7 @@ class TvSubjectDetailsUiTest {
         awaitFocus("tv-details-episode:27")
         runOnIdle { state = state.copy(content = details.copy(episodes = emptyList())) }
         awaitFocus("tv-details-all-episodes")
-        onNodeWithTag("tv-details-episodes-loading").assertDoesNotExist()
+        onNodeWithTag("tv-details-episode-placeholder-0").assertDoesNotExist()
         key(Key.DirectionDown)
         awaitFocus("tv-details-character:1")
         key(Key.DirectionUp)
@@ -1253,6 +1253,49 @@ class TvSubjectDetailsUiTest {
             "The summary must keep its bounds across loading: $summary vs $loadedSummary")
         assertEquals(action.top, loadedAction.top)
         assertEquals(action.left, loadedAction.left)
+    }
+
+    @Test fun primaryActionSkeletonsResolveIndependentlyAndKeepFocus() = runAniComposeUiTest {
+        val loaded = content()
+        var details by mutableStateOf(loaded.copy(episodes = emptyList(), episodesLoading = true,
+            playTargetId = null, collectionLoading = true, ratingLoading = true))
+        val intents = mutableListOf<TvSubjectDetailsIntent>()
+        mount({ TvSubjectDetailsUiState(content = details, loggedIn = true) }, { intents += it }, reference = true)
+        fun assertLoading(id: String, expected: Boolean) {
+            assertEquals(expected, onNodeWithTag("tv-details-$id").fetchSemanticsNode().config
+                .contains(SemanticsProperties.ProgressBarRangeInfo), "Loading state of $id")
+        }
+        listOf("play", "collection", "rating").forEach { assertLoading(it, true) }
+        capture("primary-actions-loading", "tv-subject-details")
+        key(Key.DirectionRight)
+        awaitFocus("tv-details-collection")
+        key(Key.DirectionCenter)
+        onNodeWithTag("tv-details-panel").assertDoesNotExist()
+        runOnIdle { details = details.copy(collectionLoading = false) }
+        onNodeWithTag("tv-details-collection").assertIsFocused()
+        assertLoading("collection", false)
+        assertLoading("rating", true)
+        assertLoading("play", true)
+        key(Key.DirectionRight)
+        key(Key.DirectionCenter)
+        onNodeWithTag("tv-details-panel").assertDoesNotExist()
+        onNodeWithTag("tv-rating-collection-tooltip").assertDoesNotExist()
+        runOnIdle { details = details.copy(ratingLoading = false) }
+        onNodeWithTag("tv-details-rating").assertIsFocused()
+        assertLoading("rating", false)
+        key(Key.DirectionDown)
+        awaitFocus("tv-details-all-episodes")
+        onNodeWithTag("tv-details-episode-placeholder-0").assertIsDisplayed().assertHasNoClickAction()
+        capture("episodes-loading-actions-ready", "tv-subject-details")
+        key(Key.DirectionCenter)
+        onNodeWithTag("tv-details-panel").assertDoesNotExist()
+        runOnIdle { details = loaded }
+        awaitFocus("tv-details-episode:1")
+        onNodeWithTag("tv-details-episode-placeholder-0").assertDoesNotExist()
+        assertTrue(intents.isEmpty())
+        key(Key.Back)
+        awaitFocus("tv-details-play")
+        assertLoading("play", false)
     }
 
     @Test fun loadingRowsUseTheirCardGeometryAndRestoreTheFocusedSection() = runAniComposeUiTest {

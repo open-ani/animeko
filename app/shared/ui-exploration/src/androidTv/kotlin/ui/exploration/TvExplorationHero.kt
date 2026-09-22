@@ -32,6 +32,7 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.rememberLazyListState
+import androidx.compose.foundation.progressSemantics
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.KeyboardArrowUp
@@ -103,6 +104,7 @@ internal fun TvExplorationHero(
     val featuredHeight = collapsedHeight + TvExplorationDefaults.HeroFeaturedExtraSpace
     val progress = expandProgress.coerceIn(0f, 1f)
     val interaction = remember { MutableInteractionSource() }
+    val loading = featured == null && loadState is LoadState.Loading
     var focused by remember { mutableStateOf(false) }
     val actionText = stringResource(
         if (featured != null) Lang.tv_exploration_more_details
@@ -133,25 +135,29 @@ internal fun TvExplorationHero(
                             .padding(start = TvExplorationDefaults.StartPadding, bottom = 96.dp, end = 40.dp)
                             .widthIn(max = 560.dp),
                     ) {
-                        TvDetailsTitle(
-                            collection?.subjectInfo?.displayName ?: subject?.title ?: stringResource(
-                                when (loadState) {
-                                    is LoadState.Loading -> Lang.exploration_loading
-                                    is LoadState.Error -> Lang.exploration_load_failed
-                                    else -> Lang.subject_details_empty
-                                },
-                            ),
-                            Modifier.fillMaxWidth().testTag("tv-exploration-featured-title"),
-                        )
-                        HomeMetadata(collection, Modifier.testTag("tv-exploration-featured-metadata-${subject?.subjectId}"))
-                        Spacer(Modifier.height(12.dp))
-                        Text(
-                            collection?.subjectInfo?.summary?.replace(Regex("\\s+"), " ").orEmpty(),
-                            Modifier.widthIn(max = 484.dp).testTag("tv-exploration-featured-summary"),
-                            color = TvExplorationDefaults.SecondaryContent,
-                            fontSize = 14.sp, lineHeight = 18.sp, minLines = 2, maxLines = 2,
-                            overflow = TextOverflow.Ellipsis,
-                        )
+                        if (loading) {
+                            TvExplorationHeroIdentityPlaceholder()
+                        } else {
+                            TvDetailsTitle(
+                                collection?.subjectInfo?.displayName ?: subject?.title ?: stringResource(
+                                    when (loadState) {
+                                        is LoadState.Loading -> Lang.exploration_loading
+                                        is LoadState.Error -> Lang.exploration_load_failed
+                                        else -> Lang.subject_details_empty
+                                    },
+                                ),
+                                Modifier.fillMaxWidth().testTag("tv-exploration-featured-title"),
+                            )
+                            HomeMetadata(collection, Modifier.testTag("tv-exploration-featured-metadata-${subject?.subjectId}"))
+                            Spacer(Modifier.height(12.dp))
+                            Text(
+                                collection?.subjectInfo?.summary?.replace(Regex("\\s+"), " ").orEmpty(),
+                                Modifier.widthIn(max = 484.dp).testTag("tv-exploration-featured-summary"),
+                                color = TvExplorationDefaults.SecondaryContent,
+                                fontSize = 14.sp, lineHeight = 18.sp, minLines = 2, maxLines = 2,
+                                overflow = TextOverflow.Ellipsis,
+                            )
+                        }
                     }
                     TvDetailsActionVisual(
                         actionText, focused && expanded,
@@ -160,6 +166,7 @@ internal fun TvExplorationHero(
                             .testTag("tv-exploration-action-${subject?.subjectId}")
                             .clearAndSetSemantics {},
                         blurBackground = true, glowOnFocus = true,
+                        loading = loading,
                     )
                 }
             }
@@ -173,10 +180,11 @@ internal fun TvExplorationHero(
                     .focusProperties { canFocus = expanded }
                     .onFocusChanged { focused = it.isFocused; onButtonFocusChanged(it.isFocused) }
                     .semantics { contentDescription = actionText }
-                    .clickable(interaction, indication = null, role = Role.Button, onClick = onClickDetails),
+                    .then(if (loading) Modifier.progressSemantics() else Modifier)
+                    .clickable(interaction, indication = null, role = Role.Button) { if (!loading) onClickDetails() },
                 contentAlignment = Alignment.Center,
             ) {
-                TvDetailsActionVisual(actionText, false, Modifier.graphicsLayer { alpha = 0f }.clearAndSetSemantics {})
+                TvDetailsActionVisual(actionText, false, Modifier.graphicsLayer { alpha = 0f }.clearAndSetSemantics {}, loading = loading)
             }
             if (carouselSize > 1) HomeIndicators(
                 carouselSize, carouselIndex,

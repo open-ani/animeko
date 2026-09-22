@@ -103,11 +103,13 @@ internal fun TvDetailsHeroSection(
                     TvDetailsCollectionAction(
                         details.collectionType, onCollection, actionModifier("collection"), compact,
                         boundsModifier = actionBoundsModifier("collection"),
+                        loading = details.collectionLoading,
                     )
                     TvDetailsRatingAction(
                         details.selfRating.score, onRating, actionModifier("rating"), compact,
                         boundsModifier = actionBoundsModifier("rating"),
                         available = details.collectionType != UnifiedCollectionType.NOT_COLLECTED,
+                        loading = details.ratingLoading,
                     )
                 }
             }

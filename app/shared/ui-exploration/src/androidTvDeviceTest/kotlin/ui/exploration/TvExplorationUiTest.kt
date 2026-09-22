@@ -234,6 +234,69 @@ class TvExplorationUiTest {
     }
 
     @Test
+    fun heroLoadingDoesNotBlockReadyShelvesOrStealTheirFocus() = runAniComposeUiTest {
+        val trends = MutableStateFlow(loadingPage<TrendingSubjectInfo>())
+        mount(trendingFlow = trends, poster = false)
+        onNodeWithTag("tv-exploration-hero-loading").assertExists()
+        capture("hero-loading-ready-shelves")
+        key(Key.DirectionDown)
+        awaitFocus("tv-exploration-followed-11")
+        runOnIdle { trends.value = completedPage(listOf(TrendingSubjectInfo(1, titles.first(), ""))) }
+        settle()
+        onNodeWithTag("tv-exploration-followed-11").assertIsFocused()
+        key(Key.DirectionUp)
+        awaitFocus("tv-exploration-details")
+        onNodeWithTag("tv-exploration-hero-loading").assertDoesNotExist()
+    }
+
+    @Test
+    fun followedLoadingHasItsOwnSkeletonAndNavigationSkipsToReadyRecommendations() = runAniComposeUiTest {
+        val follows = MutableStateFlow(loadingPage<FollowedSubjectInfo>())
+        mount(followedFlow = follows, poster = false)
+        onNodeWithTag("tv-exploration-followed-loading").assertExists()
+        onNodeWithTag("tv-exploration-hero-loading").assertDoesNotExist()
+        capture("followed-loading")
+        key(Key.DirectionDown)
+        awaitFocus("tv-exploration-rec-21")
+        key(Key.DirectionUp)
+        awaitFocus("tv-exploration-details")
+        key(Key.DirectionDown)
+        awaitFocus("tv-exploration-rec-21")
+        runOnIdle { follows.value = completedPage(followed()) }
+        settle()
+        onNodeWithTag("tv-exploration-rec-21").assertIsFocused()
+        key(Key.DirectionUp)
+        awaitFocus("tv-exploration-followed-11")
+        onNodeWithTag("tv-exploration-followed-loading").assertDoesNotExist()
+    }
+
+    @Test
+    fun recommendationSkeletonLoadsIndependentlyAndRefreshKeepsExistingCards() = runAniComposeUiTest {
+        val recs = MutableStateFlow(loadingPage<RecommendedItemInfo>())
+        mount(recommendationFlow = recs, poster = false)
+        key(Key.DirectionDown)
+        awaitFocus("tv-exploration-followed-11")
+        key(Key.DirectionDown)
+        awaitFocus("tv-exploration-feed-status")
+        onNodeWithTag("tv-exploration-recommendations-loading").assertExists()
+        capture("recommendations-loading")
+        val values = (21..24).map { RecommendedSubjectInfo(it, titles.first(), "", "") }
+        runOnIdle { recs.value = completedPage(values) }
+        awaitFocus("tv-exploration-rec-21")
+        onNodeWithTag("tv-exploration-recommendations-loading").assertDoesNotExist()
+        runOnIdle {
+            recs.value = PagingData.from(values, sourceLoadStates =
+                LoadStates(LoadState.Loading, LoadState.NotLoading(true), LoadState.NotLoading(true)))
+        }
+        settle()
+        onNodeWithTag("tv-exploration-rec-21").assertIsFocused()
+        onNodeWithTag("tv-exploration-recommendations-loading").assertDoesNotExist()
+    }
+
+    private fun <T : Any> loadingPage(): PagingData<T> = PagingData.empty(sourceLoadStates =
+        LoadStates(LoadState.Loading, LoadState.NotLoading(true), LoadState.NotLoading(true)))
+
+    @Test
     fun fullScreenBackdropExtendsBehindTheFloatingRailWhileControlsRespectInsets() = runAniComposeUiTest {
         mount(shellPadding = PaddingValues(0.dp), navigationRailInsets = PaddingValues(start = 56.dp))
         val page = bounds("tv-exploration")
