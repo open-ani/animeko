@@ -1099,7 +1099,7 @@ jobs:
       run: './gradlew assembleAndroidDeviceTest "-Pandroid.min.sdk=30" "--scan" "-Porg.gradle.daemon.idletimeout=60000" "-Dfile.encoding=UTF-8" "-Dorg.gradle.jvmargs=-Xmx8g -Dkotlin.daemon.jvm.options=-Xmx6g" "-Dkotlin.daemon.jvm.options=-Xmx6g"'
       if: '${{ steps.step-73.outcome == ''failure'' }}'
     - id: 'step-75'
-      name: 'Stop Gradle daemons before emulator (api=30)'
+      name: 'Stop Gradle daemons before emulator (api=30, arch=x86_64)'
       run: |-
         ./gradlew --stop
         pkill -f KotlinCompileDaemon || true
@@ -1110,11 +1110,12 @@ jobs:
       uses: 'reactivecircus/android-emulator-runner@v2.35.0'
       with:
         api-level: '30'
+        target: 'default'
         arch: 'x86_64'
         profile: 'pixel_2'
         ram-size: '2048M'
         emulator-boot-timeout: '1800'
-        script: './gradlew connectedDeviceTest --continue "-Pandroid.min.sdk=30" "--scan" "-Porg.gradle.daemon.idletimeout=60000" "-Dfile.encoding=UTF-8" "-Dorg.gradle.jvmargs=-Xmx3g -Dkotlin.daemon.jvm.options=-Xmx2g" "-Dkotlin.daemon.jvm.options=-Xmx2g"; status=$?; adb logcat -d > logcat-api30.txt || true; killall -INT crashpad_handler || true; exit $status'
+        script: './gradlew connectedDeviceTest --continue "-Pandroid.min.sdk=30" "--scan" "-Porg.gradle.daemon.idletimeout=60000" "-Dfile.encoding=UTF-8" "-Dorg.gradle.jvmargs=-Xmx3g -Dkotlin.daemon.jvm.options=-Xmx2g" "-Dkotlin.daemon.jvm.options=-Xmx2g"; status=$?; adb logcat -d > logcat-api30-x86_64.txt || true; killall -INT crashpad_handler || true; exit $status'
     - id: 'step-77'
       name: 'Upload Android Instrumented Test Reports (api=30, arch=x86_64)'
       uses: 'actions/upload-artifact@v4'
@@ -1123,7 +1124,7 @@ jobs:
         path: |-
           **/build/reports/androidTests/**
           **/build/outputs/androidTest-results/**
-          logcat-api30.txt
+          logcat-api30-x86_64.txt
         if-no-files-found: 'ignore'
         overwrite: 'true'
       if: 'always()'
@@ -1139,7 +1140,7 @@ jobs:
         echo "Removing System Images..."
         rm -rf $ANDROID_HOME/system-images
     - id: 'step-80'
-      name: 'Stop Gradle daemons before emulator (api=36)'
+      name: 'Stop Gradle daemons before emulator (api=36, arch=x86_64)'
       run: |-
         ./gradlew --stop
         pkill -f KotlinCompileDaemon || true
@@ -1150,11 +1151,12 @@ jobs:
       uses: 'reactivecircus/android-emulator-runner@v2.35.0'
       with:
         api-level: '36'
+        target: 'default'
         arch: 'x86_64'
         profile: 'pixel_2'
         ram-size: '2048M'
         emulator-boot-timeout: '1800'
-        script: './gradlew connectedDeviceTest --continue "-Pandroid.min.sdk=30" "--scan" "-Porg.gradle.daemon.idletimeout=60000" "-Dfile.encoding=UTF-8" "-Dorg.gradle.jvmargs=-Xmx3g -Dkotlin.daemon.jvm.options=-Xmx2g" "-Dkotlin.daemon.jvm.options=-Xmx2g"; status=$?; adb logcat -d > logcat-api36.txt || true; killall -INT crashpad_handler || true; exit $status'
+        script: './gradlew connectedDeviceTest --continue "-Pandroid.min.sdk=30" "--scan" "-Porg.gradle.daemon.idletimeout=60000" "-Dfile.encoding=UTF-8" "-Dorg.gradle.jvmargs=-Xmx3g -Dkotlin.daemon.jvm.options=-Xmx2g" "-Dkotlin.daemon.jvm.options=-Xmx2g"; status=$?; adb logcat -d > logcat-api36-x86_64.txt || true; killall -INT crashpad_handler || true; exit $status'
     - id: 'step-82'
       name: 'Upload Android Instrumented Test Reports (api=36, arch=x86_64)'
       uses: 'actions/upload-artifact@v4'
@@ -1163,7 +1165,7 @@ jobs:
         path: |-
           **/build/reports/androidTests/**
           **/build/outputs/androidTest-results/**
-          logcat-api36.txt
+          logcat-api36-x86_64.txt
         if-no-files-found: 'ignore'
         overwrite: 'true'
       if: 'always()'
@@ -1172,6 +1174,47 @@ jobs:
       run: |
         sdkmanager --uninstall $(sdkmanager --list | grep emulator | awk '{print $1}')
     - id: 'step-84'
+      name: 'Remove AVD'
+      run: |-
+        echo "Removing Emulator binaries..."
+        rm -rf $ANDROID_HOME/emulator
+        echo "Removing System Images..."
+        rm -rf $ANDROID_HOME/system-images
+    - id: 'step-85'
+      name: 'Stop Gradle daemons before emulator (api=36, arch=x86_64, target=android-tv)'
+      run: |-
+        ./gradlew --stop
+        pkill -f KotlinCompileDaemon || true
+        free -h
+        df -h .
+    - id: 'step-86'
+      name: 'Android Instrumented Test (api=36, arch=x86_64, target=android-tv)'
+      uses: 'reactivecircus/android-emulator-runner@v2.35.0'
+      with:
+        api-level: '36'
+        target: 'android-tv'
+        arch: 'x86_64'
+        profile: 'tv_1080p'
+        ram-size: '2048M'
+        emulator-boot-timeout: '1800'
+        script: './gradlew :app:shared:tv:connectedDeviceTest :app:shared:ui-foundation-tv:connectedDeviceTest :app:shared:ui-settings-tv:connectedDeviceTest :app:shared:ui-subject-tv:connectedDeviceTest :app:shared:ui-exploration-tv:connectedDeviceTest :app:shared:ui-onboarding-tv:connectedDeviceTest :app:shared:ui-episode-tv:connectedDeviceTest :app:shared:ui-watchtogether-tv:connectedDeviceTest --continue "-Pandroid.min.sdk=30" "--scan" "-Porg.gradle.daemon.idletimeout=60000" "-Dfile.encoding=UTF-8" "-Dorg.gradle.jvmargs=-Xmx3g -Dkotlin.daemon.jvm.options=-Xmx2g" "-Dkotlin.daemon.jvm.options=-Xmx2g"; status=$?; adb logcat -d > logcat-api36-x86_64-android-tv.txt || true; killall -INT crashpad_handler || true; exit $status'
+    - id: 'step-87'
+      name: 'Upload Android Instrumented Test Reports (api=36, arch=x86_64, target=android-tv)'
+      uses: 'actions/upload-artifact@v4'
+      with:
+        name: 'android-device-test-reports-api36-x86_64-android-tv'
+        path: |-
+          **/build/reports/androidTests/**
+          **/build/outputs/androidTest-results/**
+          logcat-api36-x86_64-android-tv.txt
+        if-no-files-found: 'ignore'
+        overwrite: 'true'
+      if: 'always()'
+    - id: 'step-88'
+      name: 'Uninstall emulators'
+      run: |
+        sdkmanager --uninstall $(sdkmanager --list | grep emulator | awk '{print $1}')
+    - id: 'step-89'
       name: 'Remove AVD'
       run: |-
         echo "Removing Emulator binaries..."
