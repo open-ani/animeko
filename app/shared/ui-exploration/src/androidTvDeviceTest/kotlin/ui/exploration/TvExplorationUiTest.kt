@@ -185,7 +185,7 @@ class TvExplorationUiTest {
         val recs = recommendationFlow ?: flowOf(
             completedPage<RecommendedItemInfo>(
                 (21..44).map {
-                    RecommendedSubjectInfo(it, titles[(it - 1) % titles.size], image)
+                    RecommendedSubjectInfo(it, titles[(it - 1) % titles.size], "", image)
                 },
             ),
         )
@@ -863,7 +863,7 @@ class TvExplorationUiTest {
 
     @Test
     fun recommendationReorderingRestoresTheSameSubjectInItsNewGridRow() = runAniComposeUiTest {
-        val values = (21..44).map { RecommendedSubjectInfo(it, titles[(it - 1) % titles.size], "") }
+        val values = (21..44).map { RecommendedSubjectInfo(it, titles[(it - 1) % titles.size], "", "") }
         val flow = MutableStateFlow(completedPage<RecommendedItemInfo>(values))
         mount(recommendationFlow = flow)
         key(Key.DirectionDown)
@@ -906,7 +906,7 @@ class TvExplorationUiTest {
                 override fun getRefreshKey(state: PagingState<Int, RecommendedItemInfo>): Int? = null
                 override suspend fun load(params: LoadParams<Int>): LoadResult<Int, RecommendedItemInfo> =
                     if (attempts++ == 0) LoadResult.Error(IOException("Offline fixture"))
-                    else LoadResult.Page(listOf(RecommendedSubjectInfo(21, "重新加载的番剧", "")), null, null)
+                    else LoadResult.Page(listOf(RecommendedSubjectInfo(21, "重新加载的番剧", "", "")), null, null)
             }
         }
         mount(withContinue = false, recommendationFlow = pager.flow)
