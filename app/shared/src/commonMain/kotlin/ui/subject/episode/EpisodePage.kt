@@ -18,7 +18,6 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.WindowInsetsSides
-import androidx.compose.foundation.layout.displayCutout
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -27,6 +26,7 @@ import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.only
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.safeContent
+import androidx.compose.foundation.layout.systemBars
 import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.union
 import androidx.compose.foundation.layout.width
@@ -955,16 +955,16 @@ fun EpisodeScreenContentPhoneScaffold(
 /**
  * 全屏播放时传给播放器控件的 window insets.
  *
- * iOS 横屏下 [WindowInsets.systemBars] 会把刘海宽度对称地报告在左右两侧, 并且还带有顶部和 home indicator 的高度,
- * 直接使用会让控件离屏幕边缘过远. 全屏时只需要避开真正有刘海 (前置摄像头) 的那一侧:
- * Compose 在 iOS 上的 [WindowInsets.displayCutout] 只包含摄像头所在的那一侧.
+ * iOS 横屏下 [WindowInsets.systemBars] 在左右两侧对称地报告 safe area, 这个值同时为刘海和屏幕圆角预留,
+ * 只避开刘海一侧会让对侧的按钮压进圆角而难以点中, 所以水平方向照系统的值用.
+ * 顶部和 home indicator 的高度不需要, 带上会让控件离上下边缘过远.
  *
  * 其他平台保持 [default] 不变.
  */
 @Composable
 private fun fullscreenVideoWindowInsets(default: WindowInsets): WindowInsets {
     return if (LocalPlatform.current.isIos()) {
-        WindowInsets.displayCutout.only(WindowInsetsSides.Horizontal)
+        WindowInsets.systemBars.only(WindowInsetsSides.Horizontal)
     } else {
         default
     }
