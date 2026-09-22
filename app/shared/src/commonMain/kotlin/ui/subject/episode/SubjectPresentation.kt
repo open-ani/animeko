@@ -12,12 +12,15 @@ package me.him188.ani.app.ui.subject.episode
 import androidx.compose.runtime.Immutable
 import androidx.compose.runtime.Stable
 import me.him188.ani.app.data.models.subject.SubjectInfo
+import me.him188.ani.app.data.models.subject.nameOrNameCn
 
 @Immutable
 class SubjectPresentation(
     val title: String,
     val isPlaceholder: Boolean = false,
     val info: SubjectInfo,
+    /** 条目原名, 供"显示原名"设置开启时使用; 默认与 [title] 相同. */
+    val originalTitle: String = title,
 ) {
     companion object {
         @Stable
@@ -33,5 +36,6 @@ fun SubjectInfo.toPresentation(): SubjectPresentation {
     return SubjectPresentation(
         title = displayName,
         info = this,
+        originalTitle = nameOrNameCn,
     )
 }

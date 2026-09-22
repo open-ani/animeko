@@ -240,6 +240,7 @@ class SearchViewModel(
                         SearchPageEffect.NavigateToSubjectDetails(
                             subjectId = intent.item.subjectId,
                             title = intent.item.title,
+                            originalTitle = intent.item.originalTitle,
                             imageUrl = intent.item.imageUrl,
                         ),
                     )
@@ -334,7 +335,7 @@ class SearchViewModel(
             previewItem.subjectId,
             placeholder = SubjectInfo.createPlaceholder(
                 previewItem.subjectId,
-                previewItem.title,
+                previewItem.originalTitle,
                 previewItem.imageUrl,
                 previewItem.title,
             ).also { currentPreviewingSubject = it },

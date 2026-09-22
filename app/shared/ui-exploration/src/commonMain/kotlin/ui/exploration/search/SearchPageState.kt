@@ -91,6 +91,7 @@ sealed interface SearchPageEffect {
     data class NavigateToSubjectDetails(
         val subjectId: Int,
         val title: String,
+        val originalTitle: String,
         val imageUrl: String,
     ) : SearchPageEffect
 }

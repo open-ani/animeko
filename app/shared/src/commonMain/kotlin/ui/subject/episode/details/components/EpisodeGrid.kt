@@ -43,9 +43,10 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.tooling.preview.PreviewLightDark
 import androidx.compose.ui.unit.dp
 import me.him188.ani.app.data.models.episode.EpisodeCollectionInfo
-import me.him188.ani.app.data.models.episode.displayName
+import me.him188.ani.app.data.models.episode.preferredDisplayName
 import me.him188.ani.app.domain.media.cache.EpisodeCacheStatus
 import me.him188.ani.app.ui.foundation.LocalEpisodeProgressSettings
+import me.him188.ani.app.ui.foundation.LocalSubjectAppearanceSettings
 import me.him188.ani.app.ui.foundation.LongClickProgressFill
 import me.him188.ani.app.ui.foundation.ProvideCompositionLocalsForPreview
 import me.him188.ani.app.ui.foundation.icons.PlayingIcon
@@ -231,7 +232,7 @@ private fun EpisodeGridItem(
             )
             EpisodeCellLabel(
                 sort = episode.episodeInfo.sort.toString(),
-                name = episode.episodeInfo.displayName,
+                name = episode.episodeInfo.preferredDisplayName(LocalSubjectAppearanceSettings.current.useOriginalTitle),
                 sortColor = sortColor,
                 nameColor = nameColor,
                 modifier = Modifier

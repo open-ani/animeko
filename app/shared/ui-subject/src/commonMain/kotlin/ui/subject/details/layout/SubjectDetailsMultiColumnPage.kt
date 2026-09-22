@@ -69,10 +69,12 @@ import kotlinx.collections.immutable.toImmutableList
 import me.him188.ani.app.data.models.subject.RelatedSubjectInfo
 import me.him188.ani.app.data.models.subject.SubjectInfo
 import me.him188.ani.app.data.models.subject.Tag
+import me.him188.ani.app.data.models.subject.preferredDisplayName
 import me.him188.ani.app.tools.ColorUtils
 import me.him188.ani.app.ui.external.placeholder.placeholder
 import me.him188.ani.app.ui.foundation.AniImageLoadSuccess
 import me.him188.ani.app.ui.foundation.AsyncImage
+import me.him188.ani.app.ui.foundation.LocalSubjectAppearanceSettings
 import me.him188.ani.app.ui.foundation.animation.AniAnimatedVisibility
 import me.him188.ani.app.ui.foundation.ifThen
 import me.him188.ani.app.ui.foundation.text.ProvideContentColor
@@ -166,7 +168,7 @@ internal fun SubjectDetailsMultiColumnPage(
         windowInsets,
         navigationIcon,
         onClickOpenExternal,
-        topBarTitle = info.displayName,
+        topBarTitle = info.preferredDisplayName(LocalSubjectAppearanceSettings.current.useOriginalTitle),
         backgroundOverlay = {
             val surfaceColor = MaterialTheme.colorScheme.surface
             val colors = remember(backgroundPalette) {
@@ -402,7 +404,7 @@ internal fun SubjectDetailsMultiColumnPlaceholder(
         windowInsets,
         navigationIcon,
         onClickOpenExternal,
-        topBarTitle = subjectInfo?.displayName,
+        topBarTitle = subjectInfo?.preferredDisplayName(LocalSubjectAppearanceSettings.current.useOriginalTitle),
     ) {
         Column(
             Modifier.width(layoutParams.sidebarWidth),
@@ -429,7 +431,7 @@ internal fun SubjectDetailsMultiColumnPlaceholder(
             }
         }
         Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(16.dp)) {
-            val title = subjectInfo?.displayName
+            val title = subjectInfo?.preferredDisplayName(LocalSubjectAppearanceSettings.current.useOriginalTitle)
             if (!title.isNullOrBlank()) {
                 Text(
                     title,
@@ -529,16 +531,19 @@ private fun SubjectSidebar(
 
 @Composable
 private fun SubjectTitleBlock(info: SubjectInfo, uiState: SubjectDetailsUiState) {
+    val useOriginalTitle = LocalSubjectAppearanceSettings.current.useOriginalTitle
+    val primaryTitle = info.preferredDisplayName(useOriginalTitle)
+    val secondaryTitle = if (useOriginalTitle) info.displayName else info.name
     Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
         Text(
-            info.displayName,
+            primaryTitle,
             style = MaterialTheme.typography.headlineSmall,
             maxLines = 2,
             overflow = TextOverflow.Ellipsis,
         )
-        if (info.name.isNotBlank() && info.name != info.displayName) {
+        if (secondaryTitle.isNotBlank() && secondaryTitle != primaryTitle) {
             Text(
-                info.name,
+                secondaryTitle,
                 style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                 maxLines = 1,

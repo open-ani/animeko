@@ -12,15 +12,42 @@ package me.him188.ani.app.ui.download.subject
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertIs
+import me.him188.ani.app.data.models.episode.EpisodeCollectionInfo
+import me.him188.ani.app.data.models.episode.EpisodeInfo
+import me.him188.ani.app.data.models.subject.createTestSubjectCollection
 import me.him188.ani.app.ui.download.components.createTestDownloadItem
 import me.him188.ani.datasources.api.EpisodeSort
+import me.him188.ani.datasources.api.EpisodeType
 import me.him188.ani.datasources.api.topic.UnifiedCollectionType
 import me.him188.ani.utils.platform.annotations.TestOnly
 
 @OptIn(TestOnly::class)
 class SubjectDownloadsPresentationTest {
     @Test
-    fun `multiple downloads of one episode retain separate identities and are deduplicated`() {
+    fun `downloadEpisodes_carries_both_the_Chinese_and_original_episode_name`() {
+        val collection = createTestSubjectCollection(
+            1,
+            listOf(
+                EpisodeCollectionInfo(
+                    episodeInfo = EpisodeInfo(
+                        episodeId = 1,
+                        type = EpisodeType.MainStory,
+                        sort = EpisodeSort(1),
+                        name = "転がる岩、君に朝が降る",
+                        nameCn = "滚石与朝阳",
+                    ),
+                    collectionType = UnifiedCollectionType.WISH,
+                ),
+            ),
+            UnifiedCollectionType.DOING,
+        )
+        val item = collection.downloadEpisodes().single()
+        assertEquals("滚石与朝阳", item.title)
+        assertEquals("転がる岩、君に朝が降る", item.originalTitle)
+    }
+
+    @Test
+    fun `multiple_downloads_of_one_episode_retain_separate_identities_and_are_deduplicated`() {
         val first = createTestDownloadItem(1).copy(id = "first")
         val second = createTestDownloadItem(1).copy(id = "second")
         val items = buildSubjectDownloadItems(listOf(episode(1), episode(2)), listOf(first, second, first))
@@ -31,13 +58,13 @@ class SubjectDownloadsPresentationTest {
     }
 
     @Test
-    fun `downloads remain visible without episode metadata`() {
+    fun `downloads_remain_visible_without_episode_metadata`() {
         val download = createTestDownloadItem(2)
         assertEquals(listOf(SubjectDownloadListItem.Download(download)), buildSubjectDownloadItems(emptyList(), listOf(download)))
     }
 
     @Test
-    fun `new episodes and changed watch status are reflected without changing download identity`() {
+    fun `new_episodes_and_changed_watch_status_are_reflected_without_changing_download_identity`() {
         val download = createTestDownloadItem(1)
         val initial = buildSubjectDownloadItems(listOf(episode(1)), listOf(download))
         val updated = buildSubjectDownloadItems(listOf(episode(1), episode(2).copy(watchStatus = UnifiedCollectionType.DONE)), listOf(download))

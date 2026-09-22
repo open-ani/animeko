@@ -12,6 +12,7 @@ package me.him188.ani.app.ui.subject.episode.list
 import androidx.compose.runtime.Immutable
 import me.him188.ani.app.data.models.subject.SubjectCollectionInfo
 import me.him188.ani.app.data.models.subject.SubjectRecurrence
+import me.him188.ani.app.data.models.subject.nameOrNameCn
 import me.him188.ani.app.domain.episode.EpisodeCompletionContext
 import me.him188.ani.app.domain.episode.EpisodeCompletionContext.mapAirDate
 import me.him188.ani.datasources.api.EpisodeSort
@@ -27,6 +28,8 @@ data class EpisodeListUiState(
     val mainEpisodes: List<EpisodeListItem>,
     val otherEpisodes: List<EpisodeListItem>,
     val isPlaceholder: Boolean = false,
+    /** 条目原名, 供 "显示原名" 设置开启时使用; 默认与 [subjectTitle] 相同. */
+    val subjectOriginalTitle: String = subjectTitle,
 ) {
     companion object {
         /**
@@ -51,6 +54,7 @@ data class EpisodeListUiState(
                 subjectTitle = collection.subjectInfo.displayName,
                 mainEpisodes = mainEpisodes.sortedBy { it.sort },
                 otherEpisodes = otherEpisodes.sortedBy { it.sort },
+                subjectOriginalTitle = collection.subjectInfo.nameOrNameCn,
             )
         }
 

@@ -107,6 +107,7 @@ import me.him188.ani.app.ui.foundation.ImageViewerBackHandler
 import me.him188.ani.app.ui.foundation.LocalImageViewerHandler
 import me.him188.ani.app.ui.foundation.LocalIsPreviewing
 import me.him188.ani.app.ui.foundation.LocalPlatform
+import me.him188.ani.app.ui.foundation.LocalSubjectAppearanceSettings
 import me.him188.ani.app.ui.foundation.ProvideCompositionLocalsForPreview
 import me.him188.ani.app.ui.foundation.WindowDropHandlerEffect
 import me.him188.ani.app.ui.foundation.animation.AniAnimatedVisibility
@@ -1062,10 +1063,11 @@ private fun EpisodeVideo(
         title = {
             val episode = page.episodePresentation
             val subject = page.subjectPresentation
+            val useOriginalTitle = LocalSubjectAppearanceSettings.current.useOriginalTitle
             EpisodePlayerTitle(
                 episode.ep,
-                episode.title,
-                subject.title,
+                if (useOriginalTitle) episode.originalTitle else episode.title,
+                if (useOriginalTitle) subject.originalTitle else subject.title,
                 Modifier.placeholder(episode.isPlaceholder || subject.isPlaceholder),
             )
         },
