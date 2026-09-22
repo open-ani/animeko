@@ -191,7 +191,7 @@ fun SubjectDetailsScreen(
     windowInsets: WindowInsets = TopAppBarDefaults.windowInsets,
     navigationIcon: @Composable () -> Unit = {},
 ) {
-    val state by vm.state.collectAsStateWithLifecycle(null)
+    val state by vm.state.collectAsStateWithLifecycle()
     val selfInfo by vm.authState.collectAsStateWithLifecycle()
     val toaster = LocalToaster.current
     val scope = rememberCoroutineScope()
@@ -224,7 +224,7 @@ fun SubjectDetailsScreen(
 
 @Composable
 fun SubjectDetailsScreen(
-    state: SubjectDetailsLoadState?,
+    state: SubjectDetailsLoadState,
     selfInfo: SelfInfoUiState,
     onPlay: (episodeId: Int) -> Unit,
     onLoadErrorRetry: () -> Unit,
@@ -239,7 +239,7 @@ fun SubjectDetailsScreen(
     val navigator = LocalNavigator.current
     val uriHandler = LocalUriHandler.current
     val onClickOpenExternal = {
-        if (state != null) uriHandler.openUri("https://bgm.tv/subject/${state.subjectId}")
+        uriHandler.openUri("https://bgm.tv/subject/${state.subjectId}")
     }
 
     // 断点必须按本页面实际可用宽度决定, 不能按窗口宽度:
@@ -247,8 +247,8 @@ fun SubjectDetailsScreen(
     BoxWithConstraints(modifier) {
         val layoutParams = SubjectDetailsLayoutParams.calculate(maxWidth)
         when (state) {
-            null, is SubjectDetailsLoadState.Placeholder -> PlaceholderSubjectDetailsPage(
-                state?.subjectInfo,
+            is SubjectDetailsLoadState.Placeholder -> PlaceholderSubjectDetailsPage(
+                state.subjectInfo,
                 layoutParams,
                 Modifier,
                 showTopBar,

@@ -130,6 +130,8 @@ import me.him188.ani.app.ui.lang.video_player_disable_danmaku
 import me.him188.ani.app.ui.lang.video_player_enable_danmaku
 import me.him188.ani.app.ui.lang.video_player_mute
 import me.him188.ani.app.ui.lang.video_player_next_episode
+import me.him188.ani.app.ui.lang.video_player_pause
+import me.him188.ani.app.ui.lang.video_player_play
 import me.him188.ani.app.ui.lang.video_player_select_episode
 import me.him188.ani.app.ui.lang.video_player_send
 import me.him188.ani.app.ui.lang.video_player_skip_op_ed
@@ -174,9 +176,9 @@ object PlayerControllerDefaults {
             modifier,
         ) {
             if (isPlaying()) {
-                Icon(Icons.Rounded.Pause, contentDescription = "Pause", Modifier.size(36.dp))
+                Icon(Icons.Rounded.Pause, contentDescription = stringResource(Lang.video_player_pause), Modifier.size(36.dp))
             } else {
-                Icon(Icons.Rounded.PlayArrow, contentDescription = "Play", Modifier.size(36.dp))
+                Icon(Icons.Rounded.PlayArrow, contentDescription = stringResource(Lang.video_player_play), Modifier.size(36.dp))
             }
         }
     }

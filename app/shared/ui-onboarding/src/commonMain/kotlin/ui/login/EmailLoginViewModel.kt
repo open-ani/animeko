@@ -23,8 +23,10 @@ import me.him188.ani.app.domain.session.InvalidSessionReason
 import me.him188.ani.app.domain.session.SessionManager
 import me.him188.ani.app.domain.session.SessionState
 import me.him188.ani.app.domain.session.auth.OAuthPlatform
+import me.him188.ani.app.domain.usecase.GlobalKoin
 import me.him188.ani.app.ui.foundation.AbstractViewModel
 import me.him188.ani.utils.logging.warn
+import org.koin.core.Koin
 import org.koin.core.component.KoinComponent
 import org.koin.core.component.inject
 import kotlin.time.Clock
@@ -32,7 +34,9 @@ import kotlin.time.Duration.Companion.seconds
 import kotlin.time.Instant
 
 @Stable
-class EmailLoginViewModel : AbstractViewModel(), KoinComponent {
+open class EmailLoginViewModel(private val koin: Koin = GlobalKoin) : AbstractViewModel(), KoinComponent {
+    override fun getKoin(): Koin = koin
+
     private val userRepository: UserRepository by inject()
     private val sessionManager: SessionManager by inject()
 

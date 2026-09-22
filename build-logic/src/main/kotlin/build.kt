@@ -13,6 +13,8 @@ import org.gradle.api.artifacts.VersionCatalog
 import org.gradle.api.artifacts.VersionCatalogsExtension
 import org.gradle.api.artifacts.component.ModuleComponentIdentifier
 import org.gradle.api.plugins.JavaPluginExtension
+import org.gradle.api.services.BuildService
+import org.gradle.api.services.BuildServiceParameters
 import org.gradle.api.tasks.compile.JavaCompile
 import org.gradle.api.tasks.testing.Test
 import org.gradle.jvm.toolchain.JavaLanguageVersion
@@ -209,6 +211,26 @@ fun Project.configureJvmTarget() {
     extensions.findByType(JavaPluginExtension::class.java)?.run {
         sourceCompatibility = ver
         targetCompatibility = ver
+    }
+}
+
+/**
+ * 占用一台 Android 设备的凭据, 见 [runConnectedDeviceTestsExclusively].
+ */
+abstract class ConnectedDeviceTestLock : BuildService<BuildServiceParameters.None>
+
+/**
+ * 让所有模块的 instrumented test 任务 (`connected*Test`) 逐个运行.
+ *
+ * 各模块的测试共用同一台设备. Gradle 会并行执行不同项目的任务 (启用 configuration cache 后默认如此),
+ * 多个测试 APK 同时运行时, 各自的 Activity 会互相抢占窗口焦点, 依赖焦点的 UI 测试因此失败.
+ */
+fun Project.runConnectedDeviceTestsExclusively() {
+    val lock = gradle.sharedServices.registerIfAbsent("connectedDeviceTestLock", ConnectedDeviceTestLock::class.java) {
+        maxParallelUsages.set(1)
+    }
+    tasks.matching { it.name.startsWith("connected") && it.name.endsWith("Test") }.configureEach {
+        usesService(lock)
     }
 }
 

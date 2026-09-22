@@ -1632,7 +1632,16 @@ class WithMatrix(
         if (matrix.uploadApk) {
             runGradle(
                 name = "Build Android Debug APKs",
-                tasks = arrayOf("assembleDefaultDebug"),
+                tasks = arrayOf("assembleDefaultDebug", "assembleTvDebug"),
+            )
+            runGradle(
+                name = "Test Android TV",
+                tasks = buildList {
+                    for (module in listOf(":app:shared:tv", ":app:shared:ui-foundation-tv", ":app:shared:ui-episode-tv", ":app:shared:ui-subject-tv")) {
+                        add("$module:testAndroidHostTest")
+                        add("--tests 'me.him188.ani.tv.*'")
+                    }
+                }.toTypedArray(),
             )
         }
 
@@ -1658,7 +1667,7 @@ class WithMatrix(
             runGradle(
                 name = "Build Android Release APKs",
                 `if` = expr { github.isAnimekoRepository and !github.isPullRequest },
-                tasks = arrayOf("assembleDefaultRelease"),
+                tasks = arrayOf("assembleDefaultRelease", "assembleTvRelease"),
                 env = mapOf(
                     "signing_release_storeFileFromRoot" to expr { prepareSigningKey.outputs["filePath"] },
                     "signing_release_storePassword" to expr { secrets.SIGNING_RELEASE_STOREPASSWORD },
@@ -1680,6 +1689,14 @@ class WithMatrix(
                     action = UploadArtifact(
                         name = "ani-android-${arch}-release",
                         path_Untyped = "app/android/build/outputs/apk/default/release/android-default-${arch}-release.apk",
+                        overwrite = true,
+                    ),
+                )
+                usesWithAttempts(
+                    name = "Upload Android TV Release APK $arch",
+                    action = UploadArtifact(
+                        name = "ani-android-tv-${arch}-release",
+                        path_Untyped = "app/android/build/outputs/apk/tv/release/android-tv-${arch}-release.apk",
                         overwrite = true,
                     ),
                 )
@@ -1815,6 +1832,7 @@ class WithMatrix(
                         action = AndroidEmulatorRunner(
                             apiLevel = apiLevel.toString(),
                             arch = arch,
+                            profile = "pixel_2",
                             ramSize = "2048M",
                             script = buildString {
                                 // --continue: 一个模块失败也把其余模块的测试跑完, 最后统一报告.
@@ -2063,6 +2081,11 @@ class WithMatrix(
                 runGradle(
                     name = "Upload Android APK for Release",
                     tasks = arrayOf(":ci-helper:uploadAndroidApk", "\"--no-configuration-cache\""),
+                    env = ciHelperSecrets,
+                )
+                runGradle(
+                    name = "Upload Android TV APK for Release",
+                    tasks = arrayOf(":ci-helper:uploadAndroidTvApk", "\"--no-configuration-cache\""),
                     env = ciHelperSecrets,
                 )
             }

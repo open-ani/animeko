@@ -793,6 +793,8 @@
     <string name="video_player_mute">靜音</string>
     <string name="video_player_volume">音量</string>
     <string name="video_player_next_episode">下一集</string>
+    <string name="video_player_play">播放</string>
+    <string name="video_player_pause">暫停</string>
     <string name="video_player_select_episode">選集</string>
     <string name="video_player_send">傳送</string>
     <string name="video_player_speed">倍速</string>
@@ -1167,7 +1169,10 @@
     <string name="subject_details_next_page">下一頁</string>
     <string name="subject_details_air_date_format">%1$s 年 %2$s 月 %3$s 日</string>
     <string name="subject_details_rating_summary">#%1$s · %2$s 人評分</string>
-    <string name="subject_details_reviews_count">%1$s 條</string>
+    <string name="subject_details_reviews_count">%1$s 條評論</string>
+    <string name="subject_details_review_title">Review</string>
+    <string name="subject_details_overview">總覽</string>
+    <string name="comment_review_hidden">[隱藏內容]</string>
     <string name="subject_details_rate">打分</string>
     <string name="subject_details_summary">簡介</string>
     <string name="foundation_load_error_network">網路錯誤</string>
@@ -1302,6 +1307,8 @@
     <string name="subject_progress_updates_on">%1$s更新</string>
     <string name="subject_progress_watched">看過 %1$s</string>
     <string name="subject_progress_unknown">未知</string>
+    <string name="subject_progress_episode_counts">已看 %1$s / 共 %2$s 集</string>
+    <string name="subject_progress_episode_counts_on_air">已看 %1$s / 已播 %2$s / 共 %3$s 集</string>
     <string name="subject_airing_upcoming">未開播</string>
     <string name="subject_airing_on_air">連載中</string>
     <string name="subject_airing_on_air_to">連載至 %1$s</string>
@@ -1558,6 +1565,16 @@
     <string name="person_details_career_writer">作家</string>
     <string name="person_details_career_illustrator">繪師</string>
     <string name="person_details_career_actor">演員</string>
+    <string name="people_character_intro">角色介紹</string>
+    <string name="people_voice_actor_intro">聲優介紹</string>
+    <string name="people_staff_intro">製作人員介紹</string>
+    <string name="people_discussion">討論</string>
+    <string name="people_discussion_source">來自使用者討論</string>
+    <string name="people_view_image">查看大圖</string>
+    <string name="people_no_information">暫無介紹和基本資訊</string>
+    <string name="people_bangumi_unavailable">Bangumi 討論暫時無法載入</string>
+    <string name="people_career_singer">歌手</string>
+    <string name="people_career_director">導演</string>
 
     <!-- 一起看 -->
     <string name="watch_together_title">一起看</string>
@@ -1645,6 +1662,29 @@
     <string name="image_viewer_copied">圖片已複製</string>
     <string name="image_viewer_copy_failed">複製圖片失敗</string>
     <string name="image_viewer_close">關閉</string>
+    <!-- Shared playback captcha messages -->
+    <string name="media_captcha_required_message">需要處理%1$s</string>
+    <string name="media_captcha_image">圖片驗證碼</string>
+    <string name="media_captcha_cloudflare">Cloudflare 驗證</string>
+    <string name="media_captcha_turnstile">Cloudflare Turnstile 驗證</string>
+    <string name="media_captcha_slider">滑動驗證</string>
+    <string name="media_captcha_unknown">驗證碼</string>
+    <string name="subject_details_no_episodes">暫無集數</string>
+    <string name="subject_details_no_summary">暫無簡介</string>
+    <string name="subject_details_tags">標籤</string>
+    <string name="subject_details_empty">暫無內容</string>
+    <string name="subject_details_main_episodes">正片</string>
+    <string name="subject_details_other_episodes">其他集數</string>
+    <string name="subject_details_unrated">取消評分</string>
+    <string name="subject_details_refresh">重新整理</string>
+    <string name="subject_details_air_month">%1$d 年 %2$d 月</string>
+    <string name="subject_details_ratings_count">%1$s 人評分</string>
+    <string name="rating_increase">提高評分</string>
+    <string name="rating_decrease">降低評分</string>
+    <string name="exploration_subject_details">番劇詳情</string>
+    <string name="exploration_for_you">為你推薦</string>
+    <string name="exploration_loading">正在載入…</string>
+    <string name="exploration_load_failed">載入失敗，請重試</string>
     <string name="downloads_load_failed">下載資訊載入失敗</string>
     <string name="downloads_empty">暫無可下載的劇集</string>
     <string name="downloads_create_failed">新增下載失敗</string>
@@ -1659,6 +1699,32 @@
     <string name="downloads_episode_picker_current">目前</string>
     <string name="downloads_episode_picker_selected_count">已選 %1$d 集</string>
     <string name="downloads_episode_picker_back">返回</string>
+    <string name="qr_login_title">掃碼登入</string>
+    <string name="qr_login_settings_description">在電視等裝置上登入此帳號</string>
+    <string name="qr_login_scan_hint">對準電視上的 QR Code</string>
+    <string name="qr_login_scan_invalid">這不是 Animeko 登入 QR Code</string>
+    <string name="qr_login_scan_torch">手電筒</string>
+    <string name="qr_login_camera_permission">需要相機權限才能掃碼</string>
+    <string name="qr_login_camera_permission_grant">允許使用相機</string>
+    <string name="qr_login_confirm_title">確認登入</string>
+    <string name="qr_login_confirm_headline">在新裝置上登入?</string>
+    <string name="qr_login_confirm_as">將以 %1$s 的身分登入以下裝置</string>
+    <string name="qr_login_confirm_as_current">將以你的帳號登入以下裝置</string>
+    <string name="qr_login_confirm_unknown_device">未知裝置</string>
+    <string name="qr_login_confirm_device_requesting">正在請求登入</string>
+    <string name="qr_login_confirm_warning">只在你本人正看著這台裝置時確認。不要掃描他人傳來的登入 QR Code。</string>
+    <string name="qr_login_confirm_approve">確認登入</string>
+    <string name="qr_login_confirm_reject">拒絕</string>
+    <string name="qr_login_approved_title">已登入</string>
+    <string name="qr_login_approved_description">%1$s 已登入你的帳號, 可以放下手機了</string>
+    <string name="qr_login_rejected_title">已拒絕登入</string>
+    <string name="qr_login_expired">QR Code 已過期, 請在電視上重新整理後再試</string>
+    <string name="qr_login_already_handled">這個 QR Code 已被使用</string>
+    <string name="qr_login_requires_login">請先在此裝置上登入 Animeko</string>
+    <string name="qr_login_failed">操作失敗, 請檢查網路後再試</string>
+    <string name="qr_login_retry">重試</string>
+    <string name="qr_login_done">完成</string>
+    <string name="qr_login_close">關閉</string>
 </resources>
 
 <!--@formatter:on-->

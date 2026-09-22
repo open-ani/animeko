@@ -1,4 +1,5 @@
 [versions]
+zxing = "3.5.4"
 kotlin = "2.4.10"
 android-gradle-plugin = "9.1.1"
 
@@ -23,6 +24,7 @@ s3 = "2.42.14"
 sentry-kotlin-multiplatform = "0.11.0"
 sqlite = "2.6.1"
 androidx-activity = "1.12.4"
+androidx-camera = "1.4.2" # https://developer.android.com/jetpack/androidx/releases/camera
 androidx-core = "1.17.0"
 stability-analyzer = "0.12.0"
 google-gms-google-services = "4.4.2"
@@ -126,6 +128,7 @@ compose-stability-analyzer = { id = "com.github.skydoves.compose.stability.analy
 aboutlibraries = { id = "com.mikepenz.aboutlibraries.plugin", version.ref = "aboutlibraries" }
 
 [libraries]
+zxing-core = { module = "com.google.zxing:core", version.ref = "zxing" }
 # Plugin libraries for build-logic.
 android-gradle-plugin = { module = "com.android.tools.build:gradle", version.ref = "android-gradle-plugin" }
 android-kotlin-multiplatform-library-gradle-plugin = { module = "com.android.kotlin.multiplatform.library:com.android.kotlin.multiplatform.library.gradle.plugin", version.ref = "android-gradle-plugin" }
@@ -264,7 +267,12 @@ androidx-compose-ui-test-manifest = { module = "androidx.compose.ui:ui-test-mani
 androidx-core-ktx = { module = "androidx.core:core-ktx", version.ref = "androidx-core" }
 androidx-activity-compose = { module = "androidx.activity:activity-compose", version.ref = "androidx-activity" }
 androidx-activity-ktx = { module = "androidx.activity:activity-ktx", version.ref = "androidx-activity" }
+androidx-camera-camera2 = { module = "androidx.camera:camera-camera2", version.ref = "androidx-camera" }
+androidx-camera-lifecycle = { module = "androidx.camera:camera-lifecycle", version.ref = "androidx-camera" }
+androidx-camera-view = { module = "androidx.camera:camera-view", version.ref = "androidx-camera" }
 androidx-appcompat = { module = "androidx.appcompat:appcompat", version = "1.7.0" }
+androidx-tv-material = { module = "androidx.tv:tv-material", version = "1.1.0" } # Compose for TV (tv-material3), 仅 :app:android tv flavor 使用
+konsist = { module = "com.lemonappdev:konsist", version = "0.17.3" } # TV 约定边界守护
 androidx-material = { module = "com.google.android.material:material", version = "1.12.0" }
 #androidx-material3-window-size-class0 = { module = "androidx.compose.material3:material3-window-size-class", version = "1.2.1" }
 androidx-browser = { module = "androidx.browser:browser", version = "1.8.0" }
