@@ -161,7 +161,7 @@ fun TvAniAppContent(
                             onContentChange = { shellContent = it },
                             onOpenSettings = { aniNavigator.navigateSettings() },
                             focusMemory = shellFocusMemory,
-                        ) { content ->
+                        ) { content, navigationRailInsets ->
                             when (content) {
                                 TvShellContent.Exploration -> {
                                     val viewModel = tvViewModel {
@@ -170,17 +170,17 @@ fun TvAniAppContent(
                                             collectionRepository = dependencies.subjectCollectionRepository,
                                         )
                                     }
-                                    TvExplorationRoute(viewModel, onNavigate)
+                                    TvExplorationRoute(viewModel, onNavigate, navigationRailInsets = navigationRailInsets)
                                 }
 
                                 TvShellContent.Schedule -> {
                                     val viewModel = tvViewModel { TvScheduleViewModel(dependencies.koin) }
-                                    TvScheduleRoute(viewModel, onNavigate)
+                                    TvScheduleRoute(viewModel, onNavigate, navigationRailInsets = navigationRailInsets)
                                 }
 
                                 TvShellContent.Collection -> {
                                     val viewModel = tvViewModel { TvCollectionViewModel() }
-                                    TvCollectionRoute(viewModel, onNavigate)
+                                    TvCollectionRoute(viewModel, onNavigate, navigationRailInsets = navigationRailInsets)
                                 }
 
                                 TvShellContent.Search -> {
@@ -188,13 +188,14 @@ fun TvAniAppContent(
                                         tvViewModel {
                                             TvSearchViewModel(dependencies.subjectSearchRepository, dependencies.settingsRepository)
                                         }
-                                    TvSearchRoute(viewModel, onNavigate)
+                                    TvSearchRoute(viewModel, onNavigate, navigationRailInsets = navigationRailInsets)
                                 }
 
                                 TvShellContent.Login -> {
                                     val viewModel = tvViewModel { TvLoginViewModel(dependencies.koin) }
                                     TvLoginRoute(
                                         viewModel,
+                                        navigationRailInsets = navigationRailInsets,
                                         onNavigate = { event ->
                                             when (event) {
                                                 TvNavigationEvent.LoggedIn -> shellContent = TvShellContent.Exploration

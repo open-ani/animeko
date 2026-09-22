@@ -12,6 +12,7 @@ package me.him188.ani.tv.ui.search
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
@@ -62,6 +63,7 @@ fun TvSearchScreen(
     results: LazyPagingItems<BatchSubjectDetails>,
     onIntent: (TvSearchIntent) -> Unit,
     modifier: Modifier = Modifier,
+    navigationRailInsets: PaddingValues = PaddingValues(0.dp),
 ) {
     // 统一焦点框架: 进页初始焦点落输入框 (聚焦后按确认弹软键盘)
     val focus = rememberTvFocusScope()
@@ -84,7 +86,7 @@ fun TvSearchScreen(
                     ),
             )
         },
-        modifier = modifier,
+        modifier = modifier.fillMaxSize().padding(navigationRailInsets),
     ) {
         when {
             !state.hasSearched -> TvSearchCenteredHint("输入关键词, 按软键盘搜索键开始")

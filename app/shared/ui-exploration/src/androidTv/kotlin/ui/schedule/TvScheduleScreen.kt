@@ -95,6 +95,7 @@ fun TvScheduleScreen(
     presentation: SchedulePagePresentation,
     onIntent: (TvScheduleIntent) -> Unit,
     modifier: Modifier = Modifier,
+    navigationRailInsets: PaddingValues = PaddingValues(0.dp),
 ) {
     // rememberLazyListState saves the viewport in the navigation entry across detail visits.
     val days = presentation.days
@@ -131,7 +132,7 @@ fun TvScheduleScreen(
     val error = presentation.error
     if (error != null) {
         Column(
-            modifier.fillMaxSize(),
+            modifier.fillMaxSize().padding(navigationRailInsets),
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.Center,
         ) {
@@ -155,7 +156,7 @@ fun TvScheduleScreen(
     // ── 多列并排 (手机 Medium 档): 固定 360dp 列宽, 列间 16dp, 初始滚动到今天列 ──
     CompositionLocalProvider(LocalBringIntoViewSpec provides scrollSpec) {
         LazyRow(
-            modifier.fillMaxSize().tvFocusNavSignal(focus),
+            modifier.fillMaxSize().padding(navigationRailInsets).tvFocusNavSignal(focus),
             state = listState,
             horizontalArrangement = Arrangement.spacedBy(TvScheduleDefaults.PageSpacing),
             contentPadding = PaddingValues(start = TvScheduleDefaults.StartPadding, end = TvPageDefaults.EndPadding),

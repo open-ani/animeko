@@ -11,13 +11,18 @@ package me.him188.ani.tv.ui.main
 
 import androidx.activity.compose.BackHandler
 import androidx.compose.animation.AnimatedContent
+import androidx.compose.animation.core.FastOutSlowInEasing
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.CalendarMonth
 import androidx.compose.material.icons.rounded.Search
@@ -46,13 +51,19 @@ import androidx.compose.ui.input.InputMode
 import androidx.compose.ui.input.key.Key
 import androidx.compose.ui.platform.LocalInputModeManager
 import androidx.compose.ui.platform.testTag
+import androidx.tv.material3.MaterialTheme
+import dev.chrisbanes.haze.HazeProgressive
+import dev.chrisbanes.haze.HazeTint
+import dev.chrisbanes.haze.hazeEffect
+import dev.chrisbanes.haze.hazeSource
+import dev.chrisbanes.haze.rememberHazeState
 import kotlinx.coroutines.flow.drop
 import me.him188.ani.app.ui.lang.Lang
-import me.him188.ani.app.ui.lang.tv_nav_schedule
 import me.him188.ani.app.ui.lang.exploration_search
 import me.him188.ani.app.ui.lang.main_screen_page_collection
 import me.him188.ani.app.ui.lang.main_screen_page_exploration
 import me.him188.ani.app.ui.lang.settings
+import me.him188.ani.app.ui.lang.tv_nav_schedule
 import me.him188.ani.tv.ui.foundation.focus.LocalTvFocusMemory
 import me.him188.ani.tv.ui.foundation.focus.TvFocusKey
 import me.him188.ani.tv.ui.foundation.focus.TvFocusMemory
@@ -71,7 +82,7 @@ enum class TvShellContent { Search, Exploration, Schedule, Collection, Login }
 
 /** 主壳焦点锚点 (统一焦点框架, 见 ui-foundation-tv/focus). */
 private enum class TvShellFocus : TvFocusKey {
-    /** 侧边栏进入落点 ("探索"条目); 菜单键从任意位置直达. */
+    /** 菜单键入口；进入时由侧栏选择当前页面或待恢复条目。 */
     Rail,
     Settings,
     Avatar,
@@ -79,9 +90,8 @@ private enum class TvShellFocus : TvFocusKey {
 }
 
 /**
- * TV 主壳. 布局对齐上游 PR#3217 的 MainScreen (TV 变体):
- * 左侧 [TvNavigationSideRail] (收起 48dp 图标列, 焦点进入展开) 浮于内容之上,
- * 内容区让开收起宽度; tab 间切换用 fade 转场.
+ * TV 主壳。页面占满屏幕；左侧悬浮导航栏展开时压暗页面，并在左侧以渐进模糊衬托。
+ * [pageContent] 接收收起态导航栏的避让范围，可分别安排背景和前景内容。
  */
 @OptIn(ExperimentalComposeUiApi::class)
 @Composable
@@ -94,11 +104,13 @@ fun TvMainShell(
     modifier: Modifier = Modifier,
     /** 焦点记忆; 调用方在 NavHost 之上创建传入使其跨 route 存活 (进详情页返回恢复焦点用). */
     focusMemory: TvFocusMemory? = null,
-    pageContent: @Composable (TvShellContent) -> Unit,
+    pageContent: @Composable (TvShellContent, navigationRailInsets: PaddingValues) -> Unit,
 ) {
     val selfInfo = uiState.selfInfo
     val currentContent by rememberUpdatedState(content)
     val pageStates = rememberSaveableStateHolder()
+    val railBackdrop = rememberHazeState()
+    val backgroundColor = tvShellBackgroundColor()
     var showLogoutConfirmation by rememberSaveable { mutableStateOf(false) }
     var restoreAccountFocus by remember { mutableStateOf<TvShellFocus?>(null) }
 
@@ -146,6 +158,11 @@ fun TvMainShell(
             }
     }
     var railHasFocus by remember { mutableStateOf(false) }
+    val railReveal by animateFloatAsState(
+        if (railHasFocus || showLogoutConfirmation || restoreAccountFocus != null) 1f else 0f,
+        tween(TvNavigationRailDefaults.ExpandDurationMillis, easing = FastOutSlowInEasing),
+        label = "navigation-rail-backdrop",
+    )
     val restoreContentFocus: () -> Unit = remember(contentFocus, memory) {
         {
             if (memory.lastId == TvShellFocus.Settings) memory.clear()
@@ -168,17 +185,20 @@ fun TvMainShell(
         modifier
             .fillMaxSize()
             .testTag("tv-main-shell")
-            .background(tvShellBackgroundColor())
-            .then(if (showLogoutConfirmation) Modifier.tvFocusNavSignal(focus) else Modifier.tvFocusHotkeyToggle(
-                focus, Key.Menu, TvShellFocus.Rail, onLeave = restoreContentFocus,
-            )),
+            .background(backgroundColor)
+            .then(
+                if (showLogoutConfirmation) Modifier.tvFocusNavSignal(focus) else Modifier.tvFocusHotkeyToggle(
+                    focus, Key.Menu, TvShellFocus.Rail, onLeave = restoreContentFocus,
+                ),
+            ),
     ) {
         Box(Modifier.fillMaxSize().tvModalUnderlay(showLogoutConfirmation)) {
-            // 内容区: 让开侧边栏收起态宽度. 焦点记忆只对内容子树 provide (侧边栏不上报)
+            // 背景与页面均占满窗口；焦点记忆仅向内容子树提供。
             Box(
                 Modifier
                     .fillMaxSize()
-                    .padding(start = TvNavigationRailDefaults.CollapsedWidth)
+                    .testTag("tv-main-page-content")
+                    .hazeSource(railBackdrop)
                     .focusRequester(contentFocus),
             ) {
                 CompositionLocalProvider(LocalTvFocusMemory provides memory) {
@@ -187,12 +207,39 @@ fun TvMainShell(
                         transitionSpec = { fadeIn() togetherWith fadeOut() },
                         label = "tvShellContent",
                     ) { current ->
-                        pageStates.SaveableStateProvider(current) { pageContent(current) }
+                        pageStates.SaveableStateProvider(current) {
+                            pageContent(current, TvNavigationRailDefaults.ContentInsets)
+                        }
                     }
                 }
+
+                Box(
+                    Modifier.fillMaxSize()
+                        .background(
+                            MaterialTheme.colorScheme.surface
+                                .copy(alpha = railReveal * TvNavigationRailDefaults.BackgroundDimAlpha),
+                        ),
+                )
             }
 
-            // 侧边栏浮于内容之上 (展开时渐变面板压住内容左缘)
+            if (railReveal > 0f) {
+                val surfaceColor = MaterialTheme.colorScheme.surface
+                Box(
+                    Modifier.fillMaxHeight()
+                        .fillMaxWidth(TvNavigationRailDefaults.BackgroundBlurWidthFraction)
+                        .hazeEffect(railBackdrop) {
+                            this.backgroundColor = backgroundColor
+                            blurRadius = TvNavigationRailDefaults.BackgroundBlurRadius
+                            progressive = HazeProgressive.horizontalGradient(
+                                startIntensity = 1f, endIntensity = 0f,
+                            )
+                            tints = listOf(HazeTint(surfaceColor))
+                            noiseFactor = 0f
+                            alpha = railReveal
+                        },
+                )
+            }
+
             TvNavigationSideRail(
                 selfInfo = selfInfo,
                 isLoggedIn = uiState.isLoggedIn == true,
@@ -215,7 +262,9 @@ fun TvMainShell(
                         selected = content == TvShellContent.Search,
                     ) { onContentChange(TvShellContent.Search) },
                     TvNavRailItem(
-                        Icons.Rounded.TravelExplore, stringResource(Lang.main_screen_page_exploration), defaultFocus = true,
+                        Icons.Rounded.TravelExplore,
+                        stringResource(Lang.main_screen_page_exploration),
+                        defaultFocus = true,
                         selected = content == TvShellContent.Exploration,
                     ) { onContentChange(TvShellContent.Exploration) },
                     TvNavRailItem(
@@ -247,6 +296,7 @@ fun TvMainShell(
                 // 点击条目后把焦点还给内容区并恢复进入前的位置 (切页时恢复目标随旧页销毁,
                 // 自然交给新页 InitialFocus)
                 returnFocusToContent = restoreContentFocus,
+                onExitFocus = restoreContentFocus,
             )
         }
         if (showLogoutConfirmation) {

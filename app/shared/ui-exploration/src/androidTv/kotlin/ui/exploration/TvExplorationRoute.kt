@@ -9,9 +9,11 @@
 
 package me.him188.ani.tv.ui.exploration
 
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.paging.compose.collectWithLifecycle
 import me.him188.ani.tv.ui.foundation.TvNavigationEffect
@@ -22,6 +24,7 @@ fun TvExplorationRoute(
     viewModel: TvExplorationViewModel,
     onNavigate: (TvNavigationEvent) -> Unit,
     modifier: Modifier = Modifier,
+    navigationRailInsets: PaddingValues = PaddingValues(0.dp),
 ) {
     val page = viewModel.explorationPageState
     val trends = page.trendingSubjectInfoPager.collectWithLifecycle()
@@ -29,5 +32,5 @@ fun TvExplorationRoute(
     val followed = viewModel.followed.collectWithLifecycle()
     val media by viewModel.mediaState.collectAsStateWithLifecycle()
     TvNavigationEffect(viewModel.navigationEvents, onNavigate)
-    TvExplorationScreen(trends, recommendations, followed, media, viewModel::onIntent, modifier)
+    TvExplorationScreen(trends, recommendations, followed, media, viewModel::onIntent, modifier, navigationRailInsets)
 }

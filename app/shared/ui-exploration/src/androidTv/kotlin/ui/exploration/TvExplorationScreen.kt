@@ -18,6 +18,8 @@ import androidx.compose.foundation.gestures.LocalBringIntoViewSpec
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.calculateEndPadding
+import androidx.compose.foundation.layout.calculateStartPadding
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -55,6 +57,7 @@ import androidx.compose.ui.input.key.type
 import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.platform.LocalAccessibilityManager
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.semantics.stateDescription
@@ -93,12 +96,15 @@ internal fun TvExplorationScreen(
     media: TvSubjectMediaUiState,
     onIntent: (TvExplorationIntent) -> Unit,
     modifier: Modifier = Modifier,
+    navigationRailInsets: PaddingValues = PaddingValues(0.dp),
 ) {
+    val layoutDirection = LocalLayoutDirection.current
     BoxWithConstraints(modifier.fillMaxSize()) {
-        val rowWidth = maxWidth - TvExplorationDefaults.StartPadding - TvExplorationDefaults.EndPadding
+        val rowWidth = maxWidth - TvExplorationDefaults.StartPadding - TvExplorationDefaults.EndPadding -
+                navigationRailInsets.calculateStartPadding(layoutDirection) - navigationRailInsets.calculateEndPadding(layoutDirection)
         val columns = ((rowWidth + TvLandscapeCardDefaults.Spacing) /
                 (TvLandscapeCardDefaults.Width + TvLandscapeCardDefaults.Spacing)).toInt().coerceAtLeast(1)
-        TvExplorationContent(trendsPager, recommendations, followed, media, onIntent, columns)
+        TvExplorationContent(trendsPager, recommendations, followed, media, onIntent, columns, navigationRailInsets)
     }
 }
 
@@ -111,6 +117,7 @@ private fun TvExplorationContent(
     media: TvSubjectMediaUiState,
     onIntent: (TvExplorationIntent) -> Unit,
     columns: Int,
+    navigationRailInsets: PaddingValues,
 ) {
     val scope = rememberCoroutineScope()
     val focus = rememberTvFocusScope()
@@ -309,6 +316,7 @@ private fun TvExplorationContent(
         val currentPreparingFocus by rememberUpdatedState(preparingFocus)
         TvExplorationPageLayout(
             viewportHeight = maxHeight, columnState = columnState, focus = focus,
+            navigationRailInsets = navigationRailInsets,
             anchoredAtHero = { currentArea == TvExplorationArea.Featured || currentArea == TvExplorationArea.ContinueWatching },
             focusedRow = { currentRows.firstOrNull { it.area == currentArea && it.indexOfSubject(currentSubjectId) >= 0 } },
             measuredHeroHeight = { measuredHeroHeight },
@@ -416,6 +424,7 @@ private fun TvExplorationPageLayout(
     viewportHeight: Dp,
     columnState: LazyListState,
     focus: TvFocusScope,
+    navigationRailInsets: PaddingValues,
     anchoredAtHero: () -> Boolean,
     focusedRow: () -> TvExplorationRow?,
     measuredHeroHeight: () -> Int,
@@ -439,7 +448,7 @@ private fun TvExplorationPageLayout(
         backdrop(Modifier.fillMaxSize().hazeSource(actionBackdrop))
         CompositionLocalProvider(LocalBringIntoViewSpec provides scrollSpec, LocalTvDetailsActionBackdrop provides actionBackdrop) {
             LazyColumn(
-                Modifier.fillMaxSize().testTag("tv-exploration-scroll"),
+                Modifier.fillMaxSize().padding(navigationRailInsets).testTag("tv-exploration-scroll"),
                 state = columnState, contentPadding = PaddingValues(bottom = viewportHeight),
             ) {
                 item("hero") { hero(Modifier.fillMaxWidth()) }

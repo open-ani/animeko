@@ -6,6 +6,7 @@ package me.him188.ani.tv.ui.main
 
 import androidx.activity.OnBackPressedDispatcher
 import androidx.activity.compose.LocalOnBackPressedDispatcherOwner
+import androidx.compose.foundation.layout.padding
 import androidx.compose.runtime.SideEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -73,14 +74,14 @@ class TvSettingsNavigationUiTest {
                                 onOpenSettings = { stack.add(NavRoutes.Settings()) },
                                 onLogout = {},
                                 focusMemory = memory,
-                            ) {
+                            ) { _, navigationRailInsets ->
                                 val focus = rememberTvFocusScope()
                                 val entry = TvFocusKey("test-page")
                                 focus.Resolver()
                                 focus.InitialFocus(entry)
                                 TvOptionRow(
                                     "Schedule",
-                                    modifier = Modifier.testTag("home-content")
+                                    modifier = Modifier.padding(navigationRailInsets).testTag("home-content")
                                         .tvFocusAnchor(focus, entry).tvFocusMemorable("test-page"),
                                 ) {}
                             }

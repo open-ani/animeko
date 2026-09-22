@@ -12,6 +12,7 @@ import android.graphics.Bitmap
 import android.os.LocaleList
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.runtime.CompositionLocalProvider
@@ -170,6 +171,8 @@ class TvExplorationUiTest {
         trendingCount: Int = 3,
         collectionTransform: (SubjectCollectionInfo) -> SubjectCollectionInfo = { it },
         poster: Boolean = true,
+        shellPadding: PaddingValues = PaddingValues(start = 48.dp),
+        navigationRailInsets: PaddingValues = PaddingValues(0.dp),
     ) {
         mainClock.autoAdvance = false
         val context = InstrumentationRegistry.getInstrumentation().targetContext
@@ -211,12 +214,15 @@ class TvExplorationUiTest {
                     val followedItems = follows.collectAsLazyPagingItems()
                     Box(
                         Modifier.fillMaxSize().background(tvShellBackgroundColor())
-                            .testTag("tv-exploration-shell").padding(start = 48.dp),
+                            .testTag("tv-exploration-shell").padding(shellPadding),
                     ) {
                         if (visible()) saved.SaveableStateProvider("exploration") {
                             CompositionLocalProvider(LocalTvFocusMemory provides focusMemory) {
                                 focusMemory.ArmOnRouteReturn()
-                                TvExplorationScreen(trendingItems, recommendationItems, followedItems, media, onIntent)
+                                TvExplorationScreen(
+                                    trendingItems, recommendationItems, followedItems, media, onIntent,
+                                    navigationRailInsets = navigationRailInsets,
+                                )
                             }
                         }
                     }
@@ -225,6 +231,22 @@ class TvExplorationUiTest {
         }
         awaitFocus("tv-exploration-details")
         settle()
+    }
+
+    @Test
+    fun fullScreenBackdropExtendsBehindTheFloatingRailWhileControlsRespectInsets() = runAniComposeUiTest {
+        mount(shellPadding = PaddingValues(0.dp), navigationRailInsets = PaddingValues(start = 56.dp))
+        val page = bounds("tv-exploration")
+        assertEquals(bounds("tv-exploration-shell"), page)
+        assertEquals(page, bounds("tv-exploration-backdrop"))
+        val density = page.height / 540f
+        assertTrue(bounds("tv-exploration-details").left >= 56f * density)
+        key(Key.DirectionDown)
+        awaitFocus("tv-exploration-followed-11")
+        settle()
+        assertTrue(bounds("tv-exploration-followed-11").left >= 56f * density)
+        assertEquals(page, bounds("tv-exploration-backdrop"))
+        capture("floating-rail-insets")
     }
 
     @Test
