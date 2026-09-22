@@ -174,7 +174,7 @@ class SubjectRelationGraphMappingTest {
     }
 
     @Test
-    fun `branches keep the server's grouping and order`() {
+    fun `branches keep the server grouping and order`() {
         val graph = kimetsu.toSubjectRelationGraph(emptyMap())
         assertEquals(
             listOf(294137, 317002, 322102, 349032, 349033),
