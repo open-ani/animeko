@@ -63,14 +63,20 @@ interface PictureInPictureHost {
     /**
      * 注册用户离开 (home/最近任务) 监听. 返回注销句柄.
      */
-    fun registerUserLeaveHintListener(listener: () -> Unit): AutoCloseable
+    fun registerUserLeaveHintListener(listener: UserLeaveHintListener): AutoCloseable
 
     /**
      * 注册小窗模式变化监听. 返回注销句柄.
      */
-    fun registerPictureInPictureModeChangedListener(
-        listener: (isInPictureInPicture: Boolean) -> Unit,
-    ): AutoCloseable
+    fun registerPictureInPictureModeChangedListener(listener: PIPModeChangedListener): AutoCloseable
+}
+
+fun interface UserLeaveHintListener {
+    fun onUserLeaveHint()
+}
+
+fun interface PIPModeChangedListener {
+    fun onChanged(isInPIP: Boolean)
 }
 
 @Composable
@@ -117,8 +123,10 @@ internal class AndroidPictureInPictureController(
     // 策略状态, 由 updatePolicy 写入
     @Volatile
     private var policyAutoEnter: Boolean = false
+
     @Volatile
     private var aspectWidth: Int? = null
+
     @Volatile
     private var aspectHeight: Int? = null
 

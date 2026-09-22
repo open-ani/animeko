@@ -31,7 +31,9 @@ import kotlinx.coroutines.launch
 import me.him188.ani.android.BuildConfig
 import me.him188.ani.app.data.repository.user.QrLoginRepository
 import me.him188.ani.app.navigation.AniNavigator
+import me.him188.ani.app.pip.PIPModeChangedListener
 import me.him188.ani.app.pip.PictureInPictureHost
+import me.him188.ani.app.pip.UserLeaveHintListener
 import me.him188.ani.app.platform.AniComponentActivity
 import me.him188.ani.app.platform.rememberPlatformWindow
 import me.him188.ani.app.ui.exprovider.ExternalContentProviderFactory
@@ -45,6 +47,7 @@ import me.him188.ani.app.ui.main.AniAppContent
 import me.him188.ani.utils.logging.error
 import me.him188.ani.utils.logging.logger
 import org.koin.android.ext.android.inject
+import java.util.concurrent.CopyOnWriteArrayList
 
 class MainActivity : AniComponentActivity(), PictureInPictureHost {
     private val logger = logger<MainActivity>()
@@ -52,33 +55,27 @@ class MainActivity : AniComponentActivity(), PictureInPictureHost {
 
     private val externalContentProviderFactory: ExternalContentProviderFactory by inject()
 
-    // Android 11 及以下没有系统自动进入小窗, 通过 onUserLeaveHint 手动进入 (见 me.him188.ani.app.pip)
-    private val userLeaveHintListeners = java.util.concurrent.CopyOnWriteArrayList<() -> Unit>()
+    private val userLeaveHintListeners = CopyOnWriteArrayList<UserLeaveHintListener>()
+    private val pipModeChangedListeners = CopyOnWriteArrayList<PIPModeChangedListener>()
 
-    // 框架没有公开的小窗模式变化监听者 API, 通过重写 Activity 回调转发 (见 me.him188.ani.app.pip)
-    private val pipModeChangedListeners =
-        java.util.concurrent.CopyOnWriteArrayList<(isInPictureInPicture: Boolean) -> Unit>()
-
-    override fun registerUserLeaveHintListener(listener: () -> Unit): AutoCloseable {
+    override fun registerUserLeaveHintListener(listener: UserLeaveHintListener): AutoCloseable {
         userLeaveHintListeners.add(listener)
         return AutoCloseable { userLeaveHintListeners.remove(listener) }
     }
 
-    override fun registerPictureInPictureModeChangedListener(
-        listener: (isInPictureInPicture: Boolean) -> Unit,
-    ): AutoCloseable {
+    override fun registerPictureInPictureModeChangedListener(listener: PIPModeChangedListener): AutoCloseable {
         pipModeChangedListeners.add(listener)
         return AutoCloseable { pipModeChangedListeners.remove(listener) }
     }
 
     override fun onUserLeaveHint() {
         super.onUserLeaveHint()
-        userLeaveHintListeners.forEach { it() }
+        userLeaveHintListeners.forEach { it.onUserLeaveHint() }
     }
 
     override fun onPictureInPictureModeChanged(isInPictureInPictureMode: Boolean, newConfig: Configuration) {
         super.onPictureInPictureModeChanged(isInPictureInPictureMode, newConfig)
-        pipModeChangedListeners.forEach { it(isInPictureInPictureMode) }
+        pipModeChangedListeners.forEach { it.onChanged(isInPictureInPictureMode) }
     }
 
     override fun onNewIntent(intent: Intent) {

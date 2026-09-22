@@ -10,10 +10,8 @@
 package me.him188.ani.app.videoplayer.ui
 
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
+import androidx.compose.runtime.produceState
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.viewinterop.UIKitView
 import kotlinx.cinterop.BetaInteropApi
@@ -43,28 +41,28 @@ actual fun VideoPlayer(
     player: MediampPlayer,
     modifier: Modifier
 ) {
-    val avPlayer = (player as? AVKitMediampPlayer)?.impl
+    check(player is AVKitMediampPlayer) { "MediampPlayer in iOS must be AVKitMediampPlayer, but got $player" }
 
-    // App 自有的 surface 包装, 而非 mediamp 的 `MediampPlayerSurface`:
-    // 1. 依赖 UIKitView 默认的 cooperative 互操作 (UIKitInteropProperties 默认即
-    //    Cooperative 模式) — 非 cooperative 在画中画进出/前后台切换时有已知的黑帧问题
-    // 2. 创建时把 AVPlayerLayer 注册进 IosVideoLayerRegistry, 供 AVPictureInPictureController 使用
-    // 复用 mediamp-avkit 的 public `PlayerUIView` (其 layerClass 即 AVPlayerLayer).
-    val aspectFeature = remember(player) { player.features[VideoAspectRatio.Key] }
-    val aspectRatioModeState = aspectFeature?.mode?.collectAsState()
-    val aspectRatioMode by (aspectRatioModeState ?: remember { mutableStateOf(AspectRatioMode.FIT) })
+    val avPlayer = player.impl
+    val aspectRatioMode by produceState(AspectRatioMode.FIT) {
+        val feature = player.features[VideoAspectRatio.Key] ?: return@produceState
+        feature.mode.collect { value = it }
+    }
 
     UIKitView(
         factory = {
-            PlayerUIView(frame = cValue<CGRect>()).apply {
-                backgroundColor = UIColor.blackColor
-                avPlayer?.let { this.player = it }
-                (layer as? AVPlayerLayer)?.let { IosVideoLayerRegistry.register(player, it) }
-            }
+            val view = PlayerUIView(frame = cValue<CGRect>())
+            view.backgroundColor = UIColor.blackColor
+            view.player = avPlayer
+            IosVideoLayerRegistry.register(
+                player,
+                checkNotNull(view.layer as AVPlayerLayer) { "PlayerUIView.layer must be AVPlayerLayer" },
+            )
+            view
         },
         modifier = modifier,
         update = { view ->
-            avPlayer?.let { view.player = it }
+            view.player = avPlayer
             view.videoGravity = when (aspectRatioMode) {
                 AspectRatioMode.FIT -> AVLayerVideoGravityResizeAspect
                 AspectRatioMode.STRETCH -> AVLayerVideoGravityResize

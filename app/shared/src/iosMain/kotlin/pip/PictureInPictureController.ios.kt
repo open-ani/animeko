@@ -114,16 +114,17 @@ private class IosPictureInPictureController(
     ) {
         refreshPossible()
     }
-    
-    private val foregroundObserver: Any =
-        NSNotificationCenter.defaultCenter.addObserverForName(
-            UIApplicationDidBecomeActiveNotification, null, null,
-            usingBlock = {
-                if (pipController.isPictureInPictureActive()) {
-                    pipController.stopPictureInPicture()
-                }
-            },
-        )
+
+    private val foregroundObserver = NSNotificationCenter.defaultCenter.addObserverForName(
+        UIApplicationDidBecomeActiveNotification,
+        null,
+        null,
+        usingBlock = {
+            if (pipController.isPictureInPictureActive()) {
+                pipController.stopPictureInPicture()
+            }
+        },
+    )
 
     private fun refreshPossible() {
         _isPictureInPicturePossible.value = pipController.isPictureInPicturePossible()
