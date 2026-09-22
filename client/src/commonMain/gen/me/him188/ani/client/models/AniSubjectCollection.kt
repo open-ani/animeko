@@ -25,6 +25,7 @@ import me.him188.ani.client.models.AniSubjectAiringInfo
 import me.him188.ani.client.models.AniSubjectRelations
 import me.him188.ani.client.models.AniSubjectType
 import me.him188.ani.client.models.AniTag
+import me.him188.ani.client.models.AniTmdbSubjectArt
 
 import kotlinx.serialization.*
 import kotlinx.serialization.descriptors.*
@@ -54,6 +55,7 @@ import kotlinx.serialization.encoding.*
  * @param rank
  * @param collectionType
  * @param airingInfo
+ * @param tmdbArt
  * @param updatedAt 收藏更新的时间. 如果没有收藏, 则为 `null`.
  */
 @Serializable
@@ -105,6 +107,8 @@ data class AniSubjectCollection (
     @SerialName(value = "collectionType") val collectionType: AniCollectionType? = null,
 
     @SerialName(value = "airingInfo") val airingInfo: AniSubjectAiringInfo? = null,
+
+    @SerialName(value = "tmdbArt") val tmdbArt: AniTmdbSubjectArt? = null,
 
     /* 收藏更新的时间. 如果没有收藏, 则为 `null`. */
     @SerialName(value = "updatedAt") val updatedAt: kotlin.String? = null

@@ -63,7 +63,7 @@ class MediaSelectorCaptchaStateTest {
             val source = presentation.webSources.single()
 
             assertEquals(request, source.captchaRequest)
-            assertEquals("需要处理Cloudflare 验证", source.captchaMessage)
+            assertEquals(WebCaptchaKind.Cloudflare, source.captchaKind)
             assertTrue(source.isCaptchaRequired)
             assertFalse(source.isError)
         } finally {
@@ -112,7 +112,7 @@ class MediaSelectorCaptchaStateTest {
 
         assertTrue(presentation.isCaptchaRequired)
         assertFalse(presentation.isFailedOrAbandoned)
-        assertEquals("需要处理图片验证码", presentation.captchaMessage)
+        assertEquals(WebCaptchaKind.Image, presentation.captchaKind)
         assertIs<SolveRequest>(presentation.captchaRequest)
     }
 

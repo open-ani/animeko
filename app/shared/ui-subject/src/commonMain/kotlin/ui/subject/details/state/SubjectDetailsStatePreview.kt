@@ -15,14 +15,14 @@ import me.him188.ani.app.data.models.subject.TestSelfRatingInfo
 import me.him188.ani.app.data.models.subject.TestSubjectCollections
 import me.him188.ani.app.data.models.subject.TestSubjectInfo
 import me.him188.ani.app.ui.comment.createTestCommentState
-import me.him188.ani.app.ui.rating.createTestEditableRatingState
 import me.him188.ani.app.ui.search.createTestPager
-import me.him188.ani.app.ui.subject.collection.components.createTestEditableSubjectCollectionTypeState
 import me.him188.ani.app.ui.subject.details.TestRelatedSubjects
 import me.him188.ani.app.ui.subject.details.TestSubjectCharacterList
 import me.him188.ani.app.data.models.subject.TestSubjectProgressInfos
 import me.him188.ani.app.ui.subject.TestSubjectAiringInfo
 import me.him188.ani.app.ui.subject.episode.list.EpisodeListUiState
+import me.him188.ani.app.ui.rating.TestEditableRatingUiState
+import me.him188.ani.app.ui.subject.collection.components.EditableSubjectCollectionTypeState
 import me.him188.ani.datasources.api.topic.UnifiedCollectionType
 import me.him188.ani.utils.platform.annotations.TestOnly
 
@@ -41,17 +41,6 @@ fun createTestSubjectDetailsState(
         staffPager = createTestPager(emptyList()),
         exposedStaffPager = createTestPager(emptyList()),
         relatedSubjectsPager = createTestPager(TestRelatedSubjects),
-        editableSubjectCollectionTypeState = createTestEditableSubjectCollectionTypeState(
-            MutableStateFlow(
-                UnifiedCollectionType.WISH,
-            ),
-            backgroundScope,
-        ),
-        editableRatingState = createTestEditableRatingState(
-            subjectInfo,
-            selfRatingInfo = TestSelfRatingInfo,
-            backgroundScope = backgroundScope,
-        ),
         subjectCommentState = createTestCommentState(backgroundScope),
         uiState = MutableStateFlow(
             SubjectDetailsUiState(
@@ -63,6 +52,11 @@ fun createTestSubjectDetailsState(
                 episodeListUiState = EpisodeListUiState.Placeholder,
                 totalStaffCount = 0,
                 totalCharactersCount = TestSubjectCharacterList.size,
+                collectionTypeEdit = EditableSubjectCollectionTypeState.Presentation.Placeholder.copy(
+                    selfCollectionType = UnifiedCollectionType.WISH,
+                    isPlaceholder = false,
+                ),
+                rating = TestEditableRatingUiState,
             ),
         ),
     )

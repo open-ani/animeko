@@ -11,6 +11,7 @@ package me.him188.ani.app.data.repository.user
 
 import androidx.datastore.core.DataStore
 import io.ktor.client.plugins.ClientRequestException
+import io.ktor.client.statement.bodyAsText
 import io.ktor.http.HttpStatusCode
 import io.ktor.http.content.OutgoingContent
 import kotlinx.coroutines.CoroutineScope
@@ -27,6 +28,7 @@ import kotlinx.coroutines.flow.shareIn
 import kotlinx.coroutines.flow.transformLatest
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import me.him188.ani.app.data.models.user.ExternalAccount
 import me.him188.ani.app.data.models.user.SelfInfo
 import me.him188.ani.app.data.repository.RepositoryAuthorizationException
 import me.him188.ani.app.data.repository.RepositoryException
@@ -36,6 +38,8 @@ import me.him188.ani.app.domain.session.InvalidSessionReason
 import me.him188.ani.app.domain.session.SessionManager
 import me.him188.ani.app.domain.session.SessionState
 import me.him188.ani.app.domain.session.SessionStateProvider
+import me.him188.ani.client.apis.BangumiAniApi
+import me.him188.ani.client.apis.OAuthAniApi
 import me.him188.ani.client.apis.UserAniApi
 import me.him188.ani.client.apis.UserAuthenticationAniApi
 import me.him188.ani.client.apis.UserProfileAniApi
@@ -61,7 +65,8 @@ class UserRepository(
     private val userApi: ApiInvoker<UserAniApi>,
     private val authApi: ApiInvoker<UserAuthenticationAniApi>,
     private val profileApi: ApiInvoker<UserProfileAniApi>,
-    private val bangumiApi: ApiInvoker<me.him188.ani.client.apis.BangumiAniApi>,
+    private val bangumiApi: ApiInvoker<BangumiAniApi>,
+    private val oauthApi: ApiInvoker<OAuthAniApi>,
     private val sessionManager: SessionManager,
     coroutineContext: CoroutineContext = Dispatchers.Default,
 ) {
@@ -288,29 +293,63 @@ class UserRepository(
         sessionManager.clearSession()
     }
 
-    suspend fun unbindBangumi() = withContext(Dispatchers.Default) {
-        bangumiApi.invoke {
-            try {
-                val resp = this.unbind().body()
+    /**
+     * 服务端已启用的第三方登录平台的 ID. 可能包含客户端不认识的平台.
+     *
+     * @throws RepositoryException
+     */
+    suspend fun getOAuthProviders(): List<String> = withContext(Dispatchers.Default) {
+        try {
+            oauthApi.invoke { getProviders().body().providers }
+        } catch (e: Exception) {
+            throw RepositoryException.wrapOrThrowCancellation(e)
+        }
+    }
 
-                sessionManager.setSession(
-                    AccessTokenSession(
-                        AccessTokenPair(
-                            aniAccessToken = resp.tokens.accessToken,
-                            expiresAtMillis = resp.tokens.expiresAtMillis,
-                            bangumiAccessToken = resp.tokens.bangumiAccessToken,
-                        ),
-                    ),
-                    refreshToken = resp.tokens.refreshToken,
-                )
-
-                // update local self info cache
-                val self = resp.user.toSelfInfo()
-                dataStore.updateData { self }
-                selfInfoRefresher.restart()
-            } catch (e: Exception) {
-                throw RepositoryException.wrapOrThrowCancellation(e)
+    /**
+     * 解绑第三方账号 (不含 Bangumi, 见 [unbindBangumi]).
+     *
+     * @throws RepositoryRequestError 这是用户的唯一登录方式 (HTTP 409), 消息可以直接展示给用户
+     * @throws RepositoryException
+     */
+    suspend fun unbindExternalAccount(provider: String) = withContext(Dispatchers.Default) {
+        try {
+            val resp = oauthApi.invoke { removeBind(provider).body() }
+            applyAuthenticationResponse(resp)
+        } catch (e: ClientRequestException) {
+            if (e.response.status == HttpStatusCode.Conflict) {
+                throw RepositoryRequestError(e.response.bodyAsText(), cause = e)
             }
+            throw RepositoryException.wrapOrThrowCancellation(e)
+        } catch (e: Exception) {
+            throw RepositoryException.wrapOrThrowCancellation(e)
+        }
+    }
+
+    private suspend fun applyAuthenticationResponse(resp: AniUserAuthRoutingAuthenticationResponse) {
+        sessionManager.setSession(
+            AccessTokenSession(
+                AccessTokenPair(
+                    aniAccessToken = resp.tokens.accessToken,
+                    expiresAtMillis = resp.tokens.expiresAtMillis,
+                    bangumiAccessToken = resp.tokens.bangumiAccessToken,
+                ),
+            ),
+            refreshToken = resp.tokens.refreshToken,
+        )
+
+        // update local self info cache
+        val self = resp.user.toSelfInfo()
+        dataStore.updateData { self }
+        selfInfoRefresher.restart()
+    }
+
+    suspend fun unbindBangumi() = withContext(Dispatchers.Default) {
+        try {
+            val resp = bangumiApi.invoke { unbind().body() }
+            applyAuthenticationResponse(resp)
+        } catch (e: Exception) {
+            throw RepositoryException.wrapOrThrowCancellation(e)
         }
     }
 }
@@ -328,5 +367,6 @@ private fun AniAniSelfUser.toSelfInfo(): SelfInfo {
         avatarUrl = largeAvatar,
         bangumiUsername = bangumiUsername,
         isBangumiSessionValid = isBangumiSessionValid,
+        externalAccounts = externalAccounts.map { ExternalAccount(it.provider, it.username) },
     )
 }

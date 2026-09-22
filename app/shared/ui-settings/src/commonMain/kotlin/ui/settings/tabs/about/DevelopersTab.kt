@@ -36,37 +36,14 @@ import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import me.him188.ani.app.ui.foundation.ProvideCompositionLocalsForPreview
-import me.him188.ani.app.ui.foundation.a
 import me.him188.ani.app.ui.foundation.ifNotNullThen
 import me.him188.ani.app.ui.foundation.layout.currentWindowAdaptiveInfo1
 import me.him188.ani.app.ui.foundation.layout.paneVerticalPadding
 import me.him188.ani.app.ui.lang.Lang
-import me.him188.ani.app.ui.lang.settings_developers_bangumi_upstream
-import me.him188.ani.app.ui.lang.settings_developers_contributor
-import me.him188.ani.app.ui.lang.settings_developers_daily_maintenance
-import me.him188.ani.app.ui.lang.settings_developers_icon_drawing
 import me.him188.ani.app.ui.lang.settings_developers_main_contributors
-import me.him188.ani.app.ui.lang.settings_developers_ml_research
-import me.him188.ani.app.ui.lang.settings_developers_organization
 import me.him188.ani.app.ui.lang.settings_developers_outstanding_contributors
-import me.him188.ani.app.ui.lang.settings_developers_project_initiator
-import me.him188.ani.app.ui.lang.settings_developers_server_development
 import me.him188.ani.app.ui.lang.settings_developers_view_more_on_github
-import me.him188.ani.app.ui.lang.settings_developers_website_development
-import me.him188.ani.app.ui.settings.Res
-import me.him188.ani.app.ui.settings.btmuli
-import me.him188.ani.app.ui.settings.generalk1ng
 import me.him188.ani.app.ui.settings.him188
-import me.him188.ani.app.ui.settings.jerryz233
-import me.him188.ani.app.ui.settings.misakatat
-import me.him188.ani.app.ui.settings.nekoouo
-import me.him188.ani.app.ui.settings.nick
-import me.him188.ani.app.ui.settings.nier4ever
-import me.him188.ani.app.ui.settings.nihildigit
-import me.him188.ani.app.ui.settings.rdlwicked
-import me.him188.ani.app.ui.settings.sanlorng
-import me.him188.ani.app.ui.settings.stageguard
-import me.him188.ani.app.ui.settings.woleoz
 import org.jetbrains.compose.resources.DrawableResource
 import org.jetbrains.compose.resources.painterResource
 import org.jetbrains.compose.resources.stringResource
@@ -130,95 +107,18 @@ fun DevelopersTab(
             )
         }
 
-        Header(stringResource(Lang.settings_developers_main_contributors))
-
-        DeveloperItem(
-            "Him188", "https://github.com/him188",
-            description = stringResource(Lang.settings_developers_project_initiator),
-            avatar = { LocalImage(Res.drawable.him188) },
-        )
-
-        DeveloperItem(
-            "StageGuard", "https://github.com/StageGuard",
-            description = stringResource(Lang.settings_developers_daily_maintenance),
-            avatar = { LocalImage(Res.drawable.stageguard) },
-        )
-
-        Header(stringResource(Lang.settings_developers_outstanding_contributors))
-
-        DeveloperItem(
-            "General_K1ng", "https://github.com/GeneralK1ng",
-            description = stringResource(Lang.settings_developers_contributor),
-            avatar = { LocalImage(Res.drawable.generalk1ng) },
-        )
-
-        DeveloperItem(
-            "JerryZ233", "https://github.com/JerryZ233",
-            description = stringResource(Lang.settings_developers_server_development),
-            avatar = { LocalImage(Res.drawable.jerryz233) },
-        )
-
-        DeveloperItem(
-            "MisakaTAT", "https://github.com/MisakaTAT",
-            description = stringResource(Lang.settings_developers_bangumi_upstream),
-            avatar = { LocalImage(Res.drawable.misakatat) },
-        )
-
-        DeveloperItem(
-            "NeKoOuO", "https://github.com/NeKoOuO",
-            description = stringResource(Lang.settings_developers_icon_drawing),
-            avatar = { LocalImage(Res.drawable.nekoouo) },
-        )
-
-        DeveloperItem(
-            "NickChenヰ", "https://github.com/nick-cjyx9",
-            description = stringResource(Lang.settings_developers_website_development),
-            avatar = { LocalImage(Res.drawable.nick) },
-        )
-
-        DeveloperItem(
-            "NieR4ever", "https://github.com/NieR4ever",
-            description = stringResource(Lang.settings_developers_contributor),
-            avatar = { LocalImage(Res.drawable.nier4ever) },
-        )
-
-        DeveloperItem(
-            "NihilDigit", "https://github.com/NihilDigit",
-            description = stringResource(Lang.settings_developers_contributor),
-            avatar = { LocalImage(Res.drawable.nihildigit) },
-        )
-
-        DeveloperItem(
-            "rdlwicked", "https://github.com/rdlwicked",
-            description = stringResource(Lang.settings_developers_ml_research),
-            avatar = { LocalImage(Res.drawable.rdlwicked) },
-        )
-
-        DeveloperItem(
-            "Sanlorng", "https://github.com/Sanlorng",
-            description = stringResource(Lang.settings_developers_contributor),
-            avatar = { LocalImage(Res.drawable.sanlorng) },
-        )
-
-        DeveloperItem(
-            "WoLeo-Z", "https://github.com/WoLeo-Z",
-            description = stringResource(Lang.settings_developers_contributor),
-            avatar = { LocalImage(Res.drawable.woleoz) },
-        )
-
-        DeveloperItem(
-            "目棃", "https://github.com/BTMuli",
-            description = stringResource(Lang.settings_developers_website_development),
-            avatar = { LocalImage(Res.drawable.btmuli) },
-        )
-
-        HorizontalDivider(Modifier.padding(vertical = 16.dp))
-
-        DeveloperItem(
-            "OpenAni", "https://github.com/open-ani",
-            description = stringResource(Lang.settings_developers_organization),
-            avatar = { LocalImage(me.him188.ani.app.ui.foundation.Res.drawable.a) },
-        )
+        developerCredits.forEachIndexed { index, credit ->
+            when (index) {
+                0 -> Header(stringResource(Lang.settings_developers_main_contributors))
+                2 -> Header(stringResource(Lang.settings_developers_outstanding_contributors))
+                developerCredits.lastIndex -> HorizontalDivider(Modifier.padding(vertical = 16.dp))
+            }
+            DeveloperItem(
+                credit.name, credit.url,
+                description = stringResource(credit.role),
+                avatar = { LocalImage(credit.avatar) },
+            )
+        }
 
         ListItem(
             headlineContent = { Text(stringResource(Lang.settings_developers_view_more_on_github)) },

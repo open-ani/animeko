@@ -11,6 +11,7 @@ package me.him188.ani.app.ui.update.devbuild
 
 import io.ktor.client.HttpClient
 import io.ktor.client.engine.mock.respond
+import io.ktor.client.request.HttpRequestData
 import io.ktor.http.HttpHeaders
 import io.ktor.http.HttpStatusCode
 import io.ktor.http.headersOf
@@ -34,6 +35,7 @@ import kotlin.test.assertContentEquals
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
 import kotlin.test.assertIs
+import kotlin.test.assertNotNull
 import kotlin.test.assertNull
 import kotlin.test.assertTrue
 
@@ -42,6 +44,11 @@ class DevBuildsStateTest {
     private val macosSpec = DevBuildPackageSpec(listOf("ani-macos-dmg-aarch64"), DevBuildPackageKind.MACOS_DMG)
     private val windowsSpec = DevBuildPackageSpec(listOf("ani-windows-portable"), DevBuildPackageKind.WINDOWS_PORTABLE_ZIP)
     private val linuxSpec = DevBuildPackageSpec(listOf("ani-linux-appimage-x64"), DevBuildPackageKind.LINUX_APPIMAGE)
+    private val androidSpec = DevBuildPackageSpec(
+        listOf("ani-android-arm64-v8a-release", "ani-android-universal-release"),
+        DevBuildPackageKind.ANDROID_APK,
+        debugArtifactNames = listOf("ani-android-arm64-v8a-debug", "ani-android-universal-debug"),
+    )
 
     private fun TestScope.createState(
         client: HttpClient,
@@ -75,6 +82,18 @@ class DevBuildsStateTest {
         joinTasks()
         return assertIs<DevBuildListState.Loaded>(listState.value).commits
     }
+
+    private suspend fun DevBuildsState.lookupAndJoin(text: String): DevBuildLookupState {
+        lookup(text)
+        joinTasks()
+        return lookupState.value
+    }
+
+    private suspend fun DevBuildsState.lookupCommit(text: String): DevBuildLookupResult.Commit =
+        assertIs<DevBuildLookupResult.Commit>(assertIs<DevBuildLookupState.Resolved>(lookupAndJoin(text)).result)
+
+    private suspend fun DevBuildsState.lookupFailure(text: String): DevBuildLookupFailure =
+        assertIs<DevBuildLookupState.Failed>(lookupAndJoin(text)).failure
 
     @Test
     fun `refresh merges commits, build status and the platform artifact`() = runTest {
@@ -275,6 +294,202 @@ class DevBuildsStateTest {
             val error = assertIs<DevBuildInstallFailure.Error>(failed.failure)
             assertTrue(assertIs<GitHubApiException>(error.throwable).isUnauthorized)
             assertNull(failed.file)
+        }
+    }
+
+    @Test
+    fun `lookup resolves a commit link to its latest build and artifact`() = runTest {
+        withTempDir { saveDir ->
+            val client = fullGitHubMockClient("ani-macos-dmg-aarch64", zipBytes())
+            val state = createState(client, macosSpec, FakeInstaller(), saveDir)
+            assertEquals(DevBuildLookupState.Idle, state.lookupState.value)
+
+            val result = state.lookupCommit("https://github.com/open-ani/animeko/commit/$SHA_A")
+            assertNull(result.pullRequest)
+            assertEquals(SHA_A, result.commit.sha)
+            assertEquals("feat(update): first line", result.commit.title)
+            assertEquals(200, result.commit.build?.id)
+            assertEquals(DevBuildStatus.SUCCESS, result.commit.build?.status)
+            assertEquals(10, result.commit.artifact?.id)
+
+            // 短 sha 也可以; 没有安装包的 commit 仍然显示构建状态
+            val second = state.lookupCommit(SHA_B.take(8))
+            assertEquals(SHA_B, second.commit.sha)
+            assertEquals(DevBuildStatus.IN_PROGRESS, second.commit.build?.status)
+            assertNull(second.commit.artifact)
+
+            state.clearLookup()
+            assertEquals(DevBuildLookupState.Idle, state.lookupState.value)
+        }
+    }
+
+    @Test
+    fun `lookup resolves a pull request to its head commit`() = runTest {
+        withTempDir { saveDir ->
+            val client = fullGitHubMockClient("ani-macos-dmg-aarch64", zipBytes())
+            val state = createState(client, macosSpec, FakeInstaller(), saveDir)
+
+            val result = state.lookupCommit("https://github.com/open-ani/animeko/pull/42/files")
+            val pr = assertNotNull(result.pullRequest)
+            assertEquals(42, pr.number)
+            assertEquals("feat: pr title", pr.title)
+            assertEquals("feat/x", pr.headRef)
+            assertFalse(pr.isFromFork)
+            assertEquals(SHA_A, result.commit.sha)
+            assertEquals(10, result.commit.artifact?.id)
+
+            val notFound = assertIs<DevBuildLookupFailure.Error>(state.lookupFailure("#43"))
+            assertTrue(assertIs<GitHubApiException>(notFound.throwable).isNotFound)
+        }
+    }
+
+    @Test
+    fun `fork pull request without a release apk falls back to the debug apk`() = runTest {
+        withTempDir { saveDir ->
+            val forkSha = "cccccccc33333333cccccccc33333333cccccccc"
+            val client = gitHubMockClient { request ->
+                val path = request.url.encodedPath
+                when {
+                    path.endsWith("/pulls/7") -> respondJson(pullRequestJson(7, forkSha, headRepo = "someone/animeko"))
+                    path.endsWith("/commits/$forkSha") -> respondJson(
+                        """{"sha": "$forkSha", "html_url": "", "commit": {"message": "fork change"}}""",
+                    )
+
+                    path.endsWith("/build.yml/runs") -> {
+                        assertEquals(forkSha, request.url.parameters["head_sha"])
+                        respondJson(
+                            """{"workflow_runs": [
+                              {"id": 500, "head_sha": "$forkSha", "status": "completed", "conclusion": "success", "html_url": ""}
+                            ]}""",
+                        )
+                    }
+
+                    path.endsWith("/actions/runs/500/artifacts") -> respondJson(
+                        """{"artifacts": [
+                          {"id": 51, "name": "ani-android-universal-debug", "size_in_bytes": 2, "archive_download_url": "u51", "expired": false,
+                           "workflow_run": {"id": 500, "head_sha": "$forkSha"}},
+                          {"id": 52, "name": "ani-android-arm64-v8a-debug", "size_in_bytes": 3, "archive_download_url": "u52", "expired": false,
+                           "workflow_run": {"id": 500, "head_sha": "$forkSha"}},
+                          {"id": 53, "name": "ani-macos-dmg-aarch64", "size_in_bytes": 4, "archive_download_url": "u53", "expired": false,
+                           "workflow_run": {"id": 500, "head_sha": "$forkSha"}}
+                        ]}""",
+                    )
+
+                    else -> error("Unexpected request: ${request.url}")
+                }
+            }
+            val state = createState(client, androidSpec, FakeInstaller(), saveDir)
+
+            val result = state.lookupCommit("https://github.com/open-ani/animeko/pull/7")
+            assertTrue(assertNotNull(result.pullRequest).isFromFork)
+            val artifact = assertNotNull(result.commit.artifact)
+            assertEquals("ani-android-arm64-v8a-debug", artifact.name)
+            assertTrue(state.spec.isDebugArtifact(artifact.name))
+        }
+    }
+
+    @Test
+    fun `lookup resolves workflow run and artifact links`() = runTest {
+        withTempDir { saveDir ->
+            val client = fullGitHubMockClient("ani-macos-dmg-aarch64", zipBytes())
+            val state = createState(client, macosSpec, FakeInstaller(), saveDir)
+
+            val run = state.lookupCommit("https://github.com/open-ani/animeko/actions/runs/100/job/1")
+            assertEquals(SHA_A, run.commit.sha)
+            assertEquals(100, run.commit.build?.id)
+            assertEquals(DevBuildStatus.FAILURE, run.commit.build?.status)
+            assertNull(run.commit.artifact, "run 100 uploaded nothing")
+
+            val artifact = state.lookupCommit("https://github.com/open-ani/animeko/actions/runs/200/artifacts/10")
+            assertEquals(SHA_A, artifact.commit.sha)
+            assertEquals(200, artifact.commit.build?.id)
+            assertEquals(10, artifact.commit.artifact?.id)
+
+            // 其他平台的 artifact
+            val windows = createState(client, windowsSpec, FakeInstaller(), saveDir)
+            val mismatch = assertIs<DevBuildLookupFailure.ArtifactNotForPlatform>(
+                windows.lookupFailure("https://api.github.com/repos/open-ani/animeko/actions/artifacts/10/zip"),
+            )
+            assertEquals("ani-macos-dmg-aarch64", mismatch.artifactName)
+        }
+    }
+
+    @Test
+    fun `package links are accepted only with the platform extension`() = runTest {
+        withTempDir { saveDir ->
+            val client = gitHubMockClient { error("no requests expected: ${it.url}") }
+            val state = createState(client, macosSpec, FakeInstaller(), saveDir)
+
+            val url = "https://github.com/open-ani/animeko/releases/download/v4.12.0/ani-4.12.0-macos-aarch64.dmg"
+            val resolved = assertIs<DevBuildLookupState.Resolved>(state.lookupAndJoin(url))
+            assertEquals(DevBuildLookupResult.Package(url, "ani-4.12.0-macos-aarch64.dmg"), resolved.result)
+
+            val unsupported = assertIs<DevBuildLookupFailure.UnsupportedPackage>(
+                state.lookupFailure("https://example.com/ani-windows.zip"),
+            )
+            assertEquals("ani-windows.zip", unsupported.fileName)
+            assertEquals(DevBuildLookupFailure.Unrecognized, state.lookupFailure("what is this"))
+            assertEquals(
+                DevBuildLookupFailure.Unrecognized,
+                state.lookupFailure("https://github.com/other/repo/commit/$SHA_A"),
+            )
+        }
+    }
+
+    @Test
+    fun `installPackage downloads the package following redirects without a token`() = runTest {
+        withTempDir { saveDir ->
+            val dmg = ByteArray(1024) { (it % 5).toByte() }
+            val installer = FakeInstaller()
+            val requests = mutableListOf<HttpRequestData>()
+            val client = gitHubMockClient { request ->
+                requests += request
+                when (request.url.host) {
+                    "github.com" -> respond(
+                        "",
+                        HttpStatusCode.Found,
+                        headersOf(HttpHeaders.Location, "https://objects.example.com/blob?sig=1"),
+                    )
+
+                    "objects.example.com" -> respond(
+                        dmg,
+                        HttpStatusCode.OK,
+                        headersOf(HttpHeaders.ContentLength, dmg.size.toString()),
+                    )
+
+                    else -> error("Unexpected request: ${request.url}")
+                }
+            }
+            val state = createState(client, macosSpec, installer, saveDir, token = "")
+            val url = "https://github.com/open-ani/animeko/releases/download/v4.12.0/ani-4.12.0-macos-aarch64.dmg"
+
+            state.installPackage(url, "ani-4.12.0-macos-aarch64.dmg", testContext)
+            state.joinTasks()
+
+            assertEquals(DevBuildInstallState.Idle, state.installState.value)
+            val installed = installer.installed.single()
+            assertEquals(saveDir.resolve("ani-4.12.0-macos-aarch64.dmg"), installed)
+            assertContentEquals(dmg, installed.readBytes())
+            assertEquals(listOf("github.com", "objects.example.com"), requests.map { it.url.host })
+            assertTrue(requests.all { it.headers[HttpHeaders.Authorization] == null })
+        }
+    }
+
+    @Test
+    fun `installPackage failure reports the target`() = runTest {
+        withTempDir { saveDir ->
+            val installer = FakeInstaller()
+            val client = gitHubMockClient { respondJson("""{"message": "gone"}""", HttpStatusCode.NotFound) }
+            val state = createState(client, macosSpec, installer, saveDir)
+            val url = "https://example.com/ani.dmg"
+
+            state.installPackage(url, "ani.dmg", testContext)
+            state.joinTasks()
+
+            val failed = assertIs<DevBuildInstallState.Failed>(state.installState.value)
+            assertEquals(DevBuildInstallTarget(url, "ani.dmg", url), failed.target)
+            assertIs<DevBuildInstallFailure.Error>(failed.failure)
+            assertTrue(installer.installed.isEmpty())
         }
     }
 }

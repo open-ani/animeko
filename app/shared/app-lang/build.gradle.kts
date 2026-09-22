@@ -54,26 +54,22 @@ val populateStringsLocales by tasks.registering(Copy::class) {
         "values-zh",
         "values-zh-rSG",
     )
-    destinationDir = file("src/androidMain/res")
+    val stringsDirectory = layout.projectDirectory.dir("src/androidMain/res")
+    into(stringsDirectory)
 
-    for (file in file("src/androidMain/res/values").listFiles().orEmpty()) {
-        if (file.isFile && file.name.startsWith("strings") && file.extension == "xml") {
-            for (locale in chtLocales) {
-                from(file("src/androidMain/res/values-zh-rHK/${file.name}")) {
-                    into(locale)
-                    rename { file.name }
-                }
-            }
-
-            for (locale in chsLocales) {
-                from(file("src/androidMain/res/values-zh-rCN/${file.name}")) {
-                    into(locale)
-                    rename { file.name }
-                }
-            }
+    for (locale in chtLocales) {
+        from(stringsDirectory.dir("values-zh-rHK")) {
+            include("*.xml")
+            into(locale)
         }
     }
 
+    for (locale in chsLocales) {
+        from(stringsDirectory.dir("values-zh-rCN")) {
+            include("*.xml")
+            into(locale)
+        }
+    }
 }
 
 tasks.matching {

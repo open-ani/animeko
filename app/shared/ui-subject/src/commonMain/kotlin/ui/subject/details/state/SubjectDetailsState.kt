@@ -26,18 +26,29 @@ import me.him188.ani.app.data.models.subject.SubjectInfo
 import me.him188.ani.app.data.models.subject.SubjectProgressInfo
 import me.him188.ani.app.ui.comment.CommentReportState
 import me.him188.ani.app.ui.comment.CommentState
-import me.him188.ani.app.ui.rating.EditableRatingState
+import me.him188.ani.app.ui.rating.EditableRatingActions
+import me.him188.ani.app.ui.rating.EditableRatingUiState
 import me.him188.ani.app.ui.subject.AiringLabelState
 import me.him188.ani.app.ui.subject.SubjectProgressState
 import me.him188.ani.app.ui.subject.collection.components.EditableSubjectCollectionTypeState
+import me.him188.ani.app.ui.subject.collection.components.SubjectCollectionTypeEditActions
 import me.him188.ani.app.ui.subject.episode.list.EpisodeListUiState
 import me.him188.ani.datasources.api.topic.UnifiedCollectionType
 
 /**
+ * 条目详情页的用户动作: 编辑收藏类型、评分.
+ */
+interface SubjectDetailsActions : SubjectCollectionTypeEditActions, EditableRatingActions {
+    companion object Noop : SubjectDetailsActions,
+        SubjectCollectionTypeEditActions by SubjectCollectionTypeEditActions.Noop,
+        EditableRatingActions by EditableRatingActions.Noop
+}
+
+/**
  * 条目详情页 UI 状态.
  *
- * 随条目数据变化的展示内容都在 [uiState] 里, 页面只订阅这一个 flow;
- * 其余是分页数据源和带交互的子状态 (收藏类型编辑、评分、评论).
+ * 随条目数据变化的展示内容都在 [uiState] 里, 页面只订阅这一个 flow; 用户动作见 [SubjectDetailsActions].
+ * 其余是分页数据源和评论 (评论的乐观更新仍在 [CommentState] 里).
  */
 @Stable
 class SubjectDetailsState(
@@ -50,15 +61,14 @@ class SubjectDetailsState(
     val charactersPager: Flow<PagingData<RelatedCharacterInfo>>,
     val exposedCharactersPager: Flow<PagingData<RelatedCharacterInfo>>,
     val relatedSubjectsPager: Flow<PagingData<RelatedSubjectInfo>>,
-    val editableSubjectCollectionTypeState: EditableSubjectCollectionTypeState,
-    val editableRatingState: EditableRatingState,
     val subjectCommentState: CommentState,
     /**
      * 页面展示内容. 数据未加载时为 [SubjectDetailsUiState.Placeholder].
      */
     val uiState: StateFlow<SubjectDetailsUiState>,
     val subjectCommentReportState: CommentReportState? = null,
-) {
+    actions: SubjectDetailsActions = SubjectDetailsActions.Noop,
+) : SubjectDetailsActions by actions {
     val detailsTabLazyListState = LazyListState()
     val commentTabLazyGridState = LazyGridState()
 }
@@ -82,6 +92,10 @@ data class SubjectDetailsUiState(
     val totalStaffCount: Int?,
     /** `null` 表示加载中. */
     val totalCharactersCount: Int?,
+    /** 收藏类型编辑 (按钮状态、"全部标记看过" 对话框). */
+    val collectionTypeEdit: EditableSubjectCollectionTypeState.Presentation,
+    /** 评分与评分编辑对话框. */
+    val rating: EditableRatingUiState,
     val isPlaceholder: Boolean = false,
 ) {
     val selfCollected: Boolean get() = selfCollectionType != UnifiedCollectionType.NOT_COLLECTED
@@ -96,6 +110,8 @@ data class SubjectDetailsUiState(
             episodeListUiState = EpisodeListUiState.Placeholder,
             totalStaffCount = null,
             totalCharactersCount = null,
+            collectionTypeEdit = EditableSubjectCollectionTypeState.Presentation.Placeholder,
+            rating = EditableRatingUiState.Placeholder,
             isPlaceholder = true,
         )
     }

@@ -30,7 +30,6 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalUriHandler
-import androidx.compose.ui.text.intl.Locale
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
@@ -79,7 +78,6 @@ import me.him188.ani.app.ui.lang.settings_app_search
 import me.him188.ani.app.ui.lang.settings_app_subject_title
 import me.him188.ani.app.ui.lang.settings_app_use_original_title
 import me.him188.ani.app.ui.lang.settings_app_use_original_title_description
-import me.him188.ani.app.ui.lang.settings_app_language_system
 import me.him188.ani.app.ui.lang.settings_player
 import me.him188.ani.app.ui.lang.settings_player_audio_time_stretch
 import me.him188.ani.app.ui.lang.settings_player_audio_time_stretch_description
@@ -833,26 +831,6 @@ internal expect fun SettingsScope.PlayerGroupPlatform(
     videoScaffoldConfig: SettingsState<VideoScaffoldConfig>,
     playerKernelConfig: SettingsState<PlayerKernelConfig>,
 )
-
-@Composable
-internal fun renderLocale(it: Locale?): String {
-    if (it == null) {
-        return stringResource(Lang.settings_app_language_system)
-    }
-
-    // The following code does not need to be localized
-    return when (it.language) {
-        "en", "eng" -> "English"
-        "zh", "chi", "zho" -> when (it.region) {
-            "CN" -> "简体中文"
-            "HK" -> "繁體中文(香港)"
-            "TW" -> "正體中文"
-            else -> "繁體中文"
-        }
-
-        else -> """${it.language}-${it.region}"""
-    }
-}
 
 @OptIn(TestOnly::class)
 @Preview

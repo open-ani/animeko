@@ -58,7 +58,8 @@ import me.him188.ani.app.ui.foundation.layout.isWidthAtLeastMedium
 import me.him188.ani.app.ui.foundation.layout.paddingIfNotEmpty
 import me.him188.ani.app.ui.foundation.stateOf
 import me.him188.ani.app.ui.rating.EditableRating
-import me.him188.ani.app.ui.rating.rememberTestEditableRatingState
+import me.him188.ani.app.ui.rating.EditableRatingActions
+import me.him188.ani.app.ui.rating.TestEditableRatingUiState
 import me.him188.ani.app.ui.subject.AiringLabelState
 import me.him188.ani.app.ui.subject.TestSubjectAiringInfo
 import me.him188.ani.app.ui.subject.collection.components.EditableSubjectCollectionTypeButton
@@ -424,9 +425,7 @@ fun PreviewSubjectDetailsHeader(
             SubjectDetailsDefaults.SelectEpisodeButtons(rememberTestSubjectProgressState(), {}, {})
         },
         rating = {
-            EditableRating(
-                state = rememberTestEditableRatingState(),
-            )
+            EditableRating(TestEditableRatingUiState, EditableRatingActions.Noop)
         },
     )
 }

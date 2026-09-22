@@ -25,6 +25,7 @@ import me.him188.ani.app.data.repository.subject.SubjectCollectionRepository
 import me.him188.ani.app.data.repository.user.UploadAvatarResult
 import me.him188.ani.app.data.repository.user.UserRepository
 import me.him188.ani.app.domain.foundation.LoadError
+import me.him188.ani.app.domain.session.auth.OAuthPlatform
 import me.him188.ani.app.tools.MonoTasker
 import me.him188.ani.app.ui.foundation.AbstractViewModel
 import me.him188.ani.app.ui.user.SelfInfoStateProducer
@@ -34,6 +35,7 @@ import me.him188.ani.datasources.api.topic.FileSize.Companion.megaBytes
 import me.him188.ani.utils.coroutines.SingleTaskExecutor
 import me.him188.ani.utils.coroutines.flows.FlowRestarter
 import me.him188.ani.utils.coroutines.flows.restartable
+import me.him188.ani.utils.logging.warn
 import me.him188.ani.utils.platform.annotations.TestOnly
 import org.koin.core.component.KoinComponent
 import org.koin.core.component.inject
@@ -55,14 +57,35 @@ class ProfileViewModel : AbstractViewModel(), KoinComponent {
     private val avatarUploadState =
         MutableStateFlow<EditProfileState.UploadAvatarState>(EditProfileState.UploadAvatarState.Default)
 
+    /**
+     * 服务端已启用的、除 Bangumi 以外的第三方登录平台. 获取失败则为空, 此时只展示已绑定的账号.
+     */
+    private val externalPlatforms = MutableStateFlow<List<OAuthPlatform>>(emptyList())
+
+    init {
+        backgroundScope.launch {
+            val providers = try {
+                userRepo.getOAuthProviders()
+            } catch (e: CancellationException) {
+                throw e
+            } catch (e: Exception) {
+                logger.warn(e) { "Failed to get OAuth providers" }
+                return@launch
+            }
+            externalPlatforms.value = providers.mapNotNull(OAuthPlatform::fromId).filter { it != OAuthPlatform.BANGUMI }
+        }
+    }
+
     val stateFlow = combine(
         selfInfoStateProvider.flow,
         avatarUploadState,
-    ) { selfInfoState, avatarState ->
+        externalPlatforms,
+    ) { selfInfoState, avatarState, platforms ->
         AccountSettingsState(
             selfInfo = selfInfoState,
             boundBangumi = selfInfoState.isSessionValid == true && selfInfoState.bangumiConnected == true,
             avatarUploadState = avatarState,
+            externalPlatforms = platforms,
         )
     }
         .restartable(stateRefresher)
@@ -188,6 +211,14 @@ class ProfileViewModel : AbstractViewModel(), KoinComponent {
         stateRefresher.restart()
     }
 
+    /**
+     * @throws me.him188.ani.app.data.repository.RepositoryRequestError 这是用户的唯一登录方式
+     */
+    suspend fun unbindExternalAccount(provider: String) {
+        userRepo.unbindExternalAccount(provider)
+        stateRefresher.restart()
+    }
+
     companion object {
         private val NICKNAME_MATCHER = Regex("^[\u4E00-\u9FFF\u3040-\u309F\u30A0-\u30FFa-zA-Z\\d_]+$")
     }
@@ -198,6 +229,10 @@ class AccountSettingsState(
     val selfInfo: SelfInfoUiState,
     val boundBangumi: Boolean,
     val avatarUploadState: EditProfileState.UploadAvatarState,
+    /**
+     * 服务端已启用的、除 Bangumi 以外的第三方登录平台
+     */
+    val externalPlatforms: List<OAuthPlatform> = emptyList(),
 ) {
     companion object {
         val Empty = AccountSettingsState(

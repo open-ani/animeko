@@ -29,15 +29,15 @@ import me.him188.ani.app.data.models.subject.TestSubjectCollections
 import me.him188.ani.app.data.models.subject.TestSubjectInfo
 import me.him188.ani.app.ui.comment.createTestCommentState
 import me.him188.ani.app.ui.foundation.ProvideCompositionLocalsForPreview
-import me.him188.ani.app.ui.rating.createTestEditableRatingState
 import me.him188.ani.app.ui.search.createTestPager
-import me.him188.ani.app.ui.subject.collection.components.createTestEditableSubjectCollectionTypeState
 import me.him188.ani.app.ui.subject.details.state.SubjectDetailsUiState
 import me.him188.ani.app.ui.subject.details.state.SubjectDetailsState
 import me.him188.ani.app.ui.subject.episode.list.TestEpisodeListUiState
 import me.him188.ani.app.ui.user.TestSelfInfoUiState
 import me.him188.ani.app.data.models.subject.TestSubjectProgressInfos
 import me.him188.ani.app.ui.subject.TestSubjectAiringInfo
+import me.him188.ani.app.ui.rating.TestEditableRatingUiState
+import me.him188.ani.app.ui.subject.collection.components.EditableSubjectCollectionTypeState
 import me.him188.ani.datasources.api.topic.UnifiedCollectionType
 import me.him188.ani.utils.platform.annotations.TestOnly
 import org.jetbrains.skia.EncodedImageFormat
@@ -69,15 +69,6 @@ class SubjectDetailsScreenshotTest {
             staffPager = createTestPager(TestSubjectStaffInfo),
             exposedStaffPager = createTestPager(TestSubjectStaffInfo.take(10)),
             relatedSubjectsPager = createTestPager(TestRelatedSubjects),
-            editableSubjectCollectionTypeState = createTestEditableSubjectCollectionTypeState(
-                MutableStateFlow(UnifiedCollectionType.DOING),
-                scope,
-            ),
-            editableRatingState = createTestEditableRatingState(
-                subjectInfo,
-                selfRatingInfo = TestSelfRatingInfo,
-                backgroundScope = scope,
-            ),
             subjectCommentState = createTestCommentState(scope),
             uiState = MutableStateFlow(
                 SubjectDetailsUiState(
@@ -89,6 +80,11 @@ class SubjectDetailsScreenshotTest {
                     episodeListUiState = TestEpisodeListUiState,
                     totalStaffCount = TestSubjectStaffInfo.size,
                     totalCharactersCount = TestSubjectCharacterList.size,
+                    collectionTypeEdit = EditableSubjectCollectionTypeState.Presentation.Placeholder.copy(
+                        selfCollectionType = UnifiedCollectionType.DOING,
+                        isPlaceholder = false,
+                    ),
+                    rating = TestEditableRatingUiState,
                     isPlaceholder = false,
                 ),
             ),

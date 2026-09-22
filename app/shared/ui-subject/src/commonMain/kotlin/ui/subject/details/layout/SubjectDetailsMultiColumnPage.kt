@@ -87,7 +87,6 @@ import me.him188.ani.app.ui.lang.subject_details_login_to_collect
 import me.him188.ani.app.ui.lang.subject_details_rate
 import me.him188.ani.app.ui.lang.subject_details_rating
 import me.him188.ani.app.ui.lang.subject_details_related_subjects
-import me.him188.ani.app.ui.rating.EditableRatingState
 import me.him188.ani.app.ui.subject.AiringLabel
 import me.him188.ani.app.ui.subject.collection.components.EditableSubjectCollectionTypeButton
 import me.him188.ani.app.ui.subject.collection.progress.SubjectProgressButton
@@ -97,11 +96,13 @@ import me.him188.ani.app.ui.subject.details.components.RatingHistogram
 import me.him188.ani.app.ui.subject.details.components.SUBJECT_COVER_IMAGE_TEST_TAG
 import me.him188.ani.app.ui.subject.details.components.RelatedSubjectsGrid
 import me.him188.ani.app.ui.subject.details.components.rememberNavigateToRelatedSubject
+import me.him188.ani.app.ui.subject.details.components.rememberNavigateToRelationGraph
 import me.him188.ani.app.ui.subject.details.sections.CharactersSection
 import me.him188.ani.app.ui.subject.details.sections.HotReviewsCardContent
 import me.him188.ani.app.ui.subject.details.sections.PagedEpisodesGrid
 import me.him188.ani.app.ui.subject.details.sections.ReviewsPreviewSection
 import me.him188.ani.app.ui.subject.details.sections.SectionHeader
+import me.him188.ani.app.ui.subject.details.sections.SectionHeaderRelationGraphButton
 import me.him188.ani.app.ui.subject.details.sections.SectionHeaderCacheButton
 import me.him188.ani.app.ui.subject.details.sections.StaffSection
 import me.him188.ani.app.ui.subject.details.sections.SubjectCollectionStatsRow
@@ -248,7 +249,7 @@ internal fun SubjectDetailsMultiColumnPage(
                 )
             }
             if (related.itemCount > 0) {
-                SubjectRelatedBlock(related)
+                SubjectRelatedBlock(state.subjectId, related)
             }
             if (!layoutParams.showRail) {
                 ReviewsPreviewSection(comments, commentCount, onShowAll = onShowComments)
@@ -263,13 +264,13 @@ internal fun SubjectDetailsMultiColumnPage(
             ) {
                 RailCard {
                     SectionHeader(stringResource(Lang.subject_details_rating)) {
-                        EditRatingButton(state.editableRatingState)
+                        EditRatingButton(uiState.rating.selfRatingInfo.score, onClick = { state.requestEditRating() })
                     }
                     SubjectRatingSummary(
                         info.ratingInfo,
                         Modifier.padding(top = 8.dp),
                         scoreStyle = MaterialTheme.typography.headlineMedium,
-                        onClick = { state.editableRatingState.requestEdit() },
+                        onClick = { state.requestEditRating() },
                     )
                     RatingHistogram(info.ratingInfo, Modifier.padding(top = 16.dp))
                 }
@@ -507,7 +508,8 @@ private fun SubjectSidebar(
             }
         } else {
             EditableSubjectCollectionTypeButton(
-                state.editableSubjectCollectionTypeState,
+                uiState.collectionTypeEdit,
+                state,
                 Modifier.fillMaxWidth(),
             )
         }
@@ -580,7 +582,7 @@ private fun SubjectRatingRow(state: SubjectDetailsState, showHistogram: Boolean)
     ) {
         SubjectRatingSummary(
             info.ratingInfo,
-            onClick = { state.editableRatingState.requestEdit() },
+            onClick = { state.requestEditRating() },
         )
         if (showHistogram) {
             Spacer(Modifier.weight(1f))
@@ -596,14 +598,13 @@ private val RATING_HISTOGRAM_WIDTH = 274.dp
  * (复用手机版同款 [Lang.rating_self_score] 文案); 点击打开评分编辑.
  */
 @Composable
-private fun EditRatingButton(editableRatingState: EditableRatingState) {
-    TextButton({ editableRatingState.requestEdit() }) {
+private fun EditRatingButton(selfScore: Int, onClick: () -> Unit) {
+    TextButton(onClick) {
         Icon(
             Icons.Rounded.StarOutline,
             contentDescription = null,
             Modifier.size(18.dp),
         )
-        val selfScore = editableRatingState.selfRatingInfo.score
         Text(
             if (selfScore > 0) {
                 stringResource(Lang.rating_self_score, selfScore)
@@ -616,9 +617,11 @@ private fun EditRatingButton(editableRatingState: EditableRatingState) {
 }
 
 @Composable
-private fun SubjectRelatedBlock(related: LazyPagingItems<RelatedSubjectInfo>) {
+private fun SubjectRelatedBlock(subjectId: Int, related: LazyPagingItems<RelatedSubjectInfo>) {
     Column(verticalArrangement = Arrangement.spacedBy(14.dp)) {
-        SectionHeader(stringResource(Lang.subject_details_related_subjects))
+        SectionHeader(stringResource(Lang.subject_details_related_subjects)) {
+            SectionHeaderRelationGraphButton(rememberNavigateToRelationGraph(subjectId))
+        }
         RelatedSubjectsGrid(related, onClick = rememberNavigateToRelatedSubject())
     }
 }

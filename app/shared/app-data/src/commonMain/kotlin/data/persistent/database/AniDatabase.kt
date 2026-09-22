@@ -87,7 +87,7 @@ import me.him188.ani.utils.httpdownloader.DownloadState
         PlaybackHistoryRecordEntity::class,
         PlaybackHistoryPendingOpEntity::class,
     ],
-    version = 24,
+    version = 25,
     autoMigrations = [
         AutoMigration(from = 1, to = 2, spec = Migrations.Migration_1_2::class),
         AutoMigration(from = 2, to = 3, spec = Migrations.Migration_2_3::class),
@@ -111,6 +111,7 @@ import me.him188.ani.utils.httpdownloader.DownloadState
         AutoMigration(from = 21, to = 22, spec = Migrations.Migration_21_22::class),
         AutoMigration(from = 22, to = 23, spec = Migrations.Migration_22_23::class),
         AutoMigration(from = 23, to = 24, spec = Migrations.Migration_23_24::class),
+        AutoMigration(from = 24, to = 25, spec = Migrations.Migration_24_25::class),
     ],
     exportSchema = true,
 )
@@ -414,6 +415,14 @@ internal object Migrations {
      * `torrent_cache` 中原有的按资源记录的列保留, 供尚无剧集记录的旧数据回退读取.
      */
     class Migration_23_24 : AutoMigrationSpec {
+        override fun onPostMigrate(connection: SQLiteConnection) {
+        }
+    }
+
+    /**
+     * Added [SubjectCollectionEntity.tmdbArt] (TMDB 横幅、海报与标题 Logo, 可空).
+     */
+    class Migration_24_25 : AutoMigrationSpec {
         override fun onPostMigrate(connection: SQLiteConnection) {
         }
     }
