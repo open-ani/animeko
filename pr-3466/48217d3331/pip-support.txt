@@ -1,0 +1,7 @@
+ios18 (fixed app, after opening the episode):
+(lldb) expr -l objc++ -- (BOOL)[(Class)objc_getClass("AVPictureInPictureController") isPictureInPictureSupported]
+(BOOL) $0 = NO
+
+ios26 (fixed app, after opening the episode):
+(lldb) expr -l objc++ -- (BOOL)[(Class)objc_getClass("AVPictureInPictureController") isPictureInPictureSupported]
+(BOOL) $0 = NO
