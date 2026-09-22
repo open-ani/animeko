@@ -30,10 +30,4 @@ kotlin {
             implementation(libs.kotlinx.coroutines.test)
         }
     }
-    sourceSets.androidDeviceTest {
-        kotlin.srcDir("../src/androidTvDeviceTest/kotlin")
-        dependencies {
-            implementation(projects.utils.uiTesting)
-        }
-    }
 }

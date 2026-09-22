@@ -41,7 +41,6 @@ kotlin {
     }
     sourceSets.androidMain.dependencies {
         runtimeOnly(libs.kotlinx.coroutines.android)
-        implementation(libs.androidx.test.runner) // TvDisplayRunListener
     }
 }
 

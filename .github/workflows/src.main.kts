@@ -1832,8 +1832,6 @@ class WithMatrix(
                         action = AndroidEmulatorRunner(
                             apiLevel = apiLevel.toString(),
                             arch = arch,
-                            // 1080x1920 的手机屏幕. 默认 AVD 只有 320x640, 而 `wm size` 最多放大到物理尺寸的 2 倍,
-                            // TV 界面的 UI 测试要把显示规格设为 1920x1080 (见 TvDisplayRunListener).
                             profile = "pixel_2",
                             ramSize = "2048M",
                             script = buildString {

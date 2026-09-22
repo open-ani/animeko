@@ -27,10 +27,4 @@ kotlin {
     sourceSets.androidHostTest {
         kotlin.srcDir("../src/androidTvTest/kotlin")
     }
-    sourceSets.androidDeviceTest {
-        kotlin.srcDir("../src/androidTvDeviceTest/kotlin")
-        dependencies {
-            implementation(projects.utils.uiTesting)
-        }
-    }
 }
