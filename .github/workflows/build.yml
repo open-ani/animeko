@@ -1114,7 +1114,7 @@ jobs:
         profile: 'pixel_2'
         ram-size: '2048M'
         emulator-boot-timeout: '1800'
-        script: './gradlew connectedDeviceTest --continue "-Pandroid.min.sdk=30" "--scan" "-Porg.gradle.daemon.idletimeout=60000" "-Dfile.encoding=UTF-8" "-Dorg.gradle.jvmargs=-Xmx3g -Dkotlin.daemon.jvm.options=-Xmx2g" "-Dkotlin.daemon.jvm.options=-Xmx2g"; status=$?; killall -INT crashpad_handler || true; exit $status'
+        script: './gradlew connectedDeviceTest --continue "-Pandroid.min.sdk=30" "--scan" "-Porg.gradle.daemon.idletimeout=60000" "-Dfile.encoding=UTF-8" "-Dorg.gradle.jvmargs=-Xmx3g -Dkotlin.daemon.jvm.options=-Xmx2g" "-Dkotlin.daemon.jvm.options=-Xmx2g"; status=$?; adb logcat -d > logcat-api30.txt || true; killall -INT crashpad_handler || true; exit $status'
     - id: 'step-77'
       name: 'Upload Android Instrumented Test Reports (api=30, arch=x86_64)'
       uses: 'actions/upload-artifact@v4'
@@ -1123,6 +1123,7 @@ jobs:
         path: |-
           **/build/reports/androidTests/**
           **/build/outputs/androidTest-results/**
+          logcat-api30.txt
         if-no-files-found: 'ignore'
         overwrite: 'true'
       if: 'always()'
@@ -1153,7 +1154,7 @@ jobs:
         profile: 'pixel_2'
         ram-size: '2048M'
         emulator-boot-timeout: '1800'
-        script: './gradlew connectedDeviceTest --continue "-Pandroid.min.sdk=30" "--scan" "-Porg.gradle.daemon.idletimeout=60000" "-Dfile.encoding=UTF-8" "-Dorg.gradle.jvmargs=-Xmx3g -Dkotlin.daemon.jvm.options=-Xmx2g" "-Dkotlin.daemon.jvm.options=-Xmx2g"; status=$?; killall -INT crashpad_handler || true; exit $status'
+        script: './gradlew connectedDeviceTest --continue "-Pandroid.min.sdk=30" "--scan" "-Porg.gradle.daemon.idletimeout=60000" "-Dfile.encoding=UTF-8" "-Dorg.gradle.jvmargs=-Xmx3g -Dkotlin.daemon.jvm.options=-Xmx2g" "-Dkotlin.daemon.jvm.options=-Xmx2g"; status=$?; adb logcat -d > logcat-api36.txt || true; killall -INT crashpad_handler || true; exit $status'
     - id: 'step-82'
       name: 'Upload Android Instrumented Test Reports (api=36, arch=x86_64)'
       uses: 'actions/upload-artifact@v4'
@@ -1162,6 +1163,7 @@ jobs:
         path: |-
           **/build/reports/androidTests/**
           **/build/outputs/androidTest-results/**
+          logcat-api36.txt
         if-no-files-found: 'ignore'
         overwrite: 'true'
       if: 'always()'

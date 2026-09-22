@@ -1843,7 +1843,9 @@ class WithMatrix(
                                 append(matrix.gradleArgsWith(gradleHeap = "3g", kotlinCompilerHeap = "2g"))
                                 // 结束 crashpad_handler 后要以 Gradle 的退出码退出, 否则测试失败不会让步骤失败.
                                 // https://github.com/ReactiveCircus/android-emulator-runner/issues/385#issuecomment-2492035091
-                                append("; status=\$?; killall -INT crashpad_handler || true; exit \$status")
+                                // 测试进程在启动阶段崩溃时不会留下按测试拆分的 logcat, 整机 logcat 是唯一线索.
+                                append("; status=\$?; adb logcat -d > logcat-api$apiLevel.txt || true; ")
+                                append("killall -INT crashpad_handler || true; exit \$status")
                             },
                             emulatorBootTimeout = 1800,
                         ),
@@ -1853,7 +1855,7 @@ class WithMatrix(
                         `if` = "always()",
                         action = UploadArtifact(
                             name = "android-device-test-reports-api$apiLevel-${arch.stringValue}",
-                            path_Untyped = "**/build/reports/androidTests/**\n**/build/outputs/androidTest-results/**",
+                            path_Untyped = "**/build/reports/androidTests/**\n**/build/outputs/androidTest-results/**\nlogcat-api$apiLevel.txt",
                             ifNoFilesFound = UploadArtifact.BehaviorIfNoFilesFound.Ignore,
                             overwrite = true,
                         ),

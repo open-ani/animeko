@@ -37,7 +37,10 @@ import org.junit.runner.notification.RunListener
  * ```
  */
 class TvDisplayRunListener : RunListener() {
+    private var physical: Triple<Int, Int, Int>? = null
+
     override fun testRunStarted(description: Description?) {
+        physical = currentMetrics()
         shell("wm size ${WIDTH_PX}x$HEIGHT_PX")
         shell("wm density $DENSITY_DPI")
         // 显示规格异步生效. 等到系统报告新的尺寸, 测试 Activity 才会以电视规格启动.
@@ -60,6 +63,18 @@ class TvDisplayRunListener : RunListener() {
     override fun testRunFinished(result: Result?) {
         shell("wm size reset")
         shell("wm density reset")
+        // 还原同样异步生效. 等到系统报告物理规格, 后续模块的测试进程才不会在配置切换中启动.
+        val deadline = System.currentTimeMillis() + 10_000
+        while (System.currentTimeMillis() < deadline) {
+            if (currentMetrics() == physical) return
+            Thread.sleep(100)
+        }
+    }
+
+    /** (宽, 高, dpi) */
+    private fun currentMetrics(): Triple<Int, Int, Int> {
+        val metrics = InstrumentationRegistry.getInstrumentation().targetContext.resources.displayMetrics
+        return Triple(metrics.widthPixels, metrics.heightPixels, metrics.densityDpi)
     }
 
     private fun shell(command: String) {
