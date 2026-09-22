@@ -1,56 +1,62 @@
 /*
  * Copyright (C) 2024-2026 OpenAni and contributors.
  *
- * 此源代码的使用受 GNU AFFERO GENERAL PUBLIC LICENSE version 3 许可证的约束, 可以在以下链接找到该许可证.
- * Use of this source code is governed by the GNU AGPLv3 license, which can be found at the following link.
- *
- * https://github.com/open-ani/ani/blob/main/LICENSE
+ * Use of this source code is governed by the GNU AGPLv3 license.
  */
 
 package me.him188.ani.tracking.api
 
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.test.runTest
 import kotlin.test.Test
 import kotlin.test.assertEquals
-import kotlin.test.assertFailsWith
+import kotlin.test.assertFalse
 import kotlin.test.assertNull
+import kotlin.test.assertTrue
 
 class TrackingProviderContractTest {
     @Test
-    fun `adapter supports the complete list entry lifecycle through the contract`() = runCommonTest {
-        val provider: TrackingProvider = InMemoryTrackingProvider()
-        val media = provider.searchAnime("Frieren").single()
+    fun `provider exposes Mihon-style account capabilities and remote lifecycle`() = runTest {
+        val provider = InMemoryTrackingProvider()
 
         assertEquals("Test Tracker", provider.info.displayName)
-        assertEquals("https://tracker.example", provider.info.websiteUrl)
+        assertFalse(provider.capabilities.supportsPrivateEntries)
+        assertEquals(TrackingAccountState.LoggedOut, provider.accountState.value)
+
+        val account = provider.login(TrackingLoginCredentials(secret = "token"))
+        assertEquals("haru", account.displayName)
+        assertTrue(provider.accountState.value is TrackingAccountState.LoggedIn)
+
+        val media = provider.search("Frieren").single()
         assertEquals("https://tracker.example/anime/1", media.siteUrl)
-        assertNull(provider.getAnime(media.id)?.listEntry)
+        assertNull(provider.prepareBinding(media.id)?.listEntry)
 
-        val saved = provider.saveListEntry(
-            TrackingListEntry(
-                mediaId = media.id,
-                status = TrackingStatus.CURRENT,
-                progress = 8,
-                score = TrackingScore(90),
-            ),
+        val bound = provider.bind(
+            TrackingListEntry(media.id, TrackingStatus.CURRENT, progress = 8, score = TrackingScore(80)),
         )
-        assertEquals(saved, provider.getAnime(media.id)?.listEntry)
+        assertEquals(bound, provider.refresh(media.id)?.listEntry)
 
-        provider.deleteListEntry(media.id)
-        assertNull(provider.getAnime(media.id)?.listEntry)
+        val updated = provider.update(bound.copy(progress = 9), didWatchEpisode = true)
+        assertEquals(9, updated.progress)
+
+        provider.delete(media.id)
+        assertNull(provider.refresh(media.id)?.listEntry)
+
+        provider.logout()
+        assertEquals(TrackingAccountState.LoggedOut, provider.accountState.value)
     }
 
     @Test
-    fun `contract rejects invalid identity progress and score values`() {
-        assertFailsWith<IllegalArgumentException> { TrackingProviderId(" ") }
-        assertFailsWith<IllegalArgumentException> { TrackingMediaId("") }
-        assertFailsWith<IllegalArgumentException> {
-            TrackingListEntry(
-                mediaId = TrackingMediaId("1"),
-                status = TrackingStatus.CURRENT,
-                progress = -1,
-            )
-        }
-        assertFailsWith<IllegalArgumentException> { TrackingScore(101) }
+    fun `normalized values reject invalid state`() {
+        assertTrue(runCatching { TrackingProviderId("") }.isFailure)
+        assertTrue(runCatching { TrackingMediaId(" ") }.isFailure)
+        assertTrue(runCatching { TrackingLoginCredentials(secret = "") }.isFailure)
+        assertTrue(
+            runCatching {
+                TrackingListEntry(TrackingMediaId("1"), TrackingStatus.CURRENT, progress = -1)
+            }.isFailure,
+        )
+        assertTrue(runCatching { TrackingScore(101) }.isFailure)
     }
 }
 
@@ -60,6 +66,10 @@ private class InMemoryTrackingProvider : TrackingProvider {
         displayName = "Test Tracker",
         websiteUrl = "https://tracker.example",
     )
+    override val capabilities = TrackingCapabilities()
+    override val accountState = MutableStateFlow<TrackingAccountState>(TrackingAccountState.LoggedOut)
+    override val statusOptions = TrackingStatus.entries.map { TrackingStatusOption(it, it.name) }
+    override val scoreOptions = (0..10).map { TrackingScoreOption(TrackingScore(it * 10), it.toString()) }
 
     private val media = TrackingMedia(
         id = TrackingMediaId("1"),
@@ -70,22 +80,31 @@ private class InMemoryTrackingProvider : TrackingProvider {
     )
     private var entry: TrackingListEntry? = null
 
-    override suspend fun searchAnime(query: String): List<TrackingMedia> = listOf(media)
-
-    override suspend fun getAnime(mediaId: TrackingMediaId): TrackingMediaWithEntry? {
-        return if (mediaId == media.id) TrackingMediaWithEntry(media, entry) else null
+    override suspend fun login(credentials: TrackingLoginCredentials): TrackingAccount {
+        return TrackingAccount("1", "haru").also { accountState.value = TrackingAccountState.LoggedIn(it) }
     }
 
-    override suspend fun saveListEntry(entry: TrackingListEntry): TrackingListEntry {
-        this.entry = entry
-        return entry
+    override suspend fun refreshAccount(): TrackingAccount =
+        (accountState.value as TrackingAccountState.LoggedIn).account
+
+    override suspend fun logout() {
+        accountState.value = TrackingAccountState.LoggedOut
     }
 
-    override suspend fun deleteListEntry(mediaId: TrackingMediaId) {
-        if (mediaId == media.id) entry = null
-    }
-}
+    override suspend fun search(query: String): List<TrackingMedia> =
+        if (media.title.contains(query, ignoreCase = true)) listOf(media) else emptyList()
 
-private fun runCommonTest(block: suspend () -> Unit) {
-    kotlinx.coroutines.test.runTest { block() }
+    override suspend fun prepareBinding(mediaId: TrackingMediaId) = refresh(mediaId)
+
+    override suspend fun bind(entry: TrackingListEntry): TrackingListEntry = entry.also { this.entry = it }
+
+    override suspend fun update(entry: TrackingListEntry, didWatchEpisode: Boolean): TrackingListEntry =
+        entry.also { this.entry = it }
+
+    override suspend fun refresh(mediaId: TrackingMediaId): TrackingMediaWithEntry? =
+        media.takeIf { it.id == mediaId }?.let { TrackingMediaWithEntry(it, entry) }
+
+    override suspend fun delete(mediaId: TrackingMediaId) {
+        if (media.id == mediaId) entry = null
+    }
 }

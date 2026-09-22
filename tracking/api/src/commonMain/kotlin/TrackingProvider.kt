@@ -9,34 +9,55 @@
 
 package me.him188.ani.tracking.api
 
+import kotlinx.coroutines.flow.StateFlow
 import kotlin.jvm.JvmInline
 
 /**
- * A remote service that stores a user's anime list.
+ * A cohesive integration with one remote anime-tracking service.
  *
- * Authentication and credential persistence are supplied to an adapter separately. Callers use this
- * interface only for remote anime and list-entry operations.
- *
- * Implementations must propagate [kotlin.coroutines.cancellation.CancellationException]. Other
- * failures are reported as [TrackingProviderException].
+ * This follows Mihon's `Tracker` lifecycle: identity and capabilities, account state, provider score
+ * presentation, search, bind, update, refresh, and delete live behind one provider façade. Credential
+ * persistence and Animeko's local binding/reconciliation records remain injected implementation details.
  */
 interface TrackingProvider {
-    /** Stable identity and user-facing metadata. UI resources remain in the presentation layer. */
     val info: TrackingProviderInfo
+    val capabilities: TrackingCapabilities
 
-    val id: TrackingProviderId
-        get() = info.id
+    /** Observable account state used by the shared Accounts UI and provider registry. */
+    val accountState: StateFlow<TrackingAccountState>
 
-    suspend fun searchAnime(query: String): List<TrackingMedia>
+    /** Provider-specific choices shown by status and score editors. */
+    val statusOptions: List<TrackingStatusOption>
+    val scoreOptions: List<TrackingScoreOption>
 
-    /** Returns the remote anime and the user's list entry, or `null` when the anime does not exist. */
-    suspend fun getAnime(mediaId: TrackingMediaId): TrackingMediaWithEntry?
+    /**
+     * Authenticate using the provider's credential exchange.
+     *
+     * Like Mihon's `login(username, password)`, fields are provider interpreted. OAuth providers use
+     * [TrackingLoginCredentials.secret] for the returned token. Credentials must not be persisted by callers.
+     */
+    suspend fun login(credentials: TrackingLoginCredentials): TrackingAccount
 
-    /** Creates or replaces the represented fields of the user's list entry. */
-    suspend fun saveListEntry(entry: TrackingListEntry): TrackingListEntry
+    suspend fun refreshAccount(): TrackingAccount
 
-    /** Deletes the remote list entry. This does not delete Animeko's local binding. */
-    suspend fun deleteListEntry(mediaId: TrackingMediaId)
+    /** Clears both the remote-client session and the injected secure credential store. */
+    suspend fun logout()
+
+    suspend fun search(query: String): List<TrackingMedia>
+
+    /** Reads current remote state before Animeko asks the user how to reconcile a binding. */
+    suspend fun prepareBinding(mediaId: TrackingMediaId): TrackingMediaWithEntry?
+
+    /** Creates or replaces the represented fields after reconciliation has been explicitly chosen. */
+    suspend fun bind(entry: TrackingListEntry): TrackingListEntry
+
+    /** Updates an existing binding; providers may apply their Mihon-style watched-episode transitions. */
+    suspend fun update(entry: TrackingListEntry, didWatchEpisode: Boolean = false): TrackingListEntry
+
+    suspend fun refresh(mediaId: TrackingMediaId): TrackingMediaWithEntry?
+
+    /** Deletes only the remote entry. Local unbinding is a separate domain operation. */
+    suspend fun delete(mediaId: TrackingMediaId)
 }
 
 data class TrackingProviderInfo(
@@ -49,6 +70,47 @@ data class TrackingProviderInfo(
         require(websiteUrl.isNotBlank()) { "Tracking provider website URL must not be blank" }
     }
 }
+
+data class TrackingCapabilities(
+    val supportsStartAndCompletionDates: Boolean = false,
+    val supportsPrivateEntries: Boolean = false,
+)
+
+sealed interface TrackingAccountState {
+    data object LoggedOut : TrackingAccountState
+    data class LoggedIn(val account: TrackingAccount) : TrackingAccountState
+    data class Refreshing(val previousAccount: TrackingAccount?) : TrackingAccountState
+}
+
+data class TrackingAccount(
+    val remoteId: String,
+    val displayName: String,
+    val avatarUrl: String? = null,
+) {
+    init {
+        require(remoteId.isNotBlank()) { "Tracking account ID must not be blank" }
+        require(displayName.isNotBlank()) { "Tracking account display name must not be blank" }
+    }
+}
+
+data class TrackingLoginCredentials(
+    val username: String = "",
+    val secret: String,
+) {
+    init {
+        require(secret.isNotBlank()) { "Tracking login secret must not be blank" }
+    }
+}
+
+data class TrackingStatusOption(
+    val status: TrackingStatus,
+    val displayName: String,
+)
+
+data class TrackingScoreOption(
+    val score: TrackingScore,
+    val displayValue: String,
+)
 
 @JvmInline
 value class TrackingProviderId(val value: String) {
@@ -82,7 +144,7 @@ data class TrackingListEntry(
     val mediaId: TrackingMediaId,
     val status: TrackingStatus,
     val progress: Int,
-    /** Normalized to 0–100. Zero means unrated. */
+    /** Normalized to 0–100, matching Mihon's AniList representation. Zero means unrated. */
     val score: TrackingScore = TrackingScore.Unrated,
 ) {
     init {
@@ -99,7 +161,6 @@ enum class TrackingStatus {
     REPEATING,
 }
 
-/** Provider-independent score normalized to the same 0–100 scale Mihon uses internally. */
 @JvmInline
 value class TrackingScore(val value: Int) {
     init {

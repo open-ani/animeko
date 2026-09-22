@@ -18,9 +18,10 @@ kotlin {
     android {
         namespace = "me.him188.ani.tracking.api"
     }
-    sourceSets.commonTest {
-        dependencies {
-            implementation(libs.kotlinx.coroutines.test)
-        }
+    sourceSets.commonMain.dependencies {
+        api(libs.kotlinx.coroutines.core)
+    }
+    sourceSets.commonTest.dependencies {
+        implementation(libs.kotlinx.coroutines.test)
     }
 }
