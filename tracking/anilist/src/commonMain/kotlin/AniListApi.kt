@@ -18,6 +18,12 @@ import kotlinx.serialization.json.buildJsonObject
 import kotlinx.serialization.json.put
 
 internal class AniListApi(private val client: HttpClient) {
+    suspend fun viewer(token: String): AniListViewer = execute<ViewerData>(
+        VIEWER,
+        JsonObject(emptyMap()),
+        token,
+    ).viewer
+
     suspend fun search(query: String, token: String): List<AniListMedia> = execute<SearchData>(
         SEARCH,
         buildJsonObject { put("search", query) },
@@ -60,6 +66,12 @@ internal class AniListApi(private val client: HttpClient) {
 
     private companion object {
         const val ENDPOINT = "https://graphql.anilist.co"
+
+        val VIEWER = """
+            query ViewerAccount {
+              Viewer { id name avatar { large } mediaListOptions { scoreFormat } }
+            }
+        """.trimIndent()
 
         val MEDIA_FIELDS = """
             id

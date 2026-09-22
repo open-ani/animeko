@@ -20,6 +20,23 @@ internal data class GraphQLResponse<T>(val data: T? = null, val errors: List<Gra
 internal data class GraphQLError(val message: String)
 
 @Serializable
+internal data class ViewerData(@SerialName("Viewer") val viewer: AniListViewer)
+
+@Serializable
+internal data class AniListViewer(
+    val id: Int,
+    val name: String,
+    val avatar: AniListAvatar? = null,
+    val mediaListOptions: AniListMediaListOptions,
+)
+
+@Serializable
+internal data class AniListAvatar(val large: String? = null)
+
+@Serializable
+internal data class AniListMediaListOptions(val scoreFormat: String)
+
+@Serializable
 internal data class SearchData(@SerialName("Page") val page: MediaPage)
 
 @Serializable

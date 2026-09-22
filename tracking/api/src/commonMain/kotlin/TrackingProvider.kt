@@ -102,6 +102,16 @@ data class TrackingLoginCredentials(
     }
 }
 
+/**
+ * Provider-scoped secure storage. Implementations must exclude the secret from Room, logs, exports,
+ * backups, and screenshots; unsupported platforms must not advertise login support.
+ */
+interface TrackingCredentialStore {
+    suspend fun load(): TrackingLoginCredentials?
+    suspend fun save(credentials: TrackingLoginCredentials)
+    suspend fun clear()
+}
+
 data class TrackingStatusOption(
     val status: TrackingStatus,
     val displayName: String,

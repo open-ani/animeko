@@ -18,7 +18,10 @@ import io.ktor.http.headersOf
 import io.ktor.serialization.kotlinx.json.json
 import kotlinx.coroutines.test.runTest
 import kotlinx.serialization.json.Json
+import me.him188.ani.tracking.api.TrackingAccountState
+import me.him188.ani.tracking.api.TrackingCredentialStore
 import me.him188.ani.tracking.api.TrackingListEntry
+import me.him188.ani.tracking.api.TrackingLoginCredentials
 import me.him188.ani.tracking.api.TrackingMediaId
 import me.him188.ani.tracking.api.TrackingScore
 import me.him188.ani.tracking.api.TrackingStatus
@@ -29,6 +32,23 @@ import kotlin.test.assertTrue
 
 class AniListTrackingProviderTest {
     @Test
+    fun `login refreshes account and provider score choices`() = runTest {
+        val store = InMemoryCredentialStore(null)
+        val provider = provider(store) {
+            respondJson(
+                """{"data":{"Viewer":{"id":123,"name":"haru","avatar":{"large":"https://img/avatar.jpg"},"mediaListOptions":{"scoreFormat":"POINT_5"}}}}""",
+            )
+        }
+
+        val account = provider.login(TrackingLoginCredentials(secret = "new-token"))
+
+        assertEquals("haru", account.displayName)
+        assertTrue(provider.accountState.value is TrackingAccountState.LoggedIn)
+        assertEquals(listOf("0 ★", "1 ★", "2 ★", "3 ★", "4 ★", "5 ★"), provider.scoreOptions.map { it.displayValue })
+        assertEquals("new-token", store.load()?.secret)
+    }
+
+    @Test
     fun `maps search result and sends bearer token`() = runTest {
         var authorization: String? = null
         val provider = provider { request ->
@@ -38,7 +58,7 @@ class AniListTrackingProviderTest {
             )
         }
 
-        val result = provider.searchAnime("Frieren").single()
+        val result = provider.search("Frieren").single()
 
         assertEquals("Bearer token", authorization)
         assertEquals("AniList", provider.info.displayName)
@@ -63,11 +83,11 @@ class AniListTrackingProviderTest {
             }
         }
 
-        val existing = provider.getAnime(TrackingMediaId("1"))!!.listEntry!!
+        val existing = provider.refresh(TrackingMediaId("1"))!!.listEntry!!
         assertEquals(12, existing.progress)
         assertEquals(TrackingScore(85), existing.score)
 
-        val saved = provider.saveListEntry(
+        val saved = provider.update(
             TrackingListEntry(TrackingMediaId("1"), TrackingStatus.COMPLETED, 28, TrackingScore(90)),
         )
         assertEquals(28, saved.progress)
@@ -84,7 +104,7 @@ class AniListTrackingProviderTest {
             )
         }
 
-        provider.deleteListEntry(TrackingMediaId("1"))
+        provider.delete(TrackingMediaId("1"))
 
         assertEquals(1, calls)
     }
@@ -92,22 +112,25 @@ class AniListTrackingProviderTest {
     @Test
     fun `missing media is represented as null`() = runTest {
         val provider = provider { respondJson("""{"data":{"Media":null}}""") }
-        assertNull(provider.getAnime(TrackingMediaId("404")))
+        assertNull(provider.refresh(TrackingMediaId("404")))
     }
 
     @Test
     fun `graphql errors become provider failures`() = runTest {
         val provider = provider { respondJson("""{"errors":[{"message":"Invalid token"}]}""") }
-        val failure = runCatching { provider.searchAnime("Frieren") }.exceptionOrNull()
+        val failure = runCatching { provider.search("Frieren") }.exceptionOrNull()
         assertTrue(failure is me.him188.ani.tracking.api.TrackingProviderException.Remote)
     }
 
-    private fun provider(handler: suspend MockRequestHandleScope.(io.ktor.client.request.HttpRequestData) -> HttpResponseData): AniListTrackingProvider {
+    private fun provider(
+        store: TrackingCredentialStore = InMemoryCredentialStore(),
+        handler: suspend MockRequestHandleScope.(io.ktor.client.request.HttpRequestData) -> HttpResponseData,
+    ): AniListTrackingProvider {
         val client = HttpClient(MockEngine(handler)) {
             expectSuccess = true
             install(ContentNegotiation) { json(Json { ignoreUnknownKeys = true }) }
         }
-        return AniListTrackingProvider(client) { "token" }
+        return AniListTrackingProvider(client, store)
     }
 
     private fun MockRequestHandleScope.respondJson(
@@ -118,4 +141,19 @@ class AniListTrackingProviderTest {
         status = status,
         headers = headersOf(HttpHeaders.ContentType, "application/json"),
     )
+}
+
+private class InMemoryCredentialStore(
+    private var credentials: TrackingLoginCredentials? = TrackingLoginCredentials(secret = "token"),
+) : TrackingCredentialStore {
+
+    override suspend fun load() = credentials
+
+    override suspend fun save(credentials: TrackingLoginCredentials) {
+        this.credentials = credentials
+    }
+
+    override suspend fun clear() {
+        credentials = null
+    }
 }

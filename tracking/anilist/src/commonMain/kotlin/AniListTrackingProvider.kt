@@ -11,7 +11,14 @@ import io.ktor.client.plugins.ClientRequestException
 import io.ktor.client.plugins.ResponseException
 import io.ktor.http.HttpStatusCode
 import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
+import me.him188.ani.tracking.api.TrackingAccount
+import me.him188.ani.tracking.api.TrackingAccountState
+import me.him188.ani.tracking.api.TrackingCapabilities
+import me.him188.ani.tracking.api.TrackingCredentialStore
 import me.him188.ani.tracking.api.TrackingListEntry
+import me.him188.ani.tracking.api.TrackingLoginCredentials
 import me.him188.ani.tracking.api.TrackingMedia
 import me.him188.ani.tracking.api.TrackingMediaId
 import me.him188.ani.tracking.api.TrackingMediaWithEntry
@@ -20,41 +27,113 @@ import me.him188.ani.tracking.api.TrackingProviderException
 import me.him188.ani.tracking.api.TrackingProviderId
 import me.him188.ani.tracking.api.TrackingProviderInfo
 import me.him188.ani.tracking.api.TrackingScore
+import me.him188.ani.tracking.api.TrackingScoreOption
 import me.him188.ani.tracking.api.TrackingStatus
+import me.him188.ani.tracking.api.TrackingStatusOption
 
 class AniListTrackingProvider(
     client: HttpClient,
-    private val accessToken: suspend () -> String,
+    private val credentialStore: TrackingCredentialStore,
 ) : TrackingProvider {
     private val api = AniListApi(client)
-    override val info = INFO
+    private val mutableAccountState = MutableStateFlow<TrackingAccountState>(TrackingAccountState.LoggedOut)
+    private var scoreFormat = POINT_100
 
-    override suspend fun searchAnime(query: String): List<TrackingMedia> = call {
-        require(query.isNotBlank()) { "Search query must not be blank" }
-        api.search(query, accessToken()).map { it.toTrackingMedia() }
+    override val info = INFO
+    override val capabilities = TrackingCapabilities(
+        supportsStartAndCompletionDates = true,
+        supportsPrivateEntries = true,
+    )
+    override val accountState: StateFlow<TrackingAccountState> = mutableAccountState
+    override val statusOptions = listOf(
+        TrackingStatusOption(TrackingStatus.CURRENT, "Watching"),
+        TrackingStatusOption(TrackingStatus.COMPLETED, "Completed"),
+        TrackingStatusOption(TrackingStatus.PAUSED, "Paused"),
+        TrackingStatusOption(TrackingStatus.DROPPED, "Dropped"),
+        TrackingStatusOption(TrackingStatus.PLANNING, "Planning"),
+        TrackingStatusOption(TrackingStatus.REPEATING, "Rewatching"),
+    )
+    override val scoreOptions: List<TrackingScoreOption>
+        get() = scoreOptions(scoreFormat)
+
+    override suspend fun login(credentials: TrackingLoginCredentials): TrackingAccount = call {
+        val viewer = api.viewer(credentials.secret)
+        credentialStore.save(credentials)
+        viewer.applyToAccountState()
     }
 
-    override suspend fun getAnime(mediaId: TrackingMediaId): TrackingMediaWithEntry? = call {
-        api.getMedia(mediaId.asAniListId(), accessToken())?.let {
+    override suspend fun refreshAccount(): TrackingAccount = call {
+        val credentials = credentialStore.load() ?: run {
+            mutableAccountState.value = TrackingAccountState.LoggedOut
+            throw TrackingProviderException.Unauthorized()
+        }
+        val previous = (mutableAccountState.value as? TrackingAccountState.LoggedIn)?.account
+        mutableAccountState.value = TrackingAccountState.Refreshing(previous)
+        try {
+            api.viewer(credentials.secret).applyToAccountState()
+        } catch (failure: Throwable) {
+            mutableAccountState.value = previous?.let(TrackingAccountState::LoggedIn) ?: TrackingAccountState.LoggedOut
+            throw failure
+        }
+    }
+
+    override suspend fun logout() {
+        credentialStore.clear()
+        mutableAccountState.value = TrackingAccountState.LoggedOut
+    }
+
+    override suspend fun search(query: String): List<TrackingMedia> = call {
+        require(query.isNotBlank()) { "Search query must not be blank" }
+        api.search(query, token()).map { it.toTrackingMedia() }
+    }
+
+    override suspend fun prepareBinding(mediaId: TrackingMediaId): TrackingMediaWithEntry? = refresh(mediaId)
+
+    override suspend fun bind(entry: TrackingListEntry): TrackingListEntry = save(entry)
+
+    override suspend fun update(entry: TrackingListEntry, didWatchEpisode: Boolean): TrackingListEntry {
+        if (!didWatchEpisode || entry.status == TrackingStatus.COMPLETED) return save(entry)
+        val totalEpisodes = refresh(entry.mediaId)?.media?.totalEpisodes
+        val transitioned = when {
+            totalEpisodes != null && entry.progress >= totalEpisodes ->
+                entry.copy(status = TrackingStatus.COMPLETED)
+            entry.status != TrackingStatus.REPEATING -> entry.copy(status = TrackingStatus.CURRENT)
+            else -> entry
+        }
+        return save(transitioned)
+    }
+
+    override suspend fun refresh(mediaId: TrackingMediaId): TrackingMediaWithEntry? = call {
+        api.getMedia(mediaId.asAniListId(), token())?.let {
             TrackingMediaWithEntry(it.toTrackingMedia(), it.mediaListEntry?.toTrackingEntry())
         }
     }
 
-    override suspend fun saveListEntry(entry: TrackingListEntry): TrackingListEntry = call {
+    override suspend fun delete(mediaId: TrackingMediaId): Unit = call {
+        val token = token()
+        val entryId = api.getMedia(mediaId.asAniListId(), token)?.mediaListEntry?.id ?: return@call
+        if (!api.delete(entryId, token)) {
+            throw TrackingProviderException.Remote("AniList did not delete list entry $entryId")
+        }
+    }
+
+    private suspend fun save(entry: TrackingListEntry): TrackingListEntry = call {
         api.save(
             mediaId = entry.mediaId.asAniListId(),
             status = entry.status.toAniListStatus(),
             score = entry.score.value,
             progress = entry.progress,
-            token = accessToken(),
+            token = token(),
         ).toTrackingEntry()
     }
 
-    override suspend fun deleteListEntry(mediaId: TrackingMediaId): Unit = call {
-        val token = accessToken()
-        val entryId = api.getMedia(mediaId.asAniListId(), token)?.mediaListEntry?.id ?: return@call
-        if (!api.delete(entryId, token)) {
-            throw TrackingProviderException.Remote("AniList did not delete list entry $entryId")
+    private suspend fun token(): String = credentialStore.load()?.secret
+        ?: throw TrackingProviderException.Unauthorized()
+
+    private fun AniListViewer.applyToAccountState(): TrackingAccount {
+        scoreFormat = mediaListOptions.scoreFormat
+        return TrackingAccount(id.toString(), name, avatar?.large).also {
+            mutableAccountState.value = TrackingAccountState.LoggedIn(it)
         }
     }
 
@@ -79,12 +158,30 @@ class AniListTrackingProvider(
     }
 
     companion object {
+        private const val POINT_100 = "POINT_100"
+
         val INFO = TrackingProviderInfo(
             id = TrackingProviderId("anilist"),
             displayName = "AniList",
             websiteUrl = "https://anilist.co",
         )
     }
+}
+
+private fun scoreOptions(format: String): List<TrackingScoreOption> = when (format) {
+    "POINT_100" -> (0..100).map { TrackingScoreOption(TrackingScore(it), it.toString()) }
+    "POINT_10" -> (0..10).map { TrackingScoreOption(TrackingScore(it * 10), it.toString()) }
+    "POINT_10_DECIMAL" -> (0..100).map { TrackingScoreOption(TrackingScore(it), (it / 10f).toString()) }
+    "POINT_5" -> (0..5).map { index ->
+        TrackingScoreOption(TrackingScore(if (index == 0) 0 else index * 20 - 10), "$index ★")
+    }
+    "POINT_3" -> listOf(
+        TrackingScoreOption(TrackingScore(0), "-"),
+        TrackingScoreOption(TrackingScore(35), "😦"),
+        TrackingScoreOption(TrackingScore(60), "😐"),
+        TrackingScoreOption(TrackingScore(85), "😊"),
+    )
+    else -> throw TrackingProviderException.Remote("Unknown AniList score format: $format")
 }
 
 private fun AniListMedia.toTrackingMedia() = TrackingMedia(
