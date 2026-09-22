@@ -136,6 +136,7 @@ includeProject(":client")
 
 // external tracking targets
 includeProject(":tracking:api", "tracking/api")
+includeProject(":tracking:anilist", "tracking/anilist")
 
 // server
 //includeProject(":server:core", "server/core") // server core
