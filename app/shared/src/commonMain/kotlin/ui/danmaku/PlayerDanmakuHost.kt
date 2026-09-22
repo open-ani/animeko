@@ -20,9 +20,6 @@ import org.openani.mediamp.MediampPlayer
 
 /**
  * A [DanmakuHost] that is connected with the [player].
- *
- * @param forcePaused 强制冻结弹幕 (不跟随 [player] 播放状态). 用于画中画小窗模式:
- * 小窗不显示弹幕, 但保持组合与事件收集, 退出小窗后弹幕从冻结位置无缝恢复.
  */
 @Composable
 fun PlayerDanmakuHost(
@@ -30,16 +27,10 @@ fun PlayerDanmakuHost(
     danmakuHostState: DanmakuHostState,
     danmakuEvent: Flow<UIDanmakuEvent>,
     modifier: Modifier = Modifier,
-    forcePaused: Boolean = false,
 ) {
-    LaunchedEffect(player, danmakuHostState, forcePaused) {
-        if (forcePaused) {
-            // 冻结弹幕时钟; 事件收集由下方的 effect 继续, 语义与"后台暂停"一致
-            danmakuHostState.setPaused(true)
-        } else {
-            player.state.collect {
-                danmakuHostState.setPaused(!it.isPlaying)
-            }
+    LaunchedEffect(player, danmakuHostState) {
+        player.state.collect {
+            danmakuHostState.setPaused(!it.isPlaying)
         }
     }
     LaunchedEffect(danmakuEvent, danmakuHostState) {

@@ -67,7 +67,6 @@ import androidx.compose.runtime.setValue
 import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.drawWithContent
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.graphics.Brush
@@ -1088,15 +1087,9 @@ private fun EpisodeVideo(
             )
         },
         danmakuHost = {
-            PlayerDanmakuHost(
-                vm.player, danmakuHostState, vm.uiDanmakuEventFlow,
-                modifier = Modifier.drawWithContent {
-                    // 小窗模式不绘制弹幕; host 保持组合并由 forcePaused 冻结,
-                    // 事件收集不中断, 退出小窗后弹幕从冻结位置无缝恢复
-                    if (!isInPictureInPicture) drawContent()
-                },
-                forcePaused = isInPictureInPicture,
-            )
+            if (!isInPictureInPicture) {
+                PlayerDanmakuHost(vm.player, danmakuHostState, vm.uiDanmakuEventFlow)
+            }
         },
         danmakuEnabled = page.danmakuEnabled,
         onToggleDanmaku = { vm.setDanmakuEnabled(!page.danmakuEnabled) },

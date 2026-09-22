@@ -17,6 +17,7 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.RowScope
 import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
@@ -264,15 +265,13 @@ internal fun EpisodeVideoImpl(
     // 若在此处切换到另一组合子树, 原 VideoPlayer(UIKitView) 会被 dispose,
     // AVPictureInPictureController 持有的 AVPlayerLayer 随之失效, 小窗立即关闭且之后无法再启动
     if (isInPictureInPicture && !LocalPlatform.current.isIos()) {
-        // 画中画小窗模式: 只渲染视频与弹幕 host, 不渲染任何交互 UI (小窗内不可交互).
-        // 弹幕 host 保持组合并由上层冻结/不绘制, 退出小窗后无缝恢复, 见 EpisodePage 的 PiP 策略 effect.
-        Box(modifier.background(Color.Black)) {
+        // 画中画小窗只渲染视频, 交互由系统提供.
+        Box(modifier.fillMaxSize().background(Color.Black)) {
             if (LocalIsPreviewing.current) {
                 Text(previewModeText)
             } else {
                 VideoPlayer(playerState, Modifier.matchParentSize())
             }
-            danmakuHost()
         }
         return
     }

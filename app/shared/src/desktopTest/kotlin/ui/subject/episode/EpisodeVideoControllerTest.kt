@@ -11,6 +11,7 @@ package me.him188.ani.app.ui.subject.episode
 
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.size
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
@@ -28,9 +29,12 @@ import androidx.compose.ui.input.key.Key
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.test.SemanticsNodeInteraction
 import androidx.compose.ui.test.SemanticsNodeInteractionsProvider
+import androidx.compose.ui.test.assertHeightIsEqualTo
+import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.assertIsFocused
 import androidx.compose.ui.test.assertIsNotFocused
 import androidx.compose.ui.test.assertTextEquals
+import androidx.compose.ui.test.assertWidthIsEqualTo
 import androidx.compose.ui.test.click
 import androidx.compose.ui.test.isRoot
 import androidx.compose.ui.test.onAllNodesWithText
@@ -48,6 +52,7 @@ import androidx.compose.ui.test.performMouseInput
 import androidx.compose.ui.test.performTouchInput
 import androidx.compose.ui.test.pressKey
 import androidx.compose.ui.test.swipe
+import androidx.compose.ui.unit.dp
 import kotlinx.collections.immutable.persistentListOf
 import kotlinx.coroutines.flow.MutableStateFlow
 import me.him188.ani.app.data.models.preference.DarkMode
@@ -241,6 +246,9 @@ class EpisodeVideoControllerTest {
         fullscreenState: PlayerFullscreenState = remember(expanded) { TestFullscreenState(expanded) },
         framePreview: MediaProgressFramePreviewState? = null,
         cacheChunkState: ChunkState = ChunkState.NONE,
+        isInPictureInPicture: Boolean = false,
+        danmakuEnabled: Boolean = false,
+        danmakuHost: @Composable () -> Unit = {},
     ) {
         ProvideCompositionLocalsForPreview(darkMode = DarkMode.DARK) {
             val actualWatchTogetherPlayerController = watchTogetherPlayerController
@@ -270,8 +278,8 @@ class EpisodeVideoControllerTest {
                     playerControllerState = playerControllerState,
                     opEdSkipDuration = opEdSkipDuration,
                     title = { PlayerTopBar() },
-                    danmakuHost = {},
-                    danmakuEnabled = false,
+                    danmakuHost = danmakuHost,
+                    danmakuEnabled = danmakuEnabled,
                     onToggleDanmaku = onToggleDanmaku,
                     videoLoadingStateFlow = remember { MutableStateFlow(VideoLoadingState.Succeed(isBt = true)) },
                     fullscreenState = fullscreenState,
@@ -384,9 +392,33 @@ class EpisodeVideoControllerTest {
                     shareData = MediaShareData(null, null),
                     onClickCache = {},
                     modifier = Modifier.testTag("PLAYER"),
+                    isInPictureInPicture = isInPictureInPicture,
                 )
             }
         }
+    }
+
+    @Test
+    fun `picture in picture omits danmaku and fills viewport`() = runAniComposeUiTest {
+        var isInPictureInPicture by mutableStateOf(false)
+        setContent {
+            Box(Modifier.size(320.dp, 180.dp)) {
+                Player(
+                    gestureFamily = GestureFamily.TOUCH,
+                    isInPictureInPicture = isInPictureInPicture,
+                    danmakuEnabled = true,
+                    danmakuHost = { Box(Modifier.fillMaxSize().testTag("danmakuHost")) },
+                )
+            }
+        }
+
+        onNodeWithTag("danmakuHost").assertIsDisplayed()
+        runOnIdle { isInPictureInPicture = true }
+        onNodeWithTag("danmakuHost").assertDoesNotExist()
+        player.assertWidthIsEqualTo(320.dp).assertHeightIsEqualTo(180.dp)
+
+        runOnIdle { isInPictureInPicture = false }
+        onNodeWithTag("danmakuHost").assertIsDisplayed()
     }
 
     /**
