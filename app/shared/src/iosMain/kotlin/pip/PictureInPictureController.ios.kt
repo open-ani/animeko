@@ -46,6 +46,11 @@ import platform.darwin.dispatch_get_main_queue
 
 @Composable
 actual fun rememberPictureInPictureController(player: MediampPlayer): PictureInPictureController {
+    // AVKit 在不支持 PiP 的设备上初始化控制器会返回 nil.
+    if (!remember { AVPictureInPictureController.isPictureInPictureSupported() }) {
+        return NoOpPictureInPictureController
+    }
+
     // layer 由 VideoPlayer 的 UIKitView factory 异步创建, 通过版本号感知
     val version by IosVideoLayerRegistry.version.collectAsState()
     val layer = remember(player, version) { player.findIosVideoLayer() }
