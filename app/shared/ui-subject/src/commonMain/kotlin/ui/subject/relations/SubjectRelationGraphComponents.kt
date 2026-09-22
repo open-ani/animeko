@@ -38,6 +38,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.graphics.drawscope.Stroke
@@ -63,6 +64,7 @@ import me.him188.ani.app.ui.lang.subject_relation_graph_episodes
 import me.him188.ani.app.ui.lang.subject_relation_graph_label_current
 import me.him188.ani.app.ui.lang.subject_relation_graph_ordinal
 import me.him188.ani.app.ui.lang.subject_relation_graph_platform_movie
+import me.him188.ani.app.ui.lang.subject_relation_graph_platform_special
 import me.him188.ani.app.ui.lang.subject_relation_graph_show_less
 import me.him188.ani.app.ui.lang.subject_relation_graph_show_more
 import me.him188.ani.app.ui.subject.details.components.renderSubjectRelation
@@ -99,6 +101,12 @@ internal object SubjectRelationGraphDefaults {
     val BranchCoverWidth = 40.dp
     val BranchCoverHeight = 56.dp
 
+    /** 支线的位置, 相对相关条目列表的左边缘. 列表左边缘与主线海报对齐, 因此支线从海报下方垂下 */
+    val BranchRailX = 12.dp
+
+    /** 有支线时相关条目的缩进: 支线和折线之后才是封面 */
+    val BranchIndent = 32.dp
+
     /** 相关条目超过这个数量时, 其余的折叠 */
     const val COLLAPSED_BRANCH_COUNT_COMPACT = 3
     const val COLLAPSED_BRANCH_COUNT_WIDE = 4
@@ -109,7 +117,10 @@ internal enum class TimelineDot { CURRENT, REACHED, UPCOMING }
 internal enum class TimelineLine { NONE, REACHED, UPCOMING }
 
 /**
- * 在左侧画纵向时间线: 一条贯穿整个高度的线, 以及位于 [dotCenterY] 的节点圆点.
+ * 在左侧画纵向时间线: 一条贯穿整个高度的线, 位于 [dotCenterY] 的节点圆点, 以及从圆点向右连到条目的横线.
+ * 横线让条目挂在时间线上, 与条目下方挂着相关条目的支线构成同一棵树.
+ *
+ * @param tickEndX 横线的右端, 即条目的左边缘
  */
 internal fun Modifier.timelineVertical(
     colors: TimelineColors,
@@ -117,11 +128,14 @@ internal fun Modifier.timelineVertical(
     dot: TimelineDot,
     lineBefore: TimelineLine,
     lineAfter: TimelineLine,
+    tickEndX: Dp,
     centerX: Dp = 12.dp,
 ): Modifier = drawBehind {
     val center = Offset(centerX.toPx(), dotCenterY.toPx())
     drawTimelineLine(colors, lineBefore, Offset(center.x, 0f), center)
     drawTimelineLine(colors, lineAfter, center, Offset(center.x, size.height))
+    val tick = if (dot == TimelineDot.UPCOMING) TimelineLine.UPCOMING else TimelineLine.REACHED
+    drawTimelineLine(colors, tick, center, Offset(tickEndX.toPx(), center.y))
     drawTimelineDot(colors, dot, center)
 }
 
@@ -139,6 +153,33 @@ internal fun Modifier.timelineHorizontal(
     drawTimelineLine(colors, lineBefore, Offset(0f, center.y), center)
     drawTimelineLine(colors, lineAfter, center, Offset(size.width, center.y))
     drawTimelineDot(colors, dot, center)
+}
+
+/**
+ * 在相关条目左侧画支线: 从上方垂下的竖线, 在条目的垂直中心以圆角折向右侧的封面.
+ *
+ * 每个条目只画自己的一段, 各段首尾相接成一条从主线条目延伸下来的支线.
+ *
+ * @param topExtent 竖线向上超出这个条目的距离: 与上一个条目的间距, 第一个条目则是到主线海报底部的距离
+ * @param isLast 最后一个条目的竖线止于折角, 否则贯穿到底部
+ */
+private fun Modifier.branchConnector(color: Color, topExtent: Dp, isLast: Boolean): Modifier = drawBehind {
+    val railX = SubjectRelationGraphDefaults.BranchRailX.toPx()
+    val endX = (SubjectRelationGraphDefaults.BranchIndent - 6.dp).toPx()
+    val centerY = size.height / 2
+    val radius = 8.dp.toPx()
+    val path = Path().apply {
+        moveTo(railX, -topExtent.toPx())
+        lineTo(railX, centerY - radius)
+        quadraticTo(railX, centerY, railX + radius, centerY)
+        lineTo(endX, centerY)
+        if (!isLast) {
+            moveTo(railX, centerY - radius)
+            lineTo(railX, size.height)
+        }
+    }
+    // 平头线帽: 相邻两段首尾相接而不重叠, 半透明颜色不会在接缝处叠深
+    drawPath(path, color, style = Stroke(1.5.dp.toPx()))
 }
 
 private fun DrawScope.drawTimelineLine(colors: TimelineColors, line: TimelineLine, start: Offset, end: Offset) {
@@ -202,7 +243,7 @@ internal fun SubjectRelationGraphPoster(
                 overflow = TextOverflow.Ellipsis,
             )
             Text(
-                renderPlatformAndEpisodes(subject, omitMovie = node.isMovie),
+                renderPlatformAndEpisodes(subject, omitLabeledPlatform = node.isMinor),
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                 maxLines = 1,
@@ -256,7 +297,7 @@ internal fun SubjectRelationGraphCompactCard(
                 Text(
                     listOfNotNull(
                         renderYear(subject),
-                        renderPlatformAndEpisodes(subject, omitMovie = node.isMovie).ifEmpty { null },
+                        renderPlatformAndEpisodes(subject, omitLabeledPlatform = node.isMinor).ifEmpty { null },
                     )
                         .joinToString(" · "),
                     style = MaterialTheme.typography.bodySmall,
@@ -269,13 +310,17 @@ internal fun SubjectRelationGraphCompactCard(
 }
 
 /**
- * "第 N 部" 或 "剧场版", 当前条目后接 "· 当前" 并使用主色.
+ * "第 N 部", 非正片条目为 "剧场版", "OVA" 或 "特别篇". 当前条目后接 "· 当前" 并使用主色.
  */
 @Composable
 private fun MainNodeLabel(node: SubjectRelationGraphMainNode, ordinal: Int?, isCurrent: Boolean) {
     val label = when {
         ordinal != null -> stringResource(Lang.subject_relation_graph_ordinal, ordinal)
-        else -> stringResource(Lang.subject_relation_graph_platform_movie)
+        else -> when (node.subject.platform) {
+            SubjectRelationGraphPlatform.MOVIE -> stringResource(Lang.subject_relation_graph_platform_movie)
+            SubjectRelationGraphPlatform.OVA -> "OVA"
+            else -> stringResource(Lang.subject_relation_graph_platform_special)
+        }
     }
     Text(
         if (isCurrent) stringResource(Lang.subject_relation_graph_label_current, label) else label,
@@ -293,6 +338,8 @@ private fun MainNodeLabel(node: SubjectRelationGraphMainNode, ordinal: Int?, isC
  *
  * @param seriesName 系列名称. 以它开头的条目名称只显示后面的部分, 例如 "雪之回忆".
  * @param nameMaxLines 窄列中名称可以换行
+ * @param connectorTopExtent 非 `null` 时条目向右缩进, 左侧画一条从主线条目延伸下来的支线连接每个条目.
+ * 值为列表顶部到主线海报底部的距离.
  */
 @Composable
 internal fun SubjectRelationGraphBranchList(
@@ -303,25 +350,40 @@ internal fun SubjectRelationGraphBranchList(
     nameMaxLines: Int,
     onClick: (SubjectRelationGraphSubject) -> Unit,
     modifier: Modifier = Modifier,
+    connectorTopExtent: Dp? = null,
 ) {
     if (branches.isEmpty()) return
     val canCollapse = branches.size > collapsedCount
     var expanded by rememberSaveable(branches, currentSubjectId) {
         mutableStateOf(branches.drop(collapsedCount).any { it.subject.subjectId == currentSubjectId })
     }
-    Column(modifier, verticalArrangement = Arrangement.spacedBy(6.dp)) {
+    val spacing = 6.dp
+    // 与主时间线未到达的部分同色, 但更细
+    val connectorColor = MaterialTheme.colorScheme.outline.copy(alpha = 0.5f)
+    Column(modifier, verticalArrangement = Arrangement.spacedBy(spacing)) {
         val visible = if (canCollapse && !expanded) branches.take(collapsedCount) else branches
-        for (branch in visible) {
+        visible.forEachIndexed { index, branch ->
             BranchRow(
                 branch,
                 name = remember(branch, seriesName) { branch.subject.displayName.removeSeriesPrefix(seriesName) },
                 isCurrent = branch.subject.subjectId == currentSubjectId,
                 nameMaxLines = nameMaxLines,
                 onClick = { onClick(branch.subject) },
+                if (connectorTopExtent == null) Modifier else Modifier.branchConnector(
+                    connectorColor,
+                    topExtent = if (index == 0) connectorTopExtent else spacing,
+                    isLast = index == visible.lastIndex,
+                ).padding(start = SubjectRelationGraphDefaults.BranchIndent),
             )
         }
         if (canCollapse) {
-            TextButton({ expanded = !expanded }) {
+            TextButton(
+                { expanded = !expanded },
+                // 按钮文字与条目封面对齐
+                if (connectorTopExtent == null) Modifier else Modifier.padding(
+                    start = SubjectRelationGraphDefaults.BranchIndent - TEXT_BUTTON_HORIZONTAL_PADDING,
+                ),
+            ) {
                 Text(
                     if (expanded) {
                         stringResource(Lang.subject_relation_graph_show_less)
@@ -455,11 +517,13 @@ internal fun renderYear(subject: SubjectRelationGraphSubject): String? =
 /**
  * 例如 "TV · 25 话". 未知的部分省略; 只有一集 (剧场版, OVA) 时不显示集数.
  *
- * @param omitMovie 不显示 "剧场版". 主线上的剧场版已经用 "剧场版" 代替了 "第几部".
+ * @param omitLabeledPlatform 不显示 "剧场版" 和 "OVA". 主线上的非正片条目已经用它们代替了 "第几部".
  */
 @Composable
-private fun renderPlatformAndEpisodes(subject: SubjectRelationGraphSubject, omitMovie: Boolean): String {
-    val platform = when (subject.platform.takeUnless { omitMovie && it == SubjectRelationGraphPlatform.MOVIE }) {
+private fun renderPlatformAndEpisodes(subject: SubjectRelationGraphSubject, omitLabeledPlatform: Boolean): String {
+    val isLabeled = subject.platform == SubjectRelationGraphPlatform.MOVIE ||
+            subject.platform == SubjectRelationGraphPlatform.OVA
+    val platform = when (subject.platform.takeUnless { omitLabeledPlatform && isLabeled }) {
         SubjectRelationGraphPlatform.TV -> "TV"
         SubjectRelationGraphPlatform.OVA -> "OVA"
         SubjectRelationGraphPlatform.WEB -> "WEB"
@@ -473,3 +537,6 @@ private fun renderPlatformAndEpisodes(subject: SubjectRelationGraphSubject, omit
 }
 
 private val PosterBadgeColor = Color(0xC7141218)
+
+/** [TextButton] 内容的水平内边距 */
+private val TEXT_BUTTON_HORIZONTAL_PADDING = 12.dp

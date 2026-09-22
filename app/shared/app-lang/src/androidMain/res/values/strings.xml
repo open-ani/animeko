@@ -1162,6 +1162,7 @@
     <string name="subject_relation_graph_truncated">This series is too large. Only part of it is shown.</string>
     <string name="subject_relation_graph_episodes">%1$d eps</string>
     <string name="subject_relation_graph_platform_movie">Movie</string>
+    <string name="subject_relation_graph_platform_special">Special</string>
     <string name="subject_details_prev_page">Previous page</string>
     <string name="subject_details_next_page">Next page</string>
     <string name="subject_details_air_date_format">%1$s/%2$s/%3$s</string>

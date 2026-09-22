@@ -1202,6 +1202,7 @@
     <string name="subject_relation_graph_truncated">系列过大，仅显示部分条目</string>
     <string name="subject_relation_graph_episodes">%1$d 话</string>
     <string name="subject_relation_graph_platform_movie">剧场版</string>
+    <string name="subject_relation_graph_platform_special">特别篇</string>
     <string name="subject_details_prev_page">上一页</string>
     <string name="subject_details_next_page">下一页</string>
     <string name="subject_details_air_date_format">%1$s 年 %2$s 月 %3$s 日</string>

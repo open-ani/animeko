@@ -160,14 +160,14 @@ internal class SubjectRelationGraphPresentation(
     }
 
     /**
-     * 每个主线条目是 "第几部". 剧场版不计数, 为 `null`.
+     * 每个主线条目是 "第几部". 非正片条目不计数, 为 `null`.
      */
     val ordinals: List<Int?> = run {
         var count = 0
-        graph.mainline.map { if (it.isMovie) null else ++count }
+        graph.mainline.map { if (it.isMinor) null else ++count }
     }
 
-    val seriesName: String = (graph.mainline.firstOrNull { !it.isMovie } ?: graph.mainline.firstOrNull())
+    val seriesName: String = (graph.mainline.firstOrNull { !it.isMinor } ?: graph.mainline.firstOrNull())
         ?.subject?.displayName.orEmpty()
 
     /** 时间线走到 [index] 处是否已经经过用户查看的条目 */
@@ -205,10 +205,15 @@ internal fun SubjectRelationGraphColumn(
                     dot = timelineDot(presentation, index),
                     lineBefore = timelineLine(presentation, index, before = true),
                     lineAfter = timelineLine(presentation, index, before = false),
+                    tickEndX = TIMELINE_GUTTER + SubjectRelationGraphDefaults.CompactCardPadding,
                 ),
             ) {
-                Spacer(Modifier.width(32.dp))
-                Column(Modifier.weight(1f).padding(bottom = 16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                Spacer(Modifier.width(TIMELINE_GUTTER))
+                val branchListSpacing = 8.dp
+                Column(
+                    Modifier.weight(1f).padding(bottom = 16.dp),
+                    verticalArrangement = Arrangement.spacedBy(branchListSpacing),
+                ) {
                     SubjectRelationGraphCompactCard(
                         node,
                         ordinal = presentation.ordinals[index],
@@ -223,7 +228,9 @@ internal fun SubjectRelationGraphColumn(
                         collapsedCount = SubjectRelationGraphDefaults.COLLAPSED_BRANCH_COUNT_COMPACT,
                         nameMaxLines = 1,
                         onClick = onClickSubject,
-                        Modifier.padding(horizontal = 8.dp),
+                        // 列表左边缘与海报对齐, 支线从海报底部垂下
+                        Modifier.padding(horizontal = SubjectRelationGraphDefaults.CompactCardPadding),
+                        connectorTopExtent = SubjectRelationGraphDefaults.CompactCardPadding + branchListSpacing,
                     )
                 }
             }
@@ -409,6 +416,8 @@ private fun TruncatedHint(modifier: Modifier = Modifier) {
     )
 }
 
+/** 手机上时间线到主线卡片的距离 */
+private val TIMELINE_GUTTER = 32.dp
 private val WIDE_LAYOUT_MIN_WIDTH = 600.dp
 private val WIDE_COLUMN_WIDTH = 204.dp
 private val WHEEL_SCROLL_STEP = 64.dp

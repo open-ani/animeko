@@ -42,30 +42,48 @@ class SubjectRelationGraphMappingTest {
     )
 
     /**
-     * 服务器对 "鬼灭之刃 游郭篇" 的真实响应 (省略了 edges 和图片)
+     * 服务器对 "鬼灭之刃 游郭篇" 的响应 (省略了 edges 和图片). 前传/续集链上的总集篇已由服务器挂到前面最近的正片下
      */
     private val kimetsu = decode(
         """
-{"subjectId": 328195, "mainline": [294137, 245665, 291494, 349032, 349033, 317002, 322102, 350764, 328195, 422759, 369768, 484412, 441939, 569579, 501958, 501960, 501961], "truncated": false, "edges": [], "nodes": [
-    {"id": 294137, "name": "鬼滅の刃 兄妹の絆", "nameCn": "鬼灭之刃 兄妹的羁绊", "imageLarge": "", "airDate": "2019-03-29", "platform": 3, "episodeCount": 1, "compilation": true, "role": "MAIN_MINOR"},
+{"subjectId": 328195, "mainline": [245665, 291494, 350764, 328195, 369768, 441939, 501958, 501960, 501961], "truncated": false, "edges": [], "nodes": [
     {"id": 245665, "name": "鬼滅の刃", "nameCn": "鬼灭之刃", "imageLarge": "", "airDate": "2019-04-06", "platform": 1, "episodeCount": 26, "compilation": false, "role": "MAIN"},
     {"id": 291494, "name": "劇場版 鬼滅の刃 無限列車編", "nameCn": "剧场版 鬼灭之刃 无限列车篇", "imageLarge": "", "airDate": "2020-10-16", "platform": 3, "episodeCount": 1, "compilation": false, "role": "MAIN_MINOR"},
-    {"id": 349032, "name": "鬼滅の刃 浅草編", "nameCn": "鬼灭之刃 浅草篇", "imageLarge": "", "airDate": "2021-09-12", "platform": 1, "episodeCount": 1, "compilation": true, "role": "MAIN_MINOR"},
-    {"id": 349033, "name": "鬼滅の刃 鼓屋敷編", "nameCn": "鬼灭之刃 鼓屋敷篇", "imageLarge": "", "airDate": "2021-09-18", "platform": 1, "episodeCount": 1, "compilation": true, "role": "MAIN_MINOR"},
-    {"id": 317002, "name": "鬼滅の刃 那田蜘蛛山編", "nameCn": "鬼灭之刃 那田蜘蛛山篇", "imageLarge": "", "airDate": "2020-10-17", "platform": 1, "episodeCount": 1, "compilation": true, "role": "MAIN_MINOR"},
-    {"id": 322102, "name": "鬼滅の刃 柱合会議・蝶屋敷編", "nameCn": "鬼灭之刃 柱合会议・蝶屋敷篇", "imageLarge": "", "airDate": "2020-12-20", "platform": 1, "episodeCount": 1, "compilation": true, "role": "MAIN_MINOR"},
     {"id": 350764, "name": "鬼滅の刃 無限列車編", "nameCn": "鬼灭之刃 无限列车篇", "imageLarge": "", "airDate": "2021-10-10", "platform": 1, "episodeCount": 7, "compilation": false, "role": "MAIN_MINOR"},
     {"id": 328195, "name": "鬼滅の刃 遊郭編", "nameCn": "鬼灭之刃 游郭篇", "imageLarge": "", "airDate": "2021-12-05", "platform": 1, "episodeCount": 11, "compilation": false, "role": "MAIN"},
-    {"id": 422759, "name": "鬼滅の刃 遊郭編 特別編集版", "nameCn": "鬼灭之刃 游郭篇 特別编集版", "imageLarge": "", "airDate": "2023-04-01", "platform": 1, "episodeCount": 2, "compilation": true, "role": "MAIN_MINOR"},
     {"id": 369768, "name": "鬼滅の刃 刀鍛冶の里編", "nameCn": "鬼灭之刃 刀匠村篇", "imageLarge": "", "airDate": "2023-04-09", "platform": 1, "episodeCount": 11, "compilation": false, "role": "MAIN"},
-    {"id": 484412, "name": "鬼滅の刃 刀鍛冶の里編 特別編集版", "nameCn": "鬼灭之刃 刀匠村篇 特別编集版", "imageLarge": "", "airDate": "2024-05-04", "platform": 1, "episodeCount": 2, "compilation": true, "role": "MAIN_MINOR"},
     {"id": 441939, "name": "鬼滅の刃 柱稽古編", "nameCn": "鬼灭之刃 柱训练篇", "imageLarge": "", "airDate": "2024-05-12", "platform": 1, "episodeCount": 8, "compilation": false, "role": "MAIN"},
-    {"id": 569579, "name": "鬼滅の刃 柱稽古編 特別編集版", "nameCn": "鬼灭之刃 柱训练篇 特別编集版", "imageLarge": "", "airDate": "2025-07-16", "platform": 1, "episodeCount": 2, "compilation": true, "role": "MAIN_MINOR"},
     {"id": 501958, "name": "劇場版 鬼滅の刃 無限城編 第一章 猗窩座再来", "nameCn": "剧场版 鬼灭之刃 无限城篇 第一章 猗窝座再袭", "imageLarge": "", "airDate": "2025-07-18", "platform": 3, "episodeCount": 1, "compilation": false, "role": "MAIN_MINOR"},
     {"id": 501960, "name": "劇場版 鬼滅の刃 無限城編 第二部", "nameCn": "剧场版 鬼灭之刃 无限城篇 第二部", "imageLarge": "", "airDate": "", "platform": 3, "episodeCount": 1, "compilation": false, "role": "MAIN_MINOR"},
     {"id": 501961, "name": "劇場版 鬼滅の刃 無限城編 第三部", "nameCn": "剧场版 鬼灭之刃 无限城篇 第三部", "imageLarge": "", "airDate": "", "platform": 3, "episodeCount": 1, "compilation": false, "role": "MAIN_MINOR"},
+    {"id": 294137, "name": "鬼滅の刃 兄妹の絆", "nameCn": "鬼灭之刃 兄妹的羁绊", "imageLarge": "", "airDate": "2019-03-29", "platform": 3, "episodeCount": 1, "compilation": true, "role": "SIDE", "attachTo": 245665, "relation": 4},
+    {"id": 317002, "name": "鬼滅の刃 那田蜘蛛山編", "nameCn": "鬼灭之刃 那田蜘蛛山篇", "imageLarge": "", "airDate": "2020-10-17", "platform": 1, "episodeCount": 1, "compilation": true, "role": "SIDE", "attachTo": 245665, "relation": 4},
+    {"id": 322102, "name": "鬼滅の刃 柱合会議・蝶屋敷編", "nameCn": "鬼灭之刃 柱合会议・蝶屋敷篇", "imageLarge": "", "airDate": "2020-12-20", "platform": 1, "episodeCount": 1, "compilation": true, "role": "SIDE", "attachTo": 245665, "relation": 4},
+    {"id": 349032, "name": "鬼滅の刃 浅草編", "nameCn": "鬼灭之刃 浅草篇", "imageLarge": "", "airDate": "2021-09-12", "platform": 1, "episodeCount": 1, "compilation": true, "role": "SIDE", "attachTo": 245665, "relation": 4},
+    {"id": 349033, "name": "鬼滅の刃 鼓屋敷編", "nameCn": "鬼灭之刃 鼓屋敷篇", "imageLarge": "", "airDate": "2021-09-18", "platform": 1, "episodeCount": 1, "compilation": true, "role": "SIDE", "attachTo": 245665, "relation": 4},
     {"id": 410499, "name": "鬼滅の刃 上弦集結、そして刀鍛冶の里へ", "nameCn": "鬼灭之刃 上弦集结、前往锻刀村", "imageLarge": "", "airDate": "2023-02-03", "platform": 3, "episodeCount": 1, "compilation": true, "role": "SIDE", "attachTo": 328195, "relation": 4},
-    {"id": 469668, "name": "鬼滅の刃 絆の奇跡、そして柱稽古へ", "nameCn": "鬼灭之刃 绊之奇迹，然后与柱训练", "imageLarge": "", "airDate": "2024-02-02", "platform": 3, "episodeCount": 1, "compilation": true, "role": "SIDE", "attachTo": 369768, "relation": 4}
+    {"id": 422759, "name": "鬼滅の刃 遊郭編 特別編集版", "nameCn": "鬼灭之刃 游郭篇 特別编集版", "imageLarge": "", "airDate": "2023-04-01", "platform": 1, "episodeCount": 2, "compilation": true, "role": "SIDE", "attachTo": 328195, "relation": 4},
+    {"id": 469668, "name": "鬼滅の刃 絆の奇跡、そして柱稽古へ", "nameCn": "鬼灭之刃 绊之奇迹，然后与柱训练", "imageLarge": "", "airDate": "2024-02-02", "platform": 3, "episodeCount": 1, "compilation": true, "role": "SIDE", "attachTo": 369768, "relation": 4},
+    {"id": 484412, "name": "鬼滅の刃 刀鍛冶の里編 特別編集版", "nameCn": "鬼灭之刃 刀匠村篇 特別编集版", "imageLarge": "", "airDate": "2024-05-04", "platform": 1, "episodeCount": 2, "compilation": true, "role": "SIDE", "attachTo": 369768, "relation": 4},
+    {"id": 569579, "name": "鬼滅の刃 柱稽古編 特別編集版", "nameCn": "鬼灭之刃 柱训练篇 特別编集版", "imageLarge": "", "airDate": "2025-07-16", "platform": 1, "episodeCount": 2, "compilation": true, "role": "SIDE", "attachTo": 441939, "relation": 4}
+]}
+        """.trimIndent(),
+    )
+
+    /**
+     * 服务器对 "进击的巨人 最终季 Part.2" 的响应的主线部分 (省略了分支, edges 和图片). 完结篇前后篇是 1 话的 TV 特别篇
+     */
+    private val aot = decode(
+        """
+{"subjectId": 331752, "mainline": [55770, 118335, 217300, 263750, 285666, 331752, 376739, 415779], "truncated": false, "edges": [], "nodes": [
+    {"id": 55770, "name": "進撃の巨人", "nameCn": "进击的巨人", "imageLarge": "", "airDate": "2013-04-06", "platform": 1, "episodeCount": 25, "compilation": false, "role": "MAIN"},
+    {"id": 118335, "name": "進撃の巨人 Season 2", "nameCn": "进击的巨人 第二季", "imageLarge": "", "airDate": "2017-04-01", "platform": 1, "episodeCount": 12, "compilation": false, "role": "MAIN"},
+    {"id": 217300, "name": "進撃の巨人 Season 3", "nameCn": "进击的巨人 第三季", "imageLarge": "", "airDate": "2018-07-22", "platform": 1, "episodeCount": 12, "compilation": false, "role": "MAIN"},
+    {"id": 263750, "name": "進撃の巨人 Season 3 Part.2", "nameCn": "进击的巨人 第三季 Part.2", "imageLarge": "", "airDate": "2019-04-28", "platform": 1, "episodeCount": 10, "compilation": false, "role": "MAIN"},
+    {"id": 285666, "name": "進撃の巨人 The Final Season", "nameCn": "进击的巨人 最终季", "imageLarge": "", "airDate": "2020-12-06", "platform": 1, "episodeCount": 16, "compilation": false, "role": "MAIN"},
+    {"id": 331752, "name": "進撃の巨人 The Final Season Part.2", "nameCn": "进击的巨人 最终季 Part.2", "imageLarge": "", "airDate": "2022-01-09", "platform": 1, "episodeCount": 12, "compilation": false, "role": "MAIN"},
+    {"id": 376739, "name": "進撃の巨人 The Final Season 完結編 前編", "nameCn": "进击的巨人 最终季 完结篇 前篇", "imageLarge": "", "airDate": "2023-03-03", "platform": 1, "episodeCount": 1, "compilation": false, "role": "MAIN_MINOR"},
+    {"id": 415779, "name": "進撃の巨人 The Final Season 完結編 後編", "nameCn": "进击的巨人 最终季 完结篇 后篇", "imageLarge": "", "airDate": "2023-11-04", "platform": 1, "episodeCount": 1, "compilation": false, "role": "MAIN_MINOR"}
 ]}
         """.trimIndent(),
     )
@@ -75,7 +93,7 @@ class SubjectRelationGraphMappingTest {
         val graph = railgun.toSubjectRelationGraph(emptyMap())
         assertEquals(97197, graph.subjectId)
         assertEquals(listOf(2585, 51928, 262940, 537743), graph.mainline.map { it.subject.subjectId })
-        assertFalse(graph.mainline.any { it.isMovie })
+        assertFalse(graph.mainline.any { it.isMinor })
         assertEquals(4, graph.mainCount)
         assertEquals(3, graph.branchCount)
 
@@ -137,12 +155,13 @@ class SubjectRelationGraphMappingTest {
     }
 
     @Test
-    fun `mainline has seasons and real movies only`() {
+    fun `mainline nodes other than seasons are minor`() {
         val graph = kimetsu.toSubjectRelationGraph(emptyMap())
         assertEquals(
             listOf(
                 245665 to false, // 鬼灭之刃
                 291494 to true, // 剧场版 无限列车篇
+                350764 to true, // 无限列车篇 TV 版, 7 话
                 328195 to false, // 游郭篇
                 369768 to false, // 刀匠村篇
                 441939 to false, // 柱训练篇
@@ -150,35 +169,32 @@ class SubjectRelationGraphMappingTest {
                 501960 to true,
                 501961 to true,
             ),
-            graph.mainline.map { it.subject.subjectId to it.isMovie },
+            graph.mainline.map { it.subject.subjectId to it.isMinor },
         )
     }
 
     @Test
-    fun `minor mainline subjects are listed under the preceding season`() {
+    fun `branches keep the server's grouping and order`() {
         val graph = kimetsu.toSubjectRelationGraph(emptyMap())
-        val first = graph.mainline[0]
         assertEquals(
-            listOf(
-                // 排在第一部之前的 "兄妹的羁绊" 是剧场版形式的总集篇, 不会成为主线的第一个条目
-                294137 to SubjectRelation.COMPILATION,
-                349032 to SubjectRelation.COMPILATION, // 浅草篇
-                349033 to SubjectRelation.COMPILATION,
-                317002 to SubjectRelation.COMPILATION,
-                322102 to SubjectRelation.COMPILATION,
-                350764 to SubjectRelation.SEQUEL, // 无限列车篇 TV 版, 7 话
-            ),
-            first.branches.map { it.subject.subjectId to it.relation },
+            listOf(294137, 317002, 322102, 349032, 349033),
+            graph.mainline[0].branches.map { it.subject.subjectId },
         )
-        // 剧场版之后的次要条目仍然归到前面最近的正片, 而不是剧场版
         assertEquals(emptyList(), graph.mainline[1].branches)
-
-        // 游郭篇: 主线上的特别编集版, 以及以 "总集篇" 关系关联的条目
         assertEquals(
-            listOf(422759 to SubjectRelation.COMPILATION, 410499 to SubjectRelation.COMPILATION),
-            graph.mainline[2].branches.map { it.subject.subjectId to it.relation },
+            listOf(410499 to SubjectRelation.COMPILATION, 422759 to SubjectRelation.COMPILATION),
+            graph.mainline[3].branches.map { it.subject.subjectId to it.relation },
         )
         assertEquals(19, graph.mainCount + graph.branchCount)
+    }
+
+    @Test
+    fun `tv specials on the sequel chain are minor mainline nodes`() {
+        val graph = aot.toSubjectRelationGraph(emptyMap())
+        assertEquals(aot.mainline.map { it.toInt() }, graph.mainline.map { it.subject.subjectId })
+        // 完结篇前后篇不计入 "第几部"
+        assertEquals(listOf(376739, 415779), graph.mainline.filter { it.isMinor }.map { it.subject.subjectId })
+        assertEquals(0, graph.branchCount)
     }
 
     @Test
@@ -189,6 +205,6 @@ class SubjectRelationGraphMappingTest {
                 .map { it.copy(role = AniSubjectRelationGraphNodeRole.MAIN) },
         ).toSubjectRelationGraph(emptyMap())
         assertEquals(listOf(501958, 501960, 501961), movies.mainline.map { it.subject.subjectId })
-        assertFalse(movies.mainline.any { it.isMovie })
+        assertFalse(movies.mainline.any { it.isMinor })
     }
 }

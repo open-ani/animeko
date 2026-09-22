@@ -1175,6 +1175,7 @@
     <string name="subject_relation_graph_truncated">系列過大，僅顯示部分條目</string>
     <string name="subject_relation_graph_episodes">%1$d 話</string>
     <string name="subject_relation_graph_platform_movie">劇場版</string>
+    <string name="subject_relation_graph_platform_special">特別篇</string>
     <string name="subject_details_prev_page">上一頁</string>
     <string name="subject_details_next_page">下一頁</string>
     <string name="subject_details_air_date_format">%1$s 年 %2$s 月 %3$s 日</string>
