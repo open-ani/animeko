@@ -16,7 +16,9 @@
 #   3. A maintainer submits a review on a PR            -> the agent addresses it and updates the PR.
 #   4. A maintainer comments `@openanibot ...` on a PR  -> the agent follows it and updates the PR.
 #      On PRs/issues AUTHORED BY openanibot, every maintainer comment triggers — no mention needed.
-#      Fork PRs are checked out read-only: the agent may inspect, test, and comment, but cannot push.
+#      Fork PRs are pushable when the PR allows maintainer edits (the bot pushes to the fork's PR
+#      branch; this needs a classic PAT, GitHub does not grant maintainer edits to fine-grained
+#      tokens). Otherwise the checkout is read-only: the agent may inspect, test, and comment.
 #   5. A maintainer comments `@openanibot ...` on an issue -> the agent responds (answers, or
 #      implements + opens a PR), resuming the issue's Codex session when one exists.
 #      (Commit comments can't trigger: GitHub Actions no longer supports the commit_comment event.)
@@ -594,12 +596,13 @@ jobs:
         run: |
           set -euo pipefail
           PR_JSON=$(gh pr view "$PR_NUMBER" \
-            --json author,headRefName,headRefOid,headRepository,headRepositoryOwner,isCrossRepository)
+            --json author,headRefName,headRefOid,headRepository,headRepositoryOwner,isCrossRepository,maintainerCanModify)
           PR_AUTHOR=$(jq -r '.author.login' <<< "$PR_JSON")
           HEAD_REF=$(jq -r '.headRefName' <<< "$PR_JSON")
           LIVE_HEAD_SHA=$(jq -r '.headRefOid' <<< "$PR_JSON")
           HEAD_REPO=$(jq -r '.headRepositoryOwner.login + "/" + .headRepository.name' <<< "$PR_JSON")
           CROSS=$(jq -r '.isCrossRepository' <<< "$PR_JSON")
+          MAINTAINER_CAN_MODIFY=$(jq -r '.maintainerCanModify' <<< "$PR_JSON")
           test "$(printf '%s' "$PR_AUTHOR" | tr '[:upper:]' '[:lower:]')" = \
                "$(printf '%s' "$TRIGGER_PR_AUTHOR" | tr '[:upper:]' '[:lower:]')" || {
             echo "::error::PR author changed from $TRIGGER_PR_AUTHOR to $PR_AUTHOR"
@@ -641,9 +644,16 @@ jobs:
               exit 1
             }
             SESSION_KEY="fork-pr-$PR_NUMBER-$HEAD_REPO-$HEAD_REF"
+            if [ "$MAINTAINER_CAN_MODIFY" = "true" ]; then
+              PUSH_REMOTE=fork
+            else
+              PUSH_REMOTE=""
+            fi
           else
             SESSION_KEY="$HEAD_REF"
+            PUSH_REMOTE=origin
           fi
+          echo "cross=$CROSS maintainer_can_modify=$MAINTAINER_CAN_MODIFY push_remote=${PUSH_REMOTE:-none}"
 
           git fetch --no-tags origin "$HEAD_SHA"
           git checkout -B "$HEAD_REF" "$HEAD_SHA"
@@ -657,6 +667,7 @@ jobs:
           echo "head_ref=$HEAD_REF" >> "$GITHUB_OUTPUT"
           echo "head_repo=$HEAD_REPO" >> "$GITHUB_OUTPUT"
           echo "cross=$CROSS" >> "$GITHUB_OUTPUT"
+          echo "push_remote=$PUSH_REMOTE" >> "$GITHUB_OUTPUT"
           echo "session_key=$SESSION_KEY" >> "$GITHUB_OUTPUT"
           echo "head_sha=$HEAD_SHA" >> "$GITHUB_OUTPUT"
           echo "live_head_sha=$LIVE_HEAD_SHA" >> "$GITHUB_OUTPUT"
@@ -667,10 +678,16 @@ jobs:
       - name: Configure PR access and submodules
         env:
           CROSS: ${{ steps.pr.outputs.cross }}
+          HEAD_REPO: ${{ steps.pr.outputs.head_repo }}
+          PUSH_REMOTE: ${{ steps.pr.outputs.push_remote }}
         run: |
           set -euo pipefail
           if [ "$CROSS" = "true" ]; then
+            # Never push fork PR changes to the base repo; the only push target is the fork's PR branch.
             git remote set-url --push origin "no-push://fork-pr/$PR_NUMBER"
+            if [ "$PUSH_REMOTE" = "fork" ]; then
+              git remote add fork "https://github.com/$HEAD_REPO.git"
+            fi
           fi
           gh auth setup-git
           git submodule sync --recursive
@@ -687,6 +704,7 @@ jobs:
       - name: Build prompt
         env:
           CROSS: ${{ steps.pr.outputs.cross }}
+          PUSH_REMOTE: ${{ steps.pr.outputs.push_remote }}
           HEAD_REF: ${{ steps.pr.outputs.head_ref }}
           HEAD_REPO: ${{ steps.pr.outputs.head_repo }}
           HEAD_SHA: ${{ steps.pr.outputs.head_sha }}
@@ -715,8 +733,12 @@ jobs:
             echo
             echo "IMPORTANT: Do every GitHub action (PR updates, comments, replies, reactions, reads) with the 'gh' CLI only."
             echo "Do NOT use any GitHub connector / MCP integration — 'gh' authenticates as the CI bot, a connector would act under a personal account."
-            if [ "$CROSS" = "true" ]; then
-              echo "This is a fork PR from $HEAD_REPO. Repository contents access is read-only and pushes are disabled."
+            if [ "$CROSS" = "true" ] && [ "$PUSH_REMOTE" = "fork" ]; then
+              echo "This is a fork PR from $HEAD_REPO and the author allows maintainer edits."
+              echo "The fork is configured as the git remote 'fork'; the only allowed push target is the PR branch: fork $HEAD_REF."
+              echo "GH_TOKEN is set from the OPENANI_BOT_TOKEN repository secret. Use it; do not run 'gh auth login', replace the token, change remotes, or push anywhere else."
+            elif [ "$CROSS" = "true" ]; then
+              echo "This is a fork PR from $HEAD_REPO and the author has NOT allowed maintainer edits. Repository contents access is read-only and pushes are disabled."
               echo "GH_TOKEN is set from the OPENANI_BOT_TOKEN repository secret. Use it; do not run 'gh auth login', replace the token, change remotes, or attempt any push."
               echo "You may inspect and modify the local checkout for testing, then report results or actionable changes on the PR."
             else
@@ -727,11 +749,11 @@ jobs:
             echo "the screenshots in the PR — run android-ui-verify AND desktop-ui-verify separately if multiple platforms are affected."
             echo
             echo "You have full access to git and gh — respond to the feedback however you judge best. Options include:"
-            if [ "$CROSS" = "true" ]; then
+            if [ -n "$PUSH_REMOTE" ]; then
+              echo "  - adjust the code and update the PR:  git push $PUSH_REMOTE HEAD:$HEAD_REF"
+            else
               echo "  - inspect the fork changes, run the requested tests, and comment with the evidence and conclusions"
               echo "  - if code changes are needed, describe them precisely or provide a patch in the PR discussion; do not push"
-            else
-              echo "  - adjust the code and update the PR:  git push origin HEAD:$HEAD_REF"
             fi
             echo "  - reply in the specific review thread, resolve that thread, or leave a PR comment (gh / gh api)"
             echo "Do only what the feedback actually calls for — don't over-respond — but make sure you respond in some form."
