@@ -37,6 +37,7 @@ import javax.crypto.Cipher
 import javax.crypto.spec.IvParameterSpec
 import javax.crypto.spec.SecretKeySpec
 import kotlin.concurrent.thread
+import kotlin.math.abs
 import kotlin.test.Test
 import kotlin.test.assertContentEquals
 import kotlin.test.assertEquals
@@ -621,6 +622,9 @@ abstract class AbstractRealHlsProxyTest internal constructor(
         val filteredSession = filtered.session()
         try {
             val local = text(httpGet(filtered.data.uri))
+            // 取播放列表时会探测各组首片的时间戳, 其中就有 ad000 与 seg016. 下面只数那之后的请求.
+            val adFetchesBeforePlayback = origin.count("/hls/ads/ad000.ts")
+            val seg016FetchesBeforePlayback = origin.count("/hls/vod/seg016.ts")
             val uris = local.segmentUris()
             assertEquals(32, uris.size)
             assertTrue(local.lineSequence().none { it.contains("/ads/") }, "ad segments must be removed")
@@ -630,11 +634,20 @@ abstract class AbstractRealHlsProxyTest internal constructor(
             filteredSession.setPrefetchRange(MediaTimeRange(48_000, 51_000))
             val done = filteredSession.awaitAllDone(1)
             assertEquals(listOf(vodRange(16)), done.map { it.range })
-            assertEquals(1, origin.count("/hls/vod/seg016.ts"))
-            assertEquals(1, origin.count("/hls/ads/ad000.ts"), "filtered session must not touch ad segments")
+            assertEquals(seg016FetchesBeforePlayback + 1, origin.count("/hls/vod/seg016.ts"))
+            assertEquals(
+                adFetchesBeforePlayback,
+                origin.count("/hls/ads/ad000.ts"),
+                "filtered session must not fetch ad segments for playback",
+            )
 
-            // 过滤后第 16 片对应 seg016, 内容一致
-            assertContentEquals(origin.bytesOf("/hls/vod/seg016.ts"), httpGet(uris[16]).body)
+            // 过滤后第 16 片对应 seg016. 拼接流的分片会被平移时间戳 (见 HlsTimestampAlignmentTest),
+            // 因此不能与源站逐字节比, 改为比长度并确认时间戳落在该片应处的位置.
+            val served = httpGet(uris[16]).body
+            assertEquals(origin.bytesOf("/hls/vod/seg016.ts").size, served.size)
+            val pts = TsPacketReader.firstPts(served)?.let { TsPacketReader.ticksToMillis(it) }
+            assertNotNull(pts)
+            assertTrue(abs(pts - 48_000) <= 200, "segment 16 should sit at 48s, got ${pts}ms")
         } finally {
             filteredSession.close()
         }
