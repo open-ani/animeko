@@ -67,6 +67,7 @@ import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Check
+import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.MoreVert
 import me.him188.ani.app.ui.foundation.icons.BangumiNext
 import androidx.compose.material.icons.outlined.Sync
@@ -215,7 +216,7 @@ internal actual fun AniListTrackingSection(
                 verticalArrangement = Arrangement.spacedBy(12.dp)) {
                 Text("Tracking", style = MaterialTheme.typography.titleLarge)
                 if (showCollection) {
-                    Surface(shape = MaterialTheme.shapes.medium, color = MaterialTheme.colorScheme.surfaceContainerLow) {
+                    Surface(shape = MaterialTheme.shapes.medium, color = MaterialTheme.colorScheme.surface) {
                     Column(Modifier.fillMaxWidth().padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
                         Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically,
                             horizontalArrangement = Arrangement.spacedBy(12.dp)) {
@@ -227,15 +228,14 @@ internal actual fun AniListTrackingSection(
                                 Text(info.name.ifBlank { info.nameCn }, maxLines = 1, overflow = TextOverflow.Ellipsis)
                             }
                         }
-                        Surface(shape = MaterialTheme.shapes.medium, color = MaterialTheme.colorScheme.surfaceContainerHigh) {
-                            Box(Modifier.fillMaxWidth().padding(8.dp)) { collectionAction() }
-                        }
+                        collectionAction()
                     }
                     }
                 }
+                if (showCollection && (loading || accountId != null)) HorizontalDivider()
                 if (updating) CircularProgressIndicator(Modifier.size(20.dp), strokeWidth = 2.dp)
                 when {
-                    loading -> Surface(shape = MaterialTheme.shapes.medium, color = MaterialTheme.colorScheme.surfaceContainerLow) {
+                    loading -> Surface(shape = MaterialTheme.shapes.medium, color = MaterialTheme.colorScheme.surface) {
                         Row(Modifier.fillMaxWidth().padding(16.dp), verticalAlignment = Alignment.CenterVertically,
                             horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                             AniListIcon()
@@ -250,16 +250,22 @@ internal actual fun AniListTrackingSection(
                         }
                     }
                     linked == null -> {
+                        Surface(shape = MaterialTheme.shapes.medium, color = MaterialTheme.colorScheme.surface) {
                         Row(Modifier.fillMaxWidth().clickable { searching = true; results = emptyList(); error = null }
-                            .background(MaterialTheme.colorScheme.surfaceContainerLow, MaterialTheme.shapes.medium).padding(16.dp),
-                            horizontalArrangement = Arrangement.spacedBy(16.dp)) {
+                            .padding(16.dp), verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                                 AniListIcon()
-                                Text("AniList · Add tracking", style = MaterialTheme.typography.titleMedium)
+                                Column(Modifier.weight(1f)) {
+                                    Text("AniList", style = MaterialTheme.typography.titleMedium)
+                                    Text("Add tracking")
+                                }
+                                Icon(Icons.Default.Add, contentDescription = null)
+                        }
                         }
                     }
                     else -> {
                         val current = linked!!
-                        Surface(shape = MaterialTheme.shapes.medium, color = MaterialTheme.colorScheme.surfaceContainerLow) {
+                        Surface(shape = MaterialTheme.shapes.medium, color = MaterialTheme.colorScheme.surface) {
                         Column(Modifier.fillMaxWidth().padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
                         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                             AniListIcon()
@@ -321,7 +327,7 @@ internal actual fun AniListTrackingSection(
                         current.listEntry?.let { entry ->
                             val scoreLabel = if (entry.score == TrackingScore.Unrated) "Score"
                                 else "${(entry.score.value / 10f).roundToInt().coerceIn(1, 10)} / 10"
-                            Surface(shape = MaterialTheme.shapes.medium, color = MaterialTheme.colorScheme.surfaceContainerHigh) {
+                            Surface(shape = MaterialTheme.shapes.medium, color = MaterialTheme.colorScheme.surface) {
                                 Column {
                                     Row(Modifier.fillMaxWidth()) {
                                         TrackingCell(provider.statusOptions.first { it.status == entry.status }.displayName,
