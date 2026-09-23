@@ -17,7 +17,11 @@ internal data class GraphQLRequest(val query: String, val variables: JsonObject)
 internal data class GraphQLResponse<T>(val data: T? = null, val errors: List<GraphQLError> = emptyList())
 
 @Serializable
-internal data class GraphQLError(val message: String)
+internal data class GraphQLError(val message: String, val status: Int? = null) {
+    val isInvalidToken: Boolean get() = status == 401 || message.equals(INVALID_TOKEN_MESSAGE, ignoreCase = true)
+}
+
+internal const val INVALID_TOKEN_MESSAGE = "Invalid token"
 
 @Serializable
 internal data class ViewerData(@SerialName("Viewer") val viewer: AniListViewer)

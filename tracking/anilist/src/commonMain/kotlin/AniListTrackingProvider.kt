@@ -9,6 +9,8 @@ package me.him188.ani.app.tracking.anilist
 import io.ktor.client.HttpClient
 import io.ktor.client.plugins.ClientRequestException
 import io.ktor.client.plugins.ResponseException
+import io.ktor.client.statement.bodyAsText
+import io.ktor.http.HttpHeaders
 import io.ktor.http.HttpStatusCode
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -64,15 +66,18 @@ class AniListTrackingProvider(
         viewer.applyToAccountState()
     }
 
-    override suspend fun refreshAccount(): TrackingAccount = call {
+    override suspend fun refreshAccount(): TrackingAccount {
         val credentials = credentialStore.load() ?: run {
             mutableAccountState.value = TrackingAccountState.LoggedOut
             throw TrackingProviderException.Unauthorized()
         }
         val previous = (mutableAccountState.value as? TrackingAccountState.LoggedIn)?.account
         mutableAccountState.value = TrackingAccountState.Refreshing(previous)
-        try {
-            api.viewer(credentials.secret).applyToAccountState()
+        return try {
+            call { api.viewer(credentials.secret) }.applyToAccountState()
+        } catch (failure: TrackingProviderException.Unauthorized) {
+            logout()
+            throw failure
         } catch (failure: Throwable) {
             mutableAccountState.value = previous?.let(TrackingAccountState::LoggedIn) ?: TrackingAccountState.LoggedOut
             throw failure
@@ -173,12 +178,22 @@ class AniListTrackingProvider(
     } catch (failure: TrackingProviderException) {
         throw failure
     } catch (failure: ClientRequestException) {
-        when (failure.response.status) {
-            HttpStatusCode.Unauthorized, HttpStatusCode.Forbidden -> throw TrackingProviderException.Unauthorized(failure)
-            HttpStatusCode.TooManyRequests -> throw TrackingProviderException.RateLimited(null, failure)
-            else -> throw TrackingProviderException.Remote("AniList request failed: ${failure.response.status}", failure)
+        val response = failure.response
+        val status = response.status
+        when {
+            status == HttpStatusCode.Unauthorized || status == HttpStatusCode.Forbidden ->
+                throw TrackingProviderException.Unauthorized(failure)
+            status == HttpStatusCode.TooManyRequests -> throw TrackingProviderException.RateLimited(
+                response.headers[HttpHeaders.RetryAfter]?.toLongOrNull()?.times(1000),
+                failure,
+            )
+            // AniList reports an expired or revoked token as HTTP 400 with an "Invalid token" GraphQL error.
+            status == HttpStatusCode.BadRequest && INVALID_TOKEN_MESSAGE in response.bodyAsText() ->
+                throw TrackingProviderException.Unauthorized(failure)
+            else -> throw TrackingProviderException.Remote("AniList request failed: $status", failure)
         }
     } catch (failure: AniListGraphQLException) {
+        if (failure.invalidToken) throw TrackingProviderException.Unauthorized(failure)
         throw TrackingProviderException.Remote(failure.message ?: "AniList GraphQL error", failure)
     } catch (failure: ResponseException) {
         throw TrackingProviderException.Remote("AniList request failed: ${failure.response.status}", failure)

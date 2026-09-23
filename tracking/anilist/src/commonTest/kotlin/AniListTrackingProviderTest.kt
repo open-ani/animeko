@@ -17,6 +17,7 @@ import io.ktor.http.HttpHeaders
 import io.ktor.http.HttpStatusCode
 import io.ktor.http.headersOf
 import io.ktor.serialization.kotlinx.json.json
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.test.runTest
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.jsonObject
@@ -28,10 +29,12 @@ import me.him188.ani.tracking.api.TrackingDateField
 import me.him188.ani.tracking.api.TrackingListEntry
 import me.him188.ani.tracking.api.TrackingLoginCredentials
 import me.him188.ani.tracking.api.TrackingMediaId
+import me.him188.ani.tracking.api.TrackingProviderException
 import me.him188.ani.tracking.api.TrackingScore
 import me.him188.ani.tracking.api.TrackingStatus
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertFailsWith
 import kotlin.test.assertNull
 import kotlin.test.assertTrue
 
@@ -163,7 +166,7 @@ class AniListTrackingProviderTest {
             provider.bind(TrackingListEntry(TrackingMediaId("1"), TrackingStatus.PLANNING, 0))
         }.exceptionOrNull()
 
-        assertTrue(failure is me.him188.ani.tracking.api.TrackingProviderException.Remote)
+        assertTrue(failure is TrackingProviderException.Remote)
         assertEquals(1, calls)
     }
 
@@ -231,10 +234,91 @@ class AniListTrackingProviderTest {
     }
 
     @Test
-    fun graphqlErrorsBecomeProviderFailures() = runTest {
-        val provider = provider { respondJson("""{"errors":[{"message":"Invalid token"}]}""") }
-        val failure = runCatching { provider.search("Frieren") }.exceptionOrNull()
-        assertTrue(failure is me.him188.ani.tracking.api.TrackingProviderException.Remote)
+    fun invalidTokenInGraphqlErrorsIsUnauthorized() = runTest {
+        val provider = provider { respondJson("""{"errors":[{"message":"Invalid token","status":400}]}""") }
+        assertFailsWith<TrackingProviderException.Unauthorized> { provider.search("Frieren") }
+    }
+
+    @Test
+    fun invalidTokenWithHttp400IsUnauthorized() = runTest {
+        val provider = provider {
+            respondJson("""{"errors":[{"message":"Invalid token","status":400}]}""", HttpStatusCode.BadRequest)
+        }
+        assertFailsWith<TrackingProviderException.Unauthorized> { provider.search("Frieren") }
+    }
+
+    @Test
+    fun refreshWithRevokedTokenLogsOut() = runTest {
+        val store = InMemoryCredentialStore()
+        var calls = 0
+        val provider = provider(store) {
+            calls++
+            if (calls == 1) {
+                respondJson("""{"data":{"Viewer":{"id":123,"name":"haru","mediaListOptions":{"scoreFormat":"POINT_100"}}}}""")
+            } else {
+                respondJson("""{"errors":[{"message":"Invalid token","status":400}]}""", HttpStatusCode.BadRequest)
+            }
+        }
+        provider.refreshAccount()
+
+        assertFailsWith<TrackingProviderException.Unauthorized> { provider.refreshAccount() }
+
+        assertEquals(TrackingAccountState.LoggedOut, provider.accountState.value)
+        assertNull(store.load())
+    }
+
+    @Test
+    fun refreshNetworkFailureKeepsPreviousAccount() = runTest {
+        var calls = 0
+        val provider = provider {
+            calls++
+            if (calls == 1) {
+                respondJson("""{"data":{"Viewer":{"id":123,"name":"haru","mediaListOptions":{"scoreFormat":"POINT_100"}}}}""")
+            } else {
+                respondJson("""{"errors":[{"message":"Internal error","status":500}]}""", HttpStatusCode.InternalServerError)
+            }
+        }
+        provider.refreshAccount()
+
+        assertFailsWith<TrackingProviderException.Remote> { provider.refreshAccount() }
+
+        assertTrue(provider.accountState.value is TrackingAccountState.LoggedIn)
+    }
+
+    @Test
+    fun http401IsUnauthorized() = runTest {
+        val provider = provider { respondJson("""{"errors":[{"message":"Unauthorized.","status":401}]}""", HttpStatusCode.Unauthorized) }
+        assertFailsWith<TrackingProviderException.Unauthorized> { provider.search("Frieren") }
+    }
+
+    @Test
+    fun otherGraphqlErrorsStayRemoteFailures() = runTest {
+        val provider = provider {
+            respondJson("""{"errors":[{"message":"Validation error","status":400}]}""", HttpStatusCode.BadRequest)
+        }
+        assertFailsWith<TrackingProviderException.Remote> { provider.search("Frieren") }
+    }
+
+    @Test
+    fun rateLimitCarriesRetryAfter() = runTest {
+        val provider = provider {
+            respond(
+                content = """{"errors":[{"message":"Too Many Requests.","status":429}]}""",
+                status = HttpStatusCode.TooManyRequests,
+                headers = headersOf(
+                    HttpHeaders.ContentType to listOf("application/json"),
+                    HttpHeaders.RetryAfter to listOf("30"),
+                ),
+            )
+        }
+        val failure = assertFailsWith<TrackingProviderException.RateLimited> { provider.search("Frieren") }
+        assertEquals(30_000L, failure.retryAfterMillis)
+    }
+
+    @Test
+    fun cancellationIsNotWrapped() = runTest {
+        val provider = provider { throw CancellationException("cancelled") }
+        assertFailsWith<CancellationException> { provider.search("Frieren") }
     }
 
     private fun provider(

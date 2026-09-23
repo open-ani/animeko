@@ -90,7 +90,12 @@ internal class AniListApi(private val client: HttpClient) {
             bearerAuth(token)
             setBody(GraphQLRequest(query, variables))
         }.body<GraphQLResponse<T>>()
-        if (response.errors.isNotEmpty()) throw AniListGraphQLException(response.errors.joinToString("; ") { it.message })
+        if (response.errors.isNotEmpty()) {
+            throw AniListGraphQLException(
+                response.errors.joinToString("; ") { it.message },
+                invalidToken = response.errors.any { it.isInvalidToken },
+            )
+        }
         return response.data ?: throw AniListGraphQLException("AniList returned neither data nor errors")
     }
 
@@ -166,4 +171,4 @@ internal class AniListApi(private val client: HttpClient) {
     }
 }
 
-internal class AniListGraphQLException(message: String) : Exception(message)
+internal class AniListGraphQLException(message: String, val invalidToken: Boolean = false) : Exception(message)
