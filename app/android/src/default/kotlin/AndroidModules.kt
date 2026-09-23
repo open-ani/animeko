@@ -91,7 +91,7 @@ fun getAndroidModules(
     serviceConnectionManager: TorrentServiceConnectionManager,
     coroutineScope: CoroutineScope,
 ) = module {
-    single<EpisodeTrackingSync> { AniListEpisodeTrackingSync(androidContext(), get(), coroutineScope) }
+    single<EpisodeTrackingSync> { AniListEpisodeTrackingSync(androidContext(), inject(), coroutineScope) }
     single<BrowserNavigator> { AndroidBrowserNavigator() }
     single<CaptchaBrowserFactory> { AndroidCaptchaBrowserFactory(androidContext()) }
     single<ImageCaptchaRecognizer> { AndroidOnnxImageCaptchaRecognizer() }

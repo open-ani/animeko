@@ -27,7 +27,7 @@ import me.him188.ani.utils.ktor.getPlatformKtorEngine
 
 internal class AniListEpisodeTrackingSync(
     context: Context,
-    private val episodes: EpisodeCollectionRepository,
+    private val episodes: Lazy<EpisodeCollectionRepository>,
     private val scope: CoroutineScope,
 ) : EpisodeTrackingSync {
     private val appContext = context.applicationContext
@@ -52,7 +52,7 @@ internal class AniListEpisodeTrackingSync(
 
     private suspend fun sync(subjectId: Int, episodeId: Int) {
         if (credentials.load() == null) return
-        val episode = episodes.episodeCollectionInfoFlow(subjectId, episodeId).first().episodeInfo
+        val episode = episodes.value.episodeCollectionInfoFlow(subjectId, episodeId).first().episodeInfo
         if (episode.type != null && episode.type != EpisodeType.MainStory) return
         val number = episode.ep?.number ?: return
         val progress = number.toInt()
