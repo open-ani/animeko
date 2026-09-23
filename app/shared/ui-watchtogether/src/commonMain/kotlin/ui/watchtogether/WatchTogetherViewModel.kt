@@ -9,21 +9,28 @@
 
 package me.him188.ani.app.ui.watchtogether
 
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.NonCancellable
+import kotlinx.coroutines.cancelAndJoin
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.receiveAsFlow
+import kotlinx.coroutines.withContext
+import kotlinx.coroutines.withTimeoutOrNull
 import me.him188.ani.app.data.network.WatchTogetherJoinException
 import me.him188.ani.app.data.network.WatchTogetherJoinFailure
 import me.him188.ani.app.data.repository.user.SettingsRepository
 import me.him188.ani.app.domain.session.SessionState
 import me.him188.ani.app.domain.session.SessionStateProvider
+import me.him188.ani.app.domain.usecase.GlobalKoin
 import me.him188.ani.app.domain.watchtogether.LocalPlaybackBridge
 import me.him188.ani.app.domain.watchtogether.RoomSession
 import me.him188.ani.app.domain.watchtogether.WatchTogetherConnectionState
@@ -33,15 +40,28 @@ import me.him188.ani.app.domain.watchtogether.WatchTogetherState
 import me.him188.ani.app.ui.foundation.AbstractViewModel
 import me.him188.ani.app.ui.foundation.launchInBackground
 import me.him188.ani.app.ui.user.SelfInfoStateProducer
+import org.koin.core.Koin
 import org.koin.core.component.KoinComponent
 import org.koin.core.component.inject
+import kotlin.coroutines.CoroutineContext
+import kotlin.coroutines.EmptyCoroutineContext
 
-class WatchTogetherViewModel : AbstractViewModel(), KoinComponent {
+open class WatchTogetherViewModel(
+    private val koin: Koin = GlobalKoin,
+    backgroundCoroutineContext: CoroutineContext = EmptyCoroutineContext,
+) : AbstractViewModel(backgroundCoroutineContext), KoinComponent {
+    final override fun getKoin(): Koin = koin
+    private var joinJob: Job? = null
+    private val joinFailureState = MutableStateFlow<WatchTogetherJoinError?>(null)
+    val joinFailure = joinFailureState.asStateFlow()
+
+    init { koin.get<WatchTogetherManager>().start() }
+
     private val manager: WatchTogetherManager by inject()
     private val settingsRepository: SettingsRepository by inject()
     private val sessionStateProvider: SessionStateProvider by inject()
     private val playbackBridge: LocalPlaybackBridge by inject()
-    private val selfInfoProducer = SelfInfoStateProducer(koin = getKoin())
+    private val selfInfoProducer by lazy { SelfInfoStateProducer(backgroundScope.coroutineContext, koin) }
 
     private val joinError = MutableStateFlow<String?>(null)
     private val dialogOpenRequestChannel = Channel<Unit>(Channel.BUFFERED)
@@ -88,29 +108,71 @@ class WatchTogetherViewModel : AbstractViewModel(), KoinComponent {
 
     fun onIntent(intent: WatchTogetherIntent) {
         when (intent) {
-            is WatchTogetherIntent.JoinRoom -> launchInBackground {
-                joinError.value = null
-                manager.join(intent.roomName, intent.password)
-                    .onFailure { throwable ->
-                        joinError.value = (throwable as? WatchTogetherJoinException)?.failure?.name
-                            ?: WatchTogetherJoinFailure.TEMPORARY.name
-                    }
-            }
-
-            WatchTogetherIntent.LeaveRoom -> launchInBackground {
-                joinError.value = null
-                manager.leave()
-            }
+            is WatchTogetherIntent.JoinRoom -> joinRoom(intent.roomName, intent.password)
+            WatchTogetherIntent.LeaveRoom -> leaveRoom()
 
             is WatchTogetherIntent.SetFollowing -> launchInBackground {
                 manager.setFollowing(intent.following)
             }
 
             WatchTogetherIntent.DisableFeature -> launchInBackground {
-                joinError.value = null
+                joinJob?.cancelAndJoin()
+                clearJoinError()
                 settingsRepository.watchTogetherSettings.update { copy(enabled = false) }
             }
         }
+    }
+
+    fun enableFeature() = launchInBackground {
+        settingsRepository.watchTogetherSettings.update { copy(enabled = true) }
+    }
+
+    fun joinRoom(roomName: String, password: String) {
+        if (joinJob?.isActive == true || manager.state.value is WatchTogetherState.Joining) return
+        if (roomName.isBlank()) {
+            joinFailureState.value = WatchTogetherJoinError.EmptyName
+            return
+        }
+        joinJob = launchInBackground {
+            if (sessionStateProvider.stateFlow.first() !is SessionState.Valid) return@launchInBackground
+            joinError.value = null
+            joinFailureState.value = null
+            try {
+                val result = withTimeoutOrNull(30_000) {
+                    settingsRepository.watchTogetherSettings.update { copy(enabled = true) }
+                    manager.state.first { it !is WatchTogetherState.Disabled }
+                    manager.join(roomName, password)
+                }
+                if (result == null) {
+                    joinFailureState.value = WatchTogetherJoinError.Timeout
+                    joinError.value = WatchTogetherJoinFailure.TEMPORARY.name
+                }
+                result?.onFailure { error ->
+                    val failure = (error as? WatchTogetherJoinException)?.failure ?: WatchTogetherJoinFailure.TEMPORARY
+                    joinError.value = failure.name
+                    joinFailureState.value = WatchTogetherJoinError.Failure(failure)
+                }
+            } finally {
+                if (manager.state.value is WatchTogetherState.Joining) {
+                    withContext(NonCancellable) { withTimeoutOrNull(5_000) { manager.leave() } }
+                }
+            }
+        }
+    }
+
+    fun cancelJoin() {
+        leaveRoom()
+    }
+
+    fun clearJoinError() {
+        joinError.value = null
+        joinFailureState.value = null
+    }
+
+    fun leaveRoom() = launchInBackground {
+        joinJob?.cancelAndJoin()
+        clearJoinError()
+        manager.leave()
     }
 
     fun onPlayerEntryClick() {
@@ -172,4 +234,10 @@ class WatchTogetherViewModel : AbstractViewModel(), KoinComponent {
         val following: Boolean = true,
         val isSelfHost: Boolean = false,
     )
+}
+
+sealed interface WatchTogetherJoinError {
+    data object EmptyName : WatchTogetherJoinError
+    data object Timeout : WatchTogetherJoinError
+    data class Failure(val reason: WatchTogetherJoinFailure) : WatchTogetherJoinError
 }

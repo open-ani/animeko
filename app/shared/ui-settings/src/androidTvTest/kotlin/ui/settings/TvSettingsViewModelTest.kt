@@ -5,30 +5,35 @@
 package me.him188.ani.tv.ui.settings
 
 import androidx.datastore.preferences.core.emptyPreferences
-import kotlinx.coroutines.cancel
 import kotlinx.coroutines.CompletableDeferred
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.cancel
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.test.StandardTestDispatcher
+import kotlinx.coroutines.test.resetMain
 import kotlinx.coroutines.test.runCurrent
 import kotlinx.coroutines.test.runTest
+import kotlinx.coroutines.test.setMain
 import me.him188.ani.app.data.models.danmaku.DanmakuRegexFilter
 import me.him188.ani.app.data.models.preference.NsfwMode
 import me.him188.ani.app.data.persistent.MemoryDataStore
 import me.him188.ani.app.data.repository.media.MediaSourceSubscriptionRepository
 import me.him188.ani.app.data.repository.media.MediaSourceSubscriptionsSaveData
+import me.him188.ani.app.data.repository.player.DanmakuRegexFilterRepository
 import me.him188.ani.app.data.repository.player.DanmakuRegexFilterRepositoryImpl
 import me.him188.ani.app.data.repository.user.PreferencesRepositoryImpl
+import me.him188.ani.app.data.repository.user.SettingsRepository
 import me.him188.ani.app.domain.media.fetch.MediaFetcher
 import me.him188.ani.app.domain.media.fetch.MediaSourceManager
 import me.him188.ani.app.domain.media.selector.MediaSelectorSourceTiers
+import me.him188.ani.app.domain.mediasource.codec.ExportedMediaSourceDataList
+import me.him188.ani.app.domain.mediasource.codec.MediaSourceCodecManager
 import me.him188.ani.app.domain.mediasource.instance.MediaSourceInstance
 import me.him188.ani.app.domain.mediasource.instance.MediaSourceSave
-import me.him188.ani.app.domain.mediasource.codec.MediaSourceCodecManager
-import me.him188.ani.app.domain.mediasource.codec.ExportedMediaSourceDataList
 import me.him188.ani.app.domain.mediasource.subscription.MediaSourceSubscription
 import me.him188.ani.app.domain.mediasource.subscription.MediaSourceSubscriptionUpdater
 import me.him188.ani.app.domain.mediasource.subscription.SubscriptionUpdateData
@@ -37,6 +42,11 @@ import me.him188.ani.datasources.api.source.FactoryId
 import me.him188.ani.datasources.api.source.MediaSourceConfig
 import me.him188.ani.datasources.api.source.MediaSourceFactory
 import me.him188.ani.utils.platform.annotations.TestOnly
+import org.koin.dsl.koinApplication
+import org.koin.dsl.module
+import kotlin.coroutines.CoroutineContext
+import kotlin.test.AfterTest
+import kotlin.test.BeforeTest
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
@@ -46,12 +56,18 @@ import kotlin.test.assertTrue
 
 @OptIn(TestOnly::class)
 class TvSettingsViewModelTest {
+    @BeforeTest
+    fun setUp() { Dispatchers.setMain(StandardTestDispatcher()) }
+
+    @AfterTest
+    fun tearDown() { Dispatchers.resetMain() }
+
     @Test
     fun editsPersistAcrossRepositoryRecreationAndPreserveUnrelatedFields() = runTest {
         val store = MemoryDataStore(emptyPreferences())
         val repository = PreferencesRepositoryImpl(store)
         repository.videoScaffoldConfig.update { copy(playbackSpeed = 2.5f, fastForwardSpeed = 3f, autoMarkDone = false) }
-        val vm = TvSettingsViewModel(
+        val vm = createViewModel(
             repository, DanmakuRegexFilterRepositoryImpl(MemoryDataStore(emptyList())), TestSources(),
             MediaSourceSubscriptionRepository(MemoryDataStore(MediaSourceSubscriptionsSaveData.Default.copy(list = emptyList()))), { emptyList() }, StandardTestDispatcher(testScheduler),
         )
@@ -83,7 +99,7 @@ class TvSettingsViewModelTest {
     @Test
     fun invalidRegexIsRejectedAndImportExportUsesTheSharedFormat() = runTest {
         val regex = DanmakuRegexFilterRepositoryImpl(MemoryDataStore(emptyList()))
-        val vm = TvSettingsViewModel(
+        val vm = createViewModel(
             PreferencesRepositoryImpl(MemoryDataStore(emptyPreferences())), regex, TestSources(),
             MediaSourceSubscriptionRepository(MemoryDataStore(MediaSourceSubscriptionsSaveData.Default.copy(list = emptyList()))), { emptyList() }, StandardTestDispatcher(testScheduler),
         )
@@ -117,7 +133,7 @@ class TvSettingsViewModelTest {
             if (fail) error("source storage unavailable")
             emit(emptyList())
         })
-        val vm = TvSettingsViewModel(
+        val vm = createViewModel(
             PreferencesRepositoryImpl(MemoryDataStore(emptyPreferences())),
             DanmakuRegexFilterRepositoryImpl(MemoryDataStore(emptyList())), sources,
             MediaSourceSubscriptionRepository(MemoryDataStore(MediaSourceSubscriptionsSaveData.Default.copy(list = emptyList()))), { emptyList() }, StandardTestDispatcher(testScheduler),
@@ -144,7 +160,7 @@ class TvSettingsViewModelTest {
         )))
         val subscriptions = MediaSourceSubscriptionRepository(subscriptionStore)
         val sources = TestSources(saves = listOf(source("first", "group"), source("second", "group", false), source("other", null)))
-        val vm = TvSettingsViewModel(
+        val vm = createViewModel(
             PreferencesRepositoryImpl(MemoryDataStore(emptyPreferences())),
             DanmakuRegexFilterRepositoryImpl(MemoryDataStore(emptyList())), sources, subscriptions,
             { emptyList() }, StandardTestDispatcher(testScheduler),
@@ -184,7 +200,7 @@ class TvSettingsViewModelTest {
             downloaded.await()
             SubscriptionUpdateData(ExportedMediaSourceDataList(emptyList()))
         }
-        val vm = TvSettingsViewModel(
+        val vm = createViewModel(
             PreferencesRepositoryImpl(MemoryDataStore(emptyPreferences())),
             DanmakuRegexFilterRepositoryImpl(MemoryDataStore(emptyList())), sources, subscriptions,
             { emptyList() }, StandardTestDispatcher(testScheduler),
@@ -213,7 +229,7 @@ class TvSettingsViewModelTest {
             list = listOf(MediaSourceSubscription("group", "https://example.com/sources.json")),
         )))
         val sources = TestSources(saves = listOf(source("first", "group")), failWrites = true)
-        val vm = TvSettingsViewModel(
+        val vm = createViewModel(
             PreferencesRepositoryImpl(MemoryDataStore(emptyPreferences())),
             DanmakuRegexFilterRepositoryImpl(MemoryDataStore(emptyList())), sources, subscriptions,
             { emptyList() }, StandardTestDispatcher(testScheduler),
@@ -227,6 +243,23 @@ class TvSettingsViewModelTest {
         } finally {
             vm.backgroundScope.cancel()
         }
+    }
+
+    private fun createViewModel(
+        settings: SettingsRepository,
+        regex: DanmakuRegexFilterRepository,
+        sources: MediaSourceManager,
+        subscriptions: MediaSourceSubscriptionRepository,
+        loadLibraries: suspend () -> List<ByteArray>,
+        context: CoroutineContext,
+    ): TvSettingsViewModel {
+        val koin = koinApplication { modules(module {
+            single { settings }
+            single { regex }
+            single { sources }
+            single { subscriptions }
+        }) }.koin
+        return TvSettingsViewModel(koin, loadLibraries, context)
     }
 
     private fun source(id: String, subscription: String?, enabled: Boolean = true) = MediaSourceSave(

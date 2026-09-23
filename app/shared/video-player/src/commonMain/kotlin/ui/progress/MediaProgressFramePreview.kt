@@ -141,11 +141,7 @@ fun rememberMediaProgressFramePreviewState(
     val state = remember(framePreview, density, maxWidth, maxHeight) {
         val maxWidthPx = with(density) { maxWidth.roundToPx() }
         val maxHeightPx = with(density) { maxHeight.roundToPx() }
-        MediaProgressFramePreviewState(
-            fetchFrame = { positionMillis ->
-                framePreview.getPreviewFrame(positionMillis, maxWidthPx, maxHeightPx)?.toImageBitmap()
-            },
-        )
+        createMediaProgressFramePreviewState(player, maxWidthPx, maxHeightPx)!!
     }
     LaunchedEffect(state, player) {
         player.mediaData.collect { data ->
@@ -158,6 +154,18 @@ fun rememberMediaProgressFramePreviewState(
         }
     }
     return state
+}
+
+/** 非 Compose 状态持有者使用的播放器取帧适配器。 */
+fun createMediaProgressFramePreviewState(
+    player: MediampPlayer,
+    maxWidth: Int,
+    maxHeight: Int,
+): MediaProgressFramePreviewState? {
+    val feature = player.features[FramePreview] ?: return null
+    return MediaProgressFramePreviewState(fetchFrame = { position ->
+        feature.getPreviewFrame(position, maxWidth, maxHeight)?.toImageBitmap()
+    })
 }
 
 /**

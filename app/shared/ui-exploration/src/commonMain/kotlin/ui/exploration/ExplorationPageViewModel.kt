@@ -14,14 +14,21 @@ import androidx.paging.cachedIn
 import androidx.paging.compose.launchAsLazyPagingItemsIn
 import androidx.paging.filter
 import androidx.paging.flatMap
+import kotlinx.coroutines.Deferred
+import kotlinx.coroutines.async
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 import me.him188.ani.app.data.models.preference.NsfwMode
+import me.him188.ani.app.data.models.subject.SubjectCollectionInfo
 import me.him188.ani.app.data.models.subject.subjectInfo
 import me.him188.ani.app.data.network.RecommendationRepository
 import me.him188.ani.app.data.network.TrendsRepository
 import me.him188.ani.app.data.repository.subject.FollowedSubjectsRepository
+import me.him188.ani.app.data.repository.subject.SubjectCollectionRepository
 import me.him188.ani.app.data.repository.user.SettingsRepository
 import me.him188.ani.app.domain.session.SessionManager
 import me.him188.ani.app.domain.usecase.GlobalKoin
@@ -39,6 +46,16 @@ open class ExplorationPageViewModel(private val koin: Koin = GlobalKoin) : Abstr
     private val sessionManager: SessionManager by inject()
     private val followedSubjectsRepository: FollowedSubjectsRepository by inject()
     private val settingsRepository: SettingsRepository by inject()
+
+    private val collectionRepository: SubjectCollectionRepository by inject()
+    private val subjectInfoRequests = mutableMapOf<Int, Deferred<SubjectCollectionInfo>>()
+    private val subjectInfoMutex = Mutex()
+
+    protected suspend fun getSubjectCollectionInfo(id: Int): SubjectCollectionInfo = subjectInfoMutex.withLock {
+        subjectInfoRequests.getOrPut(id) {
+            backgroundScope.async { collectionRepository.subjectCollectionFlow(id).first() }
+        }
+    }.await()
 
     private val nsfwSettingFlow = settingsRepository.uiSettings.flow.map { it.searchSettings.nsfwMode }
     private val horizontalScrollTipFlow =

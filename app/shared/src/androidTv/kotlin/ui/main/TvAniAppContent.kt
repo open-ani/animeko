@@ -37,6 +37,7 @@ import me.him188.ani.app.navigation.NavRoutes
 import me.him188.ani.app.navigation.PersonDetailRole
 import me.him188.ani.app.navigation.findLast
 import me.him188.ani.app.navigation.rememberAniBackStack
+import me.him188.ani.app.shared.loadOpenSourceLibrariesJsons
 import me.him188.ani.app.tools.LocalTimeFormatter
 import me.him188.ani.app.tools.TimeFormatter
 import me.him188.ani.tv.ui.collection.TvCollectionRoute
@@ -57,7 +58,6 @@ import me.him188.ani.tv.ui.search.TvSearchRoute
 import me.him188.ani.tv.ui.search.TvSearchViewModel
 import me.him188.ani.tv.ui.settings.TvSettingsRoute
 import me.him188.ani.tv.ui.settings.TvSettingsViewModel
-import me.him188.ani.app.shared.loadOpenSourceLibrariesJsons
 import me.him188.ani.tv.ui.subject.TvSubjectDetailsRoute
 import me.him188.ani.tv.ui.subject.TvSubjectDetailsViewModel
 import me.him188.ani.tv.ui.subject.person.TvPeopleDetailsRoute
@@ -89,9 +89,6 @@ fun TvAniAppContent(
     val shellFocusMemory = remember { TvFocusMemory() }
     val togetherViewModel = tvViewModel {
         TvWatchTogetherViewModel(
-            dependencies.watchTogetherManager,
-            dependencies.settingsRepository,
-            dependencies.sessionStateProvider,
             dependencies.koin,
         )
     }
@@ -153,7 +150,7 @@ fun TvAniAppContent(
                     entry<NavRoutes.Main> {
                         var shellContent by rememberSaveable { mutableStateOf(TvShellContent.Exploration) }
                         val mainViewModel = tvViewModel {
-                            TvMainViewModel(dependencies.userRepository, dependencies.sessionStateProvider)
+                            TvMainViewModel(dependencies.koin)
                         }
                         TvMainRoute(
                             mainViewModel,
@@ -167,7 +164,6 @@ fun TvAniAppContent(
                                     val viewModel = tvViewModel {
                                         TvExplorationViewModel(
                                             koin = dependencies.koin,
-                                            collectionRepository = dependencies.subjectCollectionRepository,
                                         )
                                     }
                                     TvExplorationRoute(viewModel, onNavigate)
@@ -186,7 +182,7 @@ fun TvAniAppContent(
                                 TvShellContent.Search -> {
                                     val viewModel =
                                         tvViewModel {
-                                            TvSearchViewModel(dependencies.subjectSearchRepository, dependencies.settingsRepository)
+                                            TvSearchViewModel(dependencies.koin)
                                         }
                                     TvSearchRoute(viewModel, onNavigate)
                                 }
@@ -210,10 +206,7 @@ fun TvAniAppContent(
                     entry<NavRoutes.Settings> {
                         val viewModel = tvViewModel {
                             TvSettingsViewModel(
-                                dependencies.settingsRepository,
-                                dependencies.danmakuRegexFilterRepository,
-                                dependencies.mediaSourceManager,
-                                dependencies.mediaSourceSubscriptionRepository,
+                                dependencies.koin,
                                 loadLibraries = ::loadOpenSourceLibrariesJsons,
                             )
                         }
@@ -236,8 +229,7 @@ fun TvAniAppContent(
                         val viewModel = tvViewModel {
                             TvPeopleDetailsViewModel(
                                 TvPeopleTarget(route.characterId, TvPeopleKind.Character),
-                                dependencies.personDetailsRepository, dependencies.personCommentRepository,
-                                dependencies.commentReportService, dependencies.sessionStateProvider,
+                                dependencies.koin,
                             )
                         }
                         TvPeopleDetailsRoute(viewModel, onNavigate)
@@ -252,8 +244,7 @@ fun TvAniAppContent(
                                         PersonDetailRole.Staff -> TvPeopleKind.Staff
                                     },
                                 ),
-                                dependencies.personDetailsRepository, dependencies.personCommentRepository,
-                                dependencies.commentReportService, dependencies.sessionStateProvider,
+                                dependencies.koin,
                             )
                         }
                         TvPeopleDetailsRoute(viewModel, onNavigate)
@@ -265,12 +256,7 @@ fun TvAniAppContent(
                                 placeholder = route.placeholder?.run {
                                     SubjectInfo.createPlaceholder(id, name, coverUrl, nameCN)
                                 },
-                                factory = dependencies.subjectDetailsStateFactory,
-                                collectionRepository = dependencies.subjectCollectionRepository,
-                                setEpisodeCollectionType = dependencies.setEpisodeCollectionType,
-                                searchRepository = dependencies.subjectSearchRepository,
-                                sessionStateProvider = dependencies.sessionStateProvider,
-                                settingsRepository = dependencies.settingsRepository,
+                                koin = dependencies.koin,
                             )
                         }
                         TvSubjectDetailsRoute(viewModel, onNavigate)
@@ -284,18 +270,7 @@ fun TvAniAppContent(
                                 initialEpisodeId = route.episodeId,
                                 context = context,
                                 koin = dependencies.koin,
-                                playerStateFactory = dependencies.playerStateFactory,
-                                episodeCollectionRepository = dependencies.episodeCollectionRepository,
-                                subjectCollectionRepository = dependencies.subjectCollectionRepository,
-                                danmakuRepository = dependencies.danmakuRepository,
-                                settingsRepository = dependencies.settingsRepository,
-                                getDanmakuRegexFilterListFlowUseCase = dependencies.getDanmakuRegexFilterListFlowUseCase,
-                                episodeCommentRepository = dependencies.episodeCommentRepository,
-                                getSubjectRecommendations = dependencies.getSubjectRecommendations,
-                                autoSkipRepository = dependencies.autoSkipRepository,
-                                selectorEpisodeCacheRepository = dependencies.selectorEpisodeCacheRepository,
-                                webSessionManager = dependencies.webSessionManager,
-                                playbackAutomationGate = dependencies.playbackAutomationGate,
+
                             )
                         }
                         TvEpisodeRoute(viewModel, togetherViewModel, onNavigate)

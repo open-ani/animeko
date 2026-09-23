@@ -9,54 +9,19 @@
 
 package me.him188.ani.tv.ui.main
 
-import kotlinx.coroutines.CancellationException
-import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.flow.SharingStarted
-import kotlinx.coroutines.flow.combine
-import kotlinx.coroutines.flow.receiveAsFlow
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
-import kotlinx.coroutines.launch
-import kotlinx.coroutines.sync.Mutex
-import me.him188.ani.app.data.repository.user.UserRepository
-import me.him188.ani.app.domain.foundation.LoadError
-import me.him188.ani.app.domain.session.InvalidSessionReason
-import me.him188.ani.app.domain.session.SessionState
-import me.him188.ani.app.domain.session.SessionStateProvider
-import me.him188.ani.app.ui.foundation.AbstractViewModel
+import me.him188.ani.app.ui.main.MainScreenSharedViewModel
+import org.koin.core.Koin
 
-class TvMainViewModel(
-    private val repository: UserRepository,
-    sessionStateProvider: SessionStateProvider,
-) : AbstractViewModel() {
-    private val logoutMutex = Mutex()
-    private val errors = Channel<LoadError>(Channel.BUFFERED)
-    val logoutErrors = errors.receiveAsFlow()
-
-    val uiState = combine(
-        sessionStateProvider.stateFlow,
-        repository.selfInfoFlow,
-    ) { session, selfInfo ->
-        val loggedIn = session is SessionState.Valid ||
-                (session is SessionState.Invalid && session.reason == InvalidSessionReason.NETWORK_ERROR && selfInfo != null)
-        TvMainUiState(selfInfo.takeIf { loggedIn }, isLoggedIn = loggedIn)
-    }.stateIn(backgroundScope, SharingStarted.WhileSubscribed(5_000), TvMainUiState(isLoggedIn = null))
+class TvMainViewModel(koin: Koin) : MainScreenSharedViewModel(koin) {
+    val uiState = accountState.map { TvMainUiState(it.selfInfo, isLoggedIn = it.isSessionValid) }
+        .stateIn(backgroundScope, SharingStarted.WhileSubscribed(5_000), TvMainUiState(isLoggedIn = null))
 
     fun onIntent(intent: TvMainIntent) {
         when (intent) {
-            TvMainIntent.Logout -> {
-                if (!logoutMutex.tryLock()) return
-                backgroundScope.launch {
-                    try {
-                        repository.clearSelfInfo()
-                    } catch (e: CancellationException) {
-                        throw e
-                    } catch (e: Exception) {
-                        errors.send(LoadError.fromException(e))
-                    } finally {
-                        logoutMutex.unlock()
-                    }
-                }
-            }
+            TvMainIntent.Logout -> logout()
         }
     }
 }

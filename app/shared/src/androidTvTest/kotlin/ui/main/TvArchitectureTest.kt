@@ -14,19 +14,20 @@ import com.lemonappdev.konsist.api.verify.assertFalse
 import java.io.File
 import kotlin.test.Test
 
-/**
- * TV 约定边界守护.
- *
- * D1 放弃编译期隔离后, 手机 UI 树对 tv variant 完整可见 —— 本测试是「TV 不调用手机 UI」
- * 约定的主要机械守护: 禁止 TV 代码 import 手机 UI 树 (白名单基建除外).
- *
- * v4 起不再禁 material3: 上游 PR#3217 的 TV 方案就是 material3 + 自研焦点系统
- * (完全不用 tv-material), 我们的新基建 (TvImmersiveCards/TvNavigationSideRail) 与之对齐.
- */
+/** TV 页面消费状态与 Intent；业务状态由对应共享 ViewModel 提供。 */
 class TvArchitectureTest {
 
     /** me.him188.ani.app.ui.* 中 TV 允许 import 的基建白名单 (§4.2). */
     private val uiFoundationInfraAllowList = listOf(
+        "me.him188.ani.app.ui.main.MainScreenSharedViewModel",
+        "me.him188.ani.app.ui.settings.SettingsViewModel",
+        "me.him188.ani.app.ui.subject.person.PeopleDetailsViewModel",
+        "me.him188.ani.app.ui.subject.episode.EpisodeViewModel",
+        "me.him188.ani.app.ui.danmaku.UIDanmakuEvent",
+        "me.him188.ani.app.ui.watchtogether.WatchTogetherViewModel",
+        "me.him188.ani.app.ui.watchtogether.WatchTogetherIntent",
+        "me.him188.ani.app.ui.watchtogether.WatchTogetherPhase",
+        "me.him188.ani.app.ui.watchtogether.WatchTogetherJoinError",
         "me.him188.ani.app.ui.foundation.AsyncImage",
         "me.him188.ani.app.ui.foundation.LocalSketch",
         "me.him188.ani.app.ui.foundation.rememberAniSketchInstance",
@@ -224,6 +225,44 @@ class TvArchitectureTest {
                 (!isAppContent && file.imports.any { it.name.endsWith(".tvViewModel") }) ||
                 (!isHelper && file.imports.any { it.name == "androidx.lifecycle.viewmodel.compose.viewModel" }) ||
                 (hasKoinModule && file.text.contains("ViewModel"))
+        }
+    }
+
+    @Test
+    fun `every tv viewmodel inherits its shared feature viewmodel`() {
+        val parents = mapOf(
+            "TvMainViewModel" to "MainScreenSharedViewModel",
+            "TvExplorationViewModel" to "ExplorationPageViewModel",
+            "TvScheduleViewModel" to "ScheduleViewModel",
+            "TvCollectionViewModel" to "UserCollectionsViewModel",
+            "TvSearchViewModel" to "SearchViewModel",
+            "TvLoginViewModel" to "EmailLoginViewModel",
+            "TvSettingsViewModel" to "SettingsViewModel",
+            "TvSubjectDetailsViewModel" to "SubjectDetailsViewModel",
+            "TvPeopleDetailsViewModel" to "PeopleDetailsViewModel",
+            "TvEpisodeViewModel" to "EpisodeViewModel",
+            "TvWatchTogetherViewModel" to "WatchTogetherViewModel",
+        )
+        val declaration = Regex("""class\s+(Tv\w*ViewModel)\b""")
+        tvScope().files.assertFalse { file ->
+            declaration.findAll(file.text).any { match ->
+                val parent = parents[match.groupValues[1]]
+                parent == null || !Regex(""":\s*$parent\s*\(""").containsMatchIn(file.text)
+            }
+        }
+    }
+
+    @Test
+    fun `tv adapters do not build independent playback or repository pipelines`() {
+        val independentState = Regex("""\b(?:EpisodeFetchSelectPlayState|EpisodeDanmakuLoader|CacheProgressProvider|TvSeekBar|TvAutoSkipController)\s*\(""")
+        tvScope().files.assertFalse { file ->
+            independentState.containsMatchIn(file.text) ||
+                (file.path.endsWith("ViewModel.kt") && file.imports.any {
+                    it.name.startsWith("me.him188.ani.app.data.repository.") &&
+                        it.name.substringAfterLast('.').endsWith("Repository") &&
+                        // OTP result variants are part of the shared login contract.
+                        it.name != "me.him188.ani.app.data.repository.user.UserRepository"
+                })
         }
     }
 

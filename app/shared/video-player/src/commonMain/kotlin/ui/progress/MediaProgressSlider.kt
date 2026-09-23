@@ -19,7 +19,6 @@ import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.interaction.collectIsHoveredAsState
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
@@ -57,8 +56,8 @@ import androidx.compose.ui.graphics.BlendMode
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.graphics.Shape
-import androidx.compose.ui.input.pointer.PointerEventType
 import androidx.compose.ui.input.pointer.PointerEventPass
+import androidx.compose.ui.input.pointer.PointerEventType
 import androidx.compose.ui.input.pointer.PointerType
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.layout.onSizeChanged
@@ -346,6 +345,7 @@ fun MediaProgressSlider(
     showPreviewTimeTextOnThumb: Boolean = true,
     framePreview: MediaProgressFramePreviewState? = null,
     showFramePreviewInPopup: Boolean = true,
+    showThumb: Boolean = true,
     touchSeekState: TouchSeekState? = null,
 //    drawThumb: @Composable DrawScope.() -> Unit = {
 //        drawCircle(
@@ -585,7 +585,7 @@ fun MediaProgressSlider(
             interactionSource = interactionSource,
             thumb = {
                 Canvas(Modifier.width(12.dp).height(24.dp)) {
-                    drawCircle(
+                    if (showThumb) drawCircle(
                         colors.thumbColor,
                         radius = 8.dp.toPx(),
                     )

@@ -10,75 +10,49 @@
 package me.him188.ani.tv.ui.search
 
 import androidx.compose.runtime.Stable
-import androidx.paging.PagingData
-import androidx.paging.cachedIn
 import androidx.paging.filter
-import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.combine
-import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.emptyFlow
 import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
-import kotlinx.coroutines.flow.update
 import me.him188.ani.app.data.models.preference.NsfwMode
-import me.him188.ani.app.data.network.BatchSubjectDetails
-import me.him188.ani.app.data.repository.subject.SubjectSearchRepository
-import me.him188.ani.app.data.repository.user.SettingsRepository
 import me.him188.ani.app.domain.search.SubjectSearchQuery
 import me.him188.ani.app.navigation.SubjectDetailPlaceholder
-import me.him188.ani.app.ui.foundation.AbstractViewModel
+import me.him188.ani.app.ui.exploration.search.SearchPageIntent
+import me.him188.ani.app.ui.main.SearchViewModel
 import me.him188.ani.tv.ui.foundation.TvNavigationEvent
 import me.him188.ani.tv.ui.foundation.TvNavigationEvents
+import org.koin.core.Koin
 
-/**
- * TV 搜索页薄 VM (M2 精简版: 关键词搜索, 筛选弹窗 M3).
- */
+/** TV 搜索表单将已提交的关键词接入共享搜索状态。 */
 @Stable
-class TvSearchViewModel(
-    private val subjectSearchRepository: SubjectSearchRepository,
-    settingsRepository: SettingsRepository,
-) : AbstractViewModel() {
-    private val _uiState = MutableStateFlow(TvSearchUiState())
-    private val searchSettings = settingsRepository.uiSettings.flow.map { it.searchSettings }.distinctUntilChanged()
-    val uiState = combine(_uiState, searchSettings) { state, settings -> state.copy(nsfwMode = settings.nsfwMode) }
-        .stateIn(backgroundScope, SharingStarted.WhileSubscribed(5_000), TvSearchUiState())
+class TvSearchViewModel(koin: Koin) : SearchViewModel(SubjectSearchQuery(keywords = ""), koin) {
+    private val keywords = MutableStateFlow("")
     private val navigation = TvNavigationEvents()
     val navigationEvents = navigation.events
 
-    /** 已提交的搜索 (软键盘 Search 动作触发, 非边输边搜) */
-    private val submittedQuery = MutableStateFlow<SubjectSearchQuery?>(null)
+    val uiState = combine(keywords, searchPageState) { keywords, search ->
+        TvSearchUiState(keywords = keywords, hasSearched = search.hasActiveSearch)
+    }.stateIn(backgroundScope, SharingStarted.WhileSubscribed(5_000), TvSearchUiState())
 
-    val results: Flow<PagingData<BatchSubjectDetails>> = combine(submittedQuery, searchSettings) { query, settings -> query to settings }
-        .flatMapLatest { (query, settings) ->
-            if (query == null) {
-                emptyFlow()
-            } else {
-                subjectSearchRepository.searchSubjects(
-                    if (settings.nsfwMode == NsfwMode.HIDE) query.copy(nsfw = false) else query,
-                    ignoreDoneAndDropped = { settings.ignoreDoneAndDroppedSubjects },
-                ).map { page -> page.filter { settings.nsfwMode != NsfwMode.HIDE || !it.subjectInfo.nsfw } }
-            }
-        }
-        .cachedIn(backgroundScope)
+    val results = searchPageState.value.searchState.pagerFlow.flatMapLatest { pager ->
+        pager ?: emptyFlow()
+    }.map { page -> page.filter { !it.hide && it.nsfwMode != NsfwMode.HIDE } }
 
     fun onIntent(intent: TvSearchIntent) {
         when (intent) {
-            is TvSearchIntent.ChangeKeywords -> _uiState.update { it.copy(keywords = intent.value) }
-            TvSearchIntent.Search -> {
-                val query = SubjectSearchQuery(keywords = _uiState.value.keywords).normalized()
-                if (query.hasSearchRequest()) {
-                    submittedQuery.value = query
-                    _uiState.update { it.copy(hasSearched = true) }
-                }
-            }
+            is TvSearchIntent.ChangeKeywords -> keywords.value = intent.value
+            TvSearchIntent.Search -> onSearchPageIntent(
+                SearchPageIntent.UpdateQuery(SubjectSearchQuery(keywords = keywords.value), submit = true),
+            )
             is TvSearchIntent.OpenSubject -> {
-                val info = intent.subject.subjectInfo
+                val item = intent.subject
                 navigation.emit(TvNavigationEvent.Subject(
-                    info.subjectId,
-                    SubjectDetailPlaceholder(id = info.subjectId, name = info.name, coverUrl = info.imageLarge, nameCN = info.nameCn),
+                    item.subjectId,
+                    SubjectDetailPlaceholder(item.subjectId, item.originalTitle, item.title, item.imageUrl),
                 ))
             }
         }

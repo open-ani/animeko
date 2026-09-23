@@ -9,91 +9,14 @@
 
 package me.him188.ani.tv.ui.di
 
-import me.him188.ani.app.data.network.AutoSkipRepository
-import me.him188.ani.app.data.network.BangumiSummaryService
-import me.him188.ani.app.data.repository.episode.EpisodeCollectionRepository
-import me.him188.ani.app.data.repository.episode.EpisodeCommentRepository
-import me.him188.ani.app.data.repository.media.MediaSourceSubscriptionRepository
-import me.him188.ani.app.data.repository.media.SelectorMediaSourceEpisodeCacheRepository
-import me.him188.ani.app.data.repository.subject.SubjectCollectionRepository
-import me.him188.ani.app.data.repository.subject.SubjectSearchRepository
 import me.him188.ani.app.data.repository.user.SettingsRepository
-import me.him188.ani.app.data.repository.player.DanmakuRegexFilterRepository
-import me.him188.ani.app.domain.media.fetch.MediaSourceManager
-import me.him188.ani.app.data.repository.user.UserRepository
-import me.him188.ani.app.domain.danmaku.DanmakuRepository
-import me.him188.ani.app.domain.episode.GetSubjectRecommendationUseCase
-import me.him188.ani.app.domain.episode.SetEpisodeCollectionTypeUseCase
-import me.him188.ani.app.data.network.AniCommentReportService
-import me.him188.ani.app.data.repository.person.PersonCommentRepository
-import me.him188.ani.app.data.repository.person.PersonDetailsRepository
-import me.him188.ani.app.domain.mediasource.web.captcha.WebSessionManager
-import me.him188.ani.app.domain.session.SessionStateProvider
-import me.him188.ani.app.domain.settings.GetDanmakuRegexFilterListFlowUseCase
-import me.him188.ani.app.domain.watchtogether.PlaybackAutomationGate
-import me.him188.ani.app.domain.watchtogether.WatchTogetherManager
-import me.him188.ani.app.ui.subject.details.state.SubjectDetailsStateFactory
 import org.koin.core.Koin
-import org.openani.mediamp.MediampPlayerFactory
 
-/** Application services resolved before composition, passed only to ViewModel constructors. */
-class TvAppDependencies(
-    // Shared state holders and playback sessions still take the application Koin instance.
-    val koin: Koin,
-    val userRepository: UserRepository,
-    val subjectCollectionRepository: SubjectCollectionRepository,
-    val bangumiSummaryService: BangumiSummaryService,
-    val danmakuRegexFilterRepository: DanmakuRegexFilterRepository,
-    val mediaSourceManager: MediaSourceManager,
-    val mediaSourceSubscriptionRepository: MediaSourceSubscriptionRepository,
-    val subjectSearchRepository: SubjectSearchRepository,
-    val settingsRepository: SettingsRepository,
-    val subjectDetailsStateFactory: SubjectDetailsStateFactory,
-    val playerStateFactory: MediampPlayerFactory<*>,
-    val episodeCollectionRepository: EpisodeCollectionRepository,
-    val danmakuRepository: DanmakuRepository,
-    val getDanmakuRegexFilterListFlowUseCase: GetDanmakuRegexFilterListFlowUseCase,
-    val episodeCommentRepository: EpisodeCommentRepository,
-    val getSubjectRecommendations: GetSubjectRecommendationUseCase,
-    val autoSkipRepository: AutoSkipRepository,
-    val selectorEpisodeCacheRepository: SelectorMediaSourceEpisodeCacheRepository,
-    val webSessionManager: WebSessionManager,
-    val playbackAutomationGate: PlaybackAutomationGate,
-    val watchTogetherManager: WatchTogetherManager,
-    val sessionStateProvider: SessionStateProvider,
-    val setEpisodeCollectionType: SetEpisodeCollectionTypeUseCase,
-    val personDetailsRepository: PersonDetailsRepository,
-    val personCommentRepository: PersonCommentRepository,
-    val commentReportService: AniCommentReportService,
-) {
+/** TV 应用主题与共享 ViewModel 的依赖容器。 */
+class TvAppDependencies(val koin: Koin) {
+    val settingsRepository: SettingsRepository by lazy { koin.get() }
+
     companion object {
-        fun fromKoin(koin: Koin): TvAppDependencies = TvAppDependencies(
-            koin = koin,
-            userRepository = koin.get(),
-            subjectCollectionRepository = koin.get(),
-            danmakuRegexFilterRepository = koin.get(),
-            mediaSourceManager = koin.get(),
-            mediaSourceSubscriptionRepository = koin.get(),
-            bangumiSummaryService = koin.get(),
-            subjectSearchRepository = koin.get(),
-            settingsRepository = koin.get(),
-            subjectDetailsStateFactory = koin.get(),
-            playerStateFactory = koin.get(),
-            episodeCollectionRepository = koin.get(),
-            danmakuRepository = koin.get(),
-            getDanmakuRegexFilterListFlowUseCase = koin.get(),
-            episodeCommentRepository = koin.get(),
-            getSubjectRecommendations = koin.get(),
-            autoSkipRepository = koin.get(),
-            selectorEpisodeCacheRepository = koin.get(),
-            webSessionManager = koin.get(),
-            playbackAutomationGate = koin.get(),
-            watchTogetherManager = koin.get(),
-            sessionStateProvider = koin.get(),
-            setEpisodeCollectionType = koin.get(),
-            personDetailsRepository = koin.get(),
-            personCommentRepository = koin.get(),
-            commentReportService = koin.get(),
-        )
+        fun fromKoin(koin: Koin): TvAppDependencies = TvAppDependencies(koin)
     }
 }

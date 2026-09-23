@@ -29,40 +29,25 @@ import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import me.him188.ani.app.data.models.person.PersonSubjectSummary
-import me.him188.ani.app.data.models.preference.NsfwMode
 import me.him188.ani.app.data.models.subject.SubjectInfo
-import me.him188.ani.app.data.repository.subject.SubjectCollectionRepository
-import me.him188.ani.app.data.repository.subject.SubjectSearchRepository
-import me.him188.ani.app.data.repository.user.SettingsRepository
-import me.him188.ani.app.domain.episode.SetEpisodeCollectionTypeUseCase
 import me.him188.ani.app.domain.foundation.LoadError
-import me.him188.ani.app.domain.search.SubjectSearchQuery
-import me.him188.ani.app.domain.session.SessionState
-import me.him188.ani.app.domain.session.SessionStateProvider
 import me.him188.ani.app.ui.comment.UICommentSource
-import me.him188.ani.app.ui.foundation.AbstractViewModel
 import me.him188.ani.app.ui.subject.AiringLabelState
 import me.him188.ani.app.ui.subject.SubjectProgressState
 import me.him188.ani.app.ui.subject.details.SubjectDetailsLoadState
+import me.him188.ani.app.ui.subject.details.SubjectDetailsViewModel
 import me.him188.ani.app.ui.subject.details.state.SubjectDetailsState
-import me.him188.ani.app.ui.subject.details.state.SubjectDetailsStateFactory
-import me.him188.ani.app.ui.subject.details.state.SubjectDetailsStateLoader
 import me.him188.ani.app.ui.subject.episode.list.EpisodeListItem
 import me.him188.ani.datasources.api.topic.toggleCollected
 import me.him188.ani.tv.ui.foundation.TvNavigationEvent
 import me.him188.ani.tv.ui.foundation.TvNavigationEvents
+import org.koin.core.Koin
 
 class TvSubjectDetailsViewModel(
     private val subjectId: Int,
     private val placeholder: SubjectInfo?,
-    factory: SubjectDetailsStateFactory,
-    private val collectionRepository: SubjectCollectionRepository,
-    private val setEpisodeCollectionType: SetEpisodeCollectionTypeUseCase,
-    private val searchRepository: SubjectSearchRepository,
-    sessionStateProvider: SessionStateProvider,
-    private val settingsRepository: SettingsRepository,
-) : AbstractViewModel() {
-    private val loader = SubjectDetailsStateLoader(factory, backgroundScope)
+    koin: Koin,
+) : SubjectDetailsViewModel(subjectId, placeholder, koin) {
     private val images = MutableStateFlow(TvSubjectImages())
     private val operation = MutableStateFlow(TvSubjectOperation())
     private val tagResults = MutableStateFlow<TvTagResults?>(null)
@@ -73,12 +58,12 @@ class TvSubjectDetailsViewModel(
     val errors = feedback.receiveAsFlow()
     private val navigation = TvNavigationEvents()
     val navigationEvents = navigation.events
-    private val loggedIn = sessionStateProvider.stateFlow.map { it is SessionState.Valid }
+    private val loggedIn = authState.map { it.isSessionValid }
         .stateIn(backgroundScope, SharingStarted.Eagerly, null)
 
     // Keep paging consumers mounted across loader refreshes. Paging retains the current
     // generation until the replacement has data, including lazy item/focus identities.
-    private fun <T : Any> pager(select: (SubjectDetailsState) -> Flow<PagingData<T>>) = loader.state
+    private fun <T : Any> pager(select: (SubjectDetailsState) -> Flow<PagingData<T>>) = state
         .filterIsInstance<SubjectDetailsLoadState.Ok>()
         .flatMapLatest { select(it.value) }
         .cachedIn(backgroundScope)
@@ -88,7 +73,7 @@ class TvSubjectDetailsViewModel(
     private val relatedPager = pager { it.relatedSubjectsPager }
     private val commentsPager = pager { it.subjectCommentState.list }
 
-    private val details = loader.state.flatMapLatest { loaded ->
+    private val details = state.flatMapLatest { loaded ->
         when (loaded) {
             is SubjectDetailsLoadState.Placeholder -> flowOf(TvSubjectDetailsUiState(refreshing = true))
             is SubjectDetailsLoadState.Err -> flowOf(TvSubjectDetailsUiState(error = loaded.error))
@@ -142,10 +127,10 @@ class TvSubjectDetailsViewModel(
     }.stateIn(backgroundScope, SharingStarted.Eagerly, TvSubjectDetailsUiState())
 
     init {
-        loader.load(subjectId, placeholder)
+        load()
         loadImages()
         backgroundScope.launch {
-            loader.state.collectLatest { state ->
+            state.collectLatest { state ->
                 if (state !is SubjectDetailsLoadState.Ok) return@collectLatest
                 coroutineScope {
                     launch { state.value.subjectCommentState.actionSubmitFailures.collect { feedback.send(LoadError.fromException(it)) } }
@@ -160,7 +145,7 @@ class TvSubjectDetailsViewModel(
         when (intent) {
             TvSubjectDetailsIntent.Retry -> {
                 if (operation.value.busy) return
-                loader.load(subjectId, placeholder, force = true)
+                reload()
                 loadImages()
             }
             TvSubjectDetailsIntent.Login -> navigation.emit(TvNavigationEvent.Login)
@@ -191,16 +176,7 @@ class TvSubjectDetailsViewModel(
             is TvSubjectDetailsIntent.OpenCharacter -> navigation.emit(TvNavigationEvent.Character(intent.characterId))
             is TvSubjectDetailsIntent.OpenStaff -> navigation.emit(TvNavigationEvent.Staff(intent.personId))
             is TvSubjectDetailsIntent.SearchTag -> {
-                val pager = settingsRepository.uiSettings.flow.map { it.searchSettings }.flatMapLatest { settings ->
-                    searchRepository.searchSubjects(
-                        SubjectSearchQuery(keywords = "", tags = listOf(intent.tag), nsfw = when {
-                            intent.tag == "R18" -> true
-                            settings.nsfwMode == NsfwMode.HIDE -> false
-                            else -> null
-                        }),
-                        ignoreDoneAndDropped = { settings.ignoreDoneAndDroppedSubjects },
-                    )
-                }
+                val pager = searchTag(intent.tag)
                     .map { page -> page.map { item ->
                         val info = item.subjectInfo
                         PersonSubjectSummary(info.subjectId, info.name, info.nameCn, info.imageLarge)
@@ -223,7 +199,7 @@ class TvSubjectDetailsViewModel(
         }
     }
 
-    private fun currentDetails(): SubjectDetailsState? = (loader.state.value as? SubjectDetailsLoadState.Ok)?.value
+    private fun currentDetails(): SubjectDetailsState? = (state.value as? SubjectDetailsLoadState.Ok)?.value
 
     private fun requireLogin(): Boolean {
         if (loggedIn.value == false) navigation.emit(TvNavigationEvent.Login)
@@ -251,7 +227,7 @@ class TvSubjectDetailsViewModel(
     private fun loadImages() {
         imagesJob?.cancel()
         imagesJob = backgroundScope.launch {
-            val collection = loadOrNull { collectionRepository.subjectCollectionFlow(subjectId).first() }
+            val collection = loadOrNull { subjectCollection.first() }
             if (collection == null) {
                 images.update { it.copy(backdrop = TvBackdropState(null)) }
                 return@launch
