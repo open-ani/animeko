@@ -15,15 +15,10 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.snapshotFlow
-import androidx.compose.ui.platform.LocalWindowInfo
-import androidx.compose.ui.platform.WindowInfo
-import androidx.lifecycle.Lifecycle
-import androidx.lifecycle.compose.LocalLifecycleOwner
-import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
+import me.him188.ani.tv.ui.foundation.focus.TvFocusKey
 import me.him188.ani.tv.ui.foundation.focus.TvFocusScope
-import me.him188.ani.tv.ui.foundation.focus.requestPrepared
 import me.him188.ani.tv.ui.subject.presentation.TvDetailsKey
 import me.him188.ani.tv.ui.subject.presentation.TvSubjectPresentationState
 import me.him188.ani.tv.ui.subject.presentation.detailsFocusFallback
@@ -37,40 +32,37 @@ internal data class TvDetailsFocusRow(
     val persistentEntry: Boolean = false,
 )
 
-/** 焦点恢复只等待窗口、布局和目标数据就绪，不控制页面内容的挂载。 */
+/** 准备目标行的数据和滚动位置；窗口与节点就绪由 [TvFocusScope] 负责。 */
 internal class TvDetailsFocusState(
     private val scope: TvFocusScope,
     private val presentation: TvSubjectPresentationState,
-    private val lifecycle: Lifecycle,
-    private val window: WindowInfo,
     private val rows: State<Map<String, TvDetailsFocusRow>>,
 ) {
-    var laidOut by mutableStateOf(false)
-
     suspend fun restore(
         target: String,
         previous: List<String> = emptyList(),
     ) {
-        scope.requestPrepared(isRelevant = { presentation.panel == null }) {
-            fun targetRow(): TvDetailsFocusRow? = rows.value.let { current ->
-                current[target.substringBefore(':')] ?: current.values.firstOrNull { it.entry == target }
-            }
-            lifecycle.currentStateFlow.combine(snapshotFlow {
-                val row = targetRow()
-                laidOut && window.isWindowFocused &&
-                    (row == null || target == row.entry || target in row.keys || !row.loading)
-            }) { state, ready -> state.isAtLeast(Lifecycle.State.RESUMED) && ready }.first { it }
+        scope.requestPrepared(isRelevant = { presentation.panel == null }) { prepare(target, previous) }
+    }
 
+    suspend fun prepare(target: String, previous: List<String> = emptyList()): TvFocusKey {
+        fun targetRow(): TvDetailsFocusRow? = rows.value.let { current ->
+            current[target.substringBefore(':')] ?: current.values.firstOrNull { it.entry == target }
+        }
+        snapshotFlow {
             val row = targetRow()
-            if (row == null || target == row.entry && row.persistentEntry) {
-                TvDetailsKey(target)
-            } else if (row.keys.isEmpty()) {
-                TvDetailsKey(row.entry)
-            } else {
-                val selected = detailsFocusFallback(target, previous, row.keys, row.keys.first())
-                row.state.scrollToItem(row.keys.indexOf(selected))
-                TvDetailsKey(selected)
-            }
+            row == null || target == row.entry || target in row.keys || !row.loading
+        }.first { it }
+
+        val row = targetRow()
+        return if (row == null || target == row.entry && row.persistentEntry) {
+            TvDetailsKey(target)
+        } else if (row.keys.isEmpty()) {
+            TvDetailsKey(row.entry)
+        } else {
+            val selected = detailsFocusFallback(target, previous, row.keys, row.keys.first())
+            row.state.scrollToItem(row.keys.indexOf(selected))
+            TvDetailsKey(selected)
         }
     }
 }
@@ -81,18 +73,14 @@ internal fun rememberTvDetailsFocusState(
     presentation: TvSubjectPresentationState,
     rows: Map<String, TvDetailsFocusRow>,
 ): TvDetailsFocusState {
-    val lifecycle = LocalLifecycleOwner.current.lifecycle
-    val window = LocalWindowInfo.current
     val latestRows = rememberUpdatedState(rows)
-    val state = remember(focus, presentation, lifecycle, window) {
-        TvDetailsFocusState(focus, presentation, lifecycle, window, latestRows)
+    val state = remember(focus, presentation) {
+        TvDetailsFocusState(focus, presentation, latestRows)
     }
     val scope = rememberCoroutineScope()
 
-    LaunchedEffect(state) {
-        if (presentation.panel == null && presentation.restoreTarget == null) {
-            state.restore(presentation.lastFocused)
-        }
+    focus.InitialFocus(state, isRelevant = { presentation.panel == null && presentation.restoreTarget == null }) {
+        state.prepare(presentation.lastFocused)
     }
     LaunchedEffect(state, presentation.restoreTarget, presentation.panel) {
         val target = presentation.restoreTarget ?: return@LaunchedEffect

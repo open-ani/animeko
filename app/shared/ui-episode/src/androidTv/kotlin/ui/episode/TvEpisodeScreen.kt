@@ -9,6 +9,7 @@
 
 package me.him188.ani.tv.ui.episode
 
+import android.view.KeyEvent as AndroidKeyEvent
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.core.updateTransition
@@ -134,7 +135,6 @@ import me.him188.ani.tv.ui.episode.source.TvPlayerSourceDialog
 import me.him188.ani.tv.ui.episode.source.rememberTvSourceDialogState
 import me.him188.ani.tv.ui.foundation.focus.TV_CONFIRM_KEYS
 import me.him188.ani.tv.ui.foundation.focus.rememberTvFocusScope
-import me.him188.ani.tv.ui.foundation.focus.requestPrepared
 import me.him188.ani.tv.ui.foundation.focus.tvFocusAnchor
 import me.him188.ani.tv.ui.foundation.focus.tvFocusExit
 import me.him188.ani.tv.ui.foundation.focus.tvFocusLink
@@ -147,7 +147,6 @@ import me.him188.ani.tv.ui.watchtogether.TvWatchTogetherPanel
 import org.jetbrains.compose.resources.pluralStringResource
 import org.jetbrains.compose.resources.stringResource
 import org.openani.mediamp.MediaStatus
-import android.view.KeyEvent as AndroidKeyEvent
 
 /*
  * TV 播放页.

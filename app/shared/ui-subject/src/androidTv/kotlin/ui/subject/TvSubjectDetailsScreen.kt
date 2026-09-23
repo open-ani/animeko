@@ -40,34 +40,26 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.saveable.rememberSaveableStateHolder
 import androidx.compose.runtime.setValue
-import androidx.compose.runtime.snapshotFlow
-import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusDirection
 import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.key.Key
-import androidx.compose.ui.layout.onGloballyPositioned
-import androidx.compose.ui.platform.LocalWindowInfo
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
-import me.him188.ani.tv.ui.subject.details.TvDetailsAction
-import androidx.lifecycle.Lifecycle
-import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.paging.LoadState
 import androidx.paging.compose.LazyPagingItems
 import androidx.paging.compose.collectAsLazyPagingItems
-import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import me.him188.ani.app.data.models.subject.RelatedCharacterInfo
 import me.him188.ani.app.data.models.subject.RelatedPersonInfo
 import me.him188.ani.app.data.models.subject.RelatedSubjectInfo
 import me.him188.ani.app.domain.foundation.LoadError
-import me.him188.ani.app.ui.comment.UIComment
 import me.him188.ani.app.ui.comment.CommentOverlayCleanupEffect
+import me.him188.ani.app.ui.comment.UIComment
 import me.him188.ani.app.ui.lang.Lang
 import me.him188.ani.app.ui.lang.foundation_loading
 import me.him188.ani.app.ui.lang.settings_mediasource_retry
@@ -80,44 +72,44 @@ import me.him188.ani.app.ui.lang.subject_details_staff
 import me.him188.ani.app.ui.lang.subject_details_view_all
 import me.him188.ani.app.ui.search.renderLoadErrorMessage
 import me.him188.ani.tv.ui.foundation.focus.rememberTvFocusScope
-import me.him188.ani.tv.ui.foundation.focus.requestPrepared
+import me.him188.ani.tv.ui.foundation.focus.tvBackKey
 import me.him188.ani.tv.ui.foundation.focus.tvFocusAnchor
 import me.him188.ani.tv.ui.foundation.focus.tvFocusExit
 import me.him188.ani.tv.ui.foundation.focus.tvFocusHotkey
 import me.him188.ani.tv.ui.foundation.focus.tvFocusLink
 import me.him188.ani.tv.ui.foundation.focus.tvFocusNavSignal
+import me.him188.ani.tv.ui.foundation.layout.rememberTvOptionAnchors
+import me.him188.ani.tv.ui.foundation.layout.tvModalUnderlay
+import me.him188.ani.tv.ui.foundation.layout.tvOptionAnchor
 import me.him188.ani.tv.ui.foundation.widgets.TvHeroButton
 import me.him188.ani.tv.ui.foundation.widgets.tvShellBackgroundColor
-import me.him188.ani.tv.ui.subject.components.TvDetailsBackdrop
 import me.him188.ani.tv.ui.subject.components.LocalTvDetailsBackdropImage
+import me.him188.ani.tv.ui.subject.components.TvDetailsBackdrop
 import me.him188.ani.tv.ui.subject.components.TvDetailsBackdropImage
 import me.him188.ani.tv.ui.subject.components.TvDetailsBringIntoViewSpec
 import me.him188.ani.tv.ui.subject.components.TvDetailsBrowseRowLayout
-import me.him188.ani.tv.ui.subject.components.tvDetailsEpisodePlaceholders
 import me.him188.ani.tv.ui.subject.components.TvDetailsLandscapePlaceholder
 import me.him188.ani.tv.ui.subject.components.TvDetailsPersonPlaceholder
 import me.him188.ani.tv.ui.subject.components.TvDetailsScrollAnchors
 import me.him188.ani.tv.ui.subject.components.TvSubjectDetailsDefaults
 import me.him188.ani.tv.ui.subject.components.TvSubjectDetailsPageLayout
+import me.him188.ani.tv.ui.subject.components.tvDetailsEpisodePlaceholders
 import me.him188.ani.tv.ui.subject.components.tvDetailsScrollSection
-import me.him188.ani.tv.ui.foundation.focus.tvBackKey
-import me.him188.ani.tv.ui.foundation.layout.rememberTvOptionAnchors
-import me.him188.ani.tv.ui.foundation.layout.tvModalUnderlay
-import me.him188.ani.tv.ui.foundation.layout.tvOptionAnchor
 import me.him188.ani.tv.ui.subject.details.TvCharacterCard
+import me.him188.ani.tv.ui.subject.details.TvDetailsAction
 import me.him188.ani.tv.ui.subject.details.TvDetailsCollectionAction
-import me.him188.ani.tv.ui.subject.details.TvDetailsRatingAction
-import me.him188.ani.tv.ui.subject.details.TvDetailsHeroSection
 import me.him188.ani.tv.ui.subject.details.TvDetailsFocusRow
-import me.him188.ani.tv.ui.subject.details.rememberTvDetailsFocusState
+import me.him188.ani.tv.ui.subject.details.TvDetailsHeroSection
 import me.him188.ani.tv.ui.subject.details.TvDetailsLists
+import me.him188.ani.tv.ui.subject.details.TvDetailsRatingAction
 import me.him188.ani.tv.ui.subject.details.TvEpisodeCard
 import me.him188.ani.tv.ui.subject.details.TvRelatedSubjectCard
 import me.him188.ani.tv.ui.subject.details.TvStaffCard
+import me.him188.ani.tv.ui.subject.details.TvSubjectComments
 import me.him188.ani.tv.ui.subject.details.TvSubjectDetailsPanels
 import me.him188.ani.tv.ui.subject.details.TvSubjectDetailsPlaceholder
 import me.him188.ani.tv.ui.subject.details.TvSubjectInformationSection
-import me.him188.ani.tv.ui.subject.details.TvSubjectComments
+import me.him188.ani.tv.ui.subject.details.rememberTvDetailsFocusState
 import me.him188.ani.tv.ui.subject.presentation.TvDetailsKey
 import me.him188.ani.tv.ui.subject.presentation.TvDetailsPanelKind
 import me.him188.ani.tv.ui.subject.presentation.TvSubjectPresentationState
@@ -150,17 +142,8 @@ internal fun TvSubjectDetailsScreen(
 private fun TvDetailsLoadingOrError(error: LoadError?, onRetry: () -> Unit) {
     val focus = rememberTvFocusScope()
     focus.Resolver()
-    val lifecycle = LocalLifecycleOwner.current.lifecycle
-    val window = LocalWindowInfo.current
-    var laidOut by remember(error) { mutableStateOf(false) }
-    LaunchedEffect(error) {
-        focus.requestPrepared {
-            lifecycle.currentStateFlow.first { it.isAtLeast(Lifecycle.State.RESUMED) }
-            snapshotFlow { laidOut && window.isWindowFocused }.first { it }
-            TvDetailsKey("entry")
-        }
-    }
-    val layoutModifier = Modifier.fillMaxSize().tvFocusNavSignal(focus).onGloballyPositioned { laidOut = true }
+    focus.InitialFocus(error) { TvDetailsKey("entry") }
+    val layoutModifier = Modifier.fillMaxSize().tvFocusNavSignal(focus)
     if (error == null) {
         val loading = stringResource(Lang.foundation_loading)
         TvSubjectDetailsPlaceholder(focus,
@@ -283,7 +266,6 @@ private fun TvSubjectDetailsContent(
 
     TvSubjectDetailsPageLayout(
         focus = focus, scrollState = scrollState, bringIntoViewSpec = scrollSpec,
-        scrollContentModifier = Modifier.onGloballyPositioned { focusState.laidOut = true },
         scrollAnchors = anchors,
         backdrop = {
             TvDetailsBackdrop(backdrop, { scrollState.value / backdropFadeDistance },

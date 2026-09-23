@@ -44,7 +44,6 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clipToBounds
-import androidx.compose.ui.focus.focusProperties
 import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
@@ -54,7 +53,6 @@ import androidx.compose.ui.input.key.KeyEventType
 import androidx.compose.ui.input.key.key
 import androidx.compose.ui.input.key.onPreviewKeyEvent
 import androidx.compose.ui.input.key.type
-import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.platform.LocalAccessibilityManager
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalLayoutDirection
@@ -65,24 +63,23 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.compose.LocalLifecycleOwner
-import dev.chrisbanes.haze.hazeSource
-import dev.chrisbanes.haze.rememberHazeState
 import androidx.paging.LoadState
 import androidx.paging.compose.LazyPagingItems
+import dev.chrisbanes.haze.hazeSource
+import dev.chrisbanes.haze.rememberHazeState
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
-import me.him188.ani.app.data.models.recommend.RecommendedSubjectInfo
 import me.him188.ani.app.data.models.recommend.RecommendedItemInfo
+import me.him188.ani.app.data.models.recommend.RecommendedSubjectInfo
 import me.him188.ani.app.data.models.subject.FollowedSubjectInfo
 import me.him188.ani.app.data.models.trending.TrendingSubjectInfo
 import me.him188.ani.app.ui.foundation.navigation.BackHandler
-import me.him188.ani.tv.ui.foundation.widgets.TvLandscapeCardDefaults
 import me.him188.ani.tv.ui.foundation.focus.TvFocusKey
 import me.him188.ani.tv.ui.foundation.focus.TvFocusScope
 import me.him188.ani.tv.ui.foundation.focus.rememberTvFocusScope
-import me.him188.ani.tv.ui.foundation.focus.requestPrepared
 import me.him188.ani.tv.ui.foundation.focus.tvFocusAnchor
 import me.him188.ani.tv.ui.foundation.focus.tvFocusNavSignal
+import me.him188.ani.tv.ui.foundation.widgets.TvLandscapeCardDefaults
 import me.him188.ani.tv.ui.subject.components.LocalTvDetailsActionBackdrop
 
 internal enum class TvExplorationFocus : TvFocusKey { Details, FeedStatus }
@@ -124,7 +121,6 @@ private fun TvExplorationContent(
     focus.Resolver()
     val columnState = rememberLazyListState()
     val followedRowState = rememberLazyListState()
-    var pagePlaced by remember { mutableStateOf(false) }
     var pageFocused by remember { mutableStateOf(false) }
     var detailsFocused by remember { mutableStateOf(false) }
     var footerFocused by remember { mutableStateOf(false) }
@@ -200,7 +196,7 @@ private fun TvExplorationContent(
     LaunchedEffect(heroSubject) { heroSubject?.let { onIntent(TvExplorationIntent.ShowHero(it)) } }
     val backdropSubject = heroSubject
     val backdropUrl = backdropSubject?.let { media.backdropCache[it.subjectId] ?: it.imageUrl }
-    if (pagePlaced) focus.InitialFocus(
+    focus.InitialFocus(
         if (footerFocused) TvExplorationFocus.FeedStatus
         else focusedSubjectId?.takeIf { !expanded }?.let { TvExplorationCardKey(area, it) }
             ?: TvExplorationFocus.Details,
@@ -313,11 +309,7 @@ private fun TvExplorationContent(
     }
     BoxWithConstraints(
         Modifier.fillMaxSize().testTag("tv-exploration")
-            .onGloballyPositioned { pagePlaced = true }
             .onFocusChanged { pageFocused = it.hasFocus }
-            .focusProperties {
-                onEnter = { if (!lifecycle.currentState.isAtLeast(Lifecycle.State.RESUMED)) cancelFocus() }
-            }
             .focusGroup().semantics { stateDescription = area.name },
     ) {
         val collapsedHeight = (maxHeight - 226.dp).coerceAtLeast(230.dp)

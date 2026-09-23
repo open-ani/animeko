@@ -43,8 +43,8 @@ import androidx.compose.ui.test.getUnclippedBoundsInRoot
 import androidx.compose.ui.test.hasAnyDescendant
 import androidx.compose.ui.test.hasTestTag
 import androidx.compose.ui.test.hasText
-import androidx.compose.ui.test.isFocused
 import androidx.compose.ui.test.isDisplayed
+import androidx.compose.ui.test.isFocused
 import androidx.compose.ui.test.isRoot
 import androidx.compose.ui.test.onLast
 import androidx.compose.ui.test.onNodeWithTag
@@ -100,9 +100,9 @@ import me.him188.ani.datasources.api.PackedDate
 import me.him188.ani.datasources.api.topic.UnifiedCollectionType
 import me.him188.ani.tv.ui.foundation.focus.LocalTvFocusMemory
 import me.him188.ani.tv.ui.foundation.focus.TvFocusMemory
-import me.him188.ani.tv.ui.subject.components.TvSubjectDetailsDefaults
 import me.him188.ani.tv.ui.foundation.theme.AniTvTheme
 import me.him188.ani.tv.ui.foundation.widgets.tvShellBackgroundColor
+import me.him188.ani.tv.ui.subject.components.TvSubjectDetailsDefaults
 import me.him188.ani.utils.platform.annotations.TestOnly
 import java.io.File
 import java.io.IOException
@@ -218,7 +218,6 @@ class TvExplorationUiTest {
                     ) {
                         if (visible()) saved.SaveableStateProvider("exploration") {
                             CompositionLocalProvider(LocalTvFocusMemory provides focusMemory) {
-                                focusMemory.ArmOnRouteReturn()
                                 TvExplorationScreen(
                                     trendingItems, recommendationItems, followedItems, media, onIntent,
                                     navigationRailInsets = navigationRailInsets,
@@ -1054,7 +1053,7 @@ class TvExplorationUiTest {
     }
 
     @Test
-    fun returningTransitionCannotReplaceTheSavedCardBeforeResume() = runAniComposeUiTest {
+    fun returningPageRestoresBeforeResumeAndKeepsUserNavigation() = runAniComposeUiTest {
         val owner = object : LifecycleOwner {
             override val lifecycle = LifecycleRegistry.createUnsafe(this).apply { currentState = Lifecycle.State.RESUMED }
         }
@@ -1068,12 +1067,11 @@ class TvExplorationUiTest {
         runOnIdle { owner.lifecycle.currentState = Lifecycle.State.STARTED; visible = false }
         settle()
         runOnIdle { visible = true }
-        settle()
-        onNodeWithTag("tv-exploration-rec-22").performSemanticsAction(SemanticsActions.RequestFocus) {
-            assertFalse(it())
-        }
-        runOnIdle { owner.lifecycle.currentState = Lifecycle.State.RESUMED }
         awaitFocus("tv-exploration-rec-21")
+        key(Key.DirectionRight)
+        awaitFocus("tv-exploration-rec-22")
+        runOnIdle { owner.lifecycle.currentState = Lifecycle.State.RESUMED }
+        awaitFocus("tv-exploration-rec-22")
         settle()
         assertTrue(glowProgress() > .99f)
     }

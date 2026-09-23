@@ -10,12 +10,18 @@ import androidx.compose.foundation.layout.BoxScope
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.State
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberUpdatedState
+import androidx.compose.runtime.setValue
 import androidx.compose.runtime.staticCompositionLocalOf
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.focusProperties
+import androidx.compose.ui.input.key.KeyEventType
+import androidx.compose.ui.input.key.key
 import androidx.compose.ui.input.key.onPreviewKeyEvent
+import androidx.compose.ui.input.key.type
 import androidx.compose.ui.semantics.clearAndSetSemantics
 
 internal class TvFocusBoundaryState(
@@ -23,6 +29,9 @@ internal class TvFocusBoundaryState(
     private val parent: TvFocusBoundaryState?,
 ) {
     val isActive: Boolean get() = active.value && parent?.isActive != false
+    private var navigation by mutableIntStateOf(0)
+    val userNavGeneration: Int get() = navigation + (parent?.userNavGeneration ?: 0)
+    fun notifyUserNavigation() { navigation++ }
 }
 
 internal val LocalTvFocusBoundary = staticCompositionLocalOf<TvFocusBoundaryState?> { null }
@@ -42,7 +51,13 @@ fun TvFocusBoundary(
             modifier
                 .focusProperties { onEnter = { if (!boundary.isActive) cancelFocus() } }
                 .focusGroup()
-                .onPreviewKeyEvent { !boundary.isActive }
+                .onPreviewKeyEvent {
+                    if (!boundary.isActive) return@onPreviewKeyEvent true
+                    if (it.type == KeyEventType.KeyDown && it.key in TV_USER_INTERACTION_KEYS) {
+                        boundary.notifyUserNavigation()
+                    }
+                    false
+                }
                 .then(if (boundary.isActive) Modifier else Modifier.clearAndSetSemantics { }),
             content = content,
         )

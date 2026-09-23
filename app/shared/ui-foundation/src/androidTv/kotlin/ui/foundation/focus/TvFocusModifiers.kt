@@ -13,14 +13,13 @@ import androidx.compose.foundation.focusGroup
 import androidx.compose.ui.ExperimentalComposeUiApi
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusDirection
+import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusProperties
-import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.input.key.Key
+import androidx.compose.ui.input.key.KeyEvent
 import androidx.compose.ui.input.key.KeyEventType
 import androidx.compose.ui.input.key.key
-import androidx.compose.ui.node.ModifierNodeElement
-import androidx.compose.ui.platform.InspectorInfo
 import androidx.compose.ui.input.key.onPreviewKeyEvent
 import androidx.compose.ui.input.key.type
 
@@ -43,47 +42,13 @@ import androidx.compose.ui.input.key.type
  */
 
 /**
- * 标注本节点为 [key] 锚点: 挂 FocusRequester + **节点附着/脱离上报** (事件驱动送焦的
- * 核心: 悬挂中的 request 在锚点附着瞬间送达, 见 [TvFocusScope]) + 焦点得失上报.
+ * 标注本节点为 [key] 锚点，登记请求器、布局就绪与焦点得失，供 [TvFocusScope] 解析请求。
  *
  * 焦点上报用 hasFocus (含子树): 锚点可以是容器 (如轮播行), 也可以是叶子按钮.
  */
 fun Modifier.tvFocusAnchor(scope: TvFocusScope, key: TvFocusKey): Modifier = this
-    .focusRequester(scope.requesterOf(key))
-    .then(TvFocusAnchorAttachElement(scope, key))
+    .tvFocusTarget(scope.targetOf(key))
     .onFocusChanged { scope.onAnchorFocusChanged(key, it.hasFocus) }
-
-/** 锚点附着追踪节点: 把 Compose 缺失的"节点已附着"事件上报给 [TvFocusScope]. */
-private data class TvFocusAnchorAttachElement(
-    val scope: TvFocusScope,
-    val key: TvFocusKey,
-) : ModifierNodeElement<TvFocusAnchorAttachNode>() {
-    override fun create() = TvFocusAnchorAttachNode(scope, key)
-
-    override fun update(node: TvFocusAnchorAttachNode) = node.update(scope, key)
-
-    override fun InspectorInfo.inspectableProperties() {
-        name = "tvFocusAnchorAttach"
-        properties["key"] = key
-    }
-}
-
-private class TvFocusAnchorAttachNode(
-    private var scope: TvFocusScope,
-    private var key: TvFocusKey,
-) : Modifier.Node() {
-    override fun onAttach() = scope.onAnchorAttached(key)
-
-    override fun onDetach() = scope.onAnchorDetached(key)
-
-    fun update(newScope: TvFocusScope, newKey: TvFocusKey) {
-        if (newScope === scope && newKey == key) return
-        if (isAttached) scope.onAnchorDetached(key)
-        scope = newScope
-        key = newKey
-        if (isAttached) scope.onAnchorAttached(key)
-    }
-}
 
 /**
  * 显式方向链接: 声明方向的焦点搜索直达目标锚点, 不走空间搜索.
@@ -121,7 +86,7 @@ fun Modifier.tvFocusEnterGate(
 /** [tvFocusEnterGate] 的组件级重载: 不依赖 scope, 直接给进入落点 requester (如 SideRail). */
 @OptIn(ExperimentalComposeUiApi::class)
 fun Modifier.tvFocusEnterGate(
-    entry: androidx.compose.ui.focus.FocusRequester,
+    entry: FocusRequester,
     allow: Set<FocusDirection> = setOf(FocusDirection.Left, FocusDirection.Enter),
 ): Modifier = this
     .focusProperties {
@@ -214,9 +179,8 @@ fun Modifier.tvFocusExit(
     .focusGroup()
 
 /**
- * 用户交互信号 (挂页面根节点): 方向键或确认键按下时上报 [TvFocusScope.notifyUserNavigation],
- * 放弃在途的焦点解析 —— 否则解析轮询会把用户刚移走的焦点抢回目标锚点. 不消费事件.
- * 确认键也算: 点击 (如侧边栏条目把焦点送回内容区) 引发的焦点变化同样不该被在途轮询抢回.
+ * 用户交互信号 (挂页面根节点): 导航键按下时上报 [TvFocusScope.notifyUserNavigation]，
+ * 取消在途焦点请求及其异步准备，不消费事件。
  *
  * 每个持有 [TvFocusScope] 的页面都应在根上挂本 modifier (或挂 [tvFocusHotkey], 它已兼任).
  */
@@ -227,11 +191,12 @@ fun Modifier.tvFocusNavSignal(scope: TvFocusScope): Modifier = onPreviewKeyEvent
     false // 只旁听, 不消费
 }
 
-private val TV_USER_INTERACTION_KEYS = setOf(
+internal val TV_USER_INTERACTION_KEYS = setOf(
     Key.DirectionUp, Key.DirectionDown, Key.DirectionLeft, Key.DirectionRight,
     Key.DirectionCenter, Key.Enter, Key.NumPadEnter,
+    Key.Menu, Key.Back, Key.Escape,
 )
 
 /** 本次 KeyDown 是否系统按住连发 (android nativeKeyEvent.repeatCount). */
-internal val androidx.compose.ui.input.key.KeyEvent.isAutoRepeatCompat: Boolean
-    get() = (nativeKeyEvent as? android.view.KeyEvent)?.let { it.repeatCount > 0 } ?: false
+internal val KeyEvent.isAutoRepeatCompat: Boolean
+    get() = nativeKeyEvent.repeatCount > 0

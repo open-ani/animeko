@@ -63,8 +63,6 @@ import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.semantics.stateDescription
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
-import androidx.lifecycle.Lifecycle
-import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.tv.material3.ClickableSurfaceDefaults
 import androidx.tv.material3.Icon
 import androidx.tv.material3.LocalContentColor
@@ -103,16 +101,15 @@ import me.him188.ani.app.ui.media.renderSubtitleLanguage
 import me.him188.ani.app.ui.media.webCaptchaRequiredMessage
 import me.him188.ani.datasources.api.Media
 import me.him188.ani.tv.ui.episode.TvEpisodeIntent
-import me.him188.ani.tv.ui.foundation.widgets.tvOptionPanelSurface
 import me.him188.ani.tv.ui.episode.text
 import me.him188.ani.tv.ui.foundation.focus.TvFocusKey
 import me.him188.ani.tv.ui.foundation.focus.rememberTvFocusScope
-import me.him188.ani.tv.ui.foundation.focus.requestPrepared
 import me.him188.ani.tv.ui.foundation.focus.tvFocusAnchor
 import me.him188.ani.tv.ui.foundation.focus.tvFocusNavSignal
 import me.him188.ani.tv.ui.foundation.widgets.TvOptionDefaults
 import me.him188.ani.tv.ui.foundation.widgets.TvOptionDivider
 import me.him188.ani.tv.ui.foundation.widgets.TvOptionRow
+import me.him188.ani.tv.ui.foundation.widgets.tvOptionPanelSurface
 import me.him188.ani.tv.ui.foundation.widgets.tvOptionSurfaceColors
 import org.jetbrains.compose.resources.stringResource
 
@@ -160,9 +157,9 @@ internal fun TvPlayerSourceDialog(
     val tabsState = rememberLazyListState()
     val resultFocus = rememberTvFocusScope()
     resultFocus.Resolver()
-    val lifecycle = LocalLifecycleOwner.current.lifecycle
-    var entryFocusRequested by remember { mutableStateOf(false) }
-    LaunchedEffect(dialogState.mode) {
+    var entryFocusRequested by remember(resultFocus.isActive) { mutableStateOf(false) }
+    LaunchedEffect(dialogState.mode, resultFocus.isActive) {
+        if (!resultFocus.isActive) return@LaunchedEffect
         if (entryFocusRequested) return@LaunchedEffect
         if (dialogState.mode != TvSourceMode.Simple) {
             dialogState.mode = TvSourceMode.Simple
@@ -171,7 +168,6 @@ internal fun TvPlayerSourceDialog(
         entryFocusRequested = true
         entrySelection?.let { dialogState.selectedSourceId = it.first }
         resultFocus.requestPrepared {
-            lifecycle.currentStateFlow.first { it.isAtLeast(Lifecycle.State.RESUMED) }
             if (entryGroupIndex >= 0) resultsState.scrollToItem(1 + entryGroupIndex)
             SourceFocus.Entry
         }

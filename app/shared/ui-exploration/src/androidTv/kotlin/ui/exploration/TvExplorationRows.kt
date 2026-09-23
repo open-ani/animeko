@@ -18,10 +18,10 @@ import androidx.compose.foundation.gestures.LocalBringIntoViewSpec
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -34,9 +34,9 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
-import androidx.compose.runtime.key
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.key
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
@@ -53,7 +53,6 @@ import androidx.compose.ui.input.key.key
 import androidx.compose.ui.input.key.onPreviewKeyEvent
 import androidx.compose.ui.input.key.type
 import androidx.compose.ui.layout.ContentScale
-import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.semantics.Role
@@ -72,12 +71,10 @@ import me.him188.ani.app.ui.foundation.AsyncImage
 import me.him188.ani.app.ui.lang.Lang
 import me.him188.ani.app.ui.lang.exploration_continue_watching
 import me.him188.ani.app.ui.lang.exploration_for_you
-import me.him188.ani.app.ui.lang.exploration_trending
-import me.him188.ani.tv.ui.foundation.focus.TvFocusKey
 import me.him188.ani.tv.ui.foundation.focus.TvFocusDefaults
-import me.him188.ani.tv.ui.foundation.focus.tvCardFocusBorder
+import me.him188.ani.tv.ui.foundation.focus.TvFocusKey
 import me.him188.ani.tv.ui.foundation.focus.TvFocusScope
-import me.him188.ani.tv.ui.foundation.focus.requestPrepared
+import me.him188.ani.tv.ui.foundation.focus.tvCardFocusBorder
 import me.him188.ani.tv.ui.foundation.focus.tvFocusAnchor
 import me.him188.ani.tv.ui.foundation.focus.tvFocusMemorable
 import me.him188.ani.tv.ui.foundation.widgets.TvLandscapeCard
@@ -228,7 +225,6 @@ internal fun TvExplorationRowItem(
                             memoryId = "exploration-rec-${subject.subjectId}",
                             modifier = Modifier.weight(1f).testTag("tv-exploration-rec-${subject.subjectId}")
                                 .tvFocusAnchor(focus, anchor)
-                                .onGloballyPositioned { focus.onAnchorAttached(anchor) }
                                 .onPreviewKeyEvent { event ->
                                     val delta = when (event.key) {
                                         Key.DirectionLeft -> -1
@@ -296,11 +292,6 @@ internal fun TvExplorationRowItem(
                         onFocused = { onCardFocused(row, subject) },
                         modifier = Modifier.testTag("tv-exploration-${row.key}-${subject.subjectId}")
                             .tvFocusAnchor(focus, TvExplorationCardKey(row.area, subject.subjectId))
-                            .onGloballyPositioned {
-                                // Lazy composition can attach the focus node before it is placed.
-                                // Re-announce readiness on layout so a pending request can complete.
-                                focus.onAnchorAttached(TvExplorationCardKey(row.area, subject.subjectId))
-                            }
                             .tvFocusMemorable("exploration-${row.key}-${subject.subjectId}"),
                     )
                 }

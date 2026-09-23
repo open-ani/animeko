@@ -119,6 +119,7 @@ data class TvNavRailItem(
     val restoreFocus: Boolean = false,
     /** true 时由调用方负责焦点转移，适用于独立页面导航或就地打开弹窗。 */
     val keepFocusOnClick: Boolean = false,
+    val modifier: Modifier = Modifier,
     val onClick: () -> Unit,
 )
 
@@ -225,7 +226,7 @@ fun TvNavigationSideRail(
                             keepFocusOnClick = item.keepFocusOnClick,
                             returnFocusToContent = returnFocusToContent,
                             onClick = item.onClick,
-                            modifier = Modifier.width(itemWidth).onFocusChanged {
+                            modifier = item.modifier.width(itemWidth).onFocusChanged {
                                 if (it.isFocused) accountActionsVisible = false
                             },
                         )
