@@ -13,6 +13,7 @@ import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.collect
 import kotlinx.coroutines.flow.collectLatest
+import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.launch
@@ -22,6 +23,8 @@ import me.him188.ani.app.data.repository.episode.EpisodeCollectionRepository
 import me.him188.ani.datasources.api.EpisodeType
 import me.him188.ani.tracking.api.TrackingAccount
 import me.him188.ani.tracking.api.TrackingAccountState
+import me.him188.ani.tracking.api.TrackingBindingBackup
+import me.him188.ani.tracking.api.TrackingBindingRecord
 import me.him188.ani.tracking.api.TrackingDateField
 import me.him188.ani.tracking.api.TrackingEdit
 import me.him188.ani.tracking.api.TrackingListEntry
@@ -38,10 +41,11 @@ class AniListTrackingSource(
     context: Context,
     private val provider: TrackingProvider,
     private val episodes: Lazy<EpisodeCollectionRepository>,
-) : TrackingSource {
+) : TrackingSource, TrackingBindingBackup {
     private val appContext = context.applicationContext
     private val bindings = appContext.getSharedPreferences(BINDINGS_PREFERENCES, Context.MODE_PRIVATE)
     private val snapshots = ConcurrentHashMap<Int, MutableStateFlow<TrackingSnapshot?>>()
+    private val bindingsVersion = MutableStateFlow(0)
     private val episodeSyncMutex = Mutex()
 
     override val info = provider.info
@@ -59,7 +63,8 @@ class AniListTrackingSource(
         val current = snapshotState(subjectId)
         coroutineScope {
             launch {
-                provider.accountState.collectLatest { accountState ->
+                combine(provider.accountState, bindingsVersion) { accountState, _ -> accountState }
+                    .collectLatest { accountState ->
                     when (accountState) {
                         is TrackingAccountState.LoggedIn -> {
                             current.value = loadSnapshot(subjectId, accountState.account)
@@ -163,6 +168,26 @@ class AniListTrackingSource(
                 snapshotState(subjectId).value = TrackingSnapshot(current.media, saved)
             }
         }
+    }
+
+    override fun exportBindings(): List<TrackingBindingRecord> = bindings.all.mapNotNull { (key, value) ->
+        val separator = key.lastIndexOf(':')
+        if (separator <= 0) return@mapNotNull null
+        val accountId = key.take(separator)
+        val subjectId = key.substring(separator + 1).toIntOrNull()
+        val mediaId = value as? String
+        if (accountId.isBlank() || subjectId == null || subjectId <= 0 || mediaId.isNullOrBlank()) null
+        else TrackingBindingRecord(info.id.value, accountId, subjectId, mediaId)
+    }
+
+    override fun restoreBindings(records: List<TrackingBindingRecord>) {
+        require(records.all {
+            it.providerId == info.id.value && it.accountId.isNotBlank() && it.subjectId > 0 && it.mediaId.isNotBlank()
+        }) { "Invalid AniList binding backup" }
+        val editor = bindings.edit()
+        records.forEach { editor.putString(bindingKey(it.accountId, it.subjectId), it.mediaId) }
+        check(editor.commit()) { "Could not restore AniList title bindings" }
+        bindingsVersion.value += 1
     }
 
     private suspend fun currentAccount(): TrackingAccount =

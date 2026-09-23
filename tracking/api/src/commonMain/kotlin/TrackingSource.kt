@@ -73,3 +73,16 @@ class DefaultTrackingRegistry(override val sources: List<TrackingSource>) : Trac
         require(sources.map { it.info.id }.distinct().size == sources.size) { "Duplicate tracking source ID" }
     }
 }
+
+/** Non-secret title matches that may be transferred to another device. */
+data class TrackingBindingRecord(
+    val providerId: String,
+    val accountId: String,
+    val subjectId: Int,
+    val mediaId: String,
+)
+
+interface TrackingBindingBackup {
+    fun exportBindings(): List<TrackingBindingRecord>
+    fun restoreBindings(records: List<TrackingBindingRecord>)
+}

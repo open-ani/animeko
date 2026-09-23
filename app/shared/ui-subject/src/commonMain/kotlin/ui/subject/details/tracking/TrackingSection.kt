@@ -2,6 +2,8 @@ package me.him188.ani.app.ui.subject.details.tracking
 
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.text.KeyboardActions
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -18,6 +20,8 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.MoreVert
+import androidx.compose.material.icons.filled.Search
+import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.outlined.Sync
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
@@ -49,6 +53,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalUriHandler
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -187,8 +192,21 @@ internal fun TrackingSection(subjectId: Int, modifier: Modifier = Modifier) {
             Surface(shape = MaterialTheme.shapes.large) {
                 Column(Modifier.fillMaxWidth().padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                     Text("Find tracking title", style = MaterialTheme.typography.titleMedium)
-                    OutlinedTextField(query, { query = it }, label = { Text("Search anime") }, singleLine = true)
-                    TextButton(onClick = { runSearch() }, enabled = busy == null && query.isNotBlank()) { Text("Search") }
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        OutlinedTextField(query, { query = it; results = emptyList(); error = null },
+                            modifier = Modifier.weight(1f), placeholder = { Text("Search anime") }, singleLine = true,
+                            trailingIcon = {
+                                if (query.isNotEmpty()) IconButton(onClick = { query = ""; results = emptyList(); error = null }) {
+                                    Icon(Icons.Default.Close, contentDescription = "Clear search")
+                                }
+                            },
+                            keyboardOptions = KeyboardOptions(imeAction = ImeAction.Search),
+                            keyboardActions = KeyboardActions(onSearch = { if (busy == null) runSearch() }),
+                        )
+                        IconButton(onClick = { runSearch() }, enabled = busy == null && query.isNotBlank()) {
+                            Icon(Icons.Default.Search, contentDescription = "Search tracking titles")
+                        }
+                    }
                     if (busy == id) CircularProgressIndicator(Modifier.size(20.dp))
                     LazyColumn(Modifier.heightIn(max = 420.dp)) {
                         items(results, key = { it.id.value }) { media ->

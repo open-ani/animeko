@@ -91,6 +91,10 @@ AniList provider 必须具备：
 
 Android 的条目 UI 和观看事件现已通过 `TrackingRegistry`、`TrackingCoordinator` 与 `TrackingSource` 协作。Bangumi 和 AniList 各自实现 source，单栏与多栏页面只调用 `TrackingSection(subjectId)`。同一张能力驱动卡片绘制状态、进度和评分。账号中心的 AniList OAuth 控件仍是专属实现；持久化同步失败重试尚未实现，因此这还不是完整的跨平台追踪系统。
 
+设置备份会导出 AniList 的非机密标题匹配关系（服务 ID、账号 ID、Animeko 条目 ID、AniList 媒体 ID），导入时按这些键合并到现有匹配，旧备份缺少该字段仍可导入。备份不包含 AniList token；迁移到新设备后需重新连接同一 AniList 账号，匹配才会显示。Bangumi 使用相同 subject ID，不需要单独导出匹配关系。Android 原有 `anilist-bindings` preferences 保持兼容。
+
+人工匹配搜索沿用图标按钮、清除输入按钮和键盘 Search 动作；输入变更清除过期结果。通用 `TrackingSection` 保持这些交互，而不为 AniList 单独构造搜索表单。
+
 | 能力 | 当前实现 | 验证边界 |
 |---|---|---|
 | AniList 账号 | Android OAuth、Keystore 凭据、Tracking accounts 中显示账号 | 已在连接的 Android 手机上完成登录；本轮 provider tests 与 Android 构建通过。Desktop/iOS 只提供占位实现。 |

@@ -91,6 +91,8 @@ import me.him188.ani.app.ui.user.SelfInfoStateProducer
 import me.him188.ani.danmaku.ui.DanmakuConfig
 import me.him188.ani.app.domain.foundation.ScopedHttpClientUserAgent
 import me.him188.ani.torrent.pikpak.testPikPakLogin
+import me.him188.ani.tracking.api.TrackingBindingBackup
+import me.him188.ani.tracking.api.TrackingBindingRecord
 import me.him188.ani.utils.ktor.UnsafeScopedHttpClientApi
 import me.him188.ani.utils.coroutines.IO_
 import me.him188.ani.utils.coroutines.SingleTaskExecutor
@@ -380,6 +382,9 @@ class SettingsViewModel : AbstractSettingsViewModel(), KoinComponent {
             // ignores it for the same reason.
             pikpakConfig = PikPakConfig.Default,
             tokenStore = tokenRepository.getTokenSaveSnapshot(),
+            trackingBindings = getKoin().getOrNull<TrackingBindingBackup>()?.exportBindings()?.map {
+                TrackingBindingSave(it.providerId, it.accountId, it.subjectId, it.mediaId)
+            },
         )
 
         return json.encodeToString(SettingsBackup.serializer(), backup)
@@ -415,6 +420,11 @@ class SettingsViewModel : AbstractSettingsViewModel(), KoinComponent {
         // credentials, and we don't want a restore to silently re-introduce
         // them on a different device.
         backup.tokenStore?.let { tokenRepository.restoreFromTokenSave(it) }
+        backup.trackingBindings?.let { saved ->
+            getKoin().getOrNull<TrackingBindingBackup>()?.restoreBindings(saved.map {
+                TrackingBindingRecord(it.providerId, it.accountId, it.subjectId, it.mediaId)
+            })
+        }
 
         return true
     }
@@ -465,5 +475,14 @@ private data class SettingsBackup(
     val analyticsSettings: AnalyticsSettings?,
     val debugSettings: DebugSettings?,
     val pikpakConfig: PikPakConfig? = null,
-    val tokenStore: TokenSave?
+    val tokenStore: TokenSave?,
+    val trackingBindings: List<TrackingBindingSave>? = null,
+)
+
+@Serializable
+private data class TrackingBindingSave(
+    val providerId: String,
+    val accountId: String,
+    val subjectId: Int,
+    val mediaId: String,
 )
