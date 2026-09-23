@@ -8,7 +8,6 @@ import me.him188.ani.tracking.api.DefaultTrackingRegistry
 import me.him188.ani.tracking.api.TrackingAccount
 import me.him188.ani.tracking.api.TrackingAccountState
 import me.him188.ani.tracking.api.TrackingBindingRecord
-import me.him188.ani.tracking.api.TrackingBackupValidationException
 import me.him188.ani.tracking.api.TrackingEdit
 import me.him188.ani.tracking.api.TrackingListEntry
 import me.him188.ani.tracking.api.TrackingMedia
@@ -62,24 +61,33 @@ class TrackingCoordinatorTest {
                 TrackingBindingRecord("second", "account-b", -1, "201"),
             ))
         }
-        second.authenticated = false
-        assertFailsWith<TrackingBackupValidationException> {
-            registry.restoreBindings(listOf(
-                TrackingBindingRecord("first", "account-a", 43, "101"),
-                TrackingBindingRecord("second", "account-b", 43, "201"),
-            ))
-        }
         assertEquals(records, registry.exportBindings())
     }
 
-    private class FakeSource(id: String, override val capabilities: TrackingSourceCapabilities = TrackingSourceCapabilities()) : TrackingSource {
+    @Test
+    fun registryRestoresBindingsWithoutConnectedAccount() = runTest {
+        val source = FakeSource("offline", connected = false)
+        val registry = DefaultTrackingRegistry(listOf(source))
+        val record = TrackingBindingRecord("offline", "account-a", 42, "100")
+
+        registry.restoreBindings(listOf(record))
+
+        assertEquals(listOf(record), registry.exportBindings())
+    }
+
+    private class FakeSource(
+        id: String,
+        override val capabilities: TrackingSourceCapabilities = TrackingSourceCapabilities(),
+        connected: Boolean = true,
+    ) : TrackingSource {
         override val info = TrackingProviderInfo(TrackingProviderId(id), id, "https://example.org")
-        override val connection: Flow<TrackingAccountState> = flowOf(TrackingAccountState.LoggedIn(TrackingAccount("1", "test")))
+        override val connection: Flow<TrackingAccountState> = flowOf(
+            if (connected) TrackingAccountState.LoggedIn(TrackingAccount("1", "test")) else TrackingAccountState.LoggedOut,
+        )
         override val statusOptions = listOf(TrackingStatusOption(TrackingStatus.CURRENT, "Watching"))
         override val scoreOptions = emptyList<TrackingScoreOption>()
         var lastEdit: TrackingEdit? = null
         private var bindings = emptyList<TrackingBindingRecord>()
-        var authenticated = true
         private val snapshot = TrackingSnapshot(
             TrackingMedia(TrackingMediaId("42"), "Test", "https://example.org/42", null, 12),
             TrackingListEntry(TrackingMediaId("42"), TrackingStatus.CURRENT, 1),
@@ -95,7 +103,6 @@ class TrackingCoordinatorTest {
         override fun exportBindings(): List<TrackingBindingRecord> = bindings
         override suspend fun validateBindings(records: List<TrackingBindingRecord>) {
             require(records.all { it.providerId == info.id.value && it.subjectId > 0 })
-            if (records.isNotEmpty() && !authenticated) throw TrackingBackupValidationException("Connect this tracker")
         }
         override fun applyValidatedBindings(records: List<TrackingBindingRecord>) { bindings = records }
     }

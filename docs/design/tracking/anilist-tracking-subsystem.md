@@ -91,7 +91,7 @@ AniList provider 必须具备：
 
 Android 的条目 UI 通过 `TrackingRegistry`、`TrackingCoordinator` 与 `TrackingSource` 协作；观看事件由 domain 层的 `TrackingEpisodeSynchronizer` 分发。Bangumi 和 AniList 各自实现 source，单栏与多栏页面只调用 `TrackingSection(subjectId)`。同一张能力驱动卡片绘制状态、进度和评分。账号中心的 AniList OAuth 控件仍是专属实现；持久化同步失败重试尚未实现，因此这还不是完整的跨平台追踪系统。
 
-设置备份会导出 AniList 的非机密标题匹配关系（服务 ID、账号 ID、Animeko 条目 ID、AniList 媒体 ID），导入时按这些键合并到现有匹配，旧备份缺少该字段仍可导入。备份不包含 AniList token；迁移到新设备后，须先连接与备份记录相同的 AniList 账号，才能导入匹配关系。Bangumi 使用相同 subject ID，不需要单独导出匹配关系。Android 原有 `anilist-bindings` preferences 保持兼容。
+设置备份会导出 AniList 的非机密标题匹配关系（服务 ID、账号 ID、Animeko 条目 ID、AniList 媒体 ID），导入时按这些键合并到现有匹配，旧备份缺少该字段仍可导入。备份不包含 AniList token；离线或未登录时也可导入；之后连接与备份记录相同的 AniList 账号，匹配关系才会显示。Bangumi 使用相同 subject ID，不需要单独导出匹配关系。Android 原有 `anilist-bindings` preferences 保持兼容。
 
 人工匹配搜索沿用图标按钮、清除输入按钮和键盘 Search 动作；输入变更清除过期结果。通用 `TrackingSection` 保持这些交互，而不为 AniList 单独构造搜索表单。
 
@@ -127,7 +127,7 @@ Android 的条目 UI 通过 `TrackingRegistry`、`TrackingCoordinator` 与 `Trac
 
 ### 扩展与恢复约束
 
-- 恢复备份时，在写入任何设置或会话数据之前检查文件格式、schema 版本、追踪服务 ID 与绑定字段。每个 `TrackingSource` 负责验证自己的绑定记录及所需账号的登录状态；注册表先验证全部记录，再分发写入；写入阶段不重复远端认证。账号未连接或 ID 不匹配时，在恢复界面显示可操作错误并停止。存储写入失败仍可能留下部分更改，完整事务恢复尚未实现。
+- 恢复备份时，在写入任何设置或会话数据之前检查文件格式、schema 版本、追踪服务 ID 与绑定字段。每个 `TrackingSource` 负责验证自己的绑定记录格式；注册表先验证全部记录，再分发写入。导入不访问网络，也不要求追踪账号已经连接。绑定按账号 ID 隔离，只有重新连接对应账号后才进入追踪 UI。存储写入失败仍可能留下部分更改，完整事务恢复尚未实现。
 - 搜索结果只属于发起它的查询版本；用户更改搜索词、清除输入或切换追踪服务后，旧请求结果不得重新显示。
 - 观看事件向多个服务分发属于 domain 层；UI coordinator 只处理卡片观察与用户操作。一个服务失败后继续通知其他服务，最后向 hook 报告失败。
 - 账号登录入口按具体 provider 类型解析。添加服务时注册自己的 provider 和 source，并提供自己的账号连接 UI；通用卡片、绑定备份格式和观看分发不添加服务名分支。能力关闭时，provider 无需实现日期或隐私编辑。
@@ -135,6 +135,6 @@ Android 的条目 UI 通过 `TrackingRegistry`、`TrackingCoordinator` 与 `Trac
 
 ### 验证范围
 
-- `:tracking:api:allTests :tracking:anilist:allTests :app:shared:app-data:testAndroidHostTest :app:shared:ui-subject:testAndroidHostTest :app:shared:ui-settings:testAndroidHostTest :app:android:assembleDefaultDebug -Pani.android.abis=arm64-v8a` 通过；测试覆盖第三个 source 的路由、跨 source 观看事件失败隔离，以及无效或未登录绑定在写入前被拒绝。
+- `:tracking:api:allTests :tracking:anilist:allTests :app:shared:app-data:testAndroidHostTest :app:shared:ui-subject:testAndroidHostTest :app:shared:ui-settings:testAndroidHostTest :app:android:assembleDefaultDebug -Pani.android.abis=arm64-v8a` 通过；测试覆盖第三个 source 的路由、跨 source 观看事件失败隔离，以及无效绑定在写入前被拒绝、离线账号的绑定可恢复。
 - Android debug 构建已安装在连接的手机。修复 adapter 与观看 hook 的 DI 循环后，应用正常启动；Slam Dunk 的 Track sheet 同时显示 Bangumi 与 AniList 的状态、`7 / 101` 进度和评分字段，Bangumi 正片选择弹层可以打开。该只读检查没有证明新版本的远端写入。
 - 账号中心通用化、失败持久化重试、Desktop/iOS 登录和完整设备写入回归仍待完成；不能把当前 Android 构建与只读烟测当作这些能力的验证。
