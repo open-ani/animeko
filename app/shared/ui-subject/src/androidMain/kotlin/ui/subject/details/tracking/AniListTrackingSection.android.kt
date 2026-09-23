@@ -28,8 +28,8 @@ import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
-import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.Slider
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -38,14 +38,14 @@ import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.testTag
-import androidx.compose.ui.text.input.KeyboardType
-import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.style.TextOverflow
@@ -75,6 +75,7 @@ import me.him188.ani.tracking.api.TrackingProviderId
 import me.him188.ani.tracking.api.TrackingScore
 import me.him188.ani.tracking.api.TrackingStatus
 import me.him188.ani.utils.ktor.getPlatformKtorEngine
+import kotlin.math.roundToInt
 
 @Composable
 internal actual fun AniListTrackingSection(info: SubjectInfo, modifier: Modifier) {
@@ -90,6 +91,7 @@ internal actual fun AniListTrackingSection(info: SubjectInfo, modifier: Modifier
     var accountId by remember(info.subjectId) { mutableStateOf<String?>(null) }
     var linked by remember(info.subjectId) { mutableStateOf<TrackingMediaWithEntry?>(null) }
     var loading by remember(info.subjectId) { mutableStateOf(true) }
+    var updating by remember(info.subjectId) { mutableStateOf(false) }
     var error by remember(info.subjectId) { mutableStateOf<String?>(null) }
     var searching by remember { mutableStateOf(false) }
     var searchBusy by remember { mutableStateOf(false) }
@@ -152,7 +154,7 @@ internal actual fun AniListTrackingSection(info: SubjectInfo, modifier: Modifier
         if (searching) search()
     }
 
-    TextButton(onClick = { showSheet = true; reload() }, modifier = modifier.testTag("trackingAction")) {
+    TextButton(onClick = { showSheet = true }, modifier = modifier.testTag("trackingAction")) {
         Icon(
             if (linked == null) Icons.Outlined.Sync else Icons.Default.Check,
             contentDescription = null,
@@ -165,14 +167,16 @@ internal actual fun AniListTrackingSection(info: SubjectInfo, modifier: Modifier
         ModalBottomSheet(onDismissRequest = { showSheet = false }) {
             Column(Modifier.fillMaxWidth().padding(horizontal = 24.dp, vertical = 16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
                 Text("Tracking", style = MaterialTheme.typography.titleLarge)
+                if (updating) CircularProgressIndicator(Modifier.size(20.dp), strokeWidth = 2.dp)
                 when {
-                    loading -> CircularProgressIndicator()
+                    loading && accountId == null -> CircularProgressIndicator()
                     accountId == null -> {
                         Text("Connect AniList to track this anime.")
                         TextButton(onClick = { showSheet = false; navigator.navigateSettings(SettingsTab.TRACKING) }) {
                             Text("Tracking accounts")
                         }
                     }
+                    loading && linked == null -> CircularProgressIndicator()
                     linked == null -> {
                         Row(Modifier.fillMaxWidth().clickable { searching = true; results = emptyList(); error = null }.padding(vertical = 12.dp),
                             horizontalArrangement = Arrangement.spacedBy(16.dp)) {
@@ -211,22 +215,24 @@ internal actual fun AniListTrackingSection(info: SubjectInfo, modifier: Modifier
                         current.listEntry?.let { entry ->
                             val scoreLabel = provider.scoreOptions.firstOrNull { it.score == entry.score }?.displayValue ?: "${entry.score.value}/100"
                             Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                                TextButton(onClick = { error = null; editing = EditField.STATUS }) {
+                                TextButton(onClick = { error = null; editing = EditField.STATUS }, enabled = !updating) {
                                     Text(provider.statusOptions.first { it.status == entry.status }.displayName)
                                 }
-                                TextButton(onClick = { error = null; editing = EditField.PROGRESS }) {
+                                TextButton(onClick = { error = null; editing = EditField.PROGRESS }, enabled = !updating) {
                                     Text("${entry.progress}${current.media.totalEpisodes?.let { "/$it" } ?: ""} eps")
                                 }
-                                TextButton(onClick = { error = null; editing = EditField.SCORE }) { Text("Score $scoreLabel") }
+                                TextButton(onClick = { error = null; editing = EditField.SCORE }, enabled = !updating) { Text("Score $scoreLabel") }
                             }
                         } ?: run {
-                            TextButton(onClick = { error = null; editing = EditField.STATUS }) { Text("Add AniList entry") }
+                            TextButton(onClick = { error = null; editing = EditField.STATUS }, enabled = !updating) { Text("Add AniList entry") }
                         }
                     }
                 }
                 error?.let {
                     Text(it, color = MaterialTheme.colorScheme.error)
-                    TextButton(onClick = { reload() }) { Text("Retry") }
+                    if (!it.startsWith("AniList update failed")) {
+                        TextButton(onClick = { reload() }) { Text("Retry") }
+                    }
                 }
             }
         }
@@ -334,22 +340,21 @@ internal actual fun AniListTrackingSection(info: SubjectInfo, modifier: Modifier
         val current = linked!!
         EntryEditor(current, provider.statusOptions.map { it.status to it.displayName }, provider.scoreOptions.map { it.score to it.displayValue },
             field = editing!!,
-            error = error,
             onDismiss = { editing = null },
-            onSave = { entry ->
+            onSelect = { entry ->
+                editing = null
                 scope.launch {
-                    loading = true
+                    updating = true
                     try {
                         val saved = if (current.listEntry == null) provider.bind(entry) else provider.update(entry)
-                        linked = provider.refresh(saved.mediaId)
-                        editing = null
+                        linked = current.copy(listEntry = saved)
                         error = null
                     } catch (failure: CancellationException) {
                         throw failure
                     } catch (_: Exception) {
-                        error = "AniList update failed. Retry."
+                        error = "AniList update failed. Choose a value to try again."
                     } finally {
-                        loading = false
+                        updating = false
                     }
                 }
             },
@@ -408,67 +413,51 @@ private fun EntryEditor(
     statuses: List<Pair<TrackingStatus, String>>,
     scores: List<Pair<TrackingScore, String>>,
     field: EditField,
-    error: String?,
     onDismiss: () -> Unit,
-    onSave: (TrackingListEntry) -> Unit,
+    onSelect: (TrackingListEntry) -> Unit,
 ) {
-    var status by remember(current.media.id) { mutableStateOf(current.listEntry?.status ?: TrackingStatus.PLANNING) }
-    var statusMenuOpen by remember { mutableStateOf(false) }
-    var progress by remember(current.media.id) { mutableStateOf((current.listEntry?.progress ?: 0).toString()) }
-    var score by remember(current.media.id) { mutableStateOf(current.listEntry?.score ?: TrackingScore.Unrated) }
-    val scoreIndex = scores.indexOfFirst { it.first == score }.coerceAtLeast(0)
-    val progressNumber = progress.toIntOrNull()
-    val valid = progressNumber != null && progressNumber >= 0 &&
-        (current.media.totalEpisodes == null || progressNumber <= current.media.totalEpisodes!!)
+    val entry = current.listEntry ?: TrackingListEntry(current.media.id, TrackingStatus.PLANNING, 0)
+    val maxProgress = maxOf(current.media.totalEpisodes ?: 10_000, entry.progress)
+    val progressListState = rememberLazyListState(initialFirstVisibleItemIndex = (entry.progress - 2).coerceIn(0, maxProgress))
+    var scoreIndex by remember(entry.score) { mutableIntStateOf(scores.indexOfFirst { it.first == entry.score }.coerceAtLeast(0)) }
+    val statusListState = rememberLazyListState()
     AlertDialog(
         onDismissRequest = onDismiss,
         title = { Text(when (field) {
-            EditField.STATUS -> "Edit status"
-            EditField.PROGRESS -> "Edit watched episodes"
-            EditField.SCORE -> "Edit score"
+            EditField.STATUS -> "Watch status"
+            EditField.PROGRESS -> "Episodes watched"
+            EditField.SCORE -> "Score"
         }) },
         text = {
-            Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                Text(current.media.title)
-                if (field == EditField.STATUS) {
-                    Box {
-                        OutlinedButton(onClick = { statusMenuOpen = true }) {
-                            Text(statuses.first { it.first == status }.second)
-                        }
-                        DropdownMenu(expanded = statusMenuOpen, onDismissRequest = { statusMenuOpen = false }) {
-                            statuses.forEach { (option, label) ->
-                                DropdownMenuItem(text = { Text(label) }, onClick = {
-                                    status = option
-                                    statusMenuOpen = false
-                                })
-                            }
-                        }
-                    }
-                }
-                if (field == EditField.PROGRESS) {
-                    OutlinedTextField(
-                        progress, { progress = it },
-                        label = { Text("Watched episodes") },
-                        isError = !valid,
-                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
-                        singleLine = true,
-                    )
-                }
+            Column {
                 if (field == EditField.SCORE) {
-                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                        TextButton(onClick = { score = scores[(scoreIndex - 1).coerceAtLeast(0)].first }, enabled = scoreIndex > 0) { Text("−") }
-                        Text("${scores.getOrNull(scoreIndex)?.second ?: "0"}")
-                        TextButton(onClick = { score = scores[(scoreIndex + 1).coerceAtMost(scores.lastIndex)].first }, enabled = scoreIndex < scores.lastIndex) { Text("+") }
+                    Text(scores[scoreIndex].second, style = MaterialTheme.typography.headlineMedium)
+                    Slider(
+                        value = scoreIndex.toFloat(),
+                        onValueChange = { scoreIndex = it.roundToInt().coerceIn(0, scores.lastIndex) },
+                        onValueChangeFinished = { onSelect(entry.copy(score = scores[scoreIndex].first)) },
+                        valueRange = 0f..scores.lastIndex.toFloat(),
+                        modifier = Modifier.fillMaxWidth(),
+                    )
+                } else {
+                    LazyColumn(Modifier.fillMaxWidth().height(300.dp), state = if (field == EditField.PROGRESS) progressListState else statusListState) {
+                        when (field) {
+                            EditField.STATUS -> items(statuses.size) { index ->
+                                val (option, label) = statuses[index]
+                                TextButton(onClick = { onSelect(entry.copy(status = option)) }, modifier = Modifier.fillMaxWidth()) { Text(label) }
+                            }
+                            EditField.PROGRESS -> items(maxProgress + 1) { progress ->
+                                TextButton(onClick = { onSelect(entry.copy(progress = progress)) }, modifier = Modifier.fillMaxWidth()) {
+                                    Text("$progress${current.media.totalEpisodes?.let { " / $it" } ?: ""} episodes")
+                                }
+                            }
+                            EditField.SCORE -> Unit
+                        }
                     }
                 }
-                error?.let { Text(it, color = MaterialTheme.colorScheme.error) }
             }
         },
-        confirmButton = {
-            Button(onClick = { onSave(TrackingListEntry(current.media.id, status, progressNumber!!, score)) }, enabled = valid) {
-                Text("Save to AniList")
-            }
-        },
+        confirmButton = {},
         dismissButton = { TextButton(onClick = onDismiss) { Text("Cancel") } },
     )
 }
