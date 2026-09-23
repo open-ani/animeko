@@ -67,7 +67,7 @@ Android 首个实现使用：
 
 `TrackingCredentialStore` 是 provider-scoped 的读、写、删除边界。稳定的 `TrackingProviderId` 是存储键；新增追踪服务使用同一个桌面存储，不扩展 Animeko/Bangumi 的 `TokenSave`。macOS Desktop 将追踪 token 保存于独立的 DataStore 文件，并将其目录限制为当前用户访问；文件内容没有 Keychain 静态加密保护。该 DataStore 不进入设置快照、追踪匹配备份、日志或 UI。非机密的账号与标题匹配 ID 仍在 Java Preferences。
 
-桌面适配器只读取独立 DataStore。已有 Keychain 凭据不自动导入，用户需重新授权 AniList；旧 Keychain 项不会被此适配器读取或删除。Android 继续使用 Keystore 加密文件；其它桌面平台未注册 AniList 入口。未来 iOS 适配器须选择本地存储实现并遵守相同的 provider 隔离和备份边界。
+Android 使用 Keystore 加密文件；macOS 以外的桌面平台未注册 AniList 入口。iOS 将 token 以明文保存在 `NSUserDefaults`，按 provider 隔离且不进入 Animeko 备份，但没有 Keychain 加密，并会随系统设备备份及 iCloud 备份一同保存。
 
 ### KMP common code 不依赖 Android 类型
 
@@ -121,7 +121,7 @@ Android、macOS Desktop 与 iOS 的条目 UI 均通过 `TrackingRegistry`、`Tra
 
 `TrackingCoordinator` 只通过注册表查找 source，提供观察、搜索、绑定、编辑和解绑入口。`TrackingSection(subjectId, modifier)` 是两种详情页布局的唯一入口。卡片按 capability 绘制状态、进度、评分、日期、私密和删除操作；品牌图标由各平台注册的 `TrackingIconRenderer` 按 `TrackingProviderId` 提供。Bangumi 的离散正片列表与 AniList 的累计数字列表使用同一个选择弹层。完成状态下若 Bangumi 仍有未看剧集，另行询问是否全部标记看过。
 
-`TrackingProviderId` 是用于持久化和注册表查找的开放类型，不使用封闭 enum。每个平台只在自己的实现中声明一次稳定 ID 常量。账号中心遍历已注册的 `TrackingAccountConnector`，由共同的 `TrackingAccountItem` 展示身份、连接状态及断开确认；连接器提供登录动作和可选详情页。各平台显式声明 OAuth redirect 处理规则：Android manifest 声明特定 host；macOS Desktop 使用本地内置 HTTP 监听端口；iOS 注册 `ani://` URL Scheme 处理并在 `AniIosApplication.openUrl` 中解析。
+`TrackingProviderId` 是用于持久化和注册表查找的开放类型，不使用封闭 enum。每个平台只在自己的实现中声明一次稳定 ID 常量。账号中心遍历已注册的 `TrackingAccountConnector`，由共同的 `TrackingAccountItem` 展示身份、连接状态及断开确认；连接器提供登录动作和可选详情页。各平台显式声明 OAuth redirect 处理规则：三个平台都接收 `ani://anilist-auth` 回调：Android manifest 声明特定 host；macOS Desktop 在应用 bundle 中注册 `ani://` URL Scheme，并通过 `Desktop.setOpenURIHandler` 接收；iOS 注册 `ani://` URL Scheme 处理并在 `AniIosApplication.openUrl` 中解析。任何应用或网页都能触发该 scheme，因此回调只在用户发起登录后的五分钟内被接受一次。
 
 观看 hook 在本地操作成功后调用 domain 层的 `TrackingEpisodeSynchronizer`。AniList source 对正片整数集数执行单调远端进度更新，较新的远端进度不会回退；Bangumi source 不重复写入已由本地操作保存的剧集状态。一个 source 失败时 synchronizer 继续执行其余 source，并在结束后抛出错误供 hook 记录。当前没有持久化失败队列，离线事件不会在重启后自动重试。
 
@@ -157,5 +157,5 @@ Android、macOS Desktop 与 iOS 的条目 UI 均通过 `TrackingRegistry`、`Tra
 
 - `:tracking:api:allTests :tracking:anilist:allTests :app:shared:app-data:testAndroidHostTest :app:shared:ui-subject:testAndroidHostTest :app:shared:ui-settings:testAndroidHostTest :app:android:assembleDefaultDebug -Pani.android.abis=arm64-v8a` 通过。
 - Android：真机测试通过。Tracking accounts 正常展示 Bangumi 与 AniList。
-- macOS Desktop：真机打包运行测试通过。支持 DataStore 凭据存储、本地 HTTP OAuth 登录与界面国际化（中英本地化校验通过）。
+- macOS Desktop：真机打包运行测试通过。支持 DataStore 凭据存储、`ani://` URL Scheme OAuth 回调登录与界面国际化（中英本地化校验通过）。
 - iOS：Xcode 27 + iOS 16.0 target 下完成 framework 编译与 CocoaPods 依赖集成，在 iOS Simulator (`iPhone 17`) 上成功安装并运行，验证 Explore 渲染及 Deep Link 拦截。
