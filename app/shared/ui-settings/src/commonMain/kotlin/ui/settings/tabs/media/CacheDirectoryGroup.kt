@@ -31,21 +31,24 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.platform.LocalClipboard
 import io.github.vinceglb.filekit.FileKit
 import io.github.vinceglb.filekit.dialogs.openFilePicker
 import io.github.vinceglb.filekit.dialogs.openFileSaver
 import io.github.vinceglb.filekit.readBytes
 import io.github.vinceglb.filekit.write
+import kotlinx.datetime.TimeZone
+import kotlinx.datetime.toLocalDateTime
 import me.him188.ani.app.data.models.preference.DanmakuCacheStrategy
 import me.him188.ani.app.data.models.preference.MediaCacheSettings
 import me.him188.ani.app.platform.PermissionManager
+import me.him188.ani.app.ui.foundation.getClipEntryText
 import me.him188.ani.app.ui.settings.compressBackup
 import me.him188.ani.app.ui.settings.decompressBackup
+import me.him188.ani.app.ui.foundation.setClipEntryText
 import me.him188.ani.app.ui.foundation.rememberAsyncHandler
 import me.him188.ani.app.ui.foundation.widgets.LocalToaster
 import me.him188.ani.app.ui.lang.Lang
-import me.him188.ani.app.ui.lang.settings_danmaku_cancel
-import me.him188.ani.app.ui.lang.settings_danmaku_confirm
 import me.him188.ani.app.ui.lang.settings_storage_backup_op_backup_error
 import me.him188.ani.app.ui.lang.settings_storage_backup_op_restore
 import me.him188.ani.app.ui.lang.settings_storage_backup_op_restore_error
@@ -61,6 +64,7 @@ import me.him188.ani.app.ui.settings.framework.components.DropdownItem
 import me.him188.ani.app.ui.settings.framework.components.SettingsScope
 import me.him188.ani.app.ui.settings.framework.components.TextItem
 import org.jetbrains.compose.resources.stringResource
+import kotlin.time.Clock
 
 @Stable
 class CacheDirectoryGroupState(
@@ -83,6 +87,7 @@ fun SettingsScope.BackupSettings(state: CacheDirectoryGroupState) {
     var backupTracking by remember { mutableStateOf(state.trackingBindingsAvailable) }
 
     val scope = rememberAsyncHandler()
+    val clipboard = LocalClipboard.current
     val toaster = LocalToaster.current
     val backupErrorText = stringResource(Lang.settings_storage_backup_op_backup_error)
 
@@ -125,7 +130,7 @@ fun SettingsScope.BackupSettings(state: CacheDirectoryGroupState) {
                     }
                     Text("This backup does not include downloaded videos or tracking account tokens.",
                         style = MaterialTheme.typography.bodySmall, modifier = Modifier.padding(top = 12.dp))
-                    Text("Keep the backup file private if app settings are selected.",
+                    Text("Keep the backup file or copied text private if app settings are selected.",
                         style = MaterialTheme.typography.bodySmall, modifier = Modifier.padding(top = 8.dp))
                 }
             },
@@ -133,7 +138,11 @@ fun SettingsScope.BackupSettings(state: CacheDirectoryGroupState) {
                 TextButton(onClick = {
                     scope.launch {
                         try {
-                            val target = FileKit.openFileSaver(suggestedName = "animeko-backup", extension = "animekobk")
+                            val now = Clock.System.now().toLocalDateTime(TimeZone.currentSystemDefault())
+                            val date = "${now.year}-${now.monthNumber.toString().padStart(2, '0')}-${now.dayOfMonth.toString().padStart(2, '0')}"
+                            val time = "${now.hour.toString().padStart(2, '0')}-${now.minute.toString().padStart(2, '0')}"
+                            val filename = "animeko_${date}_$time"
+                            val target = FileKit.openFileSaver(suggestedName = filename, extension = "animekobk")
                                 ?: return@launch
                             val data = state.onGetBackupData(BackupSelection(backupSettings, backupTracking))
                             target.write(compressBackup(data.encodeToByteArray()))
@@ -145,7 +154,20 @@ fun SettingsScope.BackupSettings(state: CacheDirectoryGroupState) {
                     }
                 }, enabled = backupSettings || backupTracking) { Text("Save backup") }
             },
-            dismissButton = { TextButton(onClick = { showBackupDialog = false }) { Text("Cancel") } },
+            dismissButton = {
+                TextButton(onClick = {
+                    scope.launch {
+                        try {
+                            val data = state.onGetBackupData(BackupSelection(backupSettings, backupTracking))
+                            clipboard.setClipEntryText(data)
+                            showBackupDialog = false
+                            toaster.toast("Backup copied")
+                        } catch (_: Exception) {
+                            toaster.toast(backupErrorText)
+                        }
+                    }
+                }, enabled = backupSettings || backupTracking) { Text("Copy") }
+            },
         )
     }
 
@@ -179,13 +201,22 @@ fun SettingsScope.BackupSettings(state: CacheDirectoryGroupState) {
                         }
                     },
                 ) {
-                    Text(stringResource(Lang.settings_danmaku_confirm), color = MaterialTheme.colorScheme.error)
+                    Text("Choose file", color = MaterialTheme.colorScheme.error)
                 }
             },
             dismissButton = {
-                TextButton({ showRestoreDialog = false }) {
-                    Text(stringResource(Lang.settings_danmaku_cancel))
-                }
+                TextButton({
+                    scope.launch {
+                        try {
+                            val content = clipboard.getClipEntryText()
+                            val result = content?.let { state.onRestoreSettings(it) } == true
+                            toaster.toast(if (result) restoreSuccess else restoreFailed)
+                            if (result) showRestoreDialog = false
+                        } catch (_: Exception) {
+                            toaster.toast(restoreFailed)
+                        }
+                    }
+                }) { Text("Paste") }
             },
         )
     }
