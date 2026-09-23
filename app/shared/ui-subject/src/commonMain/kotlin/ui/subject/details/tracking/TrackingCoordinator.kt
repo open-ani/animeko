@@ -85,17 +85,6 @@ class TrackingCoordinator(private val registry: TrackingRegistry) {
         refresh()
     }
 
-    suspend fun episodeWatched(subjectId: Int, episodeId: Int) {
-        var failure: Exception? = null
-        registry.sources.forEach { source ->
-            try { source.episodeWatched(subjectId, episodeId) }
-            catch (cancelled: CancellationException) { throw cancelled }
-            catch (error: Exception) { failure = error }
-        }
-        refresh()
-        failure?.let { throw it }
-    }
-
     fun refresh() { refreshes.value += 1 }
 
     private fun source(id: TrackingProviderId): TrackingSource =

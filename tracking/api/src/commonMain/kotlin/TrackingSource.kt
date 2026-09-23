@@ -32,7 +32,11 @@ interface TrackingSource : TrackingBindingBackup {
 
     override fun exportBindings(): List<TrackingBindingRecord> = emptyList()
 
-    override fun restoreBindings(records: List<TrackingBindingRecord>) {
+    override suspend fun validateBindings(records: List<TrackingBindingRecord>) {
+        require(records.isEmpty()) { "This tracking source has no stored title matches" }
+    }
+
+    override fun applyValidatedBindings(records: List<TrackingBindingRecord>) {
         require(records.isEmpty()) { "This tracking source has no stored title matches" }
     }
 }
@@ -81,11 +85,19 @@ class DefaultTrackingRegistry(override val sources: List<TrackingSource>) : Trac
 
     override fun exportBindings(): List<TrackingBindingRecord> = sources.flatMap { it.exportBindings() }
 
-    override fun restoreBindings(records: List<TrackingBindingRecord>) {
-        val sourcesById = sources.associateBy { it.info.id.value }
-        require(records.all { it.providerId in sourcesById }) { "Backup contains an unavailable tracking source" }
+    override fun applyValidatedBindings(records: List<TrackingBindingRecord>) {
         records.groupBy { it.providerId }.forEach { (id, sourceRecords) ->
-            sourcesById.getValue(id).restoreBindings(sourceRecords)
+            sources.first { it.info.id.value == id }.applyValidatedBindings(sourceRecords)
+        }
+    }
+
+    override suspend fun validateBindings(records: List<TrackingBindingRecord>) {
+        val sourcesById = sources.associateBy { it.info.id.value }
+        if (records.any { it.providerId !in sourcesById }) {
+            throw TrackingBackupValidationException("Backup requires a tracking service unavailable in this app")
+        }
+        records.groupBy { it.providerId }.forEach { (id, sourceRecords) ->
+            sourcesById.getValue(id).validateBindings(sourceRecords)
         }
     }
 }
@@ -100,5 +112,12 @@ data class TrackingBindingRecord(
 
 interface TrackingBindingBackup {
     fun exportBindings(): List<TrackingBindingRecord>
-    fun restoreBindings(records: List<TrackingBindingRecord>)
+    suspend fun validateBindings(records: List<TrackingBindingRecord>)
+    fun applyValidatedBindings(records: List<TrackingBindingRecord>)
+    suspend fun restoreBindings(records: List<TrackingBindingRecord>) {
+        validateBindings(records)
+        applyValidatedBindings(records)
+    }
 }
+
+class TrackingBackupValidationException(message: String) : IllegalArgumentException(message)

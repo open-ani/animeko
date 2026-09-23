@@ -45,6 +45,7 @@ import me.him188.ani.app.platform.PermissionManager
 import me.him188.ani.app.ui.foundation.getClipEntryText
 import me.him188.ani.app.ui.settings.compressBackup
 import me.him188.ani.app.ui.settings.decompressBackup
+import me.him188.ani.tracking.api.TrackingBackupValidationException
 import me.him188.ani.app.ui.foundation.setClipEntryText
 import me.him188.ani.app.ui.foundation.rememberAsyncHandler
 import me.him188.ani.app.ui.foundation.widgets.LocalToaster
@@ -83,6 +84,7 @@ data class BackupSelection(val settings: Boolean = true, val trackingBindings: B
 fun SettingsScope.BackupSettings(state: CacheDirectoryGroupState) {
     var showBackupDialog by remember { mutableStateOf(false) }
     var showRestoreDialog by remember { mutableStateOf(false) }
+    var restoreError by remember { mutableStateOf<String?>(null) }
     var backupSettings by remember { mutableStateOf(true) }
     var backupTracking by remember { mutableStateOf(state.trackingBindingsAvailable) }
 
@@ -98,7 +100,7 @@ fun SettingsScope.BackupSettings(state: CacheDirectoryGroupState) {
             description = { Text("Choose what to save in an Animeko backup file") },
         )
         TextItem(
-            onClick = { showRestoreDialog = true },
+            onClick = { restoreError = null; showRestoreDialog = true },
             title = { Text("Restore backup") },
             description = { Text("Import settings and tracking matches from a backup file") },
         )
@@ -179,12 +181,18 @@ fun SettingsScope.BackupSettings(state: CacheDirectoryGroupState) {
             { showRestoreDialog = false },
             icon = { Icon(Icons.Rounded.Restore, null, tint = MaterialTheme.colorScheme.error) },
             title = { Text("Restore backup") },
-            text = { Text(stringResource(Lang.settings_storage_backup_op_restore_warning)) },
+            text = {
+                Column {
+                    Text(stringResource(Lang.settings_storage_backup_op_restore_warning))
+                    restoreError?.let { Text(it, color = MaterialTheme.colorScheme.error, modifier = Modifier.padding(top = 8.dp)) }
+                }
+            },
             confirmButton = {
                 TextButton(
                     {
                         scope.launch {
                             try {
+                                restoreError = null
                                 val source = FileKit.openFilePicker() ?: return@launch
                                 val bytes = source.readBytes()
                                 val content = if (bytes.size >= 2 && bytes[0] == 0x1f.toByte() && bytes[1] == 0x8b.toByte()) {
@@ -194,9 +202,11 @@ fun SettingsScope.BackupSettings(state: CacheDirectoryGroupState) {
                                 }
                                 val result = state.onRestoreSettings(content)
                                 toaster.toast(if (result) restoreSuccess else restoreFailed)
-                                showRestoreDialog = false
+                                if (result) showRestoreDialog = false else restoreError = restoreFailed
+                            } catch (failure: TrackingBackupValidationException) {
+                                restoreError = failure.message ?: restoreFailed
                             } catch (_: Exception) {
-                                toaster.toast(restoreFailed)
+                                restoreError = restoreFailed
                             }
                         }
                     },
@@ -208,12 +218,15 @@ fun SettingsScope.BackupSettings(state: CacheDirectoryGroupState) {
                 TextButton({
                     scope.launch {
                         try {
+                            restoreError = null
                             val content = clipboard.getClipEntryText()
                             val result = content?.let { state.onRestoreSettings(it) } == true
                             toaster.toast(if (result) restoreSuccess else restoreFailed)
-                            if (result) showRestoreDialog = false
+                            if (result) showRestoreDialog = false else restoreError = restoreFailed
+                        } catch (failure: TrackingBackupValidationException) {
+                            restoreError = failure.message ?: restoreFailed
                         } catch (_: Exception) {
-                            toaster.toast(restoreFailed)
+                            restoreError = restoreFailed
                         }
                     }
                 }) { Text("Paste") }
@@ -221,6 +234,7 @@ fun SettingsScope.BackupSettings(state: CacheDirectoryGroupState) {
         )
     }
 }
+
 
 @Composable
 fun SettingsScope.DanmakuCacheSettings(state: CacheDirectoryGroupState) {

@@ -8,6 +8,7 @@ import me.him188.ani.tracking.api.DefaultTrackingRegistry
 import me.him188.ani.tracking.api.TrackingAccount
 import me.him188.ani.tracking.api.TrackingAccountState
 import me.him188.ani.tracking.api.TrackingBindingRecord
+import me.him188.ani.tracking.api.TrackingBackupValidationException
 import me.him188.ani.tracking.api.TrackingEdit
 import me.him188.ani.tracking.api.TrackingListEntry
 import me.him188.ani.tracking.api.TrackingMedia
@@ -41,17 +42,7 @@ class TrackingCoordinatorTest {
     }
 
     @Test
-    fun watchedEventContinuesAfterOneSourceFails() = runTest {
-        val first = FakeSource("first").apply { failWatched = true }
-        val second = FakeSource("second")
-        val coordinator = TrackingCoordinator(DefaultTrackingRegistry(listOf(first, second)))
-
-        assertFailsWith<IllegalStateException> { coordinator.episodeWatched(42, 7) }
-        assertEquals(1, second.watchedCalls)
-    }
-
-    @Test
-    fun registryBacksUpBindingsAcrossSources() {
+    fun registryBacksUpBindingsAcrossSources() = runTest {
         val first = FakeSource("first")
         val second = FakeSource("second")
         val registry = DefaultTrackingRegistry(listOf(first, second))
@@ -65,6 +56,19 @@ class TrackingCoordinatorTest {
         assertFailsWith<IllegalArgumentException> {
             registry.restoreBindings(listOf(TrackingBindingRecord("unknown", "account", 42, "300")))
         }
+        assertFailsWith<IllegalArgumentException> {
+            registry.restoreBindings(listOf(
+                TrackingBindingRecord("first", "account-a", 43, "101"),
+                TrackingBindingRecord("second", "account-b", -1, "201"),
+            ))
+        }
+        second.authenticated = false
+        assertFailsWith<TrackingBackupValidationException> {
+            registry.restoreBindings(listOf(
+                TrackingBindingRecord("first", "account-a", 43, "101"),
+                TrackingBindingRecord("second", "account-b", 43, "201"),
+            ))
+        }
         assertEquals(records, registry.exportBindings())
     }
 
@@ -74,9 +78,8 @@ class TrackingCoordinatorTest {
         override val statusOptions = listOf(TrackingStatusOption(TrackingStatus.CURRENT, "Watching"))
         override val scoreOptions = emptyList<TrackingScoreOption>()
         var lastEdit: TrackingEdit? = null
-        var failWatched = false
-        var watchedCalls = 0
         private var bindings = emptyList<TrackingBindingRecord>()
+        var authenticated = true
         private val snapshot = TrackingSnapshot(
             TrackingMedia(TrackingMediaId("42"), "Test", "https://example.org/42", null, 12),
             TrackingListEntry(TrackingMediaId("42"), TrackingStatus.CURRENT, 1),
@@ -89,11 +92,11 @@ class TrackingCoordinatorTest {
             return snapshot
         }
         override suspend fun unlink(subjectId: Int) {}
-        override suspend fun episodeWatched(subjectId: Int, episodeId: Int) {
-            watchedCalls++
-            if (failWatched) error("source unavailable")
-        }
         override fun exportBindings(): List<TrackingBindingRecord> = bindings
-        override fun restoreBindings(records: List<TrackingBindingRecord>) { bindings = records }
+        override suspend fun validateBindings(records: List<TrackingBindingRecord>) {
+            require(records.all { it.providerId == info.id.value && it.subjectId > 0 })
+            if (records.isNotEmpty() && !authenticated) throw TrackingBackupValidationException("Connect this tracker")
+        }
+        override fun applyValidatedBindings(records: List<TrackingBindingRecord>) { bindings = records }
     }
 }

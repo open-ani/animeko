@@ -502,7 +502,7 @@ private fun SubjectSidebar(
             onPlay = { uiState.progressInfo?.nextEpisodeIdToPlay?.let(onPlay) },
             Modifier.fillMaxWidth(),
         )
-        TrackingSection(info.subjectId, Modifier.fillMaxWidth())
+        TrackingSection(info.subjectId, Modifier.fillMaxWidth(), onClickLogin.takeIf { selfInfo.isSessionValid == false })
         // 收藏统计三格 (收藏 / 在看 / 想看)
         SubjectCollectionStatsRow(info.collectionStats)
 

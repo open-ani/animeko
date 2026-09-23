@@ -413,6 +413,11 @@ class SettingsViewModel : AbstractSettingsViewModel(), KoinComponent {
         val savedBindings = file.tracking?.bindings ?: backup.trackingBindings
         val bindingBackup = getKoin().getOrNull<TrackingBindingBackup>()
         require(savedBindings.isNullOrEmpty() || bindingBackup != null) { "Tracking backup is unavailable" }
+        savedBindings?.let { saved ->
+            bindingBackup?.validateBindings(saved.map {
+                TrackingBindingRecord(it.providerId, it.accountId, it.subjectId, it.mediaId)
+            })
+        }
 
         backup.danmakuEnabled?.let { settingsRepository.danmakuEnabled.set(it) }
         backup.danmakuConfig?.let { settingsRepository.danmakuConfig.set(it) }
@@ -441,7 +446,7 @@ class SettingsViewModel : AbstractSettingsViewModel(), KoinComponent {
         // them on a different device.
         backup.tokenStore?.let { tokenRepository.restoreFromTokenSave(it) }
         savedBindings?.let { saved ->
-            bindingBackup?.restoreBindings(saved.map {
+            bindingBackup?.applyValidatedBindings(saved.map {
                 TrackingBindingRecord(it.providerId, it.accountId, it.subjectId, it.mediaId)
             })
         }

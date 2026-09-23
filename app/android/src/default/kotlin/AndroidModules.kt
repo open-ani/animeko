@@ -28,9 +28,8 @@ import me.him188.ani.app.domain.episode.EpisodeTrackingSync
 import me.him188.ani.app.tracking.anilist.AniListTrackingProvider
 import me.him188.ani.app.tracking.anilist.createAniListHttpClient
 import me.him188.ani.app.ui.subject.details.tracking.AniListTrackingSource
-import me.him188.ani.app.ui.subject.details.tracking.TrackingCoordinator
+import me.him188.ani.app.domain.tracking.TrackingEpisodeSynchronizer
 import me.him188.ani.tracking.api.AndroidTrackingCredentialStore
-import me.him188.ani.tracking.api.TrackingProvider
 import me.him188.ani.tracking.api.TrackingProviderId
 import me.him188.ani.tracking.api.TrackingSource
 import me.him188.ani.utils.ktor.getPlatformKtorEngine
@@ -100,13 +99,13 @@ fun getAndroidModules(
     serviceConnectionManager: TorrentServiceConnectionManager,
     coroutineScope: CoroutineScope,
 ) = module {
-    single<TrackingProvider> {
+    single {
         AniListTrackingProvider(createAniListHttpClient(getPlatformKtorEngine()),
             AndroidTrackingCredentialStore(androidContext(), TrackingProviderId("anilist")))
     }
-    single { AniListTrackingSource(androidContext(), get(), inject()) }
+    single { AniListTrackingSource(androidContext(), get<AniListTrackingProvider>(), inject()) }
     single<TrackingSource> { get<AniListTrackingSource>() }
-    single<EpisodeTrackingSync> { RegistryEpisodeTrackingSync(get<TrackingCoordinator>(), coroutineScope) }
+    single<EpisodeTrackingSync> { RegistryEpisodeTrackingSync(get<TrackingEpisodeSynchronizer>(), coroutineScope) }
     single<BrowserNavigator> { AndroidBrowserNavigator() }
     single<CaptchaBrowserFactory> { AndroidCaptchaBrowserFactory(androidContext()) }
     single<ImageCaptchaRecognizer> { AndroidOnnxImageCaptchaRecognizer() }

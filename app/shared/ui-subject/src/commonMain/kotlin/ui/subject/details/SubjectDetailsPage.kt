@@ -442,7 +442,7 @@ private fun SubjectDetailsPage(
             },
             collectionActions = {
                 state.info?.let { info ->
-                    TrackingSection(info.subjectId)
+                    TrackingSection(info.subjectId, onClickLogin = onClickLogin.takeIf { selfInfo.isSessionValid == false })
                 }
             },
             rating = {

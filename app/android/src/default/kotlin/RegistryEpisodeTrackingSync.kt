@@ -6,16 +6,16 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import me.him188.ani.app.domain.episode.EpisodeTrackingSync
-import me.him188.ani.app.ui.subject.details.tracking.TrackingCoordinator
+import me.him188.ani.app.domain.tracking.TrackingEpisodeSynchronizer
 
 internal class RegistryEpisodeTrackingSync(
-    private val coordinator: TrackingCoordinator,
+    private val synchronizer: TrackingEpisodeSynchronizer,
     private val scope: CoroutineScope,
 ) : EpisodeTrackingSync {
     override fun onEpisodeWatched(subjectId: Int, episodeId: Int) {
         scope.launch(Dispatchers.IO) {
             try {
-                coordinator.episodeWatched(subjectId, episodeId)
+                synchronizer.episodeWatched(subjectId, episodeId)
             } catch (cancelled: CancellationException) {
                 throw cancelled
             } catch (failure: Exception) {

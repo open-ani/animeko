@@ -24,6 +24,7 @@ import me.him188.ani.datasources.api.EpisodeType
 import me.him188.ani.tracking.api.TrackingAccount
 import me.him188.ani.tracking.api.TrackingAccountState
 import me.him188.ani.tracking.api.TrackingBindingRecord
+import me.him188.ani.tracking.api.TrackingBackupValidationException
 import me.him188.ani.tracking.api.TrackingDateField
 import me.him188.ani.tracking.api.TrackingEdit
 import me.him188.ani.tracking.api.TrackingListEntry
@@ -179,7 +180,23 @@ class AniListTrackingSource(
         else TrackingBindingRecord(info.id.value, accountId, subjectId, mediaId)
     }
 
-    override fun restoreBindings(records: List<TrackingBindingRecord>) {
+    override suspend fun validateBindings(records: List<TrackingBindingRecord>) {
+        require(records.all {
+            it.providerId == info.id.value && it.accountId.isNotBlank() && it.subjectId > 0 && it.mediaId.isNotBlank()
+        }) { "Invalid AniList binding backup" }
+        if (records.isNotEmpty()) {
+            val account = try {
+                provider.refreshAccount()
+            } catch (unauthorized: TrackingProviderException.Unauthorized) {
+                throw TrackingBackupValidationException("Connect AniList before restoring tracking matches")
+            }
+            if (records.any { it.accountId != account.remoteId }) {
+                throw TrackingBackupValidationException("Connect the AniList account used by this backup before restoring tracking matches")
+            }
+        }
+    }
+
+    override fun applyValidatedBindings(records: List<TrackingBindingRecord>) {
         require(records.all {
             it.providerId == info.id.value && it.accountId.isNotBlank() && it.subjectId > 0 && it.mediaId.isNotBlank()
         }) { "Invalid AniList binding backup" }

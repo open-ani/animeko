@@ -9,9 +9,10 @@ package me.him188.ani.app.ui.settings.account
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
 import me.him188.ani.app.domain.usecase.GlobalKoin
+import me.him188.ani.app.tracking.anilist.AniListTrackingProvider
 import me.him188.ani.tracking.api.TrackingProvider
 
 @Composable
 internal actual fun rememberAniListTrackingProvider(): TrackingProvider? {
-    return remember { GlobalKoin.getOrNull<TrackingProvider>() }
+    return remember { GlobalKoin.getOrNull<AniListTrackingProvider>() }
 }

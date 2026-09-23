@@ -55,10 +55,12 @@ interface TrackingProvider {
     suspend fun update(entry: TrackingListEntry, didWatchEpisode: Boolean = false): TrackingListEntry
 
     /** Updates one tracking date without changing the other entry fields. Null clears that date. */
-    suspend fun updateDate(entry: TrackingListEntry, field: TrackingDateField, date: TrackingDate?): TrackingListEntry
+    suspend fun updateDate(entry: TrackingListEntry, field: TrackingDateField, date: TrackingDate?): TrackingListEntry =
+        throw UnsupportedOperationException("This tracker does not support dates")
 
     /** Updates remote visibility without changing status, progress, score, or dates. */
-    suspend fun updateVisibility(entry: TrackingListEntry, isPrivate: Boolean): TrackingListEntry
+    suspend fun updateVisibility(entry: TrackingListEntry, isPrivate: Boolean): TrackingListEntry =
+        throw UnsupportedOperationException("This tracker does not support private entries")
 
     suspend fun refresh(mediaId: TrackingMediaId): TrackingMediaWithEntry?
 

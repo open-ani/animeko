@@ -2,6 +2,7 @@ package me.him188.ani.app.ui.subject.details.tracking
 
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.layout.Arrangement
@@ -92,7 +93,7 @@ import kotlin.time.Instant
 private enum class Field { STATUS, PROGRESS, SCORE, START_DATE, FINISH_DATE }
 
 @Composable
-internal fun TrackingSection(subjectId: Int, modifier: Modifier = Modifier) {
+internal fun TrackingSection(subjectId: Int, modifier: Modifier = Modifier, onClickLogin: (() -> Unit)? = null) {
     val coordinator = remember { GlobalKoin.get<TrackingCoordinator>() }
     val cards by remember(coordinator, subjectId) { coordinator.observe(subjectId) }
         .collectAsStateWithLifecycle(emptyList())
@@ -111,6 +112,7 @@ internal fun TrackingSection(subjectId: Int, modifier: Modifier = Modifier) {
     var searching by remember { mutableStateOf<TrackingProviderId?>(null) }
     var query by remember { mutableStateOf("") }
     var results by remember { mutableStateOf<List<TrackingMedia>>(emptyList()) }
+    var searchRevision by remember { mutableStateOf(0) }
     var initialSearchTitle by remember { mutableStateOf("") }
     var busy by remember { mutableStateOf<TrackingProviderId?>(null) }
     var error by remember { mutableStateOf<String?>(null) }
@@ -135,18 +137,24 @@ internal fun TrackingSection(subjectId: Int, modifier: Modifier = Modifier) {
     fun runSearch() {
         val id = searching ?: return
         if (query.isBlank()) return
+        val requestedQuery = query.trim()
+        val requestedRevision = searchRevision
+        val shouldFallback = requestedQuery == initialSearchTitle && originalTitle.isNotBlank() && originalTitle != initialSearchTitle
         scope.launch {
             busy = id
             error = null
             try {
-                val found = coordinator.search(id, query.trim())
-                results = if (found.isEmpty() && query.trim() == initialSearchTitle &&
-                    originalTitle.isNotBlank() && originalTitle != initialSearchTitle) {
+                val found = coordinator.search(id, requestedQuery)
+                if (requestedRevision != searchRevision || searching != id) return@launch
+                val matches = if (found.isEmpty() && shouldFallback) {
                     coordinator.search(id, originalTitle)
                 } else found
+                if (requestedRevision == searchRevision && searching == id) results = matches
             }
             catch (failure: CancellationException) { throw failure }
-            catch (_: Exception) { error = "Search failed. Try again." }
+            catch (_: Exception) {
+                if (requestedRevision == searchRevision && searching == id) error = "Search failed. Try again."
+            }
             finally { busy = null }
         }
     }
@@ -173,6 +181,7 @@ internal fun TrackingSection(subjectId: Int, modifier: Modifier = Modifier) {
                     TrackingCard(card, busy == card.providerId,
                         onField = { editor = card.providerId to it },
                         onSearch = {
+                            searchRevision++
                             searching = card.providerId
                             query = preferredTitle.ifBlank { (card.load as? TrackingLoad.Ready)?.snapshot?.media?.title.orEmpty() }
                             initialSearchTitle = query
@@ -195,7 +204,12 @@ internal fun TrackingSection(subjectId: Int, modifier: Modifier = Modifier) {
                         onPrivacy = { runEdit(card.providerId, TrackingEdit.Privacy(it)) },
                     )
                 }
-                if (connectedCards.isEmpty()) Text("No tracking accounts connected.")
+                if (connectedCards.isEmpty()) {
+                    Text("No tracking accounts connected.")
+                }
+                if (onClickLogin != null) TextButton(onClick = { showSheet = false; onClickLogin() }) {
+                    Text("Sign in to Animeko")
+                }
                 TextButton(onClick = { showSheet = false; navigator.navigateSettings(SettingsTab.TRACKING) }) {
                     Text("Tracking accounts")
                 }
@@ -205,15 +219,15 @@ internal fun TrackingSection(subjectId: Int, modifier: Modifier = Modifier) {
     }
 
     searching?.let { id ->
-        Dialog(onDismissRequest = { searching = null }) {
+        Dialog(onDismissRequest = { searchRevision++; searching = null }) {
             Surface(shape = MaterialTheme.shapes.large) {
                 Column(Modifier.fillMaxWidth().padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                     Text("Find tracking title", style = MaterialTheme.typography.titleMedium)
                     Row(verticalAlignment = Alignment.CenterVertically) {
-                        OutlinedTextField(query, { query = it; results = emptyList(); error = null },
+                        OutlinedTextField(query, { searchRevision++; query = it; results = emptyList(); error = null },
                             modifier = Modifier.weight(1f), placeholder = { Text("Search anime") }, singleLine = true,
                             trailingIcon = {
-                                if (query.isNotEmpty()) IconButton(onClick = { query = ""; results = emptyList(); error = null }) {
+                                if (query.isNotEmpty()) IconButton(onClick = { searchRevision++; query = ""; results = emptyList(); error = null }) {
                                     Icon(Icons.Default.Close, contentDescription = "Clear search")
                                 }
                             },
@@ -388,7 +402,7 @@ private fun TrackingCard(
 private fun TrackingBrandIcon(iconKey: String) {
     when (iconKey) {
         "anilist" -> AniListIcon()
-        "bangumi" -> androidx.compose.foundation.Image(Icons.Default.BangumiNext, null, Modifier.size(32.dp))
+        "bangumi" -> Image(Icons.Default.BangumiNext, null, Modifier.size(32.dp))
         else -> Text(iconKey.take(1).uppercase(), style = MaterialTheme.typography.titleLarge)
     }
 }

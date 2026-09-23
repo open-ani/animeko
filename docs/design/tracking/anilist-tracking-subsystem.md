@@ -89,15 +89,15 @@ AniList provider 必须具备：
 
 ## 2026-09-23 实现状态
 
-Android 的条目 UI 和观看事件现已通过 `TrackingRegistry`、`TrackingCoordinator` 与 `TrackingSource` 协作。Bangumi 和 AniList 各自实现 source，单栏与多栏页面只调用 `TrackingSection(subjectId)`。同一张能力驱动卡片绘制状态、进度和评分。账号中心的 AniList OAuth 控件仍是专属实现；持久化同步失败重试尚未实现，因此这还不是完整的跨平台追踪系统。
+Android 的条目 UI 通过 `TrackingRegistry`、`TrackingCoordinator` 与 `TrackingSource` 协作；观看事件由 domain 层的 `TrackingEpisodeSynchronizer` 分发。Bangumi 和 AniList 各自实现 source，单栏与多栏页面只调用 `TrackingSection(subjectId)`。同一张能力驱动卡片绘制状态、进度和评分。账号中心的 AniList OAuth 控件仍是专属实现；持久化同步失败重试尚未实现，因此这还不是完整的跨平台追踪系统。
 
-设置备份会导出 AniList 的非机密标题匹配关系（服务 ID、账号 ID、Animeko 条目 ID、AniList 媒体 ID），导入时按这些键合并到现有匹配，旧备份缺少该字段仍可导入。备份不包含 AniList token；迁移到新设备后需重新连接同一 AniList 账号，匹配才会显示。Bangumi 使用相同 subject ID，不需要单独导出匹配关系。Android 原有 `anilist-bindings` preferences 保持兼容。
+设置备份会导出 AniList 的非机密标题匹配关系（服务 ID、账号 ID、Animeko 条目 ID、AniList 媒体 ID），导入时按这些键合并到现有匹配，旧备份缺少该字段仍可导入。备份不包含 AniList token；迁移到新设备后，须先连接与备份记录相同的 AniList 账号，才能导入匹配关系。Bangumi 使用相同 subject ID，不需要单独导出匹配关系。Android 原有 `anilist-bindings` preferences 保持兼容。
 
 人工匹配搜索沿用图标按钮、清除输入按钮和键盘 Search 动作；输入变更清除过期结果。通用 `TrackingSection` 保持这些交互，而不为 AniList 单独构造搜索表单。
 
 搜索结果使用 AniList 返回的封面和标题。搜索初始词遵循 Animeko 的“显示原名”设置：关闭时先用当前显示的本地化标题；若该查询没有结果，再尝试原名。用户手动改写查询后只执行输入的词，避免意外的第二次搜索。
 
-备份选择框提供“应用设置”和“追踪匹配关系”两个选项，允许只导出其中一类；可保存文件或复制到剪贴板，恢复时可选择文件或剪贴板。文件名包含本地时间，格式为 `animeko_YYYY-MM-DD_HH-mm.animekobk`。`.animekobk` 文件使用 gzip 压缩，解压后的 JSON 包含 `format: animeko-backup`、`version: 1`、`settings`、`tracking` 字段。恢复时先验证格式与版本，再写入设置；未知版本被拒绝。恢复也接受先前导出的普通 JSON 文件及旧版设置剪贴板 JSON。`TrackingRegistry` 汇总所有已注册 source 的绑定记录，并按 `providerId` 将导入记录交回各 source；无本地匹配的 Bangumi source 返回空列表。新增追踪平台实现 `TrackingSource.exportBindings` 和 `restoreBindings`，以自己的存储格式保存绑定，在导出边界转换为 `TrackingBindingRecord`；无需修改备份 UI 或文件结构。未知 `providerId` 在恢复前被拒绝，避免静默丢失。文件选择及内容选项参照 Mihon 的 `BackupCreator`；Mihon 的 `.tachibk` 文件使用 gzip 压缩的 protobuf，Animeko 的格式与之不兼容。备份不包含离线视频或完整观看数据库。应用设置类别包含现有 Animeko 会话数据，因此备份文件需要私密保存；追踪账号 token 不在其中。
+备份选择框提供“应用设置”和“追踪匹配关系”两个选项，允许只导出其中一类；可保存文件或复制到剪贴板，恢复时可选择文件或剪贴板。文件名包含本地时间，格式为 `animeko_YYYY-MM-DD_HH-mm.animekobk`。`.animekobk` 文件使用 gzip 压缩，解压后的 JSON 包含 `format: animeko-backup`、`version: 1`、`settings`、`tracking` 字段。恢复时先验证格式与版本，再写入设置；未知版本被拒绝。恢复也接受先前导出的普通 JSON 文件及旧版设置剪贴板 JSON。`TrackingRegistry` 汇总所有已注册 source 的绑定记录，并按 `providerId` 将导入记录交回各 source；无本地匹配的 Bangumi source 返回空列表。新增追踪平台实现 `TrackingSource.exportBindings`、`validateBindings` 和 `applyValidatedBindings`，以自己的存储格式保存绑定，在导出边界转换为 `TrackingBindingRecord`；无需修改备份 UI 或文件结构。未知 `providerId` 在恢复前被拒绝，避免静默丢失。文件选择及内容选项参照 Mihon 的 `BackupCreator`；Mihon 的 `.tachibk` 文件使用 gzip 压缩的 protobuf，Animeko 的格式与之不兼容。备份不包含离线视频或完整观看数据库。应用设置类别包含现有 Animeko 会话数据，因此备份文件需要私密保存；追踪账号 token 不在其中。
 
 | 能力 | 当前实现 | 验证边界 |
 |---|---|---|
@@ -115,9 +115,9 @@ Android 的条目 UI 和观看事件现已通过 `TrackingRegistry`、`TrackingC
 
 平台 DI 构造 `DefaultTrackingRegistry`。Bangumi source 使用当前 Animeko 会话和原有收藏 repository；AniList source 包装 `TrackingProvider`，沿用 Android Keystore 账号和原 `anilist-bindings`，以账号 ID 与 subject ID 查找匹配。两者的存储机制留在 adapter 内，不进入通用卡片。
 
-`TrackingCoordinator` 只通过注册表查找 source，提供观察、搜索、绑定、编辑、解绑和观看事件入口。`TrackingSection(subjectId, modifier)` 是两种详情页布局的唯一入口。卡片按 capability 绘制状态、进度、评分、日期、私密和删除操作；UI 的品牌映射只使用 `iconKey`。Bangumi 的离散正片列表与 AniList 的累计数字列表使用同一个选择弹层。完成状态下若 Bangumi 仍有未看剧集，另行询问是否全部标记看过。
+`TrackingCoordinator` 只通过注册表查找 source，提供观察、搜索、绑定、编辑和解绑入口。`TrackingSection(subjectId, modifier)` 是两种详情页布局的唯一入口。卡片按 capability 绘制状态、进度、评分、日期、私密和删除操作；UI 的品牌映射只使用 `iconKey`。Bangumi 的离散正片列表与 AniList 的累计数字列表使用同一个选择弹层。完成状态下若 Bangumi 仍有未看剧集，另行询问是否全部标记看过。
 
-观看 hook 在本地操作成功后调用协调器。AniList source 对正片整数集数执行单调远端进度更新，较新的远端进度不会回退；Bangumi source 不重复写入已由本地操作保存的剧集状态。一个 source 失败时协调器继续执行其余 source，并在结束后抛出错误供 hook 记录。当前没有持久化失败队列，离线事件不会在重启后自动重试。
+观看 hook 在本地操作成功后调用 domain 层的 `TrackingEpisodeSynchronizer`。AniList source 对正片整数集数执行单调远端进度更新，较新的远端进度不会回退；Bangumi source 不重复写入已由本地操作保存的剧集状态。一个 source 失败时 synchronizer 继续执行其余 source，并在结束后抛出错误供 hook 记录。当前没有持久化失败队列，离线事件不会在重启后自动重试。
 
 ### 接入新的同步平台
 
@@ -125,8 +125,16 @@ Android 的条目 UI 和观看事件现已通过 `TrackingRegistry`、`TrackingC
 2. 在平台 DI 中注册 source。Track sheet 与观看 hook 从 `TrackingRegistry` 发现它；通用卡片和详情页不增加服务名分支。为 `iconKey` 增加品牌资源映射，并在账号中心接入该服务的登录动作。账号中心尚未由注册表完全驱动，这一步仍需要 UI 接线。
 3. 测试账号恢复、搜索、已有远端条目保护、字段能力、编辑、删除、取消传播、观看进度单调性与失败隔离。用连接设备验证登录、绑定、编辑和重启恢复。若服务需要离线自动重试，应先补齐持久化失败队列及其测试，不得依赖当前一次性 hook。
 
+### 扩展与恢复约束
+
+- 恢复备份时，在写入任何设置或会话数据之前检查文件格式、schema 版本、追踪服务 ID 与绑定字段。每个 `TrackingSource` 负责验证自己的绑定记录及所需账号的登录状态；注册表先验证全部记录，再分发写入；写入阶段不重复远端认证。账号未连接或 ID 不匹配时，在恢复界面显示可操作错误并停止。存储写入失败仍可能留下部分更改，完整事务恢复尚未实现。
+- 搜索结果只属于发起它的查询版本；用户更改搜索词、清除输入或切换追踪服务后，旧请求结果不得重新显示。
+- 观看事件向多个服务分发属于 domain 层；UI coordinator 只处理卡片观察与用户操作。一个服务失败后继续通知其他服务，最后向 hook 报告失败。
+- 账号登录入口按具体 provider 类型解析。添加服务时注册自己的 provider 和 source，并提供自己的账号连接 UI；通用卡片、绑定备份格式和观看分发不添加服务名分支。能力关闭时，provider 无需实现日期或隐私编辑。
+- Animeko 未登录时，详情页保留登录入口，同时提供追踪账号设置入口。Desktop/iOS 登录和失败持久化重试仍未覆盖。
+
 ### 验证范围
 
-- `:tracking:api:allTests :tracking:anilist:allTests :app:shared:ui-subject:testAndroidHostTest :app:android:assembleDefaultDebug -Pani.android.abis=arm64-v8a` 通过；协调器测试用第三个 fake source 验证注册、观察和编辑路由。
+- `:tracking:api:allTests :tracking:anilist:allTests :app:shared:app-data:testAndroidHostTest :app:shared:ui-subject:testAndroidHostTest :app:shared:ui-settings:testAndroidHostTest :app:android:assembleDefaultDebug -Pani.android.abis=arm64-v8a` 通过；测试覆盖第三个 source 的路由、跨 source 观看事件失败隔离，以及无效或未登录绑定在写入前被拒绝。
 - Android debug 构建已安装在连接的手机。修复 adapter 与观看 hook 的 DI 循环后，应用正常启动；Slam Dunk 的 Track sheet 同时显示 Bangumi 与 AniList 的状态、`7 / 101` 进度和评分字段，Bangumi 正片选择弹层可以打开。该只读检查没有证明新版本的远端写入。
 - 账号中心通用化、失败持久化重试、Desktop/iOS 登录和完整设备写入回归仍待完成；不能把当前 Android 构建与只读烟测当作这些能力的验证。
