@@ -104,7 +104,7 @@ import java.time.ZoneOffset
 internal actual fun AniListTrackingSection(
     info: SubjectInfo,
     showCollection: Boolean,
-    highlightTrack: Boolean,
+    collectionTracked: Boolean,
     bangumiConnected: Boolean,
     collectionAction: @Composable () -> Unit,
     modifier: Modifier,
@@ -210,15 +210,22 @@ internal actual fun AniListTrackingSection(
         if (searching) search()
     }
 
-    if (highlightTrack && !hasAniListBinding && linked == null) {
+    val aniListTracked = if (loading) hasAniListBinding else accountId != null && linked != null
+    val trackerCount = (if (bangumiConnected && collectionTracked) 1 else 0) + (if (aniListTracked) 1 else 0)
+    val trackLabel = when (trackerCount) {
+        0 -> "Track"
+        1 -> "1 tracker"
+        else -> "$trackerCount trackers"
+    }
+    if (trackerCount == 0 && showCollection) {
         Button(onClick = { showSheet = true }, modifier = modifier.testTag("trackingAction")) {
             Icon(Icons.Outlined.Sync, contentDescription = null)
-            Text("Track")
+            Text(trackLabel)
         }
     } else {
         OutlinedButton(onClick = { showSheet = true }, modifier = modifier.testTag("trackingAction")) {
             Icon(Icons.Outlined.Sync, contentDescription = null)
-            Text("Track")
+            Text(trackLabel)
         }
     }
 

@@ -443,7 +443,7 @@ private fun SubjectDetailsPage(
             collectionActions = {
                 state.info?.let { info ->
                     AniListTrackingSection(info, showCollection = selfInfo.isSessionValid == true,
-                        highlightTrack = selfInfo.isSessionValid == true && !uiState.selfCollected,
+                        collectionTracked = selfInfo.isSessionValid == true && uiState.selfCollected,
                         bangumiConnected = selfInfo.bangumiConnected == true, collectionAction = {
                         if (selfInfo.isSessionValid == false) {
                             OutlinedButton(onClickLogin) { Text(stringResource(Lang.subject_details_login_to_collect)) }

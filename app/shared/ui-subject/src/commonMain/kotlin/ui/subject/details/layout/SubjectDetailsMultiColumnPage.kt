@@ -503,7 +503,7 @@ private fun SubjectSidebar(
             Modifier.fillMaxWidth(),
         )
         AniListTrackingSection(info, showCollection = selfInfo.isSessionValid == true,
-            highlightTrack = selfInfo.isSessionValid == true && !uiState.selfCollected,
+            collectionTracked = selfInfo.isSessionValid == true && uiState.selfCollected,
             bangumiConnected = selfInfo.bangumiConnected == true, collectionAction = {
             if (selfInfo.isSessionValid == false) {
                 OutlinedButton(onClickLogin, Modifier.fillMaxWidth()) {

@@ -14,7 +14,7 @@ import me.him188.ani.app.data.models.subject.SubjectInfo
 internal expect fun AniListTrackingSection(
     info: SubjectInfo,
     showCollection: Boolean,
-    highlightTrack: Boolean,
+    collectionTracked: Boolean,
     bangumiConnected: Boolean,
     collectionAction: @Composable () -> Unit,
     modifier: Modifier = Modifier,
