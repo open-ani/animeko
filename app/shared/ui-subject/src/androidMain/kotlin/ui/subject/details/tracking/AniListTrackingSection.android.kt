@@ -534,15 +534,23 @@ private fun EntryEditor(
                         modifier = Modifier.fillMaxWidth(),
                     )
                 } else {
-                    LazyColumn(Modifier.fillMaxWidth().height(300.dp), state = if (field == EditField.PROGRESS) progressListState else statusListState) {
+                    LazyColumn(
+                        Modifier.fillMaxWidth().height(if (field == EditField.PROGRESS) 240.dp else 300.dp),
+                        state = if (field == EditField.PROGRESS) progressListState else statusListState,
+                    ) {
                         when (field) {
                             EditField.STATUS -> items(statuses.size) { index ->
                                 val (option, label) = statuses[index]
                                 TextButton(onClick = { onSelect(entry.copy(status = option)) }, modifier = Modifier.fillMaxWidth()) { Text(label) }
                             }
                             EditField.PROGRESS -> items(maxProgress + 1) { progress ->
-                                TextButton(onClick = { onSelect(entry.copy(progress = progress)) }, modifier = Modifier.fillMaxWidth()) {
-                                    Text("$progress${current.media.totalEpisodes?.let { " / $it" } ?: ""} episodes")
+                                Row(
+                                    Modifier.fillMaxWidth().height(48.dp).clickable { onSelect(entry.copy(progress = progress)) }
+                                        .padding(horizontal = 16.dp),
+                                    verticalAlignment = androidx.compose.ui.Alignment.CenterVertically,
+                                ) {
+                                    Text(progress.toString(), Modifier.weight(1f), style = MaterialTheme.typography.bodyLarge)
+                                    if (progress == entry.progress) Icon(Icons.Default.Check, contentDescription = "Current value")
                                 }
                             }
                             EditField.SCORE -> Unit
