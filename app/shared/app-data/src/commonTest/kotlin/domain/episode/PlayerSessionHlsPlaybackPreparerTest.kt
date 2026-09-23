@@ -131,7 +131,7 @@ class PlayerSessionHlsPlaybackPreparerTest {
                         GetVideoScaffoldConfigUseCase {
                             flowOf(
                                 VideoScaffoldConfig.AllDisabled.copy(
-                                    enableExperimentalHlsSegmentFiltering = hlsEnabled,
+                                    enableHlsAdFiltering = hlsEnabled,
                                 ),
                             )
                         }

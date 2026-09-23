@@ -76,8 +76,8 @@ import me.him188.ani.app.ui.lang.settings_player_default_playback_speed
 import me.him188.ani.app.ui.lang.settings_player_enable_regex_filter
 import me.him188.ani.app.ui.lang.settings_player_exoplayer_preinit_effect_graph
 import me.him188.ani.app.ui.lang.settings_player_exoplayer_preinit_effect_graph_desc
-import me.him188.ani.app.ui.lang.settings_player_experimental_hls_segment_filter
-import me.him188.ani.app.ui.lang.settings_player_experimental_hls_segment_filter_description
+import me.him188.ani.app.ui.lang.settings_player_hls_ad_filter
+import me.him188.ani.app.ui.lang.settings_player_hls_ad_filter_description
 import me.him188.ani.app.ui.lang.settings_player_frame_preview
 import me.him188.ani.app.ui.lang.settings_player_fullscreen_always_show
 import me.him188.ani.app.ui.lang.settings_player_fullscreen_auto_hide
@@ -294,9 +294,9 @@ private fun TvSettingsItems.playerDanmaku(displayModes: List<TvSettingsDisplayMo
 private fun TvSettingsItems.playerAdvanced() {
     val video = state.video
     toggle(
-        "hls-filter", stringResource(Lang.settings_player_experimental_hls_segment_filter), video.enableExperimentalHlsSegmentFiltering,
-        stringResource(Lang.settings_player_experimental_hls_segment_filter_description),
-    ) { onIntent(TvSettingsIntent.Video { copy(enableExperimentalHlsSegmentFiltering = it) }) }
+        "hls-filter", stringResource(Lang.settings_player_hls_ad_filter), video.enableHlsAdFiltering,
+        stringResource(Lang.settings_player_hls_ad_filter_description),
+    ) { onIntent(TvSettingsIntent.Video { copy(enableHlsAdFiltering = it) }) }
     toggle(
         "preinit-effects", stringResource(Lang.settings_player_exoplayer_preinit_effect_graph), state.kernel.exoPlayerInitEffectGraphInAdvance,
         stringResource(Lang.settings_player_exoplayer_preinit_effect_graph_desc),

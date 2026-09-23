@@ -12,57 +12,106 @@ package me.him188.ani.app.domain.media.hls
 import me.him188.ani.utils.httpdownloader.m3u.DefaultM3u8Parser
 import me.him188.ani.utils.httpdownloader.m3u.M3u8Playlist
 
+/**
+ * 从播放列表中移除插播广告.
+ *
+ * 唯一的判据是时间戳连续性 ([HlsPtsContinuity]): 广告是独立转码后拼进来的, PTS 自成一条时间轴,
+ * 接不上正片. 按组的时长、分片数或文件名猜测都会误删正片: 广告插入点常把正片镜头切出几秒的残片,
+ * 正片里也有与广告等长的短镜头段.
+ */
 object HlsManifestFilter {
-    fun filter(content: String, baseUrl: String = "http://127.0.0.1/playlist.m3u8"): HlsManifestFilterResult {
-        val lines = content.lines()
+    /**
+     * 一段连续的链外组超过这个时长就不删. 实测插播 15.8-25.7 秒; 正片也可能分几段独立编码
+     * (例如单独转码的片头), 它们同样自成时间轴, 但通常远长于插播. 这个上限只阻止删除, 不产生删除.
+     */
+    private const val MAX_AD_BREAK_MILLIS = 60_000L
+
+    /**
+     * 只做结构分析, 不下判断. 调用方据 [HlsManifestAnalysis.probeTargets] 探测各组首片的时间戳, 再交给 [filter].
+     */
+    fun analyze(content: String, baseUrl: String = "http://127.0.0.1/playlist.m3u8"): HlsManifestAnalysis {
         val playlist = try {
             DefaultM3u8Parser.parse(content, baseUrl)
         } catch (_: Exception) {
-            return HlsManifestFilterResult.unsupported(content, "invalid_playlist")
+            return HlsManifestAnalysis.earlyReturn(content, HlsManifestFilterResult.unsupported(content, "invalid_playlist"))
         }
 
         when (playlist) {
             is M3u8Playlist.MasterPlaylist -> {
-                return HlsManifestFilterResult.unsupported(content, "master_playlist")
+                return HlsManifestAnalysis.earlyReturn(
+                    content,
+                    HlsManifestFilterResult.unsupported(content, MASTER_PLAYLIST),
+                )
             }
 
             is M3u8Playlist.MediaPlaylist -> {
                 if (!playlist.isEndlist) {
-                    return HlsManifestFilterResult.unsupported(content, "live_or_incomplete_playlist")
+                    return HlsManifestAnalysis.earlyReturn(
+                        content,
+                        HlsManifestFilterResult.unsupported(content, "live_or_incomplete_playlist"),
+                    )
                 }
                 if (playlist.segments.none { it.isDiscontinuity }) {
-                    return HlsManifestFilterResult.unchanged(content, "no_discontinuity")
+                    return HlsManifestAnalysis.earlyReturn(
+                        content,
+                        HlsManifestFilterResult.unchanged(content, "no_discontinuity"),
+                    )
+                }
+                // 探测读到的是密文, 同步字节有极小概率蒙对而解出假时间戳, 把正片判成广告
+                if (playlist.segments.any { it.encryption != null }) {
+                    return HlsManifestAnalysis.earlyReturn(
+                        content,
+                        HlsManifestFilterResult.unchanged(content, "encrypted"),
+                    )
+                }
+                if (playlist.segments.any { it.byteRange != null && it.byteRange?.offset == null }) {
+                    return HlsManifestAnalysis.earlyReturn(
+                        content,
+                        HlsManifestFilterResult.unchanged(content, "byterange_implicit_offset"),
+                    )
                 }
             }
         }
 
         val groups = parseGroups(playlist)
-        if (groups.isEmpty()) {
-            return HlsManifestFilterResult.unchanged(content, "no_segments")
+        if (groups.size < 2) {
+            return HlsManifestAnalysis.earlyReturn(content, HlsManifestFilterResult.unchanged(content, "single_group"))
+        }
+        return HlsManifestAnalysis(content, groups)
+    }
+
+    /**
+     * @param probe 按顺序给出各目标首片的首个 PTS (毫秒), 探测失败为 `null`.
+     */
+    suspend fun filter(
+        analysis: HlsManifestAnalysis,
+        probe: suspend (List<HlsProbeTarget>) -> List<Long?>,
+    ): HlsManifestFilterResult {
+        analysis.earlyResult?.let { return it }
+        val targets = analysis.probeTargets
+        val firstPts = probe(targets)
+        val verdict = HlsPtsContinuity.classify(
+            targets.mapIndexed { i, target -> HlsPtsContinuity.Group(target.groupIndex, target.durationMillis, firstPts[i]) },
+        )
+        return decide(analysis, verdict)
+    }
+
+    internal fun decide(analysis: HlsManifestAnalysis, verdict: HlsPtsContinuity.Verdict): HlsManifestFilterResult {
+        analysis.earlyResult?.let { return it }
+        val content = analysis.content
+        val groups = analysis.groups
+
+        val (removable, oversized) = adBreaks(groups, verdict.ads)
+            .partition { breakGroups -> breakGroups.sumOf { it.duration } * 1000 <= MAX_AD_BREAK_MILLIS }
+        val removed = removable.flatten()
+        val oversizedIndexes = oversized.flatten().map { it.index }
+        if (removed.isEmpty()) {
+            val reason = if (oversizedIndexes.isEmpty()) "no_ad" else "ad_break_too_long"
+            return HlsManifestFilterResult.unchanged(content, reason).copy(oversizedGroups = oversizedIndexes)
         }
 
-        val candidates = detectCandidates(groups)
-        if (candidates.isEmpty()) {
-            return HlsManifestFilterResult.unchanged(content, "no_candidate")
-        }
-        if (hasAes128KeyWithoutExplicitIv(playlist)) {
-            return HlsManifestFilterResult.unchanged(content, "encrypted_implicit_iv")
-        }
-        if (hasByteRangeWithoutExplicitOffset(playlist)) {
-            return HlsManifestFilterResult.unchanged(content, "byterange_implicit_offset")
-        }
-
-        val removableIndexes = candidates.mapTo(mutableSetOf()) { it.group.index }
-        val remainingSegmentCount = groups
-            .filterNot { it.index in removableIndexes }
-            .sumOf { it.count }
-        if (remainingSegmentCount == 0) {
-            return HlsManifestFilterResult.unchanged(content, "all_segments_candidate")
-        }
-
-        val removedLines = candidates
-            .flatMapTo(mutableSetOf()) { candidate -> candidate.group.lineStart..candidate.group.lineEnd }
-        val filtered = lines
+        val removedLines = removed.flatMapTo(mutableSetOf()) { it.lineStart..it.lineEnd }
+        val filtered = content.lines()
             .filterIndexed { index, _ -> index + 1 !in removedLines }
             .joinToString("\n")
             .let { if (content.endsWith('\n')) "$it\n" else it }
@@ -71,24 +120,37 @@ object HlsManifestFilter {
             status = HlsManifestFilterStatus.Filtered,
             content = filtered,
             reason = null,
-            removedGroups = candidates.map { candidate ->
+            removedGroups = removed.map { group ->
                 HlsRemovedGroup(
-                    index = candidate.group.index,
-                    lineStart = candidate.group.lineStart,
-                    lineEnd = candidate.group.lineEnd,
-                    startSegmentIndex = candidate.group.startSegmentIndex,
-                    endSegmentIndex = candidate.group.endSegmentIndex,
-                    duration = candidate.group.duration,
-                    segmentCount = candidate.group.count,
-                    reasons = candidate.reasons.map { it.id },
+                    index = group.index,
+                    lineStart = group.lineStart,
+                    lineEnd = group.lineEnd,
+                    duration = group.duration,
+                    segmentCount = group.count,
                 )
             },
+            oversizedGroups = oversizedIndexes,
         )
+    }
+
+    /** 把判为广告的组按相邻关系合成一段段插播. 一段插播常被多出来的 `#EXT-X-DISCONTINUITY` 切成两组. */
+    private fun adBreaks(groups: List<ManifestGroup>, ads: Set<Int>): List<List<ManifestGroup>> {
+        val breaks = mutableListOf<MutableList<ManifestGroup>>()
+        var previousIndex: Int? = null
+        for (group in groups) {
+            if (group.index !in ads) continue
+            if (previousIndex != null && group.index == previousIndex + 1) {
+                breaks.last() += group
+            } else {
+                breaks += mutableListOf(group)
+            }
+            previousIndex = group.index
+        }
+        return breaks
     }
 
     private fun parseGroups(playlist: M3u8Playlist.MediaPlaylist): List<ManifestGroup> {
         val groups = mutableListOf<ManifestGroup>()
-        val allSegments = mutableListOf<ManifestSegment>()
         var builder = ManifestGroupBuilder(index = 0)
 
         fun close() {
@@ -102,107 +164,21 @@ object HlsManifestFilter {
                 close()
             }
             val sourceRange = parsedSegment.sourceRange ?: return emptyList()
-            val segment = ManifestSegment(
-                index = allSegments.size,
-                duration = parsedSegment.duration.toDouble(),
-                uri = parsedSegment.uri,
-                fileName = segmentFileName(parsedSegment.uri),
-                lineStart = sourceRange.startLine,
-                lineEnd = sourceRange.endLine,
+            builder.add(
+                ManifestSegment(
+                    duration = parsedSegment.duration.toDouble(),
+                    uri = parsedSegment.uri,
+                    lineStart = sourceRange.startLine,
+                    lineEnd = sourceRange.endLine,
+                ),
             )
-            allSegments += segment
-            builder.add(segment)
         }
         close()
 
         return groups
     }
 
-    private fun detectCandidates(groups: List<ManifestGroup>): List<CandidateGroup> {
-        val segments = groups.flatMap { it.segments }
-        val dense = groups.size >= 20 || groups.size.toDouble() / segments.size > 0.08
-        val signatureCounts = groups.groupingBy { it.fileSignature }.eachCount()
-        val sequencePrefix = if (dense) numericModel(segments) else null
-
-        return groups.mapIndexedNotNull { groupIndex, group ->
-            val reasons = mutableListOf<HlsCandidateReason>()
-            val previous = groups.getOrNull(groupIndex - 1)
-            val next = groups.getOrNull(groupIndex + 1)
-            val short = group.count <= 12 || group.duration <= 45.0
-
-            val paths = group.segments.joinToString(" ") { segmentPath(it.uri).lowercase() }
-            val strongPath = listOf("adjump", "/ad/", "/ads/", "advert").any { it in paths }
-            if (strongPath) {
-                reasons += HlsCandidateReason.StrongPath
-            }
-
-            val repeatShort = signatureCounts.getValue(group.fileSignature) > 1 &&
-                group.count <= 12 &&
-                group.duration <= 45.0
-            if (repeatShort) {
-                reasons += HlsCandidateReason.RepeatShort
-            }
-
-            val sandwichedShort = previous != null &&
-                next != null &&
-                previous.duration >= 60.0 &&
-                next.duration >= 60.0 &&
-                group.duration <= 45.0 &&
-                group.count >= 2
-            if (sandwichedShort) {
-                reasons += HlsCandidateReason.SandwichedShort
-            }
-
-            if (!dense && short && group.count >= 2) {
-                reasons += HlsCandidateReason.LowDensityShort
-            }
-
-            if (isSequenceIsland(dense, sequencePrefix, segments, group, short)) {
-                reasons += HlsCandidateReason.SequenceIsland
-            }
-
-            val denseTiny = dense &&
-                (group.count <= 3 || group.duration <= 12.0) &&
-                previous != null &&
-                next != null
-            if (denseTiny) {
-                reasons += HlsCandidateReason.DenseTiny
-            }
-
-            reasons.distinct().takeIf { it.isNotEmpty() }?.let {
-                CandidateGroup(group, it)
-            }
-        }
-    }
-
-    private fun isSequenceIsland(
-        dense: Boolean,
-        sequencePrefix: String?,
-        segments: List<ManifestSegment>,
-        group: ManifestGroup,
-        short: Boolean,
-    ): Boolean {
-        if (!dense || sequencePrefix == null || group.count < 2 || !short) {
-            return false
-        }
-
-        val numbers = group.segments.map { trailingNumber(it.fileName, sequencePrefix) }
-        val first = numbers.firstOrNull()
-        val last = numbers.lastOrNull()
-        val previous = segments.getOrNull(group.startSegmentIndex - 1)?.let { trailingNumber(it.fileName, sequencePrefix) }
-        val following = segments.getOrNull(group.endSegmentIndex + 1)?.let { trailingNumber(it.fileName, sequencePrefix) }
-        val linearIsland = numbers.all { it != null } &&
-            numbers.zipWithNext().all { (left, right) -> right == left?.plus(1) }
-
-        return previous != null &&
-            following != null &&
-            first != null &&
-            last != null &&
-            linearIsland &&
-            following == previous + 1 &&
-            kotlin.math.abs(first - previous) > 1000 &&
-            kotlin.math.abs(last - following) > 1000
-    }
+    internal const val MASTER_PLAYLIST = "master_playlist"
 }
 
 enum class HlsManifestFilterStatus {
@@ -216,6 +192,8 @@ data class HlsManifestFilterResult(
     val content: String,
     val reason: String?,
     val removedGroups: List<HlsRemovedGroup>,
+    /** 时间戳判为广告, 但所在的一段超过时长上限而保留的组. */
+    val oversizedGroups: List<Int> = emptyList(),
 ) {
     companion object {
         fun unchanged(content: String, reason: String): HlsManifestFilterResult {
@@ -232,40 +210,65 @@ data class HlsRemovedGroup(
     val index: Int,
     val lineStart: Int,
     val lineEnd: Int,
-    val startSegmentIndex: Int,
-    val endSegmentIndex: Int,
     val duration: Double,
     val segmentCount: Int,
-    val reasons: List<String>,
 )
 
-private enum class HlsCandidateReason(val id: String) {
-    StrongPath("strong_path"),
-    RepeatShort("repeat_short"),
-    SandwichedShort("sandwiched_short"),
-    LowDensityShort("low_density_short"),
-    SequenceIsland("sequence_island"),
-    DenseTiny("dense_tiny"),
+/**
+ * [HlsManifestFilter.analyze] 的结果. [probeTargets] 给出各组首个分片的地址, 供调用方探测时间戳.
+ */
+class HlsManifestAnalysis internal constructor(
+    internal val content: String,
+    internal val groups: List<ManifestGroup>,
+    internal val earlyResult: HlsManifestFilterResult? = null,
+) {
+    /** 不需要探测就已有结论, 例如没有拼接点、加密或不是媒体播放列表. */
+    val isConclusive: Boolean get() = earlyResult != null
+
+    val isMasterPlaylist: Boolean
+        get() = earlyResult?.status == HlsManifestFilterStatus.Unsupported &&
+                earlyResult.reason == HlsManifestFilter.MASTER_PLAYLIST
+
+    /** 各组首个分片的绝对地址, 按组序号. */
+    val probeTargets: List<HlsProbeTarget> = groups.map { group ->
+        HlsProbeTarget(
+            groupIndex = group.index,
+            durationMillis = (group.duration * 1000).toLong(),
+            uri = group.segments.first().uri,
+        )
+    }
+
+    internal companion object {
+        fun earlyReturn(content: String, result: HlsManifestFilterResult) =
+            HlsManifestAnalysis(content, groups = emptyList(), earlyResult = result)
+    }
 }
 
-private data class ManifestSegment(
-    val index: Int,
+data class HlsProbeTarget(
+    val groupIndex: Int,
+    val durationMillis: Long,
+    val uri: String,
+)
+
+/**
+ * 探测每个分片时读取的字节数. 实测 3212 个真实分片的首个视频 PTS 都在第 752 字节
+ * (PAT, PMT 之后的第一个 PES), 这里留出近 3 倍余量. 源站单连接常只有十几 KB/s, 多读的字节会直接拖慢探测.
+ */
+internal const val PTS_PROBE_BYTES = 2 * 1024
+
+internal data class ManifestSegment(
     val duration: Double,
     val uri: String,
-    val fileName: String,
     val lineStart: Int,
     val lineEnd: Int,
 )
 
-private data class ManifestGroup(
+internal data class ManifestGroup(
     val index: Int,
     val lineStart: Int,
     val lineEnd: Int,
-    val startSegmentIndex: Int,
-    val endSegmentIndex: Int,
     val duration: Double,
     val count: Int,
-    val fileSignature: String,
     val segments: List<ManifestSegment>,
 )
 
@@ -273,12 +276,8 @@ private class ManifestGroupBuilder(
     val index: Int,
 ) {
     private val segments = mutableListOf<ManifestSegment>()
-    private var lineStart: Int? = null
 
     fun add(segment: ManifestSegment) {
-        if (segments.isEmpty()) {
-            lineStart = segment.lineStart
-        }
         segments += segment
     }
 
@@ -286,75 +285,11 @@ private class ManifestGroupBuilder(
         if (segments.isEmpty()) return null
         return ManifestGroup(
             index = index,
-            lineStart = lineStart ?: segments.first().lineStart,
+            lineStart = segments.first().lineStart,
             lineEnd = segments.last().lineEnd,
-            startSegmentIndex = segments.first().index,
-            endSegmentIndex = segments.last().index,
             duration = segments.sumOf { it.duration },
             count = segments.size,
-            fileSignature = segments.joinToString("|") { it.fileName },
             segments = segments.toList(),
         )
     }
 }
-
-private data class CandidateGroup(
-    val group: ManifestGroup,
-    val reasons: List<HlsCandidateReason>,
-)
-
-private fun numericModel(segments: List<ManifestSegment>): String? {
-    val values = segments.mapNotNull { segment ->
-        NUMERIC_TS_REGEX.matchEntire(segment.fileName)?.let {
-            it.groupValues[1] to it.groupValues[2].toInt()
-        }
-    }
-    if (values.isEmpty()) return null
-
-    val prefix = values.groupingBy { it.first }.eachCount().maxByOrNull { it.value } ?: return null
-    if (prefix.value.toDouble() / segments.size < 0.8) return null
-
-    val numbers = values.filter { it.first == prefix.key }.map { it.second }
-    val deltas = numbers.zipWithNext().map { (left, right) -> right - left }
-    if (deltas.isEmpty()) return null
-
-    val delta = deltas.groupingBy { it }.eachCount().maxByOrNull { it.value } ?: return null
-    if (delta.key != 1 || delta.value.toDouble() / deltas.size < 0.5) return null
-    return prefix.key
-}
-
-private fun trailingNumber(fileName: String, prefix: String): Int? {
-    if (!fileName.startsWith(prefix) || !fileName.endsWith(".ts")) return null
-    return fileName.substring(prefix.length, fileName.length - ".ts".length).toIntOrNull()
-}
-
-private fun segmentFileName(uri: String): String {
-    return uri.substringBefore('?').substringBefore('#').substringAfterLast('/')
-}
-
-private fun segmentPath(uri: String): String {
-    val clean = uri.substringBefore('?').substringBefore('#')
-    val path = if ("://" in clean) {
-        clean.substringAfter("://").substringAfter('/', missingDelimiterValue = "")
-    } else {
-        clean
-    }
-    if (path.isEmpty()) return ""
-    return if (path.startsWith('/')) path else "/$path"
-}
-
-private fun hasAes128KeyWithoutExplicitIv(playlist: M3u8Playlist.MediaPlaylist): Boolean {
-    return playlist.segments.any { segment ->
-        segment.encryption?.let { encryption ->
-            encryption.method.equals("AES-128", ignoreCase = true) && encryption.iv == null
-        } == true
-    }
-}
-
-private fun hasByteRangeWithoutExplicitOffset(playlist: M3u8Playlist.MediaPlaylist): Boolean {
-    return playlist.segments.any { segment ->
-        segment.byteRange?.offset == null && segment.byteRange != null
-    }
-}
-
-private val NUMERIC_TS_REGEX = Regex("""^(.*?)(\d{1,7})\.ts$""")

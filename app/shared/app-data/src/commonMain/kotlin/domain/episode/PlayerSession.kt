@@ -196,7 +196,7 @@ class PlayerSession(
         }
         val config = getVideoScaffoldConfigUseCase.invoke().first()
         val options = HlsPlaybackOptions(
-            filterSegments = config.enableExperimentalHlsSegmentFiltering,
+            filterSegments = config.enableHlsAdFiltering,
             // 自动跳过 OP/ED 需要提前缓存跳转目标处的分片, 这要求分片经由本地代理
             proxySegments = config.autoSkipOpEd,
         )
