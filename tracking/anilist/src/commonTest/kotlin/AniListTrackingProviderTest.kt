@@ -37,7 +37,7 @@ import kotlin.test.assertTrue
 
 class AniListTrackingProviderTest {
     @Test
-    fun `login refreshes account and provider score choices`() = runTest {
+    fun loginRefreshesAccountAndProviderScoreChoices() = runTest {
         val store = InMemoryCredentialStore(null)
         val provider = provider(store) {
             respondJson(
@@ -54,7 +54,7 @@ class AniListTrackingProviderTest {
     }
 
     @Test
-    fun `maps search result and sends bearer token`() = runTest {
+    fun mapsSearchResultAndSendsBearerToken() = runTest {
         var authorization: String? = null
         val provider = provider { request ->
             authorization = request.headers[HttpHeaders.Authorization]
@@ -73,7 +73,7 @@ class AniListTrackingProviderTest {
     }
 
     @Test
-    fun `reads and saves normalized list entry`() = runTest {
+    fun readsAndSavesNormalizedListEntry() = runTest {
         var calls = 0
         val provider = provider {
             calls++
@@ -100,7 +100,7 @@ class AniListTrackingProviderTest {
     }
 
     @Test
-    fun `updates only the selected date and preserves the other date`() = runTest {
+    fun updatesOnlySelectedDateAndPreservesOtherDate() = runTest {
         var calls = 0
         var mutationBody = ""
         val provider = provider { request ->
@@ -127,7 +127,7 @@ class AniListTrackingProviderTest {
     }
 
     @Test
-    fun `updates visibility without changing other entry fields`() = runTest {
+    fun updatesVisibilityWithoutChangingOtherEntryFields() = runTest {
         var calls = 0
         var mutationBody = ""
         val provider = provider { request ->
@@ -150,7 +150,7 @@ class AniListTrackingProviderTest {
     }
 
     @Test
-    fun `binding refuses to replace an existing AniList entry`() = runTest {
+    fun bindingRefusesToReplaceExistingAniListEntry() = runTest {
         var calls = 0
         val provider = provider {
             calls++
@@ -168,7 +168,7 @@ class AniListTrackingProviderTest {
     }
 
     @Test
-    fun `binding creates an entry when the remote list is empty`() = runTest {
+    fun bindingCreatesEntryWhenRemoteListIsEmpty() = runTest {
         var calls = 0
         val provider = provider {
             calls++
@@ -210,7 +210,7 @@ class AniListTrackingProviderTest {
     }
 
     @Test
-    fun `delete resolves entry id and is idempotent when no entry exists`() = runTest {
+    fun deleteResolvesEntryIdAndIsIdempotentWhenNoEntryExists() = runTest {
         var calls = 0
         val provider = provider {
             calls++
@@ -225,13 +225,13 @@ class AniListTrackingProviderTest {
     }
 
     @Test
-    fun `missing media is represented as null`() = runTest {
+    fun missingMediaIsRepresentedAsNull() = runTest {
         val provider = provider { respondJson("""{"data":{"Media":null}}""") }
         assertNull(provider.refresh(TrackingMediaId("404")))
     }
 
     @Test
-    fun `graphql errors become provider failures`() = runTest {
+    fun graphqlErrorsBecomeProviderFailures() = runTest {
         val provider = provider { respondJson("""{"errors":[{"message":"Invalid token"}]}""") }
         val failure = runCatching { provider.search("Frieren") }.exceptionOrNull()
         assertTrue(failure is me.him188.ani.tracking.api.TrackingProviderException.Remote)

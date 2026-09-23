@@ -16,7 +16,7 @@ import kotlin.test.assertTrue
 
 class TrackingProviderContractTest {
     @Test
-    fun `provider exposes Mihon-style account capabilities and remote lifecycle`() = runTest {
+    fun providerExposesAccountCapabilitiesAndRemoteLifecycle() = runTest {
         val provider = InMemoryTrackingProvider()
 
         assertEquals("Test Tracker", provider.info.displayName)
@@ -47,7 +47,7 @@ class TrackingProviderContractTest {
     }
 
     @Test
-    fun `normalized values reject invalid state`() {
+    fun normalizedValuesRejectInvalidState() {
         assertTrue(runCatching { TrackingProviderId("") }.isFailure)
         assertTrue(runCatching { TrackingMediaId(" ") }.isFailure)
         assertTrue(runCatching { TrackingLoginCredentials(secret = "") }.isFailure)
