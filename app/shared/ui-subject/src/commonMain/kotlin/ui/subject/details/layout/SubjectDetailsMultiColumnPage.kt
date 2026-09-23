@@ -510,7 +510,7 @@ private fun SubjectSidebar(
                     Text(stringResource(Lang.subject_details_login_to_collect))
                 }
             } else {
-                EditableSubjectCollectionTypeButton(uiState.collectionTypeEdit, state, Modifier.fillMaxWidth())
+                EditableSubjectCollectionTypeButton(uiState.collectionTypeEdit, state)
             }
         }, modifier = Modifier.fillMaxWidth())
         // 收藏统计三格 (收藏 / 在看 / 想看)

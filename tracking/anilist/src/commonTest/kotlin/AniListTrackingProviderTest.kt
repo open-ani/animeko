@@ -186,6 +186,30 @@ class AniListTrackingProviderTest {
     }
 
     @Test
+    fun watchingFinalEpisodeMarksAniListEntryCompleted() = runTest {
+        var calls = 0
+        var mutationBody = ""
+        val provider = provider { request ->
+            calls++
+            if (calls < 3) {
+                respondJson("""{"data":{"Media":{"id":1,"title":{"userPreferred":"Frieren"},"episodes":28,"mediaListEntry":{"id":9,"mediaId":1,"status":"CURRENT","score":80,"progress":27}}}}""")
+            } else {
+                mutationBody = request.body.toByteArray().decodeToString()
+                respondJson("""{"data":{"SaveMediaListEntry":{"id":9,"mediaId":1,"status":"COMPLETED","score":80,"progress":28}}}""")
+            }
+        }
+
+        val entry = TrackingListEntry(TrackingMediaId("1"), TrackingStatus.CURRENT, 28, TrackingScore(80))
+        val saved = provider.update(entry, didWatchEpisode = true)
+
+        assertEquals(TrackingStatus.COMPLETED, saved.status)
+        assertEquals(28, saved.progress)
+        val variables = Json.parseToJsonElement(mutationBody).jsonObject.getValue("variables").jsonObject
+        assertEquals("\"COMPLETED\"", variables.getValue("status").toString())
+        assertEquals("28", variables.getValue("progress").toString())
+    }
+
+    @Test
     fun `delete resolves entry id and is idempotent when no entry exists`() = runTest {
         var calls = 0
         val provider = provider {
