@@ -82,4 +82,10 @@ internal data class AniListEntry(
     val status: String,
     val score: Int = 0,
     val progress: Int = 0,
+    val startedAt: AniListDate? = null,
+    val completedAt: AniListDate? = null,
+    @SerialName("private") val isPrivate: Boolean = false,
 )
+
+@Serializable
+internal data class AniListDate(val year: Int? = null, val month: Int? = null, val day: Int? = null)

@@ -101,6 +101,15 @@ private class InMemoryTrackingProvider : TrackingProvider {
     override suspend fun update(entry: TrackingListEntry, didWatchEpisode: Boolean): TrackingListEntry =
         entry.also { this.entry = it }
 
+    override suspend fun updateDate(entry: TrackingListEntry, field: TrackingDateField, date: TrackingDate?): TrackingListEntry =
+        entry.copy(
+            startedAt = if (field == TrackingDateField.STARTED) date else entry.startedAt,
+            completedAt = if (field == TrackingDateField.COMPLETED) date else entry.completedAt,
+        ).also { this.entry = it }
+
+    override suspend fun updateVisibility(entry: TrackingListEntry, isPrivate: Boolean): TrackingListEntry =
+        entry.copy(isPrivate = isPrivate).also { this.entry = it }
+
     override suspend fun refresh(mediaId: TrackingMediaId): TrackingMediaWithEntry? =
         media.takeIf { it.id == mediaId }?.let { TrackingMediaWithEntry(it, entry) }
 

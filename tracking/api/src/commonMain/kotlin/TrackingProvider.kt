@@ -54,6 +54,12 @@ interface TrackingProvider {
     /** Updates an existing binding; providers may apply their Mihon-style watched-episode transitions. */
     suspend fun update(entry: TrackingListEntry, didWatchEpisode: Boolean = false): TrackingListEntry
 
+    /** Updates one tracking date without changing the other entry fields. Null clears that date. */
+    suspend fun updateDate(entry: TrackingListEntry, field: TrackingDateField, date: TrackingDate?): TrackingListEntry
+
+    /** Updates remote visibility without changing status, progress, score, or dates. */
+    suspend fun updateVisibility(entry: TrackingListEntry, isPrivate: Boolean): TrackingListEntry
+
     suspend fun refresh(mediaId: TrackingMediaId): TrackingMediaWithEntry?
 
     /** Deletes only the remote entry. Local unbinding is a separate domain operation. */
@@ -156,11 +162,18 @@ data class TrackingListEntry(
     val progress: Int,
     /** Normalized to 0–100, matching Mihon's AniList representation. Zero means unrated. */
     val score: TrackingScore = TrackingScore.Unrated,
+    val startedAt: TrackingDate? = null,
+    val completedAt: TrackingDate? = null,
+    val isPrivate: Boolean = false,
 ) {
     init {
         require(progress >= 0) { "Tracking progress must not be negative" }
     }
 }
+
+data class TrackingDate(val year: Int?, val month: Int?, val day: Int?)
+
+enum class TrackingDateField { STARTED, COMPLETED }
 
 enum class TrackingStatus {
     PLANNING,

@@ -10,6 +10,7 @@ import io.ktor.client.HttpClient
 import io.ktor.client.engine.mock.MockEngine
 import io.ktor.client.engine.mock.MockRequestHandleScope
 import io.ktor.client.engine.mock.respond
+import io.ktor.client.engine.mock.toByteArray
 import io.ktor.client.plugins.contentnegotiation.ContentNegotiation
 import io.ktor.client.request.HttpResponseData
 import io.ktor.http.HttpHeaders
@@ -18,8 +19,12 @@ import io.ktor.http.headersOf
 import io.ktor.serialization.kotlinx.json.json
 import kotlinx.coroutines.test.runTest
 import kotlinx.serialization.json.Json
+import kotlinx.serialization.json.jsonObject
+import kotlinx.serialization.json.jsonPrimitive
 import me.him188.ani.tracking.api.TrackingAccountState
 import me.him188.ani.tracking.api.TrackingCredentialStore
+import me.him188.ani.tracking.api.TrackingDate
+import me.him188.ani.tracking.api.TrackingDateField
 import me.him188.ani.tracking.api.TrackingListEntry
 import me.him188.ani.tracking.api.TrackingLoginCredentials
 import me.him188.ani.tracking.api.TrackingMediaId
@@ -92,6 +97,56 @@ class AniListTrackingProviderTest {
         )
         assertEquals(28, saved.progress)
         assertEquals(TrackingStatus.COMPLETED, saved.status)
+    }
+
+    @Test
+    fun `updates only the selected date and preserves the other date`() = runTest {
+        var calls = 0
+        var mutationBody = ""
+        val provider = provider { request ->
+            calls++
+            if (calls <= 2) {
+                respondJson("""{"data":{"Media":{"id":1,"title":{"userPreferred":"Frieren"},"mediaListEntry":{"id":9,"mediaId":1,"status":"CURRENT","score":85,"progress":12,"startedAt":{"year":2024,"month":1,"day":2},"completedAt":{"year":2024,"month":3,"day":4}}}}}""")
+            } else {
+                mutationBody = request.body.toByteArray().decodeToString()
+                respondJson("""{"data":{"SaveMediaListEntry":{"id":9,"mediaId":1,"status":"CURRENT","score":85,"progress":12,"startedAt":{"year":2024,"month":5,"day":6},"completedAt":{"year":2024,"month":3,"day":4}}}}""")
+            }
+        }
+
+        val existing = provider.refresh(TrackingMediaId("1"))!!.listEntry!!
+        assertEquals(TrackingDate(2024, 3, 4), existing.completedAt)
+        val saved = provider.updateDate(existing, TrackingDateField.STARTED, TrackingDate(2024, 5, 6))
+
+        assertEquals(TrackingDate(2024, 5, 6), saved.startedAt)
+        assertEquals(existing.completedAt, saved.completedAt)
+        val request = Json.parseToJsonElement(mutationBody).jsonObject
+        val query = request.getValue("query").jsonPrimitive.content
+        assertTrue("startedAt: ${'$'}date" in query)
+        assertTrue("completedAt: ${'$'}date" !in query)
+        assertEquals("""{"year":2024,"month":5,"day":6}""", request.getValue("variables").jsonObject.getValue("date").toString())
+    }
+
+    @Test
+    fun `updates visibility without changing other entry fields`() = runTest {
+        var calls = 0
+        var mutationBody = ""
+        val provider = provider { request ->
+            calls++
+            if (calls == 1) {
+                respondJson("""{"data":{"Media":{"id":1,"title":{"userPreferred":"Frieren"},"mediaListEntry":{"id":9,"mediaId":1,"status":"CURRENT","score":85,"progress":12,"private":false}}}}""")
+            } else {
+                mutationBody = request.body.toByteArray().decodeToString()
+                respondJson("""{"data":{"SaveMediaListEntry":{"id":9,"mediaId":1,"status":"CURRENT","score":85,"progress":12,"private":true}}}""")
+            }
+        }
+
+        val existing = TrackingListEntry(TrackingMediaId("1"), TrackingStatus.CURRENT, 12, TrackingScore(85))
+        val saved = provider.updateVisibility(existing, true)
+
+        assertTrue(saved.isPrivate)
+        assertEquals(existing.progress, saved.progress)
+        val request = Json.parseToJsonElement(mutationBody).jsonObject
+        assertEquals("true", request.getValue("variables").jsonObject.getValue("private").toString())
     }
 
     @Test

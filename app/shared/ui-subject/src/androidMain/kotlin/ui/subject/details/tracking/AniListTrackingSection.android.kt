@@ -6,6 +6,11 @@
 
 package me.him188.ani.app.ui.subject.details.tracking
 
+import android.content.ClipData
+import android.content.ClipboardManager
+import android.content.Context
+import android.content.Intent
+import android.net.Uri
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.layout.Arrangement
@@ -22,6 +27,9 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.DatePicker
+import androidx.compose.material3.DatePickerDialog
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.DropdownMenu
@@ -33,6 +41,7 @@ import androidx.compose.material3.Slider
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
+import androidx.compose.material3.rememberDatePickerState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
@@ -54,7 +63,6 @@ import androidx.compose.ui.window.DialogProperties
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.MoreVert
-import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.outlined.Sync
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.launch
@@ -67,6 +75,8 @@ import me.him188.ani.app.tracking.anilist.AniListTrackingProvider
 import me.him188.ani.app.tracking.anilist.createAniListHttpClient
 import me.him188.ani.tracking.api.AndroidTrackingCredentialStore
 import me.him188.ani.tracking.api.TrackingListEntry
+import me.him188.ani.tracking.api.TrackingDate
+import me.him188.ani.tracking.api.TrackingDateField
 import me.him188.ani.tracking.api.TrackingMedia
 import me.him188.ani.tracking.api.TrackingMediaId
 import me.him188.ani.tracking.api.TrackingMediaWithEntry
@@ -76,6 +86,9 @@ import me.him188.ani.tracking.api.TrackingScore
 import me.him188.ani.tracking.api.TrackingStatus
 import me.him188.ani.utils.ktor.getPlatformKtorEngine
 import kotlin.math.roundToInt
+import java.time.Instant
+import java.time.LocalDate
+import java.time.ZoneOffset
 
 @Composable
 internal actual fun AniListTrackingSection(info: SubjectInfo, modifier: Modifier) {
@@ -100,6 +113,7 @@ internal actual fun AniListTrackingSection(info: SubjectInfo, modifier: Modifier
     var searchSelection by remember { mutableStateOf<TrackingMedia?>(null) }
     var selected by remember { mutableStateOf<TrackingMediaWithEntry?>(null) }
     var editing by remember { mutableStateOf<EditField?>(null) }
+    var editingDate by remember { mutableStateOf<TrackingDateField?>(null) }
     var menuOpen by remember { mutableStateOf(false) }
     var confirmingUnbind by remember { mutableStateOf(false) }
     var confirmingDelete by remember { mutableStateOf(false) }
@@ -166,7 +180,6 @@ internal actual fun AniListTrackingSection(info: SubjectInfo, modifier: Modifier
     if (showSheet) {
         ModalBottomSheet(onDismissRequest = { showSheet = false }) {
             Column(Modifier.fillMaxWidth().padding(horizontal = 24.dp, vertical = 16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                Text("Tracking", style = MaterialTheme.typography.titleLarge)
                 if (updating) CircularProgressIndicator(Modifier.size(20.dp), strokeWidth = 2.dp)
                 when {
                     loading && accountId == null -> CircularProgressIndicator()
@@ -194,11 +207,23 @@ internal actual fun AniListTrackingSection(info: SubjectInfo, modifier: Modifier
                                 searching = true
                             }) {
                                 Text(current.media.title, style = MaterialTheme.typography.titleMedium, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                                if (current.listEntry?.isPrivate == true) {
+                                    Text("Private", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.primary)
+                                }
                             }
-                            IconButton(onClick = { reload() }) { Icon(Icons.Default.Refresh, contentDescription = "Refresh tracking") }
                             Box {
                                 IconButton(onClick = { menuOpen = true }) { Icon(Icons.Default.MoreVert, contentDescription = "Tracking options") }
                                 DropdownMenu(expanded = menuOpen, onDismissRequest = { menuOpen = false }) {
+                                    DropdownMenuItem(text = { Text("Open on AniList") }, onClick = {
+                                        menuOpen = false
+                                        context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(current.media.siteUrl)).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
+                                    })
+                                    DropdownMenuItem(text = { Text("Copy AniList link") }, onClick = {
+                                        menuOpen = false
+                                        (context.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager)
+                                            .setPrimaryClip(ClipData.newPlainText("AniList", current.media.siteUrl))
+                                    })
+                                    DropdownMenuItem(text = { Text("Refresh") }, onClick = { menuOpen = false; reload() })
                                     DropdownMenuItem(text = { Text("Change match") }, onClick = {
                                         menuOpen = false
                                         query = current.media.title
@@ -206,7 +231,25 @@ internal actual fun AniListTrackingSection(info: SubjectInfo, modifier: Modifier
                                         searching = true
                                     })
                                     DropdownMenuItem(text = { Text("Unlink from Animeko") }, onClick = { menuOpen = false; confirmingUnbind = true })
-                                    if (current.listEntry != null) {
+                                    current.listEntry?.let { entry ->
+                                        DropdownMenuItem(text = { Text(if (entry.isPrivate) "Make public" else "Make private") },
+                                            enabled = !updating,
+                                            onClick = {
+                                                menuOpen = false
+                                                scope.launch {
+                                                    updating = true
+                                                    try {
+                                                        linked = current.copy(listEntry = provider.updateVisibility(entry, !entry.isPrivate))
+                                                        error = null
+                                                    } catch (failure: CancellationException) {
+                                                        throw failure
+                                                    } catch (_: Exception) {
+                                                        error = "AniList update failed. Try again from options."
+                                                    } finally {
+                                                        updating = false
+                                                    }
+                                                }
+                                            })
                                         DropdownMenuItem(text = { Text("Delete AniList entry") }, onClick = { menuOpen = false; confirmingDelete = true })
                                     }
                                 }
@@ -214,14 +257,28 @@ internal actual fun AniListTrackingSection(info: SubjectInfo, modifier: Modifier
                         }
                         current.listEntry?.let { entry ->
                             val scoreLabel = provider.scoreOptions.firstOrNull { it.score == entry.score }?.displayValue ?: "${entry.score.value}/100"
-                            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                                TextButton(onClick = { error = null; editing = EditField.STATUS }, enabled = !updating) {
-                                    Text(provider.statusOptions.first { it.status == entry.status }.displayName)
+                            Surface(shape = MaterialTheme.shapes.medium, color = MaterialTheme.colorScheme.surfaceContainerHigh) {
+                                Column {
+                                    Row(Modifier.fillMaxWidth()) {
+                                        TrackingCell(provider.statusOptions.first { it.status == entry.status }.displayName,
+                                            Modifier.weight(1f), !updating) { error = null; editing = EditField.STATUS }
+                                        TrackingCell("${entry.progress}${current.media.totalEpisodes?.let { " / $it" } ?: ""}",
+                                            Modifier.weight(1f), !updating) { error = null; editing = EditField.PROGRESS }
+                                        TrackingCell(if (entry.score.value == 0) "Score" else scoreLabel,
+                                            Modifier.weight(1f), !updating) { error = null; editing = EditField.SCORE }
+                                    }
+                                    if (provider.capabilities.supportsStartAndCompletionDates) {
+                                        HorizontalDivider()
+                                        Row(Modifier.fillMaxWidth()) {
+                                            TrackingCell(entry.startedAt.displayOr("Start date"), Modifier.weight(1f), !updating) {
+                                                error = null; editingDate = TrackingDateField.STARTED
+                                            }
+                                            TrackingCell(entry.completedAt.displayOr("Finish date"), Modifier.weight(1f), !updating) {
+                                                error = null; editingDate = TrackingDateField.COMPLETED
+                                            }
+                                        }
+                                    }
                                 }
-                                TextButton(onClick = { error = null; editing = EditField.PROGRESS }, enabled = !updating) {
-                                    Text("${entry.progress}${current.media.totalEpisodes?.let { "/$it" } ?: ""} eps")
-                                }
-                                TextButton(onClick = { error = null; editing = EditField.SCORE }, enabled = !updating) { Text("Score $scoreLabel") }
                             }
                         } ?: run {
                             TextButton(onClick = { error = null; editing = EditField.STATUS }, enabled = !updating) { Text("Add AniList entry") }
@@ -361,6 +418,35 @@ internal actual fun AniListTrackingSection(info: SubjectInfo, modifier: Modifier
         )
     }
 
+    editingDate?.let { field ->
+        val current = linked?.listEntry
+        if (current != null) {
+            val date = if (field == TrackingDateField.STARTED) current.startedAt else current.completedAt
+            TrackingDateEditor(
+                title = if (field == TrackingDateField.STARTED) "Start date" else "Finish date",
+                date = date,
+                onDismiss = { editingDate = null },
+                onSelect = { selectedDate ->
+                    editingDate = null
+                    scope.launch {
+                        updating = true
+                        try {
+                            val saved = provider.updateDate(current, field, selectedDate)
+                            linked = linked?.copy(listEntry = saved)
+                            error = null
+                        } catch (failure: CancellationException) {
+                            throw failure
+                        } catch (_: Exception) {
+                            error = "AniList update failed. Choose a date to try again."
+                        } finally {
+                            updating = false
+                        }
+                    }
+                },
+            )
+        }
+    }
+
     if (confirmingUnbind) {
         AlertDialog(
             onDismissRequest = { confirmingUnbind = false },
@@ -406,6 +492,53 @@ internal actual fun AniListTrackingSection(info: SubjectInfo, modifier: Modifier
 }
 
 private enum class EditField { STATUS, PROGRESS, SCORE }
+
+@Composable
+private fun TrackingCell(label: String, modifier: Modifier, enabled: Boolean, onClick: () -> Unit) {
+    Box(modifier.clickable(enabled = enabled, onClick = onClick).height(48.dp).padding(horizontal = 8.dp)) {
+        Text(label, modifier = Modifier.align(androidx.compose.ui.Alignment.Center),
+            style = MaterialTheme.typography.bodyMedium, maxLines = 1, overflow = TextOverflow.Ellipsis)
+    }
+}
+
+private fun TrackingDate?.displayOr(placeholder: String): String {
+    if (this == null) return placeholder
+    return listOfNotNull(year?.toString(), month?.toString()?.padStart(2, '0'), day?.toString()?.padStart(2, '0'))
+        .joinToString("-").ifEmpty { placeholder }
+}
+
+@Composable
+private fun TrackingDateEditor(title: String, date: TrackingDate?, onDismiss: () -> Unit, onSelect: (TrackingDate?) -> Unit) {
+    val initialDateMillis = remember(date) {
+        runCatching {
+            LocalDate.of(requireNotNull(date?.year), requireNotNull(date.month), requireNotNull(date.day))
+                .atStartOfDay(ZoneOffset.UTC).toInstant().toEpochMilli()
+        }.getOrNull()
+    }
+    val picker = rememberDatePickerState(initialSelectedDateMillis = initialDateMillis)
+    DatePickerDialog(
+        onDismissRequest = onDismiss,
+        confirmButton = {
+            TextButton(onClick = {
+                picker.selectedDateMillis?.let {
+                    val selected = Instant.ofEpochMilli(it).atZone(ZoneOffset.UTC).toLocalDate()
+                    onSelect(TrackingDate(selected.year, selected.monthValue, selected.dayOfMonth))
+                }
+            }, enabled = picker.selectedDateMillis != null) { Text("OK") }
+        },
+        dismissButton = {
+            Row {
+                if (date != null) TextButton(onClick = { onSelect(null) }) { Text("Clear") }
+                TextButton(onClick = onDismiss) { Text("Cancel") }
+            }
+        },
+    ) {
+        Column {
+            Text(title, Modifier.padding(start = 24.dp, top = 16.dp), style = MaterialTheme.typography.titleLarge)
+            DatePicker(state = picker, title = null, headline = null, showModeToggle = false)
+        }
+    }
+}
 
 @Composable
 private fun EntryEditor(

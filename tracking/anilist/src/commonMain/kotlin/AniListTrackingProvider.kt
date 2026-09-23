@@ -17,6 +17,8 @@ import me.him188.ani.tracking.api.TrackingAccount
 import me.him188.ani.tracking.api.TrackingAccountState
 import me.him188.ani.tracking.api.TrackingCapabilities
 import me.him188.ani.tracking.api.TrackingCredentialStore
+import me.him188.ani.tracking.api.TrackingDate
+import me.him188.ani.tracking.api.TrackingDateField
 import me.him188.ani.tracking.api.TrackingListEntry
 import me.him188.ani.tracking.api.TrackingLoginCredentials
 import me.him188.ani.tracking.api.TrackingMedia
@@ -106,6 +108,20 @@ class AniListTrackingProvider(
             else -> entry
         }
         return saveExisting(transitioned)
+    }
+
+    override suspend fun updateDate(entry: TrackingListEntry, field: TrackingDateField, date: TrackingDate?): TrackingListEntry = call {
+        val token = token()
+        val entryId = api.getMedia(entry.mediaId.asAniListId(), token)?.mediaListEntry?.id
+            ?: throw TrackingProviderException.Remote("AniList list entry no longer exists")
+        api.updateDate(entryId, field, date, token).toTrackingEntry()
+    }
+
+    override suspend fun updateVisibility(entry: TrackingListEntry, isPrivate: Boolean): TrackingListEntry = call {
+        val token = token()
+        val entryId = api.getMedia(entry.mediaId.asAniListId(), token)?.mediaListEntry?.id
+            ?: throw TrackingProviderException.Remote("AniList list entry no longer exists")
+        api.updateVisibility(entryId, isPrivate, token).toTrackingEntry()
     }
 
     override suspend fun refresh(mediaId: TrackingMediaId): TrackingMediaWithEntry? = call {
@@ -210,6 +226,11 @@ private fun AniListEntry.toTrackingEntry() = TrackingListEntry(
     status = status.toTrackingStatus(),
     progress = progress,
     score = TrackingScore(score),
+    startedAt = startedAt?.takeIf { it.year != null || it.month != null || it.day != null }
+        ?.let { TrackingDate(it.year, it.month, it.day) },
+    completedAt = completedAt?.takeIf { it.year != null || it.month != null || it.day != null }
+        ?.let { TrackingDate(it.year, it.month, it.day) },
+    isPrivate = isPrivate,
 )
 
 private fun TrackingMediaId.asAniListId(): Int = value.toIntOrNull()
