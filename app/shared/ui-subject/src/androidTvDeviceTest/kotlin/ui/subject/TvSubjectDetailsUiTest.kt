@@ -14,6 +14,7 @@ import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.asAndroidBitmap
@@ -21,14 +22,18 @@ import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.graphics.toPixelMap
 import androidx.compose.ui.input.key.Key
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.platform.LocalWindowInfo
+import androidx.compose.ui.platform.WindowInfo
 import androidx.compose.ui.semantics.SemanticsActions
 import androidx.compose.ui.semantics.SemanticsProperties
 import androidx.compose.ui.test.SemanticsMatcher
+import androidx.compose.ui.test.assert
 import androidx.compose.ui.test.assertHasNoClickAction
 import androidx.compose.ui.test.assertCountEquals
 import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.assertIsFocused
+import androidx.compose.ui.test.assertIsNotFocused
 import androidx.compose.ui.test.assertIsEnabled
 import androidx.compose.ui.test.assertIsNotEnabled
 import androidx.compose.ui.test.hasAnyDescendant
@@ -102,6 +107,8 @@ import me.him188.ani.tv.ui.foundation.widgets.TvOptionDefaults
 import me.him188.ani.tv.ui.subject.components.TvSubjectDetailsDefaults
 import me.him188.ani.tv.ui.subject.components.LocalTvDetailsBackdropImage
 import me.him188.ani.tv.ui.subject.components.TvDetailsBackdropImage
+import me.him188.ani.tv.ui.subject.presentation.TvSubjectPresentationState
+import me.him188.ani.tv.ui.subject.presentation.TvDetailsPanelKind
 import me.him188.ani.utils.platform.annotations.TestOnly
 import java.io.File
 import java.io.IOException
@@ -163,11 +170,13 @@ class TvSubjectDetailsUiTest {
         state: () -> TvSubjectDetailsUiState,
         onIntent: (TvSubjectDetailsIntent) -> Unit = {},
         width: Int = 960,
-        initialTag: String = "tv-details-play",
+        initialTag: String? = "tv-details-play",
         fontScale: Float? = null,
         reference: Boolean = false,
         inset: Int = 0,
         backdropImage: TvDetailsBackdropImage? = null,
+        windowFocused: (() -> Boolean)? = null,
+        presentation: TvSubjectPresentationState = TvSubjectPresentationState(),
     ) {
         val context = InstrumentationRegistry.getInstrumentation().targetContext
         val sketch = Sketch.Builder(context).build()
@@ -181,20 +190,155 @@ class TvSubjectDetailsUiTest {
         setContent {
             DisposableEffect(sketch) { onDispose { sketch.shutdown() } }
             val density = LocalDensity.current
+            val hostWindow = LocalWindowInfo.current
+            val window = remember(hostWindow) {
+                object : WindowInfo by hostWindow {
+                    override val isWindowFocused: Boolean
+                        get() = windowFocused?.invoke() ?: hostWindow.isWindowFocused
+                }
+            }
             CompositionLocalProvider(LocalSketch provides sketch,
                 LocalTimeFormatter provides timeFormatter,
                 LocalTvDetailsBackdropImage provides backdropImage,
+                LocalWindowInfo provides window,
                 LocalDensity provides Density(density.density, fontScale ?: density.fontScale)) {
                 AniTvTheme {
                     Box(Modifier.padding(start = inset.dp, top = inset.dp).width(width.dp)) {
                         TvSubjectDetailsScreen(state().let {
                             if (reference) it.copy(images = TvSubjectImages(backdrop = TvBackdropState(image))) else it
-                        }, onIntent)
+                        }, onIntent, presentation = presentation)
                     }
                 }
             }
         }
-        awaitFocus(initialTag)
+        initialTag?.let { awaitFocus(it) }
+    }
+
+    @Test fun contentRendersWhileInitialFocusWaitsForWindow() = runAniComposeUiTest {
+        var windowFocused by mutableStateOf(false)
+        mount({ TvSubjectDetailsUiState(content = content(), loggedIn = true) },
+            initialTag = null, windowFocused = { windowFocused })
+
+        onNodeWithTag("tv-details-play").assertIsNotFocused()
+        onNodeWithTag("tv-details-collection").assertIsDisplayed()
+        onNodeWithTag("tv-details-rating").assertIsDisplayed()
+        onNodeWithTag("tv-details-all-episodes").assertExists()
+        onNodeWithTag("tv-details-info").assertExists()
+        val actions = listOf("play", "collection", "rating").associateWith {
+            onNodeWithTag("tv-details-$it").fetchSemanticsNode().boundsInRoot
+        }
+
+        runOnIdle { windowFocused = true }
+        awaitFocus("tv-details-play")
+        actions.forEach { (id, bounds) ->
+            assertEquals(bounds, onNodeWithTag("tv-details-$id").fetchSemanticsNode().boundsInRoot)
+        }
+    }
+
+    @Test fun actionAndEpisodeSkeletonsRenderWithoutInitialFocus() = runAniComposeUiTest {
+        var windowFocused by mutableStateOf(false)
+        val loaded = content()
+        var state by mutableStateOf(TvSubjectDetailsUiState(content = loaded.copy(
+            episodes = emptyList(), episodesLoading = true, playTargetId = null,
+            collectionLoading = true, ratingLoading = true,
+        ), loggedIn = true))
+        mount({ state }, initialTag = null, windowFocused = { windowFocused })
+
+        for (id in listOf("play", "collection", "rating")) {
+            onNodeWithTag("tv-details-$id").assertIsDisplayed().assertIsNotEnabled()
+                .assert(SemanticsMatcher.keyIsDefined(SemanticsProperties.ProgressBarRangeInfo))
+        }
+        onNodeWithTag("tv-details-episode-placeholder-0").assertExists()
+        onNodeWithTag("tv-details-info").assertExists()
+        runOnIdle { state = state.copy(content = loaded) }
+        onNodeWithTag("tv-details-collection").assertIsEnabled()
+        onNodeWithTag("tv-details-rating").assertIsEnabled()
+        onNodeWithTag("tv-details-episode:1").assertExists()
+        onNodeWithTag("tv-details-play").assertIsNotFocused()
+
+        runOnIdle { windowFocused = true }
+        awaitFocus("tv-details-play")
+    }
+
+    @Test fun userNavigationCancelsInitialFocusWhileContentLoads() = runAniComposeUiTest {
+        var windowFocused by mutableStateOf(false)
+        val loaded = content()
+        var state by mutableStateOf(TvSubjectDetailsUiState(content = loaded.copy(
+            episodes = emptyList(), episodesLoading = true, playTargetId = null,
+        ), loggedIn = true))
+        mount({ state }, initialTag = null, windowFocused = { windowFocused })
+
+        onNodeWithTag("tv-details-collection").performSemanticsAction(SemanticsActions.RequestFocus) { it() }
+        key(Key.DirectionRight)
+        onNodeWithTag("tv-details-rating").assertIsFocused()
+        runOnIdle {
+            state = state.copy(content = loaded)
+            windowFocused = true
+        }
+        waitForIdle()
+        onNodeWithTag("tv-details-rating").assertIsFocused()
+        onNodeWithTag("tv-details-episode:1").assertExists()
+        key(Key.DirectionDown)
+        awaitFocus("tv-details-episode:27")
+    }
+
+    @Test fun savedEpisodeFocusWaitsForEpisodesWithoutHidingContent() = runAniComposeUiTest {
+        val loaded = content()
+        var state by mutableStateOf(TvSubjectDetailsUiState(content = loaded.copy(
+            episodes = emptyList(), episodesLoading = true, playTargetId = null,
+        ), loggedIn = true))
+        val presentation = TvSubjectPresentationState().apply {
+            lastFocused = "episode:27"
+            lastEpisode = "episode:27"
+            backLevel = 1
+        }
+        mount({ state }, initialTag = null, presentation = presentation)
+
+        onNodeWithTag("tv-details-collection").assertIsDisplayed()
+        onNodeWithTag("tv-details-all-episodes").assertIsNotFocused()
+        onNodeWithTag("tv-details-episode-placeholder-0").assertExists()
+        runOnIdle { state = state.copy(content = loaded) }
+        awaitFocus("tv-details-episode:27")
+        onNodeWithTag("tv-details-episode:27").assertIsDisplayed()
+        key(Key.Back)
+        awaitFocus("tv-details-play")
+    }
+
+    @Test fun restoredPanelKeepsContentMountedAndReturnsFocusToItsAction() = runAniComposeUiTest {
+        val presentation = TvSubjectPresentationState().apply {
+            lastFocused = "rating"
+            open(TvDetailsPanelKind.Rating)
+        }
+        mount({ TvSubjectDetailsUiState(content = content(), loggedIn = true) },
+            initialTag = "tv-details-panel-rating-control", presentation = presentation)
+
+        for (id in listOf("play", "collection", "rating", "all-episodes", "info")) {
+            onNodeWithTag("tv-details-$id", useUnmergedTree = true).assertExists()
+        }
+        key(Key.Back)
+        awaitFocus("tv-details-rating")
+        key(Key.DirectionDown)
+        awaitFocus("tv-details-episode:27")
+    }
+
+    @Test fun savedLoadingEntryResolvesIfDataArrivesBeforeWindowFocus() = runAniComposeUiTest {
+        var windowFocused by mutableStateOf(false)
+        val loading = LoadStates(LoadState.Loading, LoadState.NotLoading(true), LoadState.NotLoading(false))
+        val characters = MutableStateFlow(PagingData.empty<RelatedCharacterInfo>(sourceLoadStates = loading))
+        val details = content().copy(charactersPager = characters)
+        val presentation = TvSubjectPresentationState().apply {
+            lastFocused = "characters-all"
+            backLevel = 1
+        }
+        mount({ TvSubjectDetailsUiState(content = details, loggedIn = true) },
+            initialTag = null, windowFocused = { windowFocused }, presentation = presentation)
+
+        onNodeWithTag("tv-details-characters-all").assertExists()
+        runOnIdle { characters.value = completedPage(characters()) }
+        onNodeWithTag("tv-details-characters-all").assertDoesNotExist()
+        onNodeWithTag("tv-details-play").assertIsNotFocused()
+        runOnIdle { windowFocused = true }
+        awaitFocus("tv-details-character:1")
     }
 
     @Test fun heroActionsBlurTheirBackdropAndPlayFocusAddsGlow() = runAniComposeUiTest {

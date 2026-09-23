@@ -12,6 +12,14 @@ TV 加载占位使用 `TvPlaceholderBlock` 和 `Modifier.tvPlaceholder`，两者
 状态共用 `tvDetailsEpisodePlaceholders`，卡片尺寸和间距与真实剧集一致。用户在剧集加载入口
 等待时，加载完成会把焦点交给第一集；用户已移到其他区域时不抢回焦点。
 
+详情页的内容挂载只取决于数据状态。窗口尚未获焦或页面仍在转场时，Hero 的三个操作、
+剧集和其他区块照常显示内容或骨架。焦点建立前后使用相同的布局。
+
+`TvDetailsFocusState` 独立协调初始焦点、弹层返回和列表刷新后的焦点恢复。恢复请求等待
+页面进入 `RESUMED`、窗口获焦、布局完成，并读取目标行的加载状态；保存的剧集焦点等待
+剧集数据就绪后恢复。目标已删除时选择相邻条目，列表为空时返回该行入口。方向键或确认键
+取消等待中的请求，打开弹层也会取消底层页面的恢复。
+
 ## 安装版样例
 
 以下图片是 `tvDebug` APK（`me.him188.ani.tv.debug2`）在 Android TV API 36、x86_64 模拟器中的
@@ -30,4 +38,5 @@ TV 加载占位使用 `TvPlaceholderBlock` 和 `Modifier.tvPlaceholder`，两者
 ## 回归验证
 
 `TvExplorationUiTest` 覆盖模块独立加载、刷新保留条目、跳过占位行和异步更新后的焦点保留。
-`TvSubjectDetailsUiTest` 覆盖三个操作分别结束加载、加载期间禁止提交、剧集占位语义和加载完成后的焦点交接。
+`TvSubjectDetailsUiTest` 覆盖三个操作分别结束加载、加载期间禁止提交、剧集占位语义和加载完成后的焦点交接，
+以及窗口等待期间的完整渲染、焦点建立前后的布局一致性、用户导航取消待恢复焦点、保存的剧集位置和弹层返回。
