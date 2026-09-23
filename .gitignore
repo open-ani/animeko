@@ -44,3 +44,7 @@ kls_database.db
 /app/ios/12.4.0
 /app/ios/xcb2.log
 /app/ios/xcodebuild.log
+
+# Local working notes, not part of any PR
+/PLAN.md
+/docs/dev/
