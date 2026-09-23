@@ -88,7 +88,7 @@ fun SettingsScope.BackupSettings(state: CacheDirectoryGroupState) {
         TextItem(
             onClick = { showBackupDialog = true },
             title = { Text("Create backup") },
-            description = { Text("Save selected app data to a .bk file") },
+            description = { Text("Choose what to save in an Animeko backup file") },
         )
         TextItem(
             onClick = { showRestoreDialog = true },
@@ -123,7 +123,7 @@ fun SettingsScope.BackupSettings(state: CacheDirectoryGroupState) {
                     }
                     Text("This backup does not include downloaded videos or tracking account tokens.",
                         style = MaterialTheme.typography.bodySmall, modifier = Modifier.padding(top = 12.dp))
-                    Text("Keep the .bk file private if app settings are selected.",
+                    Text("Keep the backup file private if app settings are selected.",
                         style = MaterialTheme.typography.bodySmall, modifier = Modifier.padding(top = 8.dp))
                 }
             },
@@ -131,7 +131,7 @@ fun SettingsScope.BackupSettings(state: CacheDirectoryGroupState) {
                 TextButton(onClick = {
                     scope.launch {
                         try {
-                            val target = FileKit.openFileSaver(suggestedName = "animeko-backup", extension = "bk")
+                            val target = FileKit.openFileSaver(suggestedName = "animeko-backup", extension = "json")
                                 ?: return@launch
                             val data = state.onGetBackupData(BackupSelection(backupSettings, backupTracking))
                             target.write(data.encodeToByteArray())
@@ -141,7 +141,7 @@ fun SettingsScope.BackupSettings(state: CacheDirectoryGroupState) {
                             toaster.toast(backupErrorText)
                         }
                     }
-                }, enabled = backupSettings || backupTracking) { Text("Save .bk file") }
+                }, enabled = backupSettings || backupTracking) { Text("Save backup") }
             },
             dismissButton = { TextButton(onClick = { showBackupDialog = false }) { Text("Cancel") } },
         )
