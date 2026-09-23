@@ -12,6 +12,8 @@ import android.content.Context
 import android.content.Intent
 import android.net.Uri
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.background
+import androidx.compose.foundation.selection.selectable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -35,7 +37,6 @@ import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.OutlinedTextField
-import androidx.compose.material3.Slider
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -44,12 +45,13 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.key
 import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.testTag
 import androidx.compose.foundation.lazy.rememberLazyListState
@@ -276,7 +278,8 @@ internal actual fun AniListTrackingSection(info: SubjectInfo, modifier: Modifier
                             }
                         }
                         current.listEntry?.let { entry ->
-                            val scoreLabel = provider.scoreOptions.firstOrNull { it.score == entry.score }?.displayValue ?: "${entry.score.value}/100"
+                            val scoreLabel = if (entry.score == TrackingScore.Unrated) "Score"
+                                else "${(entry.score.value / 10f).roundToInt().coerceIn(1, 10)} / 10"
                             Surface(shape = MaterialTheme.shapes.medium, color = MaterialTheme.colorScheme.surfaceContainerHigh) {
                                 Column {
                                     Row(Modifier.fillMaxWidth()) {
@@ -356,27 +359,29 @@ internal actual fun AniListTrackingSection(info: SubjectInfo, modifier: Modifier
 
     if (editing != null && linked != null) {
         val current = linked!!
-        EntryEditor(current, provider.statusOptions.map { it.status to it.displayName }, provider.scoreOptions.map { it.score to it.displayValue },
-            field = editing!!,
-            onDismiss = { editing = null },
-            onSelect = { entry ->
-                editing = null
-                scope.launch {
-                    updating = true
-                    try {
-                        val saved = if (current.listEntry == null) provider.bind(entry) else provider.update(entry)
-                        linked = current.copy(listEntry = saved)
-                        error = null
-                    } catch (failure: CancellationException) {
-                        throw failure
-                    } catch (_: Exception) {
-                        error = "AniList update failed. Choose a value to try again."
-                    } finally {
-                        updating = false
+        key(current.media.id, editing, current.listEntry?.progress) {
+            EntryEditor(current, provider.statusOptions.map { it.status to it.displayName },
+                field = editing!!,
+                onDismiss = { editing = null },
+                onSelect = { entry ->
+                    editing = null
+                    scope.launch {
+                        updating = true
+                        try {
+                            val saved = if (current.listEntry == null) provider.bind(entry) else provider.update(entry)
+                            linked = current.copy(listEntry = saved)
+                            error = null
+                        } catch (failure: CancellationException) {
+                            throw failure
+                        } catch (_: Exception) {
+                            error = "AniList update failed. Choose a value to try again."
+                        } finally {
+                            updating = false
+                        }
                     }
-                }
-            },
-        )
+                },
+            )
+        }
     }
 
     editingDate?.let { field ->
@@ -505,7 +510,6 @@ private fun TrackingDateEditor(title: String, date: TrackingDate?, onDismiss: ()
 private fun EntryEditor(
     current: TrackingMediaWithEntry,
     statuses: List<Pair<TrackingStatus, String>>,
-    scores: List<Pair<TrackingScore, String>>,
     field: EditField,
     onDismiss: () -> Unit,
     onSelect: (TrackingListEntry) -> Unit,
@@ -513,44 +517,50 @@ private fun EntryEditor(
     val entry = current.listEntry ?: TrackingListEntry(current.media.id, TrackingStatus.PLANNING, 0)
     val maxProgress = maxOf(current.media.totalEpisodes ?: 10_000, entry.progress)
     val progressListState = rememberLazyListState(initialFirstVisibleItemIndex = (entry.progress - 2).coerceIn(0, maxProgress))
-    var scoreIndex by remember(entry.score) { mutableIntStateOf(scores.indexOfFirst { it.first == entry.score }.coerceAtLeast(0)) }
     val statusListState = rememberLazyListState()
-    AlertDialog(
-        onDismissRequest = onDismiss,
-        title = { Text(when (field) {
-            EditField.STATUS -> "Watch status"
-            EditField.PROGRESS -> "Episodes watched"
-            EditField.SCORE -> "Score"
-        }) },
-        text = {
-            Column {
+    Dialog(onDismissRequest = onDismiss) {
+        Surface(Modifier.fillMaxWidth(), shape = MaterialTheme.shapes.extraLarge) {
+            Column(Modifier.padding(20.dp), verticalArrangement = Arrangement.spacedBy(16.dp)) {
+                Text(when (field) {
+                    EditField.STATUS -> "Watch status"
+                    EditField.PROGRESS -> "Episodes watched"
+                    EditField.SCORE -> "Score"
+                }, style = MaterialTheme.typography.titleLarge)
                 if (field == EditField.SCORE) {
-                    Text(scores[scoreIndex].second, style = MaterialTheme.typography.headlineMedium)
-                    Slider(
-                        value = scoreIndex.toFloat(),
-                        onValueChange = { scoreIndex = it.roundToInt().coerceIn(0, scores.lastIndex) },
-                        onValueChangeFinished = { onSelect(entry.copy(score = scores[scoreIndex].first)) },
-                        valueRange = 0f..scores.lastIndex.toFloat(),
-                        modifier = Modifier.fillMaxWidth(),
-                    )
+                    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                        repeat(2) { row ->
+                            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                                repeat(5) { column ->
+                                    val score = row * 5 + column + 1
+                                    PickerChoice(
+                                        label = score.toString(),
+                                        selected = entry.score.value != 0 && (entry.score.value / 10f).roundToInt().coerceIn(1, 10) == score,
+                                        modifier = Modifier.weight(1f),
+                                        onClick = { onSelect(entry.copy(score = TrackingScore(score * 10))) },
+                                    )
+                                }
+                            }
+                        }
+                        if (entry.score.value != 0) {
+                            TextButton(onClick = { onSelect(entry.copy(score = TrackingScore.Unrated)) }) { Text("Clear score") }
+                        }
+                    }
                 } else {
                     LazyColumn(
-                        Modifier.fillMaxWidth().height(if (field == EditField.PROGRESS) 240.dp else 300.dp),
+                        Modifier.fillMaxWidth().height(240.dp),
                         state = if (field == EditField.PROGRESS) progressListState else statusListState,
+                        verticalArrangement = Arrangement.spacedBy(4.dp),
                     ) {
                         when (field) {
                             EditField.STATUS -> items(statuses.size) { index ->
                                 val (option, label) = statuses[index]
-                                TextButton(onClick = { onSelect(entry.copy(status = option)) }, modifier = Modifier.fillMaxWidth()) { Text(label) }
+                                PickerChoice(label, entry.status == option, Modifier.fillMaxWidth()) {
+                                    onSelect(entry.copy(status = option))
+                                }
                             }
                             EditField.PROGRESS -> items(maxProgress + 1) { progress ->
-                                Row(
-                                    Modifier.fillMaxWidth().height(48.dp).clickable { onSelect(entry.copy(progress = progress)) }
-                                        .padding(horizontal = 16.dp),
-                                    verticalAlignment = androidx.compose.ui.Alignment.CenterVertically,
-                                ) {
-                                    Text(progress.toString(), Modifier.weight(1f), style = MaterialTheme.typography.bodyLarge)
-                                    if (progress == entry.progress) Icon(Icons.Default.Check, contentDescription = "Current value")
+                                PickerChoice(progress.toString(), progress == entry.progress, Modifier.fillMaxWidth()) {
+                                    onSelect(entry.copy(progress = progress))
                                 }
                             }
                             EditField.SCORE -> Unit
@@ -558,8 +568,20 @@ private fun EntryEditor(
                     }
                 }
             }
-        },
-        confirmButton = {},
-        dismissButton = { TextButton(onClick = onDismiss) { Text("Cancel") } },
-    )
+        }
+    }
+}
+
+@Composable
+private fun PickerChoice(label: String, selected: Boolean, modifier: Modifier = Modifier, onClick: () -> Unit) {
+    Box(
+        modifier.height(48.dp)
+            .background(if (selected) MaterialTheme.colorScheme.primaryContainer else MaterialTheme.colorScheme.surfaceContainerLow,
+                MaterialTheme.shapes.small)
+            .selectable(selected = selected, onClick = onClick),
+        contentAlignment = Alignment.Center,
+    ) {
+        Text(label, style = MaterialTheme.typography.bodyLarge,
+            color = if (selected) MaterialTheme.colorScheme.onPrimaryContainer else MaterialTheme.colorScheme.onSurface)
+    }
 }
