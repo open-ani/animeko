@@ -39,6 +39,7 @@ kotlin {
         implementation(libs.atomicfu)
         implementation(libs.aboutlibraries.compose.m3)
         implementation(projects.utils.selectorWorkflow)
+        implementation(projects.tracking.anilist)
     }
     sourceSets.commonTest.dependencies {
         implementation(libs.kotlinx.coroutines.test)

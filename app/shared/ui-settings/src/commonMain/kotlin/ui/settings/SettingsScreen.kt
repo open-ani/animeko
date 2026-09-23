@@ -13,6 +13,7 @@ import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.layout.BoxScope
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ColumnScope
@@ -26,12 +27,14 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.only
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.layout.windowInsetsBottomHeight
 import androidx.compose.foundation.layout.wrapContentWidth
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.outlined.AccountCircle
 import androidx.compose.material.icons.outlined.Feedback
 import androidx.compose.material.icons.outlined.FilterList
@@ -151,8 +154,11 @@ import me.him188.ani.app.ui.lang.settings_tab_storage
 import me.him188.ani.app.ui.lang.settings_tab_theme
 import me.him188.ani.app.ui.lang.settings_tab_update
 import me.him188.ani.app.ui.settings.account.BangumiSyncTab
+import me.him188.ani.app.ui.settings.account.AniListAccountItem
 import me.him188.ani.app.ui.settings.account.GithubAccountTab
 import me.him188.ani.app.ui.settings.account.ProfileGroup
+import me.him188.ani.app.ui.foundation.icons.BangumiNext
+import me.him188.ani.app.ui.settings.framework.components.TextItem
 import me.him188.ani.app.ui.settings.account.SelfInfoBanner
 import me.him188.ani.app.ui.settings.framework.components.SettingsScope
 import me.him188.ani.app.ui.settings.rendering.P2p
@@ -278,6 +284,9 @@ fun SettingsScreen(
                 containerColor = MaterialTheme.colorScheme.surfaceContainerLowest,
             )
 
+            Title("Accounts", paddingTop = 12.dp)
+            Item(SettingsTab.TRACKING)
+
             Title(stringResource(Lang.settings_category_app_ui))
             Item(SettingsTab.APPEARANCE)
             Item(SettingsTab.THEME)
@@ -356,6 +365,28 @@ fun SettingsScreen(
                         tabModifier,
                     ) {
                         when (currentTab) {
+                            SettingsTab.TRACKING -> {
+                                val selfInfo by vm.selfInfoFlow.collectAsStateWithLifecycle()
+                                Group(title = { Text("Services") }) {
+                                    val bangumiName = selfInfo.selfInfo?.bangumiUsername
+                                    TextItem(
+                                        title = { Text("Bangumi") },
+                                        icon = { Image(Icons.Default.BangumiNext, contentDescription = null, modifier = Modifier.size(40.dp)) },
+                                        description = {
+                                            Text(bangumiName ?: if (selfInfo.isSessionValid == true) "Not connected" else "Sign in to Animeko to manage")
+                                        },
+                                        onClick = when {
+                                            selfInfo.isSessionValid != true -> null
+                                            bangumiName.isNullOrBlank() -> { { onNavigateToOAuth(OAuthPlatform.BANGUMI) } }
+                                            else -> { { navigateTo(DetailPaneRoutes.BangumiSync) } }
+                                        },
+                                        action = if (!bangumiName.isNullOrBlank()) {
+                                            { Icon(Icons.Default.Check, contentDescription = "Connected", tint = Color(0xFF4CAF50)) }
+                                        } else null,
+                                    )
+                                    AniListAccountItem { url -> browserNavigator.openBrowser(context, url) }
+                                }
+                            }
                             SettingsTab.PROFILE -> ProfileGroup(
                                 onNavigateToEmail = onNavigateToEmailLogin,
                                 onNavigateToBangumiSync = {
@@ -1074,6 +1105,7 @@ abstract class SettingsDrawerScope internal constructor() : ColumnScope {
 private fun getIcon(tab: SettingsTab): ImageVector {
     return when (tab) {
         SettingsTab.PROFILE -> Icons.Outlined.AccountCircle
+        SettingsTab.TRACKING -> Icons.Outlined.AccountCircle
         SettingsTab.APPEARANCE -> Icons.Outlined.SettingsApplications
         SettingsTab.THEME -> Icons.Outlined.Palette
         SettingsTab.UPDATE -> Icons.Outlined.Update
@@ -1097,6 +1129,7 @@ private fun getIcon(tab: SettingsTab): ImageVector {
 private fun getName(tab: SettingsTab): String {
     return when (tab) {
         SettingsTab.PROFILE -> stringResource(Lang.settings_tab_account)
+        SettingsTab.TRACKING -> "Tracking accounts"
         SettingsTab.APPEARANCE -> stringResource(Lang.settings_tab_appearance)
         SettingsTab.THEME -> stringResource(Lang.settings_tab_theme)
         SettingsTab.PLAYER -> stringResource(Lang.settings_tab_player)
