@@ -36,10 +36,11 @@ internal class AniListApi(private val client: HttpClient) {
         token,
     ).media
 
-    suspend fun save(mediaId: Int, status: String, score: Int, progress: Int, token: String): AniListEntry =
+    suspend fun save(mediaId: Int, entryId: Int?, status: String, score: Int, progress: Int, token: String): AniListEntry =
         execute<SaveEntryData>(
             SAVE,
             buildJsonObject {
+                entryId?.let { put("id", it) }
                 put("mediaId", mediaId)
                 put("status", status)
                 put("score", score)
@@ -97,8 +98,8 @@ internal class AniListApi(private val client: HttpClient) {
         """.trimIndent()
 
         val SAVE = """
-            mutation SaveEntry(${'$'}mediaId: Int!, ${'$'}status: MediaListStatus!, ${'$'}score: Float!, ${'$'}progress: Int!) {
-              SaveMediaListEntry(mediaId: ${'$'}mediaId, status: ${'$'}status, scoreRaw: ${'$'}score, progress: ${'$'}progress) {
+            mutation SaveEntry(${'$'}id: Int, ${'$'}mediaId: Int!, ${'$'}status: MediaListStatus!, ${'$'}score: Int!, ${'$'}progress: Int!) {
+              SaveMediaListEntry(id: ${'$'}id, mediaId: ${'$'}mediaId, status: ${'$'}status, scoreRaw: ${'$'}score, progress: ${'$'}progress) {
                 id mediaId status score(format: POINT_100) progress
               }
             }

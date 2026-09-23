@@ -153,6 +153,7 @@ import me.him188.ani.app.ui.subject.AiringLabelState
 import me.him188.ani.app.ui.subject.SubjectProgressState
 import me.him188.ani.app.ui.subject.collection.components.EditableSubjectCollectionTypeButton
 import me.him188.ani.app.ui.subject.details.components.CollectionData
+import me.him188.ani.app.ui.subject.details.tracking.AniListTrackingSection
 import me.him188.ani.app.ui.subject.details.components.SeasonTag
 import me.him188.ani.app.ui.subject.details.components.SelectEpisodeButtons
 import me.him188.ani.app.ui.subject.details.components.SubjectBlurredBackground
@@ -458,6 +459,7 @@ private fun SubjectDetailsPage(
                     onPlay = onPlay,
                 )
             },
+            trackingAction = { state.info?.let { AniListTrackingSection(it) } },
             modifier = modifier,
             showTopBar = showTopBar,
             showBlurredBackground = showBlurredBackground,
@@ -686,6 +688,7 @@ fun SubjectDetailsSingleColumnPage(
     collectionActions: @Composable () -> Unit,
     rating: @Composable () -> Unit,
     selectEpisodeButton: @Composable BoxScope.() -> Unit,
+    trackingAction: @Composable () -> Unit = {},
     modifier: Modifier = Modifier,
     showTopBar: Boolean = true,
     showBlurredBackground: Boolean = true,
@@ -797,6 +800,9 @@ fun SubjectDetailsSingleColumnPage(
                                         onCoverImageSuccess = onCoverImageSuccess,
                                         onClickCover = onClickCover,
                                     )
+                                    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.Center) {
+                                        trackingAction()
+                                    }
                                 }
                             }
 

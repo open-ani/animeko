@@ -72,7 +72,7 @@ class AniListTrackingProviderTest {
         var calls = 0
         val provider = provider {
             calls++
-            if (calls == 1) {
+            if (calls <= 2) {
                 respondJson(
                     """{"data":{"Media":{"id":1,"title":{"userPreferred":"Frieren"},"episodes":28,"mediaListEntry":{"id":9,"mediaId":1,"status":"CURRENT","score":85,"progress":12}}}}""",
                 )
@@ -92,6 +92,42 @@ class AniListTrackingProviderTest {
         )
         assertEquals(28, saved.progress)
         assertEquals(TrackingStatus.COMPLETED, saved.status)
+    }
+
+    @Test
+    fun `binding refuses to replace an existing AniList entry`() = runTest {
+        var calls = 0
+        val provider = provider {
+            calls++
+            respondJson(
+                """{"data":{"Media":{"id":1,"title":{"userPreferred":"Frieren"},"mediaListEntry":{"id":9,"mediaId":1,"status":"CURRENT","score":85,"progress":12}}}}""",
+            )
+        }
+
+        val failure = runCatching {
+            provider.bind(TrackingListEntry(TrackingMediaId("1"), TrackingStatus.PLANNING, 0))
+        }.exceptionOrNull()
+
+        assertTrue(failure is me.him188.ani.tracking.api.TrackingProviderException.Remote)
+        assertEquals(1, calls)
+    }
+
+    @Test
+    fun `binding creates an entry when the remote list is empty`() = runTest {
+        var calls = 0
+        val provider = provider {
+            calls++
+            if (calls == 1) {
+                respondJson("""{"data":{"Media":{"id":1,"title":{"userPreferred":"Frieren"},"mediaListEntry":null}}}""")
+            } else {
+                respondJson("""{"data":{"SaveMediaListEntry":{"id":9,"mediaId":1,"status":"PLANNING","score":0,"progress":0}}}""")
+            }
+        }
+
+        val saved = provider.bind(TrackingListEntry(TrackingMediaId("1"), TrackingStatus.PLANNING, 0))
+
+        assertEquals(TrackingStatus.PLANNING, saved.status)
+        assertEquals(2, calls)
     }
 
     @Test

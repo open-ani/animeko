@@ -89,10 +89,15 @@ class AniListTrackingProvider(
 
     override suspend fun prepareBinding(mediaId: TrackingMediaId): TrackingMediaWithEntry? = refresh(mediaId)
 
-    override suspend fun bind(entry: TrackingListEntry): TrackingListEntry = save(entry)
+    override suspend fun bind(entry: TrackingListEntry): TrackingListEntry = call {
+        if (api.getMedia(entry.mediaId.asAniListId(), token())?.mediaListEntry != null) {
+            throw TrackingProviderException.Remote("AniList already has an entry for this title")
+        }
+        save(entry, null)
+    }
 
     override suspend fun update(entry: TrackingListEntry, didWatchEpisode: Boolean): TrackingListEntry {
-        if (!didWatchEpisode || entry.status == TrackingStatus.COMPLETED) return save(entry)
+        if (!didWatchEpisode || entry.status == TrackingStatus.COMPLETED) return saveExisting(entry)
         val totalEpisodes = refresh(entry.mediaId)?.media?.totalEpisodes
         val transitioned = when {
             totalEpisodes != null && entry.progress >= totalEpisodes ->
@@ -100,7 +105,7 @@ class AniListTrackingProvider(
             entry.status != TrackingStatus.REPEATING -> entry.copy(status = TrackingStatus.CURRENT)
             else -> entry
         }
-        return save(transitioned)
+        return saveExisting(transitioned)
     }
 
     override suspend fun refresh(mediaId: TrackingMediaId): TrackingMediaWithEntry? = call {
@@ -117,9 +122,17 @@ class AniListTrackingProvider(
         }
     }
 
-    private suspend fun save(entry: TrackingListEntry): TrackingListEntry = call {
+    private suspend fun saveExisting(entry: TrackingListEntry): TrackingListEntry = call {
+        val token = token()
+        val entryId = api.getMedia(entry.mediaId.asAniListId(), token)?.mediaListEntry?.id
+            ?: throw TrackingProviderException.Remote("AniList list entry no longer exists")
+        save(entry, entryId)
+    }
+
+    private suspend fun save(entry: TrackingListEntry, entryId: Int?): TrackingListEntry = call {
         api.save(
             mediaId = entry.mediaId.asAniListId(),
+            entryId = entryId,
             status = entry.status.toAniListStatus(),
             score = entry.score.value,
             progress = entry.progress,

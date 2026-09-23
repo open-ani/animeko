@@ -5,7 +5,7 @@
  * AniList mark geometry from Mihon's Apache-2.0 brand_anilist.xml.
  */
 
-package me.him188.ani.app.ui.settings.account
+package me.him188.ani.app.ui.foundation.icons
 
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.layout.size

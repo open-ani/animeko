@@ -30,6 +30,7 @@ kotlin {
         implementation(projects.utils.androidxLifecycleRuntimeTesting)
     }
     sourceSets.androidMain.dependencies {
+        implementation(projects.tracking.anilist)
     }
     sourceSets.desktopMain.dependencies {
     }
