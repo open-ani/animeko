@@ -10,6 +10,7 @@
 package me.him188.ani.tv.ui.episode
 
 import me.him188.ani.app.domain.episode.SubjectRecommendation
+import me.him188.ani.app.domain.media.player.MediaCacheProgressInfo
 import me.him188.ani.app.domain.player.VideoLoadingState
 import me.him188.ani.app.videoplayer.videoenhancement.VideoEnhancementMode
 import me.him188.ani.danmaku.api.DanmakuServiceId
@@ -53,7 +54,7 @@ data class TvEpisodeUiState(
     val mediaLabel: String? = null,
     val durationMillis: Long = 0,
     val positionMillis: Long = 0,
-    val bufferedFraction: Float = 0f,
+    val cacheProgress: MediaCacheProgressInfo? = null,
     val playbackSpeed: Float = 1f,
     val aspectRatioMode: AspectRatioMode = AspectRatioMode.FIT,
     val episodes: List<TvStripEpisode> = emptyList(),
