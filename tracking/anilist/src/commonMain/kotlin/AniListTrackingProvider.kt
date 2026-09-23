@@ -48,11 +48,11 @@ class AniListTrackingProvider(
     )
     override val accountState: StateFlow<TrackingAccountState> = mutableAccountState
     override val statusOptions = listOf(
+        TrackingStatusOption(TrackingStatus.PLANNING, "Plan to watch"),
         TrackingStatusOption(TrackingStatus.CURRENT, "Watching"),
         TrackingStatusOption(TrackingStatus.COMPLETED, "Completed"),
         TrackingStatusOption(TrackingStatus.PAUSED, "On hold"),
         TrackingStatusOption(TrackingStatus.DROPPED, "Dropped"),
-        TrackingStatusOption(TrackingStatus.PLANNING, "Plan to watch"),
         TrackingStatusOption(TrackingStatus.REPEATING, "Rewatching"),
     )
     override val scoreOptions: List<TrackingScoreOption>
