@@ -41,7 +41,7 @@ AniList 协议细节同时以[官方 API 文档](https://docs.anilist.co/)为准
 | `update(..., didReadChapter)` | `update(..., didWatchEpisode)` | 复用 watching/completed/rewatching 状态转换。 |
 | `refresh` | `refresh` | 远端状态是刷新来源，不以旧本地缓存冒充成功。 |
 | `DeletableTracker.delete` | `delete` | 远端删除与本地解除绑定是两个操作。 |
-| `TrackerManager` | `TrackingRegistry` | Track sheet 与观看同步从同一注册表发现 source；账号中心仍保留 AniList 专属登录控件。 |
+| `TrackerManager` | `TrackingRegistry` | Track sheet 与观看同步从同一注册表发现 source；账号中心与 Track sheet 通过 `TrackingAccountRegistry` 发现各服务的登录动作。 |
 
 ## 有意不照搬 Mihon 的部分
 
