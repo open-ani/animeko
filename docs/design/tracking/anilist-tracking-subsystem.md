@@ -119,6 +119,83 @@ AniList provider 必须具备：
 
 这是接入第三个服务的验收约束，不是当前代码已经达到的状态。不要仅添加一个 `TrackingSection` 名称或未被调用的 registry，就宣称插件架构完成。
 
+## 追踪模块的接口设计
+
+以下接口是实现前的约束，现有代码尚未满足。接口从两个真实实现推导：AniList 通过独立 OAuth 账号和人工匹配操作远端列表；Bangumi 使用当前 Animeko 会话、相同的 `subjectId`，并复用收藏、剧集和评分 repository。两者在同一张卡片中需要相同的状态、进度、评分布局。第三个平台用于检验扩展性，不为它预设特殊字段。
+
+### 页面只传条目身份
+
+```kotlin
+@Composable
+fun TrackingSection(subjectId: Int, modifier: Modifier = Modifier)
+```
+
+详情页的单栏和多栏调用相同接口。页面不传 `bangumiConnected`、`collectionAction`、AniList provider、状态文案、进度、评分或各平台的点击回调。`TrackingSection` 从注入的 `TrackingCoordinator` 订阅 `TrackingSheetState`，绘制 Track 按钮和卡片列表，并把用户操作作为 `TrackingIntent(providerId, action)` 交还协调器。所有入口由同一份状态得出跟踪数量；远端刷新时保留已知状态，避免按钮数量闪烁。
+
+### 注册、账号和匹配
+
+```kotlin
+interface TrackingSource {
+    val id: TrackingProviderId
+    val connection: StateFlow<TrackingConnection>
+    val matcher: TrackingMatcher
+    val capabilities: Set<TrackingCapability>
+    suspend fun read(subjectId: Int, mediaId: TrackingMediaId): TrackingEntry?
+    suspend fun apply(subjectId: Int, mediaId: TrackingMediaId, edit: TrackingEdit): TrackingEntry
+}
+
+interface TrackingMatcher {
+    val requiresSelection: Boolean
+    suspend fun candidates(subjectId: Int, query: String?): List<TrackingMedia>
+}
+
+interface TrackingRegistry {
+    val sources: List<TrackingSource>
+}
+```
+
+`TrackingConnection` 描述未连接、连接中、已连接账号和需要重新授权；账号中心和条目协调器都观察它。登录与断开由 source 内部的账号连接实现拥有，不进入条目编辑接口。`TrackingMatcher` 的直接 ID 实现返回当前 `subjectId` 对应的唯一 media，搜索实现返回待用户选择的候选；UI 只依据 `requiresSelection` 决定是否显示搜索。`TrackingCapability` 至少表达状态、剧集进度、评分、起止日期、私密条目和远端删除；不支持的字段不构造为可编辑项。`TrackingEdit` 是状态、进度、评分、日期、私密等类型化命令，source 负责转换和写入，不能把提供方字段名传给协调器。`read` 返回 `null` 表示尚无条目，不能把它当作未匹配或加载失败。`TrackingProvider` 仍可作为 AniList 远端协议门面，由 AniList source 包装；Bangumi source 调用现有 Animeko repository，不伪造 OAuth 凭据或重复写入逻辑。
+
+注册表由平台 DI 组装，一处供账号中心、条目页和观看同步使用。它只注册当前平台有可运行实现的 source；Desktop/iOS 占位 adapter 不产生假登录入口。增加第三个 source 时，详情页、通用卡片和观看事件入口无需修改。
+
+### 协调器与卡片模型
+
+```kotlin
+interface TrackingCoordinator {
+    fun observe(subjectId: Int): StateFlow<TrackingSheetState>
+    suspend fun dispatch(subjectId: Int, intent: TrackingIntent)
+    suspend fun episodeWatched(subjectId: Int, episodeId: Int)
+}
+
+data class TrackingCardModel(
+    val providerId: TrackingProviderId,
+    val providerName: String,
+    val iconKey: String,
+    val mediaTitle: String,
+    val fields: List<TrackingFieldModel>,
+    val actions: List<TrackingActionModel>,
+    val state: TrackingCardState,
+)
+```
+
+协调器按注册表顺序读取已连接 source，负责账号过滤、绑定查找、刷新、加载与错误状态、写入串行化及卡片模型构造。`TrackingFieldModel` 是状态、进度、评分、日期等类型化字段及其可选值；有字段才显示相应编辑器。`TrackingCard` 只接受 `TrackingCardModel` 和统一的 `onIntent`，用同一头部、字段行、菜单和错误位置渲染每个 source。品牌图标由 presentation 的 `iconKey` 映射，远端 adapter 不接收 Compose 或 Android 类型。卡片不调用 repository，不实例化 provider，不含 `if (providerId == ...)` 的布局分支。
+
+Bangumi 的状态、已看正片集数和 1–10 分从现有收藏流生成三项字段，编辑分别调用现有收藏、剧集和评分操作；已看集数不得把 `DROPPED` 算成看过。AniList 从远端 entry 生成同样三项字段，可选日期、私密等能力另行显示。两个 source 的字段顺序、点击区域和错误反馈一致。进度字段支持剧集列表或数值列表两种类型化选项；Bangumi 选择具体剧集，AniList 选择远端累计进度。两种编辑器使用同一弹层样式，不以进度数字推断 Bangumi 的离散剧集状态。状态颜色只作为文字之外的辅助线索。
+
+### 绑定与观看写入
+
+`TrackingBindingStore` 以 `(providerId, accountId, subjectId)` 为键保存远端 media ID。Bangumi 采用直接 ID，不需要人工匹配记录；AniList 的 `anilist-bindings` 按账号和条目读取并迁移，不能在升级时丢失已连接数据。解绑只删除本地关系；远端删除是明确的另一项操作。搜索结果选中后先读取已有远端 entry；已有 entry 默认保留其状态，写入动作只发生于用户主动编辑。
+
+本地剧集更新成功后，现有 `EpisodeTrackingSync` 入口把事件交给协调器。协调器按已连接且已匹配的 source 分发，只推进较新的正片集数；一个 source 失败不回滚本地操作或其他 source。外部失败写入可观察的持久化待重试状态；重试以最新期望进度合并，不能覆盖较新的远端进度。Bangumi 自身的本地写入不经外部同步再写一次。
+
+### 接口验收
+
+1. 两种布局的详情页只调用 `TrackingSection(subjectId, modifier)`；全文搜索不到从页面传入的 provider 专属参数或回调。
+2. Bangumi 与 AniList source 都由同一注册表发现；账号中心、Track sheet 和观看同步不各自创建 AniList 实例。
+3. 用一个第三方 fake source 注册状态、进度、评分能力，通用卡片无需修改即可显示、编辑并反馈错误；移除一种能力只影响该 source 的字段。
+4. Bangumi 卡片可编辑收藏状态、正片已看进度与评分，AniList 卡片可编辑对应字段；单栏、多栏共享行为和布局规则。
+5. 已有 AniList 绑定在迁移后仍能读取；未登录 Animeko、只连接 AniList 的用户仍能追踪；取消、失败、重启和重复观看事件不会产生回退或重复远端写入。
+
 ## 接入新的同步平台
 
 在上述统一工作流落地后，接入 MyAnimeList 等平台按以下顺序进行：
