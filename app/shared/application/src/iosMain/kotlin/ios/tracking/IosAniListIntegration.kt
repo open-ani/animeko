@@ -6,9 +6,6 @@
 
 package me.him188.ani.app.ios.tracking
 
-import kotlin.time.Duration.Companion.minutes
-import kotlin.time.TimeMark
-import kotlin.time.TimeSource
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -20,21 +17,20 @@ import me.him188.ani.app.tracking.anilist.AniListTrackingProvider
 import me.him188.ani.app.ui.settings.account.TrackingAccountConnector
 import me.him188.ani.app.ui.settings.account.TrackingLoginAction
 import me.him188.ani.app.ui.settings.account.toViewState
+import me.him188.ani.tracking.api.PendingLoginGate
 import me.him188.ani.tracking.api.TrackingLoginCredentials
 import me.him188.ani.tracking.api.TrackingProviderException
 import me.him188.ani.utils.logging.logger
 import me.him188.ani.utils.logging.warn
 
 class IosAniListAccountConnector(private val provider: AniListTrackingProvider) : TrackingAccountConnector {
-    private var pendingLoginMark: TimeMark? = null
+    private val pendingLogin = PendingLoginGate()
     override val providerId = AniListTrackingProvider.ID
     override val displayName = "AniList"
     override val loginAction: TrackingLoginAction
         get() {
-            pendingLoginMark = TimeSource.Monotonic.markNow()
-            return TrackingLoginAction.Browser(
-                "https://anilist.co/api/v2/oauth/authorize?client_id=51393&response_type=token",
-            )
+            pendingLogin.begin()
+            return TrackingLoginAction.Browser(AniListTrackingProvider.AUTHORIZE_URL)
         }
     override val state = provider.accountState.map { it.toViewState() }
 
@@ -49,9 +45,7 @@ class IosAniListAccountConnector(private val provider: AniListTrackingProvider) 
     override suspend fun disconnect() = provider.logout()
 
     suspend fun completeRedirect(token: String) {
-        val mark = pendingLoginMark ?: return
-        pendingLoginMark = null
-        if (mark.elapsedNow() > 5.minutes) return
+        if (!pendingLogin.consume()) return
         provider.login(TrackingLoginCredentials(secret = token))
     }
 }

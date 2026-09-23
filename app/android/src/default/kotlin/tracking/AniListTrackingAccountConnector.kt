@@ -17,9 +17,7 @@ class AniListTrackingAccountConnector(
     override val loginAction: TrackingLoginAction
         get() {
             pendingLogin.begin()
-            return TrackingLoginAction.Browser(
-                "https://anilist.co/api/v2/oauth/authorize?client_id=51393&response_type=token",
-            )
+            return TrackingLoginAction.Browser(AniListTrackingProvider.AUTHORIZE_URL)
         }
     override val state = provider.accountState.map { it.toViewState() }
 

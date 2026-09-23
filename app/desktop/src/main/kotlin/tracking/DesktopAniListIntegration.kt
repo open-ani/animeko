@@ -3,7 +3,6 @@ package me.him188.ani.app.desktop.tracking
 import java.awt.Desktop
 import java.net.URI
 import java.net.URLDecoder
-import java.util.concurrent.atomic.AtomicLong
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -15,21 +14,20 @@ import me.him188.ani.app.tracking.anilist.AniListTrackingProvider
 import me.him188.ani.app.ui.settings.account.TrackingAccountConnector
 import me.him188.ani.app.ui.settings.account.TrackingLoginAction
 import me.him188.ani.app.ui.settings.account.toViewState
+import me.him188.ani.tracking.api.PendingLoginGate
 import me.him188.ani.tracking.api.TrackingLoginCredentials
 import me.him188.ani.tracking.api.TrackingProviderException
 import me.him188.ani.utils.logging.logger
 import me.him188.ani.utils.logging.warn
 
 class DesktopAniListAccountConnector(private val provider: AniListTrackingProvider) : TrackingAccountConnector {
-    private val pendingLoginAt = AtomicLong(0)
+    private val pendingLogin = PendingLoginGate()
     override val providerId = AniListTrackingProvider.ID
     override val displayName = "AniList"
     override val loginAction: TrackingLoginAction
         get() {
-            pendingLoginAt.set(System.nanoTime())
-            return TrackingLoginAction.Browser(
-                "https://anilist.co/api/v2/oauth/authorize?client_id=51393&response_type=token",
-            )
+            pendingLogin.begin()
+            return TrackingLoginAction.Browser(AniListTrackingProvider.AUTHORIZE_URL)
         }
     override val state = provider.accountState.map { it.toViewState() }
 
@@ -44,8 +42,7 @@ class DesktopAniListAccountConnector(private val provider: AniListTrackingProvid
     override suspend fun disconnect() = provider.logout()
 
     internal suspend fun completeRedirect(token: String) {
-        val started = pendingLoginAt.getAndSet(0)
-        if (started == 0L || System.nanoTime() - started > 5 * 60 * 1_000_000_000L) return
+        if (!pendingLogin.consume()) return
         provider.login(TrackingLoginCredentials(secret = token))
     }
 }

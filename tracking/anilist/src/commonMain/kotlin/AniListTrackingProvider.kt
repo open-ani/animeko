@@ -190,6 +190,10 @@ class AniListTrackingProvider(
         private const val POINT_100 = "POINT_100"
         val ID = TrackingProviderId("anilist")
 
+        /** OAuth client registered on AniList with the redirect URI `ani://anilist-auth`. */
+        const val CLIENT_ID = "51393"
+        const val AUTHORIZE_URL = "https://anilist.co/api/v2/oauth/authorize?client_id=$CLIENT_ID&response_type=token"
+
         val INFO = TrackingProviderInfo(
             id = ID,
             displayName = "AniList",
