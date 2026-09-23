@@ -41,7 +41,7 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import me.him188.ani.app.data.repository.episode.EpisodeCollectionRepository
 import me.him188.ani.app.data.repository.media.SelectorMediaSourceEpisodeCacheRepository
-import me.him188.ani.app.data.repository.subject.SetSubjectCollectionTypeOrDeleteUseCase
+import me.him188.ani.app.data.repository.subject.SubjectCollectionRepository
 import me.him188.ani.app.data.repository.user.SettingsRepository
 import me.him188.ani.app.domain.episode.EpisodeCompletionContext.isKnownCompleted
 import me.him188.ani.app.domain.episode.SubjectRecommendation
@@ -92,12 +92,12 @@ class TvEpisodeViewModel(
     initialEpisodeId: Int,
     context: ContextMP,
     koin: Koin,
+    private val episodeCollectionRepository: EpisodeCollectionRepository,
+    private val subjectCollectionRepository: SubjectCollectionRepository,
+    private val settingsRepository: SettingsRepository,
+    private val selectorEpisodeCacheRepository: SelectorMediaSourceEpisodeCacheRepository,
+    private val webSessionManager: WebSessionManager,
 ) : EpisodeViewModel(subjectId, initialEpisodeId, initialIsFullscreen = true, context = context, koin = koin) {
-    private val settingsRepository = koin.get<SettingsRepository>()
-    private val episodeCollectionRepository = koin.get<EpisodeCollectionRepository>()
-    private val setSubjectCollectionType = koin.get<SetSubjectCollectionTypeOrDeleteUseCase>()
-    private val selectorEpisodeCacheRepository = koin.get<SelectorMediaSourceEpisodeCacheRepository>()
-    private val webSessionManager = koin.get<WebSessionManager>()
     private val resolvingCaptchaSources = MutableStateFlow<Set<String>>(emptySet())
     private val playbackInteraction = TvPlaybackInteractionState()
     override val isAutoSkipOpEdAllowed: Boolean
@@ -279,7 +279,7 @@ class TvEpisodeViewModel(
     }.stateIn(backgroundScope, SharingStarted.WhileSubscribed(5_000), 0L)
 
     private val panelRecommendations = recommendationsFlow
-        .map<Result<List<SubjectRecommendation>>, List<SubjectRecommendation>?> { it.getOrDefault(emptyList()) }
+        .map<List<SubjectRecommendation>, List<SubjectRecommendation>?> { it }
         .onStart { emit(null) }
         .catch { emit(emptyList()) }
 
@@ -568,7 +568,10 @@ class TvEpisodeViewModel(
     }
 
     private fun setCollection(type: UnifiedCollectionType, requestId: Long) = collectionAction {
-        setSubjectCollectionType(subjectId, type)
+        subjectCollectionRepository.setSubjectCollectionTypeOrDelete(
+            subjectId,
+            type.takeUnless { it == UnifiedCollectionType.NOT_COLLECTED },
+        )
         playerOptions.update { it.copy(collectionType = type) }
         events.send(TvEpisodeEvent.CollectionChanged(type, requestId))
     }

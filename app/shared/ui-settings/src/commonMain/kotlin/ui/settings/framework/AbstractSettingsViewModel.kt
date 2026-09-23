@@ -13,13 +13,11 @@ import kotlinx.coroutines.CoroutineScope
 import me.him188.ani.app.data.repository.user.Settings
 import me.him188.ani.app.ui.foundation.AbstractViewModel
 import me.him188.ani.app.ui.foundation.produceState
-import kotlin.coroutines.CoroutineContext
-import kotlin.coroutines.EmptyCoroutineContext
 import kotlin.properties.PropertyDelegateProvider
 import kotlin.properties.ReadOnlyProperty
 import kotlin.reflect.KProperty
 
-abstract class AbstractSettingsViewModel(backgroundCoroutineContext: CoroutineContext = EmptyCoroutineContext) : AbstractViewModel(backgroundCoroutineContext) {
+abstract class AbstractSettingsViewModel : AbstractViewModel() {
 
     ///////////////////////////////////////////////////////////////////////////
     // Settings

@@ -27,20 +27,17 @@ import me.him188.ani.app.ui.comment.UICommentSource
 import me.him188.ani.app.ui.subject.person.PeopleDetailsViewModel
 import me.him188.ani.tv.ui.foundation.TvNavigationEvent
 import me.him188.ani.tv.ui.foundation.TvNavigationEvents
-import org.koin.core.Koin
 
 /** One instance per navigation entry, including separate entries for a person's two roles. */
 class TvPeopleDetailsViewModel(
     private val target: TvPeopleTarget,
-    koin: Koin,
+    session: SessionStateProvider,
 ) : PeopleDetailsViewModel(
     commentTarget = if (target.kind == TvPeopleKind.Character) PersonCommentTarget.Character(target.id)
         else PersonCommentTarget.Person(target.id),
     originalCommentsUrl = if (target.kind == TvPeopleKind.Character) "https://bgm.tv/character/${target.id}"
         else "https://bgm.tv/person/${target.id}",
-    koin = koin,
 ) {
-    private val session = koin.get<SessionStateProvider>()
     override val commentPanelTitleFlow = MutableStateFlow<String?>(null)
     // The TV list derives its mixed-source total after pagination completes.
     override val commentCountFlow = flowOf<Int?>(null)

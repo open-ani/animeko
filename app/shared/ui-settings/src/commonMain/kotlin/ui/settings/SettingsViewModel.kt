@@ -61,7 +61,6 @@ import me.him188.ani.app.domain.settings.ProxySettingsFlowProxyProvider
 import me.him188.ani.app.domain.settings.ProxyTester
 import me.him188.ani.app.domain.settings.ServiceConnectionTester
 import me.him188.ani.app.domain.settings.ServiceConnectionTesters
-import me.him188.ani.app.domain.usecase.GlobalKoin
 import me.him188.ani.app.platform.PermissionManager
 import me.him188.ani.app.platform.currentAniBuildConfig
 import me.him188.ani.app.ui.foundation.launchInBackground
@@ -95,18 +94,10 @@ import me.him188.ani.torrent.pikpak.testPikPakLogin
 import me.him188.ani.utils.ktor.UnsafeScopedHttpClientApi
 import me.him188.ani.utils.coroutines.IO_
 import me.him188.ani.utils.coroutines.SingleTaskExecutor
-import org.koin.core.Koin
 import org.koin.core.component.KoinComponent
 import org.koin.core.component.inject
-import kotlin.coroutines.CoroutineContext
-import kotlin.coroutines.EmptyCoroutineContext
 
-open class SettingsViewModel(
-    private val koin: Koin = GlobalKoin,
-    backgroundCoroutineContext: CoroutineContext = EmptyCoroutineContext,
-) : AbstractSettingsViewModel(backgroundCoroutineContext), KoinComponent {
-    final override fun getKoin(): Koin = koin
-
+open class SettingsViewModel : AbstractSettingsViewModel(), KoinComponent {
     private val settingsRepository: SettingsRepository by inject()
     private val permissionManager: PermissionManager by inject()
     private val danmakuRegexFilterRepository: DanmakuRegexFilterRepository by inject()

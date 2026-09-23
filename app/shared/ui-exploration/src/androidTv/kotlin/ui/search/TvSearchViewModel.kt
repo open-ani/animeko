@@ -25,11 +25,10 @@ import me.him188.ani.app.ui.exploration.search.SearchPageIntent
 import me.him188.ani.app.ui.main.SearchViewModel
 import me.him188.ani.tv.ui.foundation.TvNavigationEvent
 import me.him188.ani.tv.ui.foundation.TvNavigationEvents
-import org.koin.core.Koin
 
 /** TV 搜索表单将已提交的关键词接入共享搜索状态。 */
 @Stable
-class TvSearchViewModel(koin: Koin) : SearchViewModel(SubjectSearchQuery(keywords = ""), koin) {
+class TvSearchViewModel : SearchViewModel(SubjectSearchQuery(keywords = "")) {
     private val keywords = MutableStateFlow("")
     private val navigation = TvNavigationEvents()
     val navigationEvents = navigation.events

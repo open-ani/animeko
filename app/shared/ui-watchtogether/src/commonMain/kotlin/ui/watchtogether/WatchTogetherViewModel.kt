@@ -24,7 +24,6 @@ import me.him188.ani.app.data.network.WatchTogetherJoinFailure
 import me.him188.ani.app.data.repository.user.SettingsRepository
 import me.him188.ani.app.domain.session.SessionState
 import me.him188.ani.app.domain.session.SessionStateProvider
-import me.him188.ani.app.domain.usecase.GlobalKoin
 import me.him188.ani.app.domain.watchtogether.LocalPlaybackBridge
 import me.him188.ani.app.domain.watchtogether.RoomSession
 import me.him188.ani.app.domain.watchtogether.WatchTogetherConnectionState
@@ -34,18 +33,10 @@ import me.him188.ani.app.domain.watchtogether.WatchTogetherState
 import me.him188.ani.app.ui.foundation.AbstractViewModel
 import me.him188.ani.app.ui.foundation.launchInBackground
 import me.him188.ani.app.ui.user.SelfInfoStateProducer
-import org.koin.core.Koin
 import org.koin.core.component.KoinComponent
 import org.koin.core.component.inject
-import kotlin.coroutines.CoroutineContext
-import kotlin.coroutines.EmptyCoroutineContext
 
-open class WatchTogetherViewModel(
-    private val koin: Koin = GlobalKoin,
-    backgroundCoroutineContext: CoroutineContext = EmptyCoroutineContext,
-) : AbstractViewModel(backgroundCoroutineContext), KoinComponent {
-    final override fun getKoin(): Koin = koin
-
+open class WatchTogetherViewModel : AbstractViewModel(), KoinComponent {
     private val manager: WatchTogetherManager by inject()
     private val settingsRepository: SettingsRepository by inject()
     private val sessionStateProvider: SessionStateProvider by inject()

@@ -88,6 +88,7 @@ import me.him188.ani.app.ui.lang.video_player_play
 import me.him188.ani.app.ui.lang.video_player_select_episode
 import me.him188.ani.app.ui.lang.video_player_subtitle
 import me.him188.ani.app.videoplayer.ui.progress.MediaProgressSlider
+import me.him188.ani.app.videoplayer.ui.progress.MediaProgressSliderDefaults
 import me.him188.ani.app.videoplayer.ui.progress.PlayerProgressSliderState
 import me.him188.ani.tv.ui.episode.TvEpisodeTitle
 import me.him188.ani.tv.ui.episode.TvPlayerOptionsState
@@ -602,7 +603,8 @@ internal fun TvPlayerProgress(
         state = slider,
         cacheProgressInfoFlow = { cacheProgress },
         enabled = false,
-        showThumb = focused || scrubMillis != null,
+        colors = if (focused || scrubMillis != null) MediaProgressSliderDefaults.colors()
+        else MediaProgressSliderDefaults.colors(thumbColor = Color.Transparent),
         showPreviewTimeTextOnThumb = false,
         modifier = modifier.clearAndSetSemantics {},
     )

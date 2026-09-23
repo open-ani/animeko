@@ -8,13 +8,15 @@ import androidx.datastore.preferences.core.emptyPreferences
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.awaitCancellation
-import kotlinx.coroutines.cancel
+import kotlinx.coroutines.cancelAndJoin
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.emptyFlow
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.flowOf
+import kotlinx.coroutines.job
+import kotlinx.coroutines.joinAll
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.test.StandardTestDispatcher
 import kotlinx.coroutines.test.TestScope
@@ -22,6 +24,8 @@ import kotlinx.coroutines.test.resetMain
 import kotlinx.coroutines.test.runCurrent
 import kotlinx.coroutines.test.runTest
 import kotlinx.coroutines.test.setMain
+import kotlinx.coroutines.withContext
+import kotlinx.coroutines.withTimeout
 import me.him188.ani.app.data.models.danmaku.DanmakuRegexFilter
 import me.him188.ani.app.data.models.preference.NsfwMode
 import me.him188.ani.app.data.persistent.MemoryDataStore
@@ -60,9 +64,9 @@ import me.him188.ani.datasources.api.source.MediaSourceConfig
 import me.him188.ani.datasources.api.source.MediaSourceFactory
 import me.him188.ani.utils.ktor.ApiInvoker
 import me.him188.ani.utils.platform.annotations.TestOnly
-import org.koin.dsl.koinApplication
+import org.koin.core.context.startKoin
+import org.koin.core.context.stopKoin
 import org.koin.dsl.module
-import kotlin.coroutines.CoroutineContext
 import kotlin.test.AfterTest
 import kotlin.test.BeforeTest
 import kotlin.test.Test
@@ -78,7 +82,7 @@ class TvSettingsViewModelTest {
     fun setUp() { Dispatchers.setMain(StandardTestDispatcher()) }
 
     @AfterTest
-    fun tearDown() { Dispatchers.resetMain() }
+    fun tearDown() { stopKoin(); Dispatchers.resetMain() }
 
     @Test
     fun editsPersistAcrossRepositoryRecreationAndPreserveUnrelatedFields() = runTest {
@@ -87,16 +91,16 @@ class TvSettingsViewModelTest {
         repository.videoScaffoldConfig.update { copy(playbackSpeed = 2.5f, fastForwardSpeed = 3f, autoMarkDone = false) }
         val vm = createViewModel(
             repository, DanmakuRegexFilterRepositoryImpl(MemoryDataStore(emptyList())), TestSources(),
-            MediaSourceSubscriptionRepository(MemoryDataStore(MediaSourceSubscriptionsSaveData.Default.copy(list = emptyList()))), { emptyList() }, StandardTestDispatcher(testScheduler),
+            MediaSourceSubscriptionRepository(MemoryDataStore(MediaSourceSubscriptionsSaveData.Default.copy(list = emptyList()))), { emptyList() },
         )
         try {
-            vm.onIntent(TvSettingsIntent.Video { copy(autoPlayNext = false) })
-            vm.onIntent(TvSettingsIntent.Video { withPlaybackSpeedRange(.5f..1.5f) })
-            vm.onIntent(TvSettingsIntent.Appearance { copy(searchSettings = searchSettings.copy(nsfwMode = NsfwMode.HIDE)) })
-            vm.onIntent(TvSettingsIntent.Appearance {
+            vm.dispatchAndAwait(TvSettingsIntent.Video { copy(autoPlayNext = false) })
+            vm.dispatchAndAwait(TvSettingsIntent.Video { withPlaybackSpeedRange(.5f..1.5f) })
+            vm.dispatchAndAwait(TvSettingsIntent.Appearance { copy(searchSettings = searchSettings.copy(nsfwMode = NsfwMode.HIDE)) })
+            vm.dispatchAndAwait(TvSettingsIntent.Appearance {
                 copy(searchSettings = searchSettings.copy(ignoreDoneAndDroppedSubjects = true))
             })
-            vm.onIntent(TvSettingsIntent.Theme { copy(seedColorValue = 123uL, useDynamicTheme = false) })
+            vm.dispatchAndAwait(TvSettingsIntent.Theme { copy(seedColorValue = 123uL, useDynamicTheme = false) })
             runCurrent()
             val restored = PreferencesRepositoryImpl(store)
             val video = restored.videoScaffoldConfig.flow.first()
@@ -110,7 +114,7 @@ class TvSettingsViewModelTest {
             assertTrue(restored.uiSettings.flow.first().searchSettings.ignoreDoneAndDroppedSubjects)
             assertEquals(123uL, restored.themeSettings.flow.first().seedColorValue)
         } finally {
-            vm.backgroundScope.cancel()
+            vm.backgroundScope.coroutineContext.job.cancelAndJoin()
         }
     }
 
@@ -119,28 +123,28 @@ class TvSettingsViewModelTest {
         val regex = DanmakuRegexFilterRepositoryImpl(MemoryDataStore(emptyList()))
         val vm = createViewModel(
             PreferencesRepositoryImpl(MemoryDataStore(emptyPreferences())), regex, TestSources(),
-            MediaSourceSubscriptionRepository(MemoryDataStore(MediaSourceSubscriptionsSaveData.Default.copy(list = emptyList()))), { emptyList() }, StandardTestDispatcher(testScheduler),
+            MediaSourceSubscriptionRepository(MemoryDataStore(MediaSourceSubscriptionsSaveData.Default.copy(list = emptyList()))), { emptyList() },
         )
         try {
-            vm.onIntent(TvSettingsIntent.SaveRegex(DanmakuRegexFilter("bad", regex = "["), true))
+            vm.dispatchAndAwait(TvSettingsIntent.SaveRegex(DanmakuRegexFilter("bad", regex = "["), true))
             runCurrent()
             assertTrue(regex.flow.first().isEmpty())
             val rule = DanmakuRegexFilter("good", "Spoilers", "spoiler.*")
-            vm.onIntent(TvSettingsIntent.SaveRegex(rule, true))
-            vm.onIntent(TvSettingsIntent.ExportRegex)
+            vm.dispatchAndAwait(TvSettingsIntent.SaveRegex(rule, true))
+            vm.dispatchAndAwait(TvSettingsIntent.ExportRegex)
             runCurrent()
             val exported = assertIs<TvSettingsEvent.Copy>(vm.events.first()).text
-            vm.onIntent(TvSettingsIntent.ImportRegex("invalid"))
+            vm.dispatchAndAwait(TvSettingsIntent.ImportRegex("invalid"))
             runCurrent()
             assertEquals(TvSettingsEvent.ImportFailed, vm.events.first())
             assertEquals(listOf(rule), regex.flow.first())
-            vm.onIntent(TvSettingsIntent.RemoveRegex(rule))
-            vm.onIntent(TvSettingsIntent.ImportRegex(exported))
+            vm.dispatchAndAwait(TvSettingsIntent.RemoveRegex(rule))
+            vm.dispatchAndAwait(TvSettingsIntent.ImportRegex(exported))
             runCurrent()
             assertEquals(TvSettingsEvent.ImportSucceeded, vm.events.first())
             assertEquals(listOf(rule), regex.flow.first())
         } finally {
-            vm.backgroundScope.cancel()
+            vm.backgroundScope.coroutineContext.job.cancelAndJoin()
         }
     }
 
@@ -154,20 +158,22 @@ class TvSettingsViewModelTest {
         val vm = createViewModel(
             PreferencesRepositoryImpl(MemoryDataStore(emptyPreferences())),
             DanmakuRegexFilterRepositoryImpl(MemoryDataStore(emptyList())), sources,
-            MediaSourceSubscriptionRepository(MemoryDataStore(MediaSourceSubscriptionsSaveData.Default.copy(list = emptyList()))), { emptyList() }, StandardTestDispatcher(testScheduler),
+            MediaSourceSubscriptionRepository(MemoryDataStore(MediaSourceSubscriptionsSaveData.Default.copy(list = emptyList()))), { emptyList() },
         )
         val collection = backgroundScope.launch(StandardTestDispatcher(testScheduler)) { vm.uiState.collect {} }
         try {
             runCurrent()
+            vm.awaitState { it.loadFailed }
             assertTrue(vm.uiState.value.loadFailed)
             fail = false
-            vm.onIntent(TvSettingsIntent.Retry)
+            vm.dispatchAndAwait(TvSettingsIntent.Retry)
             runCurrent()
+            vm.awaitState { it.loaded }
             assertTrue(vm.uiState.value.loaded)
             assertFalse(vm.uiState.value.loadFailed)
         } finally {
             collection.cancel()
-            vm.backgroundScope.cancel()
+            vm.backgroundScope.coroutineContext.job.cancelAndJoin()
         }
     }
 
@@ -181,27 +187,27 @@ class TvSettingsViewModelTest {
         val vm = createViewModel(
             PreferencesRepositoryImpl(MemoryDataStore(emptyPreferences())),
             DanmakuRegexFilterRepositoryImpl(MemoryDataStore(emptyList())), sources, subscriptions,
-            { emptyList() }, StandardTestDispatcher(testScheduler),
+            { emptyList() },
         )
         try {
-            vm.onIntent(TvSettingsIntent.SubscriptionEnabled("group", false))
+            vm.dispatchAndAwait(TvSettingsIntent.SubscriptionEnabled("group", false))
             runCurrent()
             assertEquals(listOf(false, false, true), sources.saves.map { it.isEnabled })
             assertFalse(MediaSourceSubscriptionRepository(subscriptionStore).flow.first().single().enabled)
-            vm.onIntent(TvSettingsIntent.SourceEnabled("first", true))
+            vm.dispatchAndAwait(TvSettingsIntent.SourceEnabled("first", true))
             runCurrent()
             assertEquals(listOf(true, false, true), sources.saves.map { it.isEnabled })
             assertFalse(subscriptions.flow.first().single().enabled)
-            vm.onIntent(TvSettingsIntent.SubscriptionEnabled("group", true))
+            vm.dispatchAndAwait(TvSettingsIntent.SubscriptionEnabled("group", true))
             runCurrent()
             assertTrue(sources.saves.all { it.isEnabled })
             assertTrue(subscriptions.flow.first().single().enabled)
-            vm.onIntent(TvSettingsIntent.SourceEnabled("second", false))
+            vm.dispatchAndAwait(TvSettingsIntent.SourceEnabled("second", false))
             runCurrent()
             assertEquals(listOf(true, false, true), sources.saves.map { it.isEnabled })
             assertTrue(subscriptions.flow.first().single().enabled)
         } finally {
-            vm.backgroundScope.cancel()
+            vm.backgroundScope.coroutineContext.job.cancelAndJoin()
         }
     }
 
@@ -221,13 +227,13 @@ class TvSettingsViewModelTest {
         val vm = createViewModel(
             PreferencesRepositoryImpl(MemoryDataStore(emptyPreferences())),
             DanmakuRegexFilterRepositoryImpl(MemoryDataStore(emptyList())), sources, subscriptions,
-            { emptyList() }, StandardTestDispatcher(testScheduler),
+            { emptyList() },
         )
         try {
             val update = launch { updater.updateAllOutdated(force = true) }
             runCurrent()
             assertEquals(1, requests)
-            vm.onIntent(TvSettingsIntent.SubscriptionEnabled("group", false))
+            vm.dispatchAndAwait(TvSettingsIntent.SubscriptionEnabled("group", false))
             runCurrent()
             downloaded.complete(Unit)
             runCurrent()
@@ -237,7 +243,7 @@ class TvSettingsViewModelTest {
             updater.updateAllOutdated(force = true)
             assertEquals(1, requests)
         } finally {
-            vm.backgroundScope.cancel()
+            vm.backgroundScope.coroutineContext.job.cancelAndJoin()
         }
     }
 
@@ -250,16 +256,16 @@ class TvSettingsViewModelTest {
         val vm = createViewModel(
             PreferencesRepositoryImpl(MemoryDataStore(emptyPreferences())),
             DanmakuRegexFilterRepositoryImpl(MemoryDataStore(emptyList())), sources, subscriptions,
-            { emptyList() }, StandardTestDispatcher(testScheduler),
+            { emptyList() },
         )
         try {
-            vm.onIntent(TvSettingsIntent.SubscriptionEnabled("group", false))
+            vm.dispatchAndAwait(TvSettingsIntent.SubscriptionEnabled("group", false))
             runCurrent()
             assertEquals(TvSettingsEvent.SaveFailed, vm.events.first())
             assertTrue(subscriptions.flow.first().single().enabled)
             assertTrue(sources.saves.single().isEnabled)
         } finally {
-            vm.backgroundScope.cancel()
+            vm.backgroundScope.coroutineContext.job.cancelAndJoin()
         }
     }
 
@@ -269,9 +275,8 @@ class TvSettingsViewModelTest {
         sources: MediaSourceManager,
         subscriptions: MediaSourceSubscriptionRepository,
         loadLibraries: suspend () -> List<ByteArray>,
-        context: CoroutineContext,
     ): TvSettingsViewModel {
-        val koin = koinApplication { modules(module {
+        startKoin { modules(module {
             single { settings }
             single { regex }
             single { sources }
@@ -298,8 +303,8 @@ class TvSettingsViewModelTest {
                     coroutineContext = backgroundScope.coroutineContext,
                 )
             }
-        }) }.koin
-        return TvSettingsViewModel(koin, loadLibraries, context)
+        }) }
+        return TvSettingsViewModel(settings, regex, sources, subscriptions, loadLibraries)
     }
 
     private fun source(id: String, subscription: String?, enabled: Boolean = true) = MediaSourceSave(
@@ -333,4 +338,15 @@ class TvSettingsViewModelTest {
     private fun <Api> pendingApi() = object : ApiInvoker<Api> {
         override suspend fun <R> invoke(action: suspend Api.() -> R): R = awaitCancellation()
     }
+
+    private suspend fun TvSettingsViewModel.dispatchAndAwait(intent: TvSettingsIntent) = withContext(Dispatchers.Default) {
+        withTimeout(5_000) {
+            val existingJobs = backgroundScope.coroutineContext.job.children.toSet()
+            onIntent(intent)
+            backgroundScope.coroutineContext.job.children.filter { it !in existingJobs }.toList().joinAll()
+        }
+    }
+
+    private suspend fun TvSettingsViewModel.awaitState(predicate: (TvSettingsUiState) -> Boolean) =
+        withContext(Dispatchers.Default) { withTimeout(5_000) { uiState.first(predicate) } }
 }

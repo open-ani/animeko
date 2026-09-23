@@ -19,26 +19,21 @@ import kotlinx.coroutines.flow.receiveAsFlow
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
-import me.him188.ani.app.data.repository.media.MediaSourceSubscriptionRepository
 import me.him188.ani.app.data.repository.player.DanmakuRegexFilterRepository
+import me.him188.ani.app.data.repository.media.MediaSourceSubscriptionRepository
 import me.him188.ani.app.data.repository.user.SettingsRepository
 import me.him188.ani.app.domain.media.fetch.MediaSourceManager
 import me.him188.ani.app.ui.settings.SettingsViewModel
 import me.him188.ani.app.ui.settings.tabs.about.mergeOpenSourceLibraries
-import org.koin.core.Koin
-import kotlin.coroutines.CoroutineContext
-import kotlin.coroutines.EmptyCoroutineContext
 
 @Stable
 class TvSettingsViewModel(
-    koin: Koin,
+    private val settings: SettingsRepository,
+    private val regexRepository: DanmakuRegexFilterRepository,
+    private val sourceManager: MediaSourceManager,
+    private val subscriptions: MediaSourceSubscriptionRepository,
     private val loadLibraries: suspend () -> List<ByteArray>,
-    backgroundCoroutineContext: CoroutineContext = EmptyCoroutineContext,
-) : SettingsViewModel(koin, backgroundCoroutineContext) {
-    private val settings = koin.get<SettingsRepository>()
-    private val regexRepository = koin.get<DanmakuRegexFilterRepository>()
-    private val sourceManager = koin.get<MediaSourceManager>()
-    private val subscriptions = koin.get<MediaSourceSubscriptionRepository>()
+) : SettingsViewModel() {
     private val eventsChannel = Channel<TvSettingsEvent>(Channel.BUFFERED)
     val events = eventsChannel.receiveAsFlow()
     private val reload = MutableStateFlow(0)

@@ -22,18 +22,14 @@ import me.him188.ani.app.domain.foundation.get
 import me.him188.ani.app.domain.foundation.withValue
 import me.him188.ani.app.domain.settings.ServiceConnectionTester
 import me.him188.ani.app.domain.settings.ServiceConnectionTesters
-import me.him188.ani.app.domain.usecase.GlobalKoin
 import me.him188.ani.app.ui.foundation.AbstractViewModel
 import me.him188.ani.app.ui.foundation.launchInBackground
 import me.him188.ani.app.ui.user.SelfInfoStateProducer
 import me.him188.ani.datasources.bangumi.BangumiClientImpl
-import org.koin.core.Koin
 import org.koin.core.component.KoinComponent
 import org.koin.core.component.inject
 
-open class MainScreenSharedViewModel(private val koin: Koin = GlobalKoin) : AbstractViewModel(), KoinComponent {
-    final override fun getKoin(): Koin = koin
-
+open class MainScreenSharedViewModel : AbstractViewModel(), KoinComponent {
     val selfInfo = SelfInfoStateProducer(koin = getKoin()).flow
 
     private val clientProvider: HttpClientProvider by inject()

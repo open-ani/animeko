@@ -46,16 +46,14 @@ import me.him188.ani.app.ui.subject.episode.list.EpisodeListItem
 import me.him188.ani.datasources.api.topic.toggleCollected
 import me.him188.ani.tv.ui.foundation.TvNavigationEvent
 import me.him188.ani.tv.ui.foundation.TvNavigationEvents
-import org.koin.core.Koin
 
 class TvSubjectDetailsViewModel(
     private val subjectId: Int,
     private val placeholder: SubjectInfo?,
-    koin: Koin,
-) : SubjectDetailsViewModel(subjectId, placeholder, koin) {
-    private val collectionRepository = koin.get<SubjectCollectionRepository>()
-    private val searchRepository = koin.get<SubjectSearchRepository>()
-    private val settingsRepository = koin.get<SettingsRepository>()
+    private val collectionRepository: SubjectCollectionRepository,
+    private val searchRepository: SubjectSearchRepository,
+    private val settingsRepository: SettingsRepository,
+) : SubjectDetailsViewModel(subjectId, placeholder) {
     private val images = MutableStateFlow(TvSubjectImages())
     private val operation = MutableStateFlow(TvSubjectOperation())
     private val tagResults = MutableStateFlow<TvTagResults?>(null)
@@ -184,7 +182,16 @@ class TvSubjectDetailsViewModel(
             is TvSubjectDetailsIntent.OpenCharacter -> navigation.emit(TvNavigationEvent.Character(intent.characterId))
             is TvSubjectDetailsIntent.OpenStaff -> navigation.emit(TvNavigationEvent.Staff(intent.personId))
             is TvSubjectDetailsIntent.SearchTag -> {
-                val pager = searchTag(intent.tag)
+                val pager = settingsRepository.uiSettings.flow.map { it.searchSettings }.flatMapLatest { settings ->
+                    searchRepository.searchSubjects(
+                        SubjectSearchQuery(keywords = "", tags = listOf(intent.tag), nsfw = when {
+                            intent.tag == "R18" -> true
+                            settings.nsfwMode == NsfwMode.HIDE -> false
+                            else -> null
+                        }),
+                        ignoreDoneAndDropped = { settings.ignoreDoneAndDroppedSubjects },
+                    )
+                }
                     .map { page -> page.map { item ->
                         val info = item.subjectInfo
                         PersonSubjectSummary(info.subjectId, info.name, info.nameCn, info.imageLarge)
@@ -231,17 +238,6 @@ class TvSubjectDetailsViewModel(
         if (content.episodesLoading || content.episodes.none { it.episodeId == episodeId }) return
         navigation.emit(TvNavigationEvent.Episode(subjectId, episodeId))
     }
-
-    private fun searchTag(tag: String) = settingsRepository.uiSettings.flow.map { it.searchSettings }.flatMapLatest { settings ->
-        searchRepository.searchSubjects(
-            SubjectSearchQuery(keywords = "", tags = listOf(tag), nsfw = when {
-                tag == "R18" -> true
-                settings.nsfwMode == NsfwMode.HIDE -> false
-                else -> null
-            }),
-            ignoreDoneAndDropped = { settings.ignoreDoneAndDroppedSubjects },
-        )
-    }.cachedIn(backgroundScope)
 
     private fun loadImages() {
         imagesJob?.cancel()

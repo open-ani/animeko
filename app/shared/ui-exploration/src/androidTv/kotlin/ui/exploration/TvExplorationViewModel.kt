@@ -33,8 +33,8 @@ import org.koin.core.Koin
 
 class TvExplorationViewModel(
     koin: Koin,
+    private val collectionRepository: SubjectCollectionRepository,
 ) : ExplorationPageViewModel(koin) {
-    private val collectionRepository = koin.get<SubjectCollectionRepository>()
     // Keep the presented pages across route changes, like the shared trending pager.
     // Recreating an empty presenter briefly removes the first row and shifts the saved viewport.
     val recommendations = explorationPageState.recommendationPager.launchAsLazyPagingItemsIn(backgroundScope)

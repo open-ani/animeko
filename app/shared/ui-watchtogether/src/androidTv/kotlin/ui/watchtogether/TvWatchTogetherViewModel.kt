@@ -9,16 +9,14 @@
 
 package me.him188.ani.tv.ui.watchtogether
 
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.NonCancellable
-import kotlinx.coroutines.cancelAndJoin
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.combine
-import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.first
-import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.receiveAsFlow
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
@@ -26,7 +24,6 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import kotlinx.coroutines.withTimeoutOrNull
 import me.him188.ani.app.data.network.WatchTogetherJoinException
-import me.him188.ani.app.data.network.WatchTogetherJoinFailure
 import me.him188.ani.app.data.repository.user.SettingsRepository
 import me.him188.ani.app.domain.session.SessionState
 import me.him188.ani.app.domain.session.SessionStateProvider
@@ -38,26 +35,20 @@ import me.him188.ani.app.ui.watchtogether.WatchTogetherConnectionPresentation
 import me.him188.ani.app.ui.watchtogether.WatchTogetherIntent
 import me.him188.ani.app.ui.watchtogether.WatchTogetherPhase
 import me.him188.ani.app.ui.watchtogether.WatchTogetherViewModel
-import org.koin.core.Koin
-import kotlin.coroutines.CoroutineContext
-import kotlin.coroutines.EmptyCoroutineContext
 
 /** App-scoped so room recovery and following continue across TV navigation entries. */
 class TvWatchTogetherViewModel(
-    koin: Koin,
-    backgroundCoroutineContext: CoroutineContext = EmptyCoroutineContext,
-) : WatchTogetherViewModel(koin, backgroundCoroutineContext) {
-    private val manager = koin.get<WatchTogetherManager>()
-    private val settingsRepository = koin.get<SettingsRepository>()
-    private val sessionStateProvider = koin.get<SessionStateProvider>()
-    private var joinJob: Job? = null
+    private val manager: WatchTogetherManager,
+    private val settings: SettingsRepository,
+    sessionStateProvider: SessionStateProvider,
+) : WatchTogetherViewModel() {
     private val form = MutableStateFlow(TvTogetherState())
-    private val roomNameInput = MutableStateFlow<String?>(null)
+    private var joinJob: Job? = null
     private val navigation = Channel<TvTogetherNavigation>(Channel.BUFFERED)
     val navigationEvents = navigation.receiveAsFlow()
-    val uiState = combine(uiStateFlow, form, roomNameInput) { shared, form, roomName ->
+    val uiState = combine(uiStateFlow, form, sessionStateProvider.stateFlow) { shared, form, session ->
         TvTogetherState(
-            roomName = shared.room?.roomName ?: roomName ?: shared.joinForm.lastRoomName,
+            roomName = shared.room?.roomName ?: form.roomName,
             password = form.password,
             joined = shared.phase == WatchTogetherPhase.IN_ROOM,
             joining = shared.phase == WatchTogetherPhase.JOINING,
@@ -66,7 +57,7 @@ class TvWatchTogetherViewModel(
             connection = shared.room?.connection ?: WatchTogetherConnectionPresentation.CONNECTED,
             playback = shared.room?.playback,
             members = shared.room?.members.orEmpty(),
-            requiresLogin = shared.requiresLogin,
+            requiresLogin = session !is SessionState.Valid,
             error = form.error,
         )
     }.stateIn(backgroundScope, SharingStarted.Eagerly, TvTogetherState())
@@ -74,9 +65,8 @@ class TvWatchTogetherViewModel(
     init {
         manager.start()
         backgroundScope.launch {
-            uiStateFlow.map { it.phase }.distinctUntilChanged().collect { phase ->
-                if (phase == WatchTogetherPhase.IN_ROOM) form.update { it.copy(password = "") }
-            }
+            val lastRoomName = settings.watchTogetherSettings.flow.first().lastRoomName
+            form.update { if (it.roomName.isEmpty()) it.copy(roomName = lastRoomName) else it }
         }
         backgroundScope.launch {
             effects.collect { effect ->
@@ -118,64 +108,55 @@ class TvWatchTogetherViewModel(
 
     fun onIntent(intent: TvTogetherIntent) {
         when (intent) {
-            TvTogetherIntent.Open -> {
-                backgroundScope.launch {
-                    settingsRepository.watchTogetherSettings.update { copy(enabled = true) }
-                }
-            }
-            is TvTogetherIntent.RoomName -> {
-                roomNameInput.value = intent.value
-                form.update { it.copy(error = null) }
-            }
-            is TvTogetherIntent.Password -> {
-                form.update { it.copy(password = intent.value, error = null) }
-            }
+            TvTogetherIntent.Open -> backgroundScope.launch { settings.watchTogetherSettings.update { copy(enabled = true) } }
+            is TvTogetherIntent.RoomName -> form.update { it.copy(roomName = intent.value, error = null) }
+            is TvTogetherIntent.Password -> form.update { it.copy(password = intent.value, error = null) }
             is TvTogetherIntent.Foreground -> onAppForegroundChanged(intent.value)
             TvTogetherIntent.ToggleFollowing -> onIntent(WatchTogetherIntent.SetFollowing(!uiState.value.following))
-            TvTogetherIntent.CancelJoin -> leaveRoom()
-            TvTogetherIntent.Leave -> {
-                leaveRoom()
+            TvTogetherIntent.CancelJoin -> {
+                val job = joinJob
+                if (job?.isActive == true) job.cancel()
+                else backgroundScope.launch { manager.leave() }
+            }
+
+            TvTogetherIntent.Leave -> backgroundScope.launch {
+                manager.leave()
                 form.update { it.copy(password = "", error = null) }
             }
+
             TvTogetherIntent.Join -> {
-                form.update { it.copy(error = null) }
-                joinRoom(roomNameInput.value ?: uiState.value.roomName, form.value.password)
+                if (joinJob?.isActive == true || uiState.value.joining || uiState.value.requiresLogin) return
+                if (form.value.roomName.isBlank()) {
+                    form.update { it.copy(error = TvTogetherError.EmptyName) }
+                    return
+                }
+                val roomName = form.value.roomName
+                val password = form.value.password
+                joinJob = backgroundScope.launch {
+                    form.update { it.copy(error = null) }
+                    try {
+                        val result = withTimeoutOrNull(30_000) {
+                            settings.watchTogetherSettings.update { copy(enabled = true) }
+                            manager.state.first { it !is WatchTogetherState.Disabled }
+                            manager.join(roomName, password)
+                        }
+                        if (result == null) form.update { it.copy(error = TvTogetherError.Timeout) }
+                        result?.onFailure { error ->
+                            form.update { it.copy(error = TvTogetherError.Join((error as? WatchTogetherJoinException)?.failure)) }
+                        }
+                        if (manager.state.value is WatchTogetherState.InRoom) form.update { it.copy(password = "") }
+                    } catch (e: CancellationException) {
+                        throw e
+                    } finally {
+                        // A cancelled join leaves the shared manager in Joining until leave resets it.
+                        if (manager.state.value is WatchTogetherState.Joining) {
+                            withContext(NonCancellable) {
+                                withTimeoutOrNull(5_000) { manager.leave() }
+                            }
+                        }
+                    }
+                }
             }
-        }
-    }
-
-    private fun joinRoom(roomName: String, password: String) {
-        if (joinJob?.isActive == true || manager.state.value is WatchTogetherState.Joining) return
-        if (roomName.isBlank()) {
-            form.update { it.copy(error = TvTogetherError.EmptyName) }
-            return
-        }
-        joinJob = backgroundScope.launch {
-            if (sessionStateProvider.stateFlow.first() !is SessionState.Valid) return@launch
-            try {
-                val result = withTimeoutOrNull(30_000) {
-                    settingsRepository.watchTogetherSettings.update { copy(enabled = true) }
-                    manager.state.first { it !is WatchTogetherState.Disabled }
-                    manager.join(roomName, password)
-                }
-                if (result == null) form.update { it.copy(error = TvTogetherError.Timeout) }
-                result?.onFailure { error ->
-                    val failure = (error as? WatchTogetherJoinException)?.failure ?: WatchTogetherJoinFailure.TEMPORARY
-                    form.update { it.copy(error = TvTogetherError.Join(failure)) }
-                }
-            } finally {
-                if (manager.state.value is WatchTogetherState.Joining) {
-                    withContext(NonCancellable) { withTimeoutOrNull(5_000) { manager.leave() } }
-                }
-            }
-        }
-    }
-
-    private fun leaveRoom() {
-        backgroundScope.launch {
-            joinJob?.cancelAndJoin()
-            form.update { it.copy(password = "", error = null) }
-            manager.leave()
         }
     }
 }

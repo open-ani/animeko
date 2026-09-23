@@ -29,7 +29,6 @@ import me.him188.ani.app.data.repository.RepositoryServiceUnavailableException
 import me.him188.ani.app.data.repository.person.PersonCommentRepository
 import me.him188.ani.app.data.repository.person.PersonDetailsRepository
 import me.him188.ani.app.domain.comment.PostCommentUseCase
-import me.him188.ani.app.domain.usecase.GlobalKoin
 import me.him188.ani.app.ui.comment.BangumiCommentSticker
 import me.him188.ani.app.ui.comment.CommentEditorState
 import me.him188.ani.app.ui.comment.CommentMapperContext
@@ -44,7 +43,6 @@ import me.him188.ani.app.ui.comment.toDataReason
 import me.him188.ani.app.ui.foundation.AbstractViewModel
 import me.him188.ani.utils.coroutines.flows.FlowRestarter
 import me.him188.ani.utils.coroutines.flows.restartable
-import org.koin.core.Koin
 import org.koin.core.component.KoinComponent
 import org.koin.core.component.inject
 import kotlin.time.Duration.Companion.seconds
@@ -58,10 +56,7 @@ import kotlin.time.Duration.Companion.seconds
 abstract class PeopleDetailsViewModel(
     private val commentTarget: PersonCommentTarget,
     private val originalCommentsUrl: String,
-    private val koin: Koin = GlobalKoin,
 ) : AbstractViewModel(), KoinComponent {
-    final override fun getKoin(): Koin = koin
-
     protected val repository: PersonDetailsRepository by inject()
     private val commentRepository: PersonCommentRepository by inject()
     private val commentReportService: AniCommentReportService by inject()

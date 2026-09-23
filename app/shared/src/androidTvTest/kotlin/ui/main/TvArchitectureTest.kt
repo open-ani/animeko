@@ -14,7 +14,15 @@ import com.lemonappdev.konsist.api.verify.assertFalse
 import java.io.File
 import kotlin.test.Test
 
-/** TV 页面消费状态与 Intent，ViewModel 继承并复用对应共享功能。 */
+/**
+ * TV 约定边界守护.
+ *
+ * D1 放弃编译期隔离后, 手机 UI 树对 tv variant 完整可见 —— 本测试是「TV 不调用手机 UI」
+ * 约定的主要机械守护: 禁止 TV 代码 import 手机 UI 树 (白名单基建除外).
+ *
+ * v4 起不再禁 material3: 上游 PR#3217 的 TV 方案就是 material3 + 自研焦点系统
+ * (完全不用 tv-material), 我们的新基建 (TvImmersiveCards/TvNavigationSideRail) 与之对齐.
+ */
 class TvArchitectureTest {
 
     /** me.him188.ani.app.ui.* 中 TV 允许 import 的基建白名单 (§4.2). */

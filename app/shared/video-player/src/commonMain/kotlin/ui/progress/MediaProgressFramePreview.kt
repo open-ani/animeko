@@ -141,7 +141,11 @@ fun rememberMediaProgressFramePreviewState(
     val state = remember(framePreview, density, maxWidth, maxHeight) {
         val maxWidthPx = with(density) { maxWidth.roundToPx() }
         val maxHeightPx = with(density) { maxHeight.roundToPx() }
-        createMediaProgressFramePreviewState(player, maxWidthPx, maxHeightPx)!!
+        MediaProgressFramePreviewState(
+            fetchFrame = { positionMillis ->
+                framePreview.getPreviewFrame(positionMillis, maxWidthPx, maxHeightPx)?.toImageBitmap()
+            },
+        )
     }
     LaunchedEffect(state, player) {
         player.mediaData.collect { data ->

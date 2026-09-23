@@ -36,7 +36,6 @@ import me.him188.ani.app.domain.episode.GetAnimeSeasonIdsFlowUseCase
 import me.him188.ani.app.domain.episode.SetEpisodeCollectionTypeUseCase
 import me.him188.ani.app.domain.search.SubjectSearchQuery
 import me.him188.ani.app.domain.search.withYearFilter
-import me.him188.ani.app.domain.usecase.GlobalKoin
 import me.him188.ani.app.ui.exploration.search.SearchPageEffect
 import me.him188.ani.app.ui.exploration.search.SearchPageIntent
 import me.him188.ani.app.ui.exploration.search.SearchPageState
@@ -53,17 +52,13 @@ import me.him188.ani.utils.analytics.Analytics
 import me.him188.ani.utils.analytics.AnalyticsEvent.Companion.SearchStart
 import me.him188.ani.utils.analytics.AnalyticsEvent.Companion.SubjectEnter
 import me.him188.ani.utils.analytics.recordEvent
-import org.koin.core.Koin
 import org.koin.core.component.KoinComponent
 import org.koin.core.component.inject
 
 @Stable
 open class SearchViewModel(
     initialSearchQuery: SubjectSearchQuery,
-    private val koin: Koin = GlobalKoin,
 ) : AbstractViewModel(), KoinComponent {
-    final override fun getKoin(): Koin = koin
-
     private val searchHistoryRepository: SubjectSearchHistoryRepository by inject()
     private val subjectSearchCompletionRepository: SubjectSearchCompletionRepository by inject()
     private val episodeCollectionRepository: EpisodeCollectionRepository by inject()

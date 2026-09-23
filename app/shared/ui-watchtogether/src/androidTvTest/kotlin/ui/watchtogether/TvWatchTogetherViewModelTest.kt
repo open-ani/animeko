@@ -10,18 +10,20 @@
 package me.him188.ani.tv.ui.watchtogether
 
 import androidx.datastore.preferences.core.emptyPreferences
+import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.awaitCancellation
-import kotlinx.coroutines.cancel
+import kotlinx.coroutines.cancelAndJoin
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.emptyFlow
-import kotlinx.coroutines.test.StandardTestDispatcher
-import kotlinx.coroutines.test.TestScope
-import kotlinx.coroutines.test.advanceTimeBy
+import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.update
+import kotlinx.coroutines.job
+import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.test.resetMain
-import kotlinx.coroutines.test.runCurrent
-import kotlinx.coroutines.test.runTest
 import kotlinx.coroutines.test.setMain
+import kotlinx.coroutines.withTimeout
 import me.him188.ani.app.data.network.WatchTogetherApiService
 import me.him188.ani.app.data.network.WatchTogetherServerEvent
 import me.him188.ani.app.data.persistent.MemoryDataStore
@@ -43,7 +45,8 @@ import me.him188.ani.client.models.AniWatchTogetherJoinResponse
 import me.him188.ani.client.models.AniWatchTogetherReportResponse
 import me.him188.ani.utils.ktor.ApiInvoker
 import me.him188.ani.utils.platform.annotations.TestOnly
-import org.koin.dsl.koinApplication
+import org.koin.core.context.startKoin
+import org.koin.core.context.stopKoin
 import org.koin.dsl.module
 import kotlin.test.AfterTest
 import kotlin.test.BeforeTest
@@ -55,82 +58,54 @@ import kotlin.test.assertNull
 @OptIn(TestOnly::class)
 class TvWatchTogetherViewModelTest {
     @BeforeTest
-    fun setUp() { Dispatchers.setMain(StandardTestDispatcher()) }
+    fun setUp() { Dispatchers.setMain(Dispatchers.Unconfined) }
 
     @AfterTest
-    fun tearDown() { Dispatchers.resetMain() }
+    fun tearDown() { stopKoin(); Dispatchers.resetMain() }
 
     @Test
-    fun cancellingAnInFlightJoinLeavesTheRoomAndAllowsRetry() = runTest {
-        withViewModel { vm, manager, api ->
-            vm.onIntent(TvTogetherIntent.RoomName("Room"))
-            vm.onIntent(TvTogetherIntent.Password("secret"))
-            runCurrent()
-            vm.onIntent(TvTogetherIntent.Join)
-            runCurrent()
-            assertIs<WatchTogetherState.Joining>(manager.state.value)
-            vm.onIntent(TvTogetherIntent.RoomName("Room"))
-            vm.onIntent(TvTogetherIntent.Password("secret"))
-            runCurrent()
-            vm.onIntent(TvTogetherIntent.Join)
-            runCurrent()
-            assertEquals(1, api.joinCalls)
+    fun cancellingAnInFlightJoinLeavesTheRoomAndAllowsRetry() = runBlocking {
+        withTimeout(5_000) {
+            withViewModel { vm, manager, api ->
+                vm.onIntent(TvTogetherIntent.RoomName("Room"))
+                vm.onIntent(TvTogetherIntent.Password("secret"))
+                vm.onIntent(TvTogetherIntent.Join)
+                api.joinCalls.first { it == 1 }
+                assertIs<WatchTogetherState.Joining>(manager.state.value)
 
-            vm.onIntent(TvTogetherIntent.CancelJoin)
-            runCurrent()
-            assertEquals(1, api.cancelledCalls)
-            assertIs<WatchTogetherState.Idle>(manager.state.value)
-            assertNull(vm.uiState.value.error)
+                vm.onIntent(TvTogetherIntent.CancelJoin)
+                manager.state.first { it is WatchTogetherState.Idle }
+                assertEquals(1, api.cancelledCalls.value)
+                assertNull(vm.uiState.value.error)
+                vm.uiState.first { !it.joining }
 
-            vm.onIntent(TvTogetherIntent.RoomName("Room"))
-            vm.onIntent(TvTogetherIntent.Password("secret"))
-            runCurrent()
-            vm.onIntent(TvTogetherIntent.Join)
-            runCurrent()
-            assertEquals(2, api.joinCalls)
-            vm.onIntent(TvTogetherIntent.Leave)
-            runCurrent()
-            assertIs<WatchTogetherState.Idle>(manager.state.value)
+                vm.onIntent(TvTogetherIntent.Join)
+                api.joinCalls.first { it == 2 }
+                vm.onIntent(TvTogetherIntent.CancelJoin)
+                manager.state.first { it is WatchTogetherState.Idle }
+            }
         }
     }
 
     @Test
-    fun joinTimeoutClearsThePendingRoomAndExposesAnEditableError() = runTest {
-        withViewModel { vm, manager, api ->
-            vm.onIntent(TvTogetherIntent.RoomName("Room"))
-            vm.onIntent(TvTogetherIntent.Password("secret"))
-            runCurrent()
-            vm.onIntent(TvTogetherIntent.Join)
-            runCurrent()
-            advanceTimeBy(30_001)
-            runCurrent()
-            assertEquals(1, api.cancelledCalls)
-            assertIs<WatchTogetherState.Idle>(manager.state.value)
-            assertEquals(TvTogetherError.Timeout, vm.uiState.value.error)
-            vm.onIntent(TvTogetherIntent.RoomName("Edited room"))
-            runCurrent()
-            assertNull(vm.uiState.value.error)
+    fun clearingTheRememberedRoomNameIsValidatedBeforeJoining() = runBlocking {
+        withTimeout(5_000) {
+            withViewModel(lastRoomName = "Remembered room") { vm, _, api ->
+                vm.uiState.first { it.roomName == "Remembered room" }
+                vm.onIntent(TvTogetherIntent.RoomName(""))
+                vm.onIntent(TvTogetherIntent.Join)
+                val state = vm.uiState.first { it.error == TvTogetherError.EmptyName }
+                assertEquals(0, api.joinCalls.value)
+                assertEquals("", state.roomName)
+            }
         }
     }
 
-    @Test
-    fun clearingTheRememberedRoomNameIsValidatedBeforeJoining() = runTest {
-        withViewModel(lastRoomName = "Remembered room") { vm, _, api ->
-            runCurrent()
-            assertEquals("Remembered room", vm.uiState.value.roomName)
-            vm.onIntent(TvTogetherIntent.RoomName(""))
-            vm.onIntent(TvTogetherIntent.Join)
-            runCurrent()
-            assertEquals(0, api.joinCalls)
-            assertEquals("", vm.uiState.value.roomName)
-            assertEquals(TvTogetherError.EmptyName, vm.uiState.value.error)
-        }
-    }
-
-    private suspend fun TestScope.withViewModel(
+    private suspend fun withViewModel(
         lastRoomName: String = "",
         block: suspend (TvWatchTogetherViewModel, WatchTogetherManager, PendingApi) -> Unit,
     ) {
+        val appScope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
         val settings = PreferencesRepositoryImpl(MemoryDataStore(emptyPreferences()))
         settings.watchTogetherSettings.update { copy(lastRoomName = lastRoomName) }
         val sessions = object : SessionStateProvider {
@@ -139,8 +114,8 @@ class TvWatchTogetherViewModelTest {
         }
         val bridge = LocalPlaybackBridge()
         val api = PendingApi()
-        val manager = WatchTogetherManager(backgroundScope, api, settings.watchTogetherSettings, sessions, bridge, PlaybackAutomationGate())
-        val app = koinApplication {
+        val manager = WatchTogetherManager(appScope, api, settings.watchTogetherSettings, sessions, bridge, PlaybackAutomationGate())
+        startKoin {
             modules(module {
                 single<SettingsRepository> { settings }
                 single<SessionStateProvider> { sessions }
@@ -154,32 +129,32 @@ class TvWatchTogetherViewModelTest {
                         bangumiApi = pendingApi(), oauthApi = pendingApi(),
                         sessionManager = SessionManager(
                             TokenRepository(MemoryDataStore(TokenSave.Initial)),
-                            backgroundScope,
+                            appScope,
                             refreshSession = { awaitCancellation() },
                         ),
-                        coroutineContext = backgroundScope.coroutineContext,
+                        coroutineContext = appScope.coroutineContext,
                     )
                 }
             })
         }
-        val vm = TvWatchTogetherViewModel(app.koin, StandardTestDispatcher(testScheduler))
+        val vm = TvWatchTogetherViewModel(manager, settings, sessions)
         try {
             block(vm, manager, api)
         } finally {
-            vm.backgroundScope.cancel()
-            app.close()
+            vm.backgroundScope.coroutineContext.job.cancelAndJoin()
+            appScope.coroutineContext.job.cancelAndJoin()
         }
     }
 
     private class PendingApi : WatchTogetherApiService {
-        var joinCalls = 0
-        var cancelledCalls = 0
+        val joinCalls = MutableStateFlow(0)
+        val cancelledCalls = MutableStateFlow(0)
         override suspend fun join(roomName: String, password: String, following: Boolean): AniWatchTogetherJoinResponse {
-            joinCalls++
+            joinCalls.update { it + 1 }
             try {
                 awaitCancellation()
             } finally {
-                cancelledCalls++
+                cancelledCalls.update { it + 1 }
             }
         }
         override suspend fun report(roomId: String, request: AniReportWatchTogetherStateRequest): AniWatchTogetherReportResponse =

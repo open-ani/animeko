@@ -190,10 +190,10 @@ import me.him188.ani.datasources.api.source.MediaSourceKind
 import me.him188.ani.datasources.api.topic.isDoneOrDropped
 import me.him188.ani.utils.coroutines.SingleTaskExecutor
 import me.him188.ani.utils.coroutines.flows.FlowRestarter
-import me.him188.ani.utils.coroutines.flows.catching
 import me.him188.ani.utils.coroutines.flows.flowOfEmptyList
 import me.him188.ani.utils.coroutines.flows.flowOfNull
 import me.him188.ani.utils.coroutines.flows.restartable
+import me.him188.ani.utils.coroutines.flows.shareTransparentlyIn
 import me.him188.ani.utils.coroutines.sampleWithInitial
 import me.him188.ani.utils.io.SystemPath
 import me.him188.ani.utils.logging.info
@@ -509,7 +509,7 @@ open class EpisodeViewModel(
 
     @OptIn(UnsafeEpisodeSessionApi::class)
     protected val recommendationsFlow = subjectInfoFlow.map { getSubjectRecommendations(it.subjectId) }
-        .catching().shareInBackground()
+        .shareTransparentlyIn(backgroundScope, SharingStarted.WhileSubscribed(5_000), replay = 1)
 
     @OptIn(UnsafeEpisodeSessionApi::class)
     val episodeDetailsState: EpisodeDetailsState = run {
@@ -522,7 +522,7 @@ open class EpisodeViewModel(
                 }
                     .produceState(null),
             ),
-            recommendations = recommendationsFlow.map { it.getOrThrow() }.produceState(emptyList()),
+            recommendations = recommendationsFlow.produceState(emptyList()),
             subjectDetailsStateLoader = SubjectDetailsStateLoader(subjectDetailsStateFactory, backgroundScope),
         )
     }
