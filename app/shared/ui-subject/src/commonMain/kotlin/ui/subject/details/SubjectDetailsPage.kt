@@ -153,7 +153,7 @@ import me.him188.ani.app.ui.subject.AiringLabelState
 import me.him188.ani.app.ui.subject.SubjectProgressState
 import me.him188.ani.app.ui.subject.collection.components.EditableSubjectCollectionTypeButton
 import me.him188.ani.app.ui.subject.details.components.CollectionData
-import me.him188.ani.app.ui.subject.details.tracking.AniListTrackingSection
+import me.him188.ani.app.ui.subject.details.tracking.TrackingSection
 import me.him188.ani.app.ui.subject.details.components.SeasonTag
 import me.him188.ani.app.ui.subject.details.components.SelectEpisodeButtons
 import me.him188.ani.app.ui.subject.details.components.SubjectBlurredBackground
@@ -442,15 +442,7 @@ private fun SubjectDetailsPage(
             },
             collectionActions = {
                 state.info?.let { info ->
-                    AniListTrackingSection(info, showCollection = selfInfo.isSessionValid == true,
-                        collectionTracked = selfInfo.isSessionValid == true && uiState.selfCollected,
-                        bangumiConnected = selfInfo.bangumiConnected == true, collectionAction = {
-                        if (selfInfo.isSessionValid == false) {
-                            OutlinedButton(onClickLogin) { Text(stringResource(Lang.subject_details_login_to_collect)) }
-                        } else {
-                            EditableSubjectCollectionTypeButton(uiState.collectionTypeEdit, state)
-                        }
-                    })
+                    TrackingSection(info.subjectId)
                 }
             },
             rating = {

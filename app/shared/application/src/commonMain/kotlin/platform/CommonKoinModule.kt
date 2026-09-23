@@ -110,6 +110,11 @@ import me.him188.ani.app.domain.watchtogether.WatchTogetherManager
 import me.him188.ani.app.domain.usecase.useCaseModules
 import me.him188.ani.app.ui.subject.details.state.DefaultSubjectDetailsStateFactory
 import me.him188.ani.app.ui.subject.details.state.SubjectDetailsStateFactory
+import me.him188.ani.app.ui.subject.details.tracking.TrackingCoordinator
+import me.him188.ani.app.data.tracking.BangumiTrackingSource
+import me.him188.ani.tracking.api.DefaultTrackingRegistry
+import me.him188.ani.tracking.api.TrackingRegistry
+import me.him188.ani.tracking.api.TrackingSource
 import me.him188.ani.datasources.bangumi.BangumiClient
 import me.him188.ani.datasources.bangumi.BangumiClientImpl
 import me.him188.ani.utils.coroutines.IO_
@@ -432,6 +437,9 @@ private fun KoinApplication.otherModules(
     // Caching
     single<MeteredNetworkDetector> { createMeteredNetworkDetector(getContext()) }
     single<SubjectDetailsStateFactory> { DefaultSubjectDetailsStateFactory() }
+    single { BangumiTrackingSource(get(), get(), inject(), get(), inject()) }
+    single<TrackingRegistry> { DefaultTrackingRegistry(listOf(get<BangumiTrackingSource>()) + getAll<TrackingSource>()) }
+    single { TrackingCoordinator(get()) }
 }
 
 /**

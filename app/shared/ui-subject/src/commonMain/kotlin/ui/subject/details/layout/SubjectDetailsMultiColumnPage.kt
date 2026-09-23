@@ -110,7 +110,7 @@ import me.him188.ani.app.ui.subject.details.sections.SubjectInfoTable
 import me.him188.ani.app.ui.subject.details.sections.SubjectRatingSummary
 import me.him188.ani.app.ui.subject.details.sections.SubjectSummarySection
 import me.him188.ani.app.ui.subject.details.sections.SubjectTagsSection
-import me.him188.ani.app.ui.subject.details.tracking.AniListTrackingSection
+import me.him188.ani.app.ui.subject.details.tracking.TrackingSection
 import me.him188.ani.app.ui.subject.details.state.SubjectDetailsState
 import me.him188.ani.app.ui.subject.details.state.SubjectDetailsUiState
 import me.him188.ani.app.ui.subject.details.state.rememberAiringLabelState
@@ -502,17 +502,7 @@ private fun SubjectSidebar(
             onPlay = { uiState.progressInfo?.nextEpisodeIdToPlay?.let(onPlay) },
             Modifier.fillMaxWidth(),
         )
-        AniListTrackingSection(info, showCollection = selfInfo.isSessionValid == true,
-            collectionTracked = selfInfo.isSessionValid == true && uiState.selfCollected,
-            bangumiConnected = selfInfo.bangumiConnected == true, collectionAction = {
-            if (selfInfo.isSessionValid == false) {
-                OutlinedButton(onClickLogin, Modifier.fillMaxWidth()) {
-                    Text(stringResource(Lang.subject_details_login_to_collect))
-                }
-            } else {
-                EditableSubjectCollectionTypeButton(uiState.collectionTypeEdit, state)
-            }
-        }, modifier = Modifier.fillMaxWidth())
+        TrackingSection(info.subjectId, Modifier.fillMaxWidth())
         // 收藏统计三格 (收藏 / 在看 / 想看)
         SubjectCollectionStatsRow(info.collectionStats)
 

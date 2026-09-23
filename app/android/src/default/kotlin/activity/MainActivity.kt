@@ -29,13 +29,10 @@ import androidx.lifecycle.lifecycleScope
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.launch
-import me.him188.ani.app.tracking.anilist.AniListTrackingProvider
-import me.him188.ani.app.tracking.anilist.createAniListHttpClient
+import me.him188.ani.app.domain.usecase.GlobalKoin
 import me.him188.ani.app.ui.settings.account.AniListAccountChanges
-import me.him188.ani.tracking.api.AndroidTrackingCredentialStore
 import me.him188.ani.tracking.api.TrackingLoginCredentials
-import me.him188.ani.tracking.api.TrackingProviderId
-import me.him188.ani.utils.ktor.getPlatformKtorEngine
+import me.him188.ani.tracking.api.TrackingProvider
 import me.him188.ani.android.BuildConfig
 import me.him188.ani.app.data.repository.user.QrLoginRepository
 import me.him188.ani.app.navigation.AniNavigator
@@ -75,12 +72,8 @@ class MainActivity : AniComponentActivity() {
                 }?.takeIf(String::isNotBlank) ?: return
                 intent.data = null
                 lifecycleScope.launch {
-                    val client = createAniListHttpClient(getPlatformKtorEngine())
                     try {
-                        val provider = AniListTrackingProvider(
-                            client,
-                            AndroidTrackingCredentialStore(applicationContext, TrackingProviderId("anilist")),
-                        )
+                        val provider = GlobalKoin.get<TrackingProvider>()
                         provider.login(TrackingLoginCredentials(secret = token))
                         AniListAccountChanges.notifyConnected()
                         Toast.makeText(this@MainActivity, "AniList connected", Toast.LENGTH_SHORT).show()
@@ -88,8 +81,6 @@ class MainActivity : AniComponentActivity() {
                         throw failure
                     } catch (_: Exception) {
                         Toast.makeText(this@MainActivity, "AniList connection failed", Toast.LENGTH_SHORT).show()
-                    } finally {
-                        client.close()
                     }
                 }
             }
