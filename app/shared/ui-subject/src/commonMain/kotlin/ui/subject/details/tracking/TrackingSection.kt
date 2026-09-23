@@ -86,6 +86,8 @@ import me.him188.ani.tracking.api.TrackingRegistry
 import me.him188.ani.tracking.api.TrackingScore
 import me.him188.ani.tracking.api.TrackingSnapshot
 import me.him188.ani.tracking.api.TrackingStatus
+import me.him188.ani.app.ui.lang.*
+import org.jetbrains.compose.resources.stringResource
 import kotlin.time.Instant
 
 private enum class Field { STATUS, PROGRESS, SCORE, START_DATE, FINISH_DATE }
@@ -121,13 +123,21 @@ internal fun TrackingSection(subjectId: Int, modifier: Modifier = Modifier, onCl
     }
     val trackedCount = connectedCards.count { it.isTracked }
 
+    val updateFailedText = stringResource(Lang.tracking_error_update_failed)
+    val searchFailedText = stringResource(Lang.tracking_error_search_failed)
+    val addFailedText = stringResource(Lang.tracking_error_add_failed)
+    val linkFailedText = stringResource(Lang.tracking_error_link_failed)
+    val unlinkFailedText = stringResource(Lang.tracking_error_unlink_failed)
+    val startDateTitle = stringResource(Lang.tracking_field_start_date)
+    val finishDateTitle = stringResource(Lang.tracking_field_finish_date)
+
     fun runEdit(id: TrackingProviderId, edit: TrackingEdit, onSuccess: () -> Unit = {}) {
         scope.launch {
             busy = id
             error = null
             try { coordinator.edit(subjectId, id, edit); onSuccess() }
             catch (failure: CancellationException) { throw failure }
-            catch (_: Exception) { error = "Tracking update failed. Try again." }
+            catch (_: Exception) { error = updateFailedText }
             finally { busy = null }
         }
     }
@@ -151,7 +161,7 @@ internal fun TrackingSection(subjectId: Int, modifier: Modifier = Modifier, onCl
             }
             catch (failure: CancellationException) { throw failure }
             catch (_: Exception) {
-                if (requestedRevision == searchRevision && searching == id) error = "Search failed. Try again."
+                if (requestedRevision == searchRevision && searching == id) error = searchFailedText
             }
             finally { busy = null }
         }
@@ -160,12 +170,15 @@ internal fun TrackingSection(subjectId: Int, modifier: Modifier = Modifier, onCl
     if (trackedCount == 0) {
         Button(onClick = { showSheet = true }, modifier = modifier.testTag("trackingAction")) {
             Icon(Icons.Outlined.Sync, contentDescription = null)
-            Text("Track")
+            Text(stringResource(Lang.tracking_action_track))
         }
     } else {
         OutlinedButton(onClick = { showSheet = true }, modifier = modifier.testTag("trackingAction")) {
             Icon(Icons.Outlined.Sync, contentDescription = null)
-            Text(if (trackedCount == 1) "1 tracker" else "$trackedCount trackers")
+            Text(
+                if (trackedCount == 1) stringResource(Lang.tracking_action_tracked_one, trackedCount)
+                else stringResource(Lang.tracking_action_tracked_many, trackedCount)
+            )
         }
     }
 
@@ -174,7 +187,7 @@ internal fun TrackingSection(subjectId: Int, modifier: Modifier = Modifier, onCl
         ModalBottomSheet(onDismissRequest = { showSheet = false }, sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)) {
             Column(Modifier.fillMaxWidth().verticalScroll(rememberScrollState()).padding(horizontal = 24.dp, vertical = 16.dp),
                 verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                Text("Tracking", style = MaterialTheme.typography.titleLarge)
+                Text(stringResource(Lang.tracking_sheet_title), style = MaterialTheme.typography.titleLarge)
                 connectedCards.forEach { card ->
                     TrackingCard(card, busy == card.providerId,
                         onField = { editor = card.providerId to it },
@@ -193,7 +206,7 @@ internal fun TrackingSection(subjectId: Int, modifier: Modifier = Modifier, onCl
                                 busy = card.providerId
                                 try { coordinator.bind(subjectId, card.providerId, mediaId); error = null }
                                 catch (failure: CancellationException) { throw failure }
-                                catch (_: Exception) { error = "Tracking could not be added. Try again." }
+                                catch (_: Exception) { error = addFailedText }
                                 finally { busy = null }
                             }
                         },
@@ -204,13 +217,13 @@ internal fun TrackingSection(subjectId: Int, modifier: Modifier = Modifier, onCl
                     )
                 }
                 if (connectedCards.isEmpty()) {
-                    Text("No tracking accounts connected.")
+                    Text(stringResource(Lang.tracking_no_accounts_connected))
                 }
                 if (onClickLogin != null) TextButton(onClick = { showSheet = false; onClickLogin() }) {
-                    Text("Sign in to Animeko")
+                    Text(stringResource(Lang.tracking_sign_in_animeko))
                 }
                 TextButton(onClick = { showSheet = false; navigator.navigateSettings(SettingsTab.TRACKING) }) {
-                    Text("Tracking accounts")
+                    Text(stringResource(Lang.tracking_manage_accounts))
                 }
                 error?.let { Text(it, color = MaterialTheme.colorScheme.error) }
             }
@@ -221,20 +234,20 @@ internal fun TrackingSection(subjectId: Int, modifier: Modifier = Modifier, onCl
         Dialog(onDismissRequest = { searchRevision++; searching = null }) {
             Surface(shape = MaterialTheme.shapes.large) {
                 Column(Modifier.fillMaxWidth().padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                    Text("Find tracking title", style = MaterialTheme.typography.titleMedium)
+                    Text(stringResource(Lang.tracking_search_dialog_title), style = MaterialTheme.typography.titleMedium)
                     Row(verticalAlignment = Alignment.CenterVertically) {
                         OutlinedTextField(query, { searchRevision++; query = it; results = emptyList(); error = null },
-                            modifier = Modifier.weight(1f), placeholder = { Text("Search anime") }, singleLine = true,
+                            modifier = Modifier.weight(1f), placeholder = { Text(stringResource(Lang.tracking_search_placeholder)) }, singleLine = true,
                             trailingIcon = {
                                 if (query.isNotEmpty()) IconButton(onClick = { searchRevision++; query = ""; results = emptyList(); error = null }) {
-                                    Icon(Icons.Default.Close, contentDescription = "Clear search")
+                                    Icon(Icons.Default.Close, contentDescription = stringResource(Lang.tracking_search_clear_description))
                                 }
                             },
                             keyboardOptions = KeyboardOptions(imeAction = ImeAction.Search),
                             keyboardActions = KeyboardActions(onSearch = { if (busy == null) runSearch() }),
                         )
                         IconButton(onClick = { runSearch() }, enabled = busy == null && query.isNotBlank()) {
-                            Icon(Icons.Default.Search, contentDescription = "Search tracking titles")
+                            Icon(Icons.Default.Search, contentDescription = stringResource(Lang.tracking_search_icon_description))
                         }
                     }
                     if (busy == id) CircularProgressIndicator(Modifier.size(20.dp))
@@ -245,7 +258,7 @@ internal fun TrackingSection(subjectId: Int, modifier: Modifier = Modifier, onCl
                                     busy = id
                                     try { coordinator.bind(subjectId, id, media.id); searching = null; error = null }
                                     catch (failure: CancellationException) { throw failure }
-                                    catch (_: Exception) { error = "Linking failed. Try again." }
+                                    catch (_: Exception) { error = linkFailedText }
                                     finally { busy = null }
                                 }
                             }.padding(12.dp), verticalAlignment = Alignment.CenterVertically,
@@ -271,7 +284,7 @@ internal fun TrackingSection(subjectId: Int, modifier: Modifier = Modifier, onCl
         if (card != null && snapshot != null && entry != null) {
             if (field == Field.START_DATE || field == Field.FINISH_DATE) {
                 val dateField = if (field == Field.START_DATE) TrackingDateField.STARTED else TrackingDateField.COMPLETED
-                TrackingDateEditor(if (field == Field.START_DATE) "Start date" else "Finish date",
+                TrackingDateEditor(if (field == Field.START_DATE) startDateTitle else finishDateTitle,
                     if (field == Field.START_DATE) entry.startedAt else entry.completedAt,
                     onDismiss = { editor = null }, onSelect = { date ->
                         editor = null
@@ -292,30 +305,45 @@ internal fun TrackingSection(subjectId: Int, modifier: Modifier = Modifier, onCl
 
     confirm?.let { (id, deleteRemote) ->
         AlertDialog(onDismissRequest = { confirm = null },
-            title = { Text(if (deleteRemote) "Delete tracking entry?" else "Unlink tracking title?") },
-            text = { Text(if (deleteRemote) "This deletes the remote list entry." else "The remote list entry stays online.") },
+            title = {
+                Text(
+                    if (deleteRemote) stringResource(Lang.tracking_confirm_delete_title)
+                    else stringResource(Lang.tracking_confirm_unlink_title)
+                )
+            },
+            text = {
+                Text(
+                    if (deleteRemote) stringResource(Lang.tracking_confirm_delete_message)
+                    else stringResource(Lang.tracking_confirm_unlink_message)
+                )
+            },
             confirmButton = { TextButton(onClick = {
                 confirm = null
                 if (deleteRemote) runEdit(id, TrackingEdit.DeleteRemoteEntry)
                 else scope.launch {
                     try { coordinator.unlink(subjectId, id) }
                     catch (failure: CancellationException) { throw failure }
-                    catch (_: Exception) { error = "Unlink failed. Try again." }
+                    catch (_: Exception) { error = unlinkFailedText }
                 }
-            }) { Text(if (deleteRemote) "Delete" else "Unlink") } },
-            dismissButton = { TextButton(onClick = { confirm = null }) { Text("Cancel") } },
+            }) {
+                Text(
+                    if (deleteRemote) stringResource(Lang.tracking_action_delete)
+                    else stringResource(Lang.tracking_menu_unlink)
+                )
+            } },
+            dismissButton = { TextButton(onClick = { confirm = null }) { Text(stringResource(Lang.subject_collection_cancel)) } },
         )
     }
 
     markAllPrompt?.let { id ->
         AlertDialog(onDismissRequest = { markAllPrompt = null },
-            title = { Text("Mark all episodes watched?") },
-            text = { Text("The completed status is saved. You can also mark every episode watched.") },
+            title = { Text(stringResource(Lang.tracking_confirm_mark_all_title)) },
+            text = { Text(stringResource(Lang.tracking_confirm_mark_all_message)) },
             confirmButton = { TextButton(onClick = {
                 markAllPrompt = null
                 runEdit(id, TrackingEdit.MarkAllEpisodesWatched)
-            }) { Text("Mark all") } },
-            dismissButton = { TextButton(onClick = { markAllPrompt = null }) { Text("Keep episodes") } },
+            }) { Text(stringResource(Lang.tracking_confirm_mark_all_action)) } },
+            dismissButton = { TextButton(onClick = { markAllPrompt = null }) { Text(stringResource(Lang.tracking_confirm_keep_episodes_action)) } },
         )
     }
 }
@@ -347,52 +375,60 @@ private fun TrackingCard(
                 if (icon != null) icon.Icon() else Text(card.providerName.take(1), style = MaterialTheme.typography.titleLarge)
                 Column(Modifier.weight(1f)) {
                     Text(card.providerName, style = MaterialTheme.typography.titleMedium)
-                    Text(snapshot?.media?.title ?: if (card.capabilities.needsMatchSearch) "Add tracking" else "Collection",
+                    Text(snapshot?.media?.title ?: if (card.capabilities.needsMatchSearch) stringResource(Lang.tracking_card_add_tracking) else stringResource(Lang.tracking_card_collection),
                         maxLines = 1, overflow = TextOverflow.Ellipsis)
                 }
                 if (card.load is TrackingLoad.Loading || updating) CircularProgressIndicator(Modifier.size(20.dp), strokeWidth = 2.dp)
                 Box {
-                    IconButton(onClick = { menuOpen = true }) { Icon(Icons.Default.MoreVert, contentDescription = "Tracking options") }
+                    IconButton(onClick = { menuOpen = true }) { Icon(Icons.Default.MoreVert, contentDescription = stringResource(Lang.tracking_options_menu_description)) }
                     DropdownMenu(expanded = menuOpen, onDismissRequest = { menuOpen = false }) {
                         snapshot?.media?.siteUrl?.takeIf { it.isNotBlank() }?.let { url ->
-                            DropdownMenuItem(text = { Text("Open on ${card.providerName}") }, onClick = { menuOpen = false; onOpen(url) })
+                            DropdownMenuItem(text = { Text(stringResource(Lang.tracking_menu_open_on_provider, card.providerName)) }, onClick = { menuOpen = false; onOpen(url) })
                         }
-                        DropdownMenuItem(text = { Text("Refresh") }, onClick = { menuOpen = false; onRefresh() })
+                        DropdownMenuItem(text = { Text(stringResource(Lang.tracking_menu_refresh)) }, onClick = { menuOpen = false; onRefresh() })
                         if (card.capabilities.needsMatchSearch) {
-                            DropdownMenuItem(text = { Text("Change match") }, onClick = { menuOpen = false; onSearch() })
-                            if (snapshot != null) DropdownMenuItem(text = { Text("Unlink") }, onClick = { menuOpen = false; onUnlink() })
+                            DropdownMenuItem(text = { Text(stringResource(Lang.tracking_menu_change_match)) }, onClick = { menuOpen = false; onSearch() })
+                            if (snapshot != null) DropdownMenuItem(text = { Text(stringResource(Lang.tracking_menu_unlink)) }, onClick = { menuOpen = false; onUnlink() })
                         }
                         if (entry != null && card.capabilities.canEditPrivacy) {
-                            DropdownMenuItem(text = { Text(if (entry.isPrivate) "Make public" else "Make private") },
+                            DropdownMenuItem(text = { Text(if (entry.isPrivate) stringResource(Lang.tracking_menu_make_public) else stringResource(Lang.tracking_menu_make_private)) },
                                 onClick = { menuOpen = false; onPrivacy(!entry.isPrivate) })
                         }
                         if (entry != null && card.capabilities.canDeleteRemoteEntry) {
-                            DropdownMenuItem(text = { Text("Delete remote entry") }, onClick = { menuOpen = false; onDelete() })
+                            DropdownMenuItem(text = { Text(stringResource(Lang.tracking_menu_delete_remote)) }, onClick = { menuOpen = false; onDelete() })
                         }
                     }
                 }
             }
             when {
-                card.load is TrackingLoad.Failed -> Text((card.load as TrackingLoad.Failed).message, color = MaterialTheme.colorScheme.error)
-                snapshot == null && card.capabilities.needsMatchSearch -> TextButton(onClick = onSearch) { Icon(Icons.Default.Add, null); Text("Add tracking") }
+                card.load is TrackingLoad.Failed -> {
+                    val message = (card.load as TrackingLoad.Failed).message
+                    val displayMessage = if (message == "Tracking could not be loaded") {
+                        stringResource(Lang.tracking_error_load_failed)
+                    } else {
+                        message
+                    }
+                    Text(displayMessage, color = MaterialTheme.colorScheme.error)
+                }
+                snapshot == null && card.capabilities.needsMatchSearch -> TextButton(onClick = onSearch) { Icon(Icons.Default.Add, null); Text(stringResource(Lang.tracking_card_add_tracking)) }
                 entry == null -> TextButton(onClick = { snapshot?.media?.id?.let(onAdd) ?: onSearch() }) {
-                    Text("Add tracking")
+                    Text(stringResource(Lang.tracking_card_add_tracking))
                 }
                 else -> {
                     Row(Modifier.fillMaxWidth()) {
                         if (card.capabilities.canEditStatus) TrackingFieldCell(
-                            card.statusOptions.firstOrNull { it.status == entry.status }?.displayName ?: entry.status.name,
+                            entry.status?.displayLabel() ?: stringResource(Lang.tracking_field_status),
                             Modifier.weight(1f), !updating) { onField(Field.STATUS) }
                         if (card.capabilities.canEditProgress) TrackingFieldCell(
                             "${entry.progress}${snapshot.media.totalEpisodes?.let { " / $it" } ?: ""}",
                             Modifier.weight(1f), !updating) { onField(Field.PROGRESS) }
                         if (card.capabilities.canEditScore) TrackingFieldCell(
-                            if (entry.score.value == 0) "Score" else "${(entry.score.value + 5) / 10} / 10",
+                            if (entry.score.value == 0) stringResource(Lang.tracking_field_score) else "${(entry.score.value + 5) / 10} / 10",
                             Modifier.weight(1f), !updating) { onField(Field.SCORE) }
                     }
                     if (card.capabilities.canEditDates) Row(Modifier.fillMaxWidth()) {
-                        TrackingFieldCell(entry.startedAt.dateLabel("Start date"), Modifier.weight(1f), !updating) { onField(Field.START_DATE) }
-                        TrackingFieldCell(entry.completedAt.dateLabel("Finish date"), Modifier.weight(1f), !updating) { onField(Field.FINISH_DATE) }
+                        TrackingFieldCell(entry.startedAt.dateLabel(stringResource(Lang.tracking_field_start_date)), Modifier.weight(1f), !updating) { onField(Field.START_DATE) }
+                        TrackingFieldCell(entry.completedAt.dateLabel(stringResource(Lang.tracking_field_finish_date)), Modifier.weight(1f), !updating) { onField(Field.FINISH_DATE) }
                     }
                 }
             }
@@ -409,23 +445,36 @@ private fun TrackingFieldCell(label: String, modifier: Modifier, enabled: Boolea
 }
 
 @Composable
+private fun TrackingStatus.displayLabel(): String = when (this) {
+    TrackingStatus.PLANNING -> stringResource(Lang.tracking_status_planning)
+    TrackingStatus.CURRENT -> stringResource(Lang.tracking_status_current)
+    TrackingStatus.COMPLETED -> stringResource(Lang.tracking_status_completed)
+    TrackingStatus.PAUSED -> stringResource(Lang.tracking_status_paused)
+    TrackingStatus.DROPPED -> stringResource(Lang.tracking_status_dropped)
+    TrackingStatus.REPEATING -> stringResource(Lang.tracking_status_repeating)
+}
+
+@Composable
 private fun TrackingChoiceDialog(card: TrackingCardModel, snapshot: TrackingSnapshot, field: Field,
     onDismiss: () -> Unit, onSelect: (TrackingEdit) -> Unit) {
     val entry = checkNotNull(snapshot.entry)
     Dialog(onDismissRequest = onDismiss) {
         Surface(shape = MaterialTheme.shapes.large) {
             Column(Modifier.fillMaxWidth().padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                Text(when (field) { Field.STATUS -> "Watch status"; Field.PROGRESS -> "Episodes watched"; else -> "Score" },
-                    style = MaterialTheme.typography.titleMedium)
+                Text(when (field) {
+                    Field.STATUS -> stringResource(Lang.tracking_dialog_title_status)
+                    Field.PROGRESS -> stringResource(Lang.tracking_dialog_title_progress)
+                    else -> stringResource(Lang.tracking_dialog_title_score)
+                }, style = MaterialTheme.typography.titleMedium)
                 LazyColumn(Modifier.heightIn(max = 300.dp)) {
                     when (field) {
                         Field.STATUS -> items(card.statusOptions) { option ->
-                            TrackingChoice(option.displayName, entry.status == option.status) { onSelect(TrackingEdit.Status(option.status)) }
+                            TrackingChoice(option.status.displayLabel(), entry.status == option.status) { onSelect(TrackingEdit.Status(option.status)) }
                         }
                         Field.PROGRESS -> {
                             val episodes = snapshot.episodes
                             if (episodes != null) items(episodes) { episode ->
-                                TrackingChoice("Episode ${episode.number}", episode.watched) {
+                                TrackingChoice(stringResource(Lang.tracking_choice_episode_format, episode.number), episode.watched) {
                                     onSelect(TrackingEdit.Episode(episode.id, !episode.watched))
                                 }
                             } else items((0..(snapshot.media.totalEpisodes ?: maxOf(entry.progress + 20, 100))).toList()) { count ->
@@ -438,14 +487,14 @@ private fun TrackingChoiceDialog(card: TrackingCardModel, snapshot: TrackingSnap
                                     onSelect(TrackingEdit.Score(TrackingScore(score * 10)))
                                 }
                             }
-                            item { TrackingChoice("Clear score", entry.score == TrackingScore.Unrated) {
+                            item { TrackingChoice(stringResource(Lang.tracking_choice_clear_score), entry.score == TrackingScore.Unrated) {
                                 onSelect(TrackingEdit.Score(TrackingScore.Unrated))
                             } }
                         }
                         else -> Unit
                     }
                 }
-                TextButton(onClick = onDismiss) { Text("Cancel") }
+                TextButton(onClick = onDismiss) { Text(stringResource(Lang.subject_collection_cancel)) }
             }
         }
     }
@@ -473,6 +522,6 @@ private fun TrackingDateEditor(title: String, date: TrackingDate?, onDismiss: ()
         confirmButton = { TextButton(onClick = {
             val selected = state.selectedDateMillis?.let { Instant.fromEpochMilliseconds(it).toLocalDateTime(TimeZone.UTC).date }
             onSelect(selected?.let { TrackingDate(it.year, it.monthNumber, it.dayOfMonth) })
-        }) { Text("Save") } },
-        dismissButton = { TextButton(onClick = onDismiss) { Text("Cancel") } }) { DatePicker(state) }
+        }) { Text(stringResource(Lang.tracking_action_save)) } },
+        dismissButton = { TextButton(onClick = onDismiss) { Text(stringResource(Lang.subject_collection_cancel)) } }) { DatePicker(state) }
 }

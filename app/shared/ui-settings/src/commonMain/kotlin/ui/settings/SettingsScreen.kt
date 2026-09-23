@@ -123,35 +123,7 @@ import me.him188.ani.app.ui.foundation.theme.appChromeHazeSource
 import me.him188.ani.app.ui.foundation.theme.isAppChromeFrostedGlassActive
 import me.him188.ani.app.ui.foundation.widgets.BackNavigationIconButton
 import me.him188.ani.app.ui.foundation.widgets.LocalToaster
-import me.him188.ani.app.ui.lang.Lang
-import me.him188.ani.app.ui.lang.acknowledgements
-import me.him188.ani.app.ui.lang.developer_list
-import me.him188.ani.app.ui.lang.settings_about_build_info
-import me.him188.ani.app.ui.lang.settings
-import me.him188.ani.app.ui.lang.settings_account_bangumi_sync_title
-import me.him188.ani.app.ui.lang.settings_account_github_title
-import me.him188.ani.app.ui.lang.settings_acknowledgements_oss_licenses
-import me.him188.ani.app.ui.lang.settings_category_app_ui
-import me.him188.ani.app.ui.lang.settings_category_data_playback
-import me.him188.ani.app.ui.lang.settings_category_network_storage
-import me.him188.ani.app.ui.lang.settings_category_others
-import me.him188.ani.app.ui.lang.settings_debug_dev_builds
-import me.him188.ani.app.ui.lang.settings_debug_mode_enabled
-import me.him188.ani.app.ui.lang.settings_tab_about
-import me.him188.ani.app.ui.lang.settings_tab_account
-import me.him188.ani.app.ui.lang.settings_tab_appearance
-import me.him188.ani.app.ui.lang.settings_tab_bt
-import me.him188.ani.app.ui.lang.settings_tab_danmaku
-import me.him188.ani.app.ui.lang.settings_tab_debug
-import me.him188.ani.app.ui.lang.settings_tab_log
-import me.him188.ani.app.ui.lang.settings_tab_media_selector
-import me.him188.ani.app.ui.lang.settings_tab_media_source
-import me.him188.ani.app.ui.lang.settings_tab_player
-import me.him188.ani.app.ui.lang.settings_tab_proxy
-import me.him188.ani.app.ui.lang.settings_tab_settings_backup
-import me.him188.ani.app.ui.lang.settings_tab_storage
-import me.him188.ani.app.ui.lang.settings_tab_theme
-import me.him188.ani.app.ui.lang.settings_tab_update
+import me.him188.ani.app.ui.lang.*
 import me.him188.ani.app.ui.settings.account.BangumiSyncTab
 import me.him188.ani.app.ui.settings.account.TrackingAccountRegistry
 import me.him188.ani.app.ui.settings.account.TrackingAccountItem
@@ -282,7 +254,7 @@ fun SettingsScreen(
                 containerColor = MaterialTheme.colorScheme.surfaceContainerLowest,
             )
 
-            Title("Accounts", paddingTop = 12.dp)
+            Title(stringResource(Lang.settings_category_accounts), paddingTop = 12.dp)
             Item(SettingsTab.TRACKING)
 
             Title(stringResource(Lang.settings_category_app_ui))
@@ -365,7 +337,7 @@ fun SettingsScreen(
                         when (currentTab) {
                             SettingsTab.TRACKING -> {
                                 val connectors = remember { GlobalKoin.get<TrackingAccountRegistry>().connectors }
-                                Group(title = { Text("Services") }) {
+                                Group(title = { Text(stringResource(Lang.settings_tracking_services_group)) }) {
                                     connectors.forEach { connector ->
                                         TrackingAccountItem(
                                             connector,
@@ -1118,7 +1090,7 @@ private fun getIcon(tab: SettingsTab): ImageVector {
 private fun getName(tab: SettingsTab): String {
     return when (tab) {
         SettingsTab.PROFILE -> stringResource(Lang.settings_tab_account)
-        SettingsTab.TRACKING -> "Tracking accounts"
+        SettingsTab.TRACKING -> stringResource(Lang.settings_tab_tracking)
         SettingsTab.APPEARANCE -> stringResource(Lang.settings_tab_appearance)
         SettingsTab.THEME -> stringResource(Lang.settings_tab_theme)
         SettingsTab.PLAYER -> stringResource(Lang.settings_tab_player)

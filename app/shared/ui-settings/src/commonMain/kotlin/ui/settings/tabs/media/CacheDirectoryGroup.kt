@@ -49,17 +49,7 @@ import me.him188.ani.tracking.api.TrackingBackupValidationException
 import me.him188.ani.app.ui.foundation.setClipEntryText
 import me.him188.ani.app.ui.foundation.rememberAsyncHandler
 import me.him188.ani.app.ui.foundation.widgets.LocalToaster
-import me.him188.ani.app.ui.lang.Lang
-import me.him188.ani.app.ui.lang.settings_storage_backup_op_backup_error
-import me.him188.ani.app.ui.lang.settings_storage_backup_op_restore
-import me.him188.ani.app.ui.lang.settings_storage_backup_op_restore_error
-import me.him188.ani.app.ui.lang.settings_storage_backup_op_restore_succees
-import me.him188.ani.app.ui.lang.settings_storage_backup_op_restore_warning
-import me.him188.ani.app.ui.lang.settings_storage_backup_title
-import me.him188.ani.app.ui.lang.settings_storage_danmaku_cache_strategy_description_cache_on_collection_doing_media_play
-import me.him188.ani.app.ui.lang.settings_storage_danmaku_cache_strategy_description_cache_on_media_cache
-import me.him188.ani.app.ui.lang.settings_storage_danmaku_cache_strategy_description_do_not_cache
-import me.him188.ani.app.ui.lang.settings_storage_danmaku_cache_strategy_title
+import me.him188.ani.app.ui.lang.*
 import me.him188.ani.app.ui.settings.framework.SettingsState
 import me.him188.ani.app.ui.settings.framework.components.DropdownItem
 import me.him188.ani.app.ui.settings.framework.components.SettingsScope
@@ -92,32 +82,34 @@ fun SettingsScope.BackupSettings(state: CacheDirectoryGroupState) {
     val clipboard = LocalClipboard.current
     val toaster = LocalToaster.current
     val backupErrorText = stringResource(Lang.settings_storage_backup_op_backup_error)
+    val backupSavedToast = stringResource(Lang.settings_storage_backup_toast_saved)
+    val backupCopiedToast = stringResource(Lang.settings_storage_backup_toast_copied)
 
     Group({ Text(stringResource(Lang.settings_storage_backup_title)) }) {
         TextItem(
             onClick = { showBackupDialog = true },
-            title = { Text("Create backup") },
-            description = { Text("Choose what to save in an Animeko backup file") },
+            title = { Text(stringResource(Lang.settings_storage_backup_create_title)) },
+            description = { Text(stringResource(Lang.settings_storage_backup_create_description)) },
         )
         TextItem(
             onClick = { restoreError = null; showRestoreDialog = true },
-            title = { Text("Restore backup") },
-            description = { Text("Import settings and tracking matches from a backup file") },
+            title = { Text(stringResource(Lang.settings_storage_backup_restore_title)) },
+            description = { Text(stringResource(Lang.settings_storage_backup_restore_description)) },
         )
     }
 
     if (showBackupDialog) {
         AlertDialog(
             onDismissRequest = { showBackupDialog = false },
-            title = { Text("Choose backup contents") },
+            title = { Text(stringResource(Lang.settings_storage_backup_dialog_title)) },
             text = {
                 Column {
                     Row(Modifier.fillMaxWidth().clickable { backupSettings = !backupSettings }.padding(vertical = 8.dp),
                         verticalAlignment = Alignment.CenterVertically) {
                         Checkbox(backupSettings, onCheckedChange = { backupSettings = it })
                         Column(Modifier.padding(start = 8.dp)) {
-                            Text("App settings")
-                            Text("Preferences and Animeko sign-in data", style = MaterialTheme.typography.bodySmall)
+                            Text(stringResource(Lang.settings_storage_backup_category_settings_title))
+                            Text(stringResource(Lang.settings_storage_backup_category_settings_description), style = MaterialTheme.typography.bodySmall)
                         }
                     }
                     if (state.trackingBindingsAvailable) Row(
@@ -126,13 +118,13 @@ fun SettingsScope.BackupSettings(state: CacheDirectoryGroupState) {
                     ) {
                         Checkbox(backupTracking, onCheckedChange = { backupTracking = it })
                         Column(Modifier.padding(start = 8.dp)) {
-                            Text("Tracking matches")
-                            Text("Saved title links for tracking services; reconnect accounts after restore", style = MaterialTheme.typography.bodySmall)
+                            Text(stringResource(Lang.settings_storage_backup_category_tracking_title))
+                            Text(stringResource(Lang.settings_storage_backup_category_tracking_description), style = MaterialTheme.typography.bodySmall)
                         }
                     }
-                    Text("This backup does not include downloaded videos or tracking account tokens.",
+                    Text(stringResource(Lang.settings_storage_backup_disclaimer_tokens),
                         style = MaterialTheme.typography.bodySmall, modifier = Modifier.padding(top = 12.dp))
-                    Text("Keep the backup file or copied text private if app settings are selected.",
+                    Text(stringResource(Lang.settings_storage_backup_disclaimer_private),
                         style = MaterialTheme.typography.bodySmall, modifier = Modifier.padding(top = 8.dp))
                 }
             },
@@ -149,12 +141,12 @@ fun SettingsScope.BackupSettings(state: CacheDirectoryGroupState) {
                             val data = state.onGetBackupData(BackupSelection(backupSettings, backupTracking))
                             target.write(compressBackup(data.encodeToByteArray()))
                             showBackupDialog = false
-                            toaster.toast("Backup saved")
+                            toaster.toast(backupSavedToast)
                         } catch (_: Exception) {
                             toaster.toast(backupErrorText)
                         }
                     }
-                }, enabled = backupSettings || backupTracking) { Text("Save backup") }
+                }, enabled = backupSettings || backupTracking) { Text(stringResource(Lang.settings_storage_backup_action_save)) }
             },
             dismissButton = {
                 TextButton(onClick = {
@@ -163,12 +155,12 @@ fun SettingsScope.BackupSettings(state: CacheDirectoryGroupState) {
                             val data = state.onGetBackupData(BackupSelection(backupSettings, backupTracking))
                             clipboard.setClipEntryText(data)
                             showBackupDialog = false
-                            toaster.toast("Backup copied")
+                            toaster.toast(backupCopiedToast)
                         } catch (_: Exception) {
                             toaster.toast(backupErrorText)
                         }
                     }
-                }, enabled = backupSettings || backupTracking) { Text("Copy") }
+                }, enabled = backupSettings || backupTracking) { Text(stringResource(Lang.settings_storage_backup_action_copy)) }
             },
         )
     }
@@ -180,7 +172,7 @@ fun SettingsScope.BackupSettings(state: CacheDirectoryGroupState) {
         AlertDialog(
             { showRestoreDialog = false },
             icon = { Icon(Icons.Rounded.Restore, null, tint = MaterialTheme.colorScheme.error) },
-            title = { Text("Restore backup") },
+            title = { Text(stringResource(Lang.settings_storage_backup_restore_title)) },
             text = {
                 Column {
                     Text(stringResource(Lang.settings_storage_backup_op_restore_warning))
@@ -211,7 +203,7 @@ fun SettingsScope.BackupSettings(state: CacheDirectoryGroupState) {
                         }
                     },
                 ) {
-                    Text("Choose file", color = MaterialTheme.colorScheme.error)
+                    Text(stringResource(Lang.settings_storage_backup_action_choose_file), color = MaterialTheme.colorScheme.error)
                 }
             },
             dismissButton = {
@@ -229,7 +221,7 @@ fun SettingsScope.BackupSettings(state: CacheDirectoryGroupState) {
                             restoreError = restoreFailed
                         }
                     }
-                }) { Text("Paste") }
+                }) { Text(stringResource(Lang.settings_storage_backup_action_paste)) }
             },
         )
     }

@@ -37,6 +37,7 @@
     <string name="playback_history_sync_pending_episode">剧集 ID %1$d</string>
     <string name="playback_history_sync_delete_pending">删除待同步项目</string>
     <string name="playback_history_sync_delete_all">删除全部待同步项目</string>
+    <string name="settings_category_accounts">账号</string>
     <string name="settings_category_app_ui">应用与界面</string>
     <string name="settings_category_data_playback">数据源与播放</string>
     <string name="settings_category_network_storage">网络与存储</string>
@@ -1766,6 +1767,92 @@
     <string name="qr_login_retry">重试</string>
     <string name="qr_login_done">完成</string>
     <string name="qr_login_close">关闭</string>
+
+    <!-- Tracking subsystem -->
+    <string name="tracking_action_track">追踪</string>
+    <string name="tracking_action_tracked_one">%1$d 个追踪服务</string>
+    <string name="tracking_action_tracked_many">%1$d 个追踪服务</string>
+    <string name="tracking_sheet_title">追踪</string>
+    <string name="tracking_card_add_tracking">添加追踪</string>
+    <string name="tracking_card_collection">收藏</string>
+    <string name="tracking_options_menu_description">追踪选项</string>
+    <string name="tracking_menu_open_on_provider">在 %1$s 查看</string>
+    <string name="tracking_menu_refresh">刷新</string>
+    <string name="tracking_menu_change_match">更改匹配</string>
+    <string name="tracking_menu_unlink">解除关联</string>
+    <string name="tracking_menu_make_public">设为公开</string>
+    <string name="tracking_menu_make_private">设为私密</string>
+    <string name="tracking_menu_delete_remote">删除远端记录</string>
+    <string name="tracking_status_planning">想看</string>
+    <string name="tracking_status_current">在看</string>
+    <string name="tracking_status_completed">看过</string>
+    <string name="tracking_status_paused">搁置</string>
+    <string name="tracking_status_dropped">抛弃</string>
+    <string name="tracking_status_repeating">重温</string>
+    <string name="tracking_field_status">状态</string>
+    <string name="tracking_field_score">评分</string>
+    <string name="tracking_field_start_date">开始日期</string>
+    <string name="tracking_field_finish_date">完成日期</string>
+    <string name="tracking_no_accounts_connected">尚未连接追踪账号。</string>
+    <string name="tracking_sign_in_animeko">登录 Animeko 账号</string>
+    <string name="tracking_manage_accounts">追踪账号</string>
+    <string name="tracking_search_dialog_title">搜索追踪条目</string>
+    <string name="tracking_search_placeholder">搜索动画</string>
+    <string name="tracking_search_clear_description">清除搜索</string>
+    <string name="tracking_search_icon_description">搜索追踪条目</string>
+    <string name="tracking_dialog_title_status">观看状态</string>
+    <string name="tracking_dialog_title_progress">观看进度</string>
+    <string name="tracking_dialog_title_score">评分</string>
+    <string name="tracking_choice_episode_format">第 %1$s 话</string>
+    <string name="tracking_choice_clear_score">清除评分</string>
+    <string name="tracking_action_save">保存</string>
+    <string name="tracking_action_delete">删除</string>
+    <string name="tracking_confirm_delete_title">删除远端追踪记录？</string>
+    <string name="tracking_confirm_delete_message">此操作将从远端列表中彻底删除此条目。</string>
+    <string name="tracking_confirm_unlink_title">解除追踪关联？</string>
+    <string name="tracking_confirm_unlink_message">远端列表中的记录将保留，仅解除本地关联。</string>
+    <string name="tracking_confirm_mark_all_title">将全部剧集标记为看过？</string>
+    <string name="tracking_confirm_mark_all_message">已保存完成状态。是否同时将所有剧集标记为已看过？</string>
+    <string name="tracking_confirm_mark_all_action">全部标记</string>
+    <string name="tracking_confirm_keep_episodes_action">保持原状</string>
+    <string name="tracking_error_update_failed">更新追踪失败，请重试。</string>
+    <string name="tracking_error_search_failed">搜索失败，请重试。</string>
+    <string name="tracking_error_add_failed">添加追踪失败，请重试。</string>
+    <string name="tracking_error_link_failed">关联失败，请重试。</string>
+    <string name="tracking_error_unlink_failed">解除关联失败，请重试。</string>
+    <string name="tracking_error_load_failed">无法加载追踪信息。</string>
+
+    <!-- Tracking Accounts Settings -->
+    <string name="settings_tab_tracking">追踪服务</string>
+    <string name="settings_tracking_services_group">服务</string>
+    <string name="settings_tracking_checking_connection">正在检查连接…</string>
+    <string name="settings_tracking_connection_check_failed">连接检查失败</string>
+    <string name="settings_tracking_not_connected">未连接</string>
+    <string name="settings_tracking_connecting">正在连接…</string>
+    <string name="settings_tracking_sign_in_to_manage">登录 Animeko 账号以管理</string>
+    <string name="settings_tracking_connected_action_description">已连接</string>
+    <string name="settings_tracking_disconnect_title">断开 %1$s 连接？</string>
+    <string name="settings_tracking_disconnect_message">远端列表中的追踪记录将保持不变。</string>
+    <string name="settings_tracking_disconnect_action">断开连接</string>
+
+    <!-- Settings Backup & Restore -->
+    <string name="settings_storage_backup_create_title">创建备份</string>
+    <string name="settings_storage_backup_create_description">选择要保存在 Animeko 备份文件中的内容</string>
+    <string name="settings_storage_backup_restore_title">恢复备份</string>
+    <string name="settings_storage_backup_restore_description">从备份文件中导入设置和追踪匹配关系</string>
+    <string name="settings_storage_backup_dialog_title">选择备份内容</string>
+    <string name="settings_storage_backup_category_settings_title">应用设置</string>
+    <string name="settings_storage_backup_category_settings_description">偏好设置与 Animeko 登录信息</string>
+    <string name="settings_storage_backup_category_tracking_title">追踪匹配关系</string>
+    <string name="settings_storage_backup_category_tracking_description">已保存的追踪服务条目关联；恢复后重新连接账号即可生效</string>
+    <string name="settings_storage_backup_disclaimer_tokens">此备份不包含下载的离线视频或追踪账号授权凭据。</string>
+    <string name="settings_storage_backup_disclaimer_private">如果包含应用设置，请妥善保管备份文件或复制的文本，避免泄露。</string>
+    <string name="settings_storage_backup_action_save">保存备份</string>
+    <string name="settings_storage_backup_action_copy">复制</string>
+    <string name="settings_storage_backup_toast_saved">备份已保存</string>
+    <string name="settings_storage_backup_toast_copied">备份已复制到剪贴板</string>
+    <string name="settings_storage_backup_action_choose_file">选择文件</string>
+    <string name="settings_storage_backup_action_paste">粘贴</string>
 </resources>
 
 <!--@formatter:on-->

@@ -26,6 +26,20 @@ import me.him188.ani.app.ui.settings.DetailPaneRoutes
 import me.him188.ani.app.ui.settings.framework.components.SettingsScope
 import me.him188.ani.app.ui.settings.framework.components.TextItem
 import me.him188.ani.app.domain.session.auth.OAuthPlatform
+import me.him188.ani.app.ui.lang.*
+import org.jetbrains.compose.resources.stringResource
+
+@Composable
+private fun formatTrackingAccountDescription(state: TrackingAccountViewState, failed: Boolean): String {
+    if (failed) return stringResource(Lang.settings_tracking_connection_check_failed)
+    return when (state.description) {
+        "Checking connection" -> stringResource(Lang.settings_tracking_checking_connection)
+        "Not connected" -> stringResource(Lang.settings_tracking_not_connected)
+        "Connecting" -> stringResource(Lang.settings_tracking_connecting)
+        "Sign in to Animeko to manage" -> stringResource(Lang.settings_tracking_sign_in_to_manage)
+        else -> state.description
+    }
+}
 
 @Composable
 fun SettingsScope.TrackingAccountItem(
@@ -56,13 +70,15 @@ fun SettingsScope.TrackingAccountItem(
         }
     }
 
+    val descriptionText = formatTrackingAccountDescription(state, failed)
+
     TextItem(
         title = { Text(connector.displayName) },
-        description = { Text(if (failed) "Connection check failed" else state.description) },
+        description = { Text(descriptionText) },
         icon = { if (icon != null) icon.Icon() else Text(connector.displayName.take(1)) },
         action = when {
             state.refreshing -> { { CircularProgressIndicator(strokeWidth = 2.dp) } }
-            state.connected -> { { Icon(Icons.Default.Check, contentDescription = "Connected", tint = Color(0xFF4CAF50)) } }
+            state.connected -> { { Icon(Icons.Default.Check, contentDescription = stringResource(Lang.settings_tracking_connected_action_description), tint = Color(0xFF4CAF50)) } }
             else -> null
         },
         onClick = if (!state.enabled) null else {
@@ -80,22 +96,22 @@ fun SettingsScope.TrackingAccountItem(
         AlertDialog(
             onDismissRequest = { showActions = false },
             title = { Text(connector.displayName) },
-            text = { Text(state.description) },
+            text = { Text(descriptionText) },
             confirmButton = {
                 connector.detailsRoute?.let { route ->
-                    TextButton(onClick = { showActions = false; openDetails(route) }) { Text("Settings") }
+                    TextButton(onClick = { showActions = false; openDetails(route) }) { Text(stringResource(Lang.settings)) }
                 }
             },
             dismissButton = {
-                TextButton(onClick = { showActions = false; confirmDisconnect = true }) { Text("Disconnect") }
+                TextButton(onClick = { showActions = false; confirmDisconnect = true }) { Text(stringResource(Lang.settings_tracking_disconnect_action)) }
             },
         )
     }
     if (confirmDisconnect) {
         AlertDialog(
             onDismissRequest = { confirmDisconnect = false },
-            title = { Text("Disconnect ${connector.displayName}?") },
-            text = { Text("Your tracking entries stay online.") },
+            title = { Text(stringResource(Lang.settings_tracking_disconnect_title, connector.displayName)) },
+            text = { Text(stringResource(Lang.settings_tracking_disconnect_message)) },
             confirmButton = {
                 TextButton(onClick = {
                     confirmDisconnect = false
@@ -109,9 +125,9 @@ fun SettingsScope.TrackingAccountItem(
                             failed = true
                         }
                     }
-                }) { Text("Disconnect") }
+                }) { Text(stringResource(Lang.settings_tracking_disconnect_action)) }
             },
-            dismissButton = { TextButton(onClick = { confirmDisconnect = false }) { Text("Cancel") } },
+            dismissButton = { TextButton(onClick = { confirmDisconnect = false }) { Text(stringResource(Lang.subject_collection_cancel)) } },
         )
     }
 }
