@@ -137,7 +137,7 @@ Android、macOS Desktop 与 iOS 的条目 UI 均通过 `TrackingRegistry`、`Tra
 - 搜索结果只属于发起它的查询版本；用户更改搜索词、清除输入或切换追踪服务后，旧请求结果不得重新显示。
 - 观看事件向多个服务分发属于 domain 层；UI coordinator 只处理卡片观察与用户操作。一个服务失败后继续通知其他服务，最后向 hook 报告失败。
 - 账号登录入口由已注册的 `TrackingAccountConnector` 提供。添加服务时注册自己的 provider、source、账号连接器和图标渲染器；通用卡片、账号行、绑定备份格式和观看分发不添加服务名分支。能力关闭时，provider 无需实现日期或隐私编辑。
-- Animeko 未登录时，详情页保留登录入口，同时提供追踪账号设置入口。
+- Track 弹层为每个未连接的服务显示该服务自己的登录动作（与设置中的账号行相同）。Animeko 未登录时 Bangumi 显示为“使用 Bangumi 登录”，Bangumi OAuth 会同时登录 Animeko 并绑定 Bangumi；不再引导至通用的 Animeko 登录页。
 
 ### 约束与限制 (Constraints & Restrictions)
 
