@@ -265,7 +265,6 @@ fun SubjectDetailsScreen(
                 selfInfo,
                 layoutParams,
                 onPlay = onPlay,
-                onClickLogin = { navigator.navigateEmailLoginStart() },
                 onClickTag,
                 onEpisodeCollectionUpdate = onEpisodeCollectionUpdate,
                 Modifier,
@@ -300,7 +299,6 @@ private fun SubjectDetailsPage(
     selfInfo: SelfInfoUiState,
     layoutParams: SubjectDetailsLayoutParams,
     onPlay: (episodeId: Int) -> Unit,
-    onClickLogin: () -> Unit,
     onClickTag: (Tag) -> Unit,
     onEpisodeCollectionUpdate: (SetEpisodeCollectionTypeRequest) -> Unit,
     modifier: Modifier = Modifier,
@@ -408,7 +406,6 @@ private fun SubjectDetailsPage(
                     onPlay = onPlay,
                     onEpisodeLongClick = onEpisodeLongClick,
                     onClickTag = onClickTag,
-                    onClickLogin = onClickLogin,
                     onShowComments = { showComments = true },
                     onClickCache = { navigator.navigateSubjectCaches(uiState.subjectId) },
                     modifier = modifier,
@@ -442,7 +439,7 @@ private fun SubjectDetailsPage(
             },
             collectionActions = {
                 state.info?.let { info ->
-                    TrackingSection(info.subjectId, onClickLogin = onClickLogin.takeIf { selfInfo.isSessionValid == false })
+                    TrackingSection(info.subjectId)
                 }
             },
             rating = {

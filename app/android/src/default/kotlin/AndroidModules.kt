@@ -35,7 +35,7 @@ import me.him188.ani.android.tracking.AndroidAniListBindingStore
 import me.him188.ani.app.ui.foundation.icons.AniListTrackingIcon
 import me.him188.ani.android.tracking.AniListTrackingAccountConnector
 import me.him188.ani.app.ui.foundation.icons.TrackingIconRenderer
-import me.him188.ani.app.ui.settings.account.TrackingAccountConnector
+import me.him188.ani.app.ui.foundation.tracking.TrackingAccountConnector
 import me.him188.ani.app.domain.tracking.TrackingEpisodeSynchronizer
 import me.him188.ani.tracking.api.AndroidTrackingCredentialStore
 import me.him188.ani.tracking.api.PendingLoginGate

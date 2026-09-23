@@ -22,6 +22,10 @@ import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.launch
 import me.him188.ani.app.domain.usecase.GlobalKoin
 import me.him188.ani.app.ui.foundation.icons.TrackingIconRegistry
+import me.him188.ani.app.ui.foundation.tracking.TrackingAccountConnector
+import me.him188.ani.app.ui.foundation.tracking.TrackingAccountStatus
+import me.him188.ani.app.ui.foundation.tracking.TrackingAccountViewState
+import me.him188.ani.app.ui.foundation.tracking.TrackingLoginAction
 import me.him188.ani.app.ui.settings.DetailPaneRoutes
 import me.him188.ani.app.ui.settings.framework.components.SettingsScope
 import me.him188.ani.app.ui.settings.framework.components.TextItem
@@ -96,7 +100,7 @@ fun SettingsScope.TrackingAccountItem(
             title = { Text(connector.displayName) },
             text = { Text(descriptionText) },
             confirmButton = {
-                connector.detailsRoute?.let { route ->
+                (connector as? TrackingAccountDetails)?.detailsRoute?.let { route ->
                     TextButton(onClick = { showActions = false; openDetails(route) }) { Text(stringResource(Lang.settings)) }
                 }
             },

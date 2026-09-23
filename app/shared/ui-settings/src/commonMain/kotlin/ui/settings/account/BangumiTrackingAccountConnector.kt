@@ -4,12 +4,16 @@ import kotlinx.coroutines.flow.map
 import me.him188.ani.app.data.repository.user.UserRepository
 import me.him188.ani.app.data.tracking.BangumiTrackingSource
 import me.him188.ani.app.domain.session.auth.OAuthPlatform
+import me.him188.ani.app.ui.foundation.tracking.TrackingAccountConnector
+import me.him188.ani.app.ui.foundation.tracking.TrackingAccountStatus
+import me.him188.ani.app.ui.foundation.tracking.TrackingAccountViewState
+import me.him188.ani.app.ui.foundation.tracking.TrackingLoginAction
 import me.him188.ani.app.ui.lang.Lang
 import me.him188.ani.app.ui.lang.settings_tracking_bangumi_disconnect_message
 import me.him188.ani.app.ui.settings.DetailPaneRoutes
 import me.him188.ani.app.ui.user.SelfInfoStateProducer
 
-class BangumiTrackingAccountConnector(private val userRepository: UserRepository) : TrackingAccountConnector {
+class BangumiTrackingAccountConnector(private val userRepository: UserRepository) : TrackingAccountConnector, TrackingAccountDetails {
     override val providerId = BangumiTrackingSource.ID
     override val displayName = "Bangumi"
     override val loginAction = TrackingLoginAction.OAuth(OAuthPlatform.BANGUMI)

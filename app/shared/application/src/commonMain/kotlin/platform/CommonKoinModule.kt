@@ -117,8 +117,8 @@ import me.him188.ani.app.ui.foundation.icons.BangumiTrackingIcon
 import me.him188.ani.app.ui.foundation.icons.TrackingIconRenderer
 import me.him188.ani.app.ui.foundation.icons.TrackingIconRegistry
 import me.him188.ani.app.ui.settings.account.BangumiTrackingAccountConnector
-import me.him188.ani.app.ui.settings.account.TrackingAccountConnector
-import me.him188.ani.app.ui.settings.account.TrackingAccountRegistry
+import me.him188.ani.app.ui.foundation.tracking.TrackingAccountConnector
+import me.him188.ani.app.ui.foundation.tracking.TrackingAccountRegistry
 import me.him188.ani.tracking.api.DefaultTrackingRegistry
 import me.him188.ani.tracking.api.TrackingBindingBackup
 import me.him188.ani.tracking.api.TrackingRegistry

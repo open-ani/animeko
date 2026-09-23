@@ -73,6 +73,10 @@ import me.him188.ani.app.domain.usecase.GlobalKoin
 import me.him188.ani.app.navigation.LocalNavigator
 import me.him188.ani.app.navigation.SettingsTab
 import me.him188.ani.app.ui.foundation.icons.TrackingIconRegistry
+import me.him188.ani.app.ui.foundation.tracking.TrackingAccountConnector
+import me.him188.ani.app.ui.foundation.tracking.TrackingAccountRegistry
+import me.him188.ani.app.ui.foundation.tracking.TrackingAccountStatus
+import me.him188.ani.app.ui.foundation.tracking.TrackingLoginAction
 import me.him188.ani.app.ui.foundation.AsyncImage
 import me.him188.ani.app.ui.foundation.LocalSubjectAppearanceSettings
 import me.him188.ani.tracking.api.TrackingAccountState
@@ -93,8 +97,9 @@ import kotlin.time.Instant
 private enum class Field { STATUS, PROGRESS, SCORE, START_DATE, FINISH_DATE }
 
 @Composable
-internal fun TrackingSection(subjectId: Int, modifier: Modifier = Modifier, onClickLogin: (() -> Unit)? = null) {
+internal fun TrackingSection(subjectId: Int, modifier: Modifier = Modifier) {
     val coordinator = remember { GlobalKoin.get<TrackingCoordinator>() }
+    val accountConnectors = remember { GlobalKoin.get<TrackingAccountRegistry>().connectors }
     val cards by remember(coordinator, subjectId) { coordinator.observe(subjectId) }
         .collectAsStateWithLifecycle(emptyList())
     val titleRepository = remember { GlobalKoin.get<SubjectCollectionRepository>() }
@@ -219,9 +224,17 @@ internal fun TrackingSection(subjectId: Int, modifier: Modifier = Modifier, onCl
                 if (connectedCards.isEmpty()) {
                     Text(stringResource(Lang.tracking_no_accounts_connected))
                 }
-                if (onClickLogin != null) TextButton(onClick = { showSheet = false; onClickLogin() }) {
-                    Text(stringResource(Lang.tracking_sign_in_animeko))
-                }
+                accountConnectors
+                    .filter { connector -> connectedCards.none { it.providerId == connector.providerId } }
+                    .forEach { connector ->
+                        TrackingSignInRow(connector) { action ->
+                            showSheet = false
+                            when (action) {
+                                is TrackingLoginAction.Browser -> uriHandler.openUri(action.url)
+                                is TrackingLoginAction.OAuth -> navigator.navigateOAuthAuthorize(action.platform.id)
+                            }
+                        }
+                    }
                 TextButton(onClick = { showSheet = false; navigator.navigateSettings(SettingsTab.TRACKING) }) {
                     Text(stringResource(Lang.tracking_manage_accounts))
                 }
@@ -517,4 +530,27 @@ private fun TrackingDateEditor(title: String, date: TrackingDate?, onDismiss: ()
             onSelect(selected?.let { TrackingDate(it.year, it.monthNumber, it.dayOfMonth) })
         }) { Text(stringResource(Lang.tracking_action_save)) } },
         dismissButton = { TextButton(onClick = onDismiss) { Text(stringResource(Lang.subject_collection_cancel)) } }) { DatePicker(state) }
+}
+
+/** Offers the provider's own sign-in so a guest never has to go through a generic Animeko login first. */
+@Composable
+private fun TrackingSignInRow(connector: TrackingAccountConnector, onLogin: (TrackingLoginAction) -> Unit) {
+    val state by connector.state.collectAsStateWithLifecycle(null)
+    val current = state ?: return
+    if (current.connected || current.refreshing) return
+    val icon = remember(connector.providerId) {
+        GlobalKoin.get<TrackingIconRegistry>().find(connector.providerId)
+    }
+    Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+        icon?.Icon()
+        TextButton(onClick = { onLogin(connector.loginAction) }) {
+            Text(
+                if (current.status == TrackingAccountStatus.SignInWithProvider) {
+                    stringResource(Lang.settings_tracking_sign_in_with, connector.displayName)
+                } else {
+                    stringResource(Lang.tracking_connect_provider, connector.displayName)
+                },
+            )
+        }
+    }
 }

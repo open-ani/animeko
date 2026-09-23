@@ -1755,7 +1755,7 @@
     <string name="tracking_field_start_date">Start date</string>
     <string name="tracking_field_finish_date">Finish date</string>
     <string name="tracking_no_accounts_connected">No tracking accounts connected.</string>
-    <string name="tracking_sign_in_animeko">Sign in to Animeko</string>
+    <string name="tracking_connect_provider">Connect %1$s</string>
     <string name="tracking_manage_accounts">Tracking accounts</string>
     <string name="tracking_search_dialog_title">Find tracking title</string>
     <string name="tracking_search_placeholder">Search anime</string>

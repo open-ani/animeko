@@ -1768,7 +1768,7 @@
     <string name="tracking_field_start_date">開始日期</string>
     <string name="tracking_field_finish_date">完成日期</string>
     <string name="tracking_no_accounts_connected">尚未連線追蹤帳號。</string>
-    <string name="tracking_sign_in_animeko">登入 Animeko 帳號</string>
+    <string name="tracking_connect_provider">連接 %1$s</string>
     <string name="tracking_manage_accounts">追蹤帳號</string>
     <string name="tracking_search_dialog_title">搜尋追蹤條目</string>
     <string name="tracking_search_placeholder">搜尋動畫</string>

@@ -1,10 +1,9 @@
-package me.him188.ani.app.ui.settings.account
+package me.him188.ani.app.ui.foundation.tracking
 
 import kotlinx.coroutines.flow.Flow
 import me.him188.ani.app.domain.session.auth.OAuthPlatform
 import me.him188.ani.app.ui.lang.Lang
 import me.him188.ani.app.ui.lang.settings_tracking_disconnect_message
-import me.him188.ani.app.ui.settings.DetailPaneRoutes
 import me.him188.ani.tracking.api.TrackingAccountState
 import me.him188.ani.tracking.api.TrackingProviderId
 import org.jetbrains.compose.resources.StringResource
@@ -41,15 +40,12 @@ sealed interface TrackingLoginAction {
     data class OAuth(val platform: OAuthPlatform) : TrackingLoginAction
 }
 
-/** The shared Settings row handles layout and disconnect confirmation. */
+/** A service the user can connect; settings rows and the tracking sheet share it. */
 interface TrackingAccountConnector {
     val providerId: TrackingProviderId
     val displayName: String
     val state: Flow<TrackingAccountViewState>
     val loginAction: TrackingLoginAction
-    val detailsRoute: DetailPaneRoutes?
-        get() = null
-
     /** Explains what disconnecting removes, shown before the user confirms. */
     val disconnectMessage: StringResource
         get() = Lang.settings_tracking_disconnect_message

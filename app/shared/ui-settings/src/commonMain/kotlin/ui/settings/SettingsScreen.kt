@@ -125,7 +125,7 @@ import me.him188.ani.app.ui.foundation.widgets.BackNavigationIconButton
 import me.him188.ani.app.ui.foundation.widgets.LocalToaster
 import me.him188.ani.app.ui.lang.*
 import me.him188.ani.app.ui.settings.account.BangumiSyncTab
-import me.him188.ani.app.ui.settings.account.TrackingAccountRegistry
+import me.him188.ani.app.ui.foundation.tracking.TrackingAccountRegistry
 import me.him188.ani.app.ui.settings.account.TrackingAccountItem
 import me.him188.ani.app.ui.settings.account.GithubAccountTab
 import me.him188.ani.app.ui.settings.account.ProfileGroup

@@ -28,7 +28,7 @@ import me.him188.ani.app.domain.tracking.TrackingEpisodeSynchronizer
 import me.him188.ani.app.tracking.anilist.AniListTrackingProvider
 import me.him188.ani.app.tracking.anilist.createAniListHttpClient
 import me.him188.ani.app.ui.foundation.icons.TrackingIconRenderer
-import me.him188.ani.app.ui.settings.account.TrackingAccountConnector
+import me.him188.ani.app.ui.foundation.tracking.TrackingAccountConnector
 import me.him188.ani.app.data.persistent.dataStores
 import me.him188.ani.app.data.persistent.database.AniDatabase
 import me.him188.ani.app.data.repository.WindowStateRepository

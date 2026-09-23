@@ -2,9 +2,9 @@ package me.him188.ani.android.tracking
 
 import kotlinx.coroutines.flow.map
 import me.him188.ani.app.tracking.anilist.AniListTrackingProvider
-import me.him188.ani.app.ui.settings.account.TrackingAccountConnector
-import me.him188.ani.app.ui.settings.account.TrackingLoginAction
-import me.him188.ani.app.ui.settings.account.toViewState
+import me.him188.ani.app.ui.foundation.tracking.TrackingAccountConnector
+import me.him188.ani.app.ui.foundation.tracking.TrackingLoginAction
+import me.him188.ani.app.ui.foundation.tracking.toViewState
 import me.him188.ani.tracking.api.PendingLoginGate
 import me.him188.ani.tracking.api.TrackingProviderException
 
