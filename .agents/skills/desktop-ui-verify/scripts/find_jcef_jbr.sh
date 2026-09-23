@@ -12,9 +12,6 @@ add_candidate() {
   local home="$1"
   [[ -n "$home" ]] || return 0
   [[ -d "$home" ]] || return 0
-  if [[ "$home" != *"/Contents/Home" && -d "$home/Contents/Home" ]]; then
-    candidates+=("$home/Contents/Home")
-  fi
   candidates+=("$home")
 }
 
@@ -29,7 +26,6 @@ add_candidate "${JAVA_HOME:-}"
 
 shopt -s nullglob
 for home in \
-  "$HOME"/.local/share/mise/installs/java/*/Contents/Home \
   "$HOME"/Library/Java/JavaVirtualMachines/*/Contents/Home \
   /Library/Java/JavaVirtualMachines/*/Contents/Home \
   /Applications/Android\ Studio*.app/Contents/jbr/Contents/Home \
