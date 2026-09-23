@@ -222,6 +222,30 @@ class AniDatabaseMigrationTest {
     }
 
     @Test
+    fun `MIG-09v24缺少torrent_cache_episode时迁移到v25补齐表并保留旧缓存`() {
+        val helper = createHelper()
+        helper.createDatabase(24).use { connection ->
+            connection.execSQL("DROP TABLE `torrent_cache_episode`")
+            connection.execSQL(
+                "INSERT INTO `torrent_cache` (`mediaId`, `torrentData`, `relativeDir`, `completed`, `pathInTorrent`, " +
+                        "`downloadSize`, `uploadSize`) VALUES ('dmhy.1', X'00', 'dir', 1, 'a.mkv', 100, 20)",
+            )
+        }
+        helper.runMigrationsAndValidate(25, emptyList()).use { connection ->
+            assertEquals(
+                setOf("mediaId", "episodeId", "completed", "pathInTorrent", "downloadSize", "uploadSize"),
+                connection.columnNames("torrent_cache_episode"),
+            )
+            connection.prepare("SELECT `relativeDir`, `downloadSize` FROM `torrent_cache` WHERE `mediaId` = 'dmhy.1'")
+                .use { statement ->
+                    assertTrue(statement.step())
+                    assertEquals("dir", statement.getText(0))
+                    assertEquals(100L, statement.getLong(1))
+                }
+        }
+    }
+
+    @Test
     fun `MIG-04 缺失手动19-20迁移时从v16迁移到v21失败`() {
         val helper = createHelper()
         helper.createDatabase(16).use {}

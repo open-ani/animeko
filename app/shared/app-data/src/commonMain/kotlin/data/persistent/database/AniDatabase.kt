@@ -424,6 +424,9 @@ internal object Migrations {
      */
     class Migration_24_25 : AutoMigrationSpec {
         override fun onPostMigrate(connection: SQLiteConnection) {
+            connection.execSQL(
+                "CREATE TABLE IF NOT EXISTS `torrent_cache_episode` (`mediaId` TEXT NOT NULL, `episodeId` TEXT NOT NULL, `completed` INTEGER NOT NULL, `pathInTorrent` TEXT NOT NULL, `downloadSize` INTEGER NOT NULL, `uploadSize` INTEGER NOT NULL, PRIMARY KEY(`mediaId`, `episodeId`))"
+            )
         }
     }
 }
