@@ -4,10 +4,10 @@
  * Use of this source code is governed by the GNU AGPLv3 license.
  */
 
-package me.him188.ani.android.tracking
+package me.him188.ani.app.data.tracking
 
-import android.content.Context
-import java.util.concurrent.ConcurrentHashMap
+import kotlinx.atomicfu.locks.SynchronizedObject
+import kotlinx.atomicfu.locks.synchronized
 import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -37,13 +37,12 @@ import me.him188.ani.tracking.api.TrackingStatus
 
 /** AniList's account-scoped remote list, with local title matches kept in the existing preferences. */
 class AniListTrackingSource(
-    context: Context,
+    private val bindings: TrackingBindingStore,
     private val provider: TrackingProvider,
     private val episodes: Lazy<EpisodeCollectionRepository>,
 ) : TrackingSource {
-    private val appContext = context.applicationContext
-    private val bindings = appContext.getSharedPreferences(BINDINGS_PREFERENCES, Context.MODE_PRIVATE)
-    private val snapshots = ConcurrentHashMap<Int, MutableStateFlow<TrackingSnapshot?>>()
+    private val snapshotsLock = SynchronizedObject()
+    private val snapshots = mutableMapOf<Int, MutableStateFlow<TrackingSnapshot?>>()
     private val bindingsVersion = MutableStateFlow(0)
     private val episodeSyncMutex = Mutex()
 
@@ -93,7 +92,7 @@ class AniListTrackingSource(
         val entry = candidate.listEntry ?: provider.bind(
             TrackingListEntry(candidate.media.id, TrackingStatus.PLANNING, progress = 0),
         )
-        bindings.edit().putString(bindingKey(account.remoteId, subjectId), candidate.media.id.value).apply()
+        bindings.put(bindingKey(account.remoteId, subjectId), candidate.media.id.value)
         return TrackingSnapshot(candidate.media, entry).also { snapshotState(subjectId).value = it }
     }
 
@@ -140,19 +139,19 @@ class AniListTrackingSource(
     override suspend fun unlink(subjectId: Int) {
         val account = (provider.accountState.value as? TrackingAccountState.LoggedIn)?.account
             ?: throw TrackingProviderException.Unauthorized()
-        bindings.edit().remove(bindingKey(account.remoteId, subjectId)).apply()
+        bindings.remove(bindingKey(account.remoteId, subjectId))
         snapshotState(subjectId).value = null
     }
 
     override suspend fun episodeWatched(subjectId: Int, episodeId: Int) {
-        if (bindings.all.keys.none { it.endsWith(":$subjectId") }) return
+        if (bindings.entries().keys.none { it.endsWith(":$subjectId") }) return
         episodeSyncMutex.withLock {
             val account = try {
                 provider.refreshAccount()
             } catch (_: TrackingProviderException.Unauthorized) {
                 return
             }
-            val mediaId = bindings.getString(bindingKey(account.remoteId, subjectId), null)
+            val mediaId = bindings.get(bindingKey(account.remoteId, subjectId))
                 ?.let(::TrackingMediaId) ?: return
             val episode = episodes.value.episodeCollectionInfoFlow(subjectId, episodeId).first().episodeInfo
             if (episode.type != null && episode.type != EpisodeType.MainStory) return
@@ -169,12 +168,12 @@ class AniListTrackingSource(
         }
     }
 
-    override fun exportBindings(): List<TrackingBindingRecord> = bindings.all.mapNotNull { (key, value) ->
+    override fun exportBindings(): List<TrackingBindingRecord> = bindings.entries().mapNotNull { (key, value) ->
         val separator = key.lastIndexOf(':')
         if (separator <= 0) return@mapNotNull null
         val accountId = key.take(separator)
         val subjectId = key.substring(separator + 1).toIntOrNull()
-        val mediaId = value as? String
+        val mediaId = value
         if (accountId.isBlank() || subjectId == null || subjectId <= 0 || mediaId.isNullOrBlank()) null
         else TrackingBindingRecord(info.id.value, accountId, subjectId, mediaId)
     }
@@ -185,9 +184,7 @@ class AniListTrackingSource(
 
     override fun applyValidatedBindings(records: List<TrackingBindingRecord>) {
         validateBindingFields(records)
-        val editor = bindings.edit()
-        records.forEach { editor.putString(bindingKey(it.accountId, it.subjectId), it.mediaId) }
-        check(editor.commit()) { "Could not restore AniList title bindings" }
+        bindings.putAll(records.associate { bindingKey(it.accountId, it.subjectId) to it.mediaId })
         bindingsVersion.value += 1
     }
 
@@ -202,20 +199,26 @@ class AniListTrackingSource(
             ?: provider.refreshAccount()
 
     private suspend fun loadSnapshot(subjectId: Int, account: TrackingAccount): TrackingSnapshot? {
-        val mediaId = bindings.getString(bindingKey(account.remoteId, subjectId), null)
+        val mediaId = bindings.get(bindingKey(account.remoteId, subjectId))
             ?.let(::TrackingMediaId) ?: return null
         val current = provider.refresh(mediaId)
             ?: throw TrackingProviderException.Remote("AniList title is unavailable")
         return TrackingSnapshot(current.media, current.listEntry)
     }
 
-    private fun snapshotState(subjectId: Int) = snapshots.computeIfAbsent(subjectId) {
-        MutableStateFlow(null)
+    private fun snapshotState(subjectId: Int) = synchronized(snapshotsLock) {
+        snapshots.getOrPut(subjectId) { MutableStateFlow(null) }
     }
 
     private fun bindingKey(accountId: String, subjectId: Int) = "$accountId:$subjectId"
 
-    private companion object {
-        const val BINDINGS_PREFERENCES = "anilist-bindings"
-    }
+}
+
+/** Persists non-secret account and title matches; credentials remain in TrackingCredentialStore. */
+interface TrackingBindingStore {
+    fun get(key: String): String?
+    fun put(key: String, value: String)
+    fun remove(key: String)
+    fun entries(): Map<String, String>
+    fun putAll(entries: Map<String, String>)
 }

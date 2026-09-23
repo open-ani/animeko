@@ -30,8 +30,9 @@ import me.him188.ani.app.data.repository.user.SettingsRepository
 import me.him188.ani.app.domain.episode.EpisodeTrackingSync
 import me.him188.ani.app.tracking.anilist.AniListTrackingProvider
 import me.him188.ani.app.tracking.anilist.createAniListHttpClient
-import me.him188.ani.android.tracking.AniListTrackingSource
-import me.him188.ani.android.tracking.AniListTrackingIcon
+import me.him188.ani.app.data.tracking.AniListTrackingSource
+import me.him188.ani.android.tracking.AndroidAniListBindingStore
+import me.him188.ani.app.ui.foundation.icons.AniListTrackingIcon
 import me.him188.ani.android.tracking.AniListTrackingAccountConnector
 import me.him188.ani.app.ui.foundation.icons.TrackingIconRenderer
 import me.him188.ani.app.ui.settings.account.TrackingAccountConnector
@@ -109,8 +110,8 @@ fun getAndroidModules(
         AniListTrackingProvider(createAniListHttpClient(getPlatformKtorEngine()),
             AndroidTrackingCredentialStore(androidContext(), AniListTrackingProvider.ID))
     }
-    single { AniListTrackingSource(androidContext(), get<AniListTrackingProvider>(), inject()) }
-    single<TrackingIconRenderer> { AniListTrackingIcon() }
+    single { AniListTrackingSource(AndroidAniListBindingStore(androidContext()), get<AniListTrackingProvider>(), inject()) }
+    single<TrackingIconRenderer> { AniListTrackingIcon(AniListTrackingProvider.ID) }
     single<TrackingAccountConnector> { AniListTrackingAccountConnector(get<AniListTrackingProvider>()) }
     single { AniListAuthRedirectHandler(get<AniListTrackingProvider>()) }
     single<TrackingAuthRedirectHandler> { get<AniListAuthRedirectHandler>() }

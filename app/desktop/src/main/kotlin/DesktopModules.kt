@@ -16,6 +16,18 @@ import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.runBlocking
 import me.him188.ani.app.data.models.preference.PikPakConfig
+import me.him188.ani.app.data.tracking.AniListTrackingSource
+import me.him188.ani.app.desktop.tracking.DesktopAniListAccountConnector
+import me.him188.ani.app.desktop.tracking.DesktopAniListBindingStore
+import me.him188.ani.app.ui.foundation.icons.AniListTrackingIcon
+import me.him188.ani.app.desktop.tracking.DesktopRegistryEpisodeTrackingSync
+import me.him188.ani.app.desktop.tracking.MacOSKeychainCredentialStore
+import me.him188.ani.app.domain.episode.EpisodeTrackingSync
+import me.him188.ani.app.domain.tracking.TrackingEpisodeSynchronizer
+import me.him188.ani.app.tracking.anilist.AniListTrackingProvider
+import me.him188.ani.app.tracking.anilist.createAniListHttpClient
+import me.him188.ani.app.ui.foundation.icons.TrackingIconRenderer
+import me.him188.ani.app.ui.settings.account.TrackingAccountConnector
 import me.him188.ani.app.data.persistent.dataStores
 import me.him188.ani.app.data.persistent.database.AniDatabase
 import me.him188.ani.app.data.repository.WindowStateRepository
@@ -65,6 +77,8 @@ import me.him188.ani.utils.httpdownloader.HttpDownloader
 import me.him188.ani.utils.io.absolutePath
 import me.him188.ani.utils.io.inSystem
 import me.him188.ani.utils.io.toKtPath
+import me.him188.ani.tracking.api.TrackingSource
+import me.him188.ani.utils.ktor.getPlatformKtorEngine
 import me.him188.ani.utils.logging.info
 import me.him188.ani.utils.logging.logger
 import me.him188.ani.utils.platform.Arch
@@ -84,6 +98,15 @@ internal fun isWindowsArm64(): Boolean {
 }
 
 fun getDesktopModules(getContext: () -> DesktopContext, scope: CoroutineScope) = module {
+    if (currentPlatformDesktop() is Platform.MacOS) {
+        single { AniListTrackingProvider(createAniListHttpClient(getPlatformKtorEngine()), MacOSKeychainCredentialStore()) }
+        single { AniListTrackingSource(DesktopAniListBindingStore(), get<AniListTrackingProvider>(), inject()) }
+        single<TrackingSource> { get<AniListTrackingSource>() }
+        single { DesktopAniListAccountConnector(get<AniListTrackingProvider>()) }
+        single<TrackingAccountConnector> { get<DesktopAniListAccountConnector>() }
+        single<TrackingIconRenderer> { AniListTrackingIcon(AniListTrackingProvider.ID) }
+        single<EpisodeTrackingSync> { DesktopRegistryEpisodeTrackingSync(get<TrackingEpisodeSynchronizer>(), scope) }
+    }
     single<TorrentEngineAccess> { AlwaysUseTorrentEngineAccess }
 
     single<MediaSaveDirProvider> {

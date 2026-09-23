@@ -5,7 +5,7 @@
  * AniList mark geometry from Mihon's Apache-2.0 brand_anilist.xml.
  */
 
-package me.him188.ani.android.tracking
+package me.him188.ani.app.ui.foundation.icons
 
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.layout.size
@@ -19,6 +19,14 @@ import androidx.compose.ui.graphics.PathFillType
 import androidx.compose.ui.graphics.drawscope.withTransform
 import androidx.compose.ui.graphics.vector.PathParser
 import androidx.compose.ui.unit.dp
+import me.him188.ani.tracking.api.TrackingProviderId
+
+class AniListTrackingIcon(override val providerId: TrackingProviderId) : TrackingIconRenderer {
+    @Composable
+    override fun Icon() {
+        AniListIcon()
+    }
+}
 
 @Composable
 fun AniListIcon(modifier: Modifier = Modifier) {
