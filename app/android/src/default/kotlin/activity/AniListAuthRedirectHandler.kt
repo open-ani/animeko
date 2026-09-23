@@ -6,9 +6,13 @@ import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.launch
 import me.him188.ani.app.tracking.anilist.AniListTrackingProvider
+import me.him188.ani.tracking.api.PendingLoginGate
 import me.him188.ani.tracking.api.TrackingLoginCredentials
 
-internal class AniListAuthRedirectHandler(private val provider: AniListTrackingProvider) : TrackingAuthRedirectHandler {
+internal class AniListAuthRedirectHandler(
+    private val provider: AniListTrackingProvider,
+    private val pendingLogin: PendingLoginGate,
+) : TrackingAuthRedirectHandler {
     override val host = "anilist-auth"
     override val providerName = "AniList"
 
@@ -18,6 +22,7 @@ internal class AniListAuthRedirectHandler(private val provider: AniListTrackingP
         }?.takeIf(String::isNotBlank) ?: return false
 
         intent.data = null
+        if (!pendingLogin.consume()) return true
         scope.launch {
             val success = try {
                 provider.login(TrackingLoginCredentials(secret = token))

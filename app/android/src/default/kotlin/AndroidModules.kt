@@ -38,6 +38,7 @@ import me.him188.ani.app.ui.foundation.icons.TrackingIconRenderer
 import me.him188.ani.app.ui.settings.account.TrackingAccountConnector
 import me.him188.ani.app.domain.tracking.TrackingEpisodeSynchronizer
 import me.him188.ani.tracking.api.AndroidTrackingCredentialStore
+import me.him188.ani.tracking.api.PendingLoginGate
 import me.him188.ani.tracking.api.TrackingSource
 import me.him188.ani.utils.ktor.getPlatformKtorEngine
 import me.him188.ani.app.domain.foundation.HttpClientProvider
@@ -112,8 +113,9 @@ fun getAndroidModules(
     }
     single { AniListTrackingSource(AndroidAniListBindingStore(androidContext()), get<AniListTrackingProvider>(), inject()) }
     single<TrackingIconRenderer> { AniListTrackingIcon(AniListTrackingProvider.ID) }
-    single<TrackingAccountConnector> { AniListTrackingAccountConnector(get<AniListTrackingProvider>()) }
-    single { AniListAuthRedirectHandler(get<AniListTrackingProvider>()) }
+    val aniListPendingLogin = PendingLoginGate()
+    single<TrackingAccountConnector> { AniListTrackingAccountConnector(get<AniListTrackingProvider>(), aniListPendingLogin) }
+    single { AniListAuthRedirectHandler(get<AniListTrackingProvider>(), aniListPendingLogin) }
     single<TrackingAuthRedirectHandler> { get<AniListAuthRedirectHandler>() }
     single { TrackingAuthRedirectRouter(getAll()) }
     single<TrackingSource> { get<AniListTrackingSource>() }

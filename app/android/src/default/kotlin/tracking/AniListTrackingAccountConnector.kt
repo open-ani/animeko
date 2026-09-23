@@ -5,15 +5,23 @@ import me.him188.ani.app.tracking.anilist.AniListTrackingProvider
 import me.him188.ani.app.ui.settings.account.TrackingAccountConnector
 import me.him188.ani.app.ui.settings.account.TrackingAccountViewState
 import me.him188.ani.app.ui.settings.account.TrackingLoginAction
+import me.him188.ani.tracking.api.PendingLoginGate
 import me.him188.ani.tracking.api.TrackingAccountState
 import me.him188.ani.tracking.api.TrackingProviderException
 
-class AniListTrackingAccountConnector(private val provider: AniListTrackingProvider) : TrackingAccountConnector {
+class AniListTrackingAccountConnector(
+    private val provider: AniListTrackingProvider,
+    private val pendingLogin: PendingLoginGate,
+) : TrackingAccountConnector {
     override val providerId = AniListTrackingProvider.ID
     override val displayName = "AniList"
-    override val loginAction = TrackingLoginAction.Browser(
-        "https://anilist.co/api/v2/oauth/authorize?client_id=51393&response_type=token",
-    )
+    override val loginAction: TrackingLoginAction
+        get() {
+            pendingLogin.begin()
+            return TrackingLoginAction.Browser(
+                "https://anilist.co/api/v2/oauth/authorize?client_id=51393&response_type=token",
+            )
+        }
     override val state = provider.accountState.map { account ->
         when (account) {
             is TrackingAccountState.LoggedIn -> TrackingAccountViewState(account.account.displayName, connected = true)
