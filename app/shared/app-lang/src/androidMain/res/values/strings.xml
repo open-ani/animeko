@@ -1734,6 +1734,7 @@
     <string name="tracking_action_tracked_many">%1$d trackers</string>
     <string name="tracking_sheet_title">Tracking</string>
     <string name="tracking_card_add_tracking">Add tracking</string>
+    <string name="tracking_card_not_matched">No title matched yet</string>
     <string name="tracking_card_collection">Collection</string>
     <string name="tracking_options_menu_description">Tracking options</string>
     <string name="tracking_menu_open_on_provider">Open on %1$s</string>
@@ -1792,7 +1793,8 @@
     <string name="settings_tracking_sign_in_to_manage">Sign in to Animeko to manage</string>
     <string name="settings_tracking_connected_action_description">Connected</string>
     <string name="settings_tracking_disconnect_title">Disconnect %1$s?</string>
-    <string name="settings_tracking_disconnect_message">Your tracking entries stay online.</string>
+    <string name="settings_tracking_disconnect_message">Signs out of this service on this device only. Your list on the service is not changed.</string>
+    <string name="settings_tracking_bangumi_disconnect_message">Unlinks Bangumi from your Animeko account on all devices. You stay signed in to Animeko, and your collection on Bangumi is not changed. You can link it again at any time.</string>
     <string name="settings_tracking_disconnect_action">Disconnect</string>
 
     <!-- Settings Backup & Restore -->

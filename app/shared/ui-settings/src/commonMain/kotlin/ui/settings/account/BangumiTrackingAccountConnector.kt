@@ -4,6 +4,8 @@ import kotlinx.coroutines.flow.map
 import me.him188.ani.app.data.repository.user.UserRepository
 import me.him188.ani.app.data.tracking.BangumiTrackingSource
 import me.him188.ani.app.domain.session.auth.OAuthPlatform
+import me.him188.ani.app.ui.lang.Lang
+import me.him188.ani.app.ui.lang.settings_tracking_bangumi_disconnect_message
 import me.him188.ani.app.ui.settings.DetailPaneRoutes
 import me.him188.ani.app.ui.user.SelfInfoStateProducer
 
@@ -12,16 +14,23 @@ class BangumiTrackingAccountConnector(private val userRepository: UserRepository
     override val displayName = "Bangumi"
     override val loginAction = TrackingLoginAction.OAuth(OAuthPlatform.BANGUMI)
     override val detailsRoute = DetailPaneRoutes.BangumiSync
+    override val disconnectMessage = Lang.settings_tracking_bangumi_disconnect_message
     override val state = SelfInfoStateProducer().flow.map { info ->
-        val name = info.selfInfo?.bangumiUsername
+        val name = info.selfInfo?.bangumiUsername?.takeIf { it.isNotBlank() }
+        val sessionValid = info.isSessionValid == true
         TrackingAccountViewState(
-            description = name ?: if (info.isSessionValid == true) "Not connected" else "Sign in to Animeko to manage",
-            connected = !name.isNullOrBlank(),
-            enabled = info.isSessionValid == true,
+            status = when {
+                name != null -> TrackingAccountStatus.Account(name)
+                sessionValid -> TrackingAccountStatus.NotConnected
+                else -> TrackingAccountStatus.SignInToManage
+            },
+            connected = name != null,
+            enabled = sessionValid,
             refreshing = info.isLoading,
         )
     }
 
+    /** Unlinks Bangumi from the Animeko account on the server; the Animeko session stays signed in. */
     override suspend fun disconnect() {
         userRepository.unbindBangumi()
     }

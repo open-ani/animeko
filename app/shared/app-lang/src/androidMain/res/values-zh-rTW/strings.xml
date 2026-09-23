@@ -1737,6 +1737,7 @@
     <string name="tracking_action_tracked_many">%1$d 個追蹤服務</string>
     <string name="tracking_sheet_title">追蹤</string>
     <string name="tracking_card_add_tracking">新增追蹤</string>
+    <string name="tracking_card_not_matched">尚未配對條目</string>
     <string name="tracking_card_collection">收藏</string>
     <string name="tracking_options_menu_description">追蹤選項</string>
     <string name="tracking_menu_open_on_provider">在 %1$s 查看</string>
@@ -1795,7 +1796,8 @@
     <string name="settings_tracking_sign_in_to_manage">登入 Animeko 帳號以管理</string>
     <string name="settings_tracking_connected_action_description">已連線</string>
     <string name="settings_tracking_disconnect_title">斷開 %1$s 連線？</string>
-    <string name="settings_tracking_disconnect_message">遠端列表中的追蹤記錄將保持不變。</string>
+    <string name="settings_tracking_disconnect_message">僅在本裝置上登出該服務，服務上的列表不會改變。</string>
+    <string name="settings_tracking_bangumi_disconnect_message">將從你的 Animeko 帳號解除綁定 Bangumi，所有裝置都會生效。你仍保持 Animeko 登入，Bangumi 上的收藏不會改變，之後可隨時重新綁定。</string>
     <string name="settings_tracking_disconnect_action">斷開連線</string>
 
     <!-- Settings Backup & Restore -->

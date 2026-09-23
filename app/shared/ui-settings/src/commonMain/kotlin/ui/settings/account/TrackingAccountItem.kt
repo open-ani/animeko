@@ -32,12 +32,12 @@ import org.jetbrains.compose.resources.stringResource
 @Composable
 private fun formatTrackingAccountDescription(state: TrackingAccountViewState, failed: Boolean): String {
     if (failed) return stringResource(Lang.settings_tracking_connection_check_failed)
-    return when (state.description) {
-        "Checking connection" -> stringResource(Lang.settings_tracking_checking_connection)
-        "Not connected" -> stringResource(Lang.settings_tracking_not_connected)
-        "Connecting" -> stringResource(Lang.settings_tracking_connecting)
-        "Sign in to Animeko to manage" -> stringResource(Lang.settings_tracking_sign_in_to_manage)
-        else -> state.description
+    return when (val status = state.status) {
+        is TrackingAccountStatus.Account -> status.name
+        TrackingAccountStatus.Checking -> stringResource(Lang.settings_tracking_checking_connection)
+        TrackingAccountStatus.NotConnected -> stringResource(Lang.settings_tracking_not_connected)
+        TrackingAccountStatus.Connecting -> stringResource(Lang.settings_tracking_connecting)
+        TrackingAccountStatus.SignInToManage -> stringResource(Lang.settings_tracking_sign_in_to_manage)
     }
 }
 
@@ -49,7 +49,7 @@ fun SettingsScope.TrackingAccountItem(
     openDetails: (DetailPaneRoutes) -> Unit,
 ) {
     val state by connector.state.collectAsStateWithLifecycle(
-        initialValue = TrackingAccountViewState("Checking connection", connected = false, refreshing = true),
+        initialValue = TrackingAccountViewState(TrackingAccountStatus.Checking, connected = false, refreshing = true),
     )
     val icon = remember(connector.providerId) {
         GlobalKoin.get<TrackingIconRegistry>().find(connector.providerId)
@@ -111,7 +111,7 @@ fun SettingsScope.TrackingAccountItem(
         AlertDialog(
             onDismissRequest = { confirmDisconnect = false },
             title = { Text(stringResource(Lang.settings_tracking_disconnect_title, connector.displayName)) },
-            text = { Text(stringResource(Lang.settings_tracking_disconnect_message)) },
+            text = { Text(stringResource(connector.disconnectMessage)) },
             confirmButton = {
                 TextButton(onClick = {
                     confirmDisconnect = false

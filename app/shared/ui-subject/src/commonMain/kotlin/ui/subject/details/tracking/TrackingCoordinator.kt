@@ -25,7 +25,7 @@ import me.him188.ani.tracking.api.TrackingScoreOption
 sealed interface TrackingLoad {
     data object Loading : TrackingLoad
     data class Ready(val snapshot: TrackingSnapshot?) : TrackingLoad
-    data class Failed(val message: String) : TrackingLoad
+    data object Failed : TrackingLoad
 }
 
 data class TrackingCardModel(
@@ -54,7 +54,7 @@ class TrackingCoordinator(private val registry: TrackingRegistry) {
                         .map<TrackingSnapshot?, TrackingLoad> { TrackingLoad.Ready(it) }
                         .catch { failure ->
                             if (failure is CancellationException) throw failure
-                            emit(TrackingLoad.Failed("Tracking could not be loaded"))
+                            emit(TrackingLoad.Failed)
                         }
                     if (generation == 0) snapshots.onStart { emit(TrackingLoad.Loading) } else snapshots
                 },

@@ -375,7 +375,7 @@ private fun TrackingCard(
                 if (icon != null) icon.Icon() else Text(card.providerName.take(1), style = MaterialTheme.typography.titleLarge)
                 Column(Modifier.weight(1f)) {
                     Text(card.providerName, style = MaterialTheme.typography.titleMedium)
-                    Text(snapshot?.media?.title ?: if (card.capabilities.needsMatchSearch) stringResource(Lang.tracking_card_add_tracking) else stringResource(Lang.tracking_card_collection),
+                    Text(snapshot?.media?.title ?: if (card.capabilities.needsMatchSearch) stringResource(Lang.tracking_card_not_matched) else stringResource(Lang.tracking_card_collection),
                         maxLines = 1, overflow = TextOverflow.Ellipsis)
                 }
                 if (card.load is TrackingLoad.Loading || updating) CircularProgressIndicator(Modifier.size(20.dp), strokeWidth = 2.dp)
@@ -401,15 +401,8 @@ private fun TrackingCard(
                 }
             }
             when {
-                card.load is TrackingLoad.Failed -> {
-                    val message = (card.load as TrackingLoad.Failed).message
-                    val displayMessage = if (message == "Tracking could not be loaded") {
-                        stringResource(Lang.tracking_error_load_failed)
-                    } else {
-                        message
-                    }
-                    Text(displayMessage, color = MaterialTheme.colorScheme.error)
-                }
+                card.load is TrackingLoad.Failed ->
+                    Text(stringResource(Lang.tracking_error_load_failed), color = MaterialTheme.colorScheme.error)
                 snapshot == null && card.capabilities.needsMatchSearch -> TextButton(onClick = onSearch) { Icon(Icons.Default.Add, null); Text(stringResource(Lang.tracking_card_add_tracking)) }
                 entry == null -> TextButton(onClick = { snapshot?.media?.id?.let(onAdd) ?: onSearch() }) {
                     Text(stringResource(Lang.tracking_card_add_tracking))
