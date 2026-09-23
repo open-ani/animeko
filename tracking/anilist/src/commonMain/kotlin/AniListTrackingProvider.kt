@@ -188,9 +188,10 @@ class AniListTrackingProvider(
 
     companion object {
         private const val POINT_100 = "POINT_100"
+        val ID = TrackingProviderId("anilist")
 
         val INFO = TrackingProviderInfo(
-            id = TrackingProviderId("anilist"),
+            id = ID,
             displayName = "AniList",
             websiteUrl = "https://anilist.co",
         )

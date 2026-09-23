@@ -113,6 +113,12 @@ import me.him188.ani.app.ui.subject.details.state.SubjectDetailsStateFactory
 import me.him188.ani.app.ui.subject.details.tracking.TrackingCoordinator
 import me.him188.ani.app.domain.tracking.TrackingEpisodeSynchronizer
 import me.him188.ani.app.data.tracking.BangumiTrackingSource
+import me.him188.ani.app.ui.foundation.icons.BangumiTrackingIcon
+import me.him188.ani.app.ui.foundation.icons.TrackingIconRenderer
+import me.him188.ani.app.ui.foundation.icons.TrackingIconRegistry
+import me.him188.ani.app.ui.settings.account.BangumiTrackingAccountConnector
+import me.him188.ani.app.ui.settings.account.TrackingAccountConnector
+import me.him188.ani.app.ui.settings.account.TrackingAccountRegistry
 import me.him188.ani.tracking.api.DefaultTrackingRegistry
 import me.him188.ani.tracking.api.TrackingBindingBackup
 import me.him188.ani.tracking.api.TrackingRegistry
@@ -440,6 +446,10 @@ private fun KoinApplication.otherModules(
     single<MeteredNetworkDetector> { createMeteredNetworkDetector(getContext()) }
     single<SubjectDetailsStateFactory> { DefaultSubjectDetailsStateFactory() }
     single { BangumiTrackingSource(get(), get(), inject(), get(), inject()) }
+    single { BangumiTrackingIcon() }
+    single { BangumiTrackingAccountConnector(get()) }
+    single { TrackingIconRegistry(listOf(get<BangumiTrackingIcon>()) + getAll<TrackingIconRenderer>()) }
+    single { TrackingAccountRegistry(listOf(get<BangumiTrackingAccountConnector>()) + getAll<TrackingAccountConnector>()) }
     single<TrackingRegistry> { DefaultTrackingRegistry(listOf(get<BangumiTrackingSource>()) + getAll<TrackingSource>()) }
     single<TrackingBindingBackup> { get<TrackingRegistry>() }
     single { TrackingCoordinator(get()) }

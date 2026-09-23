@@ -21,6 +21,8 @@ import kotlinx.coroutines.runBlocking
 import kotlinx.io.files.Path
 import me.him188.ani.android.navigation.AndroidBrowserNavigator
 import me.him188.ani.android.activity.AniListAuthRedirectHandler
+import me.him188.ani.android.activity.TrackingAuthRedirectHandler
+import me.him188.ani.android.activity.TrackingAuthRedirectRouter
 import me.him188.ani.android.provider.ExternalContentProviderFactoryImpl
 import me.him188.ani.app.data.models.preference.PikPakConfig
 import me.him188.ani.app.data.persistent.database.AniDatabase
@@ -28,10 +30,13 @@ import me.him188.ani.app.data.repository.user.SettingsRepository
 import me.him188.ani.app.domain.episode.EpisodeTrackingSync
 import me.him188.ani.app.tracking.anilist.AniListTrackingProvider
 import me.him188.ani.app.tracking.anilist.createAniListHttpClient
-import me.him188.ani.app.ui.subject.details.tracking.AniListTrackingSource
+import me.him188.ani.android.tracking.AniListTrackingSource
+import me.him188.ani.android.tracking.AniListTrackingIcon
+import me.him188.ani.android.tracking.AniListTrackingAccountConnector
+import me.him188.ani.app.ui.foundation.icons.TrackingIconRenderer
+import me.him188.ani.app.ui.settings.account.TrackingAccountConnector
 import me.him188.ani.app.domain.tracking.TrackingEpisodeSynchronizer
 import me.him188.ani.tracking.api.AndroidTrackingCredentialStore
-import me.him188.ani.tracking.api.TrackingProviderId
 import me.him188.ani.tracking.api.TrackingSource
 import me.him188.ani.utils.ktor.getPlatformKtorEngine
 import me.him188.ani.app.domain.foundation.HttpClientProvider
@@ -102,10 +107,14 @@ fun getAndroidModules(
 ) = module {
     single {
         AniListTrackingProvider(createAniListHttpClient(getPlatformKtorEngine()),
-            AndroidTrackingCredentialStore(androidContext(), TrackingProviderId("anilist")))
+            AndroidTrackingCredentialStore(androidContext(), AniListTrackingProvider.ID))
     }
     single { AniListTrackingSource(androidContext(), get<AniListTrackingProvider>(), inject()) }
+    single<TrackingIconRenderer> { AniListTrackingIcon() }
+    single<TrackingAccountConnector> { AniListTrackingAccountConnector(get<AniListTrackingProvider>()) }
     single { AniListAuthRedirectHandler(get<AniListTrackingProvider>()) }
+    single<TrackingAuthRedirectHandler> { get<AniListAuthRedirectHandler>() }
+    single { TrackingAuthRedirectRouter(getAll()) }
     single<TrackingSource> { get<AniListTrackingSource>() }
     single<EpisodeTrackingSync> { RegistryEpisodeTrackingSync(get<TrackingEpisodeSynchronizer>(), coroutineScope) }
     single<BrowserNavigator> { AndroidBrowserNavigator() }

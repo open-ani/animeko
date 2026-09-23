@@ -65,8 +65,8 @@ class BangumiTrackingSource(
 
     override val presentation: Flow<TrackingSourcePresentation> = sessionStateProvider.stateFlow.map { state ->
         if (state is SessionState.Valid && !state.bangumiConnected) {
-            TrackingSourcePresentation("Animeko", "animeko")
-        } else TrackingSourcePresentation("Bangumi", "bangumi")
+            TrackingSourcePresentation("Animeko")
+        } else TrackingSourcePresentation("Bangumi")
     }.distinctUntilChanged()
 
     override val capabilities = TrackingSourceCapabilities(
@@ -257,8 +257,9 @@ class BangumiTrackingSource(
     }
 
     companion object {
+        val ID = TrackingProviderId("bangumi")
         val INFO = TrackingProviderInfo(
-            id = TrackingProviderId("bangumi"),
+            id = ID,
             displayName = "Bangumi",
             websiteUrl = "https://bgm.tv",
         )

@@ -2,7 +2,6 @@ package me.him188.ani.app.ui.subject.details.tracking
 
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.Image
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.layout.Arrangement
@@ -73,8 +72,7 @@ import me.him188.ani.app.data.models.subject.preferredDisplayName
 import me.him188.ani.app.domain.usecase.GlobalKoin
 import me.him188.ani.app.navigation.LocalNavigator
 import me.him188.ani.app.navigation.SettingsTab
-import me.him188.ani.app.ui.foundation.icons.AniListIcon
-import me.him188.ani.app.ui.foundation.icons.BangumiNext
+import me.him188.ani.app.ui.foundation.icons.TrackingIconRegistry
 import me.him188.ani.app.ui.foundation.AsyncImage
 import me.him188.ani.app.ui.foundation.LocalSubjectAppearanceSettings
 import me.him188.ani.tracking.api.TrackingAccountState
@@ -342,7 +340,10 @@ private fun TrackingCard(
         Column(Modifier.fillMaxWidth().padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
             Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                TrackingBrandIcon(card.iconKey)
+                val icon = remember(card.providerId) {
+                    GlobalKoin.get<TrackingIconRegistry>().find(card.providerId)
+                }
+                if (icon != null) icon.Icon() else Text(card.providerName.take(1), style = MaterialTheme.typography.titleLarge)
                 Column(Modifier.weight(1f)) {
                     Text(card.providerName, style = MaterialTheme.typography.titleMedium)
                     Text(snapshot?.media?.title ?: if (card.capabilities.needsMatchSearch) "Add tracking" else "Collection",
@@ -395,15 +396,6 @@ private fun TrackingCard(
                 }
             }
         }
-    }
-}
-
-@Composable
-private fun TrackingBrandIcon(iconKey: String) {
-    when (iconKey) {
-        "anilist" -> AniListIcon()
-        "bangumi" -> Image(Icons.Default.BangumiNext, null, Modifier.size(32.dp))
-        else -> Text(iconKey.take(1).uppercase(), style = MaterialTheme.typography.titleLarge)
     }
 }
 

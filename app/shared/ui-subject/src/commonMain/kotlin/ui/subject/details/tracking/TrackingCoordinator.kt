@@ -31,7 +31,6 @@ sealed interface TrackingLoad {
 data class TrackingCardModel(
     val providerId: TrackingProviderId,
     val providerName: String,
-    val iconKey: String,
     val capabilities: TrackingSourceCapabilities,
     val statusOptions: List<TrackingStatusOption>,
     val scoreOptions: List<TrackingScoreOption>,
@@ -60,7 +59,7 @@ class TrackingCoordinator(private val registry: TrackingRegistry) {
                     if (generation == 0) snapshots.onStart { emit(TrackingLoad.Loading) } else snapshots
                 },
             ) { account, presentation, load -> TrackingCardModel(
-                source.info.id, presentation.name, presentation.iconKey, source.capabilities,
+                source.info.id, presentation.name, source.capabilities,
                 source.statusOptions, source.scoreOptions, account, load,
             ) }
         }

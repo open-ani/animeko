@@ -13,7 +13,6 @@ import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.Image
 import androidx.compose.foundation.layout.BoxScope
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ColumnScope
@@ -34,7 +33,6 @@ import androidx.compose.foundation.layout.wrapContentWidth
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.outlined.AccountCircle
 import androidx.compose.material.icons.outlined.Feedback
 import androidx.compose.material.icons.outlined.FilterList
@@ -100,6 +98,7 @@ import kotlinx.coroutines.CoroutineStart
 import kotlinx.coroutines.launch
 import kotlinx.serialization.Serializable
 import me.him188.ani.app.domain.session.auth.OAuthPlatform
+import me.him188.ani.app.domain.usecase.GlobalKoin
 import me.him188.ani.app.platform.LocalContext
 import me.him188.ani.app.platform.navigation.rememberAsyncBrowserNavigator
 import me.him188.ani.app.ui.adaptive.AniListDetailPaneScaffold
@@ -154,11 +153,10 @@ import me.him188.ani.app.ui.lang.settings_tab_storage
 import me.him188.ani.app.ui.lang.settings_tab_theme
 import me.him188.ani.app.ui.lang.settings_tab_update
 import me.him188.ani.app.ui.settings.account.BangumiSyncTab
-import me.him188.ani.app.ui.settings.account.AniListAccountItem
+import me.him188.ani.app.ui.settings.account.TrackingAccountRegistry
+import me.him188.ani.app.ui.settings.account.TrackingAccountItem
 import me.him188.ani.app.ui.settings.account.GithubAccountTab
 import me.him188.ani.app.ui.settings.account.ProfileGroup
-import me.him188.ani.app.ui.foundation.icons.BangumiNext
-import me.him188.ani.app.ui.settings.framework.components.TextItem
 import me.him188.ani.app.ui.settings.account.SelfInfoBanner
 import me.him188.ani.app.ui.settings.framework.components.SettingsScope
 import me.him188.ani.app.ui.settings.rendering.P2p
@@ -366,25 +364,16 @@ fun SettingsScreen(
                     ) {
                         when (currentTab) {
                             SettingsTab.TRACKING -> {
-                                val selfInfo by vm.selfInfoFlow.collectAsStateWithLifecycle()
+                                val connectors = remember { GlobalKoin.get<TrackingAccountRegistry>().connectors }
                                 Group(title = { Text("Services") }) {
-                                    val bangumiName = selfInfo.selfInfo?.bangumiUsername
-                                    TextItem(
-                                        title = { Text("Bangumi") },
-                                        icon = { Image(Icons.Default.BangumiNext, contentDescription = null, modifier = Modifier.size(40.dp)) },
-                                        description = {
-                                            Text(bangumiName ?: if (selfInfo.isSessionValid == true) "Not connected" else "Sign in to Animeko to manage")
-                                        },
-                                        onClick = when {
-                                            selfInfo.isSessionValid != true -> null
-                                            bangumiName.isNullOrBlank() -> { { onNavigateToOAuth(OAuthPlatform.BANGUMI) } }
-                                            else -> { { navigateTo(DetailPaneRoutes.BangumiSync) } }
-                                        },
-                                        action = if (!bangumiName.isNullOrBlank()) {
-                                            { Icon(Icons.Default.Check, contentDescription = "Connected", tint = Color(0xFF4CAF50)) }
-                                        } else null,
-                                    )
-                                    AniListAccountItem { url -> browserNavigator.openBrowser(context, url) }
+                                    connectors.forEach { connector ->
+                                        TrackingAccountItem(
+                                            connector,
+                                            openBrowser = { url -> browserNavigator.openBrowser(context, url) },
+                                            openOAuth = onNavigateToOAuth,
+                                            openDetails = { route -> navigateTo(route) },
+                                        )
+                                    }
                                 }
                             }
                             SettingsTab.PROFILE -> ProfileGroup(

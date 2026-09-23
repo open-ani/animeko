@@ -4,7 +4,7 @@
  * Use of this source code is governed by the GNU AGPLv3 license.
  */
 
-package me.him188.ani.app.ui.subject.details.tracking
+package me.him188.ani.android.tracking
 
 import android.content.Context
 import java.util.concurrent.ConcurrentHashMap

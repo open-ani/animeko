@@ -8,7 +8,7 @@ interface TrackingSource : TrackingBindingBackup {
     val info: TrackingProviderInfo
     val connection: Flow<TrackingAccountState>
     val presentation: Flow<TrackingSourcePresentation>
-        get() = flowOf(TrackingSourcePresentation(info.displayName, info.id.value))
+        get() = flowOf(TrackingSourcePresentation(info.displayName))
     val capabilities: TrackingSourceCapabilities
     val statusOptions: List<TrackingStatusOption>
     val scoreOptions: List<TrackingScoreOption>
@@ -41,7 +41,7 @@ interface TrackingSource : TrackingBindingBackup {
     }
 }
 
-data class TrackingSourcePresentation(val name: String, val iconKey: String)
+data class TrackingSourcePresentation(val name: String)
 
 data class TrackingSourceCapabilities(
     val needsMatchSearch: Boolean = false,
