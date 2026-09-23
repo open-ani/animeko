@@ -25,6 +25,7 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
@@ -75,7 +76,7 @@ import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.filled.Close
-import androidx.compose.material.icons.outlined.Edit
+import androidx.compose.material.icons.filled.Search
 import me.him188.ani.app.ui.foundation.icons.BangumiNext
 import androidx.compose.material.icons.outlined.Sync
 import kotlinx.coroutines.CancellationException
@@ -326,11 +327,6 @@ internal actual fun AniListTrackingSection(
                                     Text("Private", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.primary)
                                 }
                             }
-                            IconButton(onClick = {
-                                query = current.media.title
-                                results = emptyList()
-                                searching = true
-                            }) { Icon(Icons.Outlined.Edit, contentDescription = "Change AniList match") }
                             Box {
                                 IconButton(onClick = { menuOpen = true }) { Icon(Icons.Default.MoreVert, contentDescription = "Tracking options") }
                                 DropdownMenu(expanded = menuOpen, onDismissRequest = { menuOpen = false }) {
@@ -423,46 +419,54 @@ internal actual fun AniListTrackingSection(
             onDismissRequest = { searching = false },
             properties = DialogProperties(usePlatformDefaultWidth = false),
         ) {
-            Surface(Modifier.fillMaxWidth().fillMaxHeight(0.94f), shape = MaterialTheme.shapes.large) {
-                Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                        Text(if (linked == null) "Find AniList anime" else "Change AniList match", style = MaterialTheme.typography.titleLarge)
-                        TextButton(onClick = { searching = false }) { Text("Close") }
+            Surface(Modifier.fillMaxWidth().heightIn(max = 600.dp), shape = MaterialTheme.shapes.large) {
+                Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+                        Text(if (linked == null) "Add AniList tracking" else "Change AniList match", style = MaterialTheme.typography.titleMedium,
+                            modifier = Modifier.weight(1f))
+                        IconButton(onClick = { searching = false }) { Icon(Icons.Default.Close, contentDescription = "Close search") }
                     }
-                    OutlinedTextField(
-                        query,
-                        { query = it; results = emptyList(); error = null },
-                        modifier = Modifier.fillMaxWidth(),
-                        label = { Text("Search AniList titles") },
-                        singleLine = true,
-                        trailingIcon = {
-                            if (query.isNotEmpty()) IconButton(onClick = { query = ""; results = emptyList(); error = null }) {
-                                Icon(Icons.Default.Close, contentDescription = "Clear search")
-                            }
-                        },
-                        keyboardOptions = KeyboardOptions(imeAction = ImeAction.Search),
-                        keyboardActions = KeyboardActions(onSearch = { if (!searchBusy && linkingMediaId == null) search() }),
-                    )
-                    Button(onClick = { search() }, enabled = query.isNotBlank() && !searchBusy && linkingMediaId == null) { Text("Search") }
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        OutlinedTextField(
+                            query,
+                            { query = it; results = emptyList(); error = null },
+                            modifier = Modifier.weight(1f),
+                            placeholder = { Text("Search anime") },
+                            singleLine = true,
+                            trailingIcon = {
+                                if (query.isNotEmpty()) IconButton(onClick = { query = ""; results = emptyList(); error = null }) {
+                                    Icon(Icons.Default.Close, contentDescription = "Clear search")
+                                }
+                            },
+                            keyboardOptions = KeyboardOptions(imeAction = ImeAction.Search),
+                            keyboardActions = KeyboardActions(onSearch = { if (!searchBusy && linkingMediaId == null) search() }),
+                        )
+                        IconButton(onClick = { search() }, enabled = query.isNotBlank() && !searchBusy && linkingMediaId == null) {
+                            Icon(Icons.Default.Search, contentDescription = "Search AniList")
+                        }
+                    }
                     if (searchBusy) CircularProgressIndicator()
                     error?.let { Text(it, color = MaterialTheme.colorScheme.error) }
-                    LazyColumn(Modifier.fillMaxWidth().weight(1f), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    LazyColumn(Modifier.fillMaxWidth().heightIn(max = 440.dp)) {
                         items(results, key = { it.id.value }) { media ->
                             Surface(
                                 onClick = { link(media) },
                                 modifier = Modifier.fillMaxWidth(),
-                                shape = MaterialTheme.shapes.medium,
                                 enabled = linkingMediaId == null,
                             ) {
-                                Row(Modifier.padding(12.dp), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                                    AsyncImage(media.coverImageUrl, null, Modifier.size(64.dp, 88.dp), contentScale = ContentScale.Crop)
-                                    Column {
-                                        Text(media.title, style = MaterialTheme.typography.titleMedium)
-                                        Text("Anime${media.totalEpisodes?.let { " · $it episodes" } ?: ""}")
-                                        if (linkingMediaId == media.id) CircularProgressIndicator(Modifier.size(20.dp), strokeWidth = 2.dp)
+                                Row(Modifier.padding(vertical = 8.dp), verticalAlignment = Alignment.CenterVertically,
+                                    horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                                    AsyncImage(media.coverImageUrl, null, Modifier.size(48.dp, 68.dp), contentScale = ContentScale.Crop)
+                                    Column(Modifier.weight(1f)) {
+                                        Text(media.title, style = MaterialTheme.typography.bodyLarge, maxLines = 2, overflow = TextOverflow.Ellipsis)
+                                        Text(media.totalEpisodes?.let { "$it ${if (it == 1) "episode" else "episodes"}" } ?: "Anime", style = MaterialTheme.typography.bodySmall,
+                                            color = MaterialTheme.colorScheme.onSurfaceVariant)
                                     }
+                                    if (linked?.media?.id == media.id) Icon(Icons.Default.Check, contentDescription = "Current match")
+                                    if (linkingMediaId == media.id) CircularProgressIndicator(Modifier.size(20.dp), strokeWidth = 2.dp)
                                 }
                             }
+                            HorizontalDivider()
                         }
                     }
                 }
