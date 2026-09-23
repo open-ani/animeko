@@ -28,6 +28,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.Button
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.DatePicker
 import androidx.compose.material3.DatePickerDialog
@@ -103,6 +104,7 @@ import java.time.ZoneOffset
 internal actual fun AniListTrackingSection(
     info: SubjectInfo,
     showCollection: Boolean,
+    highlightTrack: Boolean,
     bangumiConnected: Boolean,
     collectionAction: @Composable () -> Unit,
     modifier: Modifier,
@@ -129,10 +131,12 @@ internal actual fun AniListTrackingSection(
     var editing by remember { mutableStateOf<EditField?>(null) }
     var editingDate by remember { mutableStateOf<TrackingDateField?>(null) }
     var menuOpen by remember { mutableStateOf(false) }
+    var bangumiMenuOpen by remember { mutableStateOf(false) }
     var confirmingUnbind by remember { mutableStateOf(false) }
     var confirmingDelete by remember { mutableStateOf(false) }
     var showSheet by remember { mutableStateOf(false) }
     val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
+    val hasAniListBinding = preferences.all.keys.any { it.endsWith(":${info.subjectId}") }
 
     fun bindingKey(id: String) = "$id:${info.subjectId}"
 
@@ -206,9 +210,16 @@ internal actual fun AniListTrackingSection(
         if (searching) search()
     }
 
-    OutlinedButton(onClick = { showSheet = true }, modifier = modifier.testTag("trackingAction")) {
-        Icon(Icons.Outlined.Sync, contentDescription = null)
-        Text("Track")
+    if (highlightTrack && !hasAniListBinding && linked == null) {
+        Button(onClick = { showSheet = true }, modifier = modifier.testTag("trackingAction")) {
+            Icon(Icons.Outlined.Sync, contentDescription = null)
+            Text("Track")
+        }
+    } else {
+        OutlinedButton(onClick = { showSheet = true }, modifier = modifier.testTag("trackingAction")) {
+            Icon(Icons.Outlined.Sync, contentDescription = null)
+            Text("Track")
+        }
     }
 
     if (showSheet) {
@@ -225,9 +236,28 @@ internal actual fun AniListTrackingSection(
                             if (bangumiConnected) {
                                 Image(Icons.Default.BangumiNext, contentDescription = null, modifier = Modifier.size(32.dp))
                             }
-                            Column {
+                            Column(Modifier.weight(1f)) {
                                 Text(if (bangumiConnected) "Bangumi" else "Collection", style = MaterialTheme.typography.titleMedium)
                                 Text(info.name.ifBlank { info.nameCn }, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                            }
+                            if (bangumiConnected) {
+                                Box {
+                                    IconButton(onClick = { bangumiMenuOpen = true }) {
+                                        Icon(Icons.Default.MoreVert, contentDescription = "Bangumi options")
+                                    }
+                                    DropdownMenu(expanded = bangumiMenuOpen, onDismissRequest = { bangumiMenuOpen = false }) {
+                                        val url = "https://bgm.tv/subject/${info.subjectId}"
+                                        DropdownMenuItem(text = { Text("Open on Bangumi") }, onClick = {
+                                            bangumiMenuOpen = false
+                                            context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(url)).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
+                                        })
+                                        DropdownMenuItem(text = { Text("Copy Bangumi link") }, onClick = {
+                                            bangumiMenuOpen = false
+                                            (context.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager)
+                                                .setPrimaryClip(ClipData.newPlainText("Bangumi", url))
+                                        })
+                                    }
+                                }
                             }
                         }
                         collectionAction()

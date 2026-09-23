@@ -502,7 +502,9 @@ private fun SubjectSidebar(
             onPlay = { uiState.progressInfo?.nextEpisodeIdToPlay?.let(onPlay) },
             Modifier.fillMaxWidth(),
         )
-        AniListTrackingSection(info, showCollection = selfInfo.isSessionValid == true, bangumiConnected = selfInfo.bangumiConnected == true, collectionAction = {
+        AniListTrackingSection(info, showCollection = selfInfo.isSessionValid == true,
+            highlightTrack = selfInfo.isSessionValid == true && !uiState.selfCollected,
+            bangumiConnected = selfInfo.bangumiConnected == true, collectionAction = {
             if (selfInfo.isSessionValid == false) {
                 OutlinedButton(onClickLogin, Modifier.fillMaxWidth()) {
                     Text(stringResource(Lang.subject_details_login_to_collect))
