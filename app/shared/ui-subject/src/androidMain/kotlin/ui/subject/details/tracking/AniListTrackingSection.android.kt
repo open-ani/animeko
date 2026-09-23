@@ -136,7 +136,7 @@ internal actual fun AniListTrackingSection(
 
     fun reload() {
         scope.launch {
-            loading = true
+            loading = linked == null && accountId == null
             error = null
             try {
                 val account = provider.refreshAccount()
@@ -215,20 +215,34 @@ internal actual fun AniListTrackingSection(
                 verticalArrangement = Arrangement.spacedBy(12.dp)) {
                 Text("Tracking", style = MaterialTheme.typography.titleLarge)
                 if (showCollection) {
-                    Column(Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Surface(shape = MaterialTheme.shapes.medium, color = MaterialTheme.colorScheme.surfaceContainerLow) {
+                    Column(Modifier.fillMaxWidth().padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
                         Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically,
                             horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                             if (bangumiConnected) {
                                 Image(Icons.Default.BangumiNext, contentDescription = null, modifier = Modifier.size(32.dp))
                             }
-                            Text(if (bangumiConnected) "Bangumi" else "Collection", style = MaterialTheme.typography.titleMedium)
+                            Column {
+                                Text(if (bangumiConnected) "Bangumi" else "Collection", style = MaterialTheme.typography.titleMedium)
+                                Text(info.name.ifBlank { info.nameCn }, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                            }
                         }
-                        collectionAction()
+                        Surface(shape = MaterialTheme.shapes.medium, color = MaterialTheme.colorScheme.surfaceContainerHigh) {
+                            Box(Modifier.fillMaxWidth().padding(8.dp)) { collectionAction() }
+                        }
+                    }
                     }
                 }
                 if (updating) CircularProgressIndicator(Modifier.size(20.dp), strokeWidth = 2.dp)
                 when {
-                    loading -> CircularProgressIndicator()
+                    loading -> Surface(shape = MaterialTheme.shapes.medium, color = MaterialTheme.colorScheme.surfaceContainerLow) {
+                        Row(Modifier.fillMaxWidth().padding(16.dp), verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                            AniListIcon()
+                            Text("AniList", style = MaterialTheme.typography.titleMedium, modifier = Modifier.weight(1f))
+                            CircularProgressIndicator(Modifier.size(20.dp), strokeWidth = 2.dp)
+                        }
+                    }
                     accountId == null -> {
                         if (!showCollection) Text("No tracking accounts connected.")
                         TextButton(onClick = { showSheet = false; navigator.navigateSettings(SettingsTab.TRACKING) }) {
@@ -236,7 +250,8 @@ internal actual fun AniListTrackingSection(
                         }
                     }
                     linked == null -> {
-                        Row(Modifier.fillMaxWidth().clickable { searching = true; results = emptyList(); error = null }.padding(vertical = 12.dp),
+                        Row(Modifier.fillMaxWidth().clickable { searching = true; results = emptyList(); error = null }
+                            .background(MaterialTheme.colorScheme.surfaceContainerLow, MaterialTheme.shapes.medium).padding(16.dp),
                             horizontalArrangement = Arrangement.spacedBy(16.dp)) {
                                 AniListIcon()
                                 Text("AniList · Add tracking", style = MaterialTheme.typography.titleMedium)
@@ -244,7 +259,8 @@ internal actual fun AniListTrackingSection(
                     }
                     else -> {
                         val current = linked!!
-                        Text("AniList", style = MaterialTheme.typography.titleMedium)
+                        Surface(shape = MaterialTheme.shapes.medium, color = MaterialTheme.colorScheme.surfaceContainerLow) {
+                        Column(Modifier.fillMaxWidth().padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
                         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                             AniListIcon()
                             Column(Modifier.weight(1f).clickable {
@@ -252,6 +268,7 @@ internal actual fun AniListTrackingSection(
                                 results = emptyList()
                                 searching = true
                             }) {
+                                Text("AniList", style = MaterialTheme.typography.titleMedium)
                                 Text(current.media.title, style = MaterialTheme.typography.titleMedium, maxLines = 1, overflow = TextOverflow.Ellipsis)
                                 if (current.listEntry?.isPrivate == true) {
                                     Text("Private", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.primary)
@@ -329,6 +346,8 @@ internal actual fun AniListTrackingSection(
                             }
                         } ?: run {
                             TextButton(onClick = { error = null; editing = EditField.STATUS }, enabled = !updating) { Text("Add AniList entry") }
+                        }
+                        }
                         }
                     }
                 }

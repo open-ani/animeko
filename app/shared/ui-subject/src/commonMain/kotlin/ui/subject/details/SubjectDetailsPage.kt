@@ -446,7 +446,7 @@ private fun SubjectDetailsPage(
                         if (selfInfo.isSessionValid == false) {
                             OutlinedButton(onClickLogin) { Text(stringResource(Lang.subject_details_login_to_collect)) }
                         } else {
-                            EditableSubjectCollectionTypeButton(uiState.collectionTypeEdit, state)
+                            EditableSubjectCollectionTypeButton(uiState.collectionTypeEdit, state, Modifier.fillMaxWidth())
                         }
                     })
                 }
