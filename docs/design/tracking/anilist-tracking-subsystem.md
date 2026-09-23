@@ -9,7 +9,7 @@
 
 Animeko 需要的是一个完整的追踪子系统，而不是只够调用 AniList 的 GraphQL 客户端。AniList 是第一个实现；后续追踪服务应当能够复用账号、搜索、绑定、刷新、编辑和同步流程，只提供服务自身的认证、状态、评分和远端 API 映射。
 
-Android 已完成设备登录验证。macOS Desktop 使用系统 Keychain 保存凭据并注册 AniList 追踪入口；真实账号登录和远端写入仍需桌面端到端验证。iOS 尚未注册 AniList 登录入口。
+Android 已完成设备登录验证。macOS Desktop 使用系统 Keychain 保存凭据并注册 AniList 追踪入口；真实账号登录已在桌面验证；远端写入仍需验证。iOS 尚未注册 AniList 登录入口。
 
 ## 主要参考：Mihon
 
@@ -103,7 +103,7 @@ Android 与 macOS Desktop 的条目 UI 通过 `TrackingRegistry`、`TrackingCoor
 
 | 能力 | 当前实现 | 验证边界 |
 |---|---|---|
-| AniList 账号 | Android OAuth 与 Keystore 凭据；macOS Desktop OAuth 回调与 Keychain 凭据 | Android 已在连接的手机上完成登录。macOS Desktop 的合成 Keychain 测试和应用打包通过；真实登录尚未验证。iOS 不注册 AniList 登录入口。 |
+| AniList 账号 | Android OAuth 与 Keystore 凭据；macOS Desktop OAuth 回调与 Keychain 凭据 | Android 已在连接的手机上完成登录。macOS Desktop 的合成 Keychain 测试和应用打包通过；真实 OAuth 回调与已连接账号行已验证；远端写入尚未验证。iOS 不注册 AniList 登录入口。 |
 | AniList 条目 | 手动搜索、绑定、状态、进度、1–10 分、起止日期、隐私、远端删除与本地解绑 | Provider MockEngine tests 覆盖部分 API 映射与更新；手机上完成搜索与卡片烟测。没有条目 UI 自动回归测试。 |
 | 自动观看同步 | 单集完成与“全部标记看过”会触发 AniList hook；远端进度较新时不回退 | 曾用连接账号完成手机试验；本轮新增末集状态转换回归测试。hook 本身没有自动测试，也没有持久化失败重试。 |
 | Bangumi | `BangumiTrackingSource` 复用现有收藏、剧集和评分 repository；Track sheet 显示并编辑三项字段 | 当前 Animeko 会话有效时可用；会话未连接 Bangumi 时显示为 Animeko 收藏。新卡片仍需手机交互回归。 |
@@ -135,10 +135,10 @@ Android 与 macOS Desktop 的条目 UI 通过 `TrackingRegistry`、`TrackingCoor
 - 搜索结果只属于发起它的查询版本；用户更改搜索词、清除输入或切换追踪服务后，旧请求结果不得重新显示。
 - 观看事件向多个服务分发属于 domain 层；UI coordinator 只处理卡片观察与用户操作。一个服务失败后继续通知其他服务，最后向 hook 报告失败。
 - 账号登录入口由已注册的 `TrackingAccountConnector` 提供。添加服务时注册自己的 provider、source、账号连接器和图标渲染器；通用卡片、账号行、绑定备份格式和观看分发不添加服务名分支。能力关闭时，provider 无需实现日期或隐私编辑。
-- Animeko 未登录时，详情页保留登录入口，同时提供追踪账号设置入口。macOS Desktop 真实登录、iOS 登录和失败持久化重试仍未覆盖。
+- Animeko 未登录时，详情页保留登录入口，同时提供追踪账号设置入口。macOS Desktop 远端写入、iOS 登录和失败持久化重试仍未覆盖。
 
 ### 验证范围
 
 - `:tracking:api:allTests :tracking:anilist:allTests :app:shared:app-data:testAndroidHostTest :app:shared:ui-subject:testAndroidHostTest :app:shared:ui-settings:testAndroidHostTest :app:android:assembleDefaultDebug -Pani.android.abis=arm64-v8a` 通过；测试覆盖第三个 source 的路由、跨 source 观看事件失败隔离，以及无效绑定在写入前被拒绝、离线账号的绑定可恢复。
 - Android debug 构建已安装在连接的手机。应用正常启动；Tracking accounts 同时显示 Bangumi 与 AniList 图标、账号名和连接状态，两行均打开共同的账号操作对话框。此前 Slam Dunk 的 Track sheet 显示两个服务的状态、`7 / 101` 进度和评分字段，Bangumi 正片选择弹层可以打开。此轮只读检查没有证明新版本的远端写入。
-- macOS Desktop 的 `:app:desktop:test`、`createDistributable` 与打包应用启动通过；合成 Keychain 测试验证保存、替换、读取和删除。完整桌面 OAuth 与写入回归、iOS 登录和失败持久化重试仍待完成；不能把构建与只读烟测当作这些能力的验证。
+- macOS Desktop 的 `:app:desktop:test`、`createDistributable` 与打包应用启动通过；合成 Keychain 测试验证保存、替换、读取和删除。桌面真实 OAuth 回调与已连接账号行已由用户验证；远端写入回归、iOS 登录和失败持久化重试仍待完成；不能把构建与只读烟测当作这些能力的验证。
