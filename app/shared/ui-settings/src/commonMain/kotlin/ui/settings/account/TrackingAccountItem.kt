@@ -22,6 +22,7 @@ import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.launch
 import me.him188.ani.app.domain.usecase.GlobalKoin
 import me.him188.ani.app.ui.foundation.icons.TrackingIconRegistry
+import me.him188.ani.app.ui.foundation.tracking.DisconnectableTrackingAccount
 import me.him188.ani.app.ui.foundation.tracking.TrackingAccountConnector
 import me.him188.ani.app.ui.foundation.tracking.TrackingAccountStatus
 import me.him188.ani.app.ui.foundation.tracking.TrackingAccountViewState
@@ -75,6 +76,7 @@ fun SettingsScope.TrackingAccountItem(
     }
 
     val descriptionText = formatTrackingAccountDescription(state, connector.displayName, failed)
+    val disconnectable = connector as? DisconnectableTrackingAccount
 
     TextItem(
         title = { Text(connector.displayName) },
@@ -105,21 +107,23 @@ fun SettingsScope.TrackingAccountItem(
                 }
             },
             dismissButton = {
-                TextButton(onClick = { showActions = false; confirmDisconnect = true }) { Text(stringResource(Lang.settings_tracking_disconnect_action)) }
+                if (disconnectable != null) {
+                    TextButton(onClick = { showActions = false; confirmDisconnect = true }) { Text(stringResource(Lang.settings_tracking_disconnect_action)) }
+                }
             },
         )
     }
-    if (confirmDisconnect) {
+    if (confirmDisconnect && disconnectable != null) {
         AlertDialog(
             onDismissRequest = { confirmDisconnect = false },
             title = { Text(stringResource(Lang.settings_tracking_disconnect_title, connector.displayName)) },
-            text = { Text(stringResource(connector.disconnectMessage)) },
+            text = { Text(stringResource(Lang.settings_tracking_disconnect_message)) },
             confirmButton = {
                 TextButton(onClick = {
                     confirmDisconnect = false
                     scope.launch {
                         try {
-                            connector.disconnect()
+                            disconnectable.disconnect()
                             failed = false
                         } catch (cancelled: CancellationException) {
                             throw cancelled

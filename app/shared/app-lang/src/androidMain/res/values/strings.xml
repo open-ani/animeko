@@ -1794,7 +1794,6 @@
     <string name="settings_tracking_connected_action_description">Connected</string>
     <string name="settings_tracking_disconnect_title">Disconnect %1$s?</string>
     <string name="settings_tracking_disconnect_message">Signs out of this service on this device only. Your list on the service is not changed.</string>
-    <string name="settings_tracking_bangumi_disconnect_message">Unlinks Bangumi from your Animeko account on all devices. You stay signed in to Animeko, and your collection on Bangumi is not changed. You can link it again at any time.</string>
     <string name="settings_tracking_disconnect_action">Disconnect</string>
 
     <!-- Settings Backup & Restore -->

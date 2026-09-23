@@ -447,7 +447,7 @@ private fun KoinApplication.otherModules(
     single<SubjectDetailsStateFactory> { DefaultSubjectDetailsStateFactory() }
     single { BangumiTrackingSource(get(), get(), inject(), get(), inject()) }
     single { BangumiTrackingIcon() }
-    single { BangumiTrackingAccountConnector(get()) }
+    single { BangumiTrackingAccountConnector() }
     single { TrackingIconRegistry(listOf(get<BangumiTrackingIcon>()) + getAll<TrackingIconRenderer>()) }
     single { TrackingAccountRegistry(listOf(get<BangumiTrackingAccountConnector>()) + getAll<TrackingAccountConnector>()) }
     single<TrackingRegistry> { DefaultTrackingRegistry(listOf(get<BangumiTrackingSource>()) + getAll<TrackingSource>()) }

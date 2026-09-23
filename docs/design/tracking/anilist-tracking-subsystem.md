@@ -121,7 +121,7 @@ Android、macOS Desktop 与 iOS 的条目 UI 均通过 `TrackingRegistry`、`Tra
 
 `TrackingCoordinator` 只通过注册表查找 source，提供观察、搜索、绑定、编辑和解绑入口。`TrackingSection(subjectId, modifier)` 是两种详情页布局的唯一入口。卡片按 capability 绘制状态、进度、评分、日期、私密和删除操作；品牌图标由各平台注册的 `TrackingIconRenderer` 按 `TrackingProviderId` 提供。Bangumi 的离散正片列表与 AniList 的累计数字列表使用同一个选择弹层。完成状态下若 Bangumi 仍有未看剧集，另行询问是否全部标记看过。
 
-`TrackingProviderId` 是用于持久化和注册表查找的开放类型，不使用封闭 enum。每个平台只在自己的实现中声明一次稳定 ID 常量。账号中心遍历已注册的 `TrackingAccountConnector`，由共同的 `TrackingAccountItem` 展示身份、连接状态及断开确认；连接器提供登录动作和可选详情页。各平台显式声明 OAuth redirect 处理规则：三个平台都接收 `ani://anilist-auth` 回调：Android manifest 声明特定 host；macOS Desktop 在应用 bundle 中注册 `ani://` URL Scheme，并通过 `Desktop.setOpenURIHandler` 接收；iOS 注册 `ani://` URL Scheme 处理并在 `AniIosApplication.openUrl` 中解析。任何应用或网页都能触发该 scheme，因此回调只在用户发起登录后的五分钟内被接受一次。
+`TrackingProviderId` 是用于持久化和注册表查找的开放类型，不使用封闭 enum。每个平台只在自己的实现中声明一次稳定 ID 常量。账号中心遍历已注册的 `TrackingAccountConnector`，由共同的 `TrackingAccountItem` 展示身份与连接状态；连接器提供登录动作和可选详情页。只有实现 `DisconnectableTrackingAccount` 的连接（本设备保存的 AniList token）在此提供断开；Bangumi 绑定属于 Animeko 账号，解绑会影响所有设备，并可能让之后的 Bangumi 登录创建另一个 Animeko 账号，因此仍只在个人资料页管理。各平台显式声明 OAuth redirect 处理规则：三个平台都接收 `ani://anilist-auth` 回调：Android manifest 声明特定 host；macOS Desktop 在应用 bundle 中注册 `ani://` URL Scheme，并通过 `Desktop.setOpenURIHandler` 接收；iOS 注册 `ani://` URL Scheme 处理并在 `AniIosApplication.openUrl` 中解析。任何应用或网页都能触发该 scheme，因此回调只在用户发起登录后的五分钟内被接受一次。
 
 观看 hook 在本地操作成功后调用 domain 层的 `TrackingEpisodeSynchronizer`。AniList source 对正片整数集数执行单调远端进度更新，较新的远端进度不会回退；Bangumi source 不重复写入已由本地操作保存的剧集状态。一个 source 失败时 synchronizer 继续执行其余 source，并在结束后抛出错误供 hook 记录。当前没有持久化失败队列，离线事件不会在重启后自动重试。
 

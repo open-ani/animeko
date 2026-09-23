@@ -14,6 +14,7 @@ import kotlinx.coroutines.launch
 import me.him188.ani.app.domain.episode.EpisodeTrackingSync
 import me.him188.ani.app.domain.tracking.TrackingEpisodeSynchronizer
 import me.him188.ani.app.tracking.anilist.AniListTrackingProvider
+import me.him188.ani.app.ui.foundation.tracking.DisconnectableTrackingAccount
 import me.him188.ani.app.ui.foundation.tracking.TrackingAccountConnector
 import me.him188.ani.app.ui.foundation.tracking.TrackingLoginAction
 import me.him188.ani.app.ui.foundation.tracking.toViewState
@@ -23,7 +24,7 @@ import me.him188.ani.tracking.api.TrackingProviderException
 import me.him188.ani.utils.logging.logger
 import me.him188.ani.utils.logging.warn
 
-class IosAniListAccountConnector(private val provider: AniListTrackingProvider) : TrackingAccountConnector {
+class IosAniListAccountConnector(private val provider: AniListTrackingProvider) : TrackingAccountConnector, DisconnectableTrackingAccount {
     private val pendingLogin = PendingLoginGate()
     override val providerId = AniListTrackingProvider.ID
     override val displayName = "AniList"

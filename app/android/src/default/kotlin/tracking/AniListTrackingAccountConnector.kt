@@ -2,6 +2,7 @@ package me.him188.ani.android.tracking
 
 import kotlinx.coroutines.flow.map
 import me.him188.ani.app.tracking.anilist.AniListTrackingProvider
+import me.him188.ani.app.ui.foundation.tracking.DisconnectableTrackingAccount
 import me.him188.ani.app.ui.foundation.tracking.TrackingAccountConnector
 import me.him188.ani.app.ui.foundation.tracking.TrackingLoginAction
 import me.him188.ani.app.ui.foundation.tracking.toViewState
@@ -11,7 +12,7 @@ import me.him188.ani.tracking.api.TrackingProviderException
 class AniListTrackingAccountConnector(
     private val provider: AniListTrackingProvider,
     private val pendingLogin: PendingLoginGate,
-) : TrackingAccountConnector {
+) : TrackingAccountConnector, DisconnectableTrackingAccount {
     override val providerId = AniListTrackingProvider.ID
     override val displayName = "AniList"
     override val loginAction: TrackingLoginAction

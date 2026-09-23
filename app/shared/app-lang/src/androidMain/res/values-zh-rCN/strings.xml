@@ -1834,7 +1834,6 @@
     <string name="settings_tracking_connected_action_description">已连接</string>
     <string name="settings_tracking_disconnect_title">断开 %1$s 连接？</string>
     <string name="settings_tracking_disconnect_message">仅在本设备上退出该服务的登录，服务上的列表不会改变。</string>
-    <string name="settings_tracking_bangumi_disconnect_message">将从你的 Animeko 账号解绑 Bangumi，所有设备都会生效。你仍保持 Animeko 登录，Bangumi 上的收藏不会改变，之后可随时重新绑定。</string>
     <string name="settings_tracking_disconnect_action">断开连接</string>
 
     <!-- Settings Backup & Restore -->

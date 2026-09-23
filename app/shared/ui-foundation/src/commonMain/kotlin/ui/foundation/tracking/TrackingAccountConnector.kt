@@ -2,11 +2,8 @@ package me.him188.ani.app.ui.foundation.tracking
 
 import kotlinx.coroutines.flow.Flow
 import me.him188.ani.app.domain.session.auth.OAuthPlatform
-import me.him188.ani.app.ui.lang.Lang
-import me.him188.ani.app.ui.lang.settings_tracking_disconnect_message
 import me.him188.ani.tracking.api.TrackingAccountState
 import me.him188.ani.tracking.api.TrackingProviderId
-import org.jetbrains.compose.resources.StringResource
 
 sealed interface TrackingAccountStatus {
     data class Account(val name: String) : TrackingAccountStatus
@@ -46,11 +43,16 @@ interface TrackingAccountConnector {
     val displayName: String
     val state: Flow<TrackingAccountViewState>
     val loginAction: TrackingLoginAction
-    /** Explains what disconnecting removes, shown before the user confirms. */
-    val disconnectMessage: StringResource
-        get() = Lang.settings_tracking_disconnect_message
 
     suspend fun refresh() {}
+}
+
+/**
+ * A connection this device can remove by itself, without changing any Animeko account.
+ * Links held by the Animeko account (Bangumi) are managed from the profile instead, because unlinking
+ * them affects every device and can leave a later Bangumi sign-in creating a separate Animeko account.
+ */
+interface DisconnectableTrackingAccount {
     suspend fun disconnect()
 }
 
