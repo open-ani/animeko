@@ -33,7 +33,6 @@ import me.him188.ani.tracking.api.AndroidTrackingCredentialStore
 import me.him188.ani.tracking.api.TrackingProvider
 import me.him188.ani.tracking.api.TrackingProviderId
 import me.him188.ani.tracking.api.TrackingSource
-import me.him188.ani.tracking.api.TrackingBindingBackup
 import me.him188.ani.utils.ktor.getPlatformKtorEngine
 import me.him188.ani.app.domain.foundation.HttpClientProvider
 import me.him188.ani.app.domain.foundation.ScopedHttpClientUserAgent
@@ -107,7 +106,6 @@ fun getAndroidModules(
     }
     single { AniListTrackingSource(androidContext(), get(), inject()) }
     single<TrackingSource> { get<AniListTrackingSource>() }
-    single<TrackingBindingBackup> { get<AniListTrackingSource>() }
     single<EpisodeTrackingSync> { RegistryEpisodeTrackingSync(get<TrackingCoordinator>(), coroutineScope) }
     single<BrowserNavigator> { AndroidBrowserNavigator() }
     single<CaptchaBrowserFactory> { AndroidCaptchaBrowserFactory(androidContext()) }

@@ -4,7 +4,7 @@ import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.flowOf
 
 /** One account-scoped tracking implementation. The UI only sees [TrackingSnapshot]. */
-interface TrackingSource {
+interface TrackingSource : TrackingBindingBackup {
     val info: TrackingProviderInfo
     val connection: Flow<TrackingAccountState>
     val presentation: Flow<TrackingSourcePresentation>
@@ -29,6 +29,12 @@ interface TrackingSource {
 
     /** Called after Animeko has recorded a watched episode. Local sources may ignore it. */
     suspend fun episodeWatched(subjectId: Int, episodeId: Int) {}
+
+    override fun exportBindings(): List<TrackingBindingRecord> = emptyList()
+
+    override fun restoreBindings(records: List<TrackingBindingRecord>) {
+        require(records.isEmpty()) { "This tracking source has no stored title matches" }
+    }
 }
 
 data class TrackingSourcePresentation(val name: String, val iconKey: String)
@@ -64,13 +70,23 @@ sealed interface TrackingEdit {
     data object DeleteRemoteEntry : TrackingEdit
 }
 
-interface TrackingRegistry {
+interface TrackingRegistry : TrackingBindingBackup {
     val sources: List<TrackingSource>
 }
 
 class DefaultTrackingRegistry(override val sources: List<TrackingSource>) : TrackingRegistry {
     init {
         require(sources.map { it.info.id }.distinct().size == sources.size) { "Duplicate tracking source ID" }
+    }
+
+    override fun exportBindings(): List<TrackingBindingRecord> = sources.flatMap { it.exportBindings() }
+
+    override fun restoreBindings(records: List<TrackingBindingRecord>) {
+        val sourcesById = sources.associateBy { it.info.id.value }
+        require(records.all { it.providerId in sourcesById }) { "Backup contains an unavailable tracking source" }
+        records.groupBy { it.providerId }.forEach { (id, sourceRecords) ->
+            sourcesById.getValue(id).restoreBindings(sourceRecords)
+        }
     }
 }
 

@@ -13,6 +13,7 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
@@ -50,6 +51,7 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalUriHandler
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.style.TextOverflow
@@ -65,11 +67,15 @@ import kotlinx.datetime.TimeZone
 import kotlinx.datetime.atStartOfDayIn
 import kotlinx.datetime.toLocalDateTime
 import me.him188.ani.app.data.repository.subject.SubjectCollectionRepository
+import me.him188.ani.app.data.models.subject.SubjectInfo
+import me.him188.ani.app.data.models.subject.preferredDisplayName
 import me.him188.ani.app.domain.usecase.GlobalKoin
 import me.him188.ani.app.navigation.LocalNavigator
 import me.him188.ani.app.navigation.SettingsTab
 import me.him188.ani.app.ui.foundation.icons.AniListIcon
 import me.him188.ani.app.ui.foundation.icons.BangumiNext
+import me.him188.ani.app.ui.foundation.AsyncImage
+import me.him188.ani.app.ui.foundation.LocalSubjectAppearanceSettings
 import me.him188.ani.tracking.api.TrackingAccountState
 import me.him188.ani.tracking.api.TrackingDate
 import me.him188.ani.tracking.api.TrackingDateField
@@ -91,9 +97,12 @@ internal fun TrackingSection(subjectId: Int, modifier: Modifier = Modifier) {
     val cards by remember(coordinator, subjectId) { coordinator.observe(subjectId) }
         .collectAsStateWithLifecycle(emptyList())
     val titleRepository = remember { GlobalKoin.get<SubjectCollectionRepository>() }
-    val subjectTitle by remember(subjectId) {
-        titleRepository.subjectCollectionFlow(subjectId).map { it.subjectInfo.name.ifBlank { it.subjectInfo.nameCn } }
-    }.collectAsStateWithLifecycle("")
+    val subjectInfo by remember(subjectId) {
+        titleRepository.subjectCollectionFlow(subjectId).map { it.subjectInfo }
+    }.collectAsStateWithLifecycle(null as SubjectInfo?)
+    val useOriginalTitle = LocalSubjectAppearanceSettings.current.useOriginalTitle
+    val preferredTitle = subjectInfo?.preferredDisplayName(useOriginalTitle).orEmpty()
+    val originalTitle = subjectInfo?.name.orEmpty()
     val navigator = LocalNavigator.current
     val uriHandler = LocalUriHandler.current
     val scope = rememberCoroutineScope()
@@ -102,6 +111,7 @@ internal fun TrackingSection(subjectId: Int, modifier: Modifier = Modifier) {
     var searching by remember { mutableStateOf<TrackingProviderId?>(null) }
     var query by remember { mutableStateOf("") }
     var results by remember { mutableStateOf<List<TrackingMedia>>(emptyList()) }
+    var initialSearchTitle by remember { mutableStateOf("") }
     var busy by remember { mutableStateOf<TrackingProviderId?>(null) }
     var error by remember { mutableStateOf<String?>(null) }
     var confirm by remember { mutableStateOf<Pair<TrackingProviderId, Boolean>?>(null) }
@@ -128,7 +138,13 @@ internal fun TrackingSection(subjectId: Int, modifier: Modifier = Modifier) {
         scope.launch {
             busy = id
             error = null
-            try { results = coordinator.search(id, query.trim()) }
+            try {
+                val found = coordinator.search(id, query.trim())
+                results = if (found.isEmpty() && query.trim() == initialSearchTitle &&
+                    originalTitle.isNotBlank() && originalTitle != initialSearchTitle) {
+                    coordinator.search(id, originalTitle)
+                } else found
+            }
             catch (failure: CancellationException) { throw failure }
             catch (_: Exception) { error = "Search failed. Try again." }
             finally { busy = null }
@@ -158,7 +174,8 @@ internal fun TrackingSection(subjectId: Int, modifier: Modifier = Modifier) {
                         onField = { editor = card.providerId to it },
                         onSearch = {
                             searching = card.providerId
-                            query = (card.load as? TrackingLoad.Ready)?.snapshot?.media?.title ?: subjectTitle
+                            query = preferredTitle.ifBlank { (card.load as? TrackingLoad.Ready)?.snapshot?.media?.title.orEmpty() }
+                            initialSearchTitle = query
                             results = emptyList()
                             error = null
                         },
@@ -218,7 +235,12 @@ internal fun TrackingSection(subjectId: Int, modifier: Modifier = Modifier) {
                                     catch (_: Exception) { error = "Linking failed. Try again." }
                                     finally { busy = null }
                                 }
-                            }.padding(12.dp)) {
+                            }.padding(12.dp), verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                                media.coverImageUrl?.takeIf { it.isNotBlank() }?.let { cover ->
+                                    AsyncImage(cover, contentDescription = null, modifier = Modifier.width(44.dp).height(62.dp),
+                                        contentScale = ContentScale.Crop)
+                                }
                                 Text(media.title, maxLines = 2, overflow = TextOverflow.Ellipsis)
                             }
                         }

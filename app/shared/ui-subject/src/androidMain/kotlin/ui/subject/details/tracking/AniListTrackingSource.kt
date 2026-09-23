@@ -23,7 +23,6 @@ import me.him188.ani.app.data.repository.episode.EpisodeCollectionRepository
 import me.him188.ani.datasources.api.EpisodeType
 import me.him188.ani.tracking.api.TrackingAccount
 import me.him188.ani.tracking.api.TrackingAccountState
-import me.him188.ani.tracking.api.TrackingBindingBackup
 import me.him188.ani.tracking.api.TrackingBindingRecord
 import me.him188.ani.tracking.api.TrackingDateField
 import me.him188.ani.tracking.api.TrackingEdit
@@ -41,7 +40,7 @@ class AniListTrackingSource(
     context: Context,
     private val provider: TrackingProvider,
     private val episodes: Lazy<EpisodeCollectionRepository>,
-) : TrackingSource, TrackingBindingBackup {
+) : TrackingSource {
     private val appContext = context.applicationContext
     private val bindings = appContext.getSharedPreferences(BINDINGS_PREFERENCES, Context.MODE_PRIVATE)
     private val snapshots = ConcurrentHashMap<Int, MutableStateFlow<TrackingSnapshot?>>()

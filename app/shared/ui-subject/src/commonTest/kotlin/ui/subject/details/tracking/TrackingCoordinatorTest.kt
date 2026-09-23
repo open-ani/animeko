@@ -7,6 +7,7 @@ import kotlinx.coroutines.test.runTest
 import me.him188.ani.tracking.api.DefaultTrackingRegistry
 import me.him188.ani.tracking.api.TrackingAccount
 import me.him188.ani.tracking.api.TrackingAccountState
+import me.him188.ani.tracking.api.TrackingBindingRecord
 import me.him188.ani.tracking.api.TrackingEdit
 import me.him188.ani.tracking.api.TrackingListEntry
 import me.him188.ani.tracking.api.TrackingMedia
@@ -49,6 +50,24 @@ class TrackingCoordinatorTest {
         assertEquals(1, second.watchedCalls)
     }
 
+    @Test
+    fun registryBacksUpBindingsAcrossSources() {
+        val first = FakeSource("first")
+        val second = FakeSource("second")
+        val registry = DefaultTrackingRegistry(listOf(first, second))
+        val records = listOf(
+            TrackingBindingRecord("first", "account-a", 42, "100"),
+            TrackingBindingRecord("second", "account-b", 42, "200"),
+        )
+
+        registry.restoreBindings(records)
+        assertEquals(records, registry.exportBindings())
+        assertFailsWith<IllegalArgumentException> {
+            registry.restoreBindings(listOf(TrackingBindingRecord("unknown", "account", 42, "300")))
+        }
+        assertEquals(records, registry.exportBindings())
+    }
+
     private class FakeSource(id: String, override val capabilities: TrackingSourceCapabilities = TrackingSourceCapabilities()) : TrackingSource {
         override val info = TrackingProviderInfo(TrackingProviderId(id), id, "https://example.org")
         override val connection: Flow<TrackingAccountState> = flowOf(TrackingAccountState.LoggedIn(TrackingAccount("1", "test")))
@@ -57,6 +76,7 @@ class TrackingCoordinatorTest {
         var lastEdit: TrackingEdit? = null
         var failWatched = false
         var watchedCalls = 0
+        private var bindings = emptyList<TrackingBindingRecord>()
         private val snapshot = TrackingSnapshot(
             TrackingMedia(TrackingMediaId("42"), "Test", "https://example.org/42", null, 12),
             TrackingListEntry(TrackingMediaId("42"), TrackingStatus.CURRENT, 1),
@@ -73,5 +93,7 @@ class TrackingCoordinatorTest {
             watchedCalls++
             if (failWatched) error("source unavailable")
         }
+        override fun exportBindings(): List<TrackingBindingRecord> = bindings
+        override fun restoreBindings(records: List<TrackingBindingRecord>) { bindings = records }
     }
 }
