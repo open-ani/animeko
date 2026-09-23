@@ -37,6 +37,7 @@ import io.github.vinceglb.filekit.dialogs.openFilePicker
 import io.github.vinceglb.filekit.dialogs.openFileSaver
 import io.github.vinceglb.filekit.readBytes
 import io.github.vinceglb.filekit.write
+import kotlinx.coroutines.CancellationException
 import kotlinx.datetime.TimeZone
 import kotlinx.datetime.toLocalDateTime
 import me.him188.ani.app.data.models.preference.DanmakuCacheStrategy
@@ -169,6 +170,24 @@ fun SettingsScope.BackupSettings(state: CacheDirectoryGroupState) {
         val restoreSuccess = stringResource(Lang.settings_storage_backup_op_restore_succees)
         val restoreFailed = stringResource(Lang.settings_storage_backup_op_restore_error)
 
+        fun restoreFrom(read: suspend () -> String?) {
+            scope.launch {
+                try {
+                    restoreError = null
+                    val content = read() ?: return@launch
+                    val result = state.onRestoreSettings(content)
+                    toaster.toast(if (result) restoreSuccess else restoreFailed)
+                    if (result) showRestoreDialog = false else restoreError = restoreFailed
+                } catch (failure: CancellationException) {
+                    throw failure
+                } catch (failure: TrackingBackupValidationException) {
+                    restoreError = failure.message ?: restoreFailed
+                } catch (_: Exception) {
+                    restoreError = restoreFailed
+                }
+            }
+        }
+
         AlertDialog(
             { showRestoreDialog = false },
             icon = { Icon(Icons.Rounded.Restore, null, tint = MaterialTheme.colorScheme.error) },
@@ -180,48 +199,26 @@ fun SettingsScope.BackupSettings(state: CacheDirectoryGroupState) {
                 }
             },
             confirmButton = {
-                TextButton(
-                    {
-                        scope.launch {
-                            try {
-                                restoreError = null
-                                val source = FileKit.openFilePicker() ?: return@launch
-                                val bytes = source.readBytes()
-                                val content = if (bytes.size >= 2 && bytes[0] == 0x1f.toByte() && bytes[1] == 0x8b.toByte()) {
-                                    decompressBackup(bytes).decodeToString()
-                                } else {
-                                    bytes.decodeToString()
-                                }
-                                val result = state.onRestoreSettings(content)
-                                toaster.toast(if (result) restoreSuccess else restoreFailed)
-                                if (result) showRestoreDialog = false else restoreError = restoreFailed
-                            } catch (failure: TrackingBackupValidationException) {
-                                restoreError = failure.message ?: restoreFailed
-                            } catch (_: Exception) {
-                                restoreError = restoreFailed
-                            }
+                TextButton({
+                    restoreFrom {
+                        val bytes = FileKit.openFilePicker()?.readBytes() ?: return@restoreFrom null
+                        if (bytes.size >= 2 && bytes[0] == 0x1f.toByte() && bytes[1] == 0x8b.toByte()) {
+                            decompressBackup(bytes).decodeToString()
+                        } else {
+                            bytes.decodeToString()
                         }
-                    },
-                ) {
+                    }
+                }) {
                     Text(stringResource(Lang.settings_storage_backup_action_choose_file), color = MaterialTheme.colorScheme.error)
                 }
             },
             dismissButton = {
-                TextButton({
-                    scope.launch {
-                        try {
-                            restoreError = null
-                            val content = clipboard.getClipEntryText()
-                            val result = content?.let { state.onRestoreSettings(it) } == true
-                            toaster.toast(if (result) restoreSuccess else restoreFailed)
-                            if (result) showRestoreDialog = false else restoreError = restoreFailed
-                        } catch (failure: TrackingBackupValidationException) {
-                            restoreError = failure.message ?: restoreFailed
-                        } catch (_: Exception) {
-                            restoreError = restoreFailed
-                        }
+                Row {
+                    TextButton({ showRestoreDialog = false }) { Text(stringResource(Lang.settings_danmaku_cancel)) }
+                    TextButton({ restoreFrom { clipboard.getClipEntryText() } }) {
+                        Text(stringResource(Lang.settings_storage_backup_action_paste))
                     }
-                }) { Text(stringResource(Lang.settings_storage_backup_action_paste)) }
+                }
             },
         )
     }
