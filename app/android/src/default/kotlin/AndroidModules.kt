@@ -20,6 +20,7 @@ import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.runBlocking
 import kotlinx.io.files.Path
 import me.him188.ani.android.navigation.AndroidBrowserNavigator
+import me.him188.ani.android.activity.AniListAuthRedirectHandler
 import me.him188.ani.android.provider.ExternalContentProviderFactoryImpl
 import me.him188.ani.app.data.models.preference.PikPakConfig
 import me.him188.ani.app.data.persistent.database.AniDatabase
@@ -104,6 +105,7 @@ fun getAndroidModules(
             AndroidTrackingCredentialStore(androidContext(), TrackingProviderId("anilist")))
     }
     single { AniListTrackingSource(androidContext(), get<AniListTrackingProvider>(), inject()) }
+    single { AniListAuthRedirectHandler(get<AniListTrackingProvider>()) }
     single<TrackingSource> { get<AniListTrackingSource>() }
     single<EpisodeTrackingSync> { RegistryEpisodeTrackingSync(get<TrackingEpisodeSynchronizer>(), coroutineScope) }
     single<BrowserNavigator> { AndroidBrowserNavigator() }

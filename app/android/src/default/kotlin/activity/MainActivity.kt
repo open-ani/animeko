@@ -10,7 +10,6 @@
 package me.him188.ani.android.activity
 
 import android.content.Intent
-import android.net.Uri
 import android.os.Bundle
 import android.widget.Toast
 import androidx.activity.SystemBarStyle
@@ -27,12 +26,7 @@ import androidx.compose.ui.semantics.testTagsAsResourceId
 import androidx.core.view.WindowCompat
 import androidx.lifecycle.lifecycleScope
 import kotlinx.coroutines.delay
-import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.launch
-import me.him188.ani.app.domain.usecase.GlobalKoin
-import me.him188.ani.app.ui.settings.account.AniListAccountChanges
-import me.him188.ani.tracking.api.TrackingLoginCredentials
-import me.him188.ani.app.tracking.anilist.AniListTrackingProvider
 import me.him188.ani.android.BuildConfig
 import me.him188.ani.app.data.repository.user.QrLoginRepository
 import me.him188.ani.app.navigation.AniNavigator
@@ -55,6 +49,7 @@ class MainActivity : AniComponentActivity() {
     private val aniNavigator = AniNavigator()
 
     private val externalContentProviderFactory: ExternalContentProviderFactory by inject()
+    private val aniListAuthRedirectHandler: AniListAuthRedirectHandler by inject()
 
     override fun onNewIntent(intent: Intent) {
         super.onNewIntent(intent)
@@ -67,21 +62,9 @@ class MainActivity : AniComponentActivity() {
         if (data.scheme != "ani") return
         when (data.host) {
             "anilist-auth" -> {
-                val token = data.encodedFragment?.let {
-                    Uri.parse("https://localhost.invalid/?$it").getQueryParameter("access_token")
-                }?.takeIf(String::isNotBlank) ?: return
-                intent.data = null
-                lifecycleScope.launch {
-                    try {
-                        val provider = GlobalKoin.get<AniListTrackingProvider>()
-                        provider.login(TrackingLoginCredentials(secret = token))
-                        AniListAccountChanges.notifyConnected()
-                        Toast.makeText(this@MainActivity, "AniList connected", Toast.LENGTH_SHORT).show()
-                    } catch (failure: CancellationException) {
-                        throw failure
-                    } catch (_: Exception) {
-                        Toast.makeText(this@MainActivity, "AniList connection failed", Toast.LENGTH_SHORT).show()
-                    }
+                aniListAuthRedirectHandler.handle(intent, lifecycleScope) { success ->
+                    val message = if (success) "AniList connected" else "AniList connection failed"
+                    Toast.makeText(this, message, Toast.LENGTH_SHORT).show()
                 }
             }
 
