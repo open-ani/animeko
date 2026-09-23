@@ -10,7 +10,7 @@ import androidx.test.platform.app.InstrumentationRegistry
 import kotlinx.coroutines.runBlocking
 import kotlin.test.Test
 import kotlin.test.assertEquals
-import kotlin.test.assertFails
+import kotlin.test.assertFalse
 import kotlin.test.assertNull
 
 class AndroidTrackingCredentialStoreTest {
@@ -40,19 +40,29 @@ class AndroidTrackingCredentialStoreTest {
     }
 
     @Test
-    fun rejectsCorruptCiphertext() = runBlocking {
+    fun discardsTamperedCiphertext() = assertUnreadableFileIsDiscarded("credential-store-tamper-test") { bytes ->
+        bytes.also { it[it.lastIndex] = (it.last().toInt() xor 1).toByte() }
+    }
+
+    @Test
+    fun discardsTruncatedFile() = assertUnreadableFileIsDiscarded("credential-store-truncate-test") { bytes ->
+        bytes.copyOf(3)
+    }
+
+    private fun assertUnreadableFileIsDiscarded(id: String, corrupt: (ByteArray) -> ByteArray) = runBlocking {
         val context = InstrumentationRegistry.getInstrumentation().targetContext
-        val providerId = TrackingProviderId("credential-store-corruption-test")
+        val providerId = TrackingProviderId(id)
         val store = AndroidTrackingCredentialStore(context, providerId)
         val file = context.noBackupFilesDir.resolve("tracking-${providerId.value}.credentials")
         store.clear()
         try {
             store.save(TrackingLoginCredentials("account", "test-secret"))
-            val bytes = file.readBytes()
-            bytes[bytes.lastIndex] = (bytes.last().toInt() xor 1).toByte()
-            file.writeBytes(bytes)
-            assertFails { store.load() }
-            Unit
+            file.writeBytes(corrupt(file.readBytes()))
+
+            assertNull(store.load())
+            assertFalse(file.exists())
+            store.save(TrackingLoginCredentials("account", "new-secret"))
+            assertEquals("new-secret", store.load()?.secret)
         } finally {
             store.clear()
         }

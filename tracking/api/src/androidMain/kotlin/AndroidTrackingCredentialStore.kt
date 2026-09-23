@@ -16,6 +16,8 @@ import java.io.ByteArrayInputStream
 import java.io.ByteArrayOutputStream
 import java.io.DataInputStream
 import java.io.DataOutputStream
+import java.io.IOException
+import java.security.GeneralSecurityException
 import java.security.KeyStore
 import javax.crypto.Cipher
 import javax.crypto.KeyGenerator
@@ -37,14 +39,33 @@ class AndroidTrackingCredentialStore(
     private val keyAlias = "animeko.tracking.${providerId.value}"
     private val file = AtomicFile(context.noBackupFilesDir.resolve("tracking-${providerId.value}.credentials"))
 
+    /**
+     * Returns `null` and deletes the file when it cannot be decrypted, for example after the Keystore key
+     * was lost or the file was corrupted. The token is unrecoverable then, so the user must sign in again.
+     */
     override suspend fun load(): TrackingLoginCredentials? = mutex.withLock {
         if (!file.baseFile.exists()) return null
-        val input = DataInputStream(ByteArrayInputStream(file.readFully()))
+        try {
+            decrypt(file.readFully())
+        } catch (_: GeneralSecurityException) {
+            null
+        } catch (_: IOException) {
+            null
+        } catch (_: IllegalArgumentException) {
+            null
+        } ?: run {
+            file.delete()
+            null
+        }
+    }
+
+    private fun decrypt(bytes: ByteArray): TrackingLoginCredentials {
+        val input = DataInputStream(ByteArrayInputStream(bytes))
         require(input.readUnsignedByte() == FORMAT_VERSION) { "Unsupported tracking credential format" }
         val iv = ByteArray(input.readUnsignedByte()).also(input::readFully)
         val ciphertext = input.readBytes()
         val plaintext = cipher(Cipher.DECRYPT_MODE, iv).doFinal(ciphertext)
-        DataInputStream(ByteArrayInputStream(plaintext)).use {
+        return DataInputStream(ByteArrayInputStream(plaintext)).use {
             TrackingLoginCredentials(username = it.readUTF(), secret = it.readUTF())
         }
     }
