@@ -185,6 +185,7 @@ internal fun TrackingSection(subjectId: Int, modifier: Modifier = Modifier, onCl
                             initialSearchTitle = query
                             results = emptyList()
                             error = null
+                            runSearch()
                         },
                         onRefresh = { coordinator.refresh() },
                         onAdd = { mediaId ->

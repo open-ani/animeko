@@ -97,7 +97,7 @@ Android 与 macOS Desktop 的条目 UI 通过 `TrackingRegistry`、`TrackingCoor
 
 设置备份会导出 AniList 的非机密标题匹配关系（服务 ID、账号 ID、Animeko 条目 ID、AniList 媒体 ID），导入时按这些键合并到现有匹配，旧备份缺少该字段仍可导入。备份不包含 AniList token；离线或未登录时也可导入；之后连接与备份记录相同的 AniList 账号，匹配关系才会显示。Bangumi 使用相同 subject ID，不需要单独导出匹配关系。Android 原有 `anilist-bindings` preferences 保持兼容。
 
-人工匹配搜索沿用图标按钮、清除输入按钮和键盘 Search 动作；输入变更清除过期结果。通用 `TrackingSection` 保持这些交互，而不为 AniList 单独构造搜索表单。
+人工匹配搜索打开时立即查询预填标题；图标按钮、清除输入按钮和键盘 Search 动作仍可重新查询，输入变更清除过期结果。通用 `TrackingSection` 保持这些交互，而不为 AniList 单独构造搜索表单。
 
 搜索结果使用 AniList 返回的封面和标题。搜索初始词遵循 Animeko 的“显示原名”设置：关闭时先用当前显示的本地化标题；若该查询没有结果，再尝试原名。用户手动改写查询后只执行输入的词，避免意外的第二次搜索。
 
