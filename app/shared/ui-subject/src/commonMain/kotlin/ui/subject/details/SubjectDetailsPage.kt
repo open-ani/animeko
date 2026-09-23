@@ -441,12 +441,14 @@ private fun SubjectDetailsPage(
                 SubjectDetailsDefaults.CollectionData(state.info?.collectionStats ?: SubjectCollectionStats.Zero)
             },
             collectionActions = {
-                if (selfInfo.isSessionValid == false) {
-                    OutlinedButton(onClickLogin) {
-                        Text(stringResource(Lang.subject_details_login_to_collect))
-                    }
-                } else {
-                    EditableSubjectCollectionTypeButton(uiState.collectionTypeEdit, state)
+                state.info?.let { info ->
+                    AniListTrackingSection(info, showCollection = selfInfo.isSessionValid == true, bangumiConnected = selfInfo.bangumiConnected == true, collectionAction = {
+                        if (selfInfo.isSessionValid == false) {
+                            OutlinedButton(onClickLogin) { Text(stringResource(Lang.subject_details_login_to_collect)) }
+                        } else {
+                            EditableSubjectCollectionTypeButton(uiState.collectionTypeEdit, state)
+                        }
+                    })
                 }
             },
             rating = {
@@ -459,7 +461,6 @@ private fun SubjectDetailsPage(
                     onPlay = onPlay,
                 )
             },
-            trackingAction = { state.info?.let { AniListTrackingSection(it) } },
             modifier = modifier,
             showTopBar = showTopBar,
             showBlurredBackground = showBlurredBackground,
@@ -688,7 +689,6 @@ fun SubjectDetailsSingleColumnPage(
     collectionActions: @Composable () -> Unit,
     rating: @Composable () -> Unit,
     selectEpisodeButton: @Composable BoxScope.() -> Unit,
-    trackingAction: @Composable () -> Unit = {},
     modifier: Modifier = Modifier,
     showTopBar: Boolean = true,
     showBlurredBackground: Boolean = true,
@@ -800,9 +800,6 @@ fun SubjectDetailsSingleColumnPage(
                                         onCoverImageSuccess = onCoverImageSuccess,
                                         onClickCover = onClickCover,
                                     )
-                                    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.Center) {
-                                        trackingAction()
-                                    }
                                 }
                             }
 

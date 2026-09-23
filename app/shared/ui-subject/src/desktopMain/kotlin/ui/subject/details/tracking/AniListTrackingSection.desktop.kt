@@ -11,4 +11,6 @@ import androidx.compose.ui.Modifier
 import me.him188.ani.app.data.models.subject.SubjectInfo
 
 @Composable
-internal actual fun AniListTrackingSection(info: SubjectInfo, modifier: Modifier) = Unit
+internal actual fun AniListTrackingSection(info: SubjectInfo, showCollection: Boolean, bangumiConnected: Boolean, collectionAction: @Composable () -> Unit, modifier: Modifier) {
+    collectionAction()
+}

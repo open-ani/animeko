@@ -13,6 +13,7 @@ import android.content.Intent
 import android.net.Uri
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.background
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.selection.selectable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -37,10 +38,12 @@ import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.rememberDatePickerState
+import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
@@ -55,6 +58,8 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.testTag
 import androidx.compose.foundation.lazy.rememberLazyListState
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.style.TextOverflow
@@ -63,11 +68,13 @@ import androidx.compose.ui.window.DialogProperties
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.MoreVert
+import me.him188.ani.app.ui.foundation.icons.BangumiNext
 import androidx.compose.material.icons.outlined.Sync
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.launch
 import me.him188.ani.app.data.models.subject.SubjectInfo
 import me.him188.ani.app.ui.foundation.icons.AniListIcon
+import me.him188.ani.app.ui.foundation.icons.Animeko
 import me.him188.ani.app.ui.foundation.AsyncImage
 import me.him188.ani.app.navigation.LocalNavigator
 import me.him188.ani.app.navigation.SettingsTab
@@ -91,7 +98,13 @@ import java.time.LocalDate
 import java.time.ZoneOffset
 
 @Composable
-internal actual fun AniListTrackingSection(info: SubjectInfo, modifier: Modifier) {
+internal actual fun AniListTrackingSection(
+    info: SubjectInfo,
+    showCollection: Boolean,
+    bangumiConnected: Boolean,
+    collectionAction: @Composable () -> Unit,
+    modifier: Modifier,
+) {
     val context = LocalContext.current.applicationContext
     val preferences = remember(context) { context.getSharedPreferences("anilist-bindings", 0) }
     val client = remember { createAniListHttpClient(getPlatformKtorEngine()) }
@@ -117,6 +130,7 @@ internal actual fun AniListTrackingSection(info: SubjectInfo, modifier: Modifier
     var confirmingUnbind by remember { mutableStateOf(false) }
     var confirmingDelete by remember { mutableStateOf(false) }
     var showSheet by remember { mutableStateOf(false) }
+    val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
 
     fun bindingKey(id: String) = "$id:${info.subjectId}"
 
@@ -185,42 +199,52 @@ internal actual fun AniListTrackingSection(info: SubjectInfo, modifier: Modifier
         }
     }
 
-    LaunchedEffect(info.subjectId) { reload() }
+    LaunchedEffect(info.subjectId, showSheet) { if (showSheet) reload() }
     LaunchedEffect(searching) {
         if (searching) search()
     }
 
-    TextButton(onClick = { showSheet = true }, modifier = modifier.testTag("trackingAction")) {
-        Icon(
-            if (linked == null) Icons.Outlined.Sync else Icons.Default.Check,
-            contentDescription = null,
-            tint = if (linked == null) MaterialTheme.colorScheme.onSurface else MaterialTheme.colorScheme.primary,
-        )
-        Text(if (linked == null) "Tracking" else "1 tracker")
+    OutlinedButton(onClick = { showSheet = true }, modifier = modifier.testTag("trackingAction")) {
+        Icon(Icons.Outlined.Sync, contentDescription = null)
+        Text("Track")
     }
 
     if (showSheet) {
-        ModalBottomSheet(onDismissRequest = { showSheet = false }) {
-            Column(Modifier.fillMaxWidth().padding(horizontal = 24.dp, vertical = 16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+        ModalBottomSheet(onDismissRequest = { showSheet = false }, sheetState = sheetState) {
+            Column(Modifier.fillMaxWidth().verticalScroll(rememberScrollState()).padding(horizontal = 24.dp, vertical = 16.dp),
+                verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                Text("Tracking", style = MaterialTheme.typography.titleLarge)
+                if (showCollection) {
+                    Column(Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                        Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                            if (bangumiConnected) {
+                                Image(Icons.Default.BangumiNext, contentDescription = null, modifier = Modifier.size(32.dp))
+                            }
+                            Text(if (bangumiConnected) "Bangumi" else "Collection", style = MaterialTheme.typography.titleMedium)
+                        }
+                        collectionAction()
+                    }
+                }
                 if (updating) CircularProgressIndicator(Modifier.size(20.dp), strokeWidth = 2.dp)
                 when {
-                    loading && accountId == null -> CircularProgressIndicator()
+                    loading -> CircularProgressIndicator()
                     accountId == null -> {
-                        Text("Connect AniList to track this anime.")
+                        if (!showCollection) Text("No tracking accounts connected.")
                         TextButton(onClick = { showSheet = false; navigator.navigateSettings(SettingsTab.TRACKING) }) {
                             Text("Tracking accounts")
                         }
                     }
-                    loading && linked == null -> CircularProgressIndicator()
                     linked == null -> {
                         Row(Modifier.fillMaxWidth().clickable { searching = true; results = emptyList(); error = null }.padding(vertical = 12.dp),
                             horizontalArrangement = Arrangement.spacedBy(16.dp)) {
-                            AniListIcon()
-                            Text("Add tracking", style = MaterialTheme.typography.titleMedium)
+                                AniListIcon()
+                                Text("AniList · Add tracking", style = MaterialTheme.typography.titleMedium)
                         }
                     }
                     else -> {
                         val current = linked!!
+                        Text("AniList", style = MaterialTheme.typography.titleMedium)
                         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                             AniListIcon()
                             Column(Modifier.weight(1f).clickable {
@@ -359,7 +383,7 @@ internal actual fun AniListTrackingSection(info: SubjectInfo, modifier: Modifier
 
     if (editing != null && linked != null) {
         val current = linked!!
-        key(current.media.id, editing, current.listEntry?.progress) {
+        key(current.media.id, editing, current.listEntry?.progress, current.listEntry?.score) {
             EntryEditor(current, provider.statusOptions.map { it.status to it.displayName },
                 field = editing!!,
                 onDismiss = { editing = null },
@@ -517,6 +541,8 @@ private fun EntryEditor(
     val entry = current.listEntry ?: TrackingListEntry(current.media.id, TrackingStatus.PLANNING, 0)
     val maxProgress = maxOf(current.media.totalEpisodes ?: 10_000, entry.progress)
     val progressListState = rememberLazyListState(initialFirstVisibleItemIndex = (entry.progress - 2).coerceIn(0, maxProgress))
+    val scoreListState = rememberLazyListState(initialFirstVisibleItemIndex = if (entry.score == TrackingScore.Unrated) 0
+        else (10 - (entry.score.value / 10f).roundToInt() - 2).coerceIn(0, 9))
     val statusListState = rememberLazyListState()
     Dialog(onDismissRequest = onDismiss) {
         Surface(Modifier.fillMaxWidth(), shape = MaterialTheme.shapes.extraLarge) {
@@ -527,22 +553,23 @@ private fun EntryEditor(
                     EditField.SCORE -> "Score"
                 }, style = MaterialTheme.typography.titleLarge)
                 if (field == EditField.SCORE) {
-                    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                        repeat(2) { row ->
-                            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                                repeat(5) { column ->
-                                    val score = row * 5 + column + 1
-                                    PickerChoice(
-                                        label = score.toString(),
-                                        selected = entry.score.value != 0 && (entry.score.value / 10f).roundToInt().coerceIn(1, 10) == score,
-                                        modifier = Modifier.weight(1f),
-                                        onClick = { onSelect(entry.copy(score = TrackingScore(score * 10))) },
-                                    )
-                                }
-                            }
+                    LazyColumn(Modifier.fillMaxWidth().height(240.dp), state = scoreListState,
+                        verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                        items(10) { index ->
+                            val score = 10 - index
+                            PickerChoice(
+                                label = score.toString(),
+                                selected = entry.score.value != 0 && (entry.score.value / 10f).roundToInt().coerceIn(1, 10) == score,
+                                modifier = Modifier.fillMaxWidth(),
+                                onClick = { onSelect(entry.copy(score = TrackingScore(score * 10))) },
+                            )
                         }
                         if (entry.score.value != 0) {
-                            TextButton(onClick = { onSelect(entry.copy(score = TrackingScore.Unrated)) }) { Text("Clear score") }
+                            item {
+                                PickerChoice("Clear score", false, Modifier.fillMaxWidth()) {
+                                    onSelect(entry.copy(score = TrackingScore.Unrated))
+                                }
+                            }
                         }
                     }
                 } else {

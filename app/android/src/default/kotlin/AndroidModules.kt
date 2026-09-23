@@ -24,6 +24,7 @@ import me.him188.ani.android.provider.ExternalContentProviderFactoryImpl
 import me.him188.ani.app.data.models.preference.PikPakConfig
 import me.him188.ani.app.data.persistent.database.AniDatabase
 import me.him188.ani.app.data.repository.user.SettingsRepository
+import me.him188.ani.app.domain.episode.EpisodeTrackingSync
 import me.him188.ani.app.domain.foundation.HttpClientProvider
 import me.him188.ani.app.domain.foundation.ScopedHttpClientUserAgent
 import me.him188.ani.app.domain.foundation.get
@@ -90,6 +91,7 @@ fun getAndroidModules(
     serviceConnectionManager: TorrentServiceConnectionManager,
     coroutineScope: CoroutineScope,
 ) = module {
+    single<EpisodeTrackingSync> { AniListEpisodeTrackingSync(androidContext(), get(), coroutineScope) }
     single<BrowserNavigator> { AndroidBrowserNavigator() }
     single<CaptchaBrowserFactory> { AndroidCaptchaBrowserFactory(androidContext()) }
     single<ImageCaptchaRecognizer> { AndroidOnnxImageCaptchaRecognizer() }

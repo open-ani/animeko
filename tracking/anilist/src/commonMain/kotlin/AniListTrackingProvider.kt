@@ -50,9 +50,9 @@ class AniListTrackingProvider(
     override val statusOptions = listOf(
         TrackingStatusOption(TrackingStatus.CURRENT, "Watching"),
         TrackingStatusOption(TrackingStatus.COMPLETED, "Completed"),
-        TrackingStatusOption(TrackingStatus.PAUSED, "Paused"),
+        TrackingStatusOption(TrackingStatus.PAUSED, "On hold"),
         TrackingStatusOption(TrackingStatus.DROPPED, "Dropped"),
-        TrackingStatusOption(TrackingStatus.PLANNING, "Planning"),
+        TrackingStatusOption(TrackingStatus.PLANNING, "Plan to watch"),
         TrackingStatusOption(TrackingStatus.REPEATING, "Rewatching"),
     )
     override val scoreOptions: List<TrackingScoreOption>

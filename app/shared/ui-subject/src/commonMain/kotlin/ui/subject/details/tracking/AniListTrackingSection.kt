@@ -11,4 +11,10 @@ import androidx.compose.ui.Modifier
 import me.him188.ani.app.data.models.subject.SubjectInfo
 
 @Composable
-internal expect fun AniListTrackingSection(info: SubjectInfo, modifier: Modifier = Modifier)
+internal expect fun AniListTrackingSection(
+    info: SubjectInfo,
+    showCollection: Boolean,
+    bangumiConnected: Boolean,
+    collectionAction: @Composable () -> Unit,
+    modifier: Modifier = Modifier,
+)

@@ -110,6 +110,7 @@ import me.him188.ani.app.ui.subject.details.sections.SubjectInfoTable
 import me.him188.ani.app.ui.subject.details.sections.SubjectRatingSummary
 import me.him188.ani.app.ui.subject.details.sections.SubjectSummarySection
 import me.him188.ani.app.ui.subject.details.sections.SubjectTagsSection
+import me.him188.ani.app.ui.subject.details.tracking.AniListTrackingSection
 import me.him188.ani.app.ui.subject.details.state.SubjectDetailsState
 import me.him188.ani.app.ui.subject.details.state.SubjectDetailsUiState
 import me.him188.ani.app.ui.subject.details.state.rememberAiringLabelState
@@ -501,18 +502,15 @@ private fun SubjectSidebar(
             onPlay = { uiState.progressInfo?.nextEpisodeIdToPlay?.let(onPlay) },
             Modifier.fillMaxWidth(),
         )
-        // 收藏 (定稿: 全宽 Tonal)
-        if (selfInfo.isSessionValid == false) {
-            OutlinedButton(onClickLogin, Modifier.fillMaxWidth()) {
-                Text(stringResource(Lang.subject_details_login_to_collect))
+        AniListTrackingSection(info, showCollection = selfInfo.isSessionValid == true, bangumiConnected = selfInfo.bangumiConnected == true, collectionAction = {
+            if (selfInfo.isSessionValid == false) {
+                OutlinedButton(onClickLogin, Modifier.fillMaxWidth()) {
+                    Text(stringResource(Lang.subject_details_login_to_collect))
+                }
+            } else {
+                EditableSubjectCollectionTypeButton(uiState.collectionTypeEdit, state, Modifier.fillMaxWidth())
             }
-        } else {
-            EditableSubjectCollectionTypeButton(
-                uiState.collectionTypeEdit,
-                state,
-                Modifier.fillMaxWidth(),
-            )
-        }
+        }, modifier = Modifier.fillMaxWidth())
         // 收藏统计三格 (收藏 / 在看 / 想看)
         SubjectCollectionStatsRow(info.collectionStats)
 
