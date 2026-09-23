@@ -401,7 +401,9 @@ class SettingsViewModel : AbstractSettingsViewModel(), KoinComponent {
 
     @Suppress("DuplicatedCode")
     private suspend fun restoreSettingsBackup(content: String): Boolean {
-        val file = if ("format" in json.parseToJsonElement(content).jsonObject) {
+        val fields = json.parseToJsonElement(content).jsonObject
+        val file = if ("format" in fields) {
+            require("version" in fields) { "Backup schema version is missing" }
             json.decodeFromString(AnimekoBackupFile.serializer(), content)
         } else {
             AnimekoBackupFile(settings = json.decodeFromString(SettingsBackup.serializer(), content))

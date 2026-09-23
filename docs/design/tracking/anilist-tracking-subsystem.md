@@ -97,7 +97,7 @@ Android 的条目 UI 和观看事件现已通过 `TrackingRegistry`、`TrackingC
 
 搜索结果使用 AniList 返回的封面和标题。搜索初始词遵循 Animeko 的“显示原名”设置：关闭时先用当前显示的本地化标题；若该查询没有结果，再尝试原名。用户手动改写查询后只执行输入的词，避免意外的第二次搜索。
 
-备份选择框提供“应用设置”和“追踪匹配关系”两个选项，允许只导出其中一类。生成的 `.json` 文件包含 `format`、`version`、`settings`、`tracking` 字段；恢复时也接受旧版设置剪贴板 JSON。`TrackingRegistry` 汇总所有已注册 source 的绑定记录，并按 `providerId` 将导入记录交回各 source；无本地匹配的 Bangumi source 返回空列表。新增追踪平台实现 `TrackingSource.exportBindings` 和 `restoreBindings`，以自己的存储格式保存绑定，在导出边界转换为 `TrackingBindingRecord`；无需修改备份 UI 或文件结构。未知 `providerId` 在恢复前被拒绝，避免静默丢失。文件选择及内容选项参照 Mihon 的 `BackupCreator`；Mihon 的 `.tachibk` 文件使用 gzip 压缩的 protobuf，Animeko 的 JSON 格式与之不兼容。备份不包含离线视频或完整观看数据库。应用设置类别包含现有 Animeko 会话数据，因此备份文件需要私密保存；追踪账号 token 不在其中。
+备份选择框提供“应用设置”和“追踪匹配关系”两个选项，允许只导出其中一类。`.animekobk` 文件使用 gzip 压缩，解压后的 JSON 包含 `format: animeko-backup`、`version: 1`、`settings`、`tracking` 字段。恢复时先验证格式与版本，再写入设置；未知版本被拒绝。恢复也接受先前导出的普通 JSON 文件及旧版设置剪贴板 JSON。`TrackingRegistry` 汇总所有已注册 source 的绑定记录，并按 `providerId` 将导入记录交回各 source；无本地匹配的 Bangumi source 返回空列表。新增追踪平台实现 `TrackingSource.exportBindings` 和 `restoreBindings`，以自己的存储格式保存绑定，在导出边界转换为 `TrackingBindingRecord`；无需修改备份 UI 或文件结构。未知 `providerId` 在恢复前被拒绝，避免静默丢失。文件选择及内容选项参照 Mihon 的 `BackupCreator`；Mihon 的 `.tachibk` 文件使用 gzip 压缩的 protobuf，Animeko 的格式与之不兼容。备份不包含离线视频或完整观看数据库。应用设置类别包含现有 Animeko 会话数据，因此备份文件需要私密保存；追踪账号 token 不在其中。
 
 | 能力 | 当前实现 | 验证边界 |
 |---|---|---|

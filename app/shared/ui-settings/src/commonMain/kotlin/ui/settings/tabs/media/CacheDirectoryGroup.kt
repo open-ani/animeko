@@ -39,6 +39,8 @@ import io.github.vinceglb.filekit.write
 import me.him188.ani.app.data.models.preference.DanmakuCacheStrategy
 import me.him188.ani.app.data.models.preference.MediaCacheSettings
 import me.him188.ani.app.platform.PermissionManager
+import me.him188.ani.app.ui.settings.compressBackup
+import me.him188.ani.app.ui.settings.decompressBackup
 import me.him188.ani.app.ui.foundation.rememberAsyncHandler
 import me.him188.ani.app.ui.foundation.widgets.LocalToaster
 import me.him188.ani.app.ui.lang.Lang
@@ -131,10 +133,10 @@ fun SettingsScope.BackupSettings(state: CacheDirectoryGroupState) {
                 TextButton(onClick = {
                     scope.launch {
                         try {
-                            val target = FileKit.openFileSaver(suggestedName = "animeko-backup", extension = "json")
+                            val target = FileKit.openFileSaver(suggestedName = "animeko-backup", extension = "animekobk")
                                 ?: return@launch
                             val data = state.onGetBackupData(BackupSelection(backupSettings, backupTracking))
-                            target.write(data.encodeToByteArray())
+                            target.write(compressBackup(data.encodeToByteArray()))
                             showBackupDialog = false
                             toaster.toast("Backup saved")
                         } catch (_: Exception) {
@@ -162,7 +164,13 @@ fun SettingsScope.BackupSettings(state: CacheDirectoryGroupState) {
                         scope.launch {
                             try {
                                 val source = FileKit.openFilePicker() ?: return@launch
-                                val result = state.onRestoreSettings(source.readBytes().decodeToString())
+                                val bytes = source.readBytes()
+                                val content = if (bytes.size >= 2 && bytes[0] == 0x1f.toByte() && bytes[1] == 0x8b.toByte()) {
+                                    decompressBackup(bytes).decodeToString()
+                                } else {
+                                    bytes.decodeToString()
+                                }
+                                val result = state.onRestoreSettings(content)
                                 toaster.toast(if (result) restoreSuccess else restoreFailed)
                                 showRestoreDialog = false
                             } catch (_: Exception) {
