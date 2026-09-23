@@ -57,7 +57,7 @@ internal actual fun compressBackup(content: ByteArray): ByteArray {
                 if (produced > 0) {
                     result.add(outChunk.copyOf(produced))
                 }
-            } while (stream.avail_out == 0u)
+            } while (ret != Z_STREAM_END)
 
             val totalSize = result.sumOf { it.size }
             val output = ByteArray(totalSize)
@@ -74,8 +74,8 @@ internal actual fun compressBackup(content: ByteArray): ByteArray {
 }
 
 @OptIn(ExperimentalForeignApi::class, BetaInteropApi::class)
-internal actual fun decompressBackup(content: ByteArray): ByteArray {
-    if (content.isEmpty()) return ByteArray(0)
+internal actual fun decompressBackup(content: ByteArray, maxBytes: Int): ByteArray {
+    require(content.isNotEmpty()) { "Backup data is empty" }
     memScoped {
         val stream = alloc<z_stream>()
         // 15 + 32 specifies automatic gzip/zlib detection
@@ -90,25 +90,19 @@ internal actual fun decompressBackup(content: ByteArray): ByteArray {
             stream.avail_in = content.size.toUInt()
             stream.next_in = content.refTo(0).getPointer(this).reinterpret()
 
+            var totalSize = 0
             do {
                 stream.avail_out = chunkSize.toUInt()
                 stream.next_out = outChunk.refTo(0).getPointer(this).reinterpret()
+                // Z_BUF_ERROR here means the input ended before the gzip stream did.
                 val ret = inflate(stream.ptr, Z_NO_FLUSH)
-                if (ret == Z_STREAM_END) {
-                    val produced = chunkSize - stream.avail_out.toInt()
-                    if (produced > 0) {
-                        result.add(outChunk.copyOf(produced))
-                    }
-                    break
-                }
-                check(ret == Z_OK) { "inflate failed with code $ret" }
+                check(ret == Z_OK || ret == Z_STREAM_END) { "inflate failed with code $ret" }
                 val produced = chunkSize - stream.avail_out.toInt()
-                if (produced > 0) {
-                    result.add(outChunk.copyOf(produced))
-                }
-            } while (stream.avail_out == 0u)
+                totalSize += produced
+                check(totalSize <= maxBytes) { "Backup expands beyond $maxBytes bytes" }
+                if (produced > 0) result.add(outChunk.copyOf(produced))
+            } while (ret != Z_STREAM_END)
 
-            val totalSize = result.sumOf { it.size }
             val output = ByteArray(totalSize)
             var offset = 0
             for (chunk in result) {

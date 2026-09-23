@@ -9,5 +9,9 @@ internal actual fun compressBackup(content: ByteArray): ByteArray = ByteArrayOut
     GZIPOutputStream(output).use { it.write(content) }
 }.toByteArray()
 
-internal actual fun decompressBackup(content: ByteArray): ByteArray =
-    GZIPInputStream(ByteArrayInputStream(content)).use { it.readBytes() }
+internal actual fun decompressBackup(content: ByteArray, maxBytes: Int): ByteArray =
+    GZIPInputStream(ByteArrayInputStream(content)).use { input ->
+        input.readNBytes(maxBytes + 1).also {
+            require(it.size <= maxBytes) { "Backup expands beyond $maxBytes bytes" }
+        }
+    }
