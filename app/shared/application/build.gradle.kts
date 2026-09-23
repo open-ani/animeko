@@ -40,6 +40,7 @@ kotlin {
     }
     sourceSets.iosMain.dependencies {
         implementation(libs.mediamp.ffmpeg)
+        implementation(projects.tracking.anilist)
     }
 }
 
@@ -98,6 +99,21 @@ kotlin {
                 dependsOn(":utils:http-downloader:extractMediampFfmpegAppleRuntime")
                 // 上面的 -F 指向该任务产出的 Pods 目录
                 dependsOn("podInstallSyntheticIos")
+            }
+        }
+
+        tasks.matching { it.name == "podInstallSyntheticIos" }.configureEach {
+            val buildDir = layout.buildDirectory
+            doLast {
+                val pbxproj = buildDir.file("cocoapods/synthetic/ios/Pods/Pods.xcodeproj/project.pbxproj").get().asFile
+                if (pbxproj.exists()) {
+                    val content = pbxproj.readText()
+                    val updated = content.replace("IPHONEOS_DEPLOYMENT_TARGET = 12.0;", "IPHONEOS_DEPLOYMENT_TARGET = 16.0;")
+                        .replace("IPHONEOS_DEPLOYMENT_TARGET = 15.1;", "IPHONEOS_DEPLOYMENT_TARGET = 16.0;")
+                    if (updated != content) {
+                        pbxproj.writeText(updated)
+                    }
+                }
             }
         }
     }
