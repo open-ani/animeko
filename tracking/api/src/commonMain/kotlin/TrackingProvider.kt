@@ -111,8 +111,9 @@ data class TrackingLoginCredentials(
 }
 
 /**
- * Provider-scoped secure storage. Implementations must exclude the secret from Room, logs, exports,
- * backups, and screenshots; unsupported platforms must not advertise login support.
+ * Provider-scoped credential storage. Platform adapters select the storage protection level and
+ * must exclude secrets from Room, logs, exports, backups, and screenshots. Unsupported platforms
+ * must not advertise login support.
  */
 interface TrackingCredentialStore {
     suspend fun load(): TrackingLoginCredentials?

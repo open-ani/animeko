@@ -9,7 +9,7 @@
 
 Animeko 需要的是一个完整的追踪子系统，而不是只够调用 AniList 的 GraphQL 客户端。AniList 是第一个实现；后续追踪服务应当能够复用账号、搜索、绑定、刷新、编辑和同步流程，只提供服务自身的认证、状态、评分和远端 API 映射。
 
-Android 已完成设备登录验证。macOS Desktop 使用系统 Keychain 保存凭据并注册 AniList 追踪入口；真实账号登录已在桌面验证；远端写入仍需验证。iOS 尚未注册 AniList 登录入口。
+Android 已完成设备登录验证。macOS Desktop 使用独立的追踪凭据 DataStore 并注册 AniList 追踪入口；旧 Keychain 实现曾完成真实账号登录，新存储仍需重新授权及重启验证；远端写入仍需验证。iOS 尚未注册 AniList 登录入口。
 
 ## 主要参考：Mihon
 
@@ -51,7 +51,7 @@ Mihon 的 `Anilist.bind` 会把远端个人状态复制到待绑定对象，再�
 
 `prepareBinding` 负责读取已有状态，source 的 `bind` 负责匹配记录及必要的新条目创建。后续用户主动编辑才覆盖状态、进度和评分。
 
-### 凭据不进入普通 preferences 或 Room
+### 追踪凭据独立于 Animeko 会话与备份
 
 Mihon 当前通过 tracker preferences 保存凭据。Animeko 的约束更严格：token 不进入 Room、日志、截图、普通设置导出或备份。
 
@@ -65,7 +65,9 @@ Android 首个实现使用：
 
 `utils/io` 的 `obscure` 明确只是带硬编码 key 的防窥混淆，不能用于追踪 token。
 
-macOS Desktop 将 token 保存为用户 Keychain 中的 generic password；非机密的账号与标题匹配 ID 存在 Java Preferences。其它桌面平台未注册 AniList 入口。
+`TrackingCredentialStore` 是 provider-scoped 的读、写、删除边界。稳定的 `TrackingProviderId` 是存储键；新增追踪服务使用同一个桌面存储，不扩展 Animeko/Bangumi 的 `TokenSave`。macOS Desktop 将追踪 token 保存于独立的 DataStore 文件，并将其目录限制为当前用户访问；文件内容没有 Keychain 静态加密保护。该 DataStore 不进入设置快照、追踪匹配备份、日志或 UI。非机密的账号与标题匹配 ID 仍在 Java Preferences。
+
+桌面适配器只读取独立 DataStore。已有 Keychain 凭据不自动导入，用户需重新授权 AniList；旧 Keychain 项不会被此适配器读取或删除。Android 继续使用 Keystore 加密文件；其它桌面平台未注册 AniList 入口。未来 iOS 适配器须选择本地存储实现并遵守相同的 provider 隔离和备份边界。
 
 ### KMP common code 不依赖 Android 类型
 
@@ -103,7 +105,7 @@ Android 与 macOS Desktop 的条目 UI 通过 `TrackingRegistry`、`TrackingCoor
 
 | 能力 | 当前实现 | 验证边界 |
 |---|---|---|
-| AniList 账号 | Android OAuth 与 Keystore 凭据；macOS Desktop OAuth 回调与 Keychain 凭据 | Android 已在连接的手机上完成登录。macOS Desktop 的合成 Keychain 测试和应用打包通过；真实 OAuth 回调与已连接账号行已验证；远端写入尚未验证。iOS 不注册 AniList 登录入口。 |
+| AniList 账号 | Android OAuth 与 Keystore 凭据；macOS Desktop OAuth 回调与独立 DataStore 凭据 | Android 已在连接的手机上完成登录。macOS Desktop 的 DataStore 持久化需完成回归验证；真实 OAuth 回调与已连接账号行已验证，换存储后需重新授权；远端写入尚未验证。iOS 不注册 AniList 登录入口。 |
 | AniList 条目 | 手动搜索、绑定、状态、进度、1–10 分、起止日期、隐私、远端删除与本地解绑 | Provider MockEngine tests 覆盖部分 API 映射与更新；手机上完成搜索与卡片烟测。没有条目 UI 自动回归测试。 |
 | 自动观看同步 | 单集完成与“全部标记看过”会触发 AniList hook；远端进度较新时不回退 | 曾用连接账号完成手机试验；本轮新增末集状态转换回归测试。hook 本身没有自动测试，也没有持久化失败重试。 |
 | Bangumi | `BangumiTrackingSource` 复用现有收藏、剧集和评分 repository；Track sheet 显示并编辑三项字段 | 当前 Animeko 会话有效时可用；会话未连接 Bangumi 时显示为 Animeko 收藏。新卡片仍需手机交互回归。 |
@@ -115,7 +117,7 @@ Android 与 macOS Desktop 的条目 UI 通过 `TrackingRegistry`、`TrackingCoor
 
 `tracking/api/TrackingSource.kt` 定义一个账号范围内的追踪源：连接状态、展示信息、能力、状态与评分选项，以及 `observe/search/bind/edit/unlink/episodeWatched`。`TrackingSnapshot` 区分已匹配媒体和远端列表条目；远端条目删除后仍可保留本地匹配。`TrackingEdit` 是类型化命令，UI 不传 Bangumi 或 AniList 的 API 字段。
 
-平台 DI 构造 `DefaultTrackingRegistry`。Bangumi source 使用当前 Animeko 会话和原有收藏 repository；AniList source 包装 `TrackingProvider`，以账号 ID 与 subject ID 查找匹配。Android 沿用 Keystore 账号和原 `anilist-bindings`；macOS Desktop 使用 Keychain 凭据和 Java Preferences 匹配记录。两者的存储机制留在 adapter 内，不进入通用卡片。
+平台 DI 构造 `DefaultTrackingRegistry`。Bangumi source 使用当前 Animeko 会话和原有收藏 repository；AniList source 包装 `TrackingProvider`，以账号 ID 与 subject ID 查找匹配。Android 沿用 Keystore 账号和原 `anilist-bindings`；macOS Desktop 使用独立 DataStore 凭据和 Java Preferences 匹配记录。两者的存储机制留在 adapter 内，不进入通用卡片。
 
 `TrackingCoordinator` 只通过注册表查找 source，提供观察、搜索、绑定、编辑和解绑入口。`TrackingSection(subjectId, modifier)` 是两种详情页布局的唯一入口。卡片按 capability 绘制状态、进度、评分、日期、私密和删除操作；品牌图标由各平台注册的 `TrackingIconRenderer` 按 `TrackingProviderId` 提供。Bangumi 的离散正片列表与 AniList 的累计数字列表使用同一个选择弹层。完成状态下若 Bangumi 仍有未看剧集，另行询问是否全部标记看过。
 
@@ -141,4 +143,4 @@ Android 与 macOS Desktop 的条目 UI 通过 `TrackingRegistry`、`TrackingCoor
 
 - `:tracking:api:allTests :tracking:anilist:allTests :app:shared:app-data:testAndroidHostTest :app:shared:ui-subject:testAndroidHostTest :app:shared:ui-settings:testAndroidHostTest :app:android:assembleDefaultDebug -Pani.android.abis=arm64-v8a` 通过；测试覆盖第三个 source 的路由、跨 source 观看事件失败隔离，以及无效绑定在写入前被拒绝、离线账号的绑定可恢复。
 - Android debug 构建已安装在连接的手机。应用正常启动；Tracking accounts 同时显示 Bangumi 与 AniList 图标、账号名和连接状态，两行均打开共同的账号操作对话框。此前 Slam Dunk 的 Track sheet 显示两个服务的状态、`7 / 101` 进度和评分字段，Bangumi 正片选择弹层可以打开。此轮只读检查没有证明新版本的远端写入。
-- macOS Desktop 的 `:app:desktop:test`、`createDistributable` 与打包应用启动通过；合成 Keychain 测试验证保存、替换、读取和删除。桌面真实 OAuth 回调与已连接账号行已由用户验证；远端写入回归、iOS 登录和失败持久化重试仍待完成；不能把构建与只读烟测当作这些能力的验证。
+- macOS Desktop 的 `:app:desktop:test` 验证独立 DataStore 的 provider 隔离、删除与私有目录；`createDistributable` 和打包应用启动通过，账号页显示未连接状态，目录权限为当前用户可访问。旧 Keychain 登录曾在桌面验证；新存储的真实 OAuth、重启恢复、远端写入回归、iOS 登录和失败持久化重试仍待完成；不能把构建与只读烟测当作这些能力的验证。

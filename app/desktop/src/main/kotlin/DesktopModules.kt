@@ -19,9 +19,10 @@ import me.him188.ani.app.data.models.preference.PikPakConfig
 import me.him188.ani.app.data.tracking.AniListTrackingSource
 import me.him188.ani.app.desktop.tracking.DesktopAniListAccountConnector
 import me.him188.ani.app.desktop.tracking.DesktopAniListBindingStore
-import me.him188.ani.app.ui.foundation.icons.AniListTrackingIcon
 import me.him188.ani.app.desktop.tracking.DesktopRegistryEpisodeTrackingSync
-import me.him188.ani.app.desktop.tracking.MacOSKeychainCredentialStore
+import me.him188.ani.app.desktop.tracking.DesktopTrackingCredentialStore
+import me.him188.ani.app.desktop.tracking.createDesktopTrackingCredentialDataStore
+import me.him188.ani.app.ui.foundation.icons.AniListTrackingIcon
 import me.him188.ani.app.domain.episode.EpisodeTrackingSync
 import me.him188.ani.app.domain.tracking.TrackingEpisodeSynchronizer
 import me.him188.ani.app.tracking.anilist.AniListTrackingProvider
@@ -99,7 +100,13 @@ internal fun isWindowsArm64(): Boolean {
 
 fun getDesktopModules(getContext: () -> DesktopContext, scope: CoroutineScope) = module {
     if (currentPlatformDesktop() is Platform.MacOS) {
-        single { AniListTrackingProvider(createAniListHttpClient(getPlatformKtorEngine()), MacOSKeychainCredentialStore()) }
+        single { createDesktopTrackingCredentialDataStore(getContext().dataStoreDir.resolve("tracking")) }
+        single {
+            AniListTrackingProvider(
+                createAniListHttpClient(getPlatformKtorEngine()),
+                DesktopTrackingCredentialStore(get(), AniListTrackingProvider.ID),
+            )
+        }
         single { AniListTrackingSource(DesktopAniListBindingStore(), get<AniListTrackingProvider>(), inject()) }
         single<TrackingSource> { get<AniListTrackingSource>() }
         single { DesktopAniListAccountConnector(get<AniListTrackingProvider>()) }
