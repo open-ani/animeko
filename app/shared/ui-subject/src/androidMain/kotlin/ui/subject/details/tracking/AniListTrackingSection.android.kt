@@ -12,7 +12,6 @@ import android.content.Context
 import android.content.Intent
 import android.net.Uri
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -25,7 +24,6 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material3.AlertDialog
-import androidx.compose.material3.Button
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.DatePicker
 import androidx.compose.material3.DatePickerDialog
@@ -110,8 +108,7 @@ internal actual fun AniListTrackingSection(info: SubjectInfo, modifier: Modifier
     var searchBusy by remember { mutableStateOf(false) }
     var query by remember(info.subjectId) { mutableStateOf(info.name.ifBlank { info.nameCn }) }
     var results by remember { mutableStateOf<List<TrackingMedia>>(emptyList()) }
-    var searchSelection by remember { mutableStateOf<TrackingMedia?>(null) }
-    var selected by remember { mutableStateOf<TrackingMediaWithEntry?>(null) }
+    var linkingMediaId by remember { mutableStateOf<TrackingMediaId?>(null) }
     var editing by remember { mutableStateOf<EditField?>(null) }
     var editingDate by remember { mutableStateOf<TrackingDateField?>(null) }
     var menuOpen by remember { mutableStateOf(false) }
@@ -149,7 +146,6 @@ internal actual fun AniListTrackingSection(info: SubjectInfo, modifier: Modifier
         scope.launch {
             searchBusy = true
             error = null
-            searchSelection = null
             try {
                 results = provider.search(query.trim())
                 if (results.isEmpty()) error = "No AniList matches. Try another title."
@@ -159,6 +155,30 @@ internal actual fun AniListTrackingSection(info: SubjectInfo, modifier: Modifier
                 error = "AniList search failed. Retry."
             } finally {
                 searchBusy = false
+            }
+        }
+    }
+
+    fun link(media: TrackingMedia) {
+        if (linkingMediaId != null) return
+        scope.launch {
+            linkingMediaId = media.id
+            error = null
+            try {
+                val account = accountId ?: throw TrackingProviderException.Unauthorized()
+                val candidate = provider.prepareBinding(media.id)
+                    ?: throw IllegalStateException("AniList title is unavailable")
+                val entry = candidate.listEntry
+                    ?: provider.bind(TrackingListEntry(candidate.media.id, TrackingStatus.PLANNING, 0))
+                preferences.edit().putString(bindingKey(account), candidate.media.id.value).apply()
+                linked = candidate.copy(listEntry = entry)
+                searching = false
+            } catch (failure: CancellationException) {
+                throw failure
+            } catch (_: Exception) {
+                error = "Linking failed. Tap the title to try again."
+            } finally {
+                linkingMediaId = null
             }
         }
     }
@@ -307,90 +327,31 @@ internal actual fun AniListTrackingSection(info: SubjectInfo, modifier: Modifier
                         TextButton(onClick = { searching = false }) { Text("Close") }
                     }
                     OutlinedTextField(query, { query = it }, modifier = Modifier.fillMaxWidth(), label = { Text("Title") }, singleLine = true)
-                    TextButton(onClick = { search() }, enabled = query.isNotBlank() && !searchBusy) { Text("Search") }
+                    TextButton(onClick = { search() }, enabled = query.isNotBlank() && !searchBusy && linkingMediaId == null) { Text("Search") }
                     if (searchBusy) CircularProgressIndicator()
                     error?.let { Text(it, color = MaterialTheme.colorScheme.error) }
                     LazyColumn(Modifier.fillMaxWidth().weight(1f), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                         items(results, key = { it.id.value }) { media ->
                             Surface(
-                                onClick = { searchSelection = media },
+                                onClick = { link(media) },
                                 modifier = Modifier.fillMaxWidth(),
                                 shape = MaterialTheme.shapes.medium,
-                                border = if (searchSelection?.id == media.id) BorderStroke(2.dp, MaterialTheme.colorScheme.primary) else null,
+                                enabled = linkingMediaId == null,
                             ) {
                                 Row(Modifier.padding(12.dp), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                                     AsyncImage(media.coverImageUrl, null, Modifier.size(64.dp, 88.dp), contentScale = ContentScale.Crop)
                                     Column {
                                         Text(media.title, style = MaterialTheme.typography.titleMedium)
                                         Text("Anime${media.totalEpisodes?.let { " · $it episodes" } ?: ""}")
-                                        if (searchSelection?.id == media.id) Text("Selected", color = MaterialTheme.colorScheme.primary)
+                                        if (linkingMediaId == media.id) CircularProgressIndicator(Modifier.size(20.dp), strokeWidth = 2.dp)
                                     }
                                 }
                             }
                         }
                     }
-                    Button(
-                        onClick = {
-                            val media = searchSelection ?: return@Button
-                            scope.launch {
-                                loading = true
-                                try {
-                                    selected = provider.prepareBinding(media.id)
-                                    searching = false
-                                } catch (failure: CancellationException) {
-                                    throw failure
-                                } catch (_: Exception) {
-                                    error = "Could not load this AniList title."
-                                } finally {
-                                    loading = false
-                                }
-                            }
-                        },
-                        modifier = Modifier.fillMaxWidth().height(48.dp),
-                        enabled = searchSelection != null && !loading,
-                    ) { Text("Track") }
                 }
             }
         }
-    }
-
-    selected?.let { candidate ->
-        AlertDialog(
-            onDismissRequest = { selected = null },
-            title = { Text("Link ${candidate.media.title}?") },
-            text = {
-                Column {
-                    Text(candidate.listEntry?.let {
-                        "AniList already has ${it.progress} episodes, ${provider.statusOptions.first { option -> option.status == it.status }.displayName.lowercase()}, and score ${it.score.value}/100. Keep that entry and link this Animeko title to it?"
-                    } ?: "This title has no AniList entry. Linking will add it as Planning with zero progress and no score.")
-                    error?.let { Text(it, color = MaterialTheme.colorScheme.error) }
-                }
-            },
-            confirmButton = {
-                TextButton(onClick = {
-                    scope.launch {
-                        loading = true
-                        try {
-                            val account = accountId ?: return@launch
-                            val saved = if (candidate.listEntry == null) {
-                                provider.bind(TrackingListEntry(candidate.media.id, TrackingStatus.PLANNING, 0))
-                            } else candidate.listEntry
-                            preferences.edit().putString(bindingKey(account), candidate.media.id.value).apply()
-                            linked = candidate.copy(listEntry = saved)
-                            selected = null
-                            error = null
-                        } catch (failure: CancellationException) {
-                            throw failure
-                        } catch (_: Exception) {
-                            error = "Linking failed. Retry."
-                        } finally {
-                            loading = false
-                        }
-                    }
-                }) { Text(if (candidate.listEntry == null) "Add and link" else "Keep and link") }
-            },
-            dismissButton = { TextButton(onClick = { selected = null }) { Text("Cancel") } },
-        )
     }
 
     if (editing != null && linked != null) {
