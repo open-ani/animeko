@@ -78,6 +78,7 @@ import me.him188.ani.app.ui.foundation.tracking.TrackingAccountRegistry
 import me.him188.ani.app.ui.foundation.tracking.TrackingAccountStatus
 import me.him188.ani.app.ui.foundation.tracking.TrackingLoginAction
 import me.him188.ani.app.ui.foundation.AsyncImage
+import me.him188.ani.app.ui.foundation.LocalIsPreviewing
 import me.him188.ani.app.ui.foundation.LocalSubjectAppearanceSettings
 import me.him188.ani.tracking.api.TrackingAccountState
 import me.him188.ani.tracking.api.TrackingDate
@@ -98,6 +99,34 @@ private enum class Field { STATUS, PROGRESS, SCORE, START_DATE, FINISH_DATE }
 
 @Composable
 internal fun TrackingSection(subjectId: Int, modifier: Modifier = Modifier) {
+    // Previews and UI tests run without Koin, which the tracking sources come from.
+    if (LocalIsPreviewing.current) {
+        TrackingActionButton(trackedCount = 0, onClick = {}, modifier = modifier)
+        return
+    }
+    TrackingSectionContent(subjectId, modifier)
+}
+
+@Composable
+private fun TrackingActionButton(trackedCount: Int, onClick: () -> Unit, modifier: Modifier = Modifier) {
+    if (trackedCount == 0) {
+        Button(onClick = onClick, modifier = modifier.testTag("trackingAction")) {
+            Icon(Icons.Outlined.Sync, contentDescription = null)
+            Text(stringResource(Lang.tracking_action_track))
+        }
+    } else {
+        OutlinedButton(onClick = onClick, modifier = modifier.testTag("trackingAction")) {
+            Icon(Icons.Outlined.Sync, contentDescription = null)
+            Text(
+                if (trackedCount == 1) stringResource(Lang.tracking_action_tracked_one, trackedCount)
+                else stringResource(Lang.tracking_action_tracked_many, trackedCount)
+            )
+        }
+    }
+}
+
+@Composable
+private fun TrackingSectionContent(subjectId: Int, modifier: Modifier) {
     val coordinator = remember { GlobalKoin.get<TrackingCoordinator>() }
     val accountConnectors = remember { GlobalKoin.get<TrackingAccountRegistry>().connectors }
     val cards by remember(coordinator, subjectId) { coordinator.observe(subjectId) }
@@ -172,20 +201,7 @@ internal fun TrackingSection(subjectId: Int, modifier: Modifier = Modifier) {
         }
     }
 
-    if (trackedCount == 0) {
-        Button(onClick = { showSheet = true }, modifier = modifier.testTag("trackingAction")) {
-            Icon(Icons.Outlined.Sync, contentDescription = null)
-            Text(stringResource(Lang.tracking_action_track))
-        }
-    } else {
-        OutlinedButton(onClick = { showSheet = true }, modifier = modifier.testTag("trackingAction")) {
-            Icon(Icons.Outlined.Sync, contentDescription = null)
-            Text(
-                if (trackedCount == 1) stringResource(Lang.tracking_action_tracked_one, trackedCount)
-                else stringResource(Lang.tracking_action_tracked_many, trackedCount)
-            )
-        }
-    }
+    TrackingActionButton(trackedCount, onClick = { showSheet = true }, modifier = modifier)
 
     if (showSheet) {
         LaunchedEffect(subjectId) { coordinator.refresh() }
