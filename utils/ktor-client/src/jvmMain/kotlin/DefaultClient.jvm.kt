@@ -9,9 +9,12 @@
 
 package me.him188.ani.utils.ktor
 
+import io.ktor.client.HttpClientConfig
 import io.ktor.client.call.body
+import io.ktor.client.engine.HttpClientEngineConfig
 import io.ktor.client.engine.HttpClientEngineFactory
 import io.ktor.client.engine.okhttp.OkHttp
+import io.ktor.client.engine.okhttp.OkHttpConfig
 import io.ktor.client.statement.HttpResponse
 import io.ktor.http.ContentType
 import io.ktor.http.content.OutgoingContent
@@ -21,10 +24,28 @@ import io.ktor.utils.io.ByteReadChannel
 import io.ktor.utils.io.charsets.decode
 import io.ktor.utils.io.jvm.javaio.toInputStream
 import io.ktor.utils.io.streams.asInput
+import okhttp3.Dispatcher
 import org.jsoup.Jsoup
 import org.jsoup.nodes.Document
+import kotlin.math.max
 
 actual fun getPlatformKtorEngine(): HttpClientEngineFactory<*> = OkHttp
+
+actual fun HttpClientConfig<*>.engineMaxRequestsPerHost(value: Int) {
+    @Suppress("UNCHECKED_CAST") // engine 块只会作用于实际的引擎配置, 类型在块内判断
+    (this as HttpClientConfig<HttpClientEngineConfig>).engine {
+        if (this !is OkHttpConfig) return@engine
+        // Ktor 先给每个 OkHttpClient 装上默认的 Dispatcher, 再应用 config 块, 所以这里的 Dispatcher 会生效
+        config {
+            dispatcher(
+                Dispatcher().apply {
+                    maxRequestsPerHost = value
+                    maxRequests = max(maxRequests, value)
+                },
+            )
+        }
+    }
+}
 
 suspend inline fun HttpResponse.bodyAsDocument(): Document = body()
 

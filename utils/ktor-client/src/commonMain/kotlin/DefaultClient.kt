@@ -43,6 +43,14 @@ import kotlin.time.measureTimedValue
 expect fun getPlatformKtorEngine(): HttpClientEngineFactory<*>
 
 /**
+ * 设置 [getPlatformKtorEngine] 引擎对单个 host 的并发请求上限. 使用其他引擎时不做任何设置.
+ *
+ * 引擎的默认上限很低: OkHttp 每个 client 5 个, NSURLSession 在 iOS 上 4 个. 超出的请求在引擎内部排队,
+ * 调用方自己的并发数因此不起作用.
+ */
+expect fun HttpClientConfig<*>.engineMaxRequestsPerHost(value: Int)
+
+/**
  * Note: 尽可能使用 `HttpClientProvider` 来共享 [HttpClient] 实例. 因为每个实例都潜在地会有一个线程池.
  */
 fun createDefaultHttpClient(

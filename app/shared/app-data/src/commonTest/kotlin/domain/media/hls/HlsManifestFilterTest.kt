@@ -95,6 +95,34 @@ class HlsManifestFilterTest {
         assertEquals(content, result.content)
     }
 
+    /**
+     * 续播位置在去广告后的时间轴上: 广告之后的位置要扣掉广告时长, 下一片跳过广告.
+     * 广告组还没有探测结果时按保留算, 位置落在它里面.
+     */
+    @Test
+    fun `locates a position on the ad-free timeline`() {
+        val analysis = HlsManifestFilter.analyze(
+            mediaPlaylist(
+                group(30, duration = 3.0, uriPrefix = "main/a"),
+                group(3, duration = 6.0, uriPrefix = "x/ins"),
+                group(30, duration = 3.0, uriPrefix = "main/b"),
+            ),
+        )
+        fun locate(firstPts: List<Long?>, positionMillis: Long) = HlsManifestFilter.locate(
+            analysis,
+            HlsManifestFilter.classify(analysis, firstPts),
+            positionMillis,
+            count = 2,
+        )?.segmentUris?.map { it.substringAfter("127.0.0.1/") }
+
+        val probed = listOf(1_400L, 1_466L, 91_400L)
+        assertEquals(listOf("main/b0.ts", "main/b1.ts"), locate(probed, 91_000))
+        assertEquals(listOf("main/a29.ts", "main/b0.ts"), locate(probed, 89_000))
+        assertEquals(null, locate(probed, 180_000))
+
+        assertEquals(listOf("x/ins0.ts", "x/ins1.ts"), locate(listOf(1_400L, null, null), 91_000))
+    }
+
     @Test
     fun `keeps playlist unchanged without pts evidence`() {
         val content = mediaPlaylist(

@@ -32,6 +32,7 @@ import kotlinx.coroutines.flow.first
 import kotlinx.io.IOException
 import me.him188.ani.app.platform.getAniUserAgent
 import me.him188.ani.utils.coroutines.Symbol
+import me.him188.ani.utils.ktor.engineMaxRequestsPerHost
 import me.him188.ani.utils.ktor.userAgent
 import me.him188.ani.utils.logging.debug
 import me.him188.ani.utils.logging.logger
@@ -352,6 +353,23 @@ data object ConvertSendCountExceedExceptionFeatureHandler : ScopedHttpClientFeat
                 throw IOException("Send count exceeded for url ${request.url}, see cause", e)
             }
         }
+    }
+}
+
+// endregion
+
+// region MaxRequestsPerHostFeature
+
+/**
+ * 引擎对单个 host 的并发请求上限. 用于需要对同一源站同时发出大量短请求的调用方, 例如 HLS 时间戳探测.
+ *
+ * 只作用于带这个特性借出的 client. 共享的默认 client 保持引擎默认值, 否则全应用对每个源站的并发都会跟着变.
+ */
+val MaxRequestsPerHostFeature = ScopedHttpClientFeatureKey<Int>("MaxRequestsPerHost")
+
+data object MaxRequestsPerHostFeatureHandler : ScopedHttpClientFeatureHandler<Int>(MaxRequestsPerHostFeature) {
+    override fun applyToConfig(config: HttpClientConfig<*>, value: Int) {
+        config.engineMaxRequestsPerHost(value)
     }
 }
 

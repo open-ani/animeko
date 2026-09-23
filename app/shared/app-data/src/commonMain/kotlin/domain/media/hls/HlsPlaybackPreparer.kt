@@ -36,7 +36,16 @@ data class HlsPlaybackOptions(
 }
 
 interface HlsPlaybackPreparer {
-    suspend fun prepare(data: UriMediaData, options: HlsPlaybackOptions): HlsPlaybackPreparerResult
+    /**
+     * @param startPositionHintMillis 播放预计从哪里开始 (续播时为记忆的进度), 在去除广告后的时间轴上.
+     * 只用于决定起播前预先下载哪个分片, 不影响播放列表; 给错了只会白下载一个分片.
+     * 它是单次播放的输入, 不是用户开关, 所以不放进 [HlsPlaybackOptions].
+     */
+    suspend fun prepare(
+        data: UriMediaData,
+        options: HlsPlaybackOptions,
+        startPositionHintMillis: Long? = null,
+    ): HlsPlaybackPreparerResult
 }
 
 data class HlsPlaybackPreparerResult(
@@ -57,7 +66,11 @@ interface HlsPlaybackProxySession : AutoCloseable {
 }
 
 object NoopHlsPlaybackPreparer : HlsPlaybackPreparer {
-    override suspend fun prepare(data: UriMediaData, options: HlsPlaybackOptions): HlsPlaybackPreparerResult {
+    override suspend fun prepare(
+        data: UriMediaData,
+        options: HlsPlaybackOptions,
+        startPositionHintMillis: Long?,
+    ): HlsPlaybackPreparerResult {
         return HlsPlaybackPreparerResult(data)
     }
 }
