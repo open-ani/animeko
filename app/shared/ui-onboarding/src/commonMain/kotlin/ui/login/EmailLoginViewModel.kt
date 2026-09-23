@@ -18,13 +18,11 @@ import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import me.him188.ani.app.data.repository.RepositoryRateLimitedException
-import me.him188.ani.app.data.repository.user.QrLoginRepository
 import me.him188.ani.app.data.repository.user.UserRepository
 import me.him188.ani.app.domain.session.InvalidSessionReason
 import me.him188.ani.app.domain.session.SessionManager
 import me.him188.ani.app.domain.session.SessionState
 import me.him188.ani.app.domain.session.auth.OAuthPlatform
-import me.him188.ani.app.domain.session.auth.QrLoginPoller
 import me.him188.ani.app.domain.usecase.GlobalKoin
 import me.him188.ani.app.ui.foundation.AbstractViewModel
 import me.him188.ani.utils.logging.warn
@@ -57,8 +55,6 @@ open class EmailLoginViewModel(private val koin: Koin = GlobalKoin) : AbstractVi
             },
         )
     }.stateInBackground(EmailLoginUiState.Initial)
-
-    protected fun createQrLoginPoller(deviceName: String) = QrLoginPoller(koin.get<QrLoginRepository>(), deviceName)
 
     private var otpId = ""
 

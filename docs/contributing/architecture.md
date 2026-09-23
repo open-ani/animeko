@@ -245,13 +245,13 @@ Ani UI 100% 使用 [Compose Multiplatform][CMP]（CMP）编写。
 
 ### Android TV 的状态复用
 
-TV 的 `Tv*ViewModel` 继承对应功能的共享 ViewModel。共享 ViewModel 管理数据查询、播放会话、弹幕、设置持久化与业务操作；TV 子类负责把共享状态映射为 TV 的 UI State，将 Intent 转发到共享操作，并发送导航或交互结果。焦点和面板导航由页面的 presentation state 持有。
+TV 的 `Tv*ViewModel` 继承对应功能的共享 ViewModel，复用已有的状态和操作。TV 专用的数据加载、校验、交互策略和状态保留在 TV 子类中；页面消费 UI State 并发送 Intent，焦点和面板导航由页面的 presentation state 持有。
 
-共享 ViewModel 接受应用的 Koin 容器，TV 导航入口负责构造 ViewModel。TV 子类不能另建 Repository 查询链、播放会话或同功能的状态持有者。平台需要的共享入口应放在原功能 ViewModel 中。
+共享 ViewModel 的适配以增加 `open` 为主。确有复用需要时，可以注入同一个应用 Koin 容器、开放必要的 `protected` 状态或提取已有公共数据流，保持共享端原有业务行为。TV 专用功能不属于共享父类的职责。
 
-TV 播放进度条使用 `video-player` 的 `MediaProgressSlider`、`PlayerProgressSliderState` 和共享播放 ViewModel 的 `cacheProgressInfoFlow` / `progressChaptersFlow`。遥控器层只提供预览位置、确认跳转和焦点，缓存分段、章节标记与进度绘制由共享组件处理。
+TV 播放进度条使用 `video-player` 的 `MediaProgressSlider`、`PlayerProgressSliderState` 和共享播放 ViewModel 的 `cacheProgressInfoFlow` / `progressChaptersFlow`。遥控器层提供预览位置、确认跳转和焦点，缓存分段、章节标记与进度绘制由共享组件处理。播放会话、弹幕加载和自动跳过使用已有共享实现。
 
-`TvArchitectureTest` 检查继承关系与上述边界。修改共享逻辑时，同时验证对应的共享测试和 TV Intent 接线。
+`TvArchitectureTest` 检查继承关系与播放复用边界。验证覆盖共享组件以及 TV 的状态与 Intent 行为。
 
 ## 组件项目
 

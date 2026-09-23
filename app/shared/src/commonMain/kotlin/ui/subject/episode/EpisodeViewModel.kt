@@ -51,16 +51,13 @@ import kotlinx.coroutines.flow.receiveAsFlow
 import kotlinx.coroutines.flow.shareIn
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.transformLatest
-import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.withContext
 import me.him188.ani.app.data.models.comment.CommentReportTargetType
-import me.him188.ani.app.data.models.episode.EpisodeInfo
 import me.him188.ani.app.data.models.episode.displayName
 import me.him188.ani.app.data.models.episode.nameOrNameCn
 import me.him188.ani.app.data.models.episode.renderEpisodeEp
-import me.him188.ani.app.data.models.player.playProgressByEpisodeId
 import me.him188.ani.app.data.models.preference.VideoEnhancementDefaultMode
 import me.him188.ani.app.data.models.preference.VideoScaffoldConfig
 import me.him188.ani.app.data.models.preference.parseMpvOptions
@@ -68,6 +65,7 @@ import me.him188.ani.app.data.models.subject.SubjectInfo
 import me.him188.ani.app.data.models.subject.SubjectProgressInfo
 import me.him188.ani.app.data.models.subject.nameCnOrName
 import me.him188.ani.app.data.models.subject.nameOrNameCn
+import me.him188.ani.app.data.models.player.playProgressByEpisodeId
 import me.him188.ani.app.data.network.AniCommentReportService
 import me.him188.ani.app.data.network.AutoSkipRepository
 import me.him188.ani.app.data.repository.RepositoryServiceUnavailableException
@@ -98,13 +96,11 @@ import me.him188.ani.app.domain.foundation.LoadError
 import me.him188.ani.app.domain.media.DroppedFileMedia
 import me.him188.ani.app.domain.media.cache.EpisodeCacheStatus
 import me.him188.ani.app.domain.media.download.MediaDownloadManager
-import me.him188.ani.app.domain.media.fetch.MediaSourceFetchState
 import me.him188.ani.app.domain.media.fetch.MediaSourceManager
 import me.him188.ani.app.domain.media.fetch.MediaSourceResultsFilterer
 import me.him188.ani.app.domain.media.resolver.MediaResolver
 import me.him188.ani.app.domain.mediasource.GetPreferredWebMediaSourceUseCase
 import me.him188.ani.app.domain.mediasource.instance.GetMediaSourceInstancesUseCase
-import me.him188.ani.app.domain.mediasource.web.captcha.SolveOutcome
 import me.him188.ani.app.domain.mediasource.web.captcha.WebSessionManager
 import me.him188.ani.app.domain.player.CacheProgressProvider
 import me.him188.ani.app.domain.player.extension.AnalyticsExtension
@@ -188,14 +184,13 @@ import me.him188.ani.danmaku.ui.DanmakuConfig
 import me.him188.ani.danmaku.ui.DanmakuHostState
 import me.him188.ani.danmaku.ui.DanmakuPresentation
 import me.him188.ani.danmaku.ui.DanmakuTrackProperties
-import me.him188.ani.datasources.api.Media
 import me.him188.ani.datasources.api.PackedDate
 import me.him188.ani.datasources.api.source.MediaFetchRequest
 import me.him188.ani.datasources.api.source.MediaSourceKind
-import me.him188.ani.datasources.api.topic.UnifiedCollectionType
 import me.him188.ani.datasources.api.topic.isDoneOrDropped
 import me.him188.ani.utils.coroutines.SingleTaskExecutor
 import me.him188.ani.utils.coroutines.flows.FlowRestarter
+import me.him188.ani.utils.coroutines.flows.catching
 import me.him188.ani.utils.coroutines.flows.flowOfEmptyList
 import me.him188.ani.utils.coroutines.flows.flowOfNull
 import me.him188.ani.utils.coroutines.flows.restartable
@@ -216,6 +211,7 @@ import org.openani.mediamp.metadata.Chapter
 import kotlin.time.Duration.Companion.milliseconds
 import kotlin.time.Duration.Companion.minutes
 import kotlin.time.Duration.Companion.seconds
+import me.him188.ani.app.data.models.episode.EpisodeInfo
 
 
 private const val OP_ED_AUTO_SKIP_BASE_SAMPLE_INTERVAL_MILLIS = 1_000L
@@ -314,12 +310,9 @@ open class EpisodeViewModel(
     private val webSessionManager: WebSessionManager by inject()
     private val playbackAutomationGate: PlaybackAutomationGate by inject()
     val playbackAutomationSuppressed get() = playbackAutomationGate.suppressed
-    protected val videoSettingsFlow get() = settingsRepository.videoScaffoldConfig.flow
-    protected val danmakuEnabledFlow get() = settingsRepository.danmakuEnabled.flow
-    protected val danmakuConfigurationFlow get() = settingsRepository.danmakuConfig.flow
-    protected val supportsWebCaptcha get() = webSessionManager.isInteractiveSupported
-    protected val resolvingCaptchaSources = MutableStateFlow<Set<String>>(emptySet())
-    protected val autoSkipPaused = MutableStateFlow(false)
+
+    /** 平台交互状态对自动跳过的额外约束。 */
+    protected open val isAutoSkipOpEdAllowed: Boolean get() = true
     // endregion
 
     private val tasker = SingleTaskExecutor(backgroundScope.coroutineContext)
@@ -362,7 +355,22 @@ open class EpisodeViewModel(
             MarkAsWatchedExtension,
             CacheOnBtPlayExtension,
             SwitchNextEpisodeExtension.Factory(
-                getNextEpisode = { currentEpisodeId -> getNeighborEpisodeId(currentEpisodeId, 1) },
+                getNextEpisode = { currentEpisodeId ->
+                    val list = episodeCollectionsFlow.first()
+                    val subject = subjectCollectionFlow.first()
+                    val currentIndex = list.indexOfFirst { it.episodeId == currentEpisodeId }
+                    if (currentIndex == -1) {
+                        null
+                    } else {
+                        val nextEpisode = list.getOrNull(currentIndex + 1) ?: return@Factory null
+
+                        if (!nextEpisode.episodeInfo.isKnownCompleted(subject.recurrence)) {
+                            null
+                        } else {
+                            nextEpisode.episodeId
+                        }
+                    }
+                },
             ),
             SwitchMediaOnPlayerErrorExtension,
             AutoSelectExtension,
@@ -501,7 +509,7 @@ open class EpisodeViewModel(
 
     @OptIn(UnsafeEpisodeSessionApi::class)
     protected val recommendationsFlow = subjectInfoFlow.map { getSubjectRecommendations(it.subjectId) }
-        .catch { emit(emptyList()) }.stateIn(backgroundScope, SharingStarted.Lazily, null)
+        .catching().shareInBackground()
 
     @OptIn(UnsafeEpisodeSessionApi::class)
     val episodeDetailsState: EpisodeDetailsState = run {
@@ -514,7 +522,7 @@ open class EpisodeViewModel(
                 }
                     .produceState(null),
             ),
-            recommendations = recommendationsFlow.map { it.orEmpty() }.produceState(emptyList()),
+            recommendations = recommendationsFlow.map { it.getOrThrow() }.produceState(emptyList()),
             subjectDetailsStateLoader = SubjectDetailsStateLoader(subjectDetailsStateFactory, backgroundScope),
         )
     }
@@ -731,6 +739,7 @@ open class EpisodeViewModel(
         .flatMapLatest { episodeId ->
             episodeCommentRepository.subjectEpisodeCommentsPager(
                 episodeId.toLong(),
+                // Ani 评论正常但服务端没取到 Bangumi 评论: 列表照常显示, 额外提示一次, 免得看起来像"没有评论"
                 onBangumiUnavailable = {
                     commentLoadFailureChannel.trySend(
                         RepositoryServiceUnavailableException("Bangumi episode comments unavailable"),
@@ -1030,62 +1039,6 @@ open class EpisodeViewModel(
         }
     }
 
-    suspend fun updateVideoSettings(update: VideoScaffoldConfig.() -> VideoScaffoldConfig) =
-        settingsRepository.videoScaffoldConfig.update(update)
-
-    suspend fun updateDanmakuConfig(update: DanmakuConfig.() -> DanmakuConfig) =
-        settingsRepository.danmakuConfig.update(update)
-
-    @OptIn(UnsafeEpisodeSessionApi::class)
-    suspend fun selectPlaybackMedia(media: Media) {
-        fetchPlayState.mediaSelectorFlow.filterNotNull().first().select(media)
-    }
-
-    suspend fun setSubjectCollection(type: UnifiedCollectionType) {
-        setSubjectCollectionTypeOrDeleteUseCase(subjectId, type)
-    }
-
-    suspend fun markAllEpisodesWatched() = episodeCollectionRepository.setAllEpisodesWatched(subjectId)
-
-    @OptIn(UnsafeEpisodeSessionApi::class)
-    suspend fun retryPlayback() {
-        selectorEpisodeCacheRepository.clearByRequestedSubject(subjectId)
-        fetchPlayState.switchEpisode(fetchPlayState.getCurrentEpisodeId())
-    }
-
-    suspend fun retryMediaSources(instanceId: String? = null) {
-        val session = fetchPlayState.episodeSessionFlow.value
-        if (session.infoLoadErrorStateFlow.value != null) {
-            session.restartLoad()
-            return
-        }
-        val bundle = session.fetchSelectFlow.filterNotNull().first()
-        if (instanceId == null) {
-            selectorEpisodeCacheRepository.clearByRequestedSubject(subjectId)
-            bundle.mediaFetchSession.restartAll()
-        } else {
-            val source = bundle.mediaFetchSession.mediaSourceResults.find { it.instanceId == instanceId } ?: return
-            selectorEpisodeCacheRepository.clearByRequestedSubjectAndSource(subjectId, source.mediaSourceId)
-            source.restart()
-        }
-    }
-
-    suspend fun solveSourceCaptcha(instanceId: String) {
-        if (instanceId in resolvingCaptchaSources.value || !supportsWebCaptcha) return
-        val bundle = fetchPlayState.episodeSessionFlow.value.fetchSelectFlow.filterNotNull().first()
-        val source = bundle.mediaFetchSession.mediaSourceResults.find { it.instanceId == instanceId } ?: return
-        val request = (source.state.value as? MediaSourceFetchState.CaptchaRequired)?.request ?: return
-        resolvingCaptchaSources.update { it + instanceId }
-        try {
-            if (webSessionManager.solve(request, interactive = true) == SolveOutcome.Solved) {
-                selectorEpisodeCacheRepository.clearByRequestedSubjectAndSource(subjectId, source.mediaSourceId)
-                source.restart()
-            }
-        } finally {
-            resolvingCaptchaSources.update { it - instanceId }
-        }
-    }
-
     suspend fun switchEpisode(episodeId: Int) {
         // 页内切集不经过 AniNavigator, 需在此单独过导航守卫 (如一起看跟随中只能去 host 所在集);
         // 引导性的切集走 extension 的 context.switchEpisode, 不经过这里, 不受影响.
@@ -1094,21 +1047,6 @@ open class EpisodeViewModel(
         backgroundScope.launch {
             fetchPlayState.switchEpisode(episodeId)
         }.join()
-    }
-
-    @OptIn(UnsafeEpisodeSessionApi::class)
-    suspend fun switchNeighborEpisode(offset: Int) {
-        getNeighborEpisodeId(fetchPlayState.getCurrentEpisodeId(), offset)?.let { switchEpisode(it) }
-    }
-
-    @OptIn(UnsafeEpisodeSessionApi::class)
-    private suspend fun getNeighborEpisodeId(currentEpisodeId: Int, offset: Int): Int? {
-        val episodes = episodeCollectionsFlow.first()
-        val index = episodes.indexOfFirst { it.episodeId == currentEpisodeId }
-        if (index == -1) return null
-        val target = episodes.getOrNull(index + offset) ?: return null
-        if (offset > 0 && !target.episodeInfo.isKnownCompleted(subjectCollectionFlow.first().recurrence)) return null
-        return target.episodeId
     }
 
     @OptIn(UnsafeEpisodeSessionApi::class)
@@ -1149,7 +1087,15 @@ open class EpisodeViewModel(
     }
 
     fun refreshFetch() {
-        launchInBackground { retryMediaSources() }
+        launchInBackground {
+            // 手动重新查询: 清除本条目的 web 源搜索缓存, 让所有数据源真正重新搜索
+            selectorEpisodeCacheRepository.clearByRequestedSubject(subjectId)
+            // Although it's flow, it should be ready.
+            fetchPlayState.episodeSessionFlow.flatMapLatest { it.fetchSelectFlow }
+                .mapNotNull { it?.mediaFetchSession }
+                .firstOrNull()
+                ?.restartAll()
+        }
     }
 
     /**
@@ -1188,7 +1134,17 @@ open class EpisodeViewModel(
     }
 
     fun restartSource(instanceId: String) {
-        launchInBackground { retryMediaSources(instanceId) }
+        launchInBackground {
+            val result = fetchPlayState.episodeSessionFlow.flatMapLatest { it.fetchSelectFlow }
+                .mapNotNull { it?.mediaFetchSession }
+                .firstOrNull()
+                ?.mediaSourceResults
+                ?.find { it.instanceId == instanceId }
+                ?: return@launchInBackground
+            // 手动刷新单个源: 只清除该源的搜索缓存, 让它真正重新搜索, 不影响其他源的缓存
+            selectorEpisodeCacheRepository.clearByRequestedSubjectAndSource(subjectId, result.mediaSourceId)
+            result.restart()
+        }
     }
 
     /**
@@ -1273,7 +1229,7 @@ open class EpisodeViewModel(
                     ) { pos, id, collections ->
                         // 不止一集并且当前是第一集时不跳过
                         val skipAllowed = !(collections.size > 1 && collections.getOrNull(0)?.episodeId == id) &&
-                                !playbackAutomationGate.suppressed.value && !autoSkipPaused.value && player.state.value.isPlaying
+                                !playbackAutomationGate.suppressed.value && isAutoSkipOpEdAllowed
                         if (skipAllowed) {
                             playerSkipOpEdState.update(pos)
                             // 即将自动跳过时, 提前缓存跳转目标处的数据, 跳过后可立即续播
@@ -1310,7 +1266,6 @@ open class EpisodeViewModel(
     }
 
     fun cancelMatchingDanmaku() {
-        pageState.value?.matchingDanmakuPresenter?.cancel()
         matchingDanmakuProviderId.value = null
     }
 

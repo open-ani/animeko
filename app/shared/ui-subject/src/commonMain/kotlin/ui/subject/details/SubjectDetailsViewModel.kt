@@ -10,16 +10,9 @@
 package me.him188.ani.app.ui.subject.details
 
 import androidx.compose.runtime.Stable
-import androidx.paging.cachedIn
-import kotlinx.coroutines.flow.flatMapLatest
-import kotlinx.coroutines.flow.map
-import me.him188.ani.app.data.models.preference.NsfwMode
 import me.him188.ani.app.data.models.subject.SubjectInfo
 import me.him188.ani.app.data.repository.subject.SubjectCollectionRepository
-import me.him188.ani.app.data.repository.subject.SubjectSearchRepository
-import me.him188.ani.app.data.repository.user.SettingsRepository
 import me.him188.ani.app.domain.episode.SetEpisodeCollectionTypeUseCase
-import me.him188.ani.app.domain.search.SubjectSearchQuery
 import me.him188.ani.app.domain.usecase.GlobalKoin
 import me.him188.ani.app.ui.foundation.AbstractViewModel
 import me.him188.ani.app.ui.rating.RateRequest
@@ -37,22 +30,6 @@ open class SubjectDetailsViewModel(
     private val koin: Koin = GlobalKoin,
 ) : AbstractViewModel(), KoinComponent {
     final override fun getKoin(): Koin = koin
-
-    private val collectionRepository: SubjectCollectionRepository by inject()
-    private val searchRepository: SubjectSearchRepository by inject()
-    private val settingsRepository: SettingsRepository by inject()
-    val subjectCollection = collectionRepository.subjectCollectionFlow(subjectId)
-
-    fun searchTag(tag: String) = settingsRepository.uiSettings.flow.map { it.searchSettings }.flatMapLatest { settings ->
-        searchRepository.searchSubjects(
-            SubjectSearchQuery(keywords = "", tags = listOf(tag), nsfw = when {
-                tag == "R18" -> true
-                settings.nsfwMode == NsfwMode.HIDE -> false
-                else -> null
-            }),
-            ignoreDoneAndDropped = { settings.ignoreDoneAndDroppedSubjects },
-        )
-    }.cachedIn(backgroundScope)
 
     private val factory: SubjectDetailsStateFactory by inject()
     val setEpisodeCollectionType: SetEpisodeCollectionTypeUseCase by inject()

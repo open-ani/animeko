@@ -7,13 +7,17 @@ package me.him188.ani.tv.ui.settings
 import androidx.datastore.preferences.core.emptyPreferences
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.awaitCancellation
 import kotlinx.coroutines.cancel
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.emptyFlow
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.test.StandardTestDispatcher
+import kotlinx.coroutines.test.TestScope
 import kotlinx.coroutines.test.resetMain
 import kotlinx.coroutines.test.runCurrent
 import kotlinx.coroutines.test.runTest
@@ -27,6 +31,11 @@ import me.him188.ani.app.data.repository.player.DanmakuRegexFilterRepository
 import me.him188.ani.app.data.repository.player.DanmakuRegexFilterRepositoryImpl
 import me.him188.ani.app.data.repository.user.PreferencesRepositoryImpl
 import me.him188.ani.app.data.repository.user.SettingsRepository
+import me.him188.ani.app.data.repository.user.TokenRepository
+import me.him188.ani.app.data.repository.user.TokenSave
+import me.him188.ani.app.data.repository.user.UserRepository
+import me.him188.ani.app.domain.foundation.DefaultHttpClientProvider
+import me.him188.ani.app.domain.foundation.HttpClientProvider
 import me.him188.ani.app.domain.media.fetch.MediaFetcher
 import me.him188.ani.app.domain.media.fetch.MediaSourceManager
 import me.him188.ani.app.domain.media.selector.MediaSelectorSourceTiers
@@ -37,10 +46,19 @@ import me.him188.ani.app.domain.mediasource.instance.MediaSourceSave
 import me.him188.ani.app.domain.mediasource.subscription.MediaSourceSubscription
 import me.him188.ani.app.domain.mediasource.subscription.MediaSourceSubscriptionUpdater
 import me.him188.ani.app.domain.mediasource.subscription.SubscriptionUpdateData
+import me.him188.ani.app.domain.session.InvalidSessionReason
+import me.him188.ani.app.domain.session.SessionEvent
+import me.him188.ani.app.domain.session.SessionManager
+import me.him188.ani.app.domain.session.SessionState
+import me.him188.ani.app.domain.session.SessionStateProvider
+import me.him188.ani.app.domain.settings.NoProxyProvider
+import me.him188.ani.app.platform.GrantedPermissionManager
+import me.him188.ani.app.platform.PermissionManager
 import me.him188.ani.datasources.api.matcher.MediaSourceWebVideoMatcherLoader
 import me.him188.ani.datasources.api.source.FactoryId
 import me.him188.ani.datasources.api.source.MediaSourceConfig
 import me.him188.ani.datasources.api.source.MediaSourceFactory
+import me.him188.ani.utils.ktor.ApiInvoker
 import me.him188.ani.utils.platform.annotations.TestOnly
 import org.koin.dsl.koinApplication
 import org.koin.dsl.module
@@ -245,7 +263,7 @@ class TvSettingsViewModelTest {
         }
     }
 
-    private fun createViewModel(
+    private fun TestScope.createViewModel(
         settings: SettingsRepository,
         regex: DanmakuRegexFilterRepository,
         sources: MediaSourceManager,
@@ -258,6 +276,28 @@ class TvSettingsViewModelTest {
             single { regex }
             single { sources }
             single { subscriptions }
+            single<PermissionManager> { GrantedPermissionManager }
+            single<HttpClientProvider> { DefaultHttpClientProvider(NoProxyProvider, backgroundScope) }
+            single<SessionStateProvider> {
+                object : SessionStateProvider {
+                    override val stateFlow = MutableStateFlow<SessionState>(SessionState.Invalid(InvalidSessionReason.NO_TOKEN))
+                    override val eventFlow = emptyFlow<SessionEvent>()
+                }
+            }
+            single {
+                UserRepository(
+                    dataStore = MemoryDataStore(null),
+                    sessionStateProvider = get(),
+                    userApi = pendingApi(), authApi = pendingApi(), profileApi = pendingApi(),
+                    bangumiApi = pendingApi(), oauthApi = pendingApi(),
+                    sessionManager = SessionManager(
+                        TokenRepository(MemoryDataStore(TokenSave.Initial)),
+                        backgroundScope,
+                        refreshSession = { awaitCancellation() },
+                    ),
+                    coroutineContext = backgroundScope.coroutineContext,
+                )
+            }
         }) }.koin
         return TvSettingsViewModel(koin, loadLibraries, context)
     }
@@ -288,5 +328,9 @@ class TvSettingsViewModelTest {
             saves = saves.map { if (it.instanceId in instanceIds) it.copy(isEnabled = enabled) else it }
         }
         override suspend fun removeInstance(instanceId: String) = error("Read-only sources")
+    }
+
+    private fun <Api> pendingApi() = object : ApiInvoker<Api> {
+        override suspend fun <R> invoke(action: suspend Api.() -> R): R = awaitCancellation()
     }
 }

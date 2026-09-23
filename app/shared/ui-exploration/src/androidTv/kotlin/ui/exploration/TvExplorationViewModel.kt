@@ -11,6 +11,8 @@ package me.him188.ani.tv.ui.exploration
 
 import androidx.paging.compose.launchAsLazyPagingItemsIn
 import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.Deferred
+import kotlinx.coroutines.async
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -19,7 +21,10 @@ import kotlinx.coroutines.flow.filterNotNull
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 import me.him188.ani.app.data.models.subject.SubjectCollectionInfo
+import me.him188.ani.app.data.repository.subject.SubjectCollectionRepository
 import me.him188.ani.app.navigation.SubjectDetailPlaceholder
 import me.him188.ani.app.ui.exploration.ExplorationPageViewModel
 import me.him188.ani.tv.ui.foundation.TvNavigationEvent
@@ -29,6 +34,7 @@ import org.koin.core.Koin
 class TvExplorationViewModel(
     koin: Koin,
 ) : ExplorationPageViewModel(koin) {
+    private val collectionRepository = koin.get<SubjectCollectionRepository>()
     // Keep the presented pages across route changes, like the shared trending pager.
     // Recreating an empty presenter briefly removes the first row and shifts the saved viewport.
     val recommendations = explorationPageState.recommendationPager.launchAsLazyPagingItemsIn(backgroundScope)
@@ -38,6 +44,8 @@ class TvExplorationViewModel(
     private val hero = MutableStateFlow<TvHeroSubject?>(null)
     private val navigation = TvNavigationEvents()
     val navigationEvents = navigation.events
+    private val requestsMutex = Mutex()
+    private val infoRequests = mutableMapOf<Int, Deferred<SubjectCollectionInfo?>>()
 
     init {
         backgroundScope.launch {
@@ -81,9 +89,15 @@ class TvExplorationViewModel(
 
     private suspend fun loadInfo(id: Int): SubjectCollectionInfo? {
         media.value.infoCache[id]?.let { return it }
-        return loadOrNull { getSubjectCollectionInfo(id) }?.also { info ->
-            media.update { it.copy(infoCache = it.infoCache + (id to info)) }
-        }
+        return requestsMutex.withLock {
+            infoRequests.getOrPut(id) {
+                backgroundScope.async {
+                    loadOrNull { collectionRepository.subjectCollectionFlow(id).first() }?.also { info ->
+                        media.update { it.copy(infoCache = it.infoCache + (id to info)) }
+                    }
+                }
+            }
+        }.await()
     }
 
     private suspend fun loadBackdrop(id: Int) {

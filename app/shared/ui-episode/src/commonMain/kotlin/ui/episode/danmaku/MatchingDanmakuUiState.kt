@@ -9,10 +9,7 @@
 
 package me.him188.ani.app.ui.episode.danmaku
 
-import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.Job
-import kotlinx.coroutines.ensureActive
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -22,7 +19,6 @@ import me.him188.ani.danmaku.api.provider.DanmakuEpisode
 import me.him188.ani.danmaku.api.provider.DanmakuFetchResult
 import me.him188.ani.danmaku.api.provider.DanmakuSubject
 import me.him188.ani.danmaku.api.provider.MatchingDanmakuProvider
-import kotlin.coroutines.coroutineContext
 
 
 /**
@@ -74,71 +70,118 @@ class MatchingDanmakuPresenter(
     private val _uiState = MutableStateFlow(MatchingDanmakuUiState())
     val uiState: StateFlow<MatchingDanmakuUiState> = _uiState.asStateFlow()
     val providerId get() = matchingDanmakuProvider.providerId
-    private var requestJob: Job? = null
 
-    private fun request(block: suspend () -> Unit) {
-        val previous = requestJob
-        previous?.cancel()
-        requestJob = coroutineScope.launch {
-            previous?.join()
-            block()
+    /**
+     * Trigger the search for [DanmakuSubject] based on the current query.
+     */
+    fun submitQuery(query: String) {
+        // Reset and load subjects
+        coroutineScope.launch {
+            _uiState.update {
+                it.copy(
+                    isLoadingSubjects = true,
+                    subjectError = null,
+                    subjects = emptyList(),
+                    selectedSubject = null,
+                    episodes = emptyList(),
+                    selectedEpisode = null,
+                    danmakuFetchResults = emptyList(),
+                    danmakuError = null,
+                    isFlowComplete = false,
+                )
+            }
+            try {
+                val list = matchingDanmakuProvider.fetchSubjectList(query)
+                _uiState.update { state ->
+                    state.copy(
+                        isLoadingSubjects = false,
+                        subjectError = null,
+                        subjects = list,
+                    )
+                }
+            } catch (e: Exception) {
+                _uiState.update { state ->
+                    state.copy(isLoadingSubjects = false, subjectError = e.message)
+                }
+            }
         }
     }
 
-    fun cancel() {
-        requestJob?.cancel()
-        _uiState.update { it.copy(isLoadingSubjects = false, isLoadingEpisodes = false, isLoadingDanmaku = false) }
-    }
+    /**
+     * Called when the user chooses a subject from the list.
+     * We fetch the episode list immediately after selection.
+     */
+    fun selectSubject(subject: DanmakuSubject) {
+        _uiState.update {
+            it.copy(
+                selectedSubject = subject,
+                episodes = emptyList(),
+                selectedEpisode = null,
+                danmakuFetchResults = emptyList(),
+                danmakuError = null,
+                // If we want to show a loading indicator for episodes:
+                isLoadingEpisodes = true,
+                episodeError = null,
+            )
+        }
 
-    fun backToSubjects() {
-        cancel()
-        _uiState.update { it.copy(selectedSubject = null, selectedEpisode = null, episodes = emptyList(), isFlowComplete = false) }
-    }
-
-    fun submitQuery(query: String) = request {
-        _uiState.value = MatchingDanmakuUiState(initialQuery = query, isLoadingSubjects = true)
-        try {
-            val subjects = matchingDanmakuProvider.fetchSubjectList(query)
-            coroutineContext.ensureActive()
-            _uiState.update { it.copy(isLoadingSubjects = false, subjects = subjects) }
-        } catch (e: CancellationException) {
-            throw e
-        } catch (e: Exception) {
-            _uiState.update { it.copy(isLoadingSubjects = false, subjectError = e.message ?: "Search failed") }
+        coroutineScope.launch {
+            try {
+                val episodes = matchingDanmakuProvider.fetchEpisodeList(subject)
+                _uiState.update { state ->
+                    state.copy(
+                        isLoadingEpisodes = false,
+                        episodeError = null,
+                        episodes = episodes,
+                    )
+                }
+            } catch (e: Exception) {
+                _uiState.update { state ->
+                    state.copy(isLoadingEpisodes = false, episodeError = e.message)
+                }
+            }
         }
     }
 
-    fun selectSubject(subject: DanmakuSubject) = request {
-        _uiState.update { it.copy(
-            selectedSubject = subject, selectedEpisode = null, episodes = emptyList(),
-            danmakuFetchResults = emptyList(), isLoadingEpisodes = true, episodeError = null,
-            isLoadingSubjects = false, isLoadingDanmaku = false, danmakuError = null, isFlowComplete = false,
-        ) }
-        try {
-            val episodes = matchingDanmakuProvider.fetchEpisodeList(subject)
-            coroutineContext.ensureActive()
-            _uiState.update { it.copy(isLoadingEpisodes = false, episodes = episodes) }
-        } catch (e: CancellationException) {
-            throw e
-        } catch (e: Exception) {
-            _uiState.update { it.copy(isLoadingEpisodes = false, episodeError = e.message ?: "Episode loading failed") }
+    /**
+     * Called when the user chooses an episode. We fetch final Danmaku results
+     * and mark the flow as complete.
+     */
+    fun selectEpisode(episode: DanmakuEpisode) {
+        // Update UI to reflect selected episode
+        _uiState.update {
+            it.copy(
+                selectedEpisode = episode,
+                danmakuFetchResults = emptyList(),
+                danmakuError = null,
+                isLoadingDanmaku = true,
+                isFlowComplete = false,
+            )
         }
-    }
 
-    fun selectEpisode(episode: DanmakuEpisode) = request {
-        val subject = _uiState.value.selectedSubject ?: return@request
-        _uiState.update { it.copy(
-            selectedEpisode = episode, danmakuFetchResults = emptyList(),
-            isLoadingDanmaku = true, danmakuError = null, isFlowComplete = false,
-        ) }
-        try {
-            val results = matchingDanmakuProvider.fetchDanmakuList(subject, episode)
-            coroutineContext.ensureActive()
-            _uiState.update { it.copy(isLoadingDanmaku = false, danmakuFetchResults = results, isFlowComplete = true) }
-        } catch (e: CancellationException) {
-            throw e
-        } catch (e: Exception) {
-            _uiState.update { it.copy(isLoadingDanmaku = false, danmakuError = e.message ?: "Danmaku loading failed") }
+        coroutineScope.launch {
+            try {
+                val danmakuList = matchingDanmakuProvider.fetchDanmakuList(
+                    subject = _uiState.value.selectedSubject!!,
+                    episode = episode,
+                )
+                _uiState.update { state ->
+                    state.copy(
+                        isLoadingDanmaku = false,
+                        danmakuFetchResults = danmakuList,
+                        danmakuError = null,
+                        isFlowComplete = true,
+                    )
+                }
+            } catch (e: Exception) {
+                _uiState.update { state ->
+                    state.copy(
+                        isLoadingDanmaku = false,
+                        danmakuError = e.message,
+                        isFlowComplete = false,
+                    )
+                }
+            }
         }
     }
 }

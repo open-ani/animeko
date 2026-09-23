@@ -10,6 +10,7 @@
 package me.him188.ani.tv.ui.login
 
 import android.os.Build
+import kotlin.time.Clock
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.delay
@@ -25,13 +26,14 @@ import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.sync.Mutex
 import me.him188.ani.app.data.repository.RepositoryRateLimitedException
+import me.him188.ani.app.data.repository.user.QrLoginRepository
 import me.him188.ani.app.data.repository.user.UserRepository
+import me.him188.ani.app.domain.session.auth.QrLoginPoller
 import me.him188.ani.app.domain.session.auth.QrLoginProgress
 import me.him188.ani.app.ui.login.EmailLoginViewModel
 import me.him188.ani.tv.ui.foundation.TvNavigationEvent
 import me.him188.ani.tv.ui.foundation.TvNavigationEvents
 import org.koin.core.Koin
-import kotlin.time.Clock
 
 /** Reuses the shared OTP session; request ownership and TV step transitions live here. */
 @OptIn(ExperimentalCoroutinesApi::class)
@@ -40,7 +42,7 @@ class TvLoginViewModel(
     private val clock: Clock = Clock.System,
     deviceName: String = "${Build.MANUFACTURER} ${Build.MODEL}".trim(),
 ) : EmailLoginViewModel(koin) {
-    private val qrLoginPoller = createQrLoginPoller(deviceName)
+    private val qrLoginPoller = QrLoginPoller(koin.get<QrLoginRepository>(), deviceName)
     private val fields = MutableStateFlow(TvLoginUiState())
     private val requestMutex = Mutex()
     private val navigation = TvNavigationEvents()

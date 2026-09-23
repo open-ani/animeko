@@ -14,7 +14,7 @@ import com.lemonappdev.konsist.api.verify.assertFalse
 import java.io.File
 import kotlin.test.Test
 
-/** TV 页面消费状态与 Intent；业务状态由对应共享 ViewModel 提供。 */
+/** TV 页面消费状态与 Intent，ViewModel 继承并复用对应共享功能。 */
 class TvArchitectureTest {
 
     /** me.him188.ani.app.ui.* 中 TV 允许 import 的基建白名单 (§4.2). */
@@ -27,7 +27,6 @@ class TvArchitectureTest {
         "me.him188.ani.app.ui.watchtogether.WatchTogetherViewModel",
         "me.him188.ani.app.ui.watchtogether.WatchTogetherIntent",
         "me.him188.ani.app.ui.watchtogether.WatchTogetherPhase",
-        "me.him188.ani.app.ui.watchtogether.WatchTogetherJoinError",
         "me.him188.ani.app.ui.foundation.AsyncImage",
         "me.him188.ani.app.ui.foundation.LocalSketch",
         "me.him188.ani.app.ui.foundation.rememberAniSketchInstance",
@@ -253,16 +252,10 @@ class TvArchitectureTest {
     }
 
     @Test
-    fun `tv adapters do not build independent playback or repository pipelines`() {
+    fun `tv playback reuses shared sessions and progress`() {
         val independentState = Regex("""\b(?:EpisodeFetchSelectPlayState|EpisodeDanmakuLoader|CacheProgressProvider|TvSeekBar|TvAutoSkipController)\s*\(""")
         tvScope().files.assertFalse { file ->
-            independentState.containsMatchIn(file.text) ||
-                (file.path.endsWith("ViewModel.kt") && file.imports.any {
-                    it.name.startsWith("me.him188.ani.app.data.repository.") &&
-                        it.name.substringAfterLast('.').endsWith("Repository") &&
-                        // OTP result variants are part of the shared login contract.
-                        it.name != "me.him188.ani.app.data.repository.user.UserRepository"
-                })
+            independentState.containsMatchIn(file.text)
         }
     }
 

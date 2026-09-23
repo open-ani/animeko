@@ -26,13 +26,13 @@ import me.him188.ani.app.data.models.danmaku.DanmakuFilterConfig
 import me.him188.ani.app.data.models.danmaku.DanmakuRegexFilter
 import me.him188.ani.app.data.models.preference.AnalyticsSettings
 import me.him188.ani.app.data.models.preference.AnitorrentConfig
+import me.him188.ani.app.data.models.preference.PikPakConfig
 import me.him188.ani.app.data.models.preference.DanmakuSettings
 import me.him188.ani.app.data.models.preference.DebugSettings
 import me.him188.ani.app.data.models.preference.MediaCacheSettings
 import me.him188.ani.app.data.models.preference.MediaPreference
 import me.him188.ani.app.data.models.preference.MediaSelectorSettings
 import me.him188.ani.app.data.models.preference.OneshotActionConfig
-import me.him188.ani.app.data.models.preference.PikPakConfig
 import me.him188.ani.app.data.models.preference.PlayerKernelConfig
 import me.him188.ani.app.data.models.preference.ProfileSettings
 import me.him188.ani.app.data.models.preference.ProxyMode
@@ -52,7 +52,6 @@ import me.him188.ani.app.data.repository.user.SettingsRepository
 import me.him188.ani.app.data.repository.user.TokenRepository
 import me.him188.ani.app.data.repository.user.TokenSave
 import me.him188.ani.app.domain.foundation.HttpClientProvider
-import me.him188.ani.app.domain.foundation.ScopedHttpClientUserAgent
 import me.him188.ani.app.domain.foundation.get
 import me.him188.ani.app.domain.media.fetch.MediaSourceManager
 import me.him188.ani.app.domain.mediasource.codec.MediaSourceCodecManager
@@ -91,10 +90,11 @@ import me.him188.ani.app.ui.settings.tabs.network.toDataSettings
 import me.him188.ani.app.ui.settings.tabs.network.toUIConfig
 import me.him188.ani.app.ui.user.SelfInfoStateProducer
 import me.him188.ani.danmaku.ui.DanmakuConfig
+import me.him188.ani.app.domain.foundation.ScopedHttpClientUserAgent
 import me.him188.ani.torrent.pikpak.testPikPakLogin
+import me.him188.ani.utils.ktor.UnsafeScopedHttpClientApi
 import me.him188.ani.utils.coroutines.IO_
 import me.him188.ani.utils.coroutines.SingleTaskExecutor
-import me.him188.ani.utils.ktor.UnsafeScopedHttpClientApi
 import org.koin.core.Koin
 import org.koin.core.component.KoinComponent
 import org.koin.core.component.inject
@@ -184,22 +184,20 @@ open class SettingsViewModel(
         }
     }
 
-    val cacheDirectoryGroupState by lazy {
-        CacheDirectoryGroupState(
-            mediaCacheSettingsState,
-            permissionManager,
-            onGetBackupData = {
-                withContext(Dispatchers.IO_) {
-                    serializeSettingsBackup()
-                }
-            },
-            onRestoreSettings = {
-                withContext(Dispatchers.IO_) {
-                    restoreSettingsBackup(it)
-                }
-            },
-        )
-    }
+    val cacheDirectoryGroupState = CacheDirectoryGroupState(
+        mediaCacheSettingsState,
+        permissionManager,
+        onGetBackupData = {
+            withContext(Dispatchers.IO_) {
+                serializeSettingsBackup()
+            }
+        },
+        onRestoreSettings = {
+            withContext(Dispatchers.IO_) {
+                restoreSettingsBackup(it)
+            }
+        },
+    )
 
     internal val mediaSelectorSettingsState: SettingsState<MediaSelectorSettings> =
         settingsRepository.mediaSelectorSettings.stateInBackground(MediaSelectorSettings.Default.copy(_placeholder = -1))
@@ -219,51 +217,44 @@ open class SettingsViewModel(
     }
 
     // region ConfigureProxy
-    private val proxyTester by lazy {
-        ProxyTester(
-            clientProvider = clientProvider,
-            flowScope = backgroundScope,
-        )
-    }
+    private val proxyTester = ProxyTester(
+        clientProvider = clientProvider,
+        flowScope = backgroundScope,
+    )
 
-    private val configureProxyUiState by lazy {
-        combine(
-            settingsRepository.proxySettings.flow,
-            proxyProvider.proxy,
-            proxyTester.testRunning,
-            proxyTester.testResult,
-        ) { settings, proxy, running, result ->
-            ConfigureProxyUIState(
-                config = settings.toUIConfig(),
-                systemProxy = if (settings.default.mode == ProxyMode.SYSTEM && proxy != null) {
-                    SystemProxyPresentation.Detected(proxy)
-                } else {
-                    SystemProxyPresentation.NotDetected
-                },
-                testState = ProxyTestState(
-                    testRunning = running,
-                    items = result.idToStateMap.toUIState(),
-                ),
-            )
-        }
-            .stateInBackground(
-                ConfigureProxyUIState.Placeholder,
-                SharingStarted.WhileSubscribed(),
-            )
-    }
-
-    val configureProxyState by lazy {
-        ConfigureProxyState(
-            state = configureProxyUiState,
-            onUpdateConfig = { newConfig ->
-                launchInBackground {
-                    settingsRepository.proxySettings.update { newConfig.toDataSettings() }
-                }
+    private val configureProxyUiState = combine(
+        settingsRepository.proxySettings.flow,
+        proxyProvider.proxy,
+        proxyTester.testRunning,
+        proxyTester.testResult,
+    ) { settings, proxy, running, result ->
+        ConfigureProxyUIState(
+            config = settings.toUIConfig(),
+            systemProxy = if (settings.default.mode == ProxyMode.SYSTEM && proxy != null) {
+                SystemProxyPresentation.Detected(proxy)
+            } else {
+                SystemProxyPresentation.NotDetected
             },
-            onRequestReTest = { proxyTester.restartTest() },
+            testState = ProxyTestState(
+                testRunning = running,
+                items = result.idToStateMap.toUIState(),
+            ),
         )
     }
+        .stateInBackground(
+            ConfigureProxyUIState.Placeholder,
+            SharingStarted.WhileSubscribed(),
+        )
 
+    val configureProxyState = ConfigureProxyState(
+        state = configureProxyUiState,
+        onUpdateConfig = { newConfig ->
+            launchInBackground {
+                settingsRepository.proxySettings.update { newConfig.toDataSettings() }
+            }
+        },
+        onRequestReTest = { proxyTester.restartTest() },
+    )
     // endregion
 
     val danmakuSettingsState =
@@ -307,22 +298,17 @@ open class SettingsViewModel(
     )
 
 
-    private val mediaSourceLoader by lazy {
-        MediaSourceLoader(
-            mediaSourceManager,
-            mediaSourceSubscriptionRepository.flow,
-            backgroundScope.coroutineContext,
-        )
-    }
-
-    val mediaSourceGroupState by lazy {
-        MediaSourceGroupState(
-            mediaSourceLoader.mediaSourcesFlow.produceState(emptyList()),
-            mediaSourceLoader.availableMediaSourceTemplates.produceState(emptyList()),
-            onReorder = { mediaSourceInstanceRepository.partiallyReorder(it) },
-            backgroundScope,
-        )
-    }
+    private val mediaSourceLoader = MediaSourceLoader(
+        mediaSourceManager,
+        mediaSourceSubscriptionRepository.flow,
+        backgroundScope.coroutineContext,
+    )
+    val mediaSourceGroupState = MediaSourceGroupState(
+        mediaSourceLoader.mediaSourcesFlow.produceState(emptyList()),
+        mediaSourceLoader.availableMediaSourceTemplates.produceState(emptyList()),
+        onReorder = { mediaSourceInstanceRepository.partiallyReorder(it) },
+        backgroundScope,
+    )
 
     val editMediaSourceState = EditMediaSourceState(
         getConfigFlow = { id ->
@@ -362,57 +348,13 @@ open class SettingsViewModel(
     val debugTriggerState = DebugTriggerState(debugSettingsState, backgroundScope)
     val aboutTabInfo = AboutTabInfo(currentAniBuildConfig.versionName)
 
-    val selfInfoFlow by lazy {
-        SelfInfoStateProducer(koin = getKoin()).flow
-    }
+    val selfInfoFlow = SelfInfoStateProducer(koin = getKoin()).flow
 
     suspend fun startProxyTesterLoop() {
         loopTasker.invoke {
             launch { proxyTester.testRunnerLoop() }
         }
     }
-
-    protected val appearanceSettingsFlow get() = settingsRepository.uiSettings.flow
-    protected val themeSettingsFlow get() = settingsRepository.themeSettings.flow
-    protected val videoSettingsFlow get() = settingsRepository.videoScaffoldConfig.flow
-    protected val kernelSettingsFlow get() = settingsRepository.playerKernelConfig.flow
-    protected val danmakuEnabledFlow get() = settingsRepository.danmakuEnabled.flow
-    protected val preferenceSettingsFlow get() = settingsRepository.defaultMediaPreference.flow
-    protected val selectorSettingsFlow get() = settingsRepository.mediaSelectorSettings.flow
-    protected val resolverSettingsFlow get() = settingsRepository.videoResolverSettings.flow
-    protected val filterSettingsFlow get() = settingsRepository.danmakuFilterConfig.flow
-    protected val regexFiltersFlow get() = danmakuRegexFilterRepository.flow
-    protected val mediaSourceInstancesFlow get() = mediaSourceManager.allInstances.map { sources ->
-        sources.filterNot { mediaSourceManager.isLocal(it.factoryId) }
-    }
-    protected val mediaSubscriptionsFlow get() = mediaSourceSubscriptionRepository.flow
-
-    suspend fun updateAppearance(update: UISettings.() -> UISettings) = settingsRepository.uiSettings.update(update)
-    suspend fun updateTheme(update: ThemeSettings.() -> ThemeSettings) = settingsRepository.themeSettings.update(update)
-    suspend fun updateVideo(update: VideoScaffoldConfig.() -> VideoScaffoldConfig) = settingsRepository.videoScaffoldConfig.update(update)
-    suspend fun updateKernel(update: PlayerKernelConfig.() -> PlayerKernelConfig) = settingsRepository.playerKernelConfig.update(update)
-    suspend fun setRegexFilterEnabled(enabled: Boolean) = settingsRepository.danmakuFilterConfig.update { copy(enableRegexFilter = enabled) }
-    suspend fun setDanmakuEnabled(enabled: Boolean) = settingsRepository.danmakuEnabled.set(enabled)
-    suspend fun updatePreference(update: MediaPreference.() -> MediaPreference) = settingsRepository.defaultMediaPreference.update(update)
-    suspend fun updateSelector(update: MediaSelectorSettings.() -> MediaSelectorSettings) = settingsRepository.mediaSelectorSettings.update(update)
-    suspend fun updateResolver(update: VideoResolverSettings.() -> VideoResolverSettings) = settingsRepository.videoResolverSettings.update(update)
-    suspend fun setSourceEnabled(id: String, enabled: Boolean) = mediaSourceManager.setEnabled(id, enabled)
-
-    suspend fun setSubscriptionEnabled(id: String, enabled: Boolean) {
-        mediaSourceSubscriptionRepository.update(id) { current ->
-            mediaSourceManager.setEnabled(mediaSourceManager.getListBySubscriptionId(id).map { it.instanceId }, enabled)
-            current.copy(enabled = enabled)
-        }
-    }
-
-    suspend fun saveRegexFilter(filter: DanmakuRegexFilter, isNew: Boolean) {
-        if (filter.regex.isBlank() || runCatching { Regex(filter.regex) }.isFailure) return
-        if (isNew) danmakuRegexFilterRepository.add(filter) else danmakuRegexFilterRepository.update(filter.id, filter)
-    }
-
-    suspend fun removeRegexFilter(filter: DanmakuRegexFilter) = danmakuRegexFilterRepository.remove(filter)
-    suspend fun importRegexFilters(text: String) = danmakuRegexFilterRepository.import(text)
-    suspend fun exportRegexFilters() = danmakuRegexFilterRepository.export()
 
     private val json = Json {
         ignoreUnknownKeys = true

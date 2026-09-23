@@ -29,8 +29,13 @@ import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import me.him188.ani.app.data.models.person.PersonSubjectSummary
+import me.him188.ani.app.data.models.preference.NsfwMode
 import me.him188.ani.app.data.models.subject.SubjectInfo
+import me.him188.ani.app.data.repository.subject.SubjectCollectionRepository
+import me.him188.ani.app.data.repository.subject.SubjectSearchRepository
+import me.him188.ani.app.data.repository.user.SettingsRepository
 import me.him188.ani.app.domain.foundation.LoadError
+import me.him188.ani.app.domain.search.SubjectSearchQuery
 import me.him188.ani.app.ui.comment.UICommentSource
 import me.him188.ani.app.ui.subject.AiringLabelState
 import me.him188.ani.app.ui.subject.SubjectProgressState
@@ -48,6 +53,9 @@ class TvSubjectDetailsViewModel(
     private val placeholder: SubjectInfo?,
     koin: Koin,
 ) : SubjectDetailsViewModel(subjectId, placeholder, koin) {
+    private val collectionRepository = koin.get<SubjectCollectionRepository>()
+    private val searchRepository = koin.get<SubjectSearchRepository>()
+    private val settingsRepository = koin.get<SettingsRepository>()
     private val images = MutableStateFlow(TvSubjectImages())
     private val operation = MutableStateFlow(TvSubjectOperation())
     private val tagResults = MutableStateFlow<TvTagResults?>(null)
@@ -224,10 +232,21 @@ class TvSubjectDetailsViewModel(
         navigation.emit(TvNavigationEvent.Episode(subjectId, episodeId))
     }
 
+    private fun searchTag(tag: String) = settingsRepository.uiSettings.flow.map { it.searchSettings }.flatMapLatest { settings ->
+        searchRepository.searchSubjects(
+            SubjectSearchQuery(keywords = "", tags = listOf(tag), nsfw = when {
+                tag == "R18" -> true
+                settings.nsfwMode == NsfwMode.HIDE -> false
+                else -> null
+            }),
+            ignoreDoneAndDropped = { settings.ignoreDoneAndDroppedSubjects },
+        )
+    }.cachedIn(backgroundScope)
+
     private fun loadImages() {
         imagesJob?.cancel()
         imagesJob = backgroundScope.launch {
-            val collection = loadOrNull { subjectCollection.first() }
+            val collection = loadOrNull { collectionRepository.subjectCollectionFlow(subjectId).first() }
             if (collection == null) {
                 images.update { it.copy(backdrop = TvBackdropState(null)) }
                 return@launch
