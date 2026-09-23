@@ -12,6 +12,8 @@ import android.content.Context
 import android.content.Intent
 import android.net.Uri
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.text.KeyboardActions
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.Image
@@ -65,12 +67,15 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.MoreVert
+import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.outlined.Edit
 import me.him188.ani.app.ui.foundation.icons.BangumiNext
 import androidx.compose.material.icons.outlined.Sync
 import kotlinx.coroutines.CancellationException
@@ -321,6 +326,11 @@ internal actual fun AniListTrackingSection(
                                     Text("Private", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.primary)
                                 }
                             }
+                            IconButton(onClick = {
+                                query = current.media.title
+                                results = emptyList()
+                                searching = true
+                            }) { Icon(Icons.Outlined.Edit, contentDescription = "Change AniList match") }
                             Box {
                                 IconButton(onClick = { menuOpen = true }) { Icon(Icons.Default.MoreVert, contentDescription = "Tracking options") }
                                 DropdownMenu(expanded = menuOpen, onDismissRequest = { menuOpen = false }) {
@@ -416,11 +426,24 @@ internal actual fun AniListTrackingSection(
             Surface(Modifier.fillMaxWidth().fillMaxHeight(0.94f), shape = MaterialTheme.shapes.large) {
                 Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
                     Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                        Text("Find AniList anime", style = MaterialTheme.typography.titleLarge)
+                        Text(if (linked == null) "Find AniList anime" else "Change AniList match", style = MaterialTheme.typography.titleLarge)
                         TextButton(onClick = { searching = false }) { Text("Close") }
                     }
-                    OutlinedTextField(query, { query = it }, modifier = Modifier.fillMaxWidth(), label = { Text("Title") }, singleLine = true)
-                    TextButton(onClick = { search() }, enabled = query.isNotBlank() && !searchBusy && linkingMediaId == null) { Text("Search") }
+                    OutlinedTextField(
+                        query,
+                        { query = it; results = emptyList(); error = null },
+                        modifier = Modifier.fillMaxWidth(),
+                        label = { Text("Search AniList titles") },
+                        singleLine = true,
+                        trailingIcon = {
+                            if (query.isNotEmpty()) IconButton(onClick = { query = ""; results = emptyList(); error = null }) {
+                                Icon(Icons.Default.Close, contentDescription = "Clear search")
+                            }
+                        },
+                        keyboardOptions = KeyboardOptions(imeAction = ImeAction.Search),
+                        keyboardActions = KeyboardActions(onSearch = { if (!searchBusy && linkingMediaId == null) search() }),
+                    )
+                    Button(onClick = { search() }, enabled = query.isNotBlank() && !searchBusy && linkingMediaId == null) { Text("Search") }
                     if (searchBusy) CircularProgressIndicator()
                     error?.let { Text(it, color = MaterialTheme.colorScheme.error) }
                     LazyColumn(Modifier.fillMaxWidth().weight(1f), verticalArrangement = Arrangement.spacedBy(8.dp)) {
