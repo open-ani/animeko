@@ -102,6 +102,7 @@ fun HttpClientProvider.get(
     distroChannel: String? = currentAniBuildConfig.distroChannel,
     cookieJar: WebSourceCookieJar? = null,
     identityRegistry: WebSourceIdentityRegistry? = null,
+    maxRequestsPerHost: Int? = null,
 ): ScopedHttpClient = get(
     buildSet {
         add(UserAgentFeature.withValue(userAgent))
@@ -113,6 +114,7 @@ fun HttpClientProvider.get(
         add(DistributionChannelFeature.withValue { distroChannel })
         if (cookieJar != null) add(CookieJarFeature.withValue(cookieJar))
         if (identityRegistry != null) add(WebSourceIdentityFeature.withValue(identityRegistry))
+        if (maxRequestsPerHost != null) add(MaxRequestsPerHostFeature.withValue(maxRequestsPerHost))
     },
 )
 
@@ -128,7 +130,7 @@ fun HttpClientProvider.get(
 class DefaultHttpClientProvider(
     private val proxyProvider: ProxyProvider,
     private val backgroundScope: CoroutineScope,
-    featureHandlers: List<ScopedHttpClientFeatureHandler<*>> = listOf(UserAgentFeatureHandler),
+    featureHandlers: List<ScopedHttpClientFeatureHandler<*>> = listOf(UserAgentFeatureHandler, MaxRequestsPerHostFeatureHandler),
 ) : HttpClientProvider() {
     // must have stable `equals`
     private data class Matrix(

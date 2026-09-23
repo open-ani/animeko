@@ -11,6 +11,7 @@ package me.him188.ani.app.domain.media.hls
 
 import me.him188.ani.utils.httpdownloader.m3u.DefaultM3u8Parser
 import me.him188.ani.utils.httpdownloader.m3u.M3u8Playlist
+import kotlin.math.roundToLong
 
 /**
  * 从播放列表中移除插播广告.
@@ -88,12 +89,51 @@ object HlsManifestFilter {
         probe: suspend (List<HlsProbeTarget>) -> List<Long?>,
     ): HlsManifestFilterResult {
         analysis.earlyResult?.let { return it }
-        val targets = analysis.probeTargets
-        val firstPts = probe(targets)
-        val verdict = HlsPtsContinuity.classify(
-            targets.mapIndexed { i, target -> HlsPtsContinuity.Group(target.groupIndex, target.durationMillis, firstPts[i]) },
+        return decide(analysis, classify(analysis, probe(analysis.probeTargets)))
+    }
+
+    /**
+     * @param firstPts 与 [HlsManifestAnalysis.probeTargets] 一一对应. 探测失败或尚未探测的为 `null`.
+     */
+    internal fun classify(analysis: HlsManifestAnalysis, firstPts: List<Long?>): HlsPtsContinuity.Verdict {
+        return HlsPtsContinuity.classify(
+            analysis.probeTargets.mapIndexed { i, target ->
+                HlsPtsContinuity.Group(target.groupIndex, target.durationMillis, firstPts[i])
+            },
         )
-        return decide(analysis, verdict)
+    }
+
+    /**
+     * 按 [verdict] 过滤后的时间轴上, [positionMillis] 所在的分片及其后的分片, 共至多 [count] 个.
+     * 位置超出过滤后的总时长时返回 `null`.
+     *
+     * 被移除的组与 [decide] 相同, 时间轴与代理给播放器的播放列表相同 (各分片按 [segmentDurationMillis] 累加),
+     * 所以对最终的判定, 这里给出的就是播放器跳到 [positionMillis] 时请求的分片.
+     */
+    internal fun locate(
+        analysis: HlsManifestAnalysis,
+        verdict: HlsPtsContinuity.Verdict,
+        positionMillis: Long,
+        count: Int,
+    ): HlsSegmentLocation? {
+        if (analysis.isConclusive) return null
+        val removed = removableAdGroups(analysis.groups, verdict.ads).removed.mapTo(HashSet()) { it.index }
+        val uris = ArrayList<String>(count)
+        var lastGroupIndex = -1
+        var cursor = 0L
+        for (group in analysis.groups) {
+            if (group.index in removed) continue
+            for (segment in group.segments) {
+                val end = cursor + segmentDurationMillis(segment.duration)
+                if (uris.isNotEmpty() || positionMillis < end) {
+                    uris += segment.uri
+                    lastGroupIndex = group.index
+                    if (uris.size == count) return HlsSegmentLocation(uris, lastGroupIndex)
+                }
+                cursor = end
+            }
+        }
+        return if (uris.isEmpty()) null else HlsSegmentLocation(uris, lastGroupIndex)
     }
 
     internal fun decide(analysis: HlsManifestAnalysis, verdict: HlsPtsContinuity.Verdict): HlsManifestFilterResult {
@@ -101,10 +141,8 @@ object HlsManifestFilter {
         val content = analysis.content
         val groups = analysis.groups
 
-        val (removable, oversized) = adBreaks(groups, verdict.ads)
-            .partition { breakGroups -> breakGroups.sumOf { it.duration } * 1000 <= MAX_AD_BREAK_MILLIS }
-        val removed = removable.flatten()
-        val oversizedIndexes = oversized.flatten().map { it.index }
+        val (removed, oversized) = removableAdGroups(groups, verdict.ads)
+        val oversizedIndexes = oversized.map { it.index }
         if (removed.isEmpty()) {
             val reason = if (oversizedIndexes.isEmpty()) "no_ad" else "ad_break_too_long"
             return HlsManifestFilterResult.unchanged(content, reason).copy(oversizedGroups = oversizedIndexes)
@@ -131,6 +169,15 @@ object HlsManifestFilter {
             },
             oversizedGroups = oversizedIndexes,
         )
+    }
+
+    private data class AdGroups(val removed: List<ManifestGroup>, val oversized: List<ManifestGroup>)
+
+    /** 判为广告的组中, 要移除的与因所在插播超过 [MAX_AD_BREAK_MILLIS] 而保留的. */
+    private fun removableAdGroups(groups: List<ManifestGroup>, ads: Set<Int>): AdGroups {
+        val (removable, oversized) = adBreaks(groups, ads)
+            .partition { breakGroups -> breakGroups.sumOf { it.duration } * 1000 <= MAX_AD_BREAK_MILLIS }
+        return AdGroups(removable.flatten(), oversized.flatten())
     }
 
     /** 把判为广告的组按相邻关系合成一段段插播. 一段插播常被多出来的 `#EXT-X-DISCONTINUITY` 切成两组. */
@@ -243,6 +290,24 @@ class HlsManifestAnalysis internal constructor(
             HlsManifestAnalysis(content, groups = emptyList(), earlyResult = result)
     }
 }
+
+/**
+ * [HlsManifestFilter.locate] 的结果.
+ *
+ * @property segmentUris 分片地址, 与播放列表中的写法相同 (解析时已相对 baseUrl 解析).
+ * @property lastGroupIndex [segmentUris] 中最后一个分片所在组的序号.
+ */
+internal class HlsSegmentLocation(
+    val segmentUris: List<String>,
+    val lastGroupIndex: Int,
+)
+
+/**
+ * 分片在播放列表时间轴上占的毫秒数. 代理给播放器的播放列表与 [HlsManifestFilter.locate] 都按它逐片累加,
+ * 两边的时间轴因此逐毫秒一致.
+ */
+internal fun segmentDurationMillis(durationSeconds: Double): Long =
+    (durationSeconds * 1000).roundToLong().coerceAtLeast(0L)
 
 data class HlsProbeTarget(
     val groupIndex: Int,

@@ -9,7 +9,21 @@
 
 package me.him188.ani.utils.ktor
 
+import io.ktor.client.HttpClientConfig
 import io.ktor.client.engine.*
 import io.ktor.client.engine.darwin.*
+import kotlinx.cinterop.ExperimentalForeignApi
+import kotlinx.cinterop.convert
 
 actual fun getPlatformKtorEngine(): HttpClientEngineFactory<*> = Darwin
+
+@OptIn(ExperimentalForeignApi::class)
+actual fun HttpClientConfig<*>.engineMaxRequestsPerHost(value: Int) {
+    @Suppress("UNCHECKED_CAST") // engine 块只会作用于实际的引擎配置, 类型在块内判断
+    (this as HttpClientConfig<HttpClientEngineConfig>).engine {
+        if (this !is DarwinClientEngineConfig) return@engine
+        configureSession {
+            HTTPMaximumConnectionsPerHost = value.convert()
+        }
+    }
+}

@@ -9,7 +9,9 @@
 
 package me.him188.ani.app.domain.media.hls
 
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.test.runTest
+import kotlinx.coroutines.withContext
 import me.him188.ani.app.domain.foundation.DefaultHttpClientProvider
 import me.him188.ani.app.domain.settings.NoProxyProvider
 import org.openani.mediamp.source.UriMediaData
@@ -30,11 +32,13 @@ import kotlin.test.assertNotEquals
 import kotlin.test.assertTrue
 
 /**
- * 这些测试只关心播放列表的地址改写, 分片不经代理. 开启过滤是为了让媒体播放列表也经过本地代理.
+ * 这些测试只关心地址改写. 开启过滤是为了让媒体播放列表也经过本地代理; 播放列表含拼接点, 分片也经代理,
+ * 所以分片地址按源站实际收到的请求路径来验证.
  * 源站对分片请求也返回播放列表文本, 探测不出时间戳, 所以不会删任何组; 删广告的端到端行为见 [RealHlsProxyTest].
  */
 private suspend fun PlatformHlsPlaybackPreparer.prepare(data: UriMediaData): HlsPlaybackPreparerResult =
-    prepare(data, HlsPlaybackOptions(filterSegments = true))
+    // 探测时限按真实时间计. 留在 runTest 的调度器上, 虚拟时间会在等网络时直接跳过时限, 探测全被取消.
+    withContext(Dispatchers.Default) { prepare(data, HlsPlaybackOptions(filterSegments = true)) }
 
 class PlatformHlsPlaybackPreparerTest {
     @Test
@@ -58,9 +62,8 @@ class PlatformHlsPlaybackPreparerTest {
             assertIs<HlsPlaybackProxySession>(result.session)
 
             val localManifest = URI(result.data.uri).toURL().readText()
-            assertContains(localManifest, "${server.baseUrl}/anime/01/main000.ts")
-            assertContains(localManifest, "https://cdn.example.com/main003.ts")
-            assertContains(localManifest, "${server.baseUrl}/anime/01/main004.ts")
+            fetchSegment(localManifest, index = 1)
+            assertContains(server.paths, "/anime/01/main001.ts")
         } finally {
             result.session?.close()
             provider.forceReleaseAll()
@@ -84,8 +87,9 @@ class PlatformHlsPlaybackPreparerTest {
             assertIs<HlsPlaybackProxySession>(result.session)
 
             val localManifest = URI(result.data.uri).toURL().readText()
-            assertContains(localManifest, "${server.baseUrl}/cdn/final/main000.ts")
-            assertEquals(false, "${server.baseUrl}/entry/main000.ts" in localManifest)
+            fetchSegment(localManifest, index = 1)
+            assertContains(server.paths, "/cdn/final/main001.ts")
+            assertEquals(false, "/entry/main001.ts" in server.paths)
         } finally {
             result.session?.close()
             provider.forceReleaseAll()
@@ -125,8 +129,8 @@ class PlatformHlsPlaybackPreparerTest {
             assertEquals(false, "URI=\"keys/session.key\"" in localMaster)
 
             val localVariant = URI(localVariantUri).toURL().readText()
-            assertContains(localVariant, "${server.baseUrl}/master/media/main000.ts")
-            assertContains(localVariant, "${server.baseUrl}/master/media/main004.ts")
+            fetchSegment(localVariant, index = 1)
+            assertContains(server.paths, "/master/media/main001.ts")
             // 主、子播放列表各一次, 另有探测分片时间戳的请求, 都要带上调用方的 Referer
             assertEquals(setOf("https://media.example.com/watch/master"), server.referers.toSet())
             assertTrue(server.referers.size >= 2)
@@ -172,6 +176,15 @@ class PlatformHlsPlaybackPreparerTest {
         }
     }
 
+    /**
+     * 经代理取本地播放列表里第 [index] 个分片. 不取首片: 过滤时首片会被预先下载, 请求路径里分不出是谁取的.
+     */
+    private fun fetchSegment(localPlaylist: String, index: Int) {
+        val uri = localPlaylist.lineSequence().filter { it.isNotBlank() && !it.startsWith("#") }.elementAt(index)
+        assertContains(uri, "http://127.0.0.1:")
+        URI(uri).toURL().readBytes()
+    }
+
     private class StaticManifestServer(
         content: String,
         private val contentByPath: Map<String, String> = emptyMap(),
@@ -182,9 +195,11 @@ class PlatformHlsPlaybackPreparerTest {
         private val bytes = content.toByteArray(StandardCharsets.UTF_8)
         private val serverSocket = ServerSocket(0, 50, InetAddress.getByName("127.0.0.1"))
         private val mutableReferers = mutableListOf<String?>()
+        private val mutablePaths = mutableListOf<String>()
 
         val baseUrl: String = "http://127.0.0.1:${serverSocket.localPort}"
         val referers: List<String?> get() = mutableReferers.toList()
+        val paths: List<String> get() = synchronized(mutablePaths) { mutablePaths.toList() }
 
         private val thread = thread(
             name = "PlatformHlsPlaybackPreparerTest-${serverSocket.localPort}",
@@ -211,6 +226,7 @@ class PlatformHlsPlaybackPreparerTest {
                             val requestPath = lines.firstOrNull()
                                 ?.substringAfter(" ")
                                 ?.substringBefore(" ")
+                            requestPath?.let { synchronized(mutablePaths) { mutablePaths += it } }
                             if (requestPath == redirectFrom && redirectTo != null) {
                                 output.write(redirectHeader("$baseUrl$redirectTo").toByteArray(StandardCharsets.US_ASCII))
                             } else {
@@ -223,8 +239,8 @@ class PlatformHlsPlaybackPreparerTest {
                             output.flush()
                         }
                     }
-                } catch (e: SocketException) {
-                    if (!closed.get()) throw e
+                } catch (_: SocketException) {
+                    // 客户端中途断开 (如会话关闭时取消了预缓存) 只影响这一个连接; 关闭后由循环条件退出
                 }
             }
         }
