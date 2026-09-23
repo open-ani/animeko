@@ -203,7 +203,9 @@ private fun TvSubjectDetailsContent(
         "staff" to lists.staff.itemSnapshotList.items.map { "staff:${it.personInfo.id}:${it.position}" },
         "related" to lists.related.itemSnapshotList.items.map { "related:${it.subjectId}" },
     )
-    val focusState = rememberTvDetailsFocusState(presentation, mapOf(
+    val focus = rememberTvFocusScope()
+    focus.Resolver()
+    val focusState = rememberTvDetailsFocusState(focus, presentation, mapOf(
         "episode" to TvDetailsFocusRow(episodesState, rowKeys.getValue("episode"), details.episodesLoading,
             "all-episodes", persistentEntry = true),
         "character" to TvDetailsFocusRow(charactersState, rowKeys.getValue("character"),
@@ -213,7 +215,6 @@ private fun TvSubjectDetailsContent(
         "related" to TvDetailsFocusRow(relatedState, rowKeys.getValue("related"),
             lists.related.loadState.refresh is LoadState.Loading, "relateds-all"),
     ))
-    val focus = focusState.scope
     val scope = rememberCoroutineScope()
     var informationReturnTarget by rememberSaveable { mutableStateOf<String?>(null) }
     val anchors = remember { TvDetailsScrollAnchors() }

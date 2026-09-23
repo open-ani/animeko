@@ -23,7 +23,6 @@ import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import me.him188.ani.tv.ui.foundation.focus.TvFocusScope
-import me.him188.ani.tv.ui.foundation.focus.rememberTvFocusScope
 import me.him188.ani.tv.ui.foundation.focus.requestPrepared
 import me.him188.ani.tv.ui.subject.presentation.TvDetailsKey
 import me.him188.ani.tv.ui.subject.presentation.TvSubjectPresentationState
@@ -40,7 +39,7 @@ internal data class TvDetailsFocusRow(
 
 /** 焦点恢复只等待窗口、布局和目标数据就绪，不控制页面内容的挂载。 */
 internal class TvDetailsFocusState(
-    val scope: TvFocusScope,
+    private val scope: TvFocusScope,
     private val presentation: TvSubjectPresentationState,
     private val lifecycle: Lifecycle,
     private val window: WindowInfo,
@@ -78,11 +77,10 @@ internal class TvDetailsFocusState(
 
 @Composable
 internal fun rememberTvDetailsFocusState(
+    focus: TvFocusScope,
     presentation: TvSubjectPresentationState,
     rows: Map<String, TvDetailsFocusRow>,
 ): TvDetailsFocusState {
-    val focus = rememberTvFocusScope()
-    focus.Resolver()
     val lifecycle = LocalLifecycleOwner.current.lifecycle
     val window = LocalWindowInfo.current
     val latestRows = rememberUpdatedState(rows)

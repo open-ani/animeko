@@ -65,6 +65,7 @@ import me.him188.ani.app.ui.lang.main_screen_page_exploration
 import me.him188.ani.app.ui.lang.settings
 import me.him188.ani.app.ui.lang.tv_nav_schedule
 import me.him188.ani.tv.ui.foundation.focus.LocalTvFocusMemory
+import me.him188.ani.tv.ui.foundation.focus.TvFocusBoundary
 import me.him188.ani.tv.ui.foundation.focus.TvFocusKey
 import me.him188.ani.tv.ui.foundation.focus.TvFocusMemory
 import me.him188.ani.tv.ui.foundation.focus.rememberTvFocusScope
@@ -207,8 +208,10 @@ fun TvMainShell(
                         transitionSpec = { fadeIn() togetherWith fadeOut() },
                         label = "tvShellContent",
                     ) { current ->
-                        pageStates.SaveableStateProvider(current) {
-                            pageContent(current, TvNavigationRailDefaults.ContentInsets)
+                        TvFocusBoundary(current == currentContent && !showLogoutConfirmation, Modifier.fillMaxSize()) {
+                            pageStates.SaveableStateProvider(current) {
+                                pageContent(current, TvNavigationRailDefaults.ContentInsets)
+                            }
                         }
                     }
                 }

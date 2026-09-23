@@ -37,7 +37,7 @@ import androidx.compose.ui.focus.onFocusChanged
  *    壳在 route 重组处调 [TvFocusMemory.ArmOnRouteReturn] (组合期把 lastId 转成待认领
  *    目标, Armed 态) -> 新组合中身份匹配的 [tvFocusMemorable] 组件附着时**认领登记**
  *    ([claimRestore]) -> route 进入前台 (Lifecycle RESUMED 事件, InitialFocus 挂接
- *    [activate]) 执行恢复 (Armed -> Done). 转场中不 requestFocus (会被转场收尾冲掉);
+ *    [activate]) 执行恢复 (Armed -> Done).
  *    RESUMED 后组件才附着 (数据迟到) 则认领即时恢复; 恢复失败/无认领时 InitialFocus
  *    落默认锚点防悬空. 用户交互 ([onUserInteraction]) 取消 Armed, 不再迟到抢焦.
  * 5. 【清理】壳在内容页切换时清 last/lastId (换页语义上不该恢复, 交给新页 InitialFocus).
@@ -73,9 +73,7 @@ class TvFocusMemory {
     private var claimedRequester: FocusRequester? = null
 
     /**
-     * route 是否已进入前台 (Lifecycle RESUMED, 返回转场完成): 之前认领只登记 ——
-     * 转场未结束就 requestFocus 会被转场收尾的焦点处理冲掉 (TV 模拟器实测,
-     * 这正是旧版 300ms 延时"恰好"掩盖的真实事件缺口); 之后认领即时恢复 (迟到数据).
+     * route 是否已进入前台 (Lifecycle RESUMED): 之前认领只登记，之后认领即时恢复。
      */
     private var live: Boolean = false
 

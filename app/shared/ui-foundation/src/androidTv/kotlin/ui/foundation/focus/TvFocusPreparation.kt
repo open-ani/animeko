@@ -15,18 +15,19 @@ import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 
-/** Navigation cancels preparation as well as an already submitted focus request. */
+/** User navigation or an inactive boundary cancels preparation and prevents late focus delivery. */
 suspend fun TvFocusScope.requestPrepared(
     isRelevant: () -> Boolean = { true },
     prepare: suspend () -> TvFocusKey?,
 ) = coroutineScope {
+    if (!isActive || !isRelevant()) return@coroutineScope
     val generation = userNavGeneration
     val preparation = launch(start = CoroutineStart.UNDISPATCHED) {
         val target = prepare()
-        if (target != null && generation == userNavGeneration && isRelevant()) request(target)
+        if (target != null && generation == userNavGeneration && isActive && isRelevant()) request(target)
     }
     val cancellation = launch {
-        snapshotFlow { userNavGeneration != generation || !isRelevant() }.first { it }
+        snapshotFlow { userNavGeneration != generation || !isActive || !isRelevant() }.first { it }
         preparation.cancel()
     }
     try {

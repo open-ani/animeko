@@ -13,6 +13,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.material3.Text
+import androidx.compose.runtime.SideEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
@@ -55,6 +56,7 @@ import me.him188.ani.app.ui.framework.AniComposeUiTest
 import me.him188.ani.app.ui.framework.assertScreenshot
 import me.him188.ani.app.ui.framework.runAniComposeUiTest
 import me.him188.ani.tv.ui.foundation.focus.TvFocusKey
+import me.him188.ani.tv.ui.foundation.focus.TvFocusScope
 import me.him188.ani.tv.ui.foundation.focus.rememberTvFocusScope
 import me.him188.ani.tv.ui.foundation.focus.tvFocusAnchor
 import me.him188.ani.tv.ui.foundation.focus.tvFocusMemorable
@@ -190,9 +192,32 @@ class TvNavigationRailUiTest {
         awaitContentFocus()
     }
 
+    @Test
+    fun outgoingTabCannotTakeFocusDuringTheShellTransition() = runAniComposeUiTest {
+        val fixture = mount()
+        val outgoing = fixture.scopes.getValue(TvShellContent.Exploration)
+        val started = mainClock.currentTime
+        runOnIdle { fixture.page = TvShellContent.Schedule }
+        waitUntil(timeoutMillis = 5_000) {
+            mainClock.advanceTimeByFrame()
+            assertTrue(mainClock.currentTime < started + 200)
+            fixture.scopes[TvShellContent.Schedule]?.isFocused(TvFocusKey("remembered-Schedule")) == true
+        }
+        runOnIdle {
+            assertTrue(!outgoing.isActive)
+            assertTrue(outgoing.isAnchorAttached(TvFocusKey("remembered-Exploration")))
+            outgoing.request(TvFocusKey("remembered-Exploration"))
+            outgoing.requesterOf(TvFocusKey("remembered-Exploration")).requestFocus()
+        }
+        onNodeWithTag("rail-test-remembered").assertIsFocused()
+        settle()
+        runOnIdle { assertTrue(fixture.scopes.getValue(TvShellContent.Schedule).isFocused(TvFocusKey("remembered-Schedule"))) }
+    }
+
     private class Fixture {
         var page by mutableStateOf(TvShellContent.Exploration)
         var insets: PaddingValues = PaddingValues(0.dp)
+        val scopes = mutableMapOf<TvShellContent, TvFocusScope>()
     }
 
     private fun AniComposeUiTest.mount(): Fixture {
@@ -203,6 +228,7 @@ class TvNavigationRailUiTest {
                 TvMainShell(TvMainUiState(), fixture.page, { fixture.page = it }, {}, {}) { page, insets ->
                     fixture.insets = insets
                     val focus = rememberTvFocusScope()
+                    SideEffect { fixture.scopes[page] = focus }
                     val target = TvFocusKey("remembered-$page")
                     focus.Resolver()
                     focus.InitialFocus(target)

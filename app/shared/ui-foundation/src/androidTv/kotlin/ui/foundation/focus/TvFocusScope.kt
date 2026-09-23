@@ -23,7 +23,6 @@ import androidx.compose.ui.focus.FocusRequester
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.compose.LocalLifecycleOwner
 import kotlinx.coroutines.flow.first
-import kotlinx.coroutines.flow.filterNotNull
 
 /*
  * TV 统一焦点管理框架 (使用侧 API 见 TvFocusModifiers.kt).
@@ -60,7 +59,12 @@ private data class NamedFocusKey(val name: String) : TvFocusKey {
  * 线程模型: 全部在主线程 (组合/效应/按键分发) 使用.
  */
 @Stable
-class TvFocusScope {
+class TvFocusScope internal constructor(private val boundary: TvFocusBoundaryState?) {
+    constructor() : this(null)
+
+    /** 当前导航条目及其父焦点边界均有效时，才允许提交请求。 */
+    val isActive: Boolean get() = boundary?.isActive != false
+
     private val requesters = mutableMapOf<TvFocusKey, FocusRequester>()
 
     /** 当前待解析的请求 (锚点 + 序号; 序号使同锚点连续请求也能重新触发); null = 空闲. */
@@ -89,9 +93,10 @@ class TvFocusScope {
     /**
      * 请求把焦点送到 [key] (fire-and-forget): 锚点已附着则 [Resolver] 立即送焦;
      * 未附着 (Lazy 回收/转场中) 则悬挂, 锚点一附着即送. 同 key 连续请求也会重新触发.
-     * 后发请求覆盖先发; 用户交互取消在途请求.
+     * 后发请求覆盖先发; 用户交互或所在边界失效取消在途请求，非活动边界拒绝新请求.
      */
     fun request(key: TvFocusKey) {
+        if (!isActive) return
         pending = key to ((pending?.second ?: 0) + 1)
     }
 
@@ -131,12 +136,19 @@ class TvFocusScope {
     fun Resolver() {
         LaunchedEffect(this) {
             snapshotFlow {
-                val p = pending ?: return@snapshotFlow null
+                val active = isActive
+                val p = pending
                 // 附着代数入元组: 目标脱离又重附着 (Lazy 回收再滚回) 也会重新触发
-                attachedAnchors[p.first]?.let { generation -> Triple(p.first, p.second, generation) }
+                active to if (active && p != null) {
+                    attachedAnchors[p.first]?.let { generation -> Triple(p.first, p.second, generation) }
+                } else null
             }
-                .filterNotNull()
-                .collect { (key, _, _) ->
+                .collect { (active, request) ->
+                    if (!active) {
+                        pending = null
+                        return@collect
+                    }
+                    val (key, _, _) = request ?: return@collect
                     val granted = runCatching { requesterOf(key).requestFocus() }.getOrDefault(false)
                     if (granted && pending?.first == key) pending = null
                 }
@@ -144,9 +156,8 @@ class TvFocusScope {
     }
 
     /**
-     * 进页初始焦点: 等 route 进入前台的 **Lifecycle RESUMED 事件** (转场完成) 后请求 [key]
-     * (锚点未附着则悬挂到附着, 无延时). 转场中一律不送焦 —— 转场里的 requestFocus 会被
-     * 转场收尾冲掉 (push/pop 皆然, 真人按键时序下稳定复现), 事件门控比"送了再补"可靠.
+     * 进页初始焦点: 等 route 进入 **Lifecycle RESUMED** 后请求 [key]，
+     * 锚点未附着则悬挂到附着。导航目标的请求权限由 [TvFocusBoundary] 独立控制。
      * 壳内切页 (同一 route) 时 lifecycle 已是 RESUMED, 等价于立即请求.
      *
      * 跨 route 返回 (焦点记忆 Armed) 时先裁决记忆: 认领已登记 -> 记忆恢复原位, 不落默认锚点;
@@ -167,4 +178,7 @@ class TvFocusScope {
 
 /** 创建页面级焦点调度器. 页面根部另装 [TvFocusScope.Resolver]. */
 @Composable
-fun rememberTvFocusScope(): TvFocusScope = remember { TvFocusScope() }
+fun rememberTvFocusScope(): TvFocusScope {
+    val boundary = LocalTvFocusBoundary.current
+    return remember(boundary) { TvFocusScope(boundary) }
+}
