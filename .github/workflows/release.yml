@@ -65,7 +65,6 @@ jobs:
         GH_TOKEN: '${{ secrets.GITHUB_TOKEN }}'
         OPENAI_API_KEY: '${{ secrets.OPENAI_API_KEY }}'
         GITHUB_REPOSITORY: '${{ github.repository }}'
-        CODEX_MODEL: 'gpt-5.5'
         GIT_TAG: '${{ steps.step-1.outputs.tag }}'
         TAG_VERSION: '${{ steps.step-2.outputs.substring }}'
       run: |-

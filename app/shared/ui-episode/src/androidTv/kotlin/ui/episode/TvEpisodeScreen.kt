@@ -186,7 +186,7 @@ internal fun TvEpisodeScreen(
     val onAction = presentationState::onAction
     val loadingState = uiState.loadingState
     val title = uiState.title
-    val bufferedFraction = uiState.bufferedFraction
+    val cacheProgress = uiState.cacheProgress
     val playbackSpeed = uiState.playbackSpeed
     val aspectRatioMode = uiState.aspectRatioMode
     val stripEpisodes = uiState.episodes
@@ -458,7 +458,7 @@ internal fun TvEpisodeScreen(
                             playWhenReady = uiState.playerState.playWhenReady,
                             positionMillis = positionMillis,
                             durationMillis = uiState.durationMillis,
-                            bufferedFraction = bufferedFraction,
+                            cacheProgress = cacheProgress,
                             hasNextEpisode = uiState.hasNextEpisode,
                             scrubMillis = state.scrubMillis,
                             speedLabel = formatSpeedLabel(playbackSpeed),

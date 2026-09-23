@@ -1032,7 +1032,6 @@ workflow(
                 "GH_TOKEN" to expr { secrets.GITHUB_TOKEN },
                 "OPENAI_API_KEY" to expr { secrets.OPENAI_API_KEY },
                 "GITHUB_REPOSITORY" to expr { github.repository },
-                "CODEX_MODEL" to "gpt-5.5",
                 "GIT_TAG" to expr { gitTag.tagExpr },
                 "TAG_VERSION" to expr { gitTag.tagVersionExpr },
             ),

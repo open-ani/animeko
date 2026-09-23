@@ -4,7 +4,6 @@ set -euo pipefail
 GIT_TAG="${1:-${GITHUB_REF_NAME:-}}"
 TAG_VERSION="${2:-${GIT_TAG#v}}"
 REPOSITORY="${GITHUB_REPOSITORY:-open-ani/animeko}"
-CODEX_MODEL="${CODEX_MODEL:-gpt-5.5}"
 
 if [[ -z "$GIT_TAG" ]]; then
   echo "Usage: $0 <git-tag> [tag-version]" >&2
@@ -150,7 +149,8 @@ $(cat "$workdir/git-log.md")
 PROMPT
 
 codex exec \
-  --model "$CODEX_MODEL" \
+  --model gpt-6-astra \
+  -c 'model_reasoning_effort="high"' \
   --sandbox read-only \
   --ephemeral \
   --output-last-message "$workdir/codex-notes.md" \

@@ -92,7 +92,6 @@ fun TvAniAppContent(
             dependencies.watchTogetherManager,
             dependencies.settingsRepository,
             dependencies.sessionStateProvider,
-            dependencies.koin,
         )
     }
     LaunchedEffect(togetherViewModel, aniNavigator) {
@@ -176,10 +175,7 @@ fun TvAniAppContent(
                             }
 
                             TvShellContent.Search -> {
-                                val viewModel =
-                                    tvViewModel {
-                                        TvSearchViewModel(dependencies.subjectSearchRepository, dependencies.settingsRepository)
-                                    }
+                                val viewModel = tvViewModel { TvSearchViewModel() }
                                 TvSearchRoute(viewModel, onNavigate, navigationRailInsets = navigationRailInsets)
                             }
 
@@ -229,8 +225,7 @@ fun TvAniAppContent(
                     val viewModel = tvViewModel {
                         TvPeopleDetailsViewModel(
                             TvPeopleTarget(route.characterId, TvPeopleKind.Character),
-                            dependencies.personDetailsRepository, dependencies.personCommentRepository,
-                            dependencies.commentReportService, dependencies.sessionStateProvider,
+                            dependencies.sessionStateProvider,
                         )
                     }
                     TvPeopleDetailsRoute(viewModel, onNavigate)
@@ -245,8 +240,7 @@ fun TvAniAppContent(
                                     PersonDetailRole.Staff -> TvPeopleKind.Staff
                                 },
                             ),
-                            dependencies.personDetailsRepository, dependencies.personCommentRepository,
-                            dependencies.commentReportService, dependencies.sessionStateProvider,
+                            dependencies.sessionStateProvider,
                         )
                     }
                     TvPeopleDetailsRoute(viewModel, onNavigate)
@@ -258,11 +252,8 @@ fun TvAniAppContent(
                             placeholder = route.placeholder?.run {
                                 SubjectInfo.createPlaceholder(id, name, coverUrl, nameCN)
                             },
-                            factory = dependencies.subjectDetailsStateFactory,
                             collectionRepository = dependencies.subjectCollectionRepository,
-                            setEpisodeCollectionType = dependencies.setEpisodeCollectionType,
                             searchRepository = dependencies.subjectSearchRepository,
-                            sessionStateProvider = dependencies.sessionStateProvider,
                             settingsRepository = dependencies.settingsRepository,
                         )
                     }
@@ -277,18 +268,11 @@ fun TvAniAppContent(
                             initialEpisodeId = route.episodeId,
                             context = context,
                             koin = dependencies.koin,
-                            playerStateFactory = dependencies.playerStateFactory,
                             episodeCollectionRepository = dependencies.episodeCollectionRepository,
                             subjectCollectionRepository = dependencies.subjectCollectionRepository,
-                            danmakuRepository = dependencies.danmakuRepository,
                             settingsRepository = dependencies.settingsRepository,
-                            getDanmakuRegexFilterListFlowUseCase = dependencies.getDanmakuRegexFilterListFlowUseCase,
-                            episodeCommentRepository = dependencies.episodeCommentRepository,
-                            getSubjectRecommendations = dependencies.getSubjectRecommendations,
-                            autoSkipRepository = dependencies.autoSkipRepository,
                             selectorEpisodeCacheRepository = dependencies.selectorEpisodeCacheRepository,
                             webSessionManager = dependencies.webSessionManager,
-                            playbackAutomationGate = dependencies.playbackAutomationGate,
                         )
                     }
                     TvEpisodeRoute(viewModel, togetherViewModel, onNavigate)

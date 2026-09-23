@@ -193,6 +193,7 @@ import me.him188.ani.utils.coroutines.flows.FlowRestarter
 import me.him188.ani.utils.coroutines.flows.flowOfEmptyList
 import me.him188.ani.utils.coroutines.flows.flowOfNull
 import me.him188.ani.utils.coroutines.flows.restartable
+import me.him188.ani.utils.coroutines.flows.shareTransparentlyIn
 import me.him188.ani.utils.coroutines.sampleWithInitial
 import me.him188.ani.utils.io.SystemPath
 import me.him188.ani.utils.logging.info
@@ -275,7 +276,7 @@ sealed class EpisodePageLoadError {
  * @see EpisodeFetchSelectPlayState
  */
 @Stable
-class EpisodeViewModel(
+open class EpisodeViewModel(
     val subjectId: Int,
     initialEpisodeId: Int,
     initialIsFullscreen: Boolean = false,
@@ -309,6 +310,9 @@ class EpisodeViewModel(
     private val webSessionManager: WebSessionManager by inject()
     private val playbackAutomationGate: PlaybackAutomationGate by inject()
     val playbackAutomationSuppressed get() = playbackAutomationGate.suppressed
+
+    /** 平台交互状态对自动跳过的额外约束。 */
+    protected open val isAutoSkipOpEdAllowed: Boolean get() = true
     // endregion
 
     private val tasker = SingleTaskExecutor(backgroundScope.coroutineContext)
@@ -341,7 +345,7 @@ class EpisodeViewModel(
     }.distinctUntilChanged()
 
     @OptIn(UnsafeEpisodeSessionApi::class)
-    private val fetchPlayState = EpisodeFetchSelectPlayState(
+    protected val fetchPlayState = EpisodeFetchSelectPlayState(
         subjectId, initialEpisodeId, player, backgroundScope,
         extensions = listOf(
             AnalyticsExtension,
@@ -397,7 +401,7 @@ class EpisodeViewModel(
         .stateIn(backgroundScope, SharingStarted.WhileSubscribed(), null)
 
     @UnsafeEpisodeSessionApi
-    private val subjectCollectionFlow =
+    protected val subjectCollectionFlow =
         subjectEpisodeInfoBundleFlow.filterNotNull().map { it.subjectCollectionInfo }
             .distinctUntilChanged()
 
@@ -408,7 +412,7 @@ class EpisodeViewModel(
     private val episodeCollectionFlow = subjectEpisodeInfoBundleFlow.map { it?.episodeCollectionInfo }
         .distinctUntilChanged()
 
-    private val episodeCollectionsFlow = episodeCollectionRepository.subjectEpisodeCollectionInfosFlow(subjectId)
+    protected val episodeCollectionsFlow = episodeCollectionRepository.subjectEpisodeCollectionInfosFlow(subjectId)
         .shareInBackground()
 
     @UnsafeEpisodeSessionApi
@@ -504,6 +508,10 @@ class EpisodeViewModel(
 
 
     @OptIn(UnsafeEpisodeSessionApi::class)
+    protected val recommendationsFlow = subjectInfoFlow.map { getSubjectRecommendations(it.subjectId) }
+        .shareTransparentlyIn(backgroundScope, SharingStarted.WhileSubscribed(5_000), replay = 1)
+
+    @OptIn(UnsafeEpisodeSessionApi::class)
     val episodeDetailsState: EpisodeDetailsState = run {
         EpisodeDetailsState(
             subjectInfo = subjectInfoFlow.produceState(SubjectInfo.Empty),
@@ -514,7 +522,7 @@ class EpisodeViewModel(
                 }
                     .produceState(null),
             ),
-            recommendations = subjectInfoFlow.map { getSubjectRecommendations(it.subjectId) }.produceState(emptyList()),
+            recommendations = recommendationsFlow.produceState(emptyList()),
             subjectDetailsStateLoader = SubjectDetailsStateLoader(subjectDetailsStateFactory, backgroundScope),
         )
     }
@@ -643,7 +651,7 @@ class EpisodeViewModel(
 
 
     @OptIn(UnsafeEpisodeSessionApi::class)
-    private val episodeDanmakuLoader = EpisodeDanmakuLoader(
+    protected val episodeDanmakuLoader = EpisodeDanmakuLoader(
         player = player,
         // TODO: 2025/1/6 this is not very good. May see old data. 
         selectedMedia = fetchPlayState.mediaSelectorFlow.transformLatest {
@@ -726,21 +734,23 @@ class EpisodeViewModel(
     private val commentLoadFailureChannel = Channel<Throwable>(Channel.BUFFERED)
 
     @OptIn(UnsafeEpisodeSessionApi::class)
+    val episodeCommentsPager = episodeIdFlow
+        .restartable(commentStateRestarter)
+        .flatMapLatest { episodeId ->
+            episodeCommentRepository.subjectEpisodeCommentsPager(
+                episodeId.toLong(),
+                // Ani 评论正常但服务端没取到 Bangumi 评论: 列表照常显示, 额外提示一次, 免得看起来像"没有评论"
+                onBangumiUnavailable = {
+                    commentLoadFailureChannel.trySend(
+                        RepositoryServiceUnavailableException("Bangumi episode comments unavailable"),
+                    )
+                },
+            )
+        }.cachedIn(backgroundScope)
+
+    @OptIn(UnsafeEpisodeSessionApi::class)
     val episodeCommentState: CommentState = CommentState(
-        list = episodeIdFlow
-            .restartable(commentStateRestarter)
-            .flatMapLatest { episodeId ->
-                episodeCommentRepository.subjectEpisodeCommentsPager(
-                    episodeId.toLong(),
-                    // Ani 评论正常但服务端没取到 Bangumi 评论: 列表照常显示, 额外提示一次, 免得看起来像"没有评论"
-                    onBangumiUnavailable = {
-                        commentLoadFailureChannel.trySend(
-                            RepositoryServiceUnavailableException("Bangumi episode comments unavailable"),
-                        )
-                    },
-                )
-                    .map { page -> page.map { it.parseToUIComment() } }
-            }.cachedIn(backgroundScope),
+        list = episodeCommentsPager.map { page -> page.map { it.parseToUIComment() } }.cachedIn(backgroundScope),
         countState = stateOf(null),
         onSubmitCommentReaction = { comment, value, selected ->
             // Bangumi 评论只读, 不支持提交表情回应
@@ -1219,7 +1229,7 @@ class EpisodeViewModel(
                     ) { pos, id, collections ->
                         // 不止一集并且当前是第一集时不跳过
                         val skipAllowed = !(collections.size > 1 && collections.getOrNull(0)?.episodeId == id) &&
-                                !playbackAutomationGate.suppressed.value
+                                !playbackAutomationGate.suppressed.value && isAutoSkipOpEdAllowed
                         if (skipAllowed) {
                             playerSkipOpEdState.update(pos)
                             // 即将自动跳过时, 提前缓存跳转目标处的数据, 跳过后可立即续播

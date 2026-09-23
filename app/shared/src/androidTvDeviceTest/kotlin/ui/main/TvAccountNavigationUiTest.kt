@@ -5,17 +5,23 @@
 package me.him188.ani.tv.ui.main
 
 import android.graphics.Bitmap
+import android.os.SystemClock
+import android.view.MotionEvent
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
+import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.asAndroidBitmap
+import androidx.compose.ui.input.InputMode
 import androidx.compose.ui.input.key.Key
+import androidx.compose.ui.platform.LocalInputModeManager
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.test.SemanticsMatcher
 import androidx.compose.ui.test.assertIsFocused
@@ -175,6 +181,17 @@ class TvAccountNavigationUiTest {
         assertEquals(0, fixture.logoutCount)
     }
 
+    @Test
+    fun touchModeAfterATapKeepsTheRailReachable() = runAniComposeUiTest {
+        val fixture = mount()
+        tapOutsideControls()
+        waitUntil(timeoutMillis = 5_000) {
+            mainClock.advanceTimeByFrame()
+            runOnUiThread { InputMode.Touch in fixture.inputModes }
+        }
+        openRail()
+    }
+
     private class Fixture(loggedIn: Boolean) {
         var selfInfo by mutableStateOf(if (loggedIn) SelfInfo(
             Uuid.parse("00000000-0000-0000-0000-000000000001"),
@@ -183,11 +200,16 @@ class TvAccountNavigationUiTest {
         var isLoggedIn by mutableStateOf<Boolean?>(loggedIn)
         var content by mutableStateOf(TvShellContent.Schedule)
         var logoutCount = 0
+        val inputModes = mutableListOf<InputMode>()
     }
 
     private fun AniComposeUiTest.mount(loggedIn: Boolean = true): Fixture {
         val fixture = Fixture(loggedIn)
         setContent {
+            val inputModeManager = LocalInputModeManager.current
+            LaunchedEffect(inputModeManager) {
+                snapshotFlow { inputModeManager.inputMode }.collect { fixture.inputModes += it }
+            }
             TvApplicationTheme(ThemeSettings.Default.seedColor, languageTag = "en") {
                 TvMainShell(
                     uiState = TvMainUiState(fixture.selfInfo, fixture.isLoggedIn),
@@ -248,6 +270,21 @@ class TvAccountNavigationUiTest {
     private fun AniComposeUiTest.key(key: Key) {
         onAllNodes(isRoot() and hasAnyDescendant(isFocused())).onLast().performKeyInput { pressKey(key) }
         mainClock.advanceTimeByFrame()
+    }
+
+    /** 经系统输入管线注入的触摸, 与真实触摸一样让窗口进入 touch mode. */
+    private fun AniComposeUiTest.tapOutsideControls() {
+        val shell = onNodeWithTag("tv-main-shell").fetchSemanticsNode()
+        // 右缘中部: 页面内容居中, 侧边栏在左, 系统栏在上下, 这里只有壳背景.
+        val x = shell.positionOnScreen.x + shell.size.width - 16f
+        val y = shell.positionOnScreen.y + shell.size.height / 2f
+        val instrumentation = InstrumentationRegistry.getInstrumentation()
+        val downTime = SystemClock.uptimeMillis()
+        for (action in listOf(MotionEvent.ACTION_DOWN, MotionEvent.ACTION_UP)) {
+            val event = MotionEvent.obtain(downTime, SystemClock.uptimeMillis(), action, x, y, 0)
+            instrumentation.sendPointerSync(event)
+            event.recycle()
+        }
     }
 
     private fun AniComposeUiTest.awaitFocus(tag: String) = awaitFocus(tag, hasTestTag(tag) and isFocused())

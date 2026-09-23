@@ -46,9 +46,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.focus.onFocusChanged
-import androidx.compose.ui.input.InputMode
 import androidx.compose.ui.input.key.Key
-import androidx.compose.ui.platform.LocalInputModeManager
 import androidx.compose.ui.platform.testTag
 import androidx.tv.material3.MaterialTheme
 import dev.chrisbanes.haze.HazeProgressive
@@ -67,6 +65,7 @@ import me.him188.ani.tv.ui.foundation.focus.LocalTvFocusMemory
 import me.him188.ani.tv.ui.foundation.focus.TvFocusBoundary
 import me.him188.ani.tv.ui.foundation.focus.TvFocusKey
 import me.him188.ani.tv.ui.foundation.focus.TvFocusMemory
+import me.him188.ani.tv.ui.foundation.focus.TvKeyboardInputMode
 import me.him188.ani.tv.ui.foundation.focus.rememberTvFocusScope
 import me.him188.ani.tv.ui.foundation.focus.tvFocusAnchor
 import me.him188.ani.tv.ui.foundation.focus.tvFocusHotkeyToggle
@@ -116,12 +115,7 @@ fun TvMainShell(
     var showLogoutConfirmation by rememberSaveable { mutableStateOf(false) }
     var restoreAccountFocus by remember { mutableStateOf<TvShellFocus?>(null) }
 
-    // 触屏设备上跑 TV 界面时强制键盘输入模式: touch mode 下 clickable 节点不参与
-    // 键盘焦点 (requestFocus 恒 false), 遥控器/dpad 导航整个失效. 真 TV 永远非 touch mode.
-    val inputModeManager = LocalInputModeManager.current
-    LaunchedEffect(Unit) {
-        inputModeManager.requestInputMode(InputMode.Keyboard)
-    }
+    TvKeyboardInputMode()
 
     // 返回语义: 非探索内容先回探索; 探索交给系统 (退出应用)
     BackHandler(enabled = content != TvShellContent.Exploration) {

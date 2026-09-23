@@ -18,6 +18,7 @@ kotlin {
     sourceSets.androidMain {
         kotlin.srcDir("../src/androidTv/kotlin")
         dependencies {
+            implementation(projects.app.shared)
             api(projects.app.shared.uiExploration)
             api(projects.app.shared.uiFoundationTv)
             implementation(projects.app.shared.uiSubjectTv)
