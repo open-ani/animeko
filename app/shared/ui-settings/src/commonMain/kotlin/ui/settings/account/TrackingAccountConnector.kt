@@ -14,13 +14,13 @@ sealed interface TrackingAccountStatus {
     data object Checking : TrackingAccountStatus
     data object Connecting : TrackingAccountStatus
     data object NotConnected : TrackingAccountStatus
-    data object SignInToManage : TrackingAccountStatus
+    /** Connecting also signs in to Animeko when there is no Animeko session. */
+    data object SignInWithProvider : TrackingAccountStatus
 }
 
 data class TrackingAccountViewState(
     val status: TrackingAccountStatus,
     val connected: Boolean,
-    val enabled: Boolean = true,
     val refreshing: Boolean = false,
 )
 

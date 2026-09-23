@@ -1790,7 +1790,7 @@
     <string name="settings_tracking_connection_check_failed">Connection check failed</string>
     <string name="settings_tracking_not_connected">Not connected</string>
     <string name="settings_tracking_connecting">Connecting</string>
-    <string name="settings_tracking_sign_in_to_manage">Sign in to Animeko to manage</string>
+    <string name="settings_tracking_sign_in_with">Sign in with %1$s</string>
     <string name="settings_tracking_connected_action_description">Connected</string>
     <string name="settings_tracking_disconnect_title">Disconnect %1$s?</string>
     <string name="settings_tracking_disconnect_message">Signs out of this service on this device only. Your list on the service is not changed.</string>

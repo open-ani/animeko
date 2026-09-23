@@ -30,14 +30,14 @@ import me.him188.ani.app.ui.lang.*
 import org.jetbrains.compose.resources.stringResource
 
 @Composable
-private fun formatTrackingAccountDescription(state: TrackingAccountViewState, failed: Boolean): String {
+private fun formatTrackingAccountDescription(state: TrackingAccountViewState, displayName: String, failed: Boolean): String {
     if (failed) return stringResource(Lang.settings_tracking_connection_check_failed)
     return when (val status = state.status) {
         is TrackingAccountStatus.Account -> status.name
         TrackingAccountStatus.Checking -> stringResource(Lang.settings_tracking_checking_connection)
         TrackingAccountStatus.NotConnected -> stringResource(Lang.settings_tracking_not_connected)
         TrackingAccountStatus.Connecting -> stringResource(Lang.settings_tracking_connecting)
-        TrackingAccountStatus.SignInToManage -> stringResource(Lang.settings_tracking_sign_in_to_manage)
+        TrackingAccountStatus.SignInWithProvider -> stringResource(Lang.settings_tracking_sign_in_with, displayName)
     }
 }
 
@@ -70,7 +70,7 @@ fun SettingsScope.TrackingAccountItem(
         }
     }
 
-    val descriptionText = formatTrackingAccountDescription(state, failed)
+    val descriptionText = formatTrackingAccountDescription(state, connector.displayName, failed)
 
     TextItem(
         title = { Text(connector.displayName) },
@@ -81,13 +81,11 @@ fun SettingsScope.TrackingAccountItem(
             state.connected -> { { Icon(Icons.Default.Check, contentDescription = stringResource(Lang.settings_tracking_connected_action_description), tint = Color(0xFF4CAF50)) } }
             else -> null
         },
-        onClick = if (!state.enabled) null else {
-            {
-                if (state.connected) showActions = true
-                else when (val action = connector.loginAction) {
-                    is TrackingLoginAction.Browser -> openBrowser(action.url)
-                    is TrackingLoginAction.OAuth -> openOAuth(action.platform)
-                }
+        onClick = {
+            if (state.connected) showActions = true
+            else when (val action = connector.loginAction) {
+                is TrackingLoginAction.Browser -> openBrowser(action.url)
+                is TrackingLoginAction.OAuth -> openOAuth(action.platform)
             }
         },
     )

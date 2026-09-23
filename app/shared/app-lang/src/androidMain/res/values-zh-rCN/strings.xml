@@ -1830,7 +1830,7 @@
     <string name="settings_tracking_connection_check_failed">连接检查失败</string>
     <string name="settings_tracking_not_connected">未连接</string>
     <string name="settings_tracking_connecting">正在连接…</string>
-    <string name="settings_tracking_sign_in_to_manage">登录 Animeko 账号以管理</string>
+    <string name="settings_tracking_sign_in_with">使用 %1$s 登录</string>
     <string name="settings_tracking_connected_action_description">已连接</string>
     <string name="settings_tracking_disconnect_title">断开 %1$s 连接？</string>
     <string name="settings_tracking_disconnect_message">仅在本设备上退出该服务的登录，服务上的列表不会改变。</string>

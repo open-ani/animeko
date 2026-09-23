@@ -17,15 +17,13 @@ class BangumiTrackingAccountConnector(private val userRepository: UserRepository
     override val disconnectMessage = Lang.settings_tracking_bangumi_disconnect_message
     override val state = SelfInfoStateProducer().flow.map { info ->
         val name = info.selfInfo?.bangumiUsername?.takeIf { it.isNotBlank() }
-        val sessionValid = info.isSessionValid == true
         TrackingAccountViewState(
             status = when {
                 name != null -> TrackingAccountStatus.Account(name)
-                sessionValid -> TrackingAccountStatus.NotConnected
-                else -> TrackingAccountStatus.SignInToManage
+                info.isSessionValid == false -> TrackingAccountStatus.SignInWithProvider
+                else -> TrackingAccountStatus.NotConnected
             },
             connected = name != null,
-            enabled = sessionValid,
             refreshing = info.isLoading,
         )
     }

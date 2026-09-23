@@ -1793,7 +1793,7 @@
     <string name="settings_tracking_connection_check_failed">連線檢查失敗</string>
     <string name="settings_tracking_not_connected">未連線</string>
     <string name="settings_tracking_connecting">正在連線…</string>
-    <string name="settings_tracking_sign_in_to_manage">登入 Animeko 帳號以管理</string>
+    <string name="settings_tracking_sign_in_with">使用 %1$s 登入</string>
     <string name="settings_tracking_connected_action_description">已連線</string>
     <string name="settings_tracking_disconnect_title">斷開 %1$s 連線？</string>
     <string name="settings_tracking_disconnect_message">僅在本裝置上登出該服務，服務上的列表不會改變。</string>
