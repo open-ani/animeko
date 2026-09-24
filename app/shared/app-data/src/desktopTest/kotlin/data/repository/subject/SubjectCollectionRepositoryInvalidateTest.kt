@@ -290,8 +290,6 @@ class SubjectCollectionRepositoryInvalidateTest {
         name = "subject-$subjectId",
         nameCn = "条目 $subjectId (服务端)",
         summary = "",
-        imageLarge = "",
-        imageThumb = "",
         nsfw = false,
         airDate = "2024-01-01",
         aliases = emptyList(),
