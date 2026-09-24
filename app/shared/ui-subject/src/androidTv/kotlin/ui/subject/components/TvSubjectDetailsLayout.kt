@@ -70,7 +70,7 @@ internal fun TvSubjectDetailsPageLayout(
     focus: TvFocusScope,
     scrollState: ScrollState,
     bringIntoViewSpec: BringIntoViewSpec,
-    scrollContentModifier: Modifier,
+    scrollContentModifier: Modifier = Modifier,
     scrollAnchors: TvDetailsScrollAnchors,
     backdrop: @Composable BoxScope.() -> Unit,
     modifier: Modifier = Modifier,

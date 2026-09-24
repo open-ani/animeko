@@ -11,13 +11,18 @@ package me.him188.ani.tv.ui.main
 
 import androidx.activity.compose.BackHandler
 import androidx.compose.animation.AnimatedContent
+import androidx.compose.animation.core.FastOutSlowInEasing
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.CalendarMonth
 import androidx.compose.material.icons.rounded.Search
@@ -27,7 +32,6 @@ import androidx.compose.material.icons.rounded.TravelExplore
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.SideEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -44,20 +48,28 @@ import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.input.key.Key
 import androidx.compose.ui.platform.testTag
+import androidx.tv.material3.MaterialTheme
+import dev.chrisbanes.haze.HazeProgressive
+import dev.chrisbanes.haze.HazeTint
+import dev.chrisbanes.haze.hazeEffect
+import dev.chrisbanes.haze.hazeSource
+import dev.chrisbanes.haze.rememberHazeState
 import kotlinx.coroutines.flow.drop
 import me.him188.ani.app.ui.lang.Lang
-import me.him188.ani.app.ui.lang.tv_nav_schedule
 import me.him188.ani.app.ui.lang.exploration_search
 import me.him188.ani.app.ui.lang.main_screen_page_collection
 import me.him188.ani.app.ui.lang.main_screen_page_exploration
 import me.him188.ani.app.ui.lang.settings
+import me.him188.ani.app.ui.lang.tv_nav_schedule
 import me.him188.ani.tv.ui.foundation.focus.LocalTvFocusMemory
+import me.him188.ani.tv.ui.foundation.focus.TvFocusBoundary
 import me.him188.ani.tv.ui.foundation.focus.TvFocusKey
 import me.him188.ani.tv.ui.foundation.focus.TvFocusMemory
 import me.him188.ani.tv.ui.foundation.focus.TvKeyboardInputMode
 import me.him188.ani.tv.ui.foundation.focus.rememberTvFocusScope
 import me.him188.ani.tv.ui.foundation.focus.tvFocusAnchor
 import me.him188.ani.tv.ui.foundation.focus.tvFocusHotkeyToggle
+import me.him188.ani.tv.ui.foundation.focus.tvFocusMemorable
 import me.him188.ani.tv.ui.foundation.focus.tvFocusNavSignal
 import me.him188.ani.tv.ui.foundation.layout.tvModalUnderlay
 import me.him188.ani.tv.ui.foundation.widgets.TvNavRailItem
@@ -70,7 +82,8 @@ enum class TvShellContent { Search, Exploration, Schedule, Collection, Login }
 
 /** 主壳焦点锚点 (统一焦点框架, 见 ui-foundation-tv/focus). */
 private enum class TvShellFocus : TvFocusKey {
-    /** 侧边栏进入落点 ("探索"条目); 菜单键从任意位置直达. */
+    Content,
+    /** 菜单键入口；进入时由侧栏选择当前页面或待恢复条目。 */
     Rail,
     Settings,
     Avatar,
@@ -78,9 +91,8 @@ private enum class TvShellFocus : TvFocusKey {
 }
 
 /**
- * TV 主壳. 布局对齐上游 PR#3217 的 MainScreen (TV 变体):
- * 左侧 [TvNavigationSideRail] (收起 48dp 图标列, 焦点进入展开) 浮于内容之上,
- * 内容区让开收起宽度; tab 间切换用 fade 转场.
+ * TV 主壳。页面占满屏幕；左侧悬浮导航栏展开时压暗页面，并在左侧以渐进模糊衬托。
+ * [pageContent] 接收收起态导航栏的避让范围，可分别安排背景和前景内容。
  */
 @OptIn(ExperimentalComposeUiApi::class)
 @Composable
@@ -93,11 +105,13 @@ fun TvMainShell(
     modifier: Modifier = Modifier,
     /** 焦点记忆; 调用方在 NavHost 之上创建传入使其跨 route 存活 (进详情页返回恢复焦点用). */
     focusMemory: TvFocusMemory? = null,
-    pageContent: @Composable (TvShellContent) -> Unit,
+    pageContent: @Composable (TvShellContent, navigationRailInsets: PaddingValues) -> Unit,
 ) {
     val selfInfo = uiState.selfInfo
     val currentContent by rememberUpdatedState(content)
     val pageStates = rememberSaveableStateHolder()
+    val railBackdrop = rememberHazeState()
+    val backgroundColor = tvShellBackgroundColor()
     var showLogoutConfirmation by rememberSaveable { mutableStateOf(false) }
     var restoreAccountFocus by remember { mutableStateOf<TvShellFocus?>(null) }
 
@@ -108,43 +122,36 @@ fun TvMainShell(
         onContentChange(TvShellContent.Exploration)
     }
 
-    // 菜单键在"内容区 <-> 侧边栏"间往返: 焦点在内容时直达侧边栏 (落当前页条目, rail 随
-    // hasFocus 自动展开); 焦点已在侧边栏时按菜单/返回/点击条目 = 收起并**恢复进入前的
-    // 内容区焦点** (而不是落到几何最近的节点). 恢复用 TvFocusMemory: 内容区可聚焦组件
-    // 聚焦时自动上报, 换页清记忆 (由新页 InitialFocus 接管), 记忆失效退化为默认进入.
-    // (不用 focusRestorer/saveFocusedChild: 它们只保存第一层子 target, 跨壳->页面->Lazy
-    // 的多层容器时保存到不可聚焦的中间容器, 恢复必然失败 —— TV 模拟器同帧实测)
+    // 菜单键进入侧栏的当前页条目，再次按菜单或返回键时恢复内容区的最后焦点。
+    // 记忆由实际聚焦节点上报，内容切页时清除，由目标页的 InitialFocus 选择入口。
     val focus = rememberTvFocusScope()
     focus.Resolver()
-    val contentFocus = remember { FocusRequester() }
     val memory = focusMemory ?: remember { TvFocusMemory() }
-    memory.ArmOnRouteReturn() // route 重建 (从详情页等返回) 时装填跨 route 恢复目标
     val settingsFocus = remember { FocusRequester() }
     val avatarFocus = remember { FocusRequester() }
     val logoutFocus = remember { FocusRequester() }
-    if (memory.pendingRestoreId == TvShellFocus.Settings) {
-        SideEffect { memory.claimRestore(TvShellFocus.Settings, settingsFocus) }
-    }
-    // 内容 tab **真实变化**时才清记忆: 首启 (含 route 返回重组) 不清 —— 否则刚 arm 的
-    // 跨 route 恢复目标与认领会被摧毁 (事件驱动版实测事故)
+    // 内容页切换清除当前记忆，路由返回保留保存的身份。
     LaunchedEffect(Unit) {
         snapshotFlow { currentContent }.drop(1).collect { memory.clear() }
     }
-    // 用户交互 (壳根信号, 快照事件) 取消未认领的跨 route 恢复: 迟到的数据不再抢焦点
+    // 用户交互取消账号操作的待恢复位置。
     LaunchedEffect(focus, memory) {
         snapshotFlow { focus.userNavGeneration }
             .drop(1)
             .collect {
-                memory.onUserInteraction()
                 restoreAccountFocus = null
             }
     }
     var railHasFocus by remember { mutableStateOf(false) }
-    val restoreContentFocus: () -> Unit = remember(contentFocus, memory) {
+    val railReveal by animateFloatAsState(
+        if (railHasFocus || showLogoutConfirmation || restoreAccountFocus != null) 1f else 0f,
+        tween(TvNavigationRailDefaults.ExpandDurationMillis, easing = FastOutSlowInEasing),
+        label = "navigation-rail-backdrop",
+    )
+    val restoreContentFocus: () -> Unit = remember(focus, memory) {
         {
             if (memory.lastId == TvShellFocus.Settings) memory.clear()
-            if (!memory.restore()) runCatching { contentFocus.requestFocus() }
-            Unit
+            focus.restore(memory, TvShellFocus.Content)
         }
     }
     BackHandler(enabled = railHasFocus && !showLogoutConfirmation) { restoreContentFocus() }
@@ -162,18 +169,21 @@ fun TvMainShell(
         modifier
             .fillMaxSize()
             .testTag("tv-main-shell")
-            .background(tvShellBackgroundColor())
-            .then(if (showLogoutConfirmation) Modifier.tvFocusNavSignal(focus) else Modifier.tvFocusHotkeyToggle(
-                focus, Key.Menu, TvShellFocus.Rail, onLeave = restoreContentFocus,
-            )),
+            .background(backgroundColor)
+            .then(
+                if (showLogoutConfirmation) Modifier.tvFocusNavSignal(focus) else Modifier.tvFocusHotkeyToggle(
+                    focus, Key.Menu, TvShellFocus.Rail, onLeave = restoreContentFocus,
+                ),
+            ),
     ) {
         Box(Modifier.fillMaxSize().tvModalUnderlay(showLogoutConfirmation)) {
-            // 内容区: 让开侧边栏收起态宽度. 焦点记忆只对内容子树 provide (侧边栏不上报)
+            // 背景与页面均占满窗口；焦点记忆仅向内容子树提供。
             Box(
                 Modifier
                     .fillMaxSize()
-                    .padding(start = TvNavigationRailDefaults.CollapsedWidth)
-                    .focusRequester(contentFocus),
+                    .testTag("tv-main-page-content")
+                    .hazeSource(railBackdrop)
+                    .tvFocusAnchor(focus, TvShellFocus.Content),
             ) {
                 CompositionLocalProvider(LocalTvFocusMemory provides memory) {
                     AnimatedContent(
@@ -181,12 +191,41 @@ fun TvMainShell(
                         transitionSpec = { fadeIn() togetherWith fadeOut() },
                         label = "tvShellContent",
                     ) { current ->
-                        pageStates.SaveableStateProvider(current) { pageContent(current) }
+                        TvFocusBoundary(current == currentContent, Modifier.fillMaxSize()) {
+                            pageStates.SaveableStateProvider(current) {
+                                pageContent(current, TvNavigationRailDefaults.ContentInsets)
+                            }
+                        }
                     }
                 }
+
+                Box(
+                    Modifier.fillMaxSize()
+                        .background(
+                            MaterialTheme.colorScheme.surface
+                                .copy(alpha = railReveal * TvNavigationRailDefaults.BackgroundDimAlpha),
+                        ),
+                )
             }
 
-            // 侧边栏浮于内容之上 (展开时渐变面板压住内容左缘)
+            if (railReveal > 0f) {
+                val surfaceColor = MaterialTheme.colorScheme.surface
+                Box(
+                    Modifier.fillMaxHeight()
+                        .fillMaxWidth(TvNavigationRailDefaults.BackgroundBlurWidthFraction)
+                        .hazeEffect(railBackdrop) {
+                            this.backgroundColor = backgroundColor
+                            blurRadius = TvNavigationRailDefaults.BackgroundBlurRadius
+                            progressive = HazeProgressive.horizontalGradient(
+                                startIntensity = 1f, endIntensity = 0f,
+                            )
+                            tints = listOf(HazeTint(surfaceColor))
+                            noiseFactor = 0f
+                            alpha = railReveal
+                        },
+                )
+            }
+
             TvNavigationSideRail(
                 selfInfo = selfInfo,
                 isLoggedIn = uiState.isLoggedIn == true,
@@ -209,7 +248,9 @@ fun TvMainShell(
                         selected = content == TvShellContent.Search,
                     ) { onContentChange(TvShellContent.Search) },
                     TvNavRailItem(
-                        Icons.Rounded.TravelExplore, stringResource(Lang.main_screen_page_exploration), defaultFocus = true,
+                        Icons.Rounded.TravelExplore,
+                        stringResource(Lang.main_screen_page_exploration),
+                        defaultFocus = true,
                         selected = content == TvShellContent.Exploration,
                     ) { onContentChange(TvShellContent.Exploration) },
                     TvNavRailItem(
@@ -223,16 +264,15 @@ fun TvMainShell(
                     TvNavRailItem(
                         Icons.Rounded.Settings, stringResource(Lang.settings),
                         focusRequester = settingsFocus,
-                        restoreFocus = memory.pendingRestoreId == TvShellFocus.Settings,
+                        restoreFocus = memory.lastId == TvShellFocus.Settings,
+                        modifier = Modifier.tvFocusMemorable(TvShellFocus.Settings, memory, rememberOnFocus = false),
                         keepFocusOnClick = true,
                     ) {
-                        memory.reportFocused(settingsFocus, TvShellFocus.Settings)
+                        memory.remember(TvShellFocus.Settings)
                         onOpenSettings()
                     },
                 ),
-                // Rail 锚点挂容器而非条目: requestFocus 经进入门控落到当前页条目, 而
-                // hasFocus 对整个子树上报到位 —— 否则 request(Rail) 的解析轮询永远等不到
-                // 确认, 烧满全部轮询期间会把用户点击后移入内容区的焦点一次次抢回 (实测)
+                // Rail 锚点包含整个侧栏，入口门控选择当前页条目，hasFocus 汇总子树状态。
                 modifier = Modifier
                     .testTag("tv-main-navigation")
                     .align(Alignment.CenterStart)
@@ -241,6 +281,7 @@ fun TvMainShell(
                 // 点击条目后把焦点还给内容区并恢复进入前的位置 (切页时恢复目标随旧页销毁,
                 // 自然交给新页 InitialFocus)
                 returnFocusToContent = restoreContentFocus,
+                onExitFocus = restoreContentFocus,
             )
         }
         if (showLogoutConfirmation) {

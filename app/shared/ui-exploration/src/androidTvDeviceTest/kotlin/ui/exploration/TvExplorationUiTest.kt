@@ -12,6 +12,7 @@ import android.graphics.Bitmap
 import android.os.LocaleList
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.runtime.CompositionLocalProvider
@@ -42,8 +43,8 @@ import androidx.compose.ui.test.getUnclippedBoundsInRoot
 import androidx.compose.ui.test.hasAnyDescendant
 import androidx.compose.ui.test.hasTestTag
 import androidx.compose.ui.test.hasText
-import androidx.compose.ui.test.isFocused
 import androidx.compose.ui.test.isDisplayed
+import androidx.compose.ui.test.isFocused
 import androidx.compose.ui.test.isRoot
 import androidx.compose.ui.test.onLast
 import androidx.compose.ui.test.onNodeWithTag
@@ -99,9 +100,9 @@ import me.him188.ani.datasources.api.PackedDate
 import me.him188.ani.datasources.api.topic.UnifiedCollectionType
 import me.him188.ani.tv.ui.foundation.focus.LocalTvFocusMemory
 import me.him188.ani.tv.ui.foundation.focus.TvFocusMemory
-import me.him188.ani.tv.ui.subject.components.TvSubjectDetailsDefaults
 import me.him188.ani.tv.ui.foundation.theme.AniTvTheme
 import me.him188.ani.tv.ui.foundation.widgets.tvShellBackgroundColor
+import me.him188.ani.tv.ui.subject.components.TvSubjectDetailsDefaults
 import me.him188.ani.utils.platform.annotations.TestOnly
 import java.io.File
 import java.io.IOException
@@ -170,6 +171,8 @@ class TvExplorationUiTest {
         trendingCount: Int = 3,
         collectionTransform: (SubjectCollectionInfo) -> SubjectCollectionInfo = { it },
         poster: Boolean = true,
+        shellPadding: PaddingValues = PaddingValues(start = 48.dp),
+        navigationRailInsets: PaddingValues = PaddingValues(0.dp),
     ) {
         mainClock.autoAdvance = false
         val context = InstrumentationRegistry.getInstrumentation().targetContext
@@ -211,12 +214,14 @@ class TvExplorationUiTest {
                     val followedItems = follows.collectAsLazyPagingItems()
                     Box(
                         Modifier.fillMaxSize().background(tvShellBackgroundColor())
-                            .testTag("tv-exploration-shell").padding(start = 48.dp),
+                            .testTag("tv-exploration-shell").padding(shellPadding),
                     ) {
                         if (visible()) saved.SaveableStateProvider("exploration") {
                             CompositionLocalProvider(LocalTvFocusMemory provides focusMemory) {
-                                focusMemory.ArmOnRouteReturn()
-                                TvExplorationScreen(trendingItems, recommendationItems, followedItems, media, onIntent)
+                                TvExplorationScreen(
+                                    trendingItems, recommendationItems, followedItems, media, onIntent,
+                                    navigationRailInsets = navigationRailInsets,
+                                )
                             }
                         }
                     }
@@ -225,6 +230,85 @@ class TvExplorationUiTest {
         }
         awaitFocus("tv-exploration-details")
         settle()
+    }
+
+    @Test
+    fun heroLoadingDoesNotBlockReadyShelvesOrStealTheirFocus() = runAniComposeUiTest {
+        val trends = MutableStateFlow(loadingPage<TrendingSubjectInfo>())
+        mount(trendingFlow = trends, poster = false)
+        onNodeWithTag("tv-exploration-hero-loading").assertExists()
+        capture("hero-loading-ready-shelves")
+        key(Key.DirectionDown)
+        awaitFocus("tv-exploration-followed-11")
+        runOnIdle { trends.value = completedPage(listOf(TrendingSubjectInfo(1, titles.first(), ""))) }
+        settle()
+        onNodeWithTag("tv-exploration-followed-11").assertIsFocused()
+        key(Key.DirectionUp)
+        awaitFocus("tv-exploration-details")
+        onNodeWithTag("tv-exploration-hero-loading").assertDoesNotExist()
+    }
+
+    @Test
+    fun followedLoadingHasItsOwnSkeletonAndNavigationSkipsToReadyRecommendations() = runAniComposeUiTest {
+        val follows = MutableStateFlow(loadingPage<FollowedSubjectInfo>())
+        mount(followedFlow = follows, poster = false)
+        onNodeWithTag("tv-exploration-followed-loading").assertExists()
+        onNodeWithTag("tv-exploration-hero-loading").assertDoesNotExist()
+        capture("followed-loading")
+        key(Key.DirectionDown)
+        awaitFocus("tv-exploration-rec-21")
+        key(Key.DirectionUp)
+        awaitFocus("tv-exploration-details")
+        key(Key.DirectionDown)
+        awaitFocus("tv-exploration-rec-21")
+        runOnIdle { follows.value = completedPage(followed()) }
+        settle()
+        onNodeWithTag("tv-exploration-rec-21").assertIsFocused()
+        key(Key.DirectionUp)
+        awaitFocus("tv-exploration-followed-11")
+        onNodeWithTag("tv-exploration-followed-loading").assertDoesNotExist()
+    }
+
+    @Test
+    fun recommendationSkeletonLoadsIndependentlyAndRefreshKeepsExistingCards() = runAniComposeUiTest {
+        val recs = MutableStateFlow(loadingPage<RecommendedItemInfo>())
+        mount(recommendationFlow = recs, poster = false)
+        key(Key.DirectionDown)
+        awaitFocus("tv-exploration-followed-11")
+        key(Key.DirectionDown)
+        awaitFocus("tv-exploration-feed-status")
+        onNodeWithTag("tv-exploration-recommendations-loading").assertExists()
+        capture("recommendations-loading")
+        val values = (21..24).map { RecommendedSubjectInfo(it, titles.first(), "", "") }
+        runOnIdle { recs.value = completedPage(values) }
+        awaitFocus("tv-exploration-rec-21")
+        onNodeWithTag("tv-exploration-recommendations-loading").assertDoesNotExist()
+        runOnIdle {
+            recs.value = PagingData.from(values, sourceLoadStates =
+                LoadStates(LoadState.Loading, LoadState.NotLoading(true), LoadState.NotLoading(true)))
+        }
+        settle()
+        onNodeWithTag("tv-exploration-rec-21").assertIsFocused()
+        onNodeWithTag("tv-exploration-recommendations-loading").assertDoesNotExist()
+    }
+
+    private fun <T : Any> loadingPage(): PagingData<T> = PagingData.empty(sourceLoadStates =
+        LoadStates(LoadState.Loading, LoadState.NotLoading(true), LoadState.NotLoading(true)))
+
+    @Test
+    fun fullScreenBackdropExtendsBehindTheFloatingRailWhileControlsRespectInsets() = runAniComposeUiTest {
+        mount(shellPadding = PaddingValues(0.dp), navigationRailInsets = PaddingValues(start = 56.dp))
+        val page = bounds("tv-exploration")
+        assertEquals(bounds("tv-exploration-shell"), page)
+        assertEquals(page, bounds("tv-exploration-backdrop"))
+        val density = page.height / 540f
+        assertTrue(bounds("tv-exploration-details").left >= 56f * density)
+        key(Key.DirectionDown)
+        awaitFocus("tv-exploration-followed-11")
+        settle()
+        assertTrue(bounds("tv-exploration-followed-11").left >= 56f * density)
+        assertEquals(page, bounds("tv-exploration-backdrop"))
+        capture("floating-rail-insets")
     }
 
     @Test
@@ -969,7 +1053,7 @@ class TvExplorationUiTest {
     }
 
     @Test
-    fun returningTransitionCannotReplaceTheSavedCardBeforeResume() = runAniComposeUiTest {
+    fun returningPageRestoresBeforeResumeAndKeepsUserNavigation() = runAniComposeUiTest {
         val owner = object : LifecycleOwner {
             override val lifecycle = LifecycleRegistry.createUnsafe(this).apply { currentState = Lifecycle.State.RESUMED }
         }
@@ -983,12 +1067,11 @@ class TvExplorationUiTest {
         runOnIdle { owner.lifecycle.currentState = Lifecycle.State.STARTED; visible = false }
         settle()
         runOnIdle { visible = true }
-        settle()
-        onNodeWithTag("tv-exploration-rec-22").performSemanticsAction(SemanticsActions.RequestFocus) {
-            assertFalse(it())
-        }
-        runOnIdle { owner.lifecycle.currentState = Lifecycle.State.RESUMED }
         awaitFocus("tv-exploration-rec-21")
+        key(Key.DirectionRight)
+        awaitFocus("tv-exploration-rec-22")
+        runOnIdle { owner.lifecycle.currentState = Lifecycle.State.RESUMED }
+        awaitFocus("tv-exploration-rec-22")
         settle()
         assertTrue(glowProgress() > .99f)
     }

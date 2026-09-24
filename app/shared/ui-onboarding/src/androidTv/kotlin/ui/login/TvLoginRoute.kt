@@ -9,10 +9,12 @@
 
 package me.him188.ani.tv.ui.login
 
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.unit.dp
 import me.him188.ani.tv.ui.foundation.TvNavigationEffect
 import me.him188.ani.tv.ui.foundation.TvNavigationEvent
 
@@ -21,8 +23,9 @@ fun TvLoginRoute(
     viewModel: TvLoginViewModel,
     onNavigate: (TvNavigationEvent) -> Unit,
     modifier: Modifier = Modifier,
+    navigationRailInsets: PaddingValues = PaddingValues(0.dp),
 ) {
     val state by viewModel.uiState.collectAsState()
     TvNavigationEffect(viewModel.navigationEvents, onNavigate)
-    TvLoginScreen(state, viewModel::onIntent, modifier)
+    TvLoginScreen(state, viewModel::onIntent, modifier, navigationRailInsets)
 }

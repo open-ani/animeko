@@ -9,9 +9,9 @@
 
 package me.him188.ani.tv.ui.schedule
 
+import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.gestures.BringIntoViewSpec
 import androidx.compose.foundation.gestures.LocalBringIntoViewSpec
 import androidx.compose.foundation.interaction.MutableInteractionSource
@@ -38,8 +38,8 @@ import androidx.compose.material.icons.rounded.Refresh
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.getValue
 import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -57,12 +57,12 @@ import me.him188.ani.app.ui.exploration.schedule.ScheduleDay
 import me.him188.ani.app.ui.exploration.schedule.SchedulePagePresentation
 import me.him188.ani.app.ui.foundation.AsyncImage
 import me.him188.ani.datasources.api.EpisodeSort
-import me.him188.ani.tv.ui.foundation.focus.TvFocusDefaults
-import me.him188.ani.tv.ui.foundation.focus.tvCardFocusBorder
 import me.him188.ani.tv.ui.foundation.focus.LocalTvFocusMemory
+import me.him188.ani.tv.ui.foundation.focus.TvFocusDefaults
 import me.him188.ani.tv.ui.foundation.focus.TvFocusKey
 import me.him188.ani.tv.ui.foundation.focus.TvFocusScope
 import me.him188.ani.tv.ui.foundation.focus.rememberTvFocusScope
+import me.him188.ani.tv.ui.foundation.focus.tvCardFocusBorder
 import me.him188.ani.tv.ui.foundation.focus.tvFocusAnchor
 import me.him188.ani.tv.ui.foundation.focus.tvFocusMemorable
 import me.him188.ani.tv.ui.foundation.focus.tvFocusNavSignal
@@ -95,6 +95,7 @@ fun TvScheduleScreen(
     presentation: SchedulePagePresentation,
     onIntent: (TvScheduleIntent) -> Unit,
     modifier: Modifier = Modifier,
+    navigationRailInsets: PaddingValues = PaddingValues(0.dp),
 ) {
     // rememberLazyListState saves the viewport in the navigation entry across detail visits.
     val days = presentation.days
@@ -102,7 +103,7 @@ fun TvScheduleScreen(
 
     val focus = rememberTvFocusScope()
     focus.Resolver()
-    val restoreTarget = (LocalTvFocusMemory.current?.pendingRestoreId as? TvScheduleFocus.Item)
+    val restoreTarget = (LocalTvFocusMemory.current?.lastId as? TvScheduleFocus.Item)
         ?.takeIf { target ->
             presentation.airingSchedules.any { day ->
                 day.episodes.any { entry ->
@@ -131,7 +132,7 @@ fun TvScheduleScreen(
     val error = presentation.error
     if (error != null) {
         Column(
-            modifier.fillMaxSize(),
+            modifier.fillMaxSize().padding(navigationRailInsets),
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.Center,
         ) {
@@ -155,7 +156,7 @@ fun TvScheduleScreen(
     // ── 多列并排 (手机 Medium 档): 固定 360dp 列宽, 列间 16dp, 初始滚动到今天列 ──
     CompositionLocalProvider(LocalBringIntoViewSpec provides scrollSpec) {
         LazyRow(
-            modifier.fillMaxSize().tvFocusNavSignal(focus),
+            modifier.fillMaxSize().padding(navigationRailInsets).tvFocusNavSignal(focus),
             state = listState,
             horizontalArrangement = Arrangement.spacedBy(TvScheduleDefaults.PageSpacing),
             contentPadding = PaddingValues(start = TvScheduleDefaults.StartPadding, end = TvPageDefaults.EndPadding),

@@ -36,22 +36,19 @@ import androidx.compose.ui.input.InputMode
 import androidx.compose.ui.input.key.Key
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.layout.onGloballyPositioned
-import androidx.compose.ui.platform.LocalInputModeManager
 import androidx.compose.ui.platform.LocalDensity
-import androidx.compose.ui.platform.LocalWindowInfo
+import androidx.compose.ui.platform.LocalInputModeManager
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.lifecycle.Lifecycle
-import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.paging.LoadState
 import androidx.paging.compose.collectAsLazyPagingItems
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import me.him188.ani.app.data.models.subject.PersonType
 import me.him188.ani.app.data.models.subject.nameCn
-import me.him188.ani.app.ui.foundation.AsyncImage
 import me.him188.ani.app.ui.comment.CommentOverlayCleanupEffect
+import me.him188.ani.app.ui.foundation.AsyncImage
 import me.him188.ani.app.ui.lang.Lang
 import me.him188.ani.app.ui.lang.comment_preview_image
 import me.him188.ani.app.ui.lang.comment_preview_quote
@@ -70,9 +67,8 @@ import me.him188.ani.app.ui.lang.settings_mediasource_retry
 import me.him188.ani.app.ui.lang.subject_details_no_summary
 import me.him188.ani.app.ui.richtext.RichText
 import me.him188.ani.app.ui.search.renderLoadErrorMessage
-import me.him188.ani.tv.ui.foundation.focus.rememberTvFocusScope
 import me.him188.ani.tv.ui.foundation.focus.TvAnchoredBringIntoViewSpec
-import me.him188.ani.tv.ui.foundation.focus.requestPrepared
+import me.him188.ani.tv.ui.foundation.focus.rememberTvFocusScope
 import me.him188.ani.tv.ui.foundation.focus.tvBackKey
 import me.him188.ani.tv.ui.foundation.focus.tvFocusAnchor
 import me.him188.ani.tv.ui.foundation.focus.tvFocusHotkey
@@ -81,14 +77,14 @@ import me.him188.ani.tv.ui.foundation.focus.tvFocusNavSignal
 import me.him188.ani.tv.ui.foundation.layout.tvModalUnderlay
 import me.him188.ani.tv.ui.foundation.widgets.TvOptionsRow
 import me.him188.ani.tv.ui.subject.components.LocalTvDetailsBackdropImage
+import me.him188.ani.tv.ui.subject.components.TvDetailsActionPlaceholder
 import me.him188.ani.tv.ui.subject.components.TvDetailsBackdrop
 import me.him188.ani.tv.ui.subject.components.TvDetailsBackdropImage
-import me.him188.ani.tv.ui.subject.components.TvDetailsActionPlaceholder
+import me.him188.ani.tv.ui.subject.components.TvDetailsBringIntoViewSpec
 import me.him188.ani.tv.ui.subject.components.TvDetailsDescriptionCard
+import me.him188.ani.tv.ui.subject.components.TvDetailsFullscreenOverlay
 import me.him188.ani.tv.ui.subject.components.TvDetailsLandscapePlaceholder
 import me.him188.ani.tv.ui.subject.components.TvDetailsPersonPlaceholder
-import me.him188.ani.tv.ui.subject.components.TvDetailsBringIntoViewSpec
-import me.him188.ani.tv.ui.subject.components.TvDetailsFullscreenOverlay
 import me.him188.ani.tv.ui.subject.components.TvDetailsScrollAnchors
 import me.him188.ani.tv.ui.subject.components.TvSubjectDetailsDefaults
 import me.him188.ani.tv.ui.subject.components.tvDetailsScrollSection
@@ -96,10 +92,10 @@ import me.him188.ani.tv.ui.subject.details.TvDetailsAction
 import me.him188.ani.tv.ui.subject.details.TvDetailsPersonCard
 import me.him188.ani.tv.ui.subject.person.components.TvPeopleBrowseSection
 import me.him188.ani.tv.ui.subject.person.components.TvPeopleDetailsLayout
+import me.him188.ani.tv.ui.subject.person.components.TvPeopleDiscussionPreviewCard
 import me.him188.ani.tv.ui.subject.person.components.TvPeopleIdentity
 import me.him188.ani.tv.ui.subject.person.components.TvPeopleIntroduction
 import me.him188.ani.tv.ui.subject.person.components.TvPeoplePortrait
-import me.him188.ani.tv.ui.subject.person.components.TvPeopleDiscussionPreviewCard
 import me.him188.ani.tv.ui.subject.person.components.TvPeopleSection
 import me.him188.ani.tv.ui.subject.person.components.TvPeopleWorkCard
 import me.him188.ani.tv.ui.subject.person.components.peopleSection
@@ -108,10 +104,10 @@ import me.him188.ani.tv.ui.subject.person.discussion.TvPeopleDiscussionAction
 import me.him188.ani.tv.ui.subject.person.discussion.TvPeopleDiscussionPage
 import me.him188.ani.tv.ui.subject.person.discussion.TvPeopleDiscussionState
 import me.him188.ani.tv.ui.subject.person.discussion.peopleDiscussionCount
+import me.him188.ani.tv.ui.subject.person.presentation.TvPeopleFocusScrollSpec
 import me.him188.ani.tv.ui.subject.person.presentation.TvPeopleOverlay
 import me.him188.ani.tv.ui.subject.person.presentation.TvPeoplePresentationState
 import me.him188.ani.tv.ui.subject.person.presentation.TvPeopleScrollMemory
-import me.him188.ani.tv.ui.subject.person.presentation.TvPeopleFocusScrollSpec
 import me.him188.ani.tv.ui.subject.presentation.TvDetailsKey
 import me.him188.ani.tv.ui.subject.presentation.detailsFocusFallback
 import me.him188.ani.tv.ui.subject.reviews.reviewPreview
@@ -181,8 +177,6 @@ internal fun TvPeopleDetailsScreen(
     val focus = rememberTvFocusScope()
     focus.Resolver()
     val scope = rememberCoroutineScope()
-    val lifecycle = LocalLifecycleOwner.current.lifecycle
-    val window = LocalWindowInfo.current
     val inputMode = LocalInputModeManager.current
     val anchors = remember { TvDetailsScrollAnchors() }
     val defaultSpec = LocalBringIntoViewSpec.current
@@ -197,7 +191,6 @@ internal fun TvPeopleDetailsScreen(
     val rowScrollSpec = remember(rowPaddingPx) {
         TvPeopleFocusScrollSpec(TvAnchoredBringIntoViewSpec { rowPaddingPx }, focusScrollEnabled)
     }
-    var laidOut by remember { mutableStateOf(false) }
     var laidOutSections by remember { mutableStateOf<Map<String, List<String>>>(emptyMap()) }
     var backdrop by remember(profile?.image) { mutableStateOf<TvDetailsBackdropImage?>(null) }
     var entryPending by remember { mutableStateOf(true) }
@@ -207,8 +200,6 @@ internal fun TvPeopleDetailsScreen(
 
     suspend fun restore(target: String, previous: List<String> = emptyList()) {
         focus.requestPrepared(isRelevant = { presentation.overlay == TvPeopleOverlay.None }) {
-            lifecycle.currentStateFlow.first { it.isAtLeast(Lifecycle.State.RESUMED) }
-            snapshotFlow { laidOut && window.isWindowFocused }.first { it }
             if (restorePositionPending && focus.userNavGeneration == entryNavGeneration) {
                 snapshotFlow {
                     (currentState.profile != null || !currentState.loading) &&
@@ -241,7 +232,7 @@ internal fun TvPeopleDetailsScreen(
             TvDetailsKey(selected)
         }
     }
-    LaunchedEffect(presentation.overlay) {
+    LaunchedEffect(presentation.overlay, focus.isActive) {
         entryPending = true
         expectedFocus = presentation.focused
         entryNavigation = focus.userNavGeneration
@@ -294,7 +285,6 @@ internal fun TvPeopleDetailsScreen(
             focus, scroll, scrollSpec, anchors,
             scrollContentModifier = Modifier.onGloballyPositioned {
                 laidOutSections = sections.associate { section -> section.id to section.keys }
-                laidOut = true
             },
             heroModifier = Modifier.tvDetailsScrollSection(anchors, "hero", 0f) { scroll.value },
             backdrop = { TvDetailsBackdrop(profile?.image.orEmpty(), { 1f },

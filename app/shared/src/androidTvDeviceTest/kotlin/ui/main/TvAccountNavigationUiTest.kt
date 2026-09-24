@@ -106,6 +106,8 @@ class TvAccountNavigationUiTest {
         val avatar = onNodeWithTag("tv-navigation-avatar").getUnclippedBoundsInRoot()
         val logout = onNodeWithTag("tv-navigation-logout").getUnclippedBoundsInRoot()
         assertEquals(avatar.left, logout.left)
+        assertEquals(avatar.right, logout.right)
+        before.forEach { assertEquals(avatar.right - avatar.left, it.right - it.left) }
         assertTrue(logout.bottom < avatar.top)
         key(Key.DirectionCenter)
         onNodeWithTag("tv-navigation-avatar").assertIsFocused()
@@ -219,12 +221,12 @@ class TvAccountNavigationUiTest {
                         fixture.isLoggedIn = false
                         fixture.selfInfo = null
                     },
-                ) { page ->
+                ) { page, navigationRailInsets ->
                     val focus = rememberTvFocusScope()
                     val entry = TvFocusKey("test-page-$page")
                     focus.Resolver()
                     focus.InitialFocus(entry)
-                    Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                    Box(Modifier.fillMaxSize().padding(navigationRailInsets), contentAlignment = Alignment.Center) {
                         TvOptionRow(
                             title = "Page: $page",
                             modifier = Modifier.width(240.dp).padding(16.dp).testTag("test-page-$page")

@@ -140,154 +140,153 @@ fun TvAniAppContent(
     ) {
         // tv MaterialTheme 不绘制窗口背景, 根部铺一层 Surface (深色 surface + content color)
         Surface(modifier.fillMaxSize()) {
+            val pages = entryProvider<NavRoutes> {
+                entry<NavRoutes.Main> {
+                    var shellContent by rememberSaveable { mutableStateOf(TvShellContent.Exploration) }
+                    val mainViewModel = tvViewModel {
+                        TvMainViewModel(dependencies.userRepository, dependencies.sessionStateProvider)
+                    }
+                    TvMainRoute(
+                        mainViewModel,
+                        content = shellContent,
+                        onContentChange = { shellContent = it },
+                        onOpenSettings = { aniNavigator.navigateSettings() },
+                        focusMemory = shellFocusMemory,
+                    ) { content, navigationRailInsets ->
+                        when (content) {
+                            TvShellContent.Exploration -> {
+                                val viewModel = tvViewModel {
+                                    TvExplorationViewModel(
+                                        koin = dependencies.koin,
+                                        collectionRepository = dependencies.subjectCollectionRepository,
+                                    )
+                                }
+                                TvExplorationRoute(viewModel, onNavigate, navigationRailInsets = navigationRailInsets)
+                            }
+
+                            TvShellContent.Schedule -> {
+                                val viewModel = tvViewModel { TvScheduleViewModel(dependencies.koin) }
+                                TvScheduleRoute(viewModel, onNavigate, navigationRailInsets = navigationRailInsets)
+                            }
+
+                            TvShellContent.Collection -> {
+                                val viewModel = tvViewModel { TvCollectionViewModel() }
+                                TvCollectionRoute(viewModel, onNavigate, navigationRailInsets = navigationRailInsets)
+                            }
+
+                            TvShellContent.Search -> {
+                                val viewModel = tvViewModel { TvSearchViewModel() }
+                                TvSearchRoute(viewModel, onNavigate, navigationRailInsets = navigationRailInsets)
+                            }
+
+                            TvShellContent.Login -> {
+                                val viewModel = tvViewModel { TvLoginViewModel(dependencies.koin) }
+                                TvLoginRoute(
+                                    viewModel,
+                                    navigationRailInsets = navigationRailInsets,
+                                    onNavigate = { event ->
+                                        when (event) {
+                                            TvNavigationEvent.LoggedIn -> shellContent = TvShellContent.Exploration
+                                            else -> onNavigate(event)
+                                        }
+                                    },
+                                )
+                            }
+
+                        }
+                    }
+                }
+                entry<NavRoutes.Settings> {
+                    val viewModel = tvViewModel {
+                        TvSettingsViewModel(
+                            dependencies.settingsRepository,
+                            dependencies.danmakuRegexFilterRepository,
+                            dependencies.mediaSourceManager,
+                            dependencies.mediaSourceSubscriptionRepository,
+                            loadLibraries = ::loadOpenSourceLibrariesJsons,
+                        )
+                    }
+                    TvSettingsRoute(viewModel)
+                }
+
+
+                entry<NavRoutes.OAuthAuthorize> {
+                    val viewModel = tvViewModel { TvLoginViewModel(dependencies.koin) }
+                    TvLoginRoute(
+                        viewModel,
+                        onNavigate = { event ->
+                            if (event == TvNavigationEvent.LoggedIn) aniNavigator.popBackStack()
+                            else onNavigate(event)
+                        },
+                    )
+                }
+
+                entry<NavRoutes.CharacterDetail> { route ->
+                    val viewModel = tvViewModel {
+                        TvPeopleDetailsViewModel(
+                            TvPeopleTarget(route.characterId, TvPeopleKind.Character),
+                            dependencies.sessionStateProvider,
+                        )
+                    }
+                    TvPeopleDetailsRoute(viewModel, onNavigate)
+                }
+                entry<NavRoutes.PersonDetail> { route ->
+                    val viewModel = tvViewModel {
+                        TvPeopleDetailsViewModel(
+                            TvPeopleTarget(
+                                route.personId,
+                                when (route.role) {
+                                    PersonDetailRole.VoiceActor -> TvPeopleKind.VoiceActor
+                                    PersonDetailRole.Staff -> TvPeopleKind.Staff
+                                },
+                            ),
+                            dependencies.sessionStateProvider,
+                        )
+                    }
+                    TvPeopleDetailsRoute(viewModel, onNavigate)
+                }
+                entry<NavRoutes.SubjectDetail> { route ->
+                    val viewModel = tvViewModel(key = "subject-${route.subjectId}") {
+                        TvSubjectDetailsViewModel(
+                            subjectId = route.subjectId,
+                            placeholder = route.placeholder?.run {
+                                SubjectInfo.createPlaceholder(id, name, coverUrl, nameCN)
+                            },
+                            collectionRepository = dependencies.subjectCollectionRepository,
+                            searchRepository = dependencies.subjectSearchRepository,
+                            settingsRepository = dependencies.settingsRepository,
+                        )
+                    }
+                    TvSubjectDetailsRoute(viewModel, onNavigate)
+                }
+
+                entry<NavRoutes.EpisodeDetail> { route ->
+                    val context = LocalContext.current.applicationContext
+                    val viewModel = tvViewModel(key = "episode-${route.subjectId}-${route.episodeId}") {
+                        TvEpisodeViewModel(
+                            subjectId = route.subjectId,
+                            initialEpisodeId = route.episodeId,
+                            context = context,
+                            koin = dependencies.koin,
+                            episodeCollectionRepository = dependencies.episodeCollectionRepository,
+                            subjectCollectionRepository = dependencies.subjectCollectionRepository,
+                            settingsRepository = dependencies.settingsRepository,
+                            selectorEpisodeCacheRepository = dependencies.selectorEpisodeCacheRepository,
+                            webSessionManager = dependencies.webSessionManager,
+                        )
+                    }
+                    TvEpisodeRoute(viewModel, togetherViewModel, onNavigate)
+                }
+            }
             NavDisplay(
                 backStack = backStack,
                 onBack = { aniNavigator.popBackStack() },
                 entryDecorators = listOf(
-                    // 让每个页面各自持有 rememberSaveable 状态和 ViewModel, 出栈时一并销毁
                     rememberSaveableStateHolderNavEntryDecorator(),
                     rememberViewModelStoreNavEntryDecorator(),
+                    rememberTvNavigationFocusDecorator(pages(backStack.last()).contentKey),
                 ),
-                entryProvider = entryProvider {
-                    entry<NavRoutes.Main> {
-                        var shellContent by rememberSaveable { mutableStateOf(TvShellContent.Exploration) }
-                        val mainViewModel = tvViewModel {
-                            TvMainViewModel(dependencies.userRepository, dependencies.sessionStateProvider)
-                        }
-                        TvMainRoute(
-                            mainViewModel,
-                            content = shellContent,
-                            onContentChange = { shellContent = it },
-                            onOpenSettings = { aniNavigator.navigateSettings() },
-                            focusMemory = shellFocusMemory,
-                        ) { content ->
-                            when (content) {
-                                TvShellContent.Exploration -> {
-                                    val viewModel = tvViewModel {
-                                        TvExplorationViewModel(
-                                            koin = dependencies.koin,
-                                            collectionRepository = dependencies.subjectCollectionRepository,
-                                        )
-                                    }
-                                    TvExplorationRoute(viewModel, onNavigate)
-                                }
-
-                                TvShellContent.Schedule -> {
-                                    val viewModel = tvViewModel { TvScheduleViewModel(dependencies.koin) }
-                                    TvScheduleRoute(viewModel, onNavigate)
-                                }
-
-                                TvShellContent.Collection -> {
-                                    val viewModel = tvViewModel { TvCollectionViewModel() }
-                                    TvCollectionRoute(viewModel, onNavigate)
-                                }
-
-                                TvShellContent.Search -> {
-                                    val viewModel =
-                                        tvViewModel {
-                                            TvSearchViewModel()
-                                        }
-                                    TvSearchRoute(viewModel, onNavigate)
-                                }
-
-                                TvShellContent.Login -> {
-                                    val viewModel = tvViewModel { TvLoginViewModel(dependencies.koin) }
-                                    TvLoginRoute(
-                                        viewModel,
-                                        onNavigate = { event ->
-                                            when (event) {
-                                                TvNavigationEvent.LoggedIn -> shellContent = TvShellContent.Exploration
-                                                else -> onNavigate(event)
-                                            }
-                                        },
-                                    )
-                                }
-
-                            }
-                        }
-                    }
-                    entry<NavRoutes.Settings> {
-                        val viewModel = tvViewModel {
-                            TvSettingsViewModel(
-                                dependencies.settingsRepository,
-                                dependencies.danmakuRegexFilterRepository,
-                                dependencies.mediaSourceManager,
-                                dependencies.mediaSourceSubscriptionRepository,
-                                loadLibraries = ::loadOpenSourceLibrariesJsons,
-                            )
-                        }
-                        TvSettingsRoute(viewModel)
-                    }
-
-
-                    entry<NavRoutes.OAuthAuthorize> {
-                        val viewModel = tvViewModel { TvLoginViewModel(dependencies.koin) }
-                        TvLoginRoute(
-                            viewModel,
-                            onNavigate = { event ->
-                                if (event == TvNavigationEvent.LoggedIn) aniNavigator.popBackStack()
-                                else onNavigate(event)
-                            },
-                        )
-                    }
-
-                    entry<NavRoutes.CharacterDetail> { route ->
-                        val viewModel = tvViewModel {
-                            TvPeopleDetailsViewModel(
-                                TvPeopleTarget(route.characterId, TvPeopleKind.Character),
-                                dependencies.sessionStateProvider,
-                            )
-                        }
-                        TvPeopleDetailsRoute(viewModel, onNavigate)
-                    }
-                    entry<NavRoutes.PersonDetail> { route ->
-                        val viewModel = tvViewModel {
-                            TvPeopleDetailsViewModel(
-                                TvPeopleTarget(
-                                    route.personId,
-                                    when (route.role) {
-                                        PersonDetailRole.VoiceActor -> TvPeopleKind.VoiceActor
-                                        PersonDetailRole.Staff -> TvPeopleKind.Staff
-                                    },
-                                ),
-                                dependencies.sessionStateProvider,
-                            )
-                        }
-                        TvPeopleDetailsRoute(viewModel, onNavigate)
-                    }
-                    entry<NavRoutes.SubjectDetail> { route ->
-                        val viewModel = tvViewModel(key = "subject-${route.subjectId}") {
-                            TvSubjectDetailsViewModel(
-                                subjectId = route.subjectId,
-                                placeholder = route.placeholder?.run {
-                                    SubjectInfo.createPlaceholder(id, name, coverUrl, nameCN)
-                                },
-                                collectionRepository = dependencies.subjectCollectionRepository,
-                                searchRepository = dependencies.subjectSearchRepository,
-                                settingsRepository = dependencies.settingsRepository,
-                            )
-                        }
-                        TvSubjectDetailsRoute(viewModel, onNavigate)
-                    }
-
-                    entry<NavRoutes.EpisodeDetail> { route ->
-                        val context = LocalContext.current.applicationContext
-                        val viewModel = tvViewModel(key = "episode-${route.subjectId}-${route.episodeId}") {
-                            TvEpisodeViewModel(
-                                subjectId = route.subjectId,
-                                initialEpisodeId = route.episodeId,
-                                context = context,
-                                koin = dependencies.koin,
-                                episodeCollectionRepository = dependencies.episodeCollectionRepository,
-                                subjectCollectionRepository = dependencies.subjectCollectionRepository,
-                                settingsRepository = dependencies.settingsRepository,
-                                selectorEpisodeCacheRepository = dependencies.selectorEpisodeCacheRepository,
-                                webSessionManager = dependencies.webSessionManager,
-                            )
-                        }
-                        TvEpisodeRoute(viewModel, togetherViewModel, onNavigate)
-                    }
-                },
+                entryProvider = pages,
             )
         }
     }

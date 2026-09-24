@@ -6,7 +6,6 @@ package me.him188.ani.tv.ui.subject.details
 
 
 import androidx.compose.foundation.ExperimentalFoundationApi
-import androidx.compose.foundation.progressSemantics
 import androidx.compose.foundation.focusable
 import androidx.compose.foundation.gestures.LocalBringIntoViewSpec
 import androidx.compose.foundation.gestures.animateScrollBy
@@ -26,6 +25,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.rememberLazyListState
+import androidx.compose.foundation.progressSemantics
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.Refresh
 import androidx.compose.material3.MaterialTheme
@@ -46,15 +46,11 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.input.InputMode
 import androidx.compose.ui.input.key.Key
-import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.platform.LocalInputModeManager
-import androidx.compose.ui.platform.LocalWindowInfo
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.lifecycle.Lifecycle
-import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.paging.LoadState
 import androidx.paging.compose.LazyPagingItems
 import kotlinx.coroutines.flow.first
@@ -69,7 +65,6 @@ import me.him188.ani.app.ui.lang.subject_details_reviews_count
 import me.him188.ani.app.ui.search.renderLoadErrorMessage
 import me.him188.ani.datasources.api.topic.UnifiedCollectionType
 import me.him188.ani.tv.ui.foundation.focus.rememberTvFocusScope
-import me.him188.ani.tv.ui.foundation.focus.requestPrepared
 import me.him188.ani.tv.ui.foundation.focus.tvFocusAnchor
 import me.him188.ani.tv.ui.foundation.focus.tvFocusHotkey
 import me.him188.ani.tv.ui.foundation.focus.tvFocusNavSignal
@@ -84,11 +79,11 @@ import me.him188.ani.tv.ui.subject.presentation.detailsFocusFallback
 import me.him188.ani.tv.ui.subject.reviews.TvReviewBringIntoViewSpec
 import me.him188.ani.tv.ui.subject.reviews.TvReviewCard
 import me.him188.ani.tv.ui.subject.reviews.TvReviewDefaults
-import me.him188.ani.tv.ui.subject.reviews.tvReviewLoadingItems
-import me.him188.ani.tv.ui.subject.reviews.TvReviewPlaceholder
 import me.him188.ani.tv.ui.subject.reviews.TvReviewOverview
+import me.him188.ani.tv.ui.subject.reviews.TvReviewPlaceholder
 import me.him188.ani.tv.ui.subject.reviews.TvReviewScrollbar
 import me.him188.ani.tv.ui.subject.reviews.tvReviewEdges
+import me.him188.ani.tv.ui.subject.reviews.tvReviewLoadingItems
 import org.jetbrains.compose.resources.stringResource
 
 /** Fixed overview and an independently paged review list, retained beneath nested overlays. */
@@ -110,10 +105,7 @@ internal fun TvSubjectComments(
     focus.Resolver()
     val list = rememberLazyListState()
     val scope = rememberCoroutineScope()
-    val lifecycle = LocalLifecycleOwner.current.lifecycle
-    val window = LocalWindowInfo.current
     val inputMode = LocalInputModeManager.current
-    var laidOut by remember(active) { mutableStateOf(false) }
     val isActive by rememberUpdatedState(active)
     var entryFocusPending by remember { mutableStateOf(true) }
     var entryTarget by remember { mutableStateOf(panel.focusedItem) }
@@ -131,8 +123,6 @@ internal fun TvSubjectComments(
 
     suspend fun restore(target: String?, previous: List<String> = emptyList(), animate: Boolean = false) {
         focus.requestPrepared(isRelevant = { isActive }) {
-            lifecycle.currentStateFlow.first { it.isAtLeast(Lifecycle.State.RESUMED) }
-            snapshotFlow { laidOut && window.isWindowFocused }.first { it }
             val selected = if (target == "review-rating") target else
                 detailsFocusFallback(target, previous, currentKeys, "review-status")
             if (entryFocusPending) entryTarget = selected
@@ -155,7 +145,7 @@ internal fun TvSubjectComments(
                 if (animate) {
                     // Focus moves immediately; a new direction cancels this animation and continues
                     // from the current card, rather than waiting for the previous scroll to finish.
-                    focus.request(TvDetailsKey(selected))
+                    focusNow(TvDetailsKey(selected))
                     list.animateScrollBy(checkNotNull(distance))
                     return@requestPrepared null
                 }
@@ -165,12 +155,12 @@ internal fun TvSubjectComments(
         }
     }
 
-    LaunchedEffect(active) {
+    LaunchedEffect(active, focus.isActive) {
         // Arm while the page is covered, before Compose restores focus as the child disappears.
         entryFocusPending = true
         entryTarget = panel.focusedItem
         entryNavigation = focus.userNavGeneration
-        if (active) {
+        if (active && focus.isActive) {
             // Pointer entry can leave Android in touch mode, which rejects the initial remote focus.
             inputMode.requestInputMode(InputMode.Keyboard)
             restore(panel.focusedItem, previousKeys)
@@ -206,7 +196,6 @@ internal fun TvSubjectComments(
             active = active,
             onClose = { if (isActive) onClose() },
             modifier = Modifier.tvModalUnderlay(!active).tvFocusNavSignal(focus)
-                .then(if (active) Modifier.onGloballyPositioned { laidOut = true } else Modifier)
                 .testTag("tv-reviews-page"),
             background = { TvDetailsBackdrop(backdrop, { 1f }, crossfade = false) },
         ) {

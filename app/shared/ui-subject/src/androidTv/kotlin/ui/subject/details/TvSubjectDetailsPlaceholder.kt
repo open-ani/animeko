@@ -6,12 +6,9 @@ package me.him188.ani.tv.ui.subject.details
 
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.gestures.LocalBringIntoViewSpec
-import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.rememberLazyListState
-import androidx.compose.foundation.progressSemantics
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
@@ -27,13 +24,13 @@ import me.him188.ani.tv.ui.subject.components.TvDetailsActionPlaceholder
 import me.him188.ani.tv.ui.subject.components.TvDetailsBringIntoViewSpec
 import me.him188.ani.tv.ui.subject.components.TvDetailsBrowseRowLayout
 import me.him188.ani.tv.ui.subject.components.TvDetailsDescriptionCard
-import me.him188.ani.tv.ui.subject.components.TvDetailsEpisodePlaceholder
 import me.him188.ani.tv.ui.subject.components.TvDetailsHeroLayout
 import me.him188.ani.tv.ui.subject.components.TvDetailsScrollAnchors
 import me.him188.ani.tv.ui.subject.components.TvDetailsTextPlaceholder
 import me.him188.ani.tv.ui.subject.components.TvSubjectDetailsDefaults
 import me.him188.ani.tv.ui.subject.components.TvSubjectDetailsPageLayout
 import me.him188.ani.tv.ui.subject.components.tvDetailsScrollSection
+import me.him188.ani.tv.ui.subject.components.tvDetailsEpisodePlaceholders
 import org.jetbrains.compose.resources.stringResource
 
 @OptIn(ExperimentalFoundationApi::class)
@@ -63,11 +60,7 @@ internal fun TvSubjectDetailsPlaceholder(focus: TvFocusScope, entryModifier: Mod
                 }
             }, modifier = Modifier.tvDetailsScrollSection(anchors, "hero", 0f) { scroll.value })
         TvDetailsBrowseRowLayout(stringResource(Lang.subject_details_episodes), rememberLazyListState(), "episodes", focused = false) {
-            item("loading") {
-                Row(Modifier.progressSemantics(), horizontalArrangement = Arrangement.spacedBy(TvSubjectDetailsDefaults.RowSpacing)) {
-                    repeat(3) { TvDetailsEpisodePlaceholder() }
-                }
-            }
+            tvDetailsEpisodePlaceholders()
         }
     }
 }

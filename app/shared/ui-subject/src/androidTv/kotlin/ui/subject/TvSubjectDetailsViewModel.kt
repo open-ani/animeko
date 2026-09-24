@@ -103,6 +103,8 @@ class TvSubjectDetailsViewModel(
                         commentCount = commentCount,
                         collectionType = ui.selfCollectionType,
                         selfRating = ui.rating.selfRatingInfo,
+                        collectionLoading = ui.isPlaceholder || ui.collectionTypeEdit.isPlaceholder,
+                        ratingLoading = ui.isPlaceholder,
                         mainEpisodeIds = episodeList.mainEpisodes.mapTo(mutableSetOf()) { it.episodeId },
                         charactersPager = charactersPager,
                         staffPager = staffPager,
@@ -117,7 +119,7 @@ class TvSubjectDetailsViewModel(
     }.runningFold(TvSubjectDetailsUiState()) { previous, next ->
         // Refreshing does not unmount useful content or reset its focus and viewport.
         val replacement = next.content
-        if (replacement?.episodesLoading == true && previous.content != null) {
+        if (replacement?.episodesLoading == true && previous.content?.episodesLoading == false) {
             next.copy(content = previous.content, refreshing = true)
         } else next.copy(content = replacement ?: previous.content)
     }
