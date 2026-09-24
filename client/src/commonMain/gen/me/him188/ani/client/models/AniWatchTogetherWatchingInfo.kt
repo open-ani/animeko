@@ -59,11 +59,11 @@ data class AniWatchTogetherWatchingInfo (
 
     @SerialName(value = "paused") @Required val paused: kotlin.Boolean,
 
-    @SerialName(value = "buffering") val buffering: kotlin.Boolean? = false,
+    @SerialName(value = "buffering") @Required val buffering: kotlin.Boolean,
 
-    @SerialName(value = "loading") val loading: kotlin.Boolean? = false,
+    @SerialName(value = "loading") @Required val loading: kotlin.Boolean,
 
-    @SerialName(value = "playbackRate") val playbackRate: kotlin.Float? = 1.0f
+    @SerialName(value = "playbackRate") @Required val playbackRate: kotlin.Float
 
 ) {
 
@@ -72,3 +72,4 @@ data class AniWatchTogetherWatchingInfo (
 
 
 // @formatter:on
+

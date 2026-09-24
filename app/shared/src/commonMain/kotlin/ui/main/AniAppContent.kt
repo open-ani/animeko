@@ -52,7 +52,7 @@ import me.him188.ani.app.navigation.SubjectDetailPlaceholder
 import me.him188.ani.app.navigation.rememberAniBackStack
 import me.him188.ani.app.platform.LocalContext
 import me.him188.ani.app.platform.navigation.LocalBrowserNavigator
-import me.him188.ani.app.shared.Res
+import me.him188.ani.app.shared.loadOpenSourceLibrariesJsons
 import me.him188.ani.app.ui.adaptive.navigation.AniNavigationSuiteDefaults
 import me.him188.ani.app.ui.bangumi.merge.BangumiMergeScreen
 import me.him188.ani.app.ui.bangumi.merge.BangumiMergeViewModel
@@ -80,6 +80,10 @@ import me.him188.ani.app.ui.login.EmailLoginVerifyScreen
 import me.him188.ani.app.ui.login.EmailLoginViewModel
 import me.him188.ani.app.ui.oauth.OAuthAuthorizeScreen
 import me.him188.ani.app.ui.oauth.OAuthAuthorizeViewModel
+import me.him188.ani.app.ui.qrlogin.QrLoginConfirmScreen
+import me.him188.ani.app.ui.qrlogin.QrLoginConfirmViewModel
+import me.him188.ani.app.ui.qrlogin.QrLoginScanScreen
+import me.him188.ani.app.ui.qrlogin.isQrCodeScannerSupported
 import me.him188.ani.app.ui.playback.PlaybackHistoryScreen
 import me.him188.ani.app.ui.playback.PlaybackHistorySyncStatusScreen
 import me.him188.ani.app.ui.playback.PlaybackHistoryViewModel
@@ -101,6 +105,8 @@ import me.him188.ani.app.ui.subject.person.CharacterDetailsScreen
 import me.him188.ani.app.ui.subject.person.CharacterDetailsViewModel
 import me.him188.ani.app.ui.subject.person.PersonDetailsScreen
 import me.him188.ani.app.ui.subject.person.PersonDetailsViewModel
+import me.him188.ani.app.ui.subject.relations.SubjectRelationGraphScreen
+import me.him188.ani.app.ui.subject.relations.SubjectRelationGraphViewModel
 import me.him188.ani.app.ui.user.SelfInfoStateProducer
 import me.him188.ani.app.ui.watchtogether.LocalWatchTogetherPlayerController
 import me.him188.ani.app.ui.watchtogether.WatchTogetherOverlayHost
@@ -243,6 +249,29 @@ private fun AniAppContentImpl(
                     },
                 )
             }
+            entry<NavRoutes.QrLoginScan> { route ->
+                QrLoginScanScreen(
+                    onScanned = { requestId ->
+                        // 确认页取代扫码页: 从确认页返回时不再回到相机
+                        aniNavigator.popBackStack(route, true)
+                        aniNavigator.navigateQrLoginConfirm(requestId)
+                    },
+                    onNavigateBack = { aniNavigator.popBackStack(route, true) },
+                )
+            }
+            entry<NavRoutes.QrLoginConfirm> { route ->
+                val vm = viewModel<QrLoginConfirmViewModel>(key = route.requestId) {
+                    QrLoginConfirmViewModel.create(route.requestId)
+                }
+                QrLoginConfirmScreen(
+                    vm,
+                    onNavigateBack = { aniNavigator.popBackStack(route, true) },
+                    onNavigateLogin = {
+                        aniNavigator.popBackStack(route, true)
+                        aniNavigator.navigateLogin()
+                    },
+                )
+            }
             entry<NavRoutes.Main> { route ->
                 val navigationLayoutType =
                     AniNavigationSuiteDefaults.calculateLayoutType(
@@ -355,14 +384,12 @@ private fun AniAppContentImpl(
                     },
                     onNavigateToEmailLogin = { aniNavigator.navigateEmailLoginStart() },
                     onNavigateToOAuth = { aniNavigator.navigateOAuthAuthorize(it.id) },
-                    loadOpenSourceLibrariesJsons = {
-                        listOf(
-                            Res.readBytes("files/aboutlibraries.json"),
-                            Res.readBytes("files/additional_libraries.json"),
-                        )
-                    },
+                    loadOpenSourceLibrariesJsons = ::loadOpenSourceLibrariesJsons,
                     Modifier.fillMaxSize(),
                     route.tab,
+                    onNavigateToQrLogin = if (isQrCodeScannerSupported) {
+                        { aniNavigator.navigateQrLoginScan() }
+                    } else null,
                     navigationIcon = {
                         BackNavigationIconButton(
                             {
@@ -458,6 +485,25 @@ private fun AniAppContentImpl(
                     },
                     Modifier.fillMaxSize(),
                     windowInsets = windowInsets,
+                )
+            }
+            entry<NavRoutes.SubjectRelationGraph> { route ->
+                val vm = viewModel<SubjectRelationGraphViewModel>(key = "subject-relation-graph-${route.subjectId}") {
+                    SubjectRelationGraphViewModel(route.subjectId)
+                }
+                SubjectRelationGraphScreen(
+                    vm,
+                    onClickSubject = {
+                        aniNavigator.navigateSubjectDetails(
+                            it.subjectId,
+                            SubjectDetailPlaceholder(it.subjectId, it.name, it.nameCn, it.image),
+                        )
+                    },
+                    Modifier.fillMaxSize(),
+                    windowInsets = windowInsets,
+                    navigationIcon = {
+                        BackNavigationIconButton({ aniNavigator.popBackStack(route, inclusive = true) })
+                    },
                 )
             }
             entry<NavRoutes.PersonDetail> { route ->
@@ -573,6 +619,7 @@ private fun AniAppContentImpl(
                             it.subjectId,
                             placeholder = SubjectDetailPlaceholder(
                                 id = it.subjectId,
+                                name = it.subjectOriginalTitle,
                                 nameCN = it.subjectTitle,
                                 coverUrl = it.imageUrl,
                             ),

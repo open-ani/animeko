@@ -53,12 +53,28 @@ interface SubjectCollectionTypeEditActions {
      * @return 失败原因, 成功为 `null`.
      */
     suspend fun setSelfCollectionType(new: UnifiedCollectionType): LoadError?
+
+    /**
+     * [setSelfCollectionType] 成功后是否应该询问 "同时设置所有剧集为看过".
+     * 供不使用 [EditableSubjectCollectionTypeDialogsHost] 的界面 (例如 TV) 在设置完成后同步读取.
+     */
+    val shouldOfferMarkAllWatched: Boolean
+
     fun setAllEpisodesWatched()
+
+    /**
+     * 等待完成的 [setAllEpisodesWatched].
+     *
+     * @return 失败原因, 成功为 `null`.
+     */
+    suspend fun setAllEpisodesWatchedAwait(): LoadError?
     fun dismissSetAllEpisodesDoneDialog()
 
     companion object Noop : SubjectCollectionTypeEditActions {
         override suspend fun setSelfCollectionType(new: UnifiedCollectionType): LoadError? = null
+        override val shouldOfferMarkAllWatched: Boolean get() = false
         override fun setAllEpisodesWatched() {}
+        override suspend fun setAllEpisodesWatchedAwait(): LoadError? = null
         override fun dismissSetAllEpisodesDoneDialog() {}
     }
 }
@@ -93,6 +109,7 @@ class EditableSubjectCollectionTypeState(
      * 是否显示 "将所有剧集标记为看过" 对话框
      */
     private val showSetAllEpisodesDoneDialogFlow = MutableStateFlow(false)
+    override val shouldOfferMarkAllWatched: Boolean get() = showSetAllEpisodesDoneDialogFlow.value
 
     /**
      * [setSelfCollectionType] 的后台任务
@@ -143,8 +160,12 @@ class EditableSubjectCollectionTypeState(
     }
 
     override fun setAllEpisodesWatched() {
-        backgroundScope.launch { onSetAllEpisodesWatched() }
+        backgroundScope.launch { setAllEpisodesWatchedAwait() }
     }
+
+    override suspend fun setAllEpisodesWatchedAwait(): LoadError? = setAllEpisodesWatchedTasker.async {
+        LoadError.runAndWrapOrThrowCancellation { onSetAllEpisodesWatched() }
+    }.await()
 
     override fun dismissSetAllEpisodesDoneDialog() {
         showSetAllEpisodesDoneDialogFlow.value = false
@@ -217,13 +238,18 @@ fun EditableSubjectCollectionTypeDialogsHost(
     presentation: EditableSubjectCollectionTypeState.Presentation,
     actions: SubjectCollectionTypeEditActions,
 ) {
+    val scope = rememberCoroutineScope()
+    val toaster = LocalToaster.current
     if (presentation.showSetAllEpisodesDoneDialog) {
         SetAllEpisodeDoneDialog(
             onDismissRequest = { actions.dismissSetAllEpisodesDoneDialog() },
             isWorking = presentation.isSetAllEpisodesWatchedWorking,
             onConfirm = {
-                actions.setAllEpisodesWatched()
-                actions.dismissSetAllEpisodesDoneDialog()
+                scope.launch {
+                    val error = actions.setAllEpisodesWatchedAwait()
+                    if (error == null) actions.dismissSetAllEpisodesDoneDialog()
+                    else toaster.showLoadError(error)
+                }
             },
         )
     }
@@ -241,7 +267,7 @@ private fun SetAllEpisodeDoneDialog(
         icon = { Icon(Icons.Rounded.TaskAlt, null) },
         text = { Text(stringResource(Lang.subject_collection_set_all_episodes_watched)) },
         confirmButton = {
-            TextButton(onConfirm) { Text(stringResource(Lang.subject_collection_set)) }
+            TextButton(onConfirm, enabled = !isWorking) { Text(stringResource(Lang.subject_collection_set)) }
 
             if (isWorking) {
                 CircularProgressIndicator(Modifier.padding(start = 8.dp).size(24.dp))

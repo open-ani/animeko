@@ -27,7 +27,7 @@ import kotlin.test.assertTrue
  * AniDatabase 迁移测试 (infra#10, P0#18).
  *
  * 生产迁移链 (CommonKoinModule): 1..15 destructive, 16 起走
- * AutoMigration 16→17→18→19, 手动 [MIGRATION_19_20], AutoMigration 20→21→22→23→24.
+ * AutoMigration 16→17→18→19, 手动 [MIGRATION_19_20], AutoMigration 20→21→22→23→24→25.
  *
  * [MigrationTestHelper] 从 `schemas/<db fqn>/<version>.json` 建旧版本库,
  * runMigrationsAndValidate 会把迁移后的实际 schema 与目标版本 json 逐表逐列校验.
@@ -189,6 +189,34 @@ class AniDatabaseMigrationTest {
             connection.prepare("SELECT COUNT(*) FROM `torrent_cache_episode`").use { statement ->
                 assertTrue(statement.step())
                 assertEquals(0L, statement.getLong(0))
+            }
+        }
+    }
+
+    @Test
+    fun `MIG-08 v24到v25的AutoMigration为subject_collection增加tmdbArt列且旧行为NULL`() {
+        val helper = createHelper()
+        helper.createDatabase(24).use { connection ->
+            connection.execSQL(
+                "INSERT INTO `subject_collection` (`subjectId`, `name`, `nameCn`, `summary`, `nsfw`, `imageLarge`, " +
+                        "`totalEpisodes`, `airDate`, `aliases`, `tags`, `completeDate`, `collectionType`, " +
+                        "`collection_stats_wish`, `collection_stats_doing`, `collection_stats_done`, `collection_stats_onHold`, " +
+                        "`collection_stats_dropped`, `rating_rank`, `rating_total`, `rating_score`, `rating_count_s1`, " +
+                        "`rating_count_s2`, `rating_count_s3`, `rating_count_s4`, `rating_count_s5`, `rating_count_s6`, " +
+                        "`rating_count_s7`, `rating_count_s8`, `rating_count_s9`, `rating_count_s10`, `self_rating_score`, " +
+                        "`self_rating_tags`, `self_rating_isPrivate`) VALUES (1, 'n', 'cn', '', 0, '', 12, 0, X'5B5D', X'5B5D', 0, " +
+                        "'DOING', 0, 0, 0, 0, 0, 0, 0, '0', 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, X'5B5D', 0)",
+            )
+        }
+        helper.runMigrationsAndValidate(25, emptyList()).use { connection ->
+            assertContains(connection.columnNames("subject_collection"), "tmdbArt")
+            connection.prepare(
+                "SELECT `tmdbArt`, `nameCn` FROM `subject_collection` WHERE `subjectId` = 1",
+            ).use { statement ->
+                assertTrue(statement.step())
+                // 旧行没有 TMDB 图片, 新列为 NULL, 其余数据保留
+                assertTrue(statement.isNull(0))
+                assertEquals("cn", statement.getText(1))
             }
         }
     }

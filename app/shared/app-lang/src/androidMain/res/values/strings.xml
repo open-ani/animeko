@@ -323,6 +323,9 @@
     <string name="settings_app_light_up_mode_description">Highlight the episodes that have already been watched, instead of the ones about to be watched</string>
     <string name="settings_app_episode_images">Episode stills</string>
     <string name="settings_app_episode_images_description">Show episode still images from TMDB in episode lists (available for some anime only)</string>
+    <string name="settings_app_subject_title">Anime title</string>
+    <string name="settings_app_use_original_title">Show original title</string>
+    <string name="settings_app_use_original_title_description">Prefer the original title (usually Japanese) over the Chinese title in anime lists and details</string>
     <string name="settings_app_language">Language</string>
     <string name="settings_app_language_system">System language</string>
     <string name="settings_app_language_restart">Restart to take effect</string>
@@ -791,6 +794,8 @@
     <string name="video_player_mute">Mute</string>
     <string name="video_player_volume">Volume</string>
     <string name="video_player_next_episode">Next episode</string>
+    <string name="video_player_play">Play</string>
+    <string name="video_player_pause">Pause</string>
     <string name="video_player_select_episode">Episodes</string>
     <string name="video_player_send">Send</string>
     <string name="video_player_speed">Speed</string>
@@ -1095,6 +1100,7 @@
     <string name="settings_account_developer_status_pending">Under review, this usually takes a few minutes</string>
     <string name="settings_account_developer_status_unavailable">Developer certification is not available on this server</string>
     <string name="settings_account_developer_valid_until">Valid until %1$s. It is re-evaluated automatically before it expires, no need to apply again.</string>
+    <string name="settings_account_developer_outstanding_contributor">Thank you for your outstanding contributions to Animeko. Your developer status is valid long-term.</string>
     <string name="settings_account_developer_apply">Apply</string>
     <string name="settings_account_developer_apply_limit">You can apply once a day and up to 3 times a week</string>
     <string name="settings_account_developer_next_apply_at">Next application: %1$s</string>
@@ -1146,13 +1152,30 @@
     <string name="subject_details_relation_sequel">Sequel</string>
     <string name="subject_details_relation_derived">Spin-off</string>
     <string name="subject_details_relation_special">Special</string>
+    <string name="subject_details_relation_main_story">Main story</string>
+    <string name="subject_details_relation_compilation">Compilation</string>
+    <string name="subject_relation_graph_title">Series graph</string>
+    <string name="subject_relation_graph_entry">Graph</string>
+    <string name="subject_relation_graph_summary">%1$d in main story · %2$d related</string>
+    <string name="subject_relation_graph_summary_main_only">%1$d in main story</string>
+    <string name="subject_relation_graph_ordinal">Part %1$d</string>
+    <string name="subject_relation_graph_label_current">%1$s · Current</string>
+    <string name="subject_relation_graph_show_more">%1$d more</string>
+    <string name="subject_relation_graph_show_less">Show less</string>
+    <string name="subject_relation_graph_truncated">This series is too large. Only part of it is shown.</string>
+    <string name="subject_relation_graph_episodes">%1$d eps</string>
+    <string name="subject_relation_graph_platform_movie">Movie</string>
+    <string name="subject_relation_graph_platform_special">Special</string>
     <string name="subject_details_prev_page">Previous page</string>
     <string name="subject_details_next_page">Next page</string>
     <string name="subject_details_air_date_format">%1$s/%2$s/%3$s</string>
     <string name="subject_details_rating_summary">#%1$s · %2$s ratings</string>
     <string name="subject_details_reviews_count">%1$s reviews</string>
+    <string name="subject_details_review_title">Review</string>
+    <string name="subject_details_overview">Overview</string>
+    <string name="comment_review_hidden">[Hidden content]</string>
     <string name="subject_details_rate">Rate</string>
-    <string name="subject_details_summary">Summary</string>
+    <string name="subject_details_summary">Description</string>
     <string name="foundation_load_error_network">Network error</string>
     <string name="foundation_load_error_rate_limited">You\'re doing that too fast. Please try again</string>
     <string name="foundation_load_error_service_unavailable">Service unavailable</string>
@@ -1285,6 +1308,8 @@
     <string name="subject_progress_updates_on">Updates %1$s</string>
     <string name="subject_progress_watched">Watched %1$s</string>
     <string name="subject_progress_unknown">Unknown</string>
+    <string name="subject_progress_episode_counts">%1$s watched / %2$s total</string>
+    <string name="subject_progress_episode_counts_on_air">%1$s watched / %2$s aired / %3$s total</string>
     <string name="subject_airing_upcoming">Not yet aired</string>
     <string name="subject_airing_on_air">On air</string>
     <string name="subject_airing_on_air_to">Up to %1$s</string>
@@ -1541,6 +1566,16 @@
     <string name="person_details_career_writer">Writer</string>
     <string name="person_details_career_illustrator">Illustrator</string>
     <string name="person_details_career_actor">Actor</string>
+    <string name="people_character_intro">Character introduction</string>
+    <string name="people_voice_actor_intro">Voice actor introduction</string>
+    <string name="people_staff_intro">Staff introduction</string>
+    <string name="people_discussion">Discussion</string>
+    <string name="people_discussion_source">From user discussions</string>
+    <string name="people_view_image">View image</string>
+    <string name="people_no_information">No introduction or basic information available</string>
+    <string name="people_bangumi_unavailable">Bangumi comments are temporarily unavailable</string>
+    <string name="people_career_singer">Singer</string>
+    <string name="people_career_director">Director</string>
 
     <!-- Watch Together -->
     <string name="watch_together_title">Watch Together</string>
@@ -1605,7 +1640,7 @@
     <string name="watch_together_you">(me)</string>
     <string name="watch_together_follow_host_desc">Automatically join the episode the host is watching and stay in sync</string>
     <string name="watch_together_host_desc">Your play, pause and seeks are synced to following members</string>
-    <string name="watch_together_host_empty_self">You haven\'t started playing. Once you enter an episode, following members join automatically.</string>
+    <string name="watch_together_host_empty_self">You haven’t started playing. Once you enter an episode, following members join automatically.</string>
     <string name="watch_together_episode_label">Ep %1$s · %2$s</string>
     <string name="watch_together_state_playing">Host playing</string>
     <string name="watch_together_state_paused">Paused</string>
@@ -1628,6 +1663,29 @@
     <string name="image_viewer_copied">Image copied</string>
     <string name="image_viewer_copy_failed">Failed to copy image</string>
     <string name="image_viewer_close">Close</string>
+    <!-- Shared playback captcha messages -->
+    <string name="media_captcha_required_message">Complete %1$s to continue</string>
+    <string name="media_captcha_image">image verification</string>
+    <string name="media_captcha_cloudflare">Cloudflare verification</string>
+    <string name="media_captcha_turnstile">Cloudflare Turnstile verification</string>
+    <string name="media_captcha_slider">slider verification</string>
+    <string name="media_captcha_unknown">verification</string>
+    <string name="subject_details_no_episodes">No episodes available</string>
+    <string name="subject_details_no_summary">No summary available</string>
+    <string name="subject_details_tags">Tags</string>
+    <string name="subject_details_empty">No content available</string>
+    <string name="subject_details_main_episodes">Main episodes</string>
+    <string name="subject_details_other_episodes">Other episodes</string>
+    <string name="subject_details_unrated">Clear rating</string>
+    <string name="subject_details_refresh">Refresh</string>
+    <string name="subject_details_air_month">%1$d/%2$d</string>
+    <string name="subject_details_ratings_count">%1$s ratings</string>
+    <string name="rating_increase">Increase rating</string>
+    <string name="rating_decrease">Decrease rating</string>
+    <string name="exploration_subject_details">Anime details</string>
+    <string name="exploration_for_you">For you</string>
+    <string name="exploration_loading">Loading…</string>
+    <string name="exploration_load_failed">Unable to load. Please try again.</string>
     <string name="downloads_load_failed">Unable to load download information</string>
     <string name="downloads_empty">No episodes available to download</string>
     <string name="downloads_create_failed">Unable to add this download.</string>
@@ -1642,6 +1700,32 @@
     <string name="downloads_episode_picker_current">Current</string>
     <string name="downloads_episode_picker_selected_count">%1$d episodes selected</string>
     <string name="downloads_episode_picker_back">Back</string>
+    <string name="qr_login_title">Scan to sign in</string>
+    <string name="qr_login_settings_description">Sign in to this account on a TV or another device</string>
+    <string name="qr_login_scan_hint">Point the camera at the QR code on your TV</string>
+    <string name="qr_login_scan_invalid">This is not an Animeko sign-in QR code</string>
+    <string name="qr_login_scan_torch">Flashlight</string>
+    <string name="qr_login_camera_permission">Camera access is needed to scan the QR code</string>
+    <string name="qr_login_camera_permission_grant">Allow camera access</string>
+    <string name="qr_login_confirm_title">Confirm sign-in</string>
+    <string name="qr_login_confirm_headline">Sign in on a new device?</string>
+    <string name="qr_login_confirm_as">The device below will be signed in as %1$s</string>
+    <string name="qr_login_confirm_as_current">The device below will be signed in to your account</string>
+    <string name="qr_login_confirm_unknown_device">Unknown device</string>
+    <string name="qr_login_confirm_device_requesting">Requesting to sign in</string>
+    <string name="qr_login_confirm_warning">Only confirm if you are looking at this device right now. Never scan a sign-in QR code that someone sent you.</string>
+    <string name="qr_login_confirm_approve">Confirm sign-in</string>
+    <string name="qr_login_confirm_reject">Decline</string>
+    <string name="qr_login_approved_title">Signed in</string>
+    <string name="qr_login_approved_description">%1$s is now signed in to your account. You can put your phone down.</string>
+    <string name="qr_login_rejected_title">Sign-in declined</string>
+    <string name="qr_login_expired">This QR code has expired. Refresh it on the TV and try again.</string>
+    <string name="qr_login_already_handled">This QR code has already been used</string>
+    <string name="qr_login_requires_login">Sign in to Animeko on this device first</string>
+    <string name="qr_login_failed">Something went wrong. Check your network and try again.</string>
+    <string name="qr_login_retry">Retry</string>
+    <string name="qr_login_done">Done</string>
+    <string name="qr_login_close">Close</string>
 </resources>
 
 <!--@formatter:on-->

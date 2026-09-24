@@ -47,6 +47,7 @@ import me.him188.ani.app.domain.mediasource.web.PageEvaluator
 import me.him188.ani.app.domain.mediasource.web.PageExpectation
 import me.him188.ani.app.domain.mediasource.web.PageVerdict
 import me.him188.ani.app.domain.mediasource.web.SolveRequest
+import me.him188.ani.app.domain.mediasource.web.acceptSelectorSearch
 import me.him188.ani.app.domain.mediasource.web.normalizedSessionHost
 import me.him188.ani.app.domain.mediasource.web.normalizedStorageOrigin
 import me.him188.ani.utils.coroutines.IO_
@@ -213,7 +214,7 @@ class WebSessionManager(
             }
         }
 
-        val page = httpFetch(url)
+        val page = httpFetch(url, expectation)
         val verdict = evaluator.evaluate(page, expectation)
         if (verdict !is PageVerdict.Blocked || verdict.reason !is BlockReason.Captcha || host == null) {
             return verdict
@@ -321,11 +322,15 @@ class WebSessionManager(
         return pageHost == host || pageHost.endsWith(".$host") || host.endsWith(".$pageHost")
     }
 
-    private suspend fun httpFetch(url: String): LoadedPage = withContext(ioContext) {
+    private suspend fun httpFetch(url: String, expectation: PageExpectation<*>): LoadedPage = withContext(ioContext) {
         try {
             client.use {
                 prepareGet(url) {
-                    accept(ContentType.Text.Html)
+                    if (expectation is PageExpectation.SearchResults) {
+                        acceptSelectorSearch(expectation.config.subjectFormatId)
+                    } else {
+                        accept(ContentType.Text.Html)
+                    }
                 }.execute { response ->
                     response.toLoadedPage()
                 }

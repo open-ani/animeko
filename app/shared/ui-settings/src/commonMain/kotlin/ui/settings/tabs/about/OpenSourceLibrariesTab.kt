@@ -60,7 +60,7 @@ fun OpenSourceLibrariesTab(
 ) {
     val libraries by produceState<Libs?>(null, loadLibrariesJsons) {
         value = withContext(Dispatchers.Default) {
-            mergeLibs(
+            mergeOpenSourceLibraries(
                 loadLibrariesJsons().map { json ->
                     Libs.Builder().withJson(json.decodeToString()).build()
                 },
@@ -85,7 +85,7 @@ fun OpenSourceLibrariesTab(
  * 补充数据里通常只写许可证引用不带原文; 合并时按许可证 hash (JSON 里 licenses map
  * 的 key) 把无原文的许可证替换为其他文件中带原文的同名许可证, 展开时就能显示原文.
  */
-private fun mergeLibs(parsed: List<Libs>): Libs {
+fun mergeOpenSourceLibraries(parsed: List<Libs>): Libs {
     val licensesWithContentByHash = parsed.flatMap { it.licenses }
         .filter { !it.licenseContent.isNullOrBlank() }
         .associateBy { it.hash }

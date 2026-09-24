@@ -76,6 +76,7 @@ import me.him188.ani.app.ui.lang.settings_account_developer_description
 import me.him188.ani.app.ui.lang.settings_account_developer_group
 import me.him188.ani.app.ui.lang.settings_account_developer_load_failed
 import me.him188.ani.app.ui.lang.settings_account_developer_next_apply_at
+import me.him188.ani.app.ui.lang.settings_account_developer_outstanding_contributor
 import me.him188.ani.app.ui.lang.settings_account_developer_result_failed
 import me.him188.ani.app.ui.lang.settings_account_developer_result_failed_title
 import me.him188.ani.app.ui.lang.settings_account_developer_result_rejected
@@ -224,12 +225,19 @@ internal fun GithubAccountTabImpl(
                 verification.isDeveloper -> Banner(
                     icon = Icons.Rounded.Verified,
                     title = stringResource(Lang.settings_account_developer_status_certified),
-                    text = verification.validUntil?.let {
-                        stringResource(Lang.settings_account_developer_valid_until, formatDate(it))
+                    text = if (verification.isOutstandingContributor) {
+                        stringResource(Lang.settings_account_developer_outstanding_contributor)
+                    } else {
+                        verification.validUntil?.let {
+                            stringResource(Lang.settings_account_developer_valid_until, formatDate(it))
+                        }
                     },
                     containerColor = MaterialTheme.colorScheme.primaryContainer,
                     contentColor = MaterialTheme.colorScheme.onPrimaryContainer,
-                    modifier = Modifier.testTag("developerVerification-validUntil"),
+                    modifier = Modifier.testTag(
+                        if (verification.isOutstandingContributor) "developerVerification-outstandingContributor"
+                        else "developerVerification-validUntil",
+                    ),
                 )
 
                 else -> ApplySection(verification, isPending, onApply)

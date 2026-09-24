@@ -454,7 +454,7 @@ class WatchTogetherManager(
                 val receivedAt = localNowMillis()
                 session.lastReportedWatching.value = watching
                 session.serverClock.recordSample(response.serverTime, sentAt, receivedAt)
-                response.version?.let { session.noteServerVersion(it) }
+                session.noteServerVersion(response.version)
                 response.snapshot?.let { processSnapshot(session, it) }
                 if (response.membership != AniWatchTogetherMembership.OK) {
                     scheduleMembershipLoss(session, response.membership)

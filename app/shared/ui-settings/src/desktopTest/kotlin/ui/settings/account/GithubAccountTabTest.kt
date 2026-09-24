@@ -25,6 +25,15 @@ import kotlin.test.Test
 import kotlin.test.assertEquals
 
 class GithubAccountTabTest {
+    @Test
+    fun `approved outstanding contributor is told the status is long-term`() = runAniComposeUiTest {
+        render(info(isDeveloper = true, isOutstandingContributor = true))
+
+        onNodeWithTag("developerVerification-outstandingContributor").assertIsDisplayed()
+        onNodeWithTag("developerVerification-validUntil").assertDoesNotExist()
+        onNodeWithTag("developerVerification-apply").assertDoesNotExist()
+    }
+
     private class Callbacks {
         var applies = 0
         var retries = 0
@@ -35,10 +44,12 @@ class GithubAccountTabTest {
         latestRequest: DeveloperVerificationRequestInfo? = null,
         nextApplyAt: Long? = null,
         enabled: Boolean = true,
+        isOutstandingContributor: Boolean = false,
     ) = DeveloperVerificationInfo(
         enabled = enabled,
         isDeveloper = isDeveloper,
-        validUntil = if (isDeveloper) 1_800_000_000_000 else null,
+        validUntil = if (isDeveloper && !isOutstandingContributor) 1_800_000_000_000 else null,
+        isOutstandingContributor = isOutstandingContributor,
         latestRequest = latestRequest,
         nextApplyAt = nextApplyAt,
     )

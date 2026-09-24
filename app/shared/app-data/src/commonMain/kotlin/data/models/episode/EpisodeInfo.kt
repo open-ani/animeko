@@ -12,6 +12,7 @@ package me.him188.ani.app.data.models.episode
 import androidx.compose.runtime.Immutable
 import androidx.compose.runtime.Stable
 import kotlinx.serialization.Serializable
+import me.him188.ani.app.data.models.subject.preferredDisplayName as subjectPreferredDisplayName
 import me.him188.ani.datasources.api.EpisodeSort
 import me.him188.ani.datasources.api.EpisodeType
 import me.him188.ani.datasources.api.PackedDate
@@ -61,6 +62,16 @@ data class EpisodeInfo(
 
 @Stable
 val EpisodeInfo.displayName get() = nameCn.ifBlank { name }
+
+@Stable
+val EpisodeInfo.nameOrNameCn get() = name.ifBlank { nameCn }
+
+/**
+ * 根据用户偏好选择的显示名称, 与 [subjectPreferredDisplayName] 同一约定.
+ * @param useOriginalTitle 为 `true` 时优先显示原名 ([name]), 为 `false` 时行为与 [displayName] 一致.
+ */
+fun EpisodeInfo.preferredDisplayName(useOriginalTitle: Boolean): String =
+    if (useOriginalTitle) nameOrNameCn else displayName
 
 @Stable
 fun EpisodeInfo.renderEpisodeEp() = sort.toString()

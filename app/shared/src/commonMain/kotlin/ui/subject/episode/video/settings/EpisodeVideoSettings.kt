@@ -76,6 +76,7 @@ import me.him188.ani.app.ui.settings.framework.components.SliderItem
 import me.him188.ani.app.ui.settings.framework.components.SwitchItem
 import me.him188.ani.app.ui.settings.framework.components.TextItem
 import me.him188.ani.danmaku.ui.DanmakuConfig
+import me.him188.ani.danmaku.ui.DanmakuConfigRanges
 import me.him188.ani.danmaku.ui.DanmakuStyle
 import me.him188.ani.utils.platform.isDesktop
 import org.jetbrains.compose.resources.stringResource
@@ -228,7 +229,7 @@ fun EpisodeVideoSettings(
                     // 故意每次改都更新, 可以即时预览
                     setDanmakuConfig { config -> config.copy(style = config.style.copy(fontSize = DanmakuStyle.Default.fontSize * newValue)) }
                 },
-                valueRange = 0.50f..3f,
+                valueRange = DanmakuConfigRanges.FontSizeScale,
 //                steps = ((3f - 0.50f) / 0.05f).toInt() - 1,
                 title = { Text(fontSizeText) },
                 valueLabel = { Text(remember(fontSize) { "${(fontSize * 100).roundToInt()}%" }) },
@@ -244,7 +245,7 @@ fun EpisodeVideoSettings(
                     // 故意每次改都更新, 可以即时预览
                     setDanmakuConfig { config -> config.copy(style = config.style.copy(alpha = newValue)) }
                 },
-                valueRange = 0f..1f,
+                valueRange = DanmakuConfigRanges.Opacity,
 //                steps = ((1f - 0f) / 0.05f).toInt() - 1,
                 title = { Text(opacityText) },
                 valueLabel = { Text(remember(alpha) { "${(alpha * 100).roundToInt()}%" }) },
@@ -260,7 +261,7 @@ fun EpisodeVideoSettings(
                     // 故意每次改都更新, 可以即时预览
                     setDanmakuConfig { config -> config.copy(style = config.style.copy(strokeWidth = newValue * DanmakuStyle.Default.strokeWidth)) }
                 },
-                valueRange = 0f..2f,
+                valueRange = DanmakuConfigRanges.StrokeWidthScale,
 //                steps = ((2f - 0f) / 0.1f).toInt() - 1,
                 title = { Text(strokeWidthText) },
                 valueLabel = { Text(remember(strokeWidth) { "${(strokeWidth * 100).roundToInt()}%" }) },
@@ -282,7 +283,7 @@ fun EpisodeVideoSettings(
                         }
                     }
                 },
-                valueRange = 100f..900f,
+                valueRange = DanmakuConfigRanges.FontWeight.run { first.toFloat()..last.toFloat() },
 //                steps = ((900 - 100) / 100) - 1,
                 title = { Text(fontWeightText) },
                 valueLabel = { Text(remember(fontWeight) { "${fontWeight.toInt()}" }) },
@@ -299,7 +300,7 @@ fun EpisodeVideoSettings(
                 onValueChange = { newValue ->
                     setDanmakuConfig { config -> config.copy(speed = newValue * DanmakuConfig.Default.speed) }
                 },
-                valueRange = 0.2f..3f,
+                valueRange = DanmakuConfigRanges.SpeedScale,
 //                steps = ((3f - 0.2f) / 0.1f).toInt() - 1,
                 title = { Text(speedText) },
                 description = { Text(speedDescriptionText) },
@@ -310,14 +311,11 @@ fun EpisodeVideoSettings(
             val platform = LocalPlatform.current
             val displayDensityRange = remember(platform) {
                 // 100% .. 0%
-                36.dp..(if (platform.isDesktop()) 720.dp else 240.dp)
+                DanmakuConfigRanges.densitySeparation(platform.isDesktop())
             }
             var displayDensity by remember(danmakuConfig) {
                 mutableFloatStateOf(
-                    1.minus(
-                        (danmakuConfig.safeSeparation - displayDensityRange.start) /
-                                (displayDensityRange.endInclusive - displayDensityRange.start + 1.dp),
-                    ).div(0.1f).roundToInt().toFloat(),
+                    DanmakuConfigRanges.densityLevel(danmakuConfig.safeSeparation, displayDensityRange),
                 )
             }
             SliderItem(
@@ -329,13 +327,11 @@ fun EpisodeVideoSettings(
                 onValueChangeFinished = {
                     setDanmakuConfig { config ->
                         config.copy(
-                            safeSeparation = displayDensityRange.start +
-                                    ((displayDensityRange.endInclusive - displayDensityRange.start + 1.dp)
-                                        .times((1 - displayDensity * 0.1f))),
+                            safeSeparation = DanmakuConfigRanges.separationForDensity(displayDensity, displayDensityRange),
                         )
                     }
                 },
-                valueRange = 0f..10f,
+                valueRange = DanmakuConfigRanges.DensityLevel,
                 steps = 9,
                 title = { Text(densityText) },
                 valueLabel = {
@@ -352,9 +348,9 @@ fun EpisodeVideoSettings(
             SliderItem(
                 value = danmakuConfig.displayArea,
                 onValueChange = { newValue ->
-                    setDanmakuConfig { config -> config.copy(displayArea = newValue.coerceIn(0f, 1f)) }
+                    setDanmakuConfig { config -> config.copy(displayArea = newValue.coerceIn(DanmakuConfigRanges.DisplayArea)) }
                 },
-                valueRange = 0f..1f,
+                valueRange = DanmakuConfigRanges.DisplayArea,
                 title = { Text(displayAreaText) },
                 valueLabel = {
                     val v = danmakuConfig.displayArea
