@@ -31,6 +31,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.text.selection.SelectionContainer
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.outlined.OpenInNew
@@ -521,20 +522,24 @@ private fun SubjectTitleBlock(info: SubjectInfo, uiState: SubjectDetailsUiState)
     val primaryTitle = info.preferredDisplayName(useOriginalTitle)
     val secondaryTitle = if (useOriginalTitle) info.displayName else info.name
     Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-        Text(
-            primaryTitle,
-            style = MaterialTheme.typography.headlineSmall,
-            maxLines = 2,
-            overflow = TextOverflow.Ellipsis,
-        )
-        if (secondaryTitle.isNotBlank() && secondaryTitle != primaryTitle) {
-            Text(
-                secondaryTitle,
-                style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis,
-            )
+        SelectionContainer {
+            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                Text(
+                    primaryTitle,
+                    style = MaterialTheme.typography.headlineSmall,
+                    maxLines = 2,
+                    overflow = TextOverflow.Ellipsis,
+                )
+                if (secondaryTitle.isNotBlank() && secondaryTitle != primaryTitle) {
+                    Text(
+                        secondaryTitle,
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                    )
+                }
+            }
         }
         // 元数据行 (对齐定稿的内联文本, 非 chip): 季度 · 播出状态 · 总集数
         FlowRow(

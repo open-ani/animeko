@@ -9,6 +9,7 @@
 
 package me.him188.ani.tv.ui.episode
 
+import android.view.KeyEvent as AndroidKeyEvent
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.core.updateTransition
@@ -147,7 +148,6 @@ import me.him188.ani.tv.ui.watchtogether.TvWatchTogetherPanel
 import org.jetbrains.compose.resources.pluralStringResource
 import org.jetbrains.compose.resources.stringResource
 import org.openani.mediamp.MediaStatus
-import android.view.KeyEvent as AndroidKeyEvent
 
 /*
  * TV 播放页.
@@ -187,7 +187,7 @@ internal fun TvEpisodeScreen(
     val onAction = presentationState::onAction
     val loadingState = uiState.loadingState
     val title = uiState.title
-    val bufferedFraction = uiState.bufferedFraction
+    val cacheProgress = uiState.cacheProgress
     val playbackSpeed = uiState.playbackSpeed
     val aspectRatioMode = uiState.aspectRatioMode
     val stripEpisodes = uiState.episodes
@@ -459,7 +459,7 @@ internal fun TvEpisodeScreen(
                             playWhenReady = uiState.playerState.playWhenReady,
                             positionMillis = positionMillis,
                             durationMillis = uiState.durationMillis,
-                            bufferedFraction = bufferedFraction,
+                            cacheProgress = cacheProgress,
                             hasNextEpisode = uiState.hasNextEpisode,
                             scrubMillis = state.scrubMillis,
                             speedLabel = formatSpeedLabel(playbackSpeed),

@@ -590,6 +590,7 @@ class SubjectCollectionRepositoryImpl(
                     subjectId = this.subjectId,
                     displayName = nameCn.ifEmpty { name },
                     imageLarge = imageLarge,
+                    imageThumb = imageThumb.ifEmpty { imageLarge },
                     totalEpisodes = totalEpisodes,
                 )
             }
@@ -712,6 +713,7 @@ private fun SubjectCollectionEntity.toSubjectInfo(): SubjectInfo {
         summary = summary,
         nsfw = nsfw,
         imageLarge = imageLarge,
+        imageThumb = imageThumb,
         totalEpisodes = totalEpisodes,
         airDate = airDate,
         tags = tags,
@@ -817,7 +819,8 @@ fun AniSubjectCollection.toEntity(
         nameCn = nameCn,
         summary = summary,
         nsfw = nsfw,
-        imageLarge = staticSubjectImageLargeUrl(id.toInt()),
+        imageLarge = imageLarge,
+        imageThumb = imageThumb,
         totalEpisodes = episodes.size,
         airDate = PackedDate.parseFromDate(airDate),
         aliases = aliases,
@@ -862,12 +865,6 @@ private fun AniTmdbSubjectArt.toSubjectTmdbArt(): SubjectTmdbArt = SubjectTmdbAr
 private fun AniTmdbImage.toTmdbImage(): TmdbImage = TmdbImage(medium = medium, large = large, vector = vector)
 
 /**
- * 条目大封面的静态 CDN 地址. 不依赖本地数据库, 可用于本地无记录时的兜底展示.
- */
-fun staticSubjectImageLargeUrl(subjectId: Int): String =
-    "https://static.myani.org/bangumi/subjects/$subjectId/large"
-
-/**
  * 本地数据库中缓存的条目展示信息.
  * @see SubjectCollectionRepository.getSubjectDisplayInfoOffline
  */
@@ -875,6 +872,8 @@ data class OfflineSubjectDisplayInfo(
     val subjectId: Int,
     val displayName: String,
     val imageLarge: String,
+    /** 列表用封面, 没有缩略图时与 [imageLarge] 相同. */
+    val imageThumb: String,
     val totalEpisodes: Int,
 )
 

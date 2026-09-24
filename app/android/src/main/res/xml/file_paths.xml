@@ -2,7 +2,7 @@
 <paths>
     <cache-path
             name="cache_files"
-            path="updates/download/" /> <!-- /data/data/me.him188.ani.debug2/cache/updates/download/ani-3.0.0.apk -->
+            path="updates/" /> <!-- 自动更新: cache/updates/download/ani-3.0.0.apk; 开发者安装指定 commit: cache/updates/dev-builds/ -->
 
     <cache-path
             name="image_viewer"

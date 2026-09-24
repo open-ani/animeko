@@ -316,7 +316,8 @@ private fun KoinApplication.otherModules(
 
     single<UpdateManager> {
         UpdateManager(
-            saveDir = getContext().files.cacheDir.resolve("updates/download"),
+            // Android FileProvider 共享整个 updates/ 目录, 见 file_paths.xml
+            rootDir = getContext().files.cacheDir.resolve("updates"),
         )
     }
 

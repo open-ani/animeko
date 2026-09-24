@@ -36,7 +36,7 @@ import me.him188.ani.app.ui.user.SelfInfoStateProducer
 import org.koin.core.component.KoinComponent
 import org.koin.core.component.inject
 
-class WatchTogetherViewModel : AbstractViewModel(), KoinComponent {
+open class WatchTogetherViewModel : AbstractViewModel(), KoinComponent {
     private val manager: WatchTogetherManager by inject()
     private val settingsRepository: SettingsRepository by inject()
     private val sessionStateProvider: SessionStateProvider by inject()

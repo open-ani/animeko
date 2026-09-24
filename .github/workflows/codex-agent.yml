@@ -60,7 +60,6 @@ env:
   BASE_BRANCH: main
   GIT_NAME: openanibot
   GIT_EMAIL: openanibot@users.noreply.github.com
-  CODEX_MODEL: ''   # optional model pin; empty = the applicable Codex CLI default
 
 jobs:
   # ---------------------------------------------------------------------------
@@ -247,10 +246,9 @@ jobs:
             --cd "$CLASSIFIER_DIR"
             --output-schema "$CLASSIFIER_DIR/schema.json"
             --output-last-message "$CLASSIFIER_DIR/classification.json"
+            --model gpt-6-sol
+            -c 'model_reasoning_effort="high"'
           )
-          if [ -n "$CODEX_MODEL" ]; then
-            CODEX_ARGS+=(--model "$CODEX_MODEL")
-          fi
           codex --ask-for-approval never exec "${CODEX_ARGS[@]}" - \
             < "$CLASSIFIER_DIR/prompt.txt" \
             > "$CLASSIFIER_DIR/codex.log" 2>&1
@@ -511,7 +509,8 @@ jobs:
           # also in ~/.codex/sessions/. No sandbox/approvals: required for MCP + driving the emulator.
           codex exec \
             --dangerously-bypass-approvals-and-sandbox \
-            ${CODEX_MODEL:+--model "$CODEX_MODEL"} \
+            --model gpt-6-astra \
+            -c 'model_reasoning_effort="high"' \
             "$(cat "$RUNNER_TEMP/prompt.txt")" \
             > "$LOG" 2>&1
           CODEX_EXIT=$?
@@ -777,14 +776,16 @@ jobs:
           if [ -n "$SID" ]; then
             codex exec resume "$SID" \
               --dangerously-bypass-approvals-and-sandbox \
-              ${CODEX_MODEL:+--model "$CODEX_MODEL"} \
+              --model gpt-6-astra \
+              -c 'model_reasoning_effort="high"' \
               "$(cat "$RUNNER_TEMP/prompt.txt")" \
               > "$LOG" 2>&1
           else
             echo "::warning::no remembered session for PR #$PR_NUMBER — starting fresh"
             codex exec \
               --dangerously-bypass-approvals-and-sandbox \
-              ${CODEX_MODEL:+--model "$CODEX_MODEL"} \
+              --model gpt-6-astra \
+              -c 'model_reasoning_effort="high"' \
               "$(cat "$RUNNER_TEMP/prompt.txt")" \
               > "$LOG" 2>&1
           fi
@@ -907,13 +908,15 @@ jobs:
           if [ -n "$SID" ]; then
             codex exec resume "$SID" \
               --dangerously-bypass-approvals-and-sandbox \
-              ${CODEX_MODEL:+--model "$CODEX_MODEL"} \
+              --model gpt-6-astra \
+              -c 'model_reasoning_effort="high"' \
               "$(cat "$RUNNER_TEMP/prompt.txt")" \
               > "$LOG" 2>&1
           else
             codex exec \
               --dangerously-bypass-approvals-and-sandbox \
-              ${CODEX_MODEL:+--model "$CODEX_MODEL"} \
+              --model gpt-6-astra \
+              -c 'model_reasoning_effort="high"' \
               "$(cat "$RUNNER_TEMP/prompt.txt")" \
               > "$LOG" 2>&1
           fi

@@ -26,6 +26,10 @@ import org.junit.runner.notification.RunListener
  * 手机模拟器还有系统栏, 测试 Activity 需要使用 `@style/AniTvDeviceTest` 主题让窗口延伸到系统栏之下,
  * Compose 根节点才是完整的 960×540dp.
  *
+ * 电视永远不在 touch mode, 而手机模拟器默认在. touch mode 下 clickable 节点拒绝编程式聚焦,
+ * 并且窗口首次布局和获得窗口焦点时会按系统的全局状态重置 touch mode, 覆盖界面在组合中发出的键盘模式请求.
+ * 所以每个测试开始前 (测试 Activity 启动前) 先把系统切出 touch mode.
+ *
  * 在模块的 `androidDeviceTest/AndroidManifest.xml` 中注册:
  * ```xml
  * <instrumentation ...>
@@ -58,6 +62,10 @@ class TvDisplayRunListener : RunListener() {
                     "${WIDTH_PX}x$HEIGHT_PX @ ${DENSITY_DPI}dpi. TV UI tests need a device whose physical screen " +
                     "is at least ${WIDTH_PX / 2}x${HEIGHT_PX / 2}.",
         )
+    }
+
+    override fun testStarted(description: Description?) {
+        InstrumentationRegistry.getInstrumentation().setInTouchMode(false)
     }
 
     override fun testRunFinished(result: Result?) {

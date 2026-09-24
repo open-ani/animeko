@@ -49,6 +49,7 @@ import androidx.paging.compose.itemKey
 import me.him188.ani.app.data.models.preference.NsfwMode
 import me.him188.ani.app.data.models.subject.FollowedSubjectInfo
 import me.him188.ani.app.data.models.subject.TestFollowedSubjectInfos
+import me.him188.ani.app.data.models.subject.listCoverUrl
 import me.him188.ani.app.data.models.subject.hasNewEpisodeToPlay
 import me.him188.ani.app.data.models.subject.preferredDisplayName
 import me.him188.ani.app.data.models.subject.subjectInfo
@@ -216,7 +217,7 @@ private fun FollowedSubjectItem(
         if (item != null) {
             val image = @Composable {
                 AsyncImage(
-                    item.subjectInfo.imageLarge,
+                    item.subjectInfo.listCoverUrl,
                     modifier = Modifier.size(imageSize),
                     contentDescription = item.subjectInfo.preferredDisplayName(useOriginalTitle),
                     contentScale = ContentScale.Crop,
