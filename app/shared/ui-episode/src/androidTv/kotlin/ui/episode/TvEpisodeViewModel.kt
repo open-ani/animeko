@@ -9,22 +9,14 @@
 
 package me.him188.ani.tv.ui.episode
 
-import android.graphics.Bitmap
 import androidx.compose.runtime.Stable
-import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.snapshotFlow
-import androidx.compose.ui.graphics.asImageBitmap
-import androidx.paging.PagingData
-import androidx.paging.cachedIn
 import kotlinx.coroutines.CancellationException
-import kotlinx.coroutines.CoroutineName
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
-import kotlinx.coroutines.NonCancellable
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.delay
-import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
@@ -40,181 +32,84 @@ import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.map
-import kotlinx.coroutines.flow.mapNotNull
 import kotlinx.coroutines.flow.onStart
 import kotlinx.coroutines.flow.receiveAsFlow
-import kotlinx.coroutines.flow.shareIn
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.transformLatest
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
-import me.him188.ani.app.data.models.episode.EpisodeComment
-import me.him188.ani.app.data.network.AutoSkipRepository
 import me.him188.ani.app.data.repository.episode.EpisodeCollectionRepository
-import me.him188.ani.app.data.repository.episode.EpisodeCommentRepository
 import me.him188.ani.app.data.repository.media.SelectorMediaSourceEpisodeCacheRepository
 import me.him188.ani.app.data.repository.subject.SubjectCollectionRepository
 import me.him188.ani.app.data.repository.user.SettingsRepository
-import me.him188.ani.app.domain.danmaku.DanmakuRepository
 import me.him188.ani.app.domain.episode.EpisodeCompletionContext.isKnownCompleted
-import me.him188.ani.app.domain.episode.EpisodeDanmakuLoader
-import me.him188.ani.app.domain.episode.EpisodeFetchSelectPlayState
-import me.him188.ani.app.domain.episode.GetSubjectRecommendationUseCase
 import me.him188.ani.app.domain.episode.SubjectRecommendation
 import me.him188.ani.app.domain.episode.UnsafeEpisodeSessionApi
 import me.him188.ani.app.domain.episode.episodeIdFlow
 import me.him188.ani.app.domain.episode.infoBundleFlow
 import me.him188.ani.app.domain.episode.mediaSelectorFlow
 import me.him188.ani.app.domain.media.fetch.MediaSourceFetchState
-import me.him188.ani.app.domain.media.resolver.MediaResolver
 import me.him188.ani.app.domain.mediasource.web.captcha.SolveOutcome
 import me.him188.ani.app.domain.mediasource.web.captcha.WebSessionManager
 import me.him188.ani.app.domain.player.VideoLoadingState
-import me.him188.ani.app.domain.player.extension.AutoSelectExtension
-import me.him188.ani.app.domain.player.extension.MarkAsWatchedExtension
-import me.him188.ani.app.domain.player.extension.ObserveWebMediaSourcePreferenceExtension
-import me.him188.ani.app.domain.player.extension.PlaybackSpeedExtension
-import me.him188.ani.app.domain.player.extension.RememberPlayProgressExtension
-import me.him188.ani.app.domain.player.extension.SaveMediaPreferenceExtension
-import me.him188.ani.app.domain.player.extension.SwitchMediaOnPlayerErrorExtension
-import me.him188.ani.app.domain.player.extension.SwitchNextEpisodeExtension
-import me.him188.ani.app.domain.player.extension.WatchTogetherPlayerExtension
-import me.him188.ani.app.domain.settings.GetDanmakuRegexFilterListFlowUseCase
-import me.him188.ani.app.domain.watchtogether.PlaybackAutomationGate
 import me.him188.ani.app.navigation.SubjectDetailPlaceholder
 import me.him188.ani.app.platform.ContextMP
-import me.him188.ani.app.ui.foundation.AbstractViewModel
+import me.him188.ani.app.ui.danmaku.UIDanmakuEvent
+import me.him188.ani.app.ui.subject.episode.EpisodeViewModel
 import me.him188.ani.app.videoplayer.ui.androidPlayerStatsFlow
-import me.him188.ani.app.videoplayer.ui.progress.MediaProgressFramePreviewState
+import me.him188.ani.app.videoplayer.ui.progress.createMediaProgressFramePreviewState
 import me.him188.ani.app.videoplayer.ui.progress.subtitleLanguage
-import me.him188.ani.app.videoplayer.videoenhancement.VideoEnhancementMode
-import me.him188.ani.app.videoplayer.videoenhancement.createVideoEnhancementController
-import me.him188.ani.danmaku.api.DanmakuEvent
-import me.him188.ani.danmaku.api.DanmakuInfo
 import me.him188.ani.danmaku.api.provider.MatchingDanmakuProvider
-import me.him188.ani.danmaku.ui.DanmakuConfig
-import me.him188.ani.danmaku.ui.DanmakuHostState
 import me.him188.ani.danmaku.ui.DanmakuPresentation
-import me.him188.ani.danmaku.ui.DanmakuTrackProperties
 import me.him188.ani.datasources.api.Media
 import me.him188.ani.datasources.api.topic.UnifiedCollectionType
 import me.him188.ani.tv.ui.episode.controls.TvSubtitleOption
 import me.him188.ani.tv.ui.episode.danmaku.TvDanmakuMatchState
 import me.him188.ani.tv.ui.episode.danmaku.TvDanmakuOrigin
-import me.him188.ani.tv.ui.episode.danmaku.TvUIDanmakuEvent
 import me.him188.ani.tv.ui.episode.danmaku.adjustForTv
-import me.him188.ani.tv.ui.episode.playback.TvAutoSkipController
-import me.him188.ani.tv.ui.episode.playback.TvChapter
 import me.him188.ani.tv.ui.episode.playback.TvPlaybackInteractionState
+import me.him188.ani.tv.ui.episode.playback.TvSkipPrompt
 import me.him188.ani.tv.ui.episode.recommendation.tvNavigationSubjectId
 import me.him188.ani.tv.ui.episode.source.TvSourceSelectionState
 import me.him188.ani.tv.ui.episode.source.tvSourceGroups
 import me.him188.ani.tv.ui.foundation.TvNavigationEvent
 import me.him188.ani.tv.ui.foundation.TvNavigationEvents
 import org.koin.core.Koin
-import org.openani.mediamp.ExperimentalMediampApi
-import org.openani.mediamp.MediampPlayer
-import org.openani.mediamp.MediampPlayerFactory
 import org.openani.mediamp.features.AspectRatioMode
-import org.openani.mediamp.features.Buffering
-import org.openani.mediamp.features.FramePreview
 import org.openani.mediamp.features.PlaybackSpeed
 import org.openani.mediamp.features.VideoAspectRatio
-import org.openani.mediamp.features.chapters
 import org.openani.mediamp.features.subtitleTracks
 import org.openani.mediamp.togglePlayWhenReady
 
 /**
- * TV 播放页薄 VM: 与手机共用同一套播放编排 (app-data domain),
- * 播放、弹幕、选源及一起看的操作决策均在此处处理, UI 只消费状态并发送 Intent.
+ * 将共享播放状态映射为 TV 展示状态，并将遥控器 Intent 接入共享播放操作。
  */
 @Stable
+@OptIn(UnsafeEpisodeSessionApi::class)
 class TvEpisodeViewModel(
-    val subjectId: Int,
+    subjectId: Int,
     initialEpisodeId: Int,
     context: ContextMP,
-    private val koin: Koin,
-    private val playerStateFactory: MediampPlayerFactory<*>,
+    koin: Koin,
     private val episodeCollectionRepository: EpisodeCollectionRepository,
     private val subjectCollectionRepository: SubjectCollectionRepository,
-    private val danmakuRepository: DanmakuRepository,
     private val settingsRepository: SettingsRepository,
-    private val getDanmakuRegexFilterListFlowUseCase: GetDanmakuRegexFilterListFlowUseCase,
-    private val episodeCommentRepository: EpisodeCommentRepository,
-    private val getSubjectRecommendations: GetSubjectRecommendationUseCase,
-    private val autoSkipRepository: AutoSkipRepository,
     private val selectorEpisodeCacheRepository: SelectorMediaSourceEpisodeCacheRepository,
     private val webSessionManager: WebSessionManager,
-    private val playbackAutomationGate: PlaybackAutomationGate,
-) : AbstractViewModel() {
-
-    val player: MediampPlayer =
-        playerStateFactory.create(context, backgroundScope.coroutineContext)
-
+) : EpisodeViewModel(subjectId, initialEpisodeId, initialIsFullscreen = true, context = context, koin = koin) {
+    private val resolvingCaptchaSources = MutableStateFlow<Set<String>>(emptySet())
     private val playbackInteraction = TvPlaybackInteractionState()
+    override val isAutoSkipOpEdAllowed: Boolean
+        get() = playbackInteraction.scrubMillis == null && player.state.value.isPlaying
     private val observeStats = MutableStateFlow(false)
     private val playerOptions = MutableStateFlow(TvPlayerOptionsState())
     private val danmakuMatch = MutableStateFlow(TvDanmakuMatchState())
     private var matchingJob: Job? = null
     private val sourceSelection = MutableStateFlow(TvSourceSelectionState())
-    private val resolvingCaptchaSources = MutableStateFlow<Set<String>>(emptySet())
     private val events = Channel<TvEpisodeEvent>(Channel.BUFFERED)
     val actionEvents = events.receiveAsFlow()
-    private val playbackSpeedOverride = MutableStateFlow<Float?>(null)
-    private val playbackSpeedFlow: Flow<Float> =
-        combine(settingsRepository.videoScaffoldConfig.flow, playbackSpeedOverride) { config, override ->
-            override ?: config.playbackSpeed
-        }.distinctUntilChanged()
-    private val videoEnhancement = createVideoEnhancementController(
-        player,
-        settingsRepository.playerKernelConfig.flow,
-        backgroundScope.coroutineContext,
-    )
-    private val autoSkip = TvAutoSkipController()
     private var pausedByLifecycle = false
-
-    private val episodeCollectionsFlow = episodeCollectionRepository
-        .subjectEpisodeCollectionInfosFlow(subjectId)
-        .shareIn(backgroundScope, SharingStarted.WhileSubscribed(5_000), replay = 1)
-
-    private val subjectCollectionFlow = subjectCollectionRepository
-        .subjectCollectionFlow(subjectId)
-        .shareIn(backgroundScope, SharingStarted.WhileSubscribed(5_000), replay = 1)
-
-    @OptIn(UnsafeEpisodeSessionApi::class)
-    private val fetchPlayState = EpisodeFetchSelectPlayState(
-        subjectId, initialEpisodeId, player, backgroundScope,
-        extensions = listOf(
-            PlaybackSpeedExtension.Factory(playbackSpeedFlow),
-            RememberPlayProgressExtension,
-            WatchTogetherPlayerExtension,
-            MarkAsWatchedExtension,
-            SwitchNextEpisodeExtension.Factory(
-                getNextEpisode = { currentEpisodeId ->
-                    val list = episodeCollectionsFlow.first()
-                    val subject = subjectCollectionFlow.first()
-                    val currentIndex = list.indexOfFirst { it.episodeId == currentEpisodeId }
-                    if (currentIndex == -1) {
-                        null
-                    } else {
-                        val nextEpisode = list.getOrNull(currentIndex + 1) ?: return@Factory null
-                        if (!nextEpisode.episodeInfo.isKnownCompleted(subject.recurrence)) {
-                            null
-                        } else {
-                            nextEpisode.episodeId
-                        }
-                    }
-                },
-            ),
-            SwitchMediaOnPlayerErrorExtension,
-            AutoSelectExtension,
-            SaveMediaPreferenceExtension,
-            ObserveWebMediaSourcePreferenceExtension,
-        ),
-        koin,
-        sharingStarted = SharingStarted.WhileSubscribed(5_000),
-    )
 
     // region 页面状态
 
@@ -294,18 +189,6 @@ class TvEpisodeViewModel(
     // region 辅助内容: 推荐为条目级, 评论随当前集, 弹幕为已加载列表
 
 
-    private val recommendationsFlow: StateFlow<List<SubjectRecommendation>?> = flow<List<SubjectRecommendation>?> {
-        emit(getSubjectRecommendations(subjectId))
-    }
-        .catch { emit(emptyList()) }
-        // A player's subject does not change. Keep the same recommendation items and focus keys on reopen.
-        .stateIn(backgroundScope, SharingStarted.Lazily, null)
-
-    /** 当前集的评论 (只读, §1.2); 切集自动换源. */
-    val episodeCommentsPager: Flow<PagingData<EpisodeComment>> = currentEpisodeIdFlow
-        .flatMapLatest { episodeCommentRepository.subjectEpisodeCommentsPager(it.toLong()) }
-        .cachedIn(backgroundScope)
-
     /** 已加载弹幕 (新→旧; Repopulate 重置 + Add 头插, 面板 reverseLayout 吸底展示). */
     private val danmakuList = MutableStateFlow<List<DanmakuPresentation>>(emptyList())
     private val danmakuListFlow: StateFlow<List<DanmakuPresentation>> = danmakuList
@@ -324,12 +207,6 @@ class TvEpisodeViewModel(
     private val aspectRatioModeFlow: StateFlow<AspectRatioMode> =
         aspectRatioFeature?.mode
             ?: MutableStateFlow(AspectRatioMode.FIT)
-
-    @OptIn(ExperimentalMediampApi::class)
-    private val bufferedFractionFlow: StateFlow<Float> =
-        (player.features[Buffering]?.bufferedPercentage ?: flowOf(0))
-            .map { it / 100f }
-            .stateIn(backgroundScope, SharingStarted.WhileSubscribed(5_000), 0f)
 
     /** 确认键按住 2.5x 快进 (附录 A: 长按 500ms, 松开还原原倍速). */
     private var speedBeforeHold: Float? = null
@@ -355,67 +232,6 @@ class TvEpisodeViewModel(
 
     // endregion
 
-    // region 弹幕 (接线拷自手机 EpisodeViewModel)
-
-    @OptIn(UnsafeEpisodeSessionApi::class)
-    private val episodeDanmakuLoader = EpisodeDanmakuLoader(
-        player = player,
-        selectedMedia = fetchPlayState.mediaSelectorFlow.transformLatest {
-            if (it == null) {
-                emit(null)
-            } else {
-                emitAll(it.selected)
-            }
-        },
-        bundleFlow = fetchPlayState.infoBundleFlow.filterNotNull().distinctUntilChanged(),
-        danmakuRepository = danmakuRepository,
-        getDanmakuRegexFilterListFlowUseCase = getDanmakuRegexFilterListFlowUseCase,
-        backgroundScope,
-        sharingStarted = SharingStarted.WhileSubscribed(5_000),
-    )
-
-    private val danmakuEventFlow: Flow<TvUIDanmakuEvent> = danmakuRepository.selfId.flatMapLatest { selfId ->
-        fun createDanmakuPresentation(data: DanmakuInfo, selfId: String?) =
-            DanmakuPresentation(data, isSelf = selfId == data.senderId)
-
-        episodeDanmakuLoader.danmakuEventFlow.mapNotNull { event ->
-            when (event) {
-                is DanmakuEvent.Add -> {
-                    val data = event.danmaku
-                    if (data.text.isBlank()) {
-                        null
-                    } else {
-                        TvUIDanmakuEvent.Add(createDanmakuPresentation(data, selfId))
-                    }
-                }
-
-                is DanmakuEvent.Repopulate -> {
-                    TvUIDanmakuEvent.Repopulate(
-                        event.list
-                            .filter { it.text.any { c -> !c.isWhitespace() } }
-                            .map { createDanmakuPresentation(it, selfId) },
-                        withContext(Dispatchers.Main) {
-                            player.getCurrentPositionMillis()
-                        },
-                    )
-                }
-            }
-        }
-    }.shareIn(backgroundScope, SharingStarted.WhileSubscribed(5_000), replay = 1)
-
-    private val danmakuConfigState = mutableStateOf(DanmakuConfig.Default)
-    val danmakuHostState = DanmakuHostState(danmakuConfigState, DanmakuTrackProperties.Default)
-
-    // endregion
-
-    /** Web 源解析器 (WebView), 页面需调用其 ComposeContent() 完成挂载 (同手机 EpisodePage). */
-    val mediaResolver: MediaResolver get() = fetchPlayState.playerSession.mediaResolver
-
-    /** 启动扩展系统 (AutoSelect/自动连播/进度记忆等), 由页面首帧调用 (同手机 EpisodePage). */
-    private fun onUIReady() {
-        fetchPlayState.onUIReady()
-    }
-
     private fun togglePause() {
         if (!canControlPlayback()) return
         player.togglePlayWhenReady()
@@ -427,17 +243,17 @@ class TvEpisodeViewModel(
         player.seekTo(positionMillis.coerceIn(0, duration))
     }
 
-    private fun switchEpisode(episodeId: Int) {
-        if (playbackAutomationGate.suppressed.value) {
+    private fun requestEpisode(episodeId: Int) {
+        if (playbackAutomationSuppressed.value) {
             showMessage(TvPlayerMessage.FollowingHost)
             return
         }
-        backgroundScope.launch { fetchPlayState.switchEpisode(episodeId) }
+        backgroundScope.launch { switchEpisode(episodeId) }
     }
 
     /** 上一集 (-1) / 下一集 (+1); 到列表边界则不动 (媒体键 RW/FF, §8.2 全局键). */
     private fun switchToNeighborEpisode(offset: Int) {
-        if (playbackAutomationGate.suppressed.value) {
+        if (playbackAutomationSuppressed.value) {
             showMessage(TvPlayerMessage.FollowingHost)
             return
         }
@@ -447,7 +263,7 @@ class TvEpisodeViewModel(
             if (index == -1) return@launch
             val target = list.getOrNull(index + offset) ?: return@launch
             if (offset > 0 && !target.episodeInfo.isKnownCompleted(subjectCollectionFlow.first().recurrence)) return@launch
-            fetchPlayState.switchEpisode(target.episodeId)
+            switchEpisode(target.episodeId)
         }
     }
 
@@ -462,7 +278,12 @@ class TvEpisodeViewModel(
         }
     }.stateIn(backgroundScope, SharingStarted.WhileSubscribed(5_000), 0L)
 
-    private val panelState = combine(recommendationsFlow, episodeDanmakuLoader.fetchResults) { recommendations, fetchResults ->
+    private val panelRecommendations = recommendationsFlow
+        .map<List<SubjectRecommendation>, List<SubjectRecommendation>?> { it }
+        .onStart { emit(null) }
+        .catch { emit(emptyList()) }
+
+    private val panelState = combine(panelRecommendations, episodeDanmakuLoader.fetchResults) { recommendations, fetchResults ->
         TvPlayerPanelState(
             recommendations = recommendations.orEmpty(),
             recommendationsLoading = recommendations == null,
@@ -475,9 +296,7 @@ class TvEpisodeViewModel(
     val danmakuListItems: StateFlow<List<DanmakuPresentation>> = danmakuListFlow
 
     private val options =
-        combine(bufferedFractionFlow, playbackSpeedStateFlow, aspectRatioModeFlow) { buffer, speed, aspect ->
-            Triple(buffer, speed, aspect)
-        }
+        combine(playbackSpeedStateFlow, aspectRatioModeFlow) { speed, aspect -> speed to aspect }
     private data class Selection(
         val episodes: List<TvStripEpisode>,
         val currentEpisodeId: Int,
@@ -504,7 +323,7 @@ class TvEpisodeViewModel(
             durationMillis = properties?.durationMillis ?: 0,
         )
     }.combine(options) { state, options ->
-        state.copy(bufferedFraction = options.first, playbackSpeed = options.second, aspectRatioMode = options.third)
+        state.copy(playbackSpeed = options.first, aspectRatioMode = options.second)
     }.combine(selection) { state, selected ->
         state.copy(
             episodes = selected.episodes,
@@ -514,6 +333,7 @@ class TvEpisodeViewModel(
     }
         .combine(panelState) { state, panel -> state.copy(panel = panel) }
         .combine(positionFlow) { state, position -> state.copy(positionMillis = position) }
+        .combine(cacheProgressInfoFlow) { state, cache -> state.copy(cacheProgress = cache) }
         .combine(sourceSelection) { state, sources -> state.copy(sources = sources) }
         .combine(playerOptions) { state, options -> state.copy(options = options) }
         .combine(danmakuMatch) { state, matching -> state.copy(danmakuMatch = matching) }
@@ -537,7 +357,7 @@ class TvEpisodeViewModel(
             is TvEpisodeIntent.SelectEpisode -> {
                 if (episodeStripFlow.value.none { it.episodeId == intent.episodeId }) return true
                 if (!canControlPlayback()) return true
-                if (intent.episodeId != currentEpisodeIdFlow.value) switchEpisode(intent.episodeId)
+                if (intent.episodeId != currentEpisodeIdFlow.value) requestEpisode(intent.episodeId)
                 events.trySend(TvEpisodeEvent.EpisodeSelected(intent.episodeId))
             }
 
@@ -546,7 +366,7 @@ class TvEpisodeViewModel(
                 selectMedia(intent.media, intent.requestId)
             }
 
-            TvEpisodeIntent.ToggleDanmaku -> runAction { settingsRepository.danmakuEnabled.update { !this } }
+            TvEpisodeIntent.ToggleDanmaku -> setDanmakuEnabled(!playerOptions.value.danmakuEnabled)
             is TvEpisodeIntent.ObserveStats -> observeStats.value = intent.enabled
             TvEpisodeIntent.OpenLogin -> navigation.emit(TvNavigationEvent.Login)
             TvEpisodeIntent.CancelAutoSkip -> cancelAutoSkip()
@@ -631,7 +451,7 @@ class TvEpisodeViewModel(
                     if (pausedByLifecycle) player.pause()
                 } else if (pausedByLifecycle) {
                     pausedByLifecycle = false
-                    if (!playbackAutomationGate.suppressed.value) player.play()
+                    if (!playbackAutomationSuppressed.value) player.play()
                 }
             }
 
@@ -664,12 +484,12 @@ class TvEpisodeViewModel(
 
             is TvEpisodeIntent.ToggleDanmakuSource -> playerOptions.value.danmakuOrigins.find { it.serviceId == intent.serviceId }
                 ?.let {
-                    episodeDanmakuLoader.setEnabled(it.serviceId, !it.enabled)
+                    setDanmakuSourceEnabled(it.serviceId, !it.enabled)
                 }
 
             is TvEpisodeIntent.ShiftDanmakuSource -> playerOptions.value.danmakuOrigins.find { it.serviceId == intent.serviceId }
                 ?.let {
-                    episodeDanmakuLoader.setShiftMillis(
+                    setDanmakuSourceShiftMillis(
                         it.serviceId,
                         intent.deltaMillis?.let { delta -> (it.shiftMillis + delta).coerceIn(-30_000, 30_000) } ?: 0,
                     )
@@ -682,7 +502,7 @@ class TvEpisodeViewModel(
             }
 
             is TvEpisodeIntent.SetEpisodeWatched -> runAction {
-                episodeCollectionRepository.setEpisodeCollectionType(
+                setEpisodeCollectionType(
                     subjectId,
                     intent.episodeId,
                     if (intent.watched) UnifiedCollectionType.DONE else UnifiedCollectionType.WISH,
@@ -738,13 +558,11 @@ class TvEpisodeViewModel(
         if (!canControlPlayback()) return
         val config = playerOptions.value.videoConfig
         val value = speed.coerceIn(config.minPlaybackSpeed, config.maxPlaybackSpeed)
-        playbackSpeedOverride.value = value
-        playbackSpeedFeature?.set(value)
-        if (config.rememberPlaybackSpeed) runAction { settingsRepository.videoScaffoldConfig.update { copy(playbackSpeed = value) } }
+        setPlaybackSpeed(value)
     }
 
     private fun canControlPlayback(): Boolean {
-        if (!playbackAutomationGate.suppressed.value) return true
+        if (!playbackAutomationSuppressed.value) return true
         showMessage(TvPlayerMessage.FollowingHost)
         return false
     }
@@ -775,7 +593,7 @@ class TvEpisodeViewModel(
     }
 
     private fun cancelAutoSkip() {
-        autoSkip.cancel()
+        playerSkipOpEdState.cancelSkipOpEd()
         playerOptions.update { it.copy(skipPrompt = null) }
     }
 
@@ -853,7 +671,6 @@ class TvEpisodeViewModel(
         events.send(TvEpisodeEvent.PlaybackRetried(requestId))
     }
 
-    @OptIn(UnsafeEpisodeSessionApi::class)
     private fun observePlayerOptions() {
         backgroundScope.launch(Dispatchers.Main) {
             currentEpisodeIdFlow.collect {
@@ -872,8 +689,6 @@ class TvEpisodeViewModel(
             }.collect()
         }
         backgroundScope.launch {
-            val mode = settingsRepository.videoScaffoldConfig.flow.first().videoEnhancementDefaultMode
-            videoEnhancement?.setMode(VideoEnhancementMode.valueOf(mode.name))
             videoEnhancement?.mode?.collect { mode -> playerOptions.update { it.copy(enhancementMode = mode) } }
         }
         backgroundScope.launch {
@@ -938,18 +753,7 @@ class TvEpisodeViewModel(
     }
 
     private fun observePreview() {
-        val feature = player.features[FramePreview] ?: return
-        val preview = MediaProgressFramePreviewState(fetchFrame = { position ->
-            try {
-                feature.getPreviewFrame(position, 384, 216)?.let {
-                    Bitmap.createBitmap(it.pixels, it.width, it.height, Bitmap.Config.ARGB_8888).asImageBitmap()
-                }
-            } catch (e: CancellationException) {
-                throw e
-            } catch (_: Exception) {
-                null
-            }
-        })
+        val preview = createMediaProgressFramePreviewState(player, 384, 216) ?: return
         backgroundScope.launch(Dispatchers.Main) {
             settingsRepository.videoScaffoldConfig.flow.map { it.enableFramePreview }.distinctUntilChanged()
                 .collectLatest { enabled ->
@@ -966,9 +770,16 @@ class TvEpisodeViewModel(
                             preview.onMediaChanged()
                             if (data == null) return@collectLatest
                             coroutineScope {
-                                launch { preview.prewarm(player.getCurrentPositionMillis()) }
+                                launch {
+                                    try { preview.prewarm(player.getCurrentPositionMillis()) }
+                                    catch (e: CancellationException) { throw e }
+                                    catch (_: Exception) { /* 预览不可用时仍可拖动进度条。 */ }
+                                }
                                 snapshotFlow { playbackInteraction.scrubMillis }.distinctUntilChanged().collectLatest { position ->
-                                    if (position == null) preview.onPreviewFinished() else preview.requestFrame(position)
+                                    if (position == null) preview.onPreviewFinished()
+                                    else try { preview.requestFrame(position) }
+                                    catch (e: CancellationException) { throw e }
+                                    catch (_: Exception) { preview.onPreviewFinished() }
                                 }
                             }
                         }
@@ -977,56 +788,22 @@ class TvEpisodeViewModel(
         }
     }
 
-    @OptIn(UnsafeEpisodeSessionApi::class)
     private fun observeAutoSkip() {
         backgroundScope.launch {
-            val server = currentEpisodeIdFlow.flatMapLatest { id ->
-                autoSkipRepository.rulesFlow(id).onStart { emit(emptyList()) }.catch { emit(emptyList()) }
+            progressChaptersFlow.collect { chapters ->
+                playerOptions.update { it.copy(chapters = chapters) }
             }
-            combine(
-                server,
-                player.mediaProperties,
-                player.chapters ?: flowOf(emptyList()),
-                settingsRepository.videoScaffoldConfig.flow,
-            ) { times, properties, chapters, config ->
-                val duration = properties?.durationMillis ?: 0L
-                val length = when {
-                    duration > 1_200_000 -> config.opEdSkipDuration.inWholeMilliseconds
-                    duration > 600_000 -> 55_000L
-                    else -> 0L
+        }
+        backgroundScope.launch(Dispatchers.Main) {
+            val enabled = combine(settingsRepository.videoScaffoldConfig.flow, playbackAutomationSuppressed, snapshotFlow { playbackInteraction.scrubMillis != null }, player.state) {
+                    settings, suppressed, previewing, playback ->
+                settings.autoSkipOpEd && !suppressed && !previewing && playback.isPlaying
+            }
+            combine(snapshotFlow { playerSkipOpEdState.pendingChapter }, player.currentPositionMillis, enabled) { chapter, position, enabled ->
+                chapter?.takeIf { enabled }?.let {
+                    TvSkipPrompt(it.name, ((it.offsetMillis - position + 999) / 1_000).toInt().coerceAtLeast(0))
                 }
-                val remote = if (length == 0L) emptyList() else times.sorted()
-                    .mapIndexed { index, offset -> TvChapter(if (index == 0) "OP" else "ED", offset, length) }
-                (chapters.map {
-                    TvChapter(
-                        it.name,
-                        it.offsetMillis,
-                        it.durationMillis,
-                    )
-                } + remote).distinctBy { it.offsetMillis }.sortedBy { it.offsetMillis }
-            }.collect { chapters -> playerOptions.update { it.copy(chapters = chapters) } }
-        }
-        backgroundScope.launch(Dispatchers.Main) {
-            player.mediaData.collect {
-                autoSkip.reset()
-                playerOptions.update { it.copy(skipPrompt = null) }
-            }
-        }
-        backgroundScope.launch(Dispatchers.Main) {
-            while (true) {
-                val options = playerOptions.value
-                val firstEpisode =
-                    episodeStripFlow.value.let { it.size > 1 && it.first().episodeId == currentEpisodeIdFlow.value }
-                val prompt = autoSkip.update(
-                    player.getCurrentPositionMillis(),
-                    player.mediaProperties.value?.durationMillis ?: 0L,
-                    options.chapters,
-                    options.videoConfig.autoSkipOpEd && player.state.value.isPlaying && !firstEpisode && !playbackAutomationGate.suppressed.value && playbackInteraction.scrubMillis == null,
-                    onSkip = ::seekTo,
-                )
-                playerOptions.update { it.copy(skipPrompt = prompt) }
-                delay(200)
-            }
+            }.collect { prompt -> playerOptions.update { it.copy(skipPrompt = prompt) } }
         }
     }
 
@@ -1036,10 +813,10 @@ class TvEpisodeViewModel(
             player.state.collect { danmakuHostState.setPaused(!it.isPlaying) }
         }
         backgroundScope.launch(Dispatchers.Main) {
-            danmakuEventFlow.collect { event ->
+            uiDanmakuEventFlow.collect { event ->
                 when (event) {
-                    is TvUIDanmakuEvent.Add -> danmakuHostState.trySend(event.presentation)
-                    is TvUIDanmakuEvent.Repopulate -> danmakuHostState.repopulate(
+                    is UIDanmakuEvent.Add -> danmakuHostState.trySend(event.presentation)
+                    is UIDanmakuEvent.Repopulate -> danmakuHostState.repopulate(
                         event.list,
                         event.currentPositionMillis,
                     )
@@ -1050,37 +827,24 @@ class TvEpisodeViewModel(
 
     init {
         backgroundScope.launch {
-            settingsRepository.danmakuConfig.flow.collect { danmakuConfigState.value = it }
+            collectDanmakuConfig()
         }
         backgroundScope.launch {
-            // 弹幕列表面板数据: 与渲染层共享同一 danmakuEventFlow (shareIn), 不重复拉取
-            danmakuEventFlow.collect { event ->
+            // 弹幕列表面板数据: 与渲染层共享同一 uiDanmakuEventFlow (shareIn), 不重复拉取
+            uiDanmakuEventFlow.collect { event ->
                 when (event) {
-                    is TvUIDanmakuEvent.Repopulate -> danmakuList.value = event.list.asReversed()
-                    is TvUIDanmakuEvent.Add ->
+                    is UIDanmakuEvent.Repopulate -> danmakuList.value = event.list.asReversed()
+                    is UIDanmakuEvent.Add ->
                         danmakuList.value =
                             (listOf(event.presentation) + danmakuList.value).take(DANMAKU_LIST_CAP)
                 }
-            }
-        }
-        backgroundScope.launch {
-            // 保证数据源会一直查询 (拷自手机 EpisodePageState): MediaFetchSession 是冷流,
-            // 必须有订阅者 cumulativeResults 才会真正向各数据源发起请求, AutoSelect 才有候选可选.
-            fetchPlayState.episodeSessionFlow.collectLatest { session ->
-                session.fetchSelectFlow.flatMapLatest { bundle ->
-                    bundle?.mediaFetchSession?.cumulativeResults ?: flowOf(emptyList())
-                }.collect()
             }
         }
     }
 
     override fun onCleared() {
         setSpeedHold(false)
-        videoEnhancement?.close()
         super.onCleared()
-        backgroundScope.launch(NonCancellable + CoroutineName("TvEpisodeViewModel#onCleared")) {
-            fetchPlayState.onClose()
-        }
     }
 
 

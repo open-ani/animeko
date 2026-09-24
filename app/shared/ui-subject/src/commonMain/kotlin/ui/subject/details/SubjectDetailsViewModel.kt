@@ -22,7 +22,7 @@ import org.koin.core.component.KoinComponent
 import org.koin.core.component.inject
 
 @Stable
-class SubjectDetailsViewModel(
+open class SubjectDetailsViewModel(
     private val subjectId: Int,
     private val placeholder: SubjectInfo? = null
 ) : AbstractViewModel(), KoinComponent {

@@ -44,6 +44,8 @@ class PlayerSkipOpEdState(
         currentChapter?.skipped ?: false
     }
 
+    val pendingChapter: Chapter? by derivedStateOf { currentChapter?.takeUnless { it.skipped }?.chapter }
+
     val showSkipTips: Boolean by derivedStateOf {
         currentChapter != null && !skipped
     }

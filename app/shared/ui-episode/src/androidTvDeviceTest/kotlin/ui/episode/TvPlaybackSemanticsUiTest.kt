@@ -12,6 +12,7 @@ package me.him188.ani.tv.ui.episode
 import android.graphics.Bitmap
 import androidx.activity.OnBackPressedDispatcher
 import androidx.activity.compose.LocalOnBackPressedDispatcherOwner
+import androidx.collection.floatListOf
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.runtime.SideEffect
@@ -48,6 +49,8 @@ import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.test.runCurrent
 import kotlinx.coroutines.test.runTest
 import me.him188.ani.app.domain.media.fetch.MediaSourceFetchState
+import me.him188.ani.app.domain.media.player.ChunkState
+import me.him188.ani.app.domain.media.player.MediaCacheProgressInfo
 import me.him188.ani.app.domain.mediasource.web.PageExpectation
 import me.him188.ani.app.domain.mediasource.web.SolveRequest
 import me.him188.ani.app.domain.mediasource.web.WebCaptchaKind
@@ -71,7 +74,6 @@ import me.him188.ani.app.ui.watchtogether.WatchTogetherMemberPresence
 import me.him188.ani.app.ui.watchtogether.WatchTogetherMemberPresentation
 import me.him188.ani.app.ui.watchtogether.WatchTogetherPlaybackPresentation
 import me.him188.ani.app.videoplayer.ui.progress.MediaProgressFramePreviewState
-import me.him188.ani.tv.ui.episode.playback.TvChapter
 import me.him188.ani.tv.ui.episode.playback.TvPlaybackInteractionState
 import me.him188.ani.tv.ui.episode.presentation.TvPlaybackSnapshot
 import me.him188.ani.tv.ui.episode.presentation.TvPlayerAction
@@ -87,10 +89,12 @@ import me.him188.ani.tv.ui.foundation.theme.AniTvTheme
 import me.him188.ani.tv.ui.watchtogether.TvTogetherState
 import org.jetbrains.compose.resources.StringResource
 import org.jetbrains.compose.resources.getString
+import org.openani.mediamp.InternalMediampApi
 import org.openani.mediamp.MediaStatus
 import org.openani.mediamp.PlaybackErrorCode
 import org.openani.mediamp.PlaybackException
 import org.openani.mediamp.PlayerState
+import org.openani.mediamp.metadata.Chapter
 import java.io.File
 import kotlin.test.Test
 import kotlin.test.assertEquals
@@ -99,7 +103,62 @@ import kotlin.test.assertNull
 import kotlin.test.assertSame
 import kotlin.test.assertTrue
 
+@OptIn(InternalMediampApi::class)
 class TvPlaybackSemanticsUiTest {
+    @Test
+    fun sharedProgressKeepsRemoteFocusAndOnlySeeksOnConfirmation() = runAniComposeUiTest {
+        val interaction = TvPlaybackInteractionState()
+        var state by mutableStateOf(TvEpisodeUiState(
+            playerState = PlayerState(MediaStatus.Ready, false, false),
+            loadingState = VideoLoadingState.Succeed(false),
+            durationMillis = 120_000,
+            positionMillis = 20_000,
+            interaction = interaction,
+            cacheProgress = MediaCacheProgressInfo(
+                floatListOf(.25f, .25f, .25f, .25f),
+                listOf(ChunkState.DONE, ChunkState.NONE, ChunkState.DONE, ChunkState.DOWNLOADING),
+            ),
+            options = TvPlayerOptionsState(
+                chapters = listOf(Chapter("片头", durationMillis = 30_000, offsetMillis = 30_000)),
+            ),
+        ))
+        val seeks = mutableListOf<Long>()
+        lateinit var backDispatcher: OnBackPressedDispatcher
+        showPlayer(onBackDispatcher = { backDispatcher = it }, onIntent = { intent ->
+            when (intent) {
+                is TvEpisodeIntent.PreviewBy -> interaction.setPreview(
+                    ((interaction.scrubMillis ?: state.positionMillis) + intent.deltaMillis)
+                        .coerceIn(0, state.durationMillis),
+                )
+                is TvEpisodeIntent.PreviewSeek -> interaction.setPreview(intent.positionMillis)
+                is TvEpisodeIntent.SeekTo -> {
+                    seeks += intent.positionMillis
+                    state = state.copy(positionMillis = intent.positionMillis)
+                }
+                else -> Unit
+            }
+            true
+        }) { state }
+        onNodeWithTag("tv-player-seekbar").assertIsFocused()
+        key(Key.DirectionRight)
+        val target = checkNotNull(interaction.scrubMillis)
+        assertTrue(target > 20_000)
+        assertTrue(seeks.isEmpty())
+        onNodeWithTag("tv-player-seekbar").assertIsFocused()
+        saveScreenshot("tv-shared-progress-preview")
+        key(Key.DirectionCenter)
+        assertEquals(listOf(target), seeks)
+        assertNull(interaction.scrubMillis)
+        onNodeWithTag("tv-player-seekbar").assertIsFocused()
+        key(Key.DirectionLeft)
+        assertTrue(checkNotNull(interaction.scrubMillis) < target)
+        runOnUiThread { backDispatcher.onBackPressed() }
+        waitForIdle()
+        assertNull(interaction.scrubMillis)
+        assertEquals(listOf(target), seeks)
+        onNodeWithTag("tv-player-seekbar").assertIsFocused()
+    }
+
     @Test
     fun speedStepperKeepsOneFocusTargetDuringDirectionalAdjustment() = runAniComposeUiTest {
         var state by mutableStateOf(TvEpisodeUiState(
@@ -265,7 +324,7 @@ class TvPlaybackSemanticsUiTest {
             interaction = TvPlaybackInteractionState(20_000),
             options = TvPlayerOptionsState(
                 previewAvailable = true, previewLoading = true,
-                chapters = listOf(TvChapter("片头", 0, 30_000)),
+                chapters = listOf(Chapter("片头", durationMillis = 30_000, offsetMillis = 0)),
             ),
         ))
         showPlayer { state }

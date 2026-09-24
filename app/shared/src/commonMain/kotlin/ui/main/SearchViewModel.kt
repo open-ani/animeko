@@ -56,7 +56,7 @@ import org.koin.core.component.KoinComponent
 import org.koin.core.component.inject
 
 @Stable
-class SearchViewModel(
+open class SearchViewModel(
     initialSearchQuery: SubjectSearchQuery,
 ) : AbstractViewModel(), KoinComponent {
     private val searchHistoryRepository: SubjectSearchHistoryRepository by inject()

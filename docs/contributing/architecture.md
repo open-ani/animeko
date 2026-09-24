@@ -243,6 +243,16 @@ Ani UI 100% 使用 [Compose Multiplatform][CMP]（CMP）编写。
 
 [//]: # (view model 用于桥接业务层和 ui state。)
 
+### Android TV 的状态复用
+
+TV 的 `Tv*ViewModel` 继承对应功能的共享 ViewModel，复用已有的状态和操作。TV 专用的数据加载、校验、交互策略和状态保留在 TV 子类中；页面消费 UI State 并发送 Intent，焦点和面板导航由页面的 presentation state 持有。
+
+共享 ViewModel 保留原有依赖解析和业务逻辑，仅开放继承与状态复用必需的入口。TV 专用功能由子类实现。
+
+TV 播放进度条使用 `video-player` 的 `MediaProgressSlider`、`PlayerProgressSliderState` 和共享播放 ViewModel 的 `cacheProgressInfoFlow` / `progressChaptersFlow`。遥控器层提供预览位置、确认跳转和焦点，缓存分段、章节标记与进度绘制由共享组件处理。播放会话、弹幕加载和自动跳过使用已有共享实现。
+
+`TvArchitectureTest` 检查继承关系与播放复用边界。验证覆盖共享组件以及 TV 的状态与 Intent 行为。
+
 ## 组件项目
 
 我们将 Ani 的部分组件独立为单独的项目开发，并采用宽松的 Apache 2.0 协议开源 (相对于 Ani 的 AGPL

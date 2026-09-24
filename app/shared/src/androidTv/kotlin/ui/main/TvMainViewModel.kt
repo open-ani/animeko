@@ -22,12 +22,12 @@ import me.him188.ani.app.domain.foundation.LoadError
 import me.him188.ani.app.domain.session.InvalidSessionReason
 import me.him188.ani.app.domain.session.SessionState
 import me.him188.ani.app.domain.session.SessionStateProvider
-import me.him188.ani.app.ui.foundation.AbstractViewModel
+import me.him188.ani.app.ui.main.MainScreenSharedViewModel
 
 class TvMainViewModel(
     private val repository: UserRepository,
     sessionStateProvider: SessionStateProvider,
-) : AbstractViewModel() {
+) : MainScreenSharedViewModel() {
     private val logoutMutex = Mutex()
     private val errors = Channel<LoadError>(Channel.BUFFERED)
     val logoutErrors = errors.receiveAsFlow()

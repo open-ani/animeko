@@ -17,8 +17,8 @@ import me.him188.ani.danmaku.ui.DanmakuConfig
 import me.him188.ani.datasources.api.topic.UnifiedCollectionType
 import me.him188.ani.tv.ui.episode.controls.TvSubtitleOption
 import me.him188.ani.tv.ui.episode.danmaku.TvDanmakuOrigin
-import me.him188.ani.tv.ui.episode.playback.TvChapter
 import me.him188.ani.tv.ui.episode.playback.TvSkipPrompt
+import org.openani.mediamp.metadata.Chapter
 
 data class TvPlayerOptionsState(
     val danmakuEnabled: Boolean = true,
@@ -35,7 +35,7 @@ data class TvPlayerOptionsState(
     val preview: ImageBitmap? = null,
     val previewAvailable: Boolean = false,
     val previewLoading: Boolean = false,
-    val chapters: List<TvChapter> = emptyList(),
+    val chapters: List<Chapter> = emptyList(),
     val skipPrompt: TvSkipPrompt? = null,
     val message: TvPlayerMessage? = null,
 )

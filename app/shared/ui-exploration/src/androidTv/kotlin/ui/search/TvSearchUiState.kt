@@ -9,17 +9,15 @@
 
 package me.him188.ani.tv.ui.search
 
-import me.him188.ani.app.data.models.preference.NsfwMode
-import me.him188.ani.app.data.network.BatchSubjectDetails
+import me.him188.ani.app.ui.exploration.search.SubjectPreviewItemInfo
 
 data class TvSearchUiState(
     val keywords: String = "",
     val hasSearched: Boolean = false,
-    val nsfwMode: NsfwMode = NsfwMode.BLUR,
 )
 
 sealed interface TvSearchIntent {
     data class ChangeKeywords(val value: String) : TvSearchIntent
     data object Search : TvSearchIntent
-    data class OpenSubject(val subject: BatchSubjectDetails) : TvSearchIntent
+    data class OpenSubject(val subject: SubjectPreviewItemInfo) : TvSearchIntent
 }
