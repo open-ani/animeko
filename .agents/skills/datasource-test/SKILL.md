@@ -161,7 +161,7 @@ selector_resolve_episode(subjectId, episodeId, config, extractVideo=false)
 | `searchEpisodes` | 条目详情页 404 | 条目链接拼接错误,检查 `rawBaseUrl`(留空时从 searchUrl 推断,details 里能看到实际 URL) |
 | `selectEpisodes` | 0 个剧集 / 0 条线路 | 转第 5 步: 拿详情页 HTML 离线迭代 channelFormat 的 selector;同上,可用 chrome-devtools 的渲染后 DOM 判断是 selector 问题还是 JS 渲染 |
 | `selectEpisodes` | 剧集有了但 `episodeSort` 全空 | `matchEpisodeSortFromName` 正则没匹配上剧集名(需要 `(?<ep>)` 分组);对照 details 里的剧集名调正则 |
-| `selectMedia` | `filteredCount=0` 但 original 非空 | 看 details 里的 `filteredOut`: 集数对不上(sort vs ep、电影/OVA 特判)或该条目根本不含目标集。也可临时把 config 的 `filterByEpisodeSort` 设 false 验证是过滤问题还是解析问题 |
+| `selectMedia` | `filteredCount=0` 但 original 非空 | 看 details 里的 `filteredOut`: 集数对不上(sort vs ep、电影/OVA 特判)或该条目根本不含目标集。也可临时把 config 的 `autoMatch.filterByEpisodeSort` 设 false 验证是过滤问题还是解析问题 |
 | 全部成功但 `medias` 为空 | 目标条目排名靠后被截断 | 调大 `maxSubjectsPerName`(默认 3,App 内无此限制;条目按名称长度升序排) |
 
 > `selectSubjects`/`selectEpisodes` 解析不出来时,「配置没写对」和「页面靠 JS 渲染(引擎能力缺口)」

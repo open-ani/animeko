@@ -229,10 +229,10 @@ object SelectorConfigSupport {
     ) {
         validateSearchUrl(config, pathPrefix, issues)
 
-        if (config.searchUseSubjectNamesCount < 1) {
+        if (config.autoMatch.searchUseSubjectNamesCount < 1) {
             issues += ConfigIssue(
-                "warning", "${pathPrefix}searchUseSubjectNamesCount",
-                "searchUseSubjectNamesCount 为 ${config.searchUseSubjectNamesCount}, 实际运行时至少使用 1 个搜索词",
+                "warning", "${pathPrefix}autoMatch.searchUseSubjectNamesCount",
+                "searchUseSubjectNamesCount 为 ${config.autoMatch.searchUseSubjectNamesCount}, 实际运行时至少使用 1 个搜索词",
             )
         }
         if (config.rawBaseUrl.isBlank() && config.searchUrl.isNotBlank()) {
@@ -412,7 +412,8 @@ object SelectorConfigSupport {
 
     private fun checkEpisodeSortRegex(pattern: String, path: String, issues: MutableList<ConfigIssue>) {
         if (pattern.isBlank()) {
-            issues += ConfigIssue("error", path, "matchEpisodeSortFromName 为空, 无法解析剧集序号")
+            // 列表规则不要求解析集号: 空表示整个剧集名就是集号文本, 只影响自动匹配, 浏览手动选集不受影响
+            issues += ConfigIssue("info", path, "matchEpisodeSortFromName 为空, 将把整个剧集名当作集号; 自动匹配可能识别不出集数")
             return
         }
         checkRegex(pattern, path, issues)
