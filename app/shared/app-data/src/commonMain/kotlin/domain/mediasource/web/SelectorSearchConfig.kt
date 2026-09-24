@@ -50,8 +50,8 @@ import kotlin.time.Duration.Companion.seconds
  * - **自动匹配** ([autoMatch]): 在列表之上, 让 [me.him188.ani.datasources.api.source.MediaSource.fetch]
  *   自动搜索并筛选出对应当前剧集的资源. 全部可选, 缺省时按默认策略自动匹配.
  *
- * 序列化兼容: [autoMatch] 内的字段在 6.2 以前平铺在本类顶层. 反序列化时没有 `autoMatch` 键则读取旧的平铺键;
- * 序列化时两处都写, 让旧版本客户端继续读到平铺键. 见 [SelectorSearchConfigSerializer].
+ * 序列化兼容: [autoMatch] 内的字段还接受平铺在本类顶层的写法. 反序列化时没有 `autoMatch` 键则读取平铺键;
+ * 序列化时两处都写, 让只认识平铺写法的客户端继续能读. 见 [SelectorSearchConfigSerializer].
  */
 @Immutable
 @Serializable(with = SelectorSearchConfigSerializer::class)
@@ -247,7 +247,7 @@ data class SelectorAutoMatchConfig(
     /**
      * 搜索结果按条目名长度排序, 短的在前: 搜索 "第一季" 时避免先匹配到 "第二季".
      *
-     * 6.2 以前这是各条目格式配置里的字段.
+     * 平铺写法里这是各条目格式配置的字段, 序列化器双向镜像.
      */
     val preferShorterName: Boolean = true,
     /**
@@ -265,7 +265,7 @@ data class SelectorAutoMatchConfig(
 }
 
 /**
- * 与 6.2 以前的平铺格式双向兼容的序列化器, 语义见 [SelectorSearchConfig] 类注释.
+ * 与平铺写法双向兼容的序列化器, 语义见 [SelectorSearchConfig] 类注释.
  */
 object SelectorSearchConfigSerializer : KSerializer<SelectorSearchConfig> {
     override val descriptor: SerialDescriptor get() = SelectorSearchConfigSurrogate.serializer().descriptor
@@ -280,8 +280,8 @@ object SelectorSearchConfigSerializer : KSerializer<SelectorSearchConfig> {
 }
 
 /**
- * [SelectorSearchConfig] 的 JSON 形态: 新的 [autoMatch] 与旧的平铺字段并存.
- * 旧格式里各条目格式配置的 `preferShorterName` 同样双向镜像.
+ * [SelectorSearchConfig] 的 JSON 形态: [autoMatch] 与平铺字段并存.
+ * 各条目格式配置里的 `preferShorterName` 同样双向镜像.
  */
 @Serializable
 @SerialName("SelectorSearchConfig")
@@ -308,7 +308,7 @@ private class SelectorSearchConfigSurrogate(
     val selectMedia: SelectorSearchConfig.SelectMediaConfig = SelectorSearchConfig.SelectMediaConfig(),
     val matchVideo: SelectorSearchConfig.MatchVideoConfig = SelectorSearchConfig.MatchVideoConfig(),
     /**
-     * `null` 表示 JSON 里没有这个键 (旧格式), 此时自动匹配层由平铺字段组成.
+     * `null` 表示 JSON 里没有这个键 (平铺写法), 此时自动匹配层由平铺字段组成.
      */
     val autoMatch: SelectorAutoMatchConfig? = null,
 ) {
@@ -322,7 +322,7 @@ private class SelectorSearchConfigSurrogate(
         requestInterval = config.requestInterval,
         searchCacheTtl = config.searchCacheTtl,
         subjectFormatId = config.subjectFormatId,
-        // 镜像给旧客户端
+        // 镜像给只认识平铺写法的客户端
         selectorSubjectFormatA = config.selectorSubjectFormatA.copy(preferShorterName = config.autoMatch.preferShorterName),
         selectorSubjectFormatIndexed = config.selectorSubjectFormatIndexed.copy(preferShorterName = config.autoMatch.preferShorterName),
         selectorSubjectFormatJsonPathIndexed = config.selectorSubjectFormatJsonPathIndexed.copy(preferShorterName = config.autoMatch.preferShorterName),
@@ -345,7 +345,7 @@ private class SelectorSearchConfigSurrogate(
             searchUseOnlyFirstWord = searchUseOnlyFirstWord,
             searchRemoveSpecial = searchRemoveSpecial,
             searchUseSubjectNamesCount = searchUseSubjectNamesCount,
-            // 旧格式: 以当时生效的条目格式为准
+            // 平铺写法: 以生效的条目格式为准
             preferShorterName = when (subjectFormatId) {
                 SelectorSubjectFormatIndexed.id -> selectorSubjectFormatIndexed.preferShorterName
                 SelectorSubjectFormatJsonPathIndexed.id -> selectorSubjectFormatJsonPathIndexed.preferShorterName

@@ -68,7 +68,7 @@ data object SelectorSubjectFormatA : SelectorSubjectFormat<SelectorSubjectFormat
         @param:Language("css")
         val selectLists: String = "div.video-info-header > a",
         /**
-         * 旧格式字段, 已移到 `SelectorAutoMatchConfig.preferShorterName`, 只为读写旧 JSON 保留. 解析时不使用.
+         * 平铺写法的字段, 生效值是 `SelectorAutoMatchConfig.preferShorterName`, 序列化器双向镜像. 解析时不使用.
          */
         @Deprecated("moved to SelectorAutoMatchConfig.preferShorterName")
         val preferShorterName: Boolean = true,
@@ -114,7 +114,7 @@ data object SelectorSubjectFormatIndexed :
         @param:Language("css")
         val selectLinks: String = ".search-box .thumb-menu > a",
         /**
-         * 旧格式字段, 已移到 `SelectorAutoMatchConfig.preferShorterName`, 只为读写旧 JSON 保留. 解析时不使用.
+         * 平铺写法的字段, 生效值是 `SelectorAutoMatchConfig.preferShorterName`, 序列化器双向镜像. 解析时不使用.
          */
         @Deprecated("moved to SelectorAutoMatchConfig.preferShorterName")
         val preferShorterName: Boolean = true,
@@ -165,7 +165,7 @@ data object SelectorSubjectFormatJsonPathIndexed :
         @param:Language("jsonpath")
         val selectNames: String = "$[*]['title','name']",
         /**
-         * 旧格式字段, 已移到 `SelectorAutoMatchConfig.preferShorterName`, 只为读写旧 JSON 保留. 解析时不使用.
+         * 平铺写法的字段, 生效值是 `SelectorAutoMatchConfig.preferShorterName`, 序列化器双向镜像. 解析时不使用.
          */
         @Deprecated("moved to SelectorAutoMatchConfig.preferShorterName")
         val preferShorterName: Boolean = true,

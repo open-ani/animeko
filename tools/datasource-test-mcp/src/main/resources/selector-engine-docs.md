@@ -175,8 +175,8 @@ MCP 工具:
 `searchConfig` 分两层: 上面示例里的都是**列表规则**(把搜索结果、线路、剧集列出来,以及 `matchVideo`),
 只写这一层就能在 App 里浏览并手动选集;**自动匹配**放在 `searchConfig.autoMatch` 下
 (`enabled`、`searchUseOnlyFirstWord`、`searchRemoveSpecial`、`searchUseSubjectNamesCount`、
-`preferShorterName`、`filterBySubjectName`、`filterByEpisodeSort`),全部可选。旧配置把这些字段平铺在 `searchConfig` 顶层,
-仍然能读;同时存在时以 `autoMatch` 为准。`autoMatch.enabled: false` 的源不参与自动选择,只能浏览。
+`preferShorterName`、`filterBySubjectName`、`filterByEpisodeSort`),全部可选。这些字段也接受平铺在 `searchConfig` 顶层的写法;
+同时存在时以 `autoMatch` 为准。`autoMatch.enabled: false` 的源不参与自动选择,只能浏览。
 
 ## 调试建议流程
 
