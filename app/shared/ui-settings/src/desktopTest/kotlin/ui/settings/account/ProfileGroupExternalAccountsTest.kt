@@ -69,6 +69,7 @@ class ProfileGroupExternalAccountsTest {
                         onExternalAccountClick = { callbacks.bindClicks += it },
                         onGithubAccountClick = { callbacks.githubAccountClicks++ },
                         onUnbindExternalAccount = { callbacks.unbinds += it },
+                        onUnbindEmail = {},
                     )
                 }
             }

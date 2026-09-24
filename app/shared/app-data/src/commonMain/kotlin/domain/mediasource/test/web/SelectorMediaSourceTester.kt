@@ -35,6 +35,7 @@ import me.him188.ani.app.domain.mediasource.web.WebCaptchaKind
 import me.him188.ani.app.domain.mediasource.web.captcha.SolveOutcome
 import me.him188.ani.app.domain.mediasource.web.captcha.WebSessionManager
 import me.him188.ani.app.domain.mediasource.web.normalizedSessionHost
+import me.him188.ani.app.domain.mediasource.web.orderSubjectsForAutoMatch
 import me.him188.ani.app.domain.mediasource.web.selectEpisodesImpl
 import me.him188.ani.app.domain.mediasource.web.selectSubjectsForCaptchaProbe
 import me.him188.ani.datasources.api.EpisodeSort
@@ -355,12 +356,12 @@ class SelectorMediaSourceTester(
                         }
                         SelectorTestSearchSubjectResult.Success(
                             fetched.url,
-                            subjects.orEmpty().map {
+                            searchConfig.orderSubjectsForAutoMatch(subjects.orEmpty()).map {
                                 SelectorTestSubjectPresentation.compute(
                                     it,
                                     query,
                                     document,
-                                    searchConfig.filterBySubjectName,
+                                    searchConfig.autoMatch.filterBySubjectName,
                                 )
                             },
                         )

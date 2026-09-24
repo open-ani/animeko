@@ -160,6 +160,18 @@ fun rememberMediaProgressFramePreviewState(
     return state
 }
 
+/** 非 Compose 状态持有者使用的播放器取帧适配器。 */
+fun createMediaProgressFramePreviewState(
+    player: MediampPlayer,
+    maxWidth: Int,
+    maxHeight: Int,
+): MediaProgressFramePreviewState? {
+    val feature = player.features[FramePreview] ?: return null
+    return MediaProgressFramePreviewState(fetchFrame = { position ->
+        feature.getPreviewFrame(position, maxWidth, maxHeight)?.toImageBitmap()
+    })
+}
+
 /**
  * 将 [PreviewFrame] 的 ARGB 像素转换为 [ImageBitmap].
  */

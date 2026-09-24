@@ -27,6 +27,7 @@ import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.take
 import me.him188.ani.app.data.models.preference.EpisodeProgressSettings
+import me.him188.ani.app.data.models.preference.SubjectAppearanceSettings
 import me.him188.ani.app.data.models.preference.ThemeSettings
 import me.him188.ani.app.data.repository.user.SettingsRepository
 import me.him188.ani.app.data.repository.user.UserRepository
@@ -48,6 +49,7 @@ import me.him188.ani.app.ui.foundation.LocalPlatform
 import me.him188.ani.app.ui.foundation.LocalPlatformFontFamily
 import me.him188.ani.app.ui.foundation.LocalEpisodeProgressSettings
 import me.him188.ani.app.ui.foundation.LocalSketch
+import me.him188.ani.app.ui.foundation.LocalSubjectAppearanceSettings
 import me.him188.ani.app.ui.foundation.ifThen
 import me.him188.ani.app.ui.foundation.input.ActiveInputSourceState
 import me.him188.ani.app.ui.foundation.input.LocalActiveInputSource
@@ -76,6 +78,7 @@ class AniAppState(
     val overlayComposables: List<@Composable () -> Unit>,
     val platformFont: String?,
     val episodeProgressSettings: EpisodeProgressSettings,
+    val subjectAppearanceSettings: SubjectAppearanceSettings,
 )
 
 @Stable
@@ -121,6 +124,7 @@ class AniAppViewModel : AbstractViewModel(), KoinComponent {
                 "Microsoft YaHei UI"
             } else null,
             uiSettings.episodeProgress,
+            uiSettings.subjectAppearance,
         )
     }.shareInBackground(
         started = SharingStarted.Eagerly,
@@ -147,6 +151,7 @@ fun AniApp(
         LocalTimeFormatter provides remember { TimeFormatter() },
         LocalThemeSettings provides appState.themeSettings,
         LocalEpisodeProgressSettings provides appState.episodeProgressSettings,
+        LocalSubjectAppearanceSettings provides appState.subjectAppearanceSettings,
         LocalPlatformFontFamily provides rememberPlatformFontFamily(appState.platformFont),
         LocalActiveInputSource provides remember { ActiveInputSourceState() },
     ) {

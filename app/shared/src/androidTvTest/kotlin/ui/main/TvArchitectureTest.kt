@@ -27,6 +27,14 @@ class TvArchitectureTest {
 
     /** me.him188.ani.app.ui.* 中 TV 允许 import 的基建白名单 (§4.2). */
     private val uiFoundationInfraAllowList = listOf(
+        "me.him188.ani.app.ui.main.MainScreenSharedViewModel",
+        "me.him188.ani.app.ui.settings.SettingsViewModel",
+        "me.him188.ani.app.ui.subject.person.PeopleDetailsViewModel",
+        "me.him188.ani.app.ui.subject.episode.EpisodeViewModel",
+        "me.him188.ani.app.ui.danmaku.UIDanmakuEvent",
+        "me.him188.ani.app.ui.watchtogether.WatchTogetherViewModel",
+        "me.him188.ani.app.ui.watchtogether.WatchTogetherIntent",
+        "me.him188.ani.app.ui.watchtogether.WatchTogetherPhase",
         "me.him188.ani.app.ui.foundation.AsyncImage",
         "me.him188.ani.app.ui.foundation.LocalSketch",
         "me.him188.ani.app.ui.foundation.rememberAniSketchInstance",
@@ -224,6 +232,38 @@ class TvArchitectureTest {
                 (!isAppContent && file.imports.any { it.name.endsWith(".tvViewModel") }) ||
                 (!isHelper && file.imports.any { it.name == "androidx.lifecycle.viewmodel.compose.viewModel" }) ||
                 (hasKoinModule && file.text.contains("ViewModel"))
+        }
+    }
+
+    @Test
+    fun `every tv viewmodel inherits its shared feature viewmodel`() {
+        val parents = mapOf(
+            "TvMainViewModel" to "MainScreenSharedViewModel",
+            "TvExplorationViewModel" to "ExplorationPageViewModel",
+            "TvScheduleViewModel" to "ScheduleViewModel",
+            "TvCollectionViewModel" to "UserCollectionsViewModel",
+            "TvSearchViewModel" to "SearchViewModel",
+            "TvLoginViewModel" to "EmailLoginViewModel",
+            "TvSettingsViewModel" to "SettingsViewModel",
+            "TvSubjectDetailsViewModel" to "SubjectDetailsViewModel",
+            "TvPeopleDetailsViewModel" to "PeopleDetailsViewModel",
+            "TvEpisodeViewModel" to "EpisodeViewModel",
+            "TvWatchTogetherViewModel" to "WatchTogetherViewModel",
+        )
+        val declaration = Regex("""class\s+(Tv\w*ViewModel)\b""")
+        tvScope().files.assertFalse { file ->
+            declaration.findAll(file.text).any { match ->
+                val parent = parents[match.groupValues[1]]
+                parent == null || !Regex(""":\s*$parent\s*\(""").containsMatchIn(file.text)
+            }
+        }
+    }
+
+    @Test
+    fun `tv playback reuses shared sessions and progress`() {
+        val independentState = Regex("""\b(?:EpisodeFetchSelectPlayState|EpisodeDanmakuLoader|CacheProgressProvider|TvSeekBar|TvAutoSkipController)\s*\(""")
+        tvScope().files.assertFalse { file ->
+            independentState.containsMatchIn(file.text)
         }
     }
 

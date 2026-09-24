@@ -39,7 +39,6 @@ import me.him188.ani.tv.ui.episode.TvEpisodeIntent
 import me.him188.ani.tv.ui.episode.text
 import me.him188.ani.tv.ui.foundation.focus.TvFocusKey
 import me.him188.ani.tv.ui.foundation.focus.rememberTvFocusScope
-import me.him188.ani.tv.ui.foundation.focus.requestPrepared
 import me.him188.ani.tv.ui.foundation.focus.tvFocusAnchor
 import me.him188.ani.tv.ui.foundation.focus.tvFocusHotkey
 import me.him188.ani.tv.ui.foundation.focus.tvFocusNavSignal

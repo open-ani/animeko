@@ -10,12 +10,9 @@ package me.him188.ani.tv.ui.exploration
 
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.progressSemantics
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
@@ -29,7 +26,6 @@ import me.him188.ani.app.ui.lang.exploration_load_failed
 import me.him188.ani.app.ui.lang.exploration_loading
 import me.him188.ani.app.ui.lang.settings_mediasource_retry
 import me.him188.ani.app.ui.lang.subject_details_empty
-import me.him188.ani.tv.ui.foundation.widgets.TvPlaceholderBlock
 import org.jetbrains.compose.resources.stringResource
 
 /** An in-page continuation target preserves navigation during first load, empty pages and retry. */
@@ -41,9 +37,6 @@ internal fun TvExplorationFeedStatus(state: LoadState, onRetry: () -> Unit, modi
             .padding(start = TvExplorationDefaults.StartPadding, end = TvExplorationDefaults.EndPadding),
         verticalArrangement = Arrangement.spacedBy(16.dp),
     ) {
-        if (loading) Row(horizontalArrangement = Arrangement.spacedBy(16.dp)) {
-            repeat(4) { TvPlaceholderBlock(Modifier.weight(1f).height(108.dp), RoundedCornerShape(8.dp)) }
-        }
         Text(
             stringResource(
                 when (state) {

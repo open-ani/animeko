@@ -60,7 +60,8 @@ fun SearchScreen(
                         effect.subjectId,
                         SubjectDetailPlaceholder(
                             id = effect.subjectId,
-                            name = effect.title,
+                            name = effect.originalTitle,
+                            nameCN = effect.title,
                             coverUrl = effect.imageUrl,
                         ),
                     )

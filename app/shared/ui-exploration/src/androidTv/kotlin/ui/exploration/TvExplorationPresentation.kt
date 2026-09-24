@@ -46,7 +46,7 @@ internal object TvExplorationDefaults {
     val Background = Color(0xFF0E0E0F)
     val Content = Color(0xFFE8EAED)
     val SecondaryContent = Color(0xFFBDC1C6)
-    // The existing shell reserves 48dp; content aligns with Google's 58dp screen keyline.
+    // Space between the navigation rail inset and page content.
     val StartPadding = 10.dp
     val EndPadding = 56.dp
     val HeroFeaturedExtraSpace = 147.dp

@@ -24,23 +24,16 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
-import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusDirection
 import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.input.key.Key
-import androidx.compose.ui.layout.onGloballyPositioned
-import androidx.compose.ui.platform.LocalWindowInfo
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
-import androidx.lifecycle.Lifecycle
-import androidx.lifecycle.compose.LocalLifecycleOwner
-import kotlinx.coroutines.flow.first
 import me.him188.ani.tv.ui.foundation.focus.rememberTvFocusScope
-import me.him188.ani.tv.ui.foundation.focus.requestPrepared
 import me.him188.ani.tv.ui.foundation.focus.tvFocusAnchor
 import me.him188.ani.tv.ui.foundation.focus.tvFocusExit
 import me.him188.ani.tv.ui.foundation.focus.tvFocusHotkey
@@ -48,8 +41,8 @@ import me.him188.ani.tv.ui.foundation.focus.tvFocusLink
 import me.him188.ani.tv.ui.foundation.focus.tvFocusNavSignal
 import me.him188.ani.tv.ui.foundation.layout.TvAnchoredOptionLayout
 import me.him188.ani.tv.ui.foundation.layout.TvModalOverlay
-import me.him188.ani.tv.ui.foundation.widgets.TvOptionPanel
 import me.him188.ani.tv.ui.foundation.widgets.TvOptionModal
+import me.him188.ani.tv.ui.foundation.widgets.TvOptionPanel
 import me.him188.ani.tv.ui.subject.presentation.TvDetailsKey
 import me.him188.ani.tv.ui.subject.presentation.detailsFocusFallback
 
@@ -82,9 +75,6 @@ internal fun TvDetailsPanelLayout(
     focus.Resolver()
     val listState = rememberLazyListState()
     val actionsState = rememberLazyListState()
-    val lifecycle = LocalLifecycleOwner.current.lifecycle
-    val window = LocalWindowInfo.current
-    var laidOut by remember { mutableStateOf(false) }
     var entered by remember { mutableStateOf(false) }
     val entryKey = remember { focusedKey ?: initialKey }
     var previousKeys by remember { mutableStateOf(emptyList<String>()) }
@@ -92,7 +82,8 @@ internal fun TvDetailsPanelLayout(
     val readingKeys = entries.filter { it.focusable }.map { it.key }
     val actionKeys = actions.map { it.key }
     val keys = readingKeys + actionKeys
-    LaunchedEffect(keys) {
+    LaunchedEffect(keys, focus.isActive) {
+        if (!focus.isActive) { entered = false; return@LaunchedEffect }
         if (keys.isEmpty()) return@LaunchedEffect
         val rememberedKey = if (entered) focusedKey ?: initialKey else entryKey
         val shouldRestore = !entered || rememberedKey !in keys
@@ -100,8 +91,6 @@ internal fun TvDetailsPanelLayout(
         previousKeys = keys
         if (!shouldRestore) return@LaunchedEffect
         focus.requestPrepared {
-            lifecycle.currentStateFlow.first { it.isAtLeast(Lifecycle.State.RESUMED) }
-            snapshotFlow { laidOut && window.isWindowFocused }.first { it }
             val actionIndex = actionKeys.indexOf(target)
             if (actionIndex >= 0) actionsState.scrollToItem(actionIndex)
             else listState.scrollToItem(entries.indexOfFirst { it.key == target }.coerceAtLeast(0))
@@ -143,7 +132,7 @@ internal fun TvDetailsPanelLayout(
     if (modal) {
         Box(Modifier.fillMaxSize().tvFocusNavSignal(focus).testTag("tv-details-panel")) {
             TvOptionModal(title,
-                modifier = modifier.onGloballyPositioned { laidOut = true }.testTag("tv-review-reader-popup"),
+                modifier = modifier.testTag("tv-review-reader-popup"),
                 footer = if (actions.isEmpty()) null else ({
                     LazyRow(
                         state = actionsState,
@@ -161,7 +150,7 @@ internal fun TvDetailsPanelLayout(
         return
     }
     val panelContent: @Composable () -> Unit = {
-        val panelModifier = modifier.testTag("tv-details-operation-panel").onGloballyPositioned { laidOut = true }
+        val panelModifier = modifier.testTag("tv-details-operation-panel")
         TvOptionPanel(panelModifier, title = title.takeIf { showHeader }) { entriesContent() }
     }
     TvModalOverlay(

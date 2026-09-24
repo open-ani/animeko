@@ -36,4 +36,10 @@ kotlin {
             implementation(libs.konsist)
         }
     }
+    sourceSets.androidDeviceTest {
+        kotlin.srcDir("../src/androidTvDeviceTest/kotlin")
+        dependencies {
+            implementation(projects.utils.uiTesting)
+        }
+    }
 }

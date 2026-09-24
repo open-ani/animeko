@@ -18,6 +18,7 @@ kotlin {
     sourceSets.androidMain {
         kotlin.srcDir("../src/androidTv/kotlin")
         dependencies {
+            implementation(projects.app.shared)
             api(projects.app.shared.uiEpisode)
             api(projects.app.shared.uiFoundationTv)
             implementation(projects.app.shared.uiSubjectTv)
@@ -30,5 +31,11 @@ kotlin {
     }
     sourceSets.androidHostTest {
         kotlin.srcDir("../src/androidTvTest/kotlin")
+    }
+    sourceSets.androidDeviceTest {
+        kotlin.srcDir("../src/androidTvDeviceTest/kotlin")
+        dependencies {
+            implementation(projects.utils.uiTesting)
+        }
     }
 }

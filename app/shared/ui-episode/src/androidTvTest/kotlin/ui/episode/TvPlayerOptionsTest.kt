@@ -11,9 +11,6 @@ package me.him188.ani.tv.ui.episode
 
 import androidx.compose.runtime.saveable.SaverScope
 import me.him188.ani.app.domain.media.fetch.MediaSourceFetchState
-import me.him188.ani.tv.ui.episode.playback.TvAutoSkipController
-import me.him188.ani.tv.ui.episode.playback.TvChapter
-import me.him188.ani.tv.ui.episode.playback.TvSkipPrompt
 import me.him188.ani.tv.ui.episode.source.TvSourceDialogState
 import me.him188.ani.tv.ui.episode.source.TvSourceGroup
 import me.him188.ani.tv.ui.episode.source.TvSourceMode
@@ -75,51 +72,4 @@ class TvPlayerOptionsTest {
         assertTrue(restored.showExcluded)
     }
 
-    @Test
-    fun `cancelled automatic skip never seeks and resets with media`() {
-        val controller = TvAutoSkipController()
-        val chapters = listOf(TvChapter("OP", 60_000, 85_000))
-        val seeks = mutableListOf<Long>()
-        assertEquals(TvSkipPrompt("OP", 5), controller.update(55_000, 1_400_000, chapters, true, seeks::add))
-        controller.cancel()
-        assertNull(controller.update(60_000, 1_400_000, chapters, true, seeks::add))
-        assertTrue(seeks.isEmpty())
-        controller.reset()
-        controller.update(55_000, 1_400_000, chapters, true, seeks::add)
-        controller.update(60_000, 1_400_000, chapters, true, seeks::add)
-        assertEquals(listOf(145_000L), seeks)
-    }
-
-    @Test
-    fun `disabled skipping and non opening chapters do not seek`() {
-        val controller = TvAutoSkipController()
-        val seeks = mutableListOf<Long>()
-        assertNull(controller.update(60_000, 1_400_000, listOf(TvChapter("OP", 60_000, 85_000)), false, seeks::add))
-        assertNull(controller.update(60_000, 1_400_000, listOf(TvChapter("Part", 60_000, 300_000)), true, seeks::add))
-        assertTrue(seeks.isEmpty())
-    }
-
-    @Test
-    fun `late chapter rules still show cancellable countdown`() {
-        val controller = TvAutoSkipController()
-        val chapters = listOf(TvChapter("OP", 60_000, 85_000))
-        val seeks = mutableListOf<Long>()
-        assertEquals(TvSkipPrompt("OP", 5), controller.update(60_000, 1_400_000, chapters, true, seeks::add))
-        assertEquals(TvSkipPrompt("OP", 2), controller.update(63_000, 1_400_000, chapters, true, seeks::add))
-        assertTrue(seeks.isEmpty())
-        controller.cancel()
-        assertNull(controller.update(65_000, 1_400_000, chapters, true, seeks::add))
-        assertTrue(seeks.isEmpty())
-    }
-
-    @Test
-    fun `short episode uses shorter chapter length and skips once`() {
-        val controller = TvAutoSkipController()
-        val chapters = listOf(TvChapter("OP", 60_000, 60_000))
-        val seeks = mutableListOf<Long>()
-        controller.update(55_000, 800_000, chapters, true, seeks::add)
-        controller.update(60_000, 800_000, chapters, true, seeks::add)
-        controller.update(60_000, 800_000, chapters, true, seeks::add)
-        assertEquals(listOf(120_000L), seeks)
-    }
 }

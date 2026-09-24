@@ -12,6 +12,7 @@ package me.him188.ani.tv.ui.search
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
@@ -35,7 +36,7 @@ import androidx.tv.material3.Surface
 import androidx.tv.material3.SurfaceDefaults
 import androidx.tv.material3.Text
 import me.him188.ani.app.data.models.preference.NsfwMode
-import me.him188.ani.app.data.network.BatchSubjectDetails
+import me.him188.ani.app.ui.exploration.search.SubjectPreviewItemInfo
 import me.him188.ani.tv.ui.foundation.focus.TvFocusKey
 import me.him188.ani.tv.ui.foundation.focus.TvFocusScope
 import me.him188.ani.tv.ui.foundation.focus.rememberTvFocusScope
@@ -59,9 +60,10 @@ private enum class TvSearchFocus : TvFocusKey {
 @Composable
 fun TvSearchScreen(
     state: TvSearchUiState,
-    results: LazyPagingItems<BatchSubjectDetails>,
+    results: LazyPagingItems<SubjectPreviewItemInfo>,
     onIntent: (TvSearchIntent) -> Unit,
     modifier: Modifier = Modifier,
+    navigationRailInsets: PaddingValues = PaddingValues(0.dp),
 ) {
     // 统一焦点框架: 进页初始焦点落输入框 (聚焦后按确认弹软键盘)
     val focus = rememberTvFocusScope()
@@ -84,12 +86,12 @@ fun TvSearchScreen(
                     ),
             )
         },
-        modifier = modifier,
+        modifier = modifier.fillMaxSize().padding(navigationRailInsets),
     ) {
         when {
             !state.hasSearched -> TvSearchCenteredHint("输入关键词, 按软键盘搜索键开始")
             results.itemCount == 0 -> TvSearchCenteredHint("没有找到相关番剧")
-            else -> TvSearchResultsGrid(results, { onIntent(TvSearchIntent.OpenSubject(it)) }, focus, nsfwMode = state.nsfwMode)
+            else -> TvSearchResultsGrid(results, { onIntent(TvSearchIntent.OpenSubject(it)) }, focus)
         }
     }
 }
@@ -175,11 +177,10 @@ private fun TvSearchField(
 /** 结果网格: Adaptive 海报卡网格 (追番页同规格). */
 @Composable
 private fun TvSearchResultsGrid(
-    results: LazyPagingItems<BatchSubjectDetails>,
-    onClickSubject: (BatchSubjectDetails) -> Unit,
+    results: LazyPagingItems<SubjectPreviewItemInfo>,
+    onClickSubject: (SubjectPreviewItemInfo) -> Unit,
     focus: TvFocusScope,
     modifier: Modifier = Modifier,
-    nsfwMode: NsfwMode = NsfwMode.BLUR,
 ) {
     LazyVerticalGrid(
         columns = GridCells.Adaptive(TvPageDefaults.PosterGridCellMinWidth),
@@ -188,14 +189,14 @@ private fun TvSearchResultsGrid(
         horizontalArrangement = Arrangement.spacedBy(TvPageDefaults.CardSpacing),
         verticalArrangement = Arrangement.spacedBy(TvPageDefaults.CardSpacing),
     ) {
-        items(results.itemCount, key = { results.peek(it)?.subjectInfo?.subjectId ?: it }) { index ->
+        items(results.itemCount, key = { results.peek(it)?.subjectId ?: it }) { index ->
             val details = results[index] ?: return@items
             TvPosterCard(
-                imageUrl = details.subjectInfo.imageLarge,
-                title = details.subjectInfo.displayName,
-                obscureImage = details.subjectInfo.nsfw && nsfwMode == NsfwMode.BLUR,
+                imageUrl = details.imageUrl,
+                title = details.title,
+                obscureImage = details.nsfw && details.nsfwMode == NsfwMode.BLUR,
                 onClick = { onClickSubject(details) },
-                memoryId = "search-${details.subjectInfo.subjectId}",
+                memoryId = "search-${details.subjectId}",
                 modifier = if (index == 0) Modifier.tvFocusAnchor(focus, TvSearchFocus.FirstResult) else Modifier,
             )
         }

@@ -284,6 +284,21 @@ val ANI_ANDROID_ABIS = "ani.android.abis"
 @Suppress("PropertyName")
 val ANI_ENABLE_IOS = "ani.enable.ios"
 
+/**
+ * 含 Android TV 界面的模块, 与 settings.gradle.kts 中的 `-tv` 模块一致.
+ * 它们的 instrumented test 除了在手机镜像上运行, 还会在 Android TV 系统镜像上运行.
+ */
+val androidTvModules = listOf(
+    ":app:shared:tv",
+    ":app:shared:ui-foundation-tv",
+    ":app:shared:ui-settings-tv",
+    ":app:shared:ui-subject-tv",
+    ":app:shared:ui-exploration-tv",
+    ":app:shared:ui-onboarding-tv",
+    ":app:shared:ui-episode-tv",
+    ":app:shared:ui-watchtogether-tv",
+)
+
 @Suppress("PropertyName")
 val ANI_BUILD_FRAMEWORK = "ani.build.framework"
 
@@ -1017,7 +1032,6 @@ workflow(
                 "GH_TOKEN" to expr { secrets.GITHUB_TOKEN },
                 "OPENAI_API_KEY" to expr { secrets.OPENAI_API_KEY },
                 "GITHUB_REPOSITORY" to expr { github.repository },
-                "CODEX_MODEL" to "gpt-5.5",
                 "GIT_TAG" to expr { gitTag.tagExpr },
                 "TAG_VERSION" to expr { gitTag.tagVersionExpr },
             ),
@@ -1807,6 +1821,87 @@ class WithMatrix(
                 ),
                 maxAttempts = 3,
             )
+            /**
+             * 启动一个模拟器并在其上运行 instrumented test.
+             *
+             * @param label 步骤名中区分本次运行的后缀, 例如 `api=30, arch=x86_64`.
+             * @param artifactSuffix 测试报告 artifact 名与 logcat 文件名中区分本次运行的后缀, 只能含 artifact 名允许的字符.
+             * @param gradleTasks 要运行的 `connectedDeviceTest` 任务, 不带模块前缀即对全部模块运行.
+             */
+            fun instrumentedTestRun(
+                label: String,
+                artifactSuffix: String,
+                apiLevel: Int,
+                arch: AndroidEmulatorRunner.Arch,
+                target: AndroidEmulatorRunner.Target,
+                profile: String,
+                gradleTasks: List<String>,
+            ) {
+                if (!matrix.selfHosted) {
+                    // GitHub 托管的机器只有 16 GB 内存, 模拟器要和 Gradle 一起跑.
+                    // 先停掉打包阶段留下的 Gradle/Kotlin daemon, 并记录内存与磁盘余量便于排查.
+                    run(
+                        name = "Stop Gradle daemons before emulator ($label)",
+                        command = """
+                            ./gradlew --stop
+                            pkill -f KotlinCompileDaemon || true
+                            free -h
+                            df -h .
+                        """.trimIndent(),
+                    )
+                }
+                uses(
+                    name = "Android Instrumented Test ($label)",
+                    action = AndroidEmulatorRunner(
+                        apiLevel = apiLevel.toString(),
+                        arch = arch,
+                        target = target,
+                        profile = profile,
+                        ramSize = "2048M",
+                        script = buildString {
+                            append("./gradlew ")
+                            append(gradleTasks.joinToString(" "))
+                            // --continue: 一个模块失败也把其余模块的测试跑完, 最后统一报告.
+                            append(" --continue \"-Pandroid.min.sdk=30\" ")
+                            // 测试 APK 已在上一步打包好, 这里 Gradle 只负责安装和运行, 用小堆给模拟器留内存.
+                            append(matrix.gradleArgsWith(gradleHeap = "3g", kotlinCompilerHeap = "2g"))
+                            // 结束 crashpad_handler 后要以 Gradle 的退出码退出, 否则测试失败不会让步骤失败.
+                            // https://github.com/ReactiveCircus/android-emulator-runner/issues/385#issuecomment-2492035091
+                            // 测试进程在启动阶段崩溃时不会留下按测试拆分的 logcat, 整机 logcat 是唯一线索.
+                            append("; status=\$?; adb logcat -d > logcat-$artifactSuffix.txt || true; ")
+                            append("killall -INT crashpad_handler || true; exit \$status")
+                        },
+                        emulatorBootTimeout = 1800,
+                    ),
+                )
+                uses(
+                    name = "Upload Android Instrumented Test Reports ($label)",
+                    `if` = "always()",
+                    action = UploadArtifact(
+                        name = "android-device-test-reports-$artifactSuffix",
+                        path_Untyped = "**/build/reports/androidTests/**\n**/build/outputs/androidTest-results/**\nlogcat-$artifactSuffix.txt",
+                        ifNoFilesFound = UploadArtifact.BehaviorIfNoFilesFound.Ignore,
+                        overwrite = true,
+                    ),
+                )
+                if (!matrix.runner.isSelfHosted && matrix.isUnix) {
+                    // GitHub hosted runners allow only 14GB space, so we have to remove old emulators before installing new ones
+                    run(
+                        name = "Uninstall emulators",
+                        command = "sdkmanager --uninstall \$(sdkmanager --list | grep emulator | awk '{print \$1}')\n",
+                    )
+                    run(
+                        name = "Remove AVD",
+                        command = $$"""
+                            echo "Removing Emulator binaries..."
+                            rm -rf $ANDROID_HOME/emulator
+                            echo "Removing System Images..."
+                            rm -rf $ANDROID_HOME/system-images
+                        """.trimIndent(),
+                    )
+                }
+            }
+
             for (arch in listOfNotNull(
                 // test loading anitorrent and other native libraries
                 if (matrix.arch == Arch.AARCH64) AndroidEmulatorRunner.Arch.Arm64V8a else null,
@@ -1814,65 +1909,31 @@ class WithMatrix(
             )) {
                 // 在 minSdk 30 和 targetSdk 两个版本上各跑一遍
                 for (apiLevel in listOf(30, 36)) {
-                    if (!matrix.selfHosted) {
-                        // GitHub 托管的机器只有 16 GB 内存, 模拟器要和 Gradle 一起跑.
-                        // 先停掉打包阶段留下的 Gradle/Kotlin daemon, 并记录内存与磁盘余量便于排查.
-                        run(
-                            name = "Stop Gradle daemons before emulator (api=$apiLevel)",
-                            command = """
-                                ./gradlew --stop
-                                pkill -f KotlinCompileDaemon || true
-                                free -h
-                                df -h .
-                            """.trimIndent(),
-                        )
-                    }
-                    uses(
-                        name = "Android Instrumented Test (api=$apiLevel, arch=${arch.stringValue})",
-                        action = AndroidEmulatorRunner(
-                            apiLevel = apiLevel.toString(),
-                            arch = arch,
-                            profile = "pixel_2",
-                            ramSize = "2048M",
-                            script = buildString {
-                                // --continue: 一个模块失败也把其余模块的测试跑完, 最后统一报告.
-                                append("./gradlew connectedDeviceTest --continue \"-Pandroid.min.sdk=30\" ")
-                                // 测试 APK 已在上一步打包好, 这里 Gradle 只负责安装和运行, 用小堆给模拟器留内存.
-                                append(matrix.gradleArgsWith(gradleHeap = "3g", kotlinCompilerHeap = "2g"))
-                                // 结束 crashpad_handler 后要以 Gradle 的退出码退出, 否则测试失败不会让步骤失败.
-                                // https://github.com/ReactiveCircus/android-emulator-runner/issues/385#issuecomment-2492035091
-                                append("; status=\$?; killall -INT crashpad_handler || true; exit \$status")
-                            },
-                            emulatorBootTimeout = 1800,
-                        ),
+                    instrumentedTestRun(
+                        label = "api=$apiLevel, arch=${arch.stringValue}",
+                        artifactSuffix = "api$apiLevel-${arch.stringValue}",
+                        apiLevel = apiLevel,
+                        arch = arch,
+                        target = AndroidEmulatorRunner.Target.Default,
+                        // 1080x1920 的手机屏幕. 默认 AVD 只有 320x640, 而 `wm size` 最多放大到物理尺寸的 2 倍,
+                        // TV 界面的 UI 测试要把显示规格设为 1920x1080 (见 TvDisplayRunListener).
+                        profile = "pixel_2",
+                        gradleTasks = listOf("connectedDeviceTest"),
                     )
-                    uses(
-                        name = "Upload Android Instrumented Test Reports (api=$apiLevel, arch=${arch.stringValue})",
-                        `if` = "always()",
-                        action = UploadArtifact(
-                            name = "android-device-test-reports-api$apiLevel-${arch.stringValue}",
-                            path_Untyped = "**/build/reports/androidTests/**\n**/build/outputs/androidTest-results/**",
-                            ifNoFilesFound = UploadArtifact.BehaviorIfNoFilesFound.Ignore,
-                            overwrite = true,
-                        ),
-                    )
-                    if (!matrix.runner.isSelfHosted && matrix.isUnix) {
-                        // GitHub hosted runners allow only 14GB space, so we have to remove old emulators before installing new ones
-                        run(
-                            name = "Uninstall emulators",
-                            command = "sdkmanager --uninstall \$(sdkmanager --list | grep emulator | awk '{print \$1}')\n",
-                        )
-                        run(
-                            name = "Remove AVD",
-                            command = $$"""
-                                echo "Removing Emulator binaries..."
-                                rm -rf $ANDROID_HOME/emulator
-                                echo "Removing System Images..."
-                                rm -rf $ANDROID_HOME/system-images
-                            """.trimIndent(),
-                        )
-                    }
                 }
+
+                // TV 模块的测试再在 Android TV 系统镜像上跑一遍: 无系统栏、无触摸, 只有遥控器按键.
+                // 手机镜像只能靠 TvDisplayRunListener 模拟电视的显示规格, 覆盖不到这些差异.
+                // TV 镜像只有 x86_64 与 arm64-v8a 的 API 36, 因此只跑 targetSdk 一个版本.
+                instrumentedTestRun(
+                    label = "api=36, arch=${arch.stringValue}, target=android-tv",
+                    artifactSuffix = "api36-${arch.stringValue}-android-tv",
+                    apiLevel = 36,
+                    arch = arch,
+                    target = AndroidEmulatorRunner.Target.AndroidTv,
+                    profile = "tv_1080p",
+                    gradleTasks = androidTvModules.map { "$it:connectedDeviceTest" },
+                )
             }
         }
     }

@@ -10,10 +10,18 @@
 package me.him188.ani.tv.ui.foundation.focus
 
 import androidx.compose.foundation.lazy.grid.LazyGridState
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.snapshots.Snapshot
+import kotlinx.coroutines.CompletableDeferred
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.test.runCurrent
+import kotlinx.coroutines.test.runTest
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
+import kotlin.test.assertNotSame
 import kotlin.test.assertNull
+import kotlin.test.assertSame
 import kotlin.test.assertTrue
 
 private enum class Keys : TvFocusKey { A, B }
@@ -22,13 +30,13 @@ private enum class Keys : TvFocusKey { A, B }
 class TvFocusScopeTest {
 
     @Test
-    fun `request is pending until consumed and re-request bumps sequence`() {
+    fun `each request has a separate cancellation identity`() {
         val scope = TvFocusScope()
         scope.request(Keys.A)
-        assertEquals(Keys.A, scope.pending?.first)
-        val seq1 = scope.pending?.second
+        assertSame(scope.targetOf(Keys.A), scope.pending?.target?.invoke())
+        val first = scope.pending
         scope.request(Keys.A)
-        assertTrue(scope.pending!!.second > seq1!!)
+        assertNotSame(first, scope.pending)
     }
 
     @Test
@@ -36,7 +44,7 @@ class TvFocusScopeTest {
         val scope = TvFocusScope()
         scope.request(Keys.A)
         scope.request(Keys.B)
-        assertEquals(Keys.B, scope.pending?.first)
+        assertSame(scope.targetOf(Keys.B), scope.pending?.target?.invoke())
     }
 
     @Test
@@ -50,13 +58,60 @@ class TvFocusScopeTest {
     }
 
     @Test
-    fun `anchor attach bookkeeping tracks attach and detach`() {
-        val scope = TvFocusScope()
-        assertFalse(scope.isAnchorAttached(Keys.A))
-        scope.onAnchorAttached(Keys.A)
-        assertTrue(scope.isAnchorAttached(Keys.A))
-        scope.onAnchorDetached(Keys.A)
-        assertFalse(scope.isAnchorAttached(Keys.A))
+    fun `later requests cancel suspended preparation`() = runTest {
+        val focus = TvFocusScope()
+        val data = CompletableDeferred<Unit>()
+        val work = launch { focus.requestPrepared { data.await(); Keys.A } }
+        runCurrent()
+        focus.request(Keys.B)
+        Snapshot.sendApplyNotifications()
+        runCurrent()
+        assertTrue(work.isCompleted)
+        data.complete(Unit)
+        runCurrent()
+        assertSame(focus.targetOf(Keys.B), focus.pending?.target?.invoke())
+    }
+
+    @Test
+    fun `navigation cancels preparation including work after early delivery`() = runTest {
+        val focus = TvFocusScope()
+        val work = launch { focus.requestPrepared { focusNow(Keys.A); CompletableDeferred<Unit>().await(); null } }
+        runCurrent()
+        assertSame(focus.targetOf(Keys.A), focus.pending?.target?.invoke())
+        focus.notifyUserNavigation()
+        Snapshot.sendApplyNotifications()
+        runCurrent()
+        assertTrue(work.isCompleted)
+        assertNull(focus.pending)
+    }
+
+    @Test
+    fun `parent boundary navigation cancels a child preparation`() = runTest {
+        val parent = TvFocusBoundaryState(mutableStateOf(true), null)
+        parent.notifyUserNavigation()
+        val focus = TvFocusScope(TvFocusBoundaryState(mutableStateOf(true), parent))
+        assertEquals(0, focus.userNavGeneration)
+        val work = launch { focus.requestPrepared { CompletableDeferred<Unit>().await(); Keys.A } }
+        runCurrent()
+        parent.notifyUserNavigation()
+        Snapshot.sendApplyNotifications()
+        runCurrent()
+        assertTrue(work.isCompleted)
+        assertNull(focus.pending)
+    }
+
+    @Test
+    fun `leaving a boundary cancels preparation without replay on reactivation`() = runTest {
+        val active = mutableStateOf(true)
+        val focus = TvFocusScope(TvFocusBoundaryState(active, null))
+        val work = launch { focus.requestPrepared { CompletableDeferred<Unit>().await(); Keys.A } }
+        runCurrent()
+        active.value = false
+        Snapshot.sendApplyNotifications()
+        runCurrent()
+        assertTrue(work.isCompleted)
+        active.value = true
+        assertNull(focus.pending)
     }
 
     @Test

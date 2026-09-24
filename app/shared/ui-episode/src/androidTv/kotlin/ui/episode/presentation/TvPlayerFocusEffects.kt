@@ -19,18 +19,15 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.snapshotFlow
-import androidx.lifecycle.Lifecycle
-import androidx.lifecycle.compose.LocalLifecycleOwner
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.flow.first
 import me.him188.ani.datasources.api.topic.UnifiedCollectionType
 import me.him188.ani.tv.ui.episode.TvEpisodeUiState
 import me.him188.ani.tv.ui.episode.danmaku.TvDanmakuSettingsPanelState
-import me.him188.ani.tv.ui.subject.collection.TvCollectionPrompt
-import me.him188.ani.tv.ui.subject.collection.tvCollectionEntryType
 import me.him188.ani.tv.ui.foundation.focus.TvFocusKey
 import me.him188.ani.tv.ui.foundation.focus.TvFocusScope
-import me.him188.ani.tv.ui.foundation.focus.requestPrepared
+import me.him188.ani.tv.ui.subject.collection.TvCollectionPrompt
+import me.him188.ani.tv.ui.subject.collection.tvCollectionEntryType
 import me.him188.ani.tv.ui.watchtogether.TvTogetherIntent
 import me.him188.ani.tv.ui.watchtogether.TvTogetherState
 
@@ -79,24 +76,20 @@ internal fun TvPlayerFocusEffects(
     val latestDanmakuSettingsState by rememberUpdatedState(danmakuSettingsState)
     val latestEpisodeActionId by rememberUpdatedState(presentationState.episodeActionId)
     val focusRequests = presentationState.focusRequests
-    val lifecycle = LocalLifecycleOwner.current.lifecycle
-    LaunchedEffect(focus, lifecycle) {
-        focus.requestPrepared {
-            lifecycle.currentStateFlow.first { it.isAtLeast(Lifecycle.State.RESUMED) }
-            when {
-                latestOverlay.sourceDialogVisible -> null // The source dialog owns its selected result.
-                latestOverlay.dialog != null -> TvPlayerFocus.DialogEntry
-                latestOverlay.activePanel != null -> latestEntryKey
-                latestOverlay.stripExpanded -> {
-                    val episodes = snapshotFlow { latestState.episodes }.first { it.isNotEmpty() }
-                    val index = episodes.indexOfFirst { it.episodeId == latestState.currentEpisodeId }.coerceAtLeast(0)
-                    stripListState.scrollToItem(index)
-                    EpisodeCardKey(episodes[index].episodeId)
-                }
-                latestOverlay.recommendationsVisible -> TvPlayerFocus.RecommendationsEntry
-                latestOverlay.controlsVisible -> TvPlayerFocus.SeekBar
-                else -> TvPlayerFocus.Root
+    focus.InitialFocus {
+        when {
+            latestOverlay.sourceDialogVisible -> null // The source dialog owns its selected result.
+            latestOverlay.dialog != null -> TvPlayerFocus.DialogEntry
+            latestOverlay.activePanel != null -> latestEntryKey
+            latestOverlay.stripExpanded -> {
+                val episodes = snapshotFlow { latestState.episodes }.first { it.isNotEmpty() }
+                val index = episodes.indexOfFirst { it.episodeId == latestState.currentEpisodeId }.coerceAtLeast(0)
+                stripListState.scrollToItem(index)
+                EpisodeCardKey(episodes[index].episodeId)
             }
+            latestOverlay.recommendationsVisible -> TvPlayerFocus.RecommendationsEntry
+            latestOverlay.controlsVisible -> TvPlayerFocus.SeekBar
+            else -> TvPlayerFocus.Root
         }
     }
     LaunchedEffect(focusRequests, focus) {

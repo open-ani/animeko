@@ -9,7 +9,6 @@
 
 package me.him188.ani.tv.ui.episode.controls
 
-import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
@@ -40,24 +39,26 @@ import androidx.compose.material.icons.rounded.SubtitlesOff
 import androidx.compose.material.icons.rounded.ViewModule
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.key
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.produceState
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.focus.onFocusChanged
-import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.rememberTextMeasurer
@@ -69,10 +70,8 @@ import androidx.tv.material3.Icon
 import androidx.tv.material3.MaterialTheme
 import androidx.tv.material3.Surface
 import androidx.tv.material3.Text
-import java.text.SimpleDateFormat
-import java.util.Date
-import java.util.Locale
 import kotlinx.coroutines.delay
+import me.him188.ani.app.domain.media.player.MediaCacheProgressInfo
 import me.him188.ani.app.ui.lang.Lang
 import me.him188.ani.app.ui.lang.tv_player_remote_back
 import me.him188.ani.app.ui.lang.tv_player_remote_confirm
@@ -88,12 +87,14 @@ import me.him188.ani.app.ui.lang.video_player_pause
 import me.him188.ani.app.ui.lang.video_player_play
 import me.him188.ani.app.ui.lang.video_player_select_episode
 import me.him188.ani.app.ui.lang.video_player_subtitle
+import me.him188.ani.app.videoplayer.ui.progress.MediaProgressSlider
+import me.him188.ani.app.videoplayer.ui.progress.MediaProgressSliderDefaults
+import me.him188.ani.app.videoplayer.ui.progress.PlayerProgressSliderState
 import me.him188.ani.tv.ui.episode.TvEpisodeTitle
 import me.him188.ani.tv.ui.episode.TvPlayerOptionsState
 import me.him188.ani.tv.ui.episode.components.TvRemoteHint
 import me.him188.ani.tv.ui.episode.presentation.TvPlayerPanel
 import me.him188.ani.tv.ui.episode.presentation.title
-import me.him188.ani.tv.ui.subject.collection.tvCollectionLabel
 import me.him188.ani.tv.ui.episode.source.TvSourceIcon
 import me.him188.ani.tv.ui.foundation.formatPlaybackTime
 import me.him188.ani.tv.ui.foundation.layout.rememberTvOptionAnchors
@@ -104,8 +105,12 @@ import me.him188.ani.tv.ui.foundation.widgets.TvOptionDefaults
 import me.him188.ani.tv.ui.foundation.widgets.TvOptionPanelDefaults
 import me.him188.ani.tv.ui.foundation.widgets.TvOptionsRow
 import me.him188.ani.tv.ui.foundation.widgets.TvOptionsRowDefaults
-import me.him188.ani.tv.ui.foundation.widgets.TvSeekBar
+import me.him188.ani.tv.ui.subject.collection.tvCollectionLabel
 import org.jetbrains.compose.resources.stringResource
+import org.openani.mediamp.metadata.Chapter
+import java.text.SimpleDateFormat
+import java.util.Date
+import java.util.Locale
 
 /**
  * 播放器控制层样式:
@@ -206,7 +211,7 @@ internal fun TvPlayerControlsOverlay(
     playWhenReady: Boolean,
     positionMillis: Long,
     durationMillis: Long,
-    bufferedFraction: Float,
+    cacheProgress: MediaCacheProgressInfo?,
     hasNextEpisode: Boolean,
     scrubMillis: Long?,
     speedLabel: String,
@@ -353,7 +358,7 @@ internal fun TvPlayerControlsOverlay(
                     }
                 }
 
-                // 进度条行: 左当前时间 (拖拽预览时显示目标) · TvSeekBar · 右总时长
+                // 进度条行: 左当前时间 (拖拽预览时显示目标) · 共享进度条 · 右总时长
                 var seekBarFocused by remember { mutableStateOf(false) }
                 Row(
                     Modifier
@@ -379,28 +384,14 @@ internal fun TvPlayerControlsOverlay(
                             .then(seekBarModifier)
                             .testTag("tv-player-seekbar"),
                     ) {
-                        TvSeekBar(
+                        TvPlayerProgress(
                             positionMillis = positionMillis,
                             durationMillis = durationMillis,
-                            bufferedFraction = bufferedFraction,
+                            cacheProgress = cacheProgress,
                             scrubMillis = scrubMillis,
-                            showDot = seekBarFocused,
+                            chapters = options.chapters,
+                            focused = seekBarFocused,
                         )
-                        Canvas(
-                            Modifier
-                                .fillMaxWidth()
-                                .height(16.dp),
-                        ) {
-                            if (durationMillis > 0) options.chapters.forEach { chapter ->
-                                val x = size.width * (chapter.offsetMillis.toFloat() / durationMillis).coerceIn(0f, 1f)
-                                drawLine(
-                                    Color.White.copy(alpha = .7f),
-                                    Offset(x, size.height / 2 - 3.dp.toPx()),
-                                    Offset(x, size.height / 2 + 3.dp.toPx()),
-                                    2.dp.toPx(),
-                                )
-                            }
-                        }
                     }
                     Text(
                         formatPlaybackTime(durationMillis),
@@ -580,3 +571,41 @@ internal fun playerInverseSurfaceColors() = ClickableSurfaceDefaults.colors(
     contentColor = TvPlayerControlsDefaults.Content,
     focusedContentColor = TvPlayerControlsDefaults.FocusedContent,
 )
+
+/** 遥控器焦点与按键由播放页持有，进度、缓存分段及章节标记由共享进度条绘制。 */
+@Composable
+internal fun TvPlayerProgress(
+    positionMillis: Long,
+    durationMillis: Long,
+    cacheProgress: MediaCacheProgressInfo?,
+    scrubMillis: Long?,
+    chapters: List<Chapter>,
+    focused: Boolean,
+    modifier: Modifier = Modifier,
+) {
+    val position by rememberUpdatedState(positionMillis)
+    val duration by rememberUpdatedState(durationMillis)
+    val currentChapters by rememberUpdatedState(chapters)
+    val slider = remember {
+        PlayerProgressSliderState(
+            currentPositionMillis = { position },
+            totalDurationMillis = { duration },
+            chapters = { currentChapters },
+            onPreview = {},
+            onPreviewFinished = {},
+        )
+    }
+    LaunchedEffect(slider, scrubMillis, durationMillis) {
+        if (scrubMillis == null || durationMillis <= 0) slider.cancelPreview()
+        else slider.previewPositionRatio((scrubMillis.toFloat() / durationMillis).coerceIn(0f, 1f))
+    }
+    MediaProgressSlider(
+        state = slider,
+        cacheProgressInfoFlow = { cacheProgress },
+        enabled = false,
+        colors = if (focused || scrubMillis != null) MediaProgressSliderDefaults.colors()
+        else MediaProgressSliderDefaults.colors(thumbColor = Color.Transparent),
+        showPreviewTimeTextOnThumb = false,
+        modifier = modifier.clearAndSetSemantics {},
+    )
+}

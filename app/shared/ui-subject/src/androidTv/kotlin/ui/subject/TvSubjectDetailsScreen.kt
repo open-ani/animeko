@@ -37,38 +37,29 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
-import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.saveable.rememberSaveableStateHolder
 import androidx.compose.runtime.setValue
-import androidx.compose.runtime.snapshotFlow
-import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusDirection
 import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.key.Key
-import androidx.compose.ui.layout.onGloballyPositioned
-import androidx.compose.ui.platform.LocalWindowInfo
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
-import me.him188.ani.tv.ui.subject.details.TvDetailsAction
-import androidx.lifecycle.Lifecycle
-import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.paging.LoadState
 import androidx.paging.compose.LazyPagingItems
 import androidx.paging.compose.collectAsLazyPagingItems
-import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import me.him188.ani.app.data.models.subject.RelatedCharacterInfo
 import me.him188.ani.app.data.models.subject.RelatedPersonInfo
 import me.him188.ani.app.data.models.subject.RelatedSubjectInfo
 import me.him188.ani.app.domain.foundation.LoadError
-import me.him188.ani.app.ui.comment.UIComment
 import me.him188.ani.app.ui.comment.CommentOverlayCleanupEffect
+import me.him188.ani.app.ui.comment.UIComment
 import me.him188.ani.app.ui.lang.Lang
 import me.him188.ani.app.ui.lang.foundation_loading
 import me.him188.ani.app.ui.lang.settings_mediasource_retry
@@ -81,46 +72,47 @@ import me.him188.ani.app.ui.lang.subject_details_staff
 import me.him188.ani.app.ui.lang.subject_details_view_all
 import me.him188.ani.app.ui.search.renderLoadErrorMessage
 import me.him188.ani.tv.ui.foundation.focus.rememberTvFocusScope
-import me.him188.ani.tv.ui.foundation.focus.requestPrepared
+import me.him188.ani.tv.ui.foundation.focus.tvBackKey
 import me.him188.ani.tv.ui.foundation.focus.tvFocusAnchor
 import me.him188.ani.tv.ui.foundation.focus.tvFocusExit
 import me.him188.ani.tv.ui.foundation.focus.tvFocusHotkey
 import me.him188.ani.tv.ui.foundation.focus.tvFocusLink
 import me.him188.ani.tv.ui.foundation.focus.tvFocusNavSignal
+import me.him188.ani.tv.ui.foundation.layout.rememberTvOptionAnchors
+import me.him188.ani.tv.ui.foundation.layout.tvModalUnderlay
+import me.him188.ani.tv.ui.foundation.layout.tvOptionAnchor
 import me.him188.ani.tv.ui.foundation.widgets.TvHeroButton
 import me.him188.ani.tv.ui.foundation.widgets.tvShellBackgroundColor
-import me.him188.ani.tv.ui.subject.components.TvDetailsBackdrop
 import me.him188.ani.tv.ui.subject.components.LocalTvDetailsBackdropImage
+import me.him188.ani.tv.ui.subject.components.TvDetailsBackdrop
 import me.him188.ani.tv.ui.subject.components.TvDetailsBackdropImage
 import me.him188.ani.tv.ui.subject.components.TvDetailsBringIntoViewSpec
 import me.him188.ani.tv.ui.subject.components.TvDetailsBrowseRowLayout
-import me.him188.ani.tv.ui.subject.components.TvDetailsEpisodePlaceholder
 import me.him188.ani.tv.ui.subject.components.TvDetailsLandscapePlaceholder
 import me.him188.ani.tv.ui.subject.components.TvDetailsPersonPlaceholder
 import me.him188.ani.tv.ui.subject.components.TvDetailsScrollAnchors
 import me.him188.ani.tv.ui.subject.components.TvSubjectDetailsDefaults
 import me.him188.ani.tv.ui.subject.components.TvSubjectDetailsPageLayout
+import me.him188.ani.tv.ui.subject.components.tvDetailsEpisodePlaceholders
 import me.him188.ani.tv.ui.subject.components.tvDetailsScrollSection
-import me.him188.ani.tv.ui.foundation.focus.tvBackKey
-import me.him188.ani.tv.ui.foundation.layout.rememberTvOptionAnchors
-import me.him188.ani.tv.ui.foundation.layout.tvModalUnderlay
-import me.him188.ani.tv.ui.foundation.layout.tvOptionAnchor
 import me.him188.ani.tv.ui.subject.details.TvCharacterCard
+import me.him188.ani.tv.ui.subject.details.TvDetailsAction
 import me.him188.ani.tv.ui.subject.details.TvDetailsCollectionAction
-import me.him188.ani.tv.ui.subject.details.TvDetailsRatingAction
+import me.him188.ani.tv.ui.subject.details.TvDetailsFocusRow
 import me.him188.ani.tv.ui.subject.details.TvDetailsHeroSection
 import me.him188.ani.tv.ui.subject.details.TvDetailsLists
+import me.him188.ani.tv.ui.subject.details.TvDetailsRatingAction
 import me.him188.ani.tv.ui.subject.details.TvEpisodeCard
 import me.him188.ani.tv.ui.subject.details.TvRelatedSubjectCard
 import me.him188.ani.tv.ui.subject.details.TvStaffCard
+import me.him188.ani.tv.ui.subject.details.TvSubjectComments
 import me.him188.ani.tv.ui.subject.details.TvSubjectDetailsPanels
 import me.him188.ani.tv.ui.subject.details.TvSubjectDetailsPlaceholder
 import me.him188.ani.tv.ui.subject.details.TvSubjectInformationSection
-import me.him188.ani.tv.ui.subject.details.TvSubjectComments
+import me.him188.ani.tv.ui.subject.details.rememberTvDetailsFocusState
 import me.him188.ani.tv.ui.subject.presentation.TvDetailsKey
 import me.him188.ani.tv.ui.subject.presentation.TvDetailsPanelKind
 import me.him188.ani.tv.ui.subject.presentation.TvSubjectPresentationState
-import me.him188.ani.tv.ui.subject.presentation.detailsFocusFallback
 import org.jetbrains.compose.resources.stringResource
 
 @Composable
@@ -150,17 +142,8 @@ internal fun TvSubjectDetailsScreen(
 private fun TvDetailsLoadingOrError(error: LoadError?, onRetry: () -> Unit) {
     val focus = rememberTvFocusScope()
     focus.Resolver()
-    val lifecycle = LocalLifecycleOwner.current.lifecycle
-    val window = LocalWindowInfo.current
-    var laidOut by remember(error) { mutableStateOf(false) }
-    LaunchedEffect(error) {
-        focus.requestPrepared {
-            lifecycle.currentStateFlow.first { it.isAtLeast(Lifecycle.State.RESUMED) }
-            snapshotFlow { laidOut && window.isWindowFocused }.first { it }
-            TvDetailsKey("entry")
-        }
-    }
-    val layoutModifier = Modifier.fillMaxSize().tvFocusNavSignal(focus).onGloballyPositioned { laidOut = true }
+    focus.InitialFocus(error) { TvDetailsKey("entry") }
+    val layoutModifier = Modifier.fillMaxSize().tvFocusNavSignal(focus)
     if (error == null) {
         val loading = stringResource(Lang.foundation_loading)
         TvSubjectDetailsPlaceholder(focus,
@@ -197,22 +180,25 @@ private fun TvSubjectDetailsContent(
     val charactersState = rememberLazyListState()
     val staffState = rememberLazyListState()
     val relatedState = rememberLazyListState()
-    val rowStates = mapOf("episode" to episodesState, "character" to charactersState, "staff" to staffState, "related" to relatedState)
     val rowKeys = mapOf(
         "episode" to details.episodes.map { "episode:${it.episodeId}" },
         "character" to lists.characters.itemSnapshotList.items.map { "character:${it.character.id}" },
         "staff" to lists.staff.itemSnapshotList.items.map { "staff:${it.personInfo.id}:${it.position}" },
         "related" to lists.related.itemSnapshotList.items.map { "related:${it.subjectId}" },
     )
-    val latestKeys by rememberUpdatedState(rowKeys)
-    val latestLists by rememberUpdatedState(lists)
     val focus = rememberTvFocusScope()
     focus.Resolver()
+    val focusState = rememberTvDetailsFocusState(focus, presentation, mapOf(
+        "episode" to TvDetailsFocusRow(episodesState, rowKeys.getValue("episode"), details.episodesLoading,
+            "all-episodes", persistentEntry = true),
+        "character" to TvDetailsFocusRow(charactersState, rowKeys.getValue("character"),
+            lists.characters.loadState.refresh is LoadState.Loading, "characters-all"),
+        "staff" to TvDetailsFocusRow(staffState, rowKeys.getValue("staff"),
+            lists.staff.loadState.refresh is LoadState.Loading, "staffs-all"),
+        "related" to TvDetailsFocusRow(relatedState, rowKeys.getValue("related"),
+            lists.related.loadState.refresh is LoadState.Loading, "relateds-all"),
+    ))
     val scope = rememberCoroutineScope()
-    val lifecycle = LocalLifecycleOwner.current.lifecycle
-    val window = LocalWindowInfo.current
-    var pageLaidOut by remember { mutableStateOf(false) }
-    var belowFoldReady by remember { mutableStateOf(false) }
     var informationReturnTarget by rememberSaveable { mutableStateOf<String?>(null) }
     val anchors = remember { TvDetailsScrollAnchors() }
     val defaultSpec = LocalBringIntoViewSpec.current
@@ -223,69 +209,9 @@ private fun TvSubjectDetailsContent(
     var backdropImage by remember(backdrop) { mutableStateOf<TvDetailsBackdropImage?>(null) }
     val backdropFadeDistance = with(LocalDensity.current) { TvSubjectDetailsDefaults.BackdropFadeDistance.toPx() }
 
-    suspend fun restore(target: String, previous: List<String> = emptyList()) {
-        focus.requestPrepared(isRelevant = { presentation.panel == null }) {
-            lifecycle.currentStateFlow.first { it.isAtLeast(Lifecycle.State.RESUMED) }
-            snapshotFlow { pageLaidOut && window.isWindowFocused }.first { it }
-            if (target != "play") belowFoldReady = true
-            val section = target.substringBefore(':')
-            val rowState = rowStates[section]
-            if (rowState != null) {
-                snapshotFlow {
-                    target in latestKeys[section].orEmpty() || when (section) {
-                        "character" -> latestLists.characters.loadState.refresh !is LoadState.Loading
-                        "staff" -> latestLists.staff.loadState.refresh !is LoadState.Loading
-                        "related" -> latestLists.related.loadState.refresh !is LoadState.Loading
-                        else -> true
-                    }
-                }.first { it }
-                val keys = latestKeys[section].orEmpty()
-                val selected = if (keys.isEmpty()) null else detailsFocusFallback(target, previous, keys, keys.first())
-                if (selected != null) {
-                    rowState.scrollToItem(keys.indexOf(selected))
-                    TvDetailsKey(selected)
-                } else TvDetailsKey(if (section == "episode") "all-episodes" else "${section}s-all")
-            } else TvDetailsKey(target)
-        }
-    }
-    LaunchedEffect(focus) {
-        if (presentation.panel == null) restore(presentation.lastFocused)
-        else belowFoldReady = true
-    }
-    LaunchedEffect(presentation.restoreTarget, presentation.panel) {
-        val target = presentation.restoreTarget ?: return@LaunchedEffect
-        if (presentation.panel == null) {
-            restore(target)
-            if (presentation.restoreTarget == target) presentation.restoreTarget = null
-        }
-    }
     LaunchedEffect(state.operation) {
         val operation = state.operation
         if (operation.completed && operation.error == null) presentation.complete(operation.requestId, operation.offerMarkAllWatched)
-    }
-    var previousKeys by remember { mutableStateOf(rowKeys) }
-    // Capture the identity before the lazy layout removes its focused node.
-    val focusedBeforeUpdate = presentation.lastFocused
-    LaunchedEffect(rowKeys) {
-        val current = focusedBeforeUpdate
-        val section = current.substringBefore(':')
-        val before = previousKeys[section].orEmpty()
-        val after = rowKeys[section].orEmpty()
-        if (presentation.panel == null && current in before && current !in after) {
-            // A replacement Paging flow initially has no items. Wait for its data before
-            // choosing a neighbour; this preparation survives subsequent list emissions.
-            scope.launch { restore(current, before) }
-        }
-        val loadingSection = when (current) {
-            "characters-all" -> "character"
-            "staffs-all" -> "staff"
-            "relateds-all" -> "related"
-            else -> null
-        }
-        if (presentation.panel == null && loadingSection != null && previousKeys[loadingSection].isNullOrEmpty()) {
-            rowKeys[loadingSection]?.firstOrNull()?.let { key -> scope.launch { restore(key) } }
-        }
-        previousKeys = rowKeys
     }
     fun Modifier.anchor(id: String, level: Int): Modifier = this
         .tvFocusAnchor(focus, TvDetailsKey(id))
@@ -295,7 +221,6 @@ private fun TvSubjectDetailsContent(
                 presentation.lastFocused = id
                 if (id.startsWith("episode:")) presentation.lastEpisode = id
                 presentation.backLevel = level
-                if (id == "play") belowFoldReady = true
             }
         }.testTag("tv-details-$id")
     fun open(kind: TvDetailsPanelKind, argument: String = "") {
@@ -334,14 +259,13 @@ private fun TvSubjectDetailsContent(
     fun back() {
         focus.notifyUserNavigation()
         scope.launch {
-            restore("play")
+            focusState.restore("play")
         }
     }
     BackHandler(presentation.panel == null && presentation.backLevel > 0) { back() }
 
     TvSubjectDetailsPageLayout(
         focus = focus, scrollState = scrollState, bringIntoViewSpec = scrollSpec,
-        scrollContentModifier = Modifier.onGloballyPositioned { pageLaidOut = true },
         scrollAnchors = anchors,
         backdrop = {
             TvDetailsBackdrop(backdrop, { scrollState.value / backdropFadeDistance },
@@ -351,7 +275,7 @@ private fun TvSubjectDetailsContent(
             .tvBackKey(enabled = presentation.panel == null && presentation.backLevel > 0, onBack = ::back),
     ) { heroHeight ->
         TvDetailsHeroSection(
-            details = details, height = heroHeight, interactive = belowFoldReady,
+            details = details, height = heroHeight,
             onPlay = { onIntent(TvSubjectDetailsIntent.Resume) },
             onSummary = { open(TvDetailsPanelKind.Summary) },
             onComments = { open(TvDetailsPanelKind.Comments) },
@@ -384,12 +308,11 @@ private fun TvSubjectDetailsContent(
                         },
                     )
                     .then(if (id in setOf("play", "collection", "rating")) {
-                        Modifier.tvFocusHotkey(focus, Key.DirectionDown) { scope.launch { restore(episodesEntry) } }
+                        Modifier.tvFocusHotkey(focus, Key.DirectionDown) { scope.launch { focusState.restore(episodesEntry) } }
                     } else Modifier)
             },
             modifier = surroundingContentModifier.tvDetailsScrollSection(anchors, "hero", 0f) { scrollState.value },
         )
-        if (!belowFoldReady) return@TvSubjectDetailsPageLayout
         TvDetailsBrowseRowLayout(
             title = stringResource(Lang.subject_details_episodes), listState = episodesState,
             sectionId = "episodes",
@@ -402,9 +325,10 @@ private fun TvSubjectDetailsContent(
                     onClick = { open(TvDetailsPanelKind.Episodes, presentation.lastEpisode?.substringAfter(':').orEmpty()) },
                     modifier = Modifier.anchor("all-episodes", 1).tvFocusLink(focus, up = TvDetailsKey("play"))
                         .tvFocusHotkey(focus, Key.DirectionDown) {
-                            scope.launch { restore(if (episodeKeys.isEmpty()) charactersEntry else episodesEntry) }
+                            scope.launch { focusState.restore(if (episodeKeys.isEmpty()) charactersEntry else episodesEntry) }
                         },
                     iconOnly = true,
+                    loading = details.episodesLoading && details.episodes.isEmpty(),
                 )
             },
         ) {
@@ -419,11 +343,7 @@ private fun TvSubjectDetailsContent(
             }
             if (details.episodes.isEmpty()) {
                 if (details.episodesLoading) {
-                    item("loading") {
-                        Row(Modifier.testTag("tv-details-episodes-loading").progressSemantics(), horizontalArrangement = Arrangement.spacedBy(TvSubjectDetailsDefaults.RowSpacing)) {
-                            repeat(3) { TvDetailsEpisodePlaceholder() }
-                        }
-                    }
+                    tvDetailsEpisodePlaceholders()
                 } else {
                     item("empty") { Text(stringResource(Lang.subject_details_no_episodes), color = TvSubjectDetailsDefaults.SecondaryContent) }
                 }
@@ -435,10 +355,10 @@ private fun TvSubjectDetailsContent(
             sectionId = "characters",
             focused = presentation.lastFocused.startsWith("character:") || presentation.lastFocused == "characters-all",
             entryModifier = Modifier.anchor("characters-all", 1).tvFocusLink(focus, down = TvDetailsKey(staffEntry))
-                .tvFocusHotkey(focus, Key.DirectionUp) { scope.launch { restore(episodesEntry) } },
+                .tvFocusHotkey(focus, Key.DirectionUp) { scope.launch { focusState.restore(episodesEntry) } },
             onAll = null,
             rowModifier = rowFocus("characters-row", episodesEntry, staffEntry)
-                .tvFocusHotkey(focus, Key.DirectionUp) { scope.launch { restore(episodesEntry) } }) { item ->
+                .tvFocusHotkey(focus, Key.DirectionUp) { scope.launch { focusState.restore(episodesEntry) } }) { item ->
             TvCharacterCard(item, Modifier.anchor("character:${item.character.id}", 1)) {
                 onIntent(TvSubjectDetailsIntent.OpenCharacter(item.character.id))
             }
@@ -475,7 +395,7 @@ private fun TvSubjectDetailsContent(
             details.info, totalEpisodes = if (details.episodesLoading) null else details.mainEpisodeIds.size,
             focusProgress = informationFocusProgress,
             modifier = Modifier.anchor("info", 1)
-                .tvFocusHotkey(focus, Key.DirectionUp) { scope.launch { restore(informationUpTarget) } },
+                .tvFocusHotkey(focus, Key.DirectionUp) { scope.launch { focusState.restore(informationUpTarget) } },
         )
     }
     val panelStateHolder = rememberSaveableStateHolder()

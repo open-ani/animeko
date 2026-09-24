@@ -55,6 +55,12 @@ data class SubjectCollectionEntity(
     val nsfw: Boolean,
     val imageLarge: String,
     /**
+     * 列表用封面, 服务端下发. 为空表示这条记录写入时服务端还没有这个字段.
+     * @since 6.2.0
+     */
+    @ColumnInfo(defaultValue = "")
+    val imageThumb: String = "",
+    /**
      * 会在获取剧集列表时使用, 用于验证缓存的剧集数目是否正确
      */
     val totalEpisodes: Int,

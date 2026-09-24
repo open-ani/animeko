@@ -7,8 +7,6 @@ package me.him188.ani.tv.ui.settings
 import androidx.compose.runtime.Stable
 import com.mikepenz.aboutlibraries.Libs
 import com.mikepenz.aboutlibraries.ui.compose.util.strippedLicenseContent
-import kotlin.coroutines.CoroutineContext
-import kotlin.coroutines.EmptyCoroutineContext
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -25,7 +23,7 @@ import me.him188.ani.app.data.repository.player.DanmakuRegexFilterRepository
 import me.him188.ani.app.data.repository.media.MediaSourceSubscriptionRepository
 import me.him188.ani.app.data.repository.user.SettingsRepository
 import me.him188.ani.app.domain.media.fetch.MediaSourceManager
-import me.him188.ani.app.ui.foundation.AbstractViewModel
+import me.him188.ani.app.ui.settings.SettingsViewModel
 import me.him188.ani.app.ui.settings.tabs.about.mergeOpenSourceLibraries
 
 @Stable
@@ -35,8 +33,7 @@ class TvSettingsViewModel(
     private val sourceManager: MediaSourceManager,
     private val subscriptions: MediaSourceSubscriptionRepository,
     private val loadLibraries: suspend () -> List<ByteArray>,
-    backgroundCoroutineContext: CoroutineContext = EmptyCoroutineContext,
-) : AbstractViewModel(backgroundCoroutineContext) {
+) : SettingsViewModel() {
     private val eventsChannel = Channel<TvSettingsEvent>(Channel.BUFFERED)
     val events = eventsChannel.receiveAsFlow()
     private val reload = MutableStateFlow(0)
@@ -109,9 +106,9 @@ class TvSettingsViewModel(
                     }
                     is TvSettingsIntent.RemoveRegex -> regexRepository.remove(intent.filter)
                     is TvSettingsIntent.ImportRegex -> eventsChannel.send(
-                        if (regexRepository.import(intent.text)) TvSettingsEvent.ImportSucceeded else TvSettingsEvent.ImportFailed,
+                        if (danmakuRegexFilterState.onImport(intent.text)) TvSettingsEvent.ImportSucceeded else TvSettingsEvent.ImportFailed,
                     )
-                    TvSettingsIntent.ExportRegex -> eventsChannel.send(TvSettingsEvent.Copy(regexRepository.export()))
+                    TvSettingsIntent.ExportRegex -> eventsChannel.send(TvSettingsEvent.Copy(danmakuRegexFilterState.onExport()))
                     TvSettingsIntent.LoadLibraries -> readLibraries()
                     TvSettingsIntent.Retry -> Unit
                 }

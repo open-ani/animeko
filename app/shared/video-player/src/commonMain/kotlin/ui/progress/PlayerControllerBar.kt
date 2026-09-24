@@ -64,8 +64,6 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TextFieldColors
-import androidx.compose.material3.TooltipAnchorPosition
-import androidx.compose.material3.TooltipDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
@@ -86,14 +84,21 @@ import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.input.key.Key
 import androidx.compose.ui.platform.LocalFocusManager
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.Dp
+import androidx.compose.ui.unit.IntOffset
+import androidx.compose.ui.unit.IntRect
+import androidx.compose.ui.unit.IntSize
+import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.window.Popup
 import androidx.compose.ui.window.PopupProperties
+import androidx.compose.ui.window.PopupPositionProvider
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import kotlinx.coroutines.flow.Flow
 import me.him188.ani.app.data.models.preference.DarkMode
@@ -642,10 +647,7 @@ object PlayerControllerDefaults {
         onDismissRequest: () -> Unit,
     ) {
         Popup(
-            popupPositionProvider = TooltipDefaults.rememberTooltipPositionProvider(
-                positioning = TooltipAnchorPosition.Above,
-                spacingBetweenTooltipAndAnchor = 8.dp,
-            ),
+            popupPositionProvider = rememberAboveAnchorWithinWindowPositionProvider(spacing = 8.dp),
             onDismissRequest = onDismissRequest,
             properties = PlatformPopupProperties(focusable = true, clippingEnabled = false),
         ) {
@@ -675,6 +677,36 @@ object PlayerControllerDefaults {
                             .testTag(TAG_SPEED_SWITCHER_SLIDER)
                             .padding(horizontal = 12.dp, vertical = 4.dp),
                     )
+                }
+            }
+        }
+    }
+
+    /**
+     * 把弹层放在锚点上方并水平居中, 整体限制在窗口内; 上方放不下时放到锚点下方.
+     *
+     * Material 的 tooltip 定位不做水平限制: 全屏播放时倍速按钮靠近屏幕边缘, 居中的弹层会伸进刘海对侧的
+     * safe area, 离物理边缘只剩十几 dp, 滑块拖到末端时数值气泡还会被屏幕边缘裁掉.
+     *
+     * 这里的 [PopupPositionProvider.calculatePosition] 收到的窗口尺寸和锚点坐标在 iOS 和桌面端已经扣掉了
+     * 系统栏 (Popup 的 `usePlatformInsets`), 所以限制在窗口内就等于限制在 safe area 内, 不需要再读 insets.
+     */
+    @Composable
+    private fun rememberAboveAnchorWithinWindowPositionProvider(spacing: Dp): PopupPositionProvider {
+        val spacingPx = with(LocalDensity.current) { spacing.roundToPx() }
+        return remember(spacingPx) {
+            object : PopupPositionProvider {
+                override fun calculatePosition(
+                    anchorBounds: IntRect,
+                    windowSize: IntSize,
+                    layoutDirection: LayoutDirection,
+                    popupContentSize: IntSize,
+                ): IntOffset {
+                    val maxX = (windowSize.width - popupContentSize.width).coerceAtLeast(0)
+                    val x = (anchorBounds.left + (anchorBounds.width - popupContentSize.width) / 2).coerceIn(0, maxX)
+                    val above = anchorBounds.top - popupContentSize.height - spacingPx
+                    val y = if (above >= 0) above else anchorBounds.bottom + spacingPx
+                    return IntOffset(x, y)
                 }
             }
         }
