@@ -130,7 +130,7 @@ class DandanplayDanmakuProvider(
                 if (it is CancellationException) throw it
                 logger.warn(it) { "Failed to fetch episodes by Bangumi subject id: ${request.subjectId}" }
             }.getOrNull()
-        tryMatchEpisodes(request, bgmtvEpisodes, prefixedExpectedEpisodeName, matcher)?.let { return it }
+        tryMatchEpisodes(request, bgmtvEpisodes, matcher)?.let { return it }
 
         val episodes: List<DanmakuEpisodeWithSubject>? =
             runCatching { getEpisodesByExactSubjectMatch(request) }
@@ -144,7 +144,7 @@ class DandanplayDanmakuProvider(
                     if (it is CancellationException) throw it
                     logger.error(it) { "Failed to fetch episodes by fuzzy search" }
                 }.getOrNull()
-        tryMatchEpisodes(request, episodes, prefixedExpectedEpisodeName, matcher)?.let { return it }
+        tryMatchEpisodes(request, episodes, matcher)?.let { return it }
 
         // 都不行, 那就用最不准的方法
 
@@ -184,10 +184,16 @@ class DandanplayDanmakuProvider(
     private suspend fun tryMatchEpisodes(
         request: DanmakuFetchRequest,
         episodes: List<DanmakuEpisodeWithSubject>?,
-        prefixedExpectedEpisodeName: String,
         matcher: DanmakuMatcher,
     ): DanmakuFetchResult? {
         if (episodes == null) return null
+
+        // 先用标题精确匹配. 弹弹 play 会把 Bangumi 拆成多个条目的分段放送合并为一个番剧并连续编号,
+        // 此时 Bangumi 的 ep 与弹弹的集数对不上, 只有标题是可靠的.
+        matchEpisodeByTitle(request, episodes)?.let {
+            logger.info { "Matched episode by exact title: ${it.subjectName} - ${it.episodeName}" }
+            return createResult(it.id.toLong(), DanmakuMatchMethod.Exact(it.subjectName, it.episodeName))
+        }
 
         // 用剧集编号匹配. 先用系列的, 因为系列的更大.
         episodes.firstOrNull { it.epOrSort != null && it.epOrSort == request.episodeSort }?.let {
@@ -197,20 +203,6 @@ class DandanplayDanmakuProvider(
         episodes.firstOrNull { it.epOrSort != null && it.epOrSort == request.episodeEp }?.let {
             logger.info { "Matched episode by exact episodeEp: ${it.subjectName} - ${it.episodeName}" }
             return createResult(it.id.toLong(), DanmakuMatchMethod.Exact(it.subjectName, it.episodeName))
-        }
-
-        // 用名称精确匹配, 标记为 Exact.
-        if (request.episodeName.isNotBlank()) {
-            val match =
-                episodes.firstOrNull { it.episodeName == request.episodeName }
-                    ?: episodes.firstOrNull { it.episodeName == prefixedExpectedEpisodeName }
-            match?.let { episode ->
-                logger.info { "Matched episode by exact episodeName: ${episode.subjectName} - ${episode.episodeName}" }
-                return createResult(
-                    episode.id.toLong(),
-                    DanmakuMatchMethod.Exact(episode.subjectName, episode.episodeName),
-                )
-            }
         }
 
         // 用名字不精确匹配.
@@ -225,6 +217,25 @@ class DandanplayDanmakuProvider(
         }
 
         return null
+    }
+
+    /**
+     * 按标题精确匹配. 标题去掉 "第x话" 前缀并归一化后比较, 同时接受 [DanmakuFetchRequest.episodeNames] 中的任一名称.
+     * 多个候选标题相同时, 用集数消歧; 仍无法确定则返回 `null`, 交给后续的集数匹配.
+     */
+    private fun matchEpisodeByTitle(
+        request: DanmakuFetchRequest,
+        episodes: List<DanmakuEpisodeWithSubject>,
+    ): DanmakuEpisodeWithSubject? {
+        val expectedTitles = (request.episodeNames + request.episodeName)
+            .map { normalizeEpisodeTitle(it) }
+            .filterTo(HashSet()) { it.isNotEmpty() }
+        if (expectedTitles.isEmpty()) return null
+
+        val candidates = episodes.filter { normalizeEpisodeTitle(it.episodeName) in expectedTitles }
+        return candidates.singleOrNull()
+            ?: candidates.firstOrNull { it.epOrSort != null && it.epOrSort == request.episodeSort }
+            ?: candidates.firstOrNull { it.epOrSort != null && it.epOrSort == request.episodeEp }
     }
 
     private suspend fun getEpisodesByBgmtvSubjectId(
@@ -403,6 +414,23 @@ class DandanplayDanmakuProvider(
                     list = list,
                 ),
             )
+        }
+    }
+}
+
+private val episodeNumberPrefixRegex = Regex("""^第\s*\d+\s*[话話集]""")
+
+/**
+ * 去掉 "第x话" 前缀, 全角 ASCII 转半角, 去除所有空白并转小写.
+ * 弹弹 play 的标题形如 "第18话 ラム", Bangumi 的原名则是 "ラム"; 标点也可能在 "／" 与 " / " 之间变化.
+ */
+internal fun normalizeEpisodeTitle(title: String): String {
+    val stripped = episodeNumberPrefixRegex.replace(title.trim(), "")
+    return buildString(stripped.length) {
+        for (c in stripped) {
+            val half = if (c in '\uFF01'..'\uFF5E') (c - 0xFEE0) else c
+            if (half.isWhitespace()) continue
+            append(half.lowercaseChar())
         }
     }
 }

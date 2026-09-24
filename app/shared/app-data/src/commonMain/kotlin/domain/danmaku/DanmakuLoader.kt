@@ -27,6 +27,7 @@ import kotlinx.coroutines.flow.shareIn
 import kotlinx.coroutines.flow.transformLatest
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import me.him188.ani.app.data.models.episode.allNames
 import me.him188.ani.app.data.models.episode.displayName
 import me.him188.ani.app.data.repository.danmaku.SearchDanmakuRequest
 import me.him188.ani.danmaku.api.DanmakuCollection
@@ -227,6 +228,7 @@ class DanmakuLoaderImpl internal constructor(
             episodeSort = episodeInfo.sort,
             episodeEp = episodeInfo.ep,
             episodeName = episodeInfo.displayName,
+            episodeNames = episodeInfo.allNames,
             filename = filename,
             fileHash = fileHash,
             fileSize = fileLength,
