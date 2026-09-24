@@ -1128,6 +1128,9 @@
     <string name="settings_account_profile_unbind">解绑</string>
     <string name="settings_account_profile_unbind_bangumi_confirmation">确定要解绑 Bangumi 吗？解绑后将不再同步观看记录到 Bangumi。解绑后可以重新绑定。</string>
     <string name="settings_account_profile_unbind_confirmation">确定要解绑 %1$s 吗？解绑后可以重新绑定。</string>
+    <string name="settings_account_profile_unbind_email_confirmation">确定要解绑邮箱 %1$s 吗？解绑后将不能再用它登录此账号。之后可以重新绑定邮箱。</string>
+    <string name="settings_account_profile_unbind_email_last_login_method">邮箱是此账号唯一的登录方式，无法解绑。请先绑定 Bangumi 或其他第三方账号。</string>
+    <string name="settings_account_profile_ok">好</string>
     <string name="settings_account_github_title">GitHub 账号</string>
     <string name="settings_account_github_bound">已绑定的 GitHub 账号</string>
     <string name="settings_account_developer_benefit">通过认证后不再显示广告等</string>
