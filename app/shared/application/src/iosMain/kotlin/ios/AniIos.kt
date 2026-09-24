@@ -105,6 +105,8 @@ import me.him188.ani.utils.io.absolutePath
 import me.him188.ani.utils.io.createDirectories
 import me.him188.ani.utils.io.resolve
 import me.him188.ani.utils.logging.IosLoggingConfigurator
+import me.him188.ani.utils.logging.error
+import me.him188.ani.utils.logging.logger
 import me.him188.ani.utils.platform.annotations.TestOnly
 import org.koin.core.context.startKoin
 import org.koin.dsl.module
@@ -116,6 +118,10 @@ import platform.UIKit.NSLayoutConstraint
 import platform.UIKit.UIViewController
 import platform.UIKit.addChildViewController
 import platform.UIKit.didMoveToParentViewController
+import kotlin.experimental.ExperimentalNativeApi
+import kotlin.native.getUnhandledExceptionHook
+import kotlin.native.setUnhandledExceptionHook
+import kotlin.native.terminateWithUnhandledException
 
 class AniIosApplication(
     val context: IosContext,
@@ -159,6 +165,7 @@ fun startIosApp(): AniIosApplication {
 
     AppStartupTasks.printVersions()
     IosLoggingConfigurator.configure(context.files.logsDir.path, SystemFileSystem)
+    installUnhandledExceptionHook()
     initializeIosFfmpegRuntime()
     startupTimeMonitor.mark(StepName.Logging)
 
@@ -217,6 +224,30 @@ fun startIosApp(): AniIosApplication {
         onBackPressedDispatcherOwner = onBackPressedDispatcherOwner,
         scope = scope,
     )
+}
+
+private val uncaughtExceptionLogger = logger("AniIos")
+
+/**
+ * Kotlin/Native aborts the process on an uncaught exception without going through our logger,
+ * so the file log would end right before the most useful line. Log it and flush first.
+ */
+@OptIn(ExperimentalNativeApi::class)
+private fun installUnhandledExceptionHook() {
+    val previous = getUnhandledExceptionHook()
+    setUnhandledExceptionHook { throwable ->
+        try {
+            uncaughtExceptionLogger.error(throwable) { "Uncaught Kotlin exception, terminating" }
+            IosLoggingConfigurator.flush()
+        } catch (_: Throwable) {
+            // Never let logging failures hide the original exception.
+        }
+        if (previous != null) {
+            previous(throwable)
+        } else {
+            terminateWithUnhandledException(throwable)
+        }
+    }
 }
 
 private fun initializeIosFfmpegRuntime() {
