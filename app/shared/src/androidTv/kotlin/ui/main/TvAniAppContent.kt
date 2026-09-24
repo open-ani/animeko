@@ -217,7 +217,7 @@ fun TvAniAppContent(
                                 loadLibraries = ::loadOpenSourceLibrariesJsons,
                             )
                         }
-                        TvSettingsRoute(viewModel)
+                        TvSettingsRoute(viewModel, remoteSettingsHost = dependencies.remoteSettingsHost)
                     }
 
 

@@ -49,6 +49,7 @@ class BaseSettingsState<in Value : Placeholder, out Placeholder>(
     private val onUpdate: suspend (Value) -> Unit, // background scope
     private val placeholder: Placeholder,
     backgroundScope: CoroutineScope,
+    private val initiallyLoaded: Boolean = false,
 ) : State<Placeholder> {
     private val tasker = MonoTasker(backgroundScope)
     fun update(value: Value) {
@@ -64,7 +65,7 @@ class BaseSettingsState<in Value : Placeholder, out Placeholder>(
     }
 
     override val value: Placeholder by valueState
-    val isLoading by derivedStateOf { value === placeholder }
+    val isLoading by derivedStateOf { !initiallyLoaded && value === placeholder }
     val isUpdating get() = tasker.isRunning
 }
 

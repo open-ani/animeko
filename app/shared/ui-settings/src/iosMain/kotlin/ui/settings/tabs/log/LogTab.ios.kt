@@ -9,14 +9,10 @@
 
 package me.him188.ani.app.ui.settings.tabs.log
 
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.ColumnScope
-import androidx.compose.material3.ListItem
 import androidx.compose.material3.ListItemColors
-import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.rememberCoroutineScope
-import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalClipboard
 import androidx.compose.ui.uikit.LocalUIViewController
 import kotlinx.cinterop.ExperimentalForeignApi
@@ -46,15 +42,11 @@ internal actual fun ColumnScope.PlatformLoggingItems(listItemColors: ListItemCol
     val uiViewController = LocalUIViewController.current
     val clipboard = LocalClipboard.current
     val scope = rememberCoroutineScope()
-    val shareTodayLogFileText = stringResource(Lang.settings_log_share_today_log_file)
-    val copyTodayLogContentText = stringResource(Lang.settings_log_copy_today_log_content)
     val logFileNotFoundText = stringResource(Lang.settings_log_file_not_found)
 
-    ListItem(
-        headlineContent = {
-            Text(shareTodayLogFileText)
-        },
-        Modifier.clickable {
+    LogFileActions(
+        listItemColors,
+        onShare = {
             val file = getTodayLogFile()
             if (file == null) {
                 toaster.toast(logFileNotFoundText)
@@ -62,14 +54,7 @@ internal actual fun ColumnScope.PlatformLoggingItems(listItemColors: ListItemCol
                 shareFile(file.inSystem.absolutePath, uiViewController)
             }
         },
-        colors = listItemColors,
-    )
-
-    ListItem(
-        headlineContent = {
-            Text(copyTodayLogContentText)
-        },
-        Modifier.clickable {
+        onCopy = {
             val file = getTodayLogFile()
             if (file == null) {
                 toaster.toast(logFileNotFoundText)
@@ -79,7 +64,6 @@ internal actual fun ColumnScope.PlatformLoggingItems(listItemColors: ListItemCol
                 }
             }
         },
-        colors = listItemColors,
     )
 }
 

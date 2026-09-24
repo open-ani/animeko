@@ -13,6 +13,8 @@ import android.app.Application
 import kotlinx.coroutines.launch
 import me.him188.ani.android.getCommonAndroidModules
 import me.him188.ani.app.data.repository.user.SettingsRepository
+import me.him188.ani.app.data.models.preference.DanmakuCacheStrategy
+import me.him188.ani.app.domain.settings.remote.RemoteSettingsHost
 import me.him188.ani.app.platform.AndroidLoggingConfigurator
 import me.him188.ani.app.platform.createAppRootCoroutineScope
 import me.him188.ani.app.platform.getCommonKoinModule
@@ -22,6 +24,7 @@ import me.him188.ani.utils.logging.error
 import me.him188.ani.utils.logging.logger
 import org.koin.android.ext.koin.androidContext
 import org.koin.core.context.startKoin
+import org.koin.dsl.module
 
 /**
  * TV variant 的 Application.
@@ -62,6 +65,11 @@ class TvAniApplication : Application() {
             settings.mediaSelectorSettings.update {
                 if (preferKind == MediaSourceKind.WEB) this else copy(preferKind = MediaSourceKind.WEB)
             }
+            settings.mediaCacheSettings.update {
+                if (danmakuCacheStrategy == DanmakuCacheStrategy.CACHE_ON_MEDIA_CACHE) copy(danmakuCacheStrategy = DanmakuCacheStrategy.DON_NOT_CACHE) else this
+            }
         }
+        val host = AndroidRemoteSettingsHost(this, koinApp.koin, scope)
+        koinApp.koin.loadModules(listOf(module { single<RemoteSettingsHost> { host } }))
     }
 }

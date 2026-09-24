@@ -32,6 +32,8 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Deselect
 import androidx.compose.material.icons.filled.SelectAll
+import androidx.compose.material.icons.rounded.ContentPaste
+import androidx.compose.material.icons.rounded.Share
 import androidx.compose.material.icons.rounded.Add
 import androidx.compose.material.icons.rounded.Checklist
 import androidx.compose.material.icons.rounded.Close
@@ -137,6 +139,7 @@ internal object MediaSourceGroupTestTags {
     fun item(instanceId: String): String = "media_source_item_$instanceId"
 }
 
+/** 设置页负责编辑器导航，共享列表只接收状态与用户操作。 */
 @Composable
 internal fun SettingsScope.MediaSourceGroup(
     state: MediaSourceGroupState,
@@ -145,45 +148,49 @@ internal fun SettingsScope.MediaSourceGroup(
 ) {
     val navigator = LocalNavigator.current
     val uiScope = rememberCoroutineScope()
-    var showSelectTemplate by remember { mutableStateOf(false) }
-    if (showSelectTemplate) {
-        // 选一个数据源来添加
-        SelectMediaSourceTemplateDialog(
-            templates = state.availableMediaSourceTemplates,
-            onClick = { template ->
-                showSelectTemplate = false
-
-                // 一些数据源要用单独编辑页面
-                when {
-                    template.factoryId in MediaSourcesUsingNewSettings -> {
-                        val editing = edit.startAdding(template)
-                        val job = edit.confirmEdit(editing)
-                        uiScope.launch {
-                            job.join()
-                            navigator.navigateEditMediaSource(template.factoryId, editing.editingMediaSourceId)
-                        }
-                        return@SelectMediaSourceTemplateDialog
+    edit.editMediaSourceState?.let { EditMediaSourceDialog(it, onDismissRequest = edit::cancelEdit) }
+    MediaSourceGroup(
+        state, selectionState,
+        onAddTemplate = { template ->
+            when {
+                template.factoryId in MediaSourcesUsingNewSettings -> {
+                    val editing = edit.startAdding(template)
+                    val job = edit.confirmEdit(editing)
+                    uiScope.launch {
+                        job.join()
+                        if (!job.isCancelled) navigator.navigateEditMediaSource(template.factoryId, editing.editingMediaSourceId)
                     }
-
-                    // 旧的数据源类型, 仍然使用旧的对话框形式添加
-                    template.parameters.list.isEmpty() -> {
-                        // 没有参数, 直接添加
-                        edit.confirmEdit(edit.startAdding(template))
-                        return@SelectMediaSourceTemplateDialog
-                    }
-
-                    else -> edit.startAdding(template)
                 }
-            },
-            onDismissRequest = { showSelectTemplate = false },
-        )
-    }
+                template.parameters.isEmpty() -> edit.confirmEdit(edit.startAdding(template))
+                else -> edit.startAdding(template)
+            }
+        },
+        onEditSource = { item ->
+            if (item.factoryId in MediaSourcesUsingNewSettings) navigator.navigateEditMediaSource(item.factoryId, item.instanceId)
+            else edit.startEditing(item)
+        },
+        onDeleteSource = edit::deleteMediaSource,
+        onSetEnabled = edit::toggleMediaSourceEnabled,
+    )
+}
 
-    edit.editMediaSourceState?.let {
-        // 准备添加这个数据源, 需要配置
-        // TODO: replace with a separate page
-        EditMediaSourceDialog(it, onDismissRequest = { edit.cancelEdit() })
-    }
+@Composable
+internal fun SettingsScope.MediaSourceGroup(
+    state: MediaSourceGroupState,
+    selectionState: MediaSourceSelectionState,
+    onAddTemplate: (MediaSourceTemplate) -> Unit,
+    onEditSource: (MediaSourcePresentation) -> Unit,
+    onDeleteSource: (MediaSourcePresentation) -> Unit,
+    onSetEnabled: (MediaSourcePresentation, Boolean) -> Unit,
+    onImport: (() -> Unit)? = null,
+    onExport: ((MediaSourcePresentation) -> Unit)? = null,
+) {
+    var showSelectTemplate by remember { mutableStateOf(false) }
+    if (showSelectTemplate) SelectMediaSourceTemplateDialog(
+        templates = state.availableMediaSourceTemplates,
+        onClick = { template -> showSelectTemplate = false; onAddTemplate(template) },
+        onDismissRequest = { showSelectTemplate = false },
+    )
 
     // 多选模式下的列表数据. 拖拽排序时先在本地重排, 拖拽结束后再持久化.
     var reorderData by remember { mutableStateOf(state.mediaSources) }
@@ -263,9 +270,11 @@ internal fun SettingsScope.MediaSourceGroup(
                 }
             } else {
                 Row {
+                    onImport?.let { import ->
+                        IconButton(import) { Icon(Icons.Rounded.ContentPaste, "导入数据源") }
+                    }
                     IconButton(
                         {
-                            edit.cancelEdit()
                             showSelectTemplate = true
                         },
                     ) {
@@ -273,7 +282,6 @@ internal fun SettingsScope.MediaSourceGroup(
                     }
                     IconButton(
                         {
-                            edit.cancelEdit()
                             selectionState.enterSelection()
                         },
                         enabled = state.mediaSources.isNotEmpty(),
@@ -299,13 +307,7 @@ internal fun SettingsScope.MediaSourceGroup(
                     if (index != 0) {
                         HorizontalDividerItem()
                     }
-                    val startEditing = {
-                        if (item.factoryId in MediaSourcesUsingNewSettings) {
-                            navigator.navigateEditMediaSource(item.factoryId, item.instanceId)
-                        } else {
-                            edit.startEditing(item)
-                        }
-                    }
+                    val startEditing = { onEditSource(item) }
                     val editText = stringResource(Lang.settings_media_source_edit)
                     val enterSelectionText = stringResource(Lang.settings_media_source_enter_selection_mode)
                     val moreText = stringResource(Lang.settings_media_source_more)
@@ -328,7 +330,7 @@ internal fun SettingsScope.MediaSourceGroup(
                             confirmButton = {
                                 TextButton(
                                     {
-                                        edit.deleteMediaSource(item)
+                                        onDeleteSource(item)
                                         showConfirmDeletionDialog = false
                                     },
                                 ) {
@@ -382,11 +384,10 @@ internal fun SettingsScope.MediaSourceGroup(
                         onToggleSelected = { selectionState.toggleSelection(item.instanceId) },
                     ) {
                         if (!selectionState.inSelection) {
-                            IconButton({}, enabled = false) { // 放在 button 里保持 padding 一致
-                                ConnectionTesterResultIndicator(
-                                    item.connectionTester,
-                                    showIdle = false,
-                                )
+                            item.connectionTester?.let { tester ->
+                                IconButton({}, enabled = false) {
+                                    ConnectionTesterResultIndicator(tester, showIdle = false)
+                                }
                             }
 
                             Box {
@@ -402,8 +403,9 @@ internal fun SettingsScope.MediaSourceGroup(
                                     onDismissRequest = { showMoreDropdown = false },
                                     onDeleteRequest = { showConfirmDeletionDialog = true },
                                     item,
-                                    onEnabledChange = { edit.toggleMediaSourceEnabled(item, it) },
+                                    onEnabledChange = { onSetEnabled(item, it) },
                                     onEdit = startEditing,
+                                    onExport = onExport?.let { { it(item) } },
                                 )
                             }
                         }
@@ -461,21 +463,21 @@ internal fun SettingsScope.MediaSourceGroup(
             }
         }
 
-        HorizontalDividerItem()
-
-
-        TextButtonItem(
-            onClick = {
-                state.mediaSourceTesters.toggleTest()
-            },
-            title = {
-                if (state.mediaSourceTesters.anyTesting) {
-                    Text(stringResource(Lang.settings_media_source_stop_test))
-                } else {
-                    Text(stringResource(Lang.settings_media_source_start_test))
-                }
-            },
-        )
+        if (state.mediaSources.any { it.connectionTester != null }) {
+            HorizontalDividerItem()
+            TextButtonItem(
+                onClick = {
+                    state.mediaSourceTesters.toggleTest()
+                },
+                title = {
+                    if (state.mediaSourceTesters.anyTesting) {
+                        Text(stringResource(Lang.settings_media_source_stop_test))
+                    } else {
+                        Text(stringResource(Lang.settings_media_source_start_test))
+                    }
+                },
+            )
+        }
     }
 }
 
@@ -555,10 +557,10 @@ internal fun SettingsScope.MediaSourceItem(
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.spacedBy(4.dp),
             ) {
-                item.instance.source.apply {
+                if (item.location != null && item.kind != null) {
                     Icon(
-                        imageVector = MediaSourceIcons.location(this.location, this.kind),
-                        contentDescription = this.info.description,
+                        imageVector = MediaSourceIcons.location(item.location, item.kind),
+                        contentDescription = item.info.description,
                         modifier = Modifier.size(20.dp).ifThen(!isEnabled) { alpha(DISABLED_ALPHA) },
                     )
                 }
@@ -606,11 +608,19 @@ private fun MoreOptionsDropdown(
     item: MediaSourcePresentation,
     onEnabledChange: (enabled: Boolean) -> Unit,
     onEdit: () -> Unit,
+    onExport: (() -> Unit)? = null,
 ) {
     DropdownMenu(
         expanded = showMore,
         onDismissRequest = onDismissRequest,
     ) {
+        onExport?.let { export ->
+            DropdownMenuItem(
+                text = { Text("导出数据源") },
+                leadingIcon = { Icon(Icons.Rounded.Share, null) },
+                onClick = { onDismissRequest(); export() },
+            )
+        }
         DropdownMenuItem(
             leadingIcon = {
                 if (item.isEnabled) {

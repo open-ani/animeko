@@ -9,6 +9,8 @@
 
 package me.him188.ani.app.ios
 
+import me.him188.ani.app.domain.settings.remote.RemoteSettingsConnectionRequests
+
 import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
@@ -130,6 +132,14 @@ class AniIosApplication(
      */
     @Suppress("unused") // used in Swift
     fun openUrl(url: String): Boolean {
+        if (url.startsWith("ani://remote-settings?") || url.startsWith("ani://remote-settings/?")) {
+            if (runCatching { RemoteSettingsConnectionRequests.offer(url) }.isFailure) return false
+            scope.launch(Dispatchers.Main) {
+                aniNavigator.awaitBackStack()
+                aniNavigator.navigateRemoteSettings()
+            }
+            return true
+        }
         // 扫码登录: 系统相机扫描电视上的二维码后, 网页跳转到 ani://qr-login?requestId=...
         val qrLoginRequestId = QrLoginRepository.parseRequestId(url) ?: return false
         scope.launch(Dispatchers.Main) {

@@ -313,6 +313,8 @@ class SubjectCollectionRepositoryInvalidateTest {
         relations = AniSubjectRelations(subjectId.toLong(), emptyList(), emptyList(), emptyList(), emptyList()),
         collectionType = type,
         updatedAt = "2024-01-02T00:00:00Z",
+        imageLarge = "",
+        imageThumb = "",
     )
 
     /**

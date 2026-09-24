@@ -12,6 +12,8 @@ package me.him188.ani.app.navigation
 import androidx.compose.runtime.mutableStateListOf
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertIs
+import kotlin.test.assertNotEquals
 import kotlin.test.assertNull
 
 /**
@@ -23,6 +25,31 @@ class AniNavigatorTest {
         AniNavigator().apply { setBackStack(mutableStateListOf(*routes)) }
 
     private val main = NavRoutes.Main(MainScreenPage.Exploration)
+
+    @Test
+    fun remoteConnectionReusesItsEntryAndPopsItsEditor() {
+        val settings = NavRoutes.Settings(SettingsTab.PLAYER)
+        val remote = NavRoutes.RemoteSettings()
+        val navigator = navigatorWith(main, settings, remote, NavRoutes.EditMediaSource("web-selector", "source"))
+        navigator.navigateRemoteSettings()
+        navigator.navigateRemoteSettings()
+        assertEquals(listOf(main, settings, remote), navigator.backStack)
+        navigator.popBackStack(remote, inclusive = true)
+        assertEquals(listOf(main, settings), navigator.backStack)
+    }
+
+    @Test
+    fun remoteDeepLinkHasAnIndependentIdentityAndReturnsToItsOrigin() {
+        val navigator = navigatorWith(main)
+        navigator.navigateRemoteSettings()
+        val first = assertIs<NavRoutes.RemoteSettings>(navigator.backStack.last())
+        assertEquals(2, navigator.backStack.size)
+        navigator.popBackStack()
+        assertEquals(listOf(main), navigator.backStack)
+        navigator.navigateRemoteSettings()
+        val second = assertIs<NavRoutes.RemoteSettings>(navigator.backStack.last())
+        assertNotEquals(first.entryId, second.entryId)
+    }
 
     @Test
     fun `navigate pushes onto the stack`() {

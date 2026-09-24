@@ -9,12 +9,21 @@
 
 package me.him188.ani.app.ui.settings.tabs.media.source
 
+import me.him188.ani.app.ui.lang.settings_media_source_disable
+import me.him188.ani.app.ui.lang.settings_media_source_edit
+import me.him188.ani.app.ui.lang.settings_media_source_enable
+import me.him188.ani.app.ui.lang.settings_media_source_subscription_auto_update
+import me.him188.ani.app.ui.lang.settings_media_source_subscription_disabled
+import me.him188.ani.app.ui.lang.settings_mediasource_refresh
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.text.selection.SelectionContainer
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.rounded.Edit
+import androidx.compose.material.icons.rounded.Visibility
+import androidx.compose.material.icons.rounded.VisibilityOff
 import androidx.compose.material.icons.rounded.Add
 import androidx.compose.material.icons.rounded.ContentPaste
 import androidx.compose.material.icons.rounded.Delete
@@ -155,6 +164,10 @@ class MediaSourceSubscriptionGroupState(
 @Composable
 internal fun SettingsScope.MediaSourceSubscriptionGroup(
     state: MediaSourceSubscriptionGroupState,
+    onEdit: ((MediaSourceSubscription) -> Unit)? = null,
+    onRefresh: ((MediaSourceSubscription) -> Unit)? = null,
+    onToggleEnabled: ((MediaSourceSubscription) -> Unit)? = null,
+    deleteDescription: String? = null,
 ) {
     var showAddDialog by rememberSaveable { mutableStateOf(false) }
     Group(
@@ -187,7 +200,7 @@ internal fun SettingsScope.MediaSourceSubscriptionGroup(
         },
     ) {
         for ((index, subscription) in state.subscriptions.withIndex()) {
-            SubscriptionItem(subscription, state)
+            SubscriptionItem(subscription, state, onEdit, onRefresh, onToggleEnabled, deleteDescription)
             if (index != state.subscriptions.lastIndex) {
                 HorizontalDividerItem()
             }
@@ -271,18 +284,22 @@ internal fun SettingsScope.MediaSourceSubscriptionGroup(
 @Composable
 private fun SettingsScope.SubscriptionItem(
     subscription: MediaSourceSubscription,
-    state: MediaSourceSubscriptionGroupState
+    state: MediaSourceSubscriptionGroupState,
+    onEdit: ((MediaSourceSubscription) -> Unit)?,
+    onRefresh: ((MediaSourceSubscription) -> Unit)?,
+    onToggleEnabled: ((MediaSourceSubscription) -> Unit)?,
+    deleteDescription: String?,
 ) {
     var showConfirmDelete by remember { mutableStateOf(false) }
     Item(
         headlineContent = {
             SelectionContainer {
-                Text(subscription.url)
+                Text(if (onToggleEnabled != null && !subscription.enabled) stringResource(Lang.settings_media_source_subscription_disabled, subscription.url) else subscription.url)
             }
         },
         supportingContent = {
             Text(
-                "每 ${subscription.updatePeriod} 自动更新，" + formatLastUpdated(subscription.lastUpdated),
+                stringResource(Lang.settings_media_source_subscription_auto_update, subscription.updatePeriod.toString()) + formatLastUpdated(subscription.lastUpdated),
             )
         },
         trailingContent = {
@@ -295,6 +312,25 @@ private fun SettingsScope.SubscriptionItem(
                 val clipboard = LocalClipboard.current
                 val toaster = LocalToaster.current
 
+                onEdit?.let { edit ->
+                    DropdownMenuItem(
+                        text = { Text(stringResource(Lang.settings_media_source_edit)) }, leadingIcon = { Icon(Icons.Rounded.Edit, null) },
+                        onClick = { showDropdown = false; edit(subscription) },
+                    )
+                }
+                onRefresh?.let { refresh ->
+                    DropdownMenuItem(
+                        text = { Text(stringResource(Lang.settings_mediasource_refresh)) }, leadingIcon = { Icon(Icons.Rounded.Refresh, null) },
+                        onClick = { showDropdown = false; refresh(subscription) }, enabled = subscription.enabled,
+                    )
+                }
+                onToggleEnabled?.let { toggle ->
+                    DropdownMenuItem(
+                        text = { Text(stringResource(if (subscription.enabled) Lang.settings_media_source_disable else Lang.settings_media_source_enable)) },
+                        leadingIcon = { Icon(if (subscription.enabled) Icons.Rounded.VisibilityOff else Icons.Rounded.Visibility, null) },
+                        onClick = { showDropdown = false; toggle(subscription) },
+                    )
+                }
                 DropdownMenuItem(
                     leadingIcon = { Icon(Icons.Rounded.Share, null) },
                     text = { Text(stringResource(Lang.settings_media_source_subscription_copy_link)) },
@@ -346,7 +382,7 @@ private fun SettingsScope.SubscriptionItem(
             title = { Text(stringResource(Lang.settings_media_source_subscription_delete_dialog)) },
             text = {
                 Text(
-                    stringResource(
+                    deleteDescription ?: stringResource(
                         Lang.settings_media_source_subscription_delete_description,
                         subscription.lastUpdated?.mediaSourceCount ?: 0,
                     ),

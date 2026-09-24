@@ -4,6 +4,7 @@
  */
 package me.him188.ani.tv.ui.settings
 
+import me.him188.ani.app.ui.lang.remote_settings_tv_entry
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.focusGroup
@@ -26,6 +27,7 @@ import androidx.compose.material.icons.outlined.Settings
 import androidx.compose.material.icons.outlined.SmartDisplay
 import androidx.compose.material.icons.outlined.Storage
 import androidx.compose.material.icons.outlined.Subscriptions
+import androidx.compose.material.icons.outlined.QrCodeScanner
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.SideEffect
@@ -89,6 +91,8 @@ fun TvSettingsScreen(
     displayModes: List<TvSettingsDisplayMode> = emptyList(),
     onOpenUrl: (String) -> Unit = {},
     onImport: () -> Unit = {},
+    onOpenRemoteSettings: () -> Unit = {},
+    remoteSettingsVisible: Boolean = false,
 ) {
     val focus = rememberTvFocusScope()
     var section by rememberSaveable { mutableStateOf(TvSettingsSection.Appearance) }
@@ -108,6 +112,11 @@ fun TvSettingsScreen(
     fun sendFocus(target: TvFocusKey) {
         pendingFocus = target to focus.userNavGeneration
         focusRevision++
+    }
+    var remoteWasVisible by remember { mutableStateOf(false) }
+    LaunchedEffect(remoteSettingsVisible) {
+        if (remoteWasVisible && !remoteSettingsVisible) sendFocus(settingsItemKey("remote"))
+        remoteWasVisible = remoteSettingsVisible
     }
     LaunchedEffect(focusRevision) {
         pendingFocus?.let { (target, generation) ->
@@ -224,6 +233,16 @@ fun TvSettingsScreen(
                     Modifier.verticalScroll(rememberScrollState()).tvModalUnderlay(detailFocused),
                     verticalArrangement = Arrangement.spacedBy(6.dp),
                 ) {
+                    TvOptionRow(
+                        title = stringResource(Lang.remote_settings_tv_entry),
+                        icon = Icons.Outlined.QrCodeScanner,
+                        showSelectionIndicator = false,
+                        modifier = Modifier.testTag("tv-settings-remote")
+                            .tvFocusAnchor(focus, settingsItemKey("remote"))
+                            .tvFocusMemorable("settings-remote")
+                            .focusProperties { canFocus = !detailFocused && dialog == null },
+                        onClick = onOpenRemoteSettings,
+                    )
                     TvSettingsSection.entries.forEach { entry ->
                         TvOptionRow(
                             title = stringResource(entry.title),

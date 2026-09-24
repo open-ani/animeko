@@ -9,6 +9,9 @@
 
 package me.him188.ani.app.ui.qrlogin
 
+import me.him188.ani.app.ui.lang.remote_settings_invalid_qr
+import me.him188.ani.app.ui.lang.remote_settings_scan
+import me.him188.ani.app.ui.lang.remote_settings_scan_hint
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
@@ -50,6 +53,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import kotlinx.coroutines.delay
 import me.him188.ani.app.data.repository.user.QrLoginRepository
+import me.him188.ani.remote.settings.RemoteSettingsLink
 import me.him188.ani.app.ui.foundation.layout.AniWindowInsets
 import me.him188.ani.app.ui.lang.Lang
 import me.him188.ani.app.ui.lang.qr_login_camera_permission
@@ -70,6 +74,7 @@ fun QrLoginScanScreen(
     onScanned: (requestId: String) -> Unit,
     onNavigateBack: () -> Unit,
     modifier: Modifier = Modifier,
+    remoteSettings: Boolean = false,
 ) {
     var torchEnabled by rememberSaveable { mutableStateOf(false) }
     var handled by remember { mutableStateOf(false) }
@@ -86,12 +91,14 @@ fun QrLoginScanScreen(
         QrCodeScanner(
             onScanned = { content ->
                 if (handled) return@QrCodeScanner
-                val requestId = QrLoginRepository.parseRequestId(content)
+                val requestId = if (remoteSettings) {
+                    runCatching { RemoteSettingsLink.parse(content); content }.getOrNull()
+                } else QrLoginRepository.parseRequestId(content)
                 if (requestId != null) {
                     handled = true
                     onScanned(requestId)
                 } else {
-                    invalidContent = content
+                    invalidContent = "invalid"
                 }
             },
             torchEnabled = torchEnabled,
@@ -116,7 +123,7 @@ fun QrLoginScanScreen(
         ScanFrame(Modifier.fillMaxSize())
 
         TopAppBar(
-            title = { Text(stringResource(Lang.qr_login_title)) },
+            title = { Text(if (remoteSettings) stringResource(Lang.remote_settings_scan) else stringResource(Lang.qr_login_title)) },
             navigationIcon = {
                 IconButton(onNavigateBack) { Icon(Icons.Rounded.Close, stringResource(Lang.qr_login_close)) }
             },
@@ -136,7 +143,11 @@ fun QrLoginScanScreen(
             horizontalAlignment = Alignment.CenterHorizontally,
         ) {
             Text(
-                stringResource(if (invalidContent != null) Lang.qr_login_scan_invalid else Lang.qr_login_scan_hint),
+                stringResource(when {
+                    invalidContent != null -> if (remoteSettings) Lang.remote_settings_invalid_qr else Lang.qr_login_scan_invalid
+                    remoteSettings -> Lang.remote_settings_scan_hint
+                    else -> Lang.qr_login_scan_hint
+                }),
                 color = Color.White,
                 style = MaterialTheme.typography.bodyLarge,
                 textAlign = TextAlign.Center,

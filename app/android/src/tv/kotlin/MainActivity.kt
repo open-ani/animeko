@@ -10,10 +10,13 @@
 package me.him188.ani.android.tv
 
 import android.os.Bundle
+import android.os.Build
+import android.content.pm.PackageManager
 import android.widget.Toast
 import androidx.activity.SystemBarStyle
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
@@ -41,10 +44,15 @@ import org.koin.android.ext.android.getKoin
  */
 class MainActivity : AniComponentActivity() {
 
+    private val requestLocalNetwork = registerForActivityResult(ActivityResultContracts.RequestPermission()) { }
+
     private val aniNavigator = AniNavigator()
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        if (Build.VERSION.SDK_INT >= 37 && checkSelfPermission(AndroidRemoteSettingsHost.LOCAL_NETWORK_PERMISSION) != PackageManager.PERMISSION_GRANTED && savedInstanceState == null) {
+            requestLocalNetwork.launch(AndroidRemoteSettingsHost.LOCAL_NETWORK_PERMISSION)
+        }
         // 全面屏: 内容画到系统栏后面 (对齐参考版沉浸效果)
         enableEdgeToEdge(
             statusBarStyle = SystemBarStyle.dark(android.graphics.Color.TRANSPARENT),

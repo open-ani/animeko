@@ -98,6 +98,8 @@ includeProject(":app:shared")
 includeProject(":app:shared:tv", "app/shared/shared-tv")
 includeProject(":app:shared:app-platform")
 includeProject(":app:shared:app-data")
+includeProject(":app:shared:remote-settings-contract")
+includeProject(":app:tv-remote-settings-server")
 includeProject(":app:shared:app-data-aidl")
 includeProject(":app:shared:app-lang") // We have a separate module so that the project compiles faster
 includeProject(":app:shared:ui-foundation")

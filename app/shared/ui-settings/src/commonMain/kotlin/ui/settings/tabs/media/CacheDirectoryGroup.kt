@@ -22,6 +22,8 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.platform.LocalClipboard
 import me.him188.ani.app.data.models.preference.DanmakuCacheStrategy
 import me.him188.ani.app.data.models.preference.MediaCacheSettings
@@ -35,7 +37,6 @@ import me.him188.ani.app.ui.lang.settings_danmaku_cancel
 import me.him188.ani.app.ui.lang.settings_danmaku_confirm
 import me.him188.ani.app.ui.lang.settings_mediasource_rss_copied_to_clipboard
 import me.him188.ani.app.ui.lang.settings_storage_backup_op_backup_description
-import me.him188.ani.app.ui.lang.settings_storage_backup_op_backup_error
 import me.him188.ani.app.ui.lang.settings_storage_backup_op_backup_title
 import me.him188.ani.app.ui.lang.settings_storage_backup_op_restore
 import me.him188.ani.app.ui.lang.settings_storage_backup_op_restore_description
@@ -51,16 +52,28 @@ import me.him188.ani.app.ui.settings.framework.SettingsState
 import me.him188.ani.app.ui.settings.framework.components.DropdownItem
 import me.him188.ani.app.ui.settings.framework.components.SettingsScope
 import me.him188.ani.app.ui.settings.framework.components.TextItem
+import org.jetbrains.compose.resources.StringResource
 import org.jetbrains.compose.resources.getString
 import org.jetbrains.compose.resources.stringResource
 
 @Stable
 class CacheDirectoryGroupState(
     val mediaCacheSettingsState: SettingsState<MediaCacheSettings>,
-    val permissionManager: PermissionManager,
+    private val permissionManagerProvider: () -> PermissionManager,
     val onGetBackupData: suspend () -> String,
     val onRestoreSettings: suspend (String) -> Boolean,
-)
+    val restoreWarning: StringResource? = null,
+    val cacheStrategies: List<DanmakuCacheStrategy> = DanmakuCacheStrategy.entries,
+    val canChooseCacheDirectory: Boolean = true,
+) {
+    val permissionManager get() = permissionManagerProvider()
+    constructor(
+        mediaCacheSettingsState: SettingsState<MediaCacheSettings>,
+        permissionManager: PermissionManager,
+        onGetBackupData: suspend () -> String,
+        onRestoreSettings: suspend (String) -> Boolean,
+    ) : this(mediaCacheSettingsState, { permissionManager }, onGetBackupData, onRestoreSettings)
+}
 
 @Composable
 fun SettingsScope.BackupSettings(state: CacheDirectoryGroupState) {
@@ -70,26 +83,15 @@ fun SettingsScope.BackupSettings(state: CacheDirectoryGroupState) {
     val clipboard = LocalClipboard.current
     val toaster = LocalToaster.current
 
-    Group({ Text(stringResource(Lang.settings_storage_backup_title)) }) {
-        val backupErrorText = stringResource(Lang.settings_storage_backup_op_backup_error)
-
-        TextItem(
-            onClick = {
-                scope.launch {
-                    val data = state.onGetBackupData()
-                    clipboard.setClipEntryText(data)
-                    toaster.toast(getString(Lang.settings_mediasource_rss_copied_to_clipboard))
-                }
-            },
-            title = { Text(stringResource(Lang.settings_storage_backup_op_backup_title)) },
-            description = { Text(stringResource(Lang.settings_storage_backup_op_backup_description)) },
-        )
-        TextItem(
-            onClick = { showRestoreDialog = true },
-            title = { Text(stringResource(Lang.settings_storage_backup_op_restore)) },
-            description = { Text(stringResource(Lang.settings_storage_backup_op_restore_description)) },
-        )
-    }
+    BackupSettingsActions(
+        onBackup = {
+            scope.launch {
+                clipboard.setClipEntryText(state.onGetBackupData())
+                toaster.toast(getString(Lang.settings_mediasource_rss_copied_to_clipboard))
+            }
+        },
+        onRestore = { showRestoreDialog = true },
+    )
 
     if (showRestoreDialog) {
         val restoreSuccess = stringResource(Lang.settings_storage_backup_op_restore_succees)
@@ -99,7 +101,7 @@ fun SettingsScope.BackupSettings(state: CacheDirectoryGroupState) {
             { showRestoreDialog = false },
             icon = { Icon(Icons.Rounded.ContentPaste, null, tint = MaterialTheme.colorScheme.error) },
             title = { Text(stringResource(Lang.settings_storage_backup_op_restore)) },
-            text = { Text(stringResource(Lang.settings_storage_backup_op_restore_warning)) },
+            text = { Text(stringResource(state.restoreWarning ?: Lang.settings_storage_backup_op_restore_warning)) },
             confirmButton = {
                 TextButton(
                     {
@@ -126,14 +128,22 @@ fun SettingsScope.BackupSettings(state: CacheDirectoryGroupState) {
 }
 
 @Composable
-fun SettingsScope.DanmakuCacheSettings(state: CacheDirectoryGroupState) {
-    val mediaCacheSettings by state.mediaCacheSettingsState
+fun SettingsScope.DanmakuCacheSettings(state: CacheDirectoryGroupState) =
+    DanmakuCacheSettings(state.mediaCacheSettingsState, state.cacheStrategies)
+
+@Composable
+fun SettingsScope.DanmakuCacheSettings(
+    state: SettingsState<MediaCacheSettings>,
+    strategies: List<DanmakuCacheStrategy> = DanmakuCacheStrategy.entries,
+) {
+    val mediaCacheSettings by state
     val tasker = rememberAsyncHandler()
 
     DropdownItem(
         title = { Text(stringResource(Lang.settings_storage_danmaku_cache_strategy_title)) },
         selected = { mediaCacheSettings.danmakuCacheStrategy },
-        values = { DanmakuCacheStrategy.entries },
+        modifier = Modifier.testTag("settings-danmaku-cache"),
+        values = { strategies },
         description = {
             Text(
                 when (mediaCacheSettings.danmakuCacheStrategy) {
@@ -159,7 +169,7 @@ fun SettingsScope.DanmakuCacheSettings(state: CacheDirectoryGroupState) {
         },
         onSelect = { newStrategy ->
             tasker.launch {
-                state.mediaCacheSettingsState.updateSuspended(
+                state.updateSuspended(
                     mediaCacheSettings.copy(danmakuCacheStrategy = newStrategy),
                 )
             }
@@ -171,3 +181,26 @@ fun SettingsScope.DanmakuCacheSettings(state: CacheDirectoryGroupState) {
 expect fun SettingsScope.CacheDirectoryGroup(
     state: CacheDirectoryGroupState,
 )
+
+/** 备份操作的公共入口；调用方负责读取、预览与恢复目标设备的数据。 */
+@Composable
+fun SettingsScope.BackupSettingsActions(
+    onBackup: () -> Unit,
+    onRestore: () -> Unit,
+    enabled: Boolean = true,
+) {
+    Group({ Text(stringResource(Lang.settings_storage_backup_title)) }) {
+        TextItem(
+            onClick = onBackup,
+            onClickEnabled = enabled,
+            title = { Text(stringResource(Lang.settings_storage_backup_op_backup_title)) },
+            description = { Text(stringResource(Lang.settings_storage_backup_op_backup_description)) },
+        )
+        TextItem(
+            onClick = onRestore,
+            onClickEnabled = enabled,
+            title = { Text(stringResource(Lang.settings_storage_backup_op_restore)) },
+            description = { Text(stringResource(Lang.settings_storage_backup_op_restore_description)) },
+        )
+    }
+}

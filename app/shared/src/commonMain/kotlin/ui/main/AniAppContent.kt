@@ -33,8 +33,11 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import androidx.lifecycle.viewmodel.compose.rememberViewModelStoreOwner
+import androidx.lifecycle.viewmodel.compose.rememberViewModelStoreProvider
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.lifecycle.viewmodel.navigation3.rememberViewModelStoreNavEntryDecorator
+import androidx.navigation3.runtime.NavEntryDecorator
 import androidx.navigation3.runtime.entryProvider
 import androidx.navigation3.runtime.rememberSaveableStateHolderNavEntryDecorator
 import androidx.navigation3.ui.NavDisplay
@@ -80,14 +83,15 @@ import me.him188.ani.app.ui.login.EmailLoginVerifyScreen
 import me.him188.ani.app.ui.login.EmailLoginViewModel
 import me.him188.ani.app.ui.oauth.OAuthAuthorizeScreen
 import me.him188.ani.app.ui.oauth.OAuthAuthorizeViewModel
-import me.him188.ani.app.ui.qrlogin.QrLoginConfirmScreen
-import me.him188.ani.app.ui.qrlogin.QrLoginConfirmViewModel
-import me.him188.ani.app.ui.qrlogin.QrLoginScanScreen
-import me.him188.ani.app.ui.qrlogin.isQrCodeScannerSupported
 import me.him188.ani.app.ui.playback.PlaybackHistoryScreen
 import me.him188.ani.app.ui.playback.PlaybackHistorySyncStatusScreen
 import me.him188.ani.app.ui.playback.PlaybackHistoryViewModel
 import me.him188.ani.app.ui.profile.auth.AniContactList
+import me.him188.ani.app.ui.qrlogin.LocalNetworkAccessGate
+import me.him188.ani.app.ui.qrlogin.QrLoginConfirmScreen
+import me.him188.ani.app.ui.qrlogin.QrLoginConfirmViewModel
+import me.him188.ani.app.ui.qrlogin.QrLoginScanScreen
+import me.him188.ani.app.ui.qrlogin.isQrCodeScannerSupported
 import me.him188.ani.app.ui.search.SearchScreen
 import me.him188.ani.app.ui.settings.SettingsScreen
 import me.him188.ani.app.ui.settings.SettingsViewModel
@@ -95,6 +99,9 @@ import me.him188.ani.app.ui.settings.mediasource.rss.EditRssMediaSourceScreen
 import me.him188.ani.app.ui.settings.mediasource.rss.EditRssMediaSourceViewModel
 import me.him188.ani.app.ui.settings.mediasource.selector.EditSelectorMediaSourceScreen
 import me.him188.ani.app.ui.settings.mediasource.selector.EditSelectorMediaSourceViewModel
+import me.him188.ani.app.ui.settings.remote.RemoteSettingsScreen
+import me.him188.ani.app.ui.settings.remote.RemoteSettingsSessionHost
+import me.him188.ani.app.ui.settings.remote.RemoteSettingsViewModel
 import me.him188.ani.app.ui.settings.tabs.media.torrent.peer.PeerFilterSettingsScreen
 import me.him188.ani.app.ui.settings.tabs.media.torrent.peer.PeerFilterSettingsViewModel
 import me.him188.ani.app.ui.subject.details.SubjectDetailsScreen
@@ -174,6 +181,14 @@ private fun AniAppContentImpl(
     val navMotionScheme by rememberUpdatedState(NavigationMotionScheme.current)
     val emailLoginViewModel = viewModel<EmailLoginViewModel> { EmailLoginViewModel() }
 
+    // 远程设置及其数据源编辑子页共用会话；远程 entry 出栈时释放连接。
+    val remoteSettingsStores = rememberViewModelStoreProvider()
+    val remoteSettingsStoreCleanup = remember(remoteSettingsStores) {
+        NavEntryDecorator<NavRoutes>(
+            onPop = { remoteSettingsStores.clearKey(it) },
+            decorate = { it.Content() },
+        )
+    }
     NavDisplay(
         backStack = backStack,
         modifier = modifier,
@@ -182,6 +197,7 @@ private fun AniAppContentImpl(
             // 让每个页面各自持有 rememberSaveable 状态和 ViewModel, 出栈时一并销毁
             rememberSaveableStateHolderNavEntryDecorator(),
             rememberViewModelStoreNavEntryDecorator(),
+            remoteSettingsStoreCleanup,
         ),
         transitionSpec = {
             navMotionScheme.enterTransition togetherWith navMotionScheme.exitTransition
@@ -379,24 +395,29 @@ private fun AniAppContentImpl(
             }
             entry<NavRoutes.Settings> { route ->
                 SettingsScreen(
-                    viewModel {
-                        SettingsViewModel()
-                    },
+                    viewModel { SettingsViewModel() },
                     onNavigateToEmailLogin = { aniNavigator.navigateEmailLoginStart() },
                     onNavigateToOAuth = { aniNavigator.navigateOAuthAuthorize(it.id) },
                     loadOpenSourceLibrariesJsons = ::loadOpenSourceLibrariesJsons,
-                    Modifier.fillMaxSize(),
-                    route.tab,
-                    onNavigateToQrLogin = if (isQrCodeScannerSupported) {
-                        { aniNavigator.navigateQrLoginScan() }
-                    } else null,
+                    modifier = Modifier.fillMaxSize(),
+                    initialTab = route.tab,
                     navigationIcon = {
-                        BackNavigationIconButton(
-                            {
-                                aniNavigator.popBackStack(route, inclusive = true)
-                            },
-                        )
+                        BackNavigationIconButton({ aniNavigator.popBackStack(route, inclusive = true) })
                     },
+                    onNavigateToQrLogin = if (isQrCodeScannerSupported) ({ aniNavigator.navigateQrLoginScan() }) else null,
+                    onNavigateToRemoteSettings = if (isQrCodeScannerSupported) ({ aniNavigator.navigateRemoteSettings() }) else null,
+                )
+            }
+            entry<NavRoutes.RemoteSettings>(clazzContentKey = { it.entryId }) { route ->
+                val vm = viewModel<RemoteSettingsViewModel>(
+                    viewModelStoreOwner = rememberViewModelStoreOwner(route.entryId, remoteSettingsStores),
+                ) { RemoteSettingsViewModel() }
+                RemoteSettingsScreen(
+                    vm,
+                    onNavigateBack = { aniNavigator.popBackStack(route, inclusive = true) },
+                    scanner = { scanned, cancel -> QrLoginScanScreen(scanned, cancel, remoteSettings = true) },
+                    modifier = Modifier.fillMaxSize(),
+                    networkPermission = { back, content -> LocalNetworkAccessGate(back, content) },
                 )
             }
             entry<NavRoutes.PlaybackHistory> { route ->
@@ -551,37 +572,38 @@ private fun AniAppContentImpl(
             entry<NavRoutes.EditMediaSource> { route ->
                 val factoryId = FactoryId(route.factoryId)
                 val mediaSourceInstanceId = route.mediaSourceInstanceId
-                when (factoryId) {
-                    RssMediaSource.FactoryId -> EditRssMediaSourceScreen(
-                        viewModel<EditRssMediaSourceViewModel>(key = mediaSourceInstanceId) {
-                            EditRssMediaSourceViewModel(mediaSourceInstanceId)
-                        },
-                        mediaDetailsColumn = { media ->
-                            MediaDetailsLazyGrid(
-                                MediaDetails.from(media, null, null),
-                                Modifier.fillMaxSize(),
-                                showSourceInfo = false,
-                            )
-                        },
-                        Modifier,
-                        windowInsets,
-                        navigationIcon = {
-                            BackNavigationIconButton(
-                                {
-                                    aniNavigator.popBackStack(route, inclusive = true)
-                                },
-                            )
-                        },
-                    )
-
-                    SelectorMediaSource.FactoryId -> {
-                        val context = LocalContext.current
-                        EditSelectorMediaSourceScreen(
-                            viewModel<EditSelectorMediaSourceViewModel>(key = mediaSourceInstanceId) {
-                                EditSelectorMediaSourceViewModel(mediaSourceInstanceId, context)
+                val remoteRoute = remember(route) {
+                    backStack.takeWhile { it != route }.lastOrNull {
+                        it is NavRoutes.Settings || it is NavRoutes.RemoteSettings
+                    } as? NavRoutes.RemoteSettings
+                }
+                val remoteVm = remoteRoute?.let {
+                    viewModel<RemoteSettingsViewModel>(
+                        viewModelStoreOwner = rememberViewModelStoreOwner(it.entryId, remoteSettingsStores),
+                    ) { RemoteSettingsViewModel() }
+                }
+                // 编辑器的目标在整个 entry 生命周期（包括退出动画）中保持不变。
+                val remoteEditor = remember(route) { remoteVm?.sourceEditor(mediaSourceInstanceId) }
+                if (remoteRoute != null && remoteEditor == null) {
+                    // 进程重建后凭据已失效，回到扫码页建立会话。
+                    LaunchedEffect(route) { aniNavigator.popBackStack(route, inclusive = true) }
+                    return@entry
+                }
+                val editorContent: @Composable (Modifier) -> Unit = { editorModifier ->
+                    when (factoryId) {
+                        RssMediaSource.FactoryId -> EditRssMediaSourceScreen(
+                            viewModel<EditRssMediaSourceViewModel>(key = "$mediaSourceInstanceId:${remoteRoute?.entryId}") {
+                                EditRssMediaSourceViewModel(mediaSourceInstanceId, remoteEditor)
                             },
-                            Modifier,
-                            windowInsets = windowInsets,
+                            mediaDetailsColumn = { media ->
+                                MediaDetailsLazyGrid(
+                                    MediaDetails.from(media, null, null),
+                                    Modifier.fillMaxSize(),
+                                    showSourceInfo = false,
+                                )
+                            },
+                            editorModifier,
+                            windowInsets,
                             navigationIcon = {
                                 BackNavigationIconButton(
                                     {
@@ -590,10 +612,33 @@ private fun AniAppContentImpl(
                                 )
                             },
                         )
-                    }
 
-                    else -> error("Unknown factoryId: $factoryId")
+                        SelectorMediaSource.FactoryId -> {
+                            val context = LocalContext.current
+                            EditSelectorMediaSourceScreen(
+                                viewModel<EditSelectorMediaSourceViewModel>(key = "$mediaSourceInstanceId:${remoteRoute?.entryId}") {
+                                    EditSelectorMediaSourceViewModel(mediaSourceInstanceId, context, remoteEditor)
+                                },
+                                editorModifier,
+                                windowInsets = windowInsets,
+                                navigationIcon = {
+                                    BackNavigationIconButton(
+                                        {
+                                            aniNavigator.popBackStack(route, inclusive = true)
+                                        },
+                                    )
+                                },
+                            )
+                        }
+
+                        else -> error("Unknown factoryId: $factoryId")
+                    }
                 }
+                if (remoteVm != null) RemoteSettingsSessionHost(
+                    remoteVm,
+                    onNavigateBack = { aniNavigator.popBackStack(remoteRoute, inclusive = true) },
+                ) { contentModifier, _ -> editorContent(contentModifier) }
+                else editorContent(Modifier)
             }
             entry<NavRoutes.TorrentPeerSettings> { route ->
                 val viewModel = viewModel { PeerFilterSettingsViewModel() }

@@ -7,9 +7,12 @@
  * https://github.com/open-ani/ani/blob/main/LICENSE
  */
 
+import org.openapitools.generator.gradle.plugin.tasks.GenerateTask
+
 plugins {
     id("ani.kmp-compose")
     alias(libs.plugins.kotlin.plugin.serialization)
+    alias(libs.plugins.openapi.generator)
 
     // alias(libs.plugins.kotlinx.atomicfu)
     alias(libs.plugins.kotlin.parcelize)
@@ -23,7 +26,11 @@ kotlin {
     android {
         namespace = "me.him188.ani.app.data"
     }
+    sourceSets.commonMain { kotlin.srcDir("src/commonMain/generated") }
     sourceSets.commonMain.dependencies {
+        implementation(libs.ktor.client.content.negotiation)
+        implementation(libs.ktor.serialization.kotlinx.json)
+        api(projects.app.shared.remoteSettingsContract)
         implementation(projects.app.shared.appPlatform)
         implementation(projects.app.shared.appLang)
         implementation(projects.utils.intellijAnnotations)
@@ -149,4 +156,41 @@ dependencies {
         add("kspIosArm64", libs.androidx.room.compiler)
         add("kspIosSimulatorArm64", libs.androidx.room.compiler)
     }
+}
+
+// The client shares the app's existing serializable settings and datasource models.
+val generateRemoteSettingsApi by tasks.registering(GenerateTask::class) {
+    generatorName.set("kotlin")
+    inputSpec.set(layout.projectDirectory.file("../remote-settings-contract/openapi.json").asFile.path)
+    outputDir.set(layout.buildDirectory.dir("remote-settings-openapi").get().asFile.path)
+    packageName.set("me.him188.ani.remote.settings.generated")
+    additionalProperties.set(mapOf("library" to "multiplatform", "dateLibrary" to "kotlinx-datetime"))
+    for (name in listOf("SettingsSnapshot", "PreferenceRequest", "MediaSourceRequest", "DanmakuFilterRequest", "BackupRequest", "OperationResult")) {
+        schemaMappings.put(name, name)
+        importMappings.put(name, "me.him188.ani.app.domain.settings.remote.$name")
+    }
+    globalProperties.set(mapOf("apis" to "", "models" to "PingRequest,PingResponse,RemoteError,LogSnapshot", "supportingFiles" to ""))
+    generateApiTests.set(false)
+    generateModelTests.set(false)
+    generateApiDocumentation.set(false)
+    generateModelDocumentation.set(false)
+}
+
+val generateRemoteSettingsClient = tasks.register<Sync>("generateRemoteSettingsClient") {
+    dependsOn(generateRemoteSettingsApi)
+    from(layout.buildDirectory.dir("remote-settings-openapi/src/commonMain/kotlin"))
+    into(layout.projectDirectory.dir("src/commonMain/generated"))
+}
+
+// Generated sources are checked in; generation runs only when explicitly requested.
+tasks.matching { it.name.startsWith("compile") || it.name.startsWith("ksp") }.configureEach {
+    mustRunAfter(generateRemoteSettingsClient)
+}
+
+val remoteSchemaCompilation = kotlin.targets.getByName("desktop").compilations.getByName("test")
+tasks.register<JavaExec>("generateRemoteSettingsOpenApi") {
+    dependsOn(remoteSchemaCompilation.compileTaskProvider)
+    classpath = files(remoteSchemaCompilation.output.allOutputs, remoteSchemaCompilation.runtimeDependencyFiles)
+    mainClass.set("me.him188.ani.app.domain.settings.remote.GenerateRemoteSettingsOpenApi")
+    args(layout.projectDirectory.file("../remote-settings-contract/openapi.json").asFile.absolutePath)
 }

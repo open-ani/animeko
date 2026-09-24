@@ -30,6 +30,7 @@ import kotlinx.coroutines.launch
 import me.him188.ani.android.BuildConfig
 import me.him188.ani.app.data.repository.user.QrLoginRepository
 import me.him188.ani.app.navigation.AniNavigator
+import me.him188.ani.app.domain.settings.remote.RemoteSettingsConnectionRequests
 import me.him188.ani.app.platform.AniComponentActivity
 import me.him188.ani.app.platform.rememberPlatformWindow
 import me.him188.ani.app.ui.exprovider.ExternalContentProviderFactory
@@ -68,6 +69,11 @@ class MainActivity : AniComponentActivity() {
             "qr-login" -> {
                 val requestId = QrLoginRepository.parseRequestId(data.toString()) ?: return
                 navigateWhenReady("QR login confirm") { navigateQrLoginConfirm(requestId) }
+            }
+            "remote-settings" -> {
+                if (runCatching { RemoteSettingsConnectionRequests.offer(data.toString()) }.isFailure) return
+                intent.data = null
+                navigateWhenReady("remote settings") { navigateRemoteSettings() }
             }
         }
     }

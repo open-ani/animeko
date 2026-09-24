@@ -44,7 +44,7 @@ import java.io.File
 
 @Composable
 actual fun SettingsScope.CacheDirectoryGroup(state: CacheDirectoryGroupState) {
-    Group({ Text(stringResource(Lang.settings_storage_title)) }) {
+    if (state.canChooseCacheDirectory) Group({ Text(stringResource(Lang.settings_storage_title)) }) {
         val mediaCacheSettings by state.mediaCacheSettingsState
 
         val context = LocalDesktopContext.current

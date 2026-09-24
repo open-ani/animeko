@@ -47,12 +47,13 @@ class MediaSourceSubscriptionUpdater(
      * @param force to ignore lastUpdated time
      * @return delay duration to check next time
      */
-    suspend fun updateAllOutdated(force: Boolean = false): Duration {
+    suspend fun updateAllOutdated(force: Boolean = false, subscriptionId: String? = null): Duration {
         logger.info { "MediaSourceSubscriptionUpdater.updateAllOutdated" }
         val subscriptions = subscriptions.flow.first()
         val currentTimeMillis = currentTimeMillis()
 
         for (subscription in subscriptions) {
+            if (subscriptionId != null && subscription.subscriptionId != subscriptionId) continue
             fun shouldUpdate(): Boolean {
                 if (!subscription.enabled) return false
                 if (force) return true
@@ -68,7 +69,7 @@ class MediaSourceSubscriptionUpdater(
 
             suspend fun setResult(count: Int?, error: UpdateError? = null) {
                 this.subscriptions.update(subscription.subscriptionId) { old ->
-                    old.copy(
+                    if (old.url != subscription.url || old.updatePeriod != subscription.updatePeriod || !old.enabled) old else old.copy(
                         lastUpdated = MediaSourceSubscription.LastUpdated(
                             currentTimeMillis,
                             mediaSourceCount = count,
@@ -142,7 +143,7 @@ class MediaSourceSubscriptionUpdater(
         var count: Int? = null
         // Serialize source reconciliation with subscription availability changes. Network I/O stays outside the transaction.
         subscriptions.update(subscription.subscriptionId) { current ->
-            if (current.enabled) {
+            if (current.enabled && current.url == subscription.url && current.updatePeriod == subscription.updatePeriod) {
                 applyUpdate(current, updateData, newArguments)
                 count = updateData.exportedMediaSourceDataList.mediaSources.size
             }

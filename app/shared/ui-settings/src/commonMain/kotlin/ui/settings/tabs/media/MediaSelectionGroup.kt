@@ -146,7 +146,8 @@ class MediaSelectionGroupState(
 
 @Composable
 internal fun SettingsScope.MediaSelectionGroup(
-    state: MediaSelectionGroupState
+    state: MediaSelectionGroupState,
+    remoteTv: Boolean = false,
 ) {
     val mediaDetailsStrings = rememberMediaDetailsStrings()
     Group(
@@ -266,8 +267,8 @@ internal fun SettingsScope.MediaSelectionGroup(
             val videoResolverSettings by state.videoResolverSettingsState
 
             kotlin.run {
-                val values = remember {
-                    MediaSourceKind.selectableEntries + null
+                val values = remember(remoteTv) {
+                    if (remoteTv) listOf(MediaSourceKind.WEB) else MediaSourceKind.selectableEntries + null
                 }
                 DropdownItem(
                     selected = { mediaSelectorSettings.preferKind },
@@ -435,7 +436,7 @@ internal fun SettingsScope.MediaSelectionGroup(
                     // iOS 上暂不暴露该开关: iOS 注入的是 UnsupportedCaptchaBrowserFactory, 没有交互式验证码
                     // 填写入口, 一旦关闭自动识别, 带图片验证码的数据源将没有任何兜底手段而直接不可用.
                     // 设置项本身仍然存在且默认开启, 等 iOS 支持交互式验证码后再放开这里即可.
-                    if (!LocalPlatform.current.isIos()) {
+                    if (remoteTv || !LocalPlatform.current.isIos()) {
                         SwitchItem(
                             checked = mediaSelectorSettings.enableImageCaptchaAutoSolve,
                             onCheckedChange = {

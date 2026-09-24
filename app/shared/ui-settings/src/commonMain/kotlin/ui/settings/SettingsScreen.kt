@@ -16,6 +16,7 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxScope
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ColumnScope
+import androidx.compose.foundation.layout.RowScope
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.WindowInsetsSides
@@ -38,6 +39,7 @@ import androidx.compose.material.icons.outlined.FilterList
 import androidx.compose.material.icons.outlined.Info
 import androidx.compose.material.icons.outlined.Palette
 import androidx.compose.material.icons.outlined.Public
+import androidx.compose.material.icons.outlined.QrCodeScanner
 import androidx.compose.material.icons.outlined.Science
 import androidx.compose.material.icons.outlined.Settings
 import androidx.compose.material.icons.outlined.SettingsApplications
@@ -47,6 +49,7 @@ import androidx.compose.material.icons.outlined.Subscriptions
 import androidx.compose.material.icons.outlined.Update
 import androidx.compose.material.icons.outlined.VpnKey
 import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.NavigationDrawerItem
 import androidx.compose.material3.PermanentDrawerSheet
@@ -84,6 +87,7 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -124,8 +128,9 @@ import me.him188.ani.app.ui.foundation.widgets.LocalToaster
 import me.him188.ani.app.ui.lang.Lang
 import me.him188.ani.app.ui.lang.acknowledgements
 import me.him188.ani.app.ui.lang.developer_list
-import me.him188.ani.app.ui.lang.settings_about_build_info
+import me.him188.ani.app.ui.lang.remote_settings_scan
 import me.him188.ani.app.ui.lang.settings
+import me.him188.ani.app.ui.lang.settings_about_build_info
 import me.him188.ani.app.ui.lang.settings_account_bangumi_sync_title
 import me.him188.ani.app.ui.lang.settings_account_github_title
 import me.him188.ani.app.ui.lang.settings_acknowledgements_oss_licenses
@@ -205,6 +210,7 @@ fun SettingsScreen(
      * 前往扫码登录其他设备. 为 `null` (当前平台不能扫码) 时不显示入口
      */
     onNavigateToQrLogin: (() -> Unit)? = null,
+    onNavigateToRemoteSettings: (() -> Unit)? = null,
 ) {
     val navigator: ThreePaneScaffoldNavigator<Nothing?> = rememberListDetailPaneScaffoldNavigator(
         initialDestinationHistory = buildList {
@@ -243,8 +249,15 @@ fun SettingsScreen(
 
     SettingsPageLayout(
         navigator,
+        topBarActions = {
+            onNavigateToRemoteSettings?.let { scan ->
+                IconButton(scan) {
+                    Icon(Icons.Outlined.QrCodeScanner, stringResource(Lang.remote_settings_scan))
+                }
+            }
+        },
         // TODO: 2025/2/14 We should have a SettingsNavController or so to control the tab state
-        { lastSelectedTab },
+        currentTab = { lastSelectedTab },
         onSelectedTab = { tab ->
             navigateToTab(tab)
         },
@@ -470,6 +483,8 @@ internal fun SettingsPageLayout(
     layoutParameters: ListDetailLayoutParameters = ListDetailLayoutParameters.calculate(navigator.scaffoldDirective),
     navigationIcon: @Composable () -> Unit = {},
     loadOpenSourceLibrariesJsons: suspend () -> List<ByteArray>,
+    topBarActions: @Composable RowScope.() -> Unit = {},
+    defaultTab: SettingsTab = SettingsTab.Default,
 ) = SettingsPageSurface(containerColor) {
     val layoutParametersState by rememberUpdatedState(layoutParameters)
 
@@ -480,7 +495,7 @@ internal fun SettingsPageLayout(
             this
         } else {
             // 双页模式, 默认选择第一个 tab, 以免右边很空
-            this ?: SettingsTab.Default
+            this ?: defaultTab
         }
     }
 
@@ -513,6 +528,7 @@ internal fun SettingsPageLayout(
     val listPaneTopAppBar: @Composable PaneScope.() -> Unit = {
         AniTopAppBar(
             title = { AniTopAppBarDefaults.Title(stringResource(Lang.settings)) },
+            actions = topBarActions,
             navigationIcon = {
                 if (navigator.canNavigateBack()) {
                     BackNavigationIconButton(
@@ -568,6 +584,7 @@ internal fun SettingsPageLayout(
                                     onClick = {
                                         onSelectedTab(item)
                                     },
+                                    modifier = Modifier.testTag("settings-tab-${item.name}"),
                                 )
                             }
                         }
@@ -709,7 +726,7 @@ internal fun SettingsPageLayout(
                                         },
                                         navigationIcon = {
                                             if (listDetailLayoutParameters.preferSinglePane) {
-                                                BackNavigationIconButton(onClickBackOnDetailPage)
+                                                BackNavigationIconButton(onClickBackOnDetailPage, Modifier.testTag("settings-back-detail"))
                                             }
                                         },
                                         colors = topAppBarColors,

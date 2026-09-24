@@ -39,6 +39,8 @@ import me.him188.ani.datasources.api.source.ConnectionStatus
 import me.him188.ani.datasources.api.source.FactoryId
 import me.him188.ani.datasources.api.source.MediaSourceConfig
 import me.him188.ani.datasources.api.source.MediaSourceFactory
+import me.him188.ani.datasources.api.source.MediaSourceKind
+import me.him188.ani.datasources.api.source.MediaSourceLocation
 import me.him188.ani.datasources.api.source.MediaSourceInfo
 import me.him188.ani.datasources.api.source.parameter.MediaSourceParameters
 import me.him188.ani.utils.coroutines.childScope
@@ -67,7 +69,8 @@ class MediaSourceLoader(
                     info = instance.source.info,
                     parameters = factory.parameters,
                     connectionTester = connectionTesters.getOrCreate(instance),
-                    instance,
+                    location = instance.source.location,
+                    kind = instance.source.kind,
                     ownerSubscriptionUrl = instance.config.subscriptionId?.let { subscriptionId ->
                         subscriptions.find { it.subscriptionId == subscriptionId }?.url
                     },
@@ -170,7 +173,7 @@ class MediaSourceGroupState(
 
     val mediaSourceTesters by derivedStateOf {
         DefaultConnectionTesterRunner(
-            mediaSources.map { it.connectionTester },
+            mediaSources.mapNotNull { it.connectionTester },
             backgroundScope,
         )
     }
@@ -308,8 +311,9 @@ class MediaSourcePresentation(
     val factoryId: FactoryId,
     val info: MediaSourceInfo,
     val parameters: MediaSourceParameters,
-    val connectionTester: ConnectionTester,
-    val instance: MediaSourceInstance,
+    val connectionTester: ConnectionTester? = null,
+    val location: MediaSourceLocation? = null,
+    val kind: MediaSourceKind? = null,
 
     val ownerSubscriptionUrl: String?,
 )
