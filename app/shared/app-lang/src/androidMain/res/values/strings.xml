@@ -1088,6 +1088,9 @@
     <string name="settings_account_profile_unbind">Unbind</string>
     <string name="settings_account_profile_unbind_bangumi_confirmation">Unbind Bangumi? Watch history will no longer sync to Bangumi. You can bind it again later.</string>
     <string name="settings_account_profile_unbind_confirmation">Unbind %1$s? You can bind it again later.</string>
+    <string name="settings_account_profile_unbind_email_confirmation">Unbind email %1$s? You will no longer be able to sign in to this account with it. You can bind an email again later.</string>
+    <string name="settings_account_profile_unbind_email_last_login_method">Email is the only way to sign in to this account, so it cannot be unbound. Bind Bangumi or another third-party account first.</string>
+    <string name="settings_account_profile_ok">OK</string>
     <string name="settings_account_github_title">GitHub Account</string>
     <string name="settings_account_github_bound">Linked GitHub account</string>
     <string name="settings_account_developer_benefit">Certified developers get perks such as no ads</string>

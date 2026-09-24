@@ -1098,6 +1098,9 @@
     <string name="settings_account_profile_unbind">解除綁定</string>
     <string name="settings_account_profile_unbind_bangumi_confirmation">確定要解除綁定 Bangumi 嗎？解除綁定後將不再同步觀看記錄到 Bangumi。之後可以重新綁定。</string>
     <string name="settings_account_profile_unbind_confirmation">確定要解除綁定 %1$s 嗎？解除綁定後可以重新綁定。</string>
+    <string name="settings_account_profile_unbind_email_confirmation">確定要解除綁定電子郵件 %1$s 嗎？解除綁定後將不能再用它登入此帳號。之後可以重新綁定電子郵件。</string>
+    <string name="settings_account_profile_unbind_email_last_login_method">電子郵件是此帳號唯一的登入方式，無法解除綁定。請先綁定 Bangumi 或其他第三方帳號。</string>
+    <string name="settings_account_profile_ok">好</string>
     <string name="settings_account_github_title">GitHub 帳號</string>
     <string name="settings_account_github_bound">已綁定的 GitHub 帳號</string>
     <string name="settings_account_developer_benefit">通過認證後不再顯示廣告等</string>
