@@ -29,7 +29,7 @@ MCP 工具对应关系:
 
 **做什么**: 把搜索关键词(番剧名)代入 `searchUrl` 的 `{keyword}` 占位符,HTTP GET 该 URL,返回搜索结果页。
 
-**输入**: `searchUrl`、关键词、`searchUseOnlyFirstWord`(只用名字的第一个词搜索)、`searchRemoveSpecial`(移除特殊字符,并删除「剧场版」「OVA」「总集篇」等标记词——例如「剧场版 命运石之门」会以「命运石之门」作为关键词,避免取首词时只剩「剧场版」)。
+**输入**: `searchUrl`、关键词、`autoMatch.searchUseOnlyFirstWord`(只用名字的第一个词搜索)、`autoMatch.searchRemoveSpecial`(移除特殊字符,并删除「剧场版」「OVA」「总集篇」等标记词——例如「剧场版 命运石之门」会以「命运石之门」作为关键词,避免取首词时只剩「剧场版」)。
 
 **输出**: 页面 HTML,外加 `blockReason`(被挡原因,正常为空)与 `autoSolvedCaptcha`(本次自动解掉的验证码类型)。
 
@@ -56,7 +56,9 @@ MCP 工具对应关系:
 | `indexed` | 名称与链接分别用两个 selector 选出后按序配对 | `selectNames`, `selectLinks` |
 | `json-path-indexed` | 页面是 JSON API 响应,用 JsonPath 提取 | `selectLinks`, `selectNames` |
 
-**输出**: `WebSearchSubjectInfo { name, fullUrl, partialUrl }` 列表。返回 `null` 表示配置无效(selector 为空或语法错误)。
+**输出**: `WebSearchSubjectInfo { name, fullUrl, partialUrl }` 列表,顺序与页面一致。返回 `null` 表示配置无效(selector 为空或语法错误)。
+`selector_resolve_episode` 在此之后按 `autoMatch.preferShorterName`(默认开)把名称短的条目排到前面,与 App 自动匹配一致;
+`selector_run_step` 的 `selectSubjects` 步骤输出页面原始顺序。
 
 **常见问题**:
 - 解析出 0 个条目 → selector 与页面结构不匹配,把 searchSubjects 返回的 HTML 拿来对照调 selector;
@@ -103,7 +105,7 @@ MCP 工具对应关系:
 **做什么**: 把剧集信息转换为 `Media` 对象,并按查询上下文过滤:
 
 - `episodeSortOrEp == null` 的剧集直接丢弃;
-- `filterByEpisodeSort == true` 时只保留序号与目标集数(sort 或 ep)一致的剧集;
+- `autoMatch.filterByEpisodeSort == true` 时只保留序号与目标集数(sort 或 ep)一致的剧集;
 - 字幕语言从线路名/剧集名猜测(如「简中」「繁中」),否则用 `defaultSubtitleLanguage`。
 
 **输出**: `SelectMediaResult { originalList, filteredList }`。trace 里的 `filteredOut` 列出被过滤掉的候选,便于排查「有剧集但匹配不上目标集数」的问题。
@@ -169,6 +171,12 @@ MCP 工具:
 ```
 
 也可以在 App 内导出现成配置: 设置 → 数据源 → 选择一个 Selector 源 → 导出,得到的就是上述格式 1。
+
+`searchConfig` 分两层: 上面示例里的都是**列表规则**(把搜索结果、线路、剧集列出来,以及 `matchVideo`),
+只写这一层就能在 App 里浏览并手动选集;**自动匹配**放在 `searchConfig.autoMatch` 下
+(`enabled`、`searchUseOnlyFirstWord`、`searchRemoveSpecial`、`searchUseSubjectNamesCount`、
+`preferShorterName`、`filterBySubjectName`、`filterByEpisodeSort`),全部可选。旧配置把这些字段平铺在 `searchConfig` 顶层,
+仍然能读;同时存在时以 `autoMatch` 为准。`autoMatch.enabled: false` 的源不参与自动选择,只能浏览。
 
 ## 调试建议流程
 
