@@ -39,7 +39,6 @@ import androidx.compose.foundation.lazy.LazyListScope
 import androidx.compose.foundation.text.selection.SelectionContainer
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.Close
-import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.BottomSheetDefaults
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Icon
@@ -48,24 +47,19 @@ import androidx.compose.material3.LocalContentColor
 import androidx.compose.material3.LocalTextStyle
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
-import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.ProvideTextStyle
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SheetValue
-import androidx.compose.material3.Slider
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.material3.contentColorFor
 import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.Stable
 import androidx.compose.runtime.State
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
@@ -98,6 +92,8 @@ import me.him188.ani.app.navigation.LocalNavigator
 import me.him188.ani.app.navigation.SubjectDetailPlaceholder
 import me.him188.ani.app.platform.LocalContext
 import me.him188.ani.app.platform.navigation.LocalBrowserNavigator
+import me.him188.ani.app.ui.episode.danmaku.DanmakuSourceSettingsDropdown
+import me.him188.ani.app.ui.episode.danmaku.DanmakuTimeShiftDialog
 import me.him188.ani.app.ui.episode.danmaku.renderDanmakuServiceId
 import me.him188.ani.app.ui.foundation.LocalSubjectAppearanceSettings
 import me.him188.ani.app.ui.foundation.ProvideCompositionLocalsForPreview
@@ -112,14 +108,8 @@ import me.him188.ani.app.ui.foundation.layout.paddingIfNotEmpty
 import me.him188.ani.app.ui.foundation.widgets.ModalSideSheet
 import me.him188.ani.app.ui.foundation.widgets.rememberModalSideSheetState
 import me.him188.ani.app.ui.lang.Lang
-import me.him188.ani.app.ui.lang.settings_danmaku_cancel
-import me.him188.ani.app.ui.lang.settings_danmaku_confirm
+import me.him188.ani.app.ui.lang.episode_danmaku_match_change
 import me.him188.ani.app.ui.lang.subject_episode_close_selector
-import me.him188.ani.app.ui.lang.subject_episode_danmaku_time_shift_current_offset
-import me.him188.ani.app.ui.lang.subject_episode_danmaku_time_shift_description
-import me.him188.ani.app.ui.lang.subject_episode_danmaku_time_shift_reset
-import me.him188.ani.app.ui.lang.subject_episode_danmaku_time_shift_restore
-import me.him188.ani.app.ui.lang.subject_episode_danmaku_time_shift_title
 import me.him188.ani.app.ui.lang.subject_episode_related_recommendations
 import me.him188.ani.app.ui.lang.subject_episode_select_media_source
 import me.him188.ani.app.ui.lang.subject_episode_wish_change_to
@@ -147,10 +137,8 @@ import me.him188.ani.app.ui.subject.details.state.createTestSubjectDetailsLoader
 import me.him188.ani.app.ui.subject.episode.EpisodePageLoadError
 import me.him188.ani.app.ui.subject.episode.details.components.DanmakuMatchInfoGrid
 import me.him188.ani.app.ui.subject.episode.details.components.DanmakuSourceCard
-import me.him188.ani.app.ui.subject.episode.details.components.DanmakuSourceSettingsDropdown
 import me.him188.ani.app.ui.subject.episode.details.components.FavoriteIconButton
 import me.him188.ani.app.ui.subject.episode.details.components.SubjectRecommendationCard
-import me.him188.ani.app.ui.subject.episode.details.components.formatDanmakuShiftMillis
 import me.him188.ani.app.ui.subject.episode.statistics.DanmakuMatchInfoSummaryBanner
 import me.him188.ani.app.ui.subject.episode.statistics.DanmakuStatistics
 import me.him188.ani.app.ui.subject.episode.statistics.VideoStatistics
@@ -158,7 +146,6 @@ import me.him188.ani.app.ui.subject.episode.statistics.createTestDanmakuStatisti
 import me.him188.ani.app.ui.user.SelfInfoUiState
 import me.him188.ani.app.ui.user.TestSelfInfoUiState
 import me.him188.ani.danmaku.api.DanmakuServiceId
-import me.him188.ani.danmaku.api.provider.DanmakuProviderId
 import me.him188.ani.datasources.api.Media
 import me.him188.ani.datasources.api.source.MediaFetchRequest
 import me.him188.ani.datasources.api.topic.UnifiedCollectionType
@@ -168,7 +155,6 @@ import me.him188.ani.utils.analytics.AnalyticsEvent.Companion.SubjectRecommendat
 import me.him188.ani.utils.analytics.recordEvent
 import me.him188.ani.utils.platform.annotations.TestOnly
 import org.jetbrains.compose.resources.stringResource
-import kotlin.math.roundToLong
 
 @Stable
 class EpisodeDetailsState(
@@ -212,7 +198,7 @@ fun EpisodeDetails(
     onAdjustDanmakuSourceShift: (DanmakuServiceId, Long) -> Unit,
     onClickLogin: () -> Unit,
     onClickTag: (Tag) -> Unit,
-    onManualMatchDanmaku: (DanmakuProviderId) -> Unit,
+    onManualMatchDanmaku: (DanmakuServiceId) -> Unit,
     onEpisodeCollectionUpdate: (SetEpisodeCollectionTypeRequest) -> Unit,
     loadError: EpisodePageLoadError?,
     onRetryLoad: () -> Unit,
@@ -506,17 +492,18 @@ fun EpisodeDetails(
                                 showDropdown = true
                             },
                             onClick = {
-                                onManualMatchDanmaku(source.providerId)
+                                onManualMatchDanmaku(source.serviceId)
                             },
                             Modifier.fillMaxWidth(),
                             colors = colors,
                             dropdown = {
                                 DanmakuSourceSettingsDropdown(
                                     showDropdown,
+                                    changeText = stringResource(Lang.episode_danmaku_match_change),
                                     onDismissRequest = { showDropdown = false },
                                     enabled = source.config.enabled,
                                     onClickChange = {
-                                        onManualMatchDanmaku(source.providerId)
+                                        onManualMatchDanmaku(source.serviceId)
                                     },
                                     onSetEnabled = { enabled ->
                                         onSetDanmakuSourceEnabled(source.matchInfo.serviceId, enabled)
@@ -547,11 +534,7 @@ fun EpisodeDetails(
                     expanded = expandDanmakuList,
                     onToggleExpanded = { expandDanmakuList = !expandDanmakuList },
                     onSetEnabled = onSetDanmakuSourceEnabled,
-                    onManualMatch = { serviceId ->
-                        danmakuStatistics.fetchResults.find { it.serviceId == serviceId }?.let {
-                            onManualMatchDanmaku(it.providerId)
-                        }
-                    },
+                    onManualMatch = onManualMatchDanmaku,
                     onAdjustShift = { serviceId ->
                         editingShiftServiceId = serviceId
                     },
@@ -646,11 +629,7 @@ fun EpisodeDetails(
                         DanmakuListContent(
                             state = danmakuListState,
                             onSetEnabled = onSetDanmakuSourceEnabled,
-                            onManualMatch = { serviceId ->
-                                danmakuStatistics.fetchResults.find { it.serviceId == serviceId }?.let {
-                                    onManualMatchDanmaku(it.providerId)
-                                }
-                            },
+                            onManualMatch = onManualMatchDanmaku,
                             onAdjustShift = { serviceId ->
                                 editingShiftServiceId = serviceId
                             },
@@ -676,84 +655,6 @@ fun EpisodeDetails(
             },
         )
     }
-}
-
-@Composable
-private fun DanmakuTimeShiftDialog(
-    serviceName: String,
-    currentShiftMillis: Long,
-    onDismissRequest: () -> Unit,
-    onConfirm: (Long) -> Unit,
-) {
-    val sliderRange = -30_000f..30_000f
-    var shift by remember {
-        mutableFloatStateOf(currentShiftMillis.toFloat().coerceIn(sliderRange.start, sliderRange.endInclusive))
-    }
-    LaunchedEffect(currentShiftMillis) {
-        shift = currentShiftMillis.toFloat().coerceIn(sliderRange.start, sliderRange.endInclusive)
-    }
-    fun adjust(amount: Float) {
-        shift = (shift + amount).coerceIn(sliderRange.start, sliderRange.endInclusive)
-    }
-
-    val shiftLabel = remember(shift) { formatDanmakuShiftMillis(shift.roundToLong()) }
-    val confirmText = stringResource(Lang.settings_danmaku_confirm)
-    val cancelText = stringResource(Lang.settings_danmaku_cancel)
-    val titleText = stringResource(Lang.subject_episode_danmaku_time_shift_title, serviceName)
-    val descriptionText = stringResource(Lang.subject_episode_danmaku_time_shift_description)
-    val currentOffsetText = stringResource(Lang.subject_episode_danmaku_time_shift_current_offset, shiftLabel)
-    val resetText = stringResource(Lang.subject_episode_danmaku_time_shift_reset)
-    val restoreText = stringResource(Lang.subject_episode_danmaku_time_shift_restore)
-
-    AlertDialog(
-        onDismissRequest = onDismissRequest,
-        confirmButton = {
-            TextButton(onClick = { onConfirm(shift.roundToLong()) }) {
-                Text(confirmText)
-            }
-        },
-        dismissButton = {
-            TextButton(onClick = onDismissRequest) {
-                Text(cancelText)
-            }
-        },
-        title = { Text(titleText) },
-        text = {
-            Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
-                Text(descriptionText)
-                Text(currentOffsetText)
-                Slider(
-                    value = shift,
-                    onValueChange = { shift = it.coerceIn(sliderRange.start, sliderRange.endInclusive) },
-                    valueRange = sliderRange,
-                )
-                FlowRow(
-                    horizontalArrangement = Arrangement.spacedBy(12.dp),
-                    verticalArrangement = Arrangement.spacedBy(8.dp),
-                ) {
-                    TextButton(onClick = { adjust(-500f) }) { Text("-0.5 s") }
-                    TextButton(onClick = { adjust(-100f) }) { Text("-0.1 s") }
-                    TextButton(onClick = { adjust(100f) }) { Text("+0.1 s") }
-                    TextButton(onClick = { adjust(500f) }) { Text("+0.5 s") }
-                }
-                FlowRow(
-                    horizontalArrangement = Arrangement.spacedBy(12.dp),
-                    verticalArrangement = Arrangement.spacedBy(8.dp),
-                ) {
-                    OutlinedButton(onClick = { shift = 0f }) {
-                        Text(resetText)
-                    }
-                    OutlinedButton(
-                        onClick = {
-                            shift = currentShiftMillis.toFloat().coerceIn(sliderRange.start, sliderRange.endInclusive)
-                        },
-                    ) {
-                        Text(restoreText)
-                    }
-                }
-            }
-        },
-    )
 }
 
 @Composable

@@ -1729,6 +1729,8 @@
     <string name="qr_login_retry">Retry</string>
     <string name="qr_login_done">Done</string>
     <string name="qr_login_close">Close</string>
+    <string name="subject_episode_danmaku_sources_title">Sources and timing</string>
+    <string name="subject_episode_danmaku_sources_empty">No danmaku sources available</string>
 </resources>
 
 <!--@formatter:on-->

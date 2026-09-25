@@ -1261,6 +1261,12 @@ open class EpisodeViewModel(
         episodeDanmakuLoader.setShiftMillis(serviceId, shiftMillis)
     }
 
+    fun startMatchingDanmakuForService(serviceId: DanmakuServiceId) {
+        val providerId = pageState.value?.danmakuStatistics?.fetchResults
+            ?.firstOrNull { it.serviceId == serviceId }?.providerId ?: return
+        startMatchingDanmaku(providerId)
+    }
+
     fun startMatchingDanmaku(id: DanmakuProviderId) {
         matchingDanmakuProviderId.value = id
     }

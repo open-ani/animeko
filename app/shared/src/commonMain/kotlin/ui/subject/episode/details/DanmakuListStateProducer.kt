@@ -9,13 +9,12 @@
 
 package me.him188.ani.app.ui.subject.episode.details
 
-
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.distinctUntilChanged
 import me.him188.ani.app.domain.episode.DanmakuFetchResultWithConfig
+import me.him188.ani.app.ui.episode.danmaku.DanmakuSourceItem
 import me.him188.ani.danmaku.api.DanmakuServiceId
-import me.him188.ani.danmaku.api.provider.DanmakuMatchMethod
 import me.him188.ani.danmaku.ui.DanmakuPresentation
 import me.him188.ani.utils.platform.Uuid
 
@@ -51,18 +50,6 @@ data class DanmakuListState(
 }
 
 /**
- * 弹幕源选择项数据类
- */
-data class DanmakuSourceItem(
-    val serviceId: DanmakuServiceId,
-    val displayName: String,
-    val enabled: Boolean,
-    val isFuzzyMatch: Boolean,
-    val shiftMillis: Long,
-    val count: Int,
-)
-
-/**
  * 弹幕列表状态生产者，负责处理弹幕数据的计算和转换逻辑
  */
 class DanmakuListStateProducer(
@@ -76,9 +63,8 @@ class DanmakuListStateProducer(
         val sourceItems = fetchResults.map { result ->
             DanmakuSourceItem(
                 serviceId = result.serviceId,
-                displayName = result.matchInfo.serviceId.value,
                 enabled = result.config.enabled,
-                isFuzzyMatch = !result.matchInfo.method.isExactMatch(),
+                matchMethod = result.matchInfo.method,
                 shiftMillis = result.config.shiftMillis,
                 count = danmakuList.count { presentation -> presentation.danmaku.serviceId == result.serviceId },
             )
@@ -103,10 +89,4 @@ class DanmakuListStateProducer(
         )
     }.distinctUntilChanged()
 
-    private fun DanmakuMatchMethod.isExactMatch(): Boolean {
-        return when (this) {
-            is DanmakuMatchMethod.Exact, is DanmakuMatchMethod.ExactId -> true
-            else -> false
-        }
-    }
 }
