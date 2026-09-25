@@ -17,6 +17,7 @@ import java.net.URI
 import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.ConcurrentLinkedQueue
 import java.util.concurrent.Executors
+import java.util.concurrent.atomic.AtomicInteger
 
 /**
  * 把测试素材 `src/androidDeviceTest/assets/hls/` (由其中的 `generate.sh` 用 ffmpeg 生成的真实 HLS 流) 作为源站提供的本地 HTTP 服务.
@@ -55,6 +56,11 @@ class HlsFixtureOrigin : AutoCloseable {
     private val recorded = ConcurrentLinkedQueue<RecordedRequest>()
     private val resourceCache = ConcurrentHashMap<String, ByteArray?>()
 
+    private val rangeRequestsInFlight = AtomicInteger()
+
+    /** 同时在处理的 `Range` 请求数的峰值. 探测时间戳用的是 `Range` 请求. */
+    val maxConcurrentRangeRequests = AtomicInteger()
+
     val requests: List<RecordedRequest> get() = recorded.toList()
     fun count(path: String): Int = recorded.count { it.path == path }
 
@@ -75,6 +81,8 @@ class HlsFixtureOrigin : AutoCloseable {
         val path = exchange.requestURI.path
         val headers = exchange.requestHeaders.entries.associate { (k, v) -> k.lowercase() to v.joinToString(",") }
         recorded += RecordedRequest(path, headers, exchange.remoteAddress.port)
+        val isRange = "range" in headers
+        if (isRange) maxConcurrentRangeRequests.accumulateAndGet(rangeRequestsInFlight.incrementAndGet(), ::maxOf)
         try {
             if (segmentLatencyMillis > 0 && !path.endsWith(".m3u8")) Thread.sleep(segmentLatencyMillis)
             latencyByPath[path]?.let { Thread.sleep(it) }
@@ -103,6 +111,7 @@ class HlsFixtureOrigin : AutoCloseable {
             }
             exchange.responseBody.use { it.write(slice) }
         } finally {
+            if (isRange) rangeRequestsInFlight.decrementAndGet()
             exchange.close()
         }
     }

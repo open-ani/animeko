@@ -37,7 +37,6 @@ import javax.crypto.Cipher
 import javax.crypto.spec.IvParameterSpec
 import javax.crypto.spec.SecretKeySpec
 import kotlin.concurrent.thread
-import kotlin.math.abs
 import kotlin.test.Test
 import kotlin.test.assertContentEquals
 import kotlin.test.assertEquals
@@ -641,13 +640,8 @@ abstract class AbstractRealHlsProxyTest internal constructor(
                 "filtered session must not fetch ad segments for playback",
             )
 
-            // 过滤后第 16 片对应 seg016. 拼接流的分片会被平移时间戳 (见 HlsTimestampAlignmentTest),
-            // 因此不能与源站逐字节比, 改为比长度并确认时间戳落在该片应处的位置.
-            val served = httpGet(uris[16]).body
-            assertEquals(origin.bytesOf("/hls/vod/seg016.ts").size, served.size)
-            val pts = TsPacketReader.firstPts(served)?.let { TsPacketReader.ticksToMillis(it) }
-            assertNotNull(pts)
-            assertTrue(abs(pts - 48_000) <= 200, "segment 16 should sit at 48s, got ${pts}ms")
+            // 过滤后第 16 片对应 seg016, 内容一致
+            assertContentEquals(origin.bytesOf("/hls/vod/seg016.ts"), httpGet(uris[16]).body)
         } finally {
             filteredSession.close()
         }

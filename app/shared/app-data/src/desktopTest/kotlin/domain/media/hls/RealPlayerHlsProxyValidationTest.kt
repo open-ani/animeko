@@ -54,7 +54,13 @@ abstract class AbstractRealPlayerHlsProxyValidationTest internal constructor(
         try {
             Fixture(
                 origin,
-                PlatformHlsPlaybackPreparer(provider, PlatformHlsPlaybackPreparer.DEFAULT_SEGMENT_CACHE_MAX_BYTES, serverFactory),
+                // 与桌面端相同: mpv 需要代理对齐拼接流的时间戳
+                PlatformHlsPlaybackPreparer(
+                    provider,
+                    PlatformHlsPlaybackPreparer.DEFAULT_SEGMENT_CACHE_MAX_BYTES,
+                    serverFactory,
+                    alignTimestamps = true,
+                ),
             ).block()
         } finally {
             provider.forceReleaseAll()
@@ -101,12 +107,38 @@ abstract class AbstractRealPlayerHlsProxyValidationTest internal constructor(
     private fun decodeAll(url: String): Run =
         run(ffmpeg!!, "-v", "error", "-xerror", "-i", url, "-f", "null", "-")
 
+    /** libavformat 读出的视频 DTS (秒), 按解复用顺序. mpv 的 `time-pos` 取自同一个解复用器. */
+    private fun videoDts(url: String): List<Double> {
+        val r = run(ffprobe!!, "-v", "error", "-select_streams", "v:0", "-show_entries", "packet=dts_time", "-of", "csv=p=0", url)
+        assertEquals(0, r.exitCode, r.output)
+        return r.output.lines().mapNotNull { it.trim().trimEnd(',').toDoubleOrNull() }
+    }
+
+    @Test
+    fun `libavformat sees a monotonic timeline through the proxy on an unfiltered spliced stream`() = withFixture {
+        if (skipUnless(ffprobe)) return@withFixture
+        fun rewinds(dts: List<Double>) = dts.zipWithNext().filter { (previous, next) -> next < previous }
+
+        assertTrue(rewinds(videoDts(origin.url("/hls/withads.m3u8"))).isNotEmpty(), "fixture premise: the ads rewind the timeline")
+        val result = proxied("/hls/withads.m3u8")
+        try {
+            val dts = videoDts(result.data.uri)
+            assertTrue(dts.size > 100, "expected the whole stream, got ${dts.size} packets")
+            assertEquals(emptyList(), rewinds(dts))
+            // 102 秒的播放列表, 时间轴不应被拉长或压缩
+            assertEquals(102.0, dts.last() - dts.first(), 1.0)
+        } finally {
+            result.session?.close()
+        }
+    }
+
     @Test
     fun `ffmpeg decodes every fixture variant through the proxy without errors`() = withFixture {
         if (skipUnless(ffmpeg, ffprobe)) return@withFixture
         /**
-         * @param cleanStream 流本身是否干净. 未过滤的广告拼接流在广告处时间戳回跳, ffmpeg 在 `-xerror` 下直连源站也会报错,
-         *   这种情况只要求经代理与直连源站的结果一致.
+         * @param cleanStream 流本身是否干净. 未过滤的广告拼接流在拼接点上 TS 的 continuity counter 跳变
+         *   (夹具的广告是 seg000 的副本), ffmpeg 在 `-xerror` 下直连源站也会把那里的包判为损坏.
+         *   代理不改 continuity counter, 这种情况只要求经代理与直连源站的结果一致.
          */
         data class Case(
             val path: String,
@@ -216,8 +248,9 @@ abstract class AbstractRealPlayerHlsProxyValidationTest internal constructor(
     }
 
     private fun findExecutable(name: String): String? {
+        val candidates = if (System.getProperty("os.name").startsWith("Windows")) listOf("$name.exe", name) else listOf(name)
         val dirs = (System.getenv("PATH") ?: "").split(File.pathSeparator) + listOf("/opt/homebrew/bin", "/usr/local/bin")
-        return dirs.map { File(it, name) }.firstOrNull { it.canExecute() }?.absolutePath
+        return dirs.flatMap { dir -> candidates.map { File(dir, it) } }.firstOrNull { it.canExecute() }?.absolutePath
     }
 }
 

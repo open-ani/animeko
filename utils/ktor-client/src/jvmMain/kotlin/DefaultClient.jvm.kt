@@ -17,6 +17,7 @@ import io.ktor.client.engine.okhttp.OkHttp
 import io.ktor.client.engine.okhttp.OkHttpConfig
 import io.ktor.client.statement.HttpResponse
 import io.ktor.http.ContentType
+import io.ktor.http.HttpProtocolVersion
 import io.ktor.http.content.OutgoingContent
 import io.ktor.serialization.ContentConverter
 import io.ktor.util.reflect.TypeInfo
@@ -30,6 +31,13 @@ import org.jsoup.nodes.Document
 import kotlin.math.max
 
 actual fun getPlatformKtorEngine(): HttpClientEngineFactory<*> = OkHttp
+
+/**
+ * OkHttp 在 HTTP/1.x 下每个并发请求各占一条连接, 连接数只受 [engineMaxRequestsPerHost] 间接限制;
+ * HTTP/2 下同一 host 的请求在一条连接上多路复用.
+ */
+actual fun HttpResponse.sharesConnectionsAcrossRequests(): Boolean =
+    version == HttpProtocolVersion.HTTP_2_0 || version == HttpProtocolVersion.QUIC
 
 actual fun HttpClientConfig<*>.engineMaxRequestsPerHost(value: Int) {
     @Suppress("UNCHECKED_CAST") // engine 块只会作用于实际的引擎配置, 类型在块内判断

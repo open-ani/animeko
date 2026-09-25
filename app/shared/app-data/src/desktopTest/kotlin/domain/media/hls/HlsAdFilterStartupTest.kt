@@ -107,36 +107,51 @@ class HlsAdFilterStartupTest {
         }
     }
 
+    /**
+     * 夹具源站是 HTTP/1.1, 每个并发请求各占一条连接. 探测不能对它放开到 64 路, 否则真实源站上就是 64 次 TLS 握手.
+     */
     @Test
-    fun `the first segment is downloaded once and served with rewritten timestamps`() = withPreparer { origin, preparer ->
+    fun `probes an HTTP 1 origin with a few connections`() = withPreparer { origin, preparer ->
+        // 32 片各自成组, 探测 32 个不同地址. 延迟让并发的请求在源站上重叠, 峰值才看得出来
+        origin.extraBodies["/hls/many-groups.m3u8"] = buildString {
+            appendLine("#EXTM3U")
+            appendLine("#EXT-X-TARGETDURATION:3")
+            for (i in 0..31) {
+                if (i > 0) appendLine("#EXT-X-DISCONTINUITY")
+                appendLine("#EXTINF:3.000000,")
+                appendLine("vod/seg%03d.ts".format(i))
+            }
+            appendLine("#EXT-X-ENDLIST")
+        }.encodeToByteArray()
+        origin.segmentLatencyMillis = 200
+
+        val result = preparer.prepare(UriMediaData(origin.url("/hls/many-groups.m3u8")), HlsPlaybackOptions(filterSegments = true))
+        try {
+            assertEquals(32, origin.requests.count { "range" in it.headers }, "every group must be probed")
+            val peak = origin.maxConcurrentRangeRequests.get()
+            assertTrue(peak in 2..8, "probes in flight peaked at $peak")
+        } finally {
+            result.session?.close()
+        }
+    }
+
+    @Test
+    fun `the first two segments are downloaded once, while probing`() = withPreparer { origin, preparer ->
         // 只开过滤: 可能含广告的播放列表照样代理分片
         val filtered = preparer.prepare(UriMediaData(origin.url("/hls/withads.m3u8")), HlsPlaybackOptions(filterSegments = true))
-        val prefetched = try {
+        try {
             val (firstUri, secondUri) = httpGet(filtered.data.uri).body.decodeToString().segmentUris()
             assertTrue(firstUri.startsWith("http://127.0.0.1:"), "expected a proxied segment, got $firstUri")
             // 播放器还没请求, 开头两片已经在下载: 播放器打开时两片都要读
             withTimeout(5_000) {
                 while (origin.countWhole("/hls/vod/seg000.ts") == 0 || origin.countWhole("/hls/vod/seg001.ts") == 0) delay(10)
             }
-            httpGet(secondUri)
+            assertContentEquals(origin.bytesOf("/hls/vod/seg001.ts"), httpGet(secondUri).body)
             assertEquals(1, origin.countWhole("/hls/vod/seg001.ts"), "second segment must be served from the prefetch")
-            httpGet(firstUri).body.also {
-                assertEquals(1, origin.countWhole("/hls/vod/seg000.ts"), "player request must be served from the prefetch")
-            }
+            assertContentEquals(origin.bytesOf("/hls/vod/seg000.ts"), httpGet(firstUri).body)
+            assertEquals(1, origin.countWhole("/hls/vod/seg000.ts"), "player request must be served from the prefetch")
         } finally {
             filtered.session?.close()
-        }
-
-        // 不过滤的会话没有预缓存, 首片由转发路径流式改写, 字节应与预缓存的一致
-        val forwarded = preparer.prepare(UriMediaData(origin.url("/hls/withads.m3u8")), HlsPlaybackOptions(proxySegments = true))
-        try {
-            val firstUri = httpGet(forwarded.data.uri).body.decodeToString().segmentUris().first()
-            val streamed = httpGet(firstUri).body
-            assertEquals(2, origin.countWhole("/hls/vod/seg000.ts"))
-            assertContentEquals(streamed, prefetched)
-            assertFalse(origin.bytesOf("/hls/vod/seg000.ts").contentEquals(prefetched), "timestamps should be rewritten")
-        } finally {
-            forwarded.session?.close()
         }
     }
 }

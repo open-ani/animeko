@@ -94,33 +94,18 @@ class HlsStartPositionPrefetchTest {
             assertFalse(hinted.isCompleted, "the resume segment must be requested while the probe is still running")
             hinted.await()
         }
-        val prefetched = try {
+        try {
             val local = httpGet(result.data.uri).body.decodeToString()
             assertFalse(local.contains("/ads/"), "ad group must be removed")
             val segmentUris = local.segmentUris()
             assertEquals(32, segmentUris.size)
-            httpGet(segmentUris[13]).body.also {
-                assertEquals(1, origin.countWhole("/hls/vod/seg013.ts"), "player request must be served from the prefetch")
-                assertEquals(0, origin.countWhole("/hls/vod/seg011.ts"), "position must be mapped on the ad-free timeline")
-                // 播放器打开时先读首片, 续播的跳转在开始播放之后, 所以续播也要预缓存首片
-                assertEquals(1, origin.countWhole("/hls/vod/seg000.ts"), "first segment must be prefetched when resuming too")
-            }
+            assertContentEquals(origin.bytesOf("/hls/vod/seg013.ts"), httpGet(segmentUris[13]).body)
+            assertEquals(1, origin.countWhole("/hls/vod/seg013.ts"), "player request must be served from the prefetch")
+            assertEquals(0, origin.countWhole("/hls/vod/seg011.ts"), "position must be mapped on the ad-free timeline")
+            // 播放器打开时先读首片, 续播的跳转在开始播放之后, 所以续播也要预缓存首片
+            assertEquals(1, origin.countWhole("/hls/vod/seg000.ts"), "first segment must be prefetched when resuming too")
         } finally {
             result.session?.close()
-        }
-
-        // 无提示的会话由转发路径流式改写同一片, 两者锚点都是去广告后时间轴上的 39 秒, 字节应一致
-        origin.latencyByPath.clear()
-        val plain = preparer.prepare(UriMediaData(origin.url("/hls/resume.m3u8")), HlsPlaybackOptions(filterSegments = true))
-        try {
-            val segmentUris = httpGet(plain.data.uri).body.decodeToString().segmentUris()
-            assertEquals(32, segmentUris.size)
-            val streamed = httpGet(segmentUris[13]).body
-            assertEquals(2, origin.countWhole("/hls/vod/seg013.ts"))
-            assertContentEquals(streamed, prefetched)
-            assertFalse(origin.bytesOf("/hls/vod/seg013.ts").contentEquals(prefetched), "timestamps should be rewritten")
-        } finally {
-            plain.session?.close()
         }
     }
 
