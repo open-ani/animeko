@@ -376,7 +376,7 @@ class TvPlayerSidebarNavigationUiTest {
                 SideEffect { fixture.backDispatcher = dispatcher }
                 TvEpisodeScreen(
                     uiState = TvEpisodeUiState(
-                        loadingState = VideoLoadingState.Succeed(false),
+                        loadingState = VideoLoadingState.Succeed(null),
                         positionMillis = 20_000,
                         durationMillis = 60_000,
                         options = fixture.options,

@@ -124,7 +124,7 @@ class TvPlayerI18nUiTest {
         var together by mutableStateOf(TvTogetherState(roomName = "Friends", error = TvTogetherError.Join(WatchTogetherJoinFailure.WRONG_PASSWORD)))
         var state by mutableStateOf(TvEpisodeUiState(
             title = TvEpisodeTitle("Frieren", "5", "Phantoms of the Dead"),
-            loadingState = VideoLoadingState.Succeed(false), positionMillis = 20_000, durationMillis = 60_000,
+            loadingState = VideoLoadingState.Succeed(null), positionMillis = 20_000, durationMillis = 60_000,
             episodes = listOf(
                 TvStripEpisode(5, "5", "Phantoms of the Dead", false, isKnownBroadcast = true),
                 TvStripEpisode(6, "6", "The Hero of the Village", false, isKnownBroadcast = true),

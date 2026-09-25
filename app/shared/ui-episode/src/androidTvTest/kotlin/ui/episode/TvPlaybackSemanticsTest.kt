@@ -43,7 +43,7 @@ class TvPlaybackSemanticsTest {
 
     @Test
     fun loadingIndicatorRemainsAvailableAfterResolutionForBufferingAndPlayerErrors() {
-        val loaded = VideoLoadingState.Succeed(false)
+        val loaded = VideoLoadingState.Succeed(null)
         assertFalse(shouldShowVideoLoadingIndicator(loaded, buffering = false, playerError = false))
         assertTrue(shouldShowVideoLoadingIndicator(loaded, buffering = true, playerError = false))
         assertTrue(shouldShowVideoLoadingIndicator(loaded, buffering = false, playerError = true))

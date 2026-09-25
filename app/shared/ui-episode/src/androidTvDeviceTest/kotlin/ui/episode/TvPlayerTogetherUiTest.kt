@@ -342,7 +342,7 @@ class TvPlayerTogetherUiTest {
                     TvEpisodeScreen(
                         uiState = TvEpisodeUiState(
                             title = TvEpisodeTitle("葬送的芙莉莲", "5", "死者的幻影"),
-                            loadingState = VideoLoadingState.Succeed(false),
+                            loadingState = VideoLoadingState.Succeed(null),
                             positionMillis = 620_000, durationMillis = 1_440_000,
                         ),
                         togetherState = fixture.together,
