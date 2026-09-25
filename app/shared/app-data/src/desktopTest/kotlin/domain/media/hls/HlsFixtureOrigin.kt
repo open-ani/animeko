@@ -81,11 +81,16 @@ class HlsFixtureOrigin : AutoCloseable {
         val path = exchange.requestURI.path
         val headers = exchange.requestHeaders.entries.associate { (k, v) -> k.lowercase() to v.joinToString(",") }
         recorded += RecordedRequest(path, headers, exchange.remoteAddress.port)
-        val isRange = "range" in headers
-        if (isRange) maxConcurrentRangeRequests.accumulateAndGet(rangeRequestsInFlight.incrementAndGet(), ::maxOf)
+        var countedInFlight = "range" in headers
+        if (countedInFlight) maxConcurrentRangeRequests.accumulateAndGet(rangeRequestsInFlight.incrementAndGet(), ::maxOf)
         try {
             if (segmentLatencyMillis > 0 && !path.endsWith(".m3u8")) Thread.sleep(segmentLatencyMillis)
             latencyByPath[path]?.let { Thread.sleep(it) }
+            // 开始响应前就结束计数: 客户端收到响应即可发出下一个请求, 计到响应写完的话会与它重叠, 峰值多算
+            if (countedInFlight) {
+                rangeRequestsInFlight.decrementAndGet()
+                countedInFlight = false
+            }
             failPaths[path]?.let { status ->
                 exchange.sendResponseHeaders(status, -1)
                 return
@@ -111,7 +116,7 @@ class HlsFixtureOrigin : AutoCloseable {
             }
             exchange.responseBody.use { it.write(slice) }
         } finally {
-            if (isRange) rangeRequestsInFlight.decrementAndGet()
+            if (countedInFlight) rangeRequestsInFlight.decrementAndGet()
             exchange.close()
         }
     }

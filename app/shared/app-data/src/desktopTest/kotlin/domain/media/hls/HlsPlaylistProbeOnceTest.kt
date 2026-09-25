@@ -100,7 +100,8 @@ class HlsPlaylistProbeOnceTest {
     fun `groups sharing a first segment are probed once and all classified`() = withPreparer { origin, preparer ->
         // 同一段广告插入两处
         val adBreak = "#EXT-X-DISCONTINUITY\n#EXTINF:3.000000,\nads/ad000.ts\n#EXTINF:3.000000,\nads/ad001.ts\n"
-        val withAds = origin.bytesOf("/hls/withads.m3u8").decodeToString()
+        // Windows 上 git 可能按 CRLF 检出夹具, 下面按 LF 拼接
+        val withAds = origin.bytesOf("/hls/withads.m3u8").decodeToString().replace("\r\n", "\n")
         val anchor = "vod/seg024.ts\n"
         check(anchor in withAds)
         origin.extraBodies["/hls/twoads.m3u8"] = withAds
