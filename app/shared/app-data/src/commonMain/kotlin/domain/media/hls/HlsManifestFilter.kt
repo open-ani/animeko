@@ -163,6 +163,8 @@ object HlsManifestFilter {
                     index = group.index,
                     lineStart = group.lineStart,
                     lineEnd = group.lineEnd,
+                    startSegmentIndex = group.segments.first().index,
+                    endSegmentIndex = group.segments.last().index,
                     duration = group.duration,
                     segmentCount = group.count,
                 )
@@ -206,13 +208,14 @@ object HlsManifestFilter {
             builder = ManifestGroupBuilder(index = group.index + 1)
         }
 
-        for (parsedSegment in playlist.segments) {
+        for ((segmentIndex, parsedSegment) in playlist.segments.withIndex()) {
             if (parsedSegment.isDiscontinuity) {
                 close()
             }
             val sourceRange = parsedSegment.sourceRange ?: return emptyList()
             builder.add(
                 ManifestSegment(
+                    index = segmentIndex,
                     duration = parsedSegment.duration.toDouble(),
                     uri = parsedSegment.uri,
                     lineStart = sourceRange.startLine,
@@ -253,10 +256,15 @@ data class HlsManifestFilterResult(
     }
 }
 
+/**
+ * @property startSegmentIndex 组内首个分片在播放列表所有分片中的序号. [endSegmentIndex] 同理, 含.
+ */
 data class HlsRemovedGroup(
     val index: Int,
     val lineStart: Int,
     val lineEnd: Int,
+    val startSegmentIndex: Int,
+    val endSegmentIndex: Int,
     val duration: Double,
     val segmentCount: Int,
 )
@@ -319,9 +327,11 @@ data class HlsProbeTarget(
  * 探测每个分片时读取的字节数. 实测 3212 个真实分片的首个视频 PTS 都在第 752 字节
  * (PAT, PMT 之后的第一个 PES), 这里留出近 3 倍余量. 源站单连接常只有十几 KB/s, 多读的字节会直接拖慢探测.
  */
-internal const val PTS_PROBE_BYTES = 2 * 1024
+const val PTS_PROBE_BYTES = 2 * 1024
 
 internal data class ManifestSegment(
+    /** 在播放列表所有分片中的序号. */
+    val index: Int,
     val duration: Double,
     val uri: String,
     val lineStart: Int,

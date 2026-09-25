@@ -20,11 +20,11 @@ internal fun interface TsByteSink {
  * MPEG-TS 包与 PES 头的只读解析.
  *
  * 与 [TsTimestampRewriter] 的流式状态机分开, 让只需要读时间戳的调用方 (如判断某组分片属于哪条时间轴)
- * 不必牵进暂存与平移那一套.
+ * 不必牵进暂存与平移那一套. [firstPts] 对外公开, 供工具模块按客户端相同的方式探测时间戳.
  */
-internal object TsPacketReader {
-    const val PACKET_SIZE = 188
-    const val SYNC_BYTE: Byte = 0x47
+object TsPacketReader {
+    internal const val PACKET_SIZE = 188
+    internal const val SYNC_BYTE: Byte = 0x47
 
     /** 90kHz 刻度转毫秒. */
     fun ticksToMillis(ticks: Long): Long = ticks / 90
@@ -55,7 +55,7 @@ internal object TsPacketReader {
     /**
      * [base] 处 TS 包里 PES 头 (`00 00 01` 起) 的下标, 不是带可选头部的 PES 包则返回 null.
      */
-    fun pesHeaderOffset(b: ByteArray, base: Int): Int? {
+    internal fun pesHeaderOffset(b: ByteArray, base: Int): Int? {
         if (b[base] != SYNC_BYTE) return null
         val payloadUnitStart = (b[base + 1].toInt() ushr 6) and 0x1
         if (payloadUnitStart == 0) return null
@@ -74,7 +74,7 @@ internal object TsPacketReader {
     }
 
     /** 33 位时间戳分散在 5 字节里, 每字节末位是 marker bit. */
-    fun readTimestamp(b: ByteArray, at: Int): Long {
+    internal fun readTimestamp(b: ByteArray, at: Int): Long {
         val b0 = b[at].toLong() and 0x0E
         val b1 = b[at + 1].toLong() and 0xFF
         val b2 = b[at + 2].toLong() and 0xFE

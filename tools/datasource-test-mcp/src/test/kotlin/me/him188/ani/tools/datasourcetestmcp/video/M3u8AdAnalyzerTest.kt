@@ -28,7 +28,7 @@ import kotlin.test.assertTrue
 class M3u8AdAnalyzerTest {
 
     @Test
-    fun sandwiched_short_ad_group_is_filtered_with_correct_offsets() = runTest {
+    fun spliced_ad_group_is_filtered_with_correct_offsets() = runTest {
         // 正片 30 段 x 6s (180s) + 广告 3 段 x 5s (15s) + 正片 30 段 x 6s (180s)
         val playlist = mediaPlaylist(
             group(30, duration = 6.0, uriPrefix = "main/a"),
@@ -46,7 +46,6 @@ class M3u8AdAnalyzerTest {
 
         assertEquals(1, hlsFilter.removedGroups.size)
         val removed = hlsFilter.removedGroups.single()
-        assertTrue("sandwiched_short" in removed.reasons)
         assertEquals(3, removed.segmentCount)
         assertEquals(30, removed.startSegmentIndex)
         assertEquals(32, removed.endSegmentIndex)
@@ -116,20 +115,51 @@ class M3u8AdAnalyzerTest {
         }
     }
 
+    /**
+     * 除了给出的播放列表, 还按 [SEGMENT_FIRST_PTS_MILLIS] 提供各组首片的开头: 过滤器读它判断时间轴.
+     */
     private fun analyzerServing(vararg pages: Pair<String, String>): M3u8AdAnalyzer {
         val byUrl = pages.toMap()
         val client = HttpClient(
             MockEngine { request ->
-                val body = byUrl[request.url.toString()]
-                    ?: error("Unexpected URL: ${request.url}")
-                respond(
-                    body,
-                    headers = headersOf(HttpHeaders.ContentType, "application/vnd.apple.mpegurl"),
-                )
+                val url = request.url.toString()
+                byUrl[url]?.let { body ->
+                    return@MockEngine respond(body, headers = headersOf(HttpHeaders.ContentType, "application/vnd.apple.mpegurl"))
+                }
+                val ptsMillis = SEGMENT_FIRST_PTS_MILLIS[url.substringAfterLast('/')]
+                    ?: error("Unexpected URL: $url")
+                respond(tsPacketWithVideoPts(ptsMillis * 90), headers = headersOf(HttpHeaders.ContentType, "video/mp2t"))
             },
         )
         return M3u8AdAnalyzer(client)
     }
+
+    private companion object {
+        /** 正片两段首尾相接 (1.4 秒起, 第二段接在 180 秒之后); 广告独立转码, 从 1.47 秒起. */
+        val SEGMENT_FIRST_PTS_MILLIS = mapOf(
+            "a0.ts" to 1_400L,
+            "e900.ts" to 1_470L,
+            "b0.ts" to 181_400L,
+        )
+    }
+}
+
+/** 一个载有视频 PES 头 (只带 PTS) 的 TS 包. */
+private fun tsPacketWithVideoPts(pts: Long): ByteArray {
+    val packet = ByteArray(188) { 0xFF.toByte() }
+    packet[0] = 0x47
+    packet[1] = 0x41 // payload_unit_start, PID 0x100
+    packet[2] = 0x00
+    packet[3] = 0x10 // 只有 payload
+    val pes = byteArrayOf(0, 0, 1, 0xE0.toByte(), 0, 0, 0x80.toByte(), 0x80.toByte(), 5)
+    pes.copyInto(packet, 4)
+    val at = 4 + pes.size
+    packet[at] = ((0x2 shl 4) or (((pts ushr 30).toInt() and 0x07) shl 1) or 0x01).toByte()
+    packet[at + 1] = ((pts ushr 22).toInt() and 0xFF).toByte()
+    packet[at + 2] = ((((pts ushr 15).toInt() and 0x7F) shl 1) or 0x01).toByte()
+    packet[at + 3] = ((pts ushr 7).toInt() and 0xFF).toByte()
+    packet[at + 4] = (((pts.toInt() and 0x7F) shl 1) or 0x01).toByte()
+    return packet
 }
 
 // region fixtures (style adapted from HlsManifestFilterTest)
