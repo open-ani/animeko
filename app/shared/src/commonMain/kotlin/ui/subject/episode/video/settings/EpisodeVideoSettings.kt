@@ -331,7 +331,10 @@ fun EpisodeVideoSettings(
                 onValueChangeFinished = {
                     setDanmakuConfig { config ->
                         config.copy(
-                            safeSeparation = DanmakuConfigRanges.separationForDensity(displayDensity, displayDensityRange),
+                            safeSeparation = DanmakuConfigRanges.separationForDensity(
+                                displayDensity,
+                                displayDensityRange
+                            ),
                         )
                     }
                 },

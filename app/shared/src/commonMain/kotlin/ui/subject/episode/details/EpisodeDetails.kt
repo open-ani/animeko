@@ -277,7 +277,7 @@ fun EpisodeDetails(
                     ) {
                         Text(
                             "${it.episodeInfo.sort}  " +
-                                it.episodeInfo.preferredDisplayName(LocalSubjectAppearanceSettings.current.useOriginalTitle),
+                                    it.episodeInfo.preferredDisplayName(LocalSubjectAppearanceSettings.current.useOriginalTitle),
                             Modifier.weight(1f),
                             style = MaterialTheme.typography.bodyLarge,
                             color = MaterialTheme.colorScheme.onSurfaceVariant,

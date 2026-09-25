@@ -28,7 +28,6 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.unit.dp
-import kotlin.math.roundToLong
 import me.him188.ani.app.ui.lang.Lang
 import me.him188.ani.app.ui.lang.settings_danmaku_cancel
 import me.him188.ani.app.ui.lang.settings_danmaku_confirm
@@ -38,6 +37,7 @@ import me.him188.ani.app.ui.lang.subject_episode_danmaku_time_shift_reset
 import me.him188.ani.app.ui.lang.subject_episode_danmaku_time_shift_restore
 import me.him188.ani.app.ui.lang.subject_episode_danmaku_time_shift_title
 import org.jetbrains.compose.resources.stringResource
+import kotlin.math.roundToLong
 
 @Composable
 fun DanmakuTimeShiftDialog(
@@ -70,7 +70,10 @@ fun DanmakuTimeShiftDialog(
         modifier = Modifier.testTag("danmaku-time-shift-dialog"),
         onDismissRequest = onDismissRequest,
         confirmButton = {
-            TextButton(onClick = { onConfirm(shift.roundToLong()) }, modifier = Modifier.testTag("danmaku-shift-confirm")) {
+            TextButton(
+                onClick = { onConfirm(shift.roundToLong()) },
+                modifier = Modifier.testTag("danmaku-shift-confirm")
+            ) {
                 Text(confirmText)
             }
         },
@@ -99,7 +102,10 @@ fun DanmakuTimeShiftDialog(
                     TextButton(onClick = { adjust(-500f) }) { Text("-0.5 s") }
                     TextButton(onClick = { adjust(-100f) }) { Text("-0.1 s") }
                     TextButton(onClick = { adjust(100f) }) { Text("+0.1 s") }
-                    TextButton(onClick = { adjust(500f) }, modifier = Modifier.testTag("danmaku-shift-increase")) { Text("+0.5 s") }
+                    TextButton(
+                        onClick = { adjust(500f) },
+                        modifier = Modifier.testTag("danmaku-shift-increase")
+                    ) { Text("+0.5 s") }
                 }
                 FlowRow(
                     horizontalArrangement = Arrangement.spacedBy(12.dp),

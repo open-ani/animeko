@@ -49,7 +49,6 @@ import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import kotlin.math.abs
 import me.him188.ani.app.ui.foundation.Res
 import me.him188.ani.app.ui.foundation.a
 import me.him188.ani.app.ui.lang.Lang
@@ -66,6 +65,7 @@ import me.him188.ani.danmaku.api.provider.DanmakuMatchMethod
 import me.him188.ani.utils.platform.format1f
 import org.jetbrains.compose.resources.painterResource
 import org.jetbrains.compose.resources.stringResource
+import kotlin.math.abs
 
 /**
  * 弹幕源选择项数据类
@@ -222,7 +222,12 @@ fun DanmakuSourceSettingsDropdown(
         DropdownMenuItem(
             modifier = Modifier.testTag("danmaku-source-shift"),
             text = {
-                Text(stringResource(Lang.subject_episode_danmaku_time_shift_item, formatDanmakuShiftMillis(currentShiftMillis)))
+                Text(
+                    stringResource(
+                        Lang.subject_episode_danmaku_time_shift_item,
+                        formatDanmakuShiftMillis(currentShiftMillis)
+                    )
+                )
             },
             leadingIcon = { Icon(Icons.Outlined.Schedule, null) },
             onClick = {

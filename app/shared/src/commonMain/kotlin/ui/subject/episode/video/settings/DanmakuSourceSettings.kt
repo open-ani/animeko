@@ -67,9 +67,13 @@ fun DanmakuSourceSettings(
                                 title = { Text(renderDanmakuServiceId(source.serviceId)) },
                                 description = {
                                     val status = if (source.enabled) {
-                                        stringResource(Lang.subject_episode_danmaku_time_shift_item, formatDanmakuShiftMillis(source.shiftMillis))
+                                        stringResource(
+                                            Lang.subject_episode_danmaku_time_shift_item,
+                                            formatDanmakuShiftMillis(source.shiftMillis)
+                                        )
                                     } else stringResource(Lang.subject_episode_danmaku_disabled)
-                                    val match = if (source.isExactMatch) "" else " · ${renderDanmakuMatchMethod(source.matchMethod)}"
+                                    val match =
+                                        if (source.isExactMatch) "" else " · ${renderDanmakuMatchMethod(source.matchMethod)}"
                                     Text("${source.count} · $status$match")
                                 },
                                 icon = { DanmakuServiceIcon(source.serviceId, size = 24) },
