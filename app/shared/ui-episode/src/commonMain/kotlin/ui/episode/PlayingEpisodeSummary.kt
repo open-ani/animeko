@@ -48,6 +48,7 @@ import me.him188.ani.app.data.models.subject.SelfRatingInfo
 import me.him188.ani.app.data.models.subject.TestRatingInfo
 import me.him188.ani.app.data.models.subject.TestSelfRatingInfo
 import me.him188.ani.app.ui.foundation.AsyncImage
+import me.him188.ani.app.ui.foundation.LocalSubjectAppearanceSettings
 import me.him188.ani.app.ui.lang.Lang
 import me.him188.ani.app.ui.lang.episode_summary_download
 import me.him188.ani.app.ui.lang.episode_summary_share
@@ -67,6 +68,10 @@ data class PlayingEpisodeSummary(
     val subjectCoverUrl: String,
     val rating: RatingInfo,
     val selfRatingInfo: SelfRatingInfo,
+    /** 剧集原名, 供"显示原名"设置开启时使用; 默认与 [episodeName] 相同. */
+    val episodeOriginalName: String = episodeName,
+    /** 条目原名, 同 [episodeOriginalName] 的开关约定; 默认与 [subjectName] 相同. */
+    val subjectOriginalName: String = subjectName,
 )
 
 /**
@@ -84,13 +89,16 @@ fun PlayingEpisodeSummaryRow(
 ) {
     val shareText = stringResource(Lang.episode_summary_share)
     val downloadText = stringResource(Lang.episode_summary_download)
+    val useOriginalTitle = LocalSubjectAppearanceSettings.current.useOriginalTitle
+    val episodeName = if (useOriginalTitle) summary.episodeOriginalName else summary.episodeName
+    val subjectName = if (useOriginalTitle) summary.subjectOriginalName else summary.subjectName
     Surface(color = containerColor) {
         Column(modifier) {
             if (expanded) {
                 // title
                 Row(Modifier.fillMaxWidth()) {
                     Text(
-                        "${summary.episodeSort}  ${summary.episodeName}",
+                        "${summary.episodeSort}  $episodeName",
                         softWrap = false,
                         style = MaterialTheme.typography.headlineSmall,
                         overflow = TextOverflow.Ellipsis,
@@ -106,7 +114,7 @@ fun PlayingEpisodeSummaryRow(
                 ) {
                     AsyncImage(
                         summary.subjectCoverUrl,
-                        contentDescription = summary.subjectName,
+                        contentDescription = subjectName,
                         Modifier.clip(MaterialTheme.shapes.medium).width(158.dp)
                             .height(233.dp), //.aspectRatio(9f / 16f),
                         contentScale = ContentScale.Crop,
@@ -116,7 +124,7 @@ fun PlayingEpisodeSummaryRow(
                         Row {
                             Column {
                                 Text(
-                                    summary.subjectName,
+                                    subjectName,
                                     softWrap = false,
                                     style = MaterialTheme.typography.titleLarge,
                                     overflow = TextOverflow.Ellipsis,
@@ -155,7 +163,7 @@ fun PlayingEpisodeSummaryRow(
                 // title
                 Row(Modifier.fillMaxWidth()) {
                     Text(
-                        summary.subjectName,
+                        subjectName,
                         softWrap = true,
                         maxLines = 2,
                         style = MaterialTheme.typography.titleMedium,

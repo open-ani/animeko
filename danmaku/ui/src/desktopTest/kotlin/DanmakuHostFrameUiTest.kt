@@ -121,18 +121,22 @@ class DanmakuHostFrameUiTest {
             config.value = config.value.copy(
                 style = config.value.style.copy(fontSize = 27.sp),
             )
+            var framesAdvanced = 0
             waitUntil("danmaku re-placed after font change", timeoutMillis = 10_000) {
                 mainClock.advanceTimeByFrame()
+                framesAdvanced++
                 state.floatingById("a").let { it != null && it !== tracked }
             }
             val replaced = assertNotNull(state.floatingById("a"))
             assertEquals(anchorBefore, replaced.placeFrameTimeNanos, "anchor must be preserved")
             assertEquals(multiplierBefore, replaced.speedMultiplier, "speed multiplier must not be re-rolled")
-            // waitUntil 推进了若干帧, 位置必须仍在同一条匀速直线上
-            val framesAdvanced = ((xBefore - currentX()) / expectedStep)
+            // waitUntil 推进了若干帧, 位置必须仍在同一条匀速直线上. 容差与上面逐帧检查一致, 按帧数累加.
+            val expectedTravel = framesAdvanced * expectedStep
+            val actualTravel = xBefore - currentX()
             assertTrue(
-                abs(framesAdvanced - framesAdvanced.toInt()) < 0.05f || expectedStep < 0.01f,
-                "position deviated from the uniform line across re-placement",
+                abs(actualTravel - expectedTravel) <= 0.05f * framesAdvanced + 0.05f,
+                "position deviated from the uniform line across re-placement: " +
+                    "moved $actualTravel over $framesAdvanced frames, expected $expectedTravel",
             )
 
             // 3) 连续播放时 repopulate: 在屏弹幕保留同一对象, 新弹幕加入

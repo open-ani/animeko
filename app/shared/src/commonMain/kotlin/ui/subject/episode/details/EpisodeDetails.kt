@@ -84,9 +84,10 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
-import me.him188.ani.app.data.models.episode.displayName
+import me.him188.ani.app.data.models.episode.preferredDisplayName
 import me.him188.ani.app.data.models.subject.SubjectInfo
 import me.him188.ani.app.data.models.subject.Tag
+import me.him188.ani.app.data.models.subject.preferredDisplayName
 import me.him188.ani.app.domain.danmaku.DanmakuLoadingState
 import me.him188.ani.app.domain.episode.SetEpisodeCollectionTypeRequest
 import me.him188.ani.app.domain.episode.SubjectRecommendation
@@ -98,6 +99,8 @@ import me.him188.ani.app.navigation.LocalNavigator
 import me.him188.ani.app.navigation.SubjectDetailPlaceholder
 import me.him188.ani.app.platform.LocalContext
 import me.him188.ani.app.platform.navigation.LocalBrowserNavigator
+import me.him188.ani.app.ui.episode.danmaku.renderDanmakuServiceId
+import me.him188.ani.app.ui.foundation.LocalSubjectAppearanceSettings
 import me.him188.ani.app.ui.foundation.ProvideCompositionLocalsForPreview
 import me.him188.ani.app.ui.foundation.animation.AniAnimatedVisibility
 import me.him188.ani.app.ui.foundation.animation.LocalAniMotionScheme
@@ -140,7 +143,6 @@ import me.him188.ani.app.ui.subject.collection.components.EditableSubjectCollect
 import me.him188.ani.app.ui.subject.collection.components.rememberTestEditableSubjectCollectionTypeState
 import me.him188.ani.app.ui.subject.createTestAiringLabelState
 import me.him188.ani.app.ui.subject.details.SubjectDetailsScreen
-import me.him188.ani.app.ui.subject.details.SubjectDetailsLoadState
 import me.him188.ani.app.ui.subject.details.state.SubjectDetailsStateLoader
 import me.him188.ani.app.ui.subject.details.state.createTestSubjectDetailsLoader
 import me.him188.ani.app.ui.subject.episode.EpisodePageLoadError
@@ -150,7 +152,6 @@ import me.him188.ani.app.ui.subject.episode.details.components.DanmakuSourceSett
 import me.him188.ani.app.ui.subject.episode.details.components.FavoriteIconButton
 import me.him188.ani.app.ui.subject.episode.details.components.SubjectRecommendationCard
 import me.him188.ani.app.ui.subject.episode.details.components.formatDanmakuShiftMillis
-import me.him188.ani.app.ui.subject.episode.details.components.renderDanmakuServiceId
 import me.him188.ani.app.ui.subject.episode.statistics.DanmakuMatchInfoSummaryBanner
 import me.him188.ani.app.ui.subject.episode.statistics.DanmakuStatistics
 import me.him188.ani.app.ui.subject.episode.statistics.VideoStatistics
@@ -182,8 +183,6 @@ class EpisodeDetailsState(
     val subjectId by derivedStateOf { subject.subjectId }
 //    var subjectDetailsState by mutableStateOf<SubjectDetailsState?>(null)
 //    val subjectDetailsStateError: SearchProblem
-
-    val subjectTitle by derivedStateOf { subject.displayName }
 
     var showEpisodes: Boolean by mutableStateOf(false)
 }
@@ -231,7 +230,7 @@ fun EpisodeDetails(
 
     if (state.subjectId != 0) {
         val subjectDetailsState by state.subjectDetailsStateLoader.state
-            .collectAsStateWithLifecycle(SubjectDetailsLoadState.Placeholder(state.subjectId))
+            .collectAsStateWithLifecycle()
         if (showSubjectDetails) {
             ModalBottomSheet(
                 { showSubjectDetails = false },
@@ -247,7 +246,7 @@ fun EpisodeDetails(
                     subjectDetailsState,
                     selfInfo,
                     onPlay = onSwitchEpisode,
-                    onLoadErrorRetry = { state.subjectDetailsStateLoader.reload(state.subjectId) },
+                    onLoadErrorRetry = { state.subjectDetailsStateLoader.retry() },
                     onClickTag = onClickTag,
                     onEpisodeCollectionUpdate = onEpisodeCollectionUpdate,
                     showTopBar = false,
@@ -275,7 +274,7 @@ fun EpisodeDetails(
         subjectTitle = {
             Row {
                 Text(
-                    state.subjectTitle,
+                    state.subjectInfo.value.preferredDisplayName(LocalSubjectAppearanceSettings.current.useOriginalTitle),
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis,
                 )
@@ -292,7 +291,8 @@ fun EpisodeDetails(
                         verticalAlignment = Alignment.CenterVertically,
                     ) {
                         Text(
-                            "${it.episodeInfo.sort}  ${it.episodeInfo.displayName}",
+                            "${it.episodeInfo.sort}  " +
+                                it.episodeInfo.preferredDisplayName(LocalSubjectAppearanceSettings.current.useOriginalTitle),
                             Modifier.weight(1f),
                             style = MaterialTheme.typography.bodyLarge,
                             color = MaterialTheme.colorScheme.onSurfaceVariant,

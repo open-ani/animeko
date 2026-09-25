@@ -34,7 +34,8 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import me.him188.ani.app.data.models.episode.EpisodeCollectionInfo
-import me.him188.ani.app.data.models.episode.displayName
+import me.him188.ani.app.data.models.episode.preferredDisplayName
+import me.him188.ani.app.ui.foundation.LocalSubjectAppearanceSettings
 import me.him188.ani.app.ui.foundation.LongClickProgressFill
 import me.him188.ani.app.ui.foundation.icons.PlayingIcon
 import me.him188.ani.app.ui.foundation.lists.PaginatedGroup
@@ -153,7 +154,8 @@ private fun EpisodeDetailsListItem(
             colors = ListItemDefaults.colors(containerColor = Color.Transparent),
             headlineContent = {
                 Text(
-                    "${episode.episodeInfo.sort}  ${episode.episodeInfo.displayName}",
+                    "${episode.episodeInfo.sort}  " +
+                        episode.episodeInfo.preferredDisplayName(LocalSubjectAppearanceSettings.current.useOriginalTitle),
                     color = if (isPlaying) {
                         MaterialTheme.colorScheme.primary
                     } else if (isWatched) {

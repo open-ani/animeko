@@ -38,6 +38,7 @@ import androidx.compose.material3.ProvideTextStyle
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.Stable
+import androidx.compose.runtime.compositionLocalOf
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
@@ -54,6 +55,14 @@ import me.him188.ani.app.ui.foundation.theme.slightlyWeaken
 import me.him188.ani.app.videoplayer.ui.gesture.PlayerGestureHost
 import me.him188.ani.app.videoplayer.ui.progress.PlayerControllerBar
 import me.him188.ani.app.videoplayer.ui.top.PlayerTopBar
+
+/**
+ * [VideoScaffold] 提供给 [VideoScaffold.rhsSheet] 的 window insets, 即传给框架的 `contentWindowInsets`.
+ *
+ * 侧边栏和其他控件不同: 它的背景要一直铺到屏幕边缘, 盖住系统栏和屏幕圆角, 只让里面的内容避开这些区域.
+ * 如果框架像对待其他控件那样在外层加边距, 侧边栏就会悬浮在离屏幕边缘一段距离的地方, 四周露出视频.
+ */
+val LocalVideoScaffoldSheetWindowInsets = compositionLocalOf<WindowInsets> { WindowInsets(0) }
 
 /**
  * 视频播放器框架, 可以自定义组合控制器等部分.
@@ -74,6 +83,7 @@ import me.him188.ani.app.videoplayer.ui.top.PlayerTopBar
  * @param floatingMessage 悬浮消息, 例如正在缓冲. 将会对齐到中央
  * @param framePreviewOverlay 位于整个播放器区域正中央的叠层, 不应用系统窗口边距.
  * @param rhsBar 右侧控制栏, 锁定手势等.
+ * @param rhsSheet 右侧侧边栏. 框架不为它应用 [contentWindowInsets], 而是通过 [LocalVideoScaffoldSheetWindowInsets] 提供给它.
  * @param bottomBar [PlayerControllerBar]
  * @param expanded 当前是否处于全屏模式. 全屏时此框架会 [Modifier.fillMaxSize], 否则会限制为一个 16:9 的框.
  */
@@ -362,9 +372,12 @@ fun VideoScaffold(
             ) {
                 framePreviewOverlay()
             }
-            // 右侧 sheet
-            Box(Modifier.matchParentSize().windowInsetsPadding(contentWindowInsets)) {
-                rhsSheet()
+            // 右侧 sheet. 不在这里加边距: 侧边栏的背景要延伸到屏幕边缘, 只有内容避开系统栏和圆角,
+            // 所以把 insets 交给它自己处理, 见 [LocalVideoScaffoldSheetWindowInsets].
+            Box(Modifier.matchParentSize()) {
+                CompositionLocalProvider(LocalVideoScaffoldSheetWindowInsets provides contentWindowInsets) {
+                    rhsSheet()
+                }
             }
         }
     }

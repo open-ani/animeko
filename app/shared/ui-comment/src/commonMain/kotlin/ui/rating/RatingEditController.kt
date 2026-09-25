@@ -15,6 +15,7 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.combine
 import me.him188.ani.app.data.models.subject.RatingInfo
 import me.him188.ani.app.data.models.subject.SelfRatingInfo
+import me.him188.ani.app.domain.foundation.LoadError
 import me.him188.ani.app.tools.MonoTasker
 import me.him188.ani.utils.analytics.Analytics
 import me.him188.ani.utils.analytics.AnalyticsEvent.Companion.RatingEnter
@@ -96,6 +97,21 @@ class RatingEditController(
             }
             showRatingDialog.value = false
         }
+    }
+
+    override suspend fun updateScore(score: Int): LoadError? {
+        require(score in 0..10)
+        check(isCollected())
+        val current = currentSelfRating()
+        return tasker.async {
+            LoadError.runAndWrapOrThrowCancellation {
+                onRate(RateRequest(score, current.comment.orEmpty(), current.isPrivate))
+                Analytics.recordEvent(RatingSubmit) {
+                    put("score", score)
+                    subjectId?.let { put("subject_id", it) }
+                }
+            }
+        }.await()
     }
 
     override fun dismissRatingRequiresCollectionDialog() {

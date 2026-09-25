@@ -28,20 +28,32 @@ object IosLoggingConfigurator {
         ),
     )
 
+    @Volatile
+    private var fileLogWriter: DailyRollingFileLogWriter? = null
+
     val factory: LoggerFactory
         get() = _configuredFactory ?: fallbackLoggerFactory
 
     fun configure(logsDir: Path, fileSystem: FileSystem) {
+        val fileWriter = DailyRollingFileLogWriter(
+            logsDir = logsDir,
+            fileSystem = fileSystem,
+        )
+        fileLogWriter = fileWriter
         _configuredFactory = DefaultLoggerFactory(
             listOf(
                 DarwinLogWriter(
                     logLevel = LogLevel.TRACE,
                 ),
-                DailyRollingFileLogWriter(
-                    logsDir = logsDir,
-                    fileSystem = fileSystem,
-                ),
+                fileWriter,
             ),
         )
+    }
+
+    /**
+     * Flushes the file log writer. Call before terminating the process, e.g. from an unhandled exception hook.
+     */
+    fun flush() {
+        fileLogWriter?.flush()
     }
 }

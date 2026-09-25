@@ -37,7 +37,9 @@ import me.him188.ani.app.domain.mediasource.asCandidate
 import me.him188.ani.app.domain.mediasource.web.format.SelectedChannelEpisodes
 import me.him188.ani.app.domain.mediasource.web.format.SelectorChannelFormat
 import me.him188.ani.app.domain.mediasource.web.format.SelectorFormatConfig
+import me.him188.ani.app.domain.mediasource.web.format.SelectorFormatId
 import me.him188.ani.app.domain.mediasource.web.format.SelectorSubjectFormat
+import me.him188.ani.app.domain.mediasource.web.format.SelectorSubjectFormatA
 import me.him188.ani.datasources.api.DefaultMedia
 import me.him188.ani.datasources.api.EpisodeSort
 import me.him188.ani.datasources.api.Media
@@ -126,6 +128,7 @@ abstract class SelectorMediaSourceEngine {
 
     /**
      * 根据给定信息搜索条目列表.
+     * @param subjectFormatId 搜索结果格式, 用于请求相应的响应类型.
      */
     @Throws(RepositoryException::class, CancellationException::class)
     suspend fun searchSubjects(
@@ -133,6 +136,7 @@ abstract class SelectorMediaSourceEngine {
         subjectName: String,
         useOnlyFirstWord: Boolean,
         removeSpecial: Boolean,
+        subjectFormatId: SelectorFormatId = SelectorSubjectFormatA.id,
     ): SearchSubjectResult {
         val encodedUrl = MediaSourceEngineHelpers.encodeUrlSegment(
             MediaSourceEngineHelpers.getSearchKeyword(subjectName, removeSpecial, useOnlyFirstWord),
@@ -142,7 +146,7 @@ abstract class SelectorMediaSourceEngine {
             searchUrl.replace("{keyword}", encodedUrl),
         )
 
-        return searchImpl(finalUrl)
+        return searchImpl(finalUrl, subjectFormatId)
     }
 
     fun parseSearchResult(
@@ -170,6 +174,7 @@ abstract class SelectorMediaSourceEngine {
     @Throws(RepositoryException::class, CancellationException::class)
     protected abstract suspend fun searchImpl(
         finalUrl: Url,
+        subjectFormatId: SelectorFormatId,
     ): SearchSubjectResult
 
     /**
@@ -221,48 +226,8 @@ abstract class SelectorMediaSourceEngine {
     ): SelectMediaResult {
         val parser = LabelFirstRawTitleParser()
         val originalMediaList = episodes.mapNotNull { info ->
-            val subtitleLanguages = guessSubtitleLanguages(info, parser)
-            info.episodeSortOrEp ?: return@mapNotNull null
-            DefaultMedia(
-                mediaId = buildString {
-                    append(mediaSourceId)
-                    append(".")
-                    if (config.selectMedia.distinguishSubjectName) {
-                        append(subjectName)
-                        append("-")
-                    }
-                    if (config.selectMedia.distinguishChannelName) {
-                        append(info.channel)
-                        append("-")
-                    }
-                    append(info.name)
-                    append("-")
-                    append(info.episodeSortOrEp)
-                },
-                mediaSourceId = mediaSourceId,
-                originalUrl = info.playUrl,
-                download = ResourceLocation.WebVideo(info.playUrl),
-                originalTitle = buildString {
-                    if (config.selectMedia.distinguishSubjectName) {
-                        append(subjectName)
-                        append(" ")
-                    }
-                    append(info.name)
-                },
-                publishedTime = 0L,
-                properties = MediaProperties(
-                    subjectName = subjectName,
-                    episodeName = info.name,
-                    subtitleLanguageIds = subtitleLanguages ?: listOf(config.defaultSubtitleLanguage.id),
-                    resolution = config.defaultResolution.id,
-                    alliance = info.channel ?: "",
-                    size = FileSize.Unspecified,
-                    subtitleKind = SubtitleKind.EMBEDDED,
-                ),
-                episodeRange = EpisodeRange.single(info.episodeSortOrEp),
-                location = MediaSourceLocation.Online,
-                kind = MediaSourceKind.WEB,
-            )
+            val episodeSort = info.matchingEpisodeSort(query.episodeSort, query.episodeEp) ?: return@mapNotNull null
+            createMedia(info, episodeSort, config, mediaSourceId, subjectName, parser)
         }.toList()
 
         return with(query.toFilterContext()) {
@@ -272,6 +237,62 @@ abstract class SelectorMediaSourceEngine {
             }
             SelectMediaResult(originalMediaList, filteredList)
         }
+    }
+
+    /**
+     * 把站点上的一集转换为 [DefaultMedia]. 自动匹配 ([selectMedia]) 与浏览手动选集共用, 保证同一集两种途径得到相同的 [Media.mediaId].
+     *
+     * @param episodeSort 该资源对应条目服务的哪一集. `null` 表示未知, 此时 [Media.episodeRange] 为 `null`.
+     */
+    fun createMedia(
+        info: WebSearchEpisodeInfo,
+        episodeSort: EpisodeSort?,
+        config: SelectorSearchConfig,
+        mediaSourceId: String,
+        subjectName: String,
+        parser: LabelFirstRawTitleParser = LabelFirstRawTitleParser(),
+    ): DefaultMedia {
+        val subtitleLanguages = guessSubtitleLanguages(info, parser)
+        return DefaultMedia(
+            mediaId = buildString {
+                append(mediaSourceId)
+                append(".")
+                if (config.selectMedia.distinguishSubjectName) {
+                    append(subjectName)
+                    append("-")
+                }
+                if (config.selectMedia.distinguishChannelName) {
+                    append(info.channel)
+                    append("-")
+                }
+                append(info.name)
+                append("-")
+                append(episodeSort ?: info.episodeSortOrEp ?: info.name)
+            },
+            mediaSourceId = mediaSourceId,
+            originalUrl = info.playUrl,
+            download = ResourceLocation.WebVideo(info.playUrl),
+            originalTitle = buildString {
+                if (config.selectMedia.distinguishSubjectName) {
+                    append(subjectName)
+                    append(" ")
+                }
+                append(info.name)
+            },
+            publishedTime = 0L,
+            properties = MediaProperties(
+                subjectName = subjectName,
+                episodeName = info.name,
+                subtitleLanguageIds = subtitleLanguages ?: listOf(config.defaultSubtitleLanguage.id),
+                resolution = config.defaultResolution.id,
+                alliance = info.channel ?: "",
+                size = FileSize.Unspecified,
+                subtitleKind = SubtitleKind.EMBEDDED,
+            ),
+            episodeRange = episodeSort?.let { EpisodeRange.single(it) },
+            location = MediaSourceLocation.Online,
+            kind = MediaSourceKind.WEB,
+        )
     }
 
     /**
@@ -400,6 +421,15 @@ fun WebSearchSubjectInfo.asCandidate(): MediaListFilter.Candidate {
 }
 
 /**
+ * 自动匹配阶段的条目顺序: [SelectorAutoMatchConfig.preferShorterName] 开启时按名称长度稳定排序, 否则保持页面顺序.
+ * 浏览不经过这里.
+ */
+fun SelectorSearchConfig.orderSubjectsForAutoMatch(subjects: List<WebSearchSubjectInfo>): List<WebSearchSubjectInfo> {
+    if (!autoMatch.preferShorterName) return subjects
+    return subjects.sortedBy { it.name.length }
+}
+
+/**
  * If you change, you also need to change
  */
 internal fun SelectorSearchConfig.createFiltersForSubject(): List<MediaListFilter<MediaListFilterContext>> = buildList {
@@ -408,7 +438,7 @@ internal fun SelectorSearchConfig.createFiltersForSubject(): List<MediaListFilte
 
 internal fun SelectorSearchConfig.createFiltersForEpisode(): List<MediaListFilter<MediaListFilterContext>> = buildList {
     // 不使用 filterBySubjectName, 因为 web 的剧集名称通常为 "第x集", 不包含 subject
-    if (filterByEpisodeSort) add(MediaListFilters.ContainsAnyEpisodeInfo)
+    if (autoMatch.filterByEpisodeSort) add(MediaListFilters.ContainsAnyEpisodeInfo)
 }
 
 class DefaultSelectorMediaSourceEngine(
@@ -420,11 +450,12 @@ class DefaultSelectorMediaSourceEngine(
 ) : SelectorMediaSourceEngine() {
     override suspend fun searchImpl(
         finalUrl: Url,
+        subjectFormatId: SelectorFormatId,
     ): SearchSubjectResult = withContext(ioDispatcher) {
         try {
             client.use {
                 prepareGet(finalUrl) {
-                    accept(ContentType.Text.Html)
+                    acceptSelectorSearch(subjectFormatId)
                 }.execute { response ->
                     when (response.status) {
                         HttpStatusCode.NotFound -> SearchSubjectResult(

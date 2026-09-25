@@ -250,6 +250,20 @@ internal fun SelectorConfigurationPane(
                     },
                     colors = listItemColors,
                 )
+                ListItem(
+                    headlineContent = { Text("优先选择最短标题") },
+                    Modifier
+                        .padding(top = (verticalSpacing - 8.dp).coerceAtLeast(0.dp))
+                        .clickable(enabled = state.enableEdit) { state.preferShorterName = !state.preferShorterName },
+                    supportingContent = { Text("优先选择满足匹配的标题最短的条目。可避免为第一季匹配到第二季") },
+                    trailingContent = {
+                        Switch(
+                            state.preferShorterName, { state.preferShorterName = it },
+                            enabled = state.enableEdit,
+                        )
+                    },
+                    colors = listItemColors,
+                )
 
                 var searchUseSubjectNamesCount by remember(state.searchUseSubjectNamesCount) {
                     mutableStateOf(state.searchUseSubjectNamesCount.toString())

@@ -13,6 +13,8 @@ import org.gradle.api.artifacts.VersionCatalog
 import org.gradle.api.artifacts.VersionCatalogsExtension
 import org.gradle.api.artifacts.component.ModuleComponentIdentifier
 import org.gradle.api.plugins.JavaPluginExtension
+import org.gradle.api.services.BuildService
+import org.gradle.api.services.BuildServiceParameters
 import org.gradle.api.tasks.compile.JavaCompile
 import org.gradle.api.tasks.testing.Test
 import org.gradle.jvm.toolchain.JavaLanguageVersion
@@ -212,6 +214,26 @@ fun Project.configureJvmTarget() {
     }
 }
 
+/**
+ * 占用一台 Android 设备的凭据, 见 [runConnectedDeviceTestsExclusively].
+ */
+abstract class ConnectedDeviceTestLock : BuildService<BuildServiceParameters.None>
+
+/**
+ * 让所有模块的 instrumented test 任务 (`connected*Test`) 逐个运行.
+ *
+ * 各模块的测试共用同一台设备. Gradle 会并行执行不同项目的任务 (启用 configuration cache 后默认如此),
+ * 多个测试 APK 同时运行时, 各自的 Activity 会互相抢占窗口焦点, 依赖焦点的 UI 测试因此失败.
+ */
+fun Project.runConnectedDeviceTestsExclusively() {
+    val lock = gradle.sharedServices.registerIfAbsent("connectedDeviceTestLock", ConnectedDeviceTestLock::class.java) {
+        maxParallelUsages.set(1)
+    }
+    tasks.matching { it.name.startsWith("connected") && it.name.endsWith("Test") }.configureEach {
+        usesService(lock)
+    }
+}
+
 fun Project.configureEncoding() {
     tasks.withType(JavaCompile::class.java).configureEach {
         options.encoding = "UTF8"
@@ -221,6 +243,10 @@ fun Project.configureEncoding() {
 fun Project.configureKotlinTestSettings() {
     tasks.withType(Test::class).configureEach {
         useJUnitPlatform()
+        // CI 只有构建日志可看: 失败时要能直接看到断言消息, 而不只是异常类型与行号.
+        testLogging {
+            exceptionFormat = org.gradle.api.tasks.testing.logging.TestExceptionFormat.FULL
+        }
     }
 
     // 本项目的 JVM 测试统一使用 JUnit 5, 下面给各测试源集显式声明了 kotlin-test-junit5.

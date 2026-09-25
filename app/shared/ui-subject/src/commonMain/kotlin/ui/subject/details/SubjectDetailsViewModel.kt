@@ -22,7 +22,7 @@ import org.koin.core.component.KoinComponent
 import org.koin.core.component.inject
 
 @Stable
-class SubjectDetailsViewModel(
+open class SubjectDetailsViewModel(
     private val subjectId: Int,
     private val placeholder: SubjectInfo? = null
 ) : AbstractViewModel(), KoinComponent {
@@ -45,7 +45,7 @@ class SubjectDetailsViewModel(
      * 强制重新加载, 用于加载失败后重试.
      */
     fun reload() {
-        stateLoader.reload(subjectId, placeholder)
+        stateLoader.load(subjectId, placeholder, force = true)
     }
 }
 

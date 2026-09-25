@@ -28,8 +28,8 @@ import kotlinx.serialization.encoding.*
  *
  * @param serverTime
  * @param membership
- * @param snapshot
  * @param version
+ * @param snapshot
  */
 @Serializable
 
@@ -39,9 +39,9 @@ data class AniWatchTogetherReportResponse (
 
     @SerialName(value = "membership") @Required val membership: AniWatchTogetherMembership,
 
-    @SerialName(value = "snapshot") val snapshot: AniWatchTogetherRoomSnapshot? = null,
+    @SerialName(value = "version") @Required val version: kotlin.Long,
 
-    @SerialName(value = "version") val version: kotlin.Long? = 0L
+    @SerialName(value = "snapshot") val snapshot: AniWatchTogetherRoomSnapshot? = null
 
 ) {
 
@@ -50,3 +50,4 @@ data class AniWatchTogetherReportResponse (
 
 
 // @formatter:on
+

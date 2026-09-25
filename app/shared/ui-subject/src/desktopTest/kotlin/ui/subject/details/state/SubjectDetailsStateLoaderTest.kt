@@ -34,7 +34,6 @@ import kotlin.test.assertEquals
 import kotlin.test.assertFalse
 import kotlin.test.assertIs
 import kotlin.test.assertNotSame
-import kotlin.test.assertNull
 import kotlin.test.assertSame
 import kotlin.test.assertTrue
 
@@ -90,7 +89,7 @@ class SubjectDetailsStateLoaderTest {
     fun `load emits ok`() = runTest(UnconfinedTestDispatcher()) {
         val factory = RecordingFactory()
         val loader = SubjectDetailsStateLoader(factory, backgroundScope)
-        assertNull(loader.state.value)
+        assertEquals(0, assertIs<SubjectDetailsLoadState.Placeholder>(loader.state.value).subjectId)
 
         loader.load(subjectId)
 
@@ -124,7 +123,7 @@ class SubjectDetailsStateLoaderTest {
         val first = assertIs<SubjectDetailsLoadState.Ok>(loader.state.value)
 
         loader.clear()
-        assertNull(loader.state.value)
+        assertEquals(0, assertIs<SubjectDetailsLoadState.Placeholder>(loader.state.value).subjectId)
         assertFalse(factory.scopes[0].isActive)
 
         loader.load(subjectId)
@@ -136,14 +135,14 @@ class SubjectDetailsStateLoaderTest {
     }
 
     @Test
-    fun `reload restarts loading even when loaded`() = runTest(UnconfinedTestDispatcher()) {
+    fun `force load restarts loading even when loaded`() = runTest(UnconfinedTestDispatcher()) {
         val factory = RecordingFactory()
         val loader = SubjectDetailsStateLoader(factory, backgroundScope)
 
         loader.load(subjectId)
         val first = assertIs<SubjectDetailsLoadState.Ok>(loader.state.value)
 
-        loader.reload(subjectId)
+        loader.load(subjectId, force = true)
 
         assertEquals(2, factory.createCount)
         val second = assertIs<SubjectDetailsLoadState.Ok>(loader.state.value)

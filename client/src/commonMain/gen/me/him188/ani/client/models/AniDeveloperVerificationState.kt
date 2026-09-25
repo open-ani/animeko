@@ -27,6 +27,7 @@ import kotlinx.serialization.encoding.*
  *
  * @param enabled
  * @param isDeveloper
+ * @param outstandingContributor
  * @param validUntil
  * @param latestRequest
  * @param nextApplyAt
@@ -38,6 +39,8 @@ data class AniDeveloperVerificationState (
     @SerialName(value = "enabled") @Required val enabled: kotlin.Boolean,
 
     @SerialName(value = "isDeveloper") @Required val isDeveloper: kotlin.Boolean,
+
+    @SerialName(value = "outstandingContributor") @Required val outstandingContributor: kotlin.Boolean,
 
     @SerialName(value = "validUntil") val validUntil: kotlin.Long? = null,
 

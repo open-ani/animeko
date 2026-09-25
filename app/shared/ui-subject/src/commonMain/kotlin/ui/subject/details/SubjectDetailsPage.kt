@@ -93,6 +93,7 @@ import me.him188.ani.app.data.models.subject.SubjectInfo
 import me.him188.ani.app.data.models.subject.SubjectProgressInfo
 import me.him188.ani.app.data.models.subject.Tag
 import me.him188.ani.app.data.models.subject.TestSubjectInfo
+import me.him188.ani.app.data.models.subject.preferredDisplayName
 import me.him188.ani.app.domain.episode.SetEpisodeCollectionTypeRequest
 import me.him188.ani.app.domain.foundation.LoadError
 import me.him188.ani.app.navigation.LocalNavigator
@@ -119,6 +120,7 @@ import me.him188.ani.app.ui.foundation.layout.paneVerticalPadding
 import me.him188.ani.app.ui.foundation.layout.plus
 import me.him188.ani.app.ui.foundation.layout.rememberNestedScrollableColumnState
 import me.him188.ani.app.ui.foundation.ImageViewerBackHandler
+import me.him188.ani.app.ui.foundation.LocalSubjectAppearanceSettings
 import me.him188.ani.app.ui.foundation.pagerTabIndicatorOffset
 import me.him188.ani.app.ui.foundation.rememberImageViewerHandler
 import me.him188.ani.app.ui.foundation.stateOf
@@ -191,7 +193,7 @@ fun SubjectDetailsScreen(
     windowInsets: WindowInsets = TopAppBarDefaults.windowInsets,
     navigationIcon: @Composable () -> Unit = {},
 ) {
-    val state by vm.state.collectAsStateWithLifecycle(null)
+    val state by vm.state.collectAsStateWithLifecycle()
     val selfInfo by vm.authState.collectAsStateWithLifecycle()
     val toaster = LocalToaster.current
     val scope = rememberCoroutineScope()
@@ -224,7 +226,7 @@ fun SubjectDetailsScreen(
 
 @Composable
 fun SubjectDetailsScreen(
-    state: SubjectDetailsLoadState?,
+    state: SubjectDetailsLoadState,
     selfInfo: SelfInfoUiState,
     onPlay: (episodeId: Int) -> Unit,
     onLoadErrorRetry: () -> Unit,
@@ -239,7 +241,7 @@ fun SubjectDetailsScreen(
     val navigator = LocalNavigator.current
     val uriHandler = LocalUriHandler.current
     val onClickOpenExternal = {
-        if (state != null) uriHandler.openUri("https://bgm.tv/subject/${state.subjectId}")
+        uriHandler.openUri("https://bgm.tv/subject/${state.subjectId}")
     }
 
     // 断点必须按本页面实际可用宽度决定, 不能按窗口宽度:
@@ -247,8 +249,8 @@ fun SubjectDetailsScreen(
     BoxWithConstraints(modifier) {
         val layoutParams = SubjectDetailsLayoutParams.calculate(maxWidth)
         when (state) {
-            null, is SubjectDetailsLoadState.Placeholder -> PlaceholderSubjectDetailsPage(
-                state?.subjectInfo,
+            is SubjectDetailsLoadState.Placeholder -> PlaceholderSubjectDetailsPage(
+                state.subjectInfo,
                 layoutParams,
                 Modifier,
                 showTopBar,
@@ -844,8 +846,9 @@ fun SubjectDetailsSingleColumnPage(
                                 WindowDragArea {
                                     TopAppBar(
                                         title = {
+                                            val useOriginalTitle = LocalSubjectAppearanceSettings.current.useOriginalTitle
                                             Text(
-                                                info?.displayName ?: "",
+                                                info?.preferredDisplayName(useOriginalTitle) ?: "",
                                                 maxLines = 1,
                                                 overflow = TextOverflow.Ellipsis,
                                             )

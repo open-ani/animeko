@@ -84,6 +84,7 @@ abstract class PlatformDataStoreManager {
             },
         )
     }
+
     val savedWindowStateStore by lazy {
         DataStoreFactory.create(
             serializer = SavedWindowState.serializer().nullable

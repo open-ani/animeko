@@ -66,12 +66,14 @@ import me.him188.ani.app.ui.foundation.ifThen
 import me.him188.ani.app.ui.foundation.widgets.Toaster
 import org.jetbrains.compose.resources.painterResource
 
+/** [interactionEnabled] can be disabled when a containing card or reader owns input. */
 @Composable
 fun RichText(
     elements: List<UIRichElement>,
     modifier: Modifier = Modifier,
     color: Color = LocalContentColor.current,
     style: TextStyle = LocalTextStyle.current,
+    interactionEnabled: Boolean = true,
     onClickUrl: (String) -> Unit = { },
     onClickImage: (String) -> Unit = { }
 ) {
@@ -81,7 +83,7 @@ fun RichText(
         modifier = modifier,
         horizontalAlignment = Alignment.Start,
     ) {
-        elements.toLayout(color, style, onClickUrl, onClickImage)
+        elements.toLayout(color, style, interactionEnabled, onClickUrl, onClickImage)
     }
 }
 
@@ -89,6 +91,7 @@ fun RichText(
 fun List<UIRichElement>.toLayout(
     color: Color,
     style: TextStyle,
+    interactionEnabled: Boolean = true,
     onClickUrl: (String) -> Unit,
     onClickImage: (String) -> Unit
 ) = forEach { e ->
@@ -104,6 +107,7 @@ fun List<UIRichElement>.toLayout(
                 style = style,
                 maxLine = e.maxLine,
                 align = e.align,
+                interactionEnabled = interactionEnabled,
                 onClick = { it.url?.let(onClickUrl) },
             )
         }
@@ -111,6 +115,7 @@ fun List<UIRichElement>.toLayout(
         is UIRichElement.Image -> RichTextDefaults.Image(
             element = e,
             modifier = Modifier,
+            interactionEnabled = interactionEnabled,
             onClick = { onClickImage(e.imageUrl) },
         )
 
@@ -119,6 +124,7 @@ fun List<UIRichElement>.toLayout(
             modifier = Modifier,
             color = color,
             style = style,
+            interactionEnabled = interactionEnabled,
             onClickUrl = onClickUrl,
         )
     }
@@ -212,6 +218,7 @@ object RichTextDefaults {
         style: TextStyle = LocalTextStyle.current,
         maxLine: Int? = null,
         align: TextAlign = TextAlign.Unspecified,
+        interactionEnabled: Boolean = true,
         onClick: (UIRichElement.Annotated) -> Unit
     ) {
         val inlineStickerMap: MutableMap<String, InlineTextContent> = remember { mutableStateMapOf() }
@@ -339,10 +346,11 @@ object RichTextDefaults {
             text = content,
             modifier = modifier,
             inlineContent = inlineStickerMap,
-            style = TextStyle.Default.copy(textAlign = align),
+            style = if (align == TextAlign.Unspecified) style else style.copy(textAlign = align),
             maxLines = maxLine ?: Int.MAX_VALUE,
             overflow = TextOverflow.Ellipsis,
             shouldConsumeTap = { textPos ->
+                if (!interactionEnabled) return@ClickableText false
                 // 只消费落在未揭开的遮罩或链接上的点击, 其余点击传给父级 (如整条评论点击回复)
                 val annotations = content.getStringAnnotations(textPos, textPos)
                 val maskAnno = annotations.firstOrNull { it.tag == "mask" }
@@ -379,6 +387,7 @@ object RichTextDefaults {
     fun Image(
         element: UIRichElement.Image,
         modifier: Modifier = Modifier,
+        interactionEnabled: Boolean = true,
         onClick: () -> Unit
     ) {
         var state by rememberSaveable { mutableIntStateOf(0) } // 0: loading, 1: success, 2: failed
@@ -394,7 +403,7 @@ object RichTextDefaults {
                 .animateContentSize()
                 .placeholder(state == 0)
                 .clip(RoundedCornerShape(8.dp))
-                .then(Modifier.clickable { onClick() }),
+                .ifThen(interactionEnabled) { clickable { onClick() } },
             contentScale = ContentScale.Fit,
             crossfade = false,
             onSuccess = {
@@ -409,6 +418,7 @@ object RichTextDefaults {
         modifier: Modifier = Modifier,
         color: Color = LocalContentColor.current,
         style: TextStyle = LocalTextStyle.current,
+        interactionEnabled: Boolean = true,
         onClickUrl: (String) -> Unit,
     ) {
         Surface(
@@ -420,7 +430,7 @@ object RichTextDefaults {
                 CompositionLocalProvider(
                     LocalContentColor provides MaterialTheme.colorScheme.onSurfaceVariant,
                 ) {
-                    elements.toLayout(color, style, onClickUrl) { }
+                    elements.toLayout(color, style, interactionEnabled, onClickUrl) { }
                 }
             }
         }

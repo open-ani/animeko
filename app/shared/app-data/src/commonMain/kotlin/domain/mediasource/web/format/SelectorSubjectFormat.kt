@@ -27,7 +27,7 @@ import org.intellij.lang.annotations.Language
 import kotlin.contracts.contract
 
 /**
- * 决定如何匹配条目
+ * 决定如何从搜索结果页列出条目. 结果顺序与页面一致; 自动匹配阶段的排序见 `SelectorAutoMatchConfig.preferShorterName`.
  */
 sealed class SelectorSubjectFormat<in Config : SelectorFormatConfig>(override val id: SelectorFormatId) :
     SelectorFormat { // 方便改名
@@ -67,6 +67,10 @@ data object SelectorSubjectFormatA : SelectorSubjectFormat<SelectorSubjectFormat
     data class Config(
         @param:Language("css")
         val selectLists: String = "div.video-info-header > a",
+        /**
+         * 旧格式字段, 已移到 `SelectorAutoMatchConfig.preferShorterName`, 只为读写旧 JSON 保留. 解析时不使用.
+         */
+        @Deprecated("moved to SelectorAutoMatchConfig.preferShorterName")
         val preferShorterName: Boolean = true,
     ) : SelectorFormatConfig {
         override fun isValid(): Boolean {
@@ -92,12 +96,6 @@ data object SelectorSubjectFormatA : SelectorSubjectFormat<SelectorSubjectFormat
                 partialUrl = href,
                 origin = a,
             )
-        }.apply {
-            if (config.preferShorterName) {
-                sortBy { info ->
-                    info.name.length
-                }
-            }
         }
     }
 }
@@ -115,6 +113,10 @@ data object SelectorSubjectFormatIndexed :
         val selectNames: String = ".search-box .thumb-content > .thumb-txt",
         @param:Language("css")
         val selectLinks: String = ".search-box .thumb-menu > a",
+        /**
+         * 旧格式字段, 已移到 `SelectorAutoMatchConfig.preferShorterName`, 只为读写旧 JSON 保留. 解析时不使用.
+         */
+        @Deprecated("moved to SelectorAutoMatchConfig.preferShorterName")
         val preferShorterName: Boolean = true,
     ) : SelectorFormatConfig {
         override fun isValid(): Boolean {
@@ -149,12 +151,6 @@ data object SelectorSubjectFormatIndexed :
                 partialUrl = href,
                 origin = null,
             )
-        }.apply {
-            if (config.preferShorterName) {
-                sortBy { info ->
-                    info.name.length
-                }
-            }
         }
     }
 }
@@ -168,6 +164,10 @@ data object SelectorSubjectFormatJsonPathIndexed :
         val selectLinks: String = "$[*]['url', 'link']",
         @param:Language("jsonpath")
         val selectNames: String = "$[*]['title','name']",
+        /**
+         * 旧格式字段, 已移到 `SelectorAutoMatchConfig.preferShorterName`, 只为读写旧 JSON 保留. 解析时不使用.
+         */
+        @Deprecated("moved to SelectorAutoMatchConfig.preferShorterName")
         val preferShorterName: Boolean = true,
     ) : SelectorFormatConfig {
         override fun isValid(): Boolean {
@@ -202,12 +202,6 @@ data object SelectorSubjectFormatJsonPathIndexed :
                     partialUrl = href,
                     origin = null,
                 )
-            }.apply {
-                if (config.preferShorterName) {
-                    sortBy { info ->
-                        info.name.length
-                    }
-                }
             }
         } catch (e: Exception) {
             return null

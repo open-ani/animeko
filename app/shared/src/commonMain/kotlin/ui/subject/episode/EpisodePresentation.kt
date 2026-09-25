@@ -14,6 +14,7 @@ import androidx.compose.runtime.Stable
 import me.him188.ani.app.data.models.episode.EpisodeCollectionInfo
 import me.him188.ani.app.data.models.episode.EpisodeInfo
 import me.him188.ani.app.data.models.episode.displayName
+import me.him188.ani.app.data.models.episode.nameOrNameCn
 import me.him188.ani.app.data.models.episode.renderEpisodeEp
 import me.him188.ani.app.data.models.subject.SubjectRecurrence
 import me.him188.ani.app.domain.episode.EpisodeCompletionContext.isKnownCompleted
@@ -30,6 +31,8 @@ data class EpisodePresentation(
      * @see EpisodeInfo.displayName
      */
     val title: String,
+    /** 剧集原名, 供"显示原名"设置开启时使用; 默认与 [title] 相同. */
+    val originalTitle: String = title,
     /**
      * 在当前季度中的集数, 例如第二季的第一集为 01
      *
@@ -68,6 +71,7 @@ fun EpisodeCollectionInfo.toPresentation(
 ) = EpisodePresentation(
     episodeId = this.episodeInfo.episodeId,
     title = episodeInfo.displayName,
+    originalTitle = episodeInfo.nameOrNameCn,
     ep = episodeInfo.renderEpisodeEp(),
     sort = episodeInfo.sort.toString(),
     collectionType = collectionType,

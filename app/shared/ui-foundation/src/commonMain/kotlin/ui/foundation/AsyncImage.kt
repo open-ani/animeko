@@ -53,6 +53,8 @@ import com.github.panpf.sketch.resize.Scale
 import com.github.panpf.sketch.resize.ScaleDecider
 import com.github.panpf.sketch.state.PainterStateImage
 import com.github.panpf.sketch.state.StateImage
+import com.github.panpf.sketch.target.Target
+import com.github.panpf.sketch.transition.Transition
 import com.github.panpf.sketch.util.Size
 import com.github.panpf.sketch.util.asComposeImageBitmap
 import kotlinx.coroutines.sync.Mutex
@@ -71,7 +73,11 @@ import com.github.panpf.sketch.AsyncImage as SketchAsyncImage
 
 private const val MEBIBYTE = 1024L * 1024L
 private const val IMAGE_DOWNLOAD_CACHE_SIZE = 100L * MEBIBYTE
-private const val IMAGE_MEMORY_CACHE_SIZE = 10L * MEBIBYTE
+/**
+ * 解码后位图的 LRU 上限. 列表封面按布局尺寸的 2 倍解码, 手机上一张约 1.3 MB, 一屏 9 到 12 张;
+ * 放下四五屏, 来回滚动和页面返回时不必重新读盘解码. iOS 上 Skia 没有采样解码, 重新解码尤其昂贵.
+ */
+private const val IMAGE_MEMORY_CACHE_SIZE = 64L * MEBIBYTE
 private const val ANI_IMAGE_CACHE_DIRECTORY = "image-cache"
 
 val LocalSketch = staticCompositionLocalOf<Sketch> {
@@ -194,11 +200,7 @@ internal fun AniAsyncImage(
             requestSize = requestSize,
         )
 
-        when {
-            crossfade == false -> crossfade(false)
-            crossfadeDurationMillis != null -> crossfade(crossfadeDurationMillis)
-            crossfade == true -> crossfade(true)
-        }
+        configureAniImageCrossfade(crossfade, crossfadeDurationMillis)
     }
 
     ImageLoadStateEffect(state, onLoading, onSuccess, onError)
@@ -218,6 +220,24 @@ internal fun AniAsyncImage(
         filterQuality = filterQuality,
         clipToBounds = clipToBounds,
     )
+}
+
+internal fun ImageRequest.Builder.configureAniImageCrossfade(
+    crossfade: Boolean?,
+    crossfadeDurationMillis: Int? = null,
+) {
+    when {
+        // Sketch's crossfade(false) sets null, which inherits the global crossfade again.
+        crossfade == false -> transitionFactory(NoImageTransitionFactory)
+        crossfadeDurationMillis != null -> crossfade(crossfadeDurationMillis)
+        crossfade == true -> crossfade(true)
+    }
+}
+
+private data object NoImageTransitionFactory : Transition.Factory {
+    override val key: String = "AniNoImageTransition"
+
+    override fun create(sketch: Sketch, request: ImageRequest, target: Target, result: ImageResult): Transition? = null
 }
 
 @Composable
@@ -309,7 +329,15 @@ internal fun ImageRequest.Builder.configureAniImageRequest(
     }
     scale(aniScaleDecider(contentScale, alignment))
     when (contentScale) {
-        ContentScale.Crop -> precision(Precision.SAME_ASPECT_RATIO)
+        ContentScale.Crop -> precision(
+            // Sketch only understands start/center/end crop. Preserve the source aspect
+            // for a custom alignment so Compose can position the crop without losing pixels.
+            if (alignment in listOf(
+                    Alignment.TopStart, Alignment.TopCenter, Alignment.TopEnd,
+                    Alignment.CenterStart, Alignment.Center, Alignment.CenterEnd,
+                    Alignment.BottomStart, Alignment.BottomCenter, Alignment.BottomEnd,
+                )) Precision.SAME_ASPECT_RATIO else Precision.LESS_PIXELS,
+        )
         ContentScale.FillBounds -> precision(Precision.EXACTLY)
     }
 }
@@ -392,7 +420,7 @@ internal fun createDefaultSketch(
     cacheDirectory: Path? = null,
 ): Sketch = Sketch.Builder(context).apply {
     componentLoaderEnabled(false)
-    // 小容量 LRU: 让刚显示过的图片 (翻页、列表滚回、页面返回) 无需重新读盘解码即可立即显示.
+    // 让刚显示过的图片 (翻页、列表滚回、页面返回) 无需重新读盘解码即可立即显示.
     memoryCache(LruMemoryCache(IMAGE_MEMORY_CACHE_SIZE))
     downloadCacheOptions(
         DiskCache.Options(

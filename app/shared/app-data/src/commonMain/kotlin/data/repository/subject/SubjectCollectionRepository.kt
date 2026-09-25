@@ -58,7 +58,9 @@ import me.him188.ani.app.data.models.subject.SubjectCollectionStats
 import me.him188.ani.app.data.models.subject.SubjectInfo
 import me.him188.ani.app.data.models.subject.SubjectProgressInfo
 import me.him188.ani.app.data.models.subject.SubjectRecurrence
+import me.him188.ani.app.data.models.subject.SubjectTmdbArt
 import me.him188.ani.app.data.models.subject.Tag
+import me.him188.ani.app.data.models.subject.TmdbImage
 import me.him188.ani.app.data.network.EpisodeService
 import me.him188.ani.app.data.network.SubjectService
 import me.him188.ani.app.data.persistent.database.dao.EpisodeCollectionDao
@@ -89,6 +91,8 @@ import me.him188.ani.client.models.AniSelfRatingInfo
 import me.him188.ani.client.models.AniSubjectCollection
 import me.him188.ani.client.models.AniSubjectRelations
 import me.him188.ani.client.models.AniTag
+import me.him188.ani.client.models.AniTmdbImage
+import me.him188.ani.client.models.AniTmdbSubjectArt
 import me.him188.ani.client.models.AniUpdateSubjectCollectionRequest
 import me.him188.ani.datasources.api.EpisodeSort
 import me.him188.ani.datasources.api.EpisodeType
@@ -586,6 +590,7 @@ class SubjectCollectionRepositoryImpl(
                     subjectId = this.subjectId,
                     displayName = nameCn.ifEmpty { name },
                     imageLarge = imageLarge,
+                    imageThumb = imageThumb.ifEmpty { imageLarge },
                     totalEpisodes = totalEpisodes,
                 )
             }
@@ -708,6 +713,7 @@ private fun SubjectCollectionEntity.toSubjectInfo(): SubjectInfo {
         summary = summary,
         nsfw = nsfw,
         imageLarge = imageLarge,
+        imageThumb = imageThumb,
         totalEpisodes = totalEpisodes,
         airDate = airDate,
         tags = tags,
@@ -715,6 +721,7 @@ private fun SubjectCollectionEntity.toSubjectInfo(): SubjectInfo {
         ratingInfo = ratingInfo,
         collectionStats = collectionStats,
         completeDate = completeDate,
+        tmdbArt = tmdbArt,
     )
 }
 
@@ -812,7 +819,8 @@ fun AniSubjectCollection.toEntity(
         nameCn = nameCn,
         summary = summary,
         nsfw = nsfw,
-        imageLarge = staticSubjectImageLargeUrl(id.toInt()),
+        imageLarge = imageLarge,
+        imageThumb = imageThumb,
         totalEpisodes = episodes.size,
         airDate = PackedDate.parseFromDate(airDate),
         aliases = aliases,
@@ -840,6 +848,7 @@ fun AniSubjectCollection.toEntity(
         collectionType = collectionType.toUnifiedCollectionType(),
         recurrence = airingInfo?.recurrence?.toSubjectRecurrence(),
         relations = relations.toSubjectRelationsEntity(),
+        tmdbArt = tmdbArt?.toSubjectTmdbArt(),
         lastUpdated = updatedAt?.let { Instant.parse(it) }?.toEpochMilliseconds() ?: 0,
         lastFetched = lastFetched,
         cachedStaffUpdated = 0,
@@ -847,11 +856,13 @@ fun AniSubjectCollection.toEntity(
     )
 }
 
-/**
- * 条目大封面的静态 CDN 地址. 不依赖本地数据库, 可用于本地无记录时的兜底展示.
- */
-fun staticSubjectImageLargeUrl(subjectId: Int): String =
-    "https://static.myani.org/bangumi/subjects/$subjectId/large"
+private fun AniTmdbSubjectArt.toSubjectTmdbArt(): SubjectTmdbArt = SubjectTmdbArt(
+    backdrops = backdrops.map { it.toTmdbImage() },
+    posters = posters.mapValues { it.value.toTmdbImage() },
+    logos = logos.mapValues { it.value.toTmdbImage() },
+)
+
+private fun AniTmdbImage.toTmdbImage(): TmdbImage = TmdbImage(medium = medium, large = large, vector = vector)
 
 /**
  * 本地数据库中缓存的条目展示信息.
@@ -861,6 +872,8 @@ data class OfflineSubjectDisplayInfo(
     val subjectId: Int,
     val displayName: String,
     val imageLarge: String,
+    /** 列表用封面, 没有缩略图时与 [imageLarge] 相同. */
+    val imageThumb: String,
     val totalEpisodes: Int,
 )
 

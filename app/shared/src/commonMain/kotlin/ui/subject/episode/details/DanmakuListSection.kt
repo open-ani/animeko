@@ -71,6 +71,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import me.him188.ani.app.ui.episode.danmaku.renderDanmakuServiceId
 import me.him188.ani.app.ui.foundation.Res
 import me.him188.ani.app.ui.foundation.a
 import me.him188.ani.app.ui.foundation.lists.LazyListVerticalScrollbar
@@ -89,7 +90,6 @@ import me.him188.ani.app.ui.lang.subject_episode_enable
 import me.him188.ani.app.ui.lang.subject_episode_expand
 import me.him188.ani.app.ui.lang.subject_episode_more_options
 import me.him188.ani.app.ui.subject.episode.details.components.formatDanmakuShiftMillis
-import me.him188.ani.app.ui.subject.episode.details.components.renderDanmakuServiceId
 import me.him188.ani.danmaku.api.DanmakuServiceId
 import org.jetbrains.compose.resources.painterResource
 import org.jetbrains.compose.resources.stringResource
