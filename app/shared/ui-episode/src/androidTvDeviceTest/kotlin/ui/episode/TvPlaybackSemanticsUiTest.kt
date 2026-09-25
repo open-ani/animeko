@@ -110,7 +110,7 @@ class TvPlaybackSemanticsUiTest {
         val interaction = TvPlaybackInteractionState()
         var state by mutableStateOf(TvEpisodeUiState(
             playerState = PlayerState(MediaStatus.Ready, false, false),
-            loadingState = VideoLoadingState.Succeed(false),
+            loadingState = VideoLoadingState.Succeed(null),
             durationMillis = 120_000,
             positionMillis = 20_000,
             interaction = interaction,
@@ -163,7 +163,7 @@ class TvPlaybackSemanticsUiTest {
     fun speedStepperKeepsOneFocusTargetDuringDirectionalAdjustment() = runAniComposeUiTest {
         var state by mutableStateOf(TvEpisodeUiState(
             playerState = PlayerState(MediaStatus.Ready, true, false),
-            loadingState = VideoLoadingState.Succeed(false),
+            loadingState = VideoLoadingState.Succeed(null),
             durationMillis = 60_000,
             playbackSpeed = 1f,
         ))
@@ -202,7 +202,7 @@ class TvPlaybackSemanticsUiTest {
     fun seekBarAndFirstButtonTogglePlaybackAndKeepFocusEvenWhileBuffering() = runAniComposeUiTest {
         var state by mutableStateOf(TvEpisodeUiState(
             playerState = PlayerState(MediaStatus.Ready, true, false),
-            loadingState = VideoLoadingState.Succeed(false),
+            loadingState = VideoLoadingState.Succeed(null),
             durationMillis = 60_000,
         ))
         var toggles = 0
@@ -249,11 +249,11 @@ class TvPlaybackSemanticsUiTest {
         assertMessage(Lang.subject_episode_video_loading_auto_selecting)
         runOnIdle { state = state.copy(loadingState = VideoLoadingState.ResolvingSource) }
         assertMessage(Lang.subject_episode_video_loading_resolving_source)
-        runOnIdle { state = state.copy(loadingState = VideoLoadingState.DecodingData(false)) }
+        runOnIdle { state = state.copy(loadingState = VideoLoadingState.DecodingData(null)) }
         assertMessage(Lang.subject_episode_video_loading_decoding_data)
         runOnIdle {
             state = state.copy(
-                loadingState = VideoLoadingState.Succeed(false),
+                loadingState = VideoLoadingState.Succeed(null),
                 playerState = PlayerState(MediaStatus.Ready, true, false),
             )
         }
@@ -275,7 +275,7 @@ class TvPlaybackSemanticsUiTest {
     fun mediaKeysUsePlaybackIntentWhileBuffering() = runAniComposeUiTest {
         var state by mutableStateOf(TvEpisodeUiState(
             playerState = PlayerState(MediaStatus.Ready, true, true),
-            loadingState = VideoLoadingState.Succeed(false),
+            loadingState = VideoLoadingState.Succeed(null),
         ))
         val toggles = mutableListOf<TvEpisodeIntent>()
         showPlayer(onIntent = { intent ->
@@ -301,7 +301,7 @@ class TvPlaybackSemanticsUiTest {
     fun autoHideTimerRestartsAfterBufferingEnds() = runAniComposeUiTest {
         var state by mutableStateOf(TvEpisodeUiState(
             playerState = PlayerState(MediaStatus.Ready, true, false),
-            loadingState = VideoLoadingState.Succeed(false),
+            loadingState = VideoLoadingState.Succeed(null),
         ))
         showPlayer { state }
         mainClock.autoAdvance = false
@@ -319,7 +319,7 @@ class TvPlaybackSemanticsUiTest {
     @Test
     fun seekPreviewUsesCircularLoadingAndHonorsCapabilityAndPreference() = runAniComposeUiTest {
         var state by mutableStateOf(TvEpisodeUiState(
-            loadingState = VideoLoadingState.Succeed(false),
+            loadingState = VideoLoadingState.Succeed(null),
             durationMillis = 60_000,
             interaction = TvPlaybackInteractionState(20_000),
             options = TvPlayerOptionsState(
@@ -384,7 +384,7 @@ class TvPlaybackSemanticsUiTest {
         presentation.onAction(TvPlayerAction.TogglePanel(TvPlayerPanel.Together))
         showPlayer(togetherState = { together }, presentationState = presentation) {
             TvEpisodeUiState(
-                loadingState = VideoLoadingState.Succeed(false),
+                loadingState = VideoLoadingState.Succeed(null),
             )
         }
         onNodeWithTag("tv-together-follow").assertIsDisplayed()

@@ -247,7 +247,7 @@ private fun PreviewEpisodeItemImpl(
     media: DefaultMedia? = TestMediaList[0],
     episodeTitle: String = "中文剧集名称",
     filename: String? = "filename-".repeat(3) + ".mkv",
-    videoLoadingState: VideoLoadingState = VideoLoadingState.Succeed(false),
+    videoLoadingState: VideoLoadingState = VideoLoadingState.Succeed(null),
 ) {
     val mediaDetailsStrings = rememberMediaDetailsStrings()
     Card(

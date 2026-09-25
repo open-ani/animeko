@@ -93,6 +93,7 @@ import me.him188.ani.app.domain.episode.SetEpisodeCollectionTypeRequest
 import me.him188.ani.app.domain.episode.SubjectRecommendation
 import me.him188.ani.app.domain.media.TestMediaList
 import me.him188.ani.app.domain.media.cache.EpisodeCacheStatus
+import me.him188.ani.app.domain.media.cache.engine.MediaCacheEngineKey
 import me.him188.ani.app.domain.player.VideoLoadingState
 import me.him188.ani.app.navigation.LocalNavigator
 import me.him188.ani.app.navigation.SubjectDetailPlaceholder
@@ -1109,7 +1110,7 @@ private fun PreviewEpisodeDetailsImpl(
                     previewPlayerStatisticsState(
                         playingMedia = playingMedia,
                         playingFilename = "filename-filename-filename-filename-filename-filename-filename.mkv",
-                        videoLoadingState = VideoLoadingState.Succeed(isBt = true),
+                        videoLoadingState = VideoLoadingState.Succeed(MediaCacheEngineKey.Anitorrent),
                     ),
                 )
             },

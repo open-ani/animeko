@@ -30,13 +30,12 @@ import me.him188.ani.app.domain.torrent.parcel.RemoteContinuationException
 import me.him188.ani.app.torrent.api.files.TorrentFileEntry
 import me.him188.ani.app.torrent.api.files.TorrentFileHandle
 import me.him188.ani.app.torrent.api.pieces.PieceList
+import me.him188.ani.app.torrent.io.RandomAccessFile
 import me.him188.ani.app.torrent.io.TorrentInput
 import me.him188.ani.utils.coroutines.IO_
 import me.him188.ani.utils.io.SystemPath
 import me.him188.ani.utils.io.inSystem
-import me.him188.ani.utils.io.toFile
 import org.openani.mediamp.io.SeekableInput
-import java.io.RandomAccessFile
 import kotlin.coroutines.CoroutineContext
 
 @RequiresApi(Build.VERSION_CODES.O_MR1)
@@ -121,7 +120,7 @@ class RemoteTorrentFileEntry(
                         }
 
                         TorrentInput(
-                            file = RandomAccessFile(Path(value.file).inSystem.toFile(), "r"),
+                            file = RandomAccessFile(Path(value.file).inSystem, "r"),
                             pieces = this@RemoteTorrentFileEntry.pieces,
                             logicalStartOffset = value.logicalStartOffset,
                             onWait = {

@@ -60,7 +60,7 @@ class RemoteAnitorrentEngine(
     anitorrentConfigFlow: Flow<AnitorrentConfig>,
     proxyConfig: Flow<ProxyConfig?>,
     peerFilterConfig: Flow<PeerFilterSettings>,
-    saveDir: SystemPath,
+    override val saveDir: SystemPath,
     parentCoroutineContext: CoroutineContext,
     singleThreadDispatcher: CoroutineDispatcher,
 ) : TorrentEngine {

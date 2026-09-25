@@ -59,8 +59,12 @@ abstract class AbstractDataStoreMediaCacheStorage(
     protected val metadataFlow = datastore.data
         .map { list ->
             list.filter { it.engine == engine.engineKey }
+                .distinctBy { Triple(it.origin.mediaId, it.metadata.subjectId, it.metadata.episodeId) }
                 .sortedBy { it.origin.mediaId } // consistent stable order
         }
+
+    override suspend fun hasRecordForMedia(mediaId: String): Boolean =
+        metadataFlow.first().any { it.origin.mediaId == mediaId }
 
     /**
      * 已经恢复的 [LocalFileMediaCache] 的 [MediaCache.cacheId], 不会重复恢复.
@@ -177,6 +181,23 @@ abstract class AbstractDataStoreMediaCacheStorage(
         }
 
         return cache
+    }
+
+    protected suspend fun persistMetadata(cache: MediaCache, metadata: MediaCacheMetadata) {
+        withContext(Dispatchers.IO_) {
+            datastore.updateData { list ->
+                list.map { save ->
+                    // 多个存储共用同一个 datastore, 只写回本引擎的记录. 同一资源同一剧集在两个引擎下
+                    // 各有一条时, 它们的 pathInTorrent 指向各自的目录布局, 互相覆盖会让另一条指向
+                    // 一个不存在的文件.
+                    if (save.engine == engine.engineKey && isSameMediaAndEpisode(cache, save)) {
+                        save.copy(metadata = metadata)
+                    } else {
+                        save
+                    }
+                }
+            }
+        }
     }
 
     override suspend fun delete(cache: MediaCache): Boolean {

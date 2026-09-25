@@ -23,6 +23,7 @@ import me.him188.ani.app.domain.media.hls.HlsPlaybackPreparer
 import me.him188.ani.app.domain.media.hls.HlsPlaybackProxySession
 import me.him188.ani.app.domain.media.player.prefetch.MediaPrefetchController
 import me.him188.ani.app.domain.media.fetch.MediaFetchSession
+import me.him188.ani.app.domain.media.player.data.TorrentMediaData
 import me.him188.ani.app.domain.media.resolver.EpisodeMetadata
 import me.him188.ani.app.domain.media.resolver.MediaResolutionException
 import me.him188.ani.app.domain.media.resolver.MediaResolver
@@ -35,7 +36,6 @@ import me.him188.ani.app.domain.media.selector.MediaSelector
 import me.him188.ani.app.domain.player.VideoLoadingState
 import me.him188.ani.app.domain.settings.GetVideoScaffoldConfigUseCase
 import me.him188.ani.datasources.api.Media
-import me.him188.ani.datasources.api.source.MediaSourceKind
 import me.him188.ani.utils.logging.error
 import me.him188.ani.utils.logging.info
 import me.him188.ani.utils.logging.logger
@@ -112,7 +112,9 @@ class PlayerSession(
             )
             _videoLoadingStateFlow.compareAndSet(
                 VideoLoadingState.ResolvingSource,
-                VideoLoadingState.DecodingData(isBt = media.kind == MediaSourceKind.BitTorrent),
+                VideoLoadingState.DecodingData(
+                    engineKey = (source as? TorrentBackedMediaDataProvider)?.engineKey,
+                ),
             )
 
             val data = source.open(scopeForCleanup = backgroundScope) // may throw MediaSourceOpenException
@@ -126,7 +128,12 @@ class PlayerSession(
             hlsPlaybackProxySession = preparedHlsPlaybackProxySession
             preparedHlsPlaybackProxySession = null
 
-            _videoLoadingStateFlow.value = VideoLoadingState.Succeed(isBt = source is TorrentBackedMediaDataProvider)
+            _videoLoadingStateFlow.value = VideoLoadingState.Succeed(
+                // 打开阶段可能从云盘回退到本地 BT, 此时 data 才是真正承载播放的引擎;
+                // 只有不产出 TorrentMediaData 的实现才退回 provider 声明的引擎.
+                engineKey = (data as? TorrentMediaData)?.engineKey
+                    ?: (source as? TorrentBackedMediaDataProvider)?.engineKey,
+            )
         } catch (e: UnsupportedMediaException) {
             logger.warn { IllegalStateException("Failed to resolve video source, unsupported media", e) }
             _videoLoadingStateFlow.value = VideoLoadingState.UnsupportedMedia

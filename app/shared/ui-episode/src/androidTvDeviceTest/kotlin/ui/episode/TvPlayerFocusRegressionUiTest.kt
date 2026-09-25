@@ -100,7 +100,7 @@ class TvPlayerFocusRegressionUiTest {
         var visible by mutableStateOf(true)
         val uiState = TvEpisodeUiState(
             currentEpisodeId = 1,
-            loadingState = VideoLoadingState.Succeed(false),
+            loadingState = VideoLoadingState.Succeed(null),
             positionMillis = 20_000,
             durationMillis = 60_000,
         )
@@ -243,7 +243,7 @@ class TvPlayerFocusRegressionUiTest {
                     SideEffect { fixture.backDispatcher = dispatcher }
                     TvEpisodeScreen(
                         uiState = TvEpisodeUiState(
-                            loadingState = VideoLoadingState.Succeed(false),
+                            loadingState = VideoLoadingState.Succeed(null),
                             positionMillis = 20_000,
                             durationMillis = 60_000,
                             options = fixture.options,

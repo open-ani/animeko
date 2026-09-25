@@ -321,7 +321,7 @@ class TvPlayerCommentsUiTest {
                     TvEpisodeScreen(
                         uiState = TvEpisodeUiState(
                             title = TvEpisodeTitle("测试番剧", "1"),
-                            loadingState = VideoLoadingState.Succeed(false),
+                            loadingState = VideoLoadingState.Succeed(null),
                             positionMillis = 20_000,
                             durationMillis = 60_000,
                         ),

@@ -12,22 +12,31 @@ plugins {
     alias(libs.plugins.kotlin.plugin.serialization)
 }
 
-// Propagate PIKPAK_* vars from the repo-root .env file into JVM test tasks
-// so PikPakLiveSmokeTest / CleanupProbeTest can talk to the live service.
-// .env lines may use `KEY=value` or `KEY = value` (the latter matches what
-// the user already wrote); comment lines (#) and blanks are ignored.
+// Propagate PIKPAK_* vars from the repo-root .env file, and pikpak-* keys from local.properties,
+// into JVM test tasks so PikPakTorrentEngineLiveTest can talk to the live service.
+// Lines may use `KEY=value` or `KEY = value`; comment lines (#) and blanks are ignored.
 tasks.withType<Test>().configureEach {
-    val dotenv = rootProject.file(".env")
-    if (!dotenv.exists()) return@configureEach
-    dotenv.readLines().forEach { raw ->
-        val line = raw.trim()
-        if (line.isEmpty() || line.startsWith("#")) return@forEach
-        val eq = line.indexOf('=')
-        if (eq <= 0) return@forEach
-        val key = line.substring(0, eq).trim()
-        val value = line.substring(eq + 1).trim().trim('"').trim('\'')
-        if (key.startsWith("PIKPAK_")) environment(key, value)
+    fun readKeyValues(file: File): Map<String, String> {
+        if (!file.exists()) return emptyMap()
+        return file.readLines().mapNotNull { raw ->
+            val line = raw.trim()
+            if (line.isEmpty() || line.startsWith("#")) return@mapNotNull null
+            val eq = line.indexOf('=')
+            if (eq <= 0) return@mapNotNull null
+            val key = line.substring(0, eq).trim()
+            val value = line.substring(eq + 1).trim().trim('"').trim('\'')
+            key to value
+        }.toMap()
     }
+
+    readKeyValues(rootProject.file(".env"))
+        .filterKeys { it.startsWith("PIKPAK_") }
+        .forEach { (key, value) -> environment(key, value) }
+    readKeyValues(rootProject.file("local.properties"))
+        .filterKeys { it.startsWith("pikpak-") }
+        .forEach { (key, value) ->
+            environment("PIKPAK_" + key.removePrefix("pikpak-").replace('-', '_').uppercase(), value)
+        }
 }
 
 kotlin {
@@ -37,25 +46,22 @@ kotlin {
     sourceSets.commonMain.dependencies {
         api(libs.kotlinx.coroutines.core)
         api(libs.kotlinx.datetime)
+        api(projects.torrent.torrentApi)
         api(projects.utils.platform)
         api(projects.utils.coroutines)
         api(projects.utils.io)
         api(projects.utils.ktorClient)
         api(projects.utils.logging)
+        implementation(libs.atomicfu)
         implementation(libs.kotlinx.serialization.json)
         implementation(libs.ktor.client.content.negotiation)
         implementation(libs.ktor.serialization.kotlinx.json)
-        // Auth, captcha, rate limiting, OSS signing, GCID etc. live in the
-        // SDK — this module only supplies the offline-task orchestration
-        // layer on top. See https://github.com/NihilDigit/pikpak-kotlin.
-        api("io.github.nihildigit:pikpak-kotlin:0.4.3")
+
+        // Auth, captcha, rate limiting, OSS signing, GCID etc. live in the SDK — this module only
+        // supplies the torrent-engine layer on top. See https://github.com/NihilDigit/pikpak-kotlin.
+        api("io.github.nihildigit:pikpak-kotlin:0.6.6")
     }
     sourceSets.getByName("desktopTest").dependencies {
-        // Mock engine drives PikPakKtorAbiCompatTest, which forces the SDK's
-        // Ktor companion-object accesses (HttpMethod.Post, ContentType.*, ...)
-        // to resolve against animeko's pinned Ktor version. If the SDK was
-        // built against an incompatible Ktor ABI, the first request path
-        // throws IllegalAccessError at link time and the test fails.
         implementation(libs.ktor.client.mock)
     }
 }
