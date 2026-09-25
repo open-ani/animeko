@@ -84,7 +84,6 @@ import me.him188.ani.app.ui.lang.Lang
 import me.him188.ani.app.ui.lang.rating_self_score
 import me.him188.ani.app.ui.lang.subject_details_episodes
 import me.him188.ani.app.ui.lang.subject_details_info
-import me.him188.ani.app.ui.lang.subject_details_login_to_collect
 import me.him188.ani.app.ui.lang.subject_details_rate
 import me.him188.ani.app.ui.lang.subject_details_rating
 import me.him188.ani.app.ui.lang.subject_details_related_subjects
@@ -111,6 +110,7 @@ import me.him188.ani.app.ui.subject.details.sections.SubjectInfoTable
 import me.him188.ani.app.ui.subject.details.sections.SubjectRatingSummary
 import me.him188.ani.app.ui.subject.details.sections.SubjectSummarySection
 import me.him188.ani.app.ui.subject.details.sections.SubjectTagsSection
+import me.him188.ani.app.ui.subject.details.tracking.TrackingSection
 import me.him188.ani.app.ui.subject.details.state.SubjectDetailsState
 import me.him188.ani.app.ui.subject.details.state.SubjectDetailsUiState
 import me.him188.ani.app.ui.subject.details.state.rememberAiringLabelState
@@ -134,7 +134,6 @@ internal fun SubjectDetailsMultiColumnPage(
     onPlay: (episodeId: Int) -> Unit,
     onEpisodeLongClick: (EpisodeListItem) -> Unit,
     onClickTag: (Tag) -> Unit,
-    onClickLogin: () -> Unit,
     onShowComments: () -> Unit,
     onClickCache: () -> Unit,
     modifier: Modifier = Modifier,
@@ -196,7 +195,6 @@ internal fun SubjectDetailsMultiColumnPage(
             mainEpisodeCount = episodes.size,
             onPlay = onPlay,
             onClickTag = onClickTag,
-            onClickLogin = onClickLogin,
             itemSpacing = layoutParams.sidebarItemSpacing,
             onCoverImageSuccess = onCoverImageSuccess,
             modifier = Modifier.width(layoutParams.sidebarWidth),
@@ -476,7 +474,6 @@ private fun SubjectSidebar(
     mainEpisodeCount: Int,
     onPlay: (episodeId: Int) -> Unit,
     onClickTag: (Tag) -> Unit,
-    onClickLogin: () -> Unit,
     itemSpacing: Dp,
     onCoverImageSuccess: (AniImageLoadSuccess) -> Unit,
     modifier: Modifier = Modifier,
@@ -502,18 +499,7 @@ private fun SubjectSidebar(
             onPlay = { uiState.progressInfo?.nextEpisodeIdToPlay?.let(onPlay) },
             Modifier.fillMaxWidth(),
         )
-        // 收藏 (定稿: 全宽 Tonal)
-        if (selfInfo.isSessionValid == false) {
-            OutlinedButton(onClickLogin, Modifier.fillMaxWidth()) {
-                Text(stringResource(Lang.subject_details_login_to_collect))
-            }
-        } else {
-            EditableSubjectCollectionTypeButton(
-                uiState.collectionTypeEdit,
-                state,
-                Modifier.fillMaxWidth(),
-            )
-        }
+        TrackingSection(info.subjectId, Modifier.fillMaxWidth())
         // 收藏统计三格 (收藏 / 在看 / 想看)
         SubjectCollectionStatsRow(info.collectionStats)
 

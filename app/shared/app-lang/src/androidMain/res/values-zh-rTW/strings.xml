@@ -37,6 +37,7 @@
     <string name="playback_history_sync_pending_episode">集數 ID %1$d</string>
     <string name="playback_history_sync_delete_pending">刪除待同步項目</string>
     <string name="playback_history_sync_delete_all">刪除全部待同步項目</string>
+    <string name="settings_category_accounts">帳號</string>
     <string name="settings_category_app_ui">應用與介面</string>
     <string name="settings_category_data_playback">資料源與播放</string>
     <string name="settings_category_network_storage">網路與儲存</string>
@@ -315,6 +316,9 @@
     <string name="settings_app_light_up_mode_description">高亮已經看過的劇集，而不是將要看的劇集</string>
     <string name="settings_app_episode_images">劇集劇照</string>
     <string name="settings_app_episode_images_description">在選集列表中顯示來自 TMDB 的劇集劇照（僅部分番劇提供）</string>
+    <string name="settings_app_subject_title">條目標題</string>
+    <string name="settings_app_use_original_title">顯示原名</string>
+    <string name="settings_app_use_original_title_description">在條目列表和詳情頁優先顯示原名（通常為日文），而非中文名</string>
     <string name="settings_app_language">語言</string>
     <string name="settings_app_language_system">系統語言</string>
     <string name="settings_app_language_restart">重新啟動軟體生效</string>
@@ -1729,6 +1733,93 @@
     <string name="qr_login_retry">重試</string>
     <string name="qr_login_done">完成</string>
     <string name="qr_login_close">關閉</string>
+
+    <!-- Tracking subsystem -->
+    <string name="tracking_action_track">追蹤</string>
+    <string name="tracking_action_tracked_one">%1$d 個追蹤服務</string>
+    <string name="tracking_action_tracked_many">%1$d 個追蹤服務</string>
+    <string name="tracking_sheet_title">追蹤</string>
+    <string name="tracking_card_add_tracking">新增追蹤</string>
+    <string name="tracking_card_not_matched">尚未配對條目</string>
+    <string name="tracking_card_collection">收藏</string>
+    <string name="tracking_options_menu_description">追蹤選項</string>
+    <string name="tracking_menu_open_on_provider">在 %1$s 查看</string>
+    <string name="tracking_menu_refresh">重新整理</string>
+    <string name="tracking_menu_change_match">更改匹配</string>
+    <string name="tracking_menu_unlink">解除關聯</string>
+    <string name="tracking_menu_make_public">設為公開</string>
+    <string name="tracking_menu_make_private">設為私密</string>
+    <string name="tracking_menu_delete_remote">刪除遠端記錄</string>
+    <string name="tracking_status_planning">想看</string>
+    <string name="tracking_status_current">在看</string>
+    <string name="tracking_status_completed">看過</string>
+    <string name="tracking_status_paused">擱置</string>
+    <string name="tracking_status_dropped">拋棄</string>
+    <string name="tracking_status_repeating">重溫</string>
+    <string name="tracking_field_status">狀態</string>
+    <string name="tracking_field_score">評分</string>
+    <string name="tracking_field_start_date">開始日期</string>
+    <string name="tracking_field_finish_date">完成日期</string>
+    <string name="tracking_no_accounts_connected">尚未連線追蹤帳號。</string>
+    <string name="tracking_connect_provider">連接 %1$s</string>
+    <string name="tracking_manage_accounts">追蹤帳號</string>
+    <string name="tracking_search_dialog_title">搜尋追蹤條目</string>
+    <string name="tracking_search_placeholder">搜尋動畫</string>
+    <string name="tracking_search_clear_description">清除搜尋</string>
+    <string name="tracking_search_icon_description">搜尋追蹤條目</string>
+    <string name="tracking_dialog_title_status">觀看狀態</string>
+    <string name="tracking_dialog_title_progress">觀看進度</string>
+    <string name="tracking_dialog_title_score">評分</string>
+    <string name="tracking_choice_episode_format">第 %1$s 話</string>
+    <string name="tracking_choice_clear_score">清除評分</string>
+    <string name="tracking_action_save">儲存</string>
+    <string name="tracking_action_delete">刪除</string>
+    <string name="tracking_confirm_delete_title">刪除遠端追蹤記錄？</string>
+    <string name="tracking_confirm_delete_message">此操作將從遠端列表中徹底刪除此條目。</string>
+    <string name="tracking_confirm_unlink_title">解除追蹤關聯？</string>
+    <string name="tracking_confirm_unlink_message">遠端列表中的記錄將保留，僅解除本地關聯。</string>
+    <string name="tracking_confirm_mark_all_title">將全部劇集標記為看過？</string>
+    <string name="tracking_confirm_mark_all_message">已儲存完成狀態。是否同時將所有劇集標記為已看過？</string>
+    <string name="tracking_confirm_mark_all_action">全部標記</string>
+    <string name="tracking_confirm_keep_episodes_action">保持原狀</string>
+    <string name="tracking_error_update_failed">更新追蹤失敗，請重試。</string>
+    <string name="tracking_error_search_failed">搜尋失敗，請重試。</string>
+    <string name="tracking_error_add_failed">新增追蹤失敗，請重試。</string>
+    <string name="tracking_error_link_failed">關聯失敗，請重試。</string>
+    <string name="tracking_error_unlink_failed">解除關聯失敗，請重試。</string>
+    <string name="tracking_error_load_failed">無法載入追蹤資訊。</string>
+
+    <!-- Tracking Accounts Settings -->
+    <string name="settings_tab_tracking">追蹤服務</string>
+    <string name="settings_tracking_services_group">服務</string>
+    <string name="settings_tracking_checking_connection">正在檢查連線…</string>
+    <string name="settings_tracking_connection_check_failed">連線檢查失敗</string>
+    <string name="settings_tracking_not_connected">未連線</string>
+    <string name="settings_tracking_connecting">正在連線…</string>
+    <string name="settings_tracking_sign_in_with">使用 %1$s 登入</string>
+    <string name="settings_tracking_connected_action_description">已連線</string>
+    <string name="settings_tracking_disconnect_title">斷開 %1$s 連線？</string>
+    <string name="settings_tracking_disconnect_message">僅在本裝置上登出該服務，服務上的列表不會改變。</string>
+    <string name="settings_tracking_disconnect_action">斷開連線</string>
+
+    <!-- Settings Backup & Restore -->
+    <string name="settings_storage_backup_create_title">建立備份</string>
+    <string name="settings_storage_backup_create_description">選擇要保存在 Animeko 備份檔案中的內容</string>
+    <string name="settings_storage_backup_restore_title">恢復備份</string>
+    <string name="settings_storage_backup_restore_description">從備份檔案中匯入設定和追蹤匹配關係</string>
+    <string name="settings_storage_backup_dialog_title">選擇備份內容</string>
+    <string name="settings_storage_backup_category_settings_title">應用設定</string>
+    <string name="settings_storage_backup_category_settings_description">偏好設定與 Animeko 登入資訊</string>
+    <string name="settings_storage_backup_category_tracking_title">追蹤匹配關係</string>
+    <string name="settings_storage_backup_category_tracking_description">已儲存的追蹤服務條目關聯；恢復後重新連線帳號即可生效</string>
+    <string name="settings_storage_backup_disclaimer_tokens">此備份不包含下載的離線影片或追蹤帳號授權憑據。</string>
+    <string name="settings_storage_backup_disclaimer_private">如果包含應用設定，請妥善保管備份檔案或複製的文字，避免洩漏。</string>
+    <string name="settings_storage_backup_action_save">儲存備份</string>
+    <string name="settings_storage_backup_action_copy">複製</string>
+    <string name="settings_storage_backup_toast_saved">備份已儲存</string>
+    <string name="settings_storage_backup_toast_copied">備份已複製到剪貼簿</string>
+    <string name="settings_storage_backup_action_choose_file">選擇檔案</string>
+    <string name="settings_storage_backup_action_paste">貼上</string>
 </resources>
 
 <!--@formatter:on-->

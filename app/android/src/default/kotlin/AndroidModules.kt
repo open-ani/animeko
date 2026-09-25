@@ -20,10 +20,27 @@ import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.runBlocking
 import kotlinx.io.files.Path
 import me.him188.ani.android.navigation.AndroidBrowserNavigator
+import me.him188.ani.android.activity.AniListAuthRedirectHandler
+import me.him188.ani.android.activity.TrackingAuthRedirectHandler
+import me.him188.ani.android.activity.TrackingAuthRedirectRouter
 import me.him188.ani.android.provider.ExternalContentProviderFactoryImpl
 import me.him188.ani.app.data.models.preference.PikPakConfig
 import me.him188.ani.app.data.persistent.database.AniDatabase
 import me.him188.ani.app.data.repository.user.SettingsRepository
+import me.him188.ani.app.domain.episode.EpisodeTrackingSync
+import me.him188.ani.app.tracking.anilist.AniListTrackingProvider
+import me.him188.ani.app.tracking.anilist.createAniListHttpClient
+import me.him188.ani.app.data.tracking.AniListTrackingSource
+import me.him188.ani.android.tracking.AndroidAniListBindingStore
+import me.him188.ani.app.ui.foundation.icons.AniListTrackingIcon
+import me.him188.ani.android.tracking.AniListTrackingAccountConnector
+import me.him188.ani.app.ui.foundation.icons.TrackingIconRenderer
+import me.him188.ani.app.ui.foundation.tracking.TrackingAccountConnector
+import me.him188.ani.app.domain.tracking.TrackingEpisodeSynchronizer
+import me.him188.ani.tracking.api.AndroidTrackingCredentialStore
+import me.him188.ani.tracking.api.PendingLoginGate
+import me.him188.ani.tracking.api.TrackingSource
+import me.him188.ani.utils.ktor.getPlatformKtorEngine
 import me.him188.ani.app.domain.foundation.HttpClientProvider
 import me.him188.ani.app.domain.foundation.ScopedHttpClientUserAgent
 import me.him188.ani.app.domain.foundation.get
@@ -90,6 +107,19 @@ fun getAndroidModules(
     serviceConnectionManager: TorrentServiceConnectionManager,
     coroutineScope: CoroutineScope,
 ) = module {
+    single {
+        AniListTrackingProvider(createAniListHttpClient(getPlatformKtorEngine()),
+            AndroidTrackingCredentialStore(androidContext(), AniListTrackingProvider.ID))
+    }
+    single { AniListTrackingSource(AndroidAniListBindingStore(androidContext()), get<AniListTrackingProvider>(), inject()) }
+    single<TrackingIconRenderer> { AniListTrackingIcon(AniListTrackingProvider.ID) }
+    val aniListPendingLogin = PendingLoginGate()
+    single<TrackingAccountConnector> { AniListTrackingAccountConnector(get<AniListTrackingProvider>(), aniListPendingLogin) }
+    single { AniListAuthRedirectHandler(get<AniListTrackingProvider>(), aniListPendingLogin) }
+    single<TrackingAuthRedirectHandler> { get<AniListAuthRedirectHandler>() }
+    single { TrackingAuthRedirectRouter(getAll()) }
+    single<TrackingSource> { get<AniListTrackingSource>() }
+    single<EpisodeTrackingSync> { RegistryEpisodeTrackingSync(get<TrackingEpisodeSynchronizer>(), coroutineScope) }
     single<BrowserNavigator> { AndroidBrowserNavigator() }
     single<CaptchaBrowserFactory> { AndroidCaptchaBrowserFactory(androidContext()) }
     single<ImageCaptchaRecognizer> { AndroidOnnxImageCaptchaRecognizer() }

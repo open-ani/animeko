@@ -49,6 +49,7 @@ class MainActivity : AniComponentActivity() {
     private val aniNavigator = AniNavigator()
 
     private val externalContentProviderFactory: ExternalContentProviderFactory by inject()
+    private val trackingAuthRedirectRouter: TrackingAuthRedirectRouter by inject()
 
     override fun onNewIntent(intent: Intent) {
         super.onNewIntent(intent)
@@ -59,6 +60,13 @@ class MainActivity : AniComponentActivity() {
     private fun handleStartIntent(intent: Intent) {
         val data = intent.data ?: return
         if (data.scheme != "ani") return
+        trackingAuthRedirectRouter.handlerFor(data.host)?.let { handler ->
+            handler.handle(intent, lifecycleScope) { success ->
+                val outcome = if (success) "connected" else "connection failed"
+                Toast.makeText(this, "${handler.providerName} $outcome", Toast.LENGTH_SHORT).show()
+            }
+            return
+        }
         when (data.host) {
             "subjects" -> {
                 val id = data.pathSegments.getOrNull(0)?.toIntOrNull() ?: return

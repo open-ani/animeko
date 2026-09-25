@@ -125,6 +125,7 @@ dependencies {
     // 两个 flavor 共用共享库；TV 对手机页面的访问边界靠约定 + Konsist 维护。
     implementation(projects.app.shared)
     implementation(projects.app.shared.application)
+    implementation(projects.tracking.anilist)
     "tvImplementation"(projects.app.shared.tv)
 
     implementation(libs.androidx.core.ktx)

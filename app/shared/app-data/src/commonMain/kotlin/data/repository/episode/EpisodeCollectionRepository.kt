@@ -28,8 +28,10 @@ import me.him188.ani.app.data.repository.subject.SubjectCollectionRepository
 import me.him188.ani.app.data.repository.subject.toEpisodeType
 import me.him188.ani.app.data.repository.subject.toUnifiedCollectionType
 import me.him188.ani.app.domain.episode.EpisodeCollections
+import me.him188.ani.app.domain.episode.EpisodeTrackingSync
 import me.him188.ani.client.models.AniEpisodeCollection
 import me.him188.ani.datasources.api.EpisodeSort
+import me.him188.ani.datasources.api.EpisodeType
 import me.him188.ani.datasources.api.PackedDate
 import me.him188.ani.datasources.api.topic.UnifiedCollectionType
 import me.him188.ani.utils.logging.warn
@@ -47,6 +49,7 @@ class EpisodeCollectionRepository(
     private val animeScheduleRepository: AnimeScheduleRepository,
     subjectCollectionRepository: Lazy<SubjectCollectionRepository>,
     private val getEpisodeTypeFiltersUseCase: GetEpisodeTypeFiltersUseCase,
+    private val trackingSync: EpisodeTrackingSync? = null,
     defaultDispatcher: CoroutineContext = Dispatchers.Default,
     private val cacheExpiry: Duration = 1.hours,
 ) : Repository(defaultDispatcher) {
@@ -140,12 +143,14 @@ class EpisodeCollectionRepository(
      * 设置指定条目的所有剧集为已看.
      */
     suspend fun setAllEpisodesWatched(subjectId: Int) = withContext(defaultDispatcher) {
-        val episodeIds = subjectEpisodeCollectionInfosFlow(subjectId)
-            .first()
-            .map { it.episodeId }
+        val episodes = subjectEpisodeCollectionInfosFlow(subjectId).first()
+        val episodeIds = episodes.map { it.episodeId }
 
         episodeService.setEpisodeCollection(subjectId, episodeIds, UnifiedCollectionType.DONE)
         episodeCollectionDao.setAllEpisodesWatched(subjectId)
+        episodes.filter { it.episodeInfo.type == null || it.episodeInfo.type == EpisodeType.MainStory }
+            .maxByOrNull { it.episodeInfo.ep?.number ?: 0f }
+            ?.let { trackingSync?.onEpisodeWatched(subjectId, it.episodeId) }
     }
 
     suspend fun setEpisodeCollectionType(

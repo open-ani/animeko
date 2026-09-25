@@ -106,6 +106,7 @@ import me.him188.ani.app.ui.lang.settings_update_version_expired_message
 import me.him188.ani.app.ui.lang.settings_update_version_expired_message_with_latest
 import me.him188.ani.app.ui.lang.settings_update_version_expired_title
 import me.him188.ani.app.ui.settings.SettingsViewModel
+import me.him188.ani.app.ui.settings.tabs.media.BackupSelection
 import me.him188.ani.app.ui.settings.account.ProfilePopup
 import me.him188.ani.app.ui.settings.account.ProfileViewModel
 import me.him188.ani.app.ui.subject.collection.CollectionPage
@@ -516,7 +517,9 @@ private fun BoxScope.UpdateNotifierWithVersionExpiryCheck() {
                     OutlinedButton(
                         {
                             asyncHandler.launch {
-                                val data = settingsVm.cacheDirectoryGroupState.onGetBackupData()
+                                val data = settingsVm.cacheDirectoryGroupState.onGetBackupData(
+                                    BackupSelection(settings = true, trackingBindings = false),
+                                )
                                 clipboard.setClipEntryText(data)
                                 toaster.toast(getString(Lang.settings_update_version_expired_copied_to_clipboard))
                             }

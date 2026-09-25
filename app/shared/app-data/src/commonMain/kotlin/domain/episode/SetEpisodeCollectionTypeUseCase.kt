@@ -40,10 +40,15 @@ fun interface SetEpisodeCollectionTypeUseCase : UseCase {
     }
 }
 
+fun interface EpisodeTrackingSync {
+    fun onEpisodeWatched(subjectId: Int, episodeId: Int)
+}
+
 class SetEpisodeCollectionTypeUseCaseImpl(
     koin: Koin,
 ) : SetEpisodeCollectionTypeUseCase {
     private val episodeCollectionRepository: EpisodeCollectionRepository by koin.inject()
+    private val trackingSync: EpisodeTrackingSync? by lazy { koin.getOrNull() }
     override suspend fun invoke(subjectId: Int, episodeId: Int, collectionType: UnifiedCollectionType) {
         withContext(Dispatchers.Default) {
             suspend {
@@ -51,7 +56,9 @@ class SetEpisodeCollectionTypeUseCaseImpl(
                 // Client request(PATCH https://api.bgm.tv/v0/users/-/collections/235128/episodes) invalid: 400 . Text: "{"title":"Bad Request","details":{"path":"/v0/users/-/collections/235128/episodes","method":"PATCH"},"request_id":"****","description":"you need to add subject to your collection first"}
                 episodeCollectionRepository.setEpisodeCollectionType(subjectId, episodeId, collectionType)
             }.asFlow().retryWithBackoffDelay(3).first()
+            if (collectionType == UnifiedCollectionType.DONE) {
+                trackingSync?.onEpisodeWatched(subjectId, episodeId)
+            }
         }
     }
 }
-

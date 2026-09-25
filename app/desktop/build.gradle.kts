@@ -27,6 +27,8 @@ dependencies {
     implementation(projects.app.shared)
     implementation(projects.app.shared.uiFoundation)
     implementation(projects.app.shared.application)
+    implementation(projects.tracking.anilist)
+    implementation(libs.jna)
     implementation(projects.utils.videoEnhancementShaderProvider)
     implementation(libs.compose.components.resources)
     implementation(libs.compose.native.tray)
