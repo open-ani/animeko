@@ -46,6 +46,7 @@ import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.unit.dp
 import androidx.test.platform.app.InstrumentationRegistry
 import java.io.File
+import kotlin.math.abs
 import kotlin.math.ceil
 import kotlin.math.roundToInt
 import kotlin.test.Test
@@ -155,7 +156,10 @@ class TvNavigationRailUiTest {
             val sourceColor = original.getPixel(x, original.height / 8)
             val dimmedColor = blurred.getPixel(x, blurred.height / 8)
             val expected = dimmedColors.getOrPut(sourceColor) { dimmedColor }
-            assertEquals(expected, dimmedColor,
+            // GPU color quantization can round each channel by one level.
+            assertTrue(listOf(0, 8, 16).all { shift ->
+                abs((expected shr shift and 255) - (dimmedColor shr shift and 255)) <= 1
+            },
                 "The uniform dim preserves sharp stripe edges outside the blur at x=$x")
         }
         key(Key.Menu)

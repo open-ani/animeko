@@ -41,7 +41,7 @@ internal fun TvDownloadModal(title: String, onClose: () -> Unit, content: @Compo
         val focus = rememberTvFocusScope()
         val cancel = TvFocusKey("download-modal-cancel")
         focus.Resolver()
-        focus.InitialFocus(cancel)
+        focus.InitialFocus { cancel }
         TvModalOverlay(onClose, Modifier.tvFocusNavSignal(focus), background = {}) {
             TvOptionModal(title, Modifier.testTag("tv-download-modal")) {
                 Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
