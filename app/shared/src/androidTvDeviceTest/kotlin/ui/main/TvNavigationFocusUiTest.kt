@@ -85,7 +85,7 @@ class TvNavigationFocusUiTest {
         assertEquals(1, trace.events.count { it.endsWith("request b-0") })
 
         val popStart = mainClock.currentTime
-        runOnIdle { trace.stack.removeLast() }
+        runOnIdle { trace.stack.removeAt(trace.stack.lastIndex) }
         focusBefore("a-0", popStart + 400)
         mainClock.advanceTimeBy(1_200)
         onNodeWithTag("a-0").assertIsFocused()
@@ -112,7 +112,7 @@ class TvNavigationFocusUiTest {
         assertEquals(1, trace.events.count { it.endsWith("request b-0") })
 
         val popStart = mainClock.currentTime
-        runOnIdle { trace.stack.removeLast() }
+        runOnIdle { trace.stack.removeAt(trace.stack.lastIndex) }
         focusBefore("a-1", popStart + 400)
         runOnIdle { assertEquals(Lifecycle.State.STARTED, trace.lifecycles.getValue("a").currentState) }
         mainClock.advanceTimeBy(1_200)
@@ -149,7 +149,7 @@ class TvNavigationFocusUiTest {
         runOnIdle { trace.stack.add("b") }
         focusBefore("b-0", mainClock.currentTime + 400)
         val originalScope = trace.scopes.getValue("a")
-        runOnIdle { trace.stack.removeLast() }
+        runOnIdle { trace.stack.removeAt(trace.stack.lastIndex) }
         focusBefore("a-1", mainClock.currentTime + 400)
         runOnIdle { assertTrue(originalScope === trace.scopes.getValue("a")) }
         mainClock.advanceTimeBy(1_200)
@@ -180,7 +180,7 @@ class TvNavigationFocusUiTest {
         waitUntil { preparation.isCompleted }
         runOnIdle {
             trace.suspendInitialFocus.add("a")
-            trace.stack.removeLast()
+            trace.stack.removeAt(trace.stack.lastIndex)
         }
         mainClock.advanceTimeBy(64)
         runOnIdle {
@@ -207,7 +207,7 @@ class TvNavigationFocusUiTest {
         focusBefore("b-0", mainClock.currentTime + 400)
         runOnIdle {
             trace.suspendInitialFocus.add("a")
-            trace.stack.removeLast()
+            trace.stack.removeAt(trace.stack.lastIndex)
         }
         mainClock.advanceTimeBy(64)
         runOnIdle { trace.showDeferredAnchor = true }
@@ -230,7 +230,7 @@ class TvNavigationFocusUiTest {
         onNodeWithTag("a-page").assertDoesNotExist()
 
         val popStart = mainClock.currentTime
-        runOnIdle { trace.stack.removeLast() }
+        runOnIdle { trace.stack.removeAt(trace.stack.lastIndex) }
         focusBefore("a-1", popStart + 400)
         runOnIdle { assertEquals(Lifecycle.State.STARTED, trace.lifecycles.getValue("a").currentState) }
         onNodeWithTag("a-1").performKeyInput { pressKey(Key.DirectionUp) }
@@ -249,7 +249,7 @@ class TvNavigationFocusUiTest {
         mainClock.advanceTimeBy(1_200)
         runOnIdle {
             trace.hiddenEntries.add("a-1")
-            trace.stack.removeLast()
+            trace.stack.removeAt(trace.stack.lastIndex)
         }
         focusBefore("a-0", mainClock.currentTime + 400)
         runOnIdle { trace.hiddenEntries.clear() }
@@ -270,7 +270,7 @@ class TvNavigationFocusUiTest {
         runOnIdle {
             trace.hiddenEntries.add("a-1")
             trace.showDeferredAnchor = true
-            trace.stack.removeLast()
+            trace.stack.removeAt(trace.stack.lastIndex)
         }
         focusBefore("a-0", mainClock.currentTime + 400)
         down("a-0")
@@ -292,7 +292,7 @@ class TvNavigationFocusUiTest {
         runOnIdle {
             trace.hiddenEntries.add("a-1")
             trace.showSiblingControl = true
-            trace.stack.removeLast()
+            trace.stack.removeAt(trace.stack.lastIndex)
         }
         focusBefore("a-0", mainClock.currentTime + 400)
         runOnIdle { trace.scopes.getValue("a-sibling").request(TvFocusKey("sibling")) }
@@ -331,7 +331,7 @@ class TvNavigationFocusUiTest {
             modal.requesterOf(TvFocusKey("a-modal-1")).requestFocus()
         }
         onNodeWithTag("b-0").assertIsFocused()
-        runOnIdle { trace.stack.removeLast() }
+        runOnIdle { trace.stack.removeAt(trace.stack.lastIndex) }
         focusBefore("a-modal-0", mainClock.currentTime + 400)
         mainClock.advanceTimeBy(1_200)
         onNodeWithTag("a-modal-0").assertIsFocused()
