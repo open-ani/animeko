@@ -55,9 +55,11 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.withContext
 import me.him188.ani.app.data.models.comment.CommentReportTargetType
+import me.him188.ani.app.data.models.episode.EpisodeInfo
 import me.him188.ani.app.data.models.episode.displayName
 import me.him188.ani.app.data.models.episode.nameOrNameCn
 import me.him188.ani.app.data.models.episode.renderEpisodeEp
+import me.him188.ani.app.data.models.player.playProgressByEpisodeId
 import me.him188.ani.app.data.models.preference.VideoEnhancementDefaultMode
 import me.him188.ani.app.data.models.preference.VideoScaffoldConfig
 import me.him188.ani.app.data.models.preference.parseMpvOptions
@@ -65,7 +67,6 @@ import me.him188.ani.app.data.models.subject.SubjectInfo
 import me.him188.ani.app.data.models.subject.SubjectProgressInfo
 import me.him188.ani.app.data.models.subject.nameCnOrName
 import me.him188.ani.app.data.models.subject.nameOrNameCn
-import me.him188.ani.app.data.models.player.playProgressByEpisodeId
 import me.him188.ani.app.data.network.AniCommentReportService
 import me.him188.ani.app.data.network.AutoSkipRepository
 import me.him188.ani.app.data.repository.RepositoryServiceUnavailableException
@@ -211,7 +212,6 @@ import org.openani.mediamp.metadata.Chapter
 import kotlin.time.Duration.Companion.milliseconds
 import kotlin.time.Duration.Companion.minutes
 import kotlin.time.Duration.Companion.seconds
-import me.him188.ani.app.data.models.episode.EpisodeInfo
 
 
 private const val OP_ED_AUTO_SKIP_BASE_SAMPLE_INTERVAL_MILLIS = 1_000L
@@ -1259,6 +1259,12 @@ open class EpisodeViewModel(
 
     fun setDanmakuSourceShiftMillis(serviceId: DanmakuServiceId, shiftMillis: Long) {
         episodeDanmakuLoader.setShiftMillis(serviceId, shiftMillis)
+    }
+
+    fun startMatchingDanmakuForService(serviceId: DanmakuServiceId) {
+        val providerId = pageState.value?.danmakuStatistics?.fetchResults
+            ?.firstOrNull { it.serviceId == serviceId }?.providerId ?: return
+        startMatchingDanmaku(providerId)
     }
 
     fun startMatchingDanmaku(id: DanmakuProviderId) {

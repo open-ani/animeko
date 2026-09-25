@@ -1739,6 +1739,8 @@
     <string name="qr_login_retry">重試</string>
     <string name="qr_login_done">完成</string>
     <string name="qr_login_close">關閉</string>
+    <string name="subject_episode_danmaku_sources_title">來源與時間校準</string>
+    <string name="subject_episode_danmaku_sources_empty">暫無可用彈幕來源</string>
 </resources>
 
 <!--@formatter:on-->
