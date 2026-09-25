@@ -977,14 +977,15 @@ private class LocalHlsProxySession private constructor(
     ) {
         val shiftTicks: Deferred<Long?> by lazy {
             scope.async {
-                withTimeoutOrNull(PTS_PROBE_SAFETY_CAP) {
+                val shift = withTimeoutOrNull(PTS_PROBE_SAFETY_CAP) {
                     val groupPts = firstPtsTicks(groupFirstUri).await() ?: return@withTimeoutOrNull null
                     val referencePts = firstPtsTicks(referenceFirstUri).await() ?: return@withTimeoutOrNull null
                     TsTimestampRewriter.spliceShiftTicks(groupStartMillis, groupPts, referencePts)
-                        .takeIf { it != 0L }
-                }.also {
-                    if (it == null) logger.info { "HLS timestamps of the group starting at $groupFirstUri are left as is" }
                 }
+                if (shift == null) {
+                    logger.warn { "HLS first PTS unavailable; timestamps of the group starting at $groupFirstUri are left as is" }
+                }
+                shift?.takeIf { it != 0L }
             }
         }
     }
