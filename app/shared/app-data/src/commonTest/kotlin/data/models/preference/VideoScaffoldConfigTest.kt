@@ -17,6 +17,20 @@ import kotlin.time.Duration.Companion.seconds
 
 class VideoScaffoldConfigTest {
     @Test
+    fun `foldable hover mode defaults to enabled and survives serialization`() {
+        val defaultConfig = DataStoreJson.decodeFromString(VideoScaffoldConfig.serializer(), "{}")
+        assertEquals(true, defaultConfig.enableFoldableHoverMode)
+
+        val disabledConfig = VideoScaffoldConfig.Default.copy(enableFoldableHoverMode = false)
+        val decoded = DataStoreJson.decodeFromString(
+            VideoScaffoldConfig.serializer(),
+            DataStoreJson.encodeToString(VideoScaffoldConfig.serializer(), disabledConfig),
+        )
+
+        assertEquals(false, decoded.enableFoldableHoverMode)
+    }
+
+    @Test
     fun `missing video enhancement default uses performance`() {
         val config = DataStoreJson.decodeFromString(VideoScaffoldConfig.serializer(), "{}")
 

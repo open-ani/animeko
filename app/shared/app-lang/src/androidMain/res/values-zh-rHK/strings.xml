@@ -370,6 +370,8 @@
     <string name="settings_player_auto_mark_done">觀看 90% 後自動標記為看過</string>
     <string name="settings_player_hide_selector_on_select">選擇數據源後自動關閉彈窗</string>
     <string name="settings_player_auto_fullscreen_on_landscape">旋轉螢幕時自動全螢幕</string>
+    <string name="settings_player_foldable_hover_mode">摺疊螢幕懸停模式</string>
+    <string name="settings_player_foldable_hover_mode_description">裝置半摺疊時分開顯示影片和控制器</string>
     <string name="settings_player_auto_play_next">自動連播</string>
     <string name="settings_player_audio_time_stretch">高品質音訊變速（WSOLA）</string>
     <string name="settings_player_audio_time_stretch_description">變速時提供更好的音質；如遇爆音或音訊損壞可關閉</string>

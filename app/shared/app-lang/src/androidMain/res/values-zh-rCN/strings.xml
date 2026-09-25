@@ -390,6 +390,8 @@
     <string name="settings_player_auto_mark_done">观看 90% 后自动标记为看过</string>
     <string name="settings_player_hide_selector_on_select">选择数据源后自动关闭弹窗</string>
     <string name="settings_player_auto_fullscreen_on_landscape">旋转屏幕时自动全屏</string>
+    <string name="settings_player_foldable_hover_mode">折叠屏悬停模式</string>
+    <string name="settings_player_foldable_hover_mode_description">设备半折叠时分屏显示视频和控制器</string>
     <string name="settings_player_auto_play_next">自动连播</string>
     <string name="settings_player_audio_time_stretch">高质量音频变速（WSOLA）</string>
     <string name="settings_player_audio_time_stretch_description">变速时提供更好的音质；如遇爆音或音频损坏可关闭</string>

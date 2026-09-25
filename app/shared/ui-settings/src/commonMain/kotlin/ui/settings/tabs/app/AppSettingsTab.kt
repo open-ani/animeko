@@ -93,6 +93,8 @@ import me.him188.ani.app.ui.lang.settings_player_default_playback_speed_descript
 import me.him188.ani.app.ui.lang.settings_player_experimental_hls_segment_filter
 import me.him188.ani.app.ui.lang.settings_player_experimental_hls_segment_filter_description
 import me.him188.ani.app.ui.lang.settings_player_enable_regex_filter
+import me.him188.ani.app.ui.lang.settings_player_foldable_hover_mode
+import me.him188.ani.app.ui.lang.settings_player_foldable_hover_mode_description
 import me.him188.ani.app.ui.lang.settings_player_frame_preview
 import me.him188.ani.app.ui.lang.settings_player_frame_preview_description
 import me.him188.ani.app.ui.lang.settings_player_fullscreen_always_show
@@ -588,6 +590,17 @@ fun SettingsScope.PlayerGroup(
                     videoScaffoldConfig.update(config.copy(autoFullscreenOnLandscapeMode = it))
                 },
                 title = { Text(stringResource(Lang.settings_player_auto_fullscreen_on_landscape)) },
+            )
+        }
+        if (LocalPlatform.current.isAndroid()) {
+            HorizontalDividerItem()
+            SwitchItem(
+                checked = config.enableFoldableHoverMode,
+                onCheckedChange = {
+                    videoScaffoldConfig.update(config.copy(enableFoldableHoverMode = it))
+                },
+                title = { Text(stringResource(Lang.settings_player_foldable_hover_mode)) },
+                description = { Text(stringResource(Lang.settings_player_foldable_hover_mode_description)) },
             )
         }
         HorizontalDividerItem()
