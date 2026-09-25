@@ -18,8 +18,8 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.input.key.Key
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.test.assertIsFocused
-import androidx.compose.ui.test.hasAnyDescendant
 import androidx.compose.ui.test.hasAnyAncestor
+import androidx.compose.ui.test.hasAnyDescendant
 import androidx.compose.ui.test.hasTestTag
 import androidx.compose.ui.test.hasText
 import androidx.compose.ui.test.isFocused
@@ -28,19 +28,26 @@ import androidx.compose.ui.test.onLast
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performKeyInput
-import androidx.compose.ui.test.printToString
 import androidx.compose.ui.test.pressKey
+import androidx.compose.ui.test.printToString
 import androidx.navigation3.runtime.entryProvider
 import androidx.navigation3.runtime.rememberNavBackStack
 import androidx.navigation3.runtime.rememberSaveableStateHolderNavEntryDecorator
 import androidx.navigation3.ui.NavDisplay
 import kotlin.test.Test
 import kotlin.test.assertEquals
-import me.him188.ani.app.navigation.MainScreenPage
 import me.him188.ani.app.data.models.preference.ThemeSettings
+import me.him188.ani.app.domain.media.cache.engine.MediaStats
+import me.him188.ani.app.navigation.MainScreenPage
 import me.him188.ani.app.navigation.NavRoutes
+import me.him188.ani.app.ui.download.DownloadManagementUiState
+import me.him188.ani.app.ui.download.components.SubjectDownloadGroup
+import me.him188.ani.app.ui.download.components.createTestDownloadItem
+import me.him188.ani.app.ui.download.subject.SubjectDownloadListItem
+import me.him188.ani.app.ui.download.subject.SubjectDownloadsUiState
 import me.him188.ani.app.ui.framework.AniComposeUiTest
 import me.him188.ani.app.ui.framework.runAniComposeUiTest
+import me.him188.ani.tv.ui.download.TvDownloadManagementScreen
 import me.him188.ani.tv.ui.foundation.focus.TvFocusKey
 import me.him188.ani.tv.ui.foundation.focus.TvFocusMemory
 import me.him188.ani.tv.ui.foundation.focus.rememberTvFocusScope
@@ -50,6 +57,7 @@ import me.him188.ani.tv.ui.foundation.theme.TvApplicationTheme
 import me.him188.ani.tv.ui.foundation.widgets.TvOptionRow
 import me.him188.ani.tv.ui.settings.TvSettingsScreen
 import me.him188.ani.tv.ui.settings.TvSettingsUiState
+import me.him188.ani.utils.platform.annotations.TestOnly
 
 class TvSettingsNavigationUiTest {
     @Test
@@ -111,10 +119,10 @@ class TvSettingsNavigationUiTest {
             onAllNodes(hasTestTag("tv-main-navigation") and hasAnyDescendant(isFocused()))
                 .fetchSemanticsNodes().isNotEmpty()
         }
-        listOf("Search", "Explore", "Schedule", "Collection", "Settings", "Sign In").forEach {
+        listOf("Search", "Explore", "Schedule", "Collection", "Downloads", "Settings", "Sign In").forEach {
             onNode(hasText(it) and hasAnyAncestor(hasTestTag("tv-main-navigation"))).assertExists()
         }
-        repeat(2) { key(Key.DirectionDown) }
+        repeat(3) { key(Key.DirectionDown) }
         onNodeWithText("Settings").assertIsFocused()
         key(Key.Menu)
         awaitFocus("home-second-content")
@@ -124,7 +132,7 @@ class TvSettingsNavigationUiTest {
             onAllNodes(hasTestTag("tv-main-navigation") and hasAnyDescendant(isFocused()))
                 .fetchSemanticsNodes().isNotEmpty()
         }
-        repeat(2) { key(Key.DirectionDown) }
+        repeat(3) { key(Key.DirectionDown) }
         onNodeWithText("Settings").assertIsFocused()
         key(Key.DirectionCenter)
         awaitFocus("tv-settings-section-Appearance")
@@ -151,6 +159,43 @@ class TvSettingsNavigationUiTest {
         onNodeWithTag("tv-settings").assertDoesNotExist()
         key(Key.DirectionRight)
         awaitFocus("home-content")
+    }
+
+    @Test
+    @OptIn(TestOnly::class)
+    fun downloadDialogKeepsMenuFocusInsideAndReturnsToTheRail() = runAniComposeUiTest {
+        val item = createTestDownloadItem(1).copy(id = "one")
+        setContent {
+            TvApplicationTheme(ThemeSettings.Default.seedColor, languageTag = "en") {
+                var modal by remember { mutableStateOf(false) }
+                TvMainShell(
+                    TvMainUiState(), TvShellContent.Downloads, {}, {}, {}, contentModalOpen = modal,
+                ) { _, navigationRailInsets ->
+                    TvDownloadManagementScreen(
+                        DownloadManagementUiState(MediaStats.Zero, listOf(SubjectDownloadGroup(1, "Bocchi", listOf(item), null))),
+                        1, SubjectDownloadsUiState("Bocchi", listOf(SubjectDownloadListItem.Download(item)), listOf(item),
+                            episodesLoading = false, downloadsLoading = false), {}, onModalChanged = { modal = it },
+                        navigationRailInsets = navigationRailInsets,
+                    )
+                }
+            }
+        }
+        awaitFocus("tv-download-detail-back")
+        key(Key.DirectionDown)
+        awaitFocus("tv-download-download-one")
+        key(Key.DirectionCenter)
+        awaitFocus("tv-download-modal-cancel")
+        key(Key.Menu)
+        onNodeWithTag("tv-download-modal-cancel").assertIsFocused()
+        key(Key.Back)
+        awaitFocus("tv-download-download-one")
+        key(Key.Menu)
+        waitUntil(timeoutMillis = 5_000) {
+            mainClock.advanceTimeByFrame()
+            onAllNodes(hasText("Downloads") and isFocused()).fetchSemanticsNodes().isNotEmpty()
+        }
+        key(Key.Menu)
+        awaitFocus("tv-download-download-one")
     }
 
     private fun AniComposeUiTest.key(key: Key) {

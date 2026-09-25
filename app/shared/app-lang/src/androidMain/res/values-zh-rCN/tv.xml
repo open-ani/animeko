@@ -89,7 +89,7 @@
     <string name="media_selector_source_count">%1$d 个数据源</string>
     <string name="media_selector_query_again">重新查询</string>
     <string name="media_selector_querying">正在查询数据源…</string>
-    <string name="media_selector_no_online_sources">没有可用的在线数据源，请在设置中添加</string>
+    <string name="media_selector_no_sources">暂无可用数据源，请在设置中启用。</string>
     <string name="media_selector_no_lines">没有找到可用线路</string>
     <string name="media_selector_results_excluded">结果已被排除</string>
     <string name="media_selector_no_resources">没有找到资源</string>

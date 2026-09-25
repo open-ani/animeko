@@ -262,7 +262,7 @@ class TvNavigationRailUiTest {
     private fun AniComposeUiTest.railItem(label: String): SemanticsNodeInteraction =
         onNode(hasContentDescription(label) and hasAnyAncestor(hasTestTag("tv-main-navigation")))
 
-    private val railLabels = listOf("Search", "Explore", "Schedule", "Collection", "Settings", "Sign In")
+    private val railLabels = listOf("Search", "Explore", "Schedule", "Collection", "Downloads", "Settings", "Sign In")
 
     private fun AniComposeUiTest.assertItemWidths(expected: Float) {
         railLabels.forEach { label ->

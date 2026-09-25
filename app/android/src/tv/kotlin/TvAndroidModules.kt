@@ -10,19 +10,18 @@
 package me.him188.ani.android.tv
 
 import android.app.Activity
+import kotlin.system.exitProcess
+import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.runBlocking
-import me.him188.ani.app.domain.media.resolver.AndroidWebMediaResolver
-import me.him188.ani.app.domain.media.resolver.HttpStreamingMediaResolver
-import me.him188.ani.app.domain.media.resolver.LocalFileMediaResolver
-import me.him188.ani.app.domain.media.resolver.MediaResolver
-import me.him188.ani.app.domain.media.fetch.MediaSourceManager
+import me.him188.ani.android.getAndroidMediaModules
+import me.him188.ani.app.domain.media.cache.engine.AlwaysUseTorrentEngineAccess
+import me.him188.ani.app.domain.media.cache.engine.TorrentEngineAccess
 import me.him188.ani.app.domain.mediasource.web.AndroidOnnxImageCaptchaRecognizer
 import me.him188.ani.app.domain.mediasource.web.captcha.AndroidCaptchaBrowserFactory
 import me.him188.ani.app.domain.mediasource.web.captcha.CaptchaBrowserFactory
 import me.him188.ani.app.domain.mediasource.web.captcha.ImageCaptchaRecognizer
-import me.him188.ani.app.domain.mediasource.web.captcha.WebSessionManager
-import me.him188.ani.app.data.repository.user.SettingsRepository
+import me.him188.ani.app.domain.torrent.LocalAnitorrentEngineFactory
 import me.him188.ani.app.navigation.BrowserNavigator
 import me.him188.ani.app.navigation.NoopBrowserNavigator
 import me.him188.ani.app.platform.AppTerminator
@@ -30,37 +29,14 @@ import me.him188.ani.app.platform.ContextMP
 import me.him188.ani.app.platform.findActivity
 import org.koin.android.ext.koin.androidContext
 import org.koin.dsl.module
-import kotlin.system.exitProcess
 
-/**
- * TV flavor 专属平台绑定.
- *
- * 按 §1.2 裁剪, torrent/缓存链路与 UpdateInstaller (D8 暂缓) 不注册.
- * Captcha 浏览器/识别器**需要**注册 —— 它们是 Web 数据源解析链 (WebSessionManager) 的依赖,
- * 服务于播放取源, 而非评论发送 (评论发送的 TurnstileState 才是裁剪对象).
- */
-fun getTvAndroidModules() = module {
-    // M2: 换成二维码降级实现 (弹对话框展示 URL 二维码, §6.1)
+/** TV 平台绑定: 下载引擎与播放器同进程, Web 验证由共享解析链处理. */
+fun getTvAndroidModules(coroutineScope: CoroutineScope) = module {
     single<BrowserNavigator> { NoopBrowserNavigator }
-
-    // Web 数据源解析链 (取源播放必需, §8.1)
     single<CaptchaBrowserFactory> { AndroidCaptchaBrowserFactory(androidContext()) }
     single<ImageCaptchaRecognizer> { AndroidOnnxImageCaptchaRecognizer() }
-
-    // TV 版 MediaResolver: 仅在线链路 —— 无 torrent / offline 解析 (§1.2 裁剪)
-    factory<MediaResolver> {
-        MediaResolver.from(
-            listOf<MediaResolver>(LocalFileMediaResolver())
-                .plus(HttpStreamingMediaResolver())
-                .plus(
-                    AndroidWebMediaResolver(
-                        get<MediaSourceManager>().webVideoMatcherLoader,
-                        get<SettingsRepository>(),
-                        get<WebSessionManager>(),
-                    ),
-                ),
-        )
-    }
+    single<TorrentEngineAccess> { AlwaysUseTorrentEngineAccess }
+    includes(getAndroidMediaModules(coroutineScope) { LocalAnitorrentEngineFactory })
 
     single<AppTerminator> {
         object : AppTerminator {

@@ -11,7 +11,7 @@
 
 <!-- tv flavor 增量 manifest, 与 src/main 交集做加法合并.
      模块 namespace 为 me.him188.ani, TV 源集包为 me.him188.ani.android.tv, 因此类名写全限定.
-     合并结果不含任何 <service> (BT 已裁剪, 单进程) 与 oauth callback (网页 OAuth 已裁剪). -->
+     BT 引擎在应用进程内运行, 不声明 torrent service. -->
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
 
     <!-- TV 形态声明 -->

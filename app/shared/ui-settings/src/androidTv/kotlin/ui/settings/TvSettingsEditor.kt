@@ -125,7 +125,9 @@ internal fun TvSettingsEditor(
                         Modifier.fillMaxWidth().tvFocusAnchor(focus, editorKey("entry"))
                             .tvFocusHotkey(focus, Key.DirectionDown to editorKey(if (valid) "save" else "cancel"))
                             .testTag("tv-settings-input"),
-                        isError = !valid, singleLine = true,
+                        isError = !valid, singleLine = !dialog.multiline,
+                        minLines = if (dialog.multiline) 3 else 1,
+                        maxLines = if (dialog.multiline) 5 else 1,
                         keyboardOptions = KeyboardOptions(imeAction = ImeAction.Done),
                         keyboardActions = KeyboardActions(onDone = { focus.request(editorKey(if (valid) "save" else "cancel")) }),
                     )

@@ -27,6 +27,7 @@ fun TvMainRoute(
     onOpenSettings: () -> Unit,
     modifier: Modifier = Modifier,
     focusMemory: TvFocusMemory? = null,
+    contentModalOpen: Boolean = false,
     pageContent: @Composable (TvShellContent, navigationRailInsets: PaddingValues) -> Unit,
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
@@ -42,6 +43,7 @@ fun TvMainRoute(
         onLogout = { viewModel.onIntent(TvMainIntent.Logout) },
         modifier = modifier,
         focusMemory = focusMemory,
+        contentModalOpen = contentModalOpen,
         pageContent = pageContent,
     )
 }

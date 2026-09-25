@@ -168,6 +168,7 @@ fun TvSettingsScreen(
             }
             TvSettingsSection.Sources -> content.sources { openExtra(TvSettingsExtra.Subscriptions) }
             TvSettingsSection.Watching -> content.watching { openExtra(TvSettingsExtra.WatchingAdvanced) }
+            TvSettingsSection.BitTorrent -> content.bitTorrent()
             TvSettingsSection.About -> content.about(aboutPage, ::openPage)
         }
     }
@@ -233,6 +234,7 @@ fun TvSettingsScreen(
                                 TvSettingsSection.Player -> Icons.Outlined.SmartDisplay
                                 TvSettingsSection.Sources -> Icons.Outlined.Storage
                                 TvSettingsSection.Watching -> Icons.Outlined.Subscriptions
+                                TvSettingsSection.BitTorrent -> Icons.Outlined.Storage
                                 TvSettingsSection.About -> Icons.Outlined.Info
                             },
                             selected = section == entry,

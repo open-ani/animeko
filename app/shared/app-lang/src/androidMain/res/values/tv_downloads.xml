@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="tv_downloads_add">Add downloads</string>
+    <string name="tv_downloads_empty">No downloads yet. Add an anime to choose episodes and a source.</string>
+    <string name="tv_downloads_hint">Choose an anime, then press right to manage its episodes.</string>
+    <string name="tv_downloads_summary">%1$d downloads · %2$d completed</string>
+    <string name="tv_downloads_running_hint">Downloads continue while Animeko is running.</string>
+    <string name="tv_downloads_preferred_source">Preferred source type</string>
+    <string name="tv_downloads_delete_confirm">The selected downloads and their files will be deleted.</string>
+    <string name="tv_downloads_busy">Working…</string>
+    <string name="tv_downloads_choose_source">Choose a download source</string>
+    <string name="tv_settings_bittorrent">BitTorrent</string>
+</resources>

@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="tv_downloads_add">添加下载</string>
+    <string name="tv_downloads_empty">暂无下载，添加番剧后选择剧集与数据源。</string>
+    <string name="tv_downloads_hint">选择番剧，按右键进入剧集列表。</string>
+    <string name="tv_downloads_summary">%1$d 个下载 · %2$d 个已完成</string>
+    <string name="tv_downloads_running_hint">保持 Animeko 运行以继续下载。</string>
+    <string name="tv_downloads_preferred_source">优先选择的资源类型</string>
+    <string name="tv_downloads_delete_confirm">将删除选中的下载记录及其文件。</string>
+    <string name="tv_downloads_busy">处理中…</string>
+    <string name="tv_downloads_choose_source">选择下载资源</string>
+    <string name="tv_settings_bittorrent">BitTorrent</string>
+</resources>
