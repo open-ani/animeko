@@ -53,17 +53,6 @@ internal object TsPacketReader {
     }
 
     /**
-     * 读出 [base] 处 TS 包里 PES 头最早的时间戳 (有 DTS 用 DTS), 没有则返回 null.
-     */
-    fun earliestTimestamp(b: ByteArray, base: Int): Long? {
-        val pes = pesHeaderOffset(b, base) ?: return null
-        val flags = (b[pes + 7].toInt() ushr 6) and 0x3
-        if (flags == 0x3 && pes + 19 <= base + PACKET_SIZE) return readTimestamp(b, pes + 14)
-        if (flags and 0x2 != 0 && pes + 14 <= base + PACKET_SIZE) return readTimestamp(b, pes + 9)
-        return null
-    }
-
-    /**
      * [base] 处 TS 包里 PES 头 (`00 00 01` 起) 的下标, 不是带可选头部的 PES 包则返回 null.
      */
     fun pesHeaderOffset(b: ByteArray, base: Int): Int? {
@@ -102,16 +91,16 @@ internal object TsPacketReader {
 }
 
 /**
- * 把一个 MPEG-TS 分片内的所有时间戳 (PES 的 PTS/DTS, adaptation field 的 PCR/OPCR) 整体平移,
- * 使分片最早的时间戳落在 [targetStartMillis], 即播放列表按 `#EXTINF` 累加出来的时间轴上.
+ * 把一个 MPEG-TS 分片内的所有时间戳 (PES 的 PTS/DTS, adaptation field 的 PCR/OPCR) 平移 [shiftTicks].
+ * 平移量由调用方按分片所在的 discontinuity 组算出 (见 [spliceShiftTicks]), 同组分片共用一个.
  *
  * 采集站在正片里插的广告分片是独立转码的, PTS 从 0 附近开始. libavformat 的 HLS 解复用器不按
  * `#EXT-X-DISCONTINUITY` 重映射分片时间戳, mpv 的 `time-pos` 直接取解复用器的 PTS, 于是桌面端播到广告时
- * 进度条会跳到离谱的位置. ExoPlayer 不受影响 (它对每个 discontinuity 序号建独立 TimestampAdjuster).
+ * 进度条会跳到离谱的位置. ExoPlayer 和 AVPlayer 自己按 discontinuity 重映射, 不需要本类.
  *
  * 一个分片一个实例, 用法是边收边转发:
  * ```
- * val rewriter = TsTimestampRewriter(startMillis)
+ * val rewriter = TsTimestampRewriter(shiftTicks)
  * while (true) {
  *     val read = channel.readAvailable(buffer, 0, buffer.size)
  *     if (read < 0) break
@@ -125,45 +114,28 @@ internal object TsPacketReader {
  * 只认 TS. 输入不是 TS (fMP4 分片、AES-128 密文) 时退化为原样转发, 但调用方仍应避免对加密分片使用本类:
  * 密文有极小概率通过同步字节探测, 那样会破坏分片.
  *
- * @param targetStartMillis 该分片在播放列表中的起始时间 (毫秒).
+ * @param shiftTicks 平移量 (90kHz 刻度), 按 2^33 取模.
  */
-internal class TsTimestampRewriter(
-    targetStartMillis: Long,
-) {
-    private val targetTicks = (targetStartMillis * TICKS_PER_MILLI) and TIMESTAMP_MASK
+internal class TsTimestampRewriter(shiftTicks: Long) {
+    private val shift = shiftTicks and TIMESTAMP_MASK
 
     /**
-     * 尚未输出的字节: 探测包长所需的前缀, 以及定锚期间暂存的完整包 (至多 [ANCHOR_LOOKAHEAD] 个包, 约 24KB).
-     * 平移量一旦确定就立即排空, 只留下不足一个包的尾巴, 所以内存占用是常数级, 不会缓存整个分片.
+     * 尚未输出的字节: 探测包长所需的前缀, 以及跨调用的不足一个包的尾巴. 包长一旦确定, 完整的包立即改写输出,
+     * 所以内存占用是常数级, 不会缓存整个分片.
      */
     private var held = ByteArray(INITIAL_HELD_CAPACITY)
     private var heldSize = 0
 
-    /** 第一个同步字节在 [held] 中的下标. 之前的字节是源站给的垃圾前缀, 原样转发. */
+    /** 下一个包的同步字节在 [held] 中的下标. 首个同步字节之前是源站给的垃圾前缀, 原样转发. */
     private var syncStart = -1
 
     /** 相邻两个同步字节的间距: 188 (标准), 192 (M2TS, 每包前 4 字节时间戳) 或 204 (带 RS 校验). */
     private var stride = 0
 
-    /** 平移量, 对 2^33 取模. null 表示锚点还没定下来. */
-    private var delta: Long? = null
-
-    /** 下一个待扫描的包在 [held] 中的下标. */
-    private var scanCursor = -1
-
-    /** 第一个看到的时间戳, 作为处理回绕的参考点. */
-    private var firstTimestamp = -1L
-
-    /** 已看到的最小时间戳相对 [firstTimestamp] 的有符号偏移. */
-    private var minRelative = 0L
-
-    /** 定锚前还要多看几个包. */
-    private var remainingLookahead = ANCHOR_LOOKAHEAD
-
     private var passthrough = false
 
     /**
-     * 吸收 [buffer] 的 [offset] 起 [length] 字节, 把其中能确定的部分改写后写入 [sink].
+     * 吸收 [buffer] 的 [offset] 起 [length] 字节, 把其中完整的包改写后写入 [sink].
      *
      * 允许任意切分, 包括切在 TS 包中间: 跨调用的半个包会留到下次.
      */
@@ -180,27 +152,16 @@ internal class TsTimestampRewriter(
             if (heldSize >= DETECT_LIMIT) giveUp(sink)
             return
         }
-        if (delta == null) scanForAnchor(atEnd = false)
-        if (delta == null) {
-            // 整个分片都没有 PES 头是不正常的, 与其无上限地攒下去, 不如原样转发: 时间戳不对总好过播不出来
-            if (heldSize >= HOLD_LIMIT) giveUp(sink)
-            return
-        }
         emitCompletePackets(sink)
     }
 
     /**
-     * 分片读完后调用, 输出剩余字节 (不足一个包的尾巴, 或始终没能确定平移量时的全部暂存).
+     * 分片读完后调用, 输出剩余字节 (不足一个包的尾巴, 或始终没能认出包长时的全部暂存).
      */
     suspend fun finish(sink: TsByteSink) {
-        if (passthrough || heldSize == 0) {
-            flushHeld(sink)
-            return
-        }
-        if (stride == 0) detectLayout(atEnd = true)
-        if (stride != 0) {
-            if (delta == null) scanForAnchor(atEnd = true)
-            if (delta != null) emitCompletePackets(sink)
+        if (!passthrough && heldSize > 0) {
+            if (stride == 0) detectLayout(atEnd = true)
+            if (stride != 0) emitCompletePackets(sink)
         }
         flushHeld(sink)
     }
@@ -260,42 +221,7 @@ internal class TsTimestampRewriter(
         return false
     }
 
-    /**
-     * 扫描已暂存的完整包确定锚点. 此阶段不修改也不输出任何字节: 平移量未知时 PCR 也没法改,
-     * 而 PCR 往往出现在第一个 PES 之前.
-     *
-     * 锚点取分片最靠前的时间戳, 而不是文件里第一个出现的时间戳. ffmpeg 输出的 TS 里视频 PES 通常排在音频前面,
-     * 但音频的 PTS 更早 (实测夹具视频 1.528s, 音频 1.400s); 按第一个出现的来定锚, 平移后音频会落到
-     * [targetStartMillis] 之前, 对首个分片就是负值, 取模后变成 2^33 附近的天文数字 —— 正是本类要消除的症状.
-     * 因此要多看 [ANCHOR_LOOKAHEAD] 个包取最小值, 并且带 DTS 时用 DTS (DTS 不晚于 PTS), 以保证输出不早于目标起点.
-     */
-    private fun scanForAnchor(atEnd: Boolean) {
-        if (scanCursor < 0) scanCursor = syncStart
-        var packet = scanCursor
-        while (packet + PACKET_SIZE <= heldSize) {
-            val timestamp = TsPacketReader.earliestTimestamp(held, packet)
-            if (timestamp != null) {
-                if (firstTimestamp < 0) {
-                    firstTimestamp = timestamp
-                } else {
-                    // 相对首个时间戳做有符号比较, 这样分片内部发生回绕时也能取到真正最早的那个
-                    val diff = (timestamp - firstTimestamp) and TIMESTAMP_MASK
-                    val signed = if (diff > TIMESTAMP_HALF) diff - (TIMESTAMP_MASK + 1) else diff
-                    if (signed < minRelative) minRelative = signed
-                }
-            }
-            packet += stride
-            if (firstTimestamp >= 0 && --remainingLookahead <= 0) break
-        }
-        scanCursor = packet
-        if (firstTimestamp >= 0 && (remainingLookahead <= 0 || atEnd)) {
-            val anchor = (firstTimestamp + minRelative) and TIMESTAMP_MASK
-            delta = (targetTicks - anchor) and TIMESTAMP_MASK
-        }
-    }
-
     private suspend fun emitCompletePackets(sink: TsByteSink) {
-        val shift = delta ?: return
         var packet = syncStart
         var processed = false
         while (packet + PACKET_SIZE <= heldSize) {
@@ -313,7 +239,7 @@ internal class TsTimestampRewriter(
         syncStart = packet - end
     }
 
-    private companion object {
+    companion object {
         private const val PACKET_SIZE = TsPacketReader.PACKET_SIZE
         private const val SYNC_BYTE = TsPacketReader.SYNC_BYTE
         private val STRIDES = intArrayOf(188, 192, 204)
@@ -322,21 +248,35 @@ internal class TsTimestampRewriter(
         private const val TIMESTAMP_MASK = 0x1_FFFF_FFFFL // 33 位, 90kHz 下约 26.5 小时回绕
         private const val TIMESTAMP_HALF = 0x0_FFFF_FFFFL
 
-        /** 定锚前额外观察的包数. 要覆盖音视频交织的深度, 又不能大到把整个分片攒进内存. */
-        private const val ANCHOR_LOOKAHEAD = 128
-
         private const val INITIAL_HELD_CAPACITY = 4 * 1024
         private const val MAX_SYNC_SEARCH = 1024
         private const val CONFIRMATIONS = 3
         private const val DETECT_LIMIT = MAX_SYNC_SEARCH + CONFIRMATIONS * 204
 
-        /** 暂存上限. 正常 TS 的第一个 PES 头在头几个包里, 攒到这个量还没找到就说明输入不是能改写的形状. */
-        private const val HOLD_LIMIT = 256 * 1024
+        /**
+         * 把一个 discontinuity 组接到播放列表首组时间轴上的平移量: 平移后, 组首片的首个视频 PTS 与首组首片的
+         * 首个视频 PTS 之差, 等于两组在播放列表中的起点之差.
+         *
+         * 首组不平移, 其余组都对齐到它. 按组而不是按分片定平移量: 组内各片的时间戳本来就首尾相接,
+         * 逐片对齐到 `#EXTINF` 累加出的起点反而会在每个片界引入 `#EXTINF` 舍入误差和音视频先后造成的跳变
+         * (测试夹具的首片音频比视频早 128 毫秒, 逐片对齐后第二片起整体回退 128 毫秒).
+         * 以视频 PTS 为基准: 广告过滤已经探测过各组首片的这个值, 转发分片时不必再等锚点.
+         *
+         * 广告组平移后仍可能有音频早于前一段正片的末尾 (音频先于视频的那几十毫秒), 只发生在拼接点上.
+         * 首组之后的组起点至少晚于首组一个组的时长, 平移后不会变成负值.
+         *
+         * @param groupStartMillis 组在播放列表时间轴上的起点, 相对首组.
+         */
+        fun spliceShiftTicks(groupStartMillis: Long, groupFirstPtsTicks: Long, referenceFirstPtsTicks: Long): Long {
+            val elapsed = (groupFirstPtsTicks - referenceFirstPtsTicks) and TIMESTAMP_MASK
+            val signedElapsed = if (elapsed > TIMESTAMP_HALF) elapsed - (TIMESTAMP_MASK + 1) else elapsed
+            return (groupStartMillis * TICKS_PER_MILLI - signedElapsed) and TIMESTAMP_MASK
+        }
 
         /**
          * 把 [base] 处 TS 包里的所有时间戳加上 [shift].
          */
-        fun shiftPacket(b: ByteArray, base: Int, shift: Long) {
+        private fun shiftPacket(b: ByteArray, base: Int, shift: Long) {
             if (b[base] != SYNC_BYTE) return // 失同步, 不猜
             val adaptationFieldControl = (b[base + 3].toInt() ushr 4) and 0x3
             if (adaptationFieldControl and 0x2 != 0) {

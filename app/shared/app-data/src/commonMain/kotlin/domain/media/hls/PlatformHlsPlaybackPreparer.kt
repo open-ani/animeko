@@ -14,17 +14,18 @@ import io.ktor.client.plugins.expectSuccess
 import io.ktor.client.request.get
 import io.ktor.client.request.header
 import io.ktor.client.request.prepareGet
+import io.ktor.client.statement.HttpResponse
 import io.ktor.client.statement.bodyAsBytes
 import io.ktor.client.statement.bodyAsChannel
 import io.ktor.client.statement.bodyAsText
 import io.ktor.http.HttpHeaders
+import io.ktor.http.Url
 import io.ktor.http.contentLength
 import io.ktor.http.contentType
 import io.ktor.utils.io.readAvailable
 import kotlinx.atomicfu.atomic
 import kotlinx.atomicfu.locks.SynchronizedObject
 import kotlinx.atomicfu.locks.synchronized
-import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.CoroutineName
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.CoroutineStart
@@ -56,6 +57,7 @@ import me.him188.ani.utils.httpdownloader.m3u.M3u8Playlist
 import me.him188.ani.utils.ktor.ScopedHttpClient
 import me.him188.ani.utils.ktor.UnsafeScopedHttpClientApi
 import me.him188.ani.utils.ktor.engineMaxRequestsPerHost
+import me.him188.ani.utils.ktor.sharesConnectionsAcrossRequests
 import me.him188.ani.utils.logging.info
 import me.him188.ani.utils.logging.warn
 import org.openani.mediamp.source.UriMediaData
@@ -68,18 +70,22 @@ import kotlin.time.TimeSource
  * 在本机 127.0.0.1 上起一个极简 HTTP 服务代理 HLS 播放:
  *
  * - [HlsPlaybackOptions.filterSegments]: 改写播放列表, 移除疑似广告分片 ([HlsManifestFilter]).
- *   可能含广告的播放列表同时代理分片: 转发时把时间戳平移到播放列表时间轴, 并在探测广告期间预先下载起播要用的分片 (首片, 续播时为续播位置处的分片).
+ *   可能含广告的播放列表同时代理分片, 并在探测广告期间预先下载起播要用的分片 (首片, 续播时为续播位置处的分片).
  * - [HlsPlaybackOptions.proxySegments]: 把媒体分片的地址也改写到本地, 由本地转发. 这样才能在播放器之外
  *   提前下载指定时间范围的分片 ([HlsPlaybackProxySession.setPrefetchRange]), 供自动跳过 OP/ED 后立即续播.
  *
  * 分片代理只对点播 (含 `#EXT-X-ENDLIST`) 且不使用 `#EXT-X-BYTERANGE` 的播放列表启用.
  *
  * 逻辑与平台无关, 只有 socket 部分由各平台的 [HlsProxyServer] 提供.
+ *
+ * @param alignTimestamps 转发拼接流的分片时, 把各 discontinuity 组的时间戳接到首组的时间轴上 ([TsTimestampRewriter]).
+ * 只有 mpv 需要: libavformat 不按 discontinuity 重映射时间戳. ExoPlayer 和 AVPlayer 自己重映射, 改写对它们只是多余的风险.
  */
 class PlatformHlsPlaybackPreparer internal constructor(
     private val httpClientProvider: HttpClientProvider,
     private val segmentCacheMaxBytes: Long,
     private val serverFactory: HlsProxyServerFactory,
+    private val alignTimestamps: Boolean = false,
 ) : HlsPlaybackPreparer {
     /**
      * @param segmentCacheMaxBytes 预缓存分片的内存缓存上限. 正在被预缓存请求引用的分片不会被淘汰.
@@ -87,7 +93,8 @@ class PlatformHlsPlaybackPreparer internal constructor(
     constructor(
         httpClientProvider: HttpClientProvider,
         segmentCacheMaxBytes: Long = DEFAULT_SEGMENT_CACHE_MAX_BYTES,
-    ) : this(httpClientProvider, segmentCacheMaxBytes, PlatformHlsProxyServerFactory)
+        alignTimestamps: Boolean = false,
+    ) : this(httpClientProvider, segmentCacheMaxBytes, PlatformHlsProxyServerFactory, alignTimestamps)
 
     override suspend fun prepare(
         data: UriMediaData,
@@ -112,6 +119,7 @@ class PlatformHlsPlaybackPreparer internal constructor(
                 val response = sessionClient.client.get(data.uri) {
                     data.headers.forEach { (name, value) -> header(name, value) }
                 }
+                sessionClient.noteResponse(response)
                 baseUri = response.call.request.url.toString()
                 response.bodyAsText()
             } catch (e: CancellationException) {
@@ -127,6 +135,7 @@ class PlatformHlsPlaybackPreparer internal constructor(
                     headers = data.headers,
                     client = sessionClient,
                     options = options,
+                    alignTimestamps = alignTimestamps,
                     startPositionHintMillis = startPositionHintMillis,
                     segmentCacheMaxBytes = segmentCacheMaxBytes,
                     serverFactory = serverFactory,
@@ -175,6 +184,19 @@ private class SessionHttpClient(private val scopedClient: ScopedHttpClient) : Au
 
     val client: HttpClient get() = ticket.client
 
+    private val hostsLock = SynchronizedObject()
+    private val hostsSharingConnections = HashSet<String>()
+
+    /** 记下响应所在的 host 是否共用连接. 会话对每个 host 的首批请求 (播放列表、探测) 都经过这里. */
+    fun noteResponse(response: HttpResponse) {
+        if (!response.sharesConnectionsAcrossRequests()) return
+        val host = response.call.request.url.host
+        synchronized(hostsLock) { hostsSharingConnections += host }
+    }
+
+    /** 已有响应表明对 [host] 的并发请求共用连接, 见 [sharesConnectionsAcrossRequests]. */
+    fun sharesConnections(host: String): Boolean = synchronized(hostsLock) { host in hostsSharingConnections }
+
     /** 可重复调用, 只归还一次. */
     override fun close() {
         if (released.compareAndSet(false, true)) {
@@ -189,9 +211,18 @@ private class SessionHttpClient(private val scopedClient: ScopedHttpClient) : Au
  *
  * 实测的几个 CDN 都走 HTTP/2, 会话 client 的探测复用同一条连接, 每一轮的耗时与这一轮发出多少个请求基本无关:
  * 一集 63 组、32 路时, 首批 32 个 1.6 秒同时返回, 其余 31 个排到第二轮, 全部完成用了 5.3 秒.
- * 常见的一集在 70 组以内, 取 64 让它们一轮发完. 不走 HTTP/2 的源站会因此同时建立这么多条连接, 所以不再往上加.
+ * 常见的一集在 70 组以内, 取 64 让它们一轮发完.
+ *
+ * 只在请求共用连接时才放开到这么多 (见 [SessionHttpClient.sharesConnections]), 否则按
+ * [PTS_PROBE_CONCURRENCY_SEPARATE_CONNECTIONS] 走.
  */
 private const val PTS_PROBE_CONCURRENCY = 64
+
+/**
+ * 不知道源站是否共用连接时的探测并发数. HTTP/1.1 下每个并发请求各开一条连接, 64 路就是 64 次 TLS 握手,
+ * 源站可能因此限流; 8 条与浏览器对单个 host 的连接数相当.
+ */
+private const val PTS_PROBE_CONCURRENCY_SEPARATE_CONNECTIONS = 8
 
 /**
  * 探测期间预缓存的开头分片数. 不探测时播放器拿到播放列表就开始下载, mpv (libavformat) 打开时先读前两片分析流信息,
@@ -214,6 +245,8 @@ private class LocalHlsProxySession private constructor(
     /** 会话发出的所有请求都用它, 关闭会话时归还. 见 [SessionHttpClient]. */
     private val sessionClient: SessionHttpClient,
     private val options: HlsPlaybackOptions,
+    /** 见 [PlatformHlsPlaybackPreparer] 与 [GroupAlignment]. */
+    private val alignTimestamps: Boolean,
     /** 见 [HlsPlaybackPreparer.prepare] 与 [StartPositionPrefetch]. */
     private val startPositionHintMillis: Long?,
     segmentCacheMaxBytes: Long,
@@ -248,6 +281,18 @@ private class LocalHlsProxySession private constructor(
      */
     private val localPlaylistsLock = SynchronizedObject()
     private val localPlaylists = HashMap<String, Deferred<LocalPlaylist>>()
+
+    /**
+     * 远端分片地址 -> 首个视频 PTS (90kHz 刻度), 取不到为 `null`. 广告过滤探测各组首片时填入,
+     * 对齐时间戳时复用 ([GroupAlignment]), 缺的 (不过滤广告, 或这一组没探测完) 按需补探.
+     * 每个地址只探测一次, 失败的结果也保留. 探测在 [scope] 中进行, 等待方取消不会取消它.
+     */
+    private val firstPtsLock = SynchronizedObject()
+    private val firstPtsByUri = HashMap<String, Deferred<Long?>>()
+
+    private fun firstPtsTicks(uri: String): Deferred<Long?> = synchronized(firstPtsLock) {
+        firstPtsByUri.getOrPut(uri) { scope.async { probeFirstPtsTicks(uri) } }
+    }
 
     val playlistUri: String = "http://127.0.0.1:${server.port}/playlist.m3u8"
 
@@ -321,10 +366,7 @@ private class LocalHlsProxySession private constructor(
                 if (prefetchStopRequested) break
                 if (segmentCache.isComplete(segment.remoteUri)) continue
                 val success = try {
-                    // 缓存里存改写后的字节: 命中时走 serveBytes, 不经过转发循环, 没有第二次改写的机会
-                    segmentCache.getOrDownload(segment.remoteUri) {
-                        rewriteWhole(segment, downloadSegment(segment.remoteUri))
-                    }
+                    segmentCache.getOrDownload(segment.remoteUri) { downloadSegment(segment.remoteUri) }
                     true
                 } catch (e: CancellationException) {
                     throw e
@@ -344,10 +386,10 @@ private class LocalHlsProxySession private constructor(
     }
 
     /**
-     * 把整片的时间戳平移到播放列表时间轴. 改写严格等长, 所以之后按 `Range` 切片仍然正确.
+     * 把整片的时间戳平移 [shiftTicks], 返回新数组, 不改动 [bytes] (它可能是缓存里的). 改写严格等长, 所以之后按 `Range` 切片仍然正确.
      */
-    private suspend fun rewriteWhole(segment: ProxiedSegment, bytes: ByteArray): ByteArray {
-        if (!segment.rewriteTimestamps) return bytes
+    private suspend fun rewriteWhole(segment: ProxiedSegment, bytes: ByteArray, shiftTicks: Long?): ByteArray {
+        if (shiftTicks == null) return bytes
         val out = ByteArray(bytes.size)
         var written = 0
         val sink = TsByteSink { buffer, offset, length ->
@@ -359,7 +401,7 @@ private class LocalHlsProxySession private constructor(
             written += length
         }
         return try {
-            val rewriter = TsTimestampRewriter(segment.timeRange.startMillis)
+            val rewriter = TsTimestampRewriter(shiftTicks)
             rewriter.rewrite(bytes, 0, bytes.size, sink)
             rewriter.finish(sink)
             if (written == out.size) out else bytes
@@ -442,21 +484,26 @@ private class LocalHlsProxySession private constructor(
         val response = client.get(uri) {
             this@LocalHlsProxySession.headers.forEach { (name, value) -> header(name, value) }
         }
+        sessionClient.noteResponse(response)
         return RemotePlaylist(response.bodyAsText(), response.call.request.url.toString())
     }
 
     /**
      * 提供分片: 已预缓存的直接从内存返回, 否则从远端流式转发 (不缓存).
+     *
+     * 缓存里是源站的原始字节, 时间戳在发出时按请求的这个分片改写. 同一个地址可能在播放列表里出现多次
+     * (同一段广告插在几处), 各处的平移量不同, 缓存改写后的字节就会把一处的时间轴带到另一处.
      */
     private suspend fun serveSegment(segment: ProxiedSegment, request: HlsProxyRequest, output: HlsProxyResponseSink) {
+        val shiftTicks = segment.alignment?.shiftTicks?.await()
         val cached = segmentCache.getCompleted(segment.remoteUri) ?: segmentCache.awaitInFlight(segment.remoteUri)
         if (cached != null) {
-            serveBytes(cached, request.headers["range"], output)
+            serveBytes(rewriteWhole(segment, cached, shiftTicks), request.headers["range"], output)
             return
         }
-        // Range 请求拿到的不是分片开头, 流式改写定不了锚. 取整片改写后再切片, 改写等长所以偏移不变.
-        if (segment.rewriteTimestamps && request.headers["range"] != null) {
-            val whole = rewriteWhole(segment, downloadSegment(segment.remoteUri))
+        // 改写要从 TS 包边界开始扫描, Range 请求拿到的不一定对齐包边界. 取整片改写后再切片, 改写等长所以偏移不变.
+        if (shiftTicks != null && request.headers["range"] != null) {
+            val whole = rewriteWhole(segment, downloadSegment(segment.remoteUri), shiftTicks)
             serveBytes(whole, request.headers["range"], output)
             return
         }
@@ -488,8 +535,8 @@ private class LocalHlsProxySession private constructor(
                 val channel = response.bodyAsChannel()
                 val buffer = ByteArray(64 * 1024)
                 // 改写严格等长, Content-Length 不受影响
-                val rewriter = if (segment.rewriteTimestamps && response.status.value in 200..299) {
-                    TsTimestampRewriter(segment.timeRange.startMillis)
+                val rewriter = if (shiftTicks != null && response.status.value in 200..299) {
+                    TsTimestampRewriter(shiftTicks)
                 } else {
                     null
                 }
@@ -588,27 +635,20 @@ private class LocalHlsProxySession private constructor(
             return LocalPlaylist(rewriteMediaPlaylist(content, baseUri, options.proxySegments).content, isVod)
         }
         val mayContainAds = !analysis.isConclusive
-        // 播放列表在过滤后才确定, 预缓存的分片按它改写时间戳, 所以要等到这里给出结果. 失败时给空列表.
-        val proxiedSegments = CompletableDeferred<List<ProxiedSegment>>()
-        try {
-            val proxyable = if (mayContainAds) parseProxyableMediaPlaylist(content, baseUri) else null
-            val startPrefetch = proxyable?.let { startPositionPrefetchOrNull(analysis, baseUri, proxiedSegments) }
-            // 续播时也要开头的分片: 播放器打开时先读它们分析流信息, 续播的跳转在开始播放之后才执行
-            proxyable?.segments?.take(STARTUP_PREFETCH_SEGMENTS)?.forEach { segment ->
-                prefetchSegment(resolveHlsUri(baseUri, segment.uri), proxiedSegments)
-            }
-            val filterResult = HlsManifestFilter.filter(analysis) { targets -> probeFirstPts(targets, startPrefetch) }
-            logger.info {
-                "HLS filter result $baseUri is ${filterResult.status}, reason: ${filterResult.reason}, " +
-                        "removed groups: ${filterResult.removedGroups}, oversized groups: ${filterResult.oversizedGroups}"
-            }
-            val rewritten = rewriteMediaPlaylist(filterResult.content, baseUri, options.proxySegments || mayContainAds)
-            proxiedSegments.complete(rewritten.segments)
-            startPrefetch?.onPlaylistReady(rewritten.segments)
-            return LocalPlaylist(rewritten.content, isVod)
-        } finally {
-            proxiedSegments.complete(emptyList())
+        val proxyable = if (mayContainAds) parseProxyableMediaPlaylist(content, baseUri) else null
+        val startPrefetch = proxyable?.let { startPositionPrefetchOrNull(analysis, baseUri) }
+        // 续播时也要开头的分片: 播放器打开时先读它们分析流信息, 续播的跳转在开始播放之后才执行
+        proxyable?.segments?.take(STARTUP_PREFETCH_SEGMENTS)?.forEach { segment ->
+            prefetchSegment(resolveHlsUri(baseUri, segment.uri))
         }
+        val filterResult = HlsManifestFilter.filter(analysis) { targets -> probeFirstPts(targets, startPrefetch) }
+        logger.info {
+            "HLS filter result $baseUri is ${filterResult.status}, reason: ${filterResult.reason}, " +
+                    "removed groups: ${filterResult.removedGroups}, oversized groups: ${filterResult.oversizedGroups}"
+        }
+        val rewritten = rewriteMediaPlaylist(filterResult.content, baseUri, options.proxySegments || mayContainAds)
+        startPrefetch?.onPlaylistReady(rewritten.segments)
+        return LocalPlaylist(rewritten.content, isVod)
     }
 
     /**
@@ -617,24 +657,15 @@ private class LocalHlsProxySession private constructor(
      * 播放器拿到播放列表后先要的就是它们, 与探测重叠后起播只等两者中较慢的那个.
      *
      * 不阻塞播放列表的返回: 播放器请求这一片时若还没下完, [serveSegment] 会等这次下载而不是重下.
-     * 下载失败, 或这一片不在最终的播放列表里 (被判为广告), 则缓存里没有它, 播放器的请求照常转发到源站.
-     *
-     * 缓存里存的是改写后的字节 (见 [restartPrefetchLocked]), 改写的锚点是分片在过滤后时间轴上的起点,
-     * 取自最终的播放列表 [proxiedSegments], 所以下完后还要等它给出. 锚点不按探测中途的判定来算:
-     * 之后的探测结果可能改变前面某组的判定, 锚点随之移动, 而缓存命中时字节原样发出, 没有再改写的机会.
+     * 下载失败则缓存里没有它, 播放器的请求照常转发到源站. 这一片最终被判为广告的话, 下载白费, 播放器不会请求它.
      *
      * 不钉住这一片 ([SegmentCache.pin]): 播放器紧接着就会请求它, 在那之前能把它挤出缓存的只有超过上限的范围预缓存.
      */
-    private fun prefetchSegment(remoteUri: String, proxiedSegments: Deferred<List<ProxiedSegment>>) {
+    private fun prefetchSegment(remoteUri: String) {
         // UNDISPATCHED: 缓存项在返回前就已建立, 播放器的请求一定能找到它
         scope.launch(start = CoroutineStart.UNDISPATCHED) {
             try {
-                segmentCache.getOrDownload(remoteUri) {
-                    val bytes = downloadSegment(remoteUri)
-                    val proxied = proxiedSegments.await().firstOrNull { it.remoteUri == remoteUri }
-                        ?: throw IllegalStateException("Segment is not in the local playlist")
-                    rewriteWhole(proxied, bytes)
-                }
+                segmentCache.getOrDownload(remoteUri) { downloadSegment(remoteUri) }
             } catch (e: CancellationException) {
                 throw e
             } catch (e: Throwable) {
@@ -646,16 +677,12 @@ private class LocalHlsProxySession private constructor(
     /**
      * 有续播位置且它落在播放列表范围内时返回 [StartPositionPrefetch], 否则返回 `null`.
      */
-    private fun startPositionPrefetchOrNull(
-        analysis: HlsManifestAnalysis,
-        baseUri: String,
-        proxiedSegments: Deferred<List<ProxiedSegment>>,
-    ): StartPositionPrefetch? {
+    private fun startPositionPrefetchOrNull(analysis: HlsManifestAnalysis, baseUri: String): StartPositionPrefetch? {
         val positionMillis = startPositionHintMillis ?: return null
         // 过滤只会缩短时间轴, 超出原播放列表总时长的位置在过滤后也不存在
         val totalMillis = analysis.probeTargets.sumOf { it.durationMillis }
         if (positionMillis <= 0 || positionMillis >= totalMillis) return null
-        return StartPositionPrefetch(analysis, baseUri, positionMillis, proxiedSegments)
+        return StartPositionPrefetch(analysis, baseUri, positionMillis)
     }
 
     /**
@@ -675,7 +702,6 @@ private class LocalHlsProxySession private constructor(
         private val analysis: HlsManifestAnalysis,
         private val baseUri: String,
         private val positionMillis: Long,
-        private val proxiedSegments: Deferred<List<ProxiedSegment>>,
     ) {
         private val targets = analysis.probeTargets
         private val targetIndexesByUri: Map<String, List<Int>> = targets.indices.groupBy { targets[it].uri }
@@ -707,7 +733,7 @@ private class LocalHlsProxySession private constructor(
                 location.segmentUris.map { resolveHlsUri(baseUri, it) }.also { earlyUris = it }
             }
             logger.info { "HLS start position ${positionMillis}ms: prefetching $uris before the probe finishes" }
-            uris.forEach { prefetchSegment(it, proxiedSegments) }
+            uris.forEach { prefetchSegment(it) }
         }
 
         /** 最终播放列表给出后, 补上探测期间没有预缓存或定位有误的分片. 不等待下载. */
@@ -719,7 +745,7 @@ private class LocalHlsProxySession private constructor(
             val missing = uris - early.toSet()
             if (missing.isEmpty()) return
             logger.info { "HLS start position ${positionMillis}ms: prefetching $missing after the probe (early: $early)" }
-            missing.forEach { prefetchSegment(it, proxiedSegments) }
+            missing.forEach { prefetchSegment(it) }
         }
     }
 
@@ -728,7 +754,7 @@ private class LocalHlsProxySession private constructor(
      *
      * 探测夹在取回播放列表与播放器启动之间. 正常情况下等全部完成, 最多等 [PTS_PROBE_SAFETY_CAP], 届时未完成的组记为 `null`.
      *
-     * 同一个地址只探测一次: 同一段广告常被插入多处, 各组首片是同一个文件.
+     * 同一个地址只探测一次: 同一段广告常被插入多处, 各组首片是同一个文件. 结果留在 [firstPtsByUri], 对齐时间戳时复用.
      *
      * 按组序开始探测: 续播位置之前的组先有结果, [startPrefetch] 能尽早定位续播处的分片. 并发下这只是先后的倾向.
      */
@@ -737,15 +763,16 @@ private class LocalHlsProxySession private constructor(
         val uris = targets.map { it.uri }.distinct()
         val firstPts = arrayOfNulls<Long>(uris.size)
         val finished = BooleanArray(uris.size)
+        // 各组首片通常在同一个 host 上, 以第一个为准
+        val limit = ProbeLimit(uris.firstOrNull()?.let { runCatching { Url(it).host }.getOrNull() })
         withTimeoutOrNull(PTS_PROBE_SAFETY_CAP) {
             coroutineScope {
-                val limit = Semaphore(PTS_PROBE_CONCURRENCY)
                 uris.forEachIndexed { index, uri ->
                     // 启动前取得许可, 探测才严格按组序开始; 在各自的协程里取的话, 排队先后取决于调度
                     limit.acquire()
                     launch {
                         try {
-                            val pts = client.probeFirstPts(uri)
+                            val pts = firstPtsTicks(uri).await()?.let { TsPacketReader.ticksToMillis(it) }
                             firstPts[index] = pts
                             finished[index] = true
                             startPrefetch?.onProbed(uri, pts)
@@ -764,13 +791,48 @@ private class LocalHlsProxySession private constructor(
         return targets.map { ptsByUri[it.uri] }
     }
 
-    private suspend fun HttpClient.probeFirstPts(uri: String): Long? {
+    /**
+     * 探测并发的许可. 源站共用连接时放行 [PTS_PROBE_CONCURRENCY] 个, 否则 [PTS_PROBE_CONCURRENCY_SEPARATE_CONNECTIONS] 个.
+     * 开始时还不知道 [host] 是否共用连接, 就按后者起步, 某个探测的响应表明共用后再放开:
+     * 取播放列表的响应已经说明了播放列表所在的 host, 但分片常在另一个 CDN 上.
+     */
+    private inner class ProbeLimit(private val host: String?) {
+        private val semaphore = Semaphore(PTS_PROBE_CONCURRENCY)
+
+        /** 暂扣的许可数, 得知共用连接后一次放回. */
+        private val withheld = atomic(0)
+
+        init {
+            if (!sharesConnections()) {
+                val count = PTS_PROBE_CONCURRENCY - PTS_PROBE_CONCURRENCY_SEPARATE_CONNECTIONS
+                repeat(count) { check(semaphore.tryAcquire()) }
+                withheld.value = count
+            }
+        }
+
+        private fun sharesConnections() = host != null && sessionClient.sharesConnections(host)
+
+        suspend fun acquire() = semaphore.acquire()
+
+        fun release() {
+            semaphore.release()
+            if (withheld.value > 0 && sharesConnections()) {
+                repeat(withheld.getAndSet(0)) { semaphore.release() }
+            }
+        }
+    }
+
+    /**
+     * 取回分片开头 [PTS_PROBE_BYTES] 字节, 解出首个视频 PTS (90kHz 刻度). 失败返回 `null`.
+     */
+    private suspend fun probeFirstPtsTicks(uri: String): Long? {
         return try {
-            prepareGet(uri) {
+            client.prepareGet(uri) {
                 expectSuccess = false
                 this@LocalHlsProxySession.headers.forEach { (name, value) -> header(name, value) }
                 header(HttpHeaders.Range, "bytes=0-${PTS_PROBE_BYTES - 1}")
             }.execute { response ->
+                sessionClient.noteResponse(response)
                 if (response.status.value !in 200..299) return@execute null
                 // 源站不支持 Range 时会回整个分片, 读满开头就断开, 不把几 MB 的分片下完
                 val channel = response.bodyAsChannel()
@@ -781,7 +843,7 @@ private class LocalHlsProxySession private constructor(
                     if (read < 0) break
                     length += read
                 }
-                TsPacketReader.firstPts(head, 0, length)?.let { TsPacketReader.ticksToMillis(it) }
+                TsPacketReader.firstPts(head, 0, length)
             }
         } catch (e: CancellationException) {
             throw e
@@ -806,10 +868,14 @@ private class LocalHlsProxySession private constructor(
             return RewrittenMediaPlaylist(content.rewriteMediaPlaylistUris(baseUri), emptyList())
         }
 
-        // 拼接流才需要把时间戳对齐到播放列表: 没有 discontinuity 时各分片本来就是一条时间轴, 改写只是白费解析.
+        // 拼接流才需要对齐时间戳: 没有 discontinuity 时各分片本来就是一条时间轴.
         // 加密分片是密文, 同步字节探测有极小概率蒙对而把分片改坏, 一律不碰.
-        val rewriteTimestamps = playlist.segments.any { it.isDiscontinuity } &&
+        val alignGroups = alignTimestamps &&
+                playlist.segments.any { it.isDiscontinuity } &&
                 playlist.segments.none { it.encryption != null }
+        val referenceFirstUri = resolveHlsUri(baseUri, playlist.segments.first().uri)
+        // 首组是对齐的基准, 不改写, 所以为 null
+        var alignment: GroupAlignment? = null
 
         val proxied = ArrayList<ProxiedSegment>(playlist.segments.size)
         var cursorMillis = 0L
@@ -817,6 +883,9 @@ private class LocalHlsProxySession private constructor(
             for ((index, segment) in playlist.segments.withIndex()) {
                 val durationMillis = segmentDurationMillis(segment.duration.toDouble())
                 val remoteUri = resolveHlsUri(baseUri, segment.uri)
+                if (alignGroups && index > 0 && segment.isDiscontinuity) {
+                    alignment = GroupAlignment(remoteUri, cursorMillis, referenceFirstUri)
+                }
                 // 保留原分片的扩展名: 新版 FFmpeg (mpv 的解复用器) 会拒绝扩展名不在白名单内的分片地址
                 val route = "/segment/${nextRouteId++}${segmentExtension(remoteUri)}"
                 val item = ProxiedSegment(
@@ -824,7 +893,7 @@ private class LocalHlsProxySession private constructor(
                     route = route,
                     remoteUri = remoteUri,
                     timeRange = MediaTimeRange(cursorMillis, cursorMillis + durationMillis),
-                    rewriteTimestamps = rewriteTimestamps,
+                    alignment = alignment,
                 )
                 proxied += item
                 segmentRoutes[route] = item
@@ -885,9 +954,40 @@ private class LocalHlsProxySession private constructor(
         val route: String,
         val remoteUri: String,
         val timeRange: MediaTimeRange,
-        /** 见 [serveSegment]. */
-        val rewriteTimestamps: Boolean,
+        /** 所在 discontinuity 组的时间戳对齐. 不改写时间戳 (首组, 或不需要对齐) 为 `null`. */
+        val alignment: GroupAlignment?,
     )
+
+    /**
+     * 一个 discontinuity 组 (首组以外) 的时间戳平移量, 见 [TsTimestampRewriter.spliceShiftTicks]. 同组各分片共用这一个值,
+     * 组内原本首尾相接的时间戳因而保持不变, 只在拼接点上对齐.
+     *
+     * [shiftTicks] 需要两个首片的 PTS: 开了广告过滤时探测已经取得, 否则在首次请求这一组的分片时补探.
+     * 取不到时为 `null`, 这一组整组不改写: 部分改写部分不改的话, 组内时间轴反而断开.
+     * 平移量为 0 (组在原时间轴上本来就接得上, 例如去掉广告后的正片) 也记为 `null`, 省掉一次无效改写.
+     *
+     * @param groupFirstUri 组首片的远端地址.
+     * @param groupStartMillis 组在播放列表时间轴上的起点.
+     * @param referenceFirstUri 首组首片的远端地址.
+     */
+    private inner class GroupAlignment(
+        private val groupFirstUri: String,
+        private val groupStartMillis: Long,
+        private val referenceFirstUri: String,
+    ) {
+        val shiftTicks: Deferred<Long?> by lazy {
+            scope.async {
+                withTimeoutOrNull(PTS_PROBE_SAFETY_CAP) {
+                    val groupPts = firstPtsTicks(groupFirstUri).await() ?: return@withTimeoutOrNull null
+                    val referencePts = firstPtsTicks(referenceFirstUri).await() ?: return@withTimeoutOrNull null
+                    TsTimestampRewriter.spliceShiftTicks(groupStartMillis, groupPts, referencePts)
+                        .takeIf { it != 0L }
+                }.also {
+                    if (it == null) logger.info { "HLS timestamps of the group starting at $groupFirstUri are left as is" }
+                }
+            }
+        }
+    }
 
     private class ProxiedPlaylist(val segments: List<ProxiedSegment>)
 
@@ -921,6 +1021,7 @@ private class LocalHlsProxySession private constructor(
             headers: Map<String, String>,
             client: SessionHttpClient,
             options: HlsPlaybackOptions,
+            alignTimestamps: Boolean,
             startPositionHintMillis: Long?,
             segmentCacheMaxBytes: Long,
             serverFactory: HlsProxyServerFactory,
@@ -937,6 +1038,7 @@ private class LocalHlsProxySession private constructor(
                 headers,
                 client,
                 options,
+                alignTimestamps,
                 startPositionHintMillis,
                 segmentCacheMaxBytes,
                 serverFactory.create(),

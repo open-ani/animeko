@@ -20,6 +20,7 @@ import io.ktor.client.plugins.HttpTimeout
 import io.ktor.client.plugins.contentnegotiation.ContentNegotiation
 import io.ktor.client.plugins.cookies.HttpCookies
 import io.ktor.client.plugins.plugin
+import io.ktor.client.statement.HttpResponse
 import io.ktor.http.ContentType
 import io.ktor.http.HttpHeaders
 import io.ktor.http.HttpMethod
@@ -45,10 +46,16 @@ expect fun getPlatformKtorEngine(): HttpClientEngineFactory<*>
 /**
  * 设置 [getPlatformKtorEngine] 引擎对单个 host 的并发请求上限. 使用其他引擎时不做任何设置.
  *
- * 引擎的默认上限很低: OkHttp 每个 client 5 个, NSURLSession 在 iOS 上 4 个. 超出的请求在引擎内部排队,
- * 调用方自己的并发数因此不起作用.
+ * OkHttp 默认每个 client 只放行 5 个, 超出的请求在引擎内部排队, 调用方自己的并发数因此不起作用.
+ * NSURLSession 只限制连接数而不限制请求数, 见 apple 端的实现.
  */
 expect fun HttpClientConfig<*>.engineMaxRequestsPerHost(value: Int)
+
+/**
+ * 向这个响应所在的 host 并发发出多个请求时, 它们是否共用少数几条连接, 而不是每个请求各开一条.
+ * 对同一源站同时发出几十个请求之前据此决定并发数: 各开一条连接就是几十次 TLS 握手, 源站可能因此限流.
+ */
+expect fun HttpResponse.sharesConnectionsAcrossRequests(): Boolean
 
 /**
  * Note: 尽可能使用 `HttpClientProvider` 来共享 [HttpClient] 实例. 因为每个实例都潜在地会有一个线程池.

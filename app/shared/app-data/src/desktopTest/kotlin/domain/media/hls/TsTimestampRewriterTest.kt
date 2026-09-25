@@ -33,8 +33,8 @@ class TsTimestampRewriterTest {
         fun bytes(): ByteArray = out.toByteArray()
     }
 
-    private suspend fun rewrite(input: ByteArray, targetStartMillis: Long, chunk: Int = Int.MAX_VALUE): ByteArray {
-        val rewriter = TsTimestampRewriter(targetStartMillis)
+    private suspend fun rewrite(input: ByteArray, shiftTicks: Long, chunk: Int = Int.MAX_VALUE): ByteArray {
+        val rewriter = TsTimestampRewriter(shiftTicks)
         val collector = Collector()
         var at = 0
         while (at < input.size) {
@@ -182,11 +182,14 @@ class TsTimestampRewriterTest {
 
     // endregion
 
+    /** 夹具分片里最早的 PTS/DTS 是音频的 1.4 秒. 平移这么多, 它就落在 48 秒. */
+    private val shiftTo48Seconds = 48_000 * 90L - 1_400 * 90L
+
     @Test
-    fun `真实分片改写后最早的时间戳落在目标起点`() = runTest {
-        // withads.m3u8 里 ad000.ts 就是 vod/seg000.ts 的副本, 位于播放列表 48 秒处
+    fun `真实分片的所有时间戳平移同一个量`() = runTest {
+        // withads.m3u8 里 ad000.ts 就是 vod/seg000.ts 的副本
         val input = fixture("/hls/ads/ad000.ts")
-        val output = rewrite(input, targetStartMillis = 48_000)
+        val output = rewrite(input, shiftTo48Seconds)
 
         assertEquals(input.size, output.size, "改写必须等长, 否则 Content-Length 对不上")
 
@@ -194,26 +197,22 @@ class TsTimestampRewriterTest {
         val after = readTimestamps(output)
         assertTrue(before.size > 20, "夹具里应当有足够多的时间戳, 实际 ${before.size}")
         assertEquals(before.size, after.size)
+        assertEquals(1_400 * 90L, before.filter { it.kind != "PCR" }.minOf { it.value }, "夹具前提: 最早的时间戳在 1.4 秒")
 
-        // 锚点只看 PES 的 PTS/DTS. 夹具的首个 PCR (0.83 秒) 早于首个 PTS (音频 1.4 秒), 平移后仍在目标起点之前,
-        // 这是对的: PCR 本就先于首帧送达
-        assertEquals(48_000 * 90L, after.filter { it.kind != "PCR" }.minOf { it.value })
-
-        // 所有时间戳 (PTS 与 PCR) 必须平移同一个量, 否则解复用器会用 PCR 反推出错乱的时间
-        val delta = (48_000 * 90L) - before.filter { it.kind != "PCR" }.minOf { it.value }
+        // PTS 与 PCR 必须平移同一个量, 否则解复用器会用 PCR 反推出错乱的时间
         for ((old, new) in before.zip(after)) {
             assertEquals(old.kind, new.kind)
-            assertEquals((old.value + delta) and 0x1_FFFF_FFFFL, new.value, "packet ${old.packet} ${old.kind}")
+            assertEquals((old.value + shiftTo48Seconds) and 0x1_FFFF_FFFFL, new.value, "packet ${old.packet} ${old.kind}")
         }
     }
 
     @Test
     fun `真实分片按任意大小切分喂入, 输出与一次性喂入完全相同`() = runTest {
         val input = fixture("/hls/ads/ad000.ts")
-        val expected = rewrite(input, targetStartMillis = 48_000)
+        val expected = rewrite(input, shiftTo48Seconds)
         // 1 和 7 会把 PES 头切开, 187 和 189 会让每次切分的相位不断移动
         for (chunk in listOf(1, 7, 187, 188, 189, 1000, 64 * 1024)) {
-            assertContentEquals(expected, rewrite(input, 48_000, chunk), "chunk=$chunk")
+            assertContentEquals(expected, rewrite(input, shiftTo48Seconds, chunk), "chunk=$chunk")
         }
     }
 
@@ -224,7 +223,7 @@ class TsTimestampRewriterTest {
             println("[TsTimestampRewriter] skipped: ffprobe not installed")
             return@runTest
         }
-        val output = rewrite(fixture("/hls/ads/ad000.ts"), targetStartMillis = 48_000)
+        val output = rewrite(fixture("/hls/ads/ad000.ts"), shiftTo48Seconds)
         val file = File.createTempFile("ts-rewrite", ".ts")
         try {
             file.writeBytes(output)
@@ -250,55 +249,35 @@ class TsTimestampRewriterTest {
         val pts = 50L * 90_000
         val dts = pts - 2 * 3_750 // 两帧 24fps 的重排延迟
         val input = stream(pesPacket(pid = 256, pts = pts, dts = dts))
-        val after = readTimestamps(rewrite(input, targetStartMillis = 10_000))
+        val shift = 10_000 * 90L
+        val after = readTimestamps(rewrite(input, shift))
 
-        val newDts = assertNotNull(after.firstOrNull { it.kind == "DTS" }).value
-        val newPts = assertNotNull(after.firstOrNull { it.kind == "PTS" }).value
-        // 锚点取更早的 DTS, 保证输出不早于目标起点
-        assertEquals(10_000 * 90L, newDts)
-        assertEquals(pts - dts, newPts - newDts)
+        assertEquals(dts + shift, assertNotNull(after.firstOrNull { it.kind == "DTS" }).value)
+        assertEquals(pts + shift, assertNotNull(after.firstOrNull { it.kind == "PTS" }).value)
     }
 
     @Test
-    fun `第一个 PES 之前的 PCR 也被平移`() = runTest {
+    fun `只有 PCR 没有 PES 的包也被平移`() = runTest {
         val input = stream(
             pcrOnlyPacket(pid = 256, pcr = 100L * 90_000),
             pesPacket(pid = 256, pts = 101L * 90_000, pcr = 101L * 90_000),
-            pesPacket(pid = 256, pts = 102L * 90_000),
         )
-        val after = readTimestamps(rewrite(input, targetStartMillis = 7_000))
-        // 锚点是第一个 PTS (101 秒), 早于它的 PCR 平移后落在目标起点之前, 这是正确的: PCR 本就先于首帧送达
-        assertEquals(listOf("PCR", "PCR", "PTS", "PTS"), after.map { it.kind })
-        val delta = 7_000 * 90L - 101L * 90_000
-        assertEquals(listOf(100L * 90_000 + delta, 101L * 90_000 + delta), after.filter { it.kind == "PCR" }.map { it.value })
-        assertEquals(7_000 * 90L, after.first { it.kind == "PTS" }.value)
-    }
-
-    @Test
-    fun `输入时间戳跨越 33 位回绕`() = runTest {
-        val wrapPoint = 0x1_FFFF_FFFFL + 1
-        val first = wrapPoint - 9_000 // 距回绕 0.1 秒
-        val second = (first + 90_000) and 0x1_FFFF_FFFFL // 回绕后变成很小的值
-        assertTrue(second < first, "构造前提: 第二个时间戳已经回绕")
-
-        val input = stream(
-            pesPacket(pid = 256, pts = first),
-            pesPacket(pid = 256, pts = second),
-        )
-        val after = readTimestamps(rewrite(input, targetStartMillis = 100))
-        assertEquals(listOf(100L * 90, 100L * 90 + 90_000), after.map { it.value })
+        val shift = -94L * 90_000
+        val after = readTimestamps(rewrite(input, shift))
+        assertEquals(listOf("PCR", "PCR", "PTS"), after.map { it.kind })
+        assertEquals(listOf(6L * 90_000, 7L * 90_000, 7L * 90_000), after.map { it.value })
     }
 
     @Test
     fun `输出时间戳跨越 33 位回绕`() = runTest {
-        val target = 95_443_000L // 2^33 刻度约合 95443.7 秒, 从这里起 10 秒就越过回绕点
+        val target = 95_443_000L * 90 // 2^33 刻度约合 95443.7 秒, 从这里起 10 秒就越过回绕点
         val input = stream(
             pesPacket(pid = 256, pts = 0),
             pesPacket(pid = 256, pts = 900_000), // 10 秒后, 平移后越过回绕点
         )
-        val after = readTimestamps(rewrite(input, targetStartMillis = target))
-        assertEquals(target * 90 and 0x1_FFFF_FFFFL, after[0].value)
-        assertEquals((target * 90 + 900_000) and 0x1_FFFF_FFFFL, after[1].value)
+        val after = readTimestamps(rewrite(input, target))
+        assertEquals(target and 0x1_FFFF_FFFFL, after[0].value)
+        assertEquals((target + 900_000) and 0x1_FFFF_FFFFL, after[1].value)
         assertTrue(after[1].value < after[0].value, "构造前提: 输出已经回绕")
     }
 
@@ -306,19 +285,17 @@ class TsTimestampRewriterTest {
     fun `非 TS 输入原样通过`() = runTest {
         // fMP4 分片: 代理若误判成 TS 去改写会直接改坏它
         val input = fixture("/hls/fmp4/init.mp4")
-        assertContentEquals(input, rewrite(input, targetStartMillis = 48_000))
-        assertContentEquals(input, rewrite(input, targetStartMillis = 48_000, chunk = 333))
+        assertContentEquals(input, rewrite(input, shiftTo48Seconds))
+        assertContentEquals(input, rewrite(input, shiftTo48Seconds, chunk = 333))
     }
 
     @Test
-    fun `没有时间戳的 TS 原样通过`() = runTest {
-        val input = stream(
-            pcrOnlyPacket(pid = 256, pcr = 0),
-            pcrOnlyPacket(pid = 256, pcr = 100),
-            pcrOnlyPacket(pid = 256, pcr = 200),
-            pcrOnlyPacket(pid = 256, pcr = 300),
-        )
-        assertContentEquals(input, rewrite(input, targetStartMillis = 48_000))
+    fun `组首片 PTS 早于首组时, 平移后仍落在组起点`() {
+        // 首组正片从 10 秒起, 插在 48 秒处的广告从 1.47 秒起: 组首片的 PTS 小于首组, 差值是负的
+        val reference = 10_000 * 90L
+        val group = 1_470 * 90L
+        val shift = TsTimestampRewriter.spliceShiftTicks(groupStartMillis = 48_000, group, reference)
+        assertEquals(reference + 48_000 * 90L, (group + shift) and 0x1_FFFF_FFFFL)
     }
 
     private fun findExecutable(name: String): String? {
