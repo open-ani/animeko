@@ -19,6 +19,8 @@ import me.him188.ani.app.data.network.EpisodeService
 import me.him188.ani.app.data.network.toBangumiEpType
 import me.him188.ani.app.data.persistent.database.dao.EpisodeCollectionDao
 import me.him188.ani.app.data.persistent.database.dao.EpisodeCollectionEntity
+import me.him188.ani.app.data.persistent.database.dao.EpisodeCollectionPendingOpDao
+import me.him188.ani.app.data.persistent.database.dao.EpisodeCollectionPendingOpEntity
 import me.him188.ani.app.data.persistent.database.dao.SubjectCollectionDao
 import me.him188.ani.app.data.persistent.database.dao.SubjectCollectionEntity
 import me.him188.ani.app.data.repository.Repository
@@ -40,16 +42,49 @@ import kotlin.time.Duration
 import kotlin.time.Duration.Companion.hours
 import kotlin.time.Duration.Companion.milliseconds
 
+/**
+ * 剧集看过状态的本地待同步操作. 每集只有最后一次.
+ */
+data class EpisodeCollectionPendingOp(
+    val id: Long,
+    val subjectId: Int,
+    val episodeId: Int,
+    val collectionType: UnifiedCollectionType,
+    val updatedAtMillis: Long,
+)
+
+/**
+ * 待同步操作涉及的剧集与条目名, 只读本地缓存, 供同步状态页面显示.
+ */
+data class EpisodeCollectionPendingOpNames(
+    val subjectName: String?,
+    val episodeName: String?,
+)
+
+/**
+ * [EpisodeCollectionSyncer] 对仓库的最小依赖, 让 syncer 能脱离数据库测试.
+ */
+interface EpisodeCollectionPendingOpSource {
+    val pendingOpsFlow: Flow<List<EpisodeCollectionPendingOp>>
+
+    /** 同步成功或用户放弃后移除待同步操作. 本地看过状态不回滚, 下次从服务端刷新时会被覆盖. */
+    suspend fun deletePendingOps(ids: Collection<Long>)
+}
+
 class EpisodeCollectionRepository(
     private val subjectDao: SubjectCollectionDao,
     private val episodeCollectionDao: EpisodeCollectionDao,
+    private val pendingOpDao: EpisodeCollectionPendingOpDao,
     private val episodeService: EpisodeService,
     private val animeScheduleRepository: AnimeScheduleRepository,
     subjectCollectionRepository: Lazy<SubjectCollectionRepository>,
     private val getEpisodeTypeFiltersUseCase: GetEpisodeTypeFiltersUseCase,
     defaultDispatcher: CoroutineContext = Dispatchers.Default,
     private val cacheExpiry: Duration = 1.hours,
-) : Repository(defaultDispatcher) {
+    private val nowMillis: () -> Long = { currentTimeMillis() },
+    /** 有新的待同步操作时调用, 由 syncer 决定何时推送. */
+    private val onDirtyChanged: () -> Unit = {},
+) : Repository(defaultDispatcher), EpisodeCollectionPendingOpSource {
 
     private val subjectCollectionRepository by subjectCollectionRepository
 
@@ -137,31 +172,95 @@ class EpisodeCollectionRepository(
     }.flowOn(defaultDispatcher)
 
     /**
-     * 设置指定条目的所有剧集为已看.
+     * 设置指定条目的所有剧集为已看. 先写本地并入队, 由 [EpisodeCollectionSyncer] 推到服务端.
      */
     suspend fun setAllEpisodesWatched(subjectId: Int) = withContext(defaultDispatcher) {
-        val episodeIds = subjectEpisodeCollectionInfosFlow(subjectId)
-            .first()
-            .map { it.episodeId }
+        // 优先用本地缓存, 离线也能标; 缓存为空 (还没打开过条目) 才走会拉网络的流.
+        val episodeIds = episodeCollectionDao.listIdBySubjectId(subjectId).first().ifEmpty {
+            subjectEpisodeCollectionInfosFlow(subjectId).first().map { it.episodeId }
+        }
+        if (episodeIds.isEmpty()) return@withContext
 
-        episodeService.setEpisodeCollection(subjectId, episodeIds, UnifiedCollectionType.DONE)
+        val now = nowMillis()
         episodeCollectionDao.setAllEpisodesWatched(subjectId)
+        pendingOpDao.replacePendingOps(
+            episodeIds.map { episodeId ->
+                EpisodeCollectionPendingOpEntity(
+                    subjectId = subjectId,
+                    episodeId = episodeId,
+                    collectionType = UnifiedCollectionType.DONE,
+                    updatedAtMillis = now,
+                )
+            },
+        )
+        onDirtyChanged()
     }
 
+    /**
+     * 设置剧集看过状态. 只写本地并入队, 不发网络请求, 离线也能用; 由 [EpisodeCollectionSyncer] 推到服务端.
+     */
     suspend fun setEpisodeCollectionType(
         subjectId: Int,
         episodeId: Int,
         collectionType: UnifiedCollectionType,
     ) = withContext(defaultDispatcher) {
-        if (subjectCollectionRepository.subjectCollectionFlow(subjectId)
-                .first().collectionType == UnifiedCollectionType.NOT_COLLECTED
-        ) {
+        // 只看本地缓存, 不能为了一个警告去拉网络. 服务端会在同步时拒绝没收藏的条目, syncer 那边丢弃.
+        if (subjectDao.findById(subjectId).first()?.collectionType == UnifiedCollectionType.NOT_COLLECTED) {
             logger.warn { "User has not yet collected subject $subjectId when we want to setEpisodeCollectionType, ignoring." }
-//            subjectCollectionRepository.setSubjectCollectionTypeOrDelete(subjectId, UnifiedCollectionType.DOING)
         }
-        episodeService.setEpisodeCollection(subjectId, listOf(episodeId), collectionType)
         episodeCollectionDao.updateSelfCollectionType(subjectId, episodeId, collectionType)
+        pendingOpDao.replacePendingOps(
+            listOf(
+                EpisodeCollectionPendingOpEntity(
+                    subjectId = subjectId,
+                    episodeId = episodeId,
+                    collectionType = collectionType,
+                    updatedAtMillis = nowMillis(),
+                ),
+            ),
+        )
+        onDirtyChanged()
     }
+
+    override val pendingOpsFlow: Flow<List<EpisodeCollectionPendingOp>> = pendingOpDao.pendingOpsFlow().map { ops ->
+        ops.map { it.toPendingOp() }
+    }
+
+    /**
+     * 按剧集 id 索引的待同步操作显示用名字. 只读本地缓存, 缓存里没有的剧集不在结果里.
+     */
+    fun pendingOpNamesFlow(): Flow<Map<Int, EpisodeCollectionPendingOpNames>> = pendingOpDao.pendingOpsFlow()
+        .map { ops -> ops.map { it.episodeId }.toSet() to ops.map { it.subjectId }.toSet() }
+        .distinctUntilChanged()
+        .flatMapLatest { (episodeIds, subjectIds) ->
+            if (episodeIds.isEmpty()) return@flatMapLatest flowOf(emptyMap())
+            combine(
+                episodeCollectionDao.filterByEpisodeIds(episodeIds),
+                subjectDao.filterByIds(subjectIds.toIntArray()),
+            ) { episodes, subjects ->
+                val subjectNames = subjects.associate { it.subjectId to it.nameCn.ifBlank { it.name } }
+                episodes.associate { episode ->
+                    episode.episodeId to EpisodeCollectionPendingOpNames(
+                        subjectName = subjectNames[episode.subjectId],
+                        episodeName = episode.nameCn.ifBlank { episode.name },
+                    )
+                }
+            }
+        }
+        .flowOn(defaultDispatcher)
+
+    override suspend fun deletePendingOps(ids: Collection<Long>) = withContext(defaultDispatcher) {
+        if (ids.isEmpty()) return@withContext
+        pendingOpDao.deletePendingOpsByIds(ids)
+    }
+
+    private fun EpisodeCollectionPendingOpEntity.toPendingOp() = EpisodeCollectionPendingOp(
+        id = id,
+        subjectId = subjectId,
+        episodeId = episodeId,
+        collectionType = collectionType,
+        updatedAtMillis = updatedAtMillis,
+    )
 
     /**
      * 获取指定条目的指定剧集的收藏状态.
