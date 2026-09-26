@@ -68,9 +68,8 @@ import me.him188.ani.app.ui.framework.doesNotExist
 import me.him188.ani.app.ui.framework.exists
 import me.him188.ani.app.ui.framework.runAniComposeUiTest
 import me.him188.ani.app.ui.mediafetch.TestMediaSourceResultListPresentation
-import me.him188.ani.app.ui.mediafetch.ViewKind
 import me.him188.ani.app.ui.mediafetch.rememberTestMediaSelectorState
-import me.him188.ani.app.ui.mediafetch.request.TestMediaFetchRequest
+import me.him188.ani.app.ui.mediaselect.MediaSelectorMode
 import me.him188.ani.app.ui.settings.danmaku.createTestDanmakuRegexFilterState
 import me.him188.ani.app.ui.subject.episode.video.components.DanmakuSettingsSheet
 import me.him188.ani.app.ui.subject.episode.video.components.EpisodeVideoSideSheetPage
@@ -351,21 +350,12 @@ class EpisodeVideoControllerTest {
                                 )
                             },
                             mediaSelectorPage = {
-                                val (viewKind, onViewKindChange) = rememberSaveable { mutableStateOf(ViewKind.WEB) }
-                                val (fetchRequest, onFetchRequestChange) = rememberSaveable {
-                                    mutableStateOf(
-                                        TestMediaFetchRequest,
-                                    )
-                                }
                                 EpisodeVideoSideSheets.MediaSelectorSheet(
                                     mediaSelectorState = rememberTestMediaSelectorState(),
                                     mediaSourceResultListPresentation = TestMediaSourceResultListPresentation,
-                                    viewKind = viewKind,
-                                    onViewKindChange = onViewKindChange,
-                                    fetchRequest = fetchRequest,
-                                    onFetchRequestChange = onFetchRequestChange,
+                                    mode = MediaSelectorMode.AUTO,
+                                    onModeChange = {},
                                     onDismissRequest = { goBack() },
-                                    onRefresh = {},
                                     onRestartSource = {},
                                 )
                             },

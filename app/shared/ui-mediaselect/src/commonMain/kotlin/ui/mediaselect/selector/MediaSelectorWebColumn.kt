@@ -22,16 +22,20 @@ import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.rounded.ChevronRight
 import androidx.compose.material.icons.rounded.Close
 import androidx.compose.material.icons.rounded.Refresh
+import androidx.compose.material.icons.rounded.Search
+import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.InputChip
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedCard
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.material3.minimumInteractiveComponentSize
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -40,10 +44,8 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.text.SpanStyle
-import androidx.compose.ui.text.buildAnnotatedString
-import androidx.compose.ui.text.style.TextAlign
-import androidx.compose.ui.text.style.TextDecoration
+import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
@@ -55,13 +57,13 @@ import me.him188.ani.app.ui.foundation.IconButton
 import me.him188.ani.app.ui.foundation.ProvideCompositionLocalsForPreview
 import me.him188.ani.app.ui.foundation.ifThen
 import me.him188.ani.app.ui.lang.Lang
+import me.him188.ani.app.ui.lang.media_selector_auto_rescue
 import me.him188.ani.app.ui.lang.media_selector_web_captcha_unsupported
-import me.him188.ani.app.ui.lang.media_selector_web_edit_query_action
-import me.him188.ani.app.ui.lang.media_selector_web_edit_query_prompt
 import me.him188.ani.app.ui.lang.media_selector_web_rate_limited
 import me.him188.ani.app.ui.lang.media_selector_web_waiting_captcha
 import me.him188.ani.app.ui.lang.settings_mediasource_refresh
 import me.him188.ani.app.ui.media.webCaptchaRequiredMessage
+import me.him188.ani.app.ui.mediaselect.auto.AutoMatchPageTestTags
 import me.him188.ani.app.ui.mediaselect.common.SourceIcon
 import me.him188.ani.datasources.api.Media
 import me.him188.ani.utils.platform.annotations.TestOnly
@@ -100,6 +102,8 @@ data class WebSource(
 
 /**
  * https://www.figma.com/design/LET1n9mmDa6npDTIlUuJjU/Animeko?node-id=1054-13751&t=OSgRmNiOHpUGBYYu-0
+ *
+ * @param onRequestManualSearch 底部「找不到想看的？手动查找」救援卡片的点击; null 时不显示卡片 (下载对话框).
  */
 @Composable
 fun MediaSelectorWebSourcesColumn(
@@ -109,12 +113,10 @@ fun MediaSelectorWebSourcesColumn(
     onSelect: (WebSource, WebSourceChannel) -> Unit,
     onRefresh: (WebSource) -> Unit,
     onResolveCaptcha: (WebSource) -> Unit,
-    onRequestQueryEdit: () -> Unit,
+    onRequestManualSearch: (() -> Unit)?,
     modifier: Modifier = Modifier,
     preferredSourceContainerColor: Color = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.33f)
 ) {
-    val editQueryPromptText = stringResource(Lang.media_selector_web_edit_query_prompt)
-    val editQueryActionText = stringResource(Lang.media_selector_web_edit_query_action)
     val card = @Composable { source: WebSource ->
         WebSourceCard(
             source,
@@ -146,23 +148,51 @@ fun MediaSelectorWebSourcesColumn(
             card(source)
         }
 
-        TextButton(
-            onRequestQueryEdit,
-            Modifier
-                .align(Alignment.CenterHorizontally),
+        if (onRequestManualSearch != null) {
+            ManualSearchRescueCard(
+                onClick = onRequestManualSearch,
+                Modifier.padding(top = 4.dp).fillMaxWidth().testTag(AutoMatchPageTestTags.RESCUE_CARD),
+            )
+        }
+    }
+}
+
+/**
+ * 自动页底部的救援入口: 描边卡片, 左侧搜索图标, 右侧 ChevronRight. 点击 = 切到手动查找模式.
+ */
+@Composable
+private fun ManualSearchRescueCard(
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    OutlinedCard(
+        onClick = onClick,
+        modifier = modifier,
+        shape = RoundedCornerShape(16.dp),
+        colors = CardDefaults.outlinedCardColors(containerColor = Color.Transparent),
+    ) {
+        Row(
+            Modifier.fillMaxWidth().heightIn(min = 52.dp).padding(horizontal = 16.dp),
+            horizontalArrangement = Arrangement.spacedBy(10.dp),
+            verticalAlignment = Alignment.CenterVertically,
         ) {
+            Icon(
+                Icons.Rounded.Search,
+                contentDescription = null,
+                Modifier.size(20.dp),
+                tint = MaterialTheme.colorScheme.primary,
+            )
             Text(
-                buildAnnotatedString {
-                    append(editQueryPromptText)
-                    pushStyle(
-                        SpanStyle(
-                            textDecoration = TextDecoration.Underline,
-                        ),
-                    )
-                    append(editQueryActionText)
-                },
-                color = MaterialTheme.colorScheme.outline,
-                textAlign = TextAlign.Center,
+                stringResource(Lang.media_selector_auto_rescue),
+                Modifier.weight(1f),
+                style = MaterialTheme.typography.bodyLarge,
+                fontWeight = FontWeight.Medium,
+            )
+            Icon(
+                Icons.Rounded.ChevronRight,
+                contentDescription = null,
+                Modifier.size(20.dp),
+                tint = MaterialTheme.colorScheme.onSurfaceVariant,
             )
         }
     }
@@ -325,7 +355,7 @@ private fun PreviewMediaSelectorWebColumn() {
                 onSelect = { _, _ -> },
                 onRefresh = {},
                 onResolveCaptcha = {},
-                onRequestQueryEdit = {},
+                onRequestManualSearch = {},
             )
         }
     }
@@ -344,7 +374,7 @@ private fun PreviewMediaSelectorWebColumn3() {
                 onSelect = { _, _ -> },
                 onRefresh = {},
                 onResolveCaptcha = {},
-                onRequestQueryEdit = {},
+                onRequestManualSearch = {},
             )
         }
     }

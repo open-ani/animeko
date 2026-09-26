@@ -15,6 +15,8 @@ MediaSelector 主要包含以下四个阶段：
 4. **选择**：支持手动或自动方式来选中某个 [Media]：
     - 手动调用 `select` 方法。
     - 自动通过 `trySelectDefault`、`trySelectCached` 或 `trySelectFromMediaSources` 等方法完成。
+    - 临时选择 `selectTemporarily`：只更新本会话的选择，不写偏好。用于拖入的本地文件、
+      手动查找的「仅临时播放」，以及浏览记忆按位置命中的情况，见[选源界面](media-selector-ui.md)。
 
    最终选定的资源会存入 `selected: StateFlow<Media>`，并通过 `events` Flow 广播变更。
 
@@ -131,10 +133,13 @@ Sealed class [`MaybeExcludedMedia`][MaybeExcludedMedia] 表示一个可能被排
 第 0 条规则是**当前剧集匹配**：`episodeRange` 包含当前剧集的 `sort` 或 `ep` 才保留，
 否则以 `MediaExclusionReason.EpisodeMismatch` 排除；`episodeRange` 为 `null`（无法解析集数）也视为不匹配。
 条目名以 OVA 结尾的条目额外接受 `OVA` 类型的特别篇。它先于本地缓存豁免，
-否则看第 2 话时会自动选中第 1 话的缓存。选源 UI 不把这类排除展示在“显示被排除的资源”中。
+否则看第 2 话时会自动选中第 1 话的缓存。自动匹配页不展示这类排除；
+[BT 资源页](media-selector-ui.md#bt-资源页)把集数不符作为一种排除原因展示在已被排除的资源里，
+取消按集筛选后列表基于不含第 0 条规则的条目级候选，没有这一原因。
 
 `MediaSelector.subjectCandidates` 跳过第 0 条规则、保留其余规则与排序，
-提供整个条目的候选，供[批量下载](media-downloads.md#添加下载)按线路规划各集的资源。
+提供整个条目的候选，供[批量下载](media-downloads.md#添加下载)按线路规划各集的资源，
+以及 BT 资源页取消按集筛选时展示。
 
 ## 排序阶段
 
@@ -159,6 +164,9 @@ Sealed class [`MaybeExcludedMedia`][MaybeExcludedMedia] 表示一个可能被排
 只有有效阶级不超过阈值的资源才会被立即选择。
 
 ## Web 自动选择
+
+切集时，本地缓存检查之后、本节所有阶段之前，播放页先按[浏览记忆](media-selector-ui.md#浏览记忆)回放：
+命中即已完成选择，执行循环见到已有选择就不提交；未命中才进入下面的流程。回放与自动选择在同一协程里串行。
 
 播放自动选择和播放失败换源统一调用 `MediaAutoSelector.select`。
 `MediaSelectorAutoSelectUseCase` 只负责读取配置、subject 偏好及启用上次使用的源；

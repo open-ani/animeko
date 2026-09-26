@@ -136,6 +136,15 @@ interface MediaSource : AutoCloseable {
     suspend fun fetch(query: MediaFetchRequest): SizedSource<MediaMatch>
 
     /**
+     * 是否实现了浏览协议 ([searchSubjects], [browseSubject], [createMedia]).
+     *
+     * 为 `false` 的数据源不出现在手动查找的源列表中, 其浏览方法保持默认实现 (空结果 / 抛出异常) 只用于兼容;
+     * 浏览记忆回放也只对为 `true` 的源生效.
+     * @since 6.2
+     */
+    val supportsBrowsing: Boolean get() = false
+
+    /**
      * 按关键字搜索, 返回站点上的条目列表. 不做筛选, 关键字原样使用.
      *
      * 尚未迁移到浏览形态的数据源返回空列表; 新数据源必须实现.
