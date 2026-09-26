@@ -12,10 +12,13 @@ package me.him188.ani.app.ui.subject.episode.video
 import androidx.compose.runtime.mutableStateOf
 import me.him188.ani.app.domain.media.player.prefetch.MediaPrefetchRequest
 import me.him188.ani.app.domain.media.player.prefetch.MediaTimeRange
+import me.him188.ani.datasources.api.MediaChapter
+import me.him188.ani.datasources.api.MediaChapterKind
 import org.openani.mediamp.InternalMediampApi
 import org.openani.mediamp.metadata.Chapter
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertNotNull
 import kotlin.test.assertNull
 import kotlin.time.Duration.Companion.minutes
 
@@ -25,9 +28,8 @@ class PlayerSkipOpEdStatePrefetchTest {
 
     private fun createState(chapters: List<Chapter> = listOf(op)): PlayerSkipOpEdState {
         return PlayerSkipOpEdState(
-            chapters = mutableStateOf(chapters),
+            chapters = mutableStateOf(chapters.filter { isLikelyOpEdChapter(it, 24.minutes) }),
             onSkip = {},
-            videoLength = mutableStateOf(24.minutes),
         )
     }
 
@@ -78,7 +80,6 @@ class PlayerSkipOpEdStatePrefetchTest {
         val state = PlayerSkipOpEdState(
             chapters = mutableStateOf(listOf(op)),
             onSkip = { skippedTo = it },
-            videoLength = mutableStateOf(24.minutes),
         )
         state.update(119_500) // 进入提示窗口
         state.update(120_000) // 到达章节开头, 自动跳过
@@ -105,6 +106,62 @@ class PlayerSkipOpEdStatePrefetchTest {
     fun `non op ed chapters do not trigger prefetch`() {
         val state = createState(listOf(Chapter("Ch 1", durationMillis = 600_000, offsetMillis = 0)))
         state.update(10_000)
+        assertNull(state.prefetchRequest)
+    }
+
+    @Test
+    fun `explicit source opening outside the duration heuristic is prefetched`() {
+        val chapters = selectSkipChapters(
+            mediaChapters = listOf(MediaChapter("OP", 150_000, 120_000, MediaChapterKind.OPENING)),
+            fallback = emptyList(),
+        )
+        val state = PlayerSkipOpEdState(mutableStateOf(chapters)) {}
+
+        state.update(100_000)
+
+        assertEquals(MediaPrefetchRequest(MediaTimeRange(270_000, 300_000), 120_000), state.prefetchRequest)
+    }
+
+    @Test
+    fun `replacing a chapter updates the prefetch target on the same update`() {
+        val chapters = mutableStateOf(listOf(op))
+        val state = PlayerSkipOpEdState(chapters) {}
+        state.update(100_000)
+        assertEquals(MediaPrefetchRequest(MediaTimeRange(210_000, 240_000), 120_000), state.prefetchRequest)
+
+        chapters.value = listOf(Chapter("OP", durationMillis = 150_000, offsetMillis = 120_000))
+        state.update(100_000)
+
+        assertEquals(MediaPrefetchRequest(MediaTimeRange(270_000, 300_000), 120_000), state.prefetchRequest)
+    }
+
+    @Test
+    fun `clearing chapters cancels prefetch on the same update`() {
+        val chapters = mutableStateOf(listOf(op))
+        val state = PlayerSkipOpEdState(chapters) {}
+        state.update(100_000)
+        assertNotNull(state.prefetchRequest)
+
+        chapters.value = emptyList()
+        state.update(101_000)
+
+        assertNull(state.prefetchRequest)
+    }
+
+    @Test
+    fun `equivalent chapter refresh preserves cancelled prefetch`() {
+        val chapters = mutableStateOf(listOf(op))
+        val state = PlayerSkipOpEdState(chapters) {}
+        state.update(116_000)
+        assertNotNull(state.prefetchRequest)
+        state.cancelSkipOpEd()
+
+        chapters.value = listOf(
+            Chapter(op.name, op.durationMillis, op.offsetMillis),
+            Chapter("ED", durationMillis = 90_000, offsetMillis = 1_200_000),
+        )
+        state.update(117_000)
+
         assertNull(state.prefetchRequest)
     }
 }

@@ -124,17 +124,22 @@ class JellyfinMediaSource(
             }
 
             AUTH_MODE_USERNAME_PASSWORD -> {
-                val session = checkNotNull(passwordAuthenticator).getSession()
-                Authorization(
-                    userId = session.userId,
-                    accessToken = session.accessToken,
-                    headerValue = session.authorizationHeader,
-                )
+                checkNotNull(passwordAuthenticator).getSession().toAuthorization()
             }
 
             else -> error("Unknown Jellyfin authentication mode: $authMode")
         }
     }
+
+    override fun getCachedAuthorization(): Authorization? {
+        return passwordAuthenticator?.cachedSession?.toAuthorization()
+    }
+
+    private fun JellyfinLoginSession.toAuthorization() = Authorization(
+        userId = userId,
+        accessToken = accessToken,
+        headerValue = authorizationHeader,
+    )
 
     override suspend fun invalidateAuthorization(authorization: Authorization): Boolean {
         val authenticator = passwordAuthenticator ?: return false
