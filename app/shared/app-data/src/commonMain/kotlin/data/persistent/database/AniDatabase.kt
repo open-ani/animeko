@@ -30,6 +30,8 @@ import me.him188.ani.app.data.persistent.database.dao.DanmakuDao
 import me.him188.ani.app.data.persistent.database.dao.DanmakuEntity
 import me.him188.ani.app.data.persistent.database.dao.EpisodeCollectionDao
 import me.him188.ani.app.data.persistent.database.dao.EpisodeCollectionEntity
+import me.him188.ani.app.data.persistent.database.dao.EpisodeCollectionPendingOpDao
+import me.him188.ani.app.data.persistent.database.dao.EpisodeCollectionPendingOpEntity
 import me.him188.ani.app.data.persistent.database.dao.EpisodeCommentDao
 import me.him188.ani.app.data.persistent.database.dao.HttpCacheDownloadStateDao
 import me.him188.ani.app.data.persistent.database.dao.PlaybackHistoryDao
@@ -86,8 +88,9 @@ import me.him188.ani.utils.httpdownloader.DownloadState
         PreferredWebMediaSource::class,
         PlaybackHistoryRecordEntity::class,
         PlaybackHistoryPendingOpEntity::class,
+        EpisodeCollectionPendingOpEntity::class,
     ],
-    version = 26,
+    version = 27,
     autoMigrations = [
         AutoMigration(from = 1, to = 2, spec = Migrations.Migration_1_2::class),
         AutoMigration(from = 2, to = 3, spec = Migrations.Migration_2_3::class),
@@ -113,6 +116,7 @@ import me.him188.ani.utils.httpdownloader.DownloadState
         AutoMigration(from = 23, to = 24, spec = Migrations.Migration_23_24::class),
         AutoMigration(from = 24, to = 25, spec = Migrations.Migration_24_25::class),
         AutoMigration(from = 25, to = 26, spec = Migrations.Migration_25_26::class),
+        AutoMigration(from = 26, to = 27, spec = Migrations.Migration_26_27::class),
     ],
     exportSchema = true,
 )
@@ -162,6 +166,7 @@ abstract class AniDatabase : RoomDatabase() {
     abstract fun danmakuDao(): DanmakuDao
     abstract fun preferredWebMediaSourceDao(): PreferredWebMediaSourceDao
     abstract fun playbackHistoryDao(): PlaybackHistoryDao
+    abstract fun episodeCollectionPendingOpDao(): EpisodeCollectionPendingOpDao
 }
 
 expect object AniDatabaseConstructor : RoomDatabaseConstructor<AniDatabase> {
@@ -432,6 +437,14 @@ internal object Migrations {
      * Added [SubjectCollectionEntity.imageThumb] (列表用封面地址, 默认空字符串).
      */
     class Migration_25_26 : AutoMigrationSpec {
+        override fun onPostMigrate(connection: SQLiteConnection) {
+        }
+    }
+
+    /**
+     * Added [EpisodeCollectionPendingOpEntity]: 剧集看过状态的本地待同步操作.
+     */
+    class Migration_26_27 : AutoMigrationSpec {
         override fun onPostMigrate(connection: SQLiteConnection) {
         }
     }

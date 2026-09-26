@@ -182,13 +182,14 @@ class PlaybackHistorySyncer(
 internal class LeadingTrailingSyncGate(
     scope: CoroutineScope,
     private val cooldown: Duration,
+    name: String = "PlaybackHistorySyncer.requestGate",
     private val task: suspend () -> Unit,
 ) {
     private val requests = Channel<Unit>(Channel.CONFLATED)
 
     init {
         require(cooldown.isPositive()) { "cooldown must be positive" }
-        scope.launch(CoroutineName("PlaybackHistorySyncer.requestGate")) {
+        scope.launch(CoroutineName(name)) {
             while (currentCoroutineContext().isActive) {
                 requests.receive()
                 do {

@@ -46,6 +46,8 @@ import me.him188.ani.app.data.persistent.database.MIGRATION_19_20
 import me.him188.ani.app.data.persistent.database.createDatabaseBuilder
 import me.him188.ani.app.data.repository.media.MediaSourceSaves
 import me.him188.ani.app.data.repository.media.MediaSourceSubscriptionRepository
+import me.him188.ani.app.data.repository.episode.EpisodeCollectionRepository
+import me.him188.ani.app.data.repository.episode.EpisodeCollectionSyncer
 import me.him188.ani.app.data.repository.player.PlaybackHistorySyncer
 import me.him188.ani.app.data.repository.repositoryModules
 import me.him188.ani.app.data.repository.torrent.peer.PeerFilterSubscriptionRepository
@@ -283,6 +285,14 @@ private fun KoinApplication.otherModules(
             personsApi = get<AniApiProvider>().personsApi,
             charactersApi = get<AniApiProvider>().charactersApi,
         )
+    }
+    single(createdAtStart = true) {
+        EpisodeCollectionSyncer(
+            repository = get<EpisodeCollectionRepository>(),
+            api = aniApiProvider.subjectApi,
+            sessionStateProvider = get(),
+            scope = coroutineScope,
+        ).also { it.start() }
     }
     single(createdAtStart = true) {
         PlaybackHistorySyncer(

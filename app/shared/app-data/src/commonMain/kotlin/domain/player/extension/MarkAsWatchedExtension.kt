@@ -9,7 +9,7 @@
 
 package me.him188.ani.app.domain.player.extension
 
-import io.ktor.client.plugins.ClientRequestException
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.flow.collect
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.flow.combine
@@ -111,8 +111,11 @@ class MarkAsWatchedExtension(
                 ) {
                     logger.info { "观看到 90%, 标记看过" }
                     try {
+                        // 只写本地并入队, 离线也会成功; 由 EpisodeCollectionSyncer 负责推到服务端
                         setEpisodeCollectionTypeUseCase(subjectId, episodeId, UnifiedCollectionType.DONE)
-                    } catch (e: ClientRequestException) {
+                    } catch (e: CancellationException) {
+                        throw e
+                    } catch (e: Exception) {
                         logger.warn("Failed to setEpisodeCollectionTypeUseCase, see cause", e)
                     }
                     cancelScope() // 标记成功一次后就不要再检查了
