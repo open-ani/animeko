@@ -103,7 +103,10 @@ interface EpisodePlayHistoryRepository {
 
     suspend fun deletePendingOps(ids: Collection<Long>)
 
-    suspend fun getPositionMillisByEpisodeId(episodeId: Int): Long?
+    /**
+     * 下次播放应恢复到的位置. 没有记录、记录已删除或已看完 ([EpisodeHistory.isFinished]) 时为 `null`, 表示从头播放.
+     */
+    suspend fun getResumePositionMillisByEpisodeId(episodeId: Int): Long?
 }
 
 class EpisodePlayHistoryRepositoryImpl(
@@ -251,11 +254,11 @@ class EpisodePlayHistoryRepositoryImpl(
         playbackHistoryDao.deletePendingOpsByIds(ids)
     }
 
-    override suspend fun getPositionMillisByEpisodeId(episodeId: Int): Long? {
+    override suspend fun getResumePositionMillisByEpisodeId(episodeId: Int): Long? {
         ensureLegacyDataStoreMigrated()
         return playbackHistoryDao.getRecordByEpisodeId(episodeId)
             ?.toEpisodeHistory()
-            ?.takeUnless(EpisodeHistory::isDeleted)
+            ?.takeUnless { it.isDeleted || it.isFinished }
             ?.positionMillis
             ?.also {
                 logger.info { "load play progress for episode $episodeId: positionMillis=$it" }

@@ -45,6 +45,8 @@ import kotlin.test.Ignore
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertNotEquals
+import kotlin.test.assertNull
+import kotlin.test.assertTrue
 
 class RememberPlayProgressExtensionTest : AbstractPlayerExtensionTest() {
     private val repository = EpisodePlayHistoryRepositoryImpl(
@@ -119,6 +121,17 @@ class RememberPlayProgressExtensionTest : AbstractPlayerExtensionTest() {
     ) {
         assertSavedHistory(positionMillis, episodeId)
         assertEquals(1, repository.flow.first().size)
+    }
+
+    /** 看完的记录保留位置, 但不会再被恢复. */
+    private suspend fun assertSingleFinishedHistory(
+        positionMillis: Long,
+        episodeId: Int = initialEpisodeId,
+    ) {
+        val history = assertSavedHistory(positionMillis, episodeId)
+        assertTrue(history.isFinished, "expected finished: $history")
+        assertEquals(1, repository.flow.first().size)
+        assertNull(repository.getResumePositionMillisByEpisodeId(episodeId))
     }
 
     ///////////////////////////////////////////////////////////////////////////
@@ -341,7 +354,7 @@ class RememberPlayProgressExtensionTest : AbstractPlayerExtensionTest() {
     }
 
     @Test
-    fun `when finish at end - removes play progress`() = runTest {
+    fun `when finish at end - keeps play progress but does not resume`() = runTest {
         val (testScope, suite, state) = createCase()
         advanceUntilIdle()
         repository.saveOrUpdate(episodeId = initialEpisodeId, 500)
@@ -350,13 +363,10 @@ class RememberPlayProgressExtensionTest : AbstractPlayerExtensionTest() {
 
         suite.player.seekTo(100_000 - 1)
         advanceUntilIdle()
-        suite.player.injectEnded()
+        suite.player.injectEnded() // 播放结束时播放器把位置推到时长
         advanceUntilIdle()
 
-        assertEquals(
-            listOf(),
-            repository.flow.first(),
-        )
+        assertSingleFinishedHistory(100_000)
 
         testScope.cancel()
     }
@@ -381,7 +391,7 @@ class RememberPlayProgressExtensionTest : AbstractPlayerExtensionTest() {
 
     @Test
     @Ignore // TODO: This behavior is currently not implemented. We should implement according to the test.
-    fun `when stopPlayback at end - removes play progress`() = runTest {
+    fun `when stopPlayback at end - keeps play progress but does not resume`() = runTest {
         val (testScope, suite, state) = createCase()
         advanceUntilIdle()
         repository.saveOrUpdate(episodeId = initialEpisodeId, 500)
@@ -393,10 +403,7 @@ class RememberPlayProgressExtensionTest : AbstractPlayerExtensionTest() {
         state.player.stopPlayback()
         advanceUntilIdle()
 
-        assertEquals(
-            listOf(),
-            repository.flow.first(),
-        )
+        assertSingleFinishedHistory(100_000 - 1)
 
         testScope.cancel()
     }
@@ -485,7 +492,7 @@ class RememberPlayProgressExtensionTest : AbstractPlayerExtensionTest() {
     }
 
     @Test
-    fun `removes saved when pausing close to the end`() = runTest {
+    fun `marks finished when pausing close to the end`() = runTest {
         val (testScope, suite, state) = createCase()
         advanceUntilIdle()
 
@@ -504,16 +511,13 @@ class RememberPlayProgressExtensionTest : AbstractPlayerExtensionTest() {
         advanceUntilIdle()
         suite.player.pause()
         advanceUntilIdle()
-        assertEquals(
-            listOf(),
-            repository.flow.first(),
-        )
+        assertSingleFinishedHistory(100_000 - 1)
 
         testScope.cancel()
     }
 
     @Test
-    fun `does not removes saved if paused and skip close to the end`() = runTest {
+    fun `does not mark finished if paused and skip close to the end`() = runTest {
         val (testScope, suite, state) = createCase()
         advanceUntilIdle()
 
@@ -529,7 +533,7 @@ class RememberPlayProgressExtensionTest : AbstractPlayerExtensionTest() {
 
         suite.player.seekTo(100_000 - 1)
         advanceUntilIdle()
-        // current algorithm does not remove the history in this case
+        // current algorithm does not save the history in this case
         assertSingleSavedHistoryList(1000)
 
         testScope.cancel()
@@ -689,7 +693,7 @@ class RememberPlayProgressExtensionTest : AbstractPlayerExtensionTest() {
     }
 
     @Test
-    fun `remove saved history on switch episode`() = runTest {
+    fun `marks finished on switch episode`() = runTest {
         val (testScope, suite, state) = createCase()
         advanceUntilIdle()
         repository.saveOrUpdate(episodeId = initialEpisodeId, 500)
@@ -702,12 +706,12 @@ class RememberPlayProgressExtensionTest : AbstractPlayerExtensionTest() {
         state.switchEpisode(1000)
         advanceUntilIdle()
 
-        assertEquals(emptyList(), repository.flow.first())
+        assertSingleFinishedHistory(100_000)
         testScope.cancel()
     }
 
     @Test
-    fun `remove saved history on switch episode even if player position greater than video duration`() = runTest {
+    fun `clamps position to duration and marks finished when player position greater than video duration`() = runTest {
         // https://github.com/open-ani/animeko/issues/1506
         val (testScope, suite, state) = createCase()
         advanceUntilIdle()
@@ -717,14 +721,13 @@ class RememberPlayProgressExtensionTest : AbstractPlayerExtensionTest() {
         // seekTo clamps to the duration in v2; report the out-of-range position as a native fact.
         suite.player.injectPosition(100_001)
         runCurrent()
-        suite.player.pause() // save evaluation with position > duration -> removes
+        suite.player.pause() // save evaluation with position > duration -> clamped to duration
         advanceUntilIdle()
 
         state.switchEpisode(1000)
         advanceUntilIdle()
 
-
-        assertEquals(emptyList(), repository.flow.first())
+        assertSingleFinishedHistory(100_000)
         testScope.cancel()
     }
 

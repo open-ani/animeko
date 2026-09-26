@@ -142,7 +142,7 @@ class EpisodePlayHistoryRepositoryTest {
             ),
         )
 
-        assertEquals(20_000, repository.getPositionMillisByEpisodeId(1))
+        assertEquals(20_000, repository.getResumePositionMillisByEpisodeId(1))
 
         val history = repository.flow.first().single()
         assertEquals(1, history.episodeId)
@@ -156,6 +156,27 @@ class EpisodePlayHistoryRepositoryTest {
         assertEquals(20_000, pendingOp.positionMillis)
         assertEquals(100_000, pendingOp.durationMillis)
         assertEquals(50, pendingOp.updatedAtMillis)
+    }
+
+    @Test
+    fun `finished record is kept but not resumed`() = runTest {
+        val repository = createRepository()
+        repository.saveOrUpdate(
+            episodeId = 1,
+            positionMillis = 100_000 - EpisodeHistory.FINISHED_THRESHOLD_MILLIS + 1,
+            subjectId = 10,
+            durationMillis = 100_000,
+        )
+
+        val history = repository.flow.first().single()
+        assertTrue(history.isFinished)
+        assertEquals(100_000 - EpisodeHistory.FINISHED_THRESHOLD_MILLIS + 1, history.positionMillis)
+        assertNull(repository.getResumePositionMillisByEpisodeId(1))
+        assertTrue(repository.pendingOpsFlow.first().single() is PlaybackHistoryPendingOp.Upsert)
+
+        // 未看完则照常恢复
+        repository.saveOrUpdate(episodeId = 1, positionMillis = 100_000 - EpisodeHistory.FINISHED_THRESHOLD_MILLIS)
+        assertEquals(100_000 - EpisodeHistory.FINISHED_THRESHOLD_MILLIS, repository.getResumePositionMillisByEpisodeId(1))
     }
 
     @Test
@@ -176,7 +197,7 @@ class EpisodePlayHistoryRepositoryTest {
         assertEquals(1, tombstone.episodeId)
         assertEquals(200, tombstone.deletedAtMillis)
         assertFalse(tombstone.isDirty)
-        assertNull(repository.getPositionMillisByEpisodeId(1))
+        assertNull(repository.getResumePositionMillisByEpisodeId(1))
 
         val pendingOps = repository.pendingOpsFlow.first()
         assertEquals(1, pendingOps.size)

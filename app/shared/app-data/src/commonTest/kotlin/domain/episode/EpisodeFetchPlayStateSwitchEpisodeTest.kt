@@ -110,7 +110,7 @@ class EpisodeFetchPlayStateSwitchEpisodeTest : AbstractPlayerExtensionTest() {
             advanceUntilIdle() // 不应自动切换到下一集数
 
             // 没有实际加载媒体源时，不会覆盖或删除旧进度
-            assertEquals(3000, playHistory.getPositionMillisByEpisodeId(initialEpisodeId))
+            assertEquals(3000, playHistory.getResumePositionMillisByEpisodeId(initialEpisodeId))
 
             assertEquals(initialEpisodeId, state.getCurrentEpisodeId())
         } finally {
@@ -145,8 +145,9 @@ class EpisodeFetchPlayStateSwitchEpisodeTest : AbstractPlayerExtensionTest() {
             suite.player.injectEnded()
             advanceUntilIdle() // 自动切换到下一集数
 
-            // 前一集播放完毕了
-            assertEquals(null, playHistory.getPositionMillisByEpisodeId(initialEpisodeId))
+            // 前一集播放完毕了: 记录保留, 但不再恢复
+            assertEquals(null, playHistory.getResumePositionMillisByEpisodeId(initialEpisodeId))
+            assertEquals(100_000, playHistory.flow.first().single { it.episodeId == initialEpisodeId }.positionMillis)
 
             assertEquals(newEpisodeId, state.getCurrentEpisodeId())
 

@@ -31,6 +31,21 @@ data class EpisodeHistory(
     val isDeleted: Boolean get() = deletedAtMillis != null
 
     val versionMillis: Long get() = maxOf(updatedAtMillis, deletedAtMillis ?: 0L)
+
+    /**
+     * 是否已看完: 位置距离结尾不足 [FINISHED_THRESHOLD_MILLIS]. 时长未知时无法判断, 视为未看完.
+     *
+     * 看完的记录仍然保留 (供历史列表和剧集进度显示), 但下次播放不再恢复到这个位置, 否则会立刻播放结束并触发自动连播.
+     */
+    val isFinished: Boolean
+        get() {
+            val duration = durationMillis ?: return false
+            return duration > 0L && duration - positionMillis < FINISHED_THRESHOLD_MILLIS
+        }
+
+    companion object {
+        const val FINISHED_THRESHOLD_MILLIS: Long = 5_000
+    }
 }
 
 /**

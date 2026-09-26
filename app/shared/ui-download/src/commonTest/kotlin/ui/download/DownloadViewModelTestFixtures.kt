@@ -270,7 +270,7 @@ internal class FakeEpisodePlayHistoryRepository : EpisodePlayHistoryRepository {
         throw UnsupportedOperationException()
 
     override suspend fun deletePendingOps(ids: Collection<Long>) = throw UnsupportedOperationException()
-    override suspend fun getPositionMillisByEpisodeId(episodeId: Int): Long? = throw UnsupportedOperationException()
+    override suspend fun getResumePositionMillisByEpisodeId(episodeId: Int): Long? = throw UnsupportedOperationException()
 }
 
 /**
