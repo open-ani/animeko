@@ -250,6 +250,8 @@ internal class FakeEpisodePlayHistoryRepository : EpisodePlayHistoryRepository {
     override val allHistoriesFlow: Flow<List<EpisodeHistory>> get() = flow
     override fun flowByEpisodeIds(episodeIds: Collection<Int>): Flow<List<EpisodeHistory>> =
         flow.map { histories -> histories.filter { it.episodeId in episodeIds } }
+    override fun allHistoriesFlowByEpisodeIds(episodeIds: Collection<Int>): Flow<List<EpisodeHistory>> =
+        flowByEpisodeIds(episodeIds)
     override val pendingOpsFlow: Flow<List<PlaybackHistoryPendingOp>> get() = throw UnsupportedOperationException()
     override val lastSyncAtMillisFlow: Flow<Long> get() = throw UnsupportedOperationException()
     override suspend fun clear() = throw UnsupportedOperationException()

@@ -71,6 +71,10 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.flatMapLatest
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.launch
 import me.him188.ani.app.data.models.player.EpisodeHistory
 import me.him188.ani.app.data.repository.player.EpisodePlayHistoryRepository
@@ -152,6 +156,17 @@ class PlaybackHistoryViewModel : AbstractViewModel(), KoinComponent {
         .stateInBackground(emptyList())
     val pendingOpsFlow = repository.pendingOpsFlow
         .stateInBackground(emptyList())
+
+    /**
+     * 待同步操作涉及的本地记录, 含已删除的. 删除操作本身不带条目名, 显示时从这里补.
+     */
+    @OptIn(ExperimentalCoroutinesApi::class)
+    val pendingOpHistoriesFlow = repository.pendingOpsFlow
+        .map { ops -> ops.mapTo(mutableSetOf()) { it.episodeId } }
+        .distinctUntilChanged()
+        .flatMapLatest { repository.allHistoriesFlowByEpisodeIds(it) }
+        .map { histories -> histories.associateBy { it.episodeId } }
+        .stateInBackground(emptyMap())
 
     fun delete(episodeIds: Collection<Int>) {
         if (episodeIds.isEmpty()) return
@@ -425,8 +440,9 @@ fun PlaybackHistorySyncStatusScreen(
     windowInsets: WindowInsets = AniWindowInsets.forPageContent(),
 ) {
     val pendingOps by vm.pendingOpsFlow.collectAsStateWithLifecycle()
+    val pendingOpHistories by vm.pendingOpHistoriesFlow.collectAsStateWithLifecycle()
     PlaybackHistorySyncStatusScreen(
-        pendingOps = pendingOps.toSyncStatusUiItems(),
+        pendingOps = pendingOps.toSyncStatusUiItems(pendingOpHistories),
         onNavigateBack = onNavigateBack,
         onDeletePendingOps = vm::deletePendingOps,
         modifier = modifier,
@@ -768,17 +784,31 @@ private fun List<EpisodeHistory>.toUiItems(): List<PlaybackHistoryUiItem> {
 }
 
 @Composable
-private fun List<PlaybackHistoryPendingOp>.toSyncStatusUiItems(): List<PlaybackHistorySyncStatusUiItem> {
+private fun List<PlaybackHistoryPendingOp>.toSyncStatusUiItems(
+    histories: Map<Int, EpisodeHistory>,
+): List<PlaybackHistorySyncStatusUiItem> {
     val upsertName = stringResource(Lang.playback_history_sync_op_upsert)
     val deleteName = stringResource(Lang.playback_history_sync_op_delete)
+    return toSyncStatusUiItems(histories, upsertName = upsertName, deleteName = deleteName)
+}
+
+/**
+ * 删除操作只带剧集 id, 条目名和剧集名从本地记录 [histories] (含已删除的墓碑) 里补; 更新操作自带名字, 缺失时同样回退到记录.
+ */
+internal fun List<PlaybackHistoryPendingOp>.toSyncStatusUiItems(
+    histories: Map<Int, EpisodeHistory>,
+    upsertName: String,
+    deleteName: String,
+): List<PlaybackHistorySyncStatusUiItem> {
     return map { op ->
+        val history = histories[op.episodeId]
         when (op) {
             is PlaybackHistoryPendingOp.Upsert -> PlaybackHistorySyncStatusUiItem(
                 id = op.id,
                 episodeId = op.episodeId,
                 operationName = upsertName,
-                subjectName = op.subjectName,
-                episodeName = op.episodeName,
+                subjectName = op.subjectName ?: history?.subjectName,
+                episodeName = op.episodeName ?: history?.episodeName,
                 versionMillis = op.updatedAtMillis,
             )
 
@@ -786,8 +816,8 @@ private fun List<PlaybackHistoryPendingOp>.toSyncStatusUiItems(): List<PlaybackH
                 id = op.id,
                 episodeId = op.episodeId,
                 operationName = deleteName,
-                subjectName = null,
-                episodeName = null,
+                subjectName = history?.subjectName,
+                episodeName = history?.episodeName,
                 versionMillis = op.deletedAtMillis,
             )
         }

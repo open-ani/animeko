@@ -75,6 +75,9 @@ interface EpisodePlayHistoryRepository {
      * 与 [flow] 不同, 不会把全部记录读进内存.
      */
     fun flowByEpisodeIds(episodeIds: Collection<Int>): Flow<List<EpisodeHistory>>
+
+    /** 同 [flowByEpisodeIds], 但包含已删除的记录; 用于给待同步的删除操作显示条目名. */
+    fun allHistoriesFlowByEpisodeIds(episodeIds: Collection<Int>): Flow<List<EpisodeHistory>>
     val pendingOpsFlow: Flow<List<PlaybackHistoryPendingOp>>
     val lastSyncAtMillisFlow: Flow<Long>
 
@@ -127,6 +130,12 @@ class EpisodePlayHistoryRepositoryImpl(
     override fun flowByEpisodeIds(episodeIds: Collection<Int>): Flow<List<EpisodeHistory>> {
         if (episodeIds.isEmpty()) return flowOf(emptyList())
         return playbackHistoryDao.activeRecordsFlowByEpisodeIds(episodeIds).map { records ->
+            records.map { it.toEpisodeHistory() }
+        }
+    }
+    override fun allHistoriesFlowByEpisodeIds(episodeIds: Collection<Int>): Flow<List<EpisodeHistory>> {
+        if (episodeIds.isEmpty()) return flowOf(emptyList())
+        return playbackHistoryDao.recordsFlowByEpisodeIds(episodeIds).map { records ->
             records.map { it.toEpisodeHistory() }
         }
     }

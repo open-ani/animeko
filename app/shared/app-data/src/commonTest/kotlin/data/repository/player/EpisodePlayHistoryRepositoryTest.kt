@@ -87,6 +87,20 @@ class EpisodePlayHistoryRepositoryTest {
     }
 
     @Test
+    fun `allHistoriesFlowByEpisodeIds includes deleted records`() = runTest {
+        val repository = createRepository()
+        repository.saveOrUpdate(episodeId = 1, positionMillis = 10, durationMillis = 100, subjectName = "A")
+        repository.saveOrUpdate(episodeId = 2, positionMillis = 20, durationMillis = 100, subjectName = "B")
+        repository.remove(2)
+
+        val histories = repository.allHistoriesFlowByEpisodeIds(listOf(1, 2, 99)).first().associateBy { it.episodeId }
+        assertEquals(setOf(1, 2), histories.keys)
+        assertEquals("B", histories.getValue(2).subjectName)
+        assertTrue(histories.getValue(2).isDeleted)
+        assertEquals(emptyList(), repository.allHistoriesFlowByEpisodeIds(emptyList()).first())
+    }
+
+    @Test
     fun `successive saves keep only the latest pending op for each episode`() = runTest {
         val repository = createRepository()
 
