@@ -17,17 +17,20 @@ import java.net.URI
 import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.ConcurrentLinkedQueue
 import java.util.concurrent.Executors
+import java.util.concurrent.atomic.AtomicInteger
 
 /**
  * 把测试素材 `src/androidDeviceTest/assets/hls/` (由其中的 `generate.sh` 用 ffmpeg 生成的真实 HLS 流) 作为源站提供的本地 HTTP 服务.
  *
  * - 支持 `Range` 请求 (206), 多线程处理.
- * - 记录每个路径的请求次数与请求头, 供断言 "是否命中缓存"、"请求头是否透传".
- * - [segmentLatencyMillis] 模拟慢速源站.
+ * - 记录每个路径的请求次数、请求头和所在连接, 供断言 "是否命中缓存"、"请求头是否透传"、"是否复用连接".
+ * - [segmentLatencyMillis] 模拟慢速源站, [latencyByPath] 模拟个别分片卡住.
  * - [chunkedPaths] 中的路径不返回 Content-Length, 以分块传输响应; [failPaths] 中的路径返回指定状态码.
+ * - [extraBodies] 按路径提供测试资源之外的内容, 例如由现有素材拼出的播放列表.
  */
 class HlsFixtureOrigin : AutoCloseable {
-    class RecordedRequest(val path: String, val headers: Map<String, String>)
+    /** @param clientPort 请求所在 TCP 连接的客户端端口, 同一端口即同一条连接. */
+    class RecordedRequest(val path: String, val headers: Map<String, String>, val clientPort: Int)
 
     private val server = HttpServer.create(InetSocketAddress("127.0.0.1", 0), 0).apply {
         executor = Executors.newCachedThreadPool { runnable ->
@@ -43,14 +46,26 @@ class HlsFixtureOrigin : AutoCloseable {
     @Volatile
     var segmentLatencyMillis: Long = 0
 
+    /** 按路径追加的响应前延迟, 叠加在 [segmentLatencyMillis] 之上. */
+    val latencyByPath: MutableMap<String, Long> = ConcurrentHashMap()
+
     val chunkedPaths: MutableSet<String> = ConcurrentHashMap.newKeySet()
     val failPaths: MutableMap<String, Int> = ConcurrentHashMap()
+    val extraBodies: MutableMap<String, ByteArray> = ConcurrentHashMap()
 
     private val recorded = ConcurrentLinkedQueue<RecordedRequest>()
     private val resourceCache = ConcurrentHashMap<String, ByteArray?>()
 
+    private val rangeRequestsInFlight = AtomicInteger()
+
+    /** 同时在处理的 `Range` 请求数的峰值. 探测时间戳用的是 `Range` 请求. */
+    val maxConcurrentRangeRequests = AtomicInteger()
+
     val requests: List<RecordedRequest> get() = recorded.toList()
     fun count(path: String): Int = recorded.count { it.path == path }
+
+    /** 不带 `Range` 的请求次数, 即整片下载的次数. 探测时间戳用的是 `Range` 请求. */
+    fun countWhole(path: String): Int = recorded.count { it.path == path && "range" !in it.headers }
     fun lastHeaders(path: String): Map<String, String>? = recorded.lastOrNull { it.path == path }?.headers
 
     /** 源站上某路径的字节, 即测试资源内容. */
@@ -58,16 +73,24 @@ class HlsFixtureOrigin : AutoCloseable {
 
     fun url(path: String): String = baseUrl + path
 
-    private fun resource(path: String): ByteArray? = resourceCache.getOrPut(path) {
+    private fun resource(path: String): ByteArray? = extraBodies[path] ?: resourceCache.getOrPut(path) {
         HlsFixtureOrigin::class.java.getResourceAsStream(path)?.use { it.readBytes() }
     }
 
     private fun handle(exchange: HttpExchange) {
         val path = exchange.requestURI.path
         val headers = exchange.requestHeaders.entries.associate { (k, v) -> k.lowercase() to v.joinToString(",") }
-        recorded += RecordedRequest(path, headers)
+        recorded += RecordedRequest(path, headers, exchange.remoteAddress.port)
+        var countedInFlight = "range" in headers
+        if (countedInFlight) maxConcurrentRangeRequests.accumulateAndGet(rangeRequestsInFlight.incrementAndGet(), ::maxOf)
         try {
             if (segmentLatencyMillis > 0 && !path.endsWith(".m3u8")) Thread.sleep(segmentLatencyMillis)
+            latencyByPath[path]?.let { Thread.sleep(it) }
+            // 开始响应前就结束计数: 客户端收到响应即可发出下一个请求, 计到响应写完的话会与它重叠, 峰值多算
+            if (countedInFlight) {
+                rangeRequestsInFlight.decrementAndGet()
+                countedInFlight = false
+            }
             failPaths[path]?.let { status ->
                 exchange.sendResponseHeaders(status, -1)
                 return
@@ -93,6 +116,7 @@ class HlsFixtureOrigin : AutoCloseable {
             }
             exchange.responseBody.use { it.write(slice) }
         } finally {
+            if (countedInFlight) rangeRequestsInFlight.decrementAndGet()
             exchange.close()
         }
     }

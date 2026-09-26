@@ -159,7 +159,8 @@ fun getDesktopModules(getContext: () -> DesktopContext, scope: CoroutineScope) =
     single<BrowserNavigator> { DesktopBrowserNavigator() }
     single<CaptchaBrowserFactory> { DesktopCaptchaBrowserFactory() }
     single<ImageCaptchaRecognizer> { DesktopOnnxImageCaptchaRecognizer() }
-    single<HlsPlaybackPreparer> { PlatformHlsPlaybackPreparer(get()) }
+    // 桌面端用 mpv 播放, libavformat 不按 discontinuity 重映射时间戳, 需要代理对齐
+    single<HlsPlaybackPreparer> { PlatformHlsPlaybackPreparer(get(), alignTimestamps = true) }
     single<OfflineDownloadEngine> {
         val settings = get<SettingsRepository>()
         val configState = settings.pikpakConfig.flow

@@ -95,11 +95,14 @@ data class VideoScaffoldConfig @SerializationOnly constructor(
      */
     val enableHighQualityAudioTimeStretch: Boolean = true,
     /**
-     * 过滤 HLS 播放列表中的插播片段.
+     * 过滤 HLS 播放列表中的插播广告, 见 `HlsManifestFilter`.
      *
-     * @since 5.7
+     * 5.7 至 6.1 的同类开关是默认关闭的 `enableExperimentalHlsSegmentFiltering`, 已不再读取:
+     * 换用新字段, 所有用户按新的默认值启用.
+     *
+     * @since 6.2
      */
-    val enableExperimentalHlsSegmentFiltering: Boolean = false,
+    val enableHlsAdFiltering: Boolean = true,
     /**
      * 用于在安卓上设置屏幕刷新率, 解决某些设备会自动限制刷新率的问题 (三星).
      *
@@ -234,7 +237,7 @@ data class VideoScaffoldConfig @SerializationOnly constructor(
             autoSkipOpEd = false,
             autoSwitchMediaOnPlayerError = false,
             enableHighQualityAudioTimeStretch = false,
-            enableExperimentalHlsSegmentFiltering = false,
+            enableHlsAdFiltering = false,
         )
     }
 

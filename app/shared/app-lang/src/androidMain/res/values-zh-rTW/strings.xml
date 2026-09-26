@@ -378,8 +378,8 @@
     <string name="settings_player_op_ed_skip_duration">OP/ED 跳過時長</string>
     <string name="settings_player_op_ed_skip_duration_seconds">%1$d 秒</string>
     <string name="settings_player_auto_switch_media_on_error">播放失敗時自動切換資源</string>
-    <string name="settings_player_experimental_hls_segment_filter">過濾貼片廣告（實驗性）</string>
-    <string name="settings_player_experimental_hls_segment_filter_description">嘗試過濾部分線上來源插入的貼片廣告。僅對以獨立片段插入的廣告有效，識別錯誤時可能跳過正常內容。</string>
+    <string name="settings_player_hls_ad_filter">過濾貼片廣告</string>
+    <string name="settings_player_hls_ad_filter_description">自動跳過線上來源影片中插入的廣告，個別廣告可能無法識別；如遇播放出錯可關閉</string>
     <string name="settings_player_long_press_fast_forward_speed">長按播放速度</string>
     <string name="settings_player_long_press_fast_forward_speed_description">長按時使用的播放速度</string>
     <string name="settings_player_playback_speed_range">倍速範圍</string>

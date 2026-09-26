@@ -131,7 +131,7 @@ class PlayerSessionHlsPlaybackPreparerTest {
                         GetVideoScaffoldConfigUseCase {
                             flowOf(
                                 VideoScaffoldConfig.AllDisabled.copy(
-                                    enableExperimentalHlsSegmentFiltering = hlsEnabled,
+                                    enableHlsAdFiltering = hlsEnabled,
                                 ),
                             )
                         }
@@ -165,7 +165,11 @@ class PlayerSessionHlsPlaybackPreparerTest {
         var prepareCount: Int = 0
             private set
 
-        override suspend fun prepare(data: UriMediaData, options: HlsPlaybackOptions): HlsPlaybackPreparerResult {
+        override suspend fun prepare(
+            data: UriMediaData,
+            options: HlsPlaybackOptions,
+            startPositionHintMillis: Long?,
+        ): HlsPlaybackPreparerResult {
             prepareCount++
             val session = RecordingHlsPlaybackProxySession()
             sessions += session

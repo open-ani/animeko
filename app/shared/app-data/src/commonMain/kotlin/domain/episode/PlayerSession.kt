@@ -94,8 +94,14 @@ class PlayerSession(
 
     /**
      * 解析 media 并开始播放这个 media.
+     *
+     * @param startPositionHintMillis 预计从哪里开始播放, 见 [HlsPlaybackPreparer.prepare]. 只影响预缓存, 不会跳转.
      */
-    suspend fun loadMedia(media: Media?, episodeInfo: EpisodeMetadata) = coroutineScope {
+    suspend fun loadMedia(
+        media: Media?,
+        episodeInfo: EpisodeMetadata,
+        startPositionHintMillis: Long? = null,
+    ) = coroutineScope {
         val backgroundScope = this
         _videoLoadingStateFlow.value = VideoLoadingState.Initial // 避免一直显示已取消 (.Cancelled)
         stopPlayback()
@@ -116,7 +122,7 @@ class PlayerSession(
             )
 
             val data = source.open(scopeForCleanup = backgroundScope) // may throw MediaSourceOpenException
-            val preparedData = prepareHlsPlaybackIfEnabled(data).also {
+            val preparedData = prepareHlsPlaybackIfEnabled(data, startPositionHintMillis).also {
                 preparedHlsPlaybackProxySession = it.session
             }.data
 
@@ -190,20 +196,20 @@ class PlayerSession(
         }
     }
 
-    private suspend fun prepareHlsPlaybackIfEnabled(data: MediaData): PreparedMediaData {
+    private suspend fun prepareHlsPlaybackIfEnabled(data: MediaData, startPositionHintMillis: Long?): PreparedMediaData {
         if (data !is UriMediaData) {
             return PreparedMediaData(data)
         }
         val config = getVideoScaffoldConfigUseCase.invoke().first()
         val options = HlsPlaybackOptions(
-            filterSegments = config.enableExperimentalHlsSegmentFiltering,
+            filterSegments = config.enableHlsAdFiltering,
             // 自动跳过 OP/ED 需要提前缓存跳转目标处的分片, 这要求分片经由本地代理
             proxySegments = config.autoSkipOpEd,
         )
         if (!options.isEnabled) {
             return PreparedMediaData(data)
         }
-        val result = hlsPlaybackPreparer.prepare(data, options)
+        val result = hlsPlaybackPreparer.prepare(data, options, startPositionHintMillis)
         return PreparedMediaData(result.data, result.session)
     }
 

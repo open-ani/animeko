@@ -62,6 +62,7 @@ import me.him188.ani.app.domain.foundation.DistributionChannelFeatureHandler
 import me.him188.ani.app.domain.foundation.GlobalHttpEventBus
 import me.him188.ani.app.domain.foundation.GlobalHttpEvents
 import me.him188.ani.app.domain.foundation.HttpClientProvider
+import me.him188.ani.app.domain.foundation.MaxRequestsPerHostFeatureHandler
 import me.him188.ani.app.domain.foundation.ScopedHttpClientUserAgent
 import me.him188.ani.app.domain.foundation.ServerListFeature
 import me.him188.ani.app.domain.foundation.ServerListFeatureConfig
@@ -189,6 +190,7 @@ private fun KoinApplication.otherModules(
                 SseFeatureHandler,
                 CookieJarFeatureHandler, // web 数据源统一 cookie jar (构造时注入)
                 WebSourceIdentityFeatureHandler, // web 数据源 per-host UA 对齐
+                MaxRequestsPerHostFeatureHandler,
             ),
         )
     }

@@ -12,11 +12,24 @@ package me.him188.ani.tools.datasourcetestmcp.video
 import io.ktor.client.HttpClient
 import io.ktor.client.request.get
 import io.ktor.client.request.header
+import io.ktor.client.request.prepareGet
+import io.ktor.client.statement.bodyAsChannel
 import io.ktor.client.statement.bodyAsText
+import io.ktor.http.HttpHeaders
 import io.ktor.http.Url
+import io.ktor.http.isSuccess
+import io.ktor.utils.io.readAvailable
 import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.async
+import kotlinx.coroutines.awaitAll
+import kotlinx.coroutines.coroutineScope
+import kotlinx.coroutines.sync.Semaphore
+import kotlinx.coroutines.sync.withPermit
 import me.him188.ani.app.domain.media.hls.HlsManifestFilter
 import me.him188.ani.app.domain.media.hls.HlsManifestFilterStatus
+import me.him188.ani.app.domain.media.hls.HlsProbeTarget
+import me.him188.ani.app.domain.media.hls.PTS_PROBE_BYTES
+import me.him188.ani.app.domain.media.hls.TsPacketReader
 import me.him188.ani.utils.httpdownloader.m3u.DefaultM3u8Parser
 import me.him188.ani.utils.httpdownloader.m3u.M3u8Playlist
 import me.him188.ani.utils.ktor.UrlHelpers
@@ -77,10 +90,15 @@ class M3u8AdAnalyzer(
             return analyzePlaylist(UrlHelpers.computeAbsoluteUrl(url, variant), headers, depth + 1)
         }
 
-        return analyzeMediaPlaylist(url = url, text = text, lines = lines)
+        return analyzeMediaPlaylist(url = url, headers = headers, text = text, lines = lines)
     }
 
-    private fun analyzeMediaPlaylist(url: String, text: String, lines: List<String>): AdAnalysisResult {
+    private suspend fun analyzeMediaPlaylist(
+        url: String,
+        headers: Map<String, String>,
+        text: String,
+        lines: List<String>,
+    ): AdAnalysisResult {
         var discontinuityCount = 0
         val segmentDurations = mutableListOf<Double>()
         val segmentHosts = linkedSetOf<String>()
@@ -116,17 +134,25 @@ class M3u8AdAnalyzer(
             medianSegmentDuration = segmentDurations.median(),
         )
         val filterErrors = mutableListOf<String>()
-        val hlsFilter = runClientFilter(text = text, url = url, errors = filterErrors)
+        val hlsFilter = runClientFilter(text = text, url = url, headers = headers, errors = filterErrors)
         return score(signals, playlistHost, hlsFilter, filterErrors)
     }
 
     /**
      * 在 media playlist 上运行 Ani 客户端真实的 HLS 广告过滤器, 并从原始 (未过滤的)
      * 播放列表计算各被滤除组的时间偏移.
+     *
+     * 过滤器按时间戳连续性判定广告, 需要各组首片的首个 PTS. 这里与客户端一样只读每片开头 [PTS_PROBE_BYTES] 字节.
      */
-    private fun runClientFilter(text: String, url: String, errors: MutableList<String>): HlsFilterAnalysis? =
-        runCatching {
-            val result = HlsManifestFilter.filter(text, url)
+    private suspend fun runClientFilter(
+        text: String,
+        url: String,
+        headers: Map<String, String>,
+        errors: MutableList<String>,
+    ): HlsFilterAnalysis? =
+        try {
+            val analysis = HlsManifestFilter.analyze(text, url)
+            val result = HlsManifestFilter.filter(analysis) { targets -> probeFirstPtsMillis(targets, headers) }
             val removedGroups = if (result.removedGroups.isEmpty()) {
                 emptyList()
             } else {
@@ -140,7 +166,6 @@ class M3u8AdAnalyzer(
                 result.removedGroups.map { group ->
                     val start = startOffsets.getOrElse(group.startSegmentIndex) { 0.0 }
                     RemovedAdGroup(
-                        reasons = group.reasons,
                         segmentCount = group.segmentCount,
                         durationSeconds = group.duration.round3(),
                         startOffsetSeconds = start.round3(),
@@ -158,11 +183,47 @@ class M3u8AdAnalyzer(
                 mediaPlaylistUrl = url,
                 removedGroups = removedGroups,
             )
-        }.getOrElse { e ->
-            if (e is CancellationException) throw e
+        } catch (e: CancellationException) {
+            throw e
+        } catch (e: Throwable) {
             errors += "Ani HLS 广告过滤器分析失败: ${e::class.simpleName}: ${e.message.orEmpty()}"
             null
         }
+
+    /** 各组首片的首个 PTS (毫秒), 读取失败为 `null`. 过滤器把 `null` 当作未知, 保留该组. */
+    private suspend fun probeFirstPtsMillis(targets: List<HlsProbeTarget>, headers: Map<String, String>): List<Long?> {
+        val limit = Semaphore(PROBE_CONCURRENCY)
+        return coroutineScope {
+            targets.map { target ->
+                async { limit.withPermit { probeFirstPtsMillis(target.uri, headers) } }
+            }.awaitAll()
+        }
+    }
+
+    private suspend fun probeFirstPtsMillis(uri: String, headers: Map<String, String>): Long? {
+        return try {
+            httpClient.prepareGet(uri) {
+                headers.forEach { (k, v) -> header(k, v) }
+                header(HttpHeaders.Range, "bytes=0-${PTS_PROBE_BYTES - 1}")
+            }.execute { response ->
+                if (!response.status.isSuccess()) return@execute null
+                // 源站不支持 Range 时会回整个分片, 读满开头就停
+                val channel = response.bodyAsChannel()
+                val head = ByteArray(PTS_PROBE_BYTES)
+                var length = 0
+                while (length < head.size) {
+                    val read = channel.readAvailable(head, length, head.size - length)
+                    if (read < 0) break
+                    length += read
+                }
+                TsPacketReader.firstPts(head, 0, length)?.let { TsPacketReader.ticksToMillis(it) }
+            }
+        } catch (e: CancellationException) {
+            throw e
+        } catch (_: Throwable) {
+            null
+        }
+    }
 
     private fun score(
         signals: PlaylistAdSignals,
@@ -243,4 +304,8 @@ class M3u8AdAnalyzer(
 
     /** 消除 Float 累加噪声, 保留 3 位小数 */
     private fun Double.round3(): Double = (this * 1000).roundToLong() / 1000.0
+
+    private companion object {
+        const val PROBE_CONCURRENCY = 8
+    }
 }

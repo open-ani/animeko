@@ -90,8 +90,8 @@ import me.him188.ani.app.ui.lang.settings_player_auto_switch_media_on_error
 import me.him188.ani.app.utils.formatSpeedValue
 import me.him188.ani.app.ui.lang.settings_player_default_playback_speed
 import me.him188.ani.app.ui.lang.settings_player_default_playback_speed_description
-import me.him188.ani.app.ui.lang.settings_player_experimental_hls_segment_filter
-import me.him188.ani.app.ui.lang.settings_player_experimental_hls_segment_filter_description
+import me.him188.ani.app.ui.lang.settings_player_hls_ad_filter
+import me.him188.ani.app.ui.lang.settings_player_hls_ad_filter_description
 import me.him188.ani.app.ui.lang.settings_player_enable_regex_filter
 import me.him188.ani.app.ui.lang.settings_player_frame_preview
 import me.him188.ani.app.ui.lang.settings_player_frame_preview_description
@@ -639,17 +639,14 @@ fun SettingsScope.PlayerGroup(
             )
         }
         HorizontalDividerItem()
-        if (!LocalPlatform.current.isIos()) {
-            SwitchItem(
-                checked = config.enableExperimentalHlsSegmentFiltering,
-                onCheckedChange = {
-                    videoScaffoldConfig.update(config.copy(enableExperimentalHlsSegmentFiltering = it))
-                },
-                title = { Text(stringResource(Lang.settings_player_experimental_hls_segment_filter)) },
-                description = { Text(stringResource(Lang.settings_player_experimental_hls_segment_filter_description)) },
-            )
-            HorizontalDividerItem()
-        }
+        SwitchItem(
+            checked = config.enableHlsAdFiltering,
+            onCheckedChange = {
+                videoScaffoldConfig.update(config.copy(enableHlsAdFiltering = it))
+            },
+            title = { Text(stringResource(Lang.settings_player_hls_ad_filter)) },
+            description = { Text(stringResource(Lang.settings_player_hls_ad_filter_description)) },
+        )
         HorizontalDividerItem()
         SwitchItem(
             checked = config.enableFramePreview,
