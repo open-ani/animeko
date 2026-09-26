@@ -116,6 +116,10 @@ class DownloadManagementViewModel(
         DownloadManagementUiState(stats, groups, isLoading = false)
     }.stateInBackground(DownloadManagementUiState.Placeholder)
 
+    fun pauseDownloads(ids: Set<String>) = operationRunner.run(ids, DownloadOperation.Pause)
+    fun resumeDownloads(ids: Set<String>) = operationRunner.run(ids, DownloadOperation.Resume)
+    fun deleteDownloads(ids: Set<String>) = operationRunner.run(ids, DownloadOperation.Delete)
+
     fun pauseDownload(item: DownloadItem) = operationRunner.run(setOf(item.id), DownloadOperation.Pause)
     fun resumeDownload(item: DownloadItem) = operationRunner.run(setOf(item.id), DownloadOperation.Resume)
     fun deleteDownload(item: DownloadItem) = operationRunner.run(setOf(item.id), DownloadOperation.Delete)

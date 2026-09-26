@@ -89,7 +89,7 @@
     <string name="media_selector_source_count">%1$d 個資料來源</string>
     <string name="media_selector_query_again">重新查詢</string>
     <string name="media_selector_querying">正在查詢資料來源…</string>
-    <string name="media_selector_no_online_sources">沒有可用的線上資料來源，請在設定中新增</string>
+    <string name="media_selector_no_sources">暫無可用資料來源，請在設定中啟用。</string>
     <string name="media_selector_no_lines">沒有找到可用線路</string>
     <string name="media_selector_results_excluded">結果已被排除</string>
     <string name="media_selector_no_resources">沒有找到資源</string>

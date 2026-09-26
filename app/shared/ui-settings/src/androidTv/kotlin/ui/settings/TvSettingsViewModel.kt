@@ -60,8 +60,11 @@ class TvSettingsViewModel(
             )
         }
     }
+    private val torrentPreferences = combine(preferences, settings.anitorrentConfig.flow) { state, torrent ->
+        state.copy(torrent = torrent)
+    }
     private val settingsFlow = combine(
-        preferences, settings.danmakuFilterConfig.flow, regexRepository.flow, sources, subscriptions.flow,
+        torrentPreferences, settings.danmakuFilterConfig.flow, regexRepository.flow, sources, subscriptions.flow,
     ) { state, filter, regexFilters, sources, subscriptions ->
         state.copy(
             loaded = true, filter = filter, regexFilters = regexFilters, sources = sources,
@@ -92,6 +95,7 @@ class TvSettingsViewModel(
                     is TvSettingsIntent.Preference -> settings.defaultMediaPreference.update(intent.update)
                     is TvSettingsIntent.Selector -> settings.mediaSelectorSettings.update(intent.update)
                     is TvSettingsIntent.Resolver -> settings.videoResolverSettings.update(intent.update)
+                    is TvSettingsIntent.Torrent -> settings.anitorrentConfig.update(intent.update)
                     is TvSettingsIntent.SourceEnabled -> sourceManager.setEnabled(intent.id, intent.enabled)
                     is TvSettingsIntent.SubscriptionEnabled -> subscriptions.update(intent.id) { current ->
                         sourceManager.setEnabled(

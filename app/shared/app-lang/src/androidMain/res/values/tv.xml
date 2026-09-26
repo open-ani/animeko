@@ -89,7 +89,7 @@
     <string name="media_selector_source_count">Data sources: %1$d</string>
     <string name="media_selector_query_again">Search again</string>
     <string name="media_selector_querying">Searching sources…</string>
-    <string name="media_selector_no_online_sources">No online sources available. Add one in Settings.</string>
+    <string name="media_selector_no_sources">No sources available. Enable one in Settings.</string>
     <string name="media_selector_no_lines">No available lines found</string>
     <string name="media_selector_results_excluded">Results were excluded</string>
     <string name="media_selector_no_resources">No resources found</string>

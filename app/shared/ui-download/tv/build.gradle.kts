@@ -11,30 +11,21 @@ plugins {
     id("ani.kmp-compose")
 }
 
-group = "me.him188.ani.tv"
-
 kotlin {
     android {
-        namespace = "me.him188.ani.tv"
+        namespace = "me.him188.ani.app.tv.ui.download"
     }
     sourceSets.androidMain {
         kotlin.srcDir("../src/androidTv/kotlin")
         dependencies {
-            api(projects.app.shared)
+            api(projects.app.shared.uiDownload)
             api(projects.app.shared.uiFoundationTv)
-            implementation(projects.app.shared.uiExplorationTv)
-            implementation(projects.app.shared.uiSubjectTv)
-            implementation(projects.app.shared.uiEpisodeTv)
-            implementation(projects.app.shared.uiWatchtogetherTv)
-            implementation(projects.app.shared.uiOnboardingTv)
-            implementation(projects.app.shared.uiSettingsTv)
-            implementation(projects.app.shared.uiDownloadTv)
         }
     }
     sourceSets.androidHostTest {
         kotlin.srcDir("../src/androidTvTest/kotlin")
         dependencies {
-            implementation(libs.konsist)
+            implementation(libs.kotlinx.coroutines.test)
         }
     }
     sourceSets.androidDeviceTest {

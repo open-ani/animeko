@@ -81,6 +81,7 @@ class TvSettingsUiTest {
                             state = when (intent) {
                                 is TvSettingsIntent.Appearance -> state.copy(appearance = intent.update(state.appearance))
                                 is TvSettingsIntent.Theme -> state.copy(theme = intent.update(state.theme))
+                                is TvSettingsIntent.Torrent -> state.copy(torrent = intent.update(state.torrent))
                                 is TvSettingsIntent.Video -> state.copy(video = intent.update(state.video))
                                 is TvSettingsIntent.Filter -> state.copy(filter = state.filter.copy(enableRegexFilter = intent.enabled))
                                 is TvSettingsIntent.Preference -> state.copy(preference = intent.update(state.preference))
@@ -303,7 +304,7 @@ class TvSettingsUiTest {
     fun aboutReturnsOneLevelAtATimeToTheOriginalEntry() = runAniComposeUiTest {
         state = state.copy(libraries = listOf(TvSettingsLibrary("lib", "Library", "1.0", null, "MIT", "Permission is hereby granted.")))
         mount()
-        repeat(5) { key(Key.DirectionDown) }
+        repeat(6) { key(Key.DirectionDown) }
         key(Key.DirectionCenter)
         awaitFocus("tv-settings-item-version")
         select("tv-settings-item-developers")
@@ -423,7 +424,7 @@ class TvSettingsUiTest {
     fun loadedLicenseListReceivesFocusAndLongLicenseTextScrollsWithTheRemote() = runAniComposeUiTest {
         state = state.copy(librariesLoading = true)
         mount()
-        repeat(5) { key(Key.DirectionDown) }
+        repeat(6) { key(Key.DirectionDown) }
         key(Key.DirectionCenter)
         select("tv-settings-item-acknowledgements")
         select("tv-settings-item-licenses")
@@ -544,7 +545,7 @@ class TvSettingsUiTest {
     @Test
     fun linksOfferAScannableCodeAndFocusTheActionInsteadOfTheUrlText() = runAniComposeUiTest {
         mount(fontScale = 1.3f)
-        repeat(5) { key(Key.DirectionDown) }
+        repeat(6) { key(Key.DirectionDown) }
         key(Key.DirectionCenter)
         onNodeWithTag("tv-settings-item-qq").assertDoesNotExist()
         listOf("website", "telegram").forEachIndexed { index, entry ->
@@ -564,6 +565,21 @@ class TvSettingsUiTest {
             key(Key.Back)
             awaitFocus("tv-settings-item-$entry")
         }
+    }
+
+    @Test
+    fun bitTorrentSettingsAreReachableAndRestoreFocusAfterEditing() = runAniComposeUiTest {
+        mount()
+        navigateTo("tv-settings-section-BitTorrent")
+        key(Key.DirectionCenter)
+        awaitFocus("tv-settings-item-torrent-download")
+        select("tv-settings-item-torrent-metered")
+        assertEquals(false, state.torrent.limitUploadOnMeteredNetwork)
+        navigateTo("tv-settings-item-torrent-ratio", Key.DirectionUp)
+        key(Key.DirectionCenter)
+        key(Key.Back)
+        awaitFocus("tv-settings-item-torrent-ratio")
+        capture("bittorrent")
     }
 
     private fun AniComposeUiTest.navigateTo(tag: String, direction: Key = Key.DirectionDown) {

@@ -16,7 +16,6 @@ import me.him188.ani.app.domain.media.fetch.MediaFetchSession
 import me.him188.ani.app.domain.media.selector.MediaExclusionReason
 import me.him188.ani.app.domain.media.selector.MediaSelector
 import me.him188.ani.app.domain.media.selector.UnsafeOriginalMediaAccess
-import me.him188.ani.datasources.api.source.MediaSourceKind
 
 @OptIn(UnsafeOriginalMediaAccess::class)
 internal fun tvSourceGroups(
@@ -24,7 +23,7 @@ internal fun tvSourceGroups(
     selector: MediaSelector,
     captchaSupported: Boolean,
 ): Flow<List<TvSourceGroup>> {
-    val sources = session.mediaSourceResults.filter { it.kind == MediaSourceKind.WEB }
+    val sources = session.mediaSourceResults
     if (sources.isEmpty()) return flowOf(emptyList())
     return combine(
         sources.map { source ->

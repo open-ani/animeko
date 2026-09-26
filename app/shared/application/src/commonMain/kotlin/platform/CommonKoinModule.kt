@@ -454,7 +454,7 @@ fun KoinApplication.startCommonKoinModule(
     // Now, the proxy settings is ready. Other components can use http clients.
 
     coroutineScope.launch {
-        // TV 不装配缓存模块: HttpDownloader 无绑定时跳过; 空引擎 MediaDownloadManager 的循环自然为空.
+        // HTTP 下载器先恢复传输状态, 随后各存储恢复持久化的下载记录.
         koin.getOrNull<HttpDownloader>()?.init() // restore http download states first
         koin.getOrNull<MediaDownloadManager>()?.let { manager ->
             for (storage in manager.storages) {

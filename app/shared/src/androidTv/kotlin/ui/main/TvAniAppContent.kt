@@ -37,11 +37,14 @@ import me.him188.ani.app.navigation.NavRoutes
 import me.him188.ani.app.navigation.PersonDetailRole
 import me.him188.ani.app.navigation.findLast
 import me.him188.ani.app.navigation.rememberAniBackStack
+import me.him188.ani.app.shared.loadOpenSourceLibrariesJsons
 import me.him188.ani.app.tools.LocalTimeFormatter
 import me.him188.ani.app.tools.TimeFormatter
+import me.him188.ani.app.ui.download.DownloadManagementViewModel
 import me.him188.ani.tv.ui.collection.TvCollectionRoute
 import me.him188.ani.tv.ui.collection.TvCollectionViewModel
 import me.him188.ani.tv.ui.di.TvAppDependencies
+import me.him188.ani.tv.ui.download.TvDownloadManagementRoute
 import me.him188.ani.tv.ui.episode.TvEpisodeRoute
 import me.him188.ani.tv.ui.episode.TvEpisodeViewModel
 import me.him188.ani.tv.ui.exploration.TvExplorationRoute
@@ -57,7 +60,6 @@ import me.him188.ani.tv.ui.search.TvSearchRoute
 import me.him188.ani.tv.ui.search.TvSearchViewModel
 import me.him188.ani.tv.ui.settings.TvSettingsRoute
 import me.him188.ani.tv.ui.settings.TvSettingsViewModel
-import me.him188.ani.app.shared.loadOpenSourceLibrariesJsons
 import me.him188.ani.tv.ui.subject.TvSubjectDetailsRoute
 import me.him188.ani.tv.ui.subject.TvSubjectDetailsViewModel
 import me.him188.ani.tv.ui.subject.person.TvPeopleDetailsRoute
@@ -74,7 +76,7 @@ import me.him188.ani.tv.ui.watchtogether.TvWatchTogetherViewModel
  * 所有 TV ViewModel 只在这里通过 tvViewModel 显式构造, 生命周期归属所在导航条目.
  * 主壳内的功能页首次显示时才创建对应 ViewModel, Route 只接收实例并连接状态/Intent.
  *
- * `Caches`/`BangumiAuthorize` 等按 §1.2 裁剪永不注册.
+ * 下载管理作为主壳页面呈现, 登录使用 TV 专属入口.
  */
 @Composable
 fun TvAniAppContent(
@@ -143,6 +145,7 @@ fun TvAniAppContent(
             val pages = entryProvider<NavRoutes> {
                 entry<NavRoutes.Main> {
                     var shellContent by rememberSaveable { mutableStateOf(TvShellContent.Exploration) }
+                    var downloadsModalOpen by remember { mutableStateOf(false) }
                     val mainViewModel = tvViewModel {
                         TvMainViewModel(dependencies.userRepository, dependencies.sessionStateProvider)
                     }
@@ -152,6 +155,7 @@ fun TvAniAppContent(
                         onContentChange = { shellContent = it },
                         onOpenSettings = { aniNavigator.navigateSettings() },
                         focusMemory = shellFocusMemory,
+                        contentModalOpen = downloadsModalOpen,
                     ) { content, navigationRailInsets ->
                         when (content) {
                             TvShellContent.Exploration -> {
@@ -172,6 +176,32 @@ fun TvAniAppContent(
                             TvShellContent.Collection -> {
                                 val viewModel = tvViewModel { TvCollectionViewModel() }
                                 TvCollectionRoute(viewModel, onNavigate, navigationRailInsets = navigationRailInsets)
+                            }
+
+                            TvShellContent.Downloads -> {
+                                val viewModel = tvViewModel {
+                                    DownloadManagementViewModel(
+                                        dependencies.downloadManager, dependencies.subjectCollectionRepository,
+                                        dependencies.episodePlayHistories, dependencies.downloadOperations,
+                                        dependencies.downloadPresenters,
+                                    )
+                                }
+                                TvDownloadManagementRoute(
+                                    viewModel,
+                                    navigationRailInsets = navigationRailInsets,
+                                    onPlay = { aniNavigator.navigateEpisodeDetails(it.subjectId, it.episodeId) },
+                                    onModalChanged = { downloadsModalOpen = it },
+                                    searchContent = { choose ->
+                                        val search = tvViewModel(key = "download-search") {
+                                            TvSearchViewModel()
+                                        }
+                                        TvSearchRoute(search, navigationRailInsets = navigationRailInsets, onNavigate = { event ->
+                                            if (event is TvNavigationEvent.Subject) {
+                                                choose(event.subjectId, event.placeholder?.let { it.nameCN.ifBlank { it.name } }.orEmpty())
+                                            }
+                                        })
+                                    },
+                                )
                             }
 
                             TvShellContent.Search -> {

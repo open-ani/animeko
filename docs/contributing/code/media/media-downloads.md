@@ -123,3 +123,22 @@ presenter 持有当前会话并把会话状态映射为页面状态：
 [add]: ../../../../app/shared/app-data/src/commonMain/kotlin/domain/media/download/AddDownloadUseCase.kt
 [operations]: ../../../../app/shared/app-data/src/commonMain/kotlin/domain/media/download/DownloadOperations.kt
 [presenter]: ../../../../app/shared/ui-download/src/commonMain/kotlin/ui/download/subject/SubjectDownloadsPresenter.kt
+
+## Android TV
+
+TV 主导航栏的下载入口位于 `ui-download/src/androidTv`，由 `ui-download-tv` 模块编译。
+`TvAniAppContent` 显式创建共享 `DownloadManagementViewModel`，其生命周期归属主导航条目。
+添加下载复用 TV 搜索和 `SubjectDownloadsPresenter` 的选源、批量选集会话。
+全局与条目操作均由 `DownloadOperations` 提交，关闭页面不影响已提交的操作。
+
+下载页使用左右两栏：左侧选择番剧，右侧浏览剧集，确认键打开操作，返回键从详情回到番剧列表。
+弹窗限制焦点在当前层并禁用主导航菜单热键，关闭后恢复操作行；删除后焦点落到详情返回按钮。
+布局采用 `TvScreenScaffold` 的安全边距与 TV 主题，交互遵循
+[Android TV 遥控器导航规范](https://developer.android.com/training/tv/get-started/navigation)。
+
+`getAndroidMediaModules` 负责 Android 下载目录、HTTP/BT 存储与资源解析的共同装配。
+手机提供远程 BT 引擎工厂和 service 访问控制；TV 提供 `LocalAnitorrentEngineFactory` 与
+`AlwaysUseTorrentEngineAccess`，所有 Android 版本均在应用进程内运行，不声明 BT service。
+TV 应用运行期间执行下载，重启通过共享存储恢复记录。播放页启用 `CacheOnBtPlayExtension`，
+选源列表包含在线源、BT 与本地下载。TV 的 BitTorrent 设置通过同一 `SettingsRepository` 持久化，
+配置流直接驱动下载引擎。

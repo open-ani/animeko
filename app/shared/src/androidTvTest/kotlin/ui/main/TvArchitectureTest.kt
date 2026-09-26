@@ -61,6 +61,16 @@ class TvArchitectureTest {
         "me.him188.ani.app.ui.watchtogether.watchTogetherStatusText",
         // Shared resources and locale-dependent text mappings contain no phone layouts.
         "me.him188.ani.app.ui.lang.",
+        "me.him188.ani.app.ui.download.DownloadManagementViewModel",
+        "me.him188.ani.app.ui.download.DownloadManagementUiState",
+        "me.him188.ani.app.ui.download.components.DownloadItem",
+        "me.him188.ani.app.ui.download.components.DownloadStatus",
+        "me.him188.ani.app.ui.download.subject.SubjectDownloadsPresenterFactory",
+        "me.him188.ani.app.ui.download.subject.SubjectDownloadsUiState",
+        "me.him188.ani.app.ui.download.subject.SubjectDownloadListItem",
+        "me.him188.ani.app.ui.download.subject.DownloadRequestDialogState",
+        "me.him188.ani.app.ui.download.subject.DownloadMediaPickerState",
+        "me.him188.ani.app.ui.download.subject.DownloadEpisodePickerState",
         "me.him188.ani.app.ui.rating.RateRequest",
         // Platform-neutral star glyphs and score descriptions, without the phone rating editor.
         "me.him188.ani.app.ui.rating.FiveRatingStars",
@@ -139,13 +149,12 @@ class TvArchitectureTest {
     }
 
     @Test
-    fun `tv code must not reference torrent or media cache implementations`() {
-        // 运行期由 DI 门控为空实现 (D4), 直接引用会绕过门控 (§4.2)
+    fun `tv code must not use remote torrent services`() {
         tvScope().files.assertFalse { file ->
             file.imports.any {
-                it.name.startsWith("me.him188.ani.app.domain.torrent.") ||
-                    it.name.startsWith("me.him188.ani.app.domain.media.cache.engine.") ||
-                    it.name.startsWith("me.him188.ani.app.domain.media.cache.storage.")
+                it.name.startsWith("me.him188.ani.app.domain.torrent.service.") ||
+                    it.name.startsWith("me.him188.ani.app.domain.torrent.client.") ||
+                    it.name.endsWith("RemoteAnitorrentEngineFactory")
             }
         }
     }

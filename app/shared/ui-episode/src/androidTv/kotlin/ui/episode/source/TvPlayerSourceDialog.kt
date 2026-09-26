@@ -76,8 +76,8 @@ import me.him188.ani.app.ui.lang.Lang
 import me.him188.ani.app.ui.lang.media_selector_default_line
 import me.him188.ani.app.ui.lang.media_selector_exclusion_manual
 import me.him188.ani.app.ui.lang.media_selector_no_lines
-import me.him188.ani.app.ui.lang.media_selector_no_online_sources
 import me.him188.ani.app.ui.lang.media_selector_no_resources
+import me.him188.ani.app.ui.lang.media_selector_no_sources
 import me.him188.ani.app.ui.lang.media_selector_query_again
 import me.him188.ani.app.ui.lang.media_selector_querying
 import me.him188.ani.app.ui.lang.media_selector_resource
@@ -354,7 +354,7 @@ internal fun TvPlayerSourceDialog(
                     Text(
                         state.error?.text() ?: when {
                             state.loading -> stringResource(Lang.media_selector_querying)
-                            state.groups.isEmpty() -> stringResource(Lang.media_selector_no_online_sources)
+                            state.groups.isEmpty() -> stringResource(Lang.media_selector_no_sources)
                             else -> stringResource(Lang.media_selector_no_lines)
                         },
                         color = TvOptionDefaults.Muted,

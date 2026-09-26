@@ -4,6 +4,7 @@
  */
 package me.him188.ani.tv.ui.settings
 
+import me.him188.ani.app.data.models.preference.AnitorrentConfig
 import me.him188.ani.app.data.models.danmaku.DanmakuFilterConfig
 import me.him188.ani.app.data.models.danmaku.DanmakuRegexFilter
 import me.him188.ani.app.data.models.preference.MediaPreference
@@ -27,6 +28,7 @@ data class TvSettingsUiState(
     val preference: MediaPreference = MediaPreference.PlatformDefault,
     val selector: MediaSelectorSettings = MediaSelectorSettings.Default,
     val resolver: VideoResolverSettings = VideoResolverSettings.Default,
+    val torrent: AnitorrentConfig = AnitorrentConfig.Default,
     val sources: List<TvSettingsSource> = emptyList(),
     val subscriptions: List<TvSettingsSubscription> = emptyList(),
     val libraries: List<TvSettingsLibrary> = emptyList(),
@@ -67,6 +69,7 @@ sealed interface TvSettingsIntent {
     data class Preference(val update: MediaPreference.() -> MediaPreference) : TvSettingsIntent
     data class Selector(val update: MediaSelectorSettings.() -> MediaSelectorSettings) : TvSettingsIntent
     data class Resolver(val update: VideoResolverSettings.() -> VideoResolverSettings) : TvSettingsIntent
+    data class Torrent(val update: AnitorrentConfig.() -> AnitorrentConfig) : TvSettingsIntent
     data class SourceEnabled(val id: String, val enabled: Boolean) : TvSettingsIntent
     data class SubscriptionEnabled(val id: String, val enabled: Boolean) : TvSettingsIntent
     data class SaveRegex(val filter: DanmakuRegexFilter, val isNew: Boolean) : TvSettingsIntent

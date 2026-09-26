@@ -183,6 +183,22 @@ class DownloadManagementViewModelTest {
         assertTrue(second.isClosed)
     }
 
+    @Test
+    fun `batch operations keep their target ids and leave other subjects alone`() = withFixture {
+        storage.listFlow.value = listOf(
+            testDownloadCache(1), testDownloadCache(2), testDownloadCache(3, subjectId = 2),
+        )
+        val ids = awaitState { it.entries.size == 3 }.groups.first { it.subjectId == 1 }.entries.mapTo(mutableSetOf()) { it.id }
+        vm.pauseDownloads(ids)
+        awaitState { it.groups.first { it.subjectId == 1 }.entries.all { it.isPaused } }
+        assertEquals(DownloadStatus.IN_PROGRESS, vm.uiState.value.groups.first { it.subjectId == 2 }.entries.single().status)
+        vm.resumeDownloads(ids)
+        awaitState { it.entries.all { entry -> entry.status == DownloadStatus.IN_PROGRESS } }
+        vm.deleteDownloads(ids)
+        awaitState { it.entries.size == 1 }
+        assertEquals(2, vm.uiState.value.entries.single().subjectId)
+    }
+
     private class Fixture(testScope: TestScope, storages: List<FakeDownloadStorage>) {
         val storage: FakeDownloadStorage = storages.first()
         val downloadManager = MediaDownloadManager(storages, testScope.backgroundScope)

@@ -9,29 +9,33 @@
 
 package me.him188.ani.tv.ui.di
 
+import me.him188.ani.app.data.network.AniCommentReportService
 import me.him188.ani.app.data.network.AutoSkipRepository
 import me.him188.ani.app.data.network.BangumiSummaryService
 import me.him188.ani.app.data.repository.episode.EpisodeCollectionRepository
 import me.him188.ani.app.data.repository.episode.EpisodeCommentRepository
 import me.him188.ani.app.data.repository.media.MediaSourceSubscriptionRepository
 import me.him188.ani.app.data.repository.media.SelectorMediaSourceEpisodeCacheRepository
+import me.him188.ani.app.data.repository.person.PersonCommentRepository
+import me.him188.ani.app.data.repository.person.PersonDetailsRepository
+import me.him188.ani.app.data.repository.player.DanmakuRegexFilterRepository
+import me.him188.ani.app.data.repository.player.EpisodePlayHistoryRepository
 import me.him188.ani.app.data.repository.subject.SubjectCollectionRepository
 import me.him188.ani.app.data.repository.subject.SubjectSearchRepository
 import me.him188.ani.app.data.repository.user.SettingsRepository
-import me.him188.ani.app.data.repository.player.DanmakuRegexFilterRepository
-import me.him188.ani.app.domain.media.fetch.MediaSourceManager
 import me.him188.ani.app.data.repository.user.UserRepository
 import me.him188.ani.app.domain.danmaku.DanmakuRepository
 import me.him188.ani.app.domain.episode.GetSubjectRecommendationUseCase
 import me.him188.ani.app.domain.episode.SetEpisodeCollectionTypeUseCase
-import me.him188.ani.app.data.network.AniCommentReportService
-import me.him188.ani.app.data.repository.person.PersonCommentRepository
-import me.him188.ani.app.data.repository.person.PersonDetailsRepository
+import me.him188.ani.app.domain.media.download.DownloadOperations
+import me.him188.ani.app.domain.media.download.MediaDownloadManager
+import me.him188.ani.app.domain.media.fetch.MediaSourceManager
 import me.him188.ani.app.domain.mediasource.web.captcha.WebSessionManager
 import me.him188.ani.app.domain.session.SessionStateProvider
 import me.him188.ani.app.domain.settings.GetDanmakuRegexFilterListFlowUseCase
 import me.him188.ani.app.domain.watchtogether.PlaybackAutomationGate
 import me.him188.ani.app.domain.watchtogether.WatchTogetherManager
+import me.him188.ani.app.ui.download.subject.SubjectDownloadsPresenterFactory
 import me.him188.ani.app.ui.subject.details.state.SubjectDetailsStateFactory
 import org.koin.core.Koin
 import org.openani.mediamp.MediampPlayerFactory
@@ -40,6 +44,10 @@ import org.openani.mediamp.MediampPlayerFactory
 class TvAppDependencies(
     // Shared state holders and playback sessions still take the application Koin instance.
     val koin: Koin,
+    val downloadManager: MediaDownloadManager,
+    val downloadOperations: DownloadOperations,
+    val episodePlayHistories: EpisodePlayHistoryRepository,
+    val downloadPresenters: SubjectDownloadsPresenterFactory,
     val userRepository: UserRepository,
     val subjectCollectionRepository: SubjectCollectionRepository,
     val bangumiSummaryService: BangumiSummaryService,
@@ -69,6 +77,12 @@ class TvAppDependencies(
     companion object {
         fun fromKoin(koin: Koin): TvAppDependencies = TvAppDependencies(
             koin = koin,
+            downloadManager = koin.get(),
+            downloadOperations = koin.get(),
+            episodePlayHistories = koin.get(),
+            downloadPresenters = SubjectDownloadsPresenterFactory(
+                koin.get(), koin.get(), koin.get(), koin.get(), koin.get(), koin.get(), koin.get(),
+            ),
             userRepository = koin.get(),
             subjectCollectionRepository = koin.get(),
             danmakuRegexFilterRepository = koin.get(),
