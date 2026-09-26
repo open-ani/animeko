@@ -11,11 +11,13 @@ package me.him188.ani.app.ui.subject.episode
 
 import androidx.compose.foundation.hoverable
 import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.background
 import androidx.compose.foundation.interaction.collectIsHoveredAsState
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.RowScope
 import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
@@ -52,6 +54,7 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.testTag
@@ -68,6 +71,8 @@ import me.him188.ani.app.domain.media.player.ChunkState
 import me.him188.ani.app.domain.media.player.MediaCacheProgressInfo
 import me.him188.ani.app.domain.media.player.staticMediaCacheProgressState
 import me.him188.ani.app.domain.player.VideoLoadingState
+import me.him188.ani.app.pip.NoOpPictureInPictureController
+import me.him188.ani.app.pip.PictureInPictureController
 import me.him188.ani.app.tools.rememberUiMonoTasker
 import me.him188.ani.app.ui.episode.share.MediaShareData
 import me.him188.ani.app.ui.foundation.LocalIsPreviewing
@@ -172,11 +177,13 @@ import me.him188.ani.app.videoplayer.videoenhancement.VideoEnhancementMode
 import me.him188.ani.utils.platform.annotations.TestOnly
 import me.him188.ani.utils.platform.isAndroid
 import me.him188.ani.utils.platform.isDesktop
+import me.him188.ani.utils.platform.isIos
 import me.him188.ani.utils.platform.isMobile
 import org.jetbrains.compose.resources.stringResource
 import org.openani.mediamp.MediampPlayer
 import org.openani.mediamp.features.audioTracks
 import org.openani.mediamp.features.subtitleTracks
+import org.openani.mediamp.isMediaLoaded
 import org.openani.mediamp.test.TestMediampPlayer
 import org.openani.mediamp.togglePlayWhenReady
 import kotlin.time.Duration
@@ -243,6 +250,8 @@ internal fun EpisodeVideoImpl(
     ),
     fastForwardSpeed: Float = 3f,
     contentWindowInsets: WindowInsets = WindowInsets(0.dp),
+    pictureInPictureController: PictureInPictureController = NoOpPictureInPictureController,
+    isInPictureInPicture: Boolean = false,
 ) {
     // Don't rememberSavable. 刻意让每次切换都是隐藏的
     var isLocked by remember { mutableStateOf(false) }
@@ -251,6 +260,21 @@ internal fun EpisodeVideoImpl(
     val sheetsController = rememberVideoSideSheetsController<EpisodeVideoSideSheetPage>()
     val anySideSheetVisible by sheetsController.hasPageAsState()
     val previewModeText = stringResource(Lang.subject_episode_preview_mode)
+
+    // iOS 不切换组合结构: 系统小窗只采集 AVPlayerLayer, 页面 UI 无需最小化;
+    // 若在此处切换到另一组合子树, 原 VideoPlayer(UIKitView) 会被 dispose,
+    // AVPictureInPictureController 持有的 AVPlayerLayer 随之失效, 小窗立即关闭且之后无法再启动
+    if (isInPictureInPicture && !LocalPlatform.current.isIos()) {
+        // 画中画小窗只渲染视频, 交互由系统提供.
+        Box(modifier.fillMaxSize().background(Color.Black)) {
+            if (LocalIsPreviewing.current) {
+                Text(previewModeText)
+            } else {
+                VideoPlayer(playerState, Modifier.matchParentSize())
+            }
+        }
+        return
+    }
     val watchTogetherPlayerController = LocalWatchTogetherPlayerController.current
 
     // auto hide cursor
@@ -515,6 +539,21 @@ internal fun EpisodeVideoImpl(
                     },
                     danmakuEditor = danmakuEditor,
                     endActions = {
+                        // 仅 Android 显示小窗按钮: Android 小窗是整机窗口采集, 按钮是除系统手势外的
+                        // 重要入口; iOS 小窗的主入口是系统手势 (上滑回桌面自动进入), 且按钮 enabled
+                        // 依赖 isPictureInPicturePossible, 其在部分机型上翻转不及时, 灰态观感差, 故不在 iOS 显示
+                        if (LocalPlatform.current.isAndroid() && pictureInPictureController.isSupported) {
+                            val pipPossible by pictureInPictureController.isPictureInPicturePossible
+                                .collectAsStateWithLifecycle()
+                            val mediaLoaded by remember(playerState) {
+                                playerState.state.map { it.isMediaLoaded }
+                            }.collectAsStateWithLifecycle(false)
+                            PlayerControllerDefaults.PictureInPictureIcon(
+                                enabled = pipPossible && mediaLoaded,
+                                onClick = { pictureInPictureController.enterPictureInPicture() },
+                            )
+                        }
+
                         if (expanded) {
                             PlayerControllerDefaults.SelectEpisodeIcon(
                                 onClick = { sheetsController.navigateTo(EpisodeVideoSideSheetPage.EPISODE_SELECTOR) },

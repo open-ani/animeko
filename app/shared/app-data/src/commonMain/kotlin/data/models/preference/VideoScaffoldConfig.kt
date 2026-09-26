@@ -43,6 +43,31 @@ enum class VideoEnhancementDefaultMode {
     QUALITY,
 }
 
+/**
+ * 播放中用户离开应用（上滑回桌面/锁屏等）时的行为.
+ *
+ * @see VideoScaffoldConfig.backgroundBehavior
+ */
+@Serializable
+enum class BackgroundBehavior {
+    /**
+     * 上滑回桌面时自动进入系统画中画小窗继续播放 (仅移动端).
+     */
+    AUTO_PICTURE_IN_PICTURE,
+
+    /**
+     * 退到后台时暂停播放 (原有行为).
+     */
+    PAUSE,
+
+    /**
+     * 退到后台时继续播放 (只听声音).
+     *
+     * 注意: 尚未实现, 仅为设置 schema 预留. Android 需要前台服务与媒体通知 (单独立项), iOS 依赖音频后台模式.
+     */
+    BACKGROUND_PLAYBACK,
+}
+
 @Serializable
 @Immutable
 data class VideoScaffoldConfig @SerializationOnly constructor(
@@ -153,6 +178,12 @@ data class VideoScaffoldConfig @SerializationOnly constructor(
      * @since 4.11
      */
     val playerVolume: PlayerVolume = PlayerVolume(1f, false),
+    /**
+     * 播放中用户离开应用时的行为. 见 [BackgroundBehavior].
+     *
+     * @since 5.0
+     */
+    val backgroundBehavior: BackgroundBehavior = BackgroundBehavior.AUTO_PICTURE_IN_PICTURE,
     // WARNING: if you add new property here, review Companion properties.
     @Suppress("PropertyName") @Transient val _placeholder: Int = 0,
 ) {
@@ -235,6 +266,7 @@ data class VideoScaffoldConfig @SerializationOnly constructor(
             autoSwitchMediaOnPlayerError = false,
             enableHighQualityAudioTimeStretch = false,
             enableExperimentalHlsSegmentFiltering = false,
+            backgroundBehavior = BackgroundBehavior.PAUSE,
         )
     }
 

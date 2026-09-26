@@ -378,6 +378,11 @@
     <string name="settings_player_hide_selector_on_select">Automatically close the pop-up after selecting a data source</string>
     <string name="settings_player_auto_fullscreen_on_landscape">Automatically go fullscreen on screen rotation</string>
     <string name="settings_player_auto_play_next">Auto-play next episode</string>
+    <string name="settings_player_background_behavior">When leaving the app</string>
+    <string name="settings_player_background_behavior_description">Keep the video playing in a floating window (picture-in-picture) when you switch away during playback</string>
+    <string name="settings_player_background_behavior_auto_pip">Continue in picture-in-picture</string>
+    <string name="settings_player_background_behavior_pause">Pause playback</string>
+    <string name="settings_player_background_behavior_background_playback">Continue playing in background</string>
     <string name="settings_player_audio_time_stretch">High-quality audio time-stretch (WSOLA)</string>
     <string name="settings_player_audio_time_stretch_description">Better sound quality at non-1x speeds. Turn off if you hear crackling or corrupted audio</string>
     <string name="settings_player_auto_skip_op_ed">Automatically skip OP and ED</string>
@@ -791,6 +796,9 @@
     <string name="video_player_subtitle">Subtitle</string>
     <string name="video_player_disable_danmaku">Disable danmaku</string>
     <string name="video_player_enable_danmaku">Enable danmaku</string>
+    <string name="video_player_enter_picture_in_picture">Picture-in-picture</string>
+    <string name="video_player_pip_action_play">Play</string>
+    <string name="video_player_pip_action_pause">Pause</string>
     <string name="video_player_mute">Mute</string>
     <string name="video_player_volume">Volume</string>
     <string name="video_player_next_episode">Next episode</string>
