@@ -60,6 +60,8 @@
 - `SelectorMediaSource` 实现了 `MediaSource` 的浏览方法（`searchSubjects` / `browseSubject` / `createMedia`，
   类型见 `datasource/api/.../source/Browse.kt`）：只列出站点内容，不做匹配；`fetch` 是其上的自动模式，
   由 `searchConfig.autoMatch` 控制，见 [MediaSource](media-source.md#selectormediasource)。
+  浏览方法的调用方是手动查找（`ManualBrowseState`）与浏览记忆回放（`ReplayBrowseMemoryUseCase`），
+  见下文[选源界面](#选源界面)。
 - `SelectorMediaSource.matcher` 提供数据源专属的 `WebVideoMatcher`，供之后播放时提取 URL 使用。
 
 ### RSS 数据源查询/解析管线
@@ -81,11 +83,15 @@
 4. `MediaSourceMediaFetcher` 并发调用每个启用实例的 `instance.source.fetch(...)`，
    合并进 `cumulativeResults`。
 5. `DefaultMediaSelector` 对查询到的 `Media` 过滤（先按当前剧集）、排序、选择。
-6. `MediaSelectorAutoSelectUseCaseImpl` 准备配置并启用上次使用的源，调用
+6. `AutoSelectExtension` 在同一协程里先做本地缓存检查与浏览记忆回放：等本会话的本地缓存源完成，
+   本集已有可用缓存则跳过回放；否则调用 `ReplayBrowseMemoryUseCase`，按 `ManualBrowseMemoryRepository`
+   里该条目的记忆 `browseSubject` 记住的条目、在记住的线路里找目标集，`createMedia` 后 `select`（按集号命中）
+   或 `selectTemporarily`（按位置命中），并更新记忆。命中则不进入第 7 步。
+7. `MediaSelectorAutoSelectUseCaseImpl` 准备配置并启用上次使用的源，调用
    `MediaAutoSelector.select`；后者统一处理缓存、记忆源、WEB 两段超时或 BT 完成条件。
-7. `EpisodeFetchSelectPlayState.LoadMediaOnSelectExtension` 监听 `mediaSelector.selected` 并调用
+8. `EpisodeFetchSelectPlayState.LoadMediaOnSelectExtension` 监听 `mediaSelector.selected` 并调用
    `PlayerSession.loadMedia(...)`。
-8. `PlayerSession.loadMedia(...)` 通过 `MediaResolver.resolve(...)` 解析，打开得到的
+9. `PlayerSession.loadMedia(...)` 通过 `MediaResolver.resolve(...)` 解析，打开得到的
    `MediaDataProvider`，然后调用 `player.setMediaData(...)`。
 
 ### 播放拖入的本地文件（桌面端）
@@ -97,7 +103,7 @@
    `WindowDropHost`，只在播放页处于组合中时生效。
 2. 松手后 `EpisodeViewModel.playDroppedFile` 用 `DroppedFileMedia.create(...)` 构造一个
    `download = ResourceLocation.LocalFile` 的 `Media`，并调用 `MediaSelector.selectTemporarily(...)`。
-3. 之后与上面的第 7、8 步相同：`LoadMediaOnSelectExtension` 监听到 `selected` 变化，
+3. 之后与上面的第 8、9 步相同：`LoadMediaOnSelectExtension` 监听到 `selected` 变化，
    由 `LocalFileMediaResolver` 解析并播放。
 
 注意：
@@ -106,6 +112,7 @@
   `DroppedFileMedia.MEDIA_SOURCE_ID`，可用 `DroppedFileMedia.isDroppedFile(...)` 判断。
 - `selectTemporarily` 不更新偏好，也不广播 `onChangePreference` / `onPreferWebSource`，因此只对当前
   `EpisodeSession` 有效；切换剧集会创建新的 `MediaSelector`，照常自动选择。
+  手动查找的「仅临时播放」与浏览记忆按位置命中走同一方法。
 - 已有选择时 `MediaAutoSelector` 不会覆盖它；用户仍可在数据源选择器中换回其他资源。
 - 拖入的文件播放失败时保留报错：`PlayerLoadErrorHandler.handleError` 不会为它自动换源，也不会拉黑它。
 - 跳过 OP/ED 的上报（`EpisodeViewModel.onClickSkipOpEd`）会忽略拖入的文件。
@@ -126,6 +133,39 @@
 - 查询结果并不天然“正确”；数据源实现应尽量返回准确的 `episodeRange`，`MediaSelector`
   只是在其上做额外的过滤和排序。数据源返回整个条目的资源，`MediaSelector` 的第 0 条规则
   按当前剧集筛选；不筛选剧集的条目级候选通过 `MediaSelector.subjectCandidates` 提供给批量下载。
+
+## 选源界面
+
+模式划分、容器规则与浏览记忆的取舍见[选源界面](media-selector-ui.md)。
+
+- 宿主：
+    - `app/shared/src/commonMain/kotlin/ui/subject/episode/details/EpisodeDetails.kt`：详情页
+      （宽窗口侧边栏 + BT 居中对话框；窄窗口底部弹窗）。
+    - `app/shared/src/commonMain/kotlin/ui/subject/episode/video/sidesheet/EpisodeVideoMediaSelectorSideSheet.kt`：
+      全屏播放器侧边栏（只放自动匹配）；手动查找与 BT 的全屏容器在 `EpisodePage.kt` 的 `sideSheets` 槽内。
+    - `app/shared/ui-download/src/commonMain/kotlin/ui/download/subject/SubjectDownloadRequestDialogs.kt`：
+      批量下载的选源弹窗（自动匹配 / BT）。
+    - `EpisodeViewModel`：模式、全屏容器可见性、BT 页筛选状态与手动查找状态的持有者；「播放并记住」在此写记忆。
+- 状态（`app/shared/ui-mediaselect/src/commonMain/kotlin/ui/`）：
+    - `mediafetch/MediaSelectorState.kt`：包装 `MediaSelector`，产出自动匹配页与 BT 页的列表投影、
+      四维偏好 chip 状态与临时选择。
+    - `mediafetch/MediaSourceResultPresentation.kt`：数据源查询状态的展示模型（自动匹配页的源行、BT 页的数据源面板）。
+    - `mediaselect/manual/ManualBrowseState.kt`：手动查找的搜索、浏览、选择与播放，含验证码交互。
+    - `mediaselect/bt/BtListPresentation.kt`：BT 页的会话内筛选状态与列表投影纯函数。
+- 页面与公共件（同目录）：
+    - `mediaselect/MediaSelectorMode.kt`：模式枚举、「正在观看」模型、版式阈值。
+    - `mediaselect/common/MediaSelectorChrome.kt`：模式下拉 chip 与「正在观看」卡片；
+      `mediaselect/common/MediaSelectorDialog.kt`：手动查找 / BT 的容器布局与对话框包装。
+    - `mediaselect/auto/AutoMatchPage.kt`、`mediaselect/selector/MediaSelectorWebColumn.kt`：自动匹配页（源行与救援卡片）。
+    - `mediaselect/manual/ManualBrowsePage.kt`、`ManualBrowseComponents.kt`：手动查找的双栏 / 堆叠两页。
+    - `mediaselect/bt/BtResourcesPage.kt`、`BtListViews.kt`、`BtPanels.kt`：BT 页、表格与紧凑列表、数据源与筛选面板；
+      `mediafetch/MediaSelectorFilters.kt`：表格模式的偏好下拉 chip。
+    - `mediaselect/summary/*`：播放页的选源状态横幅，不在选择器内。
+- 浏览记忆（`app/shared/app-data/src/commonMain/kotlin/`）：
+    - `data/repository/media/ManualBrowseMemoryRepository.kt`：按条目的记忆模型与仓库（typed DataStore，
+      文件由 `data/persistent/SettingsStore.kt` 提供）。
+    - `domain/media/selector/ReplayBrowseMemoryUseCase.kt`：切集回放；由 `domain/player/extension/AutoSelectExtension.kt`
+      在自动选择前调用。
 
 ## 播放时使用的 Resolver
 

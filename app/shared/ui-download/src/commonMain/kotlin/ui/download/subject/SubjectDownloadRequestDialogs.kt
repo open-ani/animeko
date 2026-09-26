@@ -79,13 +79,20 @@ import me.him188.ani.app.ui.lang.downloads_episode_picker_only_current
 import me.him188.ani.app.ui.lang.downloads_episode_picker_selected_count
 import me.him188.ani.app.ui.lang.downloads_episode_picker_title
 import me.him188.ani.app.ui.lang.downloads_episode_picker_unmatched
-import me.him188.ani.app.ui.mediafetch.MediaSelectorView
+import me.him188.ani.app.ui.lang.media_selector_sources
+import me.him188.ani.app.ui.mediafetch.MediaSelectorState
 import me.him188.ani.app.ui.mediafetch.MediaSourceInfoProvider
 import me.him188.ani.app.ui.mediafetch.MediaSourceResultListPresentation
 import me.him188.ani.app.ui.mediafetch.MediaSourceResultListPresenter
-import me.him188.ani.app.ui.mediafetch.ViewKind
 import me.him188.ani.app.ui.mediafetch.rememberMediaSelectorState
+import me.him188.ani.app.ui.mediaselect.MediaSelectorMode
+import me.him188.ani.app.ui.mediaselect.WatchingEpisode
+import me.him188.ani.app.ui.mediaselect.auto.AutoMatchPage
+import me.him188.ani.app.ui.mediaselect.bt.BtResourcesPage
+import me.him188.ani.app.ui.mediaselect.common.MediaSelectorModeChip
 import me.him188.ani.datasources.api.Media
+import me.him188.ani.datasources.api.source.MediaFetchRequest
+import me.him188.ani.datasources.api.source.MediaSourceKind
 import org.jetbrains.compose.resources.stringResource
 
 data class DownloadRequestDialogState(
@@ -114,6 +121,10 @@ class DownloadEpisodePickerState(
     val chosen: Media,
     val options: List<DownloadEpisodeOption>,
 )
+
+internal object DownloadMediaPickerTestTags {
+    const val ROOT = "download_media_picker"
+}
 
 internal object DownloadEpisodePickerTestTags {
     const val ROOT = "download_episode_picker"
@@ -204,6 +215,9 @@ private fun DownloadRequestSheet(
     }
 }
 
+/**
+ * 选源步骤: 从会话取状态, 交给 [DownloadMediaPickerContent] 绘制.
+ */
 @Composable
 private fun DownloadMediaPicker(
     selection: DownloadMediaPickerState,
@@ -222,23 +236,92 @@ private fun DownloadMediaPicker(
         ).presentationFlow.map { MediaSourceResultListPresentation(it) }
     }.collectAsStateWithLifecycle(MediaSourceResultListPresentation.Empty)
     val selectorState = rememberMediaSelectorState(sourceInfoProvider, filteredResults) { selection.selector }
-    val fetchRequest by selection.fetchSession.request.collectAsStateWithLifecycle(null)
-    var viewKind by rememberSaveable { mutableStateOf(ViewKind.WEB) }
+    // 同步口径 (含禁用源), 首帧不闪; BT 源全禁用时页面为空态.
+    val hasBt = remember(selection) {
+        selection.fetchSession.mediaSourceResults.any { it.kind == MediaSourceKind.BitTorrent }
+    }
+    // 搜索框提交的关键字经 setFetchRequest 写回会话; latestRequest 随之更新, request 只发首值.
+    val fetchRequest by remember(selection) { selection.fetchSession.latestRequest }.collectAsStateWithLifecycle(null)
+    val watching = fetchRequest?.let { WatchingEpisode(it.episodeSort.toString(), it.episodeName) }
 
-    MediaSelectorView(
-        state = selectorState,
-        viewKind = viewKind,
-        onViewKindChange = { viewKind = it },
+    DownloadMediaPickerContent(
+        selectorState = selectorState,
+        sourceResults = presentation,
+        hasBt = hasBt,
+        watching = watching,
         fetchRequest = fetchRequest,
         onFetchRequestChange = selection.fetchSession::setFetchRequest,
-        sourceResults = presentation,
         onRestartSource = { selection.fetchSession.restart(it) },
-        onRefresh = selection.fetchSession::restartAll,
-        modifier = Modifier.padding(vertical = 12.dp, horizontal = 16.dp)
-            .navigationBarsPadding().fillMaxHeight().fillMaxWidth(),
-        stickyHeaderBackgroundColor = BottomSheetDefaults.ContainerColor,
-        onClickItem = onSelect,
+        onSelect = onSelect,
     )
+}
+
+/**
+ * 选源步骤的界面: 标题行「数据源」+ 模式 chip, 下方按模式放自动匹配页或 BT 资源页.
+ * 只有 AUTO / BT 两种模式 (下载不走手动查找), 模式在本次弹窗内保持; 初值有 BT 源 → BT, 否则 AUTO.
+ * 弹窗宽 640dp, BT 页因此总是紧凑列表.
+ *
+ * @param hasBt 会话内是否有 BT 源 (含禁用源). 为 false 时模式菜单没有 BT 项.
+ * @param watching 要下载的集; BT 页只用它画「第 N 话」chip, 不画「正在观看」卡片.
+ * @param fetchRequest 当前生效的查询请求, 供 BT 页搜索框回显与提交; 会话未就绪时为 null.
+ * @param onSelect 用户点了资源; 宿主进入选集步骤, 不关闭弹窗.
+ */
+@Composable
+internal fun DownloadMediaPickerContent(
+    selectorState: MediaSelectorState,
+    sourceResults: MediaSourceResultListPresentation,
+    hasBt: Boolean,
+    watching: WatchingEpisode?,
+    fetchRequest: MediaFetchRequest?,
+    onFetchRequestChange: (MediaFetchRequest) -> Unit,
+    onRestartSource: (instanceId: String) -> Unit,
+    onSelect: (Media) -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    var userMode by rememberSaveable { mutableStateOf<MediaSelectorMode?>(null) }
+    val mode = userMode ?: if (hasBt) MediaSelectorMode.BT else MediaSelectorMode.AUTO
+
+    Column(
+        modifier.padding(vertical = 12.dp, horizontal = 16.dp)
+            .navigationBarsPadding().fillMaxHeight().fillMaxWidth()
+            .testTag(DownloadMediaPickerTestTags.ROOT),
+    ) {
+        Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+            Text(
+                stringResource(Lang.media_selector_sources),
+                Modifier.weight(1f),
+                style = MaterialTheme.typography.titleLarge,
+            )
+            MediaSelectorModeChip(
+                mode,
+                onModeChange = { userMode = it },
+                showBt = hasBt,
+                showManual = false,
+            )
+        }
+        when (mode) {
+            MediaSelectorMode.BT -> BtResourcesPage(
+                state = selectorState,
+                sourceResults = sourceResults,
+                watching = watching,
+                fetchRequest = fetchRequest,
+                onFetchRequestChange = onFetchRequestChange,
+                onClickItem = onSelect,
+                onRestartSource = onRestartSource,
+                modifier = Modifier.fillMaxWidth().weight(1f).padding(top = 12.dp),
+                showWatchingCard = false,
+            )
+
+            // 菜单不提供 MANUAL, 它与 AUTO 一样落到自动匹配页.
+            MediaSelectorMode.AUTO, MediaSelectorMode.MANUAL -> AutoMatchPage(
+                selectorState,
+                onClickItem = onSelect,
+                onRestartSource = onRestartSource,
+                onRequestManualSearch = null,
+                modifier = Modifier.fillMaxWidth().padding(top = 12.dp),
+            )
+        }
+    }
 }
 
 /**

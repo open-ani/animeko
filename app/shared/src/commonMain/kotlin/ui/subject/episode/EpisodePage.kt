@@ -38,8 +38,12 @@ import androidx.compose.foundation.pager.PagerState
 import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.rounded.Close
 import androidx.compose.material3.BottomSheetDefaults
 import androidx.compose.material3.HorizontalDivider
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.OutlinedTextFieldDefaults
@@ -50,6 +54,8 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.Tab
 import androidx.compose.material3.TabRowDefaults
 import androidx.compose.material3.Text
+import androidx.compose.material3.TopAppBar
+import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.material3.contentColorFor
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
@@ -119,6 +125,7 @@ import me.him188.ani.app.ui.foundation.effects.ScreenRotationEffect
 import me.him188.ani.app.ui.foundation.ifThen
 import me.him188.ani.app.ui.foundation.input.touchHorizontalScrollOnly
 import me.him188.ani.app.ui.foundation.layout.LocalPlatformWindow
+import me.him188.ani.app.ui.foundation.layout.Zero
 import me.him188.ani.app.ui.foundation.layout.currentWindowAdaptiveInfo1
 import me.him188.ani.app.ui.foundation.layout.desktopTitleBar
 import me.him188.ani.app.ui.foundation.layout.desktopTitleBarPadding
@@ -144,7 +151,17 @@ import me.him188.ani.app.ui.lang.episode_comments_with_count
 import me.him188.ani.app.ui.lang.episode_send_danmaku
 import me.him188.ani.app.ui.lang.foundation_richtext_external_app_link_warning_prefix
 import me.him188.ani.app.ui.lang.foundation_richtext_open_failed_prefix
+import me.him188.ani.app.ui.lang.media_selector_mode_bt
+import me.him188.ani.app.ui.lang.media_selector_mode_manual
+import me.him188.ani.app.ui.lang.media_selector_sources
 import me.him188.ani.app.ui.lang.subject_details_tab_details
+import me.him188.ani.app.ui.lang.subject_episode_close_selector
+import me.him188.ani.app.ui.mediaselect.MediaSelectorMode
+import me.him188.ani.app.ui.mediaselect.bt.BtResourcesPage
+import me.him188.ani.app.ui.mediaselect.common.MediaSelectorDialog
+import me.him188.ani.app.ui.mediaselect.common.MediaSelectorDialogLayout
+import me.him188.ani.app.ui.mediaselect.common.MediaSelectorModeChip
+import me.him188.ani.app.ui.mediaselect.manual.ManualBrowsePage
 import me.him188.ani.app.ui.richtext.RichTextDefaults
 import me.him188.ani.app.ui.subject.episode.comments.EpisodeCommentColumn
 import me.him188.ani.app.ui.subject.episode.comments.EpisodeEditCommentSheet
@@ -159,14 +176,17 @@ import me.him188.ani.app.ui.subject.episode.video.sidesheet.EpisodeSelectorSheet
 import me.him188.ani.app.ui.subject.episode.video.sidesheet.MediaSelectorSheet
 import me.him188.ani.app.ui.subject.episode.video.topbar.EpisodePlayerTitle
 import me.him188.ani.app.ui.watchtogether.LocalWatchTogetherPlayerController
+import me.him188.ani.app.videoplayer.ui.LocalVideoScaffoldSheetWindowInsets
 import me.him188.ani.app.videoplayer.ui.PlaybackSpeedControllerState
 import me.him188.ani.app.videoplayer.ui.PlayerControllerState
 import me.him188.ani.app.videoplayer.ui.PlayerFocusState
 import me.him188.ani.app.videoplayer.ui.PlayerFullscreenState
 import me.him188.ani.app.videoplayer.ui.VideoAspectRatioControllerState
+import me.him188.ani.app.videoplayer.ui.VideoSideSheetsController
 import me.him188.ani.app.videoplayer.ui.gesture.LevelController
 import me.him188.ani.app.videoplayer.ui.gesture.NoOpLevelController
 import me.him188.ani.app.videoplayer.ui.gesture.asLevelController
+import me.him188.ani.app.videoplayer.ui.rememberAlwaysOnRequester
 import me.him188.ani.app.videoplayer.ui.progress.PlayerControllerDefaults
 import me.him188.ani.app.videoplayer.ui.progress.PlayerControllerDefaults.rememberRandomDanmakuPlaceholder
 import me.him188.ani.app.videoplayer.ui.progress.rememberMediaProgressFramePreviewState
@@ -579,9 +599,12 @@ private fun EpisodeScreenTabletVeryWide(
                                 EpisodeDetails(
                                     page.mediaSelectorSummary,
                                     vm.episodeDetailsState,
-                                    page.initialMediaSelectorViewKind,
-                                    fetchRequest,
-                                    onFetchRequestChange,
+                                    mediaSelectorMode = vm.mediaSelectorMode ?: page.initialMediaSelectorMode,
+                                    onMediaSelectorModeChange = { vm.mediaSelectorMode = it },
+                                    manualBrowseState = vm.manualBrowseState,
+                                    watchingEpisode = page.watchingEpisode,
+                                    fetchRequest = fetchRequest,
+                                    onFetchRequestChange = onFetchRequestChange,
                                     vm.episodeCarouselState,
                                     vm.editableSubjectCollectionTypeState,
                                     page.danmakuStatistics,
@@ -595,7 +618,6 @@ private fun EpisodeScreenTabletVeryWide(
                                             navigator.navigateEpisodeDetails(vm.subjectId, episodeId)
                                         }
                                     },
-                                    onRefreshMediaSources = { vm.refreshFetch() },
                                     onRestartSource = { vm.restartSource(it) },
                                     onSetDanmakuSourceEnabled = { providerId, enabled ->
                                         vm.setDanmakuSourceEnabled(providerId, enabled)
@@ -620,6 +642,11 @@ private fun EpisodeScreenTabletVeryWide(
                                         page.loadError?.let { vm.retryLoad(it) }
                                     },
                                     danmakuListState = vm.danmakuListState.collectAsStateWithLifecycle().value,
+                                    onBeforeOpenMediaSelector = {
+                                        if (vm.mediaSelectorMode == null && !page.isLoading) {
+                                            vm.mediaSelectorMode = page.initialMediaSelectorMode
+                                        }
+                                    },
                                 )
                             }
                         }
@@ -754,9 +781,12 @@ private fun EpisodeScreenContentPhone(
                 EpisodeDetails(
                     page.mediaSelectorSummary,
                     vm.episodeDetailsState,
-                    page.initialMediaSelectorViewKind,
-                    page.fetchRequest,
-                    { vm.updateFetchRequest(it) },
+                    mediaSelectorMode = vm.mediaSelectorMode ?: page.initialMediaSelectorMode,
+                    onMediaSelectorModeChange = { vm.mediaSelectorMode = it },
+                    manualBrowseState = vm.manualBrowseState,
+                    watchingEpisode = page.watchingEpisode,
+                    fetchRequest = page.fetchRequest,
+                    onFetchRequestChange = { vm.updateFetchRequest(it) },
                     vm.episodeCarouselState,
                     vm.editableSubjectCollectionTypeState,
                     page.danmakuStatistics,
@@ -769,7 +799,6 @@ private fun EpisodeScreenContentPhone(
                             navigator.navigateEpisodeDetails(vm.subjectId, episodeId)
                         }
                     },
-                    onRefreshMediaSources = { vm.refreshFetch() },
                     onRestartSource = { vm.restartSource(it) },
                     onSetDanmakuSourceEnabled = { providerId, enabled ->
                         vm.setDanmakuSourceEnabled(providerId, enabled)
@@ -795,6 +824,11 @@ private fun EpisodeScreenContentPhone(
                     },
                     modifier = Modifier.fillMaxSize(),
                     danmakuListState = vm.danmakuListState.collectAsStateWithLifecycle().value,
+                    onBeforeOpenMediaSelector = {
+                        if (vm.mediaSelectorMode == null && !page.isLoading) {
+                            vm.mediaSelectorMode = page.initialMediaSelectorMode
+                        }
+                    },
                 )
             }
         },
@@ -1196,16 +1230,27 @@ private fun EpisodeVideo(
                 mediaSelectorPage = {
                     val pageState by vm.pageState.collectAsStateWithLifecycle()
                     pageState?.let { page ->
-                        val (viewKind, onViewKindChange) = rememberSaveable { mutableStateOf(page.initialMediaSelectorViewKind) }
+                        // 打开侧边栏的按钮在 EpisodeVideoTopBarActions 内拿不到 VM, 锁存放在首帧.
+                        LaunchedEffect(Unit) {
+                            if (vm.mediaSelectorMode == null && !page.isLoading) {
+                                vm.mediaSelectorMode = page.initialMediaSelectorMode
+                            }
+                        }
+                        val mode = vm.mediaSelectorMode ?: page.initialMediaSelectorMode
+                        // 侧边栏只装自动匹配页: 手动查找 / BT 资源 (下拉切换或 preferKind = BT 直接落 BT 页) 都关掉侧边栏, 改开全屏容器.
+                        // 加载中 (page.mediaSelectorState 是含假资源的占位 state) 不弹容器, 停留在侧边栏; 加载完成后 key 变化再弹.
+                        LaunchedEffect(mode, page.isLoading) {
+                            if (mode != MediaSelectorMode.AUTO && !page.isLoading) {
+                                closeSideSheet()
+                                vm.fullscreenSelectorVisible = true
+                            }
+                        }
                         EpisodeVideoSideSheets.MediaSelectorSheet(
                             page.mediaSelectorState,
                             page.mediaSourceResultListPresentation,
-                            viewKind,
-                            onViewKindChange,
-                            page.fetchRequest,
-                            { vm.updateFetchRequest(it) },
+                            mode = mode,
+                            onModeChange = { vm.mediaSelectorMode = it },
                             onDismissRequest = { goBack() },
-                            onRefresh = { vm.refreshFetch() },
                             onRestartSource = { vm.restartSource(it) },
                         )
                     }
@@ -1217,6 +1262,7 @@ private fun EpisodeVideo(
                     )
                 },
             )
+            FullscreenMediaSelectorContainer(vm, page, sheetsController, playerControllerState)
         },
         shareData = page.shareData,
         onClickCache = { navigator.navigateSubjectCaches(vm.subjectId) },
@@ -1227,6 +1273,155 @@ private fun EpisodeVideo(
         contentWindowInsets = windowInsets,
         fastForwardSpeed = vm.videoScaffoldConfig.fastForwardSpeed,
     )
+}
+
+/**
+ * 播放器的手动查找 / BT 资源容器, 与侧边栏并列放在 [VideoScaffold][me.him188.ani.app.videoplayer.ui.VideoScaffold] 的 rhsSheet 槽里.
+ * 可见性与模式都在 VM 上 ([EpisodeViewModel.fullscreenSelectorVisible] / [EpisodeViewModel.mediaSelectorMode]), 侧边栏页面被 closeSideSheet 销毁后仍然保留.
+ *
+ * 全屏时 rhsSheet 槽就是整屏, 直接铺 [MediaSelectorDialogLayout] 并自己接返回键: Android 的 Dialog 是独立 window, 会把已隐藏的系统栏拉回来.
+ * 非全屏 (平板宽布局 / 手机 16:9 视频区) 视频区太小或不是整窗, 用窗口级 [MediaSelectorDialog].
+ *
+ * 全屏容器可见期间像侧边栏 ([EpisodeVideoDefaults.SideSheets]) 一样向 [playerControllerState] 请求 alwaysOn: 容器不是 NavDisplay 页面, `anySideSheetVisible` 为 false,
+ * 而 scrim 又拦下了指针事件, 控制器会照常自动隐藏并把桌面端光标一起藏掉; 保持控制器可见即保持光标可见.
+ *
+ * `page.isLoading` 期间容器关闭且不显示: 此时 `page.mediaSelectorState` 是含假资源的占位 state, 与详情页 `mediaSelectorAvailable` 的守卫对称.
+ *
+ * X / 返回键 / 点 scrim 回到侧边栏并把模式置回 AUTO (侧边栏只装自动页, 否则侧边栏的 LaunchedEffect(mode) 会立刻再弹容器); 选中播放后全关, 模式保持.
+ */
+@Composable
+private fun FullscreenMediaSelectorContainer(
+    vm: EpisodeViewModel,
+    page: EpisodePageState,
+    sheetsController: VideoSideSheetsController<EpisodeVideoSideSheetPage>,
+    playerControllerState: PlayerControllerState,
+) {
+    LaunchedEffect(page.isLoading) {
+        if (page.isLoading) vm.fullscreenSelectorVisible = false
+    }
+    if (!vm.fullscreenSelectorVisible || page.isLoading) return
+    val mode = vm.mediaSelectorMode ?: page.initialMediaSelectorMode
+    val backToSheet = {
+        vm.fullscreenSelectorVisible = false
+        vm.mediaSelectorMode = MediaSelectorMode.AUTO
+        sheetsController.navigateTo(EpisodeVideoSideSheetPage.MEDIA_SELECTOR)
+    }
+    val closeAll = { vm.fullscreenSelectorVisible = false }
+    val content: @Composable (compact: Boolean) -> Unit = { compact ->
+        FullscreenMediaSelectorContent(
+            vm, page, mode, compact,
+            onBackToSheet = backToSheet,
+            onCloseAll = closeAll,
+        )
+    }
+    if (vm.isFullscreen) {
+        val alwaysOnRequester = rememberAlwaysOnRequester(playerControllerState, "fullscreenMediaSelector")
+        DisposableEffect(alwaysOnRequester) {
+            alwaysOnRequester.request()
+            onDispose { alwaysOnRequester.cancelRequest() }
+        }
+        BackHandler(onBack = backToSheet)
+        MediaSelectorDialogLayout(
+            onDismissRequest = backToSheet,
+            windowInsets = LocalVideoScaffoldSheetWindowInsets.current,
+            content = content,
+        )
+    } else {
+        MediaSelectorDialog(onDismissRequest = backToSheet, content = content)
+    }
+}
+
+/**
+ * 容器内容. AUTO 不在这里显示, 只作为过渡态立即回侧边栏.
+ *
+ * @param compact 容器铺满 (可用高度 < 480dp) 时为 true: 不画 TopAppBar, 由页面按 inlineTitle 槽自绘单行顶栏 (X + 标题); 否则画 TopAppBar (标题 + 模式 chip + X).
+ */
+@Composable
+private fun FullscreenMediaSelectorContent(
+    vm: EpisodeViewModel,
+    page: EpisodePageState,
+    mode: MediaSelectorMode,
+    compact: Boolean,
+    onBackToSheet: () -> Unit,
+    onCloseAll: () -> Unit,
+) {
+    val onModeChange: (MediaSelectorMode) -> Unit = { newMode ->
+        if (newMode == MediaSelectorMode.AUTO) onBackToSheet() else vm.mediaSelectorMode = newMode
+    }
+    val closeSelectorText = stringResource(Lang.subject_episode_close_selector)
+    val closeButton: @Composable () -> Unit = {
+        IconButton(onClick = onBackToSheet) {
+            Icon(Icons.Rounded.Close, contentDescription = closeSelectorText)
+        }
+    }
+    val topBar: @Composable (title: String) -> Unit = { title ->
+        TopAppBar(
+            title = { Text(title) },
+            actions = {
+                MediaSelectorModeChip(
+                    mode,
+                    onModeChange,
+                    showBt = page.mediaSourceResultListPresentation.btSources.isNotEmpty(),
+                )
+                closeButton()
+            },
+            windowInsets = WindowInsets.Zero,
+            colors = TopAppBarDefaults.topAppBarColors(containerColor = BottomSheetDefaults.ContainerColor),
+        )
+    }
+    val inlineTitle: @Composable (title: String) -> Unit = { title ->
+        closeButton()
+        Text(title, style = MaterialTheme.typography.titleLarge)
+    }
+    when (mode) {
+        MediaSelectorMode.MANUAL -> {
+            // TopAppBar 里模式已由 chip 表达, 标题与 BT 分支一样用「数据源」; 紧凑分支没有 chip, 单行标题才写模式名.
+            val inlineTitleText = stringResource(Lang.media_selector_mode_manual)
+            val topBarTitle = stringResource(Lang.media_selector_sources)
+            ManualBrowsePage(
+                vm.manualBrowseState,
+                page.watchingEpisode,
+                onPlayed = onCloseAll,
+                topBar = { topBar(topBarTitle) },
+                modifier = Modifier.fillMaxSize(),
+                closeButton = closeButton,
+                inlineTitle = if (compact) {
+                    { inlineTitle(inlineTitleText) }
+                } else {
+                    null
+                },
+            )
+        }
+
+        MediaSelectorMode.BT -> {
+            Column(Modifier.fillMaxSize()) {
+                if (!compact) {
+                    topBar(stringResource(Lang.media_selector_sources))
+                }
+                val title = stringResource(Lang.media_selector_mode_bt)
+                BtResourcesPage(
+                    page.mediaSelectorState,
+                    page.mediaSourceResultListPresentation,
+                    page.watchingEpisode,
+                    page.fetchRequest,
+                    onFetchRequestChange = { vm.updateFetchRequest(it) },
+                    onClickItem = {
+                        page.mediaSelectorState.select(it)
+                        onCloseAll()
+                    },
+                    onRestartSource = { vm.restartSource(it) },
+                    modifier = Modifier.weight(1f),
+                    inlineTitle = if (compact) {
+                        { inlineTitle(title) }
+                    } else {
+                        null
+                    },
+                )
+            }
+        }
+
+        MediaSelectorMode.AUTO -> SideEffect { onBackToSheet() }
+    }
 }
 
 @Composable

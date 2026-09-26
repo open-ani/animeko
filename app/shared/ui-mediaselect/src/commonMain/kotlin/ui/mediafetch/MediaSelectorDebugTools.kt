@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2024-2025 OpenAni and contributors.
+ * Copyright (C) 2024-2026 OpenAni and contributors.
  *
  * 此源代码的使用受 GNU AFFERO GENERAL PUBLIC LICENSE version 3 许可证的约束, 可以在以下链接找到该许可证.
  * Use of this source code is governed by the GNU AGPLv3 license, which can be found at the following link.
@@ -9,19 +9,18 @@
 
 package me.him188.ani.app.ui.mediafetch
 
-import me.him188.ani.app.domain.media.selector.MaybeExcludedMedia
-import me.him188.ani.app.domain.media.selector.UnsafeOriginalMediaAccess
+import me.him188.ani.datasources.api.Media
 import me.him188.ani.utils.logging.debug
 import me.him188.ani.utils.logging.logger
 
+/**
+ * BT 页 debug 构建下的两个按钮: 把当前列表里的条目名 / 剧集范围打到日志, 用于补充标题解析的测试数据.
+ */
 object MediaSelectorDebugTools {
     private val logger = logger<MediaSelectorDebugTools>()
 
-    @OptIn(UnsafeOriginalMediaAccess::class)
-    fun dumpSubjectNames(filteredCandidates: List<MaybeExcludedMedia>) {
-        val result = filteredCandidates
-            .map { it.original }
-            .distinctBy { it.properties.subjectName }
+    fun dumpSubjectNames(mediaList: List<Media>) {
+        val result = mediaList.distinctBy { it.properties.subjectName }
 
         logger.debug {
             val joinToString = result.joinToString("\n") { media ->
@@ -31,11 +30,8 @@ object MediaSelectorDebugTools {
         }
     }
 
-    @OptIn(UnsafeOriginalMediaAccess::class)
-    fun dumpEpisodeRanges(filteredCandidates: List<MaybeExcludedMedia>) {
-        val ranges = filteredCandidates
-            .map { it.original }
-            .mapNotNull { it.episodeRange }
+    fun dumpEpisodeRanges(mediaList: List<Media>) {
+        val ranges = mediaList.mapNotNull { it.episodeRange }
         logger.debug {
             val joinToString = ranges
                 .distinctBy { it.knownSorts.toList() }

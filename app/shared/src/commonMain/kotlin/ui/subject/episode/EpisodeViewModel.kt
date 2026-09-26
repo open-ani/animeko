@@ -71,6 +71,8 @@ import me.him188.ani.app.data.network.AutoSkipRepository
 import me.him188.ani.app.data.repository.RepositoryServiceUnavailableException
 import me.him188.ani.app.data.repository.episode.EpisodeCollectionRepository
 import me.him188.ani.app.data.repository.episode.EpisodeCommentRepository
+import me.him188.ani.app.data.repository.media.ManualBrowseMemory
+import me.him188.ani.app.data.repository.media.ManualBrowseMemoryRepository
 import me.him188.ani.app.data.repository.media.SelectorMediaSourceEpisodeCacheRepository
 import me.him188.ani.app.data.repository.player.DanmakuRegexFilterRepository
 import me.him188.ani.app.data.repository.player.EpisodePlayHistoryRepository
@@ -147,8 +149,14 @@ import me.him188.ani.app.ui.mediafetch.MediaSelectorState
 import me.him188.ani.app.ui.mediafetch.MediaSourceInfoProvider
 import me.him188.ani.app.ui.mediafetch.MediaSourceResultListPresentation
 import me.him188.ani.app.ui.mediafetch.MediaSourceResultListPresenter
-import me.him188.ani.app.ui.mediafetch.ViewKind
+import me.him188.ani.app.ui.mediafetch.MediaSourceResultPresentation
 import me.him188.ani.app.ui.mediafetch.createTestMediaSelectorState
+import me.him188.ani.app.ui.mediaselect.MediaSelectorMode
+import me.him188.ani.app.ui.mediaselect.WatchingEpisode
+import me.him188.ani.app.ui.mediaselect.bt.BtFilterState
+import me.him188.ani.app.ui.mediaselect.manual.ManualBrowseState
+import me.him188.ani.app.ui.mediaselect.manual.ManualBrowseTarget
+import me.him188.ani.app.ui.mediaselect.toWatchingEpisode
 import me.him188.ani.app.ui.mediaselect.summary.MediaSelectorSummary
 import me.him188.ani.app.ui.mediaselect.summary.MediaSelectorSummaryStateProducer
 import me.him188.ani.app.ui.mediaselect.summary.selectedMaybeExcludedMediaFlow
@@ -184,6 +192,7 @@ import me.him188.ani.danmaku.ui.DanmakuConfig
 import me.him188.ani.danmaku.ui.DanmakuHostState
 import me.him188.ani.danmaku.ui.DanmakuPresentation
 import me.him188.ani.danmaku.ui.DanmakuTrackProperties
+import me.him188.ani.datasources.api.Media
 import me.him188.ani.datasources.api.PackedDate
 import me.him188.ani.datasources.api.source.MediaFetchRequest
 import me.him188.ani.datasources.api.source.MediaSourceKind
@@ -237,7 +246,14 @@ data class EpisodePageState(
     val isPlaceholder: Boolean = false,
     val playingEpisodeSummary: PlayingEpisodeSummary?, // null means placeholder TODO: should distinguish placeholder
     val mediaSelectorSummary: MediaSelectorSummary,
-    val initialMediaSelectorViewKind: ViewKind,
+    /**
+     * preferKind == BitTorrent && mediaSourceResultListPresentation.btSources.isNotEmpty() → BT, 否则 AUTO (null / WEB / LocalCache / iOS 都是 AUTO).
+     */
+    val initialMediaSelectorMode: MediaSelectorMode,
+    /**
+     * subjectEpisodeBundle?.episodeInfo?.toWatchingEpisode(); 会话未就绪为 null.
+     */
+    val watchingEpisode: WatchingEpisode?,
     val matchingDanmakuPresenter: MatchingDanmakuPresenter?,
     val matchingDanmakuUiState: MatchingDanmakuUiState?,
     val fetchRequest: MediaFetchRequest?,
@@ -309,6 +325,7 @@ open class EpisodeViewModel(
     private val getPreferredWebMediaSource: GetPreferredWebMediaSourceUseCase by inject()
     private val webSessionManager: WebSessionManager by inject()
     private val playbackAutomationGate: PlaybackAutomationGate by inject()
+    private val manualBrowseMemoryRepository: ManualBrowseMemoryRepository by inject()
     val playbackAutomationSuppressed get() = playbackAutomationGate.suppressed
 
     /** 平台交互状态对自动跳过的额外约束。 */
@@ -387,6 +404,51 @@ open class EpisodeViewModel(
     )
 
     val mediaResolver: MediaResolver get() = fetchPlayState.playerSession.mediaResolver
+
+    /**
+     * 选择器模式, 会话内保持; null = 尚未锁存, 宿主用 `vm.mediaSelectorMode ?: page.initialMediaSelectorMode`.
+     * 锁存: 宿主打开选择器时 `if (vm.mediaSelectorMode == null && !page.isLoading) vm.mediaSelectorMode = page.initialMediaSelectorMode`,
+     * 锁存后 [EpisodePageState.initialMediaSelectorMode] 的异步翻转 (btSources 就绪) 对已打开的容器无效; 加载中打开则不锁存, 由宿主的 LaunchedEffect(mode) 响应翻转.
+     */
+    var mediaSelectorMode: MediaSelectorMode? by mutableStateOf(null)
+
+    /**
+     * 全屏播放器的手动查找 / BT 容器是否可见. 放 VM 而不是 EpisodeVideo 的 rememberSaveable:
+     * EpisodeVideo 被 EpisodeScreenTabletVeryWide 与 EpisodeScreenContentPhone 两处调用, 窗口跨 600dp / 旋转时组合位置改变, 位置型状态会归零.
+     */
+    var fullscreenSelectorVisible: Boolean by mutableStateOf(false)
+
+    /**
+     * BT 页会话内 UI 状态, 传给每次重建的 [MediaSelectorState] (占位分支也传同一实例).
+     */
+    val btFilterState: BtFilterState = BtFilterState()
+
+    /**
+     * 构造一次, 三个宿主共用. 声明位置必须在 [fetchPlayState] 与所有 `by inject()` 之后: Kotlin 按声明顺序初始化.
+     */
+    @OptIn(UnsafeEpisodeSessionApi::class)
+    val manualBrowseState: ManualBrowseState = ManualBrowseState(
+        browsableSources = getMediaSourceInstances().map { instances ->
+            instances.filter { it.isEnabled && it.source.supportsBrowsing }
+        },
+        webSessionManager = webSessionManager,
+        target = fetchPlayState.episodeSessionFlow.flatMapLatest { it.infoBundleFlow }.map { bundle ->
+            bundle?.let {
+                ManualBrowseTarget(
+                    subjectId = subjectId,
+                    subjectName = it.subjectInfo.nameCnOrName,
+                    episodeSort = it.episodeInfo.sort,
+                    episodeSortText = it.episodeInfo.sort.toString(),
+                )
+            }
+        }.distinctUntilChanged(),
+        preferredSourceId = combine(
+            manualBrowseMemoryRepository.flow(subjectId),
+            getPreferredWebMediaSource(subjectId),
+        ) { memory, preferred -> memory?.mediaSourceId ?: preferred },
+        onPlay = ::playBrowsedMedia,
+        backgroundScope = backgroundScope,
+    )
 
     // region Subject and episode data info flows
     @UnsafeEpisodeSessionApi
@@ -496,15 +558,21 @@ open class EpisodeViewModel(
 
     private val selfInfoFlow = SelfInfoStateProducer(koin = getKoin()).flow
 
-    private fun initialMediaSelectorViewKindFlow(): Flow<ViewKind> =
-        settingsRepository.mediaSelectorSettings.flow.map { settings ->
-            when (settings.preferKind) {
-                MediaSourceKind.WEB -> ViewKind.WEB
-                MediaSourceKind.BitTorrent -> ViewKind.BT
-                MediaSourceKind.LocalCache -> ViewKind.WEB
-                null -> ViewKind.WEB
-            }
+    /**
+     * @see EpisodePageState.initialMediaSelectorMode
+     */
+    private fun initialMediaSelectorModeFlow(
+        mediaSourceResultsFlow: Flow<List<MediaSourceResultPresentation>>,
+    ): Flow<MediaSelectorMode> = combine(
+        settingsRepository.mediaSelectorSettings.flow,
+        mediaSourceResultsFlow,
+    ) { settings, results ->
+        if (settings.preferKind == MediaSourceKind.BitTorrent && results.any { it.kind == MediaSourceKind.BitTorrent }) {
+            MediaSelectorMode.BT
+        } else {
+            MediaSelectorMode.AUTO
         }
+    }.distinctUntilChanged()
 
 
     @OptIn(UnsafeEpisodeSessionApi::class)
@@ -960,22 +1028,23 @@ open class EpisodeViewModel(
                         getPreferredWebMediaSource(subjectId),
                         backgroundScope,
                         webSessionManager,
+                        btFilterState,
                     )
                 } else {
                     // TODO: 2025/1/22 We should not use createTestMediaSelectorState
                     @OptIn(TestOnly::class)
-                    createTestMediaSelectorState(backgroundScope)
+                    createTestMediaSelectorState(backgroundScope, btFilterState)
                 }
             },
             mediaSourceResultsFlow.map { MediaSourceResultListPresentation(it) },
             mediaSelectorSummaryStateProducer,
-            initialMediaSelectorViewKindFlow(),
+            initialMediaSelectorModeFlow(mediaSourceResultsFlow),
             matchingDanmakuPresenter,
             matchingDanmakuPresenter.flatMapLatest { it?.uiState ?: flowOfNull() },
             combine(selectedMediaFlow, player.mediaData) { selectedMedia, mediaData ->
                 MediaShareData.from(selectedMedia, mediaData)
             },
-        ) { authState, subjectEpisodeBundle, subjectLoadError, fetchSelect, danmakuStatistics, danmakuEnabled, danmakuConfig, mediaSelectorState, mediaSourceResultsPresentation, mediaSelectorSummary, initialMediaSelectorViewKind, matchingDanmakuPresenter, matchingDanmaku, shareData ->
+        ) { authState, subjectEpisodeBundle, subjectLoadError, fetchSelect, danmakuStatistics, danmakuEnabled, danmakuConfig, mediaSelectorState, mediaSourceResultsPresentation, mediaSelectorSummary, initialMediaSelectorMode, matchingDanmakuPresenter, matchingDanmaku, shareData ->
 
             val (subject, episode) = if (subjectEpisodeBundle == null) {
                 SubjectPresentation.Placeholder to EpisodePresentation.Placeholder
@@ -1025,7 +1094,8 @@ open class EpisodeViewModel(
                     )
                 },
                 mediaSelectorSummary = mediaSelectorSummary,
-                initialMediaSelectorViewKind = initialMediaSelectorViewKind,
+                initialMediaSelectorMode = initialMediaSelectorMode,
+                watchingEpisode = subjectEpisodeBundle?.episodeInfo?.toWatchingEpisode(),
                 matchingDanmakuPresenter = matchingDanmakuPresenter,
                 matchingDanmakuUiState = matchingDanmaku?.copy(
                     initialQuery = subjectEpisodeBundle?.subjectInfo?.nameCnOrName ?: "",
@@ -1165,6 +1235,34 @@ open class EpisodeViewModel(
                 ?: return@launchInBackground
             logger.info { "Playing dropped file: $file" }
             mediaSelector.selectTemporarily(DroppedFileMedia.create(file))
+        }
+    }
+
+    /**
+     * [ManualBrowseState] 的 onPlay: 取当前 session 的 selector;
+     * memory != null → `select(media)` 后写记忆; 否则 `selectTemporarily(media)`.
+     * 记忆写入失败只记日志: select 已经发生, 页面按成功关闭.
+     */
+    private suspend fun playBrowsedMedia(media: Media, memory: ManualBrowseMemory?) {
+        val session = fetchPlayState.episodeSessionFlow.value
+        val mediaSelector = fetchPlayState.episodeSessionFlow
+            .mapLatest { current ->
+                if (current !== session) return@mapLatest null
+                current.fetchSelectFlow.filterNotNull().first().mediaSelector
+            }
+            .first()
+            ?: return
+        if (memory != null) {
+            mediaSelector.select(media)
+            try {
+                manualBrowseMemoryRepository.set(subjectId, memory)
+            } catch (e: CancellationException) {
+                throw e
+            } catch (e: Exception) {
+                logger.warn(e) { "Failed to save manual browse memory for subject $subjectId" }
+            }
+        } else {
+            mediaSelector.selectTemporarily(media)
         }
     }
 
