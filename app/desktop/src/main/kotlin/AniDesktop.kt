@@ -94,6 +94,7 @@ import me.him188.ani.app.torrent.anitorrent.AnitorrentLibraryLoader
 import me.him188.ani.app.ui.foundation.LocalPlatform
 import me.him188.ani.app.ui.foundation.LocalWindowState
 import me.him188.ani.app.ui.foundation.WindowDropHost
+import me.him188.ani.app.ui.foundation.input.ProvideTouchViewConfiguration
 import me.him188.ani.app.ui.foundation.effects.OverrideCaptionButtonAppearance
 import me.him188.ani.app.ui.foundation.ifThen
 import me.him188.ani.app.ui.foundation.layout.LocalPlatformWindow
@@ -596,12 +597,16 @@ object AniDesktop {
                     } else {
                         { secondaryWindowState, onCloseRequest, content ->
                             HandleWindowsWindowProc()
-                            WindowFrame(secondaryWindowState, onCloseRequest, content)
+                            ProvideTouchViewConfiguration {
+                                WindowFrame(secondaryWindowState, onCloseRequest, content)
+                            }
                         }
                     },
                 ) {
                     if (isRunningUnderWine()) {
-                        MainWindowContent(navigator, settingsRepository)
+                        ProvideTouchViewConfiguration {
+                            MainWindowContent(navigator, settingsRepository)
+                        }
                     } else {
                         HandleWindowsWindowProc()
                         if (platform.isWindows()) {
@@ -625,7 +630,9 @@ object AniDesktop {
                                 )
                             },
                         ) {
-                            MainWindowContent(navigator, settingsRepository)
+                            ProvideTouchViewConfiguration {
+                                MainWindowContent(navigator, settingsRepository)
+                            }
                         }
                     }
                 }
