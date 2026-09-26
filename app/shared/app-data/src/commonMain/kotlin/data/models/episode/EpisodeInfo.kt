@@ -67,6 +67,13 @@ val EpisodeInfo.displayName get() = nameCn.ifBlank { name }
 val EpisodeInfo.nameOrNameCn get() = name.ifBlank { nameCn }
 
 /**
+ * 所有非空的名称, 原名优先. 用于需要跨语言匹配剧集的场景.
+ */
+@Stable
+val EpisodeInfo.allNames: List<String>
+    get() = listOf(name, nameCn).filter { it.isNotBlank() }.distinct()
+
+/**
  * 根据用户偏好选择的显示名称, 与 [subjectPreferredDisplayName] 同一约定.
  * @param useOriginalTitle 为 `true` 时优先显示原名 ([name]), 为 `false` 时行为与 [displayName] 一致.
  */
