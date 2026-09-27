@@ -25,6 +25,7 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
+import me.him188.ani.app.data.models.danmaku.DanmakuRegexFilter
 import me.him188.ani.remote.settings.RemoteSettingsLink
 import me.him188.ani.remote.settings.RemoteSettingsProtocol
 import me.him188.ani.remote.settings.generated.apis.RemoteSettingsApi
@@ -89,29 +90,41 @@ private constructor(
         }
     }
 
+    /**
+     * [value] is a whole preference built from the snapshot visible to the caller, so its base
+     * revision is read before waiting for earlier writes. An edit built from an outdated value is
+     * rejected by the TV instead of overwriting the earlier write.
+     */
     suspend fun setPreference(value: RemotePreference) {
+        val baseRevision = snapshot.value.preferences.revisionOf(value)
         mutate { id ->
-            api.setPreference(
-                    PreferenceRequest(id, snapshot.value.preferences.revisionOf(value), value),
-                    instance,
-                )
-                .checked()
+            api.setPreference(PreferenceRequest(id, baseRevision, value), instance).checked()
         }
     }
 
     suspend fun mediaSource(
         command: MediaSourceCommand,
         baseRevision: String? = null,
+    ): RemoteOperationPayload = mediaSource(command) { baseRevision }
+
+    /**
+     * [baseRevision] runs after earlier writes finish, with the snapshot the request is based on.
+     * Returning null uses that snapshot's revision of the affected list.
+     */
+    suspend fun mediaSource(
+        command: MediaSourceCommand,
+        baseRevision: (SettingsSnapshot) -> String?,
     ): RemoteOperationPayload = mutate { id ->
         val subscription =
             command is MediaSourceCommand.SubscriptionAdd ||
                 command is MediaSourceCommand.SubscriptionEdit ||
                 command is MediaSourceCommand.SubscriptionDelete ||
                 command is MediaSourceCommand.SubscriptionRefresh
+        val current = snapshot.value
         val revision =
-            baseRevision
-                ?: if (subscription) snapshot.value.subscriptions.revision
-                else snapshot.value.mediaSources.revision
+            baseRevision(current)
+                ?: if (subscription) current.subscriptions.revision
+                else current.mediaSources.revision
         api.mediaSource(
                 MediaSourceRequest(
                     id,
@@ -124,17 +137,26 @@ private constructor(
     }
 
     suspend fun danmakuFilters(command: ReplaceDanmakuFilters): RemoteOperationPayload =
-        mutate { id ->
-            api.danmakuFilter(
-                    DanmakuFilterRequest(
-                        id,
-                        command,
-                        snapshot.value.danmakuFilters.revision,
-                    ),
-                    instance,
-                )
-                .checked()
-        }
+        editDanmakuFilters { command.filters }
+
+    /**
+     * [transform] runs after earlier writes finish, on the filters of the snapshot whose revision
+     * the request carries, so consecutive edits apply on top of each other.
+     */
+    suspend fun editDanmakuFilters(
+        transform: (List<DanmakuRegexFilter>) -> List<DanmakuRegexFilter>
+    ): RemoteOperationPayload = mutate { id ->
+        val current = snapshot.value.danmakuFilters
+        api.danmakuFilter(
+                DanmakuFilterRequest(
+                    id,
+                    ReplaceDanmakuFilters(transform(current.value)),
+                    current.revision,
+                ),
+                instance,
+            )
+            .checked()
+    }
 
     private suspend fun backup(command: RemoteBackupCommand): RemoteOperationPayload =
         mutate { id ->

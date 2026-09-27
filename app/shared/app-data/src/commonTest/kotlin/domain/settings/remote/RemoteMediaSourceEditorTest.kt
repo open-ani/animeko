@@ -136,6 +136,34 @@ class RemoteMediaSourceEditorTest {
         }
     }
 
+    @Test
+    fun changesToOtherSourcesDoNotRejectTheDraft() = runTest {
+        val fixture = Fixture()
+        val session = fixture.connect(backgroundScope)
+        try {
+            val editor = RemoteMediaSourceEditor(session, "source", backgroundScope)
+            fixture.other =
+                fixture.other.copy(
+                    config =
+                        fixture.other.config.copy(serializedArguments = encodedArguments("other"))
+                )
+            fixture.revision++
+            session.refresh()
+            editor.saveArguments(
+                SelectorMediaSourceArguments.serializer(),
+                SelectorMediaSourceArguments.Default.copy(name = "draft"),
+            )
+            advanceTimeBy(501)
+            editor.config.first { it.serializedArguments == encodedArguments("draft") }
+            editor.isSaving.first { !it }
+            assertEquals(listOf("revision-1"), fixture.revisions.toList())
+            assertEquals(encodedArguments("draft"), fixture.source.config.serializedArguments)
+            editor.close()
+        } finally {
+            session.close()
+        }
+    }
+
     private class Fixture {
         val revisions = mutableListOf<String>()
         var revision = 0
@@ -143,6 +171,14 @@ class RemoteMediaSourceEditorTest {
             MediaSourceSave(
                 "source",
                 "source",
+                FactoryId("web-selector"),
+                true,
+                MediaSourceConfig.Default,
+            )
+        var other =
+            MediaSourceSave(
+                "other",
+                "other",
                 FactoryId("web-selector"),
                 true,
                 MediaSourceConfig.Default,
@@ -175,7 +211,7 @@ class RemoteMediaSourceEditorTest {
                                             registry.snapshot(),
                                             VersionedValue(
                                                 "revision-$revision",
-                                                listOf(source),
+                                                listOf(source, other),
                                             ),
                                             VersionedValue("empty", emptyList()),
                                             VersionedValue("empty", emptyList()),

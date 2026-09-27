@@ -21,17 +21,37 @@ import me.him188.ani.app.domain.mediasource.codec.MediaSourceArguments
 import me.him188.ani.datasources.api.source.MediaSourceConfig
 import me.him188.ani.remote.settings.RemoteSettingsProtocol
 
-/** 编辑器自动保存绑定打开时的设备与 revision；请求发送后不会被下一次输入取消。 */
+/**
+ * 编辑器自动保存基于打开时或上次保存成功时确认的配置；请求发送后不会被下一次输入取消。
+ *
+ * 该数据源在电视上被其他途径修改或删除后，保存会因 revision 冲突失败，不会覆盖外部修改。
+ * 列表中其他数据源的变化不影响保存。
+ */
 class RemoteMediaSourceEditor(
     private val session: RemoteSettingsSession,
     private val instanceId: String,
     scope: CoroutineScope,
 ) : MediaSourceConfigurationEditor {
-    private fun source() =
-        session.snapshot.value.mediaSources.value.first { it.instanceId == instanceId }
+    private fun SettingsSnapshot.source() =
+        mediaSources.value.firstOrNull { it.instanceId == instanceId }
 
     private var revision = session.snapshot.value.mediaSources.revision
-    private val confirmedConfig = MutableStateFlow(source().config)
+
+    /**
+     * Changes to other sources only advance the list revision, so a draft of an unchanged source
+     * is sent with [snapshot]'s revision. Otherwise the confirmed revision makes the TV reject it.
+     */
+    private fun baseRevision(snapshot: SettingsSnapshot): String =
+        if (snapshot.source()?.config == confirmedConfig.value) {
+            snapshot.mediaSources.revision
+        } else {
+            revision
+        }
+    private val confirmedConfig =
+        MutableStateFlow(
+            checkNotNull(session.snapshot.value.source()) { "Missing media source $instanceId" }
+                .config
+        )
     override val config = confirmedConfig.asStateFlow()
 
     private class Change(val config: MediaSourceConfig)
@@ -47,14 +67,12 @@ class RemoteMediaSourceEditor(
                 val latest = changes.tryReceive().getOrNull() ?: change
                 try {
                     session.mediaSource(
-                        MediaSourceCommand.Edit(
-                            instanceId,
-                            latest.config,
-                        ),
-                        revision,
+                        MediaSourceCommand.Edit(instanceId, latest.config),
+                        ::baseRevision,
                     )
-                    confirmedConfig.value = source().config
-                    revision = session.snapshot.value.mediaSources.revision
+                    val snapshot = session.snapshot.value
+                    snapshot.source()?.let { confirmedConfig.value = it.config }
+                    revision = snapshot.mediaSources.revision
                 } catch (e: CancellationException) {
                     throw e
                 } catch (e: Exception) {

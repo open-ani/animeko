@@ -26,12 +26,14 @@ import kotlin.test.assertFalse
 import kotlin.test.assertNotNull
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.async
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.test.runCurrent
 import kotlinx.coroutines.test.runTest
 import kotlinx.io.IOException
 import kotlinx.serialization.encodeToString
+import me.him188.ani.app.data.models.danmaku.DanmakuRegexFilter
 import me.him188.ani.app.data.persistent.MemoryDataStore
 import me.him188.ani.app.data.repository.user.PreferencesRepositoryImpl
 import me.him188.ani.remote.settings.RemoteSettingsLink
@@ -152,6 +154,66 @@ class RemoteSettingsSessionTest {
         }
     }
 
+    @Test
+    fun editBuiltFromTheValueBeforeAnEarlierWriteIsRejected() = runTest {
+        val fixture = Fixture().apply { writeGate = CompletableDeferred() }
+        val session = fixture.connect(backgroundScope)
+        try {
+            val base = session.snapshot.value.preferences.videoScaffoldConfig.value
+            val first = launch {
+                session.setPreference(
+                    RemotePreference.VideoScaffold(base.copy(autoPlayNext = false))
+                )
+            }
+            fixture.writeStarted.await()
+            val second = async {
+                runCatching {
+                    session.setPreference(
+                        RemotePreference.VideoScaffold(base.copy(autoMarkDone = false))
+                    )
+                }
+            }
+            runCurrent()
+            fixture.writeGate!!.complete(Unit)
+            first.join()
+            assertEquals(
+                "REVISION_CONFLICT",
+                (second.await().exceptionOrNull() as RemoteSettingsException).code,
+            )
+            val config = session.preferences.videoScaffoldConfig.flow.first()
+            assertFalse(config.autoPlayNext)
+            assertEquals(base.autoMarkDone, config.autoMarkDone)
+        } finally {
+            session.close()
+        }
+    }
+
+    @Test
+    fun consecutiveFilterEditsApplyOnTopOfEachOther() = runTest {
+        val fixture = Fixture().apply { writeGate = CompletableDeferred() }
+        val session = fixture.connect(backgroundScope)
+        try {
+            val first = launch {
+                session.editDanmakuFilters { it + DanmakuRegexFilter("a", regex = "a") }
+            }
+            fixture.writeStarted.await()
+            val second = launch {
+                session.editDanmakuFilters { it + DanmakuRegexFilter("b", regex = "b") }
+            }
+            runCurrent()
+            fixture.writeGate!!.complete(Unit)
+            first.join()
+            second.join()
+            assertEquals(listOf("filters-0", "filters-1"), fixture.filterRevisions)
+            assertEquals(
+                listOf("a", "b"),
+                session.snapshot.value.danmakuFilters.value.map { it.id },
+            )
+        } finally {
+            session.close()
+        }
+    }
+
     private class Fixture {
         var writes = 0
         var queries = 0
@@ -161,6 +223,8 @@ class RemoteSettingsSessionTest {
         var rejectWrite = false
         var writeGate: CompletableDeferred<Unit>? = null
         val writeStarted = CompletableDeferred<Unit>()
+        val filterRevisions = mutableListOf<String>()
+        private var filters = VersionedValue("filters-0", emptyList<DanmakuRegexFilter>())
         private val json = RemoteSettingsProtocol.json
         private val registry =
             RemotePreferenceRegistry(
@@ -191,7 +255,7 @@ class RemoteSettingsSessionTest {
                                             registry.snapshot(),
                                             VersionedValue("empty", emptyList()),
                                             VersionedValue("empty", emptyList()),
-                                            VersionedValue("empty", emptyList()),
+                                            filters,
                                             emptyList(),
                                         )
                                     )
@@ -212,10 +276,17 @@ class RemoteSettingsSessionTest {
                                         json.decodeFromString<PreferenceRequest>(
                                             (request.body as TextContent).text
                                         )
-                                    registry.write(
-                                        command.baseRevision,
-                                        command.value,
-                                    )
+                                    try {
+                                        registry.write(command.baseRevision, command.value)
+                                    } catch (e: RemoteSettingsException) {
+                                        return@MockEngine respond(
+                                            json.encodeToString(
+                                                RemoteError(e.code, e.message.orEmpty())
+                                            ),
+                                            HttpStatusCode.Conflict,
+                                            headersOf(HttpHeaders.ContentType, "application/json"),
+                                        )
+                                    }
                                     result =
                                         OperationResult(
                                             command.operationId,
@@ -227,6 +298,29 @@ class RemoteSettingsSessionTest {
                                     json.encodeToString(
                                         if (pending) OperationResult(command.operationId, "pending")
                                         else result!!
+                                    )
+                                }
+                                path == "/danmaku-filter" -> {
+                                    writeStarted.complete(Unit)
+                                    writeGate?.await()
+                                    val command =
+                                        json.decodeFromString<DanmakuFilterRequest>(
+                                            (request.body as TextContent).text
+                                        )
+                                    val revision = requireNotNull(command.baseRevision)
+                                    filterRevisions += revision
+                                    assertEquals(filters.revision, revision)
+                                    filters =
+                                        VersionedValue(
+                                            "filters-${filterRevisions.size}",
+                                            command.command.filters,
+                                        )
+                                    json.encodeToString(
+                                        OperationResult(
+                                            command.operationId,
+                                            "succeeded",
+                                            RemoteOperationPayload.Applied,
+                                        )
                                     )
                                 }
                                 path.startsWith("/operations/") -> {

@@ -119,7 +119,7 @@ class RemoteSettingsFormState(
             )
 
     private fun editFilters(transform: (List<DanmakuRegexFilter>) -> List<DanmakuRegexFilter>) {
-        scope.launch { session.danmakuFilters(ReplaceDanmakuFilters(transform(filters.value))) }
+        scope.launch { session.editDanmakuFilters(transform) }
     }
 
     val regexFilters =
