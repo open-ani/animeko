@@ -27,7 +27,7 @@ import kotlin.test.assertTrue
  * AniDatabase 迁移测试 (infra#10, P0#18).
  *
  * 生产迁移链 (CommonKoinModule): 1..15 destructive, 16 起走
- * AutoMigration 16→17→18→19, 手动 [MIGRATION_19_20], AutoMigration 20→21→22→23→24→25.
+ * AutoMigration 16→17→18→19, 手动 [MIGRATION_19_20], AutoMigration 20→21→22→23→24→25→26→27.
  *
  * [MigrationTestHelper] 从 `schemas/<db fqn>/<version>.json` 建旧版本库,
  * runMigrationsAndValidate 会把迁移后的实际 schema 与目标版本 json 逐表逐列校验.
@@ -218,6 +218,17 @@ class AniDatabaseMigrationTest {
                 assertTrue(statement.isNull(0))
                 assertEquals("cn", statement.getText(1))
             }
+        }
+    }
+
+    @Test
+    fun `MIG-09 v26到v27的AutoMigration新建episode_collection_pending_op表`() {
+        val helper = createHelper()
+        helper.createDatabase(26).use { connection ->
+            assertFalse(connection.tableNames().contains("episode_collection_pending_op"))
+        }
+        helper.runMigrationsAndValidate(27, emptyList()).use { connection ->
+            assertContains(connection.tableNames(), "episode_collection_pending_op")
         }
     }
 
