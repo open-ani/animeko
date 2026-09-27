@@ -9,6 +9,12 @@ import kotlin.test.assertFails
 
 class BackupCompressionTest {
     @Test
+    fun rawFileAndExpandedContentsHaveSeparateCaps() {
+        assertEquals(10 * 1024 * 1024, MAX_BACKUP_FILE_BYTES)
+        assertEquals(32 * 1024 * 1024, MAX_BACKUP_BYTES)
+    }
+
+    @Test
     fun compressedBackupRoundTrips() {
         val content = """{"format":"animeko-backup","version":1,"tracking":{"bindings":[]}}""".encodeToByteArray()
         val compressed = compressBackup(content)

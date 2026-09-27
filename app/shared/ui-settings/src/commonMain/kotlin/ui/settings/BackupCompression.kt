@@ -2,10 +2,10 @@ package me.him188.ani.app.ui.settings
 
 import kotlinx.io.Source
 
-/** Maximum size of either the selected backup file or its expanded contents. */
-internal const val MAX_BACKUP_BYTES = 10 * 1024 * 1024
+/** Maximum size of expanded or plain-text backup contents. */
+internal const val MAX_BACKUP_BYTES = 32 * 1024 * 1024
 
-/** Limit for the compressed/plain file before any decompression. */
+/** Limit for the selected file before any decompression. */
 internal const val MAX_BACKUP_FILE_BYTES = 10 * 1024 * 1024
 
 internal expect fun compressBackup(content: ByteArray): ByteArray
