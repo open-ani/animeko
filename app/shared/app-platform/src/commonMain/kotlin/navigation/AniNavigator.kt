@@ -200,6 +200,14 @@ interface AniNavigator {
         navigate(NavRoutes.EditMediaSource(factoryId.value, mediaSourceInstanceId))
     }
 
+    fun navigateRemoteEditMediaSource(
+        remote: NavRoutes.RemoteSettings,
+        factoryId: FactoryId,
+        mediaSourceInstanceId: String,
+    ) {
+        navigate(NavRoutes.RemoteEditMediaSource(remote.entryId, factoryId.value, mediaSourceInstanceId))
+    }
+
     fun navigateTorrentPeerSettings() {
         navigate(NavRoutes.TorrentPeerSettings)
     }

@@ -9,9 +9,6 @@
 
 package me.him188.ani.app.ui.qrlogin
 
-import me.him188.ani.app.ui.lang.remote_settings_invalid_qr
-import me.him188.ani.app.ui.lang.remote_settings_scan
-import me.him188.ani.app.ui.lang.remote_settings_scan_hint
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
@@ -53,7 +50,6 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import kotlinx.coroutines.delay
 import me.him188.ani.app.data.repository.user.QrLoginRepository
-import me.him188.ani.remote.settings.RemoteSettingsLink
 import me.him188.ani.app.ui.foundation.layout.AniWindowInsets
 import me.him188.ani.app.ui.lang.Lang
 import me.him188.ani.app.ui.lang.qr_login_camera_permission
@@ -74,7 +70,30 @@ fun QrLoginScanScreen(
     onScanned: (requestId: String) -> Unit,
     onNavigateBack: () -> Unit,
     modifier: Modifier = Modifier,
-    remoteSettings: Boolean = false,
+) {
+    QrCodeScanScreen(
+        title = stringResource(Lang.qr_login_title),
+        hint = stringResource(Lang.qr_login_scan_hint),
+        invalidHint = stringResource(Lang.qr_login_scan_invalid),
+        parse = QrLoginRepository::parseRequestId,
+        onScanned = onScanned,
+        onNavigateBack = onNavigateBack,
+        modifier = modifier,
+    )
+}
+
+/**
+ * 全屏扫描二维码. [parse] 返回非 `null` 时以其结果调用一次 [onScanned]; 返回 `null` 的二维码只提示 [invalidHint], 继续扫描.
+ */
+@Composable
+fun QrCodeScanScreen(
+    title: String,
+    hint: String,
+    invalidHint: String,
+    parse: (content: String) -> String?,
+    onScanned: (String) -> Unit,
+    onNavigateBack: () -> Unit,
+    modifier: Modifier = Modifier,
 ) {
     var torchEnabled by rememberSaveable { mutableStateOf(false) }
     var handled by remember { mutableStateOf(false) }
@@ -91,14 +110,12 @@ fun QrLoginScanScreen(
         QrCodeScanner(
             onScanned = { content ->
                 if (handled) return@QrCodeScanner
-                val requestId = if (remoteSettings) {
-                    runCatching { RemoteSettingsLink.parse(content); content }.getOrNull()
-                } else QrLoginRepository.parseRequestId(content)
-                if (requestId != null) {
+                val result = parse(content)
+                if (result != null) {
                     handled = true
-                    onScanned(requestId)
+                    onScanned(result)
                 } else {
-                    invalidContent = "invalid"
+                    invalidContent = content
                 }
             },
             torchEnabled = torchEnabled,
@@ -123,7 +140,7 @@ fun QrLoginScanScreen(
         ScanFrame(Modifier.fillMaxSize())
 
         TopAppBar(
-            title = { Text(if (remoteSettings) stringResource(Lang.remote_settings_scan) else stringResource(Lang.qr_login_title)) },
+            title = { Text(title) },
             navigationIcon = {
                 IconButton(onNavigateBack) { Icon(Icons.Rounded.Close, stringResource(Lang.qr_login_close)) }
             },
@@ -143,11 +160,7 @@ fun QrLoginScanScreen(
             horizontalAlignment = Alignment.CenterHorizontally,
         ) {
             Text(
-                stringResource(when {
-                    invalidContent != null -> if (remoteSettings) Lang.remote_settings_invalid_qr else Lang.qr_login_scan_invalid
-                    remoteSettings -> Lang.remote_settings_scan_hint
-                    else -> Lang.qr_login_scan_hint
-                }),
+                if (invalidContent != null) invalidHint else hint,
                 color = Color.White,
                 style = MaterialTheme.typography.bodyLarge,
                 textAlign = TextAlign.Center,

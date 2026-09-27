@@ -63,12 +63,15 @@ import me.him188.ani.app.ui.settings.tabs.media.source.MediaSourceGroup
 import me.him188.ani.app.ui.settings.tabs.media.source.MediaSourceSelectionActions
 import me.him188.ani.app.ui.settings.tabs.media.source.MediaSourceSubscriptionGroup
 import me.him188.ani.app.ui.settings.tabs.media.source.rememberMediaSourceSelectionState
+import me.him188.ani.datasources.api.source.FactoryId
 import org.jetbrains.compose.resources.stringResource
 
 @Composable
 fun RemoteSettingsScreen(
     vm: RemoteSettingsViewModel,
     onNavigateBack: () -> Unit,
+    /** 打开电视上数据源的单独编辑页面. */
+    onEditMediaSource: (FactoryId, instanceId: String) -> Unit,
     scanner: @Composable (onScanned: (String) -> Unit, onBack: () -> Unit) -> Unit,
     modifier: Modifier = Modifier,
     windowInsets: WindowInsets = AniWindowInsets.forColumnPageContent(),
@@ -90,7 +93,7 @@ fun RemoteSettingsScreen(
             val form = vm.form
             if (form != null)
                 key(vm.remoteSession) {
-                    RemoteSettingsContent(vm, form, contentModifier, windowInsets, requestExit)
+                    RemoteSettingsContent(vm, form, contentModifier, windowInsets, requestExit, onEditMediaSource)
                 }
         }
         if (!vm.isConnected || vm.pendingRemoteLink != null) {
@@ -118,6 +121,7 @@ private fun RemoteSettingsContent(
     modifier: Modifier,
     windowInsets: WindowInsets,
     requestExit: () -> Unit,
+    onEditMediaSource: (FactoryId, instanceId: String) -> Unit,
 ) {
     val navigator: ThreePaneScaffoldNavigator<Nothing?> =
         rememberListDetailPaneScaffoldNavigator(
@@ -193,7 +197,7 @@ private fun RemoteSettingsContent(
                                     deleteDescription =
                                         stringResource(Lang.remote_settings_subscription_delete),
                                 )
-                                MediaSourceGroup(form.sources.group, form.sources.edit, selection)
+                                MediaSourceGroup(form.sources.group, form.sources.edit, selection, onEditMediaSource)
                             }
                             SettingsTab.MEDIA_SELECTOR ->
                                 RemoteMediaSelectionGroup(form)

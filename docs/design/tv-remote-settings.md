@@ -54,18 +54,19 @@ flowchart LR
 
 共享设置组件只暴露通用能力参数、内容插槽与数据读写接口，默认值遵循当前设备的本机行为。TV 的选项范围、着色器开关、订阅菜单与备份提示由 `remote/RemoteSettingsControls.kt` 组合；共享 Group 和数据源编辑器不依赖远程会话类型。存储直接复用弹幕缓存控件，备份通过 form 的回调操作固定会话，无需构造带有手机权限和目录能力的 `CacheDirectoryGroupState`。日志页通过插槽展示电视日志操作，各平台的本机日志实现各自保持独立。
 
-`RemoteSettingsSessionHost` 为远程设置及其数据源编辑子页提供设备气泡、连接／错误提示与根页退出确认。Navigation 3 的共享 store provider 以 RemoteSettings entry ID 持有 ViewModelStore，子页获取同一个 `RemoteSettingsViewModel`；只有远程 entry 出栈才清理 store。本机设置 entry 使用自身的普通 ViewModelStore。每次连接以 session 对象区分表单，编辑子页在整个生命周期内固定绑定打开时的远程 adapter。
+`RemoteSettingsSessionHost` 为远程设置及其数据源编辑子页提供设备气泡、连接／错误提示与根页退出确认。Navigation 3 的共享 store provider 以 RemoteSettings entry ID 持有 ViewModelStore，数据源编辑子页 `NavRoutes.RemoteEditMediaSource` 携带所属 entry ID，获取同一个 `RemoteSettingsViewModel`；只有远程 entry 出栈才清理 store。本机设置 entry 使用自身的普通 ViewModelStore。每次连接以 session 对象区分表单，编辑子页在整个生命周期内固定绑定打开时的远程 adapter。
 
 ### 2.1 模块划分
 
 | 模块 | 职责 |
 | --- | --- |
 | `app/shared/remote-settings-contract` | OpenAPI schema、二维码连接信息、协议常量 |
-| `app/shared/app-data` | 复用现有模型的协议 wrapper、生成客户端、schema 导出、远程会话、preference adapter、本地 backend 与配置校验 |
-| `app/tv-remote-settings-server` | JVM Ktor CIO listener、路由鉴权、请求边界、操作记录与 revision 签名 |
+| `app/shared/remote-settings` | 复用 `app-data` 现有模型的协议 wrapper、生成客户端、schema 导出、远程会话、preference adapter 与配置校验 |
+| `app/tv-remote-settings-server` | 本地 backend、JVM Ktor CIO listener、路由鉴权、请求边界、操作记录与 revision 签名 |
 | `app/android/src/tv` | Application 生命周期、LAN 地址、LAN 权限、电视固定日志文件 |
 | `app/shared/ui-settings` | `RemoteSettingsViewModel` 管理远程会话；`RemoteSettingsScreen` 复用设置布局、详情 Group 与编辑页 |
-| `app/shared/ui-onboarding` | 复用扫码页、相机权限、局域网权限入口 |
+| `app/shared/ui-onboarding` | 通用扫码页 `QrCodeScanScreen`、相机权限、局域网权限入口 |
+| `app/shared` | 远程设置与远程数据源编辑的导航入口 |
 | Android / iOS 平台入口 | scheme 解析后把临时目标交给远程会话 |
 
 HTTP server 仅由 Android TV flavor 引用，手机 APK 不启动 listener。OpenAPI 与生成客户端可供 Android、iOS 和桌面编译使用。桌面没有扫码入口。
@@ -74,14 +75,14 @@ HTTP server 仅由 Android TV flavor 引用，手机 APK 不启动 listener。Op
 
 - [协议与连接信息](../../app/shared/remote-settings-contract/src/commonMain/kotlin/me/him188/ani/remote/settings/RemoteSettingsProtocol.kt)
 - [OpenAPI](../../app/shared/remote-settings-contract/openapi.json)
-- [客户端生成任务](../../app/shared/app-data/build.gradle.kts)
-- [强类型协议模型](../../app/shared/app-data/src/commonMain/kotlin/domain/settings/remote/RemoteSettingsModels.kt)
-- [Schema 导出](../../app/shared/app-data/src/desktopTest/kotlin/domain/settings/remote/GenerateRemoteSettingsOpenApi.kt)
-- [RemoteSettingsSession](../../app/shared/app-data/src/commonMain/kotlin/domain/settings/remote/RemoteSettingsSession.kt)
-- [RemotePreferenceRepository](../../app/shared/app-data/src/commonMain/kotlin/domain/settings/remote/RemotePreferenceRepository.kt)
-- [RemotePreferenceRegistry](../../app/shared/app-data/src/commonMain/kotlin/domain/settings/remote/RemotePreferenceRegistry.kt)
-- [命令和备份 DTO](../../app/shared/app-data/src/commonMain/kotlin/domain/settings/remote/RemoteSettingsCommands.kt)
-- [LocalRemoteSettingsBackend](../../app/shared/app-data/src/commonMain/kotlin/domain/settings/remote/RemoteSettingsBackend.kt)
+- [客户端生成任务](../../app/shared/remote-settings/build.gradle.kts)
+- [强类型协议模型](../../app/shared/remote-settings/src/commonMain/kotlin/domain/settings/remote/RemoteSettingsModels.kt)
+- [Schema 导出](../../app/shared/remote-settings/src/desktopTest/kotlin/domain/settings/remote/GenerateRemoteSettingsOpenApi.kt)
+- [RemoteSettingsSession](../../app/shared/remote-settings/src/commonMain/kotlin/domain/settings/remote/RemoteSettingsSession.kt)
+- [RemotePreferenceRepository](../../app/shared/remote-settings/src/commonMain/kotlin/domain/settings/remote/RemotePreferenceRepository.kt)
+- [RemotePreferenceRegistry](../../app/shared/remote-settings/src/commonMain/kotlin/domain/settings/remote/RemotePreferenceRegistry.kt)
+- [命令和备份 DTO](../../app/shared/remote-settings/src/commonMain/kotlin/domain/settings/remote/RemoteSettingsCommands.kt)
+- [LocalRemoteSettingsBackend](../../app/tv-remote-settings-server/src/jvmMain/kotlin/me/him188/ani/tv/remotesettings/RemoteSettingsBackend.kt)
 - [服务端与操作记录](../../app/tv-remote-settings-server/src/jvmMain/kotlin/me/him188/ani/tv/remotesettings/RemoteSettingsServer.kt)
 - [AndroidRemoteSettingsHost](../../app/android/src/tv/kotlin/AndroidRemoteSettingsHost.kt)
 - [Settings 页面](../../app/shared/ui-settings/src/commonMain/kotlin/ui/settings/SettingsScreen.kt)
@@ -90,9 +91,10 @@ HTTP server 仅由 Android TV flavor 引用，手机 APK 不启动 listener。Op
 - [远程表单组合](../../app/shared/ui-settings/src/commonMain/kotlin/ui/settings/remote/RemoteSettingsControls.kt)
 - [远程会话容器](../../app/shared/ui-settings/src/commonMain/kotlin/ui/settings/remote/RemoteSettingsSessionHost.kt)
 - [电视表单状态 adapter](../../app/shared/ui-settings/src/commonMain/kotlin/ui/settings/remote/RemoteSettingsState.kt)
-- [数据源自动保存](../../app/shared/app-data/src/commonMain/kotlin/domain/settings/remote/RemoteMediaSourceEditor.kt)
+- [数据源自动保存](../../app/shared/remote-settings/src/commonMain/kotlin/domain/settings/remote/RemoteMediaSourceEditor.kt)
 - [数据源配置读写接口](../../app/shared/app-data/src/commonMain/kotlin/domain/mediasource/MediaSourceConfigurationEditor.kt)
 - [电视二维码入口](../../app/shared/ui-settings/src/androidTv/kotlin/ui/settings/TvSettingsRoute.kt)
+- [远程导航入口](../../app/shared/src/commonMain/kotlin/ui/main/RemoteSettingsNavigation.kt)
 
 ## 3. 电视进程服务
 
@@ -184,8 +186,8 @@ sequenceDiagram
 生成方式：
 
 ```shell
-./gradlew :app:shared:app-data:generateRemoteSettingsOpenApi
-./gradlew :app:shared:app-data:generateRemoteSettingsClient
+./gradlew :app:shared:remote-settings:generateRemoteSettingsOpenApi
+./gradlew :app:shared:remote-settings:generateRemoteSettingsClient
 ```
 
 生成目录为模块的 `src/commonMain/generated`。生成的 `RemoteSettingsApi` 负责请求路径、请求体与响应 DTO；session 负责调度、结果确认和错误转换。
@@ -228,7 +230,7 @@ OperationResult(operationId: String, status: String, result: RemoteOperationPayl
 
 已有 `MediaSourceConfig.serializedArguments` 由各 factory codec 定义，按原模型序列化。JSON tree 操作限制在这种原有动态字段、revision 规范化和 schema 导出工具内；配置和命令的传输容器使用强类型。
 
-客户端在 `app-data` 编译，直接引用同模块的既有配置、数据源与订阅模型。OpenAPI 的 schema 从运行时 serializer descriptor 导出；`schemaMappings` 将生成的 API 签名绑定到这些类型。schema 导出与客户端生成按上面的两条命令依次执行，编译和普通测试使用检入的生成代码。
+客户端在 `remote-settings` 模块编译，直接引用 `app-data` 的既有配置、数据源与订阅模型。OpenAPI 的 schema 从运行时 serializer descriptor 导出；`schemaMappings` 将生成的 API 签名绑定到这些类型。schema 导出与客户端生成按上面的两条命令依次执行，编译和普通测试使用检入的生成代码。
 
 ### 5.3 成功、等待与失败
 
@@ -348,7 +350,7 @@ sequenceDiagram
 
 ### 8.1 编辑器
 
-- Selector 和 RSS source 都进入现有 `NavRoutes.EditMediaSource`，分别使用完整的 `EditSelectorMediaSourceScreen` / `EditRssMediaSourceScreen` 及其原有 ViewModel。
+- Selector 和 RSS source 进入 `NavRoutes.RemoteEditMediaSource`，分别使用完整的 `EditSelectorMediaSourceScreen` / `EditRssMediaSourceScreen` 及其原有 ViewModel。本机的 `NavRoutes.EditMediaSource` 不感知远程会话。
 - 编辑器 ViewModel 通过可选的 `MediaSourceConfigurationEditor` 接口读取配置、提交参数和观察保存状态；未提供实现时使用本机 source manager。远程入口注入实现该接口的 `RemoteMediaSourceEditor`，共享编辑器仅依赖接口。编辑控件、导入导出、自动保存提示、测试页和返回导航保持共用。
 - 其他 factory 将电视参数元数据映射为 `MediaSourceParameters`，使用原有 `EditMediaSourceState` 和 `EditMediaSourceDialog`。
 - 自动保存合并 500 ms 内的输入；请求发送后按顺序完成，新输入不会取消已发出的写入。最后一次输入在编辑页关闭后仍由 Settings 的目标 scope 保存；断开会话取消该 scope。
@@ -409,7 +411,7 @@ sequenceDiagram
 
 `NavRoutes.RemoteSettings` 的导航参数只有随机 entry ID。平台入口校验 scheme 后，把连接目标放入 `RemoteSettingsConnectionRequests` 的内存槽；`RemoteSettingsViewModel` 在远程页面恢复 RESUMED 时消费并清除。已有远程 entry 时回到该 entry，没有时创建；凭据不进入导航参数、保存状态或日志。
 
-本机顶部扫码按钮导航到 RemoteSettings，远程页在未连接时呈现共用的 `QrLoginScanScreen`。外部 scheme 通过相同的权限门和连接逻辑握手。无效扫码结果使用资源化提示，不显示原始内容。连接失败可重试；新的连接成功后才释放原有电视会话。
+本机顶部扫码按钮导航到 RemoteSettings，远程页在未连接时呈现共用的 `QrCodeScanScreen`，由远程入口提供连接信息解析与提示文案。外部 scheme 通过相同的权限门和连接逻辑握手。无效扫码结果使用资源化提示，不显示原始内容。连接失败可重试；新的连接成功后才释放原有电视会话。
 
 详情页和数据源编辑页按原有层级返回；远程根页的系统返回和顶栏返回弹出退出确认。取消继续留在原位置，确定后弹出 RemoteSettings entry。气泡“退出”也会弹出所属的远程 entry 及其子页，恢复原页面及其滚动状态；从外部链接进入时可直接返回原页面。页面退出不重新打开相机。
 
@@ -465,14 +467,14 @@ HTTP 不提供 TLS 链路保密性。二维码 key 是访问授权，不能抵�
 | `RemoteSettingsSchemaTest` | 检入的 OpenAPI schema 与实际 Kotlin serializer 一致 |
 | `RemoteSettingsSessionTest` | 写入响应丢失、pending 轮询、确认后读取失败、协议失败、连续写入排序、取消调用者后已发送请求完成 |
 | `RemoteMediaSourceEditorTest` | 输入合并、关闭编辑器后保存最后输入、连续自动保存推进 revision、轮询不覆盖打开时的 revision |
-| `RemoteSettingsScreenTest` | 中英文远程页的截图及交互；写入仅影响 TV、复用 EditMediaSource 导航、设备气泡、错误提示及退出确认 |
+| `RemoteSettingsScreenTest` | 中英文远程页的截图及交互；写入仅影响 TV、导航到 RemoteEditMediaSource、设备气泡、错误提示及退出确认 |
 | `AniNavigatorTest` | 首次连接创建独立 RemoteSettings entry；重复连接复用该 entry 并弹出子编辑页，保留本机设置返回目标 |
 | `TvRemoteSettingsDialogTest` | 二维码解码、方向键焦点约束、关闭／返回、大字体与无网络布局 |
 
 ```shell
 ./gradlew :app:shared:remote-settings-contract:desktopTest
 ./gradlew :app:tv-remote-settings-server:desktopTest
-./gradlew :app:shared:app-data:desktopTest --tests '*RemotePreferenceRegistryTest' --tests '*RemoteSettingsSessionTest' --tests '*RemoteMediaSourceEditorTest'
+./gradlew :app:shared:remote-settings:desktopTest
 ./gradlew :app:shared:ui-settings:desktopTest --tests '*RemoteSettingsScreenTest'
 ./gradlew :app:shared:app-platform:desktopTest --tests '*AniNavigatorTest'
 ./gradlew :app:shared:ui-settings-tv:connectedAndroidDeviceTest -Pandroid.testInstrumentationRunnerArguments.class=me.him188.ani.tv.ui.settings.TvRemoteSettingsDialogTest

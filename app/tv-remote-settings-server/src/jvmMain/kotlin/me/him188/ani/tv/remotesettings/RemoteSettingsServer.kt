@@ -51,7 +51,6 @@ import me.him188.ani.app.domain.settings.remote.OperationResult
 import me.him188.ani.app.domain.settings.remote.PreferenceRequest
 import me.him188.ani.app.domain.settings.remote.RemoteCommandRequest
 import me.him188.ani.app.domain.settings.remote.RemoteOperationPayload
-import me.him188.ani.app.domain.settings.remote.RemoteSettingsBackend
 import me.him188.ani.app.domain.settings.remote.RemoteSettingsException
 import me.him188.ani.app.domain.settings.remote.RemoteSettingsRevision
 import me.him188.ani.remote.settings.RemoteSettingsProtocol

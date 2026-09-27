@@ -142,8 +142,11 @@ internal fun SettingsScope.MediaSourceGroup(
     state: MediaSourceGroupState,
     edit: EditMediaSourceState,
     selectionState: MediaSourceSelectionState,
+    /** 打开使用单独编辑页面的数据源. 为 `null` 时进入本机的数据源编辑页. */
+    onEditMediaSource: ((FactoryId, instanceId: String) -> Unit)? = null,
 ) {
     val navigator = LocalNavigator.current
+    val editMediaSource = onEditMediaSource ?: navigator::navigateEditMediaSource
     val uiScope = rememberCoroutineScope()
     var showSelectTemplate by remember { mutableStateOf(false) }
     if (showSelectTemplate) {
@@ -160,7 +163,7 @@ internal fun SettingsScope.MediaSourceGroup(
                         val job = edit.confirmEdit(editing)
                         uiScope.launch {
                             job.join()
-                            if (!job.isCancelled) navigator.navigateEditMediaSource(template.factoryId, editing.editingMediaSourceId)
+                            if (!job.isCancelled) editMediaSource(template.factoryId, editing.editingMediaSourceId)
                         }
                         return@SelectMediaSourceTemplateDialog
                     }
@@ -301,7 +304,7 @@ internal fun SettingsScope.MediaSourceGroup(
                     }
                     val startEditing = {
                         if (item.factoryId in MediaSourcesUsingNewSettings) {
-                            navigator.navigateEditMediaSource(item.factoryId, item.instanceId)
+                            editMediaSource(item.factoryId, item.instanceId)
                         } else {
                             edit.startEditing(item)
                         }

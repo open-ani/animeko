@@ -7,7 +7,7 @@
  * https://github.com/open-ani/ani/blob/main/LICENSE
  */
 
-package me.him188.ani.app.domain.settings.remote
+package me.him188.ani.tv.remotesettings
 
 import io.ktor.http.Url
 import kotlin.time.Duration.Companion.minutes
@@ -15,7 +15,6 @@ import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
-import kotlinx.serialization.Serializable
 import me.him188.ani.app.data.models.danmaku.DanmakuRegexFilter
 import me.him188.ani.app.data.persistent.PlatformDataStoreManager
 import me.him188.ani.app.data.repository.user.SettingsRepository
@@ -27,6 +26,25 @@ import me.him188.ani.app.domain.mediasource.codec.serializeToString
 import me.him188.ani.app.domain.mediasource.instance.MediaSourceSave
 import me.him188.ani.app.domain.mediasource.subscription.MediaSourceSubscription
 import me.him188.ani.app.domain.mediasource.subscription.MediaSourceSubscriptionUpdater
+import me.him188.ani.app.domain.settings.remote.BackupRequest
+import me.him188.ani.app.domain.settings.remote.DanmakuFilterRequest
+import me.him188.ani.app.domain.settings.remote.MediaSourceCommand
+import me.him188.ani.app.domain.settings.remote.MediaSourceRequest
+import me.him188.ani.app.domain.settings.remote.PreferenceRequest
+import me.him188.ani.app.domain.settings.remote.RemoteBackupCommand
+import me.him188.ani.app.domain.settings.remote.RemoteBackupPreview
+import me.him188.ani.app.domain.settings.remote.RemoteBackupResult
+import me.him188.ani.app.domain.settings.remote.RemoteOperationPayload
+import me.him188.ani.app.domain.settings.remote.RemotePreferenceRegistry
+import me.him188.ani.app.domain.settings.remote.RemoteSettingsBackup
+import me.him188.ani.app.domain.settings.remote.RemoteSettingsException
+import me.him188.ani.app.domain.settings.remote.RemoteSettingsRevision
+import me.him188.ani.app.domain.settings.remote.RemoteSourceParameter
+import me.him188.ani.app.domain.settings.remote.RemoteSourceTemplate
+import me.him188.ani.app.domain.settings.remote.SettingsSnapshot
+import me.him188.ani.app.domain.settings.remote.VersionedValue
+import me.him188.ani.app.domain.settings.remote.checkRemote
+import me.him188.ani.app.domain.settings.remote.key
 import me.him188.ani.datasources.api.source.MediaSourceConfig
 import me.him188.ani.datasources.api.source.parameter.BooleanParameter
 import me.him188.ani.datasources.api.source.parameter.SimpleEnumParameter
@@ -50,29 +68,6 @@ interface RemoteSettingsBackend {
 
     suspend fun log(): LogSnapshot
 }
-
-/** Form metadata contains no engine instances, HTTP clients, or executable validation callbacks. */
-@Serializable
-data class RemoteSourceTemplate(
-    val factoryId: String,
-    val name: String,
-    val description: String,
-    val allowMultiple: Boolean,
-    val parameters: List<RemoteSourceParameter>,
-    val iconUrl: String? = null,
-)
-
-@Serializable
-data class RemoteSourceParameter(
-    val name: String,
-    val description: String,
-    val kind: String,
-    val defaultValue: String,
-    val choices: List<String> = emptyList(),
-    val required: Boolean = false,
-    val visibleWhen: String? = null,
-    val acceptedValues: Set<String> = emptySet(),
-)
 
 /** Uses the same DataStore instances as the TV repositories. CAS checks run inside updateData. */
 class LocalRemoteSettingsBackend(

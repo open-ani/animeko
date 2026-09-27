@@ -93,6 +93,7 @@ class RemoteSettingsScreenTest {
                         RemoteSettingsScreen(
                             vm,
                             onNavigateBack = { exited = true },
+                            onEditMediaSource = { _, _ -> },
                             scanner = { _, _ -> Text("Remote settings scanner") },
                         )
                     else Text("Local settings")
@@ -216,9 +217,10 @@ class RemoteSettingsScreenTest {
         }
         val vm = RemoteSettingsViewModel(session)
         var exited by mutableStateOf(0)
+        val remoteRoute = NavRoutes.RemoteSettings()
         val navigator =
             AniNavigator().apply {
-                setBackStack(mutableStateListOf(NavRoutes.Settings(), NavRoutes.RemoteSettings()))
+                setBackStack(mutableStateListOf(NavRoutes.Settings(), remoteRoute))
             }
         lateinit var backDispatcher: OnBackPressedDispatcher
         try {
@@ -240,6 +242,13 @@ class RemoteSettingsScreenTest {
                                 RemoteSettingsScreen(
                                     vm,
                                     onNavigateBack = { exited++ },
+                                    onEditMediaSource = { factoryId, instanceId ->
+                                        navigator.navigateRemoteEditMediaSource(
+                                            remoteRoute,
+                                            factoryId,
+                                            instanceId,
+                                        )
+                                    },
                                     scanner = { _, _ ->
                                         Text("Settings scanner")
                                     },
@@ -303,7 +312,11 @@ class RemoteSettingsScreenTest {
             onNodeWithTag("settings-tab-MEDIA_SOURCE").performScrollTo().performClick()
             onNodeWithTag("media_source_item_source-11").performScrollTo().performClick()
             assertEquals(
-                NavRoutes.EditMediaSource(SelectorMediaSource.FactoryId.value, "source-11"),
+                NavRoutes.RemoteEditMediaSource(
+                    remoteRoute.entryId,
+                    SelectorMediaSource.FactoryId.value,
+                    "source-11",
+                ),
                 navigator.backStack.last(),
             )
             navigator.popBackStack()

@@ -15,6 +15,7 @@ import kotlin.test.assertEquals
 import kotlin.test.assertIs
 import kotlin.test.assertNotEquals
 import kotlin.test.assertNull
+import me.him188.ani.datasources.api.source.FactoryId
 
 /**
  * [AniNavigator] 是 Navigation 3 的 back stack 操作入口. 这里覆盖出栈的边界情况,
@@ -30,7 +31,12 @@ class AniNavigatorTest {
     fun remoteConnectionReusesItsEntryAndPopsItsEditor() {
         val settings = NavRoutes.Settings(SettingsTab.PLAYER)
         val remote = NavRoutes.RemoteSettings()
-        val navigator = navigatorWith(main, settings, remote, NavRoutes.EditMediaSource("web-selector", "source"))
+        val navigator = navigatorWith(main, settings, remote)
+        navigator.navigateRemoteEditMediaSource(remote, FactoryId("web-selector"), "source")
+        assertEquals(
+            NavRoutes.RemoteEditMediaSource(remote.entryId, "web-selector", "source"),
+            navigator.backStack.last(),
+        )
         navigator.navigateRemoteSettings()
         navigator.navigateRemoteSettings()
         assertEquals(listOf(main, settings, remote), navigator.backStack)

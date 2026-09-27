@@ -7,12 +7,8 @@ package me.him188.ani.tv.ui.settings
 import android.content.ClipData
 import android.content.ClipboardManager
 import android.content.Context
-import android.content.pm.PackageManager
 import android.hardware.display.DisplayManager
-import android.os.Build
 import android.view.Display
-import androidx.activity.compose.rememberLauncherForActivityResult
-import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.Box
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -44,7 +40,7 @@ fun TvSettingsRoute(viewModel: TvSettingsViewModel, modifier: Modifier = Modifie
     var showRemoteSettings by remember { mutableStateOf(false) }
     val state by viewModel.uiState.collectAsStateWithLifecycle()
     val context = LocalContext.current
-    val lanPermission = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { }
+    val requestLocalNetworkPermission = rememberLocalNetworkPermissionRequest()
     val clipboard = remember(context) { context.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager }
     val uriHandler = LocalUriHandler.current
     val toaster = LocalToaster.current
@@ -78,9 +74,7 @@ fun TvSettingsRoute(viewModel: TvSettingsViewModel, modifier: Modifier = Modifie
             state, viewModel::onIntent, Modifier.tvModalUnderlay(showRemoteSettings), modes,
             onOpenRemoteSettings = {
                 showRemoteSettings = true
-                if (Build.VERSION.SDK_INT >= 37 && context.checkSelfPermission("android.permission.ACCESS_LOCAL_NETWORK") != PackageManager.PERMISSION_GRANTED) {
-                    lanPermission.launch("android.permission.ACCESS_LOCAL_NETWORK")
-                }
+                requestLocalNetworkPermission()
             },
             remoteSettingsVisible = showRemoteSettings,
             onOpenUrl = { url ->

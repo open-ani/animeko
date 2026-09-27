@@ -123,6 +123,14 @@ sealed class NavRoutes : NavKey {
         val mediaSourceInstanceId: String,
     ) : NavRoutes()
 
+    /** Edits a source on the TV connected by the [RemoteSettings] entry [remoteEntryId]. */
+    @Serializable
+    data class RemoteEditMediaSource(
+        val remoteEntryId: String,
+        val factoryId: String,
+        val mediaSourceInstanceId: String,
+    ) : NavRoutes()
+
     @Serializable
     data object TorrentPeerSettings : NavRoutes()
 

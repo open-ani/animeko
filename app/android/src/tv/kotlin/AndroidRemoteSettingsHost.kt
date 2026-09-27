@@ -26,7 +26,6 @@ import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 import me.him188.ani.app.data.persistent.dataStores
-import me.him188.ani.app.domain.settings.remote.LocalRemoteSettingsBackend
 import me.him188.ani.app.domain.settings.remote.RemoteSettingsHost
 import me.him188.ani.app.domain.settings.remote.RemoteSettingsHostStatus
 import me.him188.ani.app.domain.settings.remote.RemoteSettingsHostState
@@ -35,6 +34,7 @@ import me.him188.ani.remote.settings.RemoteSettingsLink
 import me.him188.ani.remote.settings.RemoteSettingsProtocol
 import me.him188.ani.remote.settings.generated.models.LogSnapshot
 import me.him188.ani.tv.remotesettings.HmacSettingsRevision
+import me.him188.ani.tv.remotesettings.LocalRemoteSettingsBackend
 import me.him188.ani.tv.remotesettings.RemoteSettingsServer
 import org.koin.core.Koin
 

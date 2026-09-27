@@ -6,7 +6,7 @@ plugins {
 kotlin {
     android { namespace = "me.him188.ani.tv.remotesettings" }
     sourceSets.commonMain.dependencies {
-        api(projects.app.shared.appData)
+        api(projects.app.shared.remoteSettings)
     }
     sourceSets.getByName("jvmMain").dependencies {
         implementation(libs.ktor.server.core)

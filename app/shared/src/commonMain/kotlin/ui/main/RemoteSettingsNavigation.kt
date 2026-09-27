@@ -1,0 +1,161 @@
+/*
+ * Copyright (C) 2026 OpenAni and contributors.
+ *
+ * 此源代码的使用受 GNU AFFERO GENERAL PUBLIC LICENSE version 3 许可证的约束, 可以在以下链接找到该许可证.
+ * Use of this source code is governed by the GNU AGPLv3 license, which can be found at the following link.
+ *
+ * https://github.com/open-ani/ani/blob/main/LICENSE
+ */
+
+package me.him188.ani.app.ui.main
+
+import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.Stable
+import androidx.compose.runtime.remember
+import androidx.compose.ui.Modifier
+import androidx.lifecycle.viewmodel.ViewModelStoreProvider
+import androidx.lifecycle.viewmodel.compose.rememberViewModelStoreOwner
+import androidx.lifecycle.viewmodel.compose.rememberViewModelStoreProvider
+import androidx.lifecycle.viewmodel.compose.viewModel
+import androidx.navigation3.runtime.NavEntryDecorator
+import me.him188.ani.app.domain.mediasource.rss.RssMediaSource
+import me.him188.ani.app.domain.mediasource.web.SelectorMediaSource
+import me.him188.ani.app.navigation.AniNavigator
+import me.him188.ani.app.navigation.NavRoutes
+import me.him188.ani.app.platform.LocalContext
+import me.him188.ani.app.ui.download.details.MediaDetails
+import me.him188.ani.app.ui.download.details.MediaDetailsLazyGrid
+import me.him188.ani.app.ui.foundation.widgets.BackNavigationIconButton
+import me.him188.ani.app.ui.lang.Lang
+import me.him188.ani.app.ui.lang.remote_settings_invalid_qr
+import me.him188.ani.app.ui.lang.remote_settings_scan
+import me.him188.ani.app.ui.lang.remote_settings_scan_hint
+import me.him188.ani.app.ui.qrlogin.LocalNetworkAccessGate
+import me.him188.ani.app.ui.qrlogin.QrCodeScanScreen
+import me.him188.ani.app.ui.settings.mediasource.rss.EditRssMediaSourceScreen
+import me.him188.ani.app.ui.settings.mediasource.rss.EditRssMediaSourceViewModel
+import me.him188.ani.app.ui.settings.mediasource.selector.EditSelectorMediaSourceScreen
+import me.him188.ani.app.ui.settings.mediasource.selector.EditSelectorMediaSourceViewModel
+import me.him188.ani.app.ui.settings.remote.RemoteSettingsScreen
+import me.him188.ani.app.ui.settings.remote.RemoteSettingsSessionHost
+import me.him188.ani.app.ui.settings.remote.RemoteSettingsViewModel
+import me.him188.ani.datasources.api.source.FactoryId
+import me.him188.ani.remote.settings.RemoteSettingsLink
+import org.jetbrains.compose.resources.stringResource
+
+/**
+ * [NavRoutes.RemoteSettings] 与其 [NavRoutes.RemoteEditMediaSource] 子页共用同一个 [RemoteSettingsViewModel] (即同一个电视连接).
+ * 该 ViewModel 按远程设置 entry 保存, [decorator] 在远程设置 entry 出栈时释放它.
+ */
+@Stable
+internal class RemoteSettingsNavigation(private val stores: ViewModelStoreProvider) {
+    val decorator = NavEntryDecorator<NavRoutes>(
+        onPop = { stores.clearKey(it) },
+        decorate = { it.Content() },
+    )
+
+    @Composable
+    fun viewModel(remoteEntryId: String): RemoteSettingsViewModel =
+        viewModel(viewModelStoreOwner = rememberViewModelStoreOwner(remoteEntryId, stores)) {
+            RemoteSettingsViewModel()
+        }
+}
+
+@Composable
+internal fun rememberRemoteSettingsNavigation(): RemoteSettingsNavigation {
+    val stores = rememberViewModelStoreProvider()
+    return remember(stores) { RemoteSettingsNavigation(stores) }
+}
+
+@Composable
+internal fun RemoteSettingsRoute(
+    route: NavRoutes.RemoteSettings,
+    navigation: RemoteSettingsNavigation,
+    navigator: AniNavigator,
+) {
+    RemoteSettingsScreen(
+        navigation.viewModel(route.entryId),
+        onNavigateBack = { navigator.popBackStack(route, inclusive = true) },
+        onEditMediaSource = { factoryId, instanceId ->
+            navigator.navigateRemoteEditMediaSource(route, factoryId, instanceId)
+        },
+        scanner = { scanned, cancel -> RemoteSettingsScanScreen(scanned, cancel) },
+        modifier = Modifier.fillMaxSize(),
+        networkPermission = { back, content -> LocalNetworkAccessGate(back, content) },
+    )
+}
+
+@Composable
+private fun RemoteSettingsScanScreen(onScanned: (String) -> Unit, onNavigateBack: () -> Unit) {
+    QrCodeScanScreen(
+        title = stringResource(Lang.remote_settings_scan),
+        hint = stringResource(Lang.remote_settings_scan_hint),
+        invalidHint = stringResource(Lang.remote_settings_invalid_qr),
+        parse = { content -> content.takeIf { runCatching { RemoteSettingsLink.parse(it) }.isSuccess } },
+        onScanned = onScanned,
+        onNavigateBack = onNavigateBack,
+    )
+}
+
+@Composable
+internal fun RemoteEditMediaSourceRoute(
+    route: NavRoutes.RemoteEditMediaSource,
+    navigation: RemoteSettingsNavigation,
+    navigator: AniNavigator,
+    windowInsets: WindowInsets,
+) {
+    val remoteRoute = NavRoutes.RemoteSettings(route.remoteEntryId)
+    val vm = navigation.viewModel(route.remoteEntryId)
+    val instanceId = route.mediaSourceInstanceId
+    // 编辑器的目标在整个 entry 生命周期（包括退出动画）中保持不变。
+    val editor = remember(route) { vm.sourceEditor(instanceId) }
+    if (editor == null) {
+        // 进程重建后凭据已失效，回到扫码页建立会话。
+        LaunchedEffect(route) { navigator.popBackStack(route, inclusive = true) }
+        return
+    }
+    val navigationIcon = @Composable {
+        BackNavigationIconButton({ navigator.popBackStack(route, inclusive = true) })
+    }
+    // ViewModel 按电视连接区分, 以免与本机同 ID 数据源的编辑页共用.
+    val viewModelKey = "$instanceId:${route.remoteEntryId}"
+    RemoteSettingsSessionHost(
+        vm,
+        onNavigateBack = { navigator.popBackStack(remoteRoute, inclusive = true) },
+    ) { contentModifier, _ ->
+        when (FactoryId(route.factoryId)) {
+            RssMediaSource.FactoryId -> EditRssMediaSourceScreen(
+                viewModel<EditRssMediaSourceViewModel>(key = viewModelKey) {
+                    EditRssMediaSourceViewModel(instanceId, editor)
+                },
+                mediaDetailsColumn = { media ->
+                    MediaDetailsLazyGrid(
+                        MediaDetails.from(media, null, null),
+                        Modifier.fillMaxSize(),
+                        showSourceInfo = false,
+                    )
+                },
+                contentModifier,
+                windowInsets,
+                navigationIcon = navigationIcon,
+            )
+
+            SelectorMediaSource.FactoryId -> {
+                val context = LocalContext.current
+                EditSelectorMediaSourceScreen(
+                    viewModel<EditSelectorMediaSourceViewModel>(key = viewModelKey) {
+                        EditSelectorMediaSourceViewModel(instanceId, context, editor)
+                    },
+                    contentModifier,
+                    windowInsets = windowInsets,
+                    navigationIcon = navigationIcon,
+                )
+            }
+
+            else -> error("Unknown factoryId: ${route.factoryId}")
+        }
+    }
+}

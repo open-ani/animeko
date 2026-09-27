@@ -55,7 +55,8 @@ sealed interface RemotePreference {
     data class MediaCache(val value: MediaCacheSettings) : RemotePreference
 }
 
-internal val RemotePreference.key: String
+/** Identifies a preference in revisions, backups and restore results. */
+val RemotePreference.key: String
     get() =
         when (this) {
             is RemotePreference.VideoScaffold -> "videoScaffoldConfig"
@@ -105,6 +106,29 @@ data class RemotePreferencesSnapshot(
             RemotePreference.MediaCache(mediaCacheSettings.value),
         )
 }
+
+/** Form metadata contains no engine instances, HTTP clients, or executable validation callbacks. */
+@Serializable
+data class RemoteSourceTemplate(
+    val factoryId: String,
+    val name: String,
+    val description: String,
+    val allowMultiple: Boolean,
+    val parameters: List<RemoteSourceParameter>,
+    val iconUrl: String? = null,
+)
+
+@Serializable
+data class RemoteSourceParameter(
+    val name: String,
+    val description: String,
+    val kind: String,
+    val defaultValue: String,
+    val choices: List<String> = emptyList(),
+    val required: Boolean = false,
+    val visibleWhen: String? = null,
+    val acceptedValues: Set<String> = emptySet(),
+)
 
 @Serializable
 data class SettingsSnapshot(
