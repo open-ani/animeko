@@ -75,6 +75,7 @@ import org.jetbrains.compose.resources.stringResource
 
 /**
  * 手动查找页. `BoxWithConstraints`: maxWidth ≥ [MediaSelectorLayoutDefaults.WideContentMinWidth] → 双栏, 否则堆叠两页 (搜索 → 线路与剧集).
+ * 打开页面、生效源变化 (含记忆源晚到) 与当前集就绪时调用 [ManualBrowseState.searchIfNeeded]: 自动用当前关键字搜当前源, 搜过的源直接显示缓存.
  *
  * 顶栏规则:
  * - 堆叠第一页: 渲染宿主给的 [topBar] (宿主的标题 + 模式 chip [+ 关闭]), 其下 WatchingEpisodeCard(watching).
@@ -116,6 +117,10 @@ fun ManualBrowsePage(
                 null -> Unit
             }
         }
+    }
+
+    LaunchedEffect(state, presentation.selectedSourceId, presentation.target?.subjectName) {
+        state.searchIfNeeded()
     }
 
     BoxWithConstraints(modifier.testTag(ManualBrowsePageTestTags.ROOT)) {
@@ -449,7 +454,6 @@ private fun PreviewManualBrowsePageStacked() {
     ProvideCompositionLocalsForPreview {
         Surface {
             val state = rememberTestManualBrowseState()
-            LaunchedEffect(state) { state.search() }
             ManualBrowsePage(
                 state,
                 watching = WatchingEpisode("25", "OVA"),
@@ -469,7 +473,6 @@ private fun PreviewManualBrowsePageStackedEpisodes() {
         Surface {
             val state = rememberTestManualBrowseState()
             LaunchedEffect(state) {
-                state.search()
                 state.openSubject(TestBrowseSubjects.first())
             }
             ManualBrowsePage(
@@ -494,7 +497,6 @@ private fun PreviewManualBrowsePageConfirmDialog() {
         Surface {
             val state = rememberTestManualBrowseState()
             LaunchedEffect(state) {
-                state.search()
                 state.openSubject(TestBrowseSubjects.first())
                 state.presentationFlow.first { it.channels is ManualLoadState.Success }
                 state.selectEpisode(24)
@@ -518,7 +520,6 @@ private fun PreviewManualBrowsePageWide() {
         Surface {
             val state = rememberTestManualBrowseState()
             LaunchedEffect(state) {
-                state.search()
                 state.openSubject(TestBrowseSubjects.first())
             }
             ManualBrowsePage(

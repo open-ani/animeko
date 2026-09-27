@@ -98,6 +98,9 @@ data class ManualBrowsePresentation(
      * 生效的关键字: 用户输入 → target.subjectName → "".
      */
     val keyword: String,
+    /**
+     * 当前源的搜索结果. 结果按源缓存, 换源显示各自的结果; 没搜过的源为 Idle.
+     */
     val results: ManualLoadState<List<BrowseSubject>>,
     /**
      * 非 null = 第二页 (线路与剧集).
@@ -162,7 +165,7 @@ data class ManualBrowsePresentation(
  * 内部约定 (实现者必须遵守, 测试依赖它):
  * - 组合流 [presentationSource] (combine(browsableSources, target, preferredSourceId, 内部 MutableStateFlow…), 未 stateIn) 是唯一真值;
  *   [presentationFlow] = `presentationSource.stateIn(backgroundScope, WhileSubscribed(5_000), Empty)` 只供 UI 订阅.
- * - 所有动作 (selectSource / search / openSubject / retry / selectChannel / selectEpisode / play) 读取生效源、生效关键字、预选剧集一律 `presentationSource.first()`;
+ * - 所有动作 (selectSource / searchIfNeeded / search / openSubject / retry / selectChannel / selectEpisode / play) 读取生效源、生效关键字、预选剧集一律 `presentationSource.first()`;
  *   禁止读 `presentationFlow.value` —— `StateFlow.value` / `first()` 不会拉起 `WhileSubscribed` 的上游, 无 UI 订阅时 (单测、页面首帧) 恒为 Empty, search() 会因 selectedSourceId == null 无操作.
  *   `first()` 会拉起 `browsableSources` (`allInstances` 是 shareIn(Lazily, replay 1), 立即有值) 与 `preferredSourceId` (DataStore / Room 读一次), 延迟可接受.
  *
@@ -188,10 +191,20 @@ class ManualBrowseState(
     private val preferredSourceId: Flow<String?> = preferredSourceId
 
     /**
+     * 一个源最近一次搜索. [keyword] 是发起时的生效关键字 (已 trim); [generation] 取自 [Session.searchGeneration].
+     */
+    private data class SourceSearch(
+        val keyword: String,
+        val results: ManualLoadState<List<BrowseSubject>>,
+        val generation: Int,
+    )
+
+    /**
      * 会话内由用户动作产生的状态, 整体原子更新.
      *
-     * [searchGeneration] / [browseGeneration] 在每次发起、取消或重置对应请求时递增; 请求协程只在自己的代数仍是当前代数时写回结果,
-     * 因此被取消的旧请求即使已经拿到结果也不会覆盖新状态.
+     * [searchGeneration] 每次发起搜索时递增, 用来给请求编号; 搜索协程只在 [searches] 里该源的记录仍是自己的代数时写回结果,
+     * 所以同一个源上被新搜索取代的旧请求即使拿到结果也不会覆盖. 旧请求不取消, 只丢弃结果.
+     * [browseGeneration] 在每次发起、取消或重置浏览时递增, 规则相同, 但浏览只有一个进行中的请求, 旧的会被取消.
      */
     private data class Session(
         val explicitSourceId: String? = null,
@@ -199,7 +212,10 @@ class ManualBrowseState(
          * null = 用户未输入, 生效关键字取 target.subjectName.
          */
         val keywordInput: String? = null,
-        val results: ManualLoadState<List<BrowseSubject>> = ManualLoadState.Idle,
+        /**
+         * instanceId → 该源最近一次搜索. 换源不清空, 切回来直接显示.
+         */
+        val searches: Map<String, SourceSearch> = emptyMap(),
         val openedSubject: BrowseSubject? = null,
         val channels: ManualLoadState<List<BrowseChannel>> = ManualLoadState.Idle,
         val channelIndex: Int = 0,
@@ -215,7 +231,6 @@ class ManualBrowseState(
 
     private val session = MutableStateFlow(Session())
 
-    private var searchJob: Job? = null
     private var browseJob: Job? = null
     private var playJob: Deferred<Unit>? = null
 
@@ -248,7 +263,7 @@ class ManualBrowseState(
             sources = sources,
             selectedSourceId = selectedSourceId,
             keyword = session.keywordInput ?: target?.subjectName ?: "",
-            results = session.results,
+            results = selectedSourceId?.let { session.searches[it]?.results } ?: ManualLoadState.Idle,
             openedSubject = session.openedSubject,
             channels = session.channels,
             selectedChannelIndex = session.channelIndex,
@@ -266,24 +281,23 @@ class ManualBrowseState(
     )
 
     /**
-     * 换源不自动搜索; 清空 results / openedSubject / channels.
+     * 换源. 打开的条目属于原来的源, 一并关闭; 新源随后 [searchIfNeeded].
+     * 原来的源正在进行的搜索不取消: 结果照常写进它的缓存, 切回来直接可用.
      */
     fun selectSource(instanceId: String) {
-        searchJob?.cancel()
         browseJob?.cancel()
         session.update {
             it.copy(
                 explicitSourceId = instanceId,
-                results = ManualLoadState.Idle,
                 openedSubject = null,
                 channels = ManualLoadState.Idle,
                 channelIndex = 0,
                 userEpisodeIndex = null,
                 confirmingEpisodeIndex = null,
-                searchGeneration = it.searchGeneration + 1,
                 browseGeneration = it.browseGeneration + 1,
             )
         }
+        searchIfNeeded()
     }
 
     fun setKeyword(keyword: String) {
@@ -291,24 +305,51 @@ class ManualBrowseState(
     }
 
     /**
-     * 取消上一次搜索; 空关键字不搜; results = Loading → Success / Failed; 不做匹配过滤.
-     * 页面不自动搜索, 只在用户提交时调用.
+     * 当前源还没有用当前关键字搜过 (进行中、成功、失败都算搜过) 时搜索一次, 否则什么都不做. 页面打开、生效源变化与 [selectSource] 时调用.
+     * 失败也算搜过: 被验证码挡住的源若每次切回来都重搜, 会反复弹验证; 由用户点重试.
+     */
+    fun searchIfNeeded() {
+        launchSearch(force = false)
+    }
+
+    /**
+     * 用户提交: 总是重新搜索当前源, 同一关键字也搜 (当作刷新). 空关键字不搜; results = Loading → Success / Failed; 不做匹配过滤.
      */
     fun search() {
-        searchJob?.cancel()
+        launchSearch(force = true)
+    }
+
+    private fun launchSearch(force: Boolean) {
         val generation = session.updateAndGet { it.copy(searchGeneration = it.searchGeneration + 1) }.searchGeneration
-        searchJob = backgroundScope.launch {
+        backgroundScope.launch {
             val presentation = presentationSource.first()
             val keyword = presentation.keyword.trim()
             val sourceId = presentation.selectedSourceId
             if (keyword.isEmpty() || sourceId == null) return@launch
             val instance = findInstance(sourceId) ?: return@launch
+            // 判断与占位在同一次原子更新里完成: 页面打开与换源会同时触发 searchIfNeeded, 只能有一次真正发出请求.
+            var started = false
             session.update { s ->
-                if (s.searchGeneration == generation) s.copy(results = ManualLoadState.Loading) else s
+                val existing = s.searches[sourceId]
+                started = when {
+                    existing != null && existing.generation > generation -> false // 这个源上已有更新的搜索
+                    !force && existing != null && existing.keyword == keyword -> false
+                    else -> true
+                }
+                if (started) {
+                    s.copy(searches = s.searches + (sourceId to SourceSearch(keyword, ManualLoadState.Loading, generation)))
+                } else {
+                    s
+                }
             }
+            if (!started) return@launch
             val result = runBrowse { instance.source.searchSubjects(keyword) }
             session.update { s ->
-                if (s.searchGeneration == generation) s.copy(results = result) else s
+                if (s.searches[sourceId]?.generation == generation) {
+                    s.copy(searches = s.searches + (sourceId to SourceSearch(keyword, result, generation)))
+                } else {
+                    s
+                }
             }
         }
     }

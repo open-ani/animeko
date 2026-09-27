@@ -23,10 +23,12 @@ import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.flowOf
+import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.test.StandardTestDispatcher
 import kotlinx.coroutines.test.TestScope
 import kotlinx.coroutines.test.advanceUntilIdle
 import kotlinx.coroutines.test.resetMain
+import kotlinx.coroutines.test.runCurrent
 import kotlinx.coroutines.test.runTest
 import kotlinx.coroutines.test.setMain
 import me.him188.ani.app.data.repository.media.ManualBrowseMemory
@@ -248,6 +250,141 @@ class ManualBrowseStateTest {
         assertEquals(2, calls)
     }
 
+    /*
+     * 状态的请求跑在 backgroundScope 上, TestScope.advanceUntilIdle 不等它们: 要等请求发生用 `first { }` 挂起,
+     * 断言「没有再请求」前用 runCurrent (会执行当前时刻所有待办, 含后台).
+     */
+
+    @Test
+    fun `searchIfNeeded searches once with the effective keyword`() = runTest {
+        val keywords = MutableStateFlow(listOf<String>())
+        val state = createState(source = TestBrowsableMediaSource(searchDelegate = { k -> keywords.update { it + k }; TestBrowseSubjects }))
+
+        state.searchIfNeeded()
+        state.searchIfNeeded()
+        assertIs<ManualLoadState.Success<List<BrowseSubject>>>(state.awaitResults())
+        state.searchIfNeeded()
+        runCurrent()
+        assertEquals(listOf("命运石之门"), keywords.value)
+    }
+
+    @Test
+    fun `search always sends a new request even with the same keyword`() = runTest {
+        val calls = MutableStateFlow(0)
+        val state = createState(source = TestBrowsableMediaSource(searchDelegate = { calls.update { it + 1 }; TestBrowseSubjects }))
+        state.search()
+        state.awaitResults()
+        state.search()
+        calls.first { it == 2 }
+    }
+
+    private fun TestScope.twoSourceState(
+        searchA: suspend (String) -> List<BrowseSubject>,
+        searchB: suspend (String) -> List<BrowseSubject>,
+    ): ManualBrowseState = ManualBrowseState(
+        browsableSources = flowOf(
+            listOf(
+                createTestMediaSourceInstance(TestBrowsableMediaSource("a", searchDelegate = searchA), instanceId = "ia"),
+                createTestMediaSourceInstance(TestBrowsableMediaSource("b", searchDelegate = searchB), instanceId = "ib"),
+            ),
+        ),
+        webSessionManager = createTestWebSessionManager(backgroundScope),
+        target = flowOf(target12),
+        preferredSourceId = flowOf(null),
+        onPlay = { _, _ -> },
+        backgroundScope = stateScope,
+    )
+
+    @Test
+    fun `results are cached per source and switching back does not search again`() = runTest {
+        val a = MutableStateFlow(listOf<String>())
+        val b = MutableStateFlow(listOf<String>())
+        val state = twoSourceState(
+            searchA = { k -> a.update { it + k }; TestBrowseSubjects.take(1) },
+            searchB = { k -> b.update { it + k }; TestBrowseSubjects.take(2) },
+        )
+
+        state.searchIfNeeded()
+        assertEquals(1, assertIs<ManualLoadState.Success<List<BrowseSubject>>>(state.awaitResults()).value.size)
+
+        // 换源自动搜索新源
+        state.selectSource("ib")
+        val onB = state.presentationFlow.first { it.selectedSourceId == "ib" && it.results is ManualLoadState.Success }
+        assertEquals(2, assertIs<ManualLoadState.Success<List<BrowseSubject>>>(onB.results).value.size)
+
+        // 切回来直接显示缓存
+        state.selectSource("ia")
+        val onA = state.presentationFlow.first { it.selectedSourceId == "ia" }
+        assertEquals(1, assertIs<ManualLoadState.Success<List<BrowseSubject>>>(onA.results).value.size)
+        runCurrent()
+        assertEquals(listOf("命运石之门"), a.value)
+        assertEquals(listOf("命运石之门"), b.value)
+    }
+
+    @Test
+    fun `a new keyword re-searches a cached source when switching back`() = runTest {
+        val a = MutableStateFlow(listOf<String>())
+        val b = MutableStateFlow(listOf<String>())
+        val state = twoSourceState(
+            searchA = { k -> a.update { it + k }; TestBrowseSubjects },
+            searchB = { k -> b.update { it + k }; TestBrowseSubjects },
+        )
+        state.searchIfNeeded()
+        state.awaitResults()
+
+        state.selectSource("ib")
+        state.presentationFlow.first { it.selectedSourceId == "ib" && it.results is ManualLoadState.Success }
+        state.setKeyword("石头门")
+        state.search()
+        b.first { it == listOf("命运石之门", "石头门") }
+
+        state.selectSource("ia")
+        a.first { it == listOf("命运石之门", "石头门") }
+    }
+
+    @Test
+    fun `a failed source is not searched again on switch until retry`() = runTest {
+        val aCalls = MutableStateFlow(0)
+        val state = twoSourceState(
+            searchA = { aCalls.update { it + 1 }; throw IllegalStateException("boom") },
+            searchB = { TestBrowseSubjects },
+        )
+        state.searchIfNeeded()
+        assertIs<ManualLoadState.Failed>(state.awaitResults())
+
+        state.selectSource("ib")
+        state.presentationFlow.first { it.selectedSourceId == "ib" && it.results is ManualLoadState.Success }
+        state.selectSource("ia")
+        assertIs<ManualLoadState.Failed>(state.presentationFlow.first { it.selectedSourceId == "ia" }.results)
+        runCurrent()
+        assertEquals(1, aCalls.value)
+
+        state.retry()
+        aCalls.first { it == 2 }
+    }
+
+    @Test
+    fun `switching away does not cancel the previous source search`() = runTest {
+        val gate = CompletableDeferred<Unit>()
+        val aCalls = MutableStateFlow(0)
+        val state = twoSourceState(
+            searchA = { aCalls.update { it + 1 }; gate.await(); TestBrowseSubjects.take(1) },
+            searchB = { TestBrowseSubjects },
+        )
+        state.searchIfNeeded()
+        state.presentationFlow.first { it.results is ManualLoadState.Loading }
+
+        state.selectSource("ib")
+        state.presentationFlow.first { it.selectedSourceId == "ib" && it.results is ManualLoadState.Success }
+        gate.complete(Unit)
+
+        state.selectSource("ia")
+        val onA = state.presentationFlow.first { it.selectedSourceId == "ia" && it.results is ManualLoadState.Success }
+        assertEquals(1, assertIs<ManualLoadState.Success<List<BrowseSubject>>>(onA.results).value.size)
+        runCurrent()
+        assertEquals(1, aCalls.value)
+    }
+
     // endregion
 
     // region 验证码
@@ -399,8 +536,9 @@ class ManualBrowseStateTest {
     }
 
     @Test
-    fun `selectSource clears results and opened subject`() = runTest {
-        val state = createState()
+    fun `selectSource closes the opened subject and keeps the cached results`() = runTest {
+        var calls = 0
+        val state = createState(source = TestBrowsableMediaSource(searchDelegate = { calls++; TestBrowseSubjects }))
         state.search()
         state.awaitResults()
         state.openSubject(TestBrowseSubjects[1])
@@ -408,10 +546,12 @@ class ManualBrowseStateTest {
         val sourceId = assertNotNull(opened.selectedSourceId)
 
         state.selectSource(sourceId)
-        val presentation = state.presentationFlow.first { it.results is ManualLoadState.Idle }
-        assertNull(presentation.openedSubject)
+        val presentation = state.presentationFlow.first { it.openedSubject == null }
         assertIs<ManualLoadState.Idle>(presentation.channels)
+        assertIs<ManualLoadState.Success<List<BrowseSubject>>>(presentation.results)
         assertEquals(sourceId, presentation.selectedSourceId)
+        runCurrent()
+        assertEquals(1, calls)
     }
 
     @Test

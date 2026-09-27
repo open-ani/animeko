@@ -165,21 +165,91 @@ class ReplayBrowseMemoryUseCaseTest {
     }
 
     @Test
-    fun `ep hit when the site renumbers a sequel from 1`() = runSimpleMediaSelectorTestSuite {
+    fun `sequel renumbered from 1 follows the remembered offset`() = runSimpleMediaSelectorTestSuite {
         initSubject("孤独摇滚 第二季")
-        val fixture = fixture()
+        // 条目服务的集号从 13 开始, 站点从 01 重新编号: 上次把站点 01 当第 13 话播放
+        val fixture = fixture(memory = memory(episodeIndex = 0, episodeSort = EpisodeSort(1), playedAsSort = EpisodeSort(13)))
 
-        // 条目服务的集号是 13, 站点从 01 重新编号: 按 ep = 1 命中第一项, 资源仍标为第 13 话
-        val result = fixture.useCase(SUBJECT_ID, episodeInfo(sort = 13, ep = 1), selector)
+        val result = fixture.useCase(SUBJECT_ID, episodeInfo(sort = 14, ep = 2), selector)
 
         assertEquals(ReplayResult.SELECTED_BY_SORT, result)
         val media = fixture.source.createdMedia.single()
         assertSame(media, selector.selected.value)
-        assertEquals(EpisodeRange.single(EpisodeSort(13)), media.episodeRange)
+        assertEquals("https://example.com/play/$CHANNEL_1/1", media.originalUrl)
+        assertEquals(EpisodeRange.single(EpisodeSort(14)), media.episodeRange)
         assertEquals(
-            memory(episodeIndex = 0, episodeSort = EpisodeSort(1), playedAsSort = EpisodeSort(13)),
+            memory(episodeIndex = 1, episodeSort = EpisodeSort(2), playedAsSort = EpisodeSort(14)),
             fixture.repository.get(SUBJECT_ID),
         )
+    }
+
+    /** 站点把整部 OVA 条目列在正片后面: 01..12, OVA01, OVA02, OVA03. */
+    private fun ovaAfterMainSeries(ova: List<EpisodeSort?>) = listOf(channel(CHANNEL_1, numberedSorts(12) + ova))
+
+    private val ovaSorts: List<EpisodeSort> = listOf(EpisodeSort("OVA01"), EpisodeSort("OVA02"), EpisodeSort("OVA03"))
+
+    @Test
+    fun `ova subject listed after the main series continues with the next ova`() = runSimpleMediaSelectorTestSuite {
+        initSubject("孤独摇滚 OVA")
+        val source = FakeBrowsableSource().apply { channels = ovaAfterMainSeries(ovaSorts) }
+        // 上次把 OVA01 当第 01 话播放
+        val fixture = fixture(source = source, memory = memory(episodeIndex = 12, episodeSort = ovaSorts[0], playedAsSort = EpisodeSort(1)))
+
+        val result = fixture.useCase(SUBJECT_ID, episodeInfo(2), selector)
+
+        assertEquals(ReplayResult.SELECTED_BY_SORT, result)
+        val media = source.createdMedia.single()
+        assertEquals("https://example.com/play/$CHANNEL_1/13", media.originalUrl, "OVA02, 不是正片的 02")
+        assertEquals(EpisodeRange.single(EpisodeSort(2)), media.episodeRange)
+        assertEquals(
+            memory(episodeIndex = 13, episodeSort = ovaSorts[1], playedAsSort = EpisodeSort(2)),
+            fixture.repository.get(SUBJECT_ID),
+        )
+
+        // 跳到第 03 话也按对应关系找到 OVA03
+        selector.unselect()
+        assertEquals(ReplayResult.SELECTED_BY_SORT, fixture.useCase(SUBJECT_ID, episodeInfo(3), selector))
+        assertEquals("https://example.com/play/$CHANNEL_1/14", assertNotNull(selector.selected.value).originalUrl)
+    }
+
+    @Test
+    fun `same numbers in one channel pick the one near the remembered position`() = runSimpleMediaSelectorTestSuite {
+        initSubject("孤独摇滚 OVA")
+        // 站点的集号正则把 OVA01 也解析成 01: 同一线路里 02 出现两次
+        val source = FakeBrowsableSource().apply { channels = ovaAfterMainSeries(numberedSorts(3)) }
+        val fixture = fixture(source = source, memory = memory(episodeIndex = 12, episodeSort = EpisodeSort(1), playedAsSort = EpisodeSort(1)))
+
+        assertEquals(ReplayResult.SELECTED_BY_SORT, fixture.useCase(SUBJECT_ID, episodeInfo(2), selector))
+        assertEquals("https://example.com/play/$CHANNEL_1/13", assertNotNull(selector.selected.value).originalUrl)
+    }
+
+    @Test
+    fun `position fallback rejects a next item that contradicts the mapping`() = runSimpleMediaSelectorTestSuite {
+        initSubject("孤独摇滚 OVA")
+        // OVA 只有两集, 后面接着 SP01
+        val source = FakeBrowsableSource().apply {
+            channels = ovaAfterMainSeries(ovaSorts.take(2) + EpisodeSort(1, EpisodeType.SP))
+        }
+        val fixture = fixture(source = source, memory = memory(episodeIndex = 13, episodeSort = ovaSorts[1], playedAsSort = EpisodeSort(2)))
+
+        assertEquals(ReplayResult.NOT_FOUND, fixture.useCase(SUBJECT_ID, episodeInfo(3), selector))
+        assertNull(selector.selected.value)
+        assertTrue(source.createdMedia.isEmpty())
+    }
+
+    @Test
+    fun `unparsable remembered item never matches by sort`() = runSimpleMediaSelectorTestSuite {
+        initSubject("孤独摇滚 OVA")
+        // 正片能解析出集号, OVA 解析不出: 上次选的是 OVA 上篇, 对应关系未知, 跳集时不能按集号命中正片
+        val source = FakeBrowsableSource().apply { channels = ovaAfterMainSeries(listOf(null, null)) }
+        val fixture = fixture(source = source, memory = memory(episodeIndex = 12, episodeSort = null, playedAsSort = EpisodeSort(1)))
+
+        assertEquals(ReplayResult.NOT_FOUND, fixture.useCase(SUBJECT_ID, episodeInfo(5), selector))
+        assertTrue(source.createdMedia.isEmpty())
+
+        // 看下一集仍按位置接上 OVA 下篇
+        assertEquals(ReplayResult.SELECTED_BY_POSITION, fixture.useCase(SUBJECT_ID, episodeInfo(2), selector))
+        assertEquals("https://example.com/play/$CHANNEL_1/13", assertNotNull(selector.selected.value).originalUrl)
     }
 
     @Test
