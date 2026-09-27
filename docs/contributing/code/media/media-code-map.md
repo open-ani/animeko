@@ -140,9 +140,9 @@
 
 - 宿主：
     - `app/shared/src/commonMain/kotlin/ui/subject/episode/details/EpisodeDetails.kt`：详情页
-      （宽窗口侧边栏 + BT 居中对话框；窄窗口底部弹窗）。
+      （宽窗口侧边栏；窄窗口底部弹窗）。
     - `app/shared/src/commonMain/kotlin/ui/subject/episode/video/sidesheet/EpisodeVideoMediaSelectorSideSheet.kt`：
-      全屏播放器侧边栏（只放自动匹配）；手动查找与 BT 的全屏容器在 `EpisodePage.kt` 的 `sideSheets` 槽内。
+      播放器侧边栏（三种模式）；侧边栏太矮时手动查找与 BT 的容器在 `EpisodePage.kt` 的 `sideSheets` 槽内。
     - `app/shared/ui-download/src/commonMain/kotlin/ui/download/subject/SubjectDownloadRequestDialogs.kt`：
       批量下载的选源弹窗（自动匹配 / BT）。
     - `EpisodeViewModel`：模式、全屏容器可见性、BT 页筛选状态与手动查找状态的持有者；「播放并记住」在此写记忆。
@@ -154,7 +154,7 @@
     - `mediaselect/bt/BtListPresentation.kt`：BT 页的会话内筛选状态与列表投影纯函数。
 - 页面与公共件（同目录）：
     - `mediaselect/MediaSelectorMode.kt`：模式枚举、「正在观看」模型、版式阈值。
-    - `mediaselect/common/MediaSelectorChrome.kt`：模式下拉 chip 与「正在观看」卡片；
+    - `mediaselect/common/MediaSelectorChrome.kt`：模式下拉 chip、「正在观看」卡片与手动查找 / BT 共用的搜索框；
       `mediaselect/common/MediaSelectorDialog.kt`：手动查找 / BT 的容器布局与对话框包装。
     - `mediaselect/auto/AutoMatchPage.kt`、`mediaselect/selector/MediaSelectorWebColumn.kt`：自动匹配页（源行与救援按钮）。
     - `mediaselect/manual/ManualBrowsePage.kt`、`ManualBrowseComponents.kt`：手动查找的双栏 / 堆叠两页。

@@ -480,7 +480,7 @@ internal fun BtFilterSheet(
 }
 
 /**
- * 一组单选 chip. 当前偏好不在候选里时追加显示, 让用户能看到并取消它.
+ * 一组单选 chip.
  */
 @Composable
 private fun BtFilterGroup(
@@ -490,7 +490,6 @@ private fun BtFilterGroup(
     onSelect: (String?) -> Unit,
     label: (String) -> String = { it },
 ) {
-    val shown = if (selected != null && selected !in values) values + selected else values
     Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
         Text(title, style = MaterialTheme.typography.titleSmall)
         FlowRow(
@@ -502,7 +501,7 @@ private fun BtFilterGroup(
                 onClick = { onSelect(null) },
                 label = { Text(stringResource(Lang.media_selector_bt_filter_any)) },
             )
-            for (value in shown) {
+            for (value in values) {
                 FilterChip(
                     selected = value == selected,
                     onClick = { onSelect(value) },

@@ -65,6 +65,7 @@ import me.him188.ani.app.ui.mediafetch.TestBrowseSubjects
 import me.him188.ani.app.ui.mediafetch.rememberTestManualBrowseState
 import me.him188.ani.app.ui.mediaselect.MediaSelectorLayoutDefaults
 import me.him188.ani.app.ui.mediaselect.WatchingEpisode
+import me.him188.ani.app.ui.mediaselect.common.MediaSelectorSearchField
 import me.him188.ani.app.ui.mediaselect.common.WatchingEpisodeCard
 import me.him188.ani.app.ui.mediaselect.common.WatchingEpisodeText
 import me.him188.ani.datasources.api.source.BrowseChannel
@@ -182,11 +183,12 @@ private fun ManualBrowseStackedLayout(
                     Modifier.fillMaxWidth(),
                     isPlaceholder = presentation.isPlaceholder,
                 )
-                ManualSearchField(
+                MediaSelectorSearchField(
                     presentation.keyword,
                     onKeywordChange = state::setKeyword,
                     onSearch = state::search,
-                    Modifier.padding(horizontal = 16.dp, vertical = 8.dp).fillMaxWidth(),
+                    Modifier.padding(horizontal = 16.dp, vertical = 8.dp).fillMaxWidth()
+                        .testTag(ManualBrowsePageTestTags.SEARCH_FIELD),
                 )
                 ManualResultsList(
                     presentation.results,
@@ -348,11 +350,12 @@ private fun ManualBrowseWideLayout(
                     contentPadding = PaddingValues(start = 16.dp, end = 12.dp),
                     isPlaceholder = presentation.isPlaceholder,
                 )
-                ManualSearchField(
+                MediaSelectorSearchField(
                     presentation.keyword,
                     onKeywordChange = state::setKeyword,
                     onSearch = state::search,
-                    Modifier.padding(start = 16.dp, end = 12.dp).fillMaxWidth(),
+                    Modifier.padding(start = 16.dp, end = 12.dp).fillMaxWidth()
+                        .testTag(ManualBrowsePageTestTags.SEARCH_FIELD),
                 )
                 ManualResultsList(
                     presentation.results,

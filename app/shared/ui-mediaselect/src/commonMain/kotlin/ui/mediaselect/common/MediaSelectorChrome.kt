@@ -9,6 +9,7 @@
 
 package me.him188.ani.app.ui.mediaselect.common
 
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Row
@@ -17,6 +18,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.ArrowDropDown
+import androidx.compose.material.icons.rounded.Search
 import androidx.compose.material.icons.rounded.Tv
 import androidx.compose.material3.AssistChip
 import androidx.compose.material3.Card
@@ -24,6 +26,7 @@ import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.SearchBarDefaults
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -44,10 +47,12 @@ import me.him188.ani.app.ui.foundation.dialogs.PlatformPopupProperties
 import me.him188.ani.app.ui.foundation.widgets.SelectableDropdownMenuItem
 import me.him188.ani.app.ui.lang.Lang
 import me.him188.ani.app.ui.lang.media_selector_episode_label
+import me.him188.ani.app.ui.lang.media_selector_episode_label_with_ep
 import me.him188.ani.app.ui.lang.media_selector_mode_auto
 import me.him188.ani.app.ui.lang.media_selector_mode_bt
 import me.him188.ani.app.ui.lang.media_selector_mode_manual
 import me.him188.ani.app.ui.lang.media_selector_mode_menu
+import me.him188.ani.app.ui.lang.media_selector_search_hint
 import me.him188.ani.app.ui.lang.media_selector_watching_prefix
 import me.him188.ani.app.ui.mediaselect.MediaSelectorMode
 import me.him188.ani.app.ui.mediaselect.WatchingEpisode
@@ -112,7 +117,7 @@ fun MediaSelectorMode.displayName(): String = when (this) {
 }
 
 /**
- * surfaceContainer 圆角 12 卡片, 左侧图标, 文本「正在观看 <b>第 25 话 OVA</b>」(前缀 onSurfaceVariant, 集号 + 名 onSurface 加粗). [episode] 为 null 时不占位.
+ * surfaceContainer 圆角 12 卡片, 左侧图标, 文本「正在观看 <b>第 25 话 OVA</b>」(前缀 onSurfaceVariant, 集号 + 名 onSurface 加粗; 集号见 [episodeLabel]). [episode] 为 null 时不占位.
  */
 @Composable
 fun WatchingEpisodeCard(
@@ -159,10 +164,21 @@ fun WatchingEpisodeText(
     )
 }
 
+/**
+ * 「第 14 话」; 有 EP 时「第 14 话 (EP 02)」.
+ */
+@Composable
+fun WatchingEpisode.episodeLabel(): String =
+    if (ep == null) {
+        stringResource(Lang.media_selector_episode_label, sort)
+    } else {
+        stringResource(Lang.media_selector_episode_label_with_ep, sort, ep)
+    }
+
 @Composable
 private fun watchingEpisodeText(episode: WatchingEpisode): AnnotatedString {
     val prefix = stringResource(Lang.media_selector_watching_prefix)
-    val episodeLabel = stringResource(Lang.media_selector_episode_label, episode.sort)
+    val episodeLabel = episode.episodeLabel()
     val prefixColor = MaterialTheme.colorScheme.onSurfaceVariant
     val emphasisColor = MaterialTheme.colorScheme.onSurface
     return buildAnnotatedString {
@@ -178,6 +194,32 @@ private fun watchingEpisodeText(episode: WatchingEpisode): AnnotatedString {
             }
         }
     }
+}
+
+/**
+ * 手动查找与 BT 页的关键字搜索框: 标准 [SearchBarDefaults.InputField], 外观同收起状态的 SearchBar (inputFieldShape + SearchBar 容器色).
+ * 高度保持 InputField 自身的 56dp: 它的文字区是按 56dp 排的, 固定成更矮会把文字裁掉一半.
+ * 调用方在 [modifier] 里先固定宽度: InputField 在其后接 `sizeIn(minWidth = 360.dp)`, 不先固定会撑破 300–400dp 的侧边栏.
+ */
+@Composable
+fun MediaSelectorSearchField(
+    keyword: String,
+    onKeywordChange: (String) -> Unit,
+    onSearch: () -> Unit,
+    modifier: Modifier = Modifier,
+    enabled: Boolean = true,
+) {
+    SearchBarDefaults.InputField(
+        query = keyword,
+        onQueryChange = { onKeywordChange(it.trim('\n')) },
+        onSearch = { onSearch() },
+        expanded = false,
+        onExpandedChange = {},
+        modifier = modifier.background(SearchBarDefaults.colors().containerColor, SearchBarDefaults.inputFieldShape),
+        enabled = enabled,
+        placeholder = { Text(stringResource(Lang.media_selector_search_hint)) },
+        leadingIcon = { Icon(Icons.Rounded.Search, contentDescription = null) },
+    )
 }
 
 object MediaSelectorChromeTestTags {

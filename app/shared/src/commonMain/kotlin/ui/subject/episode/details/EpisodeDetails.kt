@@ -60,7 +60,6 @@ import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.material3.contentColorFor
 import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.Stable
 import androidx.compose.runtime.State
@@ -105,7 +104,6 @@ import me.him188.ani.app.ui.foundation.ProvideCompositionLocalsForPreview
 import me.him188.ani.app.ui.foundation.animation.AniAnimatedVisibility
 import me.him188.ani.app.ui.foundation.animation.LocalAniMotionScheme
 import me.him188.ani.app.ui.foundation.layout.AniWindowInsets
-import me.him188.ani.app.ui.foundation.layout.Zero
 import me.him188.ani.app.ui.foundation.layout.currentWindowAdaptiveInfo1
 import me.him188.ani.app.ui.foundation.layout.desktopTitleBar
 import me.him188.ani.app.ui.foundation.layout.desktopTitleBarPadding
@@ -136,7 +134,6 @@ import me.him188.ani.app.ui.mediaselect.MediaSelectorMode
 import me.him188.ani.app.ui.mediaselect.WatchingEpisode
 import me.him188.ani.app.ui.mediaselect.auto.AutoMatchPage
 import me.him188.ani.app.ui.mediaselect.bt.BtResourcesPage
-import me.him188.ani.app.ui.mediaselect.common.MediaSelectorDialog
 import me.him188.ani.app.ui.mediaselect.common.MediaSelectorModeChip
 import me.him188.ani.app.ui.mediaselect.manual.ManualBrowsePage
 import me.him188.ani.app.ui.mediaselect.manual.ManualBrowseState
@@ -241,16 +238,11 @@ fun EpisodeDetails(
     }
     // 选择器容器状态与容器本身都放在 mediaSelectorItem 槽之外: 该槽是 LazyColumn 的 item, 滚出可视区会被销毁.
     var showMediaSelector by rememberSaveable { mutableStateOf(false) }
-    // 宽屏 BT 居中对话框; 等侧边栏滑出动画结束 (onDismiss) 再打开, 避免两个 Dialog window 同帧切换.
-    var showBtDialog by rememberSaveable { mutableStateOf(false) }
-    var pendingBtDialog by rememberSaveable { mutableStateOf(false) }
     // watchingEpisode == null 即会话未就绪: 此时 mediaSelectorState 是占位 state, select 会落到假 selector, 容器不打开也不保持打开.
     val mediaSelectorAvailable = watchingEpisode != null
     LaunchedEffect(mediaSelectorAvailable) {
         if (!mediaSelectorAvailable) {
             showMediaSelector = false
-            showBtDialog = false
-            pendingBtDialog = false
         }
     }
     var editingShiftServiceId by remember {
@@ -388,12 +380,7 @@ fun EpisodeDetails(
             val openMediaSelector = {
                 if (mediaSelectorAvailable) {
                     onBeforeOpenMediaSelector()
-                    // 宽屏侧边栏装不下 BT 表格, BT 模式直接开居中对话框.
-                    if (atLeastMedium && mediaSelectorMode == MediaSelectorMode.BT) {
-                        showBtDialog = true
-                    } else {
-                        showMediaSelector = true
-                    }
+                    showMediaSelector = true
                 }
             }
             if (atLeastMedium) {
@@ -561,19 +548,8 @@ fun EpisodeDetails(
         val closeSelectorText = stringResource(Lang.subject_episode_close_selector)
         if (atLeastMedium) {
             val sheetState = rememberModalSideSheetState()
-            // 挂起标志只在本次侧边栏存活期间有效: 滑出动画 (约 300ms) 中窗口跨过宽度类、或用户切回自动并点了线路时, 侧边栏不经 onDismiss 就离开组合,
-            // 残留的 true 会让下一次关闭侧边栏误弹 BT 对话框. 正常路径 onDismiss 先消费, 这里再写一次 false 无副作用.
-            DisposableEffect(Unit) {
-                onDispose { pendingBtDialog = false }
-            }
             ModalSideSheet(
-                {
-                    showMediaSelector = false
-                    if (pendingBtDialog) {
-                        pendingBtDialog = false
-                        showBtDialog = true
-                    }
-                },
+                closeSelector,
                 state = sheetState,
                 containerColor = BottomSheetDefaults.ContainerColor,
             ) {
@@ -634,13 +610,22 @@ fun EpisodeDetails(
                             closeButton = closeButton,
                         )
 
+                        // 侧边栏宽度下 BT 页是紧凑列表. 切模式只换侧边栏的内容, 不换容器.
                         MediaSelectorMode.BT -> {
-                            // 侧边栏装不下 BT 表格: 保留顶栏滑出, 由 onDismiss 打开居中对话框.
                             topBar()
-                            LaunchedEffect(Unit) {
-                                pendingBtDialog = true
-                                sheetState.close()
-                            }
+                            BtResourcesPage(
+                                mediaSelectorState,
+                                sourceResults,
+                                watchingEpisode,
+                                fetchRequest,
+                                onFetchRequestChange,
+                                onClickItem = {
+                                    mediaSelectorState.select(it)
+                                    closeSelector()
+                                },
+                                onRestartSource = onRestartSource,
+                                modifier = Modifier.fillMaxWidth().weight(1f),
+                            )
                         }
                     }
                 }
@@ -710,75 +695,6 @@ fun EpisodeDetails(
                             modifier = Modifier.fillMaxWidth().weight(1f),
                         )
                     }
-                }
-            }
-        }
-    }
-
-    if (showBtDialog) {
-        // X / 点外部只关对话框, 不重开侧边栏; 切到其他模式才回侧边栏.
-        MediaSelectorDialog(onDismissRequest = { showBtDialog = false }) { compact ->
-            val sourceResults = mediaSourceResultListPresentation()
-            val closeSelectorText = stringResource(Lang.subject_episode_close_selector)
-            val onModeChange: (MediaSelectorMode) -> Unit = { mode ->
-                onMediaSelectorModeChange(mode)
-                if (mode != MediaSelectorMode.BT) {
-                    showBtDialog = false
-                    showMediaSelector = true
-                }
-            }
-            val closeButton = @Composable {
-                IconButton(onClick = { showBtDialog = false }) {
-                    Icon(Icons.Rounded.Close, contentDescription = closeSelectorText)
-                }
-            }
-            val onClickItem = { media: Media ->
-                mediaSelectorState.select(media)
-                showBtDialog = false
-            }
-            if (compact) {
-                // 宽屏但高度不足 (手机横屏): 容器铺满, 单行顶栏走页面的 inlineTitle 槽.
-                BtResourcesPage(
-                    mediaSelectorState,
-                    sourceResults,
-                    watchingEpisode,
-                    fetchRequest,
-                    onFetchRequestChange,
-                    onClickItem = onClickItem,
-                    onRestartSource = onRestartSource,
-                    modifier = Modifier.fillMaxSize(),
-                    inlineTitle = {
-                        closeButton()
-                        Text(
-                            stringResource(Lang.media_selector_sources),
-                            style = MaterialTheme.typography.titleLarge,
-                        )
-                        MediaSelectorModeChip(mediaSelectorMode, onModeChange, showBt = true)
-                    },
-                )
-            } else {
-                Column(Modifier.fillMaxSize()) {
-                    TopAppBar(
-                        title = { Text(stringResource(Lang.media_selector_sources)) },
-                        actions = {
-                            MediaSelectorModeChip(mediaSelectorMode, onModeChange, showBt = true)
-                            closeButton()
-                        },
-                        windowInsets = WindowInsets.Zero,
-                        colors = TopAppBarDefaults.topAppBarColors(
-                            containerColor = BottomSheetDefaults.ContainerColor,
-                        ),
-                    )
-                    BtResourcesPage(
-                        mediaSelectorState,
-                        sourceResults,
-                        watchingEpisode,
-                        fetchRequest,
-                        onFetchRequestChange,
-                        onClickItem = onClickItem,
-                        onRestartSource = onRestartSource,
-                        modifier = Modifier.fillMaxWidth().weight(1f),
-                    )
                 }
             }
         }

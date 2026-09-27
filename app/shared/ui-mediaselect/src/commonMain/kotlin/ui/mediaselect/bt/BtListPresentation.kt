@@ -51,7 +51,7 @@ data class BtCandidates(
      */
     val subject: List<MaybeExcludedMedia>,
     /**
-     * `MediaPreference.Empty.copy(alliance/resolution/subtitleLanguageId/mediaSourceId = 各自 finalSelected)`.
+     * `MediaPreference.Empty.copy(alliance/resolution/subtitleLanguageId = 各自 finalSelected)`. [projectBtList] 只取其中对 BT 候选有效的值.
      */
     val preference: MediaPreference,
     val selected: Media?,
@@ -109,7 +109,7 @@ data class BtListPresentation(
      */
     val totalCount: Int,
     /**
-     * 三项 finalSelected (来自 [BtCandidates.preference]); 「筛选 (n)」的 n = 非空个数.
+     * 三项生效偏好 (见 [projectBtList]); 「筛选 (n)」的 n = 非空个数.
      */
     val resolution: String?,
     val subtitleLanguageId: String?,
@@ -147,10 +147,13 @@ data class BtListPresentation(
 /**
  * 纯函数:
  * base = (episodeFilterEnabled ? candidates.filtered : candidates.subject).filter { original.kind == BitTorrent || original.kind == LocalCache }
- * preferredIds = algorithm.filterByPreference(base, candidates.preference).filterIsInstance<Included>().mapTo(HashSet()) { it.result.mediaId }
+ * available*: resolution 非空 distinct / subtitleLanguageIds flatten distinct / alliance 非空 distinct, 按 base 顺序.
+ * 生效偏好: alliance / resolution / subtitleLanguageId 只在值属于对应 available* 时保留, 否则为 null; mediaSourceId 恒为 null.
+ *   选中 WEB 资源会把线路名写进 alliance、把 WEB 源写进 mediaSourceId, 照搬会把全部 BT 行判为「低于偏好」;
+ *   BT 页的源维度只由 sourceFilter 表达, 偏好里的源在页面上没有控件, 用户看不到也取消不了.
+ * preferredIds = algorithm.filterByPreference(base, 生效偏好).filterIsInstance<Included>().mapTo(HashSet()) { it.result.mediaId }
  * 每项: Excluded → Reason(exclusionReason); 否则 mediaId !in preferredIds → BelowPreference; 否则主列表. isSelected = original == candidates.selected.
  * sourceFilter != null 时 included / excluded 只保留 media.mediaSourceId == sourceFilter; sourceCounts / totalCount / available* 不受 sourceFilter 影响.
- * available*: resolution 非空 distinct / subtitleLanguageIds flatten distinct / alliance 非空 distinct, 按 base 顺序.
  */
 @OptIn(UnsafeOriginalMediaAccess::class)
 fun projectBtList(
@@ -163,7 +166,24 @@ fun projectBtList(
         val kind = it.original.kind
         kind == MediaSourceKind.BitTorrent || kind == MediaSourceKind.LocalCache
     }
-    val preferredIds = algorithm.filterByPreference(base, candidates.preference)
+    val sourceCounts = LinkedHashMap<String, Int>()
+    val resolutions = LinkedHashSet<String>()
+    val subtitleLanguageIds = LinkedHashSet<String>()
+    val alliances = LinkedHashSet<String>()
+    for (item in base) {
+        val media = item.original
+        sourceCounts[media.mediaSourceId] = (sourceCounts[media.mediaSourceId] ?: 0) + 1
+        media.properties.resolution.takeIf { it.isNotBlank() }?.let { resolutions.add(it) }
+        subtitleLanguageIds.addAll(media.properties.subtitleLanguageIds)
+        media.properties.alliance.takeIf { it.isNotBlank() }?.let { alliances.add(it) }
+    }
+
+    val preference = MediaPreference.Empty.copy(
+        alliance = candidates.preference.alliance?.takeIf { it in alliances },
+        resolution = candidates.preference.resolution?.takeIf { it in resolutions },
+        subtitleLanguageId = candidates.preference.subtitleLanguageId?.takeIf { it in subtitleLanguageIds },
+    )
+    val preferredIds = algorithm.filterByPreference(base, preference)
         .filterIsInstance<MaybeExcludedMedia.Included>()
         .mapTo(HashSet()) { it.result.mediaId }
 
@@ -180,18 +200,6 @@ fun projectBtList(
         if (exclusion == null) included.add(row) else excluded.add(row)
     }
 
-    val sourceCounts = LinkedHashMap<String, Int>()
-    val resolutions = LinkedHashSet<String>()
-    val subtitleLanguageIds = LinkedHashSet<String>()
-    val alliances = LinkedHashSet<String>()
-    for (item in base) {
-        val media = item.original
-        sourceCounts[media.mediaSourceId] = (sourceCounts[media.mediaSourceId] ?: 0) + 1
-        media.properties.resolution.takeIf { it.isNotBlank() }?.let { resolutions.add(it) }
-        subtitleLanguageIds.addAll(media.properties.subtitleLanguageIds)
-        media.properties.alliance.takeIf { it.isNotBlank() }?.let { alliances.add(it) }
-    }
-
     return BtListPresentation(
         included = included,
         excluded = excluded,
@@ -200,9 +208,9 @@ fun projectBtList(
         sourceFilter = sourceFilter,
         sourceCounts = sourceCounts,
         totalCount = base.size,
-        resolution = candidates.preference.resolution,
-        subtitleLanguageId = candidates.preference.subtitleLanguageId,
-        alliance = candidates.preference.alliance,
+        resolution = preference.resolution,
+        subtitleLanguageId = preference.subtitleLanguageId,
+        alliance = preference.alliance,
         availableResolutions = resolutions.toList(),
         availableSubtitleLanguageIds = subtitleLanguageIds.toList(),
         availableAlliances = alliances.toList(),

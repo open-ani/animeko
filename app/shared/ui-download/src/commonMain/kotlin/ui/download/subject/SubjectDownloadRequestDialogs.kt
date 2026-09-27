@@ -90,6 +90,7 @@ import me.him188.ani.app.ui.mediaselect.WatchingEpisode
 import me.him188.ani.app.ui.mediaselect.auto.AutoMatchPage
 import me.him188.ani.app.ui.mediaselect.bt.BtResourcesPage
 import me.him188.ani.app.ui.mediaselect.common.MediaSelectorModeChip
+import me.him188.ani.app.ui.mediaselect.toWatchingEpisode
 import me.him188.ani.datasources.api.Media
 import me.him188.ani.datasources.api.source.MediaFetchRequest
 import me.him188.ani.datasources.api.source.MediaSourceKind
@@ -242,7 +243,7 @@ private fun DownloadMediaPicker(
     }
     // 搜索框提交的关键字经 setFetchRequest 写回会话; latestRequest 随之更新, request 只发首值.
     val fetchRequest by remember(selection) { selection.fetchSession.latestRequest }.collectAsStateWithLifecycle(null)
-    val watching = fetchRequest?.let { WatchingEpisode(it.episodeSort.toString(), it.episodeName) }
+    val watching = fetchRequest?.toWatchingEpisode()
 
     DownloadMediaPickerContent(
         selectorState = selectorState,

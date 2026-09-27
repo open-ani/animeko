@@ -222,9 +222,10 @@ class MediaSelectorState(
     )
 
     /**
-     * BT 页列表. 在 state 内 combine 九个流后交给纯函数 [projectBtList]:
-     * `filteredCandidates, subjectCandidates, selected, alliance/resolution/subtitleLanguageId/mediaSource.presentationFlow,
+     * BT 页列表. 在 state 内 combine 八个流后交给纯函数 [projectBtList]:
+     * `filteredCandidates, subjectCandidates, selected, alliance/resolution/subtitleLanguageId.presentationFlow,
      *  btFilterState.episodeFilterEnabled, btFilterState.sourceFilter`.
+     * 数据源偏好不传: BT 页的源维度只由 sourceFilter 表达.
      */
     val btPresentationFlow: StateFlow<BtListPresentation> = combine(
         mediaSelector.filteredCandidates,
@@ -233,10 +234,9 @@ class MediaSelectorState(
         alliance.presentationFlow,
         resolution.presentationFlow,
         subtitleLanguageId.presentationFlow,
-        mediaSource.presentationFlow,
         btFilterState.episodeFilterEnabled,
         btFilterState.sourceFilter,
-    ) { filtered, subject, selected, alliance, resolution, subtitleLanguageId, mediaSource, episodeFilterEnabled, sourceFilter ->
+    ) { filtered, subject, selected, alliance, resolution, subtitleLanguageId, episodeFilterEnabled, sourceFilter ->
         projectBtList(
             BtCandidates(
                 filtered = filtered,
@@ -245,7 +245,6 @@ class MediaSelectorState(
                     alliance = alliance.finalSelected,
                     resolution = resolution.finalSelected,
                     subtitleLanguageId = subtitleLanguageId.finalSelected,
-                    mediaSourceId = mediaSource.finalSelected,
                 ),
                 selected = selected,
             ),

@@ -9,7 +9,6 @@
 
 package me.him188.ani.app.ui.mediaselect.bt
 
-import androidx.compose.foundation.background
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -20,22 +19,18 @@ import androidx.compose.foundation.layout.RowScope
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.FilterList
-import androidx.compose.material.icons.rounded.Search
 import androidx.compose.material3.FilledTonalButton
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.SearchBarDefaults
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -48,7 +43,6 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
 import androidx.compose.ui.platform.LocalClipboard
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.tooling.preview.PreviewLightDark
@@ -64,9 +58,7 @@ import me.him188.ani.app.ui.foundation.widgets.LocalToaster
 import me.him188.ani.app.ui.lang.Lang
 import me.him188.ani.app.ui.lang.media_selector_bt_filter
 import me.him188.ani.app.ui.lang.media_selector_bt_filter_count
-import me.him188.ani.app.ui.lang.media_selector_episode_label
 import me.him188.ani.app.ui.lang.media_selector_mode_bt
-import me.him188.ani.app.ui.lang.media_selector_search_hint
 import me.him188.ani.app.ui.lang.settings_debug_copied
 import me.him188.ani.app.ui.mediafetch.MediaSelectorDebugTools
 import me.him188.ani.app.ui.mediafetch.MediaSelectorFilters
@@ -77,8 +69,10 @@ import me.him188.ani.app.ui.mediafetch.TestMediaSourceResultListPresentation
 import me.him188.ani.app.ui.mediafetch.rememberTestMediaSelectorState
 import me.him188.ani.app.ui.mediaselect.MediaSelectorLayoutDefaults
 import me.him188.ani.app.ui.mediaselect.WatchingEpisode
+import me.him188.ani.app.ui.mediaselect.common.MediaSelectorSearchField
 import me.him188.ani.app.ui.mediaselect.common.WatchingEpisodeCard
 import me.him188.ani.app.ui.mediaselect.common.WatchingEpisodeText
+import me.him188.ani.app.ui.mediaselect.common.episodeLabel
 import me.him188.ani.datasources.api.Media
 import me.him188.ani.datasources.api.source.MediaFetchRequest
 import me.him188.ani.datasources.api.topic.ResourceLocation
@@ -200,13 +194,13 @@ fun BtResourcesPage(
                         Modifier.padding(horizontal = horizontalPadding).padding(bottom = 12.dp).fillMaxWidth(),
                     )
                 }
-                BtSearchField(
+                MediaSelectorSearchField(
                     keyword = keyword,
                     onKeywordChange = { keyword = it },
-                    onSubmit = submitKeyword,
+                    onSearch = submitKeyword,
                     enabled = fetchRequest != null,
                     modifier = Modifier.padding(horizontal = horizontalPadding).padding(bottom = 12.dp)
-                        .fillMaxWidth().height(48.dp),
+                        .fillMaxWidth().testTag(BtResourcesPageTestTags.SEARCH_FIELD),
                 )
             } else {
                 Row(
@@ -215,12 +209,12 @@ fun BtResourcesPage(
                 ) {
                     inlineTitle()
                     Spacer(Modifier.width(16.dp))
-                    BtSearchField(
+                    MediaSelectorSearchField(
                         keyword = keyword,
                         onKeywordChange = { keyword = it },
-                        onSubmit = submitKeyword,
+                        onSearch = submitKeyword,
                         enabled = fetchRequest != null,
-                        modifier = Modifier.width(320.dp).height(48.dp),
+                        modifier = Modifier.width(320.dp).testTag(BtResourcesPageTestTags.SEARCH_FIELD),
                     )
                     Spacer(Modifier.weight(1f))
                     WatchingEpisodeText(watching, Modifier.padding(start = 16.dp))
@@ -255,7 +249,7 @@ fun BtResourcesPage(
                     FilterChip(
                         selected = episodeFilterEnabled,
                         onClick = { state.btFilterState.episodeFilterEnabled.value = !episodeFilterEnabled },
-                        label = { Text(stringResource(Lang.media_selector_episode_label, watching.sort)) },
+                        label = { Text(watching.episodeLabel()) },
                         modifier = Modifier.testTag(BtResourcesPageTestTags.EPISODE_CHIP),
                     )
                 }
@@ -269,6 +263,9 @@ fun BtResourcesPage(
                         resolution = state.resolution,
                         subtitleLanguageId = state.subtitleLanguageId,
                         alliance = state.alliance,
+                        selectedResolution = presentation.resolution,
+                        selectedSubtitleLanguageId = presentation.subtitleLanguageId,
+                        selectedAlliance = presentation.alliance,
                         availableResolutions = presentation.availableResolutions,
                         availableSubtitleLanguageIds = presentation.availableSubtitleLanguageIds,
                         availableAlliances = presentation.availableAlliances,
@@ -351,33 +348,6 @@ fun BtResourcesPage(
             modifier = Modifier.matchParentSize(),
         )
     }
-}
-
-/**
- * 关键字搜索框. 调用方固定宽高 (InputField 自带的最小尺寸接在其后, 不先固定会撑破窄容器).
- */
-@Composable
-private fun BtSearchField(
-    keyword: String,
-    onKeywordChange: (String) -> Unit,
-    onSubmit: () -> Unit,
-    enabled: Boolean,
-    modifier: Modifier = Modifier,
-) {
-    SearchBarDefaults.InputField(
-        query = keyword,
-        onQueryChange = { onKeywordChange(it.trim('\n')) },
-        onSearch = { onSubmit() },
-        expanded = false,
-        onExpandedChange = {},
-        modifier = modifier
-            .clip(RoundedCornerShape(24.dp))
-            .background(MaterialTheme.colorScheme.surfaceContainerHigh)
-            .testTag(BtResourcesPageTestTags.SEARCH_FIELD),
-        enabled = enabled,
-        placeholder = { Text(stringResource(Lang.media_selector_search_hint)) },
-        leadingIcon = { Icon(Icons.Rounded.Search, contentDescription = null) },
-    )
 }
 
 object BtResourcesPageTestTags {

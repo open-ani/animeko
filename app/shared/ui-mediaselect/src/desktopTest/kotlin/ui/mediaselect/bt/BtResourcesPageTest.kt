@@ -11,15 +11,24 @@ package me.him188.ani.app.ui.mediaselect.bt
 
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.size
+import androidx.compose.material3.SearchBarDefaults
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.semantics.SemanticsActions
+import androidx.compose.ui.test.assert
+import androidx.compose.ui.test.assertHeightIsAtLeast
 import androidx.compose.ui.test.assertIsSelected
 import androidx.compose.ui.test.assertIsNotSelected
+import androidx.compose.ui.test.hasAnyAncestor
+import androidx.compose.ui.test.hasTestTag
+import androidx.compose.ui.test.hasText
 import androidx.compose.ui.test.isDisplayed
 import androidx.compose.ui.test.onAllNodesWithTag
 import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
+import androidx.compose.ui.test.performSemanticsAction
+import androidx.compose.ui.text.TextLayoutResult
 import androidx.compose.ui.unit.dp
 import kotlinx.coroutines.runBlocking
 import kotlinx.datetime.TimeZone
@@ -32,6 +41,7 @@ import me.him188.ani.app.ui.framework.AniComposeUiTest
 import me.him188.ani.app.ui.framework.runAniComposeUiTest
 import me.him188.ani.app.ui.lang.Lang
 import me.him188.ani.app.ui.lang.media_selector_bt_empty
+import me.him188.ani.app.ui.lang.media_selector_episode_label_with_ep
 import me.him188.ani.app.ui.mediafetch.MediaSelectorState
 import me.him188.ani.app.ui.mediafetch.MediaSourceResultListPresentation
 import me.him188.ani.app.ui.mediafetch.TestMediaFetchRequest
@@ -60,6 +70,7 @@ class BtResourcesPageTest {
         onState: (MediaSelectorState) -> Unit = {},
         mediaList: List<Media> = TestMediaList,
         sourceResults: MediaSourceResultListPresentation = TestMediaSourceResultListPresentation,
+        watching: WatchingEpisode? = this@BtResourcesPageTest.watching,
     ) {
         setContent {
             ProvideCompositionLocalsForPreview {
@@ -178,5 +189,46 @@ class BtResourcesPageTest {
         waitUntil { onNodeWithTag(BtResourcesPageTestTags.TABLE).isDisplayed() }
         onNodeWithTag(BtResourcesPageTestTags.LOADING).assertExists()
         onNodeWithText(emptyText).assertDoesNotExist()
+    }
+
+    @Test
+    fun `episode chip shows ep when it differs from sort`() = runAniComposeUiTest {
+        val label = runBlocking { getString(Lang.media_selector_episode_label_with_ep, "14", "02") }
+        setPage(watching = WatchingEpisode("14", "测试", ep = "02"))
+        waitUntil { onNodeWithTag(BtResourcesPageTestTags.EPISODE_CHIP).isDisplayed() }
+        onNodeWithTag(BtResourcesPageTestTags.EPISODE_CHIP).assert(hasText(label))
+    }
+
+    @Test
+    fun `search field keeps the standard input height`() = runAniComposeUiTest {
+        setPage()
+        waitUntil { onNodeWithTag(BtResourcesPageTestTags.SEARCH_FIELD).isDisplayed() }
+        onNodeWithTag(BtResourcesPageTestTags.SEARCH_FIELD).assertHeightIsAtLeast(SearchBarDefaults.InputFieldHeight)
+    }
+
+    @Test
+    fun `compact rows show the whole title`() = runAniComposeUiTest {
+        setPage()
+        assertTitleWraps("$SOURCE_DMHY.1")
+    }
+
+    @Test
+    fun `table rows show the whole title`() = runAniComposeUiTest {
+        setPage(width = 960, height = 700)
+        assertTitleWraps("$SOURCE_DMHY.1")
+    }
+
+    /**
+     * 夹具里这条的标题在两种版式下都放不下一行: 应换行而不是省略.
+     */
+    private fun AniComposeUiTest.assertTitleWraps(mediaId: String) {
+        val title = TestMediaList.single { it.mediaId == mediaId }.originalTitle
+        waitUntil { onNodeWithTag(BtResourcesPageTestTags.row(mediaId)).isDisplayed() }
+        val layouts = mutableListOf<TextLayoutResult>()
+        onNode(hasText(title) and hasAnyAncestor(hasTestTag(BtResourcesPageTestTags.row(mediaId))), useUnmergedTree = true)
+            .performSemanticsAction(SemanticsActions.GetTextLayoutResult) { it(layouts) }
+        val layout = layouts.single()
+        assertFalse(layout.hasVisualOverflow)
+        assertTrue(layout.lineCount > 1)
     }
 }

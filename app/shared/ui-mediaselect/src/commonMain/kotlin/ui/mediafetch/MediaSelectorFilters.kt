@@ -32,7 +32,6 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
-import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import kotlinx.coroutines.launch
 import me.him188.ani.app.ui.foundation.dialogs.PlatformPopupProperties
 import me.him188.ani.app.ui.lang.Lang
@@ -49,7 +48,8 @@ import org.jetbrains.compose.resources.stringResource
 private inline val maxChipWidth get() = 160.dp
 
 /**
- * 分辨率 / 字幕 / 字幕组三个下拉 chip, 只在 BT 页表格模式使用. 候选值由调用方给出 (BT 页从基础列表自算).
+ * 分辨率 / 字幕 / 字幕组三个下拉 chip, 只在 BT 页表格模式使用. 选中值与候选值由调用方给出 (BT 页的生效偏好与基础列表自算的候选),
+ * 三个 [MediaPreferenceItemState] 只用来写偏好.
  * chip 选中态只靠填充色, 尾部恒为下拉箭头; 菜单首项「不限」= removePreference, 其后各值带 Check.
  *
  * @param singleLine 为 true 时排成一行 (不换行, 由调用方负责横向滚动); 否则 FlowRow.
@@ -59,6 +59,9 @@ fun MediaSelectorFilters(
     resolution: MediaPreferenceItemState<String>,
     subtitleLanguageId: MediaPreferenceItemState<String>,
     alliance: MediaPreferenceItemState<String>,
+    selectedResolution: String?,
+    selectedSubtitleLanguageId: String?,
+    selectedAlliance: String?,
     availableResolutions: List<String>,
     availableSubtitleLanguageIds: List<String>,
     availableAlliances: List<String>,
@@ -71,26 +74,23 @@ fun MediaSelectorFilters(
     val subtitleText = stringResource(Lang.media_selector_filter_subtitle)
     val allianceText = stringResource(Lang.media_selector_filter_alliance)
     val content = @Composable {
-        val resolutionPresentation by resolution.presentationFlow.collectAsStateWithLifecycle()
         MediaSelectorFilterChip(
-            selected = resolutionPresentation.finalSelected,
+            selected = selectedResolution,
             allValues = availableResolutions,
             onSelect = { scope.launch { resolution.prefer(it) } },
             onDeselect = { scope.launch { resolution.removePreference() } },
             name = resolutionText,
         )
-        val subtitleLanguagePresentation by subtitleLanguageId.presentationFlow.collectAsStateWithLifecycle()
         MediaSelectorFilterChip(
-            selected = subtitleLanguagePresentation.finalSelected,
+            selected = selectedSubtitleLanguageId,
             allValues = availableSubtitleLanguageIds,
             onSelect = { scope.launch { subtitleLanguageId.prefer(it) } },
             onDeselect = { scope.launch { subtitleLanguageId.removePreference() } },
             name = subtitleText,
             label = { renderSubtitleLanguage(it, mediaDetailsStrings) },
         )
-        val alliancePresentation by alliance.presentationFlow.collectAsStateWithLifecycle()
         MediaSelectorFilterChip(
-            selected = alliancePresentation.finalSelected,
+            selected = selectedAlliance,
             allValues = availableAlliances,
             onSelect = { scope.launch { alliance.prefer(it) } },
             onDeselect = { scope.launch { alliance.removePreference() } },
@@ -136,8 +136,6 @@ private fun MediaSelectorFilterChip(
     val expandText = stringResource(Lang.media_selector_filter_expand)
     val selectedText = stringResource(Lang.media_selector_filter_selected)
     val anyText = stringResource(Lang.media_selector_bt_filter_any)
-    // 当前偏好不在候选里时追加显示, 让用户能看到并取消它.
-    val shownValues = if (selected != null && selected !in allValues) allValues + selected else allValues
 
     Box(modifier) {
         FilterChip(
@@ -172,7 +170,7 @@ private fun MediaSelectorFilterChip(
                     showDropdown = false
                 },
             )
-            for (item in shownValues) {
+            for (item in allValues) {
                 DropdownMenuItem(
                     text = { Text(label(item), maxLines = 1, overflow = TextOverflow.Ellipsis) },
                     trailingIcon = {

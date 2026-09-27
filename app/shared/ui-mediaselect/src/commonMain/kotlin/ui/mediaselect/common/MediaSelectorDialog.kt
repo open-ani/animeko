@@ -35,7 +35,7 @@ import me.him188.ani.app.ui.foundation.layout.AniWindowInsets
 import me.him188.ani.app.ui.mediaselect.MediaSelectorLayoutDefaults
 
 /**
- * 手动查找 / BT 资源的容器布局. 不是 Dialog: 铺满父容器, 自画 scrim (点击 = [onDismissRequest]),
+ * 播放器侧边栏太矮时手动查找 / BT 资源的容器布局. 不是 Dialog: 铺满父容器, 自画 scrim (点击 = [onDismissRequest]),
  * Surface 上拦截点击不落到底层.
  *
  * `maxHeight < CompactDialogMaxHeight` → Surface 铺满 (RectangleShape, 内容避开 [windowInsets]), content(compact = true);
@@ -98,7 +98,7 @@ fun MediaSelectorDialogLayout(
 /**
  * 窗口级容器: Dialog 内放 [MediaSelectorDialogLayout] (windowInsets = AniWindowInsets.safeDrawing). 返回键 / 点外部都走 [onDismissRequest].
  * `animateTransition = false` 是必须的: CMP 1.11+ 的 Dialog 默认 scale-in 作用于整个内容, fillMaxSize 的 scrim 会从中心缩放出来.
- * 只给宽屏详情页 (BT 居中对话框) 与非全屏状态下的播放器; 全屏播放器用 [MediaSelectorDialogLayout] 直接铺在 rhsSheet 槽.
+ * 只给非全屏状态下的播放器; 全屏播放器用 [MediaSelectorDialogLayout] 直接铺在 rhsSheet 槽.
  */
 @Composable
 fun MediaSelectorDialog(

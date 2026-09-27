@@ -133,6 +133,40 @@ class BtListPresentationTest {
     }
 
     @Test
+    fun `preference values absent from bt candidates are ignored`() {
+        // 选中 WEB 资源后偏好里是线路名与 WEB 的属性, BT 候选里没有这些值.
+        val list = listOf(included(a), included(b))
+        val result = projectBtList(
+            candidates(
+                list,
+                preference = MediaPreference.Empty.copy(alliance = "线路1", resolution = "4K", subtitleLanguageId = "JP"),
+            ),
+            episodeFilterEnabled = true,
+            sourceFilter = null,
+        )
+
+        assertEquals(listOf(a.mediaId, b.mediaId), result.included.map { it.id })
+        assertTrue(result.excluded.isEmpty())
+        assertEquals(null, result.alliance)
+        assertEquals(null, result.resolution)
+        assertEquals(null, result.subtitleLanguageId)
+        assertEquals(0, result.activeFilterCount)
+    }
+
+    @Test
+    fun `media source preference is ignored`() {
+        val list = listOf(included(a), included(b))
+        val result = projectBtList(
+            candidates(list, preference = MediaPreference.Empty.copy(mediaSourceId = "acg")),
+            episodeFilterEnabled = true,
+            sourceFilter = null,
+        )
+
+        assertEquals(listOf(a.mediaId, b.mediaId), result.included.map { it.id })
+        assertTrue(result.excluded.isEmpty())
+    }
+
+    @Test
     fun `source filter narrows rows but not counts or available values`() {
         val list = listOf(included(a), included(b), excluded(c, MediaExclusionReason.MediaWithoutSubtitle))
         val result = projectBtList(candidates(list), episodeFilterEnabled = true, sourceFilter = "acg")

@@ -15,6 +15,8 @@ import androidx.compose.ui.unit.dp
 import kotlinx.serialization.Serializable
 import me.him188.ani.app.data.models.episode.EpisodeInfo
 import me.him188.ani.app.data.models.episode.displayName
+import me.him188.ani.datasources.api.EpisodeSort
+import me.him188.ani.datasources.api.source.MediaFetchRequest
 
 /**
  * 选择器的展示模式. 会话内保持 (放在 EpisodeViewModel), 不持久化, 不改 `MediaSelectorSettings.preferKind`.
@@ -33,12 +35,22 @@ enum class MediaSelectorMode {
 data class WatchingEpisode(
     val sort: String,
     val name: String,
+    /**
+     * 本季集号 (EP), 已格式化. 与 [sort] 相同或未知时为 null, 此时只显示 [sort].
+     * 续季的 sort 接着上一季编号, 而不少数据源按 EP 编号 (从 01 重新开始), 两者不同时都要显示, 用户才能对上资源标题里的集号.
+     */
+    val ep: String? = null,
 )
 
 /**
  * `EpisodeSort.Normal.toString()` 已补零 ("01").
  */
-fun EpisodeInfo.toWatchingEpisode(): WatchingEpisode = WatchingEpisode(sort.toString(), displayName)
+fun EpisodeInfo.toWatchingEpisode(): WatchingEpisode = watchingEpisode(sort, ep, displayName)
+
+fun MediaFetchRequest.toWatchingEpisode(): WatchingEpisode = watchingEpisode(episodeSort, episodeEp, episodeName)
+
+private fun watchingEpisode(sort: EpisodeSort, ep: EpisodeSort?, name: String): WatchingEpisode =
+    WatchingEpisode(sort.toString(), name, ep?.takeIf { it != sort }?.toString())
 
 object MediaSelectorLayoutDefaults {
     /**

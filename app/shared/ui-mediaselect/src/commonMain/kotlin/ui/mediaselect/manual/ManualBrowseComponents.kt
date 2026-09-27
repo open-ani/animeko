@@ -14,7 +14,6 @@ import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.Canvas
-import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
@@ -40,11 +39,9 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.ChevronRight
-import androidx.compose.material.icons.rounded.Search
 import androidx.compose.material3.AlertDialogDefaults
 import androidx.compose.material3.BottomSheetDefaults
 import androidx.compose.material3.Button
-import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
 import androidx.compose.material3.Icon
 import androidx.compose.material3.InputChip
@@ -53,7 +50,6 @@ import androidx.compose.material3.ListItem
 import androidx.compose.material3.ListItemDefaults
 import androidx.compose.material3.LoadingIndicator
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.SearchBarDefaults
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -83,7 +79,6 @@ import me.him188.ani.app.ui.lang.media_selector_manual_play_temporary
 import me.him188.ani.app.ui.lang.media_selector_manual_play_title
 import me.him188.ani.app.ui.lang.media_selector_manual_result_count
 import me.him188.ani.app.ui.lang.media_selector_retry
-import me.him188.ani.app.ui.lang.media_selector_search_hint
 import me.him188.ani.app.ui.settings.rendering.MediaSourceIcon
 import me.him188.ani.datasources.api.source.BrowseChannel
 import me.him188.ani.datasources.api.source.BrowseEpisode
@@ -150,33 +145,6 @@ internal fun ManualSourceChips(
             )
         }
     }
-}
-
-/**
- * 搜索框. 调用方传入的 [modifier] 先固定宽度, 这里再固定 48dp 高, 之后才轮到 [SearchBarDefaults.InputField] 自带的
- * `sizeIn(minWidth = 360.dp, minHeight = 56.dp)`, 侧边栏 268–368dp 的内容宽度才不会被撑破.
- */
-@OptIn(ExperimentalMaterial3Api::class)
-@Composable
-internal fun ManualSearchField(
-    keyword: String,
-    onKeywordChange: (String) -> Unit,
-    onSearch: () -> Unit,
-    modifier: Modifier = Modifier,
-) {
-    SearchBarDefaults.InputField(
-        query = keyword,
-        onQueryChange = onKeywordChange,
-        onSearch = { onSearch() },
-        expanded = false,
-        onExpandedChange = {},
-        modifier = modifier
-            .height(48.dp)
-            .background(MaterialTheme.colorScheme.surfaceContainerHigh, RoundedCornerShape(24.dp))
-            .testTag(ManualBrowsePageTestTags.SEARCH_FIELD),
-        placeholder = { Text(stringResource(Lang.media_selector_search_hint)) },
-        leadingIcon = { Icon(Icons.Rounded.Search, contentDescription = null) },
-    )
 }
 
 /**

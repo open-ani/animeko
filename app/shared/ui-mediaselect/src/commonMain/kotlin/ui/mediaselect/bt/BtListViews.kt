@@ -21,6 +21,7 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -183,7 +184,7 @@ internal fun rememberBtLabelStrings(): BtLabelStrings {
 private val TabularNumbers = TextStyle(fontFeatureSettings = "tnum")
 
 /**
- * 紧凑列表: 56dp 平铺行, 无卡片. 选中行 primaryContainer 背景 + 前导 Check; 排除行降低不透明度.
+ * 紧凑列表: 平铺行, 无卡片; 行内字幕组 / 完整标题 / 标签三行, 标题按宽度换行不截断 (资源的集号、版本、格式都只写在标题里). 选中行 primaryContainer 背景 + 前导 Check; 排除行降低不透明度.
  * [excludedRows] 非空且未 [revealExcluded] 时列表末尾是「显示已被排除的 N 条资源」按钮, 展开后追加排除行.
  *
  * @param isLoading 两个列表都空时: true → 居中加载指示 (占位 presentation / BT 源仍在查询), false → 「没有资源」. 有行时忽略.
@@ -238,11 +239,11 @@ private fun BtCompactRow(
         Modifier
             .testTag(BtResourcesPageTestTags.row(row.id))
             .fillMaxWidth()
-            .height(56.dp)
+            .heightIn(min = 56.dp)
             .background(background)
             .combinedClickable(onClick = { onClick(row) }, onLongClick = { onLongClick(row) })
             .alpha(if (row.isExcluded) 0.6f else 1f)
-            .padding(horizontal = horizontalPadding),
+            .padding(horizontal = horizontalPadding, vertical = 8.dp),
         horizontalArrangement = Arrangement.spacedBy(12.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
@@ -252,13 +253,21 @@ private fun BtCompactRow(
             }
         }
         Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+            val alliance = row.media.properties.alliance
+            if (alliance.isNotBlank()) {
+                Text(
+                    alliance,
+                    color = contentColor,
+                    style = MaterialTheme.typography.bodyMedium,
+                    fontWeight = FontWeight.Medium,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                )
+            }
             Text(
-                row.media.properties.alliance,
+                row.media.originalTitle,
                 color = contentColor,
-                style = MaterialTheme.typography.bodyMedium,
-                fontWeight = FontWeight.Medium,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis,
+                style = MaterialTheme.typography.bodySmall,
             )
             Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                 for (label in strings.compactLabels(row)) {
@@ -293,7 +302,7 @@ private fun BtCompactRow(
 }
 
 /**
- * 表格: 表头 + 40dp 行. 列宽由 [columns] 给定, 标题列占剩余宽度. 排除行 onSurfaceVariant, 标题前加原因标签.
+ * 表格: 表头 + 最小 40dp 的行. 列宽由 [columns] 给定, 标题列占剩余宽度且换行不截断, 其余列单行. 排除行 onSurfaceVariant, 标题前加原因标签.
  *
  * @param isLoading 同 [BtCompactList].
  */
@@ -386,10 +395,10 @@ private fun BtTableRow(
             Modifier
                 .testTag(BtResourcesPageTestTags.row(row.id))
                 .fillMaxWidth()
-                .height(40.dp)
+                .heightIn(min = 40.dp)
                 .background(background)
                 .combinedClickable(onClick = { onClick(row) }, onLongClick = { onLongClick(row) })
-                .padding(horizontal = horizontalPadding),
+                .padding(horizontal = horizontalPadding, vertical = 8.dp),
             horizontalArrangement = Arrangement.spacedBy(12.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
@@ -411,7 +420,7 @@ private fun BtTableRow(
             ) {
                 if (row.isCached) BtInlineLabel(strings.cached)
                 row.exclusion?.let { BtInlineLabel(strings.exclusion(it)) }
-                Text(row.media.originalTitle, style = style, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                Text(row.media.originalTitle, style = style)
             }
             Text(
                 row.media.properties.resolution, Modifier.width(columns.resolution),
