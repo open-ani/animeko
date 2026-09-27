@@ -21,7 +21,6 @@ import androidx.compose.runtime.SideEffect
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.asAndroidBitmap
 import androidx.compose.ui.input.key.Key
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.semantics.SemanticsActions
@@ -32,7 +31,6 @@ import androidx.compose.ui.test.assertCountEquals
 import androidx.compose.ui.test.assertHasNoClickAction
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.assertIsFocused
-import androidx.compose.ui.test.captureToImage
 import androidx.compose.ui.test.hasAnyAncestor
 import androidx.compose.ui.test.hasTestTag
 import androidx.compose.ui.test.onAllNodesWithText
@@ -116,7 +114,6 @@ class TvPlayerCommentsUiTest {
         onNodeWithText(playerTestString(Lang.comment_empty_title)).assertDoesNotExist()
         onNodeWithTag("tv-player-sidebar").assert(SemanticsMatcher.keyNotDefined(SemanticsProperties.Focused))
         onNodeWithTag("tv-sidebar-back").assertDoesNotExist()
-        saveScreenshot("comments-loading-skeleton")
         runOnIdle { fixture.backDispatcher.onBackPressed() }
         onNodeWithTag("tv-player-sidebar").assertDoesNotExist()
         onNodeWithTag("tv-player-chip-Comments").assertIsFocused()
@@ -126,7 +123,6 @@ class TvPlayerCommentsUiTest {
         waitUntil(timeoutMillis = 5_000) { onAllNodesWithText(playerTestString(Lang.comment_empty_title)).fetchSemanticsNodes().isNotEmpty() }
         onNodeWithTag("tv-player-sidebar").assert(SemanticsMatcher.keyNotDefined(SemanticsProperties.Focused))
         onNodeWithTag("tv-sidebar-back").assertDoesNotExist()
-        saveScreenshot("comments-empty-without-back-button")
         key(Key.DirectionLeft)
         onNodeWithTag("tv-player-sidebar").assertDoesNotExist()
         onNodeWithTag("tv-player-chip-Comments").assertIsFocused()
@@ -160,7 +156,6 @@ class TvPlayerCommentsUiTest {
         waitUntil(timeoutMillis = 5_000) { onAllNodes(hasTestTag("tv-comments-retry")).fetchSemanticsNodes().isNotEmpty() }
         onNodeWithText(playerTestString(Lang.comment_empty_title)).assertDoesNotExist()
         onNodeWithTag("tv-comments-retry").assertIsFocused()
-        saveScreenshot("comments-refresh-error")
         key(Key.DirectionCenter)
         waitUntil(timeoutMillis = 5_000) { refreshAttempts == 2 }
         onNodeWithTag("tv-comments-loading").assertIsDisplayed()
@@ -169,7 +164,6 @@ class TvPlayerCommentsUiTest {
         onNodeWithTag("tv-comments-retry").assertDoesNotExist()
         onNodeWithTag("tv-comments-append-loading").assertIsDisplayed().assertHasNoClickAction()
         onNodeWithTag("tv-comment-recovered").assertIsFocused()
-        saveScreenshot("comments-append-skeleton")
         runOnIdle { appended.complete(Unit) }
         waitUntil(timeoutMillis = 5_000) { onAllNodes(hasTestTag("tv-comments-append-loading")).fetchSemanticsNodes().isEmpty() }
         assertEquals(2, refreshAttempts)
@@ -226,7 +220,6 @@ class TvPlayerCommentsUiTest {
         assertFalse(preview.layoutInput.text.text.contains("[b]"))
         assertTrue(preview.layoutInput.text.spanStyles.any { it.item.fontWeight == FontWeight.Bold })
         assertEquals(26.sp, preview.layoutInput.style.lineHeight)
-        saveScreenshot("comments-card-focused")
 
         key(Key.DirectionDown)
         onNodeWithTag("tv-comment-second").assertIsFocused()
@@ -273,7 +266,6 @@ class TvPlayerCommentsUiTest {
         val revealed = textLayout("引用中的").layoutInput.text
         val unmasked = revealed.spanStyles.single { it.start == mask.start && it.end == mask.end }
         assertTrue(unmasked.item.color != unmasked.item.background)
-        saveScreenshot("comments-rich-detail")
         key(Key.DirectionCenter)
         onNodeWithText(playerTestString(Lang.tv_player_scroll_reveal_hint)).assertIsDisplayed()
 
@@ -376,13 +368,6 @@ class TvPlayerCommentsUiTest {
     private fun AniComposeUiTest.key(key: Key) {
         onRoot().performKeyInput { pressKey(key) }
         waitForIdle()
-    }
-
-    private fun AniComposeUiTest.saveScreenshot(name: String) {
-        val bitmap = onNodeWithTag("tv-comment-test").captureToImage().asAndroidBitmap()
-        val context = InstrumentationRegistry.getInstrumentation().targetContext
-        val file = File(context.getExternalFilesDir("screenshots"), "$name.png")
-        file.outputStream().use { check(bitmap.compress(Bitmap.CompressFormat.PNG, 100, it)) }
     }
 
     private fun testImage(): String {

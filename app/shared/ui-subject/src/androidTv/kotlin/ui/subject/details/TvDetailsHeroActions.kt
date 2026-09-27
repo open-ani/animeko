@@ -74,6 +74,8 @@ import me.him188.ani.app.ui.lang.rating_requires_collection
 import me.him188.ani.app.ui.lang.rating_self_score
 import me.him188.ani.app.ui.lang.subject_details_rate
 import me.him188.ani.datasources.api.topic.UnifiedCollectionType
+import me.him188.ani.tv.ui.foundation.semantics.tvBackdropBlur
+import me.him188.ani.tv.ui.foundation.semantics.tvVisualProgress
 import me.him188.ani.tv.ui.foundation.widgets.TvOptionDefaults
 import me.him188.ani.tv.ui.foundation.widgets.tvPlaceholder
 import me.him188.ani.tv.ui.subject.collection.tvCollectionLabel
@@ -145,8 +147,8 @@ fun TvDetailsActionVisual(
         noiseFactor = 0f
         alpha = if (focused) 0f else 1f
     } else Modifier
-    val glowAlpha by animateFloatAsState(
-        if (glowOnFocus && focused && available) TvSubjectDetailsDefaults.PlayGlowAlpha else 0f,
+    val glowProgress by animateFloatAsState(
+        if (glowOnFocus && focused && available) 1f else 0f,
         animationSpec = tween(180),
         label = "play-focus-glow",
     )
@@ -156,13 +158,14 @@ fun TvDetailsActionVisual(
             radius = TvSubjectDetailsDefaults.PlayGlowRadius,
             spread = TvSubjectDetailsDefaults.PlayGlowSpread,
             color = TvSubjectDetailsDefaults.Content,
-            alpha = glowAlpha,
+            alpha = glowProgress * TvSubjectDetailsDefaults.PlayGlowAlpha,
         ),
-    ) else Modifier
+    ).semantics { tvVisualProgress = glowProgress } else Modifier
     Surface(
         modifier = modifier.heightIn(min = TvSubjectDetailsDefaults.ActionHeight)
             .tvPlaceholder(loading, TvSubjectDetailsDefaults.ActionShape, TvSubjectDetailsDefaults.Content)
-            .then(glowModifier),
+            .then(glowModifier)
+            .semantics { tvBackdropBlur = hazeState != null && !focused },
         shape = TvSubjectDetailsDefaults.ActionShape,
         color = when {
             focused -> TvSubjectDetailsDefaults.Content

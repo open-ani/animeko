@@ -8,6 +8,8 @@
  */
 package me.him188.ani.tv.ui.exploration
 
+import androidx.compose.material3.lightColorScheme
+import androidx.compose.ui.graphics.Color
 import me.him188.ani.app.data.models.episode.EpisodeCollectionInfo
 import me.him188.ani.app.data.models.episode.EpisodeInfo
 import me.him188.ani.app.data.models.subject.SubjectAiringKind
@@ -18,6 +20,7 @@ import me.him188.ani.datasources.api.topic.UnifiedCollectionType
 import me.him188.ani.utils.platform.annotations.TestOnly
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertNotEquals
 import kotlin.test.assertNull
 
 @OptIn(TestOnly::class)
@@ -77,5 +80,17 @@ class TvWatchingProgressTest {
         assertNull(unknown.aired)
         assertEquals(0f, unknown.watchedFraction)
         assertEquals(0f, unknown.airedFraction)
+    }
+
+    @Test
+    fun watchedGradientFollowsTheCurrentThemeAndEndsAtItsPrimaryColor() {
+        val purple = lightColorScheme(primary = Color(0xFF6750A4), primaryContainer = Color(0xFFEADDFF))
+        val green = lightColorScheme(primary = Color(0xFF238C45), primaryContainer = Color(0xFFB7F1BF))
+        val purpleGradient = watchedProgressGradient(purple)
+        val greenGradient = watchedProgressGradient(green)
+        assertEquals(purple.primary, purpleGradient.last())
+        assertEquals(green.primary, greenGradient.last())
+        assertNotEquals(purpleGradient.first(), purpleGradient.last(), "The fill must remain a visible gradient")
+        purpleGradient.zip(greenGradient).forEach { (before, after) -> assertNotEquals(before, after) }
     }
 }

@@ -33,10 +33,10 @@ import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.semantics.semantics
-import androidx.compose.ui.semantics.stateDescription
 import com.kmpalette.color
 import com.kmpalette.rememberPaletteState
 import me.him188.ani.app.ui.foundation.AsyncImage
+import me.him188.ani.tv.ui.foundation.semantics.tvVisualProgress
 
 @Composable
 internal fun TvExplorationBackdrop(
@@ -54,7 +54,7 @@ internal fun TvExplorationBackdrop(
     Box(modifier.fillMaxSize().background(TvExplorationDefaults.Background)) {
         Box(
             Modifier.fillMaxSize().testTag("tv-exploration-glow")
-                .semantics { stateDescription = scrollProgress().toString() }
+                .semantics { tvVisualProgress = scrollProgress() }
                 .drawWithCache {
                     val wash = Brush.radialGradient(
                         listOf(glow.copy(alpha = .12f), Color.Transparent),
@@ -81,7 +81,9 @@ internal fun TvExplorationBackdrop(
             }
             Box(Modifier.fillMaxSize().testTag("tv-exploration-backdrop-${subject?.subjectId}")) {
                 AsyncImage(
-                    url, null, Modifier.fillMaxSize().graphicsLayer { scaleX = scale; scaleY = scale },
+                    url, null,
+                    Modifier.fillMaxSize().graphicsLayer { scaleX = scale; scaleY = scale }
+                        .testTag("tv-exploration-backdrop-image"),
                     contentScale = ContentScale.Crop, alignment = BiasAlignment(0f, -.5f), crossfade = false,
                     onSuccess = { bitmap = it.bitmap },
                 )

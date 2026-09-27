@@ -81,6 +81,7 @@ import me.him188.ani.tv.ui.foundation.focus.tvFocusNavSignal
 import me.him188.ani.tv.ui.foundation.layout.rememberTvOptionAnchors
 import me.him188.ani.tv.ui.foundation.layout.tvModalUnderlay
 import me.him188.ani.tv.ui.foundation.layout.tvOptionAnchor
+import me.him188.ani.tv.ui.foundation.semantics.tvVisualAlpha
 import me.him188.ani.tv.ui.foundation.widgets.TvHeroButton
 import me.him188.ani.tv.ui.foundation.widgets.tvShellBackgroundColor
 import me.him188.ani.tv.ui.subject.components.LocalTvDetailsBackdropImage
@@ -247,9 +248,11 @@ private fun TvSubjectDetailsContent(
         animationSpec = tween(180),
         label = "details-info-focus",
     )
-    val surroundingContentModifier = Modifier.graphicsLayer {
-        alpha = 1f - (1f - TvSubjectDetailsDefaults.InformationSurroundingAlpha) * informationFocusProgress
-    }
+    fun surroundingContentAlpha() =
+        1f - (1f - TvSubjectDetailsDefaults.InformationSurroundingAlpha) * informationFocusProgress
+    val surroundingContentModifier = Modifier
+        .graphicsLayer { alpha = surroundingContentAlpha() }
+        .semantics { tvVisualAlpha = surroundingContentAlpha() }
     fun rowFocus(id: String, up: String, down: String? = null) = Modifier
         .tvFocusAnchor(focus, TvDetailsKey(id))
         .tvFocusExit(focus, *listOfNotNull(
