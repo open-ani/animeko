@@ -99,7 +99,7 @@ class EpisodeCollectionSyncerTest {
     )
 
     @Test
-    fun `batches ops by subject and type, then removes them`() = runTest {
+    fun `batches ops by subject and type then removes them`() = runTest {
         val source = FakeSource(
             listOf(
                 op(1, subjectId = 1, episodeId = 11),
