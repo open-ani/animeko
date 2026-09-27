@@ -1943,6 +1943,7 @@ class WithMatrix(
             ramSize = "2048M",
             script = buildString {
                 append("touch $startedMarker; ")
+                append("./ci-helper/prepare-android-emulator.sh; ")
                 append("./gradlew ")
                 append(testRun.gradleTasks("connectedDeviceTest").joinToString(" "))
                 // --continue: 一个模块失败也把其余模块的测试跑完, 最后统一报告.
