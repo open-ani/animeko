@@ -9,7 +9,6 @@
 
 package me.him188.ani.tv.ui.episode
 
-import android.graphics.Bitmap
 import androidx.activity.OnBackPressedDispatcher
 import androidx.activity.compose.LocalOnBackPressedDispatcherOwner
 import androidx.compose.foundation.background
@@ -19,7 +18,6 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.asAndroidBitmap
 import androidx.compose.ui.input.key.Key
 import androidx.compose.ui.semantics.SemanticsProperties
 import androidx.compose.ui.test.SemanticsMatcher
@@ -27,13 +25,11 @@ import androidx.compose.ui.test.assert
 import androidx.compose.ui.test.assertHasNoClickAction
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.assertIsFocused
-import androidx.compose.ui.test.captureToImage
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.onRoot
 import androidx.compose.ui.test.performKeyInput
 import androidx.compose.ui.test.pressKey
-import androidx.test.platform.app.InstrumentationRegistry
 import kotlinx.coroutines.flow.emptyFlow
 import me.him188.ani.app.domain.player.VideoLoadingState
 import me.him188.ani.app.ui.framework.AniComposeUiTest
@@ -58,7 +54,6 @@ import me.him188.ani.tv.ui.watchtogether.TvTogetherIntent
 import me.him188.ani.tv.ui.watchtogether.TvTogetherState
 import org.openani.mediamp.MediaStatus
 import org.openani.mediamp.PlayerState
-import java.io.File
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertTrue
@@ -189,7 +184,6 @@ class TvPlayerSidebarNavigationUiTest {
         onNodeWithTag("tv-danmaku-placeholder-0", useUnmergedTree = true).assertIsFocused().assertHasNoClickAction()
         onNodeWithTag("tv-danmaku-placeholder-1", useUnmergedTree = true).assertIsDisplayed().assertHasNoClickAction()
         onNodeWithTag("tv-danmaku-list-empty").assertDoesNotExist()
-        saveScreenshot("danmaku-loading-skeleton")
         runOnIdle { fixture.backDispatcher.onBackPressed() }
         onNodeWithTag("tv-danmaku-list-button").assertIsFocused()
         key(Key.DirectionCenter)
@@ -433,12 +427,5 @@ class TvPlayerSidebarNavigationUiTest {
     private fun AniComposeUiTest.key(key: Key) {
         onRoot().performKeyInput { pressKey(key) }
         waitForIdle()
-    }
-
-    private fun AniComposeUiTest.saveScreenshot(name: String) {
-        val bitmap = onRoot().captureToImage().asAndroidBitmap()
-        val context = InstrumentationRegistry.getInstrumentation().targetContext
-        val file = File(context.getExternalFilesDir("screenshots"), "$name.png")
-        file.outputStream().use { check(bitmap.compress(Bitmap.CompressFormat.PNG, 100, it)) }
     }
 }

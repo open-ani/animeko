@@ -4,7 +4,6 @@
  */
 package me.him188.ani.tv.ui.main
 
-import android.graphics.Bitmap
 import android.os.SystemClock
 import android.view.MotionEvent
 import androidx.compose.foundation.layout.Box
@@ -18,14 +17,12 @@ import androidx.compose.runtime.setValue
 import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.asAndroidBitmap
 import androidx.compose.ui.input.InputMode
 import androidx.compose.ui.input.key.Key
 import androidx.compose.ui.platform.LocalInputModeManager
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.test.SemanticsMatcher
 import androidx.compose.ui.test.assertIsFocused
-import androidx.compose.ui.test.captureToImage
 import androidx.compose.ui.test.getUnclippedBoundsInRoot
 import androidx.compose.ui.test.hasAnyAncestor
 import androidx.compose.ui.test.hasAnyDescendant
@@ -40,7 +37,6 @@ import androidx.compose.ui.test.pressKey
 import androidx.compose.ui.test.printToString
 import androidx.compose.ui.unit.dp
 import androidx.test.platform.app.InstrumentationRegistry
-import java.io.File
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertTrue
@@ -48,7 +44,6 @@ import kotlin.uuid.Uuid
 import me.him188.ani.app.data.models.preference.ThemeSettings
 import me.him188.ani.app.data.models.user.SelfInfo
 import me.him188.ani.app.ui.framework.AniComposeUiTest
-import me.him188.ani.app.ui.framework.assertScreenshot
 import me.him188.ani.app.ui.framework.runAniComposeUiTest
 import me.him188.ani.tv.ui.foundation.focus.TvFocusKey
 import me.him188.ani.tv.ui.foundation.focus.rememberTvFocusScope
@@ -112,12 +107,10 @@ class TvAccountNavigationUiTest {
         key(Key.DirectionCenter)
         onNodeWithTag("tv-navigation-avatar").assertIsFocused()
         assertEquals(TvShellContent.Schedule, fixture.content)
-        capture("avatar-actions")
 
         key(Key.DirectionUp)
         awaitFocus("tv-navigation-logout")
         assertEquals(before, navigationBounds())
-        capture("logout-focused")
         key(Key.DirectionDown)
         awaitFocus("tv-navigation-avatar")
         key(Key.DirectionDown)
@@ -136,7 +129,6 @@ class TvAccountNavigationUiTest {
         openLogout()
         awaitFocus("tv-logout-cancel")
         assertEquals(0, fixture.logoutCount)
-        capture("confirmation")
         key(Key.Menu)
         onNodeWithTag("tv-logout-cancel").assertIsFocused()
         key(Key.DirectionCenter)
@@ -302,19 +294,6 @@ class TvAccountNavigationUiTest {
             throw AssertionError(
                 "Expected focus: $description\n" + onAllNodes(isRoot()).onLast().printToString(), failure,
             )
-        }
-    }
-
-    private fun AniComposeUiTest.capture(name: String) {
-        mainClock.advanceTimeBy(250)
-        onNodeWithTag("tv-main-shell").assertScreenshot("tv-account/$name")
-        val output = File(
-            InstrumentationRegistry.getInstrumentation().targetContext.getExternalFilesDir(null),
-            "tv-account-$name.png",
-        )
-        output.outputStream().use {
-            onNodeWithTag("tv-main-shell").captureToImage().asAndroidBitmap()
-                .compress(Bitmap.CompressFormat.PNG, 100, it)
         }
     }
 }

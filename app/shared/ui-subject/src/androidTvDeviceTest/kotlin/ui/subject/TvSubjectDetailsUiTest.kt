@@ -4,8 +4,6 @@
  */
 package me.him188.ani.tv.ui.subject
 
-import android.graphics.Bitmap
-import android.os.Build
 import android.view.KeyEvent as AndroidKeyEvent
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.padding
@@ -17,15 +15,13 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.asAndroidBitmap
-import androidx.compose.ui.graphics.asImageBitmap
-import androidx.compose.ui.graphics.toPixelMap
 import androidx.compose.ui.input.key.Key
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalWindowInfo
 import androidx.compose.ui.platform.WindowInfo
 import androidx.compose.ui.semantics.SemanticsActions
 import androidx.compose.ui.semantics.SemanticsProperties
+import androidx.compose.ui.semantics.getOrNull
 import androidx.compose.ui.test.SemanticsMatcher
 import androidx.compose.ui.test.assert
 import androidx.compose.ui.test.assertHasNoClickAction
@@ -40,7 +36,6 @@ import androidx.compose.ui.test.hasAnyDescendant
 import androidx.compose.ui.test.hasAnyAncestor
 import androidx.compose.ui.test.assertTextContains
 import androidx.compose.ui.test.assertTextEquals
-import androidx.compose.ui.test.captureToImage
 import androidx.compose.ui.test.hasSetTextAction
 import androidx.compose.ui.test.hasTestTag
 import androidx.compose.ui.test.isFocused
@@ -94,7 +89,6 @@ import me.him188.ani.app.tools.LocalTimeFormatter
 import me.him188.ani.app.tools.TimeFormatter
 import me.him188.ani.app.ui.foundation.LocalSketch
 import me.him188.ani.app.ui.framework.AniComposeUiTest
-import me.him188.ani.app.ui.framework.assertScreenshot
 import me.him188.ani.app.ui.framework.runAniComposeUiTest
 import me.him188.ani.app.ui.subject.collection.progress.createTestSubjectProgressState
 import me.him188.ani.app.ui.subject.createTestAiringLabelState
@@ -102,11 +96,10 @@ import me.him188.ani.app.ui.subject.episode.list.EpisodeListItem
 import me.him188.ani.datasources.api.EpisodeSort
 import me.him188.ani.datasources.api.PackedDate
 import me.him188.ani.datasources.api.topic.UnifiedCollectionType
+import me.him188.ani.tv.ui.foundation.semantics.TvVisualSemantics
 import me.him188.ani.tv.ui.foundation.theme.AniTvTheme
 import me.him188.ani.tv.ui.foundation.widgets.TvOptionDefaults
 import me.him188.ani.tv.ui.subject.components.TvSubjectDetailsDefaults
-import me.him188.ani.tv.ui.subject.components.LocalTvDetailsBackdropImage
-import me.him188.ani.tv.ui.subject.components.TvDetailsBackdropImage
 import me.him188.ani.tv.ui.subject.presentation.TvSubjectPresentationState
 import me.him188.ani.tv.ui.subject.presentation.TvDetailsPanelKind
 import me.him188.ani.utils.platform.annotations.TestOnly
@@ -114,6 +107,8 @@ import java.io.File
 import java.io.IOException
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertFalse
+import kotlin.test.assertNull
 import kotlin.test.assertTrue
 import kotlin.math.abs
 
@@ -174,7 +169,6 @@ class TvSubjectDetailsUiTest {
         fontScale: Float? = null,
         reference: Boolean = false,
         inset: Int = 0,
-        backdropImage: TvDetailsBackdropImage? = null,
         windowFocused: (() -> Boolean)? = null,
         presentation: TvSubjectPresentationState = TvSubjectPresentationState(),
     ) {
@@ -199,7 +193,6 @@ class TvSubjectDetailsUiTest {
             }
             CompositionLocalProvider(LocalSketch provides sketch,
                 LocalTimeFormatter provides timeFormatter,
-                LocalTvDetailsBackdropImage provides backdropImage,
                 LocalWindowInfo provides window,
                 LocalDensity provides Density(density.density, fontScale ?: density.fontScale)) {
                 AniTvTheme {
@@ -342,50 +335,21 @@ class TvSubjectDetailsUiTest {
     }
 
     @Test fun heroActionsBlurTheirBackdropAndPlayFocusAddsGlow() = runAniComposeUiTest {
-        val pattern = Bitmap.createBitmap(
-            IntArray(960 * 540) { index ->
-                if ((index % 960) / 4 % 2 == 0) 0xFFFFFFFF.toInt() else 0xFF101010.toInt()
-            },
-            960, 540, Bitmap.Config.ARGB_8888,
-        ).asImageBitmap()
-        val backdrop = TvDetailsBackdropImage("test:striped-backdrop", pattern)
-        mount({ TvSubjectDetailsUiState(content = content(), loggedIn = true,
-            images = TvSubjectImages(backdrop = TvBackdropState(backdrop.url))) }, backdropImage = backdrop)
-        val page = onNodeWithTag("tv-subject-details").fetchSemanticsNode().boundsInRoot
+        mount({ TvSubjectDetailsUiState(content = content(), loggedIn = true) })
+        fun action(id: String) = onNodeWithTag("tv-details-$id").fetchSemanticsNode().config
         val play = onNodeWithTag("tv-details-play").fetchSemanticsNode().boundsInRoot
-        val density = page.width / 960f
-        val focused = onNodeWithTag("tv-subject-details").captureToImage().toPixelMap()
         key(Key.DirectionUp)
         onNodeWithTag("tv-details-summary").assertIsFocused()
-        val unfocused = onNodeWithTag("tv-subject-details").captureToImage().toPixelMap()
-        capture("frosted-actions-pattern", "tv-subject-details")
-
-        fun contrast(bounds: Rect, verticalOffset: Float): Float {
-            val y = (bounds.top - page.top + verticalOffset * density).toInt()
-            val start = (bounds.left - page.left + 24 * density).toInt()
-            val end = (bounds.right - page.left - 24 * density).toInt()
-            val values = (start..end).map { unfocused[it, y].red }
-            return values.max() - values.min()
+        for (id in listOf("play", "collection", "rating")) {
+            assertTrue(action(id)[TvVisualSemantics.BackdropBlur], "The $id pill must blur the backdrop behind it")
         }
-        for (action in listOf("play", "collection", "rating")) {
-            val bounds = onNodeWithTag("tv-details-$action").assertIsDisplayed().fetchSemanticsNode().boundsInRoot
-            val backgroundContrast = contrast(bounds, -10f)
-            assertTrue(backgroundContrast > .12f, "The backdrop outside $action must stay sharp")
-            // Haze 在 Android 12 以下没有 RenderEffect, 按钮背景退化为纯色 scrim, 条纹不会被模糊
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
-                assertTrue(contrast(bounds, 4f) < backgroundContrast * .35f,
-                    "The $action background must blur the stripes inside its pill")
-            }
-            assertTrue(contrast(bounds, 20f) > .25f, "The $action foreground must stay crisp")
-        }
-        val haloX = (play.left - page.left - 6 * density).toInt()
-        val haloY = (play.center.y - page.top).toInt()
-        val haloDifference = (-8..8).map { delta ->
-            focused[haloX, haloY + delta].red - unfocused[haloX, haloY + delta].red
-        }.average()
-        assertTrue(haloDifference > .03, "Only the focused play button must emit an outer glow")
+        assertEquals(0f, action("play")[TvVisualSemantics.Progress], "The unfocused play button has no glow")
+        assertNull(action("collection").getOrNull(TvVisualSemantics.Progress))
+        assertNull(action("rating").getOrNull(TvVisualSemantics.Progress))
         key(Key.DirectionDown)
         onNodeWithTag("tv-details-play").assertIsFocused()
+        assertFalse(action("play")[TvVisualSemantics.BackdropBlur], "The focused play pill covers its backdrop")
+        assertEquals(1f, action("play")[TvVisualSemantics.Progress], "The focused play button emits an outer glow")
         assertEquals(play, onNodeWithTag("tv-details-play").fetchSemanticsNode().boundsInRoot,
             "The glow must not change the button bounds")
     }
@@ -405,14 +369,10 @@ class TvSubjectDetailsUiTest {
         assertTrue(card.width / page.width in .41f.. .46f)
         assertTrue(title.bottom < card.top && card.bottom < play.top)
         assertTrue(play.bottom / page.height in .80f.. .90f)
-        capture("overview", "tv-subject-details")
-        capture("description-card-unfocused", "tv-details-summary")
         key(Key.DirectionCenter)
         assertEquals(TvSubjectDetailsIntent.Resume, intents.single())
         key(Key.DirectionUp)
         onNodeWithTag("tv-details-summary").assertIsFocused()
-        capture("overview-description-focus", "tv-subject-details")
-        capture("description-card-focused", "tv-details-summary")
     }
 
     @Test fun episodesResumePlayAndRestoreBetweenHeroCharactersAndAllEpisodes() = runAniComposeUiTest {
@@ -424,7 +384,6 @@ class TvSubjectDetailsUiTest {
         val episode = onNodeWithTag("tv-details-episode:27").fetchSemanticsNode().boundsInRoot
         val characters = onNodeWithTag("tv-details-characters-heading").fetchSemanticsNode().boundsInRoot
         assertTrue(episode.bottom < characters.top, "Episodes must appear above characters")
-        capture("episodes", "tv-subject-details")
         key(Key.DirectionRight)
         awaitFocus("tv-details-episode:28")
         key(Key.DirectionCenter)
@@ -442,7 +401,6 @@ class TvSubjectDetailsUiTest {
         key(Key.DirectionCenter)
         awaitFocus("tv-details-panel-episode:28")
         assertNoDialogWindow()
-        capture("episodes-panel", "tv-details-panel")
         key(Key.DirectionCenter)
         assertEquals(listOf<TvSubjectDetailsIntent>(TvSubjectDetailsIntent.PlayEpisode(28), TvSubjectDetailsIntent.PlayEpisode(28)), intents)
         key(Key.Back)
@@ -519,12 +477,10 @@ class TvSubjectDetailsUiTest {
         val tags = onNodeWithTag("tv-description-tags").fetchSemanticsNode().boundsInRoot
         val body = onNodeWithTag("tv-details-panel-summary-text").fetchSemanticsNode().boundsInRoot
         assertTrue(tags.bottom < body.top, "Tags must stay above the scrollable description")
-        capture("description-top", "tv-details-panel")
         repeat(18) { key(Key.DirectionDown) }
         assertEquals(header, onNodeWithTag("tv-description-title").fetchSemanticsNode().boundsInRoot)
         assertEquals(tags, onNodeWithTag("tv-description-tags").assertIsDisplayed().fetchSemanticsNode().boundsInRoot)
         onNodeWithTag("tv-description-info").assertIsDisplayed()
-        capture("description-bottom", "tv-details-panel")
         key(Key.Back)
         awaitFocus("tv-details-summary")
         key(Key.DirectionDown)
@@ -534,17 +490,14 @@ class TvSubjectDetailsUiTest {
     @Test fun bangumiScoreOpensCommentsAndRestoresItsFocus() = runAniComposeUiTest {
         val intents = mutableListOf<TvSubjectDetailsIntent>()
         mount({ TvSubjectDetailsUiState(content = content(), loggedIn = false) }, { intents += it }, reference = true)
-        capture("bgm-rating-unfocused", "tv-subject-details")
         key(Key.DirectionUp)
         key(Key.DirectionUp)
         awaitFocus("tv-details-bgm-rating")
-        capture("bgm-rating-focused", "tv-subject-details")
         key(Key.DirectionCenter)
         awaitFocus("tv-details-review-status")
         assertNoDialogWindow()
         onNodeWithTag("tv-comments-title").assertIsDisplayed()
         assertTrue(intents.isEmpty())
-        capture("comments", "tv-reviews-page")
         key(Key.Back)
         awaitFocus("tv-details-bgm-rating")
         key(Key.DirectionDown)
@@ -571,7 +524,6 @@ class TvSubjectDetailsUiTest {
         onNodeWithText("未公开的剧情 1", substring = true).assertDoesNotExist()
         val overview = onNodeWithTag("tv-review-overview").fetchSemanticsNode().boundsInRoot
         val header = onNodeWithTag("tv-comments-title").fetchSemanticsNode().boundsInRoot
-        capture("reviews", "tv-reviews-page")
         key(Key.DirectionDown)
         awaitFocus("tv-details-review:review-2")
         val second = onNodeWithTag("tv-details-review:review-2").fetchSemanticsNode().boundsInRoot
@@ -599,7 +551,6 @@ class TvSubjectDetailsUiTest {
         val actions = onNodeWithTag("tv-review-actions").fetchSemanticsNode().boundsInRoot
         val original = onNodeWithTag("tv-details-panel-original").fetchSemanticsNode().boundsInRoot
         assertTrue(original.right <= actions.right, "The two common review actions should fit together")
-        capture("review-reader", "tv-details-panel")
         key(Key.DirectionDown)
         awaitFocus("tv-details-panel-reveal")
         key(Key.DirectionRight)
@@ -637,7 +588,6 @@ class TvSubjectDetailsUiTest {
         val during = onNodeWithTag("tv-details-review:review-2").fetchSemanticsNode().boundsInRoot
         assertTrue(during.center.y < before.center.y && during.center.y > viewport.center.y + 2f,
             "Focus scrolling must pass through intermediate positions")
-        capture("reviews-scroll-in-progress", "tv-reviews-page")
         key(Key.DirectionDown)
         mainClock.autoAdvance = true
         waitForIdle()
@@ -677,7 +627,6 @@ class TvSubjectDetailsUiTest {
         onNodeWithText("隐藏的结局", substring = true, useUnmergedTree = true).assertExists()
         key(Key.DirectionCenter)
         onNodeWithText("隐藏的结局", substring = true, useUnmergedTree = true).assertDoesNotExist()
-        capture("review-actions", "tv-details-panel")
         key(Key.DirectionRight)
         awaitFocus("tv-details-panel-report")
         key(Key.DirectionUp)
@@ -753,7 +702,6 @@ class TvSubjectDetailsUiTest {
         assertAnchoredOverlay(source)
         onNodeWithTag("tv-review-count").assertDoesNotExist()
         key(Key.DirectionRight)
-        capture("review-rating", "tv-details-panel")
         key(Key.Back)
         awaitFocus("tv-details-review-rating")
         assertTrue(scores.isEmpty())
@@ -817,7 +765,6 @@ class TvSubjectDetailsUiTest {
         val viewport = onNodeWithTag("tv-review-list").fetchSemanticsNode().boundsInRoot
         assertTrue(first.positionInRoot.y >= viewport.top && first.positionInRoot.y + first.size.height <= viewport.bottom,
             "The first loading card must stay fully visible")
-        capture("review-loading-skeleton", "tv-reviews-page")
         key(Key.DirectionLeft)
         awaitFocus("tv-details-review-rating")
         runOnIdle {
@@ -874,7 +821,6 @@ class TvSubjectDetailsUiTest {
         key(Key.DirectionLeft)
         awaitFocus("tv-details-review-rating")
         val source = onNodeWithTag("tv-details-review-rating").fetchSemanticsNode().boundsInRoot
-        capture("reviews-large-font", "tv-reviews-page")
         key(Key.DirectionCenter)
         awaitFocus("tv-details-panel-rating-control")
         assertAnchoredOverlay(source)
@@ -891,7 +837,6 @@ class TvSubjectDetailsUiTest {
         val footer = onNodeWithTag("tv-review-actions").fetchSemanticsNode().boundsInRoot
         val action = onNodeWithTag("tv-details-panel-original").fetchSemanticsNode().boundsInRoot
         assertTrue(action.left >= footer.left && action.right <= footer.right)
-        capture("review-actions-large-font", "tv-details-panel")
     }
 
     @Test fun browseHeadingsGrowOnlyForTheFocusedRow() = runAniComposeUiTest {
@@ -906,16 +851,9 @@ class TvSubjectDetailsUiTest {
                 assertEquals(if (section == focused) 26.sp else 16.sp, layouts.single().layoutInput.style.fontSize, section)
             }
         }
-        fun relatedContentBrightness(): Float {
-            // The heading may be inside the viewport's top fade after returning from the footer.
-            // Sample an unfocused card instead, so neither that fade nor focus colors affect opacity.
-            val pixels = onNodeWithTag("tv-details-related:102").captureToImage().toPixelMap()
-            var brightest = 0f
-            for (y in 0 until pixels.height) for (x in 0 until pixels.width) {
-                brightest = maxOf(brightest, pixels[x, y].red)
-            }
-            return brightest
-        }
+        fun relatedContentAlpha() = onNode(
+            SemanticsMatcher.keyIsDefined(TvVisualSemantics.Alpha) and hasAnyDescendant(hasTestTag("tv-details-related:102")),
+        ).fetchSemanticsNode().config[TvVisualSemantics.Alpha]
         assertHeadings()
         key(Key.DirectionDown)
         awaitFocus("tv-details-episode:27")
@@ -931,15 +869,16 @@ class TvSubjectDetailsUiTest {
         key(Key.DirectionDown)
         awaitFocus("tv-details-related:101")
         assertHeadings("related")
-        val normalBrightness = relatedContentBrightness()
+        assertEquals(1f, relatedContentAlpha(), .001f)
         key(Key.DirectionDown)
         awaitFocus("tv-details-info")
         assertHeadings("info")
-        assertTrue(relatedContentBrightness() < normalBrightness * .75f, "Surrounding content must fade while reading information")
+        assertEquals(TvSubjectDetailsDefaults.InformationSurroundingAlpha, relatedContentAlpha(), .001f,
+            "Surrounding content must fade while reading information")
         key(Key.DirectionUp)
         awaitFocus("tv-details-related:101")
         assertHeadings("related")
-        assertTrue(relatedContentBrightness() > normalBrightness * .95f, "Surrounding content must recover after focus leaves information")
+        assertEquals(1f, relatedContentAlpha(), .001f, "Surrounding content must recover after focus leaves information")
         key(Key.DirectionUp)
         awaitFocus("tv-details-staff:1:${PersonPosition.Director}")
         assertHeadings("staff")
@@ -978,8 +917,6 @@ class TvSubjectDetailsUiTest {
         val lastValue = onNodeWithText(details.info.aliases.joinToString(" / "), useUnmergedTree = true)
             .fetchSemanticsNode().boundsInRoot
         assertEquals(lastValue.bottom, information.bottom, 1f, "Information must not own the end padding")
-        capture("information", "tv-subject-details")
-        capture("information-block", "tv-details-info")
         key(Key.DirectionRight)
         key(Key.DirectionLeft)
         key(Key.DirectionDown)
@@ -989,7 +926,6 @@ class TvSubjectDetailsUiTest {
         assertTrue(intents.isEmpty())
         key(Key.DirectionUp)
         awaitFocus("tv-details-related:102")
-        capture("information-related-restored", "tv-subject-details")
         key(Key.DirectionDown)
         awaitFocus("tv-details-info")
         key(Key.Back)
@@ -1004,7 +940,6 @@ class TvSubjectDetailsUiTest {
         assertNoDialogWindow()
         assertAnchoredOverlay(source)
         onNodeWithTag("tv-details-play").assertDoesNotExist()
-        capture("collection-anchored", "tv-details-panel")
         repeat(8) { key(Key.DirectionDown) }
         awaitFocus("tv-details-overlay-trigger")
         key(Key.DirectionDown)
@@ -1027,7 +962,6 @@ class TvSubjectDetailsUiTest {
         onNodeWithTag("tv-details-panel-rating-submit").assertDoesNotExist()
         onNodeWithTag("tv-details-panel-rating-cancel").assertDoesNotExist()
         onNodeWithTag("tv-rating-controls-hint").assertIsDisplayed()
-        capture("rating-anchored-large-font", "tv-details-panel")
         key(Key.DirectionDown)
         awaitFocus("tv-details-overlay-trigger")
         key(Key.DirectionUp)
@@ -1057,14 +991,12 @@ class TvSubjectDetailsUiTest {
         repeat(4) { key(Key.DirectionDown) }
         awaitFocus("tv-details-related:101")
         onNodeWithTag("tv-details-related-loading").assertDoesNotExist()
-        capture("related-loaded-single", "tv-subject-details")
         runOnIdle { related.value = completedPage(emptyList()) }
         awaitFocus("tv-details-relateds-all")
         onNodeWithTag("tv-details-relateds-all").assertIsDisplayed()
         val emptyLayout = mutableListOf<TextLayoutResult>()
         onNodeWithTag("tv-details-relateds-all").performSemanticsAction(SemanticsActions.GetTextLayoutResult) { it(emptyLayout) }
         assertEquals(TvSubjectDetailsDefaults.SecondaryContent, emptyLayout.single().layoutInput.style.color)
-        capture("related-empty", "tv-subject-details")
         onNodeWithTag("tv-details-related-loading").assertDoesNotExist()
         key(Key.DirectionDown)
         awaitFocus("tv-details-info")
@@ -1087,7 +1019,6 @@ class TvSubjectDetailsUiTest {
         }
         val firstTag = tagBounds.getValue("2024年5月")
         val secondRowTag = tagBounds.entries.first { it.value.top >= firstTag.bottom }.key
-        capture("description-wrapped-tags", "tv-details-panel")
         key(Key.DirectionDown)
         awaitFocus("tv-description-tag:$secondRowTag")
         key(Key.DirectionDown)
@@ -1121,7 +1052,6 @@ class TvSubjectDetailsUiTest {
         onNodeWithTag("tv-details-panel-rating-control").assertIsFocused()
         assertTrue(intents.isEmpty())
         onNodeWithTag("tv-rating-description", useUnmergedTree = true).assertTextContains("8", substring = true)
-        capture("rating", "tv-details-panel")
         key(Key.DirectionCenter)
         assertEquals(8, (intents.single() as TvSubjectDetailsIntent.SetScore).score)
         awaitFocus("tv-details-rating")
@@ -1162,8 +1092,6 @@ class TvSubjectDetailsUiTest {
         awaitFocus("tv-details-rating")
         onNodeWithTag("tv-details-rating").assertIsNotEnabled()
         onNodeWithTag("tv-rating-collection-tooltip").assertIsDisplayed()
-        capture("rating-collection-tooltip", "tv-rating-collection-tooltip")
-        captureWindow("rating-collection-tooltip-context")
         key(Key.DirectionCenter)
         assertTrue(intents.isEmpty())
         assertNoDialogWindow()
@@ -1192,14 +1120,11 @@ class TvSubjectDetailsUiTest {
         mainClock.advanceTimeBy(64)
         onNodeWithTag("tv-rating-collection-tooltip").assertExists()
         onNodeWithTag("tv-details-rating").assertIsFocused()
-        captureWindow("tooltip-entering")
         mainClock.advanceTimeBy(240)
-        captureWindow("tooltip-visible")
         key(Key.DirectionLeft)
         mainClock.advanceTimeBy(48)
         onNodeWithTag("tv-rating-collection-tooltip").assertExists()
         onNodeWithTag("tv-details-collection").assertIsFocused()
-        captureWindow("tooltip-exiting")
         mainClock.advanceTimeBy(200)
         onNodeWithTag("tv-rating-collection-tooltip").assertDoesNotExist()
         mainClock.autoAdvance = true
@@ -1215,7 +1140,6 @@ class TvSubjectDetailsUiTest {
             onNodeWithTag("tv-details-panel-heading:$group").performSemanticsAction(SemanticsActions.GetTextLayoutResult) { it(layout) }
             assertEquals(TvOptionDefaults.Content, layout.single().layoutInput.style.color)
         }
-        capture("episode-heading-colors", "tv-details-panel")
     }
 
     @Test fun unratedDraftUsesRoundedAverageAndCancelDiscardsChanges() = runAniComposeUiTest {
@@ -1274,7 +1198,6 @@ class TvSubjectDetailsUiTest {
         assertPending(*UnifiedCollectionType.entries.map { "collection:${it.name}" }.toTypedArray())
         onNodeWithTag("tv-details-panel-collection:DONE").assertIsFocused()
         assertEquals(labelBounds, onNodeWithText(label, useUnmergedTree = true).fetchSemanticsNode().boundsInRoot)
-        capture("collection-pending", "tv-details-panel")
         runOnIdle { state = state.copy(operation = state.operation.copy(busy = false, completed = true,
             error = LoadError.fromException(IOException("offline")))) }
         onNodeWithTag("tv-details-panel-collection:DONE").assertIsEnabled().assertIsFocused()
@@ -1283,11 +1206,9 @@ class TvSubjectDetailsUiTest {
         runOnIdle { state = state.copy(content = state.content!!.copy(collectionType = UnifiedCollectionType.DONE),
             operation = state.operation.copy(busy = false, completed = true, offerMarkAllWatched = true)) }
         awaitFocus("tv-details-panel-mark-all")
-        capture("collection-watched-prompt", "tv-details-panel")
         key(Key.DirectionCenter)
         assertTrue(requests.last() is TvSubjectDetailsIntent.MarkAllWatched)
         assertPending("mark-all", "mark-ignore")
-        capture("collection-watched-pending", "tv-details-panel")
         runOnIdle { state = state.copy(operation = state.operation.copy(busy = false, completed = true)) }
         awaitFocus("tv-details-panel-collection:DONE")
         onNodeWithTag("tv-details-panel-collection:NOT_COLLECTED")
@@ -1298,7 +1219,6 @@ class TvSubjectDetailsUiTest {
         assertEquals(UnifiedCollectionType.NOT_COLLECTED,
             (requests.last() as TvSubjectDetailsIntent.SetCollection).type)
         assertPending("remove-confirm", "remove-cancel")
-        capture("collection-remove-pending", "tv-details-panel")
         runOnIdle { state = state.copy(content = state.content!!.copy(collectionType = UnifiedCollectionType.NOT_COLLECTED),
             operation = state.operation.copy(busy = false, completed = true)) }
         awaitFocus("tv-details-collection")
@@ -1317,7 +1237,6 @@ class TvSubjectDetailsUiTest {
         key(Key.DirectionRight)
         key(Key.DirectionCenter)
         awaitFocus("tv-details-panel-collection:DOING")
-        capture("collection", "tv-details-panel")
         key(Key.DirectionDown)
         onNodeWithTag("tv-details-panel-collection:DONE").assertIsFocused()
         key(Key.DirectionCenter)
@@ -1334,13 +1253,10 @@ class TvSubjectDetailsUiTest {
         awaitFocus("tv-details-character:1")
         key(Key.DirectionRight)
         awaitFocus("tv-details-character:2")
-        capture("characters", "tv-subject-details")
         key(Key.DirectionDown)
         awaitFocus("tv-details-staff:1:${PersonPosition.Director}")
-        capture("staff", "tv-subject-details")
         key(Key.DirectionDown)
         awaitFocus("tv-details-related:101")
-        capture("related", "tv-subject-details")
         key(Key.DirectionCenter)
         assertEquals(TvSubjectDetailsIntent.OpenRelatedSubject(101), intents.single())
         key(Key.Back)
@@ -1384,7 +1300,6 @@ class TvSubjectDetailsUiTest {
             hasAnyAncestor(hasTestTag("tv-details-loading")), useUnmergedTree = true).fetchSemanticsNode().boundsInRoot
         val title = onNodeWithTag("tv-details-title-placeholder").assertIsDisplayed().fetchSemanticsNode().boundsInRoot
         assertTrue(title.top >= onNodeWithTag("tv-subject-details").fetchSemanticsNode().boundsInRoot.top)
-        capture("initial-skeleton", "tv-subject-details")
         key(Key.DirectionCenter)
         assertTrue(intents.isEmpty())
         runOnIdle { state = TvSubjectDetailsUiState(content = content(), loggedIn = true) }
@@ -1410,7 +1325,6 @@ class TvSubjectDetailsUiTest {
                 .contains(SemanticsProperties.ProgressBarRangeInfo), "Loading state of $id")
         }
         listOf("play", "collection", "rating").forEach { assertLoading(it, true) }
-        capture("primary-actions-loading", "tv-subject-details")
         key(Key.DirectionRight)
         awaitFocus("tv-details-collection")
         key(Key.DirectionCenter)
@@ -1430,7 +1344,6 @@ class TvSubjectDetailsUiTest {
         key(Key.DirectionDown)
         awaitFocus("tv-details-all-episodes")
         onNodeWithTag("tv-details-episode-placeholder-0").assertIsDisplayed().assertHasNoClickAction()
-        capture("episodes-loading-actions-ready", "tv-subject-details")
         key(Key.DirectionCenter)
         onNodeWithTag("tv-details-panel").assertDoesNotExist()
         runOnIdle { details = loaded }
@@ -1458,7 +1371,6 @@ class TvSubjectDetailsUiTest {
             hasAnyAncestor(hasTestTag("tv-details-related-loading")), useUnmergedTree = true).fetchSemanticsNodes().first().size
         // The related row is below the viewport; its clipped bounds do not describe the image ratio.
         assertTrue(abs(work.width.toFloat() / work.height - 16f / 9f) < .02f, "Landscape image size: $work")
-        capture("rows-loading-skeleton", "tv-subject-details")
         runOnIdle { characters.value = completedPage(characters()) }
         awaitFocus("tv-details-character:1")
         // An independently loaded row must not take focus from the section just entered.
@@ -1499,12 +1411,10 @@ class TvSubjectDetailsUiTest {
         onNodeWithTag("tv-details-collection").assertIsFocused().assertIsDisplayed()
         key(Key.DirectionRight)
         onNodeWithTag("tv-details-rating").assertIsFocused().assertIsDisplayed()
-        capture("large-font", "tv-subject-details")
         repeat(5) { key(Key.DirectionDown) }
         awaitFocus("tv-details-info")
         onNodeWithText(content().info.aliases.joinToString(" / "), useUnmergedTree = true).assertIsDisplayed()
         assertDetailsEndPaddingAligned("tv-subject-details")
-        capture("information-large-font", "tv-subject-details")
     }
 
     @Test fun holdingBackClosesOnlyOneLayerOnRelease() = runAniComposeUiTest {
@@ -1555,24 +1465,5 @@ class TvSubjectDetailsUiTest {
     private fun AniComposeUiTest.key(key: Key) {
         onAllNodes(isRoot() and hasAnyDescendant(isFocused())).onLast().performKeyInput { pressKey(key) }
         waitForIdle()
-    }
-    private fun AniComposeUiTest.capture(name: String, tag: String) {
-        onNodeWithTag(tag).assertScreenshot("tv-details/$name")
-        val context = InstrumentationRegistry.getInstrumentation().targetContext
-        val output = File(context.getExternalFilesDir(null), "tv-details-$name.png")
-        output.outputStream().use { onNodeWithTag(tag).captureToImage().asAndroidBitmap().compress(Bitmap.CompressFormat.PNG, 100, it) }
-    }
-
-    /** Compose node captures exclude Popup windows; capture the viewport to review the anchor in context. */
-    private fun AniComposeUiTest.captureWindow(name: String) {
-        waitForIdle()
-        val instrumentation = InstrumentationRegistry.getInstrumentation()
-        val screenshot = checkNotNull(instrumentation.uiAutomation.takeScreenshot())
-        try {
-            val output = File(instrumentation.targetContext.getExternalFilesDir(null), "tv-details-$name.png")
-            output.outputStream().use { screenshot.compress(Bitmap.CompressFormat.PNG, 100, it) }
-        } finally {
-            screenshot.recycle()
-        }
     }
 }

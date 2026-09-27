@@ -34,6 +34,7 @@ import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
@@ -81,6 +82,7 @@ import me.him188.ani.tv.ui.foundation.focus.tvFocusNavSignal
 import me.him188.ani.tv.ui.foundation.layout.rememberTvOptionAnchors
 import me.him188.ani.tv.ui.foundation.layout.tvModalUnderlay
 import me.him188.ani.tv.ui.foundation.layout.tvOptionAnchor
+import me.him188.ani.tv.ui.foundation.semantics.tvVisualAlpha
 import me.him188.ani.tv.ui.foundation.widgets.TvHeroButton
 import me.him188.ani.tv.ui.foundation.widgets.tvShellBackgroundColor
 import me.him188.ani.tv.ui.subject.components.LocalTvDetailsBackdropImage
@@ -180,12 +182,13 @@ private fun TvSubjectDetailsContent(
     val charactersState = rememberLazyListState()
     val staffState = rememberLazyListState()
     val relatedState = rememberLazyListState()
-    val rowKeys = mapOf(
-        "episode" to details.episodes.map { "episode:${it.episodeId}" },
+    // Outside composition this reads the snapshot the lazy rows lay out, which can be newer than [rowKeys].
+    fun pagingRowKeys() = mapOf(
         "character" to lists.characters.itemSnapshotList.items.map { "character:${it.character.id}" },
         "staff" to lists.staff.itemSnapshotList.items.map { "staff:${it.personInfo.id}:${it.position}" },
         "related" to lists.related.itemSnapshotList.items.map { "related:${it.subjectId}" },
     )
+    val rowKeys = mapOf("episode" to details.episodes.map { "episode:${it.episodeId}" }) + pagingRowKeys()
     val focus = rememberTvFocusScope()
     focus.Resolver()
     val focusState = rememberTvDetailsFocusState(focus, presentation, mapOf(
@@ -213,10 +216,19 @@ private fun TvSubjectDetailsContent(
         val operation = state.operation
         if (operation.completed && operation.error == null) presentation.complete(operation.requestId, operation.offerMarkAllWatched)
     }
+    var focusNavigation by remember { mutableIntStateOf(focus.userNavGeneration) }
     fun Modifier.anchor(id: String, level: Int): Modifier = this
         .tvFocusAnchor(focus, TvDetailsKey(id))
         .onFocusChanged {
             if (it.hasFocus) {
+                // A paging row can drop the focused card before this page recomposes with the new keys, and
+                // Compose then focuses a nearby card. Keep the removed card so the row restores its neighbour.
+                val previous = presentation.lastFocused
+                val previousRow = pagingRowKeys()[previous.substringBefore(':')]
+                if (id != previous && previousRow != null && previous !in previousRow &&
+                    focus.userNavGeneration == focusNavigation && !focus.isLatestDestination(TvDetailsKey(id))
+                ) return@onFocusChanged
+                focusNavigation = focus.userNavGeneration
                 if (id == "info" && presentation.lastFocused != id) informationReturnTarget = presentation.lastFocused
                 presentation.lastFocused = id
                 if (id.startsWith("episode:")) presentation.lastEpisode = id
@@ -247,9 +259,11 @@ private fun TvSubjectDetailsContent(
         animationSpec = tween(180),
         label = "details-info-focus",
     )
-    val surroundingContentModifier = Modifier.graphicsLayer {
-        alpha = 1f - (1f - TvSubjectDetailsDefaults.InformationSurroundingAlpha) * informationFocusProgress
-    }
+    fun surroundingContentAlpha() =
+        1f - (1f - TvSubjectDetailsDefaults.InformationSurroundingAlpha) * informationFocusProgress
+    val surroundingContentModifier = Modifier
+        .graphicsLayer { alpha = surroundingContentAlpha() }
+        .semantics { tvVisualAlpha = surroundingContentAlpha() }
     fun rowFocus(id: String, up: String, down: String? = null) = Modifier
         .tvFocusAnchor(focus, TvDetailsKey(id))
         .tvFocusExit(focus, *listOfNotNull(
