@@ -2,6 +2,7 @@ package me.him188.ani.app.ui.subject.details.tracking
 
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.test.runTest
 import me.him188.ani.tracking.api.DefaultTrackingRegistry
@@ -13,6 +14,7 @@ import me.him188.ani.tracking.api.TrackingListEntry
 import me.him188.ani.tracking.api.TrackingMedia
 import me.him188.ani.tracking.api.TrackingMediaId
 import me.him188.ani.tracking.api.TrackingProviderId
+import me.him188.ani.tracking.api.TrackingProviderException
 import me.him188.ani.tracking.api.TrackingProviderInfo
 import me.him188.ani.tracking.api.TrackingScoreOption
 import me.him188.ani.tracking.api.TrackingSnapshot
@@ -38,6 +40,15 @@ class TrackingCoordinatorTest {
 
         coordinator.edit(42, TrackingProviderId("third"), TrackingEdit.Status(TrackingStatus.COMPLETED))
         assertEquals(TrackingEdit.Status(TrackingStatus.COMPLETED), sources.last().lastEdit)
+    }
+
+    @Test
+    fun rateLimitedSnapshotExposesRetryDelay() = runTest {
+        val source = FakeSource("anilist", observeFailure = TrackingProviderException.RateLimited(15_100))
+        val card = TrackingCoordinator(DefaultTrackingRegistry(listOf(source)))
+            .observe(42).first { it.single().load is TrackingLoad.RateLimited }.single()
+
+        assertEquals(16, (card.load as TrackingLoad.RateLimited).retryAfterSeconds)
     }
 
     @Test
@@ -79,6 +90,7 @@ class TrackingCoordinatorTest {
         id: String,
         override val capabilities: TrackingSourceCapabilities = TrackingSourceCapabilities(),
         connected: Boolean = true,
+        private val observeFailure: Throwable? = null,
     ) : TrackingSource {
         override val info = TrackingProviderInfo(TrackingProviderId(id), id, "https://example.org")
         override val connection: Flow<TrackingAccountState> = flowOf(
@@ -93,7 +105,9 @@ class TrackingCoordinatorTest {
             TrackingListEntry(TrackingMediaId("42"), TrackingStatus.CURRENT, 1),
         )
 
-        override fun observe(subjectId: Int): Flow<TrackingSnapshot?> = flowOf(snapshot)
+        override fun observe(subjectId: Int): Flow<TrackingSnapshot?> = observeFailure?.let { failure ->
+            flow { throw failure }
+        } ?: flowOf(snapshot)
         override suspend fun bind(subjectId: Int, mediaId: TrackingMediaId): TrackingSnapshot = snapshot
         override suspend fun edit(subjectId: Int, edit: TrackingEdit): TrackingSnapshot {
             lastEdit = edit

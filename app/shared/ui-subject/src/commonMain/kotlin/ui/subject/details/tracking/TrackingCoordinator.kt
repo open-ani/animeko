@@ -14,6 +14,7 @@ import me.him188.ani.tracking.api.TrackingAccountState
 import me.him188.ani.tracking.api.TrackingEdit
 import me.him188.ani.tracking.api.TrackingMedia
 import me.him188.ani.tracking.api.TrackingMediaId
+import me.him188.ani.tracking.api.TrackingProviderException
 import me.him188.ani.tracking.api.TrackingProviderId
 import me.him188.ani.tracking.api.TrackingRegistry
 import me.him188.ani.tracking.api.TrackingSnapshot
@@ -25,6 +26,7 @@ import me.him188.ani.tracking.api.TrackingScoreOption
 sealed interface TrackingLoad {
     data object Loading : TrackingLoad
     data class Ready(val snapshot: TrackingSnapshot?) : TrackingLoad
+    data class RateLimited(val retryAfterSeconds: Int?) : TrackingLoad
     data object Failed : TrackingLoad
 }
 
@@ -38,6 +40,12 @@ data class TrackingCardModel(
     val load: TrackingLoad,
 ) {
     val isTracked: Boolean get() = (load as? TrackingLoad.Ready)?.snapshot?.entry != null
+}
+
+internal fun retryAfterSeconds(millis: Long): Int {
+    val positiveMillis = millis.coerceAtLeast(0)
+    val seconds = positiveMillis / 1_000 + if (positiveMillis % 1_000 == 0L) 0 else 1
+    return seconds.coerceAtLeast(1).coerceAtMost(Int.MAX_VALUE.toLong()).toInt()
 }
 
 class TrackingCoordinator(private val registry: TrackingRegistry) {
@@ -54,7 +62,11 @@ class TrackingCoordinator(private val registry: TrackingRegistry) {
                         .map<TrackingSnapshot?, TrackingLoad> { TrackingLoad.Ready(it) }
                         .catch { failure ->
                             if (failure is CancellationException) throw failure
-                            emit(TrackingLoad.Failed)
+                            if (failure is TrackingProviderException.RateLimited) {
+                                emit(TrackingLoad.RateLimited(failure.retryAfterMillis?.let(::retryAfterSeconds)))
+                            } else {
+                                emit(TrackingLoad.Failed)
+                            }
                         }
                     if (generation == 0) snapshots.onStart { emit(TrackingLoad.Loading) } else snapshots
                 },

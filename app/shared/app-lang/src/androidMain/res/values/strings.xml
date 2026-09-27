@@ -1787,6 +1787,9 @@
     <string name="tracking_error_link_failed">Linking failed. Try again.</string>
     <string name="tracking_error_unlink_failed">Unlink failed. Try again.</string>
     <string name="tracking_error_load_failed">Tracking could not be loaded.</string>
+    <string name="tracking_error_rate_limited">AniList is temporarily rate-limiting requests. Wait %1$d seconds, then repeat your action.</string>
+    <string name="tracking_error_rate_limited_unknown">AniList is temporarily rate-limiting requests. Wait a moment, then try again.</string>
+    <string name="tracking_action_retry">Retry</string>
 
     <!-- Tracking Accounts Settings -->
     <string name="settings_tab_tracking">Tracking accounts</string>

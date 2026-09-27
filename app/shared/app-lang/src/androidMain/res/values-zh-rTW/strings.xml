@@ -1790,6 +1790,9 @@
     <string name="tracking_error_link_failed">關聯失敗，請重試。</string>
     <string name="tracking_error_unlink_failed">解除關聯失敗，請重試。</string>
     <string name="tracking_error_load_failed">無法載入追蹤資訊。</string>
+    <string name="tracking_error_rate_limited">AniList 請求過於頻繁。請等待 %1$d 秒後重試目前操作。</string>
+    <string name="tracking_error_rate_limited_unknown">AniList 請求過於頻繁。請稍候片刻後重試。</string>
+    <string name="tracking_action_retry">重試</string>
 
     <!-- Tracking Accounts Settings -->
     <string name="settings_tab_tracking">追蹤服務</string>

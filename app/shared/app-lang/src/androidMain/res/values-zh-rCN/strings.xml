@@ -1827,6 +1827,9 @@
     <string name="tracking_error_link_failed">关联失败，请重试。</string>
     <string name="tracking_error_unlink_failed">解除关联失败，请重试。</string>
     <string name="tracking_error_load_failed">无法加载追踪信息。</string>
+    <string name="tracking_error_rate_limited">AniList 请求过于频繁。请等待 %1$d 秒后重试当前操作。</string>
+    <string name="tracking_error_rate_limited_unknown">AniList 请求过于频繁。请稍等片刻后重试。</string>
+    <string name="tracking_action_retry">重试</string>
 
     <!-- Tracking Accounts Settings -->
     <string name="settings_tab_tracking">追踪服务</string>

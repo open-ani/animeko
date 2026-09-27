@@ -86,6 +86,7 @@ import me.him188.ani.tracking.api.TrackingEdit
 import me.him188.ani.tracking.api.TrackingMedia
 import me.him188.ani.tracking.api.TrackingMediaId
 import me.him188.ani.tracking.api.TrackingProviderId
+import me.him188.ani.tracking.api.TrackingProviderException
 import me.him188.ani.tracking.api.TrackingRegistry
 import me.him188.ani.tracking.api.TrackingScore
 import me.him188.ani.tracking.api.TrackingSnapshot
@@ -95,6 +96,34 @@ import org.jetbrains.compose.resources.stringResource
 import kotlin.time.Instant
 
 private enum class Field { STATUS, PROGRESS, SCORE, START_DATE, FINISH_DATE }
+
+private sealed interface TrackingUiError {
+    data class Failure(val message: String) : TrackingUiError
+    data class RateLimited(val retryAfterSeconds: Int?) : TrackingUiError
+}
+
+private fun trackingUiError(failure: Throwable, fallbackText: String): TrackingUiError =
+    (failure as? TrackingProviderException.RateLimited)?.let {
+        TrackingUiError.RateLimited(it.retryAfterMillis?.let(::retryAfterSeconds))
+    } ?: TrackingUiError.Failure(fallbackText)
+
+@Composable
+private fun TrackingErrorMessage(error: TrackingUiError, onRetry: (() -> Unit)? = null) {
+    Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+        Text(
+            when (error) {
+                is TrackingUiError.Failure -> error.message
+                is TrackingUiError.RateLimited -> error.retryAfterSeconds?.let {
+                    stringResource(Lang.tracking_error_rate_limited, it)
+                } ?: stringResource(Lang.tracking_error_rate_limited_unknown)
+            },
+            color = MaterialTheme.colorScheme.error,
+        )
+        if (onRetry != null) {
+            TextButton(onClick = onRetry) { Text(stringResource(Lang.tracking_action_retry)) }
+        }
+    }
+}
 
 @Composable
 internal fun TrackingSection(subjectId: Int, modifier: Modifier = Modifier) {
@@ -148,7 +177,7 @@ private fun TrackingSectionContent(subjectId: Int, modifier: Modifier) {
     var searchRevision by remember { mutableStateOf(0) }
     var initialSearchTitle by remember { mutableStateOf("") }
     var busy by remember { mutableStateOf<TrackingProviderId?>(null) }
-    var error by remember { mutableStateOf<String?>(null) }
+    var error by remember { mutableStateOf<TrackingUiError?>(null) }
     var confirm by remember { mutableStateOf<Pair<TrackingProviderId, Boolean>?>(null) }
     var markAllPrompt by remember { mutableStateOf<TrackingProviderId?>(null) }
     val connectedCards = cards.filter {
@@ -170,7 +199,7 @@ private fun TrackingSectionContent(subjectId: Int, modifier: Modifier) {
             error = null
             try { coordinator.edit(subjectId, id, edit); onSuccess() }
             catch (failure: CancellationException) { throw failure }
-            catch (_: Exception) { error = updateFailedText }
+            catch (failure: Exception) { error = trackingUiError(failure, updateFailedText) }
             finally { busy = null }
         }
     }
@@ -193,8 +222,8 @@ private fun TrackingSectionContent(subjectId: Int, modifier: Modifier) {
                 if (requestedRevision == searchRevision && searching == id) results = matches
             }
             catch (failure: CancellationException) { throw failure }
-            catch (_: Exception) {
-                if (requestedRevision == searchRevision && searching == id) error = searchFailedText
+            catch (failure: Exception) {
+                if (requestedRevision == searchRevision && searching == id) error = trackingUiError(failure, searchFailedText)
             }
             finally { busy = null }
         }
@@ -225,7 +254,7 @@ private fun TrackingSectionContent(subjectId: Int, modifier: Modifier) {
                                 busy = card.providerId
                                 try { coordinator.bind(subjectId, card.providerId, mediaId); error = null }
                                 catch (failure: CancellationException) { throw failure }
-                                catch (_: Exception) { error = addFailedText }
+                                catch (failure: Exception) { error = trackingUiError(failure, addFailedText) }
                                 finally { busy = null }
                             }
                         },
@@ -252,7 +281,7 @@ private fun TrackingSectionContent(subjectId: Int, modifier: Modifier) {
                 TextButton(onClick = { showSheet = false; navigator.navigateSettings(SettingsTab.TRACKING) }) {
                     Text(stringResource(Lang.tracking_manage_accounts))
                 }
-                error?.let { Text(it, color = MaterialTheme.colorScheme.error) }
+                error?.let { TrackingErrorMessage(it) }
             }
         }
     }
@@ -285,7 +314,7 @@ private fun TrackingSectionContent(subjectId: Int, modifier: Modifier) {
                                     busy = id
                                     try { coordinator.bind(subjectId, id, media.id); searching = null; error = null }
                                     catch (failure: CancellationException) { throw failure }
-                                    catch (_: Exception) { error = linkFailedText }
+                                    catch (failure: Exception) { error = trackingUiError(failure, linkFailedText) }
                                     finally { busy = null }
                                 }
                             }.padding(12.dp), verticalAlignment = Alignment.CenterVertically,
@@ -298,7 +327,7 @@ private fun TrackingSectionContent(subjectId: Int, modifier: Modifier) {
                             }
                         }
                     }
-                    error?.let { Text(it, color = MaterialTheme.colorScheme.error) }
+                    error?.let { TrackingErrorMessage(it) }
                 }
             }
         }
@@ -348,9 +377,9 @@ private fun TrackingSectionContent(subjectId: Int, modifier: Modifier) {
                 confirm = null
                 if (deleteRemote) runEdit(id, TrackingEdit.DeleteRemoteEntry)
                 else scope.launch {
-                    try { coordinator.unlink(subjectId, id) }
+                    try { coordinator.unlink(subjectId, id); error = null }
                     catch (failure: CancellationException) { throw failure }
-                    catch (_: Exception) { error = unlinkFailedText }
+                    catch (failure: Exception) { error = trackingUiError(failure, unlinkFailedText) }
                 }
             }) {
                 Text(
@@ -428,12 +457,17 @@ private fun TrackingCard(
                 }
             }
             when {
+                card.load is TrackingLoad.RateLimited -> TrackingErrorMessage(
+                    TrackingUiError.RateLimited(card.load.retryAfterSeconds),
+                    onRetry = onRefresh,
+                )
                 card.load is TrackingLoad.Failed ->
                     Text(stringResource(Lang.tracking_error_load_failed), color = MaterialTheme.colorScheme.error)
-                snapshot == null && card.capabilities.needsMatchSearch -> TextButton(onClick = onSearch) { Icon(Icons.Default.Add, null); Text(stringResource(Lang.tracking_card_add_tracking)) }
-                entry == null -> TextButton(onClick = { snapshot?.media?.id?.let(onAdd) ?: onSearch() }) {
-                    Text(stringResource(Lang.tracking_card_add_tracking))
-                }
+                (snapshot == null && card.capabilities.needsMatchSearch) || entry == null ->
+                    TextButton(onClick = { snapshot?.media?.id?.let(onAdd) ?: onSearch() }) {
+                        Icon(Icons.Default.Add, contentDescription = null)
+                        Text(stringResource(Lang.tracking_card_add_tracking))
+                    }
                 else -> {
                     Row(Modifier.fillMaxWidth()) {
                         if (card.capabilities.canEditStatus) TrackingFieldCell(
