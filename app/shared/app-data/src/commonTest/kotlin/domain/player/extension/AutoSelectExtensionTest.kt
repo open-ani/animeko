@@ -346,7 +346,7 @@ class AutoSelectExtensionTest : AbstractPlayerExtensionTest() {
             suite.registerComponent<ReplayBrowseMemoryUseCase> {
                 ReplayBrowseMemoryUseCase { _, _, mediaSelector ->
                     mediaSelector.select(memoryMedia)
-                    ReplayResult.SELECTED_BY_SORT
+                    ReplayResult.SELECTED
                 }
             }
         }

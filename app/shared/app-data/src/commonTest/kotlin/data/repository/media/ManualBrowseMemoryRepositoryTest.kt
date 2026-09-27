@@ -34,7 +34,6 @@ class ManualBrowseMemoryRepositoryTest {
         channelIndex: Int = 0,
         channelName: String? = "线路1",
         episodeIndex: Int = 2,
-        episodeSort: EpisodeSort? = EpisodeSort(3),
         playedAsSort: EpisodeSort = EpisodeSort(3),
     ) = ManualBrowseMemory(
         mediaSourceId = mediaSourceId,
@@ -42,7 +41,6 @@ class ManualBrowseMemoryRepositoryTest {
         channelIndex = channelIndex,
         channelName = channelName,
         episodeIndex = episodeIndex,
-        episodeSort = episodeSort,
         playedAsSort = playedAsSort,
     )
 
@@ -155,14 +153,12 @@ class ManualBrowseMemoryRepositoryTest {
             mapOf(
                 SUBJECT_A to memory(
                     channelName = null,
-                    episodeSort = null,
                     playedAsSort = EpisodeSort(25),
                 ),
                 SUBJECT_B to memory(
                     channelIndex = 3,
                     channelName = "线路4",
                     episodeIndex = 0,
-                    episodeSort = EpisodeSort(1, EpisodeType.SP),
                     playedAsSort = EpisodeSort(1, EpisodeType.SP),
                 ),
             ),
@@ -173,8 +169,7 @@ class ManualBrowseMemoryRepositoryTest {
 
         assertEquals(memories, decoded)
         assertEquals(EpisodeSort(25), decoded.bySubjectId.getValue(SUBJECT_A).playedAsSort)
-        assertNull(decoded.bySubjectId.getValue(SUBJECT_A).episodeSort)
-        assertEquals(EpisodeSort(1, EpisodeType.SP), decoded.bySubjectId.getValue(SUBJECT_B).episodeSort)
+        assertEquals(EpisodeSort(1, EpisodeType.SP), decoded.bySubjectId.getValue(SUBJECT_B).playedAsSort)
     }
 
     @Test

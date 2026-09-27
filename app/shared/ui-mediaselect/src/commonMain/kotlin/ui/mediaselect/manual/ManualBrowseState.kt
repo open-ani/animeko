@@ -115,12 +115,11 @@ data class ManualBrowsePresentation(
      * 用户显式选择 → 否则线路里第一个 episodeSort == target.episodeSort 的下标 → 否则 null.
      */
     val selectedEpisodeIndex: Int?,
-    /**
-     * 确认对话框对应的剧集下标; null = 对话框关闭. 只由用户点击网格 ([ManualBrowseState.selectEpisode]) 置为该下标, 自动预选不打开对话框;
-     * 非 null 时恒等于 [selectedEpisodeIndex]. 关闭对话框 ([ManualBrowseState.dismissConfirm]) 与播放成功都清空它.
-     */
-    val confirmingEpisodeIndex: Int?,
     val target: ManualBrowseTarget?,
+    /**
+     * 「记住选择」开关: 点选剧集播放时是否写浏览记忆 (之后每集按位置自动选择). 全局设置, 不按条目.
+     */
+    val rememberSelection: Boolean,
     /**
      * createMedia → onPlay 进行中, 按钮禁用.
      */
@@ -135,12 +134,6 @@ data class ManualBrowsePresentation(
         get() = (channels as? ManualLoadState.Success)?.value?.getOrNull(selectedChannelIndex)
     val selectedEpisode: BrowseEpisode? get() = selectedEpisodeIndex?.let { selectedChannel?.episodes?.getOrNull(it) }
 
-    /**
-     * 「下一话播放 X」的 X; 没有下一项为 null.
-     */
-    val nextEpisodeName: String?
-        get() = selectedEpisodeIndex?.let { selectedChannel?.episodes?.getOrNull(it + 1)?.name }
-
     companion object {
         val Empty: ManualBrowsePresentation = ManualBrowsePresentation(
             sources = emptyList(),
@@ -151,8 +144,8 @@ data class ManualBrowsePresentation(
             channels = ManualLoadState.Idle,
             selectedChannelIndex = 0,
             selectedEpisodeIndex = null,
-            confirmingEpisodeIndex = null,
             target = null,
+            rememberSelection = true,
             isPlaying = false,
             isPlaceholder = true,
         )
@@ -165,7 +158,7 @@ data class ManualBrowsePresentation(
  * 内部约定 (实现者必须遵守, 测试依赖它):
  * - 组合流 [presentationSource] (combine(browsableSources, target, preferredSourceId, 内部 MutableStateFlow…), 未 stateIn) 是唯一真值;
  *   [presentationFlow] = `presentationSource.stateIn(backgroundScope, WhileSubscribed(5_000), Empty)` 只供 UI 订阅.
- * - 所有动作 (selectSource / searchIfNeeded / search / openSubject / retry / selectChannel / selectEpisode / play) 读取生效源、生效关键字、预选剧集一律 `presentationSource.first()`;
+ * - 所有动作 (selectSource / searchIfNeeded / search / openSubject / retry / selectChannel / play) 读取生效源、生效关键字、预选剧集一律 `presentationSource.first()`;
  *   禁止读 `presentationFlow.value` —— `StateFlow.value` / `first()` 不会拉起 `WhileSubscribed` 的上游, 无 UI 订阅时 (单测、页面首帧) 恒为 Empty, search() 会因 selectedSourceId == null 无操作.
  *   `first()` 会拉起 `browsableSources` (`allInstances` 是 shareIn(Lazily, replay 1), 立即有值) 与 `preferredSourceId` (DataStore / Room 读一次), 延迟可接受.
  *
@@ -175,6 +168,8 @@ data class ManualBrowsePresentation(
  *        `isInteractiveSupported == false` → Failed(captchaUnsupported = true); 否则 `solve(e.request, interactive = true)` 为 Solved 则重试一次同一请求, 否则 Failed.
  * @param target 当前集; VM 从 `episodeSessionFlow.flatMapLatest { it.infoBundleFlow }` 派生.
  * @param preferredSourceId 默认源的 mediaSourceId: `combine(memoryRepo.flow(subjectId), getPreferredWebMediaSource(subjectId)) { m, p -> m?.mediaSourceId ?: p }`.
+ * @param rememberSelection 「记住选择」开关的当前值.
+ * @param onRememberSelectionChange 用户切换开关: 写设置; 关掉时宿主顺带删除本条目已有的浏览记忆. 在 [backgroundScope] 内执行.
  * @param onPlay 把 media 交给当前会话的 MediaSelector: memory != null → `select` 并写记忆; null → `selectTemporarily`. 在 [backgroundScope] 内执行, 不随 UI 作用域取消.
  */
 @Stable
@@ -183,12 +178,15 @@ class ManualBrowseState(
     private val webSessionManager: WebSessionManager,
     target: Flow<ManualBrowseTarget?>,
     preferredSourceId: Flow<String?>,
+    rememberSelection: Flow<Boolean>,
+    private val onRememberSelectionChange: suspend (Boolean) -> Unit,
     private val onPlay: suspend (media: Media, memory: ManualBrowseMemory?) -> Unit,
     private val backgroundScope: CoroutineScope,
 ) {
     private val browsableSources: Flow<List<MediaSourceInstance>> = browsableSources
     private val target: Flow<ManualBrowseTarget?> = target
     private val preferredSourceId: Flow<String?> = preferredSourceId
+    private val rememberSelection: Flow<Boolean> = rememberSelection
 
     /**
      * 一个源最近一次搜索. [keyword] 是发起时的生效关键字 (已 trim); [generation] 取自 [Session.searchGeneration].
@@ -220,10 +218,6 @@ class ManualBrowseState(
         val channels: ManualLoadState<List<BrowseChannel>> = ManualLoadState.Idle,
         val channelIndex: Int = 0,
         val userEpisodeIndex: Int? = null,
-        /**
-         * 见 [ManualBrowsePresentation.confirmingEpisodeIndex]; 与 [userEpisodeIndex] 一起被清空.
-         */
-        val confirmingEpisodeIndex: Int? = null,
         val isPlaying: Boolean = false,
         val searchGeneration: Int = 0,
         val browseGeneration: Int = 0,
@@ -243,8 +237,9 @@ class ManualBrowseState(
         this.browsableSources,
         this.target,
         this.preferredSourceId,
+        this.rememberSelection,
         session,
-    ) { instances, target, preferredId, session ->
+    ) { instances, target, preferredId, rememberSelection, session ->
         val sources = instances.map { ManualBrowseSource(it.instanceId, it.mediaSourceId, it.source.info) }
         val selectedSourceId = session.explicitSourceId?.takeIf { id -> sources.any { it.instanceId == id } }
             ?: sources.firstOrNull { it.mediaSourceId == preferredId }?.instanceId
@@ -257,8 +252,6 @@ class ManualBrowseState(
                     c.episodes.indexOfFirst { it.episodeSort != null && it.episodeSort == t.episodeSort }.takeIf { it >= 0 }
                 }
             }
-        val confirmingEpisodeIndex = session.confirmingEpisodeIndex
-            ?.takeIf { channel != null && it in channel.episodes.indices }
         ManualBrowsePresentation(
             sources = sources,
             selectedSourceId = selectedSourceId,
@@ -268,8 +261,8 @@ class ManualBrowseState(
             channels = session.channels,
             selectedChannelIndex = session.channelIndex,
             selectedEpisodeIndex = selectedEpisodeIndex,
-            confirmingEpisodeIndex = confirmingEpisodeIndex,
             target = target,
+            rememberSelection = rememberSelection,
             isPlaying = session.isPlaying,
         )
     }
@@ -293,7 +286,6 @@ class ManualBrowseState(
                 channels = ManualLoadState.Idle,
                 channelIndex = 0,
                 userEpisodeIndex = null,
-                confirmingEpisodeIndex = null,
                 browseGeneration = it.browseGeneration + 1,
             )
         }
@@ -365,7 +357,6 @@ class ManualBrowseState(
                 channels = ManualLoadState.Loading,
                 channelIndex = 0,
                 userEpisodeIndex = null,
-                confirmingEpisodeIndex = null,
                 browseGeneration = it.browseGeneration + 1,
             )
         }.browseGeneration
@@ -379,7 +370,7 @@ class ManualBrowseState(
             }
             session.update { s ->
                 if (s.browseGeneration == generation) {
-                    s.copy(channels = result, channelIndex = 0, userEpisodeIndex = null, confirmingEpisodeIndex = null)
+                    s.copy(channels = result, channelIndex = 0, userEpisodeIndex = null)
                 } else {
                     s
                 }
@@ -398,7 +389,6 @@ class ManualBrowseState(
                 channels = ManualLoadState.Idle,
                 channelIndex = 0,
                 userEpisodeIndex = null,
-                confirmingEpisodeIndex = null,
                 browseGeneration = it.browseGeneration + 1,
             )
         }
@@ -418,48 +408,40 @@ class ManualBrowseState(
     }
 
     /**
-     * 清空用户剧集选择, 关闭确认对话框.
+     * 清空用户剧集选择.
      */
     fun selectChannel(index: Int) {
-        session.update { it.copy(channelIndex = index, userEpisodeIndex = null, confirmingEpisodeIndex = null) }
+        session.update { it.copy(channelIndex = index, userEpisodeIndex = null) }
     }
 
     /**
-     * 用户点击网格里的一项: 选中它并打开确认对话框.
+     * 切换「记住选择」. 值经 rememberSelection 流回到 presentation.
      */
-    fun selectEpisode(index: Int) {
-        session.update { it.copy(userEpisodeIndex = index, confirmingEpisodeIndex = index) }
+    fun setRememberSelection(remember: Boolean) {
+        backgroundScope.launch { onRememberSelectionChange(remember) }
     }
 
     /**
-     * 关闭确认对话框 (点 scrim / 返回键), 保留剧集选中.
-     */
-    fun dismissConfirm() {
-        session.update { it.copy(confirmingEpisodeIndex = null) }
-    }
-
-    /**
-     * 播放并记住 / 仅临时播放. 要求 selectedSource、openedSubject、selectedChannel、selectedEpisode、target 均非 null, 否则返回 false.
-     * media = source.createMedia(subject, channel.name, episode, target.episodeSort) (两种情况都传当前集 sort); source 从 browsableSources.first() 按 instanceId 取.
-     * remember = true 时 memory = ManualBrowseMemory(source.mediaSourceId, subject, selectedChannelIndex, channel.name, selectedEpisodeIndex,
-     *   episode.episodeSort?.takeUnless { it is EpisodeSort.Unknown }, playedAsSort = target.episodeSort); 否则 null.
+     * 用户点击网格里的第 [episodeIndex] 项: 选中并立即播放. 要求 selectedSource、openedSubject、selectedChannel、该剧集、target 均非 null, 否则返回 false.
+     * media = source.createMedia(subject, channel.name, episode, target.episodeSort) (都传当前集 sort); source 从 browsableSources.first() 按 instanceId 取.
+     * 「记住选择」开着时 memory = ManualBrowseMemory(source.mediaSourceId, subject, selectedChannelIndex, channel.name, episodeIndex,
+     *   playedAsSort = target.episodeSort); 关着时 null (只播这一集).
      * 并发: 已有进行中的播放 (`playJob?.isActive == true` 或拿不到 [playGate]) 时立即返回 null, 本次调用被忽略, 不是失败
      *   (页面作用域被取消后再次点击不能并发两次 select; isPlaying 经 stateIn 到达按钮前的快速双击也落在这里, 页面对 null 不提示).
      *   拿到 gate 后立即 isPlaying = true, 缩短按钮仍可点的窗口; `playJob = backgroundScope.async { onPlay(media, memory) }`,
-     *   isPlaying 由 playJob 的 invokeOnCompletion 置 false (成功时同一次更新清空 confirmingEpisodeIndex), 未 launch 就返回的路径由 finally 置 false.
-     *   `playJob.await()` 成功返回 true 并关闭确认对话框 (页面随后调用 onPlayed 关闭容器), 任何异常返回 false 并保持在当前页, 对话框保持打开.
+     *   isPlaying 由 playJob 的 invokeOnCompletion 置 false, 未 launch 就返回的路径由 finally 置 false.
+     *   `playJob.await()` 成功返回 true (页面随后调用 onPlayed 关闭容器), 任何异常返回 false 并保持在当前页.
      */
-    suspend fun play(remember: Boolean): Boolean? {
+    suspend fun play(episodeIndex: Int): Boolean? {
         if (playJob?.isActive == true || !playGate.tryLock()) return null
         var launched = false
-        session.update { it.copy(isPlaying = true) }
+        session.update { it.copy(userEpisodeIndex = episodeIndex, isPlaying = true) }
         try {
             val presentation = presentationSource.first()
             val source = presentation.selectedSource ?: return false
             val subject = presentation.openedSubject ?: return false
             val channel = presentation.selectedChannel ?: return false
-            val episodeIndex = presentation.selectedEpisodeIndex ?: return false
-            val episode = presentation.selectedEpisode ?: return false
+            val episode = channel.episodes.getOrNull(episodeIndex) ?: return false
             val target = presentation.target ?: return false
             val instance = findInstance(source.instanceId) ?: return false
             val media = try {
@@ -470,14 +452,13 @@ class ManualBrowseState(
                 logger.warn(e) { "ManualBrowseState: createMedia failed for ${episode.url}" }
                 return false
             }
-            val memory = if (remember) {
+            val memory = if (presentation.rememberSelection) {
                 ManualBrowseMemory(
                     mediaSourceId = instance.mediaSourceId,
                     subject = subject,
                     channelIndex = presentation.selectedChannelIndex,
                     channelName = channel.name,
                     episodeIndex = episodeIndex,
-                    episodeSort = episode.episodeSort?.takeUnless { it is EpisodeSort.Unknown },
                     playedAsSort = target.episodeSort,
                 )
             } else {
@@ -486,14 +467,8 @@ class ManualBrowseState(
             val job = backgroundScope.async { onPlay(media, memory) }
             playJob = job
             launched = true
-            job.invokeOnCompletion { cause ->
-                // 成功时在同一次更新里关闭确认对话框, UI 不会看到「已完成但对话框仍开」的中间帧
-                session.update {
-                    it.copy(
-                        isPlaying = false,
-                        confirmingEpisodeIndex = if (cause == null) null else it.confirmingEpisodeIndex,
-                    )
-                }
+            job.invokeOnCompletion {
+                session.update { it.copy(isPlaying = false) }
                 playGate.unlock()
             }
             return try {

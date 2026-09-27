@@ -23,23 +23,18 @@ import me.him188.ani.app.domain.mediasource.instance.MediaSourceInstance
 import me.him188.ani.app.domain.usecase.UseCase
 import me.him188.ani.datasources.api.EpisodeSort
 import me.him188.ani.datasources.api.source.BrowseChannel
-import me.him188.ani.datasources.api.source.BrowseEpisode
 import me.him188.ani.utils.logging.info
 import me.him188.ani.utils.logging.logger
 import me.him188.ani.utils.logging.warn
 import kotlin.coroutines.cancellation.CancellationException
-import kotlin.math.abs
 import kotlin.time.Clock
 import kotlin.time.Duration.Companion.minutes
 import kotlin.time.Duration.Companion.seconds
 import kotlin.time.Instant
 
 enum class ReplayResult {
-    /** 在记住的线路里按记住的集号对应关系找到目标集, 已 [MediaSelector.select] (正式选择, 写偏好). */
-    SELECTED_BY_SORT,
-
-    /** 按位置 (上次第 k 项 → 第 k+1 项, 且目标集 = 上次播放集 + 1) 命中, 已 [MediaSelector.selectTemporarily] (不写偏好). */
-    SELECTED_BY_POSITION,
+    /** 在记住的线路里按位置找到目标集, 已 [MediaSelector.select] (正式选择, 写偏好). */
+    SELECTED,
 
     /** 无记忆 / 源不可用 / 未命中 / 请求失败或超时 / 已有选择: 什么都没做, 交给自动匹配. */
     NOT_FOUND;
@@ -49,7 +44,7 @@ enum class ReplayResult {
 
 /**
  * 切集时先于自动匹配尝试浏览记忆. 调用方保证在同一协程里串行: 返回 [ReplayResult.NOT_FOUND] 才启动自动选择.
- * 返回值只由「是否调用了 select / selectTemporarily」决定; 记忆更新失败不改变返回值.
+ * 返回值只由「是否调用了 select」决定; 记忆更新失败不改变返回值.
  *
  * 语义:
  * 1. `mediaSelector.selected.value != null` → NOT_FOUND, 无副作用 (不调用 browseSubject).
@@ -60,20 +55,15 @@ enum class ReplayResult {
  * 5. 线路: `channels.getOrNull(memory.channelIndex)?.takeIf { it.name == memory.channelName }`
  *    ?: `channels.firstOrNull { it.name == memory.channelName }`; 都找不到 → 线路列表非空说明记忆已结构性失效:
  *    `selected == null` 时 `repository.removeIf(subjectId, memory)` (记忆仍等于本次读到的值时才删除: 用户可能在等待期间已重新「播放并记住」) → NOT_FOUND. 记录实际下标.
- * 6. 剧集按记住的集号对应关系 ([expectedSiteSort]): 上次把站点集号为 a 的项当作第 p 集播放, 目标第 t 集找与 a 同类、编号为 a + (t − p) 的项;
- *    有多项时取离 `memory.episodeIndex + (t − p)` 最近的一项. 命中下标 i →
- *    `media = source.createMedia(memory.subject, channel.name, episodes[i], episodeInfo.sort)` → 再次确认 `selected == null` →
- *    `mediaSelector.select(media)` → 更新记忆 → SELECTED_BY_SORT.
- *    不直接拿目标集号去比: 站点可能把整部 OVA 列作 OVA01、OVA02 接在正片后面, 用户把 OVA01 当第 1 集播放后,
- *    第 2 集直接比集号会命中正片的 02. 记忆的项解析不出集号时对应关系未知, 不按集号找 (同一线路里的正片仍可能对得上号, 但不是用户要的那一项).
- * 7. 否则按位置, 前置守卫: `episodeInfo.sort is EpisodeSort.Normal && memory.playedAsSort is EpisodeSort.Normal
- *    && episodeInfo.sort.number == memory.playedAsSort.number + 1f`; 不满足 → NOT_FOUND.
- *    满足且 `episodes.getOrNull(memory.episodeIndex + 1)` 存在, 且不与对应关系矛盾 (推算得出集号时, 第 k+1 项解析出的集号不能是别的号) →
- *    `createMedia(..., episodeInfo.sort)` → 再次确认 `selected == null` → `selectTemporarily` → 更新记忆 (episodeIndex = k+1, 保持链式) → SELECTED_BY_POSITION.
- * 8. 都没有 → NOT_FOUND (不记入缓存: 记忆结构有效, 只是这一集不存在).
+ * 6. 剧集按位置: 上次把第 k 项当作第 p 集播放, 目标第 t 集取第 k + (t − p) 项; t 与 p 须是同一类编号 (都是正片, 或同一种特殊类型)
+ *    且差为整数, 否则 → NOT_FOUND. 命中下标 i → `media = source.createMedia(memory.subject, channel.name, episodes[i], episodeInfo.sort)` →
+ *    再次确认 `selected == null` → `mediaSelector.select(media)` → 更新记忆 → SELECTED.
+ *    不看数据源解析出的集号: 用户「播放并记住」时确认的就是「这一项是第 p 集, 下一话播放下一项」; 站点集号与条目集号的对应五花八门
+ *    (续季从 01 重新编号, 整部 OVA 条目列作 OVA01、OVA02 接在正片后面), 拿集号去比会命中别的项.
+ * 7. 越界 → NOT_FOUND (不记入缓存: 记忆结构有效, 只是这一集不存在, 站点之后可能更新).
  *
  * 记忆更新: `withContext(NonCancellable) { runCatching { repository.setIf(subjectId, expected = memory, memory.copy(channelIndex = 实际下标, channelName = channel.name,
- *   episodeIndex = i, episodeSort = episodes[i].episodeSort?.takeUnless { it is Unknown }, playedAsSort = episodeInfo.sort)) }.onFailure { log } }`,
+ *   episodeIndex = i, playedAsSort = episodeInfo.sort)) }.onFailure { log } }`,
  *   独立 try/catch, 失败只记日志 (select 已经发生, 返回值必须反映它; 切集也不能把半次写入取消).
  *   比较相等才写 (CAS): 从读记忆到写回之间隔着条目页请求, 用户在这期间「播放并记住」的新记忆必须保留, 不相等只记日志.
  * 所有非 [CancellationException] 的异常 (网络 / BlockedException / UnsupportedOperationException / DataStore) → NOT_FOUND; 不弹验证码.
@@ -133,28 +123,14 @@ class ReplayBrowseMemoryUseCaseImpl(
             val channel = channels[channelIndex]
             val episodes = channel.episodes
 
-            val expected = expectedSiteSort(memory, episodeInfo.sort)
-            val sortIndex = expected?.let { findEpisodeIndex(episodes, it) }
-            if (sortIndex != null) {
-                val media = source.createMedia(memory.subject, channel.name, episodes[sortIndex], episodeInfo.sort)
-                if (mediaSelector.selected.value != null) return ReplayResult.NOT_FOUND
-                mediaSelector.select(media)
-                logger.info { "Replayed browse memory for subject $subjectId by sort ${episodeInfo.sort}: ${media.mediaId}" }
-                updateMemory(subjectId, memory, channelIndex, channel, sortIndex, episodeInfo.sort)
-                return ReplayResult.SELECTED_BY_SORT
-            }
-
-            if (!isNextEpisode(target = episodeInfo.sort, played = memory.playedAsSort)) return ReplayResult.NOT_FOUND
-            val positionIndex = memory.episodeIndex + 1
-            val episode = episodes.getOrNull(positionIndex) ?: return ReplayResult.NOT_FOUND
-            // 推算得出集号却没找到: 第 k+1 项若解析出了集号, 它就不是目标集 (例如 OVA 列表之后的 SP01).
-            if (expected != null && episode.episodeSort.parsedOrNull() != null) return ReplayResult.NOT_FOUND
+            val index = targetIndex(memory, episodeInfo.sort) ?: return ReplayResult.NOT_FOUND
+            val episode = episodes.getOrNull(index) ?: return ReplayResult.NOT_FOUND
             val media = source.createMedia(memory.subject, channel.name, episode, episodeInfo.sort)
             if (mediaSelector.selected.value != null) return ReplayResult.NOT_FOUND
-            mediaSelector.selectTemporarily(media)
-            logger.info { "Replayed browse memory for subject $subjectId by position $positionIndex: ${media.mediaId}" }
-            updateMemory(subjectId, memory, channelIndex, channel, positionIndex, episodeInfo.sort)
-            return ReplayResult.SELECTED_BY_POSITION
+            mediaSelector.select(media)
+            logger.info { "Replayed browse memory for subject $subjectId at index $index as ${episodeInfo.sort}: ${media.mediaId}" }
+            updateMemory(subjectId, memory, channelIndex, channel, index, episodeInfo.sort)
+            return ReplayResult.SELECTED
         } catch (e: CancellationException) {
             throw e
         } catch (e: Exception) {
@@ -164,50 +140,20 @@ class ReplayBrowseMemoryUseCaseImpl(
     }
 
     /**
-     * 目标集在站点上应有的集号: 与记住的项 [like] 同类 (正片, 或同一种特殊类型), 编号为 [number].
-     * [anchor] 是按位置推算的下标, 用于同一线路里有多项同号时挑选.
+     * 目标集在线路里的下标 k + (t − p). 编号类型不同 (正片与 SP) 或差不是整数时算不出, 返回 null.
      */
-    private class ExpectedSiteSort(val like: EpisodeSort, val number: Float, val anchor: Float)
-
-    /**
-     * 按记住的对应关系推算. 站点编号与条目一致 (a = p)、续季从 01 重新编号 (a = 01, p = 13)、
-     * 整部 OVA 条目列作 OVA01… (a = OVA01, p = 01) 都是同一条规则.
-     * 记住的项解析不出编号, 或目标集与上次播放的集不是同一类编号 (正片与 SP) 时推算不了, 返回 null.
-     */
-    private fun expectedSiteSort(memory: ManualBrowseMemory, target: EpisodeSort): ExpectedSiteSort? {
-        val remembered = memory.episodeSort.parsedOrNull() ?: return null
-        val rememberedNumber = remembered.number ?: return null
-        val playedNumber = memory.playedAsSort.number ?: return null
-        val targetNumber = target.number ?: return null
-        if (!sameSeries(memory.playedAsSort, target)) return null
-        val offset = targetNumber - playedNumber
-        return ExpectedSiteSort(remembered, rememberedNumber + offset, memory.episodeIndex + offset)
+    private fun targetIndex(memory: ManualBrowseMemory, target: EpisodeSort): Int? {
+        val played = memory.playedAsSort
+        val sameSeries = when (played) {
+            is EpisodeSort.Normal -> target is EpisodeSort.Normal
+            is EpisodeSort.Special -> target is EpisodeSort.Special && played.type == target.type
+            is EpisodeSort.Unknown -> false
+        }
+        if (!sameSeries) return null
+        val offset = (target.number ?: return null) - (played.number ?: return null)
+        if (offset % 1f != 0f) return null
+        return memory.episodeIndex + offset.toInt()
     }
-
-    private fun findEpisodeIndex(episodes: List<BrowseEpisode>, expected: ExpectedSiteSort): Int? =
-        episodes.indices
-            .filter { i ->
-                val sort = episodes[i].episodeSort.parsedOrNull()
-                sort != null && sameSeries(sort, expected.like) && sort.number == expected.number
-            }
-            .minByOrNull { i -> abs(i - expected.anchor) }
-
-    /**
-     * 同一类编号: 都是正片, 或是同一种特殊类型 (OVA 与 OVA, SP 与 SP).
-     */
-    private fun sameSeries(a: EpisodeSort, b: EpisodeSort): Boolean = when (a) {
-        is EpisodeSort.Normal -> b is EpisodeSort.Normal
-        is EpisodeSort.Special -> b is EpisodeSort.Special && a.type == b.type
-        is EpisodeSort.Unknown -> false
-    }
-
-    private fun EpisodeSort?.parsedOrNull(): EpisodeSort? = this?.takeUnless { it is EpisodeSort.Unknown }
-
-    /**
-     * 按位置回放的守卫: 只有顺序看下一集时, 上次第 k 项的下一项才可信.
-     */
-    private fun isNextEpisode(target: EpisodeSort, played: EpisodeSort): Boolean =
-        target is EpisodeSort.Normal && played is EpisodeSort.Normal && target.number == played.number + 1f
 
     /**
      * select 已经发生, 这里的失败只记日志; 切集取消也不能把半次写入取消.
@@ -230,7 +176,6 @@ class ReplayBrowseMemoryUseCaseImpl(
                         channelIndex = channelIndex,
                         channelName = channel.name,
                         episodeIndex = episodeIndex,
-                        episodeSort = channel.episodes[episodeIndex].episodeSort?.takeUnless { it is EpisodeSort.Unknown },
                         playedAsSort = playedAsSort,
                     ),
                 )

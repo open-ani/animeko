@@ -1257,11 +1257,7 @@
     <string name="media_selector_manual_channels">線路</string>
     <string name="media_selector_manual_default_channel">預設線路</string>
     <string name="media_selector_manual_episodes_count">劇集 %1$d 項</string>
-    <string name="media_selector_manual_play_title">播放「%1$s」</string>
-    <string name="media_selector_manual_play_as">作為第 %1$s 話播放</string>
-    <string name="media_selector_manual_play_as_next">作為第 %1$s 話播放，下一話播放 %2$s</string>
-    <string name="media_selector_manual_play_remember">播放並記住</string>
-    <string name="media_selector_manual_play_temporary">僅臨時播放，不記憶</string>
+    <string name="media_selector_manual_remember_selection">記住選擇</string>
     <string name="media_selector_bt_source_all">全部數據源 %1$d 條</string>
     <string name="media_selector_bt_source_count">%1$d 條</string>
     <string name="media_selector_bt_source_querying">查詢中</string>

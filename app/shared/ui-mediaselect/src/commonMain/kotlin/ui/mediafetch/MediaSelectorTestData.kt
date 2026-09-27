@@ -12,6 +12,7 @@ package me.him188.ani.app.ui.mediafetch
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
 import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.flowOf
 import me.him188.ani.app.data.repository.media.ManualBrowseMemory
 import me.him188.ani.app.domain.media.createTestDefaultMedia
@@ -161,6 +162,7 @@ class TestBrowsableMediaSource(
 
 /**
  * browsableSources = flowOf(listOf(createTestMediaSourceInstance(source))), preferredSourceId = flowOf(null).
+ * 「记住选择」开关由 [rememberSelection] 承载, 切换直接写回它.
  */
 @TestOnly
 fun createTestManualBrowseState(
@@ -169,11 +171,14 @@ fun createTestManualBrowseState(
     target: ManualBrowseTarget? = ManualBrowseTarget(1, "命运石之门", EpisodeSort(25), "25"),
     onPlay: suspend (Media, ManualBrowseMemory?) -> Unit = { _, _ -> },
     webSessionManager: WebSessionManager = createTestWebSessionManager(backgroundScope),
+    rememberSelection: MutableStateFlow<Boolean> = MutableStateFlow(true),
 ): ManualBrowseState = ManualBrowseState(
     browsableSources = flowOf(listOf(createTestMediaSourceInstance(source))),
     webSessionManager = webSessionManager,
     target = flowOf(target),
     preferredSourceId = flowOf(null),
+    rememberSelection = rememberSelection,
+    onRememberSelectionChange = { rememberSelection.value = it },
     onPlay = onPlay,
     backgroundScope = backgroundScope,
 )

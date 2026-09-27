@@ -85,8 +85,8 @@
 5. `DefaultMediaSelector` 对查询到的 `Media` 过滤（先按当前剧集）、排序、选择。
 6. `AutoSelectExtension` 在同一协程里先做本地缓存检查与浏览记忆回放：等本会话的本地缓存源完成，
    本集已有可用缓存则跳过回放；否则调用 `ReplayBrowseMemoryUseCase`，按 `ManualBrowseMemoryRepository`
-   里该条目的记忆 `browseSubject` 记住的条目、在记住的线路里找目标集，`createMedia` 后 `select`（按集号命中）
-   或 `selectTemporarily`（按位置命中），并更新记忆。命中则不进入第 7 步。
+   里该条目的记忆 `browseSubject` 记住的条目、在记住的线路里按位置找目标集，`createMedia` 后 `select`，
+   并更新记忆。命中则不进入第 7 步。
 7. `MediaSelectorAutoSelectUseCaseImpl` 准备配置并启用上次使用的源，调用
    `MediaAutoSelector.select`；后者统一处理缓存、记忆源、WEB 两段超时或 BT 完成条件。
 8. `EpisodeFetchSelectPlayState.LoadMediaOnSelectExtension` 监听 `mediaSelector.selected` 并调用
@@ -112,7 +112,7 @@
   `DroppedFileMedia.MEDIA_SOURCE_ID`，可用 `DroppedFileMedia.isDroppedFile(...)` 判断。
 - `selectTemporarily` 不更新偏好，也不广播 `onChangePreference` / `onPreferWebSource`，因此只对当前
   `EpisodeSession` 有效；切换剧集会创建新的 `MediaSelector`，照常自动选择。
-  手动查找的「仅临时播放」与浏览记忆按位置命中走同一方法。
+  关掉「记住选择」时的手动查找点选走这个方法。
 - 已有选择时 `MediaAutoSelector` 不会覆盖它；用户仍可在数据源选择器中换回其他资源。
 - 拖入的文件播放失败时保留报错：`PlayerLoadErrorHandler.handleError` 不会为它自动换源，也不会拉黑它。
 - 跳过 OP/ED 的上报（`EpisodeViewModel.onClickSkipOpEd`）会忽略拖入的文件。
@@ -145,7 +145,8 @@
       播放器侧边栏（三种模式）；侧边栏太矮时手动查找与 BT 的容器在 `EpisodePage.kt` 的 `sideSheets` 槽内。
     - `app/shared/ui-download/src/commonMain/kotlin/ui/download/subject/SubjectDownloadRequestDialogs.kt`：
       批量下载的选源弹窗（自动匹配 / BT）。
-    - `EpisodeViewModel`：模式、全屏容器可见性、BT 页筛选状态与手动查找状态的持有者；「播放并记住」在此写记忆。
+    - `EpisodeViewModel`：模式、全屏容器可见性、BT 页筛选状态与手动查找状态的持有者；手动查找点选在此写记忆，
+      用户在自动匹配或 BT 页换源、关掉「记住选择」时在此删除记忆。
 - 状态（`app/shared/ui-mediaselect/src/commonMain/kotlin/ui/`）：
     - `mediafetch/MediaSelectorState.kt`：包装 `MediaSelector`，产出自动匹配页与 BT 页的列表投影、
       四维偏好 chip 状态与临时选择。

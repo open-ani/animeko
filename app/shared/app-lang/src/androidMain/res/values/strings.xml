@@ -1247,11 +1247,7 @@
     <string name="media_selector_manual_channels">Channels</string>
     <string name="media_selector_manual_default_channel">Default channel</string>
     <string name="media_selector_manual_episodes_count">Episodes (%1$d)</string>
-    <string name="media_selector_manual_play_title">Play "%1$s"</string>
-    <string name="media_selector_manual_play_as">Play as ep. %1$s</string>
-    <string name="media_selector_manual_play_as_next">Play as ep. %1$s, next: %2$s</string>
-    <string name="media_selector_manual_play_remember">Play and remember</string>
-    <string name="media_selector_manual_play_temporary">Play once, don\'t remember</string>
+    <string name="media_selector_manual_remember_selection">Remember choice</string>
     <string name="media_selector_bt_source_all">All sources (%1$d)</string>
     <string name="media_selector_bt_source_count">%1$d items</string>
     <string name="media_selector_bt_source_querying">Querying</string>

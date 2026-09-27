@@ -53,8 +53,6 @@ import me.him188.ani.app.ui.mediafetch.TestBrowseSubjects
 import me.him188.ani.app.ui.mediafetch.createTestManualBrowseState
 import me.him188.ani.datasources.api.EpisodeSort
 import me.him188.ani.datasources.api.Media
-import me.him188.ani.datasources.api.source.BrowseChannel
-import me.him188.ani.datasources.api.source.BrowseEpisode
 import me.him188.ani.datasources.api.source.BrowseSubject
 import me.him188.ani.datasources.api.source.MediaSource
 import me.him188.ani.datasources.api.topic.EpisodeRange
@@ -90,12 +88,14 @@ class ManualBrowseStateTest {
         target: ManualBrowseTarget? = target12,
         onPlay: suspend (Media, ManualBrowseMemory?) -> Unit = { _, _ -> },
         webSessionManager: WebSessionManager = createTestWebSessionManager(backgroundScope),
+        rememberSelection: MutableStateFlow<Boolean> = MutableStateFlow(true),
     ): ManualBrowseState = createTestManualBrowseState(
         stateScope,
         source = source,
         target = target,
         onPlay = onPlay,
         webSessionManager = webSessionManager,
+        rememberSelection = rememberSelection,
     )
 
     private suspend fun ManualBrowseState.awaitResults(): ManualLoadState<List<BrowseSubject>> =
@@ -127,6 +127,8 @@ class ManualBrowseStateTest {
             webSessionManager = createTestWebSessionManager(backgroundScope),
             target = flowOf(target12),
             preferredSourceId = preferred,
+            rememberSelection = flowOf(true),
+            onRememberSelectionChange = {},
             onPlay = { _, _ -> },
             backgroundScope = stateScope,
         )
@@ -152,6 +154,8 @@ class ManualBrowseStateTest {
             webSessionManager = createTestWebSessionManager(backgroundScope),
             target = flowOf(target12),
             preferredSourceId = flowOf(null),
+            rememberSelection = flowOf(true),
+            onRememberSelectionChange = {},
             onPlay = { _, _ -> },
             backgroundScope = stateScope,
         )
@@ -291,6 +295,8 @@ class ManualBrowseStateTest {
         webSessionManager = createTestWebSessionManager(backgroundScope),
         target = flowOf(target12),
         preferredSourceId = flowOf(null),
+        rememberSelection = flowOf(true),
+        onRememberSelectionChange = {},
         onPlay = { _, _ -> },
         backgroundScope = stateScope,
     )
@@ -481,7 +487,6 @@ class ManualBrowseStateTest {
         assertEquals(0, presentation.selectedChannelIndex)
         assertEquals(11, presentation.selectedEpisodeIndex)
         assertEquals("12", presentation.selectedEpisode?.name)
-        assertEquals("13", presentation.nextEpisodeName)
     }
 
     @Test
@@ -491,7 +496,6 @@ class ManualBrowseStateTest {
         val presentation = state.awaitChannels()
         assertNull(presentation.selectedEpisodeIndex)
         assertNull(presentation.selectedEpisode)
-        assertNull(presentation.nextEpisodeName)
     }
 
     @Test
@@ -500,25 +504,13 @@ class ManualBrowseStateTest {
         state.openSubject(TestBrowseSubjects[0])
         state.awaitChannels()
 
-        state.selectEpisode(3)
+        assertEquals(true, state.play(3))
         assertEquals(3, state.presentationFlow.first { it.selectedEpisodeIndex == 3 }.selectedEpisodeIndex)
 
         state.selectChannel(2)
         val presentation = state.presentationFlow.first { it.selectedChannelIndex == 2 }
         assertEquals("线路3", presentation.selectedChannel?.name)
         assertEquals(11, presentation.selectedEpisodeIndex)
-        assertNull(presentation.nextEpisodeName)
-    }
-
-    @Test
-    fun `last episode has no next episode name`() = runTest {
-        val state = createState(target = target12)
-        state.openSubject(TestBrowseSubjects[0])
-        state.awaitChannels()
-        state.selectEpisode(25)
-        val presentation = state.presentationFlow.first { it.selectedEpisodeIndex == 25 }
-        assertEquals("SP", presentation.selectedEpisode?.name)
-        assertNull(presentation.nextEpisodeName)
     }
 
     @Test
@@ -579,15 +571,13 @@ class ManualBrowseStateTest {
     // region 播放
 
     @Test
-    fun `play with remember passes memory with channel position and sorts`() = runTest {
+    fun `clicking an episode plays it at once and remembers channel and position`() = runTest {
         var captured: Pair<Media, ManualBrowseMemory?>? = null
         val state = createState(target = target25, onPlay = { media, memory -> captured = media to memory })
         state.openSubject(TestBrowseSubjects[0])
         state.awaitChannels()
-        state.selectEpisode(25) // SP
-        state.presentationFlow.first { it.selectedEpisodeIndex == 25 }
 
-        assertEquals(true, state.play(remember = true))
+        assertEquals(true, state.play(25)) // SP
 
         val (media, memory) = assertNotNull(captured)
         assertNotNull(memory)
@@ -596,72 +586,39 @@ class ManualBrowseStateTest {
         assertEquals(0, memory.channelIndex)
         assertEquals("线路1", memory.channelName)
         assertEquals(25, memory.episodeIndex)
-        assertEquals(EpisodeSort("SP"), memory.episodeSort)
         assertEquals(EpisodeSort(25), memory.playedAsSort)
         assertEquals(EpisodeRange.single(EpisodeSort(25)), media.episodeRange)
-        assertFalse(state.presentationFlow.first { !it.isPlaying }.isPlaying)
+        val presentation = state.presentationFlow.first { !it.isPlaying }
+        assertEquals(25, presentation.selectedEpisodeIndex)
     }
 
     @Test
-    fun `play with remember stores null sort for unparsable and missing sorts`() = runTest {
-        val memories = mutableListOf<ManualBrowseMemory?>()
-        val source = TestBrowsableMediaSource(
-            channels = {
-                listOf(
-                    BrowseChannel(
-                        name = null,
-                        episodes = listOf(
-                            BrowseEpisode(name = "壹", url = "https://example.com/1", episodeSort = EpisodeSort("壹")),
-                            BrowseEpisode(name = "OVA", url = "https://example.com/ova", episodeSort = null),
-                        ),
-                    ),
-                )
-            },
-        )
-        val state = createState(source = source, target = target25, onPlay = { _, memory -> memories += memory })
-        state.openSubject(TestBrowseSubjects[0])
-        state.awaitChannels()
-
-        state.selectEpisode(0)
-        state.presentationFlow.first { it.selectedEpisodeIndex == 0 }
-        assertEquals(true, state.play(remember = true))
-        state.selectEpisode(1)
-        state.presentationFlow.first { it.selectedEpisodeIndex == 1 }
-        assertEquals(true, state.play(remember = true))
-
-        assertEquals(2, memories.size)
-        val unknown = assertNotNull(memories[0])
-        assertNull(unknown.episodeSort)
-        assertNull(unknown.channelName)
-        assertEquals(0, unknown.episodeIndex)
-        val missing = assertNotNull(memories[1])
-        assertNull(missing.episodeSort)
-        assertEquals(1, missing.episodeIndex)
-    }
-
-    @Test
-    fun `play without remember passes null memory`() = runTest {
+    fun `remember switch off plays without memory`() = runTest {
         var captured: Pair<Media, ManualBrowseMemory?>? = null
-        val state = createState(target = target12, onPlay = { media, memory -> captured = media to memory })
+        val remember = MutableStateFlow(true)
+        val state = createState(target = target12, onPlay = { media, memory -> captured = media to memory }, rememberSelection = remember)
         state.openSubject(TestBrowseSubjects[0])
         state.awaitChannels()
 
-        assertEquals(true, state.play(remember = false))
+        state.setRememberSelection(false)
+        assertFalse(state.presentationFlow.first { !it.rememberSelection }.rememberSelection)
+        assertFalse(remember.value)
 
+        assertEquals(true, state.play(11))
         val (media, memory) = assertNotNull(captured)
         assertNull(memory)
         assertEquals(EpisodeRange.single(EpisodeSort(12)), media.episodeRange)
     }
 
     @Test
-    fun `play returns false when nothing is selected`() = runTest {
+    fun `play returns false before a subject is opened or for a missing episode`() = runTest {
         var calls = 0
         val state = createState(target = target25, onPlay = { _, _ -> calls++ })
-        assertEquals(false, state.play(remember = true))
+        assertEquals(false, state.play(0))
 
         state.openSubject(TestBrowseSubjects[0])
-        state.awaitChannels() // target 25 不在列表里, 无预选
-        assertEquals(false, state.play(remember = true))
+        state.awaitChannels()
+        assertEquals(false, state.play(999))
         assertEquals(0, calls)
     }
 
@@ -671,9 +628,7 @@ class ManualBrowseStateTest {
         val state = createState(target = null, onPlay = { _, _ -> calls++ })
         state.openSubject(TestBrowseSubjects[0])
         state.awaitChannels()
-        state.selectEpisode(0)
-        state.presentationFlow.first { it.selectedEpisodeIndex == 0 }
-        assertEquals(false, state.play(remember = false))
+        assertEquals(false, state.play(0))
         assertEquals(0, calls)
     }
 
@@ -683,7 +638,7 @@ class ManualBrowseStateTest {
         state.openSubject(TestBrowseSubjects[0])
         state.awaitChannels()
 
-        assertEquals(false, state.play(remember = true))
+        assertEquals(false, state.play(11))
         val presentation = state.presentationFlow.first { !it.isPlaying }
         assertEquals(TestBrowseSubjects[0], presentation.openedSubject)
         assertEquals(11, presentation.selectedEpisodeIndex)
@@ -697,9 +652,9 @@ class ManualBrowseStateTest {
         state.openSubject(TestBrowseSubjects[0])
         state.awaitChannels()
 
-        val first = async { state.play(remember = true) }
+        val first = async { state.play(11) }
         assertTrue(state.presentationFlow.first { it.isPlaying }.isPlaying)
-        assertNull(state.play(remember = false), "已有进行中的播放: 被忽略, 不是失败")
+        assertNull(state.play(3), "已有进行中的播放: 被忽略, 不是失败")
 
         gate.complete(Unit)
         assertEquals(true, first.await())
@@ -707,75 +662,8 @@ class ManualBrowseStateTest {
         assertEquals(1, calls)
 
         // 上一次完成后可以再次播放
-        assertEquals(true, state.play(remember = false))
+        assertEquals(true, state.play(3))
         assertEquals(2, calls)
-    }
-
-    // endregion
-
-    // region 确认对话框
-
-    @Test
-    fun `preselected episode does not open the confirm dialog but a user click does`() = runTest {
-        val state = createState(target = target12)
-        state.openSubject(TestBrowseSubjects[0])
-        val preselected = state.awaitChannels()
-        assertEquals(11, preselected.selectedEpisodeIndex)
-        assertNull(preselected.confirmingEpisodeIndex)
-
-        state.selectEpisode(11)
-        val confirming = state.presentationFlow.first { it.confirmingEpisodeIndex != null }
-        assertEquals(11, confirming.confirmingEpisodeIndex)
-        assertEquals(11, confirming.selectedEpisodeIndex)
-    }
-
-    @Test
-    fun `dismissConfirm closes the dialog and keeps the selection`() = runTest {
-        val state = createState(target = target25)
-        state.openSubject(TestBrowseSubjects[0])
-        state.awaitChannels()
-        state.selectEpisode(3)
-        state.presentationFlow.first { it.confirmingEpisodeIndex == 3 }
-
-        state.dismissConfirm()
-        val presentation = state.presentationFlow.first { it.confirmingEpisodeIndex == null }
-        assertEquals(3, presentation.selectedEpisodeIndex)
-    }
-
-    @Test
-    fun `switching channel closes the dialog together with the user selection`() = runTest {
-        val state = createState(target = target25)
-        state.openSubject(TestBrowseSubjects[0])
-        state.awaitChannels()
-        state.selectEpisode(3)
-        state.presentationFlow.first { it.confirmingEpisodeIndex == 3 }
-
-        state.selectChannel(1)
-        val presentation = state.presentationFlow.first { it.selectedChannelIndex == 1 }
-        assertNull(presentation.confirmingEpisodeIndex)
-        assertNull(presentation.selectedEpisodeIndex)
-    }
-
-    @Test
-    fun `successful play closes the dialog and a failed play keeps it open`() = runTest {
-        var fail = true
-        val state = createState(
-            target = target12,
-            onPlay = { _, _ -> if (fail) throw IllegalStateException("select failed") },
-        )
-        state.openSubject(TestBrowseSubjects[0])
-        state.awaitChannels()
-        state.selectEpisode(11)
-        state.presentationFlow.first { it.confirmingEpisodeIndex == 11 }
-
-        assertEquals(false, state.play(remember = true))
-        assertEquals(11, state.presentationFlow.first { !it.isPlaying }.confirmingEpisodeIndex)
-
-        fail = false
-        assertEquals(true, state.play(remember = true))
-        val closed = state.presentationFlow.first { it.confirmingEpisodeIndex == null }
-        assertFalse(closed.isPlaying)
-        assertEquals(11, closed.selectedEpisodeIndex)
     }
 
     // endregion

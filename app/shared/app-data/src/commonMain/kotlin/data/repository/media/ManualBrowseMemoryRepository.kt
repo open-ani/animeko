@@ -27,9 +27,8 @@ import me.him188.ani.datasources.api.source.BrowseSubject
  * @property channelIndex 线路在 `browseSubject` 返回列表中的下标; 回放时优先按下标且要求 [channelName] 一致.
  * @property channelName 线路标识 [BrowseChannel.name], 站点无线路概念时为 null; 下标失效时按它兜底.
  * @property episodeIndex 上次选中剧集在线路剧集列表中的位置 k.
- * @property episodeSort 上次选中剧集由数据源解析出的集号; `EpisodeSort.Unknown` 视为解析不出, 存为 null.
- * @property playedAsSort 上次把该项当作条目的哪一集播放 (写入时的当前集 `EpisodeInfo.sort`).
- *   按位置回放只在目标集恰好是它的下一集时才成立, 否则任意集打开、跳集、倒退都会把第 k+1 项当成目标集播放.
+ * @property playedAsSort 上次把该项当作条目的哪一集播放 (写入时的当前集 `EpisodeInfo.sort`) p. 回放第 t 集取第 k + (t − p) 项.
+ *   不记数据源解析出的集号: 回放只按位置, 站点集号与条目集号的对应关系靠这一对 (k, p) 表达.
  */
 @Serializable
 data class ManualBrowseMemory(
@@ -38,7 +37,6 @@ data class ManualBrowseMemory(
     val channelIndex: Int,
     val channelName: String?,
     val episodeIndex: Int,
-    val episodeSort: EpisodeSort? = null,
     val playedAsSort: EpisodeSort,
 )
 

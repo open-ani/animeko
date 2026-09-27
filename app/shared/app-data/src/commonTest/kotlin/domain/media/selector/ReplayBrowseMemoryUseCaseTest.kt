@@ -139,213 +139,107 @@ class ReplayBrowseMemoryUseCaseTest {
         if (memory != null) it.repository.set(SUBJECT_ID, memory)
     }
 
-    // region 集号命中
-
-    @Test
-    fun `sort hit selects formally and updates memory`() = runSimpleMediaSelectorTestSuite {
-        initSubject("孤独摇滚")
-        val fixture = fixture(memory = memory(episodeIndex = 2, episodeSort = EpisodeSort(3), playedAsSort = EpisodeSort(3)))
-
-        lateinit var result: ReplayResult
-        val collected = selector.collectEvents {
-            // 跳集看第 7 话: 位置守卫不满足, 但集号能命中
-            result = fixture.useCase(SUBJECT_ID, episodeInfo(7), selector)
-        }
-
-        assertEquals(ReplayResult.SELECTED_BY_SORT, result)
-        val media = fixture.source.createdMedia.single()
-        assertSame(media, selector.selected.value)
-        assertEquals(EpisodeRange.single(EpisodeSort(7)), media.episodeRange)
-        assertEquals(1, collected.onChangePreference.size, "正式选择写偏好")
-        assertSame(media, collected.onSelect.single().event.media)
-        assertEquals(
-            memory(episodeIndex = 6, episodeSort = EpisodeSort(7), playedAsSort = EpisodeSort(7)),
-            fixture.repository.get(SUBJECT_ID),
-        )
-    }
-
-    @Test
-    fun `sequel renumbered from 1 follows the remembered offset`() = runSimpleMediaSelectorTestSuite {
-        initSubject("孤独摇滚 第二季")
-        // 条目服务的集号从 13 开始, 站点从 01 重新编号: 上次把站点 01 当第 13 话播放
-        val fixture = fixture(memory = memory(episodeIndex = 0, episodeSort = EpisodeSort(1), playedAsSort = EpisodeSort(13)))
-
-        val result = fixture.useCase(SUBJECT_ID, episodeInfo(sort = 14, ep = 2), selector)
-
-        assertEquals(ReplayResult.SELECTED_BY_SORT, result)
-        val media = fixture.source.createdMedia.single()
-        assertSame(media, selector.selected.value)
-        assertEquals("https://example.com/play/$CHANNEL_1/1", media.originalUrl)
-        assertEquals(EpisodeRange.single(EpisodeSort(14)), media.episodeRange)
-        assertEquals(
-            memory(episodeIndex = 1, episodeSort = EpisodeSort(2), playedAsSort = EpisodeSort(14)),
-            fixture.repository.get(SUBJECT_ID),
-        )
-    }
-
-    /** 站点把整部 OVA 条目列在正片后面: 01..12, OVA01, OVA02, OVA03. */
-    private fun ovaAfterMainSeries(ova: List<EpisodeSort?>) = listOf(channel(CHANNEL_1, numberedSorts(12) + ova))
-
-    private val ovaSorts: List<EpisodeSort> = listOf(EpisodeSort("OVA01"), EpisodeSort("OVA02"), EpisodeSort("OVA03"))
-
-    @Test
-    fun `ova subject listed after the main series continues with the next ova`() = runSimpleMediaSelectorTestSuite {
-        initSubject("孤独摇滚 OVA")
-        val source = FakeBrowsableSource().apply { channels = ovaAfterMainSeries(ovaSorts) }
-        // 上次把 OVA01 当第 01 话播放
-        val fixture = fixture(source = source, memory = memory(episodeIndex = 12, episodeSort = ovaSorts[0], playedAsSort = EpisodeSort(1)))
-
-        val result = fixture.useCase(SUBJECT_ID, episodeInfo(2), selector)
-
-        assertEquals(ReplayResult.SELECTED_BY_SORT, result)
-        val media = source.createdMedia.single()
-        assertEquals("https://example.com/play/$CHANNEL_1/13", media.originalUrl, "OVA02, 不是正片的 02")
-        assertEquals(EpisodeRange.single(EpisodeSort(2)), media.episodeRange)
-        assertEquals(
-            memory(episodeIndex = 13, episodeSort = ovaSorts[1], playedAsSort = EpisodeSort(2)),
-            fixture.repository.get(SUBJECT_ID),
-        )
-
-        // 跳到第 03 话也按对应关系找到 OVA03
-        selector.unselect()
-        assertEquals(ReplayResult.SELECTED_BY_SORT, fixture.useCase(SUBJECT_ID, episodeInfo(3), selector))
-        assertEquals("https://example.com/play/$CHANNEL_1/14", assertNotNull(selector.selected.value).originalUrl)
-    }
-
-    @Test
-    fun `same numbers in one channel pick the one near the remembered position`() = runSimpleMediaSelectorTestSuite {
-        initSubject("孤独摇滚 OVA")
-        // 站点的集号正则把 OVA01 也解析成 01: 同一线路里 02 出现两次
-        val source = FakeBrowsableSource().apply { channels = ovaAfterMainSeries(numberedSorts(3)) }
-        val fixture = fixture(source = source, memory = memory(episodeIndex = 12, episodeSort = EpisodeSort(1), playedAsSort = EpisodeSort(1)))
-
-        assertEquals(ReplayResult.SELECTED_BY_SORT, fixture.useCase(SUBJECT_ID, episodeInfo(2), selector))
-        assertEquals("https://example.com/play/$CHANNEL_1/13", assertNotNull(selector.selected.value).originalUrl)
-    }
-
-    @Test
-    fun `position fallback rejects a next item that contradicts the mapping`() = runSimpleMediaSelectorTestSuite {
-        initSubject("孤独摇滚 OVA")
-        // OVA 只有两集, 后面接着 SP01
-        val source = FakeBrowsableSource().apply {
-            channels = ovaAfterMainSeries(ovaSorts.take(2) + EpisodeSort(1, EpisodeType.SP))
-        }
-        val fixture = fixture(source = source, memory = memory(episodeIndex = 13, episodeSort = ovaSorts[1], playedAsSort = EpisodeSort(2)))
-
-        assertEquals(ReplayResult.NOT_FOUND, fixture.useCase(SUBJECT_ID, episodeInfo(3), selector))
-        assertNull(selector.selected.value)
-        assertTrue(source.createdMedia.isEmpty())
-    }
-
-    @Test
-    fun `unparsable remembered item never matches by sort`() = runSimpleMediaSelectorTestSuite {
-        initSubject("孤独摇滚 OVA")
-        // 正片能解析出集号, OVA 解析不出: 上次选的是 OVA 上篇, 对应关系未知, 跳集时不能按集号命中正片
-        val source = FakeBrowsableSource().apply { channels = ovaAfterMainSeries(listOf(null, null)) }
-        val fixture = fixture(source = source, memory = memory(episodeIndex = 12, episodeSort = null, playedAsSort = EpisodeSort(1)))
-
-        assertEquals(ReplayResult.NOT_FOUND, fixture.useCase(SUBJECT_ID, episodeInfo(5), selector))
-        assertTrue(source.createdMedia.isEmpty())
-
-        // 看下一集仍按位置接上 OVA 下篇
-        assertEquals(ReplayResult.SELECTED_BY_POSITION, fixture.useCase(SUBJECT_ID, episodeInfo(2), selector))
-        assertEquals("https://example.com/play/$CHANNEL_1/13", assertNotNull(selector.selected.value).originalUrl)
-    }
-
-    @Test
-    fun `unparsable sorts never match even when the target is unparsable too`() = runSimpleMediaSelectorTestSuite {
-        initSubject("孤独摇滚")
-        val source = FakeBrowsableSource().apply {
-            channels = listOf(channel(CHANNEL_1, listOf(EpisodeSort("第一话"), EpisodeSort("第二话"), EpisodeSort("第三话"))))
-        }
-        val fixture = fixture(source = source, memory = memory(episodeIndex = 0, episodeSort = null, playedAsSort = EpisodeSort(1)))
-
-        val result = fixture.useCase(SUBJECT_ID, EpisodeInfo.Empty.copy(episodeId = 1, sort = EpisodeSort("第三话")), selector)
-
-        assertEquals(ReplayResult.NOT_FOUND, result)
-        assertNull(selector.selected.value)
-        assertTrue(source.createdMedia.isEmpty())
-    }
-
-    // endregion
-
     // region 按位置
 
     @Test
-    fun `position hit selects temporarily and chains memory`() = runSimpleMediaSelectorTestSuite {
+    fun `next episode takes the next item formally and chains memory`() = runSimpleMediaSelectorTestSuite {
         initSubject("孤独摇滚")
-        val source = FakeBrowsableSource().apply { channels = listOf(channel(CHANNEL_1, unparsableSorts(12))) }
-        val fixture = fixture(source = source, memory = memory(episodeIndex = 2, episodeSort = null, playedAsSort = EpisodeSort(3)))
+        val fixture = fixture(memory = memory(episodeIndex = 2, playedAsSort = EpisodeSort(3)))
 
         lateinit var result: ReplayResult
         val collected = selector.collectEvents {
             result = fixture.useCase(SUBJECT_ID, episodeInfo(4), selector)
         }
 
-        assertEquals(ReplayResult.SELECTED_BY_POSITION, result)
-        val media = source.createdMedia.single()
+        assertEquals(ReplayResult.SELECTED, result)
+        val media = fixture.source.createdMedia.single()
         assertSame(media, selector.selected.value)
-        assertEquals(EpisodeRange.single(EpisodeSort(4)), media.episodeRange, "按位置命中的资源也标为目标集")
         assertEquals("https://example.com/play/$CHANNEL_1/3", media.originalUrl, "第 k+1 项")
-        collected.assertOrder(OnBeforeSelect::class, OnSelect::class)
-        assertEquals(
-            memory(episodeIndex = 3, episodeSort = null, playedAsSort = EpisodeSort(4)),
-            fixture.repository.get(SUBJECT_ID),
-        )
+        assertEquals(EpisodeRange.single(EpisodeSort(4)), media.episodeRange, "资源标为目标集")
+        assertEquals(1, collected.onChangePreference.size, "正式选择写偏好")
+        assertSame(media, collected.onSelect.single().event.media)
+        assertEquals(memory(episodeIndex = 3, playedAsSort = EpisodeSort(4)), fixture.repository.get(SUBJECT_ID))
 
         // 再看下一集: 链式推进
         selector.unselect()
-        assertEquals(ReplayResult.SELECTED_BY_POSITION, fixture.useCase(SUBJECT_ID, episodeInfo(5), selector))
+        assertEquals(ReplayResult.SELECTED, fixture.useCase(SUBJECT_ID, episodeInfo(5), selector))
         assertEquals("https://example.com/play/$CHANNEL_1/4", assertNotNull(selector.selected.value).originalUrl)
-        assertEquals(
-            memory(episodeIndex = 4, episodeSort = null, playedAsSort = EpisodeSort(5)),
-            fixture.repository.get(SUBJECT_ID),
-        )
+        assertEquals(memory(episodeIndex = 4, playedAsSort = EpisodeSort(5)), fixture.repository.get(SUBJECT_ID))
     }
 
     @Test
-    fun `position guard rejects jumping ahead`() = runSimpleMediaSelectorTestSuite {
+    fun `jumping ahead and going back use the same offset`() = runSimpleMediaSelectorTestSuite {
         initSubject("孤独摇滚")
-        val source = FakeBrowsableSource().apply { channels = listOf(channel(CHANNEL_1, unparsableSorts(12))) }
-        val memory = memory(episodeIndex = 2, episodeSort = null, playedAsSort = EpisodeSort(3))
-        val fixture = fixture(source = source, memory = memory)
+        val fixture = fixture(memory = memory(episodeIndex = 2, playedAsSort = EpisodeSort(3)))
 
-        assertEquals(ReplayResult.NOT_FOUND, fixture.useCase(SUBJECT_ID, episodeInfo(8), selector))
+        assertEquals(ReplayResult.SELECTED, fixture.useCase(SUBJECT_ID, episodeInfo(7), selector))
+        assertEquals("https://example.com/play/$CHANNEL_1/6", assertNotNull(selector.selected.value).originalUrl)
 
-        assertNull(selector.selected.value)
-        assertTrue(source.createdMedia.isEmpty())
-        assertEquals(1, source.browseCalls)
-        assertEquals(memory, fixture.repository.get(SUBJECT_ID), "记忆不变")
+        selector.unselect()
+        assertEquals(ReplayResult.SELECTED, fixture.useCase(SUBJECT_ID, episodeInfo(1), selector))
+        assertEquals("https://example.com/play/$CHANNEL_1/0", assertNotNull(selector.selected.value).originalUrl)
     }
 
     @Test
-    fun `position guard rejects going backwards`() = runSimpleMediaSelectorTestSuite {
-        initSubject("孤独摇滚")
-        val source = FakeBrowsableSource().apply { channels = listOf(channel(CHANNEL_1, unparsableSorts(12))) }
-        val fixture = fixture(source = source, memory = memory(episodeIndex = 4, episodeSort = null, playedAsSort = EpisodeSort(5)))
+    fun `site episode numbers are ignored`() = runSimpleMediaSelectorTestSuite {
+        initSubject("孤独摇滚 OVA")
+        // 站点把整部 OVA 条目列在正片后面: 01..12, OVA01, OVA02, OVA03. 上次把 OVA01 当第 01 话播放.
+        val source = FakeBrowsableSource().apply {
+            channels = listOf(channel(CHANNEL_1, numberedSorts(12) + listOf(EpisodeSort("OVA01"), EpisodeSort("OVA02"), EpisodeSort("OVA03"))))
+        }
+        val fixture = fixture(source = source, memory = memory(episodeIndex = 12, playedAsSort = EpisodeSort(1)))
 
-        assertEquals(ReplayResult.NOT_FOUND, fixture.useCase(SUBJECT_ID, episodeInfo(4), selector))
+        assertEquals(ReplayResult.SELECTED, fixture.useCase(SUBJECT_ID, episodeInfo(2), selector))
 
-        assertNull(selector.selected.value)
-        assertTrue(source.createdMedia.isEmpty())
+        assertEquals("https://example.com/play/$CHANNEL_1/13", assertNotNull(selector.selected.value).originalUrl, "OVA02, 不是正片的 02")
     }
 
     @Test
-    fun `position guard requires normal sorts on both sides`() = runSimpleMediaSelectorTestSuite {
+    fun `sequel renumbered from 1 follows the remembered offset`() = runSimpleMediaSelectorTestSuite {
+        initSubject("孤独摇滚 第二季")
+        // 条目服务的集号从 13 开始, 站点从 01 重新编号: 上次把站点第一项当第 13 话播放
+        val fixture = fixture(memory = memory(episodeIndex = 0, playedAsSort = EpisodeSort(13)))
+
+        assertEquals(ReplayResult.SELECTED, fixture.useCase(SUBJECT_ID, episodeInfo(sort = 14, ep = 2), selector))
+
+        val media = assertNotNull(selector.selected.value)
+        assertEquals("https://example.com/play/$CHANNEL_1/1", media.originalUrl)
+        assertEquals(EpisodeRange.single(EpisodeSort(14)), media.episodeRange)
+    }
+
+    @Test
+    fun `main story and specials do not map onto each other`() = runSimpleMediaSelectorTestSuite {
         initSubject("孤独摇滚")
-        val source = FakeBrowsableSource().apply { channels = listOf(channel(CHANNEL_1, unparsableSorts(12))) }
-        val fixture = fixture(source = source, memory = memory(episodeIndex = 2, episodeSort = null, playedAsSort = EpisodeSort(1, EpisodeType.SP)))
+        val fixture = fixture(memory = memory(episodeIndex = 2, playedAsSort = EpisodeSort(1, EpisodeType.SP)))
 
         assertEquals(ReplayResult.NOT_FOUND, fixture.useCase(SUBJECT_ID, episodeInfo(2), selector))
-
         assertNull(selector.selected.value)
+
+        // 同一种特殊类型之间照常按偏移
+        val sp2 = EpisodeInfo.Empty.copy(episodeId = 1, sort = EpisodeSort(2, EpisodeType.SP))
+        assertEquals(ReplayResult.SELECTED, fixture.useCase(SUBJECT_ID, sp2, selector))
+        assertEquals("https://example.com/play/$CHANNEL_1/3", assertNotNull(selector.selected.value).originalUrl)
     }
 
     @Test
-    fun `missing next episode is not found and not throttled`() = runSimpleMediaSelectorTestSuite {
+    fun `target without a whole number offset is not found`() = runSimpleMediaSelectorTestSuite {
         initSubject("孤独摇滚")
-        val source = FakeBrowsableSource().apply { channels = listOf(channel(CHANNEL_1, unparsableSorts(3))) }
-        val memory = memory(episodeIndex = 2, episodeSort = null, playedAsSort = EpisodeSort(3))
+        val fixture = fixture(memory = memory(episodeIndex = 2, playedAsSort = EpisodeSort(3)))
+
+        val unparsable = EpisodeInfo.Empty.copy(episodeId = 1, sort = EpisodeSort("第三话"))
+        assertEquals(ReplayResult.NOT_FOUND, fixture.useCase(SUBJECT_ID, unparsable, selector))
+        val half = EpisodeInfo.Empty.copy(episodeId = 1, sort = EpisodeSort("3.5"))
+        assertEquals(ReplayResult.NOT_FOUND, fixture.useCase(SUBJECT_ID, half, selector))
+
+        assertNull(selector.selected.value)
+        assertTrue(fixture.source.createdMedia.isEmpty())
+    }
+
+    @Test
+    fun `index out of range is not found and not throttled`() = runSimpleMediaSelectorTestSuite {
+        initSubject("孤独摇滚")
+        val source = FakeBrowsableSource().apply { channels = listOf(channel(CHANNEL_1, numberedSorts(3))) }
+        val memory = memory(episodeIndex = 2, playedAsSort = EpisodeSort(3))
         val fixture = fixture(source = source, memory = memory)
 
         assertEquals(ReplayResult.NOT_FOUND, fixture.useCase(SUBJECT_ID, episodeInfo(4), selector))
@@ -371,11 +265,11 @@ class ReplayBrowseMemoryUseCaseTest {
         }
         val fixture = fixture(source = source, memory = memory(channelIndex = 0, channelName = CHANNEL_1))
 
-        assertEquals(ReplayResult.SELECTED_BY_SORT, fixture.useCase(SUBJECT_ID, episodeInfo(4), selector))
+        assertEquals(ReplayResult.SELECTED, fixture.useCase(SUBJECT_ID, episodeInfo(4), selector))
 
         assertEquals("https://example.com/play/$CHANNEL_1/3", assertNotNull(selector.selected.value).originalUrl)
         assertEquals(
-            memory(channelIndex = 1, channelName = CHANNEL_1, episodeIndex = 3, episodeSort = EpisodeSort(4), playedAsSort = EpisodeSort(4)),
+            memory(channelIndex = 1, channelName = CHANNEL_1, episodeIndex = 3, playedAsSort = EpisodeSort(4)),
             fixture.repository.get(SUBJECT_ID),
         )
     }
@@ -389,7 +283,7 @@ class ReplayBrowseMemoryUseCaseTest {
         }
         val fixture = fixture(source = source, memory = memory(channelIndex = 1, channelName = CHANNEL_1))
 
-        assertEquals(ReplayResult.SELECTED_BY_SORT, fixture.useCase(SUBJECT_ID, episodeInfo(4), selector))
+        assertEquals(ReplayResult.SELECTED, fixture.useCase(SUBJECT_ID, episodeInfo(4), selector))
 
         assertEquals("https://example.com/play/b/3", assertNotNull(selector.selected.value).originalUrl)
     }
@@ -400,7 +294,7 @@ class ReplayBrowseMemoryUseCaseTest {
         val source = FakeBrowsableSource().apply { channels = listOf(channel(null, numberedSorts(12))) }
         val fixture = fixture(source = source, memory = memory(channelIndex = 0, channelName = null))
 
-        assertEquals(ReplayResult.SELECTED_BY_SORT, fixture.useCase(SUBJECT_ID, episodeInfo(4), selector))
+        assertEquals(ReplayResult.SELECTED, fixture.useCase(SUBJECT_ID, episodeInfo(4), selector))
 
         assertEquals("", assertNotNull(selector.selected.value).properties.alliance)
     }
@@ -428,7 +322,7 @@ class ReplayBrowseMemoryUseCaseTest {
         val source = FakeBrowsableSource().apply { channels = listOf(channel("线路9", numberedSorts(12))) }
         val fixture = fixture(source = source, memory = memory(channelIndex = 0, channelName = CHANNEL_1))
         // 条目页请求慢, 用户等不及打开手动查找并「播放并记住」了新线路
-        val rewritten = memory(channelIndex = 2, channelName = "线路9", episodeIndex = 3, episodeSort = EpisodeSort(4), playedAsSort = EpisodeSort(4))
+        val rewritten = memory(channelIndex = 2, channelName = "线路9", episodeIndex = 3, playedAsSort = EpisodeSort(4))
         source.onBrowse = { fixture.repository.set(SUBJECT_ID, rewritten) }
 
         assertEquals(ReplayResult.NOT_FOUND, fixture.useCase(SUBJECT_ID, episodeInfo(4), selector))
@@ -453,14 +347,14 @@ class ReplayBrowseMemoryUseCaseTest {
     }
 
     @Test
-    fun `sort hit does not overwrite a memory rewritten while browsing`() = runSimpleMediaSelectorTestSuite {
+    fun `hit does not overwrite a memory rewritten while browsing`() = runSimpleMediaSelectorTestSuite {
         initSubject("孤独摇滚")
         val source = FakeBrowsableSource()
-        val fixture = fixture(source = source, memory = memory(episodeIndex = 2, episodeSort = EpisodeSort(3), playedAsSort = EpisodeSort(3)))
-        val rewritten = memory(channelIndex = 1, channelName = "线路2", episodeIndex = 0, episodeSort = EpisodeSort(1), playedAsSort = EpisodeSort(4))
+        val fixture = fixture(source = source, memory = memory(episodeIndex = 2, playedAsSort = EpisodeSort(3)))
+        val rewritten = memory(channelIndex = 1, channelName = "线路2", episodeIndex = 0, playedAsSort = EpisodeSort(4))
         source.onBrowse = { fixture.repository.set(SUBJECT_ID, rewritten) }
 
-        assertEquals(ReplayResult.SELECTED_BY_SORT, fixture.useCase(SUBJECT_ID, episodeInfo(4), selector))
+        assertEquals(ReplayResult.SELECTED, fixture.useCase(SUBJECT_ID, episodeInfo(4), selector))
 
         assertSame(source.createdMedia.single(), selector.selected.value, "回放时还没有选择, 仍然选中")
         assertEquals(rewritten, fixture.repository.get(SUBJECT_ID), "记忆更新是 CAS, 不覆盖用户刚写入的新记忆")
@@ -593,7 +487,7 @@ class ReplayBrowseMemoryUseCaseTest {
             store = FailingWriteStore(ManualBrowseMemories(mapOf(SUBJECT_ID to memory()))),
         )
 
-        assertEquals(ReplayResult.SELECTED_BY_SORT, fixture.useCase(SUBJECT_ID, episodeInfo(4), selector))
+        assertEquals(ReplayResult.SELECTED, fixture.useCase(SUBJECT_ID, episodeInfo(4), selector))
 
         assertSame(source.createdMedia.single(), selector.selected.value)
     }
@@ -612,7 +506,6 @@ class ReplayBrowseMemoryUseCaseTest {
             channelIndex: Int = 0,
             channelName: String? = CHANNEL_1,
             episodeIndex: Int = 2,
-            episodeSort: EpisodeSort? = EpisodeSort(3),
             playedAsSort: EpisodeSort = EpisodeSort(3),
         ) = ManualBrowseMemory(
             mediaSourceId = mediaSourceId,
@@ -620,7 +513,6 @@ class ReplayBrowseMemoryUseCaseTest {
             channelIndex = channelIndex,
             channelName = channelName,
             episodeIndex = episodeIndex,
-            episodeSort = episodeSort,
             playedAsSort = playedAsSort,
         )
 
@@ -632,9 +524,6 @@ class ReplayBrowseMemoryUseCaseTest {
 
         /** 站点解析出 1..[count] 的集号. */
         fun numberedSorts(count: Int): List<EpisodeSort?> = (1..count).map { EpisodeSort(it) }
-
-        /** 站点解析不出集号 (例如「第三话」), 只能按位置回放. */
-        fun unparsableSorts(count: Int): List<EpisodeSort?> = List(count) { null }
 
         fun channel(name: String?, sorts: List<EpisodeSort?>, urlPrefix: String = name ?: "default") = BrowseChannel(
             name = name,

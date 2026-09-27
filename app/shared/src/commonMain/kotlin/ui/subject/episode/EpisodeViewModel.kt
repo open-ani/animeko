@@ -446,6 +446,12 @@ open class EpisodeViewModel(
             manualBrowseMemoryRepository.flow(subjectId),
             getPreferredWebMediaSource(subjectId),
         ) { memory, preferred -> memory?.mediaSourceId ?: preferred },
+        rememberSelection = settingsRepository.mediaSelectorSettings.flow.map { it.rememberManualSelection }.distinctUntilChanged(),
+        onRememberSelectionChange = { remember ->
+            settingsRepository.mediaSelectorSettings.update { copy(rememberManualSelection = remember) }
+            // 关掉「记住选择」也结束本条目已有的记忆, 否则下一集仍会按旧记忆回放.
+            if (!remember) forgetBrowseMemory()
+        },
         onPlay = ::playBrowsedMedia,
         backgroundScope = backgroundScope,
     )
@@ -1029,6 +1035,7 @@ open class EpisodeViewModel(
                         backgroundScope,
                         webSessionManager,
                         btFilterState,
+                        onUserSelect = { forgetBrowseMemory() },
                     )
                 } else {
                     // TODO: 2025/1/22 We should not use createTestMediaSelectorState
@@ -1263,6 +1270,19 @@ open class EpisodeViewModel(
             }
         } else {
             mediaSelector.selectTemporarily(media)
+        }
+    }
+
+    /**
+     * 删除本条目的浏览记忆, 下一集回到自动匹配. 失败只记日志.
+     */
+    private suspend fun forgetBrowseMemory() {
+        try {
+            manualBrowseMemoryRepository.remove(subjectId)
+        } catch (e: CancellationException) {
+            throw e
+        } catch (e: Exception) {
+            logger.warn(e) { "Failed to remove manual browse memory for subject $subjectId" }
         }
     }
 

@@ -1287,11 +1287,7 @@
     <string name="media_selector_manual_channels">线路</string>
     <string name="media_selector_manual_default_channel">默认线路</string>
     <string name="media_selector_manual_episodes_count">剧集 %1$d 项</string>
-    <string name="media_selector_manual_play_title">播放「%1$s」</string>
-    <string name="media_selector_manual_play_as">作为第 %1$s 话播放</string>
-    <string name="media_selector_manual_play_as_next">作为第 %1$s 话播放，下一话播放 %2$s</string>
-    <string name="media_selector_manual_play_remember">播放并记住</string>
-    <string name="media_selector_manual_play_temporary">仅临时播放，不记忆</string>
+    <string name="media_selector_manual_remember_selection">记住选择</string>
     <string name="media_selector_bt_source_all">全部数据源 %1$d 条</string>
     <string name="media_selector_bt_source_count">%1$d 条</string>
     <string name="media_selector_bt_source_querying">查询中</string>

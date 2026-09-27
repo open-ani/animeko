@@ -9,39 +9,31 @@
 
 package me.him188.ani.app.ui.mediaselect.manual
 
-import androidx.compose.animation.AnimatedVisibility
-import androidx.compose.animation.fadeIn
-import androidx.compose.animation.fadeOut
 import androidx.compose.foundation.BorderStroke
-import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.GridItemSpan
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.itemsIndexed
-import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.itemsIndexed
+import androidx.compose.foundation.selection.toggleable
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.ChevronRight
-import androidx.compose.material3.AlertDialogDefaults
-import androidx.compose.material3.BottomSheetDefaults
-import androidx.compose.material3.Button
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
 import androidx.compose.material3.Icon
 import androidx.compose.material3.InputChip
@@ -51,20 +43,20 @@ import androidx.compose.material3.ListItemDefaults
 import androidx.compose.material3.LoadingIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
+import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
-import me.him188.ani.app.ui.foundation.navigation.BackHandler
 import me.him188.ani.app.ui.lang.Lang
 import me.him188.ani.app.ui.lang.media_selector_load_failed
 import me.him188.ani.app.ui.lang.media_selector_manual_captcha_unsupported
@@ -72,11 +64,7 @@ import me.him188.ani.app.ui.lang.media_selector_manual_default_channel
 import me.him188.ani.app.ui.lang.media_selector_manual_episodes_count
 import me.him188.ani.app.ui.lang.media_selector_manual_no_result
 import me.him188.ani.app.ui.lang.media_selector_manual_no_sources
-import me.him188.ani.app.ui.lang.media_selector_manual_play_as
-import me.him188.ani.app.ui.lang.media_selector_manual_play_as_next
-import me.him188.ani.app.ui.lang.media_selector_manual_play_remember
-import me.him188.ani.app.ui.lang.media_selector_manual_play_temporary
-import me.him188.ani.app.ui.lang.media_selector_manual_play_title
+import me.him188.ani.app.ui.lang.media_selector_manual_remember_selection
 import me.him188.ani.app.ui.lang.media_selector_manual_result_count
 import me.him188.ani.app.ui.lang.media_selector_retry
 import me.him188.ani.app.ui.settings.rendering.MediaSourceIcon
@@ -280,13 +268,15 @@ internal fun ManualChannelChips(
 }
 
 /**
- * 剧集网格, 头部整行放「剧集 N 项」. 调用方给 [modifier] 加 `weight(1f)`.
+ * 剧集网格. 头部整行: 左「剧集 N 项」, 右「记住选择」+ 开关. 点一项 = [onClick] (直接播放). 调用方给 [modifier] 加 `weight(1f)`.
  */
 @Composable
 internal fun ManualEpisodeGrid(
     episodes: List<BrowseEpisode>,
     selectedIndex: Int?,
-    onSelect: (Int) -> Unit,
+    onClick: (Int) -> Unit,
+    rememberSelection: Boolean,
+    onRememberSelectionChange: (Boolean) -> Unit,
     columns: Int,
     modifier: Modifier = Modifier,
     contentPadding: PaddingValues = PaddingValues(horizontal = 16.dp),
@@ -299,13 +289,36 @@ internal fun ManualEpisodeGrid(
         verticalArrangement = Arrangement.spacedBy(8.dp),
     ) {
         item(span = { GridItemSpan(maxLineSpan) }) {
-            ManualSectionLabel(stringResource(Lang.media_selector_manual_episodes_count, episodes.size))
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                ManualSectionLabel(
+                    stringResource(Lang.media_selector_manual_episodes_count, episodes.size),
+                    Modifier.weight(1f),
+                )
+                Row(
+                    Modifier
+                        .toggleable(
+                            value = rememberSelection,
+                            role = Role.Switch,
+                            onValueChange = onRememberSelectionChange,
+                        )
+                        .testTag(ManualBrowsePageTestTags.REMEMBER_SWITCH),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    Text(
+                        stringResource(Lang.media_selector_manual_remember_selection),
+                        style = MaterialTheme.typography.labelLarge,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                    Switch(checked = rememberSelection, onCheckedChange = null)
+                }
+            }
         }
         itemsIndexed(episodes) { index, episode ->
             ManualEpisodeButton(
                 episode.name,
                 selected = index == selectedIndex,
-                onClick = { onSelect(index) },
+                onClick = { onClick(index) },
                 Modifier.testTag(ManualBrowsePageTestTags.episode(index)),
             )
         }
@@ -344,125 +357,6 @@ private fun ManualEpisodeButton(
                 overflow = TextOverflow.Ellipsis,
                 textAlign = TextAlign.Center,
             )
-        }
-    }
-}
-
-internal val ManualBrowsePresentation.canPlay: Boolean
-    get() = selectedEpisode != null && target != null && !isPlaying
-
-/**
- * 「作为第 25 话播放，下一话播放 SP」/「作为第 25 话播放」; 未选剧集或会话未就绪时为空.
- */
-@Composable
-internal fun playSubtext(presentation: ManualBrowsePresentation): String {
-    val target = presentation.target ?: return ""
-    if (presentation.selectedEpisode == null) return ""
-    val next = presentation.nextEpisodeName
-    return if (next != null) {
-        stringResource(Lang.media_selector_manual_play_as_next, target.episodeSortText, next)
-    } else {
-        stringResource(Lang.media_selector_manual_play_as, target.episodeSortText)
-    }
-}
-
-/**
- * 播放确认对话框: 页面内叠层 (半透明 scrim + 居中 Surface), 外观与 M3 AlertDialog 相同 (28dp 圆角、surfaceContainerHigh、24dp 内边距,
- * titleLarge 标题「播放「name」」、bodyMedium 正文 [playSubtext]、右下角文本按钮「仅临时播放，不记忆」+ 填充按钮「播放并记住」).
- * 宽度 = min(容器宽 − 48dp, 360dp); 两个按钮放不下一行时换行、每行右对齐 (与 AlertDialog 的按钮行相同).
- *
- * 不用平台 Dialog: 全屏播放器里本页画在视频区的布局层内, Android 的 Dialog 是独立 window, 弹出会把已隐藏的系统栏拉回来 (与 BtInlineSheet 同理).
- * 可见性 = [ManualBrowsePresentation.confirmingEpisodeIndex] != null; 调用方始终组合本函数, 由它播放进出动画.
- * 点 scrim / 返回键 = [onDismiss]; 按钮 enabled = [canPlay] (isPlaying 时禁用).
- * 返回键: 本函数在页面版式之后组合, 对话框打开时它的 BackHandler 先于堆叠第二页的返回拦截.
- */
-@Composable
-internal fun ManualPlayConfirmDialog(
-    presentation: ManualBrowsePresentation,
-    onPlay: (remember: Boolean) -> Unit,
-    onDismiss: () -> Unit,
-    modifier: Modifier = Modifier,
-) {
-    val visible = presentation.confirmingEpisodeIndex != null
-    BackHandler(enabled = visible, onBack = onDismiss)
-    val scrimColor = BottomSheetDefaults.ScrimColor
-    AnimatedVisibility(visible, modifier, enter = fadeIn(), exit = fadeOut()) {
-        Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-            Canvas(
-                Modifier
-                    .fillMaxSize()
-                    .clickable(
-                        interactionSource = remember { MutableInteractionSource() },
-                        indication = null,
-                        onClick = onDismiss,
-                    )
-                    .testTag(ManualBrowsePageTestTags.CONFIRM_SCRIM),
-            ) {
-                drawRect(color = scrimColor)
-            }
-            Surface(
-                Modifier
-                    .padding(24.dp)
-                    .widthIn(max = 360.dp)
-                    .fillMaxWidth()
-                    // Surface 上的点击不落到 scrim
-                    .clickable(
-                        interactionSource = remember { MutableInteractionSource() },
-                        indication = null,
-                        onClick = {},
-                    )
-                    .testTag(ManualBrowsePageTestTags.CONFIRM_DIALOG),
-                shape = AlertDialogDefaults.shape,
-                color = AlertDialogDefaults.containerColor,
-                tonalElevation = AlertDialogDefaults.TonalElevation,
-            ) {
-                ManualPlayConfirmContent(presentation, onPlay, Modifier.padding(24.dp))
-            }
-        }
-    }
-}
-
-@Composable
-private fun ManualPlayConfirmContent(
-    presentation: ManualBrowsePresentation,
-    onPlay: (remember: Boolean) -> Unit,
-    modifier: Modifier = Modifier,
-) {
-    val enabled = presentation.canPlay
-    Column(modifier) {
-        Text(
-            presentation.selectedEpisode?.let { stringResource(Lang.media_selector_manual_play_title, it.name) }.orEmpty(),
-            Modifier.padding(bottom = 16.dp),
-            style = MaterialTheme.typography.titleLarge,
-            color = AlertDialogDefaults.titleContentColor,
-            maxLines = 2,
-            overflow = TextOverflow.Ellipsis,
-        )
-        Text(
-            playSubtext(presentation),
-            Modifier.padding(bottom = 24.dp),
-            style = MaterialTheme.typography.bodyMedium,
-            color = AlertDialogDefaults.textContentColor,
-        )
-        FlowRow(
-            Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.spacedBy(8.dp, Alignment.End),
-            verticalArrangement = Arrangement.spacedBy(12.dp),
-        ) {
-            TextButton(
-                onClick = { onPlay(false) },
-                Modifier.testTag(ManualBrowsePageTestTags.PLAY_TEMPORARY),
-                enabled = enabled,
-            ) {
-                Text(stringResource(Lang.media_selector_manual_play_temporary))
-            }
-            Button(
-                onClick = { onPlay(true) },
-                Modifier.testTag(ManualBrowsePageTestTags.PLAY_REMEMBER),
-                enabled = enabled,
-            ) {
-                Text(stringResource(Lang.media_selector_manual_play_remember))
-            }
         }
     }
 }

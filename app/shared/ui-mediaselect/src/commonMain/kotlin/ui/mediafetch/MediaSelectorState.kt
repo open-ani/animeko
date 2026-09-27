@@ -145,6 +145,7 @@ suspend fun <T : Any> MediaPreferenceItemState<T>.preferOrRemove(value: T?) {
  *
  * @param btFilterState BT 页会话内 UI 状态 (集号开关 / 源过滤). 由宿主持有并在每次重建 state 时传同一实例, 因此不随 fetchSelect bundle 重建丢失;
  * 默认值只给测试与下载对话框 ([rememberMediaSelectorState] 内 `remember { BtFilterState() }`).
+ * @param onUserSelect 用户在选择器里点选一项 ([select]) 后调用. 播放页用它结束本条目的浏览记忆: 用户在自动匹配或 BT 页手动换了源, 说明不想再按记忆走.
  */
 @Stable
 class MediaSelectorState(
@@ -155,6 +156,7 @@ class MediaSelectorState(
     private val backgroundScope: CoroutineScope,
     private val webSessionManager: WebSessionManager,
     val btFilterState: BtFilterState = BtFilterState(),
+    private val onUserSelect: suspend (Media) -> Unit = {},
 ) {
     @Immutable
     data class Presentation(
@@ -374,11 +376,13 @@ class MediaSelectorState(
     }
 
     /**
+     * 用户点选. 之后调用 onUserSelect.
      * @see MediaSelector.select
      */
     fun select(candidate: Media) {
         backgroundScope.launch {
             mediaSelector.select(candidate)
+            onUserSelect(candidate)
         }
     }
 
@@ -435,6 +439,7 @@ fun createTestMediaSelectorState(
     backgroundScope: CoroutineScope,
     btFilterState: BtFilterState = BtFilterState(),
     mediaList: List<Media> = TestMediaList,
+    onUserSelect: suspend (Media) -> Unit = {},
 ) = MediaSelectorState(
     DefaultMediaSelector(
         mediaSelectorContextNotCached = flowOf(MediaSelectorContext.EmptyForPreview),
@@ -449,4 +454,5 @@ fun createTestMediaSelectorState(
     backgroundScope,
     createTestWebSessionManager(backgroundScope),
     btFilterState,
+    onUserSelect,
 )

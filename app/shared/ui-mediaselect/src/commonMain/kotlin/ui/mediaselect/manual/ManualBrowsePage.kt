@@ -84,13 +84,10 @@ import org.jetbrains.compose.resources.stringResource
  * - 双栏且 [inlineTitle] != null: 页面自绘单行 `Row(Modifier.fillMaxWidth()) { inlineTitle(); Spacer(weight); WatchingEpisodeText(watching) }`, 不渲染 [topBar].
  * - 双栏且 [inlineTitle] == null: 渲染 [topBar], 其下 WatchingEpisodeCard(watching), 再是两栏.
  * 布局约束: 顶栏 / 卡片 / 列表在同一 Column 里, Lazy 列表与网格必须 `Modifier.weight(1f)`; 剧集网格占满剩余高度, 页面没有常驻的操作面板.
- * 剧集网格: LazyVerticalGrid, 堆叠 Fixed(4), 双栏 Fixed(9); 按钮高 44dp 圆角 10; 选中 primaryContainer + 2dp primary 边框; 头部 item(span = maxLineSpan) 放「剧集 N 项」.
- * 确认对话框 ([ManualPlayConfirmDialog], 叠在本页根节点上, 两种版式共用): 点击网格里的剧集 → [ManualBrowseState.selectEpisode] 选中并打开;
- *   标题「播放「name」」+ 副文「作为第 N 话播放，下一话播放 X」+ 文本按钮「仅临时播放，不记忆」+ 填充按钮「播放并记住」;
- *   点 scrim / 返回键 → [ManualBrowseState.dismissConfirm] 关闭对话框, 保留选中高亮, 不播放. 自动预选的匹配集不打开对话框.
- * 按钮 enabled = selectedEpisode != null && target != null && !isPlaying.
- * 点击 → scope.launch { when (state.play(remember)) { true -> onPlayed(); false -> toaster.toast(media_selector_load_failed); null -> 忽略 } }:
- * null 表示已有进行中的播放 (快速双击), 不是失败, 不提示. 播放成功后状态自行关闭对话框, 失败时对话框保持打开.
+ * 剧集网格: LazyVerticalGrid, 堆叠 Fixed(4), 双栏 Fixed(9); 按钮高 44dp 圆角 10; 选中 primaryContainer + 2dp primary 边框;
+ *   头部 item(span = maxLineSpan) 放「剧集 N 项」与右侧的「记住选择」开关 ([ManualBrowseState.setRememberSelection]).
+ * 点击网格里的剧集直接播放, 不确认: scope.launch { when (state.play(index)) { true -> onPlayed(); false -> toaster.toast(media_selector_load_failed); null -> 忽略 } }.
+ *   null 表示已有进行中的播放 (快速双击), 不是失败, 不提示. 是否写浏览记忆由「记住选择」决定, 用户在点之前就能看到它.
  *
  * @param onPlayed `state.play(...)` 返回 true 后调用; 宿主关闭所有容器.
  */
@@ -109,9 +106,9 @@ fun ManualBrowsePage(
     val toaster = LocalToaster.current
     val loadFailedText = stringResource(Lang.media_selector_load_failed)
     val currentOnPlayed by rememberUpdatedState(onPlayed)
-    val play: (remember: Boolean) -> Unit = { remember ->
+    val playEpisode: (Int) -> Unit = { index ->
         scope.launch {
-            when (state.play(remember)) {
+            when (state.play(index)) {
                 true -> currentOnPlayed()
                 false -> toaster.toast(loadFailedText)
                 null -> Unit
@@ -127,6 +124,7 @@ fun ManualBrowsePage(
         if (maxWidth >= MediaSelectorLayoutDefaults.WideContentMinWidth) {
             ManualBrowseWideLayout(
                 state, presentation, watching,
+                onPlayEpisode = playEpisode,
                 topBar = topBar,
                 inlineTitle = inlineTitle,
                 modifier = Modifier.fillMaxSize(),
@@ -134,18 +132,12 @@ fun ManualBrowsePage(
         } else {
             ManualBrowseStackedLayout(
                 state, presentation, watching,
+                onPlayEpisode = playEpisode,
                 topBar = topBar,
                 closeButton = closeButton,
                 modifier = Modifier.fillMaxSize(),
             )
         }
-        // 在版式之后组合: 对话框打开时它的 BackHandler 先于堆叠第二页的返回拦截.
-        ManualPlayConfirmDialog(
-            presentation,
-            onPlay = play,
-            onDismiss = state::dismissConfirm,
-            Modifier.fillMaxSize(),
-        )
     }
 }
 
@@ -159,6 +151,7 @@ private fun ManualBrowseStackedLayout(
     state: ManualBrowseState,
     presentation: ManualBrowsePresentation,
     watching: WatchingEpisode?,
+    onPlayEpisode: (Int) -> Unit,
     topBar: @Composable () -> Unit,
     closeButton: (@Composable () -> Unit)?,
     modifier: Modifier = Modifier,
@@ -216,7 +209,7 @@ private fun ManualBrowseStackedLayout(
                     Modifier.padding(horizontal = 16.dp).padding(bottom = 12.dp).fillMaxWidth(),
                 )
                 ManualChannelsContent(
-                    state, presentation,
+                    state, presentation, onPlayEpisode,
                     columns = 4,
                     gridContentPadding = PaddingValues(start = 16.dp, end = 16.dp, bottom = 16.dp),
                 )
@@ -232,6 +225,7 @@ private fun ManualBrowseStackedLayout(
 private fun ColumnScope.ManualChannelsContent(
     state: ManualBrowseState,
     presentation: ManualBrowsePresentation,
+    onPlayEpisode: (Int) -> Unit,
     columns: Int,
     gridContentPadding: PaddingValues = PaddingValues(horizontal = 16.dp),
     channelRow: @Composable (channels: List<BrowseChannel>) -> Unit = { channels ->
@@ -258,7 +252,9 @@ private fun ColumnScope.ManualChannelsContent(
             ManualEpisodeGrid(
                 presentation.selectedChannel?.episodes.orEmpty(),
                 presentation.selectedEpisodeIndex,
-                onSelect = state::selectEpisode,
+                onClick = onPlayEpisode,
+                rememberSelection = presentation.rememberSelection,
+                onRememberSelectionChange = state::setRememberSelection,
                 columns = columns,
                 Modifier.weight(1f).fillMaxWidth(),
                 contentPadding = gridContentPadding,
@@ -321,6 +317,7 @@ private fun ManualBrowseWideLayout(
     state: ManualBrowseState,
     presentation: ManualBrowsePresentation,
     watching: WatchingEpisode?,
+    onPlayEpisode: (Int) -> Unit,
     topBar: @Composable () -> Unit,
     inlineTitle: (@Composable RowScope.() -> Unit)?,
     modifier: Modifier = Modifier,
@@ -375,7 +372,7 @@ private fun ManualBrowseWideLayout(
                 val subject = presentation.openedSubject
                 if (subject != null) {
                     ManualChannelsContent(
-                        state, presentation,
+                        state, presentation, onPlayEpisode,
                         columns = 9,
                         gridContentPadding = PaddingValues(bottom = 16.dp),
                         channelRow = { channels ->
@@ -432,19 +429,8 @@ object ManualBrowsePageTestTags {
     const val BACK = "manual_back"
     fun channelChip(index: Int) = "manual_channel_$index"
     fun episode(index: Int) = "manual_episode_$index"
-    const val PLAY_REMEMBER = "manual_play_remember"
-    const val PLAY_TEMPORARY = "manual_play_temporary"
+    const val REMEMBER_SWITCH = "manual_remember_switch"
     const val RETRY = "manual_retry"
-
-    /**
-     * 确认对话框的 Surface.
-     */
-    const val CONFIRM_DIALOG = "manual_confirm_dialog"
-
-    /**
-     * 对话框后面覆盖整页的 scrim, 点它关闭对话框. 它的中心被对话框盖住, 测试要点露出的角落.
-     */
-    const val CONFIRM_SCRIM = "manual_confirm_scrim"
 }
 
 @OptIn(TestOnly::class)
@@ -474,32 +460,6 @@ private fun PreviewManualBrowsePageStackedEpisodes() {
             val state = rememberTestManualBrowseState()
             LaunchedEffect(state) {
                 state.openSubject(TestBrowseSubjects.first())
-            }
-            ManualBrowsePage(
-                state,
-                watching = WatchingEpisode("25", "OVA"),
-                onPlayed = {},
-                topBar = {},
-                Modifier.size(390.dp, 844.dp),
-            )
-        }
-    }
-}
-
-/**
- * 点了「OVA」之后: 确认对话框打开.
- */
-@OptIn(TestOnly::class)
-@PreviewLightDark
-@Composable
-private fun PreviewManualBrowsePageConfirmDialog() {
-    ProvideCompositionLocalsForPreview {
-        Surface {
-            val state = rememberTestManualBrowseState()
-            LaunchedEffect(state) {
-                state.openSubject(TestBrowseSubjects.first())
-                state.presentationFlow.first { it.channels is ManualLoadState.Success }
-                state.selectEpisode(24)
             }
             ManualBrowsePage(
                 state,
