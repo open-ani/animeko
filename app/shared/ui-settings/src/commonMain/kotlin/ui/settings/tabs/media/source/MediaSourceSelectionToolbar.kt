@@ -69,21 +69,6 @@ internal fun MediaSourceSelectionActions(
     windowInsets: WindowInsets,
     modifier: Modifier = Modifier,
 ) {
-    MediaSourceSelectionActions(
-        mediaSources, selectionState, editState::deleteMediaSources, editState::setMediaSourcesEnabled,
-        windowInsets, modifier,
-    )
-}
-
-@Composable
-internal fun MediaSourceSelectionActions(
-    mediaSources: List<MediaSourcePresentation>,
-    selectionState: MediaSourceSelectionState,
-    onDelete: (Collection<MediaSourcePresentation>) -> Unit,
-    onSetEnabled: (Collection<MediaSourcePresentation>, Boolean) -> Unit,
-    windowInsets: WindowInsets,
-    modifier: Modifier = Modifier,
-) {
     val selectedMediaSources = remember(mediaSources, selectionState.selectedIds) {
         mediaSources.filter { it.instanceId in selectionState.selectedIds }
     }
@@ -105,7 +90,7 @@ internal fun MediaSourceSelectionActions(
             confirmButton = {
                 TextButton(
                     onClick = {
-                        onDelete(selectedMediaSources)
+                        editState.deleteMediaSources(selectedMediaSources)
                         selectionState.clear()
                         showDeleteConfirmation = false
                     },
@@ -145,9 +130,9 @@ internal fun MediaSourceSelectionActions(
             ) {
                 IconButton(
                     onClick = {
-                        onSetEnabled(
+                        editState.setMediaSourcesEnabled(
                             selectedMediaSources.filterNot { it.isEnabled },
-                            true,
+                            enabled = true,
                         )
                     },
                     enabled = selectedMediaSources.any { !it.isEnabled },
@@ -161,9 +146,9 @@ internal fun MediaSourceSelectionActions(
                 }
                 IconButton(
                     onClick = {
-                        onSetEnabled(
+                        editState.setMediaSourcesEnabled(
                             selectedMediaSources.filter { it.isEnabled },
-                            false,
+                            enabled = false,
                         )
                     },
                     enabled = selectedMediaSources.any { it.isEnabled },

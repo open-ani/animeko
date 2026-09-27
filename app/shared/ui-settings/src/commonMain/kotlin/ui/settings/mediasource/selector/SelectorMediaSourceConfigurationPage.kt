@@ -33,12 +33,12 @@ import me.him188.ani.app.domain.foundation.get
 import me.him188.ani.app.domain.media.fetch.MediaSourceManager
 import me.him188.ani.app.domain.media.fetch.updateMediaSourceArguments
 import me.him188.ani.app.domain.media.resolver.WebViewVideoExtractor
+import me.him188.ani.app.domain.mediasource.MediaSourceConfigurationEditor
 import me.him188.ani.app.domain.mediasource.codec.MediaSourceCodecManager
 import me.him188.ani.app.domain.mediasource.web.DefaultSelectorMediaSourceEngine
 import me.him188.ani.app.domain.mediasource.web.SelectorMediaSourceArguments
 import me.him188.ani.app.domain.mediasource.web.captcha.WebSessionManager
 import me.him188.ani.app.domain.settings.ProxyProvider
-import me.him188.ani.app.domain.settings.remote.RemoteMediaSourceEditor
 import me.him188.ani.app.platform.Context
 import me.him188.ani.app.platform.currentAniBuildConfig
 import me.him188.ani.app.tools.MonoTasker
@@ -56,7 +56,7 @@ private typealias ArgumentsType = SelectorMediaSourceArguments
 class EditSelectorMediaSourceViewModel(
     initialInstanceId: String,
     context: Context,
-    private val remoteEditor: RemoteMediaSourceEditor? = null,
+    private val configurationEditor: MediaSourceConfigurationEditor? = null,
 ) : AbstractViewModel(), KoinComponent {
     private val mediaSourceManager: MediaSourceManager by inject()
     private val settingsRepository: SettingsRepository by inject()
@@ -66,94 +66,78 @@ class EditSelectorMediaSourceViewModel(
 
     private val instanceId: MutableStateFlow<String> = MutableStateFlow(initialInstanceId)
 
-    private val arguments =
-        this.instanceId.flatMapLatest { instanceId ->
-            (remoteEditor?.config ?: mediaSourceManager.instanceConfigFlow(instanceId)).map {
-                it?.deserializeArgumentsOrNull(ArgumentsType.serializer()) ?: ArgumentsType.Default
-            }
+    private val arguments = this.instanceId.flatMapLatest { instanceId ->
+        (configurationEditor?.config ?: mediaSourceManager.instanceConfigFlow(instanceId)).map {
+            it?.deserializeArgumentsOrNull(
+                ArgumentsType.serializer(),
+            ) ?: ArgumentsType.Default
         }
+    }
 
-    val state: Flow<EditSelectorMediaSourcePageState> =
-        this.instanceId
-            .transformLatest { instanceId ->
-                coroutineScope {
-                    val saveTasker = MonoTasker(this)
-                    val arguments = mutableStateOf<ArgumentsType?>(null)
-                    val allowEdit = mutableStateOf(false)
-                    launch {
-                        val config =
-                            (remoteEditor?.config
-                                    ?: mediaSourceManager.instanceConfigFlow(instanceId))
-                                .first()
-                        val persisted =
-                            config?.deserializeArgumentsOrNull(ArgumentsType.serializer())
-                                ?: ArgumentsType.Default
-                        withContext(Dispatchers.Main) {
-                            arguments.value = persisted
-                            allowEdit.value =
-                                (config != null && config.subscriptionId == null) ||
-                                    currentAniBuildConfig.isDebug
-                        }
-                    }
-                    emit(
-                        EditSelectorMediaSourcePageState(
-                            argumentsStorage =
-                                SaveableStorage(
-                                    arguments,
-                                    onSave = {
-                                        arguments.value = it
-                                        if (remoteEditor != null) {
-                                            remoteEditor.saveArguments(ArgumentsType.serializer(), it)
-                                        } else {
-                                            saveTasker.launch {
-                                                delay(500)
-                                                mediaSourceManager.updateMediaSourceArguments(
-                                                    instanceId,
-                                                    ArgumentsType.serializer(),
-                                                    it,
-                                                )
-                                            }
-                                        }
-                                    },
-                                    isSavingFlow = remoteEditor?.isSaving ?: saveTasker.isRunning,
-                                ),
-                            allowEditState = allowEdit,
-                            engine =
-                                DefaultSelectorMediaSourceEngine(
-                                    clientProvider.get(ScopedHttpClientUserAgent.BROWSER)
-                                ),
-                            webViewVideoExtractor =
-                                combine(
-                                        proxyProvider.proxy,
-                                        settingsRepository.videoResolverSettings.flow
-                                            .distinctUntilChanged(),
-                                    ) { proxySettings, videoResolverSettings ->
-                                        WebViewVideoExtractor(proxySettings, videoResolverSettings)
-                                    }
-                                    .produceState(null, this),
-                            codecManager = get<MediaSourceCodecManager>(),
-                            webSessionManager = webSessionManager,
-                            testMediaSourceId = "selector-test:$instanceId",
-                            backgroundScope = this,
-                            context,
-                            flowDispatcher = Dispatchers.Default,
-                        )
-                    )
-                    awaitCancellation()
+    val state: Flow<EditSelectorMediaSourcePageState> = this.instanceId.transformLatest { instanceId ->
+        coroutineScope {
+            val saveTasker = MonoTasker(this)
+            val arguments = mutableStateOf<ArgumentsType?>(null)
+            val allowEdit = mutableStateOf(false)
+            launch {
+                val config = (configurationEditor?.config ?: mediaSourceManager.instanceConfigFlow(instanceId)).first()
+                val persisted = config
+                    ?.deserializeArgumentsOrNull(ArgumentsType.serializer())
+                    ?: ArgumentsType.Default
+                withContext(Dispatchers.Main) {
+                    arguments.value = persisted
+                    allowEdit.value = (config != null && config.subscriptionId == null)
+                            || currentAniBuildConfig.isDebug
                 }
             }
-            .flowOn(Dispatchers.Default)
+            emit(
+                EditSelectorMediaSourcePageState(
+                    argumentsStorage = SaveableStorage(
+                        arguments,
+                        onSave = {
+                            arguments.value = it
+                            if (configurationEditor != null) {
+                                configurationEditor.saveArguments(ArgumentsType.serializer(), it)
+                            } else saveTasker.launch {
+                                delay(500)
+                                mediaSourceManager.updateMediaSourceArguments(
+                                    instanceId,
+                                    ArgumentsType.serializer(),
+                                    it,
+                                )
+                            }
+                        },
+                        isSavingFlow = configurationEditor?.isSaving ?: saveTasker.isRunning,
+                    ),
+                    allowEditState = allowEdit,
+                    engine = DefaultSelectorMediaSourceEngine(clientProvider.get(ScopedHttpClientUserAgent.BROWSER)),
+                    webViewVideoExtractor = combine(
+                        proxyProvider.proxy,
+                        settingsRepository.videoResolverSettings.flow.distinctUntilChanged(),
+                    ) { proxySettings, videoResolverSettings ->
+                        WebViewVideoExtractor(proxySettings, videoResolverSettings)
+                    }.produceState(null, this),
+                    codecManager = get<MediaSourceCodecManager>(),
+                    webSessionManager = webSessionManager,
+                    testMediaSourceId = "selector-test:$instanceId",
+                    backgroundScope = this,
+                    context,
+                    flowDispatcher = Dispatchers.Default,
+                ),
+            )
+            awaitCancellation()
+        }
+    }.flowOn(Dispatchers.Default)
 
-    //    val testState: RssTestPaneState = RssTestPaneState(
-    //        // 这里用的是序列化之后的配置, 也就是只有保存成功之后, 才会更新测试 (和触发重新查询)
-    //        searchConfigState = arguments.map { it.searchConfig
-    // }.produceState(RssSearchConfig.Empty),
-    //        engine = DefaultRssMediaSourceEngine(client, parser = RssParser(includeOrigin =
-    // true)),
-    //        backgroundScope,
-    //    )
+//    val testState: RssTestPaneState = RssTestPaneState(
+//        // 这里用的是序列化之后的配置, 也就是只有保存成功之后, 才会更新测试 (和触发重新查询)
+//        searchConfigState = arguments.map { it.searchConfig }.produceState(RssSearchConfig.Empty),
+//        engine = DefaultRssMediaSourceEngine(client, parser = RssParser(includeOrigin = true)),
+//        backgroundScope,
+//    )
+
     override fun onCleared() {
-        remoteEditor?.close()
+        configurationEditor?.close()
         super.onCleared()
     }
 }

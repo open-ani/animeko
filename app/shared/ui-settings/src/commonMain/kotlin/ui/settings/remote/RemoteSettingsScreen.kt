@@ -53,16 +53,12 @@ import me.him188.ani.app.ui.lang.remote_settings_subscription_delete
 import me.him188.ani.app.ui.lang.settings_category_data_playback
 import me.him188.ani.app.ui.lang.settings_category_network_storage
 import me.him188.ani.app.ui.lang.settings_category_others
+import me.him188.ani.app.ui.lang.settings_media_source_subscription_disabled
 import me.him188.ani.app.ui.settings.SettingsPageLayout
 import me.him188.ani.app.ui.settings.SettingsTab
 import me.him188.ani.app.ui.settings.tabs.AniHelperDestination
-import me.him188.ani.app.ui.settings.tabs.app.PlayerGroup
 import me.him188.ani.app.ui.settings.tabs.app.WatchTogetherGroup
 import me.him188.ani.app.ui.settings.tabs.log.LogTab
-import me.him188.ani.app.ui.settings.tabs.media.BackupSettings
-import me.him188.ani.app.ui.settings.tabs.media.CacheDirectoryGroup
-import me.him188.ani.app.ui.settings.tabs.media.MediaSelectionGroup
-import me.him188.ani.app.ui.settings.tabs.media.source.EditMediaSourceSubscriptionDialog
 import me.him188.ani.app.ui.settings.tabs.media.source.MediaSourceGroup
 import me.him188.ani.app.ui.settings.tabs.media.source.MediaSourceSelectionActions
 import me.him188.ani.app.ui.settings.tabs.media.source.MediaSourceSubscriptionGroup
@@ -92,8 +88,7 @@ fun RemoteSettingsScreen(
             contentModifier,
             requestExit ->
             val form = vm.form
-            val cache = vm.cacheDirectoryGroupState
-            if (form != null && cache != null)
+            if (form != null)
                 key(vm.remoteSession) {
                     RemoteSettingsContent(vm, form, contentModifier, windowInsets, requestExit)
                 }
@@ -182,33 +177,30 @@ private fun RemoteSettingsContent(
                     SettingsTab {
                         when (tab) {
                             SettingsTab.PLAYER -> {
-                                PlayerGroup(
-                                    form.video,
-                                    form.kernel,
-                                    form.filter,
-                                    form.regexFilters,
-                                    false,
-                                    remoteTv = true,
-                                )
+                                RemotePlayerGroup(form)
                                 WatchTogetherGroup(form.watching)
                             }
                             SettingsTab.MEDIA_SOURCE -> {
                                 MediaSourceSubscriptionGroup(
                                     form.sources.subscriptionsGroup,
-                                    onEdit = vm::editSubscription,
-                                    onRefresh = vm::refreshSubscription,
-                                    onToggleEnabled = vm::toggleSubscription,
+                                    subscriptionLabel = {
+                                        if (it.enabled) it.url
+                                        else stringResource(Lang.settings_media_source_subscription_disabled, it.url)
+                                    },
+                                    extraActions = { subscription, onDismiss ->
+                                        RemoteSubscriptionActions(vm, subscription, onDismiss)
+                                    },
                                     deleteDescription =
                                         stringResource(Lang.remote_settings_subscription_delete),
                                 )
                                 MediaSourceGroup(form.sources.group, form.sources.edit, selection)
                             }
                             SettingsTab.MEDIA_SELECTOR ->
-                                MediaSelectionGroup(form.selection, remoteTv = true)
+                                RemoteMediaSelectionGroup(form)
                             SettingsTab.STORAGE ->
-                                vm.cacheDirectoryGroupState?.let { CacheDirectoryGroup(it) }
+                                RemoteStorageGroup(form)
                             SettingsTab.SETTINGS_BACKUP ->
-                                vm.cacheDirectoryGroupState?.let { BackupSettings(it) }
+                                RemoteBackupGroup(form)
                             else -> Unit
                         }
                     }
@@ -248,7 +240,7 @@ private fun RemoteSettingsContent(
     )
     vm.editingSubscription?.let {
         val busy = vm.remoteSession?.busy?.collectAsStateWithLifecycle()?.value ?: true
-        EditMediaSourceSubscriptionDialog(
+        RemoteSubscriptionEditDialog(
             it,
             busy,
             vm::cancelSubscriptionEdit,

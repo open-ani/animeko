@@ -16,6 +16,7 @@ import kotlinx.serialization.builtins.ListSerializer
 import me.him188.ani.app.data.models.danmaku.DanmakuRegexFilter
 import me.him188.ani.app.data.repository.user.Settings
 import me.him188.ani.app.domain.settings.remote.RemotePreferencesSnapshot
+import me.him188.ani.app.domain.settings.remote.RemoteSettingsBackup
 import me.him188.ani.app.domain.settings.remote.RemoteSettingsSession
 import me.him188.ani.app.domain.settings.remote.ReplaceDanmakuFilters
 import me.him188.ani.app.domain.settings.remote.VersionedValue
@@ -31,6 +32,7 @@ import me.him188.ani.remote.settings.RemoteSettingsProtocol
 class RemoteSettingsFormState(
     private val session: RemoteSettingsSession,
     private val scope: CoroutineScope,
+    private val onPartialRestore: () -> Unit = {},
 ) {
 
     private val json = RemoteSettingsProtocol.json
@@ -51,6 +53,16 @@ class RemoteSettingsFormState(
     }
 
     internal val sources = RemoteMediaSourcesState(session, scope)
+
+    suspend fun exportBackup(): String = json.encodeToString(session.exportBackup())
+
+    suspend fun restoreBackup(text: String): Boolean {
+        val backup = json.decodeFromString(RemoteSettingsBackup.serializer(), text)
+        val plan = session.previewBackup(backup)
+        val result = session.applyBackup(plan.planId)
+        if (result.failed.isNotEmpty()) onPartialRestore()
+        return result.failed.isEmpty()
+    }
 
     val storage =
         state(

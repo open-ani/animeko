@@ -28,8 +28,6 @@ import androidx.compose.ui.tooling.preview.Preview
 import me.him188.ani.app.ui.foundation.ProvideCompositionLocalsForPreview
 import me.him188.ani.app.ui.lang.Lang
 import me.him188.ani.app.ui.lang.settings_about_feedback
-import me.him188.ani.app.ui.lang.settings_log_share_today_log_file
-import me.him188.ani.app.ui.lang.settings_log_copy_today_log_content
 import org.jetbrains.compose.resources.stringResource
 
 @Composable
@@ -72,24 +70,4 @@ private fun PreviewLogTab() {
             )
         }
     }
-}
-
-/** 同一组日志操作由各平台或远程会话提供实际的数据读取与分享。 */
-@Composable
-internal fun ColumnScope.LogFileActions(
-    listItemColors: ListItemColors,
-    onShare: () -> Unit,
-    onCopy: () -> Unit,
-    enabled: Boolean = true,
-) {
-    ListItem(
-        headlineContent = { Text(stringResource(Lang.settings_log_share_today_log_file)) },
-        modifier = Modifier.clickable(enabled = enabled, onClick = onShare),
-        colors = listItemColors,
-    )
-    ListItem(
-        headlineContent = { Text(stringResource(Lang.settings_log_copy_today_log_content)) },
-        modifier = Modifier.clickable(enabled = enabled, onClick = onCopy),
-        colors = listItemColors,
-    )
 }

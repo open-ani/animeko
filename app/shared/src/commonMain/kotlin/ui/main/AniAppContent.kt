@@ -99,6 +99,7 @@ import me.him188.ani.app.ui.settings.mediasource.rss.EditRssMediaSourceScreen
 import me.him188.ani.app.ui.settings.mediasource.rss.EditRssMediaSourceViewModel
 import me.him188.ani.app.ui.settings.mediasource.selector.EditSelectorMediaSourceScreen
 import me.him188.ani.app.ui.settings.mediasource.selector.EditSelectorMediaSourceViewModel
+import me.him188.ani.app.ui.settings.remote.RemoteSettingsScanButton
 import me.him188.ani.app.ui.settings.remote.RemoteSettingsScreen
 import me.him188.ani.app.ui.settings.remote.RemoteSettingsSessionHost
 import me.him188.ani.app.ui.settings.remote.RemoteSettingsViewModel
@@ -395,17 +396,29 @@ private fun AniAppContentImpl(
             }
             entry<NavRoutes.Settings> { route ->
                 SettingsScreen(
-                    viewModel { SettingsViewModel() },
+                    viewModel {
+                        SettingsViewModel()
+                    },
                     onNavigateToEmailLogin = { aniNavigator.navigateEmailLoginStart() },
                     onNavigateToOAuth = { aniNavigator.navigateOAuthAuthorize(it.id) },
                     loadOpenSourceLibrariesJsons = ::loadOpenSourceLibrariesJsons,
-                    modifier = Modifier.fillMaxSize(),
-                    initialTab = route.tab,
+                    Modifier.fillMaxSize(),
+                    route.tab,
+                    onNavigateToQrLogin = if (isQrCodeScannerSupported) {
+                        { aniNavigator.navigateQrLoginScan() }
+                    } else null,
                     navigationIcon = {
-                        BackNavigationIconButton({ aniNavigator.popBackStack(route, inclusive = true) })
+                        BackNavigationIconButton(
+                            {
+                                aniNavigator.popBackStack(route, inclusive = true)
+                            },
+                        )
                     },
-                    onNavigateToQrLogin = if (isQrCodeScannerSupported) ({ aniNavigator.navigateQrLoginScan() }) else null,
-                    onNavigateToRemoteSettings = if (isQrCodeScannerSupported) ({ aniNavigator.navigateRemoteSettings() }) else null,
+                    topBarActions = {
+                        if (isQrCodeScannerSupported) {
+                            RemoteSettingsScanButton { aniNavigator.navigateRemoteSettings() }
+                        }
+                    },
                 )
             }
             entry<NavRoutes.RemoteSettings>(clazzContentKey = { it.entryId }) { route ->

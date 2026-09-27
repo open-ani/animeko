@@ -16,6 +16,7 @@ import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import kotlinx.serialization.KSerializer
+import me.him188.ani.app.domain.mediasource.MediaSourceConfigurationEditor
 import me.him188.ani.app.domain.mediasource.codec.MediaSourceArguments
 import me.him188.ani.datasources.api.source.MediaSourceConfig
 import me.him188.ani.remote.settings.RemoteSettingsProtocol
@@ -25,18 +26,18 @@ class RemoteMediaSourceEditor(
     private val session: RemoteSettingsSession,
     private val instanceId: String,
     scope: CoroutineScope,
-) {
+) : MediaSourceConfigurationEditor {
     private fun source() =
         session.snapshot.value.mediaSources.value.first { it.instanceId == instanceId }
 
     private var revision = session.snapshot.value.mediaSources.revision
     private val confirmedConfig = MutableStateFlow(source().config)
-    val config = confirmedConfig.asStateFlow()
+    override val config = confirmedConfig.asStateFlow()
 
     private class Change(val config: MediaSourceConfig)
 
     private val pending = MutableStateFlow<Change?>(null)
-    val isSaving = pending.map { it != null }.stateIn(scope, SharingStarted.Eagerly, false)
+    override val isSaving = pending.map { it != null }.stateIn(scope, SharingStarted.Eagerly, false)
     private val changes = Channel<Change>(Channel.CONFLATED)
 
     init {
@@ -68,7 +69,7 @@ class RemoteMediaSourceEditor(
         }
     }
 
-    fun <T : MediaSourceArguments> saveArguments(serializer: KSerializer<T>, arguments: T) {
+    override fun <T : MediaSourceArguments> saveArguments(serializer: KSerializer<T>, arguments: T) {
         val change =
             Change(
                 confirmedConfig.value.copy(
@@ -83,7 +84,7 @@ class RemoteMediaSourceEditor(
         }
     }
 
-    fun close() {
+    override fun close() {
         changes.close()
     }
 }

@@ -46,11 +46,13 @@ flowchart LR
     Flow --> TV[电视设置 / 播放器 / 数据源管理器]
 ```
 
-`NavRoutes.RemoteSettings` 是独立的导航入口，持有不含凭据的随机 entry ID。`RemoteSettingsScreen` 与 `RemoteSettingsViewModel` 管理连接、电视表单状态、日志、订阅和备份操作。本机 `SettingsViewModel` 只管理本机仓库；本机设置页通过导航回调提供扫码入口。
+`NavRoutes.RemoteSettings` 是独立的导航入口，持有不含凭据的随机 entry ID。`RemoteSettingsScreen` 与 `RemoteSettingsViewModel` 管理连接、电视表单状态、日志、订阅和备份操作。本机 `SettingsViewModel` 只管理本机仓库；本机设置页提供通用顶栏 actions 插槽，导航装配层通过该插槽放置扫码入口。
 
 全局 `SettingsRepository` 始终提供当前设备的本地配置。每个远程目标持有独立的 `RemoteSettingsSession`、`RemotePreferenceRepository` 和子协程 scope；切换电视时关闭旧会话并取消旧目标的任务。网络失败保留电视快照及错误状态，不会让远程表单写入手机仓库。
 
-远程页的列表只组合允许远程配置的六个导航项，布局、列表样式、详情导航与滚动行为共用 `SettingsPageLayout`。详情直接使用现有 `PlayerGroup`、`WatchTogetherGroup`、`MediaSourceSubscriptionGroup`、`MediaSourceGroup`、`MediaSelectionGroup`、`CacheDirectoryGroup`、`BackupSettings` 和 `LogTab`；电视能力通过组件参数限制。`RemoteSettingsFormState` 为组件提供相同的 `SettingsState`、`MediaSourceGroupState`、`EditMediaSourceState` 接口。
+远程页的列表只组合允许远程配置的六个导航项，布局、列表样式、详情导航与滚动行为共用 `SettingsPageLayout`。详情直接使用现有 `PlayerGroup`、`WatchTogetherGroup`、`MediaSourceSubscriptionGroup`、`MediaSourceGroup`、`MediaSelectionGroup`、`DanmakuCacheSettings`、`BackupSettings` 和 `LogTab`。`RemoteSettingsFormState` 为组件提供相同的 `SettingsState`、`MediaSourceGroupState`、`EditMediaSourceState` 接口。
+
+共享设置组件只暴露通用能力参数、内容插槽与数据读写接口，默认值遵循当前设备的本机行为。TV 的选项范围、着色器开关、订阅菜单与备份提示由 `remote/RemoteSettingsControls.kt` 组合；共享 Group 和数据源编辑器不依赖远程会话类型。存储直接复用弹幕缓存控件，备份通过 form 的回调操作固定会话，无需构造带有手机权限和目录能力的 `CacheDirectoryGroupState`。日志页通过插槽展示电视日志操作，各平台的本机日志实现各自保持独立。
 
 `RemoteSettingsSessionHost` 为远程设置及其数据源编辑子页提供设备气泡、连接／错误提示与根页退出确认。Navigation 3 的共享 store provider 以 RemoteSettings entry ID 持有 ViewModelStore，子页获取同一个 `RemoteSettingsViewModel`；只有远程 entry 出栈才清理 store。本机设置 entry 使用自身的普通 ViewModelStore。每次连接以 session 对象区分表单，编辑子页在整个生命周期内固定绑定打开时的远程 adapter。
 
@@ -85,9 +87,11 @@ HTTP server 仅由 Android TV flavor 引用，手机 APK 不启动 listener。Op
 - [Settings 页面](../../app/shared/ui-settings/src/commonMain/kotlin/ui/settings/SettingsScreen.kt)
 - [RemoteSettingsViewModel](../../app/shared/ui-settings/src/commonMain/kotlin/ui/settings/remote/RemoteSettingsViewModel.kt)
 - [RemoteSettingsScreen](../../app/shared/ui-settings/src/commonMain/kotlin/ui/settings/remote/RemoteSettingsScreen.kt)
+- [远程表单组合](../../app/shared/ui-settings/src/commonMain/kotlin/ui/settings/remote/RemoteSettingsControls.kt)
 - [远程会话容器](../../app/shared/ui-settings/src/commonMain/kotlin/ui/settings/remote/RemoteSettingsSessionHost.kt)
 - [电视表单状态 adapter](../../app/shared/ui-settings/src/commonMain/kotlin/ui/settings/remote/RemoteSettingsState.kt)
 - [数据源自动保存](../../app/shared/app-data/src/commonMain/kotlin/domain/settings/remote/RemoteMediaSourceEditor.kt)
+- [数据源配置读写接口](../../app/shared/app-data/src/commonMain/kotlin/domain/mediasource/MediaSourceConfigurationEditor.kt)
 - [电视二维码入口](../../app/shared/ui-settings/src/androidTv/kotlin/ui/settings/TvSettingsRoute.kt)
 
 ## 3. 电视进程服务
@@ -345,7 +349,7 @@ sequenceDiagram
 ### 8.1 编辑器
 
 - Selector 和 RSS source 都进入现有 `NavRoutes.EditMediaSource`，分别使用完整的 `EditSelectorMediaSourceScreen` / `EditRssMediaSourceScreen` 及其原有 ViewModel。
-- 编辑器 ViewModel 通过可选的 `RemoteMediaSourceEditor` 读取电视配置并提交参数；未提供 adapter 时使用本机 source manager。编辑控件、导入导出、自动保存提示、测试页和返回导航保持共用。
+- 编辑器 ViewModel 通过可选的 `MediaSourceConfigurationEditor` 接口读取配置、提交参数和观察保存状态；未提供实现时使用本机 source manager。远程入口注入实现该接口的 `RemoteMediaSourceEditor`，共享编辑器仅依赖接口。编辑控件、导入导出、自动保存提示、测试页和返回导航保持共用。
 - 其他 factory 将电视参数元数据映射为 `MediaSourceParameters`，使用原有 `EditMediaSourceState` 和 `EditMediaSourceDialog`。
 - 自动保存合并 500 ms 内的输入；请求发送后按顺序完成，新输入不会取消已发出的写入。最后一次输入在编辑页关闭后仍由 Settings 的目标 scope 保存；断开会话取消该 scope。
 - 编辑时捕获打开表单时的 revision，仅使用该编辑器成功写入后的确认快照推进 revision。后台轮询不能把旧草稿绑定到外部修改后的 revision；冲突时保留输入并提示重新打开编辑器。

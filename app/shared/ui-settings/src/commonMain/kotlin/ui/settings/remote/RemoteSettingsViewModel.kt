@@ -21,37 +21,27 @@ import kotlinx.coroutines.cancel
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.filterNotNull
 import kotlinx.coroutines.launch
-import me.him188.ani.app.data.models.preference.DanmakuCacheStrategy
 import me.him188.ani.app.domain.mediasource.subscription.MediaSourceSubscription
 import me.him188.ani.app.domain.settings.remote.MediaSourceCommand
-import me.him188.ani.app.domain.settings.remote.RemoteSettingsBackup
 import me.him188.ani.app.domain.settings.remote.RemoteSettingsConnectionRequests
 import me.him188.ani.app.domain.settings.remote.RemoteSettingsFailure
 import me.him188.ani.app.domain.settings.remote.RemoteSettingsSession
-import me.him188.ani.app.platform.PermissionManager
 import me.him188.ani.app.platform.currentAniBuildConfig
 import me.him188.ani.app.ui.lang.Lang
 import me.him188.ani.app.ui.lang.remote_settings_invalid_qr
 import me.him188.ani.app.ui.lang.remote_settings_restore_partial
-import me.him188.ani.app.ui.lang.remote_settings_restore_warning
 import me.him188.ani.app.ui.settings.framework.AbstractSettingsViewModel
-import me.him188.ani.app.ui.settings.tabs.media.CacheDirectoryGroupState
 import me.him188.ani.remote.settings.RemoteSettingsLink
-import me.him188.ani.remote.settings.RemoteSettingsProtocol
 import me.him188.ani.remote.settings.generated.models.LogSnapshot
 import org.jetbrains.compose.resources.StringResource
-import org.koin.core.component.KoinComponent
-import org.koin.core.component.inject
 
 /** Owns the connection and remote adapters for one RemoteSettings navigation entry. */
 class RemoteSettingsViewModel(initialSession: RemoteSettingsSession? = null) :
-    AbstractSettingsViewModel(), KoinComponent {
-    private val permissionManager: PermissionManager by inject()
+    AbstractSettingsViewModel() {
     var remoteSession by mutableStateOf<RemoteSettingsSession?>(null)
         private set
 
     private var remoteState by mutableStateOf<RemoteSettingsFormState?>(null)
-    private var remoteCache by mutableStateOf<CacheDirectoryGroupState?>(null)
     private var remoteScope: CoroutineScope? = null
     private var connection: Job? = null
     private var connectionGeneration = 0
@@ -74,9 +64,6 @@ class RemoteSettingsViewModel(initialSession: RemoteSettingsSession? = null) :
 
     internal val form
         get() = remoteState
-
-    internal val cacheDirectoryGroupState
-        get() = remoteCache
 
     init {
         initialSession?.let(::useRemoteSession)
@@ -148,30 +135,9 @@ class RemoteSettingsViewModel(initialSession: RemoteSettingsSession? = null) :
                     }
             )
         remoteScope = scope
-        remoteState = RemoteSettingsFormState(session, scope)
-        remoteCache =
-            CacheDirectoryGroupState(
-                remoteState!!.storage,
-                permissionManagerProvider = { permissionManager },
-                onGetBackupData = {
-                    RemoteSettingsProtocol.json.encodeToString(session.exportBackup())
-                },
-                onRestoreSettings = { text ->
-                    val json = RemoteSettingsProtocol.json
-                    val backup = json.decodeFromString(RemoteSettingsBackup.serializer(), text)
-                    val plan = session.previewBackup(backup)
-                    val result = session.applyBackup(plan.planId)
-                    if (result.failed.isNotEmpty()) message = Lang.remote_settings_restore_partial
-                    result.failed.isEmpty()
-                },
-                restoreWarning = Lang.remote_settings_restore_warning,
-                canChooseCacheDirectory = false,
-                cacheStrategies =
-                    listOf(
-                        DanmakuCacheStrategy.DON_NOT_CACHE,
-                        DanmakuCacheStrategy.CACHE_ON_COLLECTION_DOING_MEDIA_PLAY,
-                    ),
-            )
+        remoteState = RemoteSettingsFormState(session, scope) {
+            if (remoteSession === session) message = Lang.remote_settings_restore_partial
+        }
         remoteSession = session
     }
 
@@ -190,7 +156,6 @@ class RemoteSettingsViewModel(initialSession: RemoteSettingsSession? = null) :
         remoteScope = null
         remoteSession = null
         remoteState = null
-        remoteCache = null
         isLoadingRemoteLog = false
         editingSubscription = null
     }

@@ -7,7 +7,7 @@
  * https://github.com/open-ani/ani/blob/main/LICENSE
  */
 
-package me.him188.ani.app.ui.settings.tabs.media.source
+package me.him188.ani.app.ui.settings.remote
 
 import me.him188.ani.app.ui.lang.Lang
 import me.him188.ani.app.ui.lang.settings_media_source_cancel
@@ -39,7 +39,7 @@ import me.him188.ani.app.domain.mediasource.subscription.MediaSourceSubscription
 import me.him188.ani.utils.platform.Uuid
 
 @Composable
-internal fun EditMediaSourceSubscriptionDialog(
+internal fun RemoteSubscriptionEditDialog(
     initial: MediaSourceSubscription?,
     busy: Boolean,
     onDismiss: () -> Unit,

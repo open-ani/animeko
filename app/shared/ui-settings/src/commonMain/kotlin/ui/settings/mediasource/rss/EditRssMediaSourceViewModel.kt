@@ -28,13 +28,13 @@ import me.him188.ani.app.domain.foundation.ScopedHttpClientUserAgent
 import me.him188.ani.app.domain.foundation.get
 import me.him188.ani.app.domain.media.fetch.MediaSourceManager
 import me.him188.ani.app.domain.media.fetch.updateMediaSourceArguments
+import me.him188.ani.app.domain.mediasource.MediaSourceConfigurationEditor
 import me.him188.ani.app.domain.mediasource.codec.MediaSourceCodecManager
 import me.him188.ani.app.domain.mediasource.rss.DefaultRssMediaSourceEngine
 import me.him188.ani.app.domain.mediasource.rss.RssMediaSourceArguments
 import me.him188.ani.app.domain.mediasource.rss.RssSearchConfig
 import me.him188.ani.app.domain.rss.RssParser
 import me.him188.ani.app.domain.settings.ProxyProvider
-import me.him188.ani.app.domain.settings.remote.RemoteMediaSourceEditor
 import me.him188.ani.app.tools.MonoTasker
 import me.him188.ani.app.ui.foundation.AbstractViewModel
 import me.him188.ani.app.ui.settings.mediasource.rss.test.RssTestPaneState
@@ -45,7 +45,7 @@ import org.koin.core.component.inject
 @Stable
 class EditRssMediaSourceViewModel(
     initialInstanceId: String,
-    private val remoteEditor: RemoteMediaSourceEditor? = null,
+    private val configurationEditor: MediaSourceConfigurationEditor? = null,
 ) : AbstractViewModel(), KoinComponent {
     private val mediaSourceManager: MediaSourceManager by inject()
     private val codecManager: MediaSourceCodecManager by inject()
@@ -54,80 +54,68 @@ class EditRssMediaSourceViewModel(
 
     private val instanceId: MutableStateFlow<String> = MutableStateFlow(initialInstanceId)
 
-    private val arguments =
-        this.instanceId.flatMapLatest { instanceId ->
-            (remoteEditor?.config ?: mediaSourceManager.instanceConfigFlow(instanceId)).map {
-                it?.deserializeArgumentsOrNull(RssMediaSourceArguments.serializer())
-                    ?: RssMediaSourceArguments.Default
-            }
+    private val arguments = this.instanceId.flatMapLatest { instanceId ->
+        (configurationEditor?.config ?: mediaSourceManager.instanceConfigFlow(instanceId)).map {
+            it?.deserializeArgumentsOrNull(
+                RssMediaSourceArguments.serializer(),
+            ) ?: RssMediaSourceArguments.Default
         }
+    }
 
     private val saveTasker = MonoTasker(backgroundScope)
 
-    val state: Flow<EditRssMediaSourceState> =
-        this.instanceId
-            .transformLatest { instanceId ->
-                coroutineScope {
-                    val arguments = mutableStateOf<RssMediaSourceArguments?>(null)
-                    val allowEdit = mutableStateOf(false)
-                    launch {
-                        val config =
-                            (remoteEditor?.config
-                                    ?: mediaSourceManager.instanceConfigFlow(instanceId))
-                                .first()
-                        val persisted =
-                            config?.deserializeArgumentsOrNull(RssMediaSourceArguments.serializer())
-                                ?: RssMediaSourceArguments.Default
-                        withContext(Dispatchers.Main) {
-                            arguments.value = persisted
-                            allowEdit.value = config != null && config.subscriptionId == null
-                        }
-                    }
-                    emit(
-                        EditRssMediaSourceState(
-                            argumentsStorage =
-                                SaveableStorage(
-                                    arguments,
-                                    onSave = {
-                                        arguments.value = it
-                                        if (remoteEditor != null) {
-                                            remoteEditor.saveArguments(RssMediaSourceArguments.serializer(), it)
-                                        } else {
-                                            saveTasker.launch {
-                                                mediaSourceManager.updateMediaSourceArguments(
-                                                    instanceId,
-                                                    RssMediaSourceArguments.serializer(),
-                                                    it,
-                                                )
-                                            }
-                                        }
-                                    },
-                                    isSavingFlow = remoteEditor?.isSaving ?: saveTasker.isRunning,
-                                ),
-                            allowEditState = allowEdit,
-                            instanceId = instanceId,
-                            codecManager = codecManager,
-                        )
-                    )
+    val state: Flow<EditRssMediaSourceState> = this.instanceId.transformLatest { instanceId ->
+        coroutineScope {
+            val arguments = mutableStateOf<RssMediaSourceArguments?>(null)
+            val allowEdit = mutableStateOf(false)
+            launch {
+                val config = (configurationEditor?.config ?: mediaSourceManager.instanceConfigFlow(instanceId)).first()
+                val persisted = config
+                    ?.deserializeArgumentsOrNull(RssMediaSourceArguments.serializer())
+                    ?: RssMediaSourceArguments.Default
+                withContext(Dispatchers.Main) {
+                    arguments.value = persisted
+                    allowEdit.value = config != null && config.subscriptionId == null
                 }
             }
-            .flowOn(Dispatchers.Default)
-
-    val testState: RssTestPaneState =
-        RssTestPaneState(
-            // 这里用的是序列化之后的配置, 也就是只有保存成功之后, 才会更新测试 (和触发重新查询)
-            searchConfigState =
-                arguments.map { it.searchConfig }.produceState(RssSearchConfig.Empty),
-            engine =
-                DefaultRssMediaSourceEngine(
-                    flowOf(httpClientProvider.get(ScopedHttpClientUserAgent.BROWSER)),
-                    parser = RssParser(includeOrigin = true),
+            emit(
+                EditRssMediaSourceState(
+                    argumentsStorage = SaveableStorage(
+                        arguments,
+                        onSave = {
+                            arguments.value = it
+                            if (configurationEditor != null) {
+                                configurationEditor.saveArguments(RssMediaSourceArguments.serializer(), it)
+                            } else saveTasker.launch {
+                                mediaSourceManager.updateMediaSourceArguments(
+                                    instanceId,
+                                    RssMediaSourceArguments.serializer(),
+                                    it,
+                                )
+                            }
+                        },
+                        isSavingFlow = configurationEditor?.isSaving ?: saveTasker.isRunning,
+                    ),
+                    allowEditState = allowEdit,
+                    instanceId = instanceId,
+                    codecManager = codecManager,
                 ),
-            backgroundScope,
-        )
+            )
+        }
+    }.flowOn(Dispatchers.Default)
+
+    val testState: RssTestPaneState = RssTestPaneState(
+        // 这里用的是序列化之后的配置, 也就是只有保存成功之后, 才会更新测试 (和触发重新查询)
+        searchConfigState = arguments.map { it.searchConfig }.produceState(RssSearchConfig.Empty),
+        engine = DefaultRssMediaSourceEngine(
+            flowOf(httpClientProvider.get(ScopedHttpClientUserAgent.BROWSER)),
+            parser = RssParser(includeOrigin = true),
+        ),
+        backgroundScope,
+    )
 
     override fun onCleared() {
-        remoteEditor?.close()
+        configurationEditor?.close()
         super.onCleared()
     }
 }

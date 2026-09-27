@@ -44,7 +44,6 @@ import java.util.Locale
 import java.util.concurrent.CopyOnWriteArrayList
 import kotlin.test.Test
 import kotlin.test.assertEquals
-import kotlin.test.assertTrue
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
@@ -127,6 +126,7 @@ class RemoteSettingsScreenTest {
         val scope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
         val tv = PreferencesRepositoryImpl(MemoryDataStore(emptyPreferences()))
         val phone = PreferencesRepositoryImpl(MemoryDataStore(emptyPreferences()))
+        val phoneKernelBefore = runBlocking { phone.playerKernelConfig.flow.first() }
         runBlocking {
             tv.mediaCacheSettings.update {
                 copy(
@@ -182,8 +182,11 @@ class RemoteSettingsScreenTest {
                                         (request.body as TextContent).text,
                                     )
                                 registry.write(body.baseRevision, body.value)
-                                assertTrue(body.value is RemotePreference.MediaCache)
-                                writes += "mediaCacheSettings"
+                                writes += when (body.value) {
+                                    is RemotePreference.MediaCache -> "mediaCacheSettings"
+                                    is RemotePreference.PlayerKernel -> "playerKernelConfig"
+                                    else -> error("Unexpected preference write")
+                                }
                                 json.encodeToString(
                                     OperationResult.serializer(),
                                     OperationResult(
@@ -282,6 +285,21 @@ class RemoteSettingsScreenTest {
             onNodeWithTag("settings-back-detail").performClick()
             onNodeWithText(if (english) "Exit remote settings?" else "退出远程配置？").assertDoesNotExist()
             onNodeWithTag("settings-remote-bubble").assertIsDisplayed()
+            onNodeWithTag("settings-tab-PLAYER").performScrollTo().performClick()
+            onNodeWithText(
+                if (english) "Automatically go fullscreen on screen rotation" else "旋转屏幕时自动全屏"
+            ).assertDoesNotExist()
+            val kernelBefore = runBlocking { tv.playerKernelConfig.flow.first() }
+            onNodeWithText(
+                if (english) "Preload video enhancement shaders" else "预先加载画质增强着色器"
+            ).performScrollTo().performClick()
+            waitUntil { writes.size == 2 && !session.busy.value }
+            assertEquals(
+                !kernelBefore.exoPlayerInitEffectGraphInAdvance,
+                runBlocking { tv.playerKernelConfig.flow.first().exoPlayerInitEffectGraphInAdvance },
+            )
+            assertEquals(phoneKernelBefore, runBlocking { phone.playerKernelConfig.flow.first() })
+            onNodeWithTag("settings-back-detail").performClick()
             onNodeWithTag("settings-tab-MEDIA_SOURCE").performScrollTo().performClick()
             onNodeWithTag("media_source_item_source-11").performScrollTo().performClick()
             assertEquals(
@@ -301,7 +319,7 @@ class RemoteSettingsScreenTest {
             waitForIdle()
             onNodeWithTag("settings-remote-bubble").assertDoesNotExist()
             assertEquals(1, exited)
-            assertEquals(listOf("mediaCacheSettings"), writes.toList())
+            assertEquals(listOf("mediaCacheSettings", "playerKernelConfig"), writes.toList())
             assertEquals(
                 DanmakuCacheStrategy.CACHE_ON_MEDIA_CACHE,
                 runBlocking { phone.mediaCacheSettings.flow.first().danmakuCacheStrategy },

@@ -11,17 +11,23 @@ package me.him188.ani.app.ui.settings.tabs.log
 
 import android.content.Context
 import android.content.Intent
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.ColumnScope
+import androidx.compose.material3.ListItem
 import androidx.compose.material3.ListItemColors
+import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalClipboard
 import androidx.core.content.FileProvider
 import kotlinx.coroutines.launch
 import me.him188.ani.app.platform.LocalContext
 import me.him188.ani.app.ui.foundation.setClipEntryText
 import me.him188.ani.app.ui.lang.Lang
+import me.him188.ani.app.ui.lang.settings_log_copy_today_log_content
 import me.him188.ani.app.ui.lang.settings_log_share_file
+import me.him188.ani.app.ui.lang.settings_log_share_today_log_file
 import me.him188.ani.buildconfig.AndroidBuildConfig
 import org.jetbrains.compose.resources.stringResource
 import java.io.File
@@ -32,11 +38,13 @@ internal actual fun ColumnScope.PlatformLoggingItems(listItemColors: ListItemCol
     val context = LocalContext.current
     val clipboard = LocalClipboard.current
     val scope = rememberCoroutineScope()
+    val shareTodayLogFileText = stringResource(Lang.settings_log_share_today_log_file)
     val shareLogFileText = stringResource(Lang.settings_log_share_file)
+    val copyTodayLogContentText = stringResource(Lang.settings_log_copy_today_log_content)
 
-    LogFileActions(
-        listItemColors,
-        onShare = {
+    ListItem(
+        headlineContent = { Text(shareTodayLogFileText) },
+        Modifier.clickable {
             val shareIntent = Intent(Intent.ACTION_SEND)
             shareIntent.setType("text/plain") // Set appropriate MIME type
             shareIntent.putExtra(
@@ -50,11 +58,17 @@ internal actual fun ColumnScope.PlatformLoggingItems(listItemColors: ListItemCol
             shareIntent.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
             context.startActivity(Intent.createChooser(shareIntent, shareLogFileText))
         },
-        onCopy = {
+        colors = listItemColors,
+    )
+
+    ListItem(
+        headlineContent = { Text(copyTodayLogContentText) },
+        Modifier.clickable {
             scope.launch {
                 clipboard.setClipEntryText(context.getCurrentLogFile().readText())
             }
         },
+        colors = listItemColors,
     )
 }
 

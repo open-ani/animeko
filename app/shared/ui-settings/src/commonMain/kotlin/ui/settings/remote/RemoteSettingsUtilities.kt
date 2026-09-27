@@ -9,13 +9,20 @@
 
 package me.him188.ani.app.ui.settings.remote
 
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.ColumnScope
+import androidx.compose.material3.ListItem
 import androidx.compose.material3.ListItemColors
+import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalClipboard
 import me.him188.ani.app.ui.foundation.setClipEntryText
-import me.him188.ani.app.ui.settings.tabs.log.LogFileActions
+import me.him188.ani.app.ui.lang.Lang
+import me.him188.ani.app.ui.lang.settings_log_copy_today_log_content
+import me.him188.ani.app.ui.lang.settings_log_share_today_log_file
 import me.him188.ani.remote.settings.generated.models.LogSnapshot
+import org.jetbrains.compose.resources.stringResource
 
 @Composable
 internal fun ColumnScope.RemoteSettingsLogActions(
@@ -24,11 +31,19 @@ internal fun ColumnScope.RemoteSettingsLogActions(
 ) {
     val clipboard = LocalClipboard.current
     val share = rememberShareRemoteLog()
-    LogFileActions(
-        colors,
-        onShare = { vm.fetchRemoteLog { share(it) } },
-        onCopy = { vm.fetchRemoteLog { clipboard.setClipEntryText(it.content) } },
-        enabled = !vm.isLoadingRemoteLog,
+    ListItem(
+        headlineContent = { Text(stringResource(Lang.settings_log_share_today_log_file)) },
+        modifier = Modifier.clickable(enabled = !vm.isLoadingRemoteLog) {
+            vm.fetchRemoteLog { share(it) }
+        },
+        colors = colors,
+    )
+    ListItem(
+        headlineContent = { Text(stringResource(Lang.settings_log_copy_today_log_content)) },
+        modifier = Modifier.clickable(enabled = !vm.isLoadingRemoteLog) {
+            vm.fetchRemoteLog { clipboard.setClipEntryText(it.content) }
+        },
+        colors = colors,
     )
 }
 

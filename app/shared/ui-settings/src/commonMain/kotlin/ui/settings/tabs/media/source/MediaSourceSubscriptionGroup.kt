@@ -9,21 +9,13 @@
 
 package me.him188.ani.app.ui.settings.tabs.media.source
 
-import me.him188.ani.app.ui.lang.settings_media_source_disable
-import me.him188.ani.app.ui.lang.settings_media_source_edit
-import me.him188.ani.app.ui.lang.settings_media_source_enable
-import me.him188.ani.app.ui.lang.settings_media_source_subscription_auto_update
-import me.him188.ani.app.ui.lang.settings_media_source_subscription_disabled
-import me.him188.ani.app.ui.lang.settings_mediasource_refresh
 import androidx.compose.animation.AnimatedContent
+import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.text.selection.SelectionContainer
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.rounded.Edit
-import androidx.compose.material.icons.rounded.Visibility
-import androidx.compose.material.icons.rounded.VisibilityOff
 import androidx.compose.material.icons.rounded.Add
 import androidx.compose.material.icons.rounded.ContentPaste
 import androidx.compose.material.icons.rounded.Delete
@@ -76,6 +68,7 @@ import me.him188.ani.app.ui.lang.settings_media_source_subscription
 import me.him188.ani.app.ui.lang.settings_media_source_subscription_add
 import me.him188.ani.app.ui.lang.settings_media_source_subscription_add_confirm
 import me.him188.ani.app.ui.lang.settings_media_source_subscription_add_dialog
+import me.him188.ani.app.ui.lang.settings_media_source_subscription_auto_update
 import me.him188.ani.app.ui.lang.settings_media_source_subscription_cancel
 import me.him188.ani.app.ui.lang.settings_media_source_subscription_copied
 import me.him188.ani.app.ui.lang.settings_media_source_subscription_copy_link
@@ -164,9 +157,8 @@ class MediaSourceSubscriptionGroupState(
 @Composable
 internal fun SettingsScope.MediaSourceSubscriptionGroup(
     state: MediaSourceSubscriptionGroupState,
-    onEdit: ((MediaSourceSubscription) -> Unit)? = null,
-    onRefresh: ((MediaSourceSubscription) -> Unit)? = null,
-    onToggleEnabled: ((MediaSourceSubscription) -> Unit)? = null,
+    subscriptionLabel: @Composable (MediaSourceSubscription) -> String = { it.url },
+    extraActions: @Composable ColumnScope.(MediaSourceSubscription, onDismiss: () -> Unit) -> Unit = { _, _ -> },
     deleteDescription: String? = null,
 ) {
     var showAddDialog by rememberSaveable { mutableStateOf(false) }
@@ -200,7 +192,7 @@ internal fun SettingsScope.MediaSourceSubscriptionGroup(
         },
     ) {
         for ((index, subscription) in state.subscriptions.withIndex()) {
-            SubscriptionItem(subscription, state, onEdit, onRefresh, onToggleEnabled, deleteDescription)
+            SubscriptionItem(subscription, state, subscriptionLabel, extraActions, deleteDescription)
             if (index != state.subscriptions.lastIndex) {
                 HorizontalDividerItem()
             }
@@ -285,16 +277,15 @@ internal fun SettingsScope.MediaSourceSubscriptionGroup(
 private fun SettingsScope.SubscriptionItem(
     subscription: MediaSourceSubscription,
     state: MediaSourceSubscriptionGroupState,
-    onEdit: ((MediaSourceSubscription) -> Unit)?,
-    onRefresh: ((MediaSourceSubscription) -> Unit)?,
-    onToggleEnabled: ((MediaSourceSubscription) -> Unit)?,
+    subscriptionLabel: @Composable (MediaSourceSubscription) -> String,
+    extraActions: @Composable ColumnScope.(MediaSourceSubscription, onDismiss: () -> Unit) -> Unit,
     deleteDescription: String?,
 ) {
     var showConfirmDelete by remember { mutableStateOf(false) }
     Item(
         headlineContent = {
             SelectionContainer {
-                Text(if (onToggleEnabled != null && !subscription.enabled) stringResource(Lang.settings_media_source_subscription_disabled, subscription.url) else subscription.url)
+                Text(subscriptionLabel(subscription))
             }
         },
         supportingContent = {
@@ -312,25 +303,8 @@ private fun SettingsScope.SubscriptionItem(
                 val clipboard = LocalClipboard.current
                 val toaster = LocalToaster.current
 
-                onEdit?.let { edit ->
-                    DropdownMenuItem(
-                        text = { Text(stringResource(Lang.settings_media_source_edit)) }, leadingIcon = { Icon(Icons.Rounded.Edit, null) },
-                        onClick = { showDropdown = false; edit(subscription) },
-                    )
-                }
-                onRefresh?.let { refresh ->
-                    DropdownMenuItem(
-                        text = { Text(stringResource(Lang.settings_mediasource_refresh)) }, leadingIcon = { Icon(Icons.Rounded.Refresh, null) },
-                        onClick = { showDropdown = false; refresh(subscription) }, enabled = subscription.enabled,
-                    )
-                }
-                onToggleEnabled?.let { toggle ->
-                    DropdownMenuItem(
-                        text = { Text(stringResource(if (subscription.enabled) Lang.settings_media_source_disable else Lang.settings_media_source_enable)) },
-                        leadingIcon = { Icon(if (subscription.enabled) Icons.Rounded.VisibilityOff else Icons.Rounded.Visibility, null) },
-                        onClick = { showDropdown = false; toggle(subscription) },
-                    )
-                }
+                extraActions(subscription) { showDropdown = false }
+
                 DropdownMenuItem(
                     leadingIcon = { Icon(Icons.Rounded.Share, null) },
                     text = { Text(stringResource(Lang.settings_media_source_subscription_copy_link)) },

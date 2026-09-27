@@ -39,7 +39,6 @@ import androidx.compose.material.icons.outlined.FilterList
 import androidx.compose.material.icons.outlined.Info
 import androidx.compose.material.icons.outlined.Palette
 import androidx.compose.material.icons.outlined.Public
-import androidx.compose.material.icons.outlined.QrCodeScanner
 import androidx.compose.material.icons.outlined.Science
 import androidx.compose.material.icons.outlined.Settings
 import androidx.compose.material.icons.outlined.SettingsApplications
@@ -49,7 +48,6 @@ import androidx.compose.material.icons.outlined.Subscriptions
 import androidx.compose.material.icons.outlined.Update
 import androidx.compose.material.icons.outlined.VpnKey
 import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.NavigationDrawerItem
 import androidx.compose.material3.PermanentDrawerSheet
@@ -128,9 +126,8 @@ import me.him188.ani.app.ui.foundation.widgets.LocalToaster
 import me.him188.ani.app.ui.lang.Lang
 import me.him188.ani.app.ui.lang.acknowledgements
 import me.him188.ani.app.ui.lang.developer_list
-import me.him188.ani.app.ui.lang.remote_settings_scan
-import me.him188.ani.app.ui.lang.settings
 import me.him188.ani.app.ui.lang.settings_about_build_info
+import me.him188.ani.app.ui.lang.settings
 import me.him188.ani.app.ui.lang.settings_account_bangumi_sync_title
 import me.him188.ani.app.ui.lang.settings_account_github_title
 import me.him188.ani.app.ui.lang.settings_acknowledgements_oss_licenses
@@ -210,7 +207,7 @@ fun SettingsScreen(
      * 前往扫码登录其他设备. 为 `null` (当前平台不能扫码) 时不显示入口
      */
     onNavigateToQrLogin: (() -> Unit)? = null,
-    onNavigateToRemoteSettings: (() -> Unit)? = null,
+    topBarActions: @Composable RowScope.() -> Unit = {},
 ) {
     val navigator: ThreePaneScaffoldNavigator<Nothing?> = rememberListDetailPaneScaffoldNavigator(
         initialDestinationHistory = buildList {
@@ -249,15 +246,8 @@ fun SettingsScreen(
 
     SettingsPageLayout(
         navigator,
-        topBarActions = {
-            onNavigateToRemoteSettings?.let { scan ->
-                IconButton(scan) {
-                    Icon(Icons.Outlined.QrCodeScanner, stringResource(Lang.remote_settings_scan))
-                }
-            }
-        },
         // TODO: 2025/2/14 We should have a SettingsNavController or so to control the tab state
-        currentTab = { lastSelectedTab },
+        { lastSelectedTab },
         onSelectedTab = { tab ->
             navigateToTab(tab)
         },
@@ -463,6 +453,7 @@ fun SettingsScreen(
         navigationIcon = navigationIcon,
         layoutParameters = layoutParameters,
         loadOpenSourceLibrariesJsons = loadOpenSourceLibrariesJsons,
+        topBarActions = topBarActions,
     )
 }
 

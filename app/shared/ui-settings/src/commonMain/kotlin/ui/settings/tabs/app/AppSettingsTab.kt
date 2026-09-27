@@ -93,8 +93,6 @@ import me.him188.ani.app.ui.lang.settings_player_default_playback_speed_descript
 import me.him188.ani.app.ui.lang.settings_player_experimental_hls_segment_filter
 import me.him188.ani.app.ui.lang.settings_player_experimental_hls_segment_filter_description
 import me.him188.ani.app.ui.lang.settings_player_enable_regex_filter
-import me.him188.ani.app.ui.lang.settings_player_exoplayer_preinit_effect_graph
-import me.him188.ani.app.ui.lang.settings_player_exoplayer_preinit_effect_graph_desc
 import me.him188.ani.app.ui.lang.settings_player_frame_preview
 import me.him188.ani.app.ui.lang.settings_player_frame_preview_description
 import me.him188.ani.app.ui.lang.settings_player_fullscreen_always_show
@@ -498,7 +496,10 @@ fun SettingsScope.PlayerGroup(
     danmakuFilterConfig: SettingsState<DanmakuFilterConfig>,
     danmakuRegexFilterState: DanmakuRegexFilterState,
     showDebug: Boolean,
-    remoteTv: Boolean = false,
+    showFullscreenOnLandscape: Boolean = LocalPlatform.current.isMobile(),
+    showAudioTimeStretch: Boolean = LocalPlatform.current.isAndroid(),
+    showHlsSegmentFiltering: Boolean = !LocalPlatform.current.isIos(),
+    platformSettings: @Composable SettingsScope.() -> Unit = { PlayerGroupPlatform(videoScaffoldConfig, playerKernelConfig) },
 ) {
     Group(title = { Text(stringResource(Lang.settings_player)) }) {
         val config by videoScaffoldConfig
@@ -583,7 +584,7 @@ fun SettingsScope.PlayerGroup(
             },
             title = { Text(stringResource(Lang.settings_player_hide_selector_on_select)) },
         )
-        if (!remoteTv && LocalPlatform.current.isMobile()) {
+        if (showFullscreenOnLandscape) {
             HorizontalDividerItem()
             SwitchItem(
                 checked = config.autoFullscreenOnLandscapeMode,
@@ -630,7 +631,7 @@ fun SettingsScope.PlayerGroup(
             },
             title = { Text(stringResource(Lang.settings_player_auto_switch_media_on_error)) },
         )
-        if (remoteTv || LocalPlatform.current.isAndroid()) {
+        if (showAudioTimeStretch) {
             HorizontalDividerItem()
             SwitchItem(
                 checked = config.enableHighQualityAudioTimeStretch,
@@ -642,7 +643,7 @@ fun SettingsScope.PlayerGroup(
             )
         }
         HorizontalDividerItem()
-        if (remoteTv || !LocalPlatform.current.isIos()) {
+        if (showHlsSegmentFiltering) {
             SwitchItem(
                 checked = config.enableExperimentalHlsSegmentFiltering,
                 onCheckedChange = {
@@ -664,16 +665,7 @@ fun SettingsScope.PlayerGroup(
         )
         HorizontalDividerItem()
         PlaybackSpeedItems(config, videoScaffoldConfig)
-        if (remoteTv) {
-            SwitchItem(
-                checked = playerKernelConfig.value.exoPlayerInitEffectGraphInAdvance,
-                onCheckedChange = {
-                    playerKernelConfig.update(playerKernelConfig.value.copy(exoPlayerInitEffectGraphInAdvance = it))
-                },
-                title = { Text(stringResource(Lang.settings_player_exoplayer_preinit_effect_graph)) },
-                description = { Text(stringResource(Lang.settings_player_exoplayer_preinit_effect_graph_desc)) },
-            )
-        } else PlayerGroupPlatform(videoScaffoldConfig, playerKernelConfig)
+        platformSettings()
     }
 }
 

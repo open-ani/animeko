@@ -200,7 +200,6 @@ internal fun EditMediaSourceDialog(
     state: EditingMediaSource,
     onDismissRequest: () -> Unit,
     modifier: Modifier = Modifier,
-    enabled: Boolean = true,
 ) {
     // TODO: check changed 
 //    val backHandler = LocalBackHandler.current
@@ -283,10 +282,10 @@ internal fun EditMediaSourceDialog(
             }
         },
         confirmButton = {
-            val canSave by remember(state, enabled) {
+            val canSave by remember(state) {
                 derivedStateOf {
 //                    !isLoading && todo 不知道为什么监听不到 isLoading, 但加载速度反正很快
-                    enabled && !state.hasError
+                    !state.hasError
                 }
             }
             when (state.editMediaSourceMode) {
