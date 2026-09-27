@@ -153,12 +153,42 @@ interface EpisodeCollectionDao {
     fun filterBySubjectIdPaging(subjectId: Int): PagingSource<Int, EpisodeCollectionEntity>
 
 
-    @Upsert
-    suspend fun upsert(item: EpisodeCollectionEntity)
+    @Query("SELECT * FROM episode_collection WHERE episodeId IN (:episodeIds)")
+    fun filterByEpisodeIds(episodeIds: Collection<Int>): Flow<List<EpisodeCollectionEntity>>
 
     @Upsert
+    suspend fun upsertEntities(item: EpisodeCollectionEntity)
+
+    @Upsert
+    suspend fun upsertEntities(items: List<EpisodeCollectionEntity>)
+
+    /**
+     * 把服务端返回的剧集写进本地. 用户本地改过但还没同步上去的看过状态 (见 [EpisodeCollectionPendingOpEntity])
+     * 会在写入后按待同步操作重新盖回去, 否则一次刷新就把离线时的标记冲掉了.
+     */
     @Transaction
-    suspend fun upsert(item: List<EpisodeCollectionEntity>)
+    suspend fun upsert(item: EpisodeCollectionEntity) {
+        upsertEntities(item)
+        reapplyPendingCollectionTypes()
+    }
+
+    @Transaction
+    suspend fun upsert(item: List<EpisodeCollectionEntity>) {
+        upsertEntities(item)
+        reapplyPendingCollectionTypes()
+    }
+
+    @Query(
+        """
+        UPDATE episode_collection SET selfCollectionType = (
+            SELECT p.collectionType FROM episode_collection_pending_op p
+            WHERE p.episodeId = episode_collection.episodeId
+            ORDER BY p.id DESC LIMIT 1
+        )
+        WHERE episodeId IN (SELECT episodeId FROM episode_collection_pending_op)
+        """,
+    )
+    suspend fun reapplyPendingCollectionTypes()
 
     @Query("""UPDATE episode_collection SET selfCollectionType = :type WHERE subjectId = :subjectId AND episodeId = :episodeId""")
     suspend fun updateSelfCollectionType(

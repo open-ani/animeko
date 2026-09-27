@@ -26,6 +26,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.unit.dp
 
 /** The bottom layers slide/fade over a shared stationary scrim. */
@@ -42,6 +43,7 @@ internal fun TvBottomControllerLayout(
                 .align(Alignment.BottomCenter)
                 .fillMaxWidth()
                 .height(300.dp)
+                .testTag("tv-player-bottom-scrim")
                 .background(
                     Brush.verticalGradient(
                         0f to Color.Transparent,

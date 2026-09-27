@@ -15,13 +15,15 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.remember
-import androidx.compose.ui.Modifier
 import androidx.compose.ui.ExperimentalComposeUiApi
+import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.focusProperties
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.key.onPreviewKeyEvent
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.semantics.clearAndSetSemantics
+import me.him188.ani.tv.ui.foundation.focus.LocalTvFocusBoundary
+import me.him188.ani.tv.ui.foundation.focus.TvFocusBoundary
 import me.him188.ani.tv.ui.foundation.focus.consumeHeldConfirmKey
 import me.him188.ani.tv.ui.foundation.focus.tvBackKey
 
@@ -35,13 +37,16 @@ fun TvModalOverlay(
     background: @Composable BoxScope.() -> Unit,
     content: @Composable BoxScope.() -> Unit,
 ) {
+    val parentBoundary = LocalTvFocusBoundary.current
+    val acceptsInput = active && parentBoundary?.isActive != false
     val enterAlpha = remember { Animatable(0f) }
     LaunchedEffect(Unit) { enterAlpha.animateTo(1f, tween(180)) }
-    BackHandler(enabled = active, onBack = onClose)
-    Box(
-        modifier.fillMaxSize().graphicsLayer { alpha = enterAlpha.value }
-            .consumeHeldConfirmKey().tvBackKey(enabled = active, onBack = onClose)
-            .focusProperties { onExit = { if (active) cancelFocus() } }.focusGroup(),
+    BackHandler(enabled = acceptsInput, onBack = onClose)
+    TvFocusBoundary(
+        active = active,
+        modifier = modifier.fillMaxSize().graphicsLayer { alpha = enterAlpha.value }
+            .consumeHeldConfirmKey().tvBackKey(enabled = acceptsInput, onBack = onClose)
+            .focusProperties { onExit = { if (active && parentBoundary?.isActive != false) cancelFocus() } },
     ) {
         background()
         Box(Modifier.matchParentSize().pointerInput(Unit) { detectTapGestures { } })

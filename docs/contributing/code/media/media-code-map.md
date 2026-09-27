@@ -57,6 +57,9 @@
 注意：
 
 - `selectMedia(...)` 产出的 `DefaultMedia` 带有 `download = ResourceLocation.WebVideo(...)`。
+- `SelectorMediaSource` 实现了 `MediaSource` 的浏览方法（`searchSubjects` / `browseSubject` / `createMedia`，
+  类型见 `datasource/api/.../source/Browse.kt`）：只列出站点内容，不做匹配；`fetch` 是其上的自动模式，
+  由 `searchConfig.autoMatch` 控制，见 [MediaSource](media-source.md#selectormediasource)。
 - `SelectorMediaSource.matcher` 提供数据源专属的 `WebVideoMatcher`，供之后播放时提取 URL 使用。
 
 ### RSS 数据源查询/解析管线

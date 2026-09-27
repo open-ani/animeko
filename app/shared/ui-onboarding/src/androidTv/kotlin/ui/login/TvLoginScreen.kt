@@ -12,6 +12,7 @@ package me.him188.ani.tv.ui.login
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.RowScope
@@ -69,6 +70,7 @@ fun TvLoginScreen(
     uiState: TvLoginUiState,
     onIntent: (TvLoginIntent) -> Unit,
     modifier: Modifier = Modifier,
+    navigationRailInsets: PaddingValues = PaddingValues(0.dp),
 ) {
     val step = uiState.step
     val busy = uiState.busy
@@ -85,7 +87,7 @@ fun TvLoginScreen(
 
     TvLoginPageLayout(
         focus = focus,
-        modifier = modifier,
+        modifier = modifier.fillMaxSize().padding(navigationRailInsets),
         qrPanel = {
             TvQrLoginPanel(
                 uiState.qr,

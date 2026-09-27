@@ -9,6 +9,7 @@
 
 package me.him188.ani.tv.ui.main
 
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -26,7 +27,7 @@ fun TvMainRoute(
     onOpenSettings: () -> Unit,
     modifier: Modifier = Modifier,
     focusMemory: TvFocusMemory? = null,
-    pageContent: @Composable (TvShellContent) -> Unit,
+    pageContent: @Composable (TvShellContent, navigationRailInsets: PaddingValues) -> Unit,
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
     val toaster = LocalToaster.current

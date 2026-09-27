@@ -6,7 +6,6 @@ package me.him188.ani.tv.ui.subject.person.discussion
 
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.ScrollState
-import androidx.compose.foundation.progressSemantics
 import androidx.compose.foundation.focusable
 import androidx.compose.foundation.gestures.LocalBringIntoViewSpec
 import androidx.compose.foundation.gestures.animateScrollBy
@@ -20,6 +19,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.rememberLazyListState
+import androidx.compose.foundation.progressSemantics
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.Refresh
 import androidx.compose.material3.Text
@@ -39,22 +39,18 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.input.key.Key
 import androidx.compose.ui.layout.ContentScale
-import androidx.compose.ui.layout.onGloballyPositioned
-import androidx.compose.ui.platform.LocalWindowInfo
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.unit.dp
-import androidx.lifecycle.Lifecycle
-import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.paging.LoadState
 import androidx.paging.compose.LazyPagingItems
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import me.him188.ani.app.domain.foundation.LoadError
 import me.him188.ani.app.tools.formatDateTime
+import me.him188.ani.app.ui.comment.CommentReportReason
 import me.him188.ani.app.ui.comment.UIComment
 import me.him188.ani.app.ui.comment.UICommentSource
 import me.him188.ani.app.ui.comment.UICommentVote
-import me.him188.ani.app.ui.comment.CommentReportReason
 import me.him188.ani.app.ui.foundation.AsyncImage
 import me.him188.ani.app.ui.lang.Lang
 import me.him188.ani.app.ui.lang.comment_empty_title
@@ -67,7 +63,6 @@ import me.him188.ani.app.ui.lang.settings_mediasource_retry
 import me.him188.ani.app.ui.richtext.RichText
 import me.him188.ani.app.ui.search.renderLoadErrorMessage
 import me.him188.ani.tv.ui.foundation.focus.rememberTvFocusScope
-import me.him188.ani.tv.ui.foundation.focus.requestPrepared
 import me.him188.ani.tv.ui.foundation.focus.tvFocusAnchor
 import me.him188.ani.tv.ui.foundation.focus.tvFocusHotkey
 import me.him188.ani.tv.ui.foundation.focus.tvFocusLink
@@ -76,18 +71,18 @@ import me.him188.ani.tv.ui.foundation.layout.TvModalOverlay
 import me.him188.ani.tv.ui.foundation.widgets.TvOptionModal
 import me.him188.ani.tv.ui.subject.components.TvDetailsReadingArea
 import me.him188.ani.tv.ui.subject.components.TvSubjectDetailsDefaults
-import me.him188.ani.tv.ui.subject.components.detailsRevealMasks
 import me.him188.ani.tv.ui.subject.components.detailsRedactMasks
+import me.him188.ani.tv.ui.subject.components.detailsRevealMasks
 import me.him188.ani.tv.ui.subject.details.TvDetailsAction
 import me.him188.ani.tv.ui.subject.details.formatCount
 import me.him188.ani.tv.ui.subject.presentation.TvDetailsKey
 import me.him188.ani.tv.ui.subject.presentation.detailsFocusFallback
 import me.him188.ani.tv.ui.subject.reviews.TvReviewBringIntoViewSpec
 import me.him188.ani.tv.ui.subject.reviews.TvReviewCard
-import me.him188.ani.tv.ui.subject.reviews.tvReviewLoadingItems
 import me.him188.ani.tv.ui.subject.reviews.TvReviewPlaceholder
 import me.him188.ani.tv.ui.subject.reviews.TvReviewScrollbar
 import me.him188.ani.tv.ui.subject.reviews.tvReviewEdges
+import me.him188.ani.tv.ui.subject.reviews.tvReviewLoadingItems
 import org.jetbrains.compose.resources.stringResource
 
 internal fun peopleDiscussionCount(items: LazyPagingItems<UIComment>, incomplete: Boolean = false): String =
@@ -117,9 +112,6 @@ internal fun TvPeopleDiscussion(
     focus.Resolver()
     val list = rememberLazyListState()
     val scope = rememberCoroutineScope()
-    val lifecycle = LocalLifecycleOwner.current.lifecycle
-    val window = LocalWindowInfo.current
-    var laidOut by remember { mutableStateOf(false) }
     val page = state.page
     val generation = state.generation
     val currentState by rememberUpdatedState(state)
@@ -146,8 +138,6 @@ internal fun TvPeopleDiscussion(
     suspend fun restore(target: String?, previous: List<String> = emptyList(), animate: Boolean = false) {
         val expectedGeneration = currentState.generation
         focus.requestPrepared(isRelevant = { currentState.generation == expectedGeneration }) {
-            lifecycle.currentStateFlow.first { it.isAtLeast(Lifecycle.State.RESUMED) }
-            snapshotFlow { laidOut && window.isWindowFocused }.first { it }
             val key = if (currentState.page == TvPeopleDiscussionPage.List)
                 detailsFocusFallback(target, previous, currentKeys, "status") else target ?: "body"
             expectedFocus = key
@@ -161,7 +151,7 @@ internal fun TvPeopleDiscussion(
                             it.offset + it.size / 2f - (layout.viewportStartOffset + layout.viewportEndOffset) / 2f
                         }
                     }.first { it != null }
-                    focus.request(TvDetailsKey(key))
+                    focusNow(TvDetailsKey(key))
                     list.animateScrollBy(checkNotNull(distance))
                     return@requestPrepared null
                 }
@@ -169,7 +159,7 @@ internal fun TvPeopleDiscussion(
             TvDetailsKey(key)
         }
     }
-    LaunchedEffect(generation) {
+    LaunchedEffect(generation, focus.isActive) {
         entryPending = true
         entryNavigation = focus.userNavGeneration
         restore(when (page) {
@@ -202,7 +192,7 @@ internal fun TvPeopleDiscussion(
     else selected?.let { (if (it.source == UICommentSource.BANGUMI) "Bangumi" else "Animeko") + " · " + formatDateTime(it.createdAt) }
 
     TvModalOverlay(onClose = { onAction(TvPeopleDiscussionAction.Close) }, background = {},
-        modifier = Modifier.tvFocusNavSignal(focus).onGloballyPositioned { laidOut = true }.testTag("tv-people-discussion")) {
+        modifier = Modifier.tvFocusNavSignal(focus).testTag("tv-people-discussion")) {
         TvOptionModal(if (page == TvPeopleDiscussionPage.List) discussionTitle else author,
             modifier = Modifier.testTag("tv-people-discussion-surface"), subtitle = subtitle,
             footer = if (page == TvPeopleDiscussionPage.Comment && selected != null) ({

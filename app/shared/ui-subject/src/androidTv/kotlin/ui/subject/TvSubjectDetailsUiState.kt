@@ -66,6 +66,8 @@ data class TvSubjectDetailsContentState(
     val canReport: Boolean = false,
     val airing: AiringLabelState? = null,
     val progress: SubjectProgressState? = null,
+    val collectionLoading: Boolean = false,
+    val ratingLoading: Boolean = false,
 )
 
 data class TvSubjectOperation(

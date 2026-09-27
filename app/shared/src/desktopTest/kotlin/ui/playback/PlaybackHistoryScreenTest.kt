@@ -140,42 +140,44 @@ class PlaybackHistoryScreenTest {
     @Test
     fun `sync status screen lists and deletes pending ops`() = runAniComposeUiTest {
         val deletePendingText = runBlocking { getString(Lang.playback_history_sync_delete_pending) }
-        var deletedIds = emptyList<Long>()
+        var deletedEpisodeIds = emptyList<Int>()
 
         setContent {
             ProvideCompositionLocalsForPreview {
                 PlaybackHistorySyncStatusScreen(
                     pendingOps = listOf(
                         PlaybackHistorySyncStatusUiItem(
-                            id = 1,
                             episodeId = 11,
-                            operationName = "更新",
+                            operationNames = listOf("更新进度", "标记看过"),
                             subjectName = "葬送的芙莉莲",
                             episodeName = "别离",
                             versionMillis = 1_700_000_000_000,
+                            playbackOpId = 1,
+                            collectionOpId = 5,
                         ),
                         PlaybackHistorySyncStatusUiItem(
-                            id = 2,
                             episodeId = 12,
-                            operationName = "删除",
+                            operationNames = listOf("删除记录"),
                             subjectName = null,
                             episodeName = null,
                             versionMillis = 1_700_000_100_000,
+                            playbackOpId = 2,
                         ),
                     ),
                     onNavigateBack = {},
-                    onDeletePendingOps = { deletedIds = it.sorted() },
+                    onDeletePendingItems = { items -> deletedEpisodeIds = items.map { it.episodeId }.sorted() },
                 )
             }
         }
 
         onNodeWithTag(PlaybackHistoryTestTags.SYNC_PENDING_LIST).assertExists()
-        onNodeWithTag("${PlaybackHistoryTestTags.SYNC_PENDING_ITEM_PREFIX}1").assertExists()
+        onNodeWithTag("${PlaybackHistoryTestTags.SYNC_PENDING_ITEM_PREFIX}11").assertExists()
         onNodeWithText("葬送的芙莉莲", substring = true).assertExists()
+        onNodeWithText("更新进度 · 标记看过 · 别离", substring = true).assertExists()
         onAllNodesWithContentDescription(deletePendingText)[0].performClick()
 
         runOnIdle {
-            assertEquals(listOf(1L), deletedIds)
+            assertEquals(listOf(11), deletedEpisodeIds)
         }
     }
 
