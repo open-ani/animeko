@@ -51,8 +51,8 @@ import me.him188.ani.app.ios.tracking.IosAniListAccountConnector
 import me.him188.ani.app.ios.tracking.IosAniListBindingStore
 import me.him188.ani.app.ios.tracking.IosRegistryEpisodeTrackingSync
 import me.him188.ani.app.ios.tracking.IosTrackingCredentialStore
-import me.him188.ani.app.ios.tracking.aniListTokenFromRedirect
 import me.him188.ani.app.tracking.anilist.AniListTrackingProvider
+import me.him188.ani.app.tracking.anilist.parseAniListOAuthRedirect
 import me.him188.ani.app.tracking.anilist.createAniListHttpClient
 import me.him188.ani.app.ui.foundation.icons.AniListTrackingIcon
 import me.him188.ani.app.ui.foundation.icons.TrackingIconRenderer
@@ -169,7 +169,7 @@ class AniIosApplication(
         }
 
         // AniList OAuth 重定向: ani://anilist-auth#access_token=...
-        val aniListToken = aniListTokenFromRedirect(url)
+        val aniListToken = parseAniListOAuthRedirect(url)
         if (aniListToken != null) {
             val connector = aniListConnector ?: return false
             scope.launch(Dispatchers.Default) {

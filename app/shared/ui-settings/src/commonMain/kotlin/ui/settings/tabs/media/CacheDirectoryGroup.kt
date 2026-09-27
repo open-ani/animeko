@@ -35,8 +35,11 @@ import androidx.compose.ui.platform.LocalClipboard
 import io.github.vinceglb.filekit.FileKit
 import io.github.vinceglb.filekit.dialogs.openFilePicker
 import io.github.vinceglb.filekit.dialogs.openFileSaver
-import io.github.vinceglb.filekit.readBytes
+import io.github.vinceglb.filekit.source
 import io.github.vinceglb.filekit.write
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
+import kotlinx.io.buffered
 import kotlinx.coroutines.CancellationException
 import kotlinx.datetime.TimeZone
 import kotlinx.datetime.toLocalDateTime
@@ -44,10 +47,14 @@ import me.him188.ani.app.data.models.preference.DanmakuCacheStrategy
 import me.him188.ani.app.data.models.preference.MediaCacheSettings
 import me.him188.ani.app.platform.PermissionManager
 import me.him188.ani.app.ui.foundation.getClipEntryText
+import me.him188.ani.app.ui.settings.MAX_BACKUP_FILE_BYTES
 import me.him188.ani.app.ui.settings.compressBackup
 import me.him188.ani.app.ui.settings.decompressBackup
+import me.him188.ani.app.ui.settings.readBackupBytes
+import me.him188.ani.app.ui.settings.requireBackupTextSize
 import me.him188.ani.tracking.api.TrackingBackupValidationException
 import me.him188.ani.app.ui.foundation.setClipEntryText
+import me.him188.ani.utils.coroutines.IO_
 import me.him188.ani.app.ui.foundation.rememberAsyncHandler
 import me.him188.ani.app.ui.foundation.widgets.LocalToaster
 import me.him188.ani.app.ui.lang.*
@@ -140,7 +147,10 @@ fun SettingsScope.BackupSettings(state: CacheDirectoryGroupState) {
                             val target = FileKit.openFileSaver(suggestedName = filename, extension = "animekobk")
                                 ?: return@launch
                             val data = state.onGetBackupData(BackupSelection(backupSettings, backupTracking))
-                            target.write(compressBackup(data.encodeToByteArray()))
+                            requireBackupTextSize(data)
+                            val compressed = compressBackup(data.encodeToByteArray())
+                            require(compressed.size <= MAX_BACKUP_FILE_BYTES) { "Backup file exceeds $MAX_BACKUP_FILE_BYTES bytes" }
+                            target.write(compressed)
                             showBackupDialog = false
                             toaster.toast(backupSavedToast)
                         } catch (_: Exception) {
@@ -154,6 +164,7 @@ fun SettingsScope.BackupSettings(state: CacheDirectoryGroupState) {
                     scope.launch {
                         try {
                             val data = state.onGetBackupData(BackupSelection(backupSettings, backupTracking))
+                            requireBackupTextSize(data)
                             clipboard.setClipEntryText(data)
                             showBackupDialog = false
                             toaster.toast(backupCopiedToast)
@@ -201,7 +212,10 @@ fun SettingsScope.BackupSettings(state: CacheDirectoryGroupState) {
             confirmButton = {
                 TextButton({
                     restoreFrom {
-                        val bytes = FileKit.openFilePicker()?.readBytes() ?: return@restoreFrom null
+                        val file = FileKit.openFilePicker() ?: return@restoreFrom null
+                        val bytes = withContext(Dispatchers.IO_) {
+                            file.source().buffered().use { source -> readBackupBytes(source) }
+                        }
                         if (bytes.size >= 2 && bytes[0] == 0x1f.toByte() && bytes[1] == 0x8b.toByte()) {
                             decompressBackup(bytes).decodeToString()
                         } else {

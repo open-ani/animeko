@@ -40,6 +40,8 @@ data class TrackingCardModel(
     val load: TrackingLoad,
 ) {
     val isTracked: Boolean get() = (load as? TrackingLoad.Ready)?.snapshot?.entry != null
+    val isConnected: Boolean get() = account is TrackingAccountState.LoggedIn || account is TrackingAccountState.Refreshing
+    val shouldShowInTrackingSheet: Boolean get() = isConnected || load is TrackingLoad.RateLimited
 }
 
 internal fun retryAfterSeconds(millis: Long): Int {

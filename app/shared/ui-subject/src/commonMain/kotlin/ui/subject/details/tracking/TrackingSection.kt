@@ -79,7 +79,6 @@ import me.him188.ani.app.ui.foundation.tracking.TrackingLoginAction
 import me.him188.ani.app.ui.foundation.AsyncImage
 import me.him188.ani.app.ui.foundation.LocalIsPreviewing
 import me.him188.ani.app.ui.foundation.LocalSubjectAppearanceSettings
-import me.him188.ani.tracking.api.TrackingAccountState
 import me.him188.ani.tracking.api.TrackingDate
 import me.him188.ani.tracking.api.TrackingDateField
 import me.him188.ani.tracking.api.TrackingEdit
@@ -180,9 +179,8 @@ private fun TrackingSectionContent(subjectId: Int, modifier: Modifier) {
     var error by remember { mutableStateOf<TrackingUiError?>(null) }
     var confirm by remember { mutableStateOf<Pair<TrackingProviderId, Boolean>?>(null) }
     var markAllPrompt by remember { mutableStateOf<TrackingProviderId?>(null) }
-    val connectedCards = cards.filter {
-        it.account is TrackingAccountState.LoggedIn || it.account is TrackingAccountState.Refreshing
-    }
+    val connectedCards = cards.filter { it.isConnected }
+    val visibleCards = cards.filter { it.shouldShowInTrackingSheet }
     val trackedCount = connectedCards.count { it.isTracked }
 
     val updateFailedText = stringResource(Lang.tracking_error_update_failed)
@@ -236,7 +234,7 @@ private fun TrackingSectionContent(subjectId: Int, modifier: Modifier) {
             Column(Modifier.fillMaxWidth().verticalScroll(rememberScrollState()).padding(horizontal = 24.dp, vertical = 16.dp),
                 verticalArrangement = Arrangement.spacedBy(12.dp)) {
                 Text(stringResource(Lang.tracking_sheet_title), style = MaterialTheme.typography.titleLarge)
-                connectedCards.forEach { card ->
+                visibleCards.forEach { card ->
                     TrackingCard(card, busy == card.providerId,
                         onField = { editor = card.providerId to it },
                         onSearch = {
@@ -264,7 +262,7 @@ private fun TrackingSectionContent(subjectId: Int, modifier: Modifier) {
                         onPrivacy = { runEdit(card.providerId, TrackingEdit.Privacy(it)) },
                     )
                 }
-                if (connectedCards.isEmpty()) {
+                if (visibleCards.isEmpty()) {
                     Text(stringResource(Lang.tracking_no_accounts_connected))
                 }
                 accountConnectors

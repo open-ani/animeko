@@ -51,21 +51,6 @@ class IosAniListAccountConnector(private val provider: AniListTrackingProvider) 
     }
 }
 
-fun aniListTokenFromRedirect(urlString: String): String? {
-    if (!urlString.startsWith("ani://anilist-auth")) return null
-    val fragmentIndex = urlString.indexOf('#')
-    if (fragmentIndex == -1) return null
-    val fragment = urlString.substring(fragmentIndex + 1)
-    for (part in fragment.split('&')) {
-        val name = part.substringBefore('=')
-        if (name == "access_token") {
-            val value = part.substringAfter('=')
-            if (value.isNotBlank()) return value
-        }
-    }
-    return null
-}
-
 class IosRegistryEpisodeTrackingSync(
     private val synchronizer: TrackingEpisodeSynchronizer,
     private val scope: CoroutineScope,

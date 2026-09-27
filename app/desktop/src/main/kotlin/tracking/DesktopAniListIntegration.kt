@@ -2,7 +2,6 @@ package me.him188.ani.app.desktop.tracking
 
 import java.awt.Desktop
 import java.net.URI
-import java.net.URLDecoder
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -11,6 +10,7 @@ import kotlinx.coroutines.launch
 import me.him188.ani.app.domain.episode.EpisodeTrackingSync
 import me.him188.ani.app.domain.tracking.TrackingEpisodeSynchronizer
 import me.him188.ani.app.tracking.anilist.AniListTrackingProvider
+import me.him188.ani.app.tracking.anilist.parseAniListOAuthRedirect
 import me.him188.ani.app.ui.foundation.tracking.DisconnectableTrackingAccount
 import me.him188.ani.app.ui.foundation.tracking.TrackingAccountConnector
 import me.him188.ani.app.ui.foundation.tracking.TrackingLoginAction
@@ -68,16 +68,7 @@ fun installAniListOpenUriHandler(connector: DesktopAniListAccountConnector, scop
     }
 }
 
-internal fun aniListTokenFromRedirect(uri: URI): String? {
-    if (uri.scheme != "ani" || uri.host != "anilist-auth") return null
-    val encoded = uri.rawFragment ?: return null
-    return encoded.split('&').firstNotNullOfOrNull { field ->
-        val name = field.substringBefore('=', "")
-        if (name != "access_token") return@firstNotNullOfOrNull null
-        runCatching { URLDecoder.decode(field.substringAfter('=', ""), Charsets.UTF_8) }
-            .getOrNull()?.takeIf(String::isNotBlank)
-    }
-}
+internal fun aniListTokenFromRedirect(uri: URI): String? = parseAniListOAuthRedirect(uri.toString())
 
 class DesktopRegistryEpisodeTrackingSync(
     private val synchronizer: TrackingEpisodeSynchronizer,

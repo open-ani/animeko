@@ -316,6 +316,24 @@ class AniListTrackingProviderTest {
     }
 
     @Test
+    fun initialAccountRefreshRateLimitKeepsCredentialsAndRetryDelay() = runTest {
+        val store = InMemoryCredentialStore()
+        val provider = provider(store) {
+            respond(
+                content = "",
+                status = HttpStatusCode.TooManyRequests,
+                headers = headersOf(HttpHeaders.RetryAfter, "30"),
+            )
+        }
+
+        val failure = assertFailsWith<TrackingProviderException.RateLimited> { provider.refreshAccount() }
+
+        assertEquals(30_000L, failure.retryAfterMillis)
+        assertEquals(TrackingAccountState.LoggedOut, provider.accountState.value)
+        assertEquals("token", store.load()?.secret)
+    }
+
+    @Test
     fun cancellationIsNotWrapped() = runTest {
         val provider = provider { throw CancellationException("cancelled") }
         assertFailsWith<CancellationException> { provider.search("Frieren") }

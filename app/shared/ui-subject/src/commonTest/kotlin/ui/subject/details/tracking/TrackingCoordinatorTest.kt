@@ -26,6 +26,7 @@ import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
 import kotlin.test.assertFailsWith
+import kotlin.test.assertTrue
 
 class TrackingCoordinatorTest {
     @Test
@@ -43,12 +44,18 @@ class TrackingCoordinatorTest {
     }
 
     @Test
-    fun rateLimitedSnapshotExposesRetryDelay() = runTest {
-        val source = FakeSource("anilist", observeFailure = TrackingProviderException.RateLimited(15_100))
+    fun initialRateLimitRemainsVisibleAfterAccountRefreshFails() = runTest {
+        val source = FakeSource(
+            "anilist",
+            connected = false,
+            observeFailure = TrackingProviderException.RateLimited(15_100),
+        )
         val card = TrackingCoordinator(DefaultTrackingRegistry(listOf(source)))
             .observe(42).first { it.single().load is TrackingLoad.RateLimited }.single()
 
         assertEquals(16, (card.load as TrackingLoad.RateLimited).retryAfterSeconds)
+        assertFalse(card.isConnected)
+        assertTrue(card.shouldShowInTrackingSheet)
     }
 
     @Test

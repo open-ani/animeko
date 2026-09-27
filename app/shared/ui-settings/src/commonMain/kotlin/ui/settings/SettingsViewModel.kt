@@ -393,14 +393,17 @@ open class SettingsViewModel : AbstractSettingsViewModel(), KoinComponent {
                 TrackingBindingSave(it.providerId, it.accountId, it.subjectId, it.mediaId)
             },
         ) else null
-        return json.encodeToString(AnimekoBackupFile.serializer(), AnimekoBackupFile(
+        val content = json.encodeToString(AnimekoBackupFile.serializer(), AnimekoBackupFile(
             settings = settings.takeIf { selection.settings },
             tracking = tracking,
         ))
+        requireBackupTextSize(content)
+        return content
     }
 
     @Suppress("DuplicatedCode")
     private suspend fun restoreSettingsBackup(content: String): Boolean {
+        requireBackupTextSize(content)
         val fields = json.parseToJsonElement(content).jsonObject
         val file = if ("format" in fields) {
             require("version" in fields) { "Backup schema version is missing" }

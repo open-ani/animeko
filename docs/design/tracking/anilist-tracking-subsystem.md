@@ -95,7 +95,7 @@ AniList provider 必须具备：
 
 [AniList 官方限流文档](https://docs.anilist.co/guide/rate-limiting)说明：常规上限为 **90 requests/minute**；截至 **2026-09-27**，文档另提示服务处于降级状态，临时上限为 **30 requests/minute**。官方还设置独立的 burst limiter，但没有公布其数值。超限会返回 HTTP 429；`Retry-After` 的单位是秒，`X-RateLimit-Reset` 是 Unix 时间戳，超限后官方要求等待后再请求。
 
-Animeko 的共享 AniList `HttpClient` 将请求限制为 **25 requests per rolling 60 seconds per client instance**。这是客户端安全上限，不是 AniList 的官方上限；它低于当前临时上限并留出少量余量。收到 429 后，后续请求至少等待响应中的 `Retry-After`；当前请求不自动重放，避免重复执行写操作。该限制只约束此客户端实例，不合并 Mihon 或其他进程发出的请求。
+Animeko 的共享 AniList `HttpClient` 将请求限制为 **25 requests per rolling 60 seconds per client instance**。这是客户端安全上限，不是 AniList 的官方上限；它低于当前临时上限并留出少量余量。每个平台的 Koin 单例 provider 持有一个 HTTP client，Viewer、读取查询和写入 mutation 共用同一预算；与 Mihon 一样，不区分读写限额。收到 429 后，后续请求至少等待响应中的 `Retry-After`；当前请求不自动重放，避免重复执行写操作。该限制只约束此客户端实例，不合并 Mihon 或其他进程发出的请求。429 错误会保留服务端等待时间并在追踪卡片中显示重试指引；初次账号刷新失败且 provider 回到未登录状态时，也保留该错误卡片。
 
 限流资料必须区分官方上限、当前降级上限和 Animeko 自身上限，并在官方状态变化时更新本节及客户端策略。
 
@@ -109,7 +109,7 @@ Android、macOS Desktop 与 iOS 的条目 UI 均通过 `TrackingRegistry`、`Tra
 
 搜索结果使用 AniList 返回的封面和标题。搜索初始词遵循 Animeko 的“显示原名”设置：关闭时先用当前显示的本地化标题；若该查询没有结果，再尝试原名。用户手动改写查询后只执行输入的词，避免意外的第二次搜索。
 
-备份选择框提供“应用设置”和“追踪匹配关系”两个选项，允许只导出其中一类；可保存文件或复制到剪贴板，恢复时可选择文件或剪贴板。文件名包含本地时间，格式为 `animeko_YYYY-MM-DD_HH-mm.animekobk`。`.animekobk` 文件使用 gzip 压缩，解压后的 JSON 包含 `format: animeko-backup`、`version: 1`、`settings`、`tracking` 字段。恢复时先验证格式与版本，再写入设置；未知版本被拒绝。恢复也接受先前导出的普通 JSON 文件及旧版设置剪贴板 JSON。`TrackingRegistry` 汇总所有已注册 source 的绑定记录，并按 `providerId` 将导入记录交回各 source；无本地匹配的 Bangumi source 返回空列表。新增追踪平台实现 `TrackingSource.exportBindings`、`validateBindings` 和 `applyValidatedBindings`，以自己的存储格式保存绑定，在导出边界转换为 `TrackingBindingRecord`；无需修改备份 UI 或文件结构。未知 `providerId` 在恢复前被拒绝，避免静默丢失。文件选择及内容选项参照 Mihon 的 `BackupCreator`；Mihon 的 `.tachibk` 文件使用 gzip 压缩的 protobuf，Animeko 的格式与之不兼容。备份不包含离线视频或完整观看数据库。应用设置类别包含现有 Animeko 会话数据，因此备份文件需要私密保存；追踪账号 token 不在其中。
+备份选择框提供“应用设置”和“追踪匹配关系”两个选项，允许只导出其中一类；可保存文件或复制到剪贴板，恢复时可选择文件或剪贴板。输入文件和解压/纯文本内容均限制为 **10 MiB**；文件从流中最多读取 10 MiB 加一个字节再拒绝超限输入，避免先将任意大小文件完整读入内存。文件名包含本地时间，格式为 `animeko_YYYY-MM-DD_HH-mm.animekobk`。`.animekobk` 文件使用 gzip 压缩，解压后的 JSON 包含 `format: animeko-backup`、`version: 1`、`settings`、`tracking` 字段。恢复时先验证格式与版本，再写入设置；未知版本被拒绝。恢复也接受先前导出的普通 JSON 文件及旧版设置剪贴板 JSON。`TrackingRegistry` 汇总所有已注册 source 的绑定记录，并按 `providerId` 将导入记录交回各 source；无本地匹配的 Bangumi source 返回空列表。新增追踪平台实现 `TrackingSource.exportBindings`、`validateBindings` 和 `applyValidatedBindings`，以自己的存储格式保存绑定，在导出边界转换为 `TrackingBindingRecord`；无需修改备份 UI 或文件结构。未知 `providerId` 在恢复前被拒绝，避免静默丢失。文件选择及内容选项参照 Mihon 的 `BackupCreator`；Mihon 的 `.tachibk` 文件使用 gzip 压缩的 protobuf，Animeko 的格式与之不兼容。备份不包含离线视频或完整观看数据库。应用设置类别包含现有 Animeko 会话数据，因此备份文件需要私密保存；追踪账号 token 不在其中。
 
 | 能力 | 当前实现 | 验证边界 |
 |---|---|---|
@@ -129,7 +129,7 @@ Android、macOS Desktop 与 iOS 的条目 UI 均通过 `TrackingRegistry`、`Tra
 
 `TrackingCoordinator` 只通过注册表查找 source，提供观察、搜索、绑定、编辑和解绑入口。`TrackingSection(subjectId, modifier)` 是两种详情页布局的唯一入口。卡片按 capability 绘制状态、进度、评分、日期、私密和删除操作；品牌图标由各平台注册的 `TrackingIconRenderer` 按 `TrackingProviderId` 提供。Bangumi 的离散正片列表与 AniList 的累计数字列表使用同一个选择弹层。完成状态下若 Bangumi 仍有未看剧集，另行询问是否全部标记看过。
 
-`TrackingProviderId` 是用于持久化和注册表查找的开放类型，不使用封闭 enum。每个平台只在自己的实现中声明一次稳定 ID 常量。账号中心遍历已注册的 `TrackingAccountConnector`，由共同的 `TrackingAccountItem` 展示身份与连接状态；连接器提供登录动作和可选详情页。只有实现 `DisconnectableTrackingAccount` 的连接（本设备保存的 AniList token）在此提供断开；Bangumi 绑定属于 Animeko 账号，解绑会影响所有设备，并可能让之后的 Bangumi 登录创建另一个 Animeko 账号，因此仍只在个人资料页管理。各平台显式声明 OAuth redirect 处理规则：三个平台都接收 `ani://anilist-auth` 回调：Android manifest 声明特定 host；macOS Desktop 在应用 bundle 中注册 `ani://` URL Scheme，并通过 `Desktop.setOpenURIHandler` 接收；iOS 注册 `ani://` URL Scheme 处理并在 `AniIosApplication.openUrl` 中解析。任何应用或网页都能触发该 scheme，因此回调只在用户发起登录后的五分钟内被接受一次。
+`TrackingProviderId` 是用于持久化和注册表查找的开放类型，不使用封闭 enum。每个平台只在自己的实现中声明一次稳定 ID 常量。账号中心遍历已注册的 `TrackingAccountConnector`，由共同的 `TrackingAccountItem` 展示身份与连接状态；连接器提供登录动作和可选详情页。只有实现 `DisconnectableTrackingAccount` 的连接（本设备保存的 AniList token）在此提供断开；Bangumi 绑定属于 Animeko 账号，解绑会影响所有设备，并可能让之后的 Bangumi 登录创建另一个 Animeko 账号，因此仍只在个人资料页管理。各平台显式声明 OAuth redirect 处理规则：三个平台都接收 `ani://anilist-auth` 回调：Android manifest 声明特定 host；macOS Desktop 在应用 bundle 中注册 `ani://` URL Scheme，并通过 `Desktop.setOpenURIHandler` 接收；iOS 注册 `ani://` URL Scheme 处理并在 `AniIosApplication.openUrl` 中解析。三端共用的解析器要求回调 authority 与注册 URI 完全匹配，再从 fragment 提取 token，拒绝 lookalike host、userinfo、port、path 或 query。任何应用或网页都能触发该 scheme，因此回调只在用户发起登录后的五分钟内被接受一次。
 
 观看 hook 在本地操作成功后调用 domain 层的 `TrackingEpisodeSynchronizer`。AniList source 对正片整数集数执行单调远端进度更新，较新的远端进度不会回退；Bangumi source 不重复写入已由本地操作保存的剧集状态。一个 source 失败时 synchronizer 继续执行其余 source，并在结束后抛出错误供 hook 记录。当前没有持久化失败队列，离线事件不会在重启后自动重试。
 
