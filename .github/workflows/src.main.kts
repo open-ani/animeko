@@ -1958,15 +1958,19 @@ class WithMatrix(
             },
             emulatorBootTimeout = 1800,
         )
+        // 正常约 20 分钟. 模拟器卡死时尽早失败, 不占用 runner 到 job 的默认超时.
+        val emulatorTimeoutMinutes = 60
         val firstAttempt = uses(
             name = "Android Instrumented Test",
             action = emulatorRunner,
             continueOnError = true,
+            timeoutMinutes = emulatorTimeoutMinutes,
         )
         val retry = uses(
             name = "Android Instrumented Test (Retry after emulator failure)",
             `if` = expr { firstAttempt.outcome.eq(AbstractResult.Status.Failure) and "hashFiles('$startedMarker') == ''" },
             action = emulatorRunner,
+            timeoutMinutes = emulatorTimeoutMinutes,
         )
         run(
             name = "Check Android Instrumented Test result",

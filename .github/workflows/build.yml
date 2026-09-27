@@ -1766,6 +1766,7 @@ jobs:
     - id: 'step-18'
       name: 'Android Instrumented Test'
       continue-on-error: true
+      timeout-minutes: 60
       uses: 'reactivecircus/android-emulator-runner@v2.35.0'
       with:
         api-level: '30'
@@ -1777,6 +1778,7 @@ jobs:
         script: 'touch android-instrumented-test-started; ./ci-helper/prepare-android-emulator.sh; ./gradlew connectedDeviceTest --continue "-Pandroid.min.sdk=30" "--scan" "-Porg.gradle.daemon.idletimeout=60000" "-Dfile.encoding=UTF-8" "-Dorg.gradle.jvmargs=-Xmx3g -Dkotlin.daemon.jvm.options=-Xmx2g" "-Dkotlin.daemon.jvm.options=-Xmx2g"; status=$?; adb logcat -d > logcat-api30-x86_64.txt || true; killall -INT crashpad_handler || true; exit $status'
     - id: 'step-19'
       name: 'Android Instrumented Test (Retry after emulator failure)'
+      timeout-minutes: 60
       uses: 'reactivecircus/android-emulator-runner@v2.35.0'
       with:
         api-level: '30'
@@ -1917,6 +1919,7 @@ jobs:
     - id: 'step-18'
       name: 'Android Instrumented Test'
       continue-on-error: true
+      timeout-minutes: 60
       uses: 'reactivecircus/android-emulator-runner@v2.35.0'
       with:
         api-level: '36'
@@ -1928,6 +1931,7 @@ jobs:
         script: 'touch android-instrumented-test-started; ./ci-helper/prepare-android-emulator.sh; ./gradlew connectedDeviceTest --continue "-Pandroid.min.sdk=30" "--scan" "-Porg.gradle.daemon.idletimeout=60000" "-Dfile.encoding=UTF-8" "-Dorg.gradle.jvmargs=-Xmx3g -Dkotlin.daemon.jvm.options=-Xmx2g" "-Dkotlin.daemon.jvm.options=-Xmx2g"; status=$?; adb logcat -d > logcat-api36-x86_64.txt || true; killall -INT crashpad_handler || true; exit $status'
     - id: 'step-19'
       name: 'Android Instrumented Test (Retry after emulator failure)'
+      timeout-minutes: 60
       uses: 'reactivecircus/android-emulator-runner@v2.35.0'
       with:
         api-level: '36'
@@ -2068,6 +2072,7 @@ jobs:
     - id: 'step-18'
       name: 'Android Instrumented Test'
       continue-on-error: true
+      timeout-minutes: 60
       uses: 'reactivecircus/android-emulator-runner@v2.35.0'
       with:
         api-level: '36'
@@ -2079,6 +2084,7 @@ jobs:
         script: 'touch android-instrumented-test-started; ./ci-helper/prepare-android-emulator.sh; ./gradlew :app:shared:tv:connectedDeviceTest :app:shared:ui-foundation-tv:connectedDeviceTest :app:shared:ui-settings-tv:connectedDeviceTest :app:shared:ui-subject-tv:connectedDeviceTest :app:shared:ui-exploration-tv:connectedDeviceTest :app:shared:ui-onboarding-tv:connectedDeviceTest :app:shared:ui-episode-tv:connectedDeviceTest :app:shared:ui-watchtogether-tv:connectedDeviceTest --continue "-Pandroid.min.sdk=30" "--scan" "-Porg.gradle.daemon.idletimeout=60000" "-Dfile.encoding=UTF-8" "-Dorg.gradle.jvmargs=-Xmx3g -Dkotlin.daemon.jvm.options=-Xmx2g" "-Dkotlin.daemon.jvm.options=-Xmx2g"; status=$?; adb logcat -d > logcat-api36-x86_64-android-tv.txt || true; killall -INT crashpad_handler || true; exit $status'
     - id: 'step-19'
       name: 'Android Instrumented Test (Retry after emulator failure)'
+      timeout-minutes: 60
       uses: 'reactivecircus/android-emulator-runner@v2.35.0'
       with:
         api-level: '36'
