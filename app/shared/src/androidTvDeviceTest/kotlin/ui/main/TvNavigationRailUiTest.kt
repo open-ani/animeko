@@ -46,6 +46,7 @@ import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.unit.dp
 import androidx.test.platform.app.InstrumentationRegistry
 import java.io.File
+import kotlin.math.abs
 import kotlin.math.ceil
 import kotlin.math.roundToInt
 import kotlin.test.Test
@@ -155,7 +156,7 @@ class TvNavigationRailUiTest {
             val sourceColor = original.getPixel(x, original.height / 8)
             val dimmedColor = blurred.getPixel(x, blurred.height / 8)
             val expected = dimmedColors.getOrPut(sourceColor) { dimmedColor }
-            assertEquals(expected, dimmedColor,
+            assertSameColor(expected, dimmedColor,
                 "The uniform dim preserves sharp stripe edges outside the blur at x=$x")
         }
         key(Key.Menu)
@@ -163,7 +164,7 @@ class TvNavigationRailUiTest {
         settle()
         val restored = capture("background-restored")
         for (x in 0 until original.width) {
-            assertEquals(original.getPixel(x, original.height / 8), restored.getPixel(x, restored.height / 8),
+            assertSameColor(original.getPixel(x, original.height / 8), restored.getPixel(x, restored.height / 8),
                 "Leaving the rail restores the background at x=$x")
         }
     }
@@ -302,4 +303,15 @@ class TvNavigationRailUiTest {
     }
 
     private fun brightness(pixel: Int): Int = ((pixel shr 16 and 255) + (pixel shr 8 and 255) + (pixel and 255)) / 3
+
+    /**
+     * 同一颜色经过不同绘制路径 (如 haze 图层与普通绘制) 后, 各通道可能差 1 个量化单位;
+     * 这里只关心条纹边缘是否保持锐利, 而非精确到位的合成取整.
+     */
+    private fun assertSameColor(expected: Int, actual: Int, message: String) {
+        val maxChannelDelta = (0..16 step 8).maxOf { shift ->
+            abs((expected shr shift and 255) - (actual shr shift and 255))
+        }
+        assertTrue(maxChannelDelta <= 2, "$message: expected ${expected.toUInt().toString(16)} but was ${actual.toUInt().toString(16)}")
+    }
 }
