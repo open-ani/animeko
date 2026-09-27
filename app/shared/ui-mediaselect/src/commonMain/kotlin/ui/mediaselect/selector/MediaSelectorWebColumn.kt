@@ -98,7 +98,11 @@ data class WebSource(
 /**
  * https://www.figma.com/design/LET1n9mmDa6npDTIlUuJjU/Animeko?node-id=1054-13751&t=OSgRmNiOHpUGBYYu-0
  *
- * @param onRequestManualSearch 底部「找不到想看的？手动查找」救援按钮的点击; null 时不显示按钮 (下载对话框).
+ * 顺序: 正常的源 → 「找不到想看的？手动查找」救援按钮 → 查询失败的源 ([WebSource.isError]), 各组内保持 [list] 的顺序.
+ * 失败的源行帮不上忙, 放在按钮前会把按钮挤到最后; 源都失败时正是最需要救援的时候.
+ * 验证码与限流的源不算失败, 仍在按钮前面: 用户处理后它们还会出结果.
+ *
+ * @param onRequestManualSearch 救援按钮的点击; null 时不显示按钮 (下载对话框).
  */
 @Composable
 fun MediaSelectorWebSourcesColumn(
@@ -137,25 +141,30 @@ fun MediaSelectorWebSourcesColumn(
 //            card(source)
 //        }
 //    }
+    val (failedSources, otherSources) = list.partition { it.isError }
     Column(modifier, verticalArrangement = Arrangement.spacedBy(8.dp)) {
         // not scrollable. 否则会跟 bottom sheet 的 scroll 冲突. 
-        list.forEach { source ->
+        otherSources.forEach { source ->
             card(source)
         }
 
         if (onRequestManualSearch != null) {
-            Box(Modifier.fillMaxWidth().padding(top = 4.dp), contentAlignment = Alignment.Center) {
+            Box(Modifier.fillMaxWidth().padding(vertical = 4.dp), contentAlignment = Alignment.Center) {
                 ManualSearchRescueButton(
                     onClick = onRequestManualSearch,
                     Modifier.testTag(AutoMatchPageTestTags.RESCUE_BUTTON),
                 )
             }
         }
+
+        failedSources.forEach { source ->
+            card(source)
+        }
     }
 }
 
 /**
- * 自动页底部的救援入口: 默认样式的文字按钮 (不加粗、无图标), 在源列表下方水平居中, 视觉上弱于源列表. 点击 = 切到手动查找模式.
+ * 自动页的救援入口: 默认样式的文字按钮 (不加粗、无图标), 水平居中, 视觉上弱于源列表. 点击 = 切到手动查找模式.
  */
 @Composable
 private fun ManualSearchRescueButton(

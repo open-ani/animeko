@@ -34,7 +34,7 @@ import me.him188.ani.utils.platform.annotations.TestOnly
 import me.him188.ani.utils.platform.isMobile
 
 /**
- * 自动匹配页 = WEB 源列表 + 底部救援按钮. 不画顶栏, 不画「正在观看」.
+ * 自动匹配页 = WEB 源列表 + 救援按钮 (在查询失败的源之前, 见 [MediaSelectorWebSourcesColumn]). 不画顶栏, 不画「正在观看」.
  * 验证码文案沿用 webCaptchaRequiredMessage(kind) 与 iOS 分支 media_selector_web_captcha_unsupported.
  *
  * @param onClickItem 用户点了线路 chip (channel.original); 宿主负责 select + 关闭容器.
