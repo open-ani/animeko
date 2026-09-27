@@ -1,0 +1,65 @@
+/*
+ * Copyright (C) 2024-2026 OpenAni and contributors.
+ *
+ * 此源代码的使用受 GNU AFFERO GENERAL PUBLIC LICENSE version 3 许可证的约束, 可以在以下链接找到该许可证.
+ * Use of this source code is governed by the GNU AGPLv3 license, which can be found at the following link.
+ *
+ * https://github.com/open-ani/ani/blob/main/LICENSE
+ */
+
+@file:OptIn(ExperimentalCoroutinesApi::class)
+
+package me.him188.ani.app.videoplayer.videoenhancement
+
+import androidx.media3.common.Effect
+import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.flow.flowOf
+import kotlinx.coroutines.test.runCurrent
+import kotlinx.coroutines.test.runTest
+import org.openani.mediamp.metadata.MediaProperties
+import org.openani.mediamp.source.UriMediaData
+import org.openani.mediamp.test.TestMediampPlayer
+import kotlin.test.Test
+import kotlin.test.assertEquals
+import kotlin.test.assertIs
+
+class VideoEnhancementControllerTest {
+    @Test
+    fun metadataChangesDoNotRebuildQualityShaders() = runTest {
+        val player = TestMediampPlayer(backgroundScope.coroutineContext)
+        val effects = mutableListOf<List<Effect>>()
+        val controller = ExoPlayerVideoEnhancementController(
+            player, { effects.add(it) }, flowOf(false), backgroundScope.coroutineContext,
+        )
+        try {
+            controller.setViewportSize(1920, 1080)
+            controller.setMode(VideoEnhancementMode.QUALITY)
+            runCurrent()
+            assertEquals(1, effects.size)
+            assertEquals(3, effects.single().size)
+            assertIs<DesktopStyleLanczosSharpEffect>(effects.single().last())
+
+            player.setMediaData(UriMediaData("file:///test.mp4"))
+            runCurrent()
+            player.injectProperties(MediaProperties(videoWidth = 1280, videoHeight = 720))
+            runCurrent()
+            player.seekTo(20_000)
+            runCurrent()
+            player.injectProperties(MediaProperties())
+            runCurrent()
+            player.injectProperties(MediaProperties(videoWidth = 1280, videoHeight = 720))
+            runCurrent()
+            assertEquals(1, effects.size, "Metadata loss and recovery must retain compiled shaders")
+
+            controller.setViewportSize(2560, 1440)
+            runCurrent()
+            assertEquals(2, effects.size, "A viewport resize must update the scaler")
+            controller.setMode(VideoEnhancementMode.OFF)
+            runCurrent()
+            assertEquals(emptyList(), effects.last())
+        } finally {
+            controller.close()
+            player.close()
+        }
+    }
+}

@@ -1368,6 +1368,8 @@
     <string name="settings_log_share_today_log_file">Share today\'s log file</string>
     <string name="settings_log_share_file">Share log file</string>
     <string name="settings_log_copy_today_log_content">Copy today\'s log content (large)</string>
+    <string name="settings_log_copy_too_large">Log too large to copy. Use “Share today’s log file”.</string>
+    <string name="settings_log_copy_failed">Copy failed. Use “Share today’s log file”.</string>
     <string name="settings_log_file_not_found">Log file not found</string>
     <string name="rating_requires_collection">Follow this anime before rating</string>
     <string name="rating_discard_edit_title">Discard changes</string>
