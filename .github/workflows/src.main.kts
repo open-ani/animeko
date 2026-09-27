@@ -594,9 +594,98 @@ fun getBuildJobBody(matrix: MatrixInstance): JobBuilder<BuildJobOutputs>.() -> U
         if (!matrix.isUbuntu) {
             gradleCheck() // save time
         }
-        androidConnectedTests()
+        // Instrumented test 在单独的 job 中运行, 见 addAndroidInstrumentedTestJobs.
 
         cleanupTempFiles()
+    }
+}
+
+/**
+ * 在一种模拟器上运行的 instrumented test.
+ *
+ * @param label 区分本次运行的后缀, 例如 `api=30, arch=x86_64`.
+ * @param artifactSuffix 测试报告 artifact 名与 logcat 文件名中区分本次运行的后缀, 只能含 artifact 名允许的字符.
+ * @param modules 要测试的模块, `null` 即全部模块.
+ */
+class AndroidInstrumentedTestRun(
+    val label: String,
+    val artifactSuffix: String,
+    val apiLevel: Int,
+    val arch: AndroidEmulatorRunner.Arch,
+    val target: AndroidEmulatorRunner.Target,
+    val profile: String,
+    val modules: List<String>?,
+) {
+    fun gradleTasks(task: String): List<String> = modules?.map { "$it:$task" } ?: listOf(task)
+}
+
+fun MatrixInstance.androidInstrumentedTestRuns(): List<AndroidInstrumentedTestRun> {
+    if (!runAndroidInstrumentedTests || !isUbuntu || selfHosted) return emptyList()
+    // Ubuntu x86_64 runner 才有 KVM, 模拟器 ABI 与 runner 一致, 顺带测试 anitorrent 等原生库的加载.
+    val arch = AndroidEmulatorRunner.Arch.X8664
+    return buildList {
+        // 在 minSdk 30 和 targetSdk 两个版本上各跑一遍
+        for (apiLevel in listOf(30, 36)) {
+            add(
+                AndroidInstrumentedTestRun(
+                    label = "api=$apiLevel, arch=${arch.stringValue}",
+                    artifactSuffix = "api$apiLevel-${arch.stringValue}",
+                    apiLevel = apiLevel,
+                    arch = arch,
+                    target = AndroidEmulatorRunner.Target.Default,
+                    // 1080x1920 的手机屏幕. 默认 AVD 只有 320x640, 而 `wm size` 最多放大到物理尺寸的 2 倍,
+                    // TV 界面的 UI 测试要把显示规格设为 1920x1080 (见 TvDisplayRunListener).
+                    profile = "pixel_2",
+                    modules = null,
+                ),
+            )
+        }
+
+        // TV 模块的测试再在 Android TV 系统镜像上跑一遍: 无系统栏、无触摸, 只有遥控器按键.
+        // 手机镜像只能靠 TvDisplayRunListener 模拟电视的显示规格, 覆盖不到这些差异.
+        // TV 镜像只有 x86_64 与 arm64-v8a 的 API 36, 因此只跑 targetSdk 一个版本.
+        add(
+            AndroidInstrumentedTestRun(
+                label = "api=36, arch=${arch.stringValue}, target=android-tv",
+                artifactSuffix = "api36-${arch.stringValue}-android-tv",
+                apiLevel = 36,
+                arch = arch,
+                target = AndroidEmulatorRunner.Target.AndroidTv,
+                profile = "tv_1080p",
+                modules = androidTvModules,
+            ),
+        )
+    }
+}
+
+/**
+ * 每种模拟器一个 job, 与构建 job 并行.
+ *
+ * 三种模拟器的测试在同一个 job 里串行要近一个小时, 是整个 workflow 的瓶颈.
+ * 拆开后每个 job 各自编译测试 APK, 多花 runner 时间, 换来 workflow 总时长接近单个 job.
+ */
+fun WorkflowBuilder.addAndroidInstrumentedTestJobs(matrix: MatrixInstance) {
+    for (testRun in matrix.androidInstrumentedTestRuns()) {
+        job(
+            id = "android-test_${matrix.runner.id}_${testRun.artifactSuffix}",
+            name = "Android Instrumented Test (${testRun.label})",
+            runsOn = RunnerType.Labelled(matrix.runsOn),
+            permissions = mapOf(
+                Permission.Actions to Mode.Write, // Upload artifacts
+            ),
+        ) {
+            uses(action = Checkout(submodules_Untyped = "recursive"))
+            with(WithMatrix(matrix)) {
+                freeSpace()
+                enableSwap()
+                deleteLocalProperties()
+                writeLocalProperties()
+                installJbr21()
+                chmod777()
+                setupGradle()
+                androidInstrumentedTest(testRun)
+            }
+        }
     }
 }
 
@@ -922,6 +1011,10 @@ workflow(
             outputs = BuildJobOutputs(),
             block = getBuildJobBody(matrix),
         )
+    }
+
+    buildMatrixInstances.forEach { matrix ->
+        addAndroidInstrumentedTestJobs(matrix)
     }
 
     builds.filter { (matrix, _) ->
@@ -1811,143 +1904,84 @@ class WithMatrix(
         }
     }
 
-    fun JobBuilder<*>.androidConnectedTests() {
-        if (matrix.runAndroidInstrumentedTests && matrix.isUnix) {
-            if (matrix.isUbuntu) {
-                run(
-                    name = "Enable KVM",
-                    command = """
-                  echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
-                  sudo udevadm control --reload-rules
-                  sudo udevadm trigger --name-match=kvm
-                """.trimIndent(),
-                )
-            }
-            // device test 以 minSdk 30 构建: 测试函数内的局部类会以带空格的测试名命名, DEX 040 (API 30) 起才允许类名含空格.
-            // 先打包 APK, 测试名不能 dex 之类的问题在启动模拟器之前就能暴露.
-            runGradle(
-                name = "Build Android Instrumented Tests",
-                tasks = arrayOf(
-                    "assembleAndroidDeviceTest",
-                    "\"-Pandroid.min.sdk=30\"",
-                ),
-                maxAttempts = 3,
-            )
-            /**
-             * 启动一个模拟器并在其上运行 instrumented test.
-             *
-             * @param label 步骤名中区分本次运行的后缀, 例如 `api=30, arch=x86_64`.
-             * @param artifactSuffix 测试报告 artifact 名与 logcat 文件名中区分本次运行的后缀, 只能含 artifact 名允许的字符.
-             * @param gradleTasks 要运行的 `connectedDeviceTest` 任务, 不带模块前缀即对全部模块运行.
-             */
-            fun instrumentedTestRun(
-                label: String,
-                artifactSuffix: String,
-                apiLevel: Int,
-                arch: AndroidEmulatorRunner.Arch,
-                target: AndroidEmulatorRunner.Target,
-                profile: String,
-                gradleTasks: List<String>,
-            ) {
-                if (!matrix.selfHosted) {
-                    // GitHub 托管的机器只有 16 GB 内存, 模拟器要和 Gradle 一起跑.
-                    // 先停掉打包阶段留下的 Gradle/Kotlin daemon, 并记录内存与磁盘余量便于排查.
-                    run(
-                        name = "Stop Gradle daemons before emulator ($label)",
-                        command = """
-                            ./gradlew --stop
-                            pkill -f KotlinCompileDaemon || true
-                            free -h
-                            df -h .
-                        """.trimIndent(),
-                    )
-                }
-                uses(
-                    name = "Android Instrumented Test ($label)",
-                    action = AndroidEmulatorRunner(
-                        apiLevel = apiLevel.toString(),
-                        arch = arch,
-                        target = target,
-                        profile = profile,
-                        ramSize = "2048M",
-                        script = buildString {
-                            append("./gradlew ")
-                            append(gradleTasks.joinToString(" "))
-                            // --continue: 一个模块失败也把其余模块的测试跑完, 最后统一报告.
-                            append(" --continue \"-Pandroid.min.sdk=30\" ")
-                            // 测试 APK 已在上一步打包好, 这里 Gradle 只负责安装和运行, 用小堆给模拟器留内存.
-                            append(matrix.gradleArgsWith(gradleHeap = "3g", kotlinCompilerHeap = "2g"))
-                            // 结束 crashpad_handler 后要以 Gradle 的退出码退出, 否则测试失败不会让步骤失败.
-                            // https://github.com/ReactiveCircus/android-emulator-runner/issues/385#issuecomment-2492035091
-                            // 测试进程在启动阶段崩溃时不会留下按测试拆分的 logcat, 整机 logcat 是唯一线索.
-                            append("; status=\$?; adb logcat -d > logcat-$artifactSuffix.txt || true; ")
-                            append("killall -INT crashpad_handler || true; exit \$status")
-                        },
-                        emulatorBootTimeout = 1800,
-                    ),
-                )
-                uses(
-                    name = "Upload Android Instrumented Test Reports ($label)",
-                    `if` = "always()",
-                    action = UploadArtifact(
-                        name = "android-device-test-reports-$artifactSuffix",
-                        path_Untyped = "**/build/reports/androidTests/**\n**/build/outputs/androidTest-results/**\nlogcat-$artifactSuffix.txt",
-                        ifNoFilesFound = UploadArtifact.BehaviorIfNoFilesFound.Ignore,
-                        overwrite = true,
-                    ),
-                )
-                if (!matrix.runner.isSelfHosted && matrix.isUnix) {
-                    // GitHub hosted runners allow only 14GB space, so we have to remove old emulators before installing new ones
-                    run(
-                        name = "Uninstall emulators",
-                        command = "sdkmanager --uninstall \$(sdkmanager --list | grep emulator | awk '{print \$1}')\n",
-                    )
-                    run(
-                        name = "Remove AVD",
-                        command = $$"""
-                            echo "Removing Emulator binaries..."
-                            rm -rf $ANDROID_HOME/emulator
-                            echo "Removing System Images..."
-                            rm -rf $ANDROID_HOME/system-images
-                        """.trimIndent(),
-                    )
-                }
-            }
+    fun JobBuilder<*>.androidInstrumentedTest(testRun: AndroidInstrumentedTestRun) {
+        run(
+            name = "Enable KVM",
+            command = """
+              echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
+              sudo udevadm control --reload-rules
+              sudo udevadm trigger --name-match=kvm
+            """.trimIndent(),
+        )
+        // device test 以 minSdk 30 构建: 测试函数内的局部类会以带空格的测试名命名, DEX 040 (API 30) 起才允许类名含空格.
+        // 先打包 APK, 测试名不能 dex 之类的问题在启动模拟器之前就能暴露.
+        runGradle(
+            name = "Build Android Instrumented Tests",
+            tasks = (testRun.gradleTasks("assembleAndroidDeviceTest") + "\"-Pandroid.min.sdk=30\"").toTypedArray(),
+            maxAttempts = 3,
+        )
+        // GitHub 托管的机器只有 16 GB 内存, 模拟器要和 Gradle 一起跑.
+        // 先停掉打包阶段留下的 Gradle/Kotlin daemon, 并记录内存与磁盘余量便于排查.
+        run(
+            name = "Stop Gradle daemons before emulator",
+            command = """
+                ./gradlew --stop
+                pkill -f KotlinCompileDaemon || true
+                free -h
+                df -h .
+            """.trimIndent(),
+        )
 
-            for (arch in listOfNotNull(
-                // test loading anitorrent and other native libraries
-                if (matrix.arch == Arch.AARCH64) AndroidEmulatorRunner.Arch.Arm64V8a else null,
-                if (matrix.arch == Arch.X64) AndroidEmulatorRunner.Arch.X8664 else null,
-            )) {
-                // 在 minSdk 30 和 targetSdk 两个版本上各跑一遍
-                for (apiLevel in listOf(30, 36)) {
-                    instrumentedTestRun(
-                        label = "api=$apiLevel, arch=${arch.stringValue}",
-                        artifactSuffix = "api$apiLevel-${arch.stringValue}",
-                        apiLevel = apiLevel,
-                        arch = arch,
-                        target = AndroidEmulatorRunner.Target.Default,
-                        // 1080x1920 的手机屏幕. 默认 AVD 只有 320x640, 而 `wm size` 最多放大到物理尺寸的 2 倍,
-                        // TV 界面的 UI 测试要把显示规格设为 1920x1080 (见 TvDisplayRunListener).
-                        profile = "pixel_2",
-                        gradleTasks = listOf("connectedDeviceTest"),
-                    )
-                }
-
-                // TV 模块的测试再在 Android TV 系统镜像上跑一遍: 无系统栏、无触摸, 只有遥控器按键.
-                // 手机镜像只能靠 TvDisplayRunListener 模拟电视的显示规格, 覆盖不到这些差异.
-                // TV 镜像只有 x86_64 与 arm64-v8a 的 API 36, 因此只跑 targetSdk 一个版本.
-                instrumentedTestRun(
-                    label = "api=36, arch=${arch.stringValue}, target=android-tv",
-                    artifactSuffix = "api36-${arch.stringValue}-android-tv",
-                    apiLevel = 36,
-                    arch = arch,
-                    target = AndroidEmulatorRunner.Target.AndroidTv,
-                    profile = "tv_1080p",
-                    gradleTasks = androidTvModules.map { "$it:connectedDeviceTest" },
-                )
-            }
-        }
+        // 脚本第一条命令留下的标记. 没有标记说明失败发生在下载 SDK 或启动模拟器阶段 (例如开机后 adb 短暂 offline),
+        // 与测试无关, 可以重试. 测试开始后的失败不重试, 以免掩盖不稳定的测试.
+        val startedMarker = "android-instrumented-test-started"
+        val emulatorRunner = AndroidEmulatorRunner(
+            apiLevel = testRun.apiLevel.toString(),
+            arch = testRun.arch,
+            target = testRun.target,
+            profile = testRun.profile,
+            ramSize = "2048M",
+            script = buildString {
+                append("touch $startedMarker; ")
+                append("./gradlew ")
+                append(testRun.gradleTasks("connectedDeviceTest").joinToString(" "))
+                // --continue: 一个模块失败也把其余模块的测试跑完, 最后统一报告.
+                append(" --continue \"-Pandroid.min.sdk=30\" ")
+                // 测试 APK 已在上一步打包好, 这里 Gradle 只负责安装和运行, 用小堆给模拟器留内存.
+                append(matrix.gradleArgsWith(gradleHeap = "3g", kotlinCompilerHeap = "2g"))
+                // 结束 crashpad_handler 后要以 Gradle 的退出码退出, 否则测试失败不会让步骤失败.
+                // https://github.com/ReactiveCircus/android-emulator-runner/issues/385#issuecomment-2492035091
+                // 测试进程在启动阶段崩溃时不会留下按测试拆分的 logcat, 整机 logcat 是唯一线索.
+                append("; status=\$?; adb logcat -d > logcat-${testRun.artifactSuffix}.txt || true; ")
+                append("killall -INT crashpad_handler || true; exit \$status")
+            },
+            emulatorBootTimeout = 1800,
+        )
+        val firstAttempt = uses(
+            name = "Android Instrumented Test",
+            action = emulatorRunner,
+            continueOnError = true,
+        )
+        val retry = uses(
+            name = "Android Instrumented Test (Retry after emulator failure)",
+            `if` = expr { firstAttempt.outcome.eq(AbstractResult.Status.Failure) and "hashFiles('$startedMarker') == ''" },
+            action = emulatorRunner,
+        )
+        run(
+            name = "Check Android Instrumented Test result",
+            `if` = expr { firstAttempt.outcome.eq(AbstractResult.Status.Failure) and retry.outcome.eq(AbstractResult.Status.Skipped) },
+            command = "echo '::error::Android instrumented tests failed. See the \"Android Instrumented Test\" step.'; exit 1",
+        )
+        uses(
+            name = "Upload Android Instrumented Test Reports",
+            `if` = "always()",
+            action = UploadArtifact(
+                name = "android-device-test-reports-${testRun.artifactSuffix}",
+                path_Untyped = "**/build/reports/androidTests/**\n**/build/outputs/androidTest-results/**\nlogcat-${testRun.artifactSuffix}.txt",
+                ifNoFilesFound = UploadArtifact.BehaviorIfNoFilesFound.Ignore,
+                overwrite = true,
+            ),
+        )
     }
 
     class PackageDesktopAndUploadOutputs {
