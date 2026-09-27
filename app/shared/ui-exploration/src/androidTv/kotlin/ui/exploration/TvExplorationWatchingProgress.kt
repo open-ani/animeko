@@ -24,8 +24,9 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.material3.Text
+import androidx.compose.material3.ColorScheme
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.State
@@ -67,6 +68,7 @@ import me.him188.ani.app.ui.lang.subject_progress_episode_counts_on_air
 import me.him188.ani.app.ui.subject.AiringLabelState
 import me.him188.ani.datasources.api.EpisodeType
 import me.him188.ani.datasources.api.topic.UnifiedCollectionType
+import me.him188.ani.tv.ui.foundation.semantics.tvAnimating
 import me.him188.ani.tv.ui.subject.details.TvDetailsAiringInfo
 import org.jetbrains.compose.resources.stringResource
 import kotlin.math.PI
@@ -145,8 +147,7 @@ internal fun HomeWatchingProgress(
 @Composable
 private fun ChargingProgressBar(progress: TvWatchingProgress, counts: String, animate: Boolean) {
     val colors = MaterialTheme.colorScheme
-    val watchedStart = lerp(colors.primary, colors.primaryContainer, .45f)
-    val watchedEnd = colors.primary
+    val watchedGradient = watchedProgressGradient(colors)
     val animationSpec = if (animate) tween<Float>(
         TvExplorationDefaults.WatchingProgressTransitionMillis, easing = FastOutSlowInEasing,
     ) else snap()
@@ -155,12 +156,16 @@ private fun ChargingProgressBar(progress: TvWatchingProgress, counts: String, an
         if (progress.onAir) progress.airedFraction else progress.watchedFraction,
         animationSpec, label = "home-aired-progress",
     )
-    val phase = rememberChargingPhase(animate && watchedFraction > 0f)
+    val durationScale = rememberCoroutineScope().coroutineContext[MotionDurationScale]?.scaleFactor ?: 1f
+    val particlesActive = animate && watchedFraction > 0f && durationScale > 0f &&
+            LocalWindowInfo.current.isWindowFocused && !LocalInspectionMode.current
+    val phase = rememberChargingPhase(particlesActive, durationScale)
     Box(
         Modifier.fillMaxWidth().height(TvExplorationDefaults.WatchingProgressHeight)
             .testTag("tv-exploration-watching-progress").semantics {
                 stateDescription = counts
                 progress.total?.let { progressBarRangeInfo = ProgressBarRangeInfo(progress.watched.toFloat(), 0f..it.toFloat()) }
+                tvAnimating = particlesActive
             },
     ) {
         if (watchedFraction > 0f) Box(
@@ -181,9 +186,7 @@ private fun ChargingProgressBar(progress: TvWatchingProgress, counts: String, an
                 Modifier.fillMaxWidth(watchedFraction).fillMaxHeight().clip(CircleShape)
                     .testTag("tv-exploration-watching-watched")
                     .drawWithCache {
-                        val fill = Brush.horizontalGradient(
-                            listOf(watchedStart, watchedEnd),
-                        )
+                        val fill = Brush.horizontalGradient(watchedGradient)
                         val sheen = Brush.verticalGradient(
                             0f to Color.White.copy(alpha = .22f), .46f to Color.Transparent,
                             1f to colors.onPrimary.copy(alpha = .1f),
@@ -208,12 +211,14 @@ private fun ChargingProgressBar(progress: TvWatchingProgress, counts: String, an
     }
 }
 
+/** Watched-segment fill from its start to the progress head, derived from the current theme. */
+internal fun watchedProgressGradient(colors: ColorScheme): List<Color> =
+    listOf(lerp(colors.primary, colors.primaryContainer, .45f), colors.primary)
+
 /** The frame clock invalidates only the watched segment's drawing. */
 @Composable
-private fun rememberChargingPhase(animate: Boolean): State<Double> {
+private fun rememberChargingPhase(active: Boolean, durationScale: Float): State<Double> {
     val phase = remember { mutableDoubleStateOf(0.0) }
-    val durationScale = rememberCoroutineScope().coroutineContext[MotionDurationScale]?.scaleFactor ?: 1f
-    val active = animate && LocalWindowInfo.current.isWindowFocused && !LocalInspectionMode.current && durationScale > 0f
     LaunchedEffect(active, durationScale) {
         if (!active) return@LaunchedEffect
         var previous = withFrameNanos { it }

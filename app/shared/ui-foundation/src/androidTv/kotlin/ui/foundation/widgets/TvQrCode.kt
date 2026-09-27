@@ -22,6 +22,7 @@ import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
 import com.google.zxing.BarcodeFormat
 import com.google.zxing.EncodeHintType
+import com.google.zxing.common.BitMatrix
 import com.google.zxing.qrcode.QRCodeWriter
 import kotlin.math.floor
 
@@ -31,24 +32,31 @@ import kotlin.math.floor
  */
 @Composable
 fun TvQrCode(content: String, contentDescription: String, modifier: Modifier = Modifier) {
-    val code = remember(content) {
-        // margin 0: 留白由绘制时统一处理
-        QRCodeWriter().encode(
-            content, BarcodeFormat.QR_CODE, 0, 0,
-            mapOf(EncodeHintType.CHARACTER_SET to "UTF-8", EncodeHintType.MARGIN to 0),
-        )
-    }
+    val code = remember(content) { encodeTvQrCode(content) }
     Canvas(modifier.semantics { this.contentDescription = contentDescription }) {
         drawRoundRect(Color.White, cornerRadius = CornerRadius(8.dp.toPx()))
-        val module = floor(size.minDimension / (code.width + QuietZoneModules * 2))
-        val offset = Offset(
-            floor((size.width - module * code.width) / 2),
-            floor((size.height - module * code.height) / 2),
-        )
+        val layout = TvQrCodeLayout(code, size)
         for (y in 0 until code.height) for (x in 0 until code.width) {
-            if (code[x, y]) drawRect(Color.Black, offset + Offset(x * module, y * module), Size(module, module))
+            if (code[x, y]) drawRect(Color.Black, layout.moduleTopLeft(x, y), Size(layout.module, layout.module))
         }
     }
 }
 
-private const val QuietZoneModules = 4
+/** 编码出的模块矩阵不含留白, 留白由 [TvQrCodeLayout] 统一处理. */
+internal fun encodeTvQrCode(content: String): BitMatrix = QRCodeWriter().encode(
+    content, BarcodeFormat.QR_CODE, 0, 0,
+    mapOf(EncodeHintType.CHARACTER_SET to "UTF-8", EncodeHintType.MARGIN to 0),
+)
+
+/** 模块在 [size] 画布中的整像素排布: 模块边长取整, 码居中, 四周至少留 [QuietZoneModules] 个模块宽. */
+internal class TvQrCodeLayout(code: BitMatrix, size: Size) {
+    val module: Float = floor(size.minDimension / (code.width + QuietZoneModules * 2))
+    val offset: Offset = Offset(
+        floor((size.width - module * code.width) / 2),
+        floor((size.height - module * code.height) / 2),
+    )
+
+    fun moduleTopLeft(x: Int, y: Int): Offset = offset + Offset(x * module, y * module)
+}
+
+internal const val QuietZoneModules = 4

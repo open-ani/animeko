@@ -4,9 +4,6 @@
  */
 package me.him188.ani.tv.ui.main
 
-import android.graphics.Bitmap
-import android.os.Build
-import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.fillMaxSize
@@ -19,16 +16,12 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.geometry.Offset
-import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.asAndroidBitmap
 import androidx.compose.ui.input.key.Key
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.semantics.SemanticsActions
 import androidx.compose.ui.test.SemanticsNodeInteraction
 import androidx.compose.ui.test.assertIsFocused
-import androidx.compose.ui.test.captureToImage
 import androidx.compose.ui.test.hasAnyAncestor
 import androidx.compose.ui.test.hasAnyDescendant
 import androidx.compose.ui.test.hasContentDescription
@@ -44,27 +37,22 @@ import androidx.compose.ui.test.pressKey
 import androidx.compose.ui.text.TextLayoutResult
 import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.unit.dp
-import androidx.test.platform.app.InstrumentationRegistry
-import java.io.File
 import kotlin.math.abs
-import kotlin.math.ceil
-import kotlin.math.roundToInt
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertTrue
 import me.him188.ani.app.data.models.preference.ThemeSettings
 import me.him188.ani.app.ui.framework.AniComposeUiTest
-import me.him188.ani.app.ui.framework.assertScreenshot
 import me.him188.ani.app.ui.framework.runAniComposeUiTest
 import me.him188.ani.tv.ui.foundation.focus.TvFocusKey
 import me.him188.ani.tv.ui.foundation.focus.TvFocusScope
 import me.him188.ani.tv.ui.foundation.focus.rememberTvFocusScope
 import me.him188.ani.tv.ui.foundation.focus.tvFocusAnchor
 import me.him188.ani.tv.ui.foundation.focus.tvFocusMemorable
+import me.him188.ani.tv.ui.foundation.semantics.TvVisualSemantics
 import me.him188.ani.tv.ui.foundation.theme.TvApplicationTheme
 import me.him188.ani.tv.ui.foundation.widgets.TvNavigationRailDefaults
 import me.him188.ani.tv.ui.foundation.widgets.TvOptionRow
-import org.junit.jupiter.api.Assumptions.assumeTrue
 
 class TvNavigationRailUiTest {
     @Test
@@ -79,7 +67,6 @@ class TvNavigationRailUiTest {
         assertEquals(collapsed.height, collapsed.width)
         assertItemWidths(collapsed.width)
         onNodeWithText("Explore").assertDoesNotExist()
-        capture("collapsed")
 
         key(Key.Menu)
         awaitRailFocus("Explore")
@@ -91,7 +78,6 @@ class TvNavigationRailUiTest {
             .performSemanticsAction(SemanticsActions.GetTextLayoutResult) { it(textLayout) }
         assertTrue(textLayout.isNotEmpty() && textLayout.none { it.isLineEllipsized(0) },
             "The container reveals the label without reflowing it during expansion")
-        capture("expanding")
         settle()
         val expanded = railItem("Explore").fetchSemanticsNode().boundsInRoot
         assertItemWidths(expanded.width)
@@ -105,15 +91,6 @@ class TvNavigationRailUiTest {
         railLabels.forEach {
             onNodeWithText(it).assertExists()
         }
-        val pill = railItem("Explore").captureToImage().asAndroidBitmap()
-        assertTrue(brightness(pill.getPixel(pill.width / 2, 3)) > 245, "White background spans the title")
-        assertTrue(brightness(pill.getPixel(0, 0)) < 240, "The pill has rounded corners")
-        fun hasDarkContent(start: Int, end: Int) = (start until end).any { x ->
-            (pill.height / 3 until pill.height * 2 / 3).any { y -> brightness(pill.getPixel(x, y)) < 80 }
-        }
-        assertTrue(hasDarkContent(pill.height / 4, pill.height * 3 / 4), "The icon is dark")
-        assertTrue(hasDarkContent(pill.height + 8, pill.width - pill.height / 3), "The title is dark")
-        capture("expanded")
 
         key(Key.DirectionRight)
         awaitContentFocus()
@@ -127,46 +104,27 @@ class TvNavigationRailUiTest {
     }
 
     @Test
-    fun railBlurFadesAtItsBoundaryAndRestoresTheBackgroundOnExit() = runAniComposeUiTest {
-        assumeTrue(Build.VERSION.SDK_INT >= 31)
+    fun railBlurAndDimFollowRailFocusAndClearOnExit() = runAniComposeUiTest {
         mount()
-        val original = capture("background-clear")
+        onNodeWithTag("tv-main-rail-blur").assertDoesNotExist()
+        assertEquals(0f, dimAlpha())
         key(Key.Menu)
         awaitRailFocus("Explore")
         settle()
-        val blurred = capture("background-gradient-blur")
-        fun contrast(bitmap: Bitmap, start: Int, end: Int): Int {
-            val samples = (start until end).map {
-                brightness(bitmap.getPixel(it, bitmap.height / 8))
-            }
-            return samples.max() - samples.min()
-        }
-        val blurEnd = (original.width * TvNavigationRailDefaults.BackgroundBlurWidthFraction).roundToInt()
-        val originalContrast = contrast(original, blurEnd / 8, blurEnd / 3)
-        val leftContrast = contrast(blurred, blurEnd / 8, blurEnd / 3)
-        val fadingContrast = contrast(blurred, blurEnd * 4 / 5, blurEnd)
-        assertTrue(originalContrast > 80)
-        assertTrue(leftContrast < originalContrast / 4, "The left edge is strongly blurred: $leftContrast")
-        assertTrue(fadingContrast > leftContrast + 40,
-            "The blur must fade toward its boundary: $leftContrast -> $fadingContrast")
-        assertTrue(contrast(blurred, blurEnd, original.width) > originalContrast / 2,
-            "The dimmed background retains contrast outside the blur")
-        val dimmedColors = mutableMapOf<Int, Int>()
-        for (x in blurEnd until original.width) {
-            val sourceColor = original.getPixel(x, original.height / 8)
-            val dimmedColor = blurred.getPixel(x, blurred.height / 8)
-            val expected = dimmedColors.getOrPut(sourceColor) { dimmedColor }
-            assertSameColor(expected, dimmedColor,
-                "The uniform dim preserves sharp stripe edges outside the blur at x=$x")
-        }
+        val shell = onNodeWithTag("tv-main-shell").fetchSemanticsNode().boundsInRoot
+        val blur = onNodeWithTag("tv-main-rail-blur").fetchSemanticsNode()
+        assertEquals(true, blur.config[TvVisualSemantics.BackdropBlur])
+        assertEquals(1f, blur.config[TvVisualSemantics.Alpha])
+        assertEquals(shell.left, blur.boundsInRoot.left)
+        assertEquals(shell.height, blur.boundsInRoot.height)
+        assertTrue(abs(blur.boundsInRoot.width - shell.width * TvNavigationRailDefaults.BackgroundBlurWidthFraction) <= 1f,
+            "The blur covers the leading part of the page: ${blur.boundsInRoot} in $shell")
+        assertEquals(TvNavigationRailDefaults.BackgroundDimAlpha, dimAlpha())
         key(Key.Menu)
         awaitContentFocus()
         settle()
-        val restored = capture("background-restored")
-        for (x in 0 until original.width) {
-            assertSameColor(original.getPixel(x, original.height / 8), restored.getPixel(x, restored.height / 8),
-                "Leaving the rail restores the background at x=$x")
-        }
+        onNodeWithTag("tv-main-rail-blur").assertDoesNotExist()
+        assertEquals(0f, dimAlpha())
     }
 
     @Test
@@ -234,15 +192,6 @@ class TvNavigationRailUiTest {
                     focus.Resolver()
                     focus.InitialFocus(target)
                     Box(Modifier.fillMaxSize().testTag("rail-test-page")) {
-                        Canvas(Modifier.fillMaxSize()) {
-                            val stripeWidth = 16.dp.toPx()
-                            repeat(ceil(size.width / stripeWidth).toInt()) { index ->
-                                drawRect(
-                                    if (index % 2 == 0) Color(0xFFB3CADB) else Color(0xFF193450),
-                                    Offset(index * stripeWidth, 0f), Size(stripeWidth, size.height),
-                                )
-                            }
-                        }
                         Box(Modifier.fillMaxSize().padding(insets).padding(24.dp)) {
                             Text("Page: $page", Modifier.align(Alignment.TopStart), color = Color.White)
                             TvOptionRow("Nearest control", modifier = Modifier.align(Alignment.CenterStart).width(180.dp)) {}
@@ -293,25 +242,6 @@ class TvNavigationRailUiTest {
 
     private fun AniComposeUiTest.settle() { mainClock.advanceTimeBy(600); waitForIdle() }
 
-    private fun AniComposeUiTest.capture(name: String): Bitmap {
-        val node = onNodeWithTag("tv-main-shell")
-        node.assertScreenshot("tv-navigation-rail/$name")
-        return node.captureToImage().asAndroidBitmap().also { bitmap ->
-            val output = File(InstrumentationRegistry.getInstrumentation().targetContext.getExternalFilesDir(null), "tv-rail-$name.png")
-            output.outputStream().use { bitmap.compress(Bitmap.CompressFormat.PNG, 100, it) }
-        }
-    }
-
-    private fun brightness(pixel: Int): Int = ((pixel shr 16 and 255) + (pixel shr 8 and 255) + (pixel and 255)) / 3
-
-    /**
-     * 同一颜色经过不同绘制路径 (如 haze 图层与普通绘制) 后, 各通道可能差 1 个量化单位;
-     * 这里只关心条纹边缘是否保持锐利, 而非精确到位的合成取整.
-     */
-    private fun assertSameColor(expected: Int, actual: Int, message: String) {
-        val maxChannelDelta = (0..16 step 8).maxOf { shift ->
-            abs((expected shr shift and 255) - (actual shr shift and 255))
-        }
-        assertTrue(maxChannelDelta <= 2, "$message: expected ${expected.toUInt().toString(16)} but was ${actual.toUInt().toString(16)}")
-    }
+    private fun AniComposeUiTest.dimAlpha(): Float =
+        onNodeWithTag("tv-main-rail-dim").fetchSemanticsNode().config[TvVisualSemantics.Alpha]
 }

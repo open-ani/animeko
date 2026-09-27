@@ -710,6 +710,18 @@ fun getVerifyJobBody(
             step = "Check that bundled SQLite can be loaded",
             enabledOnlyOn = listOf(Runner.GithubWindows11Arm64, Runner.GithubUbuntu2404),
         ),
+        // The Windows pointer bridge is the only input path the packaged app has that unit tests
+        // cannot reach: WM_POINTER only arrives at a real window on a real desktop session. Runs
+        // the same scenarios as WindowsNativeInputTest, against the packaged app.
+        VerifyTask(
+            name = "windows-native-input-test",
+            step = "Check that OS touch and mouse input reach Compose",
+            enabledOnlyOn = listOf(
+                Runner.GithubWindowsServer2025,
+                Runner.GithubWindowsServer2022,
+                Runner.GithubWindows11Arm64,
+            ),
+        ),
         VerifyTask(
             name = "jcef-init-test",
             step = "Check that JCEF can be initialized",
