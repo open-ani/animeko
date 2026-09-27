@@ -14,5 +14,6 @@ import kotlinx.serialization.json.Json
 
 fun createAniListHttpClient(engine: HttpClientEngineFactory<*>): HttpClient = HttpClient(engine) {
     expectSuccess = true
+    install(createAniListRateLimitPlugin())
     install(ContentNegotiation) { json(Json { ignoreUnknownKeys = true }) }
 }

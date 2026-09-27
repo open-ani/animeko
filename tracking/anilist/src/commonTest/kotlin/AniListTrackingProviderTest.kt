@@ -327,6 +327,7 @@ class AniListTrackingProviderTest {
     ): AniListTrackingProvider {
         val client = HttpClient(MockEngine(handler)) {
             expectSuccess = true
+            install(createAniListRateLimitPlugin())
             install(ContentNegotiation) { json(Json { ignoreUnknownKeys = true }) }
         }
         return AniListTrackingProvider(client, store)

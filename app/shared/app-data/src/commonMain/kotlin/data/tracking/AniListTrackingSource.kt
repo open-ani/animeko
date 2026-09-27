@@ -8,6 +8,7 @@ package me.him188.ani.app.data.tracking
 
 import kotlinx.atomicfu.locks.SynchronizedObject
 import kotlinx.atomicfu.locks.synchronized
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -34,6 +35,7 @@ import me.him188.ani.tracking.api.TrackingSnapshot
 import me.him188.ani.tracking.api.TrackingSource
 import me.him188.ani.tracking.api.TrackingSourceCapabilities
 import me.him188.ani.tracking.api.TrackingStatus
+import me.him188.ani.utils.logging.thisLogger
 
 /** AniList's account-scoped remote list, with local title matches kept in the existing preferences. */
 class AniListTrackingSource(
@@ -45,6 +47,8 @@ class AniListTrackingSource(
     private val snapshots = mutableMapOf<Int, MutableStateFlow<TrackingSnapshot?>>()
     private val bindingsVersion = MutableStateFlow(0)
     private val episodeSyncMutex = Mutex()
+    private val accountRefreshMutex = Mutex()
+    private val logger = thisLogger()
 
     override val info = provider.info
     override val connection: Flow<TrackingAccountState> = provider.accountState
@@ -63,29 +67,52 @@ class AniListTrackingSource(
             launch {
                 combine(provider.accountState, bindingsVersion) { accountState, _ -> accountState }
                     .collectLatest { accountState ->
-                    when (accountState) {
-                        is TrackingAccountState.LoggedIn -> {
-                            current.value = loadSnapshot(subjectId, accountState.account)
+                        try {
+                            when (accountState) {
+                                is TrackingAccountState.LoggedIn -> {
+                                    current.value = loadSnapshot(subjectId, accountState.account)
+                                }
+                                is TrackingAccountState.Refreshing -> Unit
+                                TrackingAccountState.LoggedOut -> current.value = null
+                            }
+                        } catch (_: TrackingProviderException.Unauthorized) {
+                            logger.warn("[AniList tracking] load snapshot failed: unauthorized")
+                            current.value = null
+                        } catch (failure: CancellationException) {
+                            throw failure
+                        } catch (failure: Exception) {
+                            logFailure("load snapshot", failure)
+                            throw failure
                         }
-                        is TrackingAccountState.Refreshing -> Unit
-                        TrackingAccountState.LoggedOut -> current.value = null
                     }
-                }
             }
             launch {
                 try {
-                    provider.refreshAccount()
+                    currentAccount()
                 } catch (_: TrackingProviderException.Unauthorized) {
+                    logger.warn("[AniList tracking] account refresh failed: unauthorized")
                     current.value = null
+                } catch (failure: CancellationException) {
+                    throw failure
+                } catch (failure: Exception) {
+                    logFailure("account refresh", failure)
+                    throw failure
                 }
             }
             current.collect { emit(it) }
         }
     }
 
-    override suspend fun search(query: String) = provider.search(query)
+    override suspend fun search(query: String) = try {
+        provider.search(query)
+    } catch (failure: CancellationException) {
+        throw failure
+    } catch (failure: Exception) {
+        logFailure("search", failure)
+        throw failure
+    }
 
-    override suspend fun bind(subjectId: Int, mediaId: TrackingMediaId): TrackingSnapshot {
+    override suspend fun bind(subjectId: Int, mediaId: TrackingMediaId): TrackingSnapshot = try {
         val account = currentAccount()
         val candidate = provider.prepareBinding(mediaId)
             ?: throw TrackingProviderException.Remote("AniList title is unavailable")
@@ -93,7 +120,23 @@ class AniListTrackingSource(
             TrackingListEntry(candidate.media.id, TrackingStatus.PLANNING, progress = 0),
         )
         bindings.put(bindingKey(account.remoteId, subjectId), candidate.media.id.value)
-        return TrackingSnapshot(candidate.media, entry).also { snapshotState(subjectId).value = it }
+        TrackingSnapshot(candidate.media, entry).also { snapshotState(subjectId).value = it }
+    } catch (failure: CancellationException) {
+        throw failure
+    } catch (failure: Exception) {
+        logFailure("bind", failure)
+        throw failure
+    }
+
+    private fun logFailure(operation: String, failure: Exception) {
+        // Log only safe categories and server retry timing; never include raw response bodies or account data.
+        val detail = when (failure) {
+            is TrackingProviderException.RateLimited -> "rate limited; retry after ${failure.retryAfterMillis}ms"
+            is TrackingProviderException.Unauthorized -> "unauthorized"
+            is TrackingProviderException.Remote -> "remote failure"
+            else -> failure::class.simpleName ?: "failure"
+        }
+        logger.warn("[AniList tracking] $operation failed: $detail")
     }
 
     override suspend fun edit(subjectId: Int, edit: TrackingEdit): TrackingSnapshot {
@@ -147,7 +190,7 @@ class AniListTrackingSource(
         if (bindings.entries().keys.none { it.endsWith(":$subjectId") }) return
         episodeSyncMutex.withLock {
             val account = try {
-                provider.refreshAccount()
+                currentAccount()
             } catch (_: TrackingProviderException.Unauthorized) {
                 return
             }
@@ -194,9 +237,17 @@ class AniListTrackingSource(
         }) { "Invalid AniList binding backup" }
     }
 
-    private suspend fun currentAccount(): TrackingAccount =
-        (provider.accountState.value as? TrackingAccountState.LoggedIn)?.account
-            ?: provider.refreshAccount()
+    private suspend fun currentAccount(): TrackingAccount = accountRefreshMutex.withLock {
+        when (val state = provider.accountState.value) {
+            is TrackingAccountState.LoggedIn -> state.account
+            is TrackingAccountState.Refreshing -> {
+                val settled = provider.accountState.first { it !is TrackingAccountState.Refreshing }
+                (settled as? TrackingAccountState.LoggedIn)?.account
+                    ?: throw TrackingProviderException.Unauthorized()
+            }
+            TrackingAccountState.LoggedOut -> provider.refreshAccount()
+        }
+    }
 
     private suspend fun loadSnapshot(subjectId: Int, account: TrackingAccount): TrackingSnapshot? {
         val mediaId = bindings.get(bindingKey(account.remoteId, subjectId))

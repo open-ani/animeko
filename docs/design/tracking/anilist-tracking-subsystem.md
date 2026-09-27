@@ -91,6 +91,14 @@ AniList provider 必须具备：
 8. 传播 coroutine cancellation；区分未授权、限流和其他远端失败。
 9. 自动同步不得改变本地 Animeko 操作的成功结果，并且只能推进到最新期望状态。
 
+### AniList API 限流
+
+[AniList 官方限流文档](https://docs.anilist.co/guide/rate-limiting)说明：常规上限为 **90 requests/minute**；截至 **2026-09-27**，文档另提示服务处于降级状态，临时上限为 **30 requests/minute**。官方还设置独立的 burst limiter，但没有公布其数值。超限会返回 HTTP 429；`Retry-After` 的单位是秒，`X-RateLimit-Reset` 是 Unix 时间戳，超限后官方要求等待后再请求。
+
+Animeko 的共享 AniList `HttpClient` 将请求限制为 **25 requests per rolling 60 seconds per client instance**。这是客户端安全上限，不是 AniList 的官方上限；它低于当前临时上限并留出少量余量。收到 429 后，后续请求至少等待响应中的 `Retry-After`；当前请求不自动重放，避免重复执行写操作。该限制只约束此客户端实例，不合并 Mihon 或其他进程发出的请求。
+
+限流资料必须区分官方上限、当前降级上限和 Animeko 自身上限，并在官方状态变化时更新本节及客户端策略。
+
 ## 2026-09-23 实现状态
 
 Android、macOS Desktop 与 iOS 的条目 UI 均通过 `TrackingRegistry`、`TrackingCoordinator` 与 `TrackingSource` 协作；观看事件由 domain 层的 `TrackingEpisodeSynchronizer` 分发。Bangumi 和 AniList 各自实现 source，单栏与多栏页面只调用 `TrackingSection(subjectId)`。同一张能力驱动卡片绘制状态、进度和评分。账号中心通过各平台的 `TrackingAccountConnector` 支持统一的登录操作与已连接状态管理；持久化同步失败重试尚未实现，Windows 平台支持在当前 PR 中明确排除。
