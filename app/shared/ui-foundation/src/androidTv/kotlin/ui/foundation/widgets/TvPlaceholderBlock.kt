@@ -27,12 +27,18 @@ fun TvPlaceholderBlock(
     shape: Shape = RoundedCornerShape(4.dp),
     color: Color = LocalTvOptionColors.current.content,
 ) {
-    Spacer(
-        modifier.placeholder(
-            visible = true,
-            color = color.copy(alpha = .12f),
-            shape = shape,
-            highlight = { PlaceholderHighlight.fade(color.copy(alpha = .08f)) },
-        ),
-    )
+    Spacer(modifier.tvPlaceholder(true, shape, color))
 }
+
+/** Shared loading treatment for blocks and controls whose layout and focus node stay mounted. */
+@Composable
+fun Modifier.tvPlaceholder(
+    visible: Boolean,
+    shape: Shape = RoundedCornerShape(4.dp),
+    color: Color = LocalTvOptionColors.current.content,
+): Modifier = placeholder(
+    visible = visible,
+    color = color.copy(alpha = .12f),
+    shape = shape,
+    highlight = { PlaceholderHighlight.fade(color.copy(alpha = .08f)) },
+)

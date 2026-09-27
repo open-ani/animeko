@@ -11,7 +11,8 @@
                 android:value="me.him188.ani.app.ui.framework.TvDisplayRunListener" />
     </instrumentation>
 
-    <application>
+    <!-- UI fixtures provide the video surface; bundled native media libraries are not exercised. -->
+    <application android:pageSizeCompat="enabled">
         <activity
             android:name="androidx.activity.ComponentActivity"
             android:screenOrientation="landscape"

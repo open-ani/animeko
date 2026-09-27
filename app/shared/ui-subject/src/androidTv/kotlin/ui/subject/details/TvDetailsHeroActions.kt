@@ -22,6 +22,7 @@ import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
@@ -68,12 +69,15 @@ import androidx.compose.ui.window.PopupProperties
 import dev.chrisbanes.haze.HazeTint
 import dev.chrisbanes.haze.hazeEffect
 import me.him188.ani.app.ui.lang.Lang
+import me.him188.ani.app.ui.lang.foundation_loading
 import me.him188.ani.app.ui.lang.rating_requires_collection
 import me.him188.ani.app.ui.lang.rating_self_score
 import me.him188.ani.app.ui.lang.subject_details_rate
 import me.him188.ani.datasources.api.topic.UnifiedCollectionType
+import me.him188.ani.tv.ui.foundation.semantics.tvBackdropBlur
+import me.him188.ani.tv.ui.foundation.semantics.tvVisualProgress
 import me.him188.ani.tv.ui.foundation.widgets.TvOptionDefaults
-import me.him188.ani.tv.ui.foundation.widgets.TvPlaceholderBlock
+import me.him188.ani.tv.ui.foundation.widgets.tvPlaceholder
 import me.him188.ani.tv.ui.subject.collection.tvCollectionLabel
 import me.him188.ani.tv.ui.subject.components.LocalTvDetailsActionBackdrop
 import me.him188.ani.tv.ui.subject.components.TvSubjectDetailsDefaults
@@ -98,13 +102,18 @@ fun TvDetailsAction(
 ) {
     val interaction = remember { MutableInteractionSource() }
     var focused by remember { mutableStateOf(false) }
+    val description = if (loading) stringResource(Lang.foundation_loading) else label
     TvDetailsActionVisual(
         label, focused,
         modifier.onFocusChanged { focused = it.isFocused }
             .then(if (loading) Modifier.progressSemantics() else Modifier)
-            .semantics { contentDescription = label; selected = active }
+            .semantics {
+                contentDescription = description
+                selected = active
+                if (loading) disabled()
+            }
             .clickable(interactionSource = interaction, indication = null, role = Role.Button) {
-                if (available && !busy) onClick()
+                if (available && !busy && !loading) onClick()
             },
         icon = icon, iconOnly = iconOnly, busy = busy, available = available, active = active,
         boundsModifier = boundsModifier, compact = compact, blurBackground = blurBackground,
@@ -138,8 +147,8 @@ fun TvDetailsActionVisual(
         noiseFactor = 0f
         alpha = if (focused) 0f else 1f
     } else Modifier
-    val glowAlpha by animateFloatAsState(
-        if (glowOnFocus && focused && available) TvSubjectDetailsDefaults.PlayGlowAlpha else 0f,
+    val glowProgress by animateFloatAsState(
+        if (glowOnFocus && focused && available) 1f else 0f,
         animationSpec = tween(180),
         label = "play-focus-glow",
     )
@@ -149,12 +158,14 @@ fun TvDetailsActionVisual(
             radius = TvSubjectDetailsDefaults.PlayGlowRadius,
             spread = TvSubjectDetailsDefaults.PlayGlowSpread,
             color = TvSubjectDetailsDefaults.Content,
-            alpha = glowAlpha,
+            alpha = glowProgress * TvSubjectDetailsDefaults.PlayGlowAlpha,
         ),
-    ) else Modifier
+    ).semantics { tvVisualProgress = glowProgress } else Modifier
     Surface(
         modifier = modifier.heightIn(min = TvSubjectDetailsDefaults.ActionHeight)
-            .then(glowModifier),
+            .tvPlaceholder(loading, TvSubjectDetailsDefaults.ActionShape, TvSubjectDetailsDefaults.Content)
+            .then(glowModifier)
+            .semantics { tvBackdropBlur = hazeState != null && !focused },
         shape = TvSubjectDetailsDefaults.ActionShape,
         color = when {
             focused -> TvSubjectDetailsDefaults.Content
@@ -173,7 +184,7 @@ fun TvDetailsActionVisual(
             val iconSize = if (compact) 18.dp else 22.dp
             if (busy) CircularProgressIndicator(Modifier.size(iconSize), color = content, strokeWidth = 2.dp)
             else if (icon != null) Icon(icon, null, Modifier.size(iconSize))
-            if (loading && !iconOnly) TvPlaceholderBlock(Modifier.width(100.dp).height(16.dp), color = content)
+            if (loading && !iconOnly) Spacer(Modifier.width(100.dp).height(16.dp))
             else if (!iconOnly) Text(
                 label, style = MaterialTheme.typography.titleMedium.copy(fontSize = if (compact) 14.sp else 16.sp),
                 maxLines = 1, overflow = TextOverflow.Ellipsis,
@@ -186,10 +197,12 @@ fun TvDetailsActionVisual(
 internal fun TvDetailsCollectionAction(
     type: UnifiedCollectionType, onClick: () -> Unit, modifier: Modifier, compact: Boolean, active: Boolean = false,
     boundsModifier: Modifier = Modifier,
+    loading: Boolean = false,
 ) {
     TvDetailsAction(
         type.tvCollectionLabel(), Icons.Rounded.Bookmark, onClick, modifier,
         iconOnly = compact, active = active, boundsModifier = boundsModifier, blurBackground = true,
+        loading = loading,
     )
 }
 
@@ -198,24 +211,26 @@ internal fun TvDetailsRatingAction(
     score: Int, onClick: () -> Unit, modifier: Modifier, compact: Boolean, active: Boolean = false,
     boundsModifier: Modifier = Modifier,
     available: Boolean = true,
+    loading: Boolean = false,
 ) {
     var focused by remember { mutableStateOf(false) }
     val hint = stringResource(Lang.rating_requires_collection)
     val tooltipVisible = remember { MutableTransitionState(false) }
-    tooltipVisible.targetState = focused && !available
+    tooltipVisible.targetState = focused && !available && !loading
     val tooltipSlide = with(LocalDensity.current) { TvSubjectDetailsDefaults.TooltipSlide.toPx().toInt() }
     Box {
         TvDetailsAction(
             if (score > 0) stringResource(Lang.rating_self_score, score) else stringResource(Lang.subject_details_rate),
             Icons.Rounded.Star, onClick,
             modifier.onFocusChanged { focused = it.isFocused }.semantics {
-                if (!available) {
+                if (!available && !loading) {
                     disabled()
                     stateDescription = hint
                 }
             },
             iconOnly = compact, active = active, available = available, boundsModifier = boundsModifier,
             blurBackground = true,
+            loading = loading,
         )
         if (tooltipVisible.currentState || tooltipVisible.targetState) Popup(
             popupPositionProvider = TooltipDefaults.rememberTooltipPositionProvider(

@@ -9,10 +9,12 @@
 
 package me.him188.ani.tv.ui.collection
 
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.unit.dp
 import androidx.paging.compose.collectWithLifecycle
 import me.him188.ani.tv.ui.foundation.TvNavigationEffect
 import me.him188.ani.tv.ui.foundation.TvNavigationEvent
@@ -22,9 +24,10 @@ fun TvCollectionRoute(
     viewModel: TvCollectionViewModel,
     onNavigate: (TvNavigationEvent) -> Unit,
     modifier: Modifier = Modifier,
+    navigationRailInsets: PaddingValues = PaddingValues(0.dp),
 ) {
     val state by viewModel.uiState.collectAsState()
     state.items.collectWithLifecycle()
     TvNavigationEffect(viewModel.navigationEvents, onNavigate)
-    TvCollectionScreen(state, viewModel::onIntent, modifier)
+    TvCollectionScreen(state, viewModel::onIntent, modifier, navigationRailInsets)
 }

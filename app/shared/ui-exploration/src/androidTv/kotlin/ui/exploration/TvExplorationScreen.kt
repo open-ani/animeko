@@ -18,6 +18,8 @@ import androidx.compose.foundation.gestures.LocalBringIntoViewSpec
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.calculateEndPadding
+import androidx.compose.foundation.layout.calculateStartPadding
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -42,7 +44,6 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clipToBounds
-import androidx.compose.ui.focus.focusProperties
 import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
@@ -52,9 +53,9 @@ import androidx.compose.ui.input.key.KeyEventType
 import androidx.compose.ui.input.key.key
 import androidx.compose.ui.input.key.onPreviewKeyEvent
 import androidx.compose.ui.input.key.type
-import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.platform.LocalAccessibilityManager
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.semantics.stateDescription
@@ -62,24 +63,23 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.compose.LocalLifecycleOwner
-import dev.chrisbanes.haze.hazeSource
-import dev.chrisbanes.haze.rememberHazeState
 import androidx.paging.LoadState
 import androidx.paging.compose.LazyPagingItems
+import dev.chrisbanes.haze.hazeSource
+import dev.chrisbanes.haze.rememberHazeState
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
-import me.him188.ani.app.data.models.recommend.RecommendedSubjectInfo
 import me.him188.ani.app.data.models.recommend.RecommendedItemInfo
+import me.him188.ani.app.data.models.recommend.RecommendedSubjectInfo
 import me.him188.ani.app.data.models.subject.FollowedSubjectInfo
 import me.him188.ani.app.data.models.trending.TrendingSubjectInfo
 import me.him188.ani.app.ui.foundation.navigation.BackHandler
-import me.him188.ani.tv.ui.foundation.widgets.TvLandscapeCardDefaults
 import me.him188.ani.tv.ui.foundation.focus.TvFocusKey
 import me.him188.ani.tv.ui.foundation.focus.TvFocusScope
 import me.him188.ani.tv.ui.foundation.focus.rememberTvFocusScope
-import me.him188.ani.tv.ui.foundation.focus.requestPrepared
 import me.him188.ani.tv.ui.foundation.focus.tvFocusAnchor
 import me.him188.ani.tv.ui.foundation.focus.tvFocusNavSignal
+import me.him188.ani.tv.ui.foundation.widgets.TvLandscapeCardDefaults
 import me.him188.ani.tv.ui.subject.components.LocalTvDetailsActionBackdrop
 
 internal enum class TvExplorationFocus : TvFocusKey { Details, FeedStatus }
@@ -93,12 +93,15 @@ internal fun TvExplorationScreen(
     media: TvSubjectMediaUiState,
     onIntent: (TvExplorationIntent) -> Unit,
     modifier: Modifier = Modifier,
+    navigationRailInsets: PaddingValues = PaddingValues(0.dp),
 ) {
+    val layoutDirection = LocalLayoutDirection.current
     BoxWithConstraints(modifier.fillMaxSize()) {
-        val rowWidth = maxWidth - TvExplorationDefaults.StartPadding - TvExplorationDefaults.EndPadding
+        val rowWidth = maxWidth - TvExplorationDefaults.StartPadding - TvExplorationDefaults.EndPadding -
+                navigationRailInsets.calculateStartPadding(layoutDirection) - navigationRailInsets.calculateEndPadding(layoutDirection)
         val columns = ((rowWidth + TvLandscapeCardDefaults.Spacing) /
                 (TvLandscapeCardDefaults.Width + TvLandscapeCardDefaults.Spacing)).toInt().coerceAtLeast(1)
-        TvExplorationContent(trendsPager, recommendations, followed, media, onIntent, columns)
+        TvExplorationContent(trendsPager, recommendations, followed, media, onIntent, columns, navigationRailInsets)
     }
 }
 
@@ -111,13 +114,13 @@ private fun TvExplorationContent(
     media: TvSubjectMediaUiState,
     onIntent: (TvExplorationIntent) -> Unit,
     columns: Int,
+    navigationRailInsets: PaddingValues,
 ) {
     val scope = rememberCoroutineScope()
     val focus = rememberTvFocusScope()
     focus.Resolver()
     val columnState = rememberLazyListState()
     val followedRowState = rememberLazyListState()
-    var pagePlaced by remember { mutableStateOf(false) }
     var pageFocused by remember { mutableStateOf(false) }
     var detailsFocused by remember { mutableStateOf(false) }
     var footerFocused by remember { mutableStateOf(false) }
@@ -158,6 +161,12 @@ private fun TvExplorationContent(
         .filter { recommendations.peek(it) is RecommendedSubjectInfo }
     val rows = buildList {
         if (followed.itemCount > 0) add(TvExplorationRow.ContinueWatching(followed))
+        else if (followed.loadState.refresh is LoadState.Loading) {
+            add(TvExplorationRow.Loading(TvExplorationArea.ContinueWatching, columns))
+        }
+        if (recommendations.itemCount == 0 && recommendations.loadState.refresh is LoadState.Loading) {
+            add(TvExplorationRow.Loading(TvExplorationArea.Recommendations, columns))
+        }
         repeat((recommendationIndices.size + columns - 1) / columns) {
             add(TvExplorationRow.RecommendationGrid(recommendations, recommendationIndices, it, columns))
         }
@@ -187,7 +196,7 @@ private fun TvExplorationContent(
     LaunchedEffect(heroSubject) { heroSubject?.let { onIntent(TvExplorationIntent.ShowHero(it)) } }
     val backdropSubject = heroSubject
     val backdropUrl = backdropSubject?.let { media.backdropCache[it.subjectId] ?: it.imageUrl }
-    if (pagePlaced) focus.InitialFocus(
+    focus.InitialFocus(
         if (footerFocused) TvExplorationFocus.FeedStatus
         else focusedSubjectId?.takeIf { !expanded }?.let { TvExplorationCardKey(area, it) }
             ?: TvExplorationFocus.Details,
@@ -221,9 +230,13 @@ private fun TvExplorationContent(
             }
         }
     }
-    fun navigateToRow(target: Int, column: Int? = null, subjectId: Int? = null) {
+    fun navigateToRow(target: Int, column: Int? = null, subjectId: Int? = null, direction: Int = 1) {
         if (target < 0) { returnToHero(); return }
         val row = currentRows.getOrNull(target) ?: run { navigateToFooter(); return }
+        if (row is TvExplorationRow.Loading) {
+            navigateToRow(target + direction, column, subjectId, direction)
+            return
+        }
         val index = when {
             subjectId != null -> row.indexOfSubject(subjectId).coerceAtLeast(0)
             row is TvExplorationRow.RecommendationGrid && column != null -> column.coerceAtMost(row.count - 1)
@@ -296,11 +309,7 @@ private fun TvExplorationContent(
     }
     BoxWithConstraints(
         Modifier.fillMaxSize().testTag("tv-exploration")
-            .onGloballyPositioned { pagePlaced = true }
             .onFocusChanged { pageFocused = it.hasFocus }
-            .focusProperties {
-                onEnter = { if (!lifecycle.currentState.isAtLeast(Lifecycle.State.RESUMED)) cancelFocus() }
-            }
             .focusGroup().semantics { stateDescription = area.name },
     ) {
         val collapsedHeight = (maxHeight - 226.dp).coerceAtLeast(230.dp)
@@ -309,6 +318,7 @@ private fun TvExplorationContent(
         val currentPreparingFocus by rememberUpdatedState(preparingFocus)
         TvExplorationPageLayout(
             viewportHeight = maxHeight, columnState = columnState, focus = focus,
+            navigationRailInsets = navigationRailInsets,
             anchoredAtHero = { currentArea == TvExplorationArea.Featured || currentArea == TvExplorationArea.ContinueWatching },
             focusedRow = { currentRows.firstOrNull { it.area == currentArea && it.indexOfSubject(currentSubjectId) >= 0 } },
             measuredHeroHeight = { measuredHeroHeight },
@@ -383,7 +393,7 @@ private fun TvExplorationContent(
                             TvExplorationArea.Featured -> Unit
                         }
                     },
-                    onNavigateVertical = { delta, column -> navigateToRow(index + delta, column) },
+                    onNavigateVertical = { delta, column -> navigateToRow(index + delta, column, direction = delta) },
                     modifier = Modifier.padding(bottom = TvExplorationDefaults.RowGap).graphicsLayer { alpha = rowAlpha },
                 )
             }
@@ -399,7 +409,7 @@ private fun TvExplorationContent(
                         .onPreviewKeyEvent {
                             if (it.key == Key.DirectionUp) {
                                 if (it.type == KeyEventType.KeyDown) {
-                                    if (rows.isEmpty()) returnToHero() else navigateToRow(rows.lastIndex)
+                                    if (rows.isEmpty()) returnToHero() else navigateToRow(rows.lastIndex, direction = -1)
                                 }
                                 true
                             } else false
@@ -416,6 +426,7 @@ private fun TvExplorationPageLayout(
     viewportHeight: Dp,
     columnState: LazyListState,
     focus: TvFocusScope,
+    navigationRailInsets: PaddingValues,
     anchoredAtHero: () -> Boolean,
     focusedRow: () -> TvExplorationRow?,
     measuredHeroHeight: () -> Int,
@@ -439,7 +450,7 @@ private fun TvExplorationPageLayout(
         backdrop(Modifier.fillMaxSize().hazeSource(actionBackdrop))
         CompositionLocalProvider(LocalBringIntoViewSpec provides scrollSpec, LocalTvDetailsActionBackdrop provides actionBackdrop) {
             LazyColumn(
-                Modifier.fillMaxSize().testTag("tv-exploration-scroll"),
+                Modifier.fillMaxSize().padding(navigationRailInsets).testTag("tv-exploration-scroll"),
                 state = columnState, contentPadding = PaddingValues(bottom = viewportHeight),
             ) {
                 item("hero") { hero(Modifier.fillMaxWidth()) }

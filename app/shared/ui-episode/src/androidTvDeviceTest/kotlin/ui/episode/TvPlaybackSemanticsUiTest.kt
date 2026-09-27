@@ -21,7 +21,6 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.asAndroidBitmap
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.input.key.Key
 import androidx.compose.ui.platform.testTag
@@ -30,7 +29,6 @@ import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.assertIsFocused
 import androidx.compose.ui.test.assertIsNotEnabled
 import androidx.compose.ui.test.assertTextContains
-import androidx.compose.ui.test.captureToImage
 import androidx.compose.ui.test.hasTestTag
 import androidx.compose.ui.test.isFocused
 import androidx.compose.ui.test.onAllNodesWithText
@@ -40,7 +38,6 @@ import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.onRoot
 import androidx.compose.ui.test.performKeyInput
 import androidx.compose.ui.test.pressKey
-import androidx.test.platform.app.InstrumentationRegistry
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.cancelAndJoin
 import kotlinx.coroutines.flow.emptyFlow
@@ -95,7 +92,6 @@ import org.openani.mediamp.PlaybackErrorCode
 import org.openani.mediamp.PlaybackException
 import org.openani.mediamp.PlayerState
 import org.openani.mediamp.metadata.Chapter
-import java.io.File
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
@@ -145,7 +141,6 @@ class TvPlaybackSemanticsUiTest {
         assertTrue(target > 20_000)
         assertTrue(seeks.isEmpty())
         onNodeWithTag("tv-player-seekbar").assertIsFocused()
-        saveScreenshot("tv-shared-progress-preview")
         key(Key.DirectionCenter)
         assertEquals(listOf(target), seeks)
         assertNull(interaction.scrubMillis)
@@ -184,7 +179,6 @@ class TvPlaybackSemanticsUiTest {
         key(Key.DirectionRight)
         assertEquals(1.25f, state.playbackSpeed)
         onNodeWithTag("tv-speed-control").assertIsFocused().assertTextContains("1.25", substring = true)
-        saveScreenshot("tv-speed-shared-stepper")
         key(Key.DirectionLeft)
         assertEquals(1f, state.playbackSpeed)
         assertEquals(listOf(1, -1), steps)
@@ -227,12 +221,10 @@ class TvPlaybackSemanticsUiTest {
             assertTrue(state.playerState.playWhenReady)
             key(Key.DirectionDown)
             playPause.assertIsFocused().assertContentDescriptionEquals(playerTestString(Lang.video_player_pause))
-            if (!buffering) saveScreenshot("tv-play-pause-playing")
             key(Key.DirectionCenter)
             assertFalse(state.playerState.playWhenReady)
             playPause.assertIsFocused().assertContentDescriptionEquals(playerTestString(Lang.video_player_play))
             assertEquals(nodeId, playPause.fetchSemanticsNode().id)
-            if (!buffering) saveScreenshot("tv-play-pause-paused")
             key(Key.DirectionCenter)
             assertTrue(state.playerState.playWhenReady)
             playPause.assertIsFocused().assertContentDescriptionEquals(playerTestString(Lang.video_player_pause))
@@ -260,7 +252,6 @@ class TvPlaybackSemanticsUiTest {
         onNodeWithTag("tv-player-loading").assertDoesNotExist()
         runOnIdle { state = state.copy(playerState = state.playerState.copy(isBuffering = true)) }
         assertMessage(Lang.subject_episode_video_loading_buffering)
-        saveScreenshot("tv-buffering")
         runOnIdle {
             state = state.copy(playerState = PlayerState(
                 MediaStatus.Error(PlaybackException(PlaybackErrorCode.DECODING, "Test decoding failure")), false, false,
@@ -331,7 +322,6 @@ class TvPlaybackSemanticsUiTest {
         onNodeWithTag("tv-seek-preview-loading").assertIsDisplayed()
         onNodeWithText("片头").assertIsDisplayed()
         onNodeWithText("正在加载预览…").assertDoesNotExist()
-        saveScreenshot("tv-seek-preview-loading")
         runOnIdle {
             state = state.copy(options = state.options.copy(
                 videoConfig = state.options.videoConfig.copy(enableFramePreview = false),
@@ -370,7 +360,6 @@ class TvPlaybackSemanticsUiTest {
         assertEquals<TvEpisodeIntent>(TvEpisodeIntent.ResolveSourceCaptcha("captcha"), intents.single())
         runOnIdle { group = group.copy(isResolvingCaptcha = true) }
         onNodeWithTag("tv-source-action-captcha").assertIsNotEnabled()
-        saveScreenshot("tv-source-verification-busy")
         runOnIdle { group = group.copy(isResolvingCaptcha = false, isCaptchaSupported = false) }
         onNodeWithTag("tv-source-action-captcha").assertIsNotEnabled()
         runOnIdle { group = group.copy(state = MediaSourceFetchState.Failed(IllegalStateException(), 1)) }
@@ -470,12 +459,5 @@ class TvPlaybackSemanticsUiTest {
         val text = runBlocking { getString(resource) }
         // TextWithBorder draws both the outline and the foreground text.
         onAllNodesWithText(text, substring = true).onFirst().assertIsDisplayed()
-    }
-
-    private fun AniComposeUiTest.saveScreenshot(name: String) {
-        val bitmap = onNodeWithTag("tv-semantics-test").captureToImage().asAndroidBitmap()
-        val context = InstrumentationRegistry.getInstrumentation().targetContext
-        val file = File(context.getExternalFilesDir("screenshots"), "$name.png")
-        file.outputStream().use { check(bitmap.compress(Bitmap.CompressFormat.PNG, 100, it)) }
     }
 }

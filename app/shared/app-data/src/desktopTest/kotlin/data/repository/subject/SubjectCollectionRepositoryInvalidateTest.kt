@@ -225,6 +225,7 @@ class SubjectCollectionRepositoryInvalidateTest {
             val episodeCollectionRepository = EpisodeCollectionRepository(
                 subjectDao = database.subjectCollection(),
                 episodeCollectionDao = database.episodeCollection(),
+                pendingOpDao = database.episodeCollectionPendingOpDao(),
                 episodeService = episodeService,
                 animeScheduleRepository = animeScheduleRepository,
                 subjectCollectionRepository = lazy { repository },

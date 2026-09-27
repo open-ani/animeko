@@ -64,7 +64,6 @@ import me.him188.ani.app.ui.lang.watch_together_room_name
 import me.him188.ani.app.ui.lang.watch_together_title
 import me.him188.ani.tv.ui.foundation.focus.TvFocusKey
 import me.him188.ani.tv.ui.foundation.focus.rememberTvFocusScope
-import me.him188.ani.tv.ui.foundation.focus.requestPrepared
 import me.him188.ani.tv.ui.foundation.focus.tvFocusAnchor
 import me.him188.ani.tv.ui.foundation.focus.tvFocusHotkey
 import me.him188.ani.tv.ui.foundation.focus.tvFocusNavSignal

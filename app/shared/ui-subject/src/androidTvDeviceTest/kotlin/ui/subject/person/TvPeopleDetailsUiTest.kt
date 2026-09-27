@@ -4,7 +4,6 @@
  */
 package me.him188.ani.tv.ui.subject.person
 
-import android.graphics.Bitmap
 import android.os.LocaleList
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.layout.Box
@@ -17,7 +16,6 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.saveable.rememberSaveableStateHolder
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.asAndroidBitmap
 import androidx.compose.ui.input.key.Key
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.semantics.SemanticsActions
@@ -27,7 +25,6 @@ import androidx.compose.ui.test.assertCountEquals
 import androidx.compose.ui.test.assertHasNoClickAction
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.assertIsFocused
-import androidx.compose.ui.test.captureToImage
 import androidx.compose.ui.test.hasAnyDescendant
 import androidx.compose.ui.test.hasAnyAncestor
 import androidx.compose.ui.test.hasTestTag
@@ -72,7 +69,6 @@ import me.him188.ani.app.ui.comment.UICommentSource
 import me.him188.ani.app.ui.comment.UIRichText
 import me.him188.ani.app.ui.foundation.LocalSketch
 import me.him188.ani.app.ui.framework.AniComposeUiTest
-import me.him188.ani.app.ui.framework.assertScreenshot
 import me.him188.ani.app.ui.framework.runAniComposeUiTest
 import me.him188.ani.app.ui.richtext.UIRichElement
 import me.him188.ani.tv.ui.foundation.theme.AniTvTheme
@@ -155,7 +151,6 @@ class TvPeopleDetailsUiTest {
         val state = state(TvPeopleKind.Character).copy(comments = flowOf(page(comments(shortFirst = true))))
         val intents = mutableListOf<TvPeopleIntent>()
         mount({ state }, onIntent = { intents += it })
-        capture("character")
         val image = onNodeWithTag("tv-people-portrait").fetchSemanticsNode().boundsInRoot
         val hero = onNodeWithTag("tv-people-hero").fetchSemanticsNode().boundsInRoot
         val actors = onNodeWithTag("tv-people-section:actors").fetchSemanticsNode().boundsInRoot
@@ -172,7 +167,6 @@ class TvPeopleDetailsUiTest {
         key(Key.DirectionDown)
         awaitFocus("tv-people-works:1")
         assertDetailsEndPaddingAligned("tv-people-details")
-        capture("character-last-section")
         key(Key.DirectionCenter)
         assertTrue(intents.any { it is TvPeopleIntent.OpenSubject && it.subject.subjectId == 1 })
         key(Key.Back)
@@ -182,7 +176,6 @@ class TvPeopleDetailsUiTest {
     @Test fun voiceActorCastsUseCharacterAndWorkIdentity() = runAniComposeUiTest {
         val state = state(TvPeopleKind.VoiceActor)
         mount({ state })
-        capture("voice-actor")
         repeat(2) { key(Key.DirectionDown) }
         awaitFocus("tv-people-casts:1:1")
         repeat(4) { key(Key.DirectionRight) }
@@ -192,13 +185,11 @@ class TvPeopleDetailsUiTest {
         assertDetailsEndPaddingAligned("tv-people-details")
         key(Key.DirectionUp)
         awaitFocus("tv-people-casts:1:5")
-        capture("voice-actor-section")
     }
 
     @Test fun staffStartsWithWorksAndHasNoCastRow() = runAniComposeUiTest {
         val state = state(TvPeopleKind.Staff)
         mount({ state })
-        capture("staff")
         onNodeWithTag("tv-people-section:casts").assertDoesNotExist()
         onNodeWithTag("tv-people-section:actors").assertDoesNotExist()
         repeat(2) { key(Key.DirectionDown) }
@@ -209,7 +200,6 @@ class TvPeopleDetailsUiTest {
         awaitFocus("tv-people-works:7")
         assertDetailsEndPaddingAligned("tv-people-details")
         assertEquals(first.top, onNodeWithTag("tv-people-works:7").fetchSemanticsNode().boundsInRoot.top, 1f)
-        capture("staff-last-section")
         key(Key.Back)
         awaitFocus("tv-people-intro")
     }
@@ -223,7 +213,6 @@ class TvPeopleDetailsUiTest {
         repeat(2) { key(Key.DirectionDown) }
         awaitFocus("tv-people-actors:21")
         assertDetailsEndPaddingAligned("tv-people-details")
-        capture("actors-last-section")
         key(Key.DirectionUp)
         awaitFocus("tv-people-image")
     }
@@ -233,14 +222,12 @@ class TvPeopleDetailsUiTest {
         mount({ state })
         key(Key.DirectionCenter)
         awaitFocus("tv-people-reader")
-        capture("introduction")
         val readerScroll = SemanticsMatcher.keyIsDefined(SemanticsProperties.VerticalScrollAxisRange) and
             hasAnyAncestor(hasTestTag("tv-people-reader"))
         assertEquals(0f, onNode(readerScroll).fetchSemanticsNode().config[SemanticsProperties.VerticalScrollAxisRange].value())
         repeat(70) { key(Key.DirectionDown) }
         onNodeWithText("https://example.com/people/long-information", useUnmergedTree = true).assertIsDisplayed()
         assertTrue(onNode(readerScroll).fetchSemanticsNode().config[SemanticsProperties.VerticalScrollAxisRange].value() > 0f)
-        capture("introduction-info")
         key(Key.Back)
         awaitFocus("tv-people-intro")
     }
@@ -252,7 +239,6 @@ class TvPeopleDetailsUiTest {
         awaitFocus("tv-people-reader")
         onNodeWithTag("tv-people-biography").assertDoesNotExist()
         onNodeWithTag("tv-people-infobox").assertIsDisplayed()
-        capture("information-only")
     }
 
     @Test fun discussionKeepsOneModalAndRestoresCommentAndCard() = runAniComposeUiTest {
@@ -262,7 +248,6 @@ class TvPeopleDetailsUiTest {
         key(Key.DirectionCenter)
         awaitFocus("tv-people-discussion-comment:review-1")
         assertSingleModal()
-        capture("discussion-list")
         repeat(5) { key(Key.DirectionDown) }
         awaitFocus("tv-people-discussion-comment:review-6")
         val before = onNodeWithTag("tv-people-discussion-comment:review-6").fetchSemanticsNode().boundsInRoot
@@ -271,7 +256,6 @@ class TvPeopleDetailsUiTest {
         assertSingleModal()
         onNodeWithTag("tv-people-intro").assertDoesNotExist()
         onNodeWithText("保密的剧情 6", substring = true, useUnmergedTree = true).assertDoesNotExist()
-        capture("discussion-comment")
         key(Key.Back)
         awaitFocus("tv-people-discussion-comment:review-6")
         assertEquals(before, onNodeWithTag("tv-people-discussion-comment:review-6").fetchSemanticsNode().boundsInRoot)
@@ -371,11 +355,9 @@ class TvPeopleDetailsUiTest {
         val intro = onNodeWithTag("tv-people-intro").fetchSemanticsNode().boundsInRoot
         val root = onNodeWithTag("tv-people-details").fetchSemanticsNode().boundsInRoot
         assertTrue(intro.right < portrait.left && portrait.right <= root.right)
-        capture("${kind.name.lowercase()}-loading-skeleton")
         key(Key.DirectionCenter)
         awaitFocus("tv-people-reader")
         onNodeWithTag("tv-people-reader-loading", useUnmergedTree = true).assertExists().assertHasNoClickAction()
-        if (kind == TvPeopleKind.Character) capture("introduction-loading-skeleton")
         runOnIdle { state = ready.copy(comments = comments) }
         awaitFocus("tv-people-reader")
         onNodeWithTag("tv-people-reader-loading", useUnmergedTree = true).assertDoesNotExist()
@@ -389,7 +371,6 @@ class TvPeopleDetailsUiTest {
         val viewport = onNodeWithTag("tv-people-discussion-list").fetchSemanticsNode().boundsInRoot
         assertTrue(first.positionInRoot.y >= viewport.top && first.positionInRoot.y + first.size.height <= viewport.bottom,
             "The first loading card must stay fully visible")
-        if (kind == TvPeopleKind.Character) capture("discussion-loading-skeleton")
         runOnIdle { comments.value = page(comments()) }
         awaitFocus("tv-people-discussion-comment:review-1")
         key(Key.Back)
@@ -471,14 +452,12 @@ class TvPeopleDetailsUiTest {
         key(Key.DirectionCenter)
         awaitFocus("tv-people-reader")
         repeat(10) { key(Key.DirectionDown) }
-        capture("large-font-introduction")
         key(Key.Back)
         awaitFocus("tv-people-intro")
         onNodeWithTag("tv-people-discussion").performSemanticsAction(SemanticsActions.RequestFocus) { it() }
         key(Key.DirectionCenter)
         awaitFocus("tv-people-discussion-comment:review-1")
         assertSingleModal()
-        capture("large-font-discussion")
     }
 
     @Test fun pagedWorksKeepContentOnAppendFailureAndRetry() = runAniComposeUiTest {
@@ -507,7 +486,6 @@ class TvPeopleDetailsUiTest {
         runOnIdle { failAppend = false }
         key(Key.DirectionCenter)
         awaitFocus("tv-people-works:4")
-        capture("works-retry")
     }
 
     @Test fun emptyDiscussionAndImageReturnToTheirOwnEntries() = runAniComposeUiTest {
@@ -615,12 +593,5 @@ class TvPeopleDetailsUiTest {
     private fun AniComposeUiTest.key(key: Key) {
         onAllNodes(isRoot() and hasAnyDescendant(isFocused())).onLast().performKeyInput { pressKey(key) }
         waitForIdle()
-    }
-    private fun AniComposeUiTest.capture(name: String) {
-        onNodeWithTag("tv-people-details").assertScreenshot("tv-people/$name")
-        val context = InstrumentationRegistry.getInstrumentation().targetContext
-        File(context.getExternalFilesDir(null), "tv-people-$name.png").outputStream().use {
-            onNodeWithTag("tv-people-details").captureToImage().asAndroidBitmap().compress(Bitmap.CompressFormat.PNG, 100, it)
-        }
     }
 }
