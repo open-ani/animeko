@@ -34,6 +34,7 @@ import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
@@ -181,12 +182,13 @@ private fun TvSubjectDetailsContent(
     val charactersState = rememberLazyListState()
     val staffState = rememberLazyListState()
     val relatedState = rememberLazyListState()
-    val rowKeys = mapOf(
-        "episode" to details.episodes.map { "episode:${it.episodeId}" },
+    // Outside composition this reads the snapshot the lazy rows lay out, which can be newer than [rowKeys].
+    fun pagingRowKeys() = mapOf(
         "character" to lists.characters.itemSnapshotList.items.map { "character:${it.character.id}" },
         "staff" to lists.staff.itemSnapshotList.items.map { "staff:${it.personInfo.id}:${it.position}" },
         "related" to lists.related.itemSnapshotList.items.map { "related:${it.subjectId}" },
     )
+    val rowKeys = mapOf("episode" to details.episodes.map { "episode:${it.episodeId}" }) + pagingRowKeys()
     val focus = rememberTvFocusScope()
     focus.Resolver()
     val focusState = rememberTvDetailsFocusState(focus, presentation, mapOf(
@@ -214,10 +216,19 @@ private fun TvSubjectDetailsContent(
         val operation = state.operation
         if (operation.completed && operation.error == null) presentation.complete(operation.requestId, operation.offerMarkAllWatched)
     }
+    var focusNavigation by remember { mutableIntStateOf(focus.userNavGeneration) }
     fun Modifier.anchor(id: String, level: Int): Modifier = this
         .tvFocusAnchor(focus, TvDetailsKey(id))
         .onFocusChanged {
             if (it.hasFocus) {
+                // A paging row can drop the focused card before this page recomposes with the new keys, and
+                // Compose then focuses a nearby card. Keep the removed card so the row restores its neighbour.
+                val previous = presentation.lastFocused
+                val previousRow = pagingRowKeys()[previous.substringBefore(':')]
+                if (id != previous && previousRow != null && previous !in previousRow &&
+                    focus.userNavGeneration == focusNavigation && !focus.isLatestDestination(TvDetailsKey(id))
+                ) return@onFocusChanged
+                focusNavigation = focus.userNavGeneration
                 if (id == "info" && presentation.lastFocused != id) informationReturnTarget = presentation.lastFocused
                 presentation.lastFocused = id
                 if (id.startsWith("episode:")) presentation.lastEpisode = id
