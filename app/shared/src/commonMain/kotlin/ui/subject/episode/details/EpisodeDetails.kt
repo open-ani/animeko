@@ -25,6 +25,7 @@ import androidx.compose.foundation.layout.WindowInsetsSides
 import androidx.compose.foundation.layout.add
 import androidx.compose.foundation.layout.calculateStartPadding
 import androidx.compose.foundation.layout.fillMaxHeight
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
@@ -38,7 +39,7 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyListScope
 import androidx.compose.foundation.text.selection.SelectionContainer
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.outlined.Close
+import androidx.compose.material.icons.rounded.Close
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.BottomSheetDefaults
 import androidx.compose.material3.CardDefaults
@@ -51,7 +52,6 @@ import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.ProvideTextStyle
 import androidx.compose.material3.Scaffold
-import androidx.compose.material3.SheetValue
 import androidx.compose.material3.Slider
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -60,6 +60,7 @@ import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.material3.contentColorFor
 import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.Stable
 import androidx.compose.runtime.State
@@ -104,6 +105,7 @@ import me.him188.ani.app.ui.foundation.ProvideCompositionLocalsForPreview
 import me.him188.ani.app.ui.foundation.animation.AniAnimatedVisibility
 import me.him188.ani.app.ui.foundation.animation.LocalAniMotionScheme
 import me.him188.ani.app.ui.foundation.layout.AniWindowInsets
+import me.him188.ani.app.ui.foundation.layout.Zero
 import me.him188.ani.app.ui.foundation.layout.currentWindowAdaptiveInfo1
 import me.him188.ani.app.ui.foundation.layout.desktopTitleBar
 import me.him188.ani.app.ui.foundation.layout.desktopTitleBarPadding
@@ -113,6 +115,7 @@ import me.him188.ani.app.ui.foundation.widgets.ModalSideSheet
 import me.him188.ani.app.ui.foundation.widgets.rememberModalSideSheetState
 import me.him188.ani.app.ui.lang.Lang
 import me.him188.ani.app.ui.lang.settings_danmaku_cancel
+import me.him188.ani.app.ui.lang.media_selector_sources
 import me.him188.ani.app.ui.lang.settings_danmaku_confirm
 import me.him188.ani.app.ui.lang.subject_episode_close_selector
 import me.him188.ani.app.ui.lang.subject_episode_danmaku_time_shift_current_offset
@@ -124,12 +127,19 @@ import me.him188.ani.app.ui.lang.subject_episode_related_recommendations
 import me.him188.ani.app.ui.lang.subject_episode_select_media_source
 import me.him188.ani.app.ui.lang.subject_episode_wish_change_to
 import me.him188.ani.app.ui.mediafetch.MediaSelectorState
-import me.him188.ani.app.ui.mediafetch.MediaSelectorView
 import me.him188.ani.app.ui.mediafetch.MediaSourceResultListPresentation
+import me.him188.ani.app.ui.mediafetch.TestMediaFetchRequest
 import me.him188.ani.app.ui.mediafetch.TestMediaSourceResultListPresentation
-import me.him188.ani.app.ui.mediafetch.ViewKind
+import me.him188.ani.app.ui.mediafetch.rememberTestManualBrowseState
 import me.him188.ani.app.ui.mediafetch.rememberTestMediaSelectorState
-import me.him188.ani.app.ui.mediafetch.request.TestMediaFetchRequest
+import me.him188.ani.app.ui.mediaselect.MediaSelectorMode
+import me.him188.ani.app.ui.mediaselect.WatchingEpisode
+import me.him188.ani.app.ui.mediaselect.auto.AutoMatchPage
+import me.him188.ani.app.ui.mediaselect.bt.BtResourcesPage
+import me.him188.ani.app.ui.mediaselect.common.MediaSelectorDialog
+import me.him188.ani.app.ui.mediaselect.common.MediaSelectorModeChip
+import me.him188.ani.app.ui.mediaselect.manual.ManualBrowsePage
+import me.him188.ani.app.ui.mediaselect.manual.ManualBrowseState
 import me.him188.ani.app.ui.mediaselect.summary.MediaSelectorSummary
 import me.him188.ani.app.ui.mediaselect.summary.MediaSelectorSummaryBanner
 import me.him188.ani.app.ui.mediaselect.summary.MediaSelectorSummaryCard
@@ -195,7 +205,10 @@ class EpisodeDetailsState(
 fun EpisodeDetails(
     mediaSelectorSummary: MediaSelectorSummary,
     state: EpisodeDetailsState,
-    initialMediaSelectorViewKind: ViewKind,
+    mediaSelectorMode: MediaSelectorMode,
+    onMediaSelectorModeChange: (MediaSelectorMode) -> Unit,
+    manualBrowseState: ManualBrowseState,
+    watchingEpisode: WatchingEpisode?,
     fetchRequest: MediaFetchRequest?,
     onFetchRequestChange: (MediaFetchRequest) -> Unit,
     episodeCarouselState: EpisodeCarouselState,
@@ -206,7 +219,6 @@ fun EpisodeDetails(
     mediaSourceResultListPresentation: () -> MediaSourceResultListPresentation,
     selfInfo: SelfInfoUiState,
     onSwitchEpisode: (Int) -> Unit,
-    onRefreshMediaSources: () -> Unit,
     onRestartSource: (String) -> Unit,
     onSetDanmakuSourceEnabled: (DanmakuServiceId, Boolean) -> Unit,
     onAdjustDanmakuSourceShift: (DanmakuServiceId, Long) -> Unit,
@@ -219,9 +231,27 @@ fun EpisodeDetails(
     modifier: Modifier = Modifier,
     contentPadding: PaddingValues = PaddingValues(horizontal = 16.dp, vertical = 16.dp),
     danmakuListState: DanmakuListState? = null,
+    /**
+     * 入口按钮 (onClickManualSelect / onClickSwitchSource) 打开容器前调用一次; 宿主在这里锁存模式.
+     */
+    onBeforeOpenMediaSelector: () -> Unit = {},
 ) {
     var showSubjectDetails by rememberSaveable {
         mutableStateOf(false)
+    }
+    // 选择器容器状态与容器本身都放在 mediaSelectorItem 槽之外: 该槽是 LazyColumn 的 item, 滚出可视区会被销毁.
+    var showMediaSelector by rememberSaveable { mutableStateOf(false) }
+    // 宽屏 BT 居中对话框; 等侧边栏滑出动画结束 (onDismiss) 再打开, 避免两个 Dialog window 同帧切换.
+    var showBtDialog by rememberSaveable { mutableStateOf(false) }
+    var pendingBtDialog by rememberSaveable { mutableStateOf(false) }
+    // watchingEpisode == null 即会话未就绪: 此时 mediaSelectorState 是占位 state, select 会落到假 selector, 容器不打开也不保持打开.
+    val mediaSelectorAvailable = watchingEpisode != null
+    LaunchedEffect(mediaSelectorAvailable) {
+        if (!mediaSelectorAvailable) {
+            showMediaSelector = false
+            showBtDialog = false
+            pendingBtDialog = false
+        }
     }
     var editingShiftServiceId by remember {
         mutableStateOf<DanmakuServiceId?>(null)
@@ -355,113 +385,27 @@ fun EpisodeDetails(
             }
         },*/
         mediaSelectorItem = { innerPadding ->
-            var showMediaSelector by rememberSaveable { mutableStateOf(false) }
-            if (showMediaSelector) {
-                val windowAdaptiveInfo = currentWindowAdaptiveInfo1()
-                val (viewKind, onViewKindChange) = rememberSaveable { mutableStateOf(initialMediaSelectorViewKind) }
-
-                if (windowAdaptiveInfo.isWidthAtLeastMedium) {
-                    val sheetState = rememberModalSideSheetState()
-                    ModalSideSheet(
-                        { showMediaSelector = false },
-                        state = sheetState,
-                        containerColor = BottomSheetDefaults.ContainerColor,
-                    ) {
-                        Column(
-                            modifier = Modifier
-                                .fillMaxHeight()
-                                .widthIn(300.dp, 400.dp)
-                                .windowInsetsPadding(AniWindowInsets.safeDrawing),
-                        ) {
-                            TopAppBar(
-                                title = {
-                                    Text(
-                                        stringResource(Lang.subject_episode_select_media_source),
-                                        modifier = Modifier.padding(start = 8.dp),
-                                    )
-                                },
-                                actions = {
-                                    IconButton(
-                                        onClick = { sheetState.close() },
-                                        modifier = Modifier.padding(end = 8.dp),
-                                    ) {
-                                        Icon(
-                                            Icons.Outlined.Close,
-                                            contentDescription = stringResource(Lang.subject_episode_close_selector),
-                                        )
-                                    }
-                                },
-                                colors = TopAppBarDefaults.topAppBarColors(
-                                    containerColor = BottomSheetDefaults.ContainerColor,
-                                ),
-                            )
-                            MediaSelectorView(
-                                mediaSelectorState,
-                                viewKind,
-                                onViewKindChange,
-                                fetchRequest,
-                                onFetchRequestChange,
-                                mediaSourceResultListPresentation(),
-                                onRestartSource = onRestartSource,
-                                onRefresh = onRefreshMediaSources,
-                                modifier = Modifier
-                                    .padding(vertical = 12.dp, horizontal = 16.dp)
-                                    .fillMaxWidth(),
-                                stickyHeaderBackgroundColor = BottomSheetDefaults.ContainerColor,
-                                onClickItem = {
-                                    mediaSelectorState.select(it)
-                                    showMediaSelector = false
-                                },
-                                scrollable = true,
-                            )
-                        }
-                    }
-                } else {
-                    val sheetState =
-                        rememberModalBottomSheetState(skipPartiallyExpanded = windowAdaptiveInfo.isWidthAtLeastMedium)
-                    ModalBottomSheet(
-                        { showMediaSelector = false },
-                        sheetState = sheetState,
-                        modifier = Modifier.desktopTitleBarPadding().statusBarsPadding(),
-                        contentWindowInsets = {
-                            BottomSheetDefaults.windowInsets
-                                .add(WindowInsets.desktopTitleBar())
-                                .only(WindowInsetsSides.Horizontal + WindowInsetsSides.Top)
-                        },
-                    ) {
-                        MediaSelectorView(
-                            mediaSelectorState,
-                            viewKind,
-                            onViewKindChange,
-                            fetchRequest,
-                            onFetchRequestChange,
-                            mediaSourceResultListPresentation(),
-                            onRestartSource = onRestartSource,
-                            onRefresh = onRefreshMediaSources,
-                            modifier = Modifier.padding(top = 12.dp)
-                                .padding(horizontal = 16.dp)
-                                .fillMaxWidth(),
-                            stickyHeaderBackgroundColor = BottomSheetDefaults.ContainerColor,
-                            onClickItem = {
-                                mediaSelectorState.select(it)
-                                showMediaSelector = false
-                            },
-                            scrollable = sheetState.targetValue == SheetValue.Expanded,
-                        )
+            val openMediaSelector = {
+                if (mediaSelectorAvailable) {
+                    onBeforeOpenMediaSelector()
+                    // 宽屏侧边栏装不下 BT 表格, BT 模式直接开居中对话框.
+                    if (atLeastMedium && mediaSelectorMode == MediaSelectorMode.BT) {
+                        showBtDialog = true
+                    } else {
+                        showMediaSelector = true
                     }
                 }
             }
-
             if (atLeastMedium) {
                 MediaSelectorSummaryCard(
                     mediaSelectorSummary,
-                    onClickManualSelect = { showMediaSelector = true },
+                    onClickManualSelect = openMediaSelector,
                     Modifier.fillMaxWidth().padding(innerPadding),
                 )
             } else {
                 MediaSelectorSummaryBanner(
                     mediaSelectorSummary,
-                    onClickSwitchSource = { showMediaSelector = true },
+                    onClickSwitchSource = openMediaSelector,
                     Modifier.fillMaxWidth().padding(innerPadding),
                 )
             }
@@ -609,6 +553,236 @@ fun EpisodeDetails(
         modifier = modifier,
         contentPadding = contentPadding,
     )
+
+    if (showMediaSelector) {
+        val sourceResults = mediaSourceResultListPresentation()
+        val showBt = sourceResults.btSources.isNotEmpty()
+        val closeSelector = { showMediaSelector = false }
+        val closeSelectorText = stringResource(Lang.subject_episode_close_selector)
+        if (atLeastMedium) {
+            val sheetState = rememberModalSideSheetState()
+            // 挂起标志只在本次侧边栏存活期间有效: 滑出动画 (约 300ms) 中窗口跨过宽度类、或用户切回自动并点了线路时, 侧边栏不经 onDismiss 就离开组合,
+            // 残留的 true 会让下一次关闭侧边栏误弹 BT 对话框. 正常路径 onDismiss 先消费, 这里再写一次 false 无副作用.
+            DisposableEffect(Unit) {
+                onDispose { pendingBtDialog = false }
+            }
+            ModalSideSheet(
+                {
+                    showMediaSelector = false
+                    if (pendingBtDialog) {
+                        pendingBtDialog = false
+                        showBtDialog = true
+                    }
+                },
+                state = sheetState,
+                containerColor = BottomSheetDefaults.ContainerColor,
+            ) {
+                val closeButton = @Composable {
+                    IconButton(
+                        onClick = { sheetState.close() },
+                        modifier = Modifier.padding(end = 8.dp),
+                    ) {
+                        Icon(Icons.Rounded.Close, contentDescription = closeSelectorText)
+                    }
+                }
+                val topBar = @Composable {
+                    TopAppBar(
+                        title = {
+                            Text(
+                                stringResource(Lang.subject_episode_select_media_source),
+                                modifier = Modifier.padding(start = 8.dp),
+                            )
+                        },
+                        actions = {
+                            MediaSelectorModeChip(mediaSelectorMode, onMediaSelectorModeChange, showBt = showBt)
+                            closeButton()
+                        },
+                        colors = TopAppBarDefaults.topAppBarColors(
+                            containerColor = BottomSheetDefaults.ContainerColor,
+                        ),
+                    )
+                }
+                Column(
+                    modifier = Modifier
+                        .fillMaxHeight()
+                        .widthIn(300.dp, 400.dp)
+                        .windowInsetsPadding(AniWindowInsets.safeDrawing),
+                ) {
+                    when (mediaSelectorMode) {
+                        MediaSelectorMode.AUTO -> {
+                            topBar()
+                            AutoMatchPage(
+                                mediaSelectorState,
+                                onClickItem = {
+                                    mediaSelectorState.select(it)
+                                    closeSelector()
+                                },
+                                onRestartSource = onRestartSource,
+                                onRequestManualSearch = { onMediaSelectorModeChange(MediaSelectorMode.MANUAL) },
+                                modifier = Modifier
+                                    .padding(vertical = 12.dp, horizontal = 16.dp)
+                                    .fillMaxWidth(),
+                            )
+                        }
+
+                        MediaSelectorMode.MANUAL -> ManualBrowsePage(
+                            manualBrowseState,
+                            watchingEpisode,
+                            onPlayed = closeSelector,
+                            topBar = topBar,
+                            modifier = Modifier.fillMaxSize(),
+                            closeButton = closeButton,
+                        )
+
+                        MediaSelectorMode.BT -> {
+                            // 侧边栏装不下 BT 表格: 保留顶栏滑出, 由 onDismiss 打开居中对话框.
+                            topBar()
+                            LaunchedEffect(Unit) {
+                                pendingBtDialog = true
+                                sheetState.close()
+                            }
+                        }
+                    }
+                }
+            }
+        } else {
+            ModalBottomSheet(
+                closeSelector,
+                sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true),
+                modifier = Modifier.desktopTitleBarPadding().statusBarsPadding(),
+                contentWindowInsets = {
+                    BottomSheetDefaults.windowInsets
+                        .add(WindowInsets.desktopTitleBar())
+                        .only(WindowInsetsSides.Horizontal + WindowInsetsSides.Top)
+                },
+            ) {
+                val topBar = @Composable {
+                    Row(
+                        Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 12.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        Text(
+                            stringResource(Lang.media_selector_sources),
+                            Modifier.weight(1f),
+                            style = MaterialTheme.typography.titleLarge,
+                        )
+                        MediaSelectorModeChip(mediaSelectorMode, onMediaSelectorModeChange, showBt = showBt)
+                    }
+                }
+                when (mediaSelectorMode) {
+                    MediaSelectorMode.AUTO -> Column(Modifier.fillMaxWidth()) {
+                        topBar()
+                        AutoMatchPage(
+                            mediaSelectorState,
+                            onClickItem = {
+                                mediaSelectorState.select(it)
+                                closeSelector()
+                            },
+                            onRestartSource = onRestartSource,
+                            onRequestManualSearch = { onMediaSelectorModeChange(MediaSelectorMode.MANUAL) },
+                            modifier = Modifier.padding(horizontal = 16.dp).fillMaxWidth(),
+                            scrollable = true,
+                        )
+                    }
+
+                    MediaSelectorMode.MANUAL -> ManualBrowsePage(
+                        manualBrowseState,
+                        watchingEpisode,
+                        onPlayed = closeSelector,
+                        topBar = topBar,
+                        modifier = Modifier.fillMaxSize(),
+                    )
+
+                    // Lazy 列表需要有界高度, 与下载对话框一样铺满 sheet.
+                    MediaSelectorMode.BT -> Column(Modifier.fillMaxSize()) {
+                        topBar()
+                        BtResourcesPage(
+                            mediaSelectorState,
+                            sourceResults,
+                            watchingEpisode,
+                            fetchRequest,
+                            onFetchRequestChange,
+                            onClickItem = {
+                                mediaSelectorState.select(it)
+                                closeSelector()
+                            },
+                            onRestartSource = onRestartSource,
+                            modifier = Modifier.fillMaxWidth().weight(1f),
+                        )
+                    }
+                }
+            }
+        }
+    }
+
+    if (showBtDialog) {
+        // X / 点外部只关对话框, 不重开侧边栏; 切到其他模式才回侧边栏.
+        MediaSelectorDialog(onDismissRequest = { showBtDialog = false }) { compact ->
+            val sourceResults = mediaSourceResultListPresentation()
+            val closeSelectorText = stringResource(Lang.subject_episode_close_selector)
+            val onModeChange: (MediaSelectorMode) -> Unit = { mode ->
+                onMediaSelectorModeChange(mode)
+                if (mode != MediaSelectorMode.BT) {
+                    showBtDialog = false
+                    showMediaSelector = true
+                }
+            }
+            val closeButton = @Composable {
+                IconButton(onClick = { showBtDialog = false }) {
+                    Icon(Icons.Rounded.Close, contentDescription = closeSelectorText)
+                }
+            }
+            val onClickItem = { media: Media ->
+                mediaSelectorState.select(media)
+                showBtDialog = false
+            }
+            if (compact) {
+                // 宽屏但高度不足 (手机横屏): 容器铺满, 单行顶栏走页面的 inlineTitle 槽.
+                BtResourcesPage(
+                    mediaSelectorState,
+                    sourceResults,
+                    watchingEpisode,
+                    fetchRequest,
+                    onFetchRequestChange,
+                    onClickItem = onClickItem,
+                    onRestartSource = onRestartSource,
+                    modifier = Modifier.fillMaxSize(),
+                    inlineTitle = {
+                        closeButton()
+                        Text(
+                            stringResource(Lang.media_selector_sources),
+                            style = MaterialTheme.typography.titleLarge,
+                        )
+                        MediaSelectorModeChip(mediaSelectorMode, onModeChange, showBt = true)
+                    },
+                )
+            } else {
+                Column(Modifier.fillMaxSize()) {
+                    TopAppBar(
+                        title = { Text(stringResource(Lang.media_selector_sources)) },
+                        actions = {
+                            MediaSelectorModeChip(mediaSelectorMode, onModeChange, showBt = true)
+                            closeButton()
+                        },
+                        windowInsets = WindowInsets.Zero,
+                        colors = TopAppBarDefaults.topAppBarColors(
+                            containerColor = BottomSheetDefaults.ContainerColor,
+                        ),
+                    )
+                    BtResourcesPage(
+                        mediaSelectorState,
+                        sourceResults,
+                        watchingEpisode,
+                        fetchRequest,
+                        onFetchRequestChange,
+                        onClickItem = onClickItem,
+                        onRestartSource = onRestartSource,
+                        modifier = Modifier.fillMaxWidth().weight(1f),
+                    )
+                }
+            }
+        }
+    }
 
     if (showDanmakuInfoSheet) {
         ModalBottomSheet(
@@ -1089,9 +1263,12 @@ private fun PreviewEpisodeDetailsImpl(
         EpisodeDetails(
             mediaSelectorSummary = createTestMediaSelectorSummaryAutoSelecting(),
             state,
-            initialMediaSelectorViewKind = ViewKind.WEB,
-            TestMediaFetchRequest,
-            { },
+            mediaSelectorMode = MediaSelectorMode.AUTO,
+            onMediaSelectorModeChange = {},
+            manualBrowseState = rememberTestManualBrowseState(),
+            watchingEpisode = WatchingEpisode("25", "OVA"),
+            fetchRequest = TestMediaFetchRequest,
+            onFetchRequestChange = { },
             episodeCarouselState = remember {
                 EpisodeCarouselState(
                     mutableStateOf(PreviewEpisodeCollections),
@@ -1117,7 +1294,6 @@ private fun PreviewEpisodeDetailsImpl(
             mediaSourceResultListPresentation = { TestMediaSourceResultListPresentation },
             selfInfo = selfInfo,
             onSwitchEpisode = {},
-            onRefreshMediaSources = {},
             onRestartSource = {},
             onSetDanmakuSourceEnabled = { _, _ -> },
             onAdjustDanmakuSourceShift = { _, _ -> },
