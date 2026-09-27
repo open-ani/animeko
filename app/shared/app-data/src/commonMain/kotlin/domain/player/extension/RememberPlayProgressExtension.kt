@@ -20,6 +20,7 @@ import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
 import me.him188.ani.app.data.models.episode.displayName
+import me.him188.ani.app.data.models.player.EpisodeHistory
 import me.him188.ani.app.data.repository.player.EpisodePlayHistoryRepository
 import me.him188.ani.app.domain.episode.EpisodeFetchSelectPlayState
 import me.him188.ani.app.domain.episode.EpisodeSession
@@ -43,6 +44,8 @@ import kotlin.time.Duration.Companion.seconds
  * - 切换数据源
  * - 暂停
  * - 播放完成
+ *
+ * 播放完成时位置照常保存 (钳到时长以内), 记录不会被删除; 恢复时由 [EpisodeHistory.isFinished] 判断是否从头播放.
  */
 class RememberPlayProgressExtension(
     private val context: PlayerExtensionContext,
@@ -103,7 +106,7 @@ class RememberPlayProgressExtension(
                                 haveResumedOnce = true
                             } else {
                                 val positionMillis =
-                                    playProgressRepository.getPositionMillisByEpisodeId(episodeSession.episodeId)
+                                    playProgressRepository.getResumePositionMillisByEpisodeId(episodeSession.episodeId)
                                 if (positionMillis == null) {
                                     logger.info { "Did not find saved position" }
                                     haveResumedOnce = true
@@ -198,21 +201,18 @@ class RememberPlayProgressExtension(
             return
         }
 
-        if (videoDurationMillis - currentPositionMillis < 5000 || currentPositionMillis > videoDurationMillis) {
-            playProgressRepository.remove(episodeId)
-        } else {
-            val info = latestInfoBundle(episodeId, episodeSession)
-            playProgressRepository.saveOrUpdate(
-                episodeId = episodeId,
-                positionMillis = currentPositionMillis,
-                subjectId = info?.subjectId,
-                episodeSort = info?.episodeInfo?.sort?.number,
-                subjectName = info?.subjectInfo?.displayName,
-                subjectImageUrl = info?.subjectInfo?.imageLarge,
-                episodeName = info?.episodeInfo?.displayName,
-                durationMillis = videoDurationMillis,
-            )
-        }
+        // 有些后端上报的位置会略微超过时长 (#1506), 钳到时长以内, 保证进度比例不超过 1 且能被识别为已看完.
+        val info = latestInfoBundle(episodeId, episodeSession)
+        playProgressRepository.saveOrUpdate(
+            episodeId = episodeId,
+            positionMillis = currentPositionMillis.coerceAtMost(videoDurationMillis),
+            subjectId = info?.subjectId,
+            episodeSort = info?.episodeInfo?.sort?.number,
+            subjectName = info?.subjectInfo?.displayName,
+            subjectImageUrl = info?.subjectInfo?.imageLarge,
+            episodeName = info?.episodeInfo?.displayName,
+            durationMillis = videoDurationMillis,
+        )
     }
 
     private suspend fun latestInfoBundle(

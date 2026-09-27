@@ -326,6 +326,26 @@ class UserRepository(
         }
     }
 
+    /**
+     * 解绑邮箱. 换绑见 [bindOrReBindEmail].
+     *
+     * @throws RepositoryRequestError 这是用户的唯一登录方式 (HTTP 409), 消息可以直接展示给用户
+     * @throws RepositoryException
+     */
+    suspend fun unbindEmail() = withContext(Dispatchers.Default) {
+        try {
+            val resp = authApi.invoke { unbindEmail().body() }
+            applyAuthenticationResponse(resp)
+        } catch (e: ClientRequestException) {
+            if (e.response.status == HttpStatusCode.Conflict) {
+                throw RepositoryRequestError(e.response.bodyAsText(), cause = e)
+            }
+            throw RepositoryException.wrapOrThrowCancellation(e)
+        } catch (e: Exception) {
+            throw RepositoryException.wrapOrThrowCancellation(e)
+        }
+    }
+
     private suspend fun applyAuthenticationResponse(resp: AniUserAuthRoutingAuthenticationResponse) {
         sessionManager.setSession(
             AccessTokenSession(

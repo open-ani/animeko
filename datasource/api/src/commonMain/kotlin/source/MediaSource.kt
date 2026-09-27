@@ -12,6 +12,7 @@ package me.him188.ani.datasources.api.source
 import kotlinx.serialization.Serializable
 import me.him188.ani.datasources.api.CachedMedia
 import me.him188.ani.datasources.api.DefaultMedia
+import me.him188.ani.datasources.api.EpisodeSort
 import me.him188.ani.datasources.api.Media
 import me.him188.ani.datasources.api.paging.SizedSource
 import kotlin.jvm.JvmInline
@@ -25,6 +26,16 @@ import kotlin.jvm.JvmInline
  *
  * [MediaSource] 是一个抽象的来源. 它不一定都是来自网络和 BT, 也可以是本地文件系统.
  * 用户保存的视频下载由下载管理器 `MediaDownloadManager` 管理, 然后能通过一个专门查询本地下载的 [MediaSource] 查询到.
+ *
+ * ## 两种使用方式: 浏览与自动匹配
+ *
+ * 数据源像一个网站: 按关键字搜索得到条目列表 ([searchSubjects]), 打开条目得到线路与剧集列表 ([browseSubject]),
+ * 选中一集得到可播放的资源 ([createMedia]). 这是数据源的基础形态, 只要求把站点上的东西"列出来",
+ * 不要求判断条目是否属于请求、剧集是不是第几集; 由用户 (而不是数据源) 决定哪一条对应正在观看的剧集.
+ *
+ * [fetch] 是建立在浏览之上的自动模式: 数据源自己搜索、筛选条目、解析集号, 返回带准确 [Media.episodeRange] 的资源列表,
+ * 交给数据源选择器 `MediaSelector` 自动选择. 自动模式解析不出的资源 (例如站点上名字不含集号的 OVA), 用户仍可以通过浏览手动选中.
+ * 同一集不论从哪条路径得到, [Media.mediaId] 必须相同.
  *
  * ## [MediaSource] 只负责查询资源 ([Media]) 列表
  *
@@ -123,6 +134,48 @@ interface MediaSource : AutoCloseable {
      * @throws kotlin.coroutines.cancellation.CancellationException
      */
     suspend fun fetch(query: MediaFetchRequest): SizedSource<MediaMatch>
+
+    /**
+     * 按关键字搜索, 返回站点上的条目列表. 不做筛选, 关键字原样使用.
+     *
+     * 尚未迁移到浏览形态的数据源返回空列表; 新数据源必须实现.
+     *
+     * @return 空列表表示没有结果.
+     * @throws kotlinx.io.IOException
+     * @throws kotlin.coroutines.cancellation.CancellationException
+     * @since 6.2
+     */
+    suspend fun searchSubjects(keyword: String): List<BrowseSubject> = emptyList()
+
+    /**
+     * 打开一个条目, 返回它的全部线路与各线路的剧集列表, 顺序与站点页面一致, 同名线路不合并.
+     *
+     * 没有线路概念的站点返回一个 [BrowseChannel.name] 为 `null` 的线路.
+     * 尚未迁移到浏览形态的数据源返回空列表; 新数据源必须实现.
+     *
+     * @return 空列表表示条目页面不存在或没有剧集.
+     * @throws kotlinx.io.IOException
+     * @throws kotlin.coroutines.cancellation.CancellationException
+     * @since 6.2
+     */
+    suspend fun browseSubject(subject: BrowseSubject): List<BrowseChannel> = emptyList()
+
+    /**
+     * 把浏览到的一集转换为可播放、可下载的 [Media].
+     *
+     * 尚未迁移到浏览形态的数据源抛出 [UnsupportedOperationException]; 新数据源必须实现.
+     *
+     * @param channelName 该集所在线路 [BrowseChannel.name].
+     * @param episodeSort 该资源对应条目服务的哪一集, 决定 [Media.episodeRange]. 用户手动选择时由调用方给出当前剧集;
+     * `null` 表示不知道, 这样的资源不会被自动选择, 只能临时播放.
+     * @since 6.2
+     */
+    fun createMedia(
+        subject: BrowseSubject,
+        channelName: String?,
+        episode: BrowseEpisode,
+        episodeSort: EpisodeSort?,
+    ): Media = throw UnsupportedOperationException("MediaSource '$mediaSourceId' does not support browsing")
 
     override fun close() {}
 }

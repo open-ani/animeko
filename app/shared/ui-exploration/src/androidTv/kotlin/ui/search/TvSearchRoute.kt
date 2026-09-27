@@ -9,10 +9,12 @@
 
 package me.him188.ani.tv.ui.search
 
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.unit.dp
 import androidx.paging.compose.collectAsLazyPagingItems
 import me.him188.ani.tv.ui.foundation.TvNavigationEffect
 import me.him188.ani.tv.ui.foundation.TvNavigationEvent
@@ -22,9 +24,10 @@ fun TvSearchRoute(
     viewModel: TvSearchViewModel,
     onNavigate: (TvNavigationEvent) -> Unit,
     modifier: Modifier = Modifier,
+    navigationRailInsets: PaddingValues = PaddingValues(0.dp),
 ) {
     val state by viewModel.uiState.collectAsState()
     val results = viewModel.results.collectAsLazyPagingItems()
     TvNavigationEffect(viewModel.navigationEvents, onNavigate)
-    TvSearchScreen(state, results, viewModel::onIntent, modifier)
+    TvSearchScreen(state, results, viewModel::onIntent, modifier, navigationRailInsets)
 }

@@ -68,7 +68,6 @@ import org.jetbrains.compose.resources.stringResource
 internal fun TvDetailsHeroSection(
     details: TvSubjectDetailsContentState,
     height: Dp,
-    interactive: Boolean,
     onPlay: () -> Unit,
     onSummary: () -> Unit,
     onComments: () -> Unit,
@@ -84,12 +83,12 @@ internal fun TvDetailsHeroSection(
     )
     TvDetailsHero(
         details.info, details.airing, height, modifier = modifier,
-        onComments = onComments.takeIf { interactive }, scoreModifier = actionModifier("bgm-rating"),
+        onComments = onComments, scoreModifier = actionModifier("bgm-rating"),
         introduction = { cardModifier ->
             TvDetailsDescriptionCard(
                 details.info.summary, onSummary,
                 actionModifier("summary").then(cardModifier),
-                interactive = interactive,
+                interactive = true,
             )
         },
         actions = { compact ->
@@ -99,17 +98,17 @@ internal fun TvDetailsHeroSection(
                     available = details.playTargetId != null, blurBackground = true, glowOnFocus = true,
                     loading = details.episodesLoading && details.episodes.isEmpty(),
                 )
-                if (interactive) {
-                    TvDetailsCollectionAction(
-                        details.collectionType, onCollection, actionModifier("collection"), compact,
-                        boundsModifier = actionBoundsModifier("collection"),
-                    )
-                    TvDetailsRatingAction(
-                        details.selfRating.score, onRating, actionModifier("rating"), compact,
-                        boundsModifier = actionBoundsModifier("rating"),
-                        available = details.collectionType != UnifiedCollectionType.NOT_COLLECTED,
-                    )
-                }
+                TvDetailsCollectionAction(
+                    details.collectionType, onCollection, actionModifier("collection"), compact,
+                    boundsModifier = actionBoundsModifier("collection"),
+                    loading = details.collectionLoading,
+                )
+                TvDetailsRatingAction(
+                    details.selfRating.score, onRating, actionModifier("rating"), compact,
+                    boundsModifier = actionBoundsModifier("rating"),
+                    available = details.collectionType != UnifiedCollectionType.NOT_COLLECTED,
+                    loading = details.ratingLoading,
+                )
             }
         },
     )

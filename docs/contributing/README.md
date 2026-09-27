@@ -26,6 +26,8 @@
 
 - [Kotlin 多平台](kmp.md)
 - [条目系统](code/subjects.md)
+- [Android TV 导航焦点](code/android-tv-focus.md)
+- [Android TV 加载占位](code/android-tv-loading.md)
 - [Media Framework](code/media-framework.md)
     - [MediaSource](code/media/media-source.md)
     - [MediaSelector](code/media/media-selector.md)

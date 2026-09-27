@@ -18,6 +18,7 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.draganddrop.dragAndDropTarget
 import androidx.compose.foundation.gestures.detectDragGestures
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
@@ -105,6 +106,10 @@ import me.him188.ani.app.ui.lang.settings_account_profile_third_party_accounts
 import me.him188.ani.app.ui.lang.settings_account_profile_unbind
 import me.him188.ani.app.ui.lang.settings_account_profile_unbind_bangumi_confirmation
 import me.him188.ani.app.ui.lang.settings_account_profile_unbind_confirmation
+import me.him188.ani.app.ui.lang.settings_account_profile_unbind_email_confirmation
+import me.him188.ani.app.ui.lang.settings_account_profile_unbind_email_last_login_method
+import me.him188.ani.app.ui.lang.settings_account_profile_ok
+import me.him188.ani.app.ui.lang.login_change_email
 import me.him188.ani.app.ui.lang.settings_account_profile_upload_avatar
 import me.him188.ani.app.ui.lang.settings_account_profile_uploading_avatar
 import me.him188.ani.app.ui.lang.settings_account_profile_user_id
@@ -186,6 +191,11 @@ fun SettingsScope.ProfileGroup(
                 vm.unbindExternalAccount(provider)
             }
         },
+        onUnbindEmail = {
+            asyncHandler.launch {
+                vm.unbindEmail()
+            }
+        },
         modifier = modifier,
     )
 }
@@ -217,6 +227,7 @@ internal fun SettingsScope.ProfileGroupImpl(
      * 参数为平台 ID
      */
     onUnbindExternalAccount: (provider: String) -> Unit,
+    onUnbindEmail: () -> Unit,
     modifier: Modifier = Modifier,
     /**
      * 点击 "扫码登录", 为其他设备 (例如电视) 登录当前账号. 为 `null` 时不显示. 未登录时也不显示
@@ -228,6 +239,7 @@ internal fun SettingsScope.ProfileGroupImpl(
     var showUnbindBangumiDialog by remember { mutableStateOf(false) }
     // 待确认解绑的第三方平台 ID
     var unbindingExternalProvider by remember { mutableStateOf<String?>(null) }
+    var showUnbindEmailDialog by remember { mutableStateOf(false) }
 
     val currentInfo = state.selfInfo.selfInfo
     val currentState by rememberUpdatedState(state.selfInfo)
@@ -237,6 +249,7 @@ internal fun SettingsScope.ProfileGroupImpl(
     val nicknameHintText = stringResource(Lang.settings_account_profile_nickname_hint)
     val emailText = stringResource(Lang.settings_account_profile_email)
     val bindText = stringResource(Lang.settings_account_profile_bind)
+    val changeEmailText = stringResource(Lang.login_change_email)
     val userIdText = stringResource(Lang.settings_account_profile_user_id)
     val thirdPartyAccountsText = stringResource(Lang.settings_account_profile_third_party_accounts)
     val notBoundText = stringResource(Lang.settings_account_profile_not_bound)
@@ -281,9 +294,9 @@ internal fun SettingsScope.ProfileGroupImpl(
                     sanitizeValue = { it.trim() },
                 )
 
-                val canBindEmail = remember(currentInfo) {
-                    currentInfo != null && currentInfo.email == null
-                }
+                // 未绑定时点击去绑定, 已绑定时点击去换绑
+                val canEditEmail = currentInfo != null
+                val hasEmail = currentInfo?.email != null
 
                 TextItem(
                     title = {
@@ -296,12 +309,24 @@ internal fun SettingsScope.ProfileGroupImpl(
                         }
                     },
                     description = { Text(emailText) },
-                    modifier = Modifier.placeholder(isPlaceholder),
-                    onClick = if (canBindEmail) onNavigateToEmail else null,
-                    action = if (canBindEmail) {
+                    modifier = Modifier.placeholder(isPlaceholder).testTag("email"),
+                    onClick = if (canEditEmail) onNavigateToEmail else null,
+                    action = if (canEditEmail) {
                         {
-                            IconButton(onNavigateToEmail) {
-                                Icon(Icons.Rounded.Edit, bindText, tint = MaterialTheme.colorScheme.primary)
+                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                if (hasEmail) {
+                                    TextButton(
+                                        onClick = { showUnbindEmailDialog = true },
+                                        modifier = Modifier.testTag("email-unbind"),
+                                    ) { Text(unbindText) }
+                                }
+                                IconButton(onNavigateToEmail, Modifier.testTag("email-edit")) {
+                                    Icon(
+                                        Icons.Rounded.Edit,
+                                        if (hasEmail) changeEmailText else bindText,
+                                        tint = MaterialTheme.colorScheme.primary,
+                                    )
+                                }
                             }
                         }
                     } else null,
@@ -410,6 +435,21 @@ internal fun SettingsScope.ProfileGroupImpl(
         )
     }
 
+    if (showUnbindEmailDialog) {
+        // 邮箱是唯一登录方式时不能解绑, 否则用户将无法再登录. 服务端也会拒绝 (409), 这里提前告知用户
+        val hasOtherLoginMethod = !currentInfo?.bangumiUsername.isNullOrEmpty()
+                || currentInfo?.externalAccounts.orEmpty().isNotEmpty()
+        UnbindEmailDialog(
+            email = currentInfo?.email.orEmpty(),
+            canUnbind = hasOtherLoginMethod,
+            onConfirm = {
+                onUnbindEmail()
+                showUnbindEmailDialog = false
+            },
+            onCancel = { showUnbindEmailDialog = false },
+        )
+    }
+
     unbindingExternalProvider?.let { provider ->
         UnbindExternalAccountDialog(
             platformName = OAuthPlatform.fromId(provider)?.displayName ?: provider,
@@ -455,6 +495,49 @@ private fun UnbindExternalAccountDialog(
         text = { Text(stringResource(Lang.settings_account_profile_unbind_confirmation, platformName)) },
         confirmButton = {
             TextButton(onConfirm, Modifier.testTag("unbindExternalAccountConfirm")) {
+                Text(stringResource(Lang.settings_account_profile_unbind), color = MaterialTheme.colorScheme.error)
+            }
+        },
+        dismissButton = {
+            TextButton(onCancel) {
+                Text(stringResource(Lang.subject_collection_cancel))
+            }
+        },
+    )
+}
+
+/**
+ * @param canUnbind 为 `false` 时邮箱是唯一登录方式, 只提示不能解绑
+ */
+@Composable
+private fun UnbindEmailDialog(
+    email: String,
+    canUnbind: Boolean,
+    onConfirm: () -> Unit,
+    onCancel: () -> Unit,
+) {
+    if (!canUnbind) {
+        AlertDialog(
+            onCancel,
+            text = {
+                Text(
+                    stringResource(Lang.settings_account_profile_unbind_email_last_login_method),
+                    Modifier.testTag("unbindEmailLastLoginMethod"),
+                )
+            },
+            confirmButton = {
+                TextButton(onCancel) {
+                    Text(stringResource(Lang.settings_account_profile_ok))
+                }
+            },
+        )
+        return
+    }
+    AlertDialog(
+        onCancel,
+        text = { Text(stringResource(Lang.settings_account_profile_unbind_email_confirmation, email)) },
+        confirmButton = {
+            TextButton(onConfirm, Modifier.testTag("unbindEmailConfirm")) {
                 Text(stringResource(Lang.settings_account_profile_unbind), color = MaterialTheme.colorScheme.error)
             }
         },
