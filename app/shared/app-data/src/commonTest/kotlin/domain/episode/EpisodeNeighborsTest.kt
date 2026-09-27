@@ -20,7 +20,7 @@ class EpisodeNeighborsTest {
     private data class Ep(val id: Int, val type: EpisodeType?)
 
     private fun List<Ep>.neighbor(currentEpisodeId: Int, offset: Int): Int? =
-        findNeighborEpisode(currentEpisodeId, offset, { it.id }, { it.type })?.id
+        EpisodeCollections.findNeighborEpisode(this, currentEpisodeId, offset, { it.id }, { it.type })?.id
 
     // 正片 1, SP 1, 正片 2, SP 2, 正片 3: 类型之间按序号混排
     private val interleaved = listOf(
@@ -51,6 +51,14 @@ class EpisodeNeighborsTest {
         assertNull(grouped.neighbor(101, -1))
         assertNull(grouped.neighbor(1, -1))
         assertNull(grouped.neighbor(102, 1))
+    }
+
+    @Test
+    fun `larger offset counts only episodes of the same type`() {
+        assertEquals(3, interleaved.neighbor(1, 2))
+        assertEquals(1, interleaved.neighbor(3, -2))
+        assertNull(interleaved.neighbor(101, 2))
+        assertEquals(101, interleaved.neighbor(101, 0))
     }
 
     @Test

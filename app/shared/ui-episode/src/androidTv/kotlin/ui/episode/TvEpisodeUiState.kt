@@ -9,8 +9,8 @@
 
 package me.him188.ani.tv.ui.episode
 
+import me.him188.ani.app.domain.episode.EpisodeCollections
 import me.him188.ani.app.domain.episode.SubjectRecommendation
-import me.him188.ani.app.domain.episode.findNeighborEpisode
 import me.him188.ani.app.domain.media.player.MediaCacheProgressInfo
 import me.him188.ani.app.domain.player.VideoLoadingState
 import me.him188.ani.app.videoplayer.videoenhancement.VideoEnhancementMode
@@ -70,7 +70,7 @@ data class TvEpisodeUiState(
     val danmakuMatch: TvDanmakuMatchState = TvDanmakuMatchState(),
 ) {
     val hasNextEpisode: Boolean
-        get() = episodes.findNeighborEpisode(currentEpisodeId, offset = 1, { it.episodeId }, { it.type })
+        get() = EpisodeCollections.findNeighborEpisode(episodes, currentEpisodeId, offset = 1, { it.episodeId }, { it.type })
             ?.isKnownBroadcast == true
 }
 
