@@ -30,10 +30,12 @@
     <string name="playback_history_sync_status_synced">Playback history synced</string>
     <string name="playback_history_sync_status_pending">%1$d pending sync items</string>
     <string name="playback_history_sync_status_title">Sync Status</string>
-    <string name="playback_history_sync_empty">All playback history changes are synced</string>
+    <string name="playback_history_sync_empty">All changes are synced</string>
     <string name="playback_history_sync_pending_title">Pending changes</string>
     <string name="playback_history_sync_op_upsert">Update progress</string>
     <string name="playback_history_sync_op_delete">Delete record</string>
+    <string name="playback_history_sync_op_mark_watched">Mark as watched</string>
+    <string name="playback_history_sync_op_unmark_watched">Unmark watched</string>
     <string name="playback_history_sync_pending_episode">Episode ID %1$d</string>
     <string name="playback_history_sync_delete_pending">Delete pending sync item</string>
     <string name="playback_history_sync_delete_all">Delete all pending sync items</string>

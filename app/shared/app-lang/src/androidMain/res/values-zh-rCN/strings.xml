@@ -30,10 +30,12 @@
     <string name="playback_history_sync_status_synced">播放记录已同步</string>
     <string name="playback_history_sync_status_pending">有 %1$d 项待同步</string>
     <string name="playback_history_sync_status_title">同步状态</string>
-    <string name="playback_history_sync_empty">播放记录已全部同步</string>
+    <string name="playback_history_sync_empty">所有更改已同步</string>
     <string name="playback_history_sync_pending_title">待同步项目</string>
     <string name="playback_history_sync_op_upsert">更新进度</string>
     <string name="playback_history_sync_op_delete">删除记录</string>
+    <string name="playback_history_sync_op_mark_watched">标记看过</string>
+    <string name="playback_history_sync_op_unmark_watched">取消看过</string>
     <string name="playback_history_sync_pending_episode">剧集 ID %1$d</string>
     <string name="playback_history_sync_delete_pending">删除待同步项目</string>
     <string name="playback_history_sync_delete_all">删除全部待同步项目</string>

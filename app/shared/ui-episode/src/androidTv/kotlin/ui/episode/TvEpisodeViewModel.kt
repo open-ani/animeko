@@ -47,6 +47,7 @@ import me.him188.ani.app.domain.episode.EpisodeCompletionContext.isKnownComplete
 import me.him188.ani.app.domain.episode.SubjectRecommendation
 import me.him188.ani.app.domain.episode.UnsafeEpisodeSessionApi
 import me.him188.ani.app.domain.episode.episodeIdFlow
+import me.him188.ani.app.domain.episode.findNeighborEpisode
 import me.him188.ani.app.domain.episode.infoBundleFlow
 import me.him188.ani.app.domain.episode.mediaSelectorFlow
 import me.him188.ani.app.domain.media.fetch.MediaSourceFetchState
@@ -157,6 +158,7 @@ class TvEpisodeViewModel(
                     watched = collection.collectionType == UnifiedCollectionType.DONE,
                     stillUrl = info.imageLarge,
                     isKnownBroadcast = info.isKnownCompleted(subject.recurrence),
+                    type = info.type,
                 )
             }
         }
@@ -251,17 +253,15 @@ class TvEpisodeViewModel(
         backgroundScope.launch { switchEpisode(episodeId) }
     }
 
-    /** 上一集 (-1) / 下一集 (+1); 到列表边界则不动 (媒体键 RW/FF, §8.2 全局键). */
+    /** 同类型剧集中的上一集 (-1) / 下一集 (+1); 到边界则不动 (媒体键 RW/FF, §8.2 全局键). */
     private fun switchToNeighborEpisode(offset: Int) {
         if (playbackAutomationSuppressed.value) {
             showMessage(TvPlayerMessage.FollowingHost)
             return
         }
         backgroundScope.launch {
-            val list = episodeCollectionsFlow.first()
-            val index = list.indexOfFirst { it.episodeId == currentEpisodeIdFlow.value }
-            if (index == -1) return@launch
-            val target = list.getOrNull(index + offset) ?: return@launch
+            val target = episodeCollectionsFlow.first()
+                .findNeighborEpisode(currentEpisodeIdFlow.value, offset) ?: return@launch
             if (offset > 0 && !target.episodeInfo.isKnownCompleted(subjectCollectionFlow.first().recurrence)) return@launch
             switchEpisode(target.episodeId)
         }

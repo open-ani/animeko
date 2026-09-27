@@ -9,7 +9,6 @@
 
 package me.him188.ani.tv.ui.episode
 
-import android.graphics.Bitmap
 import androidx.activity.OnBackPressedDispatcher
 import androidx.activity.compose.LocalOnBackPressedDispatcherOwner
 import androidx.compose.foundation.background
@@ -21,7 +20,6 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.asAndroidBitmap
 import androidx.compose.ui.input.key.Key
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.testTag
@@ -35,7 +33,6 @@ import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.assertIsFocused
 import androidx.compose.ui.test.assertIsNotFocused
 import androidx.compose.ui.test.assertTextContains
-import androidx.compose.ui.test.captureToImage
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.onRoot
@@ -46,7 +43,6 @@ import androidx.compose.ui.test.performTextInput
 import androidx.compose.ui.test.pressKey
 import androidx.compose.ui.text.TextLayoutResult
 import androidx.compose.ui.unit.Density
-import androidx.test.platform.app.InstrumentationRegistry
 import kotlinx.coroutines.flow.emptyFlow
 import me.him188.ani.app.data.network.WatchTogetherJoinFailure
 import me.him188.ani.app.domain.player.VideoLoadingState
@@ -80,7 +76,6 @@ import me.him188.ani.tv.ui.watchtogether.TvTogetherIntent
 import me.him188.ani.tv.ui.watchtogether.TvTogetherState
 import org.openani.mediamp.MediaStatus
 import org.openani.mediamp.PlayerState
-import java.io.File
 import kotlin.math.abs
 import kotlin.test.Test
 import kotlin.test.assertEquals
@@ -123,10 +118,8 @@ class TvPlayerTogetherUiTest {
         onNodeWithTag("tv-player-sidebar-title").assertIsDisplayed()
         assertEquals("周末放映室", fixture.together.roomName)
         assertEquals("animeko", fixture.together.password)
-        saveScreenshot("join")
         key(Key.DirectionCenter)
         onNodeWithTag("tv-together-submit").assertIsFocused().assertTextContains(playerTestString(Lang.watch_together_cancel))
-        saveScreenshot("joining")
         key(Key.DirectionCenter)
         assertEquals(1, fixture.intents.count { it == TvTogetherIntent.CancelJoin })
         runOnIdle { fixture.together = fixture.together.copy(error = TvTogetherError.Join(WatchTogetherJoinFailure.WRONG_PASSWORD)) }
@@ -134,7 +127,6 @@ class TvPlayerTogetherUiTest {
             playerTestString(Lang.watch_together_join_failed, playerTestString(Lang.watch_together_error_wrong_password)),
         )
         onNodeWithTag("tv-together-submit").assertIsFocused().assertTextContains(playerTestString(Lang.watch_together_join))
-        saveScreenshot("join-error")
         key(Key.DirectionUp)
         onNodeWithTag("tv-together-password").assertIsFocused()
         key(Key.DirectionLeft)
@@ -152,7 +144,6 @@ class TvPlayerTogetherUiTest {
             .assert(SemanticsMatcher.expectValue(SemanticsProperties.Role, Role.Switch))
             .assert(SemanticsMatcher.expectValue(SemanticsProperties.ToggleableState, ToggleableState.On))
         onNodeWithTag("tv-together-leave").assertIsDisplayed()
-        saveScreenshot("room")
         key(Key.DirectionCenter)
         assertEquals(false, fixture.together.following)
         onNodeWithTag("tv-together-follow")
@@ -166,7 +157,6 @@ class TvPlayerTogetherUiTest {
         key(Key.DirectionDown)
         onNodeWithTag("tv-together-member-host").assertIsFocused()
             .assert(SemanticsMatcher.keyNotDefined(SemanticsActions.OnClick))
-        saveScreenshot("member-focused")
         key(Key.DirectionLeft)
         assertClosed()
     }
@@ -181,7 +171,6 @@ class TvPlayerTogetherUiTest {
         onNodeWithTag("tv-together-member-member-8").assertIsFocused()
         onNodeWithTag("tv-together-follow").assertIsDisplayed()
         onNodeWithTag("tv-together-leave").assertIsDisplayed()
-        saveScreenshot("members-scrolled")
         runOnIdle {
             fixture.together = fixture.together.copy(
                 members = fixture.together.members.map { it.copy(watching = playback().copy(positionMillis = 630_000)) },
@@ -213,7 +202,6 @@ class TvPlayerTogetherUiTest {
         openTogether()
         onNodeWithTag("tv-together-playback-loading", useUnmergedTree = true).assertIsDisplayed()
         onNodeWithTag("tv-together-progress", useUnmergedTree = true).assertDoesNotExist()
-        saveScreenshot("playback-loading")
         runOnIdle {
             fixture.together = fixture.together.copy(
                 playback = playback().copy(buffering = true),
@@ -242,7 +230,6 @@ class TvPlayerTogetherUiTest {
         assertTrue(nameBounds.right < statusBounds.left, "Room name must not overlap connection status")
         assertTrue(abs(nameBounds.center.y - statusBounds.center.y) < 1f, "Room name and status must share a row")
         onNodeWithTag("tv-together-follow").assertIsFocused()
-        saveScreenshot("room-idle-reconnecting")
     }
 
     @Test
@@ -257,13 +244,11 @@ class TvPlayerTogetherUiTest {
             hostHint.fetchSemanticsNode().boundsInRoot.top > playbackCard.fetchSemanticsNode().boundsInRoot.bottom,
             "Host explanation must sit below the playback card",
         )
-        saveScreenshot("host")
         key(Key.DirectionDown)
         onNodeWithTag("tv-together-leave").assertIsFocused()
         key(Key.DirectionCenter)
         onNodeWithTag("tv-together-stay").assertIsFocused().assertTextContains(playerTestString(Lang.watch_together_cancel))
         onNodeWithText(playerTestString(Lang.watch_together_confirm_disband)).assertIsDisplayed()
-        saveScreenshot("confirm-disband")
         key(Key.DirectionCenter)
         onNodeWithTag("tv-together-leave").assertIsFocused()
         assertTrue(fixture.intents.none { it == TvTogetherIntent.Leave })
@@ -286,7 +271,6 @@ class TvPlayerTogetherUiTest {
         onNodeWithTag("tv-together-login").assertIsFocused()
         onNodeWithText(playerTestString(Lang.watch_together_login_required)).assertIsDisplayed()
         onNodeWithText(playerTestString(Lang.watch_together_login_description)).assertIsDisplayed()
-        saveScreenshot("login")
         key(Key.DirectionCenter)
         assertEquals(1, fixture.logins)
         runOnIdle { fixture.back.onBackPressed() }
@@ -324,7 +308,6 @@ class TvPlayerTogetherUiTest {
         key(Key.DirectionDown)
         onNodeWithTag("tv-together-member-host").assertIsFocused().assertTextContains(name)
             .assert(SemanticsMatcher.keyNotDefined(SemanticsActions.OnClick))
-        saveScreenshot("large-type-member")
         key(Key.DirectionDown)
         onNodeWithTag("tv-together-member-self").assertIsFocused()
         key(Key.DirectionDown)
@@ -378,17 +361,6 @@ class TvPlayerTogetherUiTest {
     private fun AniComposeUiTest.key(key: Key) {
         onRoot().performKeyInput { pressKey(key) }
         waitForIdle()
-    }
-
-    // Android's assertScreenshot is a no-op; retain real renders for visual review alongside semantic assertions.
-    private fun AniComposeUiTest.saveScreenshot(name: String) {
-        val context = InstrumentationRegistry.getInstrumentation().targetContext
-        fun save(bitmap: Bitmap, suffix: String) {
-            val file = File(context.getExternalFilesDir("screenshots"), "together-$name$suffix.png")
-            file.outputStream().use { check(bitmap.compress(Bitmap.CompressFormat.PNG, 100, it)) }
-        }
-        save(onNodeWithTag("tv-player-sidebar").captureToImage().asAndroidBitmap(), "")
-        if (name == "room" || name == "join") save(onRoot().captureToImage().asAndroidBitmap(), "-full")
     }
 
     private fun playback() = WatchTogetherPlaybackPresentation(
