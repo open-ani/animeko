@@ -14,6 +14,7 @@ Additional requirements:
 
 - **Prefer reusable interactive screenshot tests** over driving a real window: use `runAniComposeUiTest` (`utils/ui-testing`) with synthetic input (`performClick`, `performTextInput`, `sendKeyEvent`) and `onNodeWithTag(...).assertScreenshot(...)`. They run without OS input — no focus stealing, no real mouse — and stay in the repo as regression tests. When you verify a UI change manually, consider leaving such a test behind.
 - Reserve the skills below for what headless tests cannot cover: JCEF, VLC/mpv playback, native libraries, packaging, window chrome, emulator behavior.
+- Screenshots and recordings taken as verification evidence never go into the repository: git history keeps every binary forever, even after the file or branch is deleted. Upload them as GitHub attachments (the `github-image-upload` skill, when available) and embed the `https://github.com/user-attachments/...` URLs in the PR description or comment. If the upload fails, post no images and describe what you verified in text. Do not commit files, push branches, or create refs just to get an image URL. App resources and `assertScreenshot` baselines are not evidence and belong in the repository as usual.
 
 ## Agent Skills
 

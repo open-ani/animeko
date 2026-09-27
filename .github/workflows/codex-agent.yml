@@ -486,6 +486,10 @@ jobs:
             echo "1. Make the code changes on a new branch: codex/issue-$ISSUE_NUMBER (branch off $BASE_BRANCH)."
             echo "2. If your change affects any UI, verify it at runtime with the repo skills (auto-loaded from .agents/skills)"
             echo "   and embed detailed screenshots in the PR. Run android-ui-verify AND desktop-ui-verify separately if multiple platforms are affected."
+            echo "   Screenshots: upload them with the github-image-upload skill (the only allowed exception to the gh-only rule above) and embed the"
+            echo "     returned https://github.com/user-attachments/... URLs. If the upload fails, embed no images: describe what you verified in text"
+            echo "     and state that the screenshot upload failed. Never commit verification screenshots or recordings, and never push branches or refs"
+            echo "     to host images (codex/issue-$ISSUE_NUMBER is the only branch you push). App resources and assertScreenshot baselines under src/ are fine to commit."
             echo "3. Commit with a concise message, then: git push -u origin codex/issue-$ISSUE_NUMBER"
             echo "   (origin already uses HTTPS credentials from OPENANI_BOT_TOKEN; identity is preconfigured.)"
             echo "4. Open a PR: gh pr create --base $BASE_BRANCH --head codex/issue-$ISSUE_NUMBER"
@@ -746,6 +750,10 @@ jobs:
             echo
             echo "Follow AGENTS.md. If your change affects any UI, re-verify at runtime with the repo skills (.agents/skills) and refresh"
             echo "the screenshots in the PR — run android-ui-verify AND desktop-ui-verify separately if multiple platforms are affected."
+            echo "Screenshots: upload them with the github-image-upload skill (the only allowed exception to the gh-only rule above) and embed the"
+            echo "  returned https://github.com/user-attachments/... URLs. If the upload fails, embed no images: describe what you verified in text"
+            echo "  and state that the screenshot upload failed. Never commit verification screenshots or recordings, and never push branches or refs"
+            echo "  to host images. App resources and assertScreenshot baselines under src/ are fine to commit."
             echo
             echo "You have full access to git and gh — respond to the feedback however you judge best. Options include:"
             if [ -n "$PUSH_REMOTE" ]; then
@@ -889,6 +897,10 @@ jobs:
             echo "    already exist), push, then open or update a PR that references #$ISSUE_NUMBER."
             echo "If your change affects any UI, verify it at runtime with the repo skills (auto-loaded from .agents/skills)"
             echo "and embed detailed screenshots in the PR. Run android-ui-verify AND desktop-ui-verify separately if multiple platforms are affected."
+            echo "Screenshots: upload them with the github-image-upload skill (the only allowed exception to the gh-only rule above) and embed the"
+            echo "  returned https://github.com/user-attachments/... URLs. If the upload fails, embed no images: describe what you verified in text"
+            echo "  and state that the screenshot upload failed. Never commit verification screenshots or recordings, and never push branches or refs"
+            echo "  to host images (codex/issue-$ISSUE_NUMBER is the only branch you push). App resources and assertScreenshot baselines under src/ are fine to commit."
             echo "Do only what the comment actually calls for — don't over-respond — but make sure you respond in some form."
             echo "Finish by printing a short summary."
           } > "$RUNNER_TEMP/prompt.txt"
