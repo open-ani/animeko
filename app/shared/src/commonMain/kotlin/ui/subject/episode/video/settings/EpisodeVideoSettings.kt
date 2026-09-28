@@ -124,6 +124,7 @@ fun EpisodeVideoSettings(
     vm: EpisodeVideoSettingsViewModel,
     onNavigateToFilterSettings: () -> Unit,
     modifier: Modifier = Modifier,
+    sources: @Composable () -> Unit = {},
 ) {
     return EpisodeVideoSettings(
         danmakuConfig = vm.danmakuConfig,
@@ -131,6 +132,7 @@ fun EpisodeVideoSettings(
             vm::setDanmakuConfig
         },
         modifier = modifier,
+        sources = sources,
         onManageRegexFilters = onNavigateToFilterSettings,
         enableRegexFilter = vm.danmakuFilterConfig.enableRegexFilter,
         switchDanmakuRegexFilterCompletely = vm::switchDanmakuRegexFilterCompletely,
@@ -145,7 +147,8 @@ fun EpisodeVideoSettings(
     onManageRegexFilters: () -> Unit,
     switchDanmakuRegexFilterCompletely: () -> Unit,
     modifier: Modifier = Modifier,
-    useThinSlider: Boolean = true
+    useThinSlider: Boolean = true,
+    sources: @Composable () -> Unit = {},
 ) {
     val topText = stringResource(Lang.subject_episode_video_settings_top)
     val floatingText = stringResource(Lang.subject_episode_video_settings_floating)
@@ -174,6 +177,7 @@ fun EpisodeVideoSettings(
     val debugModeText = stringResource(Lang.subject_episode_video_settings_debug_mode)
 
     SettingsTab(modifier.verticalScroll(rememberScrollState())) {
+        sources()
         Column {
             Surface(Modifier.fillMaxWidth(), color = SettingsDefaults.groupBackgroundColor) {
                 FlowRow(
@@ -327,7 +331,10 @@ fun EpisodeVideoSettings(
                 onValueChangeFinished = {
                     setDanmakuConfig { config ->
                         config.copy(
-                            safeSeparation = DanmakuConfigRanges.separationForDensity(displayDensity, displayDensityRange),
+                            safeSeparation = DanmakuConfigRanges.separationForDensity(
+                                displayDensity,
+                                displayDensityRange
+                            ),
                         )
                     }
                 },
