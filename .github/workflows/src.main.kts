@@ -85,6 +85,7 @@ import io.github.typesafegithub.workflows.domain.actions.Action
 import io.github.typesafegithub.workflows.domain.actions.CustomAction
 import io.github.typesafegithub.workflows.domain.triggers.PullRequest
 import io.github.typesafegithub.workflows.domain.triggers.Push
+import io.github.typesafegithub.workflows.domain.triggers.WorkflowDispatch
 import io.github.typesafegithub.workflows.dsl.JobBuilder
 import io.github.typesafegithub.workflows.dsl.WorkflowBuilder
 import io.github.typesafegithub.workflows.dsl.expressions.contexts.GitHubContext
@@ -794,13 +795,13 @@ fun getVerifyJobBody(
         VerifyTask(
             name = "dandanplay-app-id",
             step = "Check that Dandanplay APP ID is valid",
-            `if` = expr { github.isAnimekoRepository and !github.isPullRequest },
+            `if` = expr { github.hasRepositorySecrets },
             disabledOn = listOf(Runner.GithubWindows11Arm64),
         ),
         VerifyTask(
             name = "sentry-dsn",
             step = "Check that sentryDsn is valid",
-            `if` = expr { github.isAnimekoRepository and !github.isPullRequest },
+            `if` = expr { github.hasRepositorySecrets },
             disabledOn = listOf(Runner.GithubWindows11Arm64),
         ),
         // Windows ARM64 relies on the SQLite natives built by :ci-helper:sqlite-woa64 (AndroidX does
@@ -983,11 +984,11 @@ val commonIgnoredPaths = listOf(
 workflow(
     name = "Build",
     on = listOf(
-        // Including: 
-        // - pushing directly to main
-        // - pushing to a branch that has an associated PR
-        Push(pathsIgnore = commonIgnoredPaths),
+        // 其他分支的提交由 PR 构建. 同一个提交同时触发 push 与 pull_request 会重复运行整个 workflow.
+        Push(branches = listOf("main", "release/**"), pathsIgnore = commonIgnoredPaths),
         PullRequest(pathsIgnore = commonIgnoredPaths),
+        // 没有 PR 的分支需要构建时手动运行.
+        WorkflowDispatch(),
     ),
     sourceFile = __FILE__,
     targetFileName = "build.yml",
@@ -1396,7 +1397,7 @@ class WithMatrix(
                 },
             ),
             continueOnError = true,
-            `if` = expr { github.isAnimekoRepository and !github.isPullRequest },
+            `if` = expr { github.hasRepositorySecrets },
         )
     }
 
@@ -1658,7 +1659,7 @@ class WithMatrix(
         return if (matrix.uploadApk) {
             prepareBase64File(
                 name = "Prepare signing key",
-                `if` = expr { github.isAnimekoRepository and !github.isPullRequest },
+                `if` = expr { github.hasRepositorySecrets },
                 fileName = "android_signing_key",
                 fileDir = ".",
                 encodedString = expr { secrets.SIGNING_RELEASE_STOREFILE },
@@ -1674,7 +1675,7 @@ class WithMatrix(
     fun JobBuilder<*>.prepareGoogleServicesJson(): CommandStep {
         return prepareBase64File(
             name = "Prepare google-services.json",
-            `if` = expr { github.isAnimekoRepository and !github.isPullRequest },
+            `if` = expr { github.hasRepositorySecrets },
             fileName = "google-services.json",
             fileDir = "./app/android",
             encodedString = expr { secrets.GOOGLE_SERVICES_JSON },
@@ -1798,7 +1799,7 @@ class WithMatrix(
         if (matrix.uploadApk) {
             runGradle(
                 name = "Build Android Release APKs",
-                `if` = expr { github.isAnimekoRepository and !github.isPullRequest },
+                `if` = expr { github.hasRepositorySecrets },
                 tasks = arrayOf("assembleDefaultRelease", "assembleTvRelease"),
                 env = mapOf(
                     "signing_release_storeFileFromRoot" to expr { prepareSigningKey.outputs["filePath"] },
@@ -2384,6 +2385,12 @@ val GitHubContext.isAnimekoRepository
 
 val GitHubContext.isPullRequest
     get() = """$event_name == 'pull_request'"""
+
+/**
+ * 能读取仓库 secrets 的运行: 本仓库的 push 与手动运行, 以及来自本仓库分支的 PR. fork 的 PR 读不到 secrets.
+ */
+val GitHubContext.hasRepositorySecrets
+    get() = isAnimekoRepository and (!isPullRequest or "github.event.pull_request.head.repo.full_name == $repository")
 
 val MatrixInstance.isX64 get() = arch == Arch.X64
 val MatrixInstance.isAArch64 get() = arch == Arch.AARCH64

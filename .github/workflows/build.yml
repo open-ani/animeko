@@ -5,6 +5,9 @@
 name: 'Build'
 on:
   push:
+    branches:
+    - 'main'
+    - 'release/**'
     paths-ignore:
     - '**/*.md'
     - '.idea/**'
@@ -20,6 +23,7 @@ on:
     - '.readme/**'
     - '.run/**'
     - 'scripts/*'
+  workflow_dispatch: {}
 concurrency:
   group: '${{ github.workflow }}-${{ github.event_name }}-${{ github.ref_name == ''main'' && github.run_id || github.ref_name }}'
   cancel-in-progress: true
@@ -74,7 +78,7 @@ jobs:
         echo "ani.enable.firebase=true" >> local.properties
         echo "firebase.ga.app.id=${{ secrets.FIREBASE_GA_APP_ID }}" >> local.properties
         echo "firebase.ga.api.secret=${{ secrets.FIREBASE_GA_API_SECRET }}" >> local.properties
-      if: '${{ (github.repository == ''open-ani/animeko'') && (!(github.event_name == ''pull_request'')) }}'
+      if: '${{ (github.repository == ''open-ani/animeko'') && ((!(github.event_name == ''pull_request'')) || (github.event.pull_request.head.repo.full_name == github.repository)) }}'
     - id: 'step-4'
       name: 'Get JBR (Windows)'
       env:
@@ -143,7 +147,7 @@ jobs:
         fi
         chmod 600 "$FILE_PATH"
         echo "filePath=$FILE_PATH" >> "$GITHUB_OUTPUT"
-      if: '${{ (github.repository == ''open-ani/animeko'') && (!(github.event_name == ''pull_request'')) }}'
+      if: '${{ (github.repository == ''open-ani/animeko'') && ((!(github.event_name == ''pull_request'')) || (github.event.pull_request.head.repo.full_name == github.repository)) }}'
     - id: 'step-13'
       name: 'Compile Kotlin (Attempt #1)'
       continue-on-error: true
@@ -275,7 +279,7 @@ jobs:
         echo "ani.enable.firebase=true" >> local.properties
         echo "firebase.ga.app.id=${{ secrets.FIREBASE_GA_APP_ID }}" >> local.properties
         echo "firebase.ga.api.secret=${{ secrets.FIREBASE_GA_API_SECRET }}" >> local.properties
-      if: '${{ (github.repository == ''open-ani/animeko'') && (!(github.event_name == ''pull_request'')) }}'
+      if: '${{ (github.repository == ''open-ani/animeko'') && ((!(github.event_name == ''pull_request'')) || (github.event.pull_request.head.repo.full_name == github.repository)) }}'
     - id: 'step-4'
       name: 'Setup Android SDK'
       uses: 'android-actions/setup-android@v3'
@@ -350,7 +354,7 @@ jobs:
         fi
         chmod 600 "$FILE_PATH"
         echo "filePath=$FILE_PATH" >> "$GITHUB_OUTPUT"
-      if: '${{ (github.repository == ''open-ani/animeko'') && (!(github.event_name == ''pull_request'')) }}'
+      if: '${{ (github.repository == ''open-ani/animeko'') && ((!(github.event_name == ''pull_request'')) || (github.event.pull_request.head.repo.full_name == github.repository)) }}'
     - id: 'step-14'
       name: 'Compile Kotlin (Attempt #1)'
       continue-on-error: true
@@ -496,7 +500,7 @@ jobs:
         echo "ani.enable.firebase=true" >> local.properties
         echo "firebase.ga.app.id=${{ secrets.FIREBASE_GA_APP_ID }}" >> local.properties
         echo "firebase.ga.api.secret=${{ secrets.FIREBASE_GA_API_SECRET }}" >> local.properties
-      if: '${{ (github.repository == ''open-ani/animeko'') && (!(github.event_name == ''pull_request'')) }}'
+      if: '${{ (github.repository == ''open-ani/animeko'') && ((!(github.event_name == ''pull_request'')) || (github.event.pull_request.head.repo.full_name == github.repository)) }}'
     - id: 'step-6'
       name: 'Get JBR (Windows)'
       env:
@@ -567,7 +571,7 @@ jobs:
         fi
         chmod 600 "$FILE_PATH"
         echo "filePath=$FILE_PATH" >> "$GITHUB_OUTPUT"
-      if: '${{ (github.repository == ''open-ani/animeko'') && (!(github.event_name == ''pull_request'')) }}'
+      if: '${{ (github.repository == ''open-ani/animeko'') && ((!(github.event_name == ''pull_request'')) || (github.event.pull_request.head.repo.full_name == github.repository)) }}'
     - id: 'step-16'
       name: 'Prepare google-services.json'
       env:
@@ -589,7 +593,7 @@ jobs:
         fi
         chmod 600 "$FILE_PATH"
         echo "filePath=$FILE_PATH" >> "$GITHUB_OUTPUT"
-      if: '${{ (github.repository == ''open-ani/animeko'') && (!(github.event_name == ''pull_request'')) }}'
+      if: '${{ (github.repository == ''open-ani/animeko'') && ((!(github.event_name == ''pull_request'')) || (github.event.pull_request.head.repo.full_name == github.repository)) }}'
     - id: 'step-17'
       name: 'Compile Kotlin (Attempt #1)'
       continue-on-error: true
@@ -748,7 +752,7 @@ jobs:
       continue-on-error: true
       timeout-minutes: 180
       run: './gradlew assembleDefaultRelease assembleTvRelease "--scan" "-Porg.gradle.daemon.idletimeout=60000" "-Dfile.encoding=UTF-8" "-Dorg.gradle.jvmargs=-Xmx8g -Dkotlin.daemon.jvm.options=-Xmx6g" "-Dkotlin.daemon.jvm.options=-Xmx6g"'
-      if: '${{ (github.repository == ''open-ani/animeko'') && (!(github.event_name == ''pull_request'')) }}'
+      if: '${{ (github.repository == ''open-ani/animeko'') && ((!(github.event_name == ''pull_request'')) || (github.event.pull_request.head.repo.full_name == github.repository)) }}'
     - id: 'step-38'
       name: 'Build Android Release APKs (Attempt #2)'
       env:
@@ -1108,7 +1112,7 @@ jobs:
         echo "ani.enable.firebase=true" >> local.properties
         echo "firebase.ga.app.id=${{ secrets.FIREBASE_GA_APP_ID }}" >> local.properties
         echo "firebase.ga.api.secret=${{ secrets.FIREBASE_GA_API_SECRET }}" >> local.properties
-      if: '${{ (github.repository == ''open-ani/animeko'') && (!(github.event_name == ''pull_request'')) }}'
+      if: '${{ (github.repository == ''open-ani/animeko'') && ((!(github.event_name == ''pull_request'')) || (github.event.pull_request.head.repo.full_name == github.repository)) }}'
     - id: 'step-5'
       name: 'Resolve JBR location'
       shell: 'bash'
@@ -1245,7 +1249,7 @@ jobs:
         fi
         chmod 600 "$FILE_PATH"
         echo "filePath=$FILE_PATH" >> "$GITHUB_OUTPUT"
-      if: '${{ (github.repository == ''open-ani/animeko'') && (!(github.event_name == ''pull_request'')) }}'
+      if: '${{ (github.repository == ''open-ani/animeko'') && ((!(github.event_name == ''pull_request'')) || (github.event.pull_request.head.repo.full_name == github.repository)) }}'
     - id: 'step-17'
       name: 'Compile Kotlin (Attempt #1)'
       continue-on-error: true
@@ -1337,7 +1341,7 @@ jobs:
         echo "ani.enable.firebase=true" >> local.properties
         echo "firebase.ga.app.id=${{ secrets.FIREBASE_GA_APP_ID }}" >> local.properties
         echo "firebase.ga.api.secret=${{ secrets.FIREBASE_GA_API_SECRET }}" >> local.properties
-      if: '${{ (github.repository == ''open-ani/animeko'') && (!(github.event_name == ''pull_request'')) }}'
+      if: '${{ (github.repository == ''open-ani/animeko'') && ((!(github.event_name == ''pull_request'')) || (github.event.pull_request.head.repo.full_name == github.repository)) }}'
     - id: 'step-4'
       name: 'Resolve JBR location'
       shell: 'bash'
@@ -1474,7 +1478,7 @@ jobs:
         fi
         chmod 600 "$FILE_PATH"
         echo "filePath=$FILE_PATH" >> "$GITHUB_OUTPUT"
-      if: '${{ (github.repository == ''open-ani/animeko'') && (!(github.event_name == ''pull_request'')) }}'
+      if: '${{ (github.repository == ''open-ani/animeko'') && ((!(github.event_name == ''pull_request'')) || (github.event.pull_request.head.repo.full_name == github.repository)) }}'
     - id: 'step-16'
       name: 'Compile Kotlin (Attempt #1)'
       continue-on-error: true
@@ -1694,7 +1698,7 @@ jobs:
         echo "ani.enable.firebase=true" >> local.properties
         echo "firebase.ga.app.id=${{ secrets.FIREBASE_GA_APP_ID }}" >> local.properties
         echo "firebase.ga.api.secret=${{ secrets.FIREBASE_GA_API_SECRET }}" >> local.properties
-      if: '${{ (github.repository == ''open-ani/animeko'') && (!(github.event_name == ''pull_request'')) }}'
+      if: '${{ (github.repository == ''open-ani/animeko'') && ((!(github.event_name == ''pull_request'')) || (github.event.pull_request.head.repo.full_name == github.repository)) }}'
     - id: 'step-6'
       name: 'Get JBR (Windows)'
       env:
@@ -1900,7 +1904,7 @@ jobs:
         echo "ani.enable.firebase=true" >> local.properties
         echo "firebase.ga.app.id=${{ secrets.FIREBASE_GA_APP_ID }}" >> local.properties
         echo "firebase.ga.api.secret=${{ secrets.FIREBASE_GA_API_SECRET }}" >> local.properties
-      if: '${{ (github.repository == ''open-ani/animeko'') && (!(github.event_name == ''pull_request'')) }}'
+      if: '${{ (github.repository == ''open-ani/animeko'') && ((!(github.event_name == ''pull_request'')) || (github.event.pull_request.head.repo.full_name == github.repository)) }}'
     - id: 'step-6'
       name: 'Get JBR (Windows)'
       env:
@@ -2064,13 +2068,13 @@ jobs:
       timeout-minutes: 5
       shell: 'powershell'
       run: 'powershell.exe -NoProfile -ExecutionPolicy Bypass -File "${{ github.workspace }}/ci-helper/verify/run-ani-test-windows-x64.ps1" "${{ github.workspace }}\ci-helper\verify" "dandanplay-app-id"'
-      if: '${{ (github.repository == ''open-ani/animeko'') && (!(github.event_name == ''pull_request'')) }}'
+      if: '${{ (github.repository == ''open-ani/animeko'') && ((!(github.event_name == ''pull_request'')) || (github.event.pull_request.head.repo.full_name == github.repository)) }}'
     - id: 'step-7'
       name: 'Check that sentryDsn is valid'
       timeout-minutes: 5
       shell: 'powershell'
       run: 'powershell.exe -NoProfile -ExecutionPolicy Bypass -File "${{ github.workspace }}/ci-helper/verify/run-ani-test-windows-x64.ps1" "${{ github.workspace }}\ci-helper\verify" "sentry-dsn"'
-      if: '${{ (github.repository == ''open-ani/animeko'') && (!(github.event_name == ''pull_request'')) }}'
+      if: '${{ (github.repository == ''open-ani/animeko'') && ((!(github.event_name == ''pull_request'')) || (github.event.pull_request.head.repo.full_name == github.repository)) }}'
     - id: 'step-8'
       name: 'Check that OS touch and mouse input reach Compose'
       timeout-minutes: 5
@@ -2128,13 +2132,13 @@ jobs:
       timeout-minutes: 5
       shell: 'powershell'
       run: 'powershell.exe -NoProfile -ExecutionPolicy Bypass -File "${{ github.workspace }}/ci-helper/verify/run-ani-test-windows-x64.ps1" "${{ github.workspace }}\ci-helper\verify" "dandanplay-app-id"'
-      if: '${{ (github.repository == ''open-ani/animeko'') && (!(github.event_name == ''pull_request'')) }}'
+      if: '${{ (github.repository == ''open-ani/animeko'') && ((!(github.event_name == ''pull_request'')) || (github.event.pull_request.head.repo.full_name == github.repository)) }}'
     - id: 'step-7'
       name: 'Check that sentryDsn is valid'
       timeout-minutes: 5
       shell: 'powershell'
       run: 'powershell.exe -NoProfile -ExecutionPolicy Bypass -File "${{ github.workspace }}/ci-helper/verify/run-ani-test-windows-x64.ps1" "${{ github.workspace }}\ci-helper\verify" "sentry-dsn"'
-      if: '${{ (github.repository == ''open-ani/animeko'') && (!(github.event_name == ''pull_request'')) }}'
+      if: '${{ (github.repository == ''open-ani/animeko'') && ((!(github.event_name == ''pull_request'')) || (github.event.pull_request.head.repo.full_name == github.repository)) }}'
     - id: 'step-8'
       name: 'Check that OS touch and mouse input reach Compose'
       timeout-minutes: 5
@@ -2232,12 +2236,12 @@ jobs:
       name: 'Check that Dandanplay APP ID is valid'
       timeout-minutes: 5
       run: '"$GITHUB_WORKSPACE/ci-helper/verify/run-ani-test-macos-aarch64.sh" "$GITHUB_WORKSPACE"/*.dmg dandanplay-app-id'
-      if: '${{ (github.repository == ''open-ani/animeko'') && (!(github.event_name == ''pull_request'')) }}'
+      if: '${{ (github.repository == ''open-ani/animeko'') && ((!(github.event_name == ''pull_request'')) || (github.event.pull_request.head.repo.full_name == github.repository)) }}'
     - id: 'step-6'
       name: 'Check that sentryDsn is valid'
       timeout-minutes: 5
       run: '"$GITHUB_WORKSPACE/ci-helper/verify/run-ani-test-macos-aarch64.sh" "$GITHUB_WORKSPACE"/*.dmg sentry-dsn'
-      if: '${{ (github.repository == ''open-ani/animeko'') && (!(github.event_name == ''pull_request'')) }}'
+      if: '${{ (github.repository == ''open-ani/animeko'') && ((!(github.event_name == ''pull_request'')) || (github.event.pull_request.head.repo.full_name == github.repository)) }}'
   verify_github-macos-14:
     name: 'Verify (macOS 14 AArch64 (GitHub))'
     runs-on:
@@ -2286,12 +2290,12 @@ jobs:
       name: 'Check that Dandanplay APP ID is valid'
       timeout-minutes: 5
       run: '"$GITHUB_WORKSPACE/ci-helper/verify/run-ani-test-macos-aarch64.sh" "$GITHUB_WORKSPACE"/*.dmg dandanplay-app-id'
-      if: '${{ (github.repository == ''open-ani/animeko'') && (!(github.event_name == ''pull_request'')) }}'
+      if: '${{ (github.repository == ''open-ani/animeko'') && ((!(github.event_name == ''pull_request'')) || (github.event.pull_request.head.repo.full_name == github.repository)) }}'
     - id: 'step-7'
       name: 'Check that sentryDsn is valid'
       timeout-minutes: 5
       run: '"$GITHUB_WORKSPACE/ci-helper/verify/run-ani-test-macos-aarch64.sh" "$GITHUB_WORKSPACE"/*.dmg sentry-dsn'
-      if: '${{ (github.repository == ''open-ani/animeko'') && (!(github.event_name == ''pull_request'')) }}'
+      if: '${{ (github.repository == ''open-ani/animeko'') && ((!(github.event_name == ''pull_request'')) || (github.event.pull_request.head.repo.full_name == github.repository)) }}'
   verify_github-macos-15-apple:
     name: 'Verify (macOS 15 AArch64 (GitHub))'
     runs-on:
@@ -2340,12 +2344,12 @@ jobs:
       name: 'Check that Dandanplay APP ID is valid'
       timeout-minutes: 5
       run: '"$GITHUB_WORKSPACE/ci-helper/verify/run-ani-test-macos-aarch64.sh" "$GITHUB_WORKSPACE"/*.dmg dandanplay-app-id'
-      if: '${{ (github.repository == ''open-ani/animeko'') && (!(github.event_name == ''pull_request'')) }}'
+      if: '${{ (github.repository == ''open-ani/animeko'') && ((!(github.event_name == ''pull_request'')) || (github.event.pull_request.head.repo.full_name == github.repository)) }}'
     - id: 'step-7'
       name: 'Check that sentryDsn is valid'
       timeout-minutes: 5
       run: '"$GITHUB_WORKSPACE/ci-helper/verify/run-ani-test-macos-aarch64.sh" "$GITHUB_WORKSPACE"/*.dmg sentry-dsn'
-      if: '${{ (github.repository == ''open-ani/animeko'') && (!(github.event_name == ''pull_request'')) }}'
+      if: '${{ (github.repository == ''open-ani/animeko'') && ((!(github.event_name == ''pull_request'')) || (github.event.pull_request.head.repo.full_name == github.repository)) }}'
   verify_github-ubuntu-2404:
     name: 'Verify (Ubuntu 24.04 x86_64 (GitHub))'
     runs-on:
@@ -2389,7 +2393,7 @@ jobs:
         ANI_APPIMAGE="${{ github.workspace }}/ci-helper/verify/Animeko-x86_64.AppImage"
         chmod +x "$ANI_APPIMAGE"
         ANIMEKO_DESKTOP_TEST_TASK="dandanplay-app-id" "$ANI_APPIMAGE"
-      if: '${{ (github.repository == ''open-ani/animeko'') && (!(github.event_name == ''pull_request'')) }}'
+      if: '${{ (github.repository == ''open-ani/animeko'') && ((!(github.event_name == ''pull_request'')) || (github.event.pull_request.head.repo.full_name == github.repository)) }}'
     - id: 'step-5'
       name: 'Check that sentryDsn is valid'
       timeout-minutes: 5
@@ -2398,7 +2402,7 @@ jobs:
         ANI_APPIMAGE="${{ github.workspace }}/ci-helper/verify/Animeko-x86_64.AppImage"
         chmod +x "$ANI_APPIMAGE"
         ANIMEKO_DESKTOP_TEST_TASK="sentry-dsn" "$ANI_APPIMAGE"
-      if: '${{ (github.repository == ''open-ani/animeko'') && (!(github.event_name == ''pull_request'')) }}'
+      if: '${{ (github.repository == ''open-ani/animeko'') && ((!(github.event_name == ''pull_request'')) || (github.event.pull_request.head.repo.full_name == github.repository)) }}'
     - id: 'step-6'
       name: 'Check that bundled SQLite can be loaded'
       timeout-minutes: 5
