@@ -2016,6 +2016,258 @@ jobs:
       name: 'Check Android Instrumented Test results'
       run: 'echo ''::error::Android instrumented tests failed. See the "Android Instrumented Test" steps.''; exit 1'
       if: '${{ ((steps.step-18.outcome == ''failure'') && (steps.step-19.outcome != ''success'')) }}'
+  android-test_self-hosted-macos-15_api36:
+    name: 'Android Instrumented Test (api=36, arch=arm64-v8a)'
+    runs-on:
+    - 'self-hosted'
+    - 'macOS'
+    - 'ARM64'
+    permissions:
+      actions: 'write'
+    if: '${{ github.repository == ''open-ani/animeko'' }}'
+    steps:
+    - id: 'step-0'
+      uses: 'actions/checkout@v4'
+      with:
+        submodules: 'recursive'
+    - id: 'step-1'
+      continue-on-error: true
+      run: 'rm local.properties'
+    - id: 'step-2'
+      continue-on-error: true
+      run: |
+        echo "ani.android.abis=arm64-v8a" >> local.properties
+        echo "ani.enable.ios=true" >> local.properties
+        echo "ani.build.framework=true" >> local.properties
+        echo "ani.dandanplay.app.id=${{ secrets.DANDANPLAY_APP_ID }}" >> local.properties
+        echo "ani.dandanplay.app.secret=${{ secrets.DANDANPLAY_APP_SECRET }}" >> local.properties
+        echo "ani.sentry.dsn=${{ secrets.SENTRY_DSN }}" >> local.properties
+        echo "kotlin.native.ignoreDisabledTargets=true" >> local.properties
+    - id: 'step-3'
+      continue-on-error: true
+      run: |
+        echo "ani.enable.firebase=true" >> local.properties
+        echo "firebase.ga.app.id=${{ secrets.FIREBASE_GA_APP_ID }}" >> local.properties
+        echo "firebase.ga.api.secret=${{ secrets.FIREBASE_GA_API_SECRET }}" >> local.properties
+      if: '${{ (github.repository == ''open-ani/animeko'') && ((!(github.event_name == ''pull_request'')) || (github.event.pull_request.head.repo.full_name == github.repository)) }}'
+    - id: 'step-4'
+      name: 'Resolve JBR location'
+      shell: 'bash'
+      run: |-
+        # Expand jbrLocationExpr
+        jbr_location_expr='${{ runner.tool_cache }}/jbrsdk_jcef-21.0.11-osx-aarch64-b1163.116.tar.gz'
+        echo "jbrLocation=$jbr_location_expr" >> $GITHUB_OUTPUT
+    - id: 'step-5'
+      name: 'Get JBR 21 for macOS AArch64 (Attempt #1)'
+      env:
+        jbrLocation: '${{ steps.step-4.outputs.jbrLocation }}'
+      continue-on-error: true
+      timeout-minutes: 180
+      shell: 'bash'
+      run: |-
+        jbr_location="$jbrLocation"
+        checksum_url="https://cache-redirector.jetbrains.com/intellij-jbr/jbrsdk_jcef-21.0.11-osx-aarch64-b1163.116.tar.gz.checksum"
+        checksum_file="checksum.tmp"
+        wget -q -O $checksum_file $checksum_url
+
+        expected_checksum=$(awk '{print $1}' $checksum_file)
+        file_checksum=""
+
+        if [ -f "$jbr_location" ]; then
+            file_checksum=$(shasum -a 512 "$jbr_location" | awk '{print $1}')
+        fi
+
+        if [ "$file_checksum" != "$expected_checksum" ]; then
+            wget -q --tries=3 https://cache-redirector.jetbrains.com/intellij-jbr/jbrsdk_jcef-21.0.11-osx-aarch64-b1163.116.tar.gz -O "$jbr_location"
+            file_checksum=$(shasum -a 512 "$jbr_location" | awk '{print $1}')
+        fi
+
+        if [ "$file_checksum" != "$expected_checksum" ]; then
+            echo "Checksum verification failed!" >&2
+            rm -f $checksum_file
+            exit 1
+        fi
+
+        rm -f $checksum_file
+        file "$jbr_location"
+    - id: 'step-6'
+      name: 'Get JBR 21 for macOS AArch64 (Attempt #2)'
+      env:
+        jbrLocation: '${{ steps.step-4.outputs.jbrLocation }}'
+      continue-on-error: false
+      timeout-minutes: 180
+      shell: 'bash'
+      run: |-
+        jbr_location="$jbrLocation"
+        checksum_url="https://cache-redirector.jetbrains.com/intellij-jbr/jbrsdk_jcef-21.0.11-osx-aarch64-b1163.116.tar.gz.checksum"
+        checksum_file="checksum.tmp"
+        wget -q -O $checksum_file $checksum_url
+
+        expected_checksum=$(awk '{print $1}' $checksum_file)
+        file_checksum=""
+
+        if [ -f "$jbr_location" ]; then
+            file_checksum=$(shasum -a 512 "$jbr_location" | awk '{print $1}')
+        fi
+
+        if [ "$file_checksum" != "$expected_checksum" ]; then
+            wget -q --tries=3 https://cache-redirector.jetbrains.com/intellij-jbr/jbrsdk_jcef-21.0.11-osx-aarch64-b1163.116.tar.gz -O "$jbr_location"
+            file_checksum=$(shasum -a 512 "$jbr_location" | awk '{print $1}')
+        fi
+
+        if [ "$file_checksum" != "$expected_checksum" ]; then
+            echo "Checksum verification failed!" >&2
+            rm -f $checksum_file
+            exit 1
+        fi
+
+        rm -f $checksum_file
+        file "$jbr_location"
+      if: '${{ steps.step-5.outcome == ''failure'' }}'
+    - id: 'step-7'
+      name: 'Setup JBR 21 for macOS '
+      uses: 'gmitch215/setup-java@6d2c5e1f82f180ae79f799f0ed6e3e5efb4e664d'
+      with:
+        java-version: '21'
+        distribution: 'jdkfile'
+        jdkFile: '${{ steps.step-4.outputs.jbrLocation }}'
+      env:
+        GITHUB_TOKEN: '${{ secrets.GITHUB_TOKEN }}'
+    - id: 'step-8'
+      name: 'Dump Local Properties'
+      run: 'echo "jvm.toolchain.version=21" >> local.properties'
+    - id: 'step-9'
+      run: 'chmod -R 777 .'
+    - id: 'step-10'
+      name: 'Setup Gradle'
+      uses: 'gradle/actions/setup-gradle@v3'
+      with:
+        cache-disabled: 'true'
+    - id: 'step-11'
+      name: 'Clean and download dependencies (Attempt #1)'
+      continue-on-error: true
+      timeout-minutes: 180
+      run: './gradlew --scan "--stacktrace" "-Porg.gradle.daemon.idletimeout=60000" "-Dfile.encoding=UTF-8" "-Dorg.gradle.jvmargs=-Xmx12g -Dkotlin.daemon.jvm.options=-Xmx20g" "-Dkotlin.daemon.jvm.options=-Xmx20g" "--parallel"'
+    - id: 'step-12'
+      name: 'Clean and download dependencies (Attempt #2)'
+      continue-on-error: false
+      timeout-minutes: 180
+      run: './gradlew --scan "--stacktrace" "-Porg.gradle.daemon.idletimeout=60000" "-Dfile.encoding=UTF-8" "-Dorg.gradle.jvmargs=-Xmx12g -Dkotlin.daemon.jvm.options=-Xmx20g" "-Dkotlin.daemon.jvm.options=-Xmx20g" "--parallel"'
+      if: '${{ steps.step-11.outcome == ''failure'' }}'
+    - id: 'step-13'
+      name: 'Build Android Instrumented Tests (Attempt #1)'
+      continue-on-error: true
+      timeout-minutes: 180
+      run: './gradlew assembleAndroidDeviceTest "-Pandroid.min.sdk=30" "--scan" "-Porg.gradle.daemon.idletimeout=60000" "-Dfile.encoding=UTF-8" "-Dorg.gradle.jvmargs=-Xmx12g -Dkotlin.daemon.jvm.options=-Xmx20g" "-Dkotlin.daemon.jvm.options=-Xmx20g" "--parallel"'
+    - id: 'step-14'
+      name: 'Build Android Instrumented Tests (Attempt #2)'
+      continue-on-error: true
+      timeout-minutes: 180
+      run: './gradlew assembleAndroidDeviceTest "-Pandroid.min.sdk=30" "--scan" "-Porg.gradle.daemon.idletimeout=60000" "-Dfile.encoding=UTF-8" "-Dorg.gradle.jvmargs=-Xmx12g -Dkotlin.daemon.jvm.options=-Xmx20g" "-Dkotlin.daemon.jvm.options=-Xmx20g" "--parallel"'
+      if: '${{ steps.step-13.outcome == ''failure'' }}'
+    - id: 'step-15'
+      name: 'Build Android Instrumented Tests (Attempt #3)'
+      continue-on-error: false
+      timeout-minutes: 180
+      run: './gradlew assembleAndroidDeviceTest "-Pandroid.min.sdk=30" "--scan" "-Porg.gradle.daemon.idletimeout=60000" "-Dfile.encoding=UTF-8" "-Dorg.gradle.jvmargs=-Xmx12g -Dkotlin.daemon.jvm.options=-Xmx20g" "-Dkotlin.daemon.jvm.options=-Xmx20g" "--parallel"'
+      if: '${{ steps.step-14.outcome == ''failure'' }}'
+    - id: 'step-16'
+      name: 'Stop Gradle daemons before emulator (api=36, arch=arm64-v8a)'
+      run: |-
+        ./gradlew --stop
+        pkill -f KotlinCompileDaemon || true
+        df -h .
+    - id: 'step-17'
+      name: 'Android Instrumented Test (api=36, arch=arm64-v8a)'
+      continue-on-error: true
+      timeout-minutes: 60
+      uses: 'reactivecircus/android-emulator-runner@v2.35.0'
+      with:
+        api-level: '36'
+        target: 'default'
+        arch: 'arm64-v8a'
+        profile: 'pixel_2'
+        ram-size: '2048M'
+        emulator-boot-timeout: '1800'
+        script: 'touch android-instrumented-test-started-api36-arm64-v8a; ./ci-helper/prepare-android-emulator.sh; ./gradlew connectedDeviceTest -x :app:shared:tv:connectedDeviceTest -x :app:shared:ui-foundation-tv:connectedDeviceTest -x :app:shared:ui-settings-tv:connectedDeviceTest -x :app:shared:ui-subject-tv:connectedDeviceTest -x :app:shared:ui-exploration-tv:connectedDeviceTest -x :app:shared:ui-onboarding-tv:connectedDeviceTest -x :app:shared:ui-episode-tv:connectedDeviceTest -x :app:shared:ui-watchtogether-tv:connectedDeviceTest --continue "-Pandroid.min.sdk=30" "--scan" "-Porg.gradle.daemon.idletimeout=60000" "-Dfile.encoding=UTF-8" "-Dorg.gradle.jvmargs=-Xmx3g -Dkotlin.daemon.jvm.options=-Xmx2g" "-Dkotlin.daemon.jvm.options=-Xmx2g" "--parallel"; status=$?; adb logcat -d > logcat-api36-arm64-v8a.txt || true; pkill -INT -f "$ANDROID_HOME/emulator/crashpad_handler" || true; exit $status'
+    - id: 'step-18'
+      name: 'Android Instrumented Test (api=36, arch=arm64-v8a) (Retry after emulator failure)'
+      continue-on-error: true
+      timeout-minutes: 60
+      uses: 'reactivecircus/android-emulator-runner@v2.35.0'
+      with:
+        api-level: '36'
+        target: 'default'
+        arch: 'arm64-v8a'
+        profile: 'pixel_2'
+        ram-size: '2048M'
+        emulator-boot-timeout: '1800'
+        script: 'touch android-instrumented-test-started-api36-arm64-v8a; ./ci-helper/prepare-android-emulator.sh; ./gradlew connectedDeviceTest -x :app:shared:tv:connectedDeviceTest -x :app:shared:ui-foundation-tv:connectedDeviceTest -x :app:shared:ui-settings-tv:connectedDeviceTest -x :app:shared:ui-subject-tv:connectedDeviceTest -x :app:shared:ui-exploration-tv:connectedDeviceTest -x :app:shared:ui-onboarding-tv:connectedDeviceTest -x :app:shared:ui-episode-tv:connectedDeviceTest -x :app:shared:ui-watchtogether-tv:connectedDeviceTest --continue "-Pandroid.min.sdk=30" "--scan" "-Porg.gradle.daemon.idletimeout=60000" "-Dfile.encoding=UTF-8" "-Dorg.gradle.jvmargs=-Xmx3g -Dkotlin.daemon.jvm.options=-Xmx2g" "-Dkotlin.daemon.jvm.options=-Xmx2g" "--parallel"; status=$?; adb logcat -d > logcat-api36-arm64-v8a.txt || true; pkill -INT -f "$ANDROID_HOME/emulator/crashpad_handler" || true; exit $status'
+      if: '${{ (steps.step-17.outcome == ''failure'') && (hashFiles(''android-instrumented-test-started-api36-arm64-v8a'') == '''') }}'
+    - id: 'step-19'
+      name: 'Upload Android Instrumented Test Reports (api=36, arch=arm64-v8a)'
+      uses: 'actions/upload-artifact@v4'
+      with:
+        name: 'android-device-test-reports-api36-arm64-v8a'
+        path: |-
+          **/build/reports/androidTests/**
+          **/build/outputs/androidTest-results/**
+          logcat-api36-arm64-v8a.txt
+        if-no-files-found: 'ignore'
+        overwrite: 'true'
+      if: 'always()'
+    - id: 'step-20'
+      name: 'Remove previous test results'
+      run: 'find . -type d \( -path ''*/build/outputs/androidTest-results'' -o -path ''*/build/reports/androidTests'' \) -prune -exec rm -rf {} +'
+    - id: 'step-21'
+      name: 'Stop Gradle daemons before emulator (api=36, arch=arm64-v8a, target=android-tv)'
+      run: |-
+        ./gradlew --stop
+        pkill -f KotlinCompileDaemon || true
+        df -h .
+    - id: 'step-22'
+      name: 'Android Instrumented Test (api=36, arch=arm64-v8a, target=android-tv)'
+      continue-on-error: true
+      timeout-minutes: 60
+      uses: 'reactivecircus/android-emulator-runner@v2.35.0'
+      with:
+        api-level: '36'
+        target: 'android-tv'
+        arch: 'arm64-v8a'
+        profile: 'tv_1080p'
+        ram-size: '2048M'
+        emulator-boot-timeout: '1800'
+        script: 'touch android-instrumented-test-started-api36-arm64-v8a-android-tv; ./ci-helper/prepare-android-emulator.sh; ./gradlew :app:shared:tv:connectedDeviceTest :app:shared:ui-foundation-tv:connectedDeviceTest :app:shared:ui-settings-tv:connectedDeviceTest :app:shared:ui-subject-tv:connectedDeviceTest :app:shared:ui-exploration-tv:connectedDeviceTest :app:shared:ui-onboarding-tv:connectedDeviceTest :app:shared:ui-episode-tv:connectedDeviceTest :app:shared:ui-watchtogether-tv:connectedDeviceTest --continue "-Pandroid.min.sdk=30" "--scan" "-Porg.gradle.daemon.idletimeout=60000" "-Dfile.encoding=UTF-8" "-Dorg.gradle.jvmargs=-Xmx3g -Dkotlin.daemon.jvm.options=-Xmx2g" "-Dkotlin.daemon.jvm.options=-Xmx2g" "--parallel"; status=$?; adb logcat -d > logcat-api36-arm64-v8a-android-tv.txt || true; pkill -INT -f "$ANDROID_HOME/emulator/crashpad_handler" || true; exit $status'
+    - id: 'step-23'
+      name: 'Android Instrumented Test (api=36, arch=arm64-v8a, target=android-tv) (Retry after emulator failure)'
+      continue-on-error: true
+      timeout-minutes: 60
+      uses: 'reactivecircus/android-emulator-runner@v2.35.0'
+      with:
+        api-level: '36'
+        target: 'android-tv'
+        arch: 'arm64-v8a'
+        profile: 'tv_1080p'
+        ram-size: '2048M'
+        emulator-boot-timeout: '1800'
+        script: 'touch android-instrumented-test-started-api36-arm64-v8a-android-tv; ./ci-helper/prepare-android-emulator.sh; ./gradlew :app:shared:tv:connectedDeviceTest :app:shared:ui-foundation-tv:connectedDeviceTest :app:shared:ui-settings-tv:connectedDeviceTest :app:shared:ui-subject-tv:connectedDeviceTest :app:shared:ui-exploration-tv:connectedDeviceTest :app:shared:ui-onboarding-tv:connectedDeviceTest :app:shared:ui-episode-tv:connectedDeviceTest :app:shared:ui-watchtogether-tv:connectedDeviceTest --continue "-Pandroid.min.sdk=30" "--scan" "-Porg.gradle.daemon.idletimeout=60000" "-Dfile.encoding=UTF-8" "-Dorg.gradle.jvmargs=-Xmx3g -Dkotlin.daemon.jvm.options=-Xmx2g" "-Dkotlin.daemon.jvm.options=-Xmx2g" "--parallel"; status=$?; adb logcat -d > logcat-api36-arm64-v8a-android-tv.txt || true; pkill -INT -f "$ANDROID_HOME/emulator/crashpad_handler" || true; exit $status'
+      if: '${{ (steps.step-22.outcome == ''failure'') && (hashFiles(''android-instrumented-test-started-api36-arm64-v8a-android-tv'') == '''') }}'
+    - id: 'step-24'
+      name: 'Upload Android Instrumented Test Reports (api=36, arch=arm64-v8a, target=android-tv)'
+      uses: 'actions/upload-artifact@v4'
+      with:
+        name: 'android-device-test-reports-api36-arm64-v8a-android-tv'
+        path: |-
+          **/build/reports/androidTests/**
+          **/build/outputs/androidTest-results/**
+          logcat-api36-arm64-v8a-android-tv.txt
+        if-no-files-found: 'ignore'
+        overwrite: 'true'
+      if: 'always()'
+    - id: 'step-25'
+      name: 'Check Android Instrumented Test results'
+      run: 'echo ''::error::Android instrumented tests failed. See the "Android Instrumented Test" steps.''; exit 1'
+      if: '${{ ((steps.step-17.outcome == ''failure'') && (steps.step-18.outcome != ''success'')) || ((steps.step-22.outcome == ''failure'') && (steps.step-23.outcome != ''success'')) }}'
   verify_github-windows-2025:
     name: 'Verify (Windows Server 2025 x86_64 (GitHub))'
     runs-on:
