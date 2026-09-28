@@ -247,6 +247,7 @@ class UserCollectionsViewModelTest {
         val episodeCollectionRepository = EpisodeCollectionRepository(
             subjectDao = database.subjectCollection(),
             episodeCollectionDao = database.episodeCollection(),
+            pendingOpDao = database.episodeCollectionPendingOpDao(),
             episodeService = EpisodeServiceImpl(UnusedSubjectsApi),
             animeScheduleRepository = animeScheduleRepository,
             subjectCollectionRepository = lazy { repository },

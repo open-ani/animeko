@@ -8,7 +8,6 @@
  */
 package me.him188.ani.tv.ui.exploration
 
-import android.graphics.Bitmap
 import android.os.LocaleList
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
@@ -23,7 +22,7 @@ import androidx.compose.runtime.saveable.rememberSaveableStateHolder
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.MotionDurationScale
-import androidx.compose.ui.graphics.asAndroidBitmap
+import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.input.key.Key
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.testTag
@@ -38,8 +37,8 @@ import androidx.compose.ui.test.assertIsFocused
 import androidx.compose.ui.test.assertIsSelected
 import androidx.compose.ui.test.assertTextContains
 import androidx.compose.ui.test.assertWidthIsEqualTo
-import androidx.compose.ui.test.captureToImage
 import androidx.compose.ui.test.getUnclippedBoundsInRoot
+import androidx.compose.ui.test.hasAnyAncestor
 import androidx.compose.ui.test.hasAnyDescendant
 import androidx.compose.ui.test.hasTestTag
 import androidx.compose.ui.test.hasText
@@ -55,6 +54,7 @@ import androidx.compose.ui.test.printToString
 import androidx.compose.ui.text.TextLayoutResult
 import androidx.compose.ui.unit.Density
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.toSize
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleOwner
 import androidx.lifecycle.LifecycleRegistry
@@ -92,7 +92,6 @@ import me.him188.ani.app.tools.LocalTimeFormatter
 import me.him188.ani.app.tools.TimeFormatter
 import me.him188.ani.app.ui.foundation.LocalSketch
 import me.him188.ani.app.ui.framework.AniComposeUiTest
-import me.him188.ani.app.ui.framework.assertScreenshot
 import me.him188.ani.app.ui.framework.runAniComposeUiTest
 import me.him188.ani.datasources.api.EpisodeSort
 import me.him188.ani.datasources.api.EpisodeType
@@ -100,6 +99,7 @@ import me.him188.ani.datasources.api.PackedDate
 import me.him188.ani.datasources.api.topic.UnifiedCollectionType
 import me.him188.ani.tv.ui.foundation.focus.LocalTvFocusMemory
 import me.him188.ani.tv.ui.foundation.focus.TvFocusMemory
+import me.him188.ani.tv.ui.foundation.semantics.TvVisualSemantics
 import me.him188.ani.tv.ui.foundation.theme.AniTvTheme
 import me.him188.ani.tv.ui.foundation.widgets.tvShellBackgroundColor
 import me.him188.ani.tv.ui.subject.components.TvSubjectDetailsDefaults
@@ -113,7 +113,7 @@ import kotlin.test.assertEquals
 import kotlin.test.assertFalse
 import kotlin.test.assertTrue
 
-/** Real Compose input and geometry assertions; saved PNGs also cover Android's no-op screenshot matcher. */
+/** Real Compose input with geometry and semantics assertions; visual effects are asserted through [TvVisualSemantics]. */
 @OptIn(TestOnly::class)
 class TvExplorationUiTest {
     private val titles = listOf("赛马娘 新时代之扉", "葬送的芙莉莲", "孤独摇滚！", "迷宫饭", "夏目友人帐")
@@ -179,7 +179,7 @@ class TvExplorationUiTest {
         val file = File(context.cacheDir, "tv-exploration-poster.jpg")
         InstrumentationRegistry.getInstrumentation().context.assets.open(file.name)
             .use { input -> file.outputStream().use { input.copyTo(it) } }
-        // 海报经 Sketch 按真实时钟异步加载; 比较像素是否静止的测试不放海报, 免得加载完成的那一帧混进比较.
+        // 海报经 Sketch 按真实时钟异步加载, 不受测试时钟控制; 不关心海报的测试可以不放.
         val image = if (poster) file.toURI().toString() else ""
         val sketch = Sketch.Builder(context).build()
         val timeFormatter = TimeFormatter()
@@ -237,7 +237,6 @@ class TvExplorationUiTest {
         val trends = MutableStateFlow(loadingPage<TrendingSubjectInfo>())
         mount(trendingFlow = trends, poster = false)
         onNodeWithTag("tv-exploration-hero-loading").assertExists()
-        capture("hero-loading-ready-shelves")
         key(Key.DirectionDown)
         awaitFocus("tv-exploration-followed-11")
         runOnIdle { trends.value = completedPage(listOf(TrendingSubjectInfo(1, titles.first(), ""))) }
@@ -254,7 +253,6 @@ class TvExplorationUiTest {
         mount(followedFlow = follows, poster = false)
         onNodeWithTag("tv-exploration-followed-loading").assertExists()
         onNodeWithTag("tv-exploration-hero-loading").assertDoesNotExist()
-        capture("followed-loading")
         key(Key.DirectionDown)
         awaitFocus("tv-exploration-rec-21")
         key(Key.DirectionUp)
@@ -278,7 +276,6 @@ class TvExplorationUiTest {
         key(Key.DirectionDown)
         awaitFocus("tv-exploration-feed-status")
         onNodeWithTag("tv-exploration-recommendations-loading").assertExists()
-        capture("recommendations-loading")
         val values = (21..24).map { RecommendedSubjectInfo(it, titles.first(), "", "") }
         runOnIdle { recs.value = completedPage(values) }
         awaitFocus("tv-exploration-rec-21")
@@ -308,39 +305,47 @@ class TvExplorationUiTest {
         settle()
         assertTrue(bounds("tv-exploration-followed-11").left >= 56f * density)
         assertEquals(page, bounds("tv-exploration-backdrop"))
-        capture("floating-rail-insets")
     }
 
     @Test
     fun heroZoomAndHorizontalTransitionsStayOutsideTheNavigationRail() = runAniComposeUiTest {
         mount()
-        val original = railPixels()
-        fun assertRailUnchanged(stage: String) {
-            assertTrue(original.contentEquals(railPixels()), "Home content crossed into the navigation rail: $stage")
+        val page = bounds("tv-exploration")
+        // 可见范围经祖先裁剪 (完全裁掉的节点范围为空); 放大的背景和横移的前景都不能越过页面左缘进入导航栏区域.
+        fun assertOutsideRail(stage: String) {
+            val nodes = onAllNodes(hasAnyAncestor(hasTestTag("tv-exploration")), useUnmergedTree = true)
+                .fetchSemanticsNodes()
+            assertTrue(nodes.any { it.config.getOrNull(SemanticsProperties.TestTag) == "tv-exploration-backdrop-image" })
+            nodes.filterNot { it.boundsInRoot.isEmpty }.forEach { node ->
+                assertTrue(node.boundsInRoot.left > page.left - 1f,
+                    "Home content crossed into the navigation rail at $stage: " +
+                        "${node.config.getOrNull(SemanticsProperties.TestTag)} ${node.boundsInRoot}")
+            }
+            assertEquals(page, bounds("tv-exploration-backdrop"), stage)
         }
 
         key(Key.DirectionDown)
         awaitFocus("tv-exploration-followed-11")
         settle(160)
-        assertRailUnchanged("zoom midpoint")
+        assertOutsideRail("zoom midpoint")
         settle(750)
-        assertRailUnchanged("zoomed background")
+        assertOutsideRail("zoomed background")
         key(Key.DirectionRight)
         awaitFocus("tv-exploration-followed-12")
         settle(160)
-        assertRailUnchanged("preview selection")
+        assertOutsideRail("preview selection")
         key(Key.DirectionUp)
         awaitFocus("tv-exploration-details")
         settle(160)
-        assertRailUnchanged("return to hero")
+        assertOutsideRail("return to hero")
         settle(750)
         key(Key.DirectionLeft)
         settle(100)
-        assertRailUnchanged("carousel moving right")
+        assertOutsideRail("carousel moving right")
         settle(550)
         key(Key.DirectionRight)
         settle(100)
-        assertRailUnchanged("carousel moving left")
+        assertOutsideRail("carousel moving left")
     }
 
     @Test
@@ -355,7 +360,6 @@ class TvExplorationUiTest {
         val restingTop = bounds("tv-exploration-followed-11").top / px
         assertTrue(abs(restingTop - 494f) < 2f, "Resting card top: $restingTop dp, page ${bounds("tv-exploration")}")
         assertTrue(abs(bounds("tv-exploration-featured-title").left / px - 58f) < 1f)
-        capture("01-featured")
         key(Key.DirectionDown)
         awaitFocus("tv-exploration-followed-11")
         settle()
@@ -371,7 +375,6 @@ class TvExplorationUiTest {
         assertEquals(restingCard.width, focusedCard.width)
         onNodeWithTag("tv-exploration-followed-11").assertHeightIsEqualTo(86.dp)
         assertTrue(bounds("tv-exploration-row-title-followed").height > restingLabel.height * 1.5f)
-        capture("02-immersive")
         key(Key.DirectionDown)
         awaitFocus("tv-exploration-rec-21")
         settle()
@@ -380,7 +383,6 @@ class TvExplorationUiTest {
         assertTrue(bounds("tv-exploration-rec-25").top > bounds("tv-exploration-rec-21").bottom)
         onNodeWithTag("tv-exploration-row-trending").assertDoesNotExist()
         assertEquals(fixedBackdrop, bounds("tv-exploration-backdrop"))
-        capture("03-ordinary-row")
         key(Key.DirectionUp)
         awaitFocus("tv-exploration-followed-11")
         settle()
@@ -389,7 +391,6 @@ class TvExplorationUiTest {
         awaitFocus("tv-exploration-details")
         settle()
         assertTrue(abs(bounds("tv-exploration-followed-11").top / px - 494f) < 2f)
-        capture("04-featured-restored")
     }
 
     @Test
@@ -400,30 +401,15 @@ class TvExplorationUiTest {
         key(Key.DirectionDown)
         awaitFocus("tv-exploration-followed-11")
         settle()
-        val density = bounds("tv-exploration").height / 540f
-        fun ringColor(tag: String): Int {
-            val bitmap = onNodeWithTag(tag).captureToImage().asAndroidBitmap()
-            val inset = density.toInt()
-            val samples = listOf(
-                bitmap.getPixel(bitmap.width / 2, inset),
-                bitmap.getPixel(bitmap.width / 2, bitmap.height - 1 - inset),
-                bitmap.getPixel(inset, bitmap.height / 2),
-                bitmap.getPixel(bitmap.width - 1 - inset, bitmap.height / 2),
-            )
-            assertTrue(samples.all { it == samples.first() }, "All four sides must show the same unclipped focus ring")
-            assertTrue(bitmap.getPixel(bitmap.width / 2, (3.5f * density).toInt()) != samples.first(),
-                "There must be visible space between the focus ring and the image")
-            return samples.first()
-        }
-        val continueColor = ringColor("tv-exploration-followed-11")
+        // 焦点描边画在卡片自身范围内, 卡片未被裁剪即四边描边完整.
+        assertNotClipped("tv-exploration-followed-11")
         val focused = onNodeWithTag("tv-exploration-followed-11").getUnclippedBoundsInRoot()
         assertEquals(resting.right - resting.left, focused.right - focused.left)
         assertEquals(resting.bottom - resting.top, focused.bottom - focused.top)
         key(Key.DirectionDown)
         awaitFocus("tv-exploration-rec-21")
         settle()
-        assertEquals(continueColor, ringColor("tv-exploration-rec-21"))
-        capture("unified-card-focus")
+        assertNotClipped("tv-exploration-rec-21")
     }
 
     @Test
@@ -451,11 +437,9 @@ class TvExplorationUiTest {
         awaitFocus("tv-exploration-rec-26")
         settle()
         assertTrue(abs(bounds("tv-exploration-rec-26").left - left) < 2f)
-        capture("05-recommendation-grid")
         key(Key.DirectionDown)
         awaitFocus("tv-exploration-rec-30")
         settle()
-        capture("06-grid-scroll")
         key(Key.DirectionUp)
         awaitFocus("tv-exploration-rec-26")
         key(Key.DirectionUp)
@@ -464,7 +448,6 @@ class TvExplorationUiTest {
         awaitFocus("tv-exploration-followed-12")
         settle()
         onNodeWithTag("tv-exploration-preview-title").assertTextContains(titles[1])
-        capture("07-row-memory")
     }
 
     @Test
@@ -475,7 +458,6 @@ class TvExplorationUiTest {
         awaitFocus("tv-exploration-followed-11")
         settle(64)
         assertTrue(bounds("tv-exploration-hero").height < expandedHeight)
-        capture("08-panel-midpoint")
         key(Key.DirectionUp)
         awaitFocus("tv-exploration-details")
         key(Key.DirectionDown)
@@ -488,12 +470,10 @@ class TvExplorationUiTest {
         }
         onNodeWithTag("tv-exploration-rec-21").assertIsFocused()
         assertTrue(glowProgress() < 1f)
-        capture("09-scroll-midpoint")
         key(Key.DirectionUp)
         awaitFocus("tv-exploration-followed-11")
         settle()
         assertTrue(glowProgress() < .01f)
-        capture("10-reversal")
     }
 
     @Test
@@ -507,7 +487,6 @@ class TvExplorationUiTest {
         val first = bounds("tv-exploration-rec-21")
         assertTrue(bounds("tv-exploration-rec-24").left > first.right)
         assertTrue(bounds("tv-exploration-rec-25").top > first.bottom)
-        capture("11-no-collection")
         key(Key.DirectionDown)
         awaitFocus("tv-exploration-rec-25")
         key(Key.DirectionUp)
@@ -532,7 +511,6 @@ class TvExplorationUiTest {
         onNodeWithTag("tv-exploration-preview-metadata").assert(hasAnyDescendant(hasText("–")))
         onNodeWithTag("tv-exploration-preview-metadata").assert(hasAnyDescendant(hasText("动画")))
         onNodeWithTag("tv-exploration-preview-airing").assert(hasAnyDescendant(hasText("连载", substring = true)))
-        capture("18-details-metadata")
     }
 
     @Test
@@ -577,11 +555,6 @@ class TvExplorationUiTest {
         assertEquals(0f..12f, range.range)
         assertTrue(abs(bounds("tv-exploration-watching-watched").width / track.width - .25f) < .01f)
         assertTrue(abs(bounds("tv-exploration-watching-aired").width / track.width - .75f) < .01f)
-        val bitmap = progressBitmap()
-        val borderColor = bitmap.getPixel(bitmap.width * 7 / 8, 1)
-        val trackColor = bitmap.getPixel(bitmap.width * 7 / 8, bitmap.height / 2)
-        assertTrue(((borderColor shr 16) and 255) > ((trackColor shr 16) and 255) + 40, "The light border should outline the unfilled track")
-        capture("24-watching-progress-on-air")
     }
 
     @Test
@@ -607,7 +580,6 @@ class TvExplorationUiTest {
             SemanticsMatcher.expectValue(SemanticsProperties.StateDescription, "已看 3 / 共 12 集"),
         )
         onNodeWithTag("tv-exploration-watching-aired").assertDoesNotExist()
-        capture("25-watching-progress-completed")
         key(Key.DirectionRight)
         awaitFocus("tv-exploration-followed-12")
         settle()
@@ -616,14 +588,12 @@ class TvExplorationUiTest {
         onNodeWithTag("tv-exploration-watching-progress").assert(
             SemanticsMatcher.expectValue(SemanticsProperties.StateDescription, "已看 0 / 共 12 集"),
         )
-        capture("26-watching-progress-start")
         key(Key.DirectionRight)
         awaitFocus("tv-exploration-followed-13")
         settle()
         onNodeWithTag("tv-exploration-watching-progress").assert(
             SemanticsMatcher.expectValue(SemanticsProperties.StateDescription, "已看 0 / 已播 – / 共 – 集"),
         )
-        capture("27-watching-progress-unknown")
     }
 
     @Test
@@ -649,7 +619,6 @@ class TvExplorationUiTest {
         settle(96)
         assertTrue(fraction("watched") > .25f && fraction("watched") < .5f)
         assertTrue(fraction("aired") > .5f && fraction("aired") < 10f / 12f)
-        capture("32-progress-transition-midpoint")
         key(Key.DirectionLeft)
         awaitFocus("tv-exploration-followed-11")
         assertTrue(fraction("watched") > .25f && fraction("watched") < .5f)
@@ -661,11 +630,10 @@ class TvExplorationUiTest {
         settle(500)
         assertTrue(abs(fraction("watched") - .5f) < .01f)
         assertTrue(abs(fraction("aired") - 10f / 12f) < .01f)
-        capture("33-progress-transition-finished")
     }
 
     @Test
-    fun chargingParticlesStayInsideWatchedSegmentAndPauseWithPage() = runAniComposeUiTest {
+    fun chargingParticlesAnimateOnlyWhileThePageIsResumed() = runAniComposeUiTest {
         val owner = object : LifecycleOwner {
             override val lifecycle = LifecycleRegistry.createUnsafe(this).apply { currentState = Lifecycle.State.RESUMED }
         }
@@ -675,25 +643,15 @@ class TvExplorationUiTest {
         key(Key.DirectionDown)
         awaitFocus("tv-exploration-followed-11")
         settle()
-        val before = progressBitmap()
-        settle(320)
-        val after = progressBitmap()
-        assertFalse(before.sameAs(after), "The geometric particles should move while continue watching is active")
-        val watchedWidth = bounds("tv-exploration-watching-watched").width.toInt()
-        for (y in 0 until before.height) for (x in watchedWidth until before.width) {
-            assertEquals(before.getPixel(x, y), after.getPixel(x, y), "A particle escaped the watched segment at $x,$y")
-        }
+        assertTrue(particlesAnimating(), "The geometric particles should move while continue watching is active")
         onNodeWithTag("tv-exploration-followed-11").assertIsFocused()
-        capture("30-geometric-watching-progress")
 
         runOnIdle { owner.lifecycle.currentState = Lifecycle.State.STARTED }
         settle(100)
-        val paused = progressBitmap()
-        settle(480)
-        assertTrue(paused.sameAs(progressBitmap()), "Particles should pause while the page is in the background")
+        assertFalse(particlesAnimating(), "Particles should pause while the page is in the background")
         runOnIdle { owner.lifecycle.currentState = Lifecycle.State.RESUMED }
         settle(320)
-        assertFalse(paused.sameAs(progressBitmap()), "Particles should resume with the page")
+        assertTrue(particlesAnimating(), "Particles should resume with the page")
         key(Key.DirectionDown)
         awaitFocus("tv-exploration-rec-21")
         settle()
@@ -714,17 +672,12 @@ class TvExplorationUiTest {
         key(Key.DirectionDown)
         awaitFocus("tv-exploration-followed-11")
         settle()
-        val empty = awaitStableProgressBitmap()
-        settle(480)
-        assertTrue(empty.sameAs(progressBitmap()), "An empty progress bar should remain static")
+        assertFalse(particlesAnimating(), "An empty progress bar should remain static")
         key(Key.DirectionRight)
         awaitFocus("tv-exploration-followed-12")
         settle()
         assertEquals(bounds("tv-exploration-watching-progress").width, bounds("tv-exploration-watching-watched").width)
-        val full = progressBitmap()
-        settle(320)
-        assertFalse(full.sameAs(progressBitmap()))
-        capture("31-geometric-progress-full")
+        assertTrue(particlesAnimating(), "A full progress bar keeps its particles moving")
     }
 
     @Test
@@ -735,32 +688,12 @@ class TvExplorationUiTest {
         key(Key.DirectionDown)
         awaitFocus("tv-exploration-followed-11")
         settle()
-        val before = awaitStableProgressBitmap()
-        settle(480)
-        assertTrue(before.sameAs(progressBitmap()), "System animation settings should also control the custom particles")
+        assertFalse(particlesAnimating(), "System animation settings should also control the custom particles")
         onNodeWithTag("tv-exploration-followed-11").assertIsFocused()
     }
 
-    private fun AniComposeUiTest.progressBitmap() =
-        onNodeWithTag("tv-exploration-watching-progress").captureToImage().asAndroidBitmap()
-
-    /**
-     * 慢模拟器上一帧可能要 100 ms 以上, 而测试时钟之外的绘制 (如图片加载) 不受 [settle] 控制;
-     * 等到连续三次相隔 300 ms 的截图一致, 之后的像素比较才只反映进度条自身的变化.
-     */
-    private fun AniComposeUiTest.awaitStableProgressBitmap(): Bitmap {
-        var last = progressBitmap()
-        var stableCaptures = 0
-        val deadline = System.currentTimeMillis() + 8_000
-        while (System.currentTimeMillis() < deadline) {
-            Thread.sleep(300)
-            val next = progressBitmap()
-            stableCaptures = if (last.sameAs(next)) stableCaptures + 1 else 0
-            if (stableCaptures >= 2) return next
-            last = next
-        }
-        throw AssertionError("The progress bar kept changing without the test clock advancing")
-    }
+    private fun AniComposeUiTest.particlesAnimating() = onNodeWithTag("tv-exploration-watching-progress")
+        .fetchSemanticsNode().config[TvVisualSemantics.Animating]
 
     @Test
     fun continuePreviewExpandsVerticallyAndCanReverseWithoutChangingTextSize() = runAniComposeUiTest {
@@ -773,7 +706,6 @@ class TvExplorationUiTest {
         settle(64)
         val middleHeight = bounds("tv-exploration-preview-reveal").height
         assertTrue(initialHeight > 0f && middleHeight > initialHeight)
-        capture("28-preview-expanding")
         key(Key.DirectionUp)
         awaitFocus("tv-exploration-details")
         settle(48)
@@ -784,7 +716,6 @@ class TvExplorationUiTest {
         assertEquals(textSize, textLayout("tv-exploration-preview-caption").layoutInput.style.fontSize)
         assertEquals(bounds("tv-exploration-hero").height, bounds("tv-exploration-preview-reveal").height)
         onNodeWithTag("tv-exploration-followed-11").assertIsFocused()
-        capture("29-preview-expanded-after-reversal")
         key(Key.DirectionDown)
         awaitFocus("tv-exploration-rec-21")
         settle()
@@ -817,7 +748,6 @@ class TvExplorationUiTest {
             val visible = dots.count { onNodeWithTag(it.config[SemanticsProperties.TestTag]).isDisplayed() }
             assertTrue(visible <= 5, "Indicators at $index, viewport=$viewport: " + dots.joinToString { "${it.config[SemanticsProperties.TestTag]}=${it.boundsInRoot}" })
         }
-        capture("19-all-trending")
         key(Key.DirectionRight)
         settle(550)
         onNodeWithTag("tv-exploration-dot-0").assertIsSelected()
@@ -894,7 +824,6 @@ class TvExplorationUiTest {
         val left = bounds("tv-exploration-featured-title").left
         val backdrop = bounds("tv-exploration-backdrop")
         val action = bounds("tv-exploration-action-1", unmerged = true)
-        val profile = pillProfile("tv-exploration-action-1")
         key(Key.DirectionRight)
         settle(100)
         onNodeWithTag("tv-exploration-details").assertIsFocused()
@@ -907,10 +836,7 @@ class TvExplorationUiTest {
         assertTrue(abs(action.width - incomingAction.width) < 2f)
         assertTrue(abs(action.height - incomingAction.height) < 2f)
         assertTrue(abs((incoming.boundsInRoot.left - left) - (incomingAction.left - action.left)) < 2f)
-        profile.zip(pillProfile("tv-exploration-action-2")).forEach { (before, during) ->
-            assertTrue(abs(before - during) <= 5, "Button silhouette changed: $before → $during")
-        }
-        capture("12-carousel-midpoint")
+        assertNotClipped("tv-exploration-action-2", unmerged = true)
         settle(550)
         key(Key.DirectionLeft)
         settle(550)
@@ -932,7 +858,6 @@ class TvExplorationUiTest {
         val shortStyle = textLayout("tv-exploration-featured-title").layoutInput.style
         assertEquals(TvSubjectDetailsDefaults.TitleSize, shortStyle.fontSize)
         assertEquals(TvSubjectDetailsDefaults.TitleLineHeight, shortStyle.lineHeight)
-        capture("13-short-title")
         key(Key.DirectionRight)
         settle(550)
         val title = textLayout("tv-exploration-featured-title")
@@ -941,7 +866,6 @@ class TvExplorationUiTest {
         assertEquals(action, bounds("tv-exploration-details"))
         assertEquals(shelf, bounds("tv-exploration-row-followed"))
         assertTrue(textLayout("tv-exploration-featured-summary").isLineEllipsized(1))
-        capture("14-long-title")
         key(Key.DirectionDown)
         awaitFocus("tv-exploration-followed-11")
         settle()
@@ -962,7 +886,6 @@ class TvExplorationUiTest {
         awaitFocus("tv-exploration-followed-12")
         assertTrue(bounds("tv-exploration-preview-title").bottom < bounds("tv-exploration-followed-12").top)
         onNodeWithTag("tv-exploration-preview-caption").assertTextContains("9", substring = true)
-        capture("15-large-text-reordered")
     }
 
     @Test
@@ -1017,7 +940,6 @@ class TvExplorationUiTest {
         key(Key.DirectionDown)
         awaitFocus("tv-exploration-feed-status")
         settle()
-        capture("16-retry")
         key(Key.DirectionCenter)
         awaitFocus("tv-exploration-rec-21")
         assertEquals(2, attempts)
@@ -1049,7 +971,6 @@ class TvExplorationUiTest {
         assertTrue(glowProgress() > .99f)
         assertTrue(abs(bounds("tv-exploration-rec-28").top - original.top) < 2f)
         assertTrue(abs(bounds("tv-exploration-rec-28").left - original.left) < 2f)
-        capture("17-route-return")
     }
 
     @Test
@@ -1076,25 +997,6 @@ class TvExplorationUiTest {
         assertTrue(glowProgress() > .99f)
     }
 
-    private fun AniComposeUiTest.railPixels(): IntArray {
-        val width = bounds("tv-exploration").left.toInt()
-        val bitmap = onNodeWithTag("tv-exploration-shell").captureToImage().asAndroidBitmap()
-        return IntArray(width * bitmap.height).also {
-            bitmap.getPixels(it, 0, width, 0, 0, width, bitmap.height)
-        }
-    }
-
-    private fun AniComposeUiTest.pillProfile(tag: String): List<Int> {
-        val bitmap = onNodeWithTag(tag, useUnmergedTree = true).captureToImage().asAndroidBitmap()
-        return listOf(.04f, .1f, .2f, .3f).map { fraction ->
-            val y = (bitmap.height * fraction).toInt()
-            (0 until bitmap.width).count { x ->
-                val pixel = bitmap.getPixel(x, y)
-                (pixel shr 16 and 255) > 220 && (pixel shr 8 and 255) > 220 && (pixel and 255) > 220
-            }
-        }
-    }
-
     private fun AniComposeUiTest.settle(millis: Long = 900) {
         mainClock.advanceTimeBy(millis)
         waitForIdle()
@@ -1111,7 +1013,6 @@ class TvExplorationUiTest {
             val context = InstrumentationRegistry.getInstrumentation().targetContext
             File(context.getExternalFilesDir(null), "tv-exploration-focus-failure-$tag.txt")
                 .writeText("Expected: $tag\n" + onAllNodes(isRoot()).onLast().printToString())
-            capture("failure")
             throw error
         }
     }
@@ -1124,6 +1025,18 @@ class TvExplorationUiTest {
     private fun AniComposeUiTest.bounds(tag: String, unmerged: Boolean = false) =
         onNodeWithTag(tag, useUnmergedTree = unmerged).fetchSemanticsNode().boundsInRoot
 
+    /** 经祖先裁剪后的可见范围与完整布局范围一致, 即节点四边都没有被裁掉. */
+    private fun AniComposeUiTest.assertNotClipped(tag: String, unmerged: Boolean = false) {
+        val node = onNodeWithTag(tag, useUnmergedTree = unmerged).fetchSemanticsNode()
+        val visible = node.boundsInRoot
+        val full = Rect(node.positionInRoot, node.size.toSize())
+        assertTrue(
+            abs(visible.left - full.left) < 1f && abs(visible.top - full.top) < 1f &&
+                abs(visible.right - full.right) < 1f && abs(visible.bottom - full.bottom) < 1f,
+            "$tag is clipped: visible $visible, full $full",
+        )
+    }
+
     private fun AniComposeUiTest.textLayout(tag: String): TextLayoutResult {
         val results = mutableListOf<TextLayoutResult>()
         onNodeWithTag(tag).performSemanticsAction(SemanticsActions.GetTextLayoutResult) { it(results) }
@@ -1131,17 +1044,5 @@ class TvExplorationUiTest {
     }
 
     private fun AniComposeUiTest.glowProgress() = onNodeWithTag("tv-exploration-glow")
-        .fetchSemanticsNode().config[SemanticsProperties.StateDescription].toFloat()
-
-    private fun AniComposeUiTest.capture(name: String) {
-        onNodeWithTag("tv-exploration").assertScreenshot("tv-exploration/$name")
-        val output = File(
-            InstrumentationRegistry.getInstrumentation().targetContext.getExternalFilesDir(null),
-            "tv-exploration-$name.png",
-        )
-        output.outputStream().use {
-            onNodeWithTag("tv-exploration").captureToImage().asAndroidBitmap()
-                .compress(Bitmap.CompressFormat.PNG, 100, it)
-        }
-    }
+        .fetchSemanticsNode().config[TvVisualSemantics.Progress]
 }

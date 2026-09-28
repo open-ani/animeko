@@ -12,7 +12,8 @@ Additional requirements:
 
 ## UI Verification
 
-- **Prefer reusable interactive screenshot tests** over driving a real window: use `runAniComposeUiTest` (`utils/ui-testing`) with synthetic input (`performClick`, `performTextInput`, `sendKeyEvent`) and `onNodeWithTag(...).assertScreenshot(...)`. They run without OS input — no focus stealing, no real mouse — and stay in the repo as regression tests. When you verify a UI change manually, consider leaving such a test behind.
+- **Prefer reusable interactive UI tests** over driving a real window: use `runAniComposeUiTest` (`utils/ui-testing`) with synthetic input (`performClick`, `performTextInput`, `sendKeyEvent`) and assert on semantics — focus, text, state, bounds. They run without OS input — no focus stealing, no real mouse — and stay in the repo as regression tests. When you verify a UI change manually, consider leaving such a test behind.
+- `assertScreenshot` compares against golden images only on desktop; on Android it is a no-op. Android and TV device tests do not capture or compare pixels: expose visual state that semantics cannot express (blur, dim, glow, whether an animation runs) through `TvVisualSemantics` in TV code, and test color or geometry calculations as pure functions in host tests. Check the rendered look manually with the skills below.
 - Reserve the skills below for what headless tests cannot cover: JCEF, VLC/mpv playback, native libraries, packaging, window chrome, emulator behavior.
 
 ## Agent Skills

@@ -21,7 +21,6 @@ kotlin {
             api(projects.app.shared.uiSettings)
             api(projects.app.shared.uiFoundationTv)
             implementation(libs.aboutlibraries.compose.m3)
-            implementation(libs.zxing.core)
         }
     }
     sourceSets.androidHostTest {

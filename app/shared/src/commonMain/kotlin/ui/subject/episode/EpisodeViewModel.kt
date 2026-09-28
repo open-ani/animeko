@@ -89,6 +89,7 @@ import me.him188.ani.app.domain.episode.SetEpisodeCollectionTypeUseCase
 import me.him188.ani.app.domain.episode.SubjectEpisodeInfoBundle
 import me.him188.ani.app.domain.episode.UnsafeEpisodeSessionApi
 import me.him188.ani.app.domain.episode.episodeIdFlow
+import me.him188.ani.app.domain.episode.findNeighborEpisode
 import me.him188.ani.app.domain.episode.getCurrentEpisodeId
 import me.him188.ani.app.domain.episode.infoBundleFlow
 import me.him188.ani.app.domain.episode.infoLoadErrorFlow
@@ -356,20 +357,11 @@ open class EpisodeViewModel(
             CacheOnBtPlayExtension,
             SwitchNextEpisodeExtension.Factory(
                 getNextEpisode = { currentEpisodeId ->
-                    val list = episodeCollectionsFlow.first()
                     val subject = subjectCollectionFlow.first()
-                    val currentIndex = list.indexOfFirst { it.episodeId == currentEpisodeId }
-                    if (currentIndex == -1) {
-                        null
-                    } else {
-                        val nextEpisode = list.getOrNull(currentIndex + 1) ?: return@Factory null
-
-                        if (!nextEpisode.episodeInfo.isKnownCompleted(subject.recurrence)) {
-                            null
-                        } else {
-                            nextEpisode.episodeId
-                        }
-                    }
+                    episodeCollectionsFlow.first()
+                        .findNeighborEpisode(currentEpisodeId, offset = 1)
+                        ?.takeIf { it.episodeInfo.isKnownCompleted(subject.recurrence) }
+                        ?.episodeId
                 },
             ),
             SwitchMediaOnPlayerErrorExtension,
