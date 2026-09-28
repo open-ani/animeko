@@ -1077,8 +1077,9 @@ workflow(
                 && matrix.uploadDesktopInstallers
     }.let { it.singleOrNull() ?: error("List contain multiple elements: $it") }
         .let { (_, build) ->
+            // 不在自托管 Mac 上验证: 它与 GithubMacOS15AppleSilicon 系统和架构相同, 验证的是同一个 DMG,
+            // 而这台 Mac 是所有 run 共用的瓶颈.
             listOf(
-                Runner.SelfHostedMacOS15,
                 Runner.GithubMacOS14,
                 Runner.GithubMacOS15AppleSilicon,
             ).forEach { runner ->
