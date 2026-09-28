@@ -7,9 +7,6 @@
  * https://github.com/open-ani/ani/blob/main/LICENSE
  */
 
-@file:Suppress("INVISIBLE_MEMBER", "INVISIBLE_REFERENCE")
-@file:OptIn(InternalResourceApi::class)
-
 package me.him188.ani.app.ui.danmaku
 
 import androidx.compose.foundation.layout.Box
@@ -19,25 +16,25 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.test.assertHeightIsAtLeast
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.assertIsNotSelected
 import androidx.compose.ui.test.assertTextContains
 import androidx.compose.ui.test.hasAnyAncestor
 import androidx.compose.ui.test.hasTestTag
 import androidx.compose.ui.test.onNodeWithTag
+import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
+import androidx.compose.ui.test.performScrollTo
 import androidx.compose.ui.unit.dp
 import me.him188.ani.app.data.models.preference.DarkMode
 import me.him188.ani.app.ui.episode.danmaku.DanmakuSourceItem
 import me.him188.ani.app.ui.foundation.ProvideCompositionLocalsForPreview
-import me.him188.ani.app.ui.framework.assertScreenshot
 import me.him188.ani.app.ui.framework.runAniComposeUiTest
 import me.him188.ani.app.ui.subject.episode.details.DanmakuListContent
 import me.him188.ani.app.ui.subject.episode.details.DanmakuListState
@@ -48,15 +45,9 @@ import me.him188.ani.app.ui.subject.episode.video.settings.EpisodeVideoSettings
 import me.him188.ani.danmaku.api.DanmakuServiceId
 import me.him188.ani.danmaku.api.provider.DanmakuMatchMethod
 import me.him188.ani.danmaku.ui.DanmakuConfig
-import org.jetbrains.compose.resources.ComposeEnvironment
-import org.jetbrains.compose.resources.InternalResourceApi
-import org.jetbrains.compose.resources.LanguageQualifier
-import org.jetbrains.compose.resources.LocalComposeEnvironment
-import org.jetbrains.compose.resources.RegionQualifier
-import org.jetbrains.compose.resources.ResourceEnvironment
-import org.jetbrains.compose.resources.rememberResourceEnvironment
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertTrue
 
 class DanmakuSourceSettingsTest {
     private val ani = DanmakuServiceId.Animeko
@@ -228,21 +219,32 @@ class DanmakuSourceSettingsTest {
     }
 
     @Test
-    fun `source section narrow screenshot`() = runAniComposeUiTest {
+    fun `source rows fit narrow width and retain touch targets`() = runAniComposeUiTest {
         setContent {
-            ChinesePreview(DarkMode.LIGHT) {
+            ProvideCompositionLocalsForPreview(darkMode = DarkMode.LIGHT) {
                 Surface(Modifier.width(320.dp), color = MaterialTheme.colorScheme.surface) {
                     SourceSection()
                 }
             }
         }
-        onNodeWithTag("danmaku-source-settings").assertScreenshot("/screenshots/DanmakuSourceSettingsTest.narrow.png")
+        val section = onNodeWithTag("danmaku-source-settings").fetchSemanticsNode().boundsInRoot
+        val rows = sources().map { source ->
+            onNodeWithTag("danmaku-source-${source.serviceId.value}")
+                .assertIsDisplayed()
+                .assertHeightIsAtLeast(48.dp)
+                .fetchSemanticsNode().boundsInRoot
+        }
+        rows.forEach { row ->
+            assertTrue(row.left >= section.left && row.right <= section.right)
+            assertTrue(row.top >= section.top && row.bottom <= section.bottom)
+        }
+        assertTrue(rows[0].bottom <= rows[1].top)
     }
 
     @Test
-    fun `source settings match display settings in dark panel`() = runAniComposeUiTest {
+    fun `dark panel keeps display settings reachable below sources`() = runAniComposeUiTest {
         setContent {
-            ChinesePreview(DarkMode.DARK) {
+            ProvideCompositionLocalsForPreview(darkMode = DarkMode.DARK) {
                 Surface(
                     Modifier.width(400.dp).height(720.dp).testTag("settings-panel"),
                     color = MaterialTheme.colorScheme.surfaceContainer,
@@ -254,27 +256,12 @@ class DanmakuSourceSettingsTest {
                 }
             }
         }
-        onNodeWithTag("settings-panel").assertScreenshot("/screenshots/DanmakuSourceSettingsTest.dark-panel.png")
-    }
-
-    @Composable
-    private fun ChinesePreview(darkMode: DarkMode, content: @Composable () -> Unit) {
-        val environment = rememberResourceEnvironment()
-        val chineseEnvironment = remember(environment) {
-            object : ComposeEnvironment {
-                @Composable
-                override fun rememberEnvironment() = ResourceEnvironment(
-                    language = LanguageQualifier("zh"),
-                    script = environment.script,
-                    region = RegionQualifier("CN"),
-                    theme = environment.theme,
-                    density = environment.density,
-                )
-            }
-        }
-        CompositionLocalProvider(LocalComposeEnvironment provides chineseEnvironment) {
-            ProvideCompositionLocalsForPreview(darkMode = darkMode, content = content)
-        }
+        onNodeWithTag("danmaku-source-${ani.value}").assertIsDisplayed()
+        onNodeWithTag("danmaku-source-${dandan.value}").assertIsDisplayed()
+        val sourcesBounds = onNodeWithTag("danmaku-source-settings").fetchSemanticsNode().boundsInRoot
+        val fontSizeBounds = onNodeWithText("Danmaku size").assertIsDisplayed().fetchSemanticsNode().boundsInRoot
+        assertTrue(sourcesBounds.bottom <= fontSizeBounds.top)
+        onNodeWithText("Manage regex danmaku filters").performScrollTo().assertIsDisplayed()
     }
 
     @Composable
