@@ -18,10 +18,18 @@ import io.ktor.client.request.parameter
 import io.ktor.http.HttpHeaders
 import io.ktor.http.HttpStatusCode
 import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.async
+import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.flow.asFlow
+import kotlinx.coroutines.sync.Semaphore
+import kotlinx.coroutines.sync.withPermit
+import kotlinx.coroutines.withTimeoutOrNull
+import kotlinx.io.IOException
 import kotlinx.serialization.Serializable
 import me.him188.ani.datasources.api.DefaultMedia
 import me.him188.ani.datasources.api.EpisodeSort
+import me.him188.ani.datasources.api.MediaChapter
+import me.him188.ani.datasources.api.MediaChapterKind
 import me.him188.ani.datasources.api.MediaExtraFiles
 import me.him188.ani.datasources.api.MediaProperties
 import me.him188.ani.datasources.api.Subtitle
@@ -51,6 +59,8 @@ private const val TITLE_SEARCH_ITEM_TYPES = "$TYPE_SERIES,$TYPE_SEASON,$TYPE_EPI
 private const val FIELD_PROVIDER_IDS = "ProviderIds"
 private const val PROVIDER_ID_BANGUMI = "Bangumi"
 private const val PROVIDER_ID_BANGUMI_SUBJECT = "BangumiSubject"
+private const val CHAPTER_ENRICHMENT_TIMEOUT_MILLIS = 5_000L
+private const val CHAPTER_ENRICHMENT_CONCURRENCY = 4
 
 abstract class BaseJellyfinMediaSource(
     private val client: ScopedHttpClient,
@@ -64,6 +74,9 @@ abstract class BaseJellyfinMediaSource(
     )
 
     protected abstract suspend fun getAuthorization(): Authorization
+
+    /** Reads a cached authorization without waiting for login or starting a network request. */
+    protected open fun getCachedAuthorization(): Authorization? = null
 
     /**
      * Invalidates [authorization] after the server rejects it.
@@ -91,10 +104,56 @@ abstract class BaseJellyfinMediaSource(
         return SinglePagePagedSource {
             val matches = findBySubjectNames(query)
             val authorization = getAuthorization()
-            matches
-                .mapNotNull { it.toMediaMatch(query, authorization.accessToken) }
+            val retainedMatches = matches.filter {
+                it.toMediaMatch(query, authorization.accessToken) != null
+            }
+
+            val chaptersByItemId = fetchChapters(retainedMatches.map { it.item })
+            val currentAuthorization = getCachedAuthorization() ?: authorization
+            retainedMatches
+                .mapNotNull { matchedItem ->
+                    val match = matchedItem.toMediaMatch(query, currentAuthorization.accessToken)
+                        ?: return@mapNotNull null
+                    val chapters = chaptersByItemId[matchedItem.item.Id]
+                        ?: matchedItem.item.toEmbeddedChapters()
+                    if (chapters.isEmpty()) {
+                        match
+                    } else {
+                        val media = match.media as DefaultMedia
+                        match.copy(
+                            media = media.copy(
+                                extraFiles = MediaExtraFiles(
+                                    subtitles = media.extraFiles.subtitles,
+                                    chapters = chapters,
+                                ),
+                            ),
+                        )
+                    }
+                }
                 .asFlow()
         }
+    }
+
+    private suspend fun fetchChapters(items: List<Item>): Map<String, List<MediaChapter>> {
+        // Each child owns its chapter list. Read the results after all children finish or are cancelled.
+        val chaptersByItem = items.map { it to it.toEmbeddedChapters().toMutableList() }
+        withTimeoutOrNull(CHAPTER_ENRICHMENT_TIMEOUT_MILLIS) {
+            val semaphore = Semaphore(CHAPTER_ENRICHMENT_CONCURRENCY)
+            chaptersByItem.map { (item, chapters) ->
+                async {
+                    semaphore.withPermit {
+                        try {
+                            fetchChaptersAndSegments(item.Id, chapters)
+                        } catch (e: CancellationException) {
+                            throw e
+                        } catch (e: Exception) {
+                            logger.warn(e) { "Failed to fetch chapters for item ${item.Id}" }
+                        }
+                    }
+                }
+            }.awaitAll()
+        }
+        return chaptersByItem.associate { (item, chapters) -> item.Id to chapters.toList() }
     }
 
     /**
@@ -363,8 +422,9 @@ abstract class BaseJellyfinMediaSource(
     }
 
     /**
-     * MediaStreams is large and unnecessary during discovery. Fetch it only for selected items.
-     * If this optional enrichment fails, keep the playable item and continue without subtitles.
+     * MediaStreams and Chapters are large and unnecessary during discovery. Fetch them only for
+     * selected items. If this optional enrichment fails, keep the playable item and continue
+     * without subtitle or embedded chapter metadata.
      */
     private suspend fun hydrateMediaStreams(matches: List<MatchedItem>): List<MatchedItem> {
         if (matches.isEmpty()) return emptyList()
@@ -373,7 +433,7 @@ abstract class BaseJellyfinMediaSource(
             doSearch(
                 recursive = false,
                 itemIds = matches.joinToString(",") { it.item.Id },
-                fields = "MediaStreams",
+                fields = "MediaStreams,Chapters",
                 limit = matches.size,
                 enableTotalRecordCount = false,
             ).Items.associateBy { it.Id }
@@ -381,7 +441,7 @@ abstract class BaseJellyfinMediaSource(
             throw e
         } catch (e: Throwable) {
             logger.warn(e) {
-                "Failed to load MediaStreams for Jellyfin items; continuing without subtitle metadata"
+                "Failed to load Jellyfin item metadata; continuing without subtitles or chapters"
             }
             emptyMap()
         }
@@ -390,7 +450,13 @@ abstract class BaseJellyfinMediaSource(
             val item = match.item
             match.copy(
                 item = hydratedItems[item.Id]
-                    ?.let { item.copy(MediaStreams = it.MediaStreams) }
+                    ?.let {
+                        item.copy(
+                            MediaStreams = it.MediaStreams,
+                            Chapters = it.Chapters,
+                            RunTimeTicks = it.RunTimeTicks,
+                        )
+                    }
                     ?: item,
             )
         }
@@ -482,6 +548,76 @@ abstract class BaseJellyfinMediaSource(
 
     private fun getSubtitleUri(itemId: String, index: Int, codec: String): String {
         return "$baseUrl/Videos/$itemId/$itemId/Subtitles/$index/0/Stream.$codec"
+    }
+
+    private suspend fun fetchChaptersAndSegments(itemId: String, chapters: MutableList<MediaChapter>) {
+        // 1. Try Jellyfin 10.10+ native MediaSegments API
+        val nativeSegments = fallbackOnFailure { doGetMediaSegments(itemId) }
+        chapters += nativeSegments?.Items.orEmpty().mapNotNull { segment ->
+            val kind = when (segment.Type.lowercase()) {
+                "intro" -> MediaChapterKind.OPENING
+                "outro" -> MediaChapterKind.ENDING
+                else -> return@mapNotNull null
+            }
+            val offsetMillis = segment.StartTicks / 10000
+            val durationMillis = (segment.EndTicks - segment.StartTicks) / 10000
+            if (offsetMillis < 0 || durationMillis <= 0) return@mapNotNull null
+            MediaChapter(
+                name = kind.displayName,
+                durationMillis = durationMillis,
+                offsetMillis = offsetMillis,
+                kind = kind,
+            )
+        }
+
+        // 2. Fill missing segment types from the Intro Skipper plugin.
+        if (chapters.none { it.kind == MediaChapterKind.OPENING } ||
+            chapters.none { it.kind == MediaChapterKind.ENDING }
+        ) {
+            val pluginSegments = fallbackOnFailure { doGetIntroSkipperSegments(itemId) }
+            pluginSegments?.toMediaChapters()?.forEach { chapter ->
+                if (chapters.none { it.kind == chapter.kind }) {
+                    chapters += chapter
+                }
+            }
+        }
+
+        // 3. Fall back to the legacy Intro Skipper API for any still-missing type.
+        if (chapters.none { it.kind == MediaChapterKind.OPENING }) {
+            fallbackOnFailure { doGetIntroTimestamps(itemId) }
+                ?.toMediaChapter(MediaChapterKind.OPENING)
+                ?.let(chapters::add)
+        }
+        if (chapters.none { it.kind == MediaChapterKind.ENDING }) {
+            val opening = chapters.firstOrNull { it.kind == MediaChapterKind.OPENING }
+            fallbackOnFailure { doGetIntroTimestamps(itemId, mode = "Credits") }
+                ?.toMediaChapter(MediaChapterKind.ENDING)
+                // Old plugin versions may ignore mode=Credits and return the intro again.
+                ?.takeIf { credits ->
+                    opening == null || credits.offsetMillis >= opening.offsetMillis + opening.durationMillis
+                }
+                ?.let(chapters::add)
+        }
+    }
+
+    // Their explicit kind prevents embedded chapters from being mistaken for OP/ED while still
+    // allowing the player to display them.
+    private fun Item.toEmbeddedChapters(): List<MediaChapter> {
+        val sortedChapters = Chapters.sortedBy { it.StartPositionTicks }
+        return sortedChapters.mapIndexed { index, chapter ->
+            val startTicks = chapter.StartPositionTicks
+            val endTicks = sortedChapters.getOrNull(index + 1)?.StartPositionTicks ?: RunTimeTicks
+            val offsetMillis = startTicks / 10000
+            val durationMillis = if (endTicks != null && endTicks > startTicks) {
+                (endTicks - startTicks) / 10000
+            } else {
+                0L
+            }
+            val name = chapter.Name?.takeIf { it.isNotBlank() }
+                ?: chapter.MarkerType?.takeIf { it.isNotBlank() }
+                ?: "Ch ${index + 1}"
+            MediaChapter(name = name, durationMillis = durationMillis, offsetMillis = offsetMillis)
+        }
     }
 
     private data class ParsedSubjectName(
@@ -608,6 +744,23 @@ abstract class BaseJellyfinMediaSource(
             startIndex?.let { parameter("startIndex", it) }
             limit?.let { parameter("limit", it) }
             enableTotalRecordCount?.let { parameter("enableTotalRecordCount", it) }
+        }
+    }
+
+    private suspend fun doGetMediaSegments(itemId: String): MediaSegmentQueryResult {
+        return authorizedGet("$baseUrl/MediaSegments/$itemId") {
+            url.parameters.append("includeSegmentTypes", "Intro")
+            url.parameters.append("includeSegmentTypes", "Outro")
+        }
+    }
+
+    private suspend fun doGetIntroSkipperSegments(itemId: String):IntroSkipperSegmentsDto {
+        return authorizedGet("$baseUrl/Episode/$itemId/IntroSkipperSegments")
+    }
+
+    private suspend fun doGetIntroTimestamps(itemId: String, mode: String? = null): IntroTimestampsDto {
+        return authorizedGet("$baseUrl/Episode/$itemId/IntroTimestamps") {
+            mode?.let { parameter("mode", it) }
         }
     }
 
@@ -829,6 +982,18 @@ private data class MatchedSeason(
 private class JellyfinAuthorizationException :
     IllegalStateException("Jellyfin rejected the configured authorization")
 
+internal suspend fun <T> fallbackOnFailure(block: suspend () -> T): T? {
+    return try {
+        block()
+    } catch (e: CancellationException) {
+        throw e
+    } catch (e: IOException) {
+        throw e
+    } catch (_: Exception) {
+        null
+    }
+}
+
 @Serializable
 private class SearchResponse(
     val Items: List<Item> = emptyList(),
@@ -848,6 +1013,99 @@ private data class MediaStream(
 
 @Serializable
 @Suppress("PropertyName")
+internal data class ChapterInfoDto(
+    val StartPositionTicks: Long,
+    val Name: String? = null,
+    val MarkerType: String? = null,
+)
+
+@Serializable
+@Suppress("PropertyName")
+internal data class MediaSegmentDto(
+    val Id: String? = null,
+    val ItemId: String? = null,
+    val Type: String, // "Intro", "Outro", "Recap", "Preview", "Commercial"
+    val StartTicks: Long,
+    val EndTicks: Long,
+)
+
+@Serializable
+@Suppress("PropertyName")
+internal data class MediaSegmentQueryResult(
+    val Items: List<MediaSegmentDto> = emptyList(),
+)
+
+@Serializable
+@Suppress("PropertyName")
+internal data class IntroTimestampsDto(
+    val EpisodeId: String? = null,
+    val Valid: Boolean = false,
+    val IntroStart: Double = 0.0,
+    val IntroEnd: Double = 0.0,
+    val ShowSkipPromptAt: Double? = null,
+    val HideSkipPromptAt: Double? = null,
+)
+
+@Serializable
+@Suppress("PropertyName")
+internal data class IntroSkipperSegmentsDto(
+    val Introduction: IntroSkipperSegmentDto? = null,
+    val Credits: IntroSkipperSegmentDto? = null,
+)
+
+@Serializable
+@Suppress("PropertyName")
+internal data class IntroSkipperSegmentDto(
+    val Valid: Boolean = false,
+    val Start: Double? = null,
+    val End: Double? = null,
+    val IntroStart: Double? = null,
+    val IntroEnd: Double? = null,
+) {
+    val resolvedStart: Double? get() = Start ?: IntroStart
+    val resolvedEnd: Double? get() = End ?: IntroEnd
+}
+
+internal fun IntroSkipperSegmentsDto.toMediaChapters(): List<MediaChapter> = listOfNotNull(
+    Introduction?.toMediaChapter(MediaChapterKind.OPENING),
+    Credits?.toMediaChapter(MediaChapterKind.ENDING),
+)
+
+private fun IntroSkipperSegmentDto.toMediaChapter(kind: MediaChapterKind): MediaChapter? {
+    val start = resolvedStart ?: return null
+    val end = resolvedEnd ?: return null
+    if (!Valid || start < 0.0 || end <= start) return null
+    val offsetMillis = (start * 1000).toLong()
+    val endMillis = (end * 1000).toLong()
+    return MediaChapter(
+        name = kind.displayName,
+        durationMillis = endMillis - offsetMillis,
+        offsetMillis = offsetMillis,
+        kind = kind,
+    )
+}
+
+private fun IntroTimestampsDto.toMediaChapter(kind: MediaChapterKind): MediaChapter? {
+    if (!Valid || IntroStart < 0.0 || IntroEnd <= IntroStart) return null
+    val offsetMillis = (IntroStart * 1000).toLong()
+    val endMillis = (IntroEnd * 1000).toLong()
+    return MediaChapter(
+        name = kind.displayName,
+        durationMillis = endMillis - offsetMillis,
+        offsetMillis = offsetMillis,
+        kind = kind,
+    )
+}
+
+private val MediaChapterKind.displayName: String
+    get() = when (this) {
+        MediaChapterKind.OPENING -> "OP"
+        MediaChapterKind.ENDING -> "ED"
+        MediaChapterKind.CHAPTER -> error("A regular chapter has no fixed display name")
+    }
+
+@Serializable
+@Suppress("PropertyName")
 private data class Item(
     val Name: String,
     val SeasonName: String? = null,
@@ -859,4 +1117,6 @@ private data class Item(
     val Type: String,
     val ProviderIds: Map<String, String> = emptyMap(),
     val MediaStreams: List<MediaStream> = emptyList(),
+    val Chapters: List<ChapterInfoDto> = emptyList(),
+    val RunTimeTicks: Long? = null,
 )

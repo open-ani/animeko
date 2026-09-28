@@ -19,26 +19,16 @@ import me.him188.ani.app.data.models.preference.VideoScaffoldConfig
 import me.him188.ani.app.domain.media.player.prefetch.MediaPrefetchRequest
 import me.him188.ani.app.domain.media.player.prefetch.MediaTimeRange
 import org.openani.mediamp.metadata.Chapter
-import kotlin.time.Duration
-import kotlin.time.Duration.Companion.milliseconds
-import kotlin.time.Duration.Companion.minutes
-import kotlin.time.Duration.Companion.seconds
 
 internal val DEFAULT_OP_ED_SKIP_DURATION = VideoScaffoldConfig.Default.opEdSkipDuration
 
 @Stable
 class PlayerSkipOpEdState(
-    chapters: State<List<Chapter>>,
+    private val chapters: State<List<Chapter>>,
     private val onSkip: (targetMillis: Long) -> Unit,
-    videoLength: State<Duration>,
 ) {
     private var currentChapter: CurrentChapter? by mutableStateOf(null)
-    private val opEdChapters by derivedStateOf {
-        chapters.value.filter {
-            OpEdLength.fromVideoLengthOrNull(videoLength.value)
-                ?.isOpEdChapter(it.durationMillis.milliseconds) == true
-        }.map { CurrentChapter(chapter = it, false) }
-    }
+    private var opEdChapters = emptyList<CurrentChapter>()
 
     val skipped: Boolean by derivedStateOf {
         currentChapter?.skipped ?: false
@@ -71,17 +61,23 @@ class PlayerSkipOpEdState(
      * 并且如果[currentPos]在章节开头的位置，根据[skipped]跳过该章节
      */
     fun update(currentPos: Long) {
-        prefetchRequest = computePrefetchRequest(currentPos)
-        if (opEdChapters.isEmpty()) return
-        // 在显示跳过提示范围
-        opEdChapters.find { it.chapter.offsetMillis in currentPos - 1000..currentPos + 5000 }?.let {
-            if (currentChapter == null) {
-                currentChapter = it
-            }
-        } ?: run {
-            currentChapter?.skipped = true
-            currentChapter = null
+        // 同一章节保留跳过状态；离开候选列表的章节不保留状态。
+        opEdChapters = chapters.value.map { chapter ->
+            opEdChapters.find {
+                it.chapter.name == chapter.name &&
+                        it.chapter.offsetMillis == chapter.offsetMillis &&
+                        it.chapter.durationMillis == chapter.durationMillis
+            } ?: CurrentChapter(chapter, false)
         }
+        prefetchRequest = computePrefetchRequest(currentPos)
+        // 在显示跳过提示范围
+        val candidate = opEdChapters.find {
+            it.chapter.offsetMillis in currentPos - 1000..currentPos + 5000
+        }
+        if (candidate == null) {
+            currentChapter?.skipped = true
+        }
+        currentChapter = candidate
         // 在跳过 OP/ED 范围
         currentChapter?.takeIf { it.chapter.offsetMillis in currentPos - 1000..currentPos }?.run {
             if (skipped) return@run
@@ -121,21 +117,4 @@ class PlayerSkipOpEdState(
 @Stable
 class CurrentChapter(val chapter: Chapter, skipped: Boolean) {
     var skipped by mutableStateOf(skipped)
-}
-
-fun interface OpEdLength {
-    fun isOpEdChapter(chapterLength: Duration): Boolean
-
-    companion object {
-        private val Normal = OpEdLength { it in 80.seconds..95.seconds }
-        private val Short = OpEdLength { it in 55.seconds..65.seconds }
-
-        fun fromVideoLengthOrNull(length: Duration): OpEdLength? {
-            return when {
-                length > 20.minutes -> Normal
-                length > 10.minutes -> Short
-                else -> null
-            }
-        }
-    }
 }
