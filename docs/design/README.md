@@ -10,3 +10,7 @@
 
 - [Media Selector 重构方案](media/media-selector-refactor.md)
 - [Media Selector 行为清单 (重构基线)](media/media-selector-behavior-catalog.md)
+
+## Tracking
+
+- [可扩展追踪子系统与 AniList 首个实现](tracking/anilist-tracking-subsystem.md)

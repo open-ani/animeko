@@ -30,8 +30,10 @@ import me.him188.ani.app.data.repository.subject.SubjectCollectionRepository
 import me.him188.ani.app.data.repository.subject.toEpisodeType
 import me.him188.ani.app.data.repository.subject.toUnifiedCollectionType
 import me.him188.ani.app.domain.episode.EpisodeCollections
+import me.him188.ani.app.domain.episode.EpisodeTrackingSync
 import me.him188.ani.client.models.AniEpisodeCollection
 import me.him188.ani.datasources.api.EpisodeSort
+import me.him188.ani.datasources.api.EpisodeType
 import me.him188.ani.datasources.api.PackedDate
 import me.him188.ani.datasources.api.topic.UnifiedCollectionType
 import me.him188.ani.utils.logging.warn
@@ -79,6 +81,7 @@ class EpisodeCollectionRepository(
     private val animeScheduleRepository: AnimeScheduleRepository,
     subjectCollectionRepository: Lazy<SubjectCollectionRepository>,
     private val getEpisodeTypeFiltersUseCase: GetEpisodeTypeFiltersUseCase,
+    private val trackingSync: EpisodeTrackingSync? = null,
     defaultDispatcher: CoroutineContext = Dispatchers.Default,
     private val cacheExpiry: Duration = 1.hours,
     private val nowMillis: () -> Long = { currentTimeMillis() },
@@ -175,10 +178,13 @@ class EpisodeCollectionRepository(
      * 设置指定条目的所有剧集为已看. 先写本地并入队, 由 [EpisodeCollectionSyncer] 推到服务端.
      */
     suspend fun setAllEpisodesWatched(subjectId: Int) = withContext(defaultDispatcher) {
-        // 优先用本地缓存, 离线也能标; 缓存为空 (还没打开过条目) 才走会拉网络的流.
-        val episodeIds = episodeCollectionDao.listIdBySubjectId(subjectId).first().ifEmpty {
-            subjectEpisodeCollectionInfosFlow(subjectId).first().map { it.episodeId }
+        val cachedEpisodeIds = episodeCollectionDao.listIdBySubjectId(subjectId).first()
+        val fallbackEpisodes = if (cachedEpisodeIds.isEmpty()) {
+            subjectEpisodeCollectionInfosFlow(subjectId).first()
+        } else {
+            null
         }
+        val episodeIds = cachedEpisodeIds.ifEmpty { fallbackEpisodes.orEmpty().map { it.episodeId } }
         if (episodeIds.isEmpty()) return@withContext
 
         val now = nowMillis()
@@ -194,6 +200,19 @@ class EpisodeCollectionRepository(
             },
         )
         onDirtyChanged()
+
+        val latestMainStoryEpisodeId = when {
+            trackingSync == null -> null
+            fallbackEpisodes != null -> fallbackEpisodes
+                .filter { it.episodeInfo.type == null || it.episodeInfo.type == EpisodeType.MainStory }
+                .maxByOrNull { it.episodeInfo.ep?.number ?: 0f }
+                ?.episodeId
+            else -> episodeCollectionDao.filterBySubjectId(subjectId).first()
+                .filter { it.episodeType == null || it.episodeType == EpisodeType.MainStory }
+                .maxByOrNull { it.ep?.number ?: 0f }
+                ?.episodeId
+        }
+        latestMainStoryEpisodeId?.let { trackingSync?.onEpisodeWatched(subjectId, it) }
     }
 
     /**

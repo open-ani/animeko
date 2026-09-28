@@ -153,6 +153,7 @@ import me.him188.ani.app.ui.subject.AiringLabelState
 import me.him188.ani.app.ui.subject.SubjectProgressState
 import me.him188.ani.app.ui.subject.collection.components.EditableSubjectCollectionTypeButton
 import me.him188.ani.app.ui.subject.details.components.CollectionData
+import me.him188.ani.app.ui.subject.details.tracking.TrackingSection
 import me.him188.ani.app.ui.subject.details.components.SeasonTag
 import me.him188.ani.app.ui.subject.details.components.SelectEpisodeButtons
 import me.him188.ani.app.ui.subject.details.components.SubjectBlurredBackground
@@ -264,7 +265,6 @@ fun SubjectDetailsScreen(
                 selfInfo,
                 layoutParams,
                 onPlay = onPlay,
-                onClickLogin = { navigator.navigateEmailLoginStart() },
                 onClickTag,
                 onEpisodeCollectionUpdate = onEpisodeCollectionUpdate,
                 Modifier,
@@ -299,7 +299,6 @@ private fun SubjectDetailsPage(
     selfInfo: SelfInfoUiState,
     layoutParams: SubjectDetailsLayoutParams,
     onPlay: (episodeId: Int) -> Unit,
-    onClickLogin: () -> Unit,
     onClickTag: (Tag) -> Unit,
     onEpisodeCollectionUpdate: (SetEpisodeCollectionTypeRequest) -> Unit,
     modifier: Modifier = Modifier,
@@ -407,7 +406,6 @@ private fun SubjectDetailsPage(
                     onPlay = onPlay,
                     onEpisodeLongClick = onEpisodeLongClick,
                     onClickTag = onClickTag,
-                    onClickLogin = onClickLogin,
                     onShowComments = { showComments = true },
                     onClickCache = { navigator.navigateSubjectCaches(uiState.subjectId) },
                     modifier = modifier,
@@ -440,12 +438,8 @@ private fun SubjectDetailsPage(
                 SubjectDetailsDefaults.CollectionData(state.info?.collectionStats ?: SubjectCollectionStats.Zero)
             },
             collectionActions = {
-                if (selfInfo.isSessionValid == false) {
-                    OutlinedButton(onClickLogin) {
-                        Text(stringResource(Lang.subject_details_login_to_collect))
-                    }
-                } else {
-                    EditableSubjectCollectionTypeButton(uiState.collectionTypeEdit, state)
+                state.info?.let { info ->
+                    TrackingSection(info.subjectId)
                 }
             },
             rating = {

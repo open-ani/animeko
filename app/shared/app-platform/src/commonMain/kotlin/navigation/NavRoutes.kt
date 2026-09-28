@@ -174,6 +174,7 @@ enum class MainScreenPage {
 @Serializable
 enum class SettingsTab {
     PROFILE,
+    TRACKING,
 
     APPEARANCE,
     THEME,

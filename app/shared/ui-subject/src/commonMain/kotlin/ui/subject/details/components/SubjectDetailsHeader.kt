@@ -210,17 +210,13 @@ fun SubjectDetailsHeaderCompact(
             Modifier.padding(top = 16.dp).align(Alignment.Start),
             verticalAlignment = Alignment.CenterVertically,
         ) {
-            Row(
-                Modifier.weight(1f),
-                verticalAlignment = Alignment.Bottom,
-            ) {
-                collectionData()
-            }
-            collectionAction()
+            collectionData()
         }
 
-        Box(Modifier.paddingIfNotEmpty(top = 8.dp), contentAlignment = Alignment.CenterEnd) {
-            selectEpisodeButton()
+        Row(Modifier.fillMaxWidth().paddingIfNotEmpty(top = 8.dp),
+            horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
+            Box(Modifier.weight(1f), contentAlignment = Alignment.CenterEnd) { selectEpisodeButton() }
+            collectionAction()
         }
     }
 }

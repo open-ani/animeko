@@ -19,6 +19,8 @@ kotlin {
         namespace = "me.him188.ani.app.ui.subject"
     }
     sourceSets.commonMain.dependencies {
+        implementation(projects.tracking.api)
+        implementation(libs.kotlinx.datetime)
         api(projects.app.shared.uiFoundation)
         api(projects.app.shared.uiAdaptive)
         api(projects.app.shared.uiComment)
@@ -28,8 +30,6 @@ kotlin {
     sourceSets.commonTest.dependencies {
         implementation(projects.utils.uiTesting)
         implementation(projects.utils.androidxLifecycleRuntimeTesting)
-    }
-    sourceSets.androidMain.dependencies {
     }
     sourceSets.desktopMain.dependencies {
     }
