@@ -154,9 +154,9 @@
     - `mediaselect/manual/ManualBrowseState.kt`：手动查找的搜索、浏览、选择与播放，含验证码交互。
     - `mediaselect/bt/BtListPresentation.kt`：BT 页的会话内筛选状态与列表投影纯函数。
 - 页面与公共件（同目录）：
-    - `mediaselect/MediaSelectorMode.kt`：模式枚举、「正在观看」模型、版式阈值。
+    - `mediaselect/MediaSelectorMode.kt`：模式枚举、「正在观看」模型、版式阈值与侧边栏换容器的判定。
     - `mediaselect/common/MediaSelectorChrome.kt`：模式下拉 chip、「正在观看」卡片与手动查找 / BT 共用的搜索框；
-      `mediaselect/common/MediaSelectorDialog.kt`：手动查找 / BT 的容器布局与对话框包装。
+      `mediaselect/common/MediaSelectorDialog.kt`：手动查找 / BT 的容器布局、对话框包装与容器内容（播放器与详情页共用）。
     - `mediaselect/auto/AutoMatchPage.kt`、`mediaselect/selector/MediaSelectorWebColumn.kt`：自动匹配页（源行与救援按钮）。
     - `mediaselect/manual/ManualBrowsePage.kt`、`ManualBrowseComponents.kt`：手动查找的双栏 / 堆叠两页。
     - `mediaselect/bt/BtResourcesPage.kt`、`BtListViews.kt`、`BtPanels.kt`：BT 页、表格与紧凑列表、数据源与筛选面板；

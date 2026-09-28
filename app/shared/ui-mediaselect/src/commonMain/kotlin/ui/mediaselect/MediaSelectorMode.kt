@@ -59,7 +59,7 @@ object MediaSelectorLayoutDefaults {
     val WideContentMinWidth: Dp = 720.dp
 
     /**
-     * 容器可用高度低于此值时铺满.
+     * 容器可用高度低于此值时铺满; 侧边栏可用高度低于此值时手动查找与 BT 改用容器, 见 [needsContainer].
      */
     val CompactDialogMaxHeight: Dp = 480.dp
 
@@ -67,3 +67,10 @@ object MediaSelectorLayoutDefaults {
     val DialogMaxHeight: Dp = 700.dp
     val DialogMargin: Dp = 64.dp
 }
+
+/**
+ * 侧边栏可用高度为 [sideSheetHeight] 时, 这个模式是否关掉侧边栏、改用容器.
+ * 太矮时除去标题、搜索框与筛选行, 手动查找与 BT 的列表只剩一两行; 自动匹配的源行矮, 总留在侧边栏.
+ */
+fun MediaSelectorMode.needsContainer(sideSheetHeight: Dp): Boolean =
+    this != MediaSelectorMode.AUTO && sideSheetHeight < MediaSelectorLayoutDefaults.CompactDialogMaxHeight

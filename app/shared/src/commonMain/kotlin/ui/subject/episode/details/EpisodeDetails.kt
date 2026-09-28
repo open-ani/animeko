@@ -74,7 +74,9 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalLayoutDirection
+import androidx.compose.ui.platform.LocalWindowInfo
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.tooling.preview.PreviewLightDark
@@ -134,9 +136,12 @@ import me.him188.ani.app.ui.mediaselect.MediaSelectorMode
 import me.him188.ani.app.ui.mediaselect.WatchingEpisode
 import me.him188.ani.app.ui.mediaselect.auto.AutoMatchPage
 import me.him188.ani.app.ui.mediaselect.bt.BtResourcesPage
+import me.him188.ani.app.ui.mediaselect.common.MediaSelectorDialog
+import me.him188.ani.app.ui.mediaselect.common.MediaSelectorDialogContent
 import me.him188.ani.app.ui.mediaselect.common.MediaSelectorModeChip
 import me.him188.ani.app.ui.mediaselect.manual.ManualBrowsePage
 import me.him188.ani.app.ui.mediaselect.manual.ManualBrowseState
+import me.him188.ani.app.ui.mediaselect.needsContainer
 import me.him188.ani.app.ui.mediaselect.summary.MediaSelectorSummary
 import me.him188.ani.app.ui.mediaselect.summary.MediaSelectorSummaryBanner
 import me.him188.ani.app.ui.mediaselect.summary.MediaSelectorSummaryCard
@@ -546,7 +551,28 @@ fun EpisodeDetails(
         val showBt = sourceResults.btSources.isNotEmpty()
         val closeSelector = { showMediaSelector = false }
         val closeSelectorText = stringResource(Lang.subject_episode_close_selector)
-        if (atLeastMedium) {
+        // 侧边栏占满窗口高度. 窗口太矮 (手机横屏) 时手动查找与 BT 改开窗口级对话框, 规则与播放器侧边栏相同.
+        // 关掉对话框回到侧边栏并把模式置回自动匹配, 否则侧边栏立刻又变回对话框; 选中播放后全部关闭.
+        val windowHeight = with(LocalDensity.current) { LocalWindowInfo.current.containerSize.height.toDp() }
+        if (atLeastMedium && mediaSelectorMode.needsContainer(windowHeight)) {
+            val backToSheet = { onMediaSelectorModeChange(MediaSelectorMode.AUTO) }
+            MediaSelectorDialog(onDismissRequest = backToSheet) { compact ->
+                MediaSelectorDialogContent(
+                    mediaSelectorMode,
+                    compact,
+                    onModeChange = onMediaSelectorModeChange,
+                    onClose = backToSheet,
+                    onPlayed = closeSelector,
+                    mediaSelectorState = mediaSelectorState,
+                    sourceResults = sourceResults,
+                    watching = watchingEpisode,
+                    fetchRequest = fetchRequest,
+                    onFetchRequestChange = onFetchRequestChange,
+                    onRestartSource = onRestartSource,
+                    manualBrowseState = manualBrowseState,
+                )
+            }
+        } else if (atLeastMedium) {
             val sheetState = rememberModalSideSheetState()
             ModalSideSheet(
                 closeSelector,
@@ -610,7 +636,7 @@ fun EpisodeDetails(
                             closeButton = closeButton,
                         )
 
-                        // 侧边栏宽度下 BT 页是紧凑列表. 切模式只换侧边栏的内容, 不换容器.
+                        // 侧边栏宽度下 BT 页是紧凑列表. 窗口够高时切模式只换侧边栏的内容, 不换容器.
                         MediaSelectorMode.BT -> {
                             topBar()
                             BtResourcesPage(

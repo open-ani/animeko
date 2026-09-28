@@ -38,12 +38,8 @@ import androidx.compose.foundation.pager.PagerState
 import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.rounded.Close
 import androidx.compose.material3.BottomSheetDefaults
 import androidx.compose.material3.HorizontalDivider
-import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.OutlinedTextFieldDefaults
@@ -54,8 +50,6 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.Tab
 import androidx.compose.material3.TabRowDefaults
 import androidx.compose.material3.Text
-import androidx.compose.material3.TopAppBar
-import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.material3.contentColorFor
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
@@ -80,6 +74,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalUriHandler
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.tooling.preview.PreviewLightDark
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.coerceIn
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.Lifecycle
@@ -125,7 +120,6 @@ import me.him188.ani.app.ui.foundation.effects.ScreenRotationEffect
 import me.him188.ani.app.ui.foundation.ifThen
 import me.him188.ani.app.ui.foundation.input.touchHorizontalScrollOnly
 import me.him188.ani.app.ui.foundation.layout.LocalPlatformWindow
-import me.him188.ani.app.ui.foundation.layout.Zero
 import me.him188.ani.app.ui.foundation.layout.currentWindowAdaptiveInfo1
 import me.him188.ani.app.ui.foundation.layout.desktopTitleBar
 import me.him188.ani.app.ui.foundation.layout.desktopTitleBarPadding
@@ -151,18 +145,12 @@ import me.him188.ani.app.ui.lang.episode_comments_with_count
 import me.him188.ani.app.ui.lang.episode_send_danmaku
 import me.him188.ani.app.ui.lang.foundation_richtext_external_app_link_warning_prefix
 import me.him188.ani.app.ui.lang.foundation_richtext_open_failed_prefix
-import me.him188.ani.app.ui.lang.media_selector_mode_bt
-import me.him188.ani.app.ui.lang.media_selector_mode_manual
-import me.him188.ani.app.ui.lang.media_selector_sources
 import me.him188.ani.app.ui.lang.subject_details_tab_details
-import me.him188.ani.app.ui.lang.subject_episode_close_selector
-import me.him188.ani.app.ui.mediaselect.MediaSelectorLayoutDefaults
 import me.him188.ani.app.ui.mediaselect.MediaSelectorMode
-import me.him188.ani.app.ui.mediaselect.bt.BtResourcesPage
 import me.him188.ani.app.ui.mediaselect.common.MediaSelectorDialog
+import me.him188.ani.app.ui.mediaselect.common.MediaSelectorDialogContent
 import me.him188.ani.app.ui.mediaselect.common.MediaSelectorDialogLayout
-import me.him188.ani.app.ui.mediaselect.common.MediaSelectorModeChip
-import me.him188.ani.app.ui.mediaselect.manual.ManualBrowsePage
+import me.him188.ani.app.ui.mediaselect.needsContainer
 import me.him188.ani.app.ui.richtext.RichTextDefaults
 import me.him188.ani.app.ui.subject.episode.comments.EpisodeCommentColumn
 import me.him188.ani.app.ui.subject.episode.comments.EpisodeEditCommentSheet
@@ -1208,9 +1196,9 @@ private fun EpisodeVideo(
             )
         },
         sideSheets = { sheetsController ->
-            // rhsSheet 槽就是侧边栏可用的区域. 够高时三种模式都在侧边栏; 手机横屏、手机竖屏的 16:9 视频区装不下手动查找与 BT 的列表, 改开容器.
+            // rhsSheet 槽就是侧边栏可用的区域. 够高时三种模式都在侧边栏; 手机横屏装不下手动查找与 BT 的列表, 改开容器 (见 needsContainer).
             BoxWithConstraints(Modifier.fillMaxSize()) {
-                val tallSheet = maxHeight >= MediaSelectorLayoutDefaults.CompactDialogMaxHeight
+                val sheetHeight = maxHeight
                 EpisodeVideoDefaults.SideSheets(
                     sheetsController,
                     playerControllerState,
@@ -1243,8 +1231,8 @@ private fun EpisodeVideo(
                             val mode = vm.mediaSelectorMode ?: page.initialMediaSelectorMode
                             // 侧边栏太矮时, 手动查找 / BT 资源 (下拉切换、救援按钮或 preferKind = BT 直接落 BT 页) 关掉侧边栏, 改开容器.
                             // 加载中 (page.mediaSelectorState 是含假资源的占位 state) 不弹容器, 停留在侧边栏; 加载完成后 key 变化再弹.
-                            LaunchedEffect(mode, page.isLoading, tallSheet) {
-                                if (mode.needsContainer(tallSheet) && !page.isLoading) {
+                            LaunchedEffect(mode, page.isLoading, sheetHeight) {
+                                if (mode.needsContainer(sheetHeight) && !page.isLoading) {
                                     closeSideSheet()
                                     vm.fullscreenSelectorVisible = true
                                 }
@@ -1270,7 +1258,7 @@ private fun EpisodeVideo(
                         )
                     },
                 )
-                FullscreenMediaSelectorContainer(vm, page, sheetsController, playerControllerState, tallSheet)
+                FullscreenMediaSelectorContainer(vm, page, sheetsController, playerControllerState, sheetHeight)
             }
         },
         shareData = page.shareData,
@@ -1285,16 +1273,11 @@ private fun EpisodeVideo(
 }
 
 /**
- * 这个模式是否要关掉侧边栏、改用容器. 侧边栏够高 ([tallSheet]) 时三种模式都在侧边栏, 与详情页侧边栏一致; 太矮时只有自动匹配留下.
- */
-private fun MediaSelectorMode.needsContainer(tallSheet: Boolean): Boolean = this != MediaSelectorMode.AUTO && !tallSheet
-
-/**
  * 侧边栏太矮时播放器的手动查找 / BT 资源容器, 与侧边栏并列放在 [VideoScaffold][me.him188.ani.app.videoplayer.ui.VideoScaffold] 的 rhsSheet 槽里.
  * 可见性与模式都在 VM 上 ([EpisodeViewModel.fullscreenSelectorVisible] / [EpisodeViewModel.mediaSelectorMode]), 侧边栏页面被 closeSideSheet 销毁后仍然保留.
  *
  * 全屏时 rhsSheet 槽就是整屏, 直接铺 [MediaSelectorDialogLayout] 并自己接返回键: Android 的 Dialog 是独立 window, 会把已隐藏的系统栏拉回来.
- * 非全屏 (平板宽布局 / 手机 16:9 视频区) 视频区太小或不是整窗, 用窗口级 [MediaSelectorDialog].
+ * 非全屏 (宽屏布局: 手机横屏、平板) 视频区不是整窗, 用窗口级 [MediaSelectorDialog].
  *
  * 全屏容器可见期间像侧边栏 ([EpisodeVideoDefaults.SideSheets]) 一样向 [playerControllerState] 请求 alwaysOn: 容器不是 NavDisplay 页面, `anySideSheetVisible` 为 false,
  * 而 scrim 又拦下了指针事件, 控制器会照常自动隐藏并把桌面端光标一起藏掉; 保持控制器可见即保持光标可见.
@@ -1304,7 +1287,7 @@ private fun MediaSelectorMode.needsContainer(tallSheet: Boolean): Boolean = this
  * X / 返回键 / 点 scrim 回到侧边栏并把模式置回 AUTO (否则侧边栏的 LaunchedEffect(mode) 会立刻再弹容器); 在容器里切到侧边栏装得下的模式也回侧边栏;
  * 选中播放后全关, 模式保持.
  *
- * @param tallSheet 见 [needsContainer].
+ * @param sheetHeight 侧边栏可用高度, 见 [needsContainer].
  */
 @Composable
 private fun FullscreenMediaSelectorContainer(
@@ -1312,7 +1295,7 @@ private fun FullscreenMediaSelectorContainer(
     page: EpisodePageState,
     sheetsController: VideoSideSheetsController<EpisodeVideoSideSheetPage>,
     playerControllerState: PlayerControllerState,
-    tallSheet: Boolean,
+    sheetHeight: Dp,
 ) {
     LaunchedEffect(page.isLoading) {
         if (page.isLoading) vm.fullscreenSelectorVisible = false
@@ -1326,17 +1309,24 @@ private fun FullscreenMediaSelectorContainer(
     }
     val closeAll = { vm.fullscreenSelectorVisible = false }
     val content: @Composable (compact: Boolean) -> Unit = { compact ->
-        FullscreenMediaSelectorContent(
-            vm, page, mode, compact,
+        MediaSelectorDialogContent(
+            mode, compact,
             onModeChange = { newMode ->
-                if (newMode.needsContainer(tallSheet)) vm.mediaSelectorMode = newMode else backToSheet(newMode)
+                if (newMode.needsContainer(sheetHeight)) vm.mediaSelectorMode = newMode else backToSheet(newMode)
             },
-            onBackToSheet = { backToSheet(MediaSelectorMode.AUTO) },
-            onCloseAll = closeAll,
+            onClose = { backToSheet(MediaSelectorMode.AUTO) },
+            onPlayed = closeAll,
+            mediaSelectorState = page.mediaSelectorState,
+            sourceResults = page.mediaSourceResultListPresentation,
+            watching = page.watchingEpisode,
+            fetchRequest = page.fetchRequest,
+            onFetchRequestChange = { vm.updateFetchRequest(it) },
+            onRestartSource = { vm.restartSource(it) },
+            manualBrowseState = vm.manualBrowseState,
         )
     }
     // 容器打开期间侧边栏变得够高 (窗口变大): 回到侧边栏.
-    if (!mode.needsContainer(tallSheet)) {
+    if (!mode.needsContainer(sheetHeight)) {
         SideEffect { backToSheet(mode) }
         return
     }
@@ -1354,97 +1344,6 @@ private fun FullscreenMediaSelectorContainer(
         )
     } else {
         MediaSelectorDialog(onDismissRequest = { backToSheet(MediaSelectorMode.AUTO) }, content = content)
-    }
-}
-
-/**
- * 容器内容. 侧边栏装得下的模式不走到这里 (容器先回侧边栏).
- *
- * @param compact 容器铺满 (可用高度 < 480dp) 时为 true: 不画 TopAppBar, 由页面按 inlineTitle 槽自绘单行顶栏 (X + 标题); 否则画 TopAppBar (标题 + 模式 chip + X).
- */
-@Composable
-private fun FullscreenMediaSelectorContent(
-    vm: EpisodeViewModel,
-    page: EpisodePageState,
-    mode: MediaSelectorMode,
-    compact: Boolean,
-    onModeChange: (MediaSelectorMode) -> Unit,
-    onBackToSheet: () -> Unit,
-    onCloseAll: () -> Unit,
-) {
-    val closeSelectorText = stringResource(Lang.subject_episode_close_selector)
-    val closeButton: @Composable () -> Unit = {
-        IconButton(onClick = onBackToSheet) {
-            Icon(Icons.Rounded.Close, contentDescription = closeSelectorText)
-        }
-    }
-    val topBar: @Composable (title: String) -> Unit = { title ->
-        TopAppBar(
-            title = { Text(title) },
-            actions = {
-                MediaSelectorModeChip(
-                    mode,
-                    onModeChange,
-                    showBt = page.mediaSourceResultListPresentation.btSources.isNotEmpty(),
-                )
-                closeButton()
-            },
-            windowInsets = WindowInsets.Zero,
-            colors = TopAppBarDefaults.topAppBarColors(containerColor = BottomSheetDefaults.ContainerColor),
-        )
-    }
-    val inlineTitle: @Composable (title: String) -> Unit = { title ->
-        closeButton()
-        Text(title, style = MaterialTheme.typography.titleLarge)
-    }
-    when (mode) {
-        MediaSelectorMode.MANUAL -> {
-            // TopAppBar 里模式已由 chip 表达, 标题与 BT 分支一样用「数据源」; 紧凑分支没有 chip, 单行标题才写模式名.
-            val inlineTitleText = stringResource(Lang.media_selector_mode_manual)
-            val topBarTitle = stringResource(Lang.media_selector_sources)
-            ManualBrowsePage(
-                vm.manualBrowseState,
-                page.watchingEpisode,
-                onPlayed = onCloseAll,
-                topBar = { topBar(topBarTitle) },
-                modifier = Modifier.fillMaxSize(),
-                closeButton = closeButton,
-                inlineTitle = if (compact) {
-                    { inlineTitle(inlineTitleText) }
-                } else {
-                    null
-                },
-            )
-        }
-
-        MediaSelectorMode.BT -> {
-            Column(Modifier.fillMaxSize()) {
-                if (!compact) {
-                    topBar(stringResource(Lang.media_selector_sources))
-                }
-                val title = stringResource(Lang.media_selector_mode_bt)
-                BtResourcesPage(
-                    page.mediaSelectorState,
-                    page.mediaSourceResultListPresentation,
-                    page.watchingEpisode,
-                    page.fetchRequest,
-                    onFetchRequestChange = { vm.updateFetchRequest(it) },
-                    onClickItem = {
-                        page.mediaSelectorState.select(it)
-                        onCloseAll()
-                    },
-                    onRestartSource = { vm.restartSource(it) },
-                    modifier = Modifier.weight(1f),
-                    inlineTitle = if (compact) {
-                        { inlineTitle(title) }
-                    } else {
-                        null
-                    },
-                )
-            }
-        }
-
-        MediaSelectorMode.AUTO -> {}
     }
 }
 
