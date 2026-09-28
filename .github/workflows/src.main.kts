@@ -85,6 +85,7 @@ import io.github.typesafegithub.workflows.domain.actions.Action
 import io.github.typesafegithub.workflows.domain.actions.CustomAction
 import io.github.typesafegithub.workflows.domain.triggers.PullRequest
 import io.github.typesafegithub.workflows.domain.triggers.Push
+import io.github.typesafegithub.workflows.domain.triggers.WorkflowDispatch
 import io.github.typesafegithub.workflows.dsl.JobBuilder
 import io.github.typesafegithub.workflows.dsl.WorkflowBuilder
 import io.github.typesafegithub.workflows.dsl.expressions.contexts.GitHubContext
@@ -286,7 +287,7 @@ val ANI_ENABLE_IOS = "ani.enable.ios"
 
 /**
  * 含 Android TV 界面的模块, 与 settings.gradle.kts 中的 `-tv` 模块一致.
- * 它们的 instrumented test 除了在手机镜像上运行, 还会在 Android TV 系统镜像上运行.
+ * 它们的 instrumented test 只在 Android TV 系统镜像上运行.
  */
 val androidTvModules = listOf(
     ":app:shared:tv",
@@ -537,6 +538,7 @@ run {
             // 即使自己机器上传的 dmg 安装时会有问题 (#1479), 也在 build 时使用它, 避免使用太多 GitHub 机器占用并行.
             // 发版时还是使用 GitHub
             uploadDesktopInstallers = true,
+            runAndroidInstrumentedTests = true,
         ),
     )
 
@@ -594,9 +596,134 @@ fun getBuildJobBody(matrix: MatrixInstance): JobBuilder<BuildJobOutputs>.() -> U
         if (!matrix.isUbuntu) {
             gradleCheck() // save time
         }
-        androidConnectedTests()
+        // Instrumented test 在单独的 job 中运行, 见 addAndroidInstrumentedTestJobs.
 
         cleanupTempFiles()
+    }
+}
+
+/**
+ * 运行 instrumented test 的一种模拟器.
+ *
+ * @param label 区分本次运行的后缀, 例如 `api=30, arch=x86_64`.
+ * @param artifactSuffix 测试报告 artifact 名与 logcat 文件名中区分本次运行的后缀, 只能含 artifact 名允许的字符.
+ * @param modules 在这种模拟器上测试的模块, `null` 即除 [excludedModules] 外的全部模块.
+ */
+class AndroidEmulator(
+    val label: String,
+    val artifactSuffix: String,
+    val apiLevel: Int,
+    val arch: AndroidEmulatorRunner.Arch,
+    val target: AndroidEmulatorRunner.Target,
+    val profile: String,
+    val modules: List<String>? = null,
+    val excludedModules: List<String> = emptyList(),
+) {
+    fun gradleTasks(task: String): List<String> =
+        modules?.map { "$it:$task" } ?: (listOf(task) + excludedModules.map { "-x $it:$task" })
+}
+
+/**
+ * 一个 job 编译一次测试 APK, 然后依次在 [emulators] 上运行.
+ */
+class AndroidInstrumentedTestJob(
+    val id: String,
+    val label: String,
+    val emulators: List<AndroidEmulator>,
+) {
+    /**
+     * 各模拟器测试的模块相同时只编译这些模块, 否则编译全部模块.
+     */
+    fun buildTasks(task: String): List<String> =
+        emulators.map { it.gradleTasks(task) }.distinct().singleOrNull() ?: listOf(task)
+}
+
+/**
+ * 每个 job 都要下载依赖、编译测试 APK, 在 GitHub 托管的机器上约 20 分钟, 所以同一类机器上的模拟器共用 job.
+ *
+ * - GitHub 托管的 Ubuntu x86_64 机器: 手机镜像与 TV 镜像各一个 job, 与构建 job 并行.
+ * - 自托管的 Apple Silicon Mac: arm64-v8a 镜像. GitHub 托管的 arm64 机器 (Linux 与 macOS) 不提供嵌套虚拟化,
+ *   不能运行有硬件加速的 arm64 模拟器. 只有一台 Mac, 还承担所有 run 的 iOS 与 macOS 构建,
+ *   因此只在 main 与 release 分支的 push 上运行, 只测 targetSdk.
+ */
+fun MatrixInstance.androidInstrumentedTestJobs(): List<AndroidInstrumentedTestJob> {
+    if (!runAndroidInstrumentedTests) return emptyList()
+    // 模拟器 ABI 与机器一致才有硬件加速, 顺带测试 anitorrent 等原生库在该 ABI 上的加载.
+    val arch = when {
+        isUbuntu && isX64 && !selfHosted -> AndroidEmulatorRunner.Arch.X8664
+        isMacOSAArch64 && selfHosted -> AndroidEmulatorRunner.Arch.Arm64V8a
+        else -> error("Android instrumented tests are not supported on ${runner.name}")
+    }
+    // 手机镜像跑 TV 以外的模块.
+    fun phone(apiLevel: Int) = AndroidEmulator(
+        label = "api=$apiLevel, arch=${arch.stringValue}",
+        artifactSuffix = "api$apiLevel-${arch.stringValue}",
+        apiLevel = apiLevel,
+        arch = arch,
+        target = AndroidEmulatorRunner.Target.Default,
+        // 默认 AVD 只有 320x640, 以常见手机的 1080x1920 屏幕运行.
+        profile = "pixel_2",
+        excludedModules = androidTvModules,
+    )
+    // TV 模块只在 Android TV 系统镜像上跑: 无系统栏、无触摸, 只有遥控器按键.
+    // TV 镜像只有 x86_64 与 arm64-v8a 的 API 36, 因此只跑 targetSdk 一个版本.
+    val tv = AndroidEmulator(
+        label = "api=36, arch=${arch.stringValue}, target=android-tv",
+        artifactSuffix = "api36-${arch.stringValue}-android-tv",
+        apiLevel = 36,
+        arch = arch,
+        target = AndroidEmulatorRunner.Target.AndroidTv,
+        profile = "tv_1080p",
+        modules = androidTvModules,
+    )
+    return if (selfHosted) {
+        listOf(
+            AndroidInstrumentedTestJob(
+                id = "api36",
+                label = "api=36, arch=${arch.stringValue}",
+                emulators = listOf(phone(36), tv),
+            ),
+        )
+    } else {
+        listOf(
+            // 手机镜像在 minSdk 30 和 targetSdk 两个版本上各跑一遍.
+            AndroidInstrumentedTestJob(
+                id = "phone",
+                label = "api=30 & 36, arch=${arch.stringValue}",
+                emulators = listOf(phone(30), phone(36)),
+            ),
+            AndroidInstrumentedTestJob(
+                id = "android-tv",
+                label = tv.label,
+                emulators = listOf(tv),
+            ),
+        )
+    }
+}
+
+fun WorkflowBuilder.addAndroidInstrumentedTestJobs(matrix: MatrixInstance) {
+    for (testJob in matrix.androidInstrumentedTestJobs()) {
+        job(
+            id = "android-test_${matrix.runner.id}_${testJob.id}",
+            name = "Android Instrumented Test (${testJob.label})",
+            runsOn = RunnerType.Labelled(matrix.runsOn),
+            permissions = mapOf(
+                Permission.Actions to Mode.Write, // Upload artifacts
+            ),
+            `if` = if (matrix.selfHosted) expr { github.isAnimekoRepository and github.isPush } else null,
+        ) {
+            uses(action = Checkout(submodules_Untyped = "recursive"))
+            with(WithMatrix(matrix)) {
+                freeSpace()
+                enableSwap()
+                deleteLocalProperties()
+                writeLocalProperties()
+                installJbr21()
+                chmod777()
+                setupGradle()
+                androidInstrumentedTest(testJob)
+            }
+        }
     }
 }
 
@@ -692,13 +819,13 @@ fun getVerifyJobBody(
         VerifyTask(
             name = "dandanplay-app-id",
             step = "Check that Dandanplay APP ID is valid",
-            `if` = expr { github.isAnimekoRepository and !github.isPullRequest },
+            `if` = expr { github.hasRepositorySecrets },
             disabledOn = listOf(Runner.GithubWindows11Arm64),
         ),
         VerifyTask(
             name = "sentry-dsn",
             step = "Check that sentryDsn is valid",
-            `if` = expr { github.isAnimekoRepository and !github.isPullRequest },
+            `if` = expr { github.hasRepositorySecrets },
             disabledOn = listOf(Runner.GithubWindows11Arm64),
         ),
         // Windows ARM64 relies on the SQLite natives built by :ci-helper:sqlite-woa64 (AndroidX does
@@ -709,6 +836,18 @@ fun getVerifyJobBody(
             name = "sqlite-bundled-load-test",
             step = "Check that bundled SQLite can be loaded",
             enabledOnlyOn = listOf(Runner.GithubWindows11Arm64, Runner.GithubUbuntu2404),
+        ),
+        // The Windows pointer bridge is the only input path the packaged app has that unit tests
+        // cannot reach: WM_POINTER only arrives at a real window on a real desktop session. Runs
+        // the same scenarios as WindowsNativeInputTest, against the packaged app.
+        VerifyTask(
+            name = "windows-native-input-test",
+            step = "Check that OS touch and mouse input reach Compose",
+            enabledOnlyOn = listOf(
+                Runner.GithubWindowsServer2025,
+                Runner.GithubWindowsServer2022,
+                Runner.GithubWindows11Arm64,
+            ),
         ),
         VerifyTask(
             name = "jcef-init-test",
@@ -869,11 +1008,11 @@ val commonIgnoredPaths = listOf(
 workflow(
     name = "Build",
     on = listOf(
-        // Including: 
-        // - pushing directly to main
-        // - pushing to a branch that has an associated PR
-        Push(pathsIgnore = commonIgnoredPaths),
+        // 其他分支的提交由 PR 构建. 同一个提交同时触发 push 与 pull_request 会重复运行整个 workflow.
+        Push(branches = listOf("main", "release/**"), pathsIgnore = commonIgnoredPaths),
         PullRequest(pathsIgnore = commonIgnoredPaths),
+        // 没有 PR 的分支需要构建时手动运行.
+        WorkflowDispatch(),
     ),
     sourceFile = __FILE__,
     targetFileName = "build.yml",
@@ -912,6 +1051,10 @@ workflow(
         )
     }
 
+    buildMatrixInstances.forEach { matrix ->
+        addAndroidInstrumentedTestJobs(matrix)
+    }
+
     builds.filter { (matrix, _) ->
         matrix.runner.os == OS.WINDOWS && matrix.uploadDesktopInstallers
     }.forEach { (matrix, build) ->
@@ -934,8 +1077,9 @@ workflow(
                 && matrix.uploadDesktopInstallers
     }.let { it.singleOrNull() ?: error("List contain multiple elements: $it") }
         .let { (_, build) ->
+            // 不在自托管 Mac 上验证: 它与 GithubMacOS15AppleSilicon 系统和架构相同, 验证的是同一个 DMG,
+            // 而这台 Mac 是所有 run 共用的瓶颈.
             listOf(
-                Runner.SelfHostedMacOS15,
                 Runner.GithubMacOS14,
                 Runner.GithubMacOS15AppleSilicon,
             ).forEach { runner ->
@@ -1278,7 +1422,7 @@ class WithMatrix(
                 },
             ),
             continueOnError = true,
-            `if` = expr { github.isAnimekoRepository and !github.isPullRequest },
+            `if` = expr { github.hasRepositorySecrets },
         )
     }
 
@@ -1540,7 +1684,7 @@ class WithMatrix(
         return if (matrix.uploadApk) {
             prepareBase64File(
                 name = "Prepare signing key",
-                `if` = expr { github.isAnimekoRepository and !github.isPullRequest },
+                `if` = expr { github.hasRepositorySecrets },
                 fileName = "android_signing_key",
                 fileDir = ".",
                 encodedString = expr { secrets.SIGNING_RELEASE_STOREFILE },
@@ -1556,7 +1700,7 @@ class WithMatrix(
     fun JobBuilder<*>.prepareGoogleServicesJson(): CommandStep {
         return prepareBase64File(
             name = "Prepare google-services.json",
-            `if` = expr { github.isAnimekoRepository and !github.isPullRequest },
+            `if` = expr { github.hasRepositorySecrets },
             fileName = "google-services.json",
             fileDir = "./app/android",
             encodedString = expr { secrets.GOOGLE_SERVICES_JSON },
@@ -1680,7 +1824,7 @@ class WithMatrix(
         if (matrix.uploadApk) {
             runGradle(
                 name = "Build Android Release APKs",
-                `if` = expr { github.isAnimekoRepository and !github.isPullRequest },
+                `if` = expr { github.hasRepositorySecrets },
                 tasks = arrayOf("assembleDefaultRelease", "assembleTvRelease"),
                 env = mapOf(
                     "signing_release_storeFileFromRoot" to expr { prepareSigningKey.outputs["filePath"] },
@@ -1799,143 +1943,132 @@ class WithMatrix(
         }
     }
 
-    fun JobBuilder<*>.androidConnectedTests() {
-        if (matrix.runAndroidInstrumentedTests && matrix.isUnix) {
-            if (matrix.isUbuntu) {
-                run(
-                    name = "Enable KVM",
-                    command = """
+    fun JobBuilder<*>.androidInstrumentedTest(testJob: AndroidInstrumentedTestJob) {
+        if (matrix.isUbuntu) {
+            run(
+                name = "Enable KVM",
+                command = """
                   echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
                   sudo udevadm control --reload-rules
                   sudo udevadm trigger --name-match=kvm
                 """.trimIndent(),
-                )
-            }
-            // device test 以 minSdk 30 构建: 测试函数内的局部类会以带空格的测试名命名, DEX 040 (API 30) 起才允许类名含空格.
-            // 先打包 APK, 测试名不能 dex 之类的问题在启动模拟器之前就能暴露.
-            runGradle(
-                name = "Build Android Instrumented Tests",
-                tasks = arrayOf(
-                    "assembleAndroidDeviceTest",
-                    "\"-Pandroid.min.sdk=30\"",
-                ),
-                maxAttempts = 3,
             )
-            /**
-             * 启动一个模拟器并在其上运行 instrumented test.
-             *
-             * @param label 步骤名中区分本次运行的后缀, 例如 `api=30, arch=x86_64`.
-             * @param artifactSuffix 测试报告 artifact 名与 logcat 文件名中区分本次运行的后缀, 只能含 artifact 名允许的字符.
-             * @param gradleTasks 要运行的 `connectedDeviceTest` 任务, 不带模块前缀即对全部模块运行.
-             */
-            fun instrumentedTestRun(
-                label: String,
-                artifactSuffix: String,
-                apiLevel: Int,
-                arch: AndroidEmulatorRunner.Arch,
-                target: AndroidEmulatorRunner.Target,
-                profile: String,
-                gradleTasks: List<String>,
-            ) {
-                if (!matrix.selfHosted) {
-                    // GitHub 托管的机器只有 16 GB 内存, 模拟器要和 Gradle 一起跑.
-                    // 先停掉打包阶段留下的 Gradle/Kotlin daemon, 并记录内存与磁盘余量便于排查.
-                    run(
-                        name = "Stop Gradle daemons before emulator ($label)",
-                        command = """
-                            ./gradlew --stop
-                            pkill -f KotlinCompileDaemon || true
-                            free -h
-                            df -h .
-                        """.trimIndent(),
-                    )
-                }
-                uses(
-                    name = "Android Instrumented Test ($label)",
-                    action = AndroidEmulatorRunner(
-                        apiLevel = apiLevel.toString(),
-                        arch = arch,
-                        target = target,
-                        profile = profile,
-                        ramSize = "2048M",
-                        script = buildString {
-                            append("./gradlew ")
-                            append(gradleTasks.joinToString(" "))
-                            // --continue: 一个模块失败也把其余模块的测试跑完, 最后统一报告.
-                            append(" --continue \"-Pandroid.min.sdk=30\" ")
-                            // 测试 APK 已在上一步打包好, 这里 Gradle 只负责安装和运行, 用小堆给模拟器留内存.
-                            append(matrix.gradleArgsWith(gradleHeap = "3g", kotlinCompilerHeap = "2g"))
-                            // 结束 crashpad_handler 后要以 Gradle 的退出码退出, 否则测试失败不会让步骤失败.
-                            // https://github.com/ReactiveCircus/android-emulator-runner/issues/385#issuecomment-2492035091
-                            // 测试进程在启动阶段崩溃时不会留下按测试拆分的 logcat, 整机 logcat 是唯一线索.
-                            append("; status=\$?; adb logcat -d > logcat-$artifactSuffix.txt || true; ")
-                            append("killall -INT crashpad_handler || true; exit \$status")
-                        },
-                        emulatorBootTimeout = 1800,
-                    ),
-                )
-                uses(
-                    name = "Upload Android Instrumented Test Reports ($label)",
-                    `if` = "always()",
-                    action = UploadArtifact(
-                        name = "android-device-test-reports-$artifactSuffix",
-                        path_Untyped = "**/build/reports/androidTests/**\n**/build/outputs/androidTest-results/**\nlogcat-$artifactSuffix.txt",
-                        ifNoFilesFound = UploadArtifact.BehaviorIfNoFilesFound.Ignore,
-                        overwrite = true,
-                    ),
-                )
-                if (!matrix.runner.isSelfHosted && matrix.isUnix) {
-                    // GitHub hosted runners allow only 14GB space, so we have to remove old emulators before installing new ones
-                    run(
-                        name = "Uninstall emulators",
-                        command = "sdkmanager --uninstall \$(sdkmanager --list | grep emulator | awk '{print \$1}')\n",
-                    )
-                    run(
-                        name = "Remove AVD",
-                        command = $$"""
-                            echo "Removing Emulator binaries..."
-                            rm -rf $ANDROID_HOME/emulator
-                            echo "Removing System Images..."
-                            rm -rf $ANDROID_HOME/system-images
-                        """.trimIndent(),
-                    )
-                }
-            }
-
-            for (arch in listOfNotNull(
-                // test loading anitorrent and other native libraries
-                if (matrix.arch == Arch.AARCH64) AndroidEmulatorRunner.Arch.Arm64V8a else null,
-                if (matrix.arch == Arch.X64) AndroidEmulatorRunner.Arch.X8664 else null,
-            )) {
-                // 在 minSdk 30 和 targetSdk 两个版本上各跑一遍
-                for (apiLevel in listOf(30, 36)) {
-                    instrumentedTestRun(
-                        label = "api=$apiLevel, arch=${arch.stringValue}",
-                        artifactSuffix = "api$apiLevel-${arch.stringValue}",
-                        apiLevel = apiLevel,
-                        arch = arch,
-                        target = AndroidEmulatorRunner.Target.Default,
-                        // 1080x1920 的手机屏幕. 默认 AVD 只有 320x640, 而 `wm size` 最多放大到物理尺寸的 2 倍,
-                        // TV 界面的 UI 测试要把显示规格设为 1920x1080 (见 TvDisplayRunListener).
-                        profile = "pixel_2",
-                        gradleTasks = listOf("connectedDeviceTest"),
-                    )
-                }
-
-                // TV 模块的测试再在 Android TV 系统镜像上跑一遍: 无系统栏、无触摸, 只有遥控器按键.
-                // 手机镜像只能靠 TvDisplayRunListener 模拟电视的显示规格, 覆盖不到这些差异.
-                // TV 镜像只有 x86_64 与 arm64-v8a 的 API 36, 因此只跑 targetSdk 一个版本.
-                instrumentedTestRun(
-                    label = "api=36, arch=${arch.stringValue}, target=android-tv",
-                    artifactSuffix = "api36-${arch.stringValue}-android-tv",
-                    apiLevel = 36,
-                    arch = arch,
-                    target = AndroidEmulatorRunner.Target.AndroidTv,
-                    profile = "tv_1080p",
-                    gradleTasks = androidTvModules.map { "$it:connectedDeviceTest" },
-                )
-            }
         }
+        // device test 以 minSdk 30 构建: 测试函数内的局部类会以带空格的测试名命名, DEX 040 (API 30) 起才允许类名含空格.
+        // 先打包 APK, 测试名不能 dex 之类的问题在启动模拟器之前就能暴露.
+        runGradle(
+            name = "Build Android Instrumented Tests",
+            tasks = (testJob.buildTasks("assembleAndroidDeviceTest") + "\"-Pandroid.min.sdk=30\"").toTypedArray(),
+            maxAttempts = 3,
+        )
+
+        // 每种模拟器的测试结果. 一种模拟器上的测试失败不跳过其余模拟器, 最后统一判定.
+        val testFailures = testJob.emulators.mapIndexed { index, emulator ->
+            if (index > 0) {
+                // 上一次的测试结果已经上传, 删掉以免混进下一次的报告.
+                val removeResults = "find . -type d \\( -path '*/build/outputs/androidTest-results' -o -path '*/build/reports/androidTests' \\) -prune -exec rm -rf {} +"
+                if (matrix.selfHosted) {
+                    // 自托管机器的 SDK 由其他构建共用, 保留模拟器与系统镜像.
+                    run(name = "Remove previous test results", command = removeResults)
+                } else {
+                    // GitHub 托管的机器磁盘较小, 装下一个系统镜像前先删掉上一个.
+                    run(
+                        name = "Remove previous emulator and test results",
+                        command = $$"""
+                            sdkmanager --uninstall emulator || true
+                            rm -rf "$ANDROID_HOME/emulator" "$ANDROID_HOME/system-images"
+                            $$removeResults
+                        """.trimIndent(),
+                    )
+                }
+            }
+            runOnEmulator(emulator)
+        }
+        run(
+            name = "Check Android Instrumented Test results",
+            `if` = expr { testFailures.joinToString(" || ") { "($it)" } },
+            command = "echo '::error::Android instrumented tests failed. See the \"Android Instrumented Test\" steps.'; exit 1",
+        )
+    }
+
+    /**
+     * 在 [emulator] 上运行测试并上传报告. 测试失败不让步骤失败.
+     *
+     * @return 测试失败的条件表达式, 不带 `${{ }}`.
+     */
+    private fun JobBuilder<*>.runOnEmulator(emulator: AndroidEmulator): String {
+        if (!matrix.selfHosted) {
+            // GitHub 托管的机器只有 16 GB 内存, 模拟器要和 Gradle 一起跑.
+            // 先停掉打包阶段留下的 Gradle/Kotlin daemon, 并记录内存与磁盘余量便于排查.
+            // 自托管机器上可能同时有其他 job 在用 daemon, 不能停.
+            run(
+                name = "Stop Gradle daemons before emulator (${emulator.label})",
+                command = """
+                    ./gradlew --stop
+                    pkill -f KotlinCompileDaemon || true
+                    free -h
+                    df -h .
+                """.trimIndent(),
+            )
+        }
+
+        // 脚本第一条命令留下的标记. 没有标记说明失败发生在下载 SDK 或启动模拟器阶段 (例如开机后 adb 短暂 offline),
+        // 与测试无关, 可以重试. 测试开始后的失败不重试, 以免掩盖不稳定的测试.
+        val startedMarker = "android-instrumented-test-started-${emulator.artifactSuffix}"
+        val emulatorRunner = AndroidEmulatorRunner(
+            apiLevel = emulator.apiLevel.toString(),
+            arch = emulator.arch,
+            target = emulator.target,
+            profile = emulator.profile,
+            ramSize = "2048M",
+            script = buildString {
+                append("touch $startedMarker; ")
+                append("./ci-helper/prepare-android-emulator.sh; ")
+                append("./gradlew ")
+                append(emulator.gradleTasks("connectedDeviceTest").joinToString(" "))
+                // --continue: 一个模块失败也把其余模块的测试跑完, 最后统一报告.
+                append(" --continue \"-Pandroid.min.sdk=30\" ")
+                // 测试 APK 已在上一步打包好, 这里 Gradle 只负责安装和运行, 用小堆给模拟器留内存.
+                append(matrix.gradleArgsWith(gradleHeap = "3g", kotlinCompilerHeap = "2g"))
+                // 结束 crashpad_handler 后要以 Gradle 的退出码退出, 否则测试失败不会让步骤失败.
+                // https://github.com/ReactiveCircus/android-emulator-runner/issues/385#issuecomment-2492035091
+                // 测试进程在启动阶段崩溃时不会留下按测试拆分的 logcat, 整机 logcat 是唯一线索.
+                append("; status=\$?; adb logcat -d > logcat-${emulator.artifactSuffix}.txt || true; ")
+                if (matrix.selfHosted) {
+                    // 自托管机器上还有其他程序, 只结束模拟器自己的 crashpad_handler.
+                    append("pkill -INT -f \"\$ANDROID_HOME/emulator/crashpad_handler\" || true; exit \$status")
+                } else {
+                    append("killall -INT crashpad_handler || true; exit \$status")
+                }
+            },
+            emulatorBootTimeout = 1800,
+        )
+        // 正常约 20 分钟. 模拟器卡死时尽早失败, 不占用 runner 到 job 的默认超时.
+        val emulatorTimeoutMinutes = 60
+        val firstAttempt = uses(
+            name = "Android Instrumented Test (${emulator.label})",
+            action = emulatorRunner,
+            continueOnError = true,
+            timeoutMinutes = emulatorTimeoutMinutes,
+        )
+        val retry = uses(
+            name = "Android Instrumented Test (${emulator.label}) (Retry after emulator failure)",
+            `if` = expr { firstAttempt.outcome.eq(AbstractResult.Status.Failure) and "hashFiles('$startedMarker') == ''" },
+            action = emulatorRunner,
+            continueOnError = true,
+            timeoutMinutes = emulatorTimeoutMinutes,
+        )
+        uses(
+            name = "Upload Android Instrumented Test Reports (${emulator.label})",
+            `if` = "always()",
+            action = UploadArtifact(
+                name = "android-device-test-reports-${emulator.artifactSuffix}",
+                path_Untyped = "**/build/reports/androidTests/**\n**/build/outputs/androidTest-results/**\nlogcat-${emulator.artifactSuffix}.txt",
+                ifNoFilesFound = UploadArtifact.BehaviorIfNoFilesFound.Ignore,
+                overwrite = true,
+            ),
+        )
+        return firstAttempt.outcome.eq(AbstractResult.Status.Failure) and retry.outcome.neq(AbstractResult.Status.Success)
     }
 
     class PackageDesktopAndUploadOutputs {
@@ -2293,6 +2426,15 @@ val GitHubContext.isAnimekoRepository
 
 val GitHubContext.isPullRequest
     get() = """$event_name == 'pull_request'"""
+
+val GitHubContext.isPush
+    get() = """$event_name == 'push'"""
+
+/**
+ * 能读取仓库 secrets 的运行: 本仓库的 push 与手动运行, 以及来自本仓库分支的 PR. fork 的 PR 读不到 secrets.
+ */
+val GitHubContext.hasRepositorySecrets
+    get() = isAnimekoRepository and (!isPullRequest or "github.event.pull_request.head.repo.full_name == $repository")
 
 val MatrixInstance.isX64 get() = arch == Arch.X64
 val MatrixInstance.isAArch64 get() = arch == Arch.AARCH64

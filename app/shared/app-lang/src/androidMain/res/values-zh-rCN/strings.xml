@@ -1416,6 +1416,8 @@
     <string name="settings_log_share_today_log_file">分享当日日志文件</string>
     <string name="settings_log_share_file">分享日志文件</string>
     <string name="settings_log_copy_today_log_content">复制当日日志内容（很大）</string>
+    <string name="settings_log_copy_too_large">日志太大，无法复制。请使用“分享当日日志文件”导出完整日志。</string>
+    <string name="settings_log_copy_failed">无法复制日志，请尝试“分享当日日志文件”。</string>
     <string name="settings_log_file_not_found">未找到日志文件</string>
     <string name="rating_requires_collection">请先收藏再评分</string>
     <string name="rating_discard_edit_title">舍弃编辑</string>

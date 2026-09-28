@@ -19,6 +19,8 @@ import me.him188.ani.app.domain.foundation.get
 import me.him188.ani.app.platform.AniCefApp
 import me.him188.ani.app.platform.DesktopContext
 import me.him188.ani.app.platform.currentAniBuildConfig
+import me.him188.ani.app.platform.window.WindowsNativeInputVerification
+import me.him188.ani.app.platform.window.WindowsNativeInputVerificationResult
 import me.him188.ani.app.tools.update.DefaultFileDownloader
 import me.him188.ani.app.tools.update.InstallationResult
 import me.him188.ani.app.tools.update.UpdateInstaller
@@ -57,6 +59,10 @@ object TestTasks {
             "sqlite-bundled-load-test" -> {
                 checkBundledSqlite()
                 exitProcess(0)
+            }
+
+            "windows-native-input-test" -> {
+                exitProcess(checkWindowsNativeInput())
             }
 
             "jcef-init-test" -> {
@@ -117,6 +123,34 @@ object TestTasks {
         }
         logger.info { "JCEF initialization check succeeded." }
         AniCefApp.disposeBlocking()
+    }
+
+    /**
+     * Drives the packaged app's own window with injected touch and OS mouse input, so that the
+     * Windows pointer bridge is verified against the ProGuard/jpackage output rather than against
+     * the Gradle classpath, which the `desktopTest` suite already covers.
+     *
+     * A machine that cannot host the scenarios (no interactive desktop, no foreground window, no
+     * touch injection device) is reported as skipped and does not fail the job; only events that
+     * reach Compose in the wrong shape do.
+     */
+    private fun checkWindowsNativeInput(): Int {
+        return when (val result = WindowsNativeInputVerification.runAll()) {
+            is WindowsNativeInputVerificationResult.Passed -> {
+                logger.info { "Windows native input verification passed: ${result.scenarios}" }
+                0
+            }
+
+            is WindowsNativeInputVerificationResult.Unavailable -> {
+                logger.info { "Windows native input verification skipped: ${result.reason}" }
+                0
+            }
+
+            is WindowsNativeInputVerificationResult.Failed -> {
+                logger.error { "Windows native input verification failed in ${result.scenario}: ${result.reason}" }
+                1
+            }
+        }
     }
 
     private fun checkBundledSqlite() {
