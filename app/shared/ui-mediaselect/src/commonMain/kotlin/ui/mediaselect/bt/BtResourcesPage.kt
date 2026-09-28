@@ -224,7 +224,8 @@ fun BtResourcesPage(
             if (currentAniBuildConfig.isDebug) {
                 val allMedia = { (presentation.included + presentation.excluded).map { it.media } }
                 Row(
-                    Modifier.padding(horizontal = horizontalPadding).padding(bottom = 8.dp),
+                    Modifier.horizontalScroll(rememberScrollState())
+                        .padding(horizontal = horizontalPadding).padding(bottom = 8.dp),
                     horizontalArrangement = Arrangement.spacedBy(8.dp),
                 ) {
                     FilledTonalButton(onClick = { MediaSelectorDebugTools.dumpSubjectNames(allMedia()) }) {

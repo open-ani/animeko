@@ -112,7 +112,7 @@ data class ManualBrowsePresentation(
      */
     val selectedChannelIndex: Int,
     /**
-     * 用户显式选择 → 否则线路里第一个 episodeSort == target.episodeSort 的下标 → 否则 null.
+     * 用户在当前集点选的下标 → 否则线路里第一个 episodeSort == target.episodeSort 的下标 → 否则 null.
      */
     val selectedEpisodeIndex: Int?,
     val target: ManualBrowseTarget?,
@@ -218,6 +218,10 @@ class ManualBrowseState(
         val channels: ManualLoadState<List<BrowseChannel>> = ManualLoadState.Idle,
         val channelIndex: Int = 0,
         val userEpisodeIndex: Int? = null,
+        /**
+         * 点选 [userEpisodeIndex] 时的当前集. 切到别的集后那次点选不再代表对当前集的选择, 网格回到按集号预选.
+         */
+        val userEpisodeTarget: ManualBrowseTarget? = null,
         val isPlaying: Boolean = false,
         val searchGeneration: Int = 0,
         val browseGeneration: Int = 0,
@@ -246,7 +250,7 @@ class ManualBrowseState(
             ?: sources.firstOrNull()?.instanceId
         val channel = (session.channels as? ManualLoadState.Success)?.value?.getOrNull(session.channelIndex)
         val selectedEpisodeIndex = session.userEpisodeIndex
-            ?.takeIf { channel != null && it in channel.episodes.indices }
+            ?.takeIf { channel != null && it in channel.episodes.indices && session.userEpisodeTarget == target }
             ?: channel?.let { c ->
                 target?.let { t ->
                     c.episodes.indexOfFirst { it.episodeSort != null && it.episodeSort == t.episodeSort }.takeIf { it >= 0 }
@@ -435,14 +439,15 @@ class ManualBrowseState(
     suspend fun play(episodeIndex: Int): Boolean? {
         if (playJob?.isActive == true || !playGate.tryLock()) return null
         var launched = false
-        session.update { it.copy(userEpisodeIndex = episodeIndex, isPlaying = true) }
+        session.update { it.copy(isPlaying = true) }
         try {
             val presentation = presentationSource.first()
+            val target = presentation.target ?: return false
+            session.update { it.copy(userEpisodeIndex = episodeIndex, userEpisodeTarget = target) }
             val source = presentation.selectedSource ?: return false
             val subject = presentation.openedSubject ?: return false
             val channel = presentation.selectedChannel ?: return false
             val episode = channel.episodes.getOrNull(episodeIndex) ?: return false
-            val target = presentation.target ?: return false
             val instance = findInstance(source.instanceId) ?: return false
             val media = try {
                 instance.source.createMedia(subject, channel.name, episode, target.episodeSort)

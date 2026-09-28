@@ -593,6 +593,32 @@ class ManualBrowseStateTest {
     }
 
     @Test
+    fun `episode clicked for a previous target no longer overrides the preselection`() = runTest {
+        val target = MutableStateFlow<ManualBrowseTarget?>(target12)
+        val state = ManualBrowseState(
+            browsableSources = flowOf(listOf(createTestMediaSourceInstance(TestBrowsableMediaSource()))),
+            webSessionManager = createTestWebSessionManager(backgroundScope),
+            target = target,
+            preferredSourceId = flowOf(null),
+            rememberSelection = MutableStateFlow(true),
+            onRememberSelectionChange = {},
+            onPlay = { _, _ -> },
+            backgroundScope = stateScope,
+        )
+        state.openSubject(TestBrowseSubjects[0])
+        state.awaitChannels()
+
+        assertEquals(true, state.play(3))
+        assertEquals(3, state.presentationFlow.first { !it.isPlaying }.selectedEpisodeIndex)
+
+        // 回放把下一集切过来: 上一集的点选不再算数, 按当前集号预选
+        target.value = ManualBrowseTarget(1, "命运石之门", EpisodeSort(13), "13")
+        val presentation = state.presentationFlow.first { it.target?.episodeSort == EpisodeSort(13) }
+        assertEquals(12, presentation.selectedEpisodeIndex)
+        assertEquals("13", presentation.selectedEpisode?.name)
+    }
+
+    @Test
     fun `remember switch off plays without memory`() = runTest {
         var captured: Pair<Media, ManualBrowseMemory?>? = null
         val remember = MutableStateFlow(true)
