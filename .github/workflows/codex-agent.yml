@@ -464,6 +464,9 @@ jobs:
           set -euo pipefail
           git config user.name  "$GIT_NAME"
           git config user.email "$GIT_EMAIL"
+          # The self-hosted workspace is reused and checkout keeps extra remote config; drop what fork-PR runs leave.
+          git config --unset-all remote.origin.pushurl || true
+          git remote remove fork 2>/dev/null || true
 
       - name: React 👀 to the issue
         run: |
@@ -589,6 +592,9 @@ jobs:
           set -euo pipefail
           git config user.name  "$GIT_NAME"
           git config user.email "$GIT_EMAIL"
+          # The self-hosted workspace is reused and checkout keeps extra remote config; drop what fork-PR runs leave.
+          git config --unset-all remote.origin.pushurl || true
+          git remote remove fork 2>/dev/null || true
 
       - name: Resolve & check out PR branch
         id: pr
@@ -862,6 +868,9 @@ jobs:
           set -euo pipefail
           git config user.name  "$GIT_NAME"
           git config user.email "$GIT_EMAIL"
+          # The self-hosted workspace is reused and checkout keeps extra remote config; drop what fork-PR runs leave.
+          git config --unset-all remote.origin.pushurl || true
+          git remote remove fork 2>/dev/null || true
 
       - name: React 👀 to the comment
         run: |
