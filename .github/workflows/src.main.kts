@@ -1996,17 +1996,20 @@ class WithMatrix(
      * @return 测试失败的条件表达式, 不带 `${{ }}`.
      */
     private fun JobBuilder<*>.runOnEmulator(emulator: AndroidEmulator): String {
-        // GitHub 托管的机器只有 16 GB 内存, 模拟器要和 Gradle 一起跑.
-        // 先停掉打包阶段留下的 Gradle/Kotlin daemon, 并记录内存与磁盘余量便于排查.
-        run(
-            name = "Stop Gradle daemons before emulator (${emulator.label})",
-            command = buildString {
-                appendLine("./gradlew --stop")
-                appendLine("pkill -f KotlinCompileDaemon || true")
-                if (matrix.isUbuntu) appendLine("free -h")
-                append("df -h .")
-            },
-        )
+        if (!matrix.selfHosted) {
+            // GitHub 托管的机器只有 16 GB 内存, 模拟器要和 Gradle 一起跑.
+            // 先停掉打包阶段留下的 Gradle/Kotlin daemon, 并记录内存与磁盘余量便于排查.
+            // 自托管机器上可能同时有其他 job 在用 daemon, 不能停.
+            run(
+                name = "Stop Gradle daemons before emulator (${emulator.label})",
+                command = """
+                    ./gradlew --stop
+                    pkill -f KotlinCompileDaemon || true
+                    free -h
+                    df -h .
+                """.trimIndent(),
+            )
+        }
 
         // 脚本第一条命令留下的标记. 没有标记说明失败发生在下载 SDK 或启动模拟器阶段 (例如开机后 adb 短暂 offline),
         // 与测试无关, 可以重试. 测试开始后的失败不重试, 以免掩盖不稳定的测试.

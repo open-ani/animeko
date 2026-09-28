@@ -2172,12 +2172,6 @@ jobs:
       run: './gradlew assembleAndroidDeviceTest "-Pandroid.min.sdk=30" "--scan" "-Porg.gradle.daemon.idletimeout=60000" "-Dfile.encoding=UTF-8" "-Dorg.gradle.jvmargs=-Xmx12g -Dkotlin.daemon.jvm.options=-Xmx20g" "-Dkotlin.daemon.jvm.options=-Xmx20g" "--parallel"'
       if: '${{ steps.step-14.outcome == ''failure'' }}'
     - id: 'step-16'
-      name: 'Stop Gradle daemons before emulator (api=36, arch=arm64-v8a)'
-      run: |-
-        ./gradlew --stop
-        pkill -f KotlinCompileDaemon || true
-        df -h .
-    - id: 'step-17'
       name: 'Android Instrumented Test (api=36, arch=arm64-v8a)'
       continue-on-error: true
       timeout-minutes: 60
@@ -2190,7 +2184,7 @@ jobs:
         ram-size: '2048M'
         emulator-boot-timeout: '1800'
         script: 'touch android-instrumented-test-started-api36-arm64-v8a; ./ci-helper/prepare-android-emulator.sh; ./gradlew connectedDeviceTest -x :app:shared:tv:connectedDeviceTest -x :app:shared:ui-foundation-tv:connectedDeviceTest -x :app:shared:ui-settings-tv:connectedDeviceTest -x :app:shared:ui-subject-tv:connectedDeviceTest -x :app:shared:ui-exploration-tv:connectedDeviceTest -x :app:shared:ui-onboarding-tv:connectedDeviceTest -x :app:shared:ui-episode-tv:connectedDeviceTest -x :app:shared:ui-watchtogether-tv:connectedDeviceTest --continue "-Pandroid.min.sdk=30" "--scan" "-Porg.gradle.daemon.idletimeout=60000" "-Dfile.encoding=UTF-8" "-Dorg.gradle.jvmargs=-Xmx3g -Dkotlin.daemon.jvm.options=-Xmx2g" "-Dkotlin.daemon.jvm.options=-Xmx2g" "--parallel"; status=$?; adb logcat -d > logcat-api36-arm64-v8a.txt || true; pkill -INT -f "$ANDROID_HOME/emulator/crashpad_handler" || true; exit $status'
-    - id: 'step-18'
+    - id: 'step-17'
       name: 'Android Instrumented Test (api=36, arch=arm64-v8a) (Retry after emulator failure)'
       continue-on-error: true
       timeout-minutes: 60
@@ -2203,8 +2197,8 @@ jobs:
         ram-size: '2048M'
         emulator-boot-timeout: '1800'
         script: 'touch android-instrumented-test-started-api36-arm64-v8a; ./ci-helper/prepare-android-emulator.sh; ./gradlew connectedDeviceTest -x :app:shared:tv:connectedDeviceTest -x :app:shared:ui-foundation-tv:connectedDeviceTest -x :app:shared:ui-settings-tv:connectedDeviceTest -x :app:shared:ui-subject-tv:connectedDeviceTest -x :app:shared:ui-exploration-tv:connectedDeviceTest -x :app:shared:ui-onboarding-tv:connectedDeviceTest -x :app:shared:ui-episode-tv:connectedDeviceTest -x :app:shared:ui-watchtogether-tv:connectedDeviceTest --continue "-Pandroid.min.sdk=30" "--scan" "-Porg.gradle.daemon.idletimeout=60000" "-Dfile.encoding=UTF-8" "-Dorg.gradle.jvmargs=-Xmx3g -Dkotlin.daemon.jvm.options=-Xmx2g" "-Dkotlin.daemon.jvm.options=-Xmx2g" "--parallel"; status=$?; adb logcat -d > logcat-api36-arm64-v8a.txt || true; pkill -INT -f "$ANDROID_HOME/emulator/crashpad_handler" || true; exit $status'
-      if: '${{ (steps.step-17.outcome == ''failure'') && (hashFiles(''android-instrumented-test-started-api36-arm64-v8a'') == '''') }}'
-    - id: 'step-19'
+      if: '${{ (steps.step-16.outcome == ''failure'') && (hashFiles(''android-instrumented-test-started-api36-arm64-v8a'') == '''') }}'
+    - id: 'step-18'
       name: 'Upload Android Instrumented Test Reports (api=36, arch=arm64-v8a)'
       uses: 'actions/upload-artifact@v4'
       with:
@@ -2216,16 +2210,10 @@ jobs:
         if-no-files-found: 'ignore'
         overwrite: 'true'
       if: 'always()'
-    - id: 'step-20'
+    - id: 'step-19'
       name: 'Remove previous test results'
       run: 'find . -type d \( -path ''*/build/outputs/androidTest-results'' -o -path ''*/build/reports/androidTests'' \) -prune -exec rm -rf {} +'
-    - id: 'step-21'
-      name: 'Stop Gradle daemons before emulator (api=36, arch=arm64-v8a, target=android-tv)'
-      run: |-
-        ./gradlew --stop
-        pkill -f KotlinCompileDaemon || true
-        df -h .
-    - id: 'step-22'
+    - id: 'step-20'
       name: 'Android Instrumented Test (api=36, arch=arm64-v8a, target=android-tv)'
       continue-on-error: true
       timeout-minutes: 60
@@ -2238,7 +2226,7 @@ jobs:
         ram-size: '2048M'
         emulator-boot-timeout: '1800'
         script: 'touch android-instrumented-test-started-api36-arm64-v8a-android-tv; ./ci-helper/prepare-android-emulator.sh; ./gradlew :app:shared:tv:connectedDeviceTest :app:shared:ui-foundation-tv:connectedDeviceTest :app:shared:ui-settings-tv:connectedDeviceTest :app:shared:ui-subject-tv:connectedDeviceTest :app:shared:ui-exploration-tv:connectedDeviceTest :app:shared:ui-onboarding-tv:connectedDeviceTest :app:shared:ui-episode-tv:connectedDeviceTest :app:shared:ui-watchtogether-tv:connectedDeviceTest --continue "-Pandroid.min.sdk=30" "--scan" "-Porg.gradle.daemon.idletimeout=60000" "-Dfile.encoding=UTF-8" "-Dorg.gradle.jvmargs=-Xmx3g -Dkotlin.daemon.jvm.options=-Xmx2g" "-Dkotlin.daemon.jvm.options=-Xmx2g" "--parallel"; status=$?; adb logcat -d > logcat-api36-arm64-v8a-android-tv.txt || true; pkill -INT -f "$ANDROID_HOME/emulator/crashpad_handler" || true; exit $status'
-    - id: 'step-23'
+    - id: 'step-21'
       name: 'Android Instrumented Test (api=36, arch=arm64-v8a, target=android-tv) (Retry after emulator failure)'
       continue-on-error: true
       timeout-minutes: 60
@@ -2251,8 +2239,8 @@ jobs:
         ram-size: '2048M'
         emulator-boot-timeout: '1800'
         script: 'touch android-instrumented-test-started-api36-arm64-v8a-android-tv; ./ci-helper/prepare-android-emulator.sh; ./gradlew :app:shared:tv:connectedDeviceTest :app:shared:ui-foundation-tv:connectedDeviceTest :app:shared:ui-settings-tv:connectedDeviceTest :app:shared:ui-subject-tv:connectedDeviceTest :app:shared:ui-exploration-tv:connectedDeviceTest :app:shared:ui-onboarding-tv:connectedDeviceTest :app:shared:ui-episode-tv:connectedDeviceTest :app:shared:ui-watchtogether-tv:connectedDeviceTest --continue "-Pandroid.min.sdk=30" "--scan" "-Porg.gradle.daemon.idletimeout=60000" "-Dfile.encoding=UTF-8" "-Dorg.gradle.jvmargs=-Xmx3g -Dkotlin.daemon.jvm.options=-Xmx2g" "-Dkotlin.daemon.jvm.options=-Xmx2g" "--parallel"; status=$?; adb logcat -d > logcat-api36-arm64-v8a-android-tv.txt || true; pkill -INT -f "$ANDROID_HOME/emulator/crashpad_handler" || true; exit $status'
-      if: '${{ (steps.step-22.outcome == ''failure'') && (hashFiles(''android-instrumented-test-started-api36-arm64-v8a-android-tv'') == '''') }}'
-    - id: 'step-24'
+      if: '${{ (steps.step-20.outcome == ''failure'') && (hashFiles(''android-instrumented-test-started-api36-arm64-v8a-android-tv'') == '''') }}'
+    - id: 'step-22'
       name: 'Upload Android Instrumented Test Reports (api=36, arch=arm64-v8a, target=android-tv)'
       uses: 'actions/upload-artifact@v4'
       with:
@@ -2264,10 +2252,10 @@ jobs:
         if-no-files-found: 'ignore'
         overwrite: 'true'
       if: 'always()'
-    - id: 'step-25'
+    - id: 'step-23'
       name: 'Check Android Instrumented Test results'
       run: 'echo ''::error::Android instrumented tests failed. See the "Android Instrumented Test" steps.''; exit 1'
-      if: '${{ ((steps.step-17.outcome == ''failure'') && (steps.step-18.outcome != ''success'')) || ((steps.step-22.outcome == ''failure'') && (steps.step-23.outcome != ''success'')) }}'
+      if: '${{ ((steps.step-16.outcome == ''failure'') && (steps.step-17.outcome != ''success'')) || ((steps.step-20.outcome == ''failure'') && (steps.step-21.outcome != ''success'')) }}'
   verify_github-windows-2025:
     name: 'Verify (Windows Server 2025 x86_64 (GitHub))'
     runs-on:
