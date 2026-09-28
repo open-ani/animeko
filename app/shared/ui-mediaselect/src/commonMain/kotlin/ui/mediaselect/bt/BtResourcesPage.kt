@@ -26,7 +26,6 @@ import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.FilterList
-import androidx.compose.material3.FilledTonalButton
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
@@ -50,7 +49,6 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import kotlinx.coroutines.launch
 import kotlinx.datetime.TimeZone
-import me.him188.ani.app.platform.currentAniBuildConfig
 import me.him188.ani.app.ui.foundation.ProvideCompositionLocalsForPreview
 import me.him188.ani.app.ui.foundation.navigation.BackHandler
 import me.him188.ani.app.ui.foundation.setClipEntryText
@@ -60,7 +58,6 @@ import me.him188.ani.app.ui.lang.media_selector_bt_filter
 import me.him188.ani.app.ui.lang.media_selector_bt_filter_count
 import me.him188.ani.app.ui.lang.media_selector_mode_bt
 import me.him188.ani.app.ui.lang.settings_debug_copied
-import me.him188.ani.app.ui.mediafetch.MediaSelectorDebugTools
 import me.him188.ani.app.ui.mediafetch.MediaSelectorFilters
 import me.him188.ani.app.ui.mediafetch.MediaSelectorState
 import me.him188.ani.app.ui.mediafetch.MediaSourceResultListPresentation
@@ -98,7 +95,6 @@ import org.jetbrains.compose.resources.stringResource
  * 两个列表都空: presentation 仍是占位或任一 BT 源仍在查询 → 加载指示; 否则「没有资源」.
  * 选中项只在首次到达列表时定位一次; 之后筛选 / 换源改变它的下标时不滚动, 保留用户的滚动位置.
  * 点击行 = [onClickItem]; 长按 BT 行复制磁力链.
- * debug 构建下顶部有两个 [MediaSelectorDebugTools] 按钮.
  *
  * @param sourceResults 数据源面板的源状态来源 (btSources: 名称 / 查询中 / 查询失败 + 重试 / 禁用灰显点击 = onRestartSource).
  * @param watching null → 不画「第 N 话」chip 与观看卡片 (episodeFilterEnabled 仍按 state 生效).
@@ -218,22 +214,6 @@ fun BtResourcesPage(
                     )
                     Spacer(Modifier.weight(1f))
                     WatchingEpisodeText(watching, Modifier.padding(start = 16.dp))
-                }
-            }
-
-            if (currentAniBuildConfig.isDebug) {
-                val allMedia = { (presentation.included + presentation.excluded).map { it.media } }
-                Row(
-                    Modifier.horizontalScroll(rememberScrollState())
-                        .padding(horizontal = horizontalPadding).padding(bottom = 8.dp),
-                    horizontalArrangement = Arrangement.spacedBy(8.dp),
-                ) {
-                    FilledTonalButton(onClick = { MediaSelectorDebugTools.dumpSubjectNames(allMedia()) }) {
-                        Text("Dump Subject Names")
-                    }
-                    FilledTonalButton(onClick = { MediaSelectorDebugTools.dumpEpisodeRanges(allMedia()) }) {
-                        Text("Dump Episode Ranges")
-                    }
                 }
             }
 
