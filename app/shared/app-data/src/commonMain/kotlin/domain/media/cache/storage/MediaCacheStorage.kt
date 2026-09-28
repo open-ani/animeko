@@ -44,6 +44,7 @@ import me.him188.ani.datasources.api.topic.FileSize
 import me.him188.ani.datasources.api.topic.FileSize.Companion.bytes
 import me.him188.ani.datasources.api.topic.flowOfFileSizeZero
 import me.him188.ani.utils.logging.logger
+import me.him188.ani.utils.logging.warn
 
 /**
  * 表示一个媒体缓存的存储空间, 例如一个本地目录.
