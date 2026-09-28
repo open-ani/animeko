@@ -2024,7 +2024,7 @@ jobs:
     - 'ARM64'
     permissions:
       actions: 'write'
-    if: '${{ github.repository == ''open-ani/animeko'' }}'
+    if: '${{ (github.repository == ''open-ani/animeko'') && (github.event_name == ''push'') }}'
     steps:
     - id: 'step-0'
       uses: 'actions/checkout@v4'

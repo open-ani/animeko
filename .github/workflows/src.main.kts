@@ -643,7 +643,8 @@ class AndroidInstrumentedTestJob(
  *
  * - GitHub 托管的 Ubuntu x86_64 机器: 手机镜像与 TV 镜像各一个 job, 与构建 job 并行.
  * - 自托管的 Apple Silicon Mac: arm64-v8a 镜像. GitHub 托管的 arm64 机器 (Linux 与 macOS) 不提供嵌套虚拟化,
- *   不能运行有硬件加速的 arm64 模拟器. 这台 Mac 同时承担其他构建, 只测 targetSdk.
+ *   不能运行有硬件加速的 arm64 模拟器. 只有一台 Mac, 还承担所有 run 的 iOS 与 macOS 构建,
+ *   因此只在 main 与 release 分支的 push 上运行, 只测 targetSdk.
  */
 fun MatrixInstance.androidInstrumentedTestJobs(): List<AndroidInstrumentedTestJob> {
     if (!runAndroidInstrumentedTests) return emptyList()
@@ -709,8 +710,7 @@ fun WorkflowBuilder.addAndroidInstrumentedTestJobs(matrix: MatrixInstance) {
             permissions = mapOf(
                 Permission.Actions to Mode.Write, // Upload artifacts
             ),
-            // 与构建 job 相同: 自托管机器只为本仓库运行.
-            `if` = if (matrix.selfHosted) expr { github.isAnimekoRepository } else null,
+            `if` = if (matrix.selfHosted) expr { github.isAnimekoRepository and github.isPush } else null,
         ) {
             uses(action = Checkout(submodules_Untyped = "recursive"))
             with(WithMatrix(matrix)) {
@@ -2422,6 +2422,9 @@ val GitHubContext.isAnimekoRepository
 
 val GitHubContext.isPullRequest
     get() = """$event_name == 'pull_request'"""
+
+val GitHubContext.isPush
+    get() = """$event_name == 'push'"""
 
 /**
  * 能读取仓库 secrets 的运行: 本仓库的 push 与手动运行, 以及来自本仓库分支的 PR. fork 的 PR 读不到 secrets.
