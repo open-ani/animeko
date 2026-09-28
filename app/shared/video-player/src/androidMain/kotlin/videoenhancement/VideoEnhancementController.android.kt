@@ -11,6 +11,7 @@
 
 package me.him188.ani.app.videoplayer.videoenhancement
 
+import androidx.media3.common.Effect
 import androidx.media3.exoplayer.ExoPlayer
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.first
@@ -28,15 +29,15 @@ actual fun createVideoEnhancementController(
     val exoPlayer = player.impl as? ExoPlayer ?: return null
     return ExoPlayerVideoEnhancementController(
         player,
-        exoPlayer,
+        exoPlayer::setVideoEffects,
         playerKernelConfig.map { it.exoPlayerInitEffectGraphInAdvance },
         parentCoroutineContext,
     )
 }
 
-private class ExoPlayerVideoEnhancementController(
+internal class ExoPlayerVideoEnhancementController(
     player: MediampPlayer,
-    private val exoPlayer: ExoPlayer,
+    private val setVideoEffects: (List<Effect>) -> Unit,
     preinitVideoEffects: Flow<Boolean>,
     parentCoroutineContext: CoroutineContext,
 ) : BaseVideoEnhancementController(player, parentCoroutineContext) {
@@ -50,7 +51,7 @@ private class ExoPlayerVideoEnhancementController(
         // support switching effects while playback is active.
         scope.launch {
             if (preinitVideoEffects.first()) {
-                exoPlayer.setVideoEffects(emptyList())
+                setVideoEffects(emptyList())
             }
         }
         startObserving()
@@ -66,13 +67,15 @@ private class ExoPlayerVideoEnhancementController(
             return
         }
 
-        val shouldApplyScaler = videoSize != null && viewportSize != null
+        // The shader receives input dimensions in configure(). Metadata availability must not
+        // rebuild the effect graph: compiling the quality shaders can stall playback.
+        val shouldApplyScaler = viewportSize != null
         if (
             appliedMode == mode && scalerApplied == shouldApplyScaler &&
             (!shouldApplyScaler || appliedWidth == viewportSize.width && appliedHeight == viewportSize.height)
         ) return
 
-        exoPlayer.setVideoEffects(
+        setVideoEffects(
             buildList {
                 when (mode) {
                     VideoEnhancementMode.OFF -> Unit
@@ -95,7 +98,7 @@ private class ExoPlayerVideoEnhancementController(
 
     override fun restore() {
         if (appliedMode == VideoEnhancementMode.OFF) return
-        exoPlayer.setVideoEffects(emptyList())
+        setVideoEffects(emptyList())
         appliedMode = VideoEnhancementMode.OFF
         scalerApplied = false
         appliedWidth = 0

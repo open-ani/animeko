@@ -26,8 +26,8 @@ import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.only
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.safeContent
-import androidx.compose.foundation.layout.systemBars
 import androidx.compose.foundation.layout.statusBarsPadding
+import androidx.compose.foundation.layout.systemBars
 import androidx.compose.foundation.layout.union
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.windowInsetsPadding
@@ -154,6 +154,7 @@ import me.him188.ani.app.ui.subject.episode.video.components.EpisodeVideoSideShe
 import me.him188.ani.app.ui.subject.episode.video.components.EpisodeVideoSideSheets
 import me.him188.ani.app.ui.subject.episode.video.components.FloatingFullscreenSwitchButton
 import me.him188.ani.app.ui.subject.episode.video.components.SideSheets
+import me.him188.ani.app.ui.subject.episode.video.settings.DanmakuSourceSettings
 import me.him188.ani.app.ui.subject.episode.video.sidesheet.DanmakuRegexFilterSettings
 import me.him188.ani.app.ui.subject.episode.video.sidesheet.EpisodeSelectorSheet
 import me.him188.ani.app.ui.subject.episode.video.sidesheet.MediaSelectorSheet
@@ -185,7 +186,6 @@ import org.openani.mediamp.features.PlaybackSpeed
 import org.openani.mediamp.features.Screenshots
 import org.openani.mediamp.features.VideoAspectRatio
 import org.openani.mediamp.features.toggleMute
-
 
 /**
  * 番剧详情 (播放) 页面
@@ -605,9 +605,7 @@ private fun EpisodeScreenTabletVeryWide(
                                     },
                                     onClickLogin = { navigator.navigateBangumiAuthorize() },
                                     onClickTag = { navigator.navigateSubjectSearch(it.name) },
-                                    onManualMatchDanmaku = {
-                                        vm.startMatchingDanmaku(it)
-                                    },
+                                    onManualMatchDanmaku = vm::startMatchingDanmakuForService,
                                     onEpisodeCollectionUpdate = { request ->
                                         scope.launch {
                                             vm.setEpisodeCollectionType.invokeSafe(request)?.let {
@@ -779,9 +777,7 @@ private fun EpisodeScreenContentPhone(
                     },
                     onClickLogin = { navigator.navigateBangumiAuthorize() },
                     onClickTag = { navigator.navigateSubjectSearch(it.name) },
-                    onManualMatchDanmaku = {
-                        vm.startMatchingDanmaku(it)
-                    },
+                    onManualMatchDanmaku = vm::startMatchingDanmakuForService,
                     onEpisodeCollectionUpdate = { request ->
                         scope.launch {
                             vm.setEpisodeCollectionType.invokeSafe(request)?.let {
@@ -1180,6 +1176,16 @@ private fun EpisodeVideo(
                     EpisodeVideoSideSheets.DanmakuSettingsNavigatorSheet(
                         expanded = expanded,
                         state = vm.danmakuRegexFilterState,
+                        sources = {
+                            val sourceState by vm.danmakuListState.collectAsStateWithLifecycle()
+                            DanmakuSourceSettings(
+                                sourceItems = sourceState.sourceItems,
+                                isLoading = sourceState.isLoading,
+                                onSetEnabled = vm::setDanmakuSourceEnabled,
+                                onManualMatch = vm::startMatchingDanmakuForService,
+                                onAdjustShift = vm::setDanmakuSourceShiftMillis,
+                            )
+                        },
                         onDismissRequest = { goBack() },
                         onNavigateToFilterSettings = {
                             sheetsController.navigateTo(EpisodeVideoSideSheetPage.EDIT_DANMAKU_REGEX_FILTER)

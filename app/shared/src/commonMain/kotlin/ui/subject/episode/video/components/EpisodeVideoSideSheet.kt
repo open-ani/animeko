@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2024-2025 OpenAni and contributors.
+ * Copyright (C) 2024-2026 OpenAni and contributors.
  *
  * 此源代码的使用受 GNU AFFERO GENERAL PUBLIC LICENSE version 3 许可证的约束, 可以在以下链接找到该许可证.
  * Use of this source code is governed by the GNU AGPLv3 license, which can be found at the following link.
@@ -109,7 +109,8 @@ object EpisodeVideoSideSheets {
         expanded: Boolean,
         state: DanmakuRegexFilterState,
         onDismissRequest: () -> Unit,
-        onNavigateToFilterSettings: () -> Unit
+        onNavigateToFilterSettings: () -> Unit,
+        sources: @Composable () -> Unit = {},
     ) {
         val danmakuSettingsText = stringResource(Lang.subject_episode_danmaku_settings_title)
         val closeText = stringResource(Lang.subject_episode_close)
@@ -127,7 +128,7 @@ object EpisodeVideoSideSheets {
                     }
                 },
             ) {
-                EpisodeVideoSettings(viewModel, onNavigateToFilterSettings)
+                EpisodeVideoSettings(viewModel, onNavigateToFilterSettings, sources = sources)
             }
             return
         }
@@ -152,6 +153,7 @@ object EpisodeVideoSideSheets {
                         EpisodeVideoSettings(
                             viewModel,
                             onNavigateToFilterSettings = { currentPage = DanmakuSettingsPage.REGEX_FILTER },
+                            sources = sources,
                         )
                     }
 
@@ -181,6 +183,7 @@ fun EpisodeVideoSideSheets.DanmakuSettingsSheet(
 
     onDismissRequest: () -> Unit,
     modifier: Modifier = Modifier,
+    sources: @Composable () -> Unit = {},
 ) {
     val danmakuSettingsText = stringResource(Lang.subject_episode_danmaku_settings_title)
     val closeText = stringResource(Lang.subject_episode_close)
@@ -201,6 +204,7 @@ fun EpisodeVideoSideSheets.DanmakuSettingsSheet(
             enableRegexFilter,
             onNavigateToFilterSettings,
             switchDanmakuRegexFilterCompletely,
+            sources = sources,
         )
     }
 }

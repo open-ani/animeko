@@ -1378,6 +1378,8 @@
     <string name="settings_log_share_today_log_file">分享當日日誌檔案</string>
     <string name="settings_log_share_file">分享日誌檔案</string>
     <string name="settings_log_copy_today_log_content">複製當日日誌內容（很大）</string>
+    <string name="settings_log_copy_too_large">日誌太大，無法複製。請使用「分享當日日誌檔案」匯出完整日誌。</string>
+    <string name="settings_log_copy_failed">無法複製日誌，請嘗試「分享當日日誌檔案」。</string>
     <string name="settings_log_file_not_found">未找到日誌檔案</string>
     <string name="rating_requires_collection">請先收藏再評分</string>
     <string name="rating_discard_edit_title">捨棄編輯</string>
@@ -1741,6 +1743,8 @@
     <string name="qr_login_retry">重試</string>
     <string name="qr_login_done">完成</string>
     <string name="qr_login_close">關閉</string>
+    <string name="subject_episode_danmaku_sources_title">來源與時間校準</string>
+    <string name="subject_episode_danmaku_sources_empty">暫無可用彈幕來源</string>
 </resources>
 
 <!--@formatter:on-->
