@@ -165,14 +165,14 @@ fun WatchingEpisodeText(
 }
 
 /**
- * 「第 14 话」; 有 EP 时「第 14 话 (EP 02)」.
+ * 「第 14 话」; 有 EP 时「第 02 (14) 话」: 本季集号在前, 序号在括号里. 资源标题多按本季集号命名, 用户先对的是它.
  */
 @Composable
 fun WatchingEpisode.episodeLabel(): String =
     if (ep == null) {
         stringResource(Lang.media_selector_episode_label, sort)
     } else {
-        stringResource(Lang.media_selector_episode_label_with_ep, sort, ep)
+        stringResource(Lang.media_selector_episode_label_with_ep, ep, sort)
     }
 
 @Composable

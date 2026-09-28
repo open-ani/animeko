@@ -1236,7 +1236,7 @@
     <string name="media_selector_mode_menu">Switch mode</string>
     <string name="media_selector_watching_prefix">Now watching</string>
     <string name="media_selector_episode_label">Ep. %1$s</string>
-    <string name="media_selector_episode_label_with_ep">Ep. %1$s (season Ep. %2$s)</string>
+    <string name="media_selector_episode_label_with_ep">Ep. %1$s (%2$s)</string>
     <string name="media_selector_search_hint">Keyword</string>
     <string name="media_selector_retry">Retry</string>
     <string name="media_selector_load_failed">Failed to load</string>

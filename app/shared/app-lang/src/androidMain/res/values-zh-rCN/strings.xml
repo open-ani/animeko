@@ -1276,7 +1276,7 @@
     <string name="media_selector_mode_menu">切换模式</string>
     <string name="media_selector_watching_prefix">正在观看</string>
     <string name="media_selector_episode_label">第 %1$s 话</string>
-    <string name="media_selector_episode_label_with_ep">第 %1$s 话 (EP %2$s)</string>
+    <string name="media_selector_episode_label_with_ep">第 %1$s (%2$s) 话</string>
     <string name="media_selector_search_hint">搜索关键字</string>
     <string name="media_selector_retry">重试</string>
     <string name="media_selector_load_failed">加载失败</string>

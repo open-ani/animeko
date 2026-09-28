@@ -193,7 +193,7 @@ class BtResourcesPageTest {
 
     @Test
     fun `episode chip shows ep when it differs from sort`() = runAniComposeUiTest {
-        val label = runBlocking { getString(Lang.media_selector_episode_label_with_ep, "14", "02") }
+        val label = runBlocking { getString(Lang.media_selector_episode_label_with_ep, "02", "14") }
         setPage(watching = WatchingEpisode("14", "测试", ep = "02"))
         waitUntil { onNodeWithTag(BtResourcesPageTestTags.EPISODE_CHIP).isDisplayed() }
         onNodeWithTag(BtResourcesPageTestTags.EPISODE_CHIP).assert(hasText(label))
