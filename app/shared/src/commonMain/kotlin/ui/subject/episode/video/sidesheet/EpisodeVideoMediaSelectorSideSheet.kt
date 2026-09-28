@@ -57,6 +57,7 @@ fun EpisodeVideoSideSheets.MediaSelectorSheet(
     onRefresh: () -> Unit,
     onRestartSource: (instanceId: String) -> Unit,
     modifier: Modifier = Modifier,
+    hideOnSelect: Boolean = true,
 ) {
     val selectMediaSourceText = stringResource(Lang.subject_episode_select_media_source)
     val closeSelectorText = stringResource(Lang.subject_episode_close_selector)
@@ -86,7 +87,9 @@ fun EpisodeVideoSideSheets.MediaSelectorSheet(
             stickyHeaderBackgroundColor = MaterialTheme.colorScheme.surfaceContainerHigh,
             onClickItem = {
                 mediaSelectorState.select(it)
-                onDismissRequest()
+                if (hideOnSelect) {
+                    onDismissRequest()
+                }
             },
             singleLineFilter = true,
         )
