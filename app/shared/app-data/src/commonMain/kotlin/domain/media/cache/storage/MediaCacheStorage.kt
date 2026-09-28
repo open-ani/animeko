@@ -43,6 +43,7 @@ import me.him188.ani.datasources.api.topic.EpisodeRange
 import me.him188.ani.datasources.api.topic.FileSize
 import me.him188.ani.datasources.api.topic.FileSize.Companion.bytes
 import me.him188.ani.datasources.api.topic.flowOfFileSizeZero
+import me.him188.ani.utils.logging.logger
 
 /**
  * 表示一个媒体缓存的存储空间, 例如一个本地目录.
@@ -178,6 +179,7 @@ class MediaCacheStorageSource(
     private val displayName: String,
     override val location: MediaSourceLocation = MediaSourceLocation.Local,
 ) : MediaSource {
+    private val logger = logger<MediaCacheStorageSource>()
     override val mediaSourceId: String get() = storage.mediaSourceId
     override val kind: MediaSourceKind get() = MediaSourceKind.LocalCache
 
@@ -187,7 +189,13 @@ class MediaCacheStorageSource(
         return SinglePagePagedSource {
             storage.listFlow.first().mapNotNull { cache ->
                 val kind = query.matchesSubject(cache.metadata) ?: return@mapNotNull null
-                MediaMatch(cache.getCachedMedia().forRecord(cache.metadata), kind)
+                // 单个缓存可能暂时无法提供可播放的媒体 (例如下载尚未完成),
+                // 此时跳过该缓存, 保证其他已完成的缓存仍可被查询到.
+                val cachedMedia = runCatching { cache.getCachedMedia() }.getOrElse { e ->
+                    logger.warn(e) { "Skipping cache that failed to provide media: ${cache.cacheId}" }
+                    return@mapNotNull null
+                }
+                MediaMatch(cachedMedia.forRecord(cache.metadata), kind)
             }.asFlow()
         }
     }
