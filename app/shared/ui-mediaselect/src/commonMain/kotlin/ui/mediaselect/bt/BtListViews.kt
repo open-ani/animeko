@@ -29,11 +29,13 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyListScope
 import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.Check
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.LoadingIndicator
 import androidx.compose.material3.LocalContentColor
@@ -185,6 +187,7 @@ private val TabularNumbers = TextStyle(fontFeatureSettings = "tnum")
 
 /**
  * 紧凑列表: 平铺行, 无卡片; 行内字幕组 / 完整标题 / 标签三行, 标题按宽度换行不截断 (资源的集号、版本、格式都只写在标题里). 选中行 primaryContainer 背景 + 前导 Check; 排除行降低不透明度.
+ * 行之间有分隔线: 标题常换成两三行, 只靠留白时上一行的标签与下一行的字幕组贴在一起, 分不清哪里是一条资源的开始.
  * [excludedRows] 非空且未 [revealExcluded] 时列表末尾是「显示已被排除的 N 条资源」按钮, 展开后追加排除行.
  *
  * @param isLoading 两个列表都空时: true → 居中加载指示 (占位 presentation / BT 源仍在查询), false → 「没有资源」. 有行时忽略.
@@ -213,11 +216,11 @@ internal fun BtCompactList(
         return
     }
     LazyColumn(modifier.testTag(BtResourcesPageTestTags.COMPACT_LIST), state = listState) {
-        items(rows, key = { it.id }) { row ->
-            BtCompactRow(row, strings, timeZone, onClick, onLongClick, horizontalPadding)
+        itemsIndexed(rows, key = { _, row -> row.id }) { index, row ->
+            BtCompactRow(row, strings, timeZone, onClick, onLongClick, horizontalPadding, divider = index > 0)
         }
         excludedSection(excludedRows, revealExcluded, onReveal) { row ->
-            BtCompactRow(row, strings, timeZone, onClick, onLongClick, horizontalPadding)
+            BtCompactRow(row, strings, timeZone, onClick, onLongClick, horizontalPadding, divider = true)
         }
     }
 }
@@ -231,72 +234,78 @@ private fun BtCompactRow(
     onClick: (BtRow) -> Unit,
     onLongClick: (BtRow) -> Unit,
     horizontalPadding: Dp,
+    divider: Boolean,
 ) {
     val background = if (row.isSelected) MaterialTheme.colorScheme.primaryContainer else Color.Transparent
     val contentColor = if (row.isSelected) MaterialTheme.colorScheme.onPrimaryContainer else MaterialTheme.colorScheme.onSurface
     val secondaryColor = if (row.isSelected) MaterialTheme.colorScheme.onPrimaryContainer else MaterialTheme.colorScheme.onSurfaceVariant
-    Row(
-        Modifier
-            .testTag(BtResourcesPageTestTags.row(row.id))
-            .fillMaxWidth()
-            .heightIn(min = 56.dp)
-            .background(background)
-            .combinedClickable(onClick = { onClick(row) }, onLongClick = { onLongClick(row) })
-            .alpha(if (row.isExcluded) 0.6f else 1f)
-            .padding(horizontal = horizontalPadding, vertical = 8.dp),
-        horizontalArrangement = Arrangement.spacedBy(12.dp),
-        verticalAlignment = Alignment.CenterVertically,
-    ) {
-        Box(Modifier.size(18.dp), contentAlignment = Alignment.Center) {
-            if (row.isSelected) {
-                Icon(Icons.Rounded.Check, contentDescription = null, Modifier.size(18.dp), tint = contentColor)
-            }
+    Column {
+        if (divider) {
+            HorizontalDivider(Modifier.padding(horizontal = horizontalPadding), color = MaterialTheme.colorScheme.outlineVariant)
         }
-        Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(4.dp)) {
-            val alliance = row.media.properties.alliance
-            if (alliance.isNotBlank()) {
-                Text(
-                    alliance,
-                    color = contentColor,
-                    style = MaterialTheme.typography.bodyMedium,
-                    fontWeight = FontWeight.Medium,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis,
-                )
-            }
-            Text(
-                row.media.originalTitle,
-                color = contentColor,
-                style = MaterialTheme.typography.bodySmall,
-            )
-            Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                for (label in strings.compactLabels(row)) {
-                    Text(
-                        label,
-                        color = secondaryColor,
-                        style = MaterialTheme.typography.bodySmall,
-                        maxLines = 1,
-                        softWrap = false,
-                        overflow = TextOverflow.Clip,
-                    )
+        Row(
+            Modifier
+                .testTag(BtResourcesPageTestTags.row(row.id))
+                .fillMaxWidth()
+                .heightIn(min = 56.dp)
+                .background(background)
+                .combinedClickable(onClick = { onClick(row) }, onLongClick = { onLongClick(row) })
+                .alpha(if (row.isExcluded) 0.6f else 1f)
+                .padding(horizontal = horizontalPadding, vertical = 12.dp),
+            horizontalArrangement = Arrangement.spacedBy(12.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Box(Modifier.size(18.dp), contentAlignment = Alignment.Center) {
+                if (row.isSelected) {
+                    Icon(Icons.Rounded.Check, contentDescription = null, Modifier.size(18.dp), tint = contentColor)
                 }
             }
-        }
-        Column(horizontalAlignment = Alignment.End, verticalArrangement = Arrangement.spacedBy(4.dp)) {
-            Text(
-                formatBtSize(row.media.properties.size),
-                color = secondaryColor,
-                style = MaterialTheme.typography.bodySmall.merge(TabularNumbers),
-                maxLines = 1,
-                softWrap = false,
-            )
-            Text(
-                formatPublishedMMdd(row.media.publishedTime, timeZone),
-                color = secondaryColor,
-                style = MaterialTheme.typography.bodySmall.merge(TabularNumbers),
-                maxLines = 1,
-                softWrap = false,
-            )
+            Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                val alliance = row.media.properties.alliance
+                if (alliance.isNotBlank()) {
+                    Text(
+                        alliance,
+                        color = contentColor,
+                        style = MaterialTheme.typography.bodyMedium,
+                        fontWeight = FontWeight.Medium,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                    )
+                }
+                Text(
+                    row.media.originalTitle,
+                    color = contentColor,
+                    style = MaterialTheme.typography.bodySmall,
+                )
+                Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                    for (label in strings.compactLabels(row)) {
+                        Text(
+                            label,
+                            color = secondaryColor,
+                            style = MaterialTheme.typography.bodySmall,
+                            maxLines = 1,
+                            softWrap = false,
+                            overflow = TextOverflow.Clip,
+                        )
+                    }
+                }
+            }
+            Column(horizontalAlignment = Alignment.End, verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                Text(
+                    formatBtSize(row.media.properties.size),
+                    color = secondaryColor,
+                    style = MaterialTheme.typography.bodySmall.merge(TabularNumbers),
+                    maxLines = 1,
+                    softWrap = false,
+                )
+                Text(
+                    formatPublishedMMdd(row.media.publishedTime, timeZone),
+                    color = secondaryColor,
+                    style = MaterialTheme.typography.bodySmall.merge(TabularNumbers),
+                    maxLines = 1,
+                    softWrap = false,
+                )
+            }
         }
     }
 }
