@@ -100,7 +100,7 @@ HTTP server 仅由 Android TV flavor 引用，手机 APK 不启动 listener。Op
 
 ### 3.1 启动与网络
 
-`TvAniApplication` 完成本地服务装配后创建 `AndroidRemoteSettingsHost`，通过 Koin 暴露只读 `RemoteSettingsHost.state` 给设置页。服务不依赖设置页是否打开。
+`TvAniApplication` 完成本地服务装配后创建并启动 `AndroidRemoteSettingsHost`，通过 Koin 暴露只读 `RemoteSettingsHost.state` 给设置页。服务不依赖设置页是否打开。
 
 服务创建时生成两个 UUID：
 
@@ -109,7 +109,7 @@ HTTP server 仅由 Android TV flavor 引用，手机 APK 不启动 listener。Op
 
 CIO 使用 `0.0.0.0:0` 监听，由操作系统分配可用端口。Host 读取实际端口生成二维码。客户端退出、关闭二维码或退出电视设置页都不停止服务。
 
-Host 每 3 秒检查权限、Wi-Fi／Ethernet 地址和 user UUID。只有 RFC 1918 私有 IPv4 地址进入二维码，排除 VPN transport。没有可用地址时保留进程服务，页面显示连接网络的说明。服务启动异常进入重试，重试间隔 10 秒。
+Host 在获得局域网权限前每 2 秒检查一次权限；权限被撤销时系统会结束进程，授权后不再检查。获得权限后启动 listener，之后通过 `ConnectivityManager` 网络回调跟踪 Wi-Fi／Ethernet 地址，并观察 user UUID，二者变化时更新二维码，其余时间状态不变。只有 RFC 1918 私有 IPv4 地址进入二维码，排除 VPN transport。没有可用地址时保留进程服务，页面显示连接网络的说明。服务启动或状态更新异常进入重试，重试间隔 10 秒。
 
 进程结束时 listener 随进程结束；根协程取消时显式关闭 engine。重新启动产生新的 key、实例标识与随机端口，旧二维码不保证继续有效。
 

@@ -10,8 +10,6 @@
 package me.him188.ani.android.tv
 
 import android.os.Bundle
-import android.os.Build
-import android.content.pm.PackageManager
 import android.widget.Toast
 import androidx.activity.SystemBarStyle
 import androidx.activity.compose.setContent
@@ -26,6 +24,7 @@ import me.him188.ani.app.data.models.preference.UISettings
 import me.him188.ani.app.domain.foundation.HttpClientProvider
 import me.him188.ani.app.domain.foundation.ScopedHttpClientUserAgent
 import me.him188.ani.app.domain.foundation.get
+import me.him188.ani.app.domain.settings.remote.LocalNetworkPermission
 import me.him188.ani.app.navigation.AniNavigator
 import me.him188.ani.app.platform.AniComponentActivity
 import me.him188.ani.app.ui.foundation.LocalSketch
@@ -50,8 +49,8 @@ class MainActivity : AniComponentActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        if (Build.VERSION.SDK_INT >= 37 && checkSelfPermission(AndroidRemoteSettingsHost.LOCAL_NETWORK_PERMISSION) != PackageManager.PERMISSION_GRANTED && savedInstanceState == null) {
-            requestLocalNetwork.launch(AndroidRemoteSettingsHost.LOCAL_NETWORK_PERMISSION)
+        if (savedInstanceState == null && !LocalNetworkPermission.isGranted(this)) {
+            requestLocalNetwork.launch(LocalNetworkPermission.NAME)
         }
         // 全面屏: 内容画到系统栏后面 (对齐参考版沉浸效果)
         enableEdgeToEdge(

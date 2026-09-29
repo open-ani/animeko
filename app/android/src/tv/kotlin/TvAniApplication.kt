@@ -69,7 +69,8 @@ class TvAniApplication : Application() {
                 if (danmakuCacheStrategy == DanmakuCacheStrategy.CACHE_ON_MEDIA_CACHE) copy(danmakuCacheStrategy = DanmakuCacheStrategy.DON_NOT_CACHE) else this
             }
         }
-        val host = AndroidRemoteSettingsHost(this, koinApp.koin, scope)
-        koinApp.koin.loadModules(listOf(module { single<RemoteSettingsHost> { host } }))
+        val remoteSettingsHost = AndroidRemoteSettingsHost.create(this, koinApp.koin, scope)
+        remoteSettingsHost.start(scope)
+        koinApp.koin.loadModules(listOf(module { single<RemoteSettingsHost> { remoteSettingsHost } }))
     }
 }
