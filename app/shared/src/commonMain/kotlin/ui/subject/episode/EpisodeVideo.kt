@@ -104,9 +104,8 @@ import me.him188.ani.app.ui.lang.video_player_stats_title_show
 import me.him188.ani.app.ui.lang.video_player_video_enhancement
 import me.him188.ani.app.ui.lang.watch_together_title
 import me.him188.ani.app.ui.mediafetch.TestMediaSourceResultListPresentation
-import me.him188.ani.app.ui.mediafetch.ViewKind
+import me.him188.ani.app.ui.mediaselect.MediaSelectorMode
 import me.him188.ani.app.ui.mediafetch.rememberTestMediaSelectorState
-import me.him188.ani.app.ui.mediafetch.request.TestMediaFetchRequest
 import me.him188.ani.app.ui.settings.danmaku.createTestDanmakuRegexFilterState
 import me.him188.ani.app.ui.subject.episode.details.components.ShareEpisodeDropdown
 import me.him188.ani.app.ui.subject.episode.details.components.VideoEnhancementDropdown
@@ -969,16 +968,12 @@ private fun PreviewVideoScaffoldImpl(
                     )
                 },
                 mediaSelectorPage = {
-                    val (viewKind, onViewKindChange) = rememberSaveable { mutableStateOf(ViewKind.WEB) }
                     EpisodeVideoSideSheets.MediaSelectorSheet(
                         mediaSelectorState = rememberTestMediaSelectorState(),
                         mediaSourceResultListPresentation = TestMediaSourceResultListPresentation,
-                        viewKind = viewKind,
-                        onViewKindChange = onViewKindChange,
-                        fetchRequest = TestMediaFetchRequest,
-                        onFetchRequestChange = {},
+                        mode = MediaSelectorMode.AUTO,
+                        onModeChange = {},
                         onDismissRequest = { goBack() },
-                        onRefresh = {},
                         onRestartSource = {},
                     )
                 },

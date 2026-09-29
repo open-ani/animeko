@@ -74,6 +74,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalUriHandler
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.tooling.preview.PreviewLightDark
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.coerceIn
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.Lifecycle
@@ -145,6 +146,11 @@ import me.him188.ani.app.ui.lang.episode_send_danmaku
 import me.him188.ani.app.ui.lang.foundation_richtext_external_app_link_warning_prefix
 import me.him188.ani.app.ui.lang.foundation_richtext_open_failed_prefix
 import me.him188.ani.app.ui.lang.subject_details_tab_details
+import me.him188.ani.app.ui.mediaselect.MediaSelectorMode
+import me.him188.ani.app.ui.mediaselect.common.MediaSelectorDialog
+import me.him188.ani.app.ui.mediaselect.common.MediaSelectorDialogContent
+import me.him188.ani.app.ui.mediaselect.common.MediaSelectorDialogLayout
+import me.him188.ani.app.ui.mediaselect.needsContainer
 import me.him188.ani.app.ui.richtext.RichTextDefaults
 import me.him188.ani.app.ui.subject.episode.comments.EpisodeCommentColumn
 import me.him188.ani.app.ui.subject.episode.comments.EpisodeEditCommentSheet
@@ -160,14 +166,17 @@ import me.him188.ani.app.ui.subject.episode.video.sidesheet.EpisodeSelectorSheet
 import me.him188.ani.app.ui.subject.episode.video.sidesheet.MediaSelectorSheet
 import me.him188.ani.app.ui.subject.episode.video.topbar.EpisodePlayerTitle
 import me.him188.ani.app.ui.watchtogether.LocalWatchTogetherPlayerController
+import me.him188.ani.app.videoplayer.ui.LocalVideoScaffoldSheetWindowInsets
 import me.him188.ani.app.videoplayer.ui.PlaybackSpeedControllerState
 import me.him188.ani.app.videoplayer.ui.PlayerControllerState
 import me.him188.ani.app.videoplayer.ui.PlayerFocusState
 import me.him188.ani.app.videoplayer.ui.PlayerFullscreenState
 import me.him188.ani.app.videoplayer.ui.VideoAspectRatioControllerState
+import me.him188.ani.app.videoplayer.ui.VideoSideSheetsController
 import me.him188.ani.app.videoplayer.ui.gesture.LevelController
 import me.him188.ani.app.videoplayer.ui.gesture.NoOpLevelController
 import me.him188.ani.app.videoplayer.ui.gesture.asLevelController
+import me.him188.ani.app.videoplayer.ui.rememberAlwaysOnRequester
 import me.him188.ani.app.videoplayer.ui.progress.PlayerControllerDefaults
 import me.him188.ani.app.videoplayer.ui.progress.PlayerControllerDefaults.rememberRandomDanmakuPlaceholder
 import me.him188.ani.app.videoplayer.ui.progress.rememberMediaProgressFramePreviewState
@@ -579,9 +588,12 @@ private fun EpisodeScreenTabletVeryWide(
                                 EpisodeDetails(
                                     page.mediaSelectorSummary,
                                     vm.episodeDetailsState,
-                                    page.initialMediaSelectorViewKind,
-                                    fetchRequest,
-                                    onFetchRequestChange,
+                                    mediaSelectorMode = vm.mediaSelectorMode ?: page.initialMediaSelectorMode,
+                                    onMediaSelectorModeChange = { vm.mediaSelectorMode = it },
+                                    manualBrowseState = vm.manualBrowseState,
+                                    watchingEpisode = page.watchingEpisode,
+                                    fetchRequest = fetchRequest,
+                                    onFetchRequestChange = onFetchRequestChange,
                                     vm.episodeCarouselState,
                                     vm.editableSubjectCollectionTypeState,
                                     page.danmakuStatistics,
@@ -595,7 +607,6 @@ private fun EpisodeScreenTabletVeryWide(
                                             navigator.navigateEpisodeDetails(vm.subjectId, episodeId)
                                         }
                                     },
-                                    onRefreshMediaSources = { vm.refreshFetch() },
                                     onRestartSource = { vm.restartSource(it) },
                                     onSetDanmakuSourceEnabled = { providerId, enabled ->
                                         vm.setDanmakuSourceEnabled(providerId, enabled)
@@ -618,6 +629,11 @@ private fun EpisodeScreenTabletVeryWide(
                                         page.loadError?.let { vm.retryLoad(it) }
                                     },
                                     danmakuListState = vm.danmakuListState.collectAsStateWithLifecycle().value,
+                                    onBeforeOpenMediaSelector = {
+                                        if (vm.mediaSelectorMode == null && !page.isLoading) {
+                                            vm.mediaSelectorMode = page.initialMediaSelectorMode
+                                        }
+                                    },
                                 )
                             }
                         }
@@ -752,9 +768,12 @@ private fun EpisodeScreenContentPhone(
                 EpisodeDetails(
                     page.mediaSelectorSummary,
                     vm.episodeDetailsState,
-                    page.initialMediaSelectorViewKind,
-                    page.fetchRequest,
-                    { vm.updateFetchRequest(it) },
+                    mediaSelectorMode = vm.mediaSelectorMode ?: page.initialMediaSelectorMode,
+                    onMediaSelectorModeChange = { vm.mediaSelectorMode = it },
+                    manualBrowseState = vm.manualBrowseState,
+                    watchingEpisode = page.watchingEpisode,
+                    fetchRequest = page.fetchRequest,
+                    onFetchRequestChange = { vm.updateFetchRequest(it) },
                     vm.episodeCarouselState,
                     vm.editableSubjectCollectionTypeState,
                     page.danmakuStatistics,
@@ -767,7 +786,6 @@ private fun EpisodeScreenContentPhone(
                             navigator.navigateEpisodeDetails(vm.subjectId, episodeId)
                         }
                     },
-                    onRefreshMediaSources = { vm.refreshFetch() },
                     onRestartSource = { vm.restartSource(it) },
                     onSetDanmakuSourceEnabled = { providerId, enabled ->
                         vm.setDanmakuSourceEnabled(providerId, enabled)
@@ -791,6 +809,11 @@ private fun EpisodeScreenContentPhone(
                     },
                     modifier = Modifier.fillMaxSize(),
                     danmakuListState = vm.danmakuListState.collectAsStateWithLifecycle().value,
+                    onBeforeOpenMediaSelector = {
+                        if (vm.mediaSelectorMode == null && !page.isLoading) {
+                            vm.mediaSelectorMode = page.initialMediaSelectorMode
+                        }
+                    },
                 )
             }
         },
@@ -1169,60 +1192,80 @@ private fun EpisodeVideo(
             )
         },
         sideSheets = { sheetsController ->
-            EpisodeVideoDefaults.SideSheets(
-                sheetsController,
-                playerControllerState,
-                playerSettingsPage = {
-                    EpisodeVideoSideSheets.DanmakuSettingsNavigatorSheet(
-                        expanded = expanded,
-                        state = vm.danmakuRegexFilterState,
-                        sources = {
-                            val sourceState by vm.danmakuListState.collectAsStateWithLifecycle()
-                            DanmakuSourceSettings(
-                                sourceItems = sourceState.sourceItems,
-                                isLoading = sourceState.isLoading,
-                                onSetEnabled = vm::setDanmakuSourceEnabled,
-                                onManualMatch = vm::startMatchingDanmakuForService,
-                                onAdjustShift = vm::setDanmakuSourceShiftMillis,
-                            )
-                        },
-                        onDismissRequest = { goBack() },
-                        onNavigateToFilterSettings = {
-                            sheetsController.navigateTo(EpisodeVideoSideSheetPage.EDIT_DANMAKU_REGEX_FILTER)
-                        },
-                    )
-                },
-                editDanmakuRegexFilterPage = {
-                    DanmakuRegexFilterSettings(
-                        state = vm.danmakuRegexFilterState,
-                        onDismissRequest = { goBack() },
-                        expanded = expanded,
-                    )
-                },
-                mediaSelectorPage = {
-                    val pageState by vm.pageState.collectAsStateWithLifecycle()
-                    pageState?.let { page ->
-                        val (viewKind, onViewKindChange) = rememberSaveable { mutableStateOf(page.initialMediaSelectorViewKind) }
-                        EpisodeVideoSideSheets.MediaSelectorSheet(
-                            page.mediaSelectorState,
-                            page.mediaSourceResultListPresentation,
-                            viewKind,
-                            onViewKindChange,
-                            page.fetchRequest,
-                            { vm.updateFetchRequest(it) },
+            // rhsSheet 槽就是侧边栏可用的区域. 够高时三种模式都在侧边栏; 手机横屏装不下手动查找与 BT 的列表, 改开容器 (见 needsContainer).
+            BoxWithConstraints(Modifier.fillMaxSize()) {
+                val sheetHeight = maxHeight
+                EpisodeVideoDefaults.SideSheets(
+                    sheetsController,
+                    playerControllerState,
+                    playerSettingsPage = {
+                        EpisodeVideoSideSheets.DanmakuSettingsNavigatorSheet(
+                            expanded = expanded,
+                            state = vm.danmakuRegexFilterState,
+                            sources = {
+                                val sourceState by vm.danmakuListState.collectAsStateWithLifecycle()
+                                DanmakuSourceSettings(
+                                    sourceItems = sourceState.sourceItems,
+                                    isLoading = sourceState.isLoading,
+                                    onSetEnabled = vm::setDanmakuSourceEnabled,
+                                    onManualMatch = vm::startMatchingDanmakuForService,
+                                    onAdjustShift = vm::setDanmakuSourceShiftMillis,
+                                )
+                            },
                             onDismissRequest = { goBack() },
-                            onRefresh = { vm.refreshFetch() },
-                            onRestartSource = { vm.restartSource(it) },
+                            onNavigateToFilterSettings = {
+                                sheetsController.navigateTo(EpisodeVideoSideSheetPage.EDIT_DANMAKU_REGEX_FILTER)
+                            },
                         )
-                    }
-                },
-                episodeSelectorPage = {
-                    EpisodeVideoSideSheets.EpisodeSelectorSheet(
-                        vm.episodeSelectorState,
-                        onDismissRequest = { goBack() },
-                    )
-                },
-            )
+                    },
+                    editDanmakuRegexFilterPage = {
+                        DanmakuRegexFilterSettings(
+                            state = vm.danmakuRegexFilterState,
+                            onDismissRequest = { goBack() },
+                            expanded = expanded,
+                        )
+                    },
+                    mediaSelectorPage = {
+                        val pageState by vm.pageState.collectAsStateWithLifecycle()
+                        pageState?.let { page ->
+                            // 打开侧边栏的按钮在 EpisodeVideoTopBarActions 内拿不到 VM, 锁存放在首帧.
+                            LaunchedEffect(Unit) {
+                                if (vm.mediaSelectorMode == null && !page.isLoading) {
+                                    vm.mediaSelectorMode = page.initialMediaSelectorMode
+                                }
+                            }
+                            val mode = vm.mediaSelectorMode ?: page.initialMediaSelectorMode
+                            // 侧边栏太矮时, 手动查找 / BT 资源 (下拉切换、救援按钮或 preferKind = BT 直接落 BT 页) 关掉侧边栏, 改开容器.
+                            // 加载中 (page.mediaSelectorState 是含假资源的占位 state) 不弹容器, 停留在侧边栏; 加载完成后 key 变化再弹.
+                            LaunchedEffect(mode, page.isLoading, sheetHeight) {
+                                if (mode.needsContainer(sheetHeight) && !page.isLoading) {
+                                    closeSideSheet()
+                                    vm.fullscreenSelectorVisible = true
+                                }
+                            }
+                            EpisodeVideoSideSheets.MediaSelectorSheet(
+                                page.mediaSelectorState,
+                                page.mediaSourceResultListPresentation,
+                                mode = mode,
+                                onModeChange = { vm.mediaSelectorMode = it },
+                                onDismissRequest = { goBack() },
+                                onRestartSource = { vm.restartSource(it) },
+                                watching = page.watchingEpisode,
+                                fetchRequest = page.fetchRequest,
+                                onFetchRequestChange = { vm.updateFetchRequest(it) },
+                                manualBrowseState = vm.manualBrowseState,
+                            )
+                        }
+                    },
+                    episodeSelectorPage = {
+                        EpisodeVideoSideSheets.EpisodeSelectorSheet(
+                            vm.episodeSelectorState,
+                            onDismissRequest = { goBack() },
+                        )
+                    },
+                )
+                FullscreenMediaSelectorContainer(vm, page, sheetsController, playerControllerState, sheetHeight)
+            }
         },
         shareData = page.shareData,
         onClickCache = { navigator.navigateSubjectCaches(vm.subjectId) },
@@ -1233,6 +1276,81 @@ private fun EpisodeVideo(
         contentWindowInsets = windowInsets,
         fastForwardSpeed = vm.videoScaffoldConfig.fastForwardSpeed,
     )
+}
+
+/**
+ * 侧边栏太矮时播放器的手动查找 / BT 资源容器, 与侧边栏并列放在 [VideoScaffold][me.him188.ani.app.videoplayer.ui.VideoScaffold] 的 rhsSheet 槽里.
+ * 可见性与模式都在 VM 上 ([EpisodeViewModel.fullscreenSelectorVisible] / [EpisodeViewModel.mediaSelectorMode]), 侧边栏页面被 closeSideSheet 销毁后仍然保留.
+ *
+ * 全屏时 rhsSheet 槽就是整屏, 直接铺 [MediaSelectorDialogLayout] 并自己接返回键: Android 的 Dialog 是独立 window, 会把已隐藏的系统栏拉回来.
+ * 非全屏 (宽屏布局: 手机横屏、平板) 视频区不是整窗, 用窗口级 [MediaSelectorDialog].
+ *
+ * 全屏容器可见期间像侧边栏 ([EpisodeVideoDefaults.SideSheets]) 一样向 [playerControllerState] 请求 alwaysOn: 容器不是 NavDisplay 页面, `anySideSheetVisible` 为 false,
+ * 而 scrim 又拦下了指针事件, 控制器会照常自动隐藏并把桌面端光标一起藏掉; 保持控制器可见即保持光标可见.
+ *
+ * `page.isLoading` 期间容器关闭且不显示: 此时 `page.mediaSelectorState` 是含假资源的占位 state, 与详情页 `mediaSelectorAvailable` 的守卫对称.
+ *
+ * X / 返回键 / 点 scrim 回到侧边栏并把模式置回 AUTO (否则侧边栏的 LaunchedEffect(mode) 会立刻再弹容器); 在容器里切到侧边栏装得下的模式也回侧边栏;
+ * 选中播放后全关, 模式保持.
+ *
+ * @param sheetHeight 侧边栏可用高度, 见 [needsContainer].
+ */
+@Composable
+private fun FullscreenMediaSelectorContainer(
+    vm: EpisodeViewModel,
+    page: EpisodePageState,
+    sheetsController: VideoSideSheetsController<EpisodeVideoSideSheetPage>,
+    playerControllerState: PlayerControllerState,
+    sheetHeight: Dp,
+) {
+    LaunchedEffect(page.isLoading) {
+        if (page.isLoading) vm.fullscreenSelectorVisible = false
+    }
+    if (!vm.fullscreenSelectorVisible || page.isLoading) return
+    val mode = vm.mediaSelectorMode ?: page.initialMediaSelectorMode
+    val backToSheet = { sheetMode: MediaSelectorMode ->
+        vm.fullscreenSelectorVisible = false
+        vm.mediaSelectorMode = sheetMode
+        sheetsController.navigateTo(EpisodeVideoSideSheetPage.MEDIA_SELECTOR)
+    }
+    val closeAll = { vm.fullscreenSelectorVisible = false }
+    val content: @Composable (compact: Boolean) -> Unit = { compact ->
+        MediaSelectorDialogContent(
+            mode, compact,
+            onModeChange = { newMode ->
+                if (newMode.needsContainer(sheetHeight)) vm.mediaSelectorMode = newMode else backToSheet(newMode)
+            },
+            onClose = { backToSheet(MediaSelectorMode.AUTO) },
+            onPlayed = closeAll,
+            mediaSelectorState = page.mediaSelectorState,
+            sourceResults = page.mediaSourceResultListPresentation,
+            watching = page.watchingEpisode,
+            fetchRequest = page.fetchRequest,
+            onFetchRequestChange = { vm.updateFetchRequest(it) },
+            onRestartSource = { vm.restartSource(it) },
+            manualBrowseState = vm.manualBrowseState,
+        )
+    }
+    // 容器打开期间侧边栏变得够高 (窗口变大): 回到侧边栏.
+    if (!mode.needsContainer(sheetHeight)) {
+        SideEffect { backToSheet(mode) }
+        return
+    }
+    if (vm.isFullscreen) {
+        val alwaysOnRequester = rememberAlwaysOnRequester(playerControllerState, "fullscreenMediaSelector")
+        DisposableEffect(alwaysOnRequester) {
+            alwaysOnRequester.request()
+            onDispose { alwaysOnRequester.cancelRequest() }
+        }
+        BackHandler { backToSheet(MediaSelectorMode.AUTO) }
+        MediaSelectorDialogLayout(
+            onDismissRequest = { backToSheet(MediaSelectorMode.AUTO) },
+            windowInsets = LocalVideoScaffoldSheetWindowInsets.current,
+            content = content,
+        )
+    } else {
+        MediaSelectorDialog(onDismissRequest = { backToSheet(MediaSelectorMode.AUTO) }, content = content)
+    }
 }
 
 @Composable
