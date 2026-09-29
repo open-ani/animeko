@@ -51,6 +51,12 @@ class TitleParserTest : PatternBasedTitleParserTestSuite() {
     }
 
     @Test
+    fun `S00E01 as special not ep 01`() {
+        val r = parse("""Dungeon ni Deai wo Motomeru no wa Machigatteiru Darou ka 2015 S00E01-[1080p][BDRIP][x265.OPUS]""")
+        assertEquals("SP01..SP01", r.episodeRange.toString())
+    }
+
+    @Test
     fun special() {
         val r = parse("特典映像/[DBD-Raws] [龙猫] [特典映像] [01][1080P][BDRip][HEVC-10bit][AC3].mkv")
         assertEquals("SP01..SP01", r.episodeRange.toString())
