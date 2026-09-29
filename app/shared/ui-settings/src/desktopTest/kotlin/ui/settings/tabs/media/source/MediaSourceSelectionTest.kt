@@ -137,7 +137,8 @@ class MediaSourceSelectionTest {
             ),
             parameters = MediaSourceParameters.Empty,
             connectionTester = ConnectionTester(instanceId) { ConnectionTestResult.SUCCESS },
-            instance = instance,
+            location = instance.source.location,
+            kind = instance.source.kind,
             ownerSubscriptionUrl = null,
         )
     }

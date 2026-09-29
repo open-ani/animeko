@@ -33,6 +33,7 @@ import me.him188.ani.app.domain.foundation.get
 import me.him188.ani.app.domain.media.fetch.MediaSourceManager
 import me.him188.ani.app.domain.media.fetch.updateMediaSourceArguments
 import me.him188.ani.app.domain.media.resolver.WebViewVideoExtractor
+import me.him188.ani.app.domain.mediasource.MediaSourceConfigurationEditor
 import me.him188.ani.app.domain.mediasource.codec.MediaSourceCodecManager
 import me.him188.ani.app.domain.mediasource.web.DefaultSelectorMediaSourceEngine
 import me.him188.ani.app.domain.mediasource.web.SelectorMediaSourceArguments
@@ -55,6 +56,7 @@ private typealias ArgumentsType = SelectorMediaSourceArguments
 class EditSelectorMediaSourceViewModel(
     initialInstanceId: String,
     context: Context,
+    private val configurationEditor: MediaSourceConfigurationEditor? = null,
 ) : AbstractViewModel(), KoinComponent {
     private val mediaSourceManager: MediaSourceManager by inject()
     private val settingsRepository: SettingsRepository by inject()
@@ -65,7 +67,7 @@ class EditSelectorMediaSourceViewModel(
     private val instanceId: MutableStateFlow<String> = MutableStateFlow(initialInstanceId)
 
     private val arguments = this.instanceId.flatMapLatest { instanceId ->
-        mediaSourceManager.instanceConfigFlow(instanceId).map {
+        (configurationEditor?.config ?: mediaSourceManager.instanceConfigFlow(instanceId)).map {
             it?.deserializeArgumentsOrNull(
                 ArgumentsType.serializer(),
             ) ?: ArgumentsType.Default
@@ -78,7 +80,7 @@ class EditSelectorMediaSourceViewModel(
             val arguments = mutableStateOf<ArgumentsType?>(null)
             val allowEdit = mutableStateOf(false)
             launch {
-                val config = mediaSourceManager.instanceConfigFlow(instanceId).first()
+                val config = (configurationEditor?.config ?: mediaSourceManager.instanceConfigFlow(instanceId)).first()
                 val persisted = config
                     ?.deserializeArgumentsOrNull(ArgumentsType.serializer())
                     ?: ArgumentsType.Default
@@ -94,7 +96,9 @@ class EditSelectorMediaSourceViewModel(
                         arguments,
                         onSave = {
                             arguments.value = it
-                            saveTasker.launch {
+                            if (configurationEditor != null) {
+                                configurationEditor.saveArguments(ArgumentsType.serializer(), it)
+                            } else saveTasker.launch {
                                 delay(500)
                                 mediaSourceManager.updateMediaSourceArguments(
                                     instanceId,
@@ -103,7 +107,7 @@ class EditSelectorMediaSourceViewModel(
                                 )
                             }
                         },
-                        isSavingFlow = saveTasker.isRunning,
+                        isSavingFlow = configurationEditor?.isSaving ?: saveTasker.isRunning,
                     ),
                     allowEditState = allowEdit,
                     engine = DefaultSelectorMediaSourceEngine(clientProvider.get(ScopedHttpClientUserAgent.BROWSER)),
@@ -131,4 +135,9 @@ class EditSelectorMediaSourceViewModel(
 //        engine = DefaultRssMediaSourceEngine(client, parser = RssParser(includeOrigin = true)),
 //        backgroundScope,
 //    )
+
+    override fun onCleared() {
+        configurationEditor?.close()
+        super.onCleared()
+    }
 }

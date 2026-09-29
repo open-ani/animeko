@@ -1,0 +1,2 @@
+"NSCameraUsageDescription" = "Scan QR codes to sign in and configure TV settings.";
+"NSLocalNetworkUsageDescription" = "Connect to a TV on your local network to configure its settings from your phone.";

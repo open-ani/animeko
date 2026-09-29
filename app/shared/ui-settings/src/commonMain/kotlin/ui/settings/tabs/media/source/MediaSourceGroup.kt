@@ -142,8 +142,11 @@ internal fun SettingsScope.MediaSourceGroup(
     state: MediaSourceGroupState,
     edit: EditMediaSourceState,
     selectionState: MediaSourceSelectionState,
+    /** 打开使用单独编辑页面的数据源. 为 `null` 时进入本机的数据源编辑页. */
+    onEditMediaSource: ((FactoryId, instanceId: String) -> Unit)? = null,
 ) {
     val navigator = LocalNavigator.current
+    val editMediaSource = onEditMediaSource ?: navigator::navigateEditMediaSource
     val uiScope = rememberCoroutineScope()
     var showSelectTemplate by remember { mutableStateOf(false) }
     if (showSelectTemplate) {
@@ -160,7 +163,7 @@ internal fun SettingsScope.MediaSourceGroup(
                         val job = edit.confirmEdit(editing)
                         uiScope.launch {
                             job.join()
-                            navigator.navigateEditMediaSource(template.factoryId, editing.editingMediaSourceId)
+                            if (!job.isCancelled) editMediaSource(template.factoryId, editing.editingMediaSourceId)
                         }
                         return@SelectMediaSourceTemplateDialog
                     }
@@ -301,7 +304,7 @@ internal fun SettingsScope.MediaSourceGroup(
                     }
                     val startEditing = {
                         if (item.factoryId in MediaSourcesUsingNewSettings) {
-                            navigator.navigateEditMediaSource(item.factoryId, item.instanceId)
+                            editMediaSource(item.factoryId, item.instanceId)
                         } else {
                             edit.startEditing(item)
                         }
@@ -382,11 +385,10 @@ internal fun SettingsScope.MediaSourceGroup(
                         onToggleSelected = { selectionState.toggleSelection(item.instanceId) },
                     ) {
                         if (!selectionState.inSelection) {
-                            IconButton({}, enabled = false) { // 放在 button 里保持 padding 一致
-                                ConnectionTesterResultIndicator(
-                                    item.connectionTester,
-                                    showIdle = false,
-                                )
+                            item.connectionTester?.let { tester ->
+                                IconButton({}, enabled = false) { // 放在 button 里保持 padding 一致
+                                    ConnectionTesterResultIndicator(tester, showIdle = false)
+                                }
                             }
 
                             Box {
@@ -461,21 +463,23 @@ internal fun SettingsScope.MediaSourceGroup(
             }
         }
 
-        HorizontalDividerItem()
+        if (state.mediaSources.any { it.connectionTester != null }) {
+            HorizontalDividerItem()
 
 
-        TextButtonItem(
-            onClick = {
-                state.mediaSourceTesters.toggleTest()
-            },
-            title = {
-                if (state.mediaSourceTesters.anyTesting) {
-                    Text(stringResource(Lang.settings_media_source_stop_test))
-                } else {
-                    Text(stringResource(Lang.settings_media_source_start_test))
-                }
-            },
-        )
+            TextButtonItem(
+                onClick = {
+                    state.mediaSourceTesters.toggleTest()
+                },
+                title = {
+                    if (state.mediaSourceTesters.anyTesting) {
+                        Text(stringResource(Lang.settings_media_source_stop_test))
+                    } else {
+                        Text(stringResource(Lang.settings_media_source_start_test))
+                    }
+                },
+            )
+        }
     }
 }
 
@@ -555,10 +559,10 @@ internal fun SettingsScope.MediaSourceItem(
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.spacedBy(4.dp),
             ) {
-                item.instance.source.apply {
+                if (item.location != null && item.kind != null) {
                     Icon(
-                        imageVector = MediaSourceIcons.location(this.location, this.kind),
-                        contentDescription = this.info.description,
+                        imageVector = MediaSourceIcons.location(item.location, item.kind),
+                        contentDescription = item.info.description,
                         modifier = Modifier.size(20.dp).ifThen(!isEnabled) { alpha(DISABLED_ALPHA) },
                     )
                 }

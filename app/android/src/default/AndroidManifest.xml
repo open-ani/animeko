@@ -65,6 +65,12 @@
                         android:scheme="ani" />
             </intent-filter>
 
+            <intent-filter>
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+                <data android:host="remote-settings" android:scheme="ani" />
+            </intent-filter>
             <!-- 扫码登录: 系统相机扫描电视上的二维码后, 网页跳转到 ani://qr-login?requestId=... -->
             <intent-filter android:autoVerify="false">
                 <action android:name="android.intent.action.VIEW" />

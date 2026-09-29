@@ -14,6 +14,7 @@ import android.widget.Toast
 import androidx.activity.SystemBarStyle
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
@@ -23,6 +24,7 @@ import me.him188.ani.app.data.models.preference.UISettings
 import me.him188.ani.app.domain.foundation.HttpClientProvider
 import me.him188.ani.app.domain.foundation.ScopedHttpClientUserAgent
 import me.him188.ani.app.domain.foundation.get
+import me.him188.ani.app.domain.settings.remote.LocalNetworkPermission
 import me.him188.ani.app.navigation.AniNavigator
 import me.him188.ani.app.platform.AniComponentActivity
 import me.him188.ani.app.ui.foundation.LocalSketch
@@ -41,10 +43,15 @@ import org.koin.android.ext.android.getKoin
  */
 class MainActivity : AniComponentActivity() {
 
+    private val requestLocalNetwork = registerForActivityResult(ActivityResultContracts.RequestPermission()) { }
+
     private val aniNavigator = AniNavigator()
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        if (savedInstanceState == null && !LocalNetworkPermission.isGranted(this)) {
+            requestLocalNetwork.launch(LocalNetworkPermission.NAME)
+        }
         // 全面屏: 内容画到系统栏后面 (对齐参考版沉浸效果)
         enableEdgeToEdge(
             statusBarStyle = SystemBarStyle.dark(android.graphics.Color.TRANSPARENT),

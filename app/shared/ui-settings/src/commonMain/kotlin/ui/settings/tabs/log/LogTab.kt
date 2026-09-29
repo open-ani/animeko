@@ -33,7 +33,8 @@ import org.jetbrains.compose.resources.stringResource
 @Composable
 fun LogTab(
     onClickFeedback: () -> Unit,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    loggingItems: @Composable ColumnScope.(ListItemColors) -> Unit = { PlatformLoggingItems(it) },
 ) {
     Column(modifier.fillMaxWidth()) {
         val listItemColors = ListItemDefaults.colors(
@@ -49,7 +50,7 @@ fun LogTab(
             colors = listItemColors,
         )
 
-        PlatformLoggingItems(listItemColors)
+        loggingItems(listItemColors)
     }
 }
 

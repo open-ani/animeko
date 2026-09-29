@@ -9,15 +9,21 @@ import android.content.ClipboardManager
 import android.content.Context
 import android.hardware.display.DisplayManager
 import android.view.Display
+import androidx.compose.foundation.layout.Box
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalUriHandler
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import kotlin.math.roundToInt
+import me.him188.ani.app.domain.settings.remote.RemoteSettingsHost
+import me.him188.ani.app.domain.settings.remote.RemoteSettingsHostStatus
+import me.him188.ani.app.domain.settings.remote.RemoteSettingsHostState
 import me.him188.ani.app.ui.foundation.widgets.LocalToaster
 import me.him188.ani.app.ui.lang.Lang
 import me.him188.ani.app.ui.lang.foundation_browser_open_failed_copied
@@ -26,12 +32,15 @@ import me.him188.ani.app.ui.lang.settings_danmaku_import_failed
 import me.him188.ani.app.ui.lang.settings_danmaku_import_success
 import me.him188.ani.app.ui.lang.settings_mediasource_rss_copied_to_clipboard
 import me.him188.ani.app.ui.lang.settings_save_failed
+import me.him188.ani.tv.ui.foundation.layout.tvModalUnderlay
 import org.jetbrains.compose.resources.stringResource
 
 @Composable
-fun TvSettingsRoute(viewModel: TvSettingsViewModel, modifier: Modifier = Modifier) {
+fun TvSettingsRoute(viewModel: TvSettingsViewModel, modifier: Modifier = Modifier, remoteSettingsHost: RemoteSettingsHost? = null) {
+    var showRemoteSettings by remember { mutableStateOf(false) }
     val state by viewModel.uiState.collectAsStateWithLifecycle()
     val context = LocalContext.current
+    val requestLocalNetworkPermission = rememberLocalNetworkPermissionRequest()
     val clipboard = remember(context) { context.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager }
     val uriHandler = LocalUriHandler.current
     val toaster = LocalToaster.current
@@ -60,17 +69,29 @@ fun TvSettingsRoute(viewModel: TvSettingsViewModel, modifier: Modifier = Modifie
             TvSettingsDisplayMode(it.modeId, "${it.physicalWidth} × ${it.physicalHeight} · ${it.refreshRate.roundToInt()} Hz")
         }
     }
-    TvSettingsScreen(
-        state, viewModel::onIntent, modifier, modes,
-        onOpenUrl = { url ->
-            runCatching { uriHandler.openUri(url) }.onFailure {
-                clipboard.setPrimaryClip(ClipData.newPlainText(appName, url))
-                toaster.toast(openFailed)
-            }
-        },
-        onImport = {
-            val text = clipboard.primaryClip?.takeIf { it.itemCount > 0 }?.getItemAt(0)?.coerceToText(context)?.toString().orEmpty()
-            viewModel.onIntent(TvSettingsIntent.ImportRegex(text))
-        },
-    )
+    Box(modifier) {
+        TvSettingsScreen(
+            state, viewModel::onIntent, Modifier.tvModalUnderlay(showRemoteSettings), modes,
+            onOpenRemoteSettings = {
+                showRemoteSettings = true
+                requestLocalNetworkPermission()
+            },
+            remoteSettingsVisible = showRemoteSettings,
+            onOpenUrl = { url ->
+                runCatching { uriHandler.openUri(url) }.onFailure {
+                    clipboard.setPrimaryClip(ClipData.newPlainText(appName, url))
+                    toaster.toast(openFailed)
+                }
+            },
+            onImport = {
+                val text = clipboard.primaryClip?.takeIf { it.itemCount > 0 }?.getItemAt(0)?.coerceToText(context)?.toString().orEmpty()
+                viewModel.onIntent(TvSettingsIntent.ImportRegex(text))
+            },
+        )
+        if (showRemoteSettings) {
+            val hostState = remoteSettingsHost?.state?.collectAsStateWithLifecycle()?.value
+                ?: RemoteSettingsHostState(status = RemoteSettingsHostStatus.UNAVAILABLE)
+            TvRemoteSettingsDialog(hostState, onClose = { showRemoteSettings = false })
+        }
+    }
 }

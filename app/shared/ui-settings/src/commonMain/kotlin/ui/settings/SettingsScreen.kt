@@ -16,6 +16,7 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxScope
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ColumnScope
+import androidx.compose.foundation.layout.RowScope
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.WindowInsetsSides
@@ -84,6 +85,7 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -205,6 +207,7 @@ fun SettingsScreen(
      * 前往扫码登录其他设备. 为 `null` (当前平台不能扫码) 时不显示入口
      */
     onNavigateToQrLogin: (() -> Unit)? = null,
+    topBarActions: @Composable RowScope.() -> Unit = {},
 ) {
     val navigator: ThreePaneScaffoldNavigator<Nothing?> = rememberListDetailPaneScaffoldNavigator(
         initialDestinationHistory = buildList {
@@ -450,6 +453,7 @@ fun SettingsScreen(
         navigationIcon = navigationIcon,
         layoutParameters = layoutParameters,
         loadOpenSourceLibrariesJsons = loadOpenSourceLibrariesJsons,
+        topBarActions = topBarActions,
     )
 }
 
@@ -470,6 +474,8 @@ internal fun SettingsPageLayout(
     layoutParameters: ListDetailLayoutParameters = ListDetailLayoutParameters.calculate(navigator.scaffoldDirective),
     navigationIcon: @Composable () -> Unit = {},
     loadOpenSourceLibrariesJsons: suspend () -> List<ByteArray>,
+    topBarActions: @Composable RowScope.() -> Unit = {},
+    defaultTab: SettingsTab = SettingsTab.Default,
 ) = SettingsPageSurface(containerColor) {
     val layoutParametersState by rememberUpdatedState(layoutParameters)
 
@@ -480,7 +486,7 @@ internal fun SettingsPageLayout(
             this
         } else {
             // 双页模式, 默认选择第一个 tab, 以免右边很空
-            this ?: SettingsTab.Default
+            this ?: defaultTab
         }
     }
 
@@ -513,6 +519,7 @@ internal fun SettingsPageLayout(
     val listPaneTopAppBar: @Composable PaneScope.() -> Unit = {
         AniTopAppBar(
             title = { AniTopAppBarDefaults.Title(stringResource(Lang.settings)) },
+            actions = topBarActions,
             navigationIcon = {
                 if (navigator.canNavigateBack()) {
                     BackNavigationIconButton(
@@ -568,6 +575,7 @@ internal fun SettingsPageLayout(
                                     onClick = {
                                         onSelectedTab(item)
                                     },
+                                    modifier = Modifier.testTag("settings-tab-${item.name}"),
                                 )
                             }
                         }
@@ -709,7 +717,7 @@ internal fun SettingsPageLayout(
                                         },
                                         navigationIcon = {
                                             if (listDetailLayoutParameters.preferSinglePane) {
-                                                BackNavigationIconButton(onClickBackOnDetailPage)
+                                                BackNavigationIconButton(onClickBackOnDetailPage, Modifier.testTag("settings-back-detail"))
                                             }
                                         },
                                         colors = topAppBarColors,

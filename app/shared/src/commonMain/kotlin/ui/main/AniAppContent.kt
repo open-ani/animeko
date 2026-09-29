@@ -95,6 +95,7 @@ import me.him188.ani.app.ui.settings.mediasource.rss.EditRssMediaSourceScreen
 import me.him188.ani.app.ui.settings.mediasource.rss.EditRssMediaSourceViewModel
 import me.him188.ani.app.ui.settings.mediasource.selector.EditSelectorMediaSourceScreen
 import me.him188.ani.app.ui.settings.mediasource.selector.EditSelectorMediaSourceViewModel
+import me.him188.ani.app.ui.settings.remote.RemoteSettingsScanButton
 import me.him188.ani.app.ui.settings.tabs.media.torrent.peer.PeerFilterSettingsScreen
 import me.him188.ani.app.ui.settings.tabs.media.torrent.peer.PeerFilterSettingsViewModel
 import me.him188.ani.app.ui.subject.details.SubjectDetailsScreen
@@ -174,6 +175,7 @@ private fun AniAppContentImpl(
     val navMotionScheme by rememberUpdatedState(NavigationMotionScheme.current)
     val emailLoginViewModel = viewModel<EmailLoginViewModel> { EmailLoginViewModel() }
 
+    val remoteSettingsNavigation = rememberRemoteSettingsNavigation()
     NavDisplay(
         backStack = backStack,
         modifier = modifier,
@@ -182,6 +184,7 @@ private fun AniAppContentImpl(
             // 让每个页面各自持有 rememberSaveable 状态和 ViewModel, 出栈时一并销毁
             rememberSaveableStateHolderNavEntryDecorator(),
             rememberViewModelStoreNavEntryDecorator(),
+            remoteSettingsNavigation.decorator,
         ),
         transitionSpec = {
             navMotionScheme.enterTransition togetherWith navMotionScheme.exitTransition
@@ -397,7 +400,18 @@ private fun AniAppContentImpl(
                             },
                         )
                     },
+                    topBarActions = {
+                        if (isQrCodeScannerSupported) {
+                            RemoteSettingsScanButton { aniNavigator.navigateRemoteSettings() }
+                        }
+                    },
                 )
+            }
+            entry<NavRoutes.RemoteSettings>(clazzContentKey = { it.entryId }) { route ->
+                RemoteSettingsRoute(route, remoteSettingsNavigation, aniNavigator)
+            }
+            entry<NavRoutes.RemoteEditMediaSource> { route ->
+                RemoteEditMediaSourceRoute(route, remoteSettingsNavigation, aniNavigator, windowInsets)
             }
             entry<NavRoutes.PlaybackHistory> { route ->
                 PlaybackHistoryScreen(

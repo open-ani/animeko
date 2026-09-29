@@ -28,6 +28,7 @@ import me.him188.ani.app.domain.foundation.ScopedHttpClientUserAgent
 import me.him188.ani.app.domain.foundation.get
 import me.him188.ani.app.domain.media.fetch.MediaSourceManager
 import me.him188.ani.app.domain.media.fetch.updateMediaSourceArguments
+import me.him188.ani.app.domain.mediasource.MediaSourceConfigurationEditor
 import me.him188.ani.app.domain.mediasource.codec.MediaSourceCodecManager
 import me.him188.ani.app.domain.mediasource.rss.DefaultRssMediaSourceEngine
 import me.him188.ani.app.domain.mediasource.rss.RssMediaSourceArguments
@@ -44,6 +45,7 @@ import org.koin.core.component.inject
 @Stable
 class EditRssMediaSourceViewModel(
     initialInstanceId: String,
+    private val configurationEditor: MediaSourceConfigurationEditor? = null,
 ) : AbstractViewModel(), KoinComponent {
     private val mediaSourceManager: MediaSourceManager by inject()
     private val codecManager: MediaSourceCodecManager by inject()
@@ -53,7 +55,7 @@ class EditRssMediaSourceViewModel(
     private val instanceId: MutableStateFlow<String> = MutableStateFlow(initialInstanceId)
 
     private val arguments = this.instanceId.flatMapLatest { instanceId ->
-        mediaSourceManager.instanceConfigFlow(instanceId).map {
+        (configurationEditor?.config ?: mediaSourceManager.instanceConfigFlow(instanceId)).map {
             it?.deserializeArgumentsOrNull(
                 RssMediaSourceArguments.serializer(),
             ) ?: RssMediaSourceArguments.Default
@@ -67,7 +69,7 @@ class EditRssMediaSourceViewModel(
             val arguments = mutableStateOf<RssMediaSourceArguments?>(null)
             val allowEdit = mutableStateOf(false)
             launch {
-                val config = mediaSourceManager.instanceConfigFlow(instanceId).first()
+                val config = (configurationEditor?.config ?: mediaSourceManager.instanceConfigFlow(instanceId)).first()
                 val persisted = config
                     ?.deserializeArgumentsOrNull(RssMediaSourceArguments.serializer())
                     ?: RssMediaSourceArguments.Default
@@ -82,7 +84,9 @@ class EditRssMediaSourceViewModel(
                         arguments,
                         onSave = {
                             arguments.value = it
-                            saveTasker.launch {
+                            if (configurationEditor != null) {
+                                configurationEditor.saveArguments(RssMediaSourceArguments.serializer(), it)
+                            } else saveTasker.launch {
                                 mediaSourceManager.updateMediaSourceArguments(
                                     instanceId,
                                     RssMediaSourceArguments.serializer(),
@@ -90,7 +94,7 @@ class EditRssMediaSourceViewModel(
                                 )
                             }
                         },
-                        isSavingFlow = saveTasker.isRunning,
+                        isSavingFlow = configurationEditor?.isSaving ?: saveTasker.isRunning,
                     ),
                     allowEditState = allowEdit,
                     instanceId = instanceId,
@@ -109,4 +113,9 @@ class EditRssMediaSourceViewModel(
         ),
         backgroundScope,
     )
+
+    override fun onCleared() {
+        configurationEditor?.close()
+        super.onCleared()
+    }
 }
