@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2024-2025 OpenAni and contributors.
+ * Copyright (C) 2024-2026 OpenAni and contributors.
  *
  * 此源代码的使用受 GNU AFFERO GENERAL PUBLIC LICENSE version 3 许可证的约束, 可以在以下链接找到该许可证.
  * Use of this source code is governed by the GNU AGPLv3 license, which can be found at the following link.
@@ -21,6 +21,7 @@ import me.him188.ani.app.data.models.preference.NsfwMode
 import me.him188.ani.app.data.network.AniSubjectSearchService
 import me.him188.ani.app.data.network.SubjectSearchField
 import me.him188.ani.app.data.network.SubjectSearchFilters
+import me.him188.ani.app.data.network.SubjectService
 import me.him188.ani.app.data.repository.Repository
 import me.him188.ani.app.data.repository.runWrappingExceptionAsLoadResult
 import me.him188.ani.app.data.repository.user.SettingsRepository
@@ -34,6 +35,7 @@ class SubjectSearchCompletionRepository(
     private val aniSubjectSearchService: AniSubjectSearchService,
     private val subjectCollectionRepository: SubjectCollectionRepository,
     settingsRepository: SettingsRepository,
+    private val subjectService: SubjectService,
 ) : Repository() {
     private val ignoreDoneAndDroppedFlow =
         settingsRepository.uiSettings.flow.map { it.searchSettings.ignoreDoneAndDroppedSubjects }
@@ -48,35 +50,39 @@ class SubjectSearchCompletionRepository(
                 override suspend fun load(
                     params: LoadParams<Int>
                 ): LoadResult<Int, String> = runWrappingExceptionAsLoadResult<Int, String> {
-                    // 只加载第一页
-                    val subjects = aniSubjectSearchService.searchSubjects(
-                        keyword = query,
-                        limit = params.loadSize,
-                        filters = SubjectSearchFilters(
-                            nsfw = when (nsfwSettings.first()) {
-                                NsfwMode.DISPLAY -> null
-                                NsfwMode.BLUR -> false
-                                NsfwMode.HIDE -> false
-                            },
-                        ),
-                        fields = listOf(SubjectSearchField.NAME),
-                    )
-
-                    val filteredSubjects = if (ignoreDoneAndDroppedFlow.first()) {
-                        val excludedIds = subjectCollectionRepository.getSubjectIdsByCollectionType(
+                    val nsfwMode = nsfwSettings.first()
+                    val excludedIds = if (ignoreDoneAndDroppedFlow.first()) {
+                        subjectCollectionRepository.getSubjectIdsByCollectionType(
                             types = listOf(UnifiedCollectionType.DONE, UnifiedCollectionType.DROPPED),
-                        ).first()
-
-                        subjects.filter { it.subjectInfo.subjectId !in excludedIds }
+                        ).first().toSet()
                     } else {
-                        subjects
+                        emptySet()
+                    }
+                    val completions = loadSubjectSearchCompletions(
+                        query = query,
+                        nsfwMode = nsfwMode,
+                        excludedIds = excludedIds,
+                        getSubject = subjectService::getSubjectCollection,
+                    ) { keyword ->
+                        aniSubjectSearchService.searchSubjects(
+                            keyword = keyword,
+                            limit = params.loadSize,
+                            filters = SubjectSearchFilters(
+                                nsfw = when (nsfwMode) {
+                                    NsfwMode.DISPLAY -> null
+                                    NsfwMode.BLUR, NsfwMode.HIDE -> false
+                                },
+                            ),
+                            fields = listOf(SubjectSearchField.NAME),
+                        )
+                            .filter { it.subjectInfo.subjectId !in excludedIds }
+                            .map { it.subjectInfo.nameCn.ifEmpty { it.subjectInfo.name } }
+                            .filter { it.isNotBlank() }
+                            .distinct()
                     }
 
                     LoadResult.Page(
-                        data = filteredSubjects
-                            .map { it.subjectInfo.nameCn.ifEmpty { it.subjectInfo.name } }
-                            .filter { it.isNotBlank() }
-                            .distinct(),
+                        data = completions,
                         prevKey = null,
                         nextKey = null,
                     )
