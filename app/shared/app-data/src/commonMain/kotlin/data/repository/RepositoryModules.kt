@@ -170,6 +170,7 @@ fun KoinApplication.repositoryModules(
         SubjectSearchCompletionRepository(
             aniSubjectSearchService = get(),
             settingsRepository = get(),
+            subjectService = get(),
         )
     }
 

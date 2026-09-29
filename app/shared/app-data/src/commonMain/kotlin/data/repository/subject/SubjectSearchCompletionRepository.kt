@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2024-2025 OpenAni and contributors.
+ * Copyright (C) 2024-2026 OpenAni and contributors.
  *
  * 此源代码的使用受 GNU AFFERO GENERAL PUBLIC LICENSE version 3 许可证的约束, 可以在以下链接找到该许可证.
  * Use of this source code is governed by the GNU AGPLv3 license, which can be found at the following link.
@@ -21,6 +21,7 @@ import me.him188.ani.app.data.models.preference.NsfwMode
 import me.him188.ani.app.data.network.AniSubjectSearchService
 import me.him188.ani.app.data.network.SubjectSearchField
 import me.him188.ani.app.data.network.SubjectSearchFilters
+import me.him188.ani.app.data.network.SubjectService
 import me.him188.ani.app.data.repository.Repository
 import me.him188.ani.app.data.repository.runWrappingExceptionAsLoadResult
 import me.him188.ani.app.data.repository.user.SettingsRepository
@@ -33,6 +34,7 @@ import me.him188.ani.utils.logging.error
 class SubjectSearchCompletionRepository(
     private val aniSubjectSearchService: AniSubjectSearchService,
     settingsRepository: SettingsRepository,
+    private val subjectService: SubjectService,
 ) : Repository() {
     private val ignoreDoneAndDroppedFlow =
         settingsRepository.uiSettings.flow.map { it.searchSettings.ignoreDoneAndDroppedSubjects }
@@ -47,30 +49,36 @@ class SubjectSearchCompletionRepository(
                 override suspend fun load(
                     params: LoadParams<Int>
                 ): LoadResult<Int, String> = runWrappingExceptionAsLoadResult<Int, String> {
-                    // 只加载第一页
-                    val subjects = aniSubjectSearchService.searchSubjects(
-                        keyword = query,
-                        limit = params.loadSize,
-                        filters = SubjectSearchFilters(
-                            nsfw = when (nsfwSettings.first()) {
-                                NsfwMode.DISPLAY -> null
-                                NsfwMode.BLUR -> false
-                                NsfwMode.HIDE -> false
-                            },
-                            excludeCollectionTypes = if (ignoreDoneAndDroppedFlow.first()) {
-                                listOf(UnifiedCollectionType.DONE, UnifiedCollectionType.DROPPED)
-                            } else {
-                                null
-                            },
-                        ),
-                        fields = listOf(SubjectSearchField.NAME),
-                    )
-
-                    LoadResult.Page(
-                        data = subjects
+                    val nsfwMode = nsfwSettings.first()
+                    val excludedIds = if (ignoreDoneAndDroppedFlow.first()) {
+                        emptySet()
+                    } else {
+                        emptySet()
+                    }
+                    val completions = loadSubjectSearchCompletions(
+                        query = query,
+                        nsfwMode = nsfwMode,
+                        excludedIds = excludedIds,
+                        getSubject = subjectService::getSubjectCollection,
+                    ) { keyword ->
+                        aniSubjectSearchService.searchSubjects(
+                            keyword = keyword,
+                            limit = params.loadSize,
+                            filters = SubjectSearchFilters(
+                                nsfw = when (nsfwMode) {
+                                    NsfwMode.DISPLAY -> null
+                                    NsfwMode.BLUR, NsfwMode.HIDE -> false
+                                },
+                            ),
+                            fields = listOf(SubjectSearchField.NAME),
+                        )
                             .map { it.subjectInfo.nameCn.ifEmpty { it.subjectInfo.name } }
                             .filter { it.isNotBlank() }
-                            .distinct(),
+                            .distinct()
+                    }
+
+                    LoadResult.Page(
+                        data = completions,
                         prevKey = null,
                         nextKey = null,
                     )
