@@ -155,27 +155,35 @@ class DandanplayDanmakuProvider(
                 fileSize = request.fileSize,
                 videoDuration = request.videoDuration,
             )
+            if (!resp.success) {
+                logger.warn {
+                    "Dandanplay file match failed for '$filename', " +
+                            "errorCode=${resp.errorCode}, errorMessage=${resp.errorMessage}"
+                }
+                return DanmakuFetchResult.noMatch(providerId, DanmakuServiceId.Dandanplay)
+            }
+            val matches = resp.matches.orEmpty()
             val match = if (resp.isMatched) {
-                resp.matches.firstOrNull() ?: return DanmakuFetchResult.noMatch(providerId, DanmakuServiceId.Dandanplay)
+                matches.firstOrNull() ?: return DanmakuFetchResult.noMatch(providerId, DanmakuServiceId.Dandanplay)
             } else {
                 matcher.match(
-                    resp.matches.map {
+                    matches.map {
                         DanmakuEpisodeWithSubject(
                             it.episodeId.toString(),
-                            it.animeTitle,
-                            it.episodeTitle,
+                            it.animeTitle.orEmpty(),
+                            it.episodeTitle.orEmpty(),
                             null,
                         )
                     },
                 )?.let { match ->
-                    resp.matches.first { it.episodeId.toString() == match.id }
+                    matches.first { it.episodeId.toString() == match.id }
                 } ?: return DanmakuFetchResult.noMatch(providerId, DanmakuServiceId.Dandanplay)
             }
             logger.info { "Best match by file match: ${match.animeTitle} - ${match.episodeTitle}" }
             val episodeId = match.episodeId
             return createResult(
                 episodeId,
-                DanmakuMatchMethod.Fuzzy(match.animeTitle, match.episodeTitle),
+                DanmakuMatchMethod.Fuzzy(match.animeTitle.orEmpty(), match.episodeTitle.orEmpty()),
             )
         }
         return DanmakuFetchResult.noMatch(providerId, DanmakuServiceId.Dandanplay)
