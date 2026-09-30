@@ -13,7 +13,10 @@ import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.awaitCancellation
 import kotlinx.coroutines.cancelAndJoin
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.last
+import kotlinx.coroutines.flow.toList
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.test.advanceTimeBy
 import kotlinx.coroutines.test.currentTime
 import kotlinx.coroutines.test.runCurrent
 import kotlinx.coroutines.test.runTest
@@ -54,6 +57,17 @@ class SubjectSearchCompletionsTest {
         imageLarge = "",
         imageThumb = "",
     )
+
+    private suspend fun loadSubjectSearchCompletions(
+        query: String,
+        nsfwMode: NsfwMode,
+        excludedIds: Set<Int>,
+        getSubject: suspend (Int) -> AniSubjectCollection?,
+        getEpisodeSubjectId: suspend (Int) -> Int? = { null },
+        searchKeywords: suspend (String) -> List<String>,
+    ) = subjectSearchCompletionsFlow(
+        query, nsfwMode, excludedIds, getSubject, getEpisodeSubjectId, searchKeywords,
+    ).last()
 
     @Test
     fun `extracts the first subject path before considering a whole integer`() {
@@ -196,29 +210,29 @@ class SubjectSearchCompletionsTest {
     }
 
     @Test
-    fun `episode and parent lookup share a single five second timeout`() = runTest {
-        var subjectCancelled = false
-        val result = loadSubjectSearchCompletions(
+    fun `episode and parent lookup share the three second head start and can finish later`() = runTest {
+        var keywordStartedAt = -1L
+        val result = subjectSearchCompletionsFlow(
             episodeUrl, NsfwMode.HIDE, emptySet(),
             getSubject = {
-                try {
-                    delay(3_000)
-                    subject
-                } finally {
-                    subjectCancelled = true
-                }
+                delay(3_000)
+                subject
             },
             getEpisodeSubjectId = {
                 delay(3_000)
                 id
             },
         ) {
+            keywordStartedAt = currentTime
             assertEquals(episodeUrl, it)
             listOf("fallback")
-        }
-        assertEquals(listOf("fallback"), result)
-        assertEquals(5_000L, currentTime)
-        assertTrue(subjectCancelled)
+        }.toList()
+        assertEquals(
+            listOf(listOf("fallback"), listOf(subject.nameCn, "$id", episodeUrl, "fallback")),
+            result,
+        )
+        assertEquals(3_000L, keywordStartedAt)
+        assertEquals(6_000L, currentTime)
     }
 
     @Test
@@ -300,18 +314,171 @@ class SubjectSearchCompletionsTest {
     }
 
     @Test
-    fun `lookup timeout cancels request at five seconds then falls back`() = runTest {
-        var cancelled = false
-        assertFallback {
+    fun `late specific success cancels unfinished keyword request`() = runTest {
+        var ordinaryCancelled = false
+        var keywordStartedAt = -1L
+        val results = subjectSearchCompletionsFlow(
+            url, NsfwMode.HIDE, emptySet(), { delay(10_000); subject },
+        ) {
+            keywordStartedAt = currentTime
             try {
-                delay(10_000)
-                subject
+                awaitCancellation()
             } finally {
-                cancelled = true
+                ordinaryCancelled = true
             }
+        }.toList()
+        assertEquals(listOf(listOf(subject.nameCn, "$id", url)), results)
+        assertEquals(3_000L, keywordStartedAt)
+        assertEquals(10_000L, currentTime)
+        assertTrue(ordinaryCancelled)
+    }
+
+    @Test
+    fun `specific success within three seconds never starts keyword lookup`() = runTest {
+        val result = subjectSearchCompletionsFlow(
+            "$id", NsfwMode.HIDE, emptySet(), {
+                delay(2_999)
+                subject
+            },
+        ) { error("Keyword lookup must not start before three seconds") }.toList()
+        assertEquals(listOf(listOf(subject.nameCn, "$id")), result)
+        assertEquals(2_999L, currentTime)
+    }
+
+    @Test
+    fun `ordinary results appear before late specific candidates are prepended and deduplicated`() = runTest {
+        val results = mutableListOf<List<String>>()
+        var keywordStartedAt = -1L
+        val ordinary = listOf("普通候选", subject.nameCn, "$id", url)
+        val job = launch {
+            subjectSearchCompletionsFlow(
+                url, NsfwMode.HIDE, emptySet(), {
+                    delay(7_000)
+                    subject
+                },
+            ) {
+                keywordStartedAt = currentTime
+                delay(1_000)
+                ordinary
+            }.toList(results)
         }
-        assertEquals(5_000L, currentTime)
-        assertTrue(cancelled)
+        advanceTimeBy(2_999)
+        runCurrent()
+        assertEquals(-1L, keywordStartedAt)
+        advanceTimeBy(1)
+        runCurrent()
+        assertEquals(3_000L, keywordStartedAt)
+        assertTrue(results.isEmpty())
+        advanceTimeBy(1_000)
+        runCurrent()
+        assertEquals(listOf(ordinary), results)
+        assertTrue(job.isActive)
+        job.join()
+        assertEquals(listOf(ordinary, listOf(subject.nameCn, "$id", url, "普通候选")), results)
+        assertEquals(7_000L, currentTime)
+    }
+
+    @Test
+    fun `early lookup failure starts fallback immediately`() = runTest {
+        val result = subjectSearchCompletionsFlow(
+            url, NsfwMode.HIDE, emptySet(), {
+                delay(100)
+                null
+            },
+        ) {
+            assertEquals(100L, currentTime)
+            listOf("fallback")
+        }.toList()
+        assertEquals(listOf(listOf("fallback")), result)
+    }
+
+    @Test
+    fun `late filtered lookup keeps already displayed ordinary results without duplicates`() = runTest {
+        var keywordCalls = 0
+        val result = subjectSearchCompletionsFlow(
+            url, NsfwMode.HIDE, emptySet(), {
+                delay(5_000)
+                subject.copy(nsfw = true)
+            },
+        ) {
+            keywordCalls++
+            listOf("fallback")
+        }.toList()
+        assertEquals(listOf(listOf("fallback")), result)
+        assertEquals(1, keywordCalls)
+    }
+
+    @Test
+    fun `ordinary failure does not cancel a successful specific lookup`() = runTest {
+        val result = subjectSearchCompletionsFlow(
+            url, NsfwMode.HIDE, emptySet(), {
+                delay(7_000)
+                subject
+            },
+        ) { throw IllegalStateException("Keyword search failed") }.toList()
+        assertEquals(listOf(listOf(subject.nameCn, "$id", url)), result)
+        assertEquals(7_000L, currentTime)
+    }
+
+    @Test
+    fun `both parallel lookups failing propagates the keyword error`() = runTest {
+        val error = assertFailsWith<IllegalStateException> {
+            subjectSearchCompletionsFlow(
+                url, NsfwMode.HIDE, emptySet(), {
+                    delay(7_000)
+                    error("Subject lookup failed")
+                },
+            ) { error("Keyword search failed") }.toList()
+        }
+        assertEquals("Keyword search failed", error.message)
+    }
+
+    @Test
+    fun `collector cancellation stops both parallel requests`() = runTest {
+        var specificCancelled = false
+        var ordinaryCancelled = false
+        val results = mutableListOf<List<String>>()
+        val job = launch {
+            subjectSearchCompletionsFlow(
+                url, NsfwMode.HIDE, emptySet(), {
+                    try {
+                        awaitCancellation()
+                    } finally {
+                        specificCancelled = true
+                    }
+                },
+            ) {
+                try {
+                    awaitCancellation()
+                } finally {
+                    ordinaryCancelled = true
+                }
+            }.toList(results)
+        }
+        advanceTimeBy(3_000)
+        runCurrent()
+        job.cancelAndJoin()
+        assertTrue(specificCancelled)
+        assertTrue(ordinaryCancelled)
+        assertTrue(results.isEmpty())
+    }
+
+    @Test
+    fun `late failure awaits the one already running keyword request`() = runTest {
+        var calls = 0
+        val result = subjectSearchCompletionsFlow(
+            url, NsfwMode.HIDE, emptySet(), {
+                delay(4_000)
+                null
+            },
+        ) {
+            calls++
+            delay(3_000)
+            listOf("fallback")
+        }.toList()
+        assertEquals(listOf(listOf("fallback")), result)
+        assertEquals(1, calls)
+        assertEquals(6_000L, currentTime)
     }
 
     @Test

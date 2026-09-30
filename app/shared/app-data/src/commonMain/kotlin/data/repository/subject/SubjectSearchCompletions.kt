@@ -10,6 +10,12 @@
 package me.him188.ani.app.data.repository.subject
 
 import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.async
+import kotlinx.coroutines.coroutineScope
+import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.flow
+import kotlinx.coroutines.selects.select
 import kotlinx.coroutines.withTimeoutOrNull
 import me.him188.ani.app.data.models.preference.NsfwMode
 import me.him188.ani.client.models.AniSubjectCollection
@@ -29,33 +35,81 @@ internal fun parseSearchSubjectId(query: String): Int? {
 internal fun parseSearchEpisodeId(query: String): Int? =
     episodeIdPattern.find(query)?.groupValues?.get(1)?.toIntOrNull()?.takeIf { it > 0 }
 
-/** ID 候选遵守搜索过滤设置；查询失败时使用原输入执行普通关键词补全。 */
-internal suspend fun loadSubjectSearchCompletions(
+/**
+ * ID 查询超过 3 秒时并行搜索关键词。普通候选先到先显示，ID 候选成功后置顶并取消尚未完成的关键词查询。
+ * 查询与收集协程共享生命周期；ID 查询失败或被过滤时使用普通候选。
+ */
+internal fun subjectSearchCompletionsFlow(
     query: String,
     nsfwMode: NsfwMode,
     excludedIds: Set<Int>,
     getSubject: suspend (Int) -> AniSubjectCollection?,
     getEpisodeSubjectId: suspend (Int) -> Int? = { null },
     searchKeywords: suspend (String) -> List<String>,
-): List<String> {
-    val completions = try {
-        withTimeoutOrNull(5.seconds) {
-            val subjectId = parseSearchSubjectId(query)
-                ?: parseSearchEpisodeId(query)?.let { getEpisodeSubjectId(it) }
-                ?: return@withTimeoutOrNull null
-            if (subjectId <= 0 || subjectId in excludedIds) return@withTimeoutOrNull null
-            val subject = getSubject(subjectId) ?: return@withTimeoutOrNull null
-            if (subject.type != AniSubjectType.ANIME ||
-                (subject.nsfw && nsfwMode != NsfwMode.DISPLAY)
-            ) return@withTimeoutOrNull null
-            val name = subject.nameCn.ifBlank { subject.name }
-            if (name.isBlank()) return@withTimeoutOrNull null
-            listOf(name, subjectId.toString(), query).distinct()
+): Flow<List<String>> = flow {
+    coroutineScope {
+        val specific = async {
+            try {
+                val subjectId = parseSearchSubjectId(query)
+                    ?: parseSearchEpisodeId(query)?.let { getEpisodeSubjectId(it) }
+                    ?: return@async null
+                if (subjectId <= 0 || subjectId in excludedIds) return@async null
+                val subject = getSubject(subjectId) ?: return@async null
+                if (subject.type != AniSubjectType.ANIME ||
+                    (subject.nsfw && nsfwMode != NsfwMode.DISPLAY)
+                ) return@async null
+                val name = subject.nameCn.ifBlank { subject.name }
+                if (name.isBlank()) return@async null
+                listOf(name, subjectId.toString(), query).distinct()
+            } catch (e: CancellationException) {
+                throw e
+            } catch (_: Exception) {
+                null
+            }
         }
-    } catch (e: CancellationException) {
-        throw e
-    } catch (_: Exception) {
-        null
+
+        // 只限制独占等待时间，specific 的协程属于外层作用域。
+        val completedEarly = withTimeoutOrNull(3.seconds) {
+            specific.await()
+            true
+        } == true
+        if (completedEarly || specific.isCompleted) {
+            emit(specific.await() ?: searchKeywords(query.trim()))
+            return@coroutineScope
+        }
+
+        val ordinary = async {
+            try {
+                Result.success(searchKeywords(query.trim()))
+            } catch (e: CancellationException) {
+                throw e
+            } catch (e: Exception) {
+                Result.failure(e)
+            }
+        }
+        select {
+            specific.onAwait { candidates ->
+                if (candidates != null) {
+                    val existing = if (ordinary.isCompleted) {
+                        ordinary.await().getOrNull().orEmpty()
+                    } else {
+                        ordinary.cancel()
+                        emptyList()
+                    }
+                    emit((candidates + existing).distinct())
+                } else {
+                    emit(ordinary.await().getOrThrow())
+                }
+            }
+            ordinary.onAwait { result ->
+                result.getOrNull()?.let { emit(it) }
+                val candidates = specific.await()
+                if (candidates != null) {
+                    emit((candidates + result.getOrNull().orEmpty()).distinct())
+                } else {
+                    result.getOrThrow()
+                }
+            }
+        }
     }
-    return completions ?: searchKeywords(query.trim())
-}
+}.distinctUntilChanged()

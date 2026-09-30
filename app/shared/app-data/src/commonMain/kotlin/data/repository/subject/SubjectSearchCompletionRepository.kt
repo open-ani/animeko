@@ -9,12 +9,14 @@
 
 package me.him188.ani.app.data.repository.subject
 
-import androidx.paging.Pager
+import androidx.paging.LoadState
+import androidx.paging.LoadStates
 import androidx.paging.PagingData
-import androidx.paging.PagingSource
-import androidx.paging.PagingState
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.catch
+import kotlinx.coroutines.flow.emitAll
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.flowOn
 import kotlinx.coroutines.flow.map
 import me.him188.ani.app.data.models.preference.NsfwMode
@@ -24,7 +26,7 @@ import me.him188.ani.app.data.network.SubjectSearchField
 import me.him188.ani.app.data.network.SubjectSearchFilters
 import me.him188.ani.app.data.network.SubjectService
 import me.him188.ani.app.data.repository.Repository
-import me.him188.ani.app.data.repository.runWrappingExceptionAsLoadResult
+import me.him188.ani.app.data.repository.RepositoryException
 import me.him188.ani.app.data.repository.user.SettingsRepository
 import me.him188.ani.datasources.api.topic.UnifiedCollectionType
 import me.him188.ani.utils.logging.error
@@ -43,58 +45,51 @@ class SubjectSearchCompletionRepository(
         settingsRepository.uiSettings.flow.map { it.searchSettings.ignoreDoneAndDroppedSubjects }
     private val nsfwSettings = settingsRepository.uiSettings.flow.map { it.searchSettings.nsfwMode }
 
-    fun completionsFlow(query: String): Flow<PagingData<String>> = Pager(
-        config = defaultPagingConfig,
-        pagingSourceFactory = {
-            object : PagingSource<Int, String>() {
-                override fun getRefreshKey(state: PagingState<Int, String>): Int? = null
+    fun completionsFlow(query: String): Flow<PagingData<String>> = flow {
+        val nsfwMode = nsfwSettings.first()
+        val excludedIds = if (ignoreDoneAndDroppedFlow.first()) {
+            subjectCollectionRepository.getSubjectIdsByCollectionType(
+                types = listOf(UnifiedCollectionType.DONE, UnifiedCollectionType.DROPPED),
+            ).first().toSet()
+        } else {
+            emptySet()
+        }
+        emitAll(
+            subjectSearchCompletionsFlow(
+                query = query,
+                nsfwMode = nsfwMode,
+                excludedIds = excludedIds,
+                getSubject = subjectService::getSubjectCollection,
+                getEpisodeSubjectId = bangumiEpisodeService::getSubjectId,
+            ) { keyword ->
+                aniSubjectSearchService.searchSubjects(
+                    keyword = keyword,
+                    limit = defaultPagingConfig.initialLoadSize,
+                    filters = SubjectSearchFilters(
+                        nsfw = when (nsfwMode) {
+                            NsfwMode.DISPLAY -> null
+                            NsfwMode.BLUR, NsfwMode.HIDE -> false
+                        },
+                    ),
+                    fields = listOf(SubjectSearchField.NAME),
+                )
+                    .filter { it.subjectInfo.subjectId !in excludedIds }
+                    .map { it.subjectInfo.nameCn.ifEmpty { it.subjectInfo.name } }
+                    .filter { it.isNotBlank() }
+                    .distinct()
+            }.map { PagingData.from(it, NotLoading) },
+        )
+    }.catch { cause ->
+        val error = RepositoryException.wrapOrThrowCancellation(cause)
+        logger.error(error) { "Failed to get search completions, query: $query" }
+        emit(PagingData.from(emptyList(), NotLoading.copy(refresh = LoadState.Error(error))))
+    }.flowOn(defaultDispatcher)
 
-                override suspend fun load(
-                    params: LoadParams<Int>
-                ): LoadResult<Int, String> = runWrappingExceptionAsLoadResult<Int, String> {
-                    val nsfwMode = nsfwSettings.first()
-                    val excludedIds = if (ignoreDoneAndDroppedFlow.first()) {
-                        subjectCollectionRepository.getSubjectIdsByCollectionType(
-                            types = listOf(UnifiedCollectionType.DONE, UnifiedCollectionType.DROPPED),
-                        ).first().toSet()
-                    } else {
-                        emptySet()
-                    }
-                    val completions = loadSubjectSearchCompletions(
-                        query = query,
-                        nsfwMode = nsfwMode,
-                        excludedIds = excludedIds,
-                        getSubject = subjectService::getSubjectCollection,
-                        getEpisodeSubjectId = bangumiEpisodeService::getSubjectId,
-                    ) { keyword ->
-                        aniSubjectSearchService.searchSubjects(
-                            keyword = keyword,
-                            limit = params.loadSize,
-                            filters = SubjectSearchFilters(
-                                nsfw = when (nsfwMode) {
-                                    NsfwMode.DISPLAY -> null
-                                    NsfwMode.BLUR, NsfwMode.HIDE -> false
-                                },
-                            ),
-                            fields = listOf(SubjectSearchField.NAME),
-                        )
-                            .filter { it.subjectInfo.subjectId !in excludedIds }
-                            .map { it.subjectInfo.nameCn.ifEmpty { it.subjectInfo.name } }
-                            .filter { it.isNotBlank() }
-                            .distinct()
-                    }
-
-                    LoadResult.Page(
-                        data = completions,
-                        prevKey = null,
-                        nextKey = null,
-                    )
-                }.also {
-                    if (it is LoadResult.Error) {
-                        logger.error(it.throwable) { "Failed to get search completions, query: $query" }
-                    }
-                }
-            }
-        },
-    ).flow.flowOn(defaultDispatcher)
+    private companion object {
+        val NotLoading = LoadStates(
+            refresh = LoadState.NotLoading(true),
+            prepend = LoadState.NotLoading(true),
+            append = LoadState.NotLoading(true),
+        )
+    }
 }
