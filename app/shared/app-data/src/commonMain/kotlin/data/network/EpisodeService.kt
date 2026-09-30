@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2024-2025 OpenAni and contributors.
+ * Copyright (C) 2024-2026 OpenAni and contributors.
  *
  * 此源代码的使用受 GNU AFFERO GENERAL PUBLIC LICENSE version 3 许可证的约束, 可以在以下链接找到该许可证.
  * Use of this source code is governed by the GNU AGPLv3 license, which can be found at the following link.
@@ -10,9 +10,14 @@
 package me.him188.ani.app.data.network
 
 import io.ktor.client.plugins.*
+import io.ktor.client.request.get
+import io.ktor.client.statement.bodyAsText
 import io.ktor.http.*
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
+import kotlinx.serialization.SerialName
+import kotlinx.serialization.Serializable
+import kotlinx.serialization.json.Json
 import me.him188.ani.app.data.models.episode.EpisodeCollectionInfo
 import me.him188.ani.app.data.models.episode.EpisodeInfo
 import me.him188.ani.app.data.repository.episode.toEpisodeCollectionInfo
@@ -36,6 +41,7 @@ import me.him188.ani.datasources.bangumi.models.BangumiUserEpisodeCollection
 import me.him188.ani.datasources.bangumi.processing.toCollectionType
 import me.him188.ani.utils.coroutines.IO_
 import me.him188.ani.utils.ktor.ApiInvoker
+import me.him188.ani.utils.ktor.ScopedHttpClient
 import me.him188.ani.utils.logging.logger
 import me.him188.ani.utils.platform.currentTimeMillis
 import me.him188.ani.utils.serialization.BigNum
@@ -47,6 +53,9 @@ import kotlin.coroutines.CoroutineContext
  * 执行网络请求查询.
  */
 sealed interface EpisodeService {
+    /** 使用 Bangumi 公开剧集接口查询所属条目；接口返回 404 或条目 ID 无效时返回 null。 */
+    suspend fun getSubjectId(episodeId: Int): Int?
+
     /**
      * 获取用户在这个条目下的所有剧集的收藏状态. 当用户没有收藏此条目时返回 [collectionType] 均为 [UnifiedCollectionType.NOT_COLLECTED].
      *
@@ -80,10 +89,21 @@ sealed interface EpisodeService {
 
 class EpisodeServiceImpl(
     private val subjectApi: ApiInvoker<SubjectsAniApi>,
+    private val bangumiClient: ScopedHttpClient,
     private val ioDispatcher: CoroutineContext = Dispatchers.IO_,
 ) : EpisodeService, KoinComponent {
     private val logger = logger<EpisodeServiceImpl>()
     private val sessionManager: SessionStateProvider by inject()
+    private val json = Json { ignoreUnknownKeys = true }
+
+    override suspend fun getSubjectId(episodeId: Int): Int? = withContext(ioDispatcher) {
+        try {
+            val body = bangumiClient.use { get("$BGM_API_BASE_URL/v0/episodes/$episodeId").bodyAsText() }
+            json.decodeFromString(BangumiEpisodeSubject.serializer(), body).subjectId.takeIf { it > 0 }
+        } catch (e: ClientRequestException) {
+            if (e.response.status == HttpStatusCode.NotFound) null else throw e
+        }
+    }
 
     override suspend fun getEpisodeCollectionInfosPaged(
         subjectId: Int,
@@ -153,7 +173,17 @@ class EpisodeServiceImpl(
         }
     }
 
+    @Serializable
+    private data class BangumiEpisodeSubject(
+        @SerialName("subject_id") val subjectId: Int,
+    )
+
+    /**
+     * 当前的 Ani API 不支持通过仅 epID 获取剧集，因此只通过 Bangumi API 获取剧集所属条目 ID.
+     */
     private companion object {
+        private const val BGM_API_BASE_URL = "https://api.bgm.tv"
+
         fun HttpStatusCode.isUnauthorized(): Boolean {
             return this == HttpStatusCode.Unauthorized || this == HttpStatusCode.Forbidden
         }
