@@ -33,6 +33,8 @@ import kotlin.test.assertTrue
 class SubjectSearchCompletionsTest {
     private val id = 622288
     private val url = "https://bgm.tv/subject/$id"
+    private val episodeId = 1741638
+    private val episodeUrl = "https://bgm.tv/ep/$episodeId"
     private val subject = AniSubjectCollection(
         id = id.toLong(),
         type = AniSubjectType.ANIME,
@@ -112,6 +114,131 @@ class SubjectSearchCompletionsTest {
             url, NsfwMode.HIDE, emptySet(), { subject.copy(nameCn = "  ") },
         ) { error("Unexpected keyword lookup") }
         assertEquals(listOf(subject.name, "$id", url), result)
+    }
+
+    @Test
+    fun `episode paths accept urls and shared text but not bare numbers or invalid ids`() {
+        listOf(
+            episodeUrl, "$episodeUrl?from=share#comment", "推荐：$episodeUrl", "ep/$episodeId",
+            "ep/00$episodeId", "ep/$episodeId ep/2",
+        ).forEach { assertEquals(episodeId, parseSearchEpisodeId(it), it) }
+        listOf("$episodeId", url, "ep/", "ep/-1", "ep/0", "ep/2147483648", "ep/2147483648 ep/1")
+            .forEach { assertNull(parseSearchEpisodeId(it), it) }
+    }
+
+    @Test
+    fun `episode link resolves parent subject before producing normal candidates`() = runTest {
+        val calls = mutableListOf<String>()
+        val input = "  推荐：$episodeUrl  "
+        val result = loadSubjectSearchCompletions(
+            input, NsfwMode.HIDE, emptySet(),
+            getSubject = {
+                calls += "subject:$it"
+                subject
+            },
+            getEpisodeSubjectId = {
+                calls += "episode:$it"
+                id
+            },
+        ) { error("Resolved episode must not search keywords") }
+        assertEquals(listOf("episode:$episodeId", "subject:$id"), calls)
+        assertEquals(listOf(subject.nameCn, "$id", input), result)
+    }
+
+    @Test
+    fun `subject links and bare numbers retain priority over episode lookup`() = runTest {
+        for (input in listOf("$id", "$episodeUrl $url")) {
+            val result = loadSubjectSearchCompletions(
+                input, NsfwMode.HIDE, emptySet(), { subject },
+                getEpisodeSubjectId = { error("Subject ID takes priority") },
+            ) { error("Unexpected fallback") }
+            assertEquals(listOf(subject.nameCn, "$id", input).distinct(), result)
+        }
+    }
+
+    @Test
+    fun `missing invalid or failed episode lookup falls back to original input`() = runTest {
+        val lookups: List<suspend (Int) -> Int?> = listOf(
+            { null }, { 0 }, { -1 }, { throw IllegalStateException("Request failed") },
+        )
+        for (lookup in lookups) {
+            val result = loadSubjectSearchCompletions(
+                episodeUrl, NsfwMode.HIDE, emptySet(), { error("No valid subject ID") }, lookup,
+            ) {
+                assertEquals(episodeUrl, it)
+                listOf("fallback")
+            }
+            assertEquals(listOf("fallback"), result)
+        }
+    }
+
+    @Test
+    fun `episode parents obey exclusion and nsfw filters and missing subject fallback`() = runTest {
+        val cases = listOf(
+            setOf(id) to subject,
+            emptySet<Int>() to subject.copy(nsfw = true),
+            emptySet<Int>() to null,
+        )
+        for ((excluded, parent) in cases) {
+            val result = loadSubjectSearchCompletions(
+                episodeUrl, NsfwMode.HIDE, excluded,
+                getSubject = {
+                    assertTrue(excluded.isEmpty())
+                    parent
+                },
+                getEpisodeSubjectId = { id },
+            ) {
+                assertEquals(episodeUrl, it)
+                listOf("fallback")
+            }
+            assertEquals(listOf("fallback"), result)
+        }
+    }
+
+    @Test
+    fun `episode and parent lookup share a single five second timeout`() = runTest {
+        var subjectCancelled = false
+        val result = loadSubjectSearchCompletions(
+            episodeUrl, NsfwMode.HIDE, emptySet(),
+            getSubject = {
+                try {
+                    delay(3_000)
+                    subject
+                } finally {
+                    subjectCancelled = true
+                }
+            },
+            getEpisodeSubjectId = {
+                delay(3_000)
+                id
+            },
+        ) {
+            assertEquals(episodeUrl, it)
+            listOf("fallback")
+        }
+        assertEquals(listOf("fallback"), result)
+        assertEquals(5_000L, currentTime)
+        assertTrue(subjectCancelled)
+    }
+
+    @Test
+    fun `episode lookup cancellation does not fetch parent or start fallback`() = runTest {
+        var cancelled = false
+        val job = launch {
+            loadSubjectSearchCompletions(
+                episodeUrl, NsfwMode.HIDE, emptySet(), { error("Cancelled episode has no parent") },
+                getEpisodeSubjectId = {
+                    try {
+                        awaitCancellation()
+                    } finally {
+                        cancelled = true
+                    }
+                },
+            ) { error("Cancellation must not trigger fallback") }
+        }
+        runCurrent()
+        job.cancelAndJoin()
+        assertTrue(cancelled)
     }
 
     private suspend fun assertFallback(

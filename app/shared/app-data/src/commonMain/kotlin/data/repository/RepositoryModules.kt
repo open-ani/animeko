@@ -13,6 +13,7 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.flow.map
 import me.him188.ani.app.data.network.AniApiProvider
 import me.him188.ani.app.data.network.AutoSkipRepository
+import me.him188.ani.app.data.network.BangumiEpisodeService
 import me.him188.ani.app.data.network.RecommendationRepository
 import me.him188.ani.app.data.network.TrendsRepository
 import me.him188.ani.app.data.persistent.dataStores
@@ -70,7 +71,9 @@ import me.him188.ani.app.domain.foundation.ScopedHttpClientUserAgent
 import me.him188.ani.app.domain.foundation.get
 import me.him188.ani.app.platform.Context
 import me.him188.ani.app.platform.files
+import me.him188.ani.datasources.bangumi.apis.DefaultApi
 import me.him188.ani.utils.io.resolve
+import me.him188.ani.utils.ktor.ApiInvoker
 import org.koin.core.KoinApplication
 import org.koin.core.scope.Scope
 import org.koin.dsl.module
@@ -165,12 +168,19 @@ fun KoinApplication.repositoryModules(
         )
     }
 
+    single<BangumiEpisodeService> {
+        BangumiEpisodeService(
+            ApiInvoker(get<HttpClientProvider>().get()) { DefaultApi("https://api.bgm.tv", it) },
+        )
+    }
+
     single<SubjectSearchCompletionRepository> {
         SubjectSearchCompletionRepository(
             aniSubjectSearchService = get(),
             subjectCollectionRepository = get(),
             settingsRepository = get(),
             subjectService = get(),
+            bangumiEpisodeService = get(),
         )
     }
 

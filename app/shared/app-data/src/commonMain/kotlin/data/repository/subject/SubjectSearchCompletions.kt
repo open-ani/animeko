@@ -17,6 +17,7 @@ import me.him188.ani.client.models.AniSubjectType
 import kotlin.time.Duration.Companion.seconds
 
 private val subjectIdPattern = Regex("subject/([0-9]+)")
+private val episodeIdPattern = Regex("ep/([0-9]+)")
 
 /** 提取首个 subject/ID，或将完整整数输入解析为正 Int 条目 ID。 */
 internal fun parseSearchSubjectId(query: String): Int? {
@@ -24,31 +25,37 @@ internal fun parseSearchSubjectId(query: String): Int? {
     return value.toIntOrNull()?.takeIf { it > 0 }
 }
 
+/** 从 ep/ID 中提取首个正 Int 剧集 ID；完整整数输入属于条目 ID。 */
+internal fun parseSearchEpisodeId(query: String): Int? =
+    episodeIdPattern.find(query)?.groupValues?.get(1)?.toIntOrNull()?.takeIf { it > 0 }
+
 /** ID 候选遵守搜索过滤设置；查询失败时使用原输入执行普通关键词补全。 */
 internal suspend fun loadSubjectSearchCompletions(
     query: String,
     nsfwMode: NsfwMode,
     excludedIds: Set<Int>,
     getSubject: suspend (Int) -> AniSubjectCollection?,
+    getEpisodeSubjectId: suspend (Int) -> Int? = { null },
     searchKeywords: suspend (String) -> List<String>,
 ): List<String> {
-    val subjectId = parseSearchSubjectId(query)
-    if (subjectId != null && subjectId !in excludedIds) {
-        val subject = try {
-            withTimeoutOrNull(5.seconds) { getSubject(subjectId) }
-        } catch (e: CancellationException) {
-            throw e
-        } catch (_: Exception) {
-            null
-        }
-        if (subject != null && subject.type == AniSubjectType.ANIME &&
-            (!subject.nsfw || nsfwMode == NsfwMode.DISPLAY)
-        ) {
+    val completions = try {
+        withTimeoutOrNull(5.seconds) {
+            val subjectId = parseSearchSubjectId(query)
+                ?: parseSearchEpisodeId(query)?.let { getEpisodeSubjectId(it) }
+                ?: return@withTimeoutOrNull null
+            if (subjectId <= 0 || subjectId in excludedIds) return@withTimeoutOrNull null
+            val subject = getSubject(subjectId) ?: return@withTimeoutOrNull null
+            if (subject.type != AniSubjectType.ANIME ||
+                (subject.nsfw && nsfwMode != NsfwMode.DISPLAY)
+            ) return@withTimeoutOrNull null
             val name = subject.nameCn.ifBlank { subject.name }
-            if (name.isNotBlank()) {
-                return listOf(name, subjectId.toString(), query).distinct()
-            }
+            if (name.isBlank()) return@withTimeoutOrNull null
+            listOf(name, subjectId.toString(), query).distinct()
         }
+    } catch (e: CancellationException) {
+        throw e
+    } catch (_: Exception) {
+        null
     }
-    return searchKeywords(query.trim())
+    return completions ?: searchKeywords(query.trim())
 }
