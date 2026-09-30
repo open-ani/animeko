@@ -39,23 +39,12 @@ internal class PikPakDriveIndex(
             .also { cachedTempFolderId = it }
     }
 
-    // Creating a file is where a folder deleted on another device first shows up, and the cached id
-    // would otherwise fail every read until the app restarts. Resolving again recreates the folder.
-    suspend fun <T> withTempFolder(block: suspend (parentId: String) -> T): T = try {
-        block(tempFolderId())
-    } catch (e: PikPakException) {
-        if (!isFolderGone(e)) throw e
-        logger.info { "[pikpak] temp folder no longer exists; creating it again" }
-        invalidate()
-        block(tempFolderId())
-    }
-
     suspend fun listTemp(): List<FileStat> = try {
         listFolder(existingTempFolderId())
     } catch (e: PikPakException) {
         if (!isFolderGone(e)) throw e
         logger.info { "[pikpak] temp folder no longer exists; resolving it again" }
-        invalidate()
+        invalidateTempFolder()
         listFolder(existingTempFolderId())
     }
 
@@ -66,7 +55,9 @@ internal class PikPakDriveIndex(
         clientProvider().batchDelete(fileIds)
     }
 
-    private suspend fun invalidate() {
+    // Creating a file is where a folder deleted on another device first shows up, and the cached id
+    // would otherwise fail every create until the app restarts. Resolving again recreates the folder.
+    suspend fun invalidateTempFolder() {
         lock.withLock { cachedTempFolderId = null }
         clientProvider().clearFolderIdCache()
     }

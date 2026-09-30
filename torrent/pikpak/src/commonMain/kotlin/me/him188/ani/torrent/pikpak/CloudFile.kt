@@ -9,154 +9,124 @@
 
 package me.him188.ani.torrent.pikpak
 
+import io.github.nihildigit.pikpak.BlockStore
+import io.github.nihildigit.pikpak.PikPakException
+import io.github.nihildigit.pikpak.PikPakFileCache
 import io.github.nihildigit.pikpak.PikPakFileHandle
-import io.github.nihildigit.pikpak.RangeSource
-import io.github.nihildigit.pikpak.ResolvedFile
-import io.github.nihildigit.pikpak.instantCreate
-import io.ktor.utils.io.ByteReadChannel
-import kotlinx.atomicfu.atomic
-import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.NonCancellable
-import kotlinx.coroutines.launch
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
-import kotlinx.coroutines.withContext
 import me.him188.ani.utils.logging.info
 import me.him188.ani.utils.logging.logger
-import me.him188.ani.utils.logging.warn
 import kotlin.concurrent.Volatile
+import kotlin.coroutines.CoroutineContext
 
-// GCID identifies content across accounts. Cloud objects exist only to mint signed links,
-// which remain readable after those objects are deleted.
+/**
+ * The cloud side of one file: where its bytes come from, and the SDK's cache that every stream
+ * and download of the file shares.
+ */
+internal interface CloudSource {
+    /**
+     * Mints the link now, rather than on the first read.
+     *
+     * Reads open the handle lazily, which would put a sign-in failure, a dead refresh token or an
+     * exhausted quota after the resolver has committed to this engine, where BT fallback is
+     * unavailable. Callers use this to surface those failures while fallback is still possible.
+     */
+    suspend fun prepare()
+
+    /** The file's cache on the current account. The same instance until the account changes. */
+    suspend fun cache(): PikPakFileCache
+
+    /** Bytes the CDN delivered for this file, monotonic across account changes. */
+    val deliveredBytes: Long
+
+    /**
+     * Closes the current cache and handle. The next [cache] opens new ones, over the store the
+     * provider hands out then: how a deleted file's replacement store gets a cache of its own.
+     */
+    suspend fun release()
+}
+
+// GCID identifies content across accounts. Cloud objects exist only to mint signed links, which
+// remain readable after those objects are deleted, so the handle is leased: the SDK deletes every
+// object it creates as soon as its link is in hand, the rebuilds after an expiry included.
 internal class CloudFile(
     private val gcid: String,
     private val size: Long,
     private val name: String,
     private val accountProvider: suspend () -> PikPakAccount,
     private val connectionBudget: Int,
-    private val scope: CoroutineScope,
-) : RangeSource {
+    private val storeProvider: () -> BlockStore,
+    private val cacheContext: CoroutineContext,
+) : CloudSource {
     private val logger = logger<CloudFile>()
+
+    private class Opened(val account: PikPakAccount, val handle: PikPakFileHandle, val cache: PikPakFileCache)
 
     private val mutex = Mutex()
 
     @Volatile
-    private var handle: Pair<PikPakAccount, PikPakFileHandle>? = null
+    private var opened: Opened? = null
 
-    /**
-     * Mints the link now, rather than on the first read.
-     *
-     * Reads open the handle lazily, which would put a sign-in failure, a dead refresh token or an
-     * exhausted quota after the resolver has committed to this engine, where BT fallback is unavailable.
-     * Callers use this to surface those failures while fallback is still possible.
-     *
-     * This is also where the file's length is checked, though nothing here compares it: minting
-     * goes through instantCreate, which submits size and gcid together and fails unless PikPak
-     * holds content of exactly that description. A length assertion in the app would be comparing
-     * the declared length against itself -- the SDK answers streamSize from the size handed to it
-     * once there is no transcode to probe -- so there is deliberately none.
-     */
-    suspend fun prepare() {
-        openHandle()
-    }
+    // What caches replaced by an account change had delivered, so the total never runs backwards.
+    @Volatile
+    private var retiredDelivered = 0L
 
-    override suspend fun <T> read(
-        start: Long,
-        length: Long,
-        priority: Int,
-        block: suspend (ByteReadChannel) -> T,
-    ): T = openHandle().read(start, length, priority, block)
+    override val deliveredBytes: Long get() = retiredDelivered + (opened?.cache?.deliveredBytes ?: 0L)
 
-    override suspend fun readBytes(start: Long, length: Long, priority: Int): ByteArray =
-        openHandle().readBytes(start, length, priority)
-
-    private suspend fun openHandle(): PikPakFileHandle {
-        // handle is published whole, so a reader that finds one matching its account can use it
-        // without queueing. Everything below suspends on the network, and a rebuild would otherwise
-        // hold every read of this file behind it: eight fetcher workers, the playback stream and
-        // the tail prefetch.
-        val fastPath = accountProvider()
-        handle?.takeIf { it.first === fastPath }?.let { return it.second }
-        return openHandleLocked()
-    }
-
-    // One handle per file at a time: two callers rebuilding at once would each mint a cloud object,
-    // and only one of them would ever be reported to discard.
-    private suspend fun openHandleLocked(): PikPakFileHandle = mutex.withLock {
-        val account = accountProvider()
-        handle?.takeIf { it.first === account }?.let { return@withLock it.second }
-        handle?.let { (_, previousHandle) -> retire(previousHandle) }
-        handle = null
-
-        if (gcid.isEmpty()) {
-            throw PikPakNotIndexedException(name, "$name has no gcid; it exists only on disk")
-        }
-        account.login.await()
-        val client = account.client
-        val (parentId, fileId) = account.driveIndex.withTempFolder { id ->
-            id to client.instantCreate(
-                ResolvedFile(path = name, size = size, gcid = gcid),
-                parentId = id,
-                name = name,
-            )
-        }
-
-        // Until a link has been minted from it, this object's id lives only in this frame: the
-        // handle is not published yet and onObjectMinted has not fired. Throwing or being cancelled
-        // before that point would leave an object nothing can name again. The startup sweep only
-        // removes objects older than its safety cutoff, so clean this one up immediately.
-        val minted = atomic(false)
+    override suspend fun prepare() {
+        val current = open()
         try {
-            PikPakFileHandle(
-                client = client,
+            current.handle.prewarm()
+        } catch (e: PikPakException) {
+            // The lease folder was deleted on another device: the rebuild names a parent that is
+            // gone. Resolving it again recreates it.
+            if (!isFolderGone(e)) throw e
+            logger.info { "[pikpak] temp folder no longer exists; creating it again" }
+            current.account.driveIndex.invalidateTempFolder()
+            release()
+            open().handle.prewarm()
+        }
+    }
+
+    override suspend fun cache(): PikPakFileCache = open().cache
+
+    private suspend fun open(): Opened {
+        // Published whole, so a reader that finds one for its account uses it without queueing
+        // behind a rebuild that is on the network.
+        val account = accountProvider()
+        opened?.takeIf { it.account === account && !it.cache.isClosed }?.let { return it }
+        return mutex.withLock {
+            opened?.takeIf { it.account === account && !it.cache.isClosed }?.let { return@withLock it }
+            retireLocked()
+            if (gcid.isEmpty()) {
+                throw PikPakNotIndexedException(name, "$name has no gcid; it exists only on disk")
+            }
+            account.login.await()
+            val handle = PikPakFileHandle(
+                client = account.client,
                 gcid = gcid,
                 size = size,
                 name = name,
-                initialFileId = fileId,
-                parentId = parentId,
+                parentId = account.driveIndex.tempFolderId(),
                 connectionBudget = connectionBudget,
-                onObjectMinted = {
-                    minted.value = true
-                    discard(account, it)
-                },
-            ).also {
-                it.prewarm()
-                it.streamSize()
-                handle = account to it
-            }
-        } catch (e: Throwable) {
-            if (!minted.value) discard(account, fileId)
-            throw e
+                leased = true,
+            )
+            val cache = handle.openCache(blockStore = storeProvider(), coroutineContext = cacheContext)
+            Opened(account, handle, cache).also { opened = it }
         }
     }
 
-    // In-flight reads may still hold this handle; let them finish on their original client. Closing
-    // only refuses reads that have not started, and every read reaches a handle through openHandle,
-    // so the ones still running keep the reader they hold and nothing new arrives.
-    //
-    // It has to go through closeAndReport: a handle whose rebuild succeeded and whose detail lookup
-    // then failed still owes a report, and letting the reference go is the last moment anything
-    // could collect the object behind it.
-    private fun retire(previous: PikPakFileHandle) {
-        scope.launch {
-            withContext(NonCancellable) {
-                runCatching { previous.closeAndReport() }
-                    .onFailure { logger.warn(it) { "[pikpak] could not close the handle $name left behind" } }
-            }
-        }
-    }
+    override suspend fun release() = mutex.withLock { retireLocked() }
 
-    private fun discard(account: PikPakAccount, fileId: String) {
-        scope.launch {
-            withContext(NonCancellable) {
-                try {
-                    account.driveIndex.delete(listOf(fileId))
-                    logger.info { "[pikpak] dropped the file object for $name; its link stands on its own" }
-                } catch (e: Throwable) {
-                    logger.warn(e) { "[pikpak] could not drop $fileId; the next startup sweep takes it" }
-                }
-            }
-        }
+    // Streams still open on the old cache fail their next read, and the player reopens through
+    // cache(), on the new account. close() makes the report the handle may still owe, so an object
+    // a failed rebuild left behind is deleted as well.
+    private fun retireLocked() {
+        val previous = opened ?: return
+        opened = null
+        retiredDelivered += previous.cache.deliveredBytes
+        previous.cache.close()
+        previous.handle.close()
     }
-
 }

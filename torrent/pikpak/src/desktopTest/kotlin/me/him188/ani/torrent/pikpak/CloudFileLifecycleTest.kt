@@ -9,6 +9,7 @@
 
 package me.him188.ani.torrent.pikpak
 
+import io.github.nihildigit.pikpak.BlockStore
 import io.github.nihildigit.pikpak.InMemorySessionStore
 import io.github.nihildigit.pikpak.PikPakClient
 import io.github.nihildigit.pikpak.RateLimiter
@@ -23,12 +24,10 @@ import io.ktor.http.HttpStatusCode
 import io.ktor.http.content.TextContent
 import io.ktor.http.headersOf
 import kotlinx.coroutines.CompletableDeferred
-import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.async
-import kotlinx.coroutines.cancel
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.runBlocking
-import kotlinx.coroutines.test.StandardTestDispatcher
 import kotlinx.coroutines.withTimeout
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.jsonArray
@@ -38,6 +37,7 @@ import java.util.concurrent.CopyOnWriteArrayList
 import kotlin.test.Test
 import kotlin.test.assertContentEquals
 import kotlin.test.assertEquals
+import kotlin.test.assertTrue
 import kotlin.time.Clock
 
 class CloudFileLifecycleTest {
@@ -83,6 +83,12 @@ class CloudFileLifecycleTest {
                     events += "create"
                     json("""{"file":{"id":"$accountName-minted","kind":"drive#file","size":"4","phase":"PHASE_TYPE_COMPLETE"}}""")
                 }
+                // The lease: the SDK deletes the object as soon as its link is in hand
+                path.endsWith("/drive/v1/files/$accountName-minted") && request.method == HttpMethod.Delete -> {
+                    deleted.add("$accountName-minted")
+                    events += "delete"
+                    json("{}")
+                }
                 path.endsWith("/drive/v1/files/$accountName-minted") -> json(
                     """{"id":"$accountName-minted","kind":"drive#file","size":"4",
                         "links":{"application/octet-stream":{"url":"https://cdn.test/$accountName","expire":""}}}""",
@@ -94,6 +100,8 @@ class CloudFileLifecycleTest {
                         HttpHeaders.ContentLength to listOf("4"),
                     ))
                 }
+                // The lease budget reads the free space once the sweep is done
+                path.endsWith("/drive/v1/about") -> json("""{"quota":{"limit":"6442450944","usage":"0"}}""")
                 else -> error("Unexpected request: ${request.method} ${request.url}")
             }
         })
@@ -108,46 +116,59 @@ class CloudFileLifecycleTest {
     fun `minting does not wait for the sweep and an account switch replaces handles and directory IDs`() = runBlocking {
         val a = Drive("a")
         val b = Drive("b")
-        val cleanupDispatcher = StandardTestDispatcher()
-        val cleanupScope = CoroutineScope(cleanupDispatcher)
         var account = PikPakAccount(a.client, this)
         val cloud = CloudFile(
             gcid = "A".repeat(40), size = 4, name = "episode.mkv", accountProvider = { account },
-            connectionBudget = 1, scope = cleanupScope,
+            connectionBudget = 1, storeProvider = { NoStore }, cacheContext = Dispatchers.IO,
         )
         try {
             withTimeout(15_000) {
-                val first = async { cloud.readBytes(0, 4) }
+                val first = async { readAll(cloud) }
                 // The listing is held back, and the read must not be held with it: the sweep is not
                 // on the first-playback path.
                 a.listingStarted.await()
                 assertContentEquals(a.bytes, first.await())
-                assertEquals(listOf("create", "read"), a.events)
+                assertEquals(listOf("create", "read"), a.events.filter { it == "create" || it == "read" })
                 a.listingAllowed.complete(Unit)
-                while (a.deleted.isEmpty()) delay(1)
-                assertEquals(listOf("a-old"), a.deleted)
+                while (a.deleted.size < 2) delay(1)
+                assertEquals(setOf("a-old", "a-minted"), a.deleted.toSet(), "the sweep and the lease both delete")
 
                 account = PikPakAccount(b.client, this@runBlocking)
                 b.listingAllowed.complete(Unit)
-                assertContentEquals(b.bytes, cloud.readBytes(0, 4))
-                while (a.deleted.size < 2 || b.deleted.size < 2) {
-                    cleanupDispatcher.scheduler.runCurrent()
-                    delay(1)
-                }
-                assertEquals(listOf("a-old", "a-minted"), a.deleted)
-                assertEquals(listOf("b-old", "b-minted"), b.deleted)
+                assertContentEquals(b.bytes, readAll(cloud))
+                while (b.deleted.size < 2) delay(1)
+                assertEquals(setOf("b-old", "b-minted"), b.deleted.toSet())
                 assertEquals(1, a.events.count { it == "read" })
                 assertEquals(1, b.events.count { it == "read" })
+                assertTrue(a.client.leaseBudget != null, "the lease budget was not set from the free space")
             }
         } finally {
             a.listingAllowed.complete(Unit)
             b.listingAllowed.complete(Unit)
-            cleanupScope.cancel()
+            cloud.release()
             a.client.close()
             b.client.close()
             a.http.close()
             b.http.close()
         }
+    }
+
+    private suspend fun readAll(cloud: CloudFile): ByteArray =
+        cloud.cache().openStream().use { stream ->
+            val out = ByteArray(stream.size.toInt())
+            var filled = 0
+            while (filled < out.size) {
+                val n = stream.read(out, filled, out.size - filled)
+                if (n < 0) break
+                filled += n
+            }
+            out
+        }
+
+    private object NoStore : BlockStore {
+        override suspend fun read(file: String, offset: Long, length: Int): ByteArray? = null
+
+        override suspend fun write(file: String, offset: Long, bytes: ByteArray) = Unit
     }
 
     private companion object {

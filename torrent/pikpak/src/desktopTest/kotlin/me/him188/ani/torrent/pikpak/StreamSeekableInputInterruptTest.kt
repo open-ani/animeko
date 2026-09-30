@@ -10,7 +10,6 @@
 package me.him188.ani.torrent.pikpak
 
 import io.github.nihildigit.pikpak.PikPakException
-import io.github.nihildigit.pikpak.PikPakStreamReader
 import io.github.nihildigit.pikpak.RangeSource
 import io.ktor.utils.io.ByteReadChannel
 import kotlinx.coroutines.Dispatchers
@@ -53,11 +52,11 @@ class StreamSeekableInputInterruptTest {
         }
         val input = StreamSeekableInput(
             name = "stalled.mkv",
-            reader = PikPakStreamReader(
+            reader = testReader(
                 source = stalling,
                 size = 4096,
                 concurrency = 1,
-                parentCoroutineContext = Dispatchers.IO,
+                context = Dispatchers.IO,
             ),
         )
 
@@ -104,11 +103,11 @@ class StreamSeekableInputInterruptTest {
         }
         val input = StreamSeekableInput(
             name = "offline.mkv",
-            reader = PikPakStreamReader(
+            reader = testReader(
                 source = failing,
                 size = 4096,
                 concurrency = 1,
-                parentCoroutineContext = Dispatchers.IO,
+                context = Dispatchers.IO,
             ),
             retryDelay = 10.milliseconds,
             retryWindow = 50.milliseconds,
@@ -146,11 +145,11 @@ class StreamSeekableInputInterruptTest {
         }
         val input = StreamSeekableInput(
             name = "flaky.mkv",
-            reader = PikPakStreamReader(
+            reader = testReader(
                 source = flaky,
                 size = content.size.toLong(),
                 concurrency = 1,
-                parentCoroutineContext = Dispatchers.IO,
+                context = Dispatchers.IO,
             ),
             retryDelay = 10.milliseconds,
             retryWindow = 5.seconds,

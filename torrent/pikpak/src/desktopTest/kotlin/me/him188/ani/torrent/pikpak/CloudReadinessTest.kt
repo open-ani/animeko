@@ -9,9 +9,7 @@
 
 package me.him188.ani.torrent.pikpak
 
-import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.runBlocking
-import me.him188.ani.utils.coroutines.IO_
 import me.him188.ani.utils.io.SystemPaths
 import me.him188.ani.utils.io.createTempDirectory
 import kotlin.test.Test
@@ -22,19 +20,12 @@ class CloudReadinessTest {
 
     private var prepareCalls = 0
 
-    private fun entry() = PikPakFileEntry(
-        index = 0,
-        length = length,
+    private fun entry() = testEntry(
         saveDirectory = SystemPaths.createTempDirectory("pikpak-readiness"),
-        relativePath = RELATIVE_PATH,
-        torrentId = "readiness-source-key",
-        parentCoroutineContext = Dispatchers.IO_,
-        meta = PikPakFileMeta(index = 0, pathInTorrent = RELATIVE_PATH, gcid = "GCID-01", length = length),
+        path = RELATIVE_PATH,
+        length = length,
         source = FakeRangeSource(ByteArray(length.toInt())),
-        prepareSource = { prepareCalls++ },
-        concurrency = 1,
-        scheduler = DownloadScheduler(),
-        onHandleCountChanged = {},
+        onPrepare = { prepareCalls++ },
     )
 
     @Test

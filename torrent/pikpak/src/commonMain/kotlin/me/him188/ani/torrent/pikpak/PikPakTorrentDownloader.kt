@@ -9,6 +9,7 @@
 
 package me.him188.ani.torrent.pikpak
 
+import io.github.nihildigit.pikpak.LeaseBudget
 import io.github.nihildigit.pikpak.MagnetResource
 import io.github.nihildigit.pikpak.PikPakClient
 import io.github.nihildigit.pikpak.SessionStore
@@ -106,8 +107,6 @@ class PikPakTorrentDownloader(
     private val resolvedMagnets = mutableMapOf<String, ResolvedMagnet>()
 
     private class ResolvedMagnet(val resource: MagnetResource, val at: TimeSource.Monotonic.ValueTimeMark)
-
-    private val downloadScheduler = DownloadScheduler()
 
     @Volatile
     private var closed = false
@@ -423,15 +422,6 @@ class PikPakTorrentDownloader(
         parentCoroutineContext: CoroutineContext,
         onHandleCountChanged: suspend () -> Unit,
     ): PikPakFileEntry {
-        val cloudFile = CloudFile(
-            gcid = fileMeta.gcid,
-            size = fileMeta.length,
-            name = fileMeta.pathInTorrent.substringAfterLast('/'),
-            accountProvider = ::account,
-            connectionBudget = config.value.effectiveConcurrency,
-            scope = cleanupScope,
-        )
-
         return PikPakFileEntry(
             index = fileMeta.index,
             length = fileMeta.length,
@@ -440,10 +430,17 @@ class PikPakTorrentDownloader(
             torrentId = sourceKey,
             parentCoroutineContext = parentCoroutineContext,
             meta = fileMeta,
-            source = cloudFile,
-            prepareSource = cloudFile::prepare,
-            concurrency = config.value.effectiveConcurrency,
-            scheduler = downloadScheduler,
+            cloudFactory = { storeProvider ->
+                CloudFile(
+                    gcid = fileMeta.gcid,
+                    size = fileMeta.length,
+                    name = fileMeta.pathInTorrent.substringAfterLast('/'),
+                    accountProvider = ::account,
+                    connectionBudget = config.value.effectiveConcurrency,
+                    storeProvider = storeProvider,
+                    cacheContext = parentCoroutineContext + Dispatchers.IO_,
+                )
+            },
             onHandleCountChanged = onHandleCountChanged,
         )
     }
@@ -492,16 +489,16 @@ class PikPakTorrentDownloader(
             sessionStore = sessionStore,
             httpClient = httpClient,
             cdnHttpClient = cdnClient,
-            // One gate, not two. The CDN client caps this host at the per-file budget, so an
-            // account budget above it does not admit more work, it only moves the queue into
-            // OkHttp's dispatcher -- which is FIFO, and where the playback read's priority stops
-            // meaning anything. Keep both limits aligned so priority remains effective at the gate.
-            accountConnectionBudget = config.value.effectiveConcurrency,
+            connectionBudget = config.value.effectiveConcurrency,
+            // Two files' worth, so a cache download and playback each keep a full link's budget.
+            // The CDN client admits as many per host (tunedCdnClient's default); an engine cap below
+            // the gates would queue requests where RangeReader reads the wait as a dead host.
+            accountConnectionBudget = config.value.accountConcurrency,
         ).let { PikPakAccount(it, scope) }.also { clientEntry = creds to it }
     }
 
     private companion object {
-        const val SDK_VERSION = "0.6.6"
+        const val SDK_VERSION = "2.0.0"
 
         // A backstop, not the body watchdog -- RangeReader owns that. It also bounds the wait for
         // response headers and connection setup.
@@ -522,6 +519,10 @@ data class PikPakEngineConfig(
     }
 
     val effectiveConcurrency: Int get() = concurrency.coerceIn(1, MAX_CONCURRENCY)
+
+    // Lowering the per-file count is how a slow line is accommodated, and the account-wide count
+    // has to come down with it: past what the line carries, more connections only make each slower.
+    val accountConcurrency: Int get() = effectiveConcurrency * 2
 }
 
 data class PikPakCredentials(
@@ -639,5 +640,30 @@ internal class PikPakAccount(val client: PikPakClient, scope: CoroutineScope) {
         } catch (e: Throwable) {
             logger<PikPakAccount>().warn(e) { "[pikpak] startup sweep failed" }
         }
+        budgetLeases()
+    }
+
+    // A leased object takes its full size of storage until its delete lands, and a free account has
+    // 6 GB: several episodes minted at once would fail past the free space. Measured after the
+    // sweep, so its leftovers do not count as used; `about` trails writes by more than a lease
+    // lasts, so it is read once rather than kept up to date. Until it is set, leases are unbounded.
+    private suspend fun budgetLeases() {
+        try {
+            val free = client.getQuota().quota.remainingBytes
+            client.leaseBudget = LeaseBudget(free.coerceIn(MIN_LEASE_BUDGET, MAX_LEASE_BUDGET))
+        } catch (e: CancellationException) {
+            throw e
+        } catch (e: Throwable) {
+            logger<PikPakAccount>().warn(e) { "[pikpak] could not read the free space; leases stay unbounded" }
+        }
+    }
+
+    private companion object {
+        // A file larger than the whole budget still goes through, alone; below this, one episode
+        // at a time is already what the budget enforces.
+        const val MIN_LEASE_BUDGET = 1L * 1024 * 1024 * 1024
+
+        // A premium account reports terabytes free; nothing near that is ever leased at once.
+        const val MAX_LEASE_BUDGET = 64L * 1024 * 1024 * 1024
     }
 }

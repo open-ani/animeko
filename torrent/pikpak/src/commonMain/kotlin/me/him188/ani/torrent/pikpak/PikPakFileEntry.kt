@@ -9,21 +9,25 @@
 
 package me.him188.ani.torrent.pikpak
 
+import io.github.nihildigit.pikpak.PikPakFileCache
 import io.github.nihildigit.pikpak.PikPakStreamReader
-import io.github.nihildigit.pikpak.RangeSource
+import io.github.nihildigit.pikpak.StreamRole
 import kotlinx.atomicfu.locks.SynchronizedObject
 import kotlinx.atomicfu.locks.synchronized
 import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.Deferred
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.Job
+import kotlinx.coroutines.NonCancellable
 import kotlinx.coroutines.cancel
-import kotlinx.coroutines.cancelAndJoin
+import kotlinx.coroutines.currentCoroutineContext
 import kotlinx.coroutines.delay
-import kotlinx.coroutines.isActive
+import kotlinx.coroutines.ensureActive
 import kotlinx.coroutines.flow.Flow
-import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.collectLatest
+import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.sync.Mutex
@@ -36,7 +40,8 @@ import me.him188.ani.app.torrent.api.files.TorrentFileEntry
 import me.him188.ani.app.torrent.api.files.TorrentFileHandle
 import me.him188.ani.app.torrent.api.pieces.MutablePieceList
 import me.him188.ani.app.torrent.api.pieces.PieceList
-import me.him188.ani.app.torrent.api.pieces.TorrentDownloadController
+import me.him188.ani.app.torrent.api.pieces.PieceState
+import me.him188.ani.app.torrent.io.TorrentInput
 import me.him188.ani.utils.coroutines.IO_
 import me.him188.ani.utils.io.SystemPath
 import me.him188.ani.utils.io.resolve
@@ -47,6 +52,10 @@ import kotlin.concurrent.Volatile
 import kotlin.coroutines.CoroutineContext
 import kotlin.time.Duration.Companion.seconds
 
+// One file of a PikPak torrent. Its bytes live in the SDK's file cache, which reads through the
+// cloud and keeps what it fetched in a PikPakSparseStore on disk; playback, the seek-bar preview,
+// the index prefetch and an explicit cache request all share that one cache, so nothing is fetched
+// twice. The piece list mirrors the store's blocks for the cache UI and the resume logic.
 internal class PikPakFileEntry(
     index: Int,
     length: Long,
@@ -55,12 +64,8 @@ internal class PikPakFileEntry(
     torrentId: String,
     parentCoroutineContext: CoroutineContext,
     val meta: PikPakFileMeta,
-    private val source: RangeSource,
-    // Mints the link now, so sign-in and quota failures surface while the resolver can still fall
-    // back to BT. A no-op default keeps a plain RangeSource usable in tests.
-    private val prepareSource: suspend () -> Unit = {},
-    private val concurrency: Int,
-    scheduler: DownloadScheduler,
+    /** Builds the cloud side over the store the entry currently owns; see [CloudSource.release]. */
+    cloudFactory: (storeProvider: () -> PikPakSparseStore) -> CloudSource,
     private val onHandleCountChanged: suspend () -> Unit,
 ) : AbstractTorrentFileEntry(
     index = index,
@@ -75,20 +80,17 @@ internal class PikPakFileEntry(
 
     private val dataPath: SystemPath get() = saveDirectory.resolve(relativePath)
 
-    private val streamContext: CoroutineContext = parentCoroutineContext + Dispatchers.IO_
-
-    private val slot = scheduler.newSlot("$torrentId/$fileName")
+    private val storeContext: CoroutineContext = parentCoroutineContext + Dispatchers.IO_
 
     private val resolveMutex = Mutex()
 
     @Volatile
     private var stream: Stream = newStream()
 
-    @Volatile
-    private var cloudReady = false
+    private val cloud: CloudSource = cloudFactory { stream.store }
 
     @Volatile
-    private var startJob: Job? = null
+    private var cloudReady = false
 
     override val pieces: MutablePieceList get() = stream.pieces
 
@@ -96,29 +98,20 @@ internal class PikPakFileEntry(
         if (cloudReady) return
         resolveMutex.withLock {
             if (cloudReady) return
-            // Complete imports have no GCID and must never need the cloud.
-            if (stream.fetcher.isComplete) {
+            // Complete files, imports among them, have what they need on disk; imports have no GCID
+            // and must never need the cloud.
+            if (stream.store.isComplete) {
                 cloudReady = true
                 return
             }
-            prepareSource()
+            cloud.prepare()
             cloudReady = true
         }
     }
 
-    private suspend fun startFetching() {
-        ensureCloudReady()
-
-        if (!wantsWholeFile) return
-        val current = stream
-        current.controller.resume()
-        current.fetcher.start()
-    }
-
     override val fileStats: Flow<TorrentFileEntry.Stats> = flow {
         while (true) {
-            val current = stream
-            val downloaded = current.fetcher.downloadedBytes
+            val downloaded = stream.store.heldBytes.value
             emit(
                 TorrentFileEntry.Stats(
                     downloadedBytes = downloaded,
@@ -130,15 +123,15 @@ internal class PikPakFileEntry(
         }
     }
 
-    private val streamDeliveredBytes = MutableStateFlow(0L)
+    // Everything the CDN delivered for this file: playback, preview, index and cache download alike.
+    val deliveredBytes: Long get() = cloud.deliveredBytes
 
-    val deliveredBytes: Long get() = streamDeliveredBytes.value + stream.fetcher.deliveredBytes
+    val downloadedBytes: Long get() = stream.store.heldBytes.value
 
-    val downloadedBytes: Long get() = stream.fetcher.downloadedBytes
+    private val _error = MutableStateFlow<Throwable?>(null)
+    override val error: StateFlow<Throwable?> = _error.asStateFlow()
 
-    override val error: StateFlow<Throwable?> get() = stream.fetcher.error
-
-    val isComplete: Boolean get() = stream.fetcher.isComplete
+    val isComplete: Boolean get() = stream.store.isComplete
 
     private val openHandles = MutableStateFlow(0)
     val hasOpenHandles: Boolean get() = openHandles.value > 0
@@ -147,12 +140,12 @@ internal class PikPakFileEntry(
         override val entry get() = this@PikPakFileEntry
 
         override fun resumeImpl(priority: FilePriority) {
-            beginFetchingIfWanted()
+            prepareInBackground()
         }
 
-        // Playback reads the cloud file through HybridSeekableInput with on-demand range
-        // requests, so a seek to the prefetch target costs one request and there is no piece
-        // queue to reorder. The hint only matters for peer-based engines.
+        // The player reads through the file cache, which fetches what its read position implies,
+        // so a seek costs one request and there is no piece queue to reorder. The hint only
+        // matters for peer-based engines.
         override fun setPrefetchRangeImpl(byteRange: LongRange?) {
         }
 
@@ -176,165 +169,212 @@ internal class PikPakFileEntry(
     private val wantsWholeFile: Boolean
         get() = priorityRequests.values.any { it != null && it != FilePriority.IGNORE && it < FilePriority.HIGH }
 
-    override fun updatePriority() {
-        val priority = requestingPriority
-        if (wantsWholeFile) {
-            beginFetchingIfWanted()
-        } else {
-            startJob?.cancel()
-            startJob = null
-            stream.fetcher.stop()
-        }
-        logger.info { "[$torrentId] $fileName priority -> $priority" }
+    // A flag rather than a Job handed between start and stop: a stop landing while the start is
+    // still being scheduled would otherwise cancel nothing.
+    private val downloadWanted = MutableStateFlow(false)
+
+    init {
+        scope.launch { downloadWanted.collectLatest { wanted -> if (wanted) downloadLoop() } }
     }
 
-    private fun beginFetchingIfWanted() {
-        if (startJob?.isActive == true) return
-        startJob = scope.launch {
-            while (isActive) {
-                try {
-                    if (wantsWholeFile) startFetching() else ensureCloudReady()
-                    return@launch
-                } catch (e: CancellationException) {
-                    throw e
-                } catch (e: Throwable) {
-                    if (!wantsWholeFile) {
-                        logger.warn(e) { "[$torrentId] $fileName could not settle its stream" }
-                        return@launch
-                    }
-                    logger.warn(e) { "[$torrentId] $fileName could not start fetching, retrying in $START_RETRY_DELAY" }
-                    delay(START_RETRY_DELAY)
-                }
+    override fun updatePriority() {
+        downloadWanted.value = wantsWholeFile
+        logger.info { "[$torrentId] $fileName priority -> $requestingPriority" }
+    }
+
+    private fun prepareInBackground() {
+        if (cloudReady) return
+        scope.launch {
+            try {
+                ensureCloudReady()
+            } catch (e: CancellationException) {
+                throw e
+            } catch (e: Throwable) {
+                logger.warn(e) { "[$torrentId] $fileName could not settle its stream" }
             }
         }
+    }
+
+    /**
+     * Downloads what the store is missing until it holds the whole file, container head and index
+     * first. The SDK retries each block before failing the download; this is the one outer layer,
+     * a pause and another call, which fetches only what is still missing.
+     */
+    private suspend fun downloadLoop() {
+        while (!stream.store.isComplete) {
+            try {
+                ensureCloudReady()
+                cloud.cache().download(downloadOrder()).await()
+            } catch (e: CancellationException) {
+                // Our own cancellation ends the loop. Otherwise the cache was closed under the
+                // download, by an account switch or a delete, and the next pass opens the new one.
+                currentCoroutineContext().ensureActive()
+            } catch (e: Throwable) {
+                _error.value = e
+                logger.warn(e) { "[$torrentId] $fileName download stopped, retrying in $RETRY_DELAY" }
+                delay(RETRY_DELAY)
+            }
+        }
+        _error.value = null
+    }
+
+    private fun downloadOrder(): List<LongRange> {
+        val head = minOf(length, HEADER_SIZE)
+        val tailStart = maxOf(head, length - FOOTER_SIZE)
+        return listOf(0L until head, tailStart until length, head until tailStart).filterNot { it.isEmpty() }
     }
 
     override suspend fun createInput(awaitCoroutineContext: CoroutineContext): SeekableInput =
         withContext(Dispatchers.IO_) {
             ensureCloudReady()
             val current = stream
-            // 播放已经持有 input 时, 后续 input 用于进度条预览。预览只读本地已有的数据，避免零散帧读取
-            // 占用播放所需的云端连接。createInput 不携带调用方信息，因此以现有 input 数量区分两者。
+            // 播放已经持有 input 时, 后续 input 用于进度条预览。createInput 不携带调用方信息，因此以现有
+            // input 数量区分两者。预览只读关键帧附近的一两个块, 预读窗口压到一个块, 以免和播放抢连接。
             val secondary = current.claimInput() > 0
-            logger.info { "[$torrentId] $fileName creating ${if (secondary) "a secondary" else "an"} input" }
             val inputName = if (secondary) "$fileName (preview)" else fileName
-            HybridSeekableInput(
-                name = inputName,
-                dataPath = dataPath,
-                pieces = current.pieces,
-                size = length,
-                openStream = {
-                    if (secondary) throw IOException("[$inputName] preview reads local data only")
-                    StreamSeekableInput(
-                        name = inputName,
-                        reader = PikPakStreamReader(
-                            source = source,
-                            size = length,
-                            concurrency = concurrency,
-                            parentCoroutineContext = streamContext,
-                        ),
-                    )
-                },
-                onDelivered = { delta -> streamDeliveredBytes.update { it + delta } },
-                onCloudReadStarted = slot::openStream,
-                onCloudReadFinished = slot::closeStream,
-                onClosed = { current.releaseInput() },
-                // A complete import is read from disk, where seeking to the index costs nothing.
-                tail = if (current.fetcher.isComplete) null else current.tail(),
-                isStale = { stream !== current },
-            )
+            logger.info { "[$torrentId] $inputName creating an input" }
+            try {
+                if (current.store.isComplete) {
+                    completeFileInput(current)
+                } else {
+                    cloudInput(current, inputName, secondary)
+                }
+            } catch (e: Throwable) {
+                current.releaseInput()
+                throw e
+            }
         }
+
+    // Nothing is missing, so there is nothing to wait for and no cloud to ask: a plain read of the
+    // data file, as for any finished torrent. It stops serving once the file is deleted, like the
+    // cloud input: an open handle would otherwise keep reading the unlinked file.
+    private fun completeFileInput(current: Stream): SeekableInput {
+        val input = TorrentInput(file = dataPath, pieces = current.pieces, size = length)
+        return object : SeekableInput by input {
+            override fun read(buffer: ByteArray, offset: Int, length: Int): Int {
+                if (stream !== current) throw IOException("[$fileName] the file this input was opened on was deleted")
+                return input.read(buffer, offset, length)
+            }
+
+            override fun close() {
+                try {
+                    input.close()
+                } finally {
+                    current.releaseInput()
+                }
+            }
+        }
+    }
+
+    private suspend fun cloudInput(current: Stream, inputName: String, secondary: Boolean): SeekableInput {
+        val cache = cloud.cache()
+        val reader = cache.openStream(StreamRole.FOREGROUND)
+        if (secondary) {
+            reader.readAheadLimit = PikPakStreamReader.DEFAULT_BLOCK_SIZE
+        } else {
+            current.prefetchIndex(cache, length)
+        }
+        return CloudSeekableInput(
+            name = inputName,
+            stream = StreamSeekableInput(name = inputName, reader = reader),
+            onClosed = { current.releaseInput() },
+            isStale = { stream !== current },
+        )
+    }
 
     suspend fun close() {
-        startJob?.cancelAndJoin()
-        startJob = null
-
+        downloadWanted.value = false
         resolveMutex.withLock {
-            stream.closeTail()
-            stream.fetcher.close()
+            stream.close()
+            cloud.release()
         }
-
-        slot.release()
-
         scope.cancel()
     }
 
-    // Rebuild the controller too: its completed-window state cannot resume a deleted file.
+    // The store, its pieces and every cache over them start again: the old ones describe a file
+    // that no longer exists.
     private suspend fun deleteFiles() {
-        resolveMutex.withLock {
-            val old = stream
-            old.fetcher.deleteTarget()
-            old.closeTail()
-            old.fetcher.close()
-            stream = newStream()
+        withContext(NonCancellable) {
+            resolveMutex.withLock {
+                val old = stream
+                stream = newStream()
+                cloud.release()
+                old.delete()
+                cloudReady = false
+            }
         }
     }
 
     private class Stream(
         val pieces: MutablePieceList,
-        val fetcher: PieceFetcher,
-        val controller: TorrentDownloadController,
-        private val createTail: () -> TailPrefetch,
+        val store: PikPakSparseStore,
     ) {
-        private val tailLock = SynchronizedObject()
-        private var tail: TailPrefetch? = null
-
-        // 预取的是这个文件末尾的一段, 归文件所有而不是归某个 input: 进度条预览会为同一个文件再开一个
-        // input, 各建一份就把同样的字节取两遍, 而预取排在播放读之前, 第二份是直接和正在播的读抢连接.
-        fun tail(): TailPrefetch = synchronized(tailLock) { tail ?: createTail().also { tail = it } }
-
-        fun closeTail() = synchronized(tailLock) {
-            tail?.close()
-            tail = null
-        }
-
+        private val lock = SynchronizedObject()
         private var liveInputs = 0
 
-        fun claimInput(): Int = synchronized(tailLock) { liveInputs.also { liveInputs = it + 1 } }
+        // 预取的是这个文件末尾的一段, 归文件所有而不是归某个 input: 进度条预览会为同一个文件再开一个
+        // input, 各预取一份就是和正在播的读抢连接. 缓存换了 (换账号) 就要对新缓存再预取一次.
+        private var indexPrefetch: Pair<PikPakFileCache, Deferred<Unit>>? = null
 
-        fun releaseInput() = synchronized(tailLock) {
+        fun prefetchIndex(cache: PikPakFileCache, length: Long) = synchronized(lock) {
+            if (indexPrefetch?.first === cache) return@synchronized
+            indexPrefetch?.second?.cancel()
+            val tail = maxOf(0L, length - INDEX_BYTES) until length
+            indexPrefetch = cache to cache.prefetch(listOf(tail), StreamRole.FOREGROUND, PikPakStreamReader.INDEX_PRIORITY)
+        }
+
+        fun claimInput(): Int = synchronized(lock) { liveInputs.also { liveInputs = it + 1 } }
+
+        fun releaseInput() = synchronized(lock) {
             if (liveInputs > 0) liveInputs--
+        }
+
+        suspend fun close() {
+            synchronized(lock) { indexPrefetch?.second?.cancel() }
+            store.close()
+        }
+
+        suspend fun delete() {
+            synchronized(lock) { indexPrefetch?.second?.cancel() }
+            store.delete()
         }
     }
 
     private fun newStream(): Stream {
         val pieces = PieceList.create(totalSize = length, pieceSize = PIECE_SIZE)
-
-        var controller: TorrentDownloadController? = null
-        val fetcher = PieceFetcher(
-            source = source,
-            file = dataPath,
-            pieces = pieces,
-            totalLength = length,
-            concurrency = concurrency,
-            logTag = "$torrentId/$fileName",
-            onPieceDownloaded = { controller?.onPieceDownloaded(it) },
-            parentCoroutineContext = streamContext,
-            slot = slot,
-            streaming = slot.streaming,
+        val store = PikPakSparseStore(
+            dataFile = dataPath,
+            size = length,
+            parentCoroutineContext = storeContext,
+            onHeld = { block ->
+                with(pieces) { pieces.createPieceByListIndexUnsafe(block).state = PieceState.FINISHED }
+                // Progress means whatever stopped the download has cleared
+                _error.value = null
+            },
+            blockSize = PIECE_SIZE,
         )
-        return Stream(
-            pieces = pieces,
-            fetcher = fetcher,
-            controller = TorrentDownloadController(
-                pieces = pieces,
-                priorities = fetcher,
-                windowSize = (8 * 1024 * 1024 / PIECE_SIZE).toInt().coerceIn(2, 64),
-                headerSize = HEADER_SIZE,
-                footerSize = FOOTER_SIZE,
-                possibleFooterSize = 8 * 1024 * 1024,
-            ).also { controller = it },
-            createTail = { TailPrefetch(fileName, source, length, streamContext) },
-        )
+        with(pieces) {
+            for (block in 0 until store.blockCount) {
+                if (store.isHeld(block)) pieces.createPieceByListIndexUnsafe(block).state = PieceState.FINISHED
+            }
+        }
+        return Stream(pieces, store)
     }
 
     companion object {
-        const val PIECE_SIZE: Long = 512L * 1024
+        // One piece per block of the SDK's file cache, so the piece list and the store's bitmap agree.
+        const val PIECE_SIZE: Long = PikPakStreamReader.DEFAULT_BLOCK_SIZE
 
+        // What a cache download fetches first, so a file cached while it plays has its container
+        // header and trailing index early.
         const val HEADER_SIZE: Long = 2L * 1024 * 1024
         const val FOOTER_SIZE: Long = 512L * 1024
 
-        val START_RETRY_DELAY = 30.seconds
+        // The tail a player jumps to for a Matroska file's Cues or a trailing MP4 moov before the
+        // first frame; fetched with the head so the jump is served from memory.
+        const val INDEX_BYTES: Long = 512L * 1024
+
+        val RETRY_DELAY = 30.seconds
     }
 }
 

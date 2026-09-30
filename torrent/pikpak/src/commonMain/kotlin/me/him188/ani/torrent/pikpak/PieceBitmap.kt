@@ -109,6 +109,8 @@ internal class PieceBitmap(
     }
 
     companion object {
-        fun pathFor(dataFile: SystemPath): SystemPath = dataFile.resolveSibling(dataFile.name + ".bits")
+        // One bit per 256 KiB block of the SDK's file cache. The suffix changed with the block
+        // size: a bitmap of the earlier 512 KiB pieces would claim the wrong ranges.
+        fun pathFor(dataFile: SystemPath): SystemPath = dataFile.resolveSibling(dataFile.name + ".blocks")
     }
 }

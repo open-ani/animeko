@@ -33,19 +33,7 @@ class EntryDeleteTest {
         length: Long,
         source: FakeRangeSource,
         onHandleCountChanged: suspend () -> Unit,
-    ) = PikPakFileEntry(
-        index = 0,
-        length = length,
-        saveDirectory = saveDirectory,
-        relativePath = path,
-        torrentId = "test-source-key",
-        parentCoroutineContext = Dispatchers.IO,
-        meta = PikPakFileMeta(index = 0, pathInTorrent = path, gcid = "GCID-$path", length = length),
-        source = source,
-        concurrency = 2,
-        scheduler = DownloadScheduler(),
-        onHandleCountChanged = onHandleCountChanged,
-    )
+    ) = testEntry(saveDirectory, path, length, source, onHandleCountChanged = onHandleCountChanged)
 
     @Test
     fun `a deleted episode can be downloaded again inside a session that stayed open`() = runBlocking {

@@ -59,7 +59,7 @@ kotlin {
 
         // Auth, captcha, rate limiting, OSS signing, GCID etc. live in the SDK — this module only
         // supplies the torrent-engine layer on top. See https://github.com/NihilDigit/pikpak-kotlin.
-        api("io.github.nihildigit:pikpak-kotlin:0.6.6")
+        api("io.github.nihildigit:pikpak-kotlin:2.0.0")
     }
     sourceSets.getByName("desktopTest").dependencies {
         implementation(libs.ktor.client.mock)
