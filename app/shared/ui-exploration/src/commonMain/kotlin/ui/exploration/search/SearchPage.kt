@@ -324,7 +324,7 @@ fun SearchPage(
 }
 
 @Composable
-internal fun SearchPageSearchBar(
+private fun SearchPageSearchBar(
     state: SearchPageState,
     onIntent: (SearchPageIntent) -> Unit,
     suggestionsPager: (String) -> Flow<PagingData<String>>,

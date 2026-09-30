@@ -20,7 +20,6 @@ import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.assertTextEquals
 import androidx.compose.ui.test.hasSetTextAction
 import androidx.compose.ui.test.hasText
-import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performImeAction
@@ -31,6 +30,7 @@ import androidx.compose.ui.test.pressKey
 import androidx.paging.PagingData
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.runBlocking
@@ -40,10 +40,10 @@ import me.him188.ani.app.ui.framework.AniComposeUiTest
 import me.him188.ani.app.ui.framework.runAniComposeUiTest
 import me.him188.ani.app.ui.lang.Lang
 import me.him188.ani.app.ui.lang.exploration_search_placeholder
+import me.him188.ani.app.ui.search.TestSearchState
 import org.jetbrains.compose.resources.getString
 import kotlin.test.Test
 import kotlin.test.assertEquals
-import kotlin.test.assertFalse
 import kotlin.test.assertTrue
 
 class SearchPageSearchBarTest {
@@ -53,11 +53,10 @@ class SearchPageSearchBarTest {
     private class Fixture(
         val suggestions: (String) -> Flow<PagingData<String>>,
     ) {
-        var query by mutableStateOf("")
-        var expanded by mutableStateOf(false)
         var recomposition by mutableStateOf(0)
         val intents = mutableListOf<SearchPageIntent>()
         val state = createTestSearchPageState(
+            searchState = TestSearchState(MutableStateFlow(flowOf(PagingData.empty()))),
             query = SubjectSearchQuery("", tags = listOf("百合")),
             hasActiveSearch = false,
         ).copy(searchHistoryPager = flowOf(PagingData.empty()))
@@ -66,24 +65,20 @@ class SearchPageSearchBarTest {
     private fun AniComposeUiTest.showSearchBar(fixture: Fixture) {
         setContent {
             ProvideCompositionLocalsForPreview {
-                SearchPageSearchBar(
+                SearchPage(
                     state = fixture.state,
                     onIntent = { fixture.intents += it },
                     suggestionsPager = fixture.suggestions,
-                    editingQuery = fixture.query,
-                    onEditingQueryChange = { fixture.query = it },
-                    expanded = fixture.expanded,
-                    onExpandedChange = { fixture.expanded = it },
+                    detailContent = {},
                     modifier = Modifier.testTag("search-bar-${fixture.recomposition}"),
-                    inputFieldModifier = Modifier.testTag("search-input"),
-                    windowInsets = WindowInsets(0),
+                    contentWindowInsets = WindowInsets(0),
                 )
             }
         }
     }
 
     private fun AniComposeUiTest.enterQuery(text: String) {
-        onNodeWithTag("search-input").performClick().performTextInput(text)
+        onNode(hasSetTextAction()).performClick().performTextInput(text)
         mainClock.advanceTimeBy(1_000)
         waitForIdle()
     }
@@ -136,7 +131,8 @@ class SearchPageSearchBarTest {
         showSearchBar(fixture)
         enterQuery(url)
         candidate(text).performClick()
-        onNodeWithTag("search-input").assertTextEquals(text)
+        onNode(hasSetTextAction()).assertTextEquals(text)
+        candidate(text).assertDoesNotExist()
         runOnIdle {
             assertEquals(
                 listOf<SearchPageIntent>(
@@ -144,7 +140,6 @@ class SearchPageSearchBarTest {
                 ),
                 fixture.intents,
             )
-            assertFalse(fixture.expanded)
         }
     }
 
@@ -162,7 +157,8 @@ class SearchPageSearchBarTest {
         val fixture = Fixture { flowOf(PagingData.from(candidates)) }
         showSearchBar(fixture)
         enterQuery(url)
-        onNodeWithTag("search-input").performKeyInput { pressKey(Key.Enter) }
+        onNode(hasSetTextAction()).performKeyInput { pressKey(Key.Enter) }
+        onNode(hasSetTextAction()).assertTextEquals(url)
         runOnIdle {
             assertEquals(
                 listOf<SearchPageIntent>(
@@ -170,7 +166,6 @@ class SearchPageSearchBarTest {
                 ),
                 fixture.intents,
             )
-            assertEquals(url, fixture.query)
         }
     }
 
@@ -179,7 +174,7 @@ class SearchPageSearchBarTest {
         val fixture = Fixture { flowOf(PagingData.from(candidates)) }
         showSearchBar(fixture)
         enterQuery(url)
-        onNodeWithTag("search-input").performImeAction()
+        onNode(hasSetTextAction()).performImeAction()
         runOnIdle {
             assertEquals(
                 listOf<SearchPageIntent>(
@@ -217,11 +212,11 @@ class SearchPageSearchBarTest {
         runOnIdle { assertEquals(listOf(url), started) }
 
         mainClock.autoAdvance = false
-        onNodeWithTag("search-input").performTextReplacement("622289")
+        onNode(hasSetTextAction()).performTextReplacement("622289")
         mainClock.advanceTimeByFrame()
         runOnIdle { assertTrue(oldCancelled) }
         mainClock.advanceTimeBy(300)
-        onNodeWithTag("search-input").performTextReplacement("622290")
+        onNode(hasSetTextAction()).performTextReplacement("622290")
         mainClock.advanceTimeByFrame()
         mainClock.advanceTimeBy(600)
         runOnIdle { assertEquals(listOf(url), started) }

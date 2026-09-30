@@ -58,6 +58,30 @@ class SubjectSearchCompletionsTest {
         imageThumb = "",
     )
 
+    private suspend fun parseSearchSubjectId(query: String): Int? {
+        var requestedId: Int? = null
+        SubjectSearchCompletions.flow(
+            query, NsfwMode.HIDE, emptySet(),
+            getSubject = {
+                requestedId = it
+                null
+            },
+        ) { emptyList() }.toList()
+        return requestedId
+    }
+
+    private suspend fun parseSearchEpisodeId(query: String): Int? {
+        var requestedId: Int? = null
+        SubjectSearchCompletions.flow(
+            query, NsfwMode.HIDE, emptySet(), { null },
+            getEpisodeSubjectId = {
+                requestedId = it
+                null
+            },
+        ) { emptyList() }.toList()
+        return requestedId
+    }
+
     private suspend fun loadSubjectSearchCompletions(
         query: String,
         nsfwMode: NsfwMode,
@@ -65,12 +89,12 @@ class SubjectSearchCompletionsTest {
         getSubject: suspend (Int) -> AniSubjectCollection?,
         getEpisodeSubjectId: suspend (Int) -> Int? = { null },
         searchKeywords: suspend (String) -> List<String>,
-    ) = subjectSearchCompletionsFlow(
+    ) = SubjectSearchCompletions.flow(
         query, nsfwMode, excludedIds, getSubject, getEpisodeSubjectId, searchKeywords,
     ).last()
 
     @Test
-    fun `extracts the first subject path before considering a whole integer`() {
+    fun `extracts the first subject path before considering a whole integer`() = runTest {
         listOf(
             url,
             "$url/?from=search#episode",
@@ -89,7 +113,7 @@ class SubjectSearchCompletionsTest {
     }
 
     @Test
-    fun `invalid nonpositive and overflowing ids remain keywords`() {
+    fun `invalid nonpositive and overflowing ids remain keywords`() = runTest {
         listOf(
             "", " ", "番剧", "622288 番剧", "622288.5", "0", "-1", "2147483648",
             "999999999999999999999999999", "subject/", "subject/-1", "subject/0",
@@ -131,7 +155,7 @@ class SubjectSearchCompletionsTest {
     }
 
     @Test
-    fun `episode paths accept urls and shared text but not bare numbers or invalid ids`() {
+    fun `episode paths accept urls and shared text but not bare numbers or invalid ids`() = runTest {
         listOf(
             episodeUrl, "$episodeUrl?from=share#comment", "推荐：$episodeUrl", "ep/$episodeId",
             "ep/00$episodeId", "ep/$episodeId ep/2",
@@ -212,7 +236,7 @@ class SubjectSearchCompletionsTest {
     @Test
     fun `episode and parent lookup share the three second head start and can finish later`() = runTest {
         var keywordStartedAt = -1L
-        val result = subjectSearchCompletionsFlow(
+        val result = SubjectSearchCompletions.flow(
             episodeUrl, NsfwMode.HIDE, emptySet(),
             getSubject = {
                 delay(3_000)
@@ -317,7 +341,7 @@ class SubjectSearchCompletionsTest {
     fun `late specific success cancels unfinished keyword request`() = runTest {
         var ordinaryCancelled = false
         var keywordStartedAt = -1L
-        val results = subjectSearchCompletionsFlow(
+        val results = SubjectSearchCompletions.flow(
             url, NsfwMode.HIDE, emptySet(), { delay(10_000); subject },
         ) {
             keywordStartedAt = currentTime
@@ -335,7 +359,7 @@ class SubjectSearchCompletionsTest {
 
     @Test
     fun `specific success within three seconds never starts keyword lookup`() = runTest {
-        val result = subjectSearchCompletionsFlow(
+        val result = SubjectSearchCompletions.flow(
             "$id", NsfwMode.HIDE, emptySet(), {
                 delay(2_999)
                 subject
@@ -351,7 +375,7 @@ class SubjectSearchCompletionsTest {
         var keywordStartedAt = -1L
         val ordinary = listOf("普通候选", subject.nameCn, "$id", url)
         val job = launch {
-            subjectSearchCompletionsFlow(
+            SubjectSearchCompletions.flow(
                 url, NsfwMode.HIDE, emptySet(), {
                     delay(7_000)
                     subject
@@ -380,7 +404,7 @@ class SubjectSearchCompletionsTest {
 
     @Test
     fun `early lookup failure starts fallback immediately`() = runTest {
-        val result = subjectSearchCompletionsFlow(
+        val result = SubjectSearchCompletions.flow(
             url, NsfwMode.HIDE, emptySet(), {
                 delay(100)
                 null
@@ -395,7 +419,7 @@ class SubjectSearchCompletionsTest {
     @Test
     fun `late filtered lookup keeps already displayed ordinary results without duplicates`() = runTest {
         var keywordCalls = 0
-        val result = subjectSearchCompletionsFlow(
+        val result = SubjectSearchCompletions.flow(
             url, NsfwMode.HIDE, emptySet(), {
                 delay(5_000)
                 subject.copy(nsfw = true)
@@ -410,7 +434,7 @@ class SubjectSearchCompletionsTest {
 
     @Test
     fun `ordinary failure does not cancel a successful specific lookup`() = runTest {
-        val result = subjectSearchCompletionsFlow(
+        val result = SubjectSearchCompletions.flow(
             url, NsfwMode.HIDE, emptySet(), {
                 delay(7_000)
                 subject
@@ -423,7 +447,7 @@ class SubjectSearchCompletionsTest {
     @Test
     fun `both parallel lookups failing propagates the keyword error`() = runTest {
         val error = assertFailsWith<IllegalStateException> {
-            subjectSearchCompletionsFlow(
+            SubjectSearchCompletions.flow(
                 url, NsfwMode.HIDE, emptySet(), {
                     delay(7_000)
                     error("Subject lookup failed")
@@ -439,7 +463,7 @@ class SubjectSearchCompletionsTest {
         var ordinaryCancelled = false
         val results = mutableListOf<List<String>>()
         val job = launch {
-            subjectSearchCompletionsFlow(
+            SubjectSearchCompletions.flow(
                 url, NsfwMode.HIDE, emptySet(), {
                     try {
                         awaitCancellation()
@@ -466,7 +490,7 @@ class SubjectSearchCompletionsTest {
     @Test
     fun `late failure awaits the one already running keyword request`() = runTest {
         var calls = 0
-        val result = subjectSearchCompletionsFlow(
+        val result = SubjectSearchCompletions.flow(
             url, NsfwMode.HIDE, emptySet(), {
                 delay(4_000)
                 null

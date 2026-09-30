@@ -29,6 +29,8 @@ import me.him188.ani.datasources.api.EpisodeType
 import me.him188.ani.datasources.api.PackedDate
 import me.him188.ani.datasources.api.topic.UnifiedCollectionType
 import me.him188.ani.utils.ktor.ApiInvoker
+import me.him188.ani.utils.ktor.ScopedHttpClient
+import me.him188.ani.utils.ktor.UnsafeScopedHttpClientApi
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertTrue
@@ -37,6 +39,12 @@ import kotlin.test.assertTrue
  * 剧集看过状态的本地 outbox: 写本地、入队、被服务端刷新覆盖时保留.
  */
 class EpisodeCollectionRepositoryPendingOpsTest {
+    @OptIn(UnsafeScopedHttpClientApi::class)
+    private object UnusedBangumiClient : ScopedHttpClient() {
+        override fun borrow(): Ticket = error("Bangumi client not expected")
+        override fun returnClient(ticket: Ticket) = error("Bangumi client not expected")
+    }
+
     private object UnusedSubjectsApi : ApiInvoker<SubjectsAniApi> {
         override suspend fun <R> invoke(action: suspend SubjectsAniApi.() -> R): R = error("ApiInvoker not expected")
     }
@@ -55,7 +63,7 @@ class EpisodeCollectionRepositoryPendingOpsTest {
                 subjectDao = database.subjectCollection(),
                 episodeCollectionDao = database.episodeCollection(),
                 pendingOpDao = database.episodeCollectionPendingOpDao(),
-                episodeService = EpisodeServiceImpl(UnusedSubjectsApi),
+                episodeService = EpisodeServiceImpl(UnusedSubjectsApi, UnusedBangumiClient),
                 animeScheduleRepository = AnimeScheduleRepository(AnimeScheduleService(UnusedScheduleApi)),
                 subjectCollectionRepository = lazy { error("SubjectCollectionRepository not expected") },
                 getEpisodeTypeFiltersUseCase = GetEpisodeTypeFiltersUseCase { flowOf(EpisodeType.entries) },

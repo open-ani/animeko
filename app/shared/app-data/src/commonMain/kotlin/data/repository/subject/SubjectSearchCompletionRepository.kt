@@ -21,7 +21,7 @@ import kotlinx.coroutines.flow.flowOn
 import kotlinx.coroutines.flow.map
 import me.him188.ani.app.data.models.preference.NsfwMode
 import me.him188.ani.app.data.network.AniSubjectSearchService
-import me.him188.ani.app.data.network.BangumiEpisodeService
+import me.him188.ani.app.data.network.EpisodeService
 import me.him188.ani.app.data.network.SubjectSearchField
 import me.him188.ani.app.data.network.SubjectSearchFilters
 import me.him188.ani.app.data.network.SubjectService
@@ -39,7 +39,7 @@ class SubjectSearchCompletionRepository(
     private val subjectCollectionRepository: SubjectCollectionRepository,
     settingsRepository: SettingsRepository,
     private val subjectService: SubjectService,
-    private val bangumiEpisodeService: BangumiEpisodeService,
+    private val episodeService: EpisodeService,
 ) : Repository() {
     private val ignoreDoneAndDroppedFlow =
         settingsRepository.uiSettings.flow.map { it.searchSettings.ignoreDoneAndDroppedSubjects }
@@ -55,12 +55,12 @@ class SubjectSearchCompletionRepository(
             emptySet()
         }
         emitAll(
-            subjectSearchCompletionsFlow(
+            SubjectSearchCompletions.flow(
                 query = query,
                 nsfwMode = nsfwMode,
                 excludedIds = excludedIds,
                 getSubject = subjectService::getSubjectCollection,
-                getEpisodeSubjectId = bangumiEpisodeService::getSubjectId,
+                getEpisodeSubjectId = episodeService::getSubjectId,
             ) { keyword ->
                 aniSubjectSearchService.searchSubjects(
                     keyword = keyword,
