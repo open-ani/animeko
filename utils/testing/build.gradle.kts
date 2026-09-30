@@ -25,7 +25,12 @@ kotlin {
 
     sourceSets.getByName("jvmMain") {
         dependencies {
-            implementation(kotlin("test-junit5", libs.versions.kotlin.get()))
+            implementation(kotlin("test", libs.versions.kotlin.get())) {
+                capabilities {
+                    requireCapability("org.jetbrains.kotlin:kotlin-test-framework-junit5")
+                }
+            }
+            implementation(libs.junit5.jupiter.api)
         }
     }
 }

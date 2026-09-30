@@ -10,6 +10,7 @@
 package me.him188.ani.android.activity
 
 import android.content.Intent
+import android.content.res.Configuration
 import android.os.Bundle
 import android.widget.Toast
 import androidx.activity.SystemBarStyle
@@ -30,6 +31,9 @@ import kotlinx.coroutines.launch
 import me.him188.ani.android.BuildConfig
 import me.him188.ani.app.data.repository.user.QrLoginRepository
 import me.him188.ani.app.navigation.AniNavigator
+import me.him188.ani.app.pip.PIPModeChangedListener
+import me.him188.ani.app.pip.PictureInPictureHost
+import me.him188.ani.app.pip.UserLeaveHintListener
 import me.him188.ani.app.platform.AniComponentActivity
 import me.him188.ani.app.platform.rememberPlatformWindow
 import me.him188.ani.app.ui.exprovider.ExternalContentProviderFactory
@@ -43,12 +47,36 @@ import me.him188.ani.app.ui.main.AniAppContent
 import me.him188.ani.utils.logging.error
 import me.him188.ani.utils.logging.logger
 import org.koin.android.ext.android.inject
+import java.util.concurrent.CopyOnWriteArrayList
 
-class MainActivity : AniComponentActivity() {
+class MainActivity : AniComponentActivity(), PictureInPictureHost {
     private val logger = logger<MainActivity>()
     private val aniNavigator = AniNavigator()
 
     private val externalContentProviderFactory: ExternalContentProviderFactory by inject()
+
+    private val userLeaveHintListeners = CopyOnWriteArrayList<UserLeaveHintListener>()
+    private val pipModeChangedListeners = CopyOnWriteArrayList<PIPModeChangedListener>()
+
+    override fun registerUserLeaveHintListener(listener: UserLeaveHintListener): AutoCloseable {
+        userLeaveHintListeners.add(listener)
+        return AutoCloseable { userLeaveHintListeners.remove(listener) }
+    }
+
+    override fun registerPictureInPictureModeChangedListener(listener: PIPModeChangedListener): AutoCloseable {
+        pipModeChangedListeners.add(listener)
+        return AutoCloseable { pipModeChangedListeners.remove(listener) }
+    }
+
+    override fun onUserLeaveHint() {
+        super.onUserLeaveHint()
+        userLeaveHintListeners.forEach { it.onUserLeaveHint() }
+    }
+
+    override fun onPictureInPictureModeChanged(isInPictureInPictureMode: Boolean, newConfig: Configuration) {
+        super.onPictureInPictureModeChanged(isInPictureInPictureMode, newConfig)
+        pipModeChangedListeners.forEach { it.onChanged(isInPictureInPictureMode) }
+    }
 
     override fun onNewIntent(intent: Intent) {
         super.onNewIntent(intent)
