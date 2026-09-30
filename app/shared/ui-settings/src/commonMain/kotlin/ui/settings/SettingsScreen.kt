@@ -405,7 +405,8 @@ fun SettingsScreen(
                                 PikPakAcceleratorGroup(
                                     vm.pikpakSettingsState,
                                     vm.mediaSelectorSettingsState,
-                                    vm.pikpakConnectionTester,
+                                    vm.pikpakDriveUsageState,
+                                    vm.pikpakLegacyNoticeState,
                                 )
                             }
 //                            SettingsTab.CACHE -> AutoCacheGroup(vm.mediaCacheSettingsState)

@@ -170,7 +170,10 @@ class DefaultHttpClientProvider(
         features: Set<ScopedHttpClientFeatureKeyValue<*>>,
         proxyConfig: ProxyConfig?,
     ): HttpClient {
-        return createDefaultHttpClient {
+        val requestedUserAgent = features.firstOrNull { it.key == UserAgentFeature }?.value
+        // NONE 是给自带协议处理的 SDK 用的一档: 它自己设 User-Agent、自己解析 JSON、自己重试.
+        // 走 provider 而不是让 SDK 自建客户端, 是为了保住代理配置和请求日志.
+        return createDefaultHttpClient(bare = requestedUserAgent == ScopedHttpClientUserAgent.NONE) {
             for (feature in features) {
                 val handler = featureHandlers[feature.key]
                     ?: error("No handler for feature ${feature.key}")

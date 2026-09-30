@@ -60,6 +60,7 @@ import me.him188.ani.app.data.models.preference.FullscreenSwitchMode
 import me.him188.ani.app.data.models.preference.VideoScaffoldConfig
 import me.him188.ani.app.domain.media.player.ChunkState
 import me.him188.ani.app.domain.media.player.staticMediaCacheProgressState
+import me.him188.ani.app.domain.media.cache.engine.MediaCacheEngineKey
 import me.him188.ani.app.domain.player.VideoLoadingState
 import me.him188.ani.app.ui.danmaku.PlayerDanmakuEditor
 import me.him188.ani.app.ui.episode.share.MediaShareData
@@ -280,7 +281,9 @@ class EpisodeVideoControllerTest {
                     danmakuHost = danmakuHost,
                     danmakuEnabled = danmakuEnabled,
                     onToggleDanmaku = onToggleDanmaku,
-                    videoLoadingStateFlow = remember { MutableStateFlow(VideoLoadingState.Succeed(isBt = true)) },
+                    videoLoadingStateFlow = remember {
+                        MutableStateFlow(VideoLoadingState.Succeed(MediaCacheEngineKey.Anitorrent))
+                    },
                     fullscreenState = fullscreenState,
                     danmakuEditor = {
                         if (showDanmakuEditor()) {

@@ -21,6 +21,7 @@ import me.him188.ani.test.runDynamicTests
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertNotNull
+import kotlin.test.assertNull
 
 class SelectVideoFileAnitorrentEntryTest {
     private val json = Json { ignoreUnknownKeys = true }
@@ -382,5 +383,43 @@ class SelectVideoFileAnitorrentEntryTest {
             "[DBD制作组][4K_HDR][BanG Dream! Ave Mujica][01-13TV全集][2160P][WEB-DL][简日双语内嵌][AAC][MKV]$SystemPathSeparator[DBD-SUB][4K_HDR][BanG Dream! Ave Mujica][11][2160P][WEB-DL][H265-10bit][SCJP][AAC].mkv",
             selected,
         )
+    }
+
+    @Test
+    fun `an incomplete listing does not fall back to the only video`() {
+        val selected = TorrentMediaResolver.selectVideoFileEntry(
+            listOf("[Sub] Season Pack - 01 [1080p].mkv"),
+            { this },
+            episodeTitles = listOf("第四集"),
+            episodeSort = EpisodeSort(4),
+            episodeEp = EpisodeSort(4),
+            listingComplete = false,
+        )
+        assertNull(selected)
+    }
+
+    @Test
+    fun `a complete listing still falls back to the only video`() {
+        val selected = TorrentMediaResolver.selectVideoFileEntry(
+            listOf("[Sub] Season Pack - 01 [1080p].mkv"),
+            { this },
+            episodeTitles = listOf("第四集"),
+            episodeSort = EpisodeSort(4),
+            episodeEp = EpisodeSort(4),
+        )
+        assertEquals("[Sub] Season Pack - 01 [1080p].mkv", selected)
+    }
+
+    @Test
+    fun `an incomplete listing still matches by episode number`() {
+        val selected = TorrentMediaResolver.selectVideoFileEntry(
+            listOf("[Sub] Season Pack - 04 [1080p].mkv"),
+            { this },
+            episodeTitles = listOf("第四集"),
+            episodeSort = EpisodeSort(4),
+            episodeEp = EpisodeSort(4),
+            listingComplete = false,
+        )
+        assertEquals("[Sub] Season Pack - 04 [1080p].mkv", selected)
     }
 }

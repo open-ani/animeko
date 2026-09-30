@@ -223,6 +223,9 @@ interface MediaCache {
      */
     suspend fun resume()
 
+    // Explicit user intent can promote an automatic playback record to a persistent download.
+    suspend fun resumeByUser() = resume()
+
     /**
      * 该缓存的文件是否已经被删除. 删除后不可恢复.
      */

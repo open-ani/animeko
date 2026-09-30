@@ -104,8 +104,14 @@ interface MediaCacheEngine {
 @Serializable
 @JvmInline
 value class MediaCacheEngineKey(val key: String) {
+    /**
+     * 云盘引擎按需从服务商取流, 没有磁力链解析、节点和上传, 展示层据此区分本地 BT.
+     */
+    val isCloud: Boolean get() = this == PikPak
+
     companion object {
         val Anitorrent = MediaCacheEngineKey(TorrentEngineType.Anitorrent.id)
+        val PikPak = MediaCacheEngineKey(TorrentEngineType.PikPak.id)
         val WebM3u = MediaCacheEngineKey("web-m3u")
     }
 }
