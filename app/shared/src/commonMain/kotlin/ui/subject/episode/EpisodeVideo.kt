@@ -11,7 +11,6 @@ package me.him188.ani.app.ui.subject.episode
 
 import androidx.compose.foundation.hoverable
 import androidx.compose.foundation.interaction.MutableInteractionSource
-import androidx.compose.foundation.background
 import androidx.compose.foundation.interaction.collectIsHoveredAsState
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -54,7 +53,6 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.testTag
@@ -253,28 +251,19 @@ internal fun EpisodeVideoImpl(
     pictureInPictureController: PictureInPictureController = NoOpPictureInPictureController,
     isInPictureInPicture: Boolean = false,
 ) {
-    // Don't rememberSavable. 刻意让每次切换都是隐藏的
-    var isLocked by remember { mutableStateOf(false) }
+    // Don't rememberSavable. 页面重建后都回到默认状态
+    // 锁定按钮只在 expanded 时显示, 离开 expanded 时必须解锁, 否则无法再解除
+    var isLocked by remember(expanded) { mutableStateOf(false) }
     var showPlayerStats by remember { mutableStateOf(false) }
     val playerStats by rememberPlayerStatsState(playerState)
     val sheetsController = rememberVideoSideSheetsController<EpisodeVideoSideSheetPage>()
     val anySideSheetVisible by sheetsController.hasPageAsState()
     val previewModeText = stringResource(Lang.subject_episode_preview_mode)
 
-    // iOS 不切换组合结构: 系统小窗只采集 AVPlayerLayer, 页面 UI 无需最小化;
-    // 若在此处切换到另一组合子树, 原 VideoPlayer(UIKitView) 会被 dispose,
-    // AVPictureInPictureController 持有的 AVPlayerLayer 随之失效, 小窗立即关闭且之后无法再启动
-    if (isInPictureInPicture && !LocalPlatform.current.isIos()) {
-        // 画中画小窗只渲染视频, 交互由系统提供.
-        Box(modifier.fillMaxSize().background(Color.Black)) {
-            if (LocalIsPreviewing.current) {
-                Text(previewModeText)
-            } else {
-                VideoPlayer(playerState, Modifier.matchParentSize())
-            }
-        }
-        return
-    }
+    // 画中画小窗只渲染视频, 交互由系统提供. iOS 系统小窗只采集 AVPlayerLayer, 页面 UI 无需最小化.
+    // 进出小窗只隐藏视频以外的层, 不切换组合结构: 播放器节点被重建会销毁视频输出
+    // (Android 的 Surface; iOS 上 AVPictureInPictureController 持有的 AVPlayerLayer 会失效, 小窗立即关闭且之后无法再启动).
+    val videoOnly = isInPictureInPicture && !LocalPlatform.current.isIos()
     val watchTogetherPlayerController = LocalWatchTogetherPlayerController.current
 
     // auto hide cursor
@@ -300,10 +289,12 @@ internal fun EpisodeVideoImpl(
         VideoScaffold(
             expanded = expanded,
             modifier = modifier
+                .ifThen(videoOnly) { fillMaxSize() }
                 .hoverable(videoInteractionSource)
                 .cursorVisibility(showCursor),
             contentWindowInsets = contentWindowInsets,
-            maintainAspectRatio = maintainAspectRatio,
+            maintainAspectRatio = maintainAspectRatio && !videoOnly,
+            videoOnly = videoOnly,
             controllerState = playerControllerState,
             gestureLocked = isLocked,
             topBar = {
@@ -356,7 +347,7 @@ internal fun EpisodeVideoImpl(
                     VideoPlayer(
                         playerState,
                         Modifier
-                            .ifThen(statusBarHeight != 0.dp) {
+                            .ifThen(statusBarHeight != 0.dp && !videoOnly) {
                                 offset(x = -statusBarHeight / 2, y = 0.dp)
                             }
                             .onSizeChanged {

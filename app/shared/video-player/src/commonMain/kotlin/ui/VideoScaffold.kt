@@ -86,6 +86,8 @@ val LocalVideoScaffoldSheetWindowInsets = compositionLocalOf<WindowInsets> { Win
  * @param rhsSheet 右侧侧边栏. 框架不为它应用 [contentWindowInsets], 而是通过 [LocalVideoScaffoldSheetWindowInsets] 提供给它.
  * @param bottomBar [PlayerControllerBar]
  * @param expanded 当前是否处于全屏模式. 全屏时此框架会 [Modifier.fillMaxSize], 否则会限制为一个 16:9 的框.
+ * @param videoOnly 只组合 [video], 其他各层都不组合, 用于画中画小窗.
+ * 切换它不会重建 [video]: 播放器节点被重建会销毁视频输出.
  */
 @Composable
 fun VideoScaffold(
@@ -93,6 +95,7 @@ fun VideoScaffold(
     modifier: Modifier = Modifier,
     contentWindowInsets: WindowInsets = WindowInsets.safeContent, // TODO: 目前只对部分元素有效
     maintainAspectRatio: Boolean = !expanded,
+    videoOnly: Boolean = false,
     controllerState: PlayerControllerState,
     gestureLocked: Boolean = false,
     topBar: @Composable RowScope.() -> Unit = {},
@@ -143,6 +146,7 @@ fun VideoScaffold(
                 video()
                 Box(Modifier.matchParentSize()) // 防止点击事件传播到 video 里
             }
+            if (videoOnly) return@Box
 
             // 弹幕
             Box(
