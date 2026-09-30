@@ -16,6 +16,7 @@ import kotlinx.coroutines.delay
 import kotlinx.io.IOException
 import me.him188.ani.utils.logging.logger
 import me.him188.ani.utils.logging.warn
+import me.him188.ani.utils.logging.info
 import org.openani.mediamp.io.BufferedSeekableInput
 import org.openani.mediamp.io.SeekableInput
 import kotlin.concurrent.Volatile
@@ -32,7 +33,7 @@ import kotlin.time.TimeSource
 // window amortizes coroutine and synchronization overhead across those small reads.
 internal class CloudSeekableInput(
     private val name: String,
-    private val stream: CloudStream,
+    private val stream: SeekableInput,
     private val onClosed: () -> Unit = {},
     /**
      * Whether the entry still holds the store this input was opened on.
@@ -105,46 +106,65 @@ internal class CloudSeekableInput(
     }
 
     companion object {
-        // Match TorrentInput's buffer. Small enough to keep cold seeks responsive, and it divides the
-        // cache's block size, so a fill never waits on two blocks.
+        // Match TorrentInput's buffer: small enough to keep cold seeks responsive.
         const val BUFFER_PER_DIRECTION = 64 * 1024
     }
 }
 
 /**
- * What [CloudSeekableInput] needs of a cloud byte stream.
+ * A player's read position over the file cache, as the SeekableInput [CloudSeekableInput] buffers.
  *
- * Exists so a test can count the reads that actually reach the cloud, which is the property the
- * buffering is there for and which asserting on the bytes read back cannot tell apart.
- * [deliveredBytes] is the one thing SeekableInput does not already carry.
+ * The stream behind it is opened on first use and opened again when its cache is closed under it:
+ * an account switch retires the cache the player was reading, and media3 keeps one input for the
+ * whole session, so an input that gave up with the cache would end playback for good. A stale input
+ * — its file deleted — fails instead of reopening.
+ *
+ * It also tells the SDK when someone is waiting ([PikPakStreamReader.urgent]): after a seek and
+ * before the first byte of a new playback, until a read returns bytes. Only the input can tell a
+ * seek from a buffer fill; the preview input never asks, it must not outrank playback.
  */
-internal interface CloudStream : SeekableInput {
-    val deliveredBytes: Long
-}
-
-// Player reads block; SDK workers must run on a separate dispatcher from these runBlocking calls.
 internal class StreamSeekableInput(
     private val name: String,
-    private val reader: PikPakStreamReader,
+    override val size: Long,
+    private val open: suspend () -> Opened,
+    private val urgentOnSeek: Boolean = false,
+    private val isStale: () -> Boolean = { false },
     private val retryDelay: Duration = READ_RETRY_DELAY,
     private val retryWindow: Duration = READ_RETRY_WINDOW,
-) : CloudStream {
+) : SeekableInput {
+    /** A stream and whether the cache it reads from has been closed. */
+    class Opened(val reader: PikPakStreamReader, val isDead: () -> Boolean = { false })
+
+    /** Over one reader for its whole life, as a test drives it. */
+    constructor(
+        name: String,
+        reader: PikPakStreamReader,
+        retryDelay: Duration = READ_RETRY_DELAY,
+        retryWindow: Duration = READ_RETRY_WINDOW,
+    ) : this(name, reader.size, { Opened(reader) }, retryDelay = retryDelay, retryWindow = retryWindow)
+
     private val logger = logger<StreamSeekableInput>()
 
     @Volatile
     private var closed = false
 
-    override val size: Long get() = reader.size
+    @Volatile
+    private var current: Opened? = null
 
-    override val position: Long get() = reader.position
+    @Volatile
+    override var position: Long = 0L
+        private set
 
-    override val bytesRemaining: Long get() = reader.bytesRemaining
+    // A new playback waits on its first byte as much as a seek does
+    @Volatile
+    private var wantUrgent = urgentOnSeek
 
-    override val deliveredBytes: Long get() = reader.deliveredBytes
+    override val bytesRemaining: Long get() = (size - position).coerceAtLeast(0)
 
     override fun seekTo(position: Long) {
         require(position >= 0) { "position must be >= 0, got $position" }
-        asIoFailure { runBlockingInterruptible { reader.seekTo(position) } }
+        if (position != this.position && urgentOnSeek) wantUrgent = true
+        this.position = position
     }
 
     override fun read(buffer: ByteArray, offset: Int, length: Int): Int =
@@ -158,26 +178,69 @@ internal class StreamSeekableInput(
     private fun readRidingOutFailures(buffer: ByteArray, offset: Int, length: Int): Int {
         val since = TimeSource.Monotonic.markNow()
         while (true) {
+            val opened = try {
+                stream()
+            } catch (e: Throwable) {
+                if (e is CancellationException || e.isReadInterruption()) throw e
+                throw if (e is IOException) e else IOException(e)
+            }
             try {
-                return asIoFailure { runBlockingInterruptible { reader.read(buffer, offset, length) } }
+                return asIoFailure { runBlockingInterruptible { readFrom(opened, buffer, offset, length) } }
             } catch (e: Throwable) {
                 // Closing is how playback is torn down, and the reader reports it as a failure like
                 // any other. Retrying it would spin for the whole window on every episode switch.
                 if (closed || e is CancellationException || e.isReadInterruption()) throw e
+                if (opened.isDead()) {
+                    if (isStale()) throw IOException("[$name] the file this input was opened on was deleted", e)
+                    // Not a failure of the read: the cache was replaced. The next pass opens the new one.
+                    logger.info { "[$name] the cache closed under the stream; reopening at $position" }
+                    current = null
+                    continue
+                }
                 val waited = since.elapsedNow()
                 if (waited >= retryWindow) {
-                    logger.warn(e) { "[$name] read at ${reader.position} failed, gave up after $waited" }
+                    logger.warn(e) { "[$name] read at $position failed, gave up after $waited" }
                     throw e
                 }
-                logger.warn(e) { "[$name] read at ${reader.position} failed, retrying in $retryDelay" }
+                logger.warn(e) { "[$name] read at $position failed, retrying in $retryDelay" }
                 runBlockingInterruptible { delay(retryDelay) }
+            }
+        }
+    }
+
+    private suspend fun readFrom(opened: Opened, buffer: ByteArray, offset: Int, length: Int): Int {
+        val reader = opened.reader
+        if (reader.position != position) reader.seekTo(position)
+        val urgent = wantUrgent
+        if (reader.urgent != urgent) reader.urgent = urgent
+        val read = reader.read(buffer, offset, length)
+        if (read > 0) {
+            position += read
+            if (urgent) {
+                wantUrgent = false
+                reader.urgent = false
+            }
+        }
+        return read
+    }
+
+    private fun stream(): Opened {
+        current?.takeIf { !it.isDead() }?.let { return it }
+        if (closed) throw IOException("[$name] closed")
+        return runBlockingInterruptible { open() }.also { opened ->
+            current?.reader?.close()
+            current = opened
+            // close() may have run while this was opening
+            if (closed) {
+                opened.reader.close()
+                throw IOException("[$name] closed")
             }
         }
     }
 
     override fun close() {
         closed = true
-        reader.close()
+        current?.reader?.close()
     }
 
     private companion object {

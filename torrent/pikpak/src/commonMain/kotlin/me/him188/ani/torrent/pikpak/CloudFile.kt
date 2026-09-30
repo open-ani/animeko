@@ -13,12 +13,16 @@ import io.github.nihildigit.pikpak.BlockStore
 import io.github.nihildigit.pikpak.PikPakException
 import io.github.nihildigit.pikpak.PikPakFileCache
 import io.github.nihildigit.pikpak.PikPakFileHandle
+import io.github.nihildigit.pikpak.RangeAttempt
+import io.github.nihildigit.pikpak.ResolvedFile
+import io.github.nihildigit.pikpak.fileHandle
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import me.him188.ani.utils.logging.info
 import me.him188.ani.utils.logging.logger
 import kotlin.concurrent.Volatile
 import kotlin.coroutines.CoroutineContext
+import kotlin.time.Duration.Companion.seconds
 
 /**
  * The cloud side of one file: where its bytes come from, and the SDK's cache that every stream
@@ -75,15 +79,19 @@ internal class CloudFile(
     override val deliveredBytes: Long get() = retiredDelivered + (opened?.cache?.deliveredBytes ?: 0L)
 
     override suspend fun prepare() {
-        val current = open()
+        // Checked before the first lease: a file larger than the free storage cannot be leased at
+        // all, and failing here is what lets the resolver still fall back to BT.
+        val account = accountProvider()
+        account.ensureLoggedIn()
+        account.requireRoomFor(gcid, name, size)
         try {
-            current.handle.prewarm()
+            open().handle.prewarm()
         } catch (e: PikPakException) {
-            // The lease folder was deleted on another device: the rebuild names a parent that is
+            // The lease folder was deleted on another device: the lease names a parent that is
             // gone. Resolving it again recreates it.
             if (!isFolderGone(e)) throw e
             logger.info { "[pikpak] temp folder no longer exists; creating it again" }
-            current.account.driveIndex.invalidateTempFolder()
+            account.driveIndex.invalidateTempFolder()
             release()
             open().handle.prewarm()
         }
@@ -102,15 +110,14 @@ internal class CloudFile(
             if (gcid.isEmpty()) {
                 throw PikPakNotIndexedException(name, "$name has no gcid; it exists only on disk")
             }
-            account.login.await()
-            val handle = PikPakFileHandle(
-                client = account.client,
-                gcid = gcid,
-                size = size,
-                name = name,
-                parentId = account.driveIndex.tempFolderId(),
-                connectionBudget = connectionBudget,
+            account.ensureLoggedIn()
+            val parentId = account.driveIndex.tempFolderId()
+            val detail = account.leasedDetail(ResolvedFile(path = name, size = size, gcid = gcid), parentId)
+            val handle = account.client.fileHandle(
+                detail = detail,
+                parentId = parentId,
                 leased = true,
+                onRangeAttempt = ::logAttempt,
             )
             val cache = handle.openCache(blockStore = storeProvider(), coroutineContext = cacheContext)
             Opened(account, handle, cache).also { opened = it }
@@ -119,9 +126,22 @@ internal class CloudFile(
 
     override suspend fun release() = mutex.withLock { retireLocked() }
 
-    // Streams still open on the old cache fail their next read, and the player reopens through
-    // cache(), on the new account. close() makes the report the handle may still owe, so an object
-    // a failed rebuild left behind is deleted as well.
+    // Only the attempts worth reading: failed ones, and slow ones. Players cancel constantly and
+    // fast attempts arrive by the dozen per second; the host is what tells a slow host from a slow
+    // line from a throttled link.
+    private fun logAttempt(attempt: RangeAttempt) {
+        if (attempt.outcome == RangeAttempt.Outcome.Cancelled) return
+        val slow = (attempt.timeToFirstByte ?: attempt.duration) > SLOW_FIRST_BYTE
+        if (attempt.outcome == RangeAttempt.Outcome.Complete && !slow) return
+        logger.info {
+            "[pikpak] $name ${attempt.outcome} at ${attempt.start} on ${attempt.host}: " +
+                "${attempt.delivered} bytes, first byte after ${attempt.timeToFirstByte}, took ${attempt.duration}"
+        }
+    }
+
+    // Streams still open on the old cache find it closed on their next read and reopen through
+    // cache(), on the new account; see StreamSeekableInput. close() makes the report the handle may
+    // still owe, so an object a failed rebuild left behind is deleted as well.
     private fun retireLocked() {
         val previous = opened ?: return
         opened = null
@@ -129,4 +149,14 @@ internal class CloudFile(
         previous.cache.close()
         previous.handle.close()
     }
+
+    private companion object {
+        val SLOW_FIRST_BYTE = 1.seconds
+    }
 }
+
+class PikPakNotEnoughSpaceException(
+    val fileName: String,
+    val neededBytes: Long,
+    val freeBytes: Long,
+) : Exception("PikPak has $freeBytes bytes free and $fileName needs $neededBytes to be played through it")

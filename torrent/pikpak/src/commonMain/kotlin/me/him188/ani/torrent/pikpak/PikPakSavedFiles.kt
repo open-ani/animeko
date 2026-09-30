@@ -26,7 +26,7 @@ import me.him188.ani.utils.logging.info
 import me.him188.ani.utils.logging.logger
 import kotlin.coroutines.cancellation.CancellationException
 
-// Migration uses this boundary so paths, metadata and piece bitmaps stay owned by the engine.
+// Migration uses this boundary so paths, metadata and block bitmaps stay owned by the engine.
 object PikPakSavedFiles {
     private val logger = logger<PikPakSavedFiles>()
 
@@ -93,7 +93,8 @@ object PikPakSavedFiles {
                     files = existing.files + entry.copy(index = (existing.files.maxOfOrNull { it.index } ?: -1) + 1),
                 )
             }
-            resumeData.write(meta)
+            // An import is a kept copy: it must survive its sessions closing
+            resumeData.write(meta.copy(kept = (meta.kept + pathInTorrent).distinct()))
             logger.info { "[pikpak] imported $pathInTorrent ($length bytes) into $sourceKey" }
             target
         }

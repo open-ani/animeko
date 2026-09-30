@@ -92,6 +92,7 @@ internal fun testEntry(
     onPrepare: suspend () -> Unit = {},
     onCloud: (FakeCloudSource) -> Unit = {},
     onHandleCountChanged: suspend () -> Unit = {},
+    kept: Boolean = false,
 ) = PikPakFileEntry(
     index = 0,
     length = length,
@@ -104,4 +105,5 @@ internal fun testEntry(
         FakeCloudSource(source, length, storeProvider, onPrepare).also(onCloud)
     },
     onHandleCountChanged = onHandleCountChanged,
+    kept = kept,
 )

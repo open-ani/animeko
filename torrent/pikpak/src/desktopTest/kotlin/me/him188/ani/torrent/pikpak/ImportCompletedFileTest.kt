@@ -48,7 +48,7 @@ class ImportCompletedFileTest {
         credentials = MutableStateFlow(PikPakCredentials("nobody@example.com", "unused")),
         sessionStore = InMemorySessionStore(),
         rootDataDirectory = root,
-        config = MutableStateFlow(PikPakEngineConfig()),
+        config = PikPakEngineConfig(),
         parentCoroutineContext = Dispatchers.IO,
     ).also { it.magnetResolver = resolve }
 

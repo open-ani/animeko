@@ -17,6 +17,7 @@ import kotlinx.io.IOException
 import me.him188.ani.app.torrent.api.files.FilePriority
 import me.him188.ani.utils.io.SystemPaths
 import me.him188.ani.utils.io.createTempDirectory
+import me.him188.ani.utils.io.exists
 import me.him188.ani.utils.io.readBytes
 import me.him188.ani.utils.io.resolve
 import me.him188.ani.utils.io.writeBytes
@@ -24,6 +25,7 @@ import org.openani.mediamp.io.SeekableInput
 import kotlin.test.Test
 import kotlin.test.assertContentEquals
 import kotlin.test.assertEquals
+import kotlin.test.assertFalse
 import kotlin.test.assertFailsWith
 import kotlin.test.assertIs
 import kotlin.test.assertTrue
@@ -66,17 +68,20 @@ class EntryCacheTest {
                     input.readAt(block * 20, 4096),
                 )
             }
+            // The cache writes what a stream fetched behind the stream, and a read-ahead the close
+            // cut short never lands, so what the download may skip is what the store holds once
+            // those writes have settled.
+            val held = settledDownloadedBytes(entry)
+            val playbackRequests = source.requests.size
 
             val handle = entry.createHandle()
             handle.resume(FilePriority.NORMAL)
             withTimeout(60.seconds) { entry.fileStats.first { it.isDownloadFinished } }
             handle.close()
 
-            val fetched = source.requests.flatMap { request ->
-                (request.start / block until (request.start + request.length + block - 1) / block).toList()
-            }
-            val twice = fetched.groupingBy { it }.eachCount().filterValues { it > 1 }.keys
-            assertTrue(twice.isEmpty(), "blocks fetched twice: $twice")
+            val downloaded = source.requests.drop(playbackRequests)
+                .sumOf { minOf(it.length, content.size - it.start) }
+            assertEquals(content.size - held, downloaded, "the download fetched what the store already held")
             assertContentEquals(content, entryData(entry))
         } finally {
             entry.close()
@@ -169,6 +174,62 @@ class EntryCacheTest {
             }
         } finally {
             entry.close()
+        }
+    }
+
+    @Test
+    fun `what was only played goes with the session and a kept file stays`() = runBlocking {
+        val content = payload((block * 8).toInt())
+        val played = SystemPaths.createTempDirectory("entry-played")
+        val onlyPlayed = testEntry(played, "01.mkv", content.size.toLong(), FakeRangeSource(content))
+        onlyPlayed.createInput(coroutineContext).use { it.readAt(0, 16) }
+        waitUntil("the played block reaches the disk") { played.resolve("01.mkv").exists() }
+        onlyPlayed.close()
+        assertFalse(played.resolve("01.mkv").exists(), "what was only played outlived its session")
+
+        val cached = SystemPaths.createTempDirectory("entry-kept")
+        val kept = testEntry(cached, "01.mkv", content.size.toLong(), FakeRangeSource(content))
+        val handle = kept.createHandle()
+        handle.resume(FilePriority.NORMAL)
+        withTimeout(60.seconds) { kept.fileStats.first { it.isDownloadFinished } }
+        handle.close()
+        kept.close()
+        assertContentEquals(content, cached.resolve("01.mkv").readBytes(), "a cached file went with its session")
+    }
+
+    @Test
+    fun `an input keeps playing when its cache is replaced`() = runBlocking {
+        val content = payload((block * 16).toInt())
+        var cloud: FakeCloudSource? = null
+        val entry = testEntry(
+            SystemPaths.createTempDirectory("entry-reopen"), "01.mkv", content.size.toLong(), FakeRangeSource(content),
+            onCloud = { cloud = it },
+        )
+        try {
+            entry.createInput(coroutineContext).use { input ->
+                input.readAt(0, 16)
+                // An account switch retires the cache the player was reading; media3 keeps its input
+                cloud!!.release()
+                val at = block * 10
+                assertContentEquals(content.copyOfRange(at.toInt(), at.toInt() + 16), input.readAt(at, 16))
+            }
+        } finally {
+            entry.close()
+        }
+    }
+
+    private suspend fun waitUntil(what: String, condition: suspend () -> Boolean) {
+        withTimeout(20.seconds) { while (!condition()) delay(10.milliseconds) }
+        assertTrue(condition(), what)
+    }
+
+    private suspend fun settledDownloadedBytes(entry: PikPakFileEntry): Long {
+        var last = -1L
+        while (true) {
+            val now = entry.fileStats.first().downloadedBytes
+            if (now == last) return now
+            last = now
+            delay(300.milliseconds)
         }
     }
 

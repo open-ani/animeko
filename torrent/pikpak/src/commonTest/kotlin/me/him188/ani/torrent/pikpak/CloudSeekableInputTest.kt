@@ -10,6 +10,7 @@
 package me.him188.ani.torrent.pikpak
 
 import kotlinx.io.IOException
+import org.openani.mediamp.io.SeekableInput
 import kotlin.test.Test
 import kotlin.test.assertContentEquals
 import kotlin.test.assertEquals
@@ -104,7 +105,7 @@ class CloudSeekableInputTest {
     }
 }
 
-internal class CountingCloudStream(private val content: ByteArray) : CloudStream {
+internal class CountingCloudStream(private val content: ByteArray) : SeekableInput {
     data class Request(val start: Long, val length: Int)
 
     private var pos = 0L
@@ -122,7 +123,7 @@ internal class CountingCloudStream(private val content: ByteArray) : CloudStream
 
     override val bytesRemaining: Long get() = (size - pos).coerceAtLeast(0)
 
-    override var deliveredBytes: Long = 0L
+    var deliveredBytes: Long = 0L
         private set
 
     override fun seekTo(position: Long) {

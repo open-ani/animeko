@@ -67,6 +67,13 @@ internal class PikPakFileEntry(
     /** Builds the cloud side over the store the entry currently owns; see [CloudSource.release]. */
     cloudFactory: (storeProvider: () -> PikPakSparseStore) -> CloudSource,
     private val onHandleCountChanged: suspend () -> Unit,
+    /**
+     * Whether a copy of this file was ever asked for: a cache download, or an import. What was only
+     * played is removed when the session closes, as it was before playback went through the store.
+     */
+    kept: Boolean = false,
+    /** Records that the file is kept, so a restart knows; see [kept]. */
+    private val onKept: suspend () -> Unit = {},
 ) : AbstractTorrentFileEntry(
     index = index,
     length = length,
@@ -82,12 +89,20 @@ internal class PikPakFileEntry(
 
     private val storeContext: CoroutineContext = parentCoroutineContext + Dispatchers.IO_
 
+    // Guards the stream generation: deleteFiles holds it across the swap, and every cache is opened
+    // under it, so no cache is ever built over a store that is being deleted.
     private val resolveMutex = Mutex()
+
+    @Volatile
+    private var generation = 0
 
     @Volatile
     private var stream: Stream = newStream()
 
     private val cloud: CloudSource = cloudFactory { stream.store }
+
+    @Volatile
+    private var kept = kept
 
     @Volatile
     private var cloudReady = false
@@ -178,7 +193,20 @@ internal class PikPakFileEntry(
     }
 
     override fun updatePriority() {
-        downloadWanted.value = wantsWholeFile
+        val wanted = wantsWholeFile
+        if (wanted && !kept) {
+            kept = true
+            scope.launch {
+                try {
+                    onKept()
+                } catch (e: CancellationException) {
+                    throw e
+                } catch (e: Throwable) {
+                    logger.warn(e) { "[$torrentId] $fileName could not record that it is kept" }
+                }
+            }
+        }
+        downloadWanted.value = wanted
         logger.info { "[$torrentId] $fileName priority -> $requestingPriority" }
     }
 
@@ -202,14 +230,18 @@ internal class PikPakFileEntry(
      */
     private suspend fun downloadLoop() {
         while (!stream.store.isComplete) {
+            var cache: PikPakFileCache? = null
             try {
                 ensureCloudReady()
-                cloud.cache().download(downloadOrder()).await()
+                cache = openCache()
+                cache.download(downloadOrder()).await()
             } catch (e: CancellationException) {
                 // Our own cancellation ends the loop. Otherwise the cache was closed under the
                 // download, by an account switch or a delete, and the next pass opens the new one.
                 currentCoroutineContext().ensureActive()
             } catch (e: Throwable) {
+                // Closed under the download too, surfacing as the cache's own "closed" failure
+                if (cache?.isClosed == true) continue
                 _error.value = e
                 logger.warn(e) { "[$torrentId] $fileName download stopped, retrying in $RETRY_DELAY" }
                 delay(RETRY_DELAY)
@@ -217,6 +249,8 @@ internal class PikPakFileEntry(
         }
         _error.value = null
     }
+
+    private suspend fun openCache(): PikPakFileCache = resolveMutex.withLock { cloud.cache() }
 
     private fun downloadOrder(): List<LongRange> {
         val head = minOf(length, HEADER_SIZE)
@@ -252,7 +286,7 @@ internal class PikPakFileEntry(
         val input = TorrentInput(file = dataPath, pieces = current.pieces, size = length)
         return object : SeekableInput by input {
             override fun read(buffer: ByteArray, offset: Int, length: Int): Int {
-                if (stream !== current) throw IOException("[$fileName] the file this input was opened on was deleted")
+                if (current.isStale()) throw IOException("[$fileName] the file this input was opened on was deleted")
                 return input.read(buffer, offset, length)
             }
 
@@ -267,48 +301,73 @@ internal class PikPakFileEntry(
     }
 
     private suspend fun cloudInput(current: Stream, inputName: String, secondary: Boolean): SeekableInput {
-        val cache = cloud.cache()
-        val reader = cache.openStream(StreamRole.FOREGROUND)
-        if (secondary) {
-            reader.readAheadLimit = PikPakStreamReader.DEFAULT_BLOCK_SIZE
-        } else {
-            current.prefetchIndex(cache, length)
-        }
+        // Opened now rather than on the first read, so the index prefetch starts with the input
+        if (!secondary) current.prefetchIndex(openCache(), length)
+        val stream = StreamSeekableInput(
+            name = inputName,
+            size = length,
+            open = {
+                val cache = openCache()
+                if (!secondary) current.prefetchIndex(cache, length)
+                val reader = cache.openStream(StreamRole.FOREGROUND)
+                if (secondary) reader.readAheadLimit = PikPakStreamReader.DEFAULT_BLOCK_SIZE
+                StreamSeekableInput.Opened(reader) { cache.isClosed }
+            },
+            urgentOnSeek = !secondary,
+            isStale = current::isStale,
+        )
         return CloudSeekableInput(
             name = inputName,
-            stream = StreamSeekableInput(name = inputName, reader = reader),
+            stream = stream,
             onClosed = { current.releaseInput() },
-            isStale = { stream !== current },
+            isStale = current::isStale,
         )
     }
 
+    // What was only played goes with the session, as it did before playback went through the store;
+    // a kept file stays for the next session.
     suspend fun close() {
         downloadWanted.value = false
         resolveMutex.withLock {
-            stream.close()
             cloud.release()
+            if (kept) {
+                stream.close()
+            } else {
+                try {
+                    stream.delete()
+                } catch (e: Throwable) {
+                    // Windows refuses to unlink a file an input still has open; startup pruning takes it
+                    logger.warn(e) { "[$torrentId] $fileName could not remove what was only played" }
+                }
+            }
         }
         scope.cancel()
     }
 
     // The store, its pieces and every cache over them start again: the old ones describe a file
-    // that no longer exists.
+    // that no longer exists. The old files go before the new store loads, or it would read their
+    // bitmap back as progress.
     private suspend fun deleteFiles() {
         withContext(NonCancellable) {
             resolveMutex.withLock {
                 val old = stream
-                stream = newStream()
+                generation++
+                cloudReady = false
                 cloud.release()
                 old.delete()
-                cloudReady = false
+                stream = newStream()
             }
         }
     }
 
-    private class Stream(
+    private inner class Stream(
         val pieces: MutablePieceList,
         val store: PikPakSparseStore,
+        private val generation: Int,
     ) {
+        /** Whether the file this stream describes has been deleted since. */
+        fun isStale(): Boolean = this@PikPakFileEntry.generation != generation
+
         private val lock = SynchronizedObject()
         private var liveInputs = 0
 
@@ -317,7 +376,8 @@ internal class PikPakFileEntry(
         private var indexPrefetch: Pair<PikPakFileCache, Deferred<Unit>>? = null
 
         fun prefetchIndex(cache: PikPakFileCache, length: Long) = synchronized(lock) {
-            if (indexPrefetch?.first === cache) return@synchronized
+            // A failed or withdrawn prefetch is tried again by the next input
+            if (indexPrefetch?.first === cache && indexPrefetch?.second?.isCancelled != true) return@synchronized
             indexPrefetch?.second?.cancel()
             val tail = maxOf(0L, length - INDEX_BYTES) until length
             indexPrefetch = cache to cache.prefetch(listOf(tail), StreamRole.FOREGROUND, PikPakStreamReader.INDEX_PRIORITY)
@@ -358,7 +418,7 @@ internal class PikPakFileEntry(
                 if (store.isHeld(block)) pieces.createPieceByListIndexUnsafe(block).state = PieceState.FINISHED
             }
         }
-        return Stream(pieces, store)
+        return Stream(pieces, store, generation)
     }
 
     companion object {

@@ -35,6 +35,9 @@ internal data class PikPakTorrentMeta(
     // Imported episodes alone do not establish the complete torrent listing.
     val indexed: Boolean = true,
     val files: List<PikPakFileMeta>,
+    // Paths a copy was asked for: a cache download or an import. Anything else was only played and
+    // is removed when its session closes.
+    val kept: List<String> = emptyList(),
 ) {
     companion object {
         // 5 dropped the per-file transcode variant; a version 4 record names a length that may be

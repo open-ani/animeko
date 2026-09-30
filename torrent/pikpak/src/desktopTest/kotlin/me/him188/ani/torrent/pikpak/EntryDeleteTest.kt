@@ -10,6 +10,7 @@
 package me.him188.ani.torrent.pikpak
 
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.withTimeout
@@ -68,6 +69,9 @@ class EntryDeleteTest {
         withTimeout(60_000) { cached.fileStats.first { it.isDownloadFinished } }
         assertEquals(content.size.toLong(), cached.downloadedBytes)
 
+        // Past the persist cadence, so the bitmap on disk vouches for the whole file: a store
+        // rebuilt before the delete reached the disk read it back as progress.
+        delay(PikPakSparseStore.PERSIST_INTERVAL * 2)
         handle.closeAndDelete()
 
         assertFalse(dataPath.exists(), "the cached file is gone")

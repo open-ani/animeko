@@ -71,7 +71,7 @@ class PikPakTorrentEngineLiveTest {
         val apiCalls = AtomicInteger(0)
         val http = countingClient(apiCalls)
         val credentials = MutableStateFlow(PikPakCredentials(username, password))
-        val config = MutableStateFlow(PikPakEngineConfig())
+        val config = PikPakEngineConfig()
 
         val root = SystemPaths.createTempDirectory("pikpak-engine-live").resolve("pikpak")
 
@@ -194,13 +194,13 @@ class PikPakTorrentEngineLiveTest {
 
         val magnet = "magnet:?xt=urn:btih:0123456789ABCDEF0123456789ABCDEF01234567"
 
-        val http = createDefaultHttpClient(installRetry = false, installContentNegotiation = false)
+        val http = createDefaultHttpClient(bare = true)
         val downloader = PikPakTorrentDownloader(
             httpClient = http,
             credentials = MutableStateFlow(PikPakCredentials(username, password)),
             sessionStore = InMemorySessionStore(),
             rootDataDirectory = SystemPaths.createTempDirectory("pikpak-engine-live-miss").resolve("pikpak"),
-            config = MutableStateFlow(PikPakEngineConfig()),
+            config = PikPakEngineConfig(),
             parentCoroutineContext = Dispatchers.IO,
         )
 
@@ -219,7 +219,7 @@ class PikPakTorrentEngineLiveTest {
     }
 
     private fun countingClient(counter: AtomicInteger): HttpClient =
-        createDefaultHttpClient(installRetry = false, installContentNegotiation = false).apply {
+        createDefaultHttpClient(bare = true).apply {
             plugin(HttpSend).intercept { request ->
 
                 if (request.url.host.endsWith("mypikpak.com")) counter.incrementAndGet()

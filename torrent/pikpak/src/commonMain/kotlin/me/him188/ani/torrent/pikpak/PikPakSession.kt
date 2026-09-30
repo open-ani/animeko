@@ -119,8 +119,8 @@ internal class PikPakSession(
         closed = true
         try {
             // The caller's coroutine may already be cancelled — playback cancelled while the cloud
-            // was still getting ready is the ordinary case — and entry.close() suspends on
-            // cancelAndJoin, which throws there. Letting that through would skip onClosed and leave
+            // was still getting ready is the ordinary case — and entry.close() suspends on its lock
+            // and on the store's last persist, which throw there. Letting that through would skip onClosed and leave
             // this instance in the downloader's map for good, where every later request for the
             // same torrent finds it closing, waits on an already-completed signal and retries.
             withContext(NonCancellable) {

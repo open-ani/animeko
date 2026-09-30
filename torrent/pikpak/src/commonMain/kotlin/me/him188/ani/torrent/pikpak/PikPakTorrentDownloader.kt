@@ -9,14 +9,19 @@
 
 package me.him188.ani.torrent.pikpak
 
+import io.github.nihildigit.pikpak.FileDetail
 import io.github.nihildigit.pikpak.LeaseBudget
 import io.github.nihildigit.pikpak.MagnetResource
 import io.github.nihildigit.pikpak.PikPakClient
+import io.github.nihildigit.pikpak.ResolvedFile
 import io.github.nihildigit.pikpak.SessionStore
+import io.github.nihildigit.pikpak.leaseDetail
 import io.github.nihildigit.pikpak.getQuota
 import io.github.nihildigit.pikpak.resolveMagnet
 import io.ktor.client.HttpClient
 import io.ktor.client.plugins.HttpTimeout
+import kotlinx.atomicfu.locks.SynchronizedObject
+import kotlinx.atomicfu.locks.synchronized
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Deferred
@@ -48,6 +53,7 @@ import me.him188.ani.utils.io.createDirectories
 import me.him188.ani.utils.io.exists
 import me.him188.ani.utils.io.isDirectory
 import me.him188.ani.utils.io.length
+import me.him188.ani.utils.io.name
 import me.him188.ani.utils.io.resolve
 import me.him188.ani.utils.io.useDirectoryEntries
 import me.him188.ani.utils.logging.info
@@ -68,17 +74,16 @@ class PikPakTorrentDownloader(
     private val credentials: StateFlow<PikPakCredentials?>,
     private val sessionStore: SessionStore,
     private val rootDataDirectory: SystemPath,
-    private val config: StateFlow<PikPakEngineConfig>,
+    private val config: PikPakEngineConfig = PikPakEngineConfig(),
     parentCoroutineContext: CoroutineContext,
+    /** A file could not be leased for want of drive space; see [PikPakNotEnoughSpaceException]. */
+    private val onNotEnoughSpace: (PikPakNotEnoughSpaceException) -> Unit = {},
 ) : TorrentDownloader {
     private val logger = logger<PikPakTorrentDownloader>()
     private val scope = CoroutineScope(parentCoroutineContext + SupervisorJob(parentCoroutineContext[Job]))
 
-    // Deleting a leased cloud object has to outlive this downloader. close() is what ends playback,
-    // and the object whose link was minted moments before it would go down with scope: the delete
-    // is submitted but never scheduled, and the NonCancellable inside cannot save a coroutine that
-    // never starts. The next startup sweep does not collect it either, its timestamp being far
-    // newer than the sweep's cutoff. Deliberately parentless, so cancelling scope cannot reach it.
+    // Closing sessions has to outlive this downloader: close() cancels scope, and the stores' last
+    // bitmap write would go down with it. Deliberately parentless, so cancelling scope cannot reach it.
     private val cleanupScope = CoroutineScope(parentCoroutineContext.minusKey(Job) + SupervisorJob())
 
     // RangeReader detects a silent response body. This socket timeout is a wider backstop that also
@@ -101,6 +106,15 @@ class PikPakTorrentDownloader(
 
     private val sessionLock = Mutex()
     private val sessions = mutableMapOf<String, Deferred<PikPakSession>>()
+
+    // The keys of `sessions`, readable without suspending: listSaves is not a suspend function, and
+    // the cache engine's startup pruning deletes whatever save it lists.
+    private val liveKeysLock = SynchronizedObject()
+    private val liveKeys = HashSet<String>()
+
+    private fun trackLive(sourceKey: String, live: Boolean) = synchronized(liveKeysLock) {
+        if (live) liveKeys += sourceKey else liveKeys -= sourceKey
+    }
 
 
     private val resolvedMagnetsLock = Mutex()
@@ -179,7 +193,12 @@ class PikPakTorrentDownloader(
             // Cancelling one waiter must not discard another caller's session: not one still being
             // created, and not one that completed while this caller was being cancelled either.
             if (deferred.isCancelled || (deferred.isCompleted && completedSessionOf(deferred) == null)) {
-                sessionLock.withLock { if (sessions[sourceKey] === deferred) sessions.remove(sourceKey) }
+                sessionLock.withLock {
+                    if (sessions[sourceKey] === deferred) {
+                        sessions.remove(sourceKey)
+                        trackLive(sourceKey, false)
+                    }
+                }
             } else {
                 // Creation runs on this downloader's scope, so it outlives the caller that gave up —
                 // a resolver falling back to another engine on a timeout, most of the time. The
@@ -198,9 +217,15 @@ class PikPakTorrentDownloader(
     override fun getSaveDirForTorrent(data: EncodedTorrentInfo): SystemPath =
         PikPakSavedFiles.saveDirectoryFor(rootDataDirectory, decodeUri(data))
 
+    // An open session is never listed. The cache engine's startup pruning deletes every listed save
+    // it has no record for, and playback started while the records are still being restored has
+    // none: its sparse file would go from under an open cache.
     override fun listSaves(): List<SystemPath> {
         if (!rootDataDirectory.exists()) return emptyList()
-        return rootDataDirectory.useDirectoryEntries { entries -> entries.filter { it.isDirectory() }.toList() }
+        val live = synchronized(liveKeysLock) { liveKeys.toSet() }
+        return rootDataDirectory.useDirectoryEntries { entries ->
+            entries.filter { it.isDirectory() && it.name !in live }.toList()
+        }
     }
 
     suspend fun testConnection(): Boolean {
@@ -336,6 +361,9 @@ class PikPakTorrentDownloader(
             buildEntry(
                 fileMeta, sourceKey, saveDirectory, parentCoroutineContext,
                 onHandleCountChanged = { session?.closeIfNotInUse() },
+                // An import has no GCID and nothing but the disk to play from
+                kept = fileMeta.pathInTorrent in meta.kept || fileMeta.gcid.isEmpty(),
+                onKept = { markKept(resumeData, fileMeta.pathInTorrent) },
             )
         }
         return PikPakSession(
@@ -351,6 +379,7 @@ class PikPakTorrentDownloader(
                     val current = sessions[closing.sourceKey]
                     if (current != null && completedSessionOf(current) === closing) {
                         sessions.remove(closing.sourceKey)
+                        trackLive(closing.sourceKey, false)
                     }
                 }
             },
@@ -382,7 +411,10 @@ class PikPakTorrentDownloader(
                 val candidate = sessions[sourceKey]?.takeIf { !it.isCancelled }
                 if (candidate == null) {
                     return@withLock scope.async { createSession(uri, sourceKey, parentCoroutineContext) }
-                        .also { sessions[sourceKey] = it }
+                        .also {
+                            sessions[sourceKey] = it
+                            trackLive(sourceKey, true)
+                        }
                 }
                 // Not while closing, and not awaited here: onClosed takes this same lock.
                 if (completedSessionOf(candidate)?.isClosing == true) null else candidate
@@ -421,6 +453,8 @@ class PikPakTorrentDownloader(
         saveDirectory: SystemPath,
         parentCoroutineContext: CoroutineContext,
         onHandleCountChanged: suspend () -> Unit,
+        kept: Boolean,
+        onKept: suspend () -> Unit,
     ): PikPakFileEntry {
         return PikPakFileEntry(
             index = fileMeta.index,
@@ -436,13 +470,21 @@ class PikPakTorrentDownloader(
                     size = fileMeta.length,
                     name = fileMeta.pathInTorrent.substringAfterLast('/'),
                     accountProvider = ::account,
-                    connectionBudget = config.value.effectiveConcurrency,
+                    connectionBudget = config.effectiveConcurrency,
                     storeProvider = storeProvider,
                     cacheContext = parentCoroutineContext + Dispatchers.IO_,
                 )
             },
             onHandleCountChanged = onHandleCountChanged,
+            kept = kept,
+            onKept = onKept,
         )
+    }
+
+    private suspend fun markKept(resumeData: PikPakResumeData, pathInTorrent: String) = withContext(Dispatchers.IO_) {
+        val meta = resumeData.read() ?: return@withContext
+        if (pathInTorrent in meta.kept) return@withContext
+        resumeData.write(meta.copy(kept = meta.kept + pathInTorrent))
     }
 
     internal var magnetResolver: suspend (uri: String) -> MagnetResource? = { uri ->
@@ -468,10 +510,17 @@ class PikPakTorrentDownloader(
                 length = file.size,
             )
         }
+        if (resource.truncated) {
+            logger.warn { "[pikpak] $sourceKey lists more than one page of root entries; treating the listing as partial" }
+        }
         return PikPakTorrentMeta(
             uri = uri,
             sourceKey = sourceKey,
             name = resource.name.ifEmpty { sourceKey },
+            // PikPak pages a torrent's root entries and only the first page arrives. Taken as the
+            // whole torrent, the episode fallback would pick from a list missing files, and the
+            // listing would never be asked for again.
+            indexed = !resource.truncated,
             files = files,
         )
     }
@@ -489,12 +538,12 @@ class PikPakTorrentDownloader(
             sessionStore = sessionStore,
             httpClient = httpClient,
             cdnHttpClient = cdnClient,
-            connectionBudget = config.value.effectiveConcurrency,
+            connectionBudget = config.effectiveConcurrency,
             // Two files' worth, so a cache download and playback each keep a full link's budget.
             // The CDN client admits as many per host (tunedCdnClient's default); an engine cap below
             // the gates would queue requests where RangeReader reads the wait as a dead host.
-            accountConnectionBudget = config.value.accountConcurrency,
-        ).let { PikPakAccount(it, scope) }.also { clientEntry = creds to it }
+            accountConnectionBudget = config.accountConcurrency,
+        ).let { PikPakAccount(it, scope, onNotEnoughSpace) }.also { clientEntry = creds to it }
     }
 
     private companion object {
@@ -595,36 +644,119 @@ internal fun mergeImportedInto(cloud: PikPakTorrentMeta, local: PikPakTorrentMet
             length = onDisk.length,
         )
     } + extras.map { it.copy(index = nextIndex++) }
-    return cloud.copy(indexed = true, files = files)
+    return cloud.copy(files = files, kept = (cloud.kept + local.kept).distinct())
 }
 
-// Missing files are normal for streaming sessions; preallocation makes shorter files resumable.
+// Missing files are normal for streaming sessions, and data files grow as blocks land.
 internal fun filesConsistent(saveDirectory: SystemPath, meta: PikPakTorrentMeta): Boolean = meta.files.all {
     val path = saveDirectory.resolve(it.pathInTorrent)
     !path.exists() || path.length() <= it.length
 }
 
 // Directory IDs and cleanup requests must use the client that created them, even after an account switch.
-internal class PikPakAccount(val client: PikPakClient, scope: CoroutineScope) {
+internal class PikPakAccount(
+    val client: PikPakClient,
+    scope: CoroutineScope,
+    private val onNotEnoughSpace: (PikPakNotEnoughSpaceException) -> Unit = {},
+) {
     val driveIndex = PikPakDriveIndex(clientProvider = { client })
 
-    // Every other entry point logs in before its first request. Skipping it here sent the first
-    // request of a cold start out unauthenticated: the 401 recovery path reads only the in-memory
-    // session, never the store, so a stored refresh token could not be used and the client fell
-    // back to a full captcha sign-in.
-    //
-    // Separate from the sweep so that a file's first mint waits for this alone. The sweep's listing
-    // and delete are two more round trips on the first-playback path, against the resolver's
+    private val loginLock = Mutex()
+
+    @Volatile
+    private var loggedIn = false
+
+    /**
+     * Free storage as read right after sign-in, or null until then or when it could not be read.
+     * A leased object takes its file's full size while it exists, so a file larger than this cannot
+     * be leased at all; see [CloudFile.prepare].
+     */
+    @Volatile
+    var freeBytes: Long? = null
+        private set
+
+    /**
+     * Signs in once, and again after a failure. Every other entry point logs in before its first
+     * request. Skipping it here sent the first request of a cold start out unauthenticated: the 401
+     * recovery path reads only the in-memory session, never the store, so a stored refresh token
+     * could not be used and the client fell back to a full captcha sign-in.
+     *
+     * Only a success is remembered: a cold start without network would otherwise leave the
+     * account failed until the app restarts.
+     */
+    suspend fun ensureLoggedIn() {
+        if (loggedIn) return
+        loginLock.withLock {
+            if (loggedIn) return
+            client.login()
+            loggedIn = true
+        }
+        budgetLeases()
+    }
+
+    // When each file was last reported short of space: playback, its fallback and a cache download's
+    // retries all prepare the same file, and the user is told once.
+    private val shortOfSpaceLock = SynchronizedObject()
+    private val shortOfSpaceReported = HashMap<String, TimeSource.Monotonic.ValueTimeMark>()
+
+    /**
+     * Throws [PikPakNotEnoughSpaceException] when a lease of [size] bytes cannot fit. The figure read
+     * at sign-in is compared first; a file that does not fit it is compared once more against a
+     * fresh one, since the user may have made room since.
+     */
+    suspend fun requireRoomFor(gcid: String, fileName: String, size: Long) {
+        val known = freeBytes ?: return
+        if (size <= known) return
+        val free = try {
+            client.getQuota().quota.remainingBytes.coerceAtLeast(0).also { freeBytes = it }
+        } catch (e: CancellationException) {
+            throw e
+        } catch (e: Throwable) {
+            logger<PikPakAccount>().warn(e) { "[pikpak] could not read the free space again" }
+            known
+        }
+        if (size <= free) return
+        val failure = PikPakNotEnoughSpaceException(fileName, size, free)
+        val now = TimeSource.Monotonic.markNow()
+        val report = synchronized(shortOfSpaceLock) {
+            val last = shortOfSpaceReported[gcid]
+            (last == null || last.elapsedNow() > SHORT_OF_SPACE_REPORT_INTERVAL).also {
+                if (it) shortOfSpaceReported[gcid] = now
+            }
+        }
+        if (report) onNotEnoughSpace(failure)
+        throw failure
+    }
+
+    // Leases whose links are still good, by gcid. A lease costs an instant create -- 15 % of the
+    // file's size from the monthly upload allowance -- and its link outlives the object for a day,
+    // so a second session of the same file, or a cache reopened after a delete, reuses the detail.
+    private val leasesLock = Mutex()
+    private val leases = HashMap<String, FileDetail>()
+
+    suspend fun leasedDetail(file: ResolvedFile, parentId: String): FileDetail {
+        val gcid = file.gcid.orEmpty().uppercase()
+        leasesLock.withLock { leases[gcid] }?.takeIf { it.linkUsable() }?.let { return it }
+        return client.leaseDetail(file, parentId = parentId).also { detail ->
+            leasesLock.withLock { leases[gcid] = detail }
+        }
+    }
+
+    private fun FileDetail.linkUsable(): Boolean {
+        val expiresAt = octetStream.expiresAt ?: return false
+        return octetStream.url.isNotBlank() && expiresAt - Clock.System.now() > LINK_MARGIN
+    }
+
+    // Separate from sign-in so that a file's first mint waits for sign-in alone. The sweep's
+    // listing and delete are two more round trips on the first-playback path, against the resolver's
     // fallback budget, and they cannot touch a fresh object: the sweep collects only objects older
     // than its cutoff.
-    val login: Deferred<Unit> = scope.async { client.login() }
-
     val startupSweep = scope.launch {
         try {
-            login.await()
-            // Cloud objects only bridge instant creation and signed-link minting. Five minutes
-            // allows active work on another device to finish while bounding leaked temporary data.
-            // A reader can recreate an object if a stale link later returns 404.
+            ensureLoggedIn()
+            // The SDK deletes each leased object once its link is in hand; what is left here is a
+            // delete that never ran, the process having died first. Five minutes allows active work
+            // on another device to finish.
             val cutoff = Clock.System.now() - 5.minutes
             val leftovers = driveIndex.listTemp().filter {
                 // Unknown timestamps are not evidence of abandonment.
@@ -640,17 +772,21 @@ internal class PikPakAccount(val client: PikPakClient, scope: CoroutineScope) {
         } catch (e: Throwable) {
             logger<PikPakAccount>().warn(e) { "[pikpak] startup sweep failed" }
         }
-        budgetLeases()
     }
 
     // A leased object takes its full size of storage until its delete lands, and a free account has
-    // 6 GB: several episodes minted at once would fail past the free space. Measured after the
-    // sweep, so its leftovers do not count as used; `about` trails writes by more than a lease
-    // lasts, so it is read once rather than kept up to date. Until it is set, leases are unbounded.
+    // 6 GB: several episodes minted at once would fail past the free space. Read once, right after
+    // sign-in, before the first lease: `about` trails writes by more than a lease lasts, so it is
+    // not kept up to date. Anything the startup sweep has yet to remove counts as used, which errs
+    // on the safe side.
     private suspend fun budgetLeases() {
+        if (freeBytes != null) return
         try {
-            val free = client.getQuota().quota.remainingBytes
-            client.leaseBudget = LeaseBudget(free.coerceIn(MIN_LEASE_BUDGET, MAX_LEASE_BUDGET))
+            val free = client.getQuota().quota.remainingBytes.coerceAtLeast(0)
+            freeBytes = free
+            // At least one byte: a zero capacity would admit everything. A file larger than the
+            // whole budget still goes through, alone.
+            client.leaseBudget = LeaseBudget(free.coerceIn(1, MAX_LEASE_BUDGET))
         } catch (e: CancellationException) {
             throw e
         } catch (e: Throwable) {
@@ -659,11 +795,14 @@ internal class PikPakAccount(val client: PikPakClient, scope: CoroutineScope) {
     }
 
     private companion object {
-        // A file larger than the whole budget still goes through, alone; below this, one episode
-        // at a time is already what the budget enforces.
-        const val MIN_LEASE_BUDGET = 1L * 1024 * 1024 * 1024
-
         // A premium account reports terabytes free; nothing near that is ever leased at once.
         const val MAX_LEASE_BUDGET = 64L * 1024 * 1024 * 1024
+
+        // The SDK's own refresh margin: a link this close to expiry is not handed out again.
+        val LINK_MARGIN = 5.minutes
+
+        // Longer than a cache download's retry, short enough that trying the file again later
+        // explains itself again.
+        val SHORT_OF_SPACE_REPORT_INTERVAL = 10.minutes
     }
 }

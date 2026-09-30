@@ -34,9 +34,11 @@ import kotlinx.serialization.json.jsonArray
 import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
 import java.util.concurrent.CopyOnWriteArrayList
+import kotlin.concurrent.Volatile
 import kotlin.test.Test
 import kotlin.test.assertContentEquals
 import kotlin.test.assertEquals
+import kotlin.test.assertFailsWith
 import kotlin.test.assertTrue
 import kotlin.time.Clock
 
@@ -47,6 +49,9 @@ class CloudFileLifecycleTest {
         val listingStarted = CompletableDeferred<Unit>()
         val listingAllowed = CompletableDeferred<Unit>()
         val bytes = byteArrayOf(10, 20, 30, 40)
+
+        @Volatile
+        var usage = 0L
         val http = HttpClient(MockEngine { request ->
             val path = request.url.encodedPath
             when {
@@ -101,7 +106,7 @@ class CloudFileLifecycleTest {
                     ))
                 }
                 // The lease budget reads the free space once the sweep is done
-                path.endsWith("/drive/v1/about") -> json("""{"quota":{"limit":"6442450944","usage":"0"}}""")
+                path.endsWith("/drive/v1/about") -> json("""{"quota":{"limit":"$LIMIT","usage":"$usage"}}""")
                 else -> error("Unexpected request: ${request.method} ${request.url}")
             }
         })
@@ -130,13 +135,14 @@ class CloudFileLifecycleTest {
                 assertContentEquals(a.bytes, first.await())
                 assertEquals(listOf("create", "read"), a.events.filter { it == "create" || it == "read" })
                 a.listingAllowed.complete(Unit)
-                while (a.deleted.size < 2) delay(1)
+                // The handle deletes its leased object again on its own, harmlessly: wait for the set
+                while (a.deleted.toSet().size < 2) delay(1)
                 assertEquals(setOf("a-old", "a-minted"), a.deleted.toSet(), "the sweep and the lease both delete")
 
                 account = PikPakAccount(b.client, this@runBlocking)
                 b.listingAllowed.complete(Unit)
                 assertContentEquals(b.bytes, readAll(cloud))
-                while (b.deleted.size < 2) delay(1)
+                while (b.deleted.toSet().size < 2) delay(1)
                 assertEquals(setOf("b-old", "b-minted"), b.deleted.toSet())
                 assertEquals(1, a.events.count { it == "read" })
                 assertEquals(1, b.events.count { it == "read" })
@@ -150,6 +156,39 @@ class CloudFileLifecycleTest {
             b.client.close()
             a.http.close()
             b.http.close()
+        }
+    }
+
+    @Test
+    fun `a file larger than the free space is refused once reported and admitted once room is made`() = runBlocking {
+        val drive = Drive("c")
+        drive.listingAllowed.complete(Unit)
+        drive.usage = LIMIT - 2
+        val reported = CopyOnWriteArrayList<PikPakNotEnoughSpaceException>()
+        val account = PikPakAccount(drive.client, this, onNotEnoughSpace = { reported += it })
+        val cloud = CloudFile(
+            gcid = "C".repeat(40), size = 4, name = "episode.mkv", accountProvider = { account },
+            connectionBudget = 1, storeProvider = { NoStore }, cacheContext = Dispatchers.IO,
+        )
+        try {
+            withTimeout(15_000) {
+                repeat(2) {
+                    val failure = assertFailsWith<PikPakNotEnoughSpaceException> { cloud.prepare() }
+                    assertEquals(4, failure.neededBytes)
+                    assertEquals(2, failure.freeBytes)
+                }
+                assertEquals(1, reported.size, "the same file was reported more than once")
+                assertTrue("create" !in drive.events, "a lease was attempted without room for it")
+
+                // The user frees space; the figure from sign-in is stale and is read again
+                drive.usage = 0
+                cloud.prepare()
+                assertTrue("create" in drive.events)
+            }
+        } finally {
+            cloud.release()
+            drive.client.close()
+            drive.http.close()
         }
     }
 
@@ -172,6 +211,8 @@ class CloudFileLifecycleTest {
     }
 
     private companion object {
+        const val LIMIT = 6442450944L
+
         fun MockRequestHandleScope.json(body: String) = respond(
             body, HttpStatusCode.OK, headersOf(HttpHeaders.ContentType, "application/json"),
         )

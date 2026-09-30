@@ -23,9 +23,10 @@ import me.him188.ani.utils.io.readBytes
 import me.him188.ani.utils.io.resolveSibling
 import me.him188.ani.utils.io.writeBytes
 
-// Data files are preallocated, so file length cannot prove completion: a piece never written reads
-// back as zeros at its full length. The bitmap is the only persistent record of which pieces hold
-// real bytes, and nothing downstream verifies those bytes — a wrong bit reaches the player as zeros.
+// Data files are sparse and written out of order, so file length cannot prove completion: a block
+// never written below the last one reads back as zeros. The bitmap is the only persistent record of
+// which blocks hold real bytes, and nothing downstream verifies those bytes — a wrong bit reaches
+// the player as zeros.
 //
 // It therefore carries a durability rule its own code cannot enforce: the caller must have fsynced
 // the data file before [flush] puts a bit on disk.
@@ -109,8 +110,7 @@ internal class PieceBitmap(
     }
 
     companion object {
-        // One bit per 256 KiB block of the SDK's file cache. The suffix changed with the block
-        // size: a bitmap of the earlier 512 KiB pieces would claim the wrong ranges.
+        // One bit per 256 KiB block of the SDK's file cache.
         fun pathFor(dataFile: SystemPath): SystemPath = dataFile.resolveSibling(dataFile.name + ".blocks")
     }
 }
