@@ -23,35 +23,25 @@ import me.him188.ani.app.ui.lang.Lang
 import me.him188.ani.app.ui.lang.pikpak_not_enough_space_message
 import me.him188.ani.app.ui.lang.pikpak_not_enough_space_ok
 import me.him188.ani.app.ui.lang.pikpak_not_enough_space_title
-import me.him188.ani.datasources.api.topic.FileSize.Companion.bytes
 import me.him188.ani.torrent.pikpak.PikPakNotEnoughSpaceException
 import org.jetbrains.compose.resources.stringResource
 
 /**
- * 云盘剩余空间放不下要秒传的文件时弹出. 播放可能已经回退到本地 BT, 这里只负责告诉用户为什么没走云盘.
+ * 云盘剩余空间放不下要秒传的文件时弹出. 每个账号只报一次, 见 PikPakAccount.requireRoomFor.
  */
 @Composable
 internal fun PikPakNotEnoughSpaceDialogHost(events: Flow<PikPakNotEnoughSpaceException>) {
-    var shown by remember { mutableStateOf<PikPakNotEnoughSpaceException?>(null) }
+    var shown by remember { mutableStateOf(false) }
     LaunchedEffect(events) {
-        events.collect { shown = it }
+        events.collect { shown = true }
     }
-    shown?.let { failure ->
+    if (shown) {
         AlertDialog(
-            onDismissRequest = { shown = null },
+            onDismissRequest = { shown = false },
             title = { Text(stringResource(Lang.pikpak_not_enough_space_title)) },
-            text = {
-                Text(
-                    stringResource(
-                        Lang.pikpak_not_enough_space_message,
-                        failure.fileName,
-                        failure.neededBytes.bytes.toString(),
-                        failure.freeBytes.bytes.toString(),
-                    ),
-                )
-            },
+            text = { Text(stringResource(Lang.pikpak_not_enough_space_message)) },
             confirmButton = {
-                TextButton(onClick = { shown = null }) {
+                TextButton(onClick = { shown = false }) {
                     Text(stringResource(Lang.pikpak_not_enough_space_ok))
                 }
             },

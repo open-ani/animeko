@@ -38,6 +38,7 @@ import me.him188.ani.app.torrent.api.files.AbstractTorrentFileEntry
 import me.him188.ani.app.torrent.api.files.FilePriority
 import me.him188.ani.app.torrent.api.files.TorrentFileEntry
 import me.him188.ani.app.torrent.api.files.TorrentFileHandle
+import me.him188.ani.app.torrent.api.files.TorrentRemoteFile
 import me.him188.ani.app.torrent.api.pieces.MutablePieceList
 import me.him188.ani.app.torrent.api.pieces.PieceList
 import me.him188.ani.app.torrent.api.pieces.PieceState
@@ -72,8 +73,8 @@ internal class PikPakFileEntry(
      * played is removed when the session closes, as it was before playback went through the store.
      */
     kept: Boolean = false,
-    /** Records that the file is kept, so a restart knows; see [kept]. */
-    private val onKept: suspend () -> Unit = {},
+    /** Records whether the file is kept, so a restart knows; see [kept]. */
+    private val persistKept: suspend (kept: Boolean) -> Unit = {},
 ) : AbstractTorrentFileEntry(
     index = index,
     length = length,
@@ -82,7 +83,7 @@ internal class PikPakFileEntry(
     torrentId = torrentId,
     isDebug = false,
     parentCoroutineContext = parentCoroutineContext,
-), CloudReadiness {
+), CloudReadiness, TorrentRemoteFile {
     override val supportsStreaming: Boolean get() = true
 
     private val dataPath: SystemPath get() = saveDirectory.resolve(relativePath)
@@ -96,6 +97,12 @@ internal class PikPakFileEntry(
     @Volatile
     private var generation = 0
 
+    // Whether this session put bytes into the current data file. Closing removes only those: a file
+    // this session never touched may be another episode's finished download, whatever the kept
+    // flag on disk says.
+    @Volatile
+    private var wroteThisSession = false
+
     @Volatile
     private var stream: Stream = newStream()
 
@@ -103,6 +110,20 @@ internal class PikPakFileEntry(
 
     @Volatile
     private var kept = kept
+
+    // Writes run in order and each writes the flag as it is then, so a late write cannot restore a
+    // value a delete has since cleared.
+    private val keptWrites = Mutex()
+
+    private suspend fun saveKept() {
+        try {
+            keptWrites.withLock { persistKept(kept) }
+        } catch (e: CancellationException) {
+            throw e
+        } catch (e: Throwable) {
+            logger.warn(e) { "[$torrentId] $fileName could not record whether it is kept" }
+        }
+    }
 
     @Volatile
     private var cloudReady = false
@@ -158,10 +179,8 @@ internal class PikPakFileEntry(
             prepareInBackground()
         }
 
-        // The player reads through the file cache, which fetches what its read position implies,
-        // so a seek costs one request and there is no piece queue to reorder. The hint only
-        // matters for peer-based engines.
         override fun setPrefetchRangeImpl(byteRange: LongRange?) {
+            prefetchRange.value = byteRange
         }
 
         override suspend fun closeImpl() {
@@ -188,23 +207,20 @@ internal class PikPakFileEntry(
     // still being scheduled would otherwise cancel nothing.
     private val downloadWanted = MutableStateFlow(false)
 
+    // The range to have on disk ahead of a jump, such as skipping the opening; one per entry, a new
+    // one replacing the last. See TorrentFileHandle.setPrefetchRange.
+    private val prefetchRange = MutableStateFlow<LongRange?>(null)
+
     init {
         scope.launch { downloadWanted.collectLatest { wanted -> if (wanted) downloadLoop() } }
+        scope.launch { prefetchRange.collectLatest { range -> if (range != null) prefetch(range) } }
     }
 
     override fun updatePriority() {
         val wanted = wantsWholeFile
         if (wanted && !kept) {
             kept = true
-            scope.launch {
-                try {
-                    onKept()
-                } catch (e: CancellationException) {
-                    throw e
-                } catch (e: Throwable) {
-                    logger.warn(e) { "[$torrentId] $fileName could not record that it is kept" }
-                }
-            }
+            scope.launch { saveKept() }
         }
         downloadWanted.value = wanted
         logger.info { "[$torrentId] $fileName priority -> $requestingPriority" }
@@ -248,6 +264,37 @@ internal class PikPakFileEntry(
             }
         }
         _error.value = null
+    }
+
+    /**
+     * Fetches [range] into the store at WARM priority: behind everything playing, ahead of all
+     * background work. Best effort: a failure, or a cache replaced under it, ends it.
+     *
+     * A download rather than a prefetch. The range is usually asked for a minute or two before the
+     * jump, and a prefetch keeps it in the memory cache, least recently used and capped, where
+     * playback's read-ahead may push it out by then; on disk it waits. A download holds only two
+     * requests in flight while playback runs, but it fetches the range in order, so the seconds
+     * right after the jump arrive first.
+     */
+    private suspend fun prefetch(range: LongRange) {
+        val store = stream.store
+        val last = range.last.coerceAtMost(length - 1)
+        if (range.first > last) return
+        if (((range.first / PIECE_SIZE).toInt()..(last / PIECE_SIZE).toInt()).all { store.isHeld(it) }) return
+        var job: Deferred<Unit>? = null
+        try {
+            ensureCloudReady()
+            job = openCache().download(listOf(range), StreamRole.FOREGROUND, PikPakStreamReader.WARM_PRIORITY)
+            job.await()
+        } catch (e: CancellationException) {
+            // Our own cancellation, a new range or a close, propagates; a closed cache just ends it
+            currentCoroutineContext().ensureActive()
+        } catch (e: Throwable) {
+            logger.warn(e) { "[$torrentId] $fileName could not prefetch $range" }
+        } finally {
+            // Not a child of this coroutine; cancelling it withdraws what it had not fetched
+            job?.cancel()
+        }
     }
 
     private suspend fun openCache(): PikPakFileCache = resolveMutex.withLock { cloud.cache() }
@@ -324,13 +371,18 @@ internal class PikPakFileEntry(
         )
     }
 
+    // An import has no gcid: it exists only on disk and is never streamed.
+    override val isStreamingRemotely: Boolean
+        get() = meta.gcid.isNotEmpty() && !stream.store.isComplete
+
     // What was only played goes with the session, as it did before playback went through the store;
     // a kept file stays for the next session.
     suspend fun close() {
         downloadWanted.value = false
+        prefetchRange.value = null
         resolveMutex.withLock {
             cloud.release()
-            if (kept) {
+            if (kept || !wroteThisSession) {
                 stream.close()
             } else {
                 try {
@@ -346,8 +398,10 @@ internal class PikPakFileEntry(
 
     // The store, its pieces and every cache over them start again: the old ones describe a file
     // that no longer exists. The old files go before the new store loads, or it would read their
-    // bitmap back as progress.
+    // bitmap back as progress. The copy that was asked for is gone with them, so the file is no
+    // longer kept: what is played of it later goes with its session again.
     private suspend fun deleteFiles() {
+        prefetchRange.value = null
         withContext(NonCancellable) {
             resolveMutex.withLock {
                 val old = stream
@@ -355,8 +409,11 @@ internal class PikPakFileEntry(
                 cloudReady = false
                 cloud.release()
                 old.delete()
+                wroteThisSession = false
                 stream = newStream()
             }
+            kept = false
+            saveKept()
         }
     }
 
@@ -407,6 +464,7 @@ internal class PikPakFileEntry(
             size = length,
             parentCoroutineContext = storeContext,
             onHeld = { block ->
+                wroteThisSession = true
                 with(pieces) { pieces.createPieceByListIndexUnsafe(block).state = PieceState.FINISHED }
                 // Progress means whatever stopped the download has cleared
                 _error.value = null

@@ -71,30 +71,30 @@ object PikPakSavedFiles {
                 gcid = "",
                 length = length,
             )
-            val resumeData = PikPakResumeData(saveDirectory)
-
-            val existing = resumeData.read()?.takeIf { it.uri == uri && it.sourceKey == sourceKey }
-            val meta = if (existing == null) {
-                PikPakTorrentMeta(
-                    uri = uri,
-                    sourceKey = sourceKey,
-                    name = pathInTorrent,
-                    indexed = false,
-                    files = listOf(entry),
-                )
-            } else if (existing.files.any { it.pathInTorrent == pathInTorrent }) {
-                existing.copy(
-                    files = existing.files.map {
-                        if (it.pathInTorrent == pathInTorrent) entry.copy(index = it.index) else it
-                    },
-                )
-            } else {
-                existing.copy(
-                    files = existing.files + entry.copy(index = (existing.files.maxOfOrNull { it.index } ?: -1) + 1),
-                )
+            PikPakResumeData(saveDirectory).update { current ->
+                val existing = current?.takeIf { it.uri == uri && it.sourceKey == sourceKey }
+                val meta = if (existing == null) {
+                    PikPakTorrentMeta(
+                        uri = uri,
+                        sourceKey = sourceKey,
+                        name = pathInTorrent,
+                        indexed = false,
+                        files = listOf(entry),
+                    )
+                } else if (existing.files.any { it.pathInTorrent == pathInTorrent }) {
+                    existing.copy(
+                        files = existing.files.map {
+                            if (it.pathInTorrent == pathInTorrent) entry.copy(index = it.index) else it
+                        },
+                    )
+                } else {
+                    existing.copy(
+                        files = existing.files + entry.copy(index = (existing.files.maxOfOrNull { it.index } ?: -1) + 1),
+                    )
+                }
+                // An import is a kept copy: it must survive its sessions closing
+                meta.copy(kept = (meta.kept + pathInTorrent).distinct())
             }
-            // An import is a kept copy: it must survive its sessions closing
-            resumeData.write(meta.copy(kept = (meta.kept + pathInTorrent).distinct()))
             logger.info { "[pikpak] imported $pathInTorrent ($length bytes) into $sourceKey" }
             target
         }

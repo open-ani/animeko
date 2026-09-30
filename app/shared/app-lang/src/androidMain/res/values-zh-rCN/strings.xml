@@ -70,7 +70,7 @@
     <string name="settings_pikpak_legacy_keep">保留</string>
     <string name="settings_pikpak_legacy_failed">删除失败：%1$s</string>
     <string name="pikpak_not_enough_space_title">PikPak 云盘空间不足</string>
-    <string name="pikpak_not_enough_space_message">通过 PikPak 播放「%1$s」需要云盘有 %2$s 空闲，当前只剩 %3$s。请清理云盘后重试。</string>
+    <string name="pikpak_not_enough_space_message">请清理云盘空间。</string>
     <string name="pikpak_not_enough_space_ok">知道了</string>
     <string name="settings_pikpak_recommend_title">同步调整数据源选择器？</string>
     <string name="settings_pikpak_recommend_message">PikPak 只处理 BT 资源。建议把"优先数据源类型"设为 BT，这样默认选择器才会实际走到 PikPak。</string>

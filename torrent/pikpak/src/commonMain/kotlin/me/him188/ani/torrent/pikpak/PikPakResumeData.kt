@@ -57,10 +57,19 @@ internal data class PikPakFileMeta(
 
 internal class PikPakResumeData(
     private val saveDirectory: SystemPath,
-) : SynchronizedObject() {
+) {
     private val metaPath get() = saveDirectory.resolve(PikPakTorrentMeta.FILE_NAME)
 
-    fun read(): PikPakTorrentMeta? = synchronized(this) {
+    /**
+     * Reads, transforms and writes the record as one step, returning what was written; a null result
+     * writes nothing. Entries mark themselves kept concurrently, and an import may land while a
+     * session is open: a read and a write made separately would drop whichever change lost the race.
+     */
+    fun update(transform: (PikPakTorrentMeta?) -> PikPakTorrentMeta?): PikPakTorrentMeta? = synchronized(lock) {
+        transform(read())?.also { write(it) }
+    }
+
+    fun read(): PikPakTorrentMeta? = synchronized(lock) {
         if (!metaPath.exists()) return null
         return try {
             val meta = json.decodeFromString(PikPakTorrentMeta.serializer(), metaPath.readText())
@@ -71,7 +80,7 @@ internal class PikPakResumeData(
         }
     }
 
-    fun write(meta: PikPakTorrentMeta): Unit = synchronized(this) {
+    fun write(meta: PikPakTorrentMeta): Unit = synchronized(lock) {
         val stamped = meta.copy(version = PikPakTorrentMeta.CURRENT_VERSION)
         val text = json.encodeToString(PikPakTorrentMeta.serializer(), stamped)
         val temp = metaPath.resolveSibling(metaPath.name + ".tmp")
@@ -88,5 +97,9 @@ internal class PikPakResumeData(
 
     private companion object {
         val json = Json { ignoreUnknownKeys = true; prettyPrint = true }
+
+        // One lock for every save directory: a session and an import each build their own instance
+        // over the same file. The records are a few hundred bytes and rarely written.
+        val lock = SynchronizedObject()
     }
 }

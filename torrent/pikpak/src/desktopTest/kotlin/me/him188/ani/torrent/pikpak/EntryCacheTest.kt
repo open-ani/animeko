@@ -15,6 +15,7 @@ import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.withTimeout
 import kotlinx.io.IOException
 import me.him188.ani.app.torrent.api.files.FilePriority
+import me.him188.ani.app.torrent.api.pieces.PieceState
 import me.him188.ani.utils.io.SystemPaths
 import me.him188.ani.utils.io.createTempDirectory
 import me.him188.ani.utils.io.exists
@@ -22,6 +23,7 @@ import me.him188.ani.utils.io.readBytes
 import me.him188.ani.utils.io.resolve
 import me.him188.ani.utils.io.writeBytes
 import org.openani.mediamp.io.SeekableInput
+import java.util.concurrent.CopyOnWriteArrayList
 import kotlin.test.Test
 import kotlin.test.assertContentEquals
 import kotlin.test.assertEquals
@@ -198,6 +200,44 @@ class EntryCacheTest {
     }
 
     @Test
+    fun `a finished file the session never touched stays although its kept flag was lost`() = runBlocking {
+        val content = payload((block * 8).toInt())
+        val directory = SystemPaths.createTempDirectory("entry-untouched")
+        val downloaded = testEntry(directory, "01.mkv", content.size.toLong(), FakeRangeSource(content))
+        val handle = downloaded.createHandle()
+        handle.resume(FilePriority.NORMAL)
+        withTimeout(60.seconds) { downloaded.fileStats.first { it.isDownloadFinished } }
+        handle.close()
+        downloaded.close()
+
+        // Another episode of the same torrent is played: this entry is in the session but unread
+        testEntry(directory, "01.mkv", content.size.toLong(), FakeRangeSource(content), kept = false).close()
+        assertContentEquals(content, directory.resolve("01.mkv").readBytes(), "an untouched download went with the session")
+    }
+
+    @Test
+    fun `deleting a kept file records it as no longer kept`() = runBlocking {
+        val content = payload((block * 8).toInt())
+        val persisted = CopyOnWriteArrayList<Boolean>()
+        val entry = testEntry(
+            SystemPaths.createTempDirectory("entry-delete-kept"), "01.mkv", content.size.toLong(), FakeRangeSource(content),
+            persistKept = { persisted += it },
+        )
+        try {
+            // The deletion of a finished download resumes it first, which marks it kept
+            val handle = entry.createHandle()
+            handle.resume(FilePriority.NORMAL)
+            handle.closeAndDelete()
+            waitUntil("the kept flag is written") { persisted.isNotEmpty() }
+            // A write still queued from the resume must not land after the delete's
+            delay(500.milliseconds)
+            assertEquals(false, persisted.last(), "a deleted file is still recorded as kept")
+        } finally {
+            entry.close()
+        }
+    }
+
+    @Test
     fun `an input keeps playing when its cache is replaced`() = runBlocking {
         val content = payload((block * 16).toInt())
         var cloud: FakeCloudSource? = null
@@ -222,6 +262,28 @@ class EntryCacheTest {
         withTimeout(20.seconds) { while (!condition()) delay(10.milliseconds) }
         assertTrue(condition(), what)
     }
+
+    @Test
+    fun `a prefetch range lands on disk`() = runBlocking {
+        val content = payload((block * 32).toInt())
+        val source = FakeRangeSource(content)
+        val entry = testEntry(SystemPaths.createTempDirectory("entry-prefetch-range"), "01.mkv", content.size.toLong(), source)
+        try {
+            val handle = entry.createHandle()
+            val range = block * 10 + 100..block * 12 + 5
+            handle.setPrefetchRange(range)
+            withTimeout(10.seconds) {
+                while (!(10..12).all { entry.pieceFinished(it) }) delay(50.milliseconds)
+            }
+            assertTrue(source.requests.all { it.start in block * 10..block * 12 }, "${source.requests}")
+            handle.close()
+        } finally {
+            entry.close()
+        }
+    }
+
+    private fun PikPakFileEntry.pieceFinished(index: Int): Boolean =
+        with(pieces) { pieces.createPieceByListIndexUnsafe(index).state == PieceState.FINISHED }
 
     private suspend fun settledDownloadedBytes(entry: PikPakFileEntry): Long {
         var last = -1L

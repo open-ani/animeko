@@ -87,6 +87,7 @@ import kotlinx.coroutines.launch
 import me.him188.ani.app.data.models.preference.DarkMode
 import me.him188.ani.app.data.models.preference.VideoScaffoldConfig
 import me.him188.ani.app.domain.comment.CommentContext
+import me.him188.ani.app.domain.media.player.data.suppliedFramePreview
 import me.him188.ani.app.navigation.LocalNavigator
 import me.him188.ani.app.pip.LocalPictureInPictureController
 import me.him188.ani.app.pip.PictureInPictureController
@@ -199,6 +200,7 @@ import org.openani.mediamp.features.PlaybackSpeed
 import org.openani.mediamp.features.Screenshots
 import org.openani.mediamp.features.VideoAspectRatio
 import org.openani.mediamp.features.toggleMute
+import org.openani.mediamp.source.MediaData
 
 /**
  * 番剧详情 (播放) 页面
@@ -1070,7 +1072,7 @@ private fun EpisodeVideo(
         },
     )
     val framePreview = if (vm.videoScaffoldConfig.enableFramePreview) {
-        rememberMediaProgressFramePreviewState(vm.player)
+        rememberMediaProgressFramePreviewState(vm.player, mediaFramePreview = MediaData::suppliedFramePreview)
     } else {
         null
     }

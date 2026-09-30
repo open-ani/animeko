@@ -83,7 +83,7 @@ internal class CloudFile(
         // all, and failing here is what lets the resolver still fall back to BT.
         val account = accountProvider()
         account.ensureLoggedIn()
-        account.requireRoomFor(gcid, name, size)
+        account.requireRoomFor(name, size)
         try {
             open().handle.prewarm()
         } catch (e: PikPakException) {
@@ -95,6 +95,7 @@ internal class CloudFile(
             release()
             open().handle.prewarm()
         }
+        account.onLeased()
     }
 
     override suspend fun cache(): PikPakFileCache = open().cache

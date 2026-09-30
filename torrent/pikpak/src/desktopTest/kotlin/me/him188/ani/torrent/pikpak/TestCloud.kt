@@ -93,6 +93,7 @@ internal fun testEntry(
     onCloud: (FakeCloudSource) -> Unit = {},
     onHandleCountChanged: suspend () -> Unit = {},
     kept: Boolean = false,
+    persistKept: suspend (Boolean) -> Unit = {},
 ) = PikPakFileEntry(
     index = 0,
     length = length,
@@ -106,4 +107,5 @@ internal fun testEntry(
     },
     onHandleCountChanged = onHandleCountChanged,
     kept = kept,
+    persistKept = persistKept,
 )

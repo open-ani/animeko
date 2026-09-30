@@ -177,13 +177,22 @@ class CloudFileLifecycleTest {
                     assertEquals(4, failure.neededBytes)
                     assertEquals(2, failure.freeBytes)
                 }
-                assertEquals(1, reported.size, "the same file was reported more than once")
+                assertEquals(1, reported.size, "the account was reported short of space more than once")
                 assertTrue("create" !in drive.events, "a lease was attempted without room for it")
 
                 // The user frees space; the figure from sign-in is stale and is read again
                 drive.usage = 0
                 cloud.prepare()
                 assertTrue("create" in drive.events)
+
+                // After a lease went through, the next shortage is reported again
+                drive.usage = LIMIT - 2
+                val larger = CloudFile(
+                    gcid = "D".repeat(40), size = LIMIT + 1, name = "larger.mkv", accountProvider = { account },
+                    connectionBudget = 1, storeProvider = { NoStore }, cacheContext = Dispatchers.IO,
+                )
+                assertFailsWith<PikPakNotEnoughSpaceException> { larger.prepare() }
+                assertEquals(2, reported.size, "a shortage after a successful lease was not reported")
             }
         } finally {
             cloud.release()

@@ -363,7 +363,7 @@ class PikPakTorrentDownloader(
                 onHandleCountChanged = { session?.closeIfNotInUse() },
                 // An import has no GCID and nothing but the disk to play from
                 kept = fileMeta.pathInTorrent in meta.kept || fileMeta.gcid.isEmpty(),
-                onKept = { markKept(resumeData, fileMeta.pathInTorrent) },
+                persistKept = { kept -> persistKept(resumeData, fileMeta.pathInTorrent, kept) },
             )
         }
         return PikPakSession(
@@ -440,9 +440,11 @@ class PikPakTorrentDownloader(
             logger.warn(e) { "[pikpak] $sourceKey holds imported files only and could not be indexed" }
             return partial
         }
-        val merged = mergeImportedInto(cloud, partial)
-        val result = if (filesConsistent(saveDirectory, merged)) merged else cloud
-        resumeData.write(result)
+        // Merged into the record as it is now: an import may have landed during the listing
+        val result = resumeData.update { current ->
+            val merged = mergeImportedInto(cloud, current ?: partial)
+            if (filesConsistent(saveDirectory, merged)) merged else cloud
+        }!!
         logger.info { "[pikpak] $sourceKey filled in from the magnet, ${result.files.size} file(s)" }
         return result
     }
@@ -454,7 +456,7 @@ class PikPakTorrentDownloader(
         parentCoroutineContext: CoroutineContext,
         onHandleCountChanged: suspend () -> Unit,
         kept: Boolean,
-        onKept: suspend () -> Unit,
+        persistKept: suspend (kept: Boolean) -> Unit,
     ): PikPakFileEntry {
         return PikPakFileEntry(
             index = fileMeta.index,
@@ -477,15 +479,20 @@ class PikPakTorrentDownloader(
             },
             onHandleCountChanged = onHandleCountChanged,
             kept = kept,
-            onKept = onKept,
+            persistKept = persistKept,
         )
     }
 
-    private suspend fun markKept(resumeData: PikPakResumeData, pathInTorrent: String) = withContext(Dispatchers.IO_) {
-        val meta = resumeData.read() ?: return@withContext
-        if (pathInTorrent in meta.kept) return@withContext
-        resumeData.write(meta.copy(kept = meta.kept + pathInTorrent))
-    }
+    private suspend fun persistKept(resumeData: PikPakResumeData, pathInTorrent: String, kept: Boolean) =
+        withContext(Dispatchers.IO_) {
+            resumeData.update { meta ->
+                when {
+                    meta == null || (pathInTorrent in meta.kept) == kept -> null
+                    kept -> meta.copy(kept = meta.kept + pathInTorrent)
+                    else -> meta.copy(kept = meta.kept - pathInTorrent)
+                }
+            }
+        }
 
     internal var magnetResolver: suspend (uri: String) -> MagnetResource? = { uri ->
         val client = client()
@@ -694,17 +701,20 @@ internal class PikPakAccount(
         budgetLeases()
     }
 
-    // When each file was last reported short of space: playback, its fallback and a cache download's
-    // retries all prepare the same file, and the user is told once.
+    // Reported once until a file is leased again: playback, its fallback and every retry of a cache
+    // download are refused again, and one notice is enough to send the user to free up space.
     private val shortOfSpaceLock = SynchronizedObject()
-    private val shortOfSpaceReported = HashMap<String, TimeSource.Monotonic.ValueTimeMark>()
+    private var shortOfSpaceReported = false
+
+    /** A lease went through, so the next shortage is news again; see [requireRoomFor]. */
+    fun onLeased() = synchronized(shortOfSpaceLock) { shortOfSpaceReported = false }
 
     /**
      * Throws [PikPakNotEnoughSpaceException] when a lease of [size] bytes cannot fit. The figure read
      * at sign-in is compared first; a file that does not fit it is compared once more against a
      * fresh one, since the user may have made room since.
      */
-    suspend fun requireRoomFor(gcid: String, fileName: String, size: Long) {
+    suspend fun requireRoomFor(fileName: String, size: Long) {
         val known = freeBytes ?: return
         if (size <= known) return
         val free = try {
@@ -717,12 +727,8 @@ internal class PikPakAccount(
         }
         if (size <= free) return
         val failure = PikPakNotEnoughSpaceException(fileName, size, free)
-        val now = TimeSource.Monotonic.markNow()
         val report = synchronized(shortOfSpaceLock) {
-            val last = shortOfSpaceReported[gcid]
-            (last == null || last.elapsedNow() > SHORT_OF_SPACE_REPORT_INTERVAL).also {
-                if (it) shortOfSpaceReported[gcid] = now
-            }
+            !shortOfSpaceReported.also { shortOfSpaceReported = true }
         }
         if (report) onNotEnoughSpace(failure)
         throw failure
@@ -800,9 +806,5 @@ internal class PikPakAccount(
 
         // The SDK's own refresh margin: a link this close to expiry is not handed out again.
         val LINK_MARGIN = 5.minutes
-
-        // Longer than a cache download's retry, short enough that trying the file again later
-        // explains itself again.
-        val SHORT_OF_SPACE_REPORT_INTERVAL = 10.minutes
     }
 }
