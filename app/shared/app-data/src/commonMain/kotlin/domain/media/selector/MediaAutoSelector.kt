@@ -150,6 +150,8 @@ internal class MediaAutoSelector(private val mediaSelector: MediaSelector) {
 
         // A ready cache wins immediately, even over a completed remembered WEB source.
         if (config.selectCache) {
+            // Caches of the whole subject are candidates until the episode is known, so wait for it.
+            if (!snapshot.context.hasEpisode) return Decision.Wait
             (preferred.firstOrNull { it.result.kind == MediaSourceKind.LocalCache }
                 ?: candidates.firstOrNull { it.result.kind == MediaSourceKind.LocalCache })?.let {
                 return Decision.Select(it.result, "local cache")

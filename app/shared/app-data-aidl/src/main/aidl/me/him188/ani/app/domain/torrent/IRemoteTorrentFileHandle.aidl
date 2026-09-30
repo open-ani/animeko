@@ -11,6 +11,8 @@ interface IRemoteTorrentFileHandle {
     void resume(int priorityEnum);
     
     void pause();
+    /** 预缓存文件内 [start, endInclusive] 字节范围. start < 0 表示取消. */
+    void setPrefetchRange(long start, long endInclusive);
     
     void close();
     

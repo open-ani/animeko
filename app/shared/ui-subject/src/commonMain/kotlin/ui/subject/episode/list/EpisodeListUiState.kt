@@ -12,6 +12,7 @@ package me.him188.ani.app.ui.subject.episode.list
 import androidx.compose.runtime.Immutable
 import me.him188.ani.app.data.models.subject.SubjectCollectionInfo
 import me.him188.ani.app.data.models.subject.SubjectRecurrence
+import me.him188.ani.app.data.models.subject.nameOrNameCn
 import me.him188.ani.app.domain.episode.EpisodeCompletionContext
 import me.him188.ani.app.domain.episode.EpisodeCompletionContext.mapAirDate
 import me.him188.ani.datasources.api.EpisodeSort
@@ -27,16 +28,23 @@ data class EpisodeListUiState(
     val mainEpisodes: List<EpisodeListItem>,
     val otherEpisodes: List<EpisodeListItem>,
     val isPlaceholder: Boolean = false,
+    /** 条目原名, 供 "显示原名" 设置开启时使用; 默认与 [subjectTitle] 相同. */
+    val subjectOriginalTitle: String = subjectTitle,
 ) {
     companion object {
+        /**
+         * @param playProgress 按剧集 id 索引的上次播放进度, 见 [EpisodeListItem.playProgress].
+         */
         fun from(
             collection: SubjectCollectionInfo,
             currentTime: Instant,
+            playProgress: Map<Int, Float> = emptyMap(),
         ): EpisodeListUiState {
             val (mainEpisodes, otherEpisodes) = collection.episodes.map { episode ->
                 EpisodeListItem.from(
                     episode,
                     isBroadcast = isEpisodeBroadcast(collection.recurrence, episode.episodeInfo.airDate, currentTime),
+                    playProgress = playProgress[episode.episodeId],
                 )
             }.partition {
                 it.sort is EpisodeSort.Normal
@@ -46,6 +54,7 @@ data class EpisodeListUiState(
                 subjectTitle = collection.subjectInfo.displayName,
                 mainEpisodes = mainEpisodes.sortedBy { it.sort },
                 otherEpisodes = otherEpisodes.sortedBy { it.sort },
+                subjectOriginalTitle = collection.subjectInfo.nameOrNameCn,
             )
         }
 
@@ -88,7 +97,7 @@ val TestEpisodeListUiStateVeryLong
         subjectTitle = "测试标题",
         mainEpisodes = buildList {
             repeat(100) {
-                add(createTestEpisodeListItem(EpisodeSort(it + 1)))
+                add(createTestEpisodeListItem(EpisodeSort(it + 1), imageMedium = testEpisodeStillUrlOrNull(it)))
             }
         },
         otherEpisodes = TestEpisodeListItems.take(2)
@@ -99,6 +108,10 @@ val TestEpisodeListUiStateVeryLong
 val TestEpisodeListItems
     get() = buildList {
         repeat(12) {
-            add(createTestEpisodeListItem(EpisodeSort(it + 1)))
+            add(createTestEpisodeListItem(EpisodeSort(it + 1), imageMedium = testEpisodeStillUrlOrNull(it)))
         }
     }
+
+/** 每三集里两集带剧照, 让预览与测试同时覆盖有图和无图的单元格. */
+@TestOnly
+private fun testEpisodeStillUrlOrNull(index: Int): String? = if (index % 3 != 2) TestEpisodeStillUrl else null

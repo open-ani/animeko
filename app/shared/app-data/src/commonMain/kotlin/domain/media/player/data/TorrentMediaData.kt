@@ -46,6 +46,13 @@ class TorrentMediaData(
     override suspend fun createInput(coroutineContext: CoroutineContext): SeekableInput =
         entry.createInput(coroutineContext)
 
+    /**
+     * 请求提前下载文件内 [byteRange] 的数据, 见 [TorrentFileHandle.setPrefetchRange]. 传 `null` 取消.
+     */
+    fun setPrefetchByteRange(byteRange: LongRange?) {
+        handle.setPrefetchRange(byteRange)
+    }
+
     override fun close() {
         onClose()
     }

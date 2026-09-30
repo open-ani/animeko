@@ -223,7 +223,7 @@ class DefaultBangumiMergeRepositoryTest {
     // ─── summary ────────────────────────────────────────────────────────────
 
     @Test
-    fun `REPO-01 getSummary 映射数量, 时间与同步状态`() = runTest {
+    fun `REPO-01 getSummary 映射数量 时间与同步状态`() = runTest {
         val server = Server { json(summaryJson(conflictCount = 3, autoMergedTotal = 7, syncInProgress = true)) }
         val summary = repository(server).getSummary()
 
@@ -345,7 +345,7 @@ class DefaultBangumiMergeRepositoryTest {
     }
 
     @Test
-    fun `REPO-08 同一条目多个字段保持顺序, 键与服务端字段一致`() = runTest {
+    fun `REPO-08 同一条目多个字段保持顺序 键与服务端字段一致`() = runTest {
         val server = Server {
             json(
                 stateJson(
@@ -371,7 +371,7 @@ class DefaultBangumiMergeRepositoryTest {
     }
 
     @Test
-    fun `REPO-09 标题回退 - 中文名优先, 其次原名, 都没有用 #id`() = runTest {
+    fun `REPO-09 标题回退 - 中文名优先 其次原名 都没有则用带井号的 id`() = runTest {
         val server = Server {
             json(
                 stateJson(
@@ -389,7 +389,7 @@ class DefaultBangumiMergeRepositoryTest {
     }
 
     @Test
-    fun `REPO-10 不能展示的字段被丢弃, 只剩不能展示字段的条目整条丢弃`() = runTest {
+    fun `REPO-10 不能展示的字段被丢弃 只剩不能展示字段的条目整条丢弃`() = runTest {
         val server = Server {
             json(
                 stateJson(
@@ -444,7 +444,7 @@ class DefaultBangumiMergeRepositoryTest {
     }
 
     @Test
-    fun `REPO-12 自动合并明细映射 (新增收藏, 评分, 剧集进度)`() = runTest {
+    fun `REPO-12 自动合并明细映射 - 新增收藏 评分 剧集进度`() = runTest {
         val server = Server {
             json(
                 stateJson(

@@ -41,6 +41,10 @@ class RemoteTorrentFileHandle(
         remote.call { pause() }
     }
 
+    override fun setPrefetchRange(byteRange: LongRange?) {
+        remote.call { setPrefetchRange(byteRange?.first ?: -1L, byteRange?.last ?: -1L) }
+    }
+
     override suspend fun close() {
         withContext(Dispatchers.IO_) {
             remote.call { close() }

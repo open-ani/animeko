@@ -116,7 +116,7 @@ class SourceKeyForTest {
     }
 
     @Test
-    fun `fallback uses SHA-256, not 32-bit String_hashCode`() {
+    fun `fallback uses SHA-256 rather than 32-bit String_hashCode`() {
         // Sanity check that two URLs that happen to share a String.hashCode
         // don't collide in the slot namespace. SHA-256 is a cryptographic
         // hash, so any collision here would be a genuine miracle.

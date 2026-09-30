@@ -38,7 +38,8 @@ import me.him188.ani.datasources.api.source.MediaSource
 import me.him188.ani.datasources.api.source.MediaSourceInfo
 import me.him188.ani.datasources.api.source.MediaSourceKind
 import me.him188.ani.datasources.api.source.MediaSourceLocation
-import me.him188.ani.datasources.api.source.matches
+import me.him188.ani.datasources.api.source.matchesSubject
+import me.him188.ani.datasources.api.topic.EpisodeRange
 import me.him188.ani.datasources.api.topic.FileSize
 import me.him188.ani.datasources.api.topic.FileSize.Companion.bytes
 import me.him188.ani.datasources.api.topic.flowOfFileSizeZero
@@ -168,6 +169,9 @@ interface MediaSaveDirProvider {
 
 /**
  * 将 [MediaCacheStorage] 作为 [MediaSource], 这样可以被 [MediaFetcher] 搜索到以播放.
+ *
+ * 查询以条目为单位: 返回本条目的全部缓存记录, 每条记录的剧集范围收窄为该记录的那一集
+ * (一条记录只对应一个文件), 并以剧集 ID 区分同一合集资源的多条记录. 属于其他集的记录由 `MediaSelector` 排除.
  */
 class MediaCacheStorageSource(
     private val storage: MediaCacheStorage,
@@ -182,12 +186,23 @@ class MediaCacheStorageSource(
     override suspend fun fetch(query: MediaFetchRequest): SizedSource<MediaMatch> {
         return SinglePagePagedSource {
             storage.listFlow.first().mapNotNull { cache ->
-                val kind = query.matches(cache.metadata)
-                if (kind == null) null
-                else MediaMatch(cache.getCachedMedia(), kind)
+                val kind = query.matchesSubject(cache.metadata) ?: return@mapNotNull null
+                MediaMatch(cache.getCachedMedia().forRecord(cache.metadata), kind)
             }.asFlow()
         }
     }
+
+    private fun CachedMedia.forRecord(metadata: MediaCacheMetadata): CachedMedia = CachedMedia(
+        origin = origin,
+        cacheMediaSourceId = mediaSourceId,
+        download = download,
+        location = location,
+        kind = kind,
+        properties = properties,
+        cacheProperties = cacheProperties,
+        episodeRange = EpisodeRange.single(metadata.episodeSort),
+        cacheEpisodeId = metadata.episodeId,
+    )
 
     override val info: MediaSourceInfo = MediaSourceInfo(
         displayName,

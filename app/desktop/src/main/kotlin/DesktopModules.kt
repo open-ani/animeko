@@ -56,6 +56,7 @@ import me.him188.ani.app.platform.PermissionManager
 import me.him188.ani.app.platform.files
 import me.him188.ani.app.tools.update.DesktopUpdateInstaller
 import me.him188.ani.app.tools.update.UpdateInstaller
+import me.him188.ani.app.videoplayer.player.AniMpvMediampPlayerFactory
 import me.him188.ani.torrent.offline.OfflineDownloadEngine
 import me.him188.ani.torrent.pikpak.PikPakCredentials
 import me.him188.ani.torrent.pikpak.PikPakOfflineDownloadEngine
@@ -73,7 +74,6 @@ import org.koin.dsl.module
 import org.openani.mediamp.MediampPlayerFactory
 import org.openani.mediamp.MediampPlayerFactoryLoader
 import org.openani.mediamp.compose.MediampPlayerSurfaceProviderLoader
-import org.openani.mediamp.mpv.MpvMediampPlayerFactory
 import org.openani.mediamp.mpv.compose.MpvMediampPlayerSurfaceProvider
 import java.io.File
 import kotlin.io.path.Path
@@ -152,7 +152,7 @@ fun getDesktopModules(getContext: () -> DesktopContext, scope: CoroutineScope) =
     }
 
     single<MediampPlayerFactory<*>> {
-        MediampPlayerFactoryLoader.register(MpvMediampPlayerFactory())
+        MediampPlayerFactoryLoader.register(AniMpvMediampPlayerFactory())
         MediampPlayerSurfaceProviderLoader.register(MpvMediampPlayerSurfaceProvider())
         MediampPlayerFactoryLoader.first()
     }

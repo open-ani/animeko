@@ -28,6 +28,10 @@ import kotlin.test.assertEquals
 import kotlin.test.assertIs
 import kotlin.test.assertNotEquals
 
+/** 这些测试只关心广告过滤, 分片不经代理. */
+private suspend fun PlatformHlsPlaybackPreparer.prepare(data: UriMediaData): HlsPlaybackPreparerResult =
+    prepare(data, HlsPlaybackOptions(filterSegments = true))
+
 class PlatformHlsPlaybackPreparerTest {
     @Test
     fun `filters playlist and serves rewritten local manifest`() = runTest {

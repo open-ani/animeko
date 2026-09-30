@@ -77,6 +77,7 @@ open class TestMediaSelector(
 
     final override val filteredCandidatesMedia: Flow<List<Media>> =
         filteredCandidates.map { list -> list.mapNotNull { it.result } }
+    override val subjectCandidates: Flow<List<MaybeExcludedMedia>> get() = filteredCandidates
     final override val alliance: TestMediaPreferenceItem<String> = TestMediaPreferenceItem()
     final override val resolution: TestMediaPreferenceItem<String> = TestMediaPreferenceItem()
     final override val subtitleLanguageId: TestMediaPreferenceItem<String> = TestMediaPreferenceItem()
@@ -112,6 +113,8 @@ open class TestMediaSelector(
         this.selected.value = candidate
         return true
     }
+
+    override suspend fun selectTemporarily(candidate: Media): Boolean = select(candidate)
 
     override fun unselect() {
         this.selected.value = null

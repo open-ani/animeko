@@ -1,0 +1,41 @@
+# 验证用的截图和录屏不进仓库（见 AGENTS.md「UI Verification」）：git 历史会永久保留二进制文件，删文件、删分支都回收不了。
+# 这里只放行资源目录里新增的图片和视频。要在新位置放应用资源时，在同一个 PR 里扩充白名单。
+name: PR Images
+
+on:
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  check:
+    name: No committed screenshots
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 2
+
+      - name: Check added images and videos
+        run: |
+          set -euo pipefail
+          # pull_request 检出的是合并提交，它与第一父提交（目标分支）的差异就是 squash 合并后进入目标分支的内容。
+          added=$(git diff --name-only --no-renames --diff-filter=A HEAD^1 HEAD)
+          bad=0
+          while IFS= read -r f; do
+            lower=$(printf '%s' "$f" | tr '[:upper:]' '[:lower:]')
+            case "$lower" in
+              *.png|*.jpg|*.jpeg|*.gif|*.webp|*.mp4|*.mov|*.webm) ;;
+              *) continue ;;
+            esac
+            case "/$lower" in
+              # 源码集里的是应用资源和截图测试基准图，测试常以 issue 编号命名，不能被下面的规则误伤。
+              */src/*) continue ;;
+              */pr-screenshots/*|*evidence*|*/issue-[0-9]*|*/pr-[0-9]*) ;;
+              /app/*|/.readme/*|/docs/*|/fastlane/*|/.github/assets/*|/.idea/*) continue ;;
+            esac
+            echo "::error file=$f::验证截图和录屏不要提交进仓库，请上传为 GitHub attachment 后放进 PR 描述（见 AGENTS.md「UI Verification」）。如果这是应用资源，请放到资源目录，或在 .github/workflows/pr-images.yml 中扩充白名单。"
+            bad=1
+          done <<< "$added"
+          exit $bad

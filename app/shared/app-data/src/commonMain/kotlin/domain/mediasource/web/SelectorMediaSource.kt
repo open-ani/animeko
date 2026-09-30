@@ -34,6 +34,7 @@ import me.him188.ani.app.domain.mediasource.web.captcha.SolveOutcome
 import me.him188.ani.app.domain.mediasource.web.captcha.WebSessionManager
 import me.him188.ani.datasources.api.DefaultMedia
 import me.him188.ani.datasources.api.EpisodeSort
+import me.him188.ani.datasources.api.PackedDate
 import me.him188.ani.datasources.api.matcher.WebVideoMatcher
 import me.him188.ani.datasources.api.matcher.WebVideoMatcherContext
 import me.him188.ani.datasources.api.matcher.WebVideoMatcherProvider
@@ -41,6 +42,12 @@ import me.him188.ani.datasources.api.matcher.WebViewConfig
 import me.him188.ani.datasources.api.paging.SinglePagePagedSource
 import me.him188.ani.datasources.api.paging.SizedSource
 import me.him188.ani.datasources.api.paging.map
+import me.him188.ani.app.domain.mediasource.web.format.SelectedChannelEpisodes
+import me.him188.ani.datasources.api.Media
+import me.him188.ani.datasources.api.paging.emptySizedSource
+import me.him188.ani.datasources.api.source.BrowseChannel
+import me.him188.ani.datasources.api.source.BrowseEpisode
+import me.him188.ani.datasources.api.source.BrowseSubject
 import me.him188.ani.datasources.api.source.ConnectionStatus
 import me.him188.ani.datasources.api.source.FactoryId
 import me.him188.ani.datasources.api.source.HttpMediaSource
@@ -118,8 +125,6 @@ class SelectorMediaSource(
 ) : HttpMediaSource(), WebVideoMatcherProvider {
     companion object {
         val FactoryId = FactoryId("web-selector")
-
-        private val REGEX_OVA_TAILING = Regex(".+OVA\\s*\\d*$", RegexOption.IGNORE_CASE)
 
         /**
          * 按 cookie 名称合并多组 cookies: 后面列表中的同名 cookie 覆盖前面的, 顺序为名称首次出现的顺序.
@@ -278,8 +283,8 @@ class SelectorMediaSource(
     /**
      * 尝试从 [repository] 缓存中构建搜索结果.
      *
-     * 仅当缓存的条目页面剧集列表中能找到 [query] 请求的剧集时才命中, 否则返回 `null` 走完整搜索
-     * (页面可能已更新, 例如刚开播的新集在缓存里还没有).
+     * 仅当缓存的条目页面剧集列表中能找到 [SelectorSearchQuery.freshnessProbe] (请求里已上映的最新一集, 未知时为当前剧集)
+     * 时才命中, 否则返回 `null` 走完整搜索 (页面可能已更新, 例如刚开播的新集在缓存里还没有).
      */
     private suspend fun EngineType.searchFromCacheOrNull(
         searchConfig: SelectorSearchConfig,
@@ -297,10 +302,12 @@ class SelectorMediaSource(
             return null
         }
 
+        val probe = query.freshnessProbe
+            ?: SelectorEpisodeProbe(query.episodeSort, query.episodeEp, query.episodeName)
         return buildList {
             for (cache in caches) {
                 val episodes = cache.webEpisodeInfos
-                if (episodes.findMatchingEpisodeOrNull(query.episodeSort, query.episodeEp, query.episodeName) == null) {
+                if (episodes.findMatchingEpisodeOrNull(probe.episodeSort, probe.episodeEp, probe.episodeName) == null) {
                     continue
                 }
                 addAll(
@@ -310,7 +317,7 @@ class SelectorMediaSource(
                         query,
                         mediaSourceId,
                         subjectName = cache.webSubjectInfo.name,
-                    ).filteredList,
+                    ).originalList,
                 )
             }
         }.takeIf(List<DefaultMedia>::isNotEmpty)
@@ -351,21 +358,18 @@ class SelectorMediaSource(
 
         delayUntilNextAllowedSearch()
 
-        val searchUrl = searchConfig.searchUrl.replace(
-            "{keyword}",
-            MediaSourceEngineHelpers.encodeUrlSegment(
-                MediaSourceEngineHelpers.getSearchKeyword(
-                    query.subjectName,
-                    searchConfig.searchRemoveSpecial,
-                    searchConfig.searchUseOnlyFirstWord,
-                ),
+        val searchUrl = buildSearchUrl(
+            MediaSourceEngineHelpers.getSearchKeyword(
+                query.subjectName,
+                searchConfig.autoMatch.searchRemoveSpecial,
+                searchConfig.autoMatch.searchUseOnlyFirstWord,
             ),
         )
 
         val originalSubjects = fetchPageOrThrow(searchUrl, PageExpectation.SearchResults(searchConfig))
             ?: return@withContext emptyList()
 
-        val subjects = originalSubjects.let { originalList ->
+        val subjects = searchConfig.orderSubjectsForAutoMatch(originalSubjects).let { originalList ->
             val filters = searchConfig.createFiltersForSubject()
             with(query.toFilterContext()) {
                 originalList.filter {
@@ -401,29 +405,35 @@ class SelectorMediaSource(
                         query,
                         mediaSourceId,
                         subjectName = subjectInfo.name,
-                    ).filteredList,
+                    ).originalList,
                 )
             }
         }
     }
 
     override suspend fun fetch(query: MediaFetchRequest): SizedSource<MediaMatch> {
+        if (!searchConfig.autoMatch.enabled) {
+            // 只用于浏览手动选集的数据源, 不参与自动匹配
+            return emptySizedSource()
+        }
         val allSubjectNames = query.subjectNames.toSet()
+        val freshnessProbe = query.latestAiredEpisode()?.let {
+            SelectorEpisodeProbe(episodeSort = it.sort, episodeEp = it.ep, episodeName = it.name)
+        }
 
         return query.subjectNames
-            .take(searchConfig.searchUseSubjectNamesCount.coerceAtLeast(1))
+            .take(searchConfig.autoMatch.searchUseSubjectNamesCount.coerceAtLeast(1))
             .map { name ->
                 SinglePagePagedSource {
                     engine.search(
                         searchConfig,
                         SelectorSearchQuery(
                             subjectName = name,
-                            // Web 源的 OVA 通常和正篇在一个页面, 修改请求 epSort 为 OVA 可以搜高 OVA 条目.
-                            episodeSort = if (name.matches(REGEX_OVA_TAILING)) EpisodeSort("OVA") else
-                                query.episodeSort,
+                            episodeSort = query.episodeSort,
                             allSubjectNames = allSubjectNames,
                             episodeEp = query.episodeEp,
                             episodeName = query.episodeName,
+                            freshnessProbe = freshnessProbe,
                         ),
                         mediaSourceId,
                         query.subjectId.toIntOrNull(),
@@ -433,6 +443,56 @@ class SelectorMediaSource(
                 }
             }.flattenConcat(searchConfig.requestInterval)
     }
+
+    /**
+     * 请求中已上映的最新一集正片. 剧集上映日期全部未知时为 `null`.
+     */
+    private fun MediaFetchRequest.latestAiredEpisode(): MediaFetchRequest.Episode? {
+        val today = PackedDate.now()
+        return episodes.asSequence()
+            .filter { it.sort is EpisodeSort.Normal && it.airDate.isValid && it.airDate <= today }
+            .maxByOrNull { it.sort }
+    }
+
+    // region 浏览: 列表模式, 不做任何自动匹配
+
+    override val supportsBrowsing: Boolean get() = true
+
+    private fun buildSearchUrl(keyword: String): String =
+        searchConfig.searchUrl.replace("{keyword}", MediaSourceEngineHelpers.encodeUrlSegment(keyword))
+
+    override suspend fun searchSubjects(keyword: String): List<BrowseSubject> {
+        delayUntilNextAllowedSearch()
+        val subjects = fetchPageOrThrow(buildSearchUrl(keyword), PageExpectation.SearchResults(searchConfig))
+            ?: return emptyList()
+        return subjects.map { BrowseSubject(name = it.name, url = it.fullUrl) }
+    }
+
+    override suspend fun browseSubject(subject: BrowseSubject): List<BrowseChannel> {
+        val selected = fetchPageOrThrow(subject.url, PageExpectation.SubjectDetails(searchConfig, subject.url))
+            ?: return emptyList()
+        return selected.toBrowseChannels()
+    }
+
+    override fun createMedia(
+        subject: BrowseSubject,
+        channelName: String?,
+        episode: BrowseEpisode,
+        episodeSort: EpisodeSort?,
+    ): Media = engine.createMedia(
+        WebSearchEpisodeInfo(
+            channel = channelName,
+            name = episode.name,
+            episodeSortOrEp = episode.episodeSort,
+            playUrl = episode.url,
+        ),
+        episodeSort,
+        searchConfig,
+        mediaSourceId,
+        subjectName = subject.name,
+    )
+
+    // endregion
 
     override val matcher: WebVideoMatcher by lazy {
         object : WebVideoMatcher {
@@ -487,5 +547,26 @@ private fun <T> Iterable<SizedSource<T>>.flattenConcat(delayInBetween: Duration)
             @Suppress("UNCHECKED_CAST")
             (values as Array<Int>).sum()
         }
+    }
+}
+
+/**
+ * 按页面上的播放列表分组, 顺序与页面一致; 没有分组信息时按线路名分组. 没有线路概念的页面得到一个名称为 `null` 的线路.
+ * 没有剧集的线路不列出.
+ */
+internal fun SelectedChannelEpisodes.toBrowseChannels(): List<BrowseChannel> {
+    fun List<WebSearchEpisodeInfo>.toBrowseEpisodes() =
+        map { BrowseEpisode(name = it.name, url = it.playUrl, episodeSort = it.episodeSortOrEp) }
+
+    channelGroups?.let { groups ->
+        return groups.filter { it.episodes.isNotEmpty() }
+            .map { BrowseChannel(name = it.name, label = it.label, episodes = it.episodes.toBrowseEpisodes()) }
+    }
+    if (episodes.isEmpty()) return emptyList()
+    if (channels == null) {
+        return listOf(BrowseChannel(name = null, label = null, episodes = episodes.toBrowseEpisodes()))
+    }
+    return episodes.groupBy { it.channel }.map { (channel, episodes) ->
+        BrowseChannel(name = channel, label = channel, episodes = episodes.toBrowseEpisodes())
     }
 }

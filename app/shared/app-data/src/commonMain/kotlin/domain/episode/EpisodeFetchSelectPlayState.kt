@@ -27,6 +27,7 @@ import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.flow.filterNotNull
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.flatMapLatest
+import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.getAndUpdate
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.job
@@ -37,6 +38,8 @@ import kotlinx.coroutines.withContext
 import me.him188.ani.app.data.repository.media.SelectorMediaSourceEpisodeCacheRepository
 import me.him188.ani.app.domain.foundation.LoadError
 import me.him188.ani.app.domain.media.fetch.MediaFetchSession
+import me.him188.ani.app.domain.media.fetch.MediaSourceManager
+import me.him188.ani.app.domain.media.fetch.createFetchFetchSession
 import me.him188.ani.app.domain.media.resolver.toEpisodeMetadata
 import me.him188.ani.app.domain.media.selector.MediaSelector
 import me.him188.ani.app.domain.player.ExtensionException
@@ -92,6 +95,14 @@ class EpisodeFetchSelectPlayState(
     }
 
     private val selectorCacheRepo by koin.inject<SelectorMediaSourceEpisodeCacheRepository>()
+    private val mediaSourceManager by koin.inject<MediaSourceManager>()
+
+    /**
+     * 条目级查询会话, 各集共用: 切集只重建选择器, 不重新查询.
+     */
+    private val fetchSessions = SubjectMediaFetchSessions(backgroundScope) { request ->
+        mediaSourceManager.createFetchFetchSession(flowOf(request))
+    }
 
     private val _episodeSessionFlow = MutableStateFlow(
         newEpisodeSession(initialEpisodeId),
@@ -106,6 +117,7 @@ class EpisodeFetchSelectPlayState(
     val playerSession = PlayerSession(
         player,
         koin,
+        backgroundScope,
         mainDispatcher,
     )
 
@@ -202,6 +214,7 @@ class EpisodeFetchSelectPlayState(
         koin,
         backgroundScope.coroutineContext,
         sharingStarted,
+        fetchSessions,
     )
 
     private val uiReady = CompletableDeferred<Unit>()
@@ -232,6 +245,7 @@ class EpisodeFetchSelectPlayState(
     suspend fun onClose() {
         extensionManager.call { it.onClose() }
         playerSession.stopPlayback()
+        fetchSessions.close()
         // 未过期的缓存会保留, 短暂退出后重进播放页仍可复用; 这里只是顺手回收已过期的行.
         selectorCacheRepo.purgeExpired()
     }

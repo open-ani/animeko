@@ -43,6 +43,7 @@ import androidx.compose.ui.unit.dp
 import me.him188.ani.app.ui.download.components.DownloadItem
 import me.him188.ani.app.ui.download.components.DownloadRow
 import me.him188.ani.app.ui.download.components.DownloadSelectionState
+import me.him188.ani.app.ui.foundation.LocalSubjectAppearanceSettings
 import me.him188.ani.app.ui.foundation.theme.stronglyWeaken
 import me.him188.ani.app.ui.lang.Lang
 import me.him188.ani.app.ui.lang.cache_filter_collection_done
@@ -168,8 +169,10 @@ fun EpisodeDownloadRow(
         horizontalArrangement = Arrangement.spacedBy(8.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
+        val useOriginalTitle = LocalSubjectAppearanceSettings.current.useOriginalTitle
+        val title = if (useOriginalTitle) episode.originalTitle else episode.title
         Text(
-            text = stringResource(Lang.cache_management_episode_label, episode.sort, episode.title),
+            text = stringResource(Lang.cache_management_episode_label, episode.sort, title),
             modifier = Modifier.weight(1f),
             color = contentColorForWatchStatus(episode.watchStatus, episode.hasPublished),
             style = MaterialTheme.typography.bodyLarge,

@@ -1,0 +1,26 @@
+<resources>
+    <string name="settings_option_enabled">Enabled</string>
+    <string name="settings_option_disabled">Disabled</string>
+    <string name="settings_load_failed">Unable to load settings. Please try again.</string>
+    <string name="settings_save_failed">Unable to save settings. Please try again.</string>
+    <string name="settings_playback_speed_min">Minimum speed</string>
+    <string name="settings_playback_speed_max">Maximum speed</string>
+    <string name="settings_appearance_description">Language, content visibility and search</string>
+    <string name="settings_player_description">Playback, video quality and danmaku filters</string>
+    <string name="settings_player_group_playback">Playback behavior</string>
+    <string name="settings_player_group_picture">Picture and playback speed</string>
+    <string name="settings_player_group_danmaku">Danmaku and filters</string>
+    <string name="settings_player_group_playback_description">Next episode, opening and ending skips, and watch progress</string>
+    <string name="settings_player_group_picture_description">Video enhancement, previews, and playback speed</string>
+    <string name="settings_player_group_danmaku_description">Danmaku display, refresh rate, and filter rules</string>
+    <string name="settings_player_group_advanced_description">Experimental features and fullscreen behavior</string>
+    <string name="settings_priority_reorder">Reorder priorities</string>
+    <string name="settings_priority_reorder_done">Finish reordering</string>
+    <string name="settings_priority_selected_description">Select the options to use. Higher items are preferred.</string>
+    <string name="settings_priority_position">Priority %1$d</string>
+    <string name="settings_danmaku_rule_enabled">Enable this rule</string>
+    <string name="settings_danmaku_delete_rule_title">Delete this rule?</string>
+    <string name="settings_danmaku_delete_rule_description">This filter rule will be removed. This cannot be undone.</string>
+    <string name="settings_import">Import</string>
+    <string name="settings_search_visibility_description">Only affects search results.</string>
+</resources>

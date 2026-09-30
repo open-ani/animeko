@@ -41,7 +41,22 @@ abstract class BuildConfigPlatform @Inject constructor(private val platformName:
     }
 
     fun stringField(name: String, value: String?, isOverride: Boolean = true) {
-        addField(name, isOverride, if (value == null) "null" else "\"$value\"")
+        addField(name, isOverride, if (value == null) "null" else "\"${escapeKotlinString(value)}\"")
+    }
+
+    /** 转义成 Kotlin 字符串字面量内容. 分支名之类的外部输入可能含 `$` 或引号. */
+    private fun escapeKotlinString(value: String): String = buildString(value.length) {
+        for (c in value) {
+            when (c) {
+                '\\' -> append("\\\\")
+                '"' -> append("\\\"")
+                '$' -> append("\\$")
+                '\n' -> append("\\n")
+                '\r' -> append("\\r")
+                '\t' -> append("\\t")
+                else -> append(c)
+            }
+        }
     }
 
     fun booleanField(name: String, value: Boolean, isOverride: Boolean = true) {

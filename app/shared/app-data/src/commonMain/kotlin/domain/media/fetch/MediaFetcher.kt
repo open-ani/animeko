@@ -119,11 +119,14 @@ interface MediaFetcher {
 
 /**
  * 根据 [SubjectInfo] 和 [EpisodeInfo] 创建一个 [MediaFetchRequest].
- * @see createFlow
+ *
+ * @param episode 当前剧集, 仅作提示.
+ * @param episodes 条目的全部剧集, 按剧集顺序; 数据源用它做序号映射与缓存陈旧判定.
  */
 fun MediaFetchRequest.Companion.create(
     subject: SubjectInfo,
     episode: EpisodeInfo,
+    episodes: List<EpisodeInfo> = emptyList(),
 ): MediaFetchRequest {
     return MediaFetchRequest(
         subjectId = subject.subjectId.toString(),
@@ -133,6 +136,15 @@ fun MediaFetchRequest.Companion.create(
         episodeSort = episode.sort,
         episodeName = episode.displayName,
         episodeEp = episode.ep,
+        episodes = episodes.map {
+            MediaFetchRequest.Episode(
+                episodeId = it.episodeId.toString(),
+                sort = it.sort,
+                ep = it.ep,
+                name = it.displayName,
+                airDate = it.airDate,
+            )
+        },
     )
 }
 
@@ -415,10 +427,11 @@ class MediaSourceMediaFetcher(
 
         private val overrideFetchRequest = MutableStateFlow<MediaFetchRequest?>(null)
 
-        override val request: Flow<MediaFetchRequest> =
+        override val latestRequest: Flow<MediaFetchRequest> =
             combine(initialFetchRequest, overrideFetchRequest) { initial, override ->
                 override ?: initial
-            }.take(1) // 否则会一直显示加载
+            }
+        override val request: Flow<MediaFetchRequest> = latestRequest.take(1) // 否则会一直显示加载
 
         override val mediaSourceResults: List<MediaSourceFetchResult> = mediaSources
             .filter {
@@ -544,4 +557,14 @@ private sealed interface FetchUpdate {
     data class Completed(val state: MediaSourceFetchState.Completed) : FetchUpdate {
         override val generation: Int get() = state.id
     }
+}
+
+/**
+ * 用户在查询请求编辑器里改了当前集的集数时, 选择器按改后的集数匹配 (站点集数与 Bangumi 对不上时的修正手段).
+ * 请求里的集数只对请求指向的那一集生效 (查询会话按条目共用).
+ */
+internal fun EpisodeInfo.withRequestedNumbers(request: MediaFetchRequest): EpisodeInfo {
+    if (request.episodeId != episodeId.toString()) return this
+    if (request.episodeSort == sort && request.episodeEp == ep) return this
+    return copy(sort = request.episodeSort, ep = request.episodeEp)
 }

@@ -27,9 +27,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.InternalComposeUiApi
-import androidx.compose.ui.LocalSystemTheme
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.SystemTheme
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.DpSize
 import androidx.compose.ui.unit.dp
@@ -96,15 +94,20 @@ import me.him188.ani.app.torrent.anitorrent.AnitorrentLibraryLoader
 import me.him188.ani.app.ui.foundation.LocalPlatform
 import me.him188.ani.app.ui.foundation.LocalWindowState
 import me.him188.ani.app.ui.foundation.WindowDropHost
+import me.him188.ani.app.ui.foundation.input.ProvideTouchViewConfiguration
 import me.him188.ani.app.ui.foundation.effects.OverrideCaptionButtonAppearance
 import me.him188.ani.app.ui.foundation.ifThen
 import me.him188.ani.app.ui.foundation.layout.LocalPlatformWindow
 import me.him188.ani.app.ui.foundation.layout.LocalSecondaryWindowFrame
 import me.him188.ani.app.ui.foundation.layout.isSystemInFullscreen
 import me.him188.ani.app.ui.foundation.navigation.LocalOnBackPressedDispatcherOwner
+import me.him188.ani.app.ui.foundation.navigation.OnBackPressedDispatcher
 import me.him188.ani.app.ui.foundation.navigation.SkikoOnBackPressedDispatcherOwner
+import me.him188.ani.app.ui.foundation.navigation.BackKeyEventHandler
 import me.him188.ani.app.ui.foundation.theme.AniThemeDefaults
+import me.him188.ani.app.ui.foundation.theme.LocalSystemDarkThemeOverride
 import me.him188.ani.app.ui.foundation.theme.LocalThemeSettings
+import me.him188.ani.app.ui.foundation.theme.isSystemInDarkThemeDetected
 import me.him188.ani.app.ui.foundation.widgets.LocalToaster
 import me.him188.ani.app.ui.foundation.widgets.Toast
 import me.him188.ani.app.ui.foundation.widgets.ToastViewModel
@@ -518,6 +521,11 @@ object AniDesktop {
                 onExit = exitApplicationSavingWindowState,
             )
 
+            // 没有任何启用的 BackHandler 时, 返回等价于退出当前页面
+            val backPressedDispatcher = remember(navigator) {
+                OnBackPressedDispatcher(fallback = { navigator.popBackStack() })
+            }
+            val backKeyEventHandler = remember { BackKeyEventHandler() }
             Window(
                 visible = !trayState.isWindowHiddenToTray,
                 onCloseRequest = {
@@ -530,12 +538,16 @@ object AniDesktop {
                 title = "Ani",
                 icon = appIcon,
                 alwaysOnTop = alwaysOnTopState.value,
+                // 只在没有任何节点消费按键时才会走到这里 (通常是没有焦点, 例如侧边栏关闭后清除了焦点).
+                // 不接管的话, Compose Desktop 会把这个 Escape 直接交给 Navigation 3 出栈,
+                // 绕过播放页全屏等 BackHandler, 表现为「全屏按 ESC 返回了上一页」.
+                onKeyEvent = { event -> backKeyEventHandler.onKeyEvent(event, backPressedDispatcher::onBackPressed) },
             ) {
                 // In dev mode this enables hot reload,
                 // In release mode this just executes the content
                 val lifecycleOwner = LocalLifecycleOwner.current
-                val backPressedDispatcherOwner = remember {
-                    SkikoOnBackPressedDispatcherOwner(navigator, lifecycleOwner)
+                val backPressedDispatcherOwner = remember(backPressedDispatcher, lifecycleOwner) {
+                    SkikoOnBackPressedDispatcherOwner(backPressedDispatcher, lifecycleOwner)
                 }
 
                 DisposableEffect(Unit) {
@@ -556,7 +568,7 @@ object AniDesktop {
                     }
                 }
 
-                val systemTheme by systemThemeDetector.current.collectAsStateWithLifecycle()
+                val systemIsDark by systemThemeDetector.isDark.collectAsStateWithLifecycle()
                 val platform = LocalPlatform.current
                 // We need layout hit test owner to do hit test on windows.
                 val layoutHitTestOwner = if (platform.isWindows()) {
@@ -578,20 +590,23 @@ object AniDesktop {
                         )
                     },
                     LocalOnBackPressedDispatcherOwner provides backPressedDispatcherOwner,
-                    @OptIn(InternalComposeUiApi::class)
-                    LocalSystemTheme provides systemTheme,
+                    LocalSystemDarkThemeOverride provides systemIsDark,
                     // 二级窗口 (图片查看器) 沿用主窗口的自定义外观
                     LocalSecondaryWindowFrame provides if (isRunningUnderWine()) {
                         null
                     } else {
                         { secondaryWindowState, onCloseRequest, content ->
                             HandleWindowsWindowProc()
-                            WindowFrame(secondaryWindowState, onCloseRequest, content)
+                            ProvideTouchViewConfiguration {
+                                WindowFrame(secondaryWindowState, onCloseRequest, content)
+                            }
                         }
                     },
                 ) {
                     if (isRunningUnderWine()) {
-                        MainWindowContent(navigator, settingsRepository)
+                        ProvideTouchViewConfiguration {
+                            MainWindowContent(navigator, settingsRepository)
+                        }
                     } else {
                         HandleWindowsWindowProc()
                         if (platform.isWindows()) {
@@ -615,7 +630,9 @@ object AniDesktop {
                                 )
                             },
                         ) {
-                            MainWindowContent(navigator, settingsRepository)
+                            ProvideTouchViewConfiguration {
+                                MainWindowContent(navigator, settingsRepository)
+                            }
                         }
                     }
                 }
@@ -669,12 +686,12 @@ private fun FrameWindowScope.MainWindowContent(
     AniApp {
         val themeSettings = LocalThemeSettings.current
         val titleBarThemeController = LocalTitleBarThemeController.current
-        val systemTheme = LocalSystemTheme.current
+        val systemIsDark = isSystemInDarkThemeDetected()
         val navContainerColor = AniThemeDefaults.navigationContainerColor
 
-        val isTitleBarDark = remember(themeSettings, systemTheme) {
+        val isTitleBarDark = remember(themeSettings, systemIsDark) {
             when (themeSettings.darkMode) {
-                DarkMode.AUTO -> systemTheme == SystemTheme.Dark
+                DarkMode.AUTO -> systemIsDark
                 DarkMode.LIGHT -> false
                 DarkMode.DARK -> true
             }
@@ -713,7 +730,8 @@ private fun FrameWindowScope.MainWindowContent(
                     LocalContextMenuRepresentation provides DesktopContextMenuRepresentation,
                 ) {
                     Box(Modifier.padding(all = paddingByWindowSize)) {
-                        // 主窗口级拖放: 各功能以 WindowDropHandler 接入, 按顺序第一个接管的生效
+                        // 主窗口级拖放: 各功能以 WindowDropHandler 接入, 按顺序第一个接管的生效.
+                        // 页面自己的处理者 (例如播放页拖入视频文件) 由页面通过 WindowDropHandlerEffect 注册, 优先于这里的
                         val installPackageOnDrop by remember(settingsRepository) {
                             settingsRepository.debugSettings.flow
                                 .map { it.enabled && it.installPackageOnDrop }

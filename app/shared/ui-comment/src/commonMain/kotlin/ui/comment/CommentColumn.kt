@@ -29,6 +29,9 @@ import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.LoadingIndicator
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.key
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -55,12 +58,21 @@ import me.him188.ani.app.ui.search.isLoadingNextPage
  */
 @Composable
 fun CommentOverlayCleanupEffect(state: CommentState, items: LazyPagingItems<UIComment>) {
-    LaunchedEffect(state, items) {
+    key(state) {
+        CommentOverlayCleanupEffect(items, state::clearStaleOverlays)
+    }
+}
+
+/** Allows MVI screens to dispatch refresh completion without receiving a mutable [CommentState]. */
+@Composable
+fun CommentOverlayCleanupEffect(items: LazyPagingItems<UIComment>, onRefreshCompleted: () -> Unit) {
+    val currentOnRefreshCompleted by rememberUpdatedState(onRefreshCompleted)
+    LaunchedEffect(items) {
         snapshotFlow { items.loadState.refresh }
             .distinctUntilChanged()
             .collect { refresh ->
                 if (refresh is LoadState.NotLoading) {
-                    state.clearStaleOverlays()
+                    currentOnRefreshCompleted()
                 }
             }
     }

@@ -10,12 +10,20 @@
 package me.him188.ani.app.ui.download.subject
 
 import me.him188.ani.app.data.models.episode.displayName
+import me.him188.ani.app.data.models.episode.nameOrNameCn
 import me.him188.ani.app.data.models.subject.SubjectCollectionInfo
 import me.him188.ani.app.domain.episode.EpisodeCompletionContext.isKnownCompleted
 import me.him188.ani.app.ui.download.components.DownloadItem
 
 internal fun SubjectCollectionInfo.downloadEpisodes(): List<EpisodeDownloadItem> = episodes.map {
-    EpisodeDownloadItem(it.episodeId, it.episodeInfo.sort, it.episodeInfo.displayName, it.collectionType, it.episodeInfo.isKnownCompleted(recurrence))
+    EpisodeDownloadItem(
+        it.episodeId,
+        it.episodeInfo.sort,
+        it.episodeInfo.displayName,
+        it.collectionType,
+        it.episodeInfo.isKnownCompleted(recurrence),
+        originalTitle = it.episodeInfo.nameOrNameCn,
+    )
 }
 
 /**

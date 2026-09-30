@@ -15,6 +15,8 @@ MediaSelector 主要包含以下四个阶段：
 4. **选择**：支持手动或自动方式来选中某个 [Media]：
     - 手动调用 `select` 方法。
     - 自动通过 `trySelectDefault`、`trySelectCached` 或 `trySelectFromMediaSources` 等方法完成。
+    - 临时选择 `selectTemporarily`：只更新本会话的选择，不写偏好。用于拖入的本地文件、
+      关掉「记住选择」时的手动查找点选，见[选源界面](media-selector-ui.md)。
 
    最终选定的资源会存入 `selected: StateFlow<Media>`，并通过 `events` Flow 广播变更。
 
@@ -70,9 +72,8 @@ MediaSelector 主要包含以下四个阶段：
 在整个[资源查询-选择-播放流程](../media-framework.md#资源查询-选择-播放流程)中，资源主要是在
 `MediaSelector` 环节过滤和排序。
 
-> 这里说“主要是”，是因为 `MediaSource` 自身可以进行一些过滤操作。但是这只会进行一些非常保守的过滤。
-> 而且让 `Source` 自己过滤的效果并不好，[#492](https://github.com/open-ani/animeko/issues/492)
-> 可能会将所有过滤算法移入 MediaSelector 阶段。
+> 这里说“主要是”，是因为 `MediaSource` 自身可以进行一些非常保守的过滤（例如按条目名）。
+> 数据源返回整个条目的资源，不按当前剧集裁剪；按剧集筛选是 `MediaSelector` 的第 0 条规则。
 
 > [!TIP]
 >
@@ -129,6 +130,17 @@ Sealed class [`MaybeExcludedMedia`][MaybeExcludedMedia] 表示一个可能被排
 
 参考代码中 [`MediaSelectorFilterSortAlgorithm.filterMediaList`][MediaSelectorFilterSortAlgorithm]。
 
+第 0 条规则是**当前剧集匹配**：`episodeRange` 包含当前剧集的 `sort` 或 `ep` 才保留，
+否则以 `MediaExclusionReason.EpisodeMismatch` 排除；`episodeRange` 为 `null`（无法解析集数）也视为不匹配。
+条目名以 OVA 结尾的条目额外接受 `OVA` 类型的特别篇。它先于本地缓存豁免，
+否则看第 2 话时会自动选中第 1 话的缓存。自动匹配页不展示这类排除；
+[BT 资源页](media-selector-ui.md#bt-资源页)把集数不符作为一种排除原因展示在已被排除的资源里，
+取消按集筛选后列表基于不含第 0 条规则的条目级候选，没有这一原因。
+
+`MediaSelector.subjectCandidates` 跳过第 0 条规则、保留其余规则与排序，
+提供整个条目的候选，供[批量下载](media-downloads.md#添加下载)按线路规划各集的资源，
+以及 BT 资源页取消按集筛选时展示。
+
 ## 排序阶段
 
 排序入口为 [`MediaSelectorFilterSortAlgorithm.sortMediaList`][MediaSelectorFilterSortAlgorithm]。
@@ -152,6 +164,9 @@ Sealed class [`MaybeExcludedMedia`][MaybeExcludedMedia] 表示一个可能被排
 只有有效阶级不超过阈值的资源才会被立即选择。
 
 ## Web 自动选择
+
+切集时，本地缓存检查之后、本节所有阶段之前，播放页先按[浏览记忆](media-selector-ui.md#浏览记忆)回放：
+命中即已完成选择，执行循环见到已有选择就不提交；未命中才进入下面的流程。回放与自动选择在同一协程里串行。
 
 播放自动选择和播放失败换源统一调用 `MediaAutoSelector.select`。
 `MediaSelectorAutoSelectUseCase` 只负责读取配置、subject 偏好及启用上次使用的源；

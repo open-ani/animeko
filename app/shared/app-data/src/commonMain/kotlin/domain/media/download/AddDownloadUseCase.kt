@@ -14,6 +14,7 @@ import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import me.him188.ani.app.data.models.episode.EpisodeInfo
+import me.him188.ani.app.data.models.episode.allNames
 import me.him188.ani.app.data.models.subject.SubjectInfo
 import me.him188.ani.app.domain.media.cache.MediaCache
 import me.him188.ani.app.domain.media.resolver.toEpisodeMetadata
@@ -73,6 +74,7 @@ class AddDownloadUseCaseImpl(
                         episodeSort = episode.sort,
                         episodeEp = episode.ep,
                         episodeName = episode.name,
+                        episodeNames = episode.allNames,
                         filename = media.originalTitle,
                         fileSize = cache.fileStats.first().totalSize.takeUnless { it.isUnspecified }?.inBytes,
                         fileHash = null,

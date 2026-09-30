@@ -225,6 +225,7 @@ class SubjectCollectionRepositoryInvalidateTest {
             val episodeCollectionRepository = EpisodeCollectionRepository(
                 subjectDao = database.subjectCollection(),
                 episodeCollectionDao = database.episodeCollection(),
+                pendingOpDao = database.episodeCollectionPendingOpDao(),
                 episodeService = episodeService,
                 animeScheduleRepository = animeScheduleRepository,
                 subjectCollectionRepository = lazy { repository },
@@ -311,6 +312,8 @@ class SubjectCollectionRepositoryInvalidateTest {
             )
         },
         relations = AniSubjectRelations(subjectId.toLong(), emptyList(), emptyList(), emptyList(), emptyList()),
+        imageLarge = "",
+        imageThumb = "",
         collectionType = type,
         updatedAt = "2024-01-02T00:00:00Z",
     )

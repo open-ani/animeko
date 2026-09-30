@@ -49,7 +49,7 @@ class SlotEvictionPolicyTest {
     }
 
     @Test
-    fun `current bucket is never evicted even when it's the oldest`() {
+    fun `current bucket is never evicted even when it is the oldest`() {
         // Make current the oldest of all entries.
         val ancientCurrent = bucket("CURRENT", createdTime = "2020-01-01T00:00:00Z", id = "id-current")
         val entries = listOf(ancientCurrent, older1, older2)
@@ -85,7 +85,7 @@ class SlotEvictionPolicyTest {
     }
 
     @Test
-    fun `unknown current key falls through — nothing is 'protected', still honours queueLength`() {
+    fun `unknown current key falls through — nothing is protected and queueLength is still honoured`() {
         // User resolves a source whose bucket doesn't exist yet.
         val entries = listOf(older1, older2, older3)
         val evicted = pickEvictions(entries, currentSourceKey = "NEW-KEY-NOT-PRESENT", queueLength = 2)

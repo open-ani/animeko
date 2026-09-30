@@ -16,6 +16,8 @@ class SyncGuidanceEngineTest {
         positionAtMillis = 1_000L,
         durationMillis = 100_000L,
         paused = false,
+        buffering = false,
+        loading = false,
         playbackRate = 2.0f,
     )
     private val playback = AniWatchTogetherPlayback(info, 1_000L)

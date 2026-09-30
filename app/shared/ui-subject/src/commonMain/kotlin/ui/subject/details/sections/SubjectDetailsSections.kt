@@ -21,6 +21,7 @@ import androidx.compose.foundation.text.selection.SelectionContainer
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.rounded.KeyboardArrowRight
+import androidx.compose.material.icons.rounded.AccountTree
 import androidx.compose.material.icons.rounded.Download
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -48,6 +49,7 @@ import me.him188.ani.app.ui.lang.subject_details_air_date_format
 import me.him188.ani.app.ui.lang.subject_details_aliases
 import me.him188.ani.app.ui.lang.subject_details_info
 import me.him188.ani.app.ui.lang.subject_details_manage_cache
+import me.him188.ani.app.ui.lang.subject_relation_graph_entry
 import me.him188.ani.app.ui.lang.subject_details_show_less
 import me.him188.ani.app.ui.lang.subject_details_show_more
 import me.him188.ani.app.ui.lang.subject_details_total_episodes
@@ -106,6 +108,24 @@ fun SectionHeaderActionButton(
             contentDescription = null,
             Modifier.size(18.dp),
         )
+    }
+}
+
+/**
+ * 关联条目区块标题行的 "关系图" 入口, 打开条目所在系列的关系图.
+ */
+@Composable
+fun SectionHeaderRelationGraphButton(
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    TextButton(onClick, modifier) {
+        Icon(
+            Icons.Rounded.AccountTree,
+            contentDescription = null,
+            Modifier.size(18.dp),
+        )
+        Text(stringResource(Lang.subject_relation_graph_entry), Modifier.padding(start = 4.dp))
     }
 }
 

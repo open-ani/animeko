@@ -155,7 +155,7 @@ open class BangumiAniApi : ApiClient {
 
     /**
      * 获取 Bangumi 收藏合并摘要
-     * 待处理的冲突字段数与上次全量同步自动合并的差异数. 会先触发一次同步 (不等待): 首次绑定的冲突在同步结束后才可见, 客户端可据 &#x60;syncInProgress&#x60; / &#x60;lastSyncedAt&#x60; 轮询.
+     * 待处理的冲突字段数与上次全量同步自动合并的差异数. 会先触发一次同步 (不等待): 首次绑定的冲突在同步结束后才可见, 客户端可据 &#x60;syncInProgress&#x60; / &#x60;lastSyncedAt&#x60; 轮询. 首次绑定 (含换绑 / 解绑后重绑) 的对账完成之前不展示旧账号的冲突与报告: &#x60;conflictCount &#x3D; 0&#x60;, &#x60;lastSyncedAt &#x3D; null&#x60;.
      * @return AniBangumiMergeSummary
      */
     @Suppress("UNCHECKED_CAST")

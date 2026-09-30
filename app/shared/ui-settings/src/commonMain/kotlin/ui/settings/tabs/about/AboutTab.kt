@@ -26,6 +26,7 @@ import androidx.compose.material.icons.outlined.Code
 import androidx.compose.material.icons.outlined.Feedback
 import androidx.compose.material.icons.outlined.Forum
 import androidx.compose.material.icons.outlined.Home
+import androidx.compose.material.icons.outlined.Info
 import androidx.compose.material3.Icon
 import androidx.compose.material3.ListItem
 import androidx.compose.material3.ListItemDefaults
@@ -68,6 +69,7 @@ import me.him188.ani.app.ui.lang.acknowledgements
 import me.him188.ani.app.ui.lang.developer_list
 import me.him188.ani.app.ui.lang.settings_about_app_description
 import me.him188.ani.app.ui.lang.settings_about_app_name
+import me.him188.ani.app.ui.lang.settings_about_build_info
 import me.him188.ani.app.ui.lang.settings_about_chat_groups
 import me.him188.ani.app.ui.lang.settings_about_feedback
 import me.him188.ani.app.ui.lang.settings_about_icon_description
@@ -87,6 +89,7 @@ import org.jetbrains.compose.resources.stringResource
 data class AboutTabInfo(
     val version: String,
     val releaseClass: ReleaseClass = guessReleaseClass(version),
+    val buildInfo: BuildInfo = BuildInfo.current(),
 )
 
 @OptIn(DelicateCoroutinesApi::class, TestOnly::class)
@@ -94,6 +97,7 @@ data class AboutTabInfo(
 fun AboutTab(
     state: AboutTabInfo,
     onTriggerDebugMode: () -> Unit,
+    onClickBuildInfo: () -> Unit,
     onClickReleaseNotes: () -> Unit,
     onClickWebsite: () -> Unit,
     onClickFeedback: () -> Unit,
@@ -121,6 +125,21 @@ fun AboutTab(
             modifier = Modifier.clickable(onClick = onTriggerDebugMode, role = Role.Button),
             leadingContent = { ReleaseClassIcon(state.releaseClass) },
             supportingContent = { Text(state.version) },
+            colors = listItemColors,
+        )
+        ListItem(
+            headlineContent = { Text(stringResource(Lang.settings_about_build_info)) },
+            modifier = Modifier.clickable(onClick = onClickBuildInfo, role = Role.Button),
+            leadingContent = {
+                Icon(Icons.Outlined.Info, contentDescription = null)
+            },
+            supportingContent = {
+                // 分支 @ 短 sha, 不知道时不显示
+                val branch = state.buildInfo.gitBranch
+                val sha = state.buildInfo.gitCommitShortSha
+                val summary = listOf(branch, sha).filter { it.isNotBlank() }.joinToString(" @ ")
+                if (summary.isNotEmpty()) Text(summary)
+            },
             colors = listItemColors,
         )
         ListItem(
@@ -266,6 +285,7 @@ val TestAboutTabInfo
     get() = AboutTabInfo(
         version = "4.8.0-alpha02",
         releaseClass = ReleaseClass.ALPHA,
+        buildInfo = TestBuildInfo,
     )
 
 @OptIn(TestOnly::class)
@@ -275,7 +295,7 @@ private fun PreviewAboutTab() {
     ProvideCompositionLocalsForPreview {
         Surface(color = MaterialTheme.colorScheme.surfaceContainerLowest) {
             AboutTab(
-                TestAboutTabInfo, {}, {}, {}, {}, {}, {}, {},
+                TestAboutTabInfo, {}, {}, {}, {}, {}, {}, {}, {},
             )
         }
     }

@@ -9,21 +9,15 @@
 
 package me.him188.ani.app.ui.settings.tabs.theme
 
-import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.FlowRow
-import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
-import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.unit.dp
 import me.him188.ani.app.data.models.preference.ThemeSettings
 import me.him188.ani.app.ui.foundation.LocalPlatform
-import me.him188.ani.app.ui.foundation.theme.AniThemeDefaults
 import me.him188.ani.app.ui.foundation.theme.isPlatformSupportDynamicTheme
 import me.him188.ani.app.ui.lang.Lang
 import me.him188.ani.app.ui.lang.settings_theme_always_dark_episode
@@ -43,7 +37,6 @@ import me.him188.ani.app.ui.lang.settings_theme_title
 import me.him188.ani.app.ui.settings.framework.SettingsState
 import me.him188.ani.app.ui.settings.framework.components.SettingsScope
 import me.him188.ani.app.ui.settings.framework.components.SwitchItem
-import me.him188.ani.app.ui.theme.themeColorOptions
 import me.him188.ani.utils.platform.isMobile
 import org.jetbrains.compose.resources.stringResource
 
@@ -125,42 +118,12 @@ fun SettingsScope.ThemeGroup(
         modifier = Modifier.alpha(if (themeSettings.useDynamicTheme) 0.5f else 1f),
     ) {
         Group(title = { Text(stringResource(Lang.settings_theme_palette)) }) {
-            FlowRow(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.Center,
-            ) {
-                AniThemeDefaults.themeColorOptions.forEach { color ->
-                    ColorButton(
-                        color = color,
-                        themeSettings = themeSettings,
-                        state = state,
-                        modifier = Modifier.padding(4.dp),
-                    )
-                }
-            }
+            ThemePalette(
+                selectedColor = themeSettings.seedColor.takeUnless { themeSettings.useDynamicTheme },
+                onSelect = { color ->
+                    state.update(themeSettings.copy(seedColorValue = color.value, useDynamicTheme = false))
+                },
+            )
         }
     }
-}
-
-@Composable
-private fun ColorButton(
-    color: Color,
-    themeSettings: ThemeSettings,
-    state: SettingsState<ThemeSettings>,
-    modifier: Modifier = Modifier,
-) {
-    ColorButton(
-        modifier = modifier,
-        selected = color.value == themeSettings.seedColorValue && !themeSettings.useDynamicTheme,
-        onClick = {
-            state.update(
-                themeSettings.copy(
-                    seedColorValue = color.value,
-                    useDynamicTheme = false,
-                ),
-            )
-
-        },
-        baseColor = color,
-    )
 }

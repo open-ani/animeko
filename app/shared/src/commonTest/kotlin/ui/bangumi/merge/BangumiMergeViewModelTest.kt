@@ -408,7 +408,7 @@ class BangumiMergeViewModelTest {
     }
 
     @Test
-    fun `VM-13 服务端同步进行中 (409) 返回 SyncInProgress 且保留选择与状态`() = runTest {
+    fun `VM-13 服务端以 409 表示同步进行中时返回 SyncInProgress 且保留选择与状态`() = runTest {
         val repository = testRepository { throw BangumiMergeSyncInProgressException() }
         startTestKoin(repository)
         val vm = newViewModel()
@@ -527,7 +527,7 @@ class BangumiMergeViewModelTest {
     }
 
     @Test
-    fun `VM-18 服务端从未同步过 (lastSyncedAt 为 null) 视同同步中 - 不宣称已同步 不可应用 并轮询直到有同步时间`() = runTest {
+    fun `VM-18 服务端从未同步过即 lastSyncedAt 为 null 时视同同步中 - 不宣称已同步 不可应用 并轮询直到有同步时间`() = runTest {
         var synced = false
         val repository = FakeBangumiMergeRepository(
             {
@@ -577,7 +577,7 @@ class BangumiMergeViewModelTest {
     // region 作用域取消
 
     @Test
-    fun `VM-20 提交进行中离开界面 (作用域取消) 时提交与收尾仍完成`() = runTest {
+    fun `VM-20 提交进行中离开界面导致作用域取消时提交与收尾仍完成`() = runTest {
         val repository = testRepository()
         repository.resolveGate = CompletableDeferred()
         startTestKoin(repository)

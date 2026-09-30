@@ -28,6 +28,17 @@ import me.him188.ani.datasources.api.PackedDate
 import me.him188.ani.datasources.api.topic.UnifiedCollectionType
 
 
+/**
+ * 一个条目内剧集列表的顺序: 先按类型分组, 正片在前, 其他类型按 [EpisodeType] 的声明顺序, 与 [EpisodeSort.compareTo] 一致;
+ * 组内按序号. 类型不同的剧集序号互不相关, 例如 SP 的序号从 1 开始, 按序号混排会把 SP01 排到正片第 1 集后面.
+ */
+private const val EPISODE_LIST_ORDER = """
+    CASE episodeType
+        WHEN 'MainStory' THEN 0 WHEN 'SP' THEN 1 WHEN 'OP' THEN 2 WHEN 'ED' THEN 3
+        WHEN 'PV' THEN 4 WHEN 'MAD' THEN 5 WHEN 'OVA' THEN 6 WHEN 'OAD' THEN 7
+        ELSE 8
+    END, sortNumber ASC, sort ASC"""
+
 @Entity(
     tableName = "episode_collection",
     foreignKeys = [
@@ -68,6 +79,12 @@ data class EpisodeCollectionEntity(
     val sortNumber: Float, // see #1256
     val ep: EpisodeSort? = null,
 
+    /** TMDB 剧照 (宽 300px) 的公开直链, 见 [me.him188.ani.app.data.models.episode.EpisodeInfo.imageMedium]. */
+    val imageMedium: String? = null,
+
+    /** TMDB 原尺寸剧照的公开直链, 见 [me.him188.ani.app.data.models.episode.EpisodeInfo.imageLarge]. */
+    val imageLarge: String? = null,
+
     val selfCollectionType: UnifiedCollectionType,
 
     /**
@@ -95,7 +112,7 @@ interface EpisodeCollectionDao {
         SELECT * FROM episode_collection
         WHERE subjectId = :subjectId
         AND (episodeType = :episodeType)
-        ORDER BY sortNumber ASC, sort ASC
+        ORDER BY $EPISODE_LIST_ORDER
         """,
     )
     fun filterBySubjectId(
@@ -108,7 +125,7 @@ interface EpisodeCollectionDao {
         SELECT * FROM episode_collection
         WHERE subjectId = :subjectId
         AND (episodeType IN (:episodeTypes))
-        ORDER BY sortNumber ASC, sort ASC
+        ORDER BY $EPISODE_LIST_ORDER
         """,
     )
     fun filterBySubjectId(
@@ -120,7 +137,7 @@ interface EpisodeCollectionDao {
         """
         SELECT * FROM episode_collection
         WHERE subjectId = :subjectId
-        ORDER BY sortNumber ASC, sort ASC
+        ORDER BY $EPISODE_LIST_ORDER
         """,
     )
     fun filterBySubjectId(
@@ -131,7 +148,7 @@ interface EpisodeCollectionDao {
         """
         SELECT episodeId FROM episode_collection
         WHERE subjectId = :subjectId
-        ORDER BY sortNumber ASC, sort ASC
+        ORDER BY $EPISODE_LIST_ORDER
         """,
     )
     fun listIdBySubjectId(
@@ -142,17 +159,47 @@ interface EpisodeCollectionDao {
         """
         SELECT * FROM episode_collection
         WHERE subjectId = :subjectId 
-        ORDER BY sortNumber ASC, sort ASC""",
+        ORDER BY $EPISODE_LIST_ORDER""",
     )
     fun filterBySubjectIdPaging(subjectId: Int): PagingSource<Int, EpisodeCollectionEntity>
 
 
-    @Upsert
-    suspend fun upsert(item: EpisodeCollectionEntity)
+    @Query("SELECT * FROM episode_collection WHERE episodeId IN (:episodeIds)")
+    fun filterByEpisodeIds(episodeIds: Collection<Int>): Flow<List<EpisodeCollectionEntity>>
 
     @Upsert
+    suspend fun upsertEntities(item: EpisodeCollectionEntity)
+
+    @Upsert
+    suspend fun upsertEntities(items: List<EpisodeCollectionEntity>)
+
+    /**
+     * 把服务端返回的剧集写进本地. 用户本地改过但还没同步上去的看过状态 (见 [EpisodeCollectionPendingOpEntity])
+     * 会在写入后按待同步操作重新盖回去, 否则一次刷新就把离线时的标记冲掉了.
+     */
     @Transaction
-    suspend fun upsert(item: List<EpisodeCollectionEntity>)
+    suspend fun upsert(item: EpisodeCollectionEntity) {
+        upsertEntities(item)
+        reapplyPendingCollectionTypes()
+    }
+
+    @Transaction
+    suspend fun upsert(item: List<EpisodeCollectionEntity>) {
+        upsertEntities(item)
+        reapplyPendingCollectionTypes()
+    }
+
+    @Query(
+        """
+        UPDATE episode_collection SET selfCollectionType = (
+            SELECT p.collectionType FROM episode_collection_pending_op p
+            WHERE p.episodeId = episode_collection.episodeId
+            ORDER BY p.id DESC LIMIT 1
+        )
+        WHERE episodeId IN (SELECT episodeId FROM episode_collection_pending_op)
+        """,
+    )
+    suspend fun reapplyPendingCollectionTypes()
 
     @Query("""UPDATE episode_collection SET selfCollectionType = :type WHERE subjectId = :subjectId AND episodeId = :episodeId""")
     suspend fun updateSelfCollectionType(

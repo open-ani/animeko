@@ -94,4 +94,45 @@ class WindowDropHostStateTest {
         assertTrue(state.onDrop(files("ani.dmg"), listOf(installer)))
         assertEquals(1, installer.dropped.size)
     }
+
+    @Test
+    fun `a handler that took over without content yields to the one matching the dropped content`() {
+        // 拖动阶段读不到内容, 两个处理者都愿意接管: 先展示第一个的预览, 松手后按实际内容交给安装包处理者
+        val video = FakeHandler({ it == null || it is DragAndDropContent.FileList && it.files.any { f -> f.name.endsWith(".mp4") } })
+        val installer = FakeHandler({ it == null || it is DragAndDropContent.FileList && it.files.any { f -> f.name.endsWith(".dmg") } })
+        val state = WindowDropHostState()
+
+        state.onDragStarted(null, listOf(video, installer))
+        assertSame(video, assertIs<WindowDropSession.Accepted>(state.session).handler)
+
+        assertTrue(state.onDrop(files("ani.dmg"), listOf(video, installer)))
+        assertEquals(0, video.dropped.size)
+        assertEquals(1, installer.dropped.size)
+    }
+
+    @Test
+    fun `a handler that took over without content still receives content nobody matches`() {
+        // 由展示了预览的处理者提示内容不受支持
+        val installer = FakeHandler({ it == null }, handles = false)
+        val state = WindowDropHostState()
+
+        state.onDragStarted(null, listOf(installer))
+        assertIs<WindowDropSession.Accepted>(state.session)
+
+        assertFalse(state.onDrop(files("notes.txt"), listOf(installer)))
+        assertEquals(1, installer.dropped.size)
+    }
+
+    @Test
+    fun `a handler that took over by content keeps the session on drop`() {
+        // 已按实际内容接管的会话不会在松手时改交给其他处理者
+        val first = FakeHandler({ it is DragAndDropContent.FileList })
+        val state = WindowDropHostState()
+
+        state.onDragStarted(files("episode-01.mp4"), listOf(first))
+        val later = FakeHandler({ true })
+        assertTrue(state.onDrop(files("episode-01.mp4"), listOf(later, first)))
+        assertEquals(1, first.dropped.size)
+        assertEquals(0, later.dropped.size)
+    }
 }

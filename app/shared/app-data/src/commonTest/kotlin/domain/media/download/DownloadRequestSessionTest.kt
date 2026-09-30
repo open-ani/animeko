@@ -27,6 +27,7 @@ import kotlinx.coroutines.test.runCurrent
 import kotlinx.coroutines.test.runTest
 import me.him188.ani.app.domain.media.TestMediaList
 import me.him188.ani.datasources.api.EpisodeSort
+import me.him188.ani.datasources.api.PackedDate
 import me.him188.ani.datasources.api.topic.EpisodeRange
 import me.him188.ani.utils.platform.annotations.TestOnly
 
@@ -167,6 +168,9 @@ class DownloadRequestSessionTest {
         testScope.runCurrent()
         assertTrue(session.select(1, season))
         testScope.runCurrent()
+        // 合集覆盖其他集, 进入选集; 只确认本集时, 其余待处理的集因已有覆盖它们的合集而直接复用.
+        assertTrue(session.confirmEpisodes(emptySet()))
+        testScope.runCurrent()
 
         assertEquals(DownloadRequestState.Finished(), session.state.value)
         assertEquals(listOf(1, 2, 3), created.map { it.episodeId })
@@ -183,6 +187,8 @@ class DownloadRequestSessionTest {
         session.start()
         testScope.runCurrent()
         assertTrue(session.select(1, season))
+        testScope.runCurrent()
+        assertTrue(session.confirmEpisodes(emptySet()))
         testScope.runCurrent()
 
         assertEquals(DownloadRequestState.Finished(), session.state.value)
@@ -379,9 +385,308 @@ class DownloadRequestSessionTest {
         assertEquals(0, subjectLoads)
     }
 
+    ///////////////////////////////////////////////////////////////////////////
+    // 批量下载: 选源后选集
+    ///////////////////////////////////////////////////////////////////////////
+
+    /**
+     * 同一线路: 第 1、2 集的单集资源与一个 1..6 的合集.
+     */
+    private fun DownloadRequestFixture.useBatchMediaList() {
+        val single1 = requestTestMedia(1)
+        val single2 = requestTestMedia(2)
+        val pack = requestTestMedia(100, EpisodeRange.range(1, 6))
+        mediaListFor = { listOf(single1, single2, pack) }
+    }
+
+    @Test
+    fun `choosing a media whose line covers other episodes enters episode selection`() = withFixture {
+        useBatchMediaList()
+        val session = create(listOf(1))
+        val states = recordStates(session)
+        session.start()
+        testScope.runCurrent()
+        assertTrue(session.select(1, requestTestMedia(1)))
+        testScope.runCurrent()
+
+        val selecting = assertIs<DownloadRequestState.SelectingEpisodes>(session.state.value)
+        assertEquals(1, selecting.episodeId)
+        assertEquals(listOf(1), selecting.pendingEpisodeIds)
+        assertEquals(requestTestMedia(1), selecting.chosen)
+        assertEquals((1..6).toList(), selecting.options.map { it.episodeId })
+        assertEquals(listOf(true, false, false, false, false, false), selecting.options.map { it.isCurrent })
+        assertTrue(selecting.options.all { it.availability == DownloadEpisodeOption.Availability.AVAILABLE })
+        assertEquals(requestTestMedia(1).originalTitle, selecting.options[0].resourceTitle)
+        assertEquals(requestTestMedia(100).originalTitle, selecting.options[3].resourceTitle)
+        assertTrue(created.isEmpty())
+        assertTrue(savedPreferences.isEmpty())
+        assertEquals(
+            listOf("Preparing(1, [1])", "AwaitingSelection(1, [1])", "SelectingEpisodes(1, [1])"),
+            states.map { it.describe() },
+        )
+    }
+
+    @Test
+    fun `episode selection is skipped when the line only covers the current episode`() = withFixture {
+        val session = create(listOf(1))
+        session.start()
+        testScope.runCurrent()
+        assertTrue(session.select(1, media))
+        testScope.runCurrent()
+        assertEquals(DownloadRequestState.Finished(), session.state.value)
+        assertEquals(listOf(1), created.map { it.episodeId })
+    }
+
+    @Test
+    fun `current episode already downloaded is skipped without looping`() = withFixture {
+        useBatchMediaList()
+        storage.listFlow.value = listOf(requestTestCache(requestTestMedia(1), subjectId = subject.subjectId, episodeId = 1))
+        testScope.runCurrent()
+        val session = create(listOf(1, 2))
+        session.start()
+        testScope.runCurrent()
+        assertTrue(session.select(1, requestTestMedia(1)))
+        testScope.runCurrent()
+        val selecting = assertIs<DownloadRequestState.SelectingEpisodes>(session.state.value)
+        assertEquals(DownloadEpisodeOption.Availability.ALREADY_DOWNLOADED, selecting.options[0].availability)
+        assertTrue(session.confirmEpisodes(emptySet()))
+        testScope.runCurrent()
+
+        assertEquals(2, assertIs<DownloadRequestState.AwaitingSelection>(session.state.value).episodeId)
+        assertTrue(created.isEmpty())
+        assertEquals(listOf(1, 2), queried)
+    }
+
+    @Test
+    fun `cancel during batch creation keeps the finished state and completes the batch`() = withFixture {
+        useBatchMediaList()
+        createGate = CompletableDeferred()
+        val session = create(listOf(1))
+        session.start()
+        testScope.runCurrent()
+        assertTrue(session.select(1, requestTestMedia(1)))
+        testScope.runCurrent()
+        assertTrue(session.confirmEpisodes(setOf(2, 3)))
+        testScope.runCurrent()
+        assertIs<DownloadRequestState.Creating>(session.state.value)
+
+        session.cancel()
+        assertEquals(DownloadRequestState.Finished(), session.state.value)
+        createGate!!.complete(Unit)
+        testScope.runCurrent()
+        // 交给应用作用域的整批仍会完成, 且不把状态改回 Creating
+        assertEquals(DownloadRequestState.Finished(), session.state.value)
+        assertEquals(listOf(1, 2, 3), created.map { it.episodeId })
+    }
+
+    @Test
+    fun `candidates from another fansub or source are not on the line`() = withFixture {
+        val single1 = requestTestMedia(1)
+        val otherGroup = requestTestMedia(100, EpisodeRange.range(1, 6)).run { copy(properties = properties.copy(alliance = "其他组")) }
+        val otherSource = requestTestMedia(101, EpisodeRange.range(1, 6)).copy(mediaSourceId = "other-source")
+        mediaListFor = { listOf(single1, otherGroup, otherSource) }
+        val session = create(listOf(1))
+        session.start()
+        testScope.runCurrent()
+        assertTrue(session.select(1, single1))
+        testScope.runCurrent()
+        // 其他集只有别的字幕组、别的数据源的合集能覆盖: 不在线路上, 与单集下载相同, 不进入选集
+        assertEquals(DownloadRequestState.Finished(), session.state.value)
+        assertEquals(listOf(1), created.map { it.episodeId })
+    }
+
+    @Test
+    fun `unaired episodes are unmatched even when a season pack covers them`() = withFixture {
+        useBatchMediaList()
+        subject = requestTestSubject(episodeIds = 1..3).let { collection ->
+            collection.copy(
+                episodes = collection.episodes.map { ep ->
+                    if (ep.episodeInfo.episodeId == 3) ep.copy(episodeInfo = ep.episodeInfo.copy(airDate = PackedDate(2999, 1, 1))) else ep
+                },
+            )
+        }
+        val session = create(listOf(1))
+        session.start()
+        testScope.runCurrent()
+        assertTrue(session.select(1, requestTestMedia(1)))
+        testScope.runCurrent()
+        val options = assertIs<DownloadRequestState.SelectingEpisodes>(session.state.value).options
+        assertEquals(
+            listOf(
+                DownloadEpisodeOption.Availability.AVAILABLE,
+                DownloadEpisodeOption.Availability.AVAILABLE,
+                DownloadEpisodeOption.Availability.UNMATCHED,
+            ),
+            options.map { it.availability },
+        )
+        assertTrue(session.confirmEpisodes(setOf(2, 3)))
+        testScope.runCurrent()
+        assertEquals(listOf(1, 2), created.map { it.episodeId })
+    }
+
+    @Test
+    fun `already downloaded and uncovered episodes are reported in the options`() = withFixture {
+        val single1 = requestTestMedia(1)
+        val pack = requestTestMedia(100, EpisodeRange.range(1, 3))
+        mediaListFor = { listOf(single1, pack) }
+        storage.listFlow.value = listOf(requestTestCache(requestTestMedia(2), subjectId = subject.subjectId, episodeId = 2))
+        testScope.runCurrent()
+
+        val session = create(listOf(1))
+        session.start()
+        testScope.runCurrent()
+        assertTrue(session.select(1, single1))
+        testScope.runCurrent()
+
+        val options = assertIs<DownloadRequestState.SelectingEpisodes>(session.state.value).options
+        assertEquals(
+            listOf(
+                DownloadEpisodeOption.Availability.AVAILABLE,
+                DownloadEpisodeOption.Availability.ALREADY_DOWNLOADED,
+                DownloadEpisodeOption.Availability.AVAILABLE,
+                DownloadEpisodeOption.Availability.UNMATCHED,
+                DownloadEpisodeOption.Availability.UNMATCHED,
+                DownloadEpisodeOption.Availability.UNMATCHED,
+            ),
+            options.map { it.availability },
+        )
+        assertEquals(null, options[1].resourceTitle)
+        assertEquals(null, options[3].resourceTitle)
+    }
+
+    @Test
+    fun `confirming episodes creates the chosen media first then the pack for the rest`() = withFixture {
+        useBatchMediaList()
+        val session = create(listOf(1, 5))
+        val states = recordStates(session)
+        session.start()
+        testScope.runCurrent()
+        assertTrue(session.select(1, requestTestMedia(1)))
+        testScope.runCurrent()
+        assertTrue(session.confirmEpisodes(setOf(2, 3, 5)))
+        assertFalse(session.confirmEpisodes(setOf(2)))
+        testScope.runCurrent()
+
+        assertEquals(DownloadRequestState.Finished(), session.state.value)
+        assertEquals(listOf(1, 2, 3, 5), created.map { it.episodeId })
+        assertEquals(requestTestMedia(1), created[0].media)
+        assertTrue(created.drop(1).all { it.media == requestTestMedia(100, EpisodeRange.range(1, 6)) })
+        assertEquals(listOf(1), queried)
+        assertEquals(listOf(1), released)
+        assertEquals(1, savedPreferences.size)
+        assertEquals(
+            listOf(
+                "Preparing(1, [1, 5])", "AwaitingSelection(1, [1, 5])", "SelectingEpisodes(1, [1, 5])",
+                "Creating(1, [1, 2, 3, 5])", "Creating(2, [2, 3, 5])", "Creating(3, [3, 5])", "Creating(5, [5])",
+                "Finished(null)",
+            ),
+            states.map { it.describe() },
+        )
+    }
+
+    @Test
+    fun `confirming only the current episode creates just that one`() = withFixture {
+        useBatchMediaList()
+        val session = create(listOf(1, 2))
+        session.start()
+        testScope.runCurrent()
+        assertTrue(session.select(1, requestTestMedia(1)))
+        testScope.runCurrent()
+        assertTrue(session.confirmEpisodes(emptySet()))
+        testScope.runCurrent()
+
+        assertEquals(listOf(1), created.map { it.episodeId })
+        assertEquals(2, assertIs<DownloadRequestState.AwaitingSelection>(session.state.value).episodeId)
+        assertEquals(listOf(1, 2), queried)
+    }
+
+    @Test
+    fun `unavailable episodes in the confirmation are ignored`() = withFixture {
+        useBatchMediaList()
+        storage.listFlow.value = listOf(requestTestCache(requestTestMedia(3), subjectId = subject.subjectId, episodeId = 3))
+        testScope.runCurrent()
+        val session = create(listOf(1))
+        session.start()
+        testScope.runCurrent()
+        assertTrue(session.select(1, requestTestMedia(1)))
+        testScope.runCurrent()
+        assertTrue(session.confirmEpisodes(setOf(3, 4, 99)))
+        testScope.runCurrent()
+
+        assertEquals(DownloadRequestState.Finished(), session.state.value)
+        assertEquals(listOf(1, 4), created.map { it.episodeId })
+    }
+
+    @Test
+    fun `going back returns to media selection and keeps the query`() = withFixture {
+        useBatchMediaList()
+        val session = create(listOf(1))
+        session.start()
+        testScope.runCurrent()
+        val awaiting = assertIs<DownloadRequestState.AwaitingSelection>(session.state.value)
+        assertTrue(session.select(1, requestTestMedia(1)))
+        testScope.runCurrent()
+        assertIs<DownloadRequestState.SelectingEpisodes>(session.state.value)
+        assertFalse(session.select(1, requestTestMedia(2)))
+
+        assertTrue(session.backToSelection())
+        assertFalse(session.backToSelection())
+        testScope.runCurrent()
+        val again = assertIs<DownloadRequestState.AwaitingSelection>(session.state.value)
+        assertSame(awaiting.fetchSession, again.fetchSession)
+        assertSame(awaiting.selector, again.selector)
+        assertTrue(released.isEmpty())
+        assertTrue(savedPreferences.isEmpty())
+
+        assertTrue(session.select(1, requestTestMedia(100, EpisodeRange.range(1, 6))))
+        testScope.runCurrent()
+        val selecting = assertIs<DownloadRequestState.SelectingEpisodes>(session.state.value)
+        assertTrue(selecting.options.all { it.resourceTitle == requestTestMedia(100).originalTitle })
+        assertTrue(session.confirmEpisodes(setOf(2)))
+        testScope.runCurrent()
+        assertEquals(listOf(1, 2), created.map { it.episodeId })
+        assertTrue(created.all { it.media == requestTestMedia(100, EpisodeRange.range(1, 6)) })
+        assertEquals(1, savedPreferences.size)
+    }
+
+    @Test
+    fun `cancel during episode selection releases the query`() = withFixture {
+        useBatchMediaList()
+        val session = create(listOf(1))
+        session.start()
+        testScope.runCurrent()
+        assertTrue(session.select(1, requestTestMedia(1)))
+        testScope.runCurrent()
+        assertIs<DownloadRequestState.SelectingEpisodes>(session.state.value)
+
+        session.cancel()
+        assertEquals(DownloadRequestState.Finished(), session.state.value)
+        testScope.runCurrent()
+        assertEquals(listOf(1), released)
+        assertFalse(session.confirmEpisodes(setOf(2)))
+        assertTrue(created.isEmpty())
+    }
+
+    @Test
+    fun `episodes created in a batch are skipped by the pending list`() = withFixture {
+        useBatchMediaList()
+        val session = create(listOf(1, 2, 3))
+        session.start()
+        testScope.runCurrent()
+        assertTrue(session.select(1, requestTestMedia(1)))
+        testScope.runCurrent()
+        assertTrue(session.confirmEpisodes(setOf(2)))
+        testScope.runCurrent()
+
+        assertEquals(listOf(1, 2), created.map { it.episodeId })
+        assertEquals(3, assertIs<DownloadRequestState.AwaitingSelection>(session.state.value).episodeId)
+        assertEquals(listOf(1, 3), queried)
+    }
+
     private fun DownloadRequestState.describe(): String = when (this) {
         is DownloadRequestState.Preparing -> "Preparing($episodeId, $pendingEpisodeIds)"
         is DownloadRequestState.AwaitingSelection -> "AwaitingSelection($episodeId, $pendingEpisodeIds)"
+        is DownloadRequestState.SelectingEpisodes -> "SelectingEpisodes($episodeId, $pendingEpisodeIds)"
         is DownloadRequestState.Creating -> "Creating($episodeId, $pendingEpisodeIds)"
         is DownloadRequestState.Finished -> "Finished(${error?.message})"
     }

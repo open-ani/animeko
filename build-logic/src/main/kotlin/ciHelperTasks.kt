@@ -51,8 +51,24 @@ object ReleaseArtifactNames {
 
     fun fullVersionFromTag(tag: String): String = tag.removePrefix("v")
 
-    // alpha 只能又 6 个版本，beta 只能有 3 个版本
-    fun versionCodeFromTag(tag: String): String {
+    /**
+     * 从 release tag 计算 iOS 的 `CFBundleVersion` (build 号), 写入 gradle.properties 的 `ios.version.code`.
+     * 只有 iOS 用它; Android 的 `android.version.code` 是固定常量, 桌面端用 `package.version`.
+     *
+     * CFBundleVersion 允许 1 到 3 段点分隔的非负整数, 且按段数值比较, 所以直接用三段:
+     * `major.minor.(patch * 100 + meta)`.
+     * - `v6.1.0-alpha01` -> `6.1.1`
+     * - `v6.1.0-beta01`  -> `6.1.31`
+     * - `v6.1.0`         -> `6.1.99`
+     * - `v6.1.1-alpha01` -> `6.1.101`
+     * - `v6.1.1`         -> `6.1.199`
+     * - `v10.12.3`       -> `10.12.399`
+     *
+     * `meta`: alpha 取 1..29, beta 取 31..59, 正式版固定 99, 60..98 留给将来可能的 rc.
+     * 同一个 x.y.z 内 alpha < beta < 正式版, 整体严格随发布顺序递增.
+     * 每段都是不带前导零的普通整数 (iOS 会忽略前导零), 各段没有位数上限.
+     */
+    fun iosBundleVersionFromTag(tag: String): String {
         val match = Regex("""^v(\d+)\.(\d+)\.(\d+)(?:-(alpha|beta)(\d+))?$""").matchEntire(tag)
             ?: throw GradleException("Unsupported tag format: '$tag'")
 
@@ -62,44 +78,42 @@ object ReleaseArtifactNames {
         val channel = match.groupValues[4]
         val meta = match.groupValues[5].toIntOrNull()
 
-        require(major != null && major in 0..9) {
-            "Major version '$major' in tag '$tag' cannot be encoded into a single digit."
-        }
-        require(minor != null && minor in 0..99) {
-            "Minor version '$minor' in tag '$tag' cannot be encoded into two digits."
-        }
-        require(patch != null && patch in 0..9) {
-            "Patch version '$patch' in tag '$tag' cannot be encoded into a single digit."
-        }
+        // CFBundleVersion 要求第一段大于 0
+        require(major != null && major >= 1) { "Major version '$major' in tag '$tag' must be >= 1." }
+        require(minor != null) { "Invalid minor version in tag '$tag'." }
+        require(patch != null && patch <= MAX_PATCH) { "Patch version '$patch' in tag '$tag' must be in 0..$MAX_PATCH." }
 
-        val metaDigit = when (channel) {
-            "alpha" -> when (meta) {
-                1 -> 1
-                2 -> 2
-                3 -> 3
-                4 -> 3
-                5 -> 4
-                else -> 6
+        val metaCode = when (channel) {
+            "alpha" -> {
+                require(meta != null && meta in 1..MAX_PRERELEASE_NUMBER) {
+                    "Alpha number '$meta' in tag '$tag' must be in 1..$MAX_PRERELEASE_NUMBER."
+                }
+                ALPHA_META_OFFSET + meta
             }
 
-            "beta" -> when (meta) {
-                1 -> 7
-                2 -> 8
-                else -> 9
+            "beta" -> {
+                require(meta != null && meta in 1..MAX_PRERELEASE_NUMBER) {
+                    "Beta number '$meta' in tag '$tag' must be in 1..$MAX_PRERELEASE_NUMBER."
+                }
+                BETA_META_OFFSET + meta
             }
 
-            else -> 0
+            else -> STABLE_META_CODE
         }
 
-        return buildString(5) {
-            append(major)
-            append(minor.toString().padStart(2, '0'))
-            append(patch)
-            append(metaDigit)
-        }
+        return "$major.$minor.${patch * 100 + metaCode}"
     }
 
+    private const val MAX_PRERELEASE_NUMBER = 29
+    private const val ALPHA_META_OFFSET = 0 // alpha01..alpha29 -> 1..29
+    private const val BETA_META_OFFSET = 30 // beta01..beta29 -> 31..59
+    private const val STABLE_META_CODE = 99
+    private const val MAX_PATCH = 1_000_000 // patch * 100 + meta 必须能放进 Int, 留足余量
+
     fun androidApp(fullVersion: String, arch: String): String = "$appName-$fullVersion-$arch.apk"
+
+    // TV APK 独立命名, 避免与手机 arch 资产冲突
+    fun androidTvApp(fullVersion: String, arch: String): String = "$appName-tv-$fullVersion-$arch.apk"
 
     fun androidAppQr(fullVersion: String, arch: String, server: String): String =
         "${androidApp(fullVersion, arch)}.$server.qrcode.png"
@@ -359,9 +373,18 @@ abstract class UploadAndroidApksTask : ReleaseUploadTask() {
     @get:PathSensitive(PathSensitivity.RELATIVE)
     abstract val apkDirectory: DirectoryProperty
 
+    /** 产物 flavor: "default" (手机) 或 "tv"; 决定文件名解析前缀与发布资产命名. */
+    @get:Input
+    abstract val flavor: Property<String>
+
+    init {
+        flavor.convention("default")
+    }
+
     @TaskAction
     fun uploadApks() {
         val fullVersion = releaseFullVersion.get()
+        val flavorName = flavor.get()
         val apkFiles = apkDirectory.asFileTree.files
             .filter { it.isFile && it.extension == "apk" && it.name.contains("release") }
             .sortedBy { it.name }
@@ -372,13 +395,16 @@ abstract class UploadAndroidApksTask : ReleaseUploadTask() {
 
         apkFiles.forEach { file ->
             val arch = file.name
-                .removePrefix("android-default-")
+                .removePrefix("android-$flavorName-")
                 .removeSuffix("-release.apk")
                 .takeIf { it != file.name }
                 ?: throw GradleException("Cannot infer Android architecture from file name '${file.name}'")
 
             uploadReleaseAsset(
-                name = ReleaseArtifactNames.androidApp(fullVersion, arch),
+                name = when (flavorName) {
+                    "tv" -> ReleaseArtifactNames.androidTvApp(fullVersion, arch)
+                    else -> ReleaseArtifactNames.androidApp(fullVersion, arch)
+                },
                 contentType = "application/vnd.android.package-archive",
                 file = file,
             )

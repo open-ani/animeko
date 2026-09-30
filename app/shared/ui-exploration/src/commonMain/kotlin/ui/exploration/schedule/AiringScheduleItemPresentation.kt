@@ -19,6 +19,7 @@ import kotlinx.datetime.minus
 import kotlinx.datetime.plus
 import kotlinx.datetime.toLocalDateTime
 import me.him188.ani.app.data.models.subject.displayName
+import me.him188.ani.app.data.models.subject.nameOrNameCn
 import me.him188.ani.app.domain.episode.EpisodeWithAiringTime
 import me.him188.ani.app.domain.episode.GetAnimeScheduleFlowUseCase
 import me.him188.ani.datasources.api.EpisodeSort
@@ -30,11 +31,15 @@ import me.him188.ani.utils.platform.collections.ImmutableEnumMap
 data class AiringScheduleItemPresentation(
     val subjectId: Int,
     val subjectTitle: String,
+    /** 条目原名 (通常为日文), 供"显示原名"设置开启时使用; 关闭时忽略, 显示 [subjectTitle]. */
+    val subjectOriginalTitle: String = subjectTitle,
     val imageUrl: String,
     val episodeId: Int,
     val episodeSort: EpisodeSort,
     val episodeEp: EpisodeSort?,
     val episodeName: String?,
+    /** 剧集原名, 同 [subjectOriginalTitle] 的开关约定. */
+    val episodeOriginalName: String? = episodeName,
 
     val subjectCollectionType: UnifiedCollectionType,
     val dayOfWeek: DayOfWeek,
@@ -102,11 +107,13 @@ val TestAiringScheduleItemPresentations
                     AiringScheduleItemPresentation(
                         subjectId = ++id,
                         subjectTitle = "Subject $id",
+                        subjectOriginalTitle = "オリジナル $id",
                         imageUrl = "https://example.com/image.jpg",
                         episodeId = id,
                         episodeSort = EpisodeSort(if (i % 3 == 0) 13 else 1),
                         episodeEp = EpisodeSort(1),
                         episodeName = "Episode 1",
+                        episodeOriginalName = "エピソード 1",
                         subjectCollectionType = UnifiedCollectionType.entries[i % UnifiedCollectionType.entries.size],
                         dayOfWeek = DayOfWeek.entries[i % DayOfWeek.entries.size],
                         // 每隔几个放一个时间未定的项目, 预览里能看到 "时间未定" 的样式
@@ -159,11 +166,13 @@ fun EpisodeWithAiringTime.toPresentation(timeZone: TimeZone): AiringScheduleItem
     return AiringScheduleItemPresentation(
         subjectId = subject.subjectId,
         subjectTitle = subject.displayName,
+        subjectOriginalTitle = subject.nameOrNameCn,
         imageUrl = subject.imageLarge,
         episodeId = episode.episodeId,
         episodeSort = episode.sort,
         episodeEp = episode.ep,
         episodeName = episode.displayName,
+        episodeOriginalName = episode.nameOrNameCn,
         subjectCollectionType = UnifiedCollectionType.NOT_COLLECTED,
         dayOfWeek = dateTime.dayOfWeek,
         time = if (timeKnown) dateTime.time else null,

@@ -73,16 +73,22 @@ class LibassExoPlayerMediampPlayer private constructor(
     private val pipeline: LibassMediaSourcePipeline,
     internal val exoMediampPlayer: ExoPlayerMediampPlayer,
 ) : MediampPlayer by exoMediampPlayer {
+    /**
+     * @param configurePlayerBuilder 在 [ExoPlayer.Builder] 构建前调用, 用于自定义原生播放器 (如缓冲策略).
+     *   见 [ExoPlayerMediampPlayer] 的同名参数.
+     */
     constructor(
         context: Context,
         parentCoroutineContext: CoroutineContext,
         audioTimeStretch: ExoPlayerAudioTimeStretch = ExoPlayerAudioTimeStretch.HighQualityWsola,
-    ) : this(context, parentCoroutineContext, audioTimeStretch, LibassMediaSourcePipeline(context))
+        configurePlayerBuilder: ((ExoPlayer.Builder) -> Unit)? = null,
+    ) : this(context, parentCoroutineContext, audioTimeStretch, configurePlayerBuilder, LibassMediaSourcePipeline(context))
 
     private constructor(
         context: Context,
         parentCoroutineContext: CoroutineContext,
         audioTimeStretch: ExoPlayerAudioTimeStretch,
+        configurePlayerBuilder: ((ExoPlayer.Builder) -> Unit)?,
         pipeline: LibassMediaSourcePipeline,
     ) : this(
         parentCoroutineContext,
@@ -92,6 +98,7 @@ class LibassExoPlayerMediampPlayer private constructor(
             parentCoroutineContext,
             audioTimeStretch,
             mediaSourceInterceptor = pipeline::intercept,
+            configurePlayerBuilder = configurePlayerBuilder,
         ),
     )
 
@@ -346,6 +353,13 @@ class LibassExoPlayerMediampPlayerFactory(
         } else {
             ExoPlayerAudioTimeStretch.Media3Default
         }
-        return LibassExoPlayerMediampPlayer(context, parentCoroutineContext, audioTimeStretch)
+        return LibassExoPlayerMediampPlayer(
+            context,
+            parentCoroutineContext,
+            audioTimeStretch,
+            configurePlayerBuilder = { builder ->
+                builder.setLoadControl(aniExoPlayerLoadControl())
+            },
+        )
     }
 }

@@ -20,6 +20,7 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -32,8 +33,12 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.Stable
+import androidx.compose.runtime.compositionLocalOf
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberUpdatedState
@@ -142,7 +147,14 @@ class WindowDropHostState {
     var session: WindowDropSession? by mutableStateOf(null)
         private set
 
+    /**
+     * 当前会话是否是按实际内容接管的. 拖动阶段读不到内容时的接管只决定展示哪个预览,
+     * 多个处理者都愿意接管时无法区分内容属于谁, 因此松手后要用实际内容重新判断.
+     */
+    private var acceptedByContent = false
+
     fun onDragStarted(content: DragAndDropContent?, handlers: List<WindowDropHandler>) {
+        acceptedByContent = content != null
         if (handlers.isEmpty()) {
             session = null
             return
@@ -153,17 +165,21 @@ class WindowDropHostState {
     }
 
     /**
-     * 松手. 已接管的处理者优先; 拖动阶段没有处理者接管 (例如读不到内容) 时, 用实际内容再问一遍.
+     * 松手. 按实际内容接管的处理者优先; 拖动阶段读不到内容时, 用实际内容再问一遍,
+     * 仍没有处理者认领则交还给展示了预览的处理者, 由它提示内容不受支持.
      */
     fun onDrop(content: DragAndDropContent, handlers: List<WindowDropHandler>): Boolean {
-        val handler = (session as? WindowDropSession.Accepted)?.handler
+        val accepted = (session as? WindowDropSession.Accepted)?.handler
+        val handler = accepted?.takeIf { acceptedByContent }
             ?: findHandler(content, handlers)?.handler
+            ?: accepted
             ?: return false
         return handler.onDrop(content)
     }
 
     fun onDragEnded() {
         session = null
+        acceptedByContent = false
     }
 
     private fun findHandler(
@@ -183,9 +199,50 @@ object WindowDropTestTags {
 }
 
 /**
- * 让 [content] 所在区域 (通常是整个主窗口) 接受拖放, 交给 [handlers] 处理.
+ * [WindowDropHost] 内的页面注册的处理者. 页面通过 [WindowDropHandlerEffect] 注册, 只在页面处于组合中时生效.
+ */
+@Stable
+class WindowDropHandlerRegistry {
+    private val _handlers = mutableStateListOf<WindowDropHandler>()
+
+    /**
+     * 已注册的处理者, 后注册的在前: 后注册的页面位于更上层, 优先接管.
+     */
+    val handlers: List<WindowDropHandler> get() = _handlers
+
+    fun register(handler: WindowDropHandler) {
+        _handlers.add(0, handler)
+    }
+
+    fun unregister(handler: WindowDropHandler) {
+        _handlers.remove(handler)
+    }
+}
+
+/**
+ * 由 [WindowDropHost] 提供. 为 `null` 表示当前不在 [WindowDropHost] 内 (例如不支持窗口拖放的平台).
+ */
+val LocalWindowDropHandlerRegistry = compositionLocalOf<WindowDropHandlerRegistry?> { null }
+
+/**
+ * 在调用处处于组合中期间, 将 [handler] 注册到外层的 [WindowDropHost]. 不在 [WindowDropHost] 内时没有效果.
+ */
+@Composable
+fun WindowDropHandlerEffect(handler: WindowDropHandler) {
+    val registry = LocalWindowDropHandlerRegistry.current ?: return
+    DisposableEffect(registry, handler) {
+        registry.register(handler)
+        onDispose { registry.unregister(handler) }
+    }
+}
+
+/**
+ * 让 [content] 所在区域 (通常是整个主窗口) 接受拖放, 交给处理者处理.
  *
- * [handlers] 为空时不参与拖放. 参与时 [content] 内部的其他拖放目标仍优先接收落在其上的拖放.
+ * 处理者包括 [content] 内的页面通过 [WindowDropHandlerEffect] 注册的, 以及窗口级的 [handlers];
+ * 页面注册的优先于 [handlers].
+ *
+ * 没有处理者时不参与拖放. 参与时 [content] 内部的其他拖放目标仍优先接收落在其上的拖放.
  * 拖入期间在 [content] 之上淡入接管者提供的预览 (没有处理者接管的文件则提示「不支持的文件」),
  * 拖放结束后淡出; 没有持续动效.
  */
@@ -196,7 +253,8 @@ fun WindowDropHost(
     state: WindowDropHostState = remember { WindowDropHostState() },
     content: @Composable () -> Unit,
 ) {
-    val currentHandlers by rememberUpdatedState(handlers)
+    val registry = remember { WindowDropHandlerRegistry() }
+    val currentHandlers by rememberUpdatedState(registry.handlers + handlers)
     val target = remember(state) {
         object : DragAndDropTarget {
             override fun onStarted(event: DragAndDropEvent) {
@@ -218,7 +276,9 @@ fun WindowDropHost(
     }
 
     Box(modifier.dragAndDropTarget({ currentHandlers.isNotEmpty() }, target)) {
-        content()
+        CompositionLocalProvider(LocalWindowDropHandlerRegistry provides registry) {
+            content()
+        }
 
         val session = state.session
         // 淡出期间仍需展示最后一次的内容
@@ -288,7 +348,10 @@ private fun WindowDropOverlayLayer(
             color = colors.surfaceContainer,
             shadowElevation = 6.dp,
         ) {
-            Box(Modifier.padding(start = 40.dp, top = 40.dp, end = 40.dp, bottom = 32.dp)) {
+            Box(
+                Modifier.fillMaxWidth().padding(start = 40.dp, top = 40.dp, end = 40.dp, bottom = 32.dp),
+                contentAlignment = Alignment.Center,
+            ) {
                 content()
             }
         }

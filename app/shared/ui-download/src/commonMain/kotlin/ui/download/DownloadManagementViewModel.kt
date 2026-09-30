@@ -24,7 +24,6 @@ import kotlinx.coroutines.flow.onStart
 import me.him188.ani.app.data.repository.player.EpisodePlayHistoryRepository
 import me.him188.ani.app.data.repository.subject.OfflineSubjectDisplayInfo
 import me.him188.ani.app.data.repository.subject.SubjectCollectionRepository
-import me.him188.ani.app.data.repository.subject.staticSubjectImageLargeUrl
 import me.him188.ani.app.domain.media.download.DownloadOperation
 import me.him188.ani.app.domain.media.download.DownloadOperations
 import me.him188.ani.app.domain.media.download.MediaDownloadManager
@@ -106,7 +105,7 @@ class DownloadManagementViewModel(
                 subjectName = subject?.info?.displayName ?: entries.first().subjectName,
                 entries = entries,
                 collectionType = subject?.type,
-                imageUrl = subject?.info?.imageLarge ?: staticSubjectImageLargeUrl(subjectId),
+                imageUrl = subject?.info?.imageThumb,
                 totalEpisodeCount = subject?.info?.totalEpisodes?.takeIf { it > 0 },
             )
         }.sortedWith(

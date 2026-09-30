@@ -38,7 +38,9 @@ import me.him188.ani.app.domain.media.download.DownloadRequestSessionFactory
 import me.him188.ani.app.domain.media.download.DownloadRequestState
 import me.him188.ani.app.domain.media.download.DownloadSnapshot
 import me.him188.ani.app.domain.media.download.MediaDownloadManager
+import me.him188.ani.app.domain.media.fetch.MediaFetchSession
 import me.him188.ani.app.domain.media.fetch.MediaSourceManager
+import me.him188.ani.app.domain.media.selector.MediaSelector
 import me.him188.ani.app.ui.download.DownloadOperationRunner
 import me.him188.ani.app.ui.download.components.toDownloadItem
 import me.him188.ani.app.ui.mediafetch.MediaSourceInfoProvider
@@ -104,9 +106,9 @@ class SubjectDownloadsPresenter(
         }.stateIn(scope, SharingStarted.WhileSubscribed(5000), SubjectDownloadsUiState(title = initialTitle))
 
     /**
-     * 同一个等待选源状态始终对应同一个 [DownloadMediaPickerState], 供 UI 作为 key; 离开该状态后清空.
+     * 同一个查询会话 (选源与选集两步) 始终对应同一个 [DownloadMediaPickerState], 供 UI 作为 key; 离开这两个状态后清空.
      */
-    private val currentPicker = MutableStateFlow<Pair<DownloadRequestState.AwaitingSelection, DownloadMediaPickerState>?>(null)
+    private val currentPicker = MutableStateFlow<DownloadMediaPickerState?>(null)
 
     /**
      * `null` 表示没有需要展示的弹窗.
@@ -132,13 +134,14 @@ class SubjectDownloadsPresenter(
     fun dismissOperationFailures() = operationRunner.dismissFailures()
 
     /**
-     * 正在等待其他剧集选源时取消该会话并为本集重新开启; 正在等待本集选源、准备或持久化时不做任何事.
+     * 正在等待其他剧集选源或选集时取消该会话并为本集重新开启; 正在等待本集选源或选集、准备或持久化时不做任何事.
      * @return 是否开启了新会话
      */
     fun requestDownload(episodeId: Int): Boolean {
         val current = session.value
         when (val state = current?.state?.value) {
-            is DownloadRequestState.AwaitingSelection -> {
+            is DownloadRequestState.AwaitingSelection,
+            is DownloadRequestState.SelectingEpisodes -> {
                 if (state.episodeId == episodeId) return false
                 current?.cancel()
             }
@@ -160,6 +163,20 @@ class SubjectDownloadsPresenter(
         session.value?.select(episodeId, media)
     }
 
+    /**
+     * 确认要一并下载的集.
+     */
+    fun confirmEpisodes(episodeIds: Set<Int>) {
+        session.value?.confirmEpisodes(episodeIds)
+    }
+
+    /**
+     * 从选集回到选源.
+     */
+    fun backToMediaSelection() {
+        session.value?.backToSelection()
+    }
+
     fun pauseDownloads(ids: Set<String>) = operationRunner.run(ids, DownloadOperation.Pause)
     fun resumeDownloads(ids: Set<String>) = operationRunner.run(ids, DownloadOperation.Resume)
     fun deleteDownloads(ids: Set<String>) = operationRunner.run(ids, DownloadOperation.Delete)
@@ -176,19 +193,29 @@ class SubjectDownloadsPresenter(
     }
 
     private fun DownloadRequestState?.toDialogState(): DownloadRequestDialogState? {
-        if (this !is DownloadRequestState.AwaitingSelection) currentPicker.value = null
+        if (this !is DownloadRequestState.AwaitingSelection && this !is DownloadRequestState.SelectingEpisodes) {
+            currentPicker.value = null
+        }
         return when (this) {
             null -> null
-            is DownloadRequestState.AwaitingSelection -> DownloadRequestDialogState(selection = pickerFor(this))
+            is DownloadRequestState.AwaitingSelection -> DownloadRequestDialogState(
+                selection = pickerFor(episodeId, fetchSession, selector),
+            )
+
+            is DownloadRequestState.SelectingEpisodes -> DownloadRequestDialogState(
+                selection = pickerFor(episodeId, fetchSession, selector),
+                episodePicker = DownloadEpisodePickerState(episodeId, chosen, options),
+            )
+
             is DownloadRequestState.Finished -> if (error == null) null else DownloadRequestDialogState(failed = true)
             is DownloadRequestState.Preparing, is DownloadRequestState.Creating -> DownloadRequestDialogState()
         }
     }
 
-    private fun pickerFor(state: DownloadRequestState.AwaitingSelection): DownloadMediaPickerState {
-        currentPicker.value?.let { (key, picker) -> if (key === state) return picker }
-        return DownloadMediaPickerState(state.episodeId, state.fetchSession, state.selector)
-            .also { currentPicker.value = state to it }
+    private fun pickerFor(episodeId: Int, fetchSession: MediaFetchSession, selector: MediaSelector): DownloadMediaPickerState {
+        currentPicker.value?.let { picker -> if (picker.fetchSession === fetchSession) return picker }
+        return DownloadMediaPickerState(episodeId, fetchSession, selector)
+            .also { currentPicker.value = it }
     }
 }
 

@@ -35,6 +35,7 @@ import me.him188.ani.utils.platform.currentTimeMillis
 import kotlin.coroutines.cancellation.CancellationException
 import kotlin.time.Duration
 import kotlin.time.Duration.Companion.milliseconds
+import kotlin.time.Duration.Companion.hours
 
 class MediaSourceSubscriptionUpdater(
     private val subscriptions: MediaSourceSubscriptionRepository,
@@ -53,6 +54,7 @@ class MediaSourceSubscriptionUpdater(
 
         for (subscription in subscriptions) {
             fun shouldUpdate(): Boolean {
+                if (!subscription.enabled) return false
                 if (force) return true
                 if (subscription.lastUpdated == null) return true
                 return (currentTimeMillis - subscription.lastUpdated.timeMillis).milliseconds > subscription.updatePeriod
@@ -78,7 +80,7 @@ class MediaSourceSubscriptionUpdater(
 
             try {
                 val count = updateSubscription(subscription)
-                setResult(count)
+                if (count != null) setResult(count)
             } catch (e: CancellationException) {
                 throw e
             } catch (e: RepositoryException) {
@@ -110,7 +112,7 @@ class MediaSourceSubscriptionUpdater(
             }
         }
 
-        return subscriptions.minOf { subscription -> subscription.updatePeriod }
+        return subscriptions.filter { it.enabled }.minOfOrNull { it.updatePeriod } ?: 1.hours
     }
 
     data class ExistingArgument(
@@ -128,7 +130,7 @@ class MediaSourceSubscriptionUpdater(
     }
 
     @Throws(RepositoryException::class, CancellationException::class)
-    private suspend fun updateSubscription(subscription: MediaSourceSubscription): Int {
+    private suspend fun updateSubscription(subscription: MediaSourceSubscription): Int? {
         // 下载新订阅列表
         val updateData = requester.request(subscription)
         val newArguments = updateData.exportedMediaSourceDataList.mediaSources.mapNotNull {
@@ -137,6 +139,23 @@ class MediaSourceSubscriptionUpdater(
             }.getOrNull()
         }
 
+        var count: Int? = null
+        // Serialize source reconciliation with subscription availability changes. Network I/O stays outside the transaction.
+        subscriptions.update(subscription.subscriptionId) { current ->
+            if (current.enabled) {
+                applyUpdate(current, updateData, newArguments)
+                count = updateData.exportedMediaSourceDataList.mediaSources.size
+            }
+            current
+        }
+        return count
+    }
+
+    private suspend fun applyUpdate(
+        subscription: MediaSourceSubscription,
+        updateData: SubscriptionUpdateData,
+        newArguments: List<NewArgument>,
+    ) {
         // 获取现有的
         val existing = mediaSourceManager.getListBySubscriptionId(subscriptionId = subscription.subscriptionId)
             .map { save ->
@@ -181,8 +200,6 @@ class MediaSourceSubscriptionUpdater(
                 .map { it.instanceId }
             mediaSourceManager.partiallyReorderInstances(sorted)
         }
-
-        return updateData.exportedMediaSourceDataList.mediaSources.size
     }
 
     private fun deserializeArgumentsOrNull(save: MediaSourceSave): MediaSourceArguments? {
