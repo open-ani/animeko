@@ -9,16 +9,25 @@
 
 package me.him188.ani.app.torrent.io
 
+import kotlinx.io.IOException
 import me.him188.ani.utils.io.SystemPaths
 import me.him188.ani.utils.io.createTempDirectory
+import me.him188.ani.utils.io.deleteRecursively
 import me.him188.ani.utils.io.resolve
+import kotlin.test.AfterTest
 import kotlin.test.Test
 import kotlin.test.assertContentEquals
 import kotlin.test.assertEquals
 import kotlin.test.assertFailsWith
 
 class RandomAccessFileTest {
-    private val file = SystemPaths.createTempDirectory("randomAccessFileTest").resolve("data.bin")
+    private val directory = SystemPaths.createTempDirectory("randomAccessFileTest")
+    private val file = directory.resolve("data.bin")
+
+    @AfterTest
+    fun cleanup() {
+        directory.deleteRecursively()
+    }
 
     @Test
     fun `preallocate then write at offset then read back`() {
@@ -58,8 +67,23 @@ class RandomAccessFileTest {
         }
 
         RandomAccessFile(file, "r").use { raf ->
-            assertFailsWith<kotlinx.io.IOException> {
+            assertFailsWith<IOException> {
                 raf.readFully(ByteArray(8), 0, 8)
+            }
+        }
+    }
+
+    @Test
+    fun `a write is visible to another handle before either closes`() {
+        // The sparse store writes through one handle while inputs read through their own.
+        RandomAccessFile(file, "rw").use { writer ->
+            RandomAccessFile(file, "r").use { reader ->
+                writer.seek(8)
+                writer.write(byteArrayOf(7, 8, 9), 0, 3)
+                reader.seek(8)
+                val buffer = ByteArray(3)
+                reader.readFully(buffer, 0, 3)
+                assertContentEquals(byteArrayOf(7, 8, 9), buffer)
             }
         }
     }

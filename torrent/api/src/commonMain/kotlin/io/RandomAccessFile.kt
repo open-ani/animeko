@@ -42,6 +42,7 @@ expect class RandomAccessFile : AutoCloseable {
     override fun close()
 }
 
+/** Opens [file] for reading ("r") or for reading and writing, creating it when missing ("rw"). */
 @Suppress("FunctionName")
 expect fun RandomAccessFile(file: SystemPath, mode: String): RandomAccessFile
 

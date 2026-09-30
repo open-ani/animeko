@@ -20,8 +20,10 @@ import me.him188.ani.utils.io.SystemPath
 import platform.posix.FILE
 import platform.posix.SEEK_END
 import platform.posix.SEEK_SET
+import platform.posix._IONBF
 import platform.posix.errno
 import platform.posix.fclose
+import platform.posix.fcntl
 import platform.posix.feof
 import platform.posix.ferror
 import platform.posix.fflush
@@ -33,6 +35,7 @@ import platform.posix.fsync
 import platform.posix.ftello
 import platform.posix.ftruncate
 import platform.posix.fwrite
+import platform.posix.setvbuf
 import platform.posix.strerror
 
 @OptIn(ExperimentalForeignApi::class)
@@ -63,7 +66,7 @@ actual class RandomAccessFile internal constructor(
         if (ferror(handle) != 0) {
             throw IOException("Failed to read $length bytes from $path: ${lastErrorMessage()}")
         }
-        check(feof(handle) != 0) { "fread returned 0 on $path without EOF or error" }
+        if (feof(handle) == 0) throw IOException("fread returned 0 on $path without EOF or error")
         return -1
     }
 
@@ -144,7 +147,12 @@ actual class RandomAccessFile internal constructor(
     actual fun sync() {
         // fsync works on the descriptor and cannot see the stdio buffer above it, so flush first.
         flush()
-        if (fsync(fileno(handle)) != 0) {
+        val fd = fileno(handle)
+        // On Darwin fsync hands the bytes to the drive, whose cache can still lose them on power
+        // loss; F_FULLFSYNC asks the drive to write them through. File systems that do not support
+        // it answer with an error, and fsync is the best there is.
+        if (fcntl(fd, F_FULLFSYNC) == 0) return
+        if (fsync(fd) != 0) {
             throw IOException("Failed to sync $path: ${lastErrorMessage()}")
         }
     }
@@ -174,6 +182,13 @@ actual fun RandomAccessFile(file: SystemPath, mode: String): RandomAccessFile {
         "r" -> fopen(path, "rb")
         else -> throw IllegalArgumentException("Unsupported mode: $mode, expected \"r\" or \"rw\"")
     } ?: throw IOException("Failed to open $path in mode $mode: ${lastErrorMessage()}")
+    // Unbuffered. Callers buffer for themselves, and a stdio read buffer fills whole blocks: bytes
+    // another handle writes into a block already in it -- a piece arriving while the player reads the
+    // one before -- would be served as the zeros read earlier.
+    setvbuf(handle, null, _IONBF, 0.convert())
 
     return RandomAccessFile(handle, path)
 }
+
+// <sys/fcntl.h> on Darwin; the value is part of the ABI.
+private const val F_FULLFSYNC = 51

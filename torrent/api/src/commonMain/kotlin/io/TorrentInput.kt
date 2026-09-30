@@ -110,13 +110,13 @@ class TorrentInput(
     private val awaitCoroutineContext: CoroutineContext = EmptyCoroutineContext,
 ) : BufferedSeekableInput(bufferSize) {
 
-    // exclusive
+    // inclusive
     private val logicalLastOffset = logicalStartOffset + size - 1
 
     init {
         val pieceSum = pieces.maxOf { it.dataStartOffset + it.size } - logicalStartOffset
         check(pieceSum >= size) {
-            "file length ${file.length()} is larger than pieces' range $pieceSum"
+            "size $size is larger than pieces' range $pieceSum"
         }
         check(findPieceIndex(0) != -1) {
             "logicalStartOffset $logicalStartOffset is not in any piece"
