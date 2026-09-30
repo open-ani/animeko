@@ -26,18 +26,44 @@ import kotlinx.coroutines.withTimeout
 import kotlinx.datetime.DatePeriod
 import kotlinx.datetime.LocalDate
 import kotlinx.datetime.LocalDateTime
+import kotlinx.datetime.LocalTime
 import kotlinx.datetime.TimeZone
+import kotlinx.datetime.UtcOffset
 import kotlinx.datetime.atStartOfDayIn
 import kotlinx.datetime.plus
 import kotlinx.datetime.toInstant
+import kotlinx.datetime.toLocalDateTime
+import me.him188.ani.app.data.models.danmaku.DanmakuFilterConfig
+import me.him188.ani.app.data.models.preference.AnalyticsSettings
+import me.him188.ani.app.data.models.preference.AnitorrentConfig
+import me.him188.ani.app.data.models.preference.DanmakuSettings
+import me.him188.ani.app.data.models.preference.DebugSettings
+import me.him188.ani.app.data.models.preference.MediaCacheSettings
+import me.him188.ani.app.data.models.preference.MediaPreference
+import me.him188.ani.app.data.models.preference.MediaSelectorSettings
+import me.him188.ani.app.data.models.preference.OneshotActionConfig
+import me.him188.ani.app.data.models.preference.PikPakConfig
+import me.him188.ani.app.data.models.preference.PlayerKernelConfig
+import me.him188.ani.app.data.models.preference.ProfileSettings
+import me.him188.ani.app.data.models.preference.ProxySettings
+import me.him188.ani.app.data.models.preference.ThemeSettings
+import me.him188.ani.app.data.models.preference.TorrentPeerConfig
+import me.him188.ani.app.data.models.preference.UISettings
+import me.him188.ani.app.data.models.preference.UpdateSettings
+import me.him188.ani.app.data.models.preference.VideoResolverSettings
+import me.him188.ani.app.data.models.preference.VideoScaffoldConfig
+import me.him188.ani.app.data.models.preference.WatchTogetherSettings
 import me.him188.ani.app.data.models.subject.LightEpisodeInfo
 import me.him188.ani.app.data.models.subject.LightSubjectInfo
+import me.him188.ani.app.data.repository.user.Settings
+import me.him188.ani.app.data.repository.user.SettingsRepository
 import me.him188.ani.app.domain.episode.AiringScheduleForDate
 import me.him188.ani.app.domain.episode.EpisodeWithAiringTime
 import me.him188.ani.app.domain.episode.GetAnimeScheduleFlowUseCase
 import me.him188.ani.datasources.api.EpisodeSort
 import me.him188.ani.datasources.api.PackedDate
 import me.him188.ani.datasources.api.UTC9
+import me.him188.ani.danmaku.ui.DanmakuConfig
 import org.koin.core.Koin
 import org.koin.dsl.koinApplication
 import org.koin.dsl.module
@@ -151,26 +177,74 @@ class ScheduleViewModelTest {
     }
 
     /**
-     * 记录每次调用的 `today`; 返回 [handler] 生成的 flow.
+     * 记录每次调用的 `today` 与 `timeZone`; 返回 [handler] 生成的 flow.
      */
     private class FakeGetAnimeScheduleFlowUseCase(
         private val handler: (today: LocalDate, callIndex: Int) -> Flow<List<AiringScheduleForDate>>,
     ) : GetAnimeScheduleFlowUseCase {
         val calls = MutableStateFlow<List<LocalDate>>(emptyList())
+        val timeZones = MutableStateFlow<List<TimeZone>>(emptyList())
 
         override fun invoke(today: LocalDate, timeZone: TimeZone): Flow<List<AiringScheduleForDate>> {
             val index = calls.value.size
             calls.update { it + today }
+            timeZones.update { it + timeZone }
             return handler(today, index)
         }
     }
 
+    /**
+     * 只实现 [SettingsRepository.uiSettings] 的自定义偏好; ViewModel 不依赖其他字段,
+     * 因此访问它们会立刻失败而不是返回可能掩盖问题的默认值.
+     */
+    private class FakeSettingsRepository(
+        initial: UISettings = UISettings.Default,
+    ) : SettingsRepository {
+        val state = MutableStateFlow(initial)
+
+        override val uiSettings: Settings<UISettings> = object : Settings<UISettings> {
+            override val flow: Flow<UISettings> get() = state
+            override suspend fun set(value: UISettings) {
+                state.value = value
+            }
+        }
+
+        override val danmakuEnabled: Settings<Boolean> get() = notNeeded()
+        override val danmakuConfig: Settings<DanmakuConfig> get() = notNeeded()
+        override val danmakuFilterConfig: Settings<DanmakuFilterConfig> get() = notNeeded()
+        override val mediaSelectorSettings: Settings<MediaSelectorSettings> get() = notNeeded()
+        override val defaultMediaPreference: Settings<MediaPreference> get() = notNeeded()
+        override val profileSettings: Settings<ProfileSettings> get() = notNeeded()
+        override val proxySettings: Settings<ProxySettings> get() = notNeeded()
+        override val mediaCacheSettings: Settings<MediaCacheSettings> get() = notNeeded()
+        override val danmakuSettings: Settings<DanmakuSettings> get() = notNeeded()
+        override val themeSettings: Settings<ThemeSettings> get() = notNeeded()
+        override val updateSettings: Settings<UpdateSettings> get() = notNeeded()
+        override val videoScaffoldConfig: Settings<VideoScaffoldConfig> get() = notNeeded()
+        override val playerKernelConfig: Settings<PlayerKernelConfig> get() = notNeeded()
+        override val videoResolverSettings: Settings<VideoResolverSettings> get() = notNeeded()
+        override val anitorrentConfig: Settings<AnitorrentConfig> get() = notNeeded()
+        override val pikpakConfig: Settings<PikPakConfig> get() = notNeeded()
+        override val torrentPeerConfig: Settings<TorrentPeerConfig> get() = notNeeded()
+        override val oneshotActionConfig: Settings<OneshotActionConfig> get() = notNeeded()
+        override val analyticsSettings: Settings<AnalyticsSettings> get() = notNeeded()
+        override val debugSettings: Settings<DebugSettings> get() = notNeeded()
+        override val watchTogetherSettings: Settings<WatchTogetherSettings> get() = notNeeded()
+
+        private fun <T> notNeeded(): Settings<T> =
+            error("ScheduleViewModel 只使用 uiSettings")
+    }
+
     private val timeZone = TimeZone.of("Asia/Shanghai")
 
-    private fun koinWith(useCase: GetAnimeScheduleFlowUseCase): Koin = koinApplication {
+    private fun koinWith(
+        useCase: GetAnimeScheduleFlowUseCase,
+        settings: FakeSettingsRepository = FakeSettingsRepository(),
+    ): Koin = koinApplication {
         modules(
             module {
                 single<GetAnimeScheduleFlowUseCase> { useCase }
+                single<SettingsRepository> { settings }
             },
         )
     }.koin
@@ -213,7 +287,24 @@ class ScheduleViewModelTest {
     private val viewModels = mutableListOf<ScheduleViewModel>()
 
     private fun newViewModel(useCase: GetAnimeScheduleFlowUseCase, clock: Clock): ScheduleViewModel =
-        ScheduleViewModel(koin = koinWith(useCase), timeZone = timeZone, clock = clock).also { viewModels += it }
+        ScheduleViewModel(
+            koin = koinWith(useCase),
+            clock = clock,
+            timeZoneOverride = timeZone,
+        ).also { viewModels += it }
+
+    /**
+     * 不固定时区, 因此时区来自 [FakeSettingsRepository] (即用户偏好), 可以测试切换时区的行为.
+     */
+    private fun newViewModelReadingTimeZoneSetting(
+        useCase: GetAnimeScheduleFlowUseCase,
+        clock: Clock,
+        settings: FakeSettingsRepository,
+    ): ScheduleViewModel =
+        ScheduleViewModel(
+            koin = koinWith(useCase, settings),
+            clock = clock,
+        ).also { viewModels += it }
 
     @AfterTest
     fun tearDown() {
@@ -461,6 +552,255 @@ class ScheduleViewModelTest {
         val loaded = awaitReal { vm.presentationFlow.first { !it.isPlaceholder && it.error == null } }
         assertEquals(listOf(today, today), useCase.calls.value)
         assertEquals(15, loaded.airingSchedules.size)
+
+        subscription.cancel()
+    }
+
+    // endregion
+
+    // region 时区选择
+
+    /**
+     * 时区不同, "今天" 就不同: 服务端窗口的基准日期随之改变.
+     */
+    @Test
+    fun `time zone decides which date is today`() = runTest {
+        // 2026-09-04T16:00Z: Asia/Shanghai (UTC+8) 已是 9-5, America/Los_Angeles (UTC-7) 还是 9-4
+        val now = Instant.parse("2026-09-04T16:00:00Z")
+        val shanghai = TimeZone.of("Asia/Shanghai")
+        val losAngeles = TimeZone.of("America/Los_Angeles")
+
+        val shanghaiNow = now.toLocalDateTime(shanghai)
+        assertEquals(LocalDate(2026, 9, 5), shanghaiNow.date, "前提: 上海此时已是 9-5")
+        assertEquals(
+            LocalDate(2026, 9, 4),
+            now.toLocalDateTime(losAngeles).date,
+            "前提: 洛杉矶此时还是 9-4",
+        )
+    }
+
+    /**
+     * 切换时区后: 时区偏好被写入, "今天" 按新时区重算, 并用新时区重新请求服务端.
+     */
+    @Test
+    fun `switching time zone re-reads today and refetches with the new zone`() = runTest {
+        // 上海 2026-09-05 00:00, 洛杉矶仍是 2026-09-04 09:00
+        val now = Instant.parse("2026-09-04T16:00:00Z")
+        val shanghai = TimeZone.of("Asia/Shanghai")
+        val losAngeles = TimeZone.of("America/Los_Angeles")
+        val shanghaiToday = LocalDate(2026, 9, 5)
+        val losAngelesToday = LocalDate(2026, 9, 4)
+
+        val settings = FakeSettingsRepository(UISettings(scheduleTimeZoneId = shanghai.id))
+        val useCase = FakeGetAnimeScheduleFlowUseCase { day, _ -> flow { emit(scheduleFor(day)) } }
+        val vm = newViewModelReadingTimeZoneSetting(useCase, OffsetClock(now), settings)
+        val subscription = fixtureScope.launch { vm.presentationFlow.collect {} }
+
+        val before = awaitReal { vm.presentationFlow.first { !it.isPlaceholder } }
+        assertEquals(shanghai, vm.scheduleTimeZone.value, "初始时区来自偏好")
+        assertEquals(shanghaiToday, before.days.today())
+
+        vm.setScheduleTimeZone(losAngeles)
+
+        // 偏好被写入
+        awaitReal { settings.state.first { it.scheduleTimeZoneId == losAngeles.id } }
+        assertEquals(losAngeles, awaitReal { vm.scheduleTimeZone.first { it == losAngeles } })
+
+        // "今天" 按新时区重算, 日期列 (表头) 移动到新的今天
+        val after = awaitReal { vm.presentationFlow.first { it.days.today() == losAngelesToday } }
+        assertEquals(losAngelesToday, after.days.today())
+        assertEquals(after.days, vm.pageState.days, "日期列与 presentation 同源")
+
+        // 用新时区重新请求, 且请求的 today 也按新时区计算
+        awaitReal { useCase.calls.first { it.size >= 2 } }
+        assertEquals(listOf(shanghaiToday, losAngelesToday), useCase.calls.value)
+        assertEquals(
+            listOf(shanghai, losAngeles),
+            awaitReal { useCase.timeZones.first { it.size >= 2 } },
+            "两次请求分别使用各自的时区",
+        )
+
+        subscription.cancel()
+    }
+
+    /**
+     * 切回系统时区时偏好被清空 (`null`), 而不是记录下系统时区的 ID.
+     */
+    @Test
+    fun `selecting the system time zone clears the preference`() = runTest {
+        val now = Instant.parse("2026-09-04T16:00:00Z")
+        val shanghai = TimeZone.of("Asia/Shanghai")
+        val settings = FakeSettingsRepository(UISettings(scheduleTimeZoneId = shanghai.id))
+        val useCase = FakeGetAnimeScheduleFlowUseCase { day, _ -> flow { emit(scheduleFor(day)) } }
+        val vm = newViewModelReadingTimeZoneSetting(useCase, OffsetClock(now), settings)
+        val subscription = fixtureScope.launch { vm.presentationFlow.collect {} }
+
+        awaitReal { vm.presentationFlow.first { !it.isPlaceholder } }
+        assertEquals(shanghai, vm.scheduleTimeZone.value)
+
+        vm.setScheduleTimeZone(null)
+
+        assertNull(awaitReal { settings.state.first { it.scheduleTimeZoneId == null } }.scheduleTimeZoneId)
+        assertEquals(
+            TimeZone.currentSystemDefault(),
+            awaitReal { vm.scheduleTimeZone.first { it == TimeZone.currentSystemDefault() } },
+            "跟随系统时区",
+        )
+
+        subscription.cancel()
+    }
+
+    @Test
+    fun `formatUtcOffset renders the sign and padded offset`() {
+        assertEquals("UTC+08:00", formatUtcOffset(UtcOffset(hours = 8)))
+        assertEquals("UTC-05:00", formatUtcOffset(UtcOffset(hours = -5)))
+        assertEquals("UTC+05:30", formatUtcOffset(UtcOffset(hours = 5, minutes = 30)))
+        assertEquals("UTC+00:00", formatUtcOffset(UtcOffset(hours = 0)))
+    }
+
+    @Test
+    fun `selectable time zones are valid ids and unique`() {
+        assertTrue(ScheduleSelectableTimeZones.isNotEmpty())
+        assertEquals(
+            ScheduleSelectableTimeZones.size,
+            ScheduleSelectableTimeZones.toSet().size,
+            "不应有重复项",
+        )
+        for (id in ScheduleSelectableTimeZones) {
+            // 无法解析的 ID 会让选择器少一个选项, 因此这里逐个校验
+            assertEquals(id, TimeZone.of(id).id, "时区 ID 应当可解析: $id")
+        }
+    }
+
+    /**
+     * 首次打开 (偏好里没有时区) 时自动使用系统所在时区.
+     */
+    @Test
+    fun `without a stored preference the system time zone is used`() = runTest {
+        val settings = FakeSettingsRepository() // scheduleTimeZoneId 默认 null = 未选择过
+        val useCase = FakeGetAnimeScheduleFlowUseCase { day, _ -> flow { emit(scheduleFor(day)) } }
+        val vm = newViewModelReadingTimeZoneSetting(
+            useCase,
+            OffsetClock(LocalDateTime(2026, 9, 4, 12, 0).toInstant(timeZone)),
+            settings,
+        )
+
+        assertEquals(
+            TimeZone.currentSystemDefault(),
+            awaitReal { vm.scheduleTimeZone.first() },
+            "未选择过时应自动选取系统时区",
+        )
+        assertNull(settings.state.value.scheduleTimeZoneId, "自动选取不应写入偏好")
+    }
+
+    /**
+     * 用户手动选过时区后, 之后每次打开都使用该时区, 而不是重新跟随系统.
+     */
+    @Test
+    fun `a stored preference wins over the system time zone on later launches`() = runTest {
+        val settings = FakeSettingsRepository(UISettings(scheduleTimeZoneId = "Asia/Tokyo"))
+        val useCase = FakeGetAnimeScheduleFlowUseCase { day, _ -> flow { emit(scheduleFor(day)) } }
+        val vm = newViewModelReadingTimeZoneSetting(
+            useCase,
+            OffsetClock(LocalDateTime(2026, 9, 4, 12, 0).toInstant(timeZone)),
+            settings,
+        )
+
+        val restored = awaitReal { vm.scheduleTimeZone.first() }
+        assertEquals(TimeZone.of("Asia/Tokyo"), restored, "手动选择过的时区应当被沿用")
+        assertTrue(
+            restored != TimeZone.currentSystemDefault() || TimeZone.of("Asia/Tokyo") == TimeZone.currentSystemDefault(),
+            "前提: 该时区与系统时区不同, 才能真正区分二者",
+        )
+    }
+
+    /**
+     * 切换时区必须让服务端重新请求 —— 即使新旧时区的"今天"是同一天.
+     *
+     * 这条覆盖一个已被修复的缺陷: `distinctUntilChanged` 曾放在 `todayFlow` 的 `flatMapLatest` 之外,
+     * 于是上海 → 柏林 (同属 9-30) 这类切换的去重会把日期变化整个丢掉, 服务端不再收到新时区,
+     * 页面停在旧数据上, 只有离开页面再进入才会刷新.
+     */
+    @Test
+    fun `switching to a zone on the same date still refetches with the new zone`() = runTest {
+        val shanghai = TimeZone.of("Asia/Shanghai")
+        val berlin = TimeZone.of("Europe/Berlin")
+        assertEquals(
+            Instant.parse("2026-09-30T10:00:00Z").toLocalDateTime(shanghai).date,
+            Instant.parse("2026-09-30T10:00:00Z").toLocalDateTime(berlin).date,
+            "前提: 两个时区下同属 2026-09-30, 因此不能用日期变化来触发刷新",
+        )
+
+        val settings = FakeSettingsRepository(UISettings(scheduleTimeZoneId = shanghai.id))
+        val useCase = FakeGetAnimeScheduleFlowUseCase { day, _ -> flow { emit(emptyList()) } }
+        val vm = newViewModelReadingTimeZoneSetting(
+            useCase,
+            OffsetClock(Instant.parse("2026-09-30T10:00:00Z")),
+            settings,
+        )
+        val subscription = fixtureScope.launch { vm.presentationFlow.collect {} }
+        awaitReal { useCase.timeZones.first { it.isNotEmpty() } }
+
+        vm.setScheduleTimeZone(berlin)
+
+        assertEquals(
+            listOf(shanghai, berlin),
+            awaitReal { useCase.timeZones.first { it.size >= 2 } },
+            "同一天内切换时区也必须用新时区重新请求",
+        )
+
+        subscription.cancel()
+    }
+
+    /**
+     * 切换到同一天但偏移不同的时区时, 日期列不变, 但每列的放送时刻必须重新计算.
+     */
+    @Test
+    fun `switching to a zone on the same date refreshes the displayed times`() = runTest {
+        val shanghai = TimeZone.of("Asia/Shanghai")
+        val berlin = TimeZone.of("Europe/Berlin")
+        // 2026-09-30T10:00Z: 上海 18:00 (9-30), 柏林 12:00 (9-30) —— 同一天, 时刻不同
+        val airingTime = Instant.parse("2026-09-30T10:00:00Z")
+        assertEquals(LocalDate(2026, 9, 30), airingTime.toLocalDateTime(shanghai).date)
+        assertEquals(
+            LocalDate(2026, 9, 30),
+            airingTime.toLocalDateTime(berlin).date,
+            "前提: 两个时区下同属一天, 因此日期列本身不会变化",
+        )
+
+        val settings = FakeSettingsRepository(UISettings(scheduleTimeZoneId = shanghai.id))
+        val useCase = FakeGetAnimeScheduleFlowUseCase { day, _ ->
+            flow {
+                emit(
+                    listOf(
+                        AiringScheduleForDate(
+                            date = day,
+                            list = listOf(episode(1, airingTime, timeKnown = true)),
+                        ),
+                    ),
+                )
+            }
+        }
+        val vm = newViewModelReadingTimeZoneSetting(useCase, OffsetClock(Instant.parse("2026-09-30T10:00:00Z")), settings)
+        val subscription = fixtureScope.launch { vm.presentationFlow.collect {} }
+
+        fun SchedulePagePresentation.firstTime(): LocalTime? =
+            (airingSchedules.first().episodes.first() as AiringScheduleColumnItem.Data).item.time
+
+        val shanghaiPresentation = awaitReal { vm.presentationFlow.first { !it.isPlaceholder } }
+        assertEquals(LocalTime(18, 0), shanghaiPresentation.firstTime(), "上海应为 18:00")
+
+        vm.setScheduleTimeZone(berlin)
+
+        val berlinPresentation = awaitReal {
+            vm.presentationFlow.first { it.firstTime() == LocalTime(12, 0) }
+        }
+        assertEquals(LocalTime(12, 0), berlinPresentation.firstTime(), "柏林应为 12:00")
+        assertEquals(
+            shanghaiPresentation.days,
+            berlinPresentation.days,
+            "两个时区同属一天, 日期列应当一致",
+        )
 
         subscription.cancel()
     }

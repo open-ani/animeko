@@ -611,6 +611,7 @@ private fun AniAppContentImpl(
             entry<NavRoutes.Schedule> { route ->
                 val vm = viewModel { ScheduleViewModel() }
                 val presentation by vm.presentationFlow.collectAsStateWithLifecycle()
+                val timeZone by vm.scheduleTimeZone.collectAsStateWithLifecycle()
                 ScheduleScreen(
                     presentation,
                     onRetry = { vm.refresh() },
@@ -626,6 +627,8 @@ private fun AniAppContentImpl(
                         )
                     },
                     Modifier.fillMaxSize(),
+                    timeZone = timeZone,
+                    onSelectTimeZone = { vm.setScheduleTimeZone(it) },
                     windowInsets = windowInsets,
                     navigationIcon = {
                         BackNavigationIconButton(

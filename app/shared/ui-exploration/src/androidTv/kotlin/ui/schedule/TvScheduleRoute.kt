@@ -26,6 +26,7 @@ fun TvScheduleRoute(
     navigationRailInsets: PaddingValues = PaddingValues(0.dp),
 ) {
     val presentation by viewModel.presentationFlow.collectAsState()
+    val timeZone by viewModel.scheduleTimeZone.collectAsState()
     TvNavigationEffect(viewModel.navigationEvents, onNavigate)
-    TvScheduleScreen(presentation, viewModel::onIntent, modifier, navigationRailInsets)
+    TvScheduleScreen(presentation, viewModel::onIntent, modifier, timeZone, navigationRailInsets)
 }
