@@ -11,6 +11,10 @@ package me.him188.ani.app.torrent.io
 
 import me.him188.ani.utils.io.SystemPath
 import me.him188.ani.utils.io.toFile
+import java.nio.file.FileAlreadyExistsException
+import java.nio.file.Files
+import java.nio.file.Path
+import java.nio.file.StandardOpenOption
 import java.io.RandomAccessFile as JavaRandomAccessFile
 
 actual class RandomAccessFile internal constructor(
@@ -46,5 +50,19 @@ actual class RandomAccessFile internal constructor(
 }
 
 @Suppress("FunctionName")
-actual fun RandomAccessFile(file: SystemPath, mode: String): RandomAccessFile =
-    RandomAccessFile(JavaRandomAccessFile(file.toFile(), mode))
+actual fun RandomAccessFile(file: SystemPath, mode: String): RandomAccessFile {
+    val target = file.toFile()
+    if ('w' in mode && !target.exists()) createSparse(target.toPath())
+    return RandomAccessFile(JavaRandomAccessFile(target, mode))
+}
+
+// Data files are written at their real offsets as pieces arrive, often the last one first. NTFS
+// allocates everything below a write past the end of a regular file, so the first tail piece of an
+// episode would take the whole episode's size on disk. Created sparse, the file takes only what
+// was written. Other file systems ignore the flag and are sparse already.
+private fun createSparse(path: Path) {
+    try {
+        Files.newByteChannel(path, StandardOpenOption.CREATE_NEW, StandardOpenOption.WRITE, StandardOpenOption.SPARSE).close()
+    } catch (_: FileAlreadyExistsException) {
+    }
+}
