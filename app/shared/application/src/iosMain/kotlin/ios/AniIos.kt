@@ -112,6 +112,9 @@ import org.koin.core.context.startKoin
 import org.koin.dsl.module
 import org.openani.mediamp.MediampPlayerFactory
 import org.openani.mediamp.ffmpeg.FFmpegKit
+import platform.AVFAudio.AVAudioSession
+import platform.AVFAudio.AVAudioSessionCategoryPlayback
+import platform.AVFAudio.setActive
 import platform.Foundation.NSBundle
 import platform.Foundation.NSFileManager
 import platform.UIKit.NSLayoutConstraint
@@ -167,6 +170,16 @@ fun startIosApp(): AniIosApplication {
     IosLoggingConfigurator.configure(context.files.logsDir.path, SystemFileSystem)
     installUnhandledExceptionHook()
     initializeIosFfmpegRuntime()
+
+    // 画中画/后台播放需要 playback 音频会话, 必须在任何播放开始前激活.
+    // (原为音量管理器 IosAudioManager 的懒加载副作用, 时序不可靠)
+    @OptIn(kotlinx.cinterop.ExperimentalForeignApi::class)
+    fun activateAudioSession() {
+        val session = AVAudioSession.sharedInstance()
+        session.setCategory(AVAudioSessionCategoryPlayback, error = null)
+        session.setActive(true, withOptions = 0uL, error = null)
+    }
+    activateAudioSession()
     startupTimeMonitor.mark(StepName.Logging)
 
     val koin = startKoin {

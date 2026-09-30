@@ -456,6 +456,8 @@ class SelectorMediaSource(
 
     // region 浏览: 列表模式, 不做任何自动匹配
 
+    override val supportsBrowsing: Boolean get() = true
+
     private fun buildSearchUrl(keyword: String): String =
         searchConfig.searchUrl.replace("{keyword}", MediaSourceEngineHelpers.encodeUrlSegment(keyword))
 
