@@ -24,12 +24,15 @@ import kotlinx.coroutines.test.runTest
 import kotlinx.serialization.json.Json
 import me.him188.ani.danmaku.api.provider.DanmakuFetchRequest
 import me.him188.ani.danmaku.api.provider.DanmakuMatchMethod
+import me.him188.ani.danmaku.dandanplay.data.DandanplayMatchVideoResponse
 import me.him188.ani.datasources.api.EpisodeSort
 import me.him188.ani.datasources.api.PackedDate
 import me.him188.ani.utils.ktor.asScopedHttpClient
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertFalse
 import kotlin.test.assertIs
+import kotlin.test.assertNull
 import kotlin.time.Duration.Companion.minutes
 
 class DandanplayDanmakuProviderTest {
@@ -289,6 +292,99 @@ class DandanplayDanmakuProviderTest {
     }
 
     @Test
+    fun `DandanplayMatchVideoResponse accepts null matches when match request is rejected`() {
+        val response = json.decodeFromString<DandanplayMatchVideoResponse>(REJECTED_MATCH_RESPONSE)
+
+        assertFalse(response.success)
+        assertFalse(response.isMatched)
+        assertEquals(2, response.errorCode)
+        assertEquals("一个或多个参数不符合规则", response.errorMessage)
+        assertNull(response.matches)
+    }
+
+    @Test
+    fun `fetchAutomatic returns no match when file match request is rejected`() = runTest {
+        val seenPaths = mutableListOf<String>()
+        val provider = createProvider { path ->
+            seenPaths += path
+            when (path) {
+                "/api/v2/bangumi/bgmtv/999999999" -> respondJson(
+                    """{"success": false, "errorCode": 7, "errorMessage": "无法找到指定的资源", "bangumi": null}""",
+                )
+
+                "/api/v2/search/episodes" -> respondJson(EMPTY_EPISODE_SEARCH_RESPONSE)
+                "/api/v2/match" -> respondJson(REJECTED_MATCH_RESPONSE)
+                else -> error("Unexpected request: $path")
+            }
+        }
+
+        val result = provider.fetchAutomatic(
+            request(
+                subjectId = 999999999,
+                subjectName = "unknown subject",
+                episodeSort = EpisodeSort(1),
+                episodeName = "unknown episode",
+                filename = "[Group] unknown subject - 01 [1080P]",
+            ),
+        ).single()
+
+        assertEquals(DanmakuMatchMethod.NoMatch, result.matchInfo.method)
+        assertEquals(
+            listOf(
+                "/api/v2/bangumi/bgmtv/999999999",
+                "/api/v2/search/episodes",
+                "/api/v2/match",
+            ),
+            seenPaths,
+        )
+    }
+
+    @Test
+    fun `fetchAutomatic uses file match when other matching fails`() = runTest {
+        val provider = createProvider { path ->
+            when (path) {
+                "/api/v2/bangumi/bgmtv/999999999" -> respondJson(
+                    """{"success": false, "errorCode": 7, "errorMessage": "无法找到指定的资源", "bangumi": null}""",
+                )
+
+                "/api/v2/search/episodes" -> respondJson(EMPTY_EPISODE_SEARCH_RESPONSE)
+                "/api/v2/match" -> respondJson(
+                    """
+                    {
+                      "isMatched": false,
+                      "matches": [
+                        {
+                          "episodeId": 176170001, "animeId": 17617, "animeTitle": "葬送的芙莉莲",
+                          "episodeTitle": "第1话 冒险的结束", "type": "tvseries", "typeDescription": "TV动画",
+                          "shift": 0, "imageUrl": "https://example.com/17617.jpg"
+                        }
+                      ],
+                      "errorCode": 0, "success": true, "errorMessage": ""
+                    }
+                    """.trimIndent(),
+                )
+
+                "/api/v2/comment/176170001" -> respondJson("""{"count":0,"comments":[]}""")
+                else -> error("Unexpected request: $path")
+            }
+        }
+
+        val result = provider.fetchAutomatic(
+            request(
+                subjectId = 999999999,
+                subjectName = "葬送的芙莉莲",
+                episodeSort = EpisodeSort(1),
+                episodeName = "冒险的结束",
+                filename = "[Group] Sousou no Frieren - 01 [1080P]",
+            ),
+        ).single()
+
+        val method = assertIs<DanmakuMatchMethod.Fuzzy>(result.matchInfo.method)
+        assertEquals("葬送的芙莉莲", method.subjectTitle)
+        assertEquals("第1话 冒险的结束", method.episodeTitle)
+    }
+
+    @Test
     fun `normalizeEpisodeTitle strips number prefix and unifies width and spaces`() {
         assertEquals("ラム", normalizeEpisodeTitle("第18话 ラム"))
         assertEquals("ラム", normalizeEpisodeTitle("ラム"))
@@ -330,6 +426,7 @@ class DandanplayDanmakuProviderTest {
         episodeName: String,
         episodeEp: EpisodeSort? = null,
         episodeNames: List<String> = listOf(episodeName),
+        filename: String? = null,
     ) = DanmakuFetchRequest(
         subjectId = subjectId,
         subjectPrimaryName = subjectName,
@@ -340,9 +437,22 @@ class DandanplayDanmakuProviderTest {
         episodeEp = episodeEp,
         episodeName = episodeName,
         episodeNames = episodeNames,
-        filename = null,
+        filename = filename,
         fileHash = null,
         fileSize = null,
         videoDuration = 24.minutes,
     )
+
+    private companion object {
+        val json = Json { ignoreUnknownKeys = true }
+
+        /**
+         * 弹弹 play 拒绝匹配请求时的真实响应, `matches` 为 `null`.
+         */
+        const val REJECTED_MATCH_RESPONSE =
+            """{"isMatched":false,"matches":null,"errorCode":2,"success":false,"errorMessage":"一个或多个参数不符合规则"}"""
+
+        const val EMPTY_EPISODE_SEARCH_RESPONSE =
+            """{"success": true, "errorCode": 0, "errorMessage": "", "hasMore": false, "animes": []}"""
+    }
 }

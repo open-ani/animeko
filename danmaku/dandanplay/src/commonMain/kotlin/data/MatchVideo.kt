@@ -68,19 +68,19 @@ class DandanplayDanmakuListResponse(
 @Serializable
 data class DandanplayEpisode(
     val animeId: Long,
-    val animeTitle: String,
+    val animeTitle: String? = null,
     val episodeId: Long,
-    val episodeTitle: String,
+    val episodeTitle: String? = null,
     val shift: Double,// 弹幕偏移时间（弹幕应延迟多少秒出现）。此数字为负数时表示弹幕应提前多少秒出现。
     val type: String,
-    val typeDescription: String
+    val typeDescription: String? = null,
 )
 
 @Serializable
 class DandanplayMatchVideoResponse(
     val isMatched: Boolean,
-    val matches: List<DandanplayEpisode>, // Actually it's null when success is false
+    val matches: List<DandanplayEpisode>? = null, // success 为 false 时为 null
     val errorCode: Int,
     val success: Boolean,
-    val errorMessage: String,
+    val errorMessage: String? = null,
 )
