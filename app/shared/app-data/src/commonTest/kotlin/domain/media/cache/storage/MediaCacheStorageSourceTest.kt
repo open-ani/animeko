@@ -9,6 +9,9 @@
 
 package me.him188.ani.app.domain.media.cache.storage
 
+import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.async
+import kotlinx.coroutines.ensureActive
 import kotlinx.coroutines.flow.toList
 import kotlinx.coroutines.test.runTest
 import me.him188.ani.app.domain.media.cache.MediaCache
@@ -26,6 +29,7 @@ import me.him188.ani.datasources.api.topic.EpisodeRange
 import me.him188.ani.datasources.api.topic.ResourceLocation
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertFailsWith
 import kotlin.test.assertTrue
 
 class MediaCacheStorageSourceTest {
@@ -87,6 +91,26 @@ class MediaCacheStorageSourceTest {
         }
     }
 
+    /**
+     * 模拟协程被取消: [MediaCache.getCachedMedia] 抛出 [CancellationException],
+     * 取消必须向上传播, 不能被当作普通失败吞掉.
+     */
+    private fun cancellingCache(mediaId: String): MediaCache {
+        val origin = originMedia(mediaId)
+        return object : TestMediaCache(
+            CachedMedia(
+                origin = origin,
+                cacheMediaSourceId = "test-storage",
+                download = ResourceLocation.LocalFile("/cache/$mediaId.mp4"),
+            ),
+            metadata(),
+        ) {
+            override suspend fun getCachedMedia(): CachedMedia {
+                throw CancellationException("Cancelled while getting cached media for $mediaId")
+            }
+        }
+    }
+
     private fun query() = MediaFetchRequest(
         subjectId = "1",
         episodeId = "1",
@@ -138,5 +162,23 @@ class MediaCacheStorageSourceTest {
         val results = source.fetch(query()).results.toList()
 
         assertTrue(results.isEmpty())
+    }
+
+    @Test
+    fun `fetch propagates cancellation instead of swallowing it`() = runTest {
+        val storage = TestMediaCacheStorage().apply {
+            listFlow.value = listOf(
+                cancellingCache("media-task"),
+                completedCache("media-1"),
+            )
+        }
+        val source = MediaCacheStorageSource(storage, "Test")
+
+        val deferred = async {
+            source.fetch(query()).results.toList()
+        }
+        assertFailsWith<CancellationException> { deferred.await() }
+        // 取消没有毒化测试协程本身
+        ensureActive()
     }
 }

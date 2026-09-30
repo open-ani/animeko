@@ -9,6 +9,7 @@
 
 package me.him188.ani.app.domain.media.cache.storage
 
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asFlow
@@ -192,7 +193,12 @@ class MediaCacheStorageSource(
                 val kind = query.matchesSubject(cache.metadata) ?: return@mapNotNull null
                 // 单个缓存可能暂时无法提供可播放的媒体 (例如下载尚未完成),
                 // 此时跳过该缓存, 保证其他已完成的缓存仍可被查询到.
-                val cachedMedia = runCatching { cache.getCachedMedia() }.getOrElse { e ->
+                // 注意: 协程取消 (CancellationException) 必须继续向上传播, 不能被吞掉.
+                val cachedMedia = try {
+                    cache.getCachedMedia()
+                } catch (e: CancellationException) {
+                    throw e
+                } catch (e: Exception) {
                     logger.warn(e) { "Skipping cache that failed to provide media: ${cache.cacheId}" }
                     return@mapNotNull null
                 }
