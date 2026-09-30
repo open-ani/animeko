@@ -105,6 +105,32 @@ class SearchPageSearchBarTest {
         assertTrue(tops.zipWithNext().all { (first, second) -> first < second })
     }
 
+    @Test
+    fun `late specific candidates appear above already displayed ordinary candidates`() = runAniComposeUiTest {
+        val resolved = CompletableDeferred<Unit>()
+        val fixture = Fixture {
+            flow {
+                emit(PagingData.from(listOf("普通候选")))
+                resolved.await()
+                emit(PagingData.from(candidates + "普通候选"))
+            }
+        }
+        showSearchBar(fixture)
+        enterQuery(url)
+        candidate("普通候选").assertIsDisplayed()
+        onNodeWithText(candidates.first()).assertDoesNotExist()
+        runOnIdle { resolved.complete(Unit) }
+        waitForIdle()
+        val tops = (candidates + "普通候选").map {
+            candidate(it).assertIsDisplayed().fetchSemanticsNode().boundsInRoot.top
+        }
+        assertTrue(tops.zipWithNext().all { (first, second) -> first < second })
+        candidate(candidates.first()).performClick()
+        runOnIdle {
+            assertEquals(candidates.first(), (fixture.intents.single() as SearchPageIntent.UpdateQuery).query.keywords)
+        }
+    }
+
     private fun assertCandidateSearch(text: String) = runAniComposeUiTest {
         val fixture = Fixture { flowOf(PagingData.from(candidates)) }
         showSearchBar(fixture)
@@ -173,6 +199,7 @@ class SearchPageSearchBarTest {
             flow {
                 started += query
                 if (query == url) {
+                    emit(PagingData.from(listOf("普通候选")))
                     try {
                         oldResponse.await()
                         emit(PagingData.from(listOf("过期候选")))
@@ -186,6 +213,7 @@ class SearchPageSearchBarTest {
         }
         showSearchBar(fixture)
         enterQuery(url)
+        candidate("普通候选").assertIsDisplayed()
         runOnIdle { assertEquals(listOf(url), started) }
 
         mainClock.autoAdvance = false
@@ -208,6 +236,7 @@ class SearchPageSearchBarTest {
         }
         waitForIdle()
         onNodeWithText("过期候选").assertDoesNotExist()
+        onNodeWithText("普通候选").assertDoesNotExist()
         candidate("最新候选").assertIsDisplayed()
     }
 
