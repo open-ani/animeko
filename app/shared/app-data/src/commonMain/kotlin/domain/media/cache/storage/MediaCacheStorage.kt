@@ -191,9 +191,7 @@ class MediaCacheStorageSource(
         return SinglePagePagedSource {
             storage.listFlow.first().mapNotNull { cache ->
                 val kind = query.matchesSubject(cache.metadata) ?: return@mapNotNull null
-                // 单个缓存可能暂时无法提供可播放的媒体 (例如下载尚未完成),
-                // 此时跳过该缓存, 保证其他已完成的缓存仍可被查询到.
-                // 注意: 协程取消 (CancellationException) 必须继续向上传播, 不能被吞掉.
+                // 跳过无法提供媒体的缓存; 协程取消必须继续向上传播.
                 val cachedMedia = try {
                     cache.getCachedMedia()
                 } catch (e: CancellationException) {
