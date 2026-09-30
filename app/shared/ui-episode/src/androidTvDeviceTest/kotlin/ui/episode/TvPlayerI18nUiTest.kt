@@ -10,7 +10,6 @@
 package me.him188.ani.tv.ui.episode
 
 import android.content.res.Configuration
-import android.graphics.Bitmap
 import android.os.LocaleList
 import androidx.activity.OnBackPressedDispatcher
 import androidx.activity.compose.LocalOnBackPressedDispatcherOwner
@@ -25,7 +24,6 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.asAndroidBitmap
 import androidx.compose.ui.input.key.Key
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalDensity
@@ -44,7 +42,6 @@ import androidx.compose.ui.test.assertTextContains
 import androidx.compose.ui.test.hasAnyAncestor
 import androidx.compose.ui.test.hasTestTag
 import androidx.compose.ui.test.isFocused
-import androidx.compose.ui.test.captureToImage
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.onRoot
@@ -55,7 +52,6 @@ import androidx.compose.ui.text.TextLayoutResult
 import androidx.compose.ui.unit.Density
 import androidx.compose.ui.unit.dp
 import androidx.paging.PagingData
-import androidx.test.platform.app.InstrumentationRegistry
 import kotlinx.coroutines.flow.emptyFlow
 import kotlinx.coroutines.flow.flowOf
 import me.him188.ani.app.data.models.episode.EpisodeComment
@@ -108,7 +104,6 @@ import me.him188.ani.tv.ui.watchtogether.TvTogetherError
 import me.him188.ani.tv.ui.watchtogether.TvTogetherState
 import org.openani.mediamp.MediaStatus
 import org.openani.mediamp.PlayerState
-import java.io.File
 import java.util.Locale
 import kotlin.test.Test
 import kotlin.test.assertEquals
@@ -172,7 +167,6 @@ class TvPlayerI18nUiTest {
             onNodeWithTag("tv-player-collection-collection:NOT_COLLECTED").assertDoesNotExist()
             runOnIdle { fixture.width = 680.dp; fixture.fontScale = 1.3f }
             assertPanel()
-            screenshot("shared-collection-options")
             runOnIdle { fixture.back.onBackPressed() }
             onNodeWithTag("tv-player-chip-Collection").assertIsFocused()
             onNodeWithTag("tv-player-option-panel-Collection").assertDoesNotExist()
@@ -206,7 +200,6 @@ class TvPlayerI18nUiTest {
             onNodeWithTag("tv-player-collection-collection:DONE").assertIsFocused()
             key(Key.DirectionCenter)
             assertPending(*UnifiedCollectionType.entries.map { "collection:${it.name}" }.toTypedArray())
-            screenshot("collection-pending")
             runOnIdle {
                 fixture.state = fixture.state.copy(options = fixture.state.options.copy(
                     collectionType = UnifiedCollectionType.DONE, collectionBusy = false))
@@ -214,10 +207,8 @@ class TvPlayerI18nUiTest {
                     (requests.last() as TvEpisodeIntent.SetCollection).requestId))
             }
             onNodeWithTag("tv-player-collection-mark-all").assertIsFocused().assertIsEnabled()
-            screenshot("collection-watched-prompt")
             key(Key.DirectionCenter)
             assertPending("mark-all", "mark-ignore")
-            screenshot("collection-watched-pending")
             runOnIdle {
                 fixture.state = fixture.state.copy(options = fixture.state.options.copy(collectionBusy = false))
                 fixture.presentation.onEvent(TvEpisodeEvent.AllEpisodesWatched(
@@ -230,7 +221,6 @@ class TvPlayerI18nUiTest {
             onNodeWithTag("tv-player-collection-remove-confirm").assertIsFocused()
             key(Key.DirectionCenter)
             assertPending("remove-confirm", "remove-cancel")
-            screenshot("collection-remove-pending")
         }
     }
 
@@ -245,7 +235,6 @@ class TvPlayerI18nUiTest {
             runOnIdle { fixture.state = fixture.state.copy(options = fixture.state.options.copy(message = TvPlayerMessage.FollowingHost)) }
             onNodeWithText(playerTestString(Lang.tv_player_following_host_hint, playerTestString(Lang.watch_together_title))).assertIsDisplayed()
             runOnIdle { fixture.state = fixture.state.copy(options = fixture.state.options.copy(message = null)) }
-            screenshot("controls-$locale")
 
             openPanel(TvPlayerPanel.Comments)
             onNodeWithTag("tv-comment-i18n").assertIsFocused().assertTextContains(playerTestString(Lang.comment_read_full))
@@ -253,7 +242,6 @@ class TvPlayerI18nUiTest {
             onNodeWithText(playerTestString(Lang.tv_player_scroll_reveal_hint)).assertIsDisplayed()
             key(Key.DirectionCenter)
             onNodeWithText(playerTestString(Lang.tv_player_scroll_hide_hint)).assertIsDisplayed()
-            screenshot("comment-$locale")
             runOnIdle { fixture.back.onBackPressed() }
             runOnIdle { fixture.back.onBackPressed() }
 
@@ -278,7 +266,6 @@ class TvPlayerI18nUiTest {
             key(Key.DirectionDown)
             key(Key.DirectionDown)
             onNodeWithTag("tv-together-submit").assertIsFocused()
-            screenshot("together-$locale")
             runOnIdle { fixture.back.onBackPressed() }
 
             runOnIdle { fixture.presentation.onAction(TvPlayerAction.OpenSourceDialog) }
@@ -295,7 +282,6 @@ class TvPlayerI18nUiTest {
             }
             onNodeWithTag("tv-source-detailed").performSemanticsAction(SemanticsActions.RequestFocus) { it() }
             onNodeWithText(playerTestString(Lang.media_subtitle_language_chinese_simplified) + " / custom").assertIsDisplayed()
-            screenshot("source-$locale")
         }
     }
 
@@ -336,20 +322,16 @@ class TvPlayerI18nUiTest {
                 .assert(SemanticsMatcher.keyNotDefined(SemanticsProperties.Text))
             assertEquals(nodeId, chip.fetchSemanticsNode().id)
             assertControlBounds()
-            screenshot("controls-narrow-en-US")
             openPanel(TvPlayerPanel.Together)
             assertControlBounds()
             runOnIdle { fixture.together = fixture.together.copy(error = null) }
             assertTextFits(playerTestString(Lang.watch_together_join))
-            screenshot("together-large-type-en-US")
             runOnIdle { fixture.together = fixture.together.copy(joined = true) }
             onNodeWithTag("tv-together-follow").performSemanticsAction(SemanticsActions.RequestFocus) { it() }
-            screenshot("together-follow-large-type-en-US")
             assertTextFits(playerTestString(Lang.watch_together_follow_host_desc))
             onNodeWithTag("tv-together-leave").assertIsDisplayed()
             runOnIdle { fixture.together = fixture.together.copy(isHost = true) }
             onNodeWithTag("tv-together-playback").performSemanticsAction(SemanticsActions.RequestFocus) { it() }
-            screenshot("together-host-large-type-en-US")
             assertTextFits(playerTestString(Lang.watch_together_host_desc))
             val explanationBounds = onNodeWithText(playerTestString(Lang.watch_together_host_desc), useUnmergedTree = true)
                 .fetchSemanticsNode().boundsInRoot
@@ -378,7 +360,6 @@ class TvPlayerI18nUiTest {
             }
             key(Key.DirectionRight)
             onNodeWithTag("tv-enhancement-QUALITY").assertIsFocused()
-            screenshot("enhancement-large-type-en-US")
         }
     }
 
@@ -459,12 +440,5 @@ class TvPlayerI18nUiTest {
     private fun AniComposeUiTest.key(key: Key) {
         onRoot().performKeyInput { pressKey(key) }
         waitForIdle()
-    }
-
-    private fun AniComposeUiTest.screenshot(name: String) {
-        val bitmap = onNodeWithTag("tv-i18n-player").captureToImage().asAndroidBitmap()
-        val context = InstrumentationRegistry.getInstrumentation().targetContext
-        val file = File(context.getExternalFilesDir("screenshots"), "i18n-$name.png")
-        file.outputStream().use { check(bitmap.compress(Bitmap.CompressFormat.PNG, 100, it)) }
     }
 }

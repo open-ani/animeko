@@ -71,9 +71,10 @@ data class MediaSourceResultPresentation(
 }
 
 /**
- * 在 [MediaSelectorView] 使用, 管理多个 [MediaSourceResultPresentation] 的结果
+ * 一次 fetch 会话中全部数据源的结果集合, 按 [MediaSourceKind] 拆分为 [btSources] 与 [webSources].
  *
- * 对应 UI 是 "BT" 和 "WEB" 的两行列表, 列表包含 [MediaSourceResultPresentation]
+ * [btSources] 供 [me.him188.ani.app.ui.mediaselect.bt.BtResourcesPage] 的数据源面板 / 下拉、列表加载态与下载对话框使用, 也用于判断是否显示 BT 模式入口;
+ * [webSources] 经 [MediaSelectorState] 供自动匹配页展示各源状态.
  */
 @Immutable
 data class MediaSourceResultListPresentation(

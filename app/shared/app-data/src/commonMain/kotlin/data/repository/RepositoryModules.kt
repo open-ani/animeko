@@ -20,10 +20,13 @@ import me.him188.ani.app.data.persistent.database.AniDatabase
 import me.him188.ani.app.data.repository.episode.AnimeScheduleRepository
 import me.him188.ani.app.data.repository.episode.BangumiCommentRepository
 import me.him188.ani.app.data.repository.episode.EpisodeCollectionRepository
+import me.him188.ani.app.data.repository.episode.EpisodeCollectionSyncer
 import me.him188.ani.app.data.repository.episode.EpisodeCommentRepository
 import me.him188.ani.app.data.repository.episode.EpisodeProgressRepository
 import me.him188.ani.app.data.repository.media.EpisodePreferencesRepository
 import me.him188.ani.app.data.repository.media.EpisodePreferencesRepositoryImpl
+import me.him188.ani.app.data.repository.media.ManualBrowseMemoryRepository
+import me.him188.ani.app.data.repository.media.ManualBrowseMemoryRepositoryImpl
 import me.him188.ani.app.data.repository.media.MediaSourceInstanceRepository
 import me.him188.ani.app.data.repository.media.MediaSourceInstanceRepositoryImpl
 import me.him188.ani.app.data.repository.media.MediaSourceSubscriptionRepository
@@ -207,10 +210,12 @@ fun KoinApplication.repositoryModules(
         EpisodeCollectionRepository(
             subjectDao = database.subjectCollection(),
             episodeCollectionDao = database.episodeCollection(),
+            pendingOpDao = database.episodeCollectionPendingOpDao(),
             episodeService = get(),
             animeScheduleRepository = get(),
             subjectCollectionRepository = inject(),
             getEpisodeTypeFiltersUseCase = get(),
+            onDirtyChanged = { get<EpisodeCollectionSyncer>().requestSync() },
         )
     }
 
@@ -275,6 +280,10 @@ fun KoinApplication.repositoryModules(
     single<DanmakuRegexFilterRepository> { DanmakuRegexFilterRepositoryImpl(getContext().dataStores.danmakuFilterStore) }
 
     single<MikanIndexCacheRepository> { MikanIndexCacheRepositoryImpl(getContext().dataStores.mikanIndexStore) }
+
+    single<ManualBrowseMemoryRepository> {
+        ManualBrowseMemoryRepositoryImpl(getContext().dataStores.manualBrowseMemoryStore)
+    }
 
     single<SelectorMediaSourceEpisodeCacheRepository> {
         SelectorMediaSourceEpisodeCacheRepository(

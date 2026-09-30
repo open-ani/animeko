@@ -9,7 +9,6 @@
 
 package me.him188.ani.tv.ui.episode
 
-import android.graphics.Bitmap
 import androidx.activity.OnBackPressedDispatcher
 import androidx.activity.compose.LocalOnBackPressedDispatcherOwner
 import androidx.compose.foundation.background
@@ -19,7 +18,6 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.asAndroidBitmap
 import androidx.compose.ui.input.key.Key
 import androidx.compose.ui.semantics.SemanticsProperties
 import androidx.compose.ui.test.SemanticsMatcher
@@ -27,13 +25,13 @@ import androidx.compose.ui.test.assert
 import androidx.compose.ui.test.assertHasNoClickAction
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.assertIsFocused
-import androidx.compose.ui.test.captureToImage
+import androidx.compose.ui.test.hasTestTag
+import androidx.compose.ui.test.isFocused
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.onRoot
 import androidx.compose.ui.test.performKeyInput
 import androidx.compose.ui.test.pressKey
-import androidx.test.platform.app.InstrumentationRegistry
 import kotlinx.coroutines.flow.emptyFlow
 import me.him188.ani.app.domain.player.VideoLoadingState
 import me.him188.ani.app.ui.framework.AniComposeUiTest
@@ -58,7 +56,6 @@ import me.him188.ani.tv.ui.watchtogether.TvTogetherIntent
 import me.him188.ani.tv.ui.watchtogether.TvTogetherState
 import org.openani.mediamp.MediaStatus
 import org.openani.mediamp.PlayerState
-import java.io.File
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertTrue
@@ -71,7 +68,16 @@ class TvPlayerSidebarNavigationUiTest {
         val commands = mutableListOf<TvPlaybackCommand>()
         val intents = mutableListOf<TvEpisodeIntent>()
         val togetherIntents = mutableListOf<TvTogetherIntent>()
-        val machine = TvPlayerPresentationState({ TvPlaybackSnapshot(PlayerState(MediaStatus.Ready, true, false), 20_000, 60_000) }, commands::add)
+        val machine = TvPlayerPresentationState(
+            {
+                TvPlaybackSnapshot(
+                    PlayerState(MediaStatus.Ready, true, false),
+                    20_000,
+                    60_000
+                )
+            },
+            commands::add
+        )
         var panel by mutableStateOf(TvPlayerPanelState())
         lateinit var backDispatcher: OnBackPressedDispatcher
 
@@ -105,7 +111,12 @@ class TvPlayerSidebarNavigationUiTest {
         openPanel(TvPlayerPanel.DanmakuSettings)
         key(Key.DirectionCenter)
         onNodeWithTag("tv-danmaku-property-FontSize").assertIsFocused()
-            .assert(SemanticsMatcher.expectValue(SemanticsProperties.StateDescription, playerTestString(Lang.tv_player_adjusting)))
+            .assert(
+                SemanticsMatcher.expectValue(
+                    SemanticsProperties.StateDescription,
+                    playerTestString(Lang.tv_player_adjusting)
+                )
+            )
         key(Key.DirectionLeft)
         key(Key.DirectionRight)
         assertEquals(
@@ -189,7 +200,6 @@ class TvPlayerSidebarNavigationUiTest {
         onNodeWithTag("tv-danmaku-placeholder-0", useUnmergedTree = true).assertIsFocused().assertHasNoClickAction()
         onNodeWithTag("tv-danmaku-placeholder-1", useUnmergedTree = true).assertIsDisplayed().assertHasNoClickAction()
         onNodeWithTag("tv-danmaku-list-empty").assertDoesNotExist()
-        saveScreenshot("danmaku-loading-skeleton")
         runOnIdle { fixture.backDispatcher.onBackPressed() }
         onNodeWithTag("tv-danmaku-list-button").assertIsFocused()
         key(Key.DirectionCenter)
@@ -244,11 +254,13 @@ class TvPlayerSidebarNavigationUiTest {
         val focusedNodeId = onNodeWithText("弹幕 2").fetchSemanticsNode().id
         runOnIdle {
             // Repopulation recreates presentations. IDs from different services can overlap.
-            fixture.panel = fixture.panel.copy(danmaku = listOf(
-                danmaku(5), danmaku(4), danmaku(3),
-                danmaku(2, DanmakuServiceId.Dandanplay, "另一来源的弹幕 2"),
-                danmaku(2), danmaku(1), danmaku(1),
-            ))
+            fixture.panel = fixture.panel.copy(
+                danmaku = listOf(
+                    danmaku(5), danmaku(4), danmaku(3),
+                    danmaku(2, DanmakuServiceId.Dandanplay, "另一来源的弹幕 2"),
+                    danmaku(2), danmaku(1), danmaku(1),
+                )
+            )
         }
         onNodeWithText("弹幕 2").assertIsFocused()
         assertEquals(focusedNodeId, onNodeWithText("弹幕 2").fetchSemanticsNode().id)
@@ -397,6 +409,10 @@ class TvPlayerSidebarNavigationUiTest {
     }
 
     private fun AniComposeUiTest.openPanel(panel: TvPlayerPanel) {
+        // Initial focus is delivered after Android grants window focus, outside Compose's idle synchronization.
+        waitUntil(timeoutMillis = 5_000) {
+            onAllNodes(hasTestTag("tv-player-seekbar") and isFocused()).fetchSemanticsNodes().isNotEmpty()
+        }
         onNodeWithTag("tv-player-seekbar").assertIsFocused()
         key(Key.DirectionUp)
         repeat(TvPlayerPanel.entries.indexOf(panel)) { key(Key.DirectionRight) }
@@ -433,12 +449,5 @@ class TvPlayerSidebarNavigationUiTest {
     private fun AniComposeUiTest.key(key: Key) {
         onRoot().performKeyInput { pressKey(key) }
         waitForIdle()
-    }
-
-    private fun AniComposeUiTest.saveScreenshot(name: String) {
-        val bitmap = onRoot().captureToImage().asAndroidBitmap()
-        val context = InstrumentationRegistry.getInstrumentation().targetContext
-        val file = File(context.getExternalFilesDir("screenshots"), "$name.png")
-        file.outputStream().use { check(bitmap.compress(Bitmap.CompressFormat.PNG, 100, it)) }
     }
 }

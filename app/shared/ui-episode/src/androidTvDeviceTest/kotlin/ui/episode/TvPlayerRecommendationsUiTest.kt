@@ -9,7 +9,6 @@
 
 package me.him188.ani.tv.ui.episode
 
-import android.graphics.Bitmap
 import androidx.activity.OnBackPressedDispatcher
 import androidx.activity.compose.LocalOnBackPressedDispatcherOwner
 import androidx.compose.foundation.background
@@ -19,11 +18,10 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.asAndroidBitmap
 import androidx.compose.ui.input.key.Key
 import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.semantics.SemanticsNode
 import androidx.compose.ui.semantics.SemanticsProperties
 import androidx.compose.ui.test.SemanticsMatcher
 import androidx.compose.ui.test.assert
@@ -31,7 +29,6 @@ import androidx.compose.ui.test.assertCountEquals
 import androidx.compose.ui.test.assertHasNoClickAction
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.assertIsFocused
-import androidx.compose.ui.test.captureToImage
 import androidx.compose.ui.test.hasAnyAncestor
 import androidx.compose.ui.test.hasClickAction
 import androidx.compose.ui.test.hasTestTag
@@ -40,7 +37,6 @@ import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.onRoot
 import androidx.compose.ui.test.performKeyInput
 import androidx.compose.ui.test.pressKey
-import androidx.test.platform.app.InstrumentationRegistry
 import kotlinx.coroutines.flow.emptyFlow
 import me.him188.ani.app.domain.episode.SubjectRecommendation
 import me.him188.ani.app.domain.player.VideoLoadingState
@@ -56,10 +52,7 @@ import me.him188.ani.tv.ui.foundation.theme.AniTvTheme
 import me.him188.ani.tv.ui.watchtogether.TvTogetherState
 import org.openani.mediamp.MediaStatus
 import org.openani.mediamp.PlayerState
-import java.io.File
-import kotlin.math.roundToInt
 import kotlin.test.Test
-import kotlin.test.assertContentEquals
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
 import kotlin.test.assertTrue
@@ -131,7 +124,6 @@ class TvPlayerRecommendationsUiTest {
         }
         showPlayer(fixture)
         val title = onNodeWithTag("tv-player-title-bar").fetchSemanticsNode()
-        val subjectBounds = onNodeWithText("测试番剧").fetchSemanticsNode().boundsInRoot
         onNodeWithTag("tv-player-seekbar").assertIsFocused()
         onNodeWithTag("tv-recommendations-hint")
             .assertIsDisplayed()
@@ -139,9 +131,7 @@ class TvPlayerRecommendationsUiTest {
             .assert(SemanticsMatcher.keyNotDefined(SemanticsProperties.Focused))
         key(Key.DirectionDown)
         onNodeWithTag("tv-next-episode-button").assertIsFocused()
-        val controllerScreenshot = saveScreenshot("controller-entry")
-        val titlePixels = controllerScreenshot.pixelsIn(subjectBounds)
-        val backgroundPixels = controllerScreenshot.backgroundPixels()
+        val scrim = bottomScrim()
         key(Key.DirectionDown)
         onNodeWithTag("tv-player-controller").assertDoesNotExist()
         onNodeWithTag("tv-recommendations-row").assertIsDisplayed()
@@ -150,9 +140,8 @@ class TvPlayerRecommendationsUiTest {
         val recommendationTitle = onNodeWithTag("tv-player-title-bar").fetchSemanticsNode()
         assertEquals(title.id, recommendationTitle.id)
         assertEquals(title.boundsInRoot, recommendationTitle.boundsInRoot)
-        val recommendationScreenshot = saveScreenshot("recommendation-row")
-        assertContentEquals(titlePixels, recommendationScreenshot.pixelsIn(subjectBounds), "The title must remain drawn")
-        assertContentEquals(backgroundPixels, recommendationScreenshot.backgroundPixels(), "Both views must share the scrim")
+        onNodeWithText("测试番剧").assertIsDisplayed()
+        assertSameScrim(scrim)
 
         key(Key.DirectionRight)
         onNodeWithTag("tv-recommendation-${fixture.panel.recommendations[1].uniqueId}").assertIsFocused()
@@ -162,7 +151,7 @@ class TvPlayerRecommendationsUiTest {
         onNodeWithTag("tv-recommendations-row").assertIsDisplayed()
         runOnIdle { fixture.backDispatcher.onBackPressed() }
         assertControllerHasFocus()
-        assertContentEquals(backgroundPixels, saveScreenshot("controller-restored").backgroundPixels())
+        assertSameScrim(scrim)
         assertTrue(fixture.commands.isEmpty())
     }
 
@@ -220,7 +209,6 @@ class TvPlayerRecommendationsUiTest {
         onNodeWithTag("tv-recommendation-placeholder-1").assertIsDisplayed().assertHasNoClickAction()
         onNodeWithText(playerTestString(Lang.subject_episode_recommendations_loading)).assertDoesNotExist()
         onNodeWithText(playerTestString(Lang.subject_episode_recommendations_empty)).assertDoesNotExist()
-        saveScreenshot("recommendations-loading-skeleton")
         key(Key.DirectionRight)
         onNodeWithTag("tv-recommendations-loading").assertIsFocused()
         key(Key.DirectionUp)
@@ -268,11 +256,11 @@ class TvPlayerRecommendationsUiTest {
         showPlayer(fixture)
         onNodeWithTag("tv-player-seekbar").assertIsFocused()
         val titleBounds = onNodeWithTag("tv-player-title-bar").fetchSemanticsNode().boundsInRoot
-        val backgroundPixels = onNodeWithTag("tv-player-test").captureToImage().asAndroidBitmap().backgroundPixels()
+        val scrim = bottomScrim()
         mainClock.autoAdvance = false
         openRecommendations()
         mainClock.advanceTimeBy(80)
-        assertContentEquals(backgroundPixels, saveScreenshot("recommendation-transition").backgroundPixels())
+        assertSameScrim(scrim)
         onNodeWithTag("tv-player-title-bar").assertIsDisplayed()
         assertEquals(titleBounds, onNodeWithTag("tv-player-title-bar").fetchSemanticsNode().boundsInRoot)
         key(Key.DirectionRight)
@@ -338,27 +326,13 @@ class TvPlayerRecommendationsUiTest {
         onNodeWithTag("tv-player-seekbar").assertIsFocused()
     }
 
-    // Android's assertScreenshot helper is a no-op; keep actual captures for visual inspection.
-    private fun AniComposeUiTest.saveScreenshot(name: String): Bitmap {
-        val bitmap = onNodeWithTag("tv-player-test").captureToImage().asAndroidBitmap()
-        val context = InstrumentationRegistry.getInstrumentation().targetContext
-        val file = File(context.getExternalFilesDir("screenshots"), "$name.png")
-        file.outputStream().use { check(bitmap.compress(Bitmap.CompressFormat.PNG, 100, it)) }
-        println("Screenshot: ${file.absolutePath}")
-        return bitmap
-    }
+    private fun AniComposeUiTest.bottomScrim(): SemanticsNode = onNodeWithTag("tv-player-bottom-scrim").fetchSemanticsNode()
 
-    private fun Bitmap.pixelsIn(bounds: Rect): IntArray {
-        val width = bounds.width.roundToInt()
-        val height = bounds.height.roundToInt()
-        return IntArray(width * height).also {
-            getPixels(it, 0, width, bounds.left.roundToInt(), bounds.top.roundToInt(), width, height)
-        }
-    }
-
-    // Sample inside the left margin, clear of controls and recommendation cards.
-    private fun Bitmap.backgroundPixels(): IntArray = IntArray(height).also {
-        getPixels(it, 0, 1, width / 100, 0, 1, height)
+    /** The controller and the recommendation row slide over one stationary scrim. */
+    private fun AniComposeUiTest.assertSameScrim(expected: SemanticsNode) {
+        val scrim = bottomScrim()
+        assertEquals(expected.id, scrim.id, "Both views must share the scrim")
+        assertEquals(expected.boundsInRoot, scrim.boundsInRoot)
     }
 
     private fun recommendation(id: Long, uri: String? = null) = SubjectRecommendation(

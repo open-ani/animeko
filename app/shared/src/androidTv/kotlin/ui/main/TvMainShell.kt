@@ -48,6 +48,7 @@ import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.input.key.Key
 import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.semantics.semantics
 import androidx.tv.material3.MaterialTheme
 import dev.chrisbanes.haze.HazeProgressive
 import dev.chrisbanes.haze.HazeTint
@@ -72,6 +73,8 @@ import me.him188.ani.tv.ui.foundation.focus.tvFocusHotkeyToggle
 import me.him188.ani.tv.ui.foundation.focus.tvFocusMemorable
 import me.him188.ani.tv.ui.foundation.focus.tvFocusNavSignal
 import me.him188.ani.tv.ui.foundation.layout.tvModalUnderlay
+import me.him188.ani.tv.ui.foundation.semantics.tvBackdropBlur
+import me.him188.ani.tv.ui.foundation.semantics.tvVisualAlpha
 import me.him188.ani.tv.ui.foundation.widgets.TvNavRailItem
 import me.him188.ani.tv.ui.foundation.widgets.TvNavigationRailDefaults
 import me.him188.ani.tv.ui.foundation.widgets.TvNavigationSideRail
@@ -199,12 +202,12 @@ fun TvMainShell(
                     }
                 }
 
+                val dimAlpha = railReveal * TvNavigationRailDefaults.BackgroundDimAlpha
                 Box(
                     Modifier.fillMaxSize()
-                        .background(
-                            MaterialTheme.colorScheme.surface
-                                .copy(alpha = railReveal * TvNavigationRailDefaults.BackgroundDimAlpha),
-                        ),
+                        .testTag("tv-main-rail-dim")
+                        .semantics { tvVisualAlpha = dimAlpha }
+                        .background(MaterialTheme.colorScheme.surface.copy(alpha = dimAlpha)),
                 )
             }
 
@@ -213,6 +216,11 @@ fun TvMainShell(
                 Box(
                     Modifier.fillMaxHeight()
                         .fillMaxWidth(TvNavigationRailDefaults.BackgroundBlurWidthFraction)
+                        .testTag("tv-main-rail-blur")
+                        .semantics {
+                            tvBackdropBlur = true
+                            tvVisualAlpha = railReveal
+                        }
                         .hazeEffect(railBackdrop) {
                             this.backgroundColor = backgroundColor
                             blurRadius = TvNavigationRailDefaults.BackgroundBlurRadius

@@ -78,6 +78,11 @@ constructor(
      * 实际生效值为此值与数据源配置中定义的值的较小者. 为 0 时禁用缓存.
      */
     val webSearchCacheTtl: Duration = 6.hours, // 注意, 这是 'enum'. 查看 UI 代码以确定有哪些值可以选.
+    /**
+     * 手动查找页的「记住选择」开关: 点选剧集播放时是否写浏览记忆, 之后每集按记住的位置自动选择.
+     * @since 6.2
+     */
+    val rememberManualSelection: Boolean = true,
     @Suppress("PropertyName") @Transient val _placeholder: Int = 0,
 ) {
     companion object {
