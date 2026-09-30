@@ -30,7 +30,6 @@ import me.him188.ani.app.ui.lang.Lang
 import me.him188.ani.app.ui.lang.settings_pikpak_description
 import me.him188.ani.app.ui.lang.settings_pikpak_drive_usage_failed
 import me.him188.ani.app.ui.lang.settings_pikpak_drive_usage_idle
-import me.him188.ani.app.ui.lang.settings_pikpak_drive_usage_low
 import me.him188.ani.app.ui.lang.settings_pikpak_drive_usage_signed_out
 import me.him188.ani.app.ui.lang.settings_pikpak_drive_usage_title
 import me.him188.ani.app.ui.lang.settings_pikpak_drive_usage_value
@@ -68,8 +67,14 @@ internal fun SettingsScope.PikPakAcceleratorGroup(
     val config by state
     var showRecommendDialog by remember { mutableStateOf(false) }
 
-    if (config.enabled && !config.legacyNoticeAnswered) {
-        LaunchedEffect(Unit) { legacyNoticeState.check() }
+    // The numbers shown belong to the account they were read for
+    LaunchedEffect(config.username) { driveUsageState.reset() }
+
+    val signedIn = config.username.isNotEmpty() && (config.password.isNotEmpty() || config.refreshToken.isNotEmpty())
+    if (config.enabled && !config.legacyNoticeAnswered && signedIn) {
+        // Keyed on the session as well: a check before sign-in lists nothing and is made again once
+        // the credentials are in.
+        LaunchedEffect(config.username, config.refreshToken.isNotEmpty()) { legacyNoticeState.check(config.username) }
     }
 
     Group(
@@ -108,6 +113,8 @@ internal fun SettingsScope.PikPakAcceleratorGroup(
                                     username = newUsername,
                                     password = "",
                                     refreshToken = "",
+                                    // The answer was about the previous account's folder
+                                    legacyNoticeAnswered = false,
                                 ),
                             )
                         }
@@ -246,21 +253,8 @@ private fun SettingsScope.PikPakDriveUsageItems(
                         color = MaterialTheme.colorScheme.error,
                     )
 
-                is PikPakDriveUsagePresentation.Loaded -> Column {
-                    Text(
-                        stringResource(
-                            Lang.settings_pikpak_drive_usage_value,
-                            presentation.used.toString(),
-                            presentation.limit.toString(),
-                        ),
-                    )
-                    if (presentation.freeSpaceLow) {
-                        Text(
-                            stringResource(Lang.settings_pikpak_drive_usage_low),
-                            color = MaterialTheme.colorScheme.error,
-                        )
-                    }
-                }
+                is PikPakDriveUsagePresentation.Loaded ->
+                    Text(stringResource(Lang.settings_pikpak_drive_usage_value, presentation.free.toString()))
             }
         },
         action = {

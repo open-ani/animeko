@@ -20,6 +20,7 @@ import me.him188.ani.app.ui.settings.framework.SingleTester
 import me.him188.ani.datasources.api.topic.FileSize
 import me.him188.ani.datasources.api.topic.FileSize.Companion.bytes
 import me.him188.ani.torrent.pikpak.PikPakDriveUsage
+import me.him188.ani.torrent.pikpak.PikPakNotConfiguredException
 import kotlin.coroutines.cancellation.CancellationException
 
 @Stable
@@ -31,15 +32,7 @@ sealed interface PikPakDriveUsagePresentation {
     data class Failed(val message: String) : PikPakDriveUsagePresentation
 
     data class Loaded(val usage: PikPakDriveUsage) : PikPakDriveUsagePresentation {
-        val used: FileSize get() = usage.accountUsedBytes.bytes
-        val limit: FileSize get() = usage.accountLimitBytes.bytes
         val free: FileSize get() = (usage.accountLimitBytes - usage.accountUsedBytes).coerceAtLeast(0L).bytes
-
-        val freeSpaceLow: Boolean get() = free.inBytes < LOW_FREE_SPACE_BYTES
-    }
-
-    companion object {
-        const val LOW_FREE_SPACE_BYTES: Long = 50L * 1024 * 1024 * 1024
     }
 }
 
@@ -74,8 +67,16 @@ class PikPakDriveUsageState(
         else PikPakDriveUsagePresentation.Loaded(usage)
     } catch (e: CancellationException) {
         throw e
+    } catch (e: PikPakNotConfiguredException) {
+        // Credentials missing or incomplete: not a failure to show, the account is simply not set up
+        PikPakDriveUsagePresentation.SignedOut
     } catch (e: Throwable) {
         PikPakDriveUsagePresentation.Failed(e.describe())
+    }
+
+    /** Forgets what was shown, for an account that changed since. */
+    fun reset() {
+        presentation = PikPakDriveUsagePresentation.Idle
     }
 }
 

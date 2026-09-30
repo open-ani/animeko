@@ -59,10 +59,9 @@
     <string name="settings_pikpak_password">Password</string>
     <string name="settings_pikpak_password_description">Set a password in your PikPak account settings if you signed up via Google.</string>
     <string name="settings_pikpak_password_hidden">••••••••</string>
-    <string name="settings_pikpak_drive_usage_title">Account connection test</string>
-    <string name="settings_pikpak_drive_usage_value">%1$s of %2$s used</string>
+    <string name="settings_pikpak_drive_usage_title">Drive status</string>
+    <string name="settings_pikpak_drive_usage_value">%1$s free</string>
     <string name="settings_pikpak_drive_usage_idle">Tap to test</string>
-    <string name="settings_pikpak_drive_usage_low">Free space is running out. Playback fails once the drive is full.</string>
     <string name="settings_pikpak_drive_usage_signed_out">Not signed in</string>
     <string name="settings_pikpak_drive_usage_failed">Connection failed: %1$s</string>
     <string name="settings_pikpak_legacy_title">Clean up the old cache on your drive?</string>
@@ -70,6 +69,9 @@
     <string name="settings_pikpak_legacy_delete">Delete permanently</string>
     <string name="settings_pikpak_legacy_keep">Keep</string>
     <string name="settings_pikpak_legacy_failed">Delete failed: %1$s</string>
+    <string name="pikpak_not_enough_space_title">Not enough PikPak space</string>
+    <string name="pikpak_not_enough_space_message">Playing “%1$s” through PikPak needs %2$s free in the drive, but only %3$s is left. Free up space in PikPak and try again.</string>
+    <string name="pikpak_not_enough_space_ok">OK</string>
     <string name="settings_pikpak_recommend_title">Align media selector?</string>
     <string name="settings_pikpak_recommend_message">PikPak only handles BitTorrent sources. Set "Preferred source type" to BT so the default selector routes through PikPak.</string>
     <string name="settings_pikpak_recommend_apply">Apply</string>

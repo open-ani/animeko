@@ -9,7 +9,6 @@
 
 package me.him188.ani.app.domain.media.cache.engine
 
-import androidx.datastore.core.DataStore
 import kotlinx.atomicfu.locks.SynchronizedObject
 import kotlinx.atomicfu.locks.synchronized
 import kotlinx.coroutines.CancellationException
@@ -48,7 +47,6 @@ import me.him188.ani.app.domain.media.cache.DownloaderStatus
 import me.him188.ani.app.domain.media.cache.LocalFileMediaCache
 import me.him188.ani.app.domain.media.cache.MediaCache
 import me.him188.ani.app.domain.media.cache.MediaCacheState
-import me.him188.ani.app.domain.media.cache.storage.MediaCacheSave
 import me.him188.ani.app.domain.media.cache.storage.MediaSaveDirProvider
 import me.him188.ani.app.domain.media.resolver.EpisodeMetadata
 import me.him188.ani.app.domain.media.resolver.TorrentMediaResolver
@@ -111,13 +109,6 @@ class TorrentMediaCacheEngine(
     private val dao: TorrentCacheInfoDao,
     val flowDispatcher: CoroutineContext = Dispatchers.Default,
     private val baseSaveDirProvider: MediaSaveDirProvider,
-    /**
-     * 持久化的缓存记录, 与使用本引擎的 [me.him188.ani.app.domain.media.cache.storage.MediaCacheStorage] 是同一个.
-     *
-     * 季度合集的每一集是一条独立记录, 共用同一个 torrent 行与可能同一个文件. 删除一条记录时必须知道
-     * 同一 media 下还剩哪些记录, 否则会连带删掉其他集的 torrent_cache 行和文件.
-     */
-    internal val metadataStore: DataStore<List<MediaCacheSave>>,
     private val onDownloadStarted: suspend (session: TorrentSession) -> Unit = {},
 ) : MediaCacheEngine, AutoCloseable {
     companion object {
@@ -131,14 +122,6 @@ class TorrentMediaCacheEngine(
     }
 
     val isServiceConnected = engineAccess.isServiceConnected
-
-    /**
-     * 同一 media 下本引擎还持有的记录. 删除流程先从 store 移除被删记录再关闭缓存, 所以这里读到的是删除后仍存活的记录.
-     */
-    private suspend fun remainingRecordsOfMedia(mediaId: String): List<MediaCacheMetadata> =
-        metadataStore.data.first()
-            .filter { it.engine == engineKey && it.origin.mediaId == mediaId }
-            .map { it.metadata }
 
     class FileHandle(val state: Flow<State?>) {
         val handle = state.map { it?.handle } // single emit

@@ -133,10 +133,12 @@ class PikPakCacheService : LifecycleService(), KoinComponent {
         downloadOperations.submit(ids, DownloadOperation.Pause)
     }
 
+    // Downloads are left as they are: the controller starts the service again once the process
+    // returns to the foreground, and they carry on from there. Pausing them here left them paused
+    // for good, since nothing in progress means nothing asks for the service again.
     override fun onTimeout(startId: Int, fgsType: Int) {
         super.onTimeout(startId, fgsType)
         backgroundTimedOut.value = true
-        pauseAllDownloads()
         stopSelf()
     }
 
@@ -163,8 +165,9 @@ internal data class PikPakDownloadActivity(
 
 /**
  * Only [MediaCacheState.IN_PROGRESS] counts: a paused or failed record fetches nothing, and keeping
- * a foreground service for it would pin the process for no reason. Records that merely follow
- * playback are already excluded by [MediaDownloadManager.snapshots].
+ * a foreground service for it would pin the process for no reason. Playback on PikPak creates no
+ * record ([me.him188.ani.app.domain.player.extension.CacheOnBtPlayExtension] skips cloud engines), so
+ * every record here is a download someone asked for.
  */
 internal fun pikPakDownloadActivity(manager: MediaDownloadManager): Flow<PikPakDownloadActivity> =
     manager.snapshots()

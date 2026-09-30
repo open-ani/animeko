@@ -59,10 +59,9 @@
     <string name="settings_pikpak_password">密码</string>
     <string name="settings_pikpak_password_description">如果你使用 Google 登录，需先在 PikPak 账号设置里设置密码。</string>
     <string name="settings_pikpak_password_hidden">••••••••</string>
-    <string name="settings_pikpak_drive_usage_title">账号连接测试</string>
-    <string name="settings_pikpak_drive_usage_value">已用 %1$s / %2$s</string>
+    <string name="settings_pikpak_drive_usage_title">网盘状态</string>
+    <string name="settings_pikpak_drive_usage_value">剩余 %1$s</string>
     <string name="settings_pikpak_drive_usage_idle">点击测试</string>
-    <string name="settings_pikpak_drive_usage_low">剩余空间不足，云盘写满后将无法播放。</string>
     <string name="settings_pikpak_drive_usage_signed_out">未登录</string>
     <string name="settings_pikpak_drive_usage_failed">连接失败：%1$s</string>
     <string name="settings_pikpak_legacy_title">清理云盘上的旧缓存？</string>
@@ -70,6 +69,9 @@
     <string name="settings_pikpak_legacy_delete">永久删除</string>
     <string name="settings_pikpak_legacy_keep">保留</string>
     <string name="settings_pikpak_legacy_failed">删除失败：%1$s</string>
+    <string name="pikpak_not_enough_space_title">PikPak 云盘空间不足</string>
+    <string name="pikpak_not_enough_space_message">通过 PikPak 播放「%1$s」需要云盘有 %2$s 空闲，当前只剩 %3$s。请清理云盘后重试。</string>
+    <string name="pikpak_not_enough_space_ok">知道了</string>
     <string name="settings_pikpak_recommend_title">同步调整数据源选择器？</string>
     <string name="settings_pikpak_recommend_message">PikPak 只处理 BT 资源。建议把"优先数据源类型"设为 BT，这样默认选择器才会实际走到 PikPak。</string>
     <string name="settings_pikpak_recommend_apply">应用</string>

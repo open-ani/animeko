@@ -27,6 +27,7 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
 import kotlinx.io.files.Path
 import kotlinx.io.files.SystemFileSystem
+import me.him188.ani.app.data.models.preference.PikPakConfig
 import me.him188.ani.app.data.network.AniApiProvider
 import me.him188.ani.app.data.network.AniCommentReportService
 import me.him188.ani.app.data.network.AniEpisodeCommentService
@@ -352,21 +353,12 @@ private fun KoinApplication.otherModules(
         val savedConfig = runBlocking { settings.pikpakConfig.flow.first() }
         val configState = settings.pikpakConfig.flow
             .stateIn(coroutineScope, SharingStarted.Eagerly, savedConfig)
+        fun PikPakConfig.toCredentials() = takeIf {
+            it.enabled && it.username.isNotEmpty() && (it.password.isNotEmpty() || it.refreshToken.isNotEmpty())
+        }?.let { PikPakCredentials(it.username, it.password) }
         val credentials = configState
-            .map { cfg ->
-                if (cfg.enabled && cfg.username.isNotEmpty() &&
-                    (cfg.password.isNotEmpty() || cfg.refreshToken.isNotEmpty())
-                ) {
-                    PikPakCredentials(cfg.username, cfg.password)
-                } else null
-            }
-            .stateIn(
-                coroutineScope, SharingStarted.Eagerly,
-                initialValue = savedConfig.takeIf {
-                    it.enabled && it.username.isNotEmpty() &&
-                            (it.password.isNotEmpty() || it.refreshToken.isNotEmpty())
-                }?.let { PikPakCredentials(it.username, it.password) },
-            )
+            .map { it.toCredentials() }
+            .stateIn(coroutineScope, SharingStarted.Eagerly, savedConfig.toCredentials())
 
         PikPakEngine(
             config = configState,
@@ -443,7 +435,6 @@ private fun KoinApplication.otherModules(
                                     engineAccess = if (isPikPak) AlwaysUseTorrentEngineAccess else get(),
                                     dao = database.torrentCacheInfoDao(),
                                     baseSaveDirProvider = get(),
-                                    metadataStore = metadataStore,
                                 ),
                                 displayName = "LocalTorrent",
                                 parentCoroutineContext = coroutineScope.childScopeContext(),

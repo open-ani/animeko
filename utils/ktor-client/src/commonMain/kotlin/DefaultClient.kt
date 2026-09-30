@@ -46,15 +46,15 @@ expect fun getPlatformKtorEngine(): HttpClientEngineFactory<*>
  * Note: 尽可能使用 `HttpClientProvider` 来共享 [HttpClient] 实例. 因为每个实例都潜在地会有一个线程池.
  */
 fun createDefaultHttpClient(
-    installBrowserUserAgent: Boolean = true,
-    // 自己解析 JSON、自己重试的 SDK 要的是一个不带这两个插件的客户端. ContentNegotiation 会加上
-    // Accept 头, PikPak 的 CDN 用 406 回应; HttpRequestRetry 会包住 SDK 的重试循环, 并可能在 SDK
-    // 重试前耗尽调用方的超时预算.
-    installRetry: Boolean = true,
-    installContentNegotiation: Boolean = true,
+    /**
+     * 给自带协议处理的 SDK 用: 不装 User-Agent、重试和 ContentNegotiation. ContentNegotiation 会加上
+     * Accept 头, PikPak 的 CDN 用 406 回应; HttpRequestRetry 会包住 SDK 的重试循环, 并可能在 SDK
+     * 重试前耗尽调用方的超时预算.
+     */
+    bare: Boolean = false,
     clientConfig: HttpClientConfig<*>.() -> Unit = {},
 ): HttpClient = HttpClient(getPlatformKtorEngine()) {
-    if (installRetry) {
+    if (!bare) {
         install(HttpRequestRetry) {
             maxRetries = 1
             delayMillis { 1000 }
@@ -70,10 +70,10 @@ fun createDefaultHttpClient(
         connectTimeoutMillis = 30_000
         socketTimeoutMillis = 30_000
     }
-    if (installBrowserUserAgent) {
+    if (!bare) {
         BrowserUserAgent()
     }
-    if (installContentNegotiation) {
+    if (!bare) {
         install(ContentNegotiation) {
             val xmlConverter = getXmlConverter()
             json(

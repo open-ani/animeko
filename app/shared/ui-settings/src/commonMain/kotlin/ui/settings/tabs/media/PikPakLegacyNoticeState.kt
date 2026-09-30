@@ -14,6 +14,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.launch
 import me.him188.ani.torrent.pikpak.PikPakDriveItem
 import kotlin.coroutines.cancellation.CancellationException
@@ -21,7 +22,8 @@ import kotlin.coroutines.cancellation.CancellationException
 @Stable
 class PikPakLegacyNoticeState(
     private val backgroundScope: CoroutineScope,
-    private val fetchItems: suspend () -> List<PikPakDriveItem>,
+    /** Null when the folder could not be listed; the next [check] tries again. */
+    private val fetchItems: suspend () -> List<PikPakDriveItem>?,
     private val deleteItems: suspend (ids: List<String>) -> Unit,
 ) {
     var items: List<PikPakDriveItem> by mutableStateOf(emptyList())
@@ -33,13 +35,22 @@ class PikPakLegacyNoticeState(
     var error: String? by mutableStateOf(null)
         private set
 
-    private var checked = false
+    // The account whose folder was listed. Only a listing that succeeded counts: a check made before
+    // sign-in, or offline, is made again when the account or its session changes.
+    private var checkedAccount: String? = null
+    private var checking: Job? = null
 
-    fun check() {
-        if (checked) return
-        checked = true
-        backgroundScope.launch {
-            items = fetchItems()
+    fun check(account: String) {
+        if (checkedAccount == account) return
+        if (checkedAccount != null) {
+            checkedAccount = null
+            items = emptyList()
+        }
+        checking?.cancel()
+        checking = backgroundScope.launch {
+            val listed = fetchItems() ?: return@launch
+            items = listed
+            checkedAccount = account
         }
     }
 

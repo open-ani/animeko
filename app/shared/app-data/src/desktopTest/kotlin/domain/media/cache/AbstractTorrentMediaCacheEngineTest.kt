@@ -110,7 +110,6 @@ abstract class AbstractTorrentMediaCacheEngineTest {
             baseSaveDirProvider = object : MediaSaveDirProvider {
                 override val saveDir: String = dir.absolutePath
             },
-            metadataStore = metadataStore,
             onDownloadStarted = { onDownloadStarted(it as AnitorrentDownloadSession) },
         ).also { cacheEngine = it }
     }

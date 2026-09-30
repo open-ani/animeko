@@ -66,11 +66,6 @@ class TorrentMediaCacheStorage(
     private val startupRestored = CompletableDeferred<Unit>()
 
     init {
-        // 引擎判断「删掉这条记录后同一 media 还剩哪些集」时直接读 store, 读的必须是本存储写入的那一份.
-        check(store === torrentEngine.metadataStore) {
-            "TorrentMediaCacheStorage and its TorrentMediaCacheEngine must share one metadata store."
-        }
-
         scope.launch(start = CoroutineStart.UNDISPATCHED) {
             var previousConnection: Boolean? = null
             val serviceConnected = combine(torrentEngine.isServiceConnected, engineAvailability) { connected, available ->

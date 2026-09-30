@@ -107,8 +107,7 @@ class PikPakWebM3uCacheMigration(
             list.mapNotNull { save ->
                 if (!save.isLegacyPikPakCache()) return@mapNotNull save
                 if (save.origin.mediaId in discardedIds) return@mapNotNull null
-                val result = migrated[save.origin.mediaId] ?: return@mapNotNull save
-
+                if (save.origin.mediaId !in migrated) return@mapNotNull save
                 save.copy(engine = MediaCacheEngineKey.PikPak)
             }
         }

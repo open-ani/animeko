@@ -11,9 +11,12 @@ package me.him188.ani.app.domain.torrent.engines
 
 import io.github.nihildigit.pikpak.SessionStore
 import kotlinx.coroutines.cancel
+import kotlinx.coroutines.channels.BufferOverflow
+import kotlinx.coroutines.flow.MutableSharedFlow
+import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.flow.SharingStarted
+import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.StateFlow
-import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.job
@@ -28,7 +31,7 @@ import me.him188.ani.datasources.api.source.MediaSourceLocation
 import me.him188.ani.torrent.pikpak.PikPakCredentials
 import me.him188.ani.torrent.pikpak.PikPakDriveUsage
 import me.him188.ani.torrent.pikpak.PikPakDriveItem
-import me.him188.ani.torrent.pikpak.PikPakEngineConfig
+import me.him188.ani.torrent.pikpak.PikPakNotEnoughSpaceException
 import me.him188.ani.torrent.pikpak.PikPakTorrentDownloader
 import me.him188.ani.utils.coroutines.childScope
 import me.him188.ani.utils.io.SystemPath
@@ -67,9 +70,13 @@ class PikPakEngine(
     @OptIn(UnsafeScopedHttpClientApi::class)
     private val httpClient = client.borrowForever().client
 
-    private val engineConfig: StateFlow<PikPakEngineConfig> = config
-        .map { it.toEngineConfig() }
-        .stateIn(scope, SharingStarted.Eagerly, config.value.toEngineConfig())
+    private val _notEnoughSpace = MutableSharedFlow<PikPakNotEnoughSpaceException>(
+        extraBufferCapacity = 1,
+        onBufferOverflow = BufferOverflow.DROP_OLDEST,
+    )
+
+    /** Each time a file could not be played or cached through PikPak for want of drive space. */
+    val notEnoughSpace: SharedFlow<PikPakNotEnoughSpaceException> = _notEnoughSpace.asSharedFlow()
 
     private val downloaderLock = Mutex()
 
@@ -105,15 +112,16 @@ class PikPakEngine(
         return (getDownloader() as PikPakTorrentDownloader).driveUsage()
     }
 
-    suspend fun legacyFolderItems(): List<PikPakDriveItem> {
-        if (!isSupported) return emptyList()
+    /** The legacy folder's items, or null when they could not be listed: not signed in, or offline. */
+    suspend fun legacyFolderItems(): List<PikPakDriveItem>? {
+        if (!isSupported) return null
         return try {
             (getDownloader() as PikPakTorrentDownloader).legacyFolderItems()
         } catch (e: CancellationException) {
             throw e
         } catch (e: Throwable) {
             logger.warn(e) { "Failed to list the PikPak legacy folder" }
-            emptyList()
+            null
         }
     }
 
@@ -144,8 +152,8 @@ class PikPakEngine(
                     credentials = credentials,
                     sessionStore = sessionStore,
                     rootDataDirectory = saveDir,
-                    config = engineConfig,
                     parentCoroutineContext = scope.coroutineContext,
+                    onNotEnoughSpace = { _notEnoughSpace.tryEmit(it) },
                 ).also { created ->
                     downloader = created
                     scope.coroutineContext.job.invokeOnCompletion { created.close() }
@@ -161,8 +169,4 @@ class PikPakEngine(
     override fun close() {
         scope.cancel()
     }
-
-    // concurrency 不从 PikPakConfig 来: 上限由 PikPak 对同一个签名链接的连接数限制决定, 不是用户偏好,
-    // 引擎侧的默认值已经取到这个上限.
-    private fun PikPakConfig.toEngineConfig() = PikPakEngineConfig()
 }
