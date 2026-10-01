@@ -509,12 +509,12 @@ private fun EpisodeScreenBody(
         vm.isFullscreen -> fullscreenVideoWindowInsets(compactWindowInsets)
         else -> compactWindowInsets
     }
-    val mode = when {
-        vm.isFullscreen -> EpisodeScreenLayoutMode.VIDEO_ONLY
-        !showExpandedUI -> EpisodeScreenLayoutMode.COMPACT
-        vm.sidebarVisible -> EpisodeScreenLayoutMode.WIDE
-        else -> EpisodeScreenLayoutMode.VIDEO_ONLY
-    }
+    val mode = episodeScreenLayoutMode(
+        isFullscreen = vm.isFullscreen,
+        showExpandedUI = showExpandedUI,
+        sidebarVisible = vm.sidebarVisible,
+        isDesktop = LocalPlatform.current.isDesktop(),
+    )
 
     EpisodeScreenLayout(
         mode,
