@@ -21,9 +21,14 @@ import kotlinx.coroutines.test.TestScope
 import me.him188.ani.app.data.models.preference.VideoScaffoldConfig
 import me.him188.ani.app.data.models.subject.SubjectSeriesInfo
 import me.him188.ani.app.data.models.subject.TestSubjectCollections
+import me.him188.ani.app.data.persistent.MemoryDataStore
 import me.him188.ani.app.data.persistent.database.dao.WebSearchSessionCacheDao
 import me.him188.ani.app.data.persistent.database.dao.WebSearchSessionCacheEntity
+import me.him188.ani.app.data.persistent.database.dao.createMemoryPlaybackHistoryDao
 import me.him188.ani.app.data.repository.media.SelectorMediaSourceEpisodeCacheRepository
+import me.him188.ani.app.data.repository.player.EpisodeHistories
+import me.him188.ani.app.data.repository.player.EpisodePlayHistoryRepository
+import me.him188.ani.app.data.repository.player.EpisodePlayHistoryRepositoryImpl
 import me.him188.ani.app.domain.media.hls.HlsPlaybackPreparer
 import me.him188.ani.app.domain.media.hls.NoopHlsPlaybackPreparer
 import me.him188.ani.app.domain.settings.GetVideoScaffoldConfigUseCase
@@ -91,6 +96,13 @@ class EpisodePlayerTestSuite(
                     }
                     single<HlsPlaybackPreparer> {
                         NoopHlsPlaybackPreparer
+                    }
+                    // 加载媒体前读取续播进度 (用作 HLS 预缓存的提示)
+                    single<EpisodePlayHistoryRepository> {
+                        EpisodePlayHistoryRepositoryImpl(
+                            MemoryDataStore(EpisodeHistories.Empty),
+                            createMemoryPlaybackHistoryDao(),
+                        )
                     }
                     // EpisodeFetchSelectPlayState 会在 onUIReady/onClose 清理过期的 web 搜索缓存
                     single<SelectorMediaSourceEpisodeCacheRepository> {

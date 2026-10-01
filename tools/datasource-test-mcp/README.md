@@ -39,7 +39,7 @@ The transport is a stateless subset of the MCP Streamable HTTP spec: JSON-RPC me
   并从 mpv 读取真实媒体信息 (分辨率/时长/编码/帧率/码率).
   mpv 原生库自动加载 (可用 `-Dani.mpv.native.dir` 指定目录); 加载失败时降级为仅 HTTP 探测.
 - `detect_hls_ads` — 不播放, 仅抓取 m3u8 (自动跟随 master → media) 做结构启发式分析,
-  并运行 Ani 客户端真实的 HLS 广告过滤器 (`HlsManifestFilter`), 报告各疑似广告组的时间偏移
+  并运行 Ani 客户端真实的 HLS 广告过滤器 (`HlsManifestFilter`, 需读取各组首片开头的 2 KB 判断时间轴), 报告各疑似广告组的时间偏移
   (可配合 `probe_video` 的 `captureAtSeconds` 定点截帧确认) 与 App 是否会自动滤除.
 
 ### 兼容保留
