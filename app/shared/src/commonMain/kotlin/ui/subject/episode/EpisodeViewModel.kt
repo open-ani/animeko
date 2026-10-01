@@ -406,7 +406,7 @@ open class EpisodeViewModel(
 
     /**
      * 全屏播放器的手动查找 / BT 容器是否可见. 放 VM 而不是 EpisodeVideo 的 rememberSaveable:
-     * EpisodeVideo 被 EpisodeScreenTabletVeryWide 与 EpisodeScreenContentPhone 两处调用, 窗口跨 600dp / 旋转时组合位置改变, 位置型状态会归零.
+     * 容器从侧边栏页面打开, 侧边栏页面被 closeSideSheet 销毁后容器仍要保留.
      */
     var fullscreenSelectorVisible: Boolean by mutableStateOf(false)
 
