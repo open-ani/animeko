@@ -57,7 +57,7 @@ class SubjectSearchRepository(
         },
     ).flow.flowOn(defaultDispatcher)
 
-    private inner class SubjectSearchPagingSource(
+    internal inner class SubjectSearchPagingSource(
         private val ignoreDoneAndDropped: suspend () -> Boolean,
         private val searchQuery: SubjectSearchQuery
     ) : PagingSource<Int, BatchSubjectDetails>() {
@@ -97,7 +97,8 @@ class SubjectSearchRepository(
                 return@withContext LoadResult.Page(
                     subjectInfos,
                     prevKey = if (offset == 0) null else offset,
-                    nextKey = if (subjectInfos.isEmpty()) null else offset + params.loadSize,
+                    // 搜索响应只有 items; 用服务端原始空页判断结束, 避免本地过滤清空整页时截断结果.
+                    nextKey = if (subjects.isEmpty()) null else offset + params.loadSize,
                 )
             } catch (e: CancellationException) {
                 throw e
