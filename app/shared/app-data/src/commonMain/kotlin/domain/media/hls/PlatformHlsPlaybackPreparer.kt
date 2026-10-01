@@ -503,8 +503,16 @@ private class LocalHlsProxySession private constructor(
         }
         // 改写要从 TS 包边界开始扫描, Range 请求拿到的不一定对齐包边界. 取整片改写后再切片, 改写等长所以偏移不变.
         if (shiftTicks != null && request.headers["range"] != null) {
-            val whole = rewriteWhole(segment, downloadSegment(segment.remoteUri), shiftTicks)
-            serveBytes(whole, request.headers["range"], output)
+            val original = try {
+                downloadSegment(segment.remoteUri)
+            } catch (e: CancellationException) {
+                throw e
+            } catch (e: Throwable) {
+                logger.warn(e) { "Failed to proxy HLS segment ${segment.remoteUri}" }
+                output.write(errorResponseHeader(502, "Bad Gateway").encodeToByteArray())
+                return
+            }
+            serveBytes(rewriteWhole(segment, original, shiftTicks), request.headers["range"], output)
             return
         }
         var headersWritten = false

@@ -65,10 +65,12 @@ object HlsManifestFilter {
                         HlsManifestFilterResult.unchanged(content, "encrypted"),
                     )
                 }
-                if (playlist.segments.any { it.byteRange != null && it.byteRange?.offset == null }) {
+                // 探测按组首片的地址取文件开头, 而这类播放列表的各组同在一个文件的不同区间,
+                // 每组都会读到同一个 PTS, 链串不起来, 起始 PTS 很小的正片组会被判成广告
+                if (playlist.segments.any { it.byteRange != null }) {
                     return HlsManifestAnalysis.earlyReturn(
                         content,
-                        HlsManifestFilterResult.unchanged(content, "byterange_implicit_offset"),
+                        HlsManifestFilterResult.unchanged(content, "byterange"),
                     )
                 }
             }

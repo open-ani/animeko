@@ -63,6 +63,17 @@ class TsPacketReaderFirstPtsTest {
         assertEquals(1528, firstPtsMillis(shifted))
     }
 
+    /**
+     * 伪装成图片的分片: PNG 签名的第 4 个字节是 0x47, 不是包边界. 按探测实际读取的字节数验证.
+     */
+    @Test
+    fun `finds packet boundary behind a png header`() {
+        val full = fixture("/hls/vod/seg000.ts")
+        val png = byteArrayOf(0x89.toByte(), 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A) + ByteArray(59)
+        val disguised = png + full
+        assertEquals(1528, firstPtsMillis(disguised, minOf(PTS_PROBE_BYTES, disguised.size)))
+    }
+
     @Test
     fun `returns null when there is no usable payload`() {
         assertNull(firstPtsMillis(ByteArray(0)))

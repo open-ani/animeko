@@ -162,12 +162,12 @@ class HlsManifestFilterTest {
     }
 
     @Test
-    fun `does not filter byte range playlist with implicit offset`() {
+    fun `does not filter byte range playlist`() {
         val content = buildString {
             appendLine("#EXTM3U")
             appendLine("#EXT-X-VERSION:4")
             appendLine("#EXT-X-TARGETDURATION:10")
-            appendLine("#EXT-X-BYTERANGE:3000")
+            appendLine("#EXT-X-BYTERANGE:3000@0")
             mediaPlaylistBody(
                 group(30, duration = 3.0, uriPrefix = "main/a"),
                 group(3, duration = 6.0, uriPrefix = "x/ins"),
@@ -179,7 +179,7 @@ class HlsManifestFilterTest {
         val analysis = HlsManifestFilter.analyze(content)
 
         assertTrue(analysis.isConclusive)
-        assertEquals("byterange_implicit_offset", HlsManifestFilter.decide(analysis, Verdict(setOf(1), setOf(0, 2))).reason)
+        assertEquals("byterange", HlsManifestFilter.decide(analysis, Verdict(setOf(1), setOf(0, 2))).reason)
     }
 
     @Test

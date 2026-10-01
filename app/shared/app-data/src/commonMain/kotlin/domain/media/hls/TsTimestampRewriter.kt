@@ -38,8 +38,7 @@ object TsPacketReader {
      * @param videoOnly 只认视频 PES (stream_id 0xE0..0xEF). 音视频首个 PTS 通常差上百毫秒, 比较不同分片时要取同一路.
      */
     fun firstPts(bytes: ByteArray, offset: Int = 0, length: Int = bytes.size - offset, videoOnly: Boolean = true): Long? {
-        var base = offset
-        while (base < offset + length && bytes[base] != SYNC_BYTE) base++
+        var base = syncOffset(bytes, offset, offset + length) ?: return null
         while (base + PACKET_SIZE <= offset + length) {
             if (bytes[base] != SYNC_BYTE) return null // 失同步后继续扫下去只会读到垃圾
             val pes = pesHeaderOffset(bytes, base)
@@ -51,6 +50,23 @@ object TsPacketReader {
         }
         return null
     }
+
+    /**
+     * 首个后面隔 188 字节还连着 [SYNC_CONFIRMATIONS] 个同步字节的位置, 即包边界.
+     *
+     * 不能取第一个 0x47: 采集站常在分片前拼上图片文件头伪装成图片, 而 PNG 签名 `89 50 4E 47` 的第 4 个字节就是 0x47.
+     * 从那里起算, 下一个包的位置对不上同步字节, 整片都读不出 PTS.
+     */
+    private fun syncOffset(bytes: ByteArray, start: Int, end: Int): Int? {
+        var base = start
+        while (base + SYNC_CONFIRMATIONS * PACKET_SIZE < end) {
+            if ((0..SYNC_CONFIRMATIONS).all { bytes[base + it * PACKET_SIZE] == SYNC_BYTE }) return base
+            base++
+        }
+        return null
+    }
+
+    private const val SYNC_CONFIRMATIONS = 2
 
     /**
      * [base] 处 TS 包里 PES 头 (`00 00 01` 起) 的下标, 不是带可选头部的 PES 包则返回 null.
