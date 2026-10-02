@@ -612,6 +612,8 @@
     <string name="exploration_schedule_this_weekday">週%1$s</string>
     <string name="exploration_schedule_last_weekday">上週%1$s</string>
     <string name="exploration_schedule_next_weekday">下週%1$s</string>
+    <string name="exploration_schedule_time_zone">時區</string>
+    <string name="exploration_schedule_time_zone_system">系統時區（目前系統時區）</string>
     <string name="exploration_continue_watching">繼續觀看</string>
     <string name="exploration_recommendations">推薦</string>
     <string name="exploration_horizontal_scroll_tip">按住 Shift + 滑鼠滾輪 同樣可以水平滾動</string>

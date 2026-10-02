@@ -617,6 +617,8 @@
     <string name="exploration_schedule_this_weekday">%1$s</string>
     <string name="exploration_schedule_last_weekday">Last %1$s</string>
     <string name="exploration_schedule_next_weekday">Next %1$s</string>
+    <string name="exploration_schedule_time_zone">Time zone</string>
+    <string name="exploration_schedule_time_zone_system">System time zone (current)</string>
     <string name="exploration_continue_watching">Continue Watching</string>
     <string name="exploration_recommendations">Recommendations</string>
     <string name="exploration_horizontal_scroll_tip">Hold Shift + mouse wheel to scroll horizontally</string>
