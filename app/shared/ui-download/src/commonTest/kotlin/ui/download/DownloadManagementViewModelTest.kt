@@ -22,6 +22,7 @@ import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.cancel
 import kotlinx.coroutines.flow.collect
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.test.StandardTestDispatcher
 import kotlinx.coroutines.test.TestScope
@@ -32,10 +33,13 @@ import me.him188.ani.app.domain.media.cache.MediaCacheState
 import me.him188.ani.app.domain.media.cache.engine.MediaStats
 import me.him188.ani.app.domain.media.download.DownloadOperations
 import me.him188.ani.app.domain.media.download.MediaDownloadManager
+import me.him188.ani.app.domain.mediasource.web.captcha.createTestWebSessionManager
 import me.him188.ani.app.ui.download.components.DownloadStatus
 import me.him188.ani.datasources.api.topic.FileSize.Companion.bytes
 import me.him188.ani.datasources.api.topic.UnifiedCollectionType
+import me.him188.ani.utils.platform.annotations.TestOnly
 
+@OptIn(TestOnly::class)
 class DownloadManagementViewModelTest {
     @Test
     fun `downloads are grouped by subject with offline info and fallbacks`() = withFixture {
@@ -197,6 +201,9 @@ class DownloadManagementViewModelTest {
                 downloadManager, FakeAddDownloadUseCase(storage),
             ),
             operations,
+            createTestWebSessionManager(testScope.backgroundScope),
+            FakeManualBrowseMemoryRepository(),
+            { flowOf(null) },
         )
         val vm = DownloadManagementViewModel(
             downloadManager, subjects, histories, operations, presenters,

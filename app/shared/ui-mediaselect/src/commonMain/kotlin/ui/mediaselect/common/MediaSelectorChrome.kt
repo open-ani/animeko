@@ -63,7 +63,7 @@ import org.jetbrains.compose.resources.stringResource
  * 菜单项 自动匹配 / (手动查找) / (BT 资源), 用 [SelectableDropdownMenuItem], 选中项带 Check.
  *
  * @param showBt 会话内有 BT 源时为 true (`sourceResults.btSources.isNotEmpty()`); false 时菜单不出现 BT 项.
- * @param showManual 下载对话框没有手动查找, 传 false 时菜单不出现 MANUAL 项.
+ * @param showManual 宿主没有手动查找状态时传 false, 菜单不出现 MANUAL 项.
  */
 @Composable
 fun MediaSelectorModeChip(
