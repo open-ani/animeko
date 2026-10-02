@@ -59,7 +59,7 @@ class DownloadMediaPickerTest {
                     createTestManualBrowseState(
                         scope.backgroundScope,
                         target = ManualBrowseTarget(1, "命运石之门", EpisodeSort(1), "1"),
-                        onPlay = { media, memory -> onPick(media, memory) },
+                        onPlay = { pick, memory -> onPick(pick.media, memory) },
                         rememberSelection = MutableStateFlow(false),
                     )
                 }

@@ -36,6 +36,7 @@ import me.him188.ani.app.domain.media.TestMediaList
 import me.him188.ani.app.domain.media.cache.MediaCache
 import me.him188.ani.app.domain.media.cache.MediaCacheState
 import me.him188.ani.app.domain.media.cache.engine.DummyMediaCacheEngine
+import me.him188.ani.app.domain.media.download.DownloadEpisodeOption
 import me.him188.ani.app.domain.media.download.DownloadOperations
 import me.him188.ani.app.domain.media.download.DownloadRequestSessionFactory
 import me.him188.ani.app.domain.media.download.MediaDownloadManager
@@ -368,7 +369,7 @@ class SubjectDownloadsPresenterTest {
     }
 
     @Test
-    fun `manual browse picks the resource for the awaiting episode`() = withFixture {
+    fun `manual browse picks the resource and maps other episodes by position`() = withFixture {
         sources.instances.value = listOf(createTestMediaSourceInstance(TestBrowsableMediaSource()))
         assertTrue(presenter.requestDownload(2))
         val picker = assertNotNull(awaitDialogs { it?.selection != null }?.selection)
@@ -385,10 +386,18 @@ class SubjectDownloadsPresenterTest {
         val index = assertNotNull(opened.selectedEpisodeIndex)
         assertEquals(true, manual.play(index))
 
-        // 该线路不在自动匹配的候选里, 只覆盖本集, 不进入选集直接创建.
-        val finished = awaitState { state -> !state.request.canCancel && state.downloads.any { it.episodeId == 2 } }
+        // 该线路不在自动匹配的候选里, 其他集按线路里的位置对应, 选集时都可下载.
+        val selecting = assertNotNull(awaitDialogs { it?.episodePicker != null })
+        assertSame(picker, selecting.selection)
+        val options = assertNotNull(selecting.episodePicker).options
+        assertEquals(listOf(1, 2, 3), options.map { it.episodeId })
+        assertTrue(options.all { it.availability == DownloadEpisodeOption.Availability.AVAILABLE })
+        assertEquals(listOf("01", "02", "03"), options.map { it.resourceTitle })
+
+        presenter.confirmEpisodes(setOf(1, 3))
+        val finished = awaitState { state -> !state.request.canCancel && state.downloads.size == 3 }
         assertEquals(DownloadRequestUiState(), finished.request)
-        assertEquals(listOf(2), addDownload.createdEpisodeIds)
+        assertEquals(listOf(2, 1, 3), addDownload.createdEpisodeIds)
         assertEquals(listOf(1), preferences.savedSubjectIds)
     }
 

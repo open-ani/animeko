@@ -30,6 +30,7 @@ import kotlinx.coroutines.flow.updateAndGet
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.sync.Mutex
 import me.him188.ani.app.data.repository.media.ManualBrowseMemory
+import me.him188.ani.app.domain.media.selector.browseEpisodeIndex
 import me.him188.ani.app.domain.mediasource.instance.MediaSourceInstance
 import me.him188.ani.app.domain.mediasource.web.BlockReason
 import me.him188.ani.app.domain.mediasource.web.BlockedException
@@ -40,6 +41,7 @@ import me.him188.ani.datasources.api.Media
 import me.him188.ani.datasources.api.source.BrowseChannel
 import me.him188.ani.datasources.api.source.BrowseEpisode
 import me.him188.ani.datasources.api.source.BrowseSubject
+import me.him188.ani.datasources.api.source.MediaSource
 import me.him188.ani.datasources.api.source.MediaSourceInfo
 import me.him188.ani.utils.logging.logger
 import me.him188.ani.utils.logging.warn
@@ -63,6 +65,38 @@ data class ManualBrowseTarget(
      */
     val episodeSortText: String,
 )
+
+/**
+ * 一次点选: [media] 是点选的一项作为当前集 [pickedAs] 生成的资源.
+ * 宿主可用 [createMediaFor] 按位置为其他集生成同一线路的资源 (下载弹窗据此一并下载多集).
+ */
+class ManualBrowsePick(
+    val media: Media,
+    private val source: MediaSource,
+    private val subject: BrowseSubject,
+    private val channel: BrowseChannel,
+    private val episodeIndex: Int,
+    val pickedAs: EpisodeSort,
+) {
+    /**
+     * 第 [sort] 集在同一线路里按位置对应的一项 (见 [browseEpisodeIndex]) 作为第 [sort] 集生成的资源.
+     * 编号推算不出、越界或数据源生成失败时为 null.
+     */
+    fun createMediaFor(sort: EpisodeSort): Media? {
+        val index = browseEpisodeIndex(episodeIndex, pickedAs, sort) ?: return null
+        val episode = channel.episodes.getOrNull(index) ?: return null
+        return try {
+            source.createMedia(subject, channel.name, episode, sort)
+        } catch (e: Exception) {
+            logger.warn(e) { "ManualBrowsePick: createMedia failed for ${episode.url}" }
+            null
+        }
+    }
+
+    private companion object {
+        private val logger = logger<ManualBrowsePick>()
+    }
+}
 
 @Immutable
 data class ManualBrowseSource(
@@ -171,8 +205,8 @@ data class ManualBrowsePresentation(
  * @param preferredSourceId 默认源的 mediaSourceId: `combine(memoryRepo.flow(subjectId), getPreferredWebMediaSource(subjectId)) { m, p -> m?.mediaSourceId ?: p }`.
  * @param rememberSelection 「记住选择」开关的当前值.
  * @param onRememberSelectionChange 用户切换开关: 写设置; 关掉时宿主顺带删除本条目已有的浏览记忆. 在 [backgroundScope] 内执行.
- * @param onPlay 把 media 交给宿主: 播放页交给当前会话的 MediaSelector, memory != null → `select` 并写记忆, null → `selectTemporarily`;
- *        下载弹窗把它作为本集的选择. 在 [backgroundScope] 内执行, 不随 UI 作用域取消.
+ * @param onPlay 把点选交给宿主: 播放页把 `pick.media` 交给当前会话的 MediaSelector, memory != null → `select` 并写记忆, null → `selectTemporarily`;
+ *        下载弹窗把 `pick.media` 作为本集的选择, 并按位置为其他集生成候选. 在 [backgroundScope] 内执行, 不随 UI 作用域取消.
  */
 @Stable
 class ManualBrowseState(
@@ -182,7 +216,7 @@ class ManualBrowseState(
     preferredSourceId: Flow<String?>,
     rememberSelection: Flow<Boolean>,
     private val onRememberSelectionChange: suspend (Boolean) -> Unit,
-    private val onPlay: suspend (media: Media, memory: ManualBrowseMemory?) -> Unit,
+    private val onPlay: suspend (pick: ManualBrowsePick, memory: ManualBrowseMemory?) -> Unit,
     private val backgroundScope: CoroutineScope,
 ) {
     private val browsableSources: Flow<List<MediaSourceInstance>> = browsableSources
@@ -434,7 +468,7 @@ class ManualBrowseState(
      *   playedAsSort = target.episodeSort); 关着时 null (只播这一集).
      * 并发: 已有进行中的播放 (`playJob?.isActive == true` 或拿不到 [playGate]) 时立即返回 null, 本次调用被忽略, 不是失败
      *   (页面作用域被取消后再次点击不能并发两次 select; isPlaying 经 stateIn 到达按钮前的快速双击也落在这里, 页面对 null 不提示).
-     *   拿到 gate 后立即 isPlaying = true, 缩短按钮仍可点的窗口; `playJob = backgroundScope.async { onPlay(media, memory) }`,
+     *   拿到 gate 后立即 isPlaying = true, 缩短按钮仍可点的窗口; `playJob = backgroundScope.async { onPlay(pick, memory) }`,
      *   isPlaying 由 playJob 的 invokeOnCompletion 置 false, 未 launch 就返回的路径由 finally 置 false.
      *   `playJob.await()` 成功返回 true (页面随后调用 onPlayed 关闭容器), 任何异常返回 false 并保持在当前页.
      */
@@ -471,7 +505,8 @@ class ManualBrowseState(
             } else {
                 null
             }
-            val job = backgroundScope.async { onPlay(media, memory) }
+            val pick = ManualBrowsePick(media, instance.source, subject, channel, episodeIndex, target.episodeSort)
+            val job = backgroundScope.async { onPlay(pick, memory) }
             playJob = job
             launched = true
             job.invokeOnCompletion {

@@ -444,7 +444,7 @@ open class EpisodeViewModel(
             // 关掉「记住选择」也结束本条目已有的记忆, 否则下一集仍会按旧记忆回放.
             if (!remember) forgetBrowseMemory()
         },
-        onPlay = ::playBrowsedMedia,
+        onPlay = { pick, memory -> playBrowsedMedia(pick.media, memory) },
         backgroundScope = backgroundScope,
     )
 

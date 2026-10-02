@@ -19,6 +19,7 @@ import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.flatMapLatest
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.getAndUpdate
@@ -170,8 +171,11 @@ class SubjectDownloadsPresenter(
         session.getAndUpdate { null }?.cancel()
     }
 
-    fun selectMedia(episodeId: Int, media: Media) {
-        session.value?.select(episodeId, media)
+    /**
+     * @param lineCandidates 见 [DownloadRequestSession.select].
+     */
+    fun selectMedia(episodeId: Int, media: Media, lineCandidates: List<Media> = emptyList()) {
+        session.value?.select(episodeId, media, lineCandidates)
     }
 
     /**
@@ -239,6 +243,7 @@ class SubjectDownloadsPresenter(
 
     /**
      * 点选的一集与自动匹配页点选的资源一样交给会话, 由会话保存偏好并进入选集.
+     * 条目的其他集按在同一线路里的位置生成资源一并交给会话, 选集时可以勾选; 是否已上映、是否已下载由会话判断.
      * 下载不写浏览记忆: 浏览记忆决定播放时每一集去哪里找, 下载弹窗里没有「记住选择」.
      */
     private fun createManualBrowse(
@@ -264,7 +269,12 @@ class SubjectDownloadsPresenter(
         ) { memory, preferred -> memory?.mediaSourceId ?: preferred },
         rememberSelection = flowOf(false),
         onRememberSelectionChange = {},
-        onPlay = { media, _ -> selectMedia(episodeId, media) },
+        onPlay = { pick, _ ->
+            val others = fetchSession.request.first().episodes
+                .filter { it.episodeId != episodeId.toString() }
+                .mapNotNull { pick.createMediaFor(it.sort) }
+            selectMedia(episodeId, pick.media, others)
+        },
         backgroundScope = pickerScope,
     )
 }
