@@ -26,4 +26,5 @@ fun createSubjectDownloadsViewModel(subjectId: Int): SubjectDownloadsViewModel {
 
 private fun subjectDownloadsPresenterFactory(koin: Koin) = SubjectDownloadsPresenterFactory(
     koin.get(), koin.get(), koin.get(), koin.get(), koin.get(), koin.get(), koin.get(),
+    koin.get(), koin.get(), koin.get(),
 )

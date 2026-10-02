@@ -153,7 +153,8 @@ data class ManualBrowsePresentation(
 }
 
 /**
- * 手动查找状态. 独立于 MediaSelectorState, 在 EpisodeViewModel 构造一次并持有, 搜索结果与选择在会话内保持.
+ * 手动查找状态. 独立于 MediaSelectorState, 由宿主构造并持有, 搜索结果与选择在会话内保持:
+ * 播放页由 EpisodeViewModel 构造一次; 下载弹窗由 SubjectDownloadsPresenter 为每个选源会话构造一份.
  *
  * 内部约定 (实现者必须遵守, 测试依赖它):
  * - 组合流 [presentationSource] (combine(browsableSources, target, preferredSourceId, 内部 MutableStateFlow…), 未 stateIn) 是唯一真值;
@@ -170,7 +171,8 @@ data class ManualBrowsePresentation(
  * @param preferredSourceId 默认源的 mediaSourceId: `combine(memoryRepo.flow(subjectId), getPreferredWebMediaSource(subjectId)) { m, p -> m?.mediaSourceId ?: p }`.
  * @param rememberSelection 「记住选择」开关的当前值.
  * @param onRememberSelectionChange 用户切换开关: 写设置; 关掉时宿主顺带删除本条目已有的浏览记忆. 在 [backgroundScope] 内执行.
- * @param onPlay 把 media 交给当前会话的 MediaSelector: memory != null → `select` 并写记忆; null → `selectTemporarily`. 在 [backgroundScope] 内执行, 不随 UI 作用域取消.
+ * @param onPlay 把 media 交给宿主: 播放页交给当前会话的 MediaSelector, memory != null → `select` 并写记忆, null → `selectTemporarily`;
+ *        下载弹窗把它作为本集的选择. 在 [backgroundScope] 内执行, 不随 UI 作用域取消.
  */
 @Stable
 class ManualBrowseState(

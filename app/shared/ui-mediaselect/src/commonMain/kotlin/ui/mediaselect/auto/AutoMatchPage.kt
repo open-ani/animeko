@@ -38,7 +38,7 @@ import me.him188.ani.utils.platform.isMobile
  * 验证码文案沿用 webCaptchaRequiredMessage(kind) 与 iOS 分支 media_selector_web_captcha_unsupported.
  *
  * @param onClickItem 用户点了线路 chip (channel.original); 宿主负责 select + 关闭容器.
- * @param onRequestManualSearch 点了「找不到想看的？手动查找」; null 时不显示按钮 (下载对话框).
+ * @param onRequestManualSearch 点了「找不到想看的？手动查找」; null 时不显示按钮 (宿主没有手动查找).
  * @param scrollable 为 true 时整页 verticalScroll (列表本身是 Column, 不是 LazyColumn).
  */
 @Composable

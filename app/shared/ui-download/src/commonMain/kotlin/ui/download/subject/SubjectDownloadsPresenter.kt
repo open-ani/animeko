@@ -28,6 +28,7 @@ import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.flow.updateAndGet
 import me.him188.ani.app.data.models.subject.SubjectCollectionInfo
 import me.him188.ani.app.data.models.subject.nameCnOrName
+import me.him188.ani.app.data.repository.media.ManualBrowseMemoryRepository
 import me.him188.ani.app.data.repository.player.EpisodePlayHistoryRepository
 import me.him188.ani.app.data.repository.subject.SubjectCollectionRepository
 import me.him188.ani.app.data.repository.user.SettingsRepository
@@ -41,9 +42,13 @@ import me.him188.ani.app.domain.media.download.MediaDownloadManager
 import me.him188.ani.app.domain.media.fetch.MediaFetchSession
 import me.him188.ani.app.domain.media.fetch.MediaSourceManager
 import me.him188.ani.app.domain.media.selector.MediaSelector
+import me.him188.ani.app.domain.mediasource.GetPreferredWebMediaSourceUseCase
+import me.him188.ani.app.domain.mediasource.web.captcha.WebSessionManager
 import me.him188.ani.app.ui.download.DownloadOperationRunner
 import me.him188.ani.app.ui.download.components.toDownloadItem
 import me.him188.ani.app.ui.mediafetch.MediaSourceInfoProvider
+import me.him188.ani.app.ui.mediaselect.manual.ManualBrowseState
+import me.him188.ani.app.ui.mediaselect.manual.ManualBrowseTarget
 import me.him188.ani.datasources.api.Media
 import me.him188.ani.utils.coroutines.childScope
 
@@ -60,10 +65,13 @@ class SubjectDownloadsPresenter(
     subjects: SubjectCollectionRepository,
     histories: EpisodePlayHistoryRepository,
     settings: SettingsRepository,
-    sources: MediaSourceManager,
+    private val sources: MediaSourceManager,
     downloadManager: MediaDownloadManager,
     private val sessionFactory: DownloadRequestSessionFactory,
     operations: DownloadOperations,
+    private val webSessions: WebSessionManager,
+    private val browseMemory: ManualBrowseMemoryRepository,
+    private val getPreferredWebMediaSource: GetPreferredWebMediaSourceUseCase,
     initialTitle: String? = null,
 ) : AutoCloseable {
     private val scope = parentScope.childScope()
@@ -107,8 +115,11 @@ class SubjectDownloadsPresenter(
 
     /**
      * 同一个查询会话 (选源与选集两步) 始终对应同一个 [DownloadMediaPickerState], 供 UI 作为 key; 离开这两个状态后清空.
+     * 手动查找的搜索与浏览在 [ActivePicker.scope] 中进行, 随之取消.
      */
-    private val currentPicker = MutableStateFlow<DownloadMediaPickerState?>(null)
+    private val currentPicker = MutableStateFlow<ActivePicker?>(null)
+
+    private class ActivePicker(val state: DownloadMediaPickerState, val scope: CoroutineScope)
 
     /**
      * `null` 表示没有需要展示的弹窗.
@@ -194,7 +205,7 @@ class SubjectDownloadsPresenter(
 
     private fun DownloadRequestState?.toDialogState(): DownloadRequestDialogState? {
         if (this !is DownloadRequestState.AwaitingSelection && this !is DownloadRequestState.SelectingEpisodes) {
-            currentPicker.value = null
+            currentPicker.getAndUpdate { null }?.scope?.cancel()
         }
         return when (this) {
             null -> null
@@ -213,10 +224,49 @@ class SubjectDownloadsPresenter(
     }
 
     private fun pickerFor(episodeId: Int, fetchSession: MediaFetchSession, selector: MediaSelector): DownloadMediaPickerState {
-        currentPicker.value?.let { picker -> if (picker.fetchSession === fetchSession) return picker }
-        return DownloadMediaPickerState(episodeId, fetchSession, selector)
-            .also { currentPicker.value = it }
+        currentPicker.value?.let { picker -> if (picker.state.fetchSession === fetchSession) return picker.state }
+        val pickerScope = scope.childScope()
+        val picker = ActivePicker(
+            DownloadMediaPickerState(
+                episodeId, fetchSession, selector,
+                manualBrowse = createManualBrowse(episodeId, fetchSession, pickerScope),
+            ),
+            pickerScope,
+        )
+        currentPicker.getAndUpdate { picker }?.scope?.cancel()
+        return picker.state
     }
+
+    /**
+     * 点选的一集与自动匹配页点选的资源一样交给会话, 由会话保存偏好并进入选集.
+     * 下载不写浏览记忆: 浏览记忆决定播放时每一集去哪里找, 下载弹窗里没有「记住选择」.
+     */
+    private fun createManualBrowse(
+        episodeId: Int,
+        fetchSession: MediaFetchSession,
+        pickerScope: CoroutineScope,
+    ): ManualBrowseState = ManualBrowseState(
+        browsableSources = sources.allInstances.map { instances ->
+            instances.filter { it.isEnabled && it.source.supportsBrowsing }
+        },
+        webSessionManager = webSessions,
+        target = fetchSession.request.map { request ->
+            ManualBrowseTarget(
+                subjectId = subjectId,
+                subjectName = request.subjectNameCN ?: request.subjectNames.firstOrNull().orEmpty(),
+                episodeSort = request.episodeSort,
+                episodeSortText = request.episodeSort.toString(),
+            )
+        },
+        preferredSourceId = combine(
+            browseMemory.flow(subjectId),
+            getPreferredWebMediaSource(subjectId),
+        ) { memory, preferred -> memory?.mediaSourceId ?: preferred },
+        rememberSelection = flowOf(false),
+        onRememberSelectionChange = {},
+        onPlay = { media, _ -> selectMedia(episodeId, media) },
+        backgroundScope = pickerScope,
+    )
 }
 
 private fun DownloadRequestState?.toRequestUiState() = DownloadRequestUiState(
@@ -255,10 +305,13 @@ class SubjectDownloadsPresenterFactory(
     private val downloadManager: MediaDownloadManager,
     private val sessionFactory: DownloadRequestSessionFactory,
     private val operations: DownloadOperations,
+    private val webSessions: WebSessionManager,
+    private val browseMemory: ManualBrowseMemoryRepository,
+    private val getPreferredWebMediaSource: GetPreferredWebMediaSourceUseCase,
 ) {
     fun create(subjectId: Int, parentScope: CoroutineScope, initialTitle: String? = null): SubjectDownloadsPresenter =
         SubjectDownloadsPresenter(
             subjectId, parentScope, subjects, histories, settings, sources, downloadManager, sessionFactory, operations,
-            initialTitle,
+            webSessions, browseMemory, getPreferredWebMediaSource, initialTitle,
         )
 }

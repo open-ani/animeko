@@ -24,6 +24,7 @@ import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
 import kotlinx.coroutines.flow.collect
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.job
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.test.TestScope
@@ -38,12 +39,15 @@ import me.him188.ani.app.domain.media.cache.engine.DummyMediaCacheEngine
 import me.him188.ani.app.domain.media.download.DownloadOperations
 import me.him188.ani.app.domain.media.download.DownloadRequestSessionFactory
 import me.him188.ani.app.domain.media.download.MediaDownloadManager
+import me.him188.ani.app.domain.mediasource.instance.createTestMediaSourceInstance
+import me.him188.ani.app.domain.mediasource.web.captcha.createTestWebSessionManager
 import me.him188.ani.app.tools.toProgress
 import me.him188.ani.app.ui.download.FakeAddDownloadUseCase
 import me.him188.ani.app.ui.download.FakeDeleteCacheUseCase
 import me.him188.ani.app.ui.download.FakeDownloadStorage
 import me.him188.ani.app.ui.download.FakeEpisodePlayHistoryRepository
 import me.him188.ani.app.ui.download.FakeEpisodePreferencesRepository
+import me.him188.ani.app.ui.download.FakeManualBrowseMemoryRepository
 import me.him188.ani.app.ui.download.FakeMediaFetcher
 import me.him188.ani.app.ui.download.FakeMediaSourceManager
 import me.him188.ani.app.ui.download.FakeSettingsRepository
@@ -53,6 +57,10 @@ import me.him188.ani.app.ui.download.components.DownloadStatus
 import me.him188.ani.app.ui.download.fakeMediaSelectorFactory
 import me.him188.ani.app.ui.download.testDownloadCache
 import me.him188.ani.app.ui.download.testSubjectCollection
+import me.him188.ani.app.ui.mediafetch.TestBrowsableMediaSource
+import me.him188.ani.app.ui.mediafetch.TestBrowseSubjects
+import me.him188.ani.app.ui.mediaselect.manual.ManualLoadState
+import me.him188.ani.datasources.api.EpisodeSort
 import me.him188.ani.datasources.api.topic.EpisodeRange
 import me.him188.ani.datasources.api.topic.UnifiedCollectionType
 import me.him188.ani.utils.platform.annotations.TestOnly
@@ -360,6 +368,31 @@ class SubjectDownloadsPresenterTest {
     }
 
     @Test
+    fun `manual browse picks the resource for the awaiting episode`() = withFixture {
+        sources.instances.value = listOf(createTestMediaSourceInstance(TestBrowsableMediaSource()))
+        assertTrue(presenter.requestDownload(2))
+        val picker = assertNotNull(awaitDialogs { it?.selection != null }?.selection)
+        val manual = assertNotNull(picker.manualBrowse)
+
+        val ready = manual.presentationFlow.first { it.target != null && it.sources.isNotEmpty() }
+        assertEquals(EpisodeSort(2), ready.target?.episodeSort)
+        assertEquals("中文条目名称", ready.keyword)
+        assertEquals(false, ready.rememberSelection)
+
+        manual.openSubject(TestBrowseSubjects.first())
+        val opened = manual.presentationFlow.first { it.channels is ManualLoadState.Success }
+        // 线路里集号与本集相同的一项被预选; 点它即作为本集的选择.
+        val index = assertNotNull(opened.selectedEpisodeIndex)
+        assertEquals(true, manual.play(index))
+
+        // 该线路不在自动匹配的候选里, 只覆盖本集, 不进入选集直接创建.
+        val finished = awaitState { state -> !state.request.canCancel && state.downloads.any { it.episodeId == 2 } }
+        assertEquals(DownloadRequestUiState(), finished.request)
+        assertEquals(listOf(2), addDownload.createdEpisodeIds)
+        assertEquals(listOf(1), preferences.savedSubjectIds)
+    }
+
+    @Test
     fun `requesting another episode while selecting episodes cancels the previous session`() = withFixture {
         val pack = TestMediaList.first().copy(mediaId = "pack", episodeRange = EpisodeRange.range(1, 3))
         fetcher.mediaListFor = { listOf(media, pack) }
@@ -414,6 +447,9 @@ class SubjectDownloadsPresenterTest {
             downloadManager = downloadManager,
             sessionFactory = sessionFactory,
             operations = operations,
+            webSessions = createTestWebSessionManager(testScope.backgroundScope),
+            browseMemory = FakeManualBrowseMemoryRepository(),
+            getPreferredWebMediaSource = { flowOf(null) },
             initialTitle = initialTitle,
         )
 
