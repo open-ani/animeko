@@ -40,6 +40,8 @@ import me.him188.ani.app.data.repository.player.DanmakuRegexFilterRepositoryImpl
 import me.him188.ani.app.data.repository.player.EpisodePlayHistoryRepository
 import me.him188.ani.app.data.repository.player.EpisodePlayHistoryRepositoryImpl
 import me.him188.ani.app.data.repository.player.EpisodeScreenshotRepository
+import me.him188.ani.app.data.repository.player.JellyfinPlaybackQualityRepository
+import me.him188.ani.app.data.repository.player.JellyfinPlaybackQualityRepositoryImpl
 import me.him188.ani.app.data.repository.player.PlaybackHistorySyncer
 import me.him188.ani.app.data.repository.player.WhatslinkEpisodeScreenshotRepository
 import me.him188.ani.app.data.repository.subject.BangumiMergeRepository
@@ -276,6 +278,9 @@ fun KoinApplication.repositoryModules(
     }
 
     single<SettingsRepository> { PreferencesRepositoryImpl(getContext().dataStores.preferencesStore) }
+    single<JellyfinPlaybackQualityRepository> {
+        JellyfinPlaybackQualityRepositoryImpl(getContext().dataStores.preferencesStore)
+    }
 
     single<DanmakuRegexFilterRepository> { DanmakuRegexFilterRepositoryImpl(getContext().dataStores.danmakuFilterStore) }
 
