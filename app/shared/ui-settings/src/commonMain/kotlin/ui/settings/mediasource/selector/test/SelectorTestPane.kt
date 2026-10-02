@@ -67,6 +67,7 @@ import me.him188.ani.app.domain.mediasource.web.SelectorMediaSourceEngine
 import me.him188.ani.app.domain.mediasource.web.SelectorSearchConfig
 import me.him188.ani.app.domain.mediasource.web.SolveRequest
 import me.him188.ani.app.domain.mediasource.web.WebSearchSubjectInfo
+import me.him188.ani.app.domain.mediasource.web.format.SelectorFormatId
 import me.him188.ani.app.domain.mediasource.web.displayName
 import me.him188.ani.app.ui.foundation.ProvideCompositionLocalsForPreview
 import me.him188.ani.app.ui.foundation.animation.LocalAniMotionScheme
@@ -364,7 +365,8 @@ fun PreviewSelectorTestPane() = ProvideCompositionLocalsForPreview {
 @TestOnly
 class TestSelectorMediaSourceEngine : SelectorMediaSourceEngine() {
     override suspend fun searchImpl(
-        finalUrl: Url
+        finalUrl: Url,
+        subjectFormatId: SelectorFormatId,
     ): SearchSubjectResult {
         return SearchSubjectResult(
             Url("https://example.com"),

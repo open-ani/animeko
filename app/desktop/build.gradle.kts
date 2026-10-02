@@ -114,8 +114,14 @@ compose.desktop {
         )
         if (getOs() == Os.MacOS) {
             jvmArgs(
+                // Compose 1.11.1 can crash while synchronizing its macOS accessibility tree.
+                // Remove this workaround after MediaMP is compatible with Compose 1.12+, which
+                // includes the upstream fix: https://github.com/JetBrains/compose-multiplatform-core/commit/81c2b3c283afae15b642f39dc8f8a1859041a755
+                "-Dcompose.accessibility.enable=false",
                 "--add-opens=java.desktop/sun.lwawt=ALL-UNNAMED",
                 "--add-opens=java.desktop/sun.lwawt.macosx=ALL-UNNAMED",
+                // 触摸板捏合手势 (图片查看器), 见 MacTrackpadGestures
+                "--add-exports=java.desktop/com.apple.eawt.event=ALL-UNNAMED",
             )
         }
         mainClass = "me.him188.ani.app.desktop.AniDesktop"

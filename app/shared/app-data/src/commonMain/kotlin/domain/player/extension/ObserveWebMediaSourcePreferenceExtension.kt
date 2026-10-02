@@ -21,7 +21,6 @@ import kotlinx.coroutines.launch
 import me.him188.ani.app.domain.episode.EpisodeSession
 import me.him188.ani.app.domain.media.fetch.MediaSourceFetchResult
 import me.him188.ani.app.domain.media.fetch.MediaSourceFetchState
-import me.him188.ani.app.domain.media.fetch.isFailedOrAbandoned
 import me.him188.ani.app.domain.media.selector.eventHandling
 import me.him188.ani.app.domain.mediasource.GetPreferredWebMediaSourceUseCase
 import me.him188.ani.app.domain.mediasource.SetPreferredWebMediaSourceUseCase
@@ -62,7 +61,8 @@ class ObserveWebMediaSourcePreferenceExtension(
                         }
                     }
 
-                    // 监听 Web 源加载失败的情况, 删除偏好
+                    // 监听 Web 源加载失败的情况, 删除偏好.
+                    // 条目级查询会话跨集共用, 只有源自身失败 (Failed) 才算; 被中途取消 (Abandoned) 不算.
                     combine(
                         // 如果这个 subject 没有偏好, 则不继续监听, 这里将会一直挂起
                         getPreferredWebMediaSource(context.subjectId).filterNotNull(),
@@ -75,7 +75,7 @@ class ObserveWebMediaSourcePreferenceExtension(
                     ) { preferredWebMediaSourceId, results ->
                         results.forEach {
                             if (it.mediaSourceId != preferredWebMediaSourceId) return@forEach
-                            if (it.state.value.isFailedOrAbandoned) {
+                            if (it.state.value is MediaSourceFetchState.Failed) {
                                 logger.info {
                                     "Remove web source preference for subject ${context.subjectId} from ${it.mediaSourceId}. " +
                                             "because source state in this session is ${it.state.value.str()}."

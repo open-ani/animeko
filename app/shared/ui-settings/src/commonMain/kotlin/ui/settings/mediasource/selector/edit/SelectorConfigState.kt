@@ -65,21 +65,26 @@ class SelectorConfigState(
     val searchUrlIsError by derivedStateOf { searchUrl.isBlank() }
 
     var searchUseOnlyFirstWord by argumentsStorage.prop(
-        { it.searchConfig.searchUseOnlyFirstWord },
-        { copy(searchConfig = searchConfig.copy(searchUseOnlyFirstWord = it)) },
-        SelectorMediaSourceArguments.Default.searchConfig.searchUseOnlyFirstWord,
+        { it.searchConfig.autoMatch.searchUseOnlyFirstWord },
+        { copy(searchConfig = searchConfig.copy(autoMatch = searchConfig.autoMatch.copy(searchUseOnlyFirstWord = it))) },
+        SelectorMediaSourceArguments.Default.searchConfig.autoMatch.searchUseOnlyFirstWord,
     )
 
     var searchRemoveSpecial by argumentsStorage.prop(
-        { it.searchConfig.searchRemoveSpecial },
-        { copy(searchConfig = searchConfig.copy(searchRemoveSpecial = it)) },
-        SelectorMediaSourceArguments.Default.searchConfig.searchRemoveSpecial,
+        { it.searchConfig.autoMatch.searchRemoveSpecial },
+        { copy(searchConfig = searchConfig.copy(autoMatch = searchConfig.autoMatch.copy(searchRemoveSpecial = it))) },
+        SelectorMediaSourceArguments.Default.searchConfig.autoMatch.searchRemoveSpecial,
     )
 
     var searchUseSubjectNamesCount by argumentsStorage.prop(
-        { it.searchConfig.searchUseSubjectNamesCount },
-        { copy(searchConfig = searchConfig.copy(searchUseSubjectNamesCount = it)) },
-        SelectorMediaSourceArguments.Default.searchConfig.searchUseSubjectNamesCount,
+        { it.searchConfig.autoMatch.searchUseSubjectNamesCount },
+        { copy(searchConfig = searchConfig.copy(autoMatch = searchConfig.autoMatch.copy(searchUseSubjectNamesCount = it))) },
+        SelectorMediaSourceArguments.Default.searchConfig.autoMatch.searchUseSubjectNamesCount,
+    )
+    var preferShorterName by argumentsStorage.prop(
+        { it.searchConfig.autoMatch.preferShorterName },
+        { copy(searchConfig = searchConfig.copy(autoMatch = searchConfig.autoMatch.copy(preferShorterName = it))) },
+        SelectorMediaSourceArguments.Default.searchConfig.autoMatch.preferShorterName,
     )
 
     var rawBaseUrl by argumentsStorage.prop(
@@ -137,7 +142,6 @@ class SelectorConfigState(
         val selectListsIsError by derivedStateOf {
             QueryParser.parseSelectorOrNull(selectLists) == null
         }
-        var preferShorterName by prop({ it.preferShorterName }, { copy(preferShorterName = it) })
     }
 
     val subjectFormatIndex = SubjectFormatIndexedConfig()
@@ -168,7 +172,6 @@ class SelectorConfigState(
             QueryParser.parseSelectorOrNull(selectLinks) == null
         }
 
-        var preferShorterName by prop({ it.preferShorterName }, { copy(preferShorterName = it) })
     }
 
     val subjectFormatJsonPathIndex = SubjectFormatJsonPathIndexedConfig()
@@ -199,7 +202,6 @@ class SelectorConfigState(
             JsonPath.compileOrNull(selectLinks) == null
         }
 
-        var preferShorterName by prop({ it.preferShorterName }, { copy(preferShorterName = it) })
     }
 
     // endregion
@@ -303,12 +305,12 @@ class SelectorConfigState(
         SelectorMediaSourceArguments.Default.searchConfig.defaultSubtitleLanguage,
     )
     var filterByEpisodeSort by argumentsStorage.prop(
-        { it.searchConfig.filterByEpisodeSort }, { copy(searchConfig = searchConfig.copy(filterByEpisodeSort = it)) },
-        SelectorMediaSourceArguments.Default.searchConfig.filterByEpisodeSort,
+        { it.searchConfig.autoMatch.filterByEpisodeSort }, { copy(searchConfig = searchConfig.copy(autoMatch = searchConfig.autoMatch.copy(filterByEpisodeSort = it))) },
+        SelectorMediaSourceArguments.Default.searchConfig.autoMatch.filterByEpisodeSort,
     )
     var filterBySubjectName by argumentsStorage.prop(
-        { it.searchConfig.filterBySubjectName }, { copy(searchConfig = searchConfig.copy(filterBySubjectName = it)) },
-        SelectorMediaSourceArguments.Default.searchConfig.filterBySubjectName,
+        { it.searchConfig.autoMatch.filterBySubjectName }, { copy(searchConfig = searchConfig.copy(autoMatch = searchConfig.autoMatch.copy(filterBySubjectName = it))) },
+        SelectorMediaSourceArguments.Default.searchConfig.autoMatch.filterBySubjectName,
     )
 
 

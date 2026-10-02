@@ -26,6 +26,7 @@ import me.him188.ani.app.domain.mediasource.web.DefaultSelectorMediaSourceEngine
 import me.him188.ani.app.domain.mediasource.web.PageExpectation
 import me.him188.ani.app.domain.mediasource.web.SelectorMediaSource
 import me.him188.ani.app.domain.mediasource.web.SelectorMediaSourceEngine
+import me.him188.ani.app.domain.mediasource.web.orderSubjectsForAutoMatch
 import me.him188.ani.app.domain.mediasource.web.SelectorSearchConfig
 import me.him188.ani.app.domain.mediasource.web.SelectorSearchQuery
 import me.him188.ani.app.domain.mediasource.web.WebPageCaptchaException
@@ -134,7 +135,7 @@ class SelectorEngineService(
         val allSubjectNames = context.subjectNames.toSet()
         val medias = mutableListOf<DefaultMedia>()
 
-        val namesToSearch = context.subjectNames.take(config.searchUseSubjectNamesCount.coerceAtLeast(1))
+        val namesToSearch = context.subjectNames.take(config.autoMatch.searchUseSubjectNamesCount.coerceAtLeast(1))
         // 验证码自动解决失败时, 终止整个数据源的流程: 不再换搜索词硬试, 也不对站点继续发请求
         val captchaAbort: CaptchaUnsolvedException? = try {
             for ((nameIndex, subjectName) in namesToSearch.withIndex()) {
@@ -198,6 +199,7 @@ class SelectorEngineService(
                     },
                 ) {
                     engine.selectSubjects(document, config)
+                        ?.let { config.orderSubjectsForAutoMatch(it) }
                         ?: error("配置无效: 条目格式 (subjectFormat) 的必填项为空或 selector 语法错误")
                 } ?: continue
                 if (subjects.isEmpty()) continue
@@ -660,8 +662,8 @@ class SelectorEngineService(
             MediaSourceEngineHelpers.encodeUrlSegment(
                 MediaSourceEngineHelpers.getSearchKeyword(
                     subjectName,
-                    config.searchRemoveSpecial,
-                    config.searchUseOnlyFirstWord,
+                    config.autoMatch.searchRemoveSpecial,
+                    config.autoMatch.searchUseOnlyFirstWord,
                 ),
             ),
         )

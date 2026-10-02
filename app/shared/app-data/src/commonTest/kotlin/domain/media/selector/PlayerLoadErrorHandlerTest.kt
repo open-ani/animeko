@@ -19,6 +19,8 @@ import kotlinx.coroutines.test.TestScope
 import kotlinx.coroutines.test.advanceTimeBy
 import kotlinx.coroutines.test.advanceUntilIdle
 import kotlinx.coroutines.test.runCurrent
+import kotlinx.io.files.Path
+import me.him188.ani.app.domain.media.DroppedFileMedia
 import me.him188.ani.app.domain.media.selector.testFramework.collectEvents
 import me.him188.ani.app.domain.media.selector.testFramework.runFetchMediaSelectorTestSuite
 import me.him188.ani.app.domain.media.selector.testFramework.runSimpleMediaSelectorTestSuite
@@ -27,6 +29,7 @@ import me.him188.ani.app.domain.player.extension.PlayerLoadErrorHandler
 import me.him188.ani.datasources.api.source.MediaSourceKind
 import me.him188.ani.datasources.api.source.MediaSourceKind.WEB
 import me.him188.ani.test.DisabledOnNative
+import me.him188.ani.utils.io.inSystem
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
@@ -83,6 +86,37 @@ class PlayerLoadErrorHandlerTest {
         assertTrue(job.isCompleted)
         assertEquals(mediaB.mediaId, selector.selected.value?.mediaId)
         assertEquals(setOf(mediaA.mediaId), handler.blacklist)
+    }
+
+    @Test
+    fun `拖入的本地文件播放失败不换源也不拉黑`() = runFetchMediaSelectorTestSuite {
+        initSubject("test")
+        val (_, session, sources) = configureFetchSession {
+            object {
+                val webA by web { tier = 0 }
+            }
+        }
+        // 有可以立即换到的 WEB media, 且 preferKind 为 WEB: 对普通 media 而言满足全部换源条件
+        sources.webA.complete(media(kind = WEB, subjectName = initApi.subjectName))
+        testScope().runCurrent()
+
+        val dropped = DroppedFileMedia.create(Path("/videos/episode-01.mkv").inSystem)
+        selector.selectTemporarily(dropped)
+
+        val handler = PlayerLoadErrorHandler(
+            getPreferKind = { MediaSourceKind.WEB },
+            getSourceTiers = { preferenceApi.sourceTiers!! },
+        )
+        val collected = selector.collectEvents {
+            val job = testScope().launch { handler.handleError(session, selector) }
+            testScope().advanceTimeBy(10.seconds)
+            testScope().runCurrent()
+            assertTrue(job.isCompleted)
+        }
+
+        collected.expectNoEvents()
+        assertEquals(dropped, selector.selected.value)
+        assertTrue(handler.blacklist.isEmpty())
     }
 
     @Test
@@ -272,6 +306,78 @@ class PlayerLoadErrorHandlerTest {
         assertEquals(mediaA.mediaId, selector.selected.value?.mediaId)
         assertEquals(setOf(mediaB.mediaId), handler2.blacklist)
         assertEquals(setOf(mediaA.mediaId), handler1.blacklist)
+    }
+
+    @Test
+    fun `manual choice during player error delay cancels automatic replacement`() = runFetchMediaSelectorTestSuite {
+        initSubject("test")
+        val (_, session, sources) = configureFetchSession { object { val web1 by web { tier = 0 } } }
+        sources.web1.complete(media(kind = WEB, subjectName = initApi.subjectName))
+        testScope().runCurrent()
+        val failed = media(kind = WEB, subjectName = initApi.subjectName)
+        selector.select(failed)
+        val handler = PlayerLoadErrorHandler(getPreferKind = { WEB }, getSourceTiers = { preferenceApi.sourceTiers!! })
+        val job = testScope().launch { handler.handleError(session, selector) }
+        testScope().runCurrent()
+        val manual = media(kind = WEB, subjectName = initApi.subjectName)
+        selector.select(manual)
+        testScope().advanceUntilIdle()
+        assertTrue(job.isCompleted)
+        assertEquals(manual, selector.selected.value)
+    }
+
+    @Test
+    fun `player error does not fall back to BT when WEB candidates are exhausted`() = runFetchMediaSelectorTestSuite {
+        initSubject("test")
+        val (_, session, sources) = configureFetchSession {
+            object {
+                val web1 by web { tier = 0 }
+                val bt1 by bt()
+            }
+        }
+        val failed = media(kind = WEB, subjectName = initApi.subjectName)
+        sources.web1.complete(failed)
+        sources.bt1.complete(media(kind = MediaSourceKind.BitTorrent, subjectName = initApi.subjectName))
+        testScope().runCurrent()
+        selector.select(selector.filteredCandidatesMedia.first().single { it.mediaId == failed.mediaId })
+
+        val handler = PlayerLoadErrorHandler(getPreferKind = { WEB }, getSourceTiers = { preferenceApi.sourceTiers!! })
+        lateinit var job: Job
+        val events = selector.collectEvents {
+            job = testScope().launch { handler.handleError(session, selector) }
+            testScope().advanceUntilIdle()
+        }
+
+        assertTrue(job.isCompleted)
+        assertEquals(failed.mediaId, selector.selected.value?.mediaId)
+        assertEquals(setOf(failed.mediaId), handler.blacklist)
+        events.expectNoEvents()
+    }
+
+    @Test
+    fun `player error skips ready and pending local caches`() = runFetchMediaSelectorTestSuite {
+        initSubject("test")
+        val (_, session, sources) = configureFetchSession {
+            object {
+                val cached by localCache()
+                val pendingCache by localCache()
+                val web1 by web { tier = 0 }
+            }
+        }
+        val failed = media(kind = WEB, subjectName = initApi.subjectName)
+        val replacement = media(kind = WEB, subjectName = initApi.subjectName)
+        sources.web1.complete(failed, replacement)
+        sources.cached.complete(media(kind = MediaSourceKind.LocalCache, subjectName = initApi.subjectName))
+        testScope().runCurrent()
+        selector.select(selector.filteredCandidatesMedia.first().single { it.mediaId == failed.mediaId })
+
+        val handler = PlayerLoadErrorHandler(getPreferKind = { WEB }, getSourceTiers = { preferenceApi.sourceTiers!! })
+        val job = testScope().launch { handler.handleError(session, selector) }
+        testScope().advanceUntilIdle()
+
+        assertTrue(job.isCompleted)
+        assertEquals(replacement.mediaId, selector.selected.value?.mediaId)
+        assertEquals(setOf(failed.mediaId), handler.blacklist)
     }
 
     context(scope: TestScope)

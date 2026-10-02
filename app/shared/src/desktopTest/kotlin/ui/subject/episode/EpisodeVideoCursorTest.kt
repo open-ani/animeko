@@ -37,6 +37,7 @@ import me.him188.ani.app.data.models.preference.DarkMode
 import me.him188.ani.app.data.models.preference.VideoScaffoldConfig
 import me.him188.ani.app.domain.media.player.ChunkState
 import me.him188.ani.app.domain.media.player.staticMediaCacheProgressState
+import me.him188.ani.app.domain.media.cache.engine.MediaCacheEngineKey
 import me.him188.ani.app.domain.player.VideoLoadingState
 import me.him188.ani.app.ui.episode.share.MediaShareData
 import me.him188.ani.app.ui.foundation.ProvideCompositionLocalsForPreview
@@ -47,6 +48,7 @@ import me.him188.ani.app.ui.framework.exists
 import me.him188.ani.app.ui.framework.runAniComposeUiTest
 import me.him188.ani.app.ui.subject.episode.video.components.FloatingFullscreenSwitchButton
 import me.him188.ani.app.videoplayer.ui.ControllerVisibility
+import me.him188.ani.app.videoplayer.ui.MutablePlayerFullscreenState
 import me.him188.ani.app.videoplayer.ui.NoOpPlaybackSpeedController
 import me.him188.ani.app.videoplayer.ui.NoOpVideoAspectRatio
 import me.him188.ani.app.videoplayer.ui.PlaybackSpeedControllerState
@@ -96,7 +98,7 @@ class EpisodeVideoCursorTest {
             Row {
                 val expanded = true
                 val videoScaffoldConfig = VideoScaffoldConfig.Default
-                val onClickFullScreen = {}
+                val fullscreenState = remember { MutablePlayerFullscreenState(expanded) }
                 val cacheProgressInfoFlow = staticMediaCacheProgressState(ChunkState.NONE).flow
                 EpisodeVideoImpl(
                     playerState = playerState,
@@ -108,9 +110,10 @@ class EpisodeVideoCursorTest {
                     danmakuHost = {},
                     danmakuEnabled = false,
                     onToggleDanmaku = {},
-                    videoLoadingStateFlow = remember { MutableStateFlow(VideoLoadingState.Succeed(isBt = true)) },
-                    onClickFullScreen = onClickFullScreen,
-                    onExitFullscreen = {},
+                    videoLoadingStateFlow = remember {
+                        MutableStateFlow(VideoLoadingState.Succeed(MediaCacheEngineKey.Anitorrent))
+                    },
+                    fullscreenState = fullscreenState,
                     danmakuEditor = {},
                     onClickScreenshot = {},
                     detachedProgressSlider = {
@@ -136,8 +139,7 @@ class EpisodeVideoCursorTest {
                     fullscreenSwitchButton = {
                         EpisodeVideoDefaults.FloatingFullscreenSwitchButton(
                             videoScaffoldConfig.fullscreenSwitchMode,
-                            isFullscreen = expanded,
-                            onClickFullScreen,
+                            fullscreenState,
                         )
                     },
                     sideSheets = {},

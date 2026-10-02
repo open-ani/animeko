@@ -49,6 +49,7 @@
     <string name="settings_media_cache_ttl_15min">15 minutes</string>
     <string name="settings_media_cache_ttl_30min">30 minutes</string>
     <string name="settings_media_cache_ttl_1h">1 hour</string>
+    <string name="settings_media_cache_ttl_6h">6 hours</string>
     <string name="settings_media_cache_ttl_1d">1 day</string>
     <string name="settings_media_show_disabled">Show Disabled Data Sources</string>
     <string name="settings_media_show_disabled_description">During playback, display disabled data sources from the "Data Source Management" settings in gray, rather than hiding them. This allows temporarily enabling disabled sources when preferred sources don\'t have resources</string>

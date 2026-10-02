@@ -39,6 +39,7 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
+import me.him188.ani.app.domain.session.auth.OAuthPlatform
 import me.him188.ani.app.ui.foundation.ProvideCompositionLocalsForPreview
 import me.him188.ani.app.ui.foundation.rememberAsyncHandler
 import me.him188.ani.app.ui.lang.*
@@ -47,7 +48,7 @@ import org.jetbrains.compose.resources.*
 @Composable
 fun EmailLoginStartScreen(
     onOtpSent: () -> Unit,
-    onBangumiLoginClick: () -> Unit,
+    onThirdPartyLoginClick: (OAuthPlatform) -> Unit,
     onNavigateSettings: () -> Unit,
     onNavigateBack: () -> Unit,
     modifier: Modifier = Modifier,
@@ -65,11 +66,11 @@ fun EmailLoginStartScreen(
                 onOtpSent()
             }
         },
-        onBangumiLoginClick,
+        onThirdPartyLoginClick,
         onNavigateSettings,
         onNavigateBack,
         enabled = !asyncHandler.isWorking,
-        showThirdPartyLogin = state.mode == EmailLoginUiState.Mode.LOGIN,
+        thirdPartyPlatforms = if (state.mode == EmailLoginUiState.Mode.LOGIN) state.thirdPartyPlatforms else emptyList(),
         title = { EmailPageTitle(state.mode, state.isExistingAccount) },
         modifier = modifier,
     )
@@ -80,21 +81,21 @@ fun EmailLoginStartScreen(
 internal fun EmailLoginStartScreenImpl(
     email: String,
     onContinueClick: (currentEmail: String) -> Unit,
-    onBangumiLoginClick: () -> Unit,
+    onThirdPartyLoginClick: (OAuthPlatform) -> Unit,
     onNavigateSettings: () -> Unit,
     onNavigateBack: () -> Unit,
     modifier: Modifier = Modifier,
     title: @Composable () -> Unit = { Text(stringResource(Lang.login_sign_in)) },
     enabled: Boolean = true,
-    showThirdPartyLogin: Boolean = true,
+    thirdPartyPlatforms: List<OAuthPlatform> = emptyList(),
 ) {
     EmailLoginScreenLayout(
-        onBangumiLoginClick,
+        onThirdPartyLoginClick,
         onNavigateSettings,
         onNavigateBack,
         modifier,
         title,
-        showThirdPartyLogin,
+        thirdPartyPlatforms,
     ) { scrollState ->
         CenteredSectionHeader(
             title = { Text(stringResource(Lang.login_email_address_title)) },

@@ -1,0 +1,132 @@
+{
+  "bocchi-01": {
+    "file": "bocchi-01.json",
+    "expectedMediaId": "media-e61ea807da60c707f60c734d",
+    "expectedSourceName": "嘀嗒影视",
+    "earliestMillis": 132,
+    "latestMillis": 350,
+    "recordedMediaId": "media-e61ea807da60c707f60c734d"
+  },
+  "bocchi-06": {
+    "file": "bocchi-06.json",
+    "expectedMediaId": "media-e959259a3612cdbee5ab9ba1",
+    "expectedSourceName": "嘀嗒影视",
+    "earliestMillis": 37,
+    "latestMillis": 167,
+    "recordedMediaId": "media-e959259a3612cdbee5ab9ba1"
+  },
+  "bocchi-12": {
+    "file": "bocchi-12.json",
+    "expectedMediaId": "media-4e7874f15ff4d90a0dc3d1f2",
+    "expectedSourceName": "嘀嗒影视",
+    "earliestMillis": 30,
+    "latestMillis": 216,
+    "recordedMediaId": "media-4e7874f15ff4d90a0dc3d1f2"
+  },
+  "bocchi-sp01": {
+    "file": "bocchi-sp01.json",
+    "expectedMediaId": "media-e61ea807da60c707f60c734d",
+    "expectedSourceName": "嘀嗒影视",
+    "earliestMillis": 125,
+    "latestMillis": 362,
+    "recordedMediaId": "media-e61ea807da60c707f60c734d",
+    "knownEpisodeMismatch": true
+  },
+  "fresh-bocchi-01": {
+    "file": "fresh-bocchi-01.json",
+    "expectedMediaId": "media-e61ea807da60c707f60c734d",
+    "expectedSourceName": "嘀嗒影视",
+    "earliestMillis": 1015,
+    "latestMillis": 1116,
+    "recordedMediaId": "media-e61ea807da60c707f60c734d"
+  },
+  "fresh-bocchi-sp01": {
+    "file": "fresh-bocchi-sp01.json",
+    "expectedMediaId": "media-e61ea807da60c707f60c734d",
+    "expectedSourceName": "嘀嗒影视",
+    "earliestMillis": 1575,
+    "latestMillis": 1693,
+    "recordedMediaId": "media-e61ea807da60c707f60c734d",
+    "knownEpisodeMismatch": true
+  },
+  "summer-grand-blue-s3-01": {
+    "file": "summer-grand-blue-s3-01.json",
+    "recordedMediaId": "media-83719f0cb8303cd5fcee16e1",
+    "expectedMediaId": "media-83719f0cb8303cd5fcee16e1",
+    "expectedSourceName": "稀饭动漫",
+    "earliestMillis": 2851,
+    "latestMillis": 2953,
+    "expectedMatch": "EXACT",
+    "expectedTier": 0
+  },
+  "summer-mushoku-s3-09": {
+    "file": "summer-mushoku-s3-09.json",
+    "recordedMediaId": "media-4c4a02b6233e163db04524ac",
+    "expectedMediaId": "media-4c4a02b6233e163db04524ac",
+    "expectedSourceName": "稀饭动漫",
+    "earliestMillis": 4083,
+    "latestMillis": 4088,
+    "expectedMatch": "EXACT",
+    "expectedTier": 0
+  },
+  "summer-opposites-s2-09": {
+    "file": "summer-opposites-s2-09.json",
+    "recordedMediaId": "media-7fbb799126ba5838a8b36f22",
+    "expectedMediaId": "media-7fbb799126ba5838a8b36f22",
+    "expectedSourceName": "稀饭动漫",
+    "earliestMillis": 2070,
+    "latestMillis": 2172,
+    "expectedMatch": "EXACT",
+    "expectedTier": 0
+  },
+  "summer-smoking-09": {
+    "file": "summer-smoking-09.json",
+    "recordedMediaId": "media-f0eb787fe96cb0224aa49442",
+    "expectedMediaId": "media-f0eb787fe96cb0224aa49442",
+    "expectedSourceName": "嘀嗒影视",
+    "earliestMillis": 821,
+    "latestMillis": 921,
+    "expectedMatch": "EXACT",
+    "expectedTier": 0
+  },
+  "summer-childhood-friend-09": {
+    "file": "summer-childhood-friend-09.json",
+    "recordedMediaId": "media-c2b34c5ffad4ea7f104f9196",
+    "expectedMediaId": "media-c2b34c5ffad4ea7f104f9196",
+    "expectedSourceName": "稀饭动漫",
+    "earliestMillis": 1399,
+    "latestMillis": 1500,
+    "expectedMatch": "EXACT",
+    "expectedTier": 0
+  },
+  "frieren-01": {
+    "file": "frieren-01.json",
+    "recordedMediaId": "media-92769adf69077552c8cfdde2",
+    "expectedMediaId": "media-92769adf69077552c8cfdde2",
+    "expectedSourceName": "嘀嗒影视",
+    "earliestMillis": 1169,
+    "latestMillis": 1270,
+    "expectedMatch": "EXACT",
+    "expectedTier": 0
+  },
+  "summer-youjo-s2-09": {
+    "file": "summer-youjo-s2-09.json",
+    "recordedMediaId": "media-1a90f3ca98a5960814993520",
+    "expectedMediaId": "media-1a90f3ca98a5960814993520",
+    "expectedSourceName": "稀饭动漫",
+    "earliestMillis": 3245,
+    "latestMillis": 3354,
+    "expectedMatch": "EXACT",
+    "expectedTier": 0
+  },
+  "summer-opposites-s2-01": {
+    "file": "summer-opposites-s2-01.json",
+    "recordedMediaId": "media-d8fb4554e5213cdc5c54f2f2",
+    "expectedMediaId": "media-d8fb4554e5213cdc5c54f2f2",
+    "expectedSourceName": "稀饭动漫",
+    "earliestMillis": 2120,
+    "latestMillis": 2220,
+    "expectedMatch": "EXACT",
+    "expectedTier": 0
+  }
+}

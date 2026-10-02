@@ -84,29 +84,29 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import coil3.compose.AsyncImagePainter
 import com.kmpalette.rememberPaletteState
 import dev.chrisbanes.haze.rememberHazeState
 import kotlinx.coroutines.launch
 import kotlinx.serialization.Serializable
-import me.him188.ani.app.data.models.subject.RatingInfo
-import me.him188.ani.app.data.models.subject.SelfRatingInfo
 import me.him188.ani.app.data.models.subject.SubjectCollectionStats
 import me.him188.ani.app.data.models.subject.SubjectInfo
 import me.him188.ani.app.data.models.subject.SubjectProgressInfo
 import me.him188.ani.app.data.models.subject.Tag
 import me.him188.ani.app.data.models.subject.TestSubjectInfo
+import me.him188.ani.app.data.models.subject.preferredDisplayName
 import me.him188.ani.app.domain.episode.SetEpisodeCollectionTypeRequest
 import me.him188.ani.app.domain.foundation.LoadError
 import me.him188.ani.app.navigation.LocalNavigator
 import me.him188.ani.app.ui.comment.CommentReportHost
 import me.him188.ani.app.ui.comment.UIComment
 import me.him188.ani.app.ui.external.placeholder.placeholder
+import me.him188.ani.app.ui.foundation.AniImageLoadSuccess
 import me.him188.ani.app.ui.foundation.ImageViewer
 import me.him188.ani.app.ui.foundation.ProvideCompositionLocalsForPreview
 import me.him188.ani.app.ui.foundation.Tag
 import me.him188.ani.app.ui.foundation.animation.AniAnimatedVisibility
 import me.him188.ani.app.ui.foundation.ifThen
+import me.him188.ani.app.ui.foundation.input.touchHorizontalScrollOnly
 import me.him188.ani.app.ui.foundation.interaction.WindowDragArea
 import me.him188.ani.app.ui.foundation.layout.NestedScrollableColumn
 import me.him188.ani.app.ui.foundation.layout.NestedScrollableColumnState
@@ -119,7 +119,8 @@ import me.him188.ani.app.ui.foundation.layout.paneHorizontalPadding
 import me.him188.ani.app.ui.foundation.layout.paneVerticalPadding
 import me.him188.ani.app.ui.foundation.layout.plus
 import me.him188.ani.app.ui.foundation.layout.rememberNestedScrollableColumnState
-import me.him188.ani.app.ui.foundation.navigation.BackHandler
+import me.him188.ani.app.ui.foundation.ImageViewerBackHandler
+import me.him188.ani.app.ui.foundation.LocalSubjectAppearanceSettings
 import me.him188.ani.app.ui.foundation.pagerTabIndicatorOffset
 import me.him188.ani.app.ui.foundation.rememberImageViewerHandler
 import me.him188.ani.app.ui.foundation.stateOf
@@ -130,11 +131,9 @@ import me.him188.ani.app.ui.foundation.theme.MaterialThemeFromPaletteAndImage
 import me.him188.ani.app.ui.foundation.theme.appChromeFrostedGlass
 import me.him188.ani.app.ui.foundation.theme.appChromeHazeSource
 import me.him188.ani.app.ui.foundation.theme.isAppChromeFrostedGlassActive
-import me.him188.ani.app.ui.foundation.toComposeImageBitmap
 import me.him188.ani.app.ui.foundation.widgets.BackNavigationIconButton
 import me.him188.ani.app.ui.foundation.widgets.LocalToaster
 import me.him188.ani.app.ui.foundation.widgets.showLoadError
-import me.him188.ani.app.ui.foundation.input.touchHorizontalScrollOnly
 import me.him188.ani.app.ui.lang.Lang
 import me.him188.ani.app.ui.lang.foundation_richtext_external_app_link_warning_prefix
 import me.him188.ani.app.ui.lang.foundation_richtext_open_failed_prefix
@@ -146,7 +145,8 @@ import me.him188.ani.app.ui.lang.subject_details_tab_discussions
 import me.him188.ani.app.ui.lang.subject_details_write_review
 import me.him188.ani.app.ui.rating.EditableRating
 import me.him188.ani.app.ui.rating.EditableRatingDialogsHost
-import me.him188.ani.app.ui.rating.EditableRatingState
+import me.him188.ani.app.ui.rating.EditableRatingActions
+import me.him188.ani.app.ui.rating.EditableRatingUiState
 import me.him188.ani.app.ui.richtext.RichTextDefaults
 import me.him188.ani.app.ui.search.LoadErrorCard
 import me.him188.ani.app.ui.subject.AiringLabelState
@@ -167,6 +167,8 @@ import me.him188.ani.app.ui.subject.details.layout.SubjectDetailsMultiColumnPlac
 import me.him188.ani.app.ui.subject.details.sections.SubjectCommentsSheet
 import me.him188.ani.app.ui.subject.details.state.SubjectDetailsState
 import me.him188.ani.app.ui.subject.details.state.createTestSubjectDetailsState
+import me.him188.ani.app.ui.subject.details.state.rememberAiringLabelState
+import me.him188.ani.app.ui.subject.details.state.rememberSubjectProgressState
 import me.him188.ani.app.ui.subject.episode.list.EpisodeListDialog
 import me.him188.ani.app.ui.subject.episode.list.EpisodeListItem
 import me.him188.ani.app.ui.subject.person.PeoplePreviewHost
@@ -191,13 +193,14 @@ fun SubjectDetailsScreen(
     windowInsets: WindowInsets = TopAppBarDefaults.windowInsets,
     navigationIcon: @Composable () -> Unit = {},
 ) {
-    val state by vm.state.collectAsStateWithLifecycle(null)
+    val state by vm.state.collectAsStateWithLifecycle()
     val selfInfo by vm.authState.collectAsStateWithLifecycle()
     val toaster = LocalToaster.current
     val scope = rememberCoroutineScope()
 
+    // 每次进入组合 (含从播放页返回) 只是"确保已加载"; reload 会重新加载并闪一下占位, 只用于加载失败后重试.
     LaunchedEffect(Unit) {
-        vm.reload()
+        vm.load()
     }
 
     SubjectDetailsScreen(
@@ -223,7 +226,7 @@ fun SubjectDetailsScreen(
 
 @Composable
 fun SubjectDetailsScreen(
-    state: SubjectDetailsUIState?,
+    state: SubjectDetailsLoadState,
     selfInfo: SelfInfoUiState,
     onPlay: (episodeId: Int) -> Unit,
     onLoadErrorRetry: () -> Unit,
@@ -238,7 +241,7 @@ fun SubjectDetailsScreen(
     val navigator = LocalNavigator.current
     val uriHandler = LocalUriHandler.current
     val onClickOpenExternal = {
-        if (state != null) uriHandler.openUri("https://bgm.tv/subject/${state.subjectId}")
+        uriHandler.openUri("https://bgm.tv/subject/${state.subjectId}")
     }
 
     // 断点必须按本页面实际可用宽度决定, 不能按窗口宽度:
@@ -246,8 +249,8 @@ fun SubjectDetailsScreen(
     BoxWithConstraints(modifier) {
         val layoutParams = SubjectDetailsLayoutParams.calculate(maxWidth)
         when (state) {
-            null, is SubjectDetailsUIState.Placeholder -> PlaceholderSubjectDetailsPage(
-                state?.subjectInfo,
+            is SubjectDetailsLoadState.Placeholder -> PlaceholderSubjectDetailsPage(
+                state.subjectInfo,
                 layoutParams,
                 Modifier,
                 showTopBar,
@@ -256,7 +259,7 @@ fun SubjectDetailsScreen(
                 onClickOpenExternal,
             )
 
-            is SubjectDetailsUIState.Ok -> SubjectDetailsPage(
+            is SubjectDetailsLoadState.Ok -> SubjectDetailsPage(
                 state.value,
                 selfInfo,
                 layoutParams,
@@ -272,7 +275,7 @@ fun SubjectDetailsScreen(
                 onClickOpenExternal,
             )
 
-            is SubjectDetailsUIState.Err -> ErrorSubjectDetailsPage(
+            is SubjectDetailsLoadState.Err -> ErrorSubjectDetailsPage(
                 state.placeholder,
                 error = state.error,
                 onRetry = onLoadErrorRetry,
@@ -316,13 +319,13 @@ private fun SubjectDetailsPage(
 
     // image viewer
     val imageViewer = rememberImageViewerHandler()
-    BackHandler(enabled = imageViewer.viewing.value) { imageViewer.clear() }
+    ImageViewerBackHandler(imageViewer)
 
-    val presentation by state.presentation.collectAsStateWithLifecycle()
+    val uiState by state.uiState.collectAsStateWithLifecycle()
     val onEpisodeLongClick: (EpisodeListItem) -> Unit = {
         onEpisodeCollectionUpdate(
             SetEpisodeCollectionTypeRequest(
-                presentation.subjectId,
+                uiState.subjectId,
                 it.episodeId,
                 it.collectionType.toggleCollected(),
             ),
@@ -340,15 +343,19 @@ private fun SubjectDetailsPage(
         )
     }
     val onClickCommentImage = { url: String -> imageViewer.viewImage(url) }
+    // 封面点击放大 (与评论图片共用页面级查看器)
+    val coverImageUrl = state.info?.imageLarge?.takeIf { it.isNotBlank() }
+    val onClickCover: (() -> Unit)? = coverImageUrl?.let { url -> { imageViewer.viewImage(url) } }
     // Bangumi 源评价的 "在 Bangumi 打开" 菜单项
     val onOpenCommentOriginal = { _: UIComment ->
-        browserNavigator.openUri("https://bgm.tv/subject/${presentation.subjectId}")
+        browserNavigator.openUri("https://bgm.tv/subject/${uiState.subjectId}")
     }
 
     val themeSettings = LocalThemeSettings.current
     var bitmap by remember { mutableStateOf<ImageBitmap?>(null) }
-    val onCoverImageSuccess = { success: AsyncImagePainter.State.Success ->
-        bitmap = success.result.image.toComposeImageBitmap()
+    val onCoverImageSuccess = { success: AniImageLoadSuccess ->
+        success.bitmap?.let { bitmap = it }
+        Unit
     }
     val paletteState = rememberPaletteState()
     LaunchedEffect(themeSettings, bitmap) {
@@ -364,10 +371,10 @@ private fun SubjectDetailsPage(
     ) {
         if (showSelectEpisode) {
             EpisodeListDialog(
-                presentation.episodeListUiState,
+                uiState.episodeListUiState,
                 onDismissRequest = { showSelectEpisode = false },
-                { navigator.navigateSubjectCaches(presentation.subjectId) },
-                { navigator.navigateEpisodeDetails(presentation.subjectId, it.episodeId) },
+                { navigator.navigateSubjectCaches(uiState.subjectId) },
+                { navigator.navigateEpisodeDetails(uiState.subjectId, it.episodeId) },
                 onEpisodeLongClick,
             )
         }
@@ -379,13 +386,13 @@ private fun SubjectDetailsPage(
             // 双栏 / 三栏: 全新自适应布局 (复用现有 SubjectDetailsState 数据).
             // 桌面无"评价" tab, 完整评论流与"写评价"从评价预览/热门评价卡进入.
             var showComments by rememberSaveable { mutableStateOf(false) }
-            EditableRatingDialogsHost(state.editableRatingState)
+            EditableRatingDialogsHost(uiState.rating, state)
             if (showComments) {
                 SubjectCommentsSheet(
                     state = state.subjectCommentState,
                     onClickUrl = onClickCommentUrl,
                     onClickImage = onClickCommentImage,
-                    onClickWriteReview = { state.editableRatingState.requestEdit() },
+                    onClickWriteReview = { state.requestEditRating() },
                     onDismissRequest = { showComments = false },
                     reportState = state.subjectCommentReportState,
                     onOpenOriginal = onOpenCommentOriginal,
@@ -402,7 +409,7 @@ private fun SubjectDetailsPage(
                     onClickTag = onClickTag,
                     onClickLogin = onClickLogin,
                     onShowComments = { showComments = true },
-                    onClickCache = { navigator.navigateSubjectCaches(presentation.subjectId) },
+                    onClickCache = { navigator.navigateSubjectCaches(uiState.subjectId) },
                     modifier = modifier,
                     showTopBar = showTopBar,
                     windowInsets = windowInsets,
@@ -410,6 +417,7 @@ private fun SubjectDetailsPage(
                     navigationIcon = navigationIcon,
                     onClickOpenExternal = onClickOpenExternal,
                     onCoverImageSuccess = onCoverImageSuccess,
+                    onClickCover = onClickCover,
                 )
             }
             return@MaterialThemeFromPaletteAndImage
@@ -425,7 +433,7 @@ private fun SubjectDetailsPage(
             seasonTags = {
                 SubjectDetailsDefaults.SeasonTag(
                     airDate = state.info?.airDate ?: PackedDate.Invalid,
-                    airingLabelState = state.airingLabelState,
+                    airingLabelState = uiState.rememberAiringLabelState(),
                 )
             },
             collectionData = {
@@ -437,15 +445,15 @@ private fun SubjectDetailsPage(
                         Text(stringResource(Lang.subject_details_login_to_collect))
                     }
                 } else {
-                    EditableSubjectCollectionTypeButton(state.editableSubjectCollectionTypeState)
+                    EditableSubjectCollectionTypeButton(uiState.collectionTypeEdit, state)
                 }
             },
             rating = {
-                EditableRating(state.editableRatingState)
+                EditableRating(uiState.rating, state)
             },
             selectEpisodeButton = {
                 SubjectDetailsDefaults.SelectEpisodeButtons(
-                    state.subjectProgressState,
+                    uiState.rememberSubjectProgressState(),
                     onShowEpisodeList = { showSelectEpisode = true },
                     onPlay = onPlay,
                 )
@@ -457,6 +465,7 @@ private fun SubjectDetailsPage(
             navigationIcon = navigationIcon,
             onCoverImageSuccess = onCoverImageSuccess,
             onClickOpenExternal = onClickOpenExternal,
+            onClickCover = onClickCover,
             floatingActionButton = {
                 when (SubjectDetailsTab.entries.getOrNull(pagerState.currentPage)) {
                     SubjectDetailsTab.COMMENTS -> {
@@ -465,7 +474,7 @@ private fun SubjectDetailsPage(
                             icon = {
                                 Icon(Icons.Rounded.AddComment, null)
                             },
-                            onClick = { state.editableRatingState.requestEdit() },
+                            onClick = { state.requestEditRating() },
                             expanded = !nestedScrollableColumnState.isHeaderScrolledOut,
                         )
                     }
@@ -495,7 +504,7 @@ private fun SubjectDetailsPage(
                         onEpisodeLongClick = onEpisodeLongClick,
                         onClickTag = onClickTag,
                         onShowEpisodeList = { showSelectEpisode = true },
-                        onClickCache = { navigator.navigateSubjectCaches(presentation.subjectId) },
+                        onClickCache = { navigator.navigateSubjectCaches(uiState.subjectId) },
                         modifier = Modifier
                             .nestedScrollWorkaround(state.detailsTabLazyListState),
                         listState = state.detailsTabLazyListState,
@@ -584,18 +593,9 @@ private fun PlaceholderSubjectDetailsPage(
             ) { Text(stringResource(Lang.subject_details_login_to_collect)) }
         },
         rating = {
-            val scope = rememberCoroutineScope()
             EditableRating(
-                remember {
-                    EditableRatingState(
-                        stateOf(RatingInfo.Empty),
-                        stateOf(SelfRatingInfo.Empty),
-                        stateOf(false),
-                        { false },
-                        { },
-                        scope,
-                    )
-                },
+                EditableRatingUiState.Placeholder,
+                EditableRatingActions.Noop,
                 modifier = Modifier.placeholder(true),
             )
         },
@@ -691,8 +691,9 @@ fun SubjectDetailsSingleColumnPage(
     showBlurredBackground: Boolean = true,
     windowInsets: WindowInsets = TopAppBarDefaults.windowInsets,
     navigationIcon: @Composable () -> Unit = {},
-    onCoverImageSuccess: (AsyncImagePainter.State.Success) -> Unit = {},
+    onCoverImageSuccess: (AniImageLoadSuccess) -> Unit = {},
     onClickOpenExternal: () -> Unit = {},
+    onClickCover: (() -> Unit)? = null,
     floatingActionButton: @Composable () -> Unit = {},
     tabRow: (@Composable (isOverlay: Boolean, visible: Boolean) -> Unit)? = null,
     nestedScrollableColumnState: NestedScrollableColumnState = rememberNestedScrollableColumnState(),
@@ -794,6 +795,7 @@ fun SubjectDetailsSingleColumnPage(
                                             .ifThen(!showTopBar) { padding(top = windowSizeClass.paneVerticalPadding) }
                                             .padding(horizontal = windowSizeClass.paneHorizontalPadding),
                                         onCoverImageSuccess = onCoverImageSuccess,
+                                        onClickCover = onClickCover,
                                     )
                                 }
                             }
@@ -844,8 +846,9 @@ fun SubjectDetailsSingleColumnPage(
                                 WindowDragArea {
                                     TopAppBar(
                                         title = {
+                                            val useOriginalTitle = LocalSubjectAppearanceSettings.current.useOriginalTitle
                                             Text(
-                                                info?.displayName ?: "",
+                                                info?.preferredDisplayName(useOriginalTitle) ?: "",
                                                 maxLines = 1,
                                                 overflow = TextOverflow.Ellipsis,
                                             )
@@ -1111,7 +1114,7 @@ enum class SubjectDetailsTab {
 /**
  * UI state of the subject details page.
  */
-sealed interface SubjectDetailsUIState {
+sealed interface SubjectDetailsLoadState {
     val subjectId: Int
 
     /**
@@ -1121,7 +1124,7 @@ sealed interface SubjectDetailsUIState {
     data class Placeholder(
         override val subjectId: Int,
         val subjectInfo: SubjectInfo? = null
-    ) : SubjectDetailsUIState
+    ) : SubjectDetailsLoadState
 
     /**
      * Content ready.
@@ -1129,7 +1132,7 @@ sealed interface SubjectDetailsUIState {
     class Ok(
         override val subjectId: Int,
         val value: SubjectDetailsState
-    ) : SubjectDetailsUIState
+    ) : SubjectDetailsLoadState
 
     /**
      * Load error, if preview subject info is available, it will also show.
@@ -1138,7 +1141,7 @@ sealed interface SubjectDetailsUIState {
         override val subjectId: Int,
         val placeholder: SubjectInfo?,
         val error: LoadError
-    ) : SubjectDetailsUIState
+    ) : SubjectDetailsLoadState
 }
 
 @Stable
@@ -1159,7 +1162,7 @@ internal fun PreviewSubjectDetails() = ProvideCompositionLocalsForPreview {
     val scope = rememberCoroutineScope()
     val state = remember {
         createTestSubjectDetailsState(scope)
-            .let { SubjectDetailsUIState.Ok(it.subjectId, it) }
+            .let { SubjectDetailsLoadState.Ok(it.subjectId, it) }
     }
     PreviewSubjectDetailsScreen(
         state,
@@ -1172,7 +1175,7 @@ internal fun PreviewSubjectDetails() = ProvideCompositionLocalsForPreview {
 @Composable
 internal fun PreviewPlaceholderSubjectDetails() = ProvideCompositionLocalsForPreview {
     val state = remember {
-        SubjectDetailsUIState.Placeholder(TestSubjectInfo.subjectId, TestSubjectInfo)
+        SubjectDetailsLoadState.Placeholder(TestSubjectInfo.subjectId, TestSubjectInfo)
     }
     PreviewSubjectDetailsScreen(
         state,
@@ -1186,7 +1189,7 @@ internal fun PreviewPlaceholderSubjectDetails() = ProvideCompositionLocalsForPre
 @Composable
 internal fun PreviewErrorSubjectDetails() = ProvideCompositionLocalsForPreview {
     val state = remember {
-        SubjectDetailsUIState.Err(TestSubjectInfo.subjectId, TestSubjectInfo, LoadError.NetworkError)
+        SubjectDetailsLoadState.Err(TestSubjectInfo.subjectId, TestSubjectInfo, LoadError.NetworkError)
     }
     PreviewSubjectDetailsScreen(
         state,
@@ -1196,7 +1199,7 @@ internal fun PreviewErrorSubjectDetails() = ProvideCompositionLocalsForPreview {
 @TestOnly
 @Composable
 private fun PreviewSubjectDetailsScreen(
-    state: SubjectDetailsUIState,
+    state: SubjectDetailsLoadState,
     modifier: Modifier = Modifier
 ) {
     SubjectDetailsScreen(

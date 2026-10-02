@@ -16,7 +16,6 @@ import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.onEach
 import kotlinx.coroutines.flow.shareIn
-import me.him188.ani.app.data.network.AniApiProvider
 import me.him188.ani.app.domain.foundation.HttpClientProvider
 import me.him188.ani.app.domain.foundation.ServerListFeature
 import me.him188.ani.app.domain.foundation.ServerListFeatureConfig
@@ -52,7 +51,7 @@ class ProxyTester(
 
         ServiceConnectionTesters.createDefault(
             bangumiClient = BangumiClientImpl(client),
-            aniClient = AniApiProvider(client).trendsApi,
+            aniClient = client,
             serviceIds = serviceIds,
         )
     }

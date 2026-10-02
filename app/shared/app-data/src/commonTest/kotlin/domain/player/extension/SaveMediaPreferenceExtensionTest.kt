@@ -11,6 +11,9 @@
 
 package me.him188.ani.app.domain.player.extension
 
+import kotlin.test.Test
+import kotlin.test.assertEquals
+import kotlin.test.assertTrue
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.cancel
@@ -33,12 +36,12 @@ import me.him188.ani.app.domain.media.createTestDefaultMedia
 import me.him188.ani.app.domain.media.createTestMediaProperties
 import me.him188.ani.app.domain.media.resolver.MediaResolver
 import me.him188.ani.app.domain.media.resolver.TestUniversalMediaResolver
+import me.him188.ani.app.domain.media.selector.MediaAutoSelector
 import me.him188.ani.app.domain.media.selector.MediaSelectorEventSavePreferenceUseCase
-import me.him188.ani.app.domain.media.selector.autoSelect
 import me.him188.ani.app.domain.media.selector.eventHandling
 import me.him188.ani.datasources.api.DefaultMedia
-import me.him188.ani.datasources.api.Media
 import me.him188.ani.datasources.api.EpisodeSort
+import me.him188.ani.datasources.api.Media
 import me.him188.ani.datasources.api.SubtitleKind
 import me.him188.ani.datasources.api.source.MediaSourceKind
 import me.him188.ani.datasources.api.source.MediaSourceLocation
@@ -47,9 +50,6 @@ import me.him188.ani.datasources.api.topic.FileSize.Companion.megaBytes
 import me.him188.ani.datasources.api.topic.ResourceLocation
 import me.him188.ani.datasources.api.topic.SubtitleLanguage
 import me.him188.ani.utils.coroutines.childScope
-import kotlin.test.Test
-import kotlin.test.assertEquals
-import kotlin.test.assertTrue
 
 /**
  * @see SaveMediaPreferenceExtension
@@ -158,7 +158,7 @@ class SaveMediaPreferenceExtensionTest : AbstractPlayerExtensionTest() {
 
         val session = state.mediaFetchSessionFlow.filterNotNull().first()
         val selector = state.mediaSelectorFlow.filterNotNull().first()
-        val selected = selector.autoSelect.awaitCompletedAndSelectDefault(session)
+        val selected = MediaAutoSelector(selector).select(session)
         assertEquals(myMedia, selected)
 
         // PINNED: SAVE-01 自动选择 (selectDefault, updatePreference=false) 不广播 onChangePreference, 不触发保存

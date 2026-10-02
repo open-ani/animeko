@@ -16,6 +16,7 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.flowOf
 import me.him188.ani.app.domain.media.cache.engine.TorrentMediaCacheEngine
+import me.him188.ani.app.domain.media.download.MediaDownloadManager
 import me.him188.ani.app.tools.Progress
 import me.him188.ani.app.tools.toProgress
 import me.him188.ani.app.torrent.api.TorrentSession
@@ -63,6 +64,12 @@ interface MediaCache {
 
     val canPlay: Flow<Boolean>
         get() = flowOf(true)
+
+    /**
+     * 引擎的内部状态, 供详情页诊断. 不提供诊断信息的实现为 `null`.
+     */
+    val downloaderStatus: Flow<DownloaderStatus?>
+        get() = flowOf(null)
 
     /**
      * Returns the [CachedMedia] instance for this cache.
@@ -216,6 +223,9 @@ interface MediaCache {
      */
     suspend fun resume()
 
+    // Explicit user intent can promote an automatic playback record to a persistent download.
+    suspend fun resumeByUser() = resume()
+
     /**
      * 该缓存的文件是否已经被删除. 删除后不可恢复.
      */
@@ -224,7 +234,7 @@ interface MediaCache {
     /**
      * 尝试删除此 [MediaCache] 所涉及的文件.
      *
-     * 注意! 你很可能需要使用 [MediaCacheManager.deleteCache]. 因为单独 [MediaCache.closeAndDeleteFiles] 并不会从 storage 中删除.
+     * 注意! 你很可能需要使用 [MediaDownloadManager.deleteDownload]. 因为单独 [MediaCache.closeAndDeleteFiles] 并不会从 storage 中删除.
      *
      * 此函数必须关闭所有使用的资源, 清理潜在的缓存文件, 且不得抛出异常 (除非是 [CancellationException]).
      */

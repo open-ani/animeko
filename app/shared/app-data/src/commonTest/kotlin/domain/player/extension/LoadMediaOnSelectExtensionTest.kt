@@ -19,17 +19,33 @@ import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.test.TestScope
 import kotlinx.coroutines.test.advanceUntilIdle
 import kotlinx.coroutines.test.runTest
+import kotlinx.io.files.Path
+import kotlinx.io.files.SystemTemporaryDirectory
 import me.him188.ani.app.data.models.preference.VideoScaffoldConfig
+import me.him188.ani.app.data.repository.player.EpisodePlayHistoryRepository
 import me.him188.ani.app.domain.episode.EpisodeFetchSelectPlayState
 import me.him188.ani.app.domain.episode.EpisodePlayerTestSuite
 import me.him188.ani.app.domain.episode.UnsafeEpisodeSessionApi
 import me.him188.ani.app.domain.episode.mediaSelectorFlow
+import me.him188.ani.app.domain.media.DroppedFileMedia
 import me.him188.ani.app.domain.media.TestMediaList
+import me.him188.ani.app.domain.media.hls.HlsPlaybackOptions
+import me.him188.ani.app.domain.media.hls.HlsPlaybackPreparer
+import me.him188.ani.app.domain.media.hls.HlsPlaybackPreparerResult
+import me.him188.ani.app.domain.media.player.data.AniSystemFileMediaData
+import me.him188.ani.app.domain.media.resolver.LocalFileMediaResolver
 import me.him188.ani.app.domain.media.resolver.MediaResolver
 import me.him188.ani.app.domain.media.resolver.TestUniversalMediaResolver
+import me.him188.ani.app.domain.player.VideoLoadingState
 import me.him188.ani.app.domain.settings.GetVideoScaffoldConfigUseCase
+import me.him188.ani.app.domain.watchtogether.PlaybackAutomationGate
 import me.him188.ani.utils.coroutines.childScope
+import me.him188.ani.utils.io.delete
+import me.him188.ani.utils.io.inSystem
+import me.him188.ani.utils.io.name
+import me.him188.ani.utils.io.writeBytes
 import org.openani.mediamp.source.UriMediaData
+import kotlin.random.Random
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertIs
@@ -40,16 +56,30 @@ import kotlin.test.assertSame
  * @see EpisodeFetchSelectPlayState.LoadMediaOnSelectExtension
  */
 class LoadMediaOnSelectExtensionTest : AbstractPlayerExtensionTest() {
-    private fun TestScope.createCase(): Triple<CoroutineScope, EpisodePlayerTestSuite, EpisodeFetchSelectPlayState> {
+    /**
+     * @param hlsPreparer 非空时开启 HLS 广告过滤并使用它.
+     */
+    private fun TestScope.createCase(
+        mediaResolver: MediaResolver = TestUniversalMediaResolver,
+        hlsPreparer: HlsPlaybackPreparer? = null,
+    ): Triple<CoroutineScope, EpisodePlayerTestSuite, EpisodeFetchSelectPlayState> {
         val testScope = this.childScope()
         val suite = EpisodePlayerTestSuite(this, testScope)
         suite.registerComponent<GetVideoScaffoldConfigUseCase> {
             GetVideoScaffoldConfigUseCase {
-                flowOf(VideoScaffoldConfig.AllDisabled.copy(autoPlayNext = true))
+                flowOf(
+                    VideoScaffoldConfig.AllDisabled.copy(
+                        autoPlayNext = true,
+                        enableHlsAdFiltering = hlsPreparer != null,
+                    ),
+                )
             }
         }
         suite.registerComponent<MediaResolver> {
-            TestUniversalMediaResolver
+            mediaResolver
+        }
+        if (hlsPreparer != null) {
+            suite.registerComponent<HlsPlaybackPreparer> { hlsPreparer }
         }
 
         val state = suite.createState(listOf()) // LoadMediaOnSelectExtension is intrinsic
@@ -74,6 +104,77 @@ class LoadMediaOnSelectExtensionTest : AbstractPlayerExtensionTest() {
         assertEquals(0, suite.player.currentPositionMillis.value)
 
         testScope.cancel()
+    }
+
+    @Test
+    fun `passes saved play progress to the hls preparer as start position hint`() = runTest {
+        val preparer = HintRecordingHlsPlaybackPreparer()
+        val (testScope, suite, state) = createCase(hlsPreparer = preparer)
+        suite.koin.get<EpisodePlayHistoryRepository>().saveOrUpdate(initialEpisodeId, 30_000)
+
+        val ms1 = suite.mediaSelectorTestBuilder.delayedMediaSource("1")
+        ms1.complete(listOf(TestMediaList[0]))
+        state.mediaSelectorFlow.filterNotNull().first().select(TestMediaList[0])
+        advanceUntilIdle()
+
+        assertEquals(listOf<Long?>(30_000), preparer.hints)
+        // 提示只影响预缓存, 跳转仍由 RememberPlayProgressExtension 负责
+        assertEquals(0, suite.player.currentPositionMillis.value)
+
+        testScope.cancel()
+    }
+
+    @Test
+    fun `no start position hint while watch together suppresses resume`() = runTest {
+        val preparer = HintRecordingHlsPlaybackPreparer()
+        val (testScope, suite, state) = createCase(hlsPreparer = preparer)
+        suite.koin.get<EpisodePlayHistoryRepository>().saveOrUpdate(initialEpisodeId, 30_000)
+        suite.koin.get<PlaybackAutomationGate>().setSuppressed(true)
+
+        val ms1 = suite.mediaSelectorTestBuilder.delayedMediaSource("1")
+        ms1.complete(listOf(TestMediaList[0]))
+        state.mediaSelectorFlow.filterNotNull().first().select(TestMediaList[0])
+        advanceUntilIdle()
+
+        assertEquals(listOf<Long?>(null), preparer.hints)
+
+        testScope.cancel()
+    }
+
+    private class HintRecordingHlsPlaybackPreparer : HlsPlaybackPreparer {
+        val hints = mutableListOf<Long?>()
+
+        override suspend fun prepare(
+            data: UriMediaData,
+            options: HlsPlaybackOptions,
+            startPositionHintMillis: Long?,
+        ): HlsPlaybackPreparerResult {
+            hints += startPositionHintMillis
+            return HlsPlaybackPreparerResult(data)
+        }
+    }
+
+    @Test
+    fun `plays a dropped file while media sources are still fetching`() = runTest {
+        val (testScope, suite, state) =
+            createCase(LocalFileMediaResolver())
+
+        suite.mediaSelectorTestBuilder.delayedMediaSource("1") // 一直未完成查询
+
+        // 播放器会打开文件, 因此需要一个真实存在的文件
+        val file = Path(SystemTemporaryDirectory, "ani-dropped-${Random.nextLong()}.mkv").inSystem
+        file.writeBytes(byteArrayOf(0))
+        try {
+            state.mediaSelectorFlow.filterNotNull().first().selectTemporarily(DroppedFileMedia.create(file))
+            advanceUntilIdle()
+
+            assertIs<VideoLoadingState.Succeed>(state.playerSession.videoLoadingState.value)
+            val data = assertIs<AniSystemFileMediaData>(suite.player.mediaData.first())
+            assertEquals(file.name, data.filename)
+        } finally {
+            testScope.cancel()
+            file.delete()
+        }
     }
 
     @Test

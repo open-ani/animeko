@@ -38,9 +38,7 @@ import me.him188.ani.app.tools.update.UpdateInstallationState
 import me.him188.ani.app.tools.update.UpdateInstaller
 import me.him188.ani.app.ui.foundation.AbstractViewModel
 import me.him188.ani.utils.io.createDirectories
-import me.him188.ani.utils.io.exists
 import me.him188.ani.utils.io.inSystem
-import me.him188.ani.utils.io.list
 import me.him188.ani.utils.logging.info
 import me.him188.ani.utils.logging.warn
 import me.him188.ani.utils.platform.annotations.TestOnly
@@ -200,24 +198,16 @@ class AppUpdateViewModel : AbstractViewModel(), KoinComponent {
             // Linux prepares a small zsync file; other platforms prepare the package URL unchanged.
             val preparationUrls = updateInstaller.getUpdatePreparationUrls(ver.downloadUrlAlternatives)
             val dir = updateManager.saveDir
-            if (dir.exists()) {
-                // 删除旧的文件
-                val allowedFilenames = preparationUrls.map {
-                    it.substringAfterLast("/", "")
-                }.let { list ->
-                    list + list.map { "$it.sha1" }
-                }
-                for (file in dir.list()) {
-                    if (file.name == ".DS_Store") continue
-
-                    if (allowedFilenames.none { file.name.contains(it) }) {
-                        logger.info { "Deleting old installer: $file" }
-                        updateManager.deleteInstaller(file.inSystem)
-                    }
-                }
+            // 删除旧的安装包, 保留本次要下载的文件及其校验文件 (已下载完成的可以跳过重新下载).
+            val keepFilenames = preparationUrls.map {
+                it.substringAfterLast("/", "")
+            }.let { list ->
+                list + list.map { "$it.sha1" }
             }
-
-            withContext(Dispatchers.IO) { dir.createDirectories() }
+            withContext(Dispatchers.IO) {
+                updateManager.deleteStaleInstallers(keepFilenames)
+                dir.createDirectories()
+            }
             fileDownloader.download(
                 alternativeUrls = preparationUrls,
                 filenameProvider = { it.substringAfterLast("/", "") },

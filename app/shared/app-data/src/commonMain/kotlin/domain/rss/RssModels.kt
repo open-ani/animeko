@@ -16,7 +16,6 @@ import kotlinx.serialization.Transient
 import me.him188.ani.datasources.api.topic.FileSize
 import me.him188.ani.datasources.api.topic.FileSize.Companion.Unspecified
 import me.him188.ani.datasources.api.topic.FileSize.Companion.bytes
-import me.him188.ani.datasources.api.topic.FileSize.Companion.kiloBytes
 import me.him188.ani.datasources.api.topic.ResourceLocation
 import me.him188.ani.datasources.api.topic.guessTorrentFromUrl
 import me.him188.ani.utils.xml.Element
@@ -62,12 +61,7 @@ fun RssItem.getMediaSize(): FileSize {
         //有的源会返回 1
         return Unspecified
     }
-    return if (link.contains("animes.garden")) {
-        //动漫花园返回的是kb
-        enclosure.length.kiloBytes
-    } else {
-        enclosure.length.bytes
-    }
+    return enclosure.length.bytes
 }
 
 @Immutable

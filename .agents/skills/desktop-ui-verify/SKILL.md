@@ -56,7 +56,19 @@ $DESK inject click 300 200  # window-CONTENT points = window points minus title 
                             # screenshot PNG pixel / 2, then subtract (content.y - frame.y)
 $DESK inject type hello     # goes to focus owner, else last injected-click target
 $DESK inject key 10         # AWT keycodes: 10=Enter, 27=Esc, 9=Tab, 37-40=arrows
+$DESK inject wheel 500 300 3  # mouse wheel / trackpad scroll at (500,300): dy=3 (down); `wheel x y dy dx`,
+                              # append `ctrl` for Ctrl+wheel
+$DESK inject resize 1440 900 # resize the target frame (window points) without Accessibility
+$DESK inject windows        # list visible frames; * marks the focused one
+$DESK inject window Image   # route following commands to the frame whose title contains "Image"
+                            # (secondary windows such as the image viewer); `window -` clears it
+$DESK inject dragenter 500 300 "/path/to/a file.mp4"   # external FILE drag (as from Finder) enters at (500,300);
+                            # several files: path1|path2. The drag stays active, so screenshot the hover UI now
+$DESK inject dragover 520 320   # move the active drag
+$DESK inject drop 520 320       # release it (or `inject dragexit` to cancel)
 ```
+
+- **External file drag-and-drop** (`dragenter`/`dragover`/`drop`/`dragexit`): an OS file drag never produces AWT mouse events — the native peer calls the window's `java.awt.dnd.DropTarget` directly — so the agent does the same in-process, with a fake `DropTargetContextPeer` supplying a `javaFileListFlavor` list. Everything from `processDragAndDropEventImpl` onward is the app's real path (validated 2026-09-17 on the player page: `WindowDropHost` overlay appeared, drop played the file). Only the OS gesture itself is synthetic. The files need not exist unless the app opens them. Compose resolves the hovered drop target on `dragOver`, which is why the agent sends one after `dragenter` and before `drop`. Compose decides whether anything accepts the drag at `dragenter` time: inject it only after the target screen has finished loading.
 
 - `inject type` goes to Compose's internal focus, which follows injected clicks — **click INTO the
   text field

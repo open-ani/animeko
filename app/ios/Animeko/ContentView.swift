@@ -85,7 +85,12 @@ class SwiftBridgeImpl : ISwiftBridge {
 		:
 		UIDeviceOrientation.portrait
 		
+		// 全屏期间锁定为横屏, 否则从后台切回来时系统会把界面转回竖屏. 必须在请求旋转之前设置.
+		AppDelegate.orientationLock = fullscreen ? .landscape : nil
+
 		if #available(iOS 16.0, *) {
+			uiViewController.view.window?.rootViewController?.setNeedsUpdateOfSupportedInterfaceOrientations()
+
 			if let scene = uiViewController.view.window?.windowScene {
 				// 1. Build the geometry-preferences object
 				let geometryPreferences = UIWindowScene.GeometryPreferences.iOS()

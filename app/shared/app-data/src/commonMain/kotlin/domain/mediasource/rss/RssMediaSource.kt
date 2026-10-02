@@ -156,7 +156,7 @@ class RssMediaSource(
 
             // 404 Not Found
             val channel = result.channel ?: return@PageBasedPagedSource null
-            val topics = result.matchedMediaList ?: return@PageBasedPagedSource null
+            val topics = result.allMediaList ?: return@PageBasedPagedSource null
 
             Paged(
                 null,

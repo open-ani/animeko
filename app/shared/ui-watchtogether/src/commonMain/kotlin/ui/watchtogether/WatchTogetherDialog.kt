@@ -94,13 +94,6 @@ import me.him188.ani.app.ui.lang.watch_together_disable_feature_desc
 import me.him188.ani.app.ui.lang.watch_together_disband
 import me.him188.ani.app.ui.lang.watch_together_disconnected
 import me.him188.ani.app.ui.lang.watch_together_episode_label
-import me.him188.ani.app.ui.lang.watch_together_error_invalid_name
-import me.him188.ani.app.ui.lang.watch_together_error_invalid_password
-import me.him188.ani.app.ui.lang.watch_together_error_rate_limited
-import me.him188.ani.app.ui.lang.watch_together_error_room_closed
-import me.him188.ani.app.ui.lang.watch_together_error_room_full
-import me.him188.ani.app.ui.lang.watch_together_error_temporary
-import me.him188.ani.app.ui.lang.watch_together_error_wrong_password
 import me.him188.ani.app.ui.lang.watch_together_follow_host
 import me.him188.ani.app.ui.lang.watch_together_follow_host_desc
 import me.him188.ani.app.ui.lang.watch_together_host
@@ -109,7 +102,6 @@ import me.him188.ani.app.ui.lang.watch_together_host_empty_self
 import me.him188.ani.app.ui.lang.watch_together_host_idle
 import me.him188.ani.app.ui.lang.watch_together_idle
 import me.him188.ani.app.ui.lang.watch_together_join
-import me.him188.ani.app.ui.lang.watch_together_join_failed
 import me.him188.ani.app.ui.lang.watch_together_join_helper
 import me.him188.ani.app.ui.lang.watch_together_join_subtitle
 import me.him188.ani.app.ui.lang.watch_together_joining
@@ -428,18 +420,10 @@ private fun JoinRoomContent(
         modifier = Modifier.padding(top = 8.dp, start = 14.dp),
     )
     if (errorMessage != null) {
-        val localizedError = when (errorMessage) {
-            WatchTogetherJoinFailure.WRONG_PASSWORD.name -> stringResource(Lang.watch_together_error_wrong_password)
-            WatchTogetherJoinFailure.ROOM_FULL.name -> stringResource(Lang.watch_together_error_room_full)
-            WatchTogetherJoinFailure.ROOM_CLOSED.name -> stringResource(Lang.watch_together_error_room_closed)
-            WatchTogetherJoinFailure.INVALID_NAME.name -> stringResource(Lang.watch_together_error_invalid_name)
-            WatchTogetherJoinFailure.INVALID_PASSWORD.name -> stringResource(Lang.watch_together_error_invalid_password)
-            WatchTogetherJoinFailure.RATE_LIMITED.name -> stringResource(Lang.watch_together_error_rate_limited)
-            WatchTogetherJoinFailure.TEMPORARY.name -> stringResource(Lang.watch_together_error_temporary)
-            else -> errorMessage
-        }
+        val failure = WatchTogetherJoinFailure.entries.firstOrNull { it.name == errorMessage }
+        val localizedError = failure?.let { stringResource(it.messageResource()) } ?: errorMessage
         Text(
-            text = stringResource(Lang.watch_together_join_failed, localizedError),
+            text = watchTogetherJoinFailureMessage(localizedError),
             style = MaterialTheme.typography.bodySmall,
             color = MaterialTheme.colorScheme.error,
             modifier = Modifier.padding(top = 8.dp, start = 14.dp),
@@ -701,7 +685,7 @@ private fun NowPlayingCard(playback: WatchTogetherPlaybackPresentation, modifier
 }
 
 @Composable
-private fun WatchTogetherPlaybackPresentation.stateIconAndText(): Pair<ImageVector, String> = when {
+fun WatchTogetherPlaybackPresentation.stateIconAndText(): Pair<ImageVector, String> = when {
     loading -> Icons.Rounded.Downloading to stringResource(Lang.watch_together_state_loading)
     buffering -> Icons.Rounded.HourglassEmpty to stringResource(Lang.watch_together_state_buffering)
     paused -> Icons.Rounded.Pause to stringResource(Lang.watch_together_state_paused)
@@ -800,7 +784,7 @@ private fun MemberRow(
                 }
             }
             Text(
-                text = member.statusText(),
+                text = member.watchTogetherStatusText(),
                 style = MaterialTheme.typography.bodySmall,
                 color = when {
                     disconnected -> MaterialTheme.colorScheme.error
@@ -913,7 +897,7 @@ private fun HostIdentityRow(modifier: Modifier = Modifier) {
 }
 
 @Composable
-private fun WatchTogetherMemberPresentation.statusText(): String = when (state) {
+fun WatchTogetherMemberPresentation.watchTogetherStatusText(): String = when (state) {
     WatchTogetherMemberPresence.DISCONNECTED -> {
         val minutes = disconnectedMinutes
         if (minutes != null && minutes > 0) {

@@ -15,8 +15,11 @@ import io.ktor.client.statement.bodyAsText
 import io.ktor.http.HttpStatusCode
 import io.ktor.http.isSuccess
 import kotlinx.coroutines.flow.Flow
-import kotlinx.coroutines.flow.asFlow
+import kotlinx.coroutines.flow.channelFlow
 import kotlinx.coroutines.flow.flowOf
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.sync.Semaphore
+import kotlinx.coroutines.sync.withPermit
 import kotlinx.serialization.json.Json
 import me.him188.ani.datasources.api.DefaultMedia
 import me.him188.ani.datasources.api.EpisodeSort
@@ -30,12 +33,15 @@ import me.him188.ani.datasources.api.source.MatchKind
 import me.him188.ani.datasources.api.source.MediaMatch
 import me.him188.ani.datasources.api.source.MediaSourceKind
 import me.him188.ani.datasources.api.source.MediaSourceLocation
+import me.him188.ani.datasources.api.topic.EpisodeRange
 import me.him188.ani.datasources.api.topic.FileSize.Companion.bytes
 import me.him188.ani.datasources.api.topic.ResourceLocation
 import me.him188.ani.datasources.api.topic.titles.RawTitleParser
 import me.him188.ani.datasources.api.topic.titles.parse
 import me.him188.ani.datasources.ikaros.models.IkarosEpisodeGroup
+import me.him188.ani.datasources.ikaros.models.IkarosEpisodeMeta
 import me.him188.ani.datasources.ikaros.models.IkarosEpisodeRecord
+import me.him188.ani.datasources.ikaros.models.IkarosEpisodeResource
 import me.him188.ani.datasources.ikaros.models.IkarosSubjectSync
 import me.him188.ani.datasources.ikaros.models.IkarosVideoSubtitle
 import me.him188.ani.utils.ktor.ScopedHttpClient
@@ -52,6 +58,11 @@ class IkarosClient(
         private val logger = logger<IkarosClient>()
         private val json = Json { ignoreUnknownKeys = true }
         private const val API_VERSION = "v1alpha1"
+
+        /**
+         * 同时转换的资源数. 每个资源要 3 次请求, 数量随集数线性增长.
+         */
+        private const val RESOURCE_CONCURRENCY = 4
     }
 
     suspend fun checkConnection(): HttpStatusCode {
@@ -84,70 +95,87 @@ class IkarosClient(
         return json.decodeFromString(responseText)
     }
 
-    suspend fun episodeRecords2SizeSource(
+    /**
+     * 把条目的全部剧集记录转换为资源. 每个资源需要多次请求 (附件信息, 播放地址, 字幕), 并发数受 [RESOURCE_CONCURRENCY] 限制.
+     *
+     * 资源的剧集范围来自记录的分组与序号 ([episodeSortOf]); 无法对应到剧集类型的分组 (如 OST, LIVE) 跳过.
+     */
+    fun episodeRecords2SizeSource(
         subjectId: String,
         episodeRecords: List<IkarosEpisodeRecord>,
-        episodeSort: EpisodeSort,
     ): SizedSource<MediaMatch> {
-        val mediaMatches = mutableListOf<MediaMatch>()
-        val epSortNumber = if (episodeSort.number == null) 1.0 else episodeSort.number!!.toDouble()
-        val ikarosEpisodeGroup = if (episodeSort is EpisodeSort.Special) {
-            when (episodeSort.type) {
-                EpisodeType.SP -> IkarosEpisodeGroup.SPECIAL_PROMOTION
-                EpisodeType.OP -> IkarosEpisodeGroup.OPENING_SONG
-                EpisodeType.ED -> IkarosEpisodeGroup.ENDING_SONG
-                EpisodeType.PV -> IkarosEpisodeGroup.PROMOTION_VIDEO
-                EpisodeType.MAD -> IkarosEpisodeGroup.SMALL_THEATER
-                EpisodeType.OVA -> IkarosEpisodeGroup.ORIGINAL_VIDEO_ANIMATION
-                EpisodeType.OAD -> IkarosEpisodeGroup.ORIGINAL_ANIMATION_DISC
-                else -> IkarosEpisodeGroup.MAIN
-            }
-        } else {
-            IkarosEpisodeGroup.MAIN
+        val entries = episodeRecords.flatMap { record ->
+            val sort = episodeSortOf(record.episode) ?: return@flatMap emptyList()
+            record.resources.orEmpty().map { resource -> sort to resource }
         }
-        val episode = episodeRecords.find { epRecord ->
-            epRecord.episode.sequence == epSortNumber && ikarosEpisodeGroup.name == epRecord.episode.group.name
-        }
-        if (episode?.resources != null && episode.resources.isNotEmpty()) {
-            for (epRes in episode.resources) {
-                val media = epRes.let {
-                    val attachment: IkarosAttachment? = getAttachmentById(epRes.attachmentId)
-                    val parseResult = RawTitleParser.getDefault().parse(epRes.name)
-                    DefaultMedia(
-                        mediaId = epRes.attachmentId.toString(),
-                        mediaSourceId = IkarosMediaSource.ID,
-                        originalUrl = baseUrl.plus("/console/#/subjects/subject/details/").plus(subjectId),
-                        download = ResourceLocation.HttpStreamingFile(
-                            uri = getAttReadUrl(epRes.attachmentId),
-                        ),
-                        originalTitle = epRes.name,
-                        publishedTime = kotlin.runCatching {
-                            DateFormater.utcDateStr2timeStamp(attachment?.updateTime ?: "")
-                        }.getOrElse { 0 },
-                        properties = MediaProperties(
-                            subjectName = null, // Ikaros is exact match and hence does not need these properties.
-                            episodeName = null,
-                            subtitleLanguageIds = parseResult.subtitleLanguages.map { it.id },
-                            resolution = parseResult.resolution?.displayName ?: "480P",
-                            alliance = IkarosMediaSource.ID,
-                            size = (attachment?.size ?: 0).bytes,
-                            subtitleKind = SubtitleKind.EXTERNAL_PROVIDED,
-                        ),
-                        episodeRange = parseResult.episodeRange,
-                        location = MediaSourceLocation.Online,
-                        kind = MediaSourceKind.WEB,
-                        extraFiles = fetchVideoAttSubtitles2ExtraFiles(epRes.attachmentId),
-                    )
+        val results = channelFlow {
+            val semaphore = Semaphore(RESOURCE_CONCURRENCY)
+            for ((sort, resource) in entries) {
+                launch {
+                    semaphore.withPermit {
+                        send(MediaMatch(resourceToMedia(subjectId, sort, resource), MatchKind.EXACT))
+                    }
                 }
-                val mediaMatch = MediaMatch(media, MatchKind.FUZZY)
-                mediaMatches.add(mediaMatch)
             }
         }
-
-        val sizedSource = IkarosSizeSource(
-            totalSize = flowOf(mediaMatches.size), finished = flowOf(true), results = mediaMatches.asFlow(),
+        return IkarosSizeSource(
+            totalSize = flowOf(entries.size), finished = flowOf(true), results = results,
         )
-        return sizedSource
+    }
+
+    private suspend fun resourceToMedia(
+        subjectId: String,
+        sort: EpisodeSort,
+        epRes: IkarosEpisodeResource,
+    ): DefaultMedia {
+        val attachment: IkarosAttachment? = getAttachmentById(epRes.attachmentId)
+        val parseResult = RawTitleParser.getDefault().parse(epRes.name)
+        return DefaultMedia(
+            mediaId = epRes.attachmentId.toString(),
+            mediaSourceId = IkarosMediaSource.ID,
+            originalUrl = baseUrl.plus("/console/#/subjects/subject/details/").plus(subjectId),
+            download = ResourceLocation.HttpStreamingFile(
+                uri = getAttReadUrl(epRes.attachmentId),
+            ),
+            originalTitle = epRes.name,
+            publishedTime = kotlin.runCatching {
+                DateFormater.utcDateStr2timeStamp(attachment?.updateTime ?: "")
+            }.getOrElse { 0 },
+            properties = MediaProperties(
+                subjectName = null, // Ikaros is exact match and hence does not need these properties.
+                episodeName = null,
+                subtitleLanguageIds = parseResult.subtitleLanguages.map { it.id },
+                resolution = parseResult.resolution?.displayName ?: "480P",
+                alliance = IkarosMediaSource.ID,
+                size = (attachment?.size ?: 0).bytes,
+                subtitleKind = SubtitleKind.EXTERNAL_PROVIDED,
+            ),
+            episodeRange = EpisodeRange.single(sort),
+            location = MediaSourceLocation.Online,
+            kind = MediaSourceKind.WEB,
+            extraFiles = fetchVideoAttSubtitles2ExtraFiles(epRes.attachmentId),
+        )
+    }
+
+    /**
+     * 记录对应的集数: 正片为序号, 其他分组为对应类型的特殊剧集. 没有对应剧集类型的分组返回 `null`.
+     */
+    private fun episodeSortOf(episode: IkarosEpisodeMeta): EpisodeSort? {
+        val number = episode.sequence.let { seq ->
+            if (seq == seq.toLong().toDouble()) seq.toLong().toString() else seq.toString()
+        }
+        val type = when (episode.group) {
+            IkarosEpisodeGroup.MAIN -> return EpisodeSort(number)
+            IkarosEpisodeGroup.SPECIAL_PROMOTION -> EpisodeType.SP
+            IkarosEpisodeGroup.OPENING_SONG -> EpisodeType.OP
+            IkarosEpisodeGroup.ENDING_SONG -> EpisodeType.ED
+            IkarosEpisodeGroup.PROMOTION_VIDEO -> EpisodeType.PV
+            IkarosEpisodeGroup.SMALL_THEATER -> EpisodeType.MAD
+            IkarosEpisodeGroup.ORIGINAL_VIDEO_ANIMATION -> EpisodeType.OVA
+            IkarosEpisodeGroup.ORIGINAL_ANIMATION_DISC -> EpisodeType.OAD
+            else -> return null
+        }
+        return EpisodeSort(type.value + number)
     }
 
     suspend fun getAttReadUrl(attachmentId: Long): String {

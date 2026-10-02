@@ -25,6 +25,7 @@ data class MediaSourceSubscription(
     val url: String,
     val updatePeriod: Duration = 1.hours,
     val lastUpdated: LastUpdated? = null,
+    val enabled: Boolean = true,
 ) {
     @Serializable
     class UpdateError(

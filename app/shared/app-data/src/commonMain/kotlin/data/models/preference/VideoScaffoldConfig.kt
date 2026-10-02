@@ -43,6 +43,31 @@ enum class VideoEnhancementDefaultMode {
     QUALITY,
 }
 
+/**
+ * 播放中用户离开应用（上滑回桌面/锁屏等）时的行为.
+ *
+ * @see VideoScaffoldConfig.backgroundBehavior
+ */
+@Serializable
+enum class BackgroundBehavior {
+    /**
+     * 上滑回桌面时自动进入系统画中画小窗继续播放 (仅移动端).
+     */
+    AUTO_PICTURE_IN_PICTURE,
+
+    /**
+     * 退到后台时暂停播放 (原有行为).
+     */
+    PAUSE,
+
+    /**
+     * 退到后台时继续播放 (只听声音).
+     *
+     * 注意: 尚未实现, 仅为设置 schema 预留. Android 需要前台服务与媒体通知 (单独立项), iOS 依赖音频后台模式.
+     */
+    BACKGROUND_PLAYBACK,
+}
+
 @Serializable
 @Immutable
 data class VideoScaffoldConfig @SerializationOnly constructor(
@@ -95,11 +120,14 @@ data class VideoScaffoldConfig @SerializationOnly constructor(
      */
     val enableHighQualityAudioTimeStretch: Boolean = true,
     /**
-     * 过滤 HLS 播放列表中的插播片段.
+     * 过滤 HLS 播放列表中的插播广告, 见 `HlsManifestFilter`.
      *
-     * @since 5.7
+     * 5.7 至 6.1 的同类开关是默认关闭的 `enableExperimentalHlsSegmentFiltering`, 已不再读取:
+     * 换用新字段, 所有用户按新的默认值启用.
+     *
+     * @since 6.2
      */
-    val enableExperimentalHlsSegmentFiltering: Boolean = false,
+    val enableHlsAdFiltering: Boolean = true,
     /**
      * 用于在安卓上设置屏幕刷新率, 解决某些设备会自动限制刷新率的问题 (三星).
      *
@@ -153,6 +181,12 @@ data class VideoScaffoldConfig @SerializationOnly constructor(
      * @since 4.11
      */
     val playerVolume: PlayerVolume = PlayerVolume(1f, false),
+    /**
+     * 播放中用户离开应用时的行为. 见 [BackgroundBehavior].
+     *
+     * @since 5.0
+     */
+    val backgroundBehavior: BackgroundBehavior = BackgroundBehavior.AUTO_PICTURE_IN_PICTURE,
     // WARNING: if you add new property here, review Companion properties.
     @Suppress("PropertyName") @Transient val _placeholder: Int = 0,
 ) {
@@ -234,7 +268,8 @@ data class VideoScaffoldConfig @SerializationOnly constructor(
             autoSkipOpEd = false,
             autoSwitchMediaOnPlayerError = false,
             enableHighQualityAudioTimeStretch = false,
-            enableExperimentalHlsSegmentFiltering = false,
+            enableHlsAdFiltering = false,
+            backgroundBehavior = BackgroundBehavior.PAUSE,
         )
     }
 

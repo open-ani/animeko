@@ -11,15 +11,31 @@ package me.him188.ani.app.data.models.preference
 
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.Transient
+import me.him188.ani.danmaku.api.DanmakuLocation
 
 @Serializable
 data class DanmakuSettings(
     val useGlobal: Boolean? = null,
 
+    /**
+     * 发送弹幕时使用的颜色, RGB (不含 alpha), 例如白色为 `0xFFFFFF`.
+     */
+    val sendColor: Int = DEFAULT_SEND_COLOR,
+
+    /**
+     * 发送弹幕时使用的位置.
+     */
+    val sendLocation: DanmakuLocation = DanmakuLocation.NORMAL,
+
     @Suppress("PropertyName")
     @Transient val _placeholder: Int = 0,
 ) {
     companion object {
+        /**
+         * 白色
+         */
+        const val DEFAULT_SEND_COLOR: Int = 0xFFFFFF
+
         val Default = DanmakuSettings()
     }
 }

@@ -1,5 +1,6 @@
 package me.him188.ani.app.ui.foundation.interaction
 
+import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.ime
@@ -17,8 +18,29 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.composed
 import androidx.compose.ui.focus.onFocusEvent
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalFocusManager
+import androidx.compose.ui.platform.LocalSoftwareKeyboardController
+
+/**
+ * 当后代没有消费 tap 时清除焦点并隐藏软键盘.
+ *
+ * 清除焦点是 pointer side effect, 并不是可访问的 click action, 因此这里刻意使用不带语义的
+ * pointer input. 若在 APP 根节点使用 `clickable`, 会合并整个后代语义树, 并把本来不是控件的背景
+ * 暴露为无障碍点击操作.
+ */
+fun Modifier.clearFocusOnUnhandledTap(): Modifier = composed {
+    val focusManager by rememberUpdatedState(LocalFocusManager.current)
+    val keyboard by rememberUpdatedState(LocalSoftwareKeyboardController.current)
+
+    pointerInput(Unit) {
+        detectTapGestures {
+            keyboard?.hide()
+            focusManager.clearFocus()
+        }
+    }
+}
 
 @OptIn(ExperimentalLayoutApi::class)
 fun Modifier.clearFocusOnKeyboardDismiss(onClear: (() -> Unit)? = null): Modifier = composed {

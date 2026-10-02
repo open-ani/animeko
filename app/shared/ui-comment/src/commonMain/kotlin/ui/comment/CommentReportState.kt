@@ -63,15 +63,18 @@ class CommentReportState(
 
     fun submit(comment: UIComment, reason: CommentReportReason, detail: String) {
         backgroundScope.launch {
-            try {
-                onSubmitReport(comment, reason, detail)
-                submitResultChannel.trySend(Result.success(Unit))
-            } catch (e: CancellationException) {
-                throw e
-            } catch (e: Exception) {
-                submitResultChannel.trySend(Result.failure(e))
-            }
+            submitResultChannel.trySend(submitAwait(comment, reason, detail))
         }
+    }
+
+    /** Allows a client to associate completion with its own operation identity. */
+    suspend fun submitAwait(comment: UIComment, reason: CommentReportReason, detail: String): Result<Unit> = try {
+        onSubmitReport(comment, reason, detail)
+        Result.success(Unit)
+    } catch (e: CancellationException) {
+        throw e
+    } catch (e: Exception) {
+        Result.failure(e)
     }
 }
 

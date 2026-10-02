@@ -24,6 +24,10 @@ import me.him188.ani.datasources.api.Media
 import org.koin.core.Koin
 import org.koin.mp.KoinPlatform
 import kotlin.coroutines.CoroutineContext
+import kotlinx.coroutines.flow.combine
+import me.him188.ani.app.domain.media.fetch.MediaFetchSession
+import me.him188.ani.app.domain.media.fetch.withRequestedNumbers
+import me.him188.ani.datasources.api.source.MediaFetchRequest
 
 /**
  * 提前给予 episode 和 subject 的 context, 用于构造 [MediaSelector].
@@ -31,11 +35,16 @@ import kotlin.coroutines.CoroutineContext
  * @see withRepositories
  */
 interface MediaSelectorFactory {
+    /**
+     * @param fetchRequest 查询会话当前生效的请求 ([MediaFetchSession.latestRequest]); 提供时, 用户在编辑器里改的当前集集数
+     * 覆盖 Bangumi 的集数 ([withRequestedNumbers]).
+     */
     fun create(
         subjectId: Int,
         episodeId: Int,
         mediaList: Flow<List<Media>>,
         flowCoroutineContext: CoroutineContext = Dispatchers.Default,
+        fetchRequest: Flow<MediaFetchRequest>? = null,
     ): MediaSelector // 如果要'挂载'自动保存配置, 可以为这个的返回值操作.
 
     companion object {
@@ -61,7 +70,8 @@ interface MediaSelectorFactory {
                 subjectId: Int,
                 episodeId: Int,
                 mediaList: Flow<List<Media>>,
-                flowCoroutineContext: CoroutineContext
+                flowCoroutineContext: CoroutineContext,
+                fetchRequest: Flow<MediaFetchRequest>?,
             ): MediaSelector {
                 return DefaultMediaSelector(
                     MediaSelectorContextFlowProducer(
@@ -71,8 +81,9 @@ interface MediaSelectorFactory {
                         },
                         subjectRelationsRepository.subjectSeriesInfoFlow(subjectId),
                         subjectCollectionRepository.subjectCollectionFlow(subjectId).map { it.subjectInfo },
-                        episodeCollectionRepository.episodeCollectionInfoFlow(subjectId, episodeId)
-                            .map { it.episodeInfo },
+                        episodeCollectionRepository.episodeCollectionInfoFlow(subjectId, episodeId).map { it.episodeInfo }.let { episodeInfo ->
+                            if (fetchRequest == null) episodeInfo else combine(episodeInfo, fetchRequest) { info, request -> info.withRequestedNumbers(request) }
+                        },
                         mediaSourceManager.mediaSourceTiersFlow(),
                         flowOf(subtitlePreferences),
                     ).flow,

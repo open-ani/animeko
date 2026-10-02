@@ -24,6 +24,7 @@ import kotlinx.coroutines.delay
 import org.openani.mediamp.MediampPlayer
 import org.openani.mediamp.features.FramePreview
 import org.openani.mediamp.features.PreviewFrame
+import org.openani.mediamp.source.MediaData
 
 /**
  * 进度条预览帧的状态: 悬浮 (桌面) 或拖动 (触摸) 进度条时, 加载并展示目标位置的视频帧.
@@ -58,6 +59,9 @@ class MediaProgressFramePreviewState(
     var frame: ImageBitmap? by mutableStateOf(null)
         private set
 
+    var isLoading: Boolean by mutableStateOf(false)
+        private set
+
     private var frameGridKey = Long.MIN_VALUE
     private val cache = androidx.collection.LruCache<Long, ImageBitmap>(cacheSize)
 
@@ -68,7 +72,7 @@ class MediaProgressFramePreviewState(
      * 请求加载 [positionMillis] 处的帧. 预期在 `collectLatest` 中调用: 拖动到新位置时旧请求会被取消.
      * 缓存命中立即显示; 加载成功前保留上一帧, 避免闪烁.
      */
-    internal suspend fun requestFrame(positionMillis: Long) {
+    suspend fun requestFrame(positionMillis: Long) {
         val key = gridKeyOf(positionMillis)
         if (key == frameGridKey && frame != null) return
         cache[key]?.let {
@@ -76,11 +80,16 @@ class MediaProgressFramePreviewState(
             frameGridKey = key
             return
         }
-        delay(debounceMillis) // debounce: 快速滑动时, 更新的位置会取消本次请求
-        val newFrame = fetchFrame(alignToGrid(key, positionMillis)) ?: return
-        cache.put(key, newFrame)
-        frame = newFrame
-        frameGridKey = key
+        isLoading = true
+        try {
+            delay(debounceMillis) // debounce: 快速滑动时, 更新的位置会取消本次请求
+            val newFrame = fetchFrame(alignToGrid(key, positionMillis)) ?: return
+            cache.put(key, newFrame)
+            frame = newFrame
+            frameGridKey = key
+        } finally {
+            isLoading = false
+        }
     }
 
     /**
@@ -100,8 +109,9 @@ class MediaProgressFramePreviewState(
     /**
      * 预览结束 (浮窗隐藏) 时清空当前帧, 避免下次悬浮时先显示过期位置的帧. 缓存保留.
      */
-    internal fun onPreviewFinished() {
+    fun onPreviewFinished() {
         frame = null
+        isLoading = false
         frameGridKey = Long.MIN_VALUE
     }
 
@@ -111,6 +121,7 @@ class MediaProgressFramePreviewState(
     fun onMediaChanged() {
         cache.evictAll()
         frame = null
+        isLoading = false
         frameGridKey = Long.MIN_VALUE
     }
 }
@@ -125,15 +136,18 @@ fun rememberMediaProgressFramePreviewState(
     player: MediampPlayer,
     maxWidth: Dp = 192.dp,
     maxHeight: Dp = 128.dp,
+    /** See [createMediaProgressFramePreviewState]. */
+    mediaFramePreview: (MediaData) -> FramePreview? = { null },
 ): MediaProgressFramePreviewState? {
     val framePreview = remember(player) { player.features[FramePreview] } ?: return null
     val density = LocalDensity.current
-    val state = remember(framePreview, density, maxWidth, maxHeight) {
+    val state = remember(framePreview, density, maxWidth, maxHeight, mediaFramePreview) {
         val maxWidthPx = with(density) { maxWidth.roundToPx() }
         val maxHeightPx = with(density) { maxHeight.roundToPx() }
         MediaProgressFramePreviewState(
             fetchFrame = { positionMillis ->
-                framePreview.getPreviewFrame(positionMillis, maxWidthPx, maxHeightPx)?.toImageBitmap()
+                val preview = player.mediaData.value?.let(mediaFramePreview) ?: framePreview
+                preview.getPreviewFrame(positionMillis, maxWidthPx, maxHeightPx)?.toImageBitmap()
             },
         )
     }
@@ -148,6 +162,24 @@ fun rememberMediaProgressFramePreviewState(
         }
     }
     return state
+}
+
+/** 非 Compose 状态持有者使用的播放器取帧适配器。 */
+fun createMediaProgressFramePreviewState(
+    player: MediampPlayer,
+    maxWidth: Int,
+    maxHeight: Int,
+    /**
+     * A preview the current media supplies itself, used instead of the player's for as long as it
+     * returns one; resolved on every request, since the media changes under the same state.
+     */
+    mediaFramePreview: (MediaData) -> FramePreview? = { null },
+): MediaProgressFramePreviewState? {
+    val feature = player.features[FramePreview] ?: return null
+    return MediaProgressFramePreviewState(fetchFrame = { position ->
+        val preview = player.mediaData.value?.let(mediaFramePreview) ?: feature
+        preview.getPreviewFrame(position, maxWidth, maxHeight)?.toImageBitmap()
+    })
 }
 
 /**

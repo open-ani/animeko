@@ -25,6 +25,7 @@ import me.him188.ani.client.models.AniSubjectAiringInfo
 import me.him188.ani.client.models.AniSubjectRelations
 import me.him188.ani.client.models.AniSubjectType
 import me.him188.ani.client.models.AniTag
+import me.him188.ani.client.models.AniTmdbSubjectArt
 
 import kotlinx.serialization.*
 import kotlinx.serialization.descriptors.*
@@ -48,12 +49,15 @@ import kotlinx.serialization.encoding.*
  * @param selfRating 用户对条目的评分信息. 如果没有评分, 各字段为默认值
  * @param episodes 条目对应的剧集的收藏状态
  * @param relations 系列信息
+ * @param imageLarge 封面原图地址, 供详情页等需要高清封面的地方使用.
+ * @param imageThumb 列表用的封面地址: 缩略图已生成时为 WebP 缩略图, 否则与 `imageLarge` 相同. 客户端不应自行拼接封面地址.
  * @param infobox
  * @param platform
  * @param score 如果不为空, 则必定为浮点
  * @param rank
  * @param collectionType
  * @param airingInfo
+ * @param tmdbArt
  * @param updatedAt 收藏更新的时间. 如果没有收藏, 则为 `null`.
  */
 @Serializable
@@ -93,6 +97,12 @@ data class AniSubjectCollection (
     /* 系列信息 */
     @SerialName(value = "relations") @Required val relations: AniSubjectRelations,
 
+    /* 封面原图地址, 供详情页等需要高清封面的地方使用. */
+    @SerialName(value = "imageLarge") @Required val imageLarge: kotlin.String,
+
+    /* 列表用的封面地址: 缩略图已生成时为 WebP 缩略图, 否则与 `imageLarge` 相同. 客户端不应自行拼接封面地址. */
+    @SerialName(value = "imageThumb") @Required val imageThumb: kotlin.String,
+
     @SerialName(value = "infobox") val infobox: AniInfobox? = null,
 
     @SerialName(value = "platform") val platform: kotlin.Int? = null,
@@ -105,6 +115,8 @@ data class AniSubjectCollection (
     @SerialName(value = "collectionType") val collectionType: AniCollectionType? = null,
 
     @SerialName(value = "airingInfo") val airingInfo: AniSubjectAiringInfo? = null,
+
+    @SerialName(value = "tmdbArt") val tmdbArt: AniTmdbSubjectArt? = null,
 
     /* 收藏更新的时间. 如果没有收藏, 则为 `null`. */
     @SerialName(value = "updatedAt") val updatedAt: kotlin.String? = null

@@ -148,6 +148,11 @@ object AniCefApp {
                 add("--use-gl=angle")
                 add("--use-angle=swiftshader-webgl")
 
+                // Chromium's default display backend crashes the CEF browser process (SIGTRAP)
+                // on Wayland sessions before the GPU process is usable, so JCEF never reaches
+                // the INITIALIZED state. Force the X11 (XWayland) backend, which is stable.
+                add("--ozone-platform=x11")
+
                 // will cause 139 (segfault)
                 // add("--disable-gpu")
                 // add("--disable-software-rasterizer")

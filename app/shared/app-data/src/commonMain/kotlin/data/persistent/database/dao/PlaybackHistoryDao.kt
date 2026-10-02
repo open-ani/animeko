@@ -79,6 +79,14 @@ interface PlaybackHistoryDao {
     @Query("SELECT * FROM playback_history_record WHERE episodeId = :episodeId LIMIT 1")
     suspend fun getRecordByEpisodeId(episodeId: Int): PlaybackHistoryRecordEntity?
 
+    /** 只取给定剧集的未删除记录, 剧集列表按需订阅, 不用把全表读进内存. `episodeId` 是主键, 走索引. */
+    @Query("SELECT * FROM playback_history_record WHERE episodeId IN (:episodeIds) AND deletedAtMillis IS NULL")
+    fun activeRecordsFlowByEpisodeIds(episodeIds: Collection<Int>): Flow<List<PlaybackHistoryRecordEntity>>
+
+    /** 给定剧集的记录, 包含已删除的墓碑; 同步页面用它给删除操作补条目名. */
+    @Query("SELECT * FROM playback_history_record WHERE episodeId IN (:episodeIds)")
+    fun recordsFlowByEpisodeIds(episodeIds: Collection<Int>): Flow<List<PlaybackHistoryRecordEntity>>
+
     @Query("SELECT * FROM playback_history_record WHERE deletedAtMillis IS NULL")
     suspend fun getActiveRecords(): List<PlaybackHistoryRecordEntity>
 
@@ -228,6 +236,18 @@ fun createMemoryPlaybackHistoryDao(): PlaybackHistoryDao {
 
         override suspend fun getRecordByEpisodeId(episodeId: Int): PlaybackHistoryRecordEntity? {
             return recordsStore.value.find { it.episodeId == episodeId }
+        }
+
+        override fun activeRecordsFlowByEpisodeIds(episodeIds: Collection<Int>): Flow<List<PlaybackHistoryRecordEntity>> {
+            val ids = episodeIds.toSet()
+            return recordsStore.map { records ->
+                records.filter { it.deletedAtMillis == null && it.episodeId in ids }
+            }
+        }
+
+        override fun recordsFlowByEpisodeIds(episodeIds: Collection<Int>): Flow<List<PlaybackHistoryRecordEntity>> {
+            val ids = episodeIds.toSet()
+            return recordsStore.map { records -> records.filter { it.episodeId in ids } }
         }
 
         override suspend fun getActiveRecords(): List<PlaybackHistoryRecordEntity> {

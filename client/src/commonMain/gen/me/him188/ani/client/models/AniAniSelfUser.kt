@@ -16,6 +16,7 @@
 
 package me.him188.ani.client.models
 
+import me.him188.ani.client.models.AniAniExternalAccount
 
 import kotlinx.serialization.*
 import kotlinx.serialization.descriptors.*
@@ -28,6 +29,7 @@ import kotlinx.serialization.encoding.*
  * @param nickname
  * @param hasPassword
  * @param isBangumiSessionValid
+ * @param externalAccounts
  * @param email
  * @param smallAvatar
  * @param mediumAvatar
@@ -48,6 +50,8 @@ data class AniAniSelfUser (
     @SerialName(value = "hasPassword") @Required val hasPassword: kotlin.Boolean,
 
     @SerialName(value = "isBangumiSessionValid") @Required val isBangumiSessionValid: kotlin.Boolean,
+
+    @SerialName(value = "externalAccounts") @Required val externalAccounts: kotlin.collections.List<AniAniExternalAccount>,
 
     @SerialName(value = "email") val email: kotlin.String? = null,
 

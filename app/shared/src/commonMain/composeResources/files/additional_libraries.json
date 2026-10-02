@@ -1,0 +1,154 @@
+{
+  "libraries": [
+    {
+      "uniqueId": "com.github.jellyfin:jellyfin",
+      "name": "Jellyfin",
+      "description": "The Free Software Media System - Server Backend & API",
+      "website": "https://jellyfin.org",
+      "developers": [{ "name": "Jellyfin Contributors" }],
+      "scm": { "url": "https://github.com/jellyfin/jellyfin" },
+      "licenses": ["GPL-2.0"],
+      "funding": []
+    },
+    {
+      "uniqueId": "com.github.mediabrowser:emby-apiclients",
+      "name": "Emby ApiClients",
+      "description": "Emby Server ApiClients",
+      "website": "https://dev.emby.media/",
+      "developers": [{ "name": "Emby" }],
+      "scm": { "url": "https://github.com/MediaBrowser/Emby.ApiClients" },
+      "licenses": [],
+      "funding": []
+    },
+    {
+      "uniqueId": "com.github.ikaros-dev:ikaros",
+      "name": "Ikaros",
+      "description": "Dedicated to ACGMN's Content Management System (CMS)",
+      "website": "https://docs.ikaros.run",
+      "developers": [{ "name": "ikaros-dev" }],
+      "scm": { "url": "https://github.com/ikaros-dev/ikaros" },
+      "licenses": ["AGPL-3.0"],
+      "funding": []
+    },
+    {
+      "uniqueId": "com.github.arvidn:libtorrent",
+      "name": "libtorrent",
+      "description": "An efficient feature complete C++ bittorrent implementation",
+      "website": "https://libtorrent.org",
+      "developers": [{ "name": "Arvid Norberg" }],
+      "scm": { "url": "https://github.com/arvidn/libtorrent" },
+      "licenses": ["BSD-3-Clause"],
+      "funding": []
+    },
+    {
+      "uniqueId": "com.github.bloc97:anime4k",
+      "name": "Anime4K",
+      "description": "A High-Quality Real Time Upscaler for Anime Video",
+      "website": "https://bloc97.github.io/Anime4K/",
+      "developers": [{ "name": "bloc97" }],
+      "scm": { "url": "https://github.com/bloc97/Anime4K" },
+      "licenses": ["MIT"],
+      "funding": []
+    },
+    {
+      "uniqueId": "com.github.proffitteoy:cnn-for-ani",
+      "name": "CNN-for-Ani",
+      "description": "Captcha recognition model for Animeko",
+      "developers": [{ "name": "proffitteoy" }],
+      "scm": { "url": "https://github.com/proffitteoy/CNN-for-Ani" },
+      "licenses": ["Apache-2.0"],
+      "funding": []
+    },
+    {
+      "uniqueId": "com.github.jvziyaoyao:scale",
+      "name": "Scale",
+      "description": "An image viewer for Android and Compose Multiplatform with transition animations and support for large images",
+      "website": "https://jvziyaoyao.github.io/scale",
+      "developers": [{ "name": "jvziyaoyao" }],
+      "scm": { "url": "https://github.com/jvziyaoyao/scale" },
+      "licenses": ["Apache-2.0"],
+      "funding": []
+    },
+    {
+      "uniqueId": "com.github.aclassen:composereorderable",
+      "name": "ComposeReorderable",
+      "description": "Enables reordering by drag and drop in Jetpack Compose LazyList & LazyGrid",
+      "developers": [{ "name": "André Claßen" }],
+      "scm": { "url": "https://github.com/aclassen/ComposeReorderable" },
+      "licenses": ["Apache-2.0"],
+      "funding": []
+    },
+    {
+      "uniqueId": "org.ffmpeg:ffmpeg",
+      "name": "FFmpeg",
+      "description": "A complete, cross-platform solution to record, convert and stream audio and video",
+      "website": "https://ffmpeg.org",
+      "developers": [{ "name": "FFmpeg Team" }],
+      "scm": { "url": "https://github.com/FFmpeg/FFmpeg" },
+      "licenses": ["LGPL-2.1-or-later"],
+      "funding": []
+    },
+    {
+      "uniqueId": "io.mpv:mpv",
+      "name": "mpv",
+      "description": "Command line media player",
+      "website": "https://mpv.io",
+      "developers": [{ "name": "mpv-player" }],
+      "scm": { "url": "https://github.com/mpv-player/mpv" },
+      "licenses": ["GPL-2.0-or-later"],
+      "funding": []
+    },
+    {
+      "uniqueId": "org.videolan:dav1d",
+      "name": "dav1d",
+      "description": "Fast and small AV1 decoder",
+      "website": "https://code.videolan.org/videolan/dav1d",
+      "developers": [{ "name": "VideoLAN" }],
+      "scm": { "url": "https://github.com/videolan/dav1d" },
+      "licenses": ["BSD-2-Clause"],
+      "funding": []
+    }
+  ],
+  "licenses": {
+    "Apache-2.0": {
+      "name": "Apache License 2.0",
+      "url": "https://spdx.org/licenses/Apache-2.0.html",
+      "spdxId": "Apache-2.0"
+    },
+    "MIT": {
+      "name": "MIT License",
+      "url": "https://spdx.org/licenses/MIT.html",
+      "spdxId": "MIT"
+    },
+    "BSD-3-Clause": {
+      "name": "BSD 3-Clause \"New\" or \"Revised\" License",
+      "url": "https://spdx.org/licenses/BSD-3-Clause.html",
+      "spdxId": "BSD-3-Clause"
+    },
+    "BSD-2-Clause": {
+      "name": "BSD 2-Clause \"Simplified\" License",
+      "url": "https://spdx.org/licenses/BSD-2-Clause.html",
+      "spdxId": "BSD-2-Clause"
+    },
+    "LGPL-2.1-or-later": {
+      "name": "GNU Lesser General Public License v2.1 or later",
+      "url": "https://spdx.org/licenses/LGPL-2.1-or-later.html",
+      "spdxId": "LGPL-2.1-or-later"
+    },
+    "GPL-2.0": {
+      "name": "GNU General Public License v2.0",
+      "url": "https://spdx.org/licenses/GPL-2.0-only.html",
+      "spdxId": "GPL-2.0-only"
+    },
+    "GPL-2.0-or-later": {
+      "name": "GNU General Public License v2.0 or later",
+      "url": "https://spdx.org/licenses/GPL-2.0-or-later.html",
+      "spdxId": "GPL-2.0-or-later"
+    },
+    "AGPL-3.0": {
+      "name": "GNU Affero General Public License v3.0",
+      "url": "https://spdx.org/licenses/AGPL-3.0-only.html",
+      "spdxId": "AGPL-3.0-only"
+    }
+  }
+}

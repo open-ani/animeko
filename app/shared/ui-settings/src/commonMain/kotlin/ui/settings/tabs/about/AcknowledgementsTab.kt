@@ -28,16 +28,31 @@ import androidx.compose.ui.unit.dp
 import me.him188.ani.app.ui.foundation.ProvideCompositionLocalsForPreview
 import me.him188.ani.app.ui.foundation.Res
 import me.him188.ani.app.ui.foundation.bangumi
+import me.him188.ani.app.ui.foundation.dandanplay
+import me.him188.ani.app.ui.foundation.dmhy
+import me.him188.ani.app.ui.foundation.mikan
+import me.him188.ani.app.ui.foundation.tmdb
 import me.him188.ani.app.ui.lang.Lang
 import me.him188.ani.app.ui.lang.settings_acknowledgements_bangumi
 import me.him188.ani.app.ui.lang.settings_acknowledgements_bangumi_description
 import me.him188.ani.app.ui.lang.settings_acknowledgements_dandanplay
 import me.him188.ani.app.ui.lang.settings_acknowledgements_dandanplay_description
+import me.him188.ani.app.ui.lang.settings_acknowledgements_dmhy
+import me.him188.ani.app.ui.lang.settings_acknowledgements_dmhy_description
+import me.him188.ani.app.ui.lang.settings_acknowledgements_mikan
+import me.him188.ani.app.ui.lang.settings_acknowledgements_mikan_description
+import me.him188.ani.app.ui.lang.settings_acknowledgements_oss_licenses
+import me.him188.ani.app.ui.lang.settings_acknowledgements_oss_licenses_description
+import me.him188.ani.app.ui.lang.settings_acknowledgements_tmdb
+import me.him188.ani.app.ui.lang.settings_acknowledgements_tmdb_description
 import org.jetbrains.compose.resources.painterResource
 import org.jetbrains.compose.resources.stringResource
 
 @Composable
-fun AcknowledgementsTab(modifier: Modifier = Modifier) {
+fun AcknowledgementsTab(
+    onClickOpenSourceLicenses: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
     Column(modifier) {
         val uriHandler = LocalUriHandler.current
         val listItemColors = ListItemDefaults.colors(
@@ -66,6 +81,69 @@ fun AcknowledgementsTab(modifier: Modifier = Modifier) {
                 uriHandler.openUri("https://www.dandanplay.com")
             },
             supportingContent = { Text(stringResource(Lang.settings_acknowledgements_dandanplay_description)) },
+            leadingContent = {
+                Image(
+                    painterResource(Res.drawable.dandanplay),
+                    contentDescription = null,
+                    Modifier.clip(CircleShape).size(24.dp),
+                )
+            },
+            colors = listItemColors,
+        )
+
+        ListItem(
+            headlineContent = { Text(stringResource(Lang.settings_acknowledgements_mikan)) },
+            Modifier.clickable {
+                uriHandler.openUri("https://mikanani.me")
+            },
+            supportingContent = { Text(stringResource(Lang.settings_acknowledgements_mikan_description)) },
+            leadingContent = {
+                Image(
+                    painterResource(Res.drawable.mikan),
+                    contentDescription = null,
+                    Modifier.clip(CircleShape).size(24.dp),
+                )
+            },
+            colors = listItemColors,
+        )
+
+        ListItem(
+            headlineContent = { Text(stringResource(Lang.settings_acknowledgements_dmhy)) },
+            Modifier.clickable {
+                uriHandler.openUri("https://www.dmhy.org")
+            },
+            supportingContent = { Text(stringResource(Lang.settings_acknowledgements_dmhy_description)) },
+            leadingContent = {
+                Image(
+                    painterResource(Res.drawable.dmhy),
+                    contentDescription = null,
+                    Modifier.clip(CircleShape).size(24.dp),
+                )
+            },
+            colors = listItemColors,
+        )
+
+        ListItem(
+            headlineContent = { Text(stringResource(Lang.settings_acknowledgements_tmdb)) },
+            Modifier.clickable {
+                uriHandler.openUri("https://www.themoviedb.org")
+            },
+            supportingContent = { Text(stringResource(Lang.settings_acknowledgements_tmdb_description)) },
+            leadingContent = {
+                // TMDB 的品牌条款要求原样使用官方标志, 不做圆形裁切
+                Image(
+                    painterResource(Res.drawable.tmdb),
+                    contentDescription = null,
+                    Modifier.size(24.dp),
+                )
+            },
+            colors = listItemColors,
+        )
+
+        ListItem(
+            headlineContent = { Text(stringResource(Lang.settings_acknowledgements_oss_licenses)) },
+            Modifier.clickable(onClick = onClickOpenSourceLicenses),
+            supportingContent = { Text(stringResource(Lang.settings_acknowledgements_oss_licenses_description)) },
             colors = listItemColors,
         )
     }
@@ -75,6 +153,6 @@ fun AcknowledgementsTab(modifier: Modifier = Modifier) {
 @Preview
 private fun PreviewAcknowledgementsTab() = ProvideCompositionLocalsForPreview {
     Surface {
-        AcknowledgementsTab()
+        AcknowledgementsTab(onClickOpenSourceLicenses = {})
     }
 }

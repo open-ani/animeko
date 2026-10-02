@@ -42,8 +42,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import androidx.navigation.NavDestination.Companion.hasRoute
-import androidx.navigation.NavHostController
+import androidx.compose.runtime.snapshots.SnapshotStateList
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.CoroutineStart
 import kotlinx.coroutines.Dispatchers
@@ -117,22 +116,26 @@ class EditSelectorMediaSourcePageState(
     var viewingItem by viewingItemState
         private set
 
-    lateinit var episodeNavController: NavHostController
+    /**
+     * 剧集详情页的导航栈, 栈底总是 [SelectorEpisodePaneRoutes.TEST].
+     */
+    lateinit var episodeBackStack: SnapshotStateList<SelectorEpisodePaneRoutes>
         internal set // set from ui
 
     fun viewEpisode(
         episode: SelectorTestEpisodePresentation,
     ) {
         this.viewingItem = episode
-        if (episodeNavController.currentDestination?.hasRoute<SelectorEpisodePaneRoutes.EPISODE>() != true) {
-            episodeNavController.navigate(SelectorEpisodePaneRoutes.EPISODE)
+        if (episodeBackStack.lastOrNull() != SelectorEpisodePaneRoutes.EPISODE) {
+            episodeBackStack.add(SelectorEpisodePaneRoutes.EPISODE)
         }
     }
 
     fun stopViewing() {
         this.viewingItem = null
-        if (episodeNavController.currentDestination?.hasRoute<SelectorEpisodePaneRoutes.TEST>() != true) {
-            episodeNavController.navigate(SelectorEpisodePaneRoutes.TEST)
+        // 回到栈底的 TEST. 不能用 add(TEST), 否则栈里会出现两个相同的 key
+        while (episodeBackStack.size > 1) {
+            episodeBackStack.removeAt(episodeBackStack.lastIndex)
         }
     }
 

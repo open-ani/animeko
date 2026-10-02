@@ -74,10 +74,22 @@ class DailyRollingFileLogWriter(
         return filePathForDate(today)
     }
 
+    /**
+     * Forces buffered content to disk. Call before terminating the process.
+     */
+    fun flush() {
+        synchronized(this) {
+            currentFileHandle?.flush()
+        }
+    }
+
     private fun writeLine(text: String) {
         currentFileHandle?.let {
             it.writeString(text)
             it.writeString("\n")
+            // Flush every line: a crash or a background kill never gives us a chance to flush later,
+            // and the last lines before it are exactly the ones we need.
+            it.flush()
         }
     }
 

@@ -15,6 +15,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.PreviewLightDark
 import androidx.compose.ui.unit.dp
 import me.him188.ani.app.ui.foundation.ProvideCompositionLocalsForPreview
@@ -54,6 +55,18 @@ private fun PreviewImpl() {
                         "",
                     ),
                 ),
+            ),
+            UIRichElement.AnnotatedText(
+                slice = listOf(UIRichElement.Annotated.Text("my centered content", 16f)),
+                align = TextAlign.Center,
+            ),
+            UIRichElement.AnnotatedText(
+                slice = listOf(UIRichElement.Annotated.Text("my right aligned content", 16f)),
+                align = TextAlign.Right,
+            ),
+            UIRichElement.AnnotatedText(
+                slice = listOf(UIRichElement.Annotated.Text("my left aligned content", 16f)),
+                align = TextAlign.Left,
             ),
         ),
         modifier = Modifier

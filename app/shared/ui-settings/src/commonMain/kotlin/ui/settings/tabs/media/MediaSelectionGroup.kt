@@ -40,6 +40,13 @@ import me.him188.ani.app.ui.lang.settings_media_auto_cache_partial
 import me.him188.ani.app.ui.lang.settings_media_auto_cache_space
 import me.him188.ani.app.ui.lang.settings_media_auto_enable_last
 import me.him188.ani.app.ui.lang.settings_media_auto_enable_last_description
+import me.him188.ani.app.ui.lang.settings_media_cache_ttl_15min
+import me.him188.ani.app.ui.lang.settings_media_cache_ttl_1d
+import me.him188.ani.app.ui.lang.settings_media_cache_ttl_1h
+import me.him188.ani.app.ui.lang.settings_media_cache_ttl_30min
+import me.him188.ani.app.ui.lang.settings_media_cache_ttl_5min
+import me.him188.ani.app.ui.lang.settings_media_cache_ttl_6h
+import me.him188.ani.app.ui.lang.settings_media_cache_ttl_none
 import me.him188.ani.app.ui.lang.settings_media_fast_select_web
 import me.him188.ani.app.ui.lang.settings_media_fast_select_web_description
 import me.him188.ani.app.ui.lang.settings_media_hide_no_subtitle
@@ -48,16 +55,8 @@ import me.him188.ani.app.ui.lang.settings_media_hide_single_episode
 import me.him188.ani.app.ui.lang.settings_media_hide_single_episode_description
 import me.him188.ani.app.ui.lang.settings_media_image_captcha_auto_solve
 import me.him188.ani.app.ui.lang.settings_media_image_captcha_auto_solve_description
-import me.him188.ani.app.ui.lang.settings_media_cache_ttl_15min
-import me.him188.ani.app.ui.lang.settings_media_cache_ttl_1d
-import me.him188.ani.app.ui.lang.settings_media_cache_ttl_1h
-import me.him188.ani.app.ui.lang.settings_media_cache_ttl_30min
-import me.him188.ani.app.ui.lang.settings_media_cache_ttl_5min
-import me.him188.ani.app.ui.lang.settings_media_cache_ttl_none
 import me.him188.ani.app.ui.lang.settings_media_max_wait_time
 import me.him188.ani.app.ui.lang.settings_media_max_wait_time_description
-import me.him188.ani.app.ui.lang.settings_media_web_search_cache_ttl
-import me.him188.ani.app.ui.lang.settings_media_web_search_cache_ttl_description
 import me.him188.ani.app.ui.lang.settings_media_none
 import me.him188.ani.app.ui.lang.settings_media_prefer_seasons
 import me.him188.ani.app.ui.lang.settings_media_prefer_seasons_description
@@ -86,6 +85,8 @@ import me.him188.ani.app.ui.lang.settings_media_wait_time_5s
 import me.him188.ani.app.ui.lang.settings_media_wait_time_8s
 import me.him188.ani.app.ui.lang.settings_media_wait_time_infinite
 import me.him188.ani.app.ui.lang.settings_media_wait_time_none
+import me.him188.ani.app.ui.lang.settings_media_web_search_cache_ttl
+import me.him188.ani.app.ui.lang.settings_media_web_search_cache_ttl_description
 import me.him188.ani.app.ui.media.rememberMediaDetailsStrings
 import me.him188.ani.app.ui.media.renderResolution
 import me.him188.ani.app.ui.media.renderSubtitleLanguage
@@ -264,36 +265,6 @@ internal fun SettingsScope.MediaSelectionGroup(
             val mediaSelectorSettings by state.mediaSelectorSettingsState
             val videoResolverSettings by state.videoResolverSettingsState
 
-            DropdownItem(
-                selected = { videoResolverSettings.effectiveResourceExtractionTimeoutSeconds },
-                values = { VideoResolverSettings.ResourceExtractionTimeoutSecondsOptions },
-                itemText = { timeoutSeconds ->
-                    Text(
-                        when (timeoutSeconds) {
-                            3 -> stringResource(Lang.settings_media_wait_time_3s)
-                            5 -> stringResource(Lang.settings_media_wait_time_5s)
-                            8 -> stringResource(Lang.settings_media_wait_time_8s)
-                            10 -> stringResource(Lang.settings_media_wait_time_10s)
-                            15 -> stringResource(Lang.settings_media_wait_time_15s)
-                            20 -> stringResource(Lang.settings_media_wait_time_20s)
-                            30 -> stringResource(Lang.settings_media_wait_time_30s)
-                            else -> "${timeoutSeconds}s"
-                        },
-                    )
-                },
-                onSelect = {
-                    state.videoResolverSettingsState.update(
-                        videoResolverSettings.copy(
-                            resourceExtractionTimeoutSeconds = it,
-                        ),
-                    )
-                },
-                title = { Text(stringResource(Lang.settings_media_video_link_resolve_timeout)) },
-                description = { Text(stringResource(Lang.settings_media_video_link_resolve_timeout_description)) },
-            )
-
-            HorizontalDividerItem()
-
             kotlin.run {
                 val values = remember {
                     MediaSourceKind.selectableEntries + null
@@ -324,16 +295,24 @@ internal fun SettingsScope.MediaSelectionGroup(
                 )
             }
 
-            HorizontalDividerItem()
+            if (mediaSelectorSettings.preferKind != MediaSourceKind.WEB) {
+                HorizontalDividerItem()
+            }
+
+            // 只在偏好在线源时才有意义 —— 整段动画讲的就是 web 源的搜/选/解析
+            val workflowDemo = rememberMediaSelectorWorkflowDemoState(mediaSelectorSettings.fastSelectWebKind)
 
             AniAnimatedVisibility(mediaSelectorSettings.preferKind == MediaSourceKind.WEB) {
-                SubGroup {
+                Column {
+                    MediaSelectorWorkflowItem(workflowDemo)
+
                     SwitchItem(
                         checked = mediaSelectorSettings.fastSelectWebKind,
                         onCheckedChange = {
                             state.mediaSelectorSettingsState.update(
                                 mediaSelectorSettings.copy(fastSelectWebKind = it),
                             )
+                            workflowDemo.onFastSelectWebKindChanged(it)
                         },
                         title = { Text(stringResource(Lang.settings_media_fast_select_web)) },
                         description = { Text(stringResource(Lang.settings_media_fast_select_web_description)) },
@@ -374,6 +353,7 @@ internal fun SettingsScope.MediaSelectionGroup(
                                     fastSelectWebLowTierToleranceDuration = it,
                                 ),
                             )
+                            workflowDemo.onLowTierToleranceChanged(it)
                         },
                         title = { Text(stringResource(Lang.settings_media_max_wait_time)) },
                         description = { Text(stringResource(Lang.settings_media_max_wait_time_description)) },
@@ -381,63 +361,97 @@ internal fun SettingsScope.MediaSelectionGroup(
                     )
 
                     HorizontalDividerItem()
-                }
-            }
 
-            DropdownItem(
-                selected = { mediaSelectorSettings.webSearchCacheTtl },
-                values = {
-                    listOf(
-                        Duration.ZERO,
-                        5.minutes,
-                        15.minutes,
-                        30.minutes,
-                        1.hours,
-                        1.days,
-                    )
-                },
-                itemText = { duration ->
-                    Text(
-                        when (duration) {
-                            Duration.ZERO -> stringResource(Lang.settings_media_cache_ttl_none)
-                            5.minutes -> stringResource(Lang.settings_media_cache_ttl_5min)
-                            15.minutes -> stringResource(Lang.settings_media_cache_ttl_15min)
-                            30.minutes -> stringResource(Lang.settings_media_cache_ttl_30min)
-                            1.hours -> stringResource(Lang.settings_media_cache_ttl_1h)
-                            1.days -> stringResource(Lang.settings_media_cache_ttl_1d)
-                            else -> duration.toString() // non-reachable
+                    DropdownItem(
+                        selected = { videoResolverSettings.effectiveResourceExtractionTimeoutSeconds },
+                        values = { VideoResolverSettings.ResourceExtractionTimeoutSecondsOptions },
+                        itemText = { timeoutSeconds ->
+                            Text(
+                                when (timeoutSeconds) {
+                                    3 -> stringResource(Lang.settings_media_wait_time_3s)
+                                    5 -> stringResource(Lang.settings_media_wait_time_5s)
+                                    8 -> stringResource(Lang.settings_media_wait_time_8s)
+                                    10 -> stringResource(Lang.settings_media_wait_time_10s)
+                                    15 -> stringResource(Lang.settings_media_wait_time_15s)
+                                    20 -> stringResource(Lang.settings_media_wait_time_20s)
+                                    30 -> stringResource(Lang.settings_media_wait_time_30s)
+                                    else -> "${timeoutSeconds}s"
+                                },
+                            )
                         },
+                        onSelect = {
+                            state.videoResolverSettingsState.update(
+                                videoResolverSettings.copy(
+                                    resourceExtractionTimeoutSeconds = it,
+                                ),
+                            )
+                            workflowDemo.onResolveTimeoutChanged(it)
+                        },
+                        title = { Text(stringResource(Lang.settings_media_video_link_resolve_timeout)) },
+                        description = { Text(stringResource(Lang.settings_media_video_link_resolve_timeout_description)) },
                     )
-                },
-                onSelect = {
-                    state.mediaSelectorSettingsState.update(
-                        mediaSelectorSettings.copy(webSearchCacheTtl = it),
+
+                    HorizontalDividerItem()
+
+                    DropdownItem(
+                        selected = { mediaSelectorSettings.webSearchCacheTtl },
+                        values = {
+                            listOf(
+                                Duration.ZERO,
+                                5.minutes,
+                                15.minutes,
+                                30.minutes,
+                                1.hours,
+                                6.hours,
+                                1.days,
+                            )
+                        },
+                        itemText = { duration ->
+                            Text(
+                                when (duration) {
+                                    Duration.ZERO -> stringResource(Lang.settings_media_cache_ttl_none)
+                                    5.minutes -> stringResource(Lang.settings_media_cache_ttl_5min)
+                                    15.minutes -> stringResource(Lang.settings_media_cache_ttl_15min)
+                                    30.minutes -> stringResource(Lang.settings_media_cache_ttl_30min)
+                                    1.hours -> stringResource(Lang.settings_media_cache_ttl_1h)
+                                    6.hours -> stringResource(Lang.settings_media_cache_ttl_6h)
+                                    1.days -> stringResource(Lang.settings_media_cache_ttl_1d)
+                                    else -> duration.toString() // non-reachable
+                                },
+                            )
+                        },
+                        onSelect = {
+                            state.mediaSelectorSettingsState.update(
+                                mediaSelectorSettings.copy(webSearchCacheTtl = it),
+                            )
+                            workflowDemo.onWebSearchCacheTtlChanged(it)
+                        },
+                        title = { Text(stringResource(Lang.settings_media_web_search_cache_ttl)) },
+                        description = { Text(stringResource(Lang.settings_media_web_search_cache_ttl_description)) },
                     )
-                },
-                title = { Text(stringResource(Lang.settings_media_web_search_cache_ttl)) },
-                description = { Text(stringResource(Lang.settings_media_web_search_cache_ttl_description)) },
-            )
 
-            HorizontalDividerItem()
+                    HorizontalDividerItem()
 
-            // iOS 上暂不暴露该开关: iOS 注入的是 UnsupportedCaptchaBrowserFactory, 没有交互式验证码
-            // 填写入口, 一旦关闭自动识别, 带图片验证码的数据源将没有任何兜底手段而直接不可用.
-            // 设置项本身仍然存在且默认开启, 等 iOS 支持交互式验证码后再放开这里即可.
-            if (!LocalPlatform.current.isIos()) {
-                SwitchItem(
-                    checked = mediaSelectorSettings.enableImageCaptchaAutoSolve,
-                    onCheckedChange = {
-                        state.mediaSelectorSettingsState.update(
-                            mediaSelectorSettings.copy(enableImageCaptchaAutoSolve = it),
+                    // iOS 上暂不暴露该开关: iOS 注入的是 UnsupportedCaptchaBrowserFactory, 没有交互式验证码
+                    // 填写入口, 一旦关闭自动识别, 带图片验证码的数据源将没有任何兜底手段而直接不可用.
+                    // 设置项本身仍然存在且默认开启, 等 iOS 支持交互式验证码后再放开这里即可.
+                    if (!LocalPlatform.current.isIos()) {
+                        SwitchItem(
+                            checked = mediaSelectorSettings.enableImageCaptchaAutoSolve,
+                            onCheckedChange = {
+                                state.mediaSelectorSettingsState.update(
+                                    mediaSelectorSettings.copy(enableImageCaptchaAutoSolve = it),
+                                )
+                            },
+                            title = { Text(stringResource(Lang.settings_media_image_captcha_auto_solve)) },
+                            description = {
+                                Text(stringResource(Lang.settings_media_image_captcha_auto_solve_description))
+                            },
                         )
-                    },
-                    title = { Text(stringResource(Lang.settings_media_image_captcha_auto_solve)) },
-                    description = {
-                        Text(stringResource(Lang.settings_media_image_captcha_auto_solve_description))
-                    },
-                )
 
-                HorizontalDividerItem()
+                        HorizontalDividerItem()
+                    }
+                }
             }
 
             SwitchItem(

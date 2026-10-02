@@ -15,14 +15,19 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.WindowInsetsSides
+import androidx.compose.foundation.layout.asPaddingValues
+import androidx.compose.foundation.layout.calculateEndPadding
+import androidx.compose.foundation.layout.calculateStartPadding
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.only
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.layout.windowInsetsPadding
-import androidx.compose.material3.BottomSheetDefaults
 import androidx.compose.material3.LocalContentColor
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
@@ -32,25 +37,54 @@ import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.ui.unit.dp
 import me.him188.ani.app.ui.foundation.text.ProvideTextStyleContentColor
+import me.him188.ani.app.videoplayer.ui.LocalVideoScaffoldSheetWindowInsets
 
+/**
+ * 全屏播放时的右侧侧边栏: [SideSheetSurface] + [SideSheetHeader] 标题行 + [content].
+ *
+ * @param windowInsets 侧边栏所在区域的 window insets, 默认取 [LocalVideoScaffoldSheetWindowInsets].
+ */
 @Composable
 fun SideSheetLayout(
     title: @Composable () -> Unit,
     onDismissRequest: () -> Unit,
     modifier: Modifier = Modifier,
     containerColor: Color = MaterialTheme.colorScheme.surfaceContainerHigh,
+    windowInsets: WindowInsets = LocalVideoScaffoldSheetWindowInsets.current,
     navigationButton: @Composable () -> Unit = { },
     closeButton: @Composable () -> Unit = {},
     content: @Composable () -> Unit,
+) {
+    SideSheetSurface(onDismissRequest, modifier, containerColor, windowInsets) {
+        SideSheetHeader(title, navigationButton, closeButton)
+        content()
+    }
+}
+
+/**
+ * 侧边栏的面板本身, 不含标题行. 给自己画顶栏的页面用 (手动查找的第二页把标题行换成返回箭头 + 条目名).
+ *
+ * 背景铺满整个高度并贴到屏幕末端边缘, 盖住系统栏和屏幕圆角; 只有内容按 [windowInsets] 的末端和上下方向内缩.
+ * 如果整块面板都避开 insets, 它会悬浮在离屏幕边缘一段距离的地方, 四周露出视频 (iOS 横屏尤其明显, 两侧各有几十 dp).
+ *
+ * @param windowInsets 侧边栏所在区域的 window insets, 默认取 [LocalVideoScaffoldSheetWindowInsets].
+ */
+@Composable
+fun SideSheetSurface(
+    onDismissRequest: () -> Unit,
+    modifier: Modifier = Modifier,
+    containerColor: Color = MaterialTheme.colorScheme.surfaceContainerHigh,
+    windowInsets: WindowInsets = LocalVideoScaffoldSheetWindowInsets.current,
+    content: @Composable ColumnScope.() -> Unit,
 ) {
     // Compose does not yet support side sheets
     // https://m3.material.io/components/side-sheets/overview
 
     BoxWithConstraints(
         Modifier.fillMaxSize()
-            .windowInsetsPadding(BottomSheetDefaults.windowInsets)
             .clickable(
                 onClick = onDismissRequest,
                 interactionSource = remember { MutableInteractionSource() },
@@ -61,6 +95,12 @@ fun SideSheetLayout(
         // Layout guideline:
         // https://m3.material.io/components/side-sheets/guidelines#96245186-bae4-4a33-b41f-17833bb2e2d7
 
+        val layoutDirection = LocalLayoutDirection.current
+        val horizontalInsets = windowInsets.only(WindowInsetsSides.Horizontal).asPaddingValues()
+        val endInset = horizontalInsets.calculateEndPadding(layoutDirection)
+        val availableWidth = maxWidth - horizontalInsets.calculateStartPadding(layoutDirection) - endInset
+        val contentWidth = (availableWidth * 0.28f).coerceIn(300.dp, 400.dp)
+
         Surface(
             modifier
                 .clickable(
@@ -69,38 +109,48 @@ fun SideSheetLayout(
                     indication = null,
                 )
                 .fillMaxHeight()
-                .widthIn(min = 300.dp, max = 400.dp)
-                .width((this.maxWidth * 0.28f)),
+                .width(contentWidth + endInset),
             color = containerColor,
         ) {
-            Column {
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Row(
-                        Modifier.padding(start = 16.dp, end = 12.dp).padding(vertical = 16.dp).weight(1f),
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(12.dp),
-                    ) {
-                        CompositionLocalProvider(LocalContentColor provides MaterialTheme.colorScheme.outline) {
-                            navigationButton()
-                        }
+            Column(
+                Modifier.windowInsetsPadding(windowInsets.only(WindowInsetsSides.End + WindowInsetsSides.Vertical)),
+                content = content,
+            )
+        }
+    }
+}
 
-                        Row(Modifier.weight(1f)) {
-                            ProvideTextStyleContentColor(
-                                MaterialTheme.typography.titleLarge,
-                                MaterialTheme.colorScheme.onSurfaceVariant,
-                            ) {
-                                title()
-                            }
-                        }
-                    }
-
-                    Box(Modifier.padding(start = 12.dp)) {
-                        closeButton()
-                    }
-                }
-
-                content()
+/**
+ * [SideSheetLayout] 的标题行: [navigationButton] + [title] (titleLarge, 占剩余宽度) + [closeButton].
+ */
+@Composable
+fun SideSheetHeader(
+    title: @Composable () -> Unit,
+    navigationButton: @Composable () -> Unit = { },
+    closeButton: @Composable () -> Unit = {},
+) {
+    Row(verticalAlignment = Alignment.CenterVertically) {
+        Row(
+            Modifier.padding(start = 16.dp, end = 12.dp).padding(vertical = 16.dp).weight(1f),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(12.dp),
+        ) {
+            CompositionLocalProvider(LocalContentColor provides MaterialTheme.colorScheme.outline) {
+                navigationButton()
             }
+
+            Row(Modifier.weight(1f)) {
+                ProvideTextStyleContentColor(
+                    MaterialTheme.typography.titleLarge,
+                    MaterialTheme.colorScheme.onSurfaceVariant,
+                ) {
+                    title()
+                }
+            }
+        }
+
+        Box(Modifier.padding(start = 12.dp)) {
+            closeButton()
         }
     }
 }

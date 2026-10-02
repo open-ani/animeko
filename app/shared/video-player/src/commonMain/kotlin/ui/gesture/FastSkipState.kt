@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2024-2025 OpenAni and contributors.
+ * Copyright (C) 2024-2026 OpenAni and contributors.
  *
  * 此源代码的使用受 GNU AFFERO GENERAL PUBLIC LICENSE version 3 许可证的约束, 可以在以下链接找到该许可证.
  * Use of this source code is governed by the GNU AGPLv3 license, which can be found at the following link.
@@ -133,7 +133,6 @@ fun Modifier.detectLongPressGesture(
 ): Modifier = pointerInput(requiredPointerType) {
     coroutineScope {
         val touchSlop = viewConfiguration.touchSlop
-        var isLongPressDetected = false
 
         awaitEachGesture {
             val down = awaitFirstDown(requireUnconsumed = false)
@@ -145,6 +144,7 @@ fun Modifier.detectLongPressGesture(
                 return@awaitEachGesture
             }
             val initialPosition = down.position
+            var isLongPressDetected = false
 
             // Starts a job to mark long press detected if the user does not move the pointer, 
             // i.e. is holding at the same position for a certain time).
@@ -154,30 +154,33 @@ fun Modifier.detectLongPressGesture(
                 isLongPressDetected = true
             }
 
-            var change = awaitPointerEvent()
-            while (change.changes.any { it.pressed }) { // Pointer is still down
-                val pointer = change.changes[0]
+            try {
+                var change = awaitPointerEvent()
+                while (change.changes.any { it.pressed }) { // Pointer is still down
+                    val pointer = change.changes[0]
+                    if (isLongPressDetected) {
+                        // Consume all events so that we won't trigger other gestures like swiping
+                        change.changes.forEach { it.consume() }
+                    }
+                    if ((pointer.position - initialPosition).getDistance() > touchSlop) {
+                        // User is swiping.
+                        // Note, this can also happen if the long press has already been detected.
+                        longPressJob.cancel() // Stop detecting long press if it hasn't been detected yet
+                    }
+                    change = awaitPointerEvent()
+                }
+                // Not pressing anymore
                 if (isLongPressDetected) {
-                    // Consume all events so that we won't trigger other gestures like swiping
+                    // Consume the pointer up event
                     change.changes.forEach { it.consume() }
                 }
-                if ((pointer.position - initialPosition).getDistance() > touchSlop) {
-                    // User is swiping.
-                    // Note, this can also happen if the long press has already been detected.
-                    longPressJob.cancel() // Stop detecting long press if it hasn't been detected yet
+            } finally {
+                // Cancellation may skip the pointer-up path. Cancel the timer even if it has not
+                // fired yet, and restore the speed/indicator if this gesture started acceleration.
+                longPressJob.cancel()
+                if (isLongPressDetected) {
+                    onEnd()
                 }
-                change = awaitPointerEvent()
-            }
-            // Not pressing anymore
-            if (isLongPressDetected) {
-                // Consume the pointer up event
-                change.changes.forEach { it.consume() }
-            }
-
-            longPressJob.cancel()
-            if (isLongPressDetected) {
-                onEnd()
-                isLongPressDetected = false
             }
         }
     }

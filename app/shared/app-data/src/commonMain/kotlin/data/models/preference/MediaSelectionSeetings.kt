@@ -15,7 +15,7 @@ import kotlinx.serialization.Serializable
 import kotlinx.serialization.Transient
 import me.him188.ani.datasources.api.source.MediaSourceKind
 import kotlin.time.Duration
-import kotlin.time.Duration.Companion.minutes
+import kotlin.time.Duration.Companion.hours
 import kotlin.time.Duration.Companion.seconds
 
 /**
@@ -58,7 +58,9 @@ constructor(
     /**
      * 给 low tier 源加载的宽容时间, 在这个时间内只接受 low tier 加载完成, 
      * 就算 high tier 比 low tier 率先加载完成也不选择.
-     * 超过这个时间就放开 tier 限制, 选择所有加载好的最低 tier 的源.
+     * 超过这个时间就放开 tier 限制，从精确匹配资源中按有效 tier 选择。
+     * 累计 15 秒后才允许模糊匹配兜底，精确匹配始终优先。计时在记忆源落空后开始。
+     * 无限等待只接受低 tier 精确匹配，不进入后续阶段。
      * @since 4.1
      */
     val fastSelectWebLowTierToleranceDuration: Duration = 5.seconds, // 注意, 这是 'enum'. 查看 UI 代码以确定有哪些值可以选.
@@ -75,7 +77,12 @@ constructor(
      * Web 源播放 session 搜索缓存的有效期, 用于切换剧集或短暂退出后重新进入播放页时复用搜索结果.
      * 实际生效值为此值与数据源配置中定义的值的较小者. 为 0 时禁用缓存.
      */
-    val webSearchCacheTtl: Duration = 30.minutes, // 注意, 这是 'enum'. 查看 UI 代码以确定有哪些值可以选.
+    val webSearchCacheTtl: Duration = 6.hours, // 注意, 这是 'enum'. 查看 UI 代码以确定有哪些值可以选.
+    /**
+     * 手动查找页的「记住选择」开关: 点选剧集播放时是否写浏览记忆, 之后每集按记住的位置自动选择.
+     * @since 6.2
+     */
+    val rememberManualSelection: Boolean = true,
     @Suppress("PropertyName") @Transient val _placeholder: Int = 0,
 ) {
     companion object {

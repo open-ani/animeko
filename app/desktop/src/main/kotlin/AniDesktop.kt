@@ -19,6 +19,7 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.DisposableEffect
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.SideEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
@@ -26,9 +27,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.InternalComposeUiApi
-import androidx.compose.ui.LocalSystemTheme
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.SystemTheme
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.DpSize
 import androidx.compose.ui.unit.dp
@@ -45,13 +44,16 @@ import com.sun.jna.platform.win32.WinReg
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.async
 import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.filter
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.firstOrNull
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.joinAll
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
+import kotlinx.coroutines.withContext
 import me.him188.ani.app.data.models.preference.DarkMode
+import me.him188.ani.app.data.models.preference.DebugSettings
 import me.him188.ani.app.data.models.preference.UISettings
 import me.him188.ani.app.data.persistent.database.BundledSqliteInterpositionGuard
 import me.him188.ani.app.data.repository.SavedWindowState
@@ -83,6 +85,7 @@ import me.him188.ani.app.platform.startCommonKoinModule
 import me.him188.ani.app.platform.trace.recordAppStart
 import me.him188.ani.app.platform.window.HandleWindowsWindowProc
 import me.him188.ani.app.platform.window.LocalTitleBarThemeController
+import me.him188.ani.app.platform.window.WindowsWindowUtils
 import me.him188.ani.app.platform.window.rememberLayoutHitTestOwner
 import me.him188.ani.app.platform.window.setTitleBar
 import me.him188.ani.app.tools.update.DesktopUpdateInstaller
@@ -90,20 +93,30 @@ import me.him188.ani.app.tools.update.UpdateInstaller
 import me.him188.ani.app.torrent.anitorrent.AnitorrentLibraryLoader
 import me.him188.ani.app.ui.foundation.LocalPlatform
 import me.him188.ani.app.ui.foundation.LocalWindowState
+import me.him188.ani.app.ui.foundation.WindowDropHost
+import me.him188.ani.app.ui.foundation.input.ProvideTouchViewConfiguration
 import me.him188.ani.app.ui.foundation.effects.OverrideCaptionButtonAppearance
 import me.him188.ani.app.ui.foundation.ifThen
 import me.him188.ani.app.ui.foundation.layout.LocalPlatformWindow
+import me.him188.ani.app.ui.foundation.layout.LocalSecondaryWindowFrame
 import me.him188.ani.app.ui.foundation.layout.isSystemInFullscreen
 import me.him188.ani.app.ui.foundation.navigation.LocalOnBackPressedDispatcherOwner
+import me.him188.ani.app.ui.foundation.navigation.OnBackPressedDispatcher
 import me.him188.ani.app.ui.foundation.navigation.SkikoOnBackPressedDispatcherOwner
+import me.him188.ani.app.ui.foundation.navigation.BackKeyEventHandler
 import me.him188.ani.app.ui.foundation.theme.AniThemeDefaults
+import me.him188.ani.app.ui.foundation.theme.LocalSystemDarkThemeOverride
 import me.him188.ani.app.ui.foundation.theme.LocalThemeSettings
+import me.him188.ani.app.ui.foundation.theme.isSystemInDarkThemeDetected
 import me.him188.ani.app.ui.foundation.widgets.LocalToaster
 import me.him188.ani.app.ui.foundation.widgets.Toast
 import me.him188.ani.app.ui.foundation.widgets.ToastViewModel
 import me.him188.ani.app.ui.foundation.widgets.Toaster
 import me.him188.ani.app.ui.main.AniApp
 import me.him188.ani.app.ui.main.AniAppContent
+import me.him188.ani.app.ui.update.InstallPackageDropDialogs
+import me.him188.ani.app.ui.update.rememberDropInstallPackageState
+import me.him188.ani.app.ui.update.rememberInstallPackageDropHandler
 import me.him188.ani.desktop.generated.resources.Res
 import me.him188.ani.desktop.generated.resources.a_round
 import me.him188.ani.utils.analytics.Analytics
@@ -148,6 +161,41 @@ object AniDesktop {
 
     init {
         System.setProperty("native.encoding", "UTF-8")
+    }
+
+    private fun prepareMpvLibraries(composeResDir: String) {
+        try {
+            val devNativeDir = System.getProperty("mediamp.mpv.dev.native.dir")
+            if (devNativeDir != null) {
+                // mediamp composite 开发: 直接加载本地编译的 JNI wrapper (见 local.properties
+                // 的 ani.build.mediamp.mpv.devNativeDir)
+                MPVHandle.setRuntimeLibraryDirectory(devNativeDir, false)
+            } else if (currentProcessName()?.contains("java") == true) {
+                MPVHandle.useDefaultRuntimeLibraryDirectory()
+            } else {
+                MPVHandle.setRuntimeLibraryDirectory(composeResDir, false)
+            }
+            val mpvLogger = logger<MPVHandle>()
+            // mpv_log_level in https://github.com/mpv-player/mpv/blob/master/include/mpv/client.h
+            MPVHandle.setLogHandler {
+                val prefix = it.prefix.padStart(9, ' ')
+                val handle = "0x${it.instanceHandle.toHexString().trimStart('0')}"
+                if (it.level in 1..20) {
+                    mpvLogger.error { "[$prefix@$handle] ${it.line}" }
+                } else if (it.level <= 30) {
+                    mpvLogger.warn { "[$prefix@$handle] ${it.line}" }
+                } else if (it.level <= 40) {
+                    mpvLogger.info { "[$prefix@$handle] ${it.line}" }
+                } else if (it.level <= 50) {
+                    mpvLogger.debug { "[$prefix@$handle] ${it.line}" }
+                } else {
+                    mpvLogger.trace { "[$prefix@$handle] ${it.line}" }
+                }
+            }
+            logger.info { "mediampv is loaded." }
+        } catch (e: Throwable) {
+            logger.error(e) { "Failed to load libmpv component of mediamp." }
+        }
     }
 
     private fun calculateWindowSize(
@@ -328,13 +376,19 @@ object AniDesktop {
             }
         }
 
+        // 为什么是这个目录?
+        // CMP 打包 task 会把 resource dir 放到 jar 包的目录里
+        // 我们 hack 打包 task 把包含 runtime library 的 jar 包解压到那一堆 jar 包的目录
+        val composeResDir = File(System.getProperty("compose.application.resources.dir"))
+            .parentFile.absolutePath
+
         val loadLibraryJob = coroutineScope.launch(Dispatchers.IO) {
-            configureLibrariesAndResources()
+            configureLibrariesAndResources(composeResDir)
         }
 
         // Initialize CEF application.
         coroutineScope.launch {
-            logger.info { "[JCEF init] awaiting anitorrent, FFmpegKit and libmpv loaded." }
+            logger.info { "[JCEF init] awaiting anitorrent and FFmpegKit." }
             try {
                 analyticsInitializer.join()
                 loadLibraryJob.join()
@@ -346,17 +400,25 @@ object AniDesktop {
             val proxySettings = koin.koin.get<ProxyProvider>()
                 .proxy.first()
 
-            logger.info { "[JCEF init] initializing AniCefApp." }
-
-            AniCefApp.initialize(
-                logDir = dataDir.toFile().resolve("logs"),
-                cacheDir = cacheDir.toFile().resolve("jcef-cache"),
-                proxyServer = proxySettings?.url,
-                proxyAuthUsername = proxySettings?.authorization?.username,
-                proxyAuthPassword = proxySettings?.authorization?.password,
+            initializeJcefAndPlayerBackend(
+                preparePlayerBeforeJcef = shouldPreparePlayerBeforeJcef(currentPlatformDesktop()),
+                preparePlayer = {
+                    withContext(Dispatchers.IO) {
+                        prepareMpvLibraries(composeResDir)
+                    }
+                },
+                initializeJcef = {
+                    logger.info { "[JCEF init] initializing AniCefApp." }
+                    AniCefApp.initialize(
+                        logDir = dataDir.toFile().resolve("logs"),
+                        cacheDir = cacheDir.toFile().resolve("jcef-cache"),
+                        proxyServer = proxySettings?.url,
+                        proxyAuthUsername = proxySettings?.authorization?.username,
+                        proxyAuthPassword = proxySettings?.authorization?.password,
+                    )
+                    logger.info { "[JCEF init] AniCefApp is initialized." }
+                },
             )
-
-            logger.info { "[JCEF init] AniCefApp is initialized." }
         }
 
         coroutineScope.launch {
@@ -386,6 +448,7 @@ object AniDesktop {
         }
 
         val navigator = AniNavigator()
+        DesktopMediaTraceCapture.install(koin.koin, coroutineScope)?.start(navigator)
 
         val windowStateRepository = koin.koin.get<WindowStateRepository>()
         val savedWindowStateDeferred = coroutineScope.async {
@@ -458,6 +521,11 @@ object AniDesktop {
                 onExit = exitApplicationSavingWindowState,
             )
 
+            // 没有任何启用的 BackHandler 时, 返回等价于退出当前页面
+            val backPressedDispatcher = remember(navigator) {
+                OnBackPressedDispatcher(fallback = { navigator.popBackStack() })
+            }
+            val backKeyEventHandler = remember { BackKeyEventHandler() }
             Window(
                 visible = !trayState.isWindowHiddenToTray,
                 onCloseRequest = {
@@ -470,12 +538,16 @@ object AniDesktop {
                 title = "Ani",
                 icon = appIcon,
                 alwaysOnTop = alwaysOnTopState.value,
+                // 只在没有任何节点消费按键时才会走到这里 (通常是没有焦点, 例如侧边栏关闭后清除了焦点).
+                // 不接管的话, Compose Desktop 会把这个 Escape 直接交给 Navigation 3 出栈,
+                // 绕过播放页全屏等 BackHandler, 表现为「全屏按 ESC 返回了上一页」.
+                onKeyEvent = { event -> backKeyEventHandler.onKeyEvent(event, backPressedDispatcher::onBackPressed) },
             ) {
                 // In dev mode this enables hot reload,
                 // In release mode this just executes the content
                 val lifecycleOwner = LocalLifecycleOwner.current
-                val backPressedDispatcherOwner = remember {
-                    SkikoOnBackPressedDispatcherOwner(navigator, lifecycleOwner)
+                val backPressedDispatcherOwner = remember(backPressedDispatcher, lifecycleOwner) {
+                    SkikoOnBackPressedDispatcherOwner(backPressedDispatcher, lifecycleOwner)
                 }
 
                 DisposableEffect(Unit) {
@@ -496,7 +568,7 @@ object AniDesktop {
                     }
                 }
 
-                val systemTheme by systemThemeDetector.current.collectAsStateWithLifecycle()
+                val systemIsDark by systemThemeDetector.isDark.collectAsStateWithLifecycle()
                 val platform = LocalPlatform.current
                 // We need layout hit test owner to do hit test on windows.
                 val layoutHitTestOwner = if (platform.isWindows()) {
@@ -518,13 +590,37 @@ object AniDesktop {
                         )
                     },
                     LocalOnBackPressedDispatcherOwner provides backPressedDispatcherOwner,
-                    @OptIn(InternalComposeUiApi::class)
-                    LocalSystemTheme provides systemTheme,
+                    LocalSystemDarkThemeOverride provides systemIsDark,
+                    // 二级窗口 (图片查看器) 沿用主窗口的自定义外观
+                    LocalSecondaryWindowFrame provides if (isRunningUnderWine()) {
+                        null
+                    } else {
+                        { secondaryWindowState, onCloseRequest, content ->
+                            HandleWindowsWindowProc()
+                            ProvideTouchViewConfiguration {
+                                WindowFrame(secondaryWindowState, onCloseRequest, content)
+                            }
+                        }
+                    },
                 ) {
                     if (isRunningUnderWine()) {
-                        MainWindowContent(navigator)
+                        ProvideTouchViewConfiguration {
+                            MainWindowContent(navigator, settingsRepository)
+                        }
                     } else {
                         HandleWindowsWindowProc()
+                        if (platform.isWindows()) {
+                            val platformWindow = LocalPlatformWindow.current
+                            LaunchedEffect(platformWindow, trayState) {
+                                WindowsWindowUtils.instance.windowIsActive(platformWindow)
+                                    .filter { it == true }
+                                    .collect {
+                                        if (trayState.isWindowHiddenToTray) {
+                                            trayState.restoreWindow()
+                                        }
+                                    }
+                            }
+                        }
                         WindowFrame(
                             windowState = windowState,
                             onCloseRequest = {
@@ -534,7 +630,9 @@ object AniDesktop {
                                 )
                             },
                         ) {
-                            MainWindowContent(navigator)
+                            ProvideTouchViewConfiguration {
+                                MainWindowContent(navigator, settingsRepository)
+                            }
                         }
                     }
                 }
@@ -544,19 +642,13 @@ object AniDesktop {
         // unreachable here
     }
 
-    private fun configureLibrariesAndResources() {
+    private fun configureLibrariesAndResources(composeResDir: String) {
         try {
             AnitorrentLibraryLoader.loadLibraries()
             logger.info { "Anitorrent is loaded." }
         } catch (e: Throwable) {
             logger.error(e) { "Failed to load anitorrent libraries" }
         }
-
-        // 为什么是这个目录?
-        // CMP 打包 task 会把 resource dir 放到 jar 包的目录里
-        // 我们 hack 打包 task 把包含 runtime library 的 jar 包解压到那一堆 jar 包的目录
-        val composeResDir = File(System.getProperty("compose.application.resources.dir"))
-            .parentFile.absolutePath
 
         try {
             if (currentProcessName()?.contains("java") == true) {
@@ -567,41 +659,6 @@ object AniDesktop {
             logger.info { "FFmpegKit is loaded." }
         } catch (e: Throwable) {
             logger.error(e) { "Failed to load FFmpeg component of mediamp." }
-        }
-
-        run {
-            try {
-                val devNativeDir = System.getProperty("mediamp.mpv.dev.native.dir")
-                if (devNativeDir != null) {
-                    // mediamp composite 开发: 直接加载本地编译的 JNI wrapper (见 local.properties
-                    // 的 ani.build.mediamp.mpv.devNativeDir)
-                    MPVHandle.setRuntimeLibraryDirectory(devNativeDir, false)
-                } else if (currentProcessName()?.contains("java") == true) {
-                    MPVHandle.useDefaultRuntimeLibraryDirectory()
-                } else {
-                    MPVHandle.setRuntimeLibraryDirectory(composeResDir, false)
-                }
-                val mpvLogger = logger<MPVHandle>()
-                // mpv_log_level in https://github.com/mpv-player/mpv/blob/master/include/mpv/client.h
-                MPVHandle.setLogHandler {
-                    val prefix = it.prefix.padStart(9, ' ')
-                    val handle = "0x${it.instanceHandle.toHexString().trimStart('0')}"
-                    if (it.level in 1..20) {
-                        mpvLogger.error { "[$prefix@$handle] ${it.line}" }
-                    } else if (it.level <= 30) {
-                        mpvLogger.warn { "[$prefix@$handle] ${it.line}" }
-                    } else if (it.level <= 40) {
-                        mpvLogger.info { "[$prefix@$handle] ${it.line}" }
-                    } else if (it.level <= 50) {
-                        mpvLogger.debug { "[$prefix@$handle] ${it.line}" }
-                    } else {
-                        mpvLogger.trace { "[$prefix@$handle] ${it.line}" }
-                    }
-                }
-            } catch (e: Throwable) {
-                logger.error(e) { "Failed to load libmpv component of mediamp." }
-            }
-            logger.info { "mediampv is loaded." }
         }
 
         if (currentProcessName()?.contains("java") != true) {
@@ -622,16 +679,19 @@ object AniDesktop {
 
 @OptIn(InternalComposeUiApi::class)
 @Composable
-private fun FrameWindowScope.MainWindowContent(aniNavigator: AniNavigator) {
+private fun FrameWindowScope.MainWindowContent(
+    aniNavigator: AniNavigator,
+    settingsRepository: SettingsRepository,
+) {
     AniApp {
         val themeSettings = LocalThemeSettings.current
         val titleBarThemeController = LocalTitleBarThemeController.current
-        val systemTheme = LocalSystemTheme.current
+        val systemIsDark = isSystemInDarkThemeDetected()
         val navContainerColor = AniThemeDefaults.navigationContainerColor
 
-        val isTitleBarDark = remember(themeSettings, systemTheme) {
+        val isTitleBarDark = remember(themeSettings, systemIsDark) {
             when (themeSettings.darkMode) {
-                DarkMode.AUTO -> systemTheme == SystemTheme.Dark
+                DarkMode.AUTO -> systemIsDark
                 DarkMode.LIGHT -> false
                 DarkMode.DARK -> true
             }
@@ -670,7 +730,25 @@ private fun FrameWindowScope.MainWindowContent(aniNavigator: AniNavigator) {
                     LocalContextMenuRepresentation provides DesktopContextMenuRepresentation,
                 ) {
                     Box(Modifier.padding(all = paddingByWindowSize)) {
-                        AniAppContent(aniNavigator)
+                        // 主窗口级拖放: 各功能以 WindowDropHandler 接入, 按顺序第一个接管的生效.
+                        // 页面自己的处理者 (例如播放页拖入视频文件) 由页面通过 WindowDropHandlerEffect 注册, 优先于这里的
+                        val installPackageOnDrop by remember(settingsRepository) {
+                            settingsRepository.debugSettings.flow
+                                .map { it.enabled && it.installPackageOnDrop }
+                                .distinctUntilChanged()
+                        }.collectAsStateWithLifecycle(DebugSettings.Default.installPackageOnDrop)
+                        val installPackageState = rememberDropInstallPackageState()
+                        val installPackageHandler = rememberInstallPackageDropHandler(installPackageState)
+                        WindowDropHost(
+                            handlers = listOfNotNull(
+                                // 开发者功能: 将安装包拖入窗口以安装测试版本
+                                installPackageHandler.takeIf { installPackageOnDrop },
+                            ),
+                            Modifier.fillMaxSize(),
+                        ) {
+                            AniAppContent(aniNavigator)
+                        }
+                        InstallPackageDropDialogs(installPackageState)
                         Toast({ showing }, { Text(content) })
                     }
                 }

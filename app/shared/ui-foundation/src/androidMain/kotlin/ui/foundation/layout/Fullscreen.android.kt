@@ -15,11 +15,14 @@ import androidx.core.view.WindowCompat
 import androidx.core.view.WindowInsetsCompat
 import androidx.core.view.WindowInsetsControllerCompat
 import me.him188.ani.app.platform.Context
+import me.him188.ani.utils.logging.info
+import me.him188.ani.utils.logging.logger
 
+private val logger = logger("Fullscreen")
 
 @Suppress("USELESS_CAST") // compiler bug
 actual suspend fun Context.setRequestFullScreen(window: PlatformWindowMP, fullscreen: Boolean) {
-    android.util.Log.i("setRequestFullScreen", "Requesting fullscreen: $fullscreen, context=$this")
+    logger.info { "Requesting fullscreen: $fullscreen, context=$this" }
     if (this is Activity) {
         if (fullscreen) {
             // go landscape

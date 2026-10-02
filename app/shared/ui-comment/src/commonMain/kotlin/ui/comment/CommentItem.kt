@@ -31,6 +31,7 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.text.selection.SelectionContainer
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ThumbDown
 import androidx.compose.material.icons.filled.ThumbUp
@@ -40,9 +41,7 @@ import androidx.compose.material.icons.outlined.ThumbUp
 import androidx.compose.material.icons.rounded.Face
 import androidx.compose.material.icons.rounded.MoreVert
 import androidx.compose.material3.Icon
-import androidx.compose.material3.LocalContentColor
 import androidx.compose.material3.LocalMinimumInteractiveComponentSize
-import androidx.compose.material3.LocalTextStyle
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
@@ -69,6 +68,7 @@ import androidx.compose.ui.input.pointer.isSecondaryPressed
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalClipboard
 import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.DpOffset
@@ -215,6 +215,8 @@ fun CommentItem(
                     text = comment.author?.nickname ?: comment.author?.id.toString(),
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis,
+                    color = MaterialTheme.colorScheme.outline,
+                    style = MaterialTheme.typography.bodySmall,
                 )
             },
             titleTrailing = if (showRating && (comment.rating ?: 0) > 0) {
@@ -226,12 +228,17 @@ fun CommentItem(
                 val scaledContent = remember(comment.content) {
                     comment.content.withDefaultFontSize(CommentItemDefaults.ContentFontSize)
                 }
-                RichText(
-                    elements = scaledContent.elements,
-                    modifier = Modifier.fillMaxWidth(),
-                    onClickUrl = onClickUrl,
-                    onClickImage = onClickImage,
-                )
+                // 允许划选复制正文. 长按选择文本会优先于长按唤出菜单, 菜单仍可通过正文以外的区域长按或右键唤出.
+                SelectionContainer {
+                    RichText(
+                        elements = scaledContent.elements,
+                        modifier = Modifier.fillMaxWidth(),
+                        color = MaterialTheme.colorScheme.onSurface,
+                        style = MaterialTheme.typography.labelLarge.copy(fontWeight = FontWeight.Medium),
+                        onClickUrl = onClickUrl,
+                        onClickImage = onClickImage,
+                    )
+                }
             },
             reactions = if (comment.reactions.isNotEmpty()) {
                 {
@@ -264,6 +271,8 @@ fun CommentItem(
                             if (!isAni) " · Bangumi" else "",
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis,
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.outline,
                 )
             },
             actions = if (showActions) {
@@ -396,20 +405,12 @@ fun CommentItemLayout(
                 verticalAlignment = Alignment.CenterVertically,
             ) {
                 Row(Modifier.weight(1f, fill = false)) {
-                    CompositionLocalProvider(
-                        LocalTextStyle provides MaterialTheme.typography.labelLarge,
-                        LocalContentColor provides MaterialTheme.colorScheme.onSurface,
-                    ) {
-                        title()
-                    }
+                    title()
                 }
                 titleTrailing?.invoke(this)
             }
 
-            CompositionLocalProvider(
-                LocalTextStyle provides MaterialTheme.typography.bodyMedium,
-                LocalContentColor provides MaterialTheme.colorScheme.onSurface,
-            ) {
+            Box(Modifier.padding(vertical = 3.dp)) {
                 content()
             }
 
@@ -423,12 +424,7 @@ fun CommentItemLayout(
                 verticalAlignment = Alignment.CenterVertically,
             ) {
                 Row(Modifier.weight(1f, fill = false)) {
-                    CompositionLocalProvider(
-                        LocalTextStyle provides MaterialTheme.typography.bodySmall,
-                        LocalContentColor provides MaterialTheme.colorScheme.onSurfaceVariant,
-                    ) {
-                        timestamp()
-                    }
+                    timestamp()
                 }
                 if (actions != null) {
                     CompositionLocalProvider(
@@ -702,6 +698,7 @@ object CommentItemDefaults {
                     }
                     RichText(
                         elements = briefContent.elements,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
                         modifier = Modifier.fillMaxWidth(),
                         onClickUrl = onClickUrl,
                     )

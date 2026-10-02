@@ -1,48 +1,19 @@
+/*
+ * Copyright (C) 2024-2026 OpenAni and contributors.
+ *
+ * 此源代码的使用受 GNU AFFERO GENERAL PUBLIC LICENSE version 3 许可证的约束, 可以在以下链接找到该许可证.
+ * Use of this source code is governed by the GNU AGPLv3 license, which can be found at the following link.
+ *
+ * https://github.com/open-ani/ani/blob/main/LICENSE
+ */
+
 package me.him188.ani.app.ui.subject.episode.notif
 
 import androidx.compose.runtime.Composable
-import coil3.annotation.ExperimentalCoilApi
 import me.him188.ani.app.ui.subject.episode.EpisodeViewModel
 
-@OptIn(ExperimentalCoilApi::class)
 @Composable
 fun VideoNotifEffect(vm: EpisodeViewModel) {
     // TODO: VideoNotifEffect 
     //  removed because VideoNotificationState is not available anymore
-
-//    val scope = rememberCoroutineScope()
-//    val imageLoader = LocalImageLoader.current
-//    val coilContext = LocalPlatformContext.current
-//    DisposableEffect(vm) {
-//        val state = VideoNotificationState()
-//        state.setPlayer(vm.playerState)
-//        scope.launch {
-//            val properties = vm.playerState.videoProperties.filterNotNull().first()
-//            state.setDescription(
-//                title = vm.subjectPresentation.title,
-//                text = "${vm.episodePresentation.sort} ${vm.episodePresentation.title}",
-//                length = properties.durationMillis.milliseconds,
-//            )
-//            scope.launch {
-//                kotlin.runCatching {
-//                    val request = ImageRequest.Builder(coilContext)
-//                        .data(vm.subjectPresentation.info.imageLarge)
-//                        .build()
-//
-//                    (imageLoader.execute(request) as? SuccessResult)
-//                        ?.image
-//                        ?.let {
-//                            state.setAlbumArt(it)
-//                        }
-//                }.onFailure {
-//                    it.printStackTrace()
-//                }
-//            }
-//        }
-//
-//        onDispose {
-//            state.release()
-//            scope.cancel()
-//        }
-//    }
 }

@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2024-2025 OpenAni and contributors.
+ * Copyright (C) 2024-2026 OpenAni and contributors.
  *
  * 此源代码的使用受 GNU AFFERO GENERAL PUBLIC LICENSE version 3 许可证的约束, 可以在以下链接找到该许可证.
  * Use of this source code is governed by the GNU AGPLv3 license, which can be found at the following link.
@@ -38,6 +38,7 @@ import me.him188.ani.app.ui.foundation.theme.slightlyWeaken
 import me.him188.ani.app.videoplayer.ui.ControllerVisibility
 import me.him188.ani.app.videoplayer.ui.PlaybackSpeedControllerState
 import me.him188.ani.app.videoplayer.ui.PlayerControllerState
+import me.him188.ani.app.videoplayer.ui.PlayerFullscreenState
 import me.him188.ani.app.videoplayer.ui.progress.PlayerProgressSliderState
 import org.openani.mediamp.MediampPlayer
 import org.openani.mediamp.features.PlaybackSpeed
@@ -144,10 +145,9 @@ fun LockableVideoGestureHost(
     audioController: LevelController,
     brightnessController: LevelController,
     playbackSpeedControllerState: PlaybackSpeedControllerState?,
+    fullscreenState: PlayerFullscreenState,
     modifier: Modifier = Modifier,
     onTogglePauseResume: () -> Unit = {},
-    onToggleFullscreen: () -> Unit = {},
-    onExitFullscreen: () -> Unit = {},
     onToggleDanmaku: () -> Unit = {},
     onTogglePlayerStats: () -> Unit = {},
     family: GestureFamily = gestureFamilyOf(
@@ -182,10 +182,9 @@ fun LockableVideoGestureHost(
             audioController,
             brightnessController,
             playbackSpeedControllerState,
+            fullscreenState,
             modifier,
             onTogglePauseResume = onTogglePauseResume,
-            onToggleFullscreen = onToggleFullscreen,
-            onExitFullscreen = onExitFullscreen,
             onToggleDanmaku = onToggleDanmaku,
             onTogglePlayerStats = onTogglePlayerStats,
             family = family,

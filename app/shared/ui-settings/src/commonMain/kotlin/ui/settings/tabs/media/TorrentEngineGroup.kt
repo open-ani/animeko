@@ -10,10 +10,14 @@
 package me.him188.ani.app.ui.settings.tabs.media
 
 import androidx.compose.foundation.layout.RowScope
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.ArrowOutward
+import androidx.compose.material.icons.rounded.Edit
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -21,6 +25,7 @@ import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberUpdatedState
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import me.him188.ani.app.data.models.preference.AnitorrentConfig
@@ -30,6 +35,9 @@ import me.him188.ani.app.navigation.LocalNavigator
 import me.him188.ani.app.ui.foundation.LocalPlatform
 import me.him188.ani.app.ui.lang.Lang
 import me.him188.ani.app.ui.lang.settings_media_torrent_download_rate_limit
+import me.him188.ani.app.ui.lang.settings_media_torrent_extra_trackers
+import me.him188.ani.app.ui.lang.settings_media_torrent_extra_trackers_description
+import me.him188.ani.app.ui.lang.settings_media_torrent_extra_trackers_dialog_description
 import me.him188.ani.app.ui.lang.settings_media_torrent_limit_upload_on_metered
 import me.him188.ani.app.ui.lang.settings_media_torrent_limit_upload_on_metered_description
 import me.him188.ani.app.ui.lang.settings_media_torrent_peer_filter
@@ -46,6 +54,7 @@ import me.him188.ani.app.ui.settings.framework.SettingsState
 import me.him188.ani.app.ui.settings.framework.components.SettingsScope
 import me.him188.ani.app.ui.settings.framework.components.SliderItem
 import me.him188.ani.app.ui.settings.framework.components.SwitchItem
+import me.him188.ani.app.ui.settings.framework.components.TextFieldDialog
 import me.him188.ani.app.ui.settings.framework.components.TextItem
 import me.him188.ani.datasources.api.topic.FileSize
 import me.him188.ani.datasources.api.topic.FileSize.Companion.Unspecified
@@ -145,6 +154,12 @@ internal fun SettingsScope.TorrentEngineGroup(
                 )
             }
         }
+        ExtraTrackersItem(
+            torrentSettings.extraTrackers,
+            onValueChangeCompleted = {
+                torrentSettingsState.update(torrentSettings.copy(extraTrackers = it))
+            },
+        )
         val navigator by rememberUpdatedState(LocalNavigator.current)
         TextItem(
             title = { Text(stringResource(Lang.settings_media_torrent_peer_filter)) },
@@ -156,6 +171,47 @@ internal fun SettingsScope.TorrentEngineGroup(
             },
             onClick = { navigator.navigateTorrentPeerSettings() },
         )
+    }
+}
+
+@Composable
+private fun SettingsScope.ExtraTrackersItem(
+    value: String,
+    onValueChangeCompleted: (value: String) -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    var showDialog by rememberSaveable { mutableStateOf(false) }
+    TextItem(
+        title = { Text(stringResource(Lang.settings_media_torrent_extra_trackers)) },
+        description = { Text(stringResource(Lang.settings_media_torrent_extra_trackers_description)) },
+        action = {
+            IconButton({ showDialog = true }) {
+                Icon(Icons.Rounded.Edit, null, tint = MaterialTheme.colorScheme.primary)
+            }
+        },
+        onClick = { showDialog = true },
+        modifier = modifier,
+    )
+    if (showDialog) {
+        var editingValue by rememberSaveable(value) { mutableStateOf(value) }
+        TextFieldDialog(
+            onDismissRequest = { showDialog = false },
+            onConfirm = {
+                onValueChangeCompleted(editingValue)
+                showDialog = false
+            },
+            title = { Text(stringResource(Lang.settings_media_torrent_extra_trackers)) },
+            description = { Text(stringResource(Lang.settings_media_torrent_extra_trackers_dialog_description)) },
+        ) {
+            OutlinedTextField(
+                value = editingValue,
+                onValueChange = { editingValue = it },
+                shape = MaterialTheme.shapes.medium,
+                minLines = 4,
+                maxLines = 8,
+                modifier = Modifier.fillMaxWidth(),
+            )
+        }
     }
 }
 

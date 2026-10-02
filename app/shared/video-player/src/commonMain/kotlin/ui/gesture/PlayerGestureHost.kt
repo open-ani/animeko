@@ -69,10 +69,8 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.input.pointer.PointerEventPass
 import androidx.compose.ui.input.pointer.PointerEventType
 import androidx.compose.ui.input.pointer.PointerType
-import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.coerceAtLeast
@@ -83,18 +81,19 @@ import me.him188.ani.app.tools.rememberUiMonoTasker
 import me.him188.ani.app.ui.foundation.LocalPlatform
 import me.him188.ani.app.ui.foundation.animation.AniAnimatedVisibility
 import me.him188.ani.app.ui.foundation.effects.onPointerEventMultiplatform
+import me.him188.ani.app.ui.foundation.ifNotNullThen
+import me.him188.ani.app.ui.foundation.ifThen
 import me.him188.ani.app.ui.foundation.input.LocalActiveInputSource
 import me.him188.ani.app.ui.foundation.input.asGesturePointerType
 import me.him188.ani.app.ui.foundation.input.trackActiveInputSource
-import me.him188.ani.app.ui.foundation.ifNotNullThen
-import me.him188.ani.app.ui.foundation.ifThen
-import me.him188.ani.app.ui.foundation.layout.isSystemInFullscreen
-import me.him188.ani.app.ui.lang.*
+import me.him188.ani.app.ui.lang.Lang
+import me.him188.ani.app.ui.lang.video_player_release_to_cancel
 import me.him188.ani.app.utils.fixToString
 import me.him188.ani.app.utils.formatSpeedValue
 import me.him188.ani.app.videoplayer.ui.ControllerVisibility
 import me.him188.ani.app.videoplayer.ui.PlaybackSpeedControllerState
 import me.him188.ani.app.videoplayer.ui.PlayerControllerState
+import me.him188.ani.app.videoplayer.ui.PlayerFullscreenState
 import me.him188.ani.app.videoplayer.ui.gesture.GestureIndicatorState.State.BRIGHTNESS
 import me.him188.ani.app.videoplayer.ui.gesture.GestureIndicatorState.State.FAST_BACKWARD
 import me.him188.ani.app.videoplayer.ui.gesture.GestureIndicatorState.State.FAST_FORWARD
@@ -106,11 +105,12 @@ import me.him188.ani.app.videoplayer.ui.gesture.GestureIndicatorState.State.VOLU
 import me.him188.ani.app.videoplayer.ui.gesture.SwipeSeekerState.Companion.swipeToSeek
 import me.him188.ani.app.videoplayer.ui.playerFocusHost
 import me.him188.ani.app.videoplayer.ui.progress.PlayerProgressSliderState
+import me.him188.ani.app.videoplayer.ui.toggle
 import me.him188.ani.utils.platform.Platform
 import me.him188.ani.utils.platform.isDesktop
+import org.jetbrains.compose.resources.stringResource
 import org.openani.mediamp.MediampPlayer
 import org.openani.mediamp.features.AudioLevelController
-import org.jetbrains.compose.resources.stringResource
 import kotlin.math.absoluteValue
 import kotlin.time.Duration.Companion.seconds
 
@@ -218,10 +218,13 @@ class GestureIndicatorState {
     suspend fun showSeeking(
         deltaSeconds: Int,
     ) {
-        show(SEEKING, setup = {
-            this.deltaSeconds = deltaSeconds
-            seekCancelled = false
-        }) {
+        show(
+            SEEKING,
+            setup = {
+                this.deltaSeconds = deltaSeconds
+                seekCancelled = false
+            },
+        ) {
             delay(SHORT)
         }
     }
@@ -574,18 +577,18 @@ fun PlayerGestureHost(
     audioController: LevelController,
     brightnessController: LevelController,
     playbackSpeedControllerState: PlaybackSpeedControllerState?,
+    fullscreenState: PlayerFullscreenState,
     modifier: Modifier = Modifier,
     family: GestureFamily = gestureFamilyOf(
         LocalActiveInputSource.current.current,
         LocalPlatform.current.mouseFamily,
     ),
     onTogglePauseResume: () -> Unit = {},
-    onToggleFullscreen: () -> Unit = {},
-    onExitFullscreen: () -> Unit = {},
     onToggleDanmaku: () -> Unit = {},
     onTogglePlayerStats: () -> Unit = {},
 ) {
     val onTogglePauseResumeState by rememberUpdatedState(onTogglePauseResume)
+    val isFullscreen = fullscreenState.isFullscreen
 
     val inputSourceState = LocalActiveInputSource.current
 
@@ -616,7 +619,6 @@ fun PlayerGestureHost(
         // 平台问题而非输入方式问题: 桌面没有系统级 AudioManager, 音量由 mediamp 提供.
         // 用 GestureFamily 判断会让混合设备上键盘音量键的作用目标随输入方式跳变.
         val useMediaAudioController = LocalPlatform.current.isDesktop()
-        val systemFullscreen = isSystemInFullscreen()
         val playerFocusState = controllerState.focusState
 
         val keyboardModifier = modifier
@@ -663,12 +665,11 @@ fun PlayerGestureHost(
                     }
                 },
                 onTogglePauseResume = onTogglePauseResumeState,
-                onToggleFullscreen = onToggleFullscreen,
-                onExitFullscreen = onExitFullscreen,
+                onToggleFullscreen = remember(fullscreenState) { { fullscreenState.toggle() } },
                 onToggleDanmaku = onToggleDanmaku,
                 onTogglePlayerStats = onTogglePlayerStats,
             )
-            .playerFocusHost(playerFocusState, systemFullscreen)
+            .playerFocusHost(playerFocusState, isFullscreen)
 
         if (family.autoHideController) {
             LaunchedEffect(controllerState.visibility, controllerState.alwaysOn) {
@@ -715,11 +716,11 @@ fun PlayerGestureHost(
                             playerFocusState.requestPlayerFocus()
                         }
                     },
-                    onDoubleClick = remember(family, onToggleFullscreen, playerFocusState, inputSourceState) {
+                    onDoubleClick = remember(family, fullscreenState, playerFocusState, inputSourceState) {
                         {
                             val tapFamily = gestureFamilyOf(inputSourceState.latest, family)
                             if (tapFamily.doubleClickToFullscreen) {
-                                onToggleFullscreen()
+                                fullscreenState.toggle()
                             }
                             if (tapFamily.doubleClickToPauseResume) {
                                 onTogglePauseResumeState()
@@ -829,12 +830,9 @@ fun PlayerGestureHost(
                         .swipeToFullscreen(
                             enabled = swipeGesturesEnabled && !seekerState.isSeeking && !adjustingVolumeOrBrightness &&
                                     !adjustingForwardOrBackward,
-                            onEnterFullscreen = {
-                                if (!systemFullscreen) onToggleFullscreen()
-                            },
-                            onExitFullscreen = {
-                                if (systemFullscreen) onExitFullscreen()
-                            },
+                            // request 幂等, 已在目标状态时是 no-op, 不需要在这里判断当前状态
+                            onEnterFullscreen = { fullscreenState.request(true) },
+                            onExitFullscreen = { fullscreenState.request(false) },
                         )
                         .weight(1f)
                         .fillMaxHeight(),
@@ -861,7 +859,7 @@ fun PlayerGestureHost(
             }
         }
 
-        if (family.clickToToggleController && systemFullscreen) {
+        if (family.clickToToggleController && isFullscreen) {
             // 状态栏区域响应点击手势
             Box(
                 Modifier.fillMaxWidth()

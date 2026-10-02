@@ -38,6 +38,7 @@ internal fun ProvideIosResourceEnvironment(content: @Composable () -> Unit) {
     val resourceEnvironment = remember(defaultEnvironment, resourceRegion) {
         ResourceEnvironment(
             language = defaultEnvironment.language,
+            script = defaultEnvironment.script,
             region = RegionQualifier(resourceRegion),
             theme = defaultEnvironment.theme,
             density = defaultEnvironment.density,

@@ -51,7 +51,7 @@
 -keep class io.ktor.serialization.** { *; }
 -keep class org.slf4j.** { *; }
 -keep class org.slf4j2.** { *; }
--keep class coil3.** { *; }
+-keep class * implements com.github.panpf.sketch.util.ComponentProvider { *; }
 -keep class org.apache.logging.log4j.** { *; } # class org.apache.logging.log4j.spi.StandardLevel not an enum
 
 -keep class kotlinx.coroutines.** { *; }

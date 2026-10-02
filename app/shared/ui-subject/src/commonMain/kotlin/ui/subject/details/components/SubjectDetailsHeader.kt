@@ -37,12 +37,9 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
-import coil3.compose.AsyncImagePainter
-import coil3.compose.LocalPlatformContext
-import coil3.request.ImageRequest
-import coil3.request.crossfade
 import me.him188.ani.app.data.models.subject.ContinueWatchingStatus
 import me.him188.ani.app.data.models.subject.SubjectAiringInfo
 import me.him188.ani.app.data.models.subject.SubjectAiringKind
@@ -50,14 +47,19 @@ import me.him188.ani.app.data.models.subject.SubjectInfo
 import me.him188.ani.app.data.models.subject.SubjectProgressInfo
 import me.him188.ani.app.data.models.subject.TestCoverImage
 import me.him188.ani.app.data.models.subject.TestSubjectInfo
+import me.him188.ani.app.data.models.subject.preferredDisplayName
+import me.him188.ani.app.ui.foundation.AniImageLoadSuccess
 import me.him188.ani.app.ui.foundation.AsyncImage
+import me.him188.ani.app.ui.foundation.LocalSubjectAppearanceSettings
 import me.him188.ani.app.ui.foundation.ProvideCompositionLocalsForPreview
+import me.him188.ani.app.ui.foundation.ifThen
 import me.him188.ani.app.ui.foundation.layout.currentWindowAdaptiveInfo1
 import me.him188.ani.app.ui.foundation.layout.isWidthAtLeastMedium
 import me.him188.ani.app.ui.foundation.layout.paddingIfNotEmpty
 import me.him188.ani.app.ui.foundation.stateOf
 import me.him188.ani.app.ui.rating.EditableRating
-import me.him188.ani.app.ui.rating.rememberTestEditableRatingState
+import me.him188.ani.app.ui.rating.EditableRatingActions
+import me.him188.ani.app.ui.rating.TestEditableRatingUiState
 import me.him188.ani.app.ui.subject.AiringLabelState
 import me.him188.ani.app.ui.subject.TestSubjectAiringInfo
 import me.him188.ani.app.ui.subject.collection.components.EditableSubjectCollectionTypeButton
@@ -69,6 +71,9 @@ import me.him188.ani.utils.platform.annotations.TestOnly
 
 const val COVER_WIDTH_TO_HEIGHT_RATIO = 849 / 1200f
 
+/** 条目封面图的 test tag, 供 UI 测试定位点击放大入口. */
+const val SUBJECT_COVER_IMAGE_TEST_TAG = "SubjectCoverImage"
+
 // 图片和标题
 @Composable
 internal fun SubjectDetailsHeader(
@@ -79,16 +84,19 @@ internal fun SubjectDetailsHeader(
     collectionAction: @Composable () -> Unit,
     selectEpisodeButton: @Composable BoxScope.() -> Unit,
     rating: @Composable () -> Unit,
-    onCoverImageSuccess: (AsyncImagePainter.State.Success) -> Unit = {},
+    onCoverImageSuccess: (AniImageLoadSuccess) -> Unit = {},
     modifier: Modifier = Modifier,
+    onClickCover: (() -> Unit)? = null,
 ) {
+    val useOriginalTitle = LocalSubjectAppearanceSettings.current.useOriginalTitle
+    val primaryTitle = info?.preferredDisplayName(useOriginalTitle) ?: ""
+    val secondaryTitle = if (useOriginalTitle) info?.displayName else info?.name
     if (currentWindowAdaptiveInfo1().isWidthAtLeastMedium) {
         SubjectDetailsHeaderWide(
-            info?.subjectId,
             coverImageUrl = coverImageUrl,
             title = {
                 Text(
-                    info?.displayName ?: "",
+                    primaryTitle,
                     /*Modifier.useSharedTransitionScope { modifier, animatedVisibilityScope ->
                         modifier.sharedElement(
                             rememberSharedContentState(SharedTransitionKeys.subjectTitle(info.subjectId)),
@@ -106,13 +114,13 @@ internal fun SubjectDetailsHeader(
             rating = rating,
             onCoverImageSuccess = onCoverImageSuccess,
             modifier = modifier,
+            onClickCover = onClickCover,
         )
     } else {
         SubjectDetailsHeaderCompact(
-            info?.subjectId,
             coverImageUrl = coverImageUrl,
-            title = { Text(info?.displayName ?: "") },
-            subtitle = { Text(info?.name ?: "") },
+            title = { Text(primaryTitle) },
+            subtitle = { Text(secondaryTitle ?: "") },
             seasonTags = { seasonTags() },
             collectionData = collectionData,
             collectionAction = collectionAction,
@@ -120,6 +128,7 @@ internal fun SubjectDetailsHeader(
             rating = rating,
             onSuccess = onCoverImageSuccess,
             modifier = modifier,
+            onClickCover = onClickCover,
         )
     }
 }
@@ -128,7 +137,6 @@ internal fun SubjectDetailsHeader(
 // 适合手机, 窄
 @Composable
 fun SubjectDetailsHeaderCompact(
-    subjectId: Int?,
     coverImageUrl: String?,
     title: @Composable () -> Unit,
     subtitle: @Composable () -> Unit,
@@ -137,26 +145,28 @@ fun SubjectDetailsHeaderCompact(
     collectionAction: @Composable () -> Unit,
     selectEpisodeButton: @Composable BoxScope.() -> Unit,
     rating: @Composable () -> Unit,
-    onSuccess: (AsyncImagePainter.State.Success) -> Unit,
+    onSuccess: (AniImageLoadSuccess) -> Unit,
     modifier: Modifier = Modifier,
+    onClickCover: (() -> Unit)? = null,
 ) {
     Column(modifier) {
         Row(Modifier.height(IntrinsicSize.Min), verticalAlignment = Alignment.Top) {
             val imageWidth = 140.dp
 
-            Box(Modifier.clip(MaterialTheme.shapes.medium)) {
+            Box(
+                Modifier
+                    .clip(MaterialTheme.shapes.medium)
+                    .ifThen(onClickCover != null) { clickable(onClick = checkNotNull(onClickCover)) }
+                    .testTag(SUBJECT_COVER_IMAGE_TEST_TAG),
+            ) {
                 AsyncImage(
-                    ImageRequest.Builder(LocalPlatformContext.current)
-                        .data(coverImageUrl)
-                        .memoryCacheKey(subjectId?.toString())
-                        .placeholderMemoryCacheKey(subjectId?.toString())
-                        .crossfade(300)
-                        .build(),
-                    null,
-                    Modifier
+                    model = coverImageUrl,
+                    contentDescription = null,
+                    modifier = Modifier
                         .width(imageWidth)
                         .height(imageWidth / COVER_WIDTH_TO_HEIGHT_RATIO),
                     contentScale = ContentScale.Crop,
+                    crossfadeDurationMillis = 300,
                     onSuccess = onSuccess,
                 )
             }
@@ -217,7 +227,6 @@ fun SubjectDetailsHeaderCompact(
 
 @Composable
 fun SubjectDetailsHeaderWide(
-    subjectId: Int?,
     coverImageUrl: String?,
     title: @Composable () -> Unit,
     seasonTags: @Composable RowScope.() -> Unit,
@@ -225,8 +234,9 @@ fun SubjectDetailsHeaderWide(
     collectionAction: @Composable () -> Unit,
     selectEpisodeButton: @Composable BoxScope.() -> Unit,
     rating: @Composable () -> Unit,
-    onCoverImageSuccess: (AsyncImagePainter.State.Success) -> Unit,
+    onCoverImageSuccess: (AniImageLoadSuccess) -> Unit,
     modifier: Modifier = Modifier,
+    onClickCover: (() -> Unit)? = null,
 ) {
     Column(modifier) {
         Row(
@@ -235,19 +245,20 @@ fun SubjectDetailsHeaderWide(
         ) {
             val imageWidth = 220.dp
 
-            Box(Modifier.clip(MaterialTheme.shapes.medium)) {
+            Box(
+                Modifier
+                    .clip(MaterialTheme.shapes.medium)
+                    .ifThen(onClickCover != null) { clickable(onClick = checkNotNull(onClickCover)) }
+                    .testTag(SUBJECT_COVER_IMAGE_TEST_TAG),
+            ) {
                 AsyncImage(
-                    ImageRequest.Builder(LocalPlatformContext.current)
-                        .data(coverImageUrl)
-                        .memoryCacheKey(subjectId?.toString())
-                        .placeholderMemoryCacheKey(subjectId?.toString())
-                        .crossfade(300)
-                        .build(),
-                    null,
-                    Modifier
+                    model = coverImageUrl,
+                    contentDescription = null,
+                    modifier = Modifier
                         .width(imageWidth)
                         .height(imageWidth / COVER_WIDTH_TO_HEIGHT_RATIO),
                     contentScale = ContentScale.Crop,
+                    crossfadeDurationMillis = 300,
                     onSuccess = onCoverImageSuccess,
                 )
             }
@@ -414,9 +425,7 @@ fun PreviewSubjectDetailsHeader(
             SubjectDetailsDefaults.SelectEpisodeButtons(rememberTestSubjectProgressState(), {}, {})
         },
         rating = {
-            EditableRating(
-                state = rememberTestEditableRatingState(),
-            )
+            EditableRating(TestEditableRatingUiState, EditableRatingActions.Noop)
         },
     )
 }

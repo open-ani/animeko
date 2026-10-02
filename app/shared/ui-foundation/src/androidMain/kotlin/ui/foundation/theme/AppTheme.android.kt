@@ -14,7 +14,6 @@ import androidx.activity.ComponentActivity
 import androidx.activity.SystemBarStyle
 import androidx.activity.enableEdgeToEdge
 import androidx.annotation.ChecksSdkIntAtLeast
-import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.material3.ColorScheme
 import androidx.compose.material3.dynamicDarkColorScheme
 import androidx.compose.material3.dynamicLightColorScheme
@@ -69,7 +68,7 @@ fun SystemBarColorEffect(
     isDark: Boolean = when (LocalThemeSettings.current.darkMode) {
         DarkMode.LIGHT -> false
         DarkMode.DARK -> true
-        DarkMode.AUTO -> isSystemInDarkTheme()
+        DarkMode.AUTO -> isSystemInDarkThemeDetected()
     },
 ) {
     // Set statusBarStyle & navigationBarStyle

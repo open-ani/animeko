@@ -16,6 +16,7 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.RowScope
 import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
@@ -64,11 +65,14 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.map
 import me.him188.ani.app.data.models.preference.DarkMode
 import me.him188.ani.app.data.models.preference.VideoScaffoldConfig
+import me.him188.ani.app.domain.media.cache.engine.MediaCacheEngineKey
 import me.him188.ani.app.domain.media.player.ChunkState
 import me.him188.ani.app.domain.media.player.MediaCacheProgressInfo
 import me.him188.ani.app.domain.media.player.staticMediaCacheProgressState
 import me.him188.ani.app.domain.media.resolver.JellyfinPlaybackQualityState
 import me.him188.ani.app.domain.player.VideoLoadingState
+import me.him188.ani.app.pip.NoOpPictureInPictureController
+import me.him188.ani.app.pip.PictureInPictureController
 import me.him188.ani.app.tools.rememberUiMonoTasker
 import me.him188.ani.app.ui.episode.share.MediaShareData
 import me.him188.ani.app.ui.foundation.LocalIsPreviewing
@@ -110,9 +114,8 @@ import me.him188.ani.app.ui.lang.video_player_stats_title_show
 import me.him188.ani.app.ui.lang.video_player_video_enhancement
 import me.him188.ani.app.ui.lang.watch_together_title
 import me.him188.ani.app.ui.mediafetch.TestMediaSourceResultListPresentation
-import me.him188.ani.app.ui.mediafetch.ViewKind
+import me.him188.ani.app.ui.mediaselect.MediaSelectorMode
 import me.him188.ani.app.ui.mediafetch.rememberTestMediaSelectorState
-import me.him188.ani.app.ui.mediafetch.request.TestMediaFetchRequest
 import me.him188.ani.app.ui.settings.danmaku.createTestDanmakuRegexFilterState
 import me.him188.ani.app.ui.subject.episode.details.components.ShareEpisodeDropdown
 import me.him188.ani.app.ui.subject.episode.details.components.VideoEnhancementDropdown
@@ -130,9 +133,11 @@ import me.him188.ani.app.ui.subject.episode.video.sidesheet.rememberTestEpisodeS
 import me.him188.ani.app.ui.subject.episode.video.topbar.EpisodePlayerTitle
 import me.him188.ani.app.ui.watchtogether.LocalWatchTogetherPlayerController
 import me.him188.ani.app.videoplayer.ui.ControllerVisibility
+import me.him188.ani.app.videoplayer.ui.MutablePlayerFullscreenState
 import me.him188.ani.app.videoplayer.ui.NoOpVideoAspectRatio
 import me.him188.ani.app.videoplayer.ui.PlaybackSpeedControllerState
 import me.him188.ani.app.videoplayer.ui.PlayerControllerState
+import me.him188.ani.app.videoplayer.ui.PlayerFullscreenState
 import me.him188.ani.app.videoplayer.ui.PlayerStatsOverlay
 import me.him188.ani.app.videoplayer.ui.VideoAspectRatioControllerState
 import me.him188.ani.app.videoplayer.ui.VideoPlayer
@@ -178,11 +183,13 @@ import me.him188.ani.datasources.jellyfin.JellyfinPlaybackQualityMode
 import me.him188.ani.utils.platform.annotations.TestOnly
 import me.him188.ani.utils.platform.isAndroid
 import me.him188.ani.utils.platform.isDesktop
+import me.him188.ani.utils.platform.isIos
 import me.him188.ani.utils.platform.isMobile
 import org.jetbrains.compose.resources.stringResource
 import org.openani.mediamp.MediampPlayer
 import org.openani.mediamp.features.audioTracks
 import org.openani.mediamp.features.subtitleTracks
+import org.openani.mediamp.isMediaLoaded
 import org.openani.mediamp.test.TestMediampPlayer
 import org.openani.mediamp.togglePlayWhenReady
 import kotlin.time.Duration
@@ -206,6 +213,7 @@ internal const val TAG_EPISODE_SELECTOR_SHEET = "EpisodeSelectorSheet"
 /**
  * 剧集详情页面顶部的视频控件.
  * @param title 仅在全屏时显示的标题
+ * @param fullscreenState 全屏状态与全屏请求. 控制栏按钮、双击、F 键、上下滑手势全部走它
  */
 @Composable
 internal fun EpisodeVideoImpl(
@@ -225,8 +233,7 @@ internal fun EpisodeVideoImpl(
     danmakuEnabled: Boolean,
     onToggleDanmaku: () -> Unit,
     videoLoadingStateFlow: Flow<VideoLoadingState>,
-    onClickFullScreen: () -> Unit,
-    onExitFullscreen: () -> Unit,
+    fullscreenState: PlayerFullscreenState,
     alwaysOnTop: Boolean = false,
     onToggleAlwaysOnTop: (() -> Unit)? = null,
     danmakuEditor: @Composable() (RowScope.() -> Unit),
@@ -249,16 +256,18 @@ internal fun EpisodeVideoImpl(
     onClickCache: () -> Unit,
     modifier: Modifier = Modifier,
     maintainAspectRatio: Boolean = !expanded,
-    isFullscreen: Boolean = expanded,
     gestureFamily: GestureFamily = gestureFamilyOf(
         LocalActiveInputSource.current.current,
         LocalPlatform.current.mouseFamily,
     ),
     fastForwardSpeed: Float = 3f,
     contentWindowInsets: WindowInsets = WindowInsets(0.dp),
+    pictureInPictureController: PictureInPictureController = NoOpPictureInPictureController,
+    isInPictureInPicture: Boolean = false,
 ) {
-    // Don't rememberSavable. 刻意让每次切换都是隐藏的
-    var isLocked by remember { mutableStateOf(false) }
+    // Don't rememberSavable. 页面重建后都回到默认状态
+    // 锁定按钮只在 expanded 时显示, 离开 expanded 时必须解锁, 否则无法再解除
+    var isLocked by remember(expanded) { mutableStateOf(false) }
     var showPlayerStats by remember { mutableStateOf(false) }
     val playerStats by rememberPlayerStatsState(playerState)
     val sheetsController = rememberVideoSideSheetsController<EpisodeVideoSideSheetPage>()
@@ -266,6 +275,11 @@ internal fun EpisodeVideoImpl(
     val previewModeText = stringResource(Lang.subject_episode_preview_mode)
     val showJellyfinQualityInBottomBar =
         expanded && (LocalPlatform.current.isDesktop() || currentWindowAdaptiveInfo1().isWidthAtLeastMedium)
+
+    // 画中画小窗只渲染视频, 交互由系统提供. iOS 系统小窗只采集 AVPlayerLayer, 页面 UI 无需最小化.
+    // 进出小窗只隐藏视频以外的层, 不切换组合结构: 播放器节点被重建会销毁视频输出
+    // (Android 的 Surface; iOS 上 AVPictureInPictureController 持有的 AVPlayerLayer 会失效, 小窗立即关闭且之后无法再启动).
+    val videoOnly = isInPictureInPicture && !LocalPlatform.current.isIos()
     val watchTogetherPlayerController = LocalWatchTogetherPlayerController.current
 
     // auto hide cursor
@@ -291,10 +305,12 @@ internal fun EpisodeVideoImpl(
         VideoScaffold(
             expanded = expanded,
             modifier = modifier
+                .ifThen(videoOnly) { fillMaxSize() }
                 .hoverable(videoInteractionSource)
                 .cursorVisibility(showCursor),
             contentWindowInsets = contentWindowInsets,
-            maintainAspectRatio = maintainAspectRatio,
+            maintainAspectRatio = maintainAspectRatio && !videoOnly,
+            videoOnly = videoOnly,
             controllerState = playerControllerState,
             gestureLocked = isLocked,
             topBar = {
@@ -350,7 +366,7 @@ internal fun EpisodeVideoImpl(
                     VideoPlayer(
                         playerState,
                         Modifier
-                            .ifThen(statusBarHeight != 0.dp) {
+                            .ifThen(statusBarHeight != 0.dp && !videoOnly) {
                                 offset(x = -statusBarHeight / 2, y = 0.dp)
                             }
                             .onSizeChanged {
@@ -394,6 +410,7 @@ internal fun EpisodeVideoImpl(
                     audioController = audioController,
                     brightnessController = brightnessController,
                     playbackSpeedControllerState,
+                    fullscreenState,
                     Modifier,
                     onTogglePauseResume = {
                         if (playerState.state.value.playWhenReady) {
@@ -407,8 +424,6 @@ internal fun EpisodeVideoImpl(
                         }
                         playerState.togglePlayWhenReady()
                     },
-                    onToggleFullscreen = onClickFullScreen,
-                    onExitFullscreen = onExitFullscreen,
                     onToggleDanmaku = onToggleDanmaku,
                     onTogglePlayerStats = {
                         showPlayerStats = !showPlayerStats
@@ -534,6 +549,21 @@ internal fun EpisodeVideoImpl(
                     },
                     danmakuEditor = danmakuEditor,
                     endActions = {
+                        // 仅 Android 显示小窗按钮: Android 小窗是整机窗口采集, 按钮是除系统手势外的
+                        // 重要入口; iOS 小窗的主入口是系统手势 (上滑回桌面自动进入), 且按钮 enabled
+                        // 依赖 isPictureInPicturePossible, 其在部分机型上翻转不及时, 灰态观感差, 故不在 iOS 显示
+                        if (LocalPlatform.current.isAndroid() && pictureInPictureController.isSupported) {
+                            val pipPossible by pictureInPictureController.isPictureInPicturePossible
+                                .collectAsStateWithLifecycle()
+                            val mediaLoaded by remember(playerState) {
+                                playerState.state.map { it.isMediaLoaded }
+                            }.collectAsStateWithLifecycle(false)
+                            PlayerControllerDefaults.PictureInPictureIcon(
+                                enabled = pipPossible && mediaLoaded,
+                                onClick = { pictureInPictureController.enterPictureInPicture() },
+                            )
+                        }
+
                         if (expanded) {
                             PlayerControllerDefaults.SelectEpisodeIcon(
                                 onClick = { sheetsController.navigateTo(EpisodeVideoSideSheetPage.EPISODE_SELECTOR) },
@@ -581,10 +611,7 @@ internal fun EpisodeVideoImpl(
                                 }
                             }
                         }
-                        PlayerControllerDefaults.FullscreenIcon(
-                            isFullscreen,
-                            onClickFullscreen = onClickFullScreen,
-                        )
+                        PlayerControllerDefaults.FullscreenIcon(fullscreenState)
                     },
                     expanded = expanded,
                     sliderOnly = playerControllerState.visibility == ControllerVisibility.InlineSliderOnly,
@@ -1059,7 +1086,7 @@ private fun PreviewVideoScaffoldImpl(
         },
     )
     val videoScaffoldConfig = VideoScaffoldConfig.Default
-    val onClickFullScreen = { }
+    val fullscreenState = remember(expanded) { MutablePlayerFullscreenState(expanded) }
     val cacheProgressInfoFlow = staticMediaCacheProgressState(ChunkState.NONE).flow
     EpisodeVideoImpl(
         playerState = playerState,
@@ -1078,9 +1105,8 @@ private fun PreviewVideoScaffoldImpl(
         danmakuHost = {},
         danmakuEnabled = danmakuEnabled,
         onToggleDanmaku = { danmakuEnabled = !danmakuEnabled },
-        videoLoadingStateFlow = MutableStateFlow(VideoLoadingState.Succeed(isBt = true)),
-        onClickFullScreen = onClickFullScreen,
-        onExitFullscreen = { },
+        videoLoadingStateFlow = MutableStateFlow(VideoLoadingState.Succeed(MediaCacheEngineKey.Anitorrent)),
+        fullscreenState = fullscreenState,
         danmakuEditor = {
             val (value, onValueChange) = remember { mutableStateOf("") }
             PlayerControllerDefaults.DanmakuTextField(
@@ -1116,8 +1142,7 @@ private fun PreviewVideoScaffoldImpl(
         fullscreenSwitchButton = {
             EpisodeVideoDefaults.FloatingFullscreenSwitchButton(
                 videoScaffoldConfig.fullscreenSwitchMode,
-                isFullscreen = expanded,
-                onClickFullScreen,
+                fullscreenState,
             )
         },
         sideSheets = { sheetsController ->
@@ -1142,16 +1167,12 @@ private fun PreviewVideoScaffoldImpl(
                     )
                 },
                 mediaSelectorPage = {
-                    val (viewKind, onViewKindChange) = rememberSaveable { mutableStateOf(ViewKind.WEB) }
                     EpisodeVideoSideSheets.MediaSelectorSheet(
                         mediaSelectorState = rememberTestMediaSelectorState(),
                         mediaSourceResultListPresentation = TestMediaSourceResultListPresentation,
-                        viewKind = viewKind,
-                        onViewKindChange = onViewKindChange,
-                        fetchRequest = TestMediaFetchRequest,
-                        onFetchRequestChange = {},
+                        mode = MediaSelectorMode.AUTO,
+                        onModeChange = {},
                         onDismissRequest = { goBack() },
-                        onRefresh = {},
                         onRestartSource = {},
                     )
                 },

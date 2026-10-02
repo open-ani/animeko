@@ -25,6 +25,7 @@ import me.him188.ani.app.data.models.preference.VideoScaffoldConfig
 import me.him188.ani.app.ui.foundation.animation.AniAnimatedVisibility
 import me.him188.ani.app.ui.foundation.animation.LocalAniMotionScheme
 import me.him188.ani.app.ui.subject.episode.EpisodeVideoDefaults
+import me.him188.ani.app.videoplayer.ui.PlayerFullscreenState
 import me.him188.ani.app.videoplayer.ui.progress.PlayerControllerDefaults
 import kotlin.time.Duration.Companion.seconds
 
@@ -35,8 +36,7 @@ import kotlin.time.Duration.Companion.seconds
 @Composable
 fun EpisodeVideoDefaults.FloatingFullscreenSwitchButton(
     mode: FullscreenSwitchMode,
-    isFullscreen: Boolean,
-    onClickFullScreen: () -> Unit,
+    fullscreenState: PlayerFullscreenState,
     modifier: Modifier = Modifier,
 ) {
     Box(modifier) {
@@ -44,10 +44,7 @@ fun EpisodeVideoDefaults.FloatingFullscreenSwitchButton(
             FullscreenSwitchMode.ONLY_IN_CONTROLLER -> {}
 
             FullscreenSwitchMode.ALWAYS_SHOW_FLOATING -> {
-                PlayerControllerDefaults.FullscreenIcon(
-                    isFullscreen,
-                    onClickFullscreen = onClickFullScreen,
-                )
+                PlayerControllerDefaults.FullscreenIcon(fullscreenState)
             }
 
             FullscreenSwitchMode.AUTO_HIDE_FLOATING -> {
@@ -61,10 +58,7 @@ fun EpisodeVideoDefaults.FloatingFullscreenSwitchButton(
                     enter = fadeIn(snap()),
                     exit = LocalAniMotionScheme.current.animatedVisibility.standardExit,
                 ) {
-                    PlayerControllerDefaults.FullscreenIcon(
-                        isFullscreen,
-                        onClickFullscreen = onClickFullScreen,
-                    )
+                    PlayerControllerDefaults.FullscreenIcon(fullscreenState)
                 }
             }
         }

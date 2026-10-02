@@ -51,6 +51,8 @@ interface DesktopUpdateInstaller : UpdateInstaller {
 object MacOSUpdateInstaller : DesktopUpdateInstaller {
     private val logger = logger<MacOSUpdateInstaller>()
 
+    override val installablePackageExtensions: Set<String> = setOf("dmg", "zip")
+
     override fun install(file: SystemPath, context: ContextMP): InstallationResult {
         logger.info { "Preparing to install update for macOS using external script." }
 
@@ -75,7 +77,7 @@ object MacOSUpdateInstaller : DesktopUpdateInstaller {
         }
 
         val extension = updateFile.extension.lowercase()
-        if (extension != "dmg" && extension != "zip") {
+        if (extension !in installablePackageExtensions) {
             return failed("Unsupported update file format: $extension")
         }
 
@@ -463,6 +465,8 @@ internal val LINUX_APPIMAGE_UPDATE_SCRIPT = $$"""
 
 object WindowsUpdateInstaller : DesktopUpdateInstaller {
     private val logger = logger<WindowsUpdateInstaller>()
+
+    override val installablePackageExtensions: Set<String> = setOf("zip")
 
     override fun install(file: SystemPath, context: ContextMP): InstallationResult {
         logger.info { "Installing update for Windows" }

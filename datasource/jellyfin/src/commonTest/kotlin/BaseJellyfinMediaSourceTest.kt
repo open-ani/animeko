@@ -1859,7 +1859,8 @@ class BaseJellyfinMediaSourceTest {
         ).results.toList()
 
         assertEquals("right-episode", result.single().media.mediaId)
-        assertEquals(MatchKind.FUZZY, result.single().kind)
+        // 季的 Bangumi 条目 ID 匹配, 该季的剧集都精确属于本条目.
+        assertEquals(MatchKind.EXACT, result.single().kind)
         assertFalse(requests.any { it.url.parameters["parentId"] == "wrong-season" })
     }
 

@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2024-2025 OpenAni and contributors.
+ * Copyright (C) 2024-2026 OpenAni and contributors.
  *
  * 此源代码的使用受 GNU AFFERO GENERAL PUBLIC LICENSE version 3 许可证的约束, 可以在以下链接找到该许可证.
  * Use of this source code is governed by the GNU AGPLv3 license, which can be found at the following link.
@@ -43,6 +43,7 @@ import androidx.compose.material.icons.automirrored.rounded.VolumeUp
 import androidx.compose.material.icons.rounded.Fullscreen
 import androidx.compose.material.icons.rounded.FullscreenExit
 import androidx.compose.material.icons.rounded.Pause
+import androidx.compose.material.icons.rounded.PictureInPicture
 import androidx.compose.material.icons.rounded.PlayArrow
 import androidx.compose.material.icons.rounded.SkipNext
 import androidx.compose.material.icons.rounded.Subtitles
@@ -63,8 +64,6 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TextFieldColors
-import androidx.compose.material3.TooltipAnchorPosition
-import androidx.compose.material3.TooltipDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
@@ -85,35 +84,77 @@ import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.input.key.Key
 import androidx.compose.ui.platform.LocalFocusManager
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.Dp
+import androidx.compose.ui.unit.IntOffset
+import androidx.compose.ui.unit.IntRect
+import androidx.compose.ui.unit.IntSize
+import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.window.Popup
 import androidx.compose.ui.window.PopupProperties
+import androidx.compose.ui.window.PopupPositionProvider
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import kotlinx.coroutines.flow.Flow
 import me.him188.ani.app.data.models.preference.DarkMode
 import me.him188.ani.app.domain.media.player.MediaCacheProgressInfo
+import me.him188.ani.app.ui.foundation.SteppedSlider
 import me.him188.ani.app.ui.foundation.dialogs.PlatformPopupProperties
 import me.him188.ani.app.ui.foundation.effects.onKey
 import me.him188.ani.app.ui.foundation.ifThen
-import me.him188.ani.app.ui.foundation.SteppedSlider
-import me.him188.ani.app.ui.lang.*
 import me.him188.ani.app.ui.foundation.theme.AniTheme
 import me.him188.ani.app.ui.foundation.theme.slightlyWeaken
 import me.him188.ani.app.ui.foundation.theme.stronglyWeaken
+import me.him188.ani.app.ui.lang.Lang
+import me.him188.ani.app.ui.lang.video_player_cancel
+import me.him188.ani.app.ui.lang.video_player_danmaku_placeholder_1
+import me.him188.ani.app.ui.lang.video_player_danmaku_placeholder_10
+import me.him188.ani.app.ui.lang.video_player_danmaku_placeholder_11
+import me.him188.ani.app.ui.lang.video_player_danmaku_placeholder_12
+import me.him188.ani.app.ui.lang.video_player_danmaku_placeholder_13
+import me.him188.ani.app.ui.lang.video_player_danmaku_placeholder_14
+import me.him188.ani.app.ui.lang.video_player_danmaku_placeholder_15
+import me.him188.ani.app.ui.lang.video_player_danmaku_placeholder_16
+import me.him188.ani.app.ui.lang.video_player_danmaku_placeholder_17
+import me.him188.ani.app.ui.lang.video_player_danmaku_placeholder_18
+import me.him188.ani.app.ui.lang.video_player_danmaku_placeholder_19
+import me.him188.ani.app.ui.lang.video_player_danmaku_placeholder_2
+import me.him188.ani.app.ui.lang.video_player_danmaku_placeholder_20
+import me.him188.ani.app.ui.lang.video_player_danmaku_placeholder_3
+import me.him188.ani.app.ui.lang.video_player_danmaku_placeholder_4
+import me.him188.ani.app.ui.lang.video_player_danmaku_placeholder_5
+import me.him188.ani.app.ui.lang.video_player_danmaku_placeholder_6
+import me.him188.ani.app.ui.lang.video_player_danmaku_placeholder_7
+import me.him188.ani.app.ui.lang.video_player_danmaku_placeholder_8
+import me.him188.ani.app.ui.lang.video_player_danmaku_placeholder_9
+import me.him188.ani.app.ui.lang.video_player_disable_danmaku
+import me.him188.ani.app.ui.lang.video_player_enable_danmaku
+import me.him188.ani.app.ui.lang.video_player_enter_picture_in_picture
+import me.him188.ani.app.ui.lang.video_player_mute
+import me.him188.ani.app.ui.lang.video_player_next_episode
+import me.him188.ani.app.ui.lang.video_player_pause
+import me.him188.ani.app.ui.lang.video_player_play
+import me.him188.ani.app.ui.lang.video_player_select_episode
+import me.him188.ani.app.ui.lang.video_player_send
+import me.him188.ani.app.ui.lang.video_player_skip_op_ed
+import me.him188.ani.app.ui.lang.video_player_speed
+import me.him188.ani.app.ui.lang.video_player_volume
+import me.him188.ani.app.utils.formatSpeedValue
 import me.him188.ani.app.videoplayer.ui.PlaybackSpeedControllerState
 import me.him188.ani.app.videoplayer.ui.PlayerControllerState
+import me.him188.ani.app.videoplayer.ui.PlayerFullscreenState
 import me.him188.ani.app.videoplayer.ui.VideoAspectRatioControllerState
 import me.him188.ani.app.videoplayer.ui.keepLayoutWhenHidden
 import me.him188.ani.app.videoplayer.ui.renderAspectRatioMode
+import me.him188.ani.app.videoplayer.ui.toggle
 import me.him188.ani.app.videoplayer.ui.top.needWorkaroundForFocusManager
-import me.him188.ani.app.utils.formatSpeedValue
+import org.jetbrains.compose.resources.stringResource
 import kotlin.math.roundToInt
-import org.jetbrains.compose.resources.*
 
 const val TAG_SELECT_EPISODE_ICON_BUTTON = "SelectEpisodeIconButton"
 const val TAG_SPEED_SWITCHER_TEXT_BUTTON = "SpeedSwitcherTextButton"
@@ -121,8 +162,11 @@ const val TAG_SPEED_SWITCHER_DROPDOWN_MENU = "SpeedSwitcherDropdownMenu"
 const val TAG_SPEED_SWITCHER_SLIDER = "SpeedSwitcherSlider"
 const val TAG_SPEED_SWITCHER_VALUE_INDICATOR = "SpeedSwitcherValueIndicator"
 const val TAG_DANMAKU_ICON_BUTTON = "DanmakuIconButton"
+const val TAG_PICTURE_IN_PICTURE_BUTTON = "PictureInPictureButton"
 const val TAG_VIDEO_ASPECT_RATIO_SELECTOR_TEXT_BUTTON = "VideoAspectRatioTextButton"
 const val TAG_VIDEO_ASPECT_RATIO_SELECTOR_DROPDOWN_MENU = "VideoAspectRatioDropdownMenu"
+
+const val TAG_FULL_SCREEN_BUTTON = "FullScreenButton"
 
 @Stable
 object PlayerControllerDefaults {
@@ -140,9 +184,9 @@ object PlayerControllerDefaults {
             modifier,
         ) {
             if (isPlaying()) {
-                Icon(Icons.Rounded.Pause, contentDescription = "Pause", Modifier.size(36.dp))
+                Icon(Icons.Rounded.Pause, contentDescription = stringResource(Lang.video_player_pause), Modifier.size(36.dp))
             } else {
-                Icon(Icons.Rounded.PlayArrow, contentDescription = "Play", Modifier.size(36.dp))
+                Icon(Icons.Rounded.PlayArrow, contentDescription = stringResource(Lang.video_player_play), Modifier.size(36.dp))
             }
         }
     }
@@ -165,6 +209,27 @@ object PlayerControllerDefaults {
             } else {
                 Icon(Icons.Rounded.SubtitlesOff, contentDescription = stringResource(Lang.video_player_enable_danmaku))
             }
+        }
+    }
+
+    /**
+     * 进入系统画中画小窗. 仅移动端显示; 不支持的平台由调用方隐藏.
+     */
+    @Composable
+    fun PictureInPictureIcon(
+        enabled: Boolean,
+        onClick: () -> Unit,
+        modifier: Modifier = Modifier,
+    ) {
+        IconButton(
+            onClick = onClick,
+            enabled = enabled,
+            modifier = modifier.testTag(TAG_PICTURE_IN_PICTURE_BUTTON),
+        ) {
+            Icon(
+                Icons.Rounded.PictureInPicture,
+                contentDescription = stringResource(Lang.video_player_enter_picture_in_picture),
+            )
         }
     }
 
@@ -438,7 +503,13 @@ object PlayerControllerDefaults {
                     singleLine = singleLine,
                     visualTransformation = VisualTransformation.None,
                     interactionSource = interactionSource,
-                    contentPadding = PaddingValues(vertical = 7.dp, horizontal = 16.dp),
+                    contentPadding = PaddingValues(
+                        // 有 leadingIcon 时它自带 48dp 的最小宽度, 文字前不再留 16dp
+                        start = if (leadingIcon != null) 4.dp else 16.dp,
+                        end = 16.dp,
+                        top = 7.dp,
+                        bottom = 7.dp,
+                    ),
                     colors = colors,
                     placeholder = {
                         Row(
@@ -468,24 +539,26 @@ object PlayerControllerDefaults {
     }
 
     /**
-     * To enter/exit fullscreen
+     * To enter/exit fullscreen.
+     *
+     * 图标方向和点击行为都取自同一个 [fullscreenState], 不可能对不上.
      */
     @Composable
     fun FullscreenIcon(
-        isFullscreen: Boolean,
-        onClickFullscreen: () -> Unit,
+        fullscreenState: PlayerFullscreenState,
         modifier: Modifier = Modifier,
     ) {
+        val isFullscreen = fullscreenState.isFullscreen
         val focusManager by rememberUpdatedState(LocalFocusManager.current) // workaround for #288
         IconButton(
-            onClick = onClickFullscreen,
+            onClick = remember(fullscreenState) { { fullscreenState.toggle() } },
             modifier.ifThen(needWorkaroundForFocusManager) {
                 onFocusEvent {
                     if (it.hasFocus) {
                         focusManager.clearFocus()
                     }
                 }
-            },
+            }.testTag(TAG_FULL_SCREEN_BUTTON),
         ) {
             if (isFullscreen) {
                 Icon(Icons.Rounded.FullscreenExit, contentDescription = "Exit Fullscreen", Modifier.size(32.dp))
@@ -574,10 +647,7 @@ object PlayerControllerDefaults {
         onDismissRequest: () -> Unit,
     ) {
         Popup(
-            popupPositionProvider = TooltipDefaults.rememberTooltipPositionProvider(
-                positioning = TooltipAnchorPosition.Above,
-                spacingBetweenTooltipAndAnchor = 8.dp,
-            ),
+            popupPositionProvider = rememberAboveAnchorWithinWindowPositionProvider(spacing = 8.dp),
             onDismissRequest = onDismissRequest,
             properties = PlatformPopupProperties(focusable = true, clippingEnabled = false),
         ) {
@@ -607,6 +677,36 @@ object PlayerControllerDefaults {
                             .testTag(TAG_SPEED_SWITCHER_SLIDER)
                             .padding(horizontal = 12.dp, vertical = 4.dp),
                     )
+                }
+            }
+        }
+    }
+
+    /**
+     * 把弹层放在锚点上方并水平居中, 整体限制在窗口内; 上方放不下时放到锚点下方.
+     *
+     * Material 的 tooltip 定位不做水平限制: 全屏播放时倍速按钮靠近屏幕边缘, 居中的弹层会伸进刘海对侧的
+     * safe area, 离物理边缘只剩十几 dp, 滑块拖到末端时数值气泡还会被屏幕边缘裁掉.
+     *
+     * 这里的 [PopupPositionProvider.calculatePosition] 收到的窗口尺寸和锚点坐标在 iOS 和桌面端已经扣掉了
+     * 系统栏 (Popup 的 `usePlatformInsets`), 所以限制在窗口内就等于限制在 safe area 内, 不需要再读 insets.
+     */
+    @Composable
+    private fun rememberAboveAnchorWithinWindowPositionProvider(spacing: Dp): PopupPositionProvider {
+        val spacingPx = with(LocalDensity.current) { spacing.roundToPx() }
+        return remember(spacingPx) {
+            object : PopupPositionProvider {
+                override fun calculatePosition(
+                    anchorBounds: IntRect,
+                    windowSize: IntSize,
+                    layoutDirection: LayoutDirection,
+                    popupContentSize: IntSize,
+                ): IntOffset {
+                    val maxX = (windowSize.width - popupContentSize.width).coerceAtLeast(0)
+                    val x = (anchorBounds.left + (anchorBounds.width - popupContentSize.width) / 2).coerceIn(0, maxX)
+                    val above = anchorBounds.top - popupContentSize.height - spacingPx
+                    val y = if (above >= 0) above else anchorBounds.bottom + spacingPx
+                    return IntOffset(x, y)
                 }
             }
         }

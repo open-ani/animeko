@@ -35,6 +35,10 @@ data class AnitorrentConfig(
      * * Windows 计费 Wi-Fi
      */
     val limitUploadOnMeteredNetwork: Boolean = true,
+    /**
+     * 额外的 tracker 服务器, 每行一个. 将在 BT 下载开始前与内置 tracker 一起添加.
+     */
+    val extraTrackers: String = "",
     @Transient private val _placeholder: Int = 0,
 ) {
     companion object {

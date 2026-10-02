@@ -36,7 +36,7 @@ data class AniJoinWatchTogetherRoomRequest (
 
     @SerialName(value = "password") @Required val password: kotlin.String,
 
-    @SerialName(value = "following") val following: kotlin.Boolean? = true
+    @SerialName(value = "following") val following: kotlin.Boolean? = null
 
 ) {
 
@@ -45,3 +45,4 @@ data class AniJoinWatchTogetherRoomRequest (
 
 
 // @formatter:on
+

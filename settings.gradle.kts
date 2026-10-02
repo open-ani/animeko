@@ -85,6 +85,7 @@ includeProject(":utils:analytics")
 includeProject(":utils:http-downloader")
 includeProject(":utils:build-config")
 includeProject(":utils:video-enhancement-shader-provider")
+includeProject(":utils:selector-workflow") // 数据源选择流程示意动画的数据层
 
 
 includeProject(":torrent:torrent-api", "torrent/api") // Torrent 系统 API
@@ -93,22 +94,31 @@ includeProject(":torrent:anitorrent")
 includeProject(":torrent:pikpak") // PikPak 云离线下载后端
 
 includeProject(":app:shared")
+// TV child modules compile their parent's src/androidTv directories and depend on the shared KMP modules.
+includeProject(":app:shared:tv", "app/shared/shared-tv")
 includeProject(":app:shared:app-platform")
 includeProject(":app:shared:app-data")
 includeProject(":app:shared:app-data-aidl")
 includeProject(":app:shared:app-lang") // We have a separate module so that the project compiles faster
 includeProject(":app:shared:ui-foundation")
+includeProject(":app:shared:ui-foundation-tv", "app/shared/ui-foundation/tv")
 includeProject(":app:shared:ui-settings")
+includeProject(":app:shared:ui-settings-tv", "app/shared/ui-settings/tv")
 includeProject(":app:shared:ui-adaptive")
 includeProject(":app:shared:ui-subject")
-includeProject(":app:shared:ui-cache")
+includeProject(":app:shared:ui-subject-tv", "app/shared/ui-subject/tv")
+includeProject(":app:shared:ui-download")
 includeProject(":app:shared:ui-exploration")
+includeProject(":app:shared:ui-exploration-tv", "app/shared/ui-exploration/tv")
 includeProject(":app:shared:ui-comment")
 includeProject(":app:shared:ui-onboarding")
+includeProject(":app:shared:ui-onboarding-tv", "app/shared/ui-onboarding/tv")
 includeProject(":app:shared:ui-mediaselect")
 includeProject(":app:shared:ui-episode")
+includeProject(":app:shared:ui-episode-tv", "app/shared/ui-episode/tv")
 includeProject(":app:shared:ui-exprovider")
 includeProject(":app:shared:ui-watchtogether")
+includeProject(":app:shared:ui-watchtogether-tv", "app/shared/ui-watchtogether/tv")
 includeProject(":app:shared:video-player:video-player-api", "app/shared/video-player/api")
 includeProject(":app:shared:video-player:torrent-source")
 includeProject(":app:shared:video-player")
@@ -116,7 +126,6 @@ includeProject(":app:shared:application")
 
 includeProject(":app:shared:placeholder", "app/shared/thirdparty/placeholder")
 includeProject(":app:shared:paging-compose", "app/shared/thirdparty/paging-compose")
-includeProject(":app:shared:image-viewer", "app/shared/thirdparty/image-viewer")
 includeProject(":app:shared:reorderable", "app/shared/thirdparty/reorderable")
 
 includeProject(":app:desktop", "app/desktop") // desktop JVM client for macOS, Windows, and Linux

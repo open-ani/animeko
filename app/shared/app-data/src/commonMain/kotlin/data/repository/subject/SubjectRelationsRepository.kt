@@ -42,6 +42,7 @@ import me.him188.ani.utils.platform.collections.mapToIntArray
 import me.him188.ani.utils.platform.currentTimeMillis
 import kotlin.coroutines.CoroutineContext
 import kotlin.time.Duration
+import kotlin.time.Duration.Companion.days
 import kotlin.time.Duration.Companion.hours
 import kotlin.time.Duration.Companion.milliseconds
 
@@ -75,7 +76,8 @@ class DefaultSubjectRelationsRepository(
     private val aniSubjectRelationIndexService: AniSubjectRelationIndexService,
     defaultDispatcher: CoroutineContext = Dispatchers.Default,
     private val autoRefreshPeriod: Duration = 1.hours,
-    private val cacheExpiry: Duration = 1.hours,
+    // 角色与制作人员几乎不变, 过期时间不宜太短: 该接口曾占服务端出站流量的一半以上.
+    private val cacheExpiry: Duration = 3.days,
 ) : SubjectRelationsRepository(defaultDispatcher) {
     override fun subjectSequelSubjectIdsFlow(subjectId: Int): Flow<List<Int>> = flow {
         emit(

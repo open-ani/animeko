@@ -74,6 +74,33 @@ class EpisodePlayHistoryRepositoryTest {
     }
 
     @Test
+    fun `flowByEpisodeIds returns only requested active records`() = runTest {
+        val repository = createRepository()
+        repository.saveOrUpdate(episodeId = 1, positionMillis = 10, durationMillis = 100)
+        repository.saveOrUpdate(episodeId = 2, positionMillis = 20, durationMillis = 100)
+        repository.saveOrUpdate(episodeId = 3, positionMillis = 30, durationMillis = 100)
+        repository.remove(2)
+
+        assertEquals(listOf(1), repository.flowByEpisodeIds(listOf(1, 2)).first().map { it.episodeId })
+        assertEquals(listOf(3), repository.flowByEpisodeIds(listOf(3, 99)).first().map { it.episodeId })
+        assertEquals(emptyList(), repository.flowByEpisodeIds(emptyList()).first())
+    }
+
+    @Test
+    fun `allHistoriesFlowByEpisodeIds includes deleted records`() = runTest {
+        val repository = createRepository()
+        repository.saveOrUpdate(episodeId = 1, positionMillis = 10, durationMillis = 100, subjectName = "A")
+        repository.saveOrUpdate(episodeId = 2, positionMillis = 20, durationMillis = 100, subjectName = "B")
+        repository.remove(2)
+
+        val histories = repository.allHistoriesFlowByEpisodeIds(listOf(1, 2, 99)).first().associateBy { it.episodeId }
+        assertEquals(setOf(1, 2), histories.keys)
+        assertEquals("B", histories.getValue(2).subjectName)
+        assertTrue(histories.getValue(2).isDeleted)
+        assertEquals(emptyList(), repository.allHistoriesFlowByEpisodeIds(emptyList()).first())
+    }
+
+    @Test
     fun `successive saves keep only the latest pending op for each episode`() = runTest {
         val repository = createRepository()
 
@@ -129,7 +156,7 @@ class EpisodePlayHistoryRepositoryTest {
             ),
         )
 
-        assertEquals(20_000, repository.getPositionMillisByEpisodeId(1))
+        assertEquals(20_000, repository.getResumePositionMillisByEpisodeId(1))
 
         val history = repository.flow.first().single()
         assertEquals(1, history.episodeId)
@@ -143,6 +170,27 @@ class EpisodePlayHistoryRepositoryTest {
         assertEquals(20_000, pendingOp.positionMillis)
         assertEquals(100_000, pendingOp.durationMillis)
         assertEquals(50, pendingOp.updatedAtMillis)
+    }
+
+    @Test
+    fun `finished record is kept but not resumed`() = runTest {
+        val repository = createRepository()
+        repository.saveOrUpdate(
+            episodeId = 1,
+            positionMillis = 100_000 - EpisodeHistory.FINISHED_THRESHOLD_MILLIS + 1,
+            subjectId = 10,
+            durationMillis = 100_000,
+        )
+
+        val history = repository.flow.first().single()
+        assertTrue(history.isFinished)
+        assertEquals(100_000 - EpisodeHistory.FINISHED_THRESHOLD_MILLIS + 1, history.positionMillis)
+        assertNull(repository.getResumePositionMillisByEpisodeId(1))
+        assertTrue(repository.pendingOpsFlow.first().single() is PlaybackHistoryPendingOp.Upsert)
+
+        // 未看完则照常恢复
+        repository.saveOrUpdate(episodeId = 1, positionMillis = 100_000 - EpisodeHistory.FINISHED_THRESHOLD_MILLIS)
+        assertEquals(100_000 - EpisodeHistory.FINISHED_THRESHOLD_MILLIS, repository.getResumePositionMillisByEpisodeId(1))
     }
 
     @Test
@@ -163,7 +211,7 @@ class EpisodePlayHistoryRepositoryTest {
         assertEquals(1, tombstone.episodeId)
         assertEquals(200, tombstone.deletedAtMillis)
         assertFalse(tombstone.isDirty)
-        assertNull(repository.getPositionMillisByEpisodeId(1))
+        assertNull(repository.getResumePositionMillisByEpisodeId(1))
 
         val pendingOps = repository.pendingOpsFlow.first()
         assertEquals(1, pendingOps.size)

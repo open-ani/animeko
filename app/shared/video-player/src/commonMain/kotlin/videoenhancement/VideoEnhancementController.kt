@@ -13,12 +13,14 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
+import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.launchIn
 import kotlinx.coroutines.flow.onEach
+import me.him188.ani.app.data.models.preference.PlayerKernelConfig
 import org.openani.mediamp.MediampPlayer
 import kotlin.coroutines.CoroutineContext
 
@@ -38,6 +40,7 @@ interface VideoEnhancementController : AutoCloseable {
 
 expect fun createVideoEnhancementController(
     player: MediampPlayer,
+    playerKernelConfig: Flow<PlayerKernelConfig>,
     parentCoroutineContext: CoroutineContext,
 ): VideoEnhancementController?
 
@@ -46,7 +49,7 @@ internal abstract class BaseVideoEnhancementController(
     parentCoroutineContext: CoroutineContext,
 ) : VideoEnhancementController {
     private val controllerJob = SupervisorJob(parentCoroutineContext[Job])
-    private val scope = CoroutineScope(parentCoroutineContext + controllerJob + player.mainDispatcher)
+    protected val scope = CoroutineScope(parentCoroutineContext + controllerJob + player.mainDispatcher)
     private val mutableMode = MutableStateFlow(VideoEnhancementMode.OFF)
     private val viewportSize = MutableStateFlow<VideoDimensions?>(null)
 

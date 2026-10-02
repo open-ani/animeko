@@ -93,13 +93,13 @@ class MediaSelectorCachingEnabledTest {
     }
 
     @Test
-    fun `TRY-01 trySelectDefault 主分支选中偏好资源 - cachingEnabled=false`() =
+    fun `TRY-01 trySelectDefault 主分支选中偏好资源 - cachingEnabled 为 false`() =
         runSimpleMediaSelectorTestSuite(cachingEnabled = false) {
             checkTrySelectDefaultPicksPreferredResolution()
         }
 
     @Test
-    fun `TRY-01 trySelectDefault 主分支选中偏好资源 - cachingEnabled=true`() =
+    fun `TRY-01 trySelectDefault 主分支选中偏好资源 - cachingEnabled 为 true`() =
         runSimpleMediaSelectorTestSuite(cachingEnabled = true) {
             checkTrySelectDefaultPicksPreferredResolution()
         }
@@ -128,13 +128,13 @@ class MediaSelectorCachingEnabledTest {
     }
 
     @Test
-    fun `PF-02 preferredCandidates 按用户偏好过滤而 filteredCandidates 不过滤 - cachingEnabled=false`() =
+    fun `PF-02 preferredCandidates 按用户偏好过滤而 filteredCandidates 不过滤 - cachingEnabled 为 false`() =
         runSimpleMediaSelectorTestSuite(cachingEnabled = false) {
             checkPreferredCandidatesFilteredByUserPreference()
         }
 
     @Test
-    fun `PF-02 preferredCandidates 按用户偏好过滤而 filteredCandidates 不过滤 - cachingEnabled=true`() =
+    fun `PF-02 preferredCandidates 按用户偏好过滤而 filteredCandidates 不过滤 - cachingEnabled 为 true`() =
         runSimpleMediaSelectorTestSuite(cachingEnabled = true) {
             checkPreferredCandidatesFilteredByUserPreference()
         }
@@ -179,13 +179,13 @@ class MediaSelectorCachingEnabledTest {
     }
 
     @Test
-    fun `INFRA-01 select 后候选流收敛到被选中的 media - cachingEnabled=false`() =
+    fun `INFRA-01 select 后候选流收敛到被选中的 media - cachingEnabled 为 false`() =
         runSimpleMediaSelectorTestSuite(cachingEnabled = false) {
             checkSelectConvergesToSelectedMedia()
         }
 
     @Test
-    fun `INFRA-01 select 后候选流收敛到被选中的 media - cachingEnabled=true`() =
+    fun `INFRA-01 select 后候选流收敛到被选中的 media - cachingEnabled 为 true`() =
         runSimpleMediaSelectorTestSuite(cachingEnabled = true) {
             checkSelectConvergesToSelectedMedia()
         }
@@ -281,13 +281,13 @@ class MediaSelectorCachingEnabledTest {
     }
 
     @Test
-    fun `SEL-05 select 广播的偏好载荷四字段来自 media - cachingEnabled=false`() =
+    fun `SEL-05 select 广播的偏好载荷四字段来自 media - cachingEnabled 为 false`() =
         runSimpleMediaSelectorTestSuite(cachingEnabled = false) {
             checkSelectBroadcastsEventsAndPayload()
         }
 
     @Test
-    fun `SEL-05 select 广播的偏好载荷四字段来自 media - cachingEnabled=true`() =
+    fun `SEL-05 select 广播的偏好载荷四字段来自 media - cachingEnabled 为 true`() =
         runSimpleMediaSelectorTestSuite(cachingEnabled = true) {
             checkSelectBroadcastsEventsAndPayload()
         }
@@ -330,13 +330,13 @@ class MediaSelectorCachingEnabledTest {
     }
 
     @Test
-    fun `FAST-02 tier0 源被秒选并结束编排 - cachingEnabled=false`() =
+    fun `FAST-02 tier0 源被秒选并结束编排 - cachingEnabled 为 false`() =
         runFetchMediaSelectorTestSuite(cachingEnabled = false) {
             checkTier0SourceIsInstantlySelected()
         }
 
     @Test
-    fun `FAST-02 tier0 源被秒选并结束编排 - cachingEnabled=true`() =
+    fun `FAST-02 tier0 源被秒选并结束编排 - cachingEnabled 为 true`() =
         runFetchMediaSelectorTestSuite(cachingEnabled = true) {
             checkTier0SourceIsInstantlySelected()
         }

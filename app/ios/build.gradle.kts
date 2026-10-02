@@ -342,9 +342,9 @@ tasks.register("launchAppOnSimulator", Exec::class) {
 }
 
 // ── 注入版本号到 Info.plist ──
-// 从 Gradle 属性 version.name 和 android.version.code 读取版本信息,
-// 使用正则替换模板文件中的 CFBundleShortVersionString 和 CFBundleVersion,
-// 确保 iOS 应用的版本号与 Android 端保持一致。
+// 从 Gradle 属性 version.name 和 ios.version.code 读取版本信息,
+// 使用正则替换模板文件中的 CFBundleShortVersionString 和 CFBundleVersion.
+// ios.version.code 由 CI 从 release tag 计算, 见 ReleaseArtifactNames.iosBundleVersionFromTag.
 val patchInfoPlist = tasks.register("patchInfoPlist", Task::class) {
     group = "run"
     description = "Patches Info.plist"

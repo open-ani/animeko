@@ -25,7 +25,13 @@ kotlin {
 
     sourceSets.getByName("jvmMain") {
         dependencies {
-            implementation(kotlin("test-junit5", libs.versions.kotlin.get()))
+            // 不要直接用 kotlin("test-junit5"): AS sync 解析不了它的重定向别名 (kotlin-test 组件的 framework capability 变体).
+            implementation(kotlin("test", libs.versions.kotlin.get())) {
+                capabilities {
+                    requireCapability("org.jetbrains.kotlin:kotlin-test-framework-junit5")
+                }
+            }
+            implementation(libs.junit5.jupiter.api)
         }
     }
 }

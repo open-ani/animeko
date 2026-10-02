@@ -609,6 +609,198 @@ public class GenBBSpacesTest : BBCodeParserTestHelper() {
     }
 
     @Test
+    public fun parse1038614614() {
+        BBCode.parse("[center]Hello World![/center]")
+        .run {
+            assertText(elements.at(0), value="Hello World!", align=RichElement.Text.Align.CENTER)
+        }
+    }
+
+    @Test
+    public fun parse2146736551() {
+        BBCode.parse("[center][/center]")
+        .run {
+            kotlin.test.assertEquals(0, elements.size)
+        }
+    }
+
+    @Test
+    public fun parse440500865() {
+        BBCode.parse("[center] [/center]")
+        .run {
+            assertText(elements.at(0), value=" ", align=RichElement.Text.Align.CENTER)
+        }
+    }
+
+    @Test
+    public fun parse455848923() {
+        BBCode.parse("[center] /[][/]Hello [/center]")
+        .run {
+            assertText(elements.at(0), value=" /[][/]Hello ", align=RichElement.Text.Align.CENTER)
+        }
+    }
+
+    @Test
+    public fun parse554139562() {
+        BBCode.parse("[CENTER]Hello World![/CENTER]")
+        .run {
+            assertText(elements.at(0), value="Hello World!", align=RichElement.Text.Align.CENTER)
+        }
+    }
+
+    @Test
+    public fun parse1640883801() {
+        BBCode.parse("[CENTER][/CENTER]")
+        .run {
+            kotlin.test.assertEquals(0, elements.size)
+        }
+    }
+
+    @Test
+    public fun parse1076258175() {
+        BBCode.parse("[CENTER] [/CENTER]")
+        .run {
+            assertText(elements.at(0), value=" ", align=RichElement.Text.Align.CENTER)
+        }
+    }
+
+    @Test
+    public fun parse1773024293() {
+        BBCode.parse("[CENTER] /[][/]Hello [/CENTER]")
+        .run {
+            assertText(elements.at(0), value=" /[][/]Hello ", align=RichElement.Text.Align.CENTER)
+        }
+    }
+
+    @Test
+    public fun parse77622314() {
+        BBCode.parse("[left]Hello World![/left]")
+        .run {
+            assertText(elements.at(0), value="Hello World!", align=RichElement.Text.Align.LEFT)
+        }
+    }
+
+    @Test
+    public fun parse721321063() {
+        BBCode.parse("[left][/left]")
+        .run {
+            kotlin.test.assertEquals(0, elements.size)
+        }
+    }
+
+    @Test
+    public fun parse204977891() {
+        BBCode.parse("[left] [/left]")
+        .run {
+            assertText(elements.at(0), value=" ", align=RichElement.Text.Align.LEFT)
+        }
+    }
+
+    @Test
+    public fun parse128400393() {
+        BBCode.parse("[left] /[][/]Hello [/left]")
+        .run {
+            assertText(elements.at(0), value=" /[][/]Hello ", align=RichElement.Text.Align.LEFT)
+        }
+    }
+
+    @Test
+    public fun parse661427158() {
+        BBCode.parse("[LEFT]Hello World![/LEFT]")
+        .run {
+            assertText(elements.at(0), value="Hello World!", align=RichElement.Text.Align.LEFT)
+        }
+    }
+
+    @Test
+    public fun parse2069529497() {
+        BBCode.parse("[LEFT][/LEFT]")
+        .run {
+            kotlin.test.assertEquals(0, elements.size)
+        }
+    }
+
+    @Test
+    public fun parse94132509() {
+        BBCode.parse("[LEFT] [/LEFT]")
+        .run {
+            assertText(elements.at(0), value=" ", align=RichElement.Text.Align.LEFT)
+        }
+    }
+
+    @Test
+    public fun parse647965705() {
+        BBCode.parse("[LEFT] /[][/]Hello [/LEFT]")
+        .run {
+            assertText(elements.at(0), value=" /[][/]Hello ", align=RichElement.Text.Align.LEFT)
+        }
+    }
+
+    @Test
+    public fun parse605006574() {
+        BBCode.parse("[right]Hello World![/right]")
+        .run {
+            assertText(elements.at(0), value="Hello World!", align=RichElement.Text.Align.RIGHT)
+        }
+    }
+
+    @Test
+    public fun parse388609071() {
+        BBCode.parse("[right][/right]")
+        .run {
+            kotlin.test.assertEquals(0, elements.size)
+        }
+    }
+
+    @Test
+    public fun parse404159417() {
+        BBCode.parse("[right] [/right]")
+        .run {
+            assertText(elements.at(0), value=" ", align=RichElement.Text.Align.RIGHT)
+        }
+    }
+
+    @Test
+    public fun parse660384353() {
+        BBCode.parse("[right] /[][/]Hello [/right]")
+        .run {
+            assertText(elements.at(0), value=" /[][/]Hello ", align=RichElement.Text.Align.RIGHT)
+        }
+    }
+
+    @Test
+    public fun parse1823325394() {
+        BBCode.parse("[RIGHT]Hello World![/RIGHT]")
+        .run {
+            assertText(elements.at(0), value="Hello World!", align=RichElement.Text.Align.RIGHT)
+        }
+    }
+
+    @Test
+    public fun parse2007624687() {
+        BBCode.parse("[RIGHT][/RIGHT]")
+        .run {
+            kotlin.test.assertEquals(0, elements.size)
+        }
+    }
+
+    @Test
+    public fun parse89628601() {
+        BBCode.parse("[RIGHT] [/RIGHT]")
+        .run {
+            assertText(elements.at(0), value=" ", align=RichElement.Text.Align.RIGHT)
+        }
+    }
+
+    @Test
+    public fun parse293918305() {
+        BBCode.parse("[RIGHT] /[][/]Hello [/RIGHT]")
+        .run {
+            assertText(elements.at(0), value=" /[][/]Hello ", align=RichElement.Text.Align.RIGHT)
+        }
+    }
+
+    @Test
     public fun parse1308903400() {
         BBCode.parse("[img=300,200]Hello World![/img=300,200]")
         .run {

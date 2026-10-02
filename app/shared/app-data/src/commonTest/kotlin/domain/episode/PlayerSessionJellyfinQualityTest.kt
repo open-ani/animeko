@@ -42,6 +42,7 @@ import kotlinx.serialization.json.jsonPrimitive
 import me.him188.ani.app.data.models.preference.VideoScaffoldConfig
 import me.him188.ani.app.data.repository.player.JellyfinPlaybackQualityRepository
 import me.him188.ani.app.domain.media.TestMediaList
+import me.him188.ani.app.domain.media.hls.HlsPlaybackOptions
 import me.him188.ani.app.domain.media.hls.HlsPlaybackPreparer
 import me.him188.ani.app.domain.media.hls.HlsPlaybackPreparerResult
 import me.him188.ani.app.domain.media.hls.HlsPlaybackProxySession
@@ -97,7 +98,7 @@ class PlayerSessionJellyfinQualityTest {
             ): MediaDataProvider<*> = provider
         }
         val player = ResumeBeforeSeekPlayer(TestMediampPlayer(StandardTestDispatcher(testScheduler)))
-        val session = PlayerSession(player, koin(resolver), EmptyCoroutineContext)
+        val session = PlayerSession(player, koin(resolver), backgroundScope, mainDispatcher = EmptyCoroutineContext)
         val loading = async {
             session.loadMedia(TestMediaList.first(), episodeMetadata(1))
         }
@@ -188,6 +189,7 @@ class PlayerSessionJellyfinQualityTest {
         val session = PlayerSession(
             player = player,
             koin = koin(provider),
+            backgroundScope = backgroundScope,
             mainDispatcher = EmptyCoroutineContext,
         )
 
@@ -276,7 +278,12 @@ class PlayerSessionJellyfinQualityTest {
         )
         val backingPlayer = TestMediampPlayer(StandardTestDispatcher(testScheduler))
         val player = ResumeBeforeSeekPlayer(backingPlayer)
-        val session = PlayerSession(player, koin(provider.mediaDataProvider), EmptyCoroutineContext)
+        val session = PlayerSession(
+            player,
+            koin(provider.mediaDataProvider),
+            backgroundScope,
+            mainDispatcher = EmptyCoroutineContext,
+        )
 
         session.loadMedia(TestMediaList.first(), episodeMetadata(1))
         val result = session.reloadJellyfinPlaybackQuality(
@@ -325,7 +332,12 @@ class PlayerSessionJellyfinQualityTest {
         )
         val backingPlayer = TestMediampPlayer(StandardTestDispatcher(testScheduler))
         val player = ResumeBeforeSeekPlayer(backingPlayer, failOnMediaNumber = 2)
-        val session = PlayerSession(player, koin(provider.mediaDataProvider), EmptyCoroutineContext)
+        val session = PlayerSession(
+            player,
+            koin(provider.mediaDataProvider),
+            backgroundScope,
+            mainDispatcher = EmptyCoroutineContext,
+        )
 
         session.loadMedia(TestMediaList.first(), episodeMetadata(1))
         val result = session.reloadJellyfinPlaybackQuality(
@@ -398,7 +410,7 @@ class PlayerSessionJellyfinQualityTest {
         )
         val backingPlayer = TestMediampPlayer(StandardTestDispatcher(testScheduler))
         val player = ResumeBeforeSeekPlayer(backingPlayer)
-        val session = PlayerSession(player, koin(resolver), EmptyCoroutineContext)
+        val session = PlayerSession(player, koin(resolver), backgroundScope, mainDispatcher = EmptyCoroutineContext)
 
         session.loadMedia(oldMedia, episodeMetadata(1))
         val switching = async {
@@ -464,7 +476,12 @@ class PlayerSessionJellyfinQualityTest {
             quality = JellyfinPlaybackQuality.fixed(8_000_000),
         )
         val player = ResumeBeforeSeekPlayer(TestMediampPlayer(StandardTestDispatcher(testScheduler)))
-        val session = PlayerSession(player, koin(provider.mediaDataProvider), EmptyCoroutineContext)
+        val session = PlayerSession(
+            player,
+            koin(provider.mediaDataProvider),
+            backgroundScope,
+            mainDispatcher = EmptyCoroutineContext,
+        )
 
         session.loadMedia(TestMediaList.first(), episodeMetadata(1))
         session.stopPlayback()
@@ -498,7 +515,12 @@ class PlayerSessionJellyfinQualityTest {
             quality = JellyfinPlaybackQuality.fixed(8_000_000),
         )
         val player = ResumeBeforeSeekPlayer(TestMediampPlayer(StandardTestDispatcher(testScheduler)))
-        val session = PlayerSession(player, koin(provider.mediaDataProvider), EmptyCoroutineContext)
+        val session = PlayerSession(
+            player,
+            koin(provider.mediaDataProvider),
+            backgroundScope,
+            mainDispatcher = EmptyCoroutineContext,
+        )
 
         session.loadMedia(TestMediaList.first(), episodeMetadata(1))
         val stopping = async { session.stopPlayback() }
@@ -546,19 +568,21 @@ class PlayerSessionJellyfinQualityTest {
                 hlsPlaybackPreparer = hlsPreparer,
                 hlsEnabled = true,
             ),
-            EmptyCoroutineContext,
+            backgroundScope,
+            mainDispatcher = EmptyCoroutineContext,
         )
 
         session.loadMedia(TestMediaList.first(), episodeMetadata(1))
         val result = session.reloadJellyfinPlaybackQuality(
             JellyfinPlaybackQuality.fixed(4_000_000),
-            startPositionMillis = 0L,
+            startPositionMillis = 42_000L,
         )
 
         assertTrue(result.isSuccess)
         assertEquals(JellyfinPlaybackQuality.fixed(4_000_000), provider.qualityRepository.quality)
         assertEquals(listOf("transcode-1"), stoppedSessions)
         assertEquals(1, hlsPreparer.sessions.first().closeAttempts)
+        assertEquals(listOf(null, 42_000L), hlsPreparer.startPositionHints)
         assertEquals(
             listOf(
                 "$TEST_BASE_URL/Videos/episode-1/stream-1.m3u8?api_key=test-api-key",
@@ -629,7 +653,7 @@ class PlayerSessionJellyfinQualityTest {
                             GetVideoScaffoldConfigUseCase {
                                 flowOf(
                                     VideoScaffoldConfig.AllDisabled.copy(
-                                        enableExperimentalHlsSegmentFiltering = hlsEnabled,
+                                        enableHlsAdFiltering = hlsEnabled,
                                     ),
                                 )
                             }
@@ -715,7 +739,14 @@ class PlayerSessionJellyfinQualityTest {
     private class ThrowingFirstCloseHlsPlaybackPreparer : HlsPlaybackPreparer {
         val sessions = mutableListOf<ThrowingHlsPlaybackProxySession>()
 
-        override suspend fun prepare(data: UriMediaData): HlsPlaybackPreparerResult {
+        val startPositionHints = mutableListOf<Long?>()
+
+        override suspend fun prepare(
+            data: UriMediaData,
+            options: HlsPlaybackOptions,
+            startPositionHintMillis: Long?,
+        ): HlsPlaybackPreparerResult {
+            startPositionHints += startPositionHintMillis
             val session = ThrowingHlsPlaybackProxySession(throwOnClose = sessions.isEmpty())
             sessions += session
             return HlsPlaybackPreparerResult(data, session)

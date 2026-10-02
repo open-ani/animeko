@@ -102,6 +102,7 @@ fun HttpClientProvider.get(
     distroChannel: String? = currentAniBuildConfig.distroChannel,
     cookieJar: WebSourceCookieJar? = null,
     identityRegistry: WebSourceIdentityRegistry? = null,
+    maxRequestsPerHost: Int? = null,
 ): ScopedHttpClient = get(
     buildSet {
         add(UserAgentFeature.withValue(userAgent))
@@ -113,6 +114,7 @@ fun HttpClientProvider.get(
         add(DistributionChannelFeature.withValue { distroChannel })
         if (cookieJar != null) add(CookieJarFeature.withValue(cookieJar))
         if (identityRegistry != null) add(WebSourceIdentityFeature.withValue(identityRegistry))
+        if (maxRequestsPerHost != null) add(MaxRequestsPerHostFeature.withValue(maxRequestsPerHost))
     },
 )
 
@@ -128,7 +130,7 @@ fun HttpClientProvider.get(
 class DefaultHttpClientProvider(
     private val proxyProvider: ProxyProvider,
     private val backgroundScope: CoroutineScope,
-    featureHandlers: List<ScopedHttpClientFeatureHandler<*>> = listOf(UserAgentFeatureHandler),
+    featureHandlers: List<ScopedHttpClientFeatureHandler<*>> = listOf(UserAgentFeatureHandler, MaxRequestsPerHostFeatureHandler),
 ) : HttpClientProvider() {
     // must have stable `equals`
     private data class Matrix(
@@ -170,7 +172,10 @@ class DefaultHttpClientProvider(
         features: Set<ScopedHttpClientFeatureKeyValue<*>>,
         proxyConfig: ProxyConfig?,
     ): HttpClient {
-        return createDefaultHttpClient {
+        val requestedUserAgent = features.firstOrNull { it.key == UserAgentFeature }?.value
+        // NONE 是给自带协议处理的 SDK 用的一档: 它自己设 User-Agent、自己解析 JSON、自己重试.
+        // 走 provider 而不是让 SDK 自建客户端, 是为了保住代理配置和请求日志.
+        return createDefaultHttpClient(bare = requestedUserAgent == ScopedHttpClientUserAgent.NONE) {
             for (feature in features) {
                 val handler = featureHandlers[feature.key]
                     ?: error("No handler for feature ${feature.key}")

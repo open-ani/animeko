@@ -161,7 +161,7 @@ class MediaPreferenceCrossSessionTest {
      * 即生产默认走 `enableCaching = true` 的缓存路径. 这里把会话 B 在生产默认配置下再跑一遍.
      */
     @Test
-    fun `A11 会话B在生产默认 enableCaching=true 下同样读回存档并按四字段过滤`() = runTest {
+    fun `A11 会话B在生产默认 enableCaching 为 true 下同样读回存档并按四字段过滤`() = runTest {
         val store = createTestPreferencesDataStore()
         val suite = SimpleMediaSelectorTestSuite(this)
         suite.initSubject("孤独摇滚")

@@ -9,6 +9,8 @@
 
 package me.him188.ani.app.domain.settings
 
+import io.ktor.client.request.get
+import io.ktor.http.appendPathSegments
 import io.ktor.http.isSuccess
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -23,12 +25,12 @@ import kotlinx.coroutines.flow.shareIn
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
+import me.him188.ani.app.domain.foundation.ServerListFeatureConfig
 import me.him188.ani.app.domain.settings.ServiceConnectionTester.Service
-import me.him188.ani.client.apis.TrendsAniApi
 import me.him188.ani.datasources.api.source.ConnectionStatus
 import me.him188.ani.datasources.bangumi.BangumiClient
 import me.him188.ani.utils.coroutines.SingleTaskExecutor
-import me.him188.ani.utils.ktor.ApiInvoker
+import me.him188.ani.utils.ktor.ScopedHttpClient
 import kotlin.coroutines.CoroutineContext
 import kotlin.coroutines.cancellation.CancellationException
 import kotlin.time.Duration
@@ -201,7 +203,7 @@ object ServiceConnectionTesters {
 
     fun createDefault(
         bangumiClient: BangumiClient,
-        aniClient: ApiInvoker<TrendsAniApi>,
+        aniClient: ScopedHttpClient,
         serviceIds: Set<String> = DefaultServiceIds,
         defaultDispatcher: CoroutineContext = Dispatchers.Default,
     ): ServiceConnectionTester {
@@ -216,8 +218,11 @@ object ServiceConnectionTesters {
                 Service(ID_ANI) {
                     runCatching {
                         // Note, we may have `expectSuccess = true` so on failure it will throw an exception.
-                        aniClient.invoke {
-                            getTrends().response.status.isSuccess()
+                        aniClient.use {
+                            // 与 ServerSelector 一致, 用轻量的 /status 探活, 避免请求业务接口浪费服务器资源
+                            get(ServerListFeatureConfig.MAGIC_ANI_SERVER) {
+                                url { appendPathSegments("status") }
+                            }.status.isSuccess()
                         }
                     }.getOrElse { false }
                 },
