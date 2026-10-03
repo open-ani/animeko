@@ -40,7 +40,7 @@ class PlayerScreenshotPanelLayoutTest {
     )
 
     @Test
-    fun `landscape layouts dock at bottom left, portrait at bottom right`() {
+    fun `landscape layouts dock at bottom left and portrait at bottom right`() {
         assertEquals(PlayerScreenshotPanelCorner.BottomLeft, playerScreenshotPanelCorner(800, 450))
         assertEquals(PlayerScreenshotPanelCorner.BottomLeft, playerScreenshotPanelCorner(500, 500))
         assertEquals(PlayerScreenshotPanelCorner.BottomRight, playerScreenshotPanelCorner(450, 800))
