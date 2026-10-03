@@ -44,14 +44,16 @@
 
 ## 桌面的系统分享
 
-`SystemShareSheet` (app-platform, desktopMain) 封装两个平台的系统分享面板, 通过 JNA 调用, 不需要额外的原生库:
+`SystemShareSheet` (app-platform, desktopMain) 封装两个平台的系统分享面板:
 
-- Windows (`WindowsShareSheet`): WinRT `DataTransferManager`. 用 `IDataTransferManagerInterop` 取得窗口 (HWND) 对应的管理器,
+- Windows (`WindowsShareSheet`): WinRT `DataTransferManager`, 通过 JNA 调用. 用 `IDataTransferManagerInterop` 取得窗口 (HWND) 对应的管理器,
   订阅 `DataRequested`, 再 `ShowShareUIForWindow`; 系统请求数据时把文件作为 StorageItem 和位图填进 `DataPackage`.
   所有 COM 调用在一个专用的 MTA 线程上进行, 事件处理器和装着文件的 `IIterable<IStorageItem>` 是用 JNA 回调拼成虚表的 Java 对象.
   接口 IID 与虚表顺序取自 Windows SDK 头文件, 不要凭记忆改.
-- macOS (`MacosShareSheet`): `NSSharingServicePicker`, 通过 Objective-C 运行时 (`objc_msgSend`) 创建, 用 `dispatch_async_f`
-  投递到主线程显示. 菜单从分享按钮的位置向上弹出: 面板把按钮在窗口中的矩形 (`DpRect`) 传下来, 实现按视图是否翻转换成 AppKit 坐标.
+- macOS (`MacosShareSheet`): `NSSharingServicePicker`, 由 `utils/macos-share` 模块的 JNI 库实现 (Objective-C++, 只在 macOS 主机上
+  用 clang 编成通用二进制, 作为资源装进 jar, 运行时解到临时目录加载; 其他主机上该 jar 不含 dylib, 分享退回 Finder 定位).
+  原生代码在主线程上创建并显示菜单: 菜单从分享按钮的位置向上弹出, 面板把按钮在窗口中的矩形 (`DpRect`) 传下来,
+  原生代码按视图是否翻转换成 AppKit 坐标.
 
 分享按钮的位置由 `PlayerScreenshotOverlay` 在点击时读取 (`boundsInWindow`), 经 `PlayerScreenshotSharer.share(screenshot, anchor)` 传给平台实现;
 Android 与 Windows 的面板由系统定位, 忽略它.
