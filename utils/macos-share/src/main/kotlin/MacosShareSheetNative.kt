@@ -16,8 +16,9 @@ import kotlin.io.path.outputStream
 /**
  * macOS 系统分享菜单 (`NSSharingServicePicker`) 的 JNI 入口.
  *
- * 原生库 `libanimeko_macos_share.dylib` 作为资源装在本模块的 jar 里, 只有在 macOS 主机上构建时才存在 ([isAvailable]);
- * 首次使用时解到临时目录加载. 只在 macOS 上有意义.
+ * 原生库 `libanimeko_macos_share.dylib` 作为资源装在本模块的 jar 里, 只有在 macOS 主机上构建时才存在 ([isAvailable]).
+ * 打包的应用里它被解到 jar 旁边的运行库目录 (`java.library.path`), `System.loadLibrary` 直接找到;
+ * 开发时 (gradlew run、测试) 首次使用从 jar 里解到临时目录加载. 只在 macOS 上有意义.
  */
 object MacosShareSheetNative {
     private const val LIBRARY_NAME = "animeko_macos_share"
@@ -39,7 +40,7 @@ object MacosShareSheetNative {
             System.loadLibrary(LIBRARY_NAME)
             return
         } catch (_: UnsatisfiedLinkError) {
-            // 不在 java.library.path 上: 从 jar 里解出来
+            // 没有打包 (开发时): 从 jar 里解出来
         }
         val resource = MacosShareSheetNative::class.java.classLoader.getResourceAsStream(RESOURCE_NAME)
             ?: throw UnsatisfiedLinkError("$RESOURCE_NAME is not on the classpath; this module was not built on macOS")

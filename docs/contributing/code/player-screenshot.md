@@ -51,7 +51,8 @@
   所有 COM 调用在一个专用的 MTA 线程上进行, 事件处理器和装着文件的 `IIterable<IStorageItem>` 是用 JNA 回调拼成虚表的 Java 对象.
   接口 IID 与虚表顺序取自 Windows SDK 头文件, 不要凭记忆改.
 - macOS (`MacosShareSheet`): `NSSharingServicePicker`, 由 `utils/macos-share` 模块的 JNI 库实现 (Objective-C++, 只在 macOS 主机上
-  用 clang 编成通用二进制, 作为资源装进 jar, 运行时解到临时目录加载; 其他主机上该 jar 不含 dylib, 分享退回 Finder 定位).
+  用 clang 编成通用二进制, 作为资源装进 jar; 打包时 `unpackComposeDesktopNativeLibraries` 把它解到运行库目录, 开发时解到临时目录加载;
+  其他主机上该 jar 不含 dylib, 分享退回 Finder 定位).
   原生代码在主线程上创建并显示菜单: 菜单从分享按钮的位置向上弹出, 面板把按钮在窗口中的矩形 (`DpRect`) 传下来,
   原生代码按视图是否翻转换成 AppKit 坐标.
 

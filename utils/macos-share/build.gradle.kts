@@ -17,9 +17,9 @@ plugins {
 // macOS 系统分享菜单 (NSSharingServicePicker) 的 JNI 实现, 由 app-platform 的 MacosShareSheet 调用.
 //
 // src/main/objc 里的 Objective-C++ 只在 macOS 主机上编译: 用 Xcode 的 clang 编成同时含 arm64 与 x86_64 的 dylib,
-// 作为资源装进本模块的 jar, 运行时 MacosShareSheetNative 从 classpath 解出来加载; gradlew run / desktopTest / 打包
-// 走同一条加载路径. 其他主机上本模块只产出不含 dylib 的 jar, MacosShareSheetNative.isAvailable 为 false,
-// 分享退回到在 Finder 中定位文件.
+// 作为资源装进本模块的 jar. 打包时 app/desktop 的 unpackComposeDesktopNativeLibraries 把它从 jar 里解到运行库目录
+// (与 onnxruntime、mediamp 的原生库一样), 开发时 (gradlew run、测试) MacosShareSheetNative 从 classpath 解到临时目录加载.
+// 其他主机上本模块只产出不含 dylib 的 jar, MacosShareSheetNative.isAvailable 为 false, 分享退回到在 Finder 中定位文件.
 val isMacosHost = getOs() == Os.MacOS
 
 abstract class CompileMacosShareNative @Inject constructor(
