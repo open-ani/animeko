@@ -77,3 +77,9 @@ dependencies {
 tasks.test {
     useJUnitPlatform()
 }
+
+// CI 的桌面测试步骤跑的是 desktopTest; 这是纯 JVM 模块, 用别名让加载测试在 macOS 的 CI 上也跑到
+tasks.register("desktopTest") {
+    group = "verification"
+    dependsOn(tasks.test)
+}
