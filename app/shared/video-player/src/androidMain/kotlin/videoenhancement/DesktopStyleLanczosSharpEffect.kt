@@ -13,6 +13,8 @@ package me.him188.ani.app.videoplayer.videoenhancement
 
 import android.content.Context
 import android.opengl.GLES20
+import androidx.media3.common.GlObjectsProvider
+import androidx.media3.common.GlTextureInfo
 import androidx.media3.common.VideoFrameProcessingException
 import androidx.media3.common.util.GlProgram
 import androidx.media3.common.util.GlUtil
@@ -28,19 +30,24 @@ import kotlin.math.roundToInt
  *
  * It uses mpv's Jinc radius and sharp blur, sigmoid upscaling, and 0.7 anti-ringing while
  * avoiding a second full-size intermediate texture on mobile GPUs.
+ *
+ * The output is the input scaled to fit [viewportSize], or the input size while it is `null`.
+ * [viewportSize] may be updated from any thread while the effect is in use: the shader program
+ * resizes its output on the next frame. Replacing the effect through `ExoPlayer.setVideoEffects`
+ * to resize is unsafe, because Media3 blocks the playback thread when a second effect change
+ * arrives before the frames of the previous one are rendered.
  */
-internal class DesktopStyleLanczosSharpEffect(
-    private val viewportWidth: Int,
-    private val viewportHeight: Int,
-) : GlEffect {
+internal class DesktopStyleLanczosSharpEffect : GlEffect {
+    @Volatile
+    var viewportSize: VideoDimensions? = null
+
     override fun toGlShaderProgram(context: Context, useHdr: Boolean): GlShaderProgram =
-        DesktopStyleLanczosSharpShaderProgram(context, viewportWidth, viewportHeight)
+        DesktopStyleLanczosSharpShaderProgram(context) { viewportSize }
 }
 
 private class DesktopStyleLanczosSharpShaderProgram(
     context: Context,
-    private val viewportWidth: Int,
-    private val viewportHeight: Int,
+    private val viewportSize: () -> VideoDimensions?,
 ) : BaseGlShaderProgram(
     /* useHighPrecisionColorComponents = */ true,
     /* texturePoolCapacity = */ 1,
@@ -61,18 +68,33 @@ private class DesktopStyleLanczosSharpShaderProgram(
 
     private var inputWidth = 0
     private var inputHeight = 0
+    private var configuredViewport: VideoDimensions? = null
+
+    override fun queueInputFrame(
+        glObjectsProvider: GlObjectsProvider,
+        inputTexture: GlTextureInfo,
+        presentationTimeUs: Long,
+    ) {
+        if (viewportSize() != configuredViewport) {
+            // BaseGlShaderProgram calls configure() again once its output textures are deleted.
+            // A frame is only queued while the single output texture is free, so nothing
+            // downstream is using it.
+            try {
+                super.release()
+            } catch (e: VideoFrameProcessingException) {
+                onError(e)
+                return
+            }
+        }
+        super.queueInputFrame(glObjectsProvider, inputTexture, presentationTimeUs)
+    }
 
     override fun configure(inputWidth: Int, inputHeight: Int): Size {
         this.inputWidth = inputWidth
         this.inputHeight = inputHeight
-        val scale = minOf(
-            viewportWidth.toDouble() / inputWidth,
-            viewportHeight.toDouble() / inputHeight,
-        )
-        return Size(
-            (inputWidth * scale).roundToInt().coerceAtLeast(1),
-            (inputHeight * scale).roundToInt().coerceAtLeast(1),
-        )
+        val viewport = viewportSize()
+        configuredViewport = viewport
+        return lanczosSharpOutputSize(inputWidth, inputHeight, viewport)
     }
 
     override fun drawFrame(inputTexId: Int, presentationTimeUs: Long) {
@@ -101,6 +123,21 @@ private class DesktopStyleLanczosSharpShaderProgram(
     }
 }
 
+
+/**
+ * The size of [inputWidth] x [inputHeight] scaled to fit [viewport] while keeping its aspect ratio.
+ */
+internal fun lanczosSharpOutputSize(inputWidth: Int, inputHeight: Int, viewport: VideoDimensions?): Size {
+    if (viewport == null) return Size(inputWidth, inputHeight)
+    val scale = minOf(
+        viewport.width.toDouble() / inputWidth,
+        viewport.height.toDouble() / inputHeight,
+    )
+    return Size(
+        (inputWidth * scale).roundToInt().coerceAtLeast(1),
+        (inputHeight * scale).roundToInt().coerceAtLeast(1),
+    )
+}
 
 private class LanczosSharpShaderSources(context: Context) {
     val vertexShader = VideoEnhancementShaderProvider.getShaderSource(
