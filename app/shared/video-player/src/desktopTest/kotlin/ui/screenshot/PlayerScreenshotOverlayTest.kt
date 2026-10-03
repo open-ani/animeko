@@ -37,6 +37,9 @@ import kotlin.time.Duration.Companion.seconds
 class PlayerScreenshotOverlayTest {
     private val autoDismissDelay = 3.seconds
 
+    /** 画面到播放器区域边缘的距离: 面板边距 16dp 加 A 区域内留白 8dp. */
+    private val imageMargin = 24f
+
     private fun screenshot(width: Int = 160, height: Int = 90) =
         SavedPlayerScreenshot(ImageBitmap(width, height), "shot.png", "shot")
 
@@ -96,8 +99,8 @@ class PlayerScreenshotOverlayTest {
 
         advanceUntilDocked()
         val docked = onNodeWithTag(TAG_PLAYER_SCREENSHOT_THUMBNAIL).getBoundsInRoot()
-        assertEquals(16f, docked.left.value, 1f)
-        assertEquals(450f - 60f - 16f, docked.bottom.value, 1f)
+        assertEquals(imageMargin, docked.left.value, 1f)
+        assertEquals(450f - 60f - imageMargin, docked.bottom.value, 1f)
         // 播放器高度不足 480dp, 用紧凑的 88dp 缩略图
         assertEquals(88f, docked.height.value, 1f)
         onNodeWithTag(TAG_PLAYER_SCREENSHOT_SHARE).assertIsDisplayed().assertIsEnabled()
@@ -113,8 +116,8 @@ class PlayerScreenshotOverlayTest {
         advanceUntilDocked()
 
         val docked = onNodeWithTag(TAG_PLAYER_SCREENSHOT_THUMBNAIL).getBoundsInRoot()
-        assertEquals(400f - 16f, docked.right.value, 1f)
-        assertEquals(700f - 16f, docked.bottom.value, 1f)
+        assertEquals(400f - imageMargin, docked.right.value, 1f)
+        assertEquals(700f - imageMargin, docked.bottom.value, 1f)
         // 112dp 高的 16:9 缩略图宽 199 超过上限 400 * 0.4 = 160, 按上限缩小
         assertEquals(160f, docked.width.value, 1f)
     }
@@ -168,7 +171,7 @@ class PlayerScreenshotOverlayTest {
 
         advanceUntilDocked()
         val docked = onNodeWithTag(TAG_PLAYER_SCREENSHOT_THUMBNAIL).getBoundsInRoot()
-        assertEquals(16f, docked.left.value, 1f)
+        assertEquals(imageMargin, docked.left.value, 1f)
         onNodeWithTag(TAG_PLAYER_SCREENSHOT_SHARE).assertIsEnabled()
     }
 }

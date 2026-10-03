@@ -15,21 +15,18 @@ import androidx.compose.animation.core.LinearOutSlowInEasing
 import androidx.compose.animation.core.VectorConverter
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.Image
+import androidx.compose.foundation.Indication
 import androidx.compose.foundation.LocalIndication
 import androidx.compose.foundation.background
-import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.hoverable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.interaction.collectIsHoveredAsState
 import androidx.compose.foundation.interaction.collectIsPressedAsState
-import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
-import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.asPaddingValues
-import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -39,7 +36,6 @@ import androidx.compose.material.icons.rounded.Share
 import androidx.compose.material3.Icon
 import androidx.compose.material3.LocalContentColor
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
@@ -53,15 +49,15 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.drawBehind
-import androidx.compose.ui.geometry.CornerRadius
+import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Rect
-import androidx.compose.ui.geometry.RoundRect
+import androidx.compose.ui.graphics.Canvas
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.Path
-import androidx.compose.ui.graphics.PathOperation
+import androidx.compose.ui.graphics.ImageBitmap
+import androidx.compose.ui.graphics.Paint
 import androidx.compose.ui.graphics.TransformOrigin
-import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.layout.Layout
 import androidx.compose.ui.layout.layout
@@ -69,6 +65,7 @@ import androidx.compose.ui.layout.layoutId
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.Constraints
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.IntSize
@@ -76,6 +73,8 @@ import androidx.compose.ui.unit.dp
 import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
+import me.him188.ani.app.data.models.preference.DarkMode
+import me.him188.ani.app.ui.foundation.ProvideCompositionLocalsForPreview
 import me.him188.ani.app.ui.lang.Lang
 import me.him188.ani.app.ui.lang.video_player_screenshot_dismiss
 import me.him188.ani.app.ui.lang.video_player_screenshot_share
@@ -112,14 +111,23 @@ private val DISMISS_TICK = 100.milliseconds
 /** M3 emphasized decelerate: 进入角落时快速起步、缓慢落定. */
 private val MoveEasing = CubicBezierEasing(0.05f, 0.7f, 0.1f, 1f)
 
+/** 面板 (A 区域) 与播放器区域边缘的间距. */
 private val PanelMargin = 16.dp
-private val PanelBorderWidth = 1.dp
-private val ThumbnailCornerRadius = 16.dp
-private val PillHeight = 36.dp
+private val PanelCornerRadius = 20.dp
 
-/** 分享按钮塞进缩略图下沿的深度, 使两者的轮廓连成一体. */
-private val PillOverlap = 12.dp
+/** A 区域内画面到边缘的留白. 画面圆角等于 [PanelCornerRadius] 减去此值, 与 A 区域同心. */
+private val ImagePadding = 8.dp
+private val ShareButtonSize = 40.dp
+
+/** B 区域内分享按钮到边缘的留白. */
+private val LobePadding = 6.dp
+
+/** B 区域上边与 A 区域侧边之间内凹圆角的半径. */
+private val NeckRadius = 12.dp
 private val CloseButtonSize = 24.dp
+
+/** 关闭按钮到 A 区域上边与外侧边的距离. */
+private val CloseButtonInset = 6.dp
 private val CompactThumbnailHeight = 88.dp
 private val ThumbnailHeight = 112.dp
 
@@ -132,7 +140,7 @@ private const val MAX_THUMBNAIL_WIDTH_FRACTION = 0.4f
  *
  * 1. 播放器区域白色闪光一次;
  * 2. 截图先原位停留片刻, 再以容器变换收进角落: 竖屏布局 (区域高大于宽) 右下角, 横屏布局左下角;
- * 3. 落定后长出面板外壳: 缩略图与分享按钮连成一体的异形面板, 外侧上角有关闭按钮;
+ * 3. 落定后长出面板: 画面所在的 A 区域与伸出去装分享按钮的 B 区域由一条闭合路径画成一块整体的异形面板, 关闭按钮在 A 内部的外侧上角;
  * 4. [autoDismissDelay] 后自动收起, 鼠标悬停或按住面板时暂停计时; 用户也可点关闭.
  *
  * 再次截图会替换面板内容并重放整个流程.
@@ -233,7 +241,8 @@ private fun ScreenshotPresentation(
                     right = insetPadding.calculateRightPadding(layoutDirection).toPx(),
                     bottom = insetPadding.calculateBottomPadding().toPx(),
                 ),
-                margin = PanelMargin.toPx(),
+                // 几何算的是画面矩形; A 区域比它大一圈留白, 让 A 的边缘落在 PanelMargin 处
+                margin = (PanelMargin + ImagePadding).toPx(),
                 bottomOffset = bottomOffset.toPx(),
                 thumbnailHeight = (if (playerHeight < CompactPlayerHeight) CompactThumbnailHeight else ThumbnailHeight).toPx(),
                 maxThumbnailWidth = playerSize.width * MAX_THUMBNAIL_WIDTH_FRACTION,
@@ -241,13 +250,13 @@ private fun ScreenshotPresentation(
         }
     }
     val latestGeometry by rememberUpdatedState(geometry)
-    val thumbnailCornerPx = with(density) { ThumbnailCornerRadius.toPx() }
+    val imageCornerPx = with(density) { (PanelCornerRadius - ImagePadding).toPx() }
 
     val startDocked = presentation.hasDocked
     val rect = remember {
         Animatable(if (startDocked) geometry.thumbnailRect else geometry.startRect, Rect.VectorConverter)
     }
-    val cornerRadius = remember { Animatable(if (startDocked) thumbnailCornerPx else 0f) }
+    val cornerRadius = remember { Animatable(if (startDocked) imageCornerPx else 0f) }
     val chromeAlpha = remember { Animatable(if (startDocked) 1f else 0f) }
     val scale = remember { Animatable(1f) }
     var phase by remember { mutableStateOf(if (startDocked) PanelPhase.Docked else PanelPhase.Hold) }
@@ -263,7 +272,7 @@ private fun ScreenshotPresentation(
             phase = PanelPhase.Moving
             coroutineScope {
                 launch { rect.animateTo(latestGeometry.thumbnailRect, tween(MOVE_MILLIS, easing = MoveEasing)) }
-                launch { cornerRadius.animateTo(thumbnailCornerPx, tween(MOVE_MILLIS, easing = MoveEasing)) }
+                launch { cornerRadius.animateTo(imageCornerPx, tween(MOVE_MILLIS, easing = MoveEasing)) }
             }
             phase = PanelPhase.Docked
             presentation.hasDocked = true
@@ -308,21 +317,29 @@ private fun ScreenshotPresentation(
     )
 }
 
-private const val THUMBNAIL_ID = "thumbnail"
-private const val PILL_ID = "pill"
+private const val IMAGE_ID = "image"
+private const val SHARE_ID = "share"
 private const val CLOSE_ID = "close"
 
 /** 面板各部分在面板自身坐标系中的位置. 测量阶段写入, 放置与绘制阶段读取. */
 private class PanelFrame {
-    var thumbnail: Rect = Rect.Zero
-    var pill: Rect = Rect.Zero
+    /** A 区域: 容纳画面的圆角矩形. */
+    var regionA: Rect = Rect.Zero
+
+    /** B 区域: 从 A 的下沿向屏幕中央伸出、容纳分享按钮的半圆头凸起, 底边与 A 对齐. */
+    var regionB: Rect = Rect.Zero
+
+    /** 画面在 A 区域内的位置. */
+    var image: Rect = Rect.Zero
 }
 
 /**
- * 异形面板: 缩略图停在 [thumbnailRect]; 分享按钮从缩略图下沿向屏幕中央伸出, 一部分塞在缩略图下面,
- * 两者共用一块底色与一圈边框, 轮廓是两个圆角矩形的并集; 关闭按钮骑在缩略图外侧上角.
+ * 异形面板. A 区域是一个圆角矩形, 画面落在其中、四周留 [ImagePadding] 的边, 画面本身就是 [thumbnailRect];
+ * B 区域从 A 的下沿向屏幕中央伸出, 露出的半圆头里是圆形的分享图标按钮.
+ * 整块面板是 [screenshotPanelOutline] 描出的一条闭合路径, 填 surfaceContainer: A 与 B 的底边连成一条直线,
+ * B 的上边以内凹圆角接到 A 的侧边. 关闭按钮在 A 内部的外侧上角, 盖在画面的角上.
  *
- * 入场期间 ([chromeAlpha] 为 0) 只画缩略图本身, 即正在移动的截图.
+ * 入场期间 ([chromeAlpha] 为 0) 只画画面本身, 即正在移动的截图.
  */
 @Composable
 private fun ScreenshotPanel(
@@ -339,13 +356,19 @@ private fun ScreenshotPanel(
     onDismiss: () -> Unit,
 ) {
     val density = LocalDensity.current
-    val pillHeightPx = with(density) { PillHeight.roundToPx() }
-    val pillOverlapPx = with(density) { PillOverlap.roundToPx() }
+    val imagePaddingPx = with(density) { ImagePadding.roundToPx() }
+    val panelCornerPx = with(density) { PanelCornerRadius.toPx() }
+    val shareSizePx = with(density) { ShareButtonSize.roundToPx() }
+    val lobePaddingPx = with(density) { LobePadding.roundToPx() }
     val closeSizePx = with(density) { CloseButtonSize.roundToPx() }
-    val closeOverhangPx = closeSizePx / 2
-    val borderWidthPx = with(density) { PanelBorderWidth.toPx() }
-    val panelColor = MaterialTheme.colorScheme.surfaceContainerHigh
-    val borderColor = MaterialTheme.colorScheme.outlineVariant
+    val closeInsetPx = with(density) { CloseButtonInset.roundToPx() }
+    val neckRadiusPx = with(density) { NeckRadius.toPx() }
+    val lobeHeightPx = shareSizePx + 2 * lobePaddingPx
+    // B 塞进 A 的深度取 B 的半径: 它朝 A 的那个圆头完全藏在 A 里, 露在外面的是另一个圆头
+    val lobeOverlapPx = lobeHeightPx / 2
+    val lobeWidthPx = lobeOverlapPx + 2 * lobePaddingPx + shareSizePx
+    val panelColor = MaterialTheme.colorScheme.surfaceContainer
+    val buttonColor = MaterialTheme.colorScheme.surfaceContainerLowest
     val frame = remember { PanelFrame() }
     val indication = LocalIndication.current
     val shareLabel = stringResource(Lang.video_player_screenshot_share)
@@ -357,7 +380,7 @@ private fun ScreenshotPanel(
                 bitmap = screenshot.image,
                 contentDescription = null,
                 modifier = Modifier
-                    .layoutId(THUMBNAIL_ID)
+                    .layoutId(IMAGE_ID)
                     .testTag(TAG_PLAYER_SCREENSHOT_THUMBNAIL)
                     .graphicsLayer {
                         shape = RoundedCornerShape(cornerRadius())
@@ -367,60 +390,41 @@ private fun ScreenshotPanel(
                 contentScale = ContentScale.Fit,
             )
             CompositionLocalProvider(LocalContentColor provides MaterialTheme.colorScheme.onSurface) {
-                Row(
-                    Modifier
-                        .layoutId(PILL_ID)
-                        .testTag(TAG_PLAYER_SCREENSHOT_SHARE)
-                        .graphicsLayer { alpha = chromeAlpha() }
-                        .clip(RoundedCornerShape(50))
-                        .clickable(
-                            interactionSource,
-                            indication,
-                            enabled = chromeVisible,
-                            onClickLabel = shareLabel,
-                            onClick = onShare,
-                        )
-                        .padding(
-                            // 塞在缩略图下面的那段不放内容
-                            start = if (corner == PlayerScreenshotPanelCorner.BottomLeft) PillOverlap + 10.dp else 14.dp,
-                            end = if (corner == PlayerScreenshotPanelCorner.BottomLeft) 14.dp else PillOverlap + 10.dp,
-                        ),
-                    horizontalArrangement = Arrangement.spacedBy(6.dp),
-                    verticalAlignment = Alignment.CenterVertically,
-                ) {
-                    Icon(Icons.Rounded.Share, contentDescription = null, Modifier.size(18.dp))
-                    Text(shareLabel, style = MaterialTheme.typography.labelLarge)
-                }
-                Box(
-                    Modifier
-                        .layoutId(CLOSE_ID)
-                        .testTag(TAG_PLAYER_SCREENSHOT_DISMISS)
-                        .graphicsLayer { alpha = chromeAlpha() }
-                        .clip(CircleShape)
-                        .background(MaterialTheme.colorScheme.surfaceContainerHighest)
-                        .border(PanelBorderWidth, borderColor, CircleShape)
-                        .clickable(
-                            interactionSource,
-                            indication,
-                            enabled = chromeVisible,
-                            onClickLabel = dismissLabel,
-                            onClick = onDismiss,
-                        ),
-                    contentAlignment = Alignment.Center,
-                ) {
-                    Icon(Icons.Rounded.Close, contentDescription = dismissLabel, Modifier.size(14.dp))
-                }
+                PanelCircleButton(
+                    icon = Icons.Rounded.Share,
+                    label = shareLabel,
+                    color = buttonColor,
+                    iconSize = 20.dp,
+                    alpha = chromeAlpha,
+                    enabled = chromeVisible,
+                    interactionSource = interactionSource,
+                    indication = indication,
+                    onClick = onShare,
+                    modifier = Modifier.layoutId(SHARE_ID).testTag(TAG_PLAYER_SCREENSHOT_SHARE),
+                )
+                PanelCircleButton(
+                    icon = Icons.Rounded.Close,
+                    label = dismissLabel,
+                    color = buttonColor,
+                    iconSize = 14.dp,
+                    alpha = chromeAlpha,
+                    enabled = chromeVisible,
+                    interactionSource = interactionSource,
+                    indication = indication,
+                    onClick = onDismiss,
+                    modifier = Modifier.layoutId(CLOSE_ID).testTag(TAG_PLAYER_SCREENSHOT_DISMISS),
+                )
             }
         },
         modifier = Modifier
             .layout { measurable, constraints ->
                 val placeable = measurable.measure(Constraints())
                 layout(constraints.maxWidth, constraints.maxHeight) {
-                    // 放置后缩略图子项正好落在目标矩形上
+                    // 放置后画面子项正好落在目标矩形上
                     val target = thumbnailRect()
                     placeable.place(
-                        (target.left - frame.thumbnail.left).roundToInt(),
-                        (target.top - frame.thumbnail.top).roundToInt(),
+                        (target.left - frame.image.left).roundToInt(),
+                        (target.top - frame.image.top).roundToInt(),
                     )
                 }
             }
@@ -437,60 +441,165 @@ private fun ScreenshotPanel(
             .drawBehind {
                 val alpha = chromeAlpha()
                 if (alpha <= 0f) return@drawBehind
-                val outline = Path.combine(
-                    PathOperation.Union,
-                    Path().apply { addRoundRect(RoundRect(frame.thumbnail, CornerRadius(cornerRadius()))) },
-                    Path().apply { addRoundRect(RoundRect(frame.pill, CornerRadius(frame.pill.height / 2))) },
+                drawPath(
+                    screenshotPanelOutline(frame.regionA, frame.regionB, panelCornerPx, neckRadiusPx),
+                    panelColor,
+                    alpha = alpha,
                 )
-                drawPath(outline, panelColor, alpha = alpha)
-                drawPath(outline, borderColor, alpha = alpha, style = Stroke(borderWidthPx))
             },
     ) { measurables, constraints ->
         val target = thumbnailRect()
-        val thumbnailWidth = target.width.roundToInt().coerceAtLeast(1)
-        val thumbnailHeight = target.height.roundToInt().coerceAtLeast(1)
-        val thumbnail = measurables.first { it.layoutId == THUMBNAIL_ID }
-            .measure(Constraints.fixed(thumbnailWidth, thumbnailHeight))
-        val pill = measurables.first { it.layoutId == PILL_ID }
-            .measure(Constraints(minHeight = pillHeightPx, maxHeight = pillHeightPx))
+        val imageWidth = target.width.roundToInt().coerceAtLeast(1)
+        val imageHeight = target.height.roundToInt().coerceAtLeast(1)
+        val image = measurables.first { it.layoutId == IMAGE_ID }
+            .measure(Constraints.fixed(imageWidth, imageHeight))
+        val share = measurables.first { it.layoutId == SHARE_ID }
+            .measure(Constraints.fixed(shareSizePx, shareSizePx))
         val close = measurables.first { it.layoutId == CLOSE_ID }
             .measure(Constraints.fixed(closeSizePx, closeSizePx))
 
-        val pillExtension = (pill.width - pillOverlapPx).coerceAtLeast(0)
-        val thumbnailX = when (corner) {
-            PlayerScreenshotPanelCorner.BottomLeft -> closeOverhangPx
-            PlayerScreenshotPanelCorner.BottomRight -> pillExtension
+        val regionAWidth = imageWidth + 2 * imagePaddingPx
+        val regionAHeight = imageHeight + 2 * imagePaddingPx
+        // B 露在 A 外面的长度
+        val protrusion = lobeWidthPx - lobeOverlapPx
+        // B 向屏幕中央伸出; 面板的其余边界就是 A 的边界
+        val regionAX = when (corner) {
+            PlayerScreenshotPanelCorner.BottomLeft -> 0
+            PlayerScreenshotPanelCorner.BottomRight -> protrusion
         }
-        val thumbnailY = closeOverhangPx
-        val pillX = when (corner) {
-            PlayerScreenshotPanelCorner.BottomLeft -> thumbnailX + thumbnailWidth - pillOverlapPx
-            PlayerScreenshotPanelCorner.BottomRight -> thumbnailX + pillOverlapPx - pill.width
+        val regionAY = 0
+        val regionBX = when (corner) {
+            PlayerScreenshotPanelCorner.BottomLeft -> regionAX + regionAWidth - lobeOverlapPx
+            PlayerScreenshotPanelCorner.BottomRight -> regionAX + lobeOverlapPx - lobeWidthPx
         }
-        val pillY = thumbnailY + thumbnailHeight - pill.height
+        val regionBY = (regionAY + regionAHeight - lobeHeightPx).coerceAtLeast(regionAY)
+        val shareX = when (corner) {
+            PlayerScreenshotPanelCorner.BottomLeft -> regionBX + lobeWidthPx - lobePaddingPx - shareSizePx
+            PlayerScreenshotPanelCorner.BottomRight -> regionBX + lobePaddingPx
+        }
+        val shareY = regionBY + lobePaddingPx
+        // 关闭按钮在 A 内部的外侧上角, 盖在画面的角上
         val closeX = when (corner) {
-            PlayerScreenshotPanelCorner.BottomLeft -> thumbnailX - closeOverhangPx
-            PlayerScreenshotPanelCorner.BottomRight -> thumbnailX + thumbnailWidth - closeSizePx + closeOverhangPx
+            PlayerScreenshotPanelCorner.BottomLeft -> regionAX + closeInsetPx
+            PlayerScreenshotPanelCorner.BottomRight -> regionAX + regionAWidth - closeInsetPx - closeSizePx
         }
-        frame.thumbnail = Rect(
-            thumbnailX.toFloat(),
-            thumbnailY.toFloat(),
-            (thumbnailX + thumbnailWidth).toFloat(),
-            (thumbnailY + thumbnailHeight).toFloat(),
+        val closeY = regionAY + closeInsetPx
+        frame.regionA = Rect(
+            regionAX.toFloat(),
+            regionAY.toFloat(),
+            (regionAX + regionAWidth).toFloat(),
+            (regionAY + regionAHeight).toFloat(),
         )
-        frame.pill = Rect(
-            pillX.toFloat(),
-            pillY.toFloat(),
-            (pillX + pill.width).toFloat(),
-            (pillY + pill.height).toFloat(),
+        frame.regionB = Rect(
+            regionBX.toFloat(),
+            regionBY.toFloat(),
+            (regionBX + lobeWidthPx).toFloat(),
+            (regionBY + lobeHeightPx).toFloat(),
+        )
+        val imageX = regionAX + imagePaddingPx
+        val imageY = regionAY + imagePaddingPx
+        frame.image = Rect(
+            imageX.toFloat(),
+            imageY.toFloat(),
+            (imageX + imageWidth).toFloat(),
+            (imageY + imageHeight).toFloat(),
         )
 
-        val width = closeOverhangPx + thumbnailWidth + pillExtension
-        val height = closeOverhangPx + thumbnailHeight
+        val width = regionAWidth + protrusion
+        val height = regionAHeight
         layout(width, height) {
-            // 先放分享按钮, 缩略图盖在它塞进来的那段上面
-            pill.place(pillX, pillY)
-            thumbnail.place(thumbnailX, thumbnailY)
-            close.place(closeX, 0)
+            image.place(imageX, imageY)
+            share.place(shareX, shareY)
+            close.place(closeX, closeY)
         }
     }
 }
+
+/** 面板上的圆形图标按钮: 圆底 [color], 只有图标. */
+@Composable
+private fun PanelCircleButton(
+    icon: ImageVector,
+    label: String,
+    color: Color,
+    iconSize: Dp,
+    alpha: () -> Float,
+    enabled: Boolean,
+    interactionSource: MutableInteractionSource,
+    indication: Indication?,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    Box(
+        modifier
+            .graphicsLayer { this.alpha = alpha() }
+            .clip(CircleShape)
+            .background(color)
+            .clickable(interactionSource, indication, enabled = enabled, onClickLabel = label, onClick = onClick),
+        contentAlignment = Alignment.Center,
+    ) {
+        Icon(icon, contentDescription = label, Modifier.size(iconSize))
+    }
+}
+
+// region Preview
+
+/** 16:9 的合成画面: 深蓝底上一个橙色圆和一块青色矩形, 便于看出比例与位置. */
+@Composable
+private fun rememberPreviewScreenshot(): SavedPlayerScreenshot = remember {
+    val image = ImageBitmap(1920, 1080)
+    val canvas = Canvas(image)
+    val paint = Paint()
+    paint.color = Color(0xFF1E3A5F)
+    canvas.drawRect(Rect(0f, 0f, 1920f, 1080f), paint)
+    paint.color = Color(0xFFE07A2F)
+    canvas.drawCircle(Offset(600f, 540f), 320f, paint)
+    paint.color = Color(0xFF5FB3A2)
+    canvas.drawRect(Rect(1150f, 220f, 1800f, 860f), paint)
+    SavedPlayerScreenshot(image, "12345-01-1m23s456ms.png", "preview")
+}
+
+/**
+ * 播放器区域用黑底代替视频. 底部控制栏按 72dp 计, 面板会在它上方停靠.
+ *
+ * @param docked `true` 为落定后的面板 (缩略图、分享按钮、关闭按钮); `false` 为入场起点, 截图铺在视频区域上
+ */
+@Composable
+private fun PreviewScreenshotPresentationImpl(
+    playerWidth: Dp,
+    playerHeight: Dp,
+    docked: Boolean,
+) = ProvideCompositionLocalsForPreview(darkMode = DarkMode.DARK) {
+    val screenshot = rememberPreviewScreenshot()
+    val presentation = remember {
+        PlayerScreenshotPresentation(screenshot, sequence = 1).apply { hasDocked = docked }
+    }
+    BoxWithConstraints(Modifier.size(playerWidth, playerHeight).background(Color.Black)) {
+        ScreenshotPresentation(
+            presentation = presentation,
+            playerSize = IntSize(constraints.maxWidth, constraints.maxHeight),
+            bottomOffset = 72.dp,
+            windowInsets = WindowInsets(0),
+            autoDismissDelay = PlayerScreenshotOverlayDefaults.AutoDismissDelay,
+            onShare = {},
+            onOpen = {},
+            onDismissed = {},
+        )
+    }
+}
+
+@Preview(name = "Docked, landscape (bottom left)", widthDp = 800, heightDp = 450)
+@Composable
+private fun PreviewScreenshotPresentationDockedLandscape() =
+    PreviewScreenshotPresentationImpl(800.dp, 450.dp, docked = true)
+
+@Preview(name = "Docked, portrait (bottom right)", widthDp = 400, heightDp = 700)
+@Composable
+private fun PreviewScreenshotPresentationDockedPortrait() =
+    PreviewScreenshotPresentationImpl(400.dp, 700.dp, docked = true)
+
+@Preview(name = "Entering, screenshot over the video", widthDp = 800, heightDp = 450)
+@Composable
+private fun PreviewScreenshotPresentationEntering() =
+    PreviewScreenshotPresentationImpl(800.dp, 450.dp, docked = false)
+
+// endregion
