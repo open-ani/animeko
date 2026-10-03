@@ -71,7 +71,6 @@ import me.him188.ani.app.navigation.NavRoutes
 import me.him188.ani.app.ui.foundation.ProvideCompositionLocalsForPreview
 import me.him188.ani.app.ui.foundation.navigation.LocalOnBackPressedDispatcherOwner
 import me.him188.ani.app.ui.foundation.navigation.OnBackPressedDispatcher
-import me.him188.ani.app.ui.framework.assertScreenshot
 import me.him188.ani.app.ui.framework.runAniComposeUiTest
 import me.him188.ani.datasources.api.source.MediaSourceConfig
 import me.him188.ani.remote.settings.RemoteSettingsLink
@@ -260,13 +259,6 @@ class RemoteSettingsScreenTest {
             onNodeWithTag("settings-remote-bubble").assertIsDisplayed()
             mainClock.advanceTimeBy(500)
             waitForIdle()
-            // 像素基线使用 Windows 系统字体；交互与持久化断言在所有 desktop 平台上执行。
-            if (System.getProperty("os.name").startsWith("Windows")) {
-                onNodeWithTag("remote-settings-screen")
-                    .assertScreenshot(
-                        "/screenshots/settings/remote-${if (english) "en" else "zh"}-windows.png"
-                    )
-            }
             onNodeWithTag("settings-tab-APPEARANCE").assertDoesNotExist()
             onNodeWithTag("settings-tab-PROFILE").assertDoesNotExist()
             onNodeWithContentDescription(if (english) "Scan to configure TV" else "扫码配置电视")

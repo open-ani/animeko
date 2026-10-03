@@ -35,7 +35,6 @@ import me.him188.ani.app.domain.settings.remote.LocalNetworkPermission
 import me.him188.ani.app.domain.settings.remote.RemoteSettingsHost
 import me.him188.ani.app.domain.settings.remote.RemoteSettingsHostState
 import me.him188.ani.app.platform.currentAniBuildConfig
-import me.him188.ani.app.ui.settings.tabs.log.getLogsDir
 import me.him188.ani.remote.settings.RemoteSettingsLink
 import me.him188.ani.remote.settings.RemoteSettingsProtocol
 import me.him188.ani.remote.settings.generated.models.LogSnapshot
@@ -114,7 +113,7 @@ class AndroidRemoteSettingsHost(
             val stores = application.dataStores
             val appVersion = currentAniBuildConfig.versionName
             val userId = stores.selfInfoStore.data.map { it?.id?.toString() }.distinctUntilChanged()
-            val logFile = application.getLogsDir().resolve("app.log")
+            val logFile = application.filesDir.resolve("logs/app.log")
             val createServer = {
                 val backend = LocalRemoteSettingsBackend(
                     settings = koin.get(),

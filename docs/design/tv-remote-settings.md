@@ -472,7 +472,7 @@ HTTP 不提供 TLS 链路保密性。二维码 key 是访问授权，不能抵�
 | `RemoteSettingsSchemaTest` | 检入的 OpenAPI schema 与实际 Kotlin serializer 一致 |
 | `RemoteSettingsSessionTest` | 写入响应丢失、pending 轮询、确认后读取失败、协议失败、连续写入排序、取消调用者后已提交的 preference 仍按序完成、基于过期值的编辑被拒绝且之后无需刷新即可重试 |
 | `RemoteMediaSourceEditorTest` | 输入合并、关闭编辑器后保存最后输入、连续自动保存推进 revision、轮询不覆盖打开时的 revision |
-| `RemoteSettingsScreenTest` | 中英文远程页的截图及交互；写入仅影响 TV、导航到 RemoteEditMediaSource、设备气泡、错误提示及退出确认 |
+| `RemoteSettingsScreenTest` | 中英文远程页的交互；写入仅影响 TV、导航到 RemoteEditMediaSource、设备气泡、错误提示及退出确认 |
 | `AniNavigatorTest` | 首次连接创建独立 RemoteSettings entry；重复连接复用该 entry 并弹出子编辑页，保留本机设置返回目标 |
 | `TvRemoteSettingsPaneTest` | 二维码解码、焦点留在分区列表、确认键请求权限及授权后出现二维码、大字体下的状态布局 |
 
