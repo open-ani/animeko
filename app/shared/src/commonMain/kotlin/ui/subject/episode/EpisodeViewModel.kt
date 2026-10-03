@@ -660,7 +660,7 @@ open class EpisodeViewModel(
                 collectionButtonEnabled.value = false
                 launchInBackground {
                     try {
-                        episodeCollectionRepository.setEpisodeCollectionType(
+                        setEpisodeCollectionType(
                             subjectId,
                             episodeId = episode.episodeInfo.episodeId,
                             collectionType = it,
