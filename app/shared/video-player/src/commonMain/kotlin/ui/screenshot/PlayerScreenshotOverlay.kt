@@ -37,6 +37,7 @@ import androidx.compose.material3.IconButtonDefaults
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.State
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.key
@@ -251,9 +252,8 @@ private fun ScreenshotPresentation(
     val chromeAlpha = remember { Animatable(if (startDocked) 1f else 0f) }
     val scale = remember { Animatable(1f) }
     var dismissRequested by remember { mutableStateOf(false) }
-    val interactionSource = remember { MutableInteractionSource() }
-    val hovered by interactionSource.collectIsHoveredAsState()
-    val pressed by interactionSource.collectIsPressedAsState()
+    val interactions = remember { PanelInteractions() }
+    val engaged by interactions.collectIsEngagedAsState()
 
     // 入场: 原位停留 -> 收进角落 -> 长出外壳 -> 等待自动收起
     LaunchedEffect(Unit) {
@@ -267,15 +267,15 @@ private fun ScreenshotPresentation(
             chromeAlpha.animateTo(1f, tween(CHROME_MILLIS))
         }
         // 倒计时与再次交互赛跑: 倒计时先到就收起, 悬停或按住先到就等交互结束后重新计时
-        val engaged = snapshotFlow { hovered || pressed }
+        val engagedFlow = snapshotFlow { engaged }
         while (true) {
-            engaged.first { !it }
+            engagedFlow.first { !it }
             val timedOut = merge(
                 flow {
                     delay(autoDismissDelay)
                     emit(true)
                 },
-                engaged.filter { it }.map { false },
+                engagedFlow.filter { it }.map { false },
             ).first()
             if (timedOut) break
         }
@@ -307,7 +307,7 @@ private fun ScreenshotPresentation(
         // 外壳只在停靠后才组合; 退场期间保留它做淡出, 但不再响应点击
         chromeComposed = presentation.docked,
         chromeEnabled = presentation.docked && !dismissRequested,
-        interactionSource = interactionSource,
+        interactions = interactions,
         onShare = onShare,
         onCopy = onCopy,
         onOpen = {
@@ -333,6 +333,28 @@ private class PanelFrame {
 }
 
 /**
+ * 面板上各个可交互节点各自的 [MutableInteractionSource]. 涟漪、悬停态与焦点态都取自节点自己的来源,
+ * 所以不能共用: 共用会让按下一个按钮时画面与另一个按钮一起亮起.
+ */
+private class PanelInteractions {
+    /** 整块面板的悬停; 悬停在画面或按钮上时面板同样处于悬停. */
+    val panel = MutableInteractionSource()
+    val image = MutableInteractionSource()
+    val share = MutableInteractionSource()
+    val copy = MutableInteractionSource()
+}
+
+/** 用户正在与面板交互: 悬停在面板上, 或按住画面与按钮中的任意一个. 自动收起在此期间暂停. */
+@Composable
+private fun PanelInteractions.collectIsEngagedAsState(): State<Boolean> {
+    val hovered by panel.collectIsHoveredAsState()
+    val imagePressed by image.collectIsPressedAsState()
+    val sharePressed by share.collectIsPressedAsState()
+    val copyPressed by copy.collectIsPressedAsState()
+    return remember { derivedStateOf { hovered || imagePressed || sharePressed || copyPressed } }
+}
+
+/**
  * 异形面板. A 区域是一个圆角矩形, 画面落在其中、四周留 [ImagePadding] 的边, 画面本身就是 [thumbnailRect];
  * B 区域是与 A 底边对齐、从 A 的下角向屏幕中央伸出 [LobeExtension] 的药丸, 伸出的部分里是分享与复制两个圆形图标按钮,
  * 靠 A 的是分享. 整块面板是 [screenshotPanelOutline] 描出的一条闭合路径做成的 [GenericShape], 填 surfaceContainer 并带阴影:
@@ -351,7 +373,7 @@ private fun ScreenshotPanel(
     scale: () -> Float,
     chromeComposed: Boolean,
     chromeEnabled: Boolean,
-    interactionSource: MutableInteractionSource,
+    interactions: PanelInteractions,
     onShare: () -> Unit,
     onCopy: () -> Unit,
     onOpen: () -> Unit,
@@ -387,7 +409,7 @@ private fun ScreenshotPanel(
                         shape = RoundedCornerShape(cornerRadius())
                         clip = true
                     }
-                    .clickable(interactionSource, LocalIndication.current, enabled = chromeEnabled, onClick = onOpen),
+                    .clickable(interactions.image, LocalIndication.current, enabled = chromeEnabled, onClick = onOpen),
                 contentScale = ContentScale.Fit,
             )
             if (chromeComposed) {
@@ -407,7 +429,7 @@ private fun ScreenshotPanel(
                     label = stringResource(Lang.video_player_screenshot_share),
                     alpha = chromeAlpha,
                     enabled = chromeEnabled,
-                    interactionSource = interactionSource,
+                    interactionSource = interactions.share,
                     onClick = onShare,
                     modifier = Modifier.layoutId(SHARE_ID).testTag(TAG_PLAYER_SCREENSHOT_SHARE),
                 )
@@ -416,7 +438,7 @@ private fun ScreenshotPanel(
                     label = stringResource(Lang.video_player_screenshot_copy),
                     alpha = chromeAlpha,
                     enabled = chromeEnabled,
-                    interactionSource = interactionSource,
+                    interactionSource = interactions.copy,
                     onClick = onCopy,
                     modifier = Modifier.layoutId(COPY_ID).testTag(TAG_PLAYER_SCREENSHOT_COPY),
                 )
@@ -440,7 +462,7 @@ private fun ScreenshotPanel(
                 scaleY = scale()
                 transformOrigin = if (lobeExtendsRight) TransformOrigin(0f, 1f) else TransformOrigin(1f, 1f)
             }
-            .hoverable(interactionSource),
+            .hoverable(interactions.panel),
     ) { measurables, constraints ->
         val target = thumbnailRect()
         val imageWidth = target.width.roundToInt().coerceAtLeast(1)

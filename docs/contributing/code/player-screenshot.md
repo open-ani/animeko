@@ -40,4 +40,4 @@
 容器变换的起点与视频区域对齐, 不应用系统栏边距; 只有面板的停靠位置避开边距.
 
 面板几何由纯函数 `computePlayerScreenshotPanelGeometry` 计算 (`PlayerScreenshotPanelLayoutTest`);
-闪光、变换、按钮与自动收起由 `PlayerScreenshotOverlayTest` 用合成时钟覆盖.
+闪光、变换、按钮、自动收起以及悬停 / 按住暂停收起由 `PlayerScreenshotOverlayTest` 用合成时钟覆盖.

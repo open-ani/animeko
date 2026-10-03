@@ -18,7 +18,10 @@ import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.assertIsEnabled
 import androidx.compose.ui.test.getBoundsInRoot
 import androidx.compose.ui.test.onNodeWithTag
+import androidx.compose.ui.test.onRoot
 import androidx.compose.ui.test.performClick
+import androidx.compose.ui.test.performMouseInput
+import androidx.compose.ui.test.performTouchInput
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.height
@@ -186,5 +189,44 @@ class PlayerScreenshotOverlayTest {
         val docked = onNodeWithTag(TAG_PLAYER_SCREENSHOT_THUMBNAIL).getBoundsInRoot()
         assertEquals(imageMargin, docked.left.value, 1f)
         onNodeWithTag(TAG_PLAYER_SCREENSHOT_SHARE).assertIsEnabled()
+    }
+
+    @Test
+    fun `hovering a panel button postpones the auto dismiss until the pointer leaves`() = runAniComposeUiTest {
+        val state = setOverlay(800.dp, 450.dp)
+        state.present(screenshot())
+        advanceUntilDocked()
+
+        // 悬停在按钮上也算悬停在面板上: 倒计时 3s 内不收起
+        onNodeWithTag(TAG_PLAYER_SCREENSHOT_SHARE).performMouseInput { moveTo(center) }
+        mainClock.advanceTimeBy(4_000)
+        onNodeWithTag(TAG_PLAYER_SCREENSHOT_PANEL).assertExists()
+
+        // 移出面板后重新计时
+        onRoot().performMouseInput { moveTo(topLeft) }
+        mainClock.advanceTimeBy(1_500)
+        onNodeWithTag(TAG_PLAYER_SCREENSHOT_PANEL).assertExists()
+        mainClock.advanceTimeBy(2_000)
+        onNodeWithTag(TAG_PLAYER_SCREENSHOT_PANEL).assertDoesNotExist()
+    }
+
+    @Test
+    fun `holding a panel button down postpones the auto dismiss until release`() = runAniComposeUiTest {
+        var shared = 0
+        val state = setOverlay(800.dp, 450.dp, onShare = { shared++ })
+        state.present(screenshot())
+        advanceUntilDocked()
+
+        // 触摸没有悬停, 只有按住
+        onNodeWithTag(TAG_PLAYER_SCREENSHOT_SHARE).performTouchInput { down(center) }
+        mainClock.advanceTimeBy(4_000)
+        onNodeWithTag(TAG_PLAYER_SCREENSHOT_PANEL).assertExists()
+
+        onNodeWithTag(TAG_PLAYER_SCREENSHOT_SHARE).performTouchInput { up() }
+        assertEquals(1, shared)
+        mainClock.advanceTimeBy(1_500)
+        onNodeWithTag(TAG_PLAYER_SCREENSHOT_PANEL).assertExists()
+        mainClock.advanceTimeBy(2_000)
+        onNodeWithTag(TAG_PLAYER_SCREENSHOT_PANEL).assertDoesNotExist()
     }
 }
