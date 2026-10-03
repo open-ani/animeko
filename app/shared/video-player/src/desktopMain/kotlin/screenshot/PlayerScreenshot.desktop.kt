@@ -83,13 +83,21 @@ private class DesktopPlayerScreenshotCapturer(
 }
 
 /**
- * 桌面没有系统分享面板: 「分享」把图片连同文件一起复制到剪贴板, 「打开」在文件管理器中定位文件.
+ * 桌面没有系统分享面板: 「分享」在文件管理器中定位截图文件, 「复制」把图片连同文件一起放进剪贴板.
  */
 private class DesktopPlayerScreenshotSharer(
     private val clipboard: ImageClipboard?,
 ) : PlayerScreenshotSharer {
     override suspend fun share(screenshot: SavedPlayerScreenshot): PlayerScreenshotShareOutcome {
-        val clipboard = clipboard ?: return PlayerScreenshotShareOutcome.Failed
+        return if (DesktopFileRevealer.revealFile(File(screenshot.location))) {
+            PlayerScreenshotShareOutcome.RevealedInFileManager
+        } else {
+            PlayerScreenshotShareOutcome.Failed
+        }
+    }
+
+    override suspend fun copy(screenshot: SavedPlayerScreenshot): Boolean {
+        val clipboard = clipboard ?: return false
         return try {
             clipboard.copy(
                 ImageViewerExportedFile(
@@ -98,14 +106,11 @@ private class DesktopPlayerScreenshotSharer(
                     extension = screenshot.fileName.substringAfterLast('.', "png"),
                 ),
             )
-            PlayerScreenshotShareOutcome.CopiedToClipboard
+            true
         } catch (e: CancellationException) {
             throw e
         } catch (e: Exception) {
-            PlayerScreenshotShareOutcome.Failed
+            false
         }
     }
-
-    override suspend fun open(screenshot: SavedPlayerScreenshot): Boolean =
-        DesktopFileRevealer.revealFile(File(screenshot.location))
 }

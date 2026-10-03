@@ -37,8 +37,11 @@ import kotlin.time.Duration.Companion.seconds
 class PlayerScreenshotOverlayTest {
     private val autoDismissDelay = 3.seconds
 
-    /** 画面到播放器区域边缘的距离: 面板边距 16dp 加 A 区域内留白 8dp. */
-    private val imageMargin = 24f
+    /** 画面到播放器区域侧边的距离: 面板边距 16dp 加 A 区域内留白 8dp. */
+    private val imageSideMargin = 24f
+
+    /** 画面到播放器区域底边的距离: 侧边距离再加挂在下方的 B 区域 (40dp 按钮加上下各 8dp 留白). */
+    private val imageBottomMargin = imageSideMargin + 56f
 
     private fun screenshot(width: Int = 160, height: Int = 90) =
         SavedPlayerScreenshot(ImageBitmap(width, height), "shot.png", "shot")
@@ -49,6 +52,7 @@ class PlayerScreenshotOverlayTest {
         state: PlayerScreenshotPanelState,
         bottomOffset: Dp = 0.dp,
         onShare: (SavedPlayerScreenshot) -> Unit = {},
+        onCopy: (SavedPlayerScreenshot) -> Unit = {},
         onOpen: (SavedPlayerScreenshot) -> Unit = {},
     ) {
         mainClock.autoAdvance = false
@@ -58,6 +62,7 @@ class PlayerScreenshotOverlayTest {
                     PlayerScreenshotOverlay(
                         state,
                         onShare = onShare,
+                        onCopy = onCopy,
                         onOpen = onOpen,
                         Modifier.fillMaxSize(),
                         bottomOffset = bottomOffset,
@@ -99,12 +104,12 @@ class PlayerScreenshotOverlayTest {
 
         advanceUntilDocked()
         val docked = onNodeWithTag(TAG_PLAYER_SCREENSHOT_THUMBNAIL).getBoundsInRoot()
-        assertEquals(imageMargin, docked.left.value, 1f)
-        assertEquals(450f - 60f - imageMargin, docked.bottom.value, 1f)
+        assertEquals(imageSideMargin, docked.left.value, 1f)
+        assertEquals(450f - 60f - imageBottomMargin, docked.bottom.value, 1f)
         // 播放器高度不足 480dp, 用紧凑的 88dp 缩略图
         assertEquals(88f, docked.height.value, 1f)
         onNodeWithTag(TAG_PLAYER_SCREENSHOT_SHARE).assertIsDisplayed().assertIsEnabled()
-        onNodeWithTag(TAG_PLAYER_SCREENSHOT_DISMISS).assertIsDisplayed().assertIsEnabled()
+        onNodeWithTag(TAG_PLAYER_SCREENSHOT_COPY).assertIsDisplayed().assertIsEnabled()
     }
 
     @Test
@@ -116,25 +121,41 @@ class PlayerScreenshotOverlayTest {
         advanceUntilDocked()
 
         val docked = onNodeWithTag(TAG_PLAYER_SCREENSHOT_THUMBNAIL).getBoundsInRoot()
-        assertEquals(400f - imageMargin, docked.right.value, 1f)
-        assertEquals(700f - imageMargin, docked.bottom.value, 1f)
+        assertEquals(400f - imageSideMargin, docked.right.value, 1f)
+        assertEquals(700f - imageBottomMargin, docked.bottom.value, 1f)
         // 112dp 高的 16:9 缩略图宽 199 超过上限 400 * 0.4 = 160, 按上限缩小
         assertEquals(160f, docked.width.value, 1f)
     }
 
     @Test
-    fun `share button reports the screenshot and dismiss removes the panel`() = runAniComposeUiTest {
+    fun `share and copy buttons report the screenshot and keep the panel`() = runAniComposeUiTest {
         val state = PlayerScreenshotPanelState()
         var shared: SavedPlayerScreenshot? = null
-        setOverlay(800.dp, 450.dp, state, onShare = { shared = it })
+        var copied: SavedPlayerScreenshot? = null
+        setOverlay(800.dp, 450.dp, state, onShare = { shared = it }, onCopy = { copied = it })
         val screenshot = screenshot()
         state.present(screenshot)
         advanceUntilDocked()
 
         onNodeWithTag(TAG_PLAYER_SCREENSHOT_SHARE).performClick()
         assertSame(screenshot, shared)
+        onNodeWithTag(TAG_PLAYER_SCREENSHOT_COPY).performClick()
+        assertSame(screenshot, copied)
+        mainClock.advanceTimeBy(500)
+        onNodeWithTag(TAG_PLAYER_SCREENSHOT_PANEL).assertExists()
+    }
 
-        onNodeWithTag(TAG_PLAYER_SCREENSHOT_DISMISS).performClick()
+    @Test
+    fun `clicking the screenshot opens it and dismisses the panel`() = runAniComposeUiTest {
+        val state = PlayerScreenshotPanelState()
+        var opened: SavedPlayerScreenshot? = null
+        setOverlay(800.dp, 450.dp, state, onOpen = { opened = it })
+        val screenshot = screenshot()
+        state.present(screenshot)
+        advanceUntilDocked()
+
+        onNodeWithTag(TAG_PLAYER_SCREENSHOT_THUMBNAIL).performClick()
+        assertSame(screenshot, opened)
         mainClock.advanceTimeBy(1_000)
         onNodeWithTag(TAG_PLAYER_SCREENSHOT_PANEL).assertDoesNotExist()
         assertNull(state.current)
@@ -171,7 +192,7 @@ class PlayerScreenshotOverlayTest {
 
         advanceUntilDocked()
         val docked = onNodeWithTag(TAG_PLAYER_SCREENSHOT_THUMBNAIL).getBoundsInRoot()
-        assertEquals(imageMargin, docked.left.value, 1f)
+        assertEquals(imageSideMargin, docked.left.value, 1f)
         onNodeWithTag(TAG_PLAYER_SCREENSHOT_SHARE).assertIsEnabled()
     }
 }

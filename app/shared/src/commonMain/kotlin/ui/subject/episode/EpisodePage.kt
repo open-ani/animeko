@@ -150,12 +150,12 @@ import me.him188.ani.app.ui.lang.foundation_richtext_external_app_link_warning_p
 import me.him188.ani.app.ui.lang.foundation_richtext_open_failed_prefix
 import me.him188.ani.app.ui.lang.subject_details_tab_details
 import me.him188.ani.app.ui.lang.video_player_screenshot_copied
+import me.him188.ani.app.ui.lang.video_player_screenshot_copy_failed
 import me.him188.ani.app.ui.lang.video_player_screenshot_failed_no_frame
 import me.him188.ani.app.ui.lang.video_player_screenshot_failed_permission
 import me.him188.ani.app.ui.lang.video_player_screenshot_failed_save
 import me.him188.ani.app.ui.lang.video_player_screenshot_failed_save_reason
 import me.him188.ani.app.ui.lang.video_player_screenshot_failed_unsupported
-import me.him188.ani.app.ui.lang.video_player_screenshot_open_failed
 import me.him188.ani.app.ui.lang.video_player_screenshot_share_failed
 import me.him188.ani.app.ui.mediaselect.MediaSelectorMode
 import me.him188.ani.app.ui.mediaselect.common.MediaSelectorDialog
@@ -1105,6 +1105,7 @@ private fun EpisodeVideo(
     val screenshotCapturer = rememberPlayerScreenshotCapturer()
     val screenshotSharer = rememberPlayerScreenshotSharer()
     val screenshotPanelState = rememberPlayerScreenshotPanelState()
+    val imageViewer = LocalImageViewerHandler.current
     var screenshotJob by remember { mutableStateOf<Job?>(null) }
 
     val pictureInPictureController = LocalPictureInPictureController.current
@@ -1189,22 +1190,26 @@ private fun EpisodeVideo(
                 onShare = { screenshot ->
                     scope.launch {
                         when (screenshotSharer.share(screenshot)) {
-                            PlayerScreenshotShareOutcome.Shared -> {}
-                            PlayerScreenshotShareOutcome.CopiedToClipboard ->
-                                toaster.toast(getString(Lang.video_player_screenshot_copied))
+                            PlayerScreenshotShareOutcome.Shared,
+                            PlayerScreenshotShareOutcome.RevealedInFileManager -> {}
 
                             PlayerScreenshotShareOutcome.Failed ->
                                 toaster.toast(getString(Lang.video_player_screenshot_share_failed))
                         }
                     }
                 },
-                onOpen = { screenshot ->
+                onCopy = { screenshot ->
                     scope.launch {
-                        if (!screenshotSharer.open(screenshot)) {
-                            toaster.toast(getString(Lang.video_player_screenshot_open_failed))
+                        val message = if (screenshotSharer.copy(screenshot)) {
+                            Lang.video_player_screenshot_copied
+                        } else {
+                            Lang.video_player_screenshot_copy_failed
                         }
+                        toaster.toast(getString(message))
                     }
                 },
+                // 截图在相册 / 图片目录里, 用应用内的图片查看器打开
+                onOpen = { screenshot -> imageViewer.viewImage(screenshot.location) },
                 Modifier.matchParentSize(),
                 bottomOffset = bottomControllerHeight,
                 windowInsets = windowInsets,

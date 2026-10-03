@@ -26,6 +26,9 @@ import android.view.PixelCopy
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
 import androidx.compose.ui.graphics.asImageBitmap
+import androidx.compose.ui.platform.ClipEntry
+import androidx.compose.ui.platform.Clipboard
+import androidx.compose.ui.platform.LocalClipboard
 import androidx.core.content.FileProvider
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
@@ -48,7 +51,8 @@ actual fun rememberPlayerScreenshotCapturer(): PlayerScreenshotCapturer {
 @Composable
 actual fun rememberPlayerScreenshotSharer(): PlayerScreenshotSharer {
     val context = LocalContext.current
-    return remember(context) { AndroidPlayerScreenshotSharer(context) }
+    val clipboard = LocalClipboard.current
+    return remember(context, clipboard) { AndroidPlayerScreenshotSharer(context, clipboard) }
 }
 
 private const val GALLERY_DIRECTORY = "Animeko"
@@ -160,9 +164,10 @@ private class AndroidPlayerScreenshotCapturer(
     }
 }
 
-/** 「分享」交给系统分享面板, 「打开」交给系统图片查看器; 两者都通过 content URI 授予读权限. */
+/** 「分享」交给系统分享面板; 「复制」把截图的 content URI 放进剪贴板, 接收方据此读取图片. */
 private class AndroidPlayerScreenshotSharer(
     private val context: Context,
+    private val clipboard: Clipboard,
 ) : PlayerScreenshotSharer {
     override suspend fun share(screenshot: SavedPlayerScreenshot): PlayerScreenshotShareOutcome {
         val uri = Uri.parse(screenshot.location)
@@ -179,12 +184,16 @@ private class AndroidPlayerScreenshotSharer(
         }
     }
 
-    override suspend fun open(screenshot: SavedPlayerScreenshot): Boolean {
-        val view = Intent(Intent.ACTION_VIEW).apply {
-            setDataAndType(Uri.parse(screenshot.location), MIME_PNG)
-            addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+    override suspend fun copy(screenshot: SavedPlayerScreenshot): Boolean {
+        return try {
+            val uri = Uri.parse(screenshot.location)
+            clipboard.setClipEntry(ClipEntry(ClipData.newUri(context.contentResolver, screenshot.fileName, uri)))
+            true
+        } catch (e: CancellationException) {
+            throw e
+        } catch (e: Exception) {
+            false
         }
-        return startActivity(view)
     }
 
     private fun startActivity(intent: Intent): Boolean {
