@@ -29,6 +29,7 @@ import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.platform.ClipEntry
 import androidx.compose.ui.platform.Clipboard
 import androidx.compose.ui.platform.LocalClipboard
+import androidx.compose.ui.unit.DpRect
 import androidx.core.content.FileProvider
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
@@ -168,7 +169,7 @@ private class AndroidPlayerScreenshotSharer(
     private val context: Context,
     private val clipboard: Clipboard,
 ) : PlayerScreenshotSharer {
-    override suspend fun share(screenshot: SavedPlayerScreenshot): Boolean {
+    override suspend fun share(screenshot: SavedPlayerScreenshot, anchor: DpRect?): Boolean {
         val uri = Uri.parse(screenshot.location)
         val send = Intent(Intent.ACTION_SEND).apply {
             type = MIME_PNG

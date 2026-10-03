@@ -13,6 +13,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.Stable
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.ui.unit.DpRect
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.launch
 import me.him188.ani.app.tools.MonoTasker
@@ -78,9 +79,10 @@ class PlayerScreenshotController(
         }
     }
 
-    fun share(screenshot: SavedPlayerScreenshot) {
+    /** [anchor] 是分享按钮在窗口中的位置, 见 [PlayerScreenshotSharer.share]. */
+    fun share(screenshot: SavedPlayerScreenshot, anchor: DpRect?) {
         scope.launch {
-            if (!sharer.share(screenshot)) toaster.toast(getString(Lang.video_player_screenshot_share_failed))
+            if (!sharer.share(screenshot, anchor)) toaster.toast(getString(Lang.video_player_screenshot_share_failed))
         }
     }
 

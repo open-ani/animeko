@@ -10,6 +10,7 @@
 package me.him188.ani.app.videoplayer.screenshot
 
 import androidx.compose.runtime.Composable
+import androidx.compose.ui.unit.DpRect
 import org.openani.mediamp.MediampPlayer
 
 /** iOS 使用 AVKit 后端, 它没有读取当前帧的能力, 因此不支持截图, 播放器不显示截图按钮. */
@@ -21,7 +22,7 @@ private object UnsupportedPlayerScreenshotCapturer : PlayerScreenshotCapturer {
 }
 
 private object NoOpPlayerScreenshotSharer : PlayerScreenshotSharer {
-    override suspend fun share(screenshot: SavedPlayerScreenshot): Boolean = false
+    override suspend fun share(screenshot: SavedPlayerScreenshot, anchor: DpRect?): Boolean = false
     override suspend fun copy(screenshot: SavedPlayerScreenshot): Boolean = false
 }
 

@@ -11,17 +11,24 @@ package me.him188.ani.app.videoplayer.screenshot
 
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
+import androidx.compose.ui.unit.DpRect
+import androidx.compose.ui.unit.height
+import androidx.compose.ui.unit.width
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import kotlinx.io.files.Path
 import me.him188.ani.app.platform.Context
 import me.him188.ani.app.platform.LocalContext
+import me.him188.ani.app.platform.PlatformWindow
 import me.him188.ani.app.platform.features.DesktopFileRevealer
+import me.him188.ani.app.platform.features.ShareAnchor
+import me.him188.ani.app.platform.features.SystemShareSheet
 import me.him188.ani.app.platform.files
 import me.him188.ani.app.ui.foundation.decodeImageBitmap
 import me.him188.ani.app.ui.foundation.imageviewer.ImageClipboard
 import me.him188.ani.app.ui.foundation.imageviewer.ImageViewerExportedFile
 import me.him188.ani.app.ui.foundation.imageviewer.rememberImageClipboard
+import me.him188.ani.app.ui.foundation.layout.LocalPlatformWindow
 import me.him188.ani.utils.coroutines.IO_
 import me.him188.ani.utils.coroutines.runCatchingCancellable
 import me.him188.ani.utils.io.inSystem
@@ -40,7 +47,8 @@ actual fun rememberPlayerScreenshotCapturer(): PlayerScreenshotCapturer {
 @Composable
 actual fun rememberPlayerScreenshotSharer(): PlayerScreenshotSharer {
     val clipboard = rememberImageClipboard()
-    return remember(clipboard) { DesktopPlayerScreenshotSharer(clipboard) }
+    val window = LocalPlatformWindow.current
+    return remember(clipboard, window) { DesktopPlayerScreenshotSharer(clipboard, window) }
 }
 
 private const val SCREENSHOT_DIRECTORY = "Animeko"
@@ -80,12 +88,22 @@ private class DesktopPlayerScreenshotCapturer(
     }
 }
 
-/** 桌面没有系统分享面板: 「分享」在文件管理器中定位截图文件, 「复制」把图片连同文件一起放进剪贴板. */
+/**
+ * 「分享」打开系统分享面板 ([SystemShareSheet]: Windows 的 Share UI, macOS 的分享菜单); 面板不可用 (Linux) 或没能显示时,
+ * 退回到在文件管理器中定位截图文件. 「复制」把图片连同文件一起放进剪贴板.
+ */
 private class DesktopPlayerScreenshotSharer(
     private val clipboard: ImageClipboard?,
+    private val window: PlatformWindow,
 ) : PlayerScreenshotSharer {
-    override suspend fun share(screenshot: SavedPlayerScreenshot): Boolean =
-        DesktopFileRevealer.revealFile(File(screenshot.location))
+    override suspend fun share(screenshot: SavedPlayerScreenshot, anchor: DpRect?): Boolean {
+        val file = File(screenshot.location)
+        val sheet = SystemShareSheet.current
+        if (sheet != null && sheet.shareFile(window.windowHandle, file, screenshot.fileName, anchor?.toShareAnchor())) {
+            return true
+        }
+        return DesktopFileRevealer.revealFile(file)
+    }
 
     override suspend fun copy(screenshot: SavedPlayerScreenshot): Boolean {
         val clipboard = clipboard ?: return false
@@ -100,3 +118,5 @@ private class DesktopPlayerScreenshotSharer(
         }.isSuccess
     }
 }
+
+private fun DpRect.toShareAnchor() = ShareAnchor(left.value, top.value, width.value, height.value)

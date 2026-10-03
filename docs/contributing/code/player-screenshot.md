@@ -23,7 +23,7 @@
 | 平台 | 抓帧 | 保存位置 | 分享 | 复制 |
 |------|------|----------|------|------|
 | Android | `PixelCopy` 读取 ExoPlayer 的 SurfaceView, 只含视频帧, 不含弹幕与字幕 | MediaStore `Pictures/Animeko`; Android 9 及以下直接写公共图片目录, 经 FileProvider 的 `external-path` 共享 | `ACTION_SEND` 系统分享面板 | 截图的 content URI 放进剪贴板 |
-| 桌面 | mediamp 的 `Screenshots` feature. mpv 后端在渲染线程按视频显示尺寸 (`dwidth` × `dheight`) 重新渲染当前帧并读回, 得到原始分辨率、无黑边的图片 | `~/Pictures/Animeko`; 不可用时应用数据目录下的 `screenshots` | 文件管理器中定位文件 | 图片与文件一起放进剪贴板 |
+| 桌面 | mediamp 的 `Screenshots` feature. mpv 后端在渲染线程按视频显示尺寸 (`dwidth` × `dheight`) 重新渲染当前帧并读回, 得到原始分辨率、无黑边的图片 | `~/Pictures/Animeko`; 不可用时应用数据目录下的 `screenshots` | Windows: 系统分享面板 (Share UI); macOS: 分享菜单 (`NSSharingServicePicker`); Linux 或面板没能显示: 在文件管理器中定位文件 | 图片与文件一起放进剪贴板 |
 | iOS | 不支持: AVKit 后端没有读取当前帧的能力, 按钮不显示 | - | - | - |
 
 点击画面在三个平台都用应用内图片查看器打开: Android 传 content URI, 桌面传绝对路径, 都是 Sketch 支持的模型.
@@ -41,3 +41,17 @@
 
 面板几何由纯函数 `computePlayerScreenshotPanelGeometry` 计算 (`PlayerScreenshotPanelLayoutTest`);
 闪光、变换、按钮、自动收起以及悬停 / 按住暂停收起由 `PlayerScreenshotOverlayTest` 用合成时钟覆盖.
+
+## 桌面的系统分享
+
+`SystemShareSheet` (app-platform, desktopMain) 封装两个平台的系统分享面板, 通过 JNA 调用, 不需要额外的原生库:
+
+- Windows (`WindowsShareSheet`): WinRT `DataTransferManager`. 用 `IDataTransferManagerInterop` 取得窗口 (HWND) 对应的管理器,
+  订阅 `DataRequested`, 再 `ShowShareUIForWindow`; 系统请求数据时把文件作为 StorageItem 和位图填进 `DataPackage`.
+  所有 COM 调用在一个专用的 MTA 线程上进行, 事件处理器和装着文件的 `IIterable<IStorageItem>` 是用 JNA 回调拼成虚表的 Java 对象.
+  接口 IID 与虚表顺序取自 Windows SDK 头文件, 不要凭记忆改.
+- macOS (`MacosShareSheet`): `NSSharingServicePicker`, 通过 Objective-C 运行时 (`objc_msgSend`) 创建, 用 `dispatch_async_f`
+  投递到主线程显示. 菜单从分享按钮的位置向上弹出: 面板把按钮在窗口中的矩形 (`ShareAnchor`, dp) 传下来, 实现按视图是否翻转换成 AppKit 坐标.
+
+分享按钮的位置由 `PlayerScreenshotOverlay` 在点击时读取 (`boundsInWindow`), 经 `PlayerScreenshotSharer.share(screenshot, anchor)` 传给平台实现;
+Android 与 Windows 的面板由系统定位, 忽略它.

@@ -10,11 +10,17 @@
 package me.him188.ani.app.videoplayer.screenshot
 
 import androidx.compose.runtime.Composable
+import androidx.compose.ui.unit.DpRect
 
 /** 截图预览面板上的动作. 两个方法都不抛出异常, 返回是否成功. */
 interface PlayerScreenshotSharer {
-    /** 分享: Android 交给系统分享面板; 桌面没有系统分享面板, 在文件管理器中定位截图文件. */
-    suspend fun share(screenshot: SavedPlayerScreenshot): Boolean
+    /**
+     * 分享: 交给系统分享面板. Android 用分享 Intent; Windows 用 Share UI, macOS 用分享菜单; Linux 没有系统分享面板,
+     * 在文件管理器中定位截图文件.
+     *
+     * @param anchor 分享按钮在窗口中的位置 (dp). 弹出式的分享面板 (macOS) 从它旁边弹出; 不知道时传 `null`.
+     */
+    suspend fun share(screenshot: SavedPlayerScreenshot, anchor: DpRect?): Boolean
 
     /** 把截图图片复制到系统剪贴板. */
     suspend fun copy(screenshot: SavedPlayerScreenshot): Boolean

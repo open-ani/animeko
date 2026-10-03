@@ -58,15 +58,21 @@ import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.layout.Layout
+import androidx.compose.ui.layout.LayoutCoordinates
+import androidx.compose.ui.layout.boundsInWindow
 import androidx.compose.ui.layout.layout
 import androidx.compose.ui.layout.layoutId
+import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.layout.onSizeChanged
+import androidx.compose.ui.node.Ref
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.Constraints
+import androidx.compose.ui.unit.Density
 import androidx.compose.ui.unit.Dp
+import androidx.compose.ui.unit.DpRect
 import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.unit.dp
 import kotlinx.coroutines.coroutineScope
@@ -150,7 +156,7 @@ private const val MAX_THUMBNAIL_WIDTH_FRACTION = 0.4f
  *
  * 再次截图会替换面板内容并重放整个流程.
  *
- * @param onShare 点击分享按钮
+ * @param onShare 点击分享按钮; 第二个参数是分享按钮在窗口中的位置 (dp), 供平台的分享面板定位
  * @param onCopy 点击复制按钮
  * @param onOpen 点击画面; 面板随即收起
  * @param bottomOffset 面板需要避开的底部控制栏高度; 控制栏隐藏时传 0, 面板随之下移
@@ -159,7 +165,7 @@ private const val MAX_THUMBNAIL_WIDTH_FRACTION = 0.4f
 @Composable
 fun PlayerScreenshotOverlay(
     state: PlayerScreenshotPanelState,
-    onShare: (SavedPlayerScreenshot) -> Unit,
+    onShare: (SavedPlayerScreenshot, anchorInWindow: DpRect?) -> Unit,
     onCopy: (SavedPlayerScreenshot) -> Unit,
     onOpen: (SavedPlayerScreenshot) -> Unit,
     modifier: Modifier = Modifier,
@@ -179,7 +185,7 @@ fun PlayerScreenshotOverlay(
                     bottomOffset = bottomOffset,
                     windowInsets = windowInsets,
                     autoDismissDelay = autoDismissDelay,
-                    onShare = { onShare(presentation.screenshot) },
+                    onShare = { anchor -> onShare(presentation.screenshot, anchor) },
                     onCopy = { onCopy(presentation.screenshot) },
                     onOpen = { onOpen(presentation.screenshot) },
                     onDismissed = { state.dismiss(presentation) },
@@ -217,7 +223,7 @@ private fun ScreenshotPresentation(
     bottomOffset: Dp,
     windowInsets: WindowInsets,
     autoDismissDelay: Duration,
-    onShare: () -> Unit,
+    onShare: (anchorInWindow: DpRect?) -> Unit,
     onCopy: () -> Unit,
     onOpen: () -> Unit,
     onDismissed: () -> Unit,
@@ -374,7 +380,7 @@ private fun ScreenshotPanel(
     chromeComposed: Boolean,
     chromeEnabled: Boolean,
     interactions: PanelInteractions,
-    onShare: () -> Unit,
+    onShare: (anchorInWindow: DpRect?) -> Unit,
     onCopy: () -> Unit,
     onOpen: () -> Unit,
 ) {
@@ -424,14 +430,17 @@ private fun ScreenshotPanel(
                         }
                         .background(panelColor, panelShape),
                 )
+                // 弹出式的分享面板从分享按钮旁边弹出: 点击时取按钮当前在窗口中的位置
+                val shareButtonCoordinates = remember { Ref<LayoutCoordinates>() }
                 PanelActionButton(
                     icon = Icons.Rounded.Share,
                     label = stringResource(Lang.video_player_screenshot_share),
                     alpha = chromeAlpha,
                     enabled = chromeEnabled,
                     interactionSource = interactions.share,
-                    onClick = onShare,
-                    modifier = Modifier.layoutId(SHARE_ID).testTag(TAG_PLAYER_SCREENSHOT_SHARE),
+                    onClick = { onShare(shareButtonCoordinates.value?.boundsInWindow()?.toDpRect(density)) },
+                    modifier = Modifier.layoutId(SHARE_ID).testTag(TAG_PLAYER_SCREENSHOT_SHARE)
+                        .onGloballyPositioned { shareButtonCoordinates.value = it },
                 )
                 PanelActionButton(
                     icon = Icons.Rounded.ContentCopy,
@@ -535,6 +544,10 @@ private fun PanelActionButton(
     ) {
         Icon(icon, contentDescription = label, Modifier.size(20.dp))
     }
+}
+
+private fun Rect.toDpRect(density: Density): DpRect = with(density) {
+    DpRect(left.toDp(), top.toDp(), right.toDp(), bottom.toDp())
 }
 
 // region Preview

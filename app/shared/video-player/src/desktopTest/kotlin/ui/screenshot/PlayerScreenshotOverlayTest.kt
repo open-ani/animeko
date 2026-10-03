@@ -23,6 +23,7 @@ import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performMouseInput
 import androidx.compose.ui.test.performTouchInput
 import androidx.compose.ui.unit.Dp
+import androidx.compose.ui.unit.DpRect
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.height
 import androidx.compose.ui.unit.width
@@ -32,6 +33,7 @@ import me.him188.ani.app.ui.framework.runAniComposeUiTest
 import me.him188.ani.app.videoplayer.screenshot.SavedPlayerScreenshot
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertNotNull
 import kotlin.test.assertNull
 import kotlin.test.assertSame
 import kotlin.time.Duration.Companion.seconds
@@ -50,7 +52,7 @@ class PlayerScreenshotOverlayTest {
         playerWidth: Dp,
         playerHeight: Dp,
         bottomOffset: Dp = 0.dp,
-        onShare: (SavedPlayerScreenshot) -> Unit = {},
+        onShare: (SavedPlayerScreenshot, DpRect?) -> Unit = { _, _ -> },
         onCopy: (SavedPlayerScreenshot) -> Unit = {},
         onOpen: (SavedPlayerScreenshot) -> Unit = {},
     ): PlayerScreenshotPanelState {
@@ -129,14 +131,29 @@ class PlayerScreenshotOverlayTest {
     @Test
     fun `share and copy buttons report the screenshot and keep the panel`() = runAniComposeUiTest {
         var shared: SavedPlayerScreenshot? = null
+        var sharedAnchor: DpRect? = null
         var copied: SavedPlayerScreenshot? = null
-        val state = setOverlay(800.dp, 450.dp, onShare = { shared = it }, onCopy = { copied = it })
+        val state = setOverlay(
+            800.dp, 450.dp,
+            onShare = { screenshot, anchor ->
+                shared = screenshot
+                sharedAnchor = anchor
+            },
+            onCopy = { copied = it },
+        )
         val screenshot = screenshot()
         state.present(screenshot)
         advanceUntilDocked()
 
         onNodeWithTag(TAG_PLAYER_SCREENSHOT_SHARE).performClick()
         assertSame(screenshot, shared)
+        // 分享面板从分享按钮旁边弹出: 锚点就是按钮在窗口中的位置
+        val shareButton = onNodeWithTag(TAG_PLAYER_SCREENSHOT_SHARE).getBoundsInRoot()
+        val anchor = assertNotNull(sharedAnchor)
+        assertEquals(shareButton.left.value, anchor.left.value, 1f)
+        assertEquals(shareButton.top.value, anchor.top.value, 1f)
+        assertEquals(shareButton.right.value, anchor.right.value, 1f)
+        assertEquals(shareButton.bottom.value, anchor.bottom.value, 1f)
         onNodeWithTag(TAG_PLAYER_SCREENSHOT_COPY).performClick()
         assertSame(screenshot, copied)
         mainClock.advanceTimeBy(500)
@@ -213,7 +230,7 @@ class PlayerScreenshotOverlayTest {
     @Test
     fun `holding a panel button down postpones the auto dismiss until release`() = runAniComposeUiTest {
         var shared = 0
-        val state = setOverlay(800.dp, 450.dp, onShare = { shared++ })
+        val state = setOverlay(800.dp, 450.dp, onShare = { _, _ -> shared++ })
         state.present(screenshot())
         advanceUntilDocked()
 

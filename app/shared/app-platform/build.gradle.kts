@@ -75,6 +75,7 @@ kotlin {
         api(projects.utils.buildConfig)
     }
     sourceSets.desktopMain.dependencies {
+        implementation(projects.utils.coroutines)
         api(libs.jna)
         api(libs.jna.platform)
     }
