@@ -34,6 +34,7 @@ import me.him188.ani.app.torrent.api.peer.PeerInfo
 import me.him188.ani.datasources.api.source.MediaSourceLocation
 import me.him188.ani.utils.coroutines.childScope
 import me.him188.ani.utils.coroutines.onReplacement
+import me.him188.ani.utils.io.SystemPath
 import me.him188.ani.utils.ktor.ScopedHttpClient
 import me.him188.ani.utils.logging.debug
 import me.him188.ani.utils.logging.logger
@@ -63,10 +64,14 @@ interface TorrentEngine : AutoCloseable {
      */
     val isSupported: Boolean
 
+    val saveDir: SystemPath
+
     /**
      * 测试是否可以连接到这个引擎. 不能连接一定代表无法使用, 但能连接不一定代表能使用.
      */
     suspend fun testConnection(): Boolean
+
+    suspend fun canServe(uri: String): Boolean = true
 
     /**
      * 创建一个下载器. 若已经有一个下载器在运行, 则会返回同一个下载器.

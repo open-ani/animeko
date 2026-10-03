@@ -156,6 +156,7 @@ fun AniAppContent(aniNavigator: AniNavigator) {
                     viewModel = watchTogetherViewModel,
                     aniNavigator = aniNavigator,
                 )
+                PikPakNotEnoughSpaceDialogHost(aniAppViewModel.pikPakNotEnoughSpace)
             }
         }
     }

@@ -74,6 +74,8 @@ import me.him188.ani.app.ui.settings.tabs.about.AboutTabInfo
 import me.him188.ani.app.ui.settings.tabs.app.SoftwareUpdateGroupState
 import me.him188.ani.app.ui.settings.tabs.media.CacheDirectoryGroupState
 import me.him188.ani.app.ui.settings.tabs.media.MediaSelectionGroupState
+import me.him188.ani.app.ui.settings.tabs.media.PikPakDriveUsageState
+import me.him188.ani.app.ui.settings.tabs.media.PikPakLegacyNoticeState
 import me.him188.ani.app.ui.settings.tabs.media.source.EditMediaSourceState
 import me.him188.ani.app.ui.settings.tabs.media.source.MediaSourceGroupState
 import me.him188.ani.app.ui.settings.tabs.media.source.MediaSourceLoader
@@ -89,9 +91,7 @@ import me.him188.ani.app.ui.settings.tabs.network.toDataSettings
 import me.him188.ani.app.ui.settings.tabs.network.toUIConfig
 import me.him188.ani.app.ui.user.SelfInfoStateProducer
 import me.him188.ani.danmaku.ui.DanmakuConfig
-import me.him188.ani.app.domain.foundation.ScopedHttpClientUserAgent
-import me.him188.ani.torrent.pikpak.testPikPakLogin
-import me.him188.ani.utils.ktor.UnsafeScopedHttpClientApi
+import me.him188.ani.app.domain.torrent.engines.PikPakEngine
 import me.him188.ani.utils.coroutines.IO_
 import me.him188.ani.utils.coroutines.SingleTaskExecutor
 import org.koin.core.component.KoinComponent
@@ -109,6 +109,7 @@ open class SettingsViewModel : AbstractSettingsViewModel(), KoinComponent {
     private val mediaSourceCodecManager: MediaSourceCodecManager by inject()
     private val clientProvider: HttpClientProvider by inject()
     private val tokenRepository: TokenRepository by inject()
+    private val pikpakEngine: PikPakEngine by inject()
 
     private val proxyProvider = ProxySettingsFlowProxyProvider(settingsRepository.proxySettings.flow, backgroundScope)
 
@@ -145,35 +146,16 @@ open class SettingsViewModel : AbstractSettingsViewModel(), KoinComponent {
     val pikpakSettingsState: SettingsState<PikPakConfig> =
         settingsRepository.pikpakConfig.stateInBackground(PikPakConfig.Default)
 
-    // Probes PikPak auth with the currently-displayed credentials. The engine
-    // keeps the password persisted (obscured, see PikPakConfig.password) so a
-    // revoked refresh token can be recovered without prompting the user; an
-    // existing refresh token is also a usable auth path on its own. NOT_ENABLED
-    // therefore requires both credential fields blank, not just the password.
-    //
-    // We borrow/returnClient around each probe rather than borrowForever:
-    // every click on "测试连接" would otherwise pin a fresh client in the
-    // ref-counted pool until process exit, so after e.g. a proxy change the
-    // old clients (with their sockets / threads) would accumulate.
-    @OptIn(UnsafeScopedHttpClientApi::class)
-    val pikpakConnectionTester: ConnectionTester = ConnectionTester(id = "pikpak") {
-        val cfg = pikpakSettingsState.value
-        if (cfg.username.isEmpty() || (cfg.password.isEmpty() && cfg.refreshToken.isEmpty())) {
-            ConnectionTestResult.NOT_ENABLED
-        } else {
-            val scoped = clientProvider.get(ScopedHttpClientUserAgent.ANI)
-            val ticket = scoped.borrow()
-            try {
-                if (testPikPakLogin(cfg.username, cfg.password, cfg.refreshToken, ticket.client)) {
-                    ConnectionTestResult.SUCCESS
-                } else {
-                    ConnectionTestResult.FAILED
-                }
-            } finally {
-                scoped.returnClient(ticket)
-            }
-        }
-    }
+    val pikpakDriveUsageState = PikPakDriveUsageState(
+        backgroundScope = backgroundScope,
+        fetchUsage = { pikpakEngine.driveUsage() },
+    )
+
+    val pikpakLegacyNoticeState = PikPakLegacyNoticeState(
+        backgroundScope = backgroundScope,
+        fetchItems = { pikpakEngine.legacyFolderItems() },
+        deleteItems = { pikpakEngine.clearLegacyFolder(it) },
+    )
 
     val cacheDirectoryGroupState = CacheDirectoryGroupState(
         mediaCacheSettingsState,

@@ -13,6 +13,7 @@ import android.content.Context
 import android.net.Uri
 import androidx.annotation.OptIn as AndroidxOptIn
 import androidx.media3.common.MediaItem
+import androidx.media3.common.PlaybackException as Media3PlaybackException
 import androidx.media3.common.util.UnstableApi
 import androidx.media3.datasource.DataSource
 import androidx.media3.datasource.DataSpec
@@ -20,6 +21,8 @@ import androidx.media3.datasource.DefaultDataSource
 import androidx.media3.datasource.DefaultHttpDataSource
 import androidx.media3.datasource.TransferListener
 import androidx.media3.exoplayer.ExoPlayer
+import androidx.media3.exoplayer.ExoTimeoutException
+import androidx.media3.exoplayer.analytics.AnalyticsListener
 import androidx.media3.exoplayer.source.DefaultMediaSourceFactory
 import androidx.media3.exoplayer.source.MediaSource
 import androidx.media3.extractor.DefaultExtractorsFactory
@@ -33,15 +36,21 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
+import kotlinx.coroutines.currentCoroutineContext
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.ensureActive
 import kotlinx.coroutines.flow.FlowCollector
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
+import me.him188.ani.utils.logging.logger
+import me.him188.ani.utils.logging.warn
 import org.openani.mediamp.ExperimentalMediampApi
 import org.openani.mediamp.InternalForInheritanceMediampApi
+import org.openani.mediamp.MediaStatus
 import org.openani.mediamp.MediampPlayer
 import org.openani.mediamp.MediampPlayerFactory
+import org.openani.mediamp.PlaybackException
 import org.openani.mediamp.exoplayer.ExoPlayerAudioTimeStretch
 import org.openani.mediamp.exoplayer.ExoPlayerMediampPlayer
 import org.openani.mediamp.io.SeekableInput
@@ -65,6 +74,15 @@ import kotlin.time.Duration.Companion.milliseconds
  * the open, before the interceptor runs, and the `createInput` contract allows only one open
  * input at a time. [setMediaData] therefore wraps the data in [TrackingSeekableInputMediaData]
  * so the interceptor can route playback reads through that already-open input.
+ *
+ * Video output detach timeouts: when the video output (e.g. a SurfaceView's surface) is destroyed,
+ * ExoPlayer blocks the main thread until the playback thread releases it, and stops playback with
+ * [ExoTimeoutException.TIMEOUT_OPERATION_DETACH_SURFACE] if that takes longer than
+ * [DETACH_SURFACE_TIMEOUT_MILLIS]. The media itself is fine and the picture resumes once a new
+ * output is attached, so a [UriMediaData] is reopened at the position where it failed: [openMedia]
+ * retries timeouts during an open, and [videoOutputTimeoutListener] reopens after timeouts during
+ * playback. A [SeekableInputMediaData] (BT, local files) is closed by MediaMP when its session ends
+ * and cannot be reopened as is, so its timeouts are reported as ordinary playback errors.
  */
 @OptIn(InternalForInheritanceMediampApi::class)
 @AndroidxOptIn(UnstableApi::class)
@@ -98,7 +116,10 @@ class LibassExoPlayerMediampPlayer private constructor(
             parentCoroutineContext,
             audioTimeStretch,
             mediaSourceInterceptor = pipeline::intercept,
-            configurePlayerBuilder = configurePlayerBuilder,
+            configurePlayerBuilder = { builder ->
+                builder.setDetachSurfaceTimeoutMs(DETACH_SURFACE_TIMEOUT_MILLIS)
+                configurePlayerBuilder?.invoke(builder)
+            },
         ),
     )
 
@@ -108,10 +129,48 @@ class LibassExoPlayerMediampPlayer private constructor(
     private val backgroundScope = CoroutineScope(
         parentCoroutineContext + SupervisorJob(parentCoroutineContext[Job.Key]),
     )
+    @Volatile
     private var closed = false
+
+    /**
+     * The media of the caller's latest [setMediaData], or `null` after [stopPlayback]. Reopened after
+     * a video output detach timeout during playback.
+     */
+    @Volatile
+    private var currentMediaData: MediaData? = null
+
+    /**
+     * ExoPlayer registers its analytics collector at construction, before MediaMP's Player.Listener,
+     * so this listener sees the error first. MediaMP handles the error by stopping ExoPlayer and
+     * clearing the media, so the failed position is taken from [AnalyticsListener.EventTime].
+     */
+    private val videoOutputTimeoutListener = object : AnalyticsListener {
+        override fun onPlayerError(eventTime: AnalyticsListener.EventTime, error: Media3PlaybackException) {
+            if (closed || !error.isVideoOutputDetachTimeout()) return
+            // A timeout during an open is thrown from setMediaData and retried by openMedia.
+            if (exoMediampPlayer.state.value.mediaStatus == MediaStatus.Opening) return
+            val data = currentMediaData as? UriMediaData ?: return
+            val positionMillis = eventTime.currentPlaybackPositionMs
+            val playWhenReady = exoPlayer.playWhenReady
+            logger.warn(error) {
+                "Video output detach timed out during playback, reopening at ${positionMillis}ms, playWhenReady=$playWhenReady"
+            }
+            // Reopen outside ExoPlayer's listener dispatch.
+            backgroundScope.launch(Dispatchers.Main) {
+                // The caller may have loaded other media or stopped playback in the meantime.
+                if (currentMediaData !== data) return@launch
+                try {
+                    openMedia(data, playWhenReady, positionMillis)
+                } catch (e: PlaybackException) {
+                    logger.warn(e) { "Failed to reopen media after video output detach timeout" }
+                }
+            }
+        }
+    }
 
     init {
         assHandler.init(exoPlayer)
+        exoPlayer.addAnalyticsListener(videoOutputTimeoutListener)
         backgroundScope.launch(Dispatchers.Main.immediate) {
             while (isActive) {
                 // AssRenderer normally supplies this timestamp. MediaMP owns the ExoPlayer
@@ -123,14 +182,39 @@ class LibassExoPlayerMediampPlayer private constructor(
     }
 
     override suspend fun setMediaData(data: MediaData, playWhenReady: Boolean, startPositionMillis: Long) {
-        // Wrap so the interceptor can reuse the SeekableInput the backend opens for the
-        // session; see TrackingSeekableInputMediaData.
-        val playerData = if (data is SeekableInputMediaData) {
-            TrackingSeekableInputMediaData(data)
-        } else {
-            data
+        currentMediaData = data
+        openMedia(data, playWhenReady, startPositionMillis)
+    }
+
+    /**
+     * Opens [data]. A [UriMediaData] whose open fails with a video output detach timeout is retried at
+     * the same position, up to [MAX_OPEN_ATTEMPTS] attempts in total.
+     */
+    private suspend fun openMedia(data: MediaData, playWhenReady: Boolean, startPositionMillis: Long) {
+        var attempt = 1
+        while (true) {
+            // Wrap so the interceptor can reuse the SeekableInput the backend opens for the
+            // session; see TrackingSeekableInputMediaData.
+            val playerData = if (data is SeekableInputMediaData) {
+                TrackingSeekableInputMediaData(data)
+            } else {
+                data
+            }
+            try {
+                exoMediampPlayer.setMediaData(playerData, playWhenReady, startPositionMillis)
+                return
+            } catch (e: PlaybackException) {
+                if (data !is UriMediaData || !e.isVideoOutputDetachTimeout() || attempt >= MAX_OPEN_ATTEMPTS) throw e
+                currentCoroutineContext().ensureActive()
+                logger.warn(e) { "Video output detach timed out while opening, retrying (attempt $attempt/$MAX_OPEN_ATTEMPTS)" }
+                attempt++
+            }
         }
-        exoMediampPlayer.setMediaData(playerData, playWhenReady, startPositionMillis)
+    }
+
+    override fun stopPlayback() {
+        currentMediaData = null
+        exoMediampPlayer.stopPlayback()
     }
 
     /**
@@ -166,12 +250,37 @@ class LibassExoPlayerMediampPlayer private constructor(
     override fun close() {
         if (closed) return
         closed = true
+        currentMediaData = null
         backgroundScope.cancel()
+        exoPlayer.removeAnalyticsListener(videoOutputTimeoutListener)
         exoPlayer.removeListener(assHandler)
         assHandler.release()
         exoMediampPlayer.close()
     }
+
+    private companion object {
+        private val logger = logger<LibassExoPlayerMediampPlayer>()
+
+        /**
+         * How long the main thread waits for the playback thread to release a video output. Longer
+         * than Media3's 2 s default to leave room for the video effects (GL) pipeline; the main
+         * thread is blocked meanwhile, so it must stay well below the 5 s input ANR threshold.
+         */
+        const val DETACH_SURFACE_TIMEOUT_MILLIS = 3_000L
+
+        const val MAX_OPEN_ATTEMPTS = 3
+    }
 }
+
+/**
+ * Whether [this] or its cause chain is ExoPlayer's video output detach timeout
+ * ([ExoTimeoutException.TIMEOUT_OPERATION_DETACH_SURFACE]).
+ */
+@AndroidxOptIn(UnstableApi::class)
+internal fun Throwable.isVideoOutputDetachTimeout(): Boolean =
+    generateSequence(this) { it.cause }.any {
+        it is ExoTimeoutException && it.timeoutOperation == ExoTimeoutException.TIMEOUT_OPERATION_DETACH_SURFACE
+    }
 
 /**
  * Builds libass-enabled media sources. Installed as the backend's media source interceptor

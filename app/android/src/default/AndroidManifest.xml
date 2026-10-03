@@ -37,7 +37,9 @@
         <activity
                 android:name=".activity.MainActivity"
                 android:exported="true"
-                android:launchMode="singleTask">
+                android:launchMode="singleTask"
+                android:supportsPictureInPicture="true"
+                android:configChanges="screenSize|smallestScreenSize|screenLayout|orientation">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
                 <category android:name="android.intent.category.LAUNCHER" />
@@ -100,6 +102,14 @@
                 android:exported="false"
                 android:foregroundServiceType="dataSync"
                 android:process=":torrent_service" />
+
+        <!-- No android:process: the PikPak engine runs in the app process and this service exists
+             to keep that process running. -->
+        <service
+                android:name="me.him188.ani.app.domain.torrent.service.PikPakCacheService"
+                android:enabled="true"
+                android:exported="false"
+                android:foregroundServiceType="dataSync" />
 
     </application>
 </manifest>

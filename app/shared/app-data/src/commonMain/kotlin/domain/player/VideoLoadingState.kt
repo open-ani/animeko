@@ -10,6 +10,7 @@
 package me.him188.ani.app.domain.player
 
 import androidx.compose.runtime.Immutable
+import me.him188.ani.app.domain.media.cache.engine.MediaCacheEngineKey
 import me.him188.ani.app.domain.media.resolver.MediaResolver
 import me.him188.ani.app.domain.media.selector.MediaSelector
 import me.him188.ani.datasources.api.Media
@@ -31,16 +32,22 @@ sealed interface VideoLoadingState {
     /**
      * WEB: 已经成功解析到 m3u8 链接
      * BT: 要解析磁力链, 查询元数据
+     * 云盘: 要查询文件并等待取流就绪
+     *
+     * [engineKey] 为 `null` 表示不经过种子引擎.
      */
     data class DecodingData(
-        val isBt: Boolean,
+        val engineKey: MediaCacheEngineKey?,
     ) : VideoLoadingState, Progressing
 
     /**
      * 文件成功找到
+     *
+     * [engineKey] 是实际承载播放的引擎, 为 `null` 表示不经过种子引擎. 打开阶段可能从云盘回退到本地
+     * BT, 因此它未必等于 [DecodingData.engineKey].
      */
     data class Succeed(
-        val isBt: Boolean,
+        val engineKey: MediaCacheEngineKey?,
     ) : VideoLoadingState, Progressing
 
     sealed class Failed : VideoLoadingState

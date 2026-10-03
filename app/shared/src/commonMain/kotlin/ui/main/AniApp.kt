@@ -39,6 +39,7 @@ import me.him188.ani.app.domain.mediasource.web.captcha.WebCaptchaDialogHost
 import me.him188.ani.app.domain.mediasource.web.captcha.WebSessionManager
 import me.him188.ani.app.domain.session.SessionState
 import me.him188.ani.app.domain.session.SessionStateProvider
+import me.him188.ani.app.domain.torrent.engines.PikPakEngine
 import me.him188.ani.app.navigation.BrowserNavigator
 import me.him188.ani.app.navigation.MainScreenPage
 import me.him188.ani.app.navigation.NavRoutes
@@ -62,6 +63,7 @@ import me.him188.ani.app.ui.foundation.rememberPlatformFontFamily
 import me.him188.ani.app.ui.foundation.theme.AniTheme
 import me.him188.ani.app.ui.foundation.theme.LocalThemeSettings
 import me.him188.ani.app.ui.lang.LocaleZhCN
+import me.him188.ani.torrent.pikpak.PikPakNotEnoughSpaceException
 import me.him188.ani.utils.ktor.ScopedHttpClient
 import me.him188.ani.utils.platform.Platform
 import me.him188.ani.utils.platform.currentPlatform
@@ -89,6 +91,7 @@ class AniAppViewModel : AbstractViewModel(), KoinComponent {
     private val webSessionManager: WebSessionManager by inject()
     private val userRepository: UserRepository by inject()
     private val sessionStateProvider: SessionStateProvider by inject()
+    private val pikPakEngine: PikPakEngine by inject()
 
     private val imageLoaderClient = httpClientProvider.get(ScopedHttpClientUserAgent.ANI)
 
@@ -97,6 +100,8 @@ class AniAppViewModel : AbstractViewModel(), KoinComponent {
     )
 
     val browserNavigator by inject<BrowserNavigator>()
+
+    val pikPakNotEnoughSpace: Flow<PikPakNotEnoughSpaceException> get() = pikPakEngine.notEnoughSpace
 
     val bangumiSessionExpired =
         combine(userRepository.selfInfoFlow, sessionStateProvider.stateFlow) { selfInfo, sessionState ->

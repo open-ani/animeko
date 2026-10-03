@@ -6,6 +6,7 @@
 > 后续收拢为 `MediaAutoSelector` 单一执行循环，WEB 与 BT 均不再使用分支协程竞速。
 > `MediaSelectorAutoSelect` 及 `.autoSelect` 已删除；下文保留旧公开方法的约束及相关行号为历史记录。
 > 下载缓存调用方直接等待完成并调用 `trySelectDefault`，播放和换源统一调用 `MediaAutoSelector.select`。
+> 播放页选择器为三种模式：自动匹配（WEB 源列表）、手动查找（浏览数据源的条目、线路、剧集，带按条目的浏览记忆）、BT 资源（独立页面）；模式是会话内的展示选项，不改设置。§5.2(4)、§6 C15、§7 D9/D10 的三 tab 方案由此替代；D8、D11、R5 未实施。当前设计见[选源界面](../../contributing/code/media/media-selector-ui.md)。
 
 
 > 状态:**方案定稿**;2026-08-02 增补 Phase C(BT/WEB 双模式拆分,方向已批,D8–D11 已定,见 §5/§7);其余决策点待批,批准前不动任何生产代码。

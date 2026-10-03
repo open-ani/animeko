@@ -16,13 +16,12 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
-import androidx.compose.runtime.setValue
 import androidx.compose.runtime.rememberUpdatedState
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draganddrop.DragAndDropSourceModifierNode
@@ -39,6 +38,7 @@ import androidx.compose.ui.input.key.key
 import androidx.compose.ui.input.key.type
 import androidx.compose.ui.input.pointer.PointerEventPass
 import androidx.compose.ui.input.pointer.PointerEventType
+import androidx.compose.ui.input.pointer.PointerType
 import androidx.compose.ui.input.pointer.SuspendingPointerInputModifierNode
 import androidx.compose.ui.input.pointer.isCtrlPressed
 import androidx.compose.ui.input.pointer.isMetaPressed
@@ -68,7 +68,7 @@ import kotlinx.coroutines.withTimeoutOrNull
 import me.him188.ani.app.platform.PlatformWindow
 import me.him188.ani.app.platform.window.MacTrackpadGestures
 import me.him188.ani.app.platform.window.rememberLayoutHitTestOwner
-import me.him188.ani.app.ui.foundation.LocalSketch
+import me.him188.ani.app.ui.foundation.effects.OverrideCaptionButtonAppearance
 import me.him188.ani.app.ui.foundation.imageviewer.FileKitImageFileSaver
 import me.him188.ani.app.ui.foundation.imageviewer.ImageViewerContent
 import me.him188.ani.app.ui.foundation.imageviewer.ImageViewerExportedFile
@@ -212,6 +212,7 @@ private fun ImageViewerWindow(
         val window = this.window
         val saveDialogTitle = stringResource(Lang.image_viewer_save)
         val content: @Composable () -> Unit = {
+            OverrideCaptionButtonAppearance(true)
             ImageViewerContent(
                 model = model,
                 onClose = onClose,
@@ -340,12 +341,17 @@ private class ImageDragOutNode(
             SuspendingPointerInputModifierNode {
                 awaitEachGesture {
                     val down = awaitFirstDown(requireUnconsumed = false, pass = PointerEventPass.Initial)
+                    // Mouse only. AWT runs the OS drag in a nested message loop on the toolkit thread
+                    // that waits for a mouse button release; a finger never sends one, so native touch
+                    // messages (including the pinch that started this) queue up until it gives up.
+                    if (down.type != PointerType.Mouse) return@awaitEachGesture
                     if (exported == null || !zoomable.isAtFitScale()) return@awaitEachGesture
                     val slop = viewConfiguration.touchSlop
                     while (true) {
                         val event = awaitPointerEvent(PointerEventPass.Initial)
                         val change = event.changes.firstOrNull { it.id == down.id } ?: break
                         if (!change.pressed) break
+                        if (event.changes.count { it.pressed } > 1) break
                         if ((change.position - down.position).getDistance() > slop) {
                             change.consume()
                             source.requestDragAndDropTransfer(change.position)

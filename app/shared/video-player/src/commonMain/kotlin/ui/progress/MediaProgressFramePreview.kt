@@ -24,6 +24,7 @@ import kotlinx.coroutines.delay
 import org.openani.mediamp.MediampPlayer
 import org.openani.mediamp.features.FramePreview
 import org.openani.mediamp.features.PreviewFrame
+import org.openani.mediamp.source.MediaData
 
 /**
  * 进度条预览帧的状态: 悬浮 (桌面) 或拖动 (触摸) 进度条时, 加载并展示目标位置的视频帧.
@@ -135,15 +136,18 @@ fun rememberMediaProgressFramePreviewState(
     player: MediampPlayer,
     maxWidth: Dp = 192.dp,
     maxHeight: Dp = 128.dp,
+    /** See [createMediaProgressFramePreviewState]. */
+    mediaFramePreview: (MediaData) -> FramePreview? = { null },
 ): MediaProgressFramePreviewState? {
     val framePreview = remember(player) { player.features[FramePreview] } ?: return null
     val density = LocalDensity.current
-    val state = remember(framePreview, density, maxWidth, maxHeight) {
+    val state = remember(framePreview, density, maxWidth, maxHeight, mediaFramePreview) {
         val maxWidthPx = with(density) { maxWidth.roundToPx() }
         val maxHeightPx = with(density) { maxHeight.roundToPx() }
         MediaProgressFramePreviewState(
             fetchFrame = { positionMillis ->
-                framePreview.getPreviewFrame(positionMillis, maxWidthPx, maxHeightPx)?.toImageBitmap()
+                val preview = player.mediaData.value?.let(mediaFramePreview) ?: framePreview
+                preview.getPreviewFrame(positionMillis, maxWidthPx, maxHeightPx)?.toImageBitmap()
             },
         )
     }
@@ -165,10 +169,16 @@ fun createMediaProgressFramePreviewState(
     player: MediampPlayer,
     maxWidth: Int,
     maxHeight: Int,
+    /**
+     * A preview the current media supplies itself, used instead of the player's for as long as it
+     * returns one; resolved on every request, since the media changes under the same state.
+     */
+    mediaFramePreview: (MediaData) -> FramePreview? = { null },
 ): MediaProgressFramePreviewState? {
     val feature = player.features[FramePreview] ?: return null
     return MediaProgressFramePreviewState(fetchFrame = { position ->
-        feature.getPreviewFrame(position, maxWidth, maxHeight)?.toImageBitmap()
+        val preview = player.mediaData.value?.let(mediaFramePreview) ?: feature
+        preview.getPreviewFrame(position, maxWidth, maxHeight)?.toImageBitmap()
     })
 }
 
