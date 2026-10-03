@@ -25,6 +25,7 @@ import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.only
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.safeContent
+import androidx.compose.foundation.layout.statusBars
 import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.systemBars
 import androidx.compose.foundation.layout.union
@@ -1295,7 +1296,10 @@ private fun EpisodeVideo(
         onClickCache = { navigator.navigateSubjectCaches(vm.subjectId) },
         modifier = modifier
             .fillMaxWidth().background(Color.Black)
-            .then(if (expanded) Modifier.fillMaxSize() else Modifier.statusBarsPadding()),
+            // 播放器节点在进出全屏时保持不变, 状态栏 padding 必须始终挂载, 只切换 insets 的值.
+            // iOS 上 statusBarsPadding() 被插入已挂载的节点时找不到自己的 padding 节点, padding 会一直是 0.
+            .windowInsetsPadding(if (expanded) WindowInsets(0.dp) else WindowInsets.statusBars)
+            .then(if (expanded) Modifier.fillMaxSize() else Modifier),
         maintainAspectRatio = maintainAspectRatio,
         contentWindowInsets = windowInsets,
         fastForwardSpeed = vm.videoScaffoldConfig.fastForwardSpeed,
