@@ -9,12 +9,9 @@
 
 package me.him188.ani.app.videoplayer.ui.screenshot
 
-import androidx.compose.runtime.Composable
 import androidx.compose.runtime.Stable
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import me.him188.ani.app.videoplayer.screenshot.SavedPlayerScreenshot
 
@@ -22,7 +19,7 @@ import me.him188.ani.app.videoplayer.screenshot.SavedPlayerScreenshot
  * 播放器截图预览面板的状态.
  *
  * 截图成功后调用 [present]: [PlayerScreenshotOverlay] 闪光并把截图从视频区域收进角落.
- * 面板由用户关闭或超时后调用 [dismiss].
+ * 面板超时或用户点开截图后由覆盖层调用 [dismiss].
  */
 @Stable
 class PlayerScreenshotPanelState {
@@ -30,36 +27,24 @@ class PlayerScreenshotPanelState {
     var current: PlayerScreenshotPresentation? by mutableStateOf(null)
         private set
 
-    /** 每次 [present] 递增, 用于触发闪光与重放入场动画. */
-    var sequence: Int by mutableIntStateOf(0)
-        private set
-
     fun present(screenshot: SavedPlayerScreenshot) {
-        sequence += 1
-        current = PlayerScreenshotPresentation(screenshot, sequence)
+        current = PlayerScreenshotPresentation(screenshot)
     }
 
     /** 收起 [presentation]. 它已被更新的截图替换时不做任何事. */
     fun dismiss(presentation: PlayerScreenshotPresentation) {
         if (current === presentation) current = null
     }
-
-    fun dismiss() {
-        current = null
-    }
 }
 
-/** 一次截图的展示. */
+/** 一次截图的展示. 每次 [PlayerScreenshotPanelState.present] 都是新的实例, 覆盖层据此重放入场动画. */
+@Stable
 class PlayerScreenshotPresentation(
     val screenshot: SavedPlayerScreenshot,
-    val sequence: Int,
 ) {
     /**
-     * 是否已经完成从视频区域收进角落的入场动画.
+     * 是否已经停靠在角落.
      * 覆盖层在面板停靠期间被重新组合 (例如进出画中画) 时, 面板直接停在角落, 不重放入场.
      */
-    var hasDocked: Boolean = false
+    var docked: Boolean by mutableStateOf(false)
 }
-
-@Composable
-fun rememberPlayerScreenshotPanelState(): PlayerScreenshotPanelState = remember { PlayerScreenshotPanelState() }

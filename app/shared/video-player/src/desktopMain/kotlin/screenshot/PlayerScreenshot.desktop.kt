@@ -11,7 +11,6 @@ package me.him188.ani.app.videoplayer.screenshot
 
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
-import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import kotlinx.io.files.Path
@@ -29,6 +28,7 @@ import me.him188.ani.utils.io.toFile
 import org.openani.mediamp.MediampPlayer
 import org.openani.mediamp.features.Screenshots
 import java.io.File
+import java.io.IOException
 
 @Composable
 actual fun rememberPlayerScreenshotCapturer(): PlayerScreenshotCapturer {
@@ -59,19 +59,16 @@ private class DesktopPlayerScreenshotCapturer(
         if (player.mediaProperties.value == null) {
             return PlayerScreenshotResult.Failure(PlayerScreenshotFailure.NoFrame)
         }
-        return try {
+        return runCatchingNonCancellation {
             val file = withContext(Dispatchers.IO_) { screenshotDirectory().resolve(fileName) }
             screenshots.takeScreenshot(file.absolutePath)
-            // 后端不报告失败, 以文件是否写出为准
-            val bytes = withContext(Dispatchers.IO_) {
-                file.takeIf { it.isFile && it.length() > 0 }?.readBytes()
-            } ?: return PlayerScreenshotResult.Failure(PlayerScreenshotFailure.SaveFailed(null))
-            PlayerScreenshotResult.Success(SavedPlayerScreenshot(decodeImageBitmap(bytes), fileName, file.absolutePath))
-        } catch (e: CancellationException) {
-            throw e
-        } catch (e: Exception) {
-            PlayerScreenshotResult.Failure(PlayerScreenshotFailure.SaveFailed(e))
-        }
+            // 后端不报告失败, 以文件是否写出为准; 解码整图也留在 IO 线程
+            val preview = withContext(Dispatchers.IO_) {
+                if (!file.isFile || file.length() == 0L) throw IOException("Screenshot was not written to $file")
+                decodeImageBitmap(file.readBytes()).limitedToPreviewSize()
+            }
+            PlayerScreenshotResult.Success(SavedPlayerScreenshot(preview, fileName, file.absolutePath))
+        }.getOrElse { PlayerScreenshotResult.Failure(PlayerScreenshotFailure.SaveFailed(it)) }
     }
 
     private fun screenshotDirectory(): File {
@@ -82,23 +79,16 @@ private class DesktopPlayerScreenshotCapturer(
     }
 }
 
-/**
- * 桌面没有系统分享面板: 「分享」在文件管理器中定位截图文件, 「复制」把图片连同文件一起放进剪贴板.
- */
+/** 桌面没有系统分享面板: 「分享」在文件管理器中定位截图文件, 「复制」把图片连同文件一起放进剪贴板. */
 private class DesktopPlayerScreenshotSharer(
     private val clipboard: ImageClipboard?,
 ) : PlayerScreenshotSharer {
-    override suspend fun share(screenshot: SavedPlayerScreenshot): PlayerScreenshotShareOutcome {
-        return if (DesktopFileRevealer.revealFile(File(screenshot.location))) {
-            PlayerScreenshotShareOutcome.RevealedInFileManager
-        } else {
-            PlayerScreenshotShareOutcome.Failed
-        }
-    }
+    override suspend fun share(screenshot: SavedPlayerScreenshot): Boolean =
+        DesktopFileRevealer.revealFile(File(screenshot.location))
 
     override suspend fun copy(screenshot: SavedPlayerScreenshot): Boolean {
         val clipboard = clipboard ?: return false
-        return try {
+        return runCatchingNonCancellation {
             clipboard.copy(
                 ImageViewerExportedFile(
                     path = Path(screenshot.location).inSystem,
@@ -106,11 +96,6 @@ private class DesktopPlayerScreenshotSharer(
                     extension = screenshot.fileName.substringAfterLast('.', "png"),
                 ),
             )
-            true
-        } catch (e: CancellationException) {
-            throw e
-        } catch (e: Exception) {
-            false
-        }
+        }.isSuccess
     }
 }

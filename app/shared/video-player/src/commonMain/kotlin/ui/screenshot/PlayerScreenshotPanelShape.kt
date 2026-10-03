@@ -23,16 +23,17 @@ import kotlin.math.min
  * 两者的底边连成一条直线, B 的伸出端是半圆, B 朝 A 的那一端藏在 A 里, B 的上边与 A 的侧边之间用半径 [neckRadius]
  * 的内凹圆角过渡, 所以 A 和 B 之间没有折角, 读起来是一块面板.
  *
- * B 向哪一侧伸出由两者的中心位置决定. 两个半径都会被限制在不互相冲突的范围内.
+ * @param lobeExtendsRight B 向右伸出 (面板停在左下角); 为 `false` 时 B 向左伸出, 整个轮廓是向右情况的水平镜像.
+ * 两个半径都会被限制在不互相冲突的范围内.
  */
 internal fun screenshotPanelOutline(
     regionA: Rect,
     regionB: Rect,
     cornerRadius: Float,
     neckRadius: Float,
+    lobeExtendsRight: Boolean,
 ): Path {
-    val bExtendsRight = regionB.center.x >= regionA.center.x
-    if (bExtendsRight) return outlineWithLobeExtendingRight(regionA, regionB, cornerRadius, neckRadius)
+    if (lobeExtendsRight) return outlineWithLobeExtendingRight(regionA, regionB, cornerRadius, neckRadius)
 
     // 向左伸出: 先按向右画, 再整体水平镜像
     val axis = min(regionA.left, regionB.left) + max(regionA.right, regionB.right)

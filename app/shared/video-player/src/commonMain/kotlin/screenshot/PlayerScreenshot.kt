@@ -11,15 +11,23 @@ package me.him188.ani.app.videoplayer.screenshot
 
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.Immutable
+import androidx.compose.ui.graphics.Canvas
+import androidx.compose.ui.graphics.FilterQuality
 import androidx.compose.ui.graphics.ImageBitmap
+import androidx.compose.ui.graphics.Paint
+import androidx.compose.ui.unit.IntSize
+import kotlinx.coroutines.CancellationException
+import me.him188.ani.app.ui.foundation.imageviewer.sanitizedForFileName
 import org.openani.mediamp.MediampPlayer
+import kotlin.math.max
+import kotlin.math.roundToInt
 
 /**
  * 已保存到系统相册 (Android) 或图片目录 (桌面) 的一张播放器截图.
  *
- * @property image 截图内容, 供播放器内的预览面板显示.
+ * @property image 预览用的画面, 最长边不超过 [PREVIEW_MAX_LONG_SIDE]; 完整文件在 [location].
  * @property fileName 含扩展名的文件名.
- * @property location 平台定位符: Android 为 `content://` URI, 桌面为文件的绝对路径.
+ * @property location 平台定位符: Android 为 `content://` URI, 桌面为文件的绝对路径. 也是图片查看器可以直接加载的模型.
  */
 @Immutable
 class SavedPlayerScreenshot(
@@ -40,9 +48,7 @@ sealed class PlayerScreenshotFailure {
     data object NoFrame : PlayerScreenshotFailure()
 
     /** 画面已截取但保存失败. */
-    class SaveFailed(val cause: Throwable?) : PlayerScreenshotFailure() {
-        override fun toString(): String = "SaveFailed(cause=$cause)"
-    }
+    data class SaveFailed(val cause: Throwable) : PlayerScreenshotFailure()
 }
 
 sealed class PlayerScreenshotResult {
@@ -69,14 +75,6 @@ interface PlayerScreenshotCapturer {
 @Composable
 expect fun rememberPlayerScreenshotCapturer(): PlayerScreenshotCapturer
 
-/** 不支持截图的平台使用的实现. */
-object UnsupportedPlayerScreenshotCapturer : PlayerScreenshotCapturer {
-    override fun isSupported(player: MediampPlayer): Boolean = false
-
-    override suspend fun capture(player: MediampPlayer, fileName: String): PlayerScreenshotResult =
-        PlayerScreenshotResult.Failure(PlayerScreenshotFailure.Unsupported)
-}
-
 /**
  * 截图文件名: `条目ID-剧集序号-视频时间点.png`, 例如 `12345-01-23m45s678ms.png`.
  * 剧集序号中不能出现在文件名里的字符替换为 `_`.
@@ -86,8 +84,40 @@ fun playerScreenshotFileName(subjectId: Int, episodeSort: String, positionMillis
     val minutes = position / 60_000
     val seconds = position % 60_000 / 1000
     val millis = position % 1000
-    val sort = episodeSort.replace(INVALID_FILE_NAME_CHARS, "_").ifEmpty { "0" }
+    val sort = episodeSort.sanitizedForFileName().ifEmpty { "0" }
     return "$subjectId-$sort-${minutes}m${seconds}s${millis}ms.png"
 }
 
-private val INVALID_FILE_NAME_CHARS = Regex("""[\\/:*?"<>| ]""")
+/**
+ * 预览图最长边的上限. 入场时画面会短暂铺满播放器, 1920 足够清晰, 又不至于让 4K 整帧在面板存活期间常驻内存和纹理.
+ */
+internal const val PREVIEW_MAX_LONG_SIDE = 1920
+
+/** 最长边超过 [PREVIEW_MAX_LONG_SIDE] 时按比例缩小成一张新图, 否则返回自身. */
+internal fun ImageBitmap.limitedToPreviewSize(): ImageBitmap {
+    val longSide = max(width, height)
+    if (longSide <= PREVIEW_MAX_LONG_SIDE) return this
+    val scale = PREVIEW_MAX_LONG_SIDE.toFloat() / longSide
+    val size = IntSize(
+        (width * scale).roundToInt().coerceAtLeast(1),
+        (height * scale).roundToInt().coerceAtLeast(1),
+    )
+    val scaled = ImageBitmap(size.width, size.height)
+    Canvas(scaled).drawImageRect(
+        image = this,
+        dstSize = size,
+        paint = Paint().apply { filterQuality = FilterQuality.Medium },
+    )
+    return scaled
+}
+
+/** [runCatching], 但不吞掉协程取消. */
+internal inline fun <T> runCatchingNonCancellation(block: () -> T): Result<T> {
+    return try {
+        Result.success(block())
+    } catch (e: CancellationException) {
+        throw e
+    } catch (e: Exception) {
+        Result.failure(e)
+    }
+}

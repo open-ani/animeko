@@ -11,22 +11,14 @@ package me.him188.ani.app.videoplayer.ui.screenshot
 
 import androidx.compose.ui.geometry.Rect
 import kotlin.test.Test
-import kotlin.test.assertEquals
 import kotlin.test.assertFalse
 
 class PlayerScreenshotPanelShapeTest {
-    private fun assertRect(expected: Rect, actual: Rect, tolerance: Float = 0.5f) {
-        assertEquals(expected.left, actual.left, tolerance, "left")
-        assertEquals(expected.top, actual.top, tolerance, "top")
-        assertEquals(expected.right, actual.right, tolerance, "right")
-        assertEquals(expected.bottom, actual.bottom, tolerance, "bottom")
-    }
-
     @Test
     fun `lobe extending right spans both regions`() {
         val a = Rect(0f, 0f, 215f, 104f)
         val b = Rect(187f, 48f, 319f, 104f) // 底边与 A 对齐, 一端藏在 A 里, 向右伸出
-        val path = screenshotPanelOutline(a, b, cornerRadius = 20f, neckRadius = 12f)
+        val path = screenshotPanelOutline(a, b, cornerRadius = 20f, neckRadius = 12f, lobeExtendsRight = true)
         assertFalse(path.isEmpty)
         assertRect(Rect(0f, 0f, 319f, 104f), path.getBounds())
     }
@@ -35,7 +27,7 @@ class PlayerScreenshotPanelShapeTest {
     fun `lobe extending left is the mirror image`() {
         val a = Rect(104f, 0f, 319f, 104f)
         val b = Rect(0f, 48f, 132f, 104f) // 向左伸出
-        val path = screenshotPanelOutline(a, b, cornerRadius = 20f, neckRadius = 12f)
+        val path = screenshotPanelOutline(a, b, cornerRadius = 20f, neckRadius = 12f, lobeExtendsRight = false)
         assertFalse(path.isEmpty)
         assertRect(Rect(0f, 0f, 319f, 104f), path.getBounds())
     }
@@ -44,7 +36,7 @@ class PlayerScreenshotPanelShapeTest {
     fun `tiny panels clamp the radii instead of folding`() {
         val a = Rect(0f, 0f, 30f, 30f)
         val b = Rect(20f, 10f, 60f, 30f)
-        val path = screenshotPanelOutline(a, b, cornerRadius = 40f, neckRadius = 40f)
+        val path = screenshotPanelOutline(a, b, cornerRadius = 40f, neckRadius = 40f, lobeExtendsRight = true)
         assertFalse(path.isEmpty)
         assertRect(Rect(0f, 0f, 60f, 30f), path.getBounds())
     }

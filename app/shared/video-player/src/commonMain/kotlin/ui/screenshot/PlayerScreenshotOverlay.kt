@@ -10,12 +10,10 @@
 package me.him188.ani.app.videoplayer.ui.screenshot
 
 import androidx.compose.animation.core.Animatable
-import androidx.compose.animation.core.CubicBezierEasing
 import androidx.compose.animation.core.LinearOutSlowInEasing
 import androidx.compose.animation.core.VectorConverter
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.Image
-import androidx.compose.foundation.Indication
 import androidx.compose.foundation.LocalIndication
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -26,7 +24,6 @@ import androidx.compose.foundation.interaction.collectIsPressedAsState
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.WindowInsets
-import androidx.compose.foundation.layout.asPaddingValues
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.GenericShape
@@ -34,22 +31,21 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.ContentCopy
 import androidx.compose.material.icons.rounded.Share
+import androidx.compose.material3.FilledIconButton
 import androidx.compose.material3.Icon
-import androidx.compose.material3.LocalContentColor
+import androidx.compose.material3.IconButtonDefaults
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.key
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
-import androidx.compose.ui.Alignment
+import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
-import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.graphics.Canvas
@@ -63,6 +59,7 @@ import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.layout.Layout
 import androidx.compose.ui.layout.layout
 import androidx.compose.ui.layout.layoutId
+import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.ui.platform.testTag
@@ -73,9 +70,15 @@ import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.unit.dp
 import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.filter
+import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.flow
+import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.flow.merge
 import kotlinx.coroutines.launch
 import me.him188.ani.app.data.models.preference.DarkMode
 import me.him188.ani.app.ui.foundation.ProvideCompositionLocalsForPreview
+import me.him188.ani.app.ui.foundation.animation.EmphasizedDecelerateEasing
 import me.him188.ani.app.ui.lang.Lang
 import me.him188.ani.app.ui.lang.video_player_screenshot_copy
 import me.him188.ani.app.ui.lang.video_player_screenshot_share
@@ -83,7 +86,6 @@ import me.him188.ani.app.videoplayer.screenshot.SavedPlayerScreenshot
 import org.jetbrains.compose.resources.stringResource
 import kotlin.math.roundToInt
 import kotlin.time.Duration
-import kotlin.time.Duration.Companion.milliseconds
 import kotlin.time.Duration.Companion.seconds
 
 const val TAG_PLAYER_SCREENSHOT_FLASH = "playerScreenshotFlash"
@@ -93,7 +95,7 @@ const val TAG_PLAYER_SCREENSHOT_SHARE = "playerScreenshotShare"
 const val TAG_PLAYER_SCREENSHOT_COPY = "playerScreenshotCopy"
 
 object PlayerScreenshotOverlayDefaults {
-    /** 面板落定后到自动收起的时间. 鼠标悬停或按住面板时暂停计时. */
+    /** 面板落定后到自动收起的时间. 鼠标悬停或按住面板时重新计时. */
     val AutoDismissDelay: Duration = 6.seconds
 }
 
@@ -107,10 +109,6 @@ private const val CHROME_MILLIS = 150
 private const val FOLLOW_MILLIS = 250
 private const val EXIT_MILLIS = 200
 private const val EXIT_SCALE = 0.85f
-private val DISMISS_TICK = 100.milliseconds
-
-/** M3 emphasized decelerate: 进入角落时快速起步、缓慢落定. */
-private val MoveEasing = CubicBezierEasing(0.05f, 0.7f, 0.1f, 1f)
 
 /** 面板与播放器区域边缘的间距. */
 private val PanelMargin = 16.dp
@@ -124,6 +122,7 @@ private val ActionButtonGap = 8.dp
 
 /** B 区域内动作按钮到边缘的留白. */
 private val LobePadding = 8.dp
+private val LobeHeight = ActionButtonSize + LobePadding * 2
 
 /**
  * B 区域向屏幕中央伸出 A 以外的长度: 第一个按钮紧贴 A 的边缘 (与画面的距离就是 [ImagePadding]), 然后是间距、第二个按钮和末端留白.
@@ -146,7 +145,7 @@ private const val MAX_THUMBNAIL_WIDTH_FRACTION = 0.4f
  * 2. 截图先原位停留片刻, 再以容器变换收进角落: 竖屏布局 (区域高大于宽) 右下角, 横屏布局左下角;
  * 3. 落定后长出面板: 画面所在的 A 区域的下角向屏幕中央伸出药丸形的 B 区域, 里面是分享与复制两个圆形图标按钮,
  *    整块由一条闭合路径画成带阴影的异形面板;
- * 4. [autoDismissDelay] 后自动收起, 鼠标悬停或按住面板时暂停计时; 点击画面会打开它并立即收起面板.
+ * 4. [autoDismissDelay] 后自动收起, 鼠标悬停或按住面板时重新计时; 点击画面会打开它并立即收起面板.
  *
  * 再次截图会替换面板内容并重放整个流程.
  *
@@ -167,14 +166,15 @@ fun PlayerScreenshotOverlay(
     windowInsets: WindowInsets = WindowInsets(0),
     autoDismissDelay: Duration = PlayerScreenshotOverlayDefaults.AutoDismissDelay,
 ) {
-    BoxWithConstraints(modifier) {
-        ScreenshotFlash(trigger = state.sequence, Modifier.matchParentSize())
+    var playerSize by remember { mutableStateOf(IntSize.Zero) }
+    Box(modifier.onSizeChanged { playerSize = it }) {
+        ScreenshotFlash(state.current, Modifier.matchParentSize())
         val presentation = state.current
-        if (presentation != null) {
-            key(presentation.sequence) {
+        if (presentation != null && playerSize != IntSize.Zero) {
+            key(presentation) {
                 ScreenshotPresentation(
                     presentation = presentation,
-                    playerSize = IntSize(constraints.maxWidth, constraints.maxHeight),
+                    playerSize = playerSize,
                     bottomOffset = bottomOffset,
                     windowInsets = windowInsets,
                     autoDismissDelay = autoDismissDelay,
@@ -189,16 +189,17 @@ fun PlayerScreenshotOverlay(
 }
 
 @Composable
-private fun ScreenshotFlash(trigger: Int, modifier: Modifier) {
-    // 组合此层时已经存在的截图不再闪光, 只有之后发生的截图才触发
-    val initialTrigger = remember { trigger }
+private fun ScreenshotFlash(current: PlayerScreenshotPresentation?, modifier: Modifier) {
+    // 组合此层时已经在展示的截图不再闪光, 只有之后新发生的截图才触发
+    val initial = remember { current }
     val alpha = remember { Animatable(0f) }
-    LaunchedEffect(trigger) {
-        if (trigger == initialTrigger) return@LaunchedEffect
+    LaunchedEffect(current) {
+        if (current == null || current === initial) return@LaunchedEffect
         alpha.snapTo(FLASH_PEAK_ALPHA)
         alpha.animateTo(0f, tween(FLASH_DURATION_MILLIS, easing = LinearOutSlowInEasing))
     }
-    if (alpha.value > 0f) {
+    val visible by remember { derivedStateOf { alpha.value > 0f } }
+    if (visible) {
         Box(
             modifier
                 .testTag(TAG_PLAYER_SCREENSHOT_FLASH)
@@ -206,20 +207,6 @@ private fun ScreenshotFlash(trigger: Int, modifier: Modifier) {
                 .background(Color.White),
         )
     }
-}
-
-private enum class PanelPhase {
-    /** 截图铺在视频区域上原位停留. */
-    Hold,
-
-    /** 正在收进角落. */
-    Moving,
-
-    /** 停在角落, 外壳与按钮可见. */
-    Docked,
-
-    /** 正在收起. */
-    Leaving,
 }
 
 @Composable
@@ -236,24 +223,19 @@ private fun ScreenshotPresentation(
 ) {
     val density = LocalDensity.current
     val layoutDirection = LocalLayoutDirection.current
-    val insetPadding = windowInsets.asPaddingValues()
     val screenshot = presentation.screenshot
-    val geometry = remember(playerSize, screenshot, insetPadding, bottomOffset, density, layoutDirection) {
+    val geometry = remember(playerSize, screenshot, windowInsets, bottomOffset, density, layoutDirection) {
         with(density) {
-            val playerHeight = playerSize.height.toDp()
             computePlayerScreenshotPanelGeometry(
                 playerSize = playerSize,
                 imageSize = IntSize(screenshot.image.width, screenshot.image.height),
-                insets = PlayerScreenshotPanelInsets(
-                    left = insetPadding.calculateLeftPadding(layoutDirection).toPx(),
-                    top = insetPadding.calculateTopPadding().toPx(),
-                    right = insetPadding.calculateRightPadding(layoutDirection).toPx(),
-                    bottom = insetPadding.calculateBottomPadding().toPx(),
-                ),
+                insets = windowInsets,
+                density = density,
+                layoutDirection = layoutDirection,
                 // 几何算的是画面矩形; A 区域比它大一圈留白, 让 A 的边缘落在 PanelMargin 处
                 margin = (PanelMargin + ImagePadding).toPx(),
                 bottomOffset = bottomOffset.toPx(),
-                thumbnailHeight = (if (playerHeight < CompactPlayerHeight) CompactThumbnailHeight else ThumbnailHeight).toPx(),
+                thumbnailHeight = (if (playerSize.height.toDp() < CompactPlayerHeight) CompactThumbnailHeight else ThumbnailHeight).toPx(),
                 maxThumbnailWidth = playerSize.width * MAX_THUMBNAIL_WIDTH_FRACTION,
             )
         }
@@ -261,49 +243,53 @@ private fun ScreenshotPresentation(
     val latestGeometry by rememberUpdatedState(geometry)
     val imageCornerPx = with(density) { (PanelCornerRadius - ImagePadding).toPx() }
 
-    val startDocked = presentation.hasDocked
+    val startDocked = presentation.docked
     val rect = remember {
         Animatable(if (startDocked) geometry.thumbnailRect else geometry.startRect, Rect.VectorConverter)
     }
     val cornerRadius = remember { Animatable(if (startDocked) imageCornerPx else 0f) }
     val chromeAlpha = remember { Animatable(if (startDocked) 1f else 0f) }
     val scale = remember { Animatable(1f) }
-    var phase by remember { mutableStateOf(if (startDocked) PanelPhase.Docked else PanelPhase.Hold) }
     var dismissRequested by remember { mutableStateOf(false) }
     val interactionSource = remember { MutableInteractionSource() }
     val hovered by interactionSource.collectIsHoveredAsState()
     val pressed by interactionSource.collectIsPressedAsState()
 
-    // 入场: 原位停留 -> 收进角落 -> 长出外壳 -> 倒计时自动收起
+    // 入场: 原位停留 -> 收进角落 -> 长出外壳 -> 等待自动收起
     LaunchedEffect(Unit) {
-        if (phase != PanelPhase.Docked) {
+        if (!presentation.docked) {
             delay(HOLD_MILLIS.toLong())
-            phase = PanelPhase.Moving
             coroutineScope {
-                launch { rect.animateTo(latestGeometry.thumbnailRect, tween(MOVE_MILLIS, easing = MoveEasing)) }
-                launch { cornerRadius.animateTo(imageCornerPx, tween(MOVE_MILLIS, easing = MoveEasing)) }
+                launch { rect.animateTo(latestGeometry.thumbnailRect, tween(MOVE_MILLIS, easing = EmphasizedDecelerateEasing)) }
+                launch { cornerRadius.animateTo(imageCornerPx, tween(MOVE_MILLIS, easing = EmphasizedDecelerateEasing)) }
             }
-            phase = PanelPhase.Docked
-            presentation.hasDocked = true
+            presentation.docked = true
             chromeAlpha.animateTo(1f, tween(CHROME_MILLIS))
         }
-        var remaining = autoDismissDelay
-        while (remaining > Duration.ZERO) {
-            delay(DISMISS_TICK)
-            if (!hovered && !pressed) remaining -= DISMISS_TICK
+        // 倒计时与再次交互赛跑: 倒计时先到就收起, 悬停或按住先到就等交互结束后重新计时
+        val engaged = snapshotFlow { hovered || pressed }
+        while (true) {
+            engaged.first { !it }
+            val timedOut = merge(
+                flow {
+                    delay(autoDismissDelay)
+                    emit(true)
+                },
+                engaged.filter { it }.map { false },
+            ).first()
+            if (timedOut) break
         }
         dismissRequested = true
     }
     // 停靠后目标位置变化 (控制栏显隐、区域大小变化) 时跟随
-    LaunchedEffect(geometry, phase) {
-        if (phase == PanelPhase.Docked && rect.targetValue != geometry.thumbnailRect) {
+    LaunchedEffect(geometry, presentation.docked) {
+        if (presentation.docked && rect.targetValue != geometry.thumbnailRect) {
             rect.animateTo(geometry.thumbnailRect, tween(FOLLOW_MILLIS))
         }
     }
     // 退场: 外壳淡出, 整体向停靠的角缩小
     LaunchedEffect(dismissRequested) {
         if (!dismissRequested) return@LaunchedEffect
-        phase = PanelPhase.Leaving
         coroutineScope {
             launch { chromeAlpha.animateTo(0f, tween(EXIT_MILLIS)) }
             launch { scale.animateTo(EXIT_SCALE, tween(EXIT_MILLIS)) }
@@ -318,7 +304,9 @@ private fun ScreenshotPresentation(
         cornerRadius = { cornerRadius.value },
         chromeAlpha = { chromeAlpha.value },
         scale = { scale.value },
-        chromeVisible = phase == PanelPhase.Docked,
+        // 外壳只在停靠后才组合; 退场期间保留它做淡出, 但不再响应点击
+        chromeComposed = presentation.docked,
+        chromeEnabled = presentation.docked && !dismissRequested,
         interactionSource = interactionSource,
         onShare = onShare,
         onCopy = onCopy,
@@ -335,16 +323,13 @@ private const val IMAGE_ID = "image"
 private const val SHARE_ID = "share"
 private const val COPY_ID = "copy"
 
-/** 面板各部分在面板自身坐标系中的位置. 测量阶段写入, 放置与绘制阶段读取. */
+/** A、B 两个区域在面板自身坐标系中的位置. 测量阶段写入, 放置与绘制阶段读取. */
 private class PanelFrame {
     /** A 区域: 容纳画面的圆角矩形. */
     var regionA: Rect = Rect.Zero
 
     /** B 区域: 与 A 底边对齐、从 A 的下角向屏幕中央伸出的药丸, 一端藏在 A 里, 伸出的部分容纳动作按钮. */
     var regionB: Rect = Rect.Zero
-
-    /** 画面在 A 区域内的位置. */
-    var image: Rect = Rect.Zero
 }
 
 /**
@@ -353,7 +338,8 @@ private class PanelFrame {
  * 靠 A 的是分享. 整块面板是 [screenshotPanelOutline] 描出的一条闭合路径做成的 [GenericShape], 填 surfaceContainer 并带阴影:
  * A 与 B 的底边连成一条直线, B 的上边以内凹圆角接到 A 的侧边.
  *
- * 入场期间 ([chromeAlpha] 为 0) 只画画面本身, 即正在移动的截图.
+ * 布局按面板停在左下角 (B 向右伸出) 计算, 停在右下角时整体水平镜像.
+ * 入场期间 ([chromeComposed] 为 `false`) 只组合画面本身, 即正在移动的截图.
  */
 @Composable
 private fun ScreenshotPanel(
@@ -363,7 +349,8 @@ private fun ScreenshotPanel(
     cornerRadius: () -> Float,
     chromeAlpha: () -> Float,
     scale: () -> Float,
-    chromeVisible: Boolean,
+    chromeComposed: Boolean,
+    chromeEnabled: Boolean,
     interactionSource: MutableInteractionSource,
     onShare: () -> Unit,
     onCopy: () -> Unit,
@@ -375,33 +362,21 @@ private fun ScreenshotPanel(
     val buttonSizePx = with(density) { ActionButtonSize.roundToPx() }
     val buttonGapPx = with(density) { ActionButtonGap.roundToPx() }
     val lobePaddingPx = with(density) { LobePadding.roundToPx() }
+    val lobeHeightPx = with(density) { LobeHeight.roundToPx() }
+    val extensionPx = with(density) { LobeExtension.roundToPx() }
     val neckRadiusPx = with(density) { NeckRadius.toPx() }
-    val lobeHeightPx = buttonSizePx + 2 * lobePaddingPx
-    val extensionPx = 2 * buttonSizePx + buttonGapPx + lobePaddingPx
-    // B 藏进 A 里的深度取 B 的半径, 朝 A 的那个圆头完全藏在 A 里
-    val lobeOverlapPx = lobeHeightPx / 2
+    val elevationPx = with(density) { PanelElevation.toPx() }
     val panelColor = MaterialTheme.colorScheme.surfaceContainer
-    val buttonColor = MaterialTheme.colorScheme.surfaceContainerLowest
     val frame = remember { PanelFrame() }
-    val panelShape = remember(frame, panelCornerPx, neckRadiusPx) {
+    val lobeExtendsRight = corner == PlayerScreenshotPanelCorner.BottomLeft
+    val panelShape = remember(lobeExtendsRight, panelCornerPx, neckRadiusPx) {
         GenericShape { _, _ ->
-            addPath(screenshotPanelOutline(frame.regionA, frame.regionB, panelCornerPx, neckRadiusPx))
+            addPath(screenshotPanelOutline(frame.regionA, frame.regionB, panelCornerPx, neckRadiusPx, lobeExtendsRight))
         }
     }
-    val indication = LocalIndication.current
-    val shareLabel = stringResource(Lang.video_player_screenshot_share)
-    val copyLabel = stringResource(Lang.video_player_screenshot_copy)
 
     Layout(
         content = {
-            // 面板底: 阴影与底色随外壳一起淡入, 画面移动期间不可见
-            Box(
-                Modifier
-                    .layoutId(BACKGROUND_ID)
-                    .graphicsLayer { alpha = chromeAlpha() }
-                    .shadow(PanelElevation, panelShape, clip = false)
-                    .background(panelColor, panelShape),
-            )
             Image(
                 bitmap = screenshot.image,
                 contentDescription = null,
@@ -412,31 +387,36 @@ private fun ScreenshotPanel(
                         shape = RoundedCornerShape(cornerRadius())
                         clip = true
                     }
-                    .clickable(interactionSource, indication, enabled = chromeVisible, onClick = onOpen),
+                    .clickable(interactionSource, LocalIndication.current, enabled = chromeEnabled, onClick = onOpen),
                 contentScale = ContentScale.Fit,
             )
-            CompositionLocalProvider(LocalContentColor provides MaterialTheme.colorScheme.onSurface) {
-                PanelCircleButton(
+            if (chromeComposed) {
+                // 面板底: 阴影与底色随外壳一起淡入
+                Box(
+                    Modifier
+                        .layoutId(BACKGROUND_ID)
+                        .graphicsLayer {
+                            alpha = chromeAlpha()
+                            shadowElevation = elevationPx
+                            shape = panelShape
+                        }
+                        .background(panelColor, panelShape),
+                )
+                PanelActionButton(
                     icon = Icons.Rounded.Share,
-                    label = shareLabel,
-                    color = buttonColor,
-                    iconSize = 20.dp,
+                    label = stringResource(Lang.video_player_screenshot_share),
                     alpha = chromeAlpha,
-                    enabled = chromeVisible,
+                    enabled = chromeEnabled,
                     interactionSource = interactionSource,
-                    indication = indication,
                     onClick = onShare,
                     modifier = Modifier.layoutId(SHARE_ID).testTag(TAG_PLAYER_SCREENSHOT_SHARE),
                 )
-                PanelCircleButton(
+                PanelActionButton(
                     icon = Icons.Rounded.ContentCopy,
-                    label = copyLabel,
-                    color = buttonColor,
-                    iconSize = 20.dp,
+                    label = stringResource(Lang.video_player_screenshot_copy),
                     alpha = chromeAlpha,
-                    enabled = chromeVisible,
+                    enabled = chromeEnabled,
                     interactionSource = interactionSource,
-                    indication = indication,
                     onClick = onCopy,
                     modifier = Modifier.layoutId(COPY_ID).testTag(TAG_PLAYER_SCREENSHOT_COPY),
                 )
@@ -446,11 +426,11 @@ private fun ScreenshotPanel(
             .layout { measurable, constraints ->
                 val placeable = measurable.measure(Constraints())
                 layout(constraints.maxWidth, constraints.maxHeight) {
-                    // 放置后画面子项正好落在目标矩形上
+                    // 放置后画面正好落在目标矩形上: 画面在 A 区域内缩进一圈留白
                     val target = thumbnailRect()
                     placeable.place(
-                        (target.left - frame.image.left).roundToInt(),
-                        (target.top - frame.image.top).roundToInt(),
+                        (target.left - frame.regionA.left).roundToInt() - imagePaddingPx,
+                        (target.top - frame.regionA.top).roundToInt() - imagePaddingPx,
                     )
                 }
             }
@@ -458,94 +438,80 @@ private fun ScreenshotPanel(
             .graphicsLayer {
                 scaleX = scale()
                 scaleY = scale()
-                transformOrigin = when (corner) {
-                    PlayerScreenshotPanelCorner.BottomLeft -> TransformOrigin(0f, 1f)
-                    PlayerScreenshotPanelCorner.BottomRight -> TransformOrigin(1f, 1f)
-                }
+                transformOrigin = if (lobeExtendsRight) TransformOrigin(0f, 1f) else TransformOrigin(1f, 1f)
             }
             .hoverable(interactionSource),
     ) { measurables, constraints ->
         val target = thumbnailRect()
         val imageWidth = target.width.roundToInt().coerceAtLeast(1)
         val imageHeight = target.height.roundToInt().coerceAtLeast(1)
-        val image = measurables.first { it.layoutId == IMAGE_ID }
-            .measure(Constraints.fixed(imageWidth, imageHeight))
-        val share = measurables.first { it.layoutId == SHARE_ID }
-            .measure(Constraints.fixed(buttonSizePx, buttonSizePx))
-        val copy = measurables.first { it.layoutId == COPY_ID }
-            .measure(Constraints.fixed(buttonSizePx, buttonSizePx))
-
         val regionAWidth = imageWidth + 2 * imagePaddingPx
         val regionAHeight = imageHeight + 2 * imagePaddingPx
         val width = regionAWidth + extensionPx
         val height = regionAHeight
-        // A 贴着面板的外侧边; B 与 A 底边对齐, 从 A 的下角向屏幕中央伸出
-        val regionAX = when (corner) {
-            PlayerScreenshotPanelCorner.BottomLeft -> 0
-            PlayerScreenshotPanelCorner.BottomRight -> extensionPx
-        }
-        frame.regionA = Rect(regionAX.toFloat(), 0f, (regionAX + regionAWidth).toFloat(), regionAHeight.toFloat())
-        val regionBTop = (regionAHeight - lobeHeightPx).toFloat()
-        frame.regionB = when (corner) {
-            PlayerScreenshotPanelCorner.BottomLeft ->
-                Rect((regionAX + regionAWidth - lobeOverlapPx).toFloat(), regionBTop, width.toFloat(), height.toFloat())
+        // 按 B 向右伸出计算 x, 向左伸出时镜像
+        fun x(left: Int, itemWidth: Int) = if (lobeExtendsRight) left else width - left - itemWidth
 
-            PlayerScreenshotPanelCorner.BottomRight ->
-                Rect(0f, regionBTop, (regionAX + lobeOverlapPx).toFloat(), height.toFloat())
-        }
-        val imageX = regionAX + imagePaddingPx
-        val imageY = imagePaddingPx
-        frame.image = Rect(
-            imageX.toFloat(),
-            imageY.toFloat(),
-            (imageX + imageWidth).toFloat(),
-            (imageY + imageHeight).toFloat(),
+        val regionALeft = x(0, regionAWidth)
+        frame.regionA = Rect(regionALeft.toFloat(), 0f, (regionALeft + regionAWidth).toFloat(), regionAHeight.toFloat())
+        // B 朝 A 的那个圆头 (半径等于 B 高度的一半) 完全藏在 A 里
+        val lobeWidth = lobeHeightPx / 2 + extensionPx
+        val regionBLeft = x(regionAWidth - lobeHeightPx / 2, lobeWidth)
+        frame.regionB = Rect(
+            regionBLeft.toFloat(),
+            (regionAHeight - lobeHeightPx).toFloat(),
+            (regionBLeft + lobeWidth).toFloat(),
+            height.toFloat(),
         )
-        // 动作按钮都在 B 伸出 A 的那段里: 分享紧贴 A 的边缘, 与画面只隔 A 的留白; 复制在外侧
+        // 分享紧贴 A 的边缘, 与画面只隔 A 的留白; 复制在外侧
         val buttonY = regionAHeight - lobeHeightPx + lobePaddingPx
-        val shareX = when (corner) {
-            PlayerScreenshotPanelCorner.BottomLeft -> regionAX + regionAWidth
-            PlayerScreenshotPanelCorner.BottomRight -> regionAX - buttonSizePx
-        }
-        val copyX = when (corner) {
-            PlayerScreenshotPanelCorner.BottomLeft -> shareX + buttonSizePx + buttonGapPx
-            PlayerScreenshotPanelCorner.BottomRight -> shareX - buttonGapPx - buttonSizePx
-        }
+        val shareX = x(regionAWidth, buttonSizePx)
+        val copyX = x(regionAWidth + buttonSizePx + buttonGapPx, buttonSizePx)
 
-        val background = measurables.first { it.layoutId == BACKGROUND_ID }
-            .measure(Constraints.fixed(width, height))
+        val image = measurables.first { it.layoutId == IMAGE_ID }
+            .measure(Constraints.fixed(imageWidth, imageHeight))
+        val background = measurables.firstOrNull { it.layoutId == BACKGROUND_ID }
+            ?.measure(Constraints.fixed(width, height))
+        val share = measurables.firstOrNull { it.layoutId == SHARE_ID }
+            ?.measure(Constraints.fixed(buttonSizePx, buttonSizePx))
+        val copy = measurables.firstOrNull { it.layoutId == COPY_ID }
+            ?.measure(Constraints.fixed(buttonSizePx, buttonSizePx))
         layout(width, height) {
-            background.place(0, 0)
-            image.place(imageX, imageY)
-            share.place(shareX, buttonY)
-            copy.place(copyX, buttonY)
+            background?.place(0, 0)
+            image.place(x(imagePaddingPx, imageWidth), imagePaddingPx)
+            share?.place(shareX, buttonY)
+            copy?.place(copyX, buttonY)
         }
     }
 }
 
-/** 面板上的圆形图标按钮: 圆底 [color], 只有图标. */
+/** 面板上的圆形图标按钮: 圆底 surfaceContainerLowest, 只有图标. 退场淡出期间虽已禁用, 外观保持不变. */
 @Composable
-private fun PanelCircleButton(
+private fun PanelActionButton(
     icon: ImageVector,
     label: String,
-    color: Color,
-    iconSize: Dp,
     alpha: () -> Float,
     enabled: Boolean,
     interactionSource: MutableInteractionSource,
-    indication: Indication?,
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    Box(
-        modifier
-            .graphicsLayer { this.alpha = alpha() }
-            .clip(CircleShape)
-            .background(color)
-            .clickable(interactionSource, indication, enabled = enabled, onClickLabel = label, onClick = onClick),
-        contentAlignment = Alignment.Center,
+    val container = MaterialTheme.colorScheme.surfaceContainerLowest
+    val content = MaterialTheme.colorScheme.onSurface
+    FilledIconButton(
+        onClick = onClick,
+        modifier = modifier.graphicsLayer { this.alpha = alpha() },
+        enabled = enabled,
+        shape = CircleShape,
+        colors = IconButtonDefaults.filledIconButtonColors(
+            containerColor = container,
+            contentColor = content,
+            disabledContainerColor = container,
+            disabledContentColor = content,
+        ),
+        interactionSource = interactionSource,
     ) {
-        Icon(icon, contentDescription = label, Modifier.size(iconSize))
+        Icon(icon, contentDescription = label, Modifier.size(20.dp))
     }
 }
 
@@ -578,9 +544,7 @@ private fun PreviewScreenshotPresentationImpl(
     docked: Boolean,
 ) = ProvideCompositionLocalsForPreview(darkMode = DarkMode.DARK) {
     val screenshot = rememberPreviewScreenshot()
-    val presentation = remember {
-        PlayerScreenshotPresentation(screenshot, sequence = 1).apply { hasDocked = docked }
-    }
+    val presentation = remember { PlayerScreenshotPresentation(screenshot).also { it.docked = docked } }
     BoxWithConstraints(Modifier.size(playerWidth, playerHeight).background(Color.Black)) {
         ScreenshotPresentation(
             presentation = presentation,

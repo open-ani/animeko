@@ -10,10 +10,21 @@
 package me.him188.ani.app.videoplayer.screenshot
 
 import androidx.compose.runtime.Composable
+import org.openani.mediamp.MediampPlayer
 
-/**
- * iOS 使用 AVKit 后端, 它没有读取当前帧的能力, 因此不支持截图, 播放器不显示截图按钮.
- */
+/** iOS 使用 AVKit 后端, 它没有读取当前帧的能力, 因此不支持截图, 播放器不显示截图按钮. */
+private object UnsupportedPlayerScreenshotCapturer : PlayerScreenshotCapturer {
+    override fun isSupported(player: MediampPlayer): Boolean = false
+
+    override suspend fun capture(player: MediampPlayer, fileName: String): PlayerScreenshotResult =
+        PlayerScreenshotResult.Failure(PlayerScreenshotFailure.Unsupported)
+}
+
+private object NoOpPlayerScreenshotSharer : PlayerScreenshotSharer {
+    override suspend fun share(screenshot: SavedPlayerScreenshot): Boolean = false
+    override suspend fun copy(screenshot: SavedPlayerScreenshot): Boolean = false
+}
+
 @Composable
 actual fun rememberPlayerScreenshotCapturer(): PlayerScreenshotCapturer = UnsupportedPlayerScreenshotCapturer
 

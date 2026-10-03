@@ -9,10 +9,13 @@
 
 package me.him188.ani.app.videoplayer.ui.screenshot
 
+import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.geometry.Size
+import androidx.compose.ui.unit.Density
 import androidx.compose.ui.unit.IntSize
+import androidx.compose.ui.unit.LayoutDirection
 
 /** 截图面板停靠的角. */
 enum class PlayerScreenshotPanelCorner {
@@ -23,18 +26,6 @@ enum class PlayerScreenshotPanelCorner {
 /** 竖屏布局 (播放器区域高大于宽) 停在右下角, 横屏布局停在左下角. */
 fun playerScreenshotPanelCorner(playerWidth: Int, playerHeight: Int): PlayerScreenshotPanelCorner =
     if (playerHeight > playerWidth) PlayerScreenshotPanelCorner.BottomRight else PlayerScreenshotPanelCorner.BottomLeft
-
-/** 播放器区域四周需要避开的边距 (系统栏等), 单位 px. */
-class PlayerScreenshotPanelInsets(
-    val left: Float,
-    val top: Float,
-    val right: Float,
-    val bottom: Float,
-) {
-    companion object {
-        val Zero = PlayerScreenshotPanelInsets(0f, 0f, 0f, 0f)
-    }
-}
 
 /**
  * 截图容器变换的几何: 起点是截图按原比例铺满视频区域的位置, 终点是角落的缩略图. 坐标相对播放器区域, 单位 px.
@@ -48,8 +39,8 @@ class PlayerScreenshotPanelGeometry(
 /**
  * @param playerSize 播放器区域大小
  * @param imageSize 截图像素大小; 决定长宽比
- * @param insets 面板需要避开的边距. 变换起点不避让, 与视频区域对齐
- * @param margin 缩略图与区域 (或边距) 的间距
+ * @param insets 面板需要避开的系统栏. 变换起点不避让, 与视频区域对齐
+ * @param margin 缩略图与区域 (或系统栏) 的间距
  * @param bottomOffset 额外的底部偏移, 用于避开底部控制栏
  * @param thumbnailHeight 缩略图目标高度
  * @param maxThumbnailWidth 缩略图最大宽度, 超过时整体按比例缩小
@@ -57,7 +48,9 @@ class PlayerScreenshotPanelGeometry(
 fun computePlayerScreenshotPanelGeometry(
     playerSize: IntSize,
     imageSize: IntSize,
-    insets: PlayerScreenshotPanelInsets,
+    insets: WindowInsets,
+    density: Density,
+    layoutDirection: LayoutDirection,
     margin: Float,
     bottomOffset: Float,
     thumbnailHeight: Float,
@@ -95,10 +88,11 @@ fun computePlayerScreenshotPanelGeometry(
         thumbWidth = maxThumbnailWidth
         thumbHeight = thumbWidth / aspectRatio
     }
-    val bottom = playerHeight - insets.bottom - bottomOffset - margin
+    val bottom = playerHeight - insets.getBottom(density) - bottomOffset - margin
     val left = when (corner) {
-        PlayerScreenshotPanelCorner.BottomLeft -> insets.left + margin
-        PlayerScreenshotPanelCorner.BottomRight -> playerWidth - insets.right - margin - thumbWidth
+        PlayerScreenshotPanelCorner.BottomLeft -> insets.getLeft(density, layoutDirection) + margin
+        PlayerScreenshotPanelCorner.BottomRight ->
+            playerWidth - insets.getRight(density, layoutDirection) - margin - thumbWidth
     }
     val thumbnailRect = Rect(left, bottom - thumbHeight, left + thumbWidth, bottom)
     return PlayerScreenshotPanelGeometry(startRect, thumbnailRect, corner)

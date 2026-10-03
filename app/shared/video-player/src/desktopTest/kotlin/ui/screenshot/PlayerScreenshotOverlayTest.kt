@@ -16,7 +16,6 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.assertIsEnabled
-import androidx.compose.ui.test.assertIsNotEnabled
 import androidx.compose.ui.test.getBoundsInRoot
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.performClick
@@ -37,24 +36,22 @@ import kotlin.time.Duration.Companion.seconds
 class PlayerScreenshotOverlayTest {
     private val autoDismissDelay = 3.seconds
 
-    /** 画面到播放器区域侧边的距离: 面板边距 16dp 加 A 区域内留白 8dp. */
-    private val imageSideMargin = 24f
-
-    /** 画面到播放器区域底边的距离: B 区域与 A 底边对齐, 不占画面下方的空间, 与侧边相同. */
-    private val imageBottomMargin = imageSideMargin
+    /** 画面到播放器区域边缘的距离: 面板边距 16dp 加 A 区域内留白 8dp. B 区域与 A 底边对齐, 不占画面下方的空间. */
+    private val imageMargin = 24f
 
     private fun screenshot(width: Int = 160, height: Int = 90) =
         SavedPlayerScreenshot(ImageBitmap(width, height), "shot.png", "shot")
 
+    /** 组合覆盖层并返回它的状态. */
     private fun AniComposeUiTest.setOverlay(
         playerWidth: Dp,
         playerHeight: Dp,
-        state: PlayerScreenshotPanelState,
         bottomOffset: Dp = 0.dp,
         onShare: (SavedPlayerScreenshot) -> Unit = {},
         onCopy: (SavedPlayerScreenshot) -> Unit = {},
         onOpen: (SavedPlayerScreenshot) -> Unit = {},
-    ) {
+    ): PlayerScreenshotPanelState {
+        val state = PlayerScreenshotPanelState()
         mainClock.autoAdvance = false
         setContent {
             ProvideCompositionLocalsForPreview {
@@ -71,6 +68,7 @@ class PlayerScreenshotOverlayTest {
                 }
             }
         }
+        return state
     }
 
     /** 走完原位停留、收进角落和外壳淡入. */
@@ -78,8 +76,7 @@ class PlayerScreenshotOverlayTest {
 
     @Test
     fun `flash appears on present and fades out`() = runAniComposeUiTest {
-        val state = PlayerScreenshotPanelState()
-        setOverlay(800.dp, 450.dp, state)
+        val state = setOverlay(800.dp, 450.dp)
         onNodeWithTag(TAG_PLAYER_SCREENSHOT_FLASH).assertDoesNotExist()
 
         state.present(screenshot())
@@ -92,20 +89,20 @@ class PlayerScreenshotOverlayTest {
 
     @Test
     fun `landscape screenshot starts full size and docks at bottom left above the bottom bar`() = runAniComposeUiTest {
-        val state = PlayerScreenshotPanelState()
-        setOverlay(800.dp, 450.dp, state, bottomOffset = 60.dp)
+        val state = setOverlay(800.dp, 450.dp, bottomOffset = 60.dp)
         state.present(screenshot())
         mainClock.advanceTimeBy(50)
 
         val start = onNodeWithTag(TAG_PLAYER_SCREENSHOT_THUMBNAIL).getBoundsInRoot()
         assertEquals(800f, start.width.value, 1f)
         assertEquals(450f, start.height.value, 1f)
-        onNodeWithTag(TAG_PLAYER_SCREENSHOT_SHARE).assertIsNotEnabled()
+        // 入场期间面板外壳还没有组合
+        onNodeWithTag(TAG_PLAYER_SCREENSHOT_SHARE).assertDoesNotExist()
 
         advanceUntilDocked()
         val docked = onNodeWithTag(TAG_PLAYER_SCREENSHOT_THUMBNAIL).getBoundsInRoot()
-        assertEquals(imageSideMargin, docked.left.value, 1f)
-        assertEquals(450f - 60f - imageBottomMargin, docked.bottom.value, 1f)
+        assertEquals(imageMargin, docked.left.value, 1f)
+        assertEquals(450f - 60f - imageMargin, docked.bottom.value, 1f)
         // 播放器高度不足 480dp, 用紧凑的 88dp 缩略图
         assertEquals(88f, docked.height.value, 1f)
         onNodeWithTag(TAG_PLAYER_SCREENSHOT_SHARE).assertIsDisplayed().assertIsEnabled()
@@ -114,25 +111,23 @@ class PlayerScreenshotOverlayTest {
 
     @Test
     fun `portrait screenshot docks at bottom right`() = runAniComposeUiTest {
-        val state = PlayerScreenshotPanelState()
         // 测试窗口 768dp 高, 播放器区域必须放得下, 否则会被居中裁切
-        setOverlay(400.dp, 700.dp, state)
+        val state = setOverlay(400.dp, 700.dp)
         state.present(screenshot())
         advanceUntilDocked()
 
         val docked = onNodeWithTag(TAG_PLAYER_SCREENSHOT_THUMBNAIL).getBoundsInRoot()
-        assertEquals(400f - imageSideMargin, docked.right.value, 1f)
-        assertEquals(700f - imageBottomMargin, docked.bottom.value, 1f)
+        assertEquals(400f - imageMargin, docked.right.value, 1f)
+        assertEquals(700f - imageMargin, docked.bottom.value, 1f)
         // 112dp 高的 16:9 缩略图宽 199 超过上限 400 * 0.4 = 160, 按上限缩小
         assertEquals(160f, docked.width.value, 1f)
     }
 
     @Test
     fun `share and copy buttons report the screenshot and keep the panel`() = runAniComposeUiTest {
-        val state = PlayerScreenshotPanelState()
         var shared: SavedPlayerScreenshot? = null
         var copied: SavedPlayerScreenshot? = null
-        setOverlay(800.dp, 450.dp, state, onShare = { shared = it }, onCopy = { copied = it })
+        val state = setOverlay(800.dp, 450.dp, onShare = { shared = it }, onCopy = { copied = it })
         val screenshot = screenshot()
         state.present(screenshot)
         advanceUntilDocked()
@@ -147,9 +142,8 @@ class PlayerScreenshotOverlayTest {
 
     @Test
     fun `clicking the screenshot opens it and dismisses the panel`() = runAniComposeUiTest {
-        val state = PlayerScreenshotPanelState()
         var opened: SavedPlayerScreenshot? = null
-        setOverlay(800.dp, 450.dp, state, onOpen = { opened = it })
+        val state = setOverlay(800.dp, 450.dp, onOpen = { opened = it })
         val screenshot = screenshot()
         state.present(screenshot)
         advanceUntilDocked()
@@ -163,8 +157,7 @@ class PlayerScreenshotOverlayTest {
 
     @Test
     fun `panel dismisses itself after the delay`() = runAniComposeUiTest {
-        val state = PlayerScreenshotPanelState()
-        setOverlay(800.dp, 450.dp, state)
+        val state = setOverlay(800.dp, 450.dp)
         state.present(screenshot())
         advanceUntilDocked()
         onNodeWithTag(TAG_PLAYER_SCREENSHOT_PANEL).assertExists()
@@ -179,8 +172,7 @@ class PlayerScreenshotOverlayTest {
 
     @Test
     fun `a new screenshot replaces the docked panel and flashes again`() = runAniComposeUiTest {
-        val state = PlayerScreenshotPanelState()
-        setOverlay(800.dp, 450.dp, state)
+        val state = setOverlay(800.dp, 450.dp)
         state.present(screenshot())
         advanceUntilDocked()
 
@@ -192,7 +184,7 @@ class PlayerScreenshotOverlayTest {
 
         advanceUntilDocked()
         val docked = onNodeWithTag(TAG_PLAYER_SCREENSHOT_THUMBNAIL).getBoundsInRoot()
-        assertEquals(imageSideMargin, docked.left.value, 1f)
+        assertEquals(imageMargin, docked.left.value, 1f)
         onNodeWithTag(TAG_PLAYER_SCREENSHOT_SHARE).assertIsEnabled()
     }
 }

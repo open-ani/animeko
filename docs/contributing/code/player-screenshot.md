@@ -5,17 +5,18 @@
 
 ## 流程
 
-1. `EpisodePage` 用 `playerScreenshotFileName` 生成文件名 `条目ID-剧集序号-XmYsZms.png`, 调用 `PlayerScreenshotCapturer.capture`. 上一张还在保存时忽略再次点击.
+1. `EpisodePage` 用 `playerScreenshotFileName` 生成文件名 `条目ID-剧集序号-XmYsZms.png`, 交给 `PlayerScreenshotController.take`;
+   控制器调用 `PlayerScreenshotCapturer.capture`, 上一张还在保存时忽略再次点击.
 2. 截图器先确保权限 (Android 9 及以下申请 WRITE_EXTERNAL_STORAGE; Android 10 起和桌面都不需要), 然后抓帧并保存.
-   失败不抛异常, 以 `PlayerScreenshotResult.Failure(reason)` 返回: 权限被拒 / 不支持 / 没有画面 / 保存失败.
+   失败不抛异常, 以 `PlayerScreenshotResult.Failure(reason)` 返回: 权限被拒 / 不支持 / 没有画面 / 保存失败; 控制器按原因 toast.
 3. 成功时 `PlayerScreenshotPanelState.present` 交给 `PlayerScreenshotOverlay`:
    播放器区域闪光一次; 截图原位停留 200ms 后以容器变换收进角落, 竖屏布局 (区域高大于宽) 右下, 横屏布局左下;
    落定后长出面板: 画面所在的 A 区域 (圆角矩形, 画面四周留边) 的下角向屏幕中央伸出药丸形的 B 区域 (与 A 底边对齐,
    伸出的部分装分享与复制两个圆形图标按钮), 由 `screenshotPanelOutline` 描成一条闭合路径 (底边连成直线, B 的上边以内凹圆角接到 A 的侧边),
    做成 Shape 后填 surfaceContainer 并带阴影, 按钮圆底为 surfaceContainerLowest; 没有关闭按钮, 6 秒后自动收起,
-   鼠标悬停或按住时暂停计时; 点击画面用应用内的图片查看器打开它并立即收起面板.
+   鼠标悬停或按住时重新计时; 点击画面用应用内的图片查看器打开它并立即收起面板.
    失败时 toast 说明原因.
-4. 面板动作由 `PlayerScreenshotSharer` 实现: 分享按钮调用 `share`, 复制按钮调用 `copy`; 点击画面走 `ImageViewerHandler.viewImage`.
+4. 面板动作经控制器转发给 `PlayerScreenshotSharer`: 分享按钮调用 `share`, 复制按钮调用 `copy`; 点击画面走 `ImageViewerHandler.viewImage`.
 
 ## 平台实现
 
@@ -27,7 +28,9 @@
 
 点击画面在三个平台都用应用内图片查看器打开: Android 传 content URI, 桌面传绝对路径, 都是 Sketch 支持的模型.
 
-`rememberPlayerScreenshotCapturer()` 与 `rememberPlayerScreenshotSharer()` 是 expect/actual, 各平台在此提供实现.
+`rememberPlayerScreenshotCapturer()` 与 `rememberPlayerScreenshotSharer()` 是 expect/actual, 各平台在此提供实现;
+`rememberPlayerScreenshotController()` 把它们和页面的图片查看器、toast 组装起来.
+预览图最长边限制在 1920px, 整帧只用于保存文件.
 
 ## 层级与布局
 

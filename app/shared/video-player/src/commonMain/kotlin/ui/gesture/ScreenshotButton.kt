@@ -18,12 +18,9 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.platform.testTag
 import me.him188.ani.app.ui.lang.Lang
 import me.him188.ani.app.ui.lang.video_player_screenshot
 import org.jetbrains.compose.resources.stringResource
-
-const val TAG_SCREENSHOT_BUTTON = "screenshotButton"
 
 /** 全屏时右侧按钮栏里的截图按钮, 与手势锁同款的悬浮样式. */
 @Composable
@@ -32,7 +29,7 @@ fun ScreenshotButton(
     modifier: Modifier = Modifier
 ) {
     PlayerFloatingButtonBox(
-        modifier = modifier.testTag(TAG_SCREENSHOT_BUTTON),
+        modifier = modifier,
         content = {
             IconButton(onClick) {
                 CompositionLocalProvider(LocalContentColor provides Color.White) {

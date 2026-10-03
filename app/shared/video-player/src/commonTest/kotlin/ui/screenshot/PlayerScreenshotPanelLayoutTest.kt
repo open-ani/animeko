@@ -9,8 +9,11 @@
 
 package me.him188.ani.app.videoplayer.ui.screenshot
 
+import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.ui.geometry.Rect
+import androidx.compose.ui.unit.Density
 import androidx.compose.ui.unit.IntSize
+import androidx.compose.ui.unit.LayoutDirection
 import kotlin.test.Test
 import kotlin.test.assertEquals
 
@@ -20,7 +23,7 @@ class PlayerScreenshotPanelLayoutTest {
         playerHeight: Int,
         imageWidth: Int = 1920,
         imageHeight: Int = 1080,
-        insets: PlayerScreenshotPanelInsets = PlayerScreenshotPanelInsets.Zero,
+        insets: WindowInsets = WindowInsets(0),
         bottomOffset: Float = 0f,
         thumbnailHeight: Float = 112f,
         maxThumbnailWidth: Float = playerWidth * 0.4f,
@@ -28,18 +31,13 @@ class PlayerScreenshotPanelLayoutTest {
         playerSize = IntSize(playerWidth, playerHeight),
         imageSize = IntSize(imageWidth, imageHeight),
         insets = insets,
+        density = Density(1f),
+        layoutDirection = LayoutDirection.Ltr,
         margin = 16f,
         bottomOffset = bottomOffset,
         thumbnailHeight = thumbnailHeight,
         maxThumbnailWidth = maxThumbnailWidth,
     )
-
-    private fun assertRect(expected: Rect, actual: Rect, tolerance: Float = 0.5f) {
-        assertEquals(expected.left, actual.left, tolerance, "left")
-        assertEquals(expected.top, actual.top, tolerance, "top")
-        assertEquals(expected.right, actual.right, tolerance, "right")
-        assertEquals(expected.bottom, actual.bottom, tolerance, "bottom")
-    }
 
     @Test
     fun `landscape layouts dock at bottom left, portrait at bottom right`() {
@@ -68,7 +66,7 @@ class PlayerScreenshotPanelLayoutTest {
     fun `portrait thumbnail avoids insets and the bottom offset and caps its width`() {
         val geometry = geometry(
             450, 800,
-            insets = PlayerScreenshotPanelInsets(left = 0f, top = 0f, right = 10f, bottom = 20f),
+            insets = WindowInsets(left = 0, top = 0, right = 10, bottom = 20),
             bottomOffset = 50f,
         )
         assertEquals(PlayerScreenshotPanelCorner.BottomRight, geometry.corner)

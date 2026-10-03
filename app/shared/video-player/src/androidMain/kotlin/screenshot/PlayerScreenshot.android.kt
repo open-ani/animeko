@@ -30,7 +30,6 @@ import androidx.compose.ui.platform.ClipEntry
 import androidx.compose.ui.platform.Clipboard
 import androidx.compose.ui.platform.LocalClipboard
 import androidx.core.content.FileProvider
-import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import me.him188.ani.app.platform.LocalContext
@@ -39,6 +38,7 @@ import me.him188.ani.app.platform.findActivity
 import me.him188.ani.app.videoplayer.ui.findAndroidVideoSurface
 import org.koin.mp.KoinPlatform
 import org.openani.mediamp.MediampPlayer
+import java.io.IOException
 import kotlin.coroutines.resume
 import kotlin.coroutines.suspendCoroutine
 
@@ -75,15 +75,14 @@ private class AndroidPlayerScreenshotCapturer(
         }
         val bitmap = capturePlayerSurface(player)
             ?: return PlayerScreenshotResult.Failure(PlayerScreenshotFailure.NoFrame)
-        return try {
+        return runCatchingNonCancellation {
             val uri = saveToGallery(fileName, bitmap)
-                ?: return PlayerScreenshotResult.Failure(PlayerScreenshotFailure.SaveFailed(null))
-            PlayerScreenshotResult.Success(SavedPlayerScreenshot(bitmap.asImageBitmap(), fileName, uri.toString()))
-        } catch (e: CancellationException) {
-            throw e
-        } catch (e: Exception) {
-            PlayerScreenshotResult.Failure(PlayerScreenshotFailure.SaveFailed(e))
-        }
+            val full = bitmap.asImageBitmap()
+            val preview = full.limitedToPreviewSize()
+            // 预览另有缩小的副本时整帧不再需要
+            if (preview !== full) bitmap.recycle()
+            PlayerScreenshotResult.Success(SavedPlayerScreenshot(preview, fileName, uri.toString()))
+        }.getOrElse { PlayerScreenshotResult.Failure(PlayerScreenshotFailure.SaveFailed(it)) }
     }
 
     private suspend fun ensureWritePermission(): Boolean {
@@ -114,21 +113,23 @@ private class AndroidPlayerScreenshotCapturer(
         }
     }
 
-    /** @return 保存后的 content URI; 相册拒绝写入时为 null */
-    private suspend fun saveToGallery(fileName: String, bitmap: Bitmap): Uri? = withContext(Dispatchers.IO) {
+    /** @return 保存后的 content URI. 相册拒绝写入时抛出 [IOException]. */
+    private suspend fun saveToGallery(fileName: String, bitmap: Bitmap): Uri = withContext(Dispatchers.IO) {
         if (Build.VERSION.SDK_INT < Build.VERSION_CODES.Q) {
             @Suppress("DEPRECATION")
             val directory = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_PICTURES)
                 .resolve(GALLERY_DIRECTORY)
-            if (!directory.isDirectory && !directory.mkdirs()) return@withContext null
+            if (!directory.isDirectory && !directory.mkdirs()) {
+                throw IOException("Cannot create $directory")
+            }
 
             val file = directory.resolve(fileName)
-            val saved = file.outputStream().buffered().use { output ->
+            val encoded = file.outputStream().buffered().use { output ->
                 bitmap.compress(Bitmap.CompressFormat.PNG, 100, output)
             }
-            if (!saved) {
+            if (!encoded) {
                 file.delete()
-                return@withContext null
+                throw IOException("Cannot encode screenshot to $file")
             }
             MediaScannerConnection.scanFile(context, arrayOf(file.absolutePath), arrayOf(MIME_PNG), null)
             return@withContext FileProvider.getUriForFile(context, "${context.packageName}.fileprovider", file)
@@ -142,16 +143,13 @@ private class AndroidPlayerScreenshotCapturer(
         }
         val resolver = context.contentResolver
         val uri = resolver.insert(MediaStore.Images.Media.EXTERNAL_CONTENT_URI, values)
-            ?: return@withContext null
+            ?: throw IOException("MediaStore rejected the screenshot")
 
         try {
-            val saved = resolver.openOutputStream(uri)?.use { output ->
+            val encoded = resolver.openOutputStream(uri)?.use { output ->
                 bitmap.compress(Bitmap.CompressFormat.PNG, 100, output)
-            } == true
-            if (!saved) {
-                resolver.delete(uri, null, null)
-                return@withContext null
             }
+            if (encoded != true) throw IOException("Cannot write screenshot to $uri")
 
             values.clear()
             values.put(MediaStore.Images.Media.IS_PENDING, 0)
@@ -169,7 +167,7 @@ private class AndroidPlayerScreenshotSharer(
     private val context: Context,
     private val clipboard: Clipboard,
 ) : PlayerScreenshotSharer {
-    override suspend fun share(screenshot: SavedPlayerScreenshot): PlayerScreenshotShareOutcome {
+    override suspend fun share(screenshot: SavedPlayerScreenshot): Boolean {
         val uri = Uri.parse(screenshot.location)
         val send = Intent(Intent.ACTION_SEND).apply {
             type = MIME_PNG
@@ -177,34 +175,20 @@ private class AndroidPlayerScreenshotSharer(
             clipData = ClipData.newRawUri(screenshot.fileName, uri)
             addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
         }
-        return if (startActivity(Intent.createChooser(send, null))) {
-            PlayerScreenshotShareOutcome.Shared
-        } else {
-            PlayerScreenshotShareOutcome.Failed
-        }
-    }
-
-    override suspend fun copy(screenshot: SavedPlayerScreenshot): Boolean {
-        return try {
-            val uri = Uri.parse(screenshot.location)
-            clipboard.setClipEntry(ClipEntry(ClipData.newUri(context.contentResolver, screenshot.fileName, uri)))
-            true
-        } catch (e: CancellationException) {
-            throw e
-        } catch (e: Exception) {
-            false
-        }
-    }
-
-    private fun startActivity(intent: Intent): Boolean {
+        val chooser = Intent.createChooser(send, null)
         if (context.findActivity() == null) {
-            intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+            chooser.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
         }
         return try {
-            context.startActivity(intent)
+            context.startActivity(chooser)
             true
         } catch (e: ActivityNotFoundException) {
             false
         }
     }
+
+    override suspend fun copy(screenshot: SavedPlayerScreenshot): Boolean = runCatchingNonCancellation {
+        val uri = Uri.parse(screenshot.location)
+        clipboard.setClipEntry(ClipEntry(ClipData.newUri(context.contentResolver, screenshot.fileName, uri)))
+    }.isSuccess
 }
