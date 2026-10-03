@@ -8,7 +8,7 @@
 
 | 入口／行为 | 约定 |
 | --- | --- |
-| 电视入口 | 设置页 list pane 第一项“手机配置”，打开二维码弹窗 |
+| 电视入口 | 设置页分区列表第一项“手机配置”，详情区显示二维码 |
 | 手机入口 | 设置页 top app bar 右上角扫码按钮 |
 | 外部扫码器 | `ani://remote-settings` scheme，直接进入握手流程 |
 | 会话身份 | 以 `/ping` 返回的设备名称和服务实例为准 |
@@ -93,31 +93,33 @@ HTTP server 仅由 Android TV flavor 引用，手机 APK 不启动 listener。Op
 - [电视表单状态 adapter](../../app/shared/ui-settings/src/commonMain/kotlin/ui/settings/remote/RemoteSettingsState.kt)
 - [数据源自动保存](../../app/shared/remote-settings/src/commonMain/kotlin/domain/settings/remote/RemoteMediaSourceEditor.kt)
 - [数据源配置读写接口](../../app/shared/app-data/src/commonMain/kotlin/domain/mediasource/MediaSourceConfigurationEditor.kt)
-- [电视二维码入口](../../app/shared/ui-settings/src/androidTv/kotlin/ui/settings/TvSettingsRoute.kt)
+- [电视二维码分区](../../app/shared/ui-settings/src/androidTv/kotlin/ui/settings/TvRemoteSettingsPane.kt)
 - [远程导航入口](../../app/shared/src/commonMain/kotlin/ui/main/RemoteSettingsNavigation.kt)
 
 ## 3. 电视进程服务
 
 ### 3.1 启动与网络
 
-`TvAniApplication` 完成本地服务装配后创建并启动 `AndroidRemoteSettingsHost`，通过 Koin 暴露只读 `RemoteSettingsHost.state` 给设置页。服务不依赖设置页是否打开。
+`TvAniApplication` 完成本地服务装配后创建并启动 `AndroidRemoteSettingsHost`，通过 Koin 暴露只读 `RemoteSettingsHost.state` 给设置页。服务不依赖设置页是否打开。Backend 与 HTTP server 在 Host 的 IO 协程中、获得局域网权限之后创建，不占用 Application 启动的主线程。
 
 服务创建时生成两个 UUID：
 
 - `accessKey`：本进程的 bearer key。
 - `serverInstanceId`：本进程的会话实例标识。
 
-CIO 使用 `0.0.0.0:0` 监听，由操作系统分配可用端口。Host 读取实际端口生成二维码。客户端退出、关闭二维码或退出电视设置页都不停止服务。
+CIO 使用 `0.0.0.0:0` 监听，由操作系统分配可用端口。Host 读取实际端口生成二维码。客户端退出、离开“手机配置”分区或退出电视设置页都不停止服务。
 
 Host 在获得局域网权限前每 2 秒检查一次权限；权限被撤销时系统会结束进程，授权后不再检查。获得权限后启动 listener，之后通过 `ConnectivityManager` 网络回调跟踪 Wi-Fi／Ethernet 地址，并观察 user UUID，二者变化时更新二维码，其余时间状态不变。只有 RFC 1918 私有 IPv4 地址进入二维码，排除 VPN transport。没有可用地址时保留进程服务，页面显示连接网络的说明。服务启动或状态更新异常进入重试，重试间隔 10 秒。
 
 进程结束时 listener 随进程结束；根协程取消时显式关闭 engine。重新启动产生新的 key、实例标识与随机端口，旧二维码不保证继续有效。
 
-### 3.2 二维码弹窗
+### 3.2 二维码分区
 
-`TvRemoteSettingsDialog` 使用现有 `TvModalOverlay`、`tvOptionPanelSurface`、`TvHeroButton` 和 `TvQrCode`。横向面板左侧是标题、说明与两个操作步骤，右侧是 248 dp 二维码和次要连接信息；没有网络时在相同区域显示状态说明。关闭按钮是唯一焦点，方向键不能进入底层设置列表，关闭后恢复到“手机配置”入口。
+“手机配置”是 `TvSettingsSection.Remote`，与其他分区共用设置页的列表／详情双栏布局、焦点锚点和焦点记忆。焦点移到该分区时，详情区的标题、说明下方显示 `TvRemoteSettingsPane`：左侧是三个连接步骤，右侧是 200 dp 的 `TvQrCode` 和电视的局域网地址；服务未就绪时二维码位置显示状态图标和说明。
 
-布局以 960 × 540 dp 为基准，面板最大宽度 800 dp，保留屏幕安全边距和焦点空间；文本层级、深色表面和主题强调色与项目 TV 页面一致。参考 [Android TV 布局规范](https://developer.android.com/design/ui/tv/guides/styles/layouts) 与 [TV 交互原则](https://developer.android.com/design/ui/tv/guides/foundations/design-for-tv)。
+详情区没有可聚焦内容，焦点始终留在分区列表上，方向键右和确认键不进入详情。在该分区按确认键会请求局域网权限（未授予时）。
+
+布局以 960 × 540 dp 为基准，沿用设置页的安全边距；文本层级和颜色取自 TV 主题，随深浅色主题变化。参考 [Android TV 布局规范](https://developer.android.com/design/ui/tv/guides/styles/layouts) 与 [TV 交互原则](https://developer.android.com/design/ui/tv/guides/foundations/design-for-tv)。
 
 ### 3.3 与电视本地操作共享存储
 
@@ -293,11 +295,13 @@ sequenceDiagram
 - 完成记录保留至少至下次清理时满足 10 分钟 TTL，容量 1024。
 - 电视重启后记录清空；手机不能凭旧 ID 猜测是否执行过。
 
-手机遇到写入响应丢失时，只查询原 operation ID，不自动重新 POST。无法查询、等待超时或确认后的 snapshot 获取失败时，提示结果不确定，并要求成功刷新后才能继续写入。
+手机遇到写入响应丢失时，只查询原 operation ID，不自动重新 POST。无法查询、等待超时或确认后的 snapshot 获取失败时，提示结果不确定，并要求成功刷新后才能继续写入。电视明确拒绝的写入（revision 冲突、校验失败等）没有不确定性：会话随即重新读取快照，读取成功后可以直接继续编辑。
 
 ### 6.4 客户端协程和并发
 
-`RemoteSettingsSession` 持有 child SupervisorJob、互斥锁、确认快照、busy 与 error flow。读取、日志和写入共用同一把锁；等待发送的调用可以取消，已经发送的写入会等待结果确认及快照回读，再允许下一项操作。
+`RemoteSettingsSession` 持有 child SupervisorJob、互斥锁、确认快照、busy 与 error flow。读取、日志和写入共用同一把锁；等待发送的数据源、弹幕规则和备份调用可以取消，已经发送的写入会等待结果确认及快照回读，再允许下一项操作。
+
+preference 控件每次提交整个配置对象。`RemotePreferenceRepository` 在电视确认或拒绝之前把最新提交的值作为表单值，后续编辑在它之上构造；每次提交记录它所基于的值，并在会话 scope 内按提交顺序排队，调用者离开不会取消排队的提交。发送时电视的值与所基于的值一致才带上当前 revision 发出，否则以 `REVISION_CONFLICT` 结束，不覆盖手机没有见过的修改。连续切换同一配置对象的多个开关会依次生效。
 
 设置控件原有 `MonoTasker` 可能取消前一个调用者协程。远程提交在 ViewModel／session 自己的 scope 中执行，已发出的请求不依赖控件临时任务的生命周期。
 
@@ -355,6 +359,7 @@ sequenceDiagram
 - 其他 factory 将电视参数元数据映射为 `MediaSourceParameters`，使用原有 `EditMediaSourceState` 和 `EditMediaSourceDialog`。
 - 自动保存合并 500 ms 内的输入；请求发送后按顺序完成，新输入不会取消已发出的写入。最后一次输入在编辑页关闭后仍由 Settings 的目标 scope 保存；断开会话取消该 scope。
 - 编辑时捕获打开表单时的 revision，仅使用该编辑器成功写入后的确认快照推进 revision。后台轮询不能把旧草稿绑定到外部修改后的 revision；冲突时保留输入并提示重新打开编辑器。
+- 编辑器与编辑页 entry 同生命周期，entry 重新进入组合时沿用同一个编辑器；电视上已没有该数据源时编辑页直接返回。自动保存尚未完成时气泡的“退出”不可用。
 - 编辑页和设置列表保留各自的滚动状态。子页始终显示同一个设备气泡，正常返回保留远程会话；气泡退出会弹出远程 entry 及其子页，回到进入远程配置前的页面。
 - 编辑器的测试与预览使用手机网络、WebView 和验证码环境。数据持久化、订阅刷新及播放应用配置在电视执行；手机预览不能证明电视的网络、登录状态或解码能力。
 
@@ -409,7 +414,7 @@ sequenceDiagram
 
 ### 12.1 导航
 
-`NavRoutes.RemoteSettings` 的导航参数只有随机 entry ID。平台入口校验 scheme 后，把连接目标放入 `RemoteSettingsConnectionRequests` 的内存槽；`RemoteSettingsViewModel` 在远程页面恢复 RESUMED 时消费并清除。已有远程 entry 时回到该 entry，没有时创建；凭据不进入导航参数、保存状态或日志。
+`NavRoutes.RemoteSettings` 的导航参数只有随机 entry ID。平台入口校验 scheme 后，把连接目标放入 `RemoteSettingsConnectionRequests` 的内存槽；`RemoteSettingsViewModel` 在创建时以及远程页面恢复 RESUMED 时消费并清除，由外部链接创建的页面直接进入握手，不呈现扫码页，也不请求相机权限。已有远程 entry 时回到该 entry，没有时创建；凭据不进入导航参数、保存状态或日志。
 
 本机顶部扫码按钮导航到 RemoteSettings，远程页在未连接时呈现共用的 `QrCodeScanScreen`，由远程入口提供连接信息解析与提示文案。外部 scheme 通过相同的权限门和连接逻辑握手。无效扫码结果使用资源化提示，不显示原始内容。连接失败可重试；新的连接成功后才释放原有电视会话。
 
@@ -465,11 +470,11 @@ HTTP 不提供 TLS 链路保密性。二维码 key 是访问授权，不能抵�
 | `RemoteSettingsServerTest` | 每个端点鉴权、Origin、实例／版本、操作去重、HMAC revision；生成客户端对各类命令、快照、备份结果和轮询响应的强类型联调 |
 | `RemotePreferenceRegistryTest` | 电视本地修改引发冲突、并发 CAS、敏感字段脱敏与本机字段保留、字段注入拒绝、配置 wrapper round-trip、未知／不匹配类型拒绝 |
 | `RemoteSettingsSchemaTest` | 检入的 OpenAPI schema 与实际 Kotlin serializer 一致 |
-| `RemoteSettingsSessionTest` | 写入响应丢失、pending 轮询、确认后读取失败、协议失败、连续写入排序、取消调用者后已发送请求完成 |
+| `RemoteSettingsSessionTest` | 写入响应丢失、pending 轮询、确认后读取失败、协议失败、连续写入排序、取消调用者后已提交的 preference 仍按序完成、基于过期值的编辑被拒绝且之后无需刷新即可重试 |
 | `RemoteMediaSourceEditorTest` | 输入合并、关闭编辑器后保存最后输入、连续自动保存推进 revision、轮询不覆盖打开时的 revision |
 | `RemoteSettingsScreenTest` | 中英文远程页的截图及交互；写入仅影响 TV、导航到 RemoteEditMediaSource、设备气泡、错误提示及退出确认 |
 | `AniNavigatorTest` | 首次连接创建独立 RemoteSettings entry；重复连接复用该 entry 并弹出子编辑页，保留本机设置返回目标 |
-| `TvRemoteSettingsDialogTest` | 二维码解码、方向键焦点约束、关闭／返回、大字体与无网络布局 |
+| `TvRemoteSettingsPaneTest` | 二维码解码、焦点留在分区列表、确认键请求权限及授权后出现二维码、大字体下的状态布局 |
 
 ```shell
 ./gradlew :app:shared:remote-settings-contract:desktopTest
@@ -477,7 +482,7 @@ HTTP 不提供 TLS 链路保密性。二维码 key 是访问授权，不能抵�
 ./gradlew :app:shared:remote-settings:desktopTest
 ./gradlew :app:shared:ui-settings:desktopTest --tests '*RemoteSettingsScreenTest'
 ./gradlew :app:shared:app-platform:desktopTest --tests '*AniNavigatorTest'
-./gradlew :app:shared:ui-settings-tv:connectedAndroidDeviceTest -Pandroid.testInstrumentationRunnerArguments.class=me.him188.ani.tv.ui.settings.TvRemoteSettingsDialogTest
+./gradlew :app:shared:ui-settings-tv:connectedAndroidDeviceTest -Pandroid.testInstrumentationRunnerArguments.class=me.him188.ani.tv.ui.settings.TvRemoteSettingsPaneTest
 ./gradlew :app:android:assembleTvDebug :app:android:assembleDefaultDebug -Pani.android.abis=x86_64
 ```
 

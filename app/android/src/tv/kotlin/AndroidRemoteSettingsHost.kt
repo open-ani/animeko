@@ -49,11 +49,11 @@ import org.koin.core.Koin
 /**
  * 电视进程内的远程设置服务, 由 Application 持有, 与界面生命周期无关. 界面只负责申请权限和展示 [state].
  *
- * [start] 后先等待局域网权限, 再启动 [server]; 之后随局域网地址与登录用户的变化更新二维码对应的 [RemoteSettingsLink].
+ * [start] 后先等待局域网权限, 再创建并启动服务; 之后随局域网地址与登录用户的变化更新二维码对应的 [RemoteSettingsLink].
  */
 class AndroidRemoteSettingsHost(
     private val context: Context,
-    private val server: RemoteSettingsServer,
+    private val createServer: () -> RemoteSettingsServer,
     private val appVersion: String,
     private val userId: Flow<String?>,
 ) : RemoteSettingsHost {
@@ -61,9 +61,9 @@ class AndroidRemoteSettingsHost(
     override val state: StateFlow<RemoteSettingsHostState> = mutableState.asStateFlow()
 
     fun start(scope: CoroutineScope): Job = scope.launch(Dispatchers.IO) {
-        server.use {
-            awaitLocalNetworkPermission()
-            val port = startServer()
+        awaitLocalNetworkPermission()
+        createServer().use { server ->
+            val port = startServer(server)
             combine(lanAddresses(context), userId) { address, user ->
                 if (address == null) {
                     RemoteSettingsHostState(status = RemoteSettingsHostStatus.NO_NETWORK)
@@ -89,7 +89,7 @@ class AndroidRemoteSettingsHost(
         }
     }
 
-    private suspend fun startServer(): Int {
+    private suspend fun startServer(server: RemoteSettingsServer): Int {
         while (true) {
             try {
                 return server.start()
@@ -115,23 +115,25 @@ class AndroidRemoteSettingsHost(
             val appVersion = currentAniBuildConfig.versionName
             val userId = stores.selfInfoStore.data.map { it?.id?.toString() }.distinctUntilChanged()
             val logFile = application.filesDir.resolve("logs/app.log")
-            val backend = LocalRemoteSettingsBackend(
-                settings = koin.get(),
-                stores = stores,
-                sources = koin.get(),
-                codecs = koin.get(),
-                updater = koin.get(),
-                revisions = HmacSettingsRevision(),
-                readLog = { withContext(Dispatchers.IO) { readLogTail(logFile) } },
-            )
-            val server = RemoteSettingsServer(
-                scope,
-                backend,
-                appVersion,
-                deviceName = "${Build.MANUFACTURER} ${Build.MODEL}",
-                userUuid = { userId.first() },
-            )
-            return AndroidRemoteSettingsHost(application, server, appVersion, userId)
+            val createServer = {
+                val backend = LocalRemoteSettingsBackend(
+                    settings = koin.get(),
+                    stores = stores,
+                    sources = koin.get(),
+                    codecs = koin.get(),
+                    updater = koin.get(),
+                    revisions = HmacSettingsRevision(),
+                    readLog = { withContext(Dispatchers.IO) { readLogTail(logFile) } },
+                )
+                RemoteSettingsServer(
+                    scope,
+                    backend,
+                    appVersion,
+                    deviceName = "${Build.MANUFACTURER} ${Build.MODEL}",
+                    userUuid = { userId.first() },
+                )
+            }
+            return AndroidRemoteSettingsHost(application, createServer, appVersion, userId)
         }
     }
 }

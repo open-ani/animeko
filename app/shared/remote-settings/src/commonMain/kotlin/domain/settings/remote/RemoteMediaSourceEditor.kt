@@ -27,9 +27,11 @@ import me.him188.ani.remote.settings.RemoteSettingsProtocol
  * 该数据源在电视上被其他途径修改或删除后，保存会因 revision 冲突失败，不会覆盖外部修改。
  * 列表中其他数据源的变化不影响保存。
  */
-class RemoteMediaSourceEditor(
+class RemoteMediaSourceEditor
+private constructor(
     private val session: RemoteSettingsSession,
     private val instanceId: String,
+    initialConfig: MediaSourceConfig,
     scope: CoroutineScope,
 ) : MediaSourceConfigurationEditor {
     private fun SettingsSnapshot.source() =
@@ -47,11 +49,7 @@ class RemoteMediaSourceEditor(
         } else {
             revision
         }
-    private val confirmedConfig =
-        MutableStateFlow(
-            checkNotNull(session.snapshot.value.source()) { "Missing media source $instanceId" }
-                .config
-        )
+    private val confirmedConfig = MutableStateFlow(initialConfig)
     override val config = confirmedConfig.asStateFlow()
 
     private class Change(val config: MediaSourceConfig)
@@ -104,5 +102,20 @@ class RemoteMediaSourceEditor(
 
     override fun close() {
         changes.close()
+    }
+
+    companion object {
+        /** Returns null when the TV has no source [instanceId]. */
+        fun create(
+            session: RemoteSettingsSession,
+            instanceId: String,
+            scope: CoroutineScope,
+        ): RemoteMediaSourceEditor? {
+            val source =
+                session.snapshot.value.mediaSources.value.firstOrNull {
+                    it.instanceId == instanceId
+                } ?: return null
+            return RemoteMediaSourceEditor(session, instanceId, source.config, scope)
+        }
     }
 }

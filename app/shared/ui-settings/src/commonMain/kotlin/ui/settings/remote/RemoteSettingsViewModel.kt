@@ -67,6 +67,8 @@ class RemoteSettingsViewModel(initialSession: RemoteSettingsSession? = null) :
 
     init {
         initialSession?.let(::useRemoteSession)
+        // 由外部链接创建的页面直接连接, 不经过扫码页.
+        RemoteSettingsConnectionRequests.take()?.let(::requestConnection)
     }
 
     fun cancelConnection() {

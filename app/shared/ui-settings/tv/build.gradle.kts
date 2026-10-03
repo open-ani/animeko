@@ -33,6 +33,7 @@ kotlin {
         kotlin.srcDir("../src/androidTvDeviceTest/kotlin")
         dependencies {
             implementation(projects.utils.uiTesting)
+            implementation(libs.zxing.core)
         }
     }
 }

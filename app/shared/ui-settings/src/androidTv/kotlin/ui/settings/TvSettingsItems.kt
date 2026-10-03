@@ -13,6 +13,8 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import me.him188.ani.app.data.models.danmaku.DanmakuRegexFilter
 import me.him188.ani.app.data.models.preference.VideoScaffoldConfig
 import me.him188.ani.app.ui.lang.Lang
+import me.him188.ani.app.ui.lang.remote_settings_tv_description
+import me.him188.ani.app.ui.lang.remote_settings_tv_entry
 import me.him188.ani.app.ui.lang.settings_about_app_description
 import me.him188.ani.app.ui.lang.settings_appearance_description
 import me.him188.ani.app.ui.lang.settings_media_preference_description
@@ -30,6 +32,8 @@ import org.jetbrains.compose.resources.StringResource
 import org.jetbrains.compose.resources.stringResource
 
 internal enum class TvSettingsSection(val title: StringResource) {
+    /** 详情是手机扫码用的二维码, 没有设置项. */
+    Remote(Lang.remote_settings_tv_entry),
     Appearance(Lang.settings_tab_appearance),
     Theme(Lang.settings_tab_theme),
     Player(Lang.settings_tab_player),
@@ -179,6 +183,7 @@ internal class TvSettingsItems(
 
 @Composable
 internal fun TvSettingsSection.description(): String = when (this) {
+    TvSettingsSection.Remote -> stringResource(Lang.remote_settings_tv_description)
     TvSettingsSection.Appearance -> stringResource(Lang.settings_appearance_description)
     TvSettingsSection.Theme -> stringResource(Lang.settings_theme_palette)
     TvSettingsSection.Player -> stringResource(Lang.settings_player_description)

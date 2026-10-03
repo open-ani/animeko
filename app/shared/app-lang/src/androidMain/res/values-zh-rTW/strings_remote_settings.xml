@@ -19,7 +19,6 @@
     <string name="remote_settings_network_allow">允許區域網路存取</string>
     <string name="remote_settings_network_settings">開啟系統權限設定</string>
     <string name="remote_settings_tv_entry">手機設定</string>
-    <string name="remote_settings_tv_title">用手機設定電視</string>
     <string name="remote_settings_tv_description">在手機上輕鬆編輯資料來源、播放偏好和彈幕設定。</string>
     <string name="remote_settings_tv_step_network">手機和電視連線至同一 Wi-Fi 或區域網路</string>
     <string name="remote_settings_tv_step_scan">開啟 Animeko 設定，點選右上角掃碼按鈕</string>

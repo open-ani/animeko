@@ -59,6 +59,7 @@ import me.him188.ani.app.tools.MonoTasker
 import me.him188.ani.app.tools.formatDateTime
 import me.him188.ani.app.ui.foundation.animation.LocalAniMotionScheme
 import me.him188.ani.app.ui.foundation.getClipEntryText
+import me.him188.ani.app.ui.foundation.rememberAsyncHandler
 import me.him188.ani.app.ui.foundation.setClipEntryText
 import me.him188.ani.app.ui.foundation.widgets.LocalToaster
 import me.him188.ani.app.ui.lang.Lang
@@ -300,6 +301,8 @@ private fun SettingsScope.SubscriptionItem(
             }
             DropdownMenu(showDropdown, { showDropdown = false }) {
                 val uiScope = rememberCoroutineScope()
+                // 导出可能失败 (例如远程设置的网络错误), 由 AsyncHandler 提示错误.
+                val exportHandler = rememberAsyncHandler()
                 val clipboard = LocalClipboard.current
                 val toaster = LocalToaster.current
 
@@ -322,7 +325,7 @@ private fun SettingsScope.SubscriptionItem(
                     leadingIcon = { Icon(Icons.Rounded.Share, null) },
                     text = { Text(stringResource(Lang.settings_media_source_subscription_export_all)) },
                     onClick = {
-                        uiScope.launch {
+                        exportHandler.launch {
                             val string = state.exportToString(subscription)
                             clipboard.setClipEntryText(string)
                             showDropdown = false

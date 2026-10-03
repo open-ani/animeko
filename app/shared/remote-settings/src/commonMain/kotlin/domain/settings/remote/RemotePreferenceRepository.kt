@@ -4,8 +4,10 @@
  */
 package me.him188.ani.app.domain.settings.remote
 
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.distinctUntilChanged
-import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.flow.getAndUpdate
 import me.him188.ani.app.data.repository.user.Settings
 
 class RemotePreferenceRepository(private val session: RemoteSettingsSession) {
@@ -43,11 +45,26 @@ class RemotePreferenceRepository(private val session: RemoteSettingsSession) {
         wrap: (T) -> RemotePreference,
     ): Settings<T> =
         object : Settings<T> {
+            /** The newest edit until the TV confirms or rejects it. Later edits are built on it. */
+            private val submitted = MutableStateFlow<Edit<T>?>(null)
+
             override val flow =
-                session.snapshot.map { select(it.preferences).value }.distinctUntilChanged()
+                combine(session.snapshot, submitted) { snapshot, edit ->
+                        if (edit != null) edit.value else select(snapshot.preferences).value
+                    }
+                    .distinctUntilChanged()
 
             override suspend fun set(value: T) {
-                session.setPreference(wrap(value))
+                val edit = Edit(value)
+                val previous = submitted.getAndUpdate { edit }
+                val base =
+                    if (previous != null) previous.value
+                    else select(session.snapshot.value.preferences).value
+                val write = session.submitPreference(wrap(value), wrap(base))
+                write.invokeOnCompletion { submitted.compareAndSet(edit, null) }
+                write.await()
             }
         }
+
+    private class Edit<T>(val value: T)
 }

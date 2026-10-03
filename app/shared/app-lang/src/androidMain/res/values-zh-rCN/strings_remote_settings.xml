@@ -19,7 +19,6 @@
     <string name="remote_settings_network_allow">允许局域网访问</string>
     <string name="remote_settings_network_settings">打开系统权限设置</string>
     <string name="remote_settings_tv_entry">手机配置</string>
-    <string name="remote_settings_tv_title">用手机设置电视</string>
     <string name="remote_settings_tv_description">在手机上轻松编辑数据源、播放偏好和弹幕设置。</string>
     <string name="remote_settings_tv_step_network">手机和电视连接同一 Wi-Fi 或局域网</string>
     <string name="remote_settings_tv_step_scan">打开 Animeko 设置，点击右上角扫码按钮</string>

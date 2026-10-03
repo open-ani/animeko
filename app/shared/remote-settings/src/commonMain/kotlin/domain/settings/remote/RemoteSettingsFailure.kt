@@ -4,6 +4,7 @@
  */
 package me.him188.ani.app.domain.settings.remote
 
+import kotlinx.io.IOException
 import kotlinx.serialization.SerializationException
 
 /** Presentation-independent failures. Server diagnostics are never used as UI text. */
@@ -60,7 +61,8 @@ enum class RemoteSettingsFailure {
                         "DEPENDENCY_FAILED" -> APPLY_FAILED
                         else -> SERVER_ERROR
                     }
-                else -> CONNECTION
+                is IOException -> CONNECTION
+                else -> SERVER_ERROR
             }
     }
 }

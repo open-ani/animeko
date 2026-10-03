@@ -13,6 +13,8 @@ import io.ktor.client.HttpClient
 import io.ktor.client.call.body
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.CoroutineStart
+import kotlinx.coroutines.Deferred
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.NonCancellable
 import kotlinx.coroutines.SupervisorJob
@@ -77,8 +79,8 @@ private constructor(
     val preferences = RemotePreferenceRepository(this)
 
     suspend fun refresh() = mutex.withLock {
-        checkOpen()
         try {
+            checkOpen()
             mutableSnapshot.value = api.getState(instance).checked()
             needsRefresh = false
             mutableError.value = null
@@ -91,16 +93,28 @@ private constructor(
     }
 
     /**
-     * [value] is a whole preference built from the snapshot visible to the caller, so its base
-     * revision is read before waiting for earlier writes. An edit built from an outdated value is
-     * rejected by the TV instead of overwriting the earlier write.
+     * [value] is a whole preference that the caller built from [base]. It is sent after earlier
+     * writes finish, with the revision the TV has at that time, as long as the TV still holds
+     * [base]. Otherwise it is rejected instead of overwriting a change the caller has not seen.
+     *
+     * A later edit may be built on [value], so the write stays queued when its caller leaves.
      */
-    suspend fun setPreference(value: RemotePreference) {
-        val baseRevision = snapshot.value.preferences.revisionOf(value)
-        mutate { id ->
-            api.setPreference(PreferenceRequest(id, baseRevision, value), instance).checked()
+    fun submitPreference(value: RemotePreference, base: RemotePreference): Deferred<Unit> =
+        scope.async(start = CoroutineStart.UNDISPATCHED) {
+            mutate { id ->
+                val current = snapshot.value.preferences
+                checkRemote(
+                    base in current.values(),
+                    "REVISION_CONFLICT",
+                    "Settings have changed since the edit was made",
+                )
+                api.setPreference(
+                        PreferenceRequest(id, current.revisionOf(value), value),
+                        instance,
+                    )
+                    .checked()
+            }
         }
-    }
 
     suspend fun mediaSource(
         command: MediaSourceCommand,
@@ -210,7 +224,6 @@ private constructor(
                             } catch (e: CancellationException) {
                                 throw e
                             } catch (_: Exception) {
-                                needsRefresh = true
                                 throw RemoteSettingsException(
                                     "RESULT_UNKNOWN",
                                     "Operation result is unknown",
@@ -223,7 +236,6 @@ private constructor(
                         result = api.getOperation(id, instance).checked()
                     }
                     if (result.status != "succeeded") {
-                        needsRefresh = true
                         throw RemoteSettingsException(
                             result.error?.code ?: "RESULT_UNKNOWN",
                             result.error?.message ?: "Operation has not completed",
@@ -234,14 +246,31 @@ private constructor(
                 } catch (e: CancellationException) {
                     throw e
                 } catch (e: Exception) {
-                    needsRefresh = true
-                    mutableError.value = RemoteSettingsFailure.from(e)
+                    val failure = RemoteSettingsFailure.from(e)
+                    // A rejection answered by the TV leaves nothing uncertain, so its current
+                    // revisions are reloaded for the next edit. Any other failure blocks writes
+                    // until a refresh succeeds.
+                    needsRefresh =
+                        e !is RemoteSettingsException ||
+                            failure in UnconfirmedFailures ||
+                            !reloadSnapshot()
+                    mutableError.value = failure
                     throw e
                 } finally {
                     mutableBusy.value = false
                 }
             }
             withContext(NonCancellable) { operation.await() }
+        }
+
+    private suspend fun reloadSnapshot(): Boolean =
+        try {
+            mutableSnapshot.value = api.getState(instance).checked()
+            true
+        } catch (e: CancellationException) {
+            throw e
+        } catch (_: Exception) {
+            false
         }
 
     private fun checkOpen() = checkRemote(!closed, "SESSION_CLOSED", "Session closed")
@@ -253,6 +282,13 @@ private constructor(
     }
 
     companion object {
+        private val UnconfirmedFailures =
+            setOf(
+                RemoteSettingsFailure.RESULT_UNKNOWN,
+                RemoteSettingsFailure.REFRESH_REQUIRED,
+                RemoteSettingsFailure.SESSION_CLOSED,
+            )
+
         suspend fun connect(
             link: RemoteSettingsLink,
             appVersion: String,

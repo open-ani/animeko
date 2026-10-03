@@ -19,7 +19,6 @@
     <string name="remote_settings_network_allow">Allow local network access</string>
     <string name="remote_settings_network_settings">Open system permission settings</string>
     <string name="remote_settings_tv_entry">Configure with phone</string>
-    <string name="remote_settings_tv_title">Set up your TV with your phone</string>
     <string name="remote_settings_tv_description">Edit data sources, playback preferences and danmaku settings on your phone.</string>
     <string name="remote_settings_tv_step_network">Connect your phone and TV to the same Wi-Fi or local network</string>
     <string name="remote_settings_tv_step_scan">Open Animeko settings on your phone and tap the scan button at the top right</string>

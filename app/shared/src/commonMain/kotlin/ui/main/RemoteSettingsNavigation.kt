@@ -14,8 +14,11 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.Stable
+import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
+import androidx.lifecycle.ViewModel
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.ViewModelStoreProvider
 import androidx.lifecycle.viewmodel.compose.rememberViewModelStoreOwner
 import androidx.lifecycle.viewmodel.compose.rememberViewModelStoreProvider
@@ -23,6 +26,7 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation3.runtime.NavEntryDecorator
 import me.him188.ani.app.domain.mediasource.rss.RssMediaSource
 import me.him188.ani.app.domain.mediasource.web.SelectorMediaSource
+import me.him188.ani.app.domain.settings.remote.RemoteMediaSourceEditor
 import me.him188.ani.app.navigation.AniNavigator
 import me.him188.ani.app.navigation.NavRoutes
 import me.him188.ani.app.platform.LocalContext
@@ -100,6 +104,9 @@ private fun RemoteSettingsScanScreen(onScanned: (String) -> Unit, onNavigateBack
     )
 }
 
+/** 让编辑器与编辑页 entry 同生命周期；编辑页的 ViewModel 负责关闭它。 */
+private class RemoteSourceEditorHolder(val editor: RemoteMediaSourceEditor?) : ViewModel()
+
 @Composable
 internal fun RemoteEditMediaSourceRoute(
     route: NavRoutes.RemoteEditMediaSource,
@@ -110,21 +117,26 @@ internal fun RemoteEditMediaSourceRoute(
     val remoteRoute = NavRoutes.RemoteSettings(route.remoteEntryId)
     val vm = navigation.viewModel(route.remoteEntryId)
     val instanceId = route.mediaSourceInstanceId
-    // 编辑器的目标在整个 entry 生命周期（包括退出动画）中保持不变。
-    val editor = remember(route) { vm.sourceEditor(instanceId) }
+    // ViewModel 按电视连接区分, 以免与本机同 ID 数据源的编辑页共用.
+    val viewModelKey = "$instanceId:${route.remoteEntryId}"
+    // 编辑器的目标在整个 entry 生命周期（包括退出动画和重新进入组合）中保持不变。
+    val editor = viewModel(key = "editor:$viewModelKey") {
+        RemoteSourceEditorHolder(vm.sourceEditor(instanceId))
+    }.editor
     if (editor == null) {
-        // 进程重建后凭据已失效，回到扫码页建立会话。
+        // 会话已失效（例如进程重建后凭据丢失）或电视上没有该数据源，回到上一页。
         LaunchedEffect(route) { navigator.popBackStack(route, inclusive = true) }
         return
     }
+    val isSaving by editor.isSaving.collectAsStateWithLifecycle()
     val navigationIcon = @Composable {
         BackNavigationIconButton({ navigator.popBackStack(route, inclusive = true) })
     }
-    // ViewModel 按电视连接区分, 以免与本机同 ID 数据源的编辑页共用.
-    val viewModelKey = "$instanceId:${route.remoteEntryId}"
     RemoteSettingsSessionHost(
         vm,
         onNavigateBack = { navigator.popBackStack(remoteRoute, inclusive = true) },
+        // 退出会断开会话并丢弃尚未发送的自动保存。
+        exitEnabled = !isSaving,
     ) { contentModifier, _ ->
         when (FactoryId(route.factoryId)) {
             RssMediaSource.FactoryId -> EditRssMediaSourceScreen(

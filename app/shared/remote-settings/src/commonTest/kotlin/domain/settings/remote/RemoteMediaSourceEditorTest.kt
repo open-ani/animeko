@@ -48,7 +48,7 @@ class RemoteMediaSourceEditorTest {
         val fixture = Fixture()
         val session = fixture.connect(backgroundScope)
         try {
-            val editor = RemoteMediaSourceEditor(session, "source", backgroundScope)
+            val editor = checkNotNull(RemoteMediaSourceEditor.create(session, "source", backgroundScope))
             editor.saveArguments(
                 SelectorMediaSourceArguments.serializer(),
                 SelectorMediaSourceArguments.Default.copy(name = "first"),
@@ -73,7 +73,7 @@ class RemoteMediaSourceEditorTest {
         val fixture = Fixture().apply { gate = CompletableDeferred() }
         val session = fixture.connect(backgroundScope)
         try {
-            val editor = RemoteMediaSourceEditor(session, "source", backgroundScope)
+            val editor = checkNotNull(RemoteMediaSourceEditor.create(session, "source", backgroundScope))
             editor.saveArguments(
                 SelectorMediaSourceArguments.serializer(),
                 SelectorMediaSourceArguments.Default.copy(name = "first"),
@@ -110,7 +110,7 @@ class RemoteMediaSourceEditorTest {
         val fixture = Fixture()
         val session = fixture.connect(scope)
         try {
-            val editor = RemoteMediaSourceEditor(session, "source", scope)
+            val editor = checkNotNull(RemoteMediaSourceEditor.create(session, "source", scope))
             fixture.source =
                 fixture.source.copy(
                     config =
@@ -141,7 +141,7 @@ class RemoteMediaSourceEditorTest {
         val fixture = Fixture()
         val session = fixture.connect(backgroundScope)
         try {
-            val editor = RemoteMediaSourceEditor(session, "source", backgroundScope)
+            val editor = checkNotNull(RemoteMediaSourceEditor.create(session, "source", backgroundScope))
             fixture.other =
                 fixture.other.copy(
                     config =

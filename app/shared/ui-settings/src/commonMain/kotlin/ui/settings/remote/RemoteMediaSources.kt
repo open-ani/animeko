@@ -116,7 +116,7 @@ internal class RemoteMediaSourcesState(
             scope,
         )
 
-    fun editor(instanceId: String) = RemoteMediaSourceEditor(session, instanceId, scope)
+    fun editor(instanceId: String) = RemoteMediaSourceEditor.create(session, instanceId, scope)
 
     private val editingConfigs = mutableMapOf<String, Pair<MediaSourceConfig, String>>()
 

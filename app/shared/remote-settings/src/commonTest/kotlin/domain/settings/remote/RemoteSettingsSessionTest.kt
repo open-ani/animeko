@@ -24,6 +24,7 @@ import kotlin.test.assertEquals
 import kotlin.test.assertFailsWith
 import kotlin.test.assertFalse
 import kotlin.test.assertNotNull
+import kotlin.test.assertNull
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.async
@@ -43,7 +44,7 @@ import me.him188.ani.remote.settings.generated.models.RemoteError
 
 class RemoteSettingsSessionTest {
     @Test
-    fun serializesEditsAndFinishesAcceptedWritesWhenTheCallerLeaves() = runTest {
+    fun serializesEditsAndFinishesSubmittedWritesWhenTheCallerLeaves() = runTest {
         val fixture = Fixture().apply { writeGate = CompletableDeferred() }
         val session = fixture.connect(backgroundScope)
         try {
@@ -59,16 +60,28 @@ class RemoteSettingsSessionTest {
             }
             runCurrent()
             assertEquals(1, fixture.writes)
+            // The newest edit is visible before the TV confirms it.
+            val submitted = session.preferences.videoScaffoldConfig.flow.first()
+            assertFalse(submitted.autoPlayNext)
+            assertFalse(submitted.autoMarkDone)
             cancelled.cancel()
             first.cancel()
             fixture.writeGate!!.complete(Unit)
             first.join()
             second.join()
             cancelled.join()
-            assertEquals(2, fixture.writes)
-            assertFalse(session.preferences.videoScaffoldConfig.flow.first().autoPlayNext)
+            // The edit whose caller left is still written, after the ones submitted before it.
+            val confirmed =
+                session.snapshot
+                    .first { !it.preferences.videoScaffoldConfig.value.autoMarkDone }
+                    .preferences
+                    .videoScaffoldConfig
+                    .value
+            assertFalse(confirmed.autoPlayNext)
+            assertEquals(3, fixture.writes)
             assertFalse(session.preferences.watchTogetherSettings.flow.first().followHost)
-            assertFalse(session.busy.value)
+            session.busy.first { !it }
+            assertNull(session.error.value)
         } finally {
             session.close()
         }
@@ -161,16 +174,22 @@ class RemoteSettingsSessionTest {
         try {
             val base = session.snapshot.value.preferences.videoScaffoldConfig.value
             val first = launch {
-                session.setPreference(
-                    RemotePreference.VideoScaffold(base.copy(autoPlayNext = false))
-                )
+                session
+                    .submitPreference(
+                        RemotePreference.VideoScaffold(base.copy(autoPlayNext = false)),
+                        RemotePreference.VideoScaffold(base),
+                    )
+                    .await()
             }
             fixture.writeStarted.await()
             val second = async {
                 runCatching {
-                    session.setPreference(
-                        RemotePreference.VideoScaffold(base.copy(autoMarkDone = false))
-                    )
+                    session
+                        .submitPreference(
+                            RemotePreference.VideoScaffold(base.copy(autoMarkDone = false)),
+                            RemotePreference.VideoScaffold(base),
+                        )
+                        .await()
                 }
             }
             runCurrent()
@@ -183,6 +202,9 @@ class RemoteSettingsSessionTest {
             val config = session.preferences.videoScaffoldConfig.flow.first()
             assertFalse(config.autoPlayNext)
             assertEquals(base.autoMarkDone, config.autoMarkDone)
+            // A rejected edit can be repeated on the reloaded value without waiting for a refresh.
+            session.preferences.videoScaffoldConfig.update { copy(autoMarkDone = false) }
+            assertFalse(session.preferences.videoScaffoldConfig.flow.first().autoMarkDone)
         } finally {
             session.close()
         }

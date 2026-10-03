@@ -15,10 +15,9 @@ import me.him188.ani.app.ui.lang.remote_settings_network_allow
 import me.him188.ani.app.ui.lang.remote_settings_network_permission
 import me.him188.ani.app.ui.lang.remote_settings_network_settings
 import org.jetbrains.compose.resources.stringResource
+import me.him188.ani.app.domain.settings.remote.LocalNetworkPermission
 import android.content.Intent
-import android.content.pm.PackageManager
 import android.net.Uri
-import android.os.Build
 import android.provider.Settings
 import androidx.activity.compose.BackHandler
 import androidx.activity.compose.rememberLauncherForActivityResult
@@ -47,10 +46,7 @@ import androidx.core.net.toUri
 @Composable
 actual fun LocalNetworkAccessGate(onBack: () -> Unit, content: @Composable () -> Unit) {
     val context = LocalContext.current
-    fun allowed() =
-        Build.VERSION.SDK_INT < 37 ||
-                context.checkSelfPermission("android.permission.ACCESS_LOCAL_NETWORK") ==
-                PackageManager.PERMISSION_GRANTED
+    fun allowed() = LocalNetworkPermission.isGranted(context)
     // Permission revocation during an active session is reported by its network state.
     // Keep the session UI composed so that its exit guard and cleanup remain active.
     var entered by remember { mutableStateOf(allowed()) }
@@ -60,7 +56,7 @@ actual fun LocalNetworkAccessGate(onBack: () -> Unit, content: @Composable () ->
         }
     LifecycleEventEffect(Lifecycle.Event.ON_RESUME) { if (allowed()) entered = true }
     LaunchedEffect(Unit) {
-        if (!entered) launcher.launch("android.permission.ACCESS_LOCAL_NETWORK")
+        if (!entered) launcher.launch(LocalNetworkPermission.NAME)
     }
     BackHandler(enabled = !entered, onBack = onBack)
     if (entered) content()
@@ -71,7 +67,7 @@ actual fun LocalNetworkAccessGate(onBack: () -> Unit, content: @Composable () ->
             verticalArrangement = Arrangement.spacedBy(16.dp, Alignment.CenterVertically),
         ) {
             Text(stringResource(Lang.remote_settings_network_permission))
-            Button({ launcher.launch("android.permission.ACCESS_LOCAL_NETWORK") }) {
+            Button({ launcher.launch(LocalNetworkPermission.NAME) }) {
                 Text(stringResource(Lang.remote_settings_network_allow))
             }
             TextButton(

@@ -13,7 +13,6 @@ import me.him188.ani.app.ui.lang.Lang
 import me.him188.ani.app.ui.lang.settings_media_source_cancel
 import me.him188.ani.app.ui.lang.settings_media_source_enable
 import me.him188.ani.app.ui.lang.settings_media_source_save_button
-import me.him188.ani.app.ui.lang.settings_media_source_subscription_add_dialog
 import me.him188.ani.app.ui.lang.settings_media_source_subscription_edit
 import me.him188.ani.app.ui.lang.settings_media_source_subscription_period
 import me.him188.ani.app.ui.lang.settings_media_source_subscription_url
@@ -36,23 +35,20 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import kotlin.time.Duration.Companion.minutes
 import me.him188.ani.app.domain.mediasource.subscription.MediaSourceSubscription
-import me.him188.ani.utils.platform.Uuid
 
 @Composable
 internal fun RemoteSubscriptionEditDialog(
-    initial: MediaSourceSubscription?,
+    initial: MediaSourceSubscription,
     busy: Boolean,
     onDismiss: () -> Unit,
     onSave: (MediaSourceSubscription) -> Unit,
 ) {
-    var url by remember { mutableStateOf(initial?.url.orEmpty()) }
-    var period by remember {
-        mutableStateOf((initial?.updatePeriod?.inWholeMinutes ?: 60).toString())
-    }
-    var enabled by remember { mutableStateOf(initial?.enabled ?: true) }
+    var url by remember { mutableStateOf(initial.url) }
+    var period by remember { mutableStateOf(initial.updatePeriod.inWholeMinutes.toString()) }
+    var enabled by remember { mutableStateOf(initial.enabled) }
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text(stringResource(if (initial == null) Lang.settings_media_source_subscription_add_dialog else Lang.settings_media_source_subscription_edit)) },
+        title = { Text(stringResource(Lang.settings_media_source_subscription_edit)) },
         text = {
             Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
                 OutlinedTextField(
@@ -72,7 +68,7 @@ internal fun RemoteSubscriptionEditDialog(
             TextButton(
                 {
                     onSave(
-                        (initial ?: MediaSourceSubscription(Uuid.randomString(), url)).copy(
+                        initial.copy(
                             url = url.trim(),
                             updatePeriod = period.toLong().minutes,
                             enabled = enabled,

@@ -4,7 +4,6 @@
  */
 package me.him188.ani.tv.ui.settings
 
-import me.him188.ani.app.ui.lang.remote_settings_tv_entry
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.focusGroup
@@ -23,11 +22,11 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.rounded.KeyboardArrowRight
 import androidx.compose.material.icons.outlined.Info
 import androidx.compose.material.icons.outlined.Palette
+import androidx.compose.material.icons.outlined.PhonelinkSetup
 import androidx.compose.material.icons.outlined.Settings
 import androidx.compose.material.icons.outlined.SmartDisplay
 import androidx.compose.material.icons.outlined.Storage
 import androidx.compose.material.icons.outlined.Subscriptions
-import androidx.compose.material.icons.outlined.QrCodeScanner
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.SideEffect
@@ -57,6 +56,8 @@ import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.unit.dp
 import androidx.tv.material3.MaterialTheme
 import androidx.tv.material3.Text
+import me.him188.ani.app.domain.settings.remote.RemoteSettingsHostState
+import me.him188.ani.app.domain.settings.remote.RemoteSettingsHostStatus
 import me.him188.ani.app.ui.lang.Lang
 import me.him188.ani.app.ui.lang.foundation_loading
 import me.him188.ani.app.ui.lang.settings_load_failed
@@ -91,8 +92,8 @@ fun TvSettingsScreen(
     displayModes: List<TvSettingsDisplayMode> = emptyList(),
     onOpenUrl: (String) -> Unit = {},
     onImport: () -> Unit = {},
-    onOpenRemoteSettings: () -> Unit = {},
-    remoteSettingsVisible: Boolean = false,
+    remoteSettings: RemoteSettingsHostState = RemoteSettingsHostState(status = RemoteSettingsHostStatus.UNAVAILABLE),
+    onRequestLocalNetworkPermission: () -> Unit = {},
 ) {
     val focus = rememberTvFocusScope()
     var section by rememberSaveable { mutableStateOf(TvSettingsSection.Appearance) }
@@ -112,11 +113,6 @@ fun TvSettingsScreen(
     fun sendFocus(target: TvFocusKey) {
         pendingFocus = target to focus.userNavGeneration
         focusRevision++
-    }
-    var remoteWasVisible by remember { mutableStateOf(false) }
-    LaunchedEffect(remoteSettingsVisible) {
-        if (remoteWasVisible && !remoteSettingsVisible) sendFocus(settingsItemKey("remote"))
-        remoteWasVisible = remoteSettingsVisible
     }
     LaunchedEffect(focusRevision) {
         pendingFocus?.let { (target, generation) ->
@@ -164,12 +160,14 @@ fun TvSettingsScreen(
     var directionalKey by remember { mutableStateOf<Key?>(null) }
     val content = TvSettingsItems(state, onIntent) { dialog = it }
     when {
+        section == TvSettingsSection.Remote -> {}
         state.loadFailed -> content.action(
             "retry", stringResource(Lang.settings_mediasource_retry),
             description = stringResource(Lang.settings_load_failed), opensDetail = false,
         ) { onIntent(TvSettingsIntent.Retry) }
         !state.loaded -> content.action("loading", stringResource(Lang.foundation_loading), opensDetail = false) {}
         else -> when (section) {
+            TvSettingsSection.Remote -> {}
             TvSettingsSection.Appearance -> content.appearance()
             TvSettingsSection.Theme -> content.palette()
             TvSettingsSection.Player -> content.player(TvSettingsPlayerPage.Overview, displayModes) { page ->
@@ -187,7 +185,7 @@ fun TvSettingsScreen(
     val detailEntry = settingsItemKey(initialDetailId ?: "detail-entry")
     focus.InitialFocus(if (extra != null) settingsItemKey("extra-entry") else if (detailFocused) detailEntry else sectionKey(section))
     fun enterDetail() {
-        if (detailFocused) return
+        if (detailFocused || section == TvSettingsSection.Remote) return
         detailFocused = true
         navigationGeneration++
         sendFocus(detailEntry)
@@ -233,20 +231,11 @@ fun TvSettingsScreen(
                     Modifier.verticalScroll(rememberScrollState()).tvModalUnderlay(detailFocused),
                     verticalArrangement = Arrangement.spacedBy(6.dp),
                 ) {
-                    TvOptionRow(
-                        title = stringResource(Lang.remote_settings_tv_entry),
-                        icon = Icons.Outlined.QrCodeScanner,
-                        showSelectionIndicator = false,
-                        modifier = Modifier.testTag("tv-settings-remote")
-                            .tvFocusAnchor(focus, settingsItemKey("remote"))
-                            .tvFocusMemorable("settings-remote")
-                            .focusProperties { canFocus = !detailFocused && dialog == null },
-                        onClick = onOpenRemoteSettings,
-                    )
                     TvSettingsSection.entries.forEach { entry ->
                         TvOptionRow(
                             title = stringResource(entry.title),
                             icon = when (entry) {
+                                TvSettingsSection.Remote -> Icons.Outlined.PhonelinkSetup
                                 TvSettingsSection.Appearance -> Icons.Outlined.Settings
                                 TvSettingsSection.Theme -> Icons.Outlined.Palette
                                 TvSettingsSection.Player -> Icons.Outlined.SmartDisplay
@@ -269,7 +258,7 @@ fun TvSettingsScreen(
                         ) {
                             section = entry
                             aboutPage = TvSettingsAboutPage.Overview
-                            enterDetail()
+                            if (entry == TvSettingsSection.Remote) onRequestLocalNetworkPermission() else enterDetail()
                         }
                     }
                 }
@@ -283,7 +272,9 @@ fun TvSettingsScreen(
                     if (aboutPage != TvSettingsAboutPage.Overview) stringResource(section.title) else section.description(),
                     style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
-                savedContent.SaveableStateProvider(pageId) {
+                if (section == TvSettingsSection.Remote) {
+                    TvRemoteSettingsPane(remoteSettings)
+                } else savedContent.SaveableStateProvider(pageId) {
                     TvSettingsItemsPane(
                         items, focus, detailFocused && extra == null && dialog == null,
                         lazy = section == TvSettingsSection.About && aboutPage == TvSettingsAboutPage.Licenses,

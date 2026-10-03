@@ -504,6 +504,7 @@ fun SettingsScope.PlayerGroup(
     showDebug: Boolean,
     showFullscreenOnLandscape: Boolean = LocalPlatform.current.isMobile(),
     showAudioTimeStretch: Boolean = LocalPlatform.current.isAndroid(),
+    showBackgroundBehavior: Boolean = LocalPlatform.current.isMobile(),
     platformSettings: @Composable SettingsScope.() -> Unit = { PlayerGroupPlatform(videoScaffoldConfig, playerKernelConfig) },
 ) {
     Group(title = { Text(stringResource(Lang.settings_player)) }) {
@@ -607,7 +608,7 @@ fun SettingsScope.PlayerGroup(
             },
             title = { Text(stringResource(Lang.settings_player_auto_play_next)) },
         )
-        if (LocalPlatform.current.isMobile()) {
+        if (showBackgroundBehavior) {
             HorizontalDividerItem()
             DropdownItem(
                 selected = { config.backgroundBehavior },

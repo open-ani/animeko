@@ -54,6 +54,7 @@ internal fun SettingsScope.RemotePlayerGroup(form: RemoteSettingsFormState) {
         showDebug = false,
         showFullscreenOnLandscape = false,
         showAudioTimeStretch = true,
+        showBackgroundBehavior = false,
         platformSettings = {
             HorizontalDividerItem()
             SwitchItem(

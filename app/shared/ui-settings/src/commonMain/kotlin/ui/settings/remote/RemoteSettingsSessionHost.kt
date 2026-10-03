@@ -65,6 +65,7 @@ fun RemoteSettingsSessionHost(
     vm: RemoteSettingsViewModel,
     onNavigateBack: () -> Unit,
     guardExit: Boolean = false,
+    exitEnabled: Boolean = true,
     content: @Composable (Modifier, requestExit: () -> Unit) -> Unit,
 ) {
     var confirmExit by remember { mutableStateOf(false) }
@@ -125,7 +126,7 @@ fun RemoteSettingsSessionHost(
                                     )
                                 }
                             }
-                            TextButton(onNavigateBack, enabled = !busy) {
+                            TextButton(onNavigateBack, enabled = !busy && exitEnabled) {
                                 Text(stringResource(Lang.remote_settings_exit))
                             }
                         }
