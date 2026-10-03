@@ -19,11 +19,10 @@ import kotlin.math.min
 /**
  * 截图面板的整体轮廓, 一条闭合路径.
  *
- * A 区域 [regionA] 是圆角矩形 (圆角 [cornerRadius]); B 区域 [regionB] 从 A 的下沿向外伸出, 与 A 底边对齐:
- * 两者的底边连成一条直线, B 的外端是半圆, B 的上边与 A 的侧边之间用半径 [neckRadius] 的内凹圆角过渡,
- * 所以 A 和 B 之间没有折角, 读起来是一块面板.
+ * A 区域 [regionA] 是圆角矩形 (圆角 [cornerRadius]); B 区域 [regionB] 从 A 的侧边伸出, 外端是半圆,
+ * 上下两条边都用半径 [neckRadius] 的内凹圆角接到 A 的侧边, 所以 A 和 B 之间没有折角, 读起来是一块面板.
  *
- * B 在 A 的哪一侧由两者的中心位置决定. [neckRadius] 会被限制在不与 A 的上角冲突的范围内.
+ * B 在 A 的哪一侧由两者的中心位置决定; B 的上下边应落在 A 侧边的直线段内. 两个半径都会被限制在不互相冲突的范围内.
  */
 internal fun screenshotPanelOutline(
     regionA: Rect,
@@ -48,10 +47,15 @@ internal fun screenshotPanelOutline(
 }
 
 private fun outlineWithLobeOnRight(a: Rect, b: Rect, cornerRadius: Float, neckRadius: Float): Path {
-    val rA = min(cornerRadius, min(a.width, a.height) / 2f).coerceAtLeast(0f)
+    // A 的圆角不能侵入 B 所占的那段侧边
+    val straightSide = min(b.top - a.top, a.bottom - b.bottom)
+    val rA = min(cornerRadius, min(a.width / 2f, min(a.height / 2f, straightSide))).coerceAtLeast(0f)
     val rB = (b.height / 2f).coerceAtLeast(0f)
-    // 内凹圆角不能越过 A 的上角, 也不能超过 B 露出部分可用的宽度
-    val rJ = min(neckRadius, min(b.top - (a.top + rA), (b.right - rB) - a.right)).coerceAtLeast(0f)
+    // 内凹圆角不能越过 A 的上下角, 也不能超过 B 露出部分可用的宽度
+    val rJ = min(
+        neckRadius,
+        min(min(b.top - (a.top + rA), (a.bottom - rA) - b.bottom), (b.right - rB) - a.right),
+    ).coerceAtLeast(0f)
 
     return Path().apply {
         // 顺时针: 从 A 顶边左端开始
@@ -65,7 +69,14 @@ private fun outlineWithLobeOnRight(a: Rect, b: Rect, cornerRadius: Float, neckRa
         }
         lineTo(b.right - rB, b.top)
         arcTo(Rect(Offset(b.right - rB, b.top + rB), rB), 270f, 180f, false) // B 的半圆外端 -> (b.right - rB, b.bottom)
-        lineTo(a.left + rA, a.bottom) // B 与 A 共用的底边
+        lineTo(a.right + rJ, b.bottom)
+        if (rJ > 0f) {
+            // 内凹过渡: 从 B 的下边拐回 A 的右边 -> (a.right, b.bottom + rJ)
+            arcTo(Rect(Offset(a.right + rJ, b.bottom + rJ), rJ), 270f, -90f, false)
+        }
+        lineTo(a.right, a.bottom - rA)
+        arcTo(Rect(Offset(a.right - rA, a.bottom - rA), rA), 0f, 90f, false) // A 右下角 -> (a.right - rA, a.bottom)
+        lineTo(a.left + rA, a.bottom)
         arcTo(Rect(Offset(a.left + rA, a.bottom - rA), rA), 90f, 90f, false) // A 左下角 -> (a.left, a.bottom - rA)
         lineTo(a.left, a.top + rA)
         arcTo(Rect(Offset(a.left + rA, a.top + rA), rA), 180f, 90f, false) // A 左上角 -> (a.left + rA, a.top)

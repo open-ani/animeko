@@ -29,6 +29,7 @@ import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.asPaddingValues
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.GenericShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.Close
@@ -48,7 +49,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.draw.drawBehind
+import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.graphics.Canvas
@@ -117,13 +118,14 @@ private val PanelCornerRadius = 20.dp
 
 /** A 区域内画面到边缘的留白. 画面圆角等于 [PanelCornerRadius] 减去此值, 与 A 区域同心. */
 private val ImagePadding = 8.dp
-private val ShareButtonSize = 40.dp
+private val PanelElevation = 6.dp
+private val ShareButtonSize = 36.dp
 
 /** B 区域内分享按钮到边缘的留白. */
 private val LobePadding = 6.dp
 
-/** B 区域上边与 A 区域侧边之间内凹圆角的半径. */
-private val NeckRadius = 12.dp
+/** B 区域上下边与 A 区域侧边之间内凹圆角的半径. */
+private val NeckRadius = 10.dp
 private val CloseButtonSize = 24.dp
 
 /** 关闭按钮到 A 区域上边与外侧边的距离. */
@@ -140,7 +142,7 @@ private const val MAX_THUMBNAIL_WIDTH_FRACTION = 0.4f
  *
  * 1. 播放器区域白色闪光一次;
  * 2. 截图先原位停留片刻, 再以容器变换收进角落: 竖屏布局 (区域高大于宽) 右下角, 横屏布局左下角;
- * 3. 落定后长出面板: 画面所在的 A 区域与伸出去装分享按钮的 B 区域由一条闭合路径画成一块整体的异形面板, 关闭按钮在 A 内部的外侧上角;
+ * 3. 落定后长出面板: 画面所在的 A 区域与从侧边伸出去装分享按钮的 B 区域由一条闭合路径画成一块整体的异形面板, 带阴影; 关闭按钮在 A 内部的外侧上角;
  * 4. [autoDismissDelay] 后自动收起, 鼠标悬停或按住面板时暂停计时; 用户也可点关闭.
  *
  * 再次截图会替换面板内容并重放整个流程.
@@ -317,6 +319,7 @@ private fun ScreenshotPresentation(
     )
 }
 
+private const val BACKGROUND_ID = "background"
 private const val IMAGE_ID = "image"
 private const val SHARE_ID = "share"
 private const val CLOSE_ID = "close"
@@ -326,7 +329,7 @@ private class PanelFrame {
     /** A 区域: 容纳画面的圆角矩形. */
     var regionA: Rect = Rect.Zero
 
-    /** B 区域: 从 A 的下沿向屏幕中央伸出、容纳分享按钮的半圆头凸起, 底边与 A 对齐. */
+    /** B 区域: 从 A 的侧边向屏幕中央伸出、容纳分享按钮的半圆头凸起, 在 A 的侧边上垂直居中. */
     var regionB: Rect = Rect.Zero
 
     /** 画面在 A 区域内的位置. */
@@ -335,9 +338,9 @@ private class PanelFrame {
 
 /**
  * 异形面板. A 区域是一个圆角矩形, 画面落在其中、四周留 [ImagePadding] 的边, 画面本身就是 [thumbnailRect];
- * B 区域从 A 的下沿向屏幕中央伸出, 露出的半圆头里是圆形的分享图标按钮.
- * 整块面板是 [screenshotPanelOutline] 描出的一条闭合路径, 填 surfaceContainer: A 与 B 的底边连成一条直线,
- * B 的上边以内凹圆角接到 A 的侧边. 关闭按钮在 A 内部的外侧上角, 盖在画面的角上.
+ * B 区域在 A 的侧边上垂直居中、向屏幕中央伸出, 露出的半圆头里是圆形的分享图标按钮.
+ * 整块面板是 [screenshotPanelOutline] 描出的一条闭合路径做成的 [GenericShape], 填 surfaceContainer 并带阴影:
+ * B 的上下边都以内凹圆角接到 A 的侧边. 关闭按钮在 A 内部的外侧上角, 盖在画面的角上.
  *
  * 入场期间 ([chromeAlpha] 为 0) 只画画面本身, 即正在移动的截图.
  */
@@ -370,12 +373,25 @@ private fun ScreenshotPanel(
     val panelColor = MaterialTheme.colorScheme.surfaceContainer
     val buttonColor = MaterialTheme.colorScheme.surfaceContainerLowest
     val frame = remember { PanelFrame() }
+    val panelShape = remember(frame, panelCornerPx, neckRadiusPx) {
+        GenericShape { _, _ ->
+            addPath(screenshotPanelOutline(frame.regionA, frame.regionB, panelCornerPx, neckRadiusPx))
+        }
+    }
     val indication = LocalIndication.current
     val shareLabel = stringResource(Lang.video_player_screenshot_share)
     val dismissLabel = stringResource(Lang.video_player_screenshot_dismiss)
 
     Layout(
         content = {
+            // 面板底: 阴影与底色随外壳一起淡入, 画面移动期间不可见
+            Box(
+                Modifier
+                    .layoutId(BACKGROUND_ID)
+                    .graphicsLayer { alpha = chromeAlpha() }
+                    .shadow(PanelElevation, panelShape, clip = false)
+                    .background(panelColor, panelShape),
+            )
             Image(
                 bitmap = screenshot.image,
                 contentDescription = null,
@@ -437,16 +453,7 @@ private fun ScreenshotPanel(
                     PlayerScreenshotPanelCorner.BottomRight -> TransformOrigin(1f, 1f)
                 }
             }
-            .hoverable(interactionSource)
-            .drawBehind {
-                val alpha = chromeAlpha()
-                if (alpha <= 0f) return@drawBehind
-                drawPath(
-                    screenshotPanelOutline(frame.regionA, frame.regionB, panelCornerPx, neckRadiusPx),
-                    panelColor,
-                    alpha = alpha,
-                )
-            },
+            .hoverable(interactionSource),
     ) { measurables, constraints ->
         val target = thumbnailRect()
         val imageWidth = target.width.roundToInt().coerceAtLeast(1)
@@ -472,7 +479,8 @@ private fun ScreenshotPanel(
             PlayerScreenshotPanelCorner.BottomLeft -> regionAX + regionAWidth - lobeOverlapPx
             PlayerScreenshotPanelCorner.BottomRight -> regionAX + lobeOverlapPx - lobeWidthPx
         }
-        val regionBY = (regionAY + regionAHeight - lobeHeightPx).coerceAtLeast(regionAY)
+        // B 在 A 的侧边上垂直居中
+        val regionBY = regionAY + (regionAHeight - lobeHeightPx) / 2
         val shareX = when (corner) {
             PlayerScreenshotPanelCorner.BottomLeft -> regionBX + lobeWidthPx - lobePaddingPx - shareSizePx
             PlayerScreenshotPanelCorner.BottomRight -> regionBX + lobePaddingPx
@@ -507,7 +515,10 @@ private fun ScreenshotPanel(
 
         val width = regionAWidth + protrusion
         val height = regionAHeight
+        val background = measurables.first { it.layoutId == BACKGROUND_ID }
+            .measure(Constraints.fixed(width, height))
         layout(width, height) {
+            background.place(0, 0)
             image.place(imageX, imageY)
             share.place(shareX, shareY)
             close.place(closeX, closeY)

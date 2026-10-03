@@ -24,26 +24,26 @@ class PlayerScreenshotPanelShapeTest {
 
     @Test
     fun `lobe on the right spans both regions`() {
-        val a = Rect(12f, 12f, 227f, 116f)
-        val b = Rect(201f, 64f, 279f, 116f) // 底边与 A 对齐, 向右伸出
-        val path = screenshotPanelOutline(a, b, cornerRadius = 20f, neckRadius = 12f)
+        val a = Rect(0f, 0f, 215f, 104f)
+        val b = Rect(191f, 28f, 263f, 76f) // 垂直居中, 向右伸出
+        val path = screenshotPanelOutline(a, b, cornerRadius = 20f, neckRadius = 10f)
         assertFalse(path.isEmpty)
-        assertRect(Rect(12f, 12f, 279f, 116f), path.getBounds())
+        assertRect(Rect(0f, 0f, 263f, 104f), path.getBounds())
     }
 
     @Test
     fun `lobe on the left is the mirror image`() {
-        val a = Rect(52f, 12f, 267f, 116f)
-        val b = Rect(0f, 64f, 78f, 116f) // 向左伸出
-        val path = screenshotPanelOutline(a, b, cornerRadius = 20f, neckRadius = 12f)
+        val a = Rect(48f, 0f, 263f, 104f)
+        val b = Rect(0f, 28f, 72f, 76f) // 向左伸出
+        val path = screenshotPanelOutline(a, b, cornerRadius = 20f, neckRadius = 10f)
         assertFalse(path.isEmpty)
-        assertRect(Rect(0f, 12f, 267f, 116f), path.getBounds())
+        assertRect(Rect(0f, 0f, 263f, 104f), path.getBounds())
     }
 
     @Test
     fun `tiny panels clamp the radii instead of folding`() {
         val a = Rect(0f, 0f, 30f, 30f)
-        val b = Rect(20f, 10f, 60f, 30f)
+        val b = Rect(20f, 5f, 60f, 25f)
         val path = screenshotPanelOutline(a, b, cornerRadius = 40f, neckRadius = 40f)
         assertFalse(path.isEmpty)
         assertRect(Rect(0f, 0f, 60f, 30f), path.getBounds())
