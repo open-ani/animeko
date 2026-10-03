@@ -1753,6 +1753,17 @@
     <string name="qr_login_close">Close</string>
     <string name="subject_episode_danmaku_sources_title">Sources and timing</string>
     <string name="subject_episode_danmaku_sources_empty">No danmaku sources available</string>
+    <string name="video_player_screenshot">Screenshot</string>
+    <string name="video_player_screenshot_share">Share</string>
+    <string name="video_player_screenshot_dismiss">Dismiss</string>
+    <string name="video_player_screenshot_copied">Screenshot copied to clipboard</string>
+    <string name="video_player_screenshot_share_failed">No app can share this screenshot</string>
+    <string name="video_player_screenshot_open_failed">Could not open the screenshot</string>
+    <string name="video_player_screenshot_failed_permission">Screenshot not saved: permission to write to the photo library was denied</string>
+    <string name="video_player_screenshot_failed_unsupported">This player does not support screenshots</string>
+    <string name="video_player_screenshot_failed_no_frame">Screenshot failed: no video frame to capture</string>
+    <string name="video_player_screenshot_failed_save">Screenshot could not be saved</string>
+    <string name="video_player_screenshot_failed_save_reason">Screenshot could not be saved: %1$s</string>
 </resources>
 
 <!--@formatter:on-->

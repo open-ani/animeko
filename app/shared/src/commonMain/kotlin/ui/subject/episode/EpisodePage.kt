@@ -78,6 +78,7 @@ import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.compose.LifecycleEventEffect
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.launch
@@ -148,6 +149,14 @@ import me.him188.ani.app.ui.lang.episode_send_danmaku
 import me.him188.ani.app.ui.lang.foundation_richtext_external_app_link_warning_prefix
 import me.him188.ani.app.ui.lang.foundation_richtext_open_failed_prefix
 import me.him188.ani.app.ui.lang.subject_details_tab_details
+import me.him188.ani.app.ui.lang.video_player_screenshot_copied
+import me.him188.ani.app.ui.lang.video_player_screenshot_failed_no_frame
+import me.him188.ani.app.ui.lang.video_player_screenshot_failed_permission
+import me.him188.ani.app.ui.lang.video_player_screenshot_failed_save
+import me.him188.ani.app.ui.lang.video_player_screenshot_failed_save_reason
+import me.him188.ani.app.ui.lang.video_player_screenshot_failed_unsupported
+import me.him188.ani.app.ui.lang.video_player_screenshot_open_failed
+import me.him188.ani.app.ui.lang.video_player_screenshot_share_failed
 import me.him188.ani.app.ui.mediaselect.MediaSelectorMode
 import me.him188.ani.app.ui.mediaselect.common.MediaSelectorDialog
 import me.him188.ani.app.ui.mediaselect.common.MediaSelectorDialogContent
@@ -168,6 +177,12 @@ import me.him188.ani.app.ui.subject.episode.video.sidesheet.EpisodeSelectorSheet
 import me.him188.ani.app.ui.subject.episode.video.sidesheet.MediaSelectorSheet
 import me.him188.ani.app.ui.subject.episode.video.topbar.EpisodePlayerTitle
 import me.him188.ani.app.ui.watchtogether.LocalWatchTogetherPlayerController
+import me.him188.ani.app.videoplayer.screenshot.PlayerScreenshotFailure
+import me.him188.ani.app.videoplayer.screenshot.PlayerScreenshotResult
+import me.him188.ani.app.videoplayer.screenshot.PlayerScreenshotShareOutcome
+import me.him188.ani.app.videoplayer.screenshot.playerScreenshotFileName
+import me.him188.ani.app.videoplayer.screenshot.rememberPlayerScreenshotCapturer
+import me.him188.ani.app.videoplayer.screenshot.rememberPlayerScreenshotSharer
 import me.him188.ani.app.videoplayer.ui.LocalVideoScaffoldSheetWindowInsets
 import me.him188.ani.app.videoplayer.ui.PlaybackSpeedControllerState
 import me.him188.ani.app.videoplayer.ui.PlayerControllerState
@@ -184,17 +199,21 @@ import me.him188.ani.app.videoplayer.ui.progress.PlayerControllerDefaults.rememb
 import me.him188.ani.app.videoplayer.ui.progress.rememberMediaProgressFramePreviewState
 import me.him188.ani.app.videoplayer.ui.progress.rememberMediaProgressSliderState
 import me.him188.ani.app.videoplayer.ui.rememberPlayerFullscreenState
+import me.him188.ani.app.videoplayer.ui.screenshot.PlayerScreenshotOverlay
+import me.him188.ani.app.videoplayer.ui.screenshot.rememberPlayerScreenshotPanelState
 import me.him188.ani.danmaku.api.DanmakuContent
 import me.him188.ani.danmaku.ui.DanmakuHostState
 import me.him188.ani.danmaku.ui.DanmakuPresentation
 import me.him188.ani.datasources.api.source.MediaFetchRequest
+import me.him188.ani.utils.logging.logger
+import me.him188.ani.utils.logging.warn
 import me.him188.ani.utils.platform.isAndroid
 import me.him188.ani.utils.platform.isDesktop
 import me.him188.ani.utils.platform.isIos
+import org.jetbrains.compose.resources.getString
 import org.jetbrains.compose.resources.stringResource
 import org.openani.mediamp.features.AudioLevelController
 import org.openani.mediamp.features.PlaybackSpeed
-import org.openani.mediamp.features.Screenshots
 import org.openani.mediamp.features.VideoAspectRatio
 import org.openani.mediamp.features.toggleMute
 import org.openani.mediamp.source.MediaData
@@ -1041,7 +1060,6 @@ private fun EpisodeVideo(
 ) {
     val context by rememberUpdatedState(LocalContext.current)
     val navigator = LocalNavigator.current
-    val isAndroid = LocalPlatform.current.isAndroid()
 
     // 回到前台、进出全屏后都先隐藏控制器
     LifecycleEventEffect(Lifecycle.Event.ON_RESUME) {
@@ -1082,6 +1100,12 @@ private fun EpisodeVideo(
         }
     }
     val fullscreenState = rememberEpisodeFullscreenState(vm)
+
+    val toaster = LocalToaster.current
+    val screenshotCapturer = rememberPlayerScreenshotCapturer()
+    val screenshotSharer = rememberPlayerScreenshotSharer()
+    val screenshotPanelState = rememberPlayerScreenshotPanelState()
+    var screenshotJob by remember { mutableStateOf<Job?>(null) }
 
     val pictureInPictureController = LocalPictureInPictureController.current
     val isInPictureInPicture by pictureInPictureController.isInPictureInPicture.collectAsStateWithLifecycle()
@@ -1130,21 +1154,61 @@ private fun EpisodeVideo(
                 playerControllerState = playerControllerState,
             )
         },
-        onClickScreenshot = {
-            val currentPositionMillis = vm.player.currentPositionMillis.value
-            val min = currentPositionMillis / 60000
-            val sec = (currentPositionMillis - (min * 60000)) / 1000
-            val ms = currentPositionMillis - (min * 60000) - (sec * 1000)
-            val currentPosition = "${min}m${sec}s${ms}ms"
-            // 条目ID-剧集序号-视频时间点.png
-            val filename = "${vm.subjectId}-${page.episodePresentation.ep}-${currentPosition}.png"
-            scope.launch {
-                if (isAndroid) {
-                    takeAndroidPlayerScreenshot(context, vm.player, filename)
-                } else {
-                    vm.player.features[Screenshots]?.takeScreenshot(filename)
+        onClickScreenshot = if (screenshotCapturer.isSupported(vm.player)) {
+            {
+                // 上一张还在保存时忽略再次点击
+                if (screenshotJob?.isActive != true) {
+                    val fileName = playerScreenshotFileName(
+                        subjectId = vm.subjectId,
+                        episodeSort = page.episodePresentation.ep,
+                        positionMillis = vm.player.currentPositionMillis.value,
+                    )
+                    screenshotJob = scope.launch {
+                        when (val result = screenshotCapturer.capture(vm.player, fileName)) {
+                            is PlayerScreenshotResult.Success -> screenshotPanelState.present(result.screenshot)
+                            is PlayerScreenshotResult.Failure -> {
+                                val reason = result.reason
+                                val cause = (reason as? PlayerScreenshotFailure.SaveFailed)?.cause
+                                if (cause != null) {
+                                    logger.warn(cause) { "Player screenshot failed: $reason" }
+                                } else {
+                                    logger.warn { "Player screenshot failed: $reason" }
+                                }
+                                toaster.toast(reason.toastMessage())
+                            }
+                        }
+                    }
                 }
             }
+        } else {
+            null
+        },
+        screenshotOverlay = { bottomControllerHeight ->
+            PlayerScreenshotOverlay(
+                screenshotPanelState,
+                onShare = { screenshot ->
+                    scope.launch {
+                        when (screenshotSharer.share(screenshot)) {
+                            PlayerScreenshotShareOutcome.Shared -> {}
+                            PlayerScreenshotShareOutcome.CopiedToClipboard ->
+                                toaster.toast(getString(Lang.video_player_screenshot_copied))
+
+                            PlayerScreenshotShareOutcome.Failed ->
+                                toaster.toast(getString(Lang.video_player_screenshot_share_failed))
+                        }
+                    }
+                },
+                onOpen = { screenshot ->
+                    scope.launch {
+                        if (!screenshotSharer.open(screenshot)) {
+                            toaster.toast(getString(Lang.video_player_screenshot_open_failed))
+                        }
+                    }
+                },
+                Modifier.matchParentSize(),
+                bottomOffset = bottomControllerHeight,
+                windowInsets = windowInsets,
+            )
         },
         detachedProgressSlider = {
             PlayerControllerDefaults.MediaProgressSlider(
@@ -1576,5 +1640,21 @@ fun PreviewEpisodeSceneContentPhoneScaffoldTabs() {
                 DummyDanmakuEditor({ })
             },
         )
+    }
+}
+
+private val logger = logger("EpisodeVideo")
+
+private suspend fun PlayerScreenshotFailure.toastMessage(): String = when (this) {
+    PlayerScreenshotFailure.PermissionDenied -> getString(Lang.video_player_screenshot_failed_permission)
+    PlayerScreenshotFailure.Unsupported -> getString(Lang.video_player_screenshot_failed_unsupported)
+    PlayerScreenshotFailure.NoFrame -> getString(Lang.video_player_screenshot_failed_no_frame)
+    is PlayerScreenshotFailure.SaveFailed -> {
+        val detail = cause?.message?.takeIf { it.isNotBlank() }
+        if (detail == null) {
+            getString(Lang.video_player_screenshot_failed_save)
+        } else {
+            getString(Lang.video_player_screenshot_failed_save_reason, detail)
+        }
     }
 }

@@ -13,6 +13,7 @@ import androidx.compose.foundation.hoverable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.interaction.collectIsHoveredAsState
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxScope
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.RowScope
 import androidx.compose.foundation.layout.WindowInsets
@@ -58,6 +59,7 @@ import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.tooling.preview.PreviewLightDark
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import kotlinx.coroutines.flow.Flow
@@ -202,6 +204,8 @@ internal const val TAG_EPISODE_SELECTOR_SHEET = "EpisodeSelectorSheet"
  * 剧集详情页面顶部的视频控件.
  * @param title 仅在全屏时显示的标题
  * @param fullscreenState 全屏状态与全屏请求. 控制栏按钮、双击、F 键、上下滑手势全部走它
+ * @param onClickScreenshot 点击截图按钮. 为 null 时不显示截图按钮, 即当前平台或播放器不支持截图
+ * @param screenshotOverlay 截图反馈层, 见 [VideoScaffold] 的同名槽
  */
 @Composable
 internal fun EpisodeVideoImpl(
@@ -223,7 +227,8 @@ internal fun EpisodeVideoImpl(
     alwaysOnTop: Boolean = false,
     onToggleAlwaysOnTop: (() -> Unit)? = null,
     danmakuEditor: @Composable() (RowScope.() -> Unit),
-    onClickScreenshot: () -> Unit,
+    onClickScreenshot: (() -> Unit)?,
+    screenshotOverlay: @Composable BoxScope.(bottomControllerHeight: Dp) -> Unit = {},
     detachedProgressSlider: @Composable () -> Unit,
     sidebarVisible: Boolean,
     onToggleSidebar: (isCollapsed: Boolean) -> Unit,
@@ -457,12 +462,13 @@ internal fun EpisodeVideoImpl(
                 }
             },
             rhsButtons = {
-                if (expanded && (LocalPlatform.current.isDesktop() || LocalPlatform.current.isAndroid())) {
+                if (expanded && onClickScreenshot != null) {
                     ScreenshotButton(
                         onClick = onClickScreenshot,
                     )
                 }
             },
+            screenshotOverlay = screenshotOverlay,
             gestureLock = {
                 if (expanded) {
                     GestureLock(isLocked = isLocked, onClick = { isLocked = !isLocked })

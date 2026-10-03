@@ -1746,6 +1746,17 @@
     <string name="qr_login_close">關閉</string>
     <string name="subject_episode_danmaku_sources_title">來源與時間校準</string>
     <string name="subject_episode_danmaku_sources_empty">暫無可用彈幕來源</string>
+    <string name="video_player_screenshot">截圖</string>
+    <string name="video_player_screenshot_share">分享</string>
+    <string name="video_player_screenshot_dismiss">關閉</string>
+    <string name="video_player_screenshot_copied">截圖已複製到剪貼簿</string>
+    <string name="video_player_screenshot_share_failed">沒有可以分享截圖的應用程式</string>
+    <string name="video_player_screenshot_open_failed">無法開啟截圖</string>
+    <string name="video_player_screenshot_failed_permission">截圖未儲存: 沒有寫入相簿的權限</string>
+    <string name="video_player_screenshot_failed_unsupported">目前播放器不支援截圖</string>
+    <string name="video_player_screenshot_failed_no_frame">截圖失敗: 目前沒有可擷取的畫面</string>
+    <string name="video_player_screenshot_failed_save">截圖儲存失敗</string>
+    <string name="video_player_screenshot_failed_save_reason">截圖儲存失敗: %1$s</string>
 </resources>
 
 <!--@formatter:on-->
