@@ -9,20 +9,25 @@
 
 package me.him188.ani.app.platform.features
 
+import androidx.compose.ui.unit.DpRect
+import androidx.compose.ui.unit.dp
 import kotlin.test.Test
 import kotlin.test.assertEquals
 
 class MacosShareSheetTest {
+    private val anchor = DpRect(left = 24.dp, top = 100.dp, right = 104.dp, bottom = 140.dp)
+
     @Test
     fun `anchor is flipped into a bottom-left origin for an unflipped view`() {
-        // 视图高 500: 顶部在 100、高 40 的按钮, 底边在 AppKit 坐标里是 500 - 140 = 360
-        val rect = ShareAnchor(left = 24f, top = 100f, width = 80f, height = 40f).toAppKitRect(viewHeight = 500f, flipped = false)
-        assertEquals(ShareAnchor(left = 24f, top = 360f, width = 80f, height = 40f), rect)
+        // 视图高 500: 顶部在 100、底部在 140 的按钮, 在 AppKit 坐标里占 360..400
+        assertEquals(
+            DpRect(left = 24.dp, top = 360.dp, right = 104.dp, bottom = 400.dp),
+            anchor.toAppKitRect(viewHeight = 500f, flipped = false),
+        )
     }
 
     @Test
     fun `anchor is kept as is for a flipped view`() {
-        val anchor = ShareAnchor(left = 24f, top = 100f, width = 80f, height = 40f)
         assertEquals(anchor, anchor.toAppKitRect(viewHeight = 500f, flipped = true))
     }
 }

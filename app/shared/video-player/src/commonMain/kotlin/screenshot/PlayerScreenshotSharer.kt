@@ -18,7 +18,7 @@ interface PlayerScreenshotSharer {
      * 分享: 交给系统分享面板. Android 用分享 Intent; Windows 用 Share UI, macOS 用分享菜单; Linux 没有系统分享面板,
      * 在文件管理器中定位截图文件.
      *
-     * @param anchor 分享按钮在窗口中的位置 (dp). 弹出式的分享面板 (macOS) 从它旁边弹出; 不知道时传 `null`.
+     * @param anchor 分享按钮在窗口中的位置 (dp). 弹出式的分享面板从它旁边弹出, 由系统定位的面板忽略它; 不知道时传 `null`.
      */
     suspend fun share(screenshot: SavedPlayerScreenshot, anchor: DpRect?): Boolean
 

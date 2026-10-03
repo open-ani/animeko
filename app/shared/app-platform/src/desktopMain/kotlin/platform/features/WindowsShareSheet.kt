@@ -9,6 +9,7 @@
 
 package me.him188.ani.app.platform.features
 
+import androidx.compose.ui.unit.DpRect
 import com.sun.jna.Callback
 import com.sun.jna.CallbackReference
 import com.sun.jna.CallbackThreadInitializer
@@ -16,8 +17,10 @@ import com.sun.jna.Memory
 import com.sun.jna.Native
 import com.sun.jna.Pointer
 import com.sun.jna.WString
+import com.sun.jna.platform.win32.COM.IUnknown
 import com.sun.jna.platform.win32.COM.Unknown
 import com.sun.jna.platform.win32.Guid
+import com.sun.jna.platform.win32.WinError
 import com.sun.jna.ptr.IntByReference
 import com.sun.jna.ptr.LongByReference
 import com.sun.jna.ptr.PointerByReference
@@ -33,7 +36,6 @@ import me.him188.ani.utils.logging.warn
 import java.io.File
 import java.io.IOException
 import java.util.concurrent.Executors
-import java.util.concurrent.atomic.AtomicInteger
 
 /**
  * Windows 的分享面板 (Share UI), 通过 WinRT 的 `DataTransferManager` 实现:
@@ -57,11 +59,11 @@ internal object WindowsShareSheet : SystemShareSheet {
     /** 上一次分享用到的对象. 面板打开期间系统还会回调它们, 所以保留到下一次分享. */
     private var current: ShareSession? = null
 
-    override suspend fun shareFile(windowHandle: Long, file: File, title: String, anchor: ShareAnchor?): Boolean =
+    override suspend fun shareFile(windowHandle: Long, file: File, anchor: DpRect?): Boolean =
         withContext(comThread) {
             runCatchingCancellable {
                 ensureInitialized()
-                val session = ShareSession(Pointer(windowHandle), file, title)
+                val session = ShareSession(Pointer(windowHandle), file)
                 current?.close()
                 current = session
                 session.show()
@@ -74,28 +76,40 @@ internal object WindowsShareSheet : SystemShareSheet {
         if (initialized) return
         val hr = Combase.INSTANCE.RoInitialize(RO_INIT_MULTITHREADED)
         // S_FALSE: 本线程已初始化; RPC_E_CHANGED_MODE: 已按另一种模式初始化, 仍可使用
-        if (hr < 0 && hr != RPC_E_CHANGED_MODE) throw IOException("RoInitialize failed: ${hresult(hr)}")
+        if (hr < 0 && hr != WinError.RPC_E_CHANGED_MODE) throw IOException("RoInitialize failed: ${hresult(hr)}")
         initialized = true
     }
 }
 
-/** 一次分享: 已解析的文件、注册在管理器上的事件处理器, 以及它们的释放. */
-private class ShareSession(private val hwnd: Pointer, file: File, title: String) : AutoCloseable {
-    private val owned = mutableListOf<Unknown>()
-    private val interop: ComObject = activationFactory(DATA_TRANSFER_MANAGER_CLASS, IID_DATA_TRANSFER_MANAGER_INTEROP).owned()
-    private val manager: ComObject =
-        ComObject(interop.callOut(INTEROP_GET_FOR_WINDOW, hwnd, IID_DATA_TRANSFER_MANAGER)).owned()
-    private val storageFile: ComObject = resolveStorageFile(file)
-    private val storageItem: ComObject = storageFile.queryInterface(IID_STORAGE_ITEM)
-    private val streamReference: ComObject =
-        activationFactory(STREAM_REFERENCE_CLASS, IID_STREAM_REFERENCE_STATICS).use { statics ->
-            ComObject(statics.callOut(STREAM_REFERENCE_STATICS_CREATE_FROM_FILE, storageFile.pointer)).owned()
+/**
+ * 一次分享: 已解析的文件、注册在管理器上的事件处理器, 以及它们的释放.
+ * 文件解析是异步的, 所以先发起它, 等待期间准备管理器.
+ */
+private class ShareSession(private val hwnd: Pointer, file: File) : AutoCloseable {
+    private val owned = mutableListOf<ComObject>()
+    private val interop: ComObject
+    private val manager: ComObject
+    private val handler: DataRequestedHandler
+    private val token: Long
+
+    init {
+        val operation = activationFactory(STORAGE_FILE_CLASS, IID_STORAGE_FILE_STATICS).use { statics ->
+            HString(file.absolutePath).use { path ->
+                ComObject(statics.callOut(STORAGE_FILE_STATICS_GET_FILE_FROM_PATH_ASYNC, path.handle))
+            }
         }
-    private val items = StorageItemIterable(storageItem)
-    private val handler = DataRequestedHandler(title, items, streamReference)
-    private val token: Long = LongByReference().also {
-        checkHr(manager.call(DTM_ADD_DATA_REQUESTED, handler.pointer, it), "add_DataRequested")
-    }.value
+        interop = activationFactory(DATA_TRANSFER_MANAGER_CLASS, IID_DATA_TRANSFER_MANAGER_INTEROP).owned()
+        manager = ComObject(interop.callOut(INTEROP_GET_FOR_WINDOW, hwnd, IID_DATA_TRANSFER_MANAGER)).owned()
+        val storageFile = operation.use { awaitResult(it, file) }.owned()
+        val storageItem = storageFile.queryInterface(IID_STORAGE_ITEM).owned()
+        val streamReference = activationFactory(STREAM_REFERENCE_CLASS, IID_STREAM_REFERENCE_STATICS).use { statics ->
+            ComObject(statics.callOut(STREAM_REFERENCE_STATICS_CREATE_FROM_FILE, storageFile.pointer))
+        }.owned()
+        handler = DataRequestedHandler(file.name, StorageItemIterable(storageItem), streamReference)
+        token = LongByReference().also {
+            checkHr(manager.call(DTM_ADD_DATA_REQUESTED, handler.pointer, it), "add_DataRequested")
+        }.value
+    }
 
     fun show() {
         checkHr(interop.call(INTEROP_SHOW_SHARE_UI_FOR_WINDOW, hwnd), "ShowShareUIForWindow")
@@ -103,47 +117,37 @@ private class ShareSession(private val hwnd: Pointer, file: File, title: String)
 
     override fun close() {
         manager.call(DTM_REMOVE_DATA_REQUESTED, token)
-        owned.asReversed().forEach { it.Release() }
+        owned.asReversed().forEach { it.close() }
         owned.clear()
     }
 
-    private fun <T : Unknown> T.owned(): T = also { owned += it }
+    private fun ComObject.owned(): ComObject = also { owned += it }
 
-    private fun ComObject.queryInterface(iid: Guid.IID): ComObject {
-        val out = PointerByReference()
-        checkHr(QueryInterface(Guid.REFIID(iid), out).toInt(), "QueryInterface(${iid.toGuidString()})")
-        return ComObject(out.value).owned()
-    }
-
-    /** `StorageFile.GetFileFromPathAsync` 是异步的: 轮询状态直到完成, 有上限. */
-    private fun resolveStorageFile(file: File): ComObject =
-        activationFactory(STORAGE_FILE_CLASS, IID_STORAGE_FILE_STATICS).use { statics ->
-            val operation = HString(file.absolutePath).use { path ->
-                ComObject(statics.callOut(STORAGE_FILE_STATICS_GET_FILE_FROM_PATH_ASYNC, path.handle)).owned()
-            }
-            awaitResult(operation, file)
-        }
-
+    /** 轮询 `IAsyncInfo` 直到操作完成, 有上限; 返回的 `StorageFile` 由调用方持有. */
     private fun awaitResult(operation: ComObject, file: File): ComObject {
         val info = operation.queryInterface(IID_ASYNC_INFO)
-        val status = IntByReference()
-        val deadline = System.nanoTime() + ASYNC_TIMEOUT_NANOS
-        while (true) {
-            checkHr(info.call(ASYNC_INFO_GET_STATUS, status), "IAsyncInfo.get_Status")
-            when (status.value) {
-                ASYNC_STATUS_STARTED -> {
-                    if (System.nanoTime() > deadline) throw IOException("GetFileFromPathAsync timed out for $file")
-                    Thread.sleep(5)
-                }
+        try {
+            val status = IntByReference()
+            val deadline = System.nanoTime() + ASYNC_TIMEOUT_NANOS
+            while (true) {
+                checkHr(info.call(ASYNC_INFO_GET_STATUS, status), "IAsyncInfo.get_Status")
+                when (status.value) {
+                    ASYNC_STATUS_STARTED -> {
+                        if (System.nanoTime() > deadline) throw IOException("GetFileFromPathAsync timed out for $file")
+                        Thread.sleep(1)
+                    }
 
-                ASYNC_STATUS_COMPLETED -> return ComObject(operation.callOut(ASYNC_OPERATION_GET_RESULTS)).owned()
+                    ASYNC_STATUS_COMPLETED -> return ComObject(operation.callOut(ASYNC_OPERATION_GET_RESULTS))
 
-                else -> {
-                    val error = IntByReference()
-                    info.call(ASYNC_INFO_GET_ERROR_CODE, error)
-                    throw IOException("GetFileFromPathAsync failed for $file: status ${status.value}, ${hresult(error.value)}")
+                    else -> {
+                        val error = IntByReference()
+                        info.call(ASYNC_INFO_GET_ERROR_CODE, error)
+                        throw IOException("GetFileFromPathAsync failed for $file: status ${status.value}, ${hresult(error.value)}")
+                    }
                 }
             }
+        } finally {
+            info.close()
         }
     }
 }
@@ -160,15 +164,14 @@ private class DataRequestedHandler(
     private val title: String,
     private val items: StorageItemIterable,
     private val streamReference: ComObject,
-) : JavaComObject(
-    iids = listOf(IID_UNKNOWN, IID_AGILE_OBJECT, IID_TYPED_EVENT_HANDLER_DATA_REQUESTED),
-) {
+) : JavaComObject(IID_TYPED_EVENT_HANDLER_DATA_REQUESTED, inspectable = false) {
     override val methods: List<Callback> = listOf(
-        InvokeHandlerFn { _, _, args -> invoke(args) },
+        // Invoke(sender, args)
+        ComMethod2 { _, _, args -> invoke(args) },
     )
 
     private fun invoke(args: Pointer?): Int {
-        if (args == null) return E_POINTER
+        if (args == null) return WinError.E_POINTER
         return try {
             ComObject(ComObject(args).callOut(DATA_REQUESTED_EVENT_ARGS_GET_REQUEST)).use { request ->
                 ComObject(request.callOut(DATA_REQUEST_GET_DATA)).use { data ->
@@ -182,7 +185,7 @@ private class DataRequestedHandler(
             S_OK
         } catch (e: Throwable) {
             logger.warn(e) { "Failed to fill the share DataPackage" }
-            E_FAIL
+            WinError.E_FAIL
         }
     }
 
@@ -192,15 +195,13 @@ private class DataRequestedHandler(
 }
 
 /** 只装一个 `IStorageItem` 的 `IIterable<IStorageItem>`. */
-private class StorageItemIterable(private val item: ComObject) : JavaComObject(
-    iids = listOf(IID_UNKNOWN, IID_INSPECTABLE, IID_AGILE_OBJECT, IID_ITERABLE_STORAGE_ITEM),
-) {
+private class StorageItemIterable(private val item: ComObject) : JavaComObject(IID_ITERABLE_STORAGE_ITEM, inspectable = true) {
     /** 发出去的迭代器, 保持可达直到本对象被丢弃. */
     private val iterators = mutableListOf<StorageItemIterator>()
 
-    override val methods: List<Callback> = inspectableMethods() + listOf(
+    override val methods: List<Callback> = listOf(
         // First
-        OutPointerFn { _, out ->
+        ComMethod1 { _, out ->
             val iterator = StorageItemIterator(item)
             synchronized(iterators) { iterators += iterator }
             out.setPointer(0, iterator.pointer)
@@ -210,26 +211,24 @@ private class StorageItemIterable(private val item: ComObject) : JavaComObject(
 }
 
 /** 单元素的 `IIterator<IStorageItem>`. */
-private class StorageItemIterator(private val item: ComObject) : JavaComObject(
-    iids = listOf(IID_UNKNOWN, IID_INSPECTABLE, IID_AGILE_OBJECT, IID_ITERATOR_STORAGE_ITEM),
-) {
+private class StorageItemIterator(private val item: ComObject) : JavaComObject(IID_ITERATOR_STORAGE_ITEM, inspectable = true) {
     private var consumed = false
 
-    override val methods: List<Callback> = inspectableMethods() + listOf(
+    override val methods: List<Callback> = listOf(
         // get_Current
-        OutPointerFn { _, out ->
-            if (consumed) return@OutPointerFn E_BOUNDS
+        ComMethod1 { _, out ->
+            if (consumed) return@ComMethod1 E_BOUNDS
             item.AddRef()
             out.setPointer(0, item.pointer)
             S_OK
         },
         // get_HasCurrent
-        OutPointerFn { _, out ->
+        ComMethod1 { _, out ->
             out.setByte(0, if (consumed) 0 else 1)
             S_OK
         },
         // MoveNext
-        OutPointerFn { _, out ->
+        ComMethod1 { _, out ->
             consumed = true
             out.setByte(0, 0)
             S_OK
@@ -250,69 +249,70 @@ private class StorageItemIterator(private val item: ComObject) : JavaComObject(
 }
 
 /**
- * 用 JNA 回调拼出虚表的 COM 对象. 前三项是 `IUnknown`; 子类按接口顺序提供其余方法 ([methods]), 继承 `IInspectable` 的接口先放
- * [inspectableMethods]. [iids] 是 `QueryInterface` 应答的接口. 回调与内存由本对象持有, 对象可达期间虚表有效.
+ * 用 JNA 回调拼出虚表的 COM 对象, 实现 [iid] 这一个接口. 总是应答 `IUnknown` 与 `IAgileObject`; [inspectable] 的接口再应答
+ * `IInspectable` 并带上它的三个方法, 之后才是子类按接口顺序提供的 [methods]. 生命周期由 Java 引用决定, 引用计数只需返回合理的值.
+ * 回调与内存由本对象持有, 对象可达期间虚表有效.
  */
-private abstract class JavaComObject(private val iids: List<Guid.IID>) {
+private abstract class JavaComObject(iid: Guid.IID, private val inspectable: Boolean) {
     protected abstract val methods: List<Callback>
 
-    private val refCount = AtomicInteger(1)
+    private val iids: List<Guid.IID> = listOfNotNull(IUnknown.IID_IUNKNOWN, IID_AGILE_OBJECT, IID_INSPECTABLE.takeIf { inspectable }, iid)
+
     private val unknownMethods: List<Callback> = listOf(
-        QueryInterfaceFn { self, riid, out -> queryInterface(self, riid, out) },
-        RefCountFn { refCount.incrementAndGet() },
-        RefCountFn { refCount.decrementAndGet() },
+        ComMethod2 { self, riid, out -> queryInterface(self, riid, out) },
+        ComMethod0 { 1 }, // AddRef
+        ComMethod0 { 1 }, // Release
     )
-    private val vtable: Memory by lazy {
-        val all = unknownMethods + methods
-        Memory((all.size * Native.POINTER_SIZE).toLong()).apply {
-            all.forEachIndexed { index, callback ->
-                // 系统从它自己的 RPC 线程回调; 这些线程保持附着在 JVM 上, 不在每次回调后分离
-                Native.setCallbackThreadInitializer(callback, callbackThreadInitializer)
-                setPointer((index * Native.POINTER_SIZE).toLong(), CallbackReference.getFunctionPointer(callback))
-            }
-        }
-    }
-    private val instance: Memory by lazy {
-        Memory(Native.POINTER_SIZE.toLong()).apply { setPointer(0, vtable) }
-    }
 
-    /** 可以交给系统的接口指针. */
-    val pointer: Pointer get() = instance
-
-    private fun queryInterface(self: Pointer, riid: Pointer?, out: Pointer?): Int {
-        if (out == null) return E_POINTER
-        val requested = riid?.let { Guid.GUID(it).toGuidString() }
-        if (requested != null && iids.any { it.toGuidString().equals(requested, ignoreCase = true) }) {
-            refCount.incrementAndGet()
-            out.setPointer(0, self)
-            return S_OK
-        }
-        out.setPointer(0, null)
-        return E_NOINTERFACE
-    }
-
-    protected fun inspectableMethods(): List<Callback> = listOf(
+    private val inspectableMethods: List<Callback> = listOf(
         // GetIids
-        GetIidsFn { _, count, iids ->
-            count.setInt(0, 0)
-            iids.setPointer(0, null)
+        ComMethod2 { _, count, iids ->
+            count!!.setInt(0, 0)
+            iids!!.setPointer(0, null)
             S_OK
         },
         // GetRuntimeClassName: 空 HSTRING
-        OutPointerFn { _, name ->
+        ComMethod1 { _, name ->
             name.setPointer(0, null)
             S_OK
         },
         // GetTrustLevel
-        OutPointerFn { _, level ->
+        ComMethod1 { _, level ->
             level.setInt(0, TRUST_LEVEL_BASE)
             S_OK
         },
     )
+
+    /** 第 0 项指向紧随其后的虚表, 所以这块内存的地址就是接口指针. */
+    private val memory: Memory by lazy {
+        val all = unknownMethods + (if (inspectable) inspectableMethods else emptyList()) + methods
+        Memory(((1 + all.size) * Native.POINTER_SIZE).toLong()).apply {
+            setPointer(0, share(Native.POINTER_SIZE.toLong()))
+            all.forEachIndexed { index, callback ->
+                // 系统从它自己的 RPC 线程回调; 这些线程保持附着在 JVM 上, 不在每次回调后分离
+                Native.setCallbackThreadInitializer(callback, callbackThreadInitializer)
+                setPointer(((1 + index) * Native.POINTER_SIZE).toLong(), CallbackReference.getFunctionPointer(callback))
+            }
+        }
+    }
+
+    /** 可以交给系统的接口指针. */
+    val pointer: Pointer get() = memory
+
+    private fun queryInterface(self: Pointer, riid: Pointer?, out: Pointer?): Int {
+        if (out == null) return WinError.E_POINTER
+        val requested = riid?.let { Guid.IID(it) }
+        if (requested != null && requested in iids) {
+            out.setPointer(0, self)
+            return S_OK
+        }
+        out.setPointer(0, null)
+        return WinError.E_NOINTERFACE
+    }
 }
 
-/** 按虚表下标调用方法的 COM 接口指针. `IUnknown` 占 0..2, `IInspectable` 再占 3..5. */
-private class ComObject(pointer: Pointer) : Unknown(pointer) {
+/** 按虚表下标调用方法的 COM 接口指针. `IUnknown` 占 0..2, `IInspectable` 再占 3..5. [close] 释放引用. */
+private class ComObject(pointer: Pointer) : Unknown(pointer), AutoCloseable {
     fun call(index: Int, vararg args: Any?): Int = _invokeNativeInt(index, arrayOf(pointer, *args))
 
     /** 调用末参数为 `void**` 的方法并返回得到的接口指针. */
@@ -322,9 +322,13 @@ private class ComObject(pointer: Pointer) : Unknown(pointer) {
         return out.value ?: throw IOException("vtable[$index] returned a null interface")
     }
 
-    inline fun <R> use(block: (ComObject) -> R): R = try {
-        block(this)
-    } finally {
+    fun queryInterface(iid: Guid.IID): ComObject {
+        val out = PointerByReference()
+        checkHr(QueryInterface(Guid.REFIID(iid), out).toInt(), "QueryInterface(${iid.toGuidString()})")
+        return ComObject(out.value)
+    }
+
+    override fun close() {
         Release()
     }
 }
@@ -343,7 +347,7 @@ private class HString(value: String) : AutoCloseable {
 @Suppress("FunctionName")
 private interface Combase : StdCallLibrary {
     fun RoInitialize(initType: Int): Int
-    fun RoGetActivationFactory(activatableClassId: Pointer?, iid: Guid.GUID, factory: PointerByReference): Int
+    fun RoGetActivationFactory(activatableClassId: Pointer?, iid: Guid.IID, factory: PointerByReference): Int
     fun WindowsCreateString(sourceString: WString, length: Int, string: PointerByReference): Int
     fun WindowsDeleteString(string: Pointer?): Int
 
@@ -352,29 +356,21 @@ private interface Combase : StdCallLibrary {
     }
 }
 
-private fun interface QueryInterfaceFn : StdCallCallback {
-    fun invoke(self: Pointer, riid: Pointer?, out: Pointer?): Int
-}
-
-private fun interface RefCountFn : StdCallCallback {
+// 虚表方法按参数形状声明, 名字不带角色; 角色写在放进虚表的位置上.
+private fun interface ComMethod0 : StdCallCallback {
     fun invoke(self: Pointer): Int
 }
 
-private fun interface GetIidsFn : StdCallCallback {
-    fun invoke(self: Pointer, count: Pointer, iids: Pointer): Int
+private fun interface ComMethod1 : StdCallCallback {
+    fun invoke(self: Pointer, out: Pointer): Int
 }
 
-/** 只有一个输出参数的方法: `First`, `get_Current`, `get_HasCurrent`, `MoveNext`, `GetRuntimeClassName`, `GetTrustLevel`. */
-private fun interface OutPointerFn : StdCallCallback {
-    fun invoke(self: Pointer, out: Pointer): Int
+private fun interface ComMethod2 : StdCallCallback {
+    fun invoke(self: Pointer, a: Pointer?, b: Pointer?): Int
 }
 
 private fun interface GetManyFn : StdCallCallback {
     fun invoke(self: Pointer, capacity: Int, values: Pointer, actual: Pointer): Int
-}
-
-private fun interface InvokeHandlerFn : StdCallCallback {
-    fun invoke(self: Pointer, sender: Pointer?, args: Pointer?): Int
 }
 
 private val callbackThreadInitializer = CallbackThreadInitializer(true, false, "WindowsShareSheet-callback")
@@ -386,11 +382,7 @@ private fun checkHr(hr: Int, what: String) {
 private fun hresult(hr: Int): String = "HRESULT 0x" + hr.toUInt().toString(16).padStart(8, '0')
 
 private const val S_OK = 0
-private const val E_NOINTERFACE = 0x80004002.toInt()
-private const val E_POINTER = 0x80004003.toInt()
-private const val E_FAIL = 0x80004005.toInt()
 private const val E_BOUNDS = 0x8000000B.toInt()
-private const val RPC_E_CHANGED_MODE = 0x80010106.toInt()
 private const val RO_INIT_MULTITHREADED = 1
 private const val TRUST_LEVEL_BASE = 0
 private const val ASYNC_STATUS_STARTED = 0
@@ -403,7 +395,6 @@ private const val STREAM_REFERENCE_CLASS = "Windows.Storage.Streams.RandomAccess
 
 // 接口 IID 与虚表下标取自 Windows SDK 10.0.26100 的头文件 (windows.applicationmodel.datatransfer.h, windows.storage.h,
 // windows.storage.streams.h, shobjidl_core.h). 继承 IInspectable 的接口, 自身第一个方法的下标为 6.
-private val IID_UNKNOWN = Guid.IID("00000000-0000-0000-C000-000000000046")
 private val IID_INSPECTABLE = Guid.IID("AF86E2E0-B12D-4c6a-9C5A-D7AA65101E90")
 private val IID_AGILE_OBJECT = Guid.IID("94ea2b94-e9cc-49e0-c0ff-ee64ca8f5b90")
 private val IID_ASYNC_INFO = Guid.IID("00000036-0000-0000-C000-000000000046")

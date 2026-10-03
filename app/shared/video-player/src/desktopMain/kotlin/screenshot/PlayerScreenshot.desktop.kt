@@ -12,8 +12,6 @@ package me.him188.ani.app.videoplayer.screenshot
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
 import androidx.compose.ui.unit.DpRect
-import androidx.compose.ui.unit.height
-import androidx.compose.ui.unit.width
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import kotlinx.io.files.Path
@@ -21,7 +19,6 @@ import me.him188.ani.app.platform.Context
 import me.him188.ani.app.platform.LocalContext
 import me.him188.ani.app.platform.PlatformWindow
 import me.him188.ani.app.platform.features.DesktopFileRevealer
-import me.him188.ani.app.platform.features.ShareAnchor
 import me.him188.ani.app.platform.features.SystemShareSheet
 import me.him188.ani.app.platform.files
 import me.him188.ani.app.ui.foundation.decodeImageBitmap
@@ -99,7 +96,7 @@ private class DesktopPlayerScreenshotSharer(
     override suspend fun share(screenshot: SavedPlayerScreenshot, anchor: DpRect?): Boolean {
         val file = File(screenshot.location)
         val sheet = SystemShareSheet.current
-        if (sheet != null && sheet.shareFile(window.windowHandle, file, screenshot.fileName, anchor?.toShareAnchor())) {
+        if (sheet != null && sheet.shareFile(window.windowHandle, file, anchor)) {
             return true
         }
         return DesktopFileRevealer.revealFile(file)
@@ -118,5 +115,3 @@ private class DesktopPlayerScreenshotSharer(
         }.isSuccess
     }
 }
-
-private fun DpRect.toShareAnchor() = ShareAnchor(left.value, top.value, width.value, height.value)

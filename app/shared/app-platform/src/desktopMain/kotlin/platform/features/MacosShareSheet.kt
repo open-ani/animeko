@@ -9,18 +9,23 @@
 
 package me.him188.ani.app.platform.features
 
+import androidx.compose.ui.unit.DpRect
+import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.height
+import androidx.compose.ui.unit.width
 import com.sun.jna.Callback
 import com.sun.jna.Function
 import com.sun.jna.Library
 import com.sun.jna.Memory
 import com.sun.jna.Native
 import com.sun.jna.NativeLibrary
-import com.sun.jna.Platform
 import com.sun.jna.Pointer
 import com.sun.jna.Structure
 import me.him188.ani.utils.coroutines.runCatchingCancellable
 import me.him188.ani.utils.logging.logger
 import me.him188.ani.utils.logging.warn
+import me.him188.ani.utils.platform.currentPlatformDesktop
+import me.him188.ani.utils.platform.isAArch
 import java.io.File
 import java.util.concurrent.ConcurrentHashMap
 
@@ -28,10 +33,7 @@ import java.util.concurrent.ConcurrentHashMap
  * macOS 的分享菜单: `NSSharingServicePicker`, 通过 JNA 调用 Objective-C 运行时.
  *
  * AppKit 只能在主线程使用, 而调用方运行在 AWT 或协程线程上, 所以用 `dispatch_async_f` 把工作投递到主队列, 投递即视为成功.
- * 菜单从 [ShareAnchor] 所在的位置向上弹出, 没有锚点时贴着内容区.
- *
- * `objc_msgSend` 按固定参数个数声明, 不用可变参数: Apple arm64 上可变参数走栈, 与 Objective-C 方法的调用约定不同.
- * 返回结构体的消息在 x86_64 上走 `objc_msgSend_stret`; arm64 没有这个入口, 仍用 `objc_msgSend`.
+ * 菜单从 [DpRect] 锚点所在的位置向上弹出, 没有锚点时贴着内容区.
  */
 internal object MacosShareSheet : SystemShareSheet {
     private val logger = logger<MacosShareSheet>()
@@ -39,10 +41,10 @@ internal object MacosShareSheet : SystemShareSheet {
     /** 已投递、尚未执行的工作. 回调对象必须保持可达, 否则 JNA 会回收它背后的函数指针. */
     private val pending = ConcurrentHashMap.newKeySet<ShowPickerWork>()
 
-    /** 正在显示的 picker, 由 alloc 持有一次; 菜单显示期间要活着, 到下一次分享再释放. */
+    /** 正在显示的 picker, 由 alloc 持有一次; 菜单显示期间要活着, 到下一次分享再释放. 只在主线程读写. */
     private var shownPicker: Pointer? = null
 
-    override suspend fun shareFile(windowHandle: Long, file: File, title: String, anchor: ShareAnchor?): Boolean =
+    override suspend fun shareFile(windowHandle: Long, file: File, anchor: DpRect?): Boolean =
         runCatchingCancellable {
             val work = ShowPickerWork(windowHandle, file.absolutePath, anchor)
             pending += work
@@ -55,7 +57,7 @@ internal object MacosShareSheet : SystemShareSheet {
     private class ShowPickerWork(
         private val windowHandle: Long,
         private val path: String,
-        private val anchor: ShareAnchor?,
+        private val anchor: DpRect?,
     ) : DispatchFunction {
         override fun invoke(context: Pointer?) {
             try {
@@ -68,51 +70,36 @@ internal object MacosShareSheet : SystemShareSheet {
         }
 
         private fun showPicker() {
-            val objc = ObjC.INSTANCE
             val handle = Pointer(windowHandle)
-            // Compose 给的是 NSWindow; 已经是 NSView 时直接用
-            val view = if (objc.msgSendBool(handle, "isKindOfClass:", objc.cls("NSWindow"))) {
-                objc.msgSend(handle, "contentView") ?: error("NSWindow has no contentView")
+            val view = if (ObjC.msgSendBool(handle, "isKindOfClass:", ObjC.cls("NSWindow"))) {
+                ObjC.msgSend(handle, "contentView")
             } else {
                 handle
             }
-            val url = objc.msgSend(objc.cls("NSURL"), "fileURLWithPath:", objc.nsString(path)) ?: error("NSURL for $path")
-            val items = objc.msgSend(objc.cls("NSArray"), "arrayWithObject:", url) ?: error("NSArray")
-            val allocated = objc.msgSend(objc.cls("NSSharingServicePicker"), "alloc") ?: error("NSSharingServicePicker alloc")
-            val picker = objc.msgSend(allocated, "initWithItems:", items) ?: error("NSSharingServicePicker init")
+            val url = ObjC.msgSend(ObjC.cls("NSURL"), "fileURLWithPath:", ObjC.nsString(path))
+            val items = ObjC.msgSend(ObjC.cls("NSArray"), "arrayWithObject:", url)
+            val picker = ObjC.msgSend(ObjC.msgSend(ObjC.cls("NSSharingServicePicker"), "alloc"), "initWithItems:", items)
 
-            val frame = objc.msgSendRect(view, "frame")
-            val rect = anchor?.toAppKitRect(frame.height.toFloat(), objc.msgSendBool(view, "isFlipped"))
-                ?: ShareAnchor(0f, 0f, frame.width.toFloat(), frame.height.toFloat())
-            objc.objc_msgSend(
-                picker,
-                objc.sel("showRelativeToRect:ofView:preferredEdge:"),
-                NSRect.ByValue().apply {
-                    x = rect.left.toDouble()
-                    y = rect.top.toDouble()
-                    width = rect.width.toDouble()
-                    height = rect.height.toDouble()
-                },
-                view,
-                NS_MAX_Y_EDGE,
-            )
-            synchronized(MacosShareSheet) {
-                shownPicker?.let { objc.msgSend(it, "release") }
-                shownPicker = picker
-            }
+            val frame = ObjC.msgSendRect(view, "frame")
+            val rect = anchor?.toAppKitRect(frame.height.toFloat(), ObjC.msgSendBool(view, "isFlipped"))
+                ?: DpRect(0.dp, 0.dp, frame.width.dp, frame.height.dp)
+            ObjC.msgSend(picker, "showRelativeToRect:ofView:preferredEdge:", NSRect(rect), view, NS_MAX_Y_EDGE)
+            shownPicker?.let { ObjC.msgSend(it, "release") }
+            shownPicker = picker
         }
     }
 }
 
 /**
- * 把内容区坐标 (原点左上, y 向下) 的锚点换成 AppKit 视图坐标. 视图没有翻转时原点在左下、y 向上, 用视图高度 [viewHeight] 翻转;
+ * 把内容区坐标 (原点左上, y 向下) 的矩形换成 AppKit 视图坐标. 视图没有翻转时原点在左下、y 向上, 用视图高度 [viewHeight] 翻转;
  * 翻转过的视图 (`isFlipped`) 与内容区坐标一致.
  */
-internal fun ShareAnchor.toAppKitRect(viewHeight: Float, flipped: Boolean): ShareAnchor =
-    if (flipped) this else copy(top = viewHeight - top - height)
+internal fun DpRect.toAppKitRect(viewHeight: Float, flipped: Boolean): DpRect =
+    if (flipped) this else DpRect(left, (viewHeight - bottom.value).dp, right, (viewHeight - top.value).dp)
 
+/** 按值传递与返回的 `NSRect`. JNA 需要公开的无参构造器来实例化返回值. */
 @Structure.FieldOrder("x", "y", "width", "height")
-internal open class NSRect() : Structure() {
+internal class NSRect() : Structure(), Structure.ByValue {
     @JvmField
     var x: Double = 0.0
 
@@ -125,60 +112,53 @@ internal open class NSRect() : Structure() {
     @JvmField
     var height: Double = 0.0
 
-    class ByValue : NSRect(), Structure.ByValue
+    constructor(rect: DpRect) : this() {
+        x = rect.left.value.toDouble()
+        y = rect.top.value.toDouble()
+        width = rect.width.value.toDouble()
+        height = rect.height.value.toDouble()
+    }
 }
 
 /** `NSRectEdge.maxY`: 菜单贴着矩形的上边 (AppKit 坐标里 y 最大的一边) 弹出. */
 private const val NS_MAX_Y_EDGE = 3L
 
-@Suppress("FunctionName")
-private interface ObjC : Library {
-    fun objc_getClass(name: String): Pointer?
-    fun sel_registerName(name: String): Pointer
-    fun objc_msgSend(receiver: Pointer, selector: Pointer): Pointer?
-    fun objc_msgSend(receiver: Pointer, selector: Pointer, arg: Pointer?): Pointer?
-    fun objc_msgSend(receiver: Pointer, selector: Pointer, rect: NSRect.ByValue, view: Pointer, edge: Long): Pointer?
-
-    companion object {
-        val INSTANCE: ObjC by lazy { Native.load("objc", ObjC::class.java) }
+/**
+ * Objective-C 运行时. `objc_msgSend` 按实际参数逐次调用, 不走 C 可变参数: Apple arm64 上可变参数走栈, 与方法的调用约定不同.
+ * 返回结构体的消息在 x86_64 上走 `objc_msgSend_stret`; arm64 没有这个入口, 仍用 `objc_msgSend`.
+ */
+private object ObjC {
+    private val library: NativeLibrary by lazy { NativeLibrary.getInstance("objc") }
+    private val getClass: Function by lazy { library.getFunction("objc_getClass") }
+    private val registerName: Function by lazy { library.getFunction("sel_registerName") }
+    private val msgSend: Function by lazy { library.getFunction("objc_msgSend") }
+    private val msgSendStret: Function by lazy {
+        library.getFunction(if (currentPlatformDesktop().isAArch()) "objc_msgSend" else "objc_msgSend_stret")
     }
-}
 
-private val objcLibrary: NativeLibrary by lazy { NativeLibrary.getInstance("objc") }
+    fun cls(name: String): Pointer = getClass.invokePointer(arrayOf(name)) ?: error("Objective-C class $name not found")
 
-/** 普通返回值的消息入口, 用于按别的返回类型 (如 `BOOL`) 读结果. */
-private val msgSendFunction: Function by lazy { objcLibrary.getFunction("objc_msgSend") }
+    private fun sel(name: String): Pointer = registerName.invokePointer(arrayOf(name))
 
-/** 返回结构体的消息入口. */
-private val msgSendStretFunction: Function by lazy {
-    objcLibrary.getFunction(if (Platform.isARM()) "objc_msgSend" else "objc_msgSend_stret")
-}
+    /** 返回对象的消息; nil 视为失败. */
+    fun msgSend(receiver: Pointer, selector: String, vararg args: Any?): Pointer =
+        msgSend.invokePointer(arrayOf(receiver, sel(selector), *args)) ?: error("[$selector] returned nil")
 
-private fun ObjC.cls(name: String): Pointer = objc_getClass(name) ?: error("Objective-C class $name not found")
+    /** 返回 `BOOL` 的消息: 只有最低字节有意义, 按字节读返回值. */
+    fun msgSendBool(receiver: Pointer, selector: String, vararg args: Any?): Boolean =
+        (msgSend.invoke(Byte::class.javaPrimitiveType, arrayOf(receiver, sel(selector), *args)) as Byte).toInt() != 0
 
-private fun ObjC.sel(name: String): Pointer = sel_registerName(name)
+    fun msgSendRect(receiver: Pointer, selector: String): NSRect =
+        msgSendStret.invoke(NSRect::class.java, arrayOf<Any?>(receiver, sel(selector))) as NSRect
 
-private fun ObjC.msgSend(receiver: Pointer, selector: String): Pointer? = objc_msgSend(receiver, sel(selector))
-
-private fun ObjC.msgSend(receiver: Pointer, selector: String, arg: Pointer?): Pointer? =
-    objc_msgSend(receiver, sel(selector), arg)
-
-/** 返回 `BOOL` 的消息: 只有最低字节有意义, 按字节读返回值. */
-private fun ObjC.msgSendBool(receiver: Pointer, selector: String, arg: Pointer? = null): Boolean {
-    val args: Array<Any?> = if (arg == null) arrayOf(receiver, sel(selector)) else arrayOf(receiver, sel(selector), arg)
-    return (msgSendFunction.invoke(Byte::class.javaPrimitiveType, args) as Byte).toInt() != 0
-}
-
-private fun ObjC.msgSendRect(receiver: Pointer, selector: String): NSRect =
-    msgSendStretFunction.invoke(NSRect.ByValue::class.java, arrayOf<Any?>(receiver, sel(selector))) as NSRect
-
-/** `[NSString stringWithUTF8String:]`, 自动释放. */
-private fun ObjC.nsString(value: String): Pointer {
-    val bytes = value.toByteArray(Charsets.UTF_8)
-    val memory = Memory((bytes.size + 1).toLong())
-    memory.write(0, bytes, 0, bytes.size)
-    memory.setByte(bytes.size.toLong(), 0)
-    return msgSend(cls("NSString"), "stringWithUTF8String:", memory) ?: error("NSString")
+    /** `[NSString stringWithUTF8String:]`, 自动释放. */
+    fun nsString(value: String): Pointer {
+        val bytes = value.toByteArray(Charsets.UTF_8)
+        val memory = Memory((bytes.size + 1).toLong())
+        memory.write(0, bytes, 0, bytes.size)
+        memory.setByte(bytes.size.toLong(), 0)
+        return msgSend(cls("NSString"), "stringWithUTF8String:", memory)
+    }
 }
 
 /** `dispatch_function_t`: `void (*)(void *context)`. */

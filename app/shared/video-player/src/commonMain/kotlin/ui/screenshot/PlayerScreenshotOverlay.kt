@@ -62,7 +62,7 @@ import androidx.compose.ui.layout.LayoutCoordinates
 import androidx.compose.ui.layout.boundsInWindow
 import androidx.compose.ui.layout.layout
 import androidx.compose.ui.layout.layoutId
-import androidx.compose.ui.layout.onGloballyPositioned
+import androidx.compose.ui.layout.onPlaced
 import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.node.Ref
 import androidx.compose.ui.platform.LocalDensity
@@ -440,7 +440,7 @@ private fun ScreenshotPanel(
                     interactionSource = interactions.share,
                     onClick = { onShare(shareButtonCoordinates.value?.boundsInWindow()?.toDpRect(density)) },
                     modifier = Modifier.layoutId(SHARE_ID).testTag(TAG_PLAYER_SCREENSHOT_SHARE)
-                        .onGloballyPositioned { shareButtonCoordinates.value = it },
+                        .onPlaced { shareButtonCoordinates.value = it },
                 )
                 PanelActionButton(
                     icon = Icons.Rounded.ContentCopy,

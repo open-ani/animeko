@@ -9,6 +9,7 @@
 
 package me.him188.ani.app.platform.features
 
+import androidx.compose.ui.unit.DpRect
 import me.him188.ani.utils.platform.Platform
 import me.him188.ani.utils.platform.currentPlatformDesktop
 import java.io.File
@@ -21,14 +22,13 @@ import java.io.File
  */
 interface SystemShareSheet {
     /**
-     * 为 [file] 显示系统分享面板.
+     * 为 [file] 显示系统分享面板, 面板上以文件名作标题.
      *
-     * @param windowHandle 宿主窗口的原生句柄: Windows 为 HWND, macOS 为 NSWindow 指针.
-     * @param title 面板上展示的标题, 一般是文件名.
-     * @param anchor 触发分享的控件在窗口内容区中的位置. macOS 的分享菜单从它旁边弹出; Windows 的面板由系统定位, 忽略它.
+     * @param windowHandle 宿主窗口的原生句柄: Windows 为 HWND; macOS 为 NSWindow 指针 (Compose 窗口的 `windowHandle`), 传 NSView 指针也可以.
+     * @param anchor 触发分享的控件在窗口内容区中的矩形 (dp, 原点在左上角). 弹出式的分享面板从它旁边弹出; 由系统定位的面板忽略它.
      * @return 面板是否已显示. 不抛出异常.
      */
-    suspend fun shareFile(windowHandle: Long, file: File, title: String, anchor: ShareAnchor?): Boolean
+    suspend fun shareFile(windowHandle: Long, file: File, anchor: DpRect?): Boolean
 
     companion object {
         /** 当前桌面平台的实现; Linux 为 `null`. */
@@ -41,13 +41,3 @@ interface SystemShareSheet {
         }
     }
 }
-
-/**
- * 窗口内容区坐标系中的矩形: 原点在左上角, 单位是点 (与 Compose 的 dp 相同, 不含系统缩放).
- */
-data class ShareAnchor(
-    val left: Float,
-    val top: Float,
-    val width: Float,
-    val height: Float,
-)

@@ -51,7 +51,7 @@
   所有 COM 调用在一个专用的 MTA 线程上进行, 事件处理器和装着文件的 `IIterable<IStorageItem>` 是用 JNA 回调拼成虚表的 Java 对象.
   接口 IID 与虚表顺序取自 Windows SDK 头文件, 不要凭记忆改.
 - macOS (`MacosShareSheet`): `NSSharingServicePicker`, 通过 Objective-C 运行时 (`objc_msgSend`) 创建, 用 `dispatch_async_f`
-  投递到主线程显示. 菜单从分享按钮的位置向上弹出: 面板把按钮在窗口中的矩形 (`ShareAnchor`, dp) 传下来, 实现按视图是否翻转换成 AppKit 坐标.
+  投递到主线程显示. 菜单从分享按钮的位置向上弹出: 面板把按钮在窗口中的矩形 (`DpRect`) 传下来, 实现按视图是否翻转换成 AppKit 坐标.
 
 分享按钮的位置由 `PlayerScreenshotOverlay` 在点击时读取 (`boundsInWindow`), 经 `PlayerScreenshotSharer.share(screenshot, anchor)` 传给平台实现;
 Android 与 Windows 的面板由系统定位, 忽略它.
