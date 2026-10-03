@@ -23,7 +23,7 @@
 | 平台 | 抓帧 | 保存位置 | 分享 | 复制 |
 |------|------|----------|------|------|
 | Android | `PixelCopy` 读取 ExoPlayer 的 SurfaceView, 只含视频帧, 不含弹幕与字幕 | MediaStore `Pictures/Animeko`; Android 9 及以下直接写公共图片目录, 经 FileProvider 的 `external-path` 共享 | `ACTION_SEND` 系统分享面板 | 截图的 content URI 放进剪贴板 |
-| 桌面 | mediamp 的 `Screenshots` feature. mpv 后端从自己的 surface ring 读回, 并按 `osd-dimensions` 裁掉黑边 | `~/Pictures/Animeko`; 不可用时应用数据目录下的 `screenshots` | 文件管理器中定位文件 | 图片与文件一起放进剪贴板 |
+| 桌面 | mediamp 的 `Screenshots` feature. mpv 后端在渲染线程按视频显示尺寸 (`dwidth` × `dheight`) 重新渲染当前帧并读回, 得到原始分辨率、无黑边的图片 | `~/Pictures/Animeko`; 不可用时应用数据目录下的 `screenshots` | 文件管理器中定位文件 | 图片与文件一起放进剪贴板 |
 | iOS | 不支持: AVKit 后端没有读取当前帧的能力, 按钮不显示 | - | - | - |
 
 点击画面在三个平台都用应用内图片查看器打开: Android 传 content URI, 桌面传绝对路径, 都是 Sketch 支持的模型.
