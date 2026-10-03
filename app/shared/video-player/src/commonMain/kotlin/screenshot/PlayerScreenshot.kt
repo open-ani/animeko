@@ -16,7 +16,6 @@ import androidx.compose.ui.graphics.FilterQuality
 import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.graphics.Paint
 import androidx.compose.ui.unit.IntSize
-import kotlinx.coroutines.CancellationException
 import me.him188.ani.app.ui.foundation.imageviewer.sanitizedForFileName
 import org.openani.mediamp.MediampPlayer
 import kotlin.math.max
@@ -109,15 +108,4 @@ internal fun ImageBitmap.limitedToPreviewSize(): ImageBitmap {
         paint = Paint().apply { filterQuality = FilterQuality.Medium },
     )
     return scaled
-}
-
-/** [runCatching], 但不吞掉协程取消. */
-internal inline fun <T> runCatchingNonCancellation(block: () -> T): Result<T> {
-    return try {
-        Result.success(block())
-    } catch (e: CancellationException) {
-        throw e
-    } catch (e: Exception) {
-        Result.failure(e)
-    }
 }

@@ -23,6 +23,7 @@ import me.him188.ani.app.ui.foundation.imageviewer.ImageClipboard
 import me.him188.ani.app.ui.foundation.imageviewer.ImageViewerExportedFile
 import me.him188.ani.app.ui.foundation.imageviewer.rememberImageClipboard
 import me.him188.ani.utils.coroutines.IO_
+import me.him188.ani.utils.coroutines.runCatchingCancellable
 import me.him188.ani.utils.io.inSystem
 import me.him188.ani.utils.io.toFile
 import org.openani.mediamp.MediampPlayer
@@ -59,7 +60,7 @@ private class DesktopPlayerScreenshotCapturer(
         if (player.mediaProperties.value == null) {
             return PlayerScreenshotResult.Failure(PlayerScreenshotFailure.NoFrame)
         }
-        return runCatchingNonCancellation {
+        return runCatchingCancellable {
             val file = withContext(Dispatchers.IO_) { screenshotDirectory().resolve(fileName) }
             screenshots.takeScreenshot(file.absolutePath)
             // 后端不报告失败, 以文件是否写出为准; 解码整图也留在 IO 线程
@@ -88,7 +89,7 @@ private class DesktopPlayerScreenshotSharer(
 
     override suspend fun copy(screenshot: SavedPlayerScreenshot): Boolean {
         val clipboard = clipboard ?: return false
-        return runCatchingNonCancellation {
+        return runCatchingCancellable {
             clipboard.copy(
                 ImageViewerExportedFile(
                     path = Path(screenshot.location).inSystem,

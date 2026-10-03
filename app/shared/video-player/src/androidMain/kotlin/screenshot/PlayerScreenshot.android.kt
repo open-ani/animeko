@@ -36,6 +36,7 @@ import me.him188.ani.app.platform.LocalContext
 import me.him188.ani.app.platform.PermissionManager
 import me.him188.ani.app.platform.findActivity
 import me.him188.ani.app.videoplayer.ui.findAndroidVideoSurface
+import me.him188.ani.utils.coroutines.runCatchingCancellable
 import org.koin.mp.KoinPlatform
 import org.openani.mediamp.MediampPlayer
 import java.io.IOException
@@ -75,7 +76,7 @@ private class AndroidPlayerScreenshotCapturer(
         }
         val bitmap = capturePlayerSurface(player)
             ?: return PlayerScreenshotResult.Failure(PlayerScreenshotFailure.NoFrame)
-        return runCatchingNonCancellation {
+        return runCatchingCancellable {
             val uri = saveToGallery(fileName, bitmap)
             val full = bitmap.asImageBitmap()
             val preview = full.limitedToPreviewSize()
@@ -187,7 +188,7 @@ private class AndroidPlayerScreenshotSharer(
         }
     }
 
-    override suspend fun copy(screenshot: SavedPlayerScreenshot): Boolean = runCatchingNonCancellation {
+    override suspend fun copy(screenshot: SavedPlayerScreenshot): Boolean = runCatchingCancellable {
         val uri = Uri.parse(screenshot.location)
         clipboard.setClipEntry(ClipEntry(ClipData.newUri(context.contentResolver, screenshot.fileName, uri)))
     }.isSuccess
