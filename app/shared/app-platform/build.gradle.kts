@@ -75,6 +75,8 @@ kotlin {
         api(projects.utils.buildConfig)
     }
     sourceSets.desktopMain.dependencies {
+        implementation(projects.utils.coroutines)
+        implementation(projects.utils.macosShare)
         api(libs.jna)
         api(libs.jna.platform)
     }
