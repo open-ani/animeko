@@ -40,8 +40,8 @@ class PlayerScreenshotOverlayTest {
     /** 画面到播放器区域侧边的距离: 面板边距 16dp 加 A 区域内留白 8dp. */
     private val imageSideMargin = 24f
 
-    /** 画面到播放器区域底边的距离: 侧边距离再加挂在下方的 B 区域 (40dp 按钮加上下各 8dp 留白). */
-    private val imageBottomMargin = imageSideMargin + 56f
+    /** 画面到播放器区域底边的距离: B 区域与 A 底边对齐, 不占画面下方的空间, 与侧边相同. */
+    private val imageBottomMargin = imageSideMargin
 
     private fun screenshot(width: Int = 160, height: Int = 90) =
         SavedPlayerScreenshot(ImageBitmap(width, height), "shot.png", "shot")

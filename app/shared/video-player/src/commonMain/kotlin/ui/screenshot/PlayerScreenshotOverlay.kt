@@ -125,13 +125,10 @@ private val ActionButtonGap = 8.dp
 /** B 区域内动作按钮到边缘的留白. */
 private val LobePadding = 8.dp
 
-/** B 区域的高度. */
-private val LobeHeight = ActionButtonSize + LobePadding * 2
+/** B 区域向屏幕中央伸出 A 以外的长度: 正好放下两个动作按钮. */
+private val LobeExtension = LobePadding * 2 + ActionButtonSize * 2 + ActionButtonGap
 
-/** B 区域向屏幕中央伸出 A 以外的长度, 正好放下最外侧的那个按钮. */
-private val LobeExtension = ActionButtonSize + ActionButtonGap
-
-/** B 区域上边与 A 区域内侧边之间内凹圆角的半径. */
+/** B 区域上边与 A 区域侧边之间内凹圆角的半径. */
 private val NeckRadius = 12.dp
 private val CompactThumbnailHeight = 88.dp
 private val ThumbnailHeight = 112.dp
@@ -145,7 +142,7 @@ private const val MAX_THUMBNAIL_WIDTH_FRACTION = 0.4f
  *
  * 1. 播放器区域白色闪光一次;
  * 2. 截图先原位停留片刻, 再以容器变换收进角落: 竖屏布局 (区域高大于宽) 右下角, 横屏布局左下角;
- * 3. 落定后长出面板: 画面所在的 A 区域下方挂着药丸形的 B 区域, 里面是分享与复制两个圆形图标按钮,
+ * 3. 落定后长出面板: 画面所在的 A 区域的下角向屏幕中央伸出药丸形的 B 区域, 里面是分享与复制两个圆形图标按钮,
  *    整块由一条闭合路径画成带阴影的异形面板;
  * 4. [autoDismissDelay] 后自动收起, 鼠标悬停或按住面板时暂停计时; 点击画面会打开它并立即收起面板.
  *
@@ -253,8 +250,7 @@ private fun ScreenshotPresentation(
                 ),
                 // 几何算的是画面矩形; A 区域比它大一圈留白, 让 A 的边缘落在 PanelMargin 处
                 margin = (PanelMargin + ImagePadding).toPx(),
-                // 画面下方还挂着 B 区域
-                bottomOffset = (bottomOffset + LobeHeight).toPx(),
+                bottomOffset = bottomOffset.toPx(),
                 thumbnailHeight = (if (playerHeight < CompactPlayerHeight) CompactThumbnailHeight else ThumbnailHeight).toPx(),
                 maxThumbnailWidth = playerSize.width * MAX_THUMBNAIL_WIDTH_FRACTION,
             )
@@ -342,7 +338,7 @@ private class PanelFrame {
     /** A 区域: 容纳画面的圆角矩形. */
     var regionA: Rect = Rect.Zero
 
-    /** B 区域: 挂在 A 底边下方的药丸, 外侧边与 A 对齐, 向屏幕中央伸出, 容纳动作按钮. */
+    /** B 区域: 与 A 底边对齐、从 A 的下角向屏幕中央伸出的药丸, 一端藏在 A 里, 伸出的部分容纳动作按钮. */
     var regionB: Rect = Rect.Zero
 
     /** 画面在 A 区域内的位置. */
@@ -351,9 +347,9 @@ private class PanelFrame {
 
 /**
  * 异形面板. A 区域是一个圆角矩形, 画面落在其中、四周留 [ImagePadding] 的边, 画面本身就是 [thumbnailRect];
- * B 区域是挂在 A 底边正下方的药丸: 外侧边与 A 对齐, 向屏幕中央伸出 [LobeExtension], 里面是分享与复制两个圆形图标按钮,
+ * B 区域是与 A 底边对齐、从 A 的下角向屏幕中央伸出 [LobeExtension] 的药丸, 伸出的部分里是分享与复制两个圆形图标按钮,
  * 靠 A 的是分享. 整块面板是 [screenshotPanelOutline] 描出的一条闭合路径做成的 [GenericShape], 填 surfaceContainer 并带阴影:
- * A 的内侧边与 B 的上边以内凹圆角相接, 外侧边连成一条直线.
+ * A 与 B 的底边连成一条直线, B 的上边以内凹圆角接到 A 的侧边.
  *
  * 入场期间 ([chromeAlpha] 为 0) 只画画面本身, 即正在移动的截图.
  */
@@ -379,7 +375,9 @@ private fun ScreenshotPanel(
     val lobePaddingPx = with(density) { LobePadding.roundToPx() }
     val neckRadiusPx = with(density) { NeckRadius.toPx() }
     val lobeHeightPx = buttonSizePx + 2 * lobePaddingPx
-    val extensionPx = buttonSizePx + buttonGapPx
+    val extensionPx = 2 * lobePaddingPx + 2 * buttonSizePx + buttonGapPx
+    // B 藏进 A 里的深度取 B 的半径, 朝 A 的那个圆头完全藏在 A 里
+    val lobeOverlapPx = lobeHeightPx / 2
     val panelColor = MaterialTheme.colorScheme.surfaceContainer
     val buttonColor = MaterialTheme.colorScheme.surfaceContainerLowest
     val frame = remember { PanelFrame() }
@@ -478,14 +476,21 @@ private fun ScreenshotPanel(
         val regionAWidth = imageWidth + 2 * imagePaddingPx
         val regionAHeight = imageHeight + 2 * imagePaddingPx
         val width = regionAWidth + extensionPx
-        val height = regionAHeight + lobeHeightPx
-        // A 贴着面板的外侧边; B 横贯整个面板宽度, 挂在 A 的正下方
+        val height = regionAHeight
+        // A 贴着面板的外侧边; B 与 A 底边对齐, 从 A 的下角向屏幕中央伸出
         val regionAX = when (corner) {
             PlayerScreenshotPanelCorner.BottomLeft -> 0
             PlayerScreenshotPanelCorner.BottomRight -> extensionPx
         }
         frame.regionA = Rect(regionAX.toFloat(), 0f, (regionAX + regionAWidth).toFloat(), regionAHeight.toFloat())
-        frame.regionB = Rect(0f, regionAHeight.toFloat(), width.toFloat(), height.toFloat())
+        val regionBTop = (regionAHeight - lobeHeightPx).toFloat()
+        frame.regionB = when (corner) {
+            PlayerScreenshotPanelCorner.BottomLeft ->
+                Rect((regionAX + regionAWidth - lobeOverlapPx).toFloat(), regionBTop, width.toFloat(), height.toFloat())
+
+            PlayerScreenshotPanelCorner.BottomRight ->
+                Rect(0f, regionBTop, (regionAX + lobeOverlapPx).toFloat(), height.toFloat())
+        }
         val imageX = regionAX + imagePaddingPx
         val imageY = imagePaddingPx
         frame.image = Rect(
@@ -494,15 +499,15 @@ private fun ScreenshotPanel(
             (imageX + imageWidth).toFloat(),
             (imageY + imageHeight).toFloat(),
         )
-        // 动作按钮靠 B 伸出的那一端排列, 靠 A 的是分享, 最外侧的是复制
-        val buttonY = regionAHeight + lobePaddingPx
-        val copyX = when (corner) {
-            PlayerScreenshotPanelCorner.BottomLeft -> width - lobePaddingPx - buttonSizePx
-            PlayerScreenshotPanelCorner.BottomRight -> lobePaddingPx
-        }
+        // 动作按钮都在 B 伸出 A 的那段里, 靠 A 的是分享, 外侧的是复制
+        val buttonY = regionAHeight - lobeHeightPx + lobePaddingPx
         val shareX = when (corner) {
-            PlayerScreenshotPanelCorner.BottomLeft -> copyX - buttonGapPx - buttonSizePx
-            PlayerScreenshotPanelCorner.BottomRight -> copyX + buttonSizePx + buttonGapPx
+            PlayerScreenshotPanelCorner.BottomLeft -> regionAX + regionAWidth + lobePaddingPx
+            PlayerScreenshotPanelCorner.BottomRight -> regionAX - lobePaddingPx - buttonSizePx
+        }
+        val copyX = when (corner) {
+            PlayerScreenshotPanelCorner.BottomLeft -> shareX + buttonSizePx + buttonGapPx
+            PlayerScreenshotPanelCorner.BottomRight -> shareX - buttonGapPx - buttonSizePx
         }
 
         val background = measurables.first { it.layoutId == BACKGROUND_ID }

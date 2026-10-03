@@ -10,8 +10,8 @@
    失败不抛异常, 以 `PlayerScreenshotResult.Failure(reason)` 返回: 权限被拒 / 不支持 / 没有画面 / 保存失败.
 3. 成功时 `PlayerScreenshotPanelState.present` 交给 `PlayerScreenshotOverlay`:
    播放器区域闪光一次; 截图原位停留 200ms 后以容器变换收进角落, 竖屏布局 (区域高大于宽) 右下, 横屏布局左下;
-   落定后长出面板: 画面所在的 A 区域 (圆角矩形, 画面四周留边) 下方挂着药丸形的 B 区域 (外侧边与 A 对齐, 向屏幕中央伸出,
-   装分享与复制两个圆形图标按钮), 由 `screenshotPanelOutline` 描成一条闭合路径 (A 的内侧边与 B 的上边以内凹圆角相接),
+   落定后长出面板: 画面所在的 A 区域 (圆角矩形, 画面四周留边) 的下角向屏幕中央伸出药丸形的 B 区域 (与 A 底边对齐,
+   伸出的部分装分享与复制两个圆形图标按钮), 由 `screenshotPanelOutline` 描成一条闭合路径 (底边连成直线, B 的上边以内凹圆角接到 A 的侧边),
    做成 Shape 后填 surfaceContainer 并带阴影, 按钮圆底为 surfaceContainerLowest; 没有关闭按钮, 6 秒后自动收起,
    鼠标悬停或按住时暂停计时; 点击画面用应用内的图片查看器打开它并立即收起面板.
    失败时 toast 说明原因.
