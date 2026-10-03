@@ -18,27 +18,37 @@ import me.him188.ani.datasources.api.source.MediaSourceConfig
 
 @Serializable
 sealed interface MediaSourceCommand {
+    /** Replaces the TV source list with an edited one. */
+    @Serializable sealed interface SourceList : MediaSourceCommand
+
+    /** Replaces the TV subscription list with an edited one. */
+    @Serializable sealed interface SubscriptionList : MediaSourceCommand
+
+    /** Whether the command is checked against the revision of the subscription list. */
+    val usesSubscriptionRevision: Boolean
+        get() = this is SubscriptionList || this is SubscriptionRefresh
+
     @Serializable
     @SerialName("add")
-    data class Add(val source: MediaSourceSave) : MediaSourceCommand
+    data class Add(val source: MediaSourceSave) : SourceList
 
     @Serializable
     @SerialName("edit")
-    data class Edit(val instanceId: String, val config: MediaSourceConfig) : MediaSourceCommand
+    data class Edit(val instanceId: String, val config: MediaSourceConfig) : SourceList
 
     @Serializable
     @SerialName("delete")
-    data class Delete(val ids: List<String>) : MediaSourceCommand
+    data class Delete(val ids: List<String>) : SourceList
 
     @Serializable
     @SerialName("reorder")
-    data class Reorder(val ids: List<String>) : MediaSourceCommand
+    data class Reorder(val ids: List<String>) : SourceList
 
     @Serializable
     @SerialName("enable")
-    data class Enable(val ids: List<String>, val enabled: Boolean) : MediaSourceCommand
+    data class Enable(val ids: List<String>, val enabled: Boolean) : SourceList
 
-    @Serializable @SerialName("import") data class Import(val text: String) : MediaSourceCommand
+    @Serializable @SerialName("import") data class Import(val text: String) : SourceList
 
     @Serializable
     @SerialName("export")
@@ -46,15 +56,15 @@ sealed interface MediaSourceCommand {
 
     @Serializable
     @SerialName("subscriptionAdd")
-    data class SubscriptionAdd(val subscription: MediaSourceSubscription) : MediaSourceCommand
+    data class SubscriptionAdd(val subscription: MediaSourceSubscription) : SubscriptionList
 
     @Serializable
     @SerialName("subscriptionEdit")
-    data class SubscriptionEdit(val subscription: MediaSourceSubscription) : MediaSourceCommand
+    data class SubscriptionEdit(val subscription: MediaSourceSubscription) : SubscriptionList
 
     @Serializable
     @SerialName("subscriptionDelete")
-    data class SubscriptionDelete(val id: String) : MediaSourceCommand
+    data class SubscriptionDelete(val id: String) : SubscriptionList
 
     @Serializable
     @SerialName("subscriptionRefresh")

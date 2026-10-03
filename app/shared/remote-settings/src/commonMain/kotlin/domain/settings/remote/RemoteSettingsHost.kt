@@ -16,16 +16,15 @@ interface RemoteSettingsHost {
     val state: StateFlow<RemoteSettingsHostState>
 }
 
-data class RemoteSettingsHostState(
-    val link: RemoteSettingsLink? = null,
-    val status: RemoteSettingsHostStatus =
-        if (link == null) RemoteSettingsHostStatus.STARTING else RemoteSettingsHostStatus.READY,
-)
+sealed interface RemoteSettingsHostState {
+    /** The server is listening and [link] is what the QR code encodes. */
+    data class Ready(val link: RemoteSettingsLink) : RemoteSettingsHostState
 
-enum class RemoteSettingsHostStatus {
-    STARTING,
-    PERMISSION_REQUIRED,
-    NO_NETWORK,
-    READY,
-    UNAVAILABLE,
+    data object Starting : RemoteSettingsHostState
+
+    data object PermissionRequired : RemoteSettingsHostState
+
+    data object NoNetwork : RemoteSettingsHostState
+
+    data object Unavailable : RemoteSettingsHostState
 }

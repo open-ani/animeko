@@ -11,6 +11,7 @@ package me.him188.ani.app.ui.settings.remote
 
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.structuralEqualityPolicy
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.launch
@@ -43,9 +44,11 @@ internal class RemoteMediaSourcesState(
     private val scope: CoroutineScope,
 ) {
     private val snapshot by session.snapshot.produceState(session.snapshot.value, scope)
-    val sources by derivedStateOf { snapshot.mediaSources.value }
-    private val subscriptions by derivedStateOf { snapshot.subscriptions.value }
-    val templates by derivedStateOf { snapshot.templates }
+    // Each slice only invalidates its readers when it changes, not on every snapshot.
+    val sources by derivedStateOf(structuralEqualityPolicy()) { snapshot.mediaSources.value }
+    private val subscriptions by
+        derivedStateOf(structuralEqualityPolicy()) { snapshot.subscriptions.value }
+    val templates by derivedStateOf(structuralEqualityPolicy()) { snapshot.templates }
 
     val group =
         MediaSourceGroupState(
@@ -144,9 +147,10 @@ internal class RemoteMediaSourcesState(
             onEdit = { id, config ->
                 val (original, revision) = editingConfigs.getValue(id)
                 session.mediaSource(
-                    MediaSourceCommand.Edit(id, original.copy(arguments = config.arguments)),
-                    revision,
-                )
+                    MediaSourceCommand.Edit(id, original.copy(arguments = config.arguments))
+                ) {
+                    revision
+                }
                 editingConfigs.remove(id)
             },
             onDelete = { session.mediaSource(MediaSourceCommand.Delete(it)) },

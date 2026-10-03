@@ -66,7 +66,7 @@ class TvAppDependencies(
     val personDetailsRepository: PersonDetailsRepository,
     val personCommentRepository: PersonCommentRepository,
     val commentReportService: AniCommentReportService,
-    val remoteSettingsHost: RemoteSettingsHost? = null,
+    val remoteSettingsHost: RemoteSettingsHost,
 ) {
     companion object {
         fun fromKoin(koin: Koin): TvAppDependencies = TvAppDependencies(
@@ -96,7 +96,7 @@ class TvAppDependencies(
             personDetailsRepository = koin.get(),
             personCommentRepository = koin.get(),
             commentReportService = koin.get(),
-            remoteSettingsHost = koin.getOrNull(),
+            remoteSettingsHost = koin.get(),
         )
     }
 }

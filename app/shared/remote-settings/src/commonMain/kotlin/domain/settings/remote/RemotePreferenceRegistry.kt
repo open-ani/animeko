@@ -9,6 +9,7 @@
 
 package me.him188.ani.app.domain.settings.remote
 
+import kotlin.concurrent.Volatile
 import kotlinx.coroutines.flow.first
 import kotlinx.serialization.KSerializer
 import me.him188.ani.app.data.models.danmaku.DanmakuFilterConfig
@@ -147,38 +148,28 @@ class RemotePreferenceRegistry(
             mediaCacheSettings = mediaCacheSettings.read(),
         )
 
-    suspend fun validate(value: RemotePreference) {
-        when (value) {
-            is RemotePreference.VideoScaffold -> videoScaffoldConfig.validate(value.value)
-            is RemotePreference.PlayerKernel -> playerKernelConfig.validate(value.value)
-            is RemotePreference.DanmakuFilter -> danmakuFilterConfig.validate(value.value)
-            is RemotePreference.MediaSelector -> mediaSelectorSettings.validate(value.value)
-            is RemotePreference.MediaSelection -> defaultMediaPreference.validate(value.value)
-            is RemotePreference.VideoResolver -> videoResolverSettings.validate(value.value)
-            is RemotePreference.WatchTogether -> watchTogetherSettings.validate(value.value)
-            is RemotePreference.MediaCache -> mediaCacheSettings.validate(value.value)
-        }
-    }
+    fun validate(value: RemotePreference) = bind(value).validate()
 
-    suspend fun write(expectedRevision: String, value: RemotePreference) {
+    suspend fun write(expectedRevision: String, value: RemotePreference) =
+        bind(value).write(expectedRevision)
+
+    private fun bind(value: RemotePreference): Bound<*> =
         when (value) {
-            is RemotePreference.VideoScaffold ->
-                videoScaffoldConfig.write(expectedRevision, value.value)
-            is RemotePreference.PlayerKernel ->
-                playerKernelConfig.write(expectedRevision, value.value)
-            is RemotePreference.DanmakuFilter ->
-                danmakuFilterConfig.write(expectedRevision, value.value)
-            is RemotePreference.MediaSelector ->
-                mediaSelectorSettings.write(expectedRevision, value.value)
-            is RemotePreference.MediaSelection ->
-                defaultMediaPreference.write(expectedRevision, value.value)
-            is RemotePreference.VideoResolver ->
-                videoResolverSettings.write(expectedRevision, value.value)
-            is RemotePreference.WatchTogether ->
-                watchTogetherSettings.write(expectedRevision, value.value)
-            is RemotePreference.MediaCache ->
-                mediaCacheSettings.write(expectedRevision, value.value)
+            is RemotePreference.VideoScaffold -> Bound(videoScaffoldConfig, value.value)
+            is RemotePreference.PlayerKernel -> Bound(playerKernelConfig, value.value)
+            is RemotePreference.DanmakuFilter -> Bound(danmakuFilterConfig, value.value)
+            is RemotePreference.MediaSelector -> Bound(mediaSelectorSettings, value.value)
+            is RemotePreference.MediaSelection -> Bound(defaultMediaPreference, value.value)
+            is RemotePreference.VideoResolver -> Bound(videoResolverSettings, value.value)
+            is RemotePreference.WatchTogether -> Bound(watchTogetherSettings, value.value)
+            is RemotePreference.MediaCache -> Bound(mediaCacheSettings, value.value)
         }
+
+    /** A proposed value together with the entry it is stored in. */
+    private class Bound<T>(private val entry: Entry<T>, private val value: T) {
+        fun validate() = entry.validate(value)
+
+        suspend fun write(expectedRevision: String) = entry.write(expectedRevision, value)
     }
 
     private inner class Entry<T>(
@@ -189,11 +180,16 @@ class RemotePreferenceRegistry(
         val merge: (T, T) -> T = { _, proposed -> proposed },
         val validator: (T) -> Unit = {},
     ) {
-        private fun revision(value: T) =
-            revisions.of(
-                key,
-                RemoteSettingsProtocol.json.encodeToString(serializer, project(value)),
-            )
+        /** The last projected value and its revision. Polling reads the same value repeatedly. */
+        @Volatile private var cached: Pair<T, String>? = null
+
+        private fun revision(value: T): String {
+            val projected = project(value)
+            cached?.let { (cachedValue, revision) -> if (cachedValue == projected) return revision }
+            return revisions
+                .of(key, RemoteSettingsProtocol.json.encodeToString(serializer, projected))
+                .also { cached = projected to it }
+        }
 
         suspend fun read(): VersionedValue<T> {
             val value = project(settings.flow.first())

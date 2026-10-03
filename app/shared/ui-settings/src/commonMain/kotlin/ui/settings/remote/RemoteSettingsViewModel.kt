@@ -16,7 +16,6 @@ import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineExceptionHandler
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Job
-import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.filterNotNull
@@ -32,6 +31,7 @@ import me.him188.ani.app.ui.lang.remote_settings_invalid_qr
 import me.him188.ani.app.ui.lang.remote_settings_restore_partial
 import me.him188.ani.app.ui.settings.framework.AbstractSettingsViewModel
 import me.him188.ani.remote.settings.RemoteSettingsLink
+import me.him188.ani.utils.coroutines.childScope
 import me.him188.ani.remote.settings.generated.models.LogSnapshot
 import org.jetbrains.compose.resources.StringResource
 
@@ -128,13 +128,11 @@ class RemoteSettingsViewModel(initialSession: RemoteSettingsSession? = null) :
     private fun useRemoteSession(session: RemoteSettingsSession) {
         disconnectRemote()
         val scope =
-            CoroutineScope(
-                backgroundScope.coroutineContext +
-                    SupervisorJob(backgroundScope.coroutineContext[Job]) +
-                    CoroutineExceptionHandler { _, error ->
-                        if (remoteSession === session)
-                            message = RemoteSettingsFailure.from(error).messageResource()
-                    }
+            backgroundScope.childScope(
+                CoroutineExceptionHandler { _, error ->
+                    if (remoteSession === session)
+                        message = RemoteSettingsFailure.from(error).messageResource()
+                }
             )
         remoteScope = scope
         remoteState = RemoteSettingsFormState(session, scope) {
@@ -190,7 +188,7 @@ class RemoteSettingsViewModel(initialSession: RemoteSettingsSession? = null) :
         val session = remoteSession ?: return
         val revision = subscriptionRevision
         perform {
-            session.mediaSource(MediaSourceCommand.SubscriptionEdit(subscription), revision)
+            session.mediaSource(MediaSourceCommand.SubscriptionEdit(subscription)) { revision }
             editingSubscription = null
         }
     }

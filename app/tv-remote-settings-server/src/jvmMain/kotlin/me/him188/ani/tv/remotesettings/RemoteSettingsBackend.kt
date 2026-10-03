@@ -9,12 +9,15 @@
 
 package me.him188.ani.tv.remotesettings
 
+import androidx.datastore.core.DataStore
 import io.ktor.http.Url
 import kotlin.time.Duration.Companion.minutes
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
+import kotlinx.serialization.KSerializer
+import kotlinx.serialization.builtins.ListSerializer
 import me.him188.ani.app.data.models.danmaku.DanmakuRegexFilter
 import me.him188.ani.app.data.persistent.PlatformDataStoreManager
 import me.him188.ani.app.data.repository.user.SettingsRepository
@@ -83,15 +86,37 @@ class LocalRemoteSettingsBackend(
     private val preferences = RemotePreferenceRegistry(settings, revisions)
     private val plans = mutableMapOf<String, RestorePlan>()
     private val planMutex = Mutex()
+    private val mediaSources =
+        Resource(
+            "mediaSources",
+            stores.mediaSourceSaveStore,
+            ListSerializer(MediaSourceSave.serializer()),
+            get = { it.instances },
+            set = { saves, instances -> saves.copy(instances = instances) },
+        )
+    private val subscriptions =
+        Resource(
+            "subscriptions",
+            stores.mediaSourceSubscriptionStore,
+            ListSerializer(MediaSourceSubscription.serializer()),
+            get = { it.list },
+            set = { data, list -> data.copy(list = list) },
+        )
+    private val danmakuFilters =
+        Resource(
+            "danmakuFilters",
+            stores.danmakuFilterStore,
+            ListSerializer(DanmakuRegexFilter.serializer()),
+            get = { it },
+            set = { _, filters -> filters },
+        )
 
     override suspend fun snapshot(): SettingsSnapshot =
         SettingsSnapshot(
             preferences = preferences.snapshot(),
-            mediaSources =
-                versioned("mediaSources", stores.mediaSourceSaveStore.data.first().instances),
-            subscriptions =
-                versioned("subscriptions", stores.mediaSourceSubscriptionStore.data.first().list),
-            danmakuFilters = versioned("danmakuFilters", stores.danmakuFilterStore.data.first()),
+            mediaSources = mediaSources.read(),
+            subscriptions = subscriptions.read(),
+            danmakuFilters = danmakuFilters.read(),
             templates =
                 sources.allFactories
                     .filterNot { sources.isLocal(it.factoryId) }
@@ -128,236 +153,191 @@ class LocalRemoteSettingsBackend(
     }
 
     override suspend fun mediaSource(request: MediaSourceRequest): RemoteOperationPayload {
-        val command = request.command
-        when (command) {
-            is MediaSourceCommand.Export -> {
-                val saves = stores.mediaSourceSaveStore.data.first().instances
-                requireIds(saves, command.ids)
-                return RemoteOperationPayload.SourceExport(
-                    codecs.serializeToString(
-                        ExportedMediaSourceDataList(
-                            saves
-                                .filter { it.instanceId in command.ids }
-                                .map {
-                                    val arguments =
-                                        it.config.serializedArguments
-                                            ?: throw RemoteSettingsException(
-                                                "UNSUPPORTED_EXPORT",
-                                                "This source requires backup export",
-                                            )
-                                    codecs.serialize(it.factoryId, arguments)
-                                }
-                        )
-                    )
-                )
-            }
-            is MediaSourceCommand.SubscriptionRefresh -> {
-                val before = stores.mediaSourceSubscriptionStore.data.first().list
-                checkRevision(
-                    "subscriptions",
-                    request.baseRevision,
-                    before,
-                )
-                if (command.id != null)
-                    checkRemote(
-                        before.any { it.subscriptionId == command.id && it.enabled },
-                        "NOT_FOUND",
-                        "Subscription missing or disabled",
-                    )
-                updater.updateAllOutdated(force = true, subscriptionId = command.id)
-                val after = stores.mediaSourceSubscriptionStore.data.first().list
-                checkRemote(
-                    after
-                        .filter {
-                            it.enabled && (command.id == null || it.subscriptionId == command.id)
-                        }
-                        .none { it.lastUpdated?.error != null },
-                    "SUBSCRIPTION_REFRESH_FAILED",
-                    "Some subscriptions failed to refresh",
-                )
-            }
-            is MediaSourceCommand.SubscriptionAdd,
-            is MediaSourceCommand.SubscriptionEdit,
-            is MediaSourceCommand.SubscriptionDelete -> {
-                stores.mediaSourceSubscriptionStore.updateData { current ->
-                    checkRevision(
-                        "subscriptions",
-                        request.baseRevision,
-                        current.list,
-                    )
-                    val list =
-                        when (command) {
-                            is MediaSourceCommand.SubscriptionAdd -> {
-                                checkRemote(
-                                    current.list.size < 100,
-                                    message = "Subscription limit reached",
-                                )
-                                validateSubscription(command.subscription)
-                                checkRemote(
-                                    current.list.none {
-                                        it.subscriptionId == command.subscription.subscriptionId
-                                    },
-                                    message = "Subscription already exists",
-                                )
-                                current.list + command.subscription.copy(lastUpdated = null)
-                            }
-                            is MediaSourceCommand.SubscriptionEdit -> {
-                                validateSubscription(command.subscription)
-                                checkRemote(
-                                    current.list.any {
-                                        it.subscriptionId == command.subscription.subscriptionId
-                                    },
-                                    "NOT_FOUND",
-                                    "Subscription not found",
-                                )
-                                val previous =
-                                    current.list.first {
-                                        it.subscriptionId == command.subscription.subscriptionId
-                                    }
-                                if (previous.enabled != command.subscription.enabled) {
-                                    sources.setEnabled(
-                                        sources
-                                            .getListBySubscriptionId(previous.subscriptionId)
-                                            .map { it.instanceId },
-                                        command.subscription.enabled,
-                                    )
-                                }
-                                current.list.map {
-                                    if (it.subscriptionId == command.subscription.subscriptionId)
-                                        command.subscription.copy(
-                                            lastUpdated =
-                                                if (it.url == command.subscription.url)
-                                                    it.lastUpdated
-                                                else null
-                                        )
-                                    else it
-                                }
-                            }
-                            is MediaSourceCommand.SubscriptionDelete -> {
-                                checkRemote(
-                                    current.list.any { it.subscriptionId == command.id },
-                                    "NOT_FOUND",
-                                    "Subscription not found",
-                                )
-                                current.list.filterNot { it.subscriptionId == command.id }
-                            }
-                            else -> error("Unexpected subscription command")
-                        }
-                    current.copy(list = list)
-                }
-            }
-            else ->
-                stores.mediaSourceSaveStore.updateData { current ->
-                    checkRevision(
-                        "mediaSources",
-                        request.baseRevision,
-                        current.instances,
-                    )
-                    val list = current.instances
-                    val next =
-                        when (command) {
-                            is MediaSourceCommand.Add -> {
-                                checkRemote(list.size < 1000, message = "Source limit reached")
-                                validateSource(command.source)
-                                checkRemote(
-                                    list.none { it.instanceId == command.source.instanceId },
-                                    message = "Source already exists",
-                                )
-                                val factory =
-                                    sources.allFactories.first {
-                                        it.factoryId == command.source.factoryId
-                                    }
-                                checkRemote(
-                                    factory.allowMultipleInstances ||
-                                        list.none { it.factoryId == factory.factoryId },
-                                    message = "Source can only be added once",
-                                )
-                                checkRemote(
-                                    command.source.config.subscriptionId == null,
-                                    message = "A new source cannot specify a subscription",
-                                )
-                                list + command.source
-                            }
-                            is MediaSourceCommand.Import -> {
-                                val data =
-                                    codecs.decodeFromStringOrNull(command.text)
-                                        ?: throw RemoteSettingsException(
-                                            "INVALID_ARGUMENT",
-                                            "Invalid source import format",
-                                        )
-                                checkRemote(
-                                    data.mediaSources.isNotEmpty() &&
-                                        data.mediaSources.size + list.size <= 1000,
-                                    message = "Invalid number of imported sources",
-                                )
-                                list +
-                                    data.mediaSources.map {
-                                        val arguments = codecs.encode(codecs.decode(it)).arguments
-                                        val id = Uuid.randomString()
-                                        MediaSourceSave(
-                                                id,
-                                                id,
-                                                it.factoryId,
-                                                true,
-                                                MediaSourceConfig(serializedArguments = arguments),
-                                            )
-                                            .also(::validateSource)
-                                    }
-                            }
-                            is MediaSourceCommand.Edit -> {
-                                checkRemote(
-                                    list.any { it.instanceId == command.instanceId },
-                                    "NOT_FOUND",
-                                    "Source not found",
-                                )
-                                list.map { source ->
-                                    if (source.instanceId != command.instanceId) source
-                                    else {
-                                        checkRemote(
-                                            command.config.subscriptionId ==
-                                                source.config.subscriptionId,
-                                            message =
-                                                "Source subscription membership cannot be changed",
-                                        )
-                                        source.copy(config = command.config).also(::validateSource)
-                                    }
-                                }
-                            }
-                            is MediaSourceCommand.Delete -> {
-                                requireIds(list, command.ids)
-                                list.filterNot { it.instanceId in command.ids }
-                            }
-                            is MediaSourceCommand.Enable -> {
-                                requireIds(list, command.ids)
-                                list.map {
-                                    if (it.instanceId in command.ids)
-                                        it.copy(isEnabled = command.enabled)
-                                    else it
-                                }
-                            }
-                            is MediaSourceCommand.Reorder -> {
-                                requireIds(list, command.ids)
-                                list.partiallyReorderBy({ it.instanceId }, command.ids)
-                            }
-                            else -> error("Unexpected source command")
-                        }
-                    current.copy(instances = next)
-                }
+        when (val command = request.command) {
+            is MediaSourceCommand.Export -> return exportSources(command.ids)
+            is MediaSourceCommand.SubscriptionRefresh ->
+                refreshSubscriptions(command.id, request.baseRevision)
+            is MediaSourceCommand.SubscriptionList ->
+                subscriptions.update(request.baseRevision) { editSubscriptions(it, command) }
+            is MediaSourceCommand.SourceList ->
+                mediaSources.update(request.baseRevision) { editSources(it, command) }
         }
         return RemoteOperationPayload.Applied
     }
 
+    private suspend fun exportSources(ids: List<String>): RemoteOperationPayload {
+        val saves = mediaSources.read().value
+        requireIds(saves, ids)
+        return RemoteOperationPayload.SourceExport(
+            codecs.serializeToString(
+                ExportedMediaSourceDataList(
+                    saves
+                        .filter { it.instanceId in ids }
+                        .map {
+                            val arguments =
+                                it.config.serializedArguments
+                                    ?: throw RemoteSettingsException(
+                                        "UNSUPPORTED_EXPORT",
+                                        "This source requires backup export",
+                                    )
+                            codecs.serialize(it.factoryId, arguments)
+                        }
+                )
+            )
+        )
+    }
+
+    /** Refreshes subscription [id], or every enabled subscription when it is null. */
+    private suspend fun refreshSubscriptions(id: String?, baseRevision: String?) {
+        val before = subscriptions.read()
+        subscriptions.checkRevision(baseRevision, before.value)
+        if (id != null)
+            checkRemote(
+                before.value.any { it.subscriptionId == id && it.enabled },
+                "NOT_FOUND",
+                "Subscription missing or disabled",
+            )
+        updater.updateAllOutdated(force = true, subscriptionId = id)
+        checkRemote(
+            subscriptions
+                .read()
+                .value
+                .filter { it.enabled && (id == null || it.subscriptionId == id) }
+                .none { it.lastUpdated?.error != null },
+            "SUBSCRIPTION_REFRESH_FAILED",
+            "Some subscriptions failed to refresh",
+        )
+    }
+
+    private suspend fun editSubscriptions(
+        list: List<MediaSourceSubscription>,
+        command: MediaSourceCommand.SubscriptionList,
+    ): List<MediaSourceSubscription> =
+        when (command) {
+            is MediaSourceCommand.SubscriptionAdd -> {
+                checkRemote(list.size < MAX_SUBSCRIPTIONS, message = "Subscription limit reached")
+                validateSubscription(command.subscription)
+                checkRemote(
+                    list.none { it.subscriptionId == command.subscription.subscriptionId },
+                    message = "Subscription already exists",
+                )
+                list + command.subscription.copy(lastUpdated = null)
+            }
+            is MediaSourceCommand.SubscriptionEdit -> {
+                val edited = command.subscription
+                validateSubscription(edited)
+                val previous =
+                    list.firstOrNull { it.subscriptionId == edited.subscriptionId }
+                        ?: throw RemoteSettingsException("NOT_FOUND", "Subscription not found")
+                if (previous.enabled != edited.enabled) {
+                    sources.setEnabled(
+                        sources.getListBySubscriptionId(previous.subscriptionId).map {
+                            it.instanceId
+                        },
+                        edited.enabled,
+                    )
+                }
+                // The result of the last update describes the URL it was fetched from.
+                val lastUpdated = previous.lastUpdated.takeIf { previous.url == edited.url }
+                list.map { if (it === previous) edited.copy(lastUpdated = lastUpdated) else it }
+            }
+            is MediaSourceCommand.SubscriptionDelete -> {
+                checkRemote(
+                    list.any { it.subscriptionId == command.id },
+                    "NOT_FOUND",
+                    "Subscription not found",
+                )
+                list.filterNot { it.subscriptionId == command.id }
+            }
+        }
+
+    private fun editSources(
+        list: List<MediaSourceSave>,
+        command: MediaSourceCommand.SourceList,
+    ): List<MediaSourceSave> =
+        when (command) {
+            is MediaSourceCommand.Add -> {
+                checkRemote(list.size < MAX_SOURCES, message = "Source limit reached")
+                validateSource(command.source)
+                checkRemote(
+                    list.none { it.instanceId == command.source.instanceId },
+                    message = "Source already exists",
+                )
+                val factory = sources.allFactories.first { it.factoryId == command.source.factoryId }
+                checkRemote(
+                    factory.allowMultipleInstances ||
+                        list.none { it.factoryId == factory.factoryId },
+                    message = "Source can only be added once",
+                )
+                checkRemote(
+                    command.source.config.subscriptionId == null,
+                    message = "A new source cannot specify a subscription",
+                )
+                list + command.source
+            }
+            is MediaSourceCommand.Import -> {
+                val data =
+                    codecs.decodeFromStringOrNull(command.text)
+                        ?: throw RemoteSettingsException(
+                            "INVALID_ARGUMENT",
+                            "Invalid source import format",
+                        )
+                checkRemote(
+                    data.mediaSources.isNotEmpty() &&
+                        data.mediaSources.size + list.size <= MAX_SOURCES,
+                    message = "Invalid number of imported sources",
+                )
+                list +
+                    data.mediaSources.map {
+                        val arguments = codecs.encode(codecs.decode(it)).arguments
+                        val id = Uuid.randomString()
+                        MediaSourceSave(
+                                id,
+                                id,
+                                it.factoryId,
+                                true,
+                                MediaSourceConfig(serializedArguments = arguments),
+                            )
+                            .also(::validateSource)
+                    }
+            }
+            is MediaSourceCommand.Edit -> {
+                checkRemote(
+                    list.any { it.instanceId == command.instanceId },
+                    "NOT_FOUND",
+                    "Source not found",
+                )
+                list.map { source ->
+                    if (source.instanceId != command.instanceId) source
+                    else {
+                        checkRemote(
+                            command.config.subscriptionId == source.config.subscriptionId,
+                            message = "Source subscription membership cannot be changed",
+                        )
+                        source.copy(config = command.config).also(::validateSource)
+                    }
+                }
+            }
+            is MediaSourceCommand.Delete -> {
+                requireIds(list, command.ids)
+                list.filterNot { it.instanceId in command.ids }
+            }
+            is MediaSourceCommand.Enable -> {
+                requireIds(list, command.ids)
+                list.map {
+                    if (it.instanceId in command.ids) it.copy(isEnabled = command.enabled) else it
+                }
+            }
+            is MediaSourceCommand.Reorder -> {
+                requireIds(list, command.ids)
+                list.partiallyReorderBy({ it.instanceId }, command.ids)
+            }
+        }
+
     override suspend fun danmakuFilter(request: DanmakuFilterRequest): RemoteOperationPayload {
         val filters = request.command.filters
         validateFilters(filters)
-        stores.danmakuFilterStore.updateData {
-            checkRevision(
-                "danmakuFilters",
-                request.baseRevision,
-                it,
-            )
-            filters
-        }
+        danmakuFilters.update(request.baseRevision) { filters }
         return RemoteOperationPayload.Applied
     }
 
@@ -371,10 +351,8 @@ class LocalRemoteSettingsBackend(
                 val id = Uuid.randomString()
                 val snapshot = snapshot()
                 planMutex.withLock {
-                    plans.entries.removeAll {
-                        currentTimeMillis() - it.value.createdAt > 5.minutes.inWholeMilliseconds
-                    }
-                    checkRemote(plans.size < 8, "BUSY", "Too many pending restore plans")
+                    plans.values.removeAll { it.isExpired() }
+                    checkRemote(plans.size < MAX_PLANS, "BUSY", "Too many pending restore plans")
                     plans[id] = RestorePlan(command.backup, snapshot, currentTimeMillis())
                 }
                 RemoteOperationPayload.BackupPreview(
@@ -394,11 +372,7 @@ class LocalRemoteSettingsBackend(
                             "PLAN_EXPIRED",
                             "Restore plan is no longer valid",
                         )
-                checkRemote(
-                    currentTimeMillis() - plan.createdAt <= 5.minutes.inWholeMilliseconds,
-                    "PLAN_EXPIRED",
-                    "Restore plan expired",
-                )
+                checkRemote(!plan.isExpired(), "PLAN_EXPIRED", "Restore plan expired")
                 val applied = mutableListOf<String>()
                 val failed = mutableMapOf<String, String>()
                 suspend fun apply(name: String, action: suspend () -> Unit) {
@@ -416,43 +390,23 @@ class LocalRemoteSettingsBackend(
                 }
                 // Cross-store restores report each committed resource; they do not promise
                 // cross-store atomicity.
-                apply("subscriptions") {
-                    stores.mediaSourceSubscriptionStore.updateData {
-                        checkRevision(
-                            "subscriptions",
-                            plan.snapshot.subscriptions.revision,
-                            it.list,
-                        )
-                        it.copy(
-                            list =
-                                plan.backup.subscriptions.map { subscription ->
-                                    subscription.copy(lastUpdated = null)
-                                }
-                        )
+                apply(subscriptions.name) {
+                    subscriptions.update(plan.snapshot.subscriptions.revision) {
+                        plan.backup.subscriptions.map { it.copy(lastUpdated = null) }
                     }
                 }
-                apply("mediaSources") {
+                apply(mediaSources.name) {
                     checkRemote(
-                        "subscriptions" !in failed,
+                        subscriptions.name !in failed,
                         "DEPENDENCY_FAILED",
                         "Subscription restore failed",
                     )
-                    stores.mediaSourceSaveStore.updateData {
-                        checkRevision(
-                            "mediaSources",
-                            plan.snapshot.mediaSources.revision,
-                            it.instances,
-                        )
-                        it.copy(instances = plan.backup.mediaSources)
+                    mediaSources.update(plan.snapshot.mediaSources.revision) {
+                        plan.backup.mediaSources
                     }
                 }
-                apply("danmakuFilters") {
-                    stores.danmakuFilterStore.updateData {
-                        checkRevision(
-                            "danmakuFilters",
-                            plan.snapshot.danmakuFilters.revision,
-                            it,
-                        )
+                apply(danmakuFilters.name) {
+                    danmakuFilters.update(plan.snapshot.danmakuFilters.revision) {
                         plan.backup.danmakuFilters
                     }
                 }
@@ -463,12 +417,9 @@ class LocalRemoteSettingsBackend(
     private suspend fun exportBackup() =
         RemoteSettingsBackup(
             preferences = preferences.snapshot().values(),
-            mediaSources = stores.mediaSourceSaveStore.data.first().instances,
-            subscriptions =
-                stores.mediaSourceSubscriptionStore.data.first().list.map {
-                    it.copy(lastUpdated = null)
-                },
-            danmakuFilters = stores.danmakuFilterStore.data.first(),
+            mediaSources = mediaSources.read().value,
+            subscriptions = subscriptions.read().value.map { it.copy(lastUpdated = null) },
+            danmakuFilters = danmakuFilters.read().value,
         )
 
     private suspend fun validateBackup(backup: RemoteSettingsBackup) {
@@ -478,20 +429,18 @@ class LocalRemoteSettingsBackend(
             "Incompatible backup version",
         )
         checkRemote(
-            backup.preferences.map { it.key }.distinct().size == backup.preferences.size,
+            backup.preferences.hasDistinct { it.key },
             message = "Duplicate preferences in backup",
         )
         for (value in backup.preferences) preferences.validate(value)
         checkRemote(
-            backup.mediaSources.size <= 1000 &&
-                backup.mediaSources.map { it.instanceId }.distinct().size ==
-                    backup.mediaSources.size,
+            backup.mediaSources.size <= MAX_SOURCES &&
+                backup.mediaSources.hasDistinct { it.instanceId },
             message = "Invalid source list",
         )
         checkRemote(
-            backup.subscriptions.size <= 100 &&
-                backup.subscriptions.map { it.subscriptionId }.distinct().size ==
-                    backup.subscriptions.size,
+            backup.subscriptions.size <= MAX_SUBSCRIPTIONS &&
+                backup.subscriptions.hasDistinct { it.subscriptionId },
             message = "Invalid subscription list",
         )
         backup.mediaSources.forEach(::validateSource)
@@ -554,7 +503,7 @@ class LocalRemoteSettingsBackend(
 
     private fun validateFilters(filters: List<DanmakuRegexFilter>) {
         checkRemote(
-            filters.size <= 1000 && filters.map { it.id }.distinct().size == filters.size,
+            filters.size <= MAX_FILTERS && filters.hasDistinct { it.id },
             message = "Invalid filter rule list",
         )
         filters.forEach {
@@ -573,27 +522,72 @@ class LocalRemoteSettingsBackend(
     private fun requireIds(saves: List<MediaSourceSave>, ids: List<String>) {
         checkRemote(
             ids.isNotEmpty() &&
-                ids.distinct().size == ids.size &&
+                ids.hasDistinct { it } &&
                 ids.all { id -> saves.any { it.instanceId == id } },
             "NOT_FOUND",
             "Source list revision has changed",
         )
     }
 
-    private inline fun <reified T> versioned(resource: String, value: T) =
-        VersionedValue(revisions.of(resource, json.encodeToString(value)), value)
+    /**
+     * A list kept in one of the TV stores. [update] compares the revision and writes the new list
+     * in the same store transaction.
+     */
+    private inner class Resource<S, T>(
+        val name: String,
+        private val store: DataStore<S>,
+        private val serializer: KSerializer<T>,
+        private val get: (S) -> T,
+        private val set: (S, T) -> S,
+    ) {
+        /** The last value and its revision. The store returns the same instance until it changes. */
+        @Volatile private var cached: Pair<T, String>? = null
 
-    private inline fun <reified T> checkRevision(resource: String, expected: String?, value: T) {
-        checkRemote(
-            expected != null && expected == revisions.of(resource, json.encodeToString(value)),
-            "REVISION_CONFLICT",
-            "Settings revision has changed",
-        )
+        private fun revision(value: T): String {
+            cached?.let { (cachedValue, revision) -> if (cachedValue === value) return revision }
+            return revisions.of(name, json.encodeToString(serializer, value)).also {
+                cached = value to it
+            }
+        }
+
+        suspend fun read(): VersionedValue<T> {
+            val value = get(store.data.first())
+            return VersionedValue(revision(value), value)
+        }
+
+        fun checkRevision(expected: String?, value: T) {
+            checkRemote(
+                expected != null && expected == revision(value),
+                "REVISION_CONFLICT",
+                "Settings revision has changed",
+            )
+        }
+
+        suspend fun update(expected: String?, transform: suspend (T) -> T) {
+            store.updateData { stored ->
+                val current = get(stored)
+                checkRevision(expected, current)
+                set(stored, transform(current))
+            }
+        }
     }
 
     private data class RestorePlan(
         val backup: RemoteSettingsBackup,
         val snapshot: SettingsSnapshot,
         val createdAt: Long,
-    )
+    ) {
+        fun isExpired() = currentTimeMillis() - createdAt > PLAN_TTL.inWholeMilliseconds
+    }
+
+    private companion object {
+        const val MAX_SOURCES = 1000
+        const val MAX_SUBSCRIPTIONS = 100
+        const val MAX_FILTERS = 1000
+        const val MAX_PLANS = 8
+        val PLAN_TTL = 5.minutes
+    }
 }
+
+private inline fun <T, K> List<T>.hasDistinct(key: (T) -> K): Boolean =
+    mapTo(HashSet(), key).size == size

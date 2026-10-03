@@ -13,7 +13,7 @@
 | 外部扫码器 | `ani://remote-settings` scheme，直接进入握手流程 |
 | 会话身份 | 以 `/ping` 返回的设备名称和服务实例为准 |
 | 页面范围 | 播放器、数据源、资源选择、存储、日志、设置备份 |
-| 持续提示 | 页面底部设备气泡，显示目标设备和退出按钮 |
+| 持续提示 | 页面底部设备气泡，显示目标设备和退出按钮；保存期间图标位置显示进度环，气泡高度不变 |
 | 气泡退出 | 关闭远程会话，返回进入远程配置前的页面 |
 | 页面返回 | 沿用设置详情及数据源编辑页的返回层级；离开设置根页时确认，确定后断开并退出远程设置 |
 | 服务生命周期 | 电视 Application 启动时创建；权限允许后监听，覆盖进程存活期间 |
@@ -301,7 +301,7 @@ sequenceDiagram
 
 `RemoteSettingsSession` 持有 child SupervisorJob、互斥锁、确认快照、busy 与 error flow。读取、日志和写入共用同一把锁；等待发送的数据源、弹幕规则和备份调用可以取消，已经发送的写入会等待结果确认及快照回读，再允许下一项操作。
 
-preference 控件每次提交整个配置对象。`RemotePreferenceRepository` 在电视确认或拒绝之前把最新提交的值作为表单值，后续编辑在它之上构造；每次提交记录它所基于的值，并在会话 scope 内按提交顺序排队，调用者离开不会取消排队的提交。发送时电视的值与所基于的值一致才带上当前 revision 发出，否则以 `REVISION_CONFLICT` 结束，不覆盖手机没有见过的修改。连续切换同一配置对象的多个开关会依次生效。
+preference 控件每次提交整个配置对象。每个配置对应一个 `RemotePreferenceSettings`：在电视确认或拒绝之前，`current` 是最新提交的值，否则是电视的值。表单在点击时读取 `current` 构造新对象，并在同一线程上调用 `submit`（`SettingsState` 以 `UNDISPATCHED` 启动提交），因此每次编辑都基于前一次编辑的值。`submit` 记录它所基于的值，并在会话 scope 内按提交顺序排队，调用者离开不会取消排队的提交。发送时电视的值与所基于的值一致才带上当前 revision 发出，否则以 `REVISION_CONFLICT` 结束，不覆盖手机没有见过的修改。连续切换同一配置对象的多个开关会依次生效。
 
 设置控件原有 `MonoTasker` 可能取消前一个调用者协程。远程提交在 ViewModel／session 自己的 scope 中执行，已发出的请求不依赖控件临时任务的生命周期。
 
@@ -440,7 +440,7 @@ iOS 没有与 Android 相同的通用 LAN 运行时请求 API。扫码页先说�
 
 新增界面文案通过 `app-lang` 的 `strings_remote_settings.xml` 提供英文、简体中文、香港繁体与台湾繁体；其他中文地区沿用项目的 locale 复制任务。扫码入口及说明、权限页、设备气泡、连接与退出提示、订阅编辑、日志分享、备份确认和电视二维码状态均在展示时解析 `Lang` 资源。设备名称使用占位参数，不通过拼接构造句子。
 
-协议错误保留稳定的 code 和用于诊断的英文 message。客户端将错误映射为 `RemoteSettingsFailure`，UI 再映射到 `StringResource`；服务端语言及诊断内容不决定手机的提示文案。电视 Host 状态同样使用枚举，由 TV UI 解析本机语言。iOS 的相机与局域网系统权限说明通过四种语言的 `InfoPlist.strings` 本地化，并加入 Xcode 资源构建阶段。
+协议错误保留稳定的 code 和用于诊断的英文 message。客户端将错误映射为 `RemoteSettingsFailure`，UI 再映射到 `StringResource`；服务端语言及诊断内容不决定手机的提示文案。电视 Host 状态是密封类型 `RemoteSettingsHostState`（`Ready` 携带二维码连接信息，其余为启动中、需要权限、无网络、不可用），由 TV UI 解析本机语言。iOS 的相机与局域网系统权限说明通过四种语言的 `InfoPlist.strings` 本地化，并加入 Xcode 资源构建阶段。
 
 ## 13. 安全与资源约束
 

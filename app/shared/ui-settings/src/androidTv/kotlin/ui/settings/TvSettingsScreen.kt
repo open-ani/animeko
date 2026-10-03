@@ -57,7 +57,6 @@ import androidx.compose.ui.unit.dp
 import androidx.tv.material3.MaterialTheme
 import androidx.tv.material3.Text
 import me.him188.ani.app.domain.settings.remote.RemoteSettingsHostState
-import me.him188.ani.app.domain.settings.remote.RemoteSettingsHostStatus
 import me.him188.ani.app.ui.lang.Lang
 import me.him188.ani.app.ui.lang.foundation_loading
 import me.him188.ani.app.ui.lang.settings_load_failed
@@ -92,7 +91,7 @@ fun TvSettingsScreen(
     displayModes: List<TvSettingsDisplayMode> = emptyList(),
     onOpenUrl: (String) -> Unit = {},
     onImport: () -> Unit = {},
-    remoteSettings: RemoteSettingsHostState = RemoteSettingsHostState(status = RemoteSettingsHostStatus.UNAVAILABLE),
+    remoteSettings: RemoteSettingsHostState = RemoteSettingsHostState.Unavailable,
     onRequestLocalNetworkPermission: () -> Unit = {},
 ) {
     val focus = rememberTvFocusScope()
@@ -160,7 +159,7 @@ fun TvSettingsScreen(
     var directionalKey by remember { mutableStateOf<Key?>(null) }
     val content = TvSettingsItems(state, onIntent) { dialog = it }
     when {
-        section == TvSettingsSection.Remote -> {}
+        !section.hasItems -> {}
         state.loadFailed -> content.action(
             "retry", stringResource(Lang.settings_mediasource_retry),
             description = stringResource(Lang.settings_load_failed), opensDetail = false,
@@ -185,7 +184,7 @@ fun TvSettingsScreen(
     val detailEntry = settingsItemKey(initialDetailId ?: "detail-entry")
     focus.InitialFocus(if (extra != null) settingsItemKey("extra-entry") else if (detailFocused) detailEntry else sectionKey(section))
     fun enterDetail() {
-        if (detailFocused || section == TvSettingsSection.Remote) return
+        if (detailFocused || !section.hasItems) return
         detailFocused = true
         navigationGeneration++
         sendFocus(detailEntry)
@@ -258,7 +257,7 @@ fun TvSettingsScreen(
                         ) {
                             section = entry
                             aboutPage = TvSettingsAboutPage.Overview
-                            if (entry == TvSettingsSection.Remote) onRequestLocalNetworkPermission() else enterDetail()
+                            if (entry.hasItems) enterDetail() else onRequestLocalNetworkPermission()
                         }
                     }
                 }

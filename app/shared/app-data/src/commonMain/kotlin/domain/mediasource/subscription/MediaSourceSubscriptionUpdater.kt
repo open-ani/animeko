@@ -69,7 +69,7 @@ class MediaSourceSubscriptionUpdater(
 
             suspend fun setResult(count: Int?, error: UpdateError? = null) {
                 this.subscriptions.update(subscription.subscriptionId) { old ->
-                    if (old.url != subscription.url || old.updatePeriod != subscription.updatePeriod || !old.enabled) old else old.copy(
+                    if (!old.isSameRequestAs(subscription)) old else old.copy(
                         lastUpdated = MediaSourceSubscription.LastUpdated(
                             currentTimeMillis,
                             mediaSourceCount = count,
@@ -116,6 +116,10 @@ class MediaSourceSubscriptionUpdater(
         return subscriptions.filter { it.enabled }.minOfOrNull { it.updatePeriod } ?: 1.hours
     }
 
+    /** 订阅仍然启用, 且自 [requested] 发起请求以来没有被编辑. 否则这次请求的结果已经过时. */
+    private fun MediaSourceSubscription.isSameRequestAs(requested: MediaSourceSubscription) =
+        enabled && url == requested.url && updatePeriod == requested.updatePeriod
+
     data class ExistingArgument(
         val save: MediaSourceSave,
         val arguments: MediaSourceArguments?,
@@ -143,7 +147,7 @@ class MediaSourceSubscriptionUpdater(
         var count: Int? = null
         // Serialize source reconciliation with subscription availability changes. Network I/O stays outside the transaction.
         subscriptions.update(subscription.subscriptionId) { current ->
-            if (current.enabled && current.url == subscription.url && current.updatePeriod == subscription.updatePeriod) {
+            if (current.isSameRequestAs(subscription)) {
                 applyUpdate(current, updateData, newArguments)
                 count = updateData.exportedMediaSourceDataList.mediaSources.size
             }

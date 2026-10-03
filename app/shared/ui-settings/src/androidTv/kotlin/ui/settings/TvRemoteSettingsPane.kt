@@ -30,7 +30,6 @@ import androidx.tv.material3.Icon
 import androidx.tv.material3.MaterialTheme
 import androidx.tv.material3.Text
 import me.him188.ani.app.domain.settings.remote.RemoteSettingsHostState
-import me.him188.ani.app.domain.settings.remote.RemoteSettingsHostStatus
 import me.him188.ani.app.ui.lang.Lang
 import me.him188.ani.app.ui.lang.remote_settings_tv_no_network
 import me.him188.ani.app.ui.lang.remote_settings_tv_permission
@@ -67,48 +66,43 @@ internal fun TvRemoteSettingsPane(state: RemoteSettingsHostState, modifier: Modi
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.spacedBy(12.dp),
         ) {
-            val link = state.link
-            if (link != null) {
+            if (state is RemoteSettingsHostState.Ready) {
                 TvQrCode(
-                    link.toUri(),
+                    state.link.toUri(),
                     stringResource(Lang.remote_settings_tv_qr_description),
                     Modifier.size(QrSize).testTag("tv-remote-settings-qr"),
                 )
                 Text(
-                    "${link.ip}:${link.port}",
+                    "${state.link.ip}:${state.link.port}",
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                     textAlign = TextAlign.Center,
                 )
             } else {
+                val (icon, message) =
+                    when (state) {
+                        RemoteSettingsHostState.PermissionRequired ->
+                            Icons.Rounded.Lock to Lang.remote_settings_tv_permission
+                        RemoteSettingsHostState.NoNetwork ->
+                            Icons.Rounded.WifiOff to Lang.remote_settings_tv_no_network
+                        RemoteSettingsHostState.Unavailable ->
+                            Icons.Rounded.ErrorOutline to Lang.remote_settings_tv_unavailable
+                        else -> Icons.Rounded.HourglassEmpty to Lang.remote_settings_tv_starting
+                    }
                 Box(
                     Modifier.size(QrSize)
                         .background(MaterialTheme.colorScheme.onSurface.copy(alpha = .08f), QrShape),
                     contentAlignment = Alignment.Center,
                 ) {
                     Icon(
-                        when (state.status) {
-                            RemoteSettingsHostStatus.PERMISSION_REQUIRED -> Icons.Rounded.Lock
-                            RemoteSettingsHostStatus.NO_NETWORK -> Icons.Rounded.WifiOff
-                            RemoteSettingsHostStatus.UNAVAILABLE -> Icons.Rounded.ErrorOutline
-                            RemoteSettingsHostStatus.STARTING,
-                            RemoteSettingsHostStatus.READY -> Icons.Rounded.HourglassEmpty
-                        },
+                        icon,
                         null,
                         Modifier.size(48.dp),
                         tint = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
                 }
                 Text(
-                    stringResource(
-                        when (state.status) {
-                            RemoteSettingsHostStatus.PERMISSION_REQUIRED -> Lang.remote_settings_tv_permission
-                            RemoteSettingsHostStatus.NO_NETWORK -> Lang.remote_settings_tv_no_network
-                            RemoteSettingsHostStatus.UNAVAILABLE -> Lang.remote_settings_tv_unavailable
-                            RemoteSettingsHostStatus.STARTING,
-                            RemoteSettingsHostStatus.READY -> Lang.remote_settings_tv_starting
-                        },
-                    ),
+                    stringResource(message),
                     style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.onSurface,
                     textAlign = TextAlign.Center,

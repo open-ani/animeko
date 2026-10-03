@@ -31,9 +31,9 @@ import org.jetbrains.compose.resources.DrawableResource
 import org.jetbrains.compose.resources.StringResource
 import org.jetbrains.compose.resources.stringResource
 
-internal enum class TvSettingsSection(val title: StringResource) {
-    /** 详情是手机扫码用的二维码, 没有设置项. */
-    Remote(Lang.remote_settings_tv_entry),
+/** @property hasItems 详情是否为设置项列表. 没有设置项的分区在详情区展示自己的内容, 焦点留在分区列表. */
+internal enum class TvSettingsSection(val title: StringResource, val hasItems: Boolean = true) {
+    Remote(Lang.remote_settings_tv_entry, hasItems = false),
     Appearance(Lang.settings_tab_appearance),
     Theme(Lang.settings_tab_theme),
     Player(Lang.settings_tab_player),

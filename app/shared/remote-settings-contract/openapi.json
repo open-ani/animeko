@@ -832,6 +832,9 @@
             "MediaSourceCommand": {
                 "oneOf": [
                     {
+                        "$ref": "#/components/schemas/MediaSourceCommandExport"
+                    },
+                    {
                         "$ref": "#/components/schemas/MediaSourceCommandAdd"
                     },
                     {
@@ -842,9 +845,6 @@
                     },
                     {
                         "$ref": "#/components/schemas/MediaSourceCommandEnable"
-                    },
-                    {
-                        "$ref": "#/components/schemas/MediaSourceCommandExport"
                     },
                     {
                         "$ref": "#/components/schemas/MediaSourceCommandImport"
@@ -868,11 +868,11 @@
                 "discriminator": {
                     "propertyName": "type",
                     "mapping": {
+                        "export": "#/components/schemas/MediaSourceCommandExport",
                         "add": "#/components/schemas/MediaSourceCommandAdd",
                         "delete": "#/components/schemas/MediaSourceCommandDelete",
                         "edit": "#/components/schemas/MediaSourceCommandEdit",
                         "enable": "#/components/schemas/MediaSourceCommandEnable",
-                        "export": "#/components/schemas/MediaSourceCommandExport",
                         "import": "#/components/schemas/MediaSourceCommandImport",
                         "reorder": "#/components/schemas/MediaSourceCommandReorder",
                         "subscriptionAdd": "#/components/schemas/MediaSourceCommandSubscriptionAdd",

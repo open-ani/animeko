@@ -15,9 +15,7 @@ import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.CoroutineStart
 import kotlinx.coroutines.Deferred
-import kotlinx.coroutines.Job
 import kotlinx.coroutines.NonCancellable
-import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.async
 import kotlinx.coroutines.cancel
 import kotlinx.coroutines.delay
@@ -35,19 +33,9 @@ import me.him188.ani.remote.settings.generated.infrastructure.HttpResponse
 import me.him188.ani.remote.settings.generated.models.PingRequest
 import me.him188.ani.remote.settings.generated.models.PingResponse
 import me.him188.ani.remote.settings.generated.models.RemoteError
+import me.him188.ani.utils.coroutines.childScope
+import me.him188.ani.utils.coroutines.runCatchingCancellable
 import me.him188.ani.utils.platform.Uuid
-
-/** In-memory handoff from platform deep links. Navigation entries contain no access key. */
-object RemoteSettingsConnectionRequests {
-    private val pending = MutableStateFlow<RemoteSettingsLink?>(null)
-    val requests = pending.asStateFlow()
-
-    fun offer(uri: String) {
-        pending.value = RemoteSettingsLink.parse(uri)
-    }
-
-    fun take(): RemoteSettingsLink? = pending.value?.also { pending.compareAndSet(it, null) }
-}
 
 /**
  * Owns one TV target. It never resolves a local SettingsRepository or changes global DI bindings.
@@ -69,10 +57,7 @@ private constructor(
     val error = mutableError.asStateFlow()
     private var closed = false
     private var needsRefresh = false
-    private val scope =
-        CoroutineScope(
-            parentScope.coroutineContext + SupervisorJob(parentScope.coroutineContext[Job])
-        )
+    private val scope = parentScope.childScope()
     private val instance
         get() = device.serverInstanceId
 
@@ -81,7 +66,7 @@ private constructor(
     suspend fun refresh() = mutex.withLock {
         try {
             checkOpen()
-            mutableSnapshot.value = api.getState(instance).checked()
+            loadSnapshot()
             needsRefresh = false
             mutableError.value = null
         } catch (e: CancellationException) {
@@ -116,28 +101,18 @@ private constructor(
             }
         }
 
-    suspend fun mediaSource(
-        command: MediaSourceCommand,
-        baseRevision: String? = null,
-    ): RemoteOperationPayload = mediaSource(command) { baseRevision }
-
     /**
      * [baseRevision] runs after earlier writes finish, with the snapshot the request is based on.
      * Returning null uses that snapshot's revision of the affected list.
      */
     suspend fun mediaSource(
         command: MediaSourceCommand,
-        baseRevision: (SettingsSnapshot) -> String?,
+        baseRevision: (SettingsSnapshot) -> String? = { null },
     ): RemoteOperationPayload = mutate { id ->
-        val subscription =
-            command is MediaSourceCommand.SubscriptionAdd ||
-                command is MediaSourceCommand.SubscriptionEdit ||
-                command is MediaSourceCommand.SubscriptionDelete ||
-                command is MediaSourceCommand.SubscriptionRefresh
         val current = snapshot.value
         val revision =
             baseRevision(current)
-                ?: if (subscription) current.subscriptions.revision
+                ?: if (command.usesSubscriptionRevision) current.subscriptions.revision
                 else current.mediaSources.revision
         api.mediaSource(
                 MediaSourceRequest(
@@ -149,9 +124,6 @@ private constructor(
             )
             .checked()
     }
-
-    suspend fun danmakuFilters(command: ReplaceDanmakuFilters): RemoteOperationPayload =
-        editDanmakuFilters { command.filters }
 
     /**
      * [transform] runs after earlier writes finish, on the filters of the snapshot whose revision
@@ -210,38 +182,14 @@ private constructor(
                     mutableBusy.value = true
                     mutableError.value = null
                     val id = Uuid.randomString()
-                    var result =
-                        try {
-                            send(id)
-                        } catch (e: CancellationException) {
-                            throw e
-                        } catch (e: Exception) {
-                            if (e is RemoteSettingsException) throw e
-                            // A failed response does not prove a failed write. Only query the
-                            // original operation ID.
-                            try {
-                                api.getOperation(id, instance).checked()
-                            } catch (e: CancellationException) {
-                                throw e
-                            } catch (_: Exception) {
-                                throw RemoteSettingsException(
-                                    "RESULT_UNKNOWN",
-                                    "Operation result is unknown",
-                                )
-                            }
-                        }
-                    var attempts = 0
-                    while (result.status == "pending" && attempts++ < 120) {
-                        delay(1_000)
-                        result = api.getOperation(id, instance).checked()
-                    }
+                    val result = awaitCompletion(sendOrQuery(id, send))
                     if (result.status != "succeeded") {
                         throw RemoteSettingsException(
                             result.error?.code ?: "RESULT_UNKNOWN",
                             result.error?.message ?: "Operation has not completed",
                         )
                     }
-                    mutableSnapshot.value = api.getState(instance).checked()
+                    loadSnapshot()
                     checkNotNull(result.result) { "Missing operation result" }
                 } catch (e: CancellationException) {
                     throw e
@@ -263,15 +211,42 @@ private constructor(
             withContext(NonCancellable) { operation.await() }
         }
 
-    private suspend fun reloadSnapshot(): Boolean =
+    /**
+     * A failed response does not prove a failed write, so the original operation is queried
+     * instead of being sent again.
+     */
+    private suspend fun sendOrQuery(
+        id: String,
+        send: suspend (String) -> OperationResult,
+    ): OperationResult =
         try {
-            mutableSnapshot.value = api.getState(instance).checked()
-            true
+            send(id)
         } catch (e: CancellationException) {
             throw e
+        } catch (e: RemoteSettingsException) {
+            throw e
         } catch (_: Exception) {
-            false
+            runCatchingCancellable { api.getOperation(id, instance).checked() }
+                .getOrElse {
+                    throw RemoteSettingsException("RESULT_UNKNOWN", "Operation result is unknown")
+                }
         }
+
+    private suspend fun awaitCompletion(first: OperationResult): OperationResult {
+        var result = first
+        var attempts = 0
+        while (result.status == "pending" && attempts++ < MAX_PENDING_QUERIES) {
+            delay(PENDING_QUERY_INTERVAL_MILLIS)
+            result = api.getOperation(result.operationId, instance).checked()
+        }
+        return result
+    }
+
+    private suspend fun loadSnapshot() {
+        mutableSnapshot.value = api.getState(instance).checked()
+    }
+
+    private suspend fun reloadSnapshot(): Boolean = runCatchingCancellable { loadSnapshot() }.isSuccess
 
     private fun checkOpen() = checkRemote(!closed, "SESSION_CLOSED", "Session closed")
 
@@ -282,6 +257,10 @@ private constructor(
     }
 
     companion object {
+        /** Together they cover the time the TV allows one operation to run. */
+        private const val MAX_PENDING_QUERIES = 120
+        private const val PENDING_QUERY_INTERVAL_MILLIS = 1_000L
+
         private val UnconfirmedFailures =
             setOf(
                 RemoteSettingsFailure.RESULT_UNKNOWN,
@@ -330,12 +309,7 @@ private constructor(
 
 private suspend fun <T : Any> HttpResponse<T>.checked(): T {
     if (success) return body()
-    val error =
-        try {
-            response.body<RemoteError>()
-        } catch (_: Exception) {
-            null
-        }
+    val error = runCatchingCancellable { response.body<RemoteError>() }.getOrNull()
     throw RemoteSettingsException(
         error?.code ?: "HTTP_ERROR",
         error?.message ?: "HTTP error ($status)",

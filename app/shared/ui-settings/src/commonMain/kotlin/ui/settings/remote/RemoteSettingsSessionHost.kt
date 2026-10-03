@@ -37,6 +37,9 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.foundation.layout.size
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.compose.LocalLifecycleOwner
@@ -103,7 +106,18 @@ fun RemoteSettingsSessionHost(
                             Modifier.padding(horizontal = 20.dp, vertical = 12.dp),
                             verticalAlignment = Alignment.CenterVertically,
                         ) {
-                            Icon(Icons.Outlined.Tv, null, Modifier.padding(end = 12.dp))
+                            // 保存状态占用图标的位置, 气泡高度不随保存变化.
+                            Box(Modifier.padding(end = 12.dp).size(24.dp)) {
+                                if (busy) {
+                                    val saving = stringResource(Lang.remote_settings_saving)
+                                    CircularProgressIndicator(
+                                        Modifier.matchParentSize().semantics {
+                                            contentDescription = saving
+                                        },
+                                        strokeWidth = 2.dp,
+                                    )
+                                } else Icon(Icons.Outlined.Tv, null)
+                            }
                             Column(Modifier.weight(1f)) {
                                 Text(
                                     stringResource(
@@ -113,11 +127,6 @@ fun RemoteSettingsSessionHost(
                                     maxLines = 2,
                                     overflow = TextOverflow.Ellipsis,
                                 )
-                                if (busy)
-                                    Text(
-                                        stringResource(Lang.remote_settings_saving),
-                                        style = MaterialTheme.typography.bodySmall,
-                                    )
                                 error?.let {
                                     Text(
                                         stringResource(it.messageResource()),

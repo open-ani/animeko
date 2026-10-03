@@ -9,17 +9,16 @@
 
 package me.him188.ani.app.ui.settings.remote
 
+import androidx.compose.runtime.State
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.CoroutineStart
 import kotlinx.coroutines.launch
 import kotlinx.serialization.builtins.ListSerializer
 import me.him188.ani.app.data.models.danmaku.DanmakuRegexFilter
-import me.him188.ani.app.data.repository.user.Settings
-import me.him188.ani.app.domain.settings.remote.RemotePreferencesSnapshot
+import me.him188.ani.app.domain.settings.remote.RemotePreferenceSettings
 import me.him188.ani.app.domain.settings.remote.RemoteSettingsBackup
 import me.him188.ani.app.domain.settings.remote.RemoteSettingsSession
-import me.him188.ani.app.domain.settings.remote.ReplaceDanmakuFilters
-import me.him188.ani.app.domain.settings.remote.VersionedValue
 import me.him188.ani.app.ui.foundation.produceState
 import me.him188.ani.app.ui.settings.danmaku.DanmakuRegexFilterState
 import me.him188.ani.app.ui.settings.framework.SettingsState
@@ -38,17 +37,28 @@ class RemoteSettingsFormState(
     private val json = RemoteSettingsProtocol.json
     private val filtersSerializer = ListSerializer(DanmakuRegexFilter.serializer())
 
-    private fun <T> state(
-        select: (RemotePreferencesSnapshot) -> VersionedValue<T>,
-        settings: Settings<T>,
-    ): SettingsState<T> {
-        val initial = select(session.snapshot.value.preferences).value
+    /**
+     * 控件在点击时读取 [State.value] 构造新的配置对象并提交. 读取和提交都在点击的线程上同步完成,
+     * 因此连续的编辑各自基于前一次编辑的值, 并按点击顺序写入电视.
+     */
+    private fun <T> state(settings: RemotePreferenceSettings<T>): SettingsState<T> {
+        val initial = settings.current
+        val observed = settings.flow.produceState(initial, scope)
+        val latest =
+            object : State<T> {
+                override val value: T
+                    get() {
+                        observed.value // 订阅重组
+                        return settings.current
+                    }
+            }
         return SettingsState(
-            settings.flow.produceState(initial, scope),
+            latest,
             onUpdate = { value -> settings.set(value) },
             initial,
             scope,
             initiallyLoaded = true,
+            updateStart = CoroutineStart.UNDISPATCHED,
         )
     }
 
@@ -65,48 +75,24 @@ class RemoteSettingsFormState(
     }
 
     val storage =
-        state(
-            RemotePreferencesSnapshot::mediaCacheSettings,
-            session.preferences.mediaCacheSettings,
-        )
+        state(session.preferences.mediaCacheSettings)
 
     val video =
-        state(
-            RemotePreferencesSnapshot::videoScaffoldConfig,
-            session.preferences.videoScaffoldConfig,
-        )
+        state(session.preferences.videoScaffoldConfig)
     val kernel =
-        state(
-            RemotePreferencesSnapshot::playerKernelConfig,
-            session.preferences.playerKernelConfig,
-        )
+        state(session.preferences.playerKernelConfig)
     val filter =
-        state(
-            RemotePreferencesSnapshot::danmakuFilterConfig,
-            session.preferences.danmakuFilterConfig,
-        )
+        state(session.preferences.danmakuFilterConfig)
     val watching =
-        state(
-            RemotePreferencesSnapshot::watchTogetherSettings,
-            session.preferences.watchTogetherSettings,
-        )
+        state(session.preferences.watchTogetherSettings)
     val selector =
-        state(
-            RemotePreferencesSnapshot::mediaSelectorSettings,
-            session.preferences.mediaSelectorSettings,
-        )
+        state(session.preferences.mediaSelectorSettings)
     val resolver =
-        state(
-            RemotePreferencesSnapshot::videoResolverSettings,
-            session.preferences.videoResolverSettings,
-        )
+        state(session.preferences.videoResolverSettings)
 
     val selection =
         MediaSelectionGroupState(
-            state(
-                RemotePreferencesSnapshot::defaultMediaPreference,
-                session.preferences.defaultMediaPreference,
-            ),
+            state(session.preferences.defaultMediaPreference),
             selector,
             resolver,
         )
@@ -137,9 +123,8 @@ class RemoteSettingsFormState(
             },
             onExport = { json.encodeToString(filtersSerializer, filters.value) },
             onImport = { text ->
-                session.danmakuFilters(
-                    ReplaceDanmakuFilters(json.decodeFromString(filtersSerializer, text))
-                )
+                val imported = json.decodeFromString(filtersSerializer, text)
+                session.editDanmakuFilters { imported }
                 true
             },
         )

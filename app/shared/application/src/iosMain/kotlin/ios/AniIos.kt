@@ -133,8 +133,7 @@ class AniIosApplication(
      */
     @Suppress("unused") // used in Swift
     fun openUrl(url: String): Boolean {
-        if (url.startsWith("ani://remote-settings?") || url.startsWith("ani://remote-settings/?")) {
-            if (runCatching { RemoteSettingsConnectionRequests.offer(url) }.isFailure) return false
+        if (RemoteSettingsConnectionRequests.offer(url)) {
             scope.launch(Dispatchers.Main) {
                 aniNavigator.awaitBackStack()
                 aniNavigator.navigateRemoteSettings()

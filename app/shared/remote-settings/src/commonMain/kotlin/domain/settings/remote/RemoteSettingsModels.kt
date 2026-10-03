@@ -141,10 +141,10 @@ data class SettingsSnapshot(
 
 @Serializable
 data class PreferenceRequest(
-    val operationId: String,
-    val baseRevision: String,
+    override val operationId: String,
+    override val baseRevision: String,
     val value: RemotePreference,
-)
+) : RemoteCommandRequest
 
 sealed interface RemoteCommandRequest {
     val operationId: String

@@ -39,7 +39,6 @@ import kotlinx.coroutines.async
 import kotlinx.coroutines.withTimeout
 import kotlinx.coroutines.withTimeoutOrNull
 import kotlinx.io.readByteArray
-import kotlinx.serialization.SerializationException
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.JsonArray
 import kotlinx.serialization.json.JsonElement
@@ -104,13 +103,14 @@ class RemoteSettingsServer(
  * Canonical, process-scoped revision tokens reveal neither configuration contents nor credentials.
  */
 class HmacSettingsRevision : RemoteSettingsRevision {
-    private val secret = ByteArray(32).also { SecureRandom().nextBytes(it) }
+    private val key =
+        SecretKeySpec(ByteArray(32).also { SecureRandom().nextBytes(it) }, "HmacSHA256")
 
     override fun of(resource: String, encodedValue: String): String {
         val value = RemoteSettingsProtocol.json.parseToJsonElement(encodedValue)
         val mac = Mac.getInstance("HmacSHA256")
-        mac.init(SecretKeySpec(secret, "HmacSHA256"))
-        return mac.doFinal((resource + "\n" + canonical(value)).toByteArray(Charsets.UTF_8)).hex()
+        mac.init(key)
+        return mac.doFinal((resource + "\n" + canonical(value)).toByteArray(Charsets.UTF_8)).toHexString()
     }
 }
 
@@ -121,7 +121,19 @@ private fun canonical(value: JsonElement): JsonElement =
         else -> value
     }
 
-private fun ByteArray.hex(): String = joinToString("") { "%02x".format(it.toInt() and 0xff) }
+/** How long a request waits for its operation before answering that it is still pending. */
+private const val OPERATION_REPLY_TIMEOUT_MILLIS = 1_000L
+
+private suspend fun Deferred<OperationResult>.awaitBriefly(): OperationResult? =
+    withTimeoutOrNull(OPERATION_REPLY_TIMEOUT_MILLIS) { await() }
+
+private fun Throwable.toRemoteError(invalidMessage: String, fallback: RemoteError): RemoteError =
+    when (this) {
+        is RemoteSettingsException -> RemoteError(code, message)
+        // Includes SerializationException.
+        is IllegalArgumentException -> RemoteError("INVALID_ARGUMENT", invalidMessage)
+        else -> fallback
+    }
 
 /** Accepted operations belong to the application scope, independent of the requesting socket. */
 class RemoteOperationLedger(private val scope: CoroutineScope, private val capacity: Int = 1024) {
@@ -143,9 +155,7 @@ class RemoteOperationLedger(private val scope: CoroutineScope, private val capac
             throw RemoteSettingsException("INVALID_OPERATION_ID", "Invalid operation ID")
         }
         val now = System.nanoTime()
-        entries.entries.removeIf {
-            it.value.task.isCompleted && now - it.value.createdAt > 600_000_000_000L
-        }
+        entries.values.removeIf { it.task.isCompleted && now - it.createdAt > RESULT_TTL_NANOS }
         entries[id]?.let {
             if (it.fingerprint != fingerprint)
                 throw RemoteSettingsException(
@@ -158,27 +168,16 @@ class RemoteOperationLedger(private val scope: CoroutineScope, private val capac
             throw RemoteSettingsException("BUSY", "Operation capacity reached")
         val task = scope.async {
             try {
-                val result = withTimeout(120_000) { action() }
-                OperationResult(id, "succeeded", result)
-            } catch (e: CancellationException) {
-                OperationResult(
+                OperationResult(id, "succeeded", withTimeout(OPERATION_TIMEOUT_MILLIS) { action() })
+            } catch (_: CancellationException) {
+                failed(id, RemoteError("INTERRUPTED", "Operation interrupted"))
+            } catch (e: Exception) {
+                failed(
                     id,
-                    "failed",
-                    error = RemoteError("INTERRUPTED", "Operation interrupted"),
-                )
-            } catch (e: RemoteSettingsException) {
-                OperationResult(id, "failed", error = RemoteError(e.code, e.message))
-            } catch (_: IllegalArgumentException) {
-                OperationResult(
-                    id,
-                    "failed",
-                    error = RemoteError("INVALID_ARGUMENT", "Invalid settings"),
-                )
-            } catch (_: Exception) {
-                OperationResult(
-                    id,
-                    "failed",
-                    error = RemoteError("APPLY_FAILED", "Operation failed"),
+                    e.toRemoteError(
+                        invalidMessage = "Invalid settings",
+                        fallback = RemoteError("APPLY_FAILED", "Operation failed"),
+                    ),
                 )
             }
         }
@@ -187,6 +186,13 @@ class RemoteOperationLedger(private val scope: CoroutineScope, private val capac
     }
 
     @Synchronized fun find(id: String): Deferred<OperationResult>? = entries[id]?.task
+
+    private fun failed(id: String, error: RemoteError) = OperationResult(id, "failed", error = error)
+
+    private companion object {
+        const val OPERATION_TIMEOUT_MILLIS = 120_000L
+        const val RESULT_TTL_NANOS = 600_000_000_000L
+    }
 }
 
 internal fun Application.remoteSettingsRoutes(
@@ -199,35 +205,23 @@ internal fun Application.remoteSettingsRoutes(
     routing {
         route("/") {
             intercept(ApplicationCallPipeline.Call) {
-                val authorization = call.request.header(HttpHeaders.Authorization).orEmpty()
-                val token = authorization.removePrefix("Bearer ")
-                when {
-                    !authorization.startsWith("Bearer ") ||
-                        !MessageDigest.isEqual(
-                            token.toByteArray(Charsets.UTF_8),
-                            accessKey.toByteArray(Charsets.UTF_8),
-                        ) -> {
-                        call.reply(
-                            RemoteError("UNAUTHORIZED", "Invalid access key"),
-                            HttpStatusCode.Unauthorized,
-                        )
-                        finish()
+                val instance = call.request.header("X-Ani-Server-Instance")
+                val rejection =
+                    when {
+                        !call.hasAccessKey(accessKey) ->
+                            RemoteError("UNAUTHORIZED", "Invalid access key") to
+                                HttpStatusCode.Unauthorized
+                        call.request.header(HttpHeaders.Origin) != null ->
+                            RemoteError("FORBIDDEN", "Browser requests are not supported") to
+                                HttpStatusCode.Forbidden
+                        instance != null && instance != instanceId ->
+                            RemoteError("SERVER_RESTARTED", "Server instance changed") to
+                                HttpStatusCode.Conflict
+                        else -> null
                     }
-                    call.request.header(HttpHeaders.Origin) != null -> {
-                        call.reply(
-                            RemoteError("FORBIDDEN", "Browser requests are not supported"),
-                            HttpStatusCode.Forbidden,
-                        )
-                        finish()
-                    }
-                    call.request.header("X-Ani-Server-Instance")?.let { it != instanceId } ==
-                        true -> {
-                        call.reply(
-                            RemoteError("SERVER_RESTARTED", "Server instance changed"),
-                            HttpStatusCode.Conflict,
-                        )
-                        finish()
-                    }
+                if (rejection != null) {
+                    call.reply(rejection.first, rejection.second)
+                    finish()
                 }
             }
             post("ping") {
@@ -246,19 +240,7 @@ internal fun Application.remoteSettingsRoutes(
             }
             get("state") { call.handle { reply(backend.snapshot()) } }
             get("log") { call.handle { reply(backend.log()) } }
-            post("preference") {
-                call.handle {
-                    val request = body<PreferenceRequest>()
-                    operation(
-                        operations,
-                        request.operationId,
-                        "preference:" +
-                            fingerprint(RemoteSettingsProtocol.json.encodeToString(request)),
-                    ) {
-                        backend.preference(request)
-                    }
-                }
-            }
+            commandRoute<PreferenceRequest>("preference", operations, backend::preference)
             commandRoute<MediaSourceRequest>("media-source", operations, backend::mediaSource)
             commandRoute<DanmakuFilterRequest>(
                 "danmaku-filter",
@@ -276,10 +258,7 @@ internal fun Application.remoteSettingsRoutes(
                             HttpStatusCode.NotFound,
                         )
                     else
-                        reply(
-                            withTimeoutOrNull(1_000) { task.await() }
-                                ?: OperationResult(id, "pending")
-                        )
+                        reply(task.awaitBriefly() ?: OperationResult(id, "pending"))
                 }
             }
         }
@@ -305,8 +284,18 @@ private inline fun <reified T : RemoteCommandRequest> Route.commandRoute(
     }
 }
 
+/** Compares in constant time. */
+private fun ApplicationCall.hasAccessKey(accessKey: String): Boolean {
+    val authorization = request.header(HttpHeaders.Authorization).orEmpty()
+    return authorization.startsWith("Bearer ") &&
+        MessageDigest.isEqual(
+            authorization.removePrefix("Bearer ").toByteArray(Charsets.UTF_8),
+            accessKey.toByteArray(Charsets.UTF_8),
+        )
+}
+
 private fun fingerprint(value: String) =
-    MessageDigest.getInstance("SHA-256").digest(value.toByteArray(Charsets.UTF_8)).hex()
+    MessageDigest.getInstance("SHA-256").digest(value.toByteArray(Charsets.UTF_8)).toHexString()
 
 private suspend fun ApplicationCall.operation(
     ledger: RemoteOperationLedger,
@@ -315,7 +304,7 @@ private suspend fun ApplicationCall.operation(
     action: suspend () -> RemoteOperationPayload,
 ) {
     val task = ledger.submit(id, fingerprint, action)
-    val result = withTimeoutOrNull(1_000) { task.await() }
+    val result = task.awaitBriefly()
     reply(
         result ?: OperationResult(id, "pending"),
         if (result == null) HttpStatusCode.Accepted else HttpStatusCode.OK,
@@ -356,23 +345,20 @@ private suspend fun ApplicationCall.handle(action: suspend ApplicationCall.() ->
         action()
     } catch (e: CancellationException) {
         throw e
-    } catch (e: RemoteSettingsException) {
+    } catch (e: Exception) {
+        val error =
+            e.toRemoteError(
+                invalidMessage = "Invalid request format",
+                fallback = RemoteError("SERVER_ERROR", "Internal server error"),
+            )
         val status =
-            when (e.code) {
+            when (error.code) {
                 "BUSY" -> HttpStatusCode.TooManyRequests
                 "PAYLOAD_TOO_LARGE" -> HttpStatusCode.PayloadTooLarge
                 "OPERATION_ID_REUSED" -> HttpStatusCode.Conflict
+                "SERVER_ERROR" -> HttpStatusCode.InternalServerError
                 else -> HttpStatusCode.BadRequest
             }
-        reply(RemoteError(e.code, e.message), status)
-    } catch (_: SerializationException) {
-        reply(RemoteError("INVALID_ARGUMENT", "Invalid request format"), HttpStatusCode.BadRequest)
-    } catch (_: IllegalArgumentException) {
-        reply(RemoteError("INVALID_ARGUMENT", "Invalid request format"), HttpStatusCode.BadRequest)
-    } catch (_: Exception) {
-        reply(
-            RemoteError("SERVER_ERROR", "Internal server error"),
-            HttpStatusCode.InternalServerError,
-        )
+        reply(error, status)
     }
 }

@@ -99,7 +99,7 @@ class MainActivity : AniComponentActivity(), PictureInPictureHost {
                 navigateWhenReady("QR login confirm") { navigateQrLoginConfirm(requestId) }
             }
             "remote-settings" -> {
-                if (runCatching { RemoteSettingsConnectionRequests.offer(data.toString()) }.isFailure) return
+                if (!RemoteSettingsConnectionRequests.offer(data.toString())) return
                 intent.data = null
                 navigateWhenReady("remote settings") { navigateRemoteSettings() }
             }

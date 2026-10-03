@@ -34,8 +34,8 @@ import me.him188.ani.app.data.persistent.dataStores
 import me.him188.ani.app.domain.settings.remote.LocalNetworkPermission
 import me.him188.ani.app.domain.settings.remote.RemoteSettingsHost
 import me.him188.ani.app.domain.settings.remote.RemoteSettingsHostState
-import me.him188.ani.app.domain.settings.remote.RemoteSettingsHostStatus
 import me.him188.ani.app.platform.currentAniBuildConfig
+import me.him188.ani.app.ui.settings.tabs.log.getLogsDir
 import me.him188.ani.remote.settings.RemoteSettingsLink
 import me.him188.ani.remote.settings.RemoteSettingsProtocol
 import me.him188.ani.remote.settings.generated.models.LogSnapshot
@@ -57,7 +57,7 @@ class AndroidRemoteSettingsHost(
     private val appVersion: String,
     private val userId: Flow<String?>,
 ) : RemoteSettingsHost {
-    private val mutableState = MutableStateFlow(RemoteSettingsHostState())
+    private val mutableState = MutableStateFlow<RemoteSettingsHostState>(RemoteSettingsHostState.Starting)
     override val state: StateFlow<RemoteSettingsHostState> = mutableState.asStateFlow()
 
     fun start(scope: CoroutineScope): Job = scope.launch(Dispatchers.IO) {
@@ -66,15 +66,15 @@ class AndroidRemoteSettingsHost(
             val port = startServer(server)
             combine(lanAddresses(context), userId) { address, user ->
                 if (address == null) {
-                    RemoteSettingsHostState(status = RemoteSettingsHostStatus.NO_NETWORK)
+                    RemoteSettingsHostState.NoNetwork
                 } else {
-                    RemoteSettingsHostState(
+                    RemoteSettingsHostState.Ready(
                         RemoteSettingsLink(address, port, server.accessKey, appVersion, user.orEmpty()),
                     )
                 }
             }.retryWhen { cause, _ ->
                 logger.warn(cause) { "Failed to update remote settings link" }
-                mutableState.value = RemoteSettingsHostState(status = RemoteSettingsHostStatus.UNAVAILABLE)
+                mutableState.value = RemoteSettingsHostState.Unavailable
                 delay(RETRY_INTERVAL)
                 true
             }.collect { mutableState.value = it }
@@ -84,7 +84,7 @@ class AndroidRemoteSettingsHost(
     /** 权限没有变化通知. 撤销权限会结束进程, 因此只需等到授予. */
     private suspend fun awaitLocalNetworkPermission() {
         while (!LocalNetworkPermission.isGranted(context)) {
-            mutableState.value = RemoteSettingsHostState(status = RemoteSettingsHostStatus.PERMISSION_REQUIRED)
+            mutableState.value = RemoteSettingsHostState.PermissionRequired
             delay(PERMISSION_CHECK_INTERVAL)
         }
     }
@@ -97,7 +97,7 @@ class AndroidRemoteSettingsHost(
                 throw e
             } catch (e: Exception) {
                 logger.warn(e) { "Failed to start remote settings server" }
-                mutableState.value = RemoteSettingsHostState(status = RemoteSettingsHostStatus.UNAVAILABLE)
+                mutableState.value = RemoteSettingsHostState.Unavailable
                 delay(RETRY_INTERVAL)
             }
         }
@@ -114,7 +114,7 @@ class AndroidRemoteSettingsHost(
             val stores = application.dataStores
             val appVersion = currentAniBuildConfig.versionName
             val userId = stores.selfInfoStore.data.map { it?.id?.toString() }.distinctUntilChanged()
-            val logFile = application.filesDir.resolve("logs/app.log")
+            val logFile = application.getLogsDir().resolve("app.log")
             val createServer = {
                 val backend = LocalRemoteSettingsBackend(
                     settings = koin.get(),

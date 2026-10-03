@@ -34,7 +34,6 @@ import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertTrue
 import me.him188.ani.app.domain.settings.remote.RemoteSettingsHostState
-import me.him188.ani.app.domain.settings.remote.RemoteSettingsHostStatus
 import me.him188.ani.app.ui.framework.AniComposeUiTest
 import me.him188.ani.app.ui.framework.runAniComposeUiTest
 import me.him188.ani.remote.settings.RemoteSettingsLink
@@ -50,7 +49,7 @@ class TvRemoteSettingsPaneTest {
             "6.0.0-beta01",
             "",
         )
-    private var remoteSettings by mutableStateOf(RemoteSettingsHostState(link))
+    private var remoteSettings by mutableStateOf<RemoteSettingsHostState>(RemoteSettingsHostState.Ready(link))
     private var permissionRequests = 0
 
     @Test
@@ -83,14 +82,14 @@ class TvRemoteSettingsPaneTest {
 
     @Test
     fun confirmRequestsThePermissionAndTheCodeAppearsWhenGranted() = runAniComposeUiTest {
-        remoteSettings = RemoteSettingsHostState(status = RemoteSettingsHostStatus.PERMISSION_REQUIRED)
+        remoteSettings = RemoteSettingsHostState.PermissionRequired
         mount()
         onNodeWithTag("tv-remote-settings-status").assertIsDisplayed()
         onNodeWithTag("tv-remote-settings-qr").assertDoesNotExist()
         assertEquals(0, permissionRequests)
         key(Key.DirectionCenter)
         assertEquals(1, permissionRequests)
-        remoteSettings = RemoteSettingsHostState(link)
+        remoteSettings = RemoteSettingsHostState.Ready(link)
         waitForIdle()
         onNodeWithTag("tv-remote-settings-qr").assertIsDisplayed()
         awaitFocus("tv-settings-section-Remote")
@@ -98,7 +97,7 @@ class TvRemoteSettingsPaneTest {
 
     @Test
     fun statusFitsThePaneAtLargeFont() = runAniComposeUiTest {
-        remoteSettings = RemoteSettingsHostState(status = RemoteSettingsHostStatus.NO_NETWORK)
+        remoteSettings = RemoteSettingsHostState.NoNetwork
         mount(fontScale = 1.3f)
         onNodeWithTag("tv-remote-settings-status").assertIsDisplayed()
         val pane = onNodeWithTag("tv-settings-detail").fetchSemanticsNode().boundsInRoot
