@@ -641,6 +641,7 @@
     <string name="exploration_title">探索</string>
     <string name="exploration_settings">设置</string>
     <string name="exploration_search">搜索</string>
+    <string name="exploration_search_placeholder">关键词/番剧ID/URL</string>
     <string name="exploration_trending">最高热度</string>
     <string name="exploration_schedule">新番时间表</string>
     <string name="exploration_schedule_view_details">查看详情</string>

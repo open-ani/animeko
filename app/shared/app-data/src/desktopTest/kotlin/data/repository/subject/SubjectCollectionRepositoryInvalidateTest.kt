@@ -65,6 +65,8 @@ import me.him188.ani.datasources.api.PackedDate
 import me.him188.ani.datasources.api.topic.UnifiedCollectionType
 import me.him188.ani.datasources.bangumi.models.BangumiSubjectCollectionType
 import me.him188.ani.utils.ktor.ApiInvoker
+import me.him188.ani.utils.ktor.ScopedHttpClient
+import me.him188.ani.utils.ktor.UnsafeScopedHttpClientApi
 import me.him188.ani.utils.platform.currentTimeMillis
 import java.util.concurrent.CopyOnWriteArrayList
 import java.util.concurrent.atomic.AtomicInteger
@@ -189,6 +191,12 @@ class SubjectCollectionRepositoryInvalidateTest {
         override suspend fun getBangumiFullSyncState(): BangumiSyncState? = throw UnsupportedOperationException()
     }
 
+    @OptIn(UnsafeScopedHttpClientApi::class)
+    private object UnusedBangumiClient : ScopedHttpClient() {
+        override fun borrow(): Ticket = error("Bangumi client not expected")
+        override fun returnClient(ticket: Ticket) = error("Bangumi client not expected")
+    }
+
     private object UnusedSubjectsApi : ApiInvoker<SubjectsAniApi> {
         override suspend fun <R> invoke(action: suspend SubjectsAniApi.() -> R): R {
             error("ApiInvoker not expected in tests")
@@ -218,7 +226,7 @@ class SubjectCollectionRepositoryInvalidateTest {
         val database = createTestAniDatabase()
         try {
             val service = FakeSubjectService()
-            val episodeService = EpisodeServiceImpl(UnusedSubjectsApi)
+            val episodeService = EpisodeServiceImpl(UnusedSubjectsApi, UnusedBangumiClient)
             val animeScheduleRepository = AnimeScheduleRepository(AnimeScheduleService(UnusedScheduleApi))
             val getEpisodeTypeFiltersUseCase = GetEpisodeTypeFiltersUseCase { flowOf(EpisodeType.entries) }
             lateinit var repository: SubjectCollectionRepositoryImpl
