@@ -35,7 +35,8 @@
 ## 层级与布局
 
 `VideoScaffold` 的 `screenshotOverlay` 槽覆盖整个播放器区域, 位于控制器之上、侧边栏之下, 面板以外不拦截输入.
-槽参数是底部控制栏当前占用的高度 (隐藏时为 0): 面板据此避让, 控制栏隐藏时面板下移到边距处.
+槽参数是底部控制栏 (含独立进度条) 当前占用的高度, 不含系统栏边距 (隐藏时为 0): 面板据此避让, 控制栏隐藏时面板下移到边距处.
+左下角的跳过 OP/ED 提示 (`leftBottomTips` 槽) 由框架用同一高度抬到控制栏之上 (`VideoScaffoldBottomRegionTest`).
 容器变换的起点与视频区域对齐, 不应用系统栏边距; 只有面板的停靠位置避开边距.
 
 面板几何由纯函数 `computePlayerScreenshotPanelGeometry` 计算 (`PlayerScreenshotPanelLayoutTest`);

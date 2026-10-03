@@ -19,7 +19,6 @@ import androidx.compose.foundation.layout.RowScope
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.offset
-import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.rounded.OpenInNew
 import androidx.compose.material.icons.outlined.Analytics
@@ -972,10 +971,7 @@ private fun PreviewVideoScaffoldImpl(
             VideoAspectRatioControllerState(NoOpVideoAspectRatio, scope)
         },
         leftBottomTips = {
-            PlayerControllerDefaults.LeftBottomTips(
-                onClick = {},
-                modifier = Modifier.padding(if (expanded) 16.dp else 8.dp),
-            )
+            PlayerControllerDefaults.LeftBottomTips(onClick = {})
         },
         fullscreenSwitchButton = {
             EpisodeVideoDefaults.FloatingFullscreenSwitchButton(

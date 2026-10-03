@@ -9,6 +9,7 @@
 
 package me.him188.ani.app.videoplayer.ui
 
+import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.foundation.background
 import androidx.compose.foundation.gestures.awaitEachGesture
 import androidx.compose.foundation.layout.Arrangement
@@ -78,6 +79,7 @@ val LocalVideoScaffoldSheetWindowInsets = compositionLocalOf<WindowInsets> { Win
  *
  * - 悬浮消息: [floatingMessage], 例如正在缓冲
  * - 截图反馈: [screenshotOverlay], 闪光与截图预览面板
+ * - 左下提示: [leftBottomTips], 例如跳过 OP/ED 的提示
  * - 控制器: [topBar], [rhsBar] 和 [bottomBar]
  * - 手势: [gestureHost]
  * - 弹幕: [danmakuHost]
@@ -93,8 +95,9 @@ val LocalVideoScaffoldSheetWindowInsets = compositionLocalOf<WindowInsets> { Win
  * @param rhsBar 右侧控制栏, 锁定手势等.
  * @param rhsSheet 右侧侧边栏. 框架不为它应用 [contentWindowInsets], 而是通过 [LocalVideoScaffoldSheetWindowInsets] 提供给它.
  * @param bottomBar [PlayerControllerBar]
+ * @param leftBottomTips 左下角的提示, 例如跳过 OP/ED 的提示气泡. 框架把它停在左下角、底部控制栏之上, 控制栏显隐时平滑跟随.
  * @param screenshotOverlay 覆盖整个播放器区域的截图反馈层 (闪光、截图预览面板), 位于控制器之上、[rhsSheet] 之下.
- * 参数是底部控制栏当前占用的高度 (隐藏时为 0), 面板据此避让.
+ * 参数是底部控制栏当前占用的高度 (不含系统栏边距, 隐藏时为 0), 面板据此避让.
  * @param expanded 当前是否处于全屏模式. 全屏时此框架会 [Modifier.fillMaxSize], 否则会限制为一个 16:9 的框.
  * @param videoOnly 只组合 [video], 其他各层都不组合, 用于画中画小窗.
  * 切换它不会重建 [video]: 播放器节点被重建会销毁视频输出.
@@ -133,6 +136,11 @@ fun VideoScaffold(
     val controllerVisibility = controllerState.visibility
         .withGestureLocked(gestureLocked)
         .withExpanded(expanded)
+    // 底部控制栏 (含独立进度条) 占用的高度, 由布局测得, 淡出完毕从布局移除后归零.
+    // 不含底部系统栏边距: 控制栏自己应用了边距, 避让它的元素也各自应用, 不重复计.
+    val bottomControllerHeight = with(LocalDensity.current) {
+        (bottomControllerHeightPx - contentWindowInsets.getBottom(this)).coerceAtLeast(0).toDp()
+    }
 
     val enterTransition = LocalAniMotionScheme.current.animatedVisibility.standardEnter
     val exitTransition = LocalAniMotionScheme.current.animatedVisibility.standardExit
@@ -251,7 +259,7 @@ fun VideoScaffold(
 
                     Box(Modifier.weight(1f, fill = true).fillMaxWidth())
 
-                    Column {
+                    Column(Modifier.onSizeChanged { bottomControllerHeightPx = it.height }) {
                         // 底部控制栏: 播放/暂停, 进度条, 切换全屏
                         AniAnimatedVisibility(
                             visible = controllerVisibility.bottomBar,
@@ -261,7 +269,6 @@ fun VideoScaffold(
                             val alwaysOnRequester = rememberAlwaysOnRequester(controllerState, "bottomBar")
                             Column(
                                 Modifier
-                                    .onSizeChanged { bottomControllerHeightPx = it.height }
                                     .hoverToRequestAlwaysOn(alwaysOnRequester)
                                     .pointerInput(Unit) {
                                         awaitEachGesture {
@@ -360,24 +367,20 @@ fun VideoScaffold(
                 }
             }
 
+            // 左下提示: 贴着左下角, 抬到底部控制栏之上, 控制栏显隐时平滑跟随
             Box(Modifier.matchParentSize()) {
-                Column(Modifier.windowInsetsPadding(contentWindowInsets)) {
-                    Box(Modifier.weight(0.5f))
-                    Row(
-                        Modifier.weight(0.5f),
-                        verticalAlignment = Alignment.CenterVertically,
-                    ) {
-                        leftBottomTips()
-                    }
+                val lift by animateDpAsState(bottomControllerHeight, label = "leftBottomTipsLift")
+                Box(
+                    Modifier.align(Alignment.BottomStart)
+                        .padding(bottom = lift)
+                        .windowInsetsPadding(contentWindowInsets.only(WindowInsetsSides.Horizontal + WindowInsetsSides.Bottom))
+                        .padding(if (expanded) 16.dp else 8.dp),
+                ) {
+                    leftBottomTips()
                 }
             }
-            // 截图反馈层: 盖在控制器之上, 面板避开可见的底部控制栏
+            // 截图反馈层: 盖在控制器之上, 面板避开底部控制栏
             Box(Modifier.matchParentSize()) {
-                val bottomControllerHeight = if (controllerVisibility.bottomBar) {
-                    with(LocalDensity.current) { bottomControllerHeightPx.toDp() }
-                } else {
-                    0.dp
-                }
                 screenshotOverlay(bottomControllerHeight)
             }
             // 悬浮消息, 例如正在缓冲
