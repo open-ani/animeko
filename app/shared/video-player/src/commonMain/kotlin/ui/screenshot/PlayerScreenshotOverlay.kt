@@ -125,8 +125,10 @@ private val ActionButtonGap = 8.dp
 /** B 区域内动作按钮到边缘的留白. */
 private val LobePadding = 8.dp
 
-/** B 区域向屏幕中央伸出 A 以外的长度: 正好放下两个动作按钮. */
-private val LobeExtension = LobePadding * 2 + ActionButtonSize * 2 + ActionButtonGap
+/**
+ * B 区域向屏幕中央伸出 A 以外的长度: 第一个按钮紧贴 A 的边缘 (与画面的距离就是 [ImagePadding]), 然后是间距、第二个按钮和末端留白.
+ */
+private val LobeExtension = ActionButtonSize * 2 + ActionButtonGap + LobePadding
 
 /** B 区域上边与 A 区域侧边之间内凹圆角的半径. */
 private val NeckRadius = 12.dp
@@ -375,7 +377,7 @@ private fun ScreenshotPanel(
     val lobePaddingPx = with(density) { LobePadding.roundToPx() }
     val neckRadiusPx = with(density) { NeckRadius.toPx() }
     val lobeHeightPx = buttonSizePx + 2 * lobePaddingPx
-    val extensionPx = 2 * lobePaddingPx + 2 * buttonSizePx + buttonGapPx
+    val extensionPx = 2 * buttonSizePx + buttonGapPx + lobePaddingPx
     // B 藏进 A 里的深度取 B 的半径, 朝 A 的那个圆头完全藏在 A 里
     val lobeOverlapPx = lobeHeightPx / 2
     val panelColor = MaterialTheme.colorScheme.surfaceContainer
@@ -499,11 +501,11 @@ private fun ScreenshotPanel(
             (imageX + imageWidth).toFloat(),
             (imageY + imageHeight).toFloat(),
         )
-        // 动作按钮都在 B 伸出 A 的那段里, 靠 A 的是分享, 外侧的是复制
+        // 动作按钮都在 B 伸出 A 的那段里: 分享紧贴 A 的边缘, 与画面只隔 A 的留白; 复制在外侧
         val buttonY = regionAHeight - lobeHeightPx + lobePaddingPx
         val shareX = when (corner) {
-            PlayerScreenshotPanelCorner.BottomLeft -> regionAX + regionAWidth + lobePaddingPx
-            PlayerScreenshotPanelCorner.BottomRight -> regionAX - lobePaddingPx - buttonSizePx
+            PlayerScreenshotPanelCorner.BottomLeft -> regionAX + regionAWidth
+            PlayerScreenshotPanelCorner.BottomRight -> regionAX - buttonSizePx
         }
         val copyX = when (corner) {
             PlayerScreenshotPanelCorner.BottomLeft -> shareX + buttonSizePx + buttonGapPx
