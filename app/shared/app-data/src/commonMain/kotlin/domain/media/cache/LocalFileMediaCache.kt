@@ -16,6 +16,7 @@ import me.him188.ani.app.domain.media.cache.engine.MediaCacheEngine
 import me.him188.ani.app.domain.media.cache.engine.TorrentMediaCacheEngine
 import me.him188.ani.app.domain.media.cache.storage.MediaCacheStorage
 import me.him188.ani.app.domain.media.cache.storage.TorrentMediaCacheStorage
+import me.him188.ani.app.domain.media.download.MediaDownloadManager
 import me.him188.ani.app.tools.Progress
 import me.him188.ani.datasources.api.CachedMedia
 import me.him188.ani.datasources.api.Media
@@ -45,7 +46,7 @@ class LocalFileMediaCache(
     override val metadata: MediaCacheMetadata,
     val file: SystemPath,
     uploadedSize: FileSize = 0.bytes,
-    private val backedMediaSourceId: String = MediaCacheManager.LOCAL_FS_MEDIA_SOURCE_ID,
+    private val backedMediaSourceId: String = MediaDownloadManager.LOCAL_FS_MEDIA_SOURCE_ID,
     private val onCloseAndDeleteFiles: LocalFileMediaCache.(SystemPath) -> Unit = { file.deleteRecursively() },
 ) : MediaCache {
     override val state: Flow<MediaCacheState> = MutableStateFlow(MediaCacheState.COMPLETED)

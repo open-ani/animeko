@@ -12,6 +12,7 @@ package me.him188.ani.tools.datasourcetestmcp.selector
 import io.ktor.http.Url
 import me.him188.ani.app.domain.mediasource.web.SelectorMediaSourceEngine
 import me.him188.ani.app.domain.mediasource.web.SelectorSearchConfig
+import me.him188.ani.app.domain.mediasource.web.format.SelectorFormatId
 import me.him188.ani.datasources.api.matcher.WebViewConfig
 import me.him188.ani.utils.xml.Document
 import kotlin.test.Test
@@ -23,7 +24,7 @@ import kotlin.test.assertEquals
  */
 class SelectorWebVideoMatcherTest {
     private val engine = object : SelectorMediaSourceEngine() {
-        override suspend fun searchImpl(finalUrl: Url): SearchSubjectResult =
+        override suspend fun searchImpl(finalUrl: Url, subjectFormatId: SelectorFormatId): SearchSubjectResult =
             throw UnsupportedOperationException()
 
         override suspend fun doHttpGet(uri: String): Document =

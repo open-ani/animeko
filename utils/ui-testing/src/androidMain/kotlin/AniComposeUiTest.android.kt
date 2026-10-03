@@ -9,10 +9,13 @@
 
 package me.him188.ani.app.ui.framework
 
+import androidx.activity.ComponentActivity
 import androidx.compose.ui.graphics.ImageBitmap
+import androidx.compose.ui.test.AndroidComposeUiTest
 import androidx.compose.ui.test.ComposeUiTest
 import androidx.compose.ui.test.SemanticsNodeInteraction
 import androidx.compose.ui.test.onRoot
+import androidx.compose.ui.test.runAndroidComposeUiTest
 import androidx.compose.ui.test.runComposeUiTest
 import kotlinx.coroutines.DelicateCoroutinesApi
 import kotlinx.coroutines.Dispatchers
@@ -41,6 +44,7 @@ actual fun SemanticsNodeInteraction.assertScreenshot(expectedResource: String) {
 /**
  * 相对于 [runComposeUiTest], 有一些修改:
  * - [ComposeUiTest.waitUntil] 的超时时间更长
+ * - 测试 Activity 的窗口获得焦点后才运行 [testBody]
  */
 @OptIn(DelicateCoroutinesApi::class)
 actual fun runAniComposeUiTest(effectContext: CoroutineContext, testBody: AniComposeUiTest.() -> Unit) {
@@ -57,8 +61,9 @@ actual fun runAniComposeUiTest(effectContext: CoroutineContext, testBody: AniCom
         testThread.interrupt()
     }
 
-    runComposeUiTest {
+    runAndroidComposeUiTest<ComponentActivity>(effectContext = effectContext) {
         try {
+            awaitWindowFocus()
             testBody()
         } catch (e: InterruptedException) {
             if (timedOut) {
@@ -78,5 +83,16 @@ actual fun runAniComposeUiTest(effectContext: CoroutineContext, testBody: AniCom
         } finally {
             job.cancel()
         }
+    }
+}
+
+/**
+ * 窗口焦点由系统在 Activity 启动后异步授予, 不在 [ComposeUiTest.waitForIdle] 等待的范围内.
+ * 依赖窗口焦点的界面在此之前不响应按键, 例如 TV 焦点作用域在窗口获得焦点后才分配初始焦点.
+ * 测试若在此之前发送按键, 结果取决于设备快慢.
+ */
+private fun AndroidComposeUiTest<ComponentActivity>.awaitWindowFocus() {
+    waitUntil("the test activity's window gains focus", timeoutMillis = 10_000) {
+        runOnUiThread { activity?.hasWindowFocus() == true }
     }
 }

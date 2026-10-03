@@ -120,6 +120,8 @@ compose.desktop {
                 "-Dcompose.accessibility.enable=false",
                 "--add-opens=java.desktop/sun.lwawt=ALL-UNNAMED",
                 "--add-opens=java.desktop/sun.lwawt.macosx=ALL-UNNAMED",
+                // 触摸板捏合手势 (图片查看器), 见 MacTrackpadGestures
+                "--add-exports=java.desktop/com.apple.eawt.event=ALL-UNNAMED",
             )
         }
         mainClass = "me.him188.ani.app.desktop.AniDesktop"

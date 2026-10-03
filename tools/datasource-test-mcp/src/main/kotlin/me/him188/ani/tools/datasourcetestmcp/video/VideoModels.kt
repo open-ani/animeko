@@ -116,8 +116,6 @@ data class HlsFilterAnalysis(
 
 @Serializable
 data class RemovedAdGroup(
-    /** 命中启发式: strong_path / repeat_short / sandwiched_short / low_density_short / sequence_island / dense_tiny */
-    val reasons: List<String>,
     val segmentCount: Int,
     val durationSeconds: Double,
     /** 该组在整条视频里的起止时间偏移 (秒), 可用于定点截帧确认 */

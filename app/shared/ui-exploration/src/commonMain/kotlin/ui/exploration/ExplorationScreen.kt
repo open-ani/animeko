@@ -376,7 +376,7 @@ fun ExplorationScreen(
 fun RecommendedSubjectInfo.toNavPlaceholder(): SubjectDetailPlaceholder {
     return SubjectDetailPlaceholder(
         id = bangumiId,
-        name = nameCn,
+        name = name,
         nameCN = nameCn,
         coverUrl = imageLarge,
     )

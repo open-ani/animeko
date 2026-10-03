@@ -48,54 +48,65 @@ val sqliteAmalgamationSha256 = "41716B44AC8777188C4C3F1F370F01C9CB9E3B6428EB5C98
 val isWindowsArm64Host = getOs() == Os.Windows && getArch() == Arch.AARCH64
 
 /**
- * 下载单个文件并校验 sha256. [base64Encoded] 用于 googlesource 的 `?format=TEXT` 接口.
+ * 同一份文件的一个下载来源. [base64Encoded] 用于 googlesource 的 `?format=TEXT` 接口, 它返回 base64 编码的内容.
+ */
+data class DownloadSource(val url: String, val base64Encoded: Boolean = false) : java.io.Serializable
+
+/**
+ * 从 [sources] 之一下载同一份文件并校验 sha256.
+ *
+ * 来源按顺序尝试, 一轮全部失败才退避重试, 因此单个来源的临时故障会立刻换到下一个来源.
+ * 校验失败说明内容不对而不是网络问题, 直接失败, 不再尝试其他来源.
  */
 abstract class DownloadAndVerify : DefaultTask() {
     @get:Input
-    abstract val url: Property<String>
+    abstract val sources: ListProperty<DownloadSource>
 
     @get:Input
     abstract val sha256: Property<String>
-
-    @get:Input
-    abstract val base64Encoded: Property<Boolean>
 
     @get:OutputFile
     abstract val target: RegularFileProperty
 
     @TaskAction
     fun run() {
-        val url = url.get()
-        var downloaded: ByteArray? = null
+        val sources = sources.get()
+        require(sources.isNotEmpty()) { "No download sources configured for ${target.get().asFile.name}" }
         var lastError: Exception? = null
         for (attempt in 1..5) {
-            try {
-                downloaded = URI(url).toURL().openStream().use { it.readBytes() }
-                break
-            } catch (e: Exception) {
-                lastError = e
-                logger.warn("Downloading $url failed on attempt $attempt/5: ${e.message}")
-                if (attempt < 5) {
-                    Thread.sleep(minOf(60_000L, 5_000L * (1L shl attempt)))
+            for (source in sources) {
+                val bytes = try {
+                    URI(source.url).toURL().openStream().use { it.readBytes() }
+                } catch (e: Exception) {
+                    lastError = e
+                    logger.warn("Downloading ${source.url} failed on attempt $attempt/5: ${e.message}")
+                    continue
                 }
+                val content = if (source.base64Encoded) {
+                    Base64.getMimeDecoder().decode(String(bytes, Charsets.US_ASCII).trim())
+                } else {
+                    bytes
+                }
+
+                val actual = MessageDigest.getInstance("SHA-256").digest(content)
+                    .joinToString("") { "%02X".format(it) }
+                if (!actual.equals(sha256.get(), ignoreCase = true)) {
+                    throw GradleException("SHA256 mismatch for ${source.url}. Expected ${sha256.get()}, got $actual.")
+                }
+
+                val targetFile = target.get().asFile
+                targetFile.parentFile.mkdirs()
+                targetFile.writeBytes(content)
+                return
+            }
+            if (attempt < 5) {
+                Thread.sleep(minOf(60_000L, 5_000L * (1L shl attempt)))
             }
         }
-        val bytes = downloaded ?: throw GradleException("Failed to download $url", lastError)
-        val content = if (base64Encoded.get()) {
-            Base64.getMimeDecoder().decode(String(bytes, Charsets.US_ASCII).trim())
-        } else {
-            bytes
-        }
-
-        val actual = MessageDigest.getInstance("SHA-256").digest(content)
-            .joinToString("") { "%02X".format(it) }
-        if (!actual.equals(sha256.get(), ignoreCase = true)) {
-            throw GradleException("SHA256 mismatch for $url. Expected ${sha256.get()}, got $actual.")
-        }
-
-        val targetFile = target.get().asFile
-        targetFile.parentFile.mkdirs()
-        targetFile.writeBytes(content)
+        throw GradleException(
+            "Failed to download ${target.get().asFile.name} from any source: ${sources.map { it.url }}",
+            lastError,
+        )
     }
 }
 
@@ -232,9 +243,10 @@ abstract class CompileSqliteJni @Inject constructor(
 
 val downloadSqliteAmalgamation = tasks.register<DownloadAndVerify>("downloadSqliteAmalgamation") {
     description = "Downloads the SQLite $sqliteVersion amalgamation source archive"
-    url = "https://www.sqlite.org/$sqliteAmalgamationYear/sqlite-amalgamation-$sqliteAmalgamationVersion.zip"
+    sources = listOf(
+        DownloadSource("https://www.sqlite.org/$sqliteAmalgamationYear/sqlite-amalgamation-$sqliteAmalgamationVersion.zip"),
+    )
     sha256 = sqliteAmalgamationSha256
-    base64Encoded = false
     target = layout.buildDirectory.file("sqlite-woa64/sqlite-amalgamation-$sqliteAmalgamationVersion.zip")
 }
 
@@ -250,10 +262,17 @@ val unzipSqliteAmalgamation = tasks.register<Sync>("unzipSqliteAmalgamation") {
 
 val downloadSqliteBinding = tasks.register<DownloadAndVerify>("downloadSqliteBinding") {
     description = "Downloads sqlite_bindings.cpp of androidx.sqlite $bindingSqliteVersion"
-    url = "https://android.googlesource.com/platform/frameworks/support/+/$bindingCommit" +
-            "/sqlite/sqlite-bundled/src/jvmAndroidMain/jni/sqlite_bindings.cpp?format=TEXT"
+    val path = "sqlite/sqlite-bundled/src/jvmAndroidMain/jni/sqlite_bindings.cpp"
+    // GitHub 上的 androidx/androidx 是 AOSP frameworks/support 的镜像, 与 googlesource 共用 commit, 内容以 sha256 钉死.
+    // 先用它: CI 跑在 GitHub 托管的 runner 上, 而 googlesource 会对这些 runner 的出口持续返回 503.
+    sources = listOf(
+        DownloadSource("https://raw.githubusercontent.com/androidx/androidx/$bindingCommit/$path"),
+        DownloadSource(
+            "https://android.googlesource.com/platform/frameworks/support/+/$bindingCommit/$path?format=TEXT",
+            base64Encoded = true,
+        ),
+    )
     sha256 = bindingSha256
-    base64Encoded = true
     target = layout.buildDirectory.file("sqlite-woa64/sqlite_bindings.cpp")
 }
 

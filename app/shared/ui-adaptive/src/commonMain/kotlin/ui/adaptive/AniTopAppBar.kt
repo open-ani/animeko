@@ -189,7 +189,7 @@ fun AniTopAppBar(
                         if (windowSizeClass.isWidthAtLeastMedium
                             && windowSizeClass.isHeightAtLeastMedium
                         ) {
-                            48.dp
+                            40.dp
                         } else {
                             36.dp
                         }

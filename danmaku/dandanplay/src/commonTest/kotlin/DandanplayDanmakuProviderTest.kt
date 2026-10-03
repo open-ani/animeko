@@ -24,12 +24,15 @@ import kotlinx.coroutines.test.runTest
 import kotlinx.serialization.json.Json
 import me.him188.ani.danmaku.api.provider.DanmakuFetchRequest
 import me.him188.ani.danmaku.api.provider.DanmakuMatchMethod
+import me.him188.ani.danmaku.dandanplay.data.DandanplayMatchVideoResponse
 import me.him188.ani.datasources.api.EpisodeSort
 import me.him188.ani.datasources.api.PackedDate
 import me.him188.ani.utils.ktor.asScopedHttpClient
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertFalse
 import kotlin.test.assertIs
+import kotlin.test.assertNull
 import kotlin.time.Duration.Companion.minutes
 
 class DandanplayDanmakuProviderTest {
@@ -156,6 +159,243 @@ class DandanplayDanmakuProviderTest {
         )
     }
 
+    /**
+     * 弹弹 play 把 Re:Zero 第四季的丧失篇和夺还篇合并为一个番剧 (1-19 话), 只映射到丧失篇的 Bangumi 条目.
+     * 夺还篇的 Bangumi 条目没有映射, 只能走剧集搜索; 搜索结果没有集数, 且中文名与弹弹的日文标题不同.
+     */
+    @Test
+    fun `fetchAutomatic matches merged split cour episode by original title from episode search`() = runTest {
+        val provider = createProvider { path ->
+            when (path) {
+                "/api/v2/bangumi/bgmtv/633836" -> respondJson(
+                    """{"success": false, "errorCode": 7, "errorMessage": "无法找到指定的资源", "bangumi": null}""",
+                )
+
+                "/api/v2/search/episodes" -> respondJson(
+                    """
+                    {
+                      "success": true, "errorCode": 0, "errorMessage": "", "hasMore": false,
+                      "animes": [
+                        {
+                          "animeId": 19242,
+                          "animeTitle": "Re：从零开始的异世界生活 第四季",
+                          "episodes": [
+                            {"episodeId": 192420007, "episodeTitle": "第7话 コンビニを出ると, そこは不思議の世界でした"},
+                            {"episodeId": 192420009, "episodeTitle": "第9话 残骸"},
+                            {"episodeId": 192420018, "episodeTitle": "第18话 ラム"},
+                            {"episodeId": 192420019, "episodeTitle": "第19话"}
+                          ]
+                        }
+                      ]
+                    }
+                    """.trimIndent(),
+                )
+
+                "/api/v2/comment/192420018" -> respondJson("""{"count":0,"comments":[]}""")
+                else -> error("Unexpected request: $path")
+            }
+        }
+
+        val result = provider.fetchAutomatic(
+            request(
+                subjectId = 633836,
+                subjectName = "Re：从零开始的异世界生活 第四季 夺还篇",
+                episodeSort = EpisodeSort(84),
+                episodeEp = EpisodeSort(7),
+                episodeName = "拉姆",
+                episodeNames = listOf("ラム", "拉姆"),
+            ),
+        ).single()
+
+        val method = assertIs<DanmakuMatchMethod.Exact>(result.matchInfo.method)
+        assertEquals("第18话 ラム", method.episodeTitle)
+    }
+
+    @Test
+    fun `fetchAutomatic prefers title over episode number when Bangumi mapping covers merged cours`() = runTest {
+        val provider = createProvider { path ->
+            when (path) {
+                "/api/v2/bangumi/bgmtv/633836" -> respondJson(
+                    """
+                    {
+                      "success": true, "errorCode": 0, "errorMessage": "",
+                      "bangumi": {
+                        "animeTitle": "Re：从零开始的异世界生活 第四季",
+                        "type": "tvseries",
+                        "episodes": [
+                          {"episodeId": 192420007, "episodeTitle": "第7话 コンビニを出ると, そこは不思議の世界でした", "episodeNumber": "7", "lastWatched": null, "airDate": "2026-09-23T00:00:00"},
+                          {"episodeId": 192420018, "episodeTitle": "第18话 ラム", "episodeNumber": "18", "lastWatched": null, "airDate": "2026-09-23T00:00:00"}
+                        ]
+                      }
+                    }
+                    """.trimIndent(),
+                )
+
+                "/api/v2/comment/192420018" -> respondJson("""{"count":0,"comments":[]}""")
+                else -> error("Unexpected request: $path")
+            }
+        }
+
+        val result = provider.fetchAutomatic(
+            request(
+                subjectId = 633836,
+                subjectName = "Re：从零开始的异世界生活 第四季 夺还篇",
+                episodeSort = EpisodeSort(84),
+                episodeEp = EpisodeSort(7),
+                episodeName = "拉姆",
+                episodeNames = listOf("ラム", "拉姆"),
+            ),
+        ).single()
+
+        val method = assertIs<DanmakuMatchMethod.Exact>(result.matchInfo.method)
+        assertEquals("第18话 ラム", method.episodeTitle)
+    }
+
+    @Test
+    fun `fetchAutomatic falls back to episode number when title is unknown`() = runTest {
+        val provider = createProvider { path ->
+            when (path) {
+                "/api/v2/bangumi/bgmtv/633836" -> respondJson(
+                    """
+                    {
+                      "success": true, "errorCode": 0, "errorMessage": "",
+                      "bangumi": {
+                        "animeTitle": "Re：从零开始的异世界生活 第四季",
+                        "type": "tvseries",
+                        "episodes": [
+                          {"episodeId": 192420007, "episodeTitle": "第7话 コンビニを出ると, そこは不思議の世界でした", "episodeNumber": "7", "lastWatched": null, "airDate": "2026-09-23T00:00:00"},
+                          {"episodeId": 192420019, "episodeTitle": "第19话", "episodeNumber": "19", "lastWatched": null, "airDate": "2026-09-23T00:00:00"}
+                        ]
+                      }
+                    }
+                    """.trimIndent(),
+                )
+
+                "/api/v2/comment/192420007" -> respondJson("""{"count":0,"comments":[]}""")
+                else -> error("Unexpected request: $path")
+            }
+        }
+
+        val result = provider.fetchAutomatic(
+            request(
+                subjectId = 633836,
+                subjectName = "Re：从零开始的异世界生活 第四季 夺还篇",
+                episodeSort = EpisodeSort(84),
+                episodeEp = EpisodeSort(7),
+                episodeName = "",
+                episodeNames = emptyList(),
+            ),
+        ).single()
+
+        val method = assertIs<DanmakuMatchMethod.Exact>(result.matchInfo.method)
+        assertEquals("第7话 コンビニを出ると, そこは不思議の世界でした", method.episodeTitle)
+    }
+
+    @Test
+    fun `DandanplayMatchVideoResponse accepts null matches when match request is rejected`() {
+        val response = json.decodeFromString<DandanplayMatchVideoResponse>(REJECTED_MATCH_RESPONSE)
+
+        assertFalse(response.success)
+        assertFalse(response.isMatched)
+        assertEquals(2, response.errorCode)
+        assertEquals("一个或多个参数不符合规则", response.errorMessage)
+        assertNull(response.matches)
+    }
+
+    @Test
+    fun `fetchAutomatic returns no match when file match request is rejected`() = runTest {
+        val seenPaths = mutableListOf<String>()
+        val provider = createProvider { path ->
+            seenPaths += path
+            when (path) {
+                "/api/v2/bangumi/bgmtv/999999999" -> respondJson(
+                    """{"success": false, "errorCode": 7, "errorMessage": "无法找到指定的资源", "bangumi": null}""",
+                )
+
+                "/api/v2/search/episodes" -> respondJson(EMPTY_EPISODE_SEARCH_RESPONSE)
+                "/api/v2/match" -> respondJson(REJECTED_MATCH_RESPONSE)
+                else -> error("Unexpected request: $path")
+            }
+        }
+
+        val result = provider.fetchAutomatic(
+            request(
+                subjectId = 999999999,
+                subjectName = "unknown subject",
+                episodeSort = EpisodeSort(1),
+                episodeName = "unknown episode",
+                filename = "[Group] unknown subject - 01 [1080P]",
+            ),
+        ).single()
+
+        assertEquals(DanmakuMatchMethod.NoMatch, result.matchInfo.method)
+        assertEquals(
+            listOf(
+                "/api/v2/bangumi/bgmtv/999999999",
+                "/api/v2/search/episodes",
+                "/api/v2/match",
+            ),
+            seenPaths,
+        )
+    }
+
+    @Test
+    fun `fetchAutomatic uses file match when other matching fails`() = runTest {
+        val provider = createProvider { path ->
+            when (path) {
+                "/api/v2/bangumi/bgmtv/999999999" -> respondJson(
+                    """{"success": false, "errorCode": 7, "errorMessage": "无法找到指定的资源", "bangumi": null}""",
+                )
+
+                "/api/v2/search/episodes" -> respondJson(EMPTY_EPISODE_SEARCH_RESPONSE)
+                "/api/v2/match" -> respondJson(
+                    """
+                    {
+                      "isMatched": false,
+                      "matches": [
+                        {
+                          "episodeId": 176170001, "animeId": 17617, "animeTitle": "葬送的芙莉莲",
+                          "episodeTitle": "第1话 冒险的结束", "type": "tvseries", "typeDescription": "TV动画",
+                          "shift": 0, "imageUrl": "https://example.com/17617.jpg"
+                        }
+                      ],
+                      "errorCode": 0, "success": true, "errorMessage": ""
+                    }
+                    """.trimIndent(),
+                )
+
+                "/api/v2/comment/176170001" -> respondJson("""{"count":0,"comments":[]}""")
+                else -> error("Unexpected request: $path")
+            }
+        }
+
+        val result = provider.fetchAutomatic(
+            request(
+                subjectId = 999999999,
+                subjectName = "葬送的芙莉莲",
+                episodeSort = EpisodeSort(1),
+                episodeName = "冒险的结束",
+                filename = "[Group] Sousou no Frieren - 01 [1080P]",
+            ),
+        ).single()
+
+        val method = assertIs<DanmakuMatchMethod.Fuzzy>(result.matchInfo.method)
+        assertEquals("葬送的芙莉莲", method.subjectTitle)
+        assertEquals("第1话 冒险的结束", method.episodeTitle)
+    }
+
+    @Test
+    fun `normalizeEpisodeTitle strips number prefix and unifies width and spaces`() {
+        assertEquals("ラム", normalizeEpisodeTitle("第18话 ラム"))
+        assertEquals("ラム", normalizeEpisodeTitle("ラム"))
+        assertEquals("", normalizeEpisodeTitle("第19话"))
+        assertEquals(
+            normalizeEpisodeTitle("君を連れ出す理由／ゴージャス・タイガー・リローデッド"),
+            normalizeEpisodeTitle("第1话 君を連れ出す理由 / ゴージャス・タイガー・リローデッド"),
+        )
+        assertEquals("straightbet", normalizeEpisodeTitle("第14话 STRAIGHT BET"))
+    }
+
     private fun createProvider(handler: MockRequestHandleScope.(path: String) -> HttpResponseData): DandanplayDanmakuProvider {
         val engine = MockEngine { request ->
             assertEquals("app-id", request.headers["X-AppId"])
@@ -184,6 +424,9 @@ class DandanplayDanmakuProviderTest {
         subjectName: String,
         episodeSort: EpisodeSort,
         episodeName: String,
+        episodeEp: EpisodeSort? = null,
+        episodeNames: List<String> = listOf(episodeName),
+        filename: String? = null,
     ) = DanmakuFetchRequest(
         subjectId = subjectId,
         subjectPrimaryName = subjectName,
@@ -191,11 +434,25 @@ class DandanplayDanmakuProviderTest {
         subjectPublishDate = PackedDate.Invalid,
         episodeId = 1,
         episodeSort = episodeSort,
-        episodeEp = null,
+        episodeEp = episodeEp,
         episodeName = episodeName,
-        filename = null,
+        episodeNames = episodeNames,
+        filename = filename,
         fileHash = null,
         fileSize = null,
         videoDuration = 24.minutes,
     )
+
+    private companion object {
+        val json = Json { ignoreUnknownKeys = true }
+
+        /**
+         * 弹弹 play 拒绝匹配请求时的真实响应, `matches` 为 `null`.
+         */
+        const val REJECTED_MATCH_RESPONSE =
+            """{"isMatched":false,"matches":null,"errorCode":2,"success":false,"errorMessage":"一个或多个参数不符合规则"}"""
+
+        const val EMPTY_EPISODE_SEARCH_RESPONSE =
+            """{"success": true, "errorCode": 0, "errorMessage": "", "hasMore": false, "animes": []}"""
+    }
 }

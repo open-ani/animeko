@@ -41,6 +41,8 @@ kotlin {
     }
     sourceSets.androidMain.dependencies {
         runtimeOnly(libs.kotlinx.coroutines.android)
+        implementation(libs.androidx.test.runner) // TvDisplayRunListener
+        implementation(libs.androidx.activity.ktx) // 测试 Activity 的窗口焦点
     }
 }
 

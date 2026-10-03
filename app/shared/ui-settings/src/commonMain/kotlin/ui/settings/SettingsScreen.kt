@@ -96,6 +96,7 @@ import dev.chrisbanes.haze.rememberHazeState
 import kotlinx.coroutines.CoroutineStart
 import kotlinx.coroutines.launch
 import kotlinx.serialization.Serializable
+import me.him188.ani.app.domain.session.auth.OAuthPlatform
 import me.him188.ani.app.platform.LocalContext
 import me.him188.ani.app.platform.navigation.rememberAsyncBrowserNavigator
 import me.him188.ani.app.ui.adaptive.AniListDetailPaneScaffold
@@ -123,12 +124,16 @@ import me.him188.ani.app.ui.foundation.widgets.LocalToaster
 import me.him188.ani.app.ui.lang.Lang
 import me.him188.ani.app.ui.lang.acknowledgements
 import me.him188.ani.app.ui.lang.developer_list
+import me.him188.ani.app.ui.lang.settings_about_build_info
 import me.him188.ani.app.ui.lang.settings
+import me.him188.ani.app.ui.lang.settings_account_bangumi_sync_title
+import me.him188.ani.app.ui.lang.settings_account_github_title
 import me.him188.ani.app.ui.lang.settings_acknowledgements_oss_licenses
 import me.him188.ani.app.ui.lang.settings_category_app_ui
 import me.him188.ani.app.ui.lang.settings_category_data_playback
 import me.him188.ani.app.ui.lang.settings_category_network_storage
 import me.him188.ani.app.ui.lang.settings_category_others
+import me.him188.ani.app.ui.lang.settings_debug_dev_builds
 import me.him188.ani.app.ui.lang.settings_debug_mode_enabled
 import me.him188.ani.app.ui.lang.settings_tab_about
 import me.him188.ani.app.ui.lang.settings_tab_account
@@ -146,6 +151,7 @@ import me.him188.ani.app.ui.lang.settings_tab_storage
 import me.him188.ani.app.ui.lang.settings_tab_theme
 import me.him188.ani.app.ui.lang.settings_tab_update
 import me.him188.ani.app.ui.settings.account.BangumiSyncTab
+import me.him188.ani.app.ui.settings.account.GithubAccountTab
 import me.him188.ani.app.ui.settings.account.ProfileGroup
 import me.him188.ani.app.ui.settings.account.SelfInfoBanner
 import me.him188.ani.app.ui.settings.framework.components.SettingsScope
@@ -154,6 +160,8 @@ import me.him188.ani.app.ui.settings.tabs.AniHelperDestination
 import me.him188.ani.app.ui.settings.tabs.DebugTab
 import me.him188.ani.app.ui.settings.tabs.about.AboutTab
 import me.him188.ani.app.ui.settings.tabs.about.AcknowledgementsTab
+import me.him188.ani.app.ui.settings.tabs.about.BuildInfo
+import me.him188.ani.app.ui.settings.tabs.about.BuildInfoTab
 import me.him188.ani.app.ui.settings.tabs.about.DevelopersTab
 import me.him188.ani.app.ui.settings.tabs.about.OpenSourceLibrariesTab
 import me.him188.ani.app.ui.settings.tabs.app.AppearanceGroup
@@ -164,8 +172,8 @@ import me.him188.ani.app.ui.settings.tabs.log.LogTab
 import me.him188.ani.app.ui.settings.tabs.media.BackupSettings
 import me.him188.ani.app.ui.settings.tabs.media.CacheDirectoryGroup
 import me.him188.ani.app.ui.settings.tabs.media.MediaSelectionGroup
-import me.him188.ani.app.ui.settings.tabs.media.TorrentEngineGroup
 import me.him188.ani.app.ui.settings.tabs.media.PikPakAcceleratorGroup
+import me.him188.ani.app.ui.settings.tabs.media.TorrentEngineGroup
 import me.him188.ani.app.ui.settings.tabs.media.source.MediaSourceGroup
 import me.him188.ani.app.ui.settings.tabs.media.source.MediaSourceSelectionActions
 import me.him188.ani.app.ui.settings.tabs.media.source.MediaSourceSubscriptionGroup
@@ -173,6 +181,7 @@ import me.him188.ani.app.ui.settings.tabs.media.source.rememberMediaSourceSelect
 import me.him188.ani.app.ui.settings.tabs.network.ConfigureProxyGroup
 import me.him188.ani.app.ui.settings.tabs.network.ServerSelectionGroup
 import me.him188.ani.app.ui.settings.tabs.theme.ThemeGroup
+import me.him188.ani.app.ui.update.devbuild.DevBuildsTab
 import me.him188.ani.utils.platform.hasScrollingBug
 import org.jetbrains.compose.resources.getString
 import org.jetbrains.compose.resources.stringResource
@@ -186,12 +195,16 @@ typealias SettingsTab = me.him188.ani.app.navigation.SettingsTab
 fun SettingsScreen(
     vm: SettingsViewModel,
     onNavigateToEmailLogin: () -> Unit,
-    onNavigateToBangumiOAuth: () -> Unit,
+    onNavigateToOAuth: (OAuthPlatform) -> Unit,
     loadOpenSourceLibrariesJsons: suspend () -> List<ByteArray>,
     modifier: Modifier = Modifier,
     initialTab: SettingsTab? = null,
     windowInsets: WindowInsets = AniWindowInsets.forColumnPageContent(),
     navigationIcon: @Composable () -> Unit = {},
+    /**
+     * 前往扫码登录其他设备. 为 `null` (当前平台不能扫码) 时不显示入口
+     */
+    onNavigateToQrLogin: (() -> Unit)? = null,
 ) {
     val navigator: ThreePaneScaffoldNavigator<Nothing?> = rememberListDetailPaneScaffoldNavigator(
         initialDestinationHistory = buildList {
@@ -306,6 +319,9 @@ fun SettingsScreen(
                                 }
                             }
                         },
+                        onClickBuildInfo = {
+                            navigateTo(DetailPaneRoutes.BuildInfo)
+                        },
                         onClickReleaseNotes = {
                             browserNavigator.openBrowser(
                                 context,
@@ -331,6 +347,9 @@ fun SettingsScreen(
                     SettingsTab.DEBUG -> DebugTab(
                         vm.debugSettingsState,
                         tabModifier,
+                        onNavigateToDevBuilds = {
+                            navigateTo(DetailPaneRoutes.DevBuilds)
+                        },
                     )
 
                     else -> SettingsTab(
@@ -342,7 +361,11 @@ fun SettingsScreen(
                                 onNavigateToBangumiSync = {
                                     navigateTo(DetailPaneRoutes.BangumiSync)
                                 },
-                                onNavigateToBangumiOAuth = onNavigateToBangumiOAuth,
+                                onNavigateToOAuth = onNavigateToOAuth,
+                                onNavigateToGithubAccount = {
+                                    navigateTo(DetailPaneRoutes.GithubAccount)
+                                },
+                                onNavigateToQrLogin = onNavigateToQrLogin,
                             )
 
                             SettingsTab.APPEARANCE -> AppearanceGroup(vm.uiSettings)
@@ -382,7 +405,8 @@ fun SettingsScreen(
                                 PikPakAcceleratorGroup(
                                     vm.pikpakSettingsState,
                                     vm.mediaSelectorSettingsState,
-                                    vm.pikpakConnectionTester,
+                                    vm.pikpakDriveUsageState,
+                                    vm.pikpakLegacyNoticeState,
                                 )
                             }
 //                            SettingsTab.CACHE -> AutoCacheGroup(vm.mediaCacheSettingsState)
@@ -788,11 +812,32 @@ internal fun SettingsPageLayout(
                             }
                         }
                     }
+                    entry<DetailPaneRoutes.BuildInfo> {
+                        DetailPaneRoute(
+                            topAppBar = {
+                                AniTopAppBar(
+                                    title = { AniTopAppBarDefaults.Title(stringResource(Lang.settings_about_build_info)) },
+                                    navigationIcon = {
+                                        BackNavigationIconButton(navigateUp)
+                                    },
+                                    colors = topAppBarColors,
+                                    windowInsets = topAppBarWindowInsets,
+                                    size = topAppBarSize,
+                                    scrollBehavior = detailPaneTopAppBarScrollBehavior,
+                                )
+                            },
+                            detailPaneTopAppBarScrollBehavior,
+                        ) {
+                            RouteContent {
+                                BuildInfoTab(remember { BuildInfo.current() }, Modifier.fillMaxSize())
+                            }
+                        }
+                    }
                     entry<DetailPaneRoutes.BangumiSync> {
                         DetailPaneRoute(
                             topAppBar = {
                                 AniTopAppBar(
-                                    title = { AniTopAppBarDefaults.Title("Bangumi 同步") },
+                                    title = { AniTopAppBarDefaults.Title(stringResource(Lang.settings_account_bangumi_sync_title)) },
                                     navigationIcon = {
                                         BackNavigationIconButton(navigateUp)
                                     },
@@ -806,6 +851,48 @@ internal fun SettingsPageLayout(
                         ) {
                             RouteContent(scrollable = false) {
                                 BangumiSyncTab()
+                            }
+                        }
+                    }
+                    entry<DetailPaneRoutes.GithubAccount> {
+                        DetailPaneRoute(
+                            topAppBar = {
+                                AniTopAppBar(
+                                    title = { AniTopAppBarDefaults.Title(stringResource(Lang.settings_account_github_title)) },
+                                    navigationIcon = {
+                                        BackNavigationIconButton(navigateUp)
+                                    },
+                                    colors = topAppBarColors,
+                                    windowInsets = topAppBarWindowInsets,
+                                    size = topAppBarSize,
+                                    scrollBehavior = detailPaneTopAppBarScrollBehavior,
+                                )
+                            },
+                            detailPaneTopAppBarScrollBehavior,
+                        ) {
+                            RouteContent {
+                                GithubAccountTab()
+                            }
+                        }
+                    }
+                    entry<DetailPaneRoutes.DevBuilds> {
+                        DetailPaneRoute(
+                            topAppBar = {
+                                AniTopAppBar(
+                                    title = { AniTopAppBarDefaults.Title(stringResource(Lang.settings_debug_dev_builds)) },
+                                    navigationIcon = {
+                                        BackNavigationIconButton(navigateUp)
+                                    },
+                                    colors = topAppBarColors,
+                                    windowInsets = topAppBarWindowInsets,
+                                    size = topAppBarSize,
+                                    scrollBehavior = detailPaneTopAppBarScrollBehavior,
+                                )
+                            },
+                            detailPaneTopAppBarScrollBehavior,
+                        ) {
+                            RouteContent {
+                                DevBuildsTab(Modifier.fillMaxSize())
                             }
                         }
                     }
@@ -932,7 +1019,16 @@ sealed class DetailPaneRoutes : NavKey {
     data object Developers : DetailPaneRoutes()
 
     @Serializable
+    data object BuildInfo : DetailPaneRoutes()
+
+    @Serializable
     data object BangumiSync : DetailPaneRoutes()
+
+    @Serializable
+    data object GithubAccount : DetailPaneRoutes()
+
+    @Serializable
+    data object DevBuilds : DetailPaneRoutes()
 }
 
 private val DetailPaneBackStackSaver: Saver<SnapshotStateList<DetailPaneRoutes>, Any> = listSaver(
@@ -947,7 +1043,10 @@ private val DetailPaneBackStackSaver: Saver<SnapshotStateList<DetailPaneRoutes>,
                     "Acknowledgements" -> DetailPaneRoutes.Acknowledgements
                     "OpenSourceLicenses" -> DetailPaneRoutes.OpenSourceLicenses
                     "Developers" -> DetailPaneRoutes.Developers
+                    "BuildInfo" -> DetailPaneRoutes.BuildInfo
                     "BangumiSync" -> DetailPaneRoutes.BangumiSync
+                    "GithubAccount" -> DetailPaneRoutes.GithubAccount
+                    "DevBuilds" -> DetailPaneRoutes.DevBuilds
                     else -> DetailPaneRoutes.Main
                 }
             }.toMutableStateList()

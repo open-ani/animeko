@@ -17,7 +17,6 @@ import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.AnimationSpec
 import androidx.compose.animation.core.FiniteAnimationSpec
 import androidx.compose.animation.core.tween
-import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.material3.CardColors
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.ColorScheme
@@ -55,7 +54,7 @@ expect fun appColorScheme(
     isDark: Boolean = when (LocalThemeSettings.current.darkMode) {
         DarkMode.LIGHT -> false
         DarkMode.DARK -> true
-        DarkMode.AUTO -> isSystemInDarkTheme()
+        DarkMode.AUTO -> isSystemInDarkThemeDetected()
     },
 ): ColorScheme
 
@@ -85,7 +84,7 @@ fun AniTheme(
     val isDark = when (darkModeOverride ?: LocalThemeSettings.current.darkMode) {
         DarkMode.LIGHT -> false
         DarkMode.DARK -> true
-        DarkMode.AUTO -> isSystemInDarkTheme()
+        DarkMode.AUTO -> isSystemInDarkThemeDetected()
     }
     val colorScheme = appColorScheme(isDark = isDark)
     // 深色主题直接复用当前配色; 浅色主题需额外生成一套, 界面上没有取用方时这次生成是多余的,

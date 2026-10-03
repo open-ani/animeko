@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2024-2025 OpenAni and contributors.
+ * Copyright (C) 2024-2026 OpenAni and contributors.
  *
  * 此源代码的使用受 GNU AFFERO GENERAL PUBLIC LICENSE version 3 许可证的约束, 可以在以下链接找到该许可证.
  * Use of this source code is governed by the GNU AGPLv3 license, which can be found at the following link.
@@ -24,11 +24,15 @@ import androidx.core.content.FileProvider
 import kotlinx.coroutines.launch
 import me.him188.ani.app.platform.LocalContext
 import me.him188.ani.app.ui.foundation.setClipEntryText
+import me.him188.ani.app.ui.foundation.widgets.LocalToaster
 import me.him188.ani.app.ui.lang.Lang
 import me.him188.ani.app.ui.lang.settings_log_copy_today_log_content
+import me.him188.ani.app.ui.lang.settings_log_copy_failed
+import me.him188.ani.app.ui.lang.settings_log_copy_too_large
 import me.him188.ani.app.ui.lang.settings_log_share_file
 import me.him188.ani.app.ui.lang.settings_log_share_today_log_file
 import me.him188.ani.buildconfig.AndroidBuildConfig
+import org.jetbrains.compose.resources.getString
 import org.jetbrains.compose.resources.stringResource
 import java.io.File
 
@@ -38,6 +42,7 @@ internal actual fun ColumnScope.PlatformLoggingItems(listItemColors: ListItemCol
     val context = LocalContext.current
     val clipboard = LocalClipboard.current
     val scope = rememberCoroutineScope()
+    val toaster = LocalToaster.current
     val shareTodayLogFileText = stringResource(Lang.settings_log_share_today_log_file)
     val shareLogFileText = stringResource(Lang.settings_log_share_file)
     val copyTodayLogContentText = stringResource(Lang.settings_log_copy_today_log_content)
@@ -65,7 +70,11 @@ internal actual fun ColumnScope.PlatformLoggingItems(listItemColors: ListItemCol
         headlineContent = { Text(copyTodayLogContentText) },
         Modifier.clickable {
             scope.launch {
-                clipboard.setClipEntryText(context.getCurrentLogFile().readText())
+                when (copyLogToClipboard(context.getCurrentLogFile(), clipboard::setClipEntryText)) {
+                    LogCopyResult.Copied -> Unit
+                    LogCopyResult.TooLarge -> toaster.toast(getString(Lang.settings_log_copy_too_large))
+                    LogCopyResult.Failed -> toaster.toast(getString(Lang.settings_log_copy_failed))
+                }
             }
         },
         colors = listItemColors,

@@ -61,6 +61,7 @@ import kotlin.coroutines.ContinuationInterceptor
 import kotlin.coroutines.CoroutineContext
 import kotlin.jvm.JvmName
 import kotlin.random.Random
+import me.him188.ani.datasources.api.Media
 
 /**
  * DSL for testing [me.him188.ani.app.domain.media.selector.DefaultMediaSelector].
@@ -82,8 +83,10 @@ sealed class MediaSelectorTestSuite {
         lateinit var subjectName: String
         var aliases: MutableList<String> = mutableListOf()
         var seriesInfo: SubjectSeriesInfo = SubjectSeriesInfo.Fallback
+        var episodeId: Int = 0
         var episodeSort: EpisodeSort = EpisodeSort(1)
-        var episodeEp: EpisodeSort = EpisodeSort(1)
+        var episodeEp: EpisodeSort? = EpisodeSort(1)
+        var episodeName: String = ""
 
         fun aliases(vararg aliases: String) {
             this.aliases.addAll(aliases)
@@ -115,7 +118,7 @@ sealed class MediaSelectorTestSuite {
                 nameCn = init.subjectName,
                 aliases = init.aliases.toList(),
             ),
-            episodeInfo = EpisodeInfo.Empty.copy(sort = init.episodeSort, ep = init.episodeEp),
+            episodeInfo = EpisodeInfo.Empty.copy(episodeId = init.episodeId, sort = init.episodeSort, ep = init.episodeEp, name = init.episodeName),
             subjectSeriesInfo = init.seriesInfo,
         )
         preferenceApi.mediaSelectorSettings.value = MediaSelectorSettings.Default
@@ -293,8 +296,8 @@ class SimpleMediaSelectorTestSuite(
      *
      * 1. `cachingEnabled = true` 时 `flowCoroutineContext` 被换成 **test dispatcher**
      *    (见下方构造 [selector] 处), 而生产传的是 [Dispatchers.Default] 真实线程池.
-     *    也就是说, 生产上 INFRA-01 的传播延迟是多线程竞态 (`MediaSelectorAutoSelect.kt` 的 PREF-04 workaround
-     *    正是在描述它), 在本夹具里被虚拟时间压成了"确定的一拍".
+     *    也就是说, 生产上 INFRA-01 的传播延迟是多线程竞态, 在本夹具里被虚拟时间压成了"确定的一拍".
+     *    MediaAutoSelector 使用源结果直接生成决策快照, 不依赖 UI 候选流的传播时序.
      * 2. `cachingScope` 恒传 [TestScope.backgroundScope], 因此生产真正走的另一半分支 ——
      *    `cachingScope == null` 时每个 `cached()` 各建一个无人 cancel 的 `CoroutineScope(flowCoroutineContext)`,
      *    即 INFRA-01 陈述里"scope 生命周期无人管理"那一半 —— 在测试中**永远不被执行**, 仍是零覆盖.
@@ -309,9 +312,9 @@ class SimpleMediaSelectorTestSuite(
     val mediaApi = MediaApi()
 
     inner class MediaApi {
-        val mediaList: MutableStateFlow<MutableList<DefaultMedia>> = MutableStateFlow(mutableListOf())
+        val mediaList: MutableStateFlow<MutableList<Media>> = MutableStateFlow(mutableListOf())
 
-        fun addMedia(vararg media: DefaultMedia) {
+        fun addMedia(vararg media: Media) {
             mediaList.value.addAll(media)
         }
 

@@ -61,20 +61,6 @@ internal fun SelectorSubjectConfigurationColumn(
                 isError = conf.selectListsIsError,
                 enabled = state.enableEdit,
             )
-            ListItem(
-                headlineContent = { Text("优先选择最短标题") },
-                Modifier
-                    .padding(top = (verticalSpacing - 8.dp).coerceAtLeast(0.dp))
-                    .clickable(enabled = state.enableEdit) { conf.preferShorterName = !conf.preferShorterName },
-                supportingContent = { Text("优先选择满足匹配的标题最短的条目。可避免为第一季匹配到第二季") },
-                trailingContent = {
-                    Switch(
-                        conf.preferShorterName, { conf.preferShorterName = it },
-                        enabled = state.enableEdit,
-                    )
-                },
-                colors = listItemColors,
-            )
         }
 
         SelectorSubjectFormatIndexed -> Column(modifier) {
@@ -104,20 +90,6 @@ internal fun SelectorSubjectConfigurationColumn(
                 isError = conf.selectLinksIsError,
                 enabled = state.enableEdit,
             )
-            ListItem(
-                headlineContent = { Text("优先选择最短标题") },
-                Modifier
-                    .padding(top = (verticalSpacing - 8.dp).coerceAtLeast(0.dp))
-                    .clickable(enabled = state.enableEdit) { conf.preferShorterName = !conf.preferShorterName },
-                supportingContent = { Text("优先选择满足匹配的标题最短的条目。可避免为第一季匹配到第二季") },
-                trailingContent = {
-                    Switch(
-                        conf.preferShorterName, { conf.preferShorterName = it },
-                        enabled = state.enableEdit,
-                    )
-                },
-                colors = listItemColors,
-            )
         }
 
         SelectorSubjectFormatJsonPathIndexed -> Column(modifier) {
@@ -146,20 +118,6 @@ internal fun SelectorSubjectConfigurationColumn(
                 shape = textFieldShape,
                 isError = conf.selectLinksIsError,
                 enabled = state.enableEdit,
-            )
-            ListItem(
-                headlineContent = { Text("优先选择最短标题") },
-                Modifier
-                    .padding(top = (verticalSpacing - 8.dp).coerceAtLeast(0.dp))
-                    .clickable(enabled = state.enableEdit) { conf.preferShorterName = !conf.preferShorterName },
-                supportingContent = { Text("优先选择满足匹配的标题最短的条目。可避免为第一季匹配到第二季") },
-                trailingContent = {
-                    Switch(
-                        conf.preferShorterName, { conf.preferShorterName = it },
-                        enabled = state.enableEdit,
-                    )
-                },
-                colors = listItemColors,
             )
         }
 

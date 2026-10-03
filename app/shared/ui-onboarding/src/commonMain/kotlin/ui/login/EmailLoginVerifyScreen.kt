@@ -41,10 +41,11 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import kotlinx.coroutines.delay
 import me.him188.ani.app.data.repository.user.UserRepository.SendOtpResult
+import me.him188.ani.app.domain.session.auth.OAuthPlatform
 import me.him188.ani.app.ui.foundation.ProvideCompositionLocalsForPreview
 import me.him188.ani.app.ui.foundation.rememberAsyncHandler
-import me.him188.ani.app.ui.lang.*
 import me.him188.ani.app.ui.foundation.widgets.LocalToaster
+import me.him188.ani.app.ui.lang.*
 import org.jetbrains.compose.resources.*
 import kotlin.time.Clock
 import kotlin.time.Duration.Companion.seconds
@@ -53,7 +54,7 @@ import kotlin.time.Instant
 @Composable
 fun EmailLoginVerifyScreen(
     onSuccess: () -> Unit,
-    onBangumiLoginClick: () -> Unit,
+    onThirdPartyLoginClick: (OAuthPlatform) -> Unit,
     onNavigateSettings: () -> Unit,
     onNavigateBack: () -> Unit,
     modifier: Modifier = Modifier,
@@ -90,12 +91,12 @@ fun EmailLoginVerifyScreen(
                 vm.sendEmailOtp()
             }
         },
-        onBangumiLoginClick,
+        onThirdPartyLoginClick,
         onNavigateSettings,
         onNavigateBack,
         modifier = modifier,
         enabled = !asyncHandler.isWorking,
-        showThirdPartyLogin = state.mode == EmailLoginUiState.Mode.LOGIN,
+        thirdPartyPlatforms = if (state.mode == EmailLoginUiState.Mode.LOGIN) state.thirdPartyPlatforms else emptyList(),
         title = { EmailPageTitle(state.mode, state.isExistingAccount) },
     )
 }
@@ -108,21 +109,21 @@ internal fun EmailLoginVerifyScreenImpl(
     isExistingAccount: Boolean?,
     onCodeSubmit: (string: String) -> Unit,
     onResendClick: () -> Unit,
-    onBangumiLoginClick: () -> Unit,
+    onThirdPartyLoginClick: (OAuthPlatform) -> Unit,
     onNavigateSettings: () -> Unit,
     onNavigateBack: () -> Unit,
     modifier: Modifier = Modifier,
     title: @Composable () -> Unit = { Text(stringResource(Lang.login_sign_in)) },
     enabled: Boolean = true,
-    showThirdPartyLogin: Boolean = true,
+    thirdPartyPlatforms: List<OAuthPlatform> = emptyList(),
 ) {
     EmailLoginScreenLayout(
-        onBangumiLoginClick,
+        onThirdPartyLoginClick,
         onNavigateSettings,
         onNavigateBack,
         modifier,
         title = title,
-        showThirdPartyLogin = showThirdPartyLogin,
+        thirdPartyPlatforms = thirdPartyPlatforms,
     ) {
         CenteredSectionHeader(
             title = { Text(stringResource(Lang.login_verify_title)) },

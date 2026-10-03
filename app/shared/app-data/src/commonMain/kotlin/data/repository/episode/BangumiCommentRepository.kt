@@ -38,12 +38,12 @@ class BangumiCommentRepository(
     private val commentService: BangumiCommentService,
     private val subjectReviewDao: SubjectReviewDao,
 ) : Repository() {
-    fun subjectCommentsPager(subjectId: Int): Flow<PagingData<SubjectReview>> {
+    fun subjectCommentsPager(subjectId: Int, onTotalCount: (Int?) -> Unit = {}): Flow<PagingData<SubjectReview>> {
         return Pager(
             config = defaultPagingConfig,
             initialKey = 0,
             pagingSourceFactory = {
-                SubjectReviewPagingSource(subjectId)
+                SubjectReviewPagingSource(subjectId, onTotalCount)
             },
         ).flow
     }
@@ -58,6 +58,7 @@ class BangumiCommentRepository(
 
     private inner class SubjectReviewPagingSource(
         private val subjectId: Int,
+        private val onTotalCount: (Int?) -> Unit,
     ) : PagingSource<Int, SubjectReview>() {
         override fun getRefreshKey(state: PagingState<Int, SubjectReview>): Int? = state.anchorPosition
 
@@ -71,6 +72,9 @@ class BangumiCommentRepository(
                         nextKey = null,
                     )
 
+                // The merged review endpoint returns offset + page size + 1 while more pages exist.
+                // That sentinel is a lower bound, not an exact review count.
+                onTotalCount(subjectReviews.total.takeUnless { subjectReviews.hasMore })
                 LoadResult.Page(
                     data = subjectReviews.page,
                     prevKey = if (offset == 0) null else (offset - params.loadSize).coerceAtLeast(0),

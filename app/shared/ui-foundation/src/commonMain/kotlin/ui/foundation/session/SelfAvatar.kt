@@ -9,7 +9,6 @@
 
 package me.him188.ani.app.ui.foundation.session
 
-import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
@@ -65,34 +64,31 @@ fun SelfAvatar(
     val signInText = stringResource(Lang.login_sign_in)
 
     @Composable
-    fun Content(onClick: () -> Unit) {
-        if (state.isLoading) {
+    fun AvatarSurface(content: @Composable () -> Unit) = if (onClick == null) {
+        Surface(modifier, shape = CircleShape, content = content)
+    } else {
+        Surface(onClick, modifier, shape = CircleShape, content = content)
+    }
+
+    if (state.isLoading) {
+        AvatarSurface {
             // 加载中时展示 placeholder
             AvatarImage(
                 url = state.selfInfo?.avatarUrl,
                 Modifier.size(size).clip(CircleShape).placeholder(state.selfInfo == null),
             )
+        }
+    } else {
+        if (state.isSessionValid == false || state.selfInfo == null) {
+            TextButton(onClick ?: {}, modifier = modifier) {
+                Text(signInText)
+            }
         } else {
-            if (state.isSessionValid == false || state.selfInfo == null) {
-                TextButton(onClick) {
-                    Text(signInText)
-                }
-            } else {
+            AvatarSurface {
                 AvatarImage(
                     url = state.selfInfo.avatarUrl,
                     modifier = Modifier.size(size).clip(CircleShape),
                 )
-            }
-        }
-    }
-    Box {
-        if (onClick != null) {
-            Surface(onClick, modifier, shape = CircleShape) {
-                Content(onClick)
-            }
-        } else {
-            Surface(modifier = modifier, shape = CircleShape) {
-                Content { }
             }
         }
     }

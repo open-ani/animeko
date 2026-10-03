@@ -51,6 +51,7 @@ kotlin {
     }
     sourceSets.getByName("jvmTest").dependencies {
         implementation(libs.slf4j.simple)
+        implementation(libs.ktor.client.mock)
         implementation(libs.ktor.server.core)
         implementation(libs.ktor.server.test.host)
     }

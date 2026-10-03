@@ -102,7 +102,7 @@ class AniNavigatorTest {
 
     @Test
     fun `navigateMain pops up to the target before pushing`() {
-        val navigator = navigatorWith(NavRoutes.EmailLoginStart, NavRoutes.EmailLoginVerify, NavRoutes.BangumiAuthorize)
+        val navigator = navigatorWith(NavRoutes.EmailLoginStart, NavRoutes.EmailLoginVerify, NavRoutes.OAuthAuthorize("bangumi"))
         navigator.navigateMain(MainScreenPage.Collection, popUpTargetInclusive = NavRoutes.EmailLoginStart)
 
         assertEquals(listOf(NavRoutes.Main(MainScreenPage.Collection)), navigator.backStack)

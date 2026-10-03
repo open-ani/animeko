@@ -21,6 +21,8 @@ import androidx.compose.material3.SnackbarResult
 import androidx.compose.runtime.Stable
 import androidx.core.view.WindowCompat
 import androidx.lifecycle.lifecycleScope
+import io.github.vinceglb.filekit.FileKit
+import io.github.vinceglb.filekit.dialogs.init
 import kotlinx.atomicfu.AtomicRef
 import kotlinx.atomicfu.atomic
 import kotlinx.coroutines.CompletableDeferred
@@ -38,6 +40,8 @@ abstract class AniComponentActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         initializeViewTreeOwners()
+        // FileKit.openFileSaver 等非 Compose 对话框需要 Activity 的 ActivityResultRegistry (图片查看器的保存)
+        FileKit.init(this)
     }
 
     private val requestPermissionHandlers: MutableCollection<(Boolean) -> Unit> = ConcurrentLinkedQueue()

@@ -28,6 +28,7 @@ import me.him188.ani.app.data.models.subject.RatingInfo
 import me.him188.ani.app.data.models.subject.SelfRatingInfo
 import me.him188.ani.app.data.models.subject.SubjectCollectionStats
 import me.him188.ani.app.data.models.subject.SubjectInfo
+import me.him188.ani.app.data.models.subject.SubjectTmdbArt
 import me.him188.ani.app.data.models.subject.Tag
 import me.him188.ani.app.data.persistent.database.ProtoConverters
 import me.him188.ani.datasources.api.PackedDate
@@ -53,6 +54,12 @@ data class SubjectCollectionEntity(
     val summary: String,
     val nsfw: Boolean,
     val imageLarge: String,
+    /**
+     * 列表用封面, 服务端下发. 为空表示这条记录写入时服务端还没有这个字段.
+     * @since 6.2.0
+     */
+    @ColumnInfo(defaultValue = "")
+    val imageThumb: String = "",
     /**
      * 会在获取剧集列表时使用, 用于验证缓存的剧集数目是否正确
      */
@@ -84,6 +91,12 @@ data class SubjectCollectionEntity(
      */
     @Embedded(prefix = "relations_")
     val relations: SubjectRelations = SubjectRelations.Empty,
+
+    /**
+     * @see SubjectInfo.tmdbArt
+     */
+    @field:TypeConverters(ProtoConverters.SubjectTmdbArtConverter::class)
+    val tmdbArt: SubjectTmdbArt? = null,
 
     /**
      * 此条目最后被修改的时间 (如修改收藏状态). 与服务器同步.
@@ -144,6 +157,19 @@ interface SubjectCollectionDao {
 
     @Query("""DELETE FROM subject_collection WHERE subjectId = :subjectId""")
     suspend fun delete(subjectId: Int)
+
+    /**
+     * 删除多个条目的本地缓存. 剧集缓存 ([EpisodeCollectionEntity]) 会级联删除.
+     */
+    @Query("""DELETE FROM subject_collection WHERE subjectId IN (:subjectIds)""")
+    suspend fun deleteByIds(subjectIds: List<Int>)
+
+    /**
+     * 将所有条目的 [SubjectCollectionEntity.lastFetched] 置 0, 使所有本地缓存视为已过期,
+     * 下次进入收藏页 (分页刷新) 或条目页时会从服务端重新拉取. 不删除本地数据.
+     */
+    @Query("""UPDATE subject_collection SET lastFetched = 0""")
+    suspend fun resetAllLastFetched()
 
     @Query("""DELETE FROM subject_collection WHERE collectionType = :type""")
     suspend fun deleteAll(type: UnifiedCollectionType)

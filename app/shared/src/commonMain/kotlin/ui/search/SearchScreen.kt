@@ -60,7 +60,8 @@ fun SearchScreen(
                         effect.subjectId,
                         SubjectDetailPlaceholder(
                             id = effect.subjectId,
-                            name = effect.title,
+                            name = effect.originalTitle,
+                            nameCN = effect.title,
                             coverUrl = effect.imageUrl,
                         ),
                     )
@@ -79,7 +80,7 @@ fun SearchScreen(
         suggestionsPager = vm::suggestionsPager,
         detailContent = {
             val subjectDetailsState by vm.subjectDetailsStateLoader.state
-                .collectAsStateWithLifecycle(null)
+                .collectAsStateWithLifecycle()
             val selfInfo by vm.selfInfoFlow.collectAsStateWithLifecycle()
 
             SubjectDetailsScreen(

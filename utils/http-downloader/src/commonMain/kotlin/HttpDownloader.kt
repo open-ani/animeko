@@ -155,6 +155,22 @@ data class DownloadProgress(
     val totalBytes: Long, // -1 for unknown
     val status: DownloadStatus,
     val error: DownloadError? = null,
+    /**
+     * 分片或密钥下载最近一次失败的重试信息. 只在内存中保留, 分片成功或任务停止后为 `null`.
+     */
+    val lastSegmentFailure: SegmentFailure? = null,
+)
+
+@Serializable
+data class SegmentFailure(
+    /**
+     * 失败的分片序号, 下载 HLS 密钥失败时为 `null`.
+     */
+    val segmentIndex: Int?,
+    val attempt: Int,
+    val maxAttempts: Int,
+    val message: String,
+    val timestampMillis: Long,
 )
 
 @Serializable

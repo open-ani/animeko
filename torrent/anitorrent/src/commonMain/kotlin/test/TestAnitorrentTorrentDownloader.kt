@@ -17,7 +17,7 @@ import me.him188.ani.app.torrent.anitorrent.session.TorrentAddInfo
 import me.him188.ani.app.torrent.anitorrent.session.TorrentDescriptor
 import me.him188.ani.app.torrent.anitorrent.session.TorrentFileInfo
 import me.him188.ani.app.torrent.anitorrent.session.TorrentHandle
-import me.him188.ani.app.torrent.anitorrent.session.TorrentHandleState
+import me.him188.ani.app.torrent.api.TorrentHandleState
 import me.him188.ani.app.torrent.anitorrent.session.TorrentManagerSession
 import me.him188.ani.app.torrent.anitorrent.session.TorrentResumeData
 import me.him188.ani.app.torrent.anitorrent.session.TorrentStats

@@ -31,6 +31,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.text.selection.SelectionContainer
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.outlined.OpenInNew
@@ -69,10 +70,12 @@ import kotlinx.collections.immutable.toImmutableList
 import me.him188.ani.app.data.models.subject.RelatedSubjectInfo
 import me.him188.ani.app.data.models.subject.SubjectInfo
 import me.him188.ani.app.data.models.subject.Tag
+import me.him188.ani.app.data.models.subject.preferredDisplayName
 import me.him188.ani.app.tools.ColorUtils
 import me.him188.ani.app.ui.external.placeholder.placeholder
 import me.him188.ani.app.ui.foundation.AniImageLoadSuccess
 import me.him188.ani.app.ui.foundation.AsyncImage
+import me.him188.ani.app.ui.foundation.LocalSubjectAppearanceSettings
 import me.him188.ani.app.ui.foundation.animation.AniAnimatedVisibility
 import me.him188.ani.app.ui.foundation.ifThen
 import me.him188.ani.app.ui.foundation.text.ProvideContentColor
@@ -85,7 +88,6 @@ import me.him188.ani.app.ui.lang.subject_details_login_to_collect
 import me.him188.ani.app.ui.lang.subject_details_rate
 import me.him188.ani.app.ui.lang.subject_details_rating
 import me.him188.ani.app.ui.lang.subject_details_related_subjects
-import me.him188.ani.app.ui.rating.EditableRatingState
 import me.him188.ani.app.ui.subject.AiringLabel
 import me.him188.ani.app.ui.subject.collection.components.EditableSubjectCollectionTypeButton
 import me.him188.ani.app.ui.subject.collection.progress.SubjectProgressButton
@@ -95,11 +97,13 @@ import me.him188.ani.app.ui.subject.details.components.RatingHistogram
 import me.him188.ani.app.ui.subject.details.components.SUBJECT_COVER_IMAGE_TEST_TAG
 import me.him188.ani.app.ui.subject.details.components.RelatedSubjectsGrid
 import me.him188.ani.app.ui.subject.details.components.rememberNavigateToRelatedSubject
+import me.him188.ani.app.ui.subject.details.components.rememberNavigateToRelationGraph
 import me.him188.ani.app.ui.subject.details.sections.CharactersSection
 import me.him188.ani.app.ui.subject.details.sections.HotReviewsCardContent
 import me.him188.ani.app.ui.subject.details.sections.PagedEpisodesGrid
 import me.him188.ani.app.ui.subject.details.sections.ReviewsPreviewSection
 import me.him188.ani.app.ui.subject.details.sections.SectionHeader
+import me.him188.ani.app.ui.subject.details.sections.SectionHeaderRelationGraphButton
 import me.him188.ani.app.ui.subject.details.sections.SectionHeaderCacheButton
 import me.him188.ani.app.ui.subject.details.sections.StaffSection
 import me.him188.ani.app.ui.subject.details.sections.SubjectCollectionStatsRow
@@ -108,6 +112,9 @@ import me.him188.ani.app.ui.subject.details.sections.SubjectRatingSummary
 import me.him188.ani.app.ui.subject.details.sections.SubjectSummarySection
 import me.him188.ani.app.ui.subject.details.sections.SubjectTagsSection
 import me.him188.ani.app.ui.subject.details.state.SubjectDetailsState
+import me.him188.ani.app.ui.subject.details.state.SubjectDetailsUiState
+import me.him188.ani.app.ui.subject.details.state.rememberAiringLabelState
+import me.him188.ani.app.ui.subject.details.state.rememberSubjectProgressState
 import me.him188.ani.app.ui.subject.episode.list.EpisodeListItem
 import me.him188.ani.app.ui.subject.renderSubjectSeason
 import me.him188.ani.app.ui.user.SelfInfoUiState
@@ -140,17 +147,17 @@ internal fun SubjectDetailsMultiColumnPage(
     onClickCover: (() -> Unit)? = null,
 ) {
     val info = state.info ?: return
-    val presentation by state.presentation.collectAsStateWithLifecycle()
-    val episodes = presentation.episodeListUiState.mainEpisodes
+    val uiState by state.uiState.collectAsStateWithLifecycle()
+    val episodes = uiState.episodeListUiState.mainEpisodes
     // "当前/下一集": 第一集未看(非 DONE/DROPPED)者, 用于选集高亮与初始分页页.
     val currentEpisodeId = remember(episodes) { episodes.firstOrNull { !it.isDoneOrDropped }?.episodeId }
 
     val exposedCharacters = state.exposedCharactersPager.collectAsLazyPagingItemsWithLifecycle()
     val allCharacters = state.charactersPager.collectAsLazyPagingItemsWithLifecycle()
-    val totalCharactersCount by state.totalCharactersCountState
+    val totalCharactersCount = uiState.totalCharactersCount
     val exposedStaff = state.exposedStaffPager.collectAsLazyPagingItemsWithLifecycle()
     val allStaff = state.staffPager.collectAsLazyPagingItemsWithLifecycle()
-    val totalStaffCount by state.totalStaffCountState
+    val totalStaffCount = uiState.totalStaffCount
     val related = state.relatedSubjectsPager.collectAsLazyPagingItemsWithLifecycle()
     val comments = state.subjectCommentState.list.collectAsLazyPagingItemsWithLifecycle()
     val commentCount = state.subjectCommentState.count
@@ -162,7 +169,7 @@ internal fun SubjectDetailsMultiColumnPage(
         windowInsets,
         navigationIcon,
         onClickOpenExternal,
-        topBarTitle = info.displayName,
+        topBarTitle = info.preferredDisplayName(LocalSubjectAppearanceSettings.current.useOriginalTitle),
         backgroundOverlay = {
             val surfaceColor = MaterialTheme.colorScheme.surface
             val colors = remember(backgroundPalette) {
@@ -183,6 +190,7 @@ internal fun SubjectDetailsMultiColumnPage(
         // 左侧信息栏
         SubjectSidebar(
             state = state,
+            uiState = uiState,
             info = info,
             selfInfo = selfInfo,
             mainEpisodeCount = episodes.size,
@@ -201,7 +209,7 @@ internal fun SubjectDetailsMultiColumnPage(
             Modifier.weight(1f),
             verticalArrangement = Arrangement.spacedBy(layoutParams.sectionSpacing),
         ) {
-            SubjectTitleBlock(info, state)
+            SubjectTitleBlock(info, uiState)
             if (layoutParams.kind != SubjectDetailsPaneKind.EXPANDED) {
                 SubjectRatingRow(state, showHistogram = layoutParams.showInlineRatingHistogram)
             }
@@ -223,7 +231,7 @@ internal fun SubjectDetailsMultiColumnPage(
                             // 分页时分页控件替代集数文案; 不足一页时恢复 (定稿 1610:1003)
                             pager?.invoke() ?: ProvideContentColor(MaterialTheme.colorScheme.onSurfaceVariant) {
                                 AiringLabel(
-                                    state.airingLabelState,
+                                    uiState.rememberAiringLabelState(),
                                     style = MaterialTheme.typography.bodyMedium,
                                     progressColor = MaterialTheme.colorScheme.onSurfaceVariant,
                                 )
@@ -242,7 +250,7 @@ internal fun SubjectDetailsMultiColumnPage(
                 )
             }
             if (related.itemCount > 0) {
-                SubjectRelatedBlock(related)
+                SubjectRelatedBlock(state.subjectId, related)
             }
             if (!layoutParams.showRail) {
                 ReviewsPreviewSection(comments, commentCount, onShowAll = onShowComments)
@@ -257,13 +265,13 @@ internal fun SubjectDetailsMultiColumnPage(
             ) {
                 RailCard {
                     SectionHeader(stringResource(Lang.subject_details_rating)) {
-                        EditRatingButton(state.editableRatingState)
+                        EditRatingButton(uiState.rating.selfRatingInfo.score, onClick = { state.requestEditRating() })
                     }
                     SubjectRatingSummary(
                         info.ratingInfo,
                         Modifier.padding(top = 8.dp),
                         scoreStyle = MaterialTheme.typography.headlineMedium,
-                        onClick = { state.editableRatingState.requestEdit() },
+                        onClick = { state.requestEditRating() },
                     )
                     RatingHistogram(info.ratingInfo, Modifier.padding(top = 16.dp))
                 }
@@ -397,7 +405,7 @@ internal fun SubjectDetailsMultiColumnPlaceholder(
         windowInsets,
         navigationIcon,
         onClickOpenExternal,
-        topBarTitle = subjectInfo?.displayName,
+        topBarTitle = subjectInfo?.preferredDisplayName(LocalSubjectAppearanceSettings.current.useOriginalTitle),
     ) {
         Column(
             Modifier.width(layoutParams.sidebarWidth),
@@ -424,7 +432,7 @@ internal fun SubjectDetailsMultiColumnPlaceholder(
             }
         }
         Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(16.dp)) {
-            val title = subjectInfo?.displayName
+            val title = subjectInfo?.preferredDisplayName(LocalSubjectAppearanceSettings.current.useOriginalTitle)
             if (!title.isNullOrBlank()) {
                 Text(
                     title,
@@ -462,6 +470,7 @@ internal fun SubjectDetailsMultiColumnPlaceholder(
 @Composable
 private fun SubjectSidebar(
     state: SubjectDetailsState,
+    uiState: SubjectDetailsUiState,
     info: SubjectInfo,
     selfInfo: SelfInfoUiState,
     mainEpisodeCount: Int,
@@ -489,8 +498,8 @@ private fun SubjectSidebar(
         )
         // 播放按钮 (定稿: 全宽 Filled; 无选集列表小按钮, 选集操作走中栏网格)
         SubjectProgressButton(
-            state.subjectProgressState,
-            onPlay = { state.subjectProgressState.episodeIdToPlay?.let(onPlay) },
+            uiState.rememberSubjectProgressState(),
+            onPlay = { uiState.progressInfo?.nextEpisodeIdToPlay?.let(onPlay) },
             Modifier.fillMaxWidth(),
         )
         // 收藏 (定稿: 全宽 Tonal)
@@ -500,7 +509,8 @@ private fun SubjectSidebar(
             }
         } else {
             EditableSubjectCollectionTypeButton(
-                state.editableSubjectCollectionTypeState,
+                uiState.collectionTypeEdit,
+                state,
                 Modifier.fillMaxWidth(),
             )
         }
@@ -521,22 +531,29 @@ private fun SubjectSidebar(
 }
 
 @Composable
-private fun SubjectTitleBlock(info: SubjectInfo, state: SubjectDetailsState) {
+private fun SubjectTitleBlock(info: SubjectInfo, uiState: SubjectDetailsUiState) {
+    val useOriginalTitle = LocalSubjectAppearanceSettings.current.useOriginalTitle
+    val primaryTitle = info.preferredDisplayName(useOriginalTitle)
+    val secondaryTitle = if (useOriginalTitle) info.displayName else info.name
     Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-        Text(
-            info.displayName,
-            style = MaterialTheme.typography.headlineSmall,
-            maxLines = 2,
-            overflow = TextOverflow.Ellipsis,
-        )
-        if (info.name.isNotBlank() && info.name != info.displayName) {
-            Text(
-                info.name,
-                style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis,
-            )
+        SelectionContainer {
+            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                Text(
+                    primaryTitle,
+                    style = MaterialTheme.typography.headlineSmall,
+                    maxLines = 2,
+                    overflow = TextOverflow.Ellipsis,
+                )
+                if (secondaryTitle.isNotBlank() && secondaryTitle != primaryTitle) {
+                    Text(
+                        secondaryTitle,
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                    )
+                }
+            }
         }
         // 元数据行 (对齐定稿的内联文本, 非 chip): 季度 · 播出状态 · 总集数
         FlowRow(
@@ -550,7 +567,7 @@ private fun SubjectTitleBlock(info: SubjectInfo, state: SubjectDetailsState) {
             )
             Text("·", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
             AiringLabel(
-                state.airingLabelState,
+                uiState.rememberAiringLabelState(),
                 style = MaterialTheme.typography.bodyMedium,
                 progressColor = MaterialTheme.colorScheme.onSurfaceVariant,
             )
@@ -570,7 +587,7 @@ private fun SubjectRatingRow(state: SubjectDetailsState, showHistogram: Boolean)
     ) {
         SubjectRatingSummary(
             info.ratingInfo,
-            onClick = { state.editableRatingState.requestEdit() },
+            onClick = { state.requestEditRating() },
         )
         if (showHistogram) {
             Spacer(Modifier.weight(1f))
@@ -586,14 +603,13 @@ private val RATING_HISTOGRAM_WIDTH = 274.dp
  * (复用手机版同款 [Lang.rating_self_score] 文案); 点击打开评分编辑.
  */
 @Composable
-private fun EditRatingButton(editableRatingState: EditableRatingState) {
-    TextButton({ editableRatingState.requestEdit() }) {
+private fun EditRatingButton(selfScore: Int, onClick: () -> Unit) {
+    TextButton(onClick) {
         Icon(
             Icons.Rounded.StarOutline,
             contentDescription = null,
             Modifier.size(18.dp),
         )
-        val selfScore = editableRatingState.selfRatingInfo.score
         Text(
             if (selfScore > 0) {
                 stringResource(Lang.rating_self_score, selfScore)
@@ -606,9 +622,11 @@ private fun EditRatingButton(editableRatingState: EditableRatingState) {
 }
 
 @Composable
-private fun SubjectRelatedBlock(related: LazyPagingItems<RelatedSubjectInfo>) {
+private fun SubjectRelatedBlock(subjectId: Int, related: LazyPagingItems<RelatedSubjectInfo>) {
     Column(verticalArrangement = Arrangement.spacedBy(14.dp)) {
-        SectionHeader(stringResource(Lang.subject_details_related_subjects))
+        SectionHeader(stringResource(Lang.subject_details_related_subjects)) {
+            SectionHeaderRelationGraphButton(rememberNavigateToRelationGraph(subjectId))
+        }
         RelatedSubjectsGrid(related, onClick = rememberNavigateToRelatedSubject())
     }
 }

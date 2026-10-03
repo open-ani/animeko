@@ -1,0 +1,16 @@
+{
+  "searchUrl": "https://www.fixture.invalid/search.html?wd={keyword}",
+  "requestInterval": 0,
+  "subjectFormatId": "indexed",
+  "selectorSubjectFormatIndexed": {
+    "selectNames": "body > .box-width .search-box .thumb-content > .thumb-txt",
+    "selectLinks": "body > .box-width .search-box .thumb-menu > a"
+  },
+  "channelFormatId": "index-grouped",
+  "selectorChannelFormatFlattened": {
+    "selectChannelNames": ".anthology-tab > .swiper-wrapper a",
+    "matchChannelName": "^()?(?<ch>.+?)(\\d+)?$",
+    "selectEpisodeLists": ".anthology-list-box",
+    "selectEpisodesFromList": "a"
+  }
+}

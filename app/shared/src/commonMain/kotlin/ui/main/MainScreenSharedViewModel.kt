@@ -29,7 +29,7 @@ import me.him188.ani.datasources.bangumi.BangumiClientImpl
 import org.koin.core.component.KoinComponent
 import org.koin.core.component.inject
 
-class MainScreenSharedViewModel : AbstractViewModel(), KoinComponent {
+open class MainScreenSharedViewModel : AbstractViewModel(), KoinComponent {
     val selfInfo = SelfInfoStateProducer(koin = getKoin()).flow
 
     private val clientProvider: HttpClientProvider by inject()

@@ -83,87 +83,53 @@ class MediaSelectorOrchestrationCharacterizationTest {
         assertEquals(1, sources.bt1.fetchCount)
     }
 
-    /**
-     * 夹具要点: 让 "clause④ 判 null" 与 "容忍窗 fallback 本可选中" 两件事分离, 尾部的 [assertNull] 才有判别力.
-     *
-     * - 两个源都返回 subjectName 匹配的 media, 所以 `filteredCandidates` 非空:
-     *   若 clause② (快速选择) 没有被 [cancelScope][me.him188.ani.utils.coroutines.cancellableCoroutineScope] 取消,
-     *   它会在容忍窗 (5s) 超时后以 `allowNonPreferred = true` 选中其中一条 (见对照组用例).
-     * - 但 media 的 alliance 与 `savedUserPreference.alliance` 不符, 所以 `preferredCandidates` 为空,
-     *   clause④ 的 `trySelectDefault` 返回 null, 以 null 结束编排.
-     *
-     * 因此 "5s 后仍然没有选中" 只可能是因为快速选择被取消了.
-     */
     @Test
-    fun `ORCH-06 clause4 以 null 结束编排并取消容忍窗内的快速选择`() = runFetchMediaSelectorTestSuite {
+    fun `completed Web sources with mismatched preference wait for exact phase instead of cancelling selection`() = runFetchMediaSelectorTestSuite {
         initSubject()
         preferenceApi.savedUserPreference.value = MediaPreference.Any.copy(alliance = "组A")
         preferenceApi.mediaSelectorSettings.value = autoSelectSettings()
-
         val (_, session, sources) = configureFetchSession {
             object {
                 val web1 by web { tier = 2 }
                 val web2 by web { tier = 2 }
             }
         }
-
         val collected = selector.collectEvents {
             val job = launchAutoSelect(session)
-            testScope().runCurrent()
-            assertFalse(job.isCompleted)
-
             sources.web1.complete(media(kind = WEB, alliance = "组B", subjectName = initApi.subjectName))
             sources.web2.complete(media(kind = WEB, alliance = "组B", subjectName = initApi.subjectName))
             testScope().runCurrent()
-
-            // PINNED: ORCH-06
-            // 前半段: clause④ 以 null 终结, cancelScope() 结束整个编排 (少了它 clause②③ 永不结束, job 挂死).
-            job.assertCompleted()
+            assertFalse(job.isCompleted)
             assertNull(selector.selected.value)
-            // 候选非空但偏好候选为空: 证明 "选不出" 来自偏好层而不是过滤层.
             assertEquals(2, selector.filteredCandidatesMedia.first().size)
             assertEquals(emptyList(), selector.preferredCandidatesMedia.first())
-
-            // 后半段: 容忍窗到点时快速选择已被取消, 不会再选中任何东西.
             testScope().advanceTimeBy(5.seconds)
             testScope().runCurrent()
-            assertNull(selector.selected.value)
+            assertSelectedSource(sources.web1)
+            job.assertCompleted()
         }
-        // 第二重口径: 全程没有任何选择事件发出.
-        assertEquals(emptyList(), collected.onSelect)
+        assertEquals(1, collected.onSelect.size)
+        assertEquals(0, collected.onChangePreference.size)
     }
 
-    /**
-     * [ORCH-06 clause4 以 null 结束编排并取消容忍窗内的快速选择] 的对照组: 同样的夹具下, 只要编排没有结束
-     * (多一个永不完成的 web 源使 clause④ 无法结束), 容忍窗超时后的快速选择 fallback **本来是能选中的**.
-     *
-     * 它保证主用例尾部的 `assertNull` 不是 "本来就选不出" 的恒真断言.
-     */
     @Test
-    fun `ORCH-06 对照组 编排未结束时容忍窗超时的快速选择能选中`() = runFetchMediaSelectorTestSuite {
+    fun `pending Web source does not prevent exact fallback after the first deadline`() = runFetchMediaSelectorTestSuite {
         initSubject()
         preferenceApi.savedUserPreference.value = MediaPreference.Any.copy(alliance = "组A")
         preferenceApi.mediaSelectorSettings.value = autoSelectSettings()
-
         val (_, session, sources) = configureFetchSession {
             object {
                 val web1 by web { tier = 2 }
-
-                // 永不完成, 使 clause④ 的 awaitCompletion 无法满足, 编排不会结束
                 val pendingWeb by web { tier = 2 }
             }
         }
-
         val job = launchAutoSelect(session)
         sources.web1.complete(media(kind = WEB, alliance = "组B", subjectName = initApi.subjectName))
         testScope().runCurrent()
-
         assertNull(selector.selected.value)
         assertFalse(job.isCompleted)
-
         testScope().advanceTimeBy(5.seconds)
         testScope().runCurrent()
-
         assertSelectedSource(sources.web1)
         job.assertCompleted()
     }

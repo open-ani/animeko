@@ -258,6 +258,9 @@ class WatchTogetherManagerTest {
         positionAtMillis = 1_000L,
         durationMillis = 1_440_000L,
         paused = paused,
+        buffering = false,
+        loading = false,
+        playbackRate = 1f,
     )
 
     private class MutableSettings<T>(initial: T) : Settings<T> {
@@ -313,6 +316,7 @@ class WatchTogetherManagerTest {
             return AniWatchTogetherReportResponse(
                 serverTime = 1_000L,
                 membership = AniWatchTogetherMembership.OK,
+                version = 0L,
             )
         }
 

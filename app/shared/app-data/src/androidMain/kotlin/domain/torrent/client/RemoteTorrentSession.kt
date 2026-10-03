@@ -25,6 +25,7 @@ import me.him188.ani.app.domain.torrent.callback.ITorrentSessionStatsCallback
 import me.him188.ani.app.domain.torrent.cont.ContTorrentSessionGetFiles
 import me.him188.ani.app.domain.torrent.parcel.PTorrentSessionStats
 import me.him188.ani.app.domain.torrent.parcel.RemoteContinuationException
+import me.him188.ani.app.torrent.api.TorrentHandleState
 import me.him188.ani.app.torrent.api.TorrentSession
 import me.him188.ani.app.torrent.api.files.TorrentFileEntry
 import me.him188.ani.app.torrent.api.peer.PeerInfo
@@ -91,6 +92,10 @@ class RemoteTorrentSession(
 
     override fun getPeers(): List<PeerInfo> {
         return remote.call { peers }.asList()
+    }
+
+    override fun getState(): TorrentHandleState? {
+        return TorrentHandleState.entries.getOrNull(remote.call { state })
     }
 
     override suspend fun close() {
