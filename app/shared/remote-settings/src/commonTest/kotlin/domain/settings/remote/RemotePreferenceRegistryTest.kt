@@ -14,9 +14,15 @@ import kotlin.test.assertTrue
 import kotlinx.coroutines.async
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.test.runTest
+import kotlinx.serialization.Serializable
 import kotlinx.serialization.SerializationException
+import kotlinx.serialization.json.JsonObject
+import kotlinx.serialization.json.JsonPrimitive
+import kotlinx.serialization.json.jsonObject
 import me.him188.ani.app.data.models.preference.DanmakuCacheStrategy
 import me.him188.ani.app.data.models.preference.RememberedRoomSession
+import me.him188.ani.app.data.models.preference.VideoScaffoldConfig
+import me.him188.ani.app.data.models.preference.WatchTogetherSettings
 import me.him188.ani.app.data.persistent.MemoryDataStore
 import me.him188.ani.app.data.repository.user.PreferencesRepositoryImpl
 import me.him188.ani.remote.settings.RemoteSettingsProtocol
@@ -43,6 +49,37 @@ class RemotePreferenceRegistryTest {
         assertTrue(repository.videoScaffoldConfig.flow.first().autoPlayNext)
         assertFalse(repository.videoScaffoldConfig.flow.first().autoMarkDone)
     }
+
+    @Test
+    fun fieldsUnknownToAnOlderSenderKeepTheTvValues() = runTest {
+        val repository = repository()
+        repository.videoScaffoldConfig.update { copy(autoMarkDone = false) }
+        val registry = RemotePreferenceRegistry(repository, revisions)
+        val current = registry.snapshot().videoScaffoldConfig
+        // An older phone decodes the snapshot without `autoMarkDone` and writes back what it knows.
+        val decoded = current.value.copy(autoMarkDone = true, autoPlayNext = false)
+        val sent =
+            JsonObject(
+                json.encodeToJsonElement(VideoScaffoldConfig.serializer(), decoded).jsonObject -
+                    "autoMarkDone"
+            )
+        registry.write(current.revision, RemotePreference.VideoScaffold(decoded), sent)
+        val written = repository.videoScaffoldConfig.flow.first()
+        assertFalse(written.autoPlayNext)
+        assertFalse(written.autoMarkDone)
+    }
+
+    @Test
+    fun fieldsFromANewerVersionAreIgnored() {
+        val encoded = json.encodeToJsonElement(PingRequestLike.serializer(), PingRequestLike("a"))
+        val newer = JsonObject(encoded.jsonObject + ("addedLater" to JsonPrimitive(1)))
+        assertEquals(
+            PingRequestLike("a"),
+            json.decodeFromJsonElement(PingRequestLike.serializer(), newer),
+        )
+    }
+
+    @Serializable private data class PingRequestLike(val name: String)
 
     @Test
     fun concurrentWritersCannotBothCommitWithOneRevision() = runTest {
@@ -137,13 +174,16 @@ class RemotePreferenceRegistryTest {
     }
 
     @Test
-    fun unknownAndMismatchedPreferenceVariantsFailDuringDecoding() {
-        for (body in
-            listOf(
-                """{"operationId":"op","baseRevision":"1","value":{"type":"proxySettings","value":{}}}""",
-                """{"operationId":"op","baseRevision":"1","value":{"type":"watchTogetherSettings","value":{"playbackSpeed":1.5}}}""",
-            )) assertFailsWith<SerializationException> {
-            json.decodeFromString<PreferenceRequest>(body)
+    fun unknownPreferenceVariantFailsDuringDecodingAndForeignFieldsAreIgnored() {
+        assertFailsWith<SerializationException> {
+            json.decodeFromString<PreferenceRequest>(
+                """{"operationId":"op","baseRevision":"1","value":{"type":"proxySettings","value":{}}}"""
+            )
         }
+        val request =
+            json.decodeFromString<PreferenceRequest>(
+                """{"operationId":"op","baseRevision":"1","value":{"type":"watchTogetherSettings","value":{"playbackSpeed":1.5}}}"""
+            )
+        assertEquals(RemotePreference.WatchTogether(WatchTogetherSettings()), request.value)
     }
 }

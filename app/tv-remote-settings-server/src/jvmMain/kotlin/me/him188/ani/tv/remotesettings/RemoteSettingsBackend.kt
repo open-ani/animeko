@@ -21,6 +21,7 @@ import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import kotlinx.serialization.KSerializer
 import kotlinx.serialization.builtins.ListSerializer
+import kotlinx.serialization.json.JsonObject
 import me.him188.ani.app.data.models.danmaku.DanmakuRegexFilter
 import me.him188.ani.app.data.persistent.PlatformDataStoreManager
 import me.him188.ani.app.data.repository.user.SettingsRepository
@@ -64,7 +65,8 @@ import me.him188.ani.utils.platform.collections.partiallyReorderBy
 interface RemoteSettingsBackend {
     suspend fun snapshot(): SettingsSnapshot
 
-    suspend fun preference(request: PreferenceRequest): RemoteOperationPayload
+    /** @param sent the preference value as the client wrote it, see [RemotePreferenceRegistry.write] */
+    suspend fun preference(request: PreferenceRequest, sent: JsonObject?): RemoteOperationPayload
 
     suspend fun mediaSource(request: MediaSourceRequest): RemoteOperationPayload
 
@@ -151,8 +153,11 @@ class LocalRemoteSettingsBackend(
                     },
         )
 
-    override suspend fun preference(request: PreferenceRequest): RemoteOperationPayload {
-        preferences.write(request.baseRevision, request.value)
+    override suspend fun preference(
+        request: PreferenceRequest,
+        sent: JsonObject?,
+    ): RemoteOperationPayload {
+        preferences.write(request.baseRevision, request.value, sent)
         return RemoteOperationPayload.Applied
     }
 

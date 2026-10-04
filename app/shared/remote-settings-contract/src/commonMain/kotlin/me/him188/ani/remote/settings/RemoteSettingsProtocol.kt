@@ -19,7 +19,15 @@ object RemoteSettingsProtocol {
     const val SCHEMA_VERSION = 1
     const val MAX_REQUEST_BYTES = 2 * 1024 * 1024
     const val MAX_LOG_BYTES = 2 * 1024 * 1024
-    val json = Json { encodeDefaults = true }
+    /**
+     * Fields added by a newer app version are ignored by an older one, so adding a field to a wire
+     * model keeps both versions compatible. Every known field is always written, which lets the
+     * receiver tell a field the sender does not know from one it left at its default.
+     */
+    val json = Json {
+        encodeDefaults = true
+        ignoreUnknownKeys = true
+    }
 }
 
 /** Process-scoped connection credentials. Never persist this object or include its URI in logs. */

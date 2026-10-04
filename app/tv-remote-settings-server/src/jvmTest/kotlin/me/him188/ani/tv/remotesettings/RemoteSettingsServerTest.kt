@@ -28,6 +28,7 @@ import kotlin.test.assertFailsWith
 import kotlin.test.assertIs
 import kotlin.test.assertNotEquals
 import kotlinx.coroutines.CompletableDeferred
+import kotlinx.serialization.json.JsonObject
 import kotlinx.coroutines.test.runTest
 import me.him188.ani.app.data.models.ApiFailure
 import me.him188.ani.app.data.models.danmaku.DanmakuRegexFilter
@@ -95,8 +96,11 @@ class RemoteSettingsServerTest {
                     emptyList(),
                 )
 
-            override suspend fun preference(request: PreferenceRequest): RemoteOperationPayload {
-                preferences.write(request.baseRevision, request.value)
+            override suspend fun preference(
+                request: PreferenceRequest,
+                sent: JsonObject?,
+            ): RemoteOperationPayload {
+                preferences.write(request.baseRevision, request.value, sent)
                 return RemoteOperationPayload.Applied
             }
 

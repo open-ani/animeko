@@ -45,6 +45,7 @@ import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.JsonArray
 import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.JsonObject
+import kotlinx.serialization.json.decodeFromJsonElement
 import me.him188.ani.app.domain.settings.remote.BackupRequest
 import me.him188.ani.app.domain.settings.remote.DanmakuFilterRequest
 import me.him188.ani.app.domain.settings.remote.MediaSourceRequest
@@ -246,7 +247,18 @@ internal fun Application.remoteSettingsRoutes(
             }
             get("state") { call.handle { reply(backend.snapshot()) } }
             get("log") { call.handle { reply(backend.log()) } }
-            commandRoute<PreferenceRequest>("preference", operations, backend::preference)
+            post("preference") {
+                call.handle {
+                    val json = RemoteSettingsProtocol.json
+                    val body = json.parseToJsonElement(bodyText())
+                    val request = json.decodeFromJsonElement<PreferenceRequest>(body)
+                    // {"value": {"type": ..., "value": {the fields the client knows}}}
+                    val sent = ((body as? JsonObject)?.get("value") as? JsonObject)?.get("value")
+                    operation(operations, request, "preference") {
+                        backend.preference(request, sent as? JsonObject)
+                    }
+                }
+            }
             commandRoute<MediaSourceRequest>("media-source", operations, backend::mediaSource)
             commandRoute<DanmakuFilterRequest>(
                 "danmaku-filter",
@@ -279,13 +291,7 @@ private inline fun <reified T : RemoteCommandRequest> Route.commandRoute(
     post(path) {
         call.handle {
             val request = body<T>()
-            operation(
-                operations,
-                request.operationId,
-                path + ":" + fingerprint(RemoteSettingsProtocol.json.encodeToString(request)),
-            ) {
-                handler(request)
-            }
+            operation(operations, request, path) { handler(request) }
         }
     }
 }
@@ -303,14 +309,15 @@ private fun ApplicationCall.hasAccessKey(accessKey: String): Boolean {
 private fun fingerprint(value: String) =
     MessageDigest.getInstance("SHA-256").digest(value.toByteArray(Charsets.UTF_8)).toHexString()
 
-private suspend fun ApplicationCall.operation(
+private suspend inline fun <reified T : RemoteCommandRequest> ApplicationCall.operation(
     ledger: RemoteOperationLedger,
-    id: String,
-    fingerprint: String,
-    action: suspend () -> RemoteOperationPayload,
+    request: T,
+    path: String,
+    noinline action: suspend () -> RemoteOperationPayload,
 ) {
-    val task = ledger.submit(id, fingerprint, action)
-    val result = task.awaitBriefly()
+    val id = request.operationId
+    val content = fingerprint(RemoteSettingsProtocol.json.encodeToString(request))
+    val result = ledger.submit(id, "$path:$content", action).awaitBriefly()
     reply(
         result ?: OperationResult(id, "pending"),
         if (result == null) HttpStatusCode.Accepted else HttpStatusCode.OK,
@@ -329,7 +336,10 @@ private suspend inline fun <reified T> ApplicationCall.reply(
     )
 }
 
-private suspend inline fun <reified T> ApplicationCall.body(): T {
+private suspend inline fun <reified T> ApplicationCall.body(): T =
+    RemoteSettingsProtocol.json.decodeFromString(bodyText())
+
+private suspend fun ApplicationCall.bodyText(): String {
     val contentType = request.header(HttpHeaders.ContentType).orEmpty().substringBefore(';')
     if (contentType != "application/json")
         throw RemoteSettingsException("INVALID_CONTENT_TYPE", "Request must use JSON")
@@ -341,9 +351,7 @@ private suspend inline fun <reified T> ApplicationCall.body(): T {
         }
     if (bytes.size > RemoteSettingsProtocol.MAX_REQUEST_BYTES)
         throw RemoteSettingsException("PAYLOAD_TOO_LARGE", "Payload too large")
-    return RemoteSettingsProtocol.json.decodeFromString(
-        bytes.decodeToString(throwOnInvalidSequence = true)
-    )
+    return bytes.decodeToString(throwOnInvalidSequence = true)
 }
 
 private suspend fun ApplicationCall.handle(action: suspend ApplicationCall.() -> Unit) {

@@ -12,6 +12,10 @@ package me.him188.ani.app.domain.settings.remote
 import kotlin.concurrent.Volatile
 import kotlinx.coroutines.flow.first
 import kotlinx.serialization.KSerializer
+import kotlinx.serialization.descriptors.SerialDescriptor
+import kotlinx.serialization.descriptors.StructureKind
+import kotlinx.serialization.json.JsonElement
+import kotlinx.serialization.json.JsonObject
 import me.him188.ani.app.data.models.danmaku.DanmakuFilterConfig
 import me.him188.ani.app.data.models.preference.DanmakuCacheStrategy
 import me.him188.ani.app.data.models.preference.MediaCacheSettings
@@ -150,8 +154,13 @@ class RemotePreferenceRegistry(
 
     fun validate(value: RemotePreference) = bind(value).validate()
 
-    suspend fun write(expectedRevision: String, value: RemotePreference) =
-        bind(value).write(expectedRevision)
+    /**
+     * @param sent the fields of [value] as the sender wrote them. Fields that are missing, because
+     *   the sender is an older version that does not know them, keep the TV's values. Null writes
+     *   [value] as a whole.
+     */
+    suspend fun write(expectedRevision: String, value: RemotePreference, sent: JsonObject? = null) =
+        bind(value).write(expectedRevision, sent)
 
     private fun bind(value: RemotePreference): Bound<*> =
         when (value) {
@@ -169,7 +178,8 @@ class RemotePreferenceRegistry(
     private class Bound<T>(private val entry: Entry<T>, private val value: T) {
         fun validate() = entry.validate(value)
 
-        suspend fun write(expectedRevision: String) = entry.write(expectedRevision, value)
+        suspend fun write(expectedRevision: String, sent: JsonObject?) =
+            entry.write(expectedRevision, value, sent)
     }
 
     private inner class Entry<T>(
@@ -201,16 +211,48 @@ class RemotePreferenceRegistry(
             validator(value)
         }
 
-        suspend fun write(expectedRevision: String, proposed: T) {
-            validate(proposed)
+        suspend fun write(expectedRevision: String, proposed: T, sent: JsonObject?) {
             settings.update {
                 checkRemote(
                     revision(this) == expectedRevision,
                     "REVISION_CONFLICT",
                     "Settings revision has changed",
                 )
-                merge(this, proposed)
+                val value = if (sent == null) proposed else withSentFields(project(this), sent)
+                validate(value)
+                merge(this, value)
             }
         }
+
+        private fun withSentFields(current: T, sent: JsonObject): T {
+            val json = RemoteSettingsProtocol.json
+            return json.decodeFromJsonElement(
+                serializer,
+                overlay(json.encodeToJsonElement(serializer, current), sent, serializer.descriptor),
+            )
+        }
     }
+}
+
+/**
+ * [sent] on top of [current]. Only classes are merged field by field; lists, maps and polymorphic
+ * values are taken from [sent] as a whole.
+ */
+private fun overlay(
+    current: JsonElement,
+    sent: JsonElement,
+    descriptor: SerialDescriptor,
+): JsonElement {
+    if (descriptor.kind != StructureKind.CLASS || current !is JsonObject || sent !is JsonObject)
+        return sent
+    return JsonObject(
+        current +
+            sent.mapValues { (name, value) ->
+                val index = descriptor.getElementIndex(name)
+                val existing = current[name]
+                if (index >= 0 && existing != null)
+                    overlay(existing, value, descriptor.getElementDescriptor(index))
+                else value
+            }
+    )
 }

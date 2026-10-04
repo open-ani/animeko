@@ -177,7 +177,15 @@ sequenceDiagram
 
 `POST /ping` 返回 200 表示密钥和版本检查通过；完整初始快照成功解码后才显示可编辑页面。读取失败不会显示手机配置作为占位值。
 
-`appVersion` 用于双端版本信息展示；可兼容性由显式的 `protocolVersion` 和 `schemaVersion` 决定。破坏现有请求、字段含义或必需 snapshot 结构的变更需要升级相应版本。
+`appVersion` 用于双端版本信息展示；可兼容性由显式的 `protocolVersion` 和 `schemaVersion` 决定。
+
+手机和电视独立发版，两端的配置模型可以相差若干字段：
+
+- 双方解码时忽略自己不认识的字段，编码时写出自己认识的全部字段（包括默认值）。
+- 电视写入 preference 时，以自己当前的值为底，逐字段覆盖手机发来的字段；手机不认识因而没有发送的字段保留电视的值。只有类按字段合并，列表、map 和多态值整体取手机发来的值。
+- 因此给配置模型新增带默认值的字段不需要升级版本。旧手机看不到新字段，也不会改动它；新手机连接旧电视时，新字段的修改不生效。
+
+以下变更会让旧版本误读数据，需要升级 `schemaVersion`：删除或重命名字段、改变字段的类型或含义、给已有枚举增加取值、增加没有默认值的字段。数据源、订阅和弹幕规则以整个对象或列表提交，这些模型新增字段时，旧手机的编辑会把该字段写回默认值，同样需要升级。
 
 所有后续请求带 `X-Ani-Server-Instance`。若电视检测到不匹配，返回 `SERVER_RESTARTED`，提示重新扫码。
 
@@ -247,7 +255,7 @@ OperationResult(operationId: String, status: String, result: RemoteOperationPayl
 - HTTP 400：JSON、命令、Content-Type 等请求格式错误。
 - 业务执行失败由 `OperationResult.error` 表示，不能把所有 HTTP 200 都解释为写入成功。
 
-请求体要求 `application/json`，UTF-8 解码，未知字段由严格 serializer 拒绝。读取最大 `2 MiB + 1`，超过 2 MiB 拒绝；读取超时 10 秒。业务操作最多运行 120 秒。
+请求体要求 `application/json`，UTF-8 解码；未知的字段被忽略，未知的命令或配置类型（discriminator）被拒绝。读取最大 `2 MiB + 1`，超过 2 MiB 拒绝；读取超时 10 秒。业务操作最多运行 120 秒。
 
 ## 6. 写入一致性与失败处理
 
@@ -468,7 +476,7 @@ HTTP 不提供 TLS 链路保密性。二维码 key 是访问授权，不能抵�
 | --- | --- |
 | `RemoteSettingsLinkTest` | URI round-trip、私有地址、重复参数、诊断脱敏 |
 | `RemoteSettingsServerTest` | 每个端点鉴权、Origin、实例／版本、操作去重、HMAC revision；生成客户端对各类命令、快照、备份结果和轮询响应的强类型联调 |
-| `RemotePreferenceRegistryTest` | 电视本地修改引发冲突、并发 CAS、敏感字段脱敏与本机字段保留、字段注入拒绝、配置 wrapper round-trip、未知／不匹配类型拒绝 |
+| `RemotePreferenceRegistryTest` | 电视本地修改引发冲突、并发 CAS、旧版本未发送的字段保留电视值、新版本的字段被忽略、敏感字段脱敏与本机字段保留、字段注入拒绝、配置 wrapper round-trip、未知／不匹配类型拒绝 |
 | `RemoteSettingsSchemaTest` | 检入的 OpenAPI schema 与实际 Kotlin serializer 一致 |
 | `RemoteSettingsSessionTest` | 写入响应丢失、pending 轮询、确认后读取失败、协议失败、连续写入排序、取消调用者后已提交的 preference 仍按序完成、基于过期值的编辑被拒绝且之后无需刷新即可重试 |
 | `RemoteMediaSourceEditorTest` | 输入合并、关闭编辑器后保存最后输入、连续自动保存推进 revision、轮询不覆盖打开时的 revision |
@@ -496,6 +504,7 @@ iOS 源码与权限配置需要在 macOS/Xcode 构建和真机 LAN 权限环境�
 
 ### 14.3 增加配置项时
 
+0. 给已开放的配置模型新增带默认值的字段时，只需重新导出 OpenAPI；TV 不支持的项在 `RemoteSettingsControls.kt` 中隐藏，有取值范围的字段在 registry 中校验。以下步骤用于开放新的配置类型。
 1. 确认目标 TV 实际支持此能力，定义稳定的配置 key／字段范围。
 2. 在 `RemotePreference` 增加包裹原模型的分支，在 typed snapshot 和 registry 增加属性、投影与服务端校验。
 3. 在 remote repository 提供 typed `Settings<T>`，由确认 snapshot 驱动 Flow。
