@@ -1111,6 +1111,14 @@
     <string name="settings_account_profile_unbind_email_confirmation">確定要解除綁定電子郵件 %1$s 嗎？解除綁定後將不能再用它登入此帳號。之後可以重新綁定電子郵件。</string>
     <string name="settings_account_profile_unbind_email_last_login_method">電子郵件是此帳號唯一的登入方式，無法解除綁定。請先綁定 Bangumi 或其他第三方帳號。</string>
     <string name="settings_account_profile_ok">好</string>
+    <string name="settings_account_profile_account_management">帳號管理</string>
+    <string name="settings_account_profile_delete_account">刪除帳號</string>
+    <string name="settings_account_profile_delete_account_description">永久刪除此帳號及其全部資料</string>
+    <string name="settings_account_profile_delete_account_warning">刪除帳號會永久刪除此帳號的全部資料，包括收藏、觀看記錄、評論和彈幕。刪除後無法撤回，資料無法找回。</string>
+    <string name="settings_account_profile_delete_account_input_label">輸入 %1$s 以確認</string>
+    <string name="settings_account_profile_delete_account_confirm">刪除</string>
+    <string name="settings_account_profile_deleting_account">正在刪除…</string>
+    <string name="settings_account_profile_account_deleted">帳號已刪除</string>
     <string name="settings_account_github_title">GitHub 帳號</string>
     <string name="settings_account_github_bound">已綁定的 GitHub 帳號</string>
     <string name="settings_account_developer_benefit">通過認證後不再顯示廣告等</string>
