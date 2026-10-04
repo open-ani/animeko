@@ -1108,6 +1108,13 @@
     <string name="settings_account_profile_unbind_email_confirmation">Unbind email %1$s? You will no longer be able to sign in to this account with it. You can bind an email again later.</string>
     <string name="settings_account_profile_unbind_email_last_login_method">Email is the only way to sign in to this account, so it cannot be unbound. Bind Bangumi or another third-party account first.</string>
     <string name="settings_account_profile_ok">OK</string>
+    <string name="settings_account_profile_delete_account">Delete account</string>
+    <string name="settings_account_profile_delete_account_description">Permanently delete this account and all of its data</string>
+    <string name="settings_account_profile_delete_account_warning">Deleting your account permanently deletes all of its data, including collections, watch history, comments and danmaku. This cannot be undone, and the data cannot be recovered.</string>
+    <string name="settings_account_profile_delete_account_input_label">Type %1$s to confirm</string>
+    <string name="settings_account_profile_delete_account_confirm">Delete</string>
+    <string name="settings_account_profile_deleting_account">Deleting…</string>
+    <string name="settings_account_profile_account_deleted">Account deleted</string>
     <string name="settings_account_github_title">GitHub Account</string>
     <string name="settings_account_github_bound">Linked GitHub account</string>
     <string name="settings_account_developer_benefit">Certified developers get perks such as no ads</string>

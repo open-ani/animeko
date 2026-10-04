@@ -227,6 +227,15 @@ class ProfileViewModel : AbstractViewModel(), KoinComponent {
         stateRefresher.restart()
     }
 
+    /**
+     * 注销账号. 成功后本地退出登录.
+     *
+     * @throws me.him188.ani.app.data.repository.RepositoryException
+     */
+    suspend fun deleteAccount() {
+        userRepo.deleteAccount()
+    }
+
     companion object {
         private val NICKNAME_MATCHER = Regex("^[\u4E00-\u9FFF\u3040-\u309F\u30A0-\u30FFa-zA-Z\\d_]+$")
     }
