@@ -28,7 +28,6 @@ import androidx.compose.foundation.text.selection.SelectionContainer
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.Edit
 import androidx.compose.material.icons.rounded.ErrorOutline
-import androidx.compose.material.icons.rounded.PersonRemove
 import androidx.compose.material.icons.rounded.QrCodeScanner
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.CircularProgressIndicator
@@ -90,6 +89,7 @@ import me.him188.ani.app.ui.lang.Lang
 import me.him188.ani.app.ui.lang.qr_login_settings_description
 import me.him188.ani.app.ui.lang.qr_login_title
 import me.him188.ani.app.ui.lang.settings_account_profile_account_deleted
+import me.him188.ani.app.ui.lang.settings_account_profile_account_management
 import me.him188.ani.app.ui.lang.settings_account_profile_avatar_invalid_format
 import me.him188.ani.app.ui.lang.settings_account_profile_avatar_size_exceeded
 import me.him188.ani.app.ui.lang.settings_account_profile_bind
@@ -425,16 +425,17 @@ internal fun SettingsScope.ProfileGroupImpl(
                 }
 
                 if (currentState.isSessionValid == true) {
-                    RowButtonItem(
-                        onClick = { showDeleteAccountDialog = true },
-                        description = {
-                            Text(stringResource(Lang.settings_account_profile_delete_account_description))
-                        },
-                        icon = { Icon(Icons.Rounded.PersonRemove, null) },
-                        color = MaterialTheme.colorScheme.error,
-                        modifier = Modifier.testTag("deleteAccount"),
-                    ) {
-                        Text(stringResource(Lang.settings_account_profile_delete_account))
+                    Group(title = { Text(stringResource(Lang.settings_account_profile_account_management)) }) {
+                        RowButtonItem(
+                            onClick = { showDeleteAccountDialog = true },
+                            description = {
+                                Text(stringResource(Lang.settings_account_profile_delete_account_description))
+                            },
+                            color = MaterialTheme.colorScheme.error,
+                            modifier = Modifier.testTag("deleteAccount"),
+                        ) {
+                            Text(stringResource(Lang.settings_account_profile_delete_account))
+                        }
                     }
                 }
             }

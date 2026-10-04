@@ -1108,6 +1108,7 @@
     <string name="settings_account_profile_unbind_email_confirmation">Unbind email %1$s? You will no longer be able to sign in to this account with it. You can bind an email again later.</string>
     <string name="settings_account_profile_unbind_email_last_login_method">Email is the only way to sign in to this account, so it cannot be unbound. Bind Bangumi or another third-party account first.</string>
     <string name="settings_account_profile_ok">OK</string>
+    <string name="settings_account_profile_account_management">Account management</string>
     <string name="settings_account_profile_delete_account">Delete account</string>
     <string name="settings_account_profile_delete_account_description">Permanently delete this account and all of its data</string>
     <string name="settings_account_profile_delete_account_warning">Deleting your account permanently deletes all of its data, including collections, watch history, comments and danmaku. This cannot be undone, and the data cannot be recovered.</string>
