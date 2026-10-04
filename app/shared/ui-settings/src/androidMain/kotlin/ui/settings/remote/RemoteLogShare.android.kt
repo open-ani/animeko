@@ -12,13 +12,12 @@ package me.him188.ani.app.ui.settings.remote
 import me.him188.ani.app.ui.lang.Lang
 import me.him188.ani.app.ui.lang.remote_settings_share_log
 import org.jetbrains.compose.resources.getString
-import android.content.Intent
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
 import androidx.compose.ui.platform.LocalContext
-import androidx.core.content.FileProvider
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
+import me.him188.ani.app.ui.settings.tabs.log.shareLogFile
 import me.him188.ani.remote.settings.generated.models.LogSnapshot
 
 @Composable
@@ -33,20 +32,8 @@ internal actual fun rememberShareRemoteLog(): suspend (LogSnapshot) -> Unit {
                         writeText(log.content)
                     }
                 }
-            withContext(Dispatchers.Main) {
-                val uri =
-                    FileProvider.getUriForFile(context, "${context.packageName}.fileprovider", file)
-                context.startActivity(
-                    Intent.createChooser(
-                        Intent(Intent.ACTION_SEND).apply {
-                            type = "text/plain"
-                            putExtra(Intent.EXTRA_STREAM, uri)
-                            addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
-                        },
-                        getString(Lang.remote_settings_share_log),
-                    )
-                )
-            }
+            val title = getString(Lang.remote_settings_share_log)
+            withContext(Dispatchers.Main) { context.shareLogFile(file, title) }
         }
     }
 }

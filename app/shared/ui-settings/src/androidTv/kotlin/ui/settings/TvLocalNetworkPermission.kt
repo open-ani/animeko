@@ -14,7 +14,7 @@ import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
 import androidx.compose.ui.platform.LocalContext
-import me.him188.ani.app.domain.settings.remote.LocalNetworkPermission
+import me.him188.ani.app.platform.LocalNetworkPermission
 
 /**
  * 返回一个在未授予局域网访问权限时请求该权限的函数. 电视端的远程设置服务需要该权限才能接受手机的连接.

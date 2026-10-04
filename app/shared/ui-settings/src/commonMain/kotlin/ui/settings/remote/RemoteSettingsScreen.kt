@@ -75,10 +75,6 @@ fun RemoteSettingsScreen(
     scanner: @Composable (onScanned: (String) -> Unit, onBack: () -> Unit) -> Unit,
     modifier: Modifier = Modifier,
     windowInsets: WindowInsets = AniWindowInsets.forColumnPageContent(),
-    networkPermission: @Composable (onBack: () -> Unit, content: @Composable () -> Unit) -> Unit =
-        { _, content ->
-            content()
-        },
 ) {
     val lifecycle = LocalLifecycleOwner.current
     LaunchedEffect(vm, lifecycle) {
@@ -102,7 +98,7 @@ fun RemoteSettingsScreen(
                 onNavigateBack()
             }
             Surface(Modifier.fillMaxSize()) {
-                networkPermission(onNavigateBack) {
+                LocalNetworkAccessGate(onNavigateBack) {
                     val link = vm.pendingRemoteLink
                     if (link != null) LaunchedEffect(link) { vm.connectAfterPermission() }
                     // A fresh scanner instance can retry the same QR after a failed connection.

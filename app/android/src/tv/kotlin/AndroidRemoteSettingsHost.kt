@@ -9,8 +9,11 @@
 
 package me.him188.ani.android.tv
 
+import android.app.Activity
+import android.app.Application
 import android.content.Context
 import android.os.Build
+import android.os.Bundle
 import java.io.File
 import java.io.RandomAccessFile
 import kotlin.time.Duration.Companion.seconds
@@ -18,11 +21,13 @@ import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
+import kotlinx.coroutines.channels.awaitClose
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.callbackFlow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.first
@@ -31,7 +36,7 @@ import kotlinx.coroutines.flow.retryWhen
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import me.him188.ani.app.data.persistent.dataStores
-import me.him188.ani.app.domain.settings.remote.LocalNetworkPermission
+import me.him188.ani.app.platform.LocalNetworkPermission
 import me.him188.ani.app.domain.settings.remote.RemoteSettingsHost
 import me.him188.ani.app.domain.settings.remote.RemoteSettingsHostState
 import me.him188.ani.app.platform.currentAniBuildConfig
@@ -80,12 +85,34 @@ class AndroidRemoteSettingsHost(
         }
     }
 
-    /** 权限没有变化通知. 撤销权限会结束进程, 因此只需等到授予. */
+    /**
+     * 权限没有变化通知; 授权对话框关闭或从系统设置返回时 Activity 恢复, 此时重新检查.
+     * 撤销权限会结束进程, 因此只需等到授予.
+     */
     private suspend fun awaitLocalNetworkPermission() {
-        while (!LocalNetworkPermission.isGranted(context)) {
-            mutableState.value = RemoteSettingsHostState.PermissionRequired
-            delay(PERMISSION_CHECK_INTERVAL)
+        if (LocalNetworkPermission.isGranted(context)) return
+        mutableState.value = RemoteSettingsHostState.PermissionRequired
+        activityResumed().first { LocalNetworkPermission.isGranted(context) }
+    }
+
+    /** 订阅时以及此后每次有 Activity 恢复时发出. */
+    private fun activityResumed(): Flow<Unit> = callbackFlow {
+        val application = context.applicationContext as Application
+        val callbacks = object : Application.ActivityLifecycleCallbacks {
+            override fun onActivityResumed(activity: Activity) {
+                trySend(Unit)
+            }
+
+            override fun onActivityCreated(activity: Activity, savedInstanceState: Bundle?) {}
+            override fun onActivityStarted(activity: Activity) {}
+            override fun onActivityPaused(activity: Activity) {}
+            override fun onActivityStopped(activity: Activity) {}
+            override fun onActivitySaveInstanceState(activity: Activity, outState: Bundle) {}
+            override fun onActivityDestroyed(activity: Activity) {}
         }
+        application.registerActivityLifecycleCallbacks(callbacks)
+        trySend(Unit)
+        awaitClose { application.unregisterActivityLifecycleCallbacks(callbacks) }
     }
 
     private suspend fun startServer(server: RemoteSettingsServer): Int {
@@ -104,7 +131,6 @@ class AndroidRemoteSettingsHost(
 
     companion object {
         private val logger = logger<AndroidRemoteSettingsHost>()
-        private val PERMISSION_CHECK_INTERVAL = 2.seconds
         private val RETRY_INTERVAL = 10.seconds
 
         /** 电视本机的设置、数据源与订阅都经由 [koin] 中的仓库读写, 与电视界面共用同一份存储. */
@@ -116,6 +142,7 @@ class AndroidRemoteSettingsHost(
             val logFile = application.filesDir.resolve("logs/app.log")
             val createServer = {
                 val backend = LocalRemoteSettingsBackend(
+                    scope,
                     settings = koin.get(),
                     stores = stores,
                     sources = koin.get(),

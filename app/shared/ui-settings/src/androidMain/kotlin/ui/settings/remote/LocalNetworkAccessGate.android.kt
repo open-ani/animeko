@@ -7,7 +7,7 @@
  * https://github.com/open-ani/ani/blob/main/LICENSE
  */
 
-package me.him188.ani.app.ui.qrlogin
+package me.him188.ani.app.ui.settings.remote
 
 import me.him188.ani.app.ui.lang.Lang
 import me.him188.ani.app.ui.lang.downloads_episode_picker_back
@@ -15,7 +15,7 @@ import me.him188.ani.app.ui.lang.remote_settings_network_allow
 import me.him188.ani.app.ui.lang.remote_settings_network_permission
 import me.him188.ani.app.ui.lang.remote_settings_network_settings
 import org.jetbrains.compose.resources.stringResource
-import me.him188.ani.app.domain.settings.remote.LocalNetworkPermission
+import me.him188.ani.app.platform.LocalNetworkPermission
 import android.content.Intent
 import android.net.Uri
 import android.provider.Settings
@@ -44,7 +44,7 @@ import androidx.lifecycle.compose.LifecycleEventEffect
 import androidx.core.net.toUri
 
 @Composable
-actual fun LocalNetworkAccessGate(onBack: () -> Unit, content: @Composable () -> Unit) {
+internal actual fun LocalNetworkAccessGate(onBack: () -> Unit, content: @Composable () -> Unit) {
     val context = LocalContext.current
     fun allowed() = LocalNetworkPermission.isGranted(context)
     // Permission revocation during an active session is reported by its network state.

@@ -39,8 +39,6 @@ import androidx.navigation3.runtime.entryProvider
 import androidx.navigation3.runtime.rememberSaveableStateHolderNavEntryDecorator
 import androidx.navigation3.ui.NavDisplay
 import me.him188.ani.app.data.models.subject.SubjectInfo
-import me.him188.ani.app.domain.mediasource.rss.RssMediaSource
-import me.him188.ani.app.domain.mediasource.web.SelectorMediaSource
 import me.him188.ani.app.domain.search.SubjectSearchQuery
 import me.him188.ani.app.domain.session.auth.OAuthPlatform
 import me.him188.ani.app.navigation.AniNavigator
@@ -61,8 +59,6 @@ import me.him188.ani.app.ui.download.createDownloadManagementViewModel
 import me.him188.ani.app.ui.download.createSubjectDownloadsViewModel
 import me.him188.ani.app.ui.download.details.MediaCacheDetailsPageViewModel
 import me.him188.ani.app.ui.download.details.MediaCacheDetailsScreen
-import me.him188.ani.app.ui.download.details.MediaDetails
-import me.him188.ani.app.ui.download.details.MediaDetailsLazyGrid
 import me.him188.ani.app.ui.download.subject.SubjectDownloadsScreen
 import me.him188.ani.app.ui.exploration.schedule.ScheduleScreen
 import me.him188.ani.app.ui.exploration.schedule.ScheduleViewModel
@@ -91,10 +87,6 @@ import me.him188.ani.app.ui.profile.auth.AniContactList
 import me.him188.ani.app.ui.search.SearchScreen
 import me.him188.ani.app.ui.settings.SettingsScreen
 import me.him188.ani.app.ui.settings.SettingsViewModel
-import me.him188.ani.app.ui.settings.mediasource.rss.EditRssMediaSourceScreen
-import me.him188.ani.app.ui.settings.mediasource.rss.EditRssMediaSourceViewModel
-import me.him188.ani.app.ui.settings.mediasource.selector.EditSelectorMediaSourceScreen
-import me.him188.ani.app.ui.settings.mediasource.selector.EditSelectorMediaSourceViewModel
 import me.him188.ani.app.ui.settings.remote.RemoteSettingsScanButton
 import me.him188.ani.app.ui.settings.tabs.media.torrent.peer.PeerFilterSettingsScreen
 import me.him188.ani.app.ui.settings.tabs.media.torrent.peer.PeerFilterSettingsViewModel
@@ -564,51 +556,12 @@ private fun AniAppContentImpl(
                 )
             }
             entry<NavRoutes.EditMediaSource> { route ->
-                val factoryId = FactoryId(route.factoryId)
-                val mediaSourceInstanceId = route.mediaSourceInstanceId
-                when (factoryId) {
-                    RssMediaSource.FactoryId -> EditRssMediaSourceScreen(
-                        viewModel<EditRssMediaSourceViewModel>(key = mediaSourceInstanceId) {
-                            EditRssMediaSourceViewModel(mediaSourceInstanceId)
-                        },
-                        mediaDetailsColumn = { media ->
-                            MediaDetailsLazyGrid(
-                                MediaDetails.from(media, null, null),
-                                Modifier.fillMaxSize(),
-                                showSourceInfo = false,
-                            )
-                        },
-                        Modifier,
-                        windowInsets,
-                        navigationIcon = {
-                            BackNavigationIconButton(
-                                {
-                                    aniNavigator.popBackStack(route, inclusive = true)
-                                },
-                            )
-                        },
-                    )
-
-                    SelectorMediaSource.FactoryId -> {
-                        val context = LocalContext.current
-                        EditSelectorMediaSourceScreen(
-                            viewModel<EditSelectorMediaSourceViewModel>(key = mediaSourceInstanceId) {
-                                EditSelectorMediaSourceViewModel(mediaSourceInstanceId, context)
-                            },
-                            Modifier,
-                            windowInsets = windowInsets,
-                            navigationIcon = {
-                                BackNavigationIconButton(
-                                    {
-                                        aniNavigator.popBackStack(route, inclusive = true)
-                                    },
-                                )
-                            },
-                        )
-                    }
-
-                    else -> error("Unknown factoryId: $factoryId")
-                }
+                EditMediaSourceContent(
+                    FactoryId(route.factoryId),
+                    route.mediaSourceInstanceId,
+                    onNavigateBack = { aniNavigator.popBackStack(route, inclusive = true) },
+                    windowInsets,
+                )
             }
             entry<NavRoutes.TorrentPeerSettings> { route ->
                 val viewModel = viewModel { PeerFilterSettingsViewModel() }

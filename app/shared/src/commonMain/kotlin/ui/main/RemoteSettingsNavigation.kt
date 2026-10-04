@@ -24,25 +24,14 @@ import androidx.lifecycle.viewmodel.compose.rememberViewModelStoreOwner
 import androidx.lifecycle.viewmodel.compose.rememberViewModelStoreProvider
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation3.runtime.NavEntryDecorator
-import me.him188.ani.app.domain.mediasource.rss.RssMediaSource
-import me.him188.ani.app.domain.mediasource.web.SelectorMediaSource
 import me.him188.ani.app.domain.settings.remote.RemoteMediaSourceEditor
 import me.him188.ani.app.navigation.AniNavigator
 import me.him188.ani.app.navigation.NavRoutes
-import me.him188.ani.app.platform.LocalContext
-import me.him188.ani.app.ui.download.details.MediaDetails
-import me.him188.ani.app.ui.download.details.MediaDetailsLazyGrid
-import me.him188.ani.app.ui.foundation.widgets.BackNavigationIconButton
 import me.him188.ani.app.ui.lang.Lang
 import me.him188.ani.app.ui.lang.remote_settings_invalid_qr
 import me.him188.ani.app.ui.lang.remote_settings_scan
 import me.him188.ani.app.ui.lang.remote_settings_scan_hint
-import me.him188.ani.app.ui.qrlogin.LocalNetworkAccessGate
 import me.him188.ani.app.ui.qrlogin.QrCodeScanScreen
-import me.him188.ani.app.ui.settings.mediasource.rss.EditRssMediaSourceScreen
-import me.him188.ani.app.ui.settings.mediasource.rss.EditRssMediaSourceViewModel
-import me.him188.ani.app.ui.settings.mediasource.selector.EditSelectorMediaSourceScreen
-import me.him188.ani.app.ui.settings.mediasource.selector.EditSelectorMediaSourceViewModel
 import me.him188.ani.app.ui.settings.remote.RemoteSettingsScreen
 import me.him188.ani.app.ui.settings.remote.RemoteSettingsSessionHost
 import me.him188.ani.app.ui.settings.remote.RemoteSettingsViewModel
@@ -88,7 +77,6 @@ internal fun RemoteSettingsRoute(
         },
         scanner = { scanned, cancel -> RemoteSettingsScanScreen(scanned, cancel) },
         modifier = Modifier.fillMaxSize(),
-        networkPermission = { back, content -> LocalNetworkAccessGate(back, content) },
     )
 }
 
@@ -129,45 +117,20 @@ internal fun RemoteEditMediaSourceRoute(
         return
     }
     val isSaving by editor.isSaving.collectAsStateWithLifecycle()
-    val navigationIcon = @Composable {
-        BackNavigationIconButton({ navigator.popBackStack(route, inclusive = true) })
-    }
     RemoteSettingsSessionHost(
         vm,
         onNavigateBack = { navigator.popBackStack(remoteRoute, inclusive = true) },
         // 退出会断开会话并丢弃尚未发送的自动保存。
         exitEnabled = !isSaving,
     ) { contentModifier, _ ->
-        when (FactoryId(route.factoryId)) {
-            RssMediaSource.FactoryId -> EditRssMediaSourceScreen(
-                viewModel<EditRssMediaSourceViewModel>(key = viewModelKey) {
-                    EditRssMediaSourceViewModel(instanceId, editor)
-                },
-                mediaDetailsColumn = { media ->
-                    MediaDetailsLazyGrid(
-                        MediaDetails.from(media, null, null),
-                        Modifier.fillMaxSize(),
-                        showSourceInfo = false,
-                    )
-                },
-                contentModifier,
-                windowInsets,
-                navigationIcon = navigationIcon,
-            )
-
-            SelectorMediaSource.FactoryId -> {
-                val context = LocalContext.current
-                EditSelectorMediaSourceScreen(
-                    viewModel<EditSelectorMediaSourceViewModel>(key = viewModelKey) {
-                        EditSelectorMediaSourceViewModel(instanceId, context, editor)
-                    },
-                    contentModifier,
-                    windowInsets = windowInsets,
-                    navigationIcon = navigationIcon,
-                )
-            }
-
-            else -> error("Unknown factoryId: ${route.factoryId}")
-        }
+        EditMediaSourceContent(
+            FactoryId(route.factoryId),
+            instanceId,
+            onNavigateBack = { navigator.popBackStack(route, inclusive = true) },
+            windowInsets,
+            contentModifier,
+            viewModelKey,
+            editor,
+        )
     }
 }

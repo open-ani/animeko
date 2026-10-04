@@ -7,9 +7,9 @@
  * https://github.com/open-ani/ani/blob/main/LICENSE
  */
 
-package me.him188.ani.app.ui.qrlogin
+package me.him188.ani.app.ui.settings.remote
 
 import androidx.compose.runtime.Composable
 
 @Composable
-actual fun LocalNetworkAccessGate(onBack: () -> Unit, content: @Composable () -> Unit) = content()
+internal actual fun LocalNetworkAccessGate(onBack: () -> Unit, content: @Composable () -> Unit) = content()

@@ -36,6 +36,8 @@ import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Deferred
 import kotlinx.coroutines.async
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.withTimeout
 import kotlinx.coroutines.withTimeoutOrNull
 import kotlinx.io.readByteArray
@@ -137,11 +139,7 @@ private fun Throwable.toRemoteError(invalidMessage: String, fallback: RemoteErro
 
 /** Accepted operations belong to the application scope, independent of the requesting socket. */
 class RemoteOperationLedger(private val scope: CoroutineScope, private val capacity: Int = 1024) {
-    private data class Entry(
-        val fingerprint: String,
-        val task: Deferred<OperationResult>,
-        val createdAt: Long,
-    )
+    private class Entry(val fingerprint: String, val task: Deferred<OperationResult>)
 
     private val entries = LinkedHashMap<String, Entry>()
 
@@ -154,8 +152,6 @@ class RemoteOperationLedger(private val scope: CoroutineScope, private val capac
         if (!runCatching { UUID.fromString(id).toString() == id.lowercase() }.getOrDefault(false)) {
             throw RemoteSettingsException("INVALID_OPERATION_ID", "Invalid operation ID")
         }
-        val now = System.nanoTime()
-        entries.values.removeIf { it.task.isCompleted && now - it.createdAt > RESULT_TTL_NANOS }
         entries[id]?.let {
             if (it.fingerprint != fingerprint)
                 throw RemoteSettingsException(
@@ -181,8 +177,18 @@ class RemoteOperationLedger(private val scope: CoroutineScope, private val capac
                 )
             }
         }
-        entries[id] = Entry(fingerprint, task, now)
+        entries[id] = Entry(fingerprint, task)
+        scope.launch {
+            task.join()
+            delay(RESULT_TTL_MILLIS)
+            forget(id)
+        }
         return task
+    }
+
+    @Synchronized
+    private fun forget(id: String) {
+        entries.remove(id)
     }
 
     @Synchronized fun find(id: String): Deferred<OperationResult>? = entries[id]?.task
@@ -191,7 +197,7 @@ class RemoteOperationLedger(private val scope: CoroutineScope, private val capac
 
     private companion object {
         const val OPERATION_TIMEOUT_MILLIS = 120_000L
-        const val RESULT_TTL_NANOS = 600_000_000_000L
+        const val RESULT_TTL_MILLIS = 600_000L
     }
 }
 

@@ -28,44 +28,33 @@ import me.him188.ani.remote.settings.RemoteSettingsLink
  */
 internal fun lanAddresses(context: Context): Flow<String?> = callbackFlow {
     val manager = context.getSystemService(ConnectivityManager::class.java)
+    // 各网络的局域网地址, 由回调携带的链路信息维护.
+    val addresses = LinkedHashMap<Network, String?>()
+    fun sendCurrent() {
+        trySend(addresses.values.firstOrNull { it != null })
+    }
+
     val callback = object : ConnectivityManager.NetworkCallback() {
-        override fun onAvailable(network: Network) {
-            trySend(manager.lanAddress())
-        }
-
-        override fun onCapabilitiesChanged(network: Network, capabilities: NetworkCapabilities) {
-            trySend(manager.lanAddress())
-        }
-
         override fun onLinkPropertiesChanged(network: Network, properties: LinkProperties) {
-            trySend(manager.lanAddress())
+            addresses[network] = properties.linkAddresses.firstNotNullOfOrNull {
+                (it.address as? Inet4Address)?.hostAddress?.takeIf(RemoteSettingsLink::isPrivateIpv4)
+            }
+            sendCurrent()
         }
 
         override fun onLost(network: Network) {
-            // 回调时该网络可能仍在 allNetworks 中.
-            trySend(manager.lanAddress(excluding = network))
+            addresses.remove(network)
+            sendCurrent()
         }
     }
-    // 局域网不一定能访问互联网.
+    // 局域网不一定能访问互联网. 请求默认只匹配非 VPN 网络.
     val request = NetworkRequest.Builder()
         .removeCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET)
         .addTransportType(NetworkCapabilities.TRANSPORT_WIFI)
         .addTransportType(NetworkCapabilities.TRANSPORT_ETHERNET)
         .build()
-    trySend(manager.lanAddress())
+    // 没有匹配的网络时不会有回调.
+    sendCurrent()
     manager.registerNetworkCallback(request, callback)
     awaitClose { manager.unregisterNetworkCallback(callback) }
 }.conflate().distinctUntilChanged()
-
-@Suppress("DEPRECATION")
-private fun ConnectivityManager.lanAddress(excluding: Network? = null): String? =
-    allNetworks.firstNotNullOfOrNull { network ->
-        if (network == excluding) return@firstNotNullOfOrNull null
-        val capabilities = getNetworkCapabilities(network) ?: return@firstNotNullOfOrNull null
-        val local = capabilities.hasTransport(NetworkCapabilities.TRANSPORT_WIFI) ||
-                capabilities.hasTransport(NetworkCapabilities.TRANSPORT_ETHERNET)
-        if (!local || capabilities.hasTransport(NetworkCapabilities.TRANSPORT_VPN)) return@firstNotNullOfOrNull null
-        getLinkProperties(network)?.linkAddresses?.firstNotNullOfOrNull {
-            (it.address as? Inet4Address)?.hostAddress?.takeIf(RemoteSettingsLink::isPrivateIpv4)
-        }
-    }

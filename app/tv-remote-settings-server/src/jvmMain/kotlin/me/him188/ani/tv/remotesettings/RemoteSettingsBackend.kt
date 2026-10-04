@@ -13,6 +13,9 @@ import androidx.datastore.core.DataStore
 import io.ktor.http.Url
 import kotlin.time.Duration.Companion.minutes
 import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
@@ -39,6 +42,7 @@ import me.him188.ani.app.domain.settings.remote.RemoteBackupPreview
 import me.him188.ani.app.domain.settings.remote.RemoteBackupResult
 import me.him188.ani.app.domain.settings.remote.RemoteOperationPayload
 import me.him188.ani.app.domain.settings.remote.RemotePreferenceRegistry
+import me.him188.ani.app.domain.settings.remote.RemotePreferencesSnapshot
 import me.him188.ani.app.domain.settings.remote.RemoteSettingsBackup
 import me.him188.ani.app.domain.settings.remote.RemoteSettingsException
 import me.him188.ani.app.domain.settings.remote.RemoteSettingsRevision
@@ -56,7 +60,6 @@ import me.him188.ani.remote.settings.RemoteSettingsProtocol
 import me.him188.ani.remote.settings.generated.models.LogSnapshot
 import me.him188.ani.utils.platform.Uuid
 import me.him188.ani.utils.platform.collections.partiallyReorderBy
-import me.him188.ani.utils.platform.currentTimeMillis
 
 interface RemoteSettingsBackend {
     suspend fun snapshot(): SettingsSnapshot
@@ -74,6 +77,7 @@ interface RemoteSettingsBackend {
 
 /** Uses the same DataStore instances as the TV repositories. CAS checks run inside updateData. */
 class LocalRemoteSettingsBackend(
+    private val scope: CoroutineScope,
     settings: SettingsRepository,
     private val stores: PlatformDataStoreManager,
     private val sources: MediaSourceManager,
@@ -349,11 +353,21 @@ class LocalRemoteSettingsBackend(
             is RemoteBackupCommand.Preview -> {
                 validateBackup(command.backup)
                 val id = Uuid.randomString()
-                val snapshot = snapshot()
+                val plan =
+                    RestorePlan(
+                        command.backup,
+                        preferences.snapshot(),
+                        mediaSources.read().revision,
+                        subscriptions.read().revision,
+                        danmakuFilters.read().revision,
+                    )
                 planMutex.withLock {
-                    plans.values.removeAll { it.isExpired() }
                     checkRemote(plans.size < MAX_PLANS, "BUSY", "Too many pending restore plans")
-                    plans[id] = RestorePlan(command.backup, snapshot, currentTimeMillis())
+                    plans[id] = plan
+                }
+                scope.launch {
+                    delay(PLAN_TTL)
+                    planMutex.withLock { plans.remove(id) }
                 }
                 RemoteOperationPayload.BackupPreview(
                     RemoteBackupPreview(
@@ -372,7 +386,6 @@ class LocalRemoteSettingsBackend(
                             "PLAN_EXPIRED",
                             "Restore plan is no longer valid",
                         )
-                checkRemote(!plan.isExpired(), "PLAN_EXPIRED", "Restore plan expired")
                 val applied = mutableListOf<String>()
                 val failed = mutableMapOf<String, String>()
                 suspend fun apply(name: String, action: suspend () -> Unit) {
@@ -386,12 +399,12 @@ class LocalRemoteSettingsBackend(
                     }
                 }
                 for (value in plan.backup.preferences) apply(value.key) {
-                    preferences.write(plan.snapshot.preferences.revisionOf(value), value)
+                    preferences.write(plan.preferences.revisionOf(value), value)
                 }
                 // Cross-store restores report each committed resource; they do not promise
                 // cross-store atomicity.
                 apply(subscriptions.name) {
-                    subscriptions.update(plan.snapshot.subscriptions.revision) {
+                    subscriptions.update(plan.subscriptionsRevision) {
                         plan.backup.subscriptions.map { it.copy(lastUpdated = null) }
                     }
                 }
@@ -401,12 +414,12 @@ class LocalRemoteSettingsBackend(
                         "DEPENDENCY_FAILED",
                         "Subscription restore failed",
                     )
-                    mediaSources.update(plan.snapshot.mediaSources.revision) {
+                    mediaSources.update(plan.mediaSourcesRevision) {
                         plan.backup.mediaSources
                     }
                 }
                 apply(danmakuFilters.name) {
-                    danmakuFilters.update(plan.snapshot.danmakuFilters.revision) {
+                    danmakuFilters.update(plan.danmakuFiltersRevision) {
                         plan.backup.danmakuFilters
                     }
                 }
@@ -572,13 +585,14 @@ class LocalRemoteSettingsBackend(
         }
     }
 
-    private data class RestorePlan(
+    /** A validated backup and the revisions of the settings it was previewed against. */
+    private class RestorePlan(
         val backup: RemoteSettingsBackup,
-        val snapshot: SettingsSnapshot,
-        val createdAt: Long,
-    ) {
-        fun isExpired() = currentTimeMillis() - createdAt > PLAN_TTL.inWholeMilliseconds
-    }
+        val preferences: RemotePreferencesSnapshot,
+        val mediaSourcesRevision: String,
+        val subscriptionsRevision: String,
+        val danmakuFiltersRevision: String,
+    )
 
     private companion object {
         const val MAX_SOURCES = 1000

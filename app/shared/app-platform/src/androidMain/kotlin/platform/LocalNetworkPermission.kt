@@ -7,7 +7,7 @@
  * https://github.com/open-ani/ani/blob/main/LICENSE
  */
 
-package me.him188.ani.app.domain.settings.remote
+package me.him188.ani.app.platform
 
 import android.content.Context
 import android.content.pm.PackageManager

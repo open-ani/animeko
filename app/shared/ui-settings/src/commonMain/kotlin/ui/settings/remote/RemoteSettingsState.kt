@@ -14,8 +14,8 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.CoroutineStart
 import kotlinx.coroutines.launch
-import kotlinx.serialization.builtins.ListSerializer
 import me.him188.ani.app.data.models.danmaku.DanmakuRegexFilter
+import me.him188.ani.app.data.repository.player.DanmakuRegexFilterListCodec
 import me.him188.ani.app.domain.settings.remote.RemotePreferenceSettings
 import me.him188.ani.app.domain.settings.remote.RemoteSettingsBackup
 import me.him188.ani.app.domain.settings.remote.RemoteSettingsSession
@@ -35,7 +35,6 @@ class RemoteSettingsFormState(
 ) {
 
     private val json = RemoteSettingsProtocol.json
-    private val filtersSerializer = ListSerializer(DanmakuRegexFilter.serializer())
 
     /**
      * 控件在点击时读取 [State.value] 构造新的配置对象并提交. 读取和提交都在点击的线程上同步完成,
@@ -121,9 +120,9 @@ class RemoteSettingsFormState(
                     filters.map { if (it.id == item.id) it.copy(enabled = !it.enabled) else it }
                 }
             },
-            onExport = { json.encodeToString(filtersSerializer, filters.value) },
+            onExport = { DanmakuRegexFilterListCodec.encode(filters.value) },
             onImport = { text ->
-                val imported = json.decodeFromString(filtersSerializer, text)
+                val imported = DanmakuRegexFilterListCodec.decode(text)
                 session.editDanmakuFilters { imported }
                 true
             },

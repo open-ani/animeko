@@ -64,8 +64,8 @@ flowchart LR
 | `app/shared/remote-settings` | 复用 `app-data` 现有模型的协议 wrapper、生成客户端、schema 导出、远程会话、preference adapter 与配置校验 |
 | `app/tv-remote-settings-server` | 本地 backend、JVM Ktor CIO listener、路由鉴权、请求边界、操作记录与 revision 签名 |
 | `app/android/src/tv` | Application 生命周期、LAN 地址、LAN 权限、电视固定日志文件 |
-| `app/shared/ui-settings` | `RemoteSettingsViewModel` 管理远程会话；`RemoteSettingsScreen` 复用设置布局、详情 Group 与编辑页 |
-| `app/shared/ui-onboarding` | 通用扫码页 `QrCodeScanScreen`、相机权限、局域网权限入口 |
+| `app/shared/ui-settings` | `RemoteSettingsViewModel` 管理远程会话；`LocalNetworkAccessGate` 是手机的局域网权限入口；`RemoteSettingsScreen` 复用设置布局、详情 Group 与编辑页 |
+| `app/shared/ui-onboarding` | 通用扫码页 `QrCodeScanScreen`、相机权限 |
 | `app/shared` | 远程设置与远程数据源编辑的导航入口 |
 | Android / iOS 平台入口 | scheme 解析后把临时目标交给远程会话 |
 
@@ -109,7 +109,7 @@ HTTP server 仅由 Android TV flavor 引用，手机 APK 不启动 listener。Op
 
 CIO 使用 `0.0.0.0:0` 监听，由操作系统分配可用端口。Host 读取实际端口生成二维码。客户端退出、离开“手机配置”分区或退出电视设置页都不停止服务。
 
-Host 在获得局域网权限前每 2 秒检查一次权限；权限被撤销时系统会结束进程，授权后不再检查。获得权限后启动 listener，之后通过 `ConnectivityManager` 网络回调跟踪 Wi-Fi／Ethernet 地址，并观察 user UUID，二者变化时更新二维码，其余时间状态不变。只有 RFC 1918 私有 IPv4 地址进入二维码，排除 VPN transport。没有可用地址时保留进程服务，页面显示连接网络的说明。服务启动或状态更新异常进入重试，重试间隔 10 秒。
+Host 在获得局域网权限前等待 Activity 恢复（授权对话框关闭或从系统设置返回）后重新检查权限；权限被撤销时系统会结束进程，授权后不再检查。获得权限后启动 listener，之后通过 `ConnectivityManager` 网络回调跟踪 Wi-Fi／Ethernet 地址，并观察 user UUID，二者变化时更新二维码，其余时间状态不变。只有 RFC 1918 私有 IPv4 地址进入二维码，排除 VPN transport。没有可用地址时保留进程服务，页面显示连接网络的说明。服务启动或状态更新异常进入重试，重试间隔 10 秒。
 
 进程结束时 listener 随进程结束；根协程取消时显式关闭 engine。重新启动产生新的 key、实例标识与随机端口，旧二维码不保证继续有效。
 
@@ -292,7 +292,7 @@ sequenceDiagram
 - 同 ID、同 payload：返回同一执行结果。
 - 同 ID、不同 payload：拒绝。
 - 接受后的操作属于 Application scope，HTTP 请求方断开不取消它。
-- 完成记录保留至少至下次清理时满足 10 分钟 TTL，容量 1024。
+- 完成记录在操作结束 10 分钟后移除，容量 1024。
 - 电视重启后记录清空；手机不能凭旧 ID 猜测是否执行过。
 
 手机遇到写入响应丢失时，只查询原 operation ID，不自动重新 POST。无法查询、等待超时或确认后的 snapshot 获取失败时，提示结果不确定，并要求成功刷新后才能继续写入。电视明确拒绝的写入（revision 冲突、校验失败等）没有不确定性：会话随即重新读取快照，读取成功后可以直接继续编辑。
@@ -355,7 +355,7 @@ preference 控件每次提交整个配置对象。每个配置对应一个 `Remo
 ### 8.1 编辑器
 
 - Selector 和 RSS source 进入 `NavRoutes.RemoteEditMediaSource`，分别使用完整的 `EditSelectorMediaSourceScreen` / `EditRssMediaSourceScreen` 及其原有 ViewModel。本机的 `NavRoutes.EditMediaSource` 不感知远程会话。
-- 编辑器 ViewModel 通过可选的 `MediaSourceConfigurationEditor` 接口读取配置、提交参数和观察保存状态；未提供实现时使用本机 source manager。远程入口注入实现该接口的 `RemoteMediaSourceEditor`，共享编辑器仅依赖接口。编辑控件、导入导出、自动保存提示、测试页和返回导航保持共用。
+- 编辑器 ViewModel 始终通过 `MediaSourceConfigurationEditor` 接口读取配置、提交参数和观察保存状态；未提供实现时使用经本机 source manager 持久化的 `LocalMediaSourceConfigurationEditor`。本机与远程的编辑页共用 `EditMediaSourceContent` 按 factory 选择编辑器。远程入口注入实现该接口的 `RemoteMediaSourceEditor`，共享编辑器仅依赖接口。编辑控件、导入导出、自动保存提示、测试页和返回导航保持共用。
 - 其他 factory 将电视参数元数据映射为 `MediaSourceParameters`，使用原有 `EditMediaSourceState` 和 `EditMediaSourceDialog`。
 - 自动保存合并 500 ms 内的输入；请求发送后按顺序完成，新输入不会取消已发出的写入。最后一次输入在编辑页关闭后仍由 Settings 的目标 scope 保存；断开会话取消该 scope。
 - 编辑时捕获打开表单时的 revision，仅使用该编辑器成功写入后的确认快照推进 revision。后台轮询不能把旧草稿绑定到外部修改后的 revision；冲突时保留输入并提示重新打开编辑器。
@@ -395,7 +395,7 @@ preference 控件每次提交整个配置对象。每个配置对应一个 `Remo
 
 恢复流程：复制备份到剪贴板 → 点击现有恢复设置入口 → 原生覆盖确认框 → 手机解析 → `{type: preview, backup}` → 电视完整校验 → 返回 plan ID → `{type: apply, planId}`。确认框和完成提示复用本机 `BackupSettings`，文案明确目标是电视。
 
-预览不修改设置。电视将经过验证的备份与当前 revision 快照放入内存，最多 8 个计划，TTL 为 5 分钟。手机不能把任意新 payload 与旧 plan ID 拼接提交。
+预览不修改设置。电视将经过验证的备份与当前各资源的 revision 放入内存，最多 8 个计划，5 分钟后移除。手机不能把任意新 payload 与旧 plan ID 拼接提交。
 
 ### 11.2 确认恢复
 

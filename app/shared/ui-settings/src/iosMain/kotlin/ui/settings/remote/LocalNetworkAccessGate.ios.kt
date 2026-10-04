@@ -7,12 +7,9 @@
  * https://github.com/open-ani/ani/blob/main/LICENSE
  */
 
-package me.him188.ani.app.ui.qrlogin
+package me.him188.ani.app.ui.settings.remote
 
 import androidx.compose.runtime.Composable
 
-/**
- * iOS prompts on the first connection; Android 17 prompts before starting the scanner or
- * connection.
- */
-@Composable expect fun LocalNetworkAccessGate(onBack: () -> Unit, content: @Composable () -> Unit)
+@Composable
+internal actual fun LocalNetworkAccessGate(onBack: () -> Unit, content: @Composable () -> Unit) = content()

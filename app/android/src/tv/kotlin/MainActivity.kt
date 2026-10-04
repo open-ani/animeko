@@ -24,7 +24,7 @@ import me.him188.ani.app.data.models.preference.UISettings
 import me.him188.ani.app.domain.foundation.HttpClientProvider
 import me.him188.ani.app.domain.foundation.ScopedHttpClientUserAgent
 import me.him188.ani.app.domain.foundation.get
-import me.him188.ani.app.domain.settings.remote.LocalNetworkPermission
+import me.him188.ani.app.platform.LocalNetworkPermission
 import me.him188.ani.app.navigation.AniNavigator
 import me.him188.ani.app.platform.AniComponentActivity
 import me.him188.ani.app.ui.foundation.LocalSketch

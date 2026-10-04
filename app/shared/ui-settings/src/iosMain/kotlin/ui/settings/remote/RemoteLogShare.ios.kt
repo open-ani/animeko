@@ -12,19 +12,15 @@ package me.him188.ani.app.ui.settings.remote
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
 import androidx.compose.ui.uikit.LocalUIViewController
-import kotlinx.cinterop.ExperimentalForeignApi
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import kotlinx.io.files.Path
 import kotlinx.io.files.SystemTemporaryDirectory
+import me.him188.ani.app.ui.settings.tabs.log.shareFile
 import me.him188.ani.remote.settings.generated.models.LogSnapshot
 import me.him188.ani.utils.io.inSystem
 import me.him188.ani.utils.io.writeText
-import platform.Foundation.NSURL
-import platform.UIKit.UIActivityViewController
-import platform.UIKit.popoverPresentationController
 
-@OptIn(ExperimentalForeignApi::class)
 @Composable
 internal actual fun rememberShareRemoteLog(): suspend (LogSnapshot) -> Unit {
     val controller = LocalUIViewController.current
@@ -32,15 +28,7 @@ internal actual fun rememberShareRemoteLog(): suspend (LogSnapshot) -> Unit {
         { log ->
             val path = Path(SystemTemporaryDirectory, "tv-app.log")
             path.inSystem.writeText(log.content)
-            withContext(Dispatchers.Main) {
-                val sheet =
-                    UIActivityViewController(listOf(NSURL.fileURLWithPath(path.toString())), null)
-                sheet.popoverPresentationController?.apply {
-                    sourceView = controller.view
-                    sourceRect = controller.view.bounds
-                }
-                controller.presentViewController(sheet, true, null)
-            }
+            withContext(Dispatchers.Main) { shareFile(path.toString(), controller) }
         }
     }
 }
