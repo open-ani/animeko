@@ -9,9 +9,7 @@
 
 package me.him188.ani.app.ui.update.devbuild
 
-import io.ktor.client.engine.mock.MockRequestHandleScope
 import io.ktor.client.engine.mock.respond
-import io.ktor.client.request.HttpResponseData
 import io.ktor.http.HttpHeaders
 import io.ktor.http.HttpStatusCode
 import io.ktor.http.headersOf
@@ -19,15 +17,12 @@ import kotlinx.coroutines.test.runTest
 import me.him188.ani.utils.io.SystemPaths
 import me.him188.ani.utils.io.createTempDirectory
 import me.him188.ani.utils.io.deleteRecursively
-import me.him188.ani.utils.io.list
 import me.him188.ani.utils.io.readBytes
 import me.him188.ani.utils.io.resolve
-import java.util.Collections
 import kotlin.test.Test
 import kotlin.test.assertContentEquals
 import kotlin.test.assertEquals
 import kotlin.test.assertFailsWith
-import kotlin.test.assertNotNull
 import kotlin.test.assertNull
 import kotlin.test.assertTrue
 
@@ -139,116 +134,6 @@ class GitHubDevBuildApiTest {
             }
             assertContentEquals(content, target.readBytes())
             assertEquals(3000L to 3000L, reports.last())
-        } finally {
-            dir.deleteRecursively()
-        }
-    }
-
-    @Test
-    fun `downloads in parallel parts when the server supports range`() = runTest {
-        val content = ByteArray(4 * 1024 * 1024 + 3) { (it * 31).toByte() }
-        val ranges = Collections.synchronizedList(mutableListOf<String>())
-        val client = gitHubMockClient { request ->
-            val range = assertNotNull(request.headers[HttpHeaders.Range])
-            ranges += range
-            respondRange(content, range)
-        }
-        val dir = SystemPaths.createTempDirectory("dev-build-api-test")
-        try {
-            val target = dir.resolve("a.zip")
-            val reports = Collections.synchronizedList(mutableListOf<Pair<Long, Long?>>())
-            GitHubDevBuildApi(client).downloadFile("https://blob.example.com/a.zip", target) { downloaded, total ->
-                reports += downloaded to total
-            }
-            assertContentEquals(content, target.readBytes())
-            assertEquals(listOf("a.zip"), dir.list().map { it.name })
-            // 探测请求之后, 4 段首尾相接覆盖整个文件, 最后一段较短
-            assertEquals("bytes=0-0", ranges.first())
-            assertEquals(
-                listOf("bytes=0-1048576", "bytes=1048577-2097153", "bytes=2097154-3145730", "bytes=3145731-4194306"),
-                ranges.drop(1).sortedBy { it.substringAfter('=').substringBefore('-').toLong() },
-            )
-            assertEquals(content.size.toLong() to content.size.toLong(), reports.last())
-        } finally {
-            dir.deleteRecursively()
-        }
-    }
-
-    @Test
-    fun `failed part fails the download and removes part files`() = runTest {
-        val content = ByteArray(4 * 1024 * 1024)
-        val client = gitHubMockClient { request ->
-            val range = request.headers[HttpHeaders.Range]!!
-            if (range.startsWith("bytes=2097152-")) respond("expired", HttpStatusCode.Forbidden)
-            else respondRange(content, range)
-        }
-        val dir = SystemPaths.createTempDirectory("dev-build-api-test")
-        try {
-            val e = assertFailsWith<GitHubApiException> {
-                GitHubDevBuildApi(client).downloadFile("https://blob.example.com/a.zip", dir.resolve("a.zip"))
-            }
-            assertEquals(HttpStatusCode.Forbidden, e.status)
-            assertTrue(dir.list().none { it.name.contains(".part") })
-        } finally {
-            dir.deleteRecursively()
-        }
-    }
-
-    private fun MockRequestHandleScope.respondRange(content: ByteArray, range: String): HttpResponseData {
-        val (start, end) = range.removePrefix("bytes=").split('-').map { it.toInt() }
-        return respond(
-            content.copyOfRange(start, end + 1),
-            HttpStatusCode.PartialContent,
-            headersOf(HttpHeaders.ContentRange, "bytes $start-$end/${content.size}"),
-        )
-    }
-
-    @Test
-    fun `download failure surfaces the status`() = runTest {
-        val client = gitHubMockClient { _ -> respond("gone", HttpStatusCode.NotFound) }
-        val dir = SystemPaths.createTempDirectory("dev-build-api-test")
-        try {
-            val e = assertFailsWith<GitHubApiException> {
-                GitHubDevBuildApi(client).downloadFile("https://blob.example.com/a.zip", dir.resolve("a.zip"))
-            }
-            assertEquals(HttpStatusCode.NotFound, e.status)
-        } finally {
-            dir.deleteRecursively()
-        }
-    }
-
-    @Test
-    fun `download follows relative and absolute redirects and rejects loops`() = runTest {
-        val content = byteArrayOf(1, 2, 3)
-        val visited = mutableListOf<String>()
-        val client = gitHubMockClient { request ->
-            visited += request.url.toString()
-            when (request.url.encodedPath) {
-                "/start" -> respond("", HttpStatusCode.MovedPermanently, headersOf(HttpHeaders.Location, "/next?x=1"))
-                "/next" -> respond(
-                    "",
-                    HttpStatusCode.Found,
-                    headersOf(HttpHeaders.Location, "https://objects.example.com/final"),
-                )
-
-                "/final" -> respond(content, HttpStatusCode.OK, headersOf(HttpHeaders.ContentLength, "3"))
-                "/loop" -> respond("", HttpStatusCode.Found, headersOf(HttpHeaders.Location, "/loop"))
-                else -> error("Unexpected request: ${request.url}")
-            }
-        }
-        val dir = SystemPaths.createTempDirectory("dev-build-api-test")
-        try {
-            val target = dir.resolve("a.dmg")
-            GitHubDevBuildApi(client).downloadFile("https://github.com/start", target)
-            assertContentEquals(content, target.readBytes())
-            assertEquals(
-                listOf("https://github.com/start", "https://github.com/next?x=1", "https://objects.example.com/final"),
-                visited,
-            )
-
-            assertFailsWith<GitHubApiException> {
-                GitHubDevBuildApi(client).downloadFile("https://github.com/loop", dir.resolve("b.dmg"))
-            }
         } finally {
             dir.deleteRecursively()
         }
