@@ -299,9 +299,6 @@ internal class DownloadRequestFixture(
         override fun getSubjectDisplayInfoOffline(subjectId: Int): Flow<OfflineSubjectDisplayInfo?> =
             throw UnsupportedOperationException()
 
-        override suspend fun getSubjectIdsByCollectionType(types: List<UnifiedCollectionType>): Flow<List<Int>> =
-            throw UnsupportedOperationException()
-
         override suspend fun getSubjectNamesCnByCollectionType(types: List<UnifiedCollectionType>): Flow<List<String>> =
             throw UnsupportedOperationException()
 

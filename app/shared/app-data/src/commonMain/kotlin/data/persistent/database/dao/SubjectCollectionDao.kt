@@ -285,15 +285,6 @@ interface SubjectCollectionDao {
 
     @Query(
         """
-        SELECT sc.subjectId FROM subject_collection sc
-        WHERE collectionType IS NOT NULL
-        AND (collectionType IN (:collectionTypes))
-        """,
-    )
-    fun subjectIdsByCollectionType(collectionTypes: List<UnifiedCollectionType>): Flow<List<Int>>
-
-    @Query(
-        """
         SELECT sc.nameCn FROM subject_collection sc
         WHERE collectionType IS NOT NULL
         AND (collectionType IN (:collectionTypes))

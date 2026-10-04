@@ -192,8 +192,6 @@ abstract class SubjectCollectionRepository(
      */
     abstract fun getSubjectDisplayInfoOffline(subjectId: Int): Flow<OfflineSubjectDisplayInfo?>
 
-    abstract suspend fun getSubjectIdsByCollectionType(types: List<UnifiedCollectionType>): Flow<List<Int>>
-
     abstract suspend fun getSubjectNamesCnByCollectionType(types: List<UnifiedCollectionType>): Flow<List<String>>
 
     abstract suspend fun performBangumiFullSync()
@@ -595,10 +593,6 @@ class SubjectCollectionRepositoryImpl(
                 )
             }
         }
-    }
-
-    override suspend fun getSubjectIdsByCollectionType(types: List<UnifiedCollectionType>): Flow<List<Int>> {
-        return subjectCollectionDao.subjectIdsByCollectionType(types).flowOn(defaultDispatcher)
     }
 
     override suspend fun getSubjectNamesCnByCollectionType(types: List<UnifiedCollectionType>): Flow<List<String>> {

@@ -32,7 +32,6 @@ import me.him188.ani.utils.logging.error
  */
 class SubjectSearchCompletionRepository(
     private val aniSubjectSearchService: AniSubjectSearchService,
-    private val subjectCollectionRepository: SubjectCollectionRepository,
     settingsRepository: SettingsRepository,
 ) : Repository() {
     private val ignoreDoneAndDroppedFlow =
@@ -58,22 +57,17 @@ class SubjectSearchCompletionRepository(
                                 NsfwMode.BLUR -> false
                                 NsfwMode.HIDE -> false
                             },
+                            excludeCollectionTypes = if (ignoreDoneAndDroppedFlow.first()) {
+                                listOf(UnifiedCollectionType.DONE, UnifiedCollectionType.DROPPED)
+                            } else {
+                                null
+                            },
                         ),
                         fields = listOf(SubjectSearchField.NAME),
                     )
 
-                    val filteredSubjects = if (ignoreDoneAndDroppedFlow.first()) {
-                        val excludedIds = subjectCollectionRepository.getSubjectIdsByCollectionType(
-                            types = listOf(UnifiedCollectionType.DONE, UnifiedCollectionType.DROPPED),
-                        ).first()
-
-                        subjects.filter { it.subjectInfo.subjectId !in excludedIds }
-                    } else {
-                        subjects
-                    }
-
                     LoadResult.Page(
-                        data = filteredSubjects
+                        data = subjects
                             .map { it.subjectInfo.nameCn.ifEmpty { it.subjectInfo.name } }
                             .filter { it.isNotBlank() }
                             .distinct(),
