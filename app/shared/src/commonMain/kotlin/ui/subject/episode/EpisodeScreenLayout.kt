@@ -36,6 +36,19 @@ enum class EpisodeScreenLayoutMode {
     WIDE,
 }
 
+/** 桌面端宽屏布局在全屏时也由侧边栏开关决定是否显示次要内容. */
+internal fun episodeScreenLayoutMode(
+    isFullscreen: Boolean,
+    showExpandedUI: Boolean,
+    sidebarVisible: Boolean,
+    isDesktop: Boolean,
+): EpisodeScreenLayoutMode = when {
+    isFullscreen && (!isDesktop || !showExpandedUI) -> EpisodeScreenLayoutMode.VIDEO_ONLY
+    !showExpandedUI -> EpisodeScreenLayoutMode.COMPACT
+    sidebarVisible -> EpisodeScreenLayoutMode.WIDE
+    else -> EpisodeScreenLayoutMode.VIDEO_ONLY
+}
+
 /**
  * 播放页布局: 播放器和它旁边的次要内容 (窄屏时是下方的详情与评论, 宽屏时是右侧的侧边栏).
  *
