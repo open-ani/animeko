@@ -14,6 +14,7 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.add
@@ -402,9 +403,11 @@ internal fun DownloadEpisodePicker(
                 )
             }
         }
-        Row(
+        // 窄屏 (尤其英文) 一行放不下三个快捷选择时换行; 纵向 -8dp 抵消 chip 的 48dp 触控高度, 行间视觉间距与横向一致.
+        FlowRow(
             Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp),
             horizontalArrangement = Arrangement.spacedBy(8.dp),
+            verticalArrangement = Arrangement.spacedBy((-8).dp),
         ) {
             FilterChip(
                 selected = selected == onlyCurrent,
