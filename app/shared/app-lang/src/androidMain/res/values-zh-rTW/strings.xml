@@ -229,7 +229,14 @@
     <string name="settings_mediasource_selector_config_request_interval_description">控制每送出一個請求後等待多久再送出下一個請求</string>
     <string name="settings_mediasource_selector_config_search_cache_ttl">搜尋快取有效期 (分鐘)</string>
     <string name="settings_mediasource_selector_config_search_cache_ttl_description">在此時間內切換劇集時複用搜尋結果。實際生效值為此值與使用者設定中的較小者，0 表示不快取</string>
-    <string name="settings_mediasource_selector_config_filter_settings">過濾設定</string>
+    <string name="settings_mediasource_selector_auto_match">自動匹配 (可選)</string>
+    <string name="settings_mediasource_selector_auto_match_description">在上面的列表規則之上，怎樣自動找到正在觀看的劇集。全部可選，預設值適用於大多數站點</string>
+    <string name="settings_mediasource_selector_auto_match_enabled">參與自動匹配</string>
+    <string name="settings_mediasource_selector_auto_match_enabled_description">關閉後此源只供瀏覽和手動選集，播放時不會自動搜尋</string>
+    <string name="settings_mediasource_selector_tier">階級</string>
+    <string name="settings_mediasource_selector_tier_description">數值越低越優先。階級 0 查到結果後立即選用，更高階級需先等待其他資料來源</string>
+    <string name="settings_mediasource_selector_prefer_shorter_name">優先選擇最短標題</string>
+    <string name="settings_mediasource_selector_prefer_shorter_name_description">優先選擇滿足匹配的標題最短的條目，可避免為第一季匹配到第二季</string>
     <string name="settings_mediasource_selector_config_filter_by_subject_name">使用條目名稱過濾</string>
     <string name="settings_mediasource_selector_config_filter_by_subject_name_description">要求資源標題包含條目名稱。適用於資料來源可能搜到無關內容的情況。此功能只對 4.4.0 以前版本有效，對其他版本無效</string>
     <string name="settings_mediasource_selector_config_filter_by_episode_sort">使用劇集序號過濾</string>
