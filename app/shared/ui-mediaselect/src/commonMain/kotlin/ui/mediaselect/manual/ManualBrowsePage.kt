@@ -89,7 +89,8 @@ import org.jetbrains.compose.resources.stringResource
  * 点击网格里的剧集直接播放, 不确认: scope.launch { when (state.play(index)) { true -> onPlayed(); false -> toaster.toast(media_selector_load_failed); null -> 忽略 } }.
  *   null 表示已有进行中的播放 (快速双击), 不是失败, 不提示. 是否写浏览记忆由「记住选择」决定, 用户在点之前就能看到它.
  *
- * @param onPlayed `state.play(...)` 返回 true 后调用; 宿主关闭所有容器.
+ * @param onPlayed `state.play(...)` 返回 true 后调用; 播放页宿主关闭所有容器.
+ * @param showRememberSelection 为 false 时网格头部不显示「记住选择」开关; 用于不写浏览记忆的宿主 (下载弹窗).
  */
 @Composable
 fun ManualBrowsePage(
@@ -100,6 +101,7 @@ fun ManualBrowsePage(
     modifier: Modifier = Modifier,
     closeButton: (@Composable () -> Unit)? = null,
     inlineTitle: (@Composable RowScope.() -> Unit)? = null,
+    showRememberSelection: Boolean = true,
 ) {
     val presentation by state.presentationFlow.collectAsStateWithLifecycle()
     val scope = rememberCoroutineScope()
@@ -127,6 +129,7 @@ fun ManualBrowsePage(
                 onPlayEpisode = playEpisode,
                 topBar = topBar,
                 inlineTitle = inlineTitle,
+                showRememberSelection = showRememberSelection,
                 modifier = Modifier.fillMaxSize(),
             )
         } else {
@@ -135,6 +138,7 @@ fun ManualBrowsePage(
                 onPlayEpisode = playEpisode,
                 topBar = topBar,
                 closeButton = closeButton,
+                showRememberSelection = showRememberSelection,
                 modifier = Modifier.fillMaxSize(),
             )
         }
@@ -154,6 +158,7 @@ private fun ManualBrowseStackedLayout(
     onPlayEpisode: (Int) -> Unit,
     topBar: @Composable () -> Unit,
     closeButton: (@Composable () -> Unit)?,
+    showRememberSelection: Boolean,
     modifier: Modifier = Modifier,
 ) {
     BackHandler(enabled = presentation.openedSubject != null, onBack = state::closeSubject)
@@ -210,6 +215,7 @@ private fun ManualBrowseStackedLayout(
                 )
                 ManualChannelsContent(
                     state, presentation, onPlayEpisode,
+                    showRememberSelection = showRememberSelection,
                     columns = 4,
                     gridContentPadding = PaddingValues(start = 16.dp, end = 16.dp, bottom = 16.dp),
                 )
@@ -226,6 +232,7 @@ private fun ColumnScope.ManualChannelsContent(
     state: ManualBrowseState,
     presentation: ManualBrowsePresentation,
     onPlayEpisode: (Int) -> Unit,
+    showRememberSelection: Boolean,
     columns: Int,
     gridContentPadding: PaddingValues = PaddingValues(horizontal = 16.dp),
     channelRow: @Composable (channels: List<BrowseChannel>) -> Unit = { channels ->
@@ -253,7 +260,7 @@ private fun ColumnScope.ManualChannelsContent(
                 presentation.selectedChannel?.episodes.orEmpty(),
                 presentation.selectedEpisodeIndex,
                 onClick = onPlayEpisode,
-                rememberSelection = presentation.rememberSelection,
+                rememberSelection = presentation.rememberSelection.takeIf { showRememberSelection },
                 onRememberSelectionChange = state::setRememberSelection,
                 columns = columns,
                 Modifier.weight(1f).fillMaxWidth(),
@@ -320,6 +327,7 @@ private fun ManualBrowseWideLayout(
     onPlayEpisode: (Int) -> Unit,
     topBar: @Composable () -> Unit,
     inlineTitle: (@Composable RowScope.() -> Unit)?,
+    showRememberSelection: Boolean,
     modifier: Modifier = Modifier,
 ) {
     Column(modifier) {
@@ -373,6 +381,7 @@ private fun ManualBrowseWideLayout(
                 if (subject != null) {
                     ManualChannelsContent(
                         state, presentation, onPlayEpisode,
+                        showRememberSelection = showRememberSelection,
                         columns = 9,
                         gridContentPadding = PaddingValues(bottom = 16.dp),
                         channelRow = { channels ->

@@ -144,7 +144,7 @@
     - `app/shared/src/commonMain/kotlin/ui/subject/episode/video/sidesheet/EpisodeVideoMediaSelectorSideSheet.kt`：
       播放器侧边栏（三种模式）；侧边栏太矮时手动查找与 BT 的容器在 `EpisodePage.kt` 的 `sideSheets` 槽内。
     - `app/shared/ui-download/src/commonMain/kotlin/ui/download/subject/SubjectDownloadRequestDialogs.kt`：
-      批量下载的选源弹窗（自动匹配 / BT）。
+      批量下载的选源弹窗（三种模式）；手动查找状态由 `SubjectDownloadsPresenter` 为每次选源创建。
     - `EpisodeViewModel`：模式、全屏容器可见性、BT 页筛选状态与手动查找状态的持有者；手动查找点选在此写记忆，
       用户在自动匹配或 BT 页换源、关掉「记住选择」时在此删除记忆。
 - 状态（`app/shared/ui-mediaselect/src/commonMain/kotlin/ui/`）：
