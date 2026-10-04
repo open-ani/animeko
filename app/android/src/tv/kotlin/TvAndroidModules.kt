@@ -10,6 +10,7 @@
 package me.him188.ani.android.tv
 
 import android.app.Activity
+import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.runBlocking
 import me.him188.ani.app.domain.media.resolver.AndroidWebMediaResolver
@@ -22,6 +23,7 @@ import me.him188.ani.app.domain.mediasource.web.captcha.AndroidCaptchaBrowserFac
 import me.him188.ani.app.domain.mediasource.web.captcha.CaptchaBrowserFactory
 import me.him188.ani.app.domain.mediasource.web.captcha.ImageCaptchaRecognizer
 import me.him188.ani.app.domain.mediasource.web.captcha.WebSessionManager
+import me.him188.ani.app.domain.settings.remote.RemoteSettingsHost
 import me.him188.ani.app.data.repository.user.SettingsRepository
 import me.him188.ani.app.navigation.BrowserNavigator
 import me.him188.ani.app.navigation.NoopBrowserNavigator
@@ -29,6 +31,7 @@ import me.him188.ani.app.platform.AppTerminator
 import me.him188.ani.app.platform.ContextMP
 import me.him188.ani.app.platform.findActivity
 import org.koin.android.ext.koin.androidContext
+import org.koin.dsl.bind
 import org.koin.dsl.module
 import kotlin.system.exitProcess
 
@@ -39,7 +42,7 @@ import kotlin.system.exitProcess
  * Captcha 浏览器/识别器**需要**注册 —— 它们是 Web 数据源解析链 (WebSessionManager) 的依赖,
  * 服务于播放取源, 而非评论发送 (评论发送的 TurnstileState 才是裁剪对象).
  */
-fun getTvAndroidModules() = module {
+fun getTvAndroidModules(coroutineScope: CoroutineScope) = module {
     // M2: 换成二维码降级实现 (弹对话框展示 URL 二维码, §6.1)
     single<BrowserNavigator> { NoopBrowserNavigator }
 
@@ -61,6 +64,10 @@ fun getTvAndroidModules() = module {
                 ),
         )
     }
+
+    // 电视设置页展示其状态; Application 启动后由它开始监听手机的远程设置连接.
+    single { AndroidRemoteSettingsHost.create(androidContext(), getKoin(), coroutineScope) } bind
+        RemoteSettingsHost::class
 
     single<AppTerminator> {
         object : AppTerminator {
