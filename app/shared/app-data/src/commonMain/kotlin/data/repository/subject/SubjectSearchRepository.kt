@@ -57,7 +57,7 @@ class SubjectSearchRepository(
         },
     ).flow.flowOn(defaultDispatcher)
 
-    private inner class SubjectSearchPagingSource(
+    internal inner class SubjectSearchPagingSource(
         private val ignoreDoneAndDropped: suspend () -> Boolean,
         private val searchQuery: SubjectSearchQuery
     ) : PagingSource<Int, BatchSubjectDetails>() {
