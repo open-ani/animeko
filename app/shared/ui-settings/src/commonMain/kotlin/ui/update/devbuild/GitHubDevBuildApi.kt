@@ -26,6 +26,8 @@ import io.ktor.http.contentLength
 import io.ktor.http.takeFrom
 import io.ktor.utils.io.readAvailable
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.coroutineScope
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
@@ -37,8 +39,14 @@ import me.him188.ani.utils.coroutines.IO_
 import me.him188.ani.utils.io.DEFAULT_BUFFER_SIZE
 import me.him188.ani.utils.io.SystemPath
 import me.him188.ani.utils.io.bufferedSink
+import me.him188.ani.utils.io.bufferedSource
+import me.him188.ani.utils.io.delete
+import me.him188.ani.utils.io.name
+import me.him188.ani.utils.io.resolveSibling
 import me.him188.ani.utils.logging.info
 import me.him188.ani.utils.logging.logger
+import kotlin.concurrent.atomics.AtomicLong
+import kotlin.concurrent.atomics.ExperimentalAtomicApi
 
 /**
  * 查询 GitHub 仓库的 commits, PR, Build workflow 的运行记录和上传的 artifacts, 以及下载 artifact 和安装包.
@@ -152,7 +160,8 @@ class GitHubDevBuildApi(
 
     /**
      * 下载 [url] 到 [target], 不附带 token. 跟随最多 [MAX_DOWNLOAD_REDIRECTS] 次重定向 (Release 附件的直链会重定向到对象存储).
-     * [onProgress] 在下载过程中周期性回调, 完成时最后回调一次.
+     * 服务器支持 Range 时分段并行下载, 否则单连接下载.
+     * [onProgress] 在下载过程中周期性回调, 分段下载时可能从多个线程同时回调; 完成时最后回调一次.
      */
     suspend fun downloadFile(
         url: String,
@@ -162,11 +171,17 @@ class GitHubDevBuildApi(
         var currentUrl = url
         var redirects = 0
         while (true) {
-            val redirectedTo = downloadFileOnce(currentUrl, target, onProgress) ?: return
-            if (++redirects > MAX_DOWNLOAD_REDIRECTS) {
-                throw GitHubApiException(HttpStatusCode.Found, "重定向次数过多: $url")
+            when (val probe = probeDownload(currentUrl, target, onProgress)) {
+                is DownloadProbe.Redirect -> {
+                    if (++redirects > MAX_DOWNLOAD_REDIRECTS) {
+                        throw GitHubApiException(HttpStatusCode.Found, "重定向次数过多: $url")
+                    }
+                    currentUrl = resolveRedirect(currentUrl, probe.location)
+                }
+
+                is DownloadProbe.RangeSupported -> return downloadInParts(currentUrl, target, probe.totalBytes, onProgress)
+                DownloadProbe.Completed -> return
             }
-            currentUrl = resolveRedirect(currentUrl, redirectedTo)
         }
     }
 
@@ -182,48 +197,161 @@ class GitHubDevBuildApi(
         }.buildString()
     }
 
+    private sealed interface DownloadProbe {
+        class Redirect(val location: String) : DownloadProbe
+        class RangeSupported(val totalBytes: Long) : DownloadProbe
+
+        /**
+         * 服务器忽略了 Range, 完整的文件已经写入.
+         */
+        data object Completed : DownloadProbe
+    }
+
     /**
-     * @return 需要跟随的重定向地址; 下载完成时为 `null`.
+     * 以 `Range: bytes=0-0` 请求 [url], 得知服务器是否支持分段下载以及文件大小. 服务器忽略 Range 时直接把完整响应写入 [target].
+     *
+     * 不用 HEAD 探测: 预签名直链的签名可能绑定了 GET 方法.
      */
-    private suspend fun downloadFileOnce(
+    private suspend fun probeDownload(
         url: String,
         target: SystemPath,
         onProgress: (downloadedBytes: Long, totalBytes: Long?) -> Unit,
-    ): String? {
+    ): DownloadProbe {
         return client.prepareGet(url) {
+            header(HttpHeaders.Range, "bytes=0-0")
             timeout {
                 requestTimeoutMillis = DOWNLOAD_TIMEOUT_MILLIS
             }
         }.execute { response ->
-            if (response.status.value in 300..399) {
-                return@execute response.headers[HttpHeaders.Location]
-                    ?: throw GitHubApiException(response.status, "服务器返回了重定向但没有 Location 头")
+            when {
+                response.status.value in 300..399 -> DownloadProbe.Redirect(
+                    response.headers[HttpHeaders.Location]
+                        ?: throw GitHubApiException(response.status, "服务器返回了重定向但没有 Location 头"),
+                )
+
+                response.status == HttpStatusCode.PartialContent -> {
+                    // Content-Range: bytes 0-0/<total>
+                    val totalBytes = response.headers[HttpHeaders.ContentRange]
+                        ?.substringAfterLast('/')?.toLongOrNull()?.takeIf { it > 0 }
+                        ?: throw GitHubApiException(response.status, "服务器返回的 Content-Range 没有文件大小")
+                    DownloadProbe.RangeSupported(totalBytes)
+                }
+
+                response.status.isSuccess() -> {
+                    val total = response.contentLength()
+                    logger.info { "Downloading dev build package in one connection, total=$total, target=$target" }
+                    val progress = DownloadProgress(total, onProgress)
+                    writeBody(response, target, progress::add)
+                    progress.complete()
+                    DownloadProbe.Completed
+                }
+
+                else -> throw response.toApiException()
             }
-            if (!response.status.isSuccess()) {
-                throw response.toApiException()
+        }
+    }
+
+    /**
+     * 把 [url] 处共 [totalBytes] 字节的文件分成至多 [DOWNLOAD_PARTS] 段同时下载.
+     * 第一段直接写入 [target], 其余各段写入旁边的临时文件, 全部完成后依次追加到 [target].
+     */
+    private suspend fun downloadInParts(
+        url: String,
+        target: SystemPath,
+        totalBytes: Long,
+        onProgress: (downloadedBytes: Long, totalBytes: Long?) -> Unit,
+    ) {
+        val partCount = (totalBytes / MIN_PART_BYTES).coerceIn(1, DOWNLOAD_PARTS.toLong()).toInt()
+        val partSize = (totalBytes + partCount - 1) / partCount
+        val ranges = List(partCount) { i -> i * partSize..<minOf((i + 1) * partSize, totalBytes) }
+        val partFiles = List(partCount) { i -> if (i == 0) target else target.resolveSibling("${target.name}.part$i") }
+        logger.info { "Downloading dev build package in $partCount parts, total=$totalBytes, target=$target" }
+
+        val progress = DownloadProgress(totalBytes, onProgress)
+        try {
+            coroutineScope {
+                for (i in 0 until partCount) {
+                    launch { downloadPart(url, ranges[i], partFiles[i], progress::add) }
+                }
             }
-            val total = response.contentLength()
-            logger.info { "Downloading dev build package, total=$total, target=$target" }
-            val channel = response.bodyAsChannel()
-            val buffer = ByteArray(DEFAULT_BUFFER_SIZE)
-            var downloaded = 0L
-            var lastReported = 0L
             withContext(Dispatchers.IO_) {
-                target.bufferedSink().use { sink ->
-                    while (true) {
-                        val read = channel.readAvailable(buffer)
-                        if (read == -1) break
-                        sink.write(buffer, 0, read)
-                        downloaded += read
-                        if (downloaded - lastReported >= PROGRESS_REPORT_INTERVAL_BYTES) {
-                            lastReported = downloaded
-                            onProgress(downloaded, total)
-                        }
+                target.bufferedSink(append = true).use { sink ->
+                    for (part in partFiles.drop(1)) {
+                        part.bufferedSource().use { it.transferTo(sink) }
+                        // 边拼接边删除, 磁盘峰值占用约为文件大小加一段
+                        part.delete()
                     }
                 }
             }
-            onProgress(downloaded, total ?: downloaded)
-            null
+        } finally {
+            partFiles.drop(1).forEach { it.delete() }
+        }
+        progress.complete()
+    }
+
+    private suspend fun downloadPart(url: String, range: LongRange, file: SystemPath, onRead: (Int) -> Unit) {
+        client.prepareGet(url) {
+            header(HttpHeaders.Range, "bytes=${range.first}-${range.last}")
+            timeout {
+                requestTimeoutMillis = DOWNLOAD_TIMEOUT_MILLIS
+            }
+        }.execute { response ->
+            when {
+                response.status == HttpStatusCode.PartialContent -> {}
+                // 不读响应体: 服务器没按 Range 返回时响应体是整个文件
+                response.status.isSuccess() -> throw GitHubApiException(response.status, "服务器没有按 Range 返回分段")
+                else -> throw response.toApiException()
+            }
+            val written = writeBody(response, file, onRead)
+            val expected = range.last - range.first + 1
+            if (written != expected) {
+                throw GitHubApiException(response.status, "分段 $range 应有 $expected 字节, 实际收到 $written 字节")
+            }
+        }
+    }
+
+    /**
+     * 把 [response] 的响应体写入 [target], 每读到一批数据就以其字节数回调 [onRead].
+     * @return 写入的总字节数
+     */
+    private suspend fun writeBody(response: HttpResponse, target: SystemPath, onRead: (Int) -> Unit): Long {
+        val channel = response.bodyAsChannel()
+        val buffer = ByteArray(DEFAULT_BUFFER_SIZE)
+        var written = 0L
+        withContext(Dispatchers.IO_) {
+            target.bufferedSink().use { sink ->
+                while (true) {
+                    val read = channel.readAvailable(buffer)
+                    if (read == -1) break
+                    sink.write(buffer, 0, read)
+                    written += read
+                    onRead(read)
+                }
+            }
+        }
+        return written
+    }
+
+    /**
+     * 累计各连接读到的字节数, 每跨过一个 [PROGRESS_REPORT_INTERVAL_BYTES] 回调一次 [onProgress]. [add] 可以从多个线程同时调用.
+     */
+    @OptIn(ExperimentalAtomicApi::class)
+    private class DownloadProgress(
+        private val totalBytes: Long?,
+        private val onProgress: (downloadedBytes: Long, totalBytes: Long?) -> Unit,
+    ) {
+        private val downloaded = AtomicLong(0)
+
+        fun add(bytes: Int) {
+            val after = downloaded.addAndFetch(bytes.toLong())
+            if (after / PROGRESS_REPORT_INTERVAL_BYTES != (after - bytes) / PROGRESS_REPORT_INTERVAL_BYTES) {
+                onProgress(after, totalBytes)
+            }
+        }
+
+        fun complete() {
+            val bytes = downloaded.load()
+            onProgress(bytes, totalBytes ?: bytes)
         }
     }
 
@@ -274,6 +402,18 @@ class GitHubDevBuildApi(
 
         private const val DOWNLOAD_TIMEOUT_MILLIS = 1_000_000L
         private const val MAX_DOWNLOAD_REDIRECTS = 5
+
+        /**
+         * 直链只在短时间内有效 (artifact 约 1 分钟), 所以各段必须同时开始, 不能排队等前面的段下完.
+         * 直链源站 (Azure Blob 等) 走 HTTP/1.1, 每段占一条连接; OkHttp 默认每个 host 只放行 5 个请求,
+         * NSURLSession 默认每个 host 只开 4 条连接, 超出的请求会在引擎里排队.
+         */
+        private const val DOWNLOAD_PARTS = 4
+
+        /**
+         * 每段至少这么大, 更小的文件分段省下的时间抵不过多出的连接开销.
+         */
+        private const val MIN_PART_BYTES = 1024 * 1024L
         private val ABSOLUTE_URL_REGEX = Regex("""^[a-zA-Z][a-zA-Z0-9+.-]*://""")
         private const val PROGRESS_REPORT_INTERVAL_BYTES = 512 * 1024L
 
