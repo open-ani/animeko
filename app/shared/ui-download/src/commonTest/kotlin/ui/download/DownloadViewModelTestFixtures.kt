@@ -221,9 +221,6 @@ internal class FakeSubjectCollectionRepository : SubjectCollectionRepository() {
     override suspend fun setSubjectCollectionTypeOrDelete(subjectId: Int, type: UnifiedCollectionType?) =
         throw UnsupportedOperationException()
 
-    override suspend fun getSubjectIdsByCollectionType(types: List<UnifiedCollectionType>): Flow<List<Int>> =
-        throw UnsupportedOperationException()
-
     override suspend fun getSubjectNamesCnByCollectionType(types: List<UnifiedCollectionType>): Flow<List<String>> =
         throw UnsupportedOperationException()
 

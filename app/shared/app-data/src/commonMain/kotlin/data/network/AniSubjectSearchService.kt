@@ -17,6 +17,7 @@ import me.him188.ani.app.data.models.subject.RatingInfo
 import me.him188.ani.app.data.models.subject.SubjectCollectionStats
 import me.him188.ani.app.data.models.subject.SubjectInfo
 import me.him188.ani.app.data.models.subject.Tag
+import me.him188.ani.app.data.repository.subject.toAniSubjectCollectionType
 import me.him188.ani.app.domain.mediasource.MediaListFilters
 import me.him188.ani.app.domain.search.SearchSort
 import me.him188.ani.app.domain.search.SubjectType
@@ -65,6 +66,7 @@ class AniSubjectSearchService(
                     SearchSort.DATE -> AniSubjectSearchSortBy.AIR_DATE_DESC
                 },
                 fields = fields?.map { it.toAniField() },
+                excludeCollectionTypes = filters?.excludeCollectionTypes?.mapNotNull { it.toAniSubjectCollectionType() },
             )
         }.body()
 
