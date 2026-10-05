@@ -10,6 +10,10 @@
 package me.him188.ani.app.ui.subject.episode
 
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.Stable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.layout.Layout
 import androidx.compose.ui.unit.Constraints
@@ -47,6 +51,24 @@ internal fun episodeScreenLayoutMode(
     !showExpandedUI -> EpisodeScreenLayoutMode.COMPACT
     sidebarVisible -> EpisodeScreenLayoutMode.WIDE
     else -> EpisodeScreenLayoutMode.VIDEO_ONLY
+}
+
+/**
+ * 宽屏布局的侧边栏开关. 窗口和全屏各记一份: 全屏是为了专心看视频, 默认不显示侧边栏;
+ * 在全屏里展开侧边栏也不会改变退出全屏后的布局.
+ */
+@Stable
+internal class EpisodeSidebarState(
+    private val isFullscreen: () -> Boolean,
+) {
+    private var visibleInWindow by mutableStateOf(true)
+    private var visibleInFullscreen by mutableStateOf(false)
+
+    var isVisible: Boolean
+        get() = if (isFullscreen()) visibleInFullscreen else visibleInWindow
+        set(value) {
+            if (isFullscreen()) visibleInFullscreen = value else visibleInWindow = value
+        }
 }
 
 /**

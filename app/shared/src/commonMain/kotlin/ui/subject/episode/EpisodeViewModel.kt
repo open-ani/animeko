@@ -693,7 +693,8 @@ open class EpisodeViewModel(
         )
 
     var isFullscreen: Boolean by mutableStateOf(initialIsFullscreen)
-    var sidebarVisible: Boolean by mutableStateOf(true)
+    private val sidebarState = EpisodeSidebarState { isFullscreen }
+    var sidebarVisible: Boolean by sidebarState::isVisible
     val commentLazyGirdState: LazyGridState = LazyGridState()
 
     /**

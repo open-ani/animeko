@@ -418,9 +418,9 @@ class EpisodeVideoControllerTest {
     }
 
     @Test
-    fun `desktop sidebar toggles before during and after fullscreen`() = runAniComposeUiTest {
-        var sidebarVisible by mutableStateOf(true)
+    fun `desktop fullscreen hides sidebar by default and toggles it separately from window`() = runAniComposeUiTest {
         val fullscreenState = TestFullscreenState(initialIsFullscreen = false)
+        val sidebarState = EpisodeSidebarState { fullscreenState.isFullscreen }
         val visibleControllerState = PlayerControllerState(NORMAL_VISIBLE)
         var playerCreatedCount = 0
         setContent {
@@ -428,7 +428,7 @@ class EpisodeVideoControllerTest {
                 mode = episodeScreenLayoutMode(
                     isFullscreen = fullscreenState.isFullscreen,
                     showExpandedUI = true,
-                    sidebarVisible = sidebarVisible,
+                    sidebarVisible = sidebarState.isVisible,
                     isDesktop = true,
                 ),
                 video = {
@@ -436,8 +436,8 @@ class EpisodeVideoControllerTest {
                         GestureFamily.MOUSE,
                         playerControllerState = visibleControllerState,
                         fullscreenState = fullscreenState,
-                        sidebarVisible = sidebarVisible,
-                        onToggleSidebar = { sidebarVisible = it },
+                        sidebarVisible = sidebarState.isVisible,
+                        onToggleSidebar = { sidebarState.isVisible = it },
                         onPlayerStateCreated = { playerCreatedCount++ },
                     )
                 },
@@ -446,22 +446,40 @@ class EpisodeVideoControllerTest {
             )
         }
 
-        for (fullscreen in listOf(false, true, false, true)) {
-            if (fullscreenState.isFullscreen != fullscreen) {
-                fullScreenButton.performClick()
-            }
-            onNodeWithTag("sidebar").assertWidthIsEqualTo(340.dp)
-            player.assertWidthIsEqualTo(660.dp)
-            onNodeWithTag(TAG_COLLAPSE_SIDEBAR).performClick()
-            onNodeWithTag("sidebar").assertDoesNotExist()
-            player.assertWidthIsEqualTo(1000.dp)
-            onNodeWithTag(TAG_COLLAPSE_SIDEBAR).performClick()
-            onNodeWithTag("sidebar").assertWidthIsEqualTo(340.dp)
-            runOnIdle {
-                assertEquals(fullscreen, fullscreenState.isFullscreen)
-                assertEquals(1, playerCreatedCount)
+        fun assertSidebar(fullscreen: Boolean, visible: Boolean) {
+            runOnIdle { assertEquals(fullscreen, fullscreenState.isFullscreen) }
+            if (visible) {
+                onNodeWithTag("sidebar").assertWidthIsEqualTo(340.dp)
+                player.assertWidthIsEqualTo(660.dp)
+            } else {
+                onNodeWithTag("sidebar").assertDoesNotExist()
+                player.assertWidthIsEqualTo(1000.dp)
             }
         }
+
+        assertSidebar(fullscreen = false, visible = true)
+
+        // 进入全屏默认只显示视频, 按钮仍能展开侧边栏
+        fullScreenButton.performClick()
+        assertSidebar(fullscreen = true, visible = false)
+        onNodeWithTag(TAG_COLLAPSE_SIDEBAR).performClick()
+        assertSidebar(fullscreen = true, visible = true)
+
+        // 全屏里的开关不影响窗口
+        fullScreenButton.performClick()
+        assertSidebar(fullscreen = false, visible = true)
+        onNodeWithTag(TAG_COLLAPSE_SIDEBAR).performClick()
+        assertSidebar(fullscreen = false, visible = false)
+
+        // 窗口里的开关也不影响全屏
+        fullScreenButton.performClick()
+        assertSidebar(fullscreen = true, visible = true)
+        onNodeWithTag(TAG_COLLAPSE_SIDEBAR).performClick()
+        assertSidebar(fullscreen = true, visible = false)
+        fullScreenButton.performClick()
+        assertSidebar(fullscreen = false, visible = false)
+
+        runOnIdle { assertEquals(1, playerCreatedCount) }
     }
 
     /**
