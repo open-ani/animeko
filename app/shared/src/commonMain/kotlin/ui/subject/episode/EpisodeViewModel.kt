@@ -55,6 +55,7 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.withContext
 import me.him188.ani.app.data.models.comment.CommentReportTargetType
+import me.him188.ani.app.data.models.danmaku.DanmakuTextConversionOverrides
 import me.him188.ani.app.data.models.episode.EpisodeInfo
 import me.him188.ani.app.data.models.episode.displayName
 import me.him188.ani.app.data.models.episode.nameOrNameCn
@@ -81,6 +82,7 @@ import me.him188.ani.app.data.repository.subject.SetSubjectCollectionTypeOrDelet
 import me.him188.ani.app.data.repository.user.SettingsRepository
 import me.him188.ani.app.domain.comment.PostCommentUseCase
 import me.him188.ani.app.domain.danmaku.DanmakuRepository
+import me.him188.ani.app.domain.danmaku.DanmakuTextConversionSettings
 import me.him188.ani.app.domain.danmaku.SetDanmakuEnabledUseCase
 import me.him188.ani.app.domain.episode.EpisodeCompletionContext.isKnownCompleted
 import me.him188.ani.app.domain.episode.EpisodeDanmakuLoader
@@ -194,6 +196,7 @@ import me.him188.ani.danmaku.ui.DanmakuConfig
 import me.him188.ani.danmaku.ui.DanmakuHostState
 import me.him188.ani.danmaku.ui.DanmakuPresentation
 import me.him188.ani.danmaku.ui.DanmakuTrackProperties
+import me.him188.ani.danmaku.ui.DanmakuTextConversion
 import me.him188.ani.datasources.api.Media
 import me.him188.ani.datasources.api.PackedDate
 import me.him188.ani.datasources.api.source.MediaFetchRequest
@@ -717,10 +720,50 @@ open class EpisodeViewModel(
     )
 
 
+    /**
+     * 弹幕文字转换设置流: 全局目标来自 [SettingsRepository.danmakuConfig],
+     * 按来源的覆盖来自 [SettingsRepository.danmakuTextConversionOverrides] (持久保存).
+     */
+    private val danmakuTextConversionFlow: Flow<DanmakuTextConversionSettings> = combine(
+        settingsRepository.danmakuConfig.flow,
+        settingsRepository.danmakuTextConversionOverrides.flow,
+    ) { config, overrides ->
+        DanmakuTextConversionSettings(
+            global = config.textConversion,
+            overrides = overrides.overrides.mapKeys { DanmakuServiceId(it.key) },
+        )
+    }
+
+    fun setDanmakuTextConversionOverride(serviceId: DanmakuServiceId, target: DanmakuTextConversion?) {
+        launchInBackground {
+            settingsRepository.danmakuTextConversionOverrides.update {
+                copy(
+                    overrides = if (target == null) {
+                        overrides - serviceId.value
+                    } else {
+                        overrides + (serviceId.value to target)
+                    },
+                )
+            }
+        }
+    }
+
+    fun setDanmakuTextConversionGlobal(target: DanmakuTextConversion) {
+        launchInBackground {
+            settingsRepository.danmakuConfig.update { copy(textConversion = target) }
+        }
+    }
+
+    fun resetDanmakuTextConversionOverrides() {
+        launchInBackground {
+            settingsRepository.danmakuTextConversionOverrides.update { DanmakuTextConversionOverrides.Default }
+        }
+    }
+
     @OptIn(UnsafeEpisodeSessionApi::class)
     protected val episodeDanmakuLoader = EpisodeDanmakuLoader(
         player = player,
-        // TODO: 2025/1/6 this is not very good. May see old data. 
+        // TODO: 2025/1/6 this is not very good. May see old data.
         selectedMedia = fetchPlayState.mediaSelectorFlow.transformLatest {
             if (it == null) {
                 emit(null)
@@ -731,7 +774,8 @@ open class EpisodeViewModel(
         bundleFlow = fetchPlayState.infoBundleFlow.filterNotNull().distinctUntilChanged(),
         danmakuRepository = danmakuRepository,
         getDanmakuRegexFilterListFlowUseCase = getDanmakuRegexFilterListFlowUseCase,
-        backgroundScope,
+        danmakuTextConversion = danmakuTextConversionFlow,
+        backgroundScope = backgroundScope,
         sharingStarted = SharingStarted.WhileSubscribed(5_000),
     )
 
@@ -787,6 +831,7 @@ open class EpisodeViewModel(
     val danmakuListStateProducer = DanmakuListStateProducer(
         danmakuFlow = allDanmakuListFlow,
         fetchResultsFlow = episodeDanmakuLoader.fetchResults,
+        textConversion = danmakuTextConversionFlow,
     )
 
     val danmakuListState = danmakuListStateProducer.stateFlow

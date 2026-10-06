@@ -18,6 +18,7 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.test.TestScope
 import kotlinx.coroutines.test.runTest
 import me.him188.ani.app.data.models.danmaku.DanmakuFilterConfig
+import me.him188.ani.app.data.models.danmaku.DanmakuTextConversionOverrides
 import me.him188.ani.app.data.models.preference.AnalyticsSettings
 import me.him188.ani.app.data.models.preference.AnitorrentConfig
 import me.him188.ani.app.data.models.preference.DanmakuCacheStrategy
@@ -251,6 +252,7 @@ class DanmakuCacheTest {
         override val danmakuEnabled: Settings<Boolean> by lazy { error("no implemented") }
         override val danmakuConfig: Settings<DanmakuConfig> by lazy { error("no implemented") }
         override val danmakuFilterConfig: Settings<DanmakuFilterConfig> by lazy { error("no implemented") }
+        override val danmakuTextConversionOverrides: Settings<DanmakuTextConversionOverrides> by lazy { error("no implemented") }
         override val mediaSelectorSettings: Settings<MediaSelectorSettings> by lazy { error("no implemented") }
         override val defaultMediaPreference: Settings<MediaPreference> by lazy { error("no implemented") }
         override val profileSettings: Settings<ProfileSettings> by lazy { error("no implemented") }

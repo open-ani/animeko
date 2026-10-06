@@ -1584,6 +1584,12 @@
     <string name="subject_episode_video_settings_enable_regex_filter">啟用正則彈幕過濾器</string>
     <string name="subject_episode_video_settings_manage_regex_filter">管理正則彈幕過濾器</string>
     <string name="subject_episode_video_settings_debug_mode">彈幕調試模式</string>
+    <string name="subject_episode_video_settings_text_conversion">彈幕文字</string>
+    <string name="subject_episode_video_settings_text_conversion_original">原樣</string>
+    <string name="subject_episode_video_settings_text_conversion_simplified">簡體</string>
+    <string name="subject_episode_video_settings_text_conversion_traditional">繁體</string>
+    <string name="subject_episode_video_settings_text_conversion_taiwan">台繁</string>
+    <string name="subject_episode_video_settings_text_conversion_hong_kong">港繁</string>
 
     <!-- 人物/角色詳情頁 -->
     <string name="person_details_basic_info">基本資訊</string>
@@ -1770,6 +1776,14 @@
     <string name="qr_login_done">完成</string>
     <string name="qr_login_close">關閉</string>
     <string name="subject_episode_danmaku_sources_title">來源與時間校準</string>
+    <string name="subject_episode_danmaku_text_conversion_item">簡繁轉換</string>
+    <string name="subject_episode_danmaku_text_conversion_desc">個別來源可以覆蓋全部來源的設定</string>
+    <string name="subject_episode_danmaku_text_conversion_preview_hint">範例：</string>
+    <string name="subject_episode_danmaku_text_conversion_override_count">%1$d 個來源已個別設定</string>
+    <string name="subject_episode_danmaku_text_conversion_follow_global">跟隨全局</string>
+    <string name="subject_episode_danmaku_text_conversion_section_all">全部來源</string>
+    <string name="subject_episode_danmaku_text_conversion_section_per_source">個別來源</string>
+    <string name="subject_episode_danmaku_text_conversion_reset_overrides">重設個別設定</string>
     <string name="subject_episode_danmaku_sources_empty">暫無可用彈幕來源</string>
     <string name="video_player_screenshot">截圖</string>
     <string name="video_player_screenshot_share">分享</string>

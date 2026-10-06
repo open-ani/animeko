@@ -29,7 +29,9 @@ import androidx.compose.ui.unit.dp
 import me.him188.ani.app.ui.episode.danmaku.DanmakuServiceIcon
 import me.him188.ani.app.ui.episode.danmaku.DanmakuSourceItem
 import me.him188.ani.app.ui.episode.danmaku.DanmakuSourceSettingsDropdown
+import me.him188.ani.app.ui.episode.danmaku.DanmakuTextConversionSettingsDialog
 import me.him188.ani.app.ui.episode.danmaku.DanmakuTimeShiftDialog
+import me.him188.ani.app.ui.episode.danmaku.danmakuTextConversionText
 import me.him188.ani.app.ui.episode.danmaku.formatDanmakuShiftMillis
 import me.him188.ani.app.ui.episode.danmaku.renderDanmakuMatchMethod
 import me.him188.ani.app.ui.episode.danmaku.renderDanmakuServiceId
@@ -41,6 +43,7 @@ import me.him188.ani.app.ui.lang.subject_episode_danmaku_time_shift_item
 import me.him188.ani.app.ui.settings.SettingsTab
 import me.him188.ani.app.ui.settings.framework.components.TextItem
 import me.him188.ani.danmaku.api.DanmakuServiceId
+import me.him188.ani.danmaku.ui.DanmakuTextConversion
 import org.jetbrains.compose.resources.stringResource
 
 /** 播放器设置中的弹幕来源管理。配置由播放会话持有，组件仅保存正在编辑的来源。 */
@@ -52,8 +55,14 @@ fun DanmakuSourceSettings(
     onManualMatch: (DanmakuServiceId) -> Unit,
     onAdjustShift: (DanmakuServiceId, Long) -> Unit,
     modifier: Modifier = Modifier,
+    globalTextConversion: DanmakuTextConversion = DanmakuTextConversion.ORIGINAL,
+    textConversionOverrides: Map<DanmakuServiceId, DanmakuTextConversion> = emptyMap(),
+    onSetTextConversionGlobal: (DanmakuTextConversion) -> Unit = {},
+    onSetTextConversion: (DanmakuServiceId, DanmakuTextConversion?) -> Unit = { _, _ -> },
+    onResetTextConversionOverrides: () -> Unit = {},
 ) {
     var editingServiceId by rememberSaveable { mutableStateOf<String?>(null) }
+    var showConversionDialog by rememberSaveable { mutableStateOf(false) }
     SettingsTab(modifier.testTag("danmaku-source-settings")) {
         Column {
             TextItem { Text(stringResource(Lang.subject_episode_danmaku_sources_title)) }
@@ -74,7 +83,9 @@ fun DanmakuSourceSettings(
                                     } else stringResource(Lang.subject_episode_danmaku_disabled)
                                     val match =
                                         if (source.isExactMatch) "" else " · ${renderDanmakuMatchMethod(source.matchMethod)}"
-                                    Text("${source.count} · $status$match")
+                                    val conversion = source.textConversionOverride
+                                        ?.let { " · ${danmakuTextConversionText(it)}" } ?: ""
+                                    Text("${source.count} · $status$match$conversion")
                                 },
                                 icon = { DanmakuServiceIcon(source.serviceId, size = 24) },
                                 action = { Icon(Icons.Outlined.MoreVert, contentDescription = null) },
@@ -89,6 +100,8 @@ fun DanmakuSourceSettings(
                                 onClickAdjustShift = { editingServiceId = source.serviceId.value },
                                 onClickChange = if (source.serviceId == DanmakuServiceId.Animeko) null
                                 else ({ onManualMatch(source.serviceId) }),
+                                currentTextConversionOverride = source.textConversionOverride,
+                                onClickTextConversion = { showConversionDialog = true },
                                 serviceId = source.serviceId,
                             )
                         }
@@ -114,5 +127,18 @@ fun DanmakuSourceSettings(
                 },
             )
         }
+    }
+
+    if (showConversionDialog) {
+        DanmakuTextConversionSettingsDialog(
+            global = globalTextConversion,
+            overrides = textConversionOverrides,
+            onSetGlobal = onSetTextConversionGlobal,
+            onSetOverride = onSetTextConversion,
+            onResetOverrides = {
+                onResetTextConversionOverrides()
+            },
+            onDismissRequest = { showConversionDialog = false },
+        )
     }
 }

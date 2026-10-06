@@ -27,6 +27,7 @@ import androidx.compose.material.icons.outlined.CheckCircle
 import androidx.compose.material.icons.outlined.Close
 import androidx.compose.material.icons.outlined.Refresh
 import androidx.compose.material.icons.outlined.Schedule
+import androidx.compose.material.icons.outlined.Translate
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.FilterChip
@@ -56,12 +57,19 @@ import me.him188.ani.app.ui.lang.subject_episode_danmaku_rematch
 import me.him188.ani.app.ui.lang.subject_episode_danmaku_service_baha_short
 import me.him188.ani.app.ui.lang.subject_episode_danmaku_service_bilibili_short
 import me.him188.ani.app.ui.lang.subject_episode_danmaku_service_dandanplay_short
+import me.him188.ani.app.ui.lang.subject_episode_danmaku_text_conversion_item
 import me.him188.ani.app.ui.lang.subject_episode_danmaku_time_shift_item
 import me.him188.ani.app.ui.lang.subject_episode_disable
 import me.him188.ani.app.ui.lang.subject_episode_enable
 import me.him188.ani.app.ui.lang.subject_episode_more_options
+import me.him188.ani.app.ui.lang.subject_episode_video_settings_text_conversion_hong_kong
+import me.him188.ani.app.ui.lang.subject_episode_video_settings_text_conversion_original
+import me.him188.ani.app.ui.lang.subject_episode_video_settings_text_conversion_simplified
+import me.him188.ani.app.ui.lang.subject_episode_video_settings_text_conversion_taiwan
+import me.him188.ani.app.ui.lang.subject_episode_video_settings_text_conversion_traditional
 import me.him188.ani.danmaku.api.DanmakuServiceId
 import me.him188.ani.danmaku.api.provider.DanmakuMatchMethod
+import me.him188.ani.danmaku.ui.DanmakuTextConversion
 import me.him188.ani.utils.platform.format1f
 import org.jetbrains.compose.resources.painterResource
 import org.jetbrains.compose.resources.stringResource
@@ -76,10 +84,28 @@ data class DanmakuSourceItem(
     val matchMethod: DanmakuMatchMethod,
     val shiftMillis: Long,
     val count: Int,
+    /**
+     * 该来源的简繁转换覆盖, `null` 表示跟随全局设置.
+     */
+    val textConversionOverride: DanmakuTextConversion? = null,
 ) {
     val isExactMatch: Boolean
         get() = matchMethod is DanmakuMatchMethod.Exact || matchMethod is DanmakuMatchMethod.ExactId
 }
+
+/**
+ * [DanmakuTextConversion] 的本地化显示文本.
+ */
+@Composable
+fun danmakuTextConversionText(target: DanmakuTextConversion): String = stringResource(
+    when (target) {
+        DanmakuTextConversion.ORIGINAL -> Lang.subject_episode_video_settings_text_conversion_original
+        DanmakuTextConversion.SIMPLIFIED -> Lang.subject_episode_video_settings_text_conversion_simplified
+        DanmakuTextConversion.TRADITIONAL -> Lang.subject_episode_video_settings_text_conversion_traditional
+        DanmakuTextConversion.TAIWAN -> Lang.subject_episode_video_settings_text_conversion_taiwan
+        DanmakuTextConversion.HONG_KONG -> Lang.subject_episode_video_settings_text_conversion_hong_kong
+    },
+)
 
 /**
  * 弹幕源选择器组件，以FlowRow布局显示所有可用的弹幕源。
@@ -92,7 +118,13 @@ fun DanmakuSourceChips(
     onManualMatch: (DanmakuServiceId) -> Unit,
     onAdjustShift: (DanmakuServiceId) -> Unit,
     modifier: Modifier = Modifier,
+    globalTextConversion: DanmakuTextConversion = DanmakuTextConversion.ORIGINAL,
+    textConversionOverrides: Map<DanmakuServiceId, DanmakuTextConversion> = emptyMap(),
+    onSetTextConversionGlobal: (DanmakuTextConversion) -> Unit = {},
+    onSetTextConversion: (DanmakuServiceId, DanmakuTextConversion?) -> Unit = { _, _ -> },
+    onResetTextConversionOverrides: () -> Unit = {},
 ) {
+    var showConversionDialog by rememberSaveable { mutableStateOf(false) }
     FlowRow(
         modifier = modifier,
         horizontalArrangement = Arrangement.spacedBy(4.dp),
@@ -105,9 +137,23 @@ fun DanmakuSourceChips(
                     onToggle = { onToggleSource(sourceItem.serviceId, !sourceItem.enabled) },
                     onManualMatch = { onManualMatch(sourceItem.serviceId) },
                     onAdjustShift = { onAdjustShift(sourceItem.serviceId) },
+                    onClickTextConversion = { showConversionDialog = true },
                 )
             }
         }
+    }
+
+    if (showConversionDialog) {
+        DanmakuTextConversionSettingsDialog(
+            global = globalTextConversion,
+            overrides = textConversionOverrides,
+            onSetGlobal = onSetTextConversionGlobal,
+            onSetOverride = onSetTextConversion,
+            onResetOverrides = {
+                onResetTextConversionOverrides()
+            },
+            onDismissRequest = { showConversionDialog = false },
+        )
     }
 }
 
@@ -117,6 +163,7 @@ private fun DanmakuSourceMenuAnchor(
     onToggle: () -> Unit,
     onManualMatch: () -> Unit,
     onAdjustShift: () -> Unit,
+    onClickTextConversion: () -> Unit,
 ) {
     var showDropdown by rememberSaveable { mutableStateOf(false) }
     val isAnimeko = sourceItem.serviceId == DanmakuServiceId.Animeko
@@ -168,12 +215,14 @@ private fun DanmakuSourceMenuAnchor(
             currentShiftMillis = sourceItem.shiftMillis,
             onClickAdjustShift = onAdjustShift,
             onClickChange = onManualMatch.takeUnless { isAnimeko },
+            currentTextConversionOverride = sourceItem.textConversionOverride,
+            onClickTextConversion = onClickTextConversion,
             serviceId = sourceItem.serviceId,
         )
     }
 }
 
-/** 来源操作菜单；可选的匹配操作由调用方决定是否提供。 */
+/** 来源操作菜单；可选的匹配与简繁转换操作由调用方决定是否提供。 */
 @Composable
 fun DanmakuSourceSettingsDropdown(
     expanded: Boolean,
@@ -186,6 +235,8 @@ fun DanmakuSourceSettingsDropdown(
     modifier: Modifier = Modifier,
     serviceId: DanmakuServiceId? = null,
     changeText: String = stringResource(Lang.subject_episode_danmaku_rematch),
+    currentTextConversionOverride: DanmakuTextConversion? = null,
+    onClickTextConversion: (() -> Unit)? = null,
 ) {
     DropdownMenu(expanded, onDismissRequest, modifier) {
         if (serviceId != null) {
@@ -235,6 +286,20 @@ fun DanmakuSourceSettingsDropdown(
                 onDismissRequest()
             },
         )
+        if (onClickTextConversion != null) {
+            DropdownMenuItem(
+                modifier = Modifier.testTag("danmaku-source-text-conversion"),
+                text = { Text(stringResource(Lang.subject_episode_danmaku_text_conversion_item)) },
+                leadingIcon = { Icon(Icons.Outlined.Translate, null) },
+                trailingIcon = {
+                    currentTextConversionOverride?.let { Text(danmakuTextConversionText(it)) }
+                },
+                onClick = {
+                    onClickTextConversion()
+                    onDismissRequest()
+                },
+            )
+        }
     }
 }
 

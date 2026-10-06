@@ -22,6 +22,7 @@ import kotlinx.coroutines.flow.map
 import kotlinx.serialization.KSerializer
 import me.him188.ani.app.data.models.danmaku.DanmakuConfigSerializer
 import me.him188.ani.app.data.models.danmaku.DanmakuFilterConfig
+import me.him188.ani.app.data.models.danmaku.DanmakuTextConversionOverrides
 import me.him188.ani.app.data.models.preference.AnalyticsSettings
 import me.him188.ani.app.data.models.preference.AnitorrentConfig
 import me.him188.ani.app.data.models.preference.DanmakuSettings
@@ -54,6 +55,14 @@ interface SettingsRepository {
     val danmakuEnabled: Settings<Boolean>
     val danmakuConfig: Settings<DanmakuConfig>
     val danmakuFilterConfig: Settings<DanmakuFilterConfig>
+
+    /**
+     * 按弹幕来源覆盖全局的简繁转换目标, 持久保存.
+     *
+     * @since 4.9.0
+     * @see me.him188.ani.app.domain.danmaku.DanmakuTextConversionSettings
+     */
+    val danmakuTextConversionOverrides: Settings<DanmakuTextConversionOverrides>
 
     val mediaSelectorSettings: Settings<MediaSelectorSettings>
 
@@ -173,6 +182,12 @@ class PreferencesRepositoryImpl(
             "danmaku_filter_config",
             DanmakuFilterConfig.serializer(),
             default = { DanmakuFilterConfig.Default },
+        )
+    override val danmakuTextConversionOverrides: Settings<DanmakuTextConversionOverrides> =
+        SerializablePreference(
+            "danmaku_text_conversion_overrides",
+            DanmakuTextConversionOverrides.serializer(),
+            default = { DanmakuTextConversionOverrides.Default },
         )
     override val mediaSelectorSettings: Settings<MediaSelectorSettings> = SerializablePreference(
         "mediaSelectorSettings",

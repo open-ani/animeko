@@ -22,6 +22,7 @@ import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.filter
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.flatMapLatest
+import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.mapLatest
 import kotlinx.coroutines.flow.onEach
@@ -33,6 +34,8 @@ import me.him188.ani.app.domain.danmaku.DanmakuFetcher
 import me.him188.ani.app.domain.danmaku.DanmakuLoaderImpl
 import me.him188.ani.app.domain.danmaku.DanmakuLoadingState
 import me.him188.ani.app.domain.danmaku.DanmakuRepository
+import me.him188.ani.app.domain.danmaku.DanmakuTextConversionSettings
+import me.him188.ani.app.domain.danmaku.DanmakuTextConverter
 import me.him188.ani.app.domain.media.player.data.filenameOrNull
 import me.him188.ani.app.domain.settings.GetDanmakuRegexFilterListFlowUseCase
 import me.him188.ani.danmaku.api.DanmakuCollection
@@ -70,6 +73,8 @@ class EpisodeDanmakuLoader(
     getDanmakuRegexFilterListFlowUseCase: GetDanmakuRegexFilterListFlowUseCase,
     backgroundScope: CoroutineScope,
     sharingStarted: SharingStarted = SharingStarted.WhileSubscribed(),
+    private val danmakuTextConversion: Flow<DanmakuTextConversionSettings> =
+        flowOf(DanmakuTextConversionSettings.Default),
 ) {
     private val flowScope = backgroundScope
 
@@ -122,14 +127,17 @@ class EpisodeDanmakuLoader(
     private val config = MutableStateFlow(persistentMapOf<DanmakuServiceId, DanmakuOriginConfig>())
     val configFlow = config.asStateFlow()
 
+    private val danmakuTextConverter = DanmakuTextConverter()
 
-    private val danmakuSessionFlow: Flow<DanmakuSession> = config.mapLatest { configMap ->
-        createDanmakuCollection(danmakuLoader.fetchResultFlow, configMap).at(
-            progress = player.currentPositionMillis.map { it.milliseconds },
-            playbackSpeed = { player.features[PlaybackSpeed]?.value ?: 1f },
-            danmakuRegexFilterList = getDanmakuRegexFilterListFlowUseCase(),
-        )
-    }.shareIn(flowScope, started = sharingStarted, replay = 1)
+    private val danmakuSessionFlow: Flow<DanmakuSession> =
+        combine(config, danmakuTextConversion) { configMap, conversion -> configMap to conversion }
+            .mapLatest { (configMap, conversion) ->
+                createDanmakuCollection(danmakuLoader.fetchResultFlow, configMap, conversion).at(
+                    progress = player.currentPositionMillis.map { it.milliseconds },
+                    playbackSpeed = { player.features[PlaybackSpeed]?.value ?: 1f },
+                    danmakuRegexFilterList = getDanmakuRegexFilterListFlowUseCase(),
+                )
+            }.shareIn(flowScope, started = sharingStarted, replay = 1)
 
     val danmakuLoadingStateFlow: StateFlow<DanmakuLoadingState> = danmakuLoader.danmakuLoadingStateFlow
 
@@ -181,7 +189,8 @@ class EpisodeDanmakuLoader(
 
     private fun createDanmakuCollection(
         danmakuListFlow: Flow<List<DanmakuFetchResult>?>,
-        config: Map<DanmakuServiceId, DanmakuOriginConfig>
+        config: Map<DanmakuServiceId, DanmakuOriginConfig>,
+        textConversion: DanmakuTextConversionSettings,
     ): DanmakuCollection {
         return TimeBasedDanmakuSession.create(
             danmakuListFlow.map {
@@ -200,6 +209,13 @@ class EpisodeDanmakuLoader(
                                     playTimeMillis = danmaku.playTimeMillis + config.shiftMillis,
                                     text = newText,
                                 ),
+                            )
+                        }
+                        .let { list ->
+                            danmakuTextConverter.convertDanmakuInfos(
+                                list,
+                                result.matchInfo.serviceId,
+                                textConversion,
                             )
                         }
                 } ?: emptyList()
@@ -234,7 +250,8 @@ class EpisodeDanmakuLoader(
     val allDanmakuFlow: Flow<List<DanmakuInfo>> = combine(
         fetchResults,
         danmakuLoader.fetchResultFlow.onStart { emit(null) },
-    ) { fetchResultsWithConfig, rawResults ->
+        danmakuTextConversion,
+    ) { fetchResultsWithConfig, rawResults, textConversion ->
         rawResults?.flatMap { result ->
             val configResult = fetchResultsWithConfig.find { it.serviceId == result.matchInfo.serviceId }
             if (configResult?.config?.enabled == true) {
@@ -246,6 +263,12 @@ class EpisodeDanmakuLoader(
                             playTimeMillis = danmaku.playTimeMillis + configResult.config.shiftMillis,
                             text = newText,
                         ),
+                    )
+                }.let { list ->
+                    danmakuTextConverter.convertDanmakuInfos(
+                        list,
+                        result.matchInfo.serviceId,
+                        textConversion,
                     )
                 }
             } else emptyList()
