@@ -40,6 +40,7 @@ import me.him188.ani.app.domain.mediasource.instance.MediaSourceInstance
 import me.him188.ani.app.domain.mediasource.instance.MediaSourceSave
 import me.him188.ani.app.domain.mediasource.rss.RssMediaSource
 import me.him188.ani.app.domain.mediasource.web.SelectorMediaSource
+import me.him188.ani.app.domain.mediasource.api.ApiMediaSource
 import me.him188.ani.app.domain.mediasource.web.captcha.WebSessionManager
 import me.him188.ani.app.domain.mediasource.web.captcha.WebSourceCookieJar
 import me.him188.ani.app.domain.mediasource.web.captcha.WebSourceIdentityRegistry
@@ -244,6 +245,7 @@ class MediaSourceManagerImpl(
         add(JellyfinMediaSource.Factory())
         add(EmbyMediaSource.Factory())
         add(IkarosMediaSource.Factory())
+        add(ApiMediaSource.Factory())
         add(SelectorMediaSource.Factory(selectorMediaSourceEpisodeCacheRepository, webSessionManager))
     }.toList()
 

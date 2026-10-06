@@ -1779,6 +1779,11 @@
     <string name="video_player_screenshot_failed_no_frame">Screenshot failed: no video frame to capture</string>
     <string name="video_player_screenshot_failed_save">Screenshot could not be saved</string>
     <string name="video_player_screenshot_failed_save_reason">Screenshot could not be saved: %1$s</string>
+    <string name="settings_api_json">Configuration JSON</string>
+    <string name="settings_api_save">Save</string>
+    <string name="settings_api_saved">Saved</string>
+    <string name="settings_api_search">Search keyword</string>
+    <string name="settings_api_video_resolved">Video URL resolved</string>
 </resources>
 
 <!--@formatter:on-->

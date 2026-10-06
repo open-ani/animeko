@@ -23,6 +23,7 @@ interface MediaSource {
 
 - `SelectorMediaSource`：通用 [CSS Selector][CSS Selector] 数据源；
 - `RssMediaSource`：通用 RSS 订阅数据源；
+- `ApiMediaSource`：通用 HTTP JSON API 数据源，支持 GET/POST、JSONPath 和播放时刷新视频地址，见 [JSON API 配置](json-api.md)；
 - 特别支持的数据源：
     - `JellyfinMediaSource`、`EmbyMediaSource`：Jellyfin、Emby 媒体库；
     - `DmhyMediaSource`、`MikanMediaSource`：[动漫花园][dmhy]、[蜜柑计划][Mikan] 站点；

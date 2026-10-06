@@ -1819,6 +1819,11 @@
     <string name="video_player_screenshot_failed_no_frame">截图失败: 当前没有可截取的画面</string>
     <string name="video_player_screenshot_failed_save">截图保存失败</string>
     <string name="video_player_screenshot_failed_save_reason">截图保存失败: %1$s</string>
+    <string name="settings_api_json">配置 JSON</string>
+    <string name="settings_api_save">保存</string>
+    <string name="settings_api_saved">已保存</string>
+    <string name="settings_api_search">搜索关键词</string>
+    <string name="settings_api_video_resolved">已解析视频地址</string>
 </resources>
 
 <!--@formatter:on-->

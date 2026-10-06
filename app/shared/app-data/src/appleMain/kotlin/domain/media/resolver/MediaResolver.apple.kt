@@ -72,6 +72,15 @@ class IosWebMediaResolver(
     override suspend fun resolve(media: Media, episode: EpisodeMetadata): MediaDataProvider<MediaData> {
         if (!supports(media)) throw UnsupportedMediaException(media)
 
+        matcherLoader.resolveVideoOrNull(media)?.let { webVideo ->
+            return HttpStreamingMediaDataProvider(
+                webVideo.m3u8Url,
+                media.originalTitle,
+                webVideo.headers,
+                media.extraFiles.toMediampMediaExtraFiles(),
+            )
+        }
+
         val resolverSettings = settingsRepository.videoResolverSettings.flow.first()
         val extractor = IosWebViewVideoExtractor(resolverSettings.effectiveResourceExtractionTimeoutMillis)
         // Gather all matchers: from the media source + from the classpath

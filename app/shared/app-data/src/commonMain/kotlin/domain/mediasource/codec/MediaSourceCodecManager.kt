@@ -17,6 +17,7 @@ import me.him188.ani.app.domain.mediasource.instance.MediaSourceSave
 import me.him188.ani.app.domain.mediasource.rss.RssMediaSourceCodec
 import me.him188.ani.app.domain.mediasource.subscription.SubscriptionUpdateData
 import me.him188.ani.app.domain.mediasource.web.SelectorMediaSourceCodec
+import me.him188.ani.app.domain.mediasource.api.ApiMediaSourceCodec
 import me.him188.ani.datasources.api.source.FactoryId
 import me.him188.ani.utils.platform.annotations.TestOnly
 
@@ -28,6 +29,7 @@ class MediaSourceCodecManager(
         // Register your codec here
         RssMediaSourceCodec,
         SelectorMediaSourceCodec,
+        ApiMediaSourceCodec,
     )
 ) {
 
