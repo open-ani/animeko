@@ -11,8 +11,6 @@ package me.him188.ani.app.ui.download
 
 import androidx.paging.PagingConfig
 import androidx.paging.PagingData
-import kotlin.coroutines.CoroutineContext
-import kotlin.coroutines.EmptyCoroutineContext
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.awaitCancellation
 import kotlinx.coroutines.flow.Flow
@@ -25,6 +23,7 @@ import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.map
 import me.him188.ani.app.data.models.bangumi.BangumiSyncState
 import me.him188.ani.app.data.models.danmaku.DanmakuFilterConfig
+import me.him188.ani.app.data.models.danmaku.DanmakuTextConversionOverrides
 import me.him188.ani.app.data.models.episode.EpisodeCollectionInfo
 import me.him188.ani.app.data.models.episode.EpisodeInfo
 import me.him188.ani.app.data.models.player.EpisodeHistory
@@ -101,6 +100,8 @@ import me.him188.ani.datasources.api.topic.EpisodeRange
 import me.him188.ani.datasources.api.topic.ResourceLocation
 import me.him188.ani.datasources.api.topic.UnifiedCollectionType
 import me.him188.ani.utils.platform.annotations.TestOnly
+import kotlin.coroutines.CoroutineContext
+import kotlin.coroutines.EmptyCoroutineContext
 
 internal const val TEST_STORAGE_ID = "test-storage"
 
@@ -289,6 +290,7 @@ internal class FakeSettingsRepository : SettingsRepository {
     override val danmakuEnabled: Settings<Boolean> get() = error("Not used")
     override val danmakuConfig: Settings<DanmakuConfig> get() = error("Not used")
     override val danmakuFilterConfig: Settings<DanmakuFilterConfig> get() = error("Not used")
+    override val danmakuTextConversionOverrides: Settings<DanmakuTextConversionOverrides> get() = error("Not used")
     override val defaultMediaPreference: Settings<MediaPreference> get() = error("Not used")
     override val profileSettings: Settings<ProfileSettings> get() = error("Not used")
     override val proxySettings: Settings<ProxySettings> get() = error("Not used")
