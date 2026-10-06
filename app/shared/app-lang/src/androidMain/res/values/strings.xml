@@ -250,7 +250,14 @@
     <string name="settings_mediasource_selector_config_request_interval_description">Controls how long to wait after sending each request before sending the next one</string>
     <string name="settings_mediasource_selector_config_search_cache_ttl">Search cache duration (minutes)</string>
     <string name="settings_mediasource_selector_config_search_cache_ttl_description">Reuse search results when switching episodes within this duration. The effective value is the smaller of this and the user’s setting. 0 disables caching</string>
-    <string name="settings_mediasource_selector_config_filter_settings">Filter settings</string>
+    <string name="settings_mediasource_selector_auto_match">Auto match (optional)</string>
+    <string name="settings_mediasource_selector_auto_match_description">How this source finds the episode being watched on top of the lists above. Everything here is optional; the defaults work for most sites</string>
+    <string name="settings_mediasource_selector_auto_match_enabled">Participate in auto match</string>
+    <string name="settings_mediasource_selector_auto_match_enabled_description">When off, this source is only used for browsing and manual selection. It does not search during playback</string>
+    <string name="settings_mediasource_selector_tier">Tier</string>
+    <string name="settings_mediasource_selector_tier_description">Lower is preferred. Tier 0 is selected as soon as it finds a result; higher tiers wait for other sources first</string>
+    <string name="settings_mediasource_selector_prefer_shorter_name">Prefer the shortest title</string>
+    <string name="settings_mediasource_selector_prefer_shorter_name_description">Among matching items, prefer the one with the shortest title, so that season 1 does not match season 2</string>
     <string name="settings_mediasource_selector_config_filter_by_subject_name">Filter by item name</string>
     <string name="settings_mediasource_selector_config_filter_by_subject_name_description">Require the resource title to contain the item name. Useful when the source may return irrelevant results. This only works in versions before 4.4.0 and has no effect in other versions</string>
     <string name="settings_mediasource_selector_config_filter_by_episode_sort">Filter by episode number</string>
