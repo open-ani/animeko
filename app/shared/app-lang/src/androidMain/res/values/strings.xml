@@ -609,6 +609,9 @@
     <string name="exploration_settings">Settings</string>
     <string name="exploration_search">Search</string>
     <string name="exploration_trending">Trending</string>
+    <string name="exploration_trending_ranking">Trending Ranking</string>
+    <string name="exploration_trending_ranking_heat">%1$s watching in the last 30 days</string>
+    <string name="exploration_trending_ranking_empty">No ranking yet</string>
     <string name="exploration_schedule">Anime Schedule</string>
     <string name="exploration_schedule_view_details">View details</string>
     <string name="exploration_schedule_episode">Ep. %1$s</string>
@@ -1486,6 +1489,7 @@
     <string name="foundation_paginated_list_select_group">Select group</string>
     <string name="foundation_paginated_list_next_group">Next group</string>
     <string name="rating_summary_multiline">#%1$d\n%2$d ratings</string>
+    <string name="rating_summary_total">%1$d ratings</string>
     <string name="subject_episode_statistics_copy">Copy</string>
     <string name="subject_episode_statistics_error_details">Error details</string>
     <string name="subject_episode_statistics_error">Error</string>
