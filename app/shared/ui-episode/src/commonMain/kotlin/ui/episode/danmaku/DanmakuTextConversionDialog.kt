@@ -51,6 +51,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import me.him188.ani.app.domain.danmaku.DanmakuTextConversionPreview
+import me.him188.ani.app.domain.danmaku.DanmakuTextConversionSample
 import me.him188.ani.app.ui.lang.Lang
 import me.him188.ani.app.ui.lang.settings_danmaku_confirm
 import me.him188.ani.app.ui.lang.subject_episode_danmaku_text_conversion_desc
@@ -65,27 +66,20 @@ import me.him188.ani.danmaku.ui.DanmakuTextConversion
 import org.jetbrains.compose.resources.stringResource
 
 /**
- * 对话框内按此顺序列出已知的弹幕来源.
- */
-private val conversionDialogServiceOrder = listOf(
-    DanmakuServiceId.Dandanplay,
-    DanmakuServiceId.Bilibili,
-    DanmakuServiceId.Baha,
-    DanmakuServiceId.Animeko,
-    DanmakuServiceId.AcFun,
-    DanmakuServiceId.Tucao,
-)
-
-/**
  * 弹幕文字转换的统一设置对话框: 全局目标与按来源覆盖在同一处展示和修改.
  *
  * 全局与按来源可能互相冲突 (按来源覆盖优先), 如果只在一个地方看不到完整状态会令用户困惑,
  * 因此播放器弹幕设置与每个弹幕源菜单的"简繁转换"入口都打开这一个对话框.
  * 所有选择立即生效.
+ *
+ * 按来源列表只列出本次实际拉取到的 [sources] (每个来源设置页也只列这些), 不写死来源清单,
+ * 因为能拉到的来源取决于番剧、匹配结果与网络, 列出一个不存在的来源没有意义.
+ * 另外补上 [overrides] 里残留的来源, 否则那些设置将无法在这里清除.
  */
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
 fun DanmakuTextConversionSettingsDialog(
+    sources: List<DanmakuServiceId>,
     global: DanmakuTextConversion,
     overrides: Map<DanmakuServiceId, DanmakuTextConversion>,
     onSetGlobal: (DanmakuTextConversion) -> Unit,
@@ -96,6 +90,14 @@ fun DanmakuTextConversionSettingsDialog(
 ) {
     val confirmText = stringResource(Lang.settings_danmaku_confirm)
     val followGlobalText = stringResource(Lang.subject_episode_danmaku_text_conversion_follow_global)
+    // 转换结果与来源无关, 示例只按目标文字算一次, 供所有来源行共用
+    val previews by produceState<Map<DanmakuTextConversion, DanmakuTextConversionSample>>(
+        initialValue = emptyMap(),
+    ) {
+        value = DanmakuTextConversion.entries.associateWith { target ->
+            DanmakuTextConversionPreview.sample(target)
+        }
+    }
 
     AlertDialog(
         modifier = modifier.testTag("danmaku-text-conversion-dialog"),
@@ -154,33 +156,35 @@ fun DanmakuTextConversionSettingsDialog(
                         )
                     }
                 }
-                GlobalConversionPreview(global)
+                GlobalConversionPreview(global, previews)
 
-                Spacer(Modifier.width(4.dp))
-                ConversionSectionTitle(
-                    stringResource(Lang.subject_episode_danmaku_text_conversion_section_per_source),
-                )
-                // 覆盖表里的未知来源 (例如旧版本数据) 也展示, 否则永远无法在这里清除
-                val serviceIds = (conversionDialogServiceOrder + overrides.keys).distinct()
-                Surface(
-                    shape = RoundedCornerShape(16.dp),
-                    color = MaterialTheme.colorScheme.surfaceContainerHighest,
-                ) {
-                    Column {
-                        serviceIds.forEachIndexed { index, serviceId ->
-                            if (index > 0) {
-                                HorizontalDivider(
-                                    Modifier.padding(start = 48.dp),
-                                    color = MaterialTheme.colorScheme.outlineVariant,
+                val serviceIds = (sources + overrides.keys).distinct()
+                if (serviceIds.isNotEmpty()) {
+                    Spacer(Modifier.width(4.dp))
+                    ConversionSectionTitle(
+                        stringResource(Lang.subject_episode_danmaku_text_conversion_section_per_source),
+                    )
+                    Surface(
+                        shape = RoundedCornerShape(16.dp),
+                        color = MaterialTheme.colorScheme.surfaceContainerHighest,
+                    ) {
+                        Column {
+                            serviceIds.forEachIndexed { index, serviceId ->
+                                if (index > 0) {
+                                    HorizontalDivider(
+                                        Modifier.padding(start = 48.dp),
+                                        color = MaterialTheme.colorScheme.outlineVariant,
+                                    )
+                                }
+                                PerSourceConversionRow(
+                                    serviceId = serviceId,
+                                    override = overrides[serviceId],
+                                    global = global,
+                                    followGlobalText = followGlobalText,
+                                    previews = previews,
+                                    onSelect = { onSetOverride(serviceId, it) },
                                 )
                             }
-                            PerSourceConversionRow(
-                                serviceId = serviceId,
-                                override = overrides[serviceId],
-                                global = global,
-                                followGlobalText = followGlobalText,
-                                onSelect = { onSetOverride(serviceId, it) },
-                            )
                         }
                     }
                 }
@@ -200,18 +204,15 @@ private fun ConversionSectionTitle(text: String) {
 
 /**
  * 全局选择下方的一行示例: 说明当前选择会把弹幕变成什么样.
- *
- * 全局设置对所有来源生效, 而各来源文字不同, 因此这里以简体弹幕为例说明.
  */
 @Composable
-private fun GlobalConversionPreview(global: DanmakuTextConversion) {
+private fun GlobalConversionPreview(
+    global: DanmakuTextConversion,
+    previews: Map<DanmakuTextConversion, DanmakuTextConversionSample>,
+) {
     // 原样不转换, 没有可展示的变化, 省掉这一行让默认状态更干净
     if (global == DanmakuTextConversion.ORIGINAL) return
-    val preview by produceState<Pair<String, String>?>(initialValue = null, global) {
-        val source = DanmakuTextConversionPreview.sourceSample(DanmakuServiceId.Bilibili)
-        value = source to DanmakuTextConversionPreview.sample(DanmakuServiceId.Bilibili, global)
-    }
-    val (source, converted) = preview ?: return
+    val preview = previews[global] ?: return
     Row(
         Modifier.fillMaxWidth().padding(start = 8.dp, top = 2.dp),
         horizontalArrangement = Arrangement.spacedBy(6.dp),
@@ -222,9 +223,9 @@ private fun GlobalConversionPreview(global: DanmakuTextConversion) {
             style = MaterialTheme.typography.labelMedium,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
         )
-        if (converted != source) {
+        if (preview.isChanged) {
             Text(
-                source,
+                preview.sourceText,
                 style = MaterialTheme.typography.labelMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
@@ -235,14 +236,14 @@ private fun GlobalConversionPreview(global: DanmakuTextConversion) {
             )
         }
         Text(
-            converted,
+            preview.convertedText,
             style = MaterialTheme.typography.labelMedium,
-            color = if (converted == source) {
-                MaterialTheme.colorScheme.onSurfaceVariant
-            } else {
+            color = if (preview.isChanged) {
                 MaterialTheme.colorScheme.primary
+            } else {
+                MaterialTheme.colorScheme.onSurfaceVariant
             },
-            fontWeight = if (converted == source) FontWeight.Normal else FontWeight.Medium,
+            fontWeight = if (preview.isChanged) FontWeight.Medium else FontWeight.Normal,
         )
     }
 }
@@ -253,6 +254,7 @@ private fun PerSourceConversionRow(
     override: DanmakuTextConversion?,
     global: DanmakuTextConversion,
     followGlobalText: String,
+    previews: Map<DanmakuTextConversion, DanmakuTextConversionSample>,
     onSelect: (DanmakuTextConversion?) -> Unit,
 ) {
     var expanded by rememberSaveable { mutableStateOf(false) }
@@ -305,15 +307,6 @@ private fun PerSourceConversionRow(
                 .widthIn(min = 220.dp)
                 .testTag("danmaku-text-conversion-menu-${serviceId.value}"),
         ) {
-            val previews by produceState<Map<DanmakuTextConversion, String>>(
-                initialValue = emptyMap(),
-                serviceId,
-            ) {
-                val loaded = DanmakuTextConversion.entries.associateWith { option ->
-                    DanmakuTextConversionPreview.sample(serviceId, option)
-                }
-                value = loaded
-            }
             DropdownMenuItem(
                 text = {
                     Column {
@@ -326,7 +319,7 @@ private fun PerSourceConversionRow(
                         )
                         previews[global]?.let { sample ->
                             Text(
-                                sample,
+                                sample.convertedText,
                                 style = MaterialTheme.typography.labelMedium,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                             )
@@ -353,7 +346,7 @@ private fun PerSourceConversionRow(
                             Text(danmakuTextConversionText(option))
                             previews[option]?.let { sample ->
                                 Text(
-                                    sample,
+                                    sample.convertedText,
                                     style = MaterialTheme.typography.labelMedium,
                                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                                 )

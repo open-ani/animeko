@@ -10,51 +10,40 @@
 package me.him188.ani.app.domain.danmaku
 
 import kotlinx.coroutines.test.runTest
-import me.him188.ani.danmaku.api.DanmakuServiceId
 import me.him188.ani.danmaku.ui.DanmakuTextConversion
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertFalse
+import kotlin.test.assertTrue
 
 class DanmakuTextConversionPreviewTest {
     @Test
-    fun `simplified source shows four distinct results`() = runTest {
+    fun `four targets show four distinct results`() = runTest {
         val samples = DanmakuTextConversion.entries.associateWith {
-            DanmakuTextConversionPreview.sample(DanmakuServiceId.Bilibili, it)
+            DanmakuTextConversionPreview.sample(it)
         }
         // 设置界面靠这条示例说明用词差异 (文件夹 -> 資料夾) 与台港「裡 / 裏」的差别
-        assertEquals("波奇文件夹里的歌", samples[DanmakuTextConversion.ORIGINAL])
-        assertEquals("波奇文件夹里的歌", samples[DanmakuTextConversion.SIMPLIFIED])
-        assertEquals("波奇文件夾裏的歌", samples[DanmakuTextConversion.TRADITIONAL])
-        assertEquals("波奇資料夾裡的歌", samples[DanmakuTextConversion.TAIWAN])
-        assertEquals("波奇資料夾裏的歌", samples[DanmakuTextConversion.HONG_KONG])
+        assertEquals("波奇文件夹里的歌", samples.getValue(DanmakuTextConversion.SIMPLIFIED).convertedText)
+        assertEquals("波奇文件夾裏的歌", samples.getValue(DanmakuTextConversion.TRADITIONAL).convertedText)
+        assertEquals("波奇資料夾裡的歌", samples.getValue(DanmakuTextConversion.TAIWAN).convertedText)
+        assertEquals("波奇資料夾裏的歌", samples.getValue(DanmakuTextConversion.HONG_KONG).convertedText)
         assertEquals(
             4,
-            samples.values.toSet().size,
+            samples.filterKeys { it != DanmakuTextConversion.ORIGINAL }
+                .values.map { it.convertedText }.toSet().size,
             "示例必须在四个目标文字下两两不同, 否则用户看不出它们有什么区别",
         )
     }
 
     @Test
-    fun `taiwan source sample is written in taiwan script`() = runTest {
-        val original = DanmakuTextConversionPreview.sample(DanmakuServiceId.Baha, DanmakuTextConversion.ORIGINAL)
-        // 台湾来源已经写着「資料夾」「裡」, 台繁对它无需转换
-        assertEquals("波奇資料夾裡的歌", original)
-        assertEquals(
-            "波奇資料夾裡的歌",
-            DanmakuTextConversionPreview.sample(DanmakuServiceId.Baha, DanmakuTextConversion.TAIWAN),
-        )
-        assertEquals(
-            "波奇文件夹里的歌",
-            DanmakuTextConversionPreview.sample(DanmakuServiceId.Baha, DanmakuTextConversion.SIMPLIFIED),
-        )
-    }
+    fun `sample shows a visible conversion`() = runTest {
+        // 目标是简体时用台繁样例, 才看得出转换效果
+        val simplified = DanmakuTextConversionPreview.sample(DanmakuTextConversion.SIMPLIFIED)
+        assertEquals("波奇資料夾裡的歌", simplified.sourceText)
+        assertTrue(simplified.isChanged)
 
-    @Test
-    fun `original target returns the source sample unchanged`() = runTest {
-        // 转换失败时降级为原文, 不应抛出
-        assertEquals(
-            DanmakuTextConversionPreview.sourceSample(DanmakuServiceId.Dandanplay),
-            DanmakuTextConversionPreview.sample(DanmakuServiceId.Dandanplay, DanmakuTextConversion.ORIGINAL),
-        )
+        val original = DanmakuTextConversionPreview.sample(DanmakuTextConversion.ORIGINAL)
+        assertEquals(original.sourceText, original.convertedText)
+        assertFalse(original.isChanged)
     }
 }

@@ -11,14 +11,12 @@ package me.him188.ani.app.ui.subject.episode.video.settings
 
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.ChevronRight
@@ -174,6 +172,8 @@ fun EpisodeVideoSettings(
     onNavigateToFilterSettings: () -> Unit,
     modifier: Modifier = Modifier,
     sources: @Composable () -> Unit = {},
+    /** 本次实际拉取到的弹幕来源, 用于简繁转换设置里列出可覆盖的来源. */
+    danmakuServiceIds: List<DanmakuServiceId> = emptyList(),
 ) {
     return EpisodeVideoSettings(
         danmakuConfig = vm.danmakuConfig,
@@ -182,6 +182,7 @@ fun EpisodeVideoSettings(
         },
         modifier = modifier,
         sources = sources,
+        danmakuServiceIds = danmakuServiceIds,
         onManageRegexFilters = onNavigateToFilterSettings,
         enableRegexFilter = vm.danmakuFilterConfig.enableRegexFilter,
         switchDanmakuRegexFilterCompletely = vm::switchDanmakuRegexFilterCompletely,
@@ -208,6 +209,8 @@ fun EpisodeVideoSettings(
     modifier: Modifier = Modifier,
     useThinSlider: Boolean = true,
     sources: @Composable () -> Unit = {},
+    /** 本次实际拉取到的弹幕来源, 用于简繁转换设置里列出可覆盖的来源. */
+    danmakuServiceIds: List<DanmakuServiceId> = emptyList(),
     textConversionOverrides: Map<DanmakuServiceId, DanmakuTextConversion> = emptyMap(),
     onSetTextConversionGlobal: (DanmakuTextConversion) -> Unit = {},
     onSetTextConversion: (DanmakuServiceId, DanmakuTextConversion?) -> Unit = { _, _ -> },
@@ -343,6 +346,7 @@ fun EpisodeVideoSettings(
             }
             if (showTextConversionDialog) {
                 DanmakuTextConversionSettingsDialog(
+                    sources = danmakuServiceIds,
                     global = danmakuConfig.textConversion,
                     overrides = textConversionOverrides,
                     onSetGlobal = onSetTextConversionGlobal,

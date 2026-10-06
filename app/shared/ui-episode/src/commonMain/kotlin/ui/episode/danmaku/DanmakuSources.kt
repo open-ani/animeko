@@ -145,6 +145,7 @@ fun DanmakuSourceChips(
 
     if (showConversionDialog) {
         DanmakuTextConversionSettingsDialog(
+            sources = sourceItems.map { it.serviceId },
             global = globalTextConversion,
             overrides = textConversionOverrides,
             onSetGlobal = onSetTextConversionGlobal,
