@@ -14,6 +14,7 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.add
@@ -90,6 +91,8 @@ import me.him188.ani.app.ui.mediaselect.WatchingEpisode
 import me.him188.ani.app.ui.mediaselect.auto.AutoMatchPage
 import me.him188.ani.app.ui.mediaselect.bt.BtResourcesPage
 import me.him188.ani.app.ui.mediaselect.common.MediaSelectorModeChip
+import me.him188.ani.app.ui.mediaselect.manual.ManualBrowsePage
+import me.him188.ani.app.ui.mediaselect.manual.ManualBrowseState
 import me.him188.ani.app.ui.mediaselect.toWatchingEpisode
 import me.him188.ani.datasources.api.Media
 import me.him188.ani.datasources.api.source.MediaFetchRequest
@@ -112,6 +115,10 @@ class DownloadMediaPickerState(
     val episodeId: Int,
     val fetchSession: MediaFetchSession,
     val selector: MediaSelector,
+    /**
+     * 本次选源会话的手动查找, 点选的一集作为本集的选择; 为 `null` 时没有手动查找.
+     */
+    val manualBrowse: ManualBrowseState? = null,
 )
 
 /**
@@ -254,18 +261,20 @@ private fun DownloadMediaPicker(
         onFetchRequestChange = selection.fetchSession::setFetchRequest,
         onRestartSource = { selection.fetchSession.restart(it) },
         onSelect = onSelect,
+        manualBrowse = selection.manualBrowse,
     )
 }
 
 /**
- * 选源步骤的界面: 标题行「数据源」+ 模式 chip, 下方按模式放自动匹配页或 BT 资源页.
- * 只有 AUTO / BT 两种模式 (下载不走手动查找), 模式在本次弹窗内保持; 初值有 BT 源 → BT, 否则 AUTO.
- * 弹窗宽 640dp, BT 页因此总是紧凑列表.
+ * 选源步骤的界面: 标题行「数据源」+ 模式 chip, 下方按模式放自动匹配页、手动查找页或 BT 资源页.
+ * 模式在本次弹窗内保持; 初值有 BT 源 → BT, 否则 AUTO.
+ * 弹窗宽 640dp, BT 页因此总是紧凑列表, 手动查找总是堆叠两页.
  *
  * @param hasBt 会话内是否有 BT 源 (含禁用源). 为 false 时模式菜单没有 BT 项.
  * @param watching 要下载的集; BT 页只用它画「第 N 话」chip, 不画「正在观看」卡片.
  * @param fetchRequest 当前生效的查询请求, 供 BT 页搜索框回显与提交; 会话未就绪时为 null.
- * @param onSelect 用户点了资源; 宿主进入选集步骤, 不关闭弹窗.
+ * @param onSelect 用户在自动匹配页或 BT 页点了资源; 宿主进入选集步骤, 不关闭弹窗.
+ * @param manualBrowse 手动查找状态, 点选一集经它交给会话, 不经 [onSelect]. 为 null 时模式菜单没有手动查找, 自动匹配页也没有救援按钮.
  */
 @Composable
 internal fun DownloadMediaPickerContent(
@@ -278,16 +287,18 @@ internal fun DownloadMediaPickerContent(
     onRestartSource: (instanceId: String) -> Unit,
     onSelect: (Media) -> Unit,
     modifier: Modifier = Modifier,
+    manualBrowse: ManualBrowseState? = null,
 ) {
     var userMode by rememberSaveable { mutableStateOf<MediaSelectorMode?>(null) }
-    val mode = userMode ?: if (hasBt) MediaSelectorMode.BT else MediaSelectorMode.AUTO
+    val mode = userMode?.takeIf { it != MediaSelectorMode.MANUAL || manualBrowse != null }
+        ?: if (hasBt) MediaSelectorMode.BT else MediaSelectorMode.AUTO
 
-    Column(
-        modifier.padding(vertical = 12.dp, horizontal = 16.dp)
-            .navigationBarsPadding().fillMaxHeight().fillMaxWidth()
-            .testTag(DownloadMediaPickerTestTags.ROOT),
-    ) {
-        Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+    // 手动查找页自己处理水平边距, 并在第二页用自己的顶栏替换标题行, 所以标题行与另外两页各自加水平边距.
+    val titleRow = @Composable {
+        Row(
+            Modifier.fillMaxWidth().padding(horizontal = 16.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
             Text(
                 stringResource(Lang.media_selector_sources),
                 Modifier.weight(1f),
@@ -297,30 +308,53 @@ internal fun DownloadMediaPickerContent(
                 mode,
                 onModeChange = { userMode = it },
                 showBt = hasBt,
-                showManual = false,
+                showManual = manualBrowse != null,
             )
         }
-        when (mode) {
-            MediaSelectorMode.BT -> BtResourcesPage(
-                state = selectorState,
-                sourceResults = sourceResults,
-                watching = watching,
-                fetchRequest = fetchRequest,
-                onFetchRequestChange = onFetchRequestChange,
-                onClickItem = onSelect,
-                onRestartSource = onRestartSource,
-                modifier = Modifier.fillMaxWidth().weight(1f).padding(top = 12.dp),
-                showWatchingCard = false,
+    }
+    Column(
+        modifier.padding(vertical = 12.dp)
+            .navigationBarsPadding().fillMaxHeight().fillMaxWidth()
+            .testTag(DownloadMediaPickerTestTags.ROOT),
+    ) {
+        when {
+            mode == MediaSelectorMode.BT -> {
+                titleRow()
+                BtResourcesPage(
+                    state = selectorState,
+                    sourceResults = sourceResults,
+                    watching = watching,
+                    fetchRequest = fetchRequest,
+                    onFetchRequestChange = onFetchRequestChange,
+                    onClickItem = onSelect,
+                    onRestartSource = onRestartSource,
+                    modifier = Modifier.fillMaxWidth().weight(1f).padding(start = 16.dp, top = 12.dp, end = 16.dp),
+                    showWatchingCard = false,
+                )
+            }
+
+            // 下载不写浏览记忆, 不显示「记住选择」; 要下载的集不一定是正在观看的集, 不画「正在观看」卡片.
+            mode == MediaSelectorMode.MANUAL && manualBrowse != null -> ManualBrowsePage(
+                manualBrowse,
+                watching = null,
+                onPlayed = {},
+                topBar = {
+                    Box(Modifier.padding(bottom = 12.dp)) { titleRow() }
+                },
+                modifier = Modifier.fillMaxWidth().weight(1f),
+                showRememberSelection = false,
             )
 
-            // 菜单不提供 MANUAL, 它与 AUTO 一样落到自动匹配页.
-            MediaSelectorMode.AUTO, MediaSelectorMode.MANUAL -> AutoMatchPage(
-                selectorState,
-                onClickItem = onSelect,
-                onRestartSource = onRestartSource,
-                onRequestManualSearch = null,
-                modifier = Modifier.fillMaxWidth().padding(top = 12.dp),
-            )
+            else -> {
+                titleRow()
+                AutoMatchPage(
+                    selectorState,
+                    onClickItem = onSelect,
+                    onRestartSource = onRestartSource,
+                    onRequestManualSearch = manualBrowse?.let { { userMode = MediaSelectorMode.MANUAL } },
+                    modifier = Modifier.fillMaxWidth().padding(start = 16.dp, top = 12.dp, end = 16.dp),
+                )
+            }
         }
     }
 }
@@ -369,9 +403,11 @@ internal fun DownloadEpisodePicker(
                 )
             }
         }
-        Row(
+        // 窄屏 (尤其英文) 一行放不下三个快捷选择时换行; 纵向 -8dp 抵消 chip 的 48dp 触控高度, 行间视觉间距与横向一致.
+        FlowRow(
             Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp),
             horizontalArrangement = Arrangement.spacedBy(8.dp),
+            verticalArrangement = Arrangement.spacedBy((-8).dp),
         ) {
             FilterChip(
                 selected = selected == onlyCurrent,

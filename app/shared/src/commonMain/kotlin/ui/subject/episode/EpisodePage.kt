@@ -18,7 +18,6 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.WindowInsetsSides
-import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -26,10 +25,10 @@ import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.only
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.safeContent
+import androidx.compose.foundation.layout.statusBars
 import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.systemBars
 import androidx.compose.foundation.layout.union
-import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.lazy.grid.LazyGridState
 import androidx.compose.foundation.lazy.grid.rememberLazyGridState
@@ -75,7 +74,6 @@ import androidx.compose.ui.platform.LocalUriHandler
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.tooling.preview.PreviewLightDark
 import androidx.compose.ui.unit.Dp
-import androidx.compose.ui.unit.coerceIn
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.compose.LifecycleEventEffect
@@ -171,6 +169,7 @@ import me.him188.ani.app.ui.subject.episode.video.sidesheet.EpisodeSelectorSheet
 import me.him188.ani.app.ui.subject.episode.video.sidesheet.MediaSelectorSheet
 import me.him188.ani.app.ui.subject.episode.video.topbar.EpisodePlayerTitle
 import me.him188.ani.app.ui.watchtogether.LocalWatchTogetherPlayerController
+import me.him188.ani.app.videoplayer.screenshot.playerScreenshotFileName
 import me.him188.ani.app.videoplayer.ui.LocalVideoScaffoldSheetWindowInsets
 import me.him188.ani.app.videoplayer.ui.PlaybackSpeedControllerState
 import me.him188.ani.app.videoplayer.ui.PlayerControllerState
@@ -187,6 +186,8 @@ import me.him188.ani.app.videoplayer.ui.progress.PlayerControllerDefaults.rememb
 import me.him188.ani.app.videoplayer.ui.progress.rememberMediaProgressFramePreviewState
 import me.him188.ani.app.videoplayer.ui.progress.rememberMediaProgressSliderState
 import me.him188.ani.app.videoplayer.ui.rememberPlayerFullscreenState
+import me.him188.ani.app.videoplayer.ui.screenshot.PlayerScreenshotOverlay
+import me.him188.ani.app.videoplayer.ui.screenshot.rememberPlayerScreenshotController
 import me.him188.ani.danmaku.api.DanmakuContent
 import me.him188.ani.danmaku.ui.DanmakuHostState
 import me.him188.ani.danmaku.ui.DanmakuPresentation
@@ -197,7 +198,6 @@ import me.him188.ani.utils.platform.isIos
 import org.jetbrains.compose.resources.stringResource
 import org.openani.mediamp.features.AudioLevelController
 import org.openani.mediamp.features.PlaybackSpeed
-import org.openani.mediamp.features.Screenshots
 import org.openani.mediamp.features.VideoAspectRatio
 import org.openani.mediamp.features.toggleMute
 import org.openani.mediamp.source.MediaData
@@ -410,34 +410,18 @@ private fun EpisodeScreenContent(
                     LocalImageViewerHandler provides imageViewer,
                     LocalPictureInPictureController provides pictureInPictureController,
                 ) {
-                    when {
-                        showExpandedUI ->
-                            EpisodeScreenTabletVeryWide(
-                                vm,
-                                page,
-                                vm.danmakuHostState,
-                                danmakuEditorState,
-                                page.fetchRequest,
-                                { vm.updateFetchRequest(it) },
-                                pauseOnPlaying = pauseOnPlaying,
-                                tryUnpause = tryUnpause,
-                                setShowEditCommentSheet = { showEditCommentSheet = it },
-                                modifier = Modifier.fillMaxSize(),
-                                windowInsets = windowInsets,
-                            )
-
-                        else -> EpisodeScreenContentPhone(
-                            vm,
-                            page,
-                            vm.danmakuHostState,
-                            danmakuEditorState,
-                            Modifier.fillMaxSize(),
-                            pauseOnPlaying = pauseOnPlaying,
-                            tryUnpause = tryUnpause,
-                            setShowEditCommentSheet = { showEditCommentSheet = it },
-                            windowInsets,
-                        )
-                    }
+                    EpisodeScreenBody(
+                        vm,
+                        page,
+                        vm.danmakuHostState,
+                        danmakuEditorState,
+                        showExpandedUI = showExpandedUI,
+                        pauseOnPlaying = pauseOnPlaying,
+                        tryUnpause = tryUnpause,
+                        setShowEditCommentSheet = { showEditCommentSheet = it },
+                        modifier = Modifier.fillMaxSize(),
+                        windowInsets = windowInsets,
+                    )
                 }
             }
         }
@@ -492,180 +476,230 @@ internal fun WatchTogetherPopupVisibilityEffect(
     }
 }
 
+/**
+ * 播放页主体: 播放器, 以及窄屏时下方的详情或宽屏时右侧的侧边栏.
+ *
+ * 播放器只在这里组合一次, 旋转、进出全屏、切换宽窄布局都不会重建它, 见 [EpisodeScreenLayout].
+ */
 @Composable
-private fun EpisodeScreenTabletVeryWide(
+private fun EpisodeScreenBody(
     vm: EpisodeViewModel,
     page: EpisodePageState,
     danmakuHostState: DanmakuHostState,
     danmakuEditorState: DanmakuEditorState,
-    fetchRequest: MediaFetchRequest?,
-    onFetchRequestChange: (MediaFetchRequest) -> Unit,
+    showExpandedUI: Boolean,
     pauseOnPlaying: () -> Unit,
     tryUnpause: () -> Unit,
     setShowEditCommentSheet: (Boolean) -> Unit,
     modifier: Modifier = Modifier,
     windowInsets: WindowInsets = ScaffoldDefaults.contentWindowInsets,
 ) {
-    BoxWithConstraints {
-        val maxWidth = maxWidth
-        Row(
-            modifier
-                .then(
-                    if (vm.isFullscreen) Modifier.fillMaxSize()
-                    else Modifier,
-                ),
-        ) {
+    val compactWindowInsets = windowInsets
+        .union(WindowInsets.desktopTitleBar)
+        .run {
+            // iOS 上的 top window insets 没有被正确消耗, 手动排除 top insets
+            if (LocalPlatform.current.isIos()) {
+                only(WindowInsetsSides.Horizontal)
+            } else {
+                only(WindowInsetsSides.Top + WindowInsetsSides.Horizontal)
+            }
+        }
+    val videoWindowInsets = when {
+        showExpandedUI && vm.isFullscreen -> fullscreenVideoWindowInsets(windowInsets)
+        // 非全屏右边还有东西
+        // Consider #1923 平板横屏模式下播放器底栏和导航栏重合
+        showExpandedUI -> windowInsets.only(WindowInsetsSides.Left + WindowInsetsSides.Vertical)
+        vm.isFullscreen -> fullscreenVideoWindowInsets(compactWindowInsets)
+        else -> compactWindowInsets
+    }
+    val mode = episodeScreenLayoutMode(
+        isFullscreen = vm.isFullscreen,
+        showExpandedUI = showExpandedUI,
+        sidebarVisible = vm.sidebarVisible,
+        isDesktop = LocalPlatform.current.isDesktop(),
+    )
+
+    EpisodeScreenLayout(
+        mode,
+        video = {
             EpisodeVideo(
-                // do consume insets
                 vm,
                 page,
                 danmakuHostState,
                 danmakuEditorState,
                 vm.playerControllerState,
-                expanded = true,
-                modifier = Modifier.weight(1f).fillMaxHeight(),
-                maintainAspectRatio = false,
-                windowInsets = if (vm.isFullscreen) {
-                    fullscreenVideoWindowInsets(windowInsets)
-                } else {
-                    // 非全屏右边还有东西
-                    // Consider #1923 平板横屏模式下播放器底栏和导航栏重合
-                    windowInsets.only(WindowInsetsSides.Left + WindowInsetsSides.Vertical)
-                },
+                expanded = showExpandedUI || vm.isFullscreen,
+                windowInsets = videoWindowInsets,
             )
-
-            if (vm.isFullscreen || !vm.sidebarVisible) {
-                return@Row
+        },
+        secondary = {
+            if (showExpandedUI) {
+                EpisodeScreenSidebar(
+                    vm,
+                    page,
+                    page.fetchRequest,
+                    { vm.updateFetchRequest(it) },
+                    pauseOnPlaying = pauseOnPlaying,
+                    setShowEditCommentSheet = setShowEditCommentSheet,
+                    windowInsets = windowInsets,
+                )
+            } else {
+                EpisodeScreenPhoneDetails(
+                    vm,
+                    page,
+                    danmakuEditorState,
+                    pauseOnPlaying = pauseOnPlaying,
+                    tryUnpause = tryUnpause,
+                    setShowEditCommentSheet = setShowEditCommentSheet,
+                    windowInsets = windowInsets,
+                )
             }
-
-            val pagerState = rememberPagerState(initialPage = 0) { 2 }
-            val scope = rememberCoroutineScope()
-
-            Column(
+        },
+        modifier = modifier.then(
+            if (mode == EpisodeScreenLayoutMode.COMPACT) {
+                Modifier.windowInsetsPadding(compactWindowInsets.only(WindowInsetsSides.Horizontal))
+            } else {
                 Modifier
-                    .width(
-                        width = (maxWidth * 0.25f)
-                            .coerceIn(340.dp, 460.dp),
-                    )
-                    .windowInsetsPadding(windowInsets.only(WindowInsetsSides.Right))
-                    .background(MaterialTheme.colorScheme.background), // scrollable background
-            ) {
+            },
+        ),
+    )
+}
 
-                val themeSettings = LocalThemeSettings.current
-                val isEpPageDarkTheme = when {
-                    themeSettings.alwaysDarkInEpisodePage -> true
-                    themeSettings.darkMode == DarkMode.AUTO -> isSystemInDarkThemeDetected()
-                    else -> themeSettings.darkMode == DarkMode.DARK
-                }
-                // 如果当前不是 dark theme 并且 是安卓平台 并且 没有设置播放页始终使用暗色主题，则加一个渐变色避免看不清状态栏
-                // ios 宽屏模式下会自动隐藏状态栏, 无需处理
-                val needShadeBackground = !isEpPageDarkTheme && LocalPlatform.current.isAndroid()
-                // 填充 insets 背景颜色
-                Spacer(
-                    Modifier
-                        .fillMaxWidth()
-                        .background(MaterialTheme.colorScheme.surfaceContainerLow)
-                        .ifThen(needShadeBackground) {
-                            background(
-                                Brush.verticalGradient(
-                                    listOf(
-                                        MaterialTheme.colorScheme.scrim,
-                                        Color.Transparent,
-                                    ),
-                                ),
-                            )
-                        }
-                        .windowInsetsPadding(
-                            // Consider #1767
-                            WindowInsets.safeContent // Note: this does not include desktop title bar.
-                                .only(WindowInsetsSides.Top),
+/**
+ * 宽屏布局的侧边栏: 详情与评论两个页.
+ */
+@Composable
+private fun EpisodeScreenSidebar(
+    vm: EpisodeViewModel,
+    page: EpisodePageState,
+    fetchRequest: MediaFetchRequest?,
+    onFetchRequestChange: (MediaFetchRequest) -> Unit,
+    pauseOnPlaying: () -> Unit,
+    setShowEditCommentSheet: (Boolean) -> Unit,
+    modifier: Modifier = Modifier,
+    windowInsets: WindowInsets = ScaffoldDefaults.contentWindowInsets,
+) {
+    val pagerState = rememberPagerState(initialPage = 0) { 2 }
+    val scope = rememberCoroutineScope()
+
+    Column(
+        modifier
+            .windowInsetsPadding(windowInsets.only(WindowInsetsSides.Right))
+            .background(MaterialTheme.colorScheme.background), // scrollable background
+    ) {
+        val themeSettings = LocalThemeSettings.current
+        val isEpPageDarkTheme = when {
+            themeSettings.alwaysDarkInEpisodePage -> true
+            themeSettings.darkMode == DarkMode.AUTO -> isSystemInDarkThemeDetected()
+            else -> themeSettings.darkMode == DarkMode.DARK
+        }
+        // 如果当前不是 dark theme 并且 是安卓平台 并且 没有设置播放页始终使用暗色主题，则加一个渐变色避免看不清状态栏
+        // ios 宽屏模式下会自动隐藏状态栏, 无需处理
+        val needShadeBackground = !isEpPageDarkTheme && LocalPlatform.current.isAndroid()
+        // 填充 insets 背景颜色
+        Spacer(
+            Modifier
+                .fillMaxWidth()
+                .background(MaterialTheme.colorScheme.surfaceContainerLow)
+                .ifThen(needShadeBackground) {
+                    background(
+                        Brush.verticalGradient(
+                            listOf(
+                                MaterialTheme.colorScheme.scrim,
+                                Color.Transparent,
+                            ),
                         ),
-                )
+                    )
+                }
+                .windowInsetsPadding(
+                    // Consider #1767
+                    WindowInsets.safeContent // Note: this does not include desktop title bar.
+                        .only(WindowInsetsSides.Top),
+                ),
+        )
 
-                // ExternalContent("", Modifier.fillMaxWidth().height(128.dp))
+        // ExternalContent("", Modifier.fillMaxWidth().height(128.dp))
 
-                TabRow(
-                    pagerState, scope, { vm.episodeCommentState.count }, Modifier.fillMaxWidth(),
-                    containerColor = MaterialTheme.colorScheme.surfaceContainerLow,
-                )
-                HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.weaken())
+        TabRow(
+            pagerState, scope, { vm.episodeCommentState.count }, Modifier.fillMaxWidth(),
+            containerColor = MaterialTheme.colorScheme.surfaceContainerLow,
+        )
+        HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.weaken())
 
-                HorizontalPager(
-                    state = pagerState,
-                    Modifier.fillMaxSize().touchHorizontalScrollOnly(),
-                ) { index ->
-                    when (index) {
-                        0 -> Box(Modifier.fillMaxSize()) {
-                            val navigator = LocalNavigator.current
-                            val pageState by vm.pageState.collectAsStateWithLifecycle()
-                            val toaster = LocalToaster.current
-                            pageState?.let { page ->
-                                EpisodeDetails(
-                                    page.mediaSelectorSummary,
-                                    vm.episodeDetailsState,
-                                    mediaSelectorMode = vm.mediaSelectorMode ?: page.initialMediaSelectorMode,
-                                    onMediaSelectorModeChange = { vm.mediaSelectorMode = it },
-                                    manualBrowseState = vm.manualBrowseState,
-                                    watchingEpisode = page.watchingEpisode,
-                                    fetchRequest = fetchRequest,
-                                    onFetchRequestChange = onFetchRequestChange,
-                                    vm.episodeCarouselState,
-                                    vm.editableSubjectCollectionTypeState,
-                                    page.danmakuStatistics,
-                                    vm.videoStatisticsFlow,
-                                    page.mediaSelectorState,
-                                    { page.mediaSourceResultListPresentation },
-                                    page.selfInfo,
-                                    modifier = Modifier.fillMaxSize(),
-                                    onSwitchEpisode = { episodeId ->
-                                        if (!vm.episodeSelectorState.selectEpisodeId(episodeId)) {
-                                            navigator.navigateEpisodeDetails(vm.subjectId, episodeId)
-                                        }
-                                    },
-                                    onRestartSource = { vm.restartSource(it) },
-                                    onSetDanmakuSourceEnabled = { providerId, enabled ->
-                                        vm.setDanmakuSourceEnabled(providerId, enabled)
-                                    },
-                                    onAdjustDanmakuSourceShift = { serviceId, shiftMillis ->
-                                        vm.setDanmakuSourceShiftMillis(serviceId, shiftMillis)
-                                    },
-                                    onClickLogin = { navigator.navigateBangumiAuthorize() },
-                                    onClickTag = { navigator.navigateSubjectSearch(it.name) },
-                                    onManualMatchDanmaku = vm::startMatchingDanmakuForService,
-                                    onEpisodeCollectionUpdate = { request ->
-                                        scope.launch {
-                                            vm.setEpisodeCollectionType.invokeSafe(request)?.let {
-                                                toaster.showLoadError(it)
-                                            }
-                                        }
-                                    },
-                                    loadError = page.loadError,
-                                    onRetryLoad = {
-                                        page.loadError?.let { vm.retryLoad(it) }
-                                    },
-                                    danmakuListState = vm.danmakuListState.collectAsStateWithLifecycle().value,
-                                    onBeforeOpenMediaSelector = {
-                                        if (vm.mediaSelectorMode == null && !page.isLoading) {
-                                            vm.mediaSelectorMode = page.initialMediaSelectorMode
-                                        }
-                                    },
-                                )
-                            }
-                        }
-
-                        1 -> {
-                            EpisodeCommentColumn(
-                                commentState = vm.episodeCommentState,
-                                commentReportState = vm.commentReportState,
-                                commentEditorState = vm.commentEditorState,
-                                subjectId = vm.subjectId,
-                                episodeId = page.episodePresentation.episodeId,
-                                setShowEditCommentSheet = setShowEditCommentSheet,
-                                pauseOnPlaying = pauseOnPlaying,
-                                gridState = vm.commentLazyGirdState,
-                            )
-                        }
+        HorizontalPager(
+            state = pagerState,
+            Modifier.fillMaxSize().touchHorizontalScrollOnly(),
+        ) { index ->
+            when (index) {
+                0 -> Box(Modifier.fillMaxSize()) {
+                    val navigator = LocalNavigator.current
+                    val pageState by vm.pageState.collectAsStateWithLifecycle()
+                    val toaster = LocalToaster.current
+                    pageState?.let { page ->
+                        EpisodeDetails(
+                            page.mediaSelectorSummary,
+                            vm.episodeDetailsState,
+                            mediaSelectorMode = vm.mediaSelectorMode ?: page.initialMediaSelectorMode,
+                            onMediaSelectorModeChange = { vm.mediaSelectorMode = it },
+                            manualBrowseState = vm.manualBrowseState,
+                            watchingEpisode = page.watchingEpisode,
+                            fetchRequest = fetchRequest,
+                            onFetchRequestChange = onFetchRequestChange,
+                            vm.episodeCarouselState,
+                            vm.editableSubjectCollectionTypeState,
+                            page.danmakuStatistics,
+                            vm.videoStatisticsFlow,
+                            page.mediaSelectorState,
+                            { page.mediaSourceResultListPresentation },
+                            page.selfInfo,
+                            modifier = Modifier.fillMaxSize(),
+                            onSwitchEpisode = { episodeId ->
+                                if (!vm.episodeSelectorState.selectEpisodeId(episodeId)) {
+                                    navigator.navigateEpisodeDetails(vm.subjectId, episodeId)
+                                }
+                            },
+                            onRestartSource = { vm.restartSource(it) },
+                            onSetDanmakuSourceEnabled = { providerId, enabled ->
+                                vm.setDanmakuSourceEnabled(providerId, enabled)
+                            },
+                            onAdjustDanmakuSourceShift = { serviceId, shiftMillis ->
+                                vm.setDanmakuSourceShiftMillis(serviceId, shiftMillis)
+                            },
+                            onClickLogin = { navigator.navigateBangumiAuthorize() },
+                            onClickTag = { navigator.navigateSubjectSearch(it.name) },
+                            onManualMatchDanmaku = vm::startMatchingDanmakuForService,
+                            onEpisodeCollectionUpdate = { request ->
+                                scope.launch {
+                                    vm.setEpisodeCollectionType.invokeSafe(request)?.let {
+                                        toaster.showLoadError(it)
+                                    }
+                                }
+                            },
+                            loadError = page.loadError,
+                            onRetryLoad = {
+                                page.loadError?.let { vm.retryLoad(it) }
+                            },
+                            danmakuListState = vm.danmakuListState.collectAsStateWithLifecycle().value,
+                            onBeforeOpenMediaSelector = {
+                                if (vm.mediaSelectorMode == null && !page.isLoading) {
+                                    vm.mediaSelectorMode = page.initialMediaSelectorMode
+                                }
+                            },
+                        )
                     }
+                }
+
+                1 -> {
+                    EpisodeCommentColumn(
+                        commentState = vm.episodeCommentState,
+                        commentReportState = vm.commentReportState,
+                        commentEditorState = vm.commentEditorState,
+                        subjectId = vm.subjectId,
+                        episodeId = page.episodePresentation.episodeId,
+                        setShowEditCommentSheet = setShowEditCommentSheet,
+                        pauseOnPlaying = pauseOnPlaying,
+                        gridState = vm.commentLazyGirdState,
+                    )
                 }
             }
         }
@@ -721,48 +755,25 @@ private fun TabRow(
     }
 }
 
+/**
+ * 窄屏布局中播放器下方的内容: 详情与评论两个页, 以及发送弹幕的底部弹窗.
+ */
 @Composable
-private fun EpisodeScreenContentPhone(
+private fun EpisodeScreenPhoneDetails(
     vm: EpisodeViewModel,
     page: EpisodePageState,
-    danmakuHostState: DanmakuHostState,
     danmakuEditorState: DanmakuEditorState,
-    modifier: Modifier = Modifier,
     pauseOnPlaying: () -> Unit,
     tryUnpause: () -> Unit,
     setShowEditCommentSheet: (Boolean) -> Unit,
+    modifier: Modifier = Modifier,
     windowInsets: WindowInsets = ScaffoldDefaults.contentWindowInsets,
 ) {
     var showDanmakuEditor by rememberSaveable { mutableStateOf(false) }
     val toaster = LocalToaster.current
-    val defaultVideoWindowInsets = windowInsets
-        .union(WindowInsets.desktopTitleBar)
-        .run {
-            // iOS 上的 top window insets 没有被正确消耗, 手动排除 top insets
-            if (LocalPlatform.current.isIos()) {
-                only(WindowInsetsSides.Horizontal)
-            } else {
-                only(WindowInsetsSides.Top + WindowInsetsSides.Horizontal)
-            }
-        }
-    val videoWindowInsets = if (vm.isFullscreen) {
-        fullscreenVideoWindowInsets(defaultVideoWindowInsets)
-    } else {
-        defaultVideoWindowInsets
-    }
-    val columnInsets = defaultVideoWindowInsets.only(WindowInsetsSides.Horizontal)
 
     EpisodeScreenContentPhoneScaffold(
-        videoOnly = vm.isFullscreen,
         commentCount = { vm.episodeCommentState.count },
-        video = {
-            EpisodeVideo(
-                vm, page,
-                danmakuHostState,
-                danmakuEditorState, vm.playerControllerState, vm.isFullscreen,
-                windowInsets = videoWindowInsets,
-            )
-        },
         headlineContent = {
             // ExternalContent("", Modifier.fillMaxWidth().height(64.dp))
         },
@@ -844,13 +855,7 @@ private fun EpisodeScreenContentPhone(
                 gridState = vm.commentLazyGirdState,
             )
         },
-        modifier = modifier.then(
-            if (vm.isFullscreen) {
-                Modifier.fillMaxSize()
-            } else {
-                Modifier.windowInsetsPadding(columnInsets)
-            },
-        ),
+        modifier = modifier,
     )
 
     if (showDanmakuEditor) {
@@ -927,58 +932,51 @@ private fun DetachedDanmakuEditorLayout(
     }
 }
 
+/**
+ * 窄屏布局中播放器下方的页框: 标签栏与详情、评论两个页.
+ */
 @Composable
 fun EpisodeScreenContentPhoneScaffold(
-    videoOnly: Boolean,
     commentCount: () -> Int?,
-    video: @Composable () -> Unit,
     episodeDetails: @Composable () -> Unit,
     commentColumn: @Composable () -> Unit,
     modifier: Modifier = Modifier,
     headlineContent: @Composable () -> Unit = {},
     tabRowContent: @Composable () -> Unit = {},
 ) {
-    Column(modifier) {
-        video()
+    val pagerState = rememberPagerState(initialPage = 0) { 2 }
+    val scope = rememberCoroutineScope()
 
-        if (videoOnly) {
-            return@Column
-        }
-
-        val pagerState = rememberPagerState(initialPage = 0) { 2 }
-        val scope = rememberCoroutineScope()
-
-        Column(Modifier.fillMaxSize()) {
-            headlineContent()
-            Surface(color = MaterialTheme.colorScheme.surfaceContainerLow) {
-                Row {
-                    TabRow(
-                        pagerState, scope, commentCount, Modifier.weight(1f),
-                        containerColor = MaterialTheme.colorScheme.surfaceContainerLow,
-                    )
-                    Box(
-                        modifier = Modifier.weight(0.618f) // width
-                            .height(44.dp)
-                            .padding(vertical = 4.dp, horizontal = 16.dp),
-                    ) {
-                        Row(Modifier.align(Alignment.CenterEnd)) {
-                            tabRowContent()
-                        }
+    Column(modifier.fillMaxSize()) {
+        headlineContent()
+        Surface(color = MaterialTheme.colorScheme.surfaceContainerLow) {
+            Row {
+                TabRow(
+                    pagerState, scope, commentCount, Modifier.weight(1f),
+                    containerColor = MaterialTheme.colorScheme.surfaceContainerLow,
+                )
+                Box(
+                    modifier = Modifier.weight(0.618f) // width
+                        .height(44.dp)
+                        .padding(vertical = 4.dp, horizontal = 16.dp),
+                ) {
+                    Row(Modifier.align(Alignment.CenterEnd)) {
+                        tabRowContent()
                     }
                 }
             }
-            HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.weaken())
+        }
+        HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.weaken())
 
-            HorizontalPager(state = pagerState, Modifier.fillMaxSize()) { index ->
-                Box(Modifier.fillMaxSize()) {
-                    when (index) {
-                        0 -> {
-                            episodeDetails()
-                        }
+        HorizontalPager(state = pagerState, Modifier.fillMaxSize()) { index ->
+            Box(Modifier.fillMaxSize()) {
+                when (index) {
+                    0 -> {
+                        episodeDetails()
+                    }
 
-                        1 -> {
-                            commentColumn()
-                        }
+                    1 -> {
+                        commentColumn()
                     }
                 }
             }
@@ -1046,14 +1044,15 @@ private fun EpisodeVideo(
 ) {
     val context by rememberUpdatedState(LocalContext.current)
     val navigator = LocalNavigator.current
-    val isAndroid = LocalPlatform.current.isAndroid()
 
-    // Don't rememberSavable. 刻意让每次切换都是隐藏的
+    // 回到前台、进出全屏后都先隐藏控制器
     LifecycleEventEffect(Lifecycle.Event.ON_RESUME) {
-        playerControllerState.toggleFullVisible(false) // 每次切换全屏后隐藏
+        playerControllerState.toggleFullVisible(false)
+    }
+    LaunchedEffect(vm.isFullscreen) {
+        playerControllerState.toggleFullVisible(false)
     }
 
-    // Refresh every time on configuration change (i.e. switching theme, entering fullscreen)
     val danmakuTextPlaceholder = rememberRandomDanmakuPlaceholder()
     val window = LocalPlatformWindow.current
 
@@ -1085,6 +1084,15 @@ private fun EpisodeVideo(
         }
     }
     val fullscreenState = rememberEpisodeFullscreenState(vm)
+
+    val screenshot = rememberPlayerScreenshotController(vm.player)
+    fun takeScreenshot() = screenshot.take(
+        playerScreenshotFileName(
+            subjectId = vm.subjectId,
+            episodeSort = page.episodePresentation.ep,
+            positionMillis = vm.player.currentPositionMillis.value,
+        ),
+    )
 
     val pictureInPictureController = LocalPictureInPictureController.current
     val isInPictureInPicture by pictureInPictureController.isInPictureInPicture.collectAsStateWithLifecycle()
@@ -1133,21 +1141,17 @@ private fun EpisodeVideo(
                 playerControllerState = playerControllerState,
             )
         },
-        onClickScreenshot = {
-            val currentPositionMillis = vm.player.currentPositionMillis.value
-            val min = currentPositionMillis / 60000
-            val sec = (currentPositionMillis - (min * 60000)) / 1000
-            val ms = currentPositionMillis - (min * 60000) - (sec * 1000)
-            val currentPosition = "${min}m${sec}s${ms}ms"
-            // 条目ID-剧集序号-视频时间点.png
-            val filename = "${vm.subjectId}-${page.episodePresentation.ep}-${currentPosition}.png"
-            scope.launch {
-                if (isAndroid) {
-                    takeAndroidPlayerScreenshot(context, vm.player, filename)
-                } else {
-                    vm.player.features[Screenshots]?.takeScreenshot(filename)
-                }
-            }
+        onClickScreenshot = if (screenshot.isSupported) ::takeScreenshot else null,
+        screenshotOverlay = { bottomControllerHeight ->
+            PlayerScreenshotOverlay(
+                screenshot.panelState,
+                onShare = screenshot::share,
+                onCopy = screenshot::copy,
+                onOpen = screenshot::open,
+                Modifier.matchParentSize(),
+                bottomOffset = bottomControllerHeight,
+                windowInsets = windowInsets,
+            )
         },
         detachedProgressSlider = {
             PlayerControllerDefaults.MediaProgressSlider(
@@ -1292,7 +1296,10 @@ private fun EpisodeVideo(
         onClickCache = { navigator.navigateSubjectCaches(vm.subjectId) },
         modifier = modifier
             .fillMaxWidth().background(Color.Black)
-            .then(if (expanded) Modifier.fillMaxSize() else Modifier.statusBarsPadding()),
+            // 播放器节点在进出全屏时保持不变, 状态栏 padding 必须始终挂载, 只切换 insets 的值.
+            // iOS 上 statusBarsPadding() 被插入已挂载的节点时找不到自己的 padding 节点, padding 会一直是 0.
+            .windowInsetsPadding(if (expanded) WindowInsets(0.dp) else WindowInsets.statusBars)
+            .then(if (expanded) Modifier.fillMaxSize() else Modifier),
         maintainAspectRatio = maintainAspectRatio,
         contentWindowInsets = windowInsets,
         fastForwardSpeed = vm.videoScaffoldConfig.fastForwardSpeed,
@@ -1572,15 +1579,7 @@ internal fun PreviewEpisodePage() {
 fun PreviewEpisodeSceneContentPhoneScaffoldTabs() {
     ProvideCompositionLocalsForPreview {
         EpisodeScreenContentPhoneScaffold(
-            videoOnly = false,
             commentCount = { 100 },
-            video = {
-                Box(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .height(200.dp),
-                )
-            },
             episodeDetails = { },
             commentColumn = { },
             tabRowContent = {

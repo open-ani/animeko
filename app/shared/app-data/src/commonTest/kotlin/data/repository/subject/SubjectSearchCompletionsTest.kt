@@ -22,11 +22,13 @@ import kotlinx.coroutines.test.runCurrent
 import kotlinx.coroutines.test.runTest
 import kotlinx.serialization.json.Json
 import me.him188.ani.app.data.models.preference.NsfwMode
+import me.him188.ani.client.models.AniCollectionType
 import me.him188.ani.client.models.AniFavourite
 import me.him188.ani.client.models.AniSelfRatingInfo
 import me.him188.ani.client.models.AniSubjectCollection
 import me.him188.ani.client.models.AniSubjectRelations
 import me.him188.ani.client.models.AniSubjectType
+import me.him188.ani.datasources.api.topic.UnifiedCollectionType
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFailsWith
@@ -85,12 +87,12 @@ class SubjectSearchCompletionsTest {
     private suspend fun loadSubjectSearchCompletions(
         query: String,
         nsfwMode: NsfwMode,
-        excludedIds: Set<Int>,
+        excludedCollectionTypes: Set<UnifiedCollectionType>,
         getSubject: suspend (Int) -> AniSubjectCollection?,
         getEpisodeSubjectId: suspend (Int) -> Int? = { null },
         searchKeywords: suspend (String) -> List<String>,
     ) = SubjectSearchCompletions.flow(
-        query, nsfwMode, excludedIds, getSubject, getEpisodeSubjectId, searchKeywords,
+        query, nsfwMode, excludedCollectionTypes, getSubject, getEpisodeSubjectId, searchKeywords,
     ).last()
 
     @Test
@@ -213,15 +215,14 @@ class SubjectSearchCompletionsTest {
     @Test
     fun `episode parents obey exclusion and nsfw filters and missing subject fallback`() = runTest {
         val cases = listOf(
-            setOf(id) to subject,
-            emptySet<Int>() to subject.copy(nsfw = true),
-            emptySet<Int>() to null,
+            setOf(UnifiedCollectionType.DONE) to subject.copy(collectionType = AniCollectionType.DONE),
+            emptySet<UnifiedCollectionType>() to subject.copy(nsfw = true),
+            emptySet<UnifiedCollectionType>() to null,
         )
         for ((excluded, parent) in cases) {
             val result = loadSubjectSearchCompletions(
                 episodeUrl, NsfwMode.HIDE, excluded,
                 getSubject = {
-                    assertTrue(excluded.isEmpty())
                     parent
                 },
                 getEpisodeSubjectId = { id },
@@ -281,11 +282,11 @@ class SubjectSearchCompletionsTest {
 
     private suspend fun assertFallback(
         nsfwMode: NsfwMode = NsfwMode.HIDE,
-        excludedIds: Set<Int> = emptySet(),
+        excludedCollectionTypes: Set<UnifiedCollectionType> = emptySet(),
         getSubject: suspend (Int) -> AniSubjectCollection?,
     ) {
         val keywords = mutableListOf<String>()
-        val result = loadSubjectSearchCompletions(url, nsfwMode, excludedIds, getSubject) {
+        val result = loadSubjectSearchCompletions(url, nsfwMode, excludedCollectionTypes, getSubject) {
             keywords += it
             listOf("关键词候选")
         }
@@ -333,8 +334,24 @@ class SubjectSearchCompletionsTest {
     }
 
     @Test
-    fun `excluded completed or dropped subject falls back without fetching it`() = runTest {
-        assertFallback(excludedIds = setOf(id)) { error("Excluded subject must not be fetched") }
+    fun `completed and dropped subjects are filtered using the server collection state`() = runTest {
+        for (type in listOf(AniCollectionType.DONE, AniCollectionType.DROPPED)) {
+            assertFallback(excludedCollectionTypes = setOf(UnifiedCollectionType.DONE, UnifiedCollectionType.DROPPED)) {
+                assertEquals(id, it)
+                subject.copy(collectionType = type)
+            }
+        }
+    }
+
+    @Test
+    fun `collection filter keeps uncollected and watching subjects`() = runTest {
+        for (type in listOf(null, AniCollectionType.DOING, AniCollectionType.WISH)) {
+            val result = loadSubjectSearchCompletions(
+                url, NsfwMode.HIDE, setOf(UnifiedCollectionType.DONE, UnifiedCollectionType.DROPPED),
+                { subject.copy(collectionType = type) },
+            ) { error("Visible subject must not fall back") }
+            assertEquals(listOf(subject.nameCn, "$id", url), result)
+        }
     }
 
     @Test

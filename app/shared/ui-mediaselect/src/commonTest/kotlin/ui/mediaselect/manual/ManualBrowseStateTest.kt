@@ -86,7 +86,7 @@ class ManualBrowseStateTest {
     private fun TestScope.createState(
         source: MediaSource = TestBrowsableMediaSource(),
         target: ManualBrowseTarget? = target12,
-        onPlay: suspend (Media, ManualBrowseMemory?) -> Unit = { _, _ -> },
+        onPlay: suspend (ManualBrowsePick, ManualBrowseMemory?) -> Unit = { _, _ -> },
         webSessionManager: WebSessionManager = createTestWebSessionManager(backgroundScope),
         rememberSelection: MutableStateFlow<Boolean> = MutableStateFlow(true),
     ): ManualBrowseState = createTestManualBrowseState(
@@ -573,7 +573,7 @@ class ManualBrowseStateTest {
     @Test
     fun `clicking an episode plays it at once and remembers channel and position`() = runTest {
         var captured: Pair<Media, ManualBrowseMemory?>? = null
-        val state = createState(target = target25, onPlay = { media, memory -> captured = media to memory })
+        val state = createState(target = target25, onPlay = { pick, memory -> captured = pick.media to memory })
         state.openSubject(TestBrowseSubjects[0])
         state.awaitChannels()
 
@@ -590,6 +590,28 @@ class ManualBrowseStateTest {
         assertEquals(EpisodeRange.single(EpisodeSort(25)), media.episodeRange)
         val presentation = state.presentationFlow.first { !it.isPlaying }
         assertEquals(25, presentation.selectedEpisodeIndex)
+    }
+
+    @Test
+    fun `pick creates resources for other episodes by position in the channel`() = runTest {
+        var captured: ManualBrowsePick? = null
+        val state = createState(target = target12, onPlay = { pick, _ -> captured = pick })
+        state.openSubject(TestBrowseSubjects[0])
+        state.awaitChannels()
+
+        // 线路 1 的第 3 项 ("04") 被当作第 12 集
+        assertEquals(true, state.play(3))
+        val pick = assertNotNull(captured)
+        assertEquals(EpisodeSort(12), pick.pickedAs)
+        assertEquals("https://example.com/play/1/4", pick.media.originalUrl)
+
+        val next = assertNotNull(pick.createMediaFor(EpisodeSort(13)))
+        assertEquals("https://example.com/play/1/5", next.originalUrl)
+        assertEquals(EpisodeRange.single(EpisodeSort(13)), next.episodeRange)
+        assertEquals("https://example.com/play/1/1", pick.createMediaFor(EpisodeSort(9))?.originalUrl)
+        // 越界, 或编号类型不同, 都推算不出
+        assertNull(pick.createMediaFor(EpisodeSort(8)))
+        assertNull(pick.createMediaFor(EpisodeSort("SP")))
     }
 
     @Test
@@ -622,7 +644,7 @@ class ManualBrowseStateTest {
     fun `remember switch off plays without memory`() = runTest {
         var captured: Pair<Media, ManualBrowseMemory?>? = null
         val remember = MutableStateFlow(true)
-        val state = createState(target = target12, onPlay = { media, memory -> captured = media to memory }, rememberSelection = remember)
+        val state = createState(target = target12, onPlay = { pick, memory -> captured = pick.media to memory }, rememberSelection = remember)
         state.openSubject(TestBrowseSubjects[0])
         state.awaitChannels()
 

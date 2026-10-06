@@ -11,15 +11,14 @@ package me.him188.ani.app.ui.subject.episode
 
 import androidx.compose.foundation.hoverable
 import androidx.compose.foundation.interaction.MutableInteractionSource
-import androidx.compose.foundation.background
 import androidx.compose.foundation.interaction.collectIsHoveredAsState
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxScope
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.RowScope
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.offset
-import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.rounded.OpenInNew
 import androidx.compose.material.icons.outlined.Analytics
@@ -54,12 +53,12 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.tooling.preview.PreviewLightDark
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import kotlinx.coroutines.flow.Flow
@@ -204,6 +203,8 @@ internal const val TAG_EPISODE_SELECTOR_SHEET = "EpisodeSelectorSheet"
  * 剧集详情页面顶部的视频控件.
  * @param title 仅在全屏时显示的标题
  * @param fullscreenState 全屏状态与全屏请求. 控制栏按钮、双击、F 键、上下滑手势全部走它
+ * @param onClickScreenshot 点击截图按钮. 为 null 时不显示截图按钮, 即当前平台或播放器不支持截图
+ * @param screenshotOverlay 截图反馈层, 见 [VideoScaffold] 的同名槽
  */
 @Composable
 internal fun EpisodeVideoImpl(
@@ -225,7 +226,8 @@ internal fun EpisodeVideoImpl(
     alwaysOnTop: Boolean = false,
     onToggleAlwaysOnTop: (() -> Unit)? = null,
     danmakuEditor: @Composable() (RowScope.() -> Unit),
-    onClickScreenshot: () -> Unit,
+    onClickScreenshot: (() -> Unit)?,
+    screenshotOverlay: @Composable BoxScope.(bottomControllerHeight: Dp) -> Unit = {},
     detachedProgressSlider: @Composable () -> Unit,
     sidebarVisible: Boolean,
     onToggleSidebar: (isCollapsed: Boolean) -> Unit,
@@ -253,28 +255,19 @@ internal fun EpisodeVideoImpl(
     pictureInPictureController: PictureInPictureController = NoOpPictureInPictureController,
     isInPictureInPicture: Boolean = false,
 ) {
-    // Don't rememberSavable. 刻意让每次切换都是隐藏的
-    var isLocked by remember { mutableStateOf(false) }
+    // Don't rememberSavable. 页面重建后都回到默认状态
+    // 锁定按钮只在 expanded 时显示, 离开 expanded 时必须解锁, 否则无法再解除
+    var isLocked by remember(expanded) { mutableStateOf(false) }
     var showPlayerStats by remember { mutableStateOf(false) }
     val playerStats by rememberPlayerStatsState(playerState)
     val sheetsController = rememberVideoSideSheetsController<EpisodeVideoSideSheetPage>()
     val anySideSheetVisible by sheetsController.hasPageAsState()
     val previewModeText = stringResource(Lang.subject_episode_preview_mode)
 
-    // iOS 不切换组合结构: 系统小窗只采集 AVPlayerLayer, 页面 UI 无需最小化;
-    // 若在此处切换到另一组合子树, 原 VideoPlayer(UIKitView) 会被 dispose,
-    // AVPictureInPictureController 持有的 AVPlayerLayer 随之失效, 小窗立即关闭且之后无法再启动
-    if (isInPictureInPicture && !LocalPlatform.current.isIos()) {
-        // 画中画小窗只渲染视频, 交互由系统提供.
-        Box(modifier.fillMaxSize().background(Color.Black)) {
-            if (LocalIsPreviewing.current) {
-                Text(previewModeText)
-            } else {
-                VideoPlayer(playerState, Modifier.matchParentSize())
-            }
-        }
-        return
-    }
+    // 画中画小窗只渲染视频, 交互由系统提供. iOS 系统小窗只采集 AVPlayerLayer, 页面 UI 无需最小化.
+    // 进出小窗只隐藏视频以外的层, 不切换组合结构: 播放器节点被重建会销毁视频输出
+    // (Android 的 Surface; iOS 上 AVPictureInPictureController 持有的 AVPlayerLayer 会失效, 小窗立即关闭且之后无法再启动).
+    val videoOnly = isInPictureInPicture && !LocalPlatform.current.isIos()
     val watchTogetherPlayerController = LocalWatchTogetherPlayerController.current
 
     // auto hide cursor
@@ -300,10 +293,12 @@ internal fun EpisodeVideoImpl(
         VideoScaffold(
             expanded = expanded,
             modifier = modifier
+                .ifThen(videoOnly) { fillMaxSize() }
                 .hoverable(videoInteractionSource)
                 .cursorVisibility(showCursor),
             contentWindowInsets = contentWindowInsets,
-            maintainAspectRatio = maintainAspectRatio,
+            maintainAspectRatio = maintainAspectRatio && !videoOnly,
+            videoOnly = videoOnly,
             controllerState = playerControllerState,
             gestureLocked = isLocked,
             topBar = {
@@ -356,7 +351,7 @@ internal fun EpisodeVideoImpl(
                     VideoPlayer(
                         playerState,
                         Modifier
-                            .ifThen(statusBarHeight != 0.dp) {
+                            .ifThen(statusBarHeight != 0.dp && !videoOnly) {
                                 offset(x = -statusBarHeight / 2, y = 0.dp)
                             }
                             .onSizeChanged {
@@ -466,12 +461,13 @@ internal fun EpisodeVideoImpl(
                 }
             },
             rhsButtons = {
-                if (expanded && (LocalPlatform.current.isDesktop() || LocalPlatform.current.isAndroid())) {
+                if (expanded && onClickScreenshot != null) {
                     ScreenshotButton(
                         onClick = onClickScreenshot,
                     )
                 }
             },
+            screenshotOverlay = screenshotOverlay,
             gestureLock = {
                 if (expanded) {
                     GestureLock(isLocked = isLocked, onClick = { isLocked = !isLocked })
@@ -975,10 +971,7 @@ private fun PreviewVideoScaffoldImpl(
             VideoAspectRatioControllerState(NoOpVideoAspectRatio, scope)
         },
         leftBottomTips = {
-            PlayerControllerDefaults.LeftBottomTips(
-                onClick = {},
-                modifier = Modifier.padding(if (expanded) 16.dp else 8.dp),
-            )
+            PlayerControllerDefaults.LeftBottomTips(onClick = {})
         },
         fullscreenSwitchButton = {
             EpisodeVideoDefaults.FloatingFullscreenSwitchButton(

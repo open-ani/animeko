@@ -253,7 +253,14 @@
     <string name="settings_mediasource_selector_config_request_interval_description">控制每发送一个请求后等待多久后再发送下一个请求</string>
     <string name="settings_mediasource_selector_config_search_cache_ttl">搜索缓存有效期 (分钟)</string>
     <string name="settings_mediasource_selector_config_search_cache_ttl_description">在此时间内切换剧集时复用搜索结果。实际生效值为此值与用户设置中的较小者，0 表示不缓存</string>
-    <string name="settings_mediasource_selector_config_filter_settings">过滤设置</string>
+    <string name="settings_mediasource_selector_auto_match">自动匹配 (可选)</string>
+    <string name="settings_mediasource_selector_auto_match_description">在上面的列表规则之上，怎样自动找到正在观看的剧集。全部可选，默认值适用于大多数站点</string>
+    <string name="settings_mediasource_selector_auto_match_enabled">参与自动匹配</string>
+    <string name="settings_mediasource_selector_auto_match_enabled_description">关闭后此源只供浏览和手动选集，播放时不会自动搜索</string>
+    <string name="settings_mediasource_selector_tier">阶级</string>
+    <string name="settings_mediasource_selector_tier_description">数值越低越优先。阶级 0 查到结果后立即选用，更高阶级需先等待其他数据源</string>
+    <string name="settings_mediasource_selector_prefer_shorter_name">优先选择最短标题</string>
+    <string name="settings_mediasource_selector_prefer_shorter_name_description">优先选择满足匹配的标题最短的条目，可避免为第一季匹配到第二季</string>
     <string name="settings_mediasource_selector_config_filter_by_subject_name">使用条目名称过滤</string>
     <string name="settings_mediasource_selector_config_filter_by_subject_name_description">要求资源标题包含条目名称。适用于数据源可能搜到无关内容的情况。此功能只对 4.4.0 以前版本有效，对其他版本无效</string>
     <string name="settings_mediasource_selector_config_filter_by_episode_sort">使用剧集序号过滤</string>
@@ -412,8 +419,8 @@
     <string name="settings_player_op_ed_skip_duration">OP/ED 跳过时长</string>
     <string name="settings_player_op_ed_skip_duration_seconds">%1$d 秒</string>
     <string name="settings_player_auto_switch_media_on_error">播放失败时自动切换资源</string>
-    <string name="settings_player_experimental_hls_segment_filter">过滤贴片广告（实验性）</string>
-    <string name="settings_player_experimental_hls_segment_filter_description">尝试过滤部分在线源插入的贴片广告。只对以独立片段插入的广告有效，识别错误时可能跳过正常内容。</string>
+    <string name="settings_player_hls_ad_filter">过滤贴片广告</string>
+    <string name="settings_player_hls_ad_filter_description">自动跳过在线源视频中插入的广告，个别广告可能无法识别；如遇播放出错可关闭</string>
     <string name="settings_player_long_press_fast_forward_speed">长按播放速度</string>
     <string name="settings_player_long_press_fast_forward_speed_description">长按时使用的播放速度</string>
     <string name="settings_player_playback_speed_range">倍速范围</string>
@@ -708,7 +715,7 @@
     <string name="settings_danmaku_cancel">取消</string>
     <string name="settings_danmaku_regex_expression">正则表达式</string>
     <string name="settings_danmaku_regex_invalid">正则表达式语法不正确</string>
-    <string name="settings_danmaku_regex_description">填写用于屏蔽的正则表达式，例如：\'.*签.*\' 会屏蔽所有含有文字\'签\'的弹幕。</string>
+    <string name="settings_danmaku_regex_description">填写用于屏蔽的正则表达式，例如：“.*签.*”会屏蔽所有含有文字“签”的弹幕。</string>
     <string name="settings_danmaku_export_to_clipboard">复制规则到剪切板</string>
     <string name="settings_danmaku_import_from_clipboard">从剪切板导入规则</string>
     <string name="settings_danmaku_import_title">导入弹幕正则过滤规则</string>
@@ -771,7 +778,7 @@
 
     <!-- AutoCacheGroup -->
     <string name="settings_media_auto_cache_title">自动缓存</string>
-    <string name="settings_media_auto_cache_description">自动缓存 \"在看\" 分类中未观看的剧集</string>
+    <string name="settings_media_auto_cache_description">自动缓存“在看”分类中未观看的剧集</string>
     <string name="settings_media_auto_cache_enable">启用自动缓存</string>
     <string name="settings_media_auto_cache_max_count">最大自动缓存话数</string>
     <string name="settings_media_auto_cache_max_count_description">若手动缓存数量超过该设置值，将不会自动缓存</string>
@@ -1149,6 +1156,14 @@
     <string name="settings_account_profile_unbind_email_confirmation">确定要解绑邮箱 %1$s 吗？解绑后将不能再用它登录此账号。之后可以重新绑定邮箱。</string>
     <string name="settings_account_profile_unbind_email_last_login_method">邮箱是此账号唯一的登录方式，无法解绑。请先绑定 Bangumi 或其他第三方账号。</string>
     <string name="settings_account_profile_ok">好</string>
+    <string name="settings_account_profile_account_management">账号管理</string>
+    <string name="settings_account_profile_delete_account">注销账号</string>
+    <string name="settings_account_profile_delete_account_description">永久删除此账号及其全部数据</string>
+    <string name="settings_account_profile_delete_account_warning">注销会永久删除此账号的全部数据，包括收藏、观看记录、评论和弹幕。注销后不可撤回，数据不可找回。</string>
+    <string name="settings_account_profile_delete_account_input_label">输入 %1$s 以确认</string>
+    <string name="settings_account_profile_delete_account_confirm">注销</string>
+    <string name="settings_account_profile_deleting_account">正在注销…</string>
+    <string name="settings_account_profile_account_deleted">账号已注销</string>
     <string name="settings_account_github_title">GitHub 账号</string>
     <string name="settings_account_github_bound">已绑定的 GitHub 账号</string>
     <string name="settings_account_developer_benefit">通过认证后不再显示广告等</string>
@@ -1794,6 +1809,17 @@
     <string name="qr_login_close">关闭</string>
     <string name="subject_episode_danmaku_sources_title">来源与时间校准</string>
     <string name="subject_episode_danmaku_sources_empty">暂无可用弹幕源</string>
+    <string name="video_player_screenshot">截图</string>
+    <string name="video_player_screenshot_share">分享</string>
+    <string name="video_player_screenshot_copy">复制</string>
+    <string name="video_player_screenshot_copy_failed">复制截图失败</string>
+    <string name="video_player_screenshot_copied">截图已复制到剪贴板</string>
+    <string name="video_player_screenshot_share_failed">没有可以分享截图的应用</string>
+    <string name="video_player_screenshot_failed_permission">截图未保存: 没有写入相册的权限</string>
+    <string name="video_player_screenshot_failed_unsupported">当前播放器不支持截图</string>
+    <string name="video_player_screenshot_failed_no_frame">截图失败: 当前没有可截取的画面</string>
+    <string name="video_player_screenshot_failed_save">截图保存失败</string>
+    <string name="video_player_screenshot_failed_save_reason">截图保存失败: %1$s</string>
 </resources>
 
 <!--@formatter:on-->

@@ -20,6 +20,7 @@ import kotlinx.coroutines.withTimeoutOrNull
 import me.him188.ani.app.data.models.preference.NsfwMode
 import me.him188.ani.client.models.AniSubjectCollection
 import me.him188.ani.client.models.AniSubjectType
+import me.him188.ani.datasources.api.topic.UnifiedCollectionType
 import kotlin.time.Duration.Companion.seconds
 
 /** 搜索候选的输入识别、查询调度和结果合并。 */
@@ -44,7 +45,7 @@ internal object SubjectSearchCompletions {
     fun flow(
         query: String,
         nsfwMode: NsfwMode,
-        excludedIds: Set<Int>,
+        excludedCollectionTypes: Set<UnifiedCollectionType>,
         getSubject: suspend (Int) -> AniSubjectCollection?,
         getEpisodeSubjectId: suspend (Int) -> Int? = { null },
         searchKeywords: suspend (String) -> List<String>,
@@ -55,8 +56,9 @@ internal object SubjectSearchCompletions {
                     val subjectId = parseSearchSubjectId(query)
                         ?: parseSearchEpisodeId(query)?.let { getEpisodeSubjectId(it) }
                         ?: return@async null
-                    if (subjectId <= 0 || subjectId in excludedIds) return@async null
+                    if (subjectId <= 0) return@async null
                     val subject = getSubject(subjectId) ?: return@async null
+                    if (subject.collectionType.toUnifiedCollectionType() in excludedCollectionTypes) return@async null
                     if (subject.type != AniSubjectType.ANIME ||
                         (subject.nsfw && nsfwMode != NsfwMode.DISPLAY)
                     ) return@async null

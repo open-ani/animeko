@@ -18,7 +18,11 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import me.him188.ani.app.ui.lang.Lang
+import me.him188.ani.app.ui.lang.video_player_screenshot
+import org.jetbrains.compose.resources.stringResource
 
+/** 全屏时右侧按钮栏里的截图按钮, 与手势锁同款的悬浮样式. */
 @Composable
 fun ScreenshotButton(
     onClick: () -> Unit,
@@ -28,12 +32,10 @@ fun ScreenshotButton(
         modifier = modifier,
         content = {
             IconButton(onClick) {
-                val color = Color.White
-                CompositionLocalProvider(LocalContentColor provides color) {
-                    Icon(Icons.Rounded.PhotoCamera, contentDescription = "Lock screen")
+                CompositionLocalProvider(LocalContentColor provides Color.White) {
+                    Icon(Icons.Rounded.PhotoCamera, contentDescription = stringResource(Lang.video_player_screenshot))
                 }
             }
         },
     )
 }
-

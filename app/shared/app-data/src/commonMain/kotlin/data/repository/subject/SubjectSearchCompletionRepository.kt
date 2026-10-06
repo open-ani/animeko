@@ -36,7 +36,6 @@ import me.him188.ani.utils.logging.error
  */
 class SubjectSearchCompletionRepository(
     private val aniSubjectSearchService: AniSubjectSearchService,
-    private val subjectCollectionRepository: SubjectCollectionRepository,
     settingsRepository: SettingsRepository,
     private val subjectService: SubjectService,
     private val episodeService: EpisodeService,
@@ -47,10 +46,8 @@ class SubjectSearchCompletionRepository(
 
     fun completionsFlow(query: String): Flow<PagingData<String>> = flow {
         val nsfwMode = nsfwSettings.first()
-        val excludedIds = if (ignoreDoneAndDroppedFlow.first()) {
-            subjectCollectionRepository.getSubjectIdsByCollectionType(
-                types = listOf(UnifiedCollectionType.DONE, UnifiedCollectionType.DROPPED),
-            ).first().toSet()
+        val excludedCollectionTypes = if (ignoreDoneAndDroppedFlow.first()) {
+            setOf(UnifiedCollectionType.DONE, UnifiedCollectionType.DROPPED)
         } else {
             emptySet()
         }
@@ -58,7 +55,7 @@ class SubjectSearchCompletionRepository(
             SubjectSearchCompletions.flow(
                 query = query,
                 nsfwMode = nsfwMode,
-                excludedIds = excludedIds,
+                excludedCollectionTypes = excludedCollectionTypes,
                 getSubject = subjectService::getSubjectCollection,
                 getEpisodeSubjectId = episodeService::getSubjectId,
             ) { keyword ->
@@ -70,10 +67,10 @@ class SubjectSearchCompletionRepository(
                             NsfwMode.DISPLAY -> null
                             NsfwMode.BLUR, NsfwMode.HIDE -> false
                         },
+                        excludeCollectionTypes = excludedCollectionTypes.takeIf { it.isNotEmpty() }?.toList(),
                     ),
                     fields = listOf(SubjectSearchField.NAME),
                 )
-                    .filter { it.subjectInfo.subjectId !in excludedIds }
                     .map { it.subjectInfo.nameCn.ifEmpty { it.subjectInfo.name } }
                     .filter { it.isNotBlank() }
                     .distinct()

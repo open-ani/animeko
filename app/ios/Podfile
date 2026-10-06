@@ -1,3 +1,5 @@
+require_relative 'scripts/sentry_terminate_patch'
+
 target 'Animeko' do
   use_frameworks!
   platform :ios, '16.0'
@@ -7,6 +9,7 @@ target 'Animeko' do
 end
 
 post_install do |installer|
+  SentryTerminatePatch.apply(installer.sandbox.root)
   installer.pods_project.targets.each do |target|
     target.build_configurations.each do |config|
       config.build_settings['CODE_SIGNING_ALLOWED'] = 'NO'

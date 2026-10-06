@@ -81,7 +81,7 @@ fun deriveImageFileName(model: String, bytes: ByteArray): Pair<String, String> {
         else -> lastSegment
     }
     val baseName = rawBaseName
-        .replace(INVALID_FILE_NAME_CHARS, "_")
+        .sanitizedForFileName()
         .trim { it == '.' || it == ' ' || it == '_' }
         .take(MAX_BASE_NAME_LENGTH)
         .ifEmpty { "image" }
@@ -93,6 +93,9 @@ fun deriveImageFileName(model: String, bytes: ByteArray): Pair<String, String> {
 
 private val GENERIC_SIZE_SEGMENTS = setOf("large", "medium", "small", "grid", "common", "original", "cover", "image", "img", "thumb")
 private val KNOWN_IMAGE_EXTENSIONS = setOf("jpg", "jpeg", "png", "gif", "webp", "bmp", "svg", "avif", "heic")
+/** 把不能出现在文件名里的字符替换为 `_`. */
+fun String.sanitizedForFileName(): String = replace(INVALID_FILE_NAME_CHARS, "_")
+
 private val INVALID_FILE_NAME_CHARS = Regex("""[\\/:*?"<>| ]""")
 private const val MAX_BASE_NAME_LENGTH = 80
 
