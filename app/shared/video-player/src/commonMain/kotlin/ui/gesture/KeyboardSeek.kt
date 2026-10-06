@@ -9,25 +9,29 @@
 
 package me.him188.ani.app.videoplayer.ui.gesture
 
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.Stable
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.rememberUpdatedState
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.composed
+import androidx.compose.ui.input.key.KeyEvent
 import androidx.compose.ui.input.key.KeyEventType
 import androidx.compose.ui.input.key.key
 import androidx.compose.ui.input.key.onPreviewKeyEvent
 import androidx.compose.ui.input.key.type
 import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.ui.unit.LayoutDirection
-import kotlinx.coroutines.awaitCancellation
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
-import me.him188.ani.app.tools.rememberUiMonoTasker
+import kotlinx.coroutines.launch
 import me.him188.ani.app.ui.foundation.effects.ComposeKey
 import me.him188.ani.app.ui.foundation.effects.onKey
+import me.him188.ani.app.videoplayer.ui.PlayerKeyboardHandler
 
 @Stable
 class KeyboardHorizontalDirectionState(
@@ -76,68 +80,95 @@ fun Modifier.keyboardSeekAndFastForward(
     onSeekBackward: () -> Unit,
     onSeekForward: () -> Unit,
     fastSkipState: FastSkipState?,
-): Modifier = composed(
-    inspectorInfo = {
-        name = "keyboardSeekAndFastForward"
-    },
-) {
-    val layoutDirection = LocalLayoutDirection.current
-    val backwardKey = if (layoutDirection == LayoutDirection.Ltr) {
-        ComposeKey.DirectionLeft
-    } else {
-        ComposeKey.DirectionRight
-    }
-    val forwardKey = if (layoutDirection == LayoutDirection.Ltr) {
-        ComposeKey.DirectionRight
-    } else {
-        ComposeKey.DirectionLeft
-    }
-
-    val onBackwardState by rememberUpdatedState(onSeekBackward)
-    val onForwardState by rememberUpdatedState(onSeekForward)
-
-    val tasker = rememberUiMonoTasker()
-    var ticket by remember { mutableStateOf<Int?>(null) }
-
-    onPreviewKeyEvent { event ->
-        if (event.key == backwardKey) {
-            if (event.type == KeyEventType.KeyDown) {
-                return@onPreviewKeyEvent true
-            } else if (event.type == KeyEventType.KeyUp) {
-                onBackwardState()
-                return@onPreviewKeyEvent true
-            }
-        }
-
-        if (event.key == forwardKey) {
-            if (event.type == KeyEventType.KeyDown) {
-                if (!tasker.isRunning.value) {
-                    tasker.launch {
-                        try {
-                            delay(200)
-                            fastSkipState?.let {
-                                ticket = it.startSkipping(SkipDirection.FORWARD)
-                            }
-                            awaitCancellation()
-                        } finally {
-                            ticket?.let {
-                                fastSkipState?.stopSkipping(it)
-                            }
-                            ticket = null
-                        }
-                    }
-                }
-                return@onPreviewKeyEvent true
-            } else if (event.type == KeyEventType.KeyUp) {
-                val isSkipping = ticket != null
-                tasker.cancel()
-                if (!isSkipping) {
-                    onForwardState()
-                }
-                return@onPreviewKeyEvent true
-            }
-        }
-        false
-    }
+): Modifier = composed {
+    val handler = rememberKeyboardSeekHandler(onSeekBackward, onSeekForward, fastSkipState)
+    onPreviewKeyEvent { handler(it) }
 }
 
+@Composable
+internal fun rememberKeyboardSeekHandler(
+    onSeekBackward: () -> Unit,
+    onSeekForward: () -> Unit,
+    fastSkipState: FastSkipState?,
+): PlayerKeyboardHandler {
+    val layoutDirection = LocalLayoutDirection.current
+    val onBackwardState by rememberUpdatedState(onSeekBackward)
+    val onForwardState by rememberUpdatedState(onSeekForward)
+    val scope = rememberCoroutineScope()
+    val handler = remember(layoutDirection, fastSkipState, scope) {
+        KeyboardSeekHandler(scope, layoutDirection, fastSkipState, { onBackwardState() }, { onForwardState() })
+    }
+    DisposableEffect(handler) {
+        onDispose { handler.cancel() }
+    }
+    return handler
+}
+
+private class KeyboardSeekHandler(
+    private val scope: CoroutineScope,
+    layoutDirection: LayoutDirection,
+    private val fastSkipState: FastSkipState?,
+    private val onBackward: () -> Unit,
+    private val onForward: () -> Unit,
+) : PlayerKeyboardHandler {
+    private val backwardKey = if (layoutDirection == LayoutDirection.Ltr) {
+        ComposeKey.DirectionLeft
+    } else {
+        ComposeKey.DirectionRight
+    }
+    private val forwardKey = if (layoutDirection == LayoutDirection.Ltr) {
+        ComposeKey.DirectionRight
+    } else {
+        ComposeKey.DirectionLeft
+    }
+    private var backwardPressed = false
+    private var forwardPressed = false
+    private var job: Job? = null
+    private var ticket: Int? = null
+
+    override fun invoke(event: KeyEvent): Boolean {
+        if (event.key == backwardKey) {
+            if (event.type == KeyEventType.KeyDown) {
+                backwardPressed = true
+                return true
+            }
+            if (event.type == KeyEventType.KeyUp && backwardPressed) {
+                backwardPressed = false
+                onBackward()
+                return true
+            }
+        }
+        if (event.key == forwardKey) {
+            if (event.type == KeyEventType.KeyDown) {
+                if (!forwardPressed) {
+                    forwardPressed = true
+                    job = scope.launch {
+                        delay(200)
+                        ticket = fastSkipState?.startSkipping(SkipDirection.FORWARD)
+                    }
+                }
+                return true
+            }
+            if (event.type == KeyEventType.KeyUp && forwardPressed) {
+                val wasSkipping = ticket != null
+                cancelForward()
+                if (!wasSkipping) onForward()
+                return true
+            }
+        }
+        return false
+    }
+
+    private fun cancelForward() {
+        job?.cancel()
+        job = null
+        ticket?.let { fastSkipState?.stopSkipping(it) }
+        ticket = null
+        forwardPressed = false
+    }
+
+    override fun cancel() {
+        backwardPressed = false
+        cancelForward()
+    }
+}
