@@ -31,6 +31,7 @@ import me.him188.ani.app.domain.media.hls.HlsPlaybackPreparer
 import me.him188.ani.app.domain.media.hls.PlatformHlsPlaybackPreparer
 import me.him188.ani.app.domain.media.resolver.DesktopWebMediaResolver
 import me.him188.ani.app.domain.media.resolver.HttpStreamingMediaResolver
+import me.him188.ani.app.domain.media.resolver.JellyfinMediaResolver
 import me.him188.ani.app.domain.media.resolver.LocalFileMediaResolver
 import me.him188.ani.app.domain.media.resolver.MediaResolver
 import me.him188.ani.app.domain.mediasource.web.DesktopOnnxImageCaptchaRecognizer
@@ -156,6 +157,7 @@ fun getDesktopModules(getContext: () -> DesktopContext, scope: CoroutineScope) =
         MediaResolver.from(
             torrentMediaResolvers(get<TorrentManager>().engines, get())
                 .plus(LocalFileMediaResolver())
+                .plus(JellyfinMediaResolver(get(), get()))
                 .plus(HttpStreamingMediaResolver())
                 .plus(
                     DesktopWebMediaResolver(

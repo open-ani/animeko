@@ -199,6 +199,7 @@ import me.him188.ani.datasources.api.PackedDate
 import me.him188.ani.datasources.api.source.MediaFetchRequest
 import me.him188.ani.datasources.api.source.MediaSourceKind
 import me.him188.ani.datasources.api.topic.isDoneOrDropped
+import me.him188.ani.datasources.jellyfin.JellyfinPlaybackQuality
 import me.him188.ani.utils.coroutines.SingleTaskExecutor
 import me.him188.ani.utils.coroutines.flows.FlowRestarter
 import me.him188.ani.utils.coroutines.flows.flowOfEmptyList
@@ -396,6 +397,11 @@ open class EpisodeViewModel(
     )
 
     val mediaResolver: MediaResolver get() = fetchPlayState.playerSession.mediaResolver
+    val jellyfinPlaybackQualityState get() = fetchPlayState.jellyfinPlaybackQualityState
+
+    suspend fun switchJellyfinPlaybackQuality(quality: JellyfinPlaybackQuality): Result<Unit> {
+        return fetchPlayState.switchJellyfinPlaybackQuality(quality)
+    }
 
     /**
      * 选择器模式, 会话内保持; null = 尚未锁存, 宿主用 `vm.mediaSelectorMode ?: page.initialMediaSelectorMode`.

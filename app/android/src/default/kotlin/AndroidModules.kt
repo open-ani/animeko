@@ -32,6 +32,7 @@ import me.him188.ani.app.domain.media.download.MediaDownloadManager
 import me.him188.ani.app.domain.media.fetch.MediaSourceManager
 import me.him188.ani.app.domain.media.resolver.AndroidWebMediaResolver
 import me.him188.ani.app.domain.media.resolver.HttpStreamingMediaResolver
+import me.him188.ani.app.domain.media.resolver.JellyfinMediaResolver
 import me.him188.ani.app.domain.media.resolver.LocalFileMediaResolver
 import me.him188.ani.app.domain.media.resolver.MediaResolver
 import me.him188.ani.app.domain.mediasource.web.AndroidOnnxImageCaptchaRecognizer
@@ -163,6 +164,7 @@ fun getAndroidModules(
         MediaResolver.from(
             torrentMediaResolvers(get<TorrentManager>().engines, get())
                 .plus(LocalFileMediaResolver())
+                .plus(JellyfinMediaResolver(get(), get()))
                 .plus(HttpStreamingMediaResolver())
                 .plus(
                     AndroidWebMediaResolver(
