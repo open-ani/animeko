@@ -27,7 +27,7 @@ import kotlin.test.assertNull
 
 class TrendingRankingPagingSourceTest {
     @Test
-    fun `maps rank, heat and subject`() = runTest {
+    fun `maps rank and heat with subject`() = runTest {
         val server = Server(total = 1)
 
         val page = assertIs<Page>(server.source.load(refresh(30)))
