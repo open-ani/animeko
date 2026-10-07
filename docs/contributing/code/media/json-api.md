@@ -2,9 +2,17 @@
 
 `json-api` version 1 is a declarative media source for HTTP APIs returning JSON.
 It supports browsing, automatic subject matching, multiple instances and fresh
-playback URL resolution. The settings editor accepts either an arguments object
-or a single-source `{"mediaSources":[...]}` import. It validates the configuration
-before saving. Subscription configurations are read-only.
+playback URL resolution. The settings editor provides grouped forms for basic
+information, search, channels/episodes, playback and automatic matching. An
+advanced JSON editor accepts either an arguments object or a single-source
+`{"mediaSources":[...]}` import. Both use the same configuration and validate it
+before saving. Incomplete JSON request bodies and numeric fields remain editable
+without losing the draft. Subscription configurations are read-only.
+
+Wide windows show configuration and testing side by side; compact windows switch
+between them. The tester browses subjects and channel/episode lists and resolves
+fresh playback URLs without saving the draft. It reports only the video host,
+keeping signed query parameters out of the result display.
 
 The [Xifan Next example](examples/xifan-next.json) uses the site's public
 publishable frontend key. This key is not a user credential. Sites may change

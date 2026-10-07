@@ -6,7 +6,9 @@
 package me.him188.ani.app.ui.settings.mediasource.api
 
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
@@ -14,6 +16,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.ContentCopy
@@ -22,10 +25,12 @@ import androidx.compose.material.icons.rounded.Save
 import androidx.compose.material.icons.rounded.Search
 import androidx.compose.material3.Button
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.FilterChip
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.OutlinedCard
 import androidx.compose.material3.PlainTooltip
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
@@ -41,8 +46,10 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalClipboard
 import androidx.compose.ui.platform.testTag
@@ -74,10 +81,19 @@ import me.him188.ani.app.ui.lang.settings_api_save
 import me.him188.ani.app.ui.lang.settings_api_saved
 import me.him188.ani.app.ui.lang.settings_api_search
 import me.him188.ani.app.ui.lang.settings_api_video_resolved
+import me.him188.ani.app.ui.lang.settings_api_configuration
+import me.him188.ani.app.ui.lang.settings_api_advanced
+import me.him188.ani.app.ui.lang.settings_api_read_only
+import me.him188.ani.app.ui.lang.settings_api_test_hint
+import me.him188.ani.app.ui.lang.settings_api_no_results
+import me.him188.ani.app.ui.lang.settings_api_choose_episode
+import me.him188.ani.app.ui.lang.settings_api_subjects
 import me.him188.ani.app.ui.lang.settings_mediasource_copied_to_clipboard
 import me.him188.ani.app.ui.lang.settings_mediasource_export
 import me.him188.ani.app.ui.lang.settings_mediasource_import_from_clipboard
 import me.him188.ani.app.ui.lang.settings_mediasource_selector_test
+import me.him188.ani.app.ui.settings.mediasource.rss.edit.MediaSourceHeadline
+import me.him188.ani.app.ui.foundation.theme.AniThemeDefaults
 import me.him188.ani.datasources.api.source.BrowseChannel
 import me.him188.ani.datasources.api.source.BrowseSubject
 import me.him188.ani.datasources.api.source.MediaSourceConfig
@@ -93,13 +109,16 @@ internal val apiEditorJson = Json {
 }
 
 internal fun decodeApiConfiguration(text: String, codecs: MediaSourceCodecManager): ApiMediaSourceArguments {
+    return decodeApiArguments(text, codecs).also { it.validate() }
+}
+
+internal fun decodeApiArguments(text: String, codecs: MediaSourceCodecManager): ApiMediaSourceArguments {
     val root = apiEditorJson.parseToJsonElement(text)
     val arguments = if (root is JsonObject && "mediaSources" in root) {
         val data = requireNotNull(codecs.decodeFromStringOrNull(text)).mediaSources.single()
         require(data.factoryId == ApiMediaSource.FactoryId) { "Expected a json-api source" }
         codecs.decode(data) as ApiMediaSourceArguments
     } else apiEditorJson.decodeFromJsonElement(ApiMediaSourceArguments.serializer(), root)
-    arguments.validate()
     return arguments
 }
 
@@ -166,6 +185,9 @@ fun EditApiMediaSourceScreen(
 ) {
     val scope = rememberCoroutineScope()
     val clipboard = LocalClipboard.current
+    val form = remember(vm) { ApiConfigurationFormState(vm.codecs) }
+    var advanced by rememberSaveable { mutableStateOf(false) }
+    var showTest by rememberSaveable { mutableStateOf(false) }
     var keyword by remember { mutableStateOf("") }
     var subjects by remember { mutableStateOf(emptyList<BrowseSubject>()) }
     var selected by remember { mutableStateOf<BrowseSubject?>(null) }
@@ -174,15 +196,21 @@ fun EditApiMediaSourceScreen(
     var busy by remember { mutableStateOf(false) }
     var testError by remember { mutableStateOf<String?>(null) }
     var message by remember { mutableStateOf<String?>(null) }
+    var searched by remember { mutableStateOf(false) }
+    var channelIndex by remember { mutableStateOf(0) }
     val copied = stringResource(Lang.settings_mediasource_copied_to_clipboard)
     val resolved = stringResource(Lang.settings_api_video_resolved)
     LaunchedEffect(vm.text) {
+        vm.text?.let { if (form.text != it) form.load(it) }
+    }
+    LaunchedEffect(vm.text, form.value, form.fields.toMap()) {
         subjects = emptyList()
         channels = emptyList()
         selected = null
         source = null
         testError = null
         message = null
+        searched = false
     }
     fun test(action: suspend () -> Unit) {
         scope.launch {
@@ -200,17 +228,129 @@ fun EditApiMediaSourceScreen(
             }
         }
     }
+    val configuration = runCatching { form.configuration() }
+    val editable = vm.allowEdit && !vm.isSaving && !busy
+    val configurationPane: @Composable (Modifier) -> Unit = { paneModifier ->
+        LazyColumn(paneModifier, contentPadding = PaddingValues(20.dp), verticalArrangement = Arrangement.spacedBy(16.dp)) {
+            if (vm.text == null) item { CircularProgressIndicator() } else {
+                item { MediaSourceHeadline(form.value?.iconUrl.orEmpty(), form.value?.name ?: "JSON API") }
+                item {
+                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        FilterChip(!advanced, { advanced = false }, label = { Text(stringResource(Lang.settings_api_configuration)) }, enabled = form.value != null)
+                        FilterChip(advanced, { advanced = true }, label = { Text(stringResource(Lang.settings_api_advanced)) })
+                    }
+                }
+                if (!vm.allowEdit) item { Text(stringResource(Lang.settings_api_read_only), color = MaterialTheme.colorScheme.onSurfaceVariant) }
+                item {
+                    if (advanced || form.value == null) {
+                        ApiConfigurationEditor(vm.text.orEmpty(), vm::edit, editable, vm.codecs, vm.isSaving, showSave = false) { args ->
+                            scope.launch { vm.save(args) }
+                        }
+                    } else {
+                        Column(verticalArrangement = Arrangement.spacedBy(16.dp)) { ApiConfigurationForm(form, editable, vm::edit) }
+                    }
+                }
+                configuration.exceptionOrNull()?.let { error ->
+                    item { Text(error.message.orEmpty().take(240), color = MaterialTheme.colorScheme.error) }
+                }
+                vm.error?.let { item { Text(it, color = MaterialTheme.colorScheme.error) } }
+                if (vm.saved) item { Text(stringResource(Lang.settings_api_saved), color = MaterialTheme.colorScheme.primary) }
+            }
+        }
+    }
+    val testPane: @Composable (Modifier) -> Unit = { paneModifier ->
+        LazyColumn(paneModifier, contentPadding = PaddingValues(20.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+            item {
+                Text(stringResource(Lang.settings_mediasource_selector_test), style = MaterialTheme.typography.headlineSmall)
+                Text(stringResource(Lang.settings_api_test_hint), Modifier.padding(top = 8.dp), color = MaterialTheme.colorScheme.onSurfaceVariant)
+            }
+            item {
+                Row(horizontalArrangement = Arrangement.spacedBy(12.dp), verticalAlignment = Alignment.CenterVertically) {
+                    OutlinedTextField(keyword, { keyword = it }, Modifier.weight(1f), singleLine = true,
+                        label = { Text(stringResource(Lang.settings_api_search)) }, enabled = !busy, shape = MaterialTheme.shapes.medium)
+                    Button(onClick = {
+                        test {
+                            val newSource = vm.testSource(form.configuration())
+                            subjects = emptyList()
+                            channels = emptyList()
+                            selected = null
+                            source = newSource
+                            searched = true
+                            subjects = withContext(Dispatchers.Default) { newSource.searchSubjects(keyword) }
+                        }
+                    }, enabled = !busy && keyword.isNotBlank() && configuration.isSuccess) { Icon(Icons.Rounded.Search, stringResource(Lang.settings_mediasource_selector_test)) }
+                }
+            }
+            if (busy) item { CircularProgressIndicator() }
+            testError?.let { item { Text(it, color = MaterialTheme.colorScheme.error) } }
+            message?.let { item { Text(it, color = MaterialTheme.colorScheme.primary) } }
+            if (searched && !busy && subjects.isEmpty() && testError == null) item { Text(stringResource(Lang.settings_api_no_results)) }
+            if (selected == null) {
+                items(subjects) { subject ->
+                    OutlinedCard(onClick = {
+                        test {
+                            channels = withContext(Dispatchers.Default) { source!!.browseSubject(subject) }
+                            channelIndex = 0
+                            selected = subject
+                        }
+                    }, enabled = !busy, modifier = Modifier.fillMaxWidth()) {
+                        Text(subject.name, Modifier.padding(16.dp), style = MaterialTheme.typography.titleMedium)
+                    }
+                }
+            } else {
+                item {
+                    TextButton({ selected = null; channels = emptyList(); message = null }, enabled = !busy) { Text(stringResource(Lang.settings_api_subjects)) }
+                    Text(selected!!.name, style = MaterialTheme.typography.titleLarge)
+                    Text(stringResource(Lang.settings_api_choose_episode), Modifier.padding(top = 8.dp), color = MaterialTheme.colorScheme.onSurfaceVariant)
+                }
+                if (channels.isEmpty() && !busy) item { Text(stringResource(Lang.settings_api_no_results)) }
+                item {
+                    LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        items(channels.size) { index ->
+                            val channel = channels[index]
+                            FilterChip(channelIndex == index, { channelIndex = index; message = null },
+                                label = { Text("${channel.name.orEmpty()} (${channel.episodes.size})") }, enabled = !busy)
+                        }
+                    }
+                }
+                val channel = channels.getOrNull(channelIndex)
+                items(channel?.episodes.orEmpty()) { episode ->
+                    OutlinedCard(onClick = {
+                        test {
+                            val video = withContext(Dispatchers.Default) {
+                                source!!.resolveVideo(source!!.createMedia(selected!!, channel?.name, episode, episode.episodeSort))
+                            }
+                            message = "$resolved: ${Url(video.m3u8Url).host}"
+                        }
+                    }, enabled = !busy, modifier = Modifier.fillMaxWidth()) {
+                        Text(episode.name, Modifier.padding(16.dp))
+                    }
+                }
+            }
+        }
+    }
+    BoxWithConstraints(modifier.fillMaxSize()) {
+    val wide = maxWidth >= 900.dp
     Scaffold(
-        modifier,
+        Modifier.fillMaxSize(),
         contentWindowInsets = windowInsets,
+        containerColor = AniThemeDefaults.pageContentBackgroundColor,
         topBar = {
-            TopAppBar(title = { Text("JSON API") }, navigationIcon = navigationIcon, actions = {
+            TopAppBar(title = { Text(form.value?.name ?: "JSON API") }, navigationIcon = navigationIcon, actions = {
+                if (!wide) TextButton({ showTest = !showTest }) {
+                    Text(stringResource(if (showTest) Lang.settings_api_configuration else Lang.settings_mediasource_selector_test))
+                }
+                Button({ configuration.getOrNull()?.let { args -> scope.launch { vm.save(args) } } }, enabled = editable && configuration.isSuccess,
+                    modifier = Modifier.testTag("api-form-save")) {
+                    Icon(Icons.Rounded.Save, null)
+                    Text(stringResource(Lang.settings_api_save))
+                }
                 ApiIconButton(Icons.Rounded.ContentPaste, stringResource(Lang.settings_mediasource_import_from_clipboard), vm.allowEdit && !vm.isSaving && !busy) {
                     scope.launch { clipboard.getClipEntryText()?.let(vm::edit) }
                 }
                 ApiIconButton(Icons.Rounded.ContentCopy, stringResource(Lang.settings_mediasource_export), vm.text != null && !busy) {
                     test {
-                        val args = decodeApiConfiguration(vm.text.orEmpty(), vm.codecs)
+                        val args = form.configuration()
                         clipboard.setClipEntryText(vm.codecs.serializeToString(listOf(args)))
                         message = copied
                     }
@@ -218,65 +358,15 @@ fun EditApiMediaSourceScreen(
             })
         },
     ) { padding ->
-        LazyColumn(Modifier.padding(padding).padding(24.dp).fillMaxSize(),
-            verticalArrangement = Arrangement.spacedBy(16.dp)) {
-            val text = vm.text
-            if (text == null) item { CircularProgressIndicator() } else {
-                item {
-                    Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
-                        ApiConfigurationEditor(text, vm::edit, vm.allowEdit && !vm.isSaving && !busy, vm.codecs, vm.isSaving) { args ->
-                            scope.launch { vm.save(args) }
-                        }
-                    }
+            if (wide) {
+                Row(Modifier.padding(padding).fillMaxSize(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                    configurationPane(Modifier.weight(1f).fillMaxSize())
+                    testPane(Modifier.weight(1f).fillMaxSize())
                 }
-                vm.error?.let { item { Text(it, color = MaterialTheme.colorScheme.error) } }
-                if (vm.saved) item { Text(stringResource(Lang.settings_api_saved)) }
-                item {
-                    Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                        OutlinedTextField(keyword, { keyword = it }, Modifier.weight(1f), singleLine = true,
-                            label = { Text(stringResource(Lang.settings_api_search)) }, enabled = !busy)
-                        Button(onClick = {
-                            test {
-                                val newSource = vm.testSource(decodeApiConfiguration(text, vm.codecs))
-                                subjects = emptyList()
-                                channels = emptyList()
-                                selected = null
-                                source = newSource
-                                subjects = withContext(Dispatchers.Default) { newSource.searchSubjects(keyword) }
-                            }
-                        }, enabled = !busy && keyword.isNotBlank()) {
-                            Icon(Icons.Rounded.Search, null)
-                            Text(stringResource(Lang.settings_mediasource_selector_test))
-                        }
-                    }
-                }
-                if (busy) item { CircularProgressIndicator() }
-                testError?.let { item { Text(it, color = MaterialTheme.colorScheme.error) } }
-                message?.let { item { Text(it) } }
-                items(subjects) { subject ->
-                    TextButton(onClick = {
-                        test {
-                            selected = subject
-                            channels = emptyList()
-                            channels = withContext(Dispatchers.Default) { source!!.browseSubject(subject) }
-                        }
-                    }, enabled = !busy) { Text(subject.name) }
-                }
-                channels.forEach { channel ->
-                    item { Text(channel.name.orEmpty(), style = MaterialTheme.typography.titleMedium) }
-                    items(channel.episodes) { episode ->
-                        TextButton(onClick = {
-                            test {
-                                val video = withContext(Dispatchers.Default) {
-                                    source!!.resolveVideo(source!!.createMedia(selected!!, channel.name, episode, episode.episodeSort))
-                                }
-                                message = "$resolved: ${Url(video.m3u8Url).host}"
-                            }
-                        }, enabled = !busy) { Text(episode.name) }
-                    }
-                }
+            } else {
+                if (showTest) testPane(Modifier.padding(padding).fillMaxSize()) else configurationPane(Modifier.padding(padding).fillMaxSize())
             }
-        }
+    }
     }
 }
 
@@ -287,6 +377,7 @@ internal fun ApiConfigurationEditor(
     enabled: Boolean,
     codecs: MediaSourceCodecManager,
     isSaving: Boolean,
+    showSave: Boolean = true,
     onSave: (ApiMediaSourceArguments) -> Unit,
 ) {
     val parsed = remember(text) { runCatching { decodeApiConfiguration(text, codecs) } }
@@ -295,7 +386,7 @@ internal fun ApiConfigurationEditor(
         label = { Text(stringResource(Lang.settings_api_json)) }, isError = parsed.isFailure)
     if (parsed.isFailure) Text(parsed.exceptionOrNull()?.message.orEmpty().take(200), color = MaterialTheme.colorScheme.error,
         modifier = Modifier.testTag("api-error"))
-    Button({ parsed.getOrNull()?.let(onSave) }, Modifier.testTag("api-save"), enabled = enabled && !isSaving && parsed.isSuccess) {
+    if (showSave) Button({ parsed.getOrNull()?.let(onSave) }, Modifier.testTag("api-save"), enabled = enabled && !isSaving && parsed.isSuccess) {
         Icon(Icons.Rounded.Save, null)
         Text(stringResource(Lang.settings_api_save))
     }
