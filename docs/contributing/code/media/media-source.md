@@ -19,7 +19,7 @@ interface MediaSource {
 
 ## 数据源类型
 
-目前支持两种通用数据源和一些特别支持的数据源：
+目前支持三种通用数据源和一些特别支持的数据源：
 
 - `SelectorMediaSource`：通用 [CSS Selector][CSS Selector] 数据源；
 - `RssMediaSource`：通用 RSS 订阅数据源；

@@ -14,10 +14,23 @@ between them. The tester browses subjects and channel/episode lists and resolves
 fresh playback URLs without saving the draft. It reports only the video host,
 keeping signed query parameters out of the result display.
 
-The [Xifan Next example](examples/xifan-next.json) uses the site's public
+The add-source dialog includes a **稀饭动漫 Next** preset. Selecting it persists
+a complete, editable `json-api` configuration and opens the grouped editor;
+no clipboard import or account login is required. The generic **JSON API** entry
+remains available for other sites. Presets are optional and are not automatically
+inserted into existing source lists.
+
+The preset and [Xifan Next example](examples/xifan-next.json) use the site's public
 publishable frontend key. This key is not a user credential. Sites may change
 their API contract or key; the configuration can be edited without recompiling.
 Exported configurations include headers: omit private credentials before sharing.
+
+Public availability was verified on 2026-10-07: the unauthenticated homepage
+references a JavaScript bundle containing the same `sb_publishable_` key and API
+host. Search (`search_animes`), detail (`get_anime_detail`) and playback
+(`issue-web-playback`) requests succeed with that key and no user cookies or
+user session token. These are publicly exposed website APIs, not a documented
+third-party API with a stability guarantee.
 
 ## Requests and variables
 

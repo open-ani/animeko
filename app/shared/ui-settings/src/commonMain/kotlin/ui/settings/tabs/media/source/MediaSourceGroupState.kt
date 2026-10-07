@@ -29,6 +29,9 @@ import kotlinx.coroutines.flow.shareIn
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.withContext
 import me.him188.ani.app.domain.media.fetch.MediaSourceManager
+import me.him188.ani.app.domain.mediasource.api.ApiMediaSource
+import me.him188.ani.app.domain.mediasource.api.ApiMediaSourceArguments
+import me.him188.ani.app.domain.mediasource.api.ApiMediaSourcePresets
 import me.him188.ani.app.domain.mediasource.instance.MediaSourceInstance
 import me.him188.ani.app.domain.mediasource.subscription.MediaSourceSubscription
 import me.him188.ani.app.tools.MonoTasker
@@ -40,6 +43,7 @@ import me.him188.ani.datasources.api.source.FactoryId
 import me.him188.ani.datasources.api.source.MediaSourceConfig
 import me.him188.ani.datasources.api.source.MediaSourceFactory
 import me.him188.ani.datasources.api.source.MediaSourceInfo
+import me.him188.ani.datasources.api.source.serializeArguments
 import me.him188.ani.datasources.api.source.parameter.MediaSourceParameters
 import me.him188.ani.utils.coroutines.childScope
 import me.him188.ani.utils.platform.Uuid
@@ -89,7 +93,7 @@ class MediaSourceLoader(
                 info = factory.info,
                 parameters = factory.parameters,
             )
-        }
+        } + builtInApiMediaSourceTemplates()
     }.stateIn(scope, SharingStarted.WhileSubscribed(), emptyList())
 
     private fun findFactory(factoryId: FactoryId): MediaSourceFactory? {
@@ -214,10 +218,11 @@ class EditMediaSourceState(
             factoryId = template.factoryId,
             info = template.info,
             parameters = template.parameters,
-            persistedArguments = flowOf(MediaSourceConfig()),
+            persistedArguments = flowOf(template.initialConfig),
             editMediaSourceMode = EditMediaSourceMode.Add(template.factoryId),
             onSave = { confirmEdit(it) },
             backgroundScope.coroutineContext, // TODO: this can be a memory leak
+            initialConfig = template.initialConfig,
         )
         editMediaSourceState = state
         return state
@@ -315,17 +320,34 @@ class MediaSourcePresentation(
 )
 
 /**
- * 对应一个 Factory
+ * 数据源工厂及可选的预设配置.
  */
 @Immutable
 class MediaSourceTemplate(
     val factoryId: FactoryId,
     val info: MediaSourceInfo,
-    val parameters: MediaSourceParameters
+    val parameters: MediaSourceParameters,
+    val initialConfig: MediaSourceConfig = MediaSourceConfig.Default,
 )
 
+internal fun builtInApiMediaSourceTemplates(): List<MediaSourceTemplate> = ApiMediaSourcePresets.all.map { arguments ->
+    MediaSourceTemplate(
+        factoryId = ApiMediaSource.FactoryId,
+        info = MediaSourceInfo(
+            displayName = arguments.name,
+            websiteUrl = arguments.websiteUrl,
+            iconUrl = arguments.iconUrl,
+            tier = arguments.tier,
+        ),
+        parameters = MediaSourceParameters.Empty,
+        initialConfig = MediaSourceConfig(
+            serializedArguments = MediaSourceConfig.serializeArguments(ApiMediaSourceArguments.serializer(), arguments),
+        ),
+    )
+}
+
 fun EditingMediaSource.createConfig(): MediaSourceConfig {
-    return MediaSourceConfig(
+    return initialConfig.copy(
         arguments = arguments.associate { it.name to it.toPersisted() },
     )
 }
