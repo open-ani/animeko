@@ -9,17 +9,25 @@
 
 package me.him188.ani.app.domain.episode
 
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.flatMapLatest
+import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.flowOn
-import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.withTimeoutOrNull
 import me.him188.ani.app.data.models.subject.SubjectSeriesInfo
 import me.him188.ani.app.data.repository.subject.SubjectCollectionRepository
+import me.him188.ani.app.data.repository.subject.SubjectRelationsRepository
 import me.him188.ani.app.domain.usecase.UseCase
+import me.him188.ani.utils.logging.logger
+import me.him188.ani.utils.logging.warn
 import org.koin.core.component.KoinComponent
 import org.koin.core.component.inject
 import kotlin.coroutines.CoroutineContext
+import kotlin.time.Duration.Companion.seconds
 
 fun interface GetSubjectEpisodeInfoBundleFlowUseCase : UseCase {
     data class SubjectIdAndEpisodeId(
@@ -34,19 +42,21 @@ class GetSubjectEpisodeInfoBundleFlowUseCaseImpl(
     private val flowContext: CoroutineContext = Dispatchers.Default,
 ) : GetSubjectEpisodeInfoBundleFlowUseCase, KoinComponent {
     private val subjectCollectionRepository: SubjectCollectionRepository by inject()
+    private val subjectRelationsRepository: SubjectRelationsRepository by inject()
 
     override fun invoke(idsFlow: Flow<GetSubjectEpisodeInfoBundleFlowUseCase.SubjectIdAndEpisodeId>): Flow<SubjectEpisodeInfoBundle> {
         return idsFlow.flatMapLatest { (subjectId, episodeId) ->
-            // 这里只需要查询一个网络请求 — subject collection. 
-
-            subjectCollectionRepository.subjectCollectionFlow(subjectId).map { subject ->
+            combine(
+                subjectCollectionRepository.subjectCollectionFlow(subjectId),
+                seriesInfoFlow(subjectId),
+            ) { subject, seriesInfo ->
                 val episodeCollectionInfo = (subject.episodes.find { it.episodeId == episodeId }
                     ?: throw NoSuchElementException("Episode $episodeId not found in subject $subjectId"))
                 SubjectEpisodeInfoBundle(
                     subjectId, episodeId,
                     subject,
                     episodeCollectionInfo,
-                    seriesInfo = SubjectSeriesInfo.compute(subject),
+                    seriesInfo = seriesInfo ?: SubjectSeriesInfo.compute(subject),
                     subjectCompleted = EpisodeCollections.isSubjectCompleted(
                         subject.episodes.map { it.episodeInfo },
                         subject.recurrence,
@@ -54,5 +64,28 @@ class GetSubjectEpisodeInfoBundleFlowUseCaseImpl(
                 )
             }
         }.flowOn(flowContext)
+    }
+
+    /**
+     * 系列信息要加载主线上的其他条目才能识别分部. 只取第一个值: 系列信息变化会改变查询请求, 重建整个查询会话.
+     * 超时或失败时为 `null`, 退回只用本条目自己的信息, 不让播放等太久.
+     */
+    private fun seriesInfoFlow(subjectId: Int): Flow<SubjectSeriesInfo?> = flow {
+        val seriesInfo = try {
+            withTimeoutOrNull(SERIES_INFO_TIMEOUT) {
+                subjectRelationsRepository.subjectSeriesInfoFlow(subjectId).first()
+            }
+        } catch (e: CancellationException) {
+            throw e
+        } catch (e: Exception) {
+            logger.warn(e) { "Failed to load series info for subject $subjectId, falling back to the subject alone" }
+            null
+        }
+        emit(seriesInfo)
+    }
+
+    private companion object {
+        private val SERIES_INFO_TIMEOUT = 5.seconds
+        private val logger = logger<GetSubjectEpisodeInfoBundleFlowUseCaseImpl>()
     }
 }

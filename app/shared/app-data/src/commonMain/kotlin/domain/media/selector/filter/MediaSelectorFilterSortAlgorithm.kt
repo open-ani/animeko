@@ -12,6 +12,7 @@ package me.him188.ani.app.domain.media.selector.filter
 import me.him188.ani.app.data.models.preference.MediaPreference
 import me.him188.ani.app.data.models.preference.MediaPreference.Companion.ANY_FILTER
 import me.him188.ani.app.data.models.preference.MediaSelectorSettings
+import me.him188.ani.app.data.models.subject.SeasonPartNames
 import me.him188.ani.app.data.models.subject.SubjectInfo
 import me.him188.ani.app.domain.media.selector.MatchMetadata
 import me.him188.ani.app.domain.media.selector.MaybeExcludedMedia
@@ -19,6 +20,7 @@ import me.him188.ani.app.domain.media.selector.MediaExclusionReason
 import me.him188.ani.app.domain.media.selector.MediaSelectorContext
 import me.him188.ani.app.domain.media.selector.SubtitleKindPreference
 import me.him188.ani.app.domain.media.selector.UnsafeOriginalMediaAccess
+import me.him188.ani.app.domain.media.selector.filter.SeasonPartMatcher.Companion.containsNumber
 import me.him188.ani.app.domain.mediasource.MediaListFilter
 import me.him188.ani.app.domain.mediasource.MediaListFilterContext
 import me.him188.ani.app.domain.mediasource.MediaListFilters
@@ -105,12 +107,42 @@ class MediaSelectorFilterSortAlgorithm {
         val subjectNames = NormalizedNames(context.subjectInfo?.allNames.orEmpty())
         val seriesSubjectNames = NormalizedNames(context.subjectSeriesInfo?.seriesSubjectNamesWithoutSelf.orEmpty().toList())
 
+        // 分部条目的 WEB 资源按 SeasonPartMatcher 的规则归类与选集; 特别篇的集号与分部无关, 仍按上面的规则.
+        val seasonPart = context.subjectSeriesInfo?.seasonPart
+        val partMatcher = if (
+            seasonPart != null && subjectInfo != null && episodeInfo != null && mediaListFilterContext != null &&
+            episodeInfo.sort is EpisodeSort.Normal
+        ) {
+            SeasonPartMatcher(
+                part = seasonPart,
+                ownNames = subjectInfo.allNames,
+                sequelNames = context.subjectSeriesInfo.sequelSubjectNames,
+                siblingNames = context.subjectSeriesInfo.seriesSubjectNamesWithoutSelf,
+                episodeSort = episodeInfo.sort,
+                episodeEp = episodeInfo.ep,
+                fuzzyMatches = { name ->
+                    with(MediaListFilters.ContainsSubjectName) {
+                        mediaListFilterContext.applyOn(CandidateWithSubjectName(name))
+                    }
+                },
+            )
+        } else null
+        val entryNumbers = if (partMatcher != null) SeasonPartMatcher.collectEntryNumbers(list) else emptyMap()
+
         return list.map { media ->
             filterMedia(
                 media, preference, settings, context, mediaListFilterContext, episodeMatch,
-                subjectNames, seriesSubjectNames,
+                subjectNames, seriesSubjectNames, partMatcher, entryNumbers,
             )
         }
+    }
+
+    /**
+     * 只有条目名参与过滤的候选, 供名字规则单独调用.
+     */
+    private class CandidateWithSubjectName(override val subjectName: String) : MediaListFilter.Candidate {
+        override val originalTitle: String get() = subjectName
+        override val episodeRange: EpisodeRange? get() = null
     }
 
     /**
@@ -169,9 +201,6 @@ class MediaSelectorFilterSortAlgorithm {
     }
 
     @Suppress("PrivatePropertyName")
-    private val SEASON_TAILING = Regex("""第\s*(?<season>.+)\s*[部季]""")
-
-    @Suppress("PrivatePropertyName")
     private val REGEX_OVA_TAILING = Regex(".+OVA\\s*\\d*$", RegexOption.IGNORE_CASE)
 
     /**
@@ -186,6 +215,8 @@ class MediaSelectorFilterSortAlgorithm {
         episodeMatch: EpisodeMatch?,
         subjectNames: NormalizedNames,
         seriesSubjectNames: NormalizedNames,
+        partMatcher: SeasonPartMatcher?,
+        entryNumbers: Map<Triple<String, String?, String>, Set<Float>>,
     ): MaybeExcludedMedia {
         val mediaSubjectName = media.properties.subjectName
         val mediaSubjectNameOrOriginalTitle = mediaSubjectName ?: media.originalTitle
@@ -195,7 +226,10 @@ class MediaSelectorFilterSortAlgorithm {
         }
 
         // 由下面实现调用, 方便创建 MaybeExcludedMedia
-        fun include(): MaybeExcludedMedia {
+        fun include(
+            exactSubject: Boolean? = null,
+            episodeMatchKind: MatchMetadata.EpisodeMatchKind? = null,
+        ): MaybeExcludedMedia {
             return MaybeExcludedMedia.Included(
                 media,
                 metadata = calculateMatchMetadata(
@@ -205,15 +239,31 @@ class MediaSelectorFilterSortAlgorithm {
                     media.episodeRange,
                     context.episodeInfo?.sort,
                     context.episodeInfo?.ep,
+                    exactSubject,
+                    episodeMatchKind,
                 ),
             )
         }
 
         fun exclude(reason: MediaExclusionReason): MaybeExcludedMedia = MaybeExcludedMedia.Excluded(media, reason)
 
+        val partVerdict = if (partMatcher != null && media.kind == MediaSourceKind.WEB && mediaSubjectName != null) {
+            partMatcher.classify(mediaSubjectName)
+        } else null
+        val partEntryNumbers = if (partVerdict != null) entryNumbers[SeasonPartMatcher.entryKey(media)].orEmpty() else emptySet()
+        // 分部条目: 同一站点条目里只有一集对应当前剧集
+        val partTarget = if (partMatcher != null && partVerdict != null && partVerdict !is SeasonPartMatcher.Verdict.Excluded) {
+            partMatcher.targetNumber(partVerdict, partEntryNumbers)
+        } else null
+
         // 第 0 条: 先于本地缓存豁免, 否则看第 2 话时会自动选中第 1 话的缓存.
-        if (episodeMatch != null && !episodeMatch.matches(media)) {
-            return exclude(MediaExclusionReason.EpisodeMismatch(media.episodeRange))
+        if (episodeMatch != null) {
+            val matches = if (partVerdict != null && partVerdict !is SeasonPartMatcher.Verdict.Excluded) {
+                partTarget != null && media.episodeRange?.containsNumber(partTarget) == true
+            } else {
+                episodeMatch.matches(media)
+            }
+            if (!matches) return exclude(MediaExclusionReason.EpisodeMismatch(media.episodeRange))
         }
 
         if (media.isLocalCache()) return include() // 本地缓存总是要显示
@@ -244,6 +294,22 @@ class MediaSelectorFilterSortAlgorithm {
             }
         }
 
+        if (partVerdict != null && partMatcher != null) {
+            return when (partVerdict) {
+                is SeasonPartMatcher.Verdict.Excluded -> exclude(partVerdict.reason)
+                SeasonPartMatcher.Verdict.Merged, is SeasonPartMatcher.Verdict.Own -> {
+                    // 条目级候选 (不按集裁剪) 里, 合并条目只保留本部分区间内的集, 否则批量下载会按原始集号对到前面部分的集
+                    if (episodeMatch == null && !partMatcher.belongsToPart(partVerdict, partEntryNumbers, media.episodeRange)) {
+                        return exclude(MediaExclusionReason.FromSeriesSeason)
+                    }
+                    include(
+                        exactSubject = partVerdict is SeasonPartMatcher.Verdict.Merged || (partVerdict as? SeasonPartMatcher.Verdict.Own)?.exact == true,
+                        episodeMatchKind = partTarget?.let { partMatcher.episodeMatchKind(it) },
+                    )
+                }
+            }
+        }
+
         if (mediaSubjectName != null) {
             // 数据源可以准确拿到条目名称, 我们采用 specialEquals
 
@@ -256,7 +322,7 @@ class MediaSelectorFilterSortAlgorithm {
                 // 条目名称可能是上述后者简化的形式, 但数据源的结果是前者完整版的形式
                 // 额外判断一次简化的名称可以正确地排除掉类似这种情况的其他季度的资源.
                 if (seriesSubjectNames.names.isNotEmpty()) {
-                    val mediaSubjectNameSeasonSimplified = mediaSubjectName.replace(SEASON_TAILING, $$"${season}")
+                    val mediaSubjectNameSeasonSimplified = SeasonPartNames.seasonSimplified(mediaSubjectName)
                     val seriesName = seriesSubjectNames.firstEqualOrNull(
                         normalizedMediaSubjectName,
                         MediaListFilters.normalizeForCompare(mediaSubjectNameSeasonSimplified),
@@ -328,20 +394,26 @@ class MediaSelectorFilterSortAlgorithm {
         return include()
     }
 
+    /**
+     * @param exactSubject 条目名是否精确匹配, `null` 时按 [MediaListFilters.specialEquals] 判断. 分部条目的合并条目与合成别名也算精确.
+     * @param episodeMatchKind 剧集匹配等级, `null` 时按剧集范围是否包含 sort / ep 判断.
+     */
     private fun calculateMatchMetadata(
         contextSubjectNames: NormalizedNames,
         mediaSubjectName: String,
         normalizedMediaSubjectName: String,
         mediaEpisodeRange: EpisodeRange?,
         contextEpisodeSort: EpisodeSort?,
-        contextEpisodeEp: EpisodeSort?
+        contextEpisodeEp: EpisodeSort?,
+        exactSubject: Boolean? = null,
+        episodeMatchKind: MatchMetadata.EpisodeMatchKind? = null,
     ) = MatchMetadata(
-        subjectMatchKind = if (contextSubjectNames.anyEquals(normalizedMediaSubjectName)) {
+        subjectMatchKind = if (exactSubject ?: contextSubjectNames.anyEquals(normalizedMediaSubjectName)) {
             MatchMetadata.SubjectMatchKind.EXACT
         } else {
             MatchMetadata.SubjectMatchKind.FUZZY
         },
-        episodeMatchKind = if (mediaEpisodeRange != null) {
+        episodeMatchKind = episodeMatchKind ?: if (mediaEpisodeRange != null) {
             when {
                 contextEpisodeSort != null && contextEpisodeSort in mediaEpisodeRange -> {
                     MatchMetadata.EpisodeMatchKind.SORT

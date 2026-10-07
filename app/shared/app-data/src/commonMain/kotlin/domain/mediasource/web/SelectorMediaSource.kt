@@ -308,9 +308,9 @@ class SelectorMediaSource(
         return buildList {
             for (cache in caches) {
                 val episodes = cache.webEpisodeInfos
-                if (episodes.findMatchingEpisodeOrNull(probe.episodeSort, probe.episodeEp, probe.episodeName) == null) {
-                    continue
-                }
+                val fresh = episodes.findMatchingEpisodeOrNull(probe.episodeSort, probe.episodeEp, probe.episodeName) != null ||
+                        probe.offsetSort?.let { episodes.findMatchingEpisodeOrNull(it, null, null) } != null
+                if (!fresh) continue
                 addAll(
                     selectMedia(
                         episodes.asSequence(),
@@ -412,10 +412,10 @@ class SelectorMediaSource(
         if (!isSupportedByPlatformPlayer()) return emptySizedSource()
 
         val allSubjectNames = query.subjectNames.toSet()
-        val freshnessProbe = query.latestAiredEpisode()?.let {
-            SelectorEpisodeProbe(episodeSort = it.sort, episodeEp = it.ep, episodeName = it.name)
-        }
+        val freshnessProbe = query.latestAiredEpisode()?.let { query.probeFor(it.sort, it.ep, it.name) }
+            ?: query.probeFor(query.episodeSort, query.episodeEp, query.episodeName)
         val subjectId = query.subjectId.toIntOrNull()
+        val exactMatchSubjectNames = query.exactMatchSubjectNames
         fun searchQuery(name: String) = SelectorSearchQuery(
             subjectName = name,
             episodeSort = query.episodeSort,
@@ -435,7 +435,7 @@ class SelectorMediaSource(
             episodeName = query.episodeName,
         )
         return engine.searchChain(primary, fallback, remembered, subjectId, ::searchQuery) { media ->
-            media.anySubjectNameMatches(filterContext)
+            media.anySubjectNameMatches(filterContext) || media.anySubjectNameEquals(exactMatchSubjectNames)
         }.map { MediaMatch(it, MatchKind.FUZZY) }
     }
 
@@ -515,6 +515,19 @@ class SelectorMediaSource(
             override val finished: Flow<Boolean> get() = finishedState
             override val totalSize: Flow<Int?> get() = totalSizeState
         }
+    }
+
+    /**
+     * 以请求里的一集作为缓存陈旧判定的探针. 分部条目额外带上它在合并条目里的集号.
+     */
+    private fun MediaFetchRequest.probeFor(sort: EpisodeSort, ep: EpisodeSort?, name: String?): SelectorEpisodeProbe {
+        val epNumber = (ep as? EpisodeSort.Normal)?.number
+        return SelectorEpisodeProbe(
+            episodeSort = sort,
+            episodeEp = ep,
+            episodeName = name,
+            offsetSort = if (episodeOffset > 0 && epNumber != null) EpisodeSort((epNumber + episodeOffset).toString()) else null,
+        )
     }
 
     /**
@@ -604,6 +617,17 @@ private fun List<DefaultMedia>.anySubjectNameMatches(context: MediaListFilterCon
                 override val subjectName: String get() = media.properties.subjectName ?: media.originalTitle
             },
         )
+    }
+}
+
+/**
+ * 是否有资源的条目名精确等于 [names] 之一, 见 [MediaFetchRequest.exactMatchSubjectNames].
+ */
+private fun List<DefaultMedia>.anySubjectNameEquals(names: List<String>): Boolean {
+    if (names.isEmpty()) return false
+    return any { media ->
+        val subjectName = media.properties.subjectName ?: return@any false
+        names.any { MediaListFilters.specialEquals(subjectName, it) }
     }
 }
 

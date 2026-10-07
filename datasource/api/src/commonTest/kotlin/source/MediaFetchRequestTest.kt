@@ -33,4 +33,12 @@ class MediaFetchRequestTest {
     fun `same subject query compares fallback search keywords`() {
         assertFalse(request(listOf("基础名")).isSameSubjectQuery(request(emptyList())))
     }
+
+    @Test
+    fun `same subject query compares exact match names and episode offset`() {
+        val base = request(emptyList())
+        assertFalse(base.isSameSubjectQuery(base.copy(exactMatchSubjectNames = listOf("作品 Part.2"))))
+        assertFalse(base.isSameSubjectQuery(base.copy(episodeOffset = 12)))
+        assertTrue(base.copy(episodeOffset = 12).isSameSubjectQuery(base.copy(episodeOffset = 12, episodeId = "2")))
+    }
 }

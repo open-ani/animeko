@@ -85,6 +85,18 @@ data class MediaFetchRequest(
      * 若混入 [subjectNames], 第一季的资源就会通过名称匹配.
      */
     val fallbackSearchKeywords: List<String> = emptyList(),
+    /**
+     * 除 [subjectNames] 外, 条目名精确等于其中之一的资源也算是本条目的. 不用于搜索, 也不参与模糊匹配.
+     *
+     * 条目服务把一季拆成多个条目 (分部) 时, 站点常把各部分合并进第一部分的条目, 或者用「Part 2」「第二季」等条目服务没有收录的叫法.
+     * 这些资源要按 [episodeOffset] 裁剪, 数据源只用它判断搜索有没有找到条目, 不据此过滤.
+     */
+    val exactMatchSubjectNames: List<String> = emptyList(),
+    /**
+     * 本条目是分部时前面各部分的正片集数之和, 否则为 0.
+     * 站点把各部分合并进同一个条目时, 当前剧集在该条目里是第 `episodeOffset + episodeEp` 集.
+     */
+    val episodeOffset: Int = 0,
 ) {
     /**
      * 两个请求是否查询同一个条目: 条目 ID, 名称与剧集列表相同, 忽略仅作提示的当前剧集字段.
@@ -95,6 +107,8 @@ data class MediaFetchRequest(
                 subjectNameCN == other.subjectNameCN &&
                 subjectNames == other.subjectNames &&
                 fallbackSearchKeywords == other.fallbackSearchKeywords &&
+                exactMatchSubjectNames == other.exactMatchSubjectNames &&
+                episodeOffset == other.episodeOffset &&
                 episodes == other.episodes
 
     /**
@@ -135,6 +149,9 @@ fun MediaFetchRequest.toStringMultiline() = buildString {
     subjectNames.forEach { append("- ").appendLine(it) }
     append("fallbackSearchKeywords:").appendLine()
     fallbackSearchKeywords.forEach { append("- ").appendLine(it) }
+    append("exactMatchSubjectNames:").appendLine()
+    exactMatchSubjectNames.forEach { append("- ").appendLine(it) }
+    append("episodeOffset").append(": ").append(episodeOffset).appendLine()
     append("episodeSort").append(": ").append(episodeSort).appendLine()
     append("episodeName").append(": ").append(episodeName).appendLine()
     append("episodeEp").append(": ").append(episodeEp).appendLine()

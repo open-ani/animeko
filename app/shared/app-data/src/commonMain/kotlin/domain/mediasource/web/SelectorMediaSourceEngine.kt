@@ -87,6 +87,11 @@ data class SelectorEpisodeProbe(
     val episodeSort: EpisodeSort,
     val episodeEp: EpisodeSort?,
     val episodeName: String?,
+    /**
+     * 分部条目在合并条目里的集号 (`episodeOffset + ep`), 页面包含它也算命中. 不是分部时为 `null`.
+     * @see me.him188.ani.datasources.api.source.MediaFetchRequest.episodeOffset
+     */
+    val offsetSort: EpisodeSort? = null,
 )
 
 fun SelectorSearchQuery.toFilterContext() = MediaListFilterContext(

@@ -14,6 +14,7 @@ import kotlinx.serialization.json.Json
 import me.him188.ani.app.data.models.episode.EpisodeInfo
 import me.him188.ani.app.data.models.preference.MediaPreference
 import me.him188.ani.app.data.models.preference.MediaSelectorSettings
+import me.him188.ani.app.data.models.subject.SeasonPartInfo
 import me.him188.ani.app.data.models.subject.SubjectInfo
 import me.him188.ani.app.data.models.subject.SubjectSeriesInfo
 import me.him188.ani.app.domain.media.selector.MediaSelectorContext
@@ -72,8 +73,13 @@ class MediaSelectionTrace(
     }
 
     @Serializable
-    data class Series(val seasonSort: Int, val sequelNames: Set<String>, val otherNames: Set<String>) {
-        fun restore(): SubjectSeriesInfo = SubjectSeriesInfo(seasonSort, sequelNames, otherNames)
+    data class Series(
+        val seasonSort: Int,
+        val sequelNames: Set<String>,
+        val otherNames: Set<String>,
+        val seasonPart: SeasonPartInfo? = null,
+    ) {
+        fun restore(): SubjectSeriesInfo = SubjectSeriesInfo(seasonSort, sequelNames, otherNames, seasonPart)
     }
 
     @Serializable
@@ -105,7 +111,9 @@ class MediaSelectionTrace(
             fun capture(context: MediaSelectorContext, sourceIds: List<String>): Context = Context(
                 context.subjectFinished, context.mediaSourcePrecedence,
                 context.subtitlePreferences?.let { preferences -> SubtitleKind.entries.associateWith { preferences[it] } },
-                context.subjectSeriesInfo?.let { Series(it.seasonSort, it.sequelSubjectNames, it.seriesSubjectNamesWithoutSelf) },
+                context.subjectSeriesInfo?.let {
+                    Series(it.seasonSort, it.sequelSubjectNames, it.seriesSubjectNamesWithoutSelf, it.seasonPart)
+                },
                 context.subjectInfo?.let { Subject(it.subjectId, it.name, it.nameCn, it.aliases) },
                 context.episodeInfo?.copy(desc = ""),
                 context.mediaSourceTiers?.let { tiers -> sourceIds.associateWith { tiers[it].value } },
