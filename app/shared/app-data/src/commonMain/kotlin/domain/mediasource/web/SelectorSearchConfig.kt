@@ -254,10 +254,6 @@ data class SelectorAutoMatchConfig(
      */
     val preferShorterName: Boolean = true,
     /**
-     * 按条目名筛选搜索结果.
-     */
-    val filterBySubjectName: Boolean = true,
-    /**
      * 只保留集号与当前剧集一致的资源.
      */
     val filterByEpisodeSort: Boolean = true,
@@ -350,7 +346,6 @@ private class SelectorSearchConfigSurrogate(
     val defaultSubtitleLanguage: SubtitleLanguage = SubtitleLanguage.ChineseSimplified,
     val onlySupportsPlayers: List<String> = emptyList(),
     val filterByEpisodeSort: Boolean = SelectorAutoMatchConfig.Default.filterByEpisodeSort,
-    val filterBySubjectName: Boolean = SelectorAutoMatchConfig.Default.filterBySubjectName,
     val selectMedia: SelectorSearchConfig.SelectMediaConfig = SelectorSearchConfig.SelectMediaConfig(),
     val matchVideo: SelectorSearchConfig.MatchVideoConfig = SelectorSearchConfig.MatchVideoConfig(),
     /**
@@ -379,7 +374,6 @@ private class SelectorSearchConfigSurrogate(
         defaultSubtitleLanguage = config.defaultSubtitleLanguage,
         onlySupportsPlayers = config.onlySupportsPlayers,
         filterByEpisodeSort = config.autoMatch.filterByEpisodeSort,
-        filterBySubjectName = config.autoMatch.filterBySubjectName,
         selectMedia = config.selectMedia,
         matchVideo = config.matchVideo,
         autoMatch = config.autoMatch,
@@ -397,7 +391,6 @@ private class SelectorSearchConfigSurrogate(
                 SelectorSubjectFormatJsonPathIndexed.id -> selectorSubjectFormatJsonPathIndexed.preferShorterName
                 else -> selectorSubjectFormatA.preferShorterName
             },
-            filterBySubjectName = filterBySubjectName,
             filterByEpisodeSort = filterByEpisodeSort,
         )
         return SelectorSearchConfig(

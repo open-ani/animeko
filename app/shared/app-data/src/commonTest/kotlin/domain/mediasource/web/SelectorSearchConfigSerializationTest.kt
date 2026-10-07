@@ -47,8 +47,7 @@ class SelectorSearchConfigSerializationTest {
               "searchUseOnlyFirstWord": false,
               "searchRemoveSpecial": false,
               "searchUseSubjectNamesCount": 3,
-              "filterByEpisodeSort": false,
-              "filterBySubjectName": false
+              "filterByEpisodeSort": false
             }
             """.trimIndent(),
         )
@@ -59,7 +58,6 @@ class SelectorSearchConfigSerializationTest {
                 searchUseOnlyFirstWord = false,
                 searchRemoveSpecial = false,
                 searchUseSubjectNamesCount = 3,
-                filterBySubjectName = false,
                 filterByEpisodeSort = false,
             ),
             config.autoMatch,
@@ -189,7 +187,6 @@ class SelectorSearchConfigSerializationTest {
                 searchUseOnlyFirstWord = false,
                 searchRemoveSpecial = false,
                 searchUseSubjectNamesCount = 4,
-                filterBySubjectName = false,
                 filterByEpisodeSort = false,
             ),
         )
@@ -203,7 +200,6 @@ class SelectorSearchConfigSerializationTest {
         assertFalse(obj.getValue("searchUseOnlyFirstWord").jsonPrimitive.boolean)
         assertFalse(obj.getValue("searchRemoveSpecial").jsonPrimitive.boolean)
         assertEquals(4, obj.getValue("searchUseSubjectNamesCount").jsonPrimitive.int)
-        assertFalse(obj.getValue("filterBySubjectName").jsonPrimitive.boolean)
         assertFalse(obj.getValue("filterByEpisodeSort").jsonPrimitive.boolean)
     }
 

@@ -429,15 +429,8 @@ fun SelectorSearchConfig.orderSubjectsForAutoMatch(subjects: List<WebSearchSubje
     return subjects.sortedBy { it.name.length }
 }
 
-/**
- * If you change, you also need to change
- */
-internal fun SelectorSearchConfig.createFiltersForSubject(): List<MediaListFilter<MediaListFilterContext>> = buildList {
-//    if (filterBySubjectName) add(MediaListFilters.ContainsSubjectName)
-}
-
 internal fun SelectorSearchConfig.createFiltersForEpisode(): List<MediaListFilter<MediaListFilterContext>> = buildList {
-    // 不使用 filterBySubjectName, 因为 web 的剧集名称通常为 "第x集", 不包含 subject
+    // 不按条目名过滤: web 的剧集名称通常为 "第x集", 不包含条目名. 条目名匹配由 MediaSelector 负责.
     if (autoMatch.filterByEpisodeSort) add(MediaListFilters.ContainsAnyEpisodeInfo)
 }
 
