@@ -1817,6 +1817,7 @@
     <string name="settings_api_candidates_url">Candidate video URL JSONPath</string>
     <string name="settings_api_video_headers">Video request headers (JSON object)</string>
     <string name="settings_api_auto_match">Automatically match subjects</string>
+    <string name="settings_api_filter_by_subject_name">Filter by subject name</string>
     <string name="settings_api_tier">Source priority (lower is preferred)</string>
     <string name="settings_api_channel_tiers">Channel priorities (JSON object)</string>
     <string name="settings_api_configuration">Configuration</string>

@@ -61,6 +61,7 @@ import me.him188.ani.app.ui.lang.settings_api_episode_number
 import me.him188.ani.app.ui.lang.settings_api_episode_url
 import me.him188.ani.app.ui.lang.settings_api_episodes_path
 import me.him188.ani.app.ui.lang.settings_api_first_page
+import me.him188.ani.app.ui.lang.settings_api_filter_by_subject_name
 import me.him188.ani.app.ui.lang.settings_api_headers
 import me.him188.ani.app.ui.lang.settings_api_id_path
 import me.him188.ani.app.ui.lang.settings_api_items_path
@@ -81,7 +82,6 @@ import me.him188.ani.app.ui.lang.settings_api_video_headers
 import me.him188.ani.app.ui.lang.settings_api_website
 import me.him188.ani.app.ui.lang.settings_mediasource_selector_config_default_resolution
 import me.him188.ani.app.ui.lang.settings_mediasource_selector_config_default_subtitle_language
-import me.him188.ani.app.ui.lang.settings_mediasource_selector_config_filter_by_subject_name
 import me.him188.ani.app.ui.lang.settings_mediasource_selector_config_icon_url
 import me.him188.ani.app.ui.lang.settings_mediasource_selector_config_name
 import me.him188.ani.app.ui.lang.settings_mediasource_selector_config_search_subject_names_count
@@ -219,7 +219,7 @@ internal fun ApiConfigurationForm(state: ApiConfigurationFormState, enabled: Boo
     }
     ApiSection(stringResource(Lang.settings_api_matching)) {
         ApiSwitch(args.autoMatch, { edit { args -> args.copy(autoMatch = it) } }, Lang.settings_api_auto_match, enabled)
-        ApiSwitch(args.filterBySubjectName, { edit { args -> args.copy(filterBySubjectName = it) } }, Lang.settings_mediasource_selector_config_filter_by_subject_name, enabled)
+        ApiSwitch(args.filterBySubjectName, { edit { args -> args.copy(filterBySubjectName = it) } }, Lang.settings_api_filter_by_subject_name, enabled)
         field("searchNamesCount", Lang.settings_mediasource_selector_config_search_subject_names_count)
         ApiField(args.resolution, { edit { args -> args.copy(resolution = it) } }, Lang.settings_mediasource_selector_config_default_resolution, enabled)
         ApiField(args.subtitleLanguage, { edit { args -> args.copy(subtitleLanguage = it) } }, Lang.settings_mediasource_selector_config_default_subtitle_language, enabled)
