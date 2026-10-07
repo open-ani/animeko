@@ -11,11 +11,13 @@ import androidx.compose.ui.graphics.RectangleShape
 import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.graphics.vector.ImageVector
 import me.him188.ani.app.data.models.danmaku.DanmakuRegexFilter
+import me.him188.ani.app.data.models.preference.MediaSourceProxySettings
 import me.him188.ani.app.data.models.preference.VideoScaffoldConfig
 import me.him188.ani.app.ui.lang.Lang
 import me.him188.ani.app.ui.lang.settings_about_app_description
 import me.him188.ani.app.ui.lang.settings_appearance_description
 import me.him188.ani.app.ui.lang.settings_media_preference_description
+import me.him188.ani.app.ui.lang.settings_network_proxy_description
 import me.him188.ani.app.ui.lang.settings_player_description
 import me.him188.ani.app.ui.lang.settings_tab_about
 import me.him188.ani.app.ui.lang.settings_tab_appearance
@@ -24,6 +26,7 @@ import me.him188.ani.app.ui.lang.settings_tab_media_source
 import me.him188.ani.app.ui.lang.settings_tab_player
 import me.him188.ani.app.ui.lang.settings_tab_theme
 import me.him188.ani.app.ui.lang.settings_theme_palette
+import me.him188.ani.app.ui.lang.tv_settings_network
 import me.him188.ani.app.ui.lang.tv_settings_sources_description
 import org.jetbrains.compose.resources.DrawableResource
 import org.jetbrains.compose.resources.StringResource
@@ -35,6 +38,7 @@ internal enum class TvSettingsSection(val title: StringResource) {
     Player(Lang.settings_tab_player),
     Sources(Lang.settings_tab_media_source),
     Watching(Lang.settings_tab_media_selector),
+    Network(Lang.tv_settings_network),
     About(Lang.settings_tab_about),
 }
 
@@ -112,6 +116,12 @@ internal sealed interface TvSettingsDialog {
         val config: VideoScaffoldConfig,
     ) : TvSettingsDialog
 
+    data class Proxy(
+        override val origin: String,
+        override val title: String,
+        val config: MediaSourceProxySettings,
+    ) : TvSettingsDialog
+
     data class Info(
         override val origin: String,
         override val title: String,
@@ -184,5 +194,6 @@ internal fun TvSettingsSection.description(): String = when (this) {
     TvSettingsSection.Player -> stringResource(Lang.settings_player_description)
     TvSettingsSection.Sources -> stringResource(Lang.tv_settings_sources_description)
     TvSettingsSection.Watching -> stringResource(Lang.settings_media_preference_description)
+    TvSettingsSection.Network -> stringResource(Lang.settings_network_proxy_description)
     TvSettingsSection.About -> stringResource(Lang.settings_about_app_description)
 }

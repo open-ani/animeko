@@ -28,6 +28,9 @@ import kotlinx.coroutines.withContext
 import kotlinx.coroutines.withTimeout
 import me.him188.ani.app.data.models.danmaku.DanmakuRegexFilter
 import me.him188.ani.app.data.models.preference.NsfwMode
+import me.him188.ani.app.data.models.preference.ProxyAuthorization
+import me.him188.ani.app.data.models.preference.ProxyConfig
+import me.him188.ani.app.data.models.preference.ProxyMode
 import me.him188.ani.app.data.persistent.MemoryDataStore
 import me.him188.ani.app.data.repository.media.MediaSourceSubscriptionRepository
 import me.him188.ani.app.data.repository.media.MediaSourceSubscriptionsSaveData
@@ -56,6 +59,7 @@ import me.him188.ani.app.domain.session.SessionManager
 import me.him188.ani.app.domain.session.SessionState
 import me.him188.ani.app.domain.session.SessionStateProvider
 import me.him188.ani.app.domain.settings.NoProxyProvider
+import me.him188.ani.app.domain.settings.SettingsBasedProxyProvider
 import me.him188.ani.app.platform.GrantedPermissionManager
 import me.him188.ani.app.platform.PermissionManager
 import me.him188.ani.datasources.api.matcher.MediaSourceWebVideoMatcherLoader
@@ -113,6 +117,72 @@ class TvSettingsViewModelTest {
             assertEquals(NsfwMode.HIDE, restored.uiSettings.flow.first().searchSettings.nsfwMode)
             assertTrue(restored.uiSettings.flow.first().searchSettings.ignoreDoneAndDroppedSubjects)
             assertEquals(123uL, restored.themeSettings.flow.first().seedColorValue)
+        } finally {
+            vm.backgroundScope.coroutineContext.job.cancelAndJoin()
+        }
+    }
+
+    @Test
+    fun proxyEditsPersistAndReachTheSharedProxyProvider() = runTest {
+        val store = MemoryDataStore(emptyPreferences())
+        val repository = PreferencesRepositoryImpl(store)
+        repository.videoScaffoldConfig.update { copy(autoPlayNext = false) }
+        val original = ProxyConfig("http://old-proxy:8080", ProxyAuthorization("old-user", "old-password"))
+        repository.proxySettings.update { copy(default = default.copy(mode = ProxyMode.DISABLED, customConfig = original)) }
+        val vm = createViewModel(
+            repository, DanmakuRegexFilterRepositoryImpl(MemoryDataStore(emptyList())), TestSources(),
+            MediaSourceSubscriptionRepository(MemoryDataStore(MediaSourceSubscriptionsSaveData.Default.copy(list = emptyList()))), { emptyList() },
+        )
+        val provider = SettingsBasedProxyProvider(repository, vm.backgroundScope)
+        try {
+            vm.awaitState { it.loaded }
+            assertEquals(original, vm.uiState.value.proxy.default.customConfig)
+            val config = ProxyConfig("socks5://192.168.1.2:1080", ProxyAuthorization(" tv-user ", " tv-password "))
+            vm.dispatchAndAwait(TvSettingsIntent.SaveProxy(ProxyMode.CUSTOM, config.copy(url = "  ${config.url}  ")))
+            vm.awaitState { it.proxy.default.customConfig == config }
+            withContext(Dispatchers.Default) {
+                withTimeout(5_000) { assertEquals(config, provider.proxy.first { it == config }) }
+            }
+            val restored = PreferencesRepositoryImpl(store)
+            assertEquals(ProxyMode.CUSTOM, restored.proxySettings.flow.first().default.mode)
+            assertEquals(config, restored.proxySettings.flow.first().default.customConfig)
+            assertFalse(restored.videoScaffoldConfig.flow.first().autoPlayNext)
+
+            vm.dispatchAndAwait(TvSettingsIntent.SaveProxy(ProxyMode.DISABLED, config))
+            vm.awaitState { it.proxy.default.mode == ProxyMode.DISABLED }
+            withContext(Dispatchers.Default) {
+                withTimeout(5_000) { assertNull(provider.proxy.first { it == null }) }
+            }
+            assertEquals(config, restored.proxySettings.flow.first().default.customConfig)
+            vm.dispatchAndAwait(TvSettingsIntent.SaveProxy(ProxyMode.SYSTEM, config))
+            vm.awaitState { it.proxy.default.mode == ProxyMode.SYSTEM }
+            assertEquals(config, restored.proxySettings.flow.first().default.customConfig)
+        } finally {
+            vm.backgroundScope.coroutineContext.job.cancelAndJoin()
+        }
+    }
+
+    @Test
+    fun invalidCustomProxyIsRejectedButCanStillBeDisabled() = runTest {
+        val repository = PreferencesRepositoryImpl(MemoryDataStore(emptyPreferences()))
+        val invalid = ProxyConfig("not a proxy address")
+        repository.proxySettings.update { copy(default = default.copy(mode = ProxyMode.CUSTOM, customConfig = invalid)) }
+        val before = repository.proxySettings.flow.first()
+        val vm = createViewModel(
+            repository, DanmakuRegexFilterRepositoryImpl(MemoryDataStore(emptyList())), TestSources(),
+            MediaSourceSubscriptionRepository(MemoryDataStore(MediaSourceSubscriptionsSaveData.Default.copy(list = emptyList()))), { emptyList() },
+        )
+        try {
+            for (address in listOf("", "proxy:8080", "ftp://proxy:21", "http://proxy:99999")) {
+                vm.dispatchAndAwait(TvSettingsIntent.SaveProxy(ProxyMode.CUSTOM, ProxyConfig(address)))
+                assertEquals(TvSettingsEvent.SaveFailed, vm.events.first())
+                assertEquals(before, repository.proxySettings.flow.first())
+            }
+            vm.dispatchAndAwait(TvSettingsIntent.SaveProxy(ProxyMode.DISABLED, invalid))
+            assertEquals(ProxyMode.DISABLED, repository.proxySettings.flow.first().default.mode)
+            assertEquals(invalid, repository.proxySettings.flow.first().default.customConfig)
+            vm.dispatchAndAwait(TvSettingsIntent.SaveProxy(ProxyMode.CUSTOM, ProxyConfig("https://proxy:8443")))
+            assertNull(repository.proxySettings.flow.first().default.customConfig.authorization)
         } finally {
             vm.backgroundScope.coroutineContext.job.cancelAndJoin()
         }

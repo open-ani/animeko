@@ -128,6 +128,8 @@
     <string name="tv_login_qr_rejected">已在手機上拒絕</string>
     <string name="tv_login_qr_failed">QR Code 載入失敗, 請檢查網路</string>
     <string name="tv_login_qr_refresh">重新整理 QR Code</string>
+    <string name="tv_settings_network">網路</string>
+    <string name="tv_settings_proxy_address_invalid">請輸入有效的 HTTP(S) 或 SOCKS 代理位址</string>
 </resources>
 
 <!--@formatter:on-->
