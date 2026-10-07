@@ -1,0 +1,9432 @@
+{
+ "source": "site-f",
+ "groups": [
+  {
+   "base": "亚人",
+   "partIds": [
+    146093,
+    181640
+   ],
+   "mainline": [
+    {
+     "id": 146093,
+     "names": [
+      "亚人",
+      "亜人",
+      "Ajin",
+      "Demi-Human",
+      "亞人"
+     ],
+     "mainEpisodeCount": 13
+    },
+    {
+     "id": 181640,
+     "names": [
+      "亚人 第2部分",
+      "亜人 第2クール",
+      "Ajin",
+      "Demi-Human"
+     ],
+     "mainEpisodeCount": 13
+    }
+   ],
+   "entries": [
+    {
+     "siteId": "1",
+     "name": "亚人",
+     "numbers": [
+      26,
+      25,
+      24,
+      23,
+      22,
+      21,
+      20,
+      19,
+      18,
+      17,
+      16,
+      15,
+      14,
+      13,
+      12,
+      11,
+      10,
+      9,
+      8,
+      7,
+      6,
+      5,
+      4,
+      3,
+      2,
+      1
+     ]
+    },
+    {
+     "siteId": "2",
+     "name": "亚人OAD",
+     "numbers": []
+    },
+    {
+     "siteId": "3",
+     "name": "亚人 第二季",
+     "numbers": [
+      13,
+      12,
+      11,
+      10,
+      9,
+      8,
+      7,
+      6,
+      5,
+      4,
+      3,
+      2,
+      1
+     ]
+    },
+    {
+     "siteId": "4",
+     "name": "亚人酱有话要说",
+     "numbers": [
+      13,
+      12,
+      11,
+      10,
+      9,
+      8,
+      7,
+      6,
+      5,
+      4,
+      3,
+      2,
+      1
+     ]
+    }
+   ],
+   "cases": [
+    {
+     "subjectId": 146093,
+     "index": 1,
+     "sort": 1,
+     "ep": 1,
+     "truth": [
+      {
+       "siteId": "1",
+       "number": 1
+      },
+      {
+       "siteId": "4",
+       "number": 1
+      }
+     ],
+     "verifiable": true,
+     "flags": [],
+     "conventions": [
+      "own"
+     ]
+    },
+    {
+     "subjectId": 146093,
+     "index": 7,
+     "sort": 7,
+     "ep": 7,
+     "truth": [
+      {
+       "siteId": "1",
+       "number": 7
+      },
+      {
+       "siteId": "4",
+       "number": 7
+      }
+     ],
+     "verifiable": true,
+     "flags": [],
+     "conventions": [
+      "own"
+     ]
+    },
+    {
+     "subjectId": 146093,
+     "index": 13,
+     "sort": 13,
+     "ep": 13,
+     "truth": [
+      {
+       "siteId": "1",
+       "number": 13
+      },
+      {
+       "siteId": "4",
+       "number": 13
+      }
+     ],
+     "verifiable": true,
+     "flags": [],
+     "conventions": [
+      "own"
+     ]
+    },
+    {
+     "subjectId": 181640,
+     "index": 1,
+     "sort": 14,
+     "ep": 1,
+     "truth": [
+      {
+       "siteId": "3",
+       "number": 1
+      },
+      {
+       "siteId": "1",
+       "number": 14
+      }
+     ],
+     "verifiable": true,
+     "flags": [],
+     "conventions": [
+      "A:restart",
+      "C:merged"
+     ]
+    },
+    {
+     "subjectId": 181640,
+     "index": 7,
+     "sort": 20,
+     "ep": 7,
+     "truth": [
+      {
+       "siteId": "3",
+       "number": 7
+      },
+      {
+       "siteId": "1",
+       "number": 20
+      }
+     ],
+     "verifiable": true,
+     "flags": [],
+     "conventions": [
+      "A:restart",
+      "C:merged"
+     ]
+    },
+    {
+     "subjectId": 181640,
+     "index": 13,
+     "sort": 26,
+     "ep": 13,
+     "truth": [
+      {
+       "siteId": "3",
+       "number": 13
+      },
+      {
+       "siteId": "1",
+       "number": 26
+      }
+     ],
+     "verifiable": true,
+     "flags": [],
+     "conventions": [
+      "A:restart",
+      "C:merged"
+     ]
+    }
+   ]
+  },
+  {
+   "base": "东方少年",
+   "partIds": [
+    323655,
+    375511
+   ],
+   "mainline": [
+    {
+     "id": 323655,
+     "names": [
+      "东方少年",
+      "オリエント",
+      "オリエント 第1クール",
+      "オリエント 安芸旅立ち編",
+      "ORIENT"
+     ],
+     "mainEpisodeCount": 12
+    },
+    {
+     "id": 375511,
+     "names": [
+      "东方少年 第2部分",
+      "オリエント 第2クール",
+      "东方少年 淡路岛激斗篇",
+      "オリエント 淡路島激闘編",
+      "ORIENT 2nd Season"
+     ],
+     "mainEpisodeCount": 12
+    }
+   ],
+   "entries": [
+    {
+     "siteId": "1",
+     "name": "东方少年",
+     "numbers": [
+      12,
+      11,
+      10,
+      9,
+      8,
+      7,
+      6,
+      5,
+      4,
+      3,
+      2,
+      1
+     ]
+    },
+    {
+     "siteId": "2",
+     "name": "东方少年 第二季",
+     "numbers": [
+      12,
+      11,
+      10,
+      9,
+      8,
+      7,
+      6,
+      5,
+      4,
+      3,
+      2,
+      1
+     ]
+    }
+   ],
+   "cases": [
+    {
+     "subjectId": 323655,
+     "index": 1,
+     "sort": 1,
+     "ep": 1,
+     "truth": [
+      {
+       "siteId": "1",
+       "number": 1
+      }
+     ],
+     "verifiable": true,
+     "flags": [],
+     "conventions": [
+      "own"
+     ]
+    },
+    {
+     "subjectId": 323655,
+     "index": 6,
+     "sort": 6,
+     "ep": 6,
+     "truth": [
+      {
+       "siteId": "1",
+       "number": 6
+      }
+     ],
+     "verifiable": true,
+     "flags": [],
+     "conventions": [
+      "own"
+     ]
+    },
+    {
+     "subjectId": 323655,
+     "index": 12,
+     "sort": 12,
+     "ep": 12,
+     "truth": [
+      {
+       "siteId": "1",
+       "number": 12
+      }
+     ],
+     "verifiable": true,
+     "flags": [],
+     "conventions": [
+      "own"
+     ]
+    },
+    {
+     "subjectId": 375511,
+     "index": 1,
+     "sort": 13,
+     "ep": 1,
+     "truth": [
+      {
+       "siteId": "2",
+       "number": 1
+      }
+     ],
+     "verifiable": true,
+     "flags": [],
+     "conventions": [
+      "A:restart"
+     ]
+    },
+    {
+     "subjectId": 375511,
+     "index": 6,
+     "sort": 18,
+     "ep": 6,
+     "truth": [
+      {
+       "siteId": "2",
+       "number": 6
+      }
+     ],
+     "verifiable": true,
+     "flags": [],
+     "conventions": [
+      "A:restart"
+     ]
+    },
+    {
+     "subjectId": 375511,
+     "index": 12,
+     "sort": 24,
+     "ep": 12,
+     "truth": [
+      {
+       "siteId": "2",
+       "number": 12
+      }
+     ],
+     "verifiable": true,
+     "flags": [],
+     "conventions": [
+      "A:restart"
+     ]
+    }
+   ]
+  },
+  {
+   "base": "虫师 续章",
+   "partIds": [
+    92705,
+    106207
+   ],
+   "mainline": [
+    {
+     "id": 340,
+     "names": [
+      "虫师",
+      "蟲師"
+     ],
+     "mainEpisodeCount": 26
+    },
+    {
+     "id": 88473,
+     "names": [
+      "虫师 特別篇 蚀日之翳",
+      "蟲師 特別篇 日蝕む翳"
+     ],
+     "mainEpisodeCount": 1
+    },
+    {
+     "id": 92705,
+     "names": [
+      "虫师 续章",
+      "蟲師 続章",
+      "Mushi-Shi: Next Passage",
+      "Mushishi Zoku Shou",
+      "虫师 续章 前半期",
+      "虫师 续章 第1期"
+     ],
+     "mainEpisodeCount": 10
+    },
+    {
+     "id": 106207,
+     "names": [
+      "虫师 续章 第2部分",
+      "蟲師 続章 第2クール",
+      "Mushishi Zoku Shou 2",
+      "Mushishi Zoku Shou (2014)",
+      "Mushi-Shi The Next Passage (2014)",
+      "虫师 续章 第2期",
+      "虫师 续章 后半期"
+     ],
+     "mainEpisodeCount": 10
+    },
+    {
+     "id": 120700,
+     "names": [
+      "虫师 特别篇 铃之雫",
+      "蟲師 特別編「鈴の雫」"
+     ],
+     "mainEpisodeCount": 1
+    }
+   ],
+   "entries": [
+    {
+     "siteId": "1",
+     "name": "虫师",
+     "numbers": [
+      26,
+      25,
+      24,
+      23,
+      22,
+      21,
+      20,
+      19,
+      18,
+      17,
+      16,
+      15,
+      14,
+      13,
+      12,
+      11,
+      10,
+      9,
+      8,
+      7,
+      6,
+      5,
+      4,
+      3,
+      2,
+      1,
+      1
+     ]
+    },
+    {
+     "siteId": "2",
+     "name": "虫师 铃之滴",
+     "numbers": [
+      1
+     ]
+    },
+    {
+     "siteId": "3",
+     "name": "虫师 第二季",
+     "numbers": [
+      22,
+      21,
+      20,
+      19,
+      18,
+      17,
+      16,
+      15,
+      14,
+      13,
+      12,
+      11,
+      10,
+      9,
+      8,
+      7,
+      6,
+      5,
+      4,
+      3,
+      2,
+      1
+     ]
+    },
+    {
+     "siteId": "4",
+     "name": "虫师 蚀日之翳",
+     "numbers": []
+    }
+   ],
+   "cases": [
+    {
+     "subjectId": 92705,
+     "index": 1,
+     "sort": 1,
+     "ep": 1,
+     "truth": [],
+     "verifiable": true,
+     "flags": [],
+     "conventions": []
+    },
+    {
+     "subjectId": 92705,
+     "index": 5,
+     "sort": 5,
+     "ep": 5,
+     "truth": [],
+     "verifiable": true,
+     "flags": [],
+     "conventions": []
+    },
+    {
+     "subjectId": 92705,
+     "index": 10,
+     "sort": 10,
+     "ep": 10,
+     "truth": [],
+     "verifiable": true,
+     "flags": [],
+     "conventions": []
+    },
+    {
+     "subjectId": 106207,
+     "index": 1,
+     "sort": 11,
+     "ep": 1,
+     "truth": [],
+     "verifiable": true,
+     "flags": [],
+     "conventions": []
+    },
+    {
+     "subjectId": 106207,
+     "index": 5,
+     "sort": 15,
+     "ep": 5,
+     "truth": [],
+     "verifiable": true,
+     "flags": [],
+     "conventions": []
+    },
+    {
+     "subjectId": 106207,
+     "index": 10,
+     "sort": 20,
+     "ep": 10,
+     "truth": [],
+     "verifiable": true,
+     "flags": [],
+     "conventions": []
+    }
+   ]
+  },
+  {
+   "base": "赤发白雪姬",
+   "partIds": [
+    126034,
+    145407
+   ],
+   "mainline": [
+    {
+     "id": 126034,
+     "names": [
+      "赤发白雪姬",
+      "赤髪の白雪姫",
+      "Akagami no Shirayuki-hime",
+      "Akagami no Shirayuki hime",
+      "Snow White with the Red Hair",
+      "赤髮白雪姬",
+      "红发的白雪公主"
+     ],
+     "mainEpisodeCount": 12
+    },
+    {
+     "id": 145407,
+     "names": [
+      "赤发白雪姬 第2部分",
+      "赤髪の白雪姫 第2クール",
+      "akagami s2, akagamihime 2",
+      "Akagami no Shirayuki-hime S2",
+      "Snow White with the Red Hair (2016)",
+      "Akagami no Shirayuki-hime (2016)",
+      "赤发白雪姬 第二季",
+      "红发的白雪公主 第2部分"
+     ],
+     "mainEpisodeCount": 12
+    }
+   ],
+   "entries": [
+    {
+     "siteId": "1",
+     "name": "赤发白雪姬",
+     "numbers": [
+      12,
+      11,
+      10,
+      9,
+      8,
+      7,
+      6,
+      5,
+      4,
+      3,
+      2,
+      1
+     ]
+    },
+    {
+     "siteId": "2",
+     "name": "赤发白雪姬OAD",
+     "numbers": [
+      1
+     ]
+    },
+    {
+     "siteId": "3",
+     "name": "赤发白雪姬 第二季",
+     "numbers": [
+      24,
+      23,
+      22,
+      21,
+      20,
+      19,
+      18,
+      17,
+      16,
+      15,
+      14,
+      13,
+      12,
+      11,
+      10,
+      9,
+      8,
+      7,
+      6,
+      5,
+      4,
+      3,
+      2,
+      1
+     ]
+    }
+   ],
+   "cases": [
+    {
+     "subjectId": 126034,
+     "index": 1,
+     "sort": 1,
+     "ep": 1,
+     "truth": [
+      {
+       "siteId": "2",
+       "number": 1
+      },
+      {
+       "siteId": "1",
+       "number": 1
+      }
+     ],
+     "verifiable": true,
+     "flags": [],
+     "conventions": [
+      "own"
+     ]
+    },
+    {
+     "subjectId": 126034,
+     "index": 6,
+     "sort": 6,
+     "ep": 6,
+     "truth": [
+      {
+       "siteId": "1",
+       "number": 6
+      }
+     ],
+     "verifiable": true,
+     "flags": [],
+     "conventions": [
+      "own"
+     ]
+    },
+    {
+     "subjectId": 126034,
+     "index": 12,
+     "sort": 12,
+     "ep": 12,
+     "truth": [
+      {
+       "siteId": "1",
+       "number": 12
+      }
+     ],
+     "verifiable": true,
+     "flags": [],
+     "conventions": [
+      "own"
+     ]
+    },
+    {
+     "subjectId": 145407,
+     "index": 1,
+     "sort": 13,
+     "ep": 1,
+     "truth": [
+      {
+       "siteId": "3",
+       "number": 13
+      }
+     ],
+     "verifiable": true,
+     "flags": [],
+     "conventions": [
+      "C:merged-own-named"
+     ]
+    },
+    {
+     "subjectId": 145407,
+     "index": 6,
+     "sort": 18,
+     "ep": 6,
+     "truth": [
+      {
+       "siteId": "3",
+       "number": 18
+      }
+     ],
+     "verifiable": true,
+     "flags": [],
+     "conventions": [
+      "C:merged-own-named"
+     ]
+    },
+    {
+     "subjectId": 145407,
+     "index": 12,
+     "sort": 24,
+     "ep": 12,
+     "truth": [
+      {
+       "siteId": "3",
+       "number": 24
+      }
+     ],
+     "verifiable": true,
+     "flags": [],
+     "conventions": [
+      "C:merged-own-named"
+     ]
+    }
+   ]
+  },
+  {
+   "base": "非枪人生",
+   "partIds": [
+    277627,
+    291479
+   ],
+   "mainline": [
+    {
+     "id": 277627,
+     "names": [
+      "非枪人生",
+      "ノー・ガンズ・ライフ",
+      "NO GUNS LIFE"
+     ],
+     "mainEpisodeCount": 12
+    },
+    {
+     "id": 291479,
+     "names": [
+      "非枪人生 第2部分",
+      "ノー・ガンズ・ライフ 第2クール",
+      "NO GUNS LIFE 2nd season"
+     ],
+     "mainEpisodeCount": 12
+    }
+   ],
+   "entries": [
+    {
+     "siteId": "1",
+     "name": "非枪人生",
+     "numbers": [
+      12,
+      11,
+      10,
+      9,
+      8,
+      7,
+      6,
+      5,
+      4,
+      3,
+      2,
+      1
+     ]
+    },
+    {
+     "siteId": "2",
+     "name": "非枪人生 第2部分",
+     "numbers": [
+      24,
+      23,
+      22,
+      21,
+      20,
+      19,
+      18,
+      17,
+      16,
+      15,
+      14,
+      13,
+      12,
+      11,
+      10,
+      9,
+      8,
+      7,
+      6,
+      5,
+      4,
+      3,
+      2,
+      1
+     ]
+    }
+   ],
+   "cases": [
+    {
+     "subjectId": 277627,
+     "index": 1,
+     "sort": 1,
+     "ep": 1,
+     "truth": [
+      {
+       "siteId": "1",
+       "number": 1
+      }
+     ],
+     "verifiable": true,
+     "flags": [],
+     "conventions": [
+      "own"
+     ]
+    },
+    {
+     "subjectId": 277627,
+     "index": 6,
+     "sort": 6,
+     "ep": 6,
+     "truth": [
+      {
+       "siteId": "1",
+       "number": 6
+      }
+     ],
+     "verifiable": true,
+     "flags": [],
+     "conventions": [
+      "own"
+     ]
+    },
+    {
+     "subjectId": 277627,
+     "index": 12,
+     "sort": 12,
+     "ep": 12,
+     "truth": [
+      {
+       "siteId": "1",
+       "number": 12
+      }
+     ],
+     "verifiable": true,
+     "flags": [],
+     "conventions": [
+      "own"
+     ]
+    },
+    {
+     "subjectId": 291479,
+     "index": 1,
+     "sort": 13,
+     "ep": 1,
+     "truth": [
+      {
+       "siteId": "2",
+       "number": 13
+      }
+     ],
+     "verifiable": true,
+     "flags": [],
+     "conventions": [
+      "C:merged-own-named"
+     ]
+    },
+    {
+     "subjectId": 291479,
+     "index": 6,
+     "sort": 18,
+     "ep": 6,
+     "truth": [
+      {
+       "siteId": "2",
+       "number": 18
+      }
+     ],
+     "verifiable": true,
+     "flags": [],
+     "conventions": [
+      "C:merged-own-named"
+     ]
+    },
+    {
+     "subjectId": 291479,
+     "index": 12,
+     "sort": 24,
+     "ep": 12,
+     "truth": [
+      {
+       "siteId": "2",
+       "number": 24
+      }
+     ],
+     "verifiable": true,
+     "flags": [],
+     "conventions": [
+      "C:merged-own-named"
+     ]
+    }
+   ]
+  },
+  {
+   "base": "间谍过家家",
+   "partIds": [
+    329906,
+    373267
+   ],
+   "mainline": [
+    {
+     "id": 329906,
+     "names": [
+      "间谍过家家",
+      "SPY×FAMILY",
+      "Spy x Family",
+      "スパイファミリー",
+      "SPY×FAMILY间谍家家酒(港/台)"
+     ],
+     "mainEpisodeCount": 12
+    },
+    {
+     "id": 373267,
+     "names": [
+      "间谍过家家 第2部分",
+      "SPY×FAMILY 第2クール",
+      "Spy x Family (2022)",
+      "スパイファミリー 第2クール",
+      "SPY×FAMILY Part 2"
+     ],
+     "mainEpisodeCount": 13
+    },
+    {
+     "id": 411427,
+     "names": [
+      "间谍过家家 第二季",
+      "SPY×FAMILY Season 2"
+     ],
+     "mainEpisodeCount": 12
+    },
+    {
+     "id": 498378,
+     "names": [
+      "间谍过家家 第三季",
+      "SPY×FAMILY Season 3"
+     ],
+     "mainEpisodeCount": 13
+    }
+   ],
+   "entries": [
+    {
+     "siteId": "1",
+     "name": "间谍过家家",
+     "numbers": [
+      25,
+      24,
+      23,
+      22,
+      21,
+      20,
+      19,
+      18,
+      17,
+      16,
+      15,
+      14,
+      13,
+      12,
+      11,
+      10,
+      9,
+      8,
+      7,
+      6,
+      5,
+      4,
+      3,
+      2,
+      1
+     ]
+    },
+    {
+     "siteId": "2",
+     "name": "间谍过家家 第二季",
+     "numbers": [
+      24,
+      22,
+      21,
+      20,
+      19,
+      18,
+      17,
+      16,
+      15,
+      14,
+      13,
+      12,
+      11,
+      10,
+      9,
+      8,
+      7,
+      6,
+      5,
+      4,
+      3,
+      2,
+      1
+     ]
+    },
+    {
+     "siteId": "3",
+     "name": "间谍过家家 第三季",
+     "numbers": [
+      13,
+      12,
+      11,
+      10,
+      9,
+      8,
+      7,
+      6,
+      5,
+      4,
+      3,
+      2,
+      1
+     ]
+    }
+   ],
+   "cases": [
+    {
+     "subjectId": 329906,
+     "index": 1,
+     "sort": 1,
+     "ep": 1,
+     "truth": [
+      {
+       "siteId": "1",
+       "number": 1
+      }
+     ],
+     "verifiable": true,
+     "flags": [],
+     "conventions": [
+      "own"
+     ]
+    },
+    {
+     "subjectId": 329906,
+     "index": 6,
+     "sort": 6,
+     "ep": 6,
+     "truth": [
+      {
+       "siteId": "1",
+       "number": 6
+      }
+     ],
+     "verifiable": true,
+     "flags": [],
+     "conventions": [
+      "own"
+     ]
+    },
+    {
+     "subjectId": 329906,
+     "index": 12,
+     "sort": 12,
+     "ep": 12,
+     "truth": [
+      {
+       "siteId": "1",
+       "number": 12
+      }
+     ],
+     "verifiable": true,
+     "flags": [],
+     "conventions": [
+      "own"
+     ]
+    },
+    {
+     "subjectId": 373267,
+     "index": 1,
+     "sort": 13,
+     "ep": 1,
+     "truth": [
+      {
+       "siteId": "1",
+       "number": 13
+      }
+     ],
+     "verifiable": true,
+     "flags": [],
+     "conventions": [
+      "C:merged"
+     ]
+    },
+    {
+     "subjectId": 373267,
+     "index": 7,
+     "sort": 19,
+     "ep": 7,
+     "truth": [
+      {
+       "siteId": "1",
+       "number": 19
+      }
+     ],
+     "verifiable": true,
+     "flags": [],
+     "conventions": [
+      "C:merged"
+     ]
+    },
+    {
+     "subjectId": 373267,
+     "index": 13,
+     "sort": 25,
+     "ep": 13,
+     "truth": [
+      {
+       "siteId": "1",
+       "number": 25
+      }
+     ],
+     "verifiable": true,
+     "flags": [],
+     "conventions": [
+      "C:merged"
+     ]
+    }
+   ]
+  },
+  {
+   "base": "石纪元 新世界",
+   "partIds": [
+    363101,
+    424372
+   ],
+   "mainline": [
+    {
+     "id": 266794,
+     "names": [
+      "石纪元",
+      "Dr.STONE"
+     ],
+     "mainEpisodeCount": 24
+    },
+    {
+     "id": 296261,
+     "names": [
+      "石纪元 石之战争",
+      "Dr.STONE STONE WARS"
+     ],
+     "mainEpisodeCount": 11
+    },
+    {
+     "id": 331479,
+     "names": [
+      "石纪元 龙水",
+      "Dr.STONE 龍水"
+     ],
+     "mainEpisodeCount": 1
+    },
+    {
+     "id": 363101,
+     "names": [
+      "石纪元 新世界",
+      "Dr.STONE NEW WORLD",
+      "Ｄｒ．ＳＴＯＮＥ 石纪元 第三季",
+      "新石纪 新世界",
+      "新石纪 第三季"
+     ],
+     "mainEpisodeCount": 11
+    },
+    {
+     "id": 424372,
+     "names": [
+      "石纪元 新世界 第2部分",
+      "Dr.STONE NEW WORLD 第2クール",
+      "Dr. STONE: NEW WORLD Part 2",
+      "Ｄｒ．ＳＴＯＮＥ 石纪元 第三季 第2部分",
+      "新石纪 新世界 第2部分",
+      "新石纪 第三季 第2部分"
+     ],
+     "mainEpisodeCount": 11
+    },
+    {
+     "id": 471578,
+     "names": [
+      "石纪元 科学与未来",
+      "Dr.STONE SCIENCE FUTURE",
+      "Ｄｒ．ＳＴＯＮＥ 石纪元 第四季",
+      "新石纪 科学与未来",
+      "新石纪 第四季"
+     ],
+     "mainEpisodeCount": 12
+    },
+    {
+     "id": 508003,
+     "names": [
+      "石纪元 科学与未来 第2部分",
+      "Dr.STONE SCIENCE FUTURE 第2クール",
+      "Dr. STONE: SCIENCE FUTURE Part 2",
+      "新石纪 科学与未来 第2部分",
+      "石纪元 第四季 第2部分",
+      "新石纪 第四季 第2部分",
+      "Dr. STONE SCIENCE FUTURE Cour 2"
+     ],
+     "mainEpisodeCount": 12
+    },
+    {
+     "id": 508004,
+     "names": [
+      "石纪元 科学与未来 第3部分",
+      "Dr.STONE SCIENCE FUTURE 第3クール",
+      "Dr. STONE: SCIENCE FUTURE Part 3",
+      "新石纪 科学与未来 第3部分",
+      "石纪元 第四季 第3部分",
+      "新石纪 第四季 第3部分",
+      "Dr. Stone: Science Future 3"
+     ],
+     "mainEpisodeCount": 13
+    }
+   ],
+   "entries": [
+    {
+     "siteId": "1",
+     "name": "新石纪",
+     "numbers": [
+      24,
+      23,
+      22,
+      21,
+      20,
+      19,
+      18,
+      17,
+      16,
+      15,
+      14,
+      13,
+      12,
+      11,
+      10,
+      9,
+      8,
+      7,
+      6,
+      5,
+      4,
+      3,
+      2,
+      1
+     ]
+    },
+    {
+     "siteId": "2",
+     "name": "石纪元 龙水",
+     "numbers": [
+      2,
+      1
+     ]
+    },
+    {
+     "siteId": "3",
+     "name": "石纪元 新世界",
+     "numbers": [
+      22,
+      21,
+      20,
+      19,
+      18,
+      17,
+      16,
+      15,
+      14,
+      13,
+      12,
+      11,
+      10,
+      9,
+      8,
+      7,
+      6,
+      5,
+      4,
+      3,
+      2,
+      1
+     ]
+    },
+    {
+     "siteId": "4",
+     "name": "新石纪 第二季",
+     "numbers": [
+      11,
+      10,
+      9,
+      8,
+      7,
+      6,
+      5,
+      4,
+      3,
+      2,
+      1
+     ]
+    },
+    {
+     "siteId": "5",
+     "name": "石纪元 科学与未来 第3部分",
+     "numbers": [
+      13,
+      12,
+      11,
+      10,
+      9,
+      8,
+      7,
+      6,
+      5,
+      4,
+      3
+     ]
+    }
+   ],
+   "cases": [
+    {
+     "subjectId": 363101,
+     "index": 1,
+     "sort": 1,
+     "ep": 1,
+     "truth": [
+      {
+       "siteId": "3",
+       "number": 1
+      }
+     ],
+     "verifiable": true,
+     "flags": [],
+     "conventions": [
+      "own"
+     ]
+    },
+    {
+     "subjectId": 363101,
+     "index": 6,
+     "sort": 6,
+     "ep": 6,
+     "truth": [
+      {
+       "siteId": "3",
+       "number": 6
+      }
+     ],
+     "verifiable": true,
+     "flags": [],
+     "conventions": [
+      "own"
+     ]
+    },
+    {
+     "subjectId": 363101,
+     "index": 11,
+     "sort": 11,
+     "ep": 11,
+     "truth": [
+      {
+       "siteId": "3",
+       "number": 11
+      }
+     ],
+     "verifiable": true,
+     "flags": [],
+     "conventions": [
+      "own"
+     ]
+    },
+    {
+     "subjectId": 424372,
+     "index": 1,
+     "sort": 12,
+     "ep": 1,
+     "truth": [
+      {
+       "siteId": "3",
+       "number": 12
+      }
+     ],
+     "verifiable": true,
+     "flags": [],
+     "conventions": [
+      "C:merged"
+     ]
+    },
+    {
+     "subjectId": 424372,
+     "index": 6,
+     "sort": 17,
+     "ep": 6,
+     "truth": [
+      {
+       "siteId": "3",
+       "number": 17
+      }
+     ],
+     "verifiable": true,
+     "flags": [],
+     "conventions": [
+      "C:merged"
+     ]
+    },
+    {
+     "subjectId": 424372,
+     "index": 11,
+     "sort": 22,
+     "ep": 11,
+     "truth": [
+      {
+       "siteId": "3",
+       "number": 22
+      }
+     ],
+     "verifiable": true,
+     "flags": [],
+     "conventions": [
+      "C:merged"
+     ]
+    }
+   ]
+  },
+  {
+   "base": "石纪元 科学与未来",
+   "partIds": [
+    471578,
+    508003,
+    508004
+   ],
+   "mainline": [
+    {
+     "id": 266794,
+     "names": [
+      "石纪元",
+      "Dr.STONE"
+     ],
+     "mainEpisodeCount": 24
+    },
+    {
+     "id": 296261,
+     "names": [
+      "石纪元 石之战争",
+      "Dr.STONE STONE WARS"
+     ],
+     "mainEpisodeCount": 11
+    },
+    {
+     "id": 331479,
+     "names": [
+      "石纪元 龙水",
+      "Dr.STONE 龍水"
+     ],
+     "mainEpisodeCount": 1
+    },
+    {
+     "id": 363101,
+     "names": [
+      "石纪元 新世界",
+      "Dr.STONE NEW WORLD",
+      "Ｄｒ．ＳＴＯＮＥ 石纪元 第三季",
+      "新石纪 新世界",
+      "新石纪 第三季"
+     ],
+     "mainEpisodeCount": 11
+    },
+    {
+     "id": 424372,
+     "names": [
+      "石纪元 新世界 第2部分",
+      "Dr.STONE NEW WORLD 第2クール",
+      "Dr. STONE: NEW WORLD Part 2",
+      "Ｄｒ．ＳＴＯＮＥ 石纪元 第三季 第2部分",
+      "新石纪 新世界 第2部分",
+      "新石纪 第三季 第2部分"
+     ],
+     "mainEpisodeCount": 11
+    },
+    {
+     "id": 471578,
+     "names": [
+      "石纪元 科学与未来",
+      "Dr.STONE SCIENCE FUTURE",
+      "Ｄｒ．ＳＴＯＮＥ 石纪元 第四季",
+      "新石纪 科学与未来",
+      "新石纪 第四季"
+     ],
+     "mainEpisodeCount": 12
+    },
+    {
+     "id": 508003,
+     "names": [
+      "石纪元 科学与未来 第2部分",
+      "Dr.STONE SCIENCE FUTURE 第2クール",
+      "Dr. STONE: SCIENCE FUTURE Part 2",
+      "新石纪 科学与未来 第2部分",
+      "石纪元 第四季 第2部分",
+      "新石纪 第四季 第2部分",
+      "Dr. STONE SCIENCE FUTURE Cour 2"
+     ],
+     "mainEpisodeCount": 12
+    },
+    {
+     "id": 508004,
+     "names": [
+      "石纪元 科学与未来 第3部分",
+      "Dr.STONE SCIENCE FUTURE 第3クール",
+      "Dr. STONE: SCIENCE FUTURE Part 3",
+      "新石纪 科学与未来 第3部分",
+      "石纪元 第四季 第3部分",
+      "新石纪 第四季 第3部分",
+      "Dr. Stone: Science Future 3"
+     ],
+     "mainEpisodeCount": 13
+    }
+   ],
+   "entries": [
+    {
+     "siteId": "1",
+     "name": "新石纪",
+     "numbers": [
+      24,
+      23,
+      22,
+      21,
+      20,
+      19,
+      18,
+      17,
+      16,
+      15,
+      14,
+      13,
+      12,
+      11,
+      10,
+      9,
+      8,
+      7,
+      6,
+      5,
+      4,
+      3,
+      2,
+      1
+     ]
+    },
+    {
+     "siteId": "2",
+     "name": "石纪元 龙水",
+     "numbers": [
+      2,
+      1
+     ]
+    },
+    {
+     "siteId": "3",
+     "name": "石纪元 新世界",
+     "numbers": [
+      22,
+      21,
+      20,
+      19,
+      18,
+      17,
+      16,
+      15,
+      14,
+      13,
+      12,
+      11,
+      10,
+      9,
+      8,
+      7,
+      6,
+      5,
+      4,
+      3,
+      2,
+      1
+     ]
+    },
+    {
+     "siteId": "4",
+     "name": "新石纪 第二季",
+     "numbers": [
+      11,
+      10,
+      9,
+      8,
+      7,
+      6,
+      5,
+      4,
+      3,
+      2,
+      1
+     ]
+    },
+    {
+     "siteId": "5",
+     "name": "石纪元 科学与未来 第3部分",
+     "numbers": [
+      13,
+      12,
+      11,
+      10,
+      9,
+      8,
+      7,
+      6,
+      5,
+      4,
+      3
+     ]
+    }
+   ],
+   "cases": [
+    {
+     "subjectId": 471578,
+     "index": 1,
+     "sort": 1,
+     "ep": 1,
+     "truth": [],
+     "verifiable": true,
+     "flags": [],
+     "conventions": []
+    },
+    {
+     "subjectId": 471578,
+     "index": 6,
+     "sort": 6,
+     "ep": 6,
+     "truth": [],
+     "verifiable": true,
+     "flags": [],
+     "conventions": []
+    },
+    {
+     "subjectId": 471578,
+     "index": 12,
+     "sort": 12,
+     "ep": 12,
+     "truth": [],
+     "verifiable": true,
+     "flags": [],
+     "conventions": []
+    },
+    {
+     "subjectId": 508003,
+     "index": 1,
+     "sort": 13,
+     "ep": 1,
+     "truth": [],
+     "verifiable": true,
+     "flags": [],
+     "conventions": []
+    },
+    {
+     "subjectId": 508003,
+     "index": 6,
+     "sort": 18,
+     "ep": 6,
+     "truth": [],
+     "verifiable": true,
+     "flags": [],
+     "conventions": []
+    },
+    {
+     "subjectId": 508003,
+     "index": 12,
+     "sort": 24,
+     "ep": 12,
+     "truth": [],
+     "verifiable": true,
+     "flags": [],
+     "conventions": []
+    },
+    {
+     "subjectId": 508004,
+     "index": 1,
+     "sort": 25,
+     "ep": 1,
+     "truth": [],
+     "verifiable": true,
+     "flags": [],
+     "conventions": []
+    },
+    {
+     "subjectId": 508004,
+     "index": 7,
+     "sort": 31,
+     "ep": 7,
+     "truth": [
+      {
+       "siteId": "5",
+       "number": 7
+      }
+     ],
+     "verifiable": true,
+     "flags": [],
+     "conventions": [
+      "A:restart"
+     ]
+    },
+    {
+     "subjectId": 508004,
+     "index": 13,
+     "sort": 37,
+     "ep": 13,
+     "truth": [
+      {
+       "siteId": "5",
+       "number": 13
+      }
+     ],
+     "verifiable": true,
+     "flags": [],
+     "conventions": [
+      "A:restart"
+     ]
+    }
+   ]
+  },
+  {
+   "base": "亡骸游戏",
+   "partIds": [
+    408013,
+    424892
+   ],
+   "mainline": [
+    {
+     "id": 408013,
+     "names": [
+      "亡骸游戏",
+      "デッドマウント・デスプレイ",
+      "Dead Mount Death Play",
+      "屍體如山的死亡遊戲"
+     ],
+     "mainEpisodeCount": 12
+    },
+    {
+     "id": 424892,
+     "names": [
+      "亡骸游戏 第2部分",
+      "デッドマウント・デスプレイ 第2クール",
+      "屍體如山的死亡遊戲 第二部分",
+      "Dead Mount Death Play (2023)",
+      "Dead Mount Death Play Part 2"
+     ],
+     "mainEpisodeCount": 12
+    }
+   ],
+   "entries": [
+    {
+     "siteId": "1",
+     "name": "亡骸游戏",
+     "numbers": [
+      24,
+      23,
+      22,
+      21,
+      20,
+      19,
+      18,
+      17,
+      16,
+      15,
+      14,
+      13,
+      12,
+      11,
+      10,
+      9,
+      8,
+      7,
+      6,
+      5,
+      4,
+      3,
+      2,
+      1
+     ]
+    }
+   ],
+   "cases": [
+    {
+     "subjectId": 408013,
+     "index": 1,
+     "sort": 1,
+     "ep": 1,
+     "truth": [
+      {
+       "siteId": "1",
+       "number": 1
+      }
+     ],
+     "verifiable": true,
+     "flags": [],
+     "conventions": [
+      "own"
+     ]
+    },
+    {
+     "subjectId": 408013,
+     "index": 6,
+     "sort": 6,
+     "ep": 6,
+     "truth": [
+      {
+       "siteId": "1",
+       "number": 6
+      }
+     ],
+     "verifiable": true,
+     "flags": [],
+     "conventions": [
+      "own"
+     ]
+    },
+    {
+     "subjectId": 408013,
+     "index": 12,
+     "sort": 12,
+     "ep": 12,
+     "truth": [
+      {
+       "siteId": "1",
+       "number": 12
+      }
+     ],
+     "verifiable": true,
+     "flags": [],
+     "conventions": [
+      "own"
+     ]
+    },
+    {
+     "subjectId": 424892,
+     "index": 1,
+     "sort": 13,
+     "ep": 1,
+     "truth": [
+      {
+       "siteId": "1",
+       "number": 13
+      }
+     ],
+     "verifiable": true,
+     "flags": [],
+     "conventions": [
+      "C:merged"
+     ]
+    },
+    {
+     "subjectId": 424892,
+     "index": 6,
+     "sort": 18,
+     "ep": 6,
+     "truth": [
+      {
+       "siteId": "1",
+       "number": 18
+      }
+     ],
+     "verifiable": true,
+     "flags": [],
+     "conventions": [
+      "C:merged"
+     ]
+    },
+    {
+     "subjectId": 424892,
+     "index": 12,
+     "sort": 24,
+     "ep": 12,
+     "truth": [
+      {
+       "siteId": "1",
+       "number": 24
+      }
+     ],
+     "verifiable": true,
+     "flags": [],
+     "conventions": [
+      "C:merged"
+     ]
+    }
+   ]
+  },
+  {
+   "base": "坂本日常",
+   "partIds": [
+    496617,
+    524005
+   ],
+   "mainline": [
+    {
+     "id": 496617,
+     "names": [
+      "坂本日常",
+      "SAKAMOTO DAYS",
+      "サカモトデイズ",
+      "坂本 DAYS"
+     ],
+     "mainEpisodeCount": 11
+    },
+    {
+     "id": 524005,
+     "names": [
+      "坂本日常 第2部分",
+      "SAKAMOTO DAYS 第2クール",
+      "SAKAMOTO DAYS Part 2",
+      "サカモトデイズ 第2クール",
+      "坂本 DAYS 第2部分"
+     ],
+     "mainEpisodeCount": 11
+    },
+    {
+     "id": 616760,
+     "names": [
+      "坂本日常 第二季",
+      "SAKAMOTO DAYS 第2期"
+     ],
+     "mainEpisodeCount": 0
+    }
+   ],
+   "entries": [
+    {
+     "siteId": "1",
+     "name": "坂本日常",
+     "numbers": [
+      22,
+      21,
+      20,
+      19,
+      18,
+      17,
+      16,
+      15
+     ]
+    }
+   ],
+   "cases": [
+    {
+     "subjectId": 496617,
+     "index": 1,
+     "sort": 1,
+     "ep": 1,
+     "truth": [],
+     "verifiable": false,
+     "flags": [
+      "own-named '坂本日常' numbering starts at 15"
+     ],
+     "conventions": []
+    },
+    {
+     "subjectId": 496617,
+     "index": 6,
+     "sort": 6,
+     "ep": 6,
+     "truth": [],
+     "verifiable": false,
+     "flags": [
+      "own-named '坂本日常' numbering starts at 15"
+     ],
+     "conventions": []
+    },
+    {
+     "subjectId": 496617,
+     "index": 11,
+     "sort": 11,
+     "ep": 11,
+     "truth": [],
+     "verifiable": false,
+     "flags": [
+      "own-named '坂本日常' numbering starts at 15"
+     ],
+     "conventions": []
+    },
+    {
+     "subjectId": 524005,
+     "index": 1,
+     "sort": 12,
+     "ep": 1,
+     "truth": [],
+     "verifiable": true,
+     "flags": [],
+     "conventions": []
+    },
+    {
+     "subjectId": 524005,
+     "index": 6,
+     "sort": 17,
+     "ep": 6,
+     "truth": [
+      {
+       "siteId": "1",
+       "number": 17
+      }
+     ],
+     "verifiable": true,
+     "flags": [],
+     "conventions": [
+      "C:merged"
+     ]
+    },
+    {
+     "subjectId": 524005,
+     "index": 11,
+     "sort": 22,
+     "ep": 11,
+     "truth": [
+      {
+       "siteId": "1",
+       "number": 22
+      }
+     ],
+     "verifiable": true,
+     "flags": [],
+     "conventions": [
+      "C:merged"
+     ]
+    }
+   ]
+  },
+  {
+   "base": "地狱老师",
+   "partIds": [
+    504524,
+    555772
+   ],
+   "mainline": [
+    {
+     "id": 504524,
+     "names": [
+      "地狱老师",
+      "地獄先生ぬ～べ～",
+      "地狱老师2025",
+      "灵异教师神眉",
+      "靈異教師神眉",
+      "Hell Teacher: Jigoku Sensei Nube"
+     ],
+     "mainEpisodeCount": 13
+    },
+    {
+     "id": 555772,
+     "names": [
+      "地狱老师 第2部分",
+      "地獄先生ぬ～べ～ 第2クール",
+      "Hell Teacher: Jigoku Sensei Nube (2025) Part 2",
+      "灵异教师神眉 第2部分",
+      "Jigoku Sensei Nube (2026)",
+      "Hell Teacher Nube"
+     ],
+     "mainEpisodeCount": 13
+    }
+   ],
+   "entries": [
+    {
+     "siteId": "1",
+     "name": "地狱老师",
+     "numbers": [
+      13,
+      12,
+      11,
+      10,
+      9,
+      8,
+      7,
+      6,
+      5,
+      4,
+      3
+     ]
+    }
+   ],
+   "cases": [
+    {
+     "subjectId": 504524,
+     "index": 1,
+     "sort": 1,
+     "ep": 1,
+     "truth": [],
+     "verifiable": true,
+     "flags": [],
+     "conventions": []
+    },
+    {
+     "subjectId": 504524,
+     "index": 7,
+     "sort": 7,
+     "ep": 7,
+     "truth": [
+      {
+       "siteId": "1",
+       "number": 7
+      }
+     ],
+     "verifiable": true,
+     "flags": [],
+     "conventions": [
+      "own"
+     ]
+    },
+    {
+     "subjectId": 504524,
+     "index": 13,
+     "sort": 13,
+     "ep": 13,
+     "truth": [
+      {
+       "siteId": "1",
+       "number": 13
+      }
+     ],
+     "verifiable": true,
+     "flags": [],
+     "conventions": [
+      "own"
+     ]
+    },
+    {
+     "subjectId": 555772,
+     "index": 1,
+     "sort": 14,
+     "ep": 1,
+     "truth": [],
+     "verifiable": true,
+     "flags": [],
+     "conventions": []
+    },
+    {
+     "subjectId": 555772,
+     "index": 7,
+     "sort": 20,
+     "ep": 7,
+     "truth": [],
+     "verifiable": true,
+     "flags": [],
+     "conventions": []
+    },
+    {
+     "subjectId": 555772,
+     "index": 13,
+     "sort": 26,
+     "ep": 13,
+     "truth": [],
+     "verifiable": true,
+     "flags": [],
+     "conventions": []
+    }
+   ]
+  },
+  {
+   "base": "魔真神坛斗士",
+   "partIds": [
+    564175,
+    612697
+   ],
+   "mainline": [
+    {
+     "id": 564175,
+     "names": [
+      "魔真神坛斗士",
+      "鎧真伝サムライトルーパー",
+      "Yoroi Shinden Samurai Troopers",
+      "铠真传武士骑兵",
+      "铠真传 武士军团",
+      "Yoroi Shin Den Samurai Troopers"
+     ],
+     "mainEpisodeCount": 12
+    },
+    {
+     "id": 612697,
+     "names": [
+      "魔真神坛斗士 第2部分",
+      "鎧真伝サムライトルーパー 第2クール",
+      "Yoroi Shinden Samurai Troopers Part 2",
+      "铠真传武士骑兵 第2部分",
+      "铠真传 武士军团 第2部分",
+      "Yoroi Shin Den Samurai Troopers Part 2"
+     ],
+     "mainEpisodeCount": 12
+    }
+   ],
+   "entries": [],
+   "cases": [
+    {
+     "subjectId": 564175,
+     "index": 1,
+     "sort": 1,
+     "ep": 1,
+     "truth": [],
+     "verifiable": true,
+     "flags": [],
+     "conventions": []
+    },
+    {
+     "subjectId": 564175,
+     "index": 6,
+     "sort": 6,
+     "ep": 6,
+     "truth": [],
+     "verifiable": true,
+     "flags": [],
+     "conventions": []
+    },
+    {
+     "subjectId": 564175,
+     "index": 12,
+     "sort": 12,
+     "ep": 12,
+     "truth": [],
+     "verifiable": true,
+     "flags": [],
+     "conventions": []
+    },
+    {
+     "subjectId": 612697,
+     "index": 1,
+     "sort": 13,
+     "ep": 1,
+     "truth": [],
+     "verifiable": true,
+     "flags": [],
+     "conventions": []
+    },
+    {
+     "subjectId": 612697,
+     "index": 6,
+     "sort": 18,
+     "ep": 6,
+     "truth": [],
+     "verifiable": true,
+     "flags": [],
+     "conventions": []
+    },
+    {
+     "subjectId": 612697,
+     "index": 12,
+     "sort": 24,
+     "ep": 12,
+     "truth": [],
+     "verifiable": true,
+     "flags": [],
+     "conventions": []
+    }
+   ]
+  },
+  {
+   "base": "苍穹之法芙娜 EXODUS",
+   "partIds": [
+    60901,
+    130230
+   ],
+   "mainline": [
+    {
+     "id": 14106,
+     "names": [
+      "苍穹之法芙娜 RIGHT OF LEFT",
+      "蒼穹のファフナー RIGHT OF LEFT"
+     ],
+     "mainEpisodeCount": 1
+    },
+    {
+     "id": 2936,
+     "names": [
+      "苍穹之法芙娜",
+      "蒼穹のファフナー"
+     ],
+     "mainEpisodeCount": 26
+    },
+    {
+     "id": 14109,
+     "names": [
+      "苍穹之法芙娜 HEAVEN AND EARTH",
+      "蒼穹のファフナー HEAVEN AND EARTH"
+     ],
+     "mainEpisodeCount": 1
+    },
+    {
+     "id": 363801,
+     "names": [
+      "苍穹之法芙娜 BEHIND THE LINE",
+      "蒼穹のファフナー BEHIND THE LINE"
+     ],
+     "mainEpisodeCount": 1
+    },
+    {
+     "id": 60901,
+     "names": [
+      "苍穹之法芙娜 EXODUS",
+      "蒼穹のファフナー EXODUS",
+      "苍穹之战神 EXODUS",
+      "蒼穹のファフナー EXODUS 1stシーズン"
+     ],
+     "mainEpisodeCount": 13
+    },
+    {
+     "id": 130230,
+     "names": [
+      "苍穹之法芙娜 EXODUS 第2部分",
+      "蒼穹のファフナー EXODUS 第2クール",
+      "苍穹的法芙娜 exodus 第二期",
+      "苍穹之法芙娜 EXODUS 后半",
+      "苍穹之Fafner EXODUS 第2期",
+      "苍穹之战神 EXODUS 第2期"
+     ],
+     "mainEpisodeCount": 13
+    },
+    {
+     "id": 204623,
+     "names": [
+      "苍穹之法芙娜 THE BEYOND",
+      "蒼穹のファフナー THE BEYOND"
+     ],
+     "mainEpisodeCount": 12
+    }
+   ],
+   "entries": [
+    {
+     "siteId": "1",
+     "name": "苍穹之法芙娜 THE BEYOND",
+     "numbers": [
+      13,
+      12,
+      11,
+      10,
+      9,
+      8,
+      7,
+      6,
+      5,
+      4,
+      3,
+      2,
+      1
+     ]
+    }
+   ],
+   "cases": [
+    {
+     "subjectId": 60901,
+     "index": 1,
+     "sort": 1,
+     "ep": 1,
+     "truth": [],
+     "verifiable": true,
+     "flags": [],
+     "conventions": []
+    },
+    {
+     "subjectId": 60901,
+     "index": 7,
+     "sort": 7,
+     "ep": 7,
+     "truth": [],
+     "verifiable": true,
+     "flags": [],
+     "conventions": []
+    },
+    {
+     "subjectId": 60901,
+     "index": 13,
+     "sort": 13,
+     "ep": 13,
+     "truth": [],
+     "verifiable": true,
+     "flags": [],
+     "conventions": []
+    },
+    {
+     "subjectId": 130230,
+     "index": 1,
+     "sort": 14,
+     "ep": 1,
+     "truth": [],
+     "verifiable": true,
+     "flags": [],
+     "conventions": []
+    },
+    {
+     "subjectId": 130230,
+     "index": 7,
+     "sort": 20,
+     "ep": 7,
+     "truth": [],
+     "verifiable": true,
+     "flags": [],
+     "conventions": []
+    },
+    {
+     "subjectId": 130230,
+     "index": 13,
+     "sort": 26,
+     "ep": 13,
+     "truth": [],
+     "verifiable": true,
+     "flags": [],
+     "conventions": []
+    }
+   ]
+  },
+  {
+   "base": "86 -不存在的战区",
+   "partIds": [
+    302189,
+    331887
+   ],
+   "mainline": [
+    {
+     "id": 302189,
+     "names": [
+      "86 -不存在的战区-",
+      "86―エイティシックス―",
+      "86 -不存在的地域-",
+      "86-エイティシックス-"
+     ],
+     "mainEpisodeCount": 11
+    },
+    {
+     "id": 331887,
+     "names": [
+      "86 -不存在的战区- 第2部分",
+      "86―エイティシックス― 第2クール",
+      "86: Eighty Six 2nd Season",
+      "86: Eighty Six Part 2"
+     ],
+     "mainEpisodeCount": 12
+    }
+   ],
+   "entries": [
+    {
+     "siteId": "1",
+     "name": "86 -不存在的战区-",
+     "numbers": [
+      11,
+      10,
+      9,
+      8,
+      7,
+      6,
+      5,
+      4,
+      3,
+      2,
+      1
+     ]
+    },
+    {
+     "siteId": "2",
+     "name": "86 -不存在的战区-",
+     "numbers": [
+      12,
+      11,
+      10,
+      9,
+      8,
+      7,
+      6,
+      5,
+      4,
+      3,
+      2,
+      1,
+      11,
+      10,
+      9,
+      8,
+      7,
+      6,
+      5,
+      4,
+      3,
+      2,
+      1
+     ]
+    }
+   ],
+   "cases": [
+    {
+     "subjectId": 302189,
+     "index": 1,
+     "sort": 1,
+     "ep": 1,
+     "truth": [
+      {
+       "siteId": "2",
+       "number": 1
+      },
+      {
+       "siteId": "1",
+       "number": 1
+      }
+     ],
+     "verifiable": true,
+     "flags": [],
+     "conventions": [
+      "own"
+     ]
+    },
+    {
+     "subjectId": 302189,
+     "index": 6,
+     "sort": 6,
+     "ep": 6,
+     "truth": [
+      {
+       "siteId": "2",
+       "number": 6
+      },
+      {
+       "siteId": "1",
+       "number": 6
+      }
+     ],
+     "verifiable": true,
+     "flags": [],
+     "conventions": [
+      "own"
+     ]
+    },
+    {
+     "subjectId": 302189,
+     "index": 11,
+     "sort": 11,
+     "ep": 11,
+     "truth": [
+      {
+       "siteId": "2",
+       "number": 11
+      },
+      {
+       "siteId": "1",
+       "number": 11
+      }
+     ],
+     "verifiable": true,
+     "flags": [],
+     "conventions": [
+      "own"
+     ]
+    },
+    {
+     "subjectId": 331887,
+     "index": 1,
+     "sort": 12,
+     "ep": 1,
+     "truth": [],
+     "verifiable": false,
+     "flags": [
+      "earlier-part-named '86 -不存在的战区-' has 12 eps: partially merged?"
+     ],
+     "conventions": []
+    },
+    {
+     "subjectId": 331887,
+     "index": 6,
+     "sort": 17,
+     "ep": 6,
+     "truth": [],
+     "verifiable": false,
+     "flags": [
+      "earlier-part-named '86 -不存在的战区-' has 12 eps: partially merged?"
+     ],
+     "conventions": []
+    },
+    {
+     "subjectId": 331887,
+     "index": 12,
+     "sort": 23,
+     "ep": 12,
+     "truth": [],
+     "verifiable": false,
+     "flags": [
+      "earlier-part-named '86 -不存在的战区-' has 12 eps: partially merged?"
+     ],
+     "conventions": []
+    }
+   ]
+  },
+  {
+   "base": "瓦尼塔斯的手记",
+   "partIds": [
+    331692,
+    338270
+   ],
+   "mainline": [
+    {
+     "id": 331692,
+     "names": [
+      "瓦尼塔斯的手记",
+      "ヴァニタスの手記",
+      "瓦尼塔斯的笔记",
+      "瓦尼塔斯的手札",
+      "Vanitas no Karte",
+      "The Case Study of Vanitas",
+      "Les Mémoires de Vanitas"
+     ],
+     "mainEpisodeCount": 12
+    },
+    {
+     "id": 338270,
+     "names": [
+      "瓦尼塔斯的手记 第2部分",
+      "ヴァニタスの手記 第2クール",
+      "Vanitas no Karte (2022)",
+      "Vanitas no Carte Part 2",
+      "The Case Study of Vanitas Part 2",
+      "瓦尼塔斯的笔记 第2部分",
+      "瓦尼塔斯的手札 第2部分"
+     ],
+     "mainEpisodeCount": 12
+    }
+   ],
+   "entries": [
+    {
+     "siteId": "1",
+     "name": "瓦尼塔斯的手记",
+     "numbers": [
+      24,
+      23,
+      22,
+      21,
+      20,
+      19,
+      18,
+      17,
+      16,
+      15,
+      14,
+      13,
+      12,
+      11,
+      10,
+      9,
+      8,
+      7,
+      6,
+      5,
+      4,
+      3,
+      2,
+      1
+     ]
+    }
+   ],
+   "cases": [
+    {
+     "subjectId": 331692,
+     "index": 1,
+     "sort": 1,
+     "ep": 1,
+     "truth": [
+      {
+       "siteId": "1",
+       "number": 1
+      }
+     ],
+     "verifiable": true,
+     "flags": [],
+     "conventions": [
+      "own"
+     ]
+    },
+    {
+     "subjectId": 331692,
+     "index": 6,
+     "sort": 6,
+     "ep": 6,
+     "truth": [
+      {
+       "siteId": "1",
+       "number": 6
+      }
+     ],
+     "verifiable": true,
+     "flags": [],
+     "conventions": [
+      "own"
+     ]
+    },
+    {
+     "subjectId": 331692,
+     "index": 12,
+     "sort": 12,
+     "ep": 12,
+     "truth": [
+      {
+       "siteId": "1",
+       "number": 12
+      }
+     ],
+     "verifiable": true,
+     "flags": [],
+     "conventions": [
+      "own"
+     ]
+    },
+    {
+     "subjectId": 338270,
+     "index": 1,
+     "sort": 13,
+     "ep": 1,
+     "truth": [
+      {
+       "siteId": "1",
+       "number": 13
+      }
+     ],
+     "verifiable": true,
+     "flags": [],
+     "conventions": [
+      "C:merged"
+     ]
+    },
+    {
+     "subjectId": 338270,
+     "index": 6,
+     "sort": 18,
+     "ep": 6,
+     "truth": [
+      {
+       "siteId": "1",
+       "number": 18
+      }
+     ],
+     "verifiable": true,
+     "flags": [],
+     "conventions": [
+      "C:merged"
+     ]
+    },
+    {
+     "subjectId": 338270,
+     "index": 12,
+     "sort": 24,
+     "ep": 12,
+     "truth": [
+      {
+       "siteId": "1",
+       "number": 24
+      }
+     ],
+     "verifiable": true,
+     "flags": [],
+     "conventions": [
+      "C:merged"
+     ]
+    }
+   ]
+  },
+  {
+   "base": "银砂糖师与黑妖精",
+   "partIds": [
+    351373,
+    425916
+   ],
+   "mainline": [
+    {
+     "id": 351373,
+     "names": [
+      "银砂糖师与黑妖精",
+      "シュガーアップル・フェアリーテイル",
+      "银砂糖师与黑色妖精",
+      "Sugar Apple Fairy Tale",
+      "砂糖苹果童话故事 银砂糖师与黑妖精"
+     ],
+     "mainEpisodeCount": 12
+    },
+    {
+     "id": 425916,
+     "names": [
+      "银砂糖师与黑妖精 第2部分",
+      "シュガーアップル・フェアリーテイル 第2クール",
+      "银砂糖师与黑色妖精 第2部分",
+      "Sugar Apple Fairy Tale Season 2",
+      "砂糖苹果童话故事 银砂糖师与黑妖精 第2部分"
+     ],
+     "mainEpisodeCount": 12
+    }
+   ],
+   "entries": [
+    {
+     "siteId": "1",
+     "name": "银砂糖师与黑妖精",
+     "numbers": [
+      24,
+      23,
+      22,
+      21,
+      20,
+      19,
+      18,
+      17,
+      16,
+      15,
+      14,
+      13,
+      12,
+      11,
+      10,
+      9,
+      8,
+      7,
+      6,
+      5,
+      4,
+      3,
+      2,
+      1
+     ]
+    }
+   ],
+   "cases": [
+    {
+     "subjectId": 351373,
+     "index": 1,
+     "sort": 1,
+     "ep": 1,
+     "truth": [
+      {
+       "siteId": "1",
+       "number": 1
+      }
+     ],
+     "verifiable": true,
+     "flags": [],
+     "conventions": [
+      "own"
+     ]
+    },
+    {
+     "subjectId": 351373,
+     "index": 6,
+     "sort": 6,
+     "ep": 6,
+     "truth": [
+      {
+       "siteId": "1",
+       "number": 6
+      }
+     ],
+     "verifiable": true,
+     "flags": [],
+     "conventions": [
+      "own"
+     ]
+    },
+    {
+     "subjectId": 351373,
+     "index": 12,
+     "sort": 12,
+     "ep": 12,
+     "truth": [
+      {
+       "siteId": "1",
+       "number": 12
+      }
+     ],
+     "verifiable": true,
+     "flags": [],
+     "conventions": [
+      "own"
+     ]
+    },
+    {
+     "subjectId": 425916,
+     "index": 1,
+     "sort": 13,
+     "ep": 1,
+     "truth": [
+      {
+       "siteId": "1",
+       "number": 13
+      }
+     ],
+     "verifiable": true,
+     "flags": [],
+     "conventions": [
+      "C:merged"
+     ]
+    },
+    {
+     "subjectId": 425916,
+     "index": 6,
+     "sort": 18,
+     "ep": 6,
+     "truth": [
+      {
+       "siteId": "1",
+       "number": 18
+      }
+     ],
+     "verifiable": true,
+     "flags": [],
+     "conventions": [
+      "C:merged"
+     ]
+    },
+    {
+     "subjectId": 425916,
+     "index": 12,
+     "sort": 24,
+     "ep": 12,
+     "truth": [
+      {
+       "siteId": "1",
+       "number": 24
+      }
+     ],
+     "verifiable": true,
+     "flags": [],
+     "conventions": [
+      "C:merged"
+     ]
+    }
+   ]
+  },
+  {
+   "base": "尼尔：自动人形 Ver1.1a",
+   "partIds": [
+    368116,
+    446618
+   ],
+   "mainline": [
+    {
+     "id": 368116,
+     "names": [
+      "尼尔：自动人形 Ver1.1a",
+      "NieR: Automata Ver1.1a",
+      "尼尔 自动人形",
+      "尼尔 机械纪元",
+      "ニーア オートマタ"
+     ],
+     "mainEpisodeCount": 12
+    },
+    {
+     "id": 446618,
+     "names": [
+      "尼尔：自动人形 Ver1.1a 第2部分",
+      "NieR:Automata Ver1.1a 第2クール",
+      "NieR:Automata Ver1.1a 2nd Season",
+      "NieR:Automata Ver1.1a (2024)",
+      "尼尔 自动人形 第2部分",
+      "尼尔 机械纪元 第2部分",
+      "ニーア オートマタ 第2クール"
+     ],
+     "mainEpisodeCount": 12
+    }
+   ],
+   "entries": [
+    {
+     "siteId": "1",
+     "name": "格莱普尼尔",
+     "numbers": [
+      13,
+      12,
+      11,
+      10,
+      9,
+      8,
+      7,
+      6,
+      5,
+      4,
+      3,
+      2,
+      1
+     ]
+    },
+    {
+     "siteId": "2",
+     "name": "尼尔：自动人形 Ver1.1a",
+     "numbers": [
+      12,
+      11,
+      10,
+      9,
+      8,
+      7,
+      6,
+      5,
+      4,
+      3,
+      2,
+      1
+     ]
+    }
+   ],
+   "cases": [
+    {
+     "subjectId": 368116,
+     "index": 1,
+     "sort": 1,
+     "ep": 1,
+     "truth": [
+      {
+       "siteId": "2",
+       "number": 1
+      }
+     ],
+     "verifiable": true,
+     "flags": [],
+     "conventions": [
+      "own"
+     ]
+    },
+    {
+     "subjectId": 368116,
+     "index": 6,
+     "sort": 6,
+     "ep": 6,
+     "truth": [
+      {
+       "siteId": "2",
+       "number": 6
+      }
+     ],
+     "verifiable": true,
+     "flags": [],
+     "conventions": [
+      "own"
+     ]
+    },
+    {
+     "subjectId": 368116,
+     "index": 12,
+     "sort": 12,
+     "ep": 12,
+     "truth": [
+      {
+       "siteId": "2",
+       "number": 12
+      }
+     ],
+     "verifiable": true,
+     "flags": [],
+     "conventions": [
+      "own"
+     ]
+    },
+    {
+     "subjectId": 446618,
+     "index": 1,
+     "sort": 13,
+     "ep": 1,
+     "truth": [],
+     "verifiable": true,
+     "flags": [],
+     "conventions": []
+    },
+    {
+     "subjectId": 446618,
+     "index": 6,
+     "sort": 18,
+     "ep": 6,
+     "truth": [],
+     "verifiable": true,
+     "flags": [],
+     "conventions": []
+    },
+    {
+     "subjectId": 446618,
+     "index": 12,
+     "sort": 24,
+     "ep": 12,
+     "truth": [],
+     "verifiable": true,
+     "flags": [],
+     "conventions": []
+    }
+   ]
+  },
+  {
+   "base": "奇异贤伴 黑色天使",
+   "partIds": [
+    401301,
+    456042
+   ],
+   "mainline": [
+    {
+     "id": 401301,
+     "names": [
+      "奇异贤伴 黑色天使",
+      "SYNDUALITY Noir",
+      "シンデュアリティ"
+     ],
+     "mainEpisodeCount": 12
+    },
+    {
+     "id": 456042,
+     "names": [
+      "奇异贤伴 黑色天使 第2部分",
+      "SYNDUALITY Noir 第2クール",
+      "シンデュアリティ (2024)",
+      "Synduality Noir (2024)",
+      "シンデュアリティ 第2クール"
+     ],
+     "mainEpisodeCount": 12
+    }
+   ],
+   "entries": [
+    {
+     "siteId": "1",
+     "name": "奇异贤伴 黑色天使",
+     "numbers": [
+      24,
+      23,
+      22,
+      21,
+      20,
+      19,
+      18,
+      17,
+      16,
+      15,
+      14,
+      13,
+      12,
+      11,
+      10,
+      9,
+      8,
+      7,
+      6,
+      5,
+      4,
+      3,
+      2,
+      1
+     ]
+    }
+   ],
+   "cases": [
+    {
+     "subjectId": 401301,
+     "index": 1,
+     "sort": 1,
+     "ep": 1,
+     "truth": [
+      {
+       "siteId": "1",
+       "number": 1
+      }
+     ],
+     "verifiable": true,
+     "flags": [],
+     "conventions": [
+      "own"
+     ]
+    },
+    {
+     "subjectId": 401301,
+     "index": 6,
+     "sort": 6,
+     "ep": 6,
+     "truth": [
+      {
+       "siteId": "1",
+       "number": 6
+      }
+     ],
+     "verifiable": true,
+     "flags": [],
+     "conventions": [
+      "own"
+     ]
+    },
+    {
+     "subjectId": 401301,
+     "index": 12,
+     "sort": 12,
+     "ep": 12,
+     "truth": [
+      {
+       "siteId": "1",
+       "number": 12
+      }
+     ],
+     "verifiable": true,
+     "flags": [],
+     "conventions": [
+      "own"
+     ]
+    },
+    {
+     "subjectId": 456042,
+     "index": 1,
+     "sort": 13,
+     "ep": 1,
+     "truth": [
+      {
+       "siteId": "1",
+       "number": 13
+      }
+     ],
+     "verifiable": true,
+     "flags": [],
+     "conventions": [
+      "C:merged"
+     ]
+    },
+    {
+     "subjectId": 456042,
+     "index": 6,
+     "sort": 18,
+     "ep": 6,
+     "truth": [
+      {
+       "siteId": "1",
+       "number": 18
+      }
+     ],
+     "verifiable": true,
+     "flags": [],
+     "conventions": [
+      "C:merged"
+     ]
+    },
+    {
+     "subjectId": 456042,
+     "index": 12,
+     "sort": 24,
+     "ep": 12,
+     "truth": [
+      {
+       "siteId": "1",
+       "number": 24
+      }
+     ],
+     "verifiable": true,
+     "flags": [],
+     "conventions": [
+      "C:merged"
+     ]
+    }
+   ]
+  },
+  {
+   "base": "赛马娘 芦毛灰姑娘",
+   "partIds": [
+    509297,
+    530377
+   ],
+   "mainline": [
+    {
+     "id": 509297,
+     "names": [
+      "赛马娘 芦毛灰姑娘",
+      "ウマ娘 シンデレラグレイ",
+      "赛马娘 栗帽灰姑娘",
+      "賽馬娘 灰髮灰姑娘",
+      "赛马娘 Cinderella Gray",
+      "Uma Musume Cinderella Gray"
+     ],
+     "mainEpisodeCount": 13
+    },
+    {
+     "id": 530377,
+     "names": [
+      "赛马娘 芦毛灰姑娘 第2部分",
+      "ウマ娘 シンデレラグレイ 第2クール",
+      "赛马娘 栗帽灰姑娘 第2部分",
+      "赛马娘 Cinderella Gray 第2部分",
+      "Uma Musume Cinderella Gray Part 2"
+     ],
+     "mainEpisodeCount": 10
+    }
+   ],
+   "entries": [
+    {
+     "siteId": "1",
+     "name": "赛马娘四格",
+     "numbers": [
+      24,
+      23,
+      22,
+      21,
+      20,
+      19,
+      18,
+      17,
+      16,
+      15,
+      14,
+      13,
+      12,
+      11,
+      10,
+      9,
+      8,
+      7,
+      6,
+      5,
+      4,
+      3,
+      2,
+      1
+     ]
+    },
+    {
+     "siteId": "2",
+     "name": "赛马娘 芦毛灰姑娘 第2部分",
+     "numbers": [
+      10,
+      9,
+      8,
+      7,
+      6,
+      5,
+      4,
+      3,
+      2,
+      1
+     ]
+    },
+    {
+     "siteId": "3",
+     "name": "赛马娘 Pretty Derby",
+     "numbers": [
+      13,
+      12,
+      11,
+      10,
+      9,
+      8,
+      7,
+      6,
+      5,
+      4,
+      3,
+      2,
+      1
+     ]
+    },
+    {
+     "siteId": "4",
+     "name": "赛马娘 Pretty Derby 第二季",
+     "numbers": [
+      13,
+      12,
+      11,
+      10,
+      9,
+      8,
+      7,
+      6,
+      5,
+      4,
+      3,
+      2,
+      1
+     ]
+    },
+    {
+     "siteId": "5",
+     "name": "赛马娘 Pretty Derby 第三季",
+     "numbers": [
+      13,
+      12,
+      11,
+      10,
+      9,
+      8,
+      7,
+      6,
+      5,
+      4,
+      3,
+      2,
+      1
+     ]
+    },
+    {
+     "siteId": "6",
+     "name": "赛马娘 Pretty Derby 巅峰之路",
+     "numbers": [
+      4,
+      3,
+      2,
+      1
+     ]
+    }
+   ],
+   "cases": [
+    {
+     "subjectId": 509297,
+     "index": 1,
+     "sort": 1,
+     "ep": 1,
+     "truth": [],
+     "verifiable": true,
+     "flags": [],
+     "conventions": []
+    },
+    {
+     "subjectId": 509297,
+     "index": 7,
+     "sort": 7,
+     "ep": 7,
+     "truth": [],
+     "verifiable": true,
+     "flags": [],
+     "conventions": []
+    },
+    {
+     "subjectId": 509297,
+     "index": 13,
+     "sort": 13,
+     "ep": 13,
+     "truth": [],
+     "verifiable": true,
+     "flags": [],
+     "conventions": []
+    },
+    {
+     "subjectId": 530377,
+     "index": 1,
+     "sort": 14,
+     "ep": 1,
+     "truth": [
+      {
+       "siteId": "2",
+       "number": 1
+      }
+     ],
+     "verifiable": true,
+     "flags": [],
+     "conventions": [
+      "A:restart"
+     ]
+    },
+    {
+     "subjectId": 530377,
+     "index": 5,
+     "sort": 18,
+     "ep": 5,
+     "truth": [
+      {
+       "siteId": "2",
+       "number": 5
+      }
+     ],
+     "verifiable": true,
+     "flags": [],
+     "conventions": [
+      "A:restart"
+     ]
+    },
+    {
+     "subjectId": 530377,
+     "index": 10,
+     "sort": 23,
+     "ep": 10,
+     "truth": [
+      {
+       "siteId": "2",
+       "number": 10
+      }
+     ],
+     "verifiable": true,
+     "flags": [],
+     "conventions": [
+      "A:restart"
+     ]
+    }
+   ]
+  },
+  {
+   "base": "魔法姐妹露露特莉莉",
+   "partIds": [
+    501796,
+    634210
+   ],
+   "mainline": [
+    {
+     "id": 501796,
+     "names": [
+      "魔法姐妹露露特莉莉",
+      "魔法の姉妹ルルットリリィ",
+      "魔法姐妹露露和莉莉",
+      "魔法姊妹露露特莉莉",
+      "Mahou no Shimai Lulutto Lilly",
+      "Magical Sisters Lulutto Lilly"
+     ],
+     "mainEpisodeCount": 12
+    },
+    {
+     "id": 634210,
+     "names": [
+      "魔法姐妹露露特莉莉 第2部分",
+      "魔法の姉妹ルルットリリィ 第2クール"
+     ],
+     "mainEpisodeCount": 12
+    }
+   ],
+   "entries": [
+    {
+     "siteId": "1",
+     "name": "魔法姐妹露露特莉莉",
+     "numbers": [
+      12,
+      11,
+      10,
+      9,
+      8,
+      7,
+      6,
+      5,
+      4,
+      3,
+      2,
+      1
+     ]
+    }
+   ],
+   "cases": [
+    {
+     "subjectId": 501796,
+     "index": 1,
+     "sort": 1,
+     "ep": 1,
+     "truth": [
+      {
+       "siteId": "1",
+       "number": 1
+      }
+     ],
+     "verifiable": true,
+     "flags": [],
+     "conventions": [
+      "own"
+     ]
+    },
+    {
+     "subjectId": 501796,
+     "index": 6,
+     "sort": 6,
+     "ep": 6,
+     "truth": [
+      {
+       "siteId": "1",
+       "number": 6
+      }
+     ],
+     "verifiable": true,
+     "flags": [],
+     "conventions": [
+      "own"
+     ]
+    },
+    {
+     "subjectId": 501796,
+     "index": 12,
+     "sort": 12,
+     "ep": 12,
+     "truth": [
+      {
+       "siteId": "1",
+       "number": 12
+      }
+     ],
+     "verifiable": true,
+     "flags": [],
+     "conventions": [
+      "own"
+     ]
+    },
+    {
+     "subjectId": 634210,
+     "index": 1,
+     "sort": 13,
+     "ep": 1,
+     "truth": [],
+     "verifiable": true,
+     "flags": [],
+     "conventions": []
+    },
+    {
+     "subjectId": 634210,
+     "index": 6,
+     "sort": 18,
+     "ep": 6,
+     "truth": [],
+     "verifiable": true,
+     "flags": [],
+     "conventions": []
+    },
+    {
+     "subjectId": 634210,
+     "index": 12,
+     "sort": 24,
+     "ep": 12,
+     "truth": [],
+     "verifiable": true,
+     "flags": [],
+     "conventions": []
+    }
+   ]
+  },
+  {
+   "base": "地缚少年花子君 第二季",
+   "partIds": [
+    464593,
+    548940
+   ],
+   "mainline": [
+    {
+     "id": 277551,
+     "names": [
+      "地缚少年花子君",
+      "地縛少年花子くん"
+     ],
+     "mainEpisodeCount": 12
+    },
+    {
+     "id": 464593,
+     "names": [
+      "地缚少年花子君 第二季",
+      "地縛少年花子くん２",
+      "Jibaku Shounen Hanako-kun 2",
+      "Toilet-Bound Hanako-kun Season 2"
+     ],
+     "mainEpisodeCount": 12
+    },
+    {
+     "id": 548940,
+     "names": [
+      "地缚少年花子君 第二季 第2部分",
+      "地縛少年花子くん２ 第2クール",
+      "Jibaku Shounen Hanako-kun 2 Part 2",
+      "Toilet-Bound Hanako-kun Season 2 Part 2"
+     ],
+     "mainEpisodeCount": 12
+    }
+   ],
+   "entries": [
+    {
+     "siteId": "1",
+     "name": "地缚少年花子君",
+     "numbers": [
+      14,
+      13,
+      12,
+      11,
+      10,
+      9,
+      8,
+      7,
+      6,
+      5,
+      4,
+      3,
+      2,
+      1
+     ]
+    },
+    {
+     "siteId": "2",
+     "name": "地缚少年花子君 第二季",
+     "numbers": [
+      2
+     ]
+    }
+   ],
+   "cases": [
+    {
+     "subjectId": 464593,
+     "index": 1,
+     "sort": 1,
+     "ep": 1,
+     "truth": [],
+     "verifiable": true,
+     "flags": [],
+     "conventions": []
+    },
+    {
+     "subjectId": 464593,
+     "index": 6,
+     "sort": 6,
+     "ep": 6,
+     "truth": [],
+     "verifiable": true,
+     "flags": [],
+     "conventions": []
+    },
+    {
+     "subjectId": 464593,
+     "index": 12,
+     "sort": 12,
+     "ep": 12,
+     "truth": [],
+     "verifiable": true,
+     "flags": [],
+     "conventions": []
+    },
+    {
+     "subjectId": 548940,
+     "index": 1,
+     "sort": 13,
+     "ep": 1,
+     "truth": [],
+     "verifiable": true,
+     "flags": [],
+     "conventions": []
+    },
+    {
+     "subjectId": 548940,
+     "index": 6,
+     "sort": 18,
+     "ep": 6,
+     "truth": [],
+     "verifiable": true,
+     "flags": [],
+     "conventions": []
+    },
+    {
+     "subjectId": 548940,
+     "index": 12,
+     "sort": 24,
+     "ep": 12,
+     "truth": [],
+     "verifiable": true,
+     "flags": [],
+     "conventions": []
+    }
+   ]
+  },
+  {
+   "base": "药屋少女的呢喃 第三季",
+   "partIds": [
+    568244,
+    599893
+   ],
+   "mainline": [
+    {
+     "id": 420628,
+     "names": [
+      "药屋少女的呢喃",
+      "薬屋のひとりごと"
+     ],
+     "mainEpisodeCount": 24
+    },
+    {
+     "id": 486347,
+     "names": [
+      "药屋少女的呢喃 第二季",
+      "薬屋のひとりごと 第2期"
+     ],
+     "mainEpisodeCount": 24
+    },
+    {
+     "id": 568244,
+     "names": [
+      "药屋少女的呢喃 第三季",
+      "薬屋のひとりごと 第3期",
+      "Kusuriya no Hitorigoto 3rd Season",
+      "The Apothecary Diaries Season 3"
+     ],
+     "mainEpisodeCount": 12
+    },
+    {
+     "id": 599893,
+     "names": [
+      "药屋少女的呢喃 第三季 第2部分",
+      "薬屋のひとりごと 第3期 第2クール"
+     ],
+     "mainEpisodeCount": 12
+    }
+   ],
+   "entries": [
+    {
+     "siteId": "1",
+     "name": "药屋少女的呢喃",
+     "numbers": [
+      24,
+      23,
+      22,
+      21,
+      20,
+      19,
+      18,
+      17,
+      16,
+      15,
+      14,
+      13,
+      12,
+      11,
+      10,
+      9,
+      8,
+      7,
+      6,
+      5,
+      4,
+      3,
+      2,
+      1
+     ]
+    }
+   ],
+   "cases": [
+    {
+     "subjectId": 568244,
+     "index": 1,
+     "sort": 49,
+     "ep": 1,
+     "truth": [],
+     "verifiable": true,
+     "flags": [],
+     "conventions": []
+    },
+    {
+     "subjectId": 568244,
+     "index": 6,
+     "sort": 54,
+     "ep": 6,
+     "truth": [],
+     "verifiable": true,
+     "flags": [],
+     "conventions": []
+    },
+    {
+     "subjectId": 568244,
+     "index": 12,
+     "sort": 60,
+     "ep": 12,
+     "truth": [],
+     "verifiable": true,
+     "flags": [],
+     "conventions": []
+    },
+    {
+     "subjectId": 599893,
+     "index": 1,
+     "sort": 61,
+     "ep": 1,
+     "truth": [],
+     "verifiable": true,
+     "flags": [],
+     "conventions": []
+    },
+    {
+     "subjectId": 599893,
+     "index": 6,
+     "sort": 66,
+     "ep": 6,
+     "truth": [],
+     "verifiable": true,
+     "flags": [],
+     "conventions": []
+    },
+    {
+     "subjectId": 599893,
+     "index": 12,
+     "sort": 72,
+     "ep": 12,
+     "truth": [],
+     "verifiable": true,
+     "flags": [],
+     "conventions": []
+    }
+   ]
+  },
+  {
+   "base": "JOJO的奇妙冒险 石之海",
+   "partIds": [
+    332261,
+    375913,
+    395782
+   ],
+   "mainline": [
+    {
+     "id": 61534,
+     "names": [
+      "JOJO的奇妙冒险 幻影血脉",
+      "ジョジョの奇妙な冒険 ファントムブラッド"
+     ],
+     "mainEpisodeCount": 1
+    },
+    {
+     "id": 43558,
+     "names": [
+      "JOJO的奇妙冒险",
+      "ジョジョの奇妙な冒険"
+     ],
+     "mainEpisodeCount": 26
+    },
+    {
+     "id": 38326,
+     "names": [
+      "JOJO的奇妙冒险",
+      "ジョジョの奇妙な冒険"
+     ],
+     "mainEpisodeCount": 13
+    },
+    {
+     "id": 85631,
+     "names": [
+      "JOJO的奇妙冒险 星尘斗士",
+      "ジョジョの奇妙な冒険 スターダストクルセイダース"
+     ],
+     "mainEpisodeCount": 24
+    },
+    {
+     "id": 113292,
+     "names": [
+      "JOJO的奇妙冒险 星尘斗士 埃及篇",
+      "ジョジョの奇妙な冒険 スターダストクルセイダース エジプト編"
+     ],
+     "mainEpisodeCount": 24
+    },
+    {
+     "id": 150490,
+     "names": [
+      "JOJO的奇妙冒险 不灭钻石",
+      "ジョジョの奇妙な冒険 ダイヤモンドは砕けない"
+     ],
+     "mainEpisodeCount": 39
+    },
+    {
+     "id": 235128,
+     "names": [
+      "JOJO的奇妙冒险 黄金之风",
+      "ジョジョの奇妙な冒険 黄金の風"
+     ],
+     "mainEpisodeCount": 39
+    },
+    {
+     "id": 332261,
+     "names": [
+      "JOJO的奇妙冒险 石之海",
+      "ジョジョの奇妙な冒険 ストーンオーシャン",
+      "JoJo no Kimyou na Bouken Part 6",
+      "JoJo no Kimyou na Bouken: Stone Ocean",
+      "JoJo’s Bizarre Adventure STONE OCEAN"
+     ],
+     "mainEpisodeCount": 12
+    },
+    {
+     "id": 375913,
+     "names": [
+      "JOJO的奇妙冒险 石之海 第2部分",
+      "ジョジョの奇妙な冒険 ストーンオーシャン 第2クール",
+      "JoJo's Bizarre Adventure: STONE OCEAN Part 2",
+      "JoJo no Kimyou na Bouken: Stone Ocean Part 2"
+     ],
+     "mainEpisodeCount": 12
+    },
+    {
+     "id": 395782,
+     "names": [
+      "JOJO的奇妙冒险 石之海 第3部分",
+      "ジョジョの奇妙な冒険 ストーンオーシャン 第3クール",
+      "JoJo no Kimyou na Bouken: Stone Ocean (Part 3)",
+      "JoJo`s Bizarre Adventure: Stone Ocean (Part 3)"
+     ],
+     "mainEpisodeCount": 14
+    }
+   ],
+   "entries": [
+    {
+     "siteId": "1",
+     "name": "JOJO的奇妙冒险 石之海",
+     "numbers": [
+      38,
+      37,
+      36,
+      35,
+      34,
+      33,
+      32,
+      31,
+      30,
+      29,
+      28,
+      27,
+      26,
+      25,
+      24,
+      23,
+      22,
+      21,
+      20,
+      19,
+      18,
+      17,
+      16,
+      15,
+      14,
+      13,
+      12,
+      11,
+      10,
+      9,
+      8,
+      7,
+      6,
+      5,
+      4,
+      3,
+      2,
+      1
+     ]
+    },
+    {
+     "siteId": "2",
+     "name": "JOJO的奇妙冒险 石之海",
+     "numbers": [
+      24,
+      23,
+      22,
+      21,
+      20,
+      19,
+      18,
+      17,
+      16,
+      15,
+      14,
+      13,
+      12,
+      11,
+      10,
+      9,
+      8,
+      7,
+      6,
+      5,
+      4,
+      3,
+      2,
+      1
+     ]
+    },
+    {
+     "siteId": "3",
+     "name": "飙马野郎 JOJO的奇妙冒险",
+     "numbers": [
+      2,
+      1
+     ]
+    },
+    {
+     "siteId": "4",
+     "name": "JOJO的奇妙冒险 第五部(黄金之风)",
+     "numbers": [
+      39,
+      38,
+      37,
+      36,
+      35,
+      34,
+      33,
+      32,
+      31,
+      30,
+      29,
+      28,
+      27,
+      26,
+      25,
+      24,
+      23,
+      22,
+      21,
+      20,
+      19,
+      18,
+      17,
+      16,
+      15,
+      14,
+      13,
+      12,
+      11,
+      10,
+      9,
+      8,
+      7,
+      6,
+      5,
+      4,
+      3,
+      2,
+      1
+     ]
+    },
+    {
+     "siteId": "5",
+     "name": "JOJO的奇妙冒险 第四部(不灭钻石)",
+     "numbers": [
+      39,
+      38,
+      37,
+      36,
+      35,
+      34,
+      33,
+      32,
+      31,
+      30,
+      29,
+      28,
+      27,
+      26,
+      25,
+      24,
+      23,
+      22,
+      21,
+      20,
+      19,
+      18,
+      17,
+      16,
+      15,
+      14,
+      13,
+      12,
+      11,
+      10,
+      9,
+      8,
+      7,
+      6,
+      5,
+      4,
+      3,
+      2,
+      1
+     ]
+    },
+    {
+     "siteId": "6",
+     "name": "JOJO的奇妙冒险 第三部(星尘斗士+埃及篇)",
+     "numbers": [
+      48,
+      47,
+      46,
+      45,
+      44,
+      43,
+      42,
+      41,
+      40,
+      39,
+      38,
+      37,
+      36,
+      35,
+      34,
+      33,
+      32,
+      31,
+      30,
+      29,
+      28,
+      27,
+      26,
+      25,
+      24,
+      23,
+      22,
+      21,
+      20,
+      19,
+      18,
+      17,
+      16,
+      15,
+      14,
+      13,
+      12,
+      11,
+      10,
+      9,
+      8,
+      7,
+      6,
+      5,
+      4,
+      3,
+      2,
+      1
+     ]
+    },
+    {
+     "siteId": "7",
+     "name": "JOJO的奇妙冒险 第一二部(幻影之血+战斗潮流)",
+     "numbers": [
+      26,
+      25,
+      24,
+      23,
+      22,
+      21,
+      20,
+      19,
+      18,
+      17,
+      16,
+      15,
+      14,
+      13,
+      12,
+      11,
+      10,
+      9,
+      8,
+      7,
+      6,
+      5,
+      4,
+      3,
+      2,
+      1
+     ]
+    },
+    {
+     "siteId": "8",
+     "name": "岸边露伴一动不动",
+     "numbers": [
+      4,
+      3,
+      2,
+      1
+     ]
+    }
+   ],
+   "cases": [
+    {
+     "subjectId": 332261,
+     "index": 1,
+     "sort": 1,
+     "ep": 1,
+     "truth": [
+      {
+       "siteId": "1",
+       "number": 1
+      },
+      {
+       "siteId": "2",
+       "number": 1
+      }
+     ],
+     "verifiable": true,
+     "flags": [],
+     "conventions": [
+      "own"
+     ]
+    },
+    {
+     "subjectId": 332261,
+     "index": 6,
+     "sort": 6,
+     "ep": 6,
+     "truth": [
+      {
+       "siteId": "1",
+       "number": 6
+      },
+      {
+       "siteId": "2",
+       "number": 6
+      }
+     ],
+     "verifiable": true,
+     "flags": [],
+     "conventions": [
+      "own"
+     ]
+    },
+    {
+     "subjectId": 332261,
+     "index": 12,
+     "sort": 12,
+     "ep": 12,
+     "truth": [
+      {
+       "siteId": "1",
+       "number": 12
+      },
+      {
+       "siteId": "2",
+       "number": 12
+      }
+     ],
+     "verifiable": true,
+     "flags": [],
+     "conventions": [
+      "own"
+     ]
+    },
+    {
+     "subjectId": 375913,
+     "index": 1,
+     "sort": 13,
+     "ep": 1,
+     "truth": [
+      {
+       "siteId": "1",
+       "number": 13
+      },
+      {
+       "siteId": "2",
+       "number": 13
+      }
+     ],
+     "verifiable": true,
+     "flags": [],
+     "conventions": [
+      "C:merged"
+     ]
+    },
+    {
+     "subjectId": 375913,
+     "index": 6,
+     "sort": 18,
+     "ep": 6,
+     "truth": [
+      {
+       "siteId": "1",
+       "number": 18
+      },
+      {
+       "siteId": "2",
+       "number": 18
+      }
+     ],
+     "verifiable": true,
+     "flags": [],
+     "conventions": [
+      "C:merged"
+     ]
+    },
+    {
+     "subjectId": 375913,
+     "index": 12,
+     "sort": 24,
+     "ep": 12,
+     "truth": [
+      {
+       "siteId": "1",
+       "number": 24
+      },
+      {
+       "siteId": "2",
+       "number": 24
+      }
+     ],
+     "verifiable": true,
+     "flags": [],
+     "conventions": [
+      "C:merged"
+     ]
+    },
+    {
+     "subjectId": 395782,
+     "index": 1,
+     "sort": 25,
+     "ep": 1,
+     "truth": [
+      {
+       "siteId": "1",
+       "number": 25
+      }
+     ],
+     "verifiable": true,
+     "flags": [],
+     "conventions": [
+      "C:merged"
+     ]
+    },
+    {
+     "subjectId": 395782,
+     "index": 7,
+     "sort": 31,
+     "ep": 7,
+     "truth": [
+      {
+       "siteId": "1",
+       "number": 31
+      }
+     ],
+     "verifiable": true,
+     "flags": [],
+     "conventions": [
+      "C:merged"
+     ]
+    },
+    {
+     "subjectId": 395782,
+     "index": 14,
+     "sort": 38,
+     "ep": 14,
+     "truth": [
+      {
+       "siteId": "1",
+       "number": 38
+      }
+     ],
+     "verifiable": true,
+     "flags": [],
+     "conventions": [
+      "C:merged"
+     ]
+    }
+   ]
+  },
+  {
+   "base": "魔法使的新娘 第二季",
+   "partIds": [
+    399820,
+    442523
+   ],
+   "mainline": [
+    {
+     "id": 210864,
+     "names": [
+      "魔法使的新娘",
+      "魔法使いの嫁"
+     ],
+     "mainEpisodeCount": 24
+    },
+    {
+     "id": 399820,
+     "names": [
+      "魔法使的新娘 第二季",
+      "魔法使いの嫁 SEASON2",
+      "Mahoutsukai no Yome SEASON 2",
+      "魔法使之嫁 第二季",
+      "The Ancient Magus' Bride SEASON2"
+     ],
+     "mainEpisodeCount": 12
+    },
+    {
+     "id": 442523,
+     "names": [
+      "魔法使的新娘 第二季 第2部分",
+      "魔法使いの嫁 SEASON2 第2クール",
+      "Mahoutsukai no Yome Season 2 Part 2",
+      "The Ancient Magus' Bride Season 2 Part 2"
+     ],
+     "mainEpisodeCount": 12
+    }
+   ],
+   "entries": [
+    {
+     "siteId": "1",
+     "name": "魔法使的新娘",
+     "numbers": [
+      24,
+      23,
+      22,
+      21,
+      20,
+      19,
+      18,
+      17,
+      16,
+      15,
+      14,
+      13,
+      12,
+      11,
+      10,
+      9,
+      8,
+      7,
+      6,
+      5,
+      4,
+      3,
+      2,
+      1,
+      0
+     ]
+    },
+    {
+     "siteId": "2",
+     "name": "魔法使的新娘OAD",
+     "numbers": [
+      3,
+      2,
+      1
+     ]
+    },
+    {
+     "siteId": "3",
+     "name": "魔法使的新娘 第二季",
+     "numbers": [
+      24,
+      23,
+      22,
+      21,
+      20,
+      19,
+      18,
+      17,
+      16,
+      15,
+      14,
+      13,
+      12,
+      11,
+      10,
+      9,
+      8,
+      7,
+      6,
+      5,
+      4,
+      3,
+      2,
+      1
+     ]
+    },
+    {
+     "siteId": "4",
+     "name": "魔法使的新娘 第二季 第2部分",
+     "numbers": [
+      12,
+      11,
+      10,
+      9,
+      8,
+      7,
+      6,
+      5,
+      4,
+      3,
+      2,
+      1
+     ]
+    }
+   ],
+   "cases": [
+    {
+     "subjectId": 399820,
+     "index": 1,
+     "sort": 1,
+     "ep": 1,
+     "truth": [
+      {
+       "siteId": "3",
+       "number": 1
+      }
+     ],
+     "verifiable": true,
+     "flags": [],
+     "conventions": [
+      "own"
+     ]
+    },
+    {
+     "subjectId": 399820,
+     "index": 6,
+     "sort": 6,
+     "ep": 6,
+     "truth": [
+      {
+       "siteId": "3",
+       "number": 6
+      }
+     ],
+     "verifiable": true,
+     "flags": [],
+     "conventions": [
+      "own"
+     ]
+    },
+    {
+     "subjectId": 399820,
+     "index": 12,
+     "sort": 12,
+     "ep": 12,
+     "truth": [
+      {
+       "siteId": "3",
+       "number": 12
+      }
+     ],
+     "verifiable": true,
+     "flags": [],
+     "conventions": [
+      "own"
+     ]
+    },
+    {
+     "subjectId": 442523,
+     "index": 1,
+     "sort": 13,
+     "ep": 1,
+     "truth": [
+      {
+       "siteId": "4",
+       "number": 1
+      },
+      {
+       "siteId": "3",
+       "number": 13
+      }
+     ],
+     "verifiable": true,
+     "flags": [],
+     "conventions": [
+      "A:restart",
+      "C:merged"
+     ]
+    },
+    {
+     "subjectId": 442523,
+     "index": 6,
+     "sort": 18,
+     "ep": 6,
+     "truth": [
+      {
+       "siteId": "4",
+       "number": 6
+      },
+      {
+       "siteId": "3",
+       "number": 18
+      }
+     ],
+     "verifiable": true,
+     "flags": [],
+     "conventions": [
+      "A:restart",
+      "C:merged"
+     ]
+    },
+    {
+     "subjectId": 442523,
+     "index": 12,
+     "sort": 24,
+     "ep": 12,
+     "truth": [
+      {
+       "siteId": "4",
+       "number": 12
+      },
+      {
+       "siteId": "3",
+       "number": 24
+      }
+     ],
+     "verifiable": true,
+     "flags": [],
+     "conventions": [
+      "A:restart",
+      "C:merged"
+     ]
+    }
+   ]
+  },
+  {
+   "base": "炎炎消防队 叁之章",
+   "partIds": [
+    382126,
+    502876
+   ],
+   "mainline": [
+    {
+     "id": 266372,
+     "names": [
+      "炎炎消防队",
+      "炎炎ノ消防隊"
+     ],
+     "mainEpisodeCount": 24
+    },
+    {
+     "id": 297342,
+     "names": [
+      "炎炎消防队 二之章",
+      "炎炎ノ消防隊 弐ノ章"
+     ],
+     "mainEpisodeCount": 24
+    },
+    {
+     "id": 382126,
+     "names": [
+      "炎炎消防队 叁之章",
+      "炎炎ノ消防隊 参ノ章",
+      "Fire Force Season 3",
+      "Enen no Shouboutai: San no Shou",
+      "炎炎消防队 三之章",
+      "炎炎消防队 第三季",
+      "炎炎消防隊 參之章"
+     ],
+     "mainEpisodeCount": 12
+    },
+    {
+     "id": 502876,
+     "names": [
+      "炎炎消防队 叁之章 第2部分",
+      "炎炎ノ消防隊 参ノ章 第2クール",
+      "Fire Force Season 3 Part 2",
+      "Enen no Shouboutai 3rd Season Part 2",
+      "Enen no Shouboutai: San no Shou Part 2",
+      "炎炎消防队 第三季 第2部分"
+     ],
+     "mainEpisodeCount": 13
+    }
+   ],
+   "entries": [
+    {
+     "siteId": "1",
+     "name": "炎炎消防队",
+     "numbers": [
+      24,
+      23,
+      22,
+      21,
+      20,
+      19,
+      18,
+      17,
+      16,
+      15,
+      14,
+      13,
+      12,
+      11,
+      10,
+      9,
+      8,
+      7,
+      6,
+      5,
+      4,
+      3,
+      2,
+      1
+     ]
+    },
+    {
+     "siteId": "2",
+     "name": "炎炎消防队 二之章",
+     "numbers": [
+      24,
+      23,
+      22,
+      21,
+      20,
+      19,
+      18,
+      17,
+      16,
+      15,
+      14,
+      13,
+      12,
+      11,
+      10,
+      9,
+      8,
+      7,
+      6,
+      5,
+      4,
+      3,
+      2,
+      1
+     ]
+    },
+    {
+     "siteId": "3",
+     "name": "炎炎消防队 叁之章",
+     "numbers": [
+      25,
+      24,
+      23,
+      22,
+      21
+     ]
+    },
+    {
+     "siteId": "4",
+     "name": "炎炎消防队 叁之章 第2部分",
+     "numbers": [
+      13,
+      12
+     ]
+    }
+   ],
+   "cases": [
+    {
+     "subjectId": 382126,
+     "index": 1,
+     "sort": 1,
+     "ep": 1,
+     "truth": [],
+     "verifiable": false,
+     "flags": [
+      "own-named '炎炎消防队 叁之章' numbering starts at 21"
+     ],
+     "conventions": []
+    },
+    {
+     "subjectId": 382126,
+     "index": 6,
+     "sort": 6,
+     "ep": 6,
+     "truth": [],
+     "verifiable": false,
+     "flags": [
+      "own-named '炎炎消防队 叁之章' numbering starts at 21"
+     ],
+     "conventions": []
+    },
+    {
+     "subjectId": 382126,
+     "index": 12,
+     "sort": 12,
+     "ep": 12,
+     "truth": [],
+     "verifiable": false,
+     "flags": [
+      "own-named '炎炎消防队 叁之章' numbering starts at 21"
+     ],
+     "conventions": []
+    },
+    {
+     "subjectId": 502876,
+     "index": 1,
+     "sort": 13,
+     "ep": 1,
+     "truth": [],
+     "verifiable": false,
+     "flags": [
+      "own-named '炎炎消防队 叁之章 第2部分' numbering starts at 12"
+     ],
+     "conventions": []
+    },
+    {
+     "subjectId": 502876,
+     "index": 7,
+     "sort": 19,
+     "ep": 7,
+     "truth": [],
+     "verifiable": false,
+     "flags": [
+      "own-named '炎炎消防队 叁之章 第2部分' numbering starts at 12"
+     ],
+     "conventions": []
+    },
+    {
+     "subjectId": 502876,
+     "index": 13,
+     "sort": 25,
+     "ep": 13,
+     "truth": [
+      {
+       "siteId": "3",
+       "number": 25
+      }
+     ],
+     "verifiable": false,
+     "flags": [
+      "own-named '炎炎消防队 叁之章 第2部分' numbering starts at 12"
+     ],
+     "conventions": [
+      "C:merged"
+     ]
+    }
+   ]
+  },
+  {
+   "base": "叹气的亡灵想隐退",
+   "partIds": [
+    481410,
+    530290
+   ],
+   "mainline": [
+    {
+     "id": 481410,
+     "names": [
+      "叹气的亡灵想隐退",
+      "嘆きの亡霊は引退したい",
+      "叹息的亡灵好想隐退",
+      "叹息亡灵想隐退",
+      "叹息的亡灵想要引退",
+      "嘆氣的亡靈想隱退",
+      "Nageki no Bourei wa Intai shitai",
+      "Let This Grieving Soul Retire"
+     ],
+     "mainEpisodeCount": 13
+    },
+    {
+     "id": 530290,
+     "names": [
+      "叹气的亡灵想隐退 第2部分",
+      "嘆きの亡霊は引退したい 第2クール",
+      "叹息的亡灵好想隐退 第2部分",
+      "嘆氣的亡靈想隱退 第二季",
+      "Nageki no Bourei wa Intai shitai Part 2",
+      "Let This Grieving Soul Retire Part 2"
+     ],
+     "mainEpisodeCount": 11
+    }
+   ],
+   "entries": [
+    {
+     "siteId": "1",
+     "name": "叹气的亡灵想隐退",
+     "numbers": [
+      13,
+      12,
+      11,
+      10,
+      9,
+      8,
+      7,
+      6,
+      5
+     ]
+    },
+    {
+     "siteId": "2",
+     "name": "叹气的亡灵想隐退 第2部分",
+     "numbers": [
+      11,
+      10,
+      9,
+      8,
+      7,
+      6,
+      5,
+      4,
+      3,
+      2,
+      1
+     ]
+    }
+   ],
+   "cases": [
+    {
+     "subjectId": 481410,
+     "index": 1,
+     "sort": 1,
+     "ep": 1,
+     "truth": [],
+     "verifiable": true,
+     "flags": [],
+     "conventions": []
+    },
+    {
+     "subjectId": 481410,
+     "index": 7,
+     "sort": 7,
+     "ep": 7,
+     "truth": [
+      {
+       "siteId": "1",
+       "number": 7
+      }
+     ],
+     "verifiable": true,
+     "flags": [],
+     "conventions": [
+      "own"
+     ]
+    },
+    {
+     "subjectId": 481410,
+     "index": 13,
+     "sort": 13,
+     "ep": 13,
+     "truth": [
+      {
+       "siteId": "1",
+       "number": 13
+      }
+     ],
+     "verifiable": true,
+     "flags": [],
+     "conventions": [
+      "own"
+     ]
+    },
+    {
+     "subjectId": 530290,
+     "index": 1,
+     "sort": 14,
+     "ep": 1,
+     "truth": [
+      {
+       "siteId": "2",
+       "number": 1
+      }
+     ],
+     "verifiable": true,
+     "flags": [],
+     "conventions": [
+      "A:restart"
+     ]
+    },
+    {
+     "subjectId": 530290,
+     "index": 6,
+     "sort": 19,
+     "ep": 6,
+     "truth": [
+      {
+       "siteId": "2",
+       "number": 6
+      }
+     ],
+     "verifiable": true,
+     "flags": [],
+     "conventions": [
+      "A:restart"
+     ]
+    },
+    {
+     "subjectId": 530290,
+     "index": 11,
+     "sort": 24,
+     "ep": 11,
+     "truth": [
+      {
+       "siteId": "2",
+       "number": 11
+      }
+     ],
+     "verifiable": true,
+     "flags": [],
+     "conventions": [
+      "A:restart"
+     ]
+    }
+   ]
+  },
+  {
+   "base": "弹珠汽水瓶里的千岁同学",
+   "partIds": [
+    507634,
+    584847
+   ],
+   "mainline": [
+    {
+     "id": 507634,
+     "names": [
+      "弹珠汽水瓶里的千岁同学",
+      "千歳くんはラムネ瓶のなか",
+      "千岁同学在波子汽水瓶内",
+      "Chitose-kun wa Ramune Bin no Naka",
+      "Chitose Is in the Ramune Bottle",
+      "チラムネ",
+      "Chiramune"
+     ],
+     "mainEpisodeCount": 13
+    },
+    {
+     "id": 584847,
+     "names": [
+      "弹珠汽水瓶里的千岁同学 第2部分",
+      "千歳くんはラムネ瓶のなか 第2クール",
+      "千岁同学在波子汽水瓶内 第2部分",
+      "Chitose-kun wa Ramune Bin no Naka Part 2",
+      "Chitose Is in the Ramune Bottle Part 2"
+     ],
+     "mainEpisodeCount": 12
+    }
+   ],
+   "entries": [
+    {
+     "siteId": "1",
+     "name": "弹珠汽水瓶里的千岁同学",
+     "numbers": [
+      13,
+      12,
+      11,
+      10,
+      9,
+      8,
+      7,
+      6,
+      5,
+      4,
+      3,
+      2,
+      1
+     ]
+    }
+   ],
+   "cases": [
+    {
+     "subjectId": 507634,
+     "index": 1,
+     "sort": 1,
+     "ep": 1,
+     "truth": [
+      {
+       "siteId": "1",
+       "number": 1
+      }
+     ],
+     "verifiable": true,
+     "flags": [],
+     "conventions": [
+      "own"
+     ]
+    },
+    {
+     "subjectId": 507634,
+     "index": 7,
+     "sort": 7,
+     "ep": 7,
+     "truth": [
+      {
+       "siteId": "1",
+       "number": 7
+      }
+     ],
+     "verifiable": true,
+     "flags": [],
+     "conventions": [
+      "own"
+     ]
+    },
+    {
+     "subjectId": 507634,
+     "index": 13,
+     "sort": 13,
+     "ep": 13,
+     "truth": [
+      {
+       "siteId": "1",
+       "number": 13
+      }
+     ],
+     "verifiable": true,
+     "flags": [],
+     "conventions": [
+      "own"
+     ]
+    },
+    {
+     "subjectId": 584847,
+     "index": 1,
+     "sort": 14,
+     "ep": 1,
+     "truth": [],
+     "verifiable": true,
+     "flags": [],
+     "conventions": []
+    },
+    {
+     "subjectId": 584847,
+     "index": 6,
+     "sort": 19,
+     "ep": 6,
+     "truth": [],
+     "verifiable": true,
+     "flags": [],
+     "conventions": []
+    },
+    {
+     "subjectId": 584847,
+     "index": 12,
+     "sort": 25,
+     "ep": 12,
+     "truth": [],
+     "verifiable": true,
+     "flags": [],
+     "conventions": []
+    }
+   ]
+  },
+  {
+   "base": "钻石王牌 act2 第二季",
+   "partIds": [
+    495238,
+    664395
+   ],
+   "mainline": [
+    {
+     "id": 73083,
+     "names": [
+      "钻石王牌",
+      "ダイヤのA"
+     ],
+     "mainEpisodeCount": 75
+    },
+    {
+     "id": 129844,
+     "names": [
+      "钻石王牌 第二季",
+      "ダイヤのA -SECOND SEASON-"
+     ],
+     "mainEpisodeCount": 51
+    },
+    {
+     "id": 267615,
+     "names": [
+      "钻石王牌 act2",
+      "ダイヤのA actⅡ"
+     ],
+     "mainEpisodeCount": 52
+    },
+    {
+     "id": 495238,
+     "names": [
+      "钻石王牌 act2 第二季",
+      "ダイヤのA actⅡ Second Season"
+     ],
+     "mainEpisodeCount": 13
+    },
+    {
+     "id": 664395,
+     "names": [
+      "钻石王牌 act2 第二季 第2部分",
+      "ダイヤのA actⅡ Second Season 第2クール"
+     ],
+     "mainEpisodeCount": 12
+    }
+   ],
+   "entries": [
+    {
+     "siteId": "1",
+     "name": "钻石王牌 act2",
+     "numbers": [
+      52,
+      51,
+      50,
+      49,
+      48,
+      47,
+      46,
+      45,
+      44,
+      43,
+      42,
+      41,
+      40,
+      39,
+      38,
+      37,
+      36,
+      35,
+      34,
+      33,
+      32,
+      31,
+      30,
+      29,
+      28,
+      27,
+      26,
+      25,
+      24,
+      23,
+      22,
+      21,
+      20,
+      19,
+      18,
+      17,
+      16,
+      15,
+      14,
+      13,
+      12,
+      11,
+      10,
+      9,
+      8,
+      7,
+      6,
+      5,
+      4,
+      3,
+      2,
+      1
+     ]
+    },
+    {
+     "siteId": "2",
+     "name": "钻石王牌 act2 第二季",
+     "numbers": [
+      13,
+      12,
+      11,
+      10,
+      9,
+      8,
+      7,
+      6,
+      5,
+      4,
+      3
+     ]
+    }
+   ],
+   "cases": [
+    {
+     "subjectId": 495238,
+     "index": 1,
+     "sort": 1,
+     "ep": 1,
+     "truth": [],
+     "verifiable": true,
+     "flags": [],
+     "conventions": []
+    },
+    {
+     "subjectId": 495238,
+     "index": 7,
+     "sort": 7,
+     "ep": 7,
+     "truth": [
+      {
+       "siteId": "2",
+       "number": 7
+      }
+     ],
+     "verifiable": true,
+     "flags": [],
+     "conventions": [
+      "own"
+     ]
+    },
+    {
+     "subjectId": 495238,
+     "index": 13,
+     "sort": 13,
+     "ep": 13,
+     "truth": [
+      {
+       "siteId": "2",
+       "number": 13
+      }
+     ],
+     "verifiable": true,
+     "flags": [],
+     "conventions": [
+      "own"
+     ]
+    },
+    {
+     "subjectId": 664395,
+     "index": 1,
+     "sort": 14,
+     "ep": 1,
+     "truth": [],
+     "verifiable": true,
+     "flags": [],
+     "conventions": []
+    },
+    {
+     "subjectId": 664395,
+     "index": 6,
+     "sort": 19,
+     "ep": 6,
+     "truth": [],
+     "verifiable": true,
+     "flags": [],
+     "conventions": []
+    },
+    {
+     "subjectId": 664395,
+     "index": 12,
+     "sort": 25,
+     "ep": 12,
+     "truth": [],
+     "verifiable": true,
+     "flags": [],
+     "conventions": []
+    }
+   ]
+  },
+  {
+   "base": "关于我转生变成史莱姆这档事 第二季",
+   "partIds": [
+    278031,
+    302523
+   ],
+   "mainline": [
+    {
+     "id": 239816,
+     "names": [
+      "关于我转生变成史莱姆这档事",
+      "転生したらスライムだった件"
+     ],
+     "mainEpisodeCount": 24
+    },
+    {
+     "id": 278031,
+     "names": [
+      "关于我转生变成史莱姆这档事 第二季",
+      "転生したらスライムだった件 第2期",
+      "That Time I Got Reincarnated as a Slime 2nd Season",
+      "Tensei Shitara Slime Datta Ken 2nd Season",
+      "Tensei Shitara Slime Datta Ken (2021)",
+      "That Time I Got Reincarnated as a Slime (2021)"
+     ],
+     "mainEpisodeCount": 12
+    },
+    {
+     "id": 302523,
+     "names": [
+      "关于我转生变成史莱姆这档事 第二季 第2部分",
+      "転生したらスライムだった件 第2期 2",
+      "关于我转生变成史莱姆这档事 第二季 下半部分",
+      "Tensei Shitara Slime Datta Ken 2nd Season Part 2",
+      "That Time I Got Reincarnated as a Slime Season 2 Part 2"
+     ],
+     "mainEpisodeCount": 12
+    },
+    {
+     "id": 407573,
+     "names": [
+      "关于我转生变成史莱姆这档事 第三季",
+      "転生したらスライムだった件 第3期"
+     ],
+     "mainEpisodeCount": 24
+    },
+    {
+     "id": 515594,
+     "names": [
+      "关于我转生变成史莱姆这档事 第四季",
+      "転生したらスライムだった件 第4期"
+     ],
+     "mainEpisodeCount": 24
+    },
+    {
+     "id": 616596,
+     "names": [
+      "关于我转生变成史莱姆这档事 第四季 第3部分",
+      "転生したらスライムだった件 第4期 第3クール"
+     ],
+     "mainEpisodeCount": 0
+    },
+    {
+     "id": 616597,
+     "names": [
+      "关于我转生变成史莱姆这档事 第四季 第4部分",
+      "転生したらスライムだった件 第4期 第4クール"
+     ],
+     "mainEpisodeCount": 0
+    },
+    {
+     "id": 616598,
+     "names": [
+      "关于我转生变成史莱姆这档事 第四季 第5部分",
+      "転生したらスライムだった件 第4期 第5クール"
+     ],
+     "mainEpisodeCount": 0
+    }
+   ],
+   "entries": [
+    {
+     "siteId": "1",
+     "name": "关于我转生变成史莱姆这档事",
+     "numbers": [
+      28,
+      27,
+      26,
+      25,
+      24,
+      23,
+      22,
+      21,
+      20,
+      19,
+      18,
+      17,
+      16,
+      15,
+      14,
+      13,
+      12,
+      11,
+      10,
+      9,
+      8,
+      7,
+      6,
+      5,
+      4,
+      3,
+      2,
+      1
+     ]
+    },
+    {
+     "siteId": "2",
+     "name": "关于我转生变成史莱姆这档事OAD",
+     "numbers": [
+      5,
+      4,
+      3,
+      2,
+      1
+     ]
+    },
+    {
+     "siteId": "3",
+     "name": "关于我转生变成史莱姆这档事 第二季",
+     "numbers": [
+      48,
+      47,
+      46,
+      45,
+      44,
+      43,
+      42,
+      41,
+      40,
+      39,
+      38,
+      37,
+      36,
+      35,
+      34,
+      33,
+      32,
+      31,
+      30,
+      29,
+      28,
+      27,
+      26,
+      25,
+      24,
+      23,
+      22,
+      21,
+      20,
+      19,
+      18,
+      17,
+      16,
+      15,
+      14,
+      13,
+      12,
+      11,
+      10,
+      9,
+      8,
+      7,
+      6,
+      5,
+      4,
+      3,
+      2,
+      1,
+      0
+     ]
+    },
+    {
+     "siteId": "4",
+     "name": "关于我转生变成史莱姆这档事 第三季",
+     "numbers": [
+      72,
+      71,
+      70,
+      69,
+      68,
+      67,
+      66,
+      65,
+      64,
+      63,
+      62,
+      61,
+      60,
+      59,
+      58,
+      57,
+      56,
+      55,
+      54,
+      53,
+      52,
+      51,
+      50,
+      24,
+      23,
+      22,
+      21,
+      20,
+      19,
+      18,
+      17,
+      16,
+      15,
+      14,
+      13,
+      12,
+      11,
+      10,
+      9,
+      8,
+      7,
+      6,
+      5,
+      4,
+      3,
+      2,
+      1
+     ]
+    },
+    {
+     "siteId": "5",
+     "name": "关于我转生变成史莱姆这档事 第四季",
+     "numbers": [
+      24,
+      23,
+      22,
+      21,
+      20,
+      19,
+      18,
+      17,
+      16,
+      15,
+      14,
+      13,
+      12,
+      11,
+      10,
+      9,
+      8,
+      7,
+      6,
+      5,
+      4,
+      3,
+      2,
+      1
+     ]
+    },
+    {
+     "siteId": "6",
+     "name": "关于我转生变成史莱姆这档事 第二季 第2部分",
+     "numbers": [
+      43,
+      42,
+      12,
+      11,
+      10,
+      9,
+      8,
+      7,
+      6,
+      5,
+      4,
+      3,
+      2,
+      1
+     ]
+    },
+    {
+     "siteId": "7",
+     "name": "剧场版 关于我转生变成史莱姆这档事 红莲之绊篇",
+     "numbers": []
+    },
+    {
+     "siteId": "8",
+     "name": "剧场版 关于我转生变成史莱姆这档事 苍海之泪篇",
+     "numbers": [
+      1,
+      1
+     ]
+    },
+    {
+     "siteId": "9",
+     "name": "转生史莱姆日记",
+     "numbers": [
+      12,
+      11,
+      10,
+      9,
+      8,
+      7,
+      6,
+      5,
+      4,
+      3,
+      2,
+      1
+     ]
+    }
+   ],
+   "cases": [
+    {
+     "subjectId": 278031,
+     "index": 1,
+     "sort": 25,
+     "ep": 1,
+     "truth": [
+      {
+       "siteId": "3",
+       "number": 1
+      },
+      {
+       "siteId": "2",
+       "number": 1
+      }
+     ],
+     "verifiable": true,
+     "flags": [],
+     "conventions": [
+      "own"
+     ]
+    },
+    {
+     "subjectId": 278031,
+     "index": 6,
+     "sort": 30,
+     "ep": 6,
+     "truth": [
+      {
+       "siteId": "3",
+       "number": 6
+      }
+     ],
+     "verifiable": true,
+     "flags": [],
+     "conventions": [
+      "own"
+     ]
+    },
+    {
+     "subjectId": 278031,
+     "index": 12,
+     "sort": 36,
+     "ep": 12,
+     "truth": [
+      {
+       "siteId": "3",
+       "number": 12
+      }
+     ],
+     "verifiable": true,
+     "flags": [],
+     "conventions": [
+      "own"
+     ]
+    },
+    {
+     "subjectId": 302523,
+     "index": 1,
+     "sort": 37,
+     "ep": 1,
+     "truth": [
+      {
+       "siteId": "3",
+       "number": 13
+      }
+     ],
+     "verifiable": false,
+     "flags": [
+      "own-named '关于我转生变成史莱姆这档事 第二季 第2部分' has stray numbers up to 43"
+     ],
+     "conventions": [
+      "C:merged"
+     ]
+    },
+    {
+     "subjectId": 302523,
+     "index": 6,
+     "sort": 42,
+     "ep": 6,
+     "truth": [
+      {
+       "siteId": "3",
+       "number": 18
+      }
+     ],
+     "verifiable": false,
+     "flags": [
+      "own-named '关于我转生变成史莱姆这档事 第二季 第2部分' has stray numbers up to 43"
+     ],
+     "conventions": [
+      "C:merged"
+     ]
+    },
+    {
+     "subjectId": 302523,
+     "index": 12,
+     "sort": 48,
+     "ep": 12,
+     "truth": [
+      {
+       "siteId": "3",
+       "number": 24
+      }
+     ],
+     "verifiable": false,
+     "flags": [
+      "own-named '关于我转生变成史莱姆这档事 第二季 第2部分' has stray numbers up to 43"
+     ],
+     "conventions": [
+      "C:merged"
+     ]
+    }
+   ]
+  },
+  {
+   "base": "夜樱家的大作战 第二季",
+   "partIds": [
+    517027,
+    664389
+   ],
+   "mainline": [
+    {
+     "id": 411276,
+     "names": [
+      "夜樱家的大作战",
+      "夜桜さんちの大作戦"
+     ],
+     "mainEpisodeCount": 27
+    },
+    {
+     "id": 517027,
+     "names": [
+      "夜樱家的大作战 第二季",
+      "夜桜さんちの大作戦 第2期",
+      "Yozakura-san Chi no Daisakusen Season 2",
+      "Mission: Yozakura Family Season 2"
+     ],
+     "mainEpisodeCount": 12
+    },
+    {
+     "id": 664389,
+     "names": [
+      "夜樱家的大作战 第二季 第2部分",
+      "夜桜さんちの大作戦 第2期 第2クール"
+     ],
+     "mainEpisodeCount": 12
+    }
+   ],
+   "entries": [
+    {
+     "siteId": "1",
+     "name": "夜樱家的大作战 第二季",
+     "numbers": [
+      12,
+      11,
+      10,
+      9,
+      8,
+      7,
+      6,
+      5,
+      4,
+      3,
+      2,
+      1,
+      2
+     ]
+    }
+   ],
+   "cases": [
+    {
+     "subjectId": 517027,
+     "index": 1,
+     "sort": 28,
+     "ep": 1,
+     "truth": [
+      {
+       "siteId": "1",
+       "number": 1
+      }
+     ],
+     "verifiable": true,
+     "flags": [],
+     "conventions": [
+      "own"
+     ]
+    },
+    {
+     "subjectId": 517027,
+     "index": 6,
+     "sort": 33,
+     "ep": 6,
+     "truth": [
+      {
+       "siteId": "1",
+       "number": 6
+      }
+     ],
+     "verifiable": true,
+     "flags": [],
+     "conventions": [
+      "own"
+     ]
+    },
+    {
+     "subjectId": 517027,
+     "index": 12,
+     "sort": 39,
+     "ep": 12,
+     "truth": [
+      {
+       "siteId": "1",
+       "number": 12
+      }
+     ],
+     "verifiable": true,
+     "flags": [],
+     "conventions": [
+      "own"
+     ]
+    },
+    {
+     "subjectId": 664389,
+     "index": 1,
+     "sort": 40,
+     "ep": 1,
+     "truth": [],
+     "verifiable": true,
+     "flags": [],
+     "conventions": []
+    },
+    {
+     "subjectId": 664389,
+     "index": 6,
+     "sort": 45,
+     "ep": 6,
+     "truth": [],
+     "verifiable": true,
+     "flags": [],
+     "conventions": []
+    },
+    {
+     "subjectId": 664389,
+     "index": 12,
+     "sort": 51,
+     "ep": 12,
+     "truth": [],
+     "verifiable": true,
+     "flags": [],
+     "conventions": []
+    }
+   ]
+  },
+  {
+   "base": "一弦定音！",
+   "partIds": [
+    254788,
+    270060
+   ],
+   "mainline": [
+    {
+     "id": 254788,
+     "names": [
+      "一弦定音！",
+      "この音とまれ！"
+     ],
+     "mainEpisodeCount": 13
+    },
+    {
+     "id": 270060,
+     "names": [
+      "一弦定音！第2部分",
+      "この音とまれ！第2クール"
+     ],
+     "mainEpisodeCount": 13
+    }
+   ],
+   "entries": [
+    {
+     "siteId": "1",
+     "name": "一弦定音！",
+     "numbers": [
+      13,
+      12,
+      11,
+      10,
+      9,
+      8,
+      7,
+      6,
+      5,
+      4,
+      3,
+      2,
+      1
+     ]
+    },
+    {
+     "siteId": "2",
+     "name": "一弦定音！ 第二季",
+     "numbers": [
+      26,
+      25,
+      24,
+      23,
+      22,
+      21,
+      20,
+      19,
+      18,
+      17,
+      16,
+      15,
+      14,
+      13,
+      12,
+      11,
+      10,
+      9,
+      8,
+      7,
+      6,
+      5,
+      4,
+      3,
+      2,
+      1
+     ]
+    }
+   ],
+   "cases": [
+    {
+     "subjectId": 254788,
+     "index": 1,
+     "sort": 1,
+     "ep": 1,
+     "truth": [
+      {
+       "siteId": "1",
+       "number": 1
+      }
+     ],
+     "verifiable": true,
+     "flags": [],
+     "conventions": [
+      "own"
+     ]
+    },
+    {
+     "subjectId": 254788,
+     "index": 7,
+     "sort": 7,
+     "ep": 7,
+     "truth": [
+      {
+       "siteId": "1",
+       "number": 7
+      }
+     ],
+     "verifiable": true,
+     "flags": [],
+     "conventions": [
+      "own"
+     ]
+    },
+    {
+     "subjectId": 254788,
+     "index": 13,
+     "sort": 13,
+     "ep": 13,
+     "truth": [
+      {
+       "siteId": "1",
+       "number": 13
+      }
+     ],
+     "verifiable": true,
+     "flags": [],
+     "conventions": [
+      "own"
+     ]
+    },
+    {
+     "subjectId": 270060,
+     "index": 1,
+     "sort": 14,
+     "ep": 1,
+     "truth": [
+      {
+       "siteId": "2",
+       "number": 14
+      }
+     ],
+     "verifiable": true,
+     "flags": [],
+     "conventions": [
+      "C:merged-own-named"
+     ]
+    },
+    {
+     "subjectId": 270060,
+     "index": 7,
+     "sort": 20,
+     "ep": 7,
+     "truth": [
+      {
+       "siteId": "2",
+       "number": 20
+      }
+     ],
+     "verifiable": true,
+     "flags": [],
+     "conventions": [
+      "C:merged-own-named"
+     ]
+    },
+    {
+     "subjectId": 270060,
+     "index": 13,
+     "sort": 26,
+     "ep": 13,
+     "truth": [
+      {
+       "siteId": "2",
+       "number": 26
+      }
+     ],
+     "verifiable": true,
+     "flags": [],
+     "conventions": [
+      "C:merged-own-named"
+     ]
+    }
+   ]
+  },
+  {
+   "base": "无职转生～到了异世界就拿出真本事～",
+   "partIds": [
+    277554,
+    325585
+   ],
+   "mainline": [
+    {
+     "id": 277554,
+     "names": [
+      "无职转生～到了异世界就拿出真本事～",
+      "無職転生 ～異世界行ったら本気だす～",
+      "无职转生 ～在异世界认真地活下去～",
+      "Jobless Reincarnation ~I Will Seriously Try If I Go to Another World~",
+      "Mushoku Tensei ~Isekai Ittara Honki Dasu~"
+     ],
+     "mainEpisodeCount": 11
+    },
+    {
+     "id": 325585,
+     "names": [
+      "无职转生～到了异世界就拿出真本事～ 第2部分",
+      "無職転生 ～異世界行ったら本気だす～ 第2クール",
+      "无职转生 ～在异世界认真地活下去～ 第2部分",
+      "Mushoku Tensei: Isekai Ittara Honki Dasu Part 2",
+      "Mushoku Tensei: Jobless Reincarnation Part 2",
+      "無職轉生 到了異世界就拿出真本事 後半",
+      "无职转生 ～在异世界认真地活下去～ 后半"
+     ],
+     "mainEpisodeCount": 12
+    },
+    {
+     "id": 373247,
+     "names": [
+      "无职转生 第二季 ～到了异世界就拿出真本事～",
+      "無職転生Ⅱ ～異世界行ったら本気だす～",
+      "无职转生 第二季 ～在异世界认真地活下去～",
+      "Mushoku Tensei II: Isekai Ittara Honki Dasu",
+      "Mushoku Tensei: Jobless Reincarnation Season 2"
+     ],
+     "mainEpisodeCount": 13
+    },
+    {
+     "id": 444557,
+     "names": [
+      "无职转生 第二季 ～到了异世界就拿出真本事～ 第2部分",
+      "無職転生Ⅱ ～異世界行ったら本気だす～ 第2クール",
+      "无职转生 第二季 ～在异世界认真地活下去～ 第2部分",
+      "Mushoku Tensei II: Isekai Ittara Honki Dasu (2024)",
+      "Mushoku Tensei: Jobless Reincarnation Season 2 (2024)",
+      "Mushoku Tensei: Jobless Reincarnation Season 2 part 2",
+      "Mushoku Tensei II: Isekai Ittara Honki Dasu part 2"
+     ],
+     "mainEpisodeCount": 12
+    },
+    {
+     "id": 501963,
+     "names": [
+      "无职转生 第三季 ～到了异世界就拿出真本事～",
+      "無職転生Ⅲ ～異世界行ったら本気だす～"
+     ],
+     "mainEpisodeCount": 14
+    },
+    {
+     "id": 708197,
+     "names": [
+      "无职转生 第三季 ～到了异世界就拿出真本事～ 第2部分",
+      "無職転生Ⅲ ～異世界行ったら本気だす～ 第2クール"
+     ],
+     "mainEpisodeCount": 0
+    }
+   ],
+   "entries": [
+    {
+     "siteId": "1",
+     "name": "无职转生 ～在异世界认真地活下去～",
+     "numbers": [
+      11,
+      10,
+      9,
+      8,
+      7,
+      6,
+      5,
+      4,
+      3,
+      2,
+      1
+     ]
+    },
+    {
+     "siteId": "2",
+     "name": "无职转生～到了异世界就拿出真本事～ 第2部分",
+     "numbers": [
+      24,
+      23,
+      22,
+      21,
+      20,
+      19,
+      18,
+      17,
+      15,
+      14,
+      12,
+      11,
+      10,
+      9,
+      8,
+      7,
+      6,
+      5,
+      4,
+      3,
+      2,
+      1
+     ]
+    },
+    {
+     "siteId": "3",
+     "name": "无职转生 第二季 ～到了异世界就拿出真本事～",
+     "numbers": [
+      24,
+      23,
+      22,
+      21,
+      20,
+      19,
+      18,
+      17,
+      16,
+      15,
+      14,
+      13,
+      12,
+      11,
+      10,
+      9,
+      8,
+      7,
+      6,
+      5,
+      4,
+      3,
+      2,
+      1
+     ]
+    },
+    {
+     "siteId": "4",
+     "name": "无职转生 第三季 ～到了异世界就拿出真本事～",
+     "numbers": [
+      13,
+      12,
+      11,
+      10,
+      9,
+      8,
+      7,
+      6,
+      5,
+      3,
+      2,
+      1
+     ]
+    }
+   ],
+   "cases": [
+    {
+     "subjectId": 277554,
+     "index": 1,
+     "sort": 1,
+     "ep": 1,
+     "truth": [
+      {
+       "siteId": "1",
+       "number": 1
+      }
+     ],
+     "verifiable": true,
+     "flags": [],
+     "conventions": [
+      "own"
+     ]
+    },
+    {
+     "subjectId": 277554,
+     "index": 6,
+     "sort": 6,
+     "ep": 6,
+     "truth": [
+      {
+       "siteId": "1",
+       "number": 6
+      }
+     ],
+     "verifiable": true,
+     "flags": [],
+     "conventions": [
+      "own"
+     ]
+    },
+    {
+     "subjectId": 277554,
+     "index": 11,
+     "sort": 11,
+     "ep": 11,
+     "truth": [
+      {
+       "siteId": "1",
+       "number": 11
+      }
+     ],
+     "verifiable": true,
+     "flags": [],
+     "conventions": [
+      "own"
+     ]
+    },
+    {
+     "subjectId": 325585,
+     "index": 1,
+     "sort": 12,
+     "ep": 1,
+     "truth": [
+      {
+       "siteId": "2",
+       "number": 12
+      }
+     ],
+     "verifiable": true,
+     "flags": [],
+     "conventions": [
+      "C:merged-own-named"
+     ]
+    },
+    {
+     "subjectId": 325585,
+     "index": 6,
+     "sort": 17,
+     "ep": 6,
+     "truth": [
+      {
+       "siteId": "2",
+       "number": 17
+      }
+     ],
+     "verifiable": true,
+     "flags": [],
+     "conventions": [
+      "C:merged-own-named"
+     ]
+    },
+    {
+     "subjectId": 325585,
+     "index": 12,
+     "sort": 23,
+     "ep": 12,
+     "truth": [
+      {
+       "siteId": "2",
+       "number": 23
+      }
+     ],
+     "verifiable": true,
+     "flags": [],
+     "conventions": [
+      "C:merged-own-named"
+     ]
+    }
+   ]
+  },
+  {
+   "base": "无职转生 第二季 ～到了异世界就拿出真本事～",
+   "partIds": [
+    373247,
+    444557
+   ],
+   "mainline": [
+    {
+     "id": 277554,
+     "names": [
+      "无职转生～到了异世界就拿出真本事～",
+      "無職転生 ～異世界行ったら本気だす～",
+      "无职转生 ～在异世界认真地活下去～",
+      "Jobless Reincarnation ~I Will Seriously Try If I Go to Another World~",
+      "Mushoku Tensei ~Isekai Ittara Honki Dasu~"
+     ],
+     "mainEpisodeCount": 11
+    },
+    {
+     "id": 325585,
+     "names": [
+      "无职转生～到了异世界就拿出真本事～ 第2部分",
+      "無職転生 ～異世界行ったら本気だす～ 第2クール",
+      "无职转生 ～在异世界认真地活下去～ 第2部分",
+      "Mushoku Tensei: Isekai Ittara Honki Dasu Part 2",
+      "Mushoku Tensei: Jobless Reincarnation Part 2",
+      "無職轉生 到了異世界就拿出真本事 後半",
+      "无职转生 ～在异世界认真地活下去～ 后半"
+     ],
+     "mainEpisodeCount": 12
+    },
+    {
+     "id": 373247,
+     "names": [
+      "无职转生 第二季 ～到了异世界就拿出真本事～",
+      "無職転生Ⅱ ～異世界行ったら本気だす～",
+      "无职转生 第二季 ～在异世界认真地活下去～",
+      "Mushoku Tensei II: Isekai Ittara Honki Dasu",
+      "Mushoku Tensei: Jobless Reincarnation Season 2"
+     ],
+     "mainEpisodeCount": 13
+    },
+    {
+     "id": 444557,
+     "names": [
+      "无职转生 第二季 ～到了异世界就拿出真本事～ 第2部分",
+      "無職転生Ⅱ ～異世界行ったら本気だす～ 第2クール",
+      "无职转生 第二季 ～在异世界认真地活下去～ 第2部分",
+      "Mushoku Tensei II: Isekai Ittara Honki Dasu (2024)",
+      "Mushoku Tensei: Jobless Reincarnation Season 2 (2024)",
+      "Mushoku Tensei: Jobless Reincarnation Season 2 part 2",
+      "Mushoku Tensei II: Isekai Ittara Honki Dasu part 2"
+     ],
+     "mainEpisodeCount": 12
+    },
+    {
+     "id": 501963,
+     "names": [
+      "无职转生 第三季 ～到了异世界就拿出真本事～",
+      "無職転生Ⅲ ～異世界行ったら本気だす～"
+     ],
+     "mainEpisodeCount": 14
+    },
+    {
+     "id": 708197,
+     "names": [
+      "无职转生 第三季 ～到了异世界就拿出真本事～ 第2部分",
+      "無職転生Ⅲ ～異世界行ったら本気だす～ 第2クール"
+     ],
+     "mainEpisodeCount": 0
+    }
+   ],
+   "entries": [
+    {
+     "siteId": "1",
+     "name": "无职转生 ～在异世界认真地活下去～",
+     "numbers": [
+      11,
+      10,
+      9,
+      8,
+      7,
+      6,
+      5,
+      4,
+      3,
+      2,
+      1
+     ]
+    },
+    {
+     "siteId": "2",
+     "name": "无职转生～到了异世界就拿出真本事～ 第2部分",
+     "numbers": [
+      24,
+      23,
+      22,
+      21,
+      20,
+      19,
+      18,
+      17,
+      15,
+      14,
+      12,
+      11,
+      10,
+      9,
+      8,
+      7,
+      6,
+      5,
+      4,
+      3,
+      2,
+      1
+     ]
+    },
+    {
+     "siteId": "3",
+     "name": "无职转生 第二季 ～到了异世界就拿出真本事～",
+     "numbers": [
+      24,
+      23,
+      22,
+      21,
+      20,
+      19,
+      18,
+      17,
+      16,
+      15,
+      14,
+      13,
+      12,
+      11,
+      10,
+      9,
+      8,
+      7,
+      6,
+      5,
+      4,
+      3,
+      2,
+      1
+     ]
+    },
+    {
+     "siteId": "4",
+     "name": "无职转生 第三季 ～到了异世界就拿出真本事～",
+     "numbers": [
+      13,
+      12,
+      11,
+      10,
+      9,
+      8,
+      7,
+      6,
+      5,
+      3,
+      2,
+      1
+     ]
+    }
+   ],
+   "cases": [
+    {
+     "subjectId": 373247,
+     "index": 1,
+     "sort": 0,
+     "ep": 1,
+     "truth": [
+      {
+       "siteId": "3",
+       "number": 1
+      }
+     ],
+     "verifiable": false,
+     "flags": [
+      "bangumi has a 第0话, site numbering unknowable"
+     ],
+     "conventions": [
+      "own"
+     ]
+    },
+    {
+     "subjectId": 373247,
+     "index": 7,
+     "sort": 6,
+     "ep": 7,
+     "truth": [
+      {
+       "siteId": "3",
+       "number": 7
+      }
+     ],
+     "verifiable": false,
+     "flags": [
+      "bangumi has a 第0话, site numbering unknowable"
+     ],
+     "conventions": [
+      "own"
+     ]
+    },
+    {
+     "subjectId": 373247,
+     "index": 13,
+     "sort": 12,
+     "ep": 13,
+     "truth": [
+      {
+       "siteId": "3",
+       "number": 13
+      }
+     ],
+     "verifiable": false,
+     "flags": [
+      "bangumi has a 第0话, site numbering unknowable"
+     ],
+     "conventions": [
+      "own"
+     ]
+    },
+    {
+     "subjectId": 444557,
+     "index": 1,
+     "sort": 13,
+     "ep": 1,
+     "truth": [
+      {
+       "siteId": "3",
+       "number": 14
+      }
+     ],
+     "verifiable": false,
+     "flags": [
+      "an earlier part has a 第0话, offset unknowable"
+     ],
+     "conventions": [
+      "C:merged"
+     ]
+    },
+    {
+     "subjectId": 444557,
+     "index": 6,
+     "sort": 18,
+     "ep": 6,
+     "truth": [
+      {
+       "siteId": "3",
+       "number": 19
+      }
+     ],
+     "verifiable": false,
+     "flags": [
+      "an earlier part has a 第0话, offset unknowable"
+     ],
+     "conventions": [
+      "C:merged"
+     ]
+    },
+    {
+     "subjectId": 444557,
+     "index": 12,
+     "sort": 24,
+     "ep": 12,
+     "truth": [],
+     "verifiable": false,
+     "flags": [
+      "an earlier part has a 第0话, offset unknowable"
+     ],
+     "conventions": []
+    }
+   ]
+  },
+  {
+   "base": "桃源暗鬼 ～日光・华严之泷篇～",
+   "partIds": [
+    617948,
+    702986
+   ],
+   "mainline": [
+    {
+     "id": 493546,
+     "names": [
+      "桃源暗鬼",
+      "桃源暗鬼"
+     ],
+     "mainEpisodeCount": 24
+    },
+    {
+     "id": 617948,
+     "names": [
+      "桃源暗鬼 ～日光・华严之泷篇～",
+      "桃源暗鬼 ～日光・華厳の滝編～",
+      "Tougen Anki: Nikko・Kegon no Taki-hen"
+     ],
+     "mainEpisodeCount": 12
+    },
+    {
+     "id": 702986,
+     "names": [
+      "桃源暗鬼 ～日光・华严之泷篇～ 第2部分",
+      "桃源暗鬼 ～日光・華厳の滝編～ 第2クール"
+     ],
+     "mainEpisodeCount": 12
+    }
+   ],
+   "entries": [
+    {
+     "siteId": "1",
+     "name": "桃源暗鬼",
+     "numbers": [
+      24,
+      23,
+      22,
+      21,
+      20,
+      19,
+      18,
+      17,
+      16,
+      15,
+      14,
+      13,
+      12,
+      11,
+      10,
+      9,
+      8,
+      7,
+      6,
+      5,
+      4,
+      3,
+      2,
+      1
+     ]
+    }
+   ],
+   "cases": [
+    {
+     "subjectId": 617948,
+     "index": 1,
+     "sort": 1,
+     "ep": 1,
+     "truth": [],
+     "verifiable": true,
+     "flags": [],
+     "conventions": []
+    },
+    {
+     "subjectId": 617948,
+     "index": 6,
+     "sort": 6,
+     "ep": 6,
+     "truth": [],
+     "verifiable": true,
+     "flags": [],
+     "conventions": []
+    },
+    {
+     "subjectId": 617948,
+     "index": 12,
+     "sort": 12,
+     "ep": 12,
+     "truth": [],
+     "verifiable": true,
+     "flags": [],
+     "conventions": []
+    },
+    {
+     "subjectId": 702986,
+     "index": 1,
+     "sort": 1,
+     "ep": 1,
+     "truth": [],
+     "verifiable": true,
+     "flags": [],
+     "conventions": []
+    },
+    {
+     "subjectId": 702986,
+     "index": 6,
+     "sort": 6,
+     "ep": 6,
+     "truth": [],
+     "verifiable": true,
+     "flags": [],
+     "conventions": []
+    },
+    {
+     "subjectId": 702986,
+     "index": 12,
+     "sort": 12,
+     "ep": 12,
+     "truth": [],
+     "verifiable": true,
+     "flags": [],
+     "conventions": []
+    }
+   ]
+  },
+  {
+   "base": "IDOLiSH7-偶像星愿- Third BEAT!",
+   "partIds": [
+    323960,
+    331751
+   ],
+   "mainline": [
+    {
+     "id": 190441,
+     "names": [
+      "IDOLiSH7-偶像星愿-",
+      "アイドリッシュセブン"
+     ],
+     "mainEpisodeCount": 17
+    },
+    {
+     "id": 253042,
+     "names": [
+      "IDOLiSH7-偶像星愿- Second BEAT!",
+      "アイドリッシュセブン Second BEAT!"
+     ],
+     "mainEpisodeCount": 15
+    },
+    {
+     "id": 323960,
+     "names": [
+      "IDOLiSH7-偶像星愿- Third BEAT!",
+      "アイドリッシュセブン Third BEAT!",
+      "Idolish Seven: Third Beat!",
+      "IDOLiSH7 Third BEAT!",
+      "IDOLiSH7-偶像星愿- 第三季"
+     ],
+     "mainEpisodeCount": 13
+    },
+    {
+     "id": 331751,
+     "names": [
+      "IDOLiSH7-偶像星愿- Third BEAT! 第2部分",
+      "アイドリッシュセブン Third BEAT! 第2クール",
+      "Idolish Seven: Third Beat! (2022)",
+      "IDOLiSH7: Third BEAT! Part 2",
+      "IDOLiSH7-偶像星愿- Third BEAT! Part.2"
+     ],
+     "mainEpisodeCount": 17
+    },
+    {
+     "id": 534901,
+     "names": [
+      "IDOLiSH7-偶像星愿- 4期",
+      "アイドリッシュセブン 4期"
+     ],
+     "mainEpisodeCount": 0
+    }
+   ],
+   "entries": [
+    {
+     "siteId": "1",
+     "name": "IDOLiSH7",
+     "numbers": [
+      18,
+      17,
+      16,
+      15,
+      14,
+      13,
+      12,
+      11,
+      10,
+      9,
+      8,
+      7,
+      6,
+      5,
+      4,
+      3,
+      2,
+      1
+     ]
+    },
+    {
+     "siteId": "2",
+     "name": "IDOLiSH7 第二季",
+     "numbers": [
+      16,
+      15,
+      14,
+      13,
+      12,
+      11,
+      10,
+      9,
+      8,
+      7,
+      6,
+      5,
+      4,
+      3,
+      2,
+      1
+     ]
+    },
+    {
+     "siteId": "3",
+     "name": "IDOLiSH7 Vibrato",
+     "numbers": [
+      8,
+      7,
+      6,
+      5,
+      4,
+      3,
+      2,
+      1
+     ]
+    },
+    {
+     "siteId": "4",
+     "name": "IDOLiSH7-偶像星愿- Third BEAT!",
+     "numbers": [
+      13,
+      12,
+      11,
+      10,
+      9,
+      8,
+      7,
+      6,
+      5,
+      4,
+      3,
+      2,
+      1
+     ]
+    },
+    {
+     "siteId": "5",
+     "name": "IDOLiSH7-偶像星愿- Third BEAT! 第二季",
+     "numbers": [
+      17,
+      16,
+      15,
+      14,
+      13,
+      12,
+      11,
+      10,
+      9,
+      8,
+      7,
+      6,
+      5,
+      4,
+      3,
+      2,
+      1
+     ]
+    }
+   ],
+   "cases": [
+    {
+     "subjectId": 323960,
+     "index": 1,
+     "sort": 1,
+     "ep": 1,
+     "truth": [
+      {
+       "siteId": "4",
+       "number": 1
+      }
+     ],
+     "verifiable": true,
+     "flags": [],
+     "conventions": [
+      "own"
+     ]
+    },
+    {
+     "subjectId": 323960,
+     "index": 7,
+     "sort": 7,
+     "ep": 7,
+     "truth": [
+      {
+       "siteId": "4",
+       "number": 7
+      }
+     ],
+     "verifiable": true,
+     "flags": [],
+     "conventions": [
+      "own"
+     ]
+    },
+    {
+     "subjectId": 323960,
+     "index": 13,
+     "sort": 13,
+     "ep": 13,
+     "truth": [
+      {
+       "siteId": "4",
+       "number": 13
+      }
+     ],
+     "verifiable": true,
+     "flags": [],
+     "conventions": [
+      "own"
+     ]
+    },
+    {
+     "subjectId": 331751,
+     "index": 1,
+     "sort": 14,
+     "ep": 1,
+     "truth": [
+      {
+       "siteId": "5",
+       "number": 1
+      }
+     ],
+     "verifiable": true,
+     "flags": [],
+     "conventions": [
+      "A:restart"
+     ]
+    },
+    {
+     "subjectId": 331751,
+     "index": 9,
+     "sort": 22,
+     "ep": 9,
+     "truth": [
+      {
+       "siteId": "5",
+       "number": 9
+      }
+     ],
+     "verifiable": true,
+     "flags": [],
+     "conventions": [
+      "A:restart"
+     ]
+    },
+    {
+     "subjectId": 331751,
+     "index": 17,
+     "sort": 30,
+     "ep": 17,
+     "truth": [
+      {
+       "siteId": "5",
+       "number": 17
+      }
+     ],
+     "verifiable": true,
+     "flags": [],
+     "conventions": [
+      "A:restart"
+     ]
+    }
+   ]
+  },
+  {
+   "base": "涩谷♡八",
+   "partIds": [
+    480437,
+    514693,
+    541037,
+    582915
+   ],
+   "mainline": [
+    {
+     "id": 480437,
+     "names": [
+      "涩谷♡八",
+      "SHIBUYA♡HACHI"
+     ],
+     "mainEpisodeCount": 13
+    },
+    {
+     "id": 514693,
+     "names": [
+      "涩谷♡八 第二部分",
+      "SHIBUYA♡HACHI 第2クール",
+      "SHIBUYA♡HACHI Part 2"
+     ],
+     "mainEpisodeCount": 12
+    },
+    {
+     "id": 541037,
+     "names": [
+      "涩谷♡八 第三部分",
+      "SHIBUYA♡HACHI 第3クール",
+      "SHIBUYA♡HACHI 第2期",
+      "涩谷♡八 第二季"
+     ],
+     "mainEpisodeCount": 13
+    },
+    {
+     "id": 582915,
+     "names": [
+      "涩谷♡八 第四部分",
+      "SHIBUYA♡HACHI 第4クール"
+     ],
+     "mainEpisodeCount": 13
+    }
+   ],
+   "entries": [],
+   "cases": [
+    {
+     "subjectId": 480437,
+     "index": 1,
+     "sort": 1,
+     "ep": 1,
+     "truth": [],
+     "verifiable": true,
+     "flags": [],
+     "conventions": []
+    },
+    {
+     "subjectId": 480437,
+     "index": 7,
+     "sort": 7,
+     "ep": 7,
+     "truth": [],
+     "verifiable": true,
+     "flags": [],
+     "conventions": []
+    },
+    {
+     "subjectId": 480437,
+     "index": 13,
+     "sort": 13,
+     "ep": 13,
+     "truth": [],
+     "verifiable": true,
+     "flags": [],
+     "conventions": []
+    },
+    {
+     "subjectId": 514693,
+     "index": 1,
+     "sort": 14,
+     "ep": 1,
+     "truth": [],
+     "verifiable": true,
+     "flags": [],
+     "conventions": []
+    },
+    {
+     "subjectId": 514693,
+     "index": 6,
+     "sort": 19,
+     "ep": 6,
+     "truth": [],
+     "verifiable": true,
+     "flags": [],
+     "conventions": []
+    },
+    {
+     "subjectId": 514693,
+     "index": 12,
+     "sort": 25,
+     "ep": 12,
+     "truth": [],
+     "verifiable": true,
+     "flags": [],
+     "conventions": []
+    },
+    {
+     "subjectId": 541037,
+     "index": 1,
+     "sort": 26,
+     "ep": 1,
+     "truth": [],
+     "verifiable": true,
+     "flags": [],
+     "conventions": []
+    },
+    {
+     "subjectId": 541037,
+     "index": 7,
+     "sort": 32,
+     "ep": 7,
+     "truth": [],
+     "verifiable": true,
+     "flags": [],
+     "conventions": []
+    },
+    {
+     "subjectId": 541037,
+     "index": 13,
+     "sort": 38,
+     "ep": 13,
+     "truth": [],
+     "verifiable": true,
+     "flags": [],
+     "conventions": []
+    },
+    {
+     "subjectId": 582915,
+     "index": 1,
+     "sort": 11,
+     "ep": 1,
+     "truth": [],
+     "verifiable": true,
+     "flags": [],
+     "conventions": []
+    },
+    {
+     "subjectId": 582915,
+     "index": 7,
+     "sort": 44,
+     "ep": 34,
+     "truth": [],
+     "verifiable": true,
+     "flags": [],
+     "conventions": []
+    },
+    {
+     "subjectId": 582915,
+     "index": 13,
+     "sort": 50,
+     "ep": 40,
+     "truth": [],
+     "verifiable": true,
+     "flags": [],
+     "conventions": []
+    }
+   ]
+  },
+  {
+   "base": "Re：从零开始的异世界生活 第二季",
+   "partIds": [
+    278826,
+    316247
+   ],
+   "mainline": [
+    {
+     "id": 140001,
+     "names": [
+      "Re：从零开始的异世界生活",
+      "Re:ゼロから始める異世界生活"
+     ],
+     "mainEpisodeCount": 25
+    },
+    {
+     "id": 278826,
+     "names": [
+      "Re：从零开始的异世界生活 第二季",
+      "Re:ゼロから始める異世界生活 2nd season",
+      "Re:Zero kara Hajimeru Isekai Seikatsu (2020)",
+      "Re0 第二季",
+      "Re:ゼロから始める異世界生活2"
+     ],
+     "mainEpisodeCount": 13
+    },
+    {
+     "id": 316247,
+     "names": [
+      "Re：从零开始的异世界生活 第二季 后半部分",
+      "Re:ゼロから始める異世界生活 2nd season 後半クール",
+      "Re:Zero kara Hajimeru Isekai Seikatsu (2021)",
+      "Re0 第二季后半"
+     ],
+     "mainEpisodeCount": 12
+    },
+    {
+     "id": 425998,
+     "names": [
+      "Re：从零开始的异世界生活 第三季 袭击篇",
+      "Re:ゼロから始める異世界生活 3rd season 襲擊編",
+      "Re：從零開始的異世界生活 第三季 襲擊篇",
+      "Re0 第三季",
+      "Re0 3",
+      "rezero s3",
+      "Re:Zero kara Hajimeru Isekai Seikatsu (2024)",
+      "Re:ゼロから始める異世界生活 (2024)",
+      "Re:Zero kara Hajimeru Isekai Seikatsu 3rd Season Shuugeki Hen",
+      "Re:ZERO -Starting Life in Another World- Season 3 Shuugeki Hen"
+     ],
+     "mainEpisodeCount": 8
+    },
+    {
+     "id": 510728,
+     "names": [
+      "Re：从零开始的异世界生活 第三季 反击篇",
+      "Re:ゼロから始める異世界生活 3rd season 反擊編",
+      "Re：從零開始的異世界生活 第三季 反擊篇",
+      "Re:Zero kara Hajimeru Isekai Seikatsu (2025)",
+      "Re:Zero - Starting Life in Another World (2025)",
+      "re0 第三季 反击篇",
+      "re0 第三季 反擊篇"
+     ],
+     "mainEpisodeCount": 8
+    },
+    {
+     "id": 547888,
+     "names": [
+      "Re：从零开始的异世界生活 第四季 丧失篇",
+      "Re:ゼロから始める異世界生活 4th season 喪失編",
+      "Re:Zero kara Hajimeru Isekai Seikatsu 4th Season",
+      "Re:ZERO -Starting Life in Another World- Season 4",
+      "Re Zero kara Hajimeru Isekai Seikatsu 4th Season",
+      "Re：從零開始的異世界生活 第四季 喪失篇",
+      "re0 第四季 丧失篇",
+      "re0 第四季 喪失篇"
+     ],
+     "mainEpisodeCount": 11
+    },
+    {
+     "id": 633836,
+     "names": [
+      "Re：从零开始的异世界生活 第四季 夺还篇",
+      "Re:ゼロから始める異世界生活 4th season 奪還編",
+      "Re:Zero kara Hajimeru Isekai Seikatsu 4th Season",
+      "Re:ZERO -Starting Life in Another World- Season 4",
+      "Re Zero kara Hajimeru Isekai Seikatsu 4th Season",
+      "Re：從零開始的異世界生活 第四季 奪還篇",
+      "re0 第四季 夺还篇",
+      "re0 第四季 奪還篇"
+     ],
+     "mainEpisodeCount": 8
+    }
+   ],
+   "entries": [
+    {
+     "siteId": "1",
+     "name": "Re：从零开始的异世界生活",
+     "numbers": [
+      25,
+      24,
+      23,
+      22,
+      21,
+      20,
+      19,
+      18,
+      17,
+      16,
+      15,
+      14,
+      13,
+      12,
+      11,
+      10,
+      9,
+      8,
+      7,
+      6,
+      5,
+      4,
+      3,
+      2,
+      1
+     ]
+    },
+    {
+     "siteId": "2",
+     "name": "Re：从零开始的异世界生活 第二季",
+     "numbers": [
+      29,
+      28,
+      27,
+      26,
+      25,
+      24,
+      23,
+      22,
+      21,
+      20,
+      19,
+      18,
+      17,
+      16,
+      15,
+      14,
+      13,
+      12,
+      11,
+      10,
+      9,
+      8,
+      7,
+      6,
+      5,
+      4,
+      3,
+      2,
+      1
+     ]
+    },
+    {
+     "siteId": "3",
+     "name": "Re：从零开始的异世界生活 冰结之绊",
+     "numbers": [
+      13,
+      12,
+      11,
+      10,
+      9,
+      8,
+      7,
+      6,
+      5,
+      4,
+      3,
+      2,
+      1,
+      1
+     ]
+    },
+    {
+     "siteId": "4",
+     "name": "Re：从零开始的异世界生活 新编集版",
+     "numbers": [
+      13,
+      12,
+      11,
+      10,
+      9,
+      8,
+      7,
+      6,
+      5,
+      4,
+      3,
+      2,
+      1
+     ]
+    },
+    {
+     "siteId": "5",
+     "name": "Re：从零开始的异世界生活 Memory Snow",
+     "numbers": [
+      1,
+      1
+     ]
+    }
+   ],
+   "cases": [
+    {
+     "subjectId": 278826,
+     "index": 1,
+     "sort": 26,
+     "ep": 1,
+     "truth": [
+      {
+       "siteId": "2",
+       "number": 1
+      }
+     ],
+     "verifiable": true,
+     "flags": [],
+     "conventions": [
+      "own"
+     ]
+    },
+    {
+     "subjectId": 278826,
+     "index": 7,
+     "sort": 32,
+     "ep": 7,
+     "truth": [
+      {
+       "siteId": "2",
+       "number": 7
+      }
+     ],
+     "verifiable": true,
+     "flags": [],
+     "conventions": [
+      "own"
+     ]
+    },
+    {
+     "subjectId": 278826,
+     "index": 13,
+     "sort": 38,
+     "ep": 13,
+     "truth": [
+      {
+       "siteId": "2",
+       "number": 13
+      }
+     ],
+     "verifiable": true,
+     "flags": [],
+     "conventions": [
+      "own"
+     ]
+    },
+    {
+     "subjectId": 316247,
+     "index": 1,
+     "sort": 39,
+     "ep": 1,
+     "truth": [
+      {
+       "siteId": "2",
+       "number": 14
+      }
+     ],
+     "verifiable": true,
+     "flags": [],
+     "conventions": [
+      "C:merged"
+     ]
+    },
+    {
+     "subjectId": 316247,
+     "index": 6,
+     "sort": 44,
+     "ep": 6,
+     "truth": [
+      {
+       "siteId": "2",
+       "number": 19
+      }
+     ],
+     "verifiable": true,
+     "flags": [],
+     "conventions": [
+      "C:merged"
+     ]
+    },
+    {
+     "subjectId": 316247,
+     "index": 12,
+     "sort": 50,
+     "ep": 12,
+     "truth": [
+      {
+       "siteId": "2",
+       "number": 25
+      }
+     ],
+     "verifiable": true,
+     "flags": [],
+     "conventions": [
+      "C:merged"
+     ]
+    }
+   ]
+  },
+  {
+   "base": "Re：从零开始的异世界生活 第三季 袭击篇",
+   "partIds": [
+    425998,
+    510728
+   ],
+   "mainline": [
+    {
+     "id": 140001,
+     "names": [
+      "Re：从零开始的异世界生活",
+      "Re:ゼロから始める異世界生活"
+     ],
+     "mainEpisodeCount": 25
+    },
+    {
+     "id": 278826,
+     "names": [
+      "Re：从零开始的异世界生活 第二季",
+      "Re:ゼロから始める異世界生活 2nd season",
+      "Re:Zero kara Hajimeru Isekai Seikatsu (2020)",
+      "Re0 第二季",
+      "Re:ゼロから始める異世界生活2"
+     ],
+     "mainEpisodeCount": 13
+    },
+    {
+     "id": 316247,
+     "names": [
+      "Re：从零开始的异世界生活 第二季 后半部分",
+      "Re:ゼロから始める異世界生活 2nd season 後半クール",
+      "Re:Zero kara Hajimeru Isekai Seikatsu (2021)",
+      "Re0 第二季后半"
+     ],
+     "mainEpisodeCount": 12
+    },
+    {
+     "id": 425998,
+     "names": [
+      "Re：从零开始的异世界生活 第三季 袭击篇",
+      "Re:ゼロから始める異世界生活 3rd season 襲擊編",
+      "Re：從零開始的異世界生活 第三季 襲擊篇",
+      "Re0 第三季",
+      "Re0 3",
+      "rezero s3",
+      "Re:Zero kara Hajimeru Isekai Seikatsu (2024)",
+      "Re:ゼロから始める異世界生活 (2024)",
+      "Re:Zero kara Hajimeru Isekai Seikatsu 3rd Season Shuugeki Hen",
+      "Re:ZERO -Starting Life in Another World- Season 3 Shuugeki Hen"
+     ],
+     "mainEpisodeCount": 8
+    },
+    {
+     "id": 510728,
+     "names": [
+      "Re：从零开始的异世界生活 第三季 反击篇",
+      "Re:ゼロから始める異世界生活 3rd season 反擊編",
+      "Re：從零開始的異世界生活 第三季 反擊篇",
+      "Re:Zero kara Hajimeru Isekai Seikatsu (2025)",
+      "Re:Zero - Starting Life in Another World (2025)",
+      "re0 第三季 反击篇",
+      "re0 第三季 反擊篇"
+     ],
+     "mainEpisodeCount": 8
+    },
+    {
+     "id": 547888,
+     "names": [
+      "Re：从零开始的异世界生活 第四季 丧失篇",
+      "Re:ゼロから始める異世界生活 4th season 喪失編",
+      "Re:Zero kara Hajimeru Isekai Seikatsu 4th Season",
+      "Re:ZERO -Starting Life in Another World- Season 4",
+      "Re Zero kara Hajimeru Isekai Seikatsu 4th Season",
+      "Re：從零開始的異世界生活 第四季 喪失篇",
+      "re0 第四季 丧失篇",
+      "re0 第四季 喪失篇"
+     ],
+     "mainEpisodeCount": 11
+    },
+    {
+     "id": 633836,
+     "names": [
+      "Re：从零开始的异世界生活 第四季 夺还篇",
+      "Re:ゼロから始める異世界生活 4th season 奪還編",
+      "Re:Zero kara Hajimeru Isekai Seikatsu 4th Season",
+      "Re:ZERO -Starting Life in Another World- Season 4",
+      "Re Zero kara Hajimeru Isekai Seikatsu 4th Season",
+      "Re：從零開始的異世界生活 第四季 奪還篇",
+      "re0 第四季 夺还篇",
+      "re0 第四季 奪還篇"
+     ],
+     "mainEpisodeCount": 8
+    }
+   ],
+   "entries": [
+    {
+     "siteId": "1",
+     "name": "Re：从零开始的异世界生活",
+     "numbers": [
+      25,
+      24,
+      23,
+      22,
+      21,
+      20,
+      19,
+      18,
+      17,
+      16,
+      15,
+      14,
+      13,
+      12,
+      11,
+      10,
+      9,
+      8,
+      7,
+      6,
+      5,
+      4,
+      3,
+      2,
+      1
+     ]
+    },
+    {
+     "siteId": "2",
+     "name": "Re：从零开始的异世界生活 第二季",
+     "numbers": [
+      29,
+      28,
+      27,
+      26,
+      25,
+      24,
+      23,
+      22,
+      21,
+      20,
+      19,
+      18,
+      17,
+      16,
+      15,
+      14,
+      13,
+      12,
+      11,
+      10,
+      9,
+      8,
+      7,
+      6,
+      5,
+      4,
+      3,
+      2,
+      1
+     ]
+    },
+    {
+     "siteId": "3",
+     "name": "Re：从零开始的异世界生活 冰结之绊",
+     "numbers": [
+      13,
+      12,
+      11,
+      10,
+      9,
+      8,
+      7,
+      6,
+      5,
+      4,
+      3,
+      2,
+      1,
+      1
+     ]
+    },
+    {
+     "siteId": "4",
+     "name": "Re：从零开始的异世界生活 新编集版",
+     "numbers": [
+      13,
+      12,
+      11,
+      10,
+      9,
+      8,
+      7,
+      6,
+      5,
+      4,
+      3,
+      2,
+      1
+     ]
+    },
+    {
+     "siteId": "5",
+     "name": "Re：从零开始的异世界生活 Memory Snow",
+     "numbers": [
+      1,
+      1
+     ]
+    }
+   ],
+   "cases": [
+    {
+     "subjectId": 425998,
+     "index": 1,
+     "sort": 51,
+     "ep": 1,
+     "truth": [],
+     "verifiable": true,
+     "flags": [],
+     "conventions": []
+    },
+    {
+     "subjectId": 425998,
+     "index": 4,
+     "sort": 54,
+     "ep": 4,
+     "truth": [],
+     "verifiable": true,
+     "flags": [],
+     "conventions": []
+    },
+    {
+     "subjectId": 425998,
+     "index": 8,
+     "sort": 58,
+     "ep": 8,
+     "truth": [],
+     "verifiable": true,
+     "flags": [],
+     "conventions": []
+    },
+    {
+     "subjectId": 510728,
+     "index": 1,
+     "sort": 59,
+     "ep": 1,
+     "truth": [],
+     "verifiable": true,
+     "flags": [],
+     "conventions": []
+    },
+    {
+     "subjectId": 510728,
+     "index": 4,
+     "sort": 62,
+     "ep": 4,
+     "truth": [],
+     "verifiable": true,
+     "flags": [],
+     "conventions": []
+    },
+    {
+     "subjectId": 510728,
+     "index": 8,
+     "sort": 66,
+     "ep": 8,
+     "truth": [],
+     "verifiable": true,
+     "flags": [],
+     "conventions": []
+    }
+   ]
+  },
+  {
+   "base": "Re：从零开始的异世界生活 第四季 丧失篇",
+   "partIds": [
+    547888,
+    633836
+   ],
+   "mainline": [
+    {
+     "id": 140001,
+     "names": [
+      "Re：从零开始的异世界生活",
+      "Re:ゼロから始める異世界生活"
+     ],
+     "mainEpisodeCount": 25
+    },
+    {
+     "id": 278826,
+     "names": [
+      "Re：从零开始的异世界生活 第二季",
+      "Re:ゼロから始める異世界生活 2nd season",
+      "Re:Zero kara Hajimeru Isekai Seikatsu (2020)",
+      "Re0 第二季",
+      "Re:ゼロから始める異世界生活2"
+     ],
+     "mainEpisodeCount": 13
+    },
+    {
+     "id": 316247,
+     "names": [
+      "Re：从零开始的异世界生活 第二季 后半部分",
+      "Re:ゼロから始める異世界生活 2nd season 後半クール",
+      "Re:Zero kara Hajimeru Isekai Seikatsu (2021)",
+      "Re0 第二季后半"
+     ],
+     "mainEpisodeCount": 12
+    },
+    {
+     "id": 425998,
+     "names": [
+      "Re：从零开始的异世界生活 第三季 袭击篇",
+      "Re:ゼロから始める異世界生活 3rd season 襲擊編",
+      "Re：從零開始的異世界生活 第三季 襲擊篇",
+      "Re0 第三季",
+      "Re0 3",
+      "rezero s3",
+      "Re:Zero kara Hajimeru Isekai Seikatsu (2024)",
+      "Re:ゼロから始める異世界生活 (2024)",
+      "Re:Zero kara Hajimeru Isekai Seikatsu 3rd Season Shuugeki Hen",
+      "Re:ZERO -Starting Life in Another World- Season 3 Shuugeki Hen"
+     ],
+     "mainEpisodeCount": 8
+    },
+    {
+     "id": 510728,
+     "names": [
+      "Re：从零开始的异世界生活 第三季 反击篇",
+      "Re:ゼロから始める異世界生活 3rd season 反擊編",
+      "Re：從零開始的異世界生活 第三季 反擊篇",
+      "Re:Zero kara Hajimeru Isekai Seikatsu (2025)",
+      "Re:Zero - Starting Life in Another World (2025)",
+      "re0 第三季 反击篇",
+      "re0 第三季 反擊篇"
+     ],
+     "mainEpisodeCount": 8
+    },
+    {
+     "id": 547888,
+     "names": [
+      "Re：从零开始的异世界生活 第四季 丧失篇",
+      "Re:ゼロから始める異世界生活 4th season 喪失編",
+      "Re:Zero kara Hajimeru Isekai Seikatsu 4th Season",
+      "Re:ZERO -Starting Life in Another World- Season 4",
+      "Re Zero kara Hajimeru Isekai Seikatsu 4th Season",
+      "Re：從零開始的異世界生活 第四季 喪失篇",
+      "re0 第四季 丧失篇",
+      "re0 第四季 喪失篇"
+     ],
+     "mainEpisodeCount": 11
+    },
+    {
+     "id": 633836,
+     "names": [
+      "Re：从零开始的异世界生活 第四季 夺还篇",
+      "Re:ゼロから始める異世界生活 4th season 奪還編",
+      "Re:Zero kara Hajimeru Isekai Seikatsu 4th Season",
+      "Re:ZERO -Starting Life in Another World- Season 4",
+      "Re Zero kara Hajimeru Isekai Seikatsu 4th Season",
+      "Re：從零開始的異世界生活 第四季 奪還篇",
+      "re0 第四季 夺还篇",
+      "re0 第四季 奪還篇"
+     ],
+     "mainEpisodeCount": 8
+    }
+   ],
+   "entries": [
+    {
+     "siteId": "1",
+     "name": "Re：从零开始的异世界生活",
+     "numbers": [
+      25,
+      24,
+      23,
+      22,
+      21,
+      20,
+      19,
+      18,
+      17,
+      16,
+      15,
+      14,
+      13,
+      12,
+      11,
+      10,
+      9,
+      8,
+      7,
+      6,
+      5,
+      4,
+      3,
+      2,
+      1
+     ]
+    },
+    {
+     "siteId": "2",
+     "name": "Re：从零开始的异世界生活 第二季",
+     "numbers": [
+      29,
+      28,
+      27,
+      26,
+      25,
+      24,
+      23,
+      22,
+      21,
+      20,
+      19,
+      18,
+      17,
+      16,
+      15,
+      14,
+      13,
+      12,
+      11,
+      10,
+      9,
+      8,
+      7,
+      6,
+      5,
+      4,
+      3,
+      2,
+      1
+     ]
+    },
+    {
+     "siteId": "3",
+     "name": "Re：从零开始的异世界生活 冰结之绊",
+     "numbers": [
+      13,
+      12,
+      11,
+      10,
+      9,
+      8,
+      7,
+      6,
+      5,
+      4,
+      3,
+      2,
+      1,
+      1
+     ]
+    },
+    {
+     "siteId": "4",
+     "name": "Re：从零开始的异世界生活 新编集版",
+     "numbers": [
+      13,
+      12,
+      11,
+      10,
+      9,
+      8,
+      7,
+      6,
+      5,
+      4,
+      3,
+      2,
+      1
+     ]
+    },
+    {
+     "siteId": "5",
+     "name": "Re：从零开始的异世界生活 Memory Snow",
+     "numbers": [
+      1,
+      1
+     ]
+    }
+   ],
+   "cases": [
+    {
+     "subjectId": 547888,
+     "index": 1,
+     "sort": 67,
+     "ep": 1,
+     "truth": [],
+     "verifiable": true,
+     "flags": [],
+     "conventions": []
+    },
+    {
+     "subjectId": 547888,
+     "index": 6,
+     "sort": 72,
+     "ep": 6,
+     "truth": [],
+     "verifiable": true,
+     "flags": [],
+     "conventions": []
+    },
+    {
+     "subjectId": 547888,
+     "index": 11,
+     "sort": 77,
+     "ep": 11,
+     "truth": [],
+     "verifiable": true,
+     "flags": [],
+     "conventions": []
+    },
+    {
+     "subjectId": 633836,
+     "index": 1,
+     "sort": 78,
+     "ep": 1,
+     "truth": [],
+     "verifiable": true,
+     "flags": [],
+     "conventions": []
+    },
+    {
+     "subjectId": 633836,
+     "index": 4,
+     "sort": 81,
+     "ep": 4,
+     "truth": [],
+     "verifiable": true,
+     "flags": [],
+     "conventions": []
+    },
+    {
+     "subjectId": 633836,
+     "index": 8,
+     "sort": 85,
+     "ep": 8,
+     "truth": [],
+     "verifiable": true,
+     "flags": [],
+     "conventions": []
+    }
+   ]
+  },
+  {
+   "base": "魔王学院的不适任者～史上最强的魔王始祖，转生就读子孙们的学校～ 第二季",
+   "partIds": [
+    330054,
+    455981
+   ],
+   "mainline": [
+    {
+     "id": 292222,
+     "names": [
+      "魔王学院的不适任者～史上最强的魔王始祖，转生就读子孙们的学校～",
+      "魔王学院の不適合者 ～史上最強の魔王の始祖、転生して子孫たちの学校へ通う～"
+     ],
+     "mainEpisodeCount": 13
+    },
+    {
+     "id": 330054,
+     "names": [
+      "魔王学院的不适任者～史上最强的魔王始祖，转生就读子孙们的学校～ 第二季",
+      "魔王学院の不適合者 ～史上最強の魔王の始祖、転生して子孫たちの学校へ通う～ Ⅱ",
+      "Maou Gakuin no Futekigousha II: Shijou Saikyou no Maou no Shiso, Tensei Shite Shison-tachi no Gakkou e Kayou",
+      "Maou Gakuin no Futekigousha: Shijou Saikyou no Maou no Shiso, Tensei Shite Shison-tachi no Gakkou e Kayou II",
+      "魔王学院の不適合者 ～史上最強の魔王の始祖、転生して子孫たちの学校へ通う～ 第2期"
+     ],
+     "mainEpisodeCount": 12
+    },
+    {
+     "id": 455981,
+     "names": [
+      "魔王学院的不适任者～史上最强的魔王始祖，转生就读子孙们的学校～ 第二季 第2部分",
+      "魔王学院の不適合者 ～史上最強の魔王の始祖、転生して子孫たちの学校へ通う～ Ⅱ 2ndクール",
+      "The Misfit of Demon King Academy: History`s Strongest Demon King Reincarnates and Goes to School with His Descendants II Part 2",
+      "Maou Gakuin no Futekigousha: Shijou Saikyou no Maou no Shiso, Tensei shite Shison-tachi no Gakkou e Kayou II Part 2"
+     ],
+     "mainEpisodeCount": 12
+    }
+   ],
+   "entries": [
+    {
+     "siteId": "1",
+     "name": "魔王学院的不适任者～史上最强的魔王始祖，转生就读子孙们的学校～ Ⅱ",
+     "numbers": [
+      24,
+      23,
+      22,
+      21,
+      20,
+      19,
+      18,
+      17,
+      16,
+      15,
+      14,
+      13,
+      12,
+      11,
+      10,
+      9,
+      8,
+      7,
+      6,
+      5,
+      4,
+      3,
+      2,
+      1
+     ]
+    }
+   ],
+   "cases": [
+    {
+     "subjectId": 330054,
+     "index": 1,
+     "sort": 1,
+     "ep": 1,
+     "truth": [
+      {
+       "siteId": "1",
+       "number": 1
+      }
+     ],
+     "verifiable": true,
+     "flags": [],
+     "conventions": [
+      "own"
+     ]
+    },
+    {
+     "subjectId": 330054,
+     "index": 6,
+     "sort": 6,
+     "ep": 6,
+     "truth": [
+      {
+       "siteId": "1",
+       "number": 6
+      }
+     ],
+     "verifiable": true,
+     "flags": [],
+     "conventions": [
+      "own"
+     ]
+    },
+    {
+     "subjectId": 330054,
+     "index": 12,
+     "sort": 12,
+     "ep": 12,
+     "truth": [
+      {
+       "siteId": "1",
+       "number": 12
+      }
+     ],
+     "verifiable": true,
+     "flags": [],
+     "conventions": [
+      "own"
+     ]
+    },
+    {
+     "subjectId": 455981,
+     "index": 1,
+     "sort": 13,
+     "ep": 1,
+     "truth": [
+      {
+       "siteId": "1",
+       "number": 13
+      }
+     ],
+     "verifiable": true,
+     "flags": [],
+     "conventions": [
+      "C:merged"
+     ]
+    },
+    {
+     "subjectId": 455981,
+     "index": 6,
+     "sort": 18,
+     "ep": 6,
+     "truth": [
+      {
+       "siteId": "1",
+       "number": 18
+      }
+     ],
+     "verifiable": true,
+     "flags": [],
+     "conventions": [
+      "C:merged"
+     ]
+    },
+    {
+     "subjectId": 455981,
+     "index": 12,
+     "sort": 24,
+     "ep": 12,
+     "truth": [
+      {
+       "siteId": "1",
+       "number": 24
+      }
+     ],
+     "verifiable": true,
+     "flags": [],
+     "conventions": [
+      "C:merged"
+     ]
+    }
+   ]
+  },
+  {
+   "base": "进击的巨人 第三季",
+   "partIds": [
+    217300,
+    263750
+   ],
+   "mainline": [
+    {
+     "id": 55770,
+     "names": [
+      "进击的巨人",
+      "進撃の巨人"
+     ],
+     "mainEpisodeCount": 25
+    },
+    {
+     "id": 118335,
+     "names": [
+      "进击的巨人 第二季",
+      "進撃の巨人 Season 2"
+     ],
+     "mainEpisodeCount": 12
+    },
+    {
+     "id": 217300,
+     "names": [
+      "进击的巨人 第三季",
+      "進撃の巨人 Season 3",
+      "自由之翼 3",
+      "Shingeki no Kyojin Season 3",
+      "Attack on Titan Season 3"
+     ],
+     "mainEpisodeCount": 12
+    },
+    {
+     "id": 263750,
+     "names": [
+      "进击的巨人 第三季 Part.2",
+      "進撃の巨人 Season 3 Part.2",
+      "自由之翼 3 Part.2",
+      "Attack on Titan Season 3 Part.2",
+      "Shingeki no Kyojin Season 3 Part.2"
+     ],
+     "mainEpisodeCount": 10
+    },
+    {
+     "id": 285666,
+     "names": [
+      "进击的巨人 最终季",
+      "進撃の巨人 The Final Season",
+      "进击的巨人 第四季",
+      "Attack on Titan Final Season",
+      "Shingeki no Kyojin: The Final Season"
+     ],
+     "mainEpisodeCount": 16
+    },
+    {
+     "id": 331752,
+     "names": [
+      "进击的巨人 最终季 Part.2",
+      "進撃の巨人 The Final Season Part.2",
+      "Attack on Titan Final Season Part 2",
+      "Shingeki no Kyojin: The Final Season Part 2"
+     ],
+     "mainEpisodeCount": 12
+    },
+    {
+     "id": 376739,
+     "names": [
+      "进击的巨人 最终季 完结篇 前篇",
+      "進撃の巨人 The Final Season 完結編 前編"
+     ],
+     "mainEpisodeCount": 1
+    },
+    {
+     "id": 415779,
+     "names": [
+      "进击的巨人 最终季 完结篇 后篇",
+      "進撃の巨人 The Final Season 完結編 後編"
+     ],
+     "mainEpisodeCount": 1
+    }
+   ],
+   "entries": [
+    {
+     "siteId": "1",
+     "name": "进击的巨人",
+     "numbers": [
+      26,
+      25,
+      24,
+      23,
+      22,
+      21,
+      20,
+      19,
+      18,
+      17,
+      16,
+      15,
+      14,
+      13,
+      12,
+      11,
+      10,
+      9,
+      8,
+      7,
+      6,
+      5,
+      4,
+      3,
+      2,
+      1
+     ]
+    },
+    {
+     "siteId": "2",
+     "name": "进击的巨人OAD",
+     "numbers": [
+      8,
+      7,
+      6,
+      5,
+      4,
+      3,
+      2,
+      1
+     ]
+    },
+    {
+     "siteId": "3",
+     "name": "进击的巨人 第二季",
+     "numbers": [
+      12,
+      11,
+      10,
+      9,
+      8,
+      7,
+      6,
+      5,
+      4,
+      3,
+      2,
+      1
+     ]
+    },
+    {
+     "siteId": "4",
+     "name": "进击的巨人 第三季",
+     "numbers": [
+      22,
+      21,
+      20,
+      19,
+      18,
+      17,
+      16,
+      15,
+      14,
+      13,
+      12,
+      11,
+      10,
+      9,
+      8,
+      7,
+      6,
+      5,
+      4,
+      3,
+      2,
+      1
+     ]
+    },
+    {
+     "siteId": "5",
+     "name": "进击的巨人 最终季",
+     "numbers": [
+      28,
+      27,
+      26,
+      25,
+      24,
+      23,
+      22,
+      21,
+      20,
+      19,
+      18,
+      17,
+      16,
+      15,
+      14,
+      13,
+      12,
+      11,
+      10,
+      9,
+      8,
+      7,
+      6,
+      5,
+      4,
+      3,
+      2,
+      1
+     ]
+    },
+    {
+     "siteId": "6",
+     "name": "进击的巨人 无悔的选择",
+     "numbers": [
+      2,
+      1
+     ]
+    },
+    {
+     "siteId": "7",
+     "name": "进击！巨人中学校",
+     "numbers": [
+      12,
+      11,
+      10,
+      9,
+      8,
+      7,
+      6,
+      5,
+      4,
+      3,
+      2,
+      1
+     ]
+    },
+    {
+     "siteId": "8",
+     "name": "进击的巨人 LOST GIRLS",
+     "numbers": [
+      7,
+      6,
+      5,
+      4,
+      3,
+      2,
+      1
+     ]
+    },
+    {
+     "siteId": "9",
+     "name": "进击的巨人 第三季 Part.2",
+     "numbers": [
+      22,
+      21,
+      20,
+      19,
+      18,
+      17,
+      16,
+      15,
+      14,
+      13,
+      12,
+      11,
+      10,
+      9,
+      8,
+      7,
+      6,
+      5,
+      4,
+      3,
+      2,
+      1
+     ]
+    },
+    {
+     "siteId": "10",
+     "name": "进击的巨人 最终季 Part.2",
+     "numbers": [
+      12,
+      11,
+      10,
+      9,
+      8,
+      7,
+      6,
+      5,
+      4,
+      3,
+      2,
+      1
+     ]
+    },
+    {
+     "siteId": "11",
+     "name": "进击的巨人 最终季 完结篇 前篇",
+     "numbers": [
+      1
+     ]
+    },
+    {
+     "siteId": "12",
+     "name": "剧场版 进击的巨人 完结篇 THE LAST ATTACK",
+     "numbers": [
+      1,
+      1
+     ]
+    }
+   ],
+   "cases": [
+    {
+     "subjectId": 217300,
+     "index": 1,
+     "sort": 38,
+     "ep": 1,
+     "truth": [
+      {
+       "siteId": "4",
+       "number": 1
+      }
+     ],
+     "verifiable": true,
+     "flags": [],
+     "conventions": [
+      "own"
+     ]
+    },
+    {
+     "subjectId": 217300,
+     "index": 6,
+     "sort": 43,
+     "ep": 6,
+     "truth": [
+      {
+       "siteId": "4",
+       "number": 6
+      }
+     ],
+     "verifiable": true,
+     "flags": [],
+     "conventions": [
+      "own"
+     ]
+    },
+    {
+     "subjectId": 217300,
+     "index": 12,
+     "sort": 49,
+     "ep": 12,
+     "truth": [
+      {
+       "siteId": "4",
+       "number": 12
+      }
+     ],
+     "verifiable": true,
+     "flags": [],
+     "conventions": [
+      "own"
+     ]
+    },
+    {
+     "subjectId": 263750,
+     "index": 1,
+     "sort": 50,
+     "ep": 1,
+     "truth": [
+      {
+       "siteId": "9",
+       "number": 13
+      },
+      {
+       "siteId": "4",
+       "number": 13
+      }
+     ],
+     "verifiable": true,
+     "flags": [],
+     "conventions": [
+      "C:merged",
+      "C:merged-own-named"
+     ]
+    },
+    {
+     "subjectId": 263750,
+     "index": 5,
+     "sort": 54,
+     "ep": 5,
+     "truth": [
+      {
+       "siteId": "9",
+       "number": 17
+      },
+      {
+       "siteId": "4",
+       "number": 17
+      }
+     ],
+     "verifiable": true,
+     "flags": [],
+     "conventions": [
+      "C:merged",
+      "C:merged-own-named"
+     ]
+    },
+    {
+     "subjectId": 263750,
+     "index": 10,
+     "sort": 59,
+     "ep": 10,
+     "truth": [
+      {
+       "siteId": "9",
+       "number": 22
+      },
+      {
+       "siteId": "4",
+       "number": 22
+      }
+     ],
+     "verifiable": true,
+     "flags": [],
+     "conventions": [
+      "C:merged",
+      "C:merged-own-named"
+     ]
+    }
+   ]
+  },
+  {
+   "base": "进击的巨人 最终季",
+   "partIds": [
+    285666,
+    331752
+   ],
+   "mainline": [
+    {
+     "id": 55770,
+     "names": [
+      "进击的巨人",
+      "進撃の巨人"
+     ],
+     "mainEpisodeCount": 25
+    },
+    {
+     "id": 118335,
+     "names": [
+      "进击的巨人 第二季",
+      "進撃の巨人 Season 2"
+     ],
+     "mainEpisodeCount": 12
+    },
+    {
+     "id": 217300,
+     "names": [
+      "进击的巨人 第三季",
+      "進撃の巨人 Season 3",
+      "自由之翼 3",
+      "Shingeki no Kyojin Season 3",
+      "Attack on Titan Season 3"
+     ],
+     "mainEpisodeCount": 12
+    },
+    {
+     "id": 263750,
+     "names": [
+      "进击的巨人 第三季 Part.2",
+      "進撃の巨人 Season 3 Part.2",
+      "自由之翼 3 Part.2",
+      "Attack on Titan Season 3 Part.2",
+      "Shingeki no Kyojin Season 3 Part.2"
+     ],
+     "mainEpisodeCount": 10
+    },
+    {
+     "id": 285666,
+     "names": [
+      "进击的巨人 最终季",
+      "進撃の巨人 The Final Season",
+      "进击的巨人 第四季",
+      "Attack on Titan Final Season",
+      "Shingeki no Kyojin: The Final Season"
+     ],
+     "mainEpisodeCount": 16
+    },
+    {
+     "id": 331752,
+     "names": [
+      "进击的巨人 最终季 Part.2",
+      "進撃の巨人 The Final Season Part.2",
+      "Attack on Titan Final Season Part 2",
+      "Shingeki no Kyojin: The Final Season Part 2"
+     ],
+     "mainEpisodeCount": 12
+    },
+    {
+     "id": 376739,
+     "names": [
+      "进击的巨人 最终季 完结篇 前篇",
+      "進撃の巨人 The Final Season 完結編 前編"
+     ],
+     "mainEpisodeCount": 1
+    },
+    {
+     "id": 415779,
+     "names": [
+      "进击的巨人 最终季 完结篇 后篇",
+      "進撃の巨人 The Final Season 完結編 後編"
+     ],
+     "mainEpisodeCount": 1
+    }
+   ],
+   "entries": [
+    {
+     "siteId": "1",
+     "name": "进击的巨人",
+     "numbers": [
+      26,
+      25,
+      24,
+      23,
+      22,
+      21,
+      20,
+      19,
+      18,
+      17,
+      16,
+      15,
+      14,
+      13,
+      12,
+      11,
+      10,
+      9,
+      8,
+      7,
+      6,
+      5,
+      4,
+      3,
+      2,
+      1
+     ]
+    },
+    {
+     "siteId": "2",
+     "name": "进击的巨人OAD",
+     "numbers": [
+      8,
+      7,
+      6,
+      5,
+      4,
+      3,
+      2,
+      1
+     ]
+    },
+    {
+     "siteId": "3",
+     "name": "进击的巨人 第二季",
+     "numbers": [
+      12,
+      11,
+      10,
+      9,
+      8,
+      7,
+      6,
+      5,
+      4,
+      3,
+      2,
+      1
+     ]
+    },
+    {
+     "siteId": "4",
+     "name": "进击的巨人 第三季",
+     "numbers": [
+      22,
+      21,
+      20,
+      19,
+      18,
+      17,
+      16,
+      15,
+      14,
+      13,
+      12,
+      11,
+      10,
+      9,
+      8,
+      7,
+      6,
+      5,
+      4,
+      3,
+      2,
+      1
+     ]
+    },
+    {
+     "siteId": "5",
+     "name": "进击的巨人 最终季",
+     "numbers": [
+      28,
+      27,
+      26,
+      25,
+      24,
+      23,
+      22,
+      21,
+      20,
+      19,
+      18,
+      17,
+      16,
+      15,
+      14,
+      13,
+      12,
+      11,
+      10,
+      9,
+      8,
+      7,
+      6,
+      5,
+      4,
+      3,
+      2,
+      1
+     ]
+    },
+    {
+     "siteId": "6",
+     "name": "进击的巨人 无悔的选择",
+     "numbers": [
+      2,
+      1
+     ]
+    },
+    {
+     "siteId": "7",
+     "name": "进击！巨人中学校",
+     "numbers": [
+      12,
+      11,
+      10,
+      9,
+      8,
+      7,
+      6,
+      5,
+      4,
+      3,
+      2,
+      1
+     ]
+    },
+    {
+     "siteId": "8",
+     "name": "进击的巨人 LOST GIRLS",
+     "numbers": [
+      7,
+      6,
+      5,
+      4,
+      3,
+      2,
+      1
+     ]
+    },
+    {
+     "siteId": "9",
+     "name": "进击的巨人 第三季 Part.2",
+     "numbers": [
+      22,
+      21,
+      20,
+      19,
+      18,
+      17,
+      16,
+      15,
+      14,
+      13,
+      12,
+      11,
+      10,
+      9,
+      8,
+      7,
+      6,
+      5,
+      4,
+      3,
+      2,
+      1
+     ]
+    },
+    {
+     "siteId": "10",
+     "name": "进击的巨人 最终季 Part.2",
+     "numbers": [
+      12,
+      11,
+      10,
+      9,
+      8,
+      7,
+      6,
+      5,
+      4,
+      3,
+      2,
+      1
+     ]
+    },
+    {
+     "siteId": "11",
+     "name": "进击的巨人 最终季 完结篇 前篇",
+     "numbers": [
+      1
+     ]
+    },
+    {
+     "siteId": "12",
+     "name": "剧场版 进击的巨人 完结篇 THE LAST ATTACK",
+     "numbers": [
+      1,
+      1
+     ]
+    }
+   ],
+   "cases": [
+    {
+     "subjectId": 285666,
+     "index": 1,
+     "sort": 60,
+     "ep": 1,
+     "truth": [
+      {
+       "siteId": "5",
+       "number": 1
+      }
+     ],
+     "verifiable": true,
+     "flags": [],
+     "conventions": [
+      "own"
+     ]
+    },
+    {
+     "subjectId": 285666,
+     "index": 8,
+     "sort": 67,
+     "ep": 8,
+     "truth": [
+      {
+       "siteId": "5",
+       "number": 8
+      }
+     ],
+     "verifiable": true,
+     "flags": [],
+     "conventions": [
+      "own"
+     ]
+    },
+    {
+     "subjectId": 285666,
+     "index": 16,
+     "sort": 75,
+     "ep": 16,
+     "truth": [
+      {
+       "siteId": "5",
+       "number": 16
+      }
+     ],
+     "verifiable": true,
+     "flags": [],
+     "conventions": [
+      "own"
+     ]
+    },
+    {
+     "subjectId": 331752,
+     "index": 1,
+     "sort": 76,
+     "ep": 1,
+     "truth": [
+      {
+       "siteId": "10",
+       "number": 1
+      },
+      {
+       "siteId": "5",
+       "number": 17
+      }
+     ],
+     "verifiable": true,
+     "flags": [],
+     "conventions": [
+      "A:restart",
+      "C:merged"
+     ]
+    },
+    {
+     "subjectId": 331752,
+     "index": 6,
+     "sort": 81,
+     "ep": 6,
+     "truth": [
+      {
+       "siteId": "10",
+       "number": 6
+      },
+      {
+       "siteId": "5",
+       "number": 22
+      }
+     ],
+     "verifiable": true,
+     "flags": [],
+     "conventions": [
+      "A:restart",
+      "C:merged"
+     ]
+    },
+    {
+     "subjectId": 331752,
+     "index": 12,
+     "sort": 87,
+     "ep": 12,
+     "truth": [
+      {
+       "siteId": "10",
+       "number": 12
+      },
+      {
+       "siteId": "5",
+       "number": 28
+      }
+     ],
+     "verifiable": true,
+     "flags": [],
+     "conventions": [
+      "A:restart",
+      "C:merged"
+     ]
+    }
+   ]
+  },
+  {
+   "base": "白色相簿",
+   "partIds": [
+    993,
+    2586
+   ],
+   "mainline": [
+    {
+     "id": 993,
+     "names": [
+      "白色相簿",
+      "WHITE ALBUM",
+      "白色相册",
+      "純白相薄"
+     ],
+     "mainEpisodeCount": 13
+    },
+    {
+     "id": 2586,
+     "names": [
+      "白色相簿-后半",
+      "WHITE ALBUM-後半"
+     ],
+     "mainEpisodeCount": 13
+    }
+   ],
+   "entries": [
+    {
+     "siteId": "1",
+     "name": "白色相簿",
+     "numbers": [
+      26,
+      25,
+      24,
+      23,
+      22,
+      21,
+      20,
+      19,
+      18,
+      17,
+      16,
+      15,
+      14,
+      13,
+      12,
+      11,
+      10,
+      9,
+      8,
+      7,
+      6,
+      5,
+      4,
+      3,
+      2,
+      1
+     ]
+    },
+    {
+     "siteId": "2",
+     "name": "白色相簿2",
+     "numbers": [
+      13,
+      12,
+      11,
+      10,
+      9,
+      8,
+      7,
+      6,
+      5,
+      4,
+      3,
+      2,
+      1
+     ]
+    }
+   ],
+   "cases": [
+    {
+     "subjectId": 993,
+     "index": 1,
+     "sort": 1,
+     "ep": 1,
+     "truth": [
+      {
+       "siteId": "1",
+       "number": 1
+      }
+     ],
+     "verifiable": true,
+     "flags": [],
+     "conventions": [
+      "own"
+     ]
+    },
+    {
+     "subjectId": 993,
+     "index": 7,
+     "sort": 7,
+     "ep": 7,
+     "truth": [
+      {
+       "siteId": "1",
+       "number": 7
+      }
+     ],
+     "verifiable": true,
+     "flags": [],
+     "conventions": [
+      "own"
+     ]
+    },
+    {
+     "subjectId": 993,
+     "index": 13,
+     "sort": 13,
+     "ep": 13,
+     "truth": [
+      {
+       "siteId": "1",
+       "number": 13
+      }
+     ],
+     "verifiable": true,
+     "flags": [],
+     "conventions": [
+      "own"
+     ]
+    },
+    {
+     "subjectId": 2586,
+     "index": 1,
+     "sort": 14,
+     "ep": 1,
+     "truth": [
+      {
+       "siteId": "2",
+       "number": 1
+      },
+      {
+       "siteId": "1",
+       "number": 14
+      }
+     ],
+     "verifiable": true,
+     "flags": [],
+     "conventions": [
+      "A:restart",
+      "C:merged"
+     ]
+    },
+    {
+     "subjectId": 2586,
+     "index": 7,
+     "sort": 20,
+     "ep": 7,
+     "truth": [
+      {
+       "siteId": "2",
+       "number": 7
+      },
+      {
+       "siteId": "1",
+       "number": 20
+      }
+     ],
+     "verifiable": true,
+     "flags": [],
+     "conventions": [
+      "A:restart",
+      "C:merged"
+     ]
+    },
+    {
+     "subjectId": 2586,
+     "index": 13,
+     "sort": 26,
+     "ep": 13,
+     "truth": [
+      {
+       "siteId": "2",
+       "number": 13
+      },
+      {
+       "siteId": "1",
+       "number": 26
+      }
+     ],
+     "verifiable": true,
+     "flags": [],
+     "conventions": [
+      "A:restart",
+      "C:merged"
+     ]
+    }
+   ]
+  }
+ ]
+}

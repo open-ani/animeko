@@ -10,6 +10,8 @@
 package me.him188.ani.app.data.models.subject
 
 import me.him188.ani.app.domain.mediasource.MediaListFilters
+import me.him188.ani.datasources.api.EpisodeType
+import me.him188.ani.datasources.api.PackedDate
 
 data class SubjectSeriesInfo(
 //    val subjectId: Int,
@@ -33,10 +35,18 @@ data class SubjectSeriesInfo(
      * 系列作品名称, 不包含自己的名称
      */
     val seriesSubjectNamesWithoutSelf: Set<String>,
+    /**
+     * 此条目是 Bangumi 拆分的一季中的一个部分时的分部信息, 否则为 `null`.
+     */
+    val seasonPart: SeasonPartInfo? = null,
 ) {
     companion object {
+        /**
+         * @param seriesSubjects 系列里的其他条目 (主线与续作), 用于识别分部. 缺少主线上的条目时不识别分部.
+         */
         fun compute(
             requestingSubject: SubjectCollectionInfo,
+            seriesSubjects: List<SubjectCollectionInfo> = emptyList(),
         ): SubjectSeriesInfo {
             val sequelSubjectNames = requestingSubject.relations.sequelSubjectNames.toMutableSet().apply {
                 removeAll { sequelName ->
@@ -65,7 +75,27 @@ data class SubjectSeriesInfo(
                 seasonSort = seasonSort,
                 sequelSubjectNames,
                 seriesSubjectNamesWithoutSelf,
+                seasonPart = computeSeasonPart(requestingSubject, seriesSubjects),
             )
+        }
+
+        private fun computeSeasonPart(
+            requestingSubject: SubjectCollectionInfo,
+            seriesSubjects: List<SubjectCollectionInfo>,
+        ): SeasonPartInfo? {
+            val byId = (seriesSubjects + requestingSubject).associateBy { it.subjectId }
+            val today = PackedDate.now()
+            val mainline = requestingSubject.relations.seriesMainSubjectIds.map { id ->
+                val subject = byId[id] ?: return null
+                val mainEpisodes = subject.episodes.filter { it.episodeInfo.type == EpisodeType.MainStory }
+                SeriesMainSubject(
+                    subjectId = id,
+                    names = subject.subjectInfo.allNames,
+                    mainEpisodeCount = mainEpisodes.size,
+                    airedEpisodeCount = mainEpisodes.count { !it.episodeInfo.airDate.isValid || it.episodeInfo.airDate <= today },
+                )
+            }
+            return SeasonPartInfo.compute(mainline, requestingSubject.subjectId)
         }
 
         val Fallback = SubjectSeriesInfo(
@@ -81,6 +111,7 @@ data class SubjectSeriesInfo(
 fun SubjectSeriesInfo.toBuilder() = SubjectSeriesInfoBuilder(seasonSort).apply {
     sequel(*sequelSubjectNames.toTypedArray())
     series(*seriesSubjectNamesWithoutSelf.toTypedArray())
+    seasonPart = this@toBuilder.seasonPart
 }
 
 // mainly designed for tests
@@ -93,6 +124,11 @@ class SubjectSeriesInfoBuilder(
 ) {
     private val sequelNames = mutableListOf<String>()
     private val seriesNames = mutableListOf<String>()
+
+    /**
+     * @see SubjectSeriesInfo.seasonPart
+     */
+    var seasonPart: SeasonPartInfo? = null
 
     /**
      * 添加一个续集番名.
@@ -112,7 +148,10 @@ class SubjectSeriesInfoBuilder(
     }
 
     fun build() = SubjectSeriesInfo(
-        seasonSort, sequelSubjectNames = sequelNames.toSet(), seriesSubjectNamesWithoutSelf = seriesNames.toSet(),
+        seasonSort,
+        sequelSubjectNames = sequelNames.toSet(),
+        seriesSubjectNamesWithoutSelf = seriesNames.toSet(),
+        seasonPart = seasonPart,
     )
 }
 

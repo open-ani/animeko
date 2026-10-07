@@ -46,10 +46,12 @@ class SelectorMediaSourceFetchFallbackTest {
                     when (keyword) {
                         "出包王女" -> SERIES_SEARCH_PAGE
                         "铃芽之旅" -> SUZUME_SEARCH_PAGE
+                        "接着编号" -> CONTINUED_SEARCH_PAGE
                         else -> EMPTY_SEARCH_PAGE
                     }
                 }
 
+                url.startsWith("https://example.com/subject/9.html") -> CONTINUED_SUBJECT_PAGE
                 url.startsWith("https://example.com/subject/") -> SUBJECT_PAGE
                 else -> return@MockEngine respondError(HttpStatusCode.NotFound)
             }
@@ -77,6 +79,7 @@ class SelectorMediaSourceFetchFallbackTest {
         subjectNames: List<String>,
         fallbackSearchKeywords: List<String> = emptyList(),
         episode: Int = 1,
+        exactMatchSubjectNames: List<String> = emptyList(),
     ) = MediaFetchRequest(
         subjectId = "8546",
         episodeId = episode.toString(),
@@ -84,6 +87,7 @@ class SelectorMediaSourceFetchFallbackTest {
         episodeSort = EpisodeSort(episode),
         episodeName = "",
         fallbackSearchKeywords = fallbackSearchKeywords,
+        exactMatchSubjectNames = exactMatchSubjectNames,
     )
 
     private suspend fun SelectorMediaSource.fetchSubjectNames(request: MediaFetchRequest): List<String> =
@@ -212,6 +216,48 @@ class SelectorMediaSourceFetchFallbackTest {
     }
 
     @Test
+    fun `an exact match name counts as a match and stops the fallback chain`() = runTest {
+        val (source, site) = createSource()
+        // 「出包王女」与「更多 出包王女」模糊匹配不过, 但它是合并条目的名字
+        source.fetchSubjectNames(
+            request(
+                subjectNames = listOf("更多 出包王女"),
+                fallbackSearchKeywords = listOf("出包王女", "铃芽之旅"),
+                exactMatchSubjectNames = listOf("出包王女"),
+            ),
+        )
+        assertEquals(listOf("更多", "出包王女"), site.searchKeywords)
+    }
+
+    @Test
+    fun `cached entry page continuing the numbering is fresh for the offset episode`() = runTest {
+        val site = Site()
+        val source = createTestSelectorMediaSource(
+            config, site.engine, cacheDao = InMemoryWebSearchSessionCacheDao(), cacheTtl = 1.hours,
+        )
+        // 站点接着第一部分 (4 集) 编号: 条目页只有第 5-8 集
+        fun partRequest(ep: Int, offset: Int) = MediaFetchRequest(
+            subjectId = "8546",
+            episodeId = ep.toString(),
+            subjectNames = listOf("接着编号 第2部分"),
+            episodeSort = EpisodeSort(ep + 20),
+            episodeEp = EpisodeSort(ep),
+            episodeName = "",
+            exactMatchSubjectNames = listOf("接着编号"),
+            episodeOffset = offset,
+        )
+        source.fetchSubjectNames(partRequest(ep = 1, offset = 4))
+        assertEquals(listOf("接着编号"), site.searchKeywords)
+        // 切集: 第 2 集在条目页里是第 6 集, 缓存命中, 不发请求
+        val subjects = source.fetchSubjectNames(partRequest(ep = 2, offset = 4))
+        assertEquals(listOf("接着编号"), site.searchKeywords)
+        assertEquals(listOf("接着编号"), subjects)
+        // 不知道偏移时 ep=2 不在页面里, 视为陈旧, 重新搜索
+        source.fetchSubjectNames(partRequest(ep = 2, offset = 0))
+        assertEquals(listOf("接着编号", "接着编号"), site.searchKeywords)
+    }
+
+    @Test
     fun `fallback keywords are deduplicated against the primary keywords`() {
         val fallback = listOf("出包王女 第二季", "出包王女", "更多 出包王女", "", "出包王女第2季")
         // 取首词: 「出包王女 第二季」与「出包王女」同为「出包王女」; 「更多 出包王女」与主关键词同为「更多」; 「出包王女第2季」没有空格, 整个是关键词
@@ -249,6 +295,16 @@ class SelectorMediaSourceFetchFallbackTest {
         val SUBJECT_PAGE = """
             <html><body>
             <div class="list"><a href="/play/1.html">第1集</a><a href="/play/2.html">第2集</a></div>
+            </body></html>
+        """.trimIndent()
+        val CONTINUED_SEARCH_PAGE = """
+            <html><body>
+            <div class="result"><a href="/subject/9.html" title="接着编号">接着编号</a></div>
+            </body></html>
+        """.trimIndent()
+        val CONTINUED_SUBJECT_PAGE = """
+            <html><body>
+            <div class="list"><a href="/play/5.html">第5集</a><a href="/play/6.html">第6集</a><a href="/play/7.html">第7集</a><a href="/play/8.html">第8集</a></div>
             </body></html>
         """.trimIndent()
     }

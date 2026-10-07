@@ -123,7 +123,8 @@ interface MediaFetcher {
  *
  * @param episode 当前剧集, 仅作提示.
  * @param episodes 条目的全部剧集, 按剧集顺序; 数据源用它做序号映射与缓存陈旧判定.
- * @param seriesInfo 系列信息, 用于推导回退搜索关键词 ([computeFallbackSearchKeywords]). 未知时只能从条目自己的名字推导.
+ * @param seriesInfo 系列信息, 用于推导回退搜索关键词 ([computeFallbackSearchKeywords]) 与分部的额外条目名和集数偏移 ([SubjectSeriesInfo.seasonPart]).
+ * 未知时只能从条目自己的名字推导.
  */
 fun MediaFetchRequest.Companion.create(
     subject: SubjectInfo,
@@ -152,6 +153,8 @@ fun MediaFetchRequest.Companion.create(
             subject.allNames,
             seriesInfo?.seriesSubjectNamesWithoutSelf.orEmpty(),
         ),
+        exactMatchSubjectNames = seriesInfo?.seasonPart?.let { it.mergedEntryNames + it.ownSynthesizedNames }.orEmpty().toList(),
+        episodeOffset = seriesInfo?.seasonPart?.episodeOffset ?: 0,
     )
 }
 

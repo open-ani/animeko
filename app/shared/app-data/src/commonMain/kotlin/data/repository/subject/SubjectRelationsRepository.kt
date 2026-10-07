@@ -111,13 +111,18 @@ class DefaultSubjectRelationsRepository(
             aniSubjectRelationIndexService.getSubjectRelationIndex(subjectId),
         )
     }.combine(subjectCollectionRepository.subjectCollectionFlow(subjectId)) { relations, requestingSubject ->
+        val seriesSubjectIds = (relations.sequelSubjects.toSet() + relations.seriesMainSubjectIds) - subjectId
+        if (seriesSubjectIds.isEmpty()) { // combine(emptyList()) 不会 emit
+            return@combine flowOf(SubjectSeriesInfo.compute(requestingSubject))
+        }
         combine(
-            (relations.sequelSubjects.toSet() + relations.seriesMainSubjectIds).map {
+            seriesSubjectIds.map {
                 subjectCollectionRepository.subjectCollectionFlow(it)
             },
         ) { subjectCollectionInfos ->
             SubjectSeriesInfo.compute(
                 requestingSubject = requestingSubject,
+                seriesSubjects = subjectCollectionInfos.toList(),
             )
         }
     }.flatMapLatest {
