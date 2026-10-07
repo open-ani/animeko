@@ -12,6 +12,7 @@ package me.him188.ani.app.ui.exploration
 import androidx.compose.foundation.gestures.animateScrollBy
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.WindowInsetsSides
@@ -27,6 +28,7 @@ import androidx.compose.foundation.lazy.grid.GridItemSpan
 import androidx.compose.foundation.lazy.grid.LazyGridState
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.rounded.KeyboardArrowRight
 import androidx.compose.material.icons.rounded.CalendarMonth
 import androidx.compose.material.icons.rounded.Search
 import androidx.compose.material.icons.rounded.Settings
@@ -44,9 +46,11 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.PreviewLightDark
 import androidx.compose.ui.tooling.preview.PreviewScreenSizes
 import androidx.compose.ui.unit.Density
@@ -103,6 +107,7 @@ import me.him188.ani.app.ui.lang.exploration_search
 import me.him188.ani.app.ui.lang.exploration_settings
 import me.him188.ani.app.ui.lang.exploration_title
 import me.him188.ani.app.ui.lang.exploration_trending
+import me.him188.ani.app.ui.lang.exploration_trending_more
 import me.him188.ani.app.ui.search.createTestPager
 import me.him188.ani.app.ui.search.isLoadingFirstPageOrRefreshing
 import me.him188.ani.app.ui.search.rememberLoadErrorState
@@ -144,6 +149,14 @@ class ExplorationPageState(
     fun setDisableHorizontalScrollTip() {
         onSetDisableHorizontalScrollTip()
     }
+}
+
+@Stable
+object ExplorationDefaults {
+    /**
+     * 探索页及其子页面 (如热度排行) 内容区域的最大宽度. 更宽的窗口里内容居中.
+     */
+    val ContentMaxWidth = 1300.dp
 }
 
 @Composable
@@ -226,7 +239,7 @@ fun ExplorationScreen(
                 .appChromeHazeSource(backgroundColor = AniThemeDefaults.pageContentBackgroundColor)
                 .fillMaxWidth()
                 .wrapContentWidth()
-                .widthIn(max = 1300.dp)
+                .widthIn(max = ExplorationDefaults.ContentMaxWidth)
                 .fillMaxSize()
                 .ifNotNullThen(scrollBehavior) {
                     nestedScroll(it.nestedScrollConnection)
@@ -241,14 +254,29 @@ fun ExplorationScreen(
                     NavTitleHeader(
                         title = { Text(stringResource(Lang.exploration_trending), softWrap = false) },
                         trailingActions = {
-                            TextButton(
-                                { navigator.navigateSchedule() },
-                                Modifier,
-                                contentPadding = ButtonDefaults.ButtonWithIconContentPadding,
-                            ) {
-                                Icon(Icons.Rounded.CalendarMonth, null, Modifier.size(ButtonDefaults.IconSize))
-                                Spacer(Modifier.size(ButtonDefaults.IconSpacing))
-                                Text(stringResource(Lang.exploration_schedule), softWrap = false)
+                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                // 窄屏上放不下时 (如英文) 新番时间表的文字先省略, "更多" 总是完整显示
+                                TextButton(
+                                    { navigator.navigateSchedule() },
+                                    Modifier.weight(1f, fill = false),
+                                    contentPadding = ButtonDefaults.ButtonWithIconContentPadding,
+                                ) {
+                                    Icon(Icons.Rounded.CalendarMonth, null, Modifier.size(ButtonDefaults.IconSize))
+                                    Spacer(Modifier.size(ButtonDefaults.IconSpacing))
+                                    Text(
+                                        stringResource(Lang.exploration_schedule),
+                                        maxLines = 1,
+                                        overflow = TextOverflow.Ellipsis,
+                                    )
+                                }
+                                TextButton({ navigator.navigateTrendingRanking() }) {
+                                    Text(stringResource(Lang.exploration_trending_more), softWrap = false)
+                                    Icon(
+                                        Icons.AutoMirrored.Rounded.KeyboardArrowRight,
+                                        null,
+                                        Modifier.size(ButtonDefaults.IconSize),
+                                    )
+                                }
                             }
                         },
                     )

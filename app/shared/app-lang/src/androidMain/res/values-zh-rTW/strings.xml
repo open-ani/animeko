@@ -604,6 +604,10 @@
     <string name="exploration_settings">設定</string>
     <string name="exploration_search">搜尋</string>
     <string name="exploration_trending">最高熱度</string>
+    <string name="exploration_trending_more">更多</string>
+    <string name="exploration_trending_ranking">熱度排行</string>
+    <string name="exploration_trending_ranking_heat">近 30 天 %1$s 人在看</string>
+    <string name="exploration_trending_ranking_empty">暫無排行</string>
     <string name="exploration_schedule">新番時間表</string>
     <string name="exploration_schedule_view_details">查看詳情</string>
     <string name="exploration_schedule_episode">第 %1$s 話</string>
@@ -1479,6 +1483,7 @@
     <string name="foundation_paginated_list_select_group">選擇分組</string>
     <string name="foundation_paginated_list_next_group">下一組</string>
     <string name="rating_summary_multiline">#%1$d\n%2$d 人評</string>
+    <string name="rating_summary_total">%1$d 人評</string>
     <string name="subject_episode_statistics_copy">複製</string>
     <string name="subject_episode_statistics_error_details">錯誤詳情</string>
     <string name="subject_episode_statistics_error">錯誤</string>
