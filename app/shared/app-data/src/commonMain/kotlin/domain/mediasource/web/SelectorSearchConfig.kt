@@ -245,6 +245,9 @@ data class SelectorAutoMatchConfig(
      * - 主中文名
      * - 日文原名
      * - 其他别名, 无特定顺序
+     *
+     * 这些名字都没搜到名字能对上的条目时, 再依次尝试请求附带的回退关键词 (带季度标记的别名, 由系列关系推出的基础名),
+     * 见 [me.him188.ani.datasources.api.source.MediaFetchRequest.fallbackSearchKeywords].
      */
     val searchUseSubjectNamesCount: Int = 1,
     /**
