@@ -806,6 +806,7 @@
     <string name="video_player_aspect_fit">Fit</string>
     <string name="video_player_aspect_stretch">Stretch</string>
     <string name="video_player_aspect_crop">Crop</string>
+    <string name="video_player_aspect_ratio">Aspect ratio</string>
     <string name="video_player_auto">Auto</string>
     <string name="video_player_audio_track">Audio</string>
     <string name="video_player_off">Off</string>
