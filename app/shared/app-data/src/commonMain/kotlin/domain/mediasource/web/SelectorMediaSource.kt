@@ -427,29 +427,51 @@ class SelectorMediaSource(
 
         val primary = query.subjectNames.take(searchConfig.autoMatch.searchUseSubjectNamesCount.coerceAtLeast(1))
         val fallback = searchConfig.distinctFallbackKeywords(primary, query.fallbackSearchKeywords)
+        val remembered = rememberedKeywords(subjectId, primary + fallback)
         val filterContext = MediaListFilterContext(
             subjectNames = allSubjectNames,
             episodeSort = query.episodeSort,
             episodeEp = query.episodeEp,
             episodeName = query.episodeName,
         )
-        return engine.searchChain(primary, fallback, subjectId, ::searchQuery) { media ->
+        return engine.searchChain(primary, fallback, remembered, subjectId, ::searchQuery) { media ->
             media.anySubjectNameMatches(filterContext)
         }.map { MediaMatch(it, MatchKind.FUZZY) }
     }
 
     /**
-     * 自动匹配的关键词链: [primary] 每一个都搜, 结果全部返回; 它们都没搜到名字能对上的条目时, 再依次尝试 [fallback], 搜到为止.
-     * 每个关键词的结果一搜到就发出, 不等整条链结束.
+     * [keywords] 中上次搜到过条目页的, 即搜索缓存里有它的未过期行的, 保持原顺序.
+     * 有行只说明搜到过条目页, 不说明名字对上了, 所以只用来决定搜索顺序. 读缓存失败按没有记忆处理.
+     */
+    private suspend fun rememberedKeywords(subjectId: Int?, keywords: List<String>): List<String> {
+        val cached = try {
+            repository.getCachedSubjectNames(subjectId, mediaSourceId)
+        } catch (e: CancellationException) {
+            throw e
+        } catch (e: Exception) {
+            logger.warn(e) { "SelectorMediaSource '$mediaSourceId': failed to read cached search keywords" }
+            return emptyList()
+        }
+        if (cached.isEmpty()) return emptyList()
+        val cachedSet = cached.toHashSet()
+        return keywords.filter { it in cachedSet }
+    }
+
+    /**
+     * 自动匹配的关键词链. [primary] 每一个都搜, 结果全部返回; 它们都没搜到名字能对上的条目时, 再依次尝试 [fallback], 搜到为止.
      *
-     * 两次向站点发起的搜索之间等待 [SelectorSearchConfig.requestInterval]. 命中搜索缓存的不发请求也不等待,
-     * 切集时主关键词搜不到、回退关键词已缓存的条目因此能立即得到结果.
+     * [remembered] 是其中上次搜到过条目页的 ([rememberedKeywords]), 先于其余关键词按同样的规则搜; 它们搜到了就结束, 其余的不再搜.
+     * 「更多」这类搜不到的关键词没有缓存行, 切集时不会再为它发请求.
+     *
+     * 每个关键词的结果一搜到就发出, 不等整条链结束. 两次向站点发起的搜索之间等待 [SelectorSearchConfig.requestInterval];
+     * 命中搜索缓存的不发请求也不等待.
      *
      * @param matches 一次搜索的结果里是否有名字能对上请求条目的, 见 [anySubjectNameMatches].
      */
     private fun EngineType.searchChain(
         primary: List<String>,
         fallback: List<String>,
+        remembered: List<String>,
         subjectId: Int?,
         query: (name: String) -> SelectorSearchQuery,
         matches: (List<DefaultMedia>) -> Boolean,
@@ -476,11 +498,17 @@ class SelectorMediaSource(
                     total += media.size
                     emitAll(media.asFlow())
                 }
-                for (name in primary) searchAndEmit(name)
-                for (name in fallback) {
-                    if (matched) break
-                    searchAndEmit(name)
+                val primarySet = primary.toHashSet()
+                val rememberedSet = remembered.toHashSet()
+                suspend fun searchInOrder(names: List<String>) {
+                    for (name in names) {
+                        // 主关键词全搜, 回退关键词搜到为止
+                        if (matched && name !in primarySet) break
+                        searchAndEmit(name)
+                    }
                 }
+                searchInOrder(remembered)
+                if (!matched) searchInOrder((primary + fallback).filter { it !in rememberedSet })
                 totalSizeState.value = total
                 finishedState.value = true
             }

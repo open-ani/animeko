@@ -144,6 +144,23 @@ interface WebSearchSessionCacheDao {
         now: Long,
     ): List<WebSearchSessionCacheEntity>
 
+    /**
+     * 该条目在该数据源上, 未过期的行所用过的全部查询名, 不重复. 有行即表示该查询名曾搜到过条目页.
+     */
+    @Query(
+        """
+        SELECT DISTINCT subjectName FROM web_search_session_cache
+        WHERE requesterSubjectId IS :requesterSubjectId
+            AND mediaSourceId = :mediaSourceId
+            AND expiresAt > :now
+        """,
+    )
+    suspend fun subjectNamesWithCache(
+        requesterSubjectId: Int?,
+        mediaSourceId: String,
+        now: Long,
+    ): List<String>
+
     @Query("DELETE FROM web_search_session_cache WHERE expiresAt <= :now")
     suspend fun deleteExpired(now: Long)
 

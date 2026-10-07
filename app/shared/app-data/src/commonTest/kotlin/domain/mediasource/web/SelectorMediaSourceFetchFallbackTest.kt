@@ -26,6 +26,7 @@ import me.him188.ani.datasources.api.source.MediaFetchRequest
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.time.Duration
+import kotlin.time.Duration.Companion.hours
 
 /**
  * 自动匹配的关键词链: 主关键词搜不到名字能对上的条目时, 依次尝试回退关键词.
@@ -75,11 +76,12 @@ class SelectorMediaSourceFetchFallbackTest {
     private fun request(
         subjectNames: List<String>,
         fallbackSearchKeywords: List<String> = emptyList(),
+        episode: Int = 1,
     ) = MediaFetchRequest(
         subjectId = "8546",
-        episodeId = "1",
+        episodeId = episode.toString(),
         subjectNames = subjectNames,
-        episodeSort = EpisodeSort(1),
+        episodeSort = EpisodeSort(episode),
         episodeName = "",
         fallbackSearchKeywords = fallbackSearchKeywords,
     )
@@ -172,6 +174,41 @@ class SelectorMediaSourceFetchFallbackTest {
         )
 
         assertEquals(listOf("更多", "もっとTo", "出包王女"), site.searchKeywords)
+    }
+
+    @Test
+    fun `remembered keyword is used first and the primary is not searched again`() = runTest {
+        val site = Site()
+        val source = createTestSelectorMediaSource(
+            config, site.engine, cacheDao = InMemoryWebSearchSessionCacheDao(), cacheTtl = 1.hours,
+        )
+        val names = listOf("更多 出包王女", "出包王女 第二季")
+        val fallback = listOf("出包王女 第二季", "出包王女")
+
+        source.fetchSubjectNames(request(names, fallback, episode = 1))
+        assertEquals(listOf("更多", "出包王女"), site.searchKeywords)
+
+        // 切集: 缓存的条目页含第 2 集, 不发任何请求; 「更多」没有缓存行, 不再搜
+        val subjects = source.fetchSubjectNames(request(names, fallback, episode = 2))
+        assertEquals(listOf("更多", "出包王女"), site.searchKeywords)
+        assertEquals(listOf("出包王女", "出包王女第二季", "出包王女 Darkness", "出包王女Darkness 第二季"), subjects)
+    }
+
+    @Test
+    fun `stale cache searches only the remembered keyword`() = runTest {
+        val site = Site()
+        val source = createTestSelectorMediaSource(
+            config, site.engine, cacheDao = InMemoryWebSearchSessionCacheDao(), cacheTtl = 1.hours,
+        )
+        val names = listOf("更多 出包王女", "出包王女 第二季")
+        val fallback = listOf("出包王女 第二季", "出包王女")
+
+        source.fetchSubjectNames(request(names, fallback, episode = 1))
+
+        // 新一集不在缓存的条目页里: 只对记住的「出包王女」发请求
+        val subjects = source.fetchSubjectNames(request(names, fallback, episode = 3))
+        assertEquals(listOf("更多", "出包王女", "出包王女"), site.searchKeywords)
+        assertEquals(listOf("出包王女", "出包王女第二季", "出包王女 Darkness", "出包王女Darkness 第二季"), subjects)
     }
 
     @Test
