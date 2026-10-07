@@ -101,6 +101,16 @@ class SelectorMediaSourceEpisodeCacheRepository(
     }
 
     /**
+     * 该条目在该数据源上曾搜到过条目页的查询名 (有未过期缓存行的). 数据源用它把上次有效的搜索关键词排到前面.
+     */
+    suspend fun getCachedSubjectNames(
+        requesterSubjectId: Int?,
+        mediaSourceId: String,
+    ): List<String> = withContext(defaultDispatcher) {
+        dao.subjectNamesWithCache(requesterSubjectId, mediaSourceId, currentTimeMillis())
+    }
+
+    /**
      * 返回该条目该查询名下缓存的所有未过期的条目页面, 每个页面附带其全部剧集 (保持页面上的顺序).
      */
     suspend fun getCache(

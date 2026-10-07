@@ -38,6 +38,7 @@ import androidx.lifecycle.viewmodel.navigation3.rememberViewModelStoreNavEntryDe
 import androidx.navigation3.runtime.entryProvider
 import androidx.navigation3.runtime.rememberSaveableStateHolderNavEntryDecorator
 import androidx.navigation3.ui.NavDisplay
+import androidx.paging.compose.collectAsLazyPagingItemsWithLifecycle
 import me.him188.ani.app.data.models.subject.SubjectInfo
 import me.him188.ani.app.domain.mediasource.api.ApiMediaSource
 import me.him188.ani.app.ui.settings.mediasource.api.EditApiMediaSourceScreen
@@ -69,6 +70,8 @@ import me.him188.ani.app.ui.download.details.MediaDetailsLazyGrid
 import me.him188.ani.app.ui.download.subject.SubjectDownloadsScreen
 import me.him188.ani.app.ui.exploration.schedule.ScheduleScreen
 import me.him188.ani.app.ui.exploration.schedule.ScheduleViewModel
+import me.him188.ani.app.ui.exploration.trends.TrendingRankingScreen
+import me.him188.ani.app.ui.exploration.trends.TrendingRankingViewModel
 import me.him188.ani.app.ui.foundation.animation.NavigationMotionScheme
 import me.him188.ani.app.ui.foundation.animation.ProvideAniMotionCompositionLocals
 import me.him188.ani.app.ui.foundation.layout.currentWindowAdaptiveInfo1
@@ -116,6 +119,9 @@ import me.him188.ani.app.ui.watchtogether.WatchTogetherOverlayHost
 import me.him188.ani.app.ui.watchtogether.WatchTogetherPlayerController
 import me.him188.ani.app.ui.watchtogether.WatchTogetherViewModel
 import me.him188.ani.datasources.api.source.FactoryId
+import me.him188.ani.utils.analytics.Analytics
+import me.him188.ani.utils.analytics.AnalyticsEvent.Companion.SubjectEnter
+import me.him188.ani.utils.analytics.recordEvent
 import org.jetbrains.compose.resources.stringResource
 
 /**
@@ -648,6 +654,36 @@ private fun AniAppContentImpl(
                         )
                     },
                     state = vm.pageState,
+                )
+            }
+            entry<NavRoutes.TrendingRanking> { route ->
+                val vm = viewModel { TrendingRankingViewModel() }
+                TrendingRankingScreen(
+                    vm.items.collectAsLazyPagingItemsWithLifecycle(),
+                    onClickItem = {
+                        Analytics.recordEvent(SubjectEnter) {
+                            put("source", "trending_ranking")
+                            put("subject_id", it.subject.subjectId)
+                        }
+                        aniNavigator.navigateSubjectDetails(
+                            it.subject.subjectId,
+                            placeholder = SubjectDetailPlaceholder(
+                                id = it.subject.subjectId,
+                                name = it.subject.originalTitle,
+                                nameCN = it.subject.title,
+                                coverUrl = it.subject.imageUrl,
+                            ),
+                        )
+                    },
+                    Modifier.fillMaxSize(),
+                    windowInsets = windowInsets,
+                    navigationIcon = {
+                        BackNavigationIconButton(
+                            {
+                                aniNavigator.popBackStack(route, inclusive = true)
+                            },
+                        )
+                    },
                 )
             }
         },

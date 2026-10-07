@@ -148,7 +148,6 @@ abstract class RssMediaSourceEngine {
 data class RssSearchConfig(
     val searchUrl: String = "", // required
     val filterByEpisodeSort: Boolean = true,
-    val filterBySubjectName: Boolean = true,
 ) {
     companion object {
         val Empty = RssSearchConfig()

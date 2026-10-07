@@ -107,6 +107,8 @@ android {
     productFlavors {
         create("default") {
             dimension = "distribution"
+            // The phone BT service uses SharedMemory (API 27); TV does not register that service.
+            minSdk = maxOf(27, getIntProperty("android.min.sdk"))
         }
         create("tv") {
             // Android TV 形态: 与 default 平级、单维度,

@@ -110,6 +110,12 @@ private class NoopWebSearchSessionCacheDao : WebSearchSessionCacheDao {
         now: Long,
     ): List<WebSearchSessionCacheEntity> = emptyList()
 
+    override suspend fun subjectNamesWithCache(
+        requesterSubjectId: Int?,
+        mediaSourceId: String,
+        now: Long,
+    ): List<String> = emptyList()
+
     override suspend fun deleteExpired(now: Long) {
     }
 

@@ -13,8 +13,10 @@ import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.test.UnconfinedTestDispatcher
 import kotlinx.coroutines.test.runTest
+import me.him188.ani.app.data.models.subject.RatingCounts
 import me.him188.ani.app.data.models.subject.RatingInfo
 import me.him188.ani.app.data.models.subject.SelfRatingInfo
 import kotlin.test.Test
@@ -29,7 +31,24 @@ class RatingEditControllerTest {
     private val enableEdit = MutableStateFlow(true)
 
     private fun uiStateOf(controller: RatingEditController) =
-        controller.uiStateFlow(RatingInfo.Empty, selfRating, enableEdit)
+        controller.uiStateFlow(flowOf(RatingInfo.Empty), selfRating, enableEdit)
+
+    @Test
+    fun `site wide rating follows the rating flow`() = runTest(UnconfinedTestDispatcher()) {
+        val controller = RatingEditController(
+            isCollected = { true },
+            currentSelfRating = { selfRating.value },
+            onRate = {},
+            backgroundScope,
+        )
+        val ratingInfo = MutableStateFlow(RatingInfo.Empty)
+        val uiState = controller.uiStateFlow(ratingInfo, selfRating, enableEdit)
+        assertEquals(RatingInfo.Empty, uiState.first().ratingInfo)
+
+        val rated = RatingInfo(rank = 1, total = 1, count = RatingCounts(s9 = 1), score = "9.0")
+        ratingInfo.value = rated
+        assertEquals(rated, uiState.first().ratingInfo)
+    }
 
     @Test
     fun `request edit when not collected shows requires-collection dialog`() = runTest(UnconfinedTestDispatcher()) {

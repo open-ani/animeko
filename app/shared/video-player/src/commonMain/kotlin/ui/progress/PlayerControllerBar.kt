@@ -148,9 +148,7 @@ import me.him188.ani.app.utils.formatSpeedValue
 import me.him188.ani.app.videoplayer.ui.PlaybackSpeedControllerState
 import me.him188.ani.app.videoplayer.ui.PlayerControllerState
 import me.him188.ani.app.videoplayer.ui.PlayerFullscreenState
-import me.him188.ani.app.videoplayer.ui.VideoAspectRatioControllerState
 import me.him188.ani.app.videoplayer.ui.keepLayoutWhenHidden
-import me.him188.ani.app.videoplayer.ui.renderAspectRatioMode
 import me.him188.ani.app.videoplayer.ui.toggle
 import me.him188.ani.app.videoplayer.ui.top.needWorkaroundForFocusManager
 import org.jetbrains.compose.resources.stringResource
@@ -163,8 +161,6 @@ const val TAG_SPEED_SWITCHER_SLIDER = "SpeedSwitcherSlider"
 const val TAG_SPEED_SWITCHER_VALUE_INDICATOR = "SpeedSwitcherValueIndicator"
 const val TAG_DANMAKU_ICON_BUTTON = "DanmakuIconButton"
 const val TAG_PICTURE_IN_PICTURE_BUTTON = "PictureInPictureButton"
-const val TAG_VIDEO_ASPECT_RATIO_SELECTOR_TEXT_BUTTON = "VideoAspectRatioTextButton"
-const val TAG_VIDEO_ASPECT_RATIO_SELECTOR_DROPDOWN_MENU = "VideoAspectRatioDropdownMenu"
 
 const val TAG_FULL_SCREEN_BUTTON = "FullScreenButton"
 
@@ -710,32 +706,6 @@ object PlayerControllerDefaults {
                 }
             }
         }
-    }
-
-    /**
-     * Video aspect ratio selector
-     */
-
-    @Composable
-    fun VideoAspectRatioSelector(
-        videoAspectRatioControllerState: VideoAspectRatioControllerState,
-        modifier: Modifier = Modifier,
-        onExpandedChanged: (expanded: Boolean) -> Unit = {},
-    ) {
-        return OptionsSwitcher(
-            value = videoAspectRatioControllerState.currentMode,
-            onValueChange = { videoAspectRatioControllerState.setMode(it) },
-            optionsProvider = { VideoAspectRatioControllerState.Entries },
-            renderValue = { Text(renderAspectRatioMode(it)) },
-            renderValueExposed = { Text(renderAspectRatioMode(it)) },
-            modifier,
-            properties = PlatformPopupProperties(
-                clippingEnabled = false,
-            ),
-            textButtonTestTag = TAG_VIDEO_ASPECT_RATIO_SELECTOR_TEXT_BUTTON,
-            dropdownMenuTestTag = TAG_VIDEO_ASPECT_RATIO_SELECTOR_DROPDOWN_MENU,
-            onExpandedChanged = onExpandedChanged,
-        )
     }
 
     /**
