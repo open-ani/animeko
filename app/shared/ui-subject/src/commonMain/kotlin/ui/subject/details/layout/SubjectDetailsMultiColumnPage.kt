@@ -515,7 +515,7 @@ private fun SubjectSidebar(
                 Modifier.fillMaxWidth(),
             )
         }
-        // 收藏统计 (收藏 / 在看 / 看过 / 想看)
+        // 收藏统计三格 (收藏 / 在看 / 想看)
         SubjectCollectionStatsRow(uiState.collectionStats)
 
         HorizontalDivider()
