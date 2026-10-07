@@ -895,6 +895,7 @@
     <string name="subject_collection_uncollected">Uncollected</string>
     <string name="subject_collection_guest_mode_tip">In guest mode, please search and watch directly, or sign in to use the collection feature.</string>
     <string name="subject_details_collection_summary">%1$s follows / %2$s watching</string>
+    <string name="subject_details_collection_done"> / %1$s watched</string>
     <string name="subject_details_collection_dropped"> / %1$s dropped</string>
     <string name="subject_rendering_season_year_month">%1$s/%2$s</string>
 
@@ -1182,6 +1183,7 @@
     <string name="subject_details_aliases">Aliases</string>
     <string name="subject_details_stat_collected">Collected</string>
     <string name="subject_details_stat_watching">Watching</string>
+    <string name="subject_details_stat_done">Watched</string>
     <string name="subject_details_stat_wish">Plan to watch</string>
     <string name="subject_details_relation_prequel">Prequel</string>
     <string name="subject_details_relation_sequel">Sequel</string>

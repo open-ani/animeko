@@ -20,6 +20,7 @@ import androidx.compose.ui.Modifier
 import me.him188.ani.app.data.models.subject.SubjectCollectionStats
 import me.him188.ani.app.ui.foundation.theme.slightlyWeaken
 import me.him188.ani.app.ui.lang.Lang
+import me.him188.ani.app.ui.lang.subject_details_collection_done
 import me.him188.ani.app.ui.lang.subject_details_collection_dropped
 import me.him188.ani.app.ui.lang.subject_details_collection_summary
 import org.jetbrains.compose.resources.stringResource
@@ -39,6 +40,11 @@ fun SubjectDetailsDefaults.CollectionData(
                 collection.collect.toString(),
                 collection.doing.toString(),
             ),
+            maxLines = 1,
+            style = MaterialTheme.typography.labelLarge,
+        )
+        Text(
+            stringResource(Lang.subject_details_collection_done, collection.done.toString()),
             maxLines = 1,
             style = MaterialTheme.typography.labelLarge,
         )

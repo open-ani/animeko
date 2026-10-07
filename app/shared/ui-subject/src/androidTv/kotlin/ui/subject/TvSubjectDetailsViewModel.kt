@@ -89,7 +89,11 @@ class TvSubjectDetailsViewModel(
                     val episodeList = ui.episodeListUiState
                     val episodes = episodeList.mainEpisodes + episodeList.otherEpisodes
                     TvSubjectDetailsUiState(content = TvSubjectDetailsContentState(
-                        info = shared.info ?: SubjectInfo.Empty,
+                        // 全站统计取实时值, 自己收藏或评分后随之变化
+                        info = (shared.info ?: SubjectInfo.Empty).copy(
+                            ratingInfo = ui.rating.ratingInfo,
+                            collectionStats = ui.collectionStats,
+                        ),
                         episodes = episodes,
                         episodesLoading = ui.isPlaceholder || episodeList.isPlaceholder,
                         playTargetId = selectTvResumeEpisode(ui.progressInfo?.nextEpisodeIdToPlay, episodes),

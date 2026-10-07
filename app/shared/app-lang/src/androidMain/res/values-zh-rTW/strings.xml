@@ -887,6 +887,7 @@
     <string name="subject_collection_uncollected">未收藏</string>
     <string name="subject_collection_guest_mode_tip">遊客模式下請先搜尋後觀看，或登入後使用收藏功能</string>
     <string name="subject_details_collection_summary">%1$s 收藏 / %2$s 在看</string>
+    <string name="subject_details_collection_done"> / %1$s 看過</string>
     <string name="subject_details_collection_dropped"> / %1$s 拋棄</string>
     <string name="subject_rendering_season_year_month">%1$s 年 %2$s 月</string>
 
@@ -1175,6 +1176,7 @@
     <string name="subject_details_aliases">別名</string>
     <string name="subject_details_stat_collected">收藏</string>
     <string name="subject_details_stat_watching">在看</string>
+    <string name="subject_details_stat_done">看過</string>
     <string name="subject_details_stat_wish">想看</string>
     <string name="subject_details_relation_prequel">前傳</string>
     <string name="subject_details_relation_sequel">續集</string>

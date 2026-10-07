@@ -55,6 +55,7 @@ import me.him188.ani.app.ui.lang.subject_details_rating_summary
 import me.him188.ani.app.ui.lang.subject_details_staff
 import me.him188.ani.app.ui.lang.subject_details_staff_with_count
 import me.him188.ani.app.ui.lang.subject_details_stat_collected
+import me.him188.ani.app.ui.lang.subject_details_stat_done
 import me.him188.ani.app.ui.lang.subject_details_stat_watching
 import me.him188.ani.app.ui.lang.subject_details_stat_wish
 import me.him188.ani.app.ui.lang.subject_details_view_all
@@ -67,8 +68,8 @@ import org.jetbrains.compose.resources.stringResource
 import kotlin.math.roundToInt
 
 /**
- * 收藏统计三格 (对齐 Figma 定稿: `74,553 收藏 / 5,120 在看 / 680 想看`).
- * 收藏 = 五档之和; 在看 = doing; 想看 = wish.
+ * 收藏统计: 收藏 / 在看 / 看过 / 想看.
+ * 收藏 = 五档之和; 在看 = doing; 看过 = done; 想看 = wish.
  */
 @Composable
 fun SubjectCollectionStatsRow(
@@ -78,6 +79,7 @@ fun SubjectCollectionStatsRow(
     Row(modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
         StatCell(stats.collect, stringResource(Lang.subject_details_stat_collected), Modifier.weight(1f))
         StatCell(stats.doing, stringResource(Lang.subject_details_stat_watching), Modifier.weight(1f))
+        StatCell(stats.done, stringResource(Lang.subject_details_stat_done), Modifier.weight(1f))
         StatCell(stats.wish, stringResource(Lang.subject_details_stat_wish), Modifier.weight(1f))
     }
 }

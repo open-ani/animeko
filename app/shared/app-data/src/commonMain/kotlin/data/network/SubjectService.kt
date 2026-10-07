@@ -38,6 +38,7 @@ import me.him188.ani.client.models.AniCollectionType
 import me.him188.ani.client.models.AniPerson
 import me.him188.ani.client.models.AniSubjectCollection
 import me.him188.ani.client.models.AniSubjectRecommendation
+import me.him188.ani.client.models.AniSubjectStats
 import me.him188.ani.client.models.AniUpdateSubjectCollectionRequest
 import me.him188.ani.datasources.bangumi.models.BangumiCount
 import me.him188.ani.datasources.bangumi.models.BangumiSubjectCollectionType
@@ -76,7 +77,12 @@ interface SubjectService {
      */
     fun subjectCollectionById(subjectId: Int): Flow<AniSubjectCollection?>
 
-    suspend fun patchSubjectCollection(subjectId: Int, payload: AniUpdateSubjectCollectionRequest)
+    /**
+     * 修改或创建收藏.
+     *
+     * @return 修改后条目的全站统计, 包含自己这次的修改. 服务器不返回统计 (204) 时为 `null`.
+     */
+    suspend fun patchSubjectCollection(subjectId: Int, payload: AniUpdateSubjectCollectionRequest): AniSubjectStats?
     suspend fun deleteSubjectCollection(subjectId: Int)
 
     suspend fun getSubjectRecommendations(subjectId: Int, limit: Int): List<AniSubjectRecommendation>
@@ -106,7 +112,7 @@ suspend inline fun SubjectService.setSubjectCollectionTypeOrDelete(
     subjectId: Int,
     type: AniCollectionType?
 ) {
-    return if (type == null) {
+    if (type == null) {
         deleteSubjectCollection(subjectId)
     } else {
         patchSubjectCollection(subjectId, AniUpdateSubjectCollectionRequest(collectionType = type))
@@ -187,18 +193,23 @@ class RemoteSubjectService(
 
     val subjectCountStatsRestarter = FlowRestarter()
 
-    override suspend fun patchSubjectCollection(subjectId: Int, payload: AniUpdateSubjectCollectionRequest) {
+    override suspend fun patchSubjectCollection(
+        subjectId: Int,
+        payload: AniUpdateSubjectCollectionRequest,
+    ): AniSubjectStats? {
         sessionManager.checkAccessAniApiNow()
-        withContext(ioDispatcher) {
+        val stats = withContext(ioDispatcher) {
             subjectApi {
-                this.updateSubjectCollection(
+                val response = this.updateSubjectCollection(
                     subjectId.toLong(),
                     payload,
                 )
-                Unit
+                // 早于统计功能的服务器修改成功后返回 204, 没有响应体
+                if (response.status == HttpStatusCode.NoContent.value) null else response.body()
             }
         }
         subjectCountStatsRestarter.restart()
+        return stats
     }
 
     override suspend fun getSubjectRecommendations(subjectId: Int, limit: Int): List<AniSubjectRecommendation> {
