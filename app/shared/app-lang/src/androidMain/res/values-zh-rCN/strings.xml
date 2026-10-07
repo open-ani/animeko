@@ -842,6 +842,7 @@
     <string name="video_player_aspect_fit">适应</string>
     <string name="video_player_aspect_stretch">填充</string>
     <string name="video_player_aspect_crop">裁切</string>
+    <string name="video_player_aspect_ratio">画面比例</string>
     <string name="video_player_auto">自动</string>
     <string name="video_player_audio_track">音轨</string>
     <string name="video_player_off">关闭</string>
