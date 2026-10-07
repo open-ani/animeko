@@ -78,6 +78,13 @@ data class MediaFetchRequest(
      * 为空表示未知.
      */
     val episodes: List<Episode> = emptyList(),
+    /**
+     * [subjectNames] 搜不到条目时, 数据源依次尝试的回退搜索关键词. 按优先级排列, 可以为空.
+     *
+     * 只用于搜索, 不参与名称匹配: 其中的系列基础名 (例如「更多 出包王女」的「出包王女」) 同时也是第一季的名字,
+     * 若混入 [subjectNames], 第一季的资源就会通过名称匹配.
+     */
+    val fallbackSearchKeywords: List<String> = emptyList(),
 ) {
     /**
      * 两个请求是否查询同一个条目: 条目 ID, 名称与剧集列表相同, 忽略仅作提示的当前剧集字段.
@@ -87,6 +94,7 @@ data class MediaFetchRequest(
         subjectId == other.subjectId &&
                 subjectNameCN == other.subjectNameCN &&
                 subjectNames == other.subjectNames &&
+                fallbackSearchKeywords == other.fallbackSearchKeywords &&
                 episodes == other.episodes
 
     /**
@@ -125,6 +133,8 @@ fun MediaFetchRequest.toStringMultiline() = buildString {
     append("subjectNameCn").append(": ").append(subjectNameCN).appendLine()
     append("subjectNames:").appendLine()
     subjectNames.forEach { append("- ").appendLine(it) }
+    append("fallbackSearchKeywords:").appendLine()
+    fallbackSearchKeywords.forEach { append("- ").appendLine(it) }
     append("episodeSort").append(": ").append(episodeSort).appendLine()
     append("episodeName").append(": ").append(episodeName).appendLine()
     append("episodeEp").append(": ").append(episodeEp).appendLine()
