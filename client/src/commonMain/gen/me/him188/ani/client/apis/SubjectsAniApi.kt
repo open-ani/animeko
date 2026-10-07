@@ -35,6 +35,7 @@ import me.him188.ani.client.models.AniSubjectReviewsResponse
 import me.him188.ani.client.models.AniSubjectSearchField
 import me.him188.ani.client.models.AniSubjectSearchMode
 import me.him188.ani.client.models.AniSubjectSearchSortBy
+import me.him188.ani.client.models.AniSubjectStats
 import me.him188.ani.client.models.AniUpdateEpisodeCollectionRequest
 import me.him188.ani.client.models.AniUpdateSubjectCollectionRequest
 
@@ -701,14 +702,14 @@ open class SubjectsAniApi : ApiClient {
 
 
     /**
-     * 编辑自己的收藏或创建一个收藏
-     * 编辑自己的收藏或创建一个收藏
+     * 编辑自己的收藏或创建一个收藏. 返回修改后条目的全站统计.
+     * 编辑自己的收藏或创建一个收藏. 返回修改后条目的全站统计.
      * @param subjectId
      * @param aniUpdateSubjectCollectionRequest  (optional)
-     * @return kotlin.Any
+     * @return AniSubjectStats
      */
     @Suppress("UNCHECKED_CAST")
-    open suspend fun updateSubjectCollection(subjectId: kotlin.Long, aniUpdateSubjectCollectionRequest: AniUpdateSubjectCollectionRequest? = null): HttpResponse<kotlin.Any> {
+    open suspend fun updateSubjectCollection(subjectId: kotlin.Long, aniUpdateSubjectCollectionRequest: AniUpdateSubjectCollectionRequest? = null): HttpResponse<AniSubjectStats> {
 
         val localVariableAuthNames = listOf<String>("auth-jwt")
 

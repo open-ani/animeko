@@ -47,6 +47,7 @@ fun createTestSubjectDetailsState(
                 subjectId = TestSubjectInfo.subjectId,
                 displayName = TestSubjectInfo.displayName,
                 selfCollectionType = UnifiedCollectionType.WISH,
+                collectionStats = TestSubjectInfo.collectionStats,
                 airingInfo = TestSubjectAiringInfo,
                 progressInfo = TestSubjectProgressInfos.ContinueWatching2,
                 episodeListUiState = EpisodeListUiState.Placeholder,
