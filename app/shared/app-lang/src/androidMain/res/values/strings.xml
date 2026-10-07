@@ -1779,6 +1779,10 @@
     <string name="video_player_screenshot_failed_no_frame">Screenshot failed: no video frame to capture</string>
     <string name="video_player_screenshot_failed_save">Screenshot could not be saved</string>
     <string name="video_player_screenshot_failed_save_reason">Screenshot could not be saved: %1$s</string>
+    <string name="collection_sort">Sort collections</string>
+    <string name="collection_sort_time">Collection time (latest update first)</string>
+    <string name="collection_sort_name">Title (A–Z)</string>
+    <string name="collection_sort_air_date">Release date (newest first)</string>
 </resources>
 
 <!--@formatter:on-->

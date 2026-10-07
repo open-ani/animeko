@@ -47,6 +47,7 @@ import kotlinx.coroutines.withContext
 import me.him188.ani.app.data.models.bangumi.BangumiSyncState
 import me.him188.ani.app.data.models.episode.EpisodeCollectionInfo
 import me.him188.ani.app.data.models.episode.EpisodeInfo
+import me.him188.ani.app.data.models.preference.CollectionSortOrder
 import me.him188.ani.app.data.models.preference.NsfwMode
 import me.him188.ani.app.data.models.subject.RatingCounts
 import me.him188.ani.app.data.models.subject.RatingInfo
@@ -396,6 +397,7 @@ class SubjectCollectionRepositoryImpl(
                     subjectCollectionDao.filterByCollectionTypePaging(
                         query.type,
                         includeNsfw = nsfwModeSettings != NsfwMode.HIDE,
+                        sortOrder = query.sortOrder.name,
                     )
                 },
             ).flow.map { data ->
@@ -514,10 +516,36 @@ class SubjectCollectionRepositoryImpl(
         }
     }
 
+    /** 服务端按更新时间分页；其他排序需要先取得完整快照，再由数据库排序和分页。 */
+    private suspend fun refreshCompleteCollection(type: UnifiedCollectionType?) {
+        updateRecentlyUpdatedSubjectCollectionsMutex.withLock {
+            val items = mutableListOf<AniSubjectCollection>()
+            val pageSize = 100
+            do {
+                val page = subjectService.getSubjectCollections(type?.toSubjectCollectionType(), items.size, pageSize)
+                items.addAll(page)
+            } while (page.size == pageSize)
+
+            // 所有请求成功后再替换缓存，离线或中途失败时保留原有数据。
+            val lastFetched = currentTimeMillis()
+            subjectCollectionDao.replaceCollections(
+                type,
+                items.map { it.toEntity(lastFetched = lastFetched) },
+                items.flatMap { it.episodes }.map {
+                    it.toEntity1(subjectId = it.subjectId.toInt(), lastFetched = lastFetched)
+                },
+            )
+        }
+    }
+
     private inner class SubjectCollectionRemoteMediator<T : Any>(
         private val query: CollectionsFilterQuery,
     ) : RemoteMediator<Int, T>() {
         override suspend fun initialize(): InitializeAction = withContext(defaultDispatcher) {
+            // 本地缓存可能只有服务器按更新时间返回的前几页。
+            if (query.sortOrder != CollectionSortOrder.LAST_UPDATED) {
+                return@withContext InitializeAction.LAUNCH_INITIAL_REFRESH
+            }
             val lastUpdated = subjectCollectionDao.lastFetched(query.type)
             if ((currentTimeMillis() - lastUpdated).milliseconds > cacheExpiry) {
                 InitializeAction.LAUNCH_INITIAL_REFRESH
@@ -531,6 +559,12 @@ class SubjectCollectionRepositoryImpl(
             state: PagingState<Int, T>,
         ): MediatorResult = try {
             withContext(defaultDispatcher) {
+                if (query.sortOrder != CollectionSortOrder.LAST_UPDATED) {
+                    if (loadType == LoadType.REFRESH) {
+                        refreshCompleteCollection(query.type)
+                    }
+                    return@withContext MediatorResult.Success(endOfPaginationReached = true)
+                }
                 val (offset, limit) = calculateIndexBasedLoadInfo(loadType, state)
                     ?: return@withContext MediatorResult.Success(endOfPaginationReached = true)
                 logger.debug { "${loadType}, Loading $offset, limit=$limit" }
@@ -692,6 +726,7 @@ class SubjectCollectionRepositoryImpl(
 
 data class CollectionsFilterQuery(
     val type: UnifiedCollectionType?,
+    val sortOrder: CollectionSortOrder = CollectionSortOrder.LAST_UPDATED,
 ) {
     companion object {
         val Empty = CollectionsFilterQuery(null)

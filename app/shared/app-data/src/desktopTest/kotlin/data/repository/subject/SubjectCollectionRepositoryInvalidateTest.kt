@@ -9,13 +9,16 @@
 
 package me.him188.ani.app.data.repository.subject
 
+import androidx.paging.LoadState
 import androidx.paging.PagingDataEvent
 import androidx.paging.PagingDataPresenter
 import app.cash.turbine.test
 import kotlinx.coroutines.CompletableDeferred
+import kotlinx.coroutines.cancelAndJoin
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.filterNotNull
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.collectLatest
@@ -26,6 +29,7 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.withTimeout
 import me.him188.ani.app.data.models.bangumi.BangumiSyncState
+import me.him188.ani.app.data.models.preference.CollectionSortOrder
 import me.him188.ani.app.data.models.preference.NsfwMode
 import me.him188.ani.app.data.models.subject.RatingInfo
 import me.him188.ani.app.data.models.subject.SelfRatingInfo
@@ -155,15 +159,22 @@ class SubjectCollectionRepositoryInvalidateTest {
         /**
          * 分页器的 RemoteMediator 用: 返回服务端已收藏的条目 (不按类型过滤, 测试里只放同一类型). 超出范围返回空 (分页结束).
          */
+        val pageOffsets = CopyOnWriteArrayList<Int>()
+        var failingOffset: Int? = null
+
         override suspend fun getSubjectCollections(
             type: BangumiSubjectCollectionType?,
             offset: Int,
             limit: Int,
-        ): List<AniSubjectCollection> = serverSubjects.values
+        ): List<AniSubjectCollection> {
+            pageOffsets += offset
+            if (offset == failingOffset) error("network down")
+            return serverSubjects.values
             .filter { it.collectionType != null }
             .sortedByDescending { it.id }
             .drop(offset)
             .take(limit)
+        }
 
         override suspend fun getSubjectRelations(
             subjectId: Int,
@@ -365,11 +376,13 @@ class SubjectCollectionRepositoryInvalidateTest {
     /**
      * 在当前作用域内持续收集 [CollectionsFilterQuery.type] 为 DOING 的分页器, 返回探针; 调用方负责取消 [Job].
      */
-    private suspend fun Fixture.collectDoingPager(): Pair<PagerProbe, Job> {
+    private suspend fun Fixture.collectDoingPager(
+        sortOrder: CollectionSortOrder = CollectionSortOrder.LAST_UPDATED,
+    ): Pair<PagerProbe, Job> {
         // 只传调度器, 不带 Job: 否则 presenter 内的 withContext 会脱离收集协程, 取消不了.
         val probe = PagerProbe(coroutineContext.minusKey(Job))
         val job = CoroutineScope(coroutineContext).launch {
-            repository.subjectCollectionsPager(CollectionsFilterQuery(UnifiedCollectionType.DOING))
+            repository.subjectCollectionsPager(CollectionsFilterQuery(UnifiedCollectionType.DOING, sortOrder))
                 .collectLatest { probe.collectFrom(it) }
         }
         return probe to job
@@ -395,6 +408,42 @@ class SubjectCollectionRepositoryInvalidateTest {
         selfCollectionType = UnifiedCollectionType.DONE,
         lastFetched = lastFetched,
     )
+
+    @Test
+    fun customSortFetchesAllRemotePagesBeforeShowingFirstSortedPage() = runRepositoryTest {
+        // 最新缓存只含服务端第一页；名称排序的第一个条目在服务端最后一页。
+        dao.upsert(subject(150, currentTimeMillis()))
+        for (id in 1..150) {
+            service.serverSubjects[id] = serverSubject(id).copy(nameCn = id.toString().padStart(3, '0'))
+        }
+        val (probe, job) = collectDoingPager(CollectionSortOrder.NAME)
+        try {
+            val items = probe.awaitItems { it.firstOrNull()?.subjectId == 1 }
+            assertEquals(listOf(0, 100), service.pageOffsets.toList())
+            assertEquals(150, dao.countCollected(UnifiedCollectionType.DOING).first())
+            assertEquals((1..items.size).toList(), items.map { it.subjectId })
+        } finally {
+            job.cancelAndJoin()
+        }
+    }
+
+    @Test
+    fun customSortKeepsCachedCollectionWhenLaterPageFails() = runRepositoryTest {
+        dao.upsert(subject(999, currentTimeMillis()))
+        for (id in 1..150) service.serverSubjects[id] = serverSubject(id)
+        service.failingOffset = 100
+        val (probe, job) = collectDoingPager(CollectionSortOrder.AIR_DATE)
+        try {
+            withTimeout(10.seconds) {
+                probe.loadStateFlow.filterNotNull().first { it.refresh is LoadState.Error }
+            }
+            assertEquals(listOf(0, 100), service.pageOffsets.toList())
+            assertEquals(1, dao.countCollected(UnifiedCollectionType.DOING).first())
+            assertNotNull(dao.findById(999).first())
+        } finally {
+            job.cancelAndJoin()
+        }
+    }
 
     // region invalidateCache
 

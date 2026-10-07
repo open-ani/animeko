@@ -84,6 +84,7 @@ data class LegacyThemeSettings(
 @Immutable
 data class MyCollectionsSettings(
     val enableListAnimation1: Boolean = true,
+    val sortOrder: CollectionSortOrder = CollectionSortOrder.LAST_UPDATED,
 ) {
     companion object {
         @Stable
@@ -184,4 +185,12 @@ internal object LocaleSerializer : KSerializer<Locale> {
         val delegate = Delegate.serializer().deserialize(decoder)
         return Locale(delegate.languageTag)
     }
+}
+
+/** 收藏列表的顺序；追番时间使用与服务器同步的收藏状态更新时间。 */
+@Serializable
+enum class CollectionSortOrder {
+    LAST_UPDATED,
+    NAME,
+    AIR_DATE,
 }

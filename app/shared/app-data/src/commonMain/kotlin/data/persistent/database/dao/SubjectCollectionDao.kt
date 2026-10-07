@@ -148,6 +148,21 @@ interface SubjectCollectionDao {
     @Transaction
     suspend fun upsert(item: List<SubjectCollectionEntity>)
 
+    @Upsert
+    suspend fun upsertEpisodes(items: List<EpisodeCollectionEntity>)
+
+    /** 完整快照与剧集在同一事务中替换，读取者只能看到完整的收藏列表。 */
+    @Transaction
+    suspend fun replaceCollections(
+        type: UnifiedCollectionType?,
+        subjects: List<SubjectCollectionEntity>,
+        episodes: List<EpisodeCollectionEntity>,
+    ) {
+        deleteAll(type)
+        upsert(subjects)
+        upsertEpisodes(episodes)
+    }
+
     @Query("""UPDATE subject_collection SET collectionType = :collectionType, lastUpdated = :lastUpdated WHERE subjectId = :subjectId""")
     suspend fun updateType(
         subjectId: Int,
@@ -226,13 +241,19 @@ interface SubjectCollectionDao {
         select * from subject_collection 
         where (collectionType is NOT NULL AND (:collectionType IS NULL OR collectionType = :collectionType))
         AND (:includeNsfw OR NOT nsfw)
-        order by lastUpdated DESC, subjectId DESC
+        order by
+            CASE WHEN :sortOrder = 'NAME' THEN COALESCE(NULLIF(nameCn, ''), name) END COLLATE NOCASE ASC,
+            CASE WHEN :sortOrder = 'AIR_DATE' THEN airDate = 2147483647 END ASC,
+            CASE WHEN :sortOrder = 'AIR_DATE' THEN airDate END DESC,
+            CASE WHEN :sortOrder = 'LAST_UPDATED' THEN lastUpdated END DESC,
+            subjectId DESC
         """,
     )
     @Transaction
     fun filterByCollectionTypePaging(
         collectionType: UnifiedCollectionType? = null,
         includeNsfw: Boolean,
+        sortOrder: String = "LAST_UPDATED",
     ): PagingSource<Int, SubjectCollectionAndEpisodes>
 
     @Query("""SELECT * FROM subject_collection WHERE subjectId = :subjectId""")

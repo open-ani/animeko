@@ -14,11 +14,13 @@ import androidx.compose.runtime.Stable
 import androidx.compose.runtime.getValue
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.collectLatest
+import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.filter
 import kotlinx.coroutines.flow.firstOrNull
 import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.map
 import me.him188.ani.app.data.models.bangumi.BangumiSyncState
+import me.him188.ani.app.data.models.preference.CollectionSortOrder
 import me.him188.ani.app.data.models.preference.MyCollectionsSettings
 import me.him188.ani.app.data.models.subject.SubjectCollectionInfo
 import me.him188.ani.app.data.repository.episode.AnimeScheduleRepository
@@ -34,6 +36,7 @@ import me.him188.ani.app.navigation.AniNavigator
 import me.him188.ani.app.tools.MonoTasker
 import me.him188.ani.app.ui.foundation.AbstractViewModel
 import me.him188.ani.app.ui.foundation.launchInBackground
+import me.him188.ani.app.ui.foundation.launchInMain
 import me.him188.ani.app.ui.subject.collection.components.EditableSubjectCollectionTypeState
 import me.him188.ani.app.ui.subject.collection.progress.SubjectProgressStateFactory
 import me.him188.ani.datasources.api.topic.UnifiedCollectionType
@@ -89,6 +92,11 @@ open class UserCollectionsViewModel : AbstractViewModel(), KoinComponent {
     // 而本 ViewModel 由 androidx viewModel {} 取得, 不会被 remember, init() 永远不会执行.
     // 放在 state 之后, 保证收集回调里用到的 state 已初始化 (backgroundScope 由父类构造器创建, 可用).
     init {
+        launchInMain {
+            settingsRepository.uiSettings.flow.map { it.myCollections.sortOrder }.distinctUntilChanged().collect {
+                state.selectSortOrder(it)
+            }
+        }
         launchInBackground {
             sessionStateProvider.eventFlow.filter { it is SessionEvent.NewLogin }.collectLatest {
                 logger.info { "登录信息变更, 清空缓存" }
@@ -131,6 +139,13 @@ open class UserCollectionsViewModel : AbstractViewModel(), KoinComponent {
             },
             backgroundScope,
         )
+
+    fun setSortOrder(value: CollectionSortOrder) {
+        state.selectSortOrder(value)
+        launchInBackground {
+            settingsRepository.uiSettings.update { copy(myCollections = myCollections.copy(sortOrder = value)) }
+        }
+    }
 
     suspend fun toggleEpisodeCollection(
         subjectId: Int,

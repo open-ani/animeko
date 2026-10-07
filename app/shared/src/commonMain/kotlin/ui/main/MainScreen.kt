@@ -362,6 +362,7 @@ private fun MainScreenNavigationLayout(
                             modifier = Modifier.fillMaxSize(),
                             windowInsets = pageWindowInsets,
                             enableAnimation = userCollectionsViewModel.myCollectionsSettings.enableListAnimation1,
+                            onSortOrderChange = userCollectionsViewModel::setSortOrder,
                         )
                     }
 

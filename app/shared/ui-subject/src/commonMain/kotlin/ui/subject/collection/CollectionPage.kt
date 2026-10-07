@@ -75,6 +75,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
+import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.rotate
@@ -93,11 +94,10 @@ import androidx.paging.compose.collectWithLifecycle
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.emitAll
-import kotlinx.coroutines.flow.flowOf
-import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.transformLatest
 import kotlinx.coroutines.launch
 import me.him188.ani.app.data.models.bangumi.BangumiSyncState
+import me.him188.ani.app.data.models.preference.CollectionSortOrder
 import me.him188.ani.app.data.models.preference.NsfwMode
 import me.him188.ani.app.data.models.subject.SubjectCollectionCounts
 import me.him188.ani.app.data.models.subject.SubjectCollectionInfo
@@ -178,6 +178,16 @@ class UserCollectionsState(
     ),
 ) {
     private var currentQuery by mutableStateOf(defaultQuery)
+    var sortOrder by mutableStateOf(defaultQuery.sortOrder)
+        private set
+
+    fun selectSortOrder(value: CollectionSortOrder) {
+        if (sortOrder == value) return
+        sortOrder = value
+        for (gridState in gridStates.values) {
+            gridState.requestScrollToItem(0)
+        }
+    }
 
     val selectedTypeIndex by derivedStateOf { availableTypes.indexOf(currentQuery.type) }
 
@@ -207,11 +217,9 @@ class UserCollectionsState(
     @Suppress("INVISIBLE_REFERENCE")
     fun getCollectionLazyPagingItems(typeIndex: Int): LazyPagingItems<SubjectCollectionInfo> {
         return cachedLazyPagingItems.getOrPut(typeIndex) {
-            val pagingFlow = flowOf(typeIndex)
+            val pagingFlow = snapshotFlow { CollectionsFilterQuery(availableTypes[typeIndex], sortOrder) }
                 .restartable(restarter)
-                .map { CollectionsFilterQuery(availableTypes[it]) }
                 .transformLatest { query ->
-                    // 不再发射初始加载状态，直接发射真实数据
                     emitAll(startSearch(query))
                 }
                 .cachedIn(backgroundScope)
@@ -251,6 +259,7 @@ fun CollectionPage(
     actions: @Composable RowScope.() -> Unit = {},
     windowInsets: WindowInsets = AniWindowInsets.forPageContent(),
     enableAnimation: Boolean = true,
+    onSortOrderChange: (CollectionSortOrder) -> Unit = state::selectSortOrder,
 
     ) {
     val scope = rememberCoroutineScope()
@@ -269,6 +278,7 @@ fun CollectionPage(
             }
         },
         actions = {
+            CollectionSortButton(state.sortOrder, onSortOrderChange)
             if (hideBangumiSync && isBangumiSyncing) {
                 val infiniteTransition = rememberInfiniteTransition(label = "rotation")
                 val angle by infiniteTransition.animateFloat(

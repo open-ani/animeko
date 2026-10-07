@@ -9,6 +9,10 @@
 
 package me.him188.ani.app.ui.subject.collection
 
+import androidx.compose.material3.Text
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.snapshots.Snapshot
+import androidx.compose.ui.test.onNodeWithText
 import androidx.paging.PagingConfig
 import androidx.paging.PagingData
 import androidx.room.Room
@@ -34,6 +38,7 @@ import kotlinx.coroutines.test.setMain
 import kotlinx.coroutines.withTimeout
 import me.him188.ani.app.data.models.bangumi.BangumiSyncState
 import me.him188.ani.app.data.models.danmaku.DanmakuFilterConfig
+import me.him188.ani.app.data.models.preference.CollectionSortOrder
 import me.him188.ani.app.data.models.preference.AnalyticsSettings
 import me.him188.ani.app.data.models.preference.AnitorrentConfig
 import me.him188.ani.app.data.models.preference.DanmakuSettings
@@ -68,6 +73,7 @@ import me.him188.ani.app.data.repository.subject.OfflineSubjectDisplayInfo
 import me.him188.ani.app.data.repository.subject.SubjectCollectionRepository
 import me.him188.ani.app.data.repository.user.Settings
 import me.him188.ani.app.data.repository.user.SettingsRepository
+import me.him188.ani.app.ui.framework.runAniComposeUiTest
 import me.him188.ani.app.domain.media.download.MediaDownloadManager
 import me.him188.ani.app.domain.session.SessionEvent
 import me.him188.ani.app.domain.session.SessionState
@@ -82,6 +88,7 @@ import me.him188.ani.utils.platform.annotations.TestOnly
 import org.koin.core.context.startKoin
 import org.koin.core.context.stopKoin
 import org.koin.dsl.module
+import java.util.concurrent.CopyOnWriteArrayList
 import java.util.concurrent.atomic.AtomicInteger
 import kotlin.test.AfterTest
 import kotlin.test.BeforeTest
@@ -107,6 +114,7 @@ class UserCollectionsViewModelTest {
     private class FakeSubjectCollectionRepository : SubjectCollectionRepository() {
         /** [subjectCollectionsPager] 被调用 (分页器被创建 / 重建) 的次数. */
         val pagerCalls = AtomicInteger(0)
+        val queries = CopyOnWriteArrayList<CollectionsFilterQuery>()
 
         /** [subjectCollectionCountsFlow] 返回的流被收集的次数. */
         val countsCollected = AtomicInteger(0)
@@ -117,6 +125,7 @@ class UserCollectionsViewModelTest {
             query: CollectionsFilterQuery,
             pagingConfig: PagingConfig,
         ): Flow<PagingData<SubjectCollectionInfo>> {
+            queries += query
             pagerCalls.incrementAndGet()
             return flowOf(PagingData.empty())
         }
@@ -226,6 +235,7 @@ class UserCollectionsViewModelTest {
 
     private lateinit var database: AniDatabase
     private lateinit var repository: FakeSubjectCollectionRepository
+    private lateinit var settingsRepository: FakeSettingsRepository
     private lateinit var sessionStateProvider: FakeSessionStateProvider
     private val fixtureScope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
 
@@ -239,6 +249,7 @@ class UserCollectionsViewModelTest {
             .build()
         repository = FakeSubjectCollectionRepository()
         sessionStateProvider = FakeSessionStateProvider()
+        settingsRepository = FakeSettingsRepository()
 
         val animeScheduleRepository = AnimeScheduleRepository(AnimeScheduleService(UnusedScheduleApi))
         val episodeCollectionRepository = EpisodeCollectionRepository(
@@ -259,7 +270,7 @@ class UserCollectionsViewModelTest {
                 module {
                     single<SubjectCollectionRepository> { repository }
                     single<SessionStateProvider> { sessionStateProvider }
-                    single<SettingsRepository> { FakeSettingsRepository() }
+                    single<SettingsRepository> { settingsRepository }
                     single<EpisodeProgressRepository> { episodeProgressRepository }
                 },
             )
@@ -328,4 +339,48 @@ class UserCollectionsViewModelTest {
         awaitAtLeast(2, repository.pagerCalls, "pager rebuilt after new login")
         awaitAtLeast(2, repository.countsCollected, "counts re-collected after new login")
     }
+    @Test
+    fun sortSelectionRebuildsPagerAndPersistsAcrossViewModels() = runViewModelTest { vm ->
+        vm.setSortOrder(CollectionSortOrder.NAME)
+        Snapshot.sendApplyNotifications()
+        withTimeout(10.seconds) {
+            settingsRepository.uiSettings.flow.first { it.myCollections.sortOrder == CollectionSortOrder.NAME }
+            while (repository.queries.none { it.sortOrder == CollectionSortOrder.NAME }) delay(20)
+        }
+        vm.state.selectTypeIndex(4)
+        assertEquals(CollectionSortOrder.NAME, vm.state.sortOrder)
+        val restored = UserCollectionsViewModel()
+        try {
+            withTimeout(10.seconds) {
+                while (restored.state.sortOrder != CollectionSortOrder.NAME) delay(20)
+            }
+        } finally {
+            restored.backgroundScope.cancel()
+        }
+    }
+
+    @Test
+    fun savedOrderIsRestoredWhenViewModelIsCreatedInsideComposition() {
+        Dispatchers.resetMain()
+        runBlocking {
+            settingsRepository.uiSettings.update {
+                copy(myCollections = myCollections.copy(sortOrder = CollectionSortOrder.AIR_DATE))
+            }
+        }
+        var vm: UserCollectionsViewModel? = null
+        try {
+            runAniComposeUiTest {
+                setContent {
+                    val model = remember { UserCollectionsViewModel() }
+                    vm = model
+                    Text(model.state.sortOrder.name)
+                }
+                waitUntil { vm?.state?.sortOrder == CollectionSortOrder.AIR_DATE }
+                onNodeWithText(CollectionSortOrder.AIR_DATE.name).assertExists()
+            }
+        } finally {
+            vm?.backgroundScope?.cancel()
+        }
+    }
+
 }

@@ -1819,6 +1819,10 @@
     <string name="video_player_screenshot_failed_no_frame">截图失败: 当前没有可截取的画面</string>
     <string name="video_player_screenshot_failed_save">截图保存失败</string>
     <string name="video_player_screenshot_failed_save_reason">截图保存失败: %1$s</string>
+    <string name="collection_sort">追番排序</string>
+    <string name="collection_sort_time">追番时间（最近更新优先）</string>
+    <string name="collection_sort_name">番剧名称（升序）</string>
+    <string name="collection_sort_air_date">发布时间（最新优先）</string>
 </resources>
 
 <!--@formatter:on-->
