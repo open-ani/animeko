@@ -29,13 +29,13 @@ import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import me.him188.ani.app.data.models.person.PersonSubjectSummary
-import me.him188.ani.app.data.models.preference.NsfwMode
 import me.him188.ani.app.data.models.subject.SubjectInfo
 import me.him188.ani.app.data.repository.subject.SubjectCollectionRepository
 import me.him188.ani.app.data.repository.subject.SubjectSearchRepository
 import me.him188.ani.app.data.repository.user.SettingsRepository
 import me.him188.ani.app.domain.foundation.LoadError
 import me.him188.ani.app.domain.search.SubjectSearchQuery
+import me.him188.ani.app.domain.search.withNsfwFilter
 import me.him188.ani.app.ui.comment.UICommentSource
 import me.him188.ani.app.ui.subject.AiringLabelState
 import me.him188.ani.app.ui.subject.SubjectProgressState
@@ -186,11 +186,8 @@ class TvSubjectDetailsViewModel(
             is TvSubjectDetailsIntent.SearchTag -> {
                 val pager = settingsRepository.uiSettings.flow.map { it.searchSettings }.flatMapLatest { settings ->
                     searchRepository.searchSubjects(
-                        SubjectSearchQuery(keywords = "", tags = listOf(intent.tag), nsfw = when {
-                            intent.tag == "R18" -> true
-                            settings.nsfwMode == NsfwMode.HIDE -> false
-                            else -> null
-                        }),
+                        SubjectSearchQuery(keywords = "", tags = listOf(intent.tag))
+                            .withNsfwFilter(settings.nsfwMode),
                         ignoreDoneAndDropped = { settings.ignoreDoneAndDroppedSubjects },
                     )
                 }
