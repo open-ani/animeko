@@ -504,19 +504,15 @@ class SubjectCollectionRepositoryImpl(
                 ),
             )
 
-            if (stats == null) {
-                subjectCollectionDao.updateRating(subjectId, score, comment, tags, isPrivate)
-            } else {
-                subjectCollectionDao.updateRatingAndStats(
-                    subjectId,
-                    score,
-                    comment,
-                    tags,
-                    isPrivate,
-                    collectionStats = stats.favorite.toSubjectCollectionStats(),
-                    ratingInfo = ratingInfoOf(stats.rank, stats.score, stats.scoreDetails),
-                )
-            }
+            subjectCollectionDao.updateRatingAndStats(
+                subjectId,
+                score,
+                comment,
+                tags,
+                isPrivate,
+                collectionStats = stats.favorite.toSubjectCollectionStats(),
+                ratingInfo = ratingInfoOf(stats.rank, stats.score, stats.scoreDetails),
+            )
         }
     }
 
@@ -611,17 +607,12 @@ class SubjectCollectionRepositoryImpl(
     ) {
         withContext(defaultDispatcher) {
             val stats = subjectService.patchSubjectCollection(subjectId, payload)
-            val type = payload.collectionType.toUnifiedCollectionType()
-            if (stats == null) {
-                subjectCollectionDao.updateType(subjectId, type)
-            } else {
-                subjectCollectionDao.updateTypeAndStats(
-                    subjectId,
-                    type,
-                    collectionStats = stats.favorite.toSubjectCollectionStats(),
-                    ratingInfo = ratingInfoOf(stats.rank, stats.score, stats.scoreDetails),
-                )
-            }
+            subjectCollectionDao.updateTypeAndStats(
+                subjectId,
+                payload.collectionType.toUnifiedCollectionType(),
+                collectionStats = stats.favorite.toSubjectCollectionStats(),
+                ratingInfo = ratingInfoOf(stats.rank, stats.score, stats.scoreDetails),
+            )
         }
     }
 

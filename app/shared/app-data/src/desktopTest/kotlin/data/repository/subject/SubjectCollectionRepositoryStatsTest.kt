@@ -60,12 +60,15 @@ import kotlin.test.assertEquals
 class SubjectCollectionRepositoryStatsTest {
     private class FakeSubjectService : SubjectService {
         val patches = mutableListOf<Pair<Int, AniUpdateSubjectCollectionRequest>>()
-        var stats: AniSubjectStats? = null
+        var stats = AniSubjectStats(
+            favorite = AniFavourite(wish = 0, done = 0, doing = 0, onHold = 0, dropped = 0),
+            scoreDetails = emptyMap(),
+        )
 
         override suspend fun patchSubjectCollection(
             subjectId: Int,
             payload: AniUpdateSubjectCollectionRequest,
-        ): AniSubjectStats? {
+        ): AniSubjectStats {
             patches += subjectId to payload
             return stats
         }
@@ -205,18 +208,6 @@ class SubjectCollectionRepositoryStatsTest {
             cancelAndIgnoreRemainingEvents()
         }
         assertEquals(AniCollectionType.DONE, service.patches.single().second.collectionType)
-    }
-
-    @Test
-    fun `server without stats keeps the cached stats`() = runRepositoryTest {
-        database.subjectCollection().upsert(cachedSubject(3))
-        service.stats = null
-
-        repository.setSubjectCollectionTypeOrDelete(3, UnifiedCollectionType.DONE)
-
-        val info = repository.subjectCollectionFlow(3).first()
-        assertEquals(UnifiedCollectionType.DONE, info.collectionType)
-        assertEquals(SubjectCollectionStats(5, 3, 10, 1, 0), info.subjectInfo.collectionStats)
     }
 
     @Test

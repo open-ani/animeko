@@ -80,9 +80,9 @@ interface SubjectService {
     /**
      * 修改或创建收藏.
      *
-     * @return 修改后条目的全站统计, 包含自己这次的修改. 服务器不返回统计 (204) 时为 `null`.
+     * @return 修改后条目的全站统计, 包含自己这次的修改
      */
-    suspend fun patchSubjectCollection(subjectId: Int, payload: AniUpdateSubjectCollectionRequest): AniSubjectStats?
+    suspend fun patchSubjectCollection(subjectId: Int, payload: AniUpdateSubjectCollectionRequest): AniSubjectStats
     suspend fun deleteSubjectCollection(subjectId: Int)
 
     suspend fun getSubjectRecommendations(subjectId: Int, limit: Int): List<AniSubjectRecommendation>
@@ -196,16 +196,14 @@ class RemoteSubjectService(
     override suspend fun patchSubjectCollection(
         subjectId: Int,
         payload: AniUpdateSubjectCollectionRequest,
-    ): AniSubjectStats? {
+    ): AniSubjectStats {
         sessionManager.checkAccessAniApiNow()
         val stats = withContext(ioDispatcher) {
             subjectApi {
-                val response = this.updateSubjectCollection(
+                this.updateSubjectCollection(
                     subjectId.toLong(),
                     payload,
-                )
-                // 早于统计功能的服务器修改成功后返回 204, 没有响应体
-                if (response.status == HttpStatusCode.NoContent.value) null else response.body()
+                ).body()
             }
         }
         subjectCountStatsRestarter.restart()
