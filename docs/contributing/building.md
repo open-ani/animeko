@@ -29,6 +29,10 @@ ani.dandanplay.app.secret=aaaaaaaaaaaaaaa
 
 ### Android TV
 
+TV 与共享 Android 库的最低版本为 Android 8.0（API 26），由 `android.min.sdk` 配置。
+手机 `default` flavor 的最低版本至少为 Android 8.1（API 27），因为 BT 跨进程通信使用
+`SharedMemory`；TV 不注册 BT 引擎和服务。提高 `android.min.sdk` 会同时提高两个 flavor 的最低版本。
+
 TV 文件放在对应共享模块的 `src/androidTv/kotlin` 与 `src/androidTvTest/kotlin`，
 由独立的 `ani.kmp-compose` 子模块分别作为 `androidMain` / `androidHostTest` 编译。
 功能子模块位于 `ui-xxx/tv`，主壳子模块位于 `app/shared/shared-tv`。
