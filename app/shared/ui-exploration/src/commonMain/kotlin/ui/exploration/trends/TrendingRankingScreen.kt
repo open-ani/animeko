@@ -24,6 +24,8 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.only
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.widthIn
+import androidx.compose.foundation.layout.wrapContentWidth
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.GridItemSpan
 import androidx.compose.foundation.lazy.grid.LazyGridState
@@ -56,6 +58,7 @@ import androidx.paging.compose.itemContentType
 import me.him188.ani.app.data.models.preference.NsfwMode
 import me.him188.ani.app.ui.adaptive.AniTopAppBar
 import me.him188.ani.app.ui.adaptive.AniTopAppBarDefaults
+import me.him188.ani.app.ui.exploration.ExplorationDefaults
 import me.him188.ani.app.ui.exploration.search.SubjectItemDefaults
 import me.him188.ani.app.ui.exploration.search.SubjectItemLayout
 import me.him188.ani.app.ui.exploration.search.SubjectItemLayoutParameters
@@ -134,7 +137,12 @@ fun TrendingRankingScreen(
                 )
             },
             // 顶部留给 top bar, 底部的系统栏让列表内容可以滚动到其下方
-            Modifier.padding(top = paddingValues.calculateTopPadding()).fillMaxSize(),
+            Modifier
+                .padding(top = paddingValues.calculateTopPadding())
+                .fillMaxWidth()
+                .wrapContentWidth()
+                .widthIn(max = ExplorationDefaults.ContentMaxWidth)
+                .fillMaxSize(),
             cells = GridCells.Adaptive(360.dp),
             state = gridState,
             horizontalArrangement = Arrangement.spacedBy(horizontalPadding),

@@ -609,6 +609,7 @@
     <string name="exploration_settings">Settings</string>
     <string name="exploration_search">Search</string>
     <string name="exploration_trending">Trending</string>
+    <string name="exploration_trending_more">More</string>
     <string name="exploration_trending_ranking">Trending Ranking</string>
     <string name="exploration_trending_ranking_heat">%1$s watching in the last 30 days</string>
     <string name="exploration_trending_ranking_empty">No ranking yet</string>

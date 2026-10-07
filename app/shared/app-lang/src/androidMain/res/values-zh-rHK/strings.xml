@@ -604,6 +604,7 @@
     <string name="exploration_settings">設置</string>
     <string name="exploration_search">搜索</string>
     <string name="exploration_trending">最高熱度</string>
+    <string name="exploration_trending_more">更多</string>
     <string name="exploration_trending_ranking">熱度排行</string>
     <string name="exploration_trending_ranking_heat">近 30 天 %1$s 人在看</string>
     <string name="exploration_trending_ranking_empty">暫無排行</string>
