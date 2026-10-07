@@ -369,14 +369,7 @@ class SelectorMediaSource(
         val originalSubjects = fetchPageOrThrow(searchUrl, PageExpectation.SearchResults(searchConfig))
             ?: return@withContext emptyList()
 
-        val subjects = searchConfig.orderSubjectsForAutoMatch(originalSubjects).let { originalList ->
-            val filters = searchConfig.createFiltersForSubject()
-            with(query.toFilterContext()) {
-                originalList.filter {
-                    filters.applyOn(it.asCandidate())
-                }
-            }
-        }
+        val subjects = searchConfig.orderSubjectsForAutoMatch(originalSubjects)
 
         buildList {
             for (subjectInfo in subjects) {
