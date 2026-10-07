@@ -60,11 +60,10 @@ import me.him188.ani.app.ui.adaptive.AniTopAppBar
 import me.him188.ani.app.ui.adaptive.AniTopAppBarDefaults
 import me.him188.ani.app.ui.exploration.ExplorationDefaults
 import me.him188.ani.app.ui.exploration.search.SubjectItemDefaults
-import me.him188.ani.app.ui.exploration.search.SubjectItemLayout
 import me.him188.ani.app.ui.exploration.search.SubjectItemLayoutParameters
+import me.him188.ani.app.ui.exploration.search.SubjectPreviewItem
 import me.him188.ani.app.ui.exploration.search.SubjectPreviewItemInfo
 import me.him188.ani.app.ui.exploration.search.TestSubjectPreviewItemInfos
-import me.him188.ani.app.ui.foundation.LocalSubjectAppearanceSettings
 import me.him188.ani.app.ui.foundation.ProvideCompositionLocalsForPreview
 import me.him188.ani.app.ui.foundation.layout.AniWindowInsets
 import me.him188.ani.app.ui.foundation.layout.currentWindowAdaptiveInfo1
@@ -77,7 +76,6 @@ import me.him188.ani.app.ui.lang.Lang
 import me.him188.ani.app.ui.lang.exploration_trending_ranking
 import me.him188.ani.app.ui.lang.exploration_trending_ranking_empty
 import me.him188.ani.app.ui.lang.exploration_trending_ranking_heat
-import me.him188.ani.app.ui.rating.RatingText
 import me.him188.ani.app.ui.search.LoadErrorCard
 import me.him188.ani.app.ui.search.SearchResultLazyVerticalGrid
 import me.him188.ani.app.ui.search.isFinishedAndEmpty
@@ -203,35 +201,21 @@ fun TrendingRankingItem(
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    val info = item.subject
-    val useOriginalTitle = LocalSubjectAppearanceSettings.current.useOriginalTitle
-    SubjectItemLayout(
+    SubjectPreviewItem(
         selected = false,
         onClick = onClick,
+        onPlay = {},
+        info = item.subject,
+        modifier = modifier,
         image = {
             Box(Modifier.fillMaxSize()) {
-                SubjectItemDefaults.Image(info.imageUrl)
+                SubjectItemDefaults.Image(item.subject.imageUrl)
                 TrendingRankBadge(item.rank, Modifier.align(Alignment.TopStart))
             }
-        },
-        title = { maxLines ->
-            Text(
-                if (useOriginalTitle) info.originalTitle else info.title,
-                maxLines = maxLines,
-                overflow = TextOverflow.Ellipsis,
-            )
-        },
-        tags = {
-            Text(info.tags, maxLines = 2, overflow = TextOverflow.Ellipsis)
         },
         extraInfo = {
             TrendingHeatText(item.heat)
         },
-        rating = {
-            RatingText(info.rating)
-        },
-        actions = {},
-        modifier,
     )
 }
 
