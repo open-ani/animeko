@@ -14,7 +14,6 @@ import androidx.browser.customtabs.CustomTabsIntent
 import androidx.core.net.toUri
 import me.him188.ani.app.navigation.BrowserNavigator
 import me.him188.ani.app.navigation.OpenBrowserResult
-import me.him188.ani.app.navigation.QQ_GROUP_JOIN_LINK
 import me.him188.ani.app.platform.Context
 import me.him188.ani.utils.logging.logger
 
@@ -74,21 +73,5 @@ class AndroidBrowserNavigator : BrowserNavigator {
         }
         context.startActivity(browserIntent)
     }
-
-    override fun openJoinGroup(context: Context): OpenBrowserResult {
-        try {
-            val browserIntent = Intent(Intent.ACTION_VIEW)
-                .apply { setData(QQ_GROUP.toUri()) }
-            context.startActivity(browserIntent)
-            return OpenBrowserResult.Success
-        } catch (ex: Exception) {
-            logger.warn("Failed to open QQ", ex)
-            return OpenBrowserResult.Failure(ex, QQ_GROUP_JOIN_LINK)
-        }
-    }
 }
-
-// https://qun.qq.com/#/handy-tool/join-group
-private const val QQ_GROUP =
-    "mqqopensdkapi://bizAgent/qm/qr?url=http%3A%2F%2Fqm.qq.com%2Fcgi-bin%2Fqm%2Fqr%3Ffrom%3Dapp%26p%3Dandroid%26jump_from%3Dwebapi%26k%3D" + "oiWgOz87g6x4Eskej1Ja0bKWYyZR_dPO"
  

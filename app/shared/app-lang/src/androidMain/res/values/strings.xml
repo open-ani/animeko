@@ -178,7 +178,6 @@
     <string name="episode_drop_video_unknown_name">Video file</string>
     <string name="episode_drop_video_description">Plays this file for the current episode right away. Applies to this playback only</string>
     <string name="episode_drop_video_supported_hint">video files</string>
-    <string name="settings_help_qq">QQ</string>
     <string name="settings_help_telegram">Telegram</string>
     <string name="settings_help_github">GitHub</string>
     <string name="settings_help_feedback">Send feedback</string>
@@ -189,7 +188,6 @@
     <string name="settings_about_feedback">Feedback &amp; suggestions</string>
     <string name="settings_about_source_code">Source code</string>
     <string name="settings_about_chat_groups">Chat groups</string>
-    <string name="settings_about_qq_group">QQ Group</string>
     <string name="settings_about_icon_description">Animeko Icon</string>
     <string name="settings_about_app_name">Animeko</string>
     <string name="settings_about_app_description">A one-stop platform for searching, following, and watching anime with bullet comments</string>
