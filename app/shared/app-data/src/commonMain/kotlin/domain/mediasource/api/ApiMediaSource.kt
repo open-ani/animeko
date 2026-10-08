@@ -252,7 +252,8 @@ internal fun JsonElement.scalar(path: String): JsonPrimitive? =
 
 private fun JsonElement.requiredScalar(path: String): JsonPrimitive = scalar(path) ?: error("Missing scalar at $path")
 
-private val placeholder = Regex("\\{([A-Za-z][A-Za-z0-9]*)}")
+// Android's ICU regex engine requires both literal braces to be escaped.
+private val placeholder = Regex("\\{([A-Za-z][A-Za-z0-9]*)\\}")
 
 internal fun substitute(value: String, variables: Map<String, JsonPrimitive>, escapeUrl: Boolean = false): String =
     placeholder.replace(value) { match ->
