@@ -28,6 +28,7 @@ import me.him188.ani.app.data.models.subject.RatingInfo
 import me.him188.ani.app.data.models.subject.SelfRatingInfo
 import me.him188.ani.app.data.models.subject.SubjectCollectionStats
 import me.him188.ani.app.data.models.subject.SubjectInfo
+import me.him188.ani.app.data.models.subject.SplitSeason
 import me.him188.ani.app.data.models.subject.SubjectTmdbArt
 import me.him188.ani.app.data.models.subject.Tag
 import me.him188.ani.app.data.persistent.database.ProtoConverters
@@ -128,6 +129,11 @@ data class SubjectRelations(
     @ColumnInfo(defaultValue = "'[]'")
     @field:TypeConverters(ProtoConverters.StringList::class)
     val sequelSubjectNames: List<String>,
+    /**
+     * 条目是 Bangumi 拆成几段的一季中的一段时这一季的各段, 由服务端识别. 否则为 `null`.
+     */
+    @field:TypeConverters(ProtoConverters.SplitSeasonConverter::class)
+    val splitSeason: SplitSeason? = null,
 ) {
     companion object {
         val Empty = SubjectRelations(

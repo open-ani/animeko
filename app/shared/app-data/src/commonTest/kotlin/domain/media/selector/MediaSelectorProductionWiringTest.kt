@@ -29,7 +29,6 @@ import me.him188.ani.app.data.repository.media.EpisodePreferencesRepositoryImpl
 import me.him188.ani.app.data.repository.user.SettingsRepository
 import me.him188.ani.app.data.repository.user.Settings
 import me.him188.ani.app.domain.episode.CreateMediaFetchSelectBundleFlowUseCaseImpl
-import me.him188.ani.app.domain.episode.GetSubjectSeriesInfoFlowUseCase
 import me.him188.ani.app.domain.episode.SubjectEpisodeInfoBundle
 import me.him188.ani.app.domain.media.fetch.MediaSourceManager
 import me.him188.ani.app.domain.mediasource.codec.MediaSourceTier
@@ -184,7 +183,6 @@ class MediaSelectorProductionWiringTest {
                         single<MediaSourceManager> { fakeManager }
                         single<EpisodePreferencesRepository> { repository }
                         single<SettingsRepository> { fakeSettings }
-                        single<GetSubjectSeriesInfoFlowUseCase> { GetSubjectSeriesInfoFlowUseCase { emptyFlow() } }
                     },
                 )
             }

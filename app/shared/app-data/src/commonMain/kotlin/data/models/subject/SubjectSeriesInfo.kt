@@ -10,8 +10,6 @@
 package me.him188.ani.app.data.models.subject
 
 import me.him188.ani.app.domain.mediasource.MediaListFilters
-import me.him188.ani.datasources.api.EpisodeSort
-import me.him188.ani.datasources.api.EpisodeType
 
 data class SubjectSeriesInfo(
 //    val subjectId: Int,
@@ -36,24 +34,13 @@ data class SubjectSeriesInfo(
      */
     val seriesSubjectNamesWithoutSelf: Set<String>,
     /**
-     * 当前条目所在的拆分季. 不是拆分季的一段, 或者系列里其他条目的剧集信息还没加载时为 `null`.
+     * 当前条目所在的拆分季, 由服务端识别. 不是拆分季的一段时为 `null`.
      */
     val splitSeason: SplitSeason? = null,
 ) {
     companion object {
-        /**
-         * 只根据 [requestingSubject] 自己的信息计算. 系列里其他条目的信息未知, 不识别拆分季.
-         */
         fun compute(
             requestingSubject: SubjectCollectionInfo,
-        ): SubjectSeriesInfo = compute(requestingSubject, emptyList())
-
-        /**
-         * @param seriesSubjects 系列里其他条目的信息, 用于识别拆分季. 顺序任意, 可以包含 [requestingSubject] 自己.
-         */
-        fun compute(
-            requestingSubject: SubjectCollectionInfo,
-            seriesSubjects: List<SubjectCollectionInfo>,
         ): SubjectSeriesInfo {
             val sequelSubjectNames = requestingSubject.relations.sequelSubjectNames.toMutableSet().apply {
                 removeAll { sequelName ->
@@ -82,34 +69,7 @@ data class SubjectSeriesInfo(
                 seasonSort = seasonSort,
                 sequelSubjectNames,
                 seriesSubjectNamesWithoutSelf,
-                splitSeason = computeSplitSeason(requestingSubject, seriesSubjects),
-            )
-        }
-
-        private fun computeSplitSeason(
-            requestingSubject: SubjectCollectionInfo,
-            seriesSubjects: List<SubjectCollectionInfo>,
-        ): SplitSeason? {
-            val byId = (seriesSubjects + requestingSubject).associateBy { it.subjectId }
-            val mainline = requestingSubject.relations.seriesMainSubjectIds.mapNotNull { byId[it]?.toSplitSeasonCandidate() }
-            return SplitSeason.compute(mainline, requestingSubject.subjectId)
-        }
-
-        private fun SubjectCollectionInfo.toSplitSeasonCandidate(): SplitSeason.Candidate {
-            val episodeInfos = episodes.map { it.episodeInfo }
-            val sorts = episodeInfos.asSequence()
-                .filter { it.type == EpisodeType.MainStory }
-                .mapNotNull { (it.sort as? EpisodeSort.Normal)?.number }
-                .filter { it % 1f == 0f }
-                .map { it.toInt() }
-                .toList()
-            return SplitSeason.Candidate(
-                subjectId = subjectId,
-                names = subjectInfo.allNames,
-                firstSort = sorts.minOrNull(),
-                lastSort = sorts.maxOrNull(),
-                episodeCount = sorts.size,
-                specialSorts = episodeInfos.filter { it.type == EpisodeType.SP }.mapNotNull { it.sort.number },
+                splitSeason = requestingSubject.relations.splitSeason,
             )
         }
 

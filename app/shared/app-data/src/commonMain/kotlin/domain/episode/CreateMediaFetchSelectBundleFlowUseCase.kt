@@ -11,7 +11,6 @@ package me.him188.ani.app.domain.episode
 
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
-import kotlinx.coroutines.flow.catch
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.distinctUntilChangedBy
@@ -22,7 +21,6 @@ import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.mapLatest
 import kotlinx.coroutines.flow.onStart
 import me.him188.ani.app.data.models.subject.SubjectSeriesInfo
-import me.him188.ani.app.data.repository.RepositoryException
 import me.him188.ani.app.data.repository.media.EpisodePreferencesRepository
 import me.him188.ani.app.data.repository.user.SettingsRepository
 import me.him188.ani.app.domain.media.fetch.MediaFetchSession
@@ -35,7 +33,6 @@ import me.him188.ani.app.domain.usecase.UseCase
 import me.him188.ani.datasources.api.source.MediaFetchRequest
 import me.him188.ani.utils.logging.info
 import me.him188.ani.utils.logging.logger
-import me.him188.ani.utils.logging.warn
 import me.him188.ani.utils.platform.collections.tupleOf
 import org.koin.core.component.KoinComponent
 import org.koin.core.component.inject
@@ -76,7 +73,6 @@ class CreateMediaFetchSelectBundleFlowUseCaseImpl(
     private val mediaSourceManager: MediaSourceManager by inject()
     private val episodePreferencesRepository: EpisodePreferencesRepository by inject()
     private val settingsRepository: SettingsRepository by inject()
-    private val getSubjectSeriesInfoFlowUseCase: GetSubjectSeriesInfoFlowUseCase by inject()
 
     override fun invoke(
         subjectEpisodeInfoBundleFlow: Flow<SubjectEpisodeInfoBundle?>
@@ -160,13 +156,7 @@ class CreateMediaFetchSelectBundleFlowUseCaseImpl(
                     mediaSourceManager.allInstances.map { list ->
                         list.map { it.mediaSourceId }
                     },
-                    // bundle 里的系列信息只凭条目自己算出, 先用它, 系列里其他条目的剧集加载后再换成能识别拆分季的版本.
-                    // 加载失败就一直用前者, 不能退回 Fallback 丢掉已有的系列名.
-                    getSubjectSeriesInfoFlowUseCase(bundle.subjectId)
-                        .catch { e ->
-                            logger.warn(RepositoryException.wrapOrThrowCancellation(e)) { "Failed to load series info for subject ${bundle.subjectId}, using the one from bundle" }
-                        }
-                        .onStart { emit(bundle.seriesInfo) },
+                    flowOf(bundle.seriesInfo),
                     flowOf(bundle.subjectInfo),
                     fetchSession.latestRequest.map { bundle.episodeInfo.withRequestedNumbers(it) },
                     mediaSourceManager.mediaSourceTiersFlow(), // only access local settings

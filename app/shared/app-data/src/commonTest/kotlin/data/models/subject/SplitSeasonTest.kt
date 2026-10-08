@@ -22,163 +22,112 @@ import me.him188.ani.test.TestContainer
 import kotlin.test.Test
 import kotlin.test.assertContains
 import kotlin.test.assertEquals
+import kotlin.test.assertFailsWith
 import kotlin.test.assertNull
 
 @TestContainer
 class SplitSeasonTest {
-    private fun partIds(mainline: List<SplitSeason.Candidate>, selfId: Int): List<Int>? =
-        SplitSeason.compute(mainline, selfId)?.parts?.map { it.subjectId }
+    @Test
+    fun `fixtures cover split and non-split subjects`() {
+        assertNull(ReZero.splitSeason(140001))
+        assertEquals(listOf(278826, 316247), ReZero.splitSeason(316247)!!.parts.map { it.subjectId })
+        assertEquals(listOf(547888, 633836), ReZero.splitSeason(633836)!!.parts.map { it.subjectId })
+        assertNull(MushokuTensei.splitSeason(501963))
+        assertNull(AttackOnTitan.splitSeason(376739))
+        assertNull(SpyFamily.splitSeason(411427))
+        assertNull(AncientMagusBride.splitSeason(210864))
+        assertNull(Frieren.splitSeason(515759))
+        assertNull(JujutsuKaisen.splitSeason(472741))
+        assertNull(Apothecary.splitSeason(486347))
+        assertEquals(listOf(568244, 599893), Apothecary.splitSeason(599893)!!.parts.map { it.subjectId })
+    }
 
     @Test
-    fun `ReZero groups each season but not the whole series`() {
-        assertNull(partIds(ReZero, 140001))
-        assertEquals(listOf(278826, 316247), partIds(ReZero, 278826))
-        assertEquals(listOf(278826, 316247), partIds(ReZero, 316247))
-        assertEquals(listOf(425998, 510728), partIds(ReZero, 425998))
-        assertEquals(listOf(547888, 633836), partIds(ReZero, 633836))
+    fun `selfIndex follows the requesting subject`() {
+        assertEquals(0, ReZero.splitSeason(278826)!!.selfIndex)
+        assertEquals(1, ReZero.splitSeason(316247)!!.selfIndex)
+        assertEquals(316247, ReZero.splitSeason(316247)!!.self.subjectId)
     }
 
     @Test
     fun `ReZero S2 part 2 has season number counted from 26`() {
-        val season = SplitSeason.compute(ReZero, 316247)!!
-        assertEquals(1, season.selfIndex)
+        val season = ReZero.splitSeason(316247)!!
         assertEquals(26, season.firstSort)
         assertEquals(14, season.seasonNumberOf(39))
         assertEquals(25, season.seasonNumberOf(50))
+        assertEquals(13, season.previousPartsEpisodeCount)
         assertEquals(listOf("后半部分", "後半クール", "后半"), season.self.markers)
-        assertEquals(emptyList(), season.parts[0].markers)
         assertContains(season.baseNames, "Re：从零开始的异世界生活 第二季")
         assertContains(season.baseNames, "Re0 第二季")
     }
 
     @Test
     fun `ReZero S4 parts are named by arc`() {
-        val season = SplitSeason.compute(ReZero, 633836)!!
+        val season = ReZero.splitSeason(633836)!!
         assertEquals(12, season.seasonNumberOf(78))
         assertEquals(listOf("丧失篇", "喪失編", "喪失篇"), season.parts[0].markers)
         assertEquals(listOf("夺还篇", "奪還編", "奪還篇"), season.parts[1].markers)
-        assertContains(season.baseNames, "Re：从零开始的异世界生活 第四季")
-        assertContains(season.baseNames, "Re:ゼロから始める異世界生活 4th season")
-    }
-
-    @Test
-    fun `MushokuTensei groups S1 and S2 separately and skips S3 part 2 without episodes`() {
-        assertEquals(listOf(277554, 325585), partIds(MushokuTensei, 325585))
-        assertEquals(listOf(373247, 444557), partIds(MushokuTensei, 444557))
-        assertNull(partIds(MushokuTensei, 501963))
-        assertNull(partIds(MushokuTensei, 708197))
     }
 
     @Test
     fun `MushokuTensei S2 prologue at sort 0 does not take a season number`() {
-        val season = SplitSeason.compute(MushokuTensei, 444557)!!
+        val season = MushokuTensei.splitSeason(444557)!!
         assertEquals(0, season.firstSort)
         assertEquals(13, season.seasonNumberOf(13))
         assertEquals(12, season.seasonNumberOf(12))
+        assertEquals(13, season.previousPartsEpisodeCount)
+        assertEquals(1, season.previousPartsExtraEntryCount)
     }
 
     @Test
     fun `MushokuTensei S1 part 2 season number equals sort`() {
-        val season = SplitSeason.compute(MushokuTensei, 325585)!!
+        val season = MushokuTensei.splitSeason(325585)!!
         assertEquals(12, season.seasonNumberOf(12))
-        assertEquals(listOf("第2部分", "第2クール", "Part 2", "後半", "后半"), season.self.markers)
-    }
-
-    @Test
-    fun `AttackOnTitan groups S3 and the final season but not the one-episode finales`() {
-        assertEquals(listOf(217300, 263750), partIds(AttackOnTitan, 263750))
-        assertEquals(listOf(285666, 331752), partIds(AttackOnTitan, 331752))
-        assertEquals(17, SplitSeason.compute(AttackOnTitan, 331752)!!.seasonNumberOf(76))
-        assertNull(partIds(AttackOnTitan, 376739))
-        assertNull(partIds(AttackOnTitan, 415779))
-    }
-
-    @Test
-    fun `SpyFamily groups only the first season`() {
-        assertEquals(listOf(329906, 373267), partIds(SpyFamily, 329906))
-        assertEquals(listOf(329906, 373267), partIds(SpyFamily, 373267))
-        assertNull(partIds(SpyFamily, 411427))
-        assertNull(partIds(SpyFamily, 498378))
+        assertEquals(0, season.previousPartsExtraEntryCount)
     }
 
     @Test
     fun `AncientMagusBride S2 restarts sort at 1`() {
-        assertNull(partIds(AncientMagusBride, 210864))
-        val season = SplitSeason.compute(AncientMagusBride, 442523)!!
-        assertEquals(listOf(399820, 442523), season.parts.map { it.subjectId })
+        val season = AncientMagusBride.splitSeason(442523)!!
         assertEquals(1, season.firstSort)
         assertEquals(13, season.seasonNumberOf(13))
     }
 
     @Test
-    fun `EightySix is one split season`() {
-        val season = SplitSeason.compute(EightySix, 331887)!!
-        assertEquals(1, season.selfIndex)
-        assertEquals(12, season.seasonNumberOf(12))
-        assertEquals(listOf("第2部分", "第2クール", "Part 2"), season.self.markers)
-    }
-
-    @Test
     fun `EightySix special after part 1 is an extra entry on merged pages`() {
-        val season = SplitSeason.compute(EightySix, 331887)!!
+        val season = EightySix.splitSeason(331887)!!
         assertEquals(1, season.parts[0].inlineSpecialCount)
         assertEquals(3, season.parts[1].inlineSpecialCount)
         assertEquals(1, season.previousPartsExtraEntryCount)
+        assertEquals(0, SpyFamily.splitSeason(373267)!!.previousPartsExtraEntryCount)
     }
 
     @Test
-    fun `integer sort specials and specials after the last episode are not extra entries`() {
-        assertEquals(0, SplitSeason.compute(AttackOnTitan, 331752)!!.self.inlineSpecialCount)
-        assertEquals(0, SplitSeason.compute(MushokuTensei, 325585)!!.self.inlineSpecialCount)
-        assertEquals(0, SplitSeason.compute(SpyFamily, 373267)!!.previousPartsExtraEntryCount)
+    fun `a split season needs at least two parts`() {
+        val part = ReZero.splitSeason(316247)!!.parts.first()
+        assertFailsWith<IllegalArgumentException> { SplitSeason(listOf(part), selfIndex = 0, baseNames = emptyList()) }
+        assertFailsWith<IllegalArgumentException> { SplitSeason(listOf(part, part), selfIndex = 2, baseNames = emptyList()) }
     }
 
     @Test
-    fun `MushokuTensei S2 prologue is an extra entry on merged pages`() {
-        assertEquals(1, SplitSeason.compute(MushokuTensei, 444557)!!.previousPartsExtraEntryCount)
-        assertEquals(0, SplitSeason.compute(MushokuTensei, 325585)!!.previousPartsExtraEntryCount)
+    fun `seasonNumbersOf reads season markers in page names`() {
+        assertEquals(setOf(2), SplitSeason.seasonNumbersOf("无职转生 第二季 ～到了异世界就拿出真本事～"))
+        assertEquals(setOf(2), SplitSeason.seasonNumbersOf("無職転生Ⅱ ～異世界行ったら本気だす～"))
+        assertEquals(setOf(2), SplitSeason.seasonNumbersOf("Re:ゼロから始める異世界生活 2nd season 後半クール"))
+        assertEquals(setOf(3), SplitSeason.seasonNumbersOf("rezero s3"))
+        assertEquals(setOf(2), SplitSeason.seasonNumbersOf("魔法使いの嫁 SEASON2"))
+        assertEquals(setOf(2), SplitSeason.seasonNumbersOf("葬送のフリーレン 第２期"))
+        assertEquals(setOf(4), SplitSeason.seasonNumbersOf("Re:ZERO -Starting Life in Another World- Season 4"))
+        assertEquals(emptySet(), SplitSeason.seasonNumbersOf("无职转生～到了异世界就拿出真本事～ 第2部分"))
+        assertEquals(emptySet(), SplitSeason.seasonNumbersOf("86―エイティシックス― 第2クール"))
+        assertEquals(emptySet(), SplitSeason.seasonNumbersOf("SPY×FAMILY"))
     }
 
     @Test
-    fun `continuous sort alone does not make a split season`() {
-        assertNull(partIds(Frieren, 400602))
-        assertNull(partIds(Frieren, 515759))
-        assertNull(partIds(JujutsuKaisen, 369304))
-        assertNull(partIds(JujutsuKaisen, 472741))
-        assertNull(partIds(Apothecary, 486347))
-    }
-
-    @Test
-    fun `Apothecary S3 is split`() {
-        assertEquals(listOf(568244, 599893), partIds(Apothecary, 599893))
-        assertNull(partIds(Apothecary, 420628))
-    }
-
-    @Test
-    fun `subject missing from mainline is not a split season`() {
-        assertNull(partIds(ReZero, 999999))
-        assertNull(partIds(emptyList(), 316247))
-    }
-
-    @Test
-    fun `stripMarker removes part markers but keeps season markers`() {
-        fun strip(name: String) = SplitSeason.stripMarker(name).let { it.base to it.marker }
-
-        assertEquals("无职转生～到了异世界就拿出真本事～" to "第2部分", strip("无职转生～到了异世界就拿出真本事～ 第2部分"))
-        assertEquals("無職転生Ⅱ ～異世界行ったら本気だす～" to "第2クール", strip("無職転生Ⅱ ～異世界行ったら本気だす～ 第2クール"))
-        assertEquals("Re:ゼロから始める異世界生活 2nd season" to "後半クール", strip("Re:ゼロから始める異世界生活 2nd season 後半クール"))
-        assertEquals("Re0 第二季" to "后半", strip("Re0 第二季后半"))
-        assertEquals("進撃の巨人 The Final Season" to "Part.2", strip("進撃の巨人 The Final Season Part.2"))
-        assertEquals("SPY×FAMILY" to "Part 2", strip("SPY×FAMILY Part 2"))
-        assertEquals("Re：从零开始的异世界生活 第三季" to "袭击篇", strip("Re：从零开始的异世界生活 第三季 袭击篇"))
-        assertEquals("呪術廻戦 死滅回游" to "前編", strip("呪術廻戦 死滅回游 前編"))
-        assertEquals("进击的巨人 最终季 完结篇" to "前篇", strip("进击的巨人 最终季 完结篇 前篇"))
-
-        assertEquals("葬送のフリーレン 第2期" to null, strip("葬送のフリーレン 第2期"))
-        assertEquals("间谍过家家 第二季" to null, strip("间谍过家家 第二季"))
-        assertEquals("SPY×FAMILY Season 2" to null, strip("SPY×FAMILY Season 2"))
-        assertEquals("Re:Zero kara Hajimeru Isekai Seikatsu (2021)" to null, strip("Re:Zero kara Hajimeru Isekai Seikatsu (2021)"))
-        assertEquals("魔法使いの嫁 SEASON2" to null, strip("魔法使いの嫁 SEASON2"))
-        assertEquals("前篇" to null, strip("前篇"))
+    fun `genericMarkers name the first two parts in several languages`() {
+        assertContains(SplitSeason.genericMarkers(0), "前半")
+        assertContains(SplitSeason.genericMarkers(1), "Part 2")
+        assertContains(SplitSeason.genericMarkers(1), "后半")
+        assertEquals(listOf("第3部分", "Part 3", "第3クール"), SplitSeason.genericMarkers(2))
     }
 }

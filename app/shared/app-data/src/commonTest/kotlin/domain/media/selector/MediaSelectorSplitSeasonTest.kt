@@ -11,6 +11,7 @@ package me.him188.ani.app.domain.media.selector
 
 import kotlinx.coroutines.flow.first
 import me.him188.ani.app.data.models.subject.SplitSeason
+import me.him188.ani.app.data.models.subject.SplitSeasonTestData
 import me.him188.ani.app.data.models.subject.SplitSeasonTestData.AttackOnTitan
 import me.him188.ani.app.data.models.subject.SplitSeasonTestData.EightySix
 import me.him188.ani.app.data.models.subject.SplitSeasonTestData.MushokuTensei
@@ -338,25 +339,25 @@ class MediaSelectorSplitSeasonTest {
     }
 
     /**
-     * 按 Bangumi 数据初始化 [mainline] 中的条目 [selfId], 正在观看 sort 为 [sort], ep 为 [ep] 的一集.
-     * 系列名与续集名按 `SubjectSeriesInfo.compute` 的规则去掉当前条目自己的名字.
+     * 按 Bangumi 数据初始化 [series] 中的条目 [selfId], 正在观看 sort 为 [sort], ep 为 [ep] 的一集.
+     * 系列名与续集名按 `SubjectSeriesInfo.compute` 的规则去掉当前条目自己的名字, 拆分季用服务端对该条目下发的结果.
      */
-    private fun MediaSelectorTestSuite.initSplitSeason(mainline: List<SplitSeason.Candidate>, selfId: Int, sort: Int, ep: Int) {
-        val selfIndex = mainline.indexOfFirst { it.subjectId == selfId }
-        val own = mainline[selfIndex].names
+    private fun MediaSelectorTestSuite.initSplitSeason(series: SplitSeasonTestData.Series, selfId: Int, sort: Int, ep: Int) {
+        val selfIndex = series.subjects.indexOfFirst { it.first == selfId }
+        val own = series.names(selfId)
         initSubject(own.first()) {
             aliases(*own.drop(1).toTypedArray())
             episodeSort = EpisodeSort(sort)
             episodeEp = EpisodeSort(ep)
             seriesInfo(seasonSort = selfIndex + 1) {
                 fun isOwnName(name: String) = own.any { MediaListFilters.specialEquals(it, name) }
-                series(*mainline.flatMap { it.names }.filterNot(::isOwnName).toTypedArray())
+                series(*series.subjects.flatMap { it.second }.filterNot(::isOwnName).toTypedArray())
                 sequel(
-                    *mainline.drop(selfIndex + 1).flatMap { it.names }
+                    *series.subjects.drop(selfIndex + 1).flatMap { it.second }
                         .filterNot { name -> own.any { MediaListFilters.specialContains(it, name) } }
                         .toTypedArray(),
                 )
-                splitSeason = SplitSeason.compute(mainline, selfId)
+                splitSeason = series.splitSeason(selfId)
             }
         }
     }

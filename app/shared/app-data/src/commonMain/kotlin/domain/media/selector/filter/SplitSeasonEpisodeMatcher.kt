@@ -177,13 +177,13 @@ internal class SplitSeasonEpisodeMatcher private constructor(
         }
         // 本季有编号而页名没有, 也不含本季特有的篇章名时, 页面是系列里没编号的那一季的 (通常是第一季)
         if (pageSeasonNumbers.isEmpty() && 1 !in groupSeasonNumbers && 1 in season.otherSeasonNumbers &&
-            specificMarkers.none { MediaListFilters.specialContains(subjectName, it) }
+            specificMarkers.none { containsMarker(subjectName, it) }
         ) {
             return Classification(PageKind.OTHER_SEASON, exact = false, null)
         }
 
-        val containedOwnMarkers = ownMarkers.filter { MediaListFilters.specialContains(subjectName, it) }
-        val containedSiblingMarkers = siblingMarkers.filter { MediaListFilters.specialContains(subjectName, it) }
+        val containedOwnMarkers = ownMarkers.filter { containsMarker(subjectName, it) }
+        val containedSiblingMarkers = siblingMarkers.filter { containsMarker(subjectName, it) }
         val kind = when {
             containedSiblingMarkers.isNotEmpty() -> PageKind.SEASON
             containedOwnMarkers.isNotEmpty() -> PageKind.OWN
@@ -199,6 +199,13 @@ internal class SplitSeasonEpisodeMatcher private constructor(
     }
 
     companion object {
+        /**
+         * 页名是否含有分段标记. "（下）", "·下" 这类标记去掉标点只剩一个字, 到处都能匹配上, 只按原文找.
+         */
+        private fun containsMarker(subjectName: String, marker: String): Boolean =
+            if (normalize(marker).length < 2) subjectName.contains(marker, ignoreCase = true)
+            else MediaListFilters.specialContains(subjectName, marker)
+
         /**
          * 自己的页面上除正片外还可能有编了号的总集篇或特别篇. 条目数超过本段集数这么多时, 页面装的是整季.
          */
