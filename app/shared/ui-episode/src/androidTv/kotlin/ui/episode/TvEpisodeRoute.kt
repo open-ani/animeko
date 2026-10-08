@@ -18,6 +18,7 @@ import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import me.him188.ani.app.ui.foundation.effects.ScreenOnEffect
 import me.him188.ani.app.videoplayer.ui.VideoPlayer
 import me.him188.ani.tv.ui.episode.danmaku.TvPlayerDanmakuHost
 import me.him188.ani.tv.ui.foundation.TvNavigationEffect
@@ -33,6 +34,9 @@ fun TvEpisodeRoute(
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
     val togetherState by togetherViewModel.uiState.collectAsStateWithLifecycle()
+    if (state.playerState.playWhenReady) {
+        ScreenOnEffect()
+    }
     TvNavigationEffect(viewModel.navigationEvents, onNavigate)
     LaunchedEffect(viewModel) { viewModel.onIntent(TvEpisodeIntent.UiReady) }
     val lifecycle = LocalLifecycleOwner.current.lifecycle
