@@ -137,6 +137,7 @@ class CreateMediaFetchSelectBundleFlowUseCaseImpl(
                     bundle.subjectCollectionInfo.subjectInfo,
                     bundle.episodeCollectionInfo.episodeInfo,
                     episodes = bundle.subjectCollectionInfo.episodes.map { it.episodeInfo },
+                    seriesInfo = bundle.seriesInfo,
                 )
             }
             .distinctUntilChanged() // very important to avoid re-query

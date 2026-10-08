@@ -258,8 +258,6 @@
     <string name="settings_mediasource_selector_tier_description">Lower is preferred. Tier 0 is selected as soon as it finds a result; higher tiers wait for other sources first</string>
     <string name="settings_mediasource_selector_prefer_shorter_name">Prefer the shortest title</string>
     <string name="settings_mediasource_selector_prefer_shorter_name_description">Among matching items, prefer the one with the shortest title, so that season 1 does not match season 2</string>
-    <string name="settings_mediasource_selector_config_filter_by_subject_name">Filter by item name</string>
-    <string name="settings_mediasource_selector_config_filter_by_subject_name_description">Require the resource title to contain the item name. Useful when the source may return irrelevant results. This only works in versions before 4.4.0 and has no effect in other versions</string>
     <string name="settings_mediasource_selector_config_filter_by_episode_sort">Filter by episode number</string>
     <string name="settings_mediasource_selector_config_filter_by_episode_sort_description">Require the resource title to contain the episode number. Useful when the source may return irrelevant results. Usually recommended</string>
     <string name="settings_mediasource_selector_config_default_resolution">Mark resolution</string>
@@ -545,8 +543,6 @@
     <string name="settings_mediasource_rss_search_link_supporting_text">Replacement rules:\n{keyword} is replaced with the item (anime) name\n{page} is replaced with the page number. Ignore if no pagination is needed.</string>
     <string name="settings_mediasource_rss_filter_by_episode">Use episode number filtering</string>
     <string name="settings_mediasource_rss_filter_by_episode_description">Requires the resource title to contain the episode number. Useful if irrelevant content might be found from the data source.</string>
-    <string name="settings_mediasource_rss_filter_by_subject">Use item name filtering</string>
-    <string name="settings_mediasource_rss_filter_by_subject_description">Requires the resource title to contain the item name. Useful if irrelevant content might be found.\nThis feature only works for versions before 4.4.0 and is invalid for other versions.</string>
     <string name="settings_mediasource_rss_auto_save_hint">Hint: changes are saved automatically</string>
     <string name="settings_mediasource_rss_match_tag_match">Match</string>
     <string name="settings_mediasource_rss_match_tag_not_match">No match</string>
@@ -806,6 +802,7 @@
     <string name="video_player_aspect_fit">Fit</string>
     <string name="video_player_aspect_stretch">Stretch</string>
     <string name="video_player_aspect_crop">Crop</string>
+    <string name="video_player_aspect_ratio">Aspect ratio</string>
     <string name="video_player_auto">Auto</string>
     <string name="video_player_audio_track">Audio</string>
     <string name="video_player_off">Off</string>

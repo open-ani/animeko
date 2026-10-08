@@ -77,7 +77,8 @@ fun TrendingSubjectsCarousel(
                     Surface({ onClick(item) }) {
                         AsyncImage(
                             item.imageLarge,
-                            modifier = Modifier.height(size.imageHeight),
+                            // 必须撑满 item. 只给高度时宽度取决于解码后的 bitmap, 窗口变宽后会留空白且空白处无法点击
+                            modifier = Modifier.height(size.imageHeight).fillMaxWidth(),
                             contentDescription = item.nameCn,
                             contentScale = ContentScale.Crop,
                         )

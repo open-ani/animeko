@@ -237,8 +237,6 @@
     <string name="settings_mediasource_selector_tier_description">數值越低越優先。階級 0 查到結果後立即選用，更高階級需先等待其他數據源</string>
     <string name="settings_mediasource_selector_prefer_shorter_name">優先選擇最短標題</string>
     <string name="settings_mediasource_selector_prefer_shorter_name_description">優先選擇滿足匹配的標題最短的條目，可避免為第一季匹配到第二季</string>
-    <string name="settings_mediasource_selector_config_filter_by_subject_name">使用條目名稱過濾</string>
-    <string name="settings_mediasource_selector_config_filter_by_subject_name_description">要求資源標題包含條目名稱。適用於數據源可能搜到無關內容的情況。此功能只對 4.4.0 以前版本有效，對其他版本無效</string>
     <string name="settings_mediasource_selector_config_filter_by_episode_sort">使用劇集序號過濾</string>
     <string name="settings_mediasource_selector_config_filter_by_episode_sort_description">要求資源標題包含劇集序號。適用於數據源可能搜到無關內容的情況。通常建議開啟</string>
     <string name="settings_mediasource_selector_config_default_resolution">標記分辨率</string>
@@ -540,8 +538,6 @@
     <string name="settings_mediasource_rss_search_link_supporting_text">替換規則：\n{keyword} 替換為條目 (番劇)名稱\n{page} 替換為頁碼, 如果不需要分頁則忽略</string>
     <string name="settings_mediasource_rss_filter_by_episode">使用劇集序號過濾</string>
     <string name="settings_mediasource_rss_filter_by_episode_description">要求資源標題包含劇集序號。適用於數據源可能搜到無關內容的情況</string>
-    <string name="settings_mediasource_rss_filter_by_subject">使用條目名稱過濾</string>
-    <string name="settings_mediasource_rss_filter_by_subject_description">要求資源標題包含條目名稱。適用於數據源可能搜到無關內容的情況。此功能只對 4.4.0 以前版本有效，對其他版本無效</string>
     <string name="settings_mediasource_rss_auto_save_hint">提示：修改自動保存</string>
 
     <!-- OutlinedMatchTag -->
@@ -809,6 +805,7 @@
     <string name="video_player_aspect_fit">適應</string>
     <string name="video_player_aspect_stretch">填充</string>
     <string name="video_player_aspect_crop">裁切</string>
+    <string name="video_player_aspect_ratio">畫面比例</string>
     <string name="video_player_auto">自動</string>
     <string name="video_player_audio_track">音軌</string>
     <string name="video_player_off">關閉</string>

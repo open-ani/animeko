@@ -99,8 +99,6 @@ import me.him188.ani.app.ui.lang.settings_mediasource_selector_config_distinguis
 import me.him188.ani.app.ui.lang.settings_mediasource_selector_config_distinguish_subject_name_description
 import me.him188.ani.app.ui.lang.settings_mediasource_selector_config_filter_by_episode_sort
 import me.him188.ani.app.ui.lang.settings_mediasource_selector_config_filter_by_episode_sort_description
-import me.him188.ani.app.ui.lang.settings_mediasource_selector_config_filter_by_subject_name
-import me.him188.ani.app.ui.lang.settings_mediasource_selector_config_filter_by_subject_name_description
 import me.him188.ani.app.ui.lang.settings_mediasource_selector_config_icon_url
 import me.him188.ani.app.ui.lang.settings_mediasource_selector_config_name
 import me.him188.ani.app.ui.lang.settings_mediasource_selector_config_name_placeholder
@@ -653,22 +651,6 @@ private fun AutoMatchSection(
             enabled = state.enableEdit,
         )
 
-        ListItem(
-            headlineContent = { Text(stringResource(Lang.settings_mediasource_selector_config_filter_by_subject_name)) },
-            itemPadding.focusable(false).clickable(enabled = state.enableEdit) {
-                state.filterBySubjectName = !state.filterBySubjectName
-            },
-            supportingContent = {
-                Text(stringResource(Lang.settings_mediasource_selector_config_filter_by_subject_name_description))
-            },
-            trailingContent = {
-                Switch(
-                    state.filterBySubjectName, { state.filterBySubjectName = it },
-                    enabled = state.enableEdit,
-                )
-            },
-            colors = listItemColors,
-        )
         ListItem(
             headlineContent = { Text(stringResource(Lang.settings_mediasource_selector_config_filter_by_episode_sort)) },
             itemPadding.focusable(false).clickable(enabled = state.enableEdit) {
