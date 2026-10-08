@@ -28,6 +28,8 @@ import me.him188.ani.app.domain.episode.GetEpisodeCollectionInfoFlowUseCaseImpl
 import me.him188.ani.app.domain.episode.GetEpisodeCollectionTypeUseCase
 import me.him188.ani.app.domain.episode.GetEpisodeCollectionTypeUseCaseImpl
 import me.him188.ani.app.domain.episode.GetSubjectEpisodeInfoBundleFlowUseCase
+import me.him188.ani.app.domain.episode.GetSubjectSeriesInfoFlowUseCase
+import me.him188.ani.app.domain.episode.GetSubjectSeriesInfoFlowUseCaseImpl
 import me.him188.ani.app.domain.episode.GetSubjectEpisodeInfoBundleFlowUseCaseImpl
 import me.him188.ani.app.domain.episode.GetSubjectRecommendationUseCase
 import me.him188.ani.app.domain.episode.GetSubjectRecommendationUseCaseImpl
@@ -77,6 +79,7 @@ fun KoinApplication.useCaseModules() = module {
     single<MediaSelectorAutoSelectUseCase> { MediaSelectorAutoSelectUseCaseImpl() }
     single<MediaSelectorEventSavePreferenceUseCase> { MediaSelectorEventSavePreferenceUseCaseImpl }
     single<GetSubjectEpisodeInfoBundleFlowUseCase> { GetSubjectEpisodeInfoBundleFlowUseCaseImpl() }
+    single<GetSubjectSeriesInfoFlowUseCase> { GetSubjectSeriesInfoFlowUseCaseImpl() }
     single<CreateMediaFetchSelectBundleFlowUseCase> { CreateMediaFetchSelectBundleFlowUseCaseImpl() }
     single<GetMediaSelectorSettingsFlowUseCase> { GetMediaSelectorSettingsFlowUseCaseImpl }
     single<GetVideoScaffoldConfigUseCase> { GetVideoScaffoldConfigUseCaseImpl }

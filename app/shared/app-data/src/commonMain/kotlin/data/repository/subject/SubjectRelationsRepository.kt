@@ -106,23 +106,28 @@ class DefaultSubjectRelationsRepository(
             }.flowOn(defaultDispatcher)
     }
 
-    override fun subjectSeriesInfoFlow(subjectId: Int): Flow<SubjectSeriesInfo> = flow {
-        emit(
-            aniSubjectRelationIndexService.getSubjectRelationIndex(subjectId),
-        )
-    }.combine(subjectCollectionRepository.subjectCollectionFlow(subjectId)) { relations, requestingSubject ->
-        combine(
-            (relations.sequelSubjects.toSet() + relations.seriesMainSubjectIds).map {
-                subjectCollectionRepository.subjectCollectionFlow(it)
-            },
-        ) { subjectCollectionInfos ->
-            SubjectSeriesInfo.compute(
-                requestingSubject = requestingSubject,
-            )
-        }
-    }.flatMapLatest {
-        it
-    }.flowOn(defaultDispatcher)
+    /**
+     * 系列关系取自条目收藏信息里的 [SubjectCollectionInfo.relations], 与系列索引接口是同一份数据, 不单独请求.
+     * 系列里各条目的收藏信息 (含剧集列表) 用于识别拆分季, 没有本地缓存的条目会从网络获取.
+     */
+    override fun subjectSeriesInfoFlow(subjectId: Int): Flow<SubjectSeriesInfo> =
+        subjectCollectionRepository.subjectCollectionFlow(subjectId).flatMapLatest { requestingSubject ->
+            val relations = requestingSubject.relations
+            val relatedSubjectIds = (relations.sequelSubjects.toSet() + relations.seriesMainSubjectIds) - subjectId
+            if (relatedSubjectIds.isEmpty()) { // combine(emptyList()) 不会 emit
+                return@flatMapLatest flowOf(SubjectSeriesInfo.compute(requestingSubject, emptyList()))
+            }
+            combine(
+                relatedSubjectIds.map {
+                    subjectCollectionRepository.subjectCollectionFlow(it)
+                },
+            ) { subjectCollectionInfos ->
+                SubjectSeriesInfo.compute(
+                    requestingSubject = requestingSubject,
+                    seriesSubjects = subjectCollectionInfos.toList(),
+                )
+            }
+        }.flowOn(defaultDispatcher)
 
 //    override fun subjectSequelSubjectNamesFlow(subjectId: Int): Flow<Set<String>> {
 //        return subjectSequelSubjectsFlow(subjectId)
