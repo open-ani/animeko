@@ -9,21 +9,30 @@
 
 package me.him188.ani.tv.ui.episode.danmaku
 
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.lazy.items
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.produceState
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.unit.dp
 import androidx.tv.material3.MaterialTheme
 import androidx.tv.material3.Text
+import me.him188.ani.app.domain.danmaku.DanmakuTextConversionPreview
+import me.him188.ani.app.domain.danmaku.DanmakuTextConversionSample
+import me.him188.ani.app.ui.episode.danmaku.danmakuTextConversionText
 import me.him188.ani.app.ui.lang.Lang
 import me.him188.ani.app.ui.lang.episode_danmaku_sources_timing
 import me.him188.ani.app.ui.lang.episode_danmaku_timing
 import me.him188.ani.app.ui.lang.subject_episode_danmaku_list_title
 import me.him188.ani.app.ui.lang.subject_episode_danmaku_rematch
+import me.him188.ani.app.ui.lang.subject_episode_danmaku_text_conversion_preview_hint
 import me.him188.ani.app.ui.lang.subject_episode_video_settings_bottom
 import me.him188.ani.app.ui.lang.subject_episode_video_settings_colorful
 import me.him188.ani.app.ui.lang.subject_episode_video_settings_density
@@ -37,6 +46,7 @@ import me.him188.ani.app.ui.lang.subject_episode_video_settings_font_weight
 import me.him188.ani.app.ui.lang.subject_episode_video_settings_opacity
 import me.him188.ani.app.ui.lang.subject_episode_video_settings_speed
 import me.him188.ani.app.ui.lang.subject_episode_video_settings_stroke_width
+import me.him188.ani.app.ui.lang.subject_episode_video_settings_text_conversion
 import me.him188.ani.app.ui.lang.subject_episode_video_settings_top
 import me.him188.ani.app.ui.lang.video_player_off
 import me.him188.ani.app.ui.lang.video_player_on
@@ -44,6 +54,7 @@ import me.him188.ani.danmaku.api.DanmakuServiceId
 import me.him188.ani.danmaku.ui.DanmakuConfig
 import me.him188.ani.danmaku.ui.DanmakuConfigRanges
 import me.him188.ani.danmaku.ui.DanmakuStyle
+import me.him188.ani.danmaku.ui.DanmakuTextConversion
 import me.him188.ani.tv.ui.episode.TvEpisodeIntent
 import me.him188.ani.tv.ui.episode.components.TvPlayerOptionPanelLayout
 import me.him188.ani.tv.ui.episode.components.TvPlayerSectionLabel
@@ -110,6 +121,9 @@ internal fun TvPlayerDanmakuSettingsPanel(
                 TvDanmakuProperty.Area -> stringResource(Lang.subject_episode_video_settings_display_area) to if (config.displayArea == 0f) stringResource(Lang.video_player_off) else "${(config.displayArea * 100).roundToInt()}%"
                 TvDanmakuProperty.Stroke -> stringResource(Lang.subject_episode_video_settings_stroke_width) to "${(config.style.strokeWidth / DanmakuStyle.Default.strokeWidth * 100).roundToInt()}%"
                 TvDanmakuProperty.Weight -> stringResource(Lang.subject_episode_video_settings_font_weight) to config.style.fontWeight.weight.toString()
+                TvDanmakuProperty.TextConversion -> stringResource(Lang.subject_episode_video_settings_text_conversion) to danmakuTextConversionText(
+                    config.textConversion,
+                )
                 TvDanmakuProperty.Top -> stringResource(Lang.subject_episode_video_settings_top) to if (config.enableTop) stringResource(Lang.video_player_on) else stringResource(Lang.video_player_off)
                 TvDanmakuProperty.Bottom -> stringResource(Lang.subject_episode_video_settings_bottom) to if (config.enableBottom) stringResource(Lang.video_player_on) else stringResource(Lang.video_player_off)
                 TvDanmakuProperty.Floating -> stringResource(Lang.subject_episode_video_settings_floating) to if (config.enableFloating) stringResource(Lang.video_player_on) else stringResource(Lang.video_player_off)
@@ -124,14 +138,26 @@ internal fun TvPlayerDanmakuSettingsPanel(
             }
             if (checked == null) {
                 val adjustment = TvDanmakuAdjustment.Parameter(property)
-                TvDanmakuAdjustmentRow(
-                    label, value,
-                    adjusting = danmakuAdjustment == adjustment,
-                    onAdjustingChange = { adjusting -> onDanmakuAdjustmentChange(adjustment.takeIf { adjusting }) },
-                    onStep = { onIntent(TvEpisodeIntent.AdjustDanmaku(property, it)) },
-                    modifier = (if (property == TvDanmakuProperty.FontSize) entryModifier else Modifier)
-                        .testTag("tv-danmaku-property-${property.name}"),
-                )
+                val isAdjusting = danmakuAdjustment == adjustment
+                val adjustmentRow: @Composable () -> Unit = {
+                    TvDanmakuAdjustmentRow(
+                        label, value,
+                        adjusting = isAdjusting,
+                        onAdjustingChange = { entered -> onDanmakuAdjustmentChange(adjustment.takeIf { entered }) },
+                        onStep = { onIntent(TvEpisodeIntent.AdjustDanmaku(property, it)) },
+                        modifier = (if (property == TvDanmakuProperty.FontSize) entryModifier else Modifier)
+                            .testTag("tv-danmaku-property-${property.name}"),
+                    )
+                }
+                if (property == TvDanmakuProperty.TextConversion) {
+                    Column {
+                        adjustmentRow()
+                        // 示例只在调节时展开: 平时不占版面, 也不必为此加载转换词典
+                        if (isAdjusting) DanmakuTextConversionSampleLine(config.textConversion)
+                    }
+                } else {
+                    adjustmentRow()
+                }
             } else {
                 TvOptionRow(
                     label,
@@ -187,5 +213,45 @@ internal fun TvPlayerDanmakuSettingsPanel(
                     .testTag("tv-danmaku-rematch-${origin.serviceId.value}"),
             ) { onMatch(origin) }
         }
+    }
+}
+
+/**
+ * 「弹幕文字」行在调节时展开的示例: 当前目标文字会把弹幕显示成什么样子.
+ *
+ * 只显示结果, 不显示原文 —— 原文按目标而变 (见 [DanmakuTextConversionPreview.sourceSample]),
+ * 步进时显示出来会来回跳, 反倒看不清差别; 并且屏幕上正在滚的弹幕本身就是最真实的预览.
+ * 除「原样」外的四个目标结果两两不同, 左右步进即可比较.
+ *
+ * 五个目标一次算好 (词典首次加载约 65ms), 步进时直接取, 免得每步都闪一下.
+ */
+@Composable
+private fun DanmakuTextConversionSampleLine(target: DanmakuTextConversion) {
+    val colors = LocalTvOptionColors.current
+    val previews by produceState<Map<DanmakuTextConversion, DanmakuTextConversionSample>>(emptyMap()) {
+        value = DanmakuTextConversion.entries.associateWith {
+            DanmakuTextConversionPreview.sample(it)
+        }
+    }
+    val sample = previews[target]
+    Row(
+        Modifier.padding(horizontal = 14.dp, vertical = 2.dp)
+            .testTag("tv-danmaku-text-conversion-sample"),
+        horizontalArrangement = Arrangement.spacedBy(6.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Text(
+            stringResource(Lang.subject_episode_danmaku_text_conversion_preview_hint),
+            style = MaterialTheme.typography.bodySmall,
+            color = colors.muted,
+        )
+        // 词典还没加载好时先显示原文, 加载完换成结果: 高度不变, 列表不会跳
+        val converted = sample?.convertedText
+        Text(
+            converted ?: DanmakuTextConversionPreview.sourceSample(target),
+            style = MaterialTheme.typography.bodySmall,
+            // 原样不改变文字, 与「确实转了」的几项用亮度区分开
+            color = if (sample?.isChanged == true) colors.content else colors.muted,
+        )
     }
 }
