@@ -304,6 +304,11 @@ fun Project.configureKotlinTestSettings() {
                         runtimeOnly(libs.getLibrary("junit5-android-test-runner"))
                     }
                 }
+
+            // 注意: 不要在这里给 commonTest 加 kotlin("test-annotations-common").
+            // 它会让 KGP 给 commonTest/androidDeviceTest 注入裸 kotlin-test 根依赖 (仅 IDE 解析路径),
+            // IDE sync 时与 JUnit 5 capability 冲突, 导致所有模块的 androidDeviceTest 报 "无法解析 kotlin-test".
+            // commonTest 的注解类由 :utils:testing 的 api(kotlin-test-annotations-common) 传递提供.
         }
     }
 }

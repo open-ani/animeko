@@ -56,6 +56,7 @@ Animeko 拥有多平台测试。启用 iOS 目标后，在 macOS 上会运行 11
 
 1. 在 local.properties 增加 `android.min.sdk=30`
    > 因为 SDK 30 才支持函数名写空格 (我们已经有一万个 case 了，没办法回头改每个 case 的名字了)。
+   > 反引号测试名只能使用英文字母、数字、空格、`-` 和 `_` (dex 类名不允许其他字符，D8 会直接拒绝)。
 2. ADB 连接手机或者启动模拟器
 3. `./gradlew connectedCheck`
 

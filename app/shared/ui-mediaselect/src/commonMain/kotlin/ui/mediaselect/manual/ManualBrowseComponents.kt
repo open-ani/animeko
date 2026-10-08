@@ -269,13 +269,15 @@ internal fun ManualChannelChips(
 
 /**
  * 剧集网格. 头部整行: 左「剧集 N 项」, 右「记住选择」+ 开关. 点一项 = [onClick] (直接播放). 调用方给 [modifier] 加 `weight(1f)`.
+ *
+ * @param rememberSelection 开关的值; null 时不显示开关.
  */
 @Composable
 internal fun ManualEpisodeGrid(
     episodes: List<BrowseEpisode>,
     selectedIndex: Int?,
     onClick: (Int) -> Unit,
-    rememberSelection: Boolean,
+    rememberSelection: Boolean?,
     onRememberSelectionChange: (Boolean) -> Unit,
     columns: Int,
     modifier: Modifier = Modifier,
@@ -294,23 +296,25 @@ internal fun ManualEpisodeGrid(
                     stringResource(Lang.media_selector_manual_episodes_count, episodes.size),
                     Modifier.weight(1f),
                 )
-                Row(
-                    Modifier
-                        .toggleable(
-                            value = rememberSelection,
-                            role = Role.Switch,
-                            onValueChange = onRememberSelectionChange,
+                if (rememberSelection != null) {
+                    Row(
+                        Modifier
+                            .toggleable(
+                                value = rememberSelection,
+                                role = Role.Switch,
+                                onValueChange = onRememberSelectionChange,
+                            )
+                            .testTag(ManualBrowsePageTestTags.REMEMBER_SWITCH),
+                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        Text(
+                            stringResource(Lang.media_selector_manual_remember_selection),
+                            style = MaterialTheme.typography.labelLarge,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
                         )
-                        .testTag(ManualBrowsePageTestTags.REMEMBER_SWITCH),
-                    horizontalArrangement = Arrangement.spacedBy(8.dp),
-                    verticalAlignment = Alignment.CenterVertically,
-                ) {
-                    Text(
-                        stringResource(Lang.media_selector_manual_remember_selection),
-                        style = MaterialTheme.typography.labelLarge,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    )
-                    Switch(checked = rememberSelection, onCheckedChange = null)
+                        Switch(checked = rememberSelection, onCheckedChange = null)
+                    }
                 }
             }
         }

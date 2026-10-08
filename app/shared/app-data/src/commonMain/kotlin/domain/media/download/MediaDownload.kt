@@ -111,7 +111,12 @@ class MediaDownload internal constructor(
             val transfer = combine(fileStats, downloadSpeed) { stats, speed -> stats to speed }
                 .sampleWithInitial(1.seconds)
             emitAll(
-                combine(transfer, cache.state, cache.canPlay, queuedOperation) { (stats, speed), state, canPlay, operation ->
+                combine(
+                    transfer,
+                    cache.state,
+                    cache.canPlay,
+                    queuedOperation,
+                ) { (stats, speed), state, canPlay, operation ->
                     DownloadSnapshot(
                         id = id,
                         metadata = metadata,
@@ -155,10 +160,10 @@ class MediaDownload internal constructor(
     }
 
     /**
-     * 只继续 [MediaCacheState.PAUSED] 的下载.
+     * 只继续 [MediaCacheState.PAUSED] 的下载. 这是用户操作, 自动保存的记录由此转为持久下载.
      */
     suspend fun resume() {
-        if (cache.state.first() == MediaCacheState.PAUSED) cache.resume()
+        if (cache.state.first() == MediaCacheState.PAUSED) cache.resumeByUser()
     }
 
     /**

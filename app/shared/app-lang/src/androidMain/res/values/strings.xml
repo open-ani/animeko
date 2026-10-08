@@ -52,19 +52,26 @@
     <string name="settings_tab_danmaku">Server Region</string>
     <string name="settings_tab_proxy">Proxy</string>
     <string name="settings_tab_bt">BitTorrent</string>
-    <string name="settings_pikpak_description">Resolve BitTorrent magnets through PikPak\'s cloud offline servers for faster playback. Premium subscription is required.\nThe anitorrent settings above do not apply to PikPak.</string>
+    <string name="settings_pikpak_description">Resolve BitTorrent magnets through PikPak’s cloud offline servers for faster playback. Premium subscription is required.\nThe anitorrent settings above do not apply to PikPak.</string>
     <string name="settings_pikpak_enabled">Enable PikPak</string>
     <string name="settings_pikpak_username">Username</string>
     <string name="settings_pikpak_username_placeholder">Email or phone</string>
     <string name="settings_pikpak_password">Password</string>
     <string name="settings_pikpak_password_description">Set a password in your PikPak account settings if you signed up via Google.</string>
     <string name="settings_pikpak_password_hidden">••••••••</string>
-    <string name="settings_pikpak_queue_title">Cache slots</string>
-    <string name="settings_pikpak_queue_description">How many recent sources to keep in PikPak\'s working folder before evicting the oldest. Higher makes re-plays instant at the cost of drive space. Drag past 13 for no eviction at all.</string>
-    <string name="settings_pikpak_queue_unlimited">Unlimited</string>
-    <string name="settings_pikpak_download_concurrency_title">Download concurrency</string>
-    <string name="settings_pikpak_download_concurrency_description">Number of parallel connections used when caching files from PikPak. Higher values may improve download speed but increase the chance of temporary server errors.</string>
-    <string name="settings_pikpak_test_connection">Test connection</string>
+    <string name="settings_pikpak_drive_usage_title">Drive status</string>
+    <string name="settings_pikpak_drive_usage_value">%1$s free</string>
+    <string name="settings_pikpak_drive_usage_idle">Tap to test</string>
+    <string name="settings_pikpak_drive_usage_signed_out">Not signed in</string>
+    <string name="settings_pikpak_drive_usage_failed">Connection failed: %1$s</string>
+    <string name="settings_pikpak_legacy_title">Clean up the old cache on your drive?</string>
+    <string name="settings_pikpak_legacy_message">Animeko-Playing on your PikPak drive holds %1$d item(s) from the previous version. The new resolver streams on demand and deletes on close: it wastes no drive space and resolves faster.</string>
+    <string name="settings_pikpak_legacy_delete">Delete permanently</string>
+    <string name="settings_pikpak_legacy_keep">Keep</string>
+    <string name="settings_pikpak_legacy_failed">Delete failed: %1$s</string>
+    <string name="pikpak_not_enough_space_title">Not enough PikPak space</string>
+    <string name="pikpak_not_enough_space_message">Free up space in your PikPak drive.</string>
+    <string name="pikpak_not_enough_space_ok">OK</string>
     <string name="settings_pikpak_recommend_title">Align media selector?</string>
     <string name="settings_pikpak_recommend_message">PikPak only handles BitTorrent sources. Set "Preferred source type" to BT so the default selector routes through PikPak.</string>
     <string name="settings_pikpak_recommend_apply">Apply</string>
@@ -242,10 +249,15 @@
     <string name="settings_mediasource_selector_config_request_interval">Search request interval (ms)</string>
     <string name="settings_mediasource_selector_config_request_interval_description">Controls how long to wait after sending each request before sending the next one</string>
     <string name="settings_mediasource_selector_config_search_cache_ttl">Search cache duration (minutes)</string>
-    <string name="settings_mediasource_selector_config_search_cache_ttl_description">Reuse search results when switching episodes within this duration. The effective value is the smaller of this and the user\'s setting. 0 disables caching</string>
-    <string name="settings_mediasource_selector_config_filter_settings">Filter settings</string>
-    <string name="settings_mediasource_selector_config_filter_by_subject_name">Filter by item name</string>
-    <string name="settings_mediasource_selector_config_filter_by_subject_name_description">Require the resource title to contain the item name. Useful when the source may return irrelevant results. This only works in versions before 4.4.0 and has no effect in other versions</string>
+    <string name="settings_mediasource_selector_config_search_cache_ttl_description">Reuse search results when switching episodes within this duration. The effective value is the smaller of this and the user’s setting. 0 disables caching</string>
+    <string name="settings_mediasource_selector_auto_match">Auto match (optional)</string>
+    <string name="settings_mediasource_selector_auto_match_description">How this source finds the episode being watched on top of the lists above. Everything here is optional; the defaults work for most sites</string>
+    <string name="settings_mediasource_selector_auto_match_enabled">Participate in auto match</string>
+    <string name="settings_mediasource_selector_auto_match_enabled_description">When off, this source is only used for browsing and manual selection. It does not search during playback</string>
+    <string name="settings_mediasource_selector_tier">Tier</string>
+    <string name="settings_mediasource_selector_tier_description">Lower is preferred. Tier 0 is selected as soon as it finds a result; higher tiers wait for other sources first</string>
+    <string name="settings_mediasource_selector_prefer_shorter_name">Prefer the shortest title</string>
+    <string name="settings_mediasource_selector_prefer_shorter_name_description">Among matching items, prefer the one with the shortest title, so that season 1 does not match season 2</string>
     <string name="settings_mediasource_selector_config_filter_by_episode_sort">Filter by episode number</string>
     <string name="settings_mediasource_selector_config_filter_by_episode_sort_description">Require the resource title to contain the episode number. Useful when the source may return irrelevant results. Usually recommended</string>
     <string name="settings_mediasource_selector_config_default_resolution">Mark resolution</string>
@@ -282,15 +294,15 @@
     <string name="settings_mediasource_selector_episode_lists_label">Extract a list of episode panels from the page</string>
     <string name="settings_mediasource_selector_episode_lists_supporting">CSS selector expression. Expected to return some &lt;div&gt; elements, each corresponding to an episode panel. The panel typically contains 1–12 episode buttons</string>
     <string name="settings_mediasource_selector_episodes_from_list_label">Extract the episode list from each panel</string>
-    <string name="settings_mediasource_selector_episodes_from_list_supporting">CSS selector expression. Expected to return some elements, each of which will have its text used as the episode name.\nIf the element is &lt;a&gt;, its href will be read as the episode link by default. Alternatively, you can configure the following settings to extract the link in a different way.\nIf the element is not &lt;a&gt;, i.e. the name and link are not in the same element, you\'ll need to configure the following settings to extract the link.</string>
+    <string name="settings_mediasource_selector_episodes_from_list_supporting">CSS selector expression. Expected to return some elements, each of which will have its text used as the episode name.\nIf the element is &lt;a&gt;, its href will be read as the episode link by default. Alternatively, you can configure the following settings to extract the link in a different way.\nIf the element is not &lt;a&gt;, i.e. the name and link are not in the same element, you’ll need to configure the following settings to extract the link.</string>
     <string name="settings_mediasource_selector_episode_links_from_list_label">Extract a list of episode links from the panel (optional)</string>
-    <string name="settings_mediasource_selector_episode_links_from_list_supporting">An optional CSS selector expression. If the previously extracted episode elements are not &lt;a&gt;, you\'ll need to configure this to extract the links.</string>
+    <string name="settings_mediasource_selector_episode_links_from_list_supporting">An optional CSS selector expression. If the previously extracted episode elements are not &lt;a&gt;, you’ll need to configure this to extract the links.</string>
     <string name="settings_mediasource_selector_match_episode_sort_from_name_label">Match the episode number from the episode name</string>
     <string name="settings_mediasource_selector_match_episode_sort_from_name_supporting">A regular expression search. A group named ep is expected, ideally numeric.</string>
     <string name="settings_mediasource_selector_episodes_label">Extract the episode list</string>
-    <string name="settings_mediasource_selector_episodes_supporting">CSS selector expression. Expected to return some elements, each of which will have its text used as the episode name.\nIf the element is &lt;a&gt;, its href will be read as the episode link by default. Alternatively, you can configure the following settings to extract the link in a different way.\nIf the element is not &lt;a&gt;, you\'ll need to configure the following settings to extract the link.</string>
+    <string name="settings_mediasource_selector_episodes_supporting">CSS selector expression. Expected to return some elements, each of which will have its text used as the episode name.\nIf the element is &lt;a&gt;, its href will be read as the episode link by default. Alternatively, you can configure the following settings to extract the link in a different way.\nIf the element is not &lt;a&gt;, you’ll need to configure the following settings to extract the link.</string>
     <string name="settings_mediasource_selector_episode_links_label">Extract the episode links (optional)</string>
-    <string name="settings_mediasource_selector_episode_links_supporting">An optional CSS selector expression. If the previously extracted episode elements are not &lt;a&gt;, you\'ll need to configure this to extract the link.</string>
+    <string name="settings_mediasource_selector_episode_links_supporting">An optional CSS selector expression. If the previously extracted episode elements are not &lt;a&gt;, you’ll need to configure this to extract the link.</string>
     <string name="settings_mediasource_selector_unsupported_format">This version does not support the configuration type: %1$s\n\nIt might be due to importing a config edited in a newer version.\nUpdate Ani or switch to another config type.</string>
     <string name="settings_mediasource_test_keyword">Keyword</string>
     <string name="settings_mediasource_test_random">Random</string>
@@ -394,8 +406,8 @@
     <string name="settings_player_op_ed_skip_duration">OP/ED skip duration</string>
     <string name="settings_player_op_ed_skip_duration_seconds">%1$d seconds</string>
     <string name="settings_player_auto_switch_media_on_error">Automatically switch resources on playback failure</string>
-    <string name="settings_player_experimental_hls_segment_filter">Filter inserted ads (experimental)</string>
-    <string name="settings_player_experimental_hls_segment_filter_description">Attempts to filter inserted ads from some online sources. Only works when ads are inserted as separate segments; incorrect detection may skip normal content.</string>
+    <string name="settings_player_hls_ad_filter">Filter inserted ads</string>
+    <string name="settings_player_hls_ad_filter_description">Automatically skips ads inserted into online videos. Some ads may not be detected; turn this off if playback fails</string>
     <string name="settings_player_long_press_fast_forward_speed">Long-press playback speed</string>
     <string name="settings_player_long_press_fast_forward_speed_description">Playback speed used while long-pressing</string>
     <string name="settings_player_playback_speed_range">Playback speed range</string>
@@ -411,7 +423,7 @@
     <string name="settings_player_mpv_options_placeholder">hwdec=auto\nprofile=fast</string>
     <string name="settings_storage_title">Storage settings</string>
     <string name="settings_storage_bt_cache_location">BT video cache location</string>
-    <string name="settings_storage_bt_cache_location_description">Changing this won\'t automatically migrate data nor delete old data.\nIf you want to remove old data, please click &quot;Open BT cache directory&quot; before making changes and remove all files in that directory.\n\nRestart required to take effect.</string>
+    <string name="settings_storage_bt_cache_location_description">Changing this won’t automatically migrate data nor delete old data.\nIf you want to remove old data, please click &quot;Open BT cache directory&quot; before making changes and remove all files in that directory.\n\nRestart required to take effect.</string>
     <string name="settings_storage_choose_directory">Choose video save directory</string>
     <string name="settings_storage_open_directory_chooser">Open directory chooser</string>
     <string name="settings_storage_open_bt_cache_directory">Open BT cache directory</string>
@@ -428,11 +440,11 @@
     <string name="settings_storage_backup_op_restore_error">Clipboard content is invalid or not a settings backup</string>
     <string name="settings_storage_backup_op_restore_succees">Settings imported successfully</string>
     <string name="settings_storage_danmaku_cache_strategy_title">Danmaku cache strategy</string>
-    <string name="settings_storage_danmaku_cache_strategy_description_do_not_cache">Don\'t cache danmakus, fetch from network on every play.</string>
+    <string name="settings_storage_danmaku_cache_strategy_description_do_not_cache">Don’t cache danmakus, fetch from network on every play.</string>
     <string name="settings_storage_danmaku_cache_strategy_description_cache_on_collection_doing_media_play">Cache danmakus on playing episodes which subject collection state is watching. Delete danmaku caches if subject collection state changed to others.</string>
     <string name="settings_storage_danmaku_cache_strategy_description_cache_on_media_cache">Cache danmakus on caching the corresponding media to local. Delete danmaku caches if the media cache is deleted.</string>
     <string name="settings_media_source_list">Data source list (%1$d)</string>
-    <string name="settings_media_source_list_description">Disabled data sources won\'t be automatically queried during playback, but can be manually enabled if needed. Note that the sorting will prioritize the server order, so manual sorting within the same data source subscription may be ineffective.</string>
+    <string name="settings_media_source_list_description">Disabled data sources won’t be automatically queried during playback, but can be manually enabled if needed. Note that the sorting will prioritize the server order, so manual sorting within the same data source subscription may be ineffective.</string>
     <string name="settings_media_source_cancel_sort">Cancel sorting</string>
     <string name="settings_media_source_add">Add data source</string>
     <string name="settings_media_source_save_sort">Save sorting</string>
@@ -533,8 +545,6 @@
     <string name="settings_mediasource_rss_search_link_supporting_text">Replacement rules:\n{keyword} is replaced with the item (anime) name\n{page} is replaced with the page number. Ignore if no pagination is needed.</string>
     <string name="settings_mediasource_rss_filter_by_episode">Use episode number filtering</string>
     <string name="settings_mediasource_rss_filter_by_episode_description">Requires the resource title to contain the episode number. Useful if irrelevant content might be found from the data source.</string>
-    <string name="settings_mediasource_rss_filter_by_subject">Use item name filtering</string>
-    <string name="settings_mediasource_rss_filter_by_subject_description">Requires the resource title to contain the item name. Useful if irrelevant content might be found.\nThis feature only works for versions before 4.4.0 and is invalid for other versions.</string>
     <string name="settings_mediasource_rss_auto_save_hint">Hint: changes are saved automatically</string>
     <string name="settings_mediasource_rss_match_tag_match">Match</string>
     <string name="settings_mediasource_rss_match_tag_not_match">No match</string>
@@ -597,6 +607,10 @@
     <string name="exploration_settings">Settings</string>
     <string name="exploration_search">Search</string>
     <string name="exploration_trending">Trending</string>
+    <string name="exploration_trending_more">More</string>
+    <string name="exploration_trending_ranking">Trending Ranking</string>
+    <string name="exploration_trending_ranking_heat">%1$s watching in the last 30 days</string>
+    <string name="exploration_trending_ranking_empty">No ranking yet</string>
     <string name="exploration_schedule">Anime Schedule</string>
     <string name="exploration_schedule_view_details">View details</string>
     <string name="exploration_schedule_episode">Ep. %1$s</string>
@@ -662,7 +676,7 @@
     <string name="settings_danmaku_cancel">Cancel</string>
     <string name="settings_danmaku_regex_expression">Regular Expression</string>
     <string name="settings_danmaku_regex_invalid">Invalid regular expression syntax</string>
-    <string name="settings_danmaku_regex_description">Enter a regular expression for filtering, e.g.: \'.*sign.*\' will filter all danmaku containing the word \'sign\'.</string>
+    <string name="settings_danmaku_regex_description">Enter a regular expression for filtering, e.g.: “.*sign.*” will filter all danmaku containing the word “sign”.</string>
     <string name="settings_danmaku_export_to_clipboard">Copy rules to clipboard</string>
     <string name="settings_danmaku_import_from_clipboard">Import rules from clipboard</string>
     <string name="settings_danmaku_import_title">Import danmaku regex filter rules</string>
@@ -709,7 +723,7 @@
     <string name="settings_media_torrent_title">anitorrent</string>
     <string name="settings_media_torrent_download_rate_limit">Download Speed Limit</string>
     <string name="settings_media_torrent_sharing_settings">Sharing Settings</string>
-    <string name="settings_media_torrent_sharing_description">The BT network relies on sharing between users. The videos you watch come from other users\' sharing. Allow uploading to help maintain a healthy BT sharing environment.</string>
+    <string name="settings_media_torrent_sharing_description">The BT network relies on sharing between users. The videos you watch come from other users’ sharing. Allow uploading to help maintain a healthy BT sharing environment.</string>
     <string name="settings_media_torrent_upload_rate_limit">Upload Speed Limit</string>
     <string name="settings_media_torrent_share_ratio_limit">Share Ratio Limit</string>
     <string name="settings_media_torrent_share_ratio_description">Share ratio = Upload amount / Download amount. Greater than 1 means upload amount is greater than download amount. After reaching the share ratio limit, uploading will stop.</string>
@@ -725,7 +739,7 @@
 
     <!-- AutoCacheGroup -->
     <string name="settings_media_auto_cache_title">Auto Cache</string>
-    <string name="settings_media_auto_cache_description">Automatically cache unwatched episodes in the \"Watching\" category</string>
+    <string name="settings_media_auto_cache_description">Automatically cache unwatched episodes in the “Watching” category</string>
     <string name="settings_media_auto_cache_enable">Enable auto cache</string>
     <string name="settings_media_auto_cache_max_count">Maximum auto cache episodes</string>
     <string name="settings_media_auto_cache_max_count_description">If the number of manually cached episodes exceeds this value, auto cache will not be performed</string>
@@ -775,7 +789,7 @@
     <string name="oauth_bangumi_help_website_blocked">The browser says the website is blocked or inaccessible</string>
     <string name="oauth_bangumi_help_register_choose">Which option should I choose when registering?</string>
     <string name="oauth_bangumi_help_wrong_captcha">The site keeps saying the captcha is wrong during registration or sign-in</string>
-    <string name="oauth_bangumi_help_cant_receive_email">I can\'t receive the email verification code</string>
+    <string name="oauth_bangumi_help_cant_receive_email">I can’t receive the email verification code</string>
     <string name="oauth_bangumi_help_activation_failed">Account activation keeps failing during registration</string>
     <string name="oauth_bangumi_help_others">Other issues</string>
     <string name="oauth_bangumi_help_bangumi_desc_content">Bangumi is a Chinese ACGN community website for sharing and discussion.\nBangumi provides anime indexes, collections, and watch progress tracking. Ani can sync your watch history to Bangumi.</string>
@@ -784,12 +798,13 @@
     <string name="oauth_bangumi_help_wrong_captcha_content">If there is no captcha input box, try clicking the password box a few more times. If you entered the captcha incorrectly, refresh the page before signing in again.</string>
     <string name="oauth_bangumi_help_cant_receive_email_content">Check your spam folder and try registering with a common email provider such as QQ Mail, NetEase Mail, or Outlook.</string>
     <string name="oauth_bangumi_help_activation_failed_content">Delete the last character of the activation code, then type that character manually, or try another browser.</string>
-    <string name="oauth_bangumi_help_others_content">Can\'t solve your issue? You can also get help through the following channels.</string>
+    <string name="oauth_bangumi_help_others_content">Can’t solve your issue? You can also get help through the following channels.</string>
 
     <!-- Video Player -->
     <string name="video_player_aspect_fit">Fit</string>
     <string name="video_player_aspect_stretch">Stretch</string>
     <string name="video_player_aspect_crop">Crop</string>
+    <string name="video_player_aspect_ratio">Aspect ratio</string>
     <string name="video_player_auto">Auto</string>
     <string name="video_player_audio_track">Audio</string>
     <string name="video_player_off">Off</string>
@@ -836,7 +851,7 @@
     <string name="video_player_stats_dropped_video_frames">Dropped %1$s</string>
     <string name="video_player_stats_dropped_audio_buffers">Audio lost %1$s</string>
     <string name="video_player_danmaku_placeholder_1">Send a danmaku~</string>
-    <string name="video_player_danmaku_placeholder_2">Careful, I\'m about to launch a danmaku!</string>
+    <string name="video_player_danmaku_placeholder_2">Careful, I’m about to launch a danmaku!</string>
     <string name="video_player_danmaku_placeholder_3">Every danmaku hides a secret</string>
     <string name="video_player_danmaku_placeholder_4">Summon the danmaku spirit!</string>
     <string name="video_player_danmaku_placeholder_5">Only you understand this moment best</string>
@@ -846,7 +861,7 @@
     <string name="video_player_danmaku_placeholder_9">In the weave of light and shadow, your words are the only truth</string>
     <string name="video_player_danmaku_placeholder_10">Interesting souls are one in a million</string>
     <string name="video_player_danmaku_placeholder_11">Say something</string>
-    <string name="video_player_danmaku_placeholder_12">We\'re always collecting fun danmaku slogans</string>
+    <string name="video_player_danmaku_placeholder_12">We’re always collecting fun danmaku slogans</string>
     <string name="video_player_danmaku_placeholder_13">Ad space for rent</string>
     <string name="video_player_danmaku_placeholder_14">🤔</string>
     <string name="video_player_danmaku_placeholder_15">Where dreams begin</string>
@@ -854,7 +869,7 @@
     <string name="video_player_danmaku_placeholder_17">Send a danmaku and liven things up!</string>
     <string name="video_player_danmaku_placeholder_18">How about a danmaku?</string>
     <string name="video_player_danmaku_placeholder_19">Send a friendly danmaku!</string>
-    <string name="video_player_danmaku_placeholder_20">Can\'t help wanting to send a danmaku?</string>
+    <string name="video_player_danmaku_placeholder_20">Can’t help wanting to send a danmaku?</string>
 
     <!-- Subject Collection -->
     <string name="subject_collection_wish">Want to Watch</string>
@@ -1025,7 +1040,7 @@
     <string name="settings_account_popup_cancel">Cancel</string>
     <string name="settings_account_bangumi_manual_full_sync">Manual Full Sync</string>
     <string name="settings_account_bangumi_redownload_all_data">Re-download All Bangumi Data</string>
-    <string name="settings_account_bangumi_redownload_all_data_description">Download Bangumi collection data into Animeko\'s collection service. You usually don\'t need to do this, since Animeko syncs automatically. Only run it if you notice data inconsistencies. This operation may take several minutes, and other features will be unavailable during sync. Note: full sync can only be performed once every 10 minutes.</string>
+    <string name="settings_account_bangumi_redownload_all_data_description">Download Bangumi collection data into Animeko’s collection service. You usually don’t need to do this, since Animeko syncs automatically. Only run it if you notice data inconsistencies. This operation may take several minutes, and other features will be unavailable during sync. Note: full sync can only be performed once every 10 minutes.</string>
     <string name="settings_account_bangumi_sync_queue">Sync Queue</string>
     <string name="settings_account_bangumi_sync_title">Bangumi Sync</string>
     <string name="settings_account_bangumi_conflict_handling">Conflict Resolution</string>
@@ -1103,6 +1118,14 @@
     <string name="settings_account_profile_unbind_email_confirmation">Unbind email %1$s? You will no longer be able to sign in to this account with it. You can bind an email again later.</string>
     <string name="settings_account_profile_unbind_email_last_login_method">Email is the only way to sign in to this account, so it cannot be unbound. Bind Bangumi or another third-party account first.</string>
     <string name="settings_account_profile_ok">OK</string>
+    <string name="settings_account_profile_account_management">Account management</string>
+    <string name="settings_account_profile_delete_account">Delete account</string>
+    <string name="settings_account_profile_delete_account_description">Permanently delete this account and all of its data</string>
+    <string name="settings_account_profile_delete_account_warning">Deleting your account permanently deletes all of its data, including collections, watch history, comments and danmaku. This cannot be undone, and the data cannot be recovered.</string>
+    <string name="settings_account_profile_delete_account_input_label">Type %1$s to confirm</string>
+    <string name="settings_account_profile_delete_account_confirm">Delete</string>
+    <string name="settings_account_profile_deleting_account">Deleting…</string>
+    <string name="settings_account_profile_account_deleted">Account deleted</string>
     <string name="settings_account_github_title">GitHub Account</string>
     <string name="settings_account_github_bound">Linked GitHub account</string>
     <string name="settings_account_developer_benefit">Certified developers get perks such as no ads</string>
@@ -1192,7 +1215,7 @@
     <string name="subject_details_rate">Rate</string>
     <string name="subject_details_summary">Description</string>
     <string name="foundation_load_error_network">Network error</string>
-    <string name="foundation_load_error_rate_limited">You\'re doing that too fast. Please try again</string>
+    <string name="foundation_load_error_rate_limited">You’re doing that too fast. Please try again</string>
     <string name="foundation_load_error_service_unavailable">Service unavailable</string>
     <string name="foundation_load_error_no_results">No results</string>
     <string name="foundation_load_error_requires_login">This feature requires sign-in</string>
@@ -1250,7 +1273,7 @@
     <string name="media_selector_search_hint">Keyword</string>
     <string name="media_selector_retry">Retry</string>
     <string name="media_selector_load_failed">Failed to load</string>
-    <string name="media_selector_auto_rescue">Can\'t find it? Search manually</string>
+    <string name="media_selector_auto_rescue">Can’t find it? Search manually</string>
     <string name="media_selector_manual_no_sources">No browsable sources</string>
     <string name="media_selector_manual_captcha_unsupported">Web verification required, unsupported on this platform</string>
     <string name="media_selector_manual_result_count">%1$d results</string>
@@ -1377,9 +1400,9 @@
     <string name="settings_app_danmaku_refresh_rate">Danmaku refresh rate</string>
     <string name="settings_player_exoplayer_preinit_effect_graph">Preload video enhancement shaders</string>
     <string name="settings_player_exoplayer_preinit_effect_graph_desc">When enabled, video enhancement shaders are loaded even if video enhancement is disabled by default, allowing changes to video enhancement options to take effect immediately. Otherwise, you may need to restart playback for them to take effect.\nDisable this option if the screen turns black or system features (such as motion compensation) stop working.</string>
-    <string name="settings_log_share_today_log_file">Share today\'s log file</string>
+    <string name="settings_log_share_today_log_file">Share today’s log file</string>
     <string name="settings_log_share_file">Share log file</string>
-    <string name="settings_log_copy_today_log_content">Copy today\'s log content (large)</string>
+    <string name="settings_log_copy_today_log_content">Copy today’s log content (large)</string>
     <string name="settings_log_copy_too_large">Log too large to copy. Use “Share today’s log file”.</string>
     <string name="settings_log_copy_failed">Copy failed. Use “Share today’s log file”.</string>
     <string name="settings_log_file_not_found">Log file not found</string>
@@ -1466,6 +1489,7 @@
     <string name="foundation_paginated_list_select_group">Select group</string>
     <string name="foundation_paginated_list_next_group">Next group</string>
     <string name="rating_summary_multiline">#%1$d\n%2$d ratings</string>
+    <string name="rating_summary_total">%1$d ratings</string>
     <string name="subject_episode_statistics_copy">Copy</string>
     <string name="subject_episode_statistics_error_details">Error details</string>
     <string name="subject_episode_statistics_error">Error</string>
@@ -1488,6 +1512,7 @@
     <string name="subject_episode_video_loading_resolving_source">Resolving resource link\nThis usually finishes in a few seconds. Otherwise, try switching resources</string>
     <string name="subject_episode_video_loading_decoding_data">Resource resolved. Preparing video</string>
     <string name="subject_episode_video_loading_decoding_bt">Resolving magnet link or querying metadata\nThis usually finishes in a few seconds. Otherwise, try switching resources or cache first</string>
+    <string name="subject_episode_video_loading_decoding_cloud">Preparing the cloud file\nThis usually finishes in a few seconds</string>
     <string name="subject_episode_video_loading_buffering">Buffering</string>
     <string name="subject_episode_video_loading_buffering_bt_too_long">Initial BT buffering may take longer. Please wait 30 seconds</string>
     <string name="subject_episode_video_loading_buffering_bt_no_speed_try_switch">If speed stays at zero, try switching resources</string>
@@ -1531,7 +1556,7 @@
     <string name="subject_episode_regex_filter_placeholder">Enter a regex keyword to filter danmaku</string>
     <string name="subject_episode_regex_filter_label">Regular expression</string>
     <string name="subject_episode_regex_filter_invalid">The regular expression is invalid.</string>
-    <string name="subject_episode_regex_filter_example">Example: \'sign\' filters danmaku containing \'sign\'.</string>
+    <string name="subject_episode_regex_filter_example">Example: “sign” filters danmaku containing “sign”.</string>
     <string name="subject_episode_regex_filter_add">Add</string>
     <string name="subject_episode_regex_filter_delete">Delete</string>
     <string name="subject_episode_regex_filter_management">Manage regex danmaku filters</string>
@@ -1647,9 +1672,9 @@
     <string name="watch_together_session_replaced">This room was opened on another device.</string>
     <string name="watch_together_rejoined">The previous room expired, so it was created again.</string>
     <string name="watch_together_rejoin_failed">Could not restore the previous Watch Together room.</string>
-    <string name="watch_together_navigation_blocked">Following the host — you can\'t open another episode.</string>
+    <string name="watch_together_navigation_blocked">Following the host — you can’t open another episode.</string>
     <string name="watch_together_stop_following">Stop following</string>
-    <string name="watch_together_resynced">Synced back to the host\'s position</string>
+    <string name="watch_together_resynced">Synced back to the host’s position</string>
     <string name="watch_together_join_subtitle">Join a room and watch together with friends</string>
     <string name="watch_together_members_label">Members (%1$d)</string>
     <string name="watch_together_chip_following">Following</string>
@@ -1747,6 +1772,17 @@
     <string name="qr_login_close">Close</string>
     <string name="subject_episode_danmaku_sources_title">Sources and timing</string>
     <string name="subject_episode_danmaku_sources_empty">No danmaku sources available</string>
+    <string name="video_player_screenshot">Screenshot</string>
+    <string name="video_player_screenshot_share">Share</string>
+    <string name="video_player_screenshot_copy">Copy</string>
+    <string name="video_player_screenshot_copy_failed">Could not copy the screenshot</string>
+    <string name="video_player_screenshot_copied">Screenshot copied to clipboard</string>
+    <string name="video_player_screenshot_share_failed">No app can share this screenshot</string>
+    <string name="video_player_screenshot_failed_permission">Screenshot not saved: permission to write to the photo library was denied</string>
+    <string name="video_player_screenshot_failed_unsupported">This player does not support screenshots</string>
+    <string name="video_player_screenshot_failed_no_frame">Screenshot failed: no video frame to capture</string>
+    <string name="video_player_screenshot_failed_save">Screenshot could not be saved</string>
+    <string name="video_player_screenshot_failed_save_reason">Screenshot could not be saved: %1$s</string>
 </resources>
 
 <!--@formatter:on-->

@@ -13,6 +13,7 @@ package me.him188.ani.app.ui.settings.mediasource.selector.edit
 
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.animateContentSize
+import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.focusable
@@ -26,9 +27,13 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.rounded.ExpandMore
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
+import androidx.compose.material3.Icon
 import androidx.compose.material3.ListItem
+import androidx.compose.material3.ListItemColors
 import androidx.compose.material3.ListItemDefaults
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
@@ -47,12 +52,17 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.rotate
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Shape
+import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.semantics.stateDescription
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
+import me.him188.ani.app.domain.mediasource.web.SelectorAutoMatchConfig
 import me.him188.ani.app.domain.mediasource.web.SelectorMediaSourceArguments
 import me.him188.ani.app.domain.mediasource.web.format.SelectorChannelFormatIndexGrouped
 import me.him188.ani.app.domain.mediasource.web.format.SelectorChannelFormatNoChannel
@@ -62,6 +72,7 @@ import me.him188.ani.app.domain.mediasource.web.format.SelectorSubjectFormatA
 import me.him188.ani.app.domain.mediasource.web.format.SelectorSubjectFormatIndexed
 import me.him188.ani.app.domain.mediasource.web.format.SelectorSubjectFormatJsonPathIndexed
 import me.him188.ani.app.ui.foundation.ProvideCompositionLocalsForPreview
+import me.him188.ani.app.ui.foundation.animation.AniAnimatedVisibility
 import me.him188.ani.app.ui.foundation.animation.LocalAniMotionScheme
 import me.him188.ani.app.ui.foundation.animation.StandardEasing
 import me.him188.ani.app.ui.foundation.effects.moveFocusOnEnter
@@ -70,6 +81,10 @@ import me.him188.ani.app.ui.foundation.text.ProvideTextStyleContentColor
 import me.him188.ani.app.ui.foundation.theme.EasingDurations
 import me.him188.ani.app.ui.lang.Lang
 import me.him188.ani.app.ui.lang.settings_mediasource_rss_auto_save_hint
+import me.him188.ani.app.ui.lang.settings_mediasource_selector_auto_match
+import me.him188.ani.app.ui.lang.settings_mediasource_selector_auto_match_description
+import me.him188.ani.app.ui.lang.settings_mediasource_selector_auto_match_enabled
+import me.him188.ani.app.ui.lang.settings_mediasource_selector_auto_match_enabled_description
 import me.him188.ani.app.ui.lang.settings_mediasource_selector_config_base_url
 import me.him188.ani.app.ui.lang.settings_mediasource_selector_config_base_url_supporting
 import me.him188.ani.app.ui.lang.settings_mediasource_selector_config_channel_format_grouped
@@ -84,9 +99,6 @@ import me.him188.ani.app.ui.lang.settings_mediasource_selector_config_distinguis
 import me.him188.ani.app.ui.lang.settings_mediasource_selector_config_distinguish_subject_name_description
 import me.him188.ani.app.ui.lang.settings_mediasource_selector_config_filter_by_episode_sort
 import me.him188.ani.app.ui.lang.settings_mediasource_selector_config_filter_by_episode_sort_description
-import me.him188.ani.app.ui.lang.settings_mediasource_selector_config_filter_by_subject_name
-import me.him188.ani.app.ui.lang.settings_mediasource_selector_config_filter_by_subject_name_description
-import me.him188.ani.app.ui.lang.settings_mediasource_selector_config_filter_settings
 import me.him188.ani.app.ui.lang.settings_mediasource_selector_config_icon_url
 import me.him188.ani.app.ui.lang.settings_mediasource_selector_config_name
 import me.him188.ani.app.ui.lang.settings_mediasource_selector_config_name_placeholder
@@ -109,8 +121,13 @@ import me.him188.ani.app.ui.lang.settings_mediasource_selector_config_subject_fo
 import me.him188.ani.app.ui.lang.settings_mediasource_selector_config_subject_format_single_tag
 import me.him188.ani.app.ui.lang.settings_mediasource_selector_config_user_agent_description
 import me.him188.ani.app.ui.lang.settings_mediasource_selector_config_video_playback
+import me.him188.ani.app.ui.lang.settings_mediasource_selector_prefer_shorter_name
+import me.him188.ani.app.ui.lang.settings_mediasource_selector_prefer_shorter_name_description
+import me.him188.ani.app.ui.lang.settings_mediasource_selector_tier
+import me.him188.ani.app.ui.lang.settings_mediasource_selector_tier_description
 import me.him188.ani.app.ui.settings.mediasource.rss.createTestSaveableStorage
 import me.him188.ani.app.ui.settings.mediasource.rss.edit.MediaSourceHeadline
+import me.him188.ani.datasources.api.source.MediaSourceTier
 import me.him188.ani.datasources.api.topic.Resolution
 import me.him188.ani.datasources.api.topic.SubtitleLanguage
 import me.him188.ani.utils.platform.annotations.TestOnly
@@ -167,14 +184,10 @@ internal fun SelectorConfigurationPane(
                 )
             }
 
-            Row(Modifier.padding(top = verticalSpacing, bottom = 12.dp)) {
-                ProvideTextStyleContentColor(
-                    MaterialTheme.typography.titleMedium,
-                    MaterialTheme.colorScheme.primary,
-                ) {
-                    Text(SelectorConfigurationDefaults.STEP_NAME_1)
-                }
-            }
+            // 列表规则: 怎样把站点上的条目、线路、剧集列出来, 以及怎样从播放页提取视频.
+            // 只填这一部分, 数据源就可以浏览和手动选集.
+
+            SectionTitle(SelectorConfigurationDefaults.STEP_NAME_1, Modifier.padding(top = verticalSpacing, bottom = 12.dp))
 
             Column {
                 OutlinedTextField(
@@ -214,80 +227,6 @@ internal fun SelectorConfigurationPane(
                     shape = textFieldShape,
                     enabled = state.enableEdit,
                 )
-                ListItem(
-                    headlineContent = { Text(stringResource(Lang.settings_mediasource_selector_config_search_first_word)) },
-                    Modifier
-                        .padding(top = (verticalSpacing - 8.dp).coerceAtLeast(0.dp))
-                        .clickable(enabled = state.enableEdit) {
-                            state.searchUseOnlyFirstWord = !state.searchUseOnlyFirstWord
-                        },
-                    supportingContent = {
-                        Text(stringResource(Lang.settings_mediasource_selector_config_search_first_word_description))
-                    },
-                    trailingContent = {
-                        Switch(
-                            state.searchUseOnlyFirstWord, { state.searchUseOnlyFirstWord = it },
-                            enabled = state.enableEdit,
-                        )
-                    },
-                    colors = listItemColors,
-                )
-                ListItem(
-                    headlineContent = { Text(stringResource(Lang.settings_mediasource_selector_config_search_remove_special)) },
-                    Modifier
-                        .padding(top = (verticalSpacing - 8.dp).coerceAtLeast(0.dp))
-                        .clickable(enabled = state.enableEdit) {
-                            state.searchRemoveSpecial = !state.searchRemoveSpecial
-                        },
-                    supportingContent = {
-                        Text(stringResource(Lang.settings_mediasource_selector_config_search_remove_special_description))
-                    },
-                    trailingContent = {
-                        Switch(
-                            state.searchRemoveSpecial, { state.searchRemoveSpecial = it },
-                            enabled = state.enableEdit,
-                        )
-                    },
-                    colors = listItemColors,
-                )
-                ListItem(
-                    headlineContent = { Text("优先选择最短标题") },
-                    Modifier
-                        .padding(top = (verticalSpacing - 8.dp).coerceAtLeast(0.dp))
-                        .clickable(enabled = state.enableEdit) { state.preferShorterName = !state.preferShorterName },
-                    supportingContent = { Text("优先选择满足匹配的标题最短的条目。可避免为第一季匹配到第二季") },
-                    trailingContent = {
-                        Switch(
-                            state.preferShorterName, { state.preferShorterName = it },
-                            enabled = state.enableEdit,
-                        )
-                    },
-                    colors = listItemColors,
-                )
-
-                var searchUseSubjectNamesCount by remember(state.searchUseSubjectNamesCount) {
-                    mutableStateOf(state.searchUseSubjectNamesCount.toString())
-                }
-                OutlinedTextField(
-                    searchUseSubjectNamesCount,
-                    {
-                        searchUseSubjectNamesCount = it
-                        state.searchUseSubjectNamesCount = it.toIntOrNull() ?: state.searchUseSubjectNamesCount
-                    },
-                    Modifier
-                        .padding(top = (verticalSpacing - 8.dp).coerceAtLeast(0.dp))
-                        .fillMaxWidth().moveFocusOnEnter(),
-                    label = { Text(stringResource(Lang.settings_mediasource_selector_config_search_subject_names_count)) },
-                    supportingText = {
-                        Text(stringResource(Lang.settings_mediasource_selector_config_search_subject_names_count_description))
-                    },
-                    isError = searchUseSubjectNamesCount.toIntOrNull().let {
-                        it == null || it < 1
-                    },
-                    keyboardOptions = KeyboardOptions(imeAction = ImeAction.Next),
-                    shape = textFieldShape,
-                    enabled = state.enableEdit,
-                )
                 var requestIntervalString by remember(state.requestInterval) {
                     mutableStateOf(state.requestInterval.inWholeMilliseconds.toString())
                 }
@@ -309,32 +248,11 @@ internal fun SelectorConfigurationPane(
                     shape = textFieldShape,
                     enabled = state.enableEdit,
                 )
-                var searchCacheTtlString by remember(state.searchCacheTtl) {
-                    mutableStateOf(state.searchCacheTtl.inWholeMinutes.toString())
-                }
-                OutlinedTextField(
-                    searchCacheTtlString,
-                    {
-                        searchCacheTtlString = it
-                        state.searchCacheTtl = it.toLongOrNull()?.minutes ?: state.searchCacheTtl
-                    },
-                    Modifier
-                        .padding(top = (verticalSpacing - 8.dp).coerceAtLeast(0.dp))
-                        .fillMaxWidth().moveFocusOnEnter(),
-                    label = { Text(stringResource(Lang.settings_mediasource_selector_config_search_cache_ttl)) },
-                    supportingText = {
-                        Text(stringResource(Lang.settings_mediasource_selector_config_search_cache_ttl_description))
-                    },
-                    isError = searchCacheTtlString.toLongOrNull() == null,
-                    keyboardOptions = KeyboardOptions(imeAction = ImeAction.Next),
-                    shape = textFieldShape,
-                    enabled = state.enableEdit,
-                )
             }
 
             SelectorSubjectFormatSelectionButtonRow(
                 state,
-                Modifier.fillMaxWidth().padding(bottom = 4.dp),
+                Modifier.fillMaxWidth().padding(top = verticalSpacing, bottom = 4.dp),
                 enabled = state.enableEdit,
             )
 
@@ -353,14 +271,7 @@ internal fun SelectorConfigurationPane(
                 )
             }
 
-            Row(Modifier.padding(top = verticalSpacing, bottom = 12.dp)) {
-                ProvideTextStyleContentColor(
-                    MaterialTheme.typography.titleMedium,
-                    MaterialTheme.colorScheme.primary,
-                ) {
-                    Text(SelectorConfigurationDefaults.STEP_NAME_2)
-                }
-            }
+            SectionTitle(SelectorConfigurationDefaults.STEP_NAME_2, Modifier.padding(top = verticalSpacing, bottom = 12.dp))
 
             SelectorChannelSelectionButtonRow(
                 state,
@@ -379,61 +290,7 @@ internal fun SelectorConfigurationPane(
                 SelectorChannelFormatColumn(formatId, state, Modifier.fillMaxWidth())
             }
 
-            Row(Modifier.padding(top = verticalSpacing, bottom = 12.dp)) {
-                ProvideTextStyleContentColor(
-                    MaterialTheme.typography.titleMedium,
-                    MaterialTheme.colorScheme.primary,
-                ) {
-                    Text(stringResource(Lang.settings_mediasource_selector_config_filter_settings))
-                }
-            }
-
-            Column(
-                Modifier,
-                verticalArrangement = Arrangement.spacedBy((verticalSpacing - 16.dp).coerceAtLeast(0.dp)),
-            ) {
-                ListItem(
-                    headlineContent = { Text(stringResource(Lang.settings_mediasource_selector_config_filter_by_subject_name)) },
-                    Modifier.focusable(false).clickable(
-                        enabled = state.enableEdit,
-                    ) { state.filterBySubjectName = !state.filterBySubjectName },
-                    supportingContent = {
-                        Text(stringResource(Lang.settings_mediasource_selector_config_filter_by_subject_name_description))
-                    },
-                    trailingContent = {
-                        Switch(
-                            state.filterBySubjectName, { state.filterBySubjectName = it },
-                            enabled = state.enableEdit,
-                        )
-                    },
-                    colors = listItemColors,
-                )
-                ListItem(
-                    headlineContent = { Text(stringResource(Lang.settings_mediasource_selector_config_filter_by_episode_sort)) },
-                    Modifier.focusable(false).clickable(
-                        enabled = state.enableEdit,
-                    ) { state.filterByEpisodeSort = !state.filterByEpisodeSort },
-                    supportingContent = {
-                        Text(stringResource(Lang.settings_mediasource_selector_config_filter_by_episode_sort_description))
-                    },
-                    trailingContent = {
-                        Switch(
-                            state.filterByEpisodeSort, { state.filterByEpisodeSort = it },
-                            enabled = state.enableEdit,
-                        )
-                    },
-                    colors = listItemColors,
-                )
-            }
-
-            Row(Modifier.padding(top = verticalSpacing, bottom = 12.dp)) {
-                ProvideTextStyleContentColor(
-                    MaterialTheme.typography.titleMedium,
-                    MaterialTheme.colorScheme.primary,
-                ) {
-                    Text(SelectorConfigurationDefaults.STEP_NAME_3)
-                }
-            }
+            SectionTitle(SelectorConfigurationDefaults.STEP_NAME_3, Modifier.padding(top = verticalSpacing, bottom = 12.dp))
 
             SelectorConfigurationDefaults.MatchVideoSection(
                 state,
@@ -505,14 +362,10 @@ internal fun SelectorConfigurationPane(
                 )
             }
 
-            Row(Modifier.padding(top = verticalSpacing, bottom = 12.dp)) {
-                ProvideTextStyleContentColor(
-                    MaterialTheme.typography.titleMedium,
-                    MaterialTheme.colorScheme.primary,
-                ) {
-                    Text(stringResource(Lang.settings_mediasource_selector_config_player_select_resource))
-                }
-            }
+            SectionTitle(
+                stringResource(Lang.settings_mediasource_selector_config_player_select_resource),
+                Modifier.padding(top = verticalSpacing, bottom = 12.dp),
+            )
 
             Column(Modifier, verticalArrangement = Arrangement.spacedBy(verticalSpacing)) {
                 val conf = state.selectMediaConfig
@@ -550,14 +403,10 @@ internal fun SelectorConfigurationPane(
                 )
             }
 
-            Row(Modifier.padding(top = verticalSpacing, bottom = 12.dp)) {
-                ProvideTextStyleContentColor(
-                    MaterialTheme.typography.titleMedium,
-                    MaterialTheme.colorScheme.primary,
-                ) {
-                    Text(stringResource(Lang.settings_mediasource_selector_config_video_playback))
-                }
-            }
+            SectionTitle(
+                stringResource(Lang.settings_mediasource_selector_config_video_playback),
+                Modifier.padding(top = verticalSpacing, bottom = 12.dp),
+            )
 
             Column(Modifier, verticalArrangement = Arrangement.spacedBy(verticalSpacing)) {
                 val conf = state.matchVideoConfig.videoHeaders
@@ -581,6 +430,24 @@ internal fun SelectorConfigurationPane(
                 )
             }
 
+            // 自动匹配层: 全部可选, 默认收起.
+            var autoMatchExpanded by rememberSaveable { mutableStateOf(false) }
+            AutoMatchSectionHeader(
+                expanded = autoMatchExpanded,
+                onToggle = { autoMatchExpanded = !autoMatchExpanded },
+                Modifier.padding(top = verticalSpacing),
+                colors = listItemColors,
+            )
+            AniAnimatedVisibility(visible = autoMatchExpanded) {
+                AutoMatchSection(
+                    state,
+                    Modifier.fillMaxWidth().padding(top = 4.dp),
+                    textFieldShape = textFieldShape,
+                    verticalSpacing = verticalSpacing,
+                    listItemColors = listItemColors,
+                )
+            }
+
             Row(Modifier.align(Alignment.End).padding(top = verticalSpacing, bottom = 12.dp)) {
                 if (state.enableEdit) {
                     ProvideTextStyleContentColor(
@@ -593,6 +460,213 @@ internal fun SelectorConfigurationPane(
             }
         }
 
+    }
+}
+
+@TestOnly
+object SelectorConfigPaneTestTags {
+    const val AUTO_MATCH_HEADER = "SelectorConfigPane.autoMatchHeader"
+    const val AUTO_MATCH_ENABLED = "SelectorConfigPane.autoMatchEnabled"
+    const val TIER = "SelectorConfigPane.tier"
+}
+
+@Composable
+private fun SectionTitle(text: String, modifier: Modifier = Modifier) {
+    Row(modifier) {
+        ProvideTextStyleContentColor(
+            MaterialTheme.typography.titleMedium,
+            MaterialTheme.colorScheme.primary,
+        ) {
+            Text(text)
+        }
+    }
+}
+
+/**
+ * "自动匹配" 区的标题行, 点击展开或收起.
+ */
+@Composable
+private fun AutoMatchSectionHeader(
+    expanded: Boolean,
+    onToggle: () -> Unit,
+    modifier: Modifier = Modifier,
+    colors: ListItemColors = ListItemDefaults.colors(containerColor = Color.Transparent),
+) {
+    val rotation by animateFloatAsState(if (expanded) 180f else 0f)
+    ListItem(
+        headlineContent = {
+            ProvideTextStyleContentColor(
+                MaterialTheme.typography.titleMedium,
+                MaterialTheme.colorScheme.primary,
+            ) {
+                Text(stringResource(Lang.settings_mediasource_selector_auto_match))
+            }
+        },
+        modifier
+            .focusable(false)
+            .clickable(onClick = onToggle)
+            .semantics { stateDescription = if (expanded) "expanded" else "collapsed" }
+            .testTag(SelectorConfigPaneTestTags.AUTO_MATCH_HEADER),
+        supportingContent = { Text(stringResource(Lang.settings_mediasource_selector_auto_match_description)) },
+        trailingContent = {
+            Icon(Icons.Rounded.ExpandMore, null, Modifier.rotate(rotation))
+        },
+        colors = colors,
+    )
+}
+
+/**
+ * 自动匹配层的全部配置: [SelectorAutoMatchConfig] 与数据源阶级.
+ */
+@Composable
+private fun AutoMatchSection(
+    state: SelectorConfigState,
+    modifier: Modifier = Modifier,
+    textFieldShape: Shape = SelectorConfigurationDefaults.textFieldShape,
+    verticalSpacing: Dp = SelectorConfigurationDefaults.verticalSpacing,
+    listItemColors: ListItemColors = ListItemDefaults.colors(containerColor = Color.Transparent),
+) {
+    Column(modifier) {
+        val itemPadding = Modifier.padding(top = (verticalSpacing - 8.dp).coerceAtLeast(0.dp))
+
+        ListItem(
+            headlineContent = { Text(stringResource(Lang.settings_mediasource_selector_auto_match_enabled)) },
+            Modifier.focusable(false).clickable(enabled = state.enableEdit) {
+                state.autoMatchEnabled = !state.autoMatchEnabled
+            },
+            supportingContent = { Text(stringResource(Lang.settings_mediasource_selector_auto_match_enabled_description)) },
+            trailingContent = {
+                Switch(
+                    state.autoMatchEnabled, { state.autoMatchEnabled = it },
+                    Modifier.testTag(SelectorConfigPaneTestTags.AUTO_MATCH_ENABLED),
+                    enabled = state.enableEdit,
+                )
+            },
+            colors = listItemColors,
+        )
+
+        var tierString by remember(state.tier) {
+            mutableStateOf(state.tier.value.toString())
+        }
+        OutlinedTextField(
+            tierString,
+            {
+                tierString = it
+                it.toUIntOrNull()?.let { value -> state.tier = MediaSourceTier(value) }
+            },
+            itemPadding.fillMaxWidth().moveFocusOnEnter().testTag(SelectorConfigPaneTestTags.TIER),
+            label = { Text(stringResource(Lang.settings_mediasource_selector_tier)) },
+            supportingText = { Text(stringResource(Lang.settings_mediasource_selector_tier_description)) },
+            isError = tierString.toUIntOrNull() == null,
+            keyboardOptions = KeyboardOptions(imeAction = ImeAction.Next),
+            shape = textFieldShape,
+            enabled = state.enableEdit,
+        )
+
+        ListItem(
+            headlineContent = { Text(stringResource(Lang.settings_mediasource_selector_config_search_first_word)) },
+            itemPadding.focusable(false).clickable(enabled = state.enableEdit) {
+                state.searchUseOnlyFirstWord = !state.searchUseOnlyFirstWord
+            },
+            supportingContent = {
+                Text(stringResource(Lang.settings_mediasource_selector_config_search_first_word_description))
+            },
+            trailingContent = {
+                Switch(
+                    state.searchUseOnlyFirstWord, { state.searchUseOnlyFirstWord = it },
+                    enabled = state.enableEdit,
+                )
+            },
+            colors = listItemColors,
+        )
+        ListItem(
+            headlineContent = { Text(stringResource(Lang.settings_mediasource_selector_config_search_remove_special)) },
+            itemPadding.focusable(false).clickable(enabled = state.enableEdit) {
+                state.searchRemoveSpecial = !state.searchRemoveSpecial
+            },
+            supportingContent = {
+                Text(stringResource(Lang.settings_mediasource_selector_config_search_remove_special_description))
+            },
+            trailingContent = {
+                Switch(
+                    state.searchRemoveSpecial, { state.searchRemoveSpecial = it },
+                    enabled = state.enableEdit,
+                )
+            },
+            colors = listItemColors,
+        )
+        ListItem(
+            headlineContent = { Text(stringResource(Lang.settings_mediasource_selector_prefer_shorter_name)) },
+            itemPadding.focusable(false).clickable(enabled = state.enableEdit) {
+                state.preferShorterName = !state.preferShorterName
+            },
+            supportingContent = { Text(stringResource(Lang.settings_mediasource_selector_prefer_shorter_name_description)) },
+            trailingContent = {
+                Switch(
+                    state.preferShorterName, { state.preferShorterName = it },
+                    enabled = state.enableEdit,
+                )
+            },
+            colors = listItemColors,
+        )
+
+        var searchUseSubjectNamesCount by remember(state.searchUseSubjectNamesCount) {
+            mutableStateOf(state.searchUseSubjectNamesCount.toString())
+        }
+        OutlinedTextField(
+            searchUseSubjectNamesCount,
+            {
+                searchUseSubjectNamesCount = it
+                state.searchUseSubjectNamesCount = it.toIntOrNull() ?: state.searchUseSubjectNamesCount
+            },
+            itemPadding.fillMaxWidth().moveFocusOnEnter(),
+            label = { Text(stringResource(Lang.settings_mediasource_selector_config_search_subject_names_count)) },
+            supportingText = {
+                Text(stringResource(Lang.settings_mediasource_selector_config_search_subject_names_count_description))
+            },
+            isError = searchUseSubjectNamesCount.toIntOrNull().let {
+                it == null || it < 1
+            },
+            keyboardOptions = KeyboardOptions(imeAction = ImeAction.Next),
+            shape = textFieldShape,
+            enabled = state.enableEdit,
+        )
+        var searchCacheTtlString by remember(state.searchCacheTtl) {
+            mutableStateOf(state.searchCacheTtl.inWholeMinutes.toString())
+        }
+        OutlinedTextField(
+            searchCacheTtlString,
+            {
+                searchCacheTtlString = it
+                state.searchCacheTtl = it.toLongOrNull()?.minutes ?: state.searchCacheTtl
+            },
+            itemPadding.fillMaxWidth().moveFocusOnEnter(),
+            label = { Text(stringResource(Lang.settings_mediasource_selector_config_search_cache_ttl)) },
+            supportingText = {
+                Text(stringResource(Lang.settings_mediasource_selector_config_search_cache_ttl_description))
+            },
+            isError = searchCacheTtlString.toLongOrNull() == null,
+            keyboardOptions = KeyboardOptions(imeAction = ImeAction.Next),
+            shape = textFieldShape,
+            enabled = state.enableEdit,
+        )
+
+        ListItem(
+            headlineContent = { Text(stringResource(Lang.settings_mediasource_selector_config_filter_by_episode_sort)) },
+            itemPadding.focusable(false).clickable(enabled = state.enableEdit) {
+                state.filterByEpisodeSort = !state.filterByEpisodeSort
+            },
+            supportingContent = {
+                Text(stringResource(Lang.settings_mediasource_selector_config_filter_by_episode_sort_description))
+            },
+            trailingContent = {
+                Switch(
+                    state.filterByEpisodeSort, { state.filterByEpisodeSort = it },
+                    enabled = state.enableEdit,
+                )
+            },
+            colors = listItemColors,
+        )
     }
 }
 

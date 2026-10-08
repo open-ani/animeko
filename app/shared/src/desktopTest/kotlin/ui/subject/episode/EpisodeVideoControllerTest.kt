@@ -11,6 +11,7 @@ package me.him188.ani.app.ui.subject.episode
 
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.requiredSize
 import androidx.compose.foundation.layout.size
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
@@ -60,6 +61,7 @@ import me.him188.ani.app.data.models.preference.FullscreenSwitchMode
 import me.him188.ani.app.data.models.preference.VideoScaffoldConfig
 import me.him188.ani.app.domain.media.player.ChunkState
 import me.him188.ani.app.domain.media.player.staticMediaCacheProgressState
+import me.him188.ani.app.domain.media.cache.engine.MediaCacheEngineKey
 import me.him188.ani.app.domain.player.VideoLoadingState
 import me.him188.ani.app.ui.danmaku.PlayerDanmakuEditor
 import me.him188.ani.app.ui.episode.share.MediaShareData
@@ -248,6 +250,8 @@ class EpisodeVideoControllerTest {
         isInPictureInPicture: Boolean = false,
         danmakuEnabled: Boolean = false,
         danmakuHost: @Composable () -> Unit = {},
+        sidebarVisible: Boolean = true,
+        onToggleSidebar: (Boolean) -> Unit = {},
     ) {
         ProvideCompositionLocalsForPreview(darkMode = DarkMode.DARK) {
             val actualWatchTogetherPlayerController = watchTogetherPlayerController
@@ -280,7 +284,9 @@ class EpisodeVideoControllerTest {
                     danmakuHost = danmakuHost,
                     danmakuEnabled = danmakuEnabled,
                     onToggleDanmaku = onToggleDanmaku,
-                    videoLoadingStateFlow = remember { MutableStateFlow(VideoLoadingState.Succeed(isBt = true)) },
+                    videoLoadingStateFlow = remember {
+                        MutableStateFlow(VideoLoadingState.Succeed(MediaCacheEngineKey.Anitorrent))
+                    },
                     fullscreenState = fullscreenState,
                     danmakuEditor = {
                         if (showDanmakuEditor()) {
@@ -309,8 +315,8 @@ class EpisodeVideoControllerTest {
                             showFramePreviewInPopup = expanded,
                         )
                     },
-                    sidebarVisible = true,
-                    onToggleSidebar = {},
+                    sidebarVisible = sidebarVisible,
+                    onToggleSidebar = onToggleSidebar,
                     progressSliderState = progressSliderState,
                     cacheProgressInfoFlow = cacheProgressInfoFlow,
                     framePreview = framePreview,
@@ -409,6 +415,71 @@ class EpisodeVideoControllerTest {
 
         runOnIdle { isInPictureInPicture = false }
         onNodeWithTag("danmakuHost").assertIsDisplayed()
+    }
+
+    @Test
+    fun `desktop fullscreen hides sidebar by default and toggles it separately from window`() = runAniComposeUiTest {
+        val fullscreenState = TestFullscreenState(initialIsFullscreen = false)
+        val sidebarState = EpisodeSidebarState { fullscreenState.isFullscreen }
+        val visibleControllerState = PlayerControllerState(NORMAL_VISIBLE)
+        var playerCreatedCount = 0
+        setContent {
+            EpisodeScreenLayout(
+                mode = episodeScreenLayoutMode(
+                    isFullscreen = fullscreenState.isFullscreen,
+                    showExpandedUI = true,
+                    sidebarVisible = sidebarState.isVisible,
+                    isDesktop = true,
+                ),
+                video = {
+                    Player(
+                        GestureFamily.MOUSE,
+                        playerControllerState = visibleControllerState,
+                        fullscreenState = fullscreenState,
+                        sidebarVisible = sidebarState.isVisible,
+                        onToggleSidebar = { sidebarState.isVisible = it },
+                        onPlayerStateCreated = { playerCreatedCount++ },
+                    )
+                },
+                secondary = { Box(Modifier.fillMaxSize().testTag("sidebar")) },
+                modifier = Modifier.requiredSize(1000.dp, 600.dp),
+            )
+        }
+
+        fun assertSidebar(fullscreen: Boolean, visible: Boolean) {
+            runOnIdle { assertEquals(fullscreen, fullscreenState.isFullscreen) }
+            if (visible) {
+                onNodeWithTag("sidebar").assertWidthIsEqualTo(340.dp)
+                player.assertWidthIsEqualTo(660.dp)
+            } else {
+                onNodeWithTag("sidebar").assertDoesNotExist()
+                player.assertWidthIsEqualTo(1000.dp)
+            }
+        }
+
+        assertSidebar(fullscreen = false, visible = true)
+
+        // 进入全屏默认只显示视频, 按钮仍能展开侧边栏
+        fullScreenButton.performClick()
+        assertSidebar(fullscreen = true, visible = false)
+        onNodeWithTag(TAG_COLLAPSE_SIDEBAR).performClick()
+        assertSidebar(fullscreen = true, visible = true)
+
+        // 全屏里的开关不影响窗口
+        fullScreenButton.performClick()
+        assertSidebar(fullscreen = false, visible = true)
+        onNodeWithTag(TAG_COLLAPSE_SIDEBAR).performClick()
+        assertSidebar(fullscreen = false, visible = false)
+
+        // 窗口里的开关也不影响全屏
+        fullScreenButton.performClick()
+        assertSidebar(fullscreen = true, visible = true)
+        onNodeWithTag(TAG_COLLAPSE_SIDEBAR).performClick()
+        assertSidebar(fullscreen = true, visible = false)
+        fullScreenButton.performClick()
+        assertSidebar(fullscreen = false, visible = false)
+
+        runOnIdle { assertEquals(1, playerCreatedCount) }
     }
 
     /**

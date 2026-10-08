@@ -155,6 +155,33 @@ interface SubjectCollectionDao {
         lastUpdated: Long = currentTimeMillis(),
     )
 
+    /**
+     * 更新收藏类型和全站统计. 在同一个事务中, 观察者只会看到一次变化.
+     */
+    @Transaction
+    suspend fun updateTypeAndStats(
+        subjectId: Int,
+        collectionType: UnifiedCollectionType,
+        collectionStats: SubjectCollectionStats,
+        ratingInfo: RatingInfo,
+    ) {
+        updateType(subjectId, collectionType)
+        updateStats(subjectId, collectionStats, ratingInfo)
+    }
+
+    /**
+     * 更新全站统计 (收藏数与评分). 条目不在缓存中时什么也不做.
+     */
+    @Transaction
+    suspend fun updateStats(
+        subjectId: Int,
+        collectionStats: SubjectCollectionStats,
+        ratingInfo: RatingInfo,
+    ) {
+        val entity = getById(subjectId) ?: return
+        upsert(entity.copy(collectionStats = collectionStats, ratingInfo = ratingInfo))
+    }
+
     @Query("""DELETE FROM subject_collection WHERE subjectId = :subjectId""")
     suspend fun delete(subjectId: Int)
 
@@ -238,6 +265,9 @@ interface SubjectCollectionDao {
     @Query("""SELECT * FROM subject_collection WHERE subjectId = :subjectId""")
     fun findById(subjectId: Int): Flow<SubjectCollectionEntity?>
 
+    @Query("""SELECT * FROM subject_collection WHERE subjectId = :subjectId""")
+    suspend fun getById(subjectId: Int): SubjectCollectionEntity?
+
     @Query("""SELECT * FROM subject_collection WHERE subjectId IN (:subjectIds)""")
     fun filterByIds(subjectIds: IntArray): Flow<List<SubjectCollectionEntity>>
 
@@ -275,6 +305,23 @@ interface SubjectCollectionDao {
     suspend fun updateRating(subjectId: Int, score: Int?, comment: String?, tags: List<String>?, private: Boolean?)
 
     /**
+     * 更新自己的评分和全站统计. 在同一个事务中, 观察者只会看到一次变化.
+     */
+    @Transaction
+    suspend fun updateRatingAndStats(
+        subjectId: Int,
+        score: Int?,
+        comment: String?,
+        tags: List<String>?,
+        private: Boolean?,
+        collectionStats: SubjectCollectionStats,
+        ratingInfo: RatingInfo,
+    ) {
+        updateRating(subjectId, score, comment, tags, private)
+        updateStats(subjectId, collectionStats, ratingInfo)
+    }
+
+    /**
      * 只包含保存在数据库的, 可能不完整
      */
     @Query("""SELECT COUNT(*) FROM subject_collection WHERE (collectionType is NOT NULL AND (:collectionType IS NULL OR collectionType = :collectionType))""")
@@ -282,15 +329,6 @@ interface SubjectCollectionDao {
 
     @Query("""UPDATE subject_collection SET cachedStaffUpdated = :time, cachedCharactersUpdated = :time WHERE subjectId = :subjectId""")
     suspend fun updateCachedRelationsUpdated(subjectId: Int, time: Long = currentTimeMillis())
-
-    @Query(
-        """
-        SELECT sc.subjectId FROM subject_collection sc
-        WHERE collectionType IS NOT NULL
-        AND (collectionType IN (:collectionTypes))
-        """,
-    )
-    fun subjectIdsByCollectionType(collectionTypes: List<UnifiedCollectionType>): Flow<List<Int>>
 
     @Query(
         """

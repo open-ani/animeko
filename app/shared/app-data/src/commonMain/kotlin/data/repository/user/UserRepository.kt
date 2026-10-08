@@ -16,6 +16,7 @@ import io.ktor.http.HttpStatusCode
 import io.ktor.http.content.OutgoingContent
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.NonCancellable
 import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.Flow
@@ -343,6 +344,23 @@ class UserRepository(
             throw RepositoryException.wrapOrThrowCancellation(e)
         } catch (e: Exception) {
             throw RepositoryException.wrapOrThrowCancellation(e)
+        }
+    }
+
+    /**
+     * 注销账号: 服务端删除此账号的全部数据, 成功后清除本地的登录状态. 不可撤回.
+     *
+     * @throws RepositoryException
+     */
+    suspend fun deleteAccount() = withContext(Dispatchers.Default) {
+        try {
+            profileApi.invoke { deleteAccount() }
+        } catch (e: Exception) {
+            throw RepositoryException.wrapOrThrowCancellation(e)
+        }
+        // 账号已经没了, 本地登录状态必须清除, 不能因为界面离开而中断
+        withContext(NonCancellable) {
+            clearSelfInfo()
         }
     }
 

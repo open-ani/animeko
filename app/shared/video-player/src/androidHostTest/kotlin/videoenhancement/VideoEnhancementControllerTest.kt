@@ -12,6 +12,7 @@
 package me.him188.ani.app.videoplayer.videoenhancement
 
 import androidx.media3.common.Effect
+import androidx.media3.common.util.Size
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.test.runCurrent
@@ -25,7 +26,7 @@ import kotlin.test.assertIs
 
 class VideoEnhancementControllerTest {
     @Test
-    fun metadataChangesDoNotRebuildQualityShaders() = runTest {
+    fun onlyModeChangesReplaceEffects() = runTest {
         val player = TestMediampPlayer(backgroundScope.coroutineContext)
         val effects = mutableListOf<List<Effect>>()
         val controller = ExoPlayerVideoEnhancementController(
@@ -37,7 +38,8 @@ class VideoEnhancementControllerTest {
             runCurrent()
             assertEquals(1, effects.size)
             assertEquals(3, effects.single().size)
-            assertIs<DesktopStyleLanczosSharpEffect>(effects.single().last())
+            val scaler = assertIs<DesktopStyleLanczosSharpEffect>(effects.single().last())
+            assertEquals(VideoDimensions(1920, 1080), scaler.viewportSize)
 
             player.setMediaData(UriMediaData("file:///test.mp4"))
             runCurrent()
@@ -51,9 +53,20 @@ class VideoEnhancementControllerTest {
             runCurrent()
             assertEquals(1, effects.size, "Metadata loss and recovery must retain compiled shaders")
 
+            // A fullscreen switch reports intermediate layout sizes in quick succession.
+            controller.setViewportSize(60, 33)
+            runCurrent()
             controller.setViewportSize(2560, 1440)
             runCurrent()
-            assertEquals(2, effects.size, "A viewport resize must update the scaler")
+            assertEquals(1, effects.size, "A viewport resize must not replace the effect list")
+            assertEquals(VideoDimensions(2560, 1440), scaler.viewportSize)
+
+            controller.setMode(VideoEnhancementMode.PERFORMANCE)
+            runCurrent()
+            assertEquals(2, effects.size)
+            val performanceScaler = assertIs<DesktopStyleLanczosSharpEffect>(effects.last().last())
+            assertEquals(VideoDimensions(2560, 1440), performanceScaler.viewportSize)
+
             controller.setMode(VideoEnhancementMode.OFF)
             runCurrent()
             assertEquals(emptyList(), effects.last())
@@ -61,5 +74,13 @@ class VideoEnhancementControllerTest {
             controller.close()
             player.close()
         }
+    }
+
+    @Test
+    fun scalerOutputFitsViewport() {
+        assertEquals(Size(1920, 1080), lanczosSharpOutputSize(1280, 720, VideoDimensions(1920, 1080)))
+        assertEquals(Size(1920, 1080), lanczosSharpOutputSize(1280, 720, VideoDimensions(2400, 1080)))
+        assertEquals(Size(1080, 608), lanczosSharpOutputSize(1920, 1080, VideoDimensions(1080, 608)))
+        assertEquals(Size(1280, 720), lanczosSharpOutputSize(1280, 720, viewport = null))
     }
 }

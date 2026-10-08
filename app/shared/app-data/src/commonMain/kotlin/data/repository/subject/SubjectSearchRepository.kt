@@ -16,7 +16,6 @@ import androidx.paging.PagingSource
 import androidx.paging.PagingState
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
-import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.flowOn
 import kotlinx.coroutines.withContext
 import me.him188.ani.app.data.models.schedule.AnimeSeasonId
@@ -36,7 +35,6 @@ import kotlin.coroutines.cancellation.CancellationException
 
 class SubjectSearchRepository(
     private val aniSubjectSearchService: AniSubjectSearchService,
-    private val subjectCollectionRepository: SubjectCollectionRepository,
     defaultDispatcher: CoroutineContext = Dispatchers.Default,
 ) : Repository(defaultDispatcher) {
 
@@ -57,7 +55,7 @@ class SubjectSearchRepository(
         },
     ).flow.flowOn(defaultDispatcher)
 
-    private inner class SubjectSearchPagingSource(
+    internal inner class SubjectSearchPagingSource(
         private val ignoreDoneAndDropped: suspend () -> Boolean,
         private val searchQuery: SubjectSearchQuery
     ) : PagingSource<Int, BatchSubjectDetails>() {
@@ -73,31 +71,20 @@ class SubjectSearchRepository(
                     searchQuery.keywords,
                     offset = offset,
                     limit = params.loadSize,
-                    filters = filters,
+                    filters = if (ignoreDoneAndDropped()) {
+                        filters.copy(excludeCollectionTypes = listOf(UnifiedCollectionType.DONE, UnifiedCollectionType.DROPPED))
+                    } else {
+                        filters
+                    },
                     sort = searchQuery.sort,
                     fields = subjectSearchFields,
                 )
 
-                val filteredSubjects = if (ignoreDoneAndDropped()) {
-                    val excludedIds = subjectCollectionRepository.getSubjectIdsByCollectionType(
-                        types = listOf(UnifiedCollectionType.DONE, UnifiedCollectionType.DROPPED),
-                    ).first()
-
-                    subjects.filter { it.subjectInfo.subjectId !in excludedIds }
-                } else {
-                    subjects
-                }
-
-                // 在分页源中直接过滤掉不符合条件的数据 #2380
-                val subjectInfos = filterSubjectsBySort(
-                    filteredSubjects,
-                    searchQuery.sort,
-                )
-
                 return@withContext LoadResult.Page(
-                    subjectInfos,
+                    subjects,
                     prevKey = if (offset == 0) null else offset,
-                    nextKey = if (subjectInfos.isEmpty()) null else offset + params.loadSize,
+                    // 搜索响应只有 items, 没有总数, 以空页判断结束
+                    nextKey = if (subjects.isEmpty()) null else offset + params.loadSize,
                 )
             } catch (e: CancellationException) {
                 throw e
@@ -111,6 +98,9 @@ class SubjectSearchRepository(
                 tags,
                 airDates = toBangumiAirDates(),
                 ratings = rating?.toBangumiRatings(),
+                // "最高排名" 按评分排序, 只看 Bangumi 有排名的条目: 排名要求足够的评分人数,
+                // 否则排在最前面的全是一两个人打 10 分的冷门条目 #2380 #3505
+                ranks = if (sort == SearchSort.RANK) listOf(">=1") else null,
                 nsfw = nsfw,
             )
         }
@@ -121,21 +111,6 @@ class SubjectSearchRepository(
                 range.min?.let { ">=${it}" },
                 range.max?.let { "<${it}" },
             )
-        }
-
-        /**
-         * 将数据过滤从View提升到分页层，不然会导致 #2380
-         */
-        private fun filterSubjectsBySort(
-            subjects: List<BatchSubjectDetails>,
-            sort: SearchSort
-        ): List<BatchSubjectDetails> {
-            return when (sort) {
-                SearchSort.RANK -> subjects.filter { it.subjectInfo.ratingInfo.total >= 50 }
-                SearchSort.DATE -> subjects.sortedByDescending { it.subjectInfo.airDate }
-                SearchSort.MATCH,
-                SearchSort.COLLECTION -> subjects
-            }
         }
     }
 

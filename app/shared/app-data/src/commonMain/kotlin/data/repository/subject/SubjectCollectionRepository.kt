@@ -192,8 +192,6 @@ abstract class SubjectCollectionRepository(
      */
     abstract fun getSubjectDisplayInfoOffline(subjectId: Int): Flow<OfflineSubjectDisplayInfo?>
 
-    abstract suspend fun getSubjectIdsByCollectionType(types: List<UnifiedCollectionType>): Flow<List<Int>>
-
     abstract suspend fun getSubjectNamesCnByCollectionType(types: List<UnifiedCollectionType>): Flow<List<String>>
 
     abstract suspend fun performBangumiFullSync()
@@ -494,7 +492,7 @@ class SubjectCollectionRepositoryImpl(
         isPrivate: Boolean?,
     ) {
         withContext(defaultDispatcher) {
-            subjectService.patchSubjectCollection(
+            val stats = subjectService.patchSubjectCollection(
                 subjectId,
                 AniUpdateSubjectCollectionRequest(
                     selfRating = AniSelfRatingInfo(
@@ -506,12 +504,14 @@ class SubjectCollectionRepositoryImpl(
                 ),
             )
 
-            subjectCollectionDao.updateRating(
+            subjectCollectionDao.updateRatingAndStats(
                 subjectId,
                 score,
                 comment,
                 tags,
                 isPrivate,
+                collectionStats = stats.favorite.toSubjectCollectionStats(),
+                ratingInfo = ratingInfoOf(stats.rank, stats.score, stats.scoreDetails),
             )
         }
     }
@@ -597,10 +597,6 @@ class SubjectCollectionRepositoryImpl(
         }
     }
 
-    override suspend fun getSubjectIdsByCollectionType(types: List<UnifiedCollectionType>): Flow<List<Int>> {
-        return subjectCollectionDao.subjectIdsByCollectionType(types).flowOn(defaultDispatcher)
-    }
-
     override suspend fun getSubjectNamesCnByCollectionType(types: List<UnifiedCollectionType>): Flow<List<String>> {
         return subjectCollectionDao.subjectNamesCnByCollectionType(types).flowOn(defaultDispatcher)
     }
@@ -610,8 +606,13 @@ class SubjectCollectionRepositoryImpl(
         payload: AniUpdateSubjectCollectionRequest,
     ) {
         withContext(defaultDispatcher) {
-            subjectService.patchSubjectCollection(subjectId, payload)
-            subjectCollectionDao.updateType(subjectId, payload.collectionType.toUnifiedCollectionType())
+            val stats = subjectService.patchSubjectCollection(subjectId, payload)
+            subjectCollectionDao.updateTypeAndStats(
+                subjectId,
+                payload.collectionType.toUnifiedCollectionType(),
+                collectionStats = stats.favorite.toSubjectCollectionStats(),
+                ratingInfo = ratingInfoOf(stats.rank, stats.score, stats.scoreDetails),
+            )
         }
     }
 
@@ -826,23 +827,7 @@ fun AniSubjectCollection.toEntity(
         aliases = aliases,
         tags = tags.map { it.toTag() },
         collectionStats = favorite.toSubjectCollectionStats(),
-        ratingInfo = RatingInfo(
-            rank = rank ?: 0,
-            total = scoreDetails.values.sum(),
-            count = RatingCounts(
-                s1 = scoreDetails["1"] ?: 0,
-                s2 = scoreDetails["2"] ?: 0,
-                s3 = scoreDetails["3"] ?: 0,
-                s4 = scoreDetails["4"] ?: 0,
-                s5 = scoreDetails["5"] ?: 0,
-                s6 = scoreDetails["6"] ?: 0,
-                s7 = scoreDetails["7"] ?: 0,
-                s8 = scoreDetails["8"] ?: 0,
-                s9 = scoreDetails["9"] ?: 0,
-                s10 = scoreDetails["10"] ?: 0,
-            ),
-            score = score ?: "0",
-        ),
+        ratingInfo = ratingInfoOf(rank, score, scoreDetails),
         completeDate = PackedDate.Invalid,
         selfRatingInfo = selfRating.toSelfRatingInfo(),
         collectionType = collectionType.toUnifiedCollectionType(),
@@ -889,6 +874,27 @@ fun AniSubjectRelations.toSubjectRelationsEntity(): SubjectRelations {
 fun AniTag.toTag(): Tag = Tag(
     name = name,
     count = count,
+)
+
+/**
+ * @param scoreDetails 键为 `"1"` 到 `"10"`
+ */
+private fun ratingInfoOf(rank: Int?, score: String?, scoreDetails: Map<String, Int>): RatingInfo = RatingInfo(
+    rank = rank ?: 0,
+    total = scoreDetails.values.sum(),
+    count = RatingCounts(
+        s1 = scoreDetails["1"] ?: 0,
+        s2 = scoreDetails["2"] ?: 0,
+        s3 = scoreDetails["3"] ?: 0,
+        s4 = scoreDetails["4"] ?: 0,
+        s5 = scoreDetails["5"] ?: 0,
+        s6 = scoreDetails["6"] ?: 0,
+        s7 = scoreDetails["7"] ?: 0,
+        s8 = scoreDetails["8"] ?: 0,
+        s9 = scoreDetails["9"] ?: 0,
+        s10 = scoreDetails["10"] ?: 0,
+    ),
+    score = score ?: "0",
 )
 
 fun AniFavourite.toSubjectCollectionStats(): SubjectCollectionStats {

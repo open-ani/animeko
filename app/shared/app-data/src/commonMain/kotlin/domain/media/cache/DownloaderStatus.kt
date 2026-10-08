@@ -62,6 +62,18 @@ sealed interface DownloaderStatus {
     }
 
     /**
+     * 云盘引擎. 数据按需从服务商取, 没有节点和上传可报告.
+     */
+    data class Cloud(
+        /**
+         * 取流失败的原因, 引擎正在退避重试时非 `null`.
+         *
+         * 存文案而不是 [Throwable]: 每次重试都会产生新的异常实例, 按引用比较会让详情页反复重组.
+         */
+        val errorMessage: String?,
+    ) : DownloaderStatus
+
+    /**
      * HTTP 引擎正在解析视频地址, 下载任务尚未创建.
      */
     data object Resolving : DownloaderStatus

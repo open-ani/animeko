@@ -621,6 +621,9 @@ abstract class AbstractRealHlsProxyTest internal constructor(
         val filteredSession = filtered.session()
         try {
             val local = text(httpGet(filtered.data.uri))
+            // 取播放列表时会探测各组首片的时间戳, 其中就有 ad000 与 seg016. 下面只数那之后的请求.
+            val adFetchesBeforePlayback = origin.count("/hls/ads/ad000.ts")
+            val seg016FetchesBeforePlayback = origin.count("/hls/vod/seg016.ts")
             val uris = local.segmentUris()
             assertEquals(32, uris.size)
             assertTrue(local.lineSequence().none { it.contains("/ads/") }, "ad segments must be removed")
@@ -630,8 +633,12 @@ abstract class AbstractRealHlsProxyTest internal constructor(
             filteredSession.setPrefetchRange(MediaTimeRange(48_000, 51_000))
             val done = filteredSession.awaitAllDone(1)
             assertEquals(listOf(vodRange(16)), done.map { it.range })
-            assertEquals(1, origin.count("/hls/vod/seg016.ts"))
-            assertEquals(1, origin.count("/hls/ads/ad000.ts"), "filtered session must not touch ad segments")
+            assertEquals(seg016FetchesBeforePlayback + 1, origin.count("/hls/vod/seg016.ts"))
+            assertEquals(
+                adFetchesBeforePlayback,
+                origin.count("/hls/ads/ad000.ts"),
+                "filtered session must not fetch ad segments for playback",
+            )
 
             // 过滤后第 16 片对应 seg016, 内容一致
             assertContentEquals(origin.bytesOf("/hls/vod/seg016.ts"), httpGet(uris[16]).body)

@@ -33,7 +33,9 @@ import me.him188.ani.client.models.AniSubjectRecommendation
 import me.him188.ani.client.models.AniSubjectRelationGraph
 import me.him188.ani.client.models.AniSubjectReviewsResponse
 import me.him188.ani.client.models.AniSubjectSearchField
+import me.him188.ani.client.models.AniSubjectSearchMode
 import me.him188.ani.client.models.AniSubjectSearchSortBy
+import me.him188.ani.client.models.AniSubjectStats
 import me.him188.ani.client.models.AniUpdateEpisodeCollectionRequest
 import me.him188.ani.client.models.AniUpdateSubjectCollectionRequest
 
@@ -621,10 +623,12 @@ open class SubjectsAniApi : ApiClient {
      * @param includeNsfw  (optional)
      * @param sortBy  (optional)
      * @param fields  (optional)
+     * @param mode  (optional)
+     * @param excludeCollectionTypes 排除当前用户收藏为这些类型的条目. 未登录时忽略. (optional)
      * @return AniPaginatedResponse2SubjectSearch
      */
     @Suppress("UNCHECKED_CAST")
-    open suspend fun searchSubjects(q: kotlin.String, offset: kotlin.Int? = null, limit: kotlin.Int? = null, tags: kotlin.collections.List<kotlin.String>? = null, airDates: kotlin.collections.List<kotlin.String>? = null, ratings: kotlin.collections.List<kotlin.String>? = null, ranks: kotlin.collections.List<kotlin.String>? = null, includeNsfw: AniNsfwFilter? = null, sortBy: AniSubjectSearchSortBy? = null, fields: kotlin.collections.List<AniSubjectSearchField>? = null): HttpResponse<AniPaginatedResponse2SubjectSearch> {
+    open suspend fun searchSubjects(q: kotlin.String, offset: kotlin.Int? = null, limit: kotlin.Int? = null, tags: kotlin.collections.List<kotlin.String>? = null, airDates: kotlin.collections.List<kotlin.String>? = null, ratings: kotlin.collections.List<kotlin.String>? = null, ranks: kotlin.collections.List<kotlin.String>? = null, includeNsfw: AniNsfwFilter? = null, sortBy: AniSubjectSearchSortBy? = null, fields: kotlin.collections.List<AniSubjectSearchField>? = null, mode: AniSubjectSearchMode? = null, excludeCollectionTypes: kotlin.collections.List<AniCollectionType>? = null): HttpResponse<AniPaginatedResponse2SubjectSearch> {
 
         val localVariableAuthNames = listOf<String>("auth-jwt")
 
@@ -642,6 +646,8 @@ open class SubjectsAniApi : ApiClient {
         includeNsfw?.apply { localVariableQuery["include_nsfw"] = listOf("${ includeNsfw.value }") }
         sortBy?.apply { localVariableQuery["sortBy"] = listOf("${ sortBy.value }") }
         fields?.apply { localVariableQuery["fields"] = toMultiValue(this, "csv") }
+        mode?.apply { localVariableQuery["mode"] = listOf("${ mode.value }") }
+        excludeCollectionTypes?.apply { localVariableQuery["excludeCollectionTypes"] = toMultiValue(this, "csv") }
         val localVariableHeaders = mutableMapOf<String, String>()
 
         val localVariableConfig = RequestConfig<kotlin.Any?>(
@@ -696,14 +702,14 @@ open class SubjectsAniApi : ApiClient {
 
 
     /**
-     * 编辑自己的收藏或创建一个收藏
-     * 编辑自己的收藏或创建一个收藏
+     * 编辑自己的收藏或创建一个收藏. 返回修改后条目的全站统计.
+     * 编辑自己的收藏或创建一个收藏. 返回修改后条目的全站统计.
      * @param subjectId
      * @param aniUpdateSubjectCollectionRequest  (optional)
-     * @return kotlin.Any
+     * @return AniSubjectStats
      */
     @Suppress("UNCHECKED_CAST")
-    open suspend fun updateSubjectCollection(subjectId: kotlin.Long, aniUpdateSubjectCollectionRequest: AniUpdateSubjectCollectionRequest? = null): HttpResponse<kotlin.Any> {
+    open suspend fun updateSubjectCollection(subjectId: kotlin.Long, aniUpdateSubjectCollectionRequest: AniUpdateSubjectCollectionRequest? = null): HttpResponse<AniSubjectStats> {
 
         val localVariableAuthNames = listOf<String>("auth-jwt")
 

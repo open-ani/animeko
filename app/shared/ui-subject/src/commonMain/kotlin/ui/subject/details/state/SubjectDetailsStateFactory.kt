@@ -61,6 +61,7 @@ import me.him188.ani.app.ui.comment.reportSnapshotText
 import me.him188.ani.app.ui.comment.toDataReason
 import me.him188.ani.app.ui.foundation.produceState
 import me.him188.ani.app.ui.rating.EditableRatingActions
+import me.him188.ani.app.ui.rating.EditableRatingUiState
 import me.him188.ani.app.ui.rating.RatingEditController
 import me.him188.ani.app.ui.subject.collection.components.EditableSubjectCollectionTypeState
 import me.him188.ani.app.ui.subject.collection.components.SubjectCollectionTypeEditActions
@@ -187,7 +188,7 @@ class DefaultSubjectDetailsStateFactory : SubjectDetailsStateFactory, KoinCompon
             subjectId,
         )
         val ratingUiStateFlow = ratingEditController.uiStateFlow(
-            ratingInfo = subjectInfo.ratingInfo,
+            ratingInfo = subjectCollectionFlow.map { it.subjectInfo.ratingInfo },
             selfRatingInfo = subjectCollectionFlow.map { it.selfRatingInfo },
             enableEdit = subjectCollectionFlow.map { it.collectionType != UnifiedCollectionType.NOT_COLLECTED },
         )
@@ -320,6 +321,7 @@ class DefaultSubjectDetailsStateFactory : SubjectDetailsStateFactory, KoinCompon
                     subjectId = subjectId,
                     displayName = collection.subjectInfo.displayName,
                     selfCollectionType = collection.collectionType,
+                    collectionStats = collection.subjectInfo.collectionStats,
                     airingInfo = collection.airingInfo,
                     progressInfo = SubjectProgressInfo.compute(
                         collection.subjectInfo, collection.episodes, PackedDate.now(),
@@ -333,7 +335,12 @@ class DefaultSubjectDetailsStateFactory : SubjectDetailsStateFactory, KoinCompon
                 )
             }.stateIn(
                 this, SharingStarted.WhileSubscribed(5000),
-                SubjectDetailsUiState.Placeholder.copy(subjectId = subjectId),
+                // 统计先用已有的条目信息, 避免加载前显示 0
+                SubjectDetailsUiState.Placeholder.copy(
+                    subjectId = subjectId,
+                    collectionStats = subjectInfo.collectionStats,
+                    rating = EditableRatingUiState.Placeholder.copy(ratingInfo = subjectInfo.ratingInfo),
+                ),
             ),
         )
         return state

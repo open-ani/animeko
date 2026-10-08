@@ -21,6 +21,9 @@ import kotlinx.serialization.descriptors.PrimitiveSerialDescriptor
 import kotlinx.serialization.descriptors.SerialDescriptor
 import kotlinx.serialization.encoding.Decoder
 import kotlinx.serialization.encoding.Encoder
+import kotlinx.serialization.json.JsonEncoder
+import kotlinx.serialization.json.JsonObject
+import kotlinx.serialization.json.jsonObject
 import me.him188.ani.app.domain.mediasource.web.format.SelectorChannelFormat
 import me.him188.ani.app.domain.mediasource.web.format.SelectorChannelFormatIndexGrouped
 import me.him188.ani.app.domain.mediasource.web.format.SelectorChannelFormatNoChannel
@@ -242,6 +245,9 @@ data class SelectorAutoMatchConfig(
      * - 主中文名
      * - 日文原名
      * - 其他别名, 无特定顺序
+     *
+     * 这些名字都没搜到名字能对上的条目时, 再依次尝试请求附带的回退关键词 (带季度标记的别名, 由系列关系推出的基础名),
+     * 见 [me.him188.ani.datasources.api.source.MediaFetchRequest.fallbackSearchKeywords].
      */
     val searchUseSubjectNamesCount: Int = 1,
     /**
@@ -250,10 +256,6 @@ data class SelectorAutoMatchConfig(
      * 6.2 以前这是各条目格式配置里的字段.
      */
     val preferShorterName: Boolean = true,
-    /**
-     * 按条目名筛选搜索结果.
-     */
-    val filterBySubjectName: Boolean = true,
     /**
      * 只保留集号与当前剧集一致的资源.
      */
@@ -266,17 +268,60 @@ data class SelectorAutoMatchConfig(
 
 /**
  * 与 6.2 以前的平铺格式双向兼容的序列化器, 语义见 [SelectorSearchConfig] 类注释.
+ *
+ * 各条目格式与线路格式的配置 (`selectorSubjectFormat*`, `selectorChannelFormat*`) 按需写出:
+ * 当前选中的格式总是写出; 未选中的格式只在被改动过 (不等于默认值) 时写出, 以免编辑器切换格式后丢失已填写的内容.
+ * 读取时缺少的格式配置即为默认值, 任何版本的客户端都如此, 因此省略不影响兼容性.
+ * 非 JSON 编码器写出全部字段.
  */
 object SelectorSearchConfigSerializer : KSerializer<SelectorSearchConfig> {
     override val descriptor: SerialDescriptor get() = SelectorSearchConfigSurrogate.serializer().descriptor
 
     override fun serialize(encoder: Encoder, value: SelectorSearchConfig) {
-        encoder.encodeSerializableValue(SelectorSearchConfigSurrogate.serializer(), SelectorSearchConfigSurrogate(value))
+        val surrogate = SelectorSearchConfigSurrogate(value)
+        if (encoder !is JsonEncoder) {
+            encoder.encodeSerializableValue(SelectorSearchConfigSurrogate.serializer(), surrogate)
+            return
+        }
+        val obj = encoder.json.encodeToJsonElement(SelectorSearchConfigSurrogate.serializer(), surrogate).jsonObject
+        val omitted = value.omittedFormatConfigKeys()
+        encoder.encodeJsonElement(JsonObject(obj.filterKeys { it !in omitted }))
     }
 
     override fun deserialize(decoder: Decoder): SelectorSearchConfig {
         return decoder.decodeSerializableValue(SelectorSearchConfigSurrogate.serializer()).toConfig()
     }
+}
+
+/**
+ * 可以从 JSON 中省略的格式配置键: 未选中且等于默认值的格式.
+ * `preferShorterName` 由 [SelectorAutoMatchConfig] 镜像而来, 不参与比较.
+ */
+private fun SelectorSearchConfig.omittedFormatConfigKeys(): Set<String> = buildSet {
+    fun <C : SelectorFormatConfig> consider(key: String, id: SelectorFormatId, selectedId: SelectorFormatId, config: C, default: C) {
+        if (id != selectedId && config == default) add(key)
+    }
+
+    consider(
+        "selectorSubjectFormatA", SelectorSubjectFormatA.id, subjectFormatId,
+        selectorSubjectFormatA.copy(preferShorterName = true), SelectorSubjectFormatA.Config(),
+    )
+    consider(
+        "selectorSubjectFormatIndexed", SelectorSubjectFormatIndexed.id, subjectFormatId,
+        selectorSubjectFormatIndexed.copy(preferShorterName = true), SelectorSubjectFormatIndexed.Config(),
+    )
+    consider(
+        "selectorSubjectFormatJsonPathIndexed", SelectorSubjectFormatJsonPathIndexed.id, subjectFormatId,
+        selectorSubjectFormatJsonPathIndexed.copy(preferShorterName = true), SelectorSubjectFormatJsonPathIndexed.Config(),
+    )
+    consider(
+        "selectorChannelFormatFlattened", SelectorChannelFormatIndexGrouped.id, channelFormatId,
+        selectorChannelFormatFlattened, SelectorChannelFormatIndexGrouped.Config(),
+    )
+    consider(
+        "selectorChannelFormatNoChannel", SelectorChannelFormatNoChannel.id, channelFormatId,
+        selectorChannelFormatNoChannel, SelectorChannelFormatNoChannel.Config(),
+    )
 }
 
 /**
@@ -304,7 +349,6 @@ private class SelectorSearchConfigSurrogate(
     val defaultSubtitleLanguage: SubtitleLanguage = SubtitleLanguage.ChineseSimplified,
     val onlySupportsPlayers: List<String> = emptyList(),
     val filterByEpisodeSort: Boolean = SelectorAutoMatchConfig.Default.filterByEpisodeSort,
-    val filterBySubjectName: Boolean = SelectorAutoMatchConfig.Default.filterBySubjectName,
     val selectMedia: SelectorSearchConfig.SelectMediaConfig = SelectorSearchConfig.SelectMediaConfig(),
     val matchVideo: SelectorSearchConfig.MatchVideoConfig = SelectorSearchConfig.MatchVideoConfig(),
     /**
@@ -333,7 +377,6 @@ private class SelectorSearchConfigSurrogate(
         defaultSubtitleLanguage = config.defaultSubtitleLanguage,
         onlySupportsPlayers = config.onlySupportsPlayers,
         filterByEpisodeSort = config.autoMatch.filterByEpisodeSort,
-        filterBySubjectName = config.autoMatch.filterBySubjectName,
         selectMedia = config.selectMedia,
         matchVideo = config.matchVideo,
         autoMatch = config.autoMatch,
@@ -351,7 +394,6 @@ private class SelectorSearchConfigSurrogate(
                 SelectorSubjectFormatJsonPathIndexed.id -> selectorSubjectFormatJsonPathIndexed.preferShorterName
                 else -> selectorSubjectFormatA.preferShorterName
             },
-            filterBySubjectName = filterBySubjectName,
             filterByEpisodeSort = filterByEpisodeSort,
         )
         return SelectorSearchConfig(

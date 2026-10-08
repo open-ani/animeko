@@ -229,9 +229,14 @@
     <string name="settings_mediasource_selector_config_request_interval_description">控制每送出一個請求後等待多久再送出下一個請求</string>
     <string name="settings_mediasource_selector_config_search_cache_ttl">搜尋快取有效期 (分鐘)</string>
     <string name="settings_mediasource_selector_config_search_cache_ttl_description">在此時間內切換劇集時複用搜尋結果。實際生效值為此值與使用者設定中的較小者，0 表示不快取</string>
-    <string name="settings_mediasource_selector_config_filter_settings">過濾設定</string>
-    <string name="settings_mediasource_selector_config_filter_by_subject_name">使用條目名稱過濾</string>
-    <string name="settings_mediasource_selector_config_filter_by_subject_name_description">要求資源標題包含條目名稱。適用於資料來源可能搜到無關內容的情況。此功能只對 4.4.0 以前版本有效，對其他版本無效</string>
+    <string name="settings_mediasource_selector_auto_match">自動匹配 (可選)</string>
+    <string name="settings_mediasource_selector_auto_match_description">在上面的列表規則之上，怎樣自動找到正在觀看的劇集。全部可選，預設值適用於大多數站點</string>
+    <string name="settings_mediasource_selector_auto_match_enabled">參與自動匹配</string>
+    <string name="settings_mediasource_selector_auto_match_enabled_description">關閉後此源只供瀏覽和手動選集，播放時不會自動搜尋</string>
+    <string name="settings_mediasource_selector_tier">階級</string>
+    <string name="settings_mediasource_selector_tier_description">數值越低越優先。階級 0 查到結果後立即選用，更高階級需先等待其他資料來源</string>
+    <string name="settings_mediasource_selector_prefer_shorter_name">優先選擇最短標題</string>
+    <string name="settings_mediasource_selector_prefer_shorter_name_description">優先選擇滿足匹配的標題最短的條目，可避免為第一季匹配到第二季</string>
     <string name="settings_mediasource_selector_config_filter_by_episode_sort">使用劇集序號過濾</string>
     <string name="settings_mediasource_selector_config_filter_by_episode_sort_description">要求資源標題包含劇集序號。適用於資料來源可能搜到無關內容的情況。通常建議開啟</string>
     <string name="settings_mediasource_selector_config_default_resolution">標記解析度</string>
@@ -387,8 +392,8 @@
     <string name="settings_player_op_ed_skip_duration">OP/ED 跳過時長</string>
     <string name="settings_player_op_ed_skip_duration_seconds">%1$d 秒</string>
     <string name="settings_player_auto_switch_media_on_error">播放失敗時自動切換資源</string>
-    <string name="settings_player_experimental_hls_segment_filter">過濾貼片廣告（實驗性）</string>
-    <string name="settings_player_experimental_hls_segment_filter_description">嘗試過濾部分線上來源插入的貼片廣告。僅對以獨立片段插入的廣告有效，識別錯誤時可能跳過正常內容。</string>
+    <string name="settings_player_hls_ad_filter">過濾貼片廣告</string>
+    <string name="settings_player_hls_ad_filter_description">自動跳過線上來源影片中插入的廣告，個別廣告可能無法識別；如遇播放出錯可關閉</string>
     <string name="settings_player_long_press_fast_forward_speed">長按播放速度</string>
     <string name="settings_player_long_press_fast_forward_speed_description">長按時使用的播放速度</string>
     <string name="settings_player_playback_speed_range">倍速範圍</string>
@@ -535,8 +540,6 @@
     <string name="settings_mediasource_rss_search_link_supporting_text">取代規則：\n{keyword} 取代為條目 (番劇) 名稱\n{page} 取代為頁碼, 如果不需要分頁則忽略</string>
     <string name="settings_mediasource_rss_filter_by_episode">使用劇集序號過濾</string>
     <string name="settings_mediasource_rss_filter_by_episode_description">要求資源標題包含劇集序號。適用於資料源可能搜到無關內容的情況</string>
-    <string name="settings_mediasource_rss_filter_by_subject">使用條目名稱過濾</string>
-    <string name="settings_mediasource_rss_filter_by_subject_description">要求資源標題包含條目名稱。適用於資料源可能搜到無關內容的情況。\n此功能只對 4.4.0 以前版本有效，對其他版本無效</string>
     <string name="settings_mediasource_rss_auto_save_hint">提示：修改自動儲存</string>
 
     <!-- OutlinedMatchTag -->
@@ -599,6 +602,10 @@
     <string name="exploration_settings">設定</string>
     <string name="exploration_search">搜尋</string>
     <string name="exploration_trending">最高熱度</string>
+    <string name="exploration_trending_more">更多</string>
+    <string name="exploration_trending_ranking">熱度排行</string>
+    <string name="exploration_trending_ranking_heat">近 30 天 %1$s 人在看</string>
+    <string name="exploration_trending_ranking_empty">暫無排行</string>
     <string name="exploration_schedule">新番時間表</string>
     <string name="exploration_schedule_view_details">查看詳情</string>
     <string name="exploration_schedule_episode">第 %1$s 話</string>
@@ -664,7 +671,7 @@
     <string name="settings_danmaku_cancel">取消</string>
     <string name="settings_danmaku_regex_expression">正則表達式</string>
     <string name="settings_danmaku_regex_invalid">正則表達式語法不正確</string>
-    <string name="settings_danmaku_regex_description">填寫用於屏蔽的正則表達式，例如：\'.*簽.*\' 會屏蔽所有含有文字\'簽\'的彈幕。</string>
+    <string name="settings_danmaku_regex_description">填寫用於屏蔽的正則表達式，例如：“.*簽.*”會屏蔽所有含有文字“簽”的彈幕。</string>
     <string name="settings_danmaku_export_to_clipboard">複製規則到剪貼板</string>
     <string name="settings_danmaku_import_from_clipboard">從剪貼板導入規則</string>
     <string name="settings_danmaku_import_title">導入彈幕正則過濾規則</string>
@@ -727,7 +734,7 @@
 
     <!-- AutoCacheGroup -->
     <string name="settings_media_auto_cache_title">自動快取</string>
-    <string name="settings_media_auto_cache_description">自動快取 \"在看\" 分類中未觀看的劇集</string>
+    <string name="settings_media_auto_cache_description">自動快取“在看”分類中未觀看的劇集</string>
     <string name="settings_media_auto_cache_enable">啟用自動快取</string>
     <string name="settings_media_auto_cache_max_count">最大自動快取話數</string>
     <string name="settings_media_auto_cache_max_count_description">若手動快取數量超過該設定值，將不會自動快取</string>
@@ -789,6 +796,7 @@
     <string name="video_player_aspect_fit">適應</string>
     <string name="video_player_aspect_stretch">填充</string>
     <string name="video_player_aspect_crop">裁切</string>
+    <string name="video_player_aspect_ratio">畫面比例</string>
     <string name="video_player_auto">自動</string>
     <string name="video_player_audio_track">音軌</string>
     <string name="video_player_off">關閉</string>
@@ -1103,6 +1111,14 @@
     <string name="settings_account_profile_unbind_email_confirmation">確定要解除綁定電子郵件 %1$s 嗎？解除綁定後將不能再用它登入此帳號。之後可以重新綁定電子郵件。</string>
     <string name="settings_account_profile_unbind_email_last_login_method">電子郵件是此帳號唯一的登入方式，無法解除綁定。請先綁定 Bangumi 或其他第三方帳號。</string>
     <string name="settings_account_profile_ok">好</string>
+    <string name="settings_account_profile_account_management">帳號管理</string>
+    <string name="settings_account_profile_delete_account">刪除帳號</string>
+    <string name="settings_account_profile_delete_account_description">永久刪除此帳號及其全部資料</string>
+    <string name="settings_account_profile_delete_account_warning">刪除帳號會永久刪除此帳號的全部資料，包括收藏、觀看紀錄、評論和彈幕。刪除後無法撤回，資料無法找回。</string>
+    <string name="settings_account_profile_delete_account_input_label">輸入 %1$s 以確認</string>
+    <string name="settings_account_profile_delete_account_confirm">刪除</string>
+    <string name="settings_account_profile_deleting_account">正在刪除…</string>
+    <string name="settings_account_profile_account_deleted">帳號已刪除</string>
     <string name="settings_account_github_title">GitHub 帳號</string>
     <string name="settings_account_github_bound">已綁定的 GitHub 帳號</string>
     <string name="settings_account_developer_benefit">通過認證後不再顯示廣告等</string>
@@ -1466,6 +1482,7 @@
     <string name="foundation_paginated_list_select_group">選擇分組</string>
     <string name="foundation_paginated_list_next_group">下一組</string>
     <string name="rating_summary_multiline">#%1$d\n%2$d 人評</string>
+    <string name="rating_summary_total">%1$d 人評</string>
     <string name="subject_episode_statistics_copy">複製</string>
     <string name="subject_episode_statistics_error_details">錯誤詳情</string>
     <string name="subject_episode_statistics_error">錯誤</string>
@@ -1488,6 +1505,7 @@
     <string name="subject_episode_video_loading_resolving_source">正在解析資源連結\n通常幾秒內完成，否則請切換資料來源</string>
     <string name="subject_episode_video_loading_decoding_data">資源解析成功, 正在準備影片</string>
     <string name="subject_episode_video_loading_decoding_bt">正在解析磁力連結或查詢中繼資料\n通常幾秒內完成, 否則請嘗試切換資料來源或先快取再看</string>
+    <string name="subject_episode_video_loading_decoding_cloud">正在準備雲端硬碟檔案\n通常幾秒內完成</string>
     <string name="subject_episode_video_loading_buffering">正在緩衝</string>
     <string name="subject_episode_video_loading_buffering_bt_too_long">BT 初始緩衝耗時稍長, 請耐心等待 30 秒</string>
     <string name="subject_episode_video_loading_buffering_bt_no_speed_try_switch">若持續沒有速度, 可嘗試切換資料來源</string>
@@ -1747,6 +1765,17 @@
     <string name="qr_login_close">關閉</string>
     <string name="subject_episode_danmaku_sources_title">來源與時間校準</string>
     <string name="subject_episode_danmaku_sources_empty">暫無可用彈幕來源</string>
+    <string name="video_player_screenshot">截圖</string>
+    <string name="video_player_screenshot_share">分享</string>
+    <string name="video_player_screenshot_copy">複製</string>
+    <string name="video_player_screenshot_copy_failed">複製截圖失敗</string>
+    <string name="video_player_screenshot_copied">截圖已複製到剪貼簿</string>
+    <string name="video_player_screenshot_share_failed">沒有可以分享截圖的應用程式</string>
+    <string name="video_player_screenshot_failed_permission">截圖未儲存: 沒有寫入相簿的權限</string>
+    <string name="video_player_screenshot_failed_unsupported">目前播放器不支援截圖</string>
+    <string name="video_player_screenshot_failed_no_frame">截圖失敗: 目前沒有可擷取的畫面</string>
+    <string name="video_player_screenshot_failed_save">截圖儲存失敗</string>
+    <string name="video_player_screenshot_failed_save_reason">截圖儲存失敗: %1$s</string>
 </resources>
 
 <!--@formatter:on-->

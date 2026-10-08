@@ -11,4 +11,8 @@
     <files-path
             name="logs"
             path="logs/" /> <!-- /data/data/0/me.him188.ani/files/logs/ -->
+
+    <external-path
+            name="screenshots"
+            path="Pictures/Animeko/" /> <!-- Android 9 及以下的播放器截图直接写入公共图片目录, 分享时以 content URI 共享 -->
 </paths>

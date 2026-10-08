@@ -1653,6 +1653,17 @@ jobs:
       run: './gradlew testAndroidHostTest "--scan" "-Porg.gradle.daemon.idletimeout=60000" "-Dfile.encoding=UTF-8" "-Dorg.gradle.jvmargs=-Xmx12g -Dkotlin.daemon.jvm.options=-Xmx20g" "-Dkotlin.daemon.jvm.options=-Xmx20g" "--parallel"'
       if: '${{ steps.step-41.outcome == ''failure'' }}'
     - id: 'step-43'
+      name: 'Check (iOS) (Attempt #1)'
+      continue-on-error: true
+      timeout-minutes: 120
+      run: './gradlew :app:ios:testSentryTerminatePatch :app:shared:application:iosSimulatorArm64Test "--scan" "-Porg.gradle.daemon.idletimeout=60000" "-Dfile.encoding=UTF-8" "-Dorg.gradle.jvmargs=-Xmx12g -Dkotlin.daemon.jvm.options=-Xmx20g" "-Dkotlin.daemon.jvm.options=-Xmx20g" "--parallel"'
+    - id: 'step-44'
+      name: 'Check (iOS) (Attempt #2)'
+      continue-on-error: false
+      timeout-minutes: 120
+      run: './gradlew :app:ios:testSentryTerminatePatch :app:shared:application:iosSimulatorArm64Test "--scan" "-Porg.gradle.daemon.idletimeout=60000" "-Dfile.encoding=UTF-8" "-Dorg.gradle.jvmargs=-Xmx12g -Dkotlin.daemon.jvm.options=-Xmx20g" "-Dkotlin.daemon.jvm.options=-Xmx20g" "--parallel"'
+      if: '${{ steps.step-43.outcome == ''failure'' }}'
+    - id: 'step-45'
       name: 'Cleanup temp files'
       continue-on-error: true
       run: 'chmod +x ./ci-helper/cleanup-temp-files-macos.sh && ./ci-helper/cleanup-temp-files-macos.sh'

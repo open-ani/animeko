@@ -9,12 +9,18 @@
 
 package me.him188.ani.app.data.network
 
+import me.him188.ani.datasources.api.topic.UnifiedCollectionType
+
 data class SubjectSearchFilters(
     val tags: List<String>? = null, // "童年", "原创"
     val airDates: List<String>? = null, // YYYY-MM-DD
     val ratings: List<String>? = null, // ">=6", "<8"
     val ranks: List<String>? = null,
     val nsfw: Boolean? = null,
+    /**
+     * 排除当前用户收藏为这些类型的条目, 由服务端按登录用户的收藏过滤.
+     */
+    val excludeCollectionTypes: List<UnifiedCollectionType>? = null,
 )
 
 enum class SubjectSearchField {
