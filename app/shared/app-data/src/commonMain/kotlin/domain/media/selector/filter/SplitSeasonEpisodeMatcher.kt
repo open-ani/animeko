@@ -32,7 +32,7 @@ import me.him188.ani.datasources.api.topic.EpisodeRange
  *
  * 再按页面的编号接受序号: 从大于 1 的序号开始编的页接受季内序号或 Bangumi 的 sort (站点可能按官方的总话数编号);
  * 自己的页面从 1 编时用条目内序号 ep, 但条目数明显超过本段集数时页面装的是整季, 用季内序号;
- * 其他页面只认季内序号, 且条目数要超过前面各段的总集数, 否则页面只装着前半.
+ * 其他页面只认季内序号, 且条目数要超过前面各段的总集数加上它们可能占号的特别篇和序章, 否则页面只装着前半, 或多出来的只是特别篇.
  *
  * 第一段的季内序号与 ep 相同, 不需要这里处理. 非数据源页面的资源 (BT, 本地缓存) 不处理.
  */
@@ -147,8 +147,9 @@ internal class SplitSeasonEpisodeMatcher private constructor(
                 if (number == ep) MatchMetadata.EpisodeMatchKind.EP else null
             }
 
-            // 整季合成一页时当前条目的集都排在前面各段后面, 页面至少要比前面各段加起来长. 序章不占号的季里季内序号可能不超过前面的集数
-            page.count <= season.previousPartsEpisodeCount -> null
+            // 整季合成一页时当前条目的集都排在前面各段后面, 页面至少要比前面各段加起来长.
+            // 前面各段的特别篇和序章也可能占号, 页面只多出这么几个条目时分不清它们是当前条目的集还是特别篇
+            page.count <= season.previousPartsEpisodeCount + season.previousPartsExtraEntryCount -> null
 
             else -> if (number == seasonNumber) MatchMetadata.EpisodeMatchKind.SEASON else null
         }

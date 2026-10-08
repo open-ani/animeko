@@ -96,8 +96,8 @@ data class SubjectSeriesInfo(
         }
 
         private fun SubjectCollectionInfo.toSplitSeasonCandidate(): SplitSeason.Candidate {
-            val sorts = episodes.asSequence()
-                .map { it.episodeInfo }
+            val episodeInfos = episodes.map { it.episodeInfo }
+            val sorts = episodeInfos.asSequence()
                 .filter { it.type == EpisodeType.MainStory }
                 .mapNotNull { (it.sort as? EpisodeSort.Normal)?.number }
                 .filter { it % 1f == 0f }
@@ -109,6 +109,7 @@ data class SubjectSeriesInfo(
                 firstSort = sorts.minOrNull(),
                 lastSort = sorts.maxOrNull(),
                 episodeCount = sorts.size,
+                specialSorts = episodeInfos.filter { it.type == EpisodeType.SP }.mapNotNull { it.sort.number },
             )
         }
 

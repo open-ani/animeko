@@ -119,6 +119,27 @@ class SplitSeasonTest {
     }
 
     @Test
+    fun `EightySix special after part 1 is an extra entry on merged pages`() {
+        val season = SplitSeason.compute(EightySix, 331887)!!
+        assertEquals(1, season.parts[0].inlineSpecialCount)
+        assertEquals(3, season.parts[1].inlineSpecialCount)
+        assertEquals(1, season.previousPartsExtraEntryCount)
+    }
+
+    @Test
+    fun `integer sort specials and specials after the last episode are not extra entries`() {
+        assertEquals(0, SplitSeason.compute(AttackOnTitan, 331752)!!.self.inlineSpecialCount)
+        assertEquals(0, SplitSeason.compute(MushokuTensei, 325585)!!.self.inlineSpecialCount)
+        assertEquals(0, SplitSeason.compute(SpyFamily, 373267)!!.previousPartsExtraEntryCount)
+    }
+
+    @Test
+    fun `MushokuTensei S2 prologue is an extra entry on merged pages`() {
+        assertEquals(1, SplitSeason.compute(MushokuTensei, 444557)!!.previousPartsExtraEntryCount)
+        assertEquals(0, SplitSeason.compute(MushokuTensei, 325585)!!.previousPartsExtraEntryCount)
+    }
+
+    @Test
     fun `continuous sort alone does not make a split season`() {
         assertNull(partIds(Frieren, 400602))
         assertNull(partIds(Frieren, 515759))

@@ -58,6 +58,11 @@ data class SplitSeason(
          * 正片集数.
          */
         val episodeCount: Int,
+        /**
+         * 正片中间的特别篇数: sort 在本段范围内且不是整数的特别篇, 如 86 的 11.5 集.
+         * 站点可能把它们编进正片序号, 合并页上它们会把后面各段的序号挤后.
+         */
+        val inlineSpecialCount: Int = 0,
     )
 
     init {
@@ -94,6 +99,13 @@ data class SplitSeason(
     val previousPartsEpisodeCount: Int get() = parts.take(selfIndex).sumOf { it.episodeCount }
 
     /**
+     * 当前条目前面各段里站点可能编进正片序号的额外条目数: 正片中间的特别篇和 sort 为 0 的序章.
+     * 合并页只比前面各段的集数多出不超过这么多条目时, 分不清多出来的是当前条目的集还是这些条目.
+     */
+    val previousPartsExtraEntryCount: Int
+        get() = parts.take(selfIndex).sumOf { it.inlineSpecialCount + if (it.firstSort == 0) 1 else 0 }
+
+    /**
      * 名字去掉分段标记的结果.
      */
     data class StrippedName(
@@ -119,6 +131,10 @@ data class SplitSeason(
          */
         val lastSort: Int?,
         val episodeCount: Int,
+        /**
+         * 特别篇的 sort, 用于统计 [Part.inlineSpecialCount].
+         */
+        val specialSorts: List<Float> = emptyList(),
     )
 
     companion object {
@@ -195,6 +211,7 @@ data class SplitSeason(
                     markers = candidate.names.mapNotNull { stripMarker(it).marker }.distinct(),
                     firstSort = candidate.firstSort!!,
                     episodeCount = candidate.episodeCount,
+                    inlineSpecialCount = candidate.inlineSpecialCount(),
                 )
             }
             val partIds = parts.map { it.subjectId }.toSet()
@@ -202,6 +219,15 @@ data class SplitSeason(
                 .filter { it.subjectId !in partIds }
                 .flatMapTo(mutableSetOf()) { subject -> subject.names.flatMap { seasonNumbersOf(it) }.ifEmpty { listOf(1) } }
             return SplitSeason(parts, selfIndex = selfIndexInChain - start, otherSeasonNumbers = otherSeasonNumbers)
+        }
+
+        /**
+         * 正片范围内的非整数 sort 的特别篇. 整数 sort 的特别篇 (放送前特番等) 另成一套编号, 不在正片中间.
+         */
+        private fun Candidate.inlineSpecialCount(): Int {
+            val first = firstSort ?: return 0
+            val last = lastSort ?: return 0
+            return specialSorts.count { it % 1f != 0f && it > first && it < last + 1 }
         }
 
         /**

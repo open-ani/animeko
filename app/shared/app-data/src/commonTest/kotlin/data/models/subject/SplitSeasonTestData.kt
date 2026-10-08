@@ -10,15 +10,16 @@
 package me.him188.ani.app.data.models.subject
 
 /**
- * 几个系列的主线条目, 名字、sort 范围取自 2026-10 的 Bangumi 数据. 第一个名字是中文名, 其余是日文名和别名.
+ * 几个系列的主线条目, 名字、sort 范围、特别篇的 sort 取自 2026-10 的 Bangumi 数据. 第一个名字是中文名, 其余是日文名和别名.
  */
 object SplitSeasonTestData {
-    private fun subject(id: Int, sorts: IntRange?, vararg names: String) = SplitSeason.Candidate(
+    private fun subject(id: Int, sorts: IntRange?, vararg names: String, specials: List<Float> = emptyList()) = SplitSeason.Candidate(
         subjectId = id,
         names = names.toList(),
         firstSort = sorts?.first,
         lastSort = sorts?.last,
         episodeCount = sorts?.count() ?: 0,
+        specialSorts = specials,
     )
 
     /**
@@ -84,6 +85,7 @@ object SplitSeasonTestData {
             "无职转生～到了异世界就拿出真本事～ 第2部分", "無職転生 ～異世界行ったら本気だす～ 第2クール",
             "无职转生 ～在异世界认真地活下去～ 第2部分", "Mushoku Tensei: Isekai Ittara Honki Dasu Part 2",
             "Mushoku Tensei: Jobless Reincarnation Part 2", "無職轉生 到了異世界就拿出真本事 後半", "无职转生 ～在异世界认真地活下去～ 后半",
+            specials = listOf(24f),
         ),
         subject(
             373247, 0..12,
@@ -97,6 +99,7 @@ object SplitSeasonTestData {
             "无职转生 第二季 ～在异世界认真地活下去～ 第2部分", "Mushoku Tensei II: Isekai Ittara Honki Dasu (2024)",
             "Mushoku Tensei: Jobless Reincarnation Season 2 (2024)", "Mushoku Tensei: Jobless Reincarnation Season 2 part 2",
             "Mushoku Tensei II: Isekai Ittara Honki Dasu part 2",
+            specials = listOf(18.5f),
         ),
         subject(
             501963, 1..14,
@@ -125,6 +128,7 @@ object SplitSeasonTestData {
             331752, 76..87,
             "进击的巨人 最终季 Part.2", "進撃の巨人 The Final Season Part.2", "Attack on Titan Final Season Part 2",
             "Shingeki no Kyojin: The Final Season Part 2",
+            specials = listOf(1f, 2f, 3f, 4f, 5f, 6f),
         ),
         subject(376739, 1..1, "进击的巨人 最终季 完结篇 前篇", "進撃の巨人 The Final Season 完結編 前編"),
         subject(415779, 1..1, "进击的巨人 最终季 完结篇 后篇", "進撃の巨人 The Final Season 完結編 後編"),
@@ -138,6 +142,7 @@ object SplitSeasonTestData {
         subject(
             373267, 13..25,
             "间谍过家家 第2部分", "SPY×FAMILY 第2クール", "Spy x Family (2022)", "スパイファミリー 第2クール", "SPY×FAMILY Part 2",
+            specials = listOf(0f, 15.5f),
         ),
         subject(
             411427, 26..37,
@@ -150,7 +155,7 @@ object SplitSeasonTestData {
      * 第二季的 sort 从 1 重新开始, 第2部分从 13 接上.
      */
     val AncientMagusBride = listOf(
-        subject(210864, 1..24, "魔法使的新娘", "魔法使いの嫁"),
+        subject(210864, 1..24, "魔法使的新娘", "魔法使いの嫁", specials = listOf(12.5f)),
         subject(
             399820, 1..12,
             "魔法使的新娘 第二季", "魔法使いの嫁 SEASON2", "Mahoutsukai no Yome SEASON 2", "魔法使之嫁 第二季",
@@ -163,11 +168,18 @@ object SplitSeasonTestData {
         ),
     )
 
+    /**
+     * 第一季拆成两个条目, 前半的 11 集之后还有 11.5 集, 后半中间也有特别篇.
+     */
     val EightySix = listOf(
-        subject(302189, 1..11, "86 -不存在的战区-", "86―エイティシックス―", "86 -不存在的地域-", "86-エイティシックス-"),
+        subject(
+            302189, 1..11, "86 -不存在的战区-", "86―エイティシックス―", "86 -不存在的地域-", "86-エイティシックス-",
+            specials = listOf(11.5f),
+        ),
         subject(
             331887, 12..23,
             "86 -不存在的战区- 第2部分", "86―エイティシックス― 第2クール", "86: Eighty Six 2nd Season", "86: Eighty Six Part 2",
+            specials = listOf(17.5f, 18.5f, 21.5f),
         ),
     )
 

@@ -141,11 +141,14 @@ class MediaSelectorSplitSeasonTest {
         val partOne = addPage("无职转生 第二季 ～到了异世界就拿出真本事～", 1..12, specials = listOf("OVA"))
         val partOneWithPrologue = addPage("无职转生 第二季 ～到了异世界就拿出真本事～", 0..12, source = "web4", channel = "线路J")
         val merged = addPage("无职转生 第二季 ～到了异世界就拿出真本事～", 1..24, source = "web4", channel = "线路D")
+        // 序章可能占号: 只比前半多一个条目的合并页分不清第 13 个是前半最后一集还是后半第 1 集
+        val mergedBarelyLonger = addPage("无职转生 第二季 ～到了异世界就拿出真本事～", 1..14, source = "web4", channel = "线路C")
 
         assertPage(own, 1 to "included EXACT EP")
         assertPage(partOne)
         assertPage(partOneWithPrologue)
         assertPage(merged, 13 to "included EXACT SEASON")
+        assertPage(mergedBarelyLonger)
     }
 
     @Test
@@ -241,13 +244,18 @@ class MediaSelectorSplitSeasonTest {
         val namedAsSecondSeason = addPage("86 -不存在的战区-第二季", 12..23, source = "web2", specials = listOf("17.5", "18.5", "21.5"))
         // 站点把后半叫 "第二季", Bangumi 的别名也叫 2nd Season; 从 1 编号的是后半自己的页
         val namedAsSecondSeasonRestarting = addPage("86 -不存在的战区- 第二季", 1..12, source = "web4")
+        // 前半 11 集之后有 11.5 集: 只有 12 个条目的页面分不清第 12 个是它还是后半第 1 集, 13 个才算合并页
         val namedAsFirstSeason = addPage("86 -不存在的战区第一季", 1..12, source = "web4")
+        val mergedBarelyLonger = addPage("86 -不存在的战区-", 1..12, source = "web4", channel = "线路B")
+        val mergedInProgress = addPage("86 -不存在的战区-", 1..13, source = "web4", channel = "线路C")
 
         assertPage(own, 1 to "included EXACT EP")
         assertPage(merged, 12 to "included EXACT SEASON")
         assertPage(namedAsSecondSeason, 12 to "included FUZZY SEASON")
         assertPage(namedAsSecondSeasonRestarting, 1 to "included FUZZY EP")
-        assertPage(namedAsFirstSeason, 12 to "included FUZZY SEASON")
+        assertPage(namedAsFirstSeason)
+        assertPage(mergedBarelyLonger)
+        assertPage(mergedInProgress, 12 to "included EXACT SEASON")
     }
 
     @Test
