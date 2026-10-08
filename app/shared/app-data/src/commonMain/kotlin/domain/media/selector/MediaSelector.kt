@@ -186,6 +186,15 @@ interface MediaSelector {
     val selected: StateFlow<Media?>
 
     /**
+     * [selected] 按当前条件过滤的结果, 包含匹配信息. 未选择时为 `null`.
+     *
+     * [selected] 不一定在 [filteredCandidates] 中: 浏览手动选集和浏览记忆回放现场创建资源, 用户拖入的本地文件不来自任何数据源.
+     * 此时对它单独执行与 [filteredCandidates] 相同的过滤, 名称对得上条目名或别名的照样是精确匹配.
+     * 条目信息等条件在选择之后才加载完时, 结果随之更新.
+     */
+    val selectedMaybeExcludedMedia: Flow<MaybeExcludedMedia?>
+
+    /**
      * 用于监听 [select] 等事件
      * @see eventHandling
      */
@@ -472,6 +481,20 @@ class DefaultMediaSelector(
         preferredCandidates.map { list -> list.mapNotNull { it.result } }
 
     override val selected: MutableStateFlow<Media?> = MutableStateFlow(null)
+
+    @OptIn(UnsafeOriginalMediaAccess::class)
+    override val selectedMaybeExcludedMedia: Flow<MaybeExcludedMedia?> = combine(
+        selected,
+        filteredCandidates,
+        savedDefaultPreference,
+        this.mediaSelectorSettings,
+        this.mediaSelectorContext,
+    ) { selected, candidates, pref, settings, context ->
+        if (selected == null) return@combine null
+        candidates.firstOrNull { it.original === selected } // identity check is enough and fast
+            ?: algorithm.filterMediaList(listOf(selected), pref, settings, context).single()
+    }.flowOn(flowCoroutineContext)
+
     override val events = MutableMediaSelectorEvents()
 
     override fun autoSelectSnapshots(sources: Flow<List<MediaSourceSelectionSnapshot>>): Flow<MediaAutoSelectSnapshot> =
