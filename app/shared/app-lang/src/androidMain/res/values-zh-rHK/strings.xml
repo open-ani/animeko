@@ -154,7 +154,6 @@
     <string name="episode_drop_video_unknown_name">影片檔案</string>
     <string name="episode_drop_video_description">立即在目前劇集播放此檔案，僅本次播放有效</string>
     <string name="episode_drop_video_supported_hint">影片檔案</string>
-    <string name="settings_help_qq">QQ</string>
     <string name="settings_help_telegram">Telegram</string>
     <string name="settings_help_github">GitHub</string>
     <string name="settings_help_feedback">反饋問題</string>
@@ -165,7 +164,6 @@
     <string name="settings_about_feedback">反饋建議</string>
     <string name="settings_about_source_code">源代碼</string>
     <string name="settings_about_chat_groups">交流群</string>
-    <string name="settings_about_qq_group">QQ 群</string>
     <string name="settings_about_icon_description">Animeko Icon</string>
     <string name="settings_about_app_name">Animeko</string>
     <string name="settings_about_app_description">集找番、追番、看番的一站式彈幕追番平台</string>
