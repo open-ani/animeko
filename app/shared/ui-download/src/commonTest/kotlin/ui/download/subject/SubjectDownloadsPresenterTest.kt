@@ -32,6 +32,7 @@ import kotlinx.coroutines.test.advanceTimeBy
 import kotlinx.coroutines.test.runCurrent
 import kotlinx.coroutines.test.runTest
 import me.him188.ani.app.data.models.player.EpisodeHistory
+import me.him188.ani.app.data.models.subject.SplitSeason
 import me.him188.ani.app.domain.media.TestMediaList
 import me.him188.ani.app.domain.media.cache.MediaCache
 import me.him188.ani.app.domain.media.cache.MediaCacheState
@@ -366,6 +367,29 @@ class SubjectDownloadsPresenterTest {
         assertEquals(DownloadRequestUiState(), finished.request)
         assertNull(awaitDialogs { it == null })
         assertEquals(listOf(1, 2), addDownload.createdEpisodeIds)
+    }
+
+    @Test
+    fun `manual browse target carries the subject names, ep and split season`() = withFixture {
+        val season = SplitSeason(
+            parts = listOf(
+                SplitSeason.Part(subjectId = 100, names = listOf("前半"), markers = emptyList(), firstSort = 1, episodeCount = 12),
+                SplitSeason.Part(subjectId = 1, names = listOf("中文条目名称"), markers = listOf("第2部分"), firstSort = 13, episodeCount = 3),
+            ),
+            selfIndex = 1,
+            baseNames = listOf("前半"),
+        )
+        val base = testSubjectCollection(subjectId = 1, episodeCount = 3)
+        subjects.collection.value = base.copy(relations = base.relations.copy(splitSeason = season))
+        sources.instances.value = listOf(createTestMediaSourceInstance(TestBrowsableMediaSource()))
+
+        assertTrue(presenter.requestDownload(2))
+        val picker = assertNotNull(awaitDialogs { it?.selection != null }?.selection)
+        val manual = assertNotNull(picker.manualBrowse)
+        val target = assertNotNull(manual.presentationFlow.first { it.target?.splitSeason != null }.target)
+        assertEquals(season, target.splitSeason)
+        assertEquals(EpisodeSort(2), target.episodeEp)
+        assertEquals(base.subjectInfo.allNames, target.subjectNames)
     }
 
     @Test

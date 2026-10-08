@@ -67,6 +67,31 @@ class BrowseEpisodeIndexTest {
     }
 
     @Test
+    fun `page numbered above 1 also accepts the sort`() {
+        assertEquals(0, preselect(ReZero, 316247, sort = 39, ep = 1, "Re：从零开始的异世界生活 第二季 后半部分", episodes(39..50)))
+        assertEquals(13, preselect(ReZero, 316247, sort = 39, ep = 1, "Re：从零开始的异世界生活 第二季", episodes(26..50)))
+    }
+
+    @Test
+    fun `own page holding the whole season preselects the season number`() {
+        assertEquals(13, preselect(ReZero, 316247, sort = 39, ep = 1, "Re：从零开始的异世界生活 第二季 后半部分", episodes(1..25)))
+        assertEquals(0, preselect(ReZero, 316247, sort = 39, ep = 1, "Re：从零开始的异世界生活 第二季 后半部分", episodes(1..14)))
+    }
+
+    @Test
+    fun `page only similar to the season name is treated as a merged page`() {
+        assertEquals(11, preselect(EightySix, 331887, sort = 12, ep = 1, "86 不存在的战区 全集", episodes(1..25)))
+        assertNull(preselect(EightySix, 331887, sort = 12, ep = 1, "86 不存在的战区 全集", episodes(1..12)))
+    }
+
+    @Test
+    fun `season page without the season number does not fall back to the sort`() {
+        val missing14 = episodes(1..13) + episodes(15..25) + episodes(listOf(39))
+        assertNull(preselect(ReZero, 316247, sort = 39, ep = 1, "Re：从零开始的异世界生活 第二季", missing14))
+        assertNull(preselect(ReZero, 316247, sort = 39, ep = 1, "Re：从零开始的异世界生活 第二季 后半部分", episodes(2..12)))
+    }
+
+    @Test
     fun `page of another season preselects only the sort`() {
         assertEquals(38, preselect(ReZero, 316247, sort = 39, ep = 1, "Re：从零开始的异世界生活", episodes(1..50)))
         assertNull(preselect(ReZero, 316247, sort = 39, ep = 1, "Re：从零开始的异世界生活 第三季 反击篇", episodes(1..16)))
@@ -105,5 +130,7 @@ class BrowseEpisodeIndexTest {
         assertNull(SplitSeasonPageMatcher.create(ReZero.splitSeason(278826)!!, ReZero.names(278826), EpisodeSort(26), EpisodeSort(1)))
         assertNull(SplitSeasonPageMatcher.create(ReZero.splitSeason(316247)!!, ReZero.names(316247), EpisodeSort("39.5"), EpisodeSort(1)))
         assertNull(SplitSeasonPageMatcher.create(ReZero.splitSeason(316247)!!, ReZero.names(316247), EpisodeSort(39), null))
+        assertNull(SplitSeasonPageMatcher.create(ReZero.splitSeason(316247)!!, ReZero.names(316247), EpisodeSort(39), EpisodeSort("1.5")))
+        assertNull(SplitSeasonPageMatcher.create(ReZero.splitSeason(316247)!!, listOf("", " "), EpisodeSort(39), EpisodeSort(1)))
     }
 }
