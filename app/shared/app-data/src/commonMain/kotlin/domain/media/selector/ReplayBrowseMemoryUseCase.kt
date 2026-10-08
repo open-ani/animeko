@@ -69,23 +69,6 @@ enum class ReplayResult {
  * 所有非 [CancellationException] 的异常 (网络 / BlockedException / UnsupportedOperationException / DataStore) → NOT_FOUND; 不弹验证码.
  * 超时用 `withTimeoutOrNull` 而不是 `withTimeout`: `TimeoutCancellationException` 是 CancellationException 子类, 重抛会杀掉扩展任务.
  */
-/**
- * 线路里第 [pickedIndex] 项被当作第 [pickedAs] 集时, 第 [target] 集按位置对应的下标 k + (t − p).
- * 编号类型不同 (正片与 SP) 或差不是整数时算不出, 返回 null. 不检查下标是否越界.
- * 浏览记忆回放与下载弹窗的手动查找共用这条规则.
- */
-fun browseEpisodeIndex(pickedIndex: Int, pickedAs: EpisodeSort, target: EpisodeSort): Int? {
-    val sameSeries = when (pickedAs) {
-        is EpisodeSort.Normal -> target is EpisodeSort.Normal
-        is EpisodeSort.Special -> target is EpisodeSort.Special && pickedAs.type == target.type
-        is EpisodeSort.Unknown -> false
-    }
-    if (!sameSeries) return null
-    val offset = (target.number ?: return null) - (pickedAs.number ?: return null)
-    if (offset % 1f != 0f) return null
-    return pickedIndex + offset.toInt()
-}
-
 fun interface ReplayBrowseMemoryUseCase : UseCase {
     suspend operator fun invoke(subjectId: Int, episodeInfo: EpisodeInfo, mediaSelector: MediaSelector): ReplayResult
 }

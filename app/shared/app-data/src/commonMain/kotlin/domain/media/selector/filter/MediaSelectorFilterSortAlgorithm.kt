@@ -229,7 +229,7 @@ class MediaSelectorFilterSortAlgorithm {
 
         // 第 0 条: 先于本地缓存豁免, 否则看第 2 话时会自动选中第 1 话的缓存.
         if (episodeMatch != null) {
-            if (splitSeasonMatch?.pageKind == SplitSeasonEpisodeMatcher.PageKind.OTHER_SEASON) {
+            if (splitSeasonMatch?.pageKind == SplitSeasonPageMatcher.PageKind.OTHER_SEASON) {
                 return exclude(MediaExclusionReason.FromSeriesSeason)
             }
             val matches = splitSeasonMatch?.matched ?: episodeMatch.matches(media)
@@ -264,7 +264,7 @@ class MediaSelectorFilterSortAlgorithm {
             }
         }
 
-        if (splitSeasonMatch?.pageKind == SplitSeasonEpisodeMatcher.PageKind.SEASON) {
+        if (splitSeasonMatch?.pageKind == SplitSeasonPageMatcher.PageKind.SEASON) {
             // 本季其他段的页面或整季的合并页, 已经按季内序号对上了当前集, 不按其他季度排除
         } else if (mediaSubjectName != null) {
             // 数据源可以准确拿到条目名称, 我们采用 specialEquals

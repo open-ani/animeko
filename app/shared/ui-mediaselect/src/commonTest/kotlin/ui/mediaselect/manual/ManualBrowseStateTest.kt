@@ -31,6 +31,7 @@ import kotlinx.coroutines.test.resetMain
 import kotlinx.coroutines.test.runCurrent
 import kotlinx.coroutines.test.runTest
 import kotlinx.coroutines.test.setMain
+import me.him188.ani.app.data.models.subject.SplitSeason
 import me.him188.ani.app.data.repository.media.ManualBrowseMemory
 import me.him188.ani.app.domain.mediasource.instance.createTestMediaSourceInstance
 import me.him188.ani.app.domain.mediasource.web.BlockReason
@@ -53,6 +54,8 @@ import me.him188.ani.app.ui.mediafetch.TestBrowseSubjects
 import me.him188.ani.app.ui.mediafetch.createTestManualBrowseState
 import me.him188.ani.datasources.api.EpisodeSort
 import me.him188.ani.datasources.api.Media
+import me.him188.ani.datasources.api.source.BrowseChannel
+import me.him188.ani.datasources.api.source.BrowseEpisode
 import me.him188.ani.datasources.api.source.BrowseSubject
 import me.him188.ani.datasources.api.source.MediaSource
 import me.him188.ani.datasources.api.topic.EpisodeRange
@@ -496,6 +499,57 @@ class ManualBrowseStateTest {
         val presentation = state.awaitChannels()
         assertNull(presentation.selectedEpisodeIndex)
         assertNull(presentation.selectedEpisode)
+    }
+
+    @Test
+    fun `ep is preselected when no episode has the target sort`() = runTest {
+        val state = createState(target = ManualBrowseTarget(1, "命运石之门", EpisodeSort(25), "25", episodeEp = EpisodeSort(1)))
+        state.openSubject(TestBrowseSubjects[0])
+        val presentation = state.awaitChannels()
+        assertEquals(0, presentation.selectedEpisodeIndex)
+        assertEquals("01", presentation.selectedEpisode?.name)
+    }
+
+    @Test
+    fun `split season preselects by the page numbering like auto selection`() = runTest {
+        val merged = BrowseSubject(name = "Re：从零开始的异世界生活 第二季", url = "https://example.com/subject/s2")
+        val own = BrowseSubject(name = "Re：从零开始的异世界生活 第二季 后半部分", url = "https://example.com/subject/s2p2")
+        fun channel(numbers: IntRange) = listOf(
+            BrowseChannel(
+                name = "线路1",
+                episodes = numbers.map { BrowseEpisode(name = "第${it}集", url = "https://example.com/play/$it", episodeSort = EpisodeSort(it)) },
+            ),
+        )
+        val source = TestBrowsableMediaSource(
+            subjects = listOf(merged, own),
+            channels = { subject -> if (subject == merged) channel(1..25) else channel(1..12) },
+        )
+        val season = SplitSeason(
+            parts = listOf(
+                SplitSeason.Part(278826, names = listOf("Re：从零开始的异世界生活 第二季"), markers = emptyList(), firstSort = 26, episodeCount = 13),
+                SplitSeason.Part(316247, names = listOf(own.name), markers = listOf("后半部分"), firstSort = 39, episodeCount = 12),
+            ),
+            selfIndex = 1,
+            baseNames = listOf(merged.name),
+            otherSeasonNumbers = listOf(1, 3, 4),
+        )
+        val target = ManualBrowseTarget(
+            316247, own.name, EpisodeSort(39), "39",
+            subjectNames = listOf(own.name),
+            episodeEp = EpisodeSort(1),
+            splitSeason = season,
+        )
+        val state = createState(source = source, target = target)
+
+        state.openSubject(merged)
+        val onMerged = state.presentationFlow.first { it.openedSubject == merged && it.channels is ManualLoadState.Success }
+        assertEquals(13, onMerged.selectedEpisodeIndex)
+        assertEquals("第14集", onMerged.selectedEpisode?.name)
+
+        state.closeSubject()
+        state.openSubject(own)
+        val onOwn = state.presentationFlow.first { it.openedSubject == own && it.channels is ManualLoadState.Success }
+        assertEquals(0, onOwn.selectedEpisodeIndex)
     }
 
     @Test

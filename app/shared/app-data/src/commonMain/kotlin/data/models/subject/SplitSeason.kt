@@ -16,7 +16,7 @@ import kotlinx.serialization.Serializable
  *
  * 站点常把这几个条目合成一页从 1 连续编号, 或者后半自己一页但接着前半编号, 此时后半各集的站内序号是季内序号,
  * 既不是条目内序号 [me.him188.ani.app.data.models.episode.EpisodeInfo.ep], 也不一定是 Bangumi 的 sort.
- * 选择器用这里的信息把站点的序号对回当前剧集, 见 [me.him188.ani.app.domain.media.selector.filter.SplitSeasonEpisodeMatcher].
+ * 选择器用这里的信息把站点的序号对回当前剧集, 见 [me.him188.ani.app.domain.media.selector.filter.SplitSeasonPageMatcher].
  *
  * 由服务端从系列主线识别 (sort 连续并且名字去掉分段标记后相同的相邻条目是同一季), 随条目的系列关系
  * [SubjectRelations.splitSeason] 下发, 客户端不自己识别.

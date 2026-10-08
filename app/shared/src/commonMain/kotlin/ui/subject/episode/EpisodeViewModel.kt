@@ -431,6 +431,9 @@ open class EpisodeViewModel(
                     subjectName = it.subjectInfo.nameCnOrName,
                     episodeSort = it.episodeInfo.sort,
                     episodeSortText = it.episodeInfo.sort.toString(),
+                    subjectNames = it.subjectInfo.allNames,
+                    episodeEp = it.episodeInfo.ep,
+                    splitSeason = it.seriesInfo.splitSeason,
                 )
             }
         }.distinctUntilChanged(),
