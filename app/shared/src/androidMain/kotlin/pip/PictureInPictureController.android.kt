@@ -22,7 +22,10 @@ import android.os.Build
 import android.util.Rational
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.platform.LocalContext
 import androidx.core.content.ContextCompat
 import kotlinx.coroutines.CoroutineScope
@@ -92,6 +95,25 @@ actual fun rememberPictureInPictureController(player: MediampPlayer): PictureInP
         onDispose { controller.dispose() }
     }
     return controller
+}
+
+/**
+ * 小窗状态来自宿主 Activity 的 [android.app.Activity.onPictureInPictureModeChanged] 回调,
+ * 经 [PictureInPictureHost] 转发; 宿主未实现该接口时只取组合时的快照 (不会变化).
+ */
+@Composable
+actual fun rememberIsInPictureInPicture(): Boolean {
+    val context = LocalContext.current
+    val activity = remember(context) { context.findActivity() }
+    var isInPictureInPicture by remember(activity) {
+        mutableStateOf(activity?.isInPictureInPictureMode == true)
+    }
+    DisposableEffect(activity) {
+        val registration = (activity as? PictureInPictureHost)
+            ?.registerPictureInPictureModeChangedListener { isInPictureInPicture = it }
+        onDispose { registration?.close() }
+    }
+    return isInPictureInPicture
 }
 
 /**

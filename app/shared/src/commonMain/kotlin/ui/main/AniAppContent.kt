@@ -51,6 +51,7 @@ import me.him188.ani.app.navigation.NavRoutes
 import me.him188.ani.app.navigation.OverrideNavigation
 import me.him188.ani.app.navigation.SubjectDetailPlaceholder
 import me.him188.ani.app.navigation.rememberAniBackStack
+import me.him188.ani.app.pip.rememberIsInPictureInPicture
 import me.him188.ani.app.platform.LocalContext
 import me.him188.ani.app.platform.navigation.LocalBrowserNavigator
 import me.him188.ani.app.shared.loadOpenSourceLibrariesJsons
@@ -69,6 +70,7 @@ import me.him188.ani.app.ui.exploration.schedule.ScheduleScreen
 import me.him188.ani.app.ui.exploration.schedule.ScheduleViewModel
 import me.him188.ani.app.ui.exploration.trends.TrendingRankingScreen
 import me.him188.ani.app.ui.exploration.trends.TrendingRankingViewModel
+import me.him188.ani.app.ui.foundation.LocalIsInPictureInPicture
 import me.him188.ani.app.ui.foundation.animation.NavigationMotionScheme
 import me.him188.ani.app.ui.foundation.animation.ProvideAniMotionCompositionLocals
 import me.him188.ani.app.ui.foundation.layout.currentWindowAdaptiveInfo1
@@ -83,14 +85,14 @@ import me.him188.ani.app.ui.login.EmailLoginVerifyScreen
 import me.him188.ani.app.ui.login.EmailLoginViewModel
 import me.him188.ani.app.ui.oauth.OAuthAuthorizeScreen
 import me.him188.ani.app.ui.oauth.OAuthAuthorizeViewModel
-import me.him188.ani.app.ui.qrlogin.QrLoginConfirmScreen
-import me.him188.ani.app.ui.qrlogin.QrLoginConfirmViewModel
-import me.him188.ani.app.ui.qrlogin.QrLoginScanScreen
-import me.him188.ani.app.ui.qrlogin.isQrCodeScannerSupported
 import me.him188.ani.app.ui.playback.PlaybackHistoryScreen
 import me.him188.ani.app.ui.playback.PlaybackHistorySyncStatusScreen
 import me.him188.ani.app.ui.playback.PlaybackHistoryViewModel
 import me.him188.ani.app.ui.profile.auth.AniContactList
+import me.him188.ani.app.ui.qrlogin.QrLoginConfirmScreen
+import me.him188.ani.app.ui.qrlogin.QrLoginConfirmViewModel
+import me.him188.ani.app.ui.qrlogin.QrLoginScanScreen
+import me.him188.ani.app.ui.qrlogin.isQrCodeScannerSupported
 import me.him188.ani.app.ui.search.SearchScreen
 import me.him188.ani.app.ui.settings.SettingsScreen
 import me.him188.ani.app.ui.settings.SettingsViewModel
@@ -132,6 +134,8 @@ fun AniAppContent(aniNavigator: AniNavigator) {
     val watchTogetherPlayerController = remember(watchTogetherViewModel) {
         WatchTogetherPlayerController(watchTogetherViewModel::onPlayerEntryClick)
     }
+    // 应用级浮层不随播放器页最小化, 需要自己知道系统小窗状态
+    val isInPictureInPicture = rememberIsInPictureInPicture()
 
     // 只有在 APP 首次启动的时候使用 initialNavRoute, 之后 back stack 自己维护并跨进程恢复
     val backStack = rememberAniBackStack(appState.initialNavRoute)
@@ -142,6 +146,7 @@ fun AniAppContent(aniNavigator: AniNavigator) {
             LocalNavigator provides aniNavigator,
             LocalBrowserNavigator providesDefault aniAppViewModel.browserNavigator,
             LocalWatchTogetherPlayerController provides watchTogetherPlayerController,
+            LocalIsInPictureInPicture provides isInPictureInPicture,
         ) {
             ProvideAniMotionCompositionLocals {
                 AniAppContentImpl(
