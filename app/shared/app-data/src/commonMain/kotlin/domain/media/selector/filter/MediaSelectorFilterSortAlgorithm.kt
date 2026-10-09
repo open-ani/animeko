@@ -82,15 +82,6 @@ class MediaSelectorFilterSortAlgorithm {
         }
         val episodeInfo = context.episodeInfo.takeIf { context.hasEpisode }
 
-        val mediaListFilterContext = if (subjectInfo != null && episodeInfo != null) {
-            MediaListFilterContext(
-                subjectNames = subjectInfo.allNames.toSet(),
-                episodeSort = episodeInfo.sort,
-                episodeEp = episodeInfo.ep,
-                episodeName = episodeInfo.name,
-            )
-        } else null
-
         val episodeMatch = if (matchEpisode && episodeInfo != null) {
             EpisodeMatch(
                 episodeId = episodeInfo.episodeId,
@@ -102,12 +93,33 @@ class MediaSelectorFilterSortAlgorithm {
             )
         } else null
 
+        // 拆分季的后半: 站点页面可能合并整季或接着前半编号, 按页面的编号方式对集
+        val splitSeasonMatcher = if (episodeMatch != null) SplitSeasonEpisodeMatcher.create(context, list) else null
+
+        val mediaListFilterContext = if (subjectInfo != null && episodeInfo != null) {
+            MediaListFilterContext(
+                subjectNames = subjectInfo.allNames.toSet(),
+                episodeSort = episodeInfo.sort,
+                episodeEp = episodeInfo.ep,
+                episodeName = episodeInfo.name,
+            )
+        } else null
+        // 属于本季的页面可能用其他段的名字或季名做标题, 对它们把这些名字也算作当前条目的名字
+        val seasonFilterContext = if (mediaListFilterContext != null && splitSeasonMatcher != null) {
+            MediaListFilterContext(
+                subjectNames = mediaListFilterContext.subjectNames + splitSeasonMatcher.seasonNames,
+                episodeSort = mediaListFilterContext.episodeSort,
+                episodeEp = mediaListFilterContext.episodeEp,
+                episodeName = mediaListFilterContext.episodeName,
+            )
+        } else null
+
         val subjectNames = NormalizedNames(context.subjectInfo?.allNames.orEmpty())
         val seriesSubjectNames = NormalizedNames(context.subjectSeriesInfo?.seriesSubjectNamesWithoutSelf.orEmpty().toList())
 
         return list.map { media ->
             filterMedia(
-                media, preference, settings, context, mediaListFilterContext, episodeMatch,
+                media, preference, settings, context, mediaListFilterContext, seasonFilterContext, episodeMatch, splitSeasonMatcher,
                 subjectNames, seriesSubjectNames,
             )
         }
@@ -183,12 +195,15 @@ class MediaSelectorFilterSortAlgorithm {
         settings: MediaSelectorSettings,
         context: MediaSelectorContext,
         mediaListFilterContext: MediaListFilterContext?,
+        seasonFilterContext: MediaListFilterContext?,
         episodeMatch: EpisodeMatch?,
+        splitSeasonMatcher: SplitSeasonEpisodeMatcher?,
         subjectNames: NormalizedNames,
         seriesSubjectNames: NormalizedNames,
     ): MaybeExcludedMedia {
         val mediaSubjectName = media.properties.subjectName
         val mediaSubjectNameOrOriginalTitle = mediaSubjectName ?: media.originalTitle
+        val splitSeasonMatch = splitSeasonMatcher?.match(media)
         // 大部分资源在前面的规则就被排除了, 用到时才处理
         val normalizedMediaSubjectName by lazy(LazyThreadSafetyMode.NONE) {
             MediaListFilters.normalizeForCompare(mediaSubjectNameOrOriginalTitle)
@@ -205,6 +220,7 @@ class MediaSelectorFilterSortAlgorithm {
                     media.episodeRange,
                     context.episodeInfo?.sort,
                     context.episodeInfo?.ep,
+                    splitSeasonMatch,
                 ),
             )
         }
@@ -212,8 +228,12 @@ class MediaSelectorFilterSortAlgorithm {
         fun exclude(reason: MediaExclusionReason): MaybeExcludedMedia = MaybeExcludedMedia.Excluded(media, reason)
 
         // 第 0 条: 先于本地缓存豁免, 否则看第 2 话时会自动选中第 1 话的缓存.
-        if (episodeMatch != null && !episodeMatch.matches(media)) {
-            return exclude(MediaExclusionReason.EpisodeMismatch(media.episodeRange))
+        if (episodeMatch != null) {
+            if (splitSeasonMatch?.pageKind == SplitSeasonPageMatcher.PageKind.OTHER_SEASON) {
+                return exclude(MediaExclusionReason.FromSeriesSeason)
+            }
+            val matches = splitSeasonMatch?.matched ?: episodeMatch.matches(media)
+            if (!matches) return exclude(MediaExclusionReason.EpisodeMismatch(media.episodeRange))
         }
 
         if (media.isLocalCache()) return include() // 本地缓存总是要显示
@@ -244,7 +264,9 @@ class MediaSelectorFilterSortAlgorithm {
             }
         }
 
-        if (mediaSubjectName != null) {
+        if (splitSeasonMatch?.pageKind == SplitSeasonPageMatcher.PageKind.SEASON) {
+            // 本季其他段的页面或整季的合并页, 已经按季内序号对上了当前集, 不按其他季度排除
+        } else if (mediaSubjectName != null) {
             // 数据源可以准确拿到条目名称, 我们采用 specialEquals
 
             // 首先检查数据源条目名是否与当前条目名称相同.
@@ -296,9 +318,12 @@ class MediaSelectorFilterSortAlgorithm {
             val allow = when (media.kind) {
                 MediaSourceKind.WEB -> {
                     with(MediaListFilters.ContainsSubjectName) {
-                        val baseContains = mediaListFilterContext.applyOn(
+                        // 本季的页面按去掉分段标记的页名, 与本季各段的名字和季名匹配
+                        val subjectNameForMatching = splitSeasonMatch?.subjectNameForMatching
+                        val filterContext = if (subjectNameForMatching != null && seasonFilterContext != null) seasonFilterContext else mediaListFilterContext
+                        val baseContains = filterContext.applyOn(
                             object : MediaListFilter.Candidate by media.asCandidate() {
-                                override val subjectName: String get() = mediaSubjectNameOrOriginalTitle
+                                override val subjectName: String get() = subjectNameForMatching ?: mediaSubjectNameOrOriginalTitle
                             },
                         )
                         if (media.episodeRange?.contains(EpisodeSort("OVA")) == true) {
@@ -334,14 +359,17 @@ class MediaSelectorFilterSortAlgorithm {
         normalizedMediaSubjectName: String,
         mediaEpisodeRange: EpisodeRange?,
         contextEpisodeSort: EpisodeSort?,
-        contextEpisodeEp: EpisodeSort?
+        contextEpisodeEp: EpisodeSort?,
+        splitSeasonMatch: SplitSeasonEpisodeMatcher.Result?,
     ) = MatchMetadata(
-        subjectMatchKind = if (contextSubjectNames.anyEquals(normalizedMediaSubjectName)) {
+        subjectMatchKind = if (splitSeasonMatch?.exact == true || contextSubjectNames.anyEquals(normalizedMediaSubjectName)) {
             MatchMetadata.SubjectMatchKind.EXACT
         } else {
             MatchMetadata.SubjectMatchKind.FUZZY
         },
-        episodeMatchKind = if (mediaEpisodeRange != null) {
+        episodeMatchKind = if (splitSeasonMatch != null) {
+            splitSeasonMatch.episodeMatchKind
+        } else if (mediaEpisodeRange != null) {
             when {
                 contextEpisodeSort != null && contextEpisodeSort in mediaEpisodeRange -> {
                     MatchMetadata.EpisodeMatchKind.SORT

@@ -54,6 +54,7 @@ import me.him188.ani.app.data.models.subject.SelfRatingInfo
 import me.him188.ani.app.data.models.subject.SubjectAiringInfo
 import me.him188.ani.app.data.models.subject.SubjectCollectionCounts
 import me.him188.ani.app.data.models.subject.SubjectCollectionInfo
+import me.him188.ani.app.data.models.subject.SplitSeason
 import me.him188.ani.app.data.models.subject.SubjectCollectionStats
 import me.him188.ani.app.data.models.subject.SubjectInfo
 import me.him188.ani.app.data.models.subject.SubjectProgressInfo
@@ -89,6 +90,7 @@ import me.him188.ani.client.models.AniEpisodeType
 import me.him188.ani.client.models.AniFavourite
 import me.him188.ani.client.models.AniSelfRatingInfo
 import me.him188.ani.client.models.AniSubjectCollection
+import me.him188.ani.client.models.AniSplitSeason
 import me.him188.ani.client.models.AniSubjectRelations
 import me.him188.ani.client.models.AniTag
 import me.him188.ani.client.models.AniTmdbImage
@@ -868,8 +870,25 @@ fun AniSubjectRelations.toSubjectRelationsEntity(): SubjectRelations {
         seriesMainSubjectNames,
         sequelSubjects,
         sequelSubjectNames,
+        splitSeason = splitSeason?.toSplitSeason(),
     )
 }
+
+private fun AniSplitSeason.toSplitSeason(): SplitSeason = SplitSeason(
+    parts = parts.map { part ->
+        SplitSeason.Part(
+            subjectId = part.subjectId,
+            names = part.names,
+            markers = part.markers,
+            firstSort = part.firstSort,
+            episodeCount = part.episodeCount,
+            inlineSpecialCount = part.inlineSpecialCount,
+        )
+    },
+    selfIndex = selfIndex,
+    baseNames = baseNames,
+    otherSeasonNumbers = otherSeasonNumbers,
+)
 
 fun AniTag.toTag(): Tag = Tag(
     name = name,

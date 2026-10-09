@@ -156,7 +156,7 @@ class CreateMediaFetchSelectBundleFlowUseCaseImpl(
                     mediaSourceManager.allInstances.map { list ->
                         list.map { it.mediaSourceId }
                     },
-                    flowOf(bundle.seriesInfo ?: SubjectSeriesInfo.Fallback),
+                    flowOf(bundle.seriesInfo),
                     flowOf(bundle.subjectInfo),
                     fetchSession.latestRequest.map { bundle.episodeInfo.withRequestedNumbers(it) },
                     mediaSourceManager.mediaSourceTiersFlow(), // only access local settings
