@@ -26,7 +26,6 @@ import androidx.tv.material3.MaterialTheme
 import androidx.tv.material3.Text
 import me.him188.ani.app.domain.danmaku.DanmakuTextConversionPreview
 import me.him188.ani.app.domain.danmaku.DanmakuTextConversionSample
-import me.him188.ani.app.ui.episode.danmaku.danmakuTextConversionText
 import me.him188.ani.app.ui.lang.Lang
 import me.him188.ani.app.ui.lang.episode_danmaku_sources_timing
 import me.him188.ani.app.ui.lang.episode_danmaku_timing
@@ -121,9 +120,7 @@ internal fun TvPlayerDanmakuSettingsPanel(
                 TvDanmakuProperty.Area -> stringResource(Lang.subject_episode_video_settings_display_area) to if (config.displayArea == 0f) stringResource(Lang.video_player_off) else "${(config.displayArea * 100).roundToInt()}%"
                 TvDanmakuProperty.Stroke -> stringResource(Lang.subject_episode_video_settings_stroke_width) to "${(config.style.strokeWidth / DanmakuStyle.Default.strokeWidth * 100).roundToInt()}%"
                 TvDanmakuProperty.Weight -> stringResource(Lang.subject_episode_video_settings_font_weight) to config.style.fontWeight.weight.toString()
-                TvDanmakuProperty.TextConversion -> stringResource(Lang.subject_episode_video_settings_text_conversion) to danmakuTextConversionText(
-                    config.textConversion,
-                )
+                TvDanmakuProperty.TextConversion -> stringResource(Lang.subject_episode_video_settings_text_conversion) to config.textConversion.displayText
                 TvDanmakuProperty.Top -> stringResource(Lang.subject_episode_video_settings_top) to if (config.enableTop) stringResource(Lang.video_player_on) else stringResource(Lang.video_player_off)
                 TvDanmakuProperty.Bottom -> stringResource(Lang.subject_episode_video_settings_bottom) to if (config.enableBottom) stringResource(Lang.video_player_on) else stringResource(Lang.video_player_off)
                 TvDanmakuProperty.Floating -> stringResource(Lang.subject_episode_video_settings_floating) to if (config.enableFloating) stringResource(Lang.video_player_on) else stringResource(Lang.video_player_off)
