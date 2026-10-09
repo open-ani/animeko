@@ -271,6 +271,32 @@ class MediaSelectorSplitSeasonTest {
         assertPage(merged, 17 to "included EXACT SEASON")
     }
 
+    @Test
+    fun `ReZero S2 part 2 selected media created by browsing`() = runSimpleMediaSelectorTestSuite {
+        initSplitSeason(ReZero, 316247, sort = 39, ep = 1)
+        addPage("Re：从零开始的异世界生活 第二季", 1..25)
+
+        // 浏览手动选集和浏览记忆回放创建的资源不在候选列表里, 剧集范围填的是当前集的 sort
+        suspend fun selectBrowsed(title: String): String {
+            selector.select(
+                media(
+                    sourceId = "web1",
+                    alliance = "简中",
+                    episodeRange = EpisodeRange.single(EpisodeSort(39)),
+                    kind = MediaSourceKind.WEB,
+                    subjectName = title,
+                    originalTitle = "$title 第14集",
+                    subtitleLanguages = listOf(SubtitleLanguage.ChineseSimplified.id),
+                ),
+            )
+            return selector.selectedMaybeExcludedMedia.first()!!.describe()
+        }
+
+        assertEquals("included EXACT SORT", selectBrowsed("Re：从零开始的异世界生活 第二季"))
+        assertEquals("included EXACT SORT", selectBrowsed("Re：从零开始的异世界生活 第二季 Part.2"))
+        assertEquals("excluded FromSeriesSeason", selectBrowsed("Re：从零开始的异世界生活"))
+    }
+
     private class Page(val source: String, val title: String, val channel: String, val numbers: List<Int>)
 
     private fun SimpleMediaSelectorTestSuite.addPage(

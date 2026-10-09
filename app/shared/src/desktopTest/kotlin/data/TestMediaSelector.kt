@@ -106,6 +106,8 @@ open class TestMediaSelector(
         preferredCandidates.map { list -> list.mapNotNull { it.result } }
 
     final override val selected: MutableStateFlow<Media?> = MutableStateFlow(null)
+    override val selectedMaybeExcludedMedia: Flow<MaybeExcludedMedia?>
+        get() = throw UnsupportedOperationException()
     final override val events: MediaSelectorEvents = MutableMediaSelectorEvents()
 
     override suspend fun select(candidate: Media): Boolean {
