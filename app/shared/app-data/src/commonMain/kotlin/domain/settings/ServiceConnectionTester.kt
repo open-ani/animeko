@@ -27,8 +27,6 @@ import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import me.him188.ani.app.domain.foundation.ServerListFeatureConfig
 import me.him188.ani.app.domain.settings.ServiceConnectionTester.Service
-import me.him188.ani.datasources.api.source.ConnectionStatus
-import me.him188.ani.datasources.bangumi.BangumiClient
 import me.him188.ani.utils.coroutines.SingleTaskExecutor
 import me.him188.ani.utils.ktor.ScopedHttpClient
 import kotlin.coroutines.CoroutineContext
@@ -195,26 +193,14 @@ class ServiceConnectionTester(
 
 
 object ServiceConnectionTesters {
-    const val ID_BANGUMI = "BANGUMI"
-    const val ID_BANGUMI_NEXT = "BANGUMI_NEXT"
     const val ID_ANI = "ANI"
 
-    val DefaultServiceIds = setOf(ID_BANGUMI, ID_BANGUMI_NEXT, ID_ANI)
-
     fun createDefault(
-        bangumiClient: BangumiClient,
         aniClient: ScopedHttpClient,
-        serviceIds: Set<String> = DefaultServiceIds,
         defaultDispatcher: CoroutineContext = Dispatchers.Default,
     ): ServiceConnectionTester {
         return ServiceConnectionTester(
             listOf(
-                Service(ID_BANGUMI) {
-                    bangumiClient.testConnectionMaster() == ConnectionStatus.SUCCESS
-                },
-                Service(ID_BANGUMI_NEXT) {
-                    bangumiClient.testConnectionNext() == ConnectionStatus.SUCCESS
-                },
                 Service(ID_ANI) {
                     runCatching {
                         // Note, we may have `expectSuccess = true` so on failure it will throw an exception.
@@ -226,7 +212,7 @@ object ServiceConnectionTesters {
                         }
                     }.getOrElse { false }
                 },
-            ).filter { it.id in serviceIds },
+            ),
             defaultDispatcher,
         )
 

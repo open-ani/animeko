@@ -23,8 +23,6 @@ import me.him188.ani.app.domain.settings.ServiceConnectionTester.Service
 import me.him188.ani.app.domain.usecase.GlobalKoin
 import me.him188.ani.app.platform.AniServers
 import me.him188.ani.app.platform.StartupTimeMonitor
-import me.him188.ani.datasources.api.source.ConnectionStatus
-import me.him188.ani.datasources.bangumi.BangumiClientImpl
 import me.him188.ani.utils.analytics.AnalyticsEvent.Companion.AppStart
 import me.him188.ani.utils.analytics.IAnalytics
 import me.him188.ani.utils.analytics.recordEvent
@@ -35,7 +33,6 @@ suspend fun IAnalytics.recordAppStart(startupTimeMonitor: StartupTimeMonitor) {
         setOf(ServerListFeature.withValue(ServerListFeatureConfig.Default)),
     )
 
-    val bangumiClient = BangumiClientImpl(client)
     suspend fun testAniServer(url: Url): Boolean {
         val success = client.use {
             try {
@@ -54,14 +51,7 @@ suspend fun IAnalytics.recordAppStart(startupTimeMonitor: StartupTimeMonitor) {
     }
 
     val tester = ServiceConnectionTester(
-        listOf(
-            Service("bangumi") {
-                bangumiClient.testConnectionMaster() == ConnectionStatus.SUCCESS
-            },
-            Service("bangumi_next") {
-                bangumiClient.testConnectionNext() == ConnectionStatus.SUCCESS
-            },
-        ) + AniServers.allServers.map { (name, url) ->
+        AniServers.allServers.map { (name, url) ->
             Service(
                 "ani_$name",
             ) {

@@ -16,7 +16,6 @@ import kotlinx.coroutines.withContext
 import me.him188.ani.app.data.models.episode.EpisodeCollectionInfo
 import me.him188.ani.app.data.models.episode.EpisodeInfo
 import me.him188.ani.app.data.network.EpisodeService
-import me.him188.ani.app.data.network.toBangumiEpType
 import me.him188.ani.app.data.persistent.database.dao.EpisodeCollectionDao
 import me.him188.ani.app.data.persistent.database.dao.EpisodeCollectionEntity
 import me.him188.ani.app.data.persistent.database.dao.EpisodeCollectionPendingOpDao
@@ -333,9 +332,6 @@ class EpisodeCollectionRepository(
                 val episodeTypes = getEpisodeTypeFiltersUseCase().first()
                 val episodes = episodeService.getEpisodeCollectionInfosPaged(
                     subjectId,
-                    // TODO: 2025/4/10 这里实际上不可以用 singleOrNull.
-                    //  为 null 时会查询所有类型, 然后再过滤, 导致结果数量可能少于服务器数量, UI paging 反馈的 index 可能错误, 导致无限加载某一页.
-                    episodeType = episodeTypes.singleOrNull()?.toBangumiEpType(),
                     offset = offset,
                     limit = state.config.pageSize,
                 )
