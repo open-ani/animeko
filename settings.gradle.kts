@@ -147,7 +147,6 @@ includeProject(
     ":datasource:datasource-core",
     "datasource/core",
 ) // data source managers: MediaFetcher, MediaCacheStorage
-includeProject(":datasource:bangumi", "datasource/bangumi") // https://bangumi.tv
 //   BT 数据源
 includeProject(":datasource:dmhy", "datasource/bt/dmhy") // https://dmhy.org
 includeProject(":datasource:mikan", "datasource/bt/mikan") // https://mikanani.me/

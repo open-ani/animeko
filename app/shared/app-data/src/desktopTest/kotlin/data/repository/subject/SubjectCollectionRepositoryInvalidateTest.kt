@@ -63,7 +63,6 @@ import me.him188.ani.datasources.api.EpisodeSort
 import me.him188.ani.datasources.api.EpisodeType
 import me.him188.ani.datasources.api.PackedDate
 import me.him188.ani.datasources.api.topic.UnifiedCollectionType
-import me.him188.ani.datasources.bangumi.models.BangumiSubjectCollectionType
 import me.him188.ani.utils.ktor.ApiInvoker
 import me.him188.ani.utils.platform.currentTimeMillis
 import java.util.concurrent.CopyOnWriteArrayList
@@ -156,7 +155,7 @@ class SubjectCollectionRepositoryInvalidateTest {
          * 分页器的 RemoteMediator 用: 返回服务端已收藏的条目 (不按类型过滤, 测试里只放同一类型). 超出范围返回空 (分页结束).
          */
         override suspend fun getSubjectCollections(
-            type: BangumiSubjectCollectionType?,
+            type: AniCollectionType?,
             offset: Int,
             limit: Int,
         ): List<AniSubjectCollection> = serverSubjects.values

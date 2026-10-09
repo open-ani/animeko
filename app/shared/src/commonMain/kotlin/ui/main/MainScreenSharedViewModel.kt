@@ -25,7 +25,6 @@ import me.him188.ani.app.domain.settings.ServiceConnectionTesters
 import me.him188.ani.app.ui.foundation.AbstractViewModel
 import me.him188.ani.app.ui.foundation.launchInBackground
 import me.him188.ani.app.ui.user.SelfInfoStateProducer
-import me.him188.ani.datasources.bangumi.BangumiClientImpl
 import org.koin.core.component.KoinComponent
 import org.koin.core.component.inject
 
@@ -46,11 +45,7 @@ open class MainScreenSharedViewModel : AbstractViewModel(), KoinComponent {
             val client = clientProvider.get(
                 setOf(ServerListFeature.withValue(ServerListFeatureConfig.Default)),
             )
-            val tester = ServiceConnectionTesters.createDefault(
-                bangumiClient = BangumiClientImpl(client),
-                aniClient = client,
-                serviceIds = setOf(ServiceConnectionTesters.ID_ANI),
-            )
+            val tester = ServiceConnectionTesters.createDefault(aniClient = client)
             coroutineScope {
                 launch { tester.testAll() }
                 // 内部 state 是 StateFlow, 测试完成后再订阅也能拿到最终结果

@@ -94,7 +94,6 @@ kotlin {
         // Data sources
         api(projects.datasource.datasourceApi)
         api(projects.datasource.datasourceCore)
-        api(projects.datasource.bangumi)
         api(projects.datasource.mikan)
 
         api(projects.client)
