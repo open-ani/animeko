@@ -24,22 +24,12 @@ import me.him188.ani.client.apis.SubjectsAniApi
 import me.him188.ani.client.models.AniBatchUpdateEpisodeCollectionsRequest
 import me.him188.ani.client.models.AniEpisodeCollectionType
 import me.him188.ani.client.models.AniEpisodeCollectionTypeUpdate
-import me.him188.ani.datasources.api.EpisodeSort
-import me.him188.ani.datasources.api.EpisodeType
-import me.him188.ani.datasources.api.EpisodeType.*
-import me.him188.ani.datasources.api.PackedDate
 import me.him188.ani.datasources.api.paging.Paged
 import me.him188.ani.datasources.api.topic.UnifiedCollectionType
-import me.him188.ani.datasources.bangumi.models.BangumiEpType
-import me.him188.ani.datasources.bangumi.models.BangumiEpisode
-import me.him188.ani.datasources.bangumi.models.BangumiEpisodeDetail
-import me.him188.ani.datasources.bangumi.models.BangumiUserEpisodeCollection
-import me.him188.ani.datasources.bangumi.processing.toCollectionType
 import me.him188.ani.utils.coroutines.IO_
 import me.him188.ani.utils.ktor.ApiInvoker
 import me.him188.ani.utils.logging.logger
 import me.him188.ani.utils.platform.currentTimeMillis
-import me.him188.ani.utils.serialization.BigNum
 import org.koin.core.component.KoinComponent
 import org.koin.core.component.inject
 import kotlin.coroutines.CoroutineContext
@@ -60,7 +50,6 @@ sealed interface EpisodeService {
         subjectId: Int,
         offset: Int? = 0,
         limit: Int? = 100,
-        episodeType: BangumiEpType? = null,
     ): Paged<EpisodeCollectionInfo>
 
     /**
@@ -104,7 +93,6 @@ class EpisodeServiceImpl(
         subjectId: Int,
         offset: Int?,
         limit: Int?,
-        episodeType: BangumiEpType?,
     ): Paged<EpisodeCollectionInfo> {
         return withContext(ioDispatcher) {
 
@@ -184,80 +172,6 @@ private fun EpisodeInfo.createNotCollected(): EpisodeCollectionInfo {
         episodeInfo = this,
         collectionType = UnifiedCollectionType.NOT_COLLECTED,
     )
-}
-
-private fun BangumiUserEpisodeCollection.toEpisodeCollectionInfo() =
-    EpisodeCollectionInfo(episode.toEpisodeInfo(), type.toCollectionType())
-
-internal fun BangumiEpisode.toEpisodeInfo(): EpisodeInfo {
-    return EpisodeInfo(
-        episodeId = this.id,
-        type = getEpisodeTypeByBangumiCode(this.type),
-        name = this.name,
-        nameCn = this.nameCn,
-        airDate = PackedDate.parseFromDate(this.airdate),
-        comment = this.comment,
-//        duration = this.duration,
-        desc = this.desc,
-//        disc = this.disc,
-        sort = EpisodeSort(this.sort, getEpisodeTypeByBangumiCode(this.type)),
-        ep = EpisodeSort(this.ep ?: BigNum.ONE, getEpisodeTypeByBangumiCode(this.type)),
-//        durationSeconds = this.durationSeconds
-    )
-}
-
-internal fun BangumiEpisodeDetail.toEpisodeInfo(): EpisodeInfo {
-    return EpisodeInfo(
-        episodeId = id,
-        type = getEpisodeTypeByBangumiCode(this.type),
-        name = name,
-        nameCn = nameCn,
-        sort = EpisodeSort(this.sort, getEpisodeTypeByBangumiCode(this.type)),
-        airDate = PackedDate.parseFromDate(this.airdate),
-        comment = comment,
-//        duration = duration,
-        desc = desc,
-//        disc = disc,
-        ep = EpisodeSort(this.ep ?: BigNum.ONE, getEpisodeTypeByBangumiCode(this.type)),
-    )
-}
-
-
-internal fun EpisodeType.toBangumiEpType(): BangumiEpType {
-    return when (this) {
-        MainStory -> BangumiEpType.MainStory
-        SP -> BangumiEpType.SP
-        OP -> BangumiEpType.OP
-        ED -> BangumiEpType.ED
-        PV -> BangumiEpType.PV
-        MAD -> BangumiEpType.MAD
-        EpisodeType.OVA -> BangumiEpType.Other
-        EpisodeType.OAD -> BangumiEpType.Other
-    }
-}
-
-internal fun BangumiEpType.toEpisodeType(): EpisodeType? {
-    return when (this) {
-        BangumiEpType.MainStory -> MainStory
-        BangumiEpType.SP -> SP
-        BangumiEpType.OP -> OP
-        BangumiEpType.ED -> ED
-        BangumiEpType.PV -> PV
-        BangumiEpType.MAD -> MAD
-        BangumiEpType.Other -> null
-    }
-}
-
-private fun getEpisodeTypeByBangumiCode(code: Int): EpisodeType? {
-    return when (code) {
-        0 -> MainStory
-        1 -> SP
-        2 -> OP
-        3 -> ED
-        4 -> PV
-        5 -> MAD
-        else -> null
-    }
 }
 
 fun UnifiedCollectionType.toAniEpisodeCollectionType(): AniEpisodeCollectionType? {

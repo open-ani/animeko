@@ -35,7 +35,6 @@ import me.him188.ani.app.data.network.AniPersonCommentService
 import me.him188.ani.app.data.network.AniSubjectRelationIndexService
 import me.him188.ani.app.data.network.AniSubjectSearchService
 import me.him188.ani.app.data.network.AnimeScheduleService
-import me.him188.ani.app.data.network.BangumiSummaryService
 import me.him188.ani.app.data.network.BangumiBangumiCommentServiceImpl
 import me.him188.ani.app.data.network.BangumiCommentService
 import me.him188.ani.app.data.network.BangumiRelatedPeopleService
@@ -125,8 +124,6 @@ import me.him188.ani.app.domain.watchtogether.WatchTogetherManager
 import me.him188.ani.app.domain.usecase.useCaseModules
 import me.him188.ani.app.ui.subject.details.state.DefaultSubjectDetailsStateFactory
 import me.him188.ani.app.ui.subject.details.state.SubjectDetailsStateFactory
-import me.him188.ani.datasources.bangumi.BangumiClient
-import me.him188.ani.datasources.bangumi.BangumiClientImpl
 import me.him188.ani.utils.coroutines.IO_
 import me.him188.ani.utils.coroutines.childScope
 import me.him188.ani.utils.coroutines.childScopeContext
@@ -139,7 +136,6 @@ import org.koin.core.scope.Scope
 import org.koin.dsl.module
 import kotlin.time.Duration.Companion.minutes
 
-private val Scope.client get() = get<BangumiClient>()
 private val Scope.database get() = get<AniDatabase>()
 private val Scope.settingsRepository get() = get<SettingsRepository>()
 private val Scope.aniApiProvider get() = get<AniApiProvider>()
@@ -267,13 +263,6 @@ private fun KoinApplication.otherModules(
             automationGate = get(),
         ).also { it.start() }
     }
-    single<BangumiClient> {
-        BangumiClientImpl(
-            get<HttpClientProvider>().get(
-                userAgent = ScopedHttpClientUserAgent.ANI,
-            ),
-        )
-    }
 
     single<AniSubjectSearchService> {
         AniSubjectSearchService(
@@ -327,8 +316,6 @@ private fun KoinApplication.otherModules(
     }
 
     single<AnimeScheduleService> { AnimeScheduleService(get<AniApiProvider>().scheduleApi) }
-    // TV 横版 backdrop / 分集剧照; 未配置 ani.tmdb.api.token 时自动关闭
-    single<BangumiSummaryService> { BangumiSummaryService(get()) }
 
     single<UpdateManager> {
         UpdateManager(
