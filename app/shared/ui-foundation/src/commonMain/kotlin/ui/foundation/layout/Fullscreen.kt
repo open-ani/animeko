@@ -21,8 +21,15 @@ import me.him188.ani.app.platform.Context
  *
  * Note that when [fullscreen] is `false`, the system bars will be visible,
  * but the app may be still in landscape mode if the user's system is in landscape mode.
+ *
+ * @param lockLandscape whether Android should lock the activity to landscape while entering fullscreen.
+ * Other platforms ignore this parameter.
  */
-expect suspend fun Context.setRequestFullScreen(window: PlatformWindowMP, fullscreen: Boolean)
+expect suspend fun Context.setRequestFullScreen(
+    window: PlatformWindowMP,
+    fullscreen: Boolean,
+    lockLandscape: Boolean = true,
+)
 
 expect fun Context.setSystemBarVisible(window: PlatformWindowMP, visible: Boolean)
 
