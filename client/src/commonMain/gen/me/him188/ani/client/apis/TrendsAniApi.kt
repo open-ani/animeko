@@ -16,6 +16,7 @@
 
 package me.him188.ani.client.apis
 
+import me.him188.ani.client.models.AniPaginatedResponseTrendingRankingItem
 import me.him188.ani.client.models.AniTrends
 
 import me.him188.ani.client.infrastructure.*
@@ -42,6 +43,42 @@ open class TrendsAniApi : ApiClient {
         baseUrl: String,
         httpClient: HttpClient
     ): super(baseUrl = baseUrl, httpClient = httpClient)
+
+    /**
+     * 获取完整的 Bangumi 动画热度排行, 最多 1000 个条目.
+     * 获取完整的 Bangumi 动画热度排行, 最多 1000 个条目.
+     * @param offset  (optional)
+     * @param limit  (optional)
+     * @return AniPaginatedResponseTrendingRankingItem
+     */
+    @Suppress("UNCHECKED_CAST")
+    open suspend fun getTrendingSubjects(offset: kotlin.Int? = null, limit: kotlin.Int? = null): HttpResponse<AniPaginatedResponseTrendingRankingItem> {
+
+        val localVariableAuthNames = listOf<String>("auth-jwt")
+
+        val localVariableBody =
+            io.ktor.client.utils.EmptyContent
+
+        val localVariableQuery = mutableMapOf<String, List<String>>()
+        offset?.apply { localVariableQuery["offset"] = listOf("$offset") }
+        limit?.apply { localVariableQuery["limit"] = listOf("$limit") }
+        val localVariableHeaders = mutableMapOf<String, String>()
+
+        val localVariableConfig = RequestConfig<kotlin.Any?>(
+            RequestMethod.GET,
+            "/v2/trends/subjects",
+            query = localVariableQuery,
+            headers = localVariableHeaders,
+            requiresAuthentication = true,
+        )
+
+        return request(
+            localVariableConfig,
+            localVariableBody,
+            localVariableAuthNames
+        ).wrap()
+    }
+
 
     /**
      * 获取热门排行

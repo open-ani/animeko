@@ -29,8 +29,10 @@ import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.flow.updateAndGet
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.sync.Mutex
+import me.him188.ani.app.data.models.subject.SplitSeason
 import me.him188.ani.app.data.repository.media.ManualBrowseMemory
 import me.him188.ani.app.domain.media.selector.browseEpisodeIndex
+import me.him188.ani.app.domain.media.selector.preselectedBrowseEpisodeIndex
 import me.him188.ani.app.domain.mediasource.instance.MediaSourceInstance
 import me.him188.ani.app.domain.mediasource.web.BlockReason
 import me.him188.ani.app.domain.mediasource.web.BlockedException
@@ -64,6 +66,18 @@ data class ManualBrowseTarget(
      * "25", 供「作为第 25 话播放」.
      */
     val episodeSortText: String,
+    /**
+     * 条目的所有名字 (主中文名、主日文名与别名), 预选剧集时用来认出站点上当前条目自己的页面. 默认只有 [subjectName].
+     */
+    val subjectNames: List<String> = listOf(subjectName),
+    /**
+     * 条目内序号 episodeInfo.ep, 没有时 null. 预选剧集时集号等于 sort 的项不存在才用它.
+     */
+    val episodeEp: EpisodeSort? = null,
+    /**
+     * 当前条目所在的拆分季 (服务端下发), 不是拆分季的一段时 null. 预选剧集时按它的页面规则把合并页的序号对回当前集.
+     */
+    val splitSeason: SplitSeason? = null,
 )
 
 /**
@@ -146,7 +160,7 @@ data class ManualBrowsePresentation(
      */
     val selectedChannelIndex: Int,
     /**
-     * 用户在当前集点选的下标 → 否则线路里第一个 episodeSort == target.episodeSort 的下标 → 否则 null.
+     * 用户在当前集点选的下标 → 否则按页名与线路编号预选的下标 ([preselectedBrowseEpisodeIndex]) → 否则 null.
      */
     val selectedEpisodeIndex: Int?,
     val target: ManualBrowseTarget?,
@@ -289,7 +303,7 @@ class ManualBrowseState(
             ?.takeIf { channel != null && it in channel.episodes.indices && session.userEpisodeTarget == target }
             ?: channel?.let { c ->
                 target?.let { t ->
-                    c.episodes.indexOfFirst { it.episodeSort != null && it.episodeSort == t.episodeSort }.takeIf { it >= 0 }
+                    session.openedSubject?.let { subject -> preselectedEpisodeIndex(subject, c, t) }
                 }
             }
         ManualBrowsePresentation(
@@ -306,6 +320,19 @@ class ManualBrowseState(
             isPlaying = session.isPlaying,
         )
     }
+
+    /**
+     * 打开的页面 [subject] 的线路 [channel] 里默认预选的一项.
+     */
+    private fun preselectedEpisodeIndex(subject: BrowseSubject, channel: BrowseChannel, target: ManualBrowseTarget): Int? =
+        preselectedBrowseEpisodeIndex(
+            pageName = subject.name,
+            episodes = channel.episodes,
+            sort = target.episodeSort,
+            ep = target.episodeEp,
+            splitSeason = target.splitSeason,
+            subjectNames = target.subjectNames,
+        )
 
     val presentationFlow: StateFlow<ManualBrowsePresentation> = presentationSource.stateIn(
         backgroundScope,

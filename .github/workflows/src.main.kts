@@ -1940,6 +1940,18 @@ class WithMatrix(
                 maxAttempts = 3,
                 timeoutMinutes = 180,
             )
+            // 只有构建 iOS framework 的机器配置了应用模块的 native 依赖 (FFmpeg, onnxruntime), 测试可执行文件才能链接.
+            if (matrix.buildIosFramework) {
+                runGradle(
+                    name = "Check (iOS)",
+                    tasks = arrayOf(
+                        ":app:ios:testSentryTerminatePatch",
+                        ":app:shared:application:iosSimulatorArm64Test",
+                    ),
+                    maxAttempts = 2,
+                    timeoutMinutes = 120,
+                )
+            }
         }
     }
 

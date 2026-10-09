@@ -129,7 +129,7 @@ sealed class MediaExclusionReason {
 
 data class MatchMetadata(
     val subjectMatchKind: SubjectMatchKind, // FUZZY or EXACT
-    val episodeMatchKind: EpisodeMatchKind, // NONE, EP, SORT
+    val episodeMatchKind: EpisodeMatchKind, // NONE, EP, SORT, SEASON
     /** 条目名称相似度 */
     val similarity: @Range(from = 0L, to = 100L) Int, 
 ) {
@@ -160,6 +160,12 @@ data class MatchMetadata(
          * 注意, 这不包含匹配 [EpisodeInfo.ep], 因为我们无法在第二季时根据 ep 区分是否正确.
          */
         SORT,
+
+        /**
+         * 正在观看的是拆分季的后半, 站点把整季合成一页或者后半接着前半编号, media 的序号匹配正在观看的一集在整季里的序号.
+         * @see me.him188.ani.app.data.models.subject.SplitSeason
+         */
+        SEASON,
     }
 }
 

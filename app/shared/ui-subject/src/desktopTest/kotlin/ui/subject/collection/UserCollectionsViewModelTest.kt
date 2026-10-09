@@ -72,14 +72,13 @@ import me.him188.ani.app.domain.media.download.MediaDownloadManager
 import me.him188.ani.app.domain.session.SessionEvent
 import me.him188.ani.app.domain.session.SessionState
 import me.him188.ani.app.domain.session.SessionStateProvider
+import me.him188.ani.client.apis.EpisodesAniApi
 import me.him188.ani.client.apis.ScheduleAniApi
 import me.him188.ani.client.apis.SubjectsAniApi
 import me.him188.ani.danmaku.ui.DanmakuConfig
 import me.him188.ani.datasources.api.EpisodeType
 import me.him188.ani.datasources.api.topic.UnifiedCollectionType
 import me.him188.ani.utils.ktor.ApiInvoker
-import me.him188.ani.utils.ktor.ScopedHttpClient
-import me.him188.ani.utils.ktor.UnsafeScopedHttpClientApi
 import me.him188.ani.utils.platform.annotations.TestOnly
 import org.koin.core.context.startKoin
 import org.koin.core.context.stopKoin
@@ -214,10 +213,8 @@ class UserCollectionsViewModelTest {
         override val watchTogetherSettings: Settings<WatchTogetherSettings> by lazy { error("not implemented") }
     }
 
-    @OptIn(UnsafeScopedHttpClientApi::class)
-    private object UnusedBangumiClient : ScopedHttpClient() {
-        override fun borrow(): Ticket = error("Bangumi client not expected")
-        override fun returnClient(ticket: Ticket) = error("Bangumi client not expected")
+    private object UnusedEpisodesApi : ApiInvoker<EpisodesAniApi> {
+        override suspend fun <R> invoke(action: suspend EpisodesAniApi.() -> R): R = error("Episodes API not expected")
     }
 
     private object UnusedSubjectsApi : ApiInvoker<SubjectsAniApi> {
@@ -253,7 +250,7 @@ class UserCollectionsViewModelTest {
             subjectDao = database.subjectCollection(),
             episodeCollectionDao = database.episodeCollection(),
             pendingOpDao = database.episodeCollectionPendingOpDao(),
-            episodeService = EpisodeServiceImpl(UnusedSubjectsApi, UnusedBangumiClient),
+            episodeService = EpisodeServiceImpl(UnusedSubjectsApi, UnusedEpisodesApi),
             animeScheduleRepository = animeScheduleRepository,
             subjectCollectionRepository = lazy { repository },
             getEpisodeTypeFiltersUseCase = GetEpisodeTypeFiltersUseCase { flowOf(EpisodeType.entries) },

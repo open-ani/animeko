@@ -161,7 +161,6 @@ import me.him188.ani.app.ui.mediaselect.manual.ManualBrowseTarget
 import me.him188.ani.app.ui.mediaselect.toWatchingEpisode
 import me.him188.ani.app.ui.mediaselect.summary.MediaSelectorSummary
 import me.him188.ani.app.ui.mediaselect.summary.MediaSelectorSummaryStateProducer
-import me.him188.ani.app.ui.mediaselect.summary.selectedMaybeExcludedMediaFlow
 import me.him188.ani.app.ui.settings.danmaku.DanmakuRegexFilterState
 import me.him188.ani.app.ui.subject.AiringLabelState
 import me.him188.ani.app.ui.subject.collection.components.EditableSubjectCollectionTypeState
@@ -431,6 +430,9 @@ open class EpisodeViewModel(
                     subjectName = it.subjectInfo.nameCnOrName,
                     episodeSort = it.episodeInfo.sort,
                     episodeSortText = it.episodeInfo.sort.toString(),
+                    subjectNames = it.subjectInfo.allNames,
+                    episodeEp = it.episodeInfo.ep,
+                    splitSeason = it.seriesInfo.splitSeason,
                 )
             }
         }.distinctUntilChanged(),
@@ -992,7 +994,7 @@ open class EpisodeViewModel(
 
         val mediaSelectorSummaryStateProducer = MediaSelectorSummaryStateProducer(
             episodeSession.fetchSelectFlow.mapNotNull { it?.mediaSelector }
-                .flatMapLatest { it.selectedMaybeExcludedMediaFlow }
+                .flatMapLatest { it.selectedMaybeExcludedMedia }
                 .onStart { emit(null) },
             filteredSourceResults,
             getMediaSelectorSettings(),

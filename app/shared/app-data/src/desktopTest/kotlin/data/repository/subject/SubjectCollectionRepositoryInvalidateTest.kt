@@ -46,6 +46,7 @@ import me.him188.ani.app.data.repository.episode.EpisodeCollectionRepository
 import me.him188.ani.app.domain.session.SessionEvent
 import me.him188.ani.app.domain.session.SessionState
 import me.him188.ani.app.domain.session.SessionStateProvider
+import me.him188.ani.client.apis.EpisodesAniApi
 import me.him188.ani.client.apis.ScheduleAniApi
 import me.him188.ani.client.apis.SubjectsAniApi
 import me.him188.ani.client.models.AniCollectionType
@@ -65,8 +66,6 @@ import me.him188.ani.datasources.api.PackedDate
 import me.him188.ani.datasources.api.topic.UnifiedCollectionType
 import me.him188.ani.datasources.bangumi.models.BangumiSubjectCollectionType
 import me.him188.ani.utils.ktor.ApiInvoker
-import me.him188.ani.utils.ktor.ScopedHttpClient
-import me.him188.ani.utils.ktor.UnsafeScopedHttpClientApi
 import me.him188.ani.utils.platform.currentTimeMillis
 import java.util.concurrent.CopyOnWriteArrayList
 import java.util.concurrent.atomic.AtomicInteger
@@ -191,10 +190,8 @@ class SubjectCollectionRepositoryInvalidateTest {
         override suspend fun getBangumiFullSyncState(): BangumiSyncState? = throw UnsupportedOperationException()
     }
 
-    @OptIn(UnsafeScopedHttpClientApi::class)
-    private object UnusedBangumiClient : ScopedHttpClient() {
-        override fun borrow(): Ticket = error("Bangumi client not expected")
-        override fun returnClient(ticket: Ticket) = error("Bangumi client not expected")
+    private object UnusedEpisodesApi : ApiInvoker<EpisodesAniApi> {
+        override suspend fun <R> invoke(action: suspend EpisodesAniApi.() -> R): R = error("Episodes API not expected")
     }
 
     private object UnusedSubjectsApi : ApiInvoker<SubjectsAniApi> {
@@ -226,7 +223,7 @@ class SubjectCollectionRepositoryInvalidateTest {
         val database = createTestAniDatabase()
         try {
             val service = FakeSubjectService()
-            val episodeService = EpisodeServiceImpl(UnusedSubjectsApi, UnusedBangumiClient)
+            val episodeService = EpisodeServiceImpl(UnusedSubjectsApi, UnusedEpisodesApi)
             val animeScheduleRepository = AnimeScheduleRepository(AnimeScheduleService(UnusedScheduleApi))
             val getEpisodeTypeFiltersUseCase = GetEpisodeTypeFiltersUseCase { flowOf(EpisodeType.entries) }
             lateinit var repository: SubjectCollectionRepositoryImpl

@@ -10,20 +10,16 @@
 package me.him188.ani.app.data.network
 
 import io.ktor.client.plugins.*
-import io.ktor.client.request.get
-import io.ktor.client.statement.bodyAsText
 import io.ktor.http.*
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
-import kotlinx.serialization.SerialName
-import kotlinx.serialization.Serializable
-import kotlinx.serialization.json.Json
 import me.him188.ani.app.data.models.episode.EpisodeCollectionInfo
 import me.him188.ani.app.data.models.episode.EpisodeInfo
 import me.him188.ani.app.data.repository.episode.toEpisodeCollectionInfo
 import me.him188.ani.app.data.repository.subject.toEntity1
 import me.him188.ani.app.domain.session.SessionStateProvider
 import me.him188.ani.app.domain.session.canAccessAniApiNow
+import me.him188.ani.client.apis.EpisodesAniApi
 import me.him188.ani.client.apis.SubjectsAniApi
 import me.him188.ani.client.models.AniBatchUpdateEpisodeCollectionsRequest
 import me.him188.ani.client.models.AniEpisodeCollectionType
@@ -41,7 +37,6 @@ import me.him188.ani.datasources.bangumi.models.BangumiUserEpisodeCollection
 import me.him188.ani.datasources.bangumi.processing.toCollectionType
 import me.him188.ani.utils.coroutines.IO_
 import me.him188.ani.utils.ktor.ApiInvoker
-import me.him188.ani.utils.ktor.ScopedHttpClient
 import me.him188.ani.utils.logging.logger
 import me.him188.ani.utils.platform.currentTimeMillis
 import me.him188.ani.utils.serialization.BigNum
@@ -53,7 +48,7 @@ import kotlin.coroutines.CoroutineContext
  * 执行网络请求查询.
  */
 sealed interface EpisodeService {
-    /** 使用 Bangumi 公开剧集接口查询所属条目；接口返回 404 或条目 ID 无效时返回 null。 */
+    /** 通过 Ani 剧集接口查询所属条目；接口返回 404 或条目 ID 超出正 Int 范围时返回 null。 */
     suspend fun getSubjectId(episodeId: Int): Int?
 
     /**
@@ -89,17 +84,17 @@ sealed interface EpisodeService {
 
 class EpisodeServiceImpl(
     private val subjectApi: ApiInvoker<SubjectsAniApi>,
-    private val bangumiClient: ScopedHttpClient,
+    private val episodesApi: ApiInvoker<EpisodesAniApi>,
     private val ioDispatcher: CoroutineContext = Dispatchers.IO_,
 ) : EpisodeService, KoinComponent {
     private val logger = logger<EpisodeServiceImpl>()
     private val sessionManager: SessionStateProvider by inject()
-    private val json = Json { ignoreUnknownKeys = true }
 
     override suspend fun getSubjectId(episodeId: Int): Int? = withContext(ioDispatcher) {
         try {
-            val body = bangumiClient.use { get("$BGM_API_BASE_URL/v0/episodes/$episodeId").bodyAsText() }
-            json.decodeFromString(BangumiEpisodeSubject.serializer(), body).subjectId.takeIf { it > 0 }
+            episodesApi { getEpisode(episodeId.toLong()).body().subjectId }
+                .takeIf { it in 1..Int.MAX_VALUE.toLong() }
+                ?.toInt()
         } catch (e: ClientRequestException) {
             if (e.response.status == HttpStatusCode.NotFound) null else throw e
         }
@@ -173,17 +168,7 @@ class EpisodeServiceImpl(
         }
     }
 
-    @Serializable
-    private data class BangumiEpisodeSubject(
-        @SerialName("subject_id") val subjectId: Int,
-    )
-
-    /**
-     * 当前的 Ani API 不支持通过仅 epID 获取剧集，因此只通过 Bangumi API 获取剧集所属条目 ID.
-     */
     private companion object {
-        private const val BGM_API_BASE_URL = "https://api.bgm.tv"
-
         fun HttpStatusCode.isUnauthorized(): Boolean {
             return this == HttpStatusCode.Unauthorized || this == HttpStatusCode.Forbidden
         }

@@ -20,6 +20,7 @@ import me.him188.ani.client.models.AniAutoSkipRuleCalculatorAutoSkipRules
 import me.him188.ani.client.models.AniCommentVoteValue
 import me.him188.ani.client.models.AniCreateEpisodeCommentRequest
 import me.him188.ani.client.models.AniCreateEpisodeReplyRequest
+import me.him188.ani.client.models.AniEpisodeCollection
 import me.him188.ani.client.models.AniEpisodeCommentsResponse
 import me.him188.ani.client.models.AniReportAutoSkipRequest
 
@@ -172,6 +173,39 @@ open class EpisodesAniApi : ApiClient {
         val localVariableConfig = RequestConfig<kotlin.Any?>(
             RequestMethod.GET,
             "/v2/episodes/{episodeId}/auto-skip".replace("{" + "episodeId" + "}", "$episodeId"),
+            query = localVariableQuery,
+            headers = localVariableHeaders,
+            requiresAuthentication = true,
+        )
+
+        return request(
+            localVariableConfig,
+            localVariableBody,
+            localVariableAuthNames
+        ).wrap()
+    }
+
+
+    /**
+     * 获取单个剧集信息, 不需要知道所属条目. 如果已登录, 还会返回 collectionType 字段
+     * 获取单个剧集信息, 不需要知道所属条目. 如果已登录, 还会返回 collectionType 字段
+     * @param episodeId
+     * @return AniEpisodeCollection
+     */
+    @Suppress("UNCHECKED_CAST")
+    open suspend fun getEpisode(episodeId: kotlin.Long): HttpResponse<AniEpisodeCollection> {
+
+        val localVariableAuthNames = listOf<String>("auth-jwt")
+
+        val localVariableBody =
+            io.ktor.client.utils.EmptyContent
+
+        val localVariableQuery = mutableMapOf<String, List<String>>()
+        val localVariableHeaders = mutableMapOf<String, String>()
+
+        val localVariableConfig = RequestConfig<kotlin.Any?>(
+            RequestMethod.GET,
+            "/v2/episodes/{episodeId}".replace("{" + "episodeId" + "}", "$episodeId"),
             query = localVariableQuery,
             headers = localVariableHeaders,
             requiresAuthentication = true,

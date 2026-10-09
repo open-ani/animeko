@@ -9,11 +9,13 @@
 
 package me.him188.ani.app.domain.search
 
+import me.him188.ani.app.data.models.preference.NsfwMode
 import me.him188.ani.app.data.models.schedule.AnimeSeason
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFailsWith
 import kotlin.test.assertNull
+import kotlin.test.assertTrue
 
 class SubjectSearchQueryTest {
     @Test
@@ -41,5 +43,33 @@ class SubjectSearchQueryTest {
 
         assertEquals(2025, switched.year)
         assertEquals(AnimeSeason.SPRING, switched.season)
+    }
+
+    @Test
+    fun `hide mode excludes nsfw even when R18 is selected`() {
+        val query = SubjectSearchQuery("", tags = listOf("R18"))
+
+        val filtered = query.withNsfwFilter(NsfwMode.HIDE)
+
+        assertEquals(false, filtered.nsfw)
+        assertEquals(listOf("R18"), filtered.tags)
+    }
+
+    @Test
+    fun `selecting R18 searches only nsfw when not hidden`() {
+        val query = SubjectSearchQuery("", tags = listOf("百合", "R18"))
+
+        assertTrue(query.isExplicitR18)
+        assertEquals(true, query.withNsfwFilter(NsfwMode.BLUR).nsfw)
+        assertEquals(true, query.withNsfwFilter(NsfwMode.DISPLAY).nsfw)
+    }
+
+    @Test
+    fun `nsfw filter follows settings without R18`() {
+        val query = SubjectSearchQuery("bocchi", tags = listOf("百合"))
+
+        assertEquals(false, query.withNsfwFilter(NsfwMode.HIDE).nsfw)
+        assertNull(query.withNsfwFilter(NsfwMode.BLUR).nsfw)
+        assertNull(query.withNsfwFilter(NsfwMode.DISPLAY).nsfw)
     }
 }

@@ -245,6 +245,9 @@ data class SelectorAutoMatchConfig(
      * - 主中文名
      * - 日文原名
      * - 其他别名, 无特定顺序
+     *
+     * 这些名字都没搜到名字能对上的条目时, 再依次尝试请求附带的回退关键词 (带季度标记的别名, 由系列关系推出的基础名),
+     * 见 [me.him188.ani.datasources.api.source.MediaFetchRequest.fallbackSearchKeywords].
      */
     val searchUseSubjectNamesCount: Int = 1,
     /**
@@ -253,10 +256,6 @@ data class SelectorAutoMatchConfig(
      * 6.2 以前这是各条目格式配置里的字段.
      */
     val preferShorterName: Boolean = true,
-    /**
-     * 按条目名筛选搜索结果.
-     */
-    val filterBySubjectName: Boolean = true,
     /**
      * 只保留集号与当前剧集一致的资源.
      */
@@ -350,7 +349,6 @@ private class SelectorSearchConfigSurrogate(
     val defaultSubtitleLanguage: SubtitleLanguage = SubtitleLanguage.ChineseSimplified,
     val onlySupportsPlayers: List<String> = emptyList(),
     val filterByEpisodeSort: Boolean = SelectorAutoMatchConfig.Default.filterByEpisodeSort,
-    val filterBySubjectName: Boolean = SelectorAutoMatchConfig.Default.filterBySubjectName,
     val selectMedia: SelectorSearchConfig.SelectMediaConfig = SelectorSearchConfig.SelectMediaConfig(),
     val matchVideo: SelectorSearchConfig.MatchVideoConfig = SelectorSearchConfig.MatchVideoConfig(),
     /**
@@ -379,7 +377,6 @@ private class SelectorSearchConfigSurrogate(
         defaultSubtitleLanguage = config.defaultSubtitleLanguage,
         onlySupportsPlayers = config.onlySupportsPlayers,
         filterByEpisodeSort = config.autoMatch.filterByEpisodeSort,
-        filterBySubjectName = config.autoMatch.filterBySubjectName,
         selectMedia = config.selectMedia,
         matchVideo = config.matchVideo,
         autoMatch = config.autoMatch,
@@ -397,7 +394,6 @@ private class SelectorSearchConfigSurrogate(
                 SelectorSubjectFormatJsonPathIndexed.id -> selectorSubjectFormatJsonPathIndexed.preferShorterName
                 else -> selectorSubjectFormatA.preferShorterName
             },
-            filterBySubjectName = filterBySubjectName,
             filterByEpisodeSort = filterByEpisodeSort,
         )
         return SelectorSearchConfig(

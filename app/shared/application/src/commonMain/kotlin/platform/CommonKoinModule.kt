@@ -291,7 +291,7 @@ private fun KoinApplication.otherModules(
     single<EpisodeService> {
         EpisodeServiceImpl(
             subjectApi = aniApiProvider.subjectApi,
-            bangumiClient = get<HttpClientProvider>().get(),
+            episodesApi = aniApiProvider.episodesApi,
         )
     }
 

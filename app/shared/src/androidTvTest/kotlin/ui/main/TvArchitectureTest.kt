@@ -82,6 +82,7 @@ class TvArchitectureTest {
         "me.him188.ani.app.ui.settings.tabs.about.developerCredits",
         "me.him188.ani.app.ui.settings.tabs.about.mergeOpenSourceLibraries",
         "me.him188.ani.app.ui.foundation.effects.blurEffect",
+        "me.him188.ani.app.ui.foundation.effects.ScreenOnEffect",
         "me.him188.ani.app.ui.foundation.Res",
         "me.him188.ani.app.ui.foundation.tmdb",
         "me.him188.ani.app.ui.media.webCaptchaRequiredMessage",

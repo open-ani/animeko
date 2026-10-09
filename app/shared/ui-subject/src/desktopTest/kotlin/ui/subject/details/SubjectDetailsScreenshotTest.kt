@@ -75,6 +75,7 @@ class SubjectDetailsScreenshotTest {
                     subjectId = TestSubjectInfo.subjectId,
                     displayName = TestSubjectInfo.displayName,
                     selfCollectionType = UnifiedCollectionType.DOING,
+                    collectionStats = TestSubjectInfo.collectionStats,
                     airingInfo = TestSubjectAiringInfo,
                     progressInfo = TestSubjectProgressInfos.ContinueWatching2,
                     episodeListUiState = TestEpisodeListUiState,

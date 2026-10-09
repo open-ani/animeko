@@ -44,6 +44,7 @@ import me.him188.ani.app.data.persistent.database.dao.SearchHistoryEntity
 import me.him188.ani.app.data.persistent.database.dao.SearchTagDao
 import me.him188.ani.app.data.persistent.database.dao.SearchTagEntity
 import me.him188.ani.app.data.persistent.database.dao.SubjectCollectionDao
+import me.him188.ani.app.data.persistent.database.dao.SubjectRelations
 import me.him188.ani.app.data.persistent.database.dao.SubjectCollectionEntity
 import me.him188.ani.app.data.persistent.database.dao.SubjectRelationsDao
 import me.him188.ani.app.data.persistent.database.dao.SubjectReviewDao
@@ -90,7 +91,7 @@ import me.him188.ani.utils.httpdownloader.DownloadState
         PlaybackHistoryPendingOpEntity::class,
         EpisodeCollectionPendingOpEntity::class,
     ],
-    version = 27,
+    version = 28,
     autoMigrations = [
         AutoMigration(from = 1, to = 2, spec = Migrations.Migration_1_2::class),
         AutoMigration(from = 2, to = 3, spec = Migrations.Migration_2_3::class),
@@ -117,6 +118,7 @@ import me.him188.ani.utils.httpdownloader.DownloadState
         AutoMigration(from = 24, to = 25, spec = Migrations.Migration_24_25::class),
         AutoMigration(from = 25, to = 26, spec = Migrations.Migration_25_26::class),
         AutoMigration(from = 26, to = 27, spec = Migrations.Migration_26_27::class),
+        AutoMigration(from = 27, to = 28, spec = Migrations.Migration_27_28::class),
     ],
     exportSchema = true,
 )
@@ -445,6 +447,14 @@ internal object Migrations {
      * Added [EpisodeCollectionPendingOpEntity]: 剧集看过状态的本地待同步操作.
      */
     class Migration_26_27 : AutoMigrationSpec {
+        override fun onPostMigrate(connection: SQLiteConnection) {
+        }
+    }
+
+    /**
+     * Added [SubjectRelations.splitSeason]: 服务端识别的拆分季.
+     */
+    class Migration_27_28 : AutoMigrationSpec {
         override fun onPostMigrate(connection: SQLiteConnection) {
         }
     }

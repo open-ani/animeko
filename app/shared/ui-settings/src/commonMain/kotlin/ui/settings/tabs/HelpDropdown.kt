@@ -19,7 +19,6 @@ import me.him188.ani.app.platform.navigation.rememberAsyncBrowserNavigator
 import me.him188.ani.app.ui.lang.Lang
 import me.him188.ani.app.ui.lang.settings_help_feedback
 import me.him188.ani.app.ui.lang.settings_help_github
-import me.him188.ani.app.ui.lang.settings_help_qq
 import me.him188.ani.app.ui.lang.settings_help_telegram
 import me.him188.ani.app.ui.lang.settings_help_website
 import org.jetbrains.compose.resources.stringResource
@@ -49,10 +48,6 @@ fun HelpDropdown(
     val context = LocalContext.current
 
     DropdownMenu(expanded, onDismissRequest, modifier) {
-        DropdownMenuItem(
-            text = { Text(stringResource(Lang.settings_help_qq)) },
-            onClick = { browserNavigator.openJoinGroup(context) },
-        )
         DropdownMenuItem(
             text = { Text(stringResource(Lang.settings_help_telegram)) },
             onClick = { browserNavigator.openJoinTelegram(context) },

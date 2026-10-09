@@ -13,13 +13,16 @@ import io.ktor.client.HttpClient
 import io.ktor.client.engine.mock.MockEngine
 import io.ktor.client.engine.mock.respond
 import io.ktor.client.plugins.ServerResponseException
+import io.ktor.client.plugins.contentnegotiation.ContentNegotiation
 import io.ktor.client.plugins.defaultRequest
 import io.ktor.http.HttpHeaders
 import io.ktor.http.HttpMethod
 import io.ktor.http.HttpStatusCode
 import io.ktor.http.headersOf
+import io.ktor.serialization.JsonConvertException
+import io.ktor.serialization.kotlinx.json.json
 import kotlinx.coroutines.test.runTest
-import kotlinx.serialization.SerializationException
+import me.him188.ani.app.domain.foundation.ServerListFeatureConfig
 import me.him188.ani.utils.ktor.asScopedHttpClient
 import kotlin.test.Test
 import kotlin.test.assertEquals
@@ -29,50 +32,50 @@ import kotlin.test.assertNull
 class EpisodeServiceTest {
     private suspend fun withService(
         status: HttpStatusCode = HttpStatusCode.OK,
-        subjectId: Int = 622288,
+        subjectId: Long = 622288,
         body: String? = null,
+        expectedPath: String = "/v2/episodes/1741638",
         block: suspend (EpisodeService) -> Unit,
     ) {
         val client = HttpClient(MockEngine { request ->
             assertEquals(HttpMethod.Get, request.method)
-            assertEquals("https://api.bgm.tv/v0/episodes/1741638", request.url.toString())
-            assertNull(request.headers[HttpHeaders.Authorization])
+            assertEquals(ServerListFeatureConfig.MAGIC_ANI_SERVER_HOST.lowercase(), request.url.host.lowercase())
+            assertEquals(expectedPath, request.url.encodedPath)
+            assertEquals("Bearer test-ani-token", request.headers[HttpHeaders.Authorization])
             respond(
-                body ?: """{"id":1741638,"type":0,"name":"Episode","name_cn":"","sort":1,"airdate":"","comment":0,"duration":"","desc":"","disc":0,"subject_id":$subjectId}""",
+                body ?: """{"episodeId":1741638,"subjectId":$subjectId,"sort":"1","type":"MAIN","name":"Episode","nameCn":"","description":""}""",
                 status,
                 headersOf(HttpHeaders.ContentType, "application/json"),
             )
         }) {
             expectSuccess = true
-        }
-        val aniClient = HttpClient(MockEngine { error("Episode parent lookup must use the anonymous Bangumi client") }) {
+            install(ContentNegotiation) { json() }
             defaultRequest { headers.append(HttpHeaders.Authorization, "Bearer test-ani-token") }
         }
         try {
             val provider = AniApiProvider(
-                client = aniClient.asScopedHttpClient(),
+                client = client.asScopedHttpClient(),
             )
-            block(EpisodeServiceImpl(provider.subjectApi, client.asScopedHttpClient()))
+            block(EpisodeServiceImpl(provider.subjectApi, provider.episodesApi))
         } finally {
-            aniClient.close()
             client.close()
         }
     }
 
     @Test
-    fun `public episode endpoint returns parent subject id`() = runTest {
+    fun `ani episode endpoint returns parent subject id without a subject parameter`() = runTest {
         withService { assertEquals(622288, it.getSubjectId(1741638)) }
     }
 
     @Test
-    fun `only parent subject id is required from the public response`() = runTest {
-        withService(body = """{"subject_id":622288}""") { assertEquals(622288, it.getSubjectId(1741638)) }
+    fun `maximum positive Int subject id is accepted`() = runTest {
+        withService(subjectId = Int.MAX_VALUE.toLong()) { assertEquals(Int.MAX_VALUE, it.getSubjectId(1741638)) }
     }
 
     @Test
-    fun `missing subject id propagates a decoding failure`() = runTest {
+    fun `invalid episode response propagates a decoding failure`() = runTest {
         withService(body = "{}") {
-            assertFailsWith<SerializationException> { it.getSubjectId(1741638) }
+            assertFailsWith<JsonConvertException> { it.getSubjectId(1741638) }
         }
     }
 
@@ -90,8 +93,15 @@ class EpisodeServiceTest {
 
     @Test
     fun `invalid parent subject id is rejected`() = runTest {
-        for (id in listOf(0, -1)) {
+        for (id in listOf(0L, -1L, Int.MAX_VALUE.toLong() + 1, Long.MAX_VALUE)) {
             withService(subjectId = id) { assertNull(it.getSubjectId(1741638)) }
+        }
+    }
+
+    @Test
+    fun `known subject episode lookup keeps the existing Ani route`() = runTest {
+        withService(expectedPath = "/v2/subjects/622288/episodes/1741638") {
+            assertEquals(1741638, it.getEpisodeCollectionById(622288, 1741638)?.episodeId)
         }
     }
 }

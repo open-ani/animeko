@@ -354,7 +354,6 @@ class SelectorMediaSourceTester(
                                     it,
                                     query,
                                     document,
-                                    searchConfig.autoMatch.filterBySubjectName,
                                 )
                             },
                         )

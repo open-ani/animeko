@@ -36,6 +36,7 @@ import me.him188.ani.app.ui.foundation.ProvideCompositionLocalsForPreview
 import me.him188.ani.app.ui.foundation.text.ProvideTextStyleContentColor
 import me.him188.ani.app.ui.lang.Lang
 import me.him188.ani.app.ui.lang.rating_summary_multiline
+import me.him188.ani.app.ui.lang.rating_summary_total
 import me.him188.ani.utils.platform.annotations.TestOnly
 import me.him188.ani.utils.platform.format1f
 import org.jetbrains.compose.resources.stringResource
@@ -63,14 +64,19 @@ fun RatingText(
             )
         }
 //        var hasOverflow by remember { mutableStateOf(false) }
-        Box(Modifier.padding(start = 4.dp).fillMaxHeight()) {
+        Box(Modifier.padding(start = 4.dp).fillMaxHeight(), contentAlignment = Alignment.CenterStart) {
             ProvideTextStyleContentColor(
                 MaterialTheme.typography.labelSmall,
                 MaterialTheme.colorScheme.tertiary,
             ) {
                 Column {
                     Text(
-                        stringResource(Lang.rating_summary_multiline, rating.rank, rating.total),
+                        if (rating.rank > 0) {
+                            stringResource(Lang.rating_summary_multiline, rating.rank, rating.total)
+                        } else {
+                            // 评分人数不够的条目在 Bangumi 上没有排名
+                            stringResource(Lang.rating_summary_total, rating.total)
+                        },
                         maxLines = 2,
                         softWrap = false,
                     )
