@@ -19,9 +19,3 @@ import org.openani.mediamp.MediampPlayer
 @Composable
 actual fun rememberPictureInPictureController(player: MediampPlayer): PictureInPictureController =
     NoOpPictureInPictureController
-
-/**
- * 桌面端没有系统级画中画, 恒为 false.
- */
-@Composable
-actual fun rememberIsInPictureInPicture(): Boolean = false

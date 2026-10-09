@@ -70,7 +70,6 @@ import me.him188.ani.app.navigation.AniNavigator
 import me.him188.ani.app.navigation.EpisodeNavigationGuardRegistry
 import me.him188.ani.app.navigation.NavRoutes
 import me.him188.ani.app.navigation.findLast
-import me.him188.ani.app.ui.foundation.LocalIsInPictureInPicture
 import me.him188.ani.app.ui.foundation.animation.AniAnimatedVisibility
 import me.him188.ani.app.ui.foundation.effects.OnLifecycleEvent
 import me.him188.ani.app.ui.lang.Lang
@@ -91,21 +90,16 @@ import kotlin.math.abs
 import kotlin.math.roundToInt
 import kotlin.math.roundToLong
 
-/**
- * 一起看的应用级浮层宿主: 收集房间状态, 处理导航与房间事件带来的副作用, 绘制交给同文件的 `WatchTogetherOverlayContent`.
- *
- * 小窗状态取自应用根提供的 [LocalIsInPictureInPicture]: 系统小窗展示整个应用窗口, 而本浮层不随播放器页最小化.
- */
 @Composable
 fun BoxScope.WatchTogetherOverlayHost(
     viewModel: WatchTogetherViewModel,
     aniNavigator: AniNavigator,
 ) {
     val state by viewModel.uiStateFlow.collectAsStateWithLifecycle()
+    val playerController = LocalWatchTogetherPlayerController.current
     var dialogVisible by rememberSaveable { mutableStateOf(false) }
     val toastHostState = remember { SnackbarHostState() }
     val bubblePositionState = rememberDraggableBubblePositionState()
-    val isInPictureInPicture = LocalIsInPictureInPicture.current
 
     OnLifecycleEvent { event ->
         when (event) {
@@ -221,6 +215,13 @@ fun BoxScope.WatchTogetherOverlayHost(
         }
     }
 
+    SnackbarHost(
+        toastHostState,
+        Modifier.align(Alignment.BottomCenter).padding(bottom = 24.dp),
+    ) { data ->
+        WatchTogetherToast(data)
+    }
+
     LaunchedEffect(state.featureEnabled) {
         if (!state.featureEnabled) dialogVisible = false
     }
@@ -231,75 +232,28 @@ fun BoxScope.WatchTogetherOverlayHost(
         }
     }
 
-    WatchTogetherOverlayContent(
-        state = state,
-        isInPictureInPicture = isInPictureInPicture,
-        bubblePositionState = bubblePositionState,
-        toastHostState = toastHostState,
-        onBubbleClick = { dialogVisible = true },
-        dialogVisible = dialogVisible,
-        onIntent = viewModel::onIntent,
-        onLogin = {
-            dialogVisible = false
-            aniNavigator.navigateLogin()
-        },
-        onDismissRequest = { dialogVisible = false },
-    )
-}
-
-/**
- * 一起看浮层的绘制层: 轻提示, 可拖动气泡与房间对话框.
- *
- * 与 [WatchTogetherOverlayHost] 的状态收集和副作用分开, 便于预览与单独测试.
- *
- * @param isInPictureInPicture 应用当前是否处于系统画中画小窗, 由宿主从 [LocalIsInPictureInPicture] 取得.
- * 系统小窗展示整个应用窗口, 而本浮层挂在应用根节点上, 不随播放器页最小化, 因此小窗期间不绘制气泡与对话框;
- * 气泡在此期间完全不组合, 避免它按小窗尺寸重新落位.
- */
-@Composable
-internal fun BoxScope.WatchTogetherOverlayContent(
-    state: WatchTogetherUiState,
-    isInPictureInPicture: Boolean,
-    bubblePositionState: DraggableBubblePositionState,
-    toastHostState: SnackbarHostState,
-    onBubbleClick: () -> Unit,
-    dialogVisible: Boolean,
-    onIntent: (WatchTogetherIntent) -> Unit,
-    onLogin: () -> Unit,
-    onDismissRequest: () -> Unit,
-) {
-    // 轻提示始终保持组合: 展示进度与超时由 SnackbarHost 推进, 不组合会让 showSnackbar 一直挂起.
-    SnackbarHost(
-        toastHostState,
-        Modifier.align(Alignment.BottomCenter).padding(bottom = 24.dp),
-    ) { data ->
-        WatchTogetherToast(data)
-    }
-
     if (!state.featureEnabled) return
 
-    // 小窗期间不组合气泡 (而不是仅不可见): 气泡位置按容器尺寸计算并记住, 小窗的尺寸会把它重排到窗口边缘,
-    // 退出小窗后位置就停在错误的地方.
-    if (!isInPictureInPicture) {
-        val playerController = LocalWatchTogetherPlayerController.current
-        AniAnimatedVisibility(
-            visible = playerController.isDraggablePopupVisible,
-        ) {
-            DraggableWatchTogetherBubble(
-                state = state,
-                positionState = bubblePositionState,
-                onClick = onBubbleClick,
-                modifier = Modifier.fillMaxSize(),
-            )
-        }
+    AniAnimatedVisibility(
+        visible = playerController.isDraggablePopupVisible,
+    ) {
+        DraggableWatchTogetherBubble(
+            state = state,
+            positionState = bubblePositionState,
+            onClick = { dialogVisible = true },
+            modifier = Modifier.fillMaxSize(),
+        )
     }
 
-    if (dialogVisible && !isInPictureInPicture) {
+    if (dialogVisible) {
         WatchTogetherDialog(
             state = state,
-            onIntent = onIntent,
-            onLogin = onLogin,
-            onDismissRequest = onDismissRequest,
+            onIntent = viewModel::onIntent,
+            onLogin = {
+                dialogVisible = false
+                aniNavigator.navigateLogin()
+            },
+            onDismissRequest = { dialogVisible = false },
         )
     }
 }
@@ -368,7 +322,7 @@ private fun BoxScope.DraggableWatchTogetherBubble(
         val settledTarget = positionState.targetFor(containerSize, bubbleSize, marginPx)
         LaunchedEffect(containerSize, bubbleSize, settledTarget, dragging) {
             if (!dragging && settledTarget != null) {
-                positionState.settle(settledTarget, containerSize, bubbleSize)
+                positionState.settleIfSameContainer(settledTarget, containerSize, bubbleSize)
             }
         }
 

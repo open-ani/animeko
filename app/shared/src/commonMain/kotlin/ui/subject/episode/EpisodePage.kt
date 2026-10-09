@@ -88,6 +88,7 @@ import me.him188.ani.app.domain.comment.CommentContext
 import me.him188.ani.app.domain.media.player.data.suppliedFramePreview
 import me.him188.ani.app.navigation.LocalNavigator
 import me.him188.ani.app.pip.LocalPictureInPictureController
+import me.him188.ani.app.pip.NoOpPictureInPictureController
 import me.him188.ani.app.pip.PictureInPictureController
 import me.him188.ani.app.pip.rememberPictureInPictureController
 import me.him188.ani.app.pip.shouldAutoEnterPictureInPicture
@@ -180,11 +181,11 @@ import me.him188.ani.app.videoplayer.ui.VideoSideSheetsController
 import me.him188.ani.app.videoplayer.ui.gesture.LevelController
 import me.him188.ani.app.videoplayer.ui.gesture.NoOpLevelController
 import me.him188.ani.app.videoplayer.ui.gesture.asLevelController
-import me.him188.ani.app.videoplayer.ui.rememberAlwaysOnRequester
 import me.him188.ani.app.videoplayer.ui.progress.PlayerControllerDefaults
 import me.him188.ani.app.videoplayer.ui.progress.PlayerControllerDefaults.rememberRandomDanmakuPlaceholder
 import me.him188.ani.app.videoplayer.ui.progress.rememberMediaProgressFramePreviewState
 import me.him188.ani.app.videoplayer.ui.progress.rememberMediaProgressSliderState
+import me.him188.ani.app.videoplayer.ui.rememberAlwaysOnRequester
 import me.him188.ani.app.videoplayer.ui.rememberPlayerFullscreenState
 import me.him188.ani.app.videoplayer.ui.screenshot.PlayerScreenshotOverlay
 import me.him188.ani.app.videoplayer.ui.screenshot.rememberPlayerScreenshotController
@@ -382,6 +383,7 @@ private fun EpisodeScreenContent(
                     isFullscreen = vm.isFullscreen,
                     isExpandedLayout = showExpandedUI,
                     sidebarVisible = vm.sidebarVisible,
+                    pictureInPictureController = pictureInPictureController,
                 )
 
                 page.matchingDanmakuUiState?.let { uiState ->
@@ -450,17 +452,36 @@ private fun EpisodeScreenContent(
     vm.mediaResolver.ComposeContent()
 }
 
+/**
+ * 一起看气泡的显隐: 全屏/宽屏收侧边栏时跟随控制条, 其余场景常显.
+ *
+ * 小窗期间也隐藏: 系统小窗展示整个应用窗口, 而一起看浮层挂在应用根节点上, 不随播放器页最小化,
+ * 不隐藏就会浮在小窗的视频上面.
+ *
+ * @param pictureInPictureController 播放页自己的画中画控制器
+ */
 @Composable
 internal fun WatchTogetherPopupVisibilityEffect(
     playerControllerState: PlayerControllerState,
     isFullscreen: Boolean,
     isExpandedLayout: Boolean,
     sidebarVisible: Boolean,
+    pictureInPictureController: PictureInPictureController = NoOpPictureInPictureController,
 ) {
     val watchTogetherPlayerController = LocalWatchTogetherPlayerController.current
+    val isInPictureInPicture by pictureInPictureController.isInPictureInPicture.collectAsStateWithLifecycle()
     val followControllerVisibility = isFullscreen || (isExpandedLayout && !sidebarVisible)
 
-    LaunchedEffect(followControllerVisibility, playerControllerState, watchTogetherPlayerController) {
+    LaunchedEffect(
+        followControllerVisibility,
+        playerControllerState,
+        watchTogetherPlayerController,
+        isInPictureInPicture,
+    ) {
+        if (isInPictureInPicture) {
+            watchTogetherPlayerController.setDraggablePopupVisibility(false)
+            return@LaunchedEffect
+        }
         if (followControllerVisibility) {
             snapshotFlow { playerControllerState.visibility.topBar }.collect {
                 watchTogetherPlayerController.setDraggablePopupVisibility(it)
@@ -471,7 +492,10 @@ internal fun WatchTogetherPopupVisibilityEffect(
     }
     DisposableEffect(watchTogetherPlayerController) {
         onDispose {
-            watchTogetherPlayerController.setDraggablePopupVisibility(true)
+            // 小窗期间不写回: 一起看跟播切集会重建播放页, 旧页写回 true 会让小窗里的气泡又出现
+            if (!isInPictureInPicture) {
+                watchTogetherPlayerController.setDraggablePopupVisibility(true)
+            }
         }
     }
 }

@@ -96,18 +96,6 @@ val LocalPictureInPictureController =
 expect fun rememberPictureInPictureController(player: MediampPlayer): PictureInPictureController
 
 /**
- * 当前应用是否处于系统画中画小窗.
- *
- * Android 的小窗展示整个 Activity 窗口, 挂在应用根节点上的浮层 (例如一起看气泡) 会随窗口一起被缩进小窗,
- * 这些浮层需要据此决定是否绘制. iOS 的小窗只采集视频 layer, 应用 UI 不会进入小窗, 恒为 false.
- *
- * 与 [PictureInPictureController.isInPictureInPicture] 的区别: 后者是播放页面为自己拿到的控制器状态,
- * 供页面自身做最小化; 本函数供应用级浮层使用, 不需要播放器, 可以在任何页面调用.
- */
-@Composable
-expect fun rememberIsInPictureInPicture(): Boolean
-
-/**
  * PiP 窗口宽高比的合法上下界 (Android 系统要求 2.39:1 .. 1:2.39).
  */
 private const val MAX_ASPECT_NUMERATOR = 239

@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2026 OpenAni and contributors.
+ * Copyright (C) 2024-2026 OpenAni and contributors.
  *
  * 此源代码的使用受 GNU AFFERO GENERAL PUBLIC LICENSE version 3 许可证的约束, 可以在以下链接找到该许可证.
  * Use of this source code is governed by the GNU AGPLv3 license, which can be found at the following link.
@@ -42,6 +42,18 @@ internal class DraggableBubblePositionState(
 
     fun settle(offset: Offset, containerSize: IntSize, bubbleSize: IntSize) {
         settledPlacement = SettledBubblePlacement(offset, containerSize, bubbleSize)
+    }
+
+    /**
+     * 布局自动重排后的落位: 容器尺寸与上次记录不一致时不记录.
+     *
+     * 容器尺寸变化 (进出小窗, 窗口尺寸变化) 之后 [targetFor] 给出的只是把气泡按新容器夹到边缘的临时位置,
+     * 记下来会在容器恢复原尺寸时丢掉用户拖拽的位置. 用户拖拽结束仍然用 [settle] 记录.
+     */
+    fun settleIfSameContainer(offset: Offset, containerSize: IntSize, bubbleSize: IntSize) {
+        val previous = settledPlacement
+        if (previous != null && previous.containerSize != containerSize) return
+        settle(offset, containerSize, bubbleSize)
     }
 
     fun targetFor(containerSize: IntSize, bubbleSize: IntSize, marginPx: Float): Offset? {

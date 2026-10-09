@@ -69,12 +69,6 @@ actual fun rememberPictureInPictureController(player: MediampPlayer): PictureInP
 }
 
 /**
- * iOS 的系统小窗只采集视频 layer, 应用 UI 不会进入小窗, 应用级浮层无需隐藏.
- */
-@Composable
-actual fun rememberIsInPictureInPicture(): Boolean = false
-
-/**
  * iOS 画中画控制器, 包装 AVKit 的 `AVPictureInPictureController`.
  *
  * - 自动进入: `canStartPictureInPictureAutomaticallyFromInline` (用户上滑回桌面时系统自动以小窗继续,
