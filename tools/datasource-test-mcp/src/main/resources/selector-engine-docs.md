@@ -54,7 +54,11 @@ MCP 工具对应关系:
 |---|---|---|
 | `a` | 选择 `<a>` 元素,`title`/text 为名称,`href` 为链接 | `selectLists` |
 | `indexed` | 名称与链接分别用两个 selector 选出后按序配对 | `selectNames`, `selectLinks` |
-| `json-path-indexed` | 页面是 JSON API 响应,用 JsonPath 提取 | `selectLinks`, `selectNames` |
+| `json-path-indexed` | 页面是 JSON API 响应,用 JsonPath 提取 | `selectLinks`, `selectNames`, `linkTemplate` |
+
+**`linkTemplate`**(三种格式都支持,可选): 把 select 出的原始链接代入 `{value}` 得到详情页地址,留空则直接用原始链接。
+API 只返回裸 id 时(如 `{"list":[{"id":"5395"}]}`)用它把 id 拼成详情页地址——`selectLinks` 取 `$.list[*]['id']`、`linkTemplate` 填 `/GV{value}/`,即可得到 `https://站点/GV5395/`,无需为该站写专属 Kotlin 路由。
+模板可写相对路径(以 `searchUrl` 推出的 baseUrl 解析为绝对地址)或绝对地址。
 
 **输出**: `WebSearchSubjectInfo { name, fullUrl, partialUrl }` 列表,顺序与页面一致。返回 `null` 表示配置无效(selector 为空或语法错误)。
 `selector_resolve_episode` 在此之后按 `autoMatch.preferShorterName`(默认开)把名称短的条目排到前面,与 App 自动匹配一致;
