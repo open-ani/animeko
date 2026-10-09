@@ -10,13 +10,13 @@
 package me.him188.ani.app.ui.mediaselect.manual
 
 import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -28,35 +28,48 @@ import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.GridItemSpan
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.itemsIndexed
-import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.selection.toggleable
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.rounded.Check
 import androidx.compose.material.icons.rounded.ChevronRight
+import androidx.compose.material3.DropdownMenuItem
+import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
+import androidx.compose.material3.ExposedDropdownMenuAnchorType
+import androidx.compose.material3.ExposedDropdownMenuBox
+import androidx.compose.material3.ExposedDropdownMenuDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.InputChip
-import androidx.compose.material3.InputChipDefaults
 import androidx.compose.material3.ListItem
 import androidx.compose.material3.ListItemDefaults
 import androidx.compose.material3.LoadingIndicator
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.MenuDefaults
+import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.selected
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import me.him188.ani.app.ui.foundation.ifThen
 import me.him188.ani.app.ui.lang.Lang
 import me.him188.ani.app.ui.lang.media_selector_load_failed
 import me.him188.ani.app.ui.lang.media_selector_manual_captcha_unsupported
@@ -67,7 +80,9 @@ import me.him188.ani.app.ui.lang.media_selector_manual_no_sources
 import me.him188.ani.app.ui.lang.media_selector_manual_remember_selection
 import me.him188.ani.app.ui.lang.media_selector_manual_result_count
 import me.him188.ani.app.ui.lang.media_selector_retry
+import me.him188.ani.app.ui.lang.media_selector_sources
 import me.him188.ani.app.ui.settings.rendering.MediaSourceIcon
+import me.him188.ani.app.ui.settings.rendering.MediaSourceTierTag
 import me.him188.ani.datasources.api.source.BrowseChannel
 import me.him188.ani.datasources.api.source.BrowseEpisode
 import me.him188.ani.datasources.api.source.BrowseSubject
@@ -90,49 +105,122 @@ internal fun ManualSectionLabel(
 }
 
 /**
- * 源 chips 行: 单选, 水平可滚动, 带 20dp 源图标. 无源时显示提示文本.
+ * 源选择框: 带「数据源」标签的只读框显示当前源, 点开下拉菜单竖向列出所有源 (图标 + 名称 + tier), 当前源打勾. 无源时显示提示文本.
  *
- * @param isPlaceholder 状态尚未就绪 ([ManualBrowsePresentation.isPlaceholder]): 空列表只是还没发射, 画一个与 chip 行等高的占位, 不显示「没有支持浏览的数据源」.
+ * 源的数量没有上限, 而手动查找常在 300–400dp 宽的侧边栏里: 横排时一行只露出两三个源, 鼠标也难以横向滚动.
+ * 竖排的菜单能一次看到更多源, 并用滚轮翻动.
+ *
+ * @param isPlaceholder 状态尚未就绪 ([ManualBrowsePresentation.isPlaceholder]): 空列表只是还没发射, 画一个空的选择框占位, 不显示「没有支持浏览的数据源」.
  */
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
-internal fun ManualSourceChips(
+internal fun ManualSourceSelector(
     sources: List<ManualBrowseSource>,
     selectedSourceId: String?,
     onSelect: (instanceId: String) -> Unit,
     modifier: Modifier = Modifier,
-    contentPadding: PaddingValues = PaddingValues(horizontal = 16.dp),
     isPlaceholder: Boolean = false,
 ) {
-    if (sources.isEmpty() && isPlaceholder) {
-        Spacer(modifier.height(InputChipDefaults.Height))
-        return
-    }
-    if (sources.isEmpty()) {
+    if (sources.isEmpty() && !isPlaceholder) {
         Text(
             stringResource(Lang.media_selector_manual_no_sources),
-            modifier.padding(contentPadding),
+            modifier,
             style = MaterialTheme.typography.bodyMedium,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
         )
         return
     }
-    LazyRow(
-        modifier,
-        contentPadding = contentPadding,
-        horizontalArrangement = Arrangement.spacedBy(8.dp),
+    var expanded by remember { mutableStateOf(false) }
+    val selectedSource = sources.firstOrNull { it.instanceId == selectedSourceId }
+    ExposedDropdownMenuBox(
+        expanded = expanded,
+        onExpandedChange = { expanded = it && sources.isNotEmpty() },
+        modifier = modifier,
     ) {
-        items(sources, key = { it.instanceId }) { source ->
-            InputChip(
-                selected = source.instanceId == selectedSourceId,
-                onClick = { onSelect(source.instanceId) },
-                label = { Text(source.info.displayName, maxLines = 1, overflow = TextOverflow.Ellipsis) },
-                modifier = Modifier.testTag(ManualBrowsePageTestTags.sourceChip(source.instanceId)),
-                avatar = {
-                    MediaSourceIcon(source.info, Modifier.size(20.dp).clip(MaterialTheme.shapes.extraSmall))
-                },
-            )
+        OutlinedTextField(
+            value = selectedSource?.info?.displayName.orEmpty(),
+            onValueChange = {},
+            modifier = Modifier
+                .menuAnchor(ExposedDropdownMenuAnchorType.PrimaryNotEditable)
+                .fillMaxWidth()
+                .testTag(ManualBrowsePageTestTags.SOURCE_SELECTOR),
+            readOnly = true,
+            singleLine = true,
+            label = { Text(stringResource(Lang.media_selector_sources)) },
+            leadingIcon = selectedSource?.let { source -> { ManualSourceIcon(source) } },
+            trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = expanded) },
+            colors = ExposedDropdownMenuDefaults.outlinedTextFieldColors(),
+            shape = MaterialTheme.shapes.medium,
+        )
+        ExposedDropdownMenu(
+            expanded = expanded,
+            onDismissRequest = { expanded = false },
+        ) {
+            for (source in sources) {
+                ManualSourceMenuItem(
+                    source,
+                    selected = source.instanceId == selectedSourceId,
+                    onClick = {
+                        expanded = false
+                        onSelect(source.instanceId)
+                    },
+                )
+            }
         }
     }
+}
+
+/**
+ * 选中项用 secondaryContainer 底色 + 对勾; tier 标签与对勾占固定的尾部位置, 各行的标签上下对齐.
+ */
+@Composable
+private fun ManualSourceMenuItem(
+    source: ManualBrowseSource,
+    selected: Boolean,
+    onClick: () -> Unit,
+) {
+    val colorScheme = MaterialTheme.colorScheme
+    DropdownMenuItem(
+        text = { Text(source.info.displayName, maxLines = 1, overflow = TextOverflow.Ellipsis) },
+        onClick = onClick,
+        modifier = Modifier
+            .ifThen(selected) { background(colorScheme.secondaryContainer) }
+            .semantics { this.selected = selected }
+            .testTag(ManualBrowsePageTestTags.sourceItem(source.instanceId)),
+        leadingIcon = { ManualSourceIcon(source) },
+        trailingIcon = {
+            Row(
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                source.info.tier?.let { tier ->
+                    MediaSourceTierTag(
+                        tier,
+                        containerColor = if (selected) colorScheme.surfaceContainerLowest else colorScheme.secondaryContainer,
+                    )
+                }
+                Box(Modifier.size(24.dp), contentAlignment = Alignment.Center) {
+                    if (selected) {
+                        Icon(Icons.Rounded.Check, contentDescription = null)
+                    }
+                }
+            }
+        },
+        colors = if (selected) {
+            MenuDefaults.itemColors(
+                textColor = colorScheme.onSecondaryContainer,
+                trailingIconColor = colorScheme.onSecondaryContainer,
+            )
+        } else {
+            MenuDefaults.itemColors()
+        },
+        contentPadding = ExposedDropdownMenuDefaults.ItemContentPadding,
+    )
+}
+
+@Composable
+private fun ManualSourceIcon(source: ManualBrowseSource) {
+    MediaSourceIcon(source.info, Modifier.size(24.dp).clip(MaterialTheme.shapes.extraSmall))
 }
 
 /**
