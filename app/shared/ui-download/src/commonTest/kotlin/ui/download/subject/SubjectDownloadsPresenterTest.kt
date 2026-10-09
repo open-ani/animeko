@@ -370,7 +370,7 @@ class SubjectDownloadsPresenterTest {
     }
 
     @Test
-    fun `manual browse target carries the subject names, ep and split season`() = withFixture {
+    fun `manual browse target carries the subject names ep and split season`() = withFixture {
         val season = SplitSeason(
             parts = listOf(
                 SplitSeason.Part(subjectId = 100, names = listOf("前半"), markers = emptyList(), firstSort = 1, episodeCount = 12),
