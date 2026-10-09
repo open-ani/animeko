@@ -170,6 +170,7 @@ import me.him188.ani.app.ui.subject.episode.video.sidesheet.EpisodeSelectorSheet
 import me.him188.ani.app.ui.subject.episode.video.sidesheet.MediaSelectorSheet
 import me.him188.ani.app.ui.subject.episode.video.topbar.EpisodePlayerTitle
 import me.him188.ani.app.ui.watchtogether.LocalWatchTogetherPlayerController
+import me.him188.ani.app.ui.watchtogether.rememberBubbleHideRequester
 import me.him188.ani.app.videoplayer.screenshot.playerScreenshotFileName
 import me.him188.ani.app.videoplayer.ui.LocalVideoScaffoldSheetWindowInsets
 import me.him188.ani.app.videoplayer.ui.PlaybackSpeedControllerState
@@ -458,6 +459,9 @@ private fun EpisodeScreenContent(
  * 小窗期间也隐藏: 系统小窗展示整个应用窗口, 而一起看浮层挂在应用根节点上, 不随播放器页最小化,
  * 不隐藏就会浮在小窗的视频上面.
  *
+ * 隐藏以 `BubbleHideRequester` 的形式提出, 请求随本页面一起失效: 一起看跟播切集会重建播放页,
+ * 旧页面撤销自己的请求不会影响新页面刚提出的请求.
+ *
  * @param pictureInPictureController 播放页自己的画中画控制器
  */
 @Composable
@@ -469,33 +473,26 @@ internal fun WatchTogetherPopupVisibilityEffect(
     pictureInPictureController: PictureInPictureController = NoOpPictureInPictureController,
 ) {
     val watchTogetherPlayerController = LocalWatchTogetherPlayerController.current
+    val bubbleHideRequester = rememberBubbleHideRequester(watchTogetherPlayerController, "EpisodePage")
     val isInPictureInPicture by pictureInPictureController.isInPictureInPicture.collectAsStateWithLifecycle()
     val followControllerVisibility = isFullscreen || (isExpandedLayout && !sidebarVisible)
 
     LaunchedEffect(
         followControllerVisibility,
         playerControllerState,
-        watchTogetherPlayerController,
+        bubbleHideRequester,
         isInPictureInPicture,
     ) {
         if (isInPictureInPicture) {
-            watchTogetherPlayerController.setDraggablePopupVisibility(false)
+            bubbleHideRequester.request()
             return@LaunchedEffect
         }
         if (followControllerVisibility) {
             snapshotFlow { playerControllerState.visibility.topBar }.collect {
-                watchTogetherPlayerController.setDraggablePopupVisibility(it)
+                if (it) bubbleHideRequester.cancelRequest() else bubbleHideRequester.request()
             }
         } else {
-            watchTogetherPlayerController.setDraggablePopupVisibility(true)
-        }
-    }
-    DisposableEffect(watchTogetherPlayerController) {
-        onDispose {
-            // 小窗期间不写回: 一起看跟播切集会重建播放页, 旧页写回 true 会让小窗里的气泡又出现
-            if (!isInPictureInPicture) {
-                watchTogetherPlayerController.setDraggablePopupVisibility(true)
-            }
+            bubbleHideRequester.cancelRequest()
         }
     }
 }

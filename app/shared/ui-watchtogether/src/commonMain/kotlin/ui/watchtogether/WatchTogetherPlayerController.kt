@@ -57,16 +57,6 @@ class WatchTogetherPlayerController(
     fun getHideRequesters(): List<Any> {
         return hideRequests
     }
-
-    private val singleWriterRequester = Any()
-
-    /**
-     * 直接设置可见性.
-     */
-    @Deprecated("使用 setRequestHidden 表达隐藏请求, 多个请求者才能互不影响")
-    fun setDraggablePopupVisibility(visible: Boolean) {
-        setRequestHidden(singleWriterRequester, !visible)
-    }
 }
 
 /**

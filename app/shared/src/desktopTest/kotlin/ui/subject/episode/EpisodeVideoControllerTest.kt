@@ -671,18 +671,15 @@ class EpisodeVideoControllerTest {
         val visibleControllerState = PlayerControllerState(NORMAL_VISIBLE)
         val watchTogetherPlayerController = WatchTogetherPlayerController()
         val pictureInPictureController = FakePictureInPictureController()
-        var effectComposed by mutableStateOf(true)
         setContent {
             CompositionLocalProvider(LocalWatchTogetherPlayerController provides watchTogetherPlayerController) {
-                if (effectComposed) {
-                    WatchTogetherPopupVisibilityEffect(
-                        playerControllerState = visibleControllerState,
-                        isFullscreen = false,
-                        isExpandedLayout = false,
-                        sidebarVisible = true,
-                        pictureInPictureController = pictureInPictureController,
-                    )
-                }
+                WatchTogetherPopupVisibilityEffect(
+                    playerControllerState = visibleControllerState,
+                    isFullscreen = false,
+                    isExpandedLayout = false,
+                    sidebarVisible = true,
+                    pictureInPictureController = pictureInPictureController,
+                )
             }
         }
 
@@ -694,16 +691,8 @@ class EpisodeVideoControllerTest {
             !watchTogetherPlayerController.isDraggablePopupVisible
         }
 
-        // 一起看跟播切集会重建播放页: 旧页销毁时不能把可见性写回, 否则小窗里的气泡又出现
-        runOnIdle { effectComposed = false }
-        settleFrame()
-        assertFalse(watchTogetherPlayerController.isDraggablePopupVisible)
-
         // 退出小窗后恢复常显
-        runOnIdle {
-            effectComposed = true
-            pictureInPictureController.isInPictureInPicture.value = false
-        }
+        runOnIdle { pictureInPictureController.isInPictureInPicture.value = false }
         waitUntil(timeoutMillis = WAIT_TIMEOUT) {
             watchTogetherPlayerController.isDraggablePopupVisible
         }
@@ -759,7 +748,7 @@ class EpisodeVideoControllerTest {
         }
 
     /**
-     * 守卫不能把该恢复的情况一起吞掉: 不在小窗时销毁页面, 可见性要照常写回.
+     * 播放页销毁会撤销自己提出的隐藏请求, 没有人再要求隐藏时气泡恢复常显.
      */
     @Test
     fun `watch together popup is restored when the page is disposed outside picture in picture`() =
