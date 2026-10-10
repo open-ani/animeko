@@ -98,6 +98,10 @@ data class MediaSourceConfig(
      * 所属订阅的 ID. `null` 表示是本地自己添加的
      */
     val subscriptionId: String? = null,
+    /**
+     * 数据源在所属订阅中的 ID, 由订阅作者提供. 订阅没有提供或不是来自订阅时为 `null`.
+     */
+    val idInSubscription: String? = null,
 ) {
     companion object {
         val Default = MediaSourceConfig()

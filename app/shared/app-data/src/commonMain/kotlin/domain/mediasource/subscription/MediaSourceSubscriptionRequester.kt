@@ -44,7 +44,7 @@ class MediaSourceSubscriptionRequesterImpl(
     ): SubscriptionUpdateData {
         suspend fun HttpResponse.decode() = bodyAsChannel().toSource().use {
             MediaSourceCodecManager.Companion.json.decodeFromSource(
-                SubscriptionUpdateData.serializer(),
+                SubscriptionUpdateDataReader,
                 it,
             )
         }
@@ -57,6 +57,8 @@ class MediaSourceSubscriptionRequesterImpl(
                 }
             } catch (e: CancellationException) {
                 throw e
+            } catch (e: UnsupportedSubscriptionSchemaException) {
+                throw e // 代理返回的是同一份内容
             } catch (e: Exception) {
                 collect(e) // continue
             }
