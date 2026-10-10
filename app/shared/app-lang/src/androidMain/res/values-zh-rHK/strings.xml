@@ -418,20 +418,16 @@
     <string name="settings_storage_directory_create_failed">無法建立目錄</string>
 
     <!-- MediaSourceGroup -->
-    <string name="settings_media_source_list">數據源列表 (%1$d)</string>
-    <string name="settings_media_source_list_description">在播放時，禁用的數據源不會自動查詢，但可手動點擊臨時啟用。注意，排序將優先採用雲端順序，同數據源訂閱之內的手動排序可能無效</string>
     <string name="settings_media_source_cancel_sort">取消排序</string>
     <string name="settings_media_source_add">添加數據源</string>
     <string name="settings_media_source_save_sort">保存排序</string>
     <string name="settings_media_source_sort">排序</string>
     <string name="settings_media_source_stop_test">終止測試</string>
-    <string name="settings_media_source_start_test">開始測試</string>
     <string name="settings_media_source_delete">刪除數據源</string>
     <string name="settings_media_source_delete_no_config">該數據源無特殊配置，刪除後可以重新從模板直接添加，確認刪除嗎？</string>
     <string name="settings_media_source_delete_with_config">該數據源有配置，刪除後將丟失配置，之後從模板添加時需要重新配置，確認刪除嗎？</string>
     <string name="settings_media_source_delete_confirm">刪除</string>
     <string name="settings_media_source_cancel">取消</string>
-    <string name="settings_media_source_from_subscription">來自訂閱，不可編輯</string>
     <string name="settings_media_source_edit">編輯</string>
     <string name="settings_media_source_start_sort">開始排序</string>
     <string name="settings_media_source_more">更多</string>
@@ -439,14 +435,10 @@
     <string name="settings_media_source_disabled">（已禁用）</string>
     <string name="settings_media_source_disable">禁用</string>
     <string name="settings_media_source_enable">啟用</string>
-    <string name="settings_media_source_delete_can_readd">刪除（可重新添加）</string>
     <string name="settings_media_source_enter_selection_mode">進入選擇模式</string>
-    <string name="settings_media_source_exit_selection">退出選擇模式</string>
     <string name="settings_media_source_selected_count">已選擇 %1$d 個數據源</string>
-    <string name="settings_media_source_select_all">選擇全部數據源</string>
-    <string name="settings_media_source_deselect_all">取消選擇全部數據源</string>
-    <string name="settings_media_source_enable_selected">啟用選中的數據源</string>
-    <string name="settings_media_source_disable_selected">禁用選中的數據源</string>
+    <string name="settings_media_source_select_all">全選</string>
+    <string name="settings_media_source_deselect_all">取消全選</string>
     <string name="settings_media_source_delete_selected">刪除選中的數據源</string>
     <string name="settings_media_source_delete_selected_title">刪除選中的數據源？</string>
     <string name="settings_media_source_delete_selected_confirmation">確定刪除選中的 %1$d 個數據源嗎？刪除後將丟失自訂配置，重新添加時需要再次配置。</string>
@@ -454,15 +446,13 @@
 
     <!-- MediaSourceSubscriptionGroup -->
     <string name="settings_media_source_subscription">數據源訂閱</string>
-    <string name="settings_media_source_subscription_description">可通過訂閱添加多個數據源，自動定時更新訂閱</string>
-    <string name="settings_media_source_subscription_add">添加</string>
     <string name="settings_media_source_subscription_refresh_all">刷新全部</string>
     <string name="settings_media_source_subscription_add_dialog">添加訂閱</string>
     <string name="settings_media_source_subscription_add_confirm">添加</string>
     <string name="settings_media_source_subscription_paste">貼上</string>
     <string name="settings_media_source_subscription_cancel">取消</string>
     <string name="settings_media_source_subscription_url">URL (HTTP)</string>
-    <string name="settings_media_source_subscription_auto_update">每 %1$s 自動更新，</string>
+    <string name="settings_media_source_subscription_auto_update">每 %1$s 自動更新</string>
     <string name="settings_media_source_subscription_copy_link">複製鏈接</string>
     <string name="settings_media_source_subscription_copied">已複製</string>
     <string name="settings_media_source_subscription_export_all">全部導出到剪貼板</string>
@@ -476,6 +466,22 @@
     <string name="settings_media_source_subscription_network_error">網絡錯誤，請檢查網絡連接</string>
     <string name="settings_media_source_subscription_service_unavailable">服務暫不可用，請稍後重試</string>
     <string name="settings_media_source_subscription_unauthorized">服務禁止訪問，請聯繫服務提供商</string>
+    <string name="settings_media_source_subscriptions">訂閱</string>
+    <string name="settings_media_source_custom">自定義</string>
+    <string name="settings_media_source_subscription_updated_at">%1$s更新</string>
+    <string name="settings_media_source_subscription_media_source_count">包含 %1$d 個數據源</string>
+    <string name="settings_media_source_subscription_enable_all">全部啟用</string>
+    <string name="settings_media_source_subscription_disable_all">全部禁用</string>
+    <string name="settings_media_source_subscription_delete_subscription">刪除訂閱</string>
+    <string name="settings_media_source_subscription_website">主頁</string>
+    <string name="settings_media_source_subscription_link">訂閱鏈接</string>
+    <string name="settings_media_source_subscription_update_now">立即更新</string>
+    <string name="settings_media_source_subscription_unsupported_media_sources">%1$d 個數據源需要新版 Animeko</string>
+    <string name="settings_media_source_subscription_requires_newer_app">需要新版 Animeko</string>
+    <string name="settings_media_source_test_connection">測試連接</string>
+    <string name="settings_media_source_done">完成</string>
+    <string name="settings_media_source_disabled_label">已禁用</string>
+    <string name="settings_media_source_view_config">查看配置</string>
     <string name="settings_storage_danmaku_cache_strategy_title">彈幕快取策略</string>
     <string name="settings_storage_danmaku_cache_strategy_description_do_not_cache">不快取彈幕，每次播放都從網路取得。</string>
     <string name="settings_storage_danmaku_cache_strategy_description_cache_on_collection_doing_media_play">在播放收藏狀態為「在看」的條目劇集時快取彈幕。若該條目的收藏狀態變更為其他狀態，則刪除對應的彈幕快取。</string>

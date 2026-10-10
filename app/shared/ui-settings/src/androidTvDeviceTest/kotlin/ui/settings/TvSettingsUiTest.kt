@@ -175,7 +175,7 @@ class TvSettingsUiTest {
     fun subscriptionsAndIndividualSourcesToggleWithoutOpeningSourceDialogs() = runAniComposeUiTest {
         state = state.copy(
             sources = listOf(TvSettingsSource("test", "Example source", "Source description", "https://example.com", false, "web-selector", "group")),
-            subscriptions = listOf(TvSettingsSubscription("group", "https://example.com/sources.json", true)),
+            subscriptions = listOf(TvSettingsSubscription("group", "example.com/sources.json", true)),
         )
         mount()
         repeat(3) { key(Key.DirectionDown) }
