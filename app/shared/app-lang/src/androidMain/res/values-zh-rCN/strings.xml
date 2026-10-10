@@ -518,7 +518,7 @@
     <string name="settings_media_source_subscriptions">订阅</string>
     <string name="settings_media_source_custom">自定义</string>
     <string name="settings_media_source_subscription_updated_at">%1$s更新</string>
-    <string name="settings_media_source_subscription_media_source_count">包含 %1$d 个数据源</string>
+    <string name="settings_media_source_subscription_media_source_count">%1$d 个数据源</string>
     <string name="settings_media_source_subscription_enable_all">全部启用</string>
     <string name="settings_media_source_subscription_disable_all">全部禁用</string>
     <string name="settings_media_source_subscription_delete_subscription">删除订阅</string>
@@ -530,6 +530,10 @@
     <string name="settings_media_source_test_connection">测试连接</string>
     <string name="settings_media_source_done">完成</string>
     <string name="settings_media_source_disabled_label">已禁用</string>
+    <string name="settings_media_source_kind_web">在线</string>
+    <string name="settings_media_source_location_lan">局域网</string>
+    <string name="settings_media_source_location_local">本地</string>
+    <string name="settings_media_source_subscription_media_sources">数据源</string>
     <string name="settings_media_source_view_config">查看配置</string>
 
     <!-- ConfimExitDialog -->

@@ -72,7 +72,7 @@ class MediaSourceSubscriptionUiTest {
     }
 
     @Test
-    fun `subscription item shows metadata and opens subscription`() = runAniComposeUiTest {
+    fun `subscription item shows name and opens subscription`() = runAniComposeUiTest {
         val legacySubscription = MediaSourceSubscription(
             subscriptionId = "legacy",
             url = "https://example.com/legacy.json",
@@ -90,14 +90,12 @@ class MediaSourceSubscriptionUiTest {
                         state,
                         mediaSourcesOfSubscription = { emptyList() },
                         onOpenSubscription = { opened += it },
-                        backgroundColor = Color.White,
                     )
                 }
             }
         }
 
         onNodeWithText("在线源合集").assertExists()
-        onNodeWithText("常用在线视频网站合集").assertExists()
         // 没有订阅信息时显示订阅链接
         onNodeWithText("example.com/legacy.json").assertExists()
 
@@ -136,6 +134,15 @@ class MediaSourceSubscriptionUiTest {
         runOnIdle {
             assertEquals(listOf(subscription.subscriptionId), updated)
         }
+    }
+
+    @Test
+    fun `subscription page title falls back to host`() {
+        assertEquals("在线源合集", subscription.pageTitle)
+        assertEquals(
+            "example.com",
+            MediaSourceSubscription(subscriptionId = "legacy", url = "https://example.com/legacy.json").pageTitle,
+        )
     }
 
     private fun createSubscriptionState(

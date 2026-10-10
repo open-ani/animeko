@@ -11,11 +11,8 @@ package me.him188.ani.app.ui.settings.tabs.media.source
 
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.material.icons.Icons
@@ -75,13 +72,13 @@ import me.him188.ani.app.ui.lang.settings_media_source_subscription_disable_all
 import me.him188.ani.app.ui.lang.settings_media_source_subscription_enable_all
 import me.him188.ani.app.ui.lang.settings_media_source_subscription_export_all
 import me.him188.ani.app.ui.lang.settings_media_source_subscription_link
+import me.him188.ani.app.ui.lang.settings_media_source_subscription_media_sources
 import me.him188.ani.app.ui.lang.settings_media_source_subscription_unsupported_media_sources
 import me.him188.ani.app.ui.lang.settings_media_source_subscription_update_now
 import me.him188.ani.app.ui.lang.settings_media_source_subscription_website
 import me.him188.ani.app.ui.lang.settings_media_source_view_config
 import me.him188.ani.app.ui.settings.SettingsDetailPaneScope
 import me.him188.ani.app.ui.settings.SettingsTab
-import me.him188.ani.app.ui.settings.framework.ConnectionTesterResultIndicator
 import me.him188.ani.app.ui.settings.framework.ConnectionTesterRunner
 import me.him188.ani.app.ui.settings.framework.components.SettingsScope
 import org.jetbrains.compose.resources.getString
@@ -92,6 +89,13 @@ internal object MediaSourceSubscriptionPageTestTags {
 
     fun item(instanceId: String): String = "media_source_subscription_item_$instanceId"
 }
+
+/**
+ * 订阅详情页的标题. 没有名称时只显示域名, 完整链接在页面中显示.
+ */
+internal val MediaSourceSubscription.pageTitle: String
+    get() = metadata?.name?.takeIf { it.isNotBlank() }
+        ?: url.substringAfter("://").substringBefore('/')
 
 /**
  * 订阅详情页的内容. 订阅被删除后返回上一页.
@@ -165,48 +169,47 @@ internal fun SettingsScope.MediaSourceSubscriptionPage(
 
         HorizontalDividerItem()
 
-        mediaSources.forEach { item ->
-            val openConfiguration = { navigator.openMediaSourceConfiguration(item, editState) }
-            var showMoreDropdown by remember { mutableStateOf(false) }
-            MediaSourceItem(
-                item,
-                Modifier
-                    .testTag(MediaSourceSubscriptionPageTestTags.item(item.instanceId))
-                    .clickable(
-                        onClickLabel = stringResource(Lang.settings_media_source_view_config),
-                        onClick = openConfiguration,
-                    ),
-            ) {
-                IconButton({}, enabled = false) { // 放在 button 里保持 padding 一致
-                    ConnectionTesterResultIndicator(item.connectionTester, showIdle = false)
-                }
-                Box {
-                    IconButton(onClick = { showMoreDropdown = true }) {
-                        Icon(Icons.Rounded.MoreVert, contentDescription = stringResource(Lang.settings_media_source_more))
-                    }
-                    DropdownMenu(showMoreDropdown, onDismissRequest = { showMoreDropdown = false }) {
-                        ToggleEnabledMenuItem(
-                            item,
-                            onEnabledChange = { editState.toggleMediaSourceEnabled(item, it) },
-                            onDismissRequest = { showMoreDropdown = false },
-                        )
-                        DropdownMenuItem(
-                            text = { Text(stringResource(Lang.settings_media_source_view_config)) },
-                            onClick = {
-                                showMoreDropdown = false
-                                openConfiguration()
-                            },
-                        )
+        Group(
+            title = { Text(stringResource(Lang.settings_media_source_subscription_media_sources)) },
+            actions = { TestConnectionIconButton(testers) },
+        ) {
+            mediaSources.forEach { item ->
+                val openConfiguration = { navigator.openMediaSourceConfiguration(item, editState) }
+                var showMoreDropdown by remember { mutableStateOf(false) }
+                MediaSourceItem(
+                    item,
+                    Modifier
+                        .testTag(MediaSourceSubscriptionPageTestTags.item(item.instanceId))
+                        .clickable(
+                            onClickLabel = stringResource(Lang.settings_media_source_view_config),
+                            onClick = openConfiguration,
+                        ),
+                ) {
+                    ConnectionTestResultSlot(item.connectionTester)
+                    Box {
+                        IconButton(onClick = { showMoreDropdown = true }) {
+                            Icon(
+                                Icons.Rounded.MoreVert,
+                                contentDescription = stringResource(Lang.settings_media_source_more),
+                            )
+                        }
+                        DropdownMenu(showMoreDropdown, onDismissRequest = { showMoreDropdown = false }) {
+                            ToggleEnabledMenuItem(
+                                item,
+                                onEnabledChange = { editState.toggleMediaSourceEnabled(item, it) },
+                                onDismissRequest = { showMoreDropdown = false },
+                            )
+                            DropdownMenuItem(
+                                text = { Text(stringResource(Lang.settings_media_source_view_config)) },
+                                onClick = {
+                                    showMoreDropdown = false
+                                    openConfiguration()
+                                },
+                            )
+                        }
                     }
                 }
             }
-        }
-
-        Row(
-            Modifier.fillMaxWidth().padding(end = SettingsScope.itemHorizontalPadding).padding(top = 4.dp),
-            horizontalArrangement = Arrangement.End,
-        ) {
-            TestConnectionButton(testers)
         }
     }
 }

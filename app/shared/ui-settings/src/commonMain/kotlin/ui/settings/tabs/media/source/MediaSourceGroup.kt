@@ -18,19 +18,14 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.RowScope
-import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.wrapContentHeight
 import androidx.compose.foundation.layout.wrapContentSize
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.Add
@@ -69,6 +64,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
@@ -82,6 +78,7 @@ import me.him188.ani.app.ui.foundation.interaction.onRightClickIfSupported
 import me.him188.ani.app.ui.foundation.navigation.BackHandler
 import me.him188.ani.app.ui.lang.Lang
 import me.him188.ani.app.ui.lang.settings_media_source_add
+import me.him188.ani.app.ui.lang.settings_media_source_bt
 import me.him188.ani.app.ui.lang.settings_media_source_cancel
 import me.him188.ani.app.ui.lang.settings_media_source_custom
 import me.him188.ani.app.ui.lang.settings_media_source_delete
@@ -95,6 +92,9 @@ import me.him188.ani.app.ui.lang.settings_media_source_done
 import me.him188.ani.app.ui.lang.settings_media_source_edit
 import me.him188.ani.app.ui.lang.settings_media_source_enable
 import me.him188.ani.app.ui.lang.settings_media_source_enter_selection_mode
+import me.him188.ani.app.ui.lang.settings_media_source_kind_web
+import me.him188.ani.app.ui.lang.settings_media_source_location_lan
+import me.him188.ani.app.ui.lang.settings_media_source_location_local
 import me.him188.ani.app.ui.lang.settings_media_source_more
 import me.him188.ani.app.ui.lang.settings_media_source_select_all
 import me.him188.ani.app.ui.lang.settings_media_source_select_template
@@ -102,14 +102,15 @@ import me.him188.ani.app.ui.lang.settings_media_source_selected_count
 import me.him188.ani.app.ui.lang.settings_media_source_sort
 import me.him188.ani.app.ui.lang.settings_media_source_stop_test
 import me.him188.ani.app.ui.lang.settings_media_source_test_connection
+import me.him188.ani.app.ui.settings.framework.ConnectionTester
 import me.him188.ani.app.ui.settings.framework.ConnectionTesterResultIndicator
 import me.him188.ani.app.ui.settings.framework.ConnectionTesterRunner
 import me.him188.ani.app.ui.settings.framework.components.SettingsScope
 import me.him188.ani.app.ui.settings.rendering.MediaSourceIcon
-import me.him188.ani.app.ui.settings.rendering.MediaSourceIcons
-import me.him188.ani.app.ui.settings.rendering.MediaSourceTierTag
 import me.him188.ani.datasources.api.source.FactoryId
 import me.him188.ani.datasources.api.source.MediaSourceInfo
+import me.him188.ani.datasources.api.source.MediaSourceKind
+import me.him188.ani.datasources.api.source.MediaSourceLocation
 import me.him188.ani.datasources.api.source.parameter.MediaSourceParameters
 import me.him188.ani.datasources.api.source.parameter.isEmpty
 import org.burnoutcrew.reorderable.ReorderableItem
@@ -135,7 +136,7 @@ internal object MediaSourceGroupTestTags {
 /**
  * 数据源设置页: 订阅和自定义数据源两组, 中间用分割线隔开.
  *
- * @param backgroundColor 页面的背景色, 见 [MediaSourceSubscriptionGroup] 和 [MediaSourceGroup].
+ * @param backgroundColor 页面的背景色, 见 [MediaSourceGroup].
  */
 @Composable
 internal fun SettingsScope.MediaSourceTab(
@@ -152,7 +153,6 @@ internal fun SettingsScope.MediaSourceTab(
             subscriptionState,
             mediaSourcesOfSubscription = groupState::mediaSourcesOfSubscription,
             onOpenSubscription = onOpenSubscription,
-            backgroundColor = backgroundColor,
         )
         HorizontalDividerItem()
         MediaSourceGroup(groupState, editState, selectionState, backgroundColor)
@@ -281,6 +281,7 @@ internal fun SettingsScope.MediaSourceGroup(
                     Text(stringResource(Lang.settings_media_source_done))
                 }
             } else {
+                TestConnectionIconButton(state.localMediaSourceTesters)
                 IconButton(
                     {
                         edit.cancelEdit()
@@ -363,12 +364,7 @@ internal fun SettingsScope.MediaSourceGroup(
                                 showMoreDropdown = true
                             },
                     ) {
-                        IconButton({}, enabled = false) { // 放在 button 里保持 padding 一致
-                            ConnectionTesterResultIndicator(
-                                item.connectionTester,
-                                showIdle = false,
-                            )
-                        }
+                        ConnectionTestResultSlot(item.connectionTester)
 
                         Box {
                             IconButton(onClick = { showMoreDropdown = true }) {
@@ -461,22 +457,13 @@ internal fun SettingsScope.MediaSourceGroup(
         }
 
         if (!selectionState.inSelection) {
-            Row(
-                Modifier.fillMaxWidth().padding(end = SettingsScope.itemHorizontalPadding).padding(top = 4.dp),
-                horizontalArrangement = Arrangement.End,
-            ) {
-                TestConnectionButton(state.localMediaSourceTesters)
-                TextButton(
-                    {
-                        edit.cancelEdit()
-                        showSelectTemplate = true
-                    },
-                ) {
-                    Icon(Icons.Rounded.Add, contentDescription = null, Modifier.size(18.dp))
-                    Spacer(Modifier.width(8.dp))
-                    Text(stringResource(Lang.settings_media_source_add))
-                }
-            }
+            AddItem(
+                stringResource(Lang.settings_media_source_add),
+                onClick = {
+                    edit.cancelEdit()
+                    showSelectTemplate = true
+                },
+            )
         }
     }
 }
@@ -489,21 +476,58 @@ internal fun AniNavigator.openMediaSourceConfiguration(item: MediaSourcePresenta
     }
 }
 
+/**
+ * 组标题右侧的测试连接按钮. 测试进行中时用于终止测试.
+ */
 @Composable
-internal fun TestConnectionButton(testers: ConnectionTesterRunner<*>) {
-    TextButton({ testers.toggleTest() }) {
-        Icon(
-            if (testers.anyTesting) Icons.Rounded.Stop else Icons.Rounded.NetworkCheck,
-            contentDescription = null,
-            Modifier.size(18.dp),
-        )
-        Spacer(Modifier.width(8.dp))
+internal fun TestConnectionIconButton(testers: ConnectionTesterRunner<*>) {
+    IconButton({ testers.toggleTest() }) {
         if (testers.anyTesting) {
-            Text(stringResource(Lang.settings_media_source_stop_test))
+            Icon(
+                Icons.Rounded.Stop,
+                contentDescription = stringResource(Lang.settings_media_source_stop_test),
+                tint = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
         } else {
-            Text(stringResource(Lang.settings_media_source_test_connection))
+            Icon(
+                Icons.Rounded.NetworkCheck,
+                contentDescription = stringResource(Lang.settings_media_source_test_connection),
+                tint = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
         }
     }
+}
+
+/**
+ * 正在测试或已有结果时显示连接测试结果. 没有结果时不占位, 把宽度留给名称和描述.
+ */
+@Composable
+internal fun ConnectionTestResultSlot(tester: ConnectionTester) {
+    if (tester.isTesting || tester.result != null) {
+        IconButton({}, enabled = false) { // 放在 button 里保持 padding 一致
+            ConnectionTesterResultIndicator(tester, showIdle = false)
+        }
+    }
+}
+
+/**
+ * 列表末尾的 "添加" 行. 加号占图标的位置, 文字与上方各行的名称对齐.
+ */
+@Composable
+internal fun SettingsScope.AddItem(
+    text: String,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    Item(
+        headlineContent = { Text(text, color = MaterialTheme.colorScheme.primary) },
+        modifier.clickable(role = Role.Button, onClick = onClick),
+        leadingContent = {
+            Box(Modifier.size(40.dp), contentAlignment = Alignment.Center) {
+                Icon(Icons.Rounded.Add, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
+            }
+        },
+    )
 }
 
 @Composable
@@ -530,7 +554,8 @@ internal fun ToggleEnabledMenuItem(
 internal const val DISABLED_ALPHA = 0.38f
 
 /**
- * 数据源列表中的一行. 禁用的数据源整行内容使用禁用样式, [actions] 不受影响, 以便用户重新启用.
+ * 数据源列表中的一行: 图标, 名称, 以及由类型, 等级和描述组成的第二行.
+ * 禁用的数据源整行内容使用禁用样式, [actions] 不受影响, 以便用户重新启用.
  *
  * @param leading 显示在图标之前, 例如多选模式下的复选框.
  */
@@ -544,27 +569,18 @@ internal fun SettingsScope.MediaSourceItem(
     val contentAlpha = if (item.isEnabled) 1f else DISABLED_ALPHA
     Item(
         modifier = modifier,
-        supportingContent = item.info.description?.takeIf { it.isNotBlank() }?.let { description ->
-            {
-                Text(
-                    description,
-                    Modifier.alpha(contentAlpha),
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis,
-                )
-            }
+        supportingContent = {
+            Text(
+                mediaSourceSummary(item),
+                Modifier.alpha(contentAlpha),
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+            )
         },
         leadingContent = {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 leading?.invoke()
-                Box(
-                    Modifier
-                        .alpha(contentAlpha)
-                        .size(40.dp)
-                        .clip(RoundedCornerShape(10.dp)),
-                ) {
-                    MediaSourceIcon(item.info, Modifier.fillMaxSize())
-                }
+                MediaSourceIconTile(item.info, Modifier.alpha(contentAlpha))
             }
         },
         trailingContent = {
@@ -576,25 +592,14 @@ internal fun SettingsScope.MediaSourceItem(
             Row(
                 Modifier.alpha(contentAlpha),
                 verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(6.dp),
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
             ) {
-                item.instance.source.apply {
-                    Icon(
-                        imageVector = MediaSourceIcons.location(this.location, this.kind),
-                        contentDescription = null,
-                        modifier = Modifier.size(18.dp),
-                        tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                    )
-                }
                 Text(
                     item.info.displayName,
                     Modifier.weight(1f, fill = false),
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis,
                 )
-                item.info.tier?.let { tier ->
-                    MediaSourceTierTag(tier = tier)
-                }
                 if (!item.isEnabled) {
                     Text(
                         stringResource(Lang.settings_media_source_disabled_label),
@@ -606,6 +611,32 @@ internal fun SettingsScope.MediaSourceItem(
             }
         },
     )
+}
+
+/**
+ * 例如 "在线 · T1 · 直连".
+ */
+@Composable
+private fun mediaSourceSummary(item: MediaSourcePresentation): String {
+    val source = item.instance.source
+    return listOfNotNull(
+        mediaSourceTypeLabel(source.location, source.kind),
+        item.info.tier?.let { "T${it.value}" },
+        item.info.description?.takeIf { it.isNotBlank() },
+    ).joinToString(" · ")
+}
+
+@Composable
+private fun mediaSourceTypeLabel(location: MediaSourceLocation, kind: MediaSourceKind): String {
+    return when (location) {
+        MediaSourceLocation.Local -> stringResource(Lang.settings_media_source_location_local)
+        MediaSourceLocation.Lan -> stringResource(Lang.settings_media_source_location_lan)
+        MediaSourceLocation.Online -> when (kind) {
+            MediaSourceKind.WEB -> stringResource(Lang.settings_media_source_kind_web)
+            MediaSourceKind.BitTorrent -> stringResource(Lang.settings_media_source_bt)
+            MediaSourceKind.LocalCache -> stringResource(Lang.settings_media_source_location_local)
+        }
+    }
 }
 
 @Composable

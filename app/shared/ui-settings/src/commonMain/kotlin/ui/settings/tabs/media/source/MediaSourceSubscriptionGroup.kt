@@ -14,20 +14,13 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.rounded.Add
 import androidx.compose.material.icons.rounded.ChevronRight
 import androidx.compose.material.icons.rounded.ContentPaste
 import androidx.compose.material.icons.rounded.Error
@@ -56,16 +49,12 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalClipboard
 import androidx.compose.ui.platform.testTag
-import androidx.compose.ui.semantics.contentDescription
-import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -101,7 +90,6 @@ import me.him188.ani.app.ui.lang.settings_media_source_subscription_url
 import me.him188.ani.app.ui.lang.settings_media_source_subscriptions
 import me.him188.ani.app.ui.lang.settings_mediasource_clipboard_empty
 import me.him188.ani.app.ui.settings.framework.components.SettingsScope
-import me.him188.ani.app.ui.settings.rendering.MediaSourceIcon
 import me.him188.ani.utils.platform.Uuid
 import org.jetbrains.compose.resources.getString
 import org.jetbrains.compose.resources.stringResource
@@ -186,15 +174,11 @@ internal object MediaSourceSubscriptionGroupTestTags {
 internal val MediaSourceSubscription.description: String?
     get() = metadata?.description?.takeIf { it.isNotBlank() }
 
-/**
- * @param backgroundColor 页面的背景色. 叠放的数据源图标用它描边, 以便和背景融为一体.
- */
 @Composable
 internal fun SettingsScope.MediaSourceSubscriptionGroup(
     state: MediaSourceSubscriptionGroupState,
     mediaSourcesOfSubscription: (subscriptionId: String) -> List<MediaSourcePresentation>,
     onOpenSubscription: (subscriptionId: String) -> Unit,
-    backgroundColor: Color,
 ) {
     var showAddDialog by rememberSaveable { mutableStateOf(false) }
     Group(
@@ -207,7 +191,9 @@ internal fun SettingsScope.MediaSourceSubscriptionGroup(
                     contentAlignment = Alignment.CenterEnd,
                 ) {
                     if (it) {
-                        CircularProgressIndicator(Modifier.size(24.dp))
+                        Box(Modifier.size(48.dp), contentAlignment = Alignment.Center) {
+                            CircularProgressIndicator(Modifier.size(24.dp))
+                        }
                     } else {
                         IconButton({ state.updateAll() }) {
                             Icon(
@@ -224,22 +210,15 @@ internal fun SettingsScope.MediaSourceSubscriptionGroup(
             MediaSourceSubscriptionItem(
                 subscription,
                 mediaSources = mediaSourcesOfSubscription(subscription.subscriptionId),
-                backgroundColor = backgroundColor,
                 onClick = { onOpenSubscription(subscription.subscriptionId) },
                 Modifier.testTag(MediaSourceSubscriptionGroupTestTags.item(subscription.subscriptionId)),
             )
         }
 
-        Row(
-            Modifier.fillMaxWidth().padding(end = SettingsScope.itemHorizontalPadding),
-            horizontalArrangement = Arrangement.End,
-        ) {
-            TextButton({ showAddDialog = true }) {
-                Icon(Icons.Rounded.Add, contentDescription = null, Modifier.size(18.dp))
-                Spacer(Modifier.width(8.dp))
-                Text(stringResource(Lang.settings_media_source_subscription_add_dialog))
-            }
-        }
+        AddItem(
+            stringResource(Lang.settings_media_source_subscription_add_dialog),
+            onClick = { showAddDialog = true },
+        )
 
         if (showAddDialog) {
             AddSubscriptionDialog(state, onDismissRequest = { showAddDialog = false })
@@ -248,171 +227,107 @@ internal fun SettingsScope.MediaSourceSubscriptionGroup(
 }
 
 /**
- * 订阅列表中的一行: 名称, 更新状态, 描述, 叠放的数据源图标. 点击进入订阅详情.
+ * 订阅列表中的一行: 图标, 名称, 以及数据源数量和更新状态. 点击进入订阅详情.
+ * 与数据源行的结构相同.
  */
 @Composable
-private fun MediaSourceSubscriptionItem(
+private fun SettingsScope.MediaSourceSubscriptionItem(
     subscription: MediaSourceSubscription,
     mediaSources: List<MediaSourcePresentation>,
-    backgroundColor: Color,
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    Row(
-        modifier
-            .fillMaxWidth()
-            .clickable(onClick = onClick)
-            .padding(SettingsScope.itemHorizontalPadding),
-    ) {
-        MediaSourceSubscriptionIcon(subscription)
-        Spacer(Modifier.width(16.dp))
-        Column(Modifier.weight(1f)) {
-            Text(
-                subscription.displayName,
-                style = MaterialTheme.typography.bodyLarge,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis,
-            )
-            SubscriptionUpdateStatus(subscription.lastUpdated)
-            subscription.description?.let {
-                Text(
-                    it,
-                    Modifier.padding(top = 8.dp),
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    maxLines = 2,
-                    overflow = TextOverflow.Ellipsis,
-                )
-            }
-            if (mediaSources.isNotEmpty()) {
-                MediaSourceIconStack(
-                    mediaSources,
-                    borderColor = backgroundColor,
-                    Modifier.padding(top = 12.dp),
-                )
-            }
-        }
-        // 与图标, 名称和更新状态组成的头部对齐, 而不是整行居中: 描述和图标叠放会让行变得很高.
-        // 宽度与图标按钮相同, 与其他行的 ⋮ 对齐.
-        Box(Modifier.size(width = 48.dp, height = 40.dp), contentAlignment = Alignment.Center) {
+    Item(
+        headlineContent = {
+            Text(subscription.displayName, maxLines = 1, overflow = TextOverflow.Ellipsis)
+        },
+        modifier.clickable(onClick = onClick),
+        supportingContent = {
+            SubscriptionSummary(subscription.lastUpdated, mediaSources.size)
+        },
+        leadingContent = {
+            MediaSourceSubscriptionIcon(subscription, mediaSources)
+        },
+        trailingContent = {
+            // 与其他行 48dp 图标按钮中的 ⋮ 对齐, 左侧不占多余的宽度, 留给名称
             Icon(
                 Icons.Rounded.ChevronRight,
                 contentDescription = null,
+                Modifier.padding(end = 12.dp),
                 tint = MaterialTheme.colorScheme.onSurfaceVariant,
             )
-        }
-    }
-}
-
-@Composable
-private fun SubscriptionUpdateStatus(lastUpdated: MediaSourceSubscription.LastUpdated?) {
-    val failed = lastUpdated != null && (lastUpdated.error != null || lastUpdated.mediaSourceCount == null)
-    val text = when {
-        lastUpdated == null -> stringResource(Lang.settings_media_source_subscription_not_updated)
-        failed -> stringResource(Lang.settings_media_source_subscription_update_failed) + formatError(lastUpdated.error)
-        else -> stringResource(
-            Lang.settings_media_source_subscription_updated_at,
-            formatDateTime(lastUpdated.timeMillis),
-        )
-    }
-    val color = if (failed) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.onSurfaceVariant
-    Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(4.dp)) {
-        if (failed) {
-            Icon(Icons.Rounded.Error, contentDescription = null, Modifier.size(14.dp), tint = color)
-        }
-        Text(
-            text,
-            style = MaterialTheme.typography.bodySmall,
-            color = color,
-            maxLines = 1,
-            overflow = TextOverflow.Ellipsis,
-        )
-    }
+        },
+    )
 }
 
 /**
- * 订阅作者提供的图标. 没有提供时显示默认图标, 没有订阅信息 (旧格式或还未更新) 时用更弱的颜色.
+ * 例如 "18 个数据源 · 刚刚更新". 更新失败时显示错误.
+ */
+@Composable
+private fun SubscriptionSummary(lastUpdated: MediaSourceSubscription.LastUpdated?, mediaSourceCount: Int) {
+    val failed = lastUpdated != null && (lastUpdated.error != null || lastUpdated.mediaSourceCount == null)
+    if (failed) {
+        val color = MaterialTheme.colorScheme.error
+        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+            Icon(Icons.Rounded.Error, contentDescription = null, Modifier.size(16.dp), tint = color)
+            Text(
+                stringResource(Lang.settings_media_source_subscription_update_failed) + formatError(lastUpdated?.error),
+                color = color,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+            )
+        }
+        return
+    }
+    val updateStatus = if (lastUpdated == null) {
+        stringResource(Lang.settings_media_source_subscription_not_updated)
+    } else {
+        stringResource(Lang.settings_media_source_subscription_updated_at, formatDateTime(lastUpdated.timeMillis))
+    }
+    Text(
+        if (mediaSourceCount > 0) {
+            stringResource(Lang.settings_media_source_subscription_media_source_count, mediaSourceCount) +
+                " · " + updateStatus
+        } else {
+            updateStatus
+        },
+        maxLines = 1,
+        overflow = TextOverflow.Ellipsis,
+    )
+}
+
+/**
+ * 订阅作者提供的图标. 没有提供时用订阅中前几个数据源的图标拼成, 还没有数据源时 (例如还未更新) 显示默认图标.
  */
 @Composable
 internal fun MediaSourceSubscriptionIcon(
     subscription: MediaSourceSubscription,
+    mediaSources: List<MediaSourcePresentation>,
     modifier: Modifier = Modifier,
 ) {
     val iconUrl = subscription.metadata?.iconUrl?.takeIf { it.isNotBlank() }
-    Box(
-        modifier.size(40.dp).clip(RoundedCornerShape(10.dp)),
-        contentAlignment = Alignment.Center,
-    ) {
-        if (iconUrl != null) {
-            AsyncImage(iconUrl, contentDescription = null, Modifier.fillMaxSize(), contentScale = ContentScale.Crop)
-        } else {
-            val hasMetadata = subscription.metadata?.name?.isNotBlank() == true
-            Box(
-                Modifier.fillMaxSize().background(
-                    if (hasMetadata) {
-                        MaterialTheme.colorScheme.primaryContainer
-                    } else {
-                        MaterialTheme.colorScheme.surfaceContainerHighest
-                    },
-                ),
-                contentAlignment = Alignment.Center,
-            ) {
-                Icon(
-                    Icons.Rounded.Layers,
-                    contentDescription = null,
-                    Modifier.size(22.dp),
-                    tint = if (hasMetadata) {
-                        MaterialTheme.colorScheme.onPrimaryContainer
-                    } else {
-                        MaterialTheme.colorScheme.onSurfaceVariant
-                    },
-                )
-            }
-        }
-    }
-}
+    when {
+        iconUrl != null -> AsyncImage(
+            iconUrl,
+            contentDescription = null,
+            modifier.size(40.dp).clip(RoundedCornerShape(10.dp)),
+            contentScale = ContentScale.Crop,
+        )
 
-private const val MAX_STACKED_ICONS = 6
+        mediaSources.isNotEmpty() -> MediaSourceIconMosaic(mediaSources.map { it.info }, modifier)
 
-/**
- * 叠放的数据源图标, 按订阅中的顺序, 最多显示 [MAX_STACKED_ICONS] 个, 其余用 "+N" 表示.
- */
-@Composable
-private fun MediaSourceIconStack(
-    mediaSources: List<MediaSourcePresentation>,
-    borderColor: Color,
-    modifier: Modifier = Modifier,
-) {
-    val description = stringResource(Lang.settings_media_source_subscription_media_source_count, mediaSources.size)
-    Row(
-        modifier.semantics(mergeDescendants = true) { contentDescription = description },
-        verticalAlignment = Alignment.CenterVertically,
-    ) {
-        Box {
-            mediaSources.take(MAX_STACKED_ICONS).forEachIndexed { index, mediaSource ->
-                Box(
-                    Modifier
-                        .padding(start = (20 * index).dp)
-                        .size(24.dp)
-                        .clip(RoundedCornerShape(7.dp))
-                        .background(borderColor)
-                        .padding(2.dp)
-                        .clip(RoundedCornerShape(5.dp)),
-                ) {
-                    MediaSourceIcon(
-                        mediaSource.info,
-                        Modifier.fillMaxSize().alpha(if (mediaSource.isEnabled) 1f else DISABLED_ALPHA),
-                    )
-                }
-            }
-        }
-        val remaining = mediaSources.size - MAX_STACKED_ICONS
-        if (remaining > 0) {
-            Text(
-                "+$remaining",
-                Modifier.padding(start = 6.dp),
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
+        else -> Box(
+            modifier
+                .size(40.dp)
+                .clip(RoundedCornerShape(10.dp))
+                .background(MaterialTheme.colorScheme.surfaceContainerHigh),
+            contentAlignment = Alignment.Center,
+        ) {
+            Icon(
+                Icons.Rounded.Layers,
+                contentDescription = null,
+                Modifier.size(22.dp),
+                tint = MaterialTheme.colorScheme.onSurfaceVariant,
             )
         }
     }

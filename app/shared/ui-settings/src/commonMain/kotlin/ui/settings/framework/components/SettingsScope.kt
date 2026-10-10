@@ -108,10 +108,13 @@ abstract class SettingsScope {
         Surface(modifier = modifier.fillMaxWidth(), color = SettingsDefaults.groupBackgroundColor) {
             Column(Modifier.padding(vertical = if (useThinHeader) 12.dp else 16.dp)) {
                 // Group header
-                Row(verticalAlignment = Alignment.CenterVertically) {
+                Row(
+                    // 标题与按钮垂直居中. 有按钮且没有描述时, 按钮的 48dp 高度已在标题下方留出空隙, 不再额外留空
+                    Modifier.padding(bottom = if (actions != null && description == null) 0.dp else 8.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
                     Column(
                         Modifier.padding(horizontal = itemHorizontalPadding)
-                            .padding(bottom = 8.dp)
                             .weight(1f)
                             .heightIn(min = if (description != null) 48.dp else 24.dp),
                         verticalArrangement = Arrangement.spacedBy(8.dp),

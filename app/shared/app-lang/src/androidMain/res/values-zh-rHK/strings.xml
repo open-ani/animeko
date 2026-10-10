@@ -469,7 +469,7 @@
     <string name="settings_media_source_subscriptions">訂閱</string>
     <string name="settings_media_source_custom">自定義</string>
     <string name="settings_media_source_subscription_updated_at">%1$s更新</string>
-    <string name="settings_media_source_subscription_media_source_count">包含 %1$d 個數據源</string>
+    <string name="settings_media_source_subscription_media_source_count">%1$d 個數據源</string>
     <string name="settings_media_source_subscription_enable_all">全部啟用</string>
     <string name="settings_media_source_subscription_disable_all">全部禁用</string>
     <string name="settings_media_source_subscription_delete_subscription">刪除訂閱</string>
@@ -481,6 +481,10 @@
     <string name="settings_media_source_test_connection">測試連接</string>
     <string name="settings_media_source_done">完成</string>
     <string name="settings_media_source_disabled_label">已禁用</string>
+    <string name="settings_media_source_kind_web">線上</string>
+    <string name="settings_media_source_location_lan">局域網</string>
+    <string name="settings_media_source_location_local">本地</string>
+    <string name="settings_media_source_subscription_media_sources">數據源</string>
     <string name="settings_media_source_view_config">查看配置</string>
     <string name="settings_storage_danmaku_cache_strategy_title">彈幕快取策略</string>
     <string name="settings_storage_danmaku_cache_strategy_description_do_not_cache">不快取彈幕，每次播放都從網路取得。</string>

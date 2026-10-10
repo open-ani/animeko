@@ -502,6 +502,10 @@
     <string name="settings_media_source_test_connection">Test connection</string>
     <string name="settings_media_source_done">Done</string>
     <string name="settings_media_source_disabled_label">Disabled</string>
+    <string name="settings_media_source_kind_web">Online</string>
+    <string name="settings_media_source_location_lan">LAN</string>
+    <string name="settings_media_source_location_local">Local</string>
+    <string name="settings_media_source_subscription_media_sources">Data sources</string>
     <string name="settings_media_source_view_config">View configuration</string>
     <string name="settings_media_source_discard_changes">Discard changes?</string>
     <string name="settings_media_source_discard">Discard</string>
