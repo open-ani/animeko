@@ -150,7 +150,7 @@ fun KoinApplication.getCommonKoinModule(
     coroutineScope: CoroutineScope,
     enableMediaCache: Boolean = true,
 ) = listOf(
-    useCaseModules(),
+    useCaseModules(coroutineScope),
     repositoryModules(getContext, coroutineScope),
     otherModules(getContext, coroutineScope, enableMediaCache),
 )
