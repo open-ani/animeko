@@ -58,3 +58,10 @@ data class MediaSourceSubscription(
         val unsupportedMediaSourceCount: Int = 0,
     )
 }
+
+/**
+ * 用于展示的名称: 订阅作者提供的名称, 没有时为去掉协议的订阅链接.
+ */
+val MediaSourceSubscription.displayName: String
+    get() = metadata?.name?.takeIf { it.isNotBlank() }
+        ?: url.removePrefix("https://").removePrefix("http://")

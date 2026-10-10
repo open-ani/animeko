@@ -97,6 +97,7 @@ import dev.chrisbanes.haze.rememberHazeState
 import kotlinx.coroutines.CoroutineStart
 import kotlinx.coroutines.launch
 import kotlinx.serialization.Serializable
+import me.him188.ani.app.domain.mediasource.subscription.displayName
 import me.him188.ani.app.domain.session.auth.OAuthPlatform
 import me.him188.ani.app.platform.LocalContext
 import me.him188.ani.app.platform.navigation.rememberAsyncBrowserNavigator
@@ -179,7 +180,6 @@ import me.him188.ani.app.ui.settings.tabs.media.source.MediaSourceSelectionActio
 import me.him188.ani.app.ui.settings.tabs.media.source.MediaSourceSubscriptionPageActions
 import me.him188.ani.app.ui.settings.tabs.media.source.MediaSourceSubscriptionPageContent
 import me.him188.ani.app.ui.settings.tabs.media.source.MediaSourceTab
-import me.him188.ani.app.ui.settings.tabs.media.source.displayName
 import me.him188.ani.app.ui.settings.tabs.media.source.rememberMediaSourceSelectionState
 import me.him188.ani.app.ui.settings.tabs.network.ConfigureProxyGroup
 import me.him188.ani.app.ui.settings.tabs.network.ServerSelectionGroup

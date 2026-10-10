@@ -74,6 +74,7 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.launch
 import me.him188.ani.app.data.models.ApiFailure
 import me.him188.ani.app.domain.mediasource.subscription.MediaSourceSubscription
+import me.him188.ani.app.domain.mediasource.subscription.displayName
 import me.him188.ani.app.tools.MonoTasker
 import me.him188.ani.app.tools.formatDateTime
 import me.him188.ani.app.ui.foundation.AsyncImage
@@ -181,13 +182,6 @@ class MediaSourceSubscriptionGroupState(
 internal object MediaSourceSubscriptionGroupTestTags {
     fun item(subscriptionId: String): String = "media_source_subscription_$subscriptionId"
 }
-
-/**
- * 订阅作者提供的名称. 没有时显示订阅链接.
- */
-val MediaSourceSubscription.displayName: String
-    get() = metadata?.name?.takeIf { it.isNotBlank() }
-        ?: url.removePrefix("https://").removePrefix("http://")
 
 internal val MediaSourceSubscription.description: String?
     get() = metadata?.description?.takeIf { it.isNotBlank() }
