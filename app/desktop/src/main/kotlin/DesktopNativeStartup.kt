@@ -9,8 +9,43 @@
 
 package me.him188.ani.app.desktop
 
+import kotlinx.coroutines.CompletableDeferred
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Deferred
+import kotlinx.coroutines.launch
 import me.him188.ani.utils.platform.Arch
 import me.him188.ani.utils.platform.Platform
+
+/**
+ * Starts native initialization and returns a barrier to await before exposing playback entry points.
+ * On Intel macOS this includes JCEF initialization (#3269, #3371); elsewhere the player can become
+ * ready while JCEF is still initializing. A failed or cancelled startup must also release waiters.
+ */
+internal fun CoroutineScope.launchDesktopNativeStartup(
+    preparePlayerBeforeJcef: Boolean,
+    beforeInitialization: suspend () -> Unit,
+    preparePlayer: suspend () -> Unit,
+    initializeJcef: suspend () -> Unit,
+): Deferred<Unit> {
+    val playerReady = CompletableDeferred<Unit>()
+    val startupJob = launch {
+        beforeInitialization()
+        initializeJcefAndPlayerBackend(
+            preparePlayerBeforeJcef = preparePlayerBeforeJcef,
+            preparePlayer = {
+                preparePlayer()
+                playerReady.complete(Unit)
+            },
+            initializeJcef = initializeJcef,
+        )
+    }
+    startupJob.invokeOnCompletion { cause ->
+        if (cause != null) {
+            playerReady.completeExceptionally(cause)
+        }
+    }
+    return playerReady
+}
 
 /**
  * Returns whether player native libraries should load before JCEF on [platform].
