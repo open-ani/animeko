@@ -9,12 +9,9 @@
 
 package me.him188.ani.app.ui.watchtogether
 
-import androidx.compose.runtime.Composable
-import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.Stable
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.remember
 import androidx.compose.runtime.snapshots.SnapshotStateList
 import androidx.compose.runtime.staticCompositionLocalOf
 import me.him188.ani.utils.platform.annotations.TestOnly
@@ -57,43 +54,6 @@ class WatchTogetherPlayerController(
     fun getHideRequesters(): List<Any> {
         return hideRequests
     }
-}
-
-/**
- * 悬浮气泡的隐藏请求. 用法与播放器控制器的 `AlwaysOnRequester` 相同:
- * 每个调用点持有自己的实例, 离开组合时自动撤销自己的请求.
- */
-interface BubbleHideRequester {
-    fun request()
-    fun cancelRequest()
-}
-
-@Composable
-fun rememberBubbleHideRequester(
-    controller: WatchTogetherPlayerController,
-    debugName: String,
-): BubbleHideRequester {
-    val requester = remember(controller, debugName) {
-        object : BubbleHideRequester {
-            override fun request() {
-                controller.setRequestHidden(this, true)
-            }
-
-            override fun cancelRequest() {
-                controller.setRequestHidden(this, false)
-            }
-
-            override fun toString(): String {
-                return "BubbleHideRequester($debugName)"
-            }
-        }
-    }
-    DisposableEffect(requester) {
-        onDispose {
-            requester.cancelRequest()
-        }
-    }
-    return requester
 }
 
 val LocalWatchTogetherPlayerController = staticCompositionLocalOf { WatchTogetherPlayerController() }

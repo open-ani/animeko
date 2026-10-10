@@ -170,7 +170,6 @@ import me.him188.ani.app.ui.subject.episode.video.sidesheet.EpisodeSelectorSheet
 import me.him188.ani.app.ui.subject.episode.video.sidesheet.MediaSelectorSheet
 import me.him188.ani.app.ui.subject.episode.video.topbar.EpisodePlayerTitle
 import me.him188.ani.app.ui.watchtogether.LocalWatchTogetherPlayerController
-import me.him188.ani.app.ui.watchtogether.rememberBubbleHideRequester
 import me.him188.ani.app.videoplayer.screenshot.playerScreenshotFileName
 import me.him188.ani.app.videoplayer.ui.LocalVideoScaffoldSheetWindowInsets
 import me.him188.ani.app.videoplayer.ui.PlaybackSpeedControllerState
@@ -459,9 +458,6 @@ private fun EpisodeScreenContent(
  * 小窗期间也隐藏: 系统小窗展示整个应用窗口, 而一起看浮层挂在应用根节点上, 不随播放器页最小化,
  * 不隐藏就会浮在小窗的视频上面.
  *
- * 隐藏以 `BubbleHideRequester` 的形式提出, 请求随本页面一起失效: 一起看跟播切集会重建播放页,
- * 旧页面撤销自己的请求不会影响新页面刚提出的请求.
- *
  * @param pictureInPictureController 播放页自己的画中画控制器
  */
 @Composable
@@ -472,27 +468,25 @@ internal fun WatchTogetherPopupVisibilityEffect(
     sidebarVisible: Boolean,
     pictureInPictureController: PictureInPictureController = NoOpPictureInPictureController,
 ) {
-    val watchTogetherPlayerController = LocalWatchTogetherPlayerController.current
-    val bubbleHideRequester = rememberBubbleHideRequester(watchTogetherPlayerController, "EpisodePage")
+    val watchTogetherController = LocalWatchTogetherPlayerController.current
     val isInPictureInPicture by pictureInPictureController.isInPictureInPicture.collectAsStateWithLifecycle()
+
+    val playerControllerRequester = remember { Any() }
     val followControllerVisibility = isFullscreen || (isExpandedLayout && !sidebarVisible)
 
-    LaunchedEffect(
-        followControllerVisibility,
-        playerControllerState,
-        bubbleHideRequester,
-        isInPictureInPicture,
-    ) {
-        if (isInPictureInPicture) {
-            bubbleHideRequester.request()
-            return@LaunchedEffect
-        }
-        if (followControllerVisibility) {
-            snapshotFlow { playerControllerState.visibility.topBar }.collect {
-                if (it) bubbleHideRequester.cancelRequest() else bubbleHideRequester.request()
-            }
-        } else {
-            bubbleHideRequester.cancelRequest()
+    LaunchedEffect(followControllerVisibility, playerControllerState) {
+        snapshotFlow { followControllerVisibility && !playerControllerState.visibility.topBar }
+            .collect { watchTogetherController.setRequestHidden(playerControllerRequester, it) }
+    }
+
+    LaunchedEffect(isInPictureInPicture) {
+        watchTogetherController.setRequestHidden("pictureInPicture", isInPictureInPicture)
+    }
+
+    DisposableEffect(watchTogetherController) {
+        onDispose {
+            watchTogetherController.setRequestHidden(playerControllerRequester, false)
+            if (!isInPictureInPicture) watchTogetherController.setRequestHidden("pictureInPicture", false)
         }
     }
 }
