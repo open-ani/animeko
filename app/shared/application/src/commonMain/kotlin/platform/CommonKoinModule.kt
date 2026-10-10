@@ -91,7 +91,6 @@ import me.him188.ani.app.domain.media.download.MediaDownloadManager
 import me.him188.ani.app.domain.mediasource.web.PageEvaluator
 import me.him188.ani.app.domain.mediasource.web.captcha.BrowserImageCaptchaSolver
 import me.him188.ani.app.domain.mediasource.web.captcha.CaptchaBrowserFactory
-import me.him188.ani.app.domain.mediasource.web.captcha.GirigiriSearchRoute
 import me.him188.ani.app.domain.mediasource.web.captcha.ImageCaptchaRecognizer
 import me.him188.ani.app.domain.mediasource.web.captcha.MacCmsImageCaptchaSolver
 import me.him188.ani.app.domain.mediasource.web.captcha.WebSessionManager
@@ -230,7 +229,6 @@ private fun KoinApplication.otherModules(
             solverEnabled = {
                 settingsRepository.mediaSelectorSettings.flow.first().enableImageCaptchaAutoSolve
             },
-            searchRoutes = listOf(GirigiriSearchRoute(evaluator)),
             maxSessions = browserFactory.recommendedMaxSessions,
         )
     }
