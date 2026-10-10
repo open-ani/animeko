@@ -462,7 +462,7 @@ internal fun SettingsScope.MediaSourceGroup(
 
         if (!selectionState.inSelection) {
             Row(
-                Modifier.fillMaxWidth().padding(horizontal = 8.dp).padding(top = 4.dp),
+                Modifier.fillMaxWidth().padding(end = SettingsScope.itemHorizontalPadding).padding(top = 4.dp),
                 horizontalArrangement = Arrangement.End,
             ) {
                 TestConnectionButton(state.localMediaSourceTesters)

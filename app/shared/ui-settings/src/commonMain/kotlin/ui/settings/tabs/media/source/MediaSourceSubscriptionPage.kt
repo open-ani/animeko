@@ -48,6 +48,7 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalClipboard
 import androidx.compose.ui.platform.LocalUriHandler
 import androidx.compose.ui.platform.testTag
@@ -152,7 +153,7 @@ internal fun SettingsScope.MediaSourceSubscriptionPage(
                         overflow = TextOverflow.Ellipsis,
                     )
                 },
-                leadingContent = { Icon(Icons.Rounded.Home, contentDescription = null) },
+                leadingContent = { InfoIcon(Icons.Rounded.Home) },
                 trailingContent = {
                     Icon(Icons.AutoMirrored.Rounded.OpenInNew, contentDescription = null, Modifier.size(20.dp))
                 },
@@ -202,11 +203,21 @@ internal fun SettingsScope.MediaSourceSubscriptionPage(
         }
 
         Row(
-            Modifier.fillMaxWidth().padding(horizontal = 8.dp).padding(top = 4.dp),
+            Modifier.fillMaxWidth().padding(end = SettingsScope.itemHorizontalPadding).padding(top = 4.dp),
             horizontalArrangement = Arrangement.End,
         ) {
             TestConnectionButton(testers)
         }
+    }
+}
+
+/**
+ * 与数据源图标同宽, 让信息行和下方数据源行的文字对齐.
+ */
+@Composable
+private fun InfoIcon(imageVector: ImageVector) {
+    Box(Modifier.size(40.dp), contentAlignment = Alignment.Center) {
+        Icon(imageVector, contentDescription = null)
     }
 }
 
@@ -218,7 +229,7 @@ private fun SettingsScope.SubscriptionUrlItem(url: String) {
     Item(
         headlineContent = { Text(stringResource(Lang.settings_media_source_subscription_link)) },
         supportingContent = { Text(url, maxLines = 1, overflow = TextOverflow.Ellipsis) },
-        leadingContent = { Icon(Icons.Rounded.Link, contentDescription = null) },
+        leadingContent = { InfoIcon(Icons.Rounded.Link) },
         trailingContent = {
             IconButton(
                 {
@@ -260,7 +271,7 @@ private fun SettingsScope.SubscriptionUpdateItem(
                 Text(stringResource(Lang.settings_media_source_subscription_unsupported_media_sources, count))
             }
         },
-        leadingContent = { Icon(Icons.Rounded.Schedule, contentDescription = null) },
+        leadingContent = { InfoIcon(Icons.Rounded.Schedule) },
         trailingContent = {
             AnimatedContent(
                 isUpdating,

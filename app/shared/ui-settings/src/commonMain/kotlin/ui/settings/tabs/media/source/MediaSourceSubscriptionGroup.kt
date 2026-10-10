@@ -237,7 +237,7 @@ internal fun SettingsScope.MediaSourceSubscriptionGroup(
         }
 
         Row(
-            Modifier.fillMaxWidth().padding(horizontal = 8.dp).padding(top = 4.dp),
+            Modifier.fillMaxWidth().padding(end = SettingsScope.itemHorizontalPadding),
             horizontalArrangement = Arrangement.End,
         ) {
             TextButton({ showAddDialog = true }) {
@@ -269,9 +269,9 @@ private fun MediaSourceSubscriptionItem(
             .fillMaxWidth()
             .clickable(onClick = onClick)
             .padding(SettingsScope.itemHorizontalPadding),
-        horizontalArrangement = Arrangement.spacedBy(16.dp),
     ) {
         MediaSourceSubscriptionIcon(subscription)
+        Spacer(Modifier.width(16.dp))
         Column(Modifier.weight(1f)) {
             Text(
                 subscription.displayName,
@@ -298,8 +298,9 @@ private fun MediaSourceSubscriptionItem(
                 )
             }
         }
-        // 与图标, 名称和更新状态组成的头部对齐, 而不是整行居中: 描述和图标叠放会让行变得很高
-        Box(Modifier.height(40.dp), contentAlignment = Alignment.Center) {
+        // 与图标, 名称和更新状态组成的头部对齐, 而不是整行居中: 描述和图标叠放会让行变得很高.
+        // 宽度与图标按钮相同, 与其他行的 ⋮ 对齐.
+        Box(Modifier.size(width = 48.dp, height = 40.dp), contentAlignment = Alignment.Center) {
             Icon(
                 Icons.Rounded.ChevronRight,
                 contentDescription = null,

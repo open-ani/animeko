@@ -69,7 +69,9 @@ class UnsupportedSubscriptionSchemaException(
 object SubscriptionUpdateDataReader : DeserializationStrategy<SubscriptionUpdateData> {
     override val descriptor: SerialDescriptor get() = AnyVersion.serializer().descriptor
 
-    @Throws(SerializationException::class, UnsupportedSubscriptionSchemaException::class)
+    /**
+     * @throws UnsupportedSubscriptionSchemaException 订阅的 [SubscriptionUpdateData.schemaVersion] 高于这个客户端支持的版本
+     */
     override fun deserialize(decoder: Decoder): SubscriptionUpdateData {
         val data = decoder.decodeSerializableValue(AnyVersion.serializer())
         if (data.schemaVersion > SubscriptionUpdateData.CURRENT_SCHEMA_VERSION) {
