@@ -95,7 +95,6 @@ class EditingMediaSource(
     val editMediaSourceMode: EditMediaSourceMode,
     private val onSave: suspend (EditingMediaSource) -> Unit, // background
     parentCoroutineContext: CoroutineContext,
-    val initialConfig: MediaSourceConfig = MediaSourceConfig.Default,
 ) : HasBackgroundScope by BackgroundScope(parentCoroutineContext), Closeable {
     val arguments = parameters.list.map { param ->
         when (param) {
