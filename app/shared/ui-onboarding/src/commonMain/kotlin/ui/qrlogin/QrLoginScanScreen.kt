@@ -71,6 +71,30 @@ fun QrLoginScanScreen(
     onNavigateBack: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
+    QrCodeScanScreen(
+        title = stringResource(Lang.qr_login_title),
+        hint = stringResource(Lang.qr_login_scan_hint),
+        invalidHint = stringResource(Lang.qr_login_scan_invalid),
+        parse = QrLoginRepository::parseRequestId,
+        onScanned = onScanned,
+        onNavigateBack = onNavigateBack,
+        modifier = modifier,
+    )
+}
+
+/**
+ * 全屏扫描二维码. [parse] 返回非 `null` 时以其结果调用一次 [onScanned]; 返回 `null` 的二维码只提示 [invalidHint], 继续扫描.
+ */
+@Composable
+fun QrCodeScanScreen(
+    title: String,
+    hint: String,
+    invalidHint: String,
+    parse: (content: String) -> String?,
+    onScanned: (String) -> Unit,
+    onNavigateBack: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
     var torchEnabled by rememberSaveable { mutableStateOf(false) }
     var handled by remember { mutableStateOf(false) }
     // 最近一次扫到的无关二维码. 用于提示, 一段时间后自动消失
@@ -86,10 +110,10 @@ fun QrLoginScanScreen(
         QrCodeScanner(
             onScanned = { content ->
                 if (handled) return@QrCodeScanner
-                val requestId = QrLoginRepository.parseRequestId(content)
-                if (requestId != null) {
+                val result = parse(content)
+                if (result != null) {
                     handled = true
-                    onScanned(requestId)
+                    onScanned(result)
                 } else {
                     invalidContent = content
                 }
@@ -116,7 +140,7 @@ fun QrLoginScanScreen(
         ScanFrame(Modifier.fillMaxSize())
 
         TopAppBar(
-            title = { Text(stringResource(Lang.qr_login_title)) },
+            title = { Text(title) },
             navigationIcon = {
                 IconButton(onNavigateBack) { Icon(Icons.Rounded.Close, stringResource(Lang.qr_login_close)) }
             },
@@ -136,7 +160,7 @@ fun QrLoginScanScreen(
             horizontalAlignment = Alignment.CenterHorizontally,
         ) {
             Text(
-                stringResource(if (invalidContent != null) Lang.qr_login_scan_invalid else Lang.qr_login_scan_hint),
+                if (invalidContent != null) invalidHint else hint,
                 color = Color.White,
                 style = MaterialTheme.typography.bodyLarge,
                 textAlign = TextAlign.Center,

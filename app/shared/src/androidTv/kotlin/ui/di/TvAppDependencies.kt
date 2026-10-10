@@ -33,6 +33,7 @@ import me.him188.ani.app.domain.watchtogether.PlaybackAutomationGate
 import me.him188.ani.app.domain.watchtogether.WatchTogetherManager
 import me.him188.ani.app.ui.subject.details.state.SubjectDetailsStateFactory
 import org.koin.core.Koin
+import me.him188.ani.app.domain.settings.remote.RemoteSettingsHost
 import org.openani.mediamp.MediampPlayerFactory
 
 /** Application services resolved before composition, passed only to ViewModel constructors. */
@@ -63,6 +64,7 @@ class TvAppDependencies(
     val personDetailsRepository: PersonDetailsRepository,
     val personCommentRepository: PersonCommentRepository,
     val commentReportService: AniCommentReportService,
+    val remoteSettingsHost: RemoteSettingsHost,
 ) {
     companion object {
         fun fromKoin(koin: Koin): TvAppDependencies = TvAppDependencies(
@@ -91,6 +93,7 @@ class TvAppDependencies(
             personDetailsRepository = koin.get(),
             personCommentRepository = koin.get(),
             commentReportService = koin.get(),
+            remoteSettingsHost = koin.get(),
         )
     }
 }

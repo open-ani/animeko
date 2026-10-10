@@ -11,10 +11,10 @@ package me.him188.ani.app.ui.settings.mediasource.selector
 
 import androidx.compose.runtime.Stable
 import androidx.compose.runtime.mutableStateOf
+import kotlin.time.Duration.Companion.milliseconds
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.awaitCancellation
 import kotlinx.coroutines.coroutineScope
-import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.combine
@@ -31,8 +31,8 @@ import me.him188.ani.app.domain.foundation.HttpClientProvider
 import me.him188.ani.app.domain.foundation.ScopedHttpClientUserAgent
 import me.him188.ani.app.domain.foundation.get
 import me.him188.ani.app.domain.media.fetch.MediaSourceManager
-import me.him188.ani.app.domain.media.fetch.updateMediaSourceArguments
 import me.him188.ani.app.domain.media.resolver.WebViewVideoExtractor
+import me.him188.ani.app.domain.mediasource.MediaSourceConfigurationEditor
 import me.him188.ani.app.domain.mediasource.codec.MediaSourceCodecManager
 import me.him188.ani.app.domain.mediasource.web.DefaultSelectorMediaSourceEngine
 import me.him188.ani.app.domain.mediasource.web.SelectorMediaSourceArguments
@@ -40,9 +40,9 @@ import me.him188.ani.app.domain.mediasource.web.captcha.WebSessionManager
 import me.him188.ani.app.domain.settings.ProxyProvider
 import me.him188.ani.app.platform.Context
 import me.him188.ani.app.platform.currentAniBuildConfig
-import me.him188.ani.app.tools.MonoTasker
 import me.him188.ani.app.ui.foundation.AbstractViewModel
 import me.him188.ani.app.ui.foundation.produceState
+import me.him188.ani.app.ui.settings.mediasource.LocalMediaSourceConfigurationEditor
 import me.him188.ani.app.ui.settings.mediasource.rss.SaveableStorage
 import me.him188.ani.datasources.api.source.deserializeArgumentsOrNull
 import org.koin.core.component.KoinComponent
@@ -55,6 +55,7 @@ private typealias ArgumentsType = SelectorMediaSourceArguments
 class EditSelectorMediaSourceViewModel(
     initialInstanceId: String,
     context: Context,
+    configurationEditor: MediaSourceConfigurationEditor? = null,
 ) : AbstractViewModel(), KoinComponent {
     private val mediaSourceManager: MediaSourceManager by inject()
     private val settingsRepository: SettingsRepository by inject()
@@ -64,8 +65,16 @@ class EditSelectorMediaSourceViewModel(
 
     private val instanceId: MutableStateFlow<String> = MutableStateFlow(initialInstanceId)
 
-    private val arguments = this.instanceId.flatMapLatest { instanceId ->
-        mediaSourceManager.instanceConfigFlow(instanceId).map {
+    private val editor = configurationEditor
+        ?: LocalMediaSourceConfigurationEditor(
+            mediaSourceManager,
+            initialInstanceId,
+            backgroundScope,
+            debounce = 500.milliseconds,
+        )
+
+    private val arguments = this.instanceId.flatMapLatest {
+        editor.config.map {
             it?.deserializeArgumentsOrNull(
                 ArgumentsType.serializer(),
             ) ?: ArgumentsType.Default
@@ -74,11 +83,10 @@ class EditSelectorMediaSourceViewModel(
 
     val state: Flow<EditSelectorMediaSourcePageState> = this.instanceId.transformLatest { instanceId ->
         coroutineScope {
-            val saveTasker = MonoTasker(this)
             val arguments = mutableStateOf<ArgumentsType?>(null)
             val allowEdit = mutableStateOf(false)
             launch {
-                val config = mediaSourceManager.instanceConfigFlow(instanceId).first()
+                val config = editor.config.first()
                 val persisted = config
                     ?.deserializeArgumentsOrNull(ArgumentsType.serializer())
                     ?: ArgumentsType.Default
@@ -94,16 +102,9 @@ class EditSelectorMediaSourceViewModel(
                         arguments,
                         onSave = {
                             arguments.value = it
-                            saveTasker.launch {
-                                delay(500)
-                                mediaSourceManager.updateMediaSourceArguments(
-                                    instanceId,
-                                    ArgumentsType.serializer(),
-                                    it,
-                                )
-                            }
+                            editor.saveArguments(ArgumentsType.serializer(), it)
                         },
-                        isSavingFlow = saveTasker.isRunning,
+                        isSavingFlow = editor.isSaving,
                     ),
                     allowEditState = allowEdit,
                     engine = DefaultSelectorMediaSourceEngine(clientProvider.get(ScopedHttpClientUserAgent.BROWSER)),
@@ -131,4 +132,9 @@ class EditSelectorMediaSourceViewModel(
 //        engine = DefaultRssMediaSourceEngine(client, parser = RssParser(includeOrigin = true)),
 //        backgroundScope,
 //    )
+
+    override fun onCleared() {
+        editor.close()
+        super.onCleared()
+    }
 }

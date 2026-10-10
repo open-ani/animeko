@@ -31,6 +31,7 @@ import kotlinx.coroutines.launch
 import me.him188.ani.android.BuildConfig
 import me.him188.ani.app.data.repository.user.QrLoginRepository
 import me.him188.ani.app.navigation.AniNavigator
+import me.him188.ani.app.domain.settings.remote.RemoteSettingsConnectionRequests
 import me.him188.ani.app.pip.PIPModeChangedListener
 import me.him188.ani.app.pip.PictureInPictureHost
 import me.him188.ani.app.pip.UserLeaveHintListener
@@ -96,6 +97,11 @@ class MainActivity : AniComponentActivity(), PictureInPictureHost {
             "qr-login" -> {
                 val requestId = QrLoginRepository.parseRequestId(data.toString()) ?: return
                 navigateWhenReady("QR login confirm") { navigateQrLoginConfirm(requestId) }
+            }
+            "remote-settings" -> {
+                if (!RemoteSettingsConnectionRequests.offer(data.toString())) return
+                intent.data = null
+                navigateWhenReady("remote settings") { navigateRemoteSettings() }
             }
         }
     }

@@ -31,7 +31,6 @@ import me.him188.ani.app.ui.lang.settings_log_copy_failed
 import me.him188.ani.app.ui.lang.settings_log_copy_too_large
 import me.him188.ani.app.ui.lang.settings_log_share_file
 import me.him188.ani.app.ui.lang.settings_log_share_today_log_file
-import me.him188.ani.buildconfig.AndroidBuildConfig
 import org.jetbrains.compose.resources.getString
 import org.jetbrains.compose.resources.stringResource
 import java.io.File
@@ -49,20 +48,7 @@ internal actual fun ColumnScope.PlatformLoggingItems(listItemColors: ListItemCol
 
     ListItem(
         headlineContent = { Text(shareTodayLogFileText) },
-        Modifier.clickable {
-            val shareIntent = Intent(Intent.ACTION_SEND)
-            shareIntent.setType("text/plain") // Set appropriate MIME type
-            shareIntent.putExtra(
-                Intent.EXTRA_STREAM,
-                FileProvider.getUriForFile(
-                    context,
-                    AndroidBuildConfig.APP_APPLICATION_ID + ".fileprovider",
-                    context.getCurrentLogFile(),
-                ),
-            )
-            shareIntent.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
-            context.startActivity(Intent.createChooser(shareIntent, shareLogFileText))
-        },
+        Modifier.clickable { context.shareLogFile(context.getCurrentLogFile(), shareLogFileText) },
         colors = listItemColors,
     )
 
@@ -79,6 +65,18 @@ internal actual fun ColumnScope.PlatformLoggingItems(listItemColors: ListItemCol
         },
         colors = listItemColors,
     )
+}
+
+/** 通过系统分享面板分享 [file]. [file] 需要位于 FileProvider 公开的目录中. */
+internal fun Context.shareLogFile(file: File, chooserTitle: String) {
+    val shareIntent = Intent(Intent.ACTION_SEND)
+    shareIntent.setType("text/plain")
+    shareIntent.putExtra(
+        Intent.EXTRA_STREAM,
+        FileProvider.getUriForFile(this, "$packageName.fileprovider", file),
+    )
+    shareIntent.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+    startActivity(Intent.createChooser(shareIntent, chooserTitle))
 }
 
 // Used also in AniApplication

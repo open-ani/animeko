@@ -503,7 +503,11 @@ fun SettingsScope.PlayerGroup(
     playerKernelConfig: SettingsState<PlayerKernelConfig>,
     danmakuFilterConfig: SettingsState<DanmakuFilterConfig>,
     danmakuRegexFilterState: DanmakuRegexFilterState,
-    showDebug: Boolean
+    showDebug: Boolean,
+    showFullscreenOnLandscape: Boolean = LocalPlatform.current.isMobile(),
+    showAudioTimeStretch: Boolean = LocalPlatform.current.isAndroid(),
+    showBackgroundBehavior: Boolean = LocalPlatform.current.isMobile(),
+    platformSettings: @Composable SettingsScope.() -> Unit = { PlayerGroupPlatform(videoScaffoldConfig, playerKernelConfig) },
 ) {
     Group(title = { Text(stringResource(Lang.settings_player)) }) {
         val config by videoScaffoldConfig
@@ -588,7 +592,7 @@ fun SettingsScope.PlayerGroup(
             },
             title = { Text(stringResource(Lang.settings_player_hide_selector_on_select)) },
         )
-        if (LocalPlatform.current.isMobile()) {
+        if (showFullscreenOnLandscape) {
             HorizontalDividerItem()
             SwitchItem(
                 checked = config.autoFullscreenOnLandscapeMode,
@@ -617,7 +621,7 @@ fun SettingsScope.PlayerGroup(
             },
             title = { Text(stringResource(Lang.settings_player_auto_play_next)) },
         )
-        if (LocalPlatform.current.isMobile()) {
+        if (showBackgroundBehavior) {
             HorizontalDividerItem()
             DropdownItem(
                 selected = { config.backgroundBehavior },
@@ -678,7 +682,7 @@ fun SettingsScope.PlayerGroup(
             },
             title = { Text(stringResource(Lang.settings_player_auto_switch_media_on_error)) },
         )
-        if (LocalPlatform.current.isAndroid()) {
+        if (showAudioTimeStretch) {
             HorizontalDividerItem()
             SwitchItem(
                 checked = config.enableHighQualityAudioTimeStretch,
@@ -709,7 +713,7 @@ fun SettingsScope.PlayerGroup(
         )
         HorizontalDividerItem()
         PlaybackSpeedItems(config, videoScaffoldConfig)
-        PlayerGroupPlatform(videoScaffoldConfig, playerKernelConfig)
+        platformSettings()
     }
 }
 

@@ -18,6 +18,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalUriHandler
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import kotlin.math.roundToInt
+import me.him188.ani.app.domain.settings.remote.RemoteSettingsHost
 import me.him188.ani.app.ui.foundation.widgets.LocalToaster
 import me.him188.ani.app.ui.lang.Lang
 import me.him188.ani.app.ui.lang.foundation_browser_open_failed_copied
@@ -29,9 +30,11 @@ import me.him188.ani.app.ui.lang.settings_save_failed
 import org.jetbrains.compose.resources.stringResource
 
 @Composable
-fun TvSettingsRoute(viewModel: TvSettingsViewModel, modifier: Modifier = Modifier) {
+fun TvSettingsRoute(viewModel: TvSettingsViewModel, remoteSettingsHost: RemoteSettingsHost, modifier: Modifier = Modifier) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
+    val remoteSettings by remoteSettingsHost.state.collectAsStateWithLifecycle()
     val context = LocalContext.current
+    val requestLocalNetworkPermission = rememberLocalNetworkPermissionRequest()
     val clipboard = remember(context) { context.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager }
     val uriHandler = LocalUriHandler.current
     val toaster = LocalToaster.current
@@ -72,5 +75,7 @@ fun TvSettingsRoute(viewModel: TvSettingsViewModel, modifier: Modifier = Modifie
             val text = clipboard.primaryClip?.takeIf { it.itemCount > 0 }?.getItemAt(0)?.coerceToText(context)?.toString().orEmpty()
             viewModel.onIntent(TvSettingsIntent.ImportRegex(text))
         },
+        remoteSettings = remoteSettings,
+        onRequestLocalNetworkPermission = requestLocalNetworkPermission,
     )
 }

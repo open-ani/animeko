@@ -1,5 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <paths>
+    <cache-path name="remote_settings_logs" path="remote-settings-logs/" />
     <cache-path
             name="cache_files"
             path="updates/" /> <!-- 自动更新: cache/updates/download/ani-3.0.0.apk; 开发者安装指定 commit: cache/updates/dev-builds/ -->

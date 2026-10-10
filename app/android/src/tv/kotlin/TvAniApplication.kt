@@ -13,6 +13,7 @@ import android.app.Application
 import kotlinx.coroutines.launch
 import me.him188.ani.android.getCommonAndroidModules
 import me.him188.ani.app.data.repository.user.SettingsRepository
+import me.him188.ani.app.data.models.preference.DanmakuCacheStrategy
 import me.him188.ani.app.platform.AndroidLoggingConfigurator
 import me.him188.ani.app.platform.createAppRootCoroutineScope
 import me.him188.ani.app.platform.getCommonKoinModule
@@ -52,7 +53,7 @@ class TvAniApplication : Application() {
             // 共享装配 + 空引擎缓存门控 —— TV 无缓存/BT, 选源池自然无 LocalCache 源 (§1.2)
             modules(getCommonKoinModule({ this@TvAniApplication }, scope, enableMediaCache = false))
             modules(getCommonAndroidModules(scope)) // src/main 交集 (无 torrent 绑定)
-            modules(getTvAndroidModules()) // src/tv — Web 解析链 / BrowserNavigator 降级 / AppTerminator
+            modules(getTvAndroidModules(scope)) // src/tv — Web 解析链 / BrowserNavigator 降级 / AppTerminator
         }.startCommonKoinModule(this@TvAniApplication, scope) // proxy/Session 后台任务; 缓存恢复段判空跳过
 
         scope.launch {
@@ -62,6 +63,10 @@ class TvAniApplication : Application() {
             settings.mediaSelectorSettings.update {
                 if (preferKind == MediaSourceKind.WEB) this else copy(preferKind = MediaSourceKind.WEB)
             }
+            settings.mediaCacheSettings.update {
+                if (danmakuCacheStrategy == DanmakuCacheStrategy.CACHE_ON_MEDIA_CACHE) copy(danmakuCacheStrategy = DanmakuCacheStrategy.DON_NOT_CACHE) else this
+            }
         }
+        koinApp.koin.get<AndroidRemoteSettingsHost>().start(scope)
     }
 }
