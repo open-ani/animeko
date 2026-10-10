@@ -60,6 +60,8 @@ MCP 工具对应关系:
 API 只返回裸 id 时(如 `{"list":[{"id":"5395"}]}`)用它把 id 拼成详情页地址——`selectLinks` 取 `$.list[*]['id']`、`linkTemplate` 填 `/GV{value}/`,即可得到 `https://站点/GV5395/`,无需为该站写专属 Kotlin 路由。
 模板可写相对路径(以 `searchUrl` 推出的 baseUrl 解析为绝对地址)或绝对地址。
 
+注: `linkTemplate` 是 web-selector 侧的**链接合成**(把 id 拼成详情页 URL), 角色上等价于通用 `json-api` 源的 `subjectUrl`。两者因**详情页格式不同**而分属两套源——web-selector 解析 HTML 详情(所以 girigiri 这类"JSON 搜索 + HTML 详情"的混合源用它), `json-api` 解析 JSON 详情(如稀饭 Next 这类纯 JSON API 源用 `subjectUrl`)。命名随各自词汇(web-selector 的 `selectLinks`/`selectNames` vs `json-api` 的 `subjectUrl`/`episodeUrl`), 不强求同名。
+
 **输出**: `WebSearchSubjectInfo { name, fullUrl, partialUrl }` 列表,顺序与页面一致。返回 `null` 表示配置无效(selector 为空或语法错误)。
 `selector_resolve_episode` 在此之后按 `autoMatch.preferShorterName`(默认开)把名称短的条目排到前面,与 App 自动匹配一致;
 `selector_run_step` 的 `selectSubjects` 步骤输出页面原始顺序。
