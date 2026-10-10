@@ -58,6 +58,7 @@ data class OAuthResult(
     val tokens: AccessTokenPair,
     val expiresInSeconds: Long,
     val refreshToken: String,
+    val userId: String,
 )
 
 fun AniUserAuthRoutingLoginResponse.toOAuthResult(): OAuthResult {
@@ -69,6 +70,7 @@ fun AniUserAuthRoutingLoginResponse.toOAuthResult(): OAuthResult {
         ),
         expiresInSeconds = this.tokens.expiresAtMillis.milliseconds.inWholeSeconds,
         refreshToken = this.tokens.refreshToken,
+        userId = this.userId,
     )
 }
 
