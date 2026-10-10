@@ -82,6 +82,15 @@ class AndroidWebMediaResolver(
     override suspend fun resolve(media: Media, episode: EpisodeMetadata): MediaDataProvider<*> {
         if (!supports(media)) throw UnsupportedMediaException(media)
 
+        matcherLoader.resolveVideoOrNull(media)?.let { webVideo ->
+            return HttpStreamingMediaDataProvider(
+                webVideo.m3u8Url,
+                media.originalTitle,
+                webVideo.headers,
+                media.extraFiles.toMediampMediaExtraFiles(),
+            )
+        }
+
         val matchersFromMediaSource = matcherLoader.loadMatchers(media.mediaSourceId)
         val allMatchers = matchersFromMediaSource + matchersFromClasspath
 

@@ -80,6 +80,15 @@ class DesktopWebMediaResolver(
         return withContext(Dispatchers.Default) {
             if (!supports(media)) throw UnsupportedMediaException(media)
 
+            matcherLoader.resolveVideoOrNull(media)?.let { webVideo ->
+                return@withContext HttpStreamingMediaDataProvider(
+                    webVideo.m3u8Url,
+                    media.originalTitle,
+                    webVideo.headers,
+                    media.extraFiles.toMediampMediaExtraFiles(),
+                )
+            }
+
             val resolverSettings = settings.videoResolverSettings.flow.first()
             val matchersFromMediaSource = matcherLoader.loadMatchers(media.mediaSourceId)
             val allMatchers = matchersFromMediaSource + matchersFromClasspath

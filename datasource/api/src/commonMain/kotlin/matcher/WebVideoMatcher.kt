@@ -60,11 +60,24 @@ interface WebVideoMatcherProvider {
 }
 
 /**
+ * A source that resolves a stable playback page through its API at playback/download time.
+ * Signed video URLs are not stored in search results.
+ */
+interface WebVideoResolverProvider {
+    suspend fun resolveVideo(media: Media): WebVideo
+}
+
+/**
  * 用于加载各个数据源实例提供的 [WebVideoMatcher]. 因为数据源实例 [MediaSource] 是创建动态的.
  */
 class MediaSourceWebVideoMatcherLoader(
     private val mediaSources: Flow<List<MediaSource>>
 ) {
+    suspend fun resolveVideoOrNull(media: Media): WebVideo? {
+        val source = mediaSources.first().firstOrNull { it.mediaSourceId == media.mediaSourceId }
+        return (source as? WebVideoResolverProvider)?.resolveVideo(media)
+    }
+
     suspend fun loadMatchers(mediaSourceId: String): List<WebVideoMatcher> {
         return mediaSources.first().asSequence()
             .filter { it.mediaSourceId == mediaSourceId }

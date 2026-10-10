@@ -75,6 +75,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import kotlinx.coroutines.launch
+import me.him188.ani.app.domain.mediasource.api.ApiMediaSource
 import me.him188.ani.app.domain.mediasource.rss.RssMediaSource
 import me.him188.ani.app.domain.mediasource.web.SelectorMediaSource
 import me.him188.ani.app.navigation.LocalNavigator
@@ -124,6 +125,7 @@ import org.jetbrains.compose.resources.stringResource
 
 @Stable
 internal val MediaSourcesUsingNewSettings = listOf(
+    ApiMediaSource.FactoryId,
     RssMediaSource.FactoryId,
     SelectorMediaSource.FactoryId,
 )
