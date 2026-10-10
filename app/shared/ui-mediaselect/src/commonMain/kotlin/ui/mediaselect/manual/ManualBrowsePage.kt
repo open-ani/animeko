@@ -175,15 +175,11 @@ private fun ManualBrowseStackedLayout(
                     watching,
                     Modifier.padding(horizontal = 16.dp).padding(bottom = 12.dp).fillMaxWidth(),
                 )
-                ManualSectionLabel(
-                    stringResource(Lang.media_selector_sources),
-                    Modifier.padding(horizontal = 16.dp).padding(bottom = 4.dp),
-                )
-                ManualSourceChips(
+                ManualSourceSelector(
                     presentation.sources,
                     presentation.selectedSourceId,
                     onSelect = state::selectSource,
-                    Modifier.fillMaxWidth(),
+                    Modifier.padding(horizontal = 16.dp).fillMaxWidth(),
                     isPlaceholder = presentation.isPlaceholder,
                 )
                 MediaSelectorSearchField(
@@ -352,12 +348,11 @@ private fun ManualBrowseWideLayout(
                 Modifier.width(300.dp).fillMaxHeight(),
                 verticalArrangement = Arrangement.spacedBy(8.dp),
             ) {
-                ManualSourceChips(
+                ManualSourceSelector(
                     presentation.sources,
                     presentation.selectedSourceId,
                     onSelect = state::selectSource,
-                    Modifier.fillMaxWidth(),
-                    contentPadding = PaddingValues(start = 16.dp, end = 12.dp),
+                    Modifier.padding(start = 16.dp, end = 12.dp).fillMaxWidth(),
                     isPlaceholder = presentation.isPlaceholder,
                 )
                 MediaSelectorSearchField(
@@ -432,7 +427,8 @@ private fun ManualWideSubjectHeader(
 
 object ManualBrowsePageTestTags {
     const val ROOT = "manual_browse_page"
-    fun sourceChip(instanceId: String) = "manual_source_$instanceId"
+    const val SOURCE_SELECTOR = "manual_source_selector"
+    fun sourceItem(instanceId: String) = "manual_source_item_$instanceId"
     const val SEARCH_FIELD = "manual_search_field"
     fun result(index: Int) = "manual_result_$index"
     const val BACK = "manual_back"

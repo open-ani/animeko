@@ -16,7 +16,12 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.semantics.SemanticsProperties
+import androidx.compose.ui.semantics.getOrNull
 import androidx.compose.ui.test.ComposeUiTest
+import androidx.compose.ui.test.SemanticsMatcher
+import androidx.compose.ui.test.assert
+import androidx.compose.ui.test.assertIsNotSelected
 import androidx.compose.ui.test.assertIsOff
 import androidx.compose.ui.test.assertIsOn
 import androidx.compose.ui.test.assertIsSelected
@@ -37,6 +42,7 @@ import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.runBlocking
 import me.him188.ani.app.data.repository.media.ManualBrowseMemory
 import me.him188.ani.app.domain.mediasource.instance.MediaSourceInstance
+import me.him188.ani.app.domain.mediasource.instance.createTestMediaSourceInstance
 import me.him188.ani.app.domain.mediasource.web.captcha.createTestWebSessionManager
 import me.him188.ani.app.ui.foundation.ProvideCompositionLocalsForPreview
 import me.him188.ani.app.ui.foundation.navigation.LocalOnBackPressedDispatcherOwner
@@ -54,6 +60,8 @@ import me.him188.ani.app.ui.mediaselect.WatchingEpisode
 import me.him188.ani.app.ui.mediaselect.common.MediaSelectorChromeTestTags
 import me.him188.ani.datasources.api.EpisodeSort
 import me.him188.ani.datasources.api.source.MediaSource
+import me.him188.ani.datasources.api.source.MediaSourceInfo
+import me.him188.ani.datasources.api.source.MediaSourceTier
 import me.him188.ani.utils.platform.annotations.TestOnly
 import org.jetbrains.compose.resources.getString
 import kotlin.test.Test
@@ -222,6 +230,7 @@ class ManualBrowsePageTest {
             createState = { scope, _ -> createPageState(scope, browsableSources = sources) },
         )
         onNodeWithText(topBarText).assertExists()
+        onNodeWithTag(ManualBrowsePageTestTags.SOURCE_SELECTOR).assertExists()
         onNodeWithTag(ManualBrowsePageTestTags.SEARCH_FIELD).assertExists()
         runOnIdle { assertTrue(harness.state.presentationFlow.value.isPlaceholder) }
         onNodeWithText(noSourcesText).assertDoesNotExist()
@@ -229,6 +238,52 @@ class ManualBrowsePageTest {
         // 源列表就绪且确实为空: 显示提示
         runOnIdle { assertTrue(sources.tryEmit(emptyList())) }
         waitUntil(timeoutMillis = 10_000) { onAllNodes(hasText(noSourcesText)).fetchSemanticsNodes().isNotEmpty() }
+    }
+
+    @Test
+    fun `source menu lists sources with tiers and selecting one searches it`() = runAniComposeUiTest {
+        val first = TestBrowsableMediaSource(
+            "first",
+            info = MediaSourceInfo(displayName = "First", tier = MediaSourceTier(0u)),
+        )
+        val second = TestBrowsableMediaSource(
+            "second",
+            subjects = TestBrowseSubjects.take(2),
+            info = MediaSourceInfo(displayName = "Second"),
+        )
+        val harness = setPage(
+            width = 400, height = 800,
+            createState = { scope, _ ->
+                createPageState(
+                    scope,
+                    browsableSources = flowOf(
+                        listOf(
+                            createTestMediaSourceInstance(first, instanceId = "first"),
+                            createTestMediaSourceInstance(second, instanceId = "second"),
+                        ),
+                    ),
+                )
+            },
+        )
+        // 默认选中第一个源, 打开页面即搜索它
+        awaitTag(ManualBrowsePageTestTags.result(3))
+        onNodeWithTag(ManualBrowsePageTestTags.SOURCE_SELECTOR).assert(hasText("First"))
+
+        onNodeWithTag(ManualBrowsePageTestTags.SOURCE_SELECTOR).performClick()
+        awaitTag(ManualBrowsePageTestTags.sourceItem("second"))
+        onNodeWithTag(ManualBrowsePageTestTags.sourceItem("first")).assertIsSelected().assert(hasText("T0"))
+        // 没有 tier 的源不显示标签
+        val hasTierTag = SemanticsMatcher("has a tier tag") { node ->
+            node.config.getOrNull(SemanticsProperties.Text).orEmpty().any { Regex("""T\d+""").matches(it.text) }
+        }
+        onNodeWithTag(ManualBrowsePageTestTags.sourceItem("second")).assertIsNotSelected().assert(!hasTierTag)
+
+        onNodeWithTag(ManualBrowsePageTestTags.sourceItem("second")).performClick()
+        awaitNoTag(ManualBrowsePageTestTags.sourceItem("first"))
+        awaitNoTag(ManualBrowsePageTestTags.result(2))
+        onNodeWithTag(ManualBrowsePageTestTags.result(1)).assertExists()
+        onNodeWithTag(ManualBrowsePageTestTags.SOURCE_SELECTOR).assert(hasText("Second"))
+        runOnIdle { assertEquals("second", harness.state.presentationFlow.value.selectedSourceId) }
     }
 
     private fun createPageState(
