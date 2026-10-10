@@ -58,6 +58,8 @@ value class AnalyticsEvent(val event: String) {
         val EpisodeEnter = AnalyticsEvent("episode_enter")
         val EpisodeSwitch = AnalyticsEvent("episode_switch")
         val EpisodePlaying = AnalyticsEvent("episode_playing")
+        val EpisodeExit = AnalyticsEvent("episode_exit")
+        val MediaFetchResult = AnalyticsEvent("media_fetch_result")
 
         val CacheCreate = AnalyticsEvent("cache_create")
 

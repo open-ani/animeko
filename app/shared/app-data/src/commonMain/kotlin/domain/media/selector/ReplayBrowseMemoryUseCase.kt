@@ -128,7 +128,7 @@ class ReplayBrowseMemoryUseCaseImpl(
             val episode = episodes.getOrNull(index) ?: return ReplayResult.NOT_FOUND
             val media = source.createMedia(memory.subject, channel.name, episode, episodeInfo.sort)
             if (mediaSelector.selected.value != null) return ReplayResult.NOT_FOUND
-            mediaSelector.select(media)
+            mediaSelector.select(media, SelectOrigin.BROWSE_MEMORY)
             logger.info { "Replayed browse memory for subject $subjectId at index $index as ${episodeInfo.sort}: ${media.mediaId}" }
             updateMemory(subjectId, memory, channelIndex, channel, index, episodeInfo.sort)
             return ReplayResult.SELECTED

@@ -24,6 +24,7 @@ import me.him188.ani.app.data.models.subject.SubjectSeriesInfo
 import me.him188.ani.app.domain.media.selector.MediaExclusionReason
 import me.him188.ani.app.domain.media.selector.OptionalPreference
 import me.him188.ani.app.domain.media.selector.SelectEvent
+import me.him188.ani.app.domain.media.selector.SelectOrigin
 import me.him188.ani.app.domain.media.selector.preferredValueOrNull
 import me.him188.ani.datasources.api.DefaultMedia
 import me.him188.ani.datasources.api.EpisodeSort
@@ -1482,6 +1483,7 @@ class DefaultMediaSelectorTest : AbstractDefaultMediaSelectorTest() {
                 media = target,
                 subtitleLanguageId = null,
                 previousMedia = null,
+                origin = SelectOrigin.AUTOMATIC,
             )
 
             assertEquals(listOf(expectedEvent), onBeforeSelect)
@@ -1510,6 +1512,7 @@ class DefaultMediaSelectorTest : AbstractDefaultMediaSelectorTest() {
                 media = target,
                 subtitleLanguageId = null,
                 previousMedia = null,
+                origin = SelectOrigin.AUTOMATIC,
             )
 
             assertEquals(listOf(expectedEvent), onBeforeSelect)

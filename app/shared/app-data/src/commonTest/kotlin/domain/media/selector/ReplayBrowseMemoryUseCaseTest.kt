@@ -158,6 +158,7 @@ class ReplayBrowseMemoryUseCaseTest {
         assertEquals(EpisodeRange.single(EpisodeSort(4)), media.episodeRange, "资源标为目标集")
         assertEquals(1, collected.onChangePreference.size, "正式选择写偏好")
         assertSame(media, collected.onSelect.single().event.media)
+        assertEquals(SelectOrigin.BROWSE_MEMORY, collected.onSelect.single().event.origin)
         assertEquals(memory(episodeIndex = 3, playedAsSort = EpisodeSort(4)), fixture.repository.get(SUBJECT_ID))
 
         // 再看下一集: 链式推进
