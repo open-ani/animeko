@@ -72,6 +72,7 @@ import me.him188.ani.app.domain.media.download.MediaDownloadManager
 import me.him188.ani.app.domain.session.SessionEvent
 import me.him188.ani.app.domain.session.SessionState
 import me.him188.ani.app.domain.session.SessionStateProvider
+import me.him188.ani.client.apis.EpisodesAniApi
 import me.him188.ani.client.apis.ScheduleAniApi
 import me.him188.ani.client.apis.SubjectsAniApi
 import me.him188.ani.danmaku.ui.DanmakuConfig
@@ -212,6 +213,10 @@ class UserCollectionsViewModelTest {
         override val watchTogetherSettings: Settings<WatchTogetherSettings> by lazy { error("not implemented") }
     }
 
+    private object UnusedEpisodesApi : ApiInvoker<EpisodesAniApi> {
+        override suspend fun <R> invoke(action: suspend EpisodesAniApi.() -> R): R = error("Episodes API not expected")
+    }
+
     private object UnusedSubjectsApi : ApiInvoker<SubjectsAniApi> {
         override suspend fun <R> invoke(action: suspend SubjectsAniApi.() -> R): R {
             error("ApiInvoker not expected in tests")
@@ -245,7 +250,7 @@ class UserCollectionsViewModelTest {
             subjectDao = database.subjectCollection(),
             episodeCollectionDao = database.episodeCollection(),
             pendingOpDao = database.episodeCollectionPendingOpDao(),
-            episodeService = EpisodeServiceImpl(UnusedSubjectsApi),
+            episodeService = EpisodeServiceImpl(UnusedSubjectsApi, UnusedEpisodesApi),
             animeScheduleRepository = animeScheduleRepository,
             subjectCollectionRepository = lazy { repository },
             getEpisodeTypeFiltersUseCase = GetEpisodeTypeFiltersUseCase { flowOf(EpisodeType.entries) },

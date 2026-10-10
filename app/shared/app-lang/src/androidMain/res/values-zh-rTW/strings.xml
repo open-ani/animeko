@@ -599,6 +599,7 @@
     <string name="exploration_title">探索</string>
     <string name="exploration_settings">設定</string>
     <string name="exploration_search">搜尋</string>
+    <string name="exploration_search_placeholder">關鍵字/番劇ID/URL</string>
     <string name="exploration_trending">最高熱度</string>
     <string name="exploration_trending_more">更多</string>
     <string name="exploration_trending_ranking">熱度排行</string>
