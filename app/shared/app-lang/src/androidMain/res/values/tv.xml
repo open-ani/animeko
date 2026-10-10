@@ -128,6 +128,8 @@
     <string name="tv_login_qr_rejected">Declined on your phone</string>
     <string name="tv_login_qr_failed">Couldn’t load the QR code. Check your network</string>
     <string name="tv_login_qr_refresh">Refresh QR code</string>
+    <string name="tv_settings_network">Network</string>
+    <string name="tv_settings_proxy_address_invalid">Enter a valid HTTP(S) or SOCKS proxy address</string>
 </resources>
 
 <!--@formatter:on-->

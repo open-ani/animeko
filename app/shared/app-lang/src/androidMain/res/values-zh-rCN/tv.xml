@@ -128,6 +128,8 @@
     <string name="tv_login_qr_rejected">已在手机上拒绝</string>
     <string name="tv_login_qr_failed">二维码加载失败, 请检查网络</string>
     <string name="tv_login_qr_refresh">刷新二维码</string>
+    <string name="tv_settings_network">网络</string>
+    <string name="tv_settings_proxy_address_invalid">请输入有效的 HTTP(S) 或 SOCKS 代理地址</string>
 </resources>
 
 <!--@formatter:on-->
