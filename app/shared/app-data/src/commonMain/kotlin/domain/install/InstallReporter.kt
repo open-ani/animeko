@@ -15,11 +15,11 @@ import io.ktor.http.HttpStatusCode
 import kotlinx.coroutines.CoroutineName
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.flow.Flow
-import kotlinx.coroutines.flow.collectLatest
-import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.first
-import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
+import kotlinx.coroutines.withTimeoutOrNull
 import me.him188.ani.app.data.repository.RepositoryException
 import me.him188.ani.app.data.repository.player.EpisodePlayHistoryRepository
 import me.him188.ani.app.domain.session.InvalidSessionReason
@@ -34,14 +34,17 @@ import me.him188.ani.utils.logging.info
 import me.him188.ani.utils.logging.logger
 import me.him188.ani.utils.logging.warn
 import kotlin.time.Clock
+import kotlin.time.Duration.Companion.minutes
 import kotlin.time.Instant
 
 /**
  * 登录后向服务器上报本机的安装信息 (`PUT /users/me/install-report`), 用来区分全新的用户和在本机未登录使用了一段时间才登录的用户.
  *
- * 每个 (安装, 用户) 只上报一次. 从未登录状态登录时 ([beforeNewLogin]) 生成报告并保存为待上报, 当前用户确认是报告的用户后发送,
- * 成功后清除. 发送失败时保留, 下次启动时如果登录的还是这个用户就重试; 换了用户登录则丢弃旧的报告.
- * 启动时已经登录的用户没有经历登录, 不会生成报告.
+ * 每个 (安装, 用户) 只上报一次. 从未登录状态登录时 ([beforeNewLogin]) 生成报告并保存为待上报, 成功后清除;
+ * 换了用户登录则丢弃旧的报告. 启动时已经登录的用户没有经历登录, 不会生成报告.
+ *
+ * 登录后和每次启动时各尝试发送一次: 最多等 [USER_CONFIRM_TIMEOUT], 当前用户确认是报告的用户才发送.
+ * 等不到或发送失败时保留报告, 下次启动再试. 没有待上报的报告时不留下任何协程.
  *
  * 上报是统计用途, 任何失败都只记录日志, 不影响登录.
  *
@@ -59,7 +62,12 @@ class InstallReporter(
     private val logger = logger<InstallReporter>()
 
     /**
-     * 初始化 [InstallInfo.firstLaunchAtMillis], 然后在有待上报的报告时发送.
+     * 启动时和登录后的发送可能同时等到同一个用户, 串行化后只有一个会发送.
+     */
+    private val sendLock = Mutex()
+
+    /**
+     * 初始化 [InstallInfo.firstLaunchAtMillis], 然后在有待上报的报告时尝试发送一次.
      */
     fun start() {
         scope.launch(CoroutineName("InstallReporter")) {
@@ -69,16 +77,7 @@ class InstallReporter(
                 RepositoryException.wrapOrThrowCancellation(e)
                 logger.warn(e) { "Failed to initialize install info" }
             }
-
-            store.data
-                .map { it.pendingReport }
-                .distinctUntilChanged()
-                .collectLatest { pending ->
-                    if (pending == null) return@collectLatest
-                    // 登录的不是报告的用户时一直等待, 直到下次登录替换掉这个报告
-                    currentUserId.first { it == pending.userId }
-                    sendCatching(pending)
-                }
+            store.data.first().pendingReport?.let { trySend(it) }
         }
     }
 
@@ -104,6 +103,9 @@ class InstallReporter(
             info.copy(hasLoggedIn = true, pendingReport = pending)
         }
         logger.info { "New login, pending install report: ${updated.pendingReport}" }
+        updated.pendingReport?.let { pending ->
+            scope.launch(CoroutineName("InstallReporter")) { trySend(pending) }
+        }
     }
 
     /**
@@ -139,6 +141,23 @@ class InstallReporter(
         if (hadLogin) return now
         val earliestRecord = playHistoryRepository.getEarliestRecordTimeMillis() ?: return now
         return minOf(now, earliestRecord)
+    }
+
+    /**
+     * 等当前用户确认是 [pending] 的用户后发送. 等不到时保留报告, 留到下次启动.
+     */
+    private suspend fun trySend(pending: PendingInstallReport) {
+        // 登录后要先等新会话保存、用户信息加载
+        val confirmed = withTimeoutOrNull(USER_CONFIRM_TIMEOUT) { currentUserId.first { it == pending.userId } } != null
+        if (!confirmed) {
+            logger.info { "Logged in user is not ${pending.userId}, keeping install report for next start" }
+            return
+        }
+        sendLock.withLock {
+            // 已经由另一次尝试发送, 或被新的登录替换
+            if (store.data.first().pendingReport != pending) return
+            sendCatching(pending)
+        }
     }
 
     private suspend fun sendCatching(pending: PendingInstallReport) {
@@ -181,5 +200,9 @@ class InstallReporter(
             is SessionState.Valid -> true
             is SessionState.Invalid -> state.reason != InvalidSessionReason.NO_TOKEN
         }
+    }
+
+    companion object {
+        val USER_CONFIRM_TIMEOUT = 1.minutes
     }
 }

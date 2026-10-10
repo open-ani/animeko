@@ -21,7 +21,9 @@ import kotlinx.coroutines.cancel
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.emptyFlow
+import kotlinx.coroutines.job
 import kotlinx.coroutines.test.TestScope
+import kotlinx.coroutines.test.advanceTimeBy
 import kotlinx.coroutines.test.runCurrent
 import kotlinx.coroutines.test.runTest
 import kotlinx.io.IOException
@@ -41,6 +43,7 @@ import me.him188.ani.client.models.AniReportInstallRequest
 import me.him188.ani.utils.ktor.ApiInvoker
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertFalse
 import kotlin.time.Clock
 import kotlin.time.Instant
 import io.ktor.client.statement.HttpResponse as KtorHttpResponse
@@ -112,6 +115,13 @@ class InstallReporterTest {
         clock = FixedClock(nowMillis),
     )
 
+    /**
+     * 单独的 scope, 用来检查上报任务是否已经结束.
+     */
+    private fun TestScope.reporterScope() = CoroutineScope(backgroundScope.coroutineContext + Job())
+
+    private fun CoroutineScope.hasRunningTasks() = coroutineContext.job.children.any { it.isActive }
+
     private suspend fun addRecord(episodeId: Int, updatedAtMillis: Long, deletedAtMillis: Long? = null) {
         historyDao.upsertRecord(
             PlaybackHistoryRecordEntity(
@@ -172,6 +182,15 @@ class InstallReporterTest {
         runCurrent()
 
         assertEquals(InstallInfo(firstLaunchAtMillis = nowMillis, hasLoggedIn = true), installStore.data.value)
+    }
+
+    @Test
+    fun `startup without a pending report leaves nothing running`() = runTest {
+        val scope = reporterScope()
+        createReporter(FakeUserProfileApi(okResponse()), scope).start()
+        runCurrent()
+
+        assertFalse(scope.hasRunningTasks())
     }
 
     @Test
@@ -267,7 +286,8 @@ class InstallReporterTest {
     @Test
     fun `report is sent once the logged in user is confirmed`() = runTest {
         val api = FakeUserProfileApi(okResponse())
-        val reporter = createReporter(api)
+        val scope = reporterScope()
+        val reporter = createReporter(api, scope)
         reporter.start()
         runCurrent()
 
@@ -283,6 +303,27 @@ class InstallReporterTest {
             InstallInfo(firstLaunchAtMillis = nowMillis, hasLoggedIn = true, reportedUserIds = setOf("u1")),
             installStore.data.value,
         )
+        assertFalse(scope.hasRunningTasks())
+    }
+
+    @Test
+    fun `startup and login attempts waiting for the same user send once`() = runTest {
+        installStore.data.value = InstallInfo(
+            firstLaunchAtMillis = nowMillis,
+            hasLoggedIn = true,
+            pendingReport = PendingInstallReport("u1", nowMillis, localEpisodesBeforeLogin = 5, hadPreviousLogin = false),
+        )
+        val api = FakeUserProfileApi(okResponse())
+        val reporter = createReporter(api)
+        reporter.start()
+        runCurrent()
+
+        // 启动时的尝试还在等用户信息, 这时同一个用户重新登录
+        reporter.beforeNewLogin("u1")
+        currentUserId.value = "u1"
+        runCurrent()
+
+        assertEquals(listOf(request(nowMillis, localEpisodes = 5, hadPreviousLogin = false)), api.requests)
     }
 
     @Test
@@ -338,9 +379,19 @@ class InstallReporterTest {
         currentUserId.value = "u2"
         val api = FakeUserProfileApi(okResponse())
 
-        createReporter(api).start()
+        val scope = reporterScope()
+        createReporter(api, scope).start()
         runCurrent()
 
+        assertEquals(emptyList(), api.requests)
+        assertEquals("u1", installStore.data.value.pendingReport?.userId)
+
+        // 等不到报告的用户就放弃, 留到下次启动
+        advanceTimeBy(InstallReporter.USER_CONFIRM_TIMEOUT)
+        runCurrent()
+        assertFalse(scope.hasRunningTasks())
+        currentUserId.value = "u1"
+        runCurrent()
         assertEquals(emptyList(), api.requests)
         assertEquals("u1", installStore.data.value.pendingReport?.userId)
     }
