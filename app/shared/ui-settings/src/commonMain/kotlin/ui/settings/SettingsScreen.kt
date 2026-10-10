@@ -84,6 +84,7 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -174,11 +175,10 @@ import me.him188.ani.app.ui.settings.tabs.media.CacheDirectoryGroup
 import me.him188.ani.app.ui.settings.tabs.media.MediaSelectionGroup
 import me.him188.ani.app.ui.settings.tabs.media.PikPakAcceleratorGroup
 import me.him188.ani.app.ui.settings.tabs.media.TorrentEngineGroup
-import me.him188.ani.app.ui.settings.tabs.media.source.MediaSourceGroup
 import me.him188.ani.app.ui.settings.tabs.media.source.MediaSourceSelectionActions
-import me.him188.ani.app.ui.settings.tabs.media.source.MediaSourceSubscriptionGroup
 import me.him188.ani.app.ui.settings.tabs.media.source.MediaSourceSubscriptionPageActions
 import me.him188.ani.app.ui.settings.tabs.media.source.MediaSourceSubscriptionPageContent
+import me.him188.ani.app.ui.settings.tabs.media.source.MediaSourceTab
 import me.him188.ani.app.ui.settings.tabs.media.source.displayName
 import me.him188.ani.app.ui.settings.tabs.media.source.rememberMediaSourceSelectionState
 import me.him188.ani.app.ui.settings.tabs.network.ConfigureProxyGroup
@@ -385,22 +385,16 @@ fun SettingsScreen(
                                 WatchTogetherGroup(vm.watchTogetherSettings)
                             }
 
-                            SettingsTab.MEDIA_SOURCE -> {
-                                MediaSourceSubscriptionGroup(
-                                    vm.mediaSourceSubscriptionGroupState,
-                                    mediaSourcesOfSubscription = vm.mediaSourceGroupState::mediaSourcesOfSubscription,
-                                    onOpenSubscription = {
-                                        navigateTo(DetailPaneRoutes.MediaSourceSubscription(it))
-                                    },
-                                    backgroundColor = listDetailLayoutParameters.detailPaneColors.containerColor,
-                                )
-                                MediaSourceGroup(
-                                    vm.mediaSourceGroupState,
-                                    vm.editMediaSourceState,
-                                    mediaSourceSelectionState,
-                                    backgroundColor = listDetailLayoutParameters.detailPaneColors.containerColor,
-                                )
-                            }
+                            SettingsTab.MEDIA_SOURCE -> MediaSourceTab(
+                                vm.mediaSourceSubscriptionGroupState,
+                                vm.mediaSourceGroupState,
+                                vm.editMediaSourceState,
+                                mediaSourceSelectionState,
+                                backgroundColor = listDetailLayoutParameters.detailPaneColors.containerColor,
+                                onOpenSubscription = {
+                                    navigateTo(DetailPaneRoutes.MediaSourceSubscription(it))
+                                },
+                            )
 
                             SettingsTab.MEDIA_SELECTOR -> MediaSelectionGroup(vm.mediaSelectionGroupState)
                             SettingsTab.SERVER -> ServerSelectionGroup(vm.danmakuSettingsState, vm.danmakuServerTesters)
@@ -911,7 +905,14 @@ internal fun SettingsPageLayout(
                         DetailPaneRoute(
                             topAppBar = {
                                 AniTopAppBar(
-                                    title = { AniTopAppBarDefaults.Title(subscriptionPageTitle(route.subscriptionId)) },
+                                    title = {
+                                        // 没有名称的订阅用链接作为标题, 可能很长
+                                        Text(
+                                            subscriptionPageTitle(route.subscriptionId),
+                                            maxLines = 1,
+                                            overflow = TextOverflow.Ellipsis,
+                                        )
+                                    },
                                     navigationIcon = {
                                         BackNavigationIconButton(navigateUp)
                                     },

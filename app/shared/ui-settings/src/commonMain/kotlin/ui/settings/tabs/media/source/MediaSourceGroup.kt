@@ -133,6 +133,33 @@ internal object MediaSourceGroupTestTags {
 }
 
 /**
+ * 数据源设置页: 订阅和自定义数据源两组, 中间用分割线隔开.
+ *
+ * @param backgroundColor 页面的背景色, 见 [MediaSourceSubscriptionGroup] 和 [MediaSourceGroup].
+ */
+@Composable
+internal fun SettingsScope.MediaSourceTab(
+    subscriptionState: MediaSourceSubscriptionGroupState,
+    groupState: MediaSourceGroupState,
+    editState: EditMediaSourceState,
+    selectionState: MediaSourceSelectionState,
+    backgroundColor: Color,
+    onOpenSubscription: (subscriptionId: String) -> Unit,
+) {
+    // 两组属于同一个页面, 不使用设置页默认的组间距
+    Column {
+        MediaSourceSubscriptionGroup(
+            subscriptionState,
+            mediaSourcesOfSubscription = groupState::mediaSourcesOfSubscription,
+            onOpenSubscription = onOpenSubscription,
+            backgroundColor = backgroundColor,
+        )
+        HorizontalDividerItem()
+        MediaSourceGroup(groupState, editState, selectionState, backgroundColor)
+    }
+}
+
+/**
  * 不属于订阅的数据源. 用户可以添加, 编辑, 删除, 也可以在多选模式下拖动排序.
  * 订阅中的数据源在订阅详情页 [MediaSourceSubscriptionPage] 中显示.
  *
