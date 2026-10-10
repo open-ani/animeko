@@ -12,10 +12,13 @@ package me.him188.ani.app.ui.subject.episode.details
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.flowOf
+import me.him188.ani.app.domain.danmaku.DanmakuTextConversionSettings
 import me.him188.ani.app.domain.episode.DanmakuFetchResultWithConfig
 import me.him188.ani.app.ui.episode.danmaku.DanmakuSourceItem
 import me.him188.ani.danmaku.api.DanmakuServiceId
 import me.him188.ani.danmaku.ui.DanmakuPresentation
+import me.him188.ani.danmaku.ui.DanmakuTextConversion
 import me.him188.ani.utils.platform.Uuid
 
 /**
@@ -38,6 +41,14 @@ data class DanmakuListState(
     val sourceItems: List<DanmakuSourceItem>,
     val isLoading: Boolean,
     val isEmpty: Boolean,
+    /**
+     * 全局弹幕文字转换设置, 用于展示各来源的跟随值.
+     */
+    val globalTextConversion: DanmakuTextConversion = DanmakuTextConversion.ORIGINAL,
+    /**
+     * 按来源的弹幕文字转换覆盖, 用于打开统一设置对话框.
+     */
+    val textConversionOverrides: Map<DanmakuServiceId, DanmakuTextConversion> = emptyMap(),
 ) {
     companion object {
         val Loading = DanmakuListState(
@@ -55,11 +66,13 @@ data class DanmakuListState(
 class DanmakuListStateProducer(
     danmakuFlow: Flow<List<DanmakuPresentation>>,
     fetchResultsFlow: Flow<List<DanmakuFetchResultWithConfig>>,
+    textConversion: Flow<DanmakuTextConversionSettings> = flowOf(DanmakuTextConversionSettings.Default),
 ) {
     val stateFlow: Flow<DanmakuListState> = combine(
         danmakuFlow,
         fetchResultsFlow,
-    ) { danmakuList, fetchResults ->
+        textConversion,
+    ) { danmakuList, fetchResults, textConversion ->
         val sourceItems = fetchResults.map { result ->
             DanmakuSourceItem(
                 serviceId = result.serviceId,
@@ -67,6 +80,7 @@ class DanmakuListStateProducer(
                 matchMethod = result.matchInfo.method,
                 shiftMillis = result.config.shiftMillis,
                 count = danmakuList.count { presentation -> presentation.danmaku.serviceId == result.serviceId },
+                textConversionOverride = textConversion.overrides[result.serviceId],
             )
         }
 
@@ -86,6 +100,8 @@ class DanmakuListStateProducer(
             sourceItems = sourceItems,
             isLoading = fetchResults.isEmpty(),
             isEmpty = danmakuList.isEmpty() && fetchResults.isNotEmpty(),
+            globalTextConversion = textConversion.global,
+            textConversionOverrides = textConversion.overrides,
         )
     }.distinctUntilChanged()
 

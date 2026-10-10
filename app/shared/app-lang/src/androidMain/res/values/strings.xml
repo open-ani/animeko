@@ -1581,6 +1581,12 @@
     <string name="subject_episode_video_settings_enable_regex_filter">Enable regex danmaku filters</string>
     <string name="subject_episode_video_settings_manage_regex_filter">Manage regex danmaku filters</string>
     <string name="subject_episode_video_settings_debug_mode">Danmaku debug mode</string>
+    <string name="subject_episode_video_settings_text_conversion">Danmaku text</string>
+    <string name="subject_episode_video_settings_text_conversion_original">Original</string>
+    <string name="subject_episode_video_settings_text_conversion_simplified">Simplified</string>
+    <string name="subject_episode_video_settings_text_conversion_traditional">Traditional</string>
+    <string name="subject_episode_video_settings_text_conversion_taiwan">Taiwan</string>
+    <string name="subject_episode_video_settings_text_conversion_hong_kong">Hong Kong</string>
 
     <!-- Person / character details pages -->
     <string name="person_details_basic_info">Basic info</string>
@@ -1767,6 +1773,14 @@
     <string name="qr_login_done">Done</string>
     <string name="qr_login_close">Close</string>
     <string name="subject_episode_danmaku_sources_title">Sources and timing</string>
+    <string name="subject_episode_danmaku_text_conversion_item">Text conversion</string>
+    <string name="subject_episode_danmaku_text_conversion_desc">Sources below can override the setting for all sources</string>
+    <string name="subject_episode_danmaku_text_conversion_preview_hint">Example:</string>
+    <string name="subject_episode_danmaku_text_conversion_override_count">%1$d sources customized</string>
+    <string name="subject_episode_danmaku_text_conversion_follow_global">Follow global</string>
+    <string name="subject_episode_danmaku_text_conversion_section_all">All sources</string>
+    <string name="subject_episode_danmaku_text_conversion_section_per_source">Individual sources</string>
+    <string name="subject_episode_danmaku_text_conversion_reset_overrides">Reset individual settings</string>
     <string name="subject_episode_danmaku_sources_empty">No danmaku sources available</string>
     <string name="video_player_screenshot">Screenshot</string>
     <string name="video_player_screenshot_share">Share</string>

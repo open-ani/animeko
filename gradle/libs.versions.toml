@@ -94,6 +94,7 @@ posthog-java = "1.2.0"
 onnxruntime = "1.22.0"
 openapi-generator = "7.13.0"
 mediamp = "0.5.1"
+sokkuri = "0.2.0" # 简繁转换 (OpenCC 的 KMP 移植, group: com.generalk1ng.sokkuri)
 libass-android = "0.5.0-beta01"
 compose-native-tray = "2.1.1"
 kmpalette = "4.0.0-beta02"
@@ -317,6 +318,9 @@ mediamp-mpv-runtime-windows-arm64 = { module = "org.openani.mediamp:mediamp-mpv-
 mediamp-mpv-runtime-linux-x64 = { module = "org.openani.mediamp:mediamp-mpv-runtime-linux-x64", version.ref = "mediamp" }
 mediamp-mpv-runtime-macos-x64 = { module = "org.openani.mediamp:mediamp-mpv-runtime-macos-x64", version.ref = "mediamp" }
 mediamp-mpv-runtime-macos-arm64 = { module = "org.openani.mediamp:mediamp-mpv-runtime-macos-arm64", version.ref = "mediamp" }
+
+# sokkuri (简繁转换, OpenCC 的 KMP 移植)
+sokkuri-runtime = { module = "com.generalk1ng.sokkuri:sokkuri-runtime", version.ref = "sokkuri" }
 mediamp-source-ktxio = { module = "org.openani.mediamp:mediamp-source-ktxio", version.ref = "mediamp" }
 mediamp-test = { module = "org.openani.mediamp:mediamp-test", version.ref = "mediamp" }
 libass-media = { module = "io.github.peerless2012:ass-media", version.ref = "libass-android" }

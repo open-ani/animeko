@@ -12,15 +12,20 @@ package me.him188.ani.app.ui.subject.episode.video.settings
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.FlowRow
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.outlined.ChevronRight
+import androidx.compose.material.icons.outlined.Translate
 import androidx.compose.material.icons.rounded.Check
 import androidx.compose.material.icons.rounded.Close
 import androidx.compose.material3.ElevatedFilterChip
 import androidx.compose.material3.Icon
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -30,19 +35,28 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
+import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.launch
 import me.him188.ani.app.data.models.danmaku.DanmakuFilterConfig
 import me.him188.ani.app.data.models.danmaku.DanmakuRegexFilter
+import me.him188.ani.app.data.models.danmaku.DanmakuTextConversionOverrides
 import me.him188.ani.app.data.repository.player.DanmakuRegexFilterRepository
 import me.him188.ani.app.data.repository.user.SettingsRepository
+import me.him188.ani.app.ui.episode.danmaku.DanmakuTextConversionSettingsDialog
+import me.him188.ani.app.ui.episode.danmaku.danmakuTextConversionText
 import me.him188.ani.app.ui.foundation.LocalPlatform
 import me.him188.ani.app.ui.foundation.ProvideCompositionLocalsForPreview
 import me.him188.ani.app.ui.foundation.rememberDebugSettingsViewModel
 import me.him188.ani.app.ui.lang.Lang
+import me.him188.ani.app.ui.lang.subject_episode_danmaku_text_conversion_override_count
 import me.him188.ani.app.ui.lang.subject_episode_video_settings_bottom
 import me.him188.ani.app.ui.lang.subject_episode_video_settings_colorful
 import me.him188.ani.app.ui.lang.subject_episode_video_settings_debug_mode
@@ -67,6 +81,7 @@ import me.him188.ani.app.ui.lang.subject_episode_video_settings_opacity
 import me.him188.ani.app.ui.lang.subject_episode_video_settings_speed
 import me.him188.ani.app.ui.lang.subject_episode_video_settings_speed_description
 import me.him188.ani.app.ui.lang.subject_episode_video_settings_stroke_width
+import me.him188.ani.app.ui.lang.subject_episode_video_settings_text_conversion
 import me.him188.ani.app.ui.lang.subject_episode_video_settings_top
 import me.him188.ani.app.ui.settings.SettingsTab
 import me.him188.ani.app.ui.settings.framework.AbstractSettingsViewModel
@@ -75,9 +90,11 @@ import me.him188.ani.app.ui.settings.framework.components.SettingsDefaults
 import me.him188.ani.app.ui.settings.framework.components.SliderItem
 import me.him188.ani.app.ui.settings.framework.components.SwitchItem
 import me.him188.ani.app.ui.settings.framework.components.TextItem
+import me.him188.ani.danmaku.api.DanmakuServiceId
 import me.him188.ani.danmaku.ui.DanmakuConfig
 import me.him188.ani.danmaku.ui.DanmakuConfigRanges
 import me.him188.ani.danmaku.ui.DanmakuStyle
+import me.him188.ani.danmaku.ui.DanmakuTextConversion
 import me.him188.ani.utils.platform.isDesktop
 import org.jetbrains.compose.resources.stringResource
 import org.koin.core.component.KoinComponent
@@ -104,12 +121,42 @@ class EpisodeVideoSettingsViewModel : AbstractSettingsViewModel(), KoinComponent
         initialValue = emptyList(),
     )
     val danmakuFilterConfig: DanmakuFilterConfig by danmakuFilterConfigState
+    val danmakuTextConversionOverrides: Map<DanmakuServiceId, DanmakuTextConversion> by
+        settingsRepository.danmakuTextConversionOverrides.flow
+            .map { model -> model.overrides.mapKeys { (id) -> DanmakuServiceId(id) } }
+            .produceState(emptyMap())
     val isLoading: Boolean by derivedStateOf {
         danmakuConfigState.isLoading || danmakuFilterConfigState.isLoading
     }
 
     fun setDanmakuConfig(transform: DanmakuConfig.() -> DanmakuConfig) {
         danmakuConfigState.update(transform(danmakuConfig))
+    }
+
+    fun setDanmakuTextConversion(target: DanmakuTextConversion) {
+        danmakuConfigState.update(danmakuConfig.copy(textConversion = target))
+    }
+
+    fun resetDanmakuTextConversionOverrides() {
+        backgroundScope.launch {
+            settingsRepository.danmakuTextConversionOverrides.update { DanmakuTextConversionOverrides.Default }
+        }
+    }
+
+    fun setDanmakuTextConversionOverride(serviceId: DanmakuServiceId, target: DanmakuTextConversion) {
+        backgroundScope.launch {
+            settingsRepository.danmakuTextConversionOverrides.update {
+                copy(overrides = overrides + (serviceId.value to target))
+            }
+        }
+    }
+
+    fun resetDanmakuTextConversionOverride(serviceId: DanmakuServiceId) {
+        backgroundScope.launch {
+            settingsRepository.danmakuTextConversionOverrides.update {
+                copy(overrides = overrides - serviceId.value)
+            }
+        }
     }
 
     fun switchDanmakuRegexFilterCompletely() {
@@ -125,6 +172,8 @@ fun EpisodeVideoSettings(
     onNavigateToFilterSettings: () -> Unit,
     modifier: Modifier = Modifier,
     sources: @Composable () -> Unit = {},
+    /** 本次实际拉取到的弹幕来源, 用于简繁转换设置里列出可覆盖的来源. */
+    danmakuServiceIds: List<DanmakuServiceId> = emptyList(),
 ) {
     return EpisodeVideoSettings(
         danmakuConfig = vm.danmakuConfig,
@@ -133,9 +182,20 @@ fun EpisodeVideoSettings(
         },
         modifier = modifier,
         sources = sources,
+        danmakuServiceIds = danmakuServiceIds,
         onManageRegexFilters = onNavigateToFilterSettings,
         enableRegexFilter = vm.danmakuFilterConfig.enableRegexFilter,
         switchDanmakuRegexFilterCompletely = vm::switchDanmakuRegexFilterCompletely,
+        textConversionOverrides = vm.danmakuTextConversionOverrides,
+        onSetTextConversionGlobal = remember(vm) { vm::setDanmakuTextConversion },
+        onSetTextConversion = { serviceId, target ->
+            if (target == null) {
+                vm.resetDanmakuTextConversionOverride(serviceId)
+            } else {
+                vm.setDanmakuTextConversionOverride(serviceId, target)
+            }
+        },
+        onResetTextConversionOverrides = vm::resetDanmakuTextConversionOverrides,
     )
 }
 
@@ -149,6 +209,12 @@ fun EpisodeVideoSettings(
     modifier: Modifier = Modifier,
     useThinSlider: Boolean = true,
     sources: @Composable () -> Unit = {},
+    /** 本次实际拉取到的弹幕来源, 用于简繁转换设置里列出可覆盖的来源. */
+    danmakuServiceIds: List<DanmakuServiceId> = emptyList(),
+    textConversionOverrides: Map<DanmakuServiceId, DanmakuTextConversion> = emptyMap(),
+    onSetTextConversionGlobal: (DanmakuTextConversion) -> Unit = {},
+    onSetTextConversion: (DanmakuServiceId, DanmakuTextConversion?) -> Unit = { _, _ -> },
+    onResetTextConversionOverrides: () -> Unit = {},
 ) {
     val topText = stringResource(Lang.subject_episode_video_settings_top)
     val floatingText = stringResource(Lang.subject_episode_video_settings_floating)
@@ -175,6 +241,7 @@ fun EpisodeVideoSettings(
     val enableRegexFilterText = stringResource(Lang.subject_episode_video_settings_enable_regex_filter)
     val manageRegexFilterText = stringResource(Lang.subject_episode_video_settings_manage_regex_filter)
     val debugModeText = stringResource(Lang.subject_episode_video_settings_debug_mode)
+    val textConversionText = stringResource(Lang.subject_episode_video_settings_text_conversion)
 
     SettingsTab(modifier.verticalScroll(rememberScrollState())) {
         sources()
@@ -223,6 +290,70 @@ fun EpisodeVideoSettings(
                         label = { Text(colorfulText, maxLines = 1) },
                     )
                 }
+            }
+            var showTextConversionDialog by rememberSaveable { mutableStateOf(false) }
+            TextItem(
+                onClick = { showTextConversionDialog = true },
+                modifier = Modifier.testTag("danmaku-text-conversion"),
+                icon = { Icon(Icons.Outlined.Translate, contentDescription = null) },
+                description = if (textConversionOverrides.isEmpty()) {
+                    null
+                } else {
+                    {
+                        Text(
+                            stringResource(
+                                Lang.subject_episode_danmaku_text_conversion_override_count,
+                                textConversionOverrides.size,
+                            ),
+                        )
+                    }
+                },
+                action = {
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(2.dp),
+                    ) {
+                        // 生效的目标文字做成 pill: 一眼能看到设置结果, 也能看出这里点得动
+                        val converted = danmakuConfig.textConversion != DanmakuTextConversion.ORIGINAL
+                        Surface(
+                            shape = CircleShape,
+                            color = if (converted) {
+                                MaterialTheme.colorScheme.secondaryContainer
+                            } else {
+                                MaterialTheme.colorScheme.surfaceContainerHighest
+                            },
+                        ) {
+                            Text(
+                                danmakuTextConversionText(danmakuConfig.textConversion),
+                                Modifier.padding(horizontal = 10.dp, vertical = 3.dp),
+                                style = MaterialTheme.typography.labelLarge,
+                                color = if (converted) {
+                                    MaterialTheme.colorScheme.onSecondaryContainer
+                                } else {
+                                    MaterialTheme.colorScheme.onSurfaceVariant
+                                },
+                            )
+                        }
+                        Icon(
+                            Icons.Outlined.ChevronRight,
+                            contentDescription = null,
+                            tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                    }
+                },
+            ) {
+                Text(textConversionText)
+            }
+            if (showTextConversionDialog) {
+                DanmakuTextConversionSettingsDialog(
+                    sources = danmakuServiceIds,
+                    global = danmakuConfig.textConversion,
+                    overrides = textConversionOverrides,
+                    onSetGlobal = onSetTextConversionGlobal,
+                    onSetOverride = onSetTextConversion,
+                    onResetOverrides = onResetTextConversionOverrides,
+                    onDismissRequest = { showTextConversionDialog = false },
+                )
             }
             val fontSize by remember(danmakuConfig) {
                 mutableFloatStateOf(danmakuConfig.style.fontSize.value / DanmakuStyle.Default.fontSize.value)

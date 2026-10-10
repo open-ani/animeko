@@ -372,6 +372,13 @@ idea {
 
 tasks.withType<ComposeHotRun> {
     configureDevProperties()
+    // Compose 的 run/runRelease 任务会自动带上 compose.application.resources.dir, 热重载任务不会,
+    // 而 AniDesktop.main 启动时无条件读它 (File(System.getProperty(...))), 缺失就是 NPE.
+    // 取值与 Compose 的 run 任务一致; dev 运行里它只影响打包形态下的 native 库/着色器定位.
+    val prepareAppResources = tasks.named<Sync>("prepareAppResources")
+    dependsOn(prepareAppResources)
+    // 必须在这里解析成具体路径: 热重载的参数文件不会解析 Provider, 会把 provider.toString() 写进去
+    systemProperty("compose.application.resources.dir", prepareAppResources.get().destinationDir.absolutePath)
 }
 
 afterEvaluate {

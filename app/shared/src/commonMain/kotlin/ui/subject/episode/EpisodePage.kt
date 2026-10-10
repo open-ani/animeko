@@ -180,11 +180,11 @@ import me.him188.ani.app.videoplayer.ui.VideoSideSheetsController
 import me.him188.ani.app.videoplayer.ui.gesture.LevelController
 import me.him188.ani.app.videoplayer.ui.gesture.NoOpLevelController
 import me.him188.ani.app.videoplayer.ui.gesture.asLevelController
-import me.him188.ani.app.videoplayer.ui.rememberAlwaysOnRequester
 import me.him188.ani.app.videoplayer.ui.progress.PlayerControllerDefaults
 import me.him188.ani.app.videoplayer.ui.progress.PlayerControllerDefaults.rememberRandomDanmakuPlaceholder
 import me.him188.ani.app.videoplayer.ui.progress.rememberMediaProgressFramePreviewState
 import me.him188.ani.app.videoplayer.ui.progress.rememberMediaProgressSliderState
+import me.him188.ani.app.videoplayer.ui.rememberAlwaysOnRequester
 import me.him188.ani.app.videoplayer.ui.rememberPlayerFullscreenState
 import me.him188.ani.app.videoplayer.ui.screenshot.PlayerScreenshotOverlay
 import me.him188.ani.app.videoplayer.ui.screenshot.rememberPlayerScreenshotController
@@ -665,6 +665,9 @@ private fun EpisodeScreenSidebar(
                             onAdjustDanmakuSourceShift = { serviceId, shiftMillis ->
                                 vm.setDanmakuSourceShiftMillis(serviceId, shiftMillis)
                             },
+                            onSetDanmakuTextConversion = vm::setDanmakuTextConversionOverride,
+                            onSetDanmakuTextConversionGlobal = vm::setDanmakuTextConversionGlobal,
+                            onResetDanmakuTextConversionOverrides = vm::resetDanmakuTextConversionOverrides,
                             onClickLogin = { navigator.navigateBangumiAuthorize() },
                             onClickTag = { navigator.navigateSubjectSearch(it.name) },
                             onManualMatchDanmaku = vm::startMatchingDanmakuForService,
@@ -819,6 +822,9 @@ private fun EpisodeScreenPhoneDetails(
                     onAdjustDanmakuSourceShift = { serviceId, shiftMillis ->
                         vm.setDanmakuSourceShiftMillis(serviceId, shiftMillis)
                     },
+                    onSetDanmakuTextConversion = vm::setDanmakuTextConversionOverride,
+                    onSetDanmakuTextConversionGlobal = vm::setDanmakuTextConversionGlobal,
+                    onResetDanmakuTextConversionOverrides = vm::resetDanmakuTextConversionOverrides,
                     onClickLogin = { navigator.navigateBangumiAuthorize() },
                     onClickTag = { navigator.navigateSubjectSearch(it.name) },
                     onManualMatchDanmaku = vm::startMatchingDanmakuForService,
@@ -1226,17 +1232,24 @@ private fun EpisodeVideo(
                     sheetsController,
                     playerControllerState,
                     playerSettingsPage = {
+                        // 转换设置的按来源列表与实际拉取到的来源一致, 因此和来源设置读同一份状态
+                        val sourceState by vm.danmakuListState.collectAsStateWithLifecycle()
                         EpisodeVideoSideSheets.DanmakuSettingsNavigatorSheet(
                             expanded = expanded,
                             state = vm.danmakuRegexFilterState,
+                            danmakuServiceIds = sourceState.sourceItems.map { it.serviceId },
                             sources = {
-                                val sourceState by vm.danmakuListState.collectAsStateWithLifecycle()
                                 DanmakuSourceSettings(
                                     sourceItems = sourceState.sourceItems,
                                     isLoading = sourceState.isLoading,
                                     onSetEnabled = vm::setDanmakuSourceEnabled,
                                     onManualMatch = vm::startMatchingDanmakuForService,
                                     onAdjustShift = vm::setDanmakuSourceShiftMillis,
+                                    globalTextConversion = sourceState.globalTextConversion,
+                                    textConversionOverrides = sourceState.textConversionOverrides,
+                                    onSetTextConversionGlobal = vm::setDanmakuTextConversionGlobal,
+                                    onSetTextConversion = vm::setDanmakuTextConversionOverride,
+                                    onResetTextConversionOverrides = vm::resetDanmakuTextConversionOverrides,
                                 )
                             },
                             onDismissRequest = { goBack() },

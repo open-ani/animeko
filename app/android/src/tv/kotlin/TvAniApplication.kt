@@ -10,6 +10,8 @@
 package me.him188.ani.android.tv
 
 import android.app.Application
+import com.generalk1ng.sokkuri.Sokkuri
+import com.generalk1ng.sokkuri.init
 import kotlinx.coroutines.launch
 import me.him188.ani.android.getCommonAndroidModules
 import me.him188.ani.app.data.repository.user.SettingsRepository
@@ -37,6 +39,9 @@ class TvAniApplication : Application() {
         super.onCreate()
         val logsDir = filesDir.resolve("logs").absolutePath
         AndroidLoggingConfigurator.configure(logsDir)
+
+        // 弹幕简繁转换 (sokkuri) 需要从 assets 加载词典
+        Sokkuri.init(this)
 
         val defaultUEH = Thread.getDefaultUncaughtExceptionHandler()
         Thread.setDefaultUncaughtExceptionHandler { t, e ->

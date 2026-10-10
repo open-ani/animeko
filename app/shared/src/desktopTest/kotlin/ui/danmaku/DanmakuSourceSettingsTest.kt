@@ -45,6 +45,7 @@ import me.him188.ani.app.ui.subject.episode.video.settings.EpisodeVideoSettings
 import me.him188.ani.danmaku.api.DanmakuServiceId
 import me.him188.ani.danmaku.api.provider.DanmakuMatchMethod
 import me.him188.ani.danmaku.ui.DanmakuConfig
+import me.him188.ani.danmaku.ui.DanmakuTextConversion
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertTrue
@@ -262,6 +263,93 @@ class DanmakuSourceSettingsTest {
         val fontSizeBounds = onNodeWithText("Danmaku size").assertIsDisplayed().fetchSemanticsNode().boundsInRoot
         assertTrue(sourcesBounds.bottom <= fontSizeBounds.top)
         onNodeWithText("Manage regex danmaku filters").performScrollTo().assertIsDisplayed()
+    }
+
+    @Test
+    fun `text conversion dialog selects override and follow global resets it`() = runAniComposeUiTest {
+        var sources by mutableStateOf(sources())
+        var conversion: Pair<DanmakuServiceId, DanmakuTextConversion?>? = null
+        setContent {
+            ProvideCompositionLocalsForPreview {
+                DanmakuSourceSettings(
+                    sources, false, { _, _ -> }, {},
+                    onAdjustShift = { _, _ -> },
+                    globalTextConversion = DanmakuTextConversion.ORIGINAL,
+                    onSetTextConversion = { id, target -> conversion = id to target },
+                )
+            }
+        }
+        onNodeWithTag("danmaku-source-${dandan.value}").performClick()
+        onNodeWithTag("danmaku-source-text-conversion").assertIsDisplayed().performClick()
+        onNodeWithTag("danmaku-text-conversion-dialog").assertIsDisplayed()
+
+        // 单个来源: 选择具体目标, 立即生效但对话框保持打开
+        onNodeWithTag("danmaku-text-conversion-source-${dandan.value}").performClick()
+        onNodeWithTag("danmaku-text-conversion-option-${dandan.value}-TRADITIONAL").performClick()
+        runOnIdle { assertEquals(dandan to DanmakuTextConversion.TRADITIONAL, conversion) }
+        onNodeWithTag("danmaku-text-conversion-dialog").assertIsDisplayed()
+
+        // 切回跟随全局
+        onNodeWithTag("danmaku-text-conversion-source-${dandan.value}").performClick()
+        onNodeWithTag("danmaku-text-conversion-option-${dandan.value}-follow_global").performClick()
+        runOnIdle { assertEquals(dandan to null, conversion) }
+        onNodeWithTag("danmaku-text-conversion-dialog").assertIsDisplayed()
+
+        // 确认按钮关闭对话框, 其他来源不受影响
+        onNodeWithTag("danmaku-text-conversion-close").performClick()
+        onNodeWithTag("danmaku-text-conversion-dialog").assertDoesNotExist()
+        onNodeWithTag("danmaku-source-${ani.value}").assertIsDisplayed()
+    }
+
+    @Test
+    fun `text conversion row opens unified dialog switching global and resetting overrides`() = runAniComposeUiTest {
+        var config by mutableStateOf(DanmakuConfig.Default)
+        var global: DanmakuTextConversion? = null
+        var resetCount = 0
+        setContent {
+            ProvideCompositionLocalsForPreview {
+                Box(Modifier.width(400.dp)) {
+                    EpisodeVideoSettings(
+                        config,
+                        setDanmakuConfig = { transform -> config = transform(config) },
+                        false, {}, {},
+                        textConversionOverrides = mapOf(DanmakuServiceId.Baha to DanmakuTextConversion.TAIWAN),
+                        onSetTextConversionGlobal = { global = it },
+                        onResetTextConversionOverrides = { resetCount++ },
+                    )
+                }
+            }
+        }
+        onNodeWithTag("danmaku-text-conversion").assertIsDisplayed()
+        onNodeWithTag("danmaku-text-conversion-dialog").assertDoesNotExist()
+        onNodeWithTag("danmaku-text-conversion").performClick()
+        onNodeWithTag("danmaku-text-conversion-dialog").assertIsDisplayed()
+
+        // 有单独设置时展示重置按钮
+        onNodeWithTag("danmaku-text-conversion-reset").assertIsDisplayed().performClick()
+        runOnIdle { assertEquals(1, resetCount) }
+
+        // 全局 chips 切换目标
+        onNodeWithTag("danmaku-text-conversion-global-TAIWAN").performClick()
+        runOnIdle { assertEquals(DanmakuTextConversion.TAIWAN, global) }
+        onNodeWithTag("danmaku-text-conversion-global-ORIGINAL").performClick()
+        runOnIdle { assertEquals(DanmakuTextConversion.ORIGINAL, global) }
+    }
+
+    @Test
+    fun `text conversion reset hidden while no overrides`() = runAniComposeUiTest {
+        setContent {
+            ProvideCompositionLocalsForPreview {
+                Box(Modifier.width(400.dp)) {
+                    EpisodeVideoSettings(
+                        DanmakuConfig.Default, {}, false, {}, {},
+                    )
+                }
+            }
+        }
+        onNodeWithTag("danmaku-text-conversion").performClick()
+        onNodeWithTag("danmaku-text-conversion-dialog").assertIsDisplayed()
+        onNodeWithTag("danmaku-text-conversion-reset").assertDoesNotExist()
     }
 
     @Composable
