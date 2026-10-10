@@ -322,7 +322,7 @@ private fun BoxScope.DraggableWatchTogetherBubble(
         val settledTarget = positionState.targetFor(containerSize, bubbleSize, marginPx)
         LaunchedEffect(containerSize, bubbleSize, settledTarget, dragging) {
             if (!dragging && settledTarget != null) {
-                positionState.settle(settledTarget, containerSize, bubbleSize)
+                positionState.settleIfSameContainer(settledTarget, containerSize, bubbleSize)
             }
         }
 
