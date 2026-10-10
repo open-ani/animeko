@@ -84,6 +84,7 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -174,9 +175,11 @@ import me.him188.ani.app.ui.settings.tabs.media.CacheDirectoryGroup
 import me.him188.ani.app.ui.settings.tabs.media.MediaSelectionGroup
 import me.him188.ani.app.ui.settings.tabs.media.PikPakAcceleratorGroup
 import me.him188.ani.app.ui.settings.tabs.media.TorrentEngineGroup
-import me.him188.ani.app.ui.settings.tabs.media.source.MediaSourceGroup
 import me.him188.ani.app.ui.settings.tabs.media.source.MediaSourceSelectionActions
-import me.him188.ani.app.ui.settings.tabs.media.source.MediaSourceSubscriptionGroup
+import me.him188.ani.app.ui.settings.tabs.media.source.MediaSourceSubscriptionPageActions
+import me.him188.ani.app.ui.settings.tabs.media.source.MediaSourceSubscriptionPageContent
+import me.him188.ani.app.ui.settings.tabs.media.source.MediaSourceTab
+import me.him188.ani.app.ui.settings.tabs.media.source.pageTitle
 import me.him188.ani.app.ui.settings.tabs.media.source.rememberMediaSourceSelectionState
 import me.him188.ani.app.ui.settings.tabs.network.ConfigureProxyGroup
 import me.him188.ani.app.ui.settings.tabs.network.ServerSelectionGroup
@@ -382,16 +385,16 @@ fun SettingsScreen(
                                 WatchTogetherGroup(vm.watchTogetherSettings)
                             }
 
-                            SettingsTab.MEDIA_SOURCE -> {
-                                MediaSourceSubscriptionGroup(
-                                    vm.mediaSourceSubscriptionGroupState,
-                                )
-                                MediaSourceGroup(
-                                    vm.mediaSourceGroupState,
-                                    vm.editMediaSourceState,
-                                    mediaSourceSelectionState,
-                                )
-                            }
+                            SettingsTab.MEDIA_SOURCE -> MediaSourceTab(
+                                vm.mediaSourceSubscriptionGroupState,
+                                vm.mediaSourceGroupState,
+                                vm.editMediaSourceState,
+                                mediaSourceSelectionState,
+                                backgroundColor = listDetailLayoutParameters.detailPaneColors.containerColor,
+                                onOpenSubscription = {
+                                    navigateTo(DetailPaneRoutes.MediaSourceSubscription(it))
+                                },
+                            )
 
                             SettingsTab.MEDIA_SELECTOR -> MediaSelectionGroup(vm.mediaSelectionGroupState)
                             SettingsTab.SERVER -> ServerSelectionGroup(vm.danmakuSettingsState, vm.danmakuServerTesters)
@@ -446,6 +449,25 @@ fun SettingsScreen(
                 }
             }
         },
+        subscriptionPageTitle = { subscriptionId ->
+            vm.mediaSourceSubscriptionGroupState.findSubscription(subscriptionId)?.pageTitle.orEmpty()
+        },
+        subscriptionPageActions = { subscriptionId ->
+            MediaSourceSubscriptionPageActions(
+                subscriptionId,
+                vm.mediaSourceSubscriptionGroupState,
+                vm.mediaSourceGroupState,
+                vm.editMediaSourceState,
+            )
+        },
+        subscriptionPageContent = { subscriptionId ->
+            MediaSourceSubscriptionPageContent(
+                subscriptionId,
+                vm.mediaSourceSubscriptionGroupState,
+                vm.mediaSourceGroupState,
+                vm.editMediaSourceState,
+            )
+        },
         modifier = modifier,
         contentWindowInsets = windowInsets,
         navigationIcon = navigationIcon,
@@ -465,6 +487,10 @@ internal fun SettingsPageLayout(
     tabContent: @Composable SettingsDetailPaneScope.(currentTab: SettingsTab?) -> Unit, // inside Column verticalScroll
     detailPaneBottomBar: @Composable BoxScope.(currentTab: SettingsTab?, windowInsets: WindowInsets) -> Unit =
         { _, _ -> },
+    // [DetailPaneRoutes.MediaSourceSubscription] 页面. 由调用方提供, 因为它依赖设置页的状态.
+    subscriptionPageTitle: @Composable (subscriptionId: String) -> String = { "" },
+    subscriptionPageActions: @Composable (subscriptionId: String) -> Unit = {},
+    subscriptionPageContent: @Composable SettingsDetailPaneScope.(subscriptionId: String) -> Unit = {},
     modifier: Modifier = Modifier,
     contentWindowInsets: WindowInsets = AniWindowInsets.forColumnPageContent(),
     containerColor: Color = AniThemeDefaults.pageContentBackgroundColor,
@@ -875,6 +901,37 @@ internal fun SettingsPageLayout(
                             }
                         }
                     }
+                    entry<DetailPaneRoutes.MediaSourceSubscription> { route ->
+                        DetailPaneRoute(
+                            topAppBar = {
+                                AniTopAppBar(
+                                    title = {
+                                        // 没有名称的订阅用链接作为标题, 可能很长
+                                        Text(
+                                            subscriptionPageTitle(route.subscriptionId),
+                                            maxLines = 1,
+                                            overflow = TextOverflow.Ellipsis,
+                                        )
+                                    },
+                                    navigationIcon = {
+                                        BackNavigationIconButton(navigateUp)
+                                    },
+                                    actions = {
+                                        subscriptionPageActions(route.subscriptionId)
+                                    },
+                                    colors = topAppBarColors,
+                                    windowInsets = topAppBarWindowInsets,
+                                    size = topAppBarSize,
+                                    scrollBehavior = detailPaneTopAppBarScrollBehavior,
+                                )
+                            },
+                            detailPaneTopAppBarScrollBehavior,
+                        ) {
+                            RouteContent {
+                                subscriptionPageContent(route.subscriptionId)
+                            }
+                        }
+                    }
                     entry<DetailPaneRoutes.DevBuilds> {
                         DetailPaneRoute(
                             topAppBar = {
@@ -1029,17 +1086,34 @@ sealed class DetailPaneRoutes : NavKey {
 
     @Serializable
     data object DevBuilds : DetailPaneRoutes()
+
+    @Serializable
+    data class MediaSourceSubscription(val subscriptionId: String) : DetailPaneRoutes()
 }
 
+private const val MEDIA_SOURCE_SUBSCRIPTION_ROUTE_PREFIX = "MediaSourceSubscription:"
+
 private val DetailPaneBackStackSaver: Saver<SnapshotStateList<DetailPaneRoutes>, Any> = listSaver(
-    save = { stack -> stack.map { it::class.simpleName ?: "Main" } },
+    save = { stack ->
+        stack.map {
+            when (it) {
+                is DetailPaneRoutes.MediaSourceSubscription -> MEDIA_SOURCE_SUBSCRIPTION_ROUTE_PREFIX + it.subscriptionId
+                else -> it::class.simpleName ?: "Main"
+            }
+        }
+    },
     restore = { saved ->
         // 空栈会让 NavDisplay 抛异常, 此时放弃恢复
         if (saved.isEmpty()) {
             null
         } else {
             saved.map { name ->
-                when (name as String) {
+                if (name.startsWith(MEDIA_SOURCE_SUBSCRIPTION_ROUTE_PREFIX)) {
+                    return@map DetailPaneRoutes.MediaSourceSubscription(
+                        name.removePrefix(MEDIA_SOURCE_SUBSCRIPTION_ROUTE_PREFIX),
+                    )
+                }
+                when (name) {
                     "Acknowledgements" -> DetailPaneRoutes.Acknowledgements
                     "OpenSourceLicenses" -> DetailPaneRoutes.OpenSourceLicenses
                     "Developers" -> DetailPaneRoutes.Developers

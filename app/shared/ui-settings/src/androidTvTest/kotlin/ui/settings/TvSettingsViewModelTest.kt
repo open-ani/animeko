@@ -43,7 +43,6 @@ import me.him188.ani.app.domain.foundation.HttpClientProvider
 import me.him188.ani.app.domain.media.fetch.MediaFetcher
 import me.him188.ani.app.domain.media.fetch.MediaSourceManager
 import me.him188.ani.app.domain.media.selector.MediaSelectorSourceTiers
-import me.him188.ani.app.domain.mediasource.codec.ExportedMediaSourceDataList
 import me.him188.ani.app.domain.mediasource.codec.MediaSourceCodecManager
 import me.him188.ani.app.domain.mediasource.instance.MediaSourceInstance
 import me.him188.ani.app.domain.mediasource.instance.MediaSourceSave
@@ -222,7 +221,7 @@ class TvSettingsViewModelTest {
         val updater = MediaSourceSubscriptionUpdater(subscriptions, sources, MediaSourceCodecManager()) {
             requests++
             downloaded.await()
-            SubscriptionUpdateData(ExportedMediaSourceDataList(emptyList()))
+            SubscriptionUpdateData(mediaSources = emptyList())
         }
         val vm = createViewModel(
             PreferencesRepositoryImpl(MemoryDataStore(emptyPreferences())),

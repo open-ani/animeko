@@ -433,7 +433,7 @@ internal fun TvSettingsItems.sources(openSubscriptions: () -> Unit) {
 internal fun TvSettingsItems.subscriptions() {
     state.subscriptions.forEach { subscription ->
         toggle(
-            "subscription-${subscription.id}", subscription.url.removePrefix("https://").removePrefix("http://"),
+            "subscription-${subscription.id}", subscription.name,
             subscription.enabled,
             stringResource(Lang.tv_settings_subscription_sources_count, state.sources.count { it.subscription == subscription.id }),
         ) { onIntent(TvSettingsIntent.SubscriptionEnabled(subscription.id, it)) }

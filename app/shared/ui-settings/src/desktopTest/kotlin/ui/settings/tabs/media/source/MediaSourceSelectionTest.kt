@@ -17,6 +17,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.test.longClick
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.performClick
@@ -81,7 +82,7 @@ class MediaSourceSelectionTest {
 
                 Box(Modifier.fillMaxSize()) {
                     SettingsTab {
-                        MediaSourceGroup(groupState, editState, selectionState)
+                        MediaSourceGroup(groupState, editState, selectionState, backgroundColor = Color.White)
                     }
                     if (selectionState.inSelection) {
                         MediaSourceSelectionActions(
@@ -138,7 +139,7 @@ class MediaSourceSelectionTest {
             parameters = MediaSourceParameters.Empty,
             connectionTester = ConnectionTester(instanceId) { ConnectionTestResult.SUCCESS },
             instance = instance,
-            ownerSubscriptionUrl = null,
+            ownerSubscriptionId = null,
         )
     }
 }
