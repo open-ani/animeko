@@ -285,6 +285,21 @@ class EpisodePlayHistoryRepositoryTest {
     }
 
     @Test
+    fun `local record stats include deleted and not yet migrated legacy records`() = runTest {
+        val repository = createRepository(
+            EpisodeHistories(
+                histories = listOf(
+                    EpisodeHistory(episodeId = 1, positionMillis = 20_000, updatedAtMillis = 50),
+                    EpisodeHistory(episodeId = 2, positionMillis = 30_000, updatedAtMillis = 40, deletedAtMillis = 60),
+                ),
+            ),
+        )
+
+        assertEquals(2, repository.countAllRecords())
+        assertEquals(40, repository.getEarliestRecordTimeMillis())
+    }
+
+    @Test
     fun `delete pending ops removes selected ops`() = runTest {
         val repository = createRepository()
         repository.saveOrUpdate(

@@ -136,7 +136,8 @@ class DefaultQrLoginRepository(
             AniQrLoginStatus.SCANNED -> QrLoginPollResult.Scanned(resp.scannedByNickname?.takeIf { it.isNotEmpty() })
             AniQrLoginStatus.REJECTED -> QrLoginPollResult.Rejected
             AniQrLoginStatus.APPROVED -> {
-                val tokens = resp.login?.tokens ?: error("QR login is approved but the server sent no tokens")
+                val login = resp.login ?: error("QR login is approved but the server sent no tokens")
+                val tokens = login.tokens
                 sessionManager.setSession(
                     AccessTokenSession(
                         AccessTokenPair(
@@ -146,6 +147,7 @@ class DefaultQrLoginRepository(
                         ),
                     ),
                     refreshToken = tokens.refreshToken,
+                    userId = login.userId,
                 )
                 QrLoginPollResult.Approved
             }

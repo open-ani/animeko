@@ -110,6 +110,16 @@ interface EpisodePlayHistoryRepository {
      * 下次播放应恢复到的位置. 没有记录、记录已删除或已看完 ([EpisodeHistory.isFinished]) 时为 `null`, 表示从头播放.
      */
     suspend fun getResumePositionMillisByEpisodeId(episodeId: Int): Long?
+
+    /**
+     * 本机的播放记录数, 包含已删除的记录 (旧版本会把看完的剧集标记为删除, 它们同样代表看过).
+     */
+    suspend fun countAllRecords(): Int
+
+    /**
+     * 本机最早一条播放记录的更新时间, 没有记录时为 `null`. 同步过的记录可能来自其他设备.
+     */
+    suspend fun getEarliestRecordTimeMillis(): Long?
 }
 
 class EpisodePlayHistoryRepositoryImpl(
@@ -272,6 +282,16 @@ class EpisodePlayHistoryRepositoryImpl(
             ?.also {
                 logger.info { "load play progress for episode $episodeId: positionMillis=$it" }
             }
+    }
+
+    override suspend fun countAllRecords(): Int {
+        ensureLegacyDataStoreMigrated()
+        return playbackHistoryDao.countAllRecords()
+    }
+
+    override suspend fun getEarliestRecordTimeMillis(): Long? {
+        ensureLegacyDataStoreMigrated()
+        return playbackHistoryDao.getEarliestUpdatedAtMillis()
     }
 
     private fun EpisodeHistory.toPendingUpsertOrNull(): PlaybackHistoryPendingOp.Upsert? {
