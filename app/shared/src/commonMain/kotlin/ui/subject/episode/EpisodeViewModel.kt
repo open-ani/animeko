@@ -110,7 +110,9 @@ import me.him188.ani.app.domain.player.CacheProgressProvider
 import me.him188.ani.app.domain.player.extension.AnalyticsExtension
 import me.him188.ani.app.domain.player.extension.AutoSelectExtension
 import me.him188.ani.app.domain.player.extension.CacheOnBtPlayExtension
+import me.him188.ani.app.domain.player.extension.EpisodeExitAnalyticsExtension
 import me.him188.ani.app.domain.player.extension.MarkAsWatchedExtension
+import me.him188.ani.app.domain.player.extension.MediaFetchAnalyticsExtension
 import me.him188.ani.app.domain.player.extension.ObserveWebMediaSourcePreferenceExtension
 import me.him188.ani.app.domain.player.extension.PlaybackSpeedExtension
 import me.him188.ani.app.domain.player.extension.RememberPlayProgressExtension
@@ -366,6 +368,8 @@ open class EpisodeViewModel(
         subjectId, initialEpisodeId, player, backgroundScope,
         extensions = listOf(
             AnalyticsExtension,
+            EpisodeExitAnalyticsExtension,
+            MediaFetchAnalyticsExtension,
             PlaybackSpeedExtension.Factory(playbackSpeedFlow),
             RememberPlayProgressExtension,
             WatchTogetherPlayerExtension,

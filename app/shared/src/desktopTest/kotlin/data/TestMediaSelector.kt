@@ -24,6 +24,7 @@ import me.him188.ani.app.domain.media.selector.MediaSelector
 import me.him188.ani.app.domain.media.selector.MediaSelectorEvents
 import me.him188.ani.app.domain.media.selector.MutableMediaSelectorEvents
 import me.him188.ani.app.domain.media.selector.OptionalPreference
+import me.him188.ani.app.domain.media.selector.SelectOrigin
 import me.him188.ani.app.domain.media.selector.filter.MediaSelectorFilterSortAlgorithm
 import me.him188.ani.app.domain.media.selector.orElse
 import me.him188.ani.datasources.api.Media
@@ -110,7 +111,7 @@ open class TestMediaSelector(
         get() = throw UnsupportedOperationException()
     final override val events: MediaSelectorEvents = MutableMediaSelectorEvents()
 
-    override suspend fun select(candidate: Media): Boolean {
+    override suspend fun select(candidate: Media, origin: SelectOrigin): Boolean {
         if (this.selected.value == candidate) return false
         this.selected.value = candidate
         return true
