@@ -83,6 +83,7 @@ class OAuthConfigurator(
             sessionManager.setSession(
                 AccessTokenSession(oAuthResult.tokens),
                 oAuthResult.refreshToken,
+                userId = oAuthResult.userId,
             )
         } catch (ex: CancellationException) {
             _state.value = State.Idle
