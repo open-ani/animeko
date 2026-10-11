@@ -9,13 +9,17 @@
 
 package me.him188.ani.app.domain.mediasource.codec
 
+import kotlinx.serialization.EncodeDefault
+import kotlinx.serialization.ExperimentalSerializationApi
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.JsonElement
+import me.him188.ani.app.domain.mediasource.MediaSourceTags
 import me.him188.ani.datasources.api.source.FactoryId
 
 /**
  * @see MediaSourceCodec.encode
  */
+@OptIn(ExperimentalSerializationApi::class)
 @Serializable
 data class ExportedMediaSourceData(
     val factoryId: FactoryId,
@@ -32,5 +36,10 @@ data class ExportedMediaSourceData(
      * 未提供时使用 [MediaSourceArguments.name].
      */
     val id: String? = null,
+    /**
+     * 订阅作者给数据源打的标签, 客户端据此调整对这个数据源的处理. 已知的标签见 [MediaSourceTags], 不认识的忽略.
+     */
+    @EncodeDefault(EncodeDefault.Mode.NEVER)
+    val tags: List<String> = emptyList(),
 )
 

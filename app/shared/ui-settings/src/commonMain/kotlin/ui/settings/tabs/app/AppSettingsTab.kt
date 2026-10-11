@@ -38,6 +38,7 @@ import me.him188.ani.app.data.models.preference.BackgroundBehavior
 import me.him188.ani.app.data.models.preference.DesktopCloseBehavior
 import me.him188.ani.app.data.models.preference.EpisodeListProgressTheme
 import me.him188.ani.app.data.models.preference.FullscreenSwitchMode
+import me.him188.ani.app.data.models.preference.HlsAdFilteringMode
 import me.him188.ani.app.data.models.preference.NsfwMode
 import me.him188.ani.app.data.models.preference.PlayerKernelConfig
 import me.him188.ani.app.data.models.preference.ThemeSettings
@@ -97,7 +98,12 @@ import me.him188.ani.app.utils.formatSpeedValue
 import me.him188.ani.app.ui.lang.settings_player_default_playback_speed
 import me.him188.ani.app.ui.lang.settings_player_default_playback_speed_description
 import me.him188.ani.app.ui.lang.settings_player_hls_ad_filter
-import me.him188.ani.app.ui.lang.settings_player_hls_ad_filter_description
+import me.him188.ani.app.ui.lang.settings_player_hls_ad_filter_all
+import me.him188.ani.app.ui.lang.settings_player_hls_ad_filter_all_description
+import me.him188.ani.app.ui.lang.settings_player_hls_ad_filter_off
+import me.him188.ani.app.ui.lang.settings_player_hls_ad_filter_off_description
+import me.him188.ani.app.ui.lang.settings_player_hls_ad_filter_smart
+import me.him188.ani.app.ui.lang.settings_player_hls_ad_filter_smart_description
 import me.him188.ani.app.ui.lang.settings_player_enable_regex_filter
 import me.him188.ani.app.ui.lang.settings_player_foldable_hover_mode
 import me.him188.ani.app.ui.lang.settings_player_foldable_hover_mode_description
@@ -690,13 +696,15 @@ fun SettingsScope.PlayerGroup(
             )
         }
         HorizontalDividerItem()
-        SwitchItem(
-            checked = config.enableHlsAdFiltering,
-            onCheckedChange = {
-                videoScaffoldConfig.update(config.copy(enableHlsAdFiltering = it))
+        DropdownItem(
+            selected = { config.effectiveHlsAdFilteringMode },
+            values = { HlsAdFilteringMode.entries },
+            itemText = { Text(it.renderText()) },
+            onSelect = {
+                videoScaffoldConfig.update(config.copy(hlsAdFilteringMode = it))
             },
             title = { Text(stringResource(Lang.settings_player_hls_ad_filter)) },
-            description = { Text(stringResource(Lang.settings_player_hls_ad_filter_description)) },
+            description = { Text(config.effectiveHlsAdFilteringMode.renderDescription()) },
         )
         HorizontalDividerItem()
         SwitchItem(
@@ -871,6 +879,24 @@ private fun DesktopCloseBehavior.renderText(): String {
     return when (this) {
         DesktopCloseBehavior.EXIT -> stringResource(Lang.settings_app_close_behavior_exit)
         DesktopCloseBehavior.MINIMIZE -> stringResource(Lang.settings_app_close_behavior_minimize_to_tray)
+    }
+}
+
+@Composable
+internal fun HlsAdFilteringMode.renderText(): String {
+    return when (this) {
+        HlsAdFilteringMode.ALL -> stringResource(Lang.settings_player_hls_ad_filter_all)
+        HlsAdFilteringMode.SMART -> stringResource(Lang.settings_player_hls_ad_filter_smart)
+        HlsAdFilteringMode.OFF -> stringResource(Lang.settings_player_hls_ad_filter_off)
+    }
+}
+
+@Composable
+internal fun HlsAdFilteringMode.renderDescription(): String {
+    return when (this) {
+        HlsAdFilteringMode.ALL -> stringResource(Lang.settings_player_hls_ad_filter_all_description)
+        HlsAdFilteringMode.SMART -> stringResource(Lang.settings_player_hls_ad_filter_smart_description)
+        HlsAdFilteringMode.OFF -> stringResource(Lang.settings_player_hls_ad_filter_off_description)
     }
 }
 
