@@ -1,0 +1,2 @@
+"NSCameraUsageDescription" = "用于扫描登录和电视设置二维码。";
+"NSLocalNetworkUsageDescription" = "连接同一局域网中的电视，在手机上配置电视设置。";

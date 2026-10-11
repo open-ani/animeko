@@ -10,3 +10,7 @@
 
 - [Media Selector 重构方案](media/media-selector-refactor.md)
 - [Media Selector 行为清单 (重构基线)](media/media-selector-behavior-catalog.md)
+
+## 设置
+
+- [TV 局域网远程设置设计](tv-remote-settings.md)

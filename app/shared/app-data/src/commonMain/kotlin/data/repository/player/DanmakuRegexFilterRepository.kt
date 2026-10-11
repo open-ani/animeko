@@ -36,8 +36,6 @@ class DanmakuRegexFilterRepositoryImpl(
     private val store: DataStore<List<DanmakuRegexFilter>>,
 ) : DanmakuRegexFilterRepository {
 
-    private val json = Json { ignoreUnknownKeys = true }
-
     override val flow: Flow<List<DanmakuRegexFilter>> = store.data
 
     override suspend fun update(id: String, new: DanmakuRegexFilter) {
@@ -66,20 +64,14 @@ class DanmakuRegexFilterRepositoryImpl(
 
     override suspend fun export(): String {
         return withContext(Dispatchers.IO_) {
-            json.encodeToString(
-                ListSerializer(DanmakuRegexFilter.serializer()),
-                store.data.first(),
-            )
+            DanmakuRegexFilterListCodec.encode(store.data.first())
         }
     }
 
     override suspend fun import(jsonString: String): Boolean {
         return withContext(Dispatchers.IO_) {
             try {
-                val filters = json.decodeFromString(
-                    ListSerializer(DanmakuRegexFilter.serializer()),
-                    jsonString,
-                )
+                val filters = DanmakuRegexFilterListCodec.decode(jsonString)
                 store.updateData { filters }
                 true
             } catch (_: Exception) {
@@ -94,4 +86,15 @@ class DanmakuRegexFilterRepositoryImpl(
         }
     }
 
+}
+
+/** 弹幕过滤规则列表导入导出时使用的文本格式. */
+object DanmakuRegexFilterListCodec {
+    private val json = Json { ignoreUnknownKeys = true }
+    private val serializer = ListSerializer(DanmakuRegexFilter.serializer())
+
+    fun encode(filters: List<DanmakuRegexFilter>): String = json.encodeToString(serializer, filters)
+
+    /** @throws IllegalArgumentException [text] 不是导出的规则列表 */
+    fun decode(text: String): List<DanmakuRegexFilter> = json.decodeFromString(serializer, text)
 }

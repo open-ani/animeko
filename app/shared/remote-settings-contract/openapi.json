@@ -1,0 +1,2447 @@
+{
+    "openapi": "3.0.3",
+    "info": {
+        "title": "Animeko TV Remote Settings",
+        "version": "1.0.0",
+        "description": "Process-scoped LAN configuration service. All routes require the QR bearer key. Mutations use an operation UUID and conditional resource revision; accepted operations can finish after the requesting connection closes. Request bodies are limited to 2 MiB."
+    },
+    "servers": [
+        {
+            "url": "http://127.0.0.1"
+        }
+    ],
+    "security": [
+        {
+            "accessKey": []
+        }
+    ],
+    "paths": {
+        "/ping": {
+            "post": {
+                "tags": [
+                    "RemoteSettings"
+                ],
+                "operationId": "ping",
+                "responses": {
+                    "200": {
+                        "description": "Success",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/PingResponse"
+                                }
+                            }
+                        }
+                    },
+                    "default": {
+                        "description": "Remote settings error",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/RemoteError"
+                                }
+                            }
+                        }
+                    }
+                },
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/PingRequest"
+                            }
+                        }
+                    }
+                },
+                "parameters": [
+                    {
+                        "name": "X-Ani-Server-Instance",
+                        "in": "header",
+                        "schema": {
+                            "type": "string"
+                        },
+                        "required": false
+                    }
+                ]
+            }
+        },
+        "/state": {
+            "get": {
+                "tags": [
+                    "RemoteSettings"
+                ],
+                "operationId": "getState",
+                "responses": {
+                    "200": {
+                        "description": "Success",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/SettingsSnapshot"
+                                }
+                            }
+                        }
+                    },
+                    "default": {
+                        "description": "Remote settings error",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/RemoteError"
+                                }
+                            }
+                        }
+                    }
+                },
+                "parameters": [
+                    {
+                        "name": "X-Ani-Server-Instance",
+                        "in": "header",
+                        "schema": {
+                            "type": "string"
+                        },
+                        "required": false
+                    }
+                ]
+            }
+        },
+        "/preference": {
+            "post": {
+                "tags": [
+                    "RemoteSettings"
+                ],
+                "operationId": "setPreference",
+                "responses": {
+                    "200": {
+                        "description": "Success",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/OperationResult"
+                                }
+                            }
+                        }
+                    },
+                    "default": {
+                        "description": "Remote settings error",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/RemoteError"
+                                }
+                            }
+                        }
+                    },
+                    "202": {
+                        "description": "Operation accepted and still running; query its operationId without resubmitting.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/OperationResult"
+                                }
+                            }
+                        }
+                    }
+                },
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/PreferenceRequest"
+                            }
+                        }
+                    }
+                },
+                "parameters": [
+                    {
+                        "name": "X-Ani-Server-Instance",
+                        "in": "header",
+                        "schema": {
+                            "type": "string"
+                        },
+                        "required": false
+                    }
+                ]
+            }
+        },
+        "/media-source": {
+            "post": {
+                "tags": [
+                    "RemoteSettings"
+                ],
+                "operationId": "mediaSource",
+                "responses": {
+                    "200": {
+                        "description": "Success",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/OperationResult"
+                                }
+                            }
+                        }
+                    },
+                    "default": {
+                        "description": "Remote settings error",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/RemoteError"
+                                }
+                            }
+                        }
+                    },
+                    "202": {
+                        "description": "Operation accepted and still running; query its operationId without resubmitting.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/OperationResult"
+                                }
+                            }
+                        }
+                    }
+                },
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/MediaSourceRequest"
+                            }
+                        }
+                    }
+                },
+                "parameters": [
+                    {
+                        "name": "X-Ani-Server-Instance",
+                        "in": "header",
+                        "schema": {
+                            "type": "string"
+                        },
+                        "required": false
+                    }
+                ]
+            }
+        },
+        "/danmaku-filter": {
+            "post": {
+                "tags": [
+                    "RemoteSettings"
+                ],
+                "operationId": "danmakuFilter",
+                "responses": {
+                    "200": {
+                        "description": "Success",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/OperationResult"
+                                }
+                            }
+                        }
+                    },
+                    "default": {
+                        "description": "Remote settings error",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/RemoteError"
+                                }
+                            }
+                        }
+                    },
+                    "202": {
+                        "description": "Operation accepted and still running; query its operationId without resubmitting.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/OperationResult"
+                                }
+                            }
+                        }
+                    }
+                },
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/DanmakuFilterRequest"
+                            }
+                        }
+                    }
+                },
+                "parameters": [
+                    {
+                        "name": "X-Ani-Server-Instance",
+                        "in": "header",
+                        "schema": {
+                            "type": "string"
+                        },
+                        "required": false
+                    }
+                ]
+            }
+        },
+        "/backup": {
+            "post": {
+                "tags": [
+                    "RemoteSettings"
+                ],
+                "operationId": "backup",
+                "responses": {
+                    "200": {
+                        "description": "Success",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/OperationResult"
+                                }
+                            }
+                        }
+                    },
+                    "default": {
+                        "description": "Remote settings error",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/RemoteError"
+                                }
+                            }
+                        }
+                    },
+                    "202": {
+                        "description": "Operation accepted and still running; query its operationId without resubmitting.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/OperationResult"
+                                }
+                            }
+                        }
+                    }
+                },
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/BackupRequest"
+                            }
+                        }
+                    }
+                },
+                "parameters": [
+                    {
+                        "name": "X-Ani-Server-Instance",
+                        "in": "header",
+                        "schema": {
+                            "type": "string"
+                        },
+                        "required": false
+                    }
+                ]
+            }
+        },
+        "/log": {
+            "get": {
+                "tags": [
+                    "RemoteSettings"
+                ],
+                "operationId": "getLog",
+                "responses": {
+                    "200": {
+                        "description": "Success",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/LogSnapshot"
+                                }
+                            }
+                        }
+                    },
+                    "default": {
+                        "description": "Remote settings error",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/RemoteError"
+                                }
+                            }
+                        }
+                    }
+                },
+                "parameters": [
+                    {
+                        "name": "X-Ani-Server-Instance",
+                        "in": "header",
+                        "schema": {
+                            "type": "string"
+                        },
+                        "required": false
+                    }
+                ]
+            }
+        },
+        "/operations/{operationId}": {
+            "get": {
+                "tags": [
+                    "RemoteSettings"
+                ],
+                "operationId": "getOperation",
+                "responses": {
+                    "200": {
+                        "description": "Success",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/OperationResult"
+                                }
+                            }
+                        }
+                    },
+                    "default": {
+                        "description": "Remote settings error",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/RemoteError"
+                                }
+                            }
+                        }
+                    }
+                },
+                "parameters": [
+                    {
+                        "name": "X-Ani-Server-Instance",
+                        "in": "header",
+                        "schema": {
+                            "type": "string"
+                        },
+                        "required": false
+                    },
+                    {
+                        "name": "operationId",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                ]
+            }
+        }
+    },
+    "components": {
+        "securitySchemes": {
+            "accessKey": {
+                "type": "http",
+                "scheme": "bearer"
+            }
+        },
+        "schemas": {
+            "ApiFailure": {
+                "oneOf": [
+                    {
+                        "$ref": "#/components/schemas/ApiFailureNetworkError"
+                    },
+                    {
+                        "$ref": "#/components/schemas/ApiFailureServiceUnavailable"
+                    },
+                    {
+                        "$ref": "#/components/schemas/ApiFailureUnauthorized"
+                    }
+                ],
+                "discriminator": {
+                    "propertyName": "type",
+                    "mapping": {
+                        "me.him188.ani.app.data.models.ApiFailure.NetworkError": "#/components/schemas/ApiFailureNetworkError",
+                        "me.him188.ani.app.data.models.ApiFailure.ServiceUnavailable": "#/components/schemas/ApiFailureServiceUnavailable",
+                        "me.him188.ani.app.data.models.ApiFailure.Unauthorized": "#/components/schemas/ApiFailureUnauthorized"
+                    }
+                }
+            },
+            "ApiFailureNetworkError": {
+                "type": "object",
+                "properties": {
+                    "type": {
+                        "type": "string",
+                        "enum": [
+                            "me.him188.ani.app.data.models.ApiFailure.NetworkError"
+                        ]
+                    }
+                },
+                "required": [
+                    "type"
+                ],
+                "additionalProperties": false
+            },
+            "ApiFailureServiceUnavailable": {
+                "type": "object",
+                "properties": {
+                    "type": {
+                        "type": "string",
+                        "enum": [
+                            "me.him188.ani.app.data.models.ApiFailure.ServiceUnavailable"
+                        ]
+                    }
+                },
+                "required": [
+                    "type"
+                ],
+                "additionalProperties": false
+            },
+            "ApiFailureUnauthorized": {
+                "type": "object",
+                "properties": {
+                    "type": {
+                        "type": "string",
+                        "enum": [
+                            "me.him188.ani.app.data.models.ApiFailure.Unauthorized"
+                        ]
+                    }
+                },
+                "required": [
+                    "type"
+                ],
+                "additionalProperties": false
+            },
+            "BackupRequest": {
+                "type": "object",
+                "properties": {
+                    "operationId": {
+                        "type": "string"
+                    },
+                    "command": {
+                        "$ref": "#/components/schemas/RemoteBackupCommand"
+                    },
+                    "baseRevision": {
+                        "allOf": [
+                            {
+                                "type": "string"
+                            }
+                        ],
+                        "nullable": true
+                    }
+                },
+                "required": [
+                    "operationId",
+                    "command"
+                ],
+                "additionalProperties": false
+            },
+            "ClientProxyConfig": {
+                "type": "object",
+                "properties": {
+                    "url": {
+                        "type": "string"
+                    },
+                    "authorization": {
+                        "allOf": [
+                            {
+                                "type": "string"
+                            }
+                        ],
+                        "nullable": true
+                    }
+                },
+                "required": [
+                    "url"
+                ],
+                "additionalProperties": false
+            },
+            "DanmakuFilterConfig": {
+                "type": "object",
+                "properties": {
+                    "enableRegexFilter": {
+                        "type": "boolean"
+                    }
+                },
+                "required": [],
+                "additionalProperties": false
+            },
+            "DanmakuFilterRequest": {
+                "type": "object",
+                "properties": {
+                    "operationId": {
+                        "type": "string"
+                    },
+                    "command": {
+                        "$ref": "#/components/schemas/ReplaceDanmakuFilters"
+                    },
+                    "baseRevision": {
+                        "allOf": [
+                            {
+                                "type": "string"
+                            }
+                        ],
+                        "nullable": true
+                    }
+                },
+                "required": [
+                    "operationId",
+                    "command"
+                ],
+                "additionalProperties": false
+            },
+            "DanmakuRegexFilter": {
+                "type": "object",
+                "properties": {
+                    "id": {
+                        "type": "string"
+                    },
+                    "name": {
+                        "type": "string"
+                    },
+                    "regex": {
+                        "type": "string"
+                    },
+                    "enabled": {
+                        "type": "boolean"
+                    }
+                },
+                "required": [
+                    "id"
+                ],
+                "additionalProperties": false
+            },
+            "LastUpdated": {
+                "type": "object",
+                "properties": {
+                    "timeMillis": {
+                        "type": "integer",
+                        "format": "int64"
+                    },
+                    "mediaSourceCount": {
+                        "allOf": [
+                            {
+                                "type": "integer",
+                                "format": "int32"
+                            }
+                        ],
+                        "nullable": true
+                    },
+                    "error": {
+                        "allOf": [
+                            {
+                                "$ref": "#/components/schemas/UpdateError"
+                            }
+                        ],
+                        "nullable": true
+                    }
+                },
+                "required": [
+                    "timeMillis",
+                    "mediaSourceCount"
+                ],
+                "additionalProperties": false
+            },
+            "LogSnapshot": {
+                "type": "object",
+                "properties": {
+                    "fileName": {
+                        "type": "string"
+                    },
+                    "content": {
+                        "type": "string"
+                    },
+                    "truncated": {
+                        "type": "boolean"
+                    }
+                },
+                "required": [
+                    "fileName",
+                    "content",
+                    "truncated"
+                ],
+                "additionalProperties": false
+            },
+            "MediaCacheSettings": {
+                "type": "object",
+                "properties": {
+                    "enabled": {
+                        "type": "boolean"
+                    },
+                    "maxCountPerSubject": {
+                        "type": "integer",
+                        "format": "int32"
+                    },
+                    "mostRecentOnly": {
+                        "type": "boolean"
+                    },
+                    "mostRecentCount": {
+                        "type": "integer",
+                        "format": "int32"
+                    },
+                    "saveDir": {
+                        "allOf": [
+                            {
+                                "type": "string"
+                            }
+                        ],
+                        "nullable": true
+                    },
+                    "danmakuCacheStrategy": {
+                        "type": "string",
+                        "enum": [
+                            "DON_NOT_CACHE",
+                            "CACHE_ON_COLLECTION_DOING_MEDIA_PLAY",
+                            "CACHE_ON_MEDIA_CACHE"
+                        ]
+                    }
+                },
+                "required": [],
+                "additionalProperties": false
+            },
+            "MediaPreference": {
+                "type": "object",
+                "properties": {
+                    "alliance": {
+                        "allOf": [
+                            {
+                                "type": "string"
+                            }
+                        ],
+                        "nullable": true
+                    },
+                    "alliancePatterns": {
+                        "allOf": [
+                            {
+                                "type": "array",
+                                "items": {
+                                    "type": "string"
+                                }
+                            }
+                        ],
+                        "nullable": true
+                    },
+                    "resolution": {
+                        "allOf": [
+                            {
+                                "type": "string"
+                            }
+                        ],
+                        "nullable": true
+                    },
+                    "fallbackResolutions": {
+                        "allOf": [
+                            {
+                                "type": "array",
+                                "items": {
+                                    "type": "string"
+                                }
+                            }
+                        ],
+                        "nullable": true
+                    },
+                    "subtitleLanguageId": {
+                        "allOf": [
+                            {
+                                "type": "string"
+                            }
+                        ],
+                        "nullable": true
+                    },
+                    "fallbackSubtitleLanguageIds": {
+                        "allOf": [
+                            {
+                                "type": "array",
+                                "items": {
+                                    "type": "string"
+                                }
+                            }
+                        ],
+                        "nullable": true
+                    },
+                    "showWithoutSubtitle": {
+                        "type": "boolean"
+                    },
+                    "mediaSourceId": {
+                        "allOf": [
+                            {
+                                "type": "string"
+                            }
+                        ],
+                        "nullable": true
+                    },
+                    "fallbackMediaSourceIds": {
+                        "allOf": [
+                            {
+                                "type": "array",
+                                "items": {
+                                    "type": "string"
+                                }
+                            }
+                        ],
+                        "nullable": true
+                    }
+                },
+                "required": [],
+                "additionalProperties": false
+            },
+            "MediaSelectorSettings": {
+                "type": "object",
+                "properties": {
+                    "showDisabled": {
+                        "type": "boolean"
+                    },
+                    "hideSingleEpisodeForCompleted": {
+                        "type": "boolean"
+                    },
+                    "preferSeasons": {
+                        "type": "boolean"
+                    },
+                    "autoEnableLastSelected": {
+                        "type": "boolean"
+                    },
+                    "preferKind": {
+                        "allOf": [
+                            {
+                                "type": "string",
+                                "enum": [
+                                    "WEB",
+                                    "BitTorrent",
+                                    "LocalCache"
+                                ]
+                            }
+                        ],
+                        "nullable": true
+                    },
+                    "fastSelectWebKind": {
+                        "type": "boolean"
+                    },
+                    "fastSelectWebLowTierToleranceDuration": {
+                        "type": "string"
+                    },
+                    "enableImageCaptchaAutoSolve": {
+                        "type": "boolean"
+                    },
+                    "webSearchCacheTtl": {
+                        "type": "string"
+                    },
+                    "rememberManualSelection": {
+                        "type": "boolean"
+                    }
+                },
+                "required": [],
+                "additionalProperties": false
+            },
+            "MediaSourceCommand": {
+                "oneOf": [
+                    {
+                        "$ref": "#/components/schemas/MediaSourceCommandExport"
+                    },
+                    {
+                        "$ref": "#/components/schemas/MediaSourceCommandAdd"
+                    },
+                    {
+                        "$ref": "#/components/schemas/MediaSourceCommandDelete"
+                    },
+                    {
+                        "$ref": "#/components/schemas/MediaSourceCommandEdit"
+                    },
+                    {
+                        "$ref": "#/components/schemas/MediaSourceCommandEnable"
+                    },
+                    {
+                        "$ref": "#/components/schemas/MediaSourceCommandImport"
+                    },
+                    {
+                        "$ref": "#/components/schemas/MediaSourceCommandReorder"
+                    },
+                    {
+                        "$ref": "#/components/schemas/MediaSourceCommandSubscriptionAdd"
+                    },
+                    {
+                        "$ref": "#/components/schemas/MediaSourceCommandSubscriptionDelete"
+                    },
+                    {
+                        "$ref": "#/components/schemas/MediaSourceCommandSubscriptionEdit"
+                    },
+                    {
+                        "$ref": "#/components/schemas/MediaSourceCommandSubscriptionRefresh"
+                    }
+                ],
+                "discriminator": {
+                    "propertyName": "type",
+                    "mapping": {
+                        "export": "#/components/schemas/MediaSourceCommandExport",
+                        "add": "#/components/schemas/MediaSourceCommandAdd",
+                        "delete": "#/components/schemas/MediaSourceCommandDelete",
+                        "edit": "#/components/schemas/MediaSourceCommandEdit",
+                        "enable": "#/components/schemas/MediaSourceCommandEnable",
+                        "import": "#/components/schemas/MediaSourceCommandImport",
+                        "reorder": "#/components/schemas/MediaSourceCommandReorder",
+                        "subscriptionAdd": "#/components/schemas/MediaSourceCommandSubscriptionAdd",
+                        "subscriptionDelete": "#/components/schemas/MediaSourceCommandSubscriptionDelete",
+                        "subscriptionEdit": "#/components/schemas/MediaSourceCommandSubscriptionEdit",
+                        "subscriptionRefresh": "#/components/schemas/MediaSourceCommandSubscriptionRefresh"
+                    }
+                }
+            },
+            "MediaSourceCommandAdd": {
+                "type": "object",
+                "properties": {
+                    "source": {
+                        "$ref": "#/components/schemas/MediaSourceSave"
+                    },
+                    "type": {
+                        "type": "string",
+                        "enum": [
+                            "add"
+                        ]
+                    }
+                },
+                "required": [
+                    "type",
+                    "source"
+                ],
+                "additionalProperties": false
+            },
+            "MediaSourceCommandDelete": {
+                "type": "object",
+                "properties": {
+                    "ids": {
+                        "type": "array",
+                        "items": {
+                            "type": "string"
+                        }
+                    },
+                    "type": {
+                        "type": "string",
+                        "enum": [
+                            "delete"
+                        ]
+                    }
+                },
+                "required": [
+                    "type",
+                    "ids"
+                ],
+                "additionalProperties": false
+            },
+            "MediaSourceCommandEdit": {
+                "type": "object",
+                "properties": {
+                    "instanceId": {
+                        "type": "string"
+                    },
+                    "config": {
+                        "$ref": "#/components/schemas/MediaSourceConfig"
+                    },
+                    "type": {
+                        "type": "string",
+                        "enum": [
+                            "edit"
+                        ]
+                    }
+                },
+                "required": [
+                    "type",
+                    "instanceId",
+                    "config"
+                ],
+                "additionalProperties": false
+            },
+            "MediaSourceCommandEnable": {
+                "type": "object",
+                "properties": {
+                    "ids": {
+                        "type": "array",
+                        "items": {
+                            "type": "string"
+                        }
+                    },
+                    "enabled": {
+                        "type": "boolean"
+                    },
+                    "type": {
+                        "type": "string",
+                        "enum": [
+                            "enable"
+                        ]
+                    }
+                },
+                "required": [
+                    "type",
+                    "ids",
+                    "enabled"
+                ],
+                "additionalProperties": false
+            },
+            "MediaSourceCommandExport": {
+                "type": "object",
+                "properties": {
+                    "ids": {
+                        "type": "array",
+                        "items": {
+                            "type": "string"
+                        }
+                    },
+                    "type": {
+                        "type": "string",
+                        "enum": [
+                            "export"
+                        ]
+                    }
+                },
+                "required": [
+                    "type",
+                    "ids"
+                ],
+                "additionalProperties": false
+            },
+            "MediaSourceCommandImport": {
+                "type": "object",
+                "properties": {
+                    "text": {
+                        "type": "string"
+                    },
+                    "type": {
+                        "type": "string",
+                        "enum": [
+                            "import"
+                        ]
+                    }
+                },
+                "required": [
+                    "type",
+                    "text"
+                ],
+                "additionalProperties": false
+            },
+            "MediaSourceCommandReorder": {
+                "type": "object",
+                "properties": {
+                    "ids": {
+                        "type": "array",
+                        "items": {
+                            "type": "string"
+                        }
+                    },
+                    "type": {
+                        "type": "string",
+                        "enum": [
+                            "reorder"
+                        ]
+                    }
+                },
+                "required": [
+                    "type",
+                    "ids"
+                ],
+                "additionalProperties": false
+            },
+            "MediaSourceCommandSubscriptionAdd": {
+                "type": "object",
+                "properties": {
+                    "subscription": {
+                        "$ref": "#/components/schemas/MediaSourceSubscription"
+                    },
+                    "type": {
+                        "type": "string",
+                        "enum": [
+                            "subscriptionAdd"
+                        ]
+                    }
+                },
+                "required": [
+                    "type",
+                    "subscription"
+                ],
+                "additionalProperties": false
+            },
+            "MediaSourceCommandSubscriptionDelete": {
+                "type": "object",
+                "properties": {
+                    "id": {
+                        "type": "string"
+                    },
+                    "type": {
+                        "type": "string",
+                        "enum": [
+                            "subscriptionDelete"
+                        ]
+                    }
+                },
+                "required": [
+                    "type",
+                    "id"
+                ],
+                "additionalProperties": false
+            },
+            "MediaSourceCommandSubscriptionEdit": {
+                "type": "object",
+                "properties": {
+                    "subscription": {
+                        "$ref": "#/components/schemas/MediaSourceSubscription"
+                    },
+                    "type": {
+                        "type": "string",
+                        "enum": [
+                            "subscriptionEdit"
+                        ]
+                    }
+                },
+                "required": [
+                    "type",
+                    "subscription"
+                ],
+                "additionalProperties": false
+            },
+            "MediaSourceCommandSubscriptionRefresh": {
+                "type": "object",
+                "properties": {
+                    "id": {
+                        "allOf": [
+                            {
+                                "type": "string"
+                            }
+                        ],
+                        "nullable": true
+                    },
+                    "type": {
+                        "type": "string",
+                        "enum": [
+                            "subscriptionRefresh"
+                        ]
+                    }
+                },
+                "required": [
+                    "type"
+                ],
+                "additionalProperties": false
+            },
+            "MediaSourceConfig": {
+                "type": "object",
+                "properties": {
+                    "proxy": {
+                        "allOf": [
+                            {
+                                "$ref": "#/components/schemas/ClientProxyConfig"
+                            }
+                        ],
+                        "nullable": true
+                    },
+                    "userAgent": {
+                        "allOf": [
+                            {
+                                "type": "string"
+                            }
+                        ],
+                        "nullable": true
+                    },
+                    "arguments": {
+                        "type": "object",
+                        "additionalProperties": {
+                            "allOf": [
+                                {
+                                    "type": "string"
+                                }
+                            ],
+                            "nullable": true
+                        }
+                    },
+                    "serializedArguments": {
+                        "allOf": [
+                            {
+                                "description": "Factory-specific MediaSourceConfig.serializedArguments"
+                            }
+                        ],
+                        "nullable": true
+                    },
+                    "subscriptionId": {
+                        "allOf": [
+                            {
+                                "type": "string"
+                            }
+                        ],
+                        "nullable": true
+                    }
+                },
+                "required": [],
+                "additionalProperties": false
+            },
+            "MediaSourceRequest": {
+                "type": "object",
+                "properties": {
+                    "operationId": {
+                        "type": "string"
+                    },
+                    "command": {
+                        "$ref": "#/components/schemas/MediaSourceCommand"
+                    },
+                    "baseRevision": {
+                        "allOf": [
+                            {
+                                "type": "string"
+                            }
+                        ],
+                        "nullable": true
+                    }
+                },
+                "required": [
+                    "operationId",
+                    "command"
+                ],
+                "additionalProperties": false
+            },
+            "MediaSourceSave": {
+                "type": "object",
+                "properties": {
+                    "instanceId": {
+                        "type": "string"
+                    },
+                    "mediaSourceId": {
+                        "type": "string"
+                    },
+                    "factoryId": {
+                        "type": "string"
+                    },
+                    "isEnabled": {
+                        "type": "boolean"
+                    },
+                    "config": {
+                        "$ref": "#/components/schemas/MediaSourceConfig"
+                    }
+                },
+                "required": [
+                    "instanceId",
+                    "mediaSourceId",
+                    "isEnabled",
+                    "config"
+                ],
+                "additionalProperties": false
+            },
+            "MediaSourceSubscription": {
+                "type": "object",
+                "properties": {
+                    "subscriptionId": {
+                        "type": "string"
+                    },
+                    "url": {
+                        "type": "string"
+                    },
+                    "updatePeriod": {
+                        "type": "string"
+                    },
+                    "lastUpdated": {
+                        "allOf": [
+                            {
+                                "$ref": "#/components/schemas/LastUpdated"
+                            }
+                        ],
+                        "nullable": true
+                    },
+                    "enabled": {
+                        "type": "boolean"
+                    }
+                },
+                "required": [
+                    "subscriptionId",
+                    "url"
+                ],
+                "additionalProperties": false
+            },
+            "OperationResult": {
+                "type": "object",
+                "properties": {
+                    "operationId": {
+                        "type": "string"
+                    },
+                    "status": {
+                        "type": "string"
+                    },
+                    "result": {
+                        "allOf": [
+                            {
+                                "$ref": "#/components/schemas/RemoteOperationPayload"
+                            }
+                        ],
+                        "nullable": true
+                    },
+                    "error": {
+                        "allOf": [
+                            {
+                                "$ref": "#/components/schemas/RemoteError"
+                            }
+                        ],
+                        "nullable": true
+                    }
+                },
+                "required": [
+                    "operationId",
+                    "status"
+                ],
+                "additionalProperties": false
+            },
+            "PingRequest": {
+                "type": "object",
+                "properties": {
+                    "appVersion": {
+                        "type": "string"
+                    },
+                    "protocolVersion": {
+                        "type": "integer",
+                        "format": "int32"
+                    },
+                    "schemaVersion": {
+                        "type": "integer",
+                        "format": "int32"
+                    }
+                },
+                "required": [
+                    "appVersion",
+                    "protocolVersion",
+                    "schemaVersion"
+                ],
+                "additionalProperties": false
+            },
+            "PingResponse": {
+                "type": "object",
+                "properties": {
+                    "serverInstanceId": {
+                        "type": "string"
+                    },
+                    "appVersion": {
+                        "type": "string"
+                    },
+                    "deviceName": {
+                        "type": "string"
+                    },
+                    "protocolVersion": {
+                        "type": "integer",
+                        "format": "int32"
+                    },
+                    "schemaVersion": {
+                        "type": "integer",
+                        "format": "int32"
+                    },
+                    "capabilities": {
+                        "type": "array",
+                        "items": {
+                            "type": "string"
+                        }
+                    },
+                    "userUuid": {
+                        "allOf": [
+                            {
+                                "type": "string"
+                            }
+                        ],
+                        "nullable": true
+                    }
+                },
+                "required": [
+                    "serverInstanceId",
+                    "appVersion",
+                    "deviceName",
+                    "protocolVersion",
+                    "schemaVersion",
+                    "capabilities"
+                ],
+                "additionalProperties": false
+            },
+            "PlayerKernelConfig": {
+                "type": "object",
+                "properties": {
+                    "mpvOptions": {
+                        "type": "array",
+                        "items": {
+                            "type": "string"
+                        }
+                    },
+                    "exoPlayerInitEffectGraphInAdvance": {
+                        "type": "boolean"
+                    }
+                },
+                "required": [],
+                "additionalProperties": false
+            },
+            "PlayerVolume": {
+                "type": "object",
+                "properties": {
+                    "level": {
+                        "type": "number",
+                        "format": "float"
+                    },
+                    "mute": {
+                        "type": "boolean"
+                    }
+                },
+                "required": [
+                    "level",
+                    "mute"
+                ],
+                "additionalProperties": false
+            },
+            "PreferenceRequest": {
+                "type": "object",
+                "properties": {
+                    "operationId": {
+                        "type": "string"
+                    },
+                    "baseRevision": {
+                        "type": "string"
+                    },
+                    "value": {
+                        "$ref": "#/components/schemas/RemotePreference"
+                    }
+                },
+                "required": [
+                    "operationId",
+                    "baseRevision",
+                    "value"
+                ],
+                "additionalProperties": false
+            },
+            "RememberedRoomSession": {
+                "type": "object",
+                "properties": {
+                    "roomName": {
+                        "type": "string"
+                    },
+                    "password": {
+                        "type": "string"
+                    },
+                    "joinedAt": {
+                        "type": "integer",
+                        "format": "int64"
+                    }
+                },
+                "required": [
+                    "roomName",
+                    "password",
+                    "joinedAt"
+                ],
+                "additionalProperties": false
+            },
+            "RemoteBackupCommand": {
+                "oneOf": [
+                    {
+                        "$ref": "#/components/schemas/RemoteBackupCommandApply"
+                    },
+                    {
+                        "$ref": "#/components/schemas/RemoteBackupCommandExport"
+                    },
+                    {
+                        "$ref": "#/components/schemas/RemoteBackupCommandPreview"
+                    }
+                ],
+                "discriminator": {
+                    "propertyName": "type",
+                    "mapping": {
+                        "apply": "#/components/schemas/RemoteBackupCommandApply",
+                        "export": "#/components/schemas/RemoteBackupCommandExport",
+                        "preview": "#/components/schemas/RemoteBackupCommandPreview"
+                    }
+                }
+            },
+            "RemoteBackupCommandApply": {
+                "type": "object",
+                "properties": {
+                    "planId": {
+                        "type": "string"
+                    },
+                    "type": {
+                        "type": "string",
+                        "enum": [
+                            "apply"
+                        ]
+                    }
+                },
+                "required": [
+                    "type",
+                    "planId"
+                ],
+                "additionalProperties": false
+            },
+            "RemoteBackupCommandExport": {
+                "type": "object",
+                "properties": {
+                    "type": {
+                        "type": "string",
+                        "enum": [
+                            "export"
+                        ]
+                    }
+                },
+                "required": [
+                    "type"
+                ],
+                "additionalProperties": false
+            },
+            "RemoteBackupCommandPreview": {
+                "type": "object",
+                "properties": {
+                    "backup": {
+                        "$ref": "#/components/schemas/RemoteSettingsBackup"
+                    },
+                    "type": {
+                        "type": "string",
+                        "enum": [
+                            "preview"
+                        ]
+                    }
+                },
+                "required": [
+                    "type",
+                    "backup"
+                ],
+                "additionalProperties": false
+            },
+            "RemoteBackupPreview": {
+                "type": "object",
+                "properties": {
+                    "planId": {
+                        "type": "string"
+                    },
+                    "preferenceCount": {
+                        "type": "integer",
+                        "format": "int32"
+                    },
+                    "sourceCount": {
+                        "type": "integer",
+                        "format": "int32"
+                    },
+                    "subscriptionCount": {
+                        "type": "integer",
+                        "format": "int32"
+                    },
+                    "filterCount": {
+                        "type": "integer",
+                        "format": "int32"
+                    }
+                },
+                "required": [
+                    "planId",
+                    "preferenceCount",
+                    "sourceCount",
+                    "subscriptionCount",
+                    "filterCount"
+                ],
+                "additionalProperties": false
+            },
+            "RemoteBackupResult": {
+                "type": "object",
+                "properties": {
+                    "applied": {
+                        "type": "array",
+                        "items": {
+                            "type": "string"
+                        }
+                    },
+                    "failed": {
+                        "type": "object",
+                        "additionalProperties": {
+                            "type": "string"
+                        }
+                    }
+                },
+                "required": [
+                    "applied",
+                    "failed"
+                ],
+                "additionalProperties": false
+            },
+            "RemoteError": {
+                "type": "object",
+                "properties": {
+                    "code": {
+                        "type": "string"
+                    },
+                    "message": {
+                        "allOf": [
+                            {
+                                "type": "string"
+                            }
+                        ],
+                        "nullable": true
+                    }
+                },
+                "required": [
+                    "code"
+                ],
+                "additionalProperties": false
+            },
+            "RemoteOperationPayload": {
+                "oneOf": [
+                    {
+                        "$ref": "#/components/schemas/RemoteOperationPayloadApplied"
+                    },
+                    {
+                        "$ref": "#/components/schemas/RemoteOperationPayloadBackupApplied"
+                    },
+                    {
+                        "$ref": "#/components/schemas/RemoteOperationPayloadBackupExport"
+                    },
+                    {
+                        "$ref": "#/components/schemas/RemoteOperationPayloadBackupPreview"
+                    },
+                    {
+                        "$ref": "#/components/schemas/RemoteOperationPayloadSourceExport"
+                    }
+                ],
+                "discriminator": {
+                    "propertyName": "type",
+                    "mapping": {
+                        "applied": "#/components/schemas/RemoteOperationPayloadApplied",
+                        "backupApplied": "#/components/schemas/RemoteOperationPayloadBackupApplied",
+                        "backupExport": "#/components/schemas/RemoteOperationPayloadBackupExport",
+                        "backupPreview": "#/components/schemas/RemoteOperationPayloadBackupPreview",
+                        "sourceExport": "#/components/schemas/RemoteOperationPayloadSourceExport"
+                    }
+                }
+            },
+            "RemoteOperationPayloadApplied": {
+                "type": "object",
+                "properties": {
+                    "type": {
+                        "type": "string",
+                        "enum": [
+                            "applied"
+                        ]
+                    }
+                },
+                "required": [
+                    "type"
+                ],
+                "additionalProperties": false
+            },
+            "RemoteOperationPayloadBackupApplied": {
+                "type": "object",
+                "properties": {
+                    "value": {
+                        "$ref": "#/components/schemas/RemoteBackupResult"
+                    },
+                    "type": {
+                        "type": "string",
+                        "enum": [
+                            "backupApplied"
+                        ]
+                    }
+                },
+                "required": [
+                    "type",
+                    "value"
+                ],
+                "additionalProperties": false
+            },
+            "RemoteOperationPayloadBackupExport": {
+                "type": "object",
+                "properties": {
+                    "value": {
+                        "$ref": "#/components/schemas/RemoteSettingsBackup"
+                    },
+                    "type": {
+                        "type": "string",
+                        "enum": [
+                            "backupExport"
+                        ]
+                    }
+                },
+                "required": [
+                    "type",
+                    "value"
+                ],
+                "additionalProperties": false
+            },
+            "RemoteOperationPayloadBackupPreview": {
+                "type": "object",
+                "properties": {
+                    "value": {
+                        "$ref": "#/components/schemas/RemoteBackupPreview"
+                    },
+                    "type": {
+                        "type": "string",
+                        "enum": [
+                            "backupPreview"
+                        ]
+                    }
+                },
+                "required": [
+                    "type",
+                    "value"
+                ],
+                "additionalProperties": false
+            },
+            "RemoteOperationPayloadSourceExport": {
+                "type": "object",
+                "properties": {
+                    "text": {
+                        "type": "string"
+                    },
+                    "type": {
+                        "type": "string",
+                        "enum": [
+                            "sourceExport"
+                        ]
+                    }
+                },
+                "required": [
+                    "type",
+                    "text"
+                ],
+                "additionalProperties": false
+            },
+            "RemotePreference": {
+                "oneOf": [
+                    {
+                        "$ref": "#/components/schemas/RemotePreferenceDanmakuFilterConfig"
+                    },
+                    {
+                        "$ref": "#/components/schemas/RemotePreferenceMediaCacheSettings"
+                    },
+                    {
+                        "$ref": "#/components/schemas/RemotePreferenceDefaultMediaPreference"
+                    },
+                    {
+                        "$ref": "#/components/schemas/RemotePreferenceMediaSelectorSettings"
+                    },
+                    {
+                        "$ref": "#/components/schemas/RemotePreferencePlayerKernelConfig"
+                    },
+                    {
+                        "$ref": "#/components/schemas/RemotePreferenceVideoResolverSettings"
+                    },
+                    {
+                        "$ref": "#/components/schemas/RemotePreferenceVideoScaffoldConfig"
+                    },
+                    {
+                        "$ref": "#/components/schemas/RemotePreferenceWatchTogetherSettings"
+                    }
+                ],
+                "discriminator": {
+                    "propertyName": "type",
+                    "mapping": {
+                        "danmakuFilterConfig": "#/components/schemas/RemotePreferenceDanmakuFilterConfig",
+                        "mediaCacheSettings": "#/components/schemas/RemotePreferenceMediaCacheSettings",
+                        "defaultMediaPreference": "#/components/schemas/RemotePreferenceDefaultMediaPreference",
+                        "mediaSelectorSettings": "#/components/schemas/RemotePreferenceMediaSelectorSettings",
+                        "playerKernelConfig": "#/components/schemas/RemotePreferencePlayerKernelConfig",
+                        "videoResolverSettings": "#/components/schemas/RemotePreferenceVideoResolverSettings",
+                        "videoScaffoldConfig": "#/components/schemas/RemotePreferenceVideoScaffoldConfig",
+                        "watchTogetherSettings": "#/components/schemas/RemotePreferenceWatchTogetherSettings"
+                    }
+                }
+            },
+            "RemotePreferenceDanmakuFilterConfig": {
+                "type": "object",
+                "properties": {
+                    "value": {
+                        "$ref": "#/components/schemas/DanmakuFilterConfig"
+                    },
+                    "type": {
+                        "type": "string",
+                        "enum": [
+                            "danmakuFilterConfig"
+                        ]
+                    }
+                },
+                "required": [
+                    "type",
+                    "value"
+                ],
+                "additionalProperties": false
+            },
+            "RemotePreferenceDefaultMediaPreference": {
+                "type": "object",
+                "properties": {
+                    "value": {
+                        "$ref": "#/components/schemas/MediaPreference"
+                    },
+                    "type": {
+                        "type": "string",
+                        "enum": [
+                            "defaultMediaPreference"
+                        ]
+                    }
+                },
+                "required": [
+                    "type",
+                    "value"
+                ],
+                "additionalProperties": false
+            },
+            "RemotePreferenceMediaCacheSettings": {
+                "type": "object",
+                "properties": {
+                    "value": {
+                        "$ref": "#/components/schemas/MediaCacheSettings"
+                    },
+                    "type": {
+                        "type": "string",
+                        "enum": [
+                            "mediaCacheSettings"
+                        ]
+                    }
+                },
+                "required": [
+                    "type",
+                    "value"
+                ],
+                "additionalProperties": false
+            },
+            "RemotePreferenceMediaSelectorSettings": {
+                "type": "object",
+                "properties": {
+                    "value": {
+                        "$ref": "#/components/schemas/MediaSelectorSettings"
+                    },
+                    "type": {
+                        "type": "string",
+                        "enum": [
+                            "mediaSelectorSettings"
+                        ]
+                    }
+                },
+                "required": [
+                    "type",
+                    "value"
+                ],
+                "additionalProperties": false
+            },
+            "RemotePreferencePlayerKernelConfig": {
+                "type": "object",
+                "properties": {
+                    "value": {
+                        "$ref": "#/components/schemas/PlayerKernelConfig"
+                    },
+                    "type": {
+                        "type": "string",
+                        "enum": [
+                            "playerKernelConfig"
+                        ]
+                    }
+                },
+                "required": [
+                    "type",
+                    "value"
+                ],
+                "additionalProperties": false
+            },
+            "RemotePreferenceVideoResolverSettings": {
+                "type": "object",
+                "properties": {
+                    "value": {
+                        "$ref": "#/components/schemas/VideoResolverSettings"
+                    },
+                    "type": {
+                        "type": "string",
+                        "enum": [
+                            "videoResolverSettings"
+                        ]
+                    }
+                },
+                "required": [
+                    "type",
+                    "value"
+                ],
+                "additionalProperties": false
+            },
+            "RemotePreferenceVideoScaffoldConfig": {
+                "type": "object",
+                "properties": {
+                    "value": {
+                        "$ref": "#/components/schemas/VideoScaffoldConfig"
+                    },
+                    "type": {
+                        "type": "string",
+                        "enum": [
+                            "videoScaffoldConfig"
+                        ]
+                    }
+                },
+                "required": [
+                    "type",
+                    "value"
+                ],
+                "additionalProperties": false
+            },
+            "RemotePreferenceWatchTogetherSettings": {
+                "type": "object",
+                "properties": {
+                    "value": {
+                        "$ref": "#/components/schemas/WatchTogetherSettings"
+                    },
+                    "type": {
+                        "type": "string",
+                        "enum": [
+                            "watchTogetherSettings"
+                        ]
+                    }
+                },
+                "required": [
+                    "type",
+                    "value"
+                ],
+                "additionalProperties": false
+            },
+            "RemotePreferencesSnapshot": {
+                "type": "object",
+                "properties": {
+                    "videoScaffoldConfig": {
+                        "$ref": "#/components/schemas/VersionedVideoScaffoldConfig"
+                    },
+                    "playerKernelConfig": {
+                        "$ref": "#/components/schemas/VersionedPlayerKernelConfig"
+                    },
+                    "danmakuFilterConfig": {
+                        "$ref": "#/components/schemas/VersionedDanmakuFilterConfig"
+                    },
+                    "mediaSelectorSettings": {
+                        "$ref": "#/components/schemas/VersionedMediaSelectorSettings"
+                    },
+                    "defaultMediaPreference": {
+                        "$ref": "#/components/schemas/VersionedMediaPreference"
+                    },
+                    "videoResolverSettings": {
+                        "$ref": "#/components/schemas/VersionedVideoResolverSettings"
+                    },
+                    "watchTogetherSettings": {
+                        "$ref": "#/components/schemas/VersionedWatchTogetherSettings"
+                    },
+                    "mediaCacheSettings": {
+                        "$ref": "#/components/schemas/VersionedMediaCacheSettings"
+                    }
+                },
+                "required": [
+                    "videoScaffoldConfig",
+                    "playerKernelConfig",
+                    "danmakuFilterConfig",
+                    "mediaSelectorSettings",
+                    "defaultMediaPreference",
+                    "videoResolverSettings",
+                    "watchTogetherSettings",
+                    "mediaCacheSettings"
+                ],
+                "additionalProperties": false
+            },
+            "RemoteSettingsBackup": {
+                "type": "object",
+                "properties": {
+                    "schemaVersion": {
+                        "type": "integer",
+                        "format": "int32"
+                    },
+                    "preferences": {
+                        "type": "array",
+                        "items": {
+                            "$ref": "#/components/schemas/RemotePreference"
+                        }
+                    },
+                    "mediaSources": {
+                        "type": "array",
+                        "items": {
+                            "$ref": "#/components/schemas/MediaSourceSave"
+                        }
+                    },
+                    "subscriptions": {
+                        "type": "array",
+                        "items": {
+                            "$ref": "#/components/schemas/MediaSourceSubscription"
+                        }
+                    },
+                    "danmakuFilters": {
+                        "type": "array",
+                        "items": {
+                            "$ref": "#/components/schemas/DanmakuRegexFilter"
+                        }
+                    }
+                },
+                "required": [
+                    "preferences",
+                    "mediaSources",
+                    "subscriptions",
+                    "danmakuFilters"
+                ],
+                "additionalProperties": false
+            },
+            "RemoteSourceParameter": {
+                "type": "object",
+                "properties": {
+                    "name": {
+                        "type": "string"
+                    },
+                    "description": {
+                        "type": "string"
+                    },
+                    "kind": {
+                        "type": "string"
+                    },
+                    "defaultValue": {
+                        "type": "string"
+                    },
+                    "choices": {
+                        "type": "array",
+                        "items": {
+                            "type": "string"
+                        }
+                    },
+                    "required": {
+                        "type": "boolean"
+                    },
+                    "visibleWhen": {
+                        "allOf": [
+                            {
+                                "type": "string"
+                            }
+                        ],
+                        "nullable": true
+                    },
+                    "acceptedValues": {
+                        "type": "array",
+                        "items": {
+                            "type": "string"
+                        }
+                    }
+                },
+                "required": [
+                    "name",
+                    "description",
+                    "kind",
+                    "defaultValue"
+                ],
+                "additionalProperties": false
+            },
+            "RemoteSourceTemplate": {
+                "type": "object",
+                "properties": {
+                    "factoryId": {
+                        "type": "string"
+                    },
+                    "name": {
+                        "type": "string"
+                    },
+                    "description": {
+                        "type": "string"
+                    },
+                    "allowMultiple": {
+                        "type": "boolean"
+                    },
+                    "parameters": {
+                        "type": "array",
+                        "items": {
+                            "$ref": "#/components/schemas/RemoteSourceParameter"
+                        }
+                    },
+                    "iconUrl": {
+                        "allOf": [
+                            {
+                                "type": "string"
+                            }
+                        ],
+                        "nullable": true
+                    }
+                },
+                "required": [
+                    "factoryId",
+                    "name",
+                    "description",
+                    "allowMultiple",
+                    "parameters"
+                ],
+                "additionalProperties": false
+            },
+            "ReplaceDanmakuFilters": {
+                "type": "object",
+                "properties": {
+                    "filters": {
+                        "type": "array",
+                        "items": {
+                            "$ref": "#/components/schemas/DanmakuRegexFilter"
+                        }
+                    }
+                },
+                "required": [
+                    "filters"
+                ],
+                "additionalProperties": false
+            },
+            "SettingsSnapshot": {
+                "type": "object",
+                "properties": {
+                    "preferences": {
+                        "$ref": "#/components/schemas/RemotePreferencesSnapshot"
+                    },
+                    "mediaSources": {
+                        "$ref": "#/components/schemas/VersionedListOfMediaSourceSave"
+                    },
+                    "subscriptions": {
+                        "$ref": "#/components/schemas/VersionedListOfMediaSourceSubscription"
+                    },
+                    "danmakuFilters": {
+                        "$ref": "#/components/schemas/VersionedListOfDanmakuRegexFilter"
+                    },
+                    "templates": {
+                        "type": "array",
+                        "items": {
+                            "$ref": "#/components/schemas/RemoteSourceTemplate"
+                        }
+                    }
+                },
+                "required": [
+                    "preferences",
+                    "mediaSources",
+                    "subscriptions",
+                    "danmakuFilters",
+                    "templates"
+                ],
+                "additionalProperties": false
+            },
+            "UpdateError": {
+                "type": "object",
+                "properties": {
+                    "message": {
+                        "allOf": [
+                            {
+                                "type": "string"
+                            }
+                        ],
+                        "nullable": true
+                    },
+                    "failure": {
+                        "allOf": [
+                            {
+                                "$ref": "#/components/schemas/ApiFailure"
+                            }
+                        ],
+                        "nullable": true
+                    }
+                },
+                "required": [
+                    "message"
+                ],
+                "additionalProperties": false
+            },
+            "VersionedDanmakuFilterConfig": {
+                "type": "object",
+                "properties": {
+                    "revision": {
+                        "type": "string"
+                    },
+                    "value": {
+                        "$ref": "#/components/schemas/DanmakuFilterConfig"
+                    }
+                },
+                "required": [
+                    "revision",
+                    "value"
+                ],
+                "additionalProperties": false
+            },
+            "VersionedListOfDanmakuRegexFilter": {
+                "type": "object",
+                "properties": {
+                    "revision": {
+                        "type": "string"
+                    },
+                    "value": {
+                        "type": "array",
+                        "items": {
+                            "$ref": "#/components/schemas/DanmakuRegexFilter"
+                        }
+                    }
+                },
+                "required": [
+                    "revision",
+                    "value"
+                ],
+                "additionalProperties": false
+            },
+            "VersionedListOfMediaSourceSave": {
+                "type": "object",
+                "properties": {
+                    "revision": {
+                        "type": "string"
+                    },
+                    "value": {
+                        "type": "array",
+                        "items": {
+                            "$ref": "#/components/schemas/MediaSourceSave"
+                        }
+                    }
+                },
+                "required": [
+                    "revision",
+                    "value"
+                ],
+                "additionalProperties": false
+            },
+            "VersionedListOfMediaSourceSubscription": {
+                "type": "object",
+                "properties": {
+                    "revision": {
+                        "type": "string"
+                    },
+                    "value": {
+                        "type": "array",
+                        "items": {
+                            "$ref": "#/components/schemas/MediaSourceSubscription"
+                        }
+                    }
+                },
+                "required": [
+                    "revision",
+                    "value"
+                ],
+                "additionalProperties": false
+            },
+            "VersionedMediaCacheSettings": {
+                "type": "object",
+                "properties": {
+                    "revision": {
+                        "type": "string"
+                    },
+                    "value": {
+                        "$ref": "#/components/schemas/MediaCacheSettings"
+                    }
+                },
+                "required": [
+                    "revision",
+                    "value"
+                ],
+                "additionalProperties": false
+            },
+            "VersionedMediaPreference": {
+                "type": "object",
+                "properties": {
+                    "revision": {
+                        "type": "string"
+                    },
+                    "value": {
+                        "$ref": "#/components/schemas/MediaPreference"
+                    }
+                },
+                "required": [
+                    "revision",
+                    "value"
+                ],
+                "additionalProperties": false
+            },
+            "VersionedMediaSelectorSettings": {
+                "type": "object",
+                "properties": {
+                    "revision": {
+                        "type": "string"
+                    },
+                    "value": {
+                        "$ref": "#/components/schemas/MediaSelectorSettings"
+                    }
+                },
+                "required": [
+                    "revision",
+                    "value"
+                ],
+                "additionalProperties": false
+            },
+            "VersionedPlayerKernelConfig": {
+                "type": "object",
+                "properties": {
+                    "revision": {
+                        "type": "string"
+                    },
+                    "value": {
+                        "$ref": "#/components/schemas/PlayerKernelConfig"
+                    }
+                },
+                "required": [
+                    "revision",
+                    "value"
+                ],
+                "additionalProperties": false
+            },
+            "VersionedVideoResolverSettings": {
+                "type": "object",
+                "properties": {
+                    "revision": {
+                        "type": "string"
+                    },
+                    "value": {
+                        "$ref": "#/components/schemas/VideoResolverSettings"
+                    }
+                },
+                "required": [
+                    "revision",
+                    "value"
+                ],
+                "additionalProperties": false
+            },
+            "VersionedVideoScaffoldConfig": {
+                "type": "object",
+                "properties": {
+                    "revision": {
+                        "type": "string"
+                    },
+                    "value": {
+                        "$ref": "#/components/schemas/VideoScaffoldConfig"
+                    }
+                },
+                "required": [
+                    "revision",
+                    "value"
+                ],
+                "additionalProperties": false
+            },
+            "VersionedWatchTogetherSettings": {
+                "type": "object",
+                "properties": {
+                    "revision": {
+                        "type": "string"
+                    },
+                    "value": {
+                        "$ref": "#/components/schemas/WatchTogetherSettings"
+                    }
+                },
+                "required": [
+                    "revision",
+                    "value"
+                ],
+                "additionalProperties": false
+            },
+            "VideoResolverSettings": {
+                "type": "object",
+                "properties": {
+                    "driver": {
+                        "type": "string",
+                        "enum": [
+                            "CHROME",
+                            "EDGE",
+                            "AUTO"
+                        ]
+                    },
+                    "headless": {
+                        "type": "boolean"
+                    },
+                    "resourceExtractionTimeoutSeconds": {
+                        "type": "integer",
+                        "format": "int32"
+                    },
+                    "dataSourceBrowserConcurrency": {
+                        "type": "integer",
+                        "format": "int32"
+                    }
+                },
+                "required": [],
+                "additionalProperties": false
+            },
+            "VideoScaffoldConfig": {
+                "type": "object",
+                "properties": {
+                    "fullscreenSwitchMode": {
+                        "type": "string",
+                        "enum": [
+                            "ALWAYS_SHOW_FLOATING",
+                            "AUTO_HIDE_FLOATING",
+                            "ONLY_IN_CONTROLLER"
+                        ]
+                    },
+                    "enableFramePreview": {
+                        "type": "boolean"
+                    },
+                    "videoEnhancementDefaultMode": {
+                        "type": "string",
+                        "enum": [
+                            "OFF",
+                            "PERFORMANCE",
+                            "QUALITY"
+                        ]
+                    },
+                    "pauseVideoOnEditDanmaku": {
+                        "type": "boolean"
+                    },
+                    "autoMarkDone": {
+                        "type": "boolean"
+                    },
+                    "hideSelectorOnSelect": {
+                        "type": "boolean"
+                    },
+                    "autoFullscreenOnLandscapeMode": {
+                        "type": "boolean"
+                    },
+                    "autoPlayNext": {
+                        "type": "boolean"
+                    },
+                    "autoSkipOpEd": {
+                        "type": "boolean"
+                    },
+                    "opEdSkipDuration": {
+                        "type": "string"
+                    },
+                    "autoSwitchMediaOnPlayerError": {
+                        "type": "boolean"
+                    },
+                    "enableHighQualityAudioTimeStretch": {
+                        "type": "boolean"
+                    },
+                    "enableHlsAdFiltering": {
+                        "type": "boolean"
+                    },
+                    "displayModeId": {
+                        "type": "integer",
+                        "format": "int32"
+                    },
+                    "fastForwardSpeed": {
+                        "type": "number",
+                        "format": "float"
+                    },
+                    "playbackSpeed": {
+                        "type": "number",
+                        "format": "float"
+                    },
+                    "rememberPlaybackSpeed": {
+                        "type": "boolean"
+                    },
+                    "minPlaybackSpeed": {
+                        "type": "number",
+                        "format": "float"
+                    },
+                    "maxPlaybackSpeed": {
+                        "type": "number",
+                        "format": "float"
+                    },
+                    "playerVolume": {
+                        "$ref": "#/components/schemas/PlayerVolume"
+                    },
+                    "backgroundBehavior": {
+                        "type": "string",
+                        "enum": [
+                            "AUTO_PICTURE_IN_PICTURE",
+                            "PAUSE",
+                            "BACKGROUND_PLAYBACK"
+                        ]
+                    }
+                },
+                "required": [],
+                "additionalProperties": false
+            },
+            "WatchTogetherSettings": {
+                "type": "object",
+                "properties": {
+                    "enabled": {
+                        "type": "boolean"
+                    },
+                    "followHost": {
+                        "type": "boolean"
+                    },
+                    "lastRoomName": {
+                        "type": "string"
+                    },
+                    "rememberedSession": {
+                        "allOf": [
+                            {
+                                "$ref": "#/components/schemas/RememberedRoomSession"
+                            }
+                        ],
+                        "nullable": true
+                    }
+                },
+                "required": [],
+                "additionalProperties": false
+            }
+        }
+    }
+}

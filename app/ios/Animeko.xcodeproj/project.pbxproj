@@ -14,6 +14,7 @@
 		2152FB042600AC8F00CF470E /* iOSApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2152FB032600AC8F00CF470E /* iOSApp.swift */; };
 		6FA72F27919077AAAC1D327A /* Pods_Animeko.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 9394AA604B73CA09673A25D5 /* Pods_Animeko.framework */; };
 		7555FF83242A565900829871 /* ContentView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7555FF82242A565900829871 /* ContentView.swift */; };
+		8E1F0B937448499DB28A1901 /* InfoPlist.strings in Resources */ = {isa = PBXBuildFile; fileRef = 8E1F0B937448499DB28A1900 /* InfoPlist.strings */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXCopyFilesBuildPhase section */
@@ -41,6 +42,10 @@
 		7555FF8C242A565B00829871 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
 		9394AA604B73CA09673A25D5 /* Pods_Animeko.framework */ = {isa = PBXFileReference; explicitFileType = wrapper.framework; includeInIndex = 0; path = Pods_Animeko.framework; sourceTree = BUILT_PRODUCTS_DIR; };
 		F249EC154975837B7E34C6F8 /* Pods-Animeko.release.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-Animeko.release.xcconfig"; path = "Target Support Files/Pods-Animeko/Pods-Animeko.release.xcconfig"; sourceTree = "<group>"; };
+		8E1F0B937448499DB28A1910 /* en */ = {isa = PBXFileReference; lastKnownFileType = text.plist.strings; name = "en"; path = "en.lproj/InfoPlist.strings"; sourceTree = "<group>"; };
+		8E1F0B937448499DB28A1911 /* zh-Hans */ = {isa = PBXFileReference; lastKnownFileType = text.plist.strings; name = "zh-Hans"; path = "zh-Hans.lproj/InfoPlist.strings"; sourceTree = "<group>"; };
+		8E1F0B937448499DB28A1912 /* zh-Hant-HK */ = {isa = PBXFileReference; lastKnownFileType = text.plist.strings; name = "zh-Hant-HK"; path = "zh-Hant-HK.lproj/InfoPlist.strings"; sourceTree = "<group>"; };
+		8E1F0B937448499DB28A1913 /* zh-Hant-TW */ = {isa = PBXFileReference; lastKnownFileType = text.plist.strings; name = "zh-Hant-TW"; path = "zh-Hant-TW.lproj/InfoPlist.strings"; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -97,6 +102,7 @@
 				058557BA273AAA24004C7B11 /* Assets.xcassets */,
 				7555FF82242A565900829871 /* ContentView.swift */,
 				7555FF8C242A565B00829871 /* Info.plist */,
+				8E1F0B937448499DB28A1900 /* InfoPlist.strings */,
 				2152FB032600AC8F00CF470E /* iOSApp.swift */,
 				058557D7273AAEEB004C7B11 /* Preview Content */,
 			);
@@ -158,6 +164,9 @@
 			knownRegions = (
 				en,
 				Base,
+				"zh-Hans",
+				"zh-Hant-HK",
+				"zh-Hant-TW",
 			);
 			mainGroup = 7555FF72242A565900829871;
 			productRefGroup = 7555FF7C242A565900829871 /* Products */;
@@ -176,10 +185,25 @@
 			files = (
 				058557D9273AAEEB004C7B11 /* Preview Assets.xcassets in Resources */,
 				058557BB273AAA24004C7B11 /* Assets.xcassets in Resources */,
+				8E1F0B937448499DB28A1901 /* InfoPlist.strings in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
 /* End PBXResourcesBuildPhase section */
+
+/* Begin PBXVariantGroup section */
+		8E1F0B937448499DB28A1900 /* InfoPlist.strings */ = {
+			isa = PBXVariantGroup;
+			children = (
+				8E1F0B937448499DB28A1910 /* en */,
+				8E1F0B937448499DB28A1911 /* zh-Hans */,
+				8E1F0B937448499DB28A1912 /* zh-Hant-HK */,
+				8E1F0B937448499DB28A1913 /* zh-Hant-TW */,
+			);
+			name = InfoPlist.strings;
+			sourceTree = "<group>";
+		};
+/* End PBXVariantGroup section */
 
 /* Begin PBXShellScriptBuildPhase section */
 		32AED4EACB5E805DA85594C8 /* [CP] Copy Pods Resources */ = {

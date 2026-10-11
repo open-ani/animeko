@@ -13,15 +13,17 @@ import io.ktor.client.plugins.ClientRequestException
 import io.ktor.client.plugins.ServerResponseException
 import io.ktor.http.HttpStatusCode
 import kotlinx.io.IOException
+import kotlinx.serialization.Serializable
 import kotlin.contracts.InvocationKind
 import kotlin.contracts.contract
 import kotlin.coroutines.cancellation.CancellationException
 import kotlin.jvm.JvmInline
 
+@Serializable
 sealed interface ApiFailure {
-    data object Unauthorized : ApiFailure
-    data object NetworkError : ApiFailure // IOException
-    data object ServiceUnavailable : ApiFailure // 500..599
+    @Serializable data object Unauthorized : ApiFailure
+    @Serializable data object NetworkError : ApiFailure // IOException
+    @Serializable data object ServiceUnavailable : ApiFailure // 500..599
 }
 
 /**

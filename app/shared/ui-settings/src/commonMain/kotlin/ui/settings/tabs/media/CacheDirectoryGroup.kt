@@ -22,7 +22,9 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalClipboard
+import androidx.compose.ui.platform.testTag
 import me.him188.ani.app.data.models.preference.DanmakuCacheStrategy
 import me.him188.ani.app.data.models.preference.MediaCacheSettings
 import me.him188.ani.app.platform.PermissionManager
@@ -51,6 +53,7 @@ import me.him188.ani.app.ui.settings.framework.SettingsState
 import me.him188.ani.app.ui.settings.framework.components.DropdownItem
 import me.him188.ani.app.ui.settings.framework.components.SettingsScope
 import me.him188.ani.app.ui.settings.framework.components.TextItem
+import org.jetbrains.compose.resources.StringResource
 import org.jetbrains.compose.resources.getString
 import org.jetbrains.compose.resources.stringResource
 
@@ -63,7 +66,15 @@ class CacheDirectoryGroupState(
 )
 
 @Composable
-fun SettingsScope.BackupSettings(state: CacheDirectoryGroupState) {
+fun SettingsScope.BackupSettings(state: CacheDirectoryGroupState) =
+    BackupSettings(state.onGetBackupData, state.onRestoreSettings)
+
+@Composable
+fun SettingsScope.BackupSettings(
+    onGetBackupData: suspend () -> String,
+    onRestoreSettings: suspend (String) -> Boolean,
+    restoreWarning: StringResource = Lang.settings_storage_backup_op_restore_warning,
+) {
     var showRestoreDialog by remember { mutableStateOf(false) }
 
     val scope = rememberAsyncHandler()
@@ -76,7 +87,7 @@ fun SettingsScope.BackupSettings(state: CacheDirectoryGroupState) {
         TextItem(
             onClick = {
                 scope.launch {
-                    val data = state.onGetBackupData()
+                    val data = onGetBackupData()
                     clipboard.setClipEntryText(data)
                     toaster.toast(getString(Lang.settings_mediasource_rss_copied_to_clipboard))
                 }
@@ -99,14 +110,14 @@ fun SettingsScope.BackupSettings(state: CacheDirectoryGroupState) {
             { showRestoreDialog = false },
             icon = { Icon(Icons.Rounded.ContentPaste, null, tint = MaterialTheme.colorScheme.error) },
             title = { Text(stringResource(Lang.settings_storage_backup_op_restore)) },
-            text = { Text(stringResource(Lang.settings_storage_backup_op_restore_warning)) },
+            text = { Text(stringResource(restoreWarning)) },
             confirmButton = {
                 TextButton(
                     {
                         scope.launch {
                             val clipboardText = clipboard.getClipEntryText()
                                 ?.takeIf { it.isNotBlank() && it.isNotEmpty() }
-                            val result = clipboardText?.let { state.onRestoreSettings(it) } == true
+                            val result = clipboardText?.let { onRestoreSettings(it) } == true
 
                             toaster.toast(if (result) restoreSuccess else restoreFailed)
                             showRestoreDialog = false
@@ -126,14 +137,22 @@ fun SettingsScope.BackupSettings(state: CacheDirectoryGroupState) {
 }
 
 @Composable
-fun SettingsScope.DanmakuCacheSettings(state: CacheDirectoryGroupState) {
-    val mediaCacheSettings by state.mediaCacheSettingsState
+fun SettingsScope.DanmakuCacheSettings(state: CacheDirectoryGroupState) =
+    DanmakuCacheSettings(state.mediaCacheSettingsState)
+
+@Composable
+fun SettingsScope.DanmakuCacheSettings(
+    state: SettingsState<MediaCacheSettings>,
+    strategies: List<DanmakuCacheStrategy> = DanmakuCacheStrategy.entries,
+) {
+    val mediaCacheSettings by state
     val tasker = rememberAsyncHandler()
 
     DropdownItem(
         title = { Text(stringResource(Lang.settings_storage_danmaku_cache_strategy_title)) },
         selected = { mediaCacheSettings.danmakuCacheStrategy },
-        values = { DanmakuCacheStrategy.entries },
+        modifier = Modifier.testTag("settings-danmaku-cache"),
+        values = { strategies },
         description = {
             Text(
                 when (mediaCacheSettings.danmakuCacheStrategy) {
@@ -159,7 +178,7 @@ fun SettingsScope.DanmakuCacheSettings(state: CacheDirectoryGroupState) {
         },
         onSelect = { newStrategy ->
             tasker.launch {
-                state.mediaCacheSettingsState.updateSuspended(
+                state.updateSuspended(
                     mediaCacheSettings.copy(danmakuCacheStrategy = newStrategy),
                 )
             }

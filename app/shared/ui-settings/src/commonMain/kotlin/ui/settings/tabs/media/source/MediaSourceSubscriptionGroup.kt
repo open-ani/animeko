@@ -10,6 +10,7 @@
 package me.him188.ani.app.ui.settings.tabs.media.source
 
 import androidx.compose.animation.AnimatedContent
+import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
@@ -58,6 +59,7 @@ import me.him188.ani.app.tools.MonoTasker
 import me.him188.ani.app.tools.formatDateTime
 import me.him188.ani.app.ui.foundation.animation.LocalAniMotionScheme
 import me.him188.ani.app.ui.foundation.getClipEntryText
+import me.him188.ani.app.ui.foundation.rememberAsyncHandler
 import me.him188.ani.app.ui.foundation.setClipEntryText
 import me.him188.ani.app.ui.foundation.widgets.LocalToaster
 import me.him188.ani.app.ui.lang.Lang
@@ -67,6 +69,7 @@ import me.him188.ani.app.ui.lang.settings_media_source_subscription
 import me.him188.ani.app.ui.lang.settings_media_source_subscription_add
 import me.him188.ani.app.ui.lang.settings_media_source_subscription_add_confirm
 import me.him188.ani.app.ui.lang.settings_media_source_subscription_add_dialog
+import me.him188.ani.app.ui.lang.settings_media_source_subscription_auto_update
 import me.him188.ani.app.ui.lang.settings_media_source_subscription_cancel
 import me.him188.ani.app.ui.lang.settings_media_source_subscription_copied
 import me.him188.ani.app.ui.lang.settings_media_source_subscription_copy_link
@@ -155,6 +158,9 @@ class MediaSourceSubscriptionGroupState(
 @Composable
 internal fun SettingsScope.MediaSourceSubscriptionGroup(
     state: MediaSourceSubscriptionGroupState,
+    subscriptionLabel: @Composable (MediaSourceSubscription) -> String = { it.url },
+    extraActions: @Composable ColumnScope.(MediaSourceSubscription, onDismiss: () -> Unit) -> Unit = { _, _ -> },
+    deleteDescription: String? = null,
 ) {
     var showAddDialog by rememberSaveable { mutableStateOf(false) }
     Group(
@@ -187,7 +193,7 @@ internal fun SettingsScope.MediaSourceSubscriptionGroup(
         },
     ) {
         for ((index, subscription) in state.subscriptions.withIndex()) {
-            SubscriptionItem(subscription, state)
+            SubscriptionItem(subscription, state, subscriptionLabel, extraActions, deleteDescription)
             if (index != state.subscriptions.lastIndex) {
                 HorizontalDividerItem()
             }
@@ -271,18 +277,21 @@ internal fun SettingsScope.MediaSourceSubscriptionGroup(
 @Composable
 private fun SettingsScope.SubscriptionItem(
     subscription: MediaSourceSubscription,
-    state: MediaSourceSubscriptionGroupState
+    state: MediaSourceSubscriptionGroupState,
+    subscriptionLabel: @Composable (MediaSourceSubscription) -> String,
+    extraActions: @Composable ColumnScope.(MediaSourceSubscription, onDismiss: () -> Unit) -> Unit,
+    deleteDescription: String?,
 ) {
     var showConfirmDelete by remember { mutableStateOf(false) }
     Item(
         headlineContent = {
             SelectionContainer {
-                Text(subscription.url)
+                Text(subscriptionLabel(subscription))
             }
         },
         supportingContent = {
             Text(
-                "每 ${subscription.updatePeriod} 自动更新，" + formatLastUpdated(subscription.lastUpdated),
+                stringResource(Lang.settings_media_source_subscription_auto_update, subscription.updatePeriod.toString()) + formatLastUpdated(subscription.lastUpdated),
             )
         },
         trailingContent = {
@@ -292,8 +301,12 @@ private fun SettingsScope.SubscriptionItem(
             }
             DropdownMenu(showDropdown, { showDropdown = false }) {
                 val uiScope = rememberCoroutineScope()
+                // 导出可能失败 (例如远程设置的网络错误), 由 AsyncHandler 提示错误.
+                val exportHandler = rememberAsyncHandler()
                 val clipboard = LocalClipboard.current
                 val toaster = LocalToaster.current
+
+                extraActions(subscription) { showDropdown = false }
 
                 DropdownMenuItem(
                     leadingIcon = { Icon(Icons.Rounded.Share, null) },
@@ -312,7 +325,7 @@ private fun SettingsScope.SubscriptionItem(
                     leadingIcon = { Icon(Icons.Rounded.Share, null) },
                     text = { Text(stringResource(Lang.settings_media_source_subscription_export_all)) },
                     onClick = {
-                        uiScope.launch {
+                        exportHandler.launch {
                             val string = state.exportToString(subscription)
                             clipboard.setClipEntryText(string)
                             showDropdown = false
@@ -346,7 +359,7 @@ private fun SettingsScope.SubscriptionItem(
             title = { Text(stringResource(Lang.settings_media_source_subscription_delete_dialog)) },
             text = {
                 Text(
-                    stringResource(
+                    deleteDescription ?: stringResource(
                         Lang.settings_media_source_subscription_delete_description,
                         subscription.lastUpdated?.mediaSourceCount ?: 0,
                     ),

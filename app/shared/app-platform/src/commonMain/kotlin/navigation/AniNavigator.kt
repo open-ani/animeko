@@ -179,6 +179,12 @@ interface AniNavigator {
         navigate(NavRoutes.Settings(tab))
     }
 
+    /** 远程连接复用栈中的 RemoteSettings entry，保留本机设置的页面状态。 */
+    fun navigateRemoteSettings() {
+        val remote = backStack.lastOrNull { it is NavRoutes.RemoteSettings }
+        if (remote == null) navigate(NavRoutes.RemoteSettings()) else popBackStack(remote, inclusive = false)
+    }
+
     fun navigateSubjectSearch(search: NavRoutes.SubjectSearch = NavRoutes.SubjectSearch()) {
         navigate(search)
     }
@@ -192,6 +198,14 @@ interface AniNavigator {
         mediaSourceInstanceId: String,
     ) {
         navigate(NavRoutes.EditMediaSource(factoryId.value, mediaSourceInstanceId))
+    }
+
+    fun navigateRemoteEditMediaSource(
+        remote: NavRoutes.RemoteSettings,
+        factoryId: FactoryId,
+        mediaSourceInstanceId: String,
+    ) {
+        navigate(NavRoutes.RemoteEditMediaSource(remote.entryId, factoryId.value, mediaSourceInstanceId))
     }
 
     fun navigateTorrentPeerSettings() {

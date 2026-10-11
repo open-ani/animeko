@@ -57,3 +57,6 @@
 -renamesourcefileattribute SourceFile
 -keepnames class me.him188.ani.** { *; }
 -keepnames class ** { *; } # Keep all names as this only increases pacakge size by a few MBs, but significantly helps with debugging.
+
+# Ktor server (TV remote settings) probes the debugger through java.lang.management, which Android does not have.
+-dontwarn java.lang.management.**

@@ -128,6 +128,7 @@ dependencies {
     implementation(projects.app.shared)
     implementation(projects.app.shared.application)
     "tvImplementation"(projects.app.shared.tv)
+    "tvImplementation"(projects.app.tvRemoteSettingsServer)
 
     implementation(libs.androidx.core.ktx)
     implementation(libs.androidx.appcompat)

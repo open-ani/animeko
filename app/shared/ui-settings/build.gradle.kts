@@ -31,6 +31,7 @@ kotlin {
     sourceSets.commonMain.dependencies {
         api(projects.app.shared.uiFoundation)
         api(projects.app.shared.uiAdaptive)
+        api(projects.app.shared.remoteSettings)
         implementation(libs.compose.components.resources)
         implementation(projects.app.shared.reorderable)
         implementation(projects.app.shared.placeholder)

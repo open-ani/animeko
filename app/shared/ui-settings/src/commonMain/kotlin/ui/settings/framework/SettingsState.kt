@@ -18,6 +18,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.CoroutineStart
 import me.him188.ani.app.data.repository.user.Settings
 import me.him188.ani.app.tools.MonoTasker
 import me.him188.ani.app.ui.foundation.produceState
@@ -49,22 +50,28 @@ class BaseSettingsState<in Value : Placeholder, out Placeholder>(
     private val onUpdate: suspend (Value) -> Unit, // background scope
     private val placeholder: Placeholder,
     backgroundScope: CoroutineScope,
+    private val initiallyLoaded: Boolean = false,
+    /**
+     * [onUpdate] 的启动方式. [CoroutineStart.UNDISPATCHED] 让它在 [update] 的调用线程上立即执行到第一个挂起点,
+     * 之后的 [update] 无法在它开始之前将其取消.
+     */
+    private val updateStart: CoroutineStart = CoroutineStart.DEFAULT,
 ) : State<Placeholder> {
     private val tasker = MonoTasker(backgroundScope)
     fun update(value: Value) {
-        tasker.launch {
+        tasker.launch(start = updateStart) {
             onUpdate(value)
         }
     }
 
     suspend fun updateSuspended(value: Value) {
-        tasker.launch {
+        tasker.launch(start = updateStart) {
             onUpdate(value)
         }.join()
     }
 
     override val value: Placeholder by valueState
-    val isLoading by derivedStateOf { value === placeholder }
+    val isLoading by derivedStateOf { !initiallyLoaded && value === placeholder }
     val isUpdating get() = tasker.isRunning
 }
 

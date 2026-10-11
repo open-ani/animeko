@@ -27,15 +27,15 @@ import me.him188.ani.app.domain.foundation.HttpClientProvider
 import me.him188.ani.app.domain.foundation.ScopedHttpClientUserAgent
 import me.him188.ani.app.domain.foundation.get
 import me.him188.ani.app.domain.media.fetch.MediaSourceManager
-import me.him188.ani.app.domain.media.fetch.updateMediaSourceArguments
+import me.him188.ani.app.domain.mediasource.MediaSourceConfigurationEditor
 import me.him188.ani.app.domain.mediasource.codec.MediaSourceCodecManager
 import me.him188.ani.app.domain.mediasource.rss.DefaultRssMediaSourceEngine
 import me.him188.ani.app.domain.mediasource.rss.RssMediaSourceArguments
 import me.him188.ani.app.domain.mediasource.rss.RssSearchConfig
 import me.him188.ani.app.domain.rss.RssParser
 import me.him188.ani.app.domain.settings.ProxyProvider
-import me.him188.ani.app.tools.MonoTasker
 import me.him188.ani.app.ui.foundation.AbstractViewModel
+import me.him188.ani.app.ui.settings.mediasource.LocalMediaSourceConfigurationEditor
 import me.him188.ani.app.ui.settings.mediasource.rss.test.RssTestPaneState
 import me.him188.ani.datasources.api.source.deserializeArgumentsOrNull
 import org.koin.core.component.KoinComponent
@@ -44,6 +44,7 @@ import org.koin.core.component.inject
 @Stable
 class EditRssMediaSourceViewModel(
     initialInstanceId: String,
+    configurationEditor: MediaSourceConfigurationEditor? = null,
 ) : AbstractViewModel(), KoinComponent {
     private val mediaSourceManager: MediaSourceManager by inject()
     private val codecManager: MediaSourceCodecManager by inject()
@@ -52,22 +53,23 @@ class EditRssMediaSourceViewModel(
 
     private val instanceId: MutableStateFlow<String> = MutableStateFlow(initialInstanceId)
 
-    private val arguments = this.instanceId.flatMapLatest { instanceId ->
-        mediaSourceManager.instanceConfigFlow(instanceId).map {
+    private val editor = configurationEditor
+        ?: LocalMediaSourceConfigurationEditor(mediaSourceManager, initialInstanceId, backgroundScope)
+
+    private val arguments = this.instanceId.flatMapLatest {
+        editor.config.map {
             it?.deserializeArgumentsOrNull(
                 RssMediaSourceArguments.serializer(),
             ) ?: RssMediaSourceArguments.Default
         }
     }
 
-    private val saveTasker = MonoTasker(backgroundScope)
-
     val state: Flow<EditRssMediaSourceState> = this.instanceId.transformLatest { instanceId ->
         coroutineScope {
             val arguments = mutableStateOf<RssMediaSourceArguments?>(null)
             val allowEdit = mutableStateOf(false)
             launch {
-                val config = mediaSourceManager.instanceConfigFlow(instanceId).first()
+                val config = editor.config.first()
                 val persisted = config
                     ?.deserializeArgumentsOrNull(RssMediaSourceArguments.serializer())
                     ?: RssMediaSourceArguments.Default
@@ -82,15 +84,9 @@ class EditRssMediaSourceViewModel(
                         arguments,
                         onSave = {
                             arguments.value = it
-                            saveTasker.launch {
-                                mediaSourceManager.updateMediaSourceArguments(
-                                    instanceId,
-                                    RssMediaSourceArguments.serializer(),
-                                    it,
-                                )
-                            }
+                            editor.saveArguments(RssMediaSourceArguments.serializer(), it)
                         },
-                        isSavingFlow = saveTasker.isRunning,
+                        isSavingFlow = editor.isSaving,
                     ),
                     allowEditState = allowEdit,
                     instanceId = instanceId,
@@ -109,4 +105,9 @@ class EditRssMediaSourceViewModel(
         ),
         backgroundScope,
     )
+
+    override fun onCleared() {
+        editor.close()
+        super.onCleared()
+    }
 }

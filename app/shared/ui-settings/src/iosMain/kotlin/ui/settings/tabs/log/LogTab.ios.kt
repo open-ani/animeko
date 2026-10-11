@@ -84,7 +84,7 @@ internal actual fun ColumnScope.PlatformLoggingItems(listItemColors: ListItemCol
 }
 
 @OptIn(ExperimentalForeignApi::class)
-private fun shareFile(originalPath: String, hostVC: UIViewController) {
+internal fun shareFile(originalPath: String, hostVC: UIViewController) {
     // 1. Guarantee the file is inside our container
     val temp = SystemTemporaryDirectory
 

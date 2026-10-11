@@ -22,6 +22,7 @@ import me.him188.ani.app.ui.lang.Lang
 import me.him188.ani.app.ui.lang.main_screen_page_cache_management
 import me.him188.ani.app.ui.lang.main_screen_page_collection
 import me.him188.ani.app.ui.lang.main_screen_page_exploration
+import me.him188.ani.utils.platform.Uuid
 import org.jetbrains.compose.resources.stringResource
 
 @Serializable
@@ -70,6 +71,10 @@ sealed class NavRoutes : NavKey {
         val tab: SettingsTab? = null,
     ) : NavRoutes()
 
+    /** A session entry identity. Connection credentials live only in process memory. */
+    @Serializable
+    data class RemoteSettings(val entryId: String = Uuid.randomString()) : NavRoutes()
+
     @Serializable
     data class SubjectSearch(
         val keyword: String? = null,
@@ -114,6 +119,14 @@ sealed class NavRoutes : NavKey {
 
     @Serializable
     data class EditMediaSource(
+        val factoryId: String,
+        val mediaSourceInstanceId: String,
+    ) : NavRoutes()
+
+    /** Edits a source on the TV connected by the [RemoteSettings] entry [remoteEntryId]. */
+    @Serializable
+    data class RemoteEditMediaSource(
+        val remoteEntryId: String,
         val factoryId: String,
         val mediaSourceInstanceId: String,
     ) : NavRoutes()
