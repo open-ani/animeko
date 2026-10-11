@@ -248,7 +248,7 @@ class InstallReporterTest {
     }
 
     @Test
-    fun `another user's login replaces the pending report and marks previous login`() = runTest {
+    fun `login by another user replaces the pending report and marks previous login`() = runTest {
         val reporter = createReporter(FakeUserProfileApi(okResponse()))
         reporter.start()
         runCurrent()
@@ -264,7 +264,7 @@ class InstallReporterTest {
     }
 
     @Test
-    fun `same user's login keeps the first pending report`() = runTest {
+    fun `login by same user keeps the first pending report`() = runTest {
         val reporter = createReporter(FakeUserProfileApi(okResponse()))
         reporter.start()
         runCurrent()
