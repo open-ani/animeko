@@ -29,7 +29,11 @@ import me.him188.ani.app.ui.lang.settings_save_failed
 import org.jetbrains.compose.resources.stringResource
 
 @Composable
-fun TvSettingsRoute(viewModel: TvSettingsViewModel, modifier: Modifier = Modifier) {
+fun TvSettingsRoute(
+    viewModel: TvSettingsViewModel,
+    modifier: Modifier = Modifier,
+    onCheckUpdate: () -> Unit = {},
+) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
     val context = LocalContext.current
     val clipboard = remember(context) { context.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager }
@@ -72,5 +76,6 @@ fun TvSettingsRoute(viewModel: TvSettingsViewModel, modifier: Modifier = Modifie
             val text = clipboard.primaryClip?.takeIf { it.itemCount > 0 }?.getItemAt(0)?.coerceToText(context)?.toString().orEmpty()
             viewModel.onIntent(TvSettingsIntent.ImportRegex(text))
         },
+        onCheckUpdate = onCheckUpdate,
     )
 }

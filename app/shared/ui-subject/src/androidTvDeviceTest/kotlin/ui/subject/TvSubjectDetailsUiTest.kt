@@ -683,7 +683,9 @@ class TvSubjectDetailsUiTest {
     @Test fun reviewRatingReusesTheEditorAndReturnsToItsAnchor() = runAniComposeUiTest {
         var state by mutableStateOf(TvSubjectDetailsUiState(content = reviewContent(), loggedIn = true))
         val scores = mutableListOf<TvSubjectDetailsIntent.SetScore>()
+        var ratingEntries = 0
         mount({ state }, { intent ->
+            if (intent == TvSubjectDetailsIntent.EnterRating) ratingEntries++
             if (intent is TvSubjectDetailsIntent.SetScore) {
                 scores += intent
                 state = state.copy(content = state.content!!.copy(selfRating = SelfRatingInfo(intent.score, "", emptyList(), false)),
@@ -699,6 +701,7 @@ class TvSubjectDetailsUiTest {
         val source = onNodeWithTag("tv-details-review-rating").fetchSemanticsNode().boundsInRoot
         key(Key.DirectionCenter)
         awaitFocus("tv-details-panel-rating-control")
+        assertEquals(1, ratingEntries)
         assertAnchoredOverlay(source)
         onNodeWithTag("tv-review-count").assertDoesNotExist()
         key(Key.DirectionRight)
@@ -707,6 +710,7 @@ class TvSubjectDetailsUiTest {
         assertTrue(scores.isEmpty())
         key(Key.DirectionCenter)
         awaitFocus("tv-details-panel-rating-control")
+        assertEquals(2, ratingEntries)
         onNodeWithTag("tv-rating-description", useUnmergedTree = true).assertTextContains("7", substring = true)
         key(Key.DirectionRight)
         key(Key.DirectionCenter)
@@ -1050,10 +1054,10 @@ class TvSubjectDetailsUiTest {
         onNodeWithTag("tv-rating-description", useUnmergedTree = true).assertTextContains("7", substring = true)
         key(Key.DirectionRight)
         onNodeWithTag("tv-details-panel-rating-control").assertIsFocused()
-        assertTrue(intents.isEmpty())
+        assertEquals(listOf<TvSubjectDetailsIntent>(TvSubjectDetailsIntent.EnterRating), intents)
         onNodeWithTag("tv-rating-description", useUnmergedTree = true).assertTextContains("8", substring = true)
         key(Key.DirectionCenter)
-        assertEquals(8, (intents.single() as TvSubjectDetailsIntent.SetScore).score)
+        assertEquals(8, intents.filterIsInstance<TvSubjectDetailsIntent.SetScore>().single().score)
         awaitFocus("tv-details-rating")
     }
 
@@ -1070,7 +1074,7 @@ class TvSubjectDetailsUiTest {
         repeat(12) { key(Key.DirectionRight) }
         onNodeWithTag("tv-rating-description", useUnmergedTree = true).assertTextContains("10", substring = true)
         repeat(12) { key(Key.DirectionLeft) }
-        assertTrue(intents.isEmpty())
+        assertEquals(listOf<TvSubjectDetailsIntent>(TvSubjectDetailsIntent.EnterRating), intents)
         key(Key.DirectionCenter)
         assertEquals(0, (intents.last() as TvSubjectDetailsIntent.SetScore).score)
         onNodeWithTag("tv-rating-error").assertIsDisplayed()

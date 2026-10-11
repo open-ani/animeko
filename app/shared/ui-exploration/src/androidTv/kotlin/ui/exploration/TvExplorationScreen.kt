@@ -339,7 +339,7 @@ private fun TvExplorationContent(
                     animateProgress = area == TvExplorationArea.ContinueWatching && pageFocused &&
                         lifecycleState.isAtLeast(Lifecycle.State.RESUMED) && scrollProgress < 1f,
                     onClickDetails = {
-                        if (featuredSubject != null) onIntent(TvExplorationIntent.OpenSubject(featuredSubject))
+                        if (featuredSubject != null) onIntent(TvExplorationIntent.OpenSubject(featuredSubject, TvExplorationArea.Featured))
                         else if (trendsPager.loadState.refresh is LoadState.Error) trendsPager.retry()
                         else if (trendsPager.loadState.refresh is LoadState.NotLoading) trendsPager.refresh()
                     },

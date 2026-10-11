@@ -25,6 +25,9 @@ import me.him188.ani.app.ui.exploration.search.SearchPageIntent
 import me.him188.ani.app.ui.main.SearchViewModel
 import me.him188.ani.tv.ui.foundation.TvNavigationEvent
 import me.him188.ani.tv.ui.foundation.TvNavigationEvents
+import me.him188.ani.utils.analytics.Analytics
+import me.him188.ani.utils.analytics.AnalyticsEvent.Companion.SubjectEnter
+import me.him188.ani.utils.analytics.recordEvent
 
 /** TV 搜索表单将已提交的关键词接入共享搜索状态。 */
 @Stable
@@ -49,6 +52,11 @@ class TvSearchViewModel : SearchViewModel(SubjectSearchQuery(keywords = "")) {
             )
             is TvSearchIntent.OpenSubject -> {
                 val item = intent.subject
+                Analytics.recordEvent(SubjectEnter) {
+                    put("source", "search")
+                    put("subject_id", item.subjectId)
+                    put("position", intent.position)
+                }
                 navigation.emit(TvNavigationEvent.Subject(
                     item.subjectId,
                     SubjectDetailPlaceholder(item.subjectId, item.originalTitle, item.title, item.imageUrl),

@@ -46,6 +46,10 @@ import me.him188.ani.app.ui.subject.episode.list.EpisodeListItem
 import me.him188.ani.datasources.api.topic.toggleCollected
 import me.him188.ani.tv.ui.foundation.TvNavigationEvent
 import me.him188.ani.tv.ui.foundation.TvNavigationEvents
+import me.him188.ani.utils.analytics.Analytics
+import me.him188.ani.utils.analytics.AnalyticsEvent.Companion.RatingEnter
+import me.him188.ani.utils.analytics.AnalyticsEvent.Companion.SubjectEnter
+import me.him188.ani.utils.analytics.recordEvent
 
 class TvSubjectDetailsViewModel(
     private val subjectId: Int,
@@ -163,7 +167,12 @@ class TvSubjectDetailsViewModel(
             TvSubjectDetailsIntent.Login -> navigation.emit(TvNavigationEvent.Login)
             TvSubjectDetailsIntent.Resume -> uiState.value.content?.playTargetId?.let(::playEpisode)
             is TvSubjectDetailsIntent.PlayEpisode -> playEpisode(intent.episodeId)
-            is TvSubjectDetailsIntent.OpenRelatedSubject -> navigation.emit(TvNavigationEvent.Subject(intent.subjectId))
+            is TvSubjectDetailsIntent.OpenRelatedSubject -> openSubject(intent.subjectId, "subject_related")
+            is TvSubjectDetailsIntent.OpenTagSubject -> openSubject(intent.subjectId, "subject_tag")
+            TvSubjectDetailsIntent.EnterRating -> Analytics.recordEvent(RatingEnter) {
+                put("has_existing_score", (uiState.value.content?.selfRating?.score ?: 0) > 0)
+                put("subject_id", subjectId)
+            }
             is TvSubjectDetailsIntent.SetCollection -> perform(intent.requestId) { shared ->
                 val error = shared.setSelfCollectionType(intent.type)
                 val offer = error == null && shared.shouldOfferMarkAllWatched
@@ -234,6 +243,14 @@ class TvSubjectDetailsViewModel(
             catch (e: Exception) { TvSubjectOperation(error = LoadError.fromException(e)) }
             operation.value = result.copy(requestId = requestId, completed = true)
         }
+    }
+
+    private fun openSubject(targetSubjectId: Int, source: String) {
+        Analytics.recordEvent(SubjectEnter) {
+            put("source", source)
+            put("subject_id", targetSubjectId)
+        }
+        navigation.emit(TvNavigationEvent.Subject(targetSubjectId))
     }
 
     private fun playEpisode(episodeId: Int) {
