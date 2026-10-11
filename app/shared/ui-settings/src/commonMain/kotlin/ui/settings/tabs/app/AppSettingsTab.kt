@@ -883,7 +883,7 @@ private fun DesktopCloseBehavior.renderText(): String {
 }
 
 @Composable
-internal fun HlsAdFilteringMode.renderText(): String {
+private fun HlsAdFilteringMode.renderText(): String {
     return when (this) {
         HlsAdFilteringMode.ALL -> stringResource(Lang.settings_player_hls_ad_filter_all)
         HlsAdFilteringMode.SMART -> stringResource(Lang.settings_player_hls_ad_filter_smart)
@@ -892,7 +892,7 @@ internal fun HlsAdFilteringMode.renderText(): String {
 }
 
 @Composable
-internal fun HlsAdFilteringMode.renderDescription(): String {
+private fun HlsAdFilteringMode.renderDescription(): String {
     return when (this) {
         HlsAdFilteringMode.ALL -> stringResource(Lang.settings_player_hls_ad_filter_all_description)
         HlsAdFilteringMode.SMART -> stringResource(Lang.settings_player_hls_ad_filter_smart_description)

@@ -78,6 +78,12 @@ import me.him188.ani.app.ui.lang.settings_player_enable_regex_filter
 import me.him188.ani.app.ui.lang.settings_player_exoplayer_preinit_effect_graph
 import me.him188.ani.app.ui.lang.settings_player_exoplayer_preinit_effect_graph_desc
 import me.him188.ani.app.ui.lang.settings_player_hls_ad_filter
+import me.him188.ani.app.ui.lang.settings_player_hls_ad_filter_all
+import me.him188.ani.app.ui.lang.settings_player_hls_ad_filter_all_description
+import me.him188.ani.app.ui.lang.settings_player_hls_ad_filter_off
+import me.him188.ani.app.ui.lang.settings_player_hls_ad_filter_off_description
+import me.him188.ani.app.ui.lang.settings_player_hls_ad_filter_smart
+import me.him188.ani.app.ui.lang.settings_player_hls_ad_filter_smart_description
 import me.him188.ani.app.ui.lang.settings_player_frame_preview
 import me.him188.ani.app.ui.lang.settings_player_fullscreen_always_show
 import me.him188.ani.app.ui.lang.settings_player_fullscreen_auto_hide
@@ -108,8 +114,6 @@ import me.him188.ani.app.ui.lang.settings_tab_player
 import me.him188.ani.app.ui.lang.settings_theme_mode_auto
 import me.him188.ani.app.ui.lang.settings_theme_palette
 import me.him188.ani.app.ui.lang.tv_settings_subscription_sources_count
-import me.him188.ani.app.ui.settings.tabs.app.renderDescription
-import me.him188.ani.app.ui.settings.tabs.app.renderText
 import me.him188.ani.app.ui.settings.tabs.media.MediaSelectorWorkflowDemoState
 import me.him188.ani.app.ui.lang.video_player_enable_danmaku
 import me.him188.ani.app.ui.lang.video_player_off
@@ -297,8 +301,17 @@ private fun TvSettingsItems.playerAdvanced() {
     val video = state.video
     choice(
         "hls-filter", stringResource(Lang.settings_player_hls_ad_filter), video.effectiveHlsAdFilteringMode,
-        HlsAdFilteringMode.entries, HlsAdFilteringMode.entries.map { it.renderText() },
-        video.effectiveHlsAdFilteringMode.renderDescription(),
+        HlsAdFilteringMode.entries,
+        listOf(
+            stringResource(Lang.settings_player_hls_ad_filter_all),
+            stringResource(Lang.settings_player_hls_ad_filter_smart),
+            stringResource(Lang.settings_player_hls_ad_filter_off),
+        ),
+        when (video.effectiveHlsAdFilteringMode) {
+            HlsAdFilteringMode.ALL -> stringResource(Lang.settings_player_hls_ad_filter_all_description)
+            HlsAdFilteringMode.SMART -> stringResource(Lang.settings_player_hls_ad_filter_smart_description)
+            HlsAdFilteringMode.OFF -> stringResource(Lang.settings_player_hls_ad_filter_off_description)
+        },
     ) { value -> onIntent(TvSettingsIntent.Video { copy(hlsAdFilteringMode = value) }) }
     toggle(
         "preinit-effects", stringResource(Lang.settings_player_exoplayer_preinit_effect_graph), state.kernel.exoPlayerInitEffectGraphInAdvance,
