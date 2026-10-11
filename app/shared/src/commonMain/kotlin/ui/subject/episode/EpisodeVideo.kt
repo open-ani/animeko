@@ -124,7 +124,6 @@ import me.him188.ani.app.ui.subject.episode.video.components.EpisodeVideoSideShe
 import me.him188.ani.app.ui.subject.episode.video.components.EpisodeVideoSideSheets
 import me.him188.ani.app.ui.subject.episode.video.components.FloatingFullscreenSwitchButton
 import me.him188.ani.app.ui.subject.episode.video.components.SideSheets
-import me.him188.ani.app.ui.subject.episode.video.components.rememberStatusBarHeightAsState
 import me.him188.ani.app.ui.subject.episode.video.loading.EpisodeVideoLoadingIndicator
 import me.him188.ani.app.ui.subject.episode.video.sidesheet.DanmakuRegexFilterSettings
 import me.him188.ani.app.ui.subject.episode.video.sidesheet.EpisodeSelectorSheet
@@ -368,15 +367,9 @@ internal fun EpisodeVideoImpl(
                 if (LocalIsPreviewing.current) {
                     Text(previewModeText)
                 } else {
-                    // Save the status bar height to offset the video player
-                    val statusBarHeight by rememberStatusBarHeightAsState()
-
                     VideoPlayer(
                         playerState,
                         Modifier
-                            .ifThen(statusBarHeight != 0.dp && !videoOnly) {
-                                offset(x = -statusBarHeight / 2, y = 0.dp)
-                            }
                             .onSizeChanged {
                                 videoEnhancement?.setViewportSize(it.width, it.height)
                             }
