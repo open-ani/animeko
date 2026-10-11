@@ -1163,13 +1163,13 @@ class TvSubjectDetailsUiTest {
         onNodeWithTag("tv-rating-description", useUnmergedTree = true).assertTextContains("8", substring = true)
         key(Key.Back)
         awaitFocus("tv-details-rating")
-        assertTrue(intents.isEmpty())
+        assertEquals(listOf<TvSubjectDetailsIntent>(TvSubjectDetailsIntent.EnterRating), intents)
         key(Key.DirectionCenter)
         awaitFocus("tv-details-panel-rating-control")
         onNodeWithTag("tv-rating-description", useUnmergedTree = true).assertTextContains("6", substring = true)
         key(Key.Back)
         awaitFocus("tv-details-rating")
-        assertTrue(intents.isEmpty())
+        assertEquals(List<TvSubjectDetailsIntent>(2) { TvSubjectDetailsIntent.EnterRating }, intents)
     }
 
     @Test fun collectionOptionsAndConfirmationsDisableUntilTheRequestFinishes() = runAniComposeUiTest {
