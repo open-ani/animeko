@@ -249,6 +249,8 @@
     <string name="settings_mediasource_selector_config_search_subject_names_count_description">每次播放使用多少个条目名称进行查询。\n为 1 则只使用主名称，为 2 额外使用日文原名，大于 2 将额外使用其他别名，别名的数量不固定。\n一般用 1 就够了，使用多个名称将会显著增加播放时的等待时间。</string>
     <string name="settings_mediasource_selector_config_request_interval">搜索请求间隔时间 (毫秒)</string>
     <string name="settings_mediasource_selector_config_request_interval_description">控制每发送一个请求后等待多久后再发送下一个请求</string>
+    <string name="settings_mediasource_selector_config_source_user_agent">User-Agent (可选)</string>
+    <string name="settings_mediasource_selector_config_source_user_agent_description">数据源全程使用的 User-Agent：搜索页和详情页请求、验证码浏览器、加载播放页匹配视频链接。留空则使用默认值，不影响播放器请求视频</string>
     <string name="settings_mediasource_selector_config_search_cache_ttl">搜索缓存有效期 (分钟)</string>
     <string name="settings_mediasource_selector_config_search_cache_ttl_description">在此时间内切换剧集时复用搜索结果。实际生效值为此值与用户设置中的较小者，0 表示不缓存</string>
     <string name="settings_mediasource_selector_auto_match">自动匹配 (可选)</string>

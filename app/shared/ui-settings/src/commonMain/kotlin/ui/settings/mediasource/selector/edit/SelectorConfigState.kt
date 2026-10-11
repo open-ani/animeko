@@ -116,6 +116,12 @@ class SelectorConfigState(
 
     // endregion
 
+    var userAgent by argumentsStorage.prop(
+        { it.searchConfig.userAgent },
+        { copy(searchConfig = searchConfig.copy(userAgent = it)) },
+        SelectorMediaSourceArguments.Default.searchConfig.userAgent,
+    )
+
     var rawBaseUrl by argumentsStorage.prop(
         { it.searchConfig.rawBaseUrl },
         { copy(searchConfig = searchConfig.copy(rawBaseUrl = it)) },

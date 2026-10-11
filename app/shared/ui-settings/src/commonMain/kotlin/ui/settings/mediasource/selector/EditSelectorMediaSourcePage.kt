@@ -143,6 +143,7 @@ class EditSelectorMediaSourcePageState(
     internal val episodeState: SelectorEpisodeState = SelectorEpisodeState(
         itemState = viewingItemState,
         matchVideoConfigState = derivedStateOf { configurationState.searchConfigState.value?.matchVideo },
+        userAgentState = derivedStateOf { configurationState.searchConfigState.value?.userAgentOrNull },
         webViewVideoExtractor = webViewVideoExtractor,
         engine = engine,
         backgroundScope = backgroundScope,

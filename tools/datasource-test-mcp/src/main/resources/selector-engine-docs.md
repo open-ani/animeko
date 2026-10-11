@@ -124,6 +124,11 @@ MCP 工具对应关系:
 匹配成功后,视频请求会附带 `addHeadersToVideo` 配置的 `User-Agent` / `Referer`;
 WebView 加载播放页时会注入 `cookies`(每行一个 `name=value`)。
 
+`searchConfig.userAgent` 是数据源全程使用的 UA:搜索页、详情页请求,解验证码的浏览器,加载播放页的 WebView 都用它
+(浏览器里请求头与主页面的 `navigator.userAgent` 都生效,桌面端跨站 iframe 里的 `navigator.userAgent` 除外)。
+为空则 HTTP 用浏览器风格的默认 UA、WebView 用平台默认 UA。站点按 UA 区分移动端/桌面端页面时设置它;
+它不影响播放视频用的 `addHeadersToVideo.userAgent`。
+
 MCP 工具:
 
 - `selector_run_step(step=matchWebVideo, config, url)` — 离线测试某个 URL 会被判为「视频 / 嵌套页 / 忽略」,调 `matchVideoUrl` 正则用;

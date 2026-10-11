@@ -117,6 +117,8 @@ import me.him188.ani.app.ui.lang.settings_mediasource_selector_config_search_sub
 import me.him188.ani.app.ui.lang.settings_mediasource_selector_config_search_url
 import me.him188.ani.app.ui.lang.settings_mediasource_selector_config_search_url_placeholder
 import me.him188.ani.app.ui.lang.settings_mediasource_selector_config_search_url_supporting
+import me.him188.ani.app.ui.lang.settings_mediasource_selector_config_source_user_agent
+import me.him188.ani.app.ui.lang.settings_mediasource_selector_config_source_user_agent_description
 import me.him188.ani.app.ui.lang.settings_mediasource_selector_config_subject_format_multi_tag
 import me.him188.ani.app.ui.lang.settings_mediasource_selector_config_subject_format_single_tag
 import me.him188.ani.app.ui.lang.settings_mediasource_selector_config_user_agent_description
@@ -244,6 +246,19 @@ internal fun SelectorConfigurationPane(
                         Text(stringResource(Lang.settings_mediasource_selector_config_request_interval_description))
                     },
                     isError = requestIntervalString.toLongOrNull() == null,
+                    keyboardOptions = KeyboardOptions(imeAction = ImeAction.Next),
+                    shape = textFieldShape,
+                    enabled = state.enableEdit,
+                )
+                OutlinedTextField(
+                    state.userAgent, { state.userAgent = it },
+                    Modifier
+                        .padding(top = (verticalSpacing - 8.dp).coerceAtLeast(0.dp))
+                        .fillMaxWidth().moveFocusOnEnter(),
+                    label = { Text(stringResource(Lang.settings_mediasource_selector_config_source_user_agent)) },
+                    supportingText = {
+                        Text(stringResource(Lang.settings_mediasource_selector_config_source_user_agent_description))
+                    },
                     keyboardOptions = KeyboardOptions(imeAction = ImeAction.Next),
                     shape = textFieldShape,
                     enabled = state.enableEdit,

@@ -209,6 +209,7 @@ class SelectorSearchConfigSerializationTest {
             searchUrl = "https://example.com/{keyword}",
             rawBaseUrl = "https://example.com",
             onlySupportsPlayers = listOf("mpv"),
+            userAgent = "Mozilla/5.0 (Linux; Android 14) Mobile",
             autoMatch = SelectorAutoMatchConfig(searchUseSubjectNamesCount = 2, filterByEpisodeSort = false),
         )
         assertEquals(config, decode(json.encodeToString(SelectorSearchConfig.serializer(), config)))

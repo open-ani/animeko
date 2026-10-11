@@ -71,6 +71,16 @@ data class SelectorSearchConfig(
      * 播放 session 搜索缓存的有效期. 实际生效值为此值与用户设置中定义的值的较小者. 为 0 时禁用缓存.
      */
     val searchCacheTtl: @Serializable(DurationAsMillisSerializer::class) Duration = 2.hours,
+    /**
+     * 数据源全程使用的 User-Agent: 搜索页与详情页的 HTTP 请求、解验证码的浏览器、加载播放页匹配视频链接的 WebView.
+     * 验证码的通过状态 (如 `cf_clearance`) 绑定 UA, 全程一致才能沿用解验证码时的会话.
+     *
+     * 为空时 HTTP 请求使用浏览器风格的默认 UA, 浏览器使用各平台 WebView 的默认值.
+     * 不影响播放器请求视频, 那一步使用 [MatchVideoConfig.addHeadersToVideo] 中的 [VideoHeaders.userAgent].
+     *
+     * @since 6.3
+     */
+    val userAgent: String = "",
     // Phase 2, for search result, select subjects
     val subjectFormatId: SelectorFormatId = SelectorSubjectFormatA.id,
     val selectorSubjectFormatA: SelectorSubjectFormatA.Config = SelectorSubjectFormatA.Config(),
@@ -127,6 +137,11 @@ data class SelectorSearchConfig(
     val finalBaseUrl by lazy(LazyThreadSafetyMode.PUBLICATION) {
         rawBaseUrl.ifBlank { guessBaseUrl(searchUrl) }
     }
+
+    /**
+     * 实际生效的 [userAgent]: 去掉首尾空白, 为空时为 `null`.
+     */
+    val userAgentOrNull: String? get() = userAgent.trim().ifEmpty { null }
 
     @Serializable
     @Suppress("RegExpRedundantEscape")
@@ -338,6 +353,7 @@ private class SelectorSearchConfigSurrogate(
     val rawBaseUrl: String = "",
     val requestInterval: @Serializable(DurationAsMillisSerializer::class) Duration = 3.seconds,
     val searchCacheTtl: @Serializable(DurationAsMillisSerializer::class) Duration = 2.hours,
+    val userAgent: String = "",
     val subjectFormatId: SelectorFormatId = SelectorSubjectFormatA.id,
     val selectorSubjectFormatA: SelectorSubjectFormatA.Config = SelectorSubjectFormatA.Config(),
     val selectorSubjectFormatIndexed: SelectorSubjectFormatIndexed.Config = SelectorSubjectFormatIndexed.Config(),
@@ -365,6 +381,7 @@ private class SelectorSearchConfigSurrogate(
         rawBaseUrl = config.rawBaseUrl,
         requestInterval = config.requestInterval,
         searchCacheTtl = config.searchCacheTtl,
+        userAgent = config.userAgent,
         subjectFormatId = config.subjectFormatId,
         // 镜像给旧客户端
         selectorSubjectFormatA = config.selectorSubjectFormatA.copy(preferShorterName = config.autoMatch.preferShorterName),
@@ -401,6 +418,7 @@ private class SelectorSearchConfigSurrogate(
             rawBaseUrl = rawBaseUrl,
             requestInterval = requestInterval,
             searchCacheTtl = searchCacheTtl,
+            userAgent = userAgent,
             subjectFormatId = subjectFormatId,
             // 内存里的旧字段与 autoMatch 保持一致, 避免两处不同
             selectorSubjectFormatA = selectorSubjectFormatA.copy(preferShorterName = autoMatch.preferShorterName),

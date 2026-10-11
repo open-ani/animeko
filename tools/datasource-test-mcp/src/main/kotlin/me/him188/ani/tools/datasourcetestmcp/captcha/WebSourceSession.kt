@@ -217,8 +217,8 @@ private class LazyCefCaptchaBrowserFactory(
     override val isSupported: Boolean get() = delegate.isSupported
     override val recommendedMaxSessions: Int get() = delegate.recommendedMaxSessions
 
-    override suspend fun create(): CaptchaBrowser {
+    override suspend fun create(userAgent: String?): CaptchaBrowser {
         McpCefApp.initialize(workDir)
-        return delegate.create()
+        return delegate.create(userAgent)
     }
 }

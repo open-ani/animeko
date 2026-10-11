@@ -134,6 +134,7 @@ class WebViewVideoResolverEngine(
                     matchedBy = matchedBy,
                     matchedUrl = matchedUrl,
                     cookieCount = webViewConfig.cookies.size,
+                    userAgent = webViewConfig.userAgent,
                 ),
                 errors = if (video == null) listOf("No video URL matched by the webview resolver engine") else emptyList(),
             )
@@ -162,6 +163,7 @@ class WebViewVideoResolverEngine(
         matchedBy: String?,
         matchedUrl: String?,
         cookieCount: Int,
+        userAgent: String? = null,
         exception: Throwable? = null,
     ): JsonElement {
         return buildJsonObject {
@@ -171,6 +173,7 @@ class WebViewVideoResolverEngine(
             put("cefLogFile", AniCefApp.currentAppLogFile?.absolutePath ?: "")
             put("matcherCount", matchers.size)
             put("cookieCount", cookieCount)
+            put("userAgent", userAgent ?: "")
             put("matchedBy", matchedBy ?: "")
             put("matchedUrl", matchedUrl ?: "")
             put("matchers", buildJsonArray {
