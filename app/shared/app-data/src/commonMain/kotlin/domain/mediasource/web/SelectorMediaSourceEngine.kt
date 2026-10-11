@@ -328,7 +328,14 @@ abstract class SelectorMediaSourceEngine {
         return false
     }
 
-    fun matchWebVideo(url: String, searchConfig: SelectorSearchConfig.MatchVideoConfig): WebVideoMatcher.MatchResult {
+    /**
+     * @param userAgent 数据源配置的 UA ([SelectorSearchConfig.userAgentOrNull]), 匹配到的视频由播放器带着它请求.
+     */
+    fun matchWebVideo(
+        url: String,
+        searchConfig: SelectorSearchConfig.MatchVideoConfig,
+        userAgent: String?,
+    ): WebVideoMatcher.MatchResult {
         if (shouldLoadPage(url, searchConfig)) {
             return WebVideoMatcher.MatchResult.LoadPage
         }
@@ -344,7 +351,7 @@ abstract class SelectorMediaSourceEngine {
             WebVideo(
                 videoUrl,
                 mapOf(
-                    "User-Agent" to searchConfig.addHeadersToVideo.userAgent,
+                    "User-Agent" to (userAgent ?: SelectorSearchConfig.DEFAULT_VIDEO_USER_AGENT),
                     "Referer" to searchConfig.addHeadersToVideo.referer,
                     "Sec-Ch-Ua-Mobile" to "?0",
                     "Sec-Ch-Ua-Platform" to "macOS",

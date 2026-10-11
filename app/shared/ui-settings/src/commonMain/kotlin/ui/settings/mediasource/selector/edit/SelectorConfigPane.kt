@@ -121,7 +121,6 @@ import me.him188.ani.app.ui.lang.settings_mediasource_selector_config_source_use
 import me.him188.ani.app.ui.lang.settings_mediasource_selector_config_source_user_agent_description
 import me.him188.ani.app.ui.lang.settings_mediasource_selector_config_subject_format_multi_tag
 import me.him188.ani.app.ui.lang.settings_mediasource_selector_config_subject_format_single_tag
-import me.him188.ani.app.ui.lang.settings_mediasource_selector_config_user_agent_description
 import me.him188.ani.app.ui.lang.settings_mediasource_selector_config_video_playback
 import me.him188.ani.app.ui.lang.settings_mediasource_selector_prefer_shorter_name
 import me.him188.ani.app.ui.lang.settings_mediasource_selector_prefer_shorter_name_description
@@ -430,15 +429,6 @@ internal fun SelectorConfigurationPane(
                     Modifier.fillMaxWidth().moveFocusOnEnter(),
                     label = { Text("Referer") },
                     supportingText = { Text(stringResource(Lang.settings_mediasource_selector_config_referer_description)) },
-                    keyboardOptions = KeyboardOptions(imeAction = ImeAction.Next),
-                    shape = textFieldShape,
-                    enabled = state.enableEdit,
-                )
-                OutlinedTextField(
-                    conf.userAgent, { conf.userAgent = it },
-                    Modifier.fillMaxWidth().moveFocusOnEnter(),
-                    label = { Text("User-Agent") },
-                    supportingText = { Text(stringResource(Lang.settings_mediasource_selector_config_user_agent_description)) },
                     keyboardOptions = KeyboardOptions(imeAction = ImeAction.Next),
                     shape = textFieldShape,
                     enabled = state.enableEdit,

@@ -568,7 +568,7 @@ class SelectorEngineService(
     private fun stepMatchWebVideo(input: SelectorRunStepInput): SelectorRunStepResult {
         val config = requireConfig(input)
         val url = requireNotNull(input.url) { "matchWebVideo 步骤需要 url 参数" }
-        val matchResult = engine.matchWebVideo(url, config.matchVideo)
+        val matchResult = engine.matchWebVideo(url, config.matchVideo, config.userAgentOrNull)
         val (kind, video) = when (matchResult) {
             is WebVideoMatcher.MatchResult.Matched -> "matched" to matchResult.video
             WebVideoMatcher.MatchResult.LoadPage -> "loadPage" to null
@@ -844,7 +844,7 @@ class SelectorWebVideoMatcher(
     override fun match(
         url: String,
         context: WebVideoMatcherContext,
-    ): WebVideoMatcher.MatchResult = engine.matchWebVideo(url, matchVideoConfig)
+    ): WebVideoMatcher.MatchResult = engine.matchWebVideo(url, matchVideoConfig, userAgent)
 
     override fun patchConfig(config: WebViewConfig): WebViewConfig =
         SelectorMediaSource.patchWebViewConfig(config, matchVideoConfig, userAgent, captchaCookies())

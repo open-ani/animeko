@@ -135,6 +135,7 @@ class SelectorEpisodeState(
      */
     val rawMatchResults: Flow<List<MatchResult>> by derivedStateOf { // TODO: 2024/12/14 this is shit 
         val matchVideoConfig = matchVideoConfigState.value ?: return@derivedStateOf emptyFlow()
+        val userAgent = userAgentState.value
         searcher.searchResultFlow.flatMapLatest { searchResult ->
             searchResult ?: return@flatMapLatest emptyFlow()
             val flow = when (searchResult) {
@@ -150,7 +151,7 @@ class SelectorEpisodeState(
             flow.map { list ->
                 list.asSequence()
                     .map { original ->
-                        MatchResult(original, engine.matchWebVideo(original.url, matchVideoConfig).videoOrNull)
+                        MatchResult(original, engine.matchWebVideo(original.url, matchVideoConfig, userAgent).videoOrNull)
                     }
                     .distinctBy { it.key } // O(n) extra space, O(1) time
                     .toMutableList() // single list instance construction

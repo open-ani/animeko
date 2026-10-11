@@ -588,7 +588,11 @@ class SelectorMediaSource(
             override fun match(
                 url: String,
                 context: WebVideoMatcherContext
-            ): WebVideoMatcher.MatchResult = engine.matchWebVideo(url, arguments.searchConfig.matchVideo)
+            ): WebVideoMatcher.MatchResult = engine.matchWebVideo(
+                url,
+                arguments.searchConfig.matchVideo,
+                arguments.searchConfig.userAgentOrNull,
+            )
 
             override fun patchConfig(config: WebViewConfig): WebViewConfig = patchWebViewConfig(
                 config,

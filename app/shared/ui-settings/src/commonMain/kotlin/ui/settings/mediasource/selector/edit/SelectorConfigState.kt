@@ -410,9 +410,6 @@ class SelectorConfigState(
             var referer by prop(
                 { it.referer }, { copy(referer = it) },
             )
-            var userAgent by prop(
-                { it.userAgent }, { copy(userAgent = it) },
-            )
         }
     }
 

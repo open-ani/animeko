@@ -226,7 +226,7 @@
     <string name="settings_mediasource_selector_config_request_interval">搜索請求間隔時間 (毫秒)</string>
     <string name="settings_mediasource_selector_config_request_interval_description">控制每發送一個請求後等待多久後再發送下一個請求</string>
     <string name="settings_mediasource_selector_config_source_user_agent">User-Agent (可選)</string>
-    <string name="settings_mediasource_selector_config_source_user_agent_description">數據源全程使用的 User-Agent：搜尋頁和詳情頁請求、驗證碼瀏覽器、載入播放頁匹配影片鏈接。留空則使用預設值，不影響播放器請求影片</string>
+    <string name="settings_mediasource_selector_config_source_user_agent_description">數據源全程使用的 User-Agent：搜尋頁和詳情頁請求、驗證碼瀏覽器、載入播放頁匹配影片鏈接、播放器請求影片。留空則使用預設值</string>
     <string name="settings_mediasource_selector_config_search_cache_ttl">搜尋快取有效期 (分鐘)</string>
     <string name="settings_mediasource_selector_config_search_cache_ttl_description">在此時間內切換劇集時複用搜尋結果。實際生效值為此值與使用者設定中的較小者，0 表示不快取</string>
     <string name="settings_mediasource_selector_auto_match">自動匹配 (可選)</string>
@@ -250,7 +250,6 @@
     <string name="settings_mediasource_selector_config_distinguish_channel_name_description">關閉後，線路名稱不同，但只要標題相同的劇集就會被去重。\n開啟此項則不會這樣去重。\n此選項不影響測試結果，影響播放器內選擇數據源時的結果。</string>
     <string name="settings_mediasource_selector_config_video_playback">播放影片時</string>
     <string name="settings_mediasource_selector_config_referer_description">播放影片時執行的 HTTP 請求的 Referer，可留空</string>
-    <string name="settings_mediasource_selector_config_user_agent_description">播放影片時執行的 HTTP 請求的 User-Agent</string>
     <string name="settings_mediasource_selector_config_subject_format_single_tag">單標籤</string>
     <string name="settings_mediasource_selector_config_subject_format_multi_tag">多標籤</string>
     <string name="settings_mediasource_selector_config_channel_format_no_channel">不區分線路</string>

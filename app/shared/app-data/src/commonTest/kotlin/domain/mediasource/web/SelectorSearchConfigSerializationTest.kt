@@ -25,8 +25,9 @@ import kotlin.test.assertFalse
 import kotlin.test.assertTrue
 
 /**
- * [SelectorSearchConfig] 的 JSON 兼容性: 6.2 以前自动匹配字段平铺在顶层, 现在收进 `autoMatch`.
- * 新旧两种 JSON 都要能读; 写出时两处都写, 让旧客户端继续读到平铺字段.
+ * [SelectorSearchConfig] 的 JSON 兼容性: 6.2 以前自动匹配字段平铺在顶层, 现在收进 `autoMatch`;
+ * 6.3 以前只有播放器的 UA (`matchVideo.addHeadersToVideo.userAgent`), 现在是顶层 `userAgent`.
+ * 新旧两种 JSON 都要能读; 写出时两处都写, 让旧客户端继续读到旧字段.
  */
 class SelectorSearchConfigSerializationTest {
     private val json = Json {
@@ -201,6 +202,58 @@ class SelectorSearchConfigSerializationTest {
         assertFalse(obj.getValue("searchRemoveSpecial").jsonPrimitive.boolean)
         assertEquals(4, obj.getValue("searchUseSubjectNamesCount").jsonPrimitive.int)
         assertFalse(obj.getValue("filterByEpisodeSort").jsonPrimitive.boolean)
+    }
+
+    @Test
+    fun `legacy video user agent is migrated when userAgent is absent`() {
+        val config = decode(
+            """
+            {
+              "searchUrl": "https://example.com/{keyword}",
+              "matchVideo": { "addHeadersToVideo": { "referer": "https://example.com/", "userAgent": "LegacyUA/1.0" } }
+            }
+            """.trimIndent(),
+        )
+        assertEquals("LegacyUA/1.0", config.userAgent)
+        assertEquals("https://example.com/", config.matchVideo.addHeadersToVideo.referer)
+    }
+
+    @Test
+    fun `legacy default video user agent means no user agent`() {
+        val legacyDefault = decode(
+            """
+            {
+              "matchVideo": { "addHeadersToVideo": { "userAgent": "${SelectorSearchConfig.DEFAULT_VIDEO_USER_AGENT}" } }
+            }
+            """.trimIndent(),
+        )
+        assertEquals("", legacyDefault.userAgent)
+        assertEquals("", decode("""{"matchVideo": {}}""").userAgent)
+        assertEquals("", decode("""{"matchVideo": { "addHeadersToVideo": { "userAgent": "  " } }}""").userAgent)
+    }
+
+    @Test
+    fun `userAgent key wins over legacy video user agent`() {
+        val config = decode(
+            """
+            {
+              "userAgent": "",
+              "matchVideo": { "addHeadersToVideo": { "userAgent": "LegacyUA/1.0" } }
+            }
+            """.trimIndent(),
+        )
+        assertEquals("", config.userAgent)
+    }
+
+    @Test
+    fun `serialization mirrors user agent into legacy video headers`() {
+        fun legacyVideoUserAgent(config: SelectorSearchConfig) = encode(config).getValue("matchVideo").jsonObject
+            .getValue("addHeadersToVideo").jsonObject.getValue("userAgent").jsonPrimitive.content
+
+        val configured = SelectorSearchConfig(userAgent = "MobileUA/1.0")
+        assertEquals("MobileUA/1.0", encode(configured).getValue("userAgent").jsonPrimitive.content)
+        assertEquals("MobileUA/1.0", legacyVideoUserAgent(configured))
+        assertEquals(SelectorSearchConfig.DEFAULT_VIDEO_USER_AGENT, legacyVideoUserAgent(SelectorSearchConfig()))
     }
 
     @Test
