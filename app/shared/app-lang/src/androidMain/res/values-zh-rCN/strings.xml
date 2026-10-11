@@ -251,6 +251,8 @@
     <string name="settings_mediasource_selector_config_request_interval_description">控制每发送一个请求后等待多久后再发送下一个请求</string>
     <string name="settings_mediasource_selector_config_source_user_agent">User-Agent (可选)</string>
     <string name="settings_mediasource_selector_config_source_user_agent_description">数据源全程使用的 User-Agent：搜索页和详情页请求、验证码浏览器、加载播放页匹配视频链接、播放器请求视频。留空则使用默认值</string>
+    <string name="settings_mediasource_selector_config_source_user_agent_video_only">从旧配置迁移，仅用于播放器请求视频；搜索、验证码和播放页仍使用默认 User-Agent</string>
+    <string name="settings_mediasource_selector_config_source_user_agent_apply_throughout">应用到全程</string>
     <string name="settings_mediasource_selector_config_search_cache_ttl">搜索缓存有效期 (分钟)</string>
     <string name="settings_mediasource_selector_config_search_cache_ttl_description">在此时间内切换剧集时复用搜索结果。实际生效值为此值与用户设置中的较小者，0 表示不缓存</string>
     <string name="settings_mediasource_selector_auto_match">自动匹配 (可选)</string>

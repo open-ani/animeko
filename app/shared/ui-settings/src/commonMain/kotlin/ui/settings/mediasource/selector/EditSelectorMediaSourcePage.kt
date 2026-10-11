@@ -53,6 +53,7 @@ import me.him188.ani.app.domain.mediasource.test.web.SelectorMediaSourceTester
 import me.him188.ani.app.domain.mediasource.test.web.SelectorTestEpisodePresentation
 import me.him188.ani.app.domain.mediasource.web.SelectorMediaSourceArguments
 import me.him188.ani.app.domain.mediasource.web.SelectorMediaSourceEngine
+import me.him188.ani.app.domain.mediasource.web.SelectorSearchConfig
 import me.him188.ani.app.domain.mediasource.web.captcha.WebSessionManager
 import me.him188.ani.app.platform.Context
 import me.him188.ani.app.ui.foundation.interaction.WindowDragArea
@@ -143,7 +144,10 @@ class EditSelectorMediaSourcePageState(
     internal val episodeState: SelectorEpisodeState = SelectorEpisodeState(
         itemState = viewingItemState,
         matchVideoConfigState = derivedStateOf { configurationState.searchConfigState.value?.matchVideo },
-        userAgentState = derivedStateOf { configurationState.searchConfigState.value?.userAgentOrNull },
+        pageUserAgentState = derivedStateOf { configurationState.searchConfigState.value?.pageUserAgentOrNull },
+        videoUserAgentState = derivedStateOf {
+            configurationState.searchConfigState.value?.videoUserAgent ?: SelectorSearchConfig.DEFAULT_VIDEO_USER_AGENT
+        },
         webViewVideoExtractor = webViewVideoExtractor,
         engine = engine,
         backgroundScope = backgroundScope,

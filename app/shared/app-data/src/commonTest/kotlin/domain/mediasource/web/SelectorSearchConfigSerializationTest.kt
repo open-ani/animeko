@@ -22,6 +22,7 @@ import me.him188.ani.app.domain.mediasource.web.format.SelectorSubjectFormatInde
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
+import kotlin.test.assertNull
 import kotlin.test.assertTrue
 
 /**
@@ -204,18 +205,29 @@ class SelectorSearchConfigSerializationTest {
         assertFalse(obj.getValue("filterByEpisodeSort").jsonPrimitive.boolean)
     }
 
+    private val legacyCustomVideoUserAgentJson = """
+        {
+          "searchUrl": "https://example.com/{keyword}",
+          "matchVideo": { "addHeadersToVideo": { "referer": "https://example.com/", "userAgent": "LegacyUA/1.0" } }
+        }
+    """.trimIndent()
+
     @Test
-    fun `legacy video user agent is migrated when userAgent is absent`() {
-        val config = decode(
-            """
-            {
-              "searchUrl": "https://example.com/{keyword}",
-              "matchVideo": { "addHeadersToVideo": { "referer": "https://example.com/", "userAgent": "LegacyUA/1.0" } }
-            }
-            """.trimIndent(),
-        )
+    fun `legacy video user agent is migrated only for video`() {
+        val config = decode(legacyCustomVideoUserAgentJson)
         assertEquals("LegacyUA/1.0", config.userAgent)
+        assertTrue(config.userAgentOnlyForVideo)
+        assertEquals("LegacyUA/1.0", config.videoUserAgent)
+        assertNull(config.pageUserAgentOrNull)
         assertEquals("https://example.com/", config.matchVideo.addHeadersToVideo.referer)
+    }
+
+    @Test
+    fun `migrated video only user agent keeps its scope after saving`() {
+        val saved = decode(json.encodeToString(SelectorSearchConfig.serializer(), decode(legacyCustomVideoUserAgentJson)))
+        assertEquals("LegacyUA/1.0", saved.userAgent)
+        assertTrue(saved.userAgentOnlyForVideo)
+        assertNull(saved.pageUserAgentOrNull)
     }
 
     @Test
@@ -228,6 +240,8 @@ class SelectorSearchConfigSerializationTest {
             """.trimIndent(),
         )
         assertEquals("", legacyDefault.userAgent)
+        assertFalse(legacyDefault.userAgentOnlyForVideo)
+        assertEquals(SelectorSearchConfig.DEFAULT_VIDEO_USER_AGENT, legacyDefault.videoUserAgent)
         assertEquals("", decode("""{"matchVideo": {}}""").userAgent)
         assertEquals("", decode("""{"matchVideo": { "addHeadersToVideo": { "userAgent": "  " } }}""").userAgent)
     }
@@ -243,6 +257,14 @@ class SelectorSearchConfigSerializationTest {
             """.trimIndent(),
         )
         assertEquals("", config.userAgent)
+        assertFalse(config.userAgentOnlyForVideo)
+    }
+
+    @Test
+    fun `source user agent applies to pages and video`() {
+        val config = SelectorSearchConfig(userAgent = " MobileUA/1.0 ")
+        assertEquals("MobileUA/1.0", config.pageUserAgentOrNull)
+        assertEquals("MobileUA/1.0", config.videoUserAgent)
     }
 
     @Test
@@ -254,6 +276,7 @@ class SelectorSearchConfigSerializationTest {
         assertEquals("MobileUA/1.0", encode(configured).getValue("userAgent").jsonPrimitive.content)
         assertEquals("MobileUA/1.0", legacyVideoUserAgent(configured))
         assertEquals(SelectorSearchConfig.DEFAULT_VIDEO_USER_AGENT, legacyVideoUserAgent(SelectorSearchConfig()))
+        assertEquals("LegacyUA/1.0", legacyVideoUserAgent(SelectorSearchConfig(userAgent = "LegacyUA/1.0", userAgentOnlyForVideo = true)))
     }
 
     @Test

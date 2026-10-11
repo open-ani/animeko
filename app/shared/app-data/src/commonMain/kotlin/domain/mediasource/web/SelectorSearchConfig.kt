@@ -54,7 +54,8 @@ import kotlin.time.Duration.Companion.seconds
  *   自动搜索并筛选出对应当前剧集的资源. 全部可选, 缺省时按默认策略自动匹配.
  *
  * 序列化兼容: [autoMatch] 内的字段在 6.2 以前平铺在本类顶层. 反序列化时没有 `autoMatch` 键则读取旧的平铺键;
- * 序列化时两处都写, 让旧版本客户端继续读到平铺键. [userAgent] 同理, 旧位置是 `matchVideo.addHeadersToVideo.userAgent`.
+ * 序列化时两处都写, 让旧版本客户端继续读到平铺键. [userAgent] 同理, 旧位置是 `matchVideo.addHeadersToVideo.userAgent`,
+ * 从那里迁移来的值保持只用于播放器 (见 [userAgentOnlyForVideo]).
  * 见 [SelectorSearchConfigSerializer].
  */
 @Immutable
@@ -77,12 +78,20 @@ data class SelectorSearchConfig(
      * 以及播放器请求视频. 验证码的通过状态 (如 `cf_clearance`) 绑定 UA, 全程一致才能沿用解验证码时的会话.
      *
      * 为空时 HTTP 请求使用浏览器风格的默认 UA, 浏览器使用各平台 WebView 的默认值, 播放器使用 [DEFAULT_VIDEO_USER_AGENT].
-     *
-     * 6.3 以前只有播放器请求视频时的 UA ([VideoHeaders.userAgent]). 读取旧配置时, 它不等于当时的默认值就迁移到这里.
+     * 作用范围受 [userAgentOnlyForVideo] 限制, 实际取值用 [pageUserAgentOrNull] 与 [videoUserAgent].
      *
      * @since 6.3
      */
     val userAgent: String = "",
+    /**
+     * [userAgent] 只用于播放器请求视频, 搜索、验证码与加载播放页仍使用默认 UA.
+     *
+     * 6.3 以前只能配置播放器的 UA ([VideoHeaders.userAgent]). 旧配置里改过它时, 读取时迁移到 [userAgent] 并设置此项,
+     * 保持原来的作用范围. 只由迁移设置, 编辑器里可以取消, 改为全程使用.
+     *
+     * @since 6.3
+     */
+    val userAgentOnlyForVideo: Boolean = false,
     // Phase 2, for search result, select subjects
     val subjectFormatId: SelectorFormatId = SelectorSubjectFormatA.id,
     val selectorSubjectFormatA: SelectorSubjectFormatA.Config = SelectorSubjectFormatA.Config(),
@@ -141,9 +150,15 @@ data class SelectorSearchConfig(
     }
 
     /**
-     * 实际生效的 [userAgent]: 去掉首尾空白, 为空时为 `null`.
+     * 搜索页与详情页的 HTTP 请求、解验证码的浏览器、加载播放页的 WebView 使用的 UA. `null` 时使用各自的默认值.
      */
-    val userAgentOrNull: String? get() = userAgent.trim().ifEmpty { null }
+    val pageUserAgentOrNull: String?
+        get() = if (userAgentOnlyForVideo) null else userAgent.trim().ifEmpty { null }
+
+    /**
+     * 播放器请求视频使用的 UA.
+     */
+    val videoUserAgent: String get() = userAgent.trim().ifEmpty { DEFAULT_VIDEO_USER_AGENT }
 
     @Serializable
     @Suppress("RegExpRedundantEscape")
@@ -369,6 +384,7 @@ private class SelectorSearchConfigSurrogate(
      * `null` 表示 JSON 里没有这个键 (6.3 以前的格式), 此时从 `matchVideo.addHeadersToVideo.userAgent` 迁移.
      */
     val userAgent: String? = null,
+    val userAgentOnlyForVideo: Boolean = false,
     val subjectFormatId: SelectorFormatId = SelectorSubjectFormatA.id,
     val selectorSubjectFormatA: SelectorSubjectFormatA.Config = SelectorSubjectFormatA.Config(),
     val selectorSubjectFormatIndexed: SelectorSubjectFormatIndexed.Config = SelectorSubjectFormatIndexed.Config(),
@@ -397,6 +413,7 @@ private class SelectorSearchConfigSurrogate(
         requestInterval = config.requestInterval,
         searchCacheTtl = config.searchCacheTtl,
         userAgent = config.userAgent,
+        userAgentOnlyForVideo = config.userAgentOnlyForVideo,
         subjectFormatId = config.subjectFormatId,
         // 镜像给旧客户端
         selectorSubjectFormatA = config.selectorSubjectFormatA.copy(preferShorterName = config.autoMatch.preferShorterName),
@@ -413,7 +430,7 @@ private class SelectorSearchConfigSurrogate(
         // 镜像给旧客户端, 让它们的播放器使用同一个 UA
         matchVideo = config.matchVideo.copy(
             addHeadersToVideo = config.matchVideo.addHeadersToVideo.copy(
-                userAgent = config.userAgentOrNull ?: SelectorSearchConfig.DEFAULT_VIDEO_USER_AGENT,
+                userAgent = config.videoUserAgent,
             ),
         ),
         autoMatch = config.autoMatch,
@@ -433,15 +450,17 @@ private class SelectorSearchConfigSurrogate(
             },
             filterByEpisodeSort = filterByEpisodeSort,
         )
+        // 旧格式只有播放器的 UA, 等于旧默认值说明没有改过
         val legacyVideoUserAgent = matchVideo.addHeadersToVideo.userAgent.trim()
+            .takeUnless { it == SelectorSearchConfig.DEFAULT_VIDEO_USER_AGENT }.orEmpty()
         return SelectorSearchConfig(
             searchUrl = searchUrl,
             rawBaseUrl = rawBaseUrl,
             requestInterval = requestInterval,
             searchCacheTtl = searchCacheTtl,
-            // 旧格式: 只有播放器的 UA, 等于旧默认值说明没有改过
-            userAgent = userAgent
-                ?: legacyVideoUserAgent.takeUnless { it == SelectorSearchConfig.DEFAULT_VIDEO_USER_AGENT }.orEmpty(),
+            userAgent = userAgent ?: legacyVideoUserAgent,
+            // 迁移来的 UA 保持原来的作用范围
+            userAgentOnlyForVideo = if (userAgent == null) legacyVideoUserAgent.isNotEmpty() else userAgentOnlyForVideo,
             subjectFormatId = subjectFormatId,
             // 内存里的旧字段与 autoMatch 保持一致, 避免两处不同
             selectorSubjectFormatA = selectorSubjectFormatA.copy(preferShorterName = autoMatch.preferShorterName),

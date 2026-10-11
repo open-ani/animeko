@@ -46,9 +46,13 @@ class SelectorEpisodeState(
      */
     matchVideoConfigState: State<SelectorSearchConfig.MatchVideoConfig?>,
     /**
-     * 数据源配置的 UA ([SelectorSearchConfig.userAgentOrNull]).
+     * 加载播放页使用的 UA ([SelectorSearchConfig.pageUserAgentOrNull]).
      */
-    private val userAgentState: State<String?>,
+    private val pageUserAgentState: State<String?>,
+    /**
+     * 播放器请求视频使用的 UA ([SelectorSearchConfig.videoUserAgent]).
+     */
+    private val videoUserAgentState: State<String>,
     /**
      * null means loading. Should finally have one.
      */
@@ -88,7 +92,7 @@ class SelectorEpisodeState(
                             extractor.getVideoResourceUrl(
                                 context,
                                 episodeUrl,
-                                SelectorMediaSource.patchWebViewConfig(WebViewConfig.Empty, config, userAgentState.value),
+                                SelectorMediaSource.patchWebViewConfig(WebViewConfig.Empty, config, pageUserAgentState.value),
                             ) {
                                 val shouldLoadPage = engine.shouldLoadPage(it, config)
                                 collect(SelectorTestWebUrl(it, didLoadNestedPage = shouldLoadPage))
@@ -135,7 +139,7 @@ class SelectorEpisodeState(
      */
     val rawMatchResults: Flow<List<MatchResult>> by derivedStateOf { // TODO: 2024/12/14 this is shit 
         val matchVideoConfig = matchVideoConfigState.value ?: return@derivedStateOf emptyFlow()
-        val userAgent = userAgentState.value
+        val videoUserAgent = videoUserAgentState.value
         searcher.searchResultFlow.flatMapLatest { searchResult ->
             searchResult ?: return@flatMapLatest emptyFlow()
             val flow = when (searchResult) {
@@ -151,7 +155,7 @@ class SelectorEpisodeState(
             flow.map { list ->
                 list.asSequence()
                     .map { original ->
-                        MatchResult(original, engine.matchWebVideo(original.url, matchVideoConfig, userAgent).videoOrNull)
+                        MatchResult(original, engine.matchWebVideo(original.url, matchVideoConfig, videoUserAgent).videoOrNull)
                     }
                     .distinctBy { it.key } // O(n) extra space, O(1) time
                     .toMutableList() // single list instance construction

@@ -27,24 +27,33 @@ class SelectorMediaSourceEngineMatchWebVideoTest {
         HttpClient(MockEngine { respond("") }).asScopedHttpClient(),
     )
 
-    private fun videoHeaders(userAgent: String?): Map<String, String> {
-        val result = engine.matchWebVideo(
-            "https://cdn.example.com/video.mp4",
-            SelectorSearchConfig.MatchVideoConfig(addHeadersToVideo = SelectorSearchConfig.VideoHeaders(referer = "https://example.com/")),
-            userAgent,
-        )
+    private fun videoHeaders(config: SelectorSearchConfig): Map<String, String> {
+        val result = engine.matchWebVideo("https://cdn.example.com/video.mp4", config.matchVideo, config.videoUserAgent)
         return assertIs<WebVideoMatcher.MatchResult.Matched>(result).video.headers
     }
 
     @Test
     fun `player uses the source user agent`() {
-        val headers = videoHeaders("Mobile UA")
+        val headers = videoHeaders(
+            SelectorSearchConfig(
+                userAgent = "Mobile UA",
+                matchVideo = SelectorSearchConfig.MatchVideoConfig(
+                    addHeadersToVideo = SelectorSearchConfig.VideoHeaders(referer = "https://example.com/"),
+                ),
+            ),
+        )
         assertEquals("Mobile UA", headers["User-Agent"])
         assertEquals("https://example.com/", headers["Referer"])
     }
 
     @Test
+    fun `player uses the video only user agent`() {
+        val headers = videoHeaders(SelectorSearchConfig(userAgent = "Legacy UA", userAgentOnlyForVideo = true))
+        assertEquals("Legacy UA", headers["User-Agent"])
+    }
+
+    @Test
     fun `player falls back to the default video user agent`() {
-        assertEquals(SelectorSearchConfig.DEFAULT_VIDEO_USER_AGENT, videoHeaders(null)["User-Agent"])
+        assertEquals(SelectorSearchConfig.DEFAULT_VIDEO_USER_AGENT, videoHeaders(SelectorSearchConfig())["User-Agent"])
     }
 }

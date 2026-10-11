@@ -227,6 +227,8 @@
     <string name="settings_mediasource_selector_config_request_interval_description">控制每發送一個請求後等待多久後再發送下一個請求</string>
     <string name="settings_mediasource_selector_config_source_user_agent">User-Agent (可選)</string>
     <string name="settings_mediasource_selector_config_source_user_agent_description">數據源全程使用的 User-Agent：搜尋頁和詳情頁請求、驗證碼瀏覽器、載入播放頁匹配影片鏈接、播放器請求影片。留空則使用預設值</string>
+    <string name="settings_mediasource_selector_config_source_user_agent_video_only">從舊配置遷移，僅用於播放器請求影片；搜尋、驗證碼和播放頁仍使用預設 User-Agent</string>
+    <string name="settings_mediasource_selector_config_source_user_agent_apply_throughout">應用到全程</string>
     <string name="settings_mediasource_selector_config_search_cache_ttl">搜尋快取有效期 (分鐘)</string>
     <string name="settings_mediasource_selector_config_search_cache_ttl_description">在此時間內切換劇集時複用搜尋結果。實際生效值為此值與使用者設定中的較小者，0 表示不快取</string>
     <string name="settings_mediasource_selector_auto_match">自動匹配 (可選)</string>

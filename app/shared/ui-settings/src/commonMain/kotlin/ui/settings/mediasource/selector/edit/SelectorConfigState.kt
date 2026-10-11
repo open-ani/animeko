@@ -122,6 +122,15 @@ class SelectorConfigState(
         SelectorMediaSourceArguments.Default.searchConfig.userAgent,
     )
 
+    /**
+     * 旧配置迁移来的 UA 只用于播放器. 见 [SelectorSearchConfig.userAgentOnlyForVideo].
+     */
+    var userAgentOnlyForVideo by argumentsStorage.prop(
+        { it.searchConfig.userAgentOnlyForVideo },
+        { copy(searchConfig = searchConfig.copy(userAgentOnlyForVideo = it)) },
+        SelectorMediaSourceArguments.Default.searchConfig.userAgentOnlyForVideo,
+    )
+
     var rawBaseUrl by argumentsStorage.prop(
         { it.searchConfig.rawBaseUrl },
         { copy(searchConfig = searchConfig.copy(rawBaseUrl = it)) },
