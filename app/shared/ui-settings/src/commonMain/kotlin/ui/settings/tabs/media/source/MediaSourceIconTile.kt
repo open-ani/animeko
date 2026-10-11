@@ -41,7 +41,7 @@ import me.him188.ani.datasources.api.source.MediaSourceInfo
  * 列表中的数据源图标.
  *
  * 数据源图标的形状各不相同: 有铺满的方图, 有透明背景的 logo, 也有横向的文字 logo.
- * 统一放在圆角底板上完整显示, 不裁切. 没有图标或加载失败时显示名称的首字.
+ * 图标按比例完整显示, 不加底色. 没有图标或加载失败时, 在 [containerColor] 底板上显示名称的首字.
  */
 @Composable
 internal fun MediaSourceIconTile(
@@ -53,11 +53,12 @@ internal fun MediaSourceIconTile(
     val resource = info.getIconResourceOrNull()
     val iconUrl = info.iconUrl?.takeIf { it.isNotBlank() }
     var failed by remember(iconUrl) { mutableStateOf(false) }
+    val hasIcon = resource != null || (iconUrl != null && !failed)
     Box(
         modifier
             .size(if (small) 16.dp else 40.dp)
             .clip(RoundedCornerShape(if (small) 4.dp else 10.dp))
-            .background(containerColor),
+            .then(if (hasIcon) Modifier else Modifier.background(containerColor)),
         contentAlignment = Alignment.Center,
     ) {
         when {

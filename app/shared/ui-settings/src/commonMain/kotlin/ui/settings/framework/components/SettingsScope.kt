@@ -176,13 +176,7 @@ abstract class SettingsScope {
             headlineContent = headlineContent,
             modifier,
             overlineContent,
-            supportingContent = supportingContent?.let {
-                {
-                    Column(Modifier.padding(top = 6.dp)) {
-                        it()
-                    }
-                }
-            },
+            supportingContent,
             leadingContent,
             trailingContent = trailingContent?.let {
                 {
