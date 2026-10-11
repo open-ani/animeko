@@ -23,6 +23,7 @@ import me.him188.ani.app.data.repository.player.DanmakuRegexFilterRepository
 import me.him188.ani.app.data.repository.media.MediaSourceSubscriptionRepository
 import me.him188.ani.app.data.repository.user.SettingsRepository
 import me.him188.ani.app.domain.media.fetch.MediaSourceManager
+import me.him188.ani.app.domain.mediasource.subscription.displayName
 import me.him188.ani.app.ui.settings.SettingsViewModel
 import me.him188.ani.app.ui.settings.tabs.about.mergeOpenSourceLibraries
 
@@ -65,7 +66,7 @@ class TvSettingsViewModel(
     ) { state, filter, regexFilters, sources, subscriptions ->
         state.copy(
             loaded = true, filter = filter, regexFilters = regexFilters, sources = sources,
-            subscriptions = subscriptions.map { TvSettingsSubscription(it.subscriptionId, it.url, it.enabled) },
+            subscriptions = subscriptions.map { TvSettingsSubscription(it.subscriptionId, it.displayName, it.enabled) },
         )
     }
     val uiState = combine(

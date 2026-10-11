@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2024-2025 OpenAni and contributors.
+ * Copyright (C) 2024-2026 OpenAni and contributors.
  *
  * 此源代码的使用受 GNU AFFERO GENERAL PUBLIC LICENSE version 3 许可证的约束, 可以在以下链接找到该许可证.
  * Use of this source code is governed by the GNU AGPLv3 license, which can be found at the following link.
@@ -11,11 +11,15 @@ package me.him188.ani.app.domain.mediasource.codec
 
 import kotlinx.collections.immutable.ImmutableList
 import kotlinx.collections.immutable.persistentListOf
+import kotlinx.serialization.SerializationException
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonElement
 import me.him188.ani.app.domain.mediasource.instance.MediaSourceSave
 import me.him188.ani.app.domain.mediasource.rss.RssMediaSourceCodec
+import me.him188.ani.app.domain.mediasource.subscription.SubscriptionMetadata
 import me.him188.ani.app.domain.mediasource.subscription.SubscriptionUpdateData
+import me.him188.ani.app.domain.mediasource.subscription.SubscriptionUpdateDataReader
+import me.him188.ani.app.domain.mediasource.subscription.UnsupportedSubscriptionSchemaException
 import me.him188.ani.app.domain.mediasource.web.SelectorMediaSourceCodec
 import me.him188.ani.datasources.api.source.FactoryId
 import me.him188.ani.utils.platform.annotations.TestOnly
@@ -113,7 +117,16 @@ class MediaSourceCodecManager(
      */
     fun serializeSubscriptionToString(
         data: SubscriptionUpdateData,
-    ): String = context.json.encodeToString(SubscriptionUpdateData.serializer(), data)
+    ): String = subscriptionJson.encodeToString(SubscriptionUpdateData.serializer(), data)
+
+    /**
+     * 读取订阅文件或导出的数据源, 同时接受旧格式.
+     *
+     * @see SubscriptionUpdateDataReader
+     */
+    @Throws(SerializationException::class, IllegalArgumentException::class, UnsupportedSubscriptionSchemaException::class)
+    fun decodeSubscriptionFromString(string: String): SubscriptionUpdateData =
+        context.json.decodeFromString(SubscriptionUpdateDataReader, string)
 
     companion object {
         val json = Json {
@@ -121,47 +134,39 @@ class MediaSourceCodecManager(
             encodeDefaults = true
             allowSpecialFloatingPointValues = true
         }
+
+        /**
+         * 订阅文件会被人阅读和手动编辑, 不输出值为 `null` 的可选字段.
+         */
+        private val subscriptionJson = Json(json) {
+            explicitNulls = false
+        }
     }
 }
 
 fun MediaSourceCodecManager.serializeSubscriptionToString(
-    saves: List<MediaSourceSave>
+    saves: List<MediaSourceSave>,
+    metadata: SubscriptionMetadata? = null,
 ): String = serializeSubscriptionToString(
     SubscriptionUpdateData(
-        ExportedMediaSourceDataList(
-            saves.mapNotNull {
-                val args = it.config.serializedArguments ?: return@mapNotNull null
-                serialize(it.factoryId, args)
-            },
-        ),
+        name = metadata?.name,
+        description = metadata?.description,
+        websiteUrl = metadata?.websiteUrl,
+        iconUrl = metadata?.iconUrl,
+        mediaSources = saves.mapNotNull {
+            val args = it.config.serializedArguments ?: return@mapNotNull null
+            serialize(it.factoryId, args).copy(id = it.config.idInSubscription)
+        },
     ),
 )
 
 class FactoryNotFoundException(factoryId: FactoryId) : MediaSourceDecodeException("Factory not found: $factoryId")
 
-// region serialization with ExportedMediaSourceDataList
-
-fun MediaSourceCodecManager.serializeToString(
-    list: ExportedMediaSourceDataList
-): String {
-    // should not throw
-    return context.json.encodeToString(ExportedMediaSourceDataList.serializer(), list)
-}
-
-fun MediaSourceCodecManager.decodeFromStringOrNull(string: String): ExportedMediaSourceDataList? {
-    return kotlin.runCatching {
-        // Decode might throw when encountering invalid data
-        context.json.decodeFromString(ExportedMediaSourceDataList.serializer(), string)
-    }.getOrNull()
-}
-
-// endregion
-
 // region serialization with List<MediaSourceArgument>
 
 fun MediaSourceCodecManager.serializeToString(
     arguments: List<MediaSourceArguments>
-): String = serializeToString(ExportedMediaSourceDataList(arguments.map { encode(it) }))
+): String = serializeSubscriptionToString(SubscriptionUpdateData(mediaSources = arguments.map { encode(it) }))
 
 //fun MediaSourceCodecManager.deserializeListFromStringOrNull(string: String): List<MediaSourceArgument>? {
 //    return decodeFromStringOrNull(string)?.let { list ->

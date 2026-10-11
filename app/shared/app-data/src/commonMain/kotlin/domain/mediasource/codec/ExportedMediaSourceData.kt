@@ -27,9 +27,10 @@ data class ExportedMediaSourceData(
      * [MediaSourceArguments] 的序列化结果
      */
     val arguments: JsonElement, // 不使用多态序列化, 为了兼容性
+    /**
+     * 数据源在订阅中的稳定 ID. 订阅更新时用它对应本地已有的数据源, 这样订阅作者给数据源改名不会丢失用户的设置.
+     * 未提供时使用 [MediaSourceArguments.name].
+     */
+    val id: String? = null,
 )
 
-@Serializable
-data class ExportedMediaSourceDataList(
-    val mediaSources: List<ExportedMediaSourceData>,
-) 
