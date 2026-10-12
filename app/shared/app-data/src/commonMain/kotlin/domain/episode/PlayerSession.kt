@@ -187,6 +187,7 @@ class PlayerSession(
                 ResolutionFailures.ENGINE_ERROR -> VideoLoadingState.UnknownError(e)
                 ResolutionFailures.NETWORK_ERROR -> VideoLoadingState.NetworkError
                 ResolutionFailures.NO_MATCHING_RESOURCE -> VideoLoadingState.NoMatchingFile
+                ResolutionFailures.WEB_ENGINE_UNAVAILABLE -> VideoLoadingState.WebEngineUnavailable
             }
             stopPlayback()
         } catch (e: CancellationException) { // 切换数据源 (含 MediaLoadCancellationException)
