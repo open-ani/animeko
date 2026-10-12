@@ -210,6 +210,10 @@ interface AniNavigator {
         navigate(NavRoutes.Schedule)
     }
 
+    fun navigateTrendingRanking() {
+        navigate(NavRoutes.TrendingRanking)
+    }
+
     fun navigatePlaybackHistory() {
         navigate(NavRoutes.PlaybackHistory)
     }

@@ -10,7 +10,6 @@
 package me.him188.ani.tv.ui.di
 
 import me.him188.ani.app.data.network.AutoSkipRepository
-import me.him188.ani.app.data.network.BangumiSummaryService
 import me.him188.ani.app.data.repository.episode.EpisodeCollectionRepository
 import me.him188.ani.app.data.repository.episode.EpisodeCommentRepository
 import me.him188.ani.app.data.repository.media.MediaSourceSubscriptionRepository
@@ -42,7 +41,6 @@ class TvAppDependencies(
     val koin: Koin,
     val userRepository: UserRepository,
     val subjectCollectionRepository: SubjectCollectionRepository,
-    val bangumiSummaryService: BangumiSummaryService,
     val danmakuRegexFilterRepository: DanmakuRegexFilterRepository,
     val mediaSourceManager: MediaSourceManager,
     val mediaSourceSubscriptionRepository: MediaSourceSubscriptionRepository,
@@ -74,7 +72,6 @@ class TvAppDependencies(
             danmakuRegexFilterRepository = koin.get(),
             mediaSourceManager = koin.get(),
             mediaSourceSubscriptionRepository = koin.get(),
-            bangumiSummaryService = koin.get(),
             subjectSearchRepository = koin.get(),
             settingsRepository = koin.get(),
             subjectDetailsStateFactory = koin.get(),

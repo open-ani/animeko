@@ -35,7 +35,6 @@ import me.him188.ani.app.data.network.AniPersonCommentService
 import me.him188.ani.app.data.network.AniSubjectRelationIndexService
 import me.him188.ani.app.data.network.AniSubjectSearchService
 import me.him188.ani.app.data.network.AnimeScheduleService
-import me.him188.ani.app.data.network.BangumiSummaryService
 import me.him188.ani.app.data.network.BangumiBangumiCommentServiceImpl
 import me.him188.ani.app.data.network.BangumiCommentService
 import me.him188.ani.app.data.network.BangumiRelatedPeopleService
@@ -58,11 +57,13 @@ import me.him188.ani.app.data.repository.repositoryModules
 import me.him188.ani.app.data.repository.torrent.peer.PeerFilterSubscriptionRepository
 import me.him188.ani.app.data.repository.user.AccessTokenSession
 import me.him188.ani.app.data.repository.user.SettingsRepository
+import me.him188.ani.app.data.repository.user.UserRepository
 import me.him188.ani.app.domain.torrent.TorrentEngineType
 import me.him188.ani.app.domain.torrent.engines.PikPakEngine
 import me.him188.ani.torrent.pikpak.PikPakCredentials
 import me.him188.ani.torrent.pikpak.PikPakSessionStoreAdapter
 import me.him188.ani.utils.io.inSystem
+import me.him188.ani.app.domain.foundation.AniInstallIdFeatureHandler
 import me.him188.ani.app.domain.foundation.ConvertSendCountExceedExceptionFeature
 import me.him188.ani.app.domain.foundation.ConvertSendCountExceedExceptionFeatureHandler
 import me.him188.ani.app.domain.foundation.CookieJarFeatureHandler
@@ -87,12 +88,13 @@ import me.him188.ani.app.domain.foundation.VersionExpiryFeatureHandler
 import me.him188.ani.app.domain.foundation.VersionExpiryService
 import me.him188.ani.app.domain.foundation.get
 import me.him188.ani.app.domain.foundation.withValue
+import me.him188.ani.app.domain.install.InstallIdRepository
+import me.him188.ani.app.domain.install.InstallReporter
 import me.him188.ani.app.domain.media.download.DownloadOperations
 import me.him188.ani.app.domain.media.download.MediaDownloadManager
 import me.him188.ani.app.domain.mediasource.web.PageEvaluator
 import me.him188.ani.app.domain.mediasource.web.captcha.BrowserImageCaptchaSolver
 import me.him188.ani.app.domain.mediasource.web.captcha.CaptchaBrowserFactory
-import me.him188.ani.app.domain.mediasource.web.captcha.GirigiriSearchRoute
 import me.him188.ani.app.domain.mediasource.web.captcha.ImageCaptchaRecognizer
 import me.him188.ani.app.domain.mediasource.web.captcha.MacCmsImageCaptchaSolver
 import me.him188.ani.app.domain.mediasource.web.captcha.WebSessionManager
@@ -125,8 +127,6 @@ import me.him188.ani.app.domain.watchtogether.WatchTogetherManager
 import me.him188.ani.app.domain.usecase.useCaseModules
 import me.him188.ani.app.ui.subject.details.state.DefaultSubjectDetailsStateFactory
 import me.him188.ani.app.ui.subject.details.state.SubjectDetailsStateFactory
-import me.him188.ani.datasources.bangumi.BangumiClient
-import me.him188.ani.datasources.bangumi.BangumiClientImpl
 import me.him188.ani.utils.coroutines.IO_
 import me.him188.ani.utils.coroutines.childScope
 import me.him188.ani.utils.coroutines.childScopeContext
@@ -139,7 +139,6 @@ import org.koin.core.scope.Scope
 import org.koin.dsl.module
 import kotlin.time.Duration.Companion.minutes
 
-private val Scope.client get() = get<BangumiClient>()
 private val Scope.database get() = get<AniDatabase>()
 private val Scope.settingsRepository get() = get<SettingsRepository>()
 private val Scope.aniApiProvider get() = get<AniApiProvider>()
@@ -171,6 +170,9 @@ private fun KoinApplication.otherModules(
             tokenRepository = get(),
             coroutineScope = coroutineScope,
             refreshSession = AniSessionRefresher { aniApiProvider.userAuthApi },
+            newLoginListener = SessionManager.NewLoginListener { userId ->
+                get<InstallReporter>().beforeNewLogin(userId)
+            },
         )
     }
     single<SessionStateProvider> {
@@ -183,8 +185,10 @@ private fun KoinApplication.otherModules(
             coroutineScope,
         )
     }
+    single<InstallIdRepository> { InstallIdRepository(getContext().dataStores.installInfoStore) }
     single<HttpClientProvider> {
         val sessionManager by inject<SessionManager>()
+        val installIdRepository = get<InstallIdRepository>()
         DefaultHttpClientProvider(
             get(), coroutineScope,
             featureHandlers = listOf(
@@ -195,6 +199,7 @@ private fun KoinApplication.otherModules(
                     },
                     onRefresh = { null },
                 ),
+                AniInstallIdFeatureHandler { installIdRepository.currentId },
                 ServerListFeatureHandler(
                     get<ServerSelector>().flow,
                 ),
@@ -234,7 +239,6 @@ private fun KoinApplication.otherModules(
             solverEnabled = {
                 settingsRepository.mediaSelectorSettings.flow.first().enableImageCaptchaAutoSolve
             },
-            searchRoutes = listOf(GirigiriSearchRoute(evaluator)),
             maxSessions = browserFactory.recommendedMaxSessions,
         )
     }
@@ -248,11 +252,13 @@ private fun KoinApplication.otherModules(
             }
         }
     }
-    single<AniApiProvider> { AniApiProvider(get<HttpClientProvider>().get(useAniToken = true)) }
+    single<AniApiProvider> {
+        AniApiProvider(get<HttpClientProvider>().get(useAniToken = true, useAniInstallId = true))
+    }
     single<WatchTogetherApiService> {
         DefaultWatchTogetherApiService(
             provider = get(),
-            eventsClient = get<HttpClientProvider>().get(useAniToken = true, useSse = true),
+            eventsClient = get<HttpClientProvider>().get(useAniToken = true, useAniInstallId = true, useSse = true),
         )
     }
     single<LocalPlaybackBridge> { LocalPlaybackBridge() }
@@ -266,13 +272,6 @@ private fun KoinApplication.otherModules(
             playbackBridge = get(),
             automationGate = get(),
         ).also { it.start() }
-    }
-    single<BangumiClient> {
-        BangumiClientImpl(
-            get<HttpClientProvider>().get(
-                userAgent = ScopedHttpClientUserAgent.ANI,
-            ),
-        )
     }
 
     single<AniSubjectSearchService> {
@@ -316,14 +315,22 @@ private fun KoinApplication.otherModules(
             scope = coroutineScope,
         ).also { it.start() }
     }
+    single(createdAtStart = true) {
+        InstallReporter(
+            store = getContext().dataStores.installInfoStore,
+            playHistoryRepository = get(),
+            api = aniApiProvider.userProfileApi,
+            sessionStateProvider = get(),
+            currentUserId = get<UserRepository>().selfInfoFlow.map { it?.id?.toString() },
+            scope = coroutineScope,
+        ).also { it.start() }
+    }
     single<AniSubjectRelationIndexService> {
         val provider = get<AniApiProvider>()
         AniSubjectRelationIndexService(provider.subjectRelationsApi)
     }
 
     single<AnimeScheduleService> { AnimeScheduleService(get<AniApiProvider>().scheduleApi) }
-    // TV 横版 backdrop / 分集剧照; 未配置 ani.tmdb.api.token 时自动关闭
-    single<BangumiSummaryService> { BangumiSummaryService(get()) }
 
     single<UpdateManager> {
         UpdateManager(
@@ -507,6 +514,14 @@ fun KoinApplication.startCommonKoinModule(
     // Start the proxy provider very soon (before initialization of any other components)
     runBlocking {
         koin.get<SessionManager>().clearSessionIfAccessTokenExpired()
+        // 在任何请求之前加载, 让发往 Ani 服务器的请求都带上安装 ID
+        try {
+            koin.get<InstallIdRepository>().load()
+        } catch (e: CancellationException) {
+            throw e
+        } catch (e: Exception) {
+            logger("ani-startup").warn(e) { "Failed to load install id" }
+        }
         // We have to block here to read the saved proxy settings
         when (val proxyProvider = koin.get<HttpClientProvider>()) {
             // compile-safe type cast

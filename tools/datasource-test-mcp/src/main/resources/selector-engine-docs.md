@@ -54,7 +54,13 @@ MCP 工具对应关系:
 |---|---|---|
 | `a` | 选择 `<a>` 元素,`title`/text 为名称,`href` 为链接 | `selectLists` |
 | `indexed` | 名称与链接分别用两个 selector 选出后按序配对 | `selectNames`, `selectLinks` |
-| `json-path-indexed` | 页面是 JSON API 响应,用 JsonPath 提取 | `selectLinks`, `selectNames` |
+| `json-path-indexed` | 页面是 JSON API 响应,用 JsonPath 提取 | `selectLinks`, `selectNames`, `linkTemplate` |
+
+**`linkTemplate`**(三种格式都支持,可选): 把 select 出的原始链接代入 `{value}` 得到详情页地址,留空则直接用原始链接。
+API 只返回裸 id 时(如 `{"list":[{"id":"5395"}]}`)用它把 id 拼成详情页地址——`selectLinks` 取 `$.list[*]['id']`、`linkTemplate` 填 `/GV{value}/`,即可得到 `https://站点/GV5395/`,无需为该站写专属 Kotlin 路由。
+模板可写相对路径(以 `searchUrl` 推出的 baseUrl 解析为绝对地址)或绝对地址。
+
+注: `linkTemplate` 是 web-selector 侧的**链接合成**(把 id 拼成详情页 URL), 角色上等价于通用 `json-api` 源的 `subjectUrl`。两者因**详情页格式不同**而分属两套源——web-selector 解析 HTML 详情(所以 girigiri 这类"JSON 搜索 + HTML 详情"的混合源用它), `json-api` 解析 JSON 详情(如稀饭 Next 这类纯 JSON API 源用 `subjectUrl`)。命名随各自词汇(web-selector 的 `selectLinks`/`selectNames` vs `json-api` 的 `subjectUrl`/`episodeUrl`), 不强求同名。
 
 **输出**: `WebSearchSubjectInfo { name, fullUrl, partialUrl }` 列表,顺序与页面一致。返回 `null` 表示配置无效(selector 为空或语法错误)。
 `selector_resolve_episode` 在此之后按 `autoMatch.preferShorterName`(默认开)把名称短的条目排到前面,与 App 自动匹配一致;
@@ -175,7 +181,7 @@ MCP 工具:
 `searchConfig` 分两层: 上面示例里的都是**列表规则**(把搜索结果、线路、剧集列出来,以及 `matchVideo`),
 只写这一层就能在 App 里浏览并手动选集;**自动匹配**放在 `searchConfig.autoMatch` 下
 (`enabled`、`searchUseOnlyFirstWord`、`searchRemoveSpecial`、`searchUseSubjectNamesCount`、
-`preferShorterName`、`filterBySubjectName`、`filterByEpisodeSort`),全部可选。这些字段也接受平铺在 `searchConfig` 顶层的写法;
+`preferShorterName`、`filterByEpisodeSort`),全部可选。这些字段也接受平铺在 `searchConfig` 顶层的写法;
 同时存在时以 `autoMatch` 为准。`autoMatch.enabled: false` 的源不参与自动选择,只能浏览。
 
 ## 调试建议流程

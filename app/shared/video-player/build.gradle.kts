@@ -39,6 +39,7 @@ kotlin {
         implementation(libs.androidx.media3.exoplayer.dash)
         implementation(libs.androidx.media3.exoplayer.hls)
         implementation(libs.libass.media)
+        implementation(libs.androidx.core.ktx)
         api(libs.mediamp.exoplayer)
     }
     sourceSets.getByName("androidHostTest").dependencies {

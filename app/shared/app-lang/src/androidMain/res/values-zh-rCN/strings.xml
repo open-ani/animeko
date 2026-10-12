@@ -178,7 +178,6 @@
     <string name="episode_drop_video_unknown_name">视频文件</string>
     <string name="episode_drop_video_description">立即在当前剧集播放此文件，仅本次播放有效</string>
     <string name="episode_drop_video_supported_hint">视频文件</string>
-    <string name="settings_help_qq">QQ</string>
     <string name="settings_help_telegram">Telegram</string>
     <string name="settings_help_github">GitHub</string>
     <string name="settings_help_feedback">反馈问题</string>
@@ -189,7 +188,6 @@
     <string name="settings_about_feedback">反馈建议</string>
     <string name="settings_about_source_code">源代码</string>
     <string name="settings_about_chat_groups">交流群</string>
-    <string name="settings_about_qq_group">QQ 群</string>
     <string name="settings_about_icon_description">Animeko Icon</string>
     <string name="settings_about_app_name">Animeko</string>
     <string name="settings_about_app_description">集找番、追番、看番的一站式弹幕追番平台</string>
@@ -253,9 +251,14 @@
     <string name="settings_mediasource_selector_config_request_interval_description">控制每发送一个请求后等待多久后再发送下一个请求</string>
     <string name="settings_mediasource_selector_config_search_cache_ttl">搜索缓存有效期 (分钟)</string>
     <string name="settings_mediasource_selector_config_search_cache_ttl_description">在此时间内切换剧集时复用搜索结果。实际生效值为此值与用户设置中的较小者，0 表示不缓存</string>
-    <string name="settings_mediasource_selector_config_filter_settings">过滤设置</string>
-    <string name="settings_mediasource_selector_config_filter_by_subject_name">使用条目名称过滤</string>
-    <string name="settings_mediasource_selector_config_filter_by_subject_name_description">要求资源标题包含条目名称。适用于数据源可能搜到无关内容的情况。此功能只对 4.4.0 以前版本有效，对其他版本无效</string>
+    <string name="settings_mediasource_selector_auto_match">自动匹配 (可选)</string>
+    <string name="settings_mediasource_selector_auto_match_description">在上面的列表规则之上，怎样自动找到正在观看的剧集。全部可选，默认值适用于大多数站点</string>
+    <string name="settings_mediasource_selector_auto_match_enabled">参与自动匹配</string>
+    <string name="settings_mediasource_selector_auto_match_enabled_description">关闭后此源只供浏览和手动选集，播放时不会自动搜索</string>
+    <string name="settings_mediasource_selector_tier">阶级</string>
+    <string name="settings_mediasource_selector_tier_description">数值越低越优先。阶级 0 查到结果后立即选用，更高阶级需先等待其他数据源</string>
+    <string name="settings_mediasource_selector_prefer_shorter_name">优先选择最短标题</string>
+    <string name="settings_mediasource_selector_prefer_shorter_name_description">优先选择满足匹配的标题最短的条目，可避免为第一季匹配到第二季</string>
     <string name="settings_mediasource_selector_config_filter_by_episode_sort">使用剧集序号过滤</string>
     <string name="settings_mediasource_selector_config_filter_by_episode_sort_description">要求资源标题包含剧集序号。适用于数据源可能搜到无关内容的情况。通常建议开启</string>
     <string name="settings_mediasource_selector_config_default_resolution">标记分辨率</string>
@@ -399,6 +402,8 @@
     <string name="settings_player_auto_mark_done">观看 90% 后自动标记为看过</string>
     <string name="settings_player_hide_selector_on_select">选择数据源后自动关闭弹窗</string>
     <string name="settings_player_auto_fullscreen_on_landscape">旋转屏幕时自动全屏</string>
+    <string name="settings_player_foldable_hover_mode">折叠屏悬停模式</string>
+    <string name="settings_player_foldable_hover_mode_description">设备半折叠时分屏显示视频和控制器</string>
     <string name="settings_player_auto_play_next">自动连播</string>
     <string name="settings_player_background_behavior">切换到其他应用时</string>
     <string name="settings_player_background_behavior_description">播放中离开应用时，自动以小窗继续播放</string>
@@ -413,7 +418,12 @@
     <string name="settings_player_op_ed_skip_duration_seconds">%1$d 秒</string>
     <string name="settings_player_auto_switch_media_on_error">播放失败时自动切换资源</string>
     <string name="settings_player_hls_ad_filter">过滤贴片广告</string>
-    <string name="settings_player_hls_ad_filter_description">自动跳过在线源视频中插入的广告，个别广告可能无法识别；如遇播放出错可关闭</string>
+    <string name="settings_player_hls_ad_filter_all">全开</string>
+    <string name="settings_player_hls_ad_filter_smart">智能</string>
+    <string name="settings_player_hls_ad_filter_off">关闭</string>
+    <string name="settings_player_hls_ad_filter_all_description">过滤所有在线源的广告。识别广告会让视频晚 1-4 秒开播，最多 8 秒</string>
+    <string name="settings_player_hls_ad_filter_smart_description">只过滤订阅标记为含有插播广告的在线源，个别广告可能无法识别；如遇播放出错可关闭</string>
+    <string name="settings_player_hls_ad_filter_off_description">不过滤在线源视频中插入的广告</string>
     <string name="settings_player_long_press_fast_forward_speed">长按播放速度</string>
     <string name="settings_player_long_press_fast_forward_speed_description">长按时使用的播放速度</string>
     <string name="settings_player_playback_speed_range">倍速范围</string>
@@ -462,20 +472,16 @@
     
 
     <!-- MediaSourceGroup -->
-    <string name="settings_media_source_list">数据源列表 (%1$d)</string>
-    <string name="settings_media_source_list_description">在播放时，禁用的数据源不会自动查询，但可手动点击临时启用。注意，排序将优先采用云端顺序，同数据源订阅之内的手动排序可能无效</string>
     <string name="settings_media_source_cancel_sort">取消排序</string>
     <string name="settings_media_source_add">添加数据源</string>
     <string name="settings_media_source_save_sort">保存排序</string>
     <string name="settings_media_source_sort">排序</string>
     <string name="settings_media_source_stop_test">终止测试</string>
-    <string name="settings_media_source_start_test">开始测试</string>
     <string name="settings_media_source_delete">删除数据源</string>
     <string name="settings_media_source_delete_no_config">该数据源无特殊配置，删除后可以重新从模板直接添加，确认删除吗？</string>
     <string name="settings_media_source_delete_with_config">该数据源有配置，删除后将丢失配置，之后从模板添加时需要重新配置，确认删除吗？</string>
     <string name="settings_media_source_delete_confirm">删除</string>
     <string name="settings_media_source_cancel">取消</string>
-    <string name="settings_media_source_from_subscription">来自订阅，不可编辑</string>
     <string name="settings_media_source_edit">编辑</string>
     <string name="settings_media_source_start_sort">开始排序</string>
     <string name="settings_media_source_more">更多</string>
@@ -483,14 +489,10 @@
     <string name="settings_media_source_disabled">（已禁用）</string>
     <string name="settings_media_source_disable">禁用</string>
     <string name="settings_media_source_enable">启用</string>
-    <string name="settings_media_source_delete_can_readd">删除（可重新添加）</string>
     <string name="settings_media_source_enter_selection_mode">进入选择模式</string>
-    <string name="settings_media_source_exit_selection">退出选择模式</string>
     <string name="settings_media_source_selected_count">已选择 %1$d 个数据源</string>
-    <string name="settings_media_source_select_all">选择全部数据源</string>
-    <string name="settings_media_source_deselect_all">取消选择全部数据源</string>
-    <string name="settings_media_source_enable_selected">启用选中的数据源</string>
-    <string name="settings_media_source_disable_selected">禁用选中的数据源</string>
+    <string name="settings_media_source_select_all">全选</string>
+    <string name="settings_media_source_deselect_all">取消全选</string>
     <string name="settings_media_source_delete_selected">删除选中的数据源</string>
     <string name="settings_media_source_delete_selected_title">删除选中的数据源？</string>
     <string name="settings_media_source_delete_selected_confirmation">确定删除选中的 %1$d 个数据源吗？删除后将丢失自定义配置，重新添加时需要再次配置。</string>
@@ -498,15 +500,13 @@
 
     <!-- MediaSourceSubscriptionGroup -->
     <string name="settings_media_source_subscription">数据源订阅</string>
-    <string name="settings_media_source_subscription_description">可通过订阅添加多个数据源，自动定时更新订阅</string>
-    <string name="settings_media_source_subscription_add">添加</string>
     <string name="settings_media_source_subscription_refresh_all">刷新全部</string>
     <string name="settings_media_source_subscription_add_dialog">添加订阅</string>
     <string name="settings_media_source_subscription_add_confirm">添加</string>
     <string name="settings_media_source_subscription_paste">粘贴</string>
     <string name="settings_media_source_subscription_cancel">取消</string>
     <string name="settings_media_source_subscription_url">URL (HTTP)</string>
-    <string name="settings_media_source_subscription_auto_update">每 %1$s 自动更新，</string>
+    <string name="settings_media_source_subscription_auto_update">每 %1$s 自动更新</string>
     <string name="settings_media_source_subscription_copy_link">复制链接</string>
     <string name="settings_media_source_subscription_copied">已复制</string>
     <string name="settings_media_source_subscription_export_all">全部导出到剪贴板</string>
@@ -520,6 +520,26 @@
     <string name="settings_media_source_subscription_network_error">网络错误，请检查网络连接</string>
     <string name="settings_media_source_subscription_service_unavailable">服务暂不可用，请稍后重试</string>
     <string name="settings_media_source_subscription_unauthorized">服务禁止访问，请联系服务提供商</string>
+    <string name="settings_media_source_subscriptions">订阅</string>
+    <string name="settings_media_source_custom">自定义</string>
+    <string name="settings_media_source_subscription_updated_at">%1$s更新</string>
+    <string name="settings_media_source_subscription_media_source_count">%1$d 个数据源</string>
+    <string name="settings_media_source_subscription_enable_all">全部启用</string>
+    <string name="settings_media_source_subscription_disable_all">全部禁用</string>
+    <string name="settings_media_source_subscription_delete_subscription">删除订阅</string>
+    <string name="settings_media_source_subscription_website">主页</string>
+    <string name="settings_media_source_subscription_link">订阅链接</string>
+    <string name="settings_media_source_subscription_update_now">立即更新</string>
+    <string name="settings_media_source_subscription_unsupported_media_sources">%1$d 个数据源需要新版 Animeko</string>
+    <string name="settings_media_source_subscription_requires_newer_app">需要新版 Animeko</string>
+    <string name="settings_media_source_test_connection">测试连接</string>
+    <string name="settings_media_source_done">完成</string>
+    <string name="settings_media_source_disabled_label">已禁用</string>
+    <string name="settings_media_source_kind_web">在线</string>
+    <string name="settings_media_source_location_lan">局域网</string>
+    <string name="settings_media_source_location_local">本地</string>
+    <string name="settings_media_source_subscription_media_sources">数据源</string>
+    <string name="settings_media_source_view_config">查看配置</string>
 
     <!-- ConfimExitDialog -->
     <string name="settings_media_source_discard_changes">舍弃更改?</string>
@@ -578,8 +598,6 @@
     <string name="settings_mediasource_rss_search_link_supporting_text">替换规则：\n{keyword} 替换为条目 (番剧) 名称\n{page} 替换为页码, 如果不需要分页则忽略</string>
     <string name="settings_mediasource_rss_filter_by_episode">使用剧集序号过滤</string>
     <string name="settings_mediasource_rss_filter_by_episode_description">要求资源标题包含剧集序号。适用于数据源可能搜到无关内容的情况</string>
-    <string name="settings_mediasource_rss_filter_by_subject">使用条目名称过滤</string>
-    <string name="settings_mediasource_rss_filter_by_subject_description">要求资源标题包含条目名称。适用于数据源可能搜到无关内容的情况。\n此功能只对 4.4.0 以前版本有效，对其他版本无效</string>
     <string name="settings_mediasource_rss_auto_save_hint">提示：修改自动保存</string>
 
     <!-- OutlinedMatchTag -->
@@ -642,6 +660,10 @@
     <string name="exploration_settings">设置</string>
     <string name="exploration_search">搜索</string>
     <string name="exploration_trending">最高热度</string>
+    <string name="exploration_trending_more">更多</string>
+    <string name="exploration_trending_ranking">热度排行</string>
+    <string name="exploration_trending_ranking_heat">近 30 天 %1$s 人在看</string>
+    <string name="exploration_trending_ranking_empty">暂无排行</string>
     <string name="exploration_schedule">新番时间表</string>
     <string name="exploration_schedule_view_details">查看详情</string>
     <string name="exploration_schedule_episode">第 %1$s 话</string>
@@ -707,7 +729,7 @@
     <string name="settings_danmaku_cancel">取消</string>
     <string name="settings_danmaku_regex_expression">正则表达式</string>
     <string name="settings_danmaku_regex_invalid">正则表达式语法不正确</string>
-    <string name="settings_danmaku_regex_description">填写用于屏蔽的正则表达式，例如：\'.*签.*\' 会屏蔽所有含有文字\'签\'的弹幕。</string>
+    <string name="settings_danmaku_regex_description">填写用于屏蔽的正则表达式，例如：“.*签.*”会屏蔽所有含有文字“签”的弹幕。</string>
     <string name="settings_danmaku_export_to_clipboard">复制规则到剪切板</string>
     <string name="settings_danmaku_import_from_clipboard">从剪切板导入规则</string>
     <string name="settings_danmaku_import_title">导入弹幕正则过滤规则</string>
@@ -742,8 +764,6 @@
     <string name="settings_network_proxy_password">密码</string>
     <string name="settings_network_proxy_retest">重新测试</string>
     <string name="settings_network_proxy_service_danmaku">弹幕服务</string>
-    <string name="settings_network_proxy_service_collection">收藏数据服务</string>
-    <string name="settings_network_proxy_service_comment">评论服务</string>
     <string name="settings_network_proxy_test_success">连接成功</string>
     <string name="settings_network_proxy_test_failed">连接失败</string>
     <string name="settings_network_proxy_current_disabled">未启用代理</string>
@@ -770,7 +790,7 @@
 
     <!-- AutoCacheGroup -->
     <string name="settings_media_auto_cache_title">自动缓存</string>
-    <string name="settings_media_auto_cache_description">自动缓存 \"在看\" 分类中未观看的剧集</string>
+    <string name="settings_media_auto_cache_description">自动缓存“在看”分类中未观看的剧集</string>
     <string name="settings_media_auto_cache_enable">启用自动缓存</string>
     <string name="settings_media_auto_cache_max_count">最大自动缓存话数</string>
     <string name="settings_media_auto_cache_max_count_description">若手动缓存数量超过该设置值，将不会自动缓存</string>
@@ -835,6 +855,7 @@
     <string name="video_player_aspect_fit">适应</string>
     <string name="video_player_aspect_stretch">填充</string>
     <string name="video_player_aspect_crop">裁切</string>
+    <string name="video_player_aspect_ratio">画面比例</string>
     <string name="video_player_auto">自动</string>
     <string name="video_player_original_quality">原画</string>
     <string name="video_player_playback_bitrate">播放码率</string>
@@ -1151,6 +1172,14 @@
     <string name="settings_account_profile_unbind_email_confirmation">确定要解绑邮箱 %1$s 吗？解绑后将不能再用它登录此账号。之后可以重新绑定邮箱。</string>
     <string name="settings_account_profile_unbind_email_last_login_method">邮箱是此账号唯一的登录方式，无法解绑。请先绑定 Bangumi 或其他第三方账号。</string>
     <string name="settings_account_profile_ok">好</string>
+    <string name="settings_account_profile_account_management">账号管理</string>
+    <string name="settings_account_profile_delete_account">注销账号</string>
+    <string name="settings_account_profile_delete_account_description">永久删除此账号及其全部数据</string>
+    <string name="settings_account_profile_delete_account_warning">注销会永久删除此账号的全部数据，包括收藏、观看记录、评论和弹幕。注销后不可撤回，数据不可找回。</string>
+    <string name="settings_account_profile_delete_account_input_label">输入 %1$s 以确认</string>
+    <string name="settings_account_profile_delete_account_confirm">注销</string>
+    <string name="settings_account_profile_deleting_account">正在注销…</string>
+    <string name="settings_account_profile_account_deleted">账号已注销</string>
     <string name="settings_account_github_title">GitHub 账号</string>
     <string name="settings_account_github_bound">已绑定的 GitHub 账号</string>
     <string name="settings_account_developer_benefit">通过认证后不再显示广告等</string>
@@ -1514,6 +1543,7 @@
     <string name="foundation_paginated_list_select_group">选择分组</string>
     <string name="foundation_paginated_list_next_group">下一组</string>
     <string name="rating_summary_multiline">#%1$d\n%2$d 人评</string>
+    <string name="rating_summary_total">%1$d 人评</string>
     <string name="subject_episode_statistics_copy">复制</string>
     <string name="subject_episode_statistics_error_details">错误详情</string>
     <string name="subject_episode_statistics_error">错误</string>
@@ -1796,6 +1826,17 @@
     <string name="qr_login_close">关闭</string>
     <string name="subject_episode_danmaku_sources_title">来源与时间校准</string>
     <string name="subject_episode_danmaku_sources_empty">暂无可用弹幕源</string>
+    <string name="video_player_screenshot">截图</string>
+    <string name="video_player_screenshot_share">分享</string>
+    <string name="video_player_screenshot_copy">复制</string>
+    <string name="video_player_screenshot_copy_failed">复制截图失败</string>
+    <string name="video_player_screenshot_copied">截图已复制到剪贴板</string>
+    <string name="video_player_screenshot_share_failed">没有可以分享截图的应用</string>
+    <string name="video_player_screenshot_failed_permission">截图未保存: 没有写入相册的权限</string>
+    <string name="video_player_screenshot_failed_unsupported">当前播放器不支持截图</string>
+    <string name="video_player_screenshot_failed_no_frame">截图失败: 当前没有可截取的画面</string>
+    <string name="video_player_screenshot_failed_save">截图保存失败</string>
+    <string name="video_player_screenshot_failed_save_reason">截图保存失败: %1$s</string>
 </resources>
 
 <!--@formatter:on-->

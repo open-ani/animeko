@@ -39,6 +39,7 @@ import kotlinx.coroutines.withContext
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
+import me.him188.ani.app.data.models.preference.HlsAdFilteringMode
 import me.him188.ani.app.data.models.preference.VideoScaffoldConfig
 import me.him188.ani.app.data.repository.player.JellyfinPlaybackQualityRepository
 import me.him188.ani.app.domain.media.TestMediaList
@@ -51,11 +52,16 @@ import me.him188.ani.app.domain.media.player.data.MediaDataProvider
 import me.him188.ani.app.domain.media.resolver.EpisodeMetadata
 import me.him188.ani.app.domain.media.resolver.JellyfinMediaDataProvider
 import me.him188.ani.app.domain.media.resolver.MediaResolver
+import me.him188.ani.app.domain.mediasource.MediaSourceTags
+import me.him188.ani.app.domain.mediasource.instance.GetMediaSourceInstancesUseCase
+import me.him188.ani.app.domain.mediasource.instance.MediaSourceInstance
+import me.him188.ani.app.domain.mediasource.instance.createTestMediaSourceInstance
 import me.him188.ani.app.domain.settings.GetVideoScaffoldConfigUseCase
 import me.him188.ani.app.domain.watchtogether.PlaybackAutomationGate
 import me.him188.ani.datasources.api.EpisodeSort
 import me.him188.ani.datasources.api.Media
 import me.him188.ani.datasources.api.source.MediaSourceConfig
+import me.him188.ani.datasources.api.source.TestHttpMediaSource
 import me.him188.ani.datasources.jellyfin.JellyfinMediaSource
 import me.him188.ani.datasources.jellyfin.JellyfinPlaybackQuality
 import me.him188.ani.utils.ktor.asScopedHttpClient
@@ -595,6 +601,75 @@ class PlayerSessionJellyfinQualityTest {
         assertEquals(listOf("transcode-1", "transcode-2"), stoppedSessions)
     }
 
+    @Test
+    fun `smart HLS filtering uses the selected source across quality reloads`() = runTest {
+        for (tagged in listOf(true, false)) {
+            val media = TestMediaList.first()
+            val provider = provider(
+                source = source { request ->
+                    when (request.url.encodedPath) {
+                        "/Items/episode-1/PlaybackInfo" -> respondJson(
+                            playbackInfo("transcode", false, "/Videos/episode-1/stream.m3u8"),
+                        )
+                        "/Videos/ActiveEncodings" -> respond("")
+                        else -> error("Unexpected request: ${request.url}")
+                    }
+                },
+                itemId = "episode-1",
+                quality = JellyfinPlaybackQuality.fixed(8_000_000),
+            )
+            val recordedOptions = mutableListOf<HlsPlaybackOptions>()
+            val positionHints = mutableListOf<Long?>()
+            val preparer = object : HlsPlaybackPreparer {
+                override suspend fun prepare(
+                    data: UriMediaData,
+                    options: HlsPlaybackOptions,
+                    startPositionHintMillis: Long?,
+                ): HlsPlaybackPreparerResult {
+                    recordedOptions += options
+                    positionHints += startPositionHintMillis
+                    return HlsPlaybackPreparerResult(data)
+                }
+            }
+            val session = PlayerSession(
+                ResumeBeforeSeekPlayer(TestMediampPlayer(StandardTestDispatcher(testScheduler))),
+                koin(
+                    resolver = resolver(media.mediaId to provider.mediaDataProvider),
+                    hlsPlaybackPreparer = preparer,
+                    config = VideoScaffoldConfig.AllDisabled.copy(
+                        hlsAdFilteringMode = HlsAdFilteringMode.SMART,
+                        autoSkipOpEd = true,
+                    ),
+                    mediaSourceInstances = listOf(
+                        createTestMediaSourceInstance(
+                            TestHttpMediaSource(mediaSourceId = media.mediaSourceId),
+                            config = MediaSourceConfig(
+                                tags = if (tagged) listOf(MediaSourceTags.HLS_ADS) else emptyList(),
+                            ),
+                        ),
+                    ),
+                ),
+                backgroundScope,
+                mainDispatcher = EmptyCoroutineContext,
+            )
+
+            session.loadMedia(media, episodeMetadata(1), startPositionHintMillis = 12_000L)
+            for (bitrate in listOf(4_000_000, 2_000_000)) {
+                assertTrue(
+                    session.reloadJellyfinPlaybackQuality(
+                        JellyfinPlaybackQuality.fixed(bitrate),
+                        startPositionMillis = 42_000L,
+                    ).isSuccess,
+                )
+            }
+
+            assertEquals(List(3) { HlsPlaybackOptions(filterSegments = tagged, proxySegments = true) }, recordedOptions)
+            assertEquals(listOf<Long?>(12_000L, 42_000L, 42_000L), positionHints)
+            session.stopPlayback()
+            session.close()
+        }
+    }
+
     private class ResumeBeforeSeekPlayer(
         private val delegate: TestMediampPlayer,
         private val failOnMediaNumber: Int? = null,
@@ -643,6 +718,10 @@ class PlayerSessionJellyfinQualityTest {
         resolver: MediaResolver,
         hlsPlaybackPreparer: HlsPlaybackPreparer = NoopHlsPlaybackPreparer,
         hlsEnabled: Boolean = false,
+        config: VideoScaffoldConfig = VideoScaffoldConfig.AllDisabled.copy(
+            hlsAdFilteringMode = if (hlsEnabled) HlsAdFilteringMode.ALL else HlsAdFilteringMode.OFF,
+        ),
+        mediaSourceInstances: List<MediaSourceInstance> = emptyList(),
     ): Koin {
         return Koin().also { koin ->
             koin.loadModules(
@@ -651,11 +730,12 @@ class PlayerSessionJellyfinQualityTest {
                         single<MediaResolver> { resolver }
                         single<GetVideoScaffoldConfigUseCase> {
                             GetVideoScaffoldConfigUseCase {
-                                flowOf(
-                                    VideoScaffoldConfig.AllDisabled.copy(
-                                        enableHlsAdFiltering = hlsEnabled,
-                                    ),
-                                )
+                                flowOf(config)
+                            }
+                        }
+                        single<GetMediaSourceInstancesUseCase> {
+                            object : GetMediaSourceInstancesUseCase {
+                                override fun invoke(): Flow<List<MediaSourceInstance>> = flowOf(mediaSourceInstances)
                             }
                         }
                         single<HlsPlaybackPreparer> { hlsPlaybackPreparer }

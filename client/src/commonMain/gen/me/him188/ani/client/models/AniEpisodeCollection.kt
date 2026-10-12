@@ -37,8 +37,8 @@ import kotlinx.serialization.encoding.*
  * @param airdate
  * @param disc
  * @param duration
- * @param imageMedium 剧集截图 (TMDB still, 宽 300px), 直接可用的公开 URL. 没有可用图片时为 null.
- * @param imageLarge 剧集截图 (TMDB still, 原图). 没有可用图片时为 null.
+ * @param imageMedium 列表用剧集截图: 宽 640 的 WebP 缩略图, 缩略图尚未生成时为原图. 直接可用的公开 URL, 没有可用图片时为 null.
+ * @param imageLarge 剧集截图原图. 没有可用图片时为 null.
  * @param collectionType
  */
 @Serializable
@@ -70,10 +70,10 @@ data class AniEpisodeCollection (
 
     @SerialName(value = "duration") val duration: kotlin.String? = null,
 
-    /* 剧集截图 (TMDB still, 宽 300px), 直接可用的公开 URL. 没有可用图片时为 null. */
+    /* 列表用剧集截图: 宽 640 的 WebP 缩略图, 缩略图尚未生成时为原图. 直接可用的公开 URL, 没有可用图片时为 null. */
     @SerialName(value = "imageMedium") val imageMedium: kotlin.String? = null,
 
-    /* 剧集截图 (TMDB still, 原图). 没有可用图片时为 null. */
+    /* 剧集截图原图. 没有可用图片时为 null. */
     @SerialName(value = "imageLarge") val imageLarge: kotlin.String? = null,
 
     @SerialName(value = "collectionType") val collectionType: AniEpisodeCollectionType? = null

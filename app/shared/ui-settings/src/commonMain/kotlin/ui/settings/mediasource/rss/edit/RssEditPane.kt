@@ -39,8 +39,6 @@ import me.him188.ani.app.ui.lang.Lang
 import me.him188.ani.app.ui.lang.settings_mediasource_rss_auto_save_hint
 import me.him188.ani.app.ui.lang.settings_mediasource_rss_filter_by_episode
 import me.him188.ani.app.ui.lang.settings_mediasource_rss_filter_by_episode_description
-import me.him188.ani.app.ui.lang.settings_mediasource_rss_filter_by_subject
-import me.him188.ani.app.ui.lang.settings_mediasource_rss_filter_by_subject_description
 import me.him188.ani.app.ui.lang.settings_mediasource_rss_icon_link
 import me.him188.ani.app.ui.lang.settings_mediasource_rss_name
 import me.him188.ani.app.ui.lang.settings_mediasource_rss_name_placeholder
@@ -134,21 +132,6 @@ fun RssEditPane(
                         trailingContent = {
                             Switch(
                                 state.filterByEpisodeSort, { state.filterByEpisodeSort = it },
-                                enabled = state.enableEdit,
-                            )
-                        },
-                        colors = listItemColors,
-                    )
-
-                    ListItem(
-                        headlineContent = { Text(stringResource(Lang.settings_mediasource_rss_filter_by_subject)) },
-                        Modifier.clickable(
-                            enabled = state.enableEdit,
-                        ) { state.filterBySubjectName = !state.filterBySubjectName },
-                        supportingContent = { Text(stringResource(Lang.settings_mediasource_rss_filter_by_subject_description)) },
-                        trailingContent = {
-                            Switch(
-                                state.filterBySubjectName, { state.filterBySubjectName = it },
                                 enabled = state.enableEdit,
                             )
                         },

@@ -22,6 +22,7 @@ import kotlinx.coroutines.withTimeoutOrNull
 import me.him188.ani.app.domain.media.resolver.JellyfinMediaDataProvider
 import me.him188.ani.app.domain.media.resolver.JellyfinPlaybackQualityState
 import me.him188.ani.app.domain.media.resolver.OpenedJellyfinPlayback
+import me.him188.ani.datasources.api.Media
 import me.him188.ani.datasources.jellyfin.JellyfinPlaybackQuality
 import me.him188.ani.datasources.jellyfin.JellyfinPlaybackQualityMode
 import me.him188.ani.utils.coroutines.IO_
@@ -31,6 +32,7 @@ import me.him188.ani.utils.logging.warn
 internal data class ActiveJellyfinPlayback(
     val provider: JellyfinMediaDataProvider,
     val opened: OpenedJellyfinPlayback,
+    val media: Media,
 )
 
 /**
@@ -87,7 +89,7 @@ internal class JellyfinPlaybackController {
         quality: JellyfinPlaybackQuality,
         startPositionMillis: Long,
         stopLocalPlayback: suspend () -> Unit,
-        openAndPlay: suspend (OpenedJellyfinPlayback, startPositionMillis: Long) -> Unit,
+        openAndPlay: suspend (OpenedJellyfinPlayback, Media, startPositionMillis: Long) -> Unit,
     ): Result<Unit> = playbackTransitionMutex.withLock {
         val current = activePlayback
             ?: return@withLock Result.failure(
@@ -114,8 +116,8 @@ internal class JellyfinPlaybackController {
                 forceAutoDetection = quality.mode == JellyfinPlaybackQualityMode.AUTO,
             ).also { replacement = it }
 
-            openAndPlay(opened, startPositionMillis)
-            activePlayback = ActiveJellyfinPlayback(current.provider, opened)
+            openAndPlay(opened, current.media, startPositionMillis)
+            activePlayback = current.copy(opened = opened)
             _qualityState.value = opened.state
             Result.success(Unit)
         } catch (e: CancellationException) {
@@ -144,7 +146,7 @@ internal class JellyfinPlaybackController {
                 stopEncodingSafely(previous)
             }
             replacement?.let {
-                stopEncodingSafely(ActiveJellyfinPlayback(previous.provider, it))
+                stopEncodingSafely(previous.copy(opened = it))
             }
         }
         activePlayback = null

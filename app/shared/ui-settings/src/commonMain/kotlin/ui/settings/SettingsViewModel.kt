@@ -302,6 +302,7 @@ open class SettingsViewModel : AbstractSettingsViewModel(), KoinComponent {
     val mediaSourceSubscriptionGroupState = MediaSourceSubscriptionGroupState(
         subscriptionsState = subscriptionsState,
         onUpdateAll = { mediaSourceSubscriptionUpdater.updateAllOutdated(force = true) },
+        onUpdate = { mediaSourceSubscriptionUpdater.update(it) },
         onAdd = { mediaSourceSubscriptionRepository.add(it) },
         onDelete = {
             launchInBackground {
@@ -311,9 +312,9 @@ open class SettingsViewModel : AbstractSettingsViewModel(), KoinComponent {
                 mediaSourceSubscriptionRepository.remove(it)
             }
         },
-        onExportLocalChangesToString = { subscription ->
+        onExportToString = { subscription ->
             val saves = mediaSourceManager.getListBySubscriptionId(subscription.subscriptionId)
-            mediaSourceCodecManager.serializeSubscriptionToString(saves)
+            mediaSourceCodecManager.serializeSubscriptionToString(saves, subscription.metadata)
         },
         backgroundScope,
     )
@@ -407,8 +408,6 @@ private fun Map<String, ServiceConnectionTester.TestState>.toUIState(): List<Pro
         this@toUIState.forEach { (id, state) ->
             val case = when (id) {
                 ServiceConnectionTesters.ID_ANI -> ProxyTestCase.AniDanmakuApi
-                ServiceConnectionTesters.ID_BANGUMI -> ProxyTestCase.BangumiApi
-                ServiceConnectionTesters.ID_BANGUMI_NEXT -> ProxyTestCase.BangumiNextApi
                 else -> return@forEach
             }
             val result = when (state) {

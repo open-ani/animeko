@@ -68,6 +68,29 @@ enum class BackgroundBehavior {
     BACKGROUND_PLAYBACK,
 }
 
+/**
+ * 对哪些数据源过滤 HLS 插播广告 (`HlsManifestFilter`).
+ *
+ * 过滤要在起播前探测播放列表各段的时间戳, 可能含广告的播放列表因此晚 1-4 秒开播, 最多 8 秒.
+ * 多数数据源没有插播广告, 不值得每次都等, 所以默认只对订阅标记过的数据源过滤.
+ *
+ * @see VideoScaffoldConfig.hlsAdFilteringMode
+ */
+@Serializable
+enum class HlsAdFilteringMode {
+    /**
+     * 所有数据源都过滤.
+     */
+    ALL,
+
+    /**
+     * 只过滤订阅标记为可能含插播广告的数据源 (`MediaSourceTags.HLS_ADS`).
+     */
+    SMART,
+
+    OFF,
+}
+
 @Serializable
 @Immutable
 data class VideoScaffoldConfig @SerializationOnly constructor(
@@ -100,6 +123,10 @@ data class VideoScaffoldConfig @SerializationOnly constructor(
      */
     val autoFullscreenOnLandscapeMode: Boolean = false,
     /**
+     * 设备半折叠时使用悬停布局.
+     */
+    val enableFoldableHoverMode: Boolean = true,
+    /**
      * 自动连播
      */
     val autoPlayNext: Boolean = true,
@@ -120,14 +147,19 @@ data class VideoScaffoldConfig @SerializationOnly constructor(
      */
     val enableHighQualityAudioTimeStretch: Boolean = true,
     /**
-     * 过滤 HLS 播放列表中的插播广告, 见 `HlsManifestFilter`.
+     * 6.2 的 HLS 插播广告过滤开关, 由 [hlsAdFilteringMode] 取代, 只在迁移时读取 (见 [effectiveHlsAdFilteringMode]).
      *
-     * 5.7 至 6.1 的同类开关是默认关闭的 `enableExperimentalHlsSegmentFiltering`, 已不再读取:
-     * 换用新字段, 所有用户按新的默认值启用.
+     * 5.7 至 6.1 的同类开关是默认关闭的 `enableExperimentalHlsSegmentFiltering`, 不读取.
      *
      * @since 6.2
      */
     val enableHlsAdFiltering: Boolean = true,
+    /**
+     * 对哪些数据源过滤 HLS 插播广告. `null` 表示用户没有选过, 实际生效的值见 [effectiveHlsAdFilteringMode].
+     *
+     * @since 6.3
+     */
+    val hlsAdFilteringMode: HlsAdFilteringMode? = null,
     /**
      * 用于在安卓上设置屏幕刷新率, 解决某些设备会自动限制刷新率的问题 (三星).
      *
@@ -190,6 +222,14 @@ data class VideoScaffoldConfig @SerializationOnly constructor(
     // WARNING: if you add new property here, review Companion properties.
     @Suppress("PropertyName") @Transient val _placeholder: Int = 0,
 ) {
+    /**
+     * 实际生效的 [hlsAdFilteringMode]. 用户没有选过时, 在 6.2 关闭了过滤 ([enableHlsAdFiltering]) 的保持关闭,
+     * 其余使用 [HlsAdFilteringMode.SMART].
+     */
+    val effectiveHlsAdFilteringMode: HlsAdFilteringMode
+        get() = hlsAdFilteringMode
+            ?: if (enableHlsAdFiltering) HlsAdFilteringMode.SMART else HlsAdFilteringMode.OFF
+
     /**
      * 应用新的可调倍速范围，并将依赖该范围的值限制在其中。
      */
@@ -264,11 +304,12 @@ data class VideoScaffoldConfig @SerializationOnly constructor(
             autoMarkDone = false,
             hideSelectorOnSelect = false,
             autoFullscreenOnLandscapeMode = false,
+            enableFoldableHoverMode = false,
             autoPlayNext = false,
             autoSkipOpEd = false,
             autoSwitchMediaOnPlayerError = false,
             enableHighQualityAudioTimeStretch = false,
-            enableHlsAdFiltering = false,
+            hlsAdFilteringMode = HlsAdFilteringMode.OFF,
             backgroundBehavior = BackgroundBehavior.PAUSE,
         )
     }

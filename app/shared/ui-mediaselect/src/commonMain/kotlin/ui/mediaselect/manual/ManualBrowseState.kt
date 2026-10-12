@@ -29,7 +29,10 @@ import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.flow.updateAndGet
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.sync.Mutex
+import me.him188.ani.app.data.models.subject.SplitSeason
 import me.him188.ani.app.data.repository.media.ManualBrowseMemory
+import me.him188.ani.app.domain.media.selector.browseEpisodeIndex
+import me.him188.ani.app.domain.media.selector.preselectedBrowseEpisodeIndex
 import me.him188.ani.app.domain.mediasource.instance.MediaSourceInstance
 import me.him188.ani.app.domain.mediasource.web.BlockReason
 import me.him188.ani.app.domain.mediasource.web.BlockedException
@@ -40,6 +43,7 @@ import me.him188.ani.datasources.api.Media
 import me.him188.ani.datasources.api.source.BrowseChannel
 import me.him188.ani.datasources.api.source.BrowseEpisode
 import me.him188.ani.datasources.api.source.BrowseSubject
+import me.him188.ani.datasources.api.source.MediaSource
 import me.him188.ani.datasources.api.source.MediaSourceInfo
 import me.him188.ani.utils.logging.logger
 import me.him188.ani.utils.logging.warn
@@ -62,7 +66,51 @@ data class ManualBrowseTarget(
      * "25", 供「作为第 25 话播放」.
      */
     val episodeSortText: String,
+    /**
+     * 条目的所有名字 (主中文名、主日文名与别名), 预选剧集时用来认出站点上当前条目自己的页面. 默认只有 [subjectName].
+     */
+    val subjectNames: List<String> = listOf(subjectName),
+    /**
+     * 条目内序号 episodeInfo.ep, 没有时 null. 预选剧集时集号等于 sort 的项不存在才用它.
+     */
+    val episodeEp: EpisodeSort? = null,
+    /**
+     * 当前条目所在的拆分季 (服务端下发), 不是拆分季的一段时 null. 预选剧集时按它的页面规则把合并页的序号对回当前集.
+     */
+    val splitSeason: SplitSeason? = null,
 )
+
+/**
+ * 一次点选: [media] 是点选的一项作为当前集 [pickedAs] 生成的资源.
+ * 宿主可用 [createMediaFor] 按位置为其他集生成同一线路的资源 (下载弹窗据此一并下载多集).
+ */
+class ManualBrowsePick(
+    val media: Media,
+    private val source: MediaSource,
+    private val subject: BrowseSubject,
+    private val channel: BrowseChannel,
+    private val episodeIndex: Int,
+    val pickedAs: EpisodeSort,
+) {
+    /**
+     * 第 [sort] 集在同一线路里按位置对应的一项 (见 [browseEpisodeIndex]) 作为第 [sort] 集生成的资源.
+     * 编号推算不出、越界或数据源生成失败时为 null.
+     */
+    fun createMediaFor(sort: EpisodeSort): Media? {
+        val index = browseEpisodeIndex(episodeIndex, pickedAs, sort) ?: return null
+        val episode = channel.episodes.getOrNull(index) ?: return null
+        return try {
+            source.createMedia(subject, channel.name, episode, sort)
+        } catch (e: Exception) {
+            logger.warn(e) { "ManualBrowsePick: createMedia failed for ${episode.url}" }
+            null
+        }
+    }
+
+    private companion object {
+        private val logger = logger<ManualBrowsePick>()
+    }
+}
 
 @Immutable
 data class ManualBrowseSource(
@@ -112,7 +160,7 @@ data class ManualBrowsePresentation(
      */
     val selectedChannelIndex: Int,
     /**
-     * 用户在当前集点选的下标 → 否则线路里第一个 episodeSort == target.episodeSort 的下标 → 否则 null.
+     * 用户在当前集点选的下标 → 否则按页名与线路编号预选的下标 ([preselectedBrowseEpisodeIndex]) → 否则 null.
      */
     val selectedEpisodeIndex: Int?,
     val target: ManualBrowseTarget?,
@@ -153,7 +201,8 @@ data class ManualBrowsePresentation(
 }
 
 /**
- * 手动查找状态. 独立于 MediaSelectorState, 在 EpisodeViewModel 构造一次并持有, 搜索结果与选择在会话内保持.
+ * 手动查找状态. 独立于 MediaSelectorState, 由宿主构造并持有, 搜索结果与选择在会话内保持:
+ * 播放页由 EpisodeViewModel 构造一次; 下载弹窗由 SubjectDownloadsPresenter 为每个选源会话构造一份.
  *
  * 内部约定 (实现者必须遵守, 测试依赖它):
  * - 组合流 [presentationSource] (combine(browsableSources, target, preferredSourceId, 内部 MutableStateFlow…), 未 stateIn) 是唯一真值;
@@ -170,7 +219,8 @@ data class ManualBrowsePresentation(
  * @param preferredSourceId 默认源的 mediaSourceId: `combine(memoryRepo.flow(subjectId), getPreferredWebMediaSource(subjectId)) { m, p -> m?.mediaSourceId ?: p }`.
  * @param rememberSelection 「记住选择」开关的当前值.
  * @param onRememberSelectionChange 用户切换开关: 写设置; 关掉时宿主顺带删除本条目已有的浏览记忆. 在 [backgroundScope] 内执行.
- * @param onPlay 把 media 交给当前会话的 MediaSelector: memory != null → `select` 并写记忆; null → `selectTemporarily`. 在 [backgroundScope] 内执行, 不随 UI 作用域取消.
+ * @param onPlay 把点选交给宿主: 播放页把 `pick.media` 交给当前会话的 MediaSelector, memory != null → `select` 并写记忆, null → `selectTemporarily`;
+ *        下载弹窗把 `pick.media` 作为本集的选择, 并按位置为其他集生成候选. 在 [backgroundScope] 内执行, 不随 UI 作用域取消.
  */
 @Stable
 class ManualBrowseState(
@@ -180,7 +230,7 @@ class ManualBrowseState(
     preferredSourceId: Flow<String?>,
     rememberSelection: Flow<Boolean>,
     private val onRememberSelectionChange: suspend (Boolean) -> Unit,
-    private val onPlay: suspend (media: Media, memory: ManualBrowseMemory?) -> Unit,
+    private val onPlay: suspend (pick: ManualBrowsePick, memory: ManualBrowseMemory?) -> Unit,
     private val backgroundScope: CoroutineScope,
 ) {
     private val browsableSources: Flow<List<MediaSourceInstance>> = browsableSources
@@ -253,7 +303,7 @@ class ManualBrowseState(
             ?.takeIf { channel != null && it in channel.episodes.indices && session.userEpisodeTarget == target }
             ?: channel?.let { c ->
                 target?.let { t ->
-                    c.episodes.indexOfFirst { it.episodeSort != null && it.episodeSort == t.episodeSort }.takeIf { it >= 0 }
+                    session.openedSubject?.let { subject -> preselectedEpisodeIndex(subject, c, t) }
                 }
             }
         ManualBrowsePresentation(
@@ -270,6 +320,19 @@ class ManualBrowseState(
             isPlaying = session.isPlaying,
         )
     }
+
+    /**
+     * 打开的页面 [subject] 的线路 [channel] 里默认预选的一项.
+     */
+    private fun preselectedEpisodeIndex(subject: BrowseSubject, channel: BrowseChannel, target: ManualBrowseTarget): Int? =
+        preselectedBrowseEpisodeIndex(
+            pageName = subject.name,
+            episodes = channel.episodes,
+            sort = target.episodeSort,
+            ep = target.episodeEp,
+            splitSeason = target.splitSeason,
+            subjectNames = target.subjectNames,
+        )
 
     val presentationFlow: StateFlow<ManualBrowsePresentation> = presentationSource.stateIn(
         backgroundScope,
@@ -432,7 +495,7 @@ class ManualBrowseState(
      *   playedAsSort = target.episodeSort); 关着时 null (只播这一集).
      * 并发: 已有进行中的播放 (`playJob?.isActive == true` 或拿不到 [playGate]) 时立即返回 null, 本次调用被忽略, 不是失败
      *   (页面作用域被取消后再次点击不能并发两次 select; isPlaying 经 stateIn 到达按钮前的快速双击也落在这里, 页面对 null 不提示).
-     *   拿到 gate 后立即 isPlaying = true, 缩短按钮仍可点的窗口; `playJob = backgroundScope.async { onPlay(media, memory) }`,
+     *   拿到 gate 后立即 isPlaying = true, 缩短按钮仍可点的窗口; `playJob = backgroundScope.async { onPlay(pick, memory) }`,
      *   isPlaying 由 playJob 的 invokeOnCompletion 置 false, 未 launch 就返回的路径由 finally 置 false.
      *   `playJob.await()` 成功返回 true (页面随后调用 onPlayed 关闭容器), 任何异常返回 false 并保持在当前页.
      */
@@ -469,7 +532,8 @@ class ManualBrowseState(
             } else {
                 null
             }
-            val job = backgroundScope.async { onPlay(media, memory) }
+            val pick = ManualBrowsePick(media, instance.source, subject, channel, episodeIndex, target.episodeSort)
+            val job = backgroundScope.async { onPlay(pick, memory) }
             playJob = job
             launched = true
             job.invokeOnCompletion {

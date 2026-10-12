@@ -106,23 +106,13 @@ class DefaultSubjectRelationsRepository(
             }.flowOn(defaultDispatcher)
     }
 
-    override fun subjectSeriesInfoFlow(subjectId: Int): Flow<SubjectSeriesInfo> = flow {
-        emit(
-            aniSubjectRelationIndexService.getSubjectRelationIndex(subjectId),
-        )
-    }.combine(subjectCollectionRepository.subjectCollectionFlow(subjectId)) { relations, requestingSubject ->
-        combine(
-            (relations.sequelSubjects.toSet() + relations.seriesMainSubjectIds).map {
-                subjectCollectionRepository.subjectCollectionFlow(it)
-            },
-        ) { subjectCollectionInfos ->
-            SubjectSeriesInfo.compute(
-                requestingSubject = requestingSubject,
-            )
-        }
-    }.flatMapLatest {
-        it
-    }.flowOn(defaultDispatcher)
+    /**
+     * 系列关系 (含拆分季) 取自条目收藏信息里的 [SubjectCollectionInfo.relations], 与系列索引接口是同一份数据, 不单独请求.
+     */
+    override fun subjectSeriesInfoFlow(subjectId: Int): Flow<SubjectSeriesInfo> =
+        subjectCollectionRepository.subjectCollectionFlow(subjectId)
+            .map { SubjectSeriesInfo.compute(it) }
+            .flowOn(defaultDispatcher)
 
 //    override fun subjectSequelSubjectNamesFlow(subjectId: Int): Flow<Set<String>> {
 //        return subjectSequelSubjectsFlow(subjectId)

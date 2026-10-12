@@ -12,14 +12,19 @@ package me.him188.ani.app.ui.settings.rendering
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.wrapContentSize
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.DisplaySettings
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Surface
+import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.ColorFilter
 import androidx.compose.ui.graphics.painter.Painter
 import androidx.compose.ui.graphics.vector.rememberVectorPainter
@@ -31,6 +36,7 @@ import me.him188.ani.app.ui.foundation.Res
 import me.him188.ani.app.ui.foundation.dmhy
 import me.him188.ani.app.ui.foundation.mikan
 import me.him188.ani.datasources.api.source.MediaSourceInfo
+import me.him188.ani.datasources.api.source.MediaSourceTier
 import org.jetbrains.compose.resources.painterResource
 
 @Composable
@@ -115,5 +121,31 @@ fun SmallMediaSourceIcon(
                 )
             }
         }
+    }
+}
+
+/**
+ * 「T0」「T1」样式的数据源等级标签.
+ *
+ * @param containerColor 标签所在的行本身是 secondaryContainer 底色 (例如选中的菜单项) 时换一个底色, 否则标签与行融为一体.
+ */
+@Composable
+fun MediaSourceTierTag(
+    tier: MediaSourceTier,
+    modifier: Modifier = Modifier,
+    containerColor: Color = MaterialTheme.colorScheme.secondaryContainer,
+) {
+    Surface(
+        modifier = modifier,
+        color = containerColor,
+        contentColor = MaterialTheme.colorScheme.onSecondaryContainer,
+        shape = MaterialTheme.shapes.extraSmall,
+    ) {
+        Text(
+            text = "T${tier.value}",
+            modifier = Modifier.wrapContentSize().padding(horizontal = 6.dp, vertical = 2.dp),
+            style = MaterialTheme.typography.labelSmall,
+            softWrap = false,
+        )
     }
 }

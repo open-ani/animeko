@@ -42,6 +42,7 @@ import kotlinx.io.IOException
 import me.him188.ani.app.data.models.episode.EpisodeInfo
 import me.him188.ani.app.data.models.episode.displayName
 import me.him188.ani.app.data.models.subject.SubjectInfo
+import me.him188.ani.app.data.models.subject.SubjectSeriesInfo
 import me.him188.ani.app.data.models.subject.nameCnOrName
 import me.him188.ani.app.data.repository.RepositoryAuthorizationException
 import me.him188.ani.app.data.repository.RepositoryException
@@ -122,11 +123,13 @@ interface MediaFetcher {
  *
  * @param episode 当前剧集, 仅作提示.
  * @param episodes 条目的全部剧集, 按剧集顺序; 数据源用它做序号映射与缓存陈旧判定.
+ * @param seriesInfo 系列信息, 用于推导回退搜索关键词 ([computeFallbackSearchKeywords]). 未知时只能从条目自己的名字推导.
  */
 fun MediaFetchRequest.Companion.create(
     subject: SubjectInfo,
     episode: EpisodeInfo,
     episodes: List<EpisodeInfo> = emptyList(),
+    seriesInfo: SubjectSeriesInfo? = null,
 ): MediaFetchRequest {
     return MediaFetchRequest(
         subjectId = subject.subjectId.toString(),
@@ -145,6 +148,10 @@ fun MediaFetchRequest.Companion.create(
                 airDate = it.airDate,
             )
         },
+        fallbackSearchKeywords = computeFallbackSearchKeywords(
+            subject.allNames,
+            seriesInfo?.seriesSubjectNamesWithoutSelf.orEmpty(),
+        ),
     )
 }
 

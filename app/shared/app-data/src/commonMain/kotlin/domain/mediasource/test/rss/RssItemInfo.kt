@@ -74,14 +74,13 @@ class RssItemInfo(
                     }
                 }
 
-                if (config.filterBySubjectName) {
-                    emit(
-                        "标题",
-                        isMatch = me.him188.ani.app.domain.mediasource.MediaListFilters.ContainsSubjectName.applyOn(
-                            candidate,
-                        ),
-                    )
-                }
+                // 不是过滤条件, 只展示标题是否包含条目名, 用于检查搜索结果是否相关
+                emit(
+                    "标题",
+                    isMatch = me.him188.ani.app.domain.mediasource.MediaListFilters.ContainsSubjectName.applyOn(
+                        candidate,
+                    ),
+                )
             }
 
             val resourceLocation = rss.guessResourceLocation()

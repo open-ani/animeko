@@ -88,7 +88,6 @@ class InteractiveSolveUi internal constructor(
  * @param solvers 自动解决策略链.
  * @param solverEnabled 自动解决总开关 (用户设置). 每次自动 solve 前读取, 关闭时不尝试任何 [solvers];
  * 不影响 interactive 手动解决.
- * @param searchRoutes 备用取数路由.
  */
 class WebSessionManager(
     private val browserFactory: CaptchaBrowserFactory,
@@ -99,7 +98,6 @@ class WebSessionManager(
     private val backgroundScope: CoroutineScope,
     private val solvers: List<CaptchaSolver> = emptyList(),
     private val solverEnabled: suspend () -> Boolean = { true },
-    private val searchRoutes: List<SearchRoute> = emptyList(),
     private val maxSessions: Int = 3,
     private val idleTtl: Duration = 5.minutes,
     private val stickyWindow: Duration = 60.seconds,
@@ -193,14 +191,6 @@ class WebSessionManager(
         if (host != null) {
             consumePendingSolvedPage(host, url)?.let { page ->
                 return evaluator.evaluate(page, expectation)
-            }
-        }
-
-        if (host != null) {
-            for (route in searchRoutes) {
-                if (route.matches(host)) {
-                    route.fetch(url, expectation, client)?.let { return it }
-                }
             }
         }
 

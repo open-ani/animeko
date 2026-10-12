@@ -40,6 +40,7 @@ import androidx.compose.ui.text.rememberTextMeasurer
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
+import me.him188.ani.app.data.models.preference.NsfwMode
 import me.him188.ani.app.data.models.schedule.AnimeSeason
 import me.him188.ani.app.data.models.subject.CanonicalTagKind
 import me.him188.ani.app.ui.foundation.ProvideCompositionLocalsForPreview
@@ -69,6 +70,12 @@ import kotlin.random.Random
 data class SearchFilterState(
     val chips: List<SearchFilterChipState>,
 ) {
+    /**
+     * 筛选栏展示的标签分类, 不含自定义标签.
+     */
+    val tagKinds: List<CanonicalTagKind>
+        get() = chips.mapNotNull { it.kind }
+
     companion object {
         val DEFAULT_TAG_KINDS = listOf(
             // order matters
@@ -82,6 +89,17 @@ data class SearchFilterState(
             CanonicalTagKind.Rating,
             CanonicalTagKind.Category,
         )
+
+        /**
+         * 按 NSFW 设置决定筛选栏展示的标签分类. [NsfwMode.HIDE] 下不展示分级 (R18).
+         */
+        fun tagKinds(nsfwMode: NsfwMode): List<CanonicalTagKind> {
+            return if (nsfwMode == NsfwMode.HIDE) {
+                DEFAULT_TAG_KINDS - CanonicalTagKind.Rating
+            } else {
+                DEFAULT_TAG_KINDS
+            }
+        }
     }
 }
 

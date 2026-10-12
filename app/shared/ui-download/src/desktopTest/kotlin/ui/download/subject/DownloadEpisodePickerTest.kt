@@ -9,12 +9,18 @@
 
 package me.him188.ani.app.ui.download.subject
 
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.width
+import androidx.compose.ui.Modifier
 import androidx.compose.ui.test.assertIsEnabled
 import androidx.compose.ui.test.assertIsNotEnabled
 import androidx.compose.ui.test.assertTextEquals
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
+import androidx.compose.ui.unit.dp
+import java.util.Locale
+import kotlin.math.abs
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertTrue
@@ -90,4 +96,35 @@ class DownloadEpisodePickerTest {
         onNodeWithTag(DownloadEpisodePickerTestTags.BACK).performClick()
         runOnIdle { assertTrue(back) }
     }
+
+    @Test
+    fun `shortcut chips wrap instead of being squeezed on a narrow screen`() {
+        val previous = Locale.getDefault()
+        // 英文的三个快捷选择在 360dp 宽下一行放不下
+        Locale.setDefault(Locale.ENGLISH)
+        try {
+            runAniComposeUiTest {
+                setContent {
+                    ProvideCompositionLocalsForPreview {
+                        Box(Modifier.width(360.dp)) {
+                            DownloadEpisodePicker(state, onBack = {}, onConfirm = {})
+                        }
+                    }
+                }
+                val width = onNodeWithTag(DownloadEpisodePickerTestTags.ROOT).fetchSemanticsNode().boundsInRoot.width
+                val chips = listOf(
+                    DownloadEpisodePickerTestTags.ONLY_CURRENT,
+                    DownloadEpisodePickerTestTags.FROM_CURRENT,
+                    DownloadEpisodePickerTestTags.ALL,
+                ).map { onNodeWithTag(it).fetchSemanticsNode().boundsInRoot }
+                // 被挤窄的 chip 文字会逐字换行而变高, 完整显示时三个一样高
+                val heights = chips.map { it.height }
+                assertTrue(heights.all { abs(it - heights.first()) < 0.5f }, "Chip heights differ: $heights")
+                assertTrue(chips.all { it.right <= width + 0.5f }, "Chips overflow width $width: $chips")
+            }
+        } finally {
+            Locale.setDefault(previous)
+        }
+    }
 }
+
