@@ -50,12 +50,12 @@ sealed interface PageExpectation<out T> {
     data object AnyContent : PageExpectation<Document>
 
     /**
-     * 数据源配置的 User-Agent ([SelectorSearchConfig.pageUserAgentOrNull]). 取这个页面与为它解验证码都以此 UA 进行.
+     * 数据源配置的 User-Agent ([SelectorSearchConfig.userAgentOrNull]). 取这个页面与为它解验证码都以此 UA 进行.
      */
     val userAgent: String?
         get() = when (this) {
-            is SearchResults -> config.pageUserAgentOrNull
-            is SubjectDetails -> config.pageUserAgentOrNull
+            is SearchResults -> config.userAgentOrNull
+            is SubjectDetails -> config.userAgentOrNull
             AnyContent -> null
         }
 }

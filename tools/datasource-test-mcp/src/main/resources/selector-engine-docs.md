@@ -126,10 +126,9 @@ WebView 加载播放页时会注入 `cookies`(每行一个 `name=value`)。
 
 `searchConfig.userAgent` 是数据源全程使用的 UA:搜索页、详情页请求,解验证码的浏览器,加载播放页的 WebView,
 播放器请求视频都用它(浏览器里请求头与主页面的 `navigator.userAgent` 都生效,桌面端跨站 iframe 里的 `navigator.userAgent` 除外)。
-为空则 HTTP 用浏览器风格的默认 UA、WebView 用平台默认 UA、播放器用一个固定的 Chrome UA。
+为空则 HTTP 用浏览器风格的默认 UA、WebView 用平台默认 UA、播放器用 `addHeadersToVideo.userAgent`。
 站点按 UA 区分移动端/桌面端页面,或视频 CDN 校验 UA 时设置它。
-旧配置里的 `addHeadersToVideo.userAgent` 已并入这里,不要再写它。读取旧配置时改过的值迁移到 `userAgent`,
-并设 `userAgentOnlyForVideo: true` 保持原来的作用范围:只用于播放器,搜索、验证码和播放页仍用默认 UA。新配置不要设这个标记。
+`addHeadersToVideo.userAgent` 是旧配置里只给播放器用的 UA,只为兼容旧配置保留,新配置不要写它。
 
 MCP 工具:
 

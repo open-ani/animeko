@@ -541,8 +541,7 @@ internal fun rememberTestSelectorEpisodeState(
         SelectorEpisodeState(
             itemState = stateOf(item),
             matchVideoConfigState = stateOf(config),
-            pageUserAgentState = stateOf(null),
-            videoUserAgentState = stateOf(SelectorSearchConfig.DEFAULT_VIDEO_USER_AGENT),
+            userAgentState = stateOf(null),
             webViewVideoExtractor = stateOf(TestWebViewVideoExtractor(urls)),
             engine = TestSelectorMediaSourceEngine(),
             backgroundScope = scope,

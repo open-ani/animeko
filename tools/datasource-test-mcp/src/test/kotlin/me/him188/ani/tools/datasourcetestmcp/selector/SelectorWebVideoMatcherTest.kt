@@ -21,7 +21,7 @@ import kotlin.test.assertNull
 
 /**
  * [SelectorWebVideoMatcher.patchConfig] 必须与 App 内 `SelectorMediaSource.matcher` 一致:
- * cookie 按名去重, 后面的列表覆盖前面的; 配置了 User-Agent 时覆盖上游的, 只用于播放器的 User-Agent 除外.
+ * cookie 按名去重, 后面的列表覆盖前面的; 配置了 User-Agent 时覆盖上游的.
  */
 class SelectorWebVideoMatcherTest {
     private val engine = object : SelectorMediaSourceEngine() {
@@ -32,15 +32,11 @@ class SelectorWebVideoMatcherTest {
             throw UnsupportedOperationException()
     }
 
-    private fun matcher(cookies: String = "", userAgent: String = "", userAgentOnlyForVideo: Boolean = false) =
-        SelectorWebVideoMatcher(
-            engine,
-            SelectorSearchConfig(
-                userAgent = userAgent,
-                userAgentOnlyForVideo = userAgentOnlyForVideo,
-                matchVideo = SelectorSearchConfig.MatchVideoConfig(cookies = cookies),
-            ),
-        )
+    private fun matcher(cookies: String = "", userAgent: String? = null) = SelectorWebVideoMatcher(
+        engine,
+        SelectorSearchConfig.MatchVideoConfig(cookies = cookies),
+        userAgent,
+    )
 
     @Test
     fun `configured cookie overrides same-name upstream cookie`() {
@@ -76,13 +72,6 @@ class SelectorWebVideoMatcherTest {
     fun `configured user agent overrides upstream user agent`() {
         val result = matcher(userAgent = "Mobile UA").patchConfig(WebViewConfig(userAgent = "Upstream UA"))
         assertEquals("Mobile UA", result.userAgent)
-    }
-
-    @Test
-    fun `video only user agent keeps upstream user agent`() {
-        val result = matcher(userAgent = "Legacy UA", userAgentOnlyForVideo = true)
-            .patchConfig(WebViewConfig(userAgent = "Upstream UA"))
-        assertEquals("Upstream UA", result.userAgent)
     }
 
     @Test

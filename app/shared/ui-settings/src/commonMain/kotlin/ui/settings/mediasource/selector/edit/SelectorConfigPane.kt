@@ -118,9 +118,7 @@ import me.him188.ani.app.ui.lang.settings_mediasource_selector_config_search_url
 import me.him188.ani.app.ui.lang.settings_mediasource_selector_config_search_url_placeholder
 import me.him188.ani.app.ui.lang.settings_mediasource_selector_config_search_url_supporting
 import me.him188.ani.app.ui.lang.settings_mediasource_selector_config_source_user_agent
-import me.him188.ani.app.ui.lang.settings_mediasource_selector_config_source_user_agent_apply_throughout
 import me.him188.ani.app.ui.lang.settings_mediasource_selector_config_source_user_agent_description
-import me.him188.ani.app.ui.lang.settings_mediasource_selector_config_source_user_agent_video_only
 import me.him188.ani.app.ui.lang.settings_mediasource_selector_config_subject_format_multi_tag
 import me.him188.ani.app.ui.lang.settings_mediasource_selector_config_subject_format_single_tag
 import me.him188.ani.app.ui.lang.settings_mediasource_selector_config_video_playback
@@ -258,29 +256,12 @@ internal fun SelectorConfigurationPane(
                         .fillMaxWidth().moveFocusOnEnter(),
                     label = { Text(stringResource(Lang.settings_mediasource_selector_config_source_user_agent)) },
                     supportingText = {
-                        Text(
-                            stringResource(
-                                if (state.userAgentOnlyForVideo) {
-                                    Lang.settings_mediasource_selector_config_source_user_agent_video_only
-                                } else {
-                                    Lang.settings_mediasource_selector_config_source_user_agent_description
-                                },
-                            ),
-                        )
+                        Text(stringResource(Lang.settings_mediasource_selector_config_source_user_agent_description))
                     },
                     keyboardOptions = KeyboardOptions(imeAction = ImeAction.Next),
                     shape = textFieldShape,
                     enabled = state.enableEdit,
                 )
-                if (state.userAgentOnlyForVideo) {
-                    TextButton(
-                        onClick = { state.userAgentOnlyForVideo = false },
-                        Modifier.align(Alignment.End),
-                        enabled = state.enableEdit,
-                    ) {
-                        Text(stringResource(Lang.settings_mediasource_selector_config_source_user_agent_apply_throughout))
-                    }
-                }
             }
 
             SelectorSubjectFormatSelectionButtonRow(

@@ -56,7 +56,6 @@ import kotlin.coroutines.EmptyCoroutineContext
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertIs
-import kotlin.test.assertNotEquals
 import kotlin.test.assertNotNull
 import kotlin.test.assertNull
 import kotlin.test.assertTrue
@@ -383,29 +382,6 @@ class WebSessionManagerTest {
         browser.script(finalUrl = searchUrl, html = parseableHtml)
         assertEquals(SolveOutcome.Solved, result.await())
         assertEquals(MOBILE_UA, fixture.identityRegistry.userAgentFor("example.com"))
-    }
-
-    // 只用于播放器的 UA (旧配置迁移而来) 不影响取页面与解验证码
-    @Test
-    fun `video only user agent is not used for pages`() = runTestExt {
-        val requestUserAgents = mutableListOf<String?>()
-        val fixture = Fixture(this) { request ->
-            requestUserAgents += request.headers[HttpHeaders.UserAgent]
-            challengeHtml to HttpStatusCode.Forbidden
-        }
-        val expectation = PageExpectation.SearchResults(
-            searchConfig.copy(userAgent = MOBILE_UA, userAgentOnlyForVideo = true),
-        )
-
-        assertIs<PageVerdict.Blocked>(fixture.manager.fetchPage(searchUrl, expectation))
-        assertNotEquals(MOBILE_UA, requestUserAgents.single())
-
-        val result = async { fixture.manager.solve(solveRequest(expectation), interactive = true) }
-        fixture.manager.interactiveUi.first { it != null }
-        val browser = fixture.factory.created.single()
-        assertEquals("FakeBrowserUA/1.0", browser.userAgent)
-        browser.script(finalUrl = searchUrl, html = parseableHtml)
-        assertEquals(SolveOutcome.Solved, result.await())
     }
 
     // 暖会话只给 UA 相同的请求复用: 播放页嗅探与直连被挡后的浏览器重载

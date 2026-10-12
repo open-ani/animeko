@@ -133,7 +133,7 @@ class SelectorMediaSource(
          *
          * 公开给编辑器测试页与外部工具 (如 `tools/datasource-test-mcp`) 复用, 以保证与 App 播放时行为一致.
          *
-         * @param userAgent 数据源配置的 UA ([SelectorSearchConfig.pageUserAgentOrNull]).
+         * @param userAgent 数据源配置的 UA ([SelectorSearchConfig.userAgentOrNull]).
          * @param captchaCookies 该站点已解出的验证码会话 cookies. HTTP、播放器、各平台共用同一份 cookie 真相.
          */
         fun patchWebViewConfig(
@@ -591,13 +591,13 @@ class SelectorMediaSource(
             ): WebVideoMatcher.MatchResult = engine.matchWebVideo(
                 url,
                 arguments.searchConfig.matchVideo,
-                arguments.searchConfig.videoUserAgent,
+                arguments.searchConfig.userAgentOrNull,
             )
 
             override fun patchConfig(config: WebViewConfig): WebViewConfig = patchWebViewConfig(
                 config,
                 arguments.searchConfig.matchVideo,
-                userAgent = arguments.searchConfig.pageUserAgentOrNull,
+                userAgent = arguments.searchConfig.userAgentOrNull,
                 captchaCookies = sessionManager.cookieJar.getCookieHeaderValues(searchConfig.searchUrl),
             )
         }
