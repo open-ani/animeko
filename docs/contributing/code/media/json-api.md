@@ -1,77 +1,60 @@
-# JSON API media sources
+# JSON API 数据源的设计
 
-`json-api` version 1 is a declarative media source for HTTP APIs returning JSON.
-It supports browsing, automatic subject matching, multiple instances and fresh
-playback URL resolution. The settings editor provides grouped forms for basic
-information, search, channels/episodes, playback and automatic matching. An
-advanced JSON editor accepts either an arguments object or a single-source
-`{"mediaSources":[...]}` import. Both use the same configuration and validate it
-before saving. Incomplete JSON request bodies and numeric fields remain editable
-without losing the draft. Subscription configurations are read-only.
+`ApiMediaSource`（`json-api`）面向把搜索、线路和播放地址放在 JSON 接口里的站点。这类站点的
+HTML 是空壳，数据由脚本在页面加载后请求，`SelectorMediaSource` 的 CSS Selector 读不到。
+它与 Selector 源并列而不是合并进去：Selector 的抽象是“页面上的元素”，这里的抽象是“接口返回的
+JSON”，两者的配置模型和失败方式都不同。
 
-Wide windows show configuration and testing side by side; compact windows switch
-between them. The tester browses subjects and channel/episode lists and resolves
-fresh playback URLs without saving the draft. It reports only the video host,
-keeping signed query parameters out of the result display.
+配置是声明式的：请求模板加 JSONPath。刻意不支持执行 JavaScript——订阅可以把配置推送给所有用户，
+允许执行代码就等于允许订阅方在用户设备上跑任意程序。代价是签名算法写在脚本里的站点接不进来。
 
-The add-source dialog provides a generic **JSON API** entry. Site configurations
-are supplied through clipboard imports or external media-source subscriptions;
-the app does not bundle site presets. API contracts and keys can be updated in
-the configuration without recompiling. Exported configurations include headers:
-omit private credentials before sharing.
+## 标识与持久化
 
-## Requests and variables
+资源的 `mediaId` 由条目、线路、剧集三个 ID 组成，不含名字也不含视频地址。这样手动浏览和自动匹配
+得到的同一集是同一个 `mediaId`，重启后也不变，播放历史、下载记录和选择器记忆都能对上。
 
-Each `request` has `url`, `method` (`GET` or `POST`), optional `headers` and an
-optional structured JSON `body`. Global `headers` apply to all three requests;
-per-request headers override them. Video requests use `playback.videoHeaders`
-only, so API credentials are not forwarded to video hosts.
+浏览协议要求 `BrowseSubject.url`、`BrowseEpisode.url` 是“页面地址”且跨浏览稳定。JSON 站点的
+页面地址未必带全后续请求需要的 ID，所以 URL 在站点真实页面地址后面附加 `#ani-api=` 片段携带 ID。
+片段里只放 ID，不放名字：`BrowseSubject.url` 是浏览记忆的键，站点改一个标题就不该让记忆失效。
+模板需要的 `subjectName`、`channelName`、`episodeName` 在调用时从 `BrowseSubject` 和
+`Media.properties` 取。`Media.originalUrl` 去掉片段，“打开网页”看到的是真实页面。
 
-| Stage | Available variables |
-| --- | --- |
-| Search | `{keyword}`, `{page}`, `{pageSize}` |
-| Detail | `{subjectId}`, `{subjectName}` |
-| Playback | Detail variables, `{channelId}`, `{channelName}`, `{episodeId}`, `{episodeName}` |
+## 播放时解析
 
-URL substitutions are percent-encoded. In a JSON body, an entire string value
-such as `"{subjectId}"` is replaced with the original JSON primitive, preserving
-numeric identifiers. Embedded substitutions such as `"Bearer {channelId}"` stay
-strings and are escaped by the JSON serializer. Unknown variables fail explicitly.
-Templates are declarative; JavaScript execution is not supported.
+视频地址通常带签名、会过期，因此搜索结果里从不保存视频地址。数据源实现 `WebVideoResolverProvider`，
+各平台的 Web 解析器直接向它要一份新的 `WebVideo`，不再对这类源做 WebView 嗅探（嗅探只用于没有实现
+该接口的源）。解析失败统一包装为 `MediaResolutionException`：网络错误与无资源由播放器分别提示，配置
+或接口错误仍归为未知错误。
 
-## Extraction
+API 请求头（全局的和每个请求自己的）只发给三类接口请求；视频请求只带 `playback.videoHeaders`。
+这条边界是为了密钥不流向 CDN。反过来，导出的配置里含有 API 请求头，分享前要自行去掉密钥。
 
-Paths use the existing `utils/jsonpath` implementation. `search.itemsPath` selects
-subjects from the search response. ID, name and aliases paths are relative to
-each subject. Alias selections can contain strings or arrays of strings.
+## 模板替换
 
-`detail.channelsPath` selects channels from the detail response. Channel ID/name
-and `episodesPath` are relative to each channel; episode fields are relative to
-each episode. For an API without channels, use `channelsPath: "$"` and empty
-channel ID/name paths. Each object can then contain its own episode list.
+请求体里整个字符串恰好是一个占位符时，替换为原始的 JSON 值，数字 ID 保持数字；占位符嵌在字符串
+中间时结果仍是字符串。这是因为不少接口对 `"id": 42` 与 `"id": "42"` 的处理不同。URL 中的替换一律
+百分号编码，避免站点返回的名字破坏 URL 结构。
 
-Episode numbers are parsed as `EpisodeSort`. An optional kind path and prefix
-map distinguish main episodes, specials and other sorts. Unmapped kinds and
-missing numbers remain available for manual selection. `fetch` returns every
-episode of matching subjects; the media selector performs episode filtering.
-`autoMatch: false` keeps only manual browsing. `filterBySubjectName` defaults to
-true and includes extracted aliases. `searchNamesCount` defaults to 3.
+## 自动匹配
 
-Pagination is optional. Page numbers start at `firstPage` (default 1), and
-`pageSize` defaults to 50. Searching stops on a short page, a page with no new
-IDs, or `maxPages` (default 20, at most 100).
+`fetch` 的结果都是 `FUZZY`：接口是按关键字搜的，数据源不知道条目 ID 的对应关系。条目名预过滤使用
+`MediaListFilters.ContainsSubjectName`，与选择器下游对 WEB 资源的判据相同，所以这里放行的资源
+不会在选择器里仅因名字被排除；用更严的相等判断会把带年份、季度后缀的标题误杀。理由与
+`SelectorMediaSource` 一致。关键字按顺序搜索，某个关键字搜到能用的条目（开启名字过滤时是名字对上的
+条目，关闭时是任意结果）就不再搜其余关键字。开启名字过滤时请求数由过滤本身约束；关闭时每个搜索结果
+都要打开详情，所以每次 `fetch` 最多打开固定数量的条目，避免宽泛关键字引发几十次详情请求。单个条目的
+详情请求失败只记日志并跳过，不把整个源标记为失败。
 
-## Playback and persistence
+连接测试只发一次搜索请求，不分页。分页搜索服务于浏览和自动匹配；测试连通性只需确认接口能应答。
 
-`playback.urlPath` selects a video URL. An optional `successPath` must resolve to
-true. If the response contains per-channel candidates, configure `candidatesPath`,
-`candidateIdPath` and `candidateUrlPath`; a matching channel candidate takes
-precedence over the top-level URL. Resolved URLs must use HTTP(S).
+## 配置编辑
 
-Website URL templates (`search.subjectUrl`, `detail.episodeUrl`) cannot contain
-fragments. Browse links and download locations carry typed identifiers in an
-`ani-api` fragment. `Media.originalUrl` is the clean website URL. Media IDs use
-subject, channel and episode IDs and remain stable across manual/automatic
-selection. Playback reads those identifiers after an app restart and requests
-fresh signed URLs through `WebVideoResolverProvider` on desktop, Android and iOS.
-No local bridge process or transient in-memory lookup is required.
+分组表单和原始 JSON 编辑器读写同一份配置，改动即保存，与 RSS、Selector 编辑器相同。普通字段直接
+写入配置；JSON 字段和数字字段多一层草稿，因为 `ApiRequest.body` 是 `JsonElement`，用户敲到一半的
+JSON 和清空的数字框在参数模型里没有对应的值。草稿先存文本，能解析时才写入配置；配置被导入等途径
+改掉时草稿作废。订阅提供的实例只读。
+
+## 站点配置的来源
+
+应用内不内置任何站点预设，站点配置通过导入或订阅进入。接口契约和密钥会变，由订阅维护者更新配置
+即可，不必等应用发版。

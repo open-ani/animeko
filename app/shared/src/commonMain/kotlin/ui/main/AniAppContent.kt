@@ -41,8 +41,6 @@ import androidx.navigation3.ui.NavDisplay
 import androidx.paging.compose.collectAsLazyPagingItemsWithLifecycle
 import me.him188.ani.app.data.models.subject.SubjectInfo
 import me.him188.ani.app.domain.mediasource.api.ApiMediaSource
-import me.him188.ani.app.ui.settings.mediasource.api.EditApiMediaSourceScreen
-import me.him188.ani.app.ui.settings.mediasource.api.EditApiMediaSourceViewModel
 import me.him188.ani.app.domain.mediasource.rss.RssMediaSource
 import me.him188.ani.app.domain.mediasource.web.SelectorMediaSource
 import me.him188.ani.app.domain.search.SubjectSearchQuery
@@ -97,6 +95,8 @@ import me.him188.ani.app.ui.profile.auth.AniContactList
 import me.him188.ani.app.ui.search.SearchScreen
 import me.him188.ani.app.ui.settings.SettingsScreen
 import me.him188.ani.app.ui.settings.SettingsViewModel
+import me.him188.ani.app.ui.settings.mediasource.api.EditApiMediaSourceScreen
+import me.him188.ani.app.ui.settings.mediasource.api.EditApiMediaSourceViewModel
 import me.him188.ani.app.ui.settings.mediasource.rss.EditRssMediaSourceScreen
 import me.him188.ani.app.ui.settings.mediasource.rss.EditRssMediaSourceViewModel
 import me.him188.ani.app.ui.settings.mediasource.selector.EditSelectorMediaSourceScreen
@@ -566,11 +566,17 @@ private fun AniAppContentImpl(
                         viewModel<EditApiMediaSourceViewModel>(key = mediaSourceInstanceId) {
                             EditApiMediaSourceViewModel(mediaSourceInstanceId)
                         },
+                        Modifier,
                         windowInsets = windowInsets,
                         navigationIcon = {
-                            BackNavigationIconButton({ aniNavigator.popBackStack(route, inclusive = true) })
+                            BackNavigationIconButton(
+                                {
+                                    aniNavigator.popBackStack(route, inclusive = true)
+                                },
+                            )
                         },
                     )
+
                     RssMediaSource.FactoryId -> EditRssMediaSourceScreen(
                         viewModel<EditRssMediaSourceViewModel>(key = mediaSourceInstanceId) {
                             EditRssMediaSourceViewModel(mediaSourceInstanceId)

@@ -1822,10 +1822,7 @@
     <string name="video_player_screenshot_failed_save">截图保存失败</string>
     <string name="video_player_screenshot_failed_save_reason">截图保存失败: %1$s</string>
     <string name="settings_api_json">配置 JSON</string>
-    <string name="settings_api_save">保存</string>
-    <string name="settings_api_saved">已保存</string>
-    <string name="settings_api_search">搜索关键词</string>
-    <string name="settings_api_video_resolved">已解析视频地址</string>
+    <string name="settings_api_video_resolved">已解析视频地址：%1$s</string>
     <string name="settings_api_basic">基本信息</string>
     <string name="settings_api_website">网站地址</string>
     <string name="settings_api_headers">请求头（JSON 对象）</string>
@@ -1860,15 +1857,14 @@
     <string name="settings_api_video_headers">视频请求头（JSON 对象）</string>
     <string name="settings_api_auto_match">自动匹配条目</string>
     <string name="settings_api_filter_by_subject_name">按条目名称过滤</string>
-    <string name="settings_api_tier">数据源阶级（数值越低越优先）</string>
     <string name="settings_api_channel_tiers">线路阶级（JSON 对象）</string>
-    <string name="settings_api_configuration">配置</string>
-    <string name="settings_api_advanced">高级 JSON</string>
-    <string name="settings_api_read_only">此订阅配置仅供查看。</string>
-    <string name="settings_api_test_hint">搜索条目，选择线路与剧集，再测试视频地址解析。</string>
+    <string name="settings_api_configuration">表单</string>
+    <string name="settings_api_advanced">JSON</string>
     <string name="settings_api_no_results">暂无结果</string>
     <string name="settings_api_choose_episode">选择剧集以测试视频地址解析。</string>
-    <string name="settings_api_subjects">返回搜索结果</string>
+    <string name="settings_api_episode_id_path">剧集 ID JSONPath</string>
+    <string name="settings_api_episode_name_path">剧集名称 JSONPath</string>
+    <string name="settings_api_validation_error">配置有误：%1$s</string>
 </resources>
 
 <!--@formatter:on-->

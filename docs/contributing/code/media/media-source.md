@@ -23,7 +23,7 @@ interface MediaSource {
 
 - `SelectorMediaSource`：通用 [CSS Selector][CSS Selector] 数据源；
 - `RssMediaSource`：通用 RSS 订阅数据源；
-- `ApiMediaSource`：通用 HTTP JSON API 数据源，支持 GET/POST、JSONPath 和播放时刷新视频地址，见 [JSON API 配置](json-api.md)；
+- `ApiMediaSource`：通用 HTTP JSON API 数据源，面向把数据放在接口里的站点，见 [JSON API 数据源的设计](json-api.md)；
 - 特别支持的数据源：
     - `JellyfinMediaSource`、`EmbyMediaSource`：Jellyfin、Emby 媒体库；
     - `DmhyMediaSource`、`MikanMediaSource`：[动漫花园][dmhy]、[蜜柑计划][Mikan] 站点；
@@ -166,8 +166,8 @@ Selector 配置据此分两层：
 
 有以下多种方法扩展数据源支持：
 
-- （最简单）编写通用的数据源的配置。可以在 APP 内“设置-数据源管理”中添加 `Selector` 和 `RSS`
-  类型数据源。只需编写一些 CSS Selector 配置即可使用。
+- （最简单）编写通用的数据源的配置。可以在 APP 内“设置-数据源管理”中添加 `Selector`、`RSS` 和 `JSON API`
+  类型数据源。只需编写一些 CSS Selector 或 JSONPath 配置即可使用。
 - 实现新的 `MediaSelector`。参考 `IkarosMediaSource`（位于 `datasource/ikaros`）。通常需要为 Animeko
   仓库提交代码，增加一个新的模块。
 
