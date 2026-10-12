@@ -113,6 +113,7 @@ class AndroidWebMediaResolver(
         val webVideo = (
             webSessionManager.extractVideoResource(
                 pageUrl = media.download.uri,
+                userAgent = config.userAgent,
                 timeoutMillis = timeoutMillis,
                 resourceMatcher = resourceMatcher,
             ) ?: AndroidWebViewVideoExtractor(timeoutMillis).getVideoResourceUrl(
@@ -190,7 +191,7 @@ class AndroidWebViewVideoExtractor(
             }
 
             loadedNestedUrls.add(pageUrl)
-            createWebView(context, deferred, ::handleUrl).loadUrl(pageUrl)
+            createWebView(context, config.userAgent, deferred, ::handleUrl).loadUrl(pageUrl)
 
             //            webView.webChromeClient = object : WebChromeClient() {
             //                override fun onConsoleMessage(consoleMessage: ConsoleMessage?): Boolean {
@@ -221,6 +222,7 @@ class AndroidWebViewVideoExtractor(
     @OptIn(DelicateCoroutinesApi::class)
     private fun createWebView(
         context: Context,
+        userAgent: String?,
         deferred: CompletableDeferred<WebResource>,
         handleUrl: (WebView, String) -> Boolean,
     ): WebView = WebView(context).apply {
@@ -233,6 +235,7 @@ class AndroidWebViewVideoExtractor(
         webView.settings.javaScriptEnabled = true
         webView.settings.mixedContentMode = WebSettings.MIXED_CONTENT_COMPATIBILITY_MODE
         webView.settings.domStorageEnabled = true
+        userAgent?.let { webView.settings.userAgentString = it }
         webView.webViewClient = object : WebViewClient() {
             override fun shouldInterceptRequest(
                 view: WebView,

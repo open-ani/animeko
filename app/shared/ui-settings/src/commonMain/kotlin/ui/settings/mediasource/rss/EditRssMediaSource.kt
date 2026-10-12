@@ -143,16 +143,11 @@ class EditRssMediaSourceState(
         { it.searchConfig.filterByEpisodeSort }, { copy(searchConfig = searchConfig.copy(filterByEpisodeSort = it)) },
         true,
     )
-    var filterBySubjectName by argumentsStorage.prop(
-        { it.searchConfig.filterBySubjectName }, { copy(searchConfig = searchConfig.copy(filterBySubjectName = it)) },
-        true,
-    )
 
     val searchConfig by derivedStateOf {
         RssSearchConfig(
             searchUrl = searchUrl,
             filterByEpisodeSort = filterByEpisodeSort,
-            filterBySubjectName = filterBySubjectName,
         )
     }
 

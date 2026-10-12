@@ -23,10 +23,6 @@ class DesktopBrowserNavigator : BrowserNavigator {
         }
     }
 
-    override fun openJoinGroup(context: Context): OpenBrowserResult {
-        return openBrowser(context, QQ_GROUP_JOIN_LINK)
-    }
-
     override fun intentActionView(context: Context, url: String): OpenBrowserResult {
         return openBrowser(context, url)
     }

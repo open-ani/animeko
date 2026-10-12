@@ -184,7 +184,7 @@ class WebViewCaptchaBrowser private constructor(
             "(function(){var d=document.documentElement; return d ? d.outerHTML : '';})()"
 
         @SuppressLint("SetJavaScriptEnabled")
-        internal suspend fun create(context: Context): WebViewCaptchaBrowser =
+        internal suspend fun create(context: Context, userAgent: String?): WebViewCaptchaBrowser =
             withContext(Dispatchers.Main.immediate) {
                 val webView = WebView(context)
                 CookieManager.getInstance().setAcceptCookie(true)
@@ -193,6 +193,7 @@ class WebViewCaptchaBrowser private constructor(
                     javaScriptEnabled = true
                     domStorageEnabled = true
                     mixedContentMode = WebSettings.MIXED_CONTENT_COMPATIBILITY_MODE
+                    userAgent?.let { userAgentString = it }
                 }
                 WebViewCaptchaBrowser(webView).apply { setup() }
             }
@@ -206,5 +207,5 @@ class AndroidCaptchaBrowserFactory(
 
     override val recommendedMaxSessions: Int get() = 2
 
-    override suspend fun create(): CaptchaBrowser = WebViewCaptchaBrowser.create(context)
+    override suspend fun create(userAgent: String?): CaptchaBrowser = WebViewCaptchaBrowser.create(context, userAgent)
 }

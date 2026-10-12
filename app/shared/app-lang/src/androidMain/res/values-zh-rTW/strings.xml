@@ -154,7 +154,6 @@
     <string name="episode_drop_video_unknown_name">影片檔案</string>
     <string name="episode_drop_video_description">立即在目前劇集播放此檔案，僅本次播放有效</string>
     <string name="episode_drop_video_supported_hint">影片檔案</string>
-    <string name="settings_help_qq">QQ</string>
     <string name="settings_help_telegram">Telegram</string>
     <string name="settings_help_github">GitHub</string>
     <string name="settings_help_feedback">回饋問題</string>
@@ -165,7 +164,6 @@
     <string name="settings_about_feedback">回饋建議</string>
     <string name="settings_about_source_code">原始碼</string>
     <string name="settings_about_chat_groups">交流群</string>
-    <string name="settings_about_qq_group">QQ 群</string>
     <string name="settings_about_icon_description">Animeko Icon</string>
     <string name="settings_about_app_name">Animeko</string>
     <string name="settings_about_app_description">集找番、追番、看番的一站式彈幕追番平台</string>
@@ -227,6 +225,8 @@
     <string name="settings_mediasource_selector_config_search_subject_names_count_description">每次播放使用多少個條目名稱進行查詢。\n為 1 則只使用主名稱，為 2 額外使用日文原名，大於 2 將額外使用其他別名，別名的數量不固定。\n一般用 1 就夠了，使用多個名稱將會顯著增加播放時的等待時間。</string>
     <string name="settings_mediasource_selector_config_request_interval">搜尋請求間隔時間 (毫秒)</string>
     <string name="settings_mediasource_selector_config_request_interval_description">控制每送出一個請求後等待多久再送出下一個請求</string>
+    <string name="settings_mediasource_selector_config_source_user_agent">User-Agent (可選)</string>
+    <string name="settings_mediasource_selector_config_source_user_agent_description">資料源全程使用的 User-Agent：搜尋頁和詳情頁請求、驗證碼瀏覽器、載入播放頁匹配影片連結、播放器請求影片。留空則使用預設值</string>
     <string name="settings_mediasource_selector_config_search_cache_ttl">搜尋快取有效期 (分鐘)</string>
     <string name="settings_mediasource_selector_config_search_cache_ttl_description">在此時間內切換劇集時複用搜尋結果。實際生效值為此值與使用者設定中的較小者，0 表示不快取</string>
     <string name="settings_mediasource_selector_auto_match">自動匹配 (可選)</string>
@@ -237,8 +237,6 @@
     <string name="settings_mediasource_selector_tier_description">數值越低越優先。階級 0 查到結果後立即選用，更高階級需先等待其他資料來源</string>
     <string name="settings_mediasource_selector_prefer_shorter_name">優先選擇最短標題</string>
     <string name="settings_mediasource_selector_prefer_shorter_name_description">優先選擇滿足匹配的標題最短的條目，可避免為第一季匹配到第二季</string>
-    <string name="settings_mediasource_selector_config_filter_by_subject_name">使用條目名稱過濾</string>
-    <string name="settings_mediasource_selector_config_filter_by_subject_name_description">要求資源標題包含條目名稱。適用於資料來源可能搜到無關內容的情況。此功能只對 4.4.0 以前版本有效，對其他版本無效</string>
     <string name="settings_mediasource_selector_config_filter_by_episode_sort">使用劇集序號過濾</string>
     <string name="settings_mediasource_selector_config_filter_by_episode_sort_description">要求資源標題包含劇集序號。適用於資料來源可能搜到無關內容的情況。通常建議開啟</string>
     <string name="settings_mediasource_selector_config_default_resolution">標記解析度</string>
@@ -252,7 +250,6 @@
     <string name="settings_mediasource_selector_config_distinguish_channel_name_description">關閉後，線路名稱不同，但只要標題相同的劇集就會被去重。\n開啟此項則不會這樣去重。\n此選項不影響測試結果，影響播放器內選擇資料來源時的結果。</string>
     <string name="settings_mediasource_selector_config_video_playback">播放影片時</string>
     <string name="settings_mediasource_selector_config_referer_description">播放影片時執行的 HTTP 請求 Referer，可留空</string>
-    <string name="settings_mediasource_selector_config_user_agent_description">播放影片時執行的 HTTP 請求 User-Agent</string>
     <string name="settings_mediasource_selector_config_subject_format_single_tag">單標籤</string>
     <string name="settings_mediasource_selector_config_subject_format_multi_tag">多標籤</string>
     <string name="settings_mediasource_selector_config_channel_format_no_channel">不區分線路</string>
@@ -379,6 +376,8 @@
     <string name="settings_player_auto_mark_done">觀看 90% 後自動標記為看過</string>
     <string name="settings_player_hide_selector_on_select">選擇資料源後自動關閉彈出視窗</string>
     <string name="settings_player_auto_fullscreen_on_landscape">旋轉螢幕時自動全螢幕</string>
+    <string name="settings_player_foldable_hover_mode">摺疊螢幕懸停模式</string>
+    <string name="settings_player_foldable_hover_mode_description">裝置半摺疊時分開顯示影片和控制器</string>
     <string name="settings_player_auto_play_next">自動連播</string>
     <string name="settings_player_background_behavior">切換到其他應用程式時</string>
     <string name="settings_player_background_behavior_description">播放中離開應用程式時，自動以小窗繼續播放</string>
@@ -393,7 +392,12 @@
     <string name="settings_player_op_ed_skip_duration_seconds">%1$d 秒</string>
     <string name="settings_player_auto_switch_media_on_error">播放失敗時自動切換資源</string>
     <string name="settings_player_hls_ad_filter">過濾貼片廣告</string>
-    <string name="settings_player_hls_ad_filter_description">自動跳過線上來源影片中插入的廣告，個別廣告可能無法識別；如遇播放出錯可關閉</string>
+    <string name="settings_player_hls_ad_filter_all">全開</string>
+    <string name="settings_player_hls_ad_filter_smart">智慧</string>
+    <string name="settings_player_hls_ad_filter_off">關閉</string>
+    <string name="settings_player_hls_ad_filter_all_description">過濾所有線上來源的廣告。識別廣告會讓影片晚 1-4 秒開播，最多 8 秒</string>
+    <string name="settings_player_hls_ad_filter_smart_description">只過濾訂閱標記為含有插播廣告的線上來源，個別廣告可能無法識別；如遇播放出錯可關閉</string>
+    <string name="settings_player_hls_ad_filter_off_description">不過濾線上來源影片中插入的廣告</string>
     <string name="settings_player_long_press_fast_forward_speed">長按播放速度</string>
     <string name="settings_player_long_press_fast_forward_speed_description">長按時使用的播放速度</string>
     <string name="settings_player_playback_speed_range">倍速範圍</string>
@@ -420,20 +424,16 @@
     <string name="settings_storage_directory_create_failed">無法建立目錄</string>
 
     <!-- MediaSourceGroup -->
-    <string name="settings_media_source_list">資料源列表 (%1$d)</string>
-    <string name="settings_media_source_list_description">在播放時，停用的資料源不會自動查詢，但可手動點擊臨時啟用。注意，排序將優先採用雲端順序，同資料源訂閱之內的手動排序可能無效</string>
     <string name="settings_media_source_cancel_sort">取消排序</string>
     <string name="settings_media_source_add">新增資料源</string>
     <string name="settings_media_source_save_sort">儲存排序</string>
     <string name="settings_media_source_sort">排序</string>
     <string name="settings_media_source_stop_test">終止測試</string>
-    <string name="settings_media_source_start_test">開始測試</string>
     <string name="settings_media_source_delete">刪除資料源</string>
     <string name="settings_media_source_delete_no_config">該資料源無特殊配置，刪除後可以重新從模板直接添加，確認刪除嗎？</string>
     <string name="settings_media_source_delete_with_config">該資料源有配置，刪除後將遺失配置，之後從模板添加時需要重新配置，確認刪除嗎？</string>
     <string name="settings_media_source_delete_confirm">刪除</string>
     <string name="settings_media_source_cancel">取消</string>
-    <string name="settings_media_source_from_subscription">來自訂閱，不可編輯</string>
     <string name="settings_media_source_edit">編輯</string>
     <string name="settings_media_source_start_sort">開始排序</string>
     <string name="settings_media_source_more">更多</string>
@@ -441,14 +441,10 @@
     <string name="settings_media_source_disabled">（已停用）</string>
     <string name="settings_media_source_disable">停用</string>
     <string name="settings_media_source_enable">啟用</string>
-    <string name="settings_media_source_delete_can_readd">刪除（可重新添加）</string>
     <string name="settings_media_source_enter_selection_mode">進入選擇模式</string>
-    <string name="settings_media_source_exit_selection">退出選擇模式</string>
     <string name="settings_media_source_selected_count">已選擇 %1$d 個資料源</string>
-    <string name="settings_media_source_select_all">選擇全部資料源</string>
-    <string name="settings_media_source_deselect_all">取消選擇全部資料源</string>
-    <string name="settings_media_source_enable_selected">啟用選中的資料源</string>
-    <string name="settings_media_source_disable_selected">停用選中的資料源</string>
+    <string name="settings_media_source_select_all">全選</string>
+    <string name="settings_media_source_deselect_all">取消全選</string>
     <string name="settings_media_source_delete_selected">刪除選中的資料源</string>
     <string name="settings_media_source_delete_selected_title">刪除選中的資料源？</string>
     <string name="settings_media_source_delete_selected_confirmation">確定刪除選中的 %1$d 個資料源嗎？刪除後將遺失自訂設定，重新添加時需要再次設定。</string>
@@ -456,15 +452,13 @@
 
     <!-- MediaSourceSubscriptionGroup -->
     <string name="settings_media_source_subscription">資料源訂閱</string>
-    <string name="settings_media_source_subscription_description">可透過訂閱添加多個資料源，並自動定時更新訂閱</string>
-    <string name="settings_media_source_subscription_add">添加</string>
     <string name="settings_media_source_subscription_refresh_all">全部重新整理</string>
     <string name="settings_media_source_subscription_add_dialog">添加訂閱</string>
     <string name="settings_media_source_subscription_add_confirm">添加</string>
     <string name="settings_media_source_subscription_paste">貼上</string>
     <string name="settings_media_source_subscription_cancel">取消</string>
     <string name="settings_media_source_subscription_url">URL (HTTP)</string>
-    <string name="settings_media_source_subscription_auto_update">每 %1$s 自動更新，</string>
+    <string name="settings_media_source_subscription_auto_update">每 %1$s 自動更新</string>
     <string name="settings_media_source_subscription_copy_link">複製連結</string>
     <string name="settings_media_source_subscription_copied">已複製</string>
     <string name="settings_media_source_subscription_export_all">全部匯出到剪貼簿</string>
@@ -478,6 +472,26 @@
     <string name="settings_media_source_subscription_network_error">網路錯誤，請檢查網路連線</string>
     <string name="settings_media_source_subscription_service_unavailable">服務暫不可用，請稍後重試</string>
     <string name="settings_media_source_subscription_unauthorized">服務禁止訪問，請聯絡服務提供者</string>
+    <string name="settings_media_source_subscriptions">訂閱</string>
+    <string name="settings_media_source_custom">自訂</string>
+    <string name="settings_media_source_subscription_updated_at">%1$s更新</string>
+    <string name="settings_media_source_subscription_media_source_count">%1$d 個資料源</string>
+    <string name="settings_media_source_subscription_enable_all">全部啟用</string>
+    <string name="settings_media_source_subscription_disable_all">全部停用</string>
+    <string name="settings_media_source_subscription_delete_subscription">刪除訂閱</string>
+    <string name="settings_media_source_subscription_website">首頁</string>
+    <string name="settings_media_source_subscription_link">訂閱連結</string>
+    <string name="settings_media_source_subscription_update_now">立即更新</string>
+    <string name="settings_media_source_subscription_unsupported_media_sources">%1$d 個資料源需要新版 Animeko</string>
+    <string name="settings_media_source_subscription_requires_newer_app">需要新版 Animeko</string>
+    <string name="settings_media_source_test_connection">測試連線</string>
+    <string name="settings_media_source_done">完成</string>
+    <string name="settings_media_source_disabled_label">已停用</string>
+    <string name="settings_media_source_kind_web">線上</string>
+    <string name="settings_media_source_location_lan">區域網路</string>
+    <string name="settings_media_source_location_local">本機</string>
+    <string name="settings_media_source_subscription_media_sources">資料源</string>
+    <string name="settings_media_source_view_config">檢視設定</string>
     <string name="settings_storage_danmaku_cache_strategy_title">彈幕快取策略</string>
     <string name="settings_storage_danmaku_cache_strategy_description_do_not_cache">不快取彈幕，每次播放都從網路取得。</string>
     <string name="settings_storage_danmaku_cache_strategy_description_cache_on_collection_doing_media_play">在播放收藏狀態為「在看」的條目劇集時快取彈幕。若該條目的收藏狀態變更為其他狀態，則刪除對應的彈幕快取。</string>
@@ -540,8 +554,6 @@
     <string name="settings_mediasource_rss_search_link_supporting_text">取代規則：\n{keyword} 取代為條目 (番劇) 名稱\n{page} 取代為頁碼, 如果不需要分頁則忽略</string>
     <string name="settings_mediasource_rss_filter_by_episode">使用劇集序號過濾</string>
     <string name="settings_mediasource_rss_filter_by_episode_description">要求資源標題包含劇集序號。適用於資料源可能搜到無關內容的情況</string>
-    <string name="settings_mediasource_rss_filter_by_subject">使用條目名稱過濾</string>
-    <string name="settings_mediasource_rss_filter_by_subject_description">要求資源標題包含條目名稱。適用於資料源可能搜到無關內容的情況。\n此功能只對 4.4.0 以前版本有效，對其他版本無效</string>
     <string name="settings_mediasource_rss_auto_save_hint">提示：修改自動儲存</string>
 
     <!-- OutlinedMatchTag -->
@@ -604,6 +616,10 @@
     <string name="exploration_settings">設定</string>
     <string name="exploration_search">搜尋</string>
     <string name="exploration_trending">最高熱度</string>
+    <string name="exploration_trending_more">更多</string>
+    <string name="exploration_trending_ranking">熱度排行</string>
+    <string name="exploration_trending_ranking_heat">近 30 天 %1$s 人在看</string>
+    <string name="exploration_trending_ranking_empty">暫無排行</string>
     <string name="exploration_schedule">新番時間表</string>
     <string name="exploration_schedule_view_details">查看詳情</string>
     <string name="exploration_schedule_episode">第 %1$s 話</string>
@@ -704,8 +720,6 @@
     <string name="settings_network_proxy_password">密碼</string>
     <string name="settings_network_proxy_retest">重新測試</string>
     <string name="settings_network_proxy_service_danmaku">彈幕服務</string>
-    <string name="settings_network_proxy_service_collection">收藏資料服務</string>
-    <string name="settings_network_proxy_service_comment">評論服務</string>
     <string name="settings_network_proxy_test_success">連線成功</string>
     <string name="settings_network_proxy_test_failed">連線失敗</string>
     <string name="settings_network_proxy_current_disabled">未啟用代理</string>
@@ -794,6 +808,7 @@
     <string name="video_player_aspect_fit">適應</string>
     <string name="video_player_aspect_stretch">填充</string>
     <string name="video_player_aspect_crop">裁切</string>
+    <string name="video_player_aspect_ratio">畫面比例</string>
     <string name="video_player_auto">自動</string>
     <string name="video_player_audio_track">音軌</string>
     <string name="video_player_off">關閉</string>
@@ -1479,10 +1494,12 @@
     <string name="foundation_paginated_list_select_group">選擇分組</string>
     <string name="foundation_paginated_list_next_group">下一組</string>
     <string name="rating_summary_multiline">#%1$d\n%2$d 人評</string>
+    <string name="rating_summary_total">%1$d 人評</string>
     <string name="subject_episode_statistics_copy">複製</string>
     <string name="subject_episode_statistics_error_details">錯誤詳情</string>
     <string name="subject_episode_statistics_error">錯誤</string>
     <string name="subject_episode_statistics_no_matching_file">未匹配到檔案</string>
+    <string name="subject_episode_statistics_web_engine_unavailable">內建瀏覽器未啟動，無法解析網頁資料來源，請重新啟動應用程式</string>
     <string name="subject_episode_statistics_resolution_timed_out">解析逾時</string>
     <string name="subject_episode_statistics_unsupported_media">不支援的影片類型</string>
     <string name="subject_episode_statistics_unknown_error_tap">未知錯誤，點擊查看</string>
@@ -1511,6 +1528,7 @@
     <string name="subject_episode_video_loading_cause_unknown_error">未知錯誤</string>
     <string name="subject_episode_video_loading_cause_unsupported_media">不支援該檔案類型</string>
     <string name="subject_episode_video_loading_cause_no_matching_file">未找到可播放的檔案</string>
+    <string name="subject_episode_video_loading_cause_web_engine_unavailable">內建瀏覽器未啟動, 請重新啟動應用程式</string>
     <string name="subject_episode_video_loading_cause_cancelled">已取消</string>
     <string name="subject_episode_video_loading_cause_network_error">網路錯誤</string>
     <string name="subject_episode_wish_change_to">已想看，可更改為：</string>

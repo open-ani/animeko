@@ -88,6 +88,7 @@ import me.him188.ani.app.domain.comment.CommentContext
 import me.him188.ani.app.domain.media.player.data.suppliedFramePreview
 import me.him188.ani.app.navigation.LocalNavigator
 import me.him188.ani.app.pip.LocalPictureInPictureController
+import me.him188.ani.app.pip.NoOpPictureInPictureController
 import me.him188.ani.app.pip.PictureInPictureController
 import me.him188.ani.app.pip.rememberPictureInPictureController
 import me.him188.ani.app.pip.shouldAutoEnterPictureInPicture
@@ -181,11 +182,11 @@ import me.him188.ani.app.videoplayer.ui.VideoSideSheetsController
 import me.him188.ani.app.videoplayer.ui.gesture.LevelController
 import me.him188.ani.app.videoplayer.ui.gesture.NoOpLevelController
 import me.him188.ani.app.videoplayer.ui.gesture.asLevelController
-import me.him188.ani.app.videoplayer.ui.rememberAlwaysOnRequester
 import me.him188.ani.app.videoplayer.ui.progress.PlayerControllerDefaults
 import me.him188.ani.app.videoplayer.ui.progress.PlayerControllerDefaults.rememberRandomDanmakuPlaceholder
 import me.him188.ani.app.videoplayer.ui.progress.rememberMediaProgressFramePreviewState
 import me.him188.ani.app.videoplayer.ui.progress.rememberMediaProgressSliderState
+import me.him188.ani.app.videoplayer.ui.rememberAlwaysOnRequester
 import me.him188.ani.app.videoplayer.ui.rememberPlayerFullscreenState
 import me.him188.ani.app.videoplayer.ui.screenshot.PlayerScreenshotOverlay
 import me.him188.ani.app.videoplayer.ui.screenshot.rememberPlayerScreenshotController
@@ -384,6 +385,7 @@ private fun EpisodeScreenContent(
                     isFullscreen = vm.isFullscreen,
                     isExpandedLayout = showExpandedUI,
                     sidebarVisible = vm.sidebarVisible,
+                    pictureInPictureController = pictureInPictureController,
                 )
 
                 page.matchingDanmakuUiState?.let { uiState ->
@@ -452,28 +454,41 @@ private fun EpisodeScreenContent(
     vm.mediaResolver.ComposeContent()
 }
 
+/**
+ * 一起看气泡的显隐: 全屏/宽屏收侧边栏时跟随控制条, 其余场景常显.
+ *
+ * 小窗期间也隐藏: 系统小窗展示整个应用窗口, 而一起看浮层挂在应用根节点上, 不随播放器页最小化,
+ * 不隐藏就会浮在小窗的视频上面.
+ *
+ * @param pictureInPictureController 播放页自己的画中画控制器
+ */
 @Composable
 internal fun WatchTogetherPopupVisibilityEffect(
     playerControllerState: PlayerControllerState,
     isFullscreen: Boolean,
     isExpandedLayout: Boolean,
     sidebarVisible: Boolean,
+    pictureInPictureController: PictureInPictureController = NoOpPictureInPictureController,
 ) {
-    val watchTogetherPlayerController = LocalWatchTogetherPlayerController.current
+    val watchTogetherController = LocalWatchTogetherPlayerController.current
+    val isInPictureInPicture by pictureInPictureController.isInPictureInPicture.collectAsStateWithLifecycle()
+
+    val playerControllerRequester = remember { Any() }
     val followControllerVisibility = isFullscreen || (isExpandedLayout && !sidebarVisible)
 
-    LaunchedEffect(followControllerVisibility, playerControllerState, watchTogetherPlayerController) {
-        if (followControllerVisibility) {
-            snapshotFlow { playerControllerState.visibility.topBar }.collect {
-                watchTogetherPlayerController.setDraggablePopupVisibility(it)
-            }
-        } else {
-            watchTogetherPlayerController.setDraggablePopupVisibility(true)
-        }
+    LaunchedEffect(followControllerVisibility, playerControllerState) {
+        snapshotFlow { followControllerVisibility && !playerControllerState.visibility.topBar }
+            .collect { watchTogetherController.setRequestHidden(playerControllerRequester, it) }
     }
-    DisposableEffect(watchTogetherPlayerController) {
+
+    LaunchedEffect(isInPictureInPicture) {
+        watchTogetherController.setRequestHidden("pictureInPicture", isInPictureInPicture)
+    }
+
+    DisposableEffect(watchTogetherController) {
         onDispose {
-            watchTogetherPlayerController.setDraggablePopupVisibility(true)
+            watchTogetherController.setRequestHidden(playerControllerRequester, false)
+            if (!isInPictureInPicture) watchTogetherController.setRequestHidden("pictureInPicture", false)
         }
     }
 }
@@ -1014,6 +1029,8 @@ private fun fullscreenVideoWindowInsets(default: WindowInsets): WindowInsets {
 private fun rememberEpisodeFullscreenState(vm: EpisodeViewModel): PlayerFullscreenState {
     val context by rememberUpdatedState(LocalContext.current)
     val window = LocalPlatformWindow.current
+    val hasFoldingFeature = currentWindowAdaptiveInfo1().windowPosture.hingeList.isNotEmpty()
+    val keepFoldableOrientation = vm.videoScaffoldConfig.enableFoldableHoverMode && hasFoldingFeature
     val scope = rememberCoroutineScope()
     return rememberPlayerFullscreenState(
         isFullscreen = { vm.isFullscreen },
@@ -1022,7 +1039,7 @@ private fun rememberEpisodeFullscreenState(vm: EpisodeViewModel): PlayerFullscre
                 // 进入是「先改状态再改窗口」, 退出是「先改窗口再改状态」, 与规范化之前的行为保持一致
                 if (fullscreen) {
                     vm.isFullscreen = true
-                    context.setRequestFullScreen(window, true)
+                    context.setRequestFullScreen(window, true, lockLandscape = !keepFoldableOrientation)
                 } else {
                     context.setRequestFullScreen(window, false)
                     vm.isFullscreen = false
@@ -1304,6 +1321,7 @@ private fun EpisodeVideo(
             .then(if (expanded) Modifier.fillMaxSize() else Modifier),
         maintainAspectRatio = maintainAspectRatio,
         contentWindowInsets = windowInsets,
+        enableFoldableHoverMode = vm.videoScaffoldConfig.enableFoldableHoverMode,
         fastForwardSpeed = vm.videoScaffoldConfig.fastForwardSpeed,
         pictureInPictureController = pictureInPictureController,
         isInPictureInPicture = isInPictureInPicture,

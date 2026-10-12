@@ -82,6 +82,7 @@ class TvArchitectureTest {
         "me.him188.ani.app.ui.settings.tabs.about.developerCredits",
         "me.him188.ani.app.ui.settings.tabs.about.mergeOpenSourceLibraries",
         "me.him188.ani.app.ui.foundation.effects.blurEffect",
+        "me.him188.ani.app.ui.foundation.effects.ScreenOnEffect",
         "me.him188.ani.app.ui.foundation.Res",
         "me.him188.ani.app.ui.foundation.tmdb",
         "me.him188.ani.app.ui.media.webCaptchaRequiredMessage",
@@ -109,6 +110,9 @@ class TvArchitectureTest {
         "me.him188.ani.app.ui.exploration.search.",
         // 登录态 UI 状态 (SelfInfoUiState/SelfInfoStateProducer)
         "me.him188.ani.app.ui.user.",
+        "me.him188.ani.app.ui.update.AppUpdateViewModel",
+        "me.him188.ani.app.ui.update.AppUpdatePresentation",
+        "me.him188.ani.app.ui.update.AppUpdateState",
     )
 
     /** TV 代码 = shared 中各模块的 src/androidTv 目录 + Android 应用的 src/tv 出包胶水. */
@@ -249,6 +253,7 @@ class TvArchitectureTest {
             "TvPeopleDetailsViewModel" to "PeopleDetailsViewModel",
             "TvEpisodeViewModel" to "EpisodeViewModel",
             "TvWatchTogetherViewModel" to "WatchTogetherViewModel",
+            "TvUpdateViewModel" to "AppUpdateViewModel",
         )
         val declaration = Regex("""class\s+(Tv\w*ViewModel)\b""")
         tvScope().files.assertFalse { file ->

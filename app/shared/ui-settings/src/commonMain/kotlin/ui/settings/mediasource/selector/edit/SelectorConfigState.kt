@@ -104,11 +104,6 @@ class SelectorConfigState(
         { copy(searchConfig = searchConfig.copy(autoMatch = searchConfig.autoMatch.copy(filterByEpisodeSort = it))) },
         SelectorMediaSourceArguments.Default.searchConfig.autoMatch.filterByEpisodeSort,
     )
-    var filterBySubjectName by argumentsStorage.prop(
-        { it.searchConfig.autoMatch.filterBySubjectName },
-        { copy(searchConfig = searchConfig.copy(autoMatch = searchConfig.autoMatch.copy(filterBySubjectName = it))) },
-        SelectorMediaSourceArguments.Default.searchConfig.autoMatch.filterBySubjectName,
-    )
 
     /**
      * 播放 session 内复用搜索结果的时长. 浏览不读写缓存, 因此属于自动匹配层.
@@ -120,6 +115,12 @@ class SelectorConfigState(
     )
 
     // endregion
+
+    var userAgent by argumentsStorage.prop(
+        { it.searchConfig.userAgent },
+        { copy(searchConfig = searchConfig.copy(userAgent = it)) },
+        SelectorMediaSourceArguments.Default.searchConfig.userAgent,
+    )
 
     var rawBaseUrl by argumentsStorage.prop(
         { it.searchConfig.rawBaseUrl },
@@ -408,9 +409,6 @@ class SelectorConfigState(
 
             var referer by prop(
                 { it.referer }, { copy(referer = it) },
-            )
-            var userAgent by prop(
-                { it.userAgent }, { copy(userAgent = it) },
             )
         }
     }

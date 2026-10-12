@@ -38,6 +38,7 @@ import me.him188.ani.app.ui.lang.settings_help_telegram
 import me.him188.ani.app.ui.lang.settings_load_failed
 import me.him188.ani.app.ui.lang.settings_mediasource_retry
 import me.him188.ani.app.ui.lang.settings_tab_about
+import me.him188.ani.app.ui.lang.settings_update_check
 import me.him188.ani.app.ui.settings.tabs.AniHelperDestination
 import me.him188.ani.app.ui.settings.tabs.about.developerCredits
 import org.jetbrains.compose.resources.DrawableResource
@@ -55,6 +56,7 @@ internal fun TvSettingsAboutPage.title(): String = stringResource(when (this) {
 internal fun TvSettingsItems.about(
     page: TvSettingsAboutPage,
     navigate: (TvSettingsAboutPage) -> Unit,
+    onCheckUpdate: () -> Unit,
 ) {
     fun link(id: String, title: String, url: String, description: String? = null, artwork: DrawableResource? = null,
              artworkShape: Shape = RectangleShape) {
@@ -70,6 +72,7 @@ internal fun TvSettingsItems.about(
             action("version", stringResource(Lang.settings_about_version), "$title $version") {
                 open(TvSettingsDialog.Info("version", title, "$description\n\n$version"))
             }
+            action("check-update", stringResource(Lang.settings_update_check), onClick = onCheckUpdate)
             link("releases", stringResource(Lang.settings_about_release_notes), AniHelperDestination.RELEASE_PREFIX + version)
             link("website", stringResource(Lang.settings_about_website), AniHelperDestination.ANI_WEBSITE)
             link("feedback", stringResource(Lang.settings_about_feedback), AniHelperDestination.ISSUE_TRACKER)

@@ -119,9 +119,9 @@ class TestBrowsableMediaSource(
     val subjects: List<BrowseSubject> = TestBrowseSubjects,
     val channels: (BrowseSubject) -> List<BrowseChannel> = { TestBrowseChannels },
     val searchDelegate: suspend (String) -> List<BrowseSubject> = { subjects },
+    override val info: MediaSourceInfo = MediaSourceInfo(displayName = mediaSourceId),
 ) : MediaSource {
     override val kind: MediaSourceKind get() = MediaSourceKind.WEB
-    override val info: MediaSourceInfo = MediaSourceInfo(displayName = mediaSourceId)
     override val supportsBrowsing: Boolean get() = true
 
     override suspend fun checkConnection(): ConnectionStatus = ConnectionStatus.SUCCESS

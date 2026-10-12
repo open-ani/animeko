@@ -95,7 +95,7 @@ onnxruntime = "1.22.0"
 openapi-generator = "7.13.0"
 mediamp = "0.5.1"
 libass-android = "0.5.0-beta01"
-compose-native-tray = "1.3.0"
+compose-native-tray = "2.1.1"
 kmpalette = "4.0.0-beta02"
 haze = "1.7.2"
 aboutlibraries = "15.0.4" # https://github.com/mikepenz/AboutLibraries/releases
@@ -341,7 +341,7 @@ diamondedge-logging = { module = "com.diamondedge:logging", version.ref = "diamo
 jsonpathkt-kotlinx = { module = "com.eygraber:jsonpathkt-kotlinx", version.ref = "jsonpathkt-kotlinx" }
 filekit-dialogs = { module = "io.github.vinceglb:filekit-dialogs", version.ref = "filekit" }
 filekit-dialogs-compose = { module = "io.github.vinceglb:filekit-dialogs-compose", version.ref = "filekit" }
-compose-native-tray = { module = "io.github.kdroidfilter:composenativetray", version.ref = "compose-native-tray" }
+compose-native-tray = { module = "dev.nucleusframework:composenativetray", version.ref = "compose-native-tray" }
 # Workaround for Kotlin compiler bug
 stately-common = { module = "co.touchlab:stately-common", version.ref = "stately-common" }
 jsystemthemedetector = { module = "org.openani.jsystemthemedetector:jSystemThemeDetector", version.ref = "jsystemthemedetector" }

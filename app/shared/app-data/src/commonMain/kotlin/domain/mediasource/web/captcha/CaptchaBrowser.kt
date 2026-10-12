@@ -51,7 +51,7 @@ enum class InterceptDecision {
  */
 interface CaptchaBrowser : AutoCloseable {
     /**
-     * 浏览器的真实 User-Agent, 用于 HTTP 侧身份对齐 (`cf_clearance` 绑定 UA).
+     * 浏览器实际使用的 User-Agent, 用于 HTTP 侧身份对齐 (`cf_clearance` 绑定 UA).
      */
     val userAgent: String
 
@@ -112,8 +112,10 @@ interface CaptchaBrowserFactory {
 
     /**
      * 创建一个新的浏览器实例. [isSupported] 为 `false` 时抛出 [UnsupportedOperationException].
+     *
+     * @param userAgent 浏览器的所有请求与页面脚本使用的 User-Agent. `null` 时使用平台 WebView 的默认值.
      */
-    suspend fun create(): CaptchaBrowser
+    suspend fun create(userAgent: String?): CaptchaBrowser
 }
 
 /**
@@ -121,6 +123,6 @@ interface CaptchaBrowserFactory {
  */
 object UnsupportedCaptchaBrowserFactory : CaptchaBrowserFactory {
     override val isSupported: Boolean get() = false
-    override suspend fun create(): CaptchaBrowser =
+    override suspend fun create(userAgent: String?): CaptchaBrowser =
         throw UnsupportedOperationException("CaptchaBrowser is not supported on this platform")
 }

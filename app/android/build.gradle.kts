@@ -8,6 +8,7 @@
  */
 
 import com.google.gms.googleservices.GoogleServicesPlugin.MissingGoogleServicesStrategy
+import groovy.json.JsonSlurper
 
 plugins {
     id("ani.android-application")
@@ -103,15 +104,17 @@ android {
             signingConfig = signingConfigs.getByName("debug")
         }
     }
-    flavorDimensions += "distribution"
+    flavorDimensions += AniAndroidFlavors.DIMENSION
     productFlavors {
-        create("default") {
-            dimension = "distribution"
+        create(AniAndroidFlavors.DEFAULT) {
+            dimension = AniAndroidFlavors.DIMENSION
+            // The phone BT service uses SharedMemory (API 27); TV does not register that service.
+            minSdk = maxOf(27, getIntProperty("android.min.sdk"))
         }
-        create("tv") {
+        create(AniAndroidFlavors.TV) {
             // Android TV 形态: 与 default 平级、单维度,
             // 保证手机任务名 assembleDefaultRelease 与产物路径零变化.
-            dimension = "distribution"
+            dimension = AniAndroidFlavors.DIMENSION
             applicationIdSuffix = ".tv"
         }
     }
@@ -153,23 +156,19 @@ googleServices {
         }
 }
 
-// tv flavor 不接入 Firebase: google-services.json 只含手机包名, 禁用 tv variant 的
-// GoogleServices 任务以避免 "No matching client found" 失败.
-tasks.configureEach {
-    if (name.startsWith("processTv") && name.endsWith("GoogleServices")) {
-        enabled = false
-    }
-}
+val googleServicesPackageNames: Set<String> =
+    providers.fileContents(layout.projectDirectory.file("google-services.json")).asText.orNull?.let { json ->
+        ((JsonSlurper().parseText(json) as Map<*, *>)["client"] as? List<*>).orEmpty().mapNotNullTo(mutableSetOf()) { client ->
+            val clientInfo = (client as? Map<*, *>)?.get("client_info") as? Map<*, *>
+            (clientInfo?.get("android_client_info") as? Map<*, *>)?.get("package_name") as? String
+        }
+    }.orEmpty()
 
-// 同时从 tv variant 的依赖闭包剔除 Firebase/GMS (经 :utils:analytics api 传递进来):
-// TV 端 Analytics 永不初始化, 剔除后 manifest 不再混入 AD_ID/AdServices 权限与 measurement 服务.
-configurations.configureEach {
-    if (name.startsWith("tv") && name.endsWith("Classpath")) {
-        exclude(group = "dev.gitlive", module = "firebase-analytics")
-        exclude(group = "dev.gitlive", module = "firebase-analytics-android")
-        exclude(group = "dev.gitlive", module = "firebase-app")
-        exclude(group = "dev.gitlive", module = "firebase-app-android")
-        exclude(group = "com.google.firebase")
-        exclude(group = "com.google.android.gms")
+androidComponents {
+    onVariants(selector().withFlavor(AniAndroidFlavors.DIMENSION to AniAndroidFlavors.TV)) { variant ->
+        if (variant.applicationId.get() !in googleServicesPackageNames) {
+            val taskName = "process${variant.name.replaceFirstChar { it.uppercase() }}GoogleServices"
+            tasks.matching { it.name == taskName }.configureEach { enabled = false }
+        }
     }
 }

@@ -44,21 +44,22 @@ class RatingEditController(
     /**
      * 把对话框状态与提交状态合并进展示数据.
      *
+     * @param ratingInfo 全站评分. 自己评分后会随之变化.
      * @param enableEdit 是否允许点击进入编辑, 通常是 "已收藏".
      */
     fun uiStateFlow(
-        ratingInfo: RatingInfo,
+        ratingInfo: Flow<RatingInfo>,
         selfRatingInfo: Flow<SelfRatingInfo>,
         enableEdit: Flow<Boolean>,
     ): Flow<EditableRatingUiState> = combine(
-        selfRatingInfo,
+        combine(ratingInfo, selfRatingInfo) { rating, self -> rating to self },
         enableEdit,
         showRatingDialog,
         showRatingRequiresCollectionDialog,
         tasker.isRunning,
-    ) { self, enable, showDialog, showRequiresCollection, updating ->
+    ) { (rating, self), enable, showDialog, showRequiresCollection, updating ->
         EditableRatingUiState(
-            ratingInfo = ratingInfo,
+            ratingInfo = rating,
             selfRatingInfo = self,
             enableEdit = enable,
             showRatingDialog = showDialog,

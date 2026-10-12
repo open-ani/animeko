@@ -21,6 +21,7 @@ import kotlinx.coroutines.test.advanceUntilIdle
 import kotlinx.coroutines.test.runTest
 import kotlinx.io.files.Path
 import kotlinx.io.files.SystemTemporaryDirectory
+import me.him188.ani.app.data.models.preference.HlsAdFilteringMode
 import me.him188.ani.app.data.models.preference.VideoScaffoldConfig
 import me.him188.ani.app.data.repository.player.EpisodePlayHistoryRepository
 import me.him188.ani.app.domain.episode.EpisodeFetchSelectPlayState
@@ -70,7 +71,7 @@ class LoadMediaOnSelectExtensionTest : AbstractPlayerExtensionTest() {
                 flowOf(
                     VideoScaffoldConfig.AllDisabled.copy(
                         autoPlayNext = true,
-                        enableHlsAdFiltering = hlsPreparer != null,
+                        hlsAdFilteringMode = if (hlsPreparer != null) HlsAdFilteringMode.ALL else HlsAdFilteringMode.OFF,
                     ),
                 )
             }

@@ -2025,7 +2025,7 @@ class WithMatrix(
         }
 
         // 脚本第一条命令留下的标记. 没有标记说明失败发生在下载 SDK 或启动模拟器阶段 (例如开机后 adb 短暂 offline),
-        // 与测试无关, 可以重试. 测试开始后的失败不重试, 以免掩盖不稳定的测试.
+        // 与测试无关, 可以重试. 测试开始后的失败只有 ART 崩溃会在 run-android-device-tests.sh 里重跑, 这里不重试, 以免掩盖不稳定的测试.
         val startedMarker = "android-instrumented-test-started-${emulator.artifactSuffix}"
         val emulatorRunner = AndroidEmulatorRunner(
             apiLevel = emulator.apiLevel.toString(),
@@ -2036,16 +2036,15 @@ class WithMatrix(
             script = buildString {
                 append("touch $startedMarker; ")
                 append("./ci-helper/prepare-android-emulator.sh; ")
-                append("./gradlew ")
+                append("./ci-helper/run-android-device-tests.sh logcat-${emulator.artifactSuffix}.txt ")
                 append(emulator.gradleTasks("connectedDeviceTest").joinToString(" "))
                 // --continue: 一个模块失败也把其余模块的测试跑完, 最后统一报告.
                 append(" --continue \"-Pandroid.min.sdk=30\" ")
                 // 测试 APK 已在上一步打包好, 这里 Gradle 只负责安装和运行, 用小堆给模拟器留内存.
                 append(matrix.gradleArgsWith(gradleHeap = "3g", kotlinCompilerHeap = "2g"))
-                // 结束 crashpad_handler 后要以 Gradle 的退出码退出, 否则测试失败不会让步骤失败.
+                // 结束 crashpad_handler 后要以测试脚本的退出码退出, 否则测试失败不会让步骤失败.
                 // https://github.com/ReactiveCircus/android-emulator-runner/issues/385#issuecomment-2492035091
-                // 测试进程在启动阶段崩溃时不会留下按测试拆分的 logcat, 整机 logcat 是唯一线索.
-                append("; status=\$?; adb logcat -d > logcat-${emulator.artifactSuffix}.txt || true; ")
+                append("; status=\$?; ")
                 if (matrix.selfHosted) {
                     // 自托管机器上还有其他程序, 只结束模拟器自己的 crashpad_handler.
                     append("pkill -INT -f \"\$ANDROID_HOME/emulator/crashpad_handler\" || true; exit \$status")

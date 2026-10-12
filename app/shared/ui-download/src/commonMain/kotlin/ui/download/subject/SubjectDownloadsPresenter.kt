@@ -18,6 +18,7 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.flow
@@ -255,14 +256,17 @@ class SubjectDownloadsPresenter(
             instances.filter { it.isEnabled && it.source.supportsBrowsing }
         },
         webSessionManager = webSessions,
-        target = fetchSession.request.map { request ->
+        target = combine(fetchSession.request, subject) { request, subject ->
             ManualBrowseTarget(
                 subjectId = subjectId,
                 subjectName = request.subjectNameCN ?: request.subjectNames.firstOrNull().orEmpty(),
                 episodeSort = request.episodeSort,
                 episodeSortText = request.episodeSort.toString(),
+                subjectNames = request.subjectNames,
+                episodeEp = request.episodeEp,
+                splitSeason = subject.value?.relations?.splitSeason,
             )
-        },
+        }.distinctUntilChanged(),
         preferredSourceId = combine(
             browseMemory.flow(subjectId),
             getPreferredWebMediaSource(subjectId),

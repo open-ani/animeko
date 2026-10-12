@@ -11,7 +11,6 @@ package me.him188.ani.app.domain.mediasource.web.captcha
 
 import me.him188.ani.app.domain.mediasource.web.BlockReason
 import me.him188.ani.app.domain.mediasource.web.LoadedPage
-import me.him188.ani.app.domain.mediasource.web.PageExpectation
 import me.him188.ani.app.domain.mediasource.web.PageVerdict
 import me.him188.ani.app.domain.mediasource.web.SolveRequest
 import me.him188.ani.utils.ktor.ScopedHttpClient
@@ -62,26 +61,9 @@ class SolveContext internal constructor(
      * 纯 HTTP 验证码可能只放行当前搜索请求, 不能为验证成功再重复请求一次.
      */
     val retainSolvedPage: (LoadedPage) -> Unit = {},
-)
-
-/**
- * 备用取数路由.
- *
- * "换一条路取数": HTML 页被验证页挡住时改走站点公开 API 等, 绕过验证码而非解决它.
- * [WebSessionManager.fetchPage] 在发起常规请求之前查询命中 host 的路由;
- * 路由失败 (返回 `null`) 则回落到常规请求 → 验证码流程.
- *
- * 路由是硬编码的 per-site 适配, 隔离在这一层, 不污染通用解析与 solver 抽象.
- */
-interface SearchRoute {
-    val id: String
-
-    fun matches(host: String): Boolean
-
-    /** 直接取数并返回判决; 不适用或失败时返回 `null`. */
-    suspend fun <T> fetch(
-        url: String,
-        expectation: PageExpectation<T>,
-        http: ScopedHttpClient,
-    ): PageVerdict<T>?
+) {
+    /**
+     * 数据源配置的 User-Agent. 纯 HTTP 策略的请求需要以它发出 (`webSourceUserAgent`), 与浏览器和后续取页保持同一身份.
+     */
+    val userAgent: String? get() = request.expectation.userAgent
 }

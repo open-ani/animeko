@@ -121,6 +121,8 @@
 
 - 过滤/排序主实现：`MediaSelectorFilterSortAlgorithm`。算法细节见
   [MediaSelector](media-selector.md)。
+- 拆分季的页面规则：`domain/media/selector/filter/SplitSeasonPageMatcher.kt`（页名分类与按页面编号对集，
+  自动选择与手动查找的预选共用）；`SplitSeasonEpisodeMatcher.kt` 是它在过滤规则里的适配，从候选列表统计各页面的集号。
 - 选择器主实现：`DefaultMediaSelector`。
 - 阶级（tier）：`MediaSelectorSourceTiers`
   （`app/shared/app-data/.../domain/media/selector/MediaSelectorContext.kt`）
@@ -167,6 +169,8 @@
       文件由 `data/persistent/SettingsStore.kt` 提供）。
     - `domain/media/selector/ReplayBrowseMemoryUseCase.kt`：切集回放；由 `domain/player/extension/AutoSelectExtension.kt`
       在自动选择前调用。
+    - `domain/media/selector/BrowseEpisodeIndex.kt`：线路里按位置换算剧集下标（回放与下载弹窗共用），
+      以及手动查找打开线路时的默认预选。
 
 ## 播放时使用的 Resolver
 

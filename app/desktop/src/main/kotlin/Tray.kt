@@ -16,14 +16,14 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.graphics.painter.Painter
 import androidx.compose.ui.window.ApplicationScope
-import com.kdroid.composetray.menu.api.TrayMenuBuilder
+import dev.nucleusframework.composenativetray.menu.api.TrayMenuBuilder
 import me.him188.ani.app.data.models.preference.DesktopCloseBehavior
 import me.him188.ani.app.ui.lang.Lang
 import me.him188.ani.app.ui.lang.desktop_tray_open
 import me.him188.ani.app.ui.lang.settings_app_close_behavior_exit
 import org.jetbrains.compose.resources.stringResource
 import java.awt.SystemTray
-import com.kdroid.composetray.tray.api.Tray as ComposeNativeTray
+import dev.nucleusframework.composenativetray.tray.api.Tray as ComposeNativeTray
 
 @Composable
 fun rememberAniTrayState(): AniTrayState {

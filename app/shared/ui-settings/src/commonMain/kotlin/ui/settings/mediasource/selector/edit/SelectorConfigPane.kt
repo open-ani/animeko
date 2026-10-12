@@ -99,8 +99,6 @@ import me.him188.ani.app.ui.lang.settings_mediasource_selector_config_distinguis
 import me.him188.ani.app.ui.lang.settings_mediasource_selector_config_distinguish_subject_name_description
 import me.him188.ani.app.ui.lang.settings_mediasource_selector_config_filter_by_episode_sort
 import me.him188.ani.app.ui.lang.settings_mediasource_selector_config_filter_by_episode_sort_description
-import me.him188.ani.app.ui.lang.settings_mediasource_selector_config_filter_by_subject_name
-import me.him188.ani.app.ui.lang.settings_mediasource_selector_config_filter_by_subject_name_description
 import me.him188.ani.app.ui.lang.settings_mediasource_selector_config_icon_url
 import me.him188.ani.app.ui.lang.settings_mediasource_selector_config_name
 import me.him188.ani.app.ui.lang.settings_mediasource_selector_config_name_placeholder
@@ -119,9 +117,10 @@ import me.him188.ani.app.ui.lang.settings_mediasource_selector_config_search_sub
 import me.him188.ani.app.ui.lang.settings_mediasource_selector_config_search_url
 import me.him188.ani.app.ui.lang.settings_mediasource_selector_config_search_url_placeholder
 import me.him188.ani.app.ui.lang.settings_mediasource_selector_config_search_url_supporting
+import me.him188.ani.app.ui.lang.settings_mediasource_selector_config_source_user_agent
+import me.him188.ani.app.ui.lang.settings_mediasource_selector_config_source_user_agent_description
 import me.him188.ani.app.ui.lang.settings_mediasource_selector_config_subject_format_multi_tag
 import me.him188.ani.app.ui.lang.settings_mediasource_selector_config_subject_format_single_tag
-import me.him188.ani.app.ui.lang.settings_mediasource_selector_config_user_agent_description
 import me.him188.ani.app.ui.lang.settings_mediasource_selector_config_video_playback
 import me.him188.ani.app.ui.lang.settings_mediasource_selector_prefer_shorter_name
 import me.him188.ani.app.ui.lang.settings_mediasource_selector_prefer_shorter_name_description
@@ -246,6 +245,19 @@ internal fun SelectorConfigurationPane(
                         Text(stringResource(Lang.settings_mediasource_selector_config_request_interval_description))
                     },
                     isError = requestIntervalString.toLongOrNull() == null,
+                    keyboardOptions = KeyboardOptions(imeAction = ImeAction.Next),
+                    shape = textFieldShape,
+                    enabled = state.enableEdit,
+                )
+                OutlinedTextField(
+                    state.userAgent, { state.userAgent = it },
+                    Modifier
+                        .padding(top = (verticalSpacing - 8.dp).coerceAtLeast(0.dp))
+                        .fillMaxWidth().moveFocusOnEnter(),
+                    label = { Text(stringResource(Lang.settings_mediasource_selector_config_source_user_agent)) },
+                    supportingText = {
+                        Text(stringResource(Lang.settings_mediasource_selector_config_source_user_agent_description))
+                    },
                     keyboardOptions = KeyboardOptions(imeAction = ImeAction.Next),
                     shape = textFieldShape,
                     enabled = state.enableEdit,
@@ -417,15 +429,6 @@ internal fun SelectorConfigurationPane(
                     Modifier.fillMaxWidth().moveFocusOnEnter(),
                     label = { Text("Referer") },
                     supportingText = { Text(stringResource(Lang.settings_mediasource_selector_config_referer_description)) },
-                    keyboardOptions = KeyboardOptions(imeAction = ImeAction.Next),
-                    shape = textFieldShape,
-                    enabled = state.enableEdit,
-                )
-                OutlinedTextField(
-                    conf.userAgent, { conf.userAgent = it },
-                    Modifier.fillMaxWidth().moveFocusOnEnter(),
-                    label = { Text("User-Agent") },
-                    supportingText = { Text(stringResource(Lang.settings_mediasource_selector_config_user_agent_description)) },
                     keyboardOptions = KeyboardOptions(imeAction = ImeAction.Next),
                     shape = textFieldShape,
                     enabled = state.enableEdit,
@@ -653,22 +656,6 @@ private fun AutoMatchSection(
             enabled = state.enableEdit,
         )
 
-        ListItem(
-            headlineContent = { Text(stringResource(Lang.settings_mediasource_selector_config_filter_by_subject_name)) },
-            itemPadding.focusable(false).clickable(enabled = state.enableEdit) {
-                state.filterBySubjectName = !state.filterBySubjectName
-            },
-            supportingContent = {
-                Text(stringResource(Lang.settings_mediasource_selector_config_filter_by_subject_name_description))
-            },
-            trailingContent = {
-                Switch(
-                    state.filterBySubjectName, { state.filterBySubjectName = it },
-                    enabled = state.enableEdit,
-                )
-            },
-            colors = listItemColors,
-        )
         ListItem(
             headlineContent = { Text(stringResource(Lang.settings_mediasource_selector_config_filter_by_episode_sort)) },
             itemPadding.focusable(false).clickable(enabled = state.enableEdit) {

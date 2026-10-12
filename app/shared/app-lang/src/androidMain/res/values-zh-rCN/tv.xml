@@ -128,6 +128,15 @@
     <string name="tv_login_qr_rejected">已在手机上拒绝</string>
     <string name="tv_login_qr_failed">二维码加载失败, 请检查网络</string>
     <string name="tv_login_qr_refresh">刷新二维码</string>
+    <string name="tv_update_download">下载更新</string>
+    <string name="tv_update_install">安装</string>
+    <string name="tv_update_cancel_download">取消下载</string>
+    <string name="tv_update_later">稍后</string>
+    <string name="tv_update_downloading">正在下载… %1$s</string>
+    <string name="tv_update_download_failed">下载失败</string>
+    <string name="tv_update_install_hint">如果没有出现安装界面，请在系统设置中允许 Animeko TV 安装未知应用，然后再次选择安装。</string>
+    <string name="tv_update_expired_message">当前版本已停止支持，请更新后继续使用。也可以前往 https://myani.org 下载最新版本。</string>
+    <string name="tv_update_expired_message_with_latest">当前版本已停止支持，请更新到 %1$s 后继续使用。也可以前往 https://myani.org 下载。</string>
 </resources>
 
 <!--@formatter:on-->
