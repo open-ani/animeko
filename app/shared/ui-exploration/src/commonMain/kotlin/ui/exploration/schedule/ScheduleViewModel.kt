@@ -23,16 +23,19 @@ import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.flow
+import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.onEach
 import kotlinx.coroutines.flow.onStart
 import kotlinx.coroutines.flow.stateIn
+import kotlinx.coroutines.launch
 import kotlinx.datetime.DatePeriod
 import kotlinx.datetime.LocalDate
 import kotlinx.datetime.TimeZone
 import kotlinx.datetime.atStartOfDayIn
 import kotlinx.datetime.plus
 import kotlinx.datetime.toLocalDateTime
+import me.him188.ani.app.data.repository.user.SettingsRepository
 import me.him188.ani.app.domain.episode.AiringScheduleForDate
 import me.him188.ani.app.domain.episode.GetAnimeScheduleFlowUseCase
 import me.him188.ani.app.domain.foundation.LoadError
@@ -43,12 +46,18 @@ import me.him188.ani.utils.coroutines.flows.catching
 import me.him188.ani.utils.coroutines.flows.restartable
 import me.him188.ani.utils.platform.annotations.TestOnly
 import org.koin.core.Koin
+import org.koin.core.component.inject
 
 /**
  * 新番时间表页面的 ViewModel.
  *
- * - "今天" 是一个 flow: 构造后立即发出当前本地日期, 之后每到 [timeZone] 的本地 00:00 再发一次 (每次都重新计算到下一个 00:00 的延迟,
- *   所以夏令时切换也正确). 向服务端请求的窗口由它派生 (`flatMapLatest`).
+ * - [scheduleTimeZone] 是页面使用的时区: 默认读取用户偏好
+ *   ([me.him188.ani.app.data.models.preference.UISettings.scheduleTimeZoneId], `null` 表示系统时区),
+ *   测试可通过构造参数固定. 时区变化后重新计算"今天"并重新请求服务端, 日期列
+ *   ([SchedulePagePresentation.days]) 与每列内容一起切换.
+ * - "今天" 是一个 flow: 构造后立即发出当前 [scheduleTimeZone] 下的本地日期, 之后每到该时区的本地 00:00
+ *   再发一次 (每次都重新计算到下一个 00:00 的延迟, 所以夏令时切换也正确). 向服务端请求的窗口由它派生
+ *   (`flatMapLatest`).
  * - [presentationFlow] 是页面状态的唯一来源: 日期列 ([SchedulePagePresentation.days]) 和每列的内容
  *   ([SchedulePagePresentation.airingSchedules]) 总是由同一个 [ScheduleLoad] 生成, 所以永远一致.
  *   今天变化 (或 [refresh]) 时, 在新的响应到达之前, 先立即发出一个以新的今天为基准的占位 presentation
@@ -59,21 +68,61 @@ import org.koin.core.Koin
  *
  * 本 ViewModel 由 androidx `viewModel {}` 取得, 不会被 compose remember, 所以不使用 [AbstractViewModel.init].
  *
+ * @param koin 依赖来源. 测试传入自己的 Koin.
  * @param clock 时钟. 测试用假时钟驱动跨午夜.
+ * @param timeZoneOverride 非 `null` 时固定使用该时区, 不读取用户偏好. 供测试与预览使用.
  */
 open class ScheduleViewModel(
     koin: Koin = GlobalKoin,
-    private val timeZone: TimeZone = TimeZone.currentSystemDefault(),
     private val clock: Clock = Clock.System,
+    timeZoneOverride: TimeZone? = null,
 ) : AbstractViewModel() {
     private val getAnimeScheduleFlowUseCase: GetAnimeScheduleFlowUseCase by koin.inject()
-
-    private fun currentToday(): LocalDate = clock.now().toLocalDateTime(timeZone).date
+    private val settingsRepository: SettingsRepository by koin.inject()
 
     /**
-     * 当前本地日期. 立即发出一次, 之后每到本地 00:00 再发一次.
+     * 用户选择的时区, 或测试固定的时区. 单例 `flow` 而非 `StateFlow`, 以便测试替换.
      */
-    private val todayFlow: Flow<LocalDate> = flow {
+    private val selectedTimeZoneFlow: Flow<TimeZone?> =
+        if (timeZoneOverride != null) {
+            flowOf(timeZoneOverride)
+        } else {
+            settingsRepository.uiSettings.flow.map { uiSettings ->
+                uiSettings.scheduleTimeZoneId?.let(TimeZone::of)
+            }
+        }
+
+    /**
+     * 页面使用的时区. [selectedTimeZoneFlow] 为 `null` 时取系统时区.
+     *
+     * 每次读取都重新调用 [TimeZone.currentSystemDefault], 因此系统时区改变后无需任何操作即可生效.
+     */
+    val scheduleTimeZone: StateFlow<TimeZone> = selectedTimeZoneFlow
+        .map { it ?: TimeZone.currentSystemDefault() }
+        .distinctUntilChanged()
+        .stateIn(backgroundScope, SharingStarted.Eagerly, timeZoneOverride ?: TimeZone.currentSystemDefault())
+
+    /**
+     * 修改时区. 传 `null` 表示跟随系统时区.
+     */
+    fun setScheduleTimeZone(timeZone: TimeZone?) {
+        backgroundScope.launch {
+            settingsRepository.uiSettings.update { copy(scheduleTimeZoneId = timeZone?.id) }
+        }
+    }
+
+    private fun currentToday(): LocalDate = clock.now().toLocalDateTime(scheduleTimeZone.value).date
+
+    /**
+     * 在 [timeZone] 下立即发出当前本地日期, 之后每到该时区的本地 00:00 再发一次.
+     *
+     * 每次循环都重新读取 [Clock.now], 因此时区变化 (含夏令时) 不会把已经过期的延迟带入下一轮.
+     *
+     * [distinctUntilChanged] 必须留在内层, 只对本时区内的连续值去重 (跨午夜时不会重复发出同一天).
+     * 若把它提到 [todayFlow] 的 `flatMapLatest` 之外, 两个偏移不同但同属一天的时区 (如上海与柏林)
+     * 切换时, 内层发出的日期与前一个时区相同, 这次变化会被整个丢掉, 服务端就不会用新时区重新请求.
+     */
+    private fun todayFlowFor(timeZone: TimeZone): Flow<LocalDate> = flow {
         while (true) {
             val now = clock.now()
             emit(now.toLocalDateTime(timeZone).date)
@@ -81,6 +130,15 @@ open class ScheduleViewModel(
             delay(delayUntilNextMidnight(now, timeZone).coerceAtLeast(1.seconds))
         }
     }.distinctUntilChanged()
+
+    /**
+     * 当前本地日期. 立即发出一次, 之后每到本地 00:00 再发一次.
+     *
+     * 时区变化时 [flatMapLatest] 会重启内层 flow: **即使新旧时区的当前日期相同, 也会重新发出该日期**,
+     * 让 [airingSchedulesFlow] 用新时区重新请求服务端 (各剧集归属的日期与时刻都可能不同).
+     */
+    private val todayFlow: Flow<LocalDate> = scheduleTimeZone
+        .flatMapLatest { timeZone -> todayFlowFor(timeZone) }
 
     /**
      * 每分钟发出一次 (对齐到整分钟), 用于移动当前时间指示器.
@@ -105,7 +163,7 @@ open class ScheduleViewModel(
     private val airingSchedulesFlowRestarter = FlowRestarter()
     private val airingSchedulesFlow: Flow<ScheduleLoad> = todayFlow
         .flatMapLatest { today ->
-            getAnimeScheduleFlowUseCase(today, timeZone = timeZone)
+            getAnimeScheduleFlowUseCase(today, timeZone = scheduleTimeZone.value)
                 .catching()
                 .map { ScheduleLoad(today, it) }
                 // 今天一变就先发出 "加载中", 让日期列和占位列立即移动到新的今天, 不等服务端响应
@@ -156,7 +214,7 @@ open class ScheduleViewModel(
                 isPlaceholder = true,
             )
 
-        val timeZone = timeZone
+        val timeZone = scheduleTimeZone.value
         val currentDateTime = now.toLocalDateTime(timeZone)
         return SchedulePagePresentation(
             days = days,

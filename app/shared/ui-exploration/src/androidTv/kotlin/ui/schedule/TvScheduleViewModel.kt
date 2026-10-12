@@ -9,6 +9,7 @@
 
 package me.him188.ani.tv.ui.schedule
 
+import kotlinx.datetime.TimeZone
 import me.him188.ani.app.ui.exploration.schedule.ScheduleViewModel
 import me.him188.ani.tv.ui.foundation.TvNavigationEvent
 import me.him188.ani.tv.ui.foundation.TvNavigationEvents
@@ -17,6 +18,11 @@ import org.koin.core.Koin
 sealed interface TvScheduleIntent {
     data object Refresh : TvScheduleIntent
     data class OpenSubject(val subjectId: Int) : TvScheduleIntent
+
+    /**
+     * 修改时间表显示放送时刻所用的时区. `null` 表示跟随系统时区.
+     */
+    data class SetTimeZone(val timeZone: TimeZone?) : TvScheduleIntent
 }
 
 class TvScheduleViewModel(koin: Koin) : ScheduleViewModel(koin) {
@@ -27,6 +33,7 @@ class TvScheduleViewModel(koin: Koin) : ScheduleViewModel(koin) {
         when (intent) {
             TvScheduleIntent.Refresh -> refresh()
             is TvScheduleIntent.OpenSubject -> navigation.emit(TvNavigationEvent.Subject(intent.subjectId))
+            is TvScheduleIntent.SetTimeZone -> setScheduleTimeZone(intent.timeZone)
         }
     }
 }

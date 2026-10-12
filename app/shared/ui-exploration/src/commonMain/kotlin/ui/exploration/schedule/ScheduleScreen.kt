@@ -63,6 +63,7 @@ import androidx.compose.ui.unit.dp
 import androidx.window.core.layout.WindowSizeClass
 import kotlinx.coroutines.launch
 import kotlinx.datetime.DayOfWeek
+import kotlinx.datetime.TimeZone
 import kotlinx.datetime.number
 import me.him188.ani.app.ui.adaptive.AniTopAppBar
 import me.him188.ani.app.ui.adaptive.HorizontalScrollControlScaffoldOnDesktop
@@ -137,6 +138,10 @@ class ScheduleScreenState(
 }
 
 
+/**
+ * @param timeZone 页面显示放送时刻所使用的时区. 顶栏的选择器可以修改它.
+ * @param onSelectTimeZone 用户选择了新的时区; 传 `null` 表示跟随系统时区
+ */
 @Composable
 fun ScheduleScreen(
     presentation: SchedulePagePresentation,
@@ -145,6 +150,8 @@ fun ScheduleScreen(
     modifier: Modifier = Modifier,
     layoutParams: ScheduleScreenLayoutParams = ScheduleScreenLayoutParams.calculate(),
     colors: ScheduleScreenColors = ScheduleScreenDefaults.colors(),
+    timeZone: TimeZone = TimeZone.currentSystemDefault(),
+    onSelectTimeZone: (TimeZone?) -> Unit = {},
     navigationIcon: @Composable () -> Unit = {},
     state: ScheduleScreenState = remember { ScheduleScreenState { presentation.days } },
     windowInsets: WindowInsets = AniWindowInsets.forPageContent(),
@@ -156,6 +163,9 @@ fun ScheduleScreen(
                 title = { Text(stringResource(Lang.exploration_schedule)) },
                 Modifier.fillMaxWidth(),
                 navigationIcon = navigationIcon,
+                actions = {
+                    ScheduleTimeZoneSelector(timeZone, onSelectTimeZone)
+                },
                 windowInsets = windowInsets.only(WindowInsetsSides.Top + WindowInsetsSides.Horizontal),
             )
         },
