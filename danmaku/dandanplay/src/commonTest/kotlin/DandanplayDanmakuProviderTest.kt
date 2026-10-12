@@ -212,6 +212,53 @@ class DandanplayDanmakuProviderTest {
         assertEquals("第18话 ラム", method.episodeTitle)
     }
 
+    /**
+     * 条目的几个名字都搜到同一部番剧. 重复的结果不能让标题匹配以为有多个候选.
+     */
+    @Test
+    fun `fetchAutomatic matches title when several names find the same anime`() = runTest {
+        val provider = createProvider { path ->
+            when (path) {
+                "/api/v2/bangumi/bgmtv/633836" -> respondJson(NO_MAPPING_RESPONSE)
+                "/api/v2/search/episodes" -> respondJson(
+                    """
+                    {
+                      "success": true, "errorCode": 0, "errorMessage": "", "hasMore": false,
+                      "animes": [
+                        {
+                          "animeId": 19242,
+                          "animeTitle": "Re：从零开始的异世界生活 第四季",
+                          "episodes": [
+                            {"episodeId": 192420005, "episodeTitle": "第5话 棒振り"},
+                            {"episodeId": 192420012, "episodeTitle": "第12话 これからの話"}
+                          ]
+                        }
+                      ]
+                    }
+                    """.trimIndent(),
+                )
+
+                "/api/v2/comment/192420012" -> respondJson("""{"count":0,"comments":[]}""")
+                else -> error("Unexpected request: $path")
+            }
+        }
+
+        val result = provider.fetchAutomatic(
+            request(
+                subjectId = 633836,
+                subjectName = "Re：从零开始的异世界生活 第四季 夺还篇",
+                episodeSort = EpisodeSort(78),
+                episodeEp = EpisodeSort(1),
+                episodeName = "接下来的事",
+                episodeNames = listOf("これからの話", "接下来的事"),
+                subjectNames = listOf("Re：从零开始的异世界生活 第四季 夺还篇", "Re：從零開始的異世界生活 第四季 奪還篇"),
+            ),
+        ).single()
+
+        val method = assertIs<DanmakuMatchMethod.Exact>(result.matchInfo.method)
+        assertEquals("第12话 これからの話", method.episodeTitle)
+    }
+
     @Test
     fun `fetchAutomatic prefers title over episode number when Bangumi mapping covers merged cours`() = runTest {
         val provider = createProvider { path ->
@@ -589,6 +636,7 @@ class DandanplayDanmakuProviderTest {
         subjectName: String,
         episodeSort: EpisodeSort,
         episodeName: String,
+        subjectNames: List<String> = listOf(subjectName),
         episodeEp: EpisodeSort? = null,
         episodeNames: List<String> = listOf(episodeName),
         filename: String? = null,
@@ -596,7 +644,7 @@ class DandanplayDanmakuProviderTest {
     ) = DanmakuFetchRequest(
         subjectId = subjectId,
         subjectPrimaryName = subjectName,
-        subjectNames = listOf(subjectName),
+        subjectNames = subjectNames,
         subjectPublishDate = PackedDate.Invalid,
         episodeId = 1,
         episodeSort = episodeSort,

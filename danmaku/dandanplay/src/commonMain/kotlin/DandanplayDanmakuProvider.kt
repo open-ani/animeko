@@ -382,7 +382,8 @@ class DandanplayDanmakuProvider(
             }.getOrNull() ?: emptySet()
         }
         logger.info { "Ep search result: ${searchEpisodeResponse}}" }
-        return searchEpisodeResponse.flatMap { anime ->
+        // 按条目的各个名字搜索常返回同一部番剧, 重复的剧集会让标题匹配以为有多个候选
+        return searchEpisodeResponse.distinctBy { it.animeId }.flatMap { anime ->
             anime.episodes.map { ep ->
                 DanmakuEpisodeWithSubject(
                     id = ep.episodeId.toString(),
