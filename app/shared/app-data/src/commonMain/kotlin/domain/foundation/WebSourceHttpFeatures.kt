@@ -14,7 +14,9 @@ import io.ktor.client.HttpClientConfig
 import io.ktor.client.plugins.HttpSend
 import io.ktor.client.plugins.cookies.HttpCookies
 import io.ktor.client.plugins.plugin
+import io.ktor.client.request.HttpRequestBuilder
 import io.ktor.http.HttpHeaders
+import io.ktor.util.AttributeKey
 import me.him188.ani.app.domain.mediasource.web.captcha.WebSourceCookieJar
 import me.him188.ani.app.domain.mediasource.web.captcha.WebSourceIdentityRegistry
 
@@ -40,7 +42,11 @@ object CookieJarFeatureHandler : ScopedHttpClientFeatureHandler<WebSourceCookieJ
 // region WebSourceIdentityFeature
 
 /**
- * per-host User-Agent 对齐: 对已 solve 的 host 覆写 `User-Agent` 为浏览器真实 UA.
+ * Web 数据源的 User-Agent 对齐. 按优先级覆写请求的 `User-Agent`:
+ * 1. 请求通过 [webSourceUserAgent] 指定的数据源 UA;
+ * 2. 已 solve 的 host 记录的浏览器 UA.
+ *
+ * 数据源指定了 UA 时, 它的验证码浏览器也以同一 UA 创建, solve 后记录的就是这个 UA, 两者一致.
  *
  * @see WebSourceIdentityRegistry
  */
@@ -51,12 +57,23 @@ object WebSourceIdentityFeatureHandler :
     override fun applyToClient(client: HttpClient, value: WebSourceIdentityRegistry?) {
         value ?: return
         client.plugin(HttpSend).intercept { request ->
-            value.userAgentFor(request.url.host)?.let { ua ->
+            (request.attributes.getOrNull(WebSourceUserAgentAttribute) ?: value.userAgentFor(request.url.host))?.let { ua ->
                 request.headers[HttpHeaders.UserAgent] = ua
             }
             execute(request)
         }
     }
+}
+
+private val WebSourceUserAgentAttribute = AttributeKey<String>("WebSourceUserAgent")
+
+/**
+ * 以数据源配置的 [userAgent] 发出这个请求, 由 [WebSourceIdentityFeature] 写入请求头. `null` 时不做改变.
+ *
+ * 不能直接设置请求头: client 上的 UserAgent 插件会再追加一个值.
+ */
+fun HttpRequestBuilder.webSourceUserAgent(userAgent: String?) {
+    if (userAgent != null) attributes.put(WebSourceUserAgentAttribute, userAgent)
 }
 
 // endregion

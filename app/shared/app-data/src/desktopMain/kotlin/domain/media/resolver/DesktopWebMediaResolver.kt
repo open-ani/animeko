@@ -28,6 +28,9 @@ import me.him188.ani.app.data.repository.user.SettingsRepository
 import me.him188.ani.app.domain.media.player.data.MediaDataProvider
 import me.him188.ani.app.domain.media.resolver.WebViewVideoExtractor.Instruction
 import me.him188.ani.app.domain.mediasource.web.captcha.WebSessionManager
+import me.him188.ani.app.domain.mediasource.web.captcha.applyUserAgent
+import me.him188.ani.app.domain.mediasource.web.captcha.browserCreatedSignal
+import me.him188.ani.app.domain.mediasource.web.captcha.overrideNavigatorUserAgent
 import me.him188.ani.app.domain.settings.ProxyProvider
 import me.him188.ani.app.platform.AniCefApp
 import me.him188.ani.app.platform.Context
@@ -113,6 +116,7 @@ class DesktopWebMediaResolver(
             val webVideo = (
                     webSessionManager.extractVideoResource(
                         pageUrl = media.download.uri,
+                        userAgent = webViewConfig.userAgent,
                         timeoutMillis = resolverSettings.effectiveResourceExtractionTimeoutMillis,
                         resourceMatcher = resourceMatcher,
                     ) ?: CefVideoExtractor(proxyProvider.proxy.first(), resolverSettings)
@@ -158,6 +162,7 @@ class CefVideoExtractor(
         var client: org.cef.CefClient? = null
         var browser: CefBrowser? = null
         val deferred = CompletableDeferred<WebResource>()
+        val userAgent = config.userAgent
 
         try {
             // 启动时 JCEF 初始化可能因机器卡顿而超时, 实例仍在后台初始化, 这里接着等它就绪.
@@ -172,6 +177,7 @@ class CefVideoExtractor(
                 throw MediaResolutionException(ResolutionFailures.WEB_ENGINE_UNAVAILABLE)
             }
             client = createdClient
+            val browserCreated = AniCefApp.suspendCoroutineOnCefContext { createdClient.browserCreatedSignal() }
 
             val createdBrowser = AniCefApp.suspendCoroutineOnCefContext {
                 val lastUrl = object {
@@ -179,7 +185,8 @@ class CefVideoExtractor(
                     var value: String? by atomic(null)
                 }
                 createdClient.createBrowser(
-                    pageUrl,
+                    // 指定了 UA 时先打开空白页, 等覆写 navigator.userAgent 之后再加载 pageUrl
+                    if (userAgent == null) pageUrl else "about:blank",
                     CefRendering.DEFAULT,
                     true,
                     CefRequestContext.createContext { _, _, _, _, _, _, _ ->
@@ -193,6 +200,7 @@ class CefVideoExtractor(
                                     if (handleUrl(request, browser)) {
                                         return true
                                     }
+                                    request.applyUserAgent(userAgent)
                                 }
                                 return super.onBeforeResourceLoad(browser, frame, request)
                             }
@@ -257,12 +265,19 @@ class CefVideoExtractor(
                     cookieManager.setCookie(url.host, ktorCookie.toCefCookie())
                 }
 
-                logger.info { "Fetching $pageUrl" }
+                logger.info { "Fetching $pageUrl, userAgent=$userAgent" }
                 // start browser immediately
                 createdBrowser.createImmediately()
             }
 
             withTimeoutOrNull(videoResolverSettings.effectiveResourceExtractionTimeoutMillis) {
+                if (userAgent != null) {
+                    browserCreated.await()
+                    createdBrowser.overrideNavigatorUserAgent(userAgent)
+                    AniCefApp.suspendCoroutineOnCefContext {
+                        createdBrowser.loadURL(pageUrl)
+                    }
+                }
                 deferred.await()
             }
         } catch (e: CancellationException) {

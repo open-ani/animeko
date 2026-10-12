@@ -128,12 +128,28 @@ class SelectorMediaSource(
         val FactoryId = FactoryId("web-selector")
 
         /**
-         * 按 cookie 名称合并多组 cookies: 后面列表中的同名 cookie 覆盖前面的, 顺序为名称首次出现的顺序.
+         * [matcher] 对 WebView 配置的修改: 依次合并 [config] 已有的 cookies、[matchVideo] 中配置的 cookies 和 [captchaCookies];
+         * [userAgent] 非 `null` 时覆盖 [config] 的 User-Agent.
          *
-         * 这是 [matcher] 向 WebView 注入 cookies 时的合并语义.
-         * 公开给外部工具 (如 `tools/datasource-test-mcp`) 复用, 以保证与 App 行为一致.
+         * 公开给编辑器测试页与外部工具 (如 `tools/datasource-test-mcp`) 复用, 以保证与 App 播放时行为一致.
+         *
+         * @param userAgent 数据源配置的 UA ([SelectorSearchConfig.userAgentOrNull]).
+         * @param captchaCookies 该站点已解出的验证码会话 cookies. HTTP、播放器、各平台共用同一份 cookie 真相.
          */
-        fun mergeCookies(vararg cookieLists: List<String>): List<String> {
+        fun patchWebViewConfig(
+            config: WebViewConfig,
+            matchVideo: SelectorSearchConfig.MatchVideoConfig,
+            userAgent: String?,
+            captchaCookies: List<String> = emptyList(),
+        ): WebViewConfig = config.copy(
+            cookies = mergeCookies(config.cookies, matchVideo.cookies.lines(), captchaCookies),
+            userAgent = userAgent ?: config.userAgent,
+        )
+
+        /**
+         * 按 cookie 名称合并多组 cookies: 后面列表中的同名 cookie 覆盖前面的, 顺序为名称首次出现的顺序.
+         */
+        private fun mergeCookies(vararg cookieLists: List<String>): List<String> {
             val merged = linkedMapOf<String, String>()
             for (cookie in cookieLists.asSequence().flatten()) {
                 val trimmed = cookie.trim()
@@ -572,22 +588,18 @@ class SelectorMediaSource(
             override fun match(
                 url: String,
                 context: WebVideoMatcherContext
-            ): WebVideoMatcher.MatchResult = engine.matchWebVideo(url, arguments.searchConfig.matchVideo)
+            ): WebVideoMatcher.MatchResult = engine.matchWebVideo(
+                url,
+                arguments.searchConfig.matchVideo,
+                arguments.searchConfig.userAgentOrNull,
+            )
 
-            override fun patchConfig(config: WebViewConfig): WebViewConfig {
-                val configuredCookies = arguments.searchConfig.matchVideo.cookies
-                    .lines()
-                    .filter { it.isNotBlank() }
-                // HTTP、播放器、两个平台共用同一份 cookie 真相
-                val captchaCookies = sessionManager.cookieJar.getCookieHeaderValues(searchConfig.searchUrl)
-                return config.copy(
-                    cookies = mergeCookies(
-                        config.cookies,
-                        configuredCookies,
-                        captchaCookies,
-                    ),
-                )
-            }
+            override fun patchConfig(config: WebViewConfig): WebViewConfig = patchWebViewConfig(
+                config,
+                arguments.searchConfig.matchVideo,
+                userAgent = arguments.searchConfig.userAgentOrNull,
+                captchaCookies = sessionManager.cookieJar.getCookieHeaderValues(searchConfig.searchUrl),
+            )
         }
     }
 

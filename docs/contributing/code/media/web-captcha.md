@@ -127,6 +127,19 @@ iOS 没有浏览器实现: 不支持交互解决, UI 以提示代替 "处理验�
 因此 solve 成功时记录浏览器的 UA, [WebSourceIdentity] 插件对该 host 的后续请求覆写 `User-Agent`;
 未 solve 过的 host 不受影响。
 
+数据源可以配置自己的 UA (`searchConfig.userAgent`), 它从一开始就是身份的一部分, 全程使用:
+直连请求经 `webSourceUserAgent` 带上它 (优先于注册表), 验证码浏览器以它创建, solve 后注册表记录的也就是它,
+播放时加载播放页的 WebView 和请求视频的播放器同样使用它。这样解验证码得到的 clearance 对搜索、详情页和播放页都有效。
+旧配置只能设置播放器的 UA (`addHeadersToVideo.userAgent`)。它不迁移到 `searchConfig.userAgent`, 只在后者为空时
+供播放器使用, 不参与上述身份, 以免升级后搜索请求换了 UA, 站点返回不同的页面。
+
+一个 host 的 cookie 只有一份, 只能绑定一个 UA, 因此暖会话记录创建时的 UA, 只给 UA 相同的请求复用
+(浏览器重载、播放页嗅探); 以另一个 UA 解验证码时旧会话作废。不配置 UA 的数据源对应 "平台默认" 这一种身份。
+
+桌面端 CEF 只有全局 UA 设置, 单个浏览器的 UA 通过两处覆写实现: 请求头 (所有 frame) 与 DevTools 的
+`navigator.userAgent` (仅主 frame 的渲染进程)。跨站 iframe 里的脚本仍读到 CEF 默认 UA,
+依赖 iframe 内脚本指纹的挑战 (如 Turnstile) 在配置了 UA 时可能更难通过。
+
 ## 自动解决与备用取数
 
 **[CaptchaSolver]**: 自动与交互的唯一区别是 "谁在驱动浏览器"。`solve(interactive = false)` 在用户开启了自动解决、

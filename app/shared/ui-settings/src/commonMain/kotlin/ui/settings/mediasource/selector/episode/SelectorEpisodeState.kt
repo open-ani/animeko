@@ -21,6 +21,7 @@ import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.withTimeoutOrNull
 import me.him188.ani.app.domain.media.resolver.WebViewVideoExtractor
 import me.him188.ani.app.domain.mediasource.test.web.SelectorTestEpisodePresentation
+import me.him188.ani.app.domain.mediasource.web.SelectorMediaSource
 import me.him188.ani.app.domain.mediasource.web.SelectorMediaSourceEngine
 import me.him188.ani.app.domain.mediasource.web.SelectorSearchConfig
 import me.him188.ani.app.platform.Context
@@ -44,6 +45,10 @@ class SelectorEpisodeState(
      * null means loading. Should finally have one.
      */
     matchVideoConfigState: State<SelectorSearchConfig.MatchVideoConfig?>,
+    /**
+     * 数据源配置的 UA ([SelectorSearchConfig.userAgentOrNull]). 加载播放页与播放器请求视频都使用它.
+     */
+    private val userAgentState: State<String?>,
     /**
      * null means loading. Should finally have one.
      */
@@ -83,7 +88,7 @@ class SelectorEpisodeState(
                             extractor.getVideoResourceUrl(
                                 context,
                                 episodeUrl,
-                                WebViewConfig.Empty.copy(config.cookies.lines().filter { it.isNotBlank() }),
+                                SelectorMediaSource.patchWebViewConfig(WebViewConfig.Empty, config, userAgentState.value),
                             ) {
                                 val shouldLoadPage = engine.shouldLoadPage(it, config)
                                 collect(SelectorTestWebUrl(it, didLoadNestedPage = shouldLoadPage))
@@ -130,6 +135,7 @@ class SelectorEpisodeState(
      */
     val rawMatchResults: Flow<List<MatchResult>> by derivedStateOf { // TODO: 2024/12/14 this is shit 
         val matchVideoConfig = matchVideoConfigState.value ?: return@derivedStateOf emptyFlow()
+        val userAgent = userAgentState.value
         searcher.searchResultFlow.flatMapLatest { searchResult ->
             searchResult ?: return@flatMapLatest emptyFlow()
             val flow = when (searchResult) {
@@ -145,7 +151,7 @@ class SelectorEpisodeState(
             flow.map { list ->
                 list.asSequence()
                     .map { original ->
-                        MatchResult(original, engine.matchWebVideo(original.url, matchVideoConfig).videoOrNull)
+                        MatchResult(original, engine.matchWebVideo(original.url, matchVideoConfig, userAgent).videoOrNull)
                     }
                     .distinctBy { it.key } // O(n) extra space, O(1) time
                     .toMutableList() // single list instance construction
