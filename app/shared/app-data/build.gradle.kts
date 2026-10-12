@@ -62,7 +62,6 @@ kotlin {
 
         api(projects.datasource.datasourceApi)
         api(projects.datasource.datasourceCore)
-        api(projects.datasource.bangumi)
         api(projects.datasource.mikan)
         api(projects.datasource.jellyfin)
         api(projects.datasource.ikaros)
@@ -70,6 +69,7 @@ kotlin {
         api(projects.danmaku.dandanplay)
 
         api(libs.paging.common)
+        api(libs.androidx.collection)
 
         implementation(libs.koin.core)
         implementation(libs.atomicfu)

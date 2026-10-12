@@ -24,7 +24,6 @@ import androidx.compose.foundation.text.selection.SelectionContainer
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.Close
 import androidx.compose.material.icons.outlined.QuestionMark
-import androidx.compose.material.icons.outlined.Schedule
 import androidx.compose.material.icons.outlined.Subtitles
 import androidx.compose.material.icons.outlined.WorkspacePremium
 import androidx.compose.material.icons.rounded.Close
@@ -33,8 +32,6 @@ import androidx.compose.material.icons.rounded.MoreVert
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardColors
 import androidx.compose.material3.CardDefaults
-import androidx.compose.material3.DropdownMenu
-import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.ListItem
@@ -53,27 +50,18 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import me.him188.ani.app.domain.episode.DanmakuFetchResultWithConfig
+import me.him188.ani.app.ui.episode.danmaku.renderDanmakuMatchMethod
 import me.him188.ani.app.ui.episode.danmaku.renderDanmakuServiceId
 import me.him188.ani.app.ui.foundation.ProvideCompositionLocalsForPreview
 import me.him188.ani.app.ui.lang.Lang
-import me.him188.ani.app.ui.lang.episode_danmaku_match_change
 import me.him188.ani.app.ui.lang.subject_episode_danmaku_count
 import me.him188.ani.app.ui.lang.subject_episode_danmaku_disabled
-import me.him188.ani.app.ui.lang.subject_episode_danmaku_match_exact
-import me.him188.ani.app.ui.lang.subject_episode_danmaku_match_fuzzy
-import me.him188.ani.app.ui.lang.subject_episode_danmaku_match_none
-import me.him188.ani.app.ui.lang.subject_episode_danmaku_match_semi_fuzzy
 import me.him188.ani.app.ui.lang.subject_episode_danmaku_settings_for
-import me.him188.ani.app.ui.lang.subject_episode_danmaku_time_shift_item
-import me.him188.ani.app.ui.lang.subject_episode_disable
-import me.him188.ani.app.ui.lang.subject_episode_enable
 import me.him188.ani.danmaku.api.DanmakuServiceId
 import me.him188.ani.danmaku.api.provider.DanmakuMatchInfo
 import me.him188.ani.danmaku.api.provider.DanmakuMatchMethod
 import me.him188.ani.utils.platform.annotations.TestOnly
-import me.him188.ani.utils.platform.format1f
 import org.jetbrains.compose.resources.stringResource
-import kotlin.math.abs
 
 @Composable
 fun DanmakuMatchInfoGrid(
@@ -210,75 +198,17 @@ fun DanmakuSourceCard(
 }
 
 
-internal fun formatDanmakuShiftMillis(shiftMillis: Long): String {
-    if (shiftMillis == 0L) return "0 ms"
-    val sign = if (shiftMillis > 0) "+" else "-"
-    val absMillis = abs(shiftMillis)
-    return if (absMillis >= 1_000) {
-        val seconds = absMillis / 1_000.0
-        "$sign${String.format1f(seconds)} s"
-    } else {
-        "$sign$absMillis ms"
-    }
-}
-
-@Composable
-fun DanmakuSourceSettingsDropdown(
-    expanded: Boolean,
-    onDismissRequest: () -> Unit,
-    enabled: Boolean,
-    onClickChange: () -> Unit,
-    onSetEnabled: (enabled: Boolean) -> Unit,
-    currentShiftMillis: Long,
-    onClickAdjustShift: () -> Unit,
-    modifier: Modifier = Modifier,
-) {
-    val changeText = stringResource(Lang.episode_danmaku_match_change)
-    val enableText = stringResource(Lang.subject_episode_enable)
-    val disableText = stringResource(Lang.subject_episode_disable)
-    val timeShiftText = stringResource(
-        Lang.subject_episode_danmaku_time_shift_item,
-        formatDanmakuShiftMillis(currentShiftMillis),
-    )
-    DropdownMenu(expanded, onDismissRequest, modifier) {
-        DropdownMenuItem(
-            text = { Text(changeText) },
-            onClick = {
-                onClickChange()
-                onDismissRequest()
-            },
-        )
-        DropdownMenuItem(
-            text = { Text(if (enabled) disableText else enableText) },
-            onClick = {
-                onSetEnabled(!enabled)
-                onDismissRequest()
-            },
-        )
-        DropdownMenuItem(
-            text = { Text(timeShiftText) },
-            leadingIcon = { Icon(Icons.Outlined.Schedule, null) },
-            onClick = {
-                onClickAdjustShift()
-                onDismissRequest()
-            },
-        )
-    }
-}
-
 @Composable
 private fun DanmakuMatchMethodView(
     method: DanmakuMatchMethod,
     showDetails: Boolean,
     modifier: Modifier = Modifier,
 ) {
-    val semiFuzzyMatchText = stringResource(Lang.subject_episode_danmaku_match_semi_fuzzy)
-    val fuzzyMatchText = stringResource(Lang.subject_episode_danmaku_match_fuzzy)
-    val noMatchText = stringResource(Lang.subject_episode_danmaku_match_none)
+    val matchText = renderDanmakuMatchMethod(method)
     Column(modifier, verticalArrangement = Arrangement.spacedBy(12.dp)) {
         when (method) {
             is DanmakuMatchMethod.Exact -> {
-                ExactMatch()
+                ExactMatch(matchText)
                 if (showDetails) {
                     SelectionContainer {
                         Text(method.subjectTitle, Modifier.basicMarquee(), softWrap = false)
@@ -296,7 +226,7 @@ private fun DanmakuMatchMethodView(
                 ) {
                     CompositionLocalProvider(LocalContentColor provides MaterialTheme.colorScheme.tertiary) {
                         Icon(Icons.Outlined.QuestionMark, null)
-                        Text(semiFuzzyMatchText, softWrap = false)
+                        Text(matchText, softWrap = false)
                     }
                 }
                 if (showDetails) {
@@ -316,7 +246,7 @@ private fun DanmakuMatchMethodView(
                 ) {
                     CompositionLocalProvider(LocalContentColor provides MaterialTheme.colorScheme.tertiary) {
                         Icon(Icons.Outlined.QuestionMark, null)
-                        Text(fuzzyMatchText, softWrap = false)
+                        Text(matchText, softWrap = false)
                     }
                 }
                 if (showDetails) {
@@ -330,7 +260,7 @@ private fun DanmakuMatchMethodView(
             }
 
             is DanmakuMatchMethod.ExactId -> {
-                ExactMatch()
+                ExactMatch(matchText)
                 if (showDetails) {
                     SelectionContainer {
                         Text(method.subjectId.toString(), Modifier.basicMarquee(), softWrap = false)
@@ -348,7 +278,7 @@ private fun DanmakuMatchMethodView(
                 ) {
                     CompositionLocalProvider(LocalContentColor provides MaterialTheme.colorScheme.secondary) {
                         Icon(Icons.Outlined.Close, null)
-                        Text(noMatchText, softWrap = false)
+                        Text(matchText, softWrap = false)
                     }
                 }
             }
@@ -358,15 +288,14 @@ private fun DanmakuMatchMethodView(
 
 
 @Composable
-private fun ExactMatch() {
-    val exactMatchText = stringResource(Lang.subject_episode_danmaku_match_exact)
+private fun ExactMatch(matchText: String) {
     Row(
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(12.dp),
     ) {
         CompositionLocalProvider(LocalContentColor provides MaterialTheme.colorScheme.primary) {
             Icon(Icons.Outlined.WorkspacePremium, null)
-            Text(exactMatchText)
+            Text(matchText)
         }
     }
 }

@@ -14,7 +14,6 @@ import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.test.runTest
 import kotlinx.io.files.Path
-import me.him188.ani.app.data.models.preference.PikPakConfig
 import me.him188.ani.app.data.persistent.database.dao.HttpCacheDownloadStateDao
 import me.him188.ani.app.domain.media.TestMediaList
 import me.him188.ani.app.domain.media.player.data.MediaDataProvider
@@ -50,8 +49,8 @@ class HttpDownloadIdentityTest {
         val downloader = FakeDownloader()
         val engine = engine(downloader)
         val media = TestMediaList.first().copy(
-            kind = MediaSourceKind.BitTorrent,
-            download = ResourceLocation.MagnetLink("magnet:?xt=urn:btih:season"),
+            kind = MediaSourceKind.WEB,
+            download = ResourceLocation.HttpStreamingFile("https://example.com/season.mp4"),
         )
         val firstCache = engine.createCache(media, testMetadata(1), testEpisodeMetadata(1), backgroundScope.coroutineContext)
         val firstId = downloader.states.keys.single()
@@ -109,7 +108,11 @@ class HttpDownloadIdentityTest {
 
     @Test
     fun `identity is stable filesystem safe and distinguishes episodes subjects and media`() = runTest {
-        val media = TestMediaList.first()
+        // The HTTP engine only accepts WEB media; the test list defaults to magnets.
+        val media = TestMediaList.first().copy(
+            kind = MediaSourceKind.WEB,
+            download = ResourceLocation.HttpStreamingFile("https://example.com/identity.mp4"),
+        )
         suspend fun createId(media: Media, metadata: MediaCacheMetadata): DownloadId {
             val downloader = FakeDownloader()
             engine(downloader).createCache(media, metadata, testEpisodeMetadata(1), backgroundScope.coroutineContext)
@@ -121,7 +124,7 @@ class HttpDownloadIdentityTest {
         assertNotEquals(id, createId(media, testMetadata(2)))
         assertNotEquals(id, createId(media, testMetadata(1).copy(subjectId = "2")))
         assertTrue(id.value.matches(Regex("http-v2-[0-9a-f]{64}")))
-        val slash = TestMediaList.first().copy(mediaId = "source/path")
+        val slash = media.copy(mediaId = "source/path")
         val colon = slash.copy(mediaId = "source:path")
         assertNotEquals(createId(slash, testMetadata(1)), createId(colon, testMetadata(1)))
     }
@@ -166,7 +169,6 @@ class HttpDownloadIdentityTest {
 
             override suspend fun getById(id: DownloadId) = downloader.persisted[id]
         },
-        pikpakConfig = { PikPakConfig.Default.copy(enabled = true) },
     )
 }
 

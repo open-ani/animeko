@@ -53,12 +53,17 @@ internal class MediaAutoSelector(private val mediaSelector: MediaSelector) {
         val fastSelect: Boolean = true,
         val exactMatchAfter: Duration = 5.seconds,
         val fuzzyMatchAfter: Duration = 15.seconds,
-        val instantTier: MediaSourceTier = MediaSourceTier(0u),
+        val instantTier: MediaSourceTier = DefaultInstantTier,
         val waitForPendingSources: Boolean = true,
     ) {
         init {
             require(exactMatchAfter >= Duration.ZERO)
             require(fuzzyMatchAfter >= Duration.ZERO)
+        }
+
+        companion object {
+            /** First-deadline stage accepts exact matches whose effective tier is at most this. */
+            val DefaultInstantTier = MediaSourceTier(0u)
         }
     }
 

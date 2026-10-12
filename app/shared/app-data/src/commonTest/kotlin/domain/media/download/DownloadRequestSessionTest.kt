@@ -427,6 +427,36 @@ class DownloadRequestSessionTest {
     }
 
     @Test
+    fun `line candidates given with the choice cover other episodes ahead of selector candidates`() = withFixture {
+        mediaListFor = { listOf(requestTestMedia(2)) }
+        val manual2 = requestTestMedia(2).copy(mediaId = "manual-2")
+        val manual3 = requestTestMedia(3).copy(mediaId = "manual-3")
+        val session = create(listOf(1))
+        session.start()
+        testScope.runCurrent()
+        assertTrue(session.select(1, requestTestMedia(1), lineCandidates = listOf(manual2, manual3)))
+        testScope.runCurrent()
+
+        val selecting = assertIs<DownloadRequestState.SelectingEpisodes>(session.state.value)
+        assertEquals(
+            listOf(
+                DownloadEpisodeOption.Availability.AVAILABLE,
+                DownloadEpisodeOption.Availability.AVAILABLE,
+                DownloadEpisodeOption.Availability.AVAILABLE,
+                DownloadEpisodeOption.Availability.UNMATCHED,
+            ),
+            selecting.options.take(4).map { it.availability },
+        )
+        assertTrue(session.confirmEpisodes(setOf(2, 3)))
+        testScope.runCurrent()
+
+        assertEquals(DownloadRequestState.Finished(), session.state.value)
+        assertEquals(listOf(1, 2, 3), created.map { it.episodeId })
+        assertSame(manual2, created[1].media)
+        assertSame(manual3, created[2].media)
+    }
+
+    @Test
     fun `episode selection is skipped when the line only covers the current episode`() = withFixture {
         val session = create(listOf(1))
         session.start()

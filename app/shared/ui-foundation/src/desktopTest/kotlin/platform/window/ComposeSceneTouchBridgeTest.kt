@@ -35,6 +35,39 @@ class ComposeSceneTouchBridgeTest {
     }
 
     @Test
+    fun `queue merges consecutive moves and schedules one drain until emptied`() {
+        val queue = WindowsTouchCommandQueue()
+        val pointer = WindowsPointerData(1, PT_TOUCH, POINTER_FLAG_INCONTACT, 0, 0)
+        fun move(x: Int, time: Long) = WindowsTouchCommand.Inject(
+            WindowsTouchEvent(
+                WindowsTouchEventType.MOVE,
+                pointer.copy(screenX = x, eventTimeMillis = time),
+                listOf(WindowsTouchPointer(1, x, 0, pressed = true, WindowsPointerKind.TOUCH, 1f)),
+            ),
+        )
+
+        assertEquals(true, queue.offer(move(10, 1)))
+        assertEquals(false, queue.offer(move(20, 2)))
+        assertEquals(false, queue.offer(move(30, 3)))
+        assertEquals(false, queue.offer(WindowsTouchCommand.Cancel))
+        assertEquals(2, queue.size())
+
+        val merged = queue.poll() as WindowsTouchCommand.Inject
+        assertEquals(30, merged.event.pointers.single().screenX)
+        assertEquals(listOf(1L, 2L), merged.event.pointers.single().historical.map { it.eventTimeMillis })
+        assertEquals(WindowsTouchCommand.Cancel, queue.poll())
+        assertEquals(null, queue.poll())
+
+        assertEquals(true, queue.offer(move(40, 4)))
+    }
+
+    @Test
+    fun `historical samples carry the position the velocity tracker reads`() {
+        val change = historicalChange(uptimeMillis = 5, scenePosition = Offset(120f, 340f))
+        assertEquals(Offset(120f, 340f), change.originalEventPosition)
+    }
+
+    @Test
     fun `current CMP exposes one list pointer event overload`() {
         val methods = ComposeScene::class.java.methods.filter { method ->
             method.name.startsWith("sendPointerEvent-") &&

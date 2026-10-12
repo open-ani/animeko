@@ -26,10 +26,8 @@ import me.him188.ani.app.platform.LocalContext
 import me.him188.ani.app.platform.navigation.rememberAsyncBrowserNavigator
 import me.him188.ani.app.ui.foundation.icons.AniIcons
 import me.him188.ani.app.ui.foundation.icons.GithubMark
-import me.him188.ani.app.ui.foundation.icons.QqRoundedOutline
 import me.him188.ani.app.ui.foundation.icons.Telegram
 import me.him188.ani.app.ui.lang.Lang
-import me.him188.ani.app.ui.lang.settings_about_qq_group
 import me.him188.ani.app.ui.lang.settings_about_website
 import me.him188.ani.app.ui.settings.tabs.AniHelperDestination
 import org.jetbrains.compose.resources.stringResource
@@ -43,7 +41,6 @@ fun AniContactList(
     val browserNavigator = rememberAsyncBrowserNavigator()
     val context = LocalContext.current
     val websiteText = stringResource(Lang.settings_about_website)
-    val qqGroupText = stringResource(Lang.settings_about_qq_group)
 
     FlowRow(
         modifier,
@@ -67,18 +64,6 @@ fun AniContactList(
                 )
             },
             label = { Text(websiteText) },
-        )
-
-        SuggestionChip(
-            { browserNavigator.openJoinGroup(context) },
-            icon = {
-                Icon(
-                    AniIcons.QqRoundedOutline,
-                    qqGroupText,
-                    Modifier.size(ContactIconSize),
-                )
-            },
-            label = { Text(qqGroupText) },
         )
 
         SuggestionChip(

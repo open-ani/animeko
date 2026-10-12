@@ -12,14 +12,11 @@ package me.him188.ani.app.ui.subject.episode.details
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.expandVertically
 import androidx.compose.animation.shrinkVertically
-import androidx.compose.foundation.Image
-import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
-import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
@@ -32,24 +29,13 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.outlined.FeaturedPlayList
-import androidx.compose.material.icons.outlined.ArrowDropDown
-import androidx.compose.material.icons.outlined.CheckCircle
-import androidx.compose.material.icons.outlined.Close
 import androidx.compose.material.icons.outlined.ExpandLess
 import androidx.compose.material.icons.outlined.ExpandMore
-import androidx.compose.material.icons.outlined.Refresh
-import androidx.compose.material.icons.outlined.Schedule
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
-import androidx.compose.material3.DropdownMenu
-import androidx.compose.material3.DropdownMenuItem
-import androidx.compose.material3.FilterChip
-import androidx.compose.material3.FilterChipDefaults
-import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.ListItem
 import androidx.compose.material3.ListItemDefaults
@@ -58,40 +44,23 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.layout
-import androidx.compose.ui.text.font.FontFamily
-import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
-import me.him188.ani.app.ui.episode.danmaku.renderDanmakuServiceId
-import me.him188.ani.app.ui.foundation.Res
-import me.him188.ani.app.ui.foundation.a
+import me.him188.ani.app.ui.episode.danmaku.DanmakuServiceIcon
+import me.him188.ani.app.ui.episode.danmaku.DanmakuSourceChips
 import me.him188.ani.app.ui.foundation.lists.LazyListVerticalScrollbar
 import me.him188.ani.app.ui.lang.Lang
 import me.him188.ani.app.ui.lang.subject_episode_collapse
 import me.him188.ani.app.ui.lang.subject_episode_danmaku_list_empty
 import me.him188.ani.app.ui.lang.subject_episode_danmaku_list_empty_filtered
 import me.him188.ani.app.ui.lang.subject_episode_danmaku_list_title
-import me.him188.ani.app.ui.lang.subject_episode_danmaku_rematch
-import me.him188.ani.app.ui.lang.subject_episode_danmaku_service_baha_short
-import me.him188.ani.app.ui.lang.subject_episode_danmaku_service_bilibili_short
-import me.him188.ani.app.ui.lang.subject_episode_danmaku_service_dandanplay_short
-import me.him188.ani.app.ui.lang.subject_episode_danmaku_time_shift_item
-import me.him188.ani.app.ui.lang.subject_episode_disable
-import me.him188.ani.app.ui.lang.subject_episode_enable
 import me.him188.ani.app.ui.lang.subject_episode_expand
-import me.him188.ani.app.ui.lang.subject_episode_more_options
-import me.him188.ani.app.ui.subject.episode.details.components.formatDanmakuShiftMillis
 import me.him188.ani.danmaku.api.DanmakuServiceId
-import org.jetbrains.compose.resources.painterResource
 import org.jetbrains.compose.resources.stringResource
 
 /**
@@ -242,211 +211,6 @@ fun DanmakuListContent(
                 )
             }
         }
-    }
-}
-
-/**
- * 弹幕源选择器组件，以FlowRow布局显示所有可用的弹幕源。
- */
-@OptIn(ExperimentalLayoutApi::class)
-@Composable
-private fun DanmakuSourceChips(
-    sourceItems: List<DanmakuSourceItem>,
-    onToggleSource: (DanmakuServiceId, Boolean) -> Unit,
-    onManualMatch: (DanmakuServiceId) -> Unit,
-    onAdjustShift: (DanmakuServiceId) -> Unit,
-    modifier: Modifier = Modifier,
-) {
-    FlowRow(
-        modifier = modifier,
-        horizontalArrangement = Arrangement.spacedBy(4.dp),
-        verticalArrangement = Arrangement.spacedBy(4.dp),
-    ) {
-        sourceItems.forEach { sourceItem ->
-            DanmakuSourceChip(
-                sourceItem = sourceItem,
-                onToggle = { onToggleSource(sourceItem.serviceId, !sourceItem.enabled) },
-                onManualMatch = { onManualMatch(sourceItem.serviceId) },
-                onAdjustShift = { onAdjustShift(sourceItem.serviceId) },
-            )
-        }
-    }
-}
-
-/**
- * 单个弹幕源选择 Chip 组件，显示弹幕源图标和弹幕数量。
- */
-@Composable
-private fun DanmakuSourceChip(
-    sourceItem: DanmakuSourceItem,
-    onToggle: () -> Unit,
-    onManualMatch: () -> Unit,
-    onAdjustShift: () -> Unit,
-) {
-    var showDropdown by rememberSaveable { mutableStateOf(false) }
-    val isAnimeko = sourceItem.serviceId == DanmakuServiceId.Animeko
-    val moreOptionsText = stringResource(Lang.subject_episode_more_options)
-    val disableText = stringResource(Lang.subject_episode_disable)
-    val enableText = stringResource(Lang.subject_episode_enable)
-    val rematchText = stringResource(Lang.subject_episode_danmaku_rematch)
-    val timeShiftText = stringResource(
-        Lang.subject_episode_danmaku_time_shift_item,
-        formatDanmakuShiftMillis(sourceItem.shiftMillis),
-    )
-
-    Box {
-        FilterChip(
-            selected = sourceItem.enabled,
-            onClick = onToggle,
-            label = {
-                Row(
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(if (isAnimeko) 4.dp else (-4).dp),
-                ) {
-                    Text(if (sourceItem.count == 0) renderDanmakuServiceId(sourceItem.serviceId) else "${sourceItem.count}")
-
-                    Icon(
-                        Icons.Outlined.ArrowDropDown,
-                        contentDescription = moreOptionsText,
-                        modifier = Modifier
-                            .offset(x = 8.dp)
-                            .clickable { showDropdown = true },
-                    )
-                }
-            },
-            leadingIcon = {
-                DanmakuServiceIcon(
-                    serviceId = sourceItem.serviceId,
-                    size = 24,
-                )
-            },
-            colors = if (sourceItem.enabled && sourceItem.isFuzzyMatch) {
-                FilterChipDefaults.filterChipColors(
-                    selectedContainerColor = MaterialTheme.colorScheme.tertiaryContainer,
-                    selectedLabelColor = MaterialTheme.colorScheme.onTertiaryContainer,
-                )
-            } else {
-                FilterChipDefaults.filterChipColors()
-            },
-        )
-
-        if (showDropdown) {
-            DropdownMenu(
-                expanded = showDropdown,
-                onDismissRequest = { showDropdown = false },
-            ) {
-                Column(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(horizontal = 16.dp, vertical = 12.dp),
-                ) {
-                    Row(
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(8.dp),
-                    ) {
-                        DanmakuServiceIcon(
-                            serviceId = sourceItem.serviceId,
-                            size = 24,
-                        )
-                        Text(
-                            text = renderDanmakuServiceId(sourceItem.serviceId),
-                            style = MaterialTheme.typography.titleSmall,
-                            color = MaterialTheme.colorScheme.onSurface,
-                        )
-                    }
-                }
-
-                HorizontalDivider()
-
-                // 操作菜单项
-                DropdownMenuItem(
-                    text = { Text(if (sourceItem.enabled) disableText else enableText) },
-                    leadingIcon = {
-                        Icon(
-                            if (sourceItem.enabled) Icons.Outlined.Close else Icons.Outlined.CheckCircle,
-                            contentDescription = null,
-                        )
-                    },
-                    onClick = {
-                        onToggle()
-                        showDropdown = false
-                    },
-                )
-                if (!isAnimeko) {
-                    DropdownMenuItem(
-                        text = { Text(rematchText) },
-                        leadingIcon = { Icon(Icons.Outlined.Refresh, null) },
-                        onClick = {
-                            onManualMatch()
-                            showDropdown = false
-                        },
-                    )
-                }
-                DropdownMenuItem(
-                    text = { Text(timeShiftText) },
-                    leadingIcon = { Icon(Icons.Outlined.Schedule, null) },
-                    onClick = {
-                        onAdjustShift()
-                        showDropdown = false
-                    },
-                )
-            }
-        }
-    }
-}
-
-@Composable
-private fun DanmakuServiceIcon(
-    serviceId: DanmakuServiceId,
-    size: Int,
-    modifier: Modifier = Modifier,
-) {
-    when (serviceId) {
-        DanmakuServiceId.Animeko -> {
-            Image(
-                painter = painterResource(Res.drawable.a),
-                contentDescription = renderDanmakuServiceId(serviceId),
-                modifier = modifier
-                    .size(size.dp)
-                    .clip(CircleShape),
-            )
-        }
-
-        else -> {
-            val text = getDanmakuServiceIconInfo(serviceId)
-            Box(
-                modifier = modifier
-                    .size(size.dp)
-                    .background(
-                        color = MaterialTheme.colorScheme.secondaryContainer,
-                        shape = CircleShape,
-                    ),
-                contentAlignment = Alignment.Center,
-            ) {
-                Text(
-                    text = text,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    fontSize = (size * 0.6).sp,
-                    fontWeight = FontWeight.Bold,
-                    fontFamily = FontFamily.Monospace,
-                )
-            }
-        }
-    }
-}
-
-/**
- * 弹幕源的显示文字
- */
-@Composable
-private fun getDanmakuServiceIconInfo(serviceId: DanmakuServiceId): String {
-    return when (serviceId) {
-        DanmakuServiceId.Bilibili -> stringResource(Lang.subject_episode_danmaku_service_bilibili_short)
-        DanmakuServiceId.Dandanplay -> stringResource(Lang.subject_episode_danmaku_service_dandanplay_short)
-        DanmakuServiceId.AcFun -> "Ac"
-        DanmakuServiceId.Baha -> stringResource(Lang.subject_episode_danmaku_service_baha_short)
-        DanmakuServiceId.Tucao -> "TC"
-        else -> "?"
     }
 }
 

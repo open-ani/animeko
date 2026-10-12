@@ -45,10 +45,14 @@ SelectorMediaSource
         ├─ RateLimited → delay 后重试一次; 仍失败 → UI 显示限流倒计时, 到点自动重试
         ├─ Captcha     → solve(interactive = false)
         │                 ├─ Solved → 重新 fetchPage
-        │                 └─ 失败   → UI 显示验证码 chip
+        │                 └─ 失败   → 自动匹配页的源行显示可点击的验证提示
         │                              点击 → solve(interactive = true) → 用户在浏览器解决 → 重启该源
         └─ NotFound    → 视为无结果
 ```
+
+手动查找的搜索与条目页请求走同一 `fetchPage`。被验证码挡住时直接 `solve(interactive = true)`，
+解决后重试一次同一请求，仍失败显示错误与重试；限流与其他错误只显示错误与重试。
+浏览记忆回放遇到 `Blocked` 视为未命中，不发起 solve。
 
 ## PageEvaluator: 唯一判决函数
 
@@ -106,7 +110,8 @@ SelectorMediaSource
   **禁止任何形式的等待** (`runBlocking`、`invokeAndWait`、信号量等);
 - cookie 收集用 `suspendCancellableCoroutine` 桥接回调, 由 manager 的协程消费, 永不阻塞 UI 线程。
 
-iOS 没有浏览器实现: 不支持交互解决, UI 以提示代替 "处理验证码" 按钮; 不依赖浏览器的自动 solver 照常工作。
+iOS 没有浏览器实现: 不支持交互解决, UI 以提示代替 "处理验证码" 按钮, 手动查找的对应状态是不带重试的提示;
+不依赖浏览器的自动 solver 照常工作。
 
 ## Cookie 与 User-Agent
 

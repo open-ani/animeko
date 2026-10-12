@@ -15,6 +15,10 @@ import kotlinx.serialization.json.boolean
 import kotlinx.serialization.json.int
 import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
+import me.him188.ani.app.domain.mediasource.web.format.SelectorChannelFormatIndexGrouped
+import me.him188.ani.app.domain.mediasource.web.format.SelectorChannelFormatNoChannel
+import me.him188.ani.app.domain.mediasource.web.format.SelectorSubjectFormatA
+import me.him188.ani.app.domain.mediasource.web.format.SelectorSubjectFormatIndexed
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
@@ -43,8 +47,7 @@ class SelectorSearchConfigSerializationTest {
               "searchUseOnlyFirstWord": false,
               "searchRemoveSpecial": false,
               "searchUseSubjectNamesCount": 3,
-              "filterByEpisodeSort": false,
-              "filterBySubjectName": false
+              "filterByEpisodeSort": false
             }
             """.trimIndent(),
         )
@@ -55,7 +58,6 @@ class SelectorSearchConfigSerializationTest {
                 searchUseOnlyFirstWord = false,
                 searchRemoveSpecial = false,
                 searchUseSubjectNamesCount = 3,
-                filterBySubjectName = false,
                 filterByEpisodeSort = false,
             ),
             config.autoMatch,
@@ -77,12 +79,80 @@ class SelectorSearchConfigSerializationTest {
     }
 
     @Test
-    fun `preferShorterName is mirrored into every subject format on write`() {
-        val obj = encode(SelectorSearchConfig(autoMatch = SelectorAutoMatchConfig(preferShorterName = false)))
-        for (key in listOf("selectorSubjectFormatA", "selectorSubjectFormatIndexed", "selectorSubjectFormatJsonPathIndexed")) {
+    fun `preferShorterName is mirrored into every written subject format`() {
+        val obj = encode(
+            SelectorSearchConfig(
+                subjectFormatId = SelectorSubjectFormatIndexed.id,
+                selectorSubjectFormatA = SelectorSubjectFormatA.Config(selectLists = "a.custom"),
+                autoMatch = SelectorAutoMatchConfig(preferShorterName = false),
+            ),
+        )
+        for (key in listOf("selectorSubjectFormatA", "selectorSubjectFormatIndexed")) {
             assertFalse(obj.getValue(key).jsonObject.getValue("preferShorterName").jsonPrimitive.boolean, key)
         }
         assertFalse(obj.getValue("autoMatch").jsonObject.getValue("preferShorterName").jsonPrimitive.boolean)
+    }
+
+    @Test
+    fun `unselected default format configs are omitted on write`() {
+        val obj = encode(
+            SelectorSearchConfig(
+                subjectFormatId = SelectorSubjectFormatIndexed.id,
+                channelFormatId = SelectorChannelFormatIndexGrouped.id,
+            ),
+        )
+        assertEquals(
+            setOf("selectorSubjectFormatIndexed", "selectorChannelFormatFlattened"),
+            obj.keys.filter { it.startsWith("selectorSubjectFormat") || it.startsWith("selectorChannelFormat") }.toSet(),
+        )
+    }
+
+    @Test
+    fun `selected format config is written even when it equals the default`() {
+        val obj = encode(SelectorSearchConfig())
+        assertTrue("selectorSubjectFormatA" in obj)
+        assertTrue("selectorChannelFormatNoChannel" in obj)
+        assertFalse("selectorSubjectFormatIndexed" in obj)
+        assertFalse("selectorSubjectFormatJsonPathIndexed" in obj)
+        assertFalse("selectorChannelFormatFlattened" in obj)
+    }
+
+    @Test
+    fun `unselected format config is kept when it was edited`() {
+        val config = SelectorSearchConfig(
+            subjectFormatId = SelectorSubjectFormatA.id,
+            selectorSubjectFormatIndexed = SelectorSubjectFormatIndexed.Config(selectNames = ".custom"),
+            channelFormatId = SelectorChannelFormatNoChannel.id,
+            selectorChannelFormatFlattened = SelectorChannelFormatIndexGrouped.Config(selectEpisodeLists = ".custom"),
+        )
+        val obj = encode(config)
+        assertEquals(".custom", obj.getValue("selectorSubjectFormatIndexed").jsonObject.getValue("selectNames").jsonPrimitive.content)
+        assertEquals(".custom", obj.getValue("selectorChannelFormatFlattened").jsonObject.getValue("selectEpisodeLists").jsonPrimitive.content)
+        assertFalse("selectorSubjectFormatJsonPathIndexed" in obj)
+        assertEquals(config, decode(obj.toString()))
+    }
+
+    @Test
+    fun `unselected format differing only in mirrored preferShorterName is still omitted`() {
+        val obj = encode(
+            SelectorSearchConfig(
+                subjectFormatId = SelectorSubjectFormatA.id,
+                selectorSubjectFormatIndexed = SelectorSubjectFormatIndexed.Config(preferShorterName = false),
+                autoMatch = SelectorAutoMatchConfig(preferShorterName = false),
+            ),
+        )
+        assertFalse("selectorSubjectFormatIndexed" in obj)
+    }
+
+    @Test
+    fun `omitted format configs decode to defaults`() {
+        val config = SelectorSearchConfig(
+            subjectFormatId = SelectorSubjectFormatIndexed.id,
+            selectorSubjectFormatIndexed = SelectorSubjectFormatIndexed.Config(selectNames = ".n", selectLinks = ".l"),
+            channelFormatId = SelectorChannelFormatIndexGrouped.id,
+            selectorChannelFormatFlattened = SelectorChannelFormatIndexGrouped.Config(selectChannelNames = ".c"),
+        )
+        assertEquals(config, decode(json.encodeToString(SelectorSearchConfig.serializer(), config)))
     }
 
     @Test
@@ -117,7 +187,6 @@ class SelectorSearchConfigSerializationTest {
                 searchUseOnlyFirstWord = false,
                 searchRemoveSpecial = false,
                 searchUseSubjectNamesCount = 4,
-                filterBySubjectName = false,
                 filterByEpisodeSort = false,
             ),
         )
@@ -131,7 +200,6 @@ class SelectorSearchConfigSerializationTest {
         assertFalse(obj.getValue("searchUseOnlyFirstWord").jsonPrimitive.boolean)
         assertFalse(obj.getValue("searchRemoveSpecial").jsonPrimitive.boolean)
         assertEquals(4, obj.getValue("searchUseSubjectNamesCount").jsonPrimitive.int)
-        assertFalse(obj.getValue("filterBySubjectName").jsonPrimitive.boolean)
         assertFalse(obj.getValue("filterByEpisodeSort").jsonPrimitive.boolean)
     }
 

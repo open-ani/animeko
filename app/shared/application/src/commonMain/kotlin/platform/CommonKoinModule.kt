@@ -10,6 +10,7 @@
 package me.him188.ani.app.platform
 
 import androidx.sqlite.driver.bundled.BundledSQLiteDriver
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineExceptionHandler
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -17,12 +18,16 @@ import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.currentCoroutineContext
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.SharingStarted
+import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
 import kotlinx.io.files.Path
 import kotlinx.io.files.SystemFileSystem
+import me.him188.ani.app.data.models.preference.PikPakConfig
 import me.him188.ani.app.data.network.AniApiProvider
 import me.him188.ani.app.data.network.AniCommentReportService
 import me.him188.ani.app.data.network.AniEpisodeCommentService
@@ -30,7 +35,6 @@ import me.him188.ani.app.data.network.AniPersonCommentService
 import me.him188.ani.app.data.network.AniSubjectRelationIndexService
 import me.him188.ani.app.data.network.AniSubjectSearchService
 import me.him188.ani.app.data.network.AnimeScheduleService
-import me.him188.ani.app.data.network.BangumiSummaryService
 import me.him188.ani.app.data.network.BangumiBangumiCommentServiceImpl
 import me.him188.ani.app.data.network.BangumiCommentService
 import me.him188.ani.app.data.network.BangumiRelatedPeopleService
@@ -53,6 +57,13 @@ import me.him188.ani.app.data.repository.repositoryModules
 import me.him188.ani.app.data.repository.torrent.peer.PeerFilterSubscriptionRepository
 import me.him188.ani.app.data.repository.user.AccessTokenSession
 import me.him188.ani.app.data.repository.user.SettingsRepository
+import me.him188.ani.app.data.repository.user.UserRepository
+import me.him188.ani.app.domain.torrent.TorrentEngineType
+import me.him188.ani.app.domain.torrent.engines.PikPakEngine
+import me.him188.ani.torrent.pikpak.PikPakCredentials
+import me.him188.ani.torrent.pikpak.PikPakSessionStoreAdapter
+import me.him188.ani.utils.io.inSystem
+import me.him188.ani.app.domain.foundation.AniInstallIdFeatureHandler
 import me.him188.ani.app.domain.foundation.ConvertSendCountExceedExceptionFeature
 import me.him188.ani.app.domain.foundation.ConvertSendCountExceedExceptionFeatureHandler
 import me.him188.ani.app.domain.foundation.CookieJarFeatureHandler
@@ -64,6 +75,7 @@ import me.him188.ani.app.domain.foundation.DistributionChannelFeatureHandler
 import me.him188.ani.app.domain.foundation.GlobalHttpEventBus
 import me.him188.ani.app.domain.foundation.GlobalHttpEvents
 import me.him188.ani.app.domain.foundation.HttpClientProvider
+import me.him188.ani.app.domain.foundation.MaxRequestsPerHostFeatureHandler
 import me.him188.ani.app.domain.foundation.ScopedHttpClientUserAgent
 import me.him188.ani.app.domain.foundation.ServerListFeature
 import me.him188.ani.app.domain.foundation.ServerListFeatureConfig
@@ -76,6 +88,8 @@ import me.him188.ani.app.domain.foundation.VersionExpiryFeatureHandler
 import me.him188.ani.app.domain.foundation.VersionExpiryService
 import me.him188.ani.app.domain.foundation.get
 import me.him188.ani.app.domain.foundation.withValue
+import me.him188.ani.app.domain.install.InstallIdRepository
+import me.him188.ani.app.domain.install.InstallReporter
 import me.him188.ani.app.domain.media.download.DownloadOperations
 import me.him188.ani.app.domain.media.download.MediaDownloadManager
 import me.him188.ani.app.domain.mediasource.web.PageEvaluator
@@ -87,8 +101,10 @@ import me.him188.ani.app.domain.mediasource.web.captcha.MacCmsImageCaptchaSolver
 import me.him188.ani.app.domain.mediasource.web.captcha.WebSessionManager
 import me.him188.ani.app.domain.mediasource.web.captcha.WebSourceCookieJar
 import me.him188.ani.app.domain.mediasource.web.captcha.WebSourceIdentityRegistry
+import me.him188.ani.app.domain.media.cache.PikPakWebM3uCacheMigration
 import me.him188.ani.app.domain.media.cache.engine.HttpMediaCacheEngine
 import me.him188.ani.app.domain.media.cache.engine.KtorPersistentHttpDownloader
+import me.him188.ani.app.domain.media.cache.engine.AlwaysUseTorrentEngineAccess
 import me.him188.ani.app.domain.media.cache.engine.MediaCacheEngineKey
 import me.him188.ani.app.domain.media.cache.engine.TorrentMediaCacheEngine
 import me.him188.ani.app.domain.media.cache.storage.HttpMediaCacheStorage
@@ -125,8 +141,6 @@ import me.him188.ani.tracking.api.DefaultTrackingRegistry
 import me.him188.ani.tracking.api.TrackingBindingBackup
 import me.him188.ani.tracking.api.TrackingRegistry
 import me.him188.ani.tracking.api.TrackingSource
-import me.him188.ani.datasources.bangumi.BangumiClient
-import me.him188.ani.datasources.bangumi.BangumiClientImpl
 import me.him188.ani.utils.coroutines.IO_
 import me.him188.ani.utils.coroutines.childScope
 import me.him188.ani.utils.coroutines.childScopeContext
@@ -139,7 +153,6 @@ import org.koin.core.scope.Scope
 import org.koin.dsl.module
 import kotlin.time.Duration.Companion.minutes
 
-private val Scope.client get() = get<BangumiClient>()
 private val Scope.database get() = get<AniDatabase>()
 private val Scope.settingsRepository get() = get<SettingsRepository>()
 private val Scope.aniApiProvider get() = get<AniApiProvider>()
@@ -171,6 +184,9 @@ private fun KoinApplication.otherModules(
             tokenRepository = get(),
             coroutineScope = coroutineScope,
             refreshSession = AniSessionRefresher { aniApiProvider.userAuthApi },
+            newLoginListener = SessionManager.NewLoginListener { userId ->
+                get<InstallReporter>().beforeNewLogin(userId)
+            },
         )
     }
     single<SessionStateProvider> {
@@ -183,8 +199,10 @@ private fun KoinApplication.otherModules(
             coroutineScope,
         )
     }
+    single<InstallIdRepository> { InstallIdRepository(getContext().dataStores.installInfoStore) }
     single<HttpClientProvider> {
         val sessionManager by inject<SessionManager>()
+        val installIdRepository = get<InstallIdRepository>()
         DefaultHttpClientProvider(
             get(), coroutineScope,
             featureHandlers = listOf(
@@ -195,6 +213,7 @@ private fun KoinApplication.otherModules(
                     },
                     onRefresh = { null },
                 ),
+                AniInstallIdFeatureHandler { installIdRepository.currentId },
                 ServerListFeatureHandler(
                     get<ServerSelector>().flow,
                 ),
@@ -204,6 +223,7 @@ private fun KoinApplication.otherModules(
                 SseFeatureHandler,
                 CookieJarFeatureHandler, // web 数据源统一 cookie jar (构造时注入)
                 WebSourceIdentityFeatureHandler, // web 数据源 per-host UA 对齐
+                MaxRequestsPerHostFeatureHandler,
             ),
         )
     }
@@ -247,11 +267,13 @@ private fun KoinApplication.otherModules(
             }
         }
     }
-    single<AniApiProvider> { AniApiProvider(get<HttpClientProvider>().get(useAniToken = true)) }
+    single<AniApiProvider> {
+        AniApiProvider(get<HttpClientProvider>().get(useAniToken = true, useAniInstallId = true))
+    }
     single<WatchTogetherApiService> {
         DefaultWatchTogetherApiService(
             provider = get(),
-            eventsClient = get<HttpClientProvider>().get(useAniToken = true, useSse = true),
+            eventsClient = get<HttpClientProvider>().get(useAniToken = true, useAniInstallId = true, useSse = true),
         )
     }
     single<LocalPlaybackBridge> { LocalPlaybackBridge() }
@@ -265,13 +287,6 @@ private fun KoinApplication.otherModules(
             playbackBridge = get(),
             automationGate = get(),
         ).also { it.start() }
-    }
-    single<BangumiClient> {
-        BangumiClientImpl(
-            get<HttpClientProvider>().get(
-                userAgent = ScopedHttpClientUserAgent.ANI,
-            ),
-        )
     }
 
     single<AniSubjectSearchService> {
@@ -315,14 +330,22 @@ private fun KoinApplication.otherModules(
             scope = coroutineScope,
         ).also { it.start() }
     }
+    single(createdAtStart = true) {
+        InstallReporter(
+            store = getContext().dataStores.installInfoStore,
+            playHistoryRepository = get(),
+            api = aniApiProvider.userProfileApi,
+            sessionStateProvider = get(),
+            currentUserId = get<UserRepository>().selfInfoFlow.map { it?.id?.toString() },
+            scope = coroutineScope,
+        ).also { it.start() }
+    }
     single<AniSubjectRelationIndexService> {
         val provider = get<AniApiProvider>()
         AniSubjectRelationIndexService(provider.subjectRelationsApi)
     }
 
     single<AnimeScheduleService> { AnimeScheduleService(get<AniApiProvider>().scheduleApi) }
-    // TV 横版 backdrop / 分集剧照; 未配置 ani.tmdb.api.token 时自动关闭
-    single<BangumiSummaryService> { BangumiSummaryService(get()) }
 
     single<UpdateManager> {
         UpdateManager(
@@ -344,6 +367,41 @@ private fun KoinApplication.otherModules(
             .setDriver(BundledSQLiteDriver())
             .setQueryCoroutineContext(Dispatchers.IO_)
             .build()
+    }
+
+    // Bound even without media cache: SettingsViewModel, which TV also uses, injects it lazily.
+    single<PikPakEngine> {
+        val settings = get<SettingsRepository>()
+
+        // Cache restoration reads isSupported synchronously; a default placeholder could discard valid records.
+        val savedConfig = runBlocking { settings.pikpakConfig.flow.first() }
+        val configState = settings.pikpakConfig.flow
+            .stateIn(coroutineScope, SharingStarted.Eagerly, savedConfig)
+        fun PikPakConfig.toCredentials() = takeIf {
+            it.enabled && it.username.isNotEmpty() && (it.password.isNotEmpty() || it.refreshToken.isNotEmpty())
+        }?.let { PikPakCredentials(it.username, it.password) }
+        val credentials = configState
+            .map { it.toCredentials() }
+            .stateIn(coroutineScope, SharingStarted.Eagerly, savedConfig.toCredentials())
+
+        PikPakEngine(
+            config = configState,
+            credentials = credentials,
+            sessionStore = PikPakSessionStoreAdapter(
+                readRefreshToken = { account ->
+                    configState.value.takeIf { it.username == account }?.refreshToken.orEmpty()
+                },
+                // A request started before an account switch must not replace the new account's token.
+                writeRefreshToken = { account, rt ->
+                    settings.pikpakConfig.update {
+                        if (username == account) copy(refreshToken = rt) else this
+                    }
+                },
+            ),
+            client = get<HttpClientProvider>().get(ScopedHttpClientUserAgent.NONE),
+            saveDir = Path(get<MediaSaveDirProvider>().saveDir, TorrentEngineType.PikPak.id).inSystem,
+            parentCoroutineContext = coroutineScope.coroutineContext,
+        )
     }
 
     single {
@@ -387,6 +445,7 @@ private fun KoinApplication.otherModules(
                         )
                     }*/
                     for (engine in engines) {
+                        val isPikPak = engine.type == TorrentEngineType.PikPak
                         add(
                             @Suppress("DEPRECATION")
                             TorrentMediaCacheStorage(
@@ -396,14 +455,16 @@ private fun KoinApplication.otherModules(
                                     mediaSourceId = id,
                                     engineKey = MediaCacheEngineKey(engine.type.id),
                                     torrentEngine = engine,
-                                    engineAccess = get(),
+                                    // PikPak runs in-process and must not start Android's BT foreground service.
+                                    engineAccess = if (isPikPak) AlwaysUseTorrentEngineAccess else get(),
                                     dao = database.torrentCacheInfoDao(),
                                     baseSaveDirProvider = get(),
                                 ),
                                 displayName = "LocalTorrent",
                                 parentCoroutineContext = coroutineScope.childScopeContext(),
-                                shareRatioLimitFlow = settingsRepository.anitorrentConfig.flow
-                                    .map { it.shareRatioLimit },
+                                engineAvailability = (engine as? PikPakEngine)?.availability ?: flowOf(true),
+                                shareRatioLimitFlow = if (isPikPak) flowOf(0f)
+                                else settingsRepository.anitorrentConfig.flow.map { it.shareRatioLimit },
                             ),
                         )
                     }
@@ -477,6 +538,14 @@ fun KoinApplication.startCommonKoinModule(
     // Start the proxy provider very soon (before initialization of any other components)
     runBlocking {
         koin.get<SessionManager>().clearSessionIfAccessTokenExpired()
+        // 在任何请求之前加载, 让发往 Ani 服务器的请求都带上安装 ID
+        try {
+            koin.get<InstallIdRepository>().load()
+        } catch (e: CancellationException) {
+            throw e
+        } catch (e: Exception) {
+            logger("ani-startup").warn(e) { "Failed to load install id" }
+        }
         // We have to block here to read the saved proxy settings
         when (val proxyProvider = koin.get<HttpClientProvider>()) {
             // compile-safe type cast
@@ -486,12 +555,38 @@ fun KoinApplication.startCommonKoinModule(
     // Now, the proxy settings is ready. Other components can use http clients.
 
     coroutineScope.launch {
-        // TV 不装配缓存模块: HttpDownloader 无绑定时跳过; 空引擎 MediaDownloadManager 的循环自然为空.
-        koin.getOrNull<HttpDownloader>()?.init() // restore http download states first
-        koin.getOrNull<MediaDownloadManager>()?.let { manager ->
-            for (storage in manager.storages) {
-                storage.restorePersistedCaches()
-            }
+        // Without media cache (TV) there is no HttpDownloader, and nothing below applies.
+        val httpDownloader = koin.getOrNull<HttpDownloader>() ?: return@launch
+        val startupLogger = logger("ani-startup")
+        httpDownloader.init() // restore http download states first
+
+        // Migration changes engine ownership and must finish before cache restoration dispatches
+        // records. A migration failure is isolated so records remain restorable by their current engine.
+        try {
+            PikPakWebM3uCacheMigration(
+                metadataStore = context.dataStores.mediaCacheMetadataStore,
+                httpDao = koin.get<AniDatabase>().httpCacheDownloadStateDao(),
+                torrentDao = koin.get<AniDatabase>().torrentCacheInfoDao(),
+                baseSaveDirProvider = koin.get(),
+                pikpakSaveDir = koin.get<PikPakEngine>().saveDir,
+            ).migrate()
+        } catch (e: CancellationException) {
+            throw e
+        } catch (e: Throwable) {
+            startupLogger.warn(e) { "Failed to migrate legacy PikPak caches; restoring them as they are." }
+        }
+
+        try {
+            koin.get<PikPakEngine>().sweepLeftoversOnStartup()
+        } catch (e: CancellationException) {
+            throw e
+        } catch (e: Throwable) {
+            startupLogger.warn(e) { "Failed to sweep leftover PikPak cloud objects on startup." }
+        }
+
+        val manager = koin.get<MediaDownloadManager>()
+        for (storage in manager.storages) {
+            storage.restorePersistedCaches()
         }
     }
 

@@ -25,6 +25,7 @@ import androidx.compose.foundation.layout.WindowInsetsSides
 import androidx.compose.foundation.layout.add
 import androidx.compose.foundation.layout.calculateStartPadding
 import androidx.compose.foundation.layout.fillMaxHeight
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
@@ -38,8 +39,7 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyListScope
 import androidx.compose.foundation.text.selection.SelectionContainer
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.outlined.Close
-import androidx.compose.material3.AlertDialog
+import androidx.compose.material.icons.rounded.Close
 import androidx.compose.material3.BottomSheetDefaults
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Icon
@@ -48,13 +48,9 @@ import androidx.compose.material3.LocalContentColor
 import androidx.compose.material3.LocalTextStyle
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
-import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.ProvideTextStyle
 import androidx.compose.material3.Scaffold
-import androidx.compose.material3.SheetValue
-import androidx.compose.material3.Slider
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.material3.contentColorFor
@@ -65,7 +61,6 @@ import androidx.compose.runtime.Stable
 import androidx.compose.runtime.State
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
@@ -74,7 +69,9 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalLayoutDirection
+import androidx.compose.ui.platform.LocalWindowInfo
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.tooling.preview.PreviewLightDark
@@ -93,11 +90,14 @@ import me.him188.ani.app.domain.episode.SetEpisodeCollectionTypeRequest
 import me.him188.ani.app.domain.episode.SubjectRecommendation
 import me.him188.ani.app.domain.media.TestMediaList
 import me.him188.ani.app.domain.media.cache.EpisodeCacheStatus
+import me.him188.ani.app.domain.media.cache.engine.MediaCacheEngineKey
 import me.him188.ani.app.domain.player.VideoLoadingState
 import me.him188.ani.app.navigation.LocalNavigator
 import me.him188.ani.app.navigation.SubjectDetailPlaceholder
 import me.him188.ani.app.platform.LocalContext
 import me.him188.ani.app.platform.navigation.LocalBrowserNavigator
+import me.him188.ani.app.ui.episode.danmaku.DanmakuSourceSettingsDropdown
+import me.him188.ani.app.ui.episode.danmaku.DanmakuTimeShiftDialog
 import me.him188.ani.app.ui.episode.danmaku.renderDanmakuServiceId
 import me.him188.ani.app.ui.foundation.LocalSubjectAppearanceSettings
 import me.him188.ani.app.ui.foundation.ProvideCompositionLocalsForPreview
@@ -112,24 +112,28 @@ import me.him188.ani.app.ui.foundation.layout.paddingIfNotEmpty
 import me.him188.ani.app.ui.foundation.widgets.ModalSideSheet
 import me.him188.ani.app.ui.foundation.widgets.rememberModalSideSheetState
 import me.him188.ani.app.ui.lang.Lang
-import me.him188.ani.app.ui.lang.settings_danmaku_cancel
-import me.him188.ani.app.ui.lang.settings_danmaku_confirm
+import me.him188.ani.app.ui.lang.episode_danmaku_match_change
+import me.him188.ani.app.ui.lang.media_selector_sources
 import me.him188.ani.app.ui.lang.subject_episode_close_selector
-import me.him188.ani.app.ui.lang.subject_episode_danmaku_time_shift_current_offset
-import me.him188.ani.app.ui.lang.subject_episode_danmaku_time_shift_description
-import me.him188.ani.app.ui.lang.subject_episode_danmaku_time_shift_reset
-import me.him188.ani.app.ui.lang.subject_episode_danmaku_time_shift_restore
-import me.him188.ani.app.ui.lang.subject_episode_danmaku_time_shift_title
 import me.him188.ani.app.ui.lang.subject_episode_related_recommendations
 import me.him188.ani.app.ui.lang.subject_episode_select_media_source
 import me.him188.ani.app.ui.lang.subject_episode_wish_change_to
 import me.him188.ani.app.ui.mediafetch.MediaSelectorState
-import me.him188.ani.app.ui.mediafetch.MediaSelectorView
 import me.him188.ani.app.ui.mediafetch.MediaSourceResultListPresentation
+import me.him188.ani.app.ui.mediafetch.TestMediaFetchRequest
 import me.him188.ani.app.ui.mediafetch.TestMediaSourceResultListPresentation
-import me.him188.ani.app.ui.mediafetch.ViewKind
+import me.him188.ani.app.ui.mediafetch.rememberTestManualBrowseState
 import me.him188.ani.app.ui.mediafetch.rememberTestMediaSelectorState
-import me.him188.ani.app.ui.mediafetch.request.TestMediaFetchRequest
+import me.him188.ani.app.ui.mediaselect.MediaSelectorMode
+import me.him188.ani.app.ui.mediaselect.WatchingEpisode
+import me.him188.ani.app.ui.mediaselect.auto.AutoMatchPage
+import me.him188.ani.app.ui.mediaselect.bt.BtResourcesPage
+import me.him188.ani.app.ui.mediaselect.common.MediaSelectorDialog
+import me.him188.ani.app.ui.mediaselect.common.MediaSelectorDialogContent
+import me.him188.ani.app.ui.mediaselect.common.MediaSelectorModeChip
+import me.him188.ani.app.ui.mediaselect.manual.ManualBrowsePage
+import me.him188.ani.app.ui.mediaselect.manual.ManualBrowseState
+import me.him188.ani.app.ui.mediaselect.needsContainer
 import me.him188.ani.app.ui.mediaselect.summary.MediaSelectorSummary
 import me.him188.ani.app.ui.mediaselect.summary.MediaSelectorSummaryBanner
 import me.him188.ani.app.ui.mediaselect.summary.MediaSelectorSummaryCard
@@ -147,10 +151,8 @@ import me.him188.ani.app.ui.subject.details.state.createTestSubjectDetailsLoader
 import me.him188.ani.app.ui.subject.episode.EpisodePageLoadError
 import me.him188.ani.app.ui.subject.episode.details.components.DanmakuMatchInfoGrid
 import me.him188.ani.app.ui.subject.episode.details.components.DanmakuSourceCard
-import me.him188.ani.app.ui.subject.episode.details.components.DanmakuSourceSettingsDropdown
 import me.him188.ani.app.ui.subject.episode.details.components.FavoriteIconButton
 import me.him188.ani.app.ui.subject.episode.details.components.SubjectRecommendationCard
-import me.him188.ani.app.ui.subject.episode.details.components.formatDanmakuShiftMillis
 import me.him188.ani.app.ui.subject.episode.statistics.DanmakuMatchInfoSummaryBanner
 import me.him188.ani.app.ui.subject.episode.statistics.DanmakuStatistics
 import me.him188.ani.app.ui.subject.episode.statistics.VideoStatistics
@@ -158,7 +160,6 @@ import me.him188.ani.app.ui.subject.episode.statistics.createTestDanmakuStatisti
 import me.him188.ani.app.ui.user.SelfInfoUiState
 import me.him188.ani.app.ui.user.TestSelfInfoUiState
 import me.him188.ani.danmaku.api.DanmakuServiceId
-import me.him188.ani.danmaku.api.provider.DanmakuProviderId
 import me.him188.ani.datasources.api.Media
 import me.him188.ani.datasources.api.source.MediaFetchRequest
 import me.him188.ani.datasources.api.topic.UnifiedCollectionType
@@ -168,7 +169,6 @@ import me.him188.ani.utils.analytics.AnalyticsEvent.Companion.SubjectRecommendat
 import me.him188.ani.utils.analytics.recordEvent
 import me.him188.ani.utils.platform.annotations.TestOnly
 import org.jetbrains.compose.resources.stringResource
-import kotlin.math.roundToLong
 
 @Stable
 class EpisodeDetailsState(
@@ -195,7 +195,10 @@ class EpisodeDetailsState(
 fun EpisodeDetails(
     mediaSelectorSummary: MediaSelectorSummary,
     state: EpisodeDetailsState,
-    initialMediaSelectorViewKind: ViewKind,
+    mediaSelectorMode: MediaSelectorMode,
+    onMediaSelectorModeChange: (MediaSelectorMode) -> Unit,
+    manualBrowseState: ManualBrowseState,
+    watchingEpisode: WatchingEpisode?,
     fetchRequest: MediaFetchRequest?,
     onFetchRequestChange: (MediaFetchRequest) -> Unit,
     episodeCarouselState: EpisodeCarouselState,
@@ -206,22 +209,34 @@ fun EpisodeDetails(
     mediaSourceResultListPresentation: () -> MediaSourceResultListPresentation,
     selfInfo: SelfInfoUiState,
     onSwitchEpisode: (Int) -> Unit,
-    onRefreshMediaSources: () -> Unit,
     onRestartSource: (String) -> Unit,
     onSetDanmakuSourceEnabled: (DanmakuServiceId, Boolean) -> Unit,
     onAdjustDanmakuSourceShift: (DanmakuServiceId, Long) -> Unit,
     onClickLogin: () -> Unit,
     onClickTag: (Tag) -> Unit,
-    onManualMatchDanmaku: (DanmakuProviderId) -> Unit,
+    onManualMatchDanmaku: (DanmakuServiceId) -> Unit,
     onEpisodeCollectionUpdate: (SetEpisodeCollectionTypeRequest) -> Unit,
     loadError: EpisodePageLoadError?,
     onRetryLoad: () -> Unit,
     modifier: Modifier = Modifier,
     contentPadding: PaddingValues = PaddingValues(horizontal = 16.dp, vertical = 16.dp),
     danmakuListState: DanmakuListState? = null,
+    /**
+     * 入口按钮 (onClickManualSelect / onClickSwitchSource) 打开容器前调用一次; 宿主在这里锁存模式.
+     */
+    onBeforeOpenMediaSelector: () -> Unit = {},
 ) {
     var showSubjectDetails by rememberSaveable {
         mutableStateOf(false)
+    }
+    // 选择器容器状态与容器本身都放在 mediaSelectorItem 槽之外: 该槽是 LazyColumn 的 item, 滚出可视区会被销毁.
+    var showMediaSelector by rememberSaveable { mutableStateOf(false) }
+    // watchingEpisode == null 即会话未就绪: 此时 mediaSelectorState 是占位 state, select 会落到假 selector, 容器不打开也不保持打开.
+    val mediaSelectorAvailable = watchingEpisode != null
+    LaunchedEffect(mediaSelectorAvailable) {
+        if (!mediaSelectorAvailable) {
+            showMediaSelector = false
+        }
     }
     var editingShiftServiceId by remember {
         mutableStateOf<DanmakuServiceId?>(null)
@@ -291,7 +306,7 @@ fun EpisodeDetails(
                     ) {
                         Text(
                             "${it.episodeInfo.sort}  " +
-                                it.episodeInfo.preferredDisplayName(LocalSubjectAppearanceSettings.current.useOriginalTitle),
+                                    it.episodeInfo.preferredDisplayName(LocalSubjectAppearanceSettings.current.useOriginalTitle),
                             Modifier.weight(1f),
                             style = MaterialTheme.typography.bodyLarge,
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
@@ -355,113 +370,22 @@ fun EpisodeDetails(
             }
         },*/
         mediaSelectorItem = { innerPadding ->
-            var showMediaSelector by rememberSaveable { mutableStateOf(false) }
-            if (showMediaSelector) {
-                val windowAdaptiveInfo = currentWindowAdaptiveInfo1()
-                val (viewKind, onViewKindChange) = rememberSaveable { mutableStateOf(initialMediaSelectorViewKind) }
-
-                if (windowAdaptiveInfo.isWidthAtLeastMedium) {
-                    val sheetState = rememberModalSideSheetState()
-                    ModalSideSheet(
-                        { showMediaSelector = false },
-                        state = sheetState,
-                        containerColor = BottomSheetDefaults.ContainerColor,
-                    ) {
-                        Column(
-                            modifier = Modifier
-                                .fillMaxHeight()
-                                .widthIn(300.dp, 400.dp)
-                                .windowInsetsPadding(AniWindowInsets.safeDrawing),
-                        ) {
-                            TopAppBar(
-                                title = {
-                                    Text(
-                                        stringResource(Lang.subject_episode_select_media_source),
-                                        modifier = Modifier.padding(start = 8.dp),
-                                    )
-                                },
-                                actions = {
-                                    IconButton(
-                                        onClick = { sheetState.close() },
-                                        modifier = Modifier.padding(end = 8.dp),
-                                    ) {
-                                        Icon(
-                                            Icons.Outlined.Close,
-                                            contentDescription = stringResource(Lang.subject_episode_close_selector),
-                                        )
-                                    }
-                                },
-                                colors = TopAppBarDefaults.topAppBarColors(
-                                    containerColor = BottomSheetDefaults.ContainerColor,
-                                ),
-                            )
-                            MediaSelectorView(
-                                mediaSelectorState,
-                                viewKind,
-                                onViewKindChange,
-                                fetchRequest,
-                                onFetchRequestChange,
-                                mediaSourceResultListPresentation(),
-                                onRestartSource = onRestartSource,
-                                onRefresh = onRefreshMediaSources,
-                                modifier = Modifier
-                                    .padding(vertical = 12.dp, horizontal = 16.dp)
-                                    .fillMaxWidth(),
-                                stickyHeaderBackgroundColor = BottomSheetDefaults.ContainerColor,
-                                onClickItem = {
-                                    mediaSelectorState.select(it)
-                                    showMediaSelector = false
-                                },
-                                scrollable = true,
-                            )
-                        }
-                    }
-                } else {
-                    val sheetState =
-                        rememberModalBottomSheetState(skipPartiallyExpanded = windowAdaptiveInfo.isWidthAtLeastMedium)
-                    ModalBottomSheet(
-                        { showMediaSelector = false },
-                        sheetState = sheetState,
-                        modifier = Modifier.desktopTitleBarPadding().statusBarsPadding(),
-                        contentWindowInsets = {
-                            BottomSheetDefaults.windowInsets
-                                .add(WindowInsets.desktopTitleBar())
-                                .only(WindowInsetsSides.Horizontal + WindowInsetsSides.Top)
-                        },
-                    ) {
-                        MediaSelectorView(
-                            mediaSelectorState,
-                            viewKind,
-                            onViewKindChange,
-                            fetchRequest,
-                            onFetchRequestChange,
-                            mediaSourceResultListPresentation(),
-                            onRestartSource = onRestartSource,
-                            onRefresh = onRefreshMediaSources,
-                            modifier = Modifier.padding(top = 12.dp)
-                                .padding(horizontal = 16.dp)
-                                .fillMaxWidth(),
-                            stickyHeaderBackgroundColor = BottomSheetDefaults.ContainerColor,
-                            onClickItem = {
-                                mediaSelectorState.select(it)
-                                showMediaSelector = false
-                            },
-                            scrollable = sheetState.targetValue == SheetValue.Expanded,
-                        )
-                    }
+            val openMediaSelector = {
+                if (mediaSelectorAvailable) {
+                    onBeforeOpenMediaSelector()
+                    showMediaSelector = true
                 }
             }
-
             if (atLeastMedium) {
                 MediaSelectorSummaryCard(
                     mediaSelectorSummary,
-                    onClickManualSelect = { showMediaSelector = true },
+                    onClickManualSelect = openMediaSelector,
                     Modifier.fillMaxWidth().padding(innerPadding),
                 )
             } else {
                 MediaSelectorSummaryBanner(
                     mediaSelectorSummary,
-                    onClickSwitchSource = { showMediaSelector = true },
+                    onClickSwitchSource = openMediaSelector,
                     Modifier.fillMaxWidth().padding(innerPadding),
                 )
             }
@@ -506,17 +430,18 @@ fun EpisodeDetails(
                                 showDropdown = true
                             },
                             onClick = {
-                                onManualMatchDanmaku(source.providerId)
+                                onManualMatchDanmaku(source.serviceId)
                             },
                             Modifier.fillMaxWidth(),
                             colors = colors,
                             dropdown = {
                                 DanmakuSourceSettingsDropdown(
                                     showDropdown,
+                                    changeText = stringResource(Lang.episode_danmaku_match_change),
                                     onDismissRequest = { showDropdown = false },
                                     enabled = source.config.enabled,
                                     onClickChange = {
-                                        onManualMatchDanmaku(source.providerId)
+                                        onManualMatchDanmaku(source.serviceId)
                                     },
                                     onSetEnabled = { enabled ->
                                         onSetDanmakuSourceEnabled(source.matchInfo.serviceId, enabled)
@@ -547,11 +472,7 @@ fun EpisodeDetails(
                     expanded = expandDanmakuList,
                     onToggleExpanded = { expandDanmakuList = !expandDanmakuList },
                     onSetEnabled = onSetDanmakuSourceEnabled,
-                    onManualMatch = { serviceId ->
-                        danmakuStatistics.fetchResults.find { it.serviceId == serviceId }?.let {
-                            onManualMatchDanmaku(it.providerId)
-                        }
-                    },
+                    onManualMatch = onManualMatchDanmaku,
                     onAdjustShift = { serviceId ->
                         editingShiftServiceId = serviceId
                     },
@@ -610,6 +531,186 @@ fun EpisodeDetails(
         contentPadding = contentPadding,
     )
 
+    if (showMediaSelector) {
+        val sourceResults = mediaSourceResultListPresentation()
+        val showBt = sourceResults.btSources.isNotEmpty()
+        val closeSelector = { showMediaSelector = false }
+        val closeSelectorText = stringResource(Lang.subject_episode_close_selector)
+        // 侧边栏占满窗口高度. 窗口太矮 (手机横屏) 时手动查找与 BT 改开窗口级对话框, 规则与播放器侧边栏相同.
+        // 关掉对话框回到侧边栏并把模式置回自动匹配, 否则侧边栏立刻又变回对话框; 选中播放后全部关闭.
+        val windowHeight = with(LocalDensity.current) { LocalWindowInfo.current.containerSize.height.toDp() }
+        if (atLeastMedium && mediaSelectorMode.needsContainer(windowHeight)) {
+            val backToSheet = { onMediaSelectorModeChange(MediaSelectorMode.AUTO) }
+            MediaSelectorDialog(onDismissRequest = backToSheet) { compact ->
+                MediaSelectorDialogContent(
+                    mediaSelectorMode,
+                    compact,
+                    onModeChange = onMediaSelectorModeChange,
+                    onClose = backToSheet,
+                    onPlayed = closeSelector,
+                    mediaSelectorState = mediaSelectorState,
+                    sourceResults = sourceResults,
+                    watching = watchingEpisode,
+                    fetchRequest = fetchRequest,
+                    onFetchRequestChange = onFetchRequestChange,
+                    onRestartSource = onRestartSource,
+                    manualBrowseState = manualBrowseState,
+                )
+            }
+        } else if (atLeastMedium) {
+            val sheetState = rememberModalSideSheetState()
+            ModalSideSheet(
+                closeSelector,
+                state = sheetState,
+                containerColor = BottomSheetDefaults.ContainerColor,
+            ) {
+                val closeButton = @Composable {
+                    IconButton(
+                        onClick = { sheetState.close() },
+                        modifier = Modifier.padding(end = 8.dp),
+                    ) {
+                        Icon(Icons.Rounded.Close, contentDescription = closeSelectorText)
+                    }
+                }
+                val topBar = @Composable {
+                    TopAppBar(
+                        title = {
+                            Text(
+                                stringResource(Lang.subject_episode_select_media_source),
+                                modifier = Modifier.padding(start = 8.dp),
+                            )
+                        },
+                        actions = {
+                            MediaSelectorModeChip(mediaSelectorMode, onMediaSelectorModeChange, showBt = showBt)
+                            closeButton()
+                        },
+                        colors = TopAppBarDefaults.topAppBarColors(
+                            containerColor = BottomSheetDefaults.ContainerColor,
+                        ),
+                    )
+                }
+                Column(
+                    modifier = Modifier
+                        .fillMaxHeight()
+                        .widthIn(300.dp, 400.dp)
+                        .windowInsetsPadding(AniWindowInsets.safeDrawing),
+                ) {
+                    when (mediaSelectorMode) {
+                        MediaSelectorMode.AUTO -> {
+                            topBar()
+                            AutoMatchPage(
+                                mediaSelectorState,
+                                onClickItem = {
+                                    mediaSelectorState.select(it)
+                                    closeSelector()
+                                },
+                                onRestartSource = onRestartSource,
+                                onRequestManualSearch = { onMediaSelectorModeChange(MediaSelectorMode.MANUAL) },
+                                modifier = Modifier
+                                    .padding(vertical = 12.dp, horizontal = 16.dp)
+                                    .fillMaxWidth(),
+                            )
+                        }
+
+                        MediaSelectorMode.MANUAL -> ManualBrowsePage(
+                            manualBrowseState,
+                            watchingEpisode,
+                            onPlayed = closeSelector,
+                            topBar = topBar,
+                            modifier = Modifier.fillMaxSize(),
+                            closeButton = closeButton,
+                        )
+
+                        // 侧边栏宽度下 BT 页是紧凑列表. 窗口够高时切模式只换侧边栏的内容, 不换容器.
+                        MediaSelectorMode.BT -> {
+                            topBar()
+                            BtResourcesPage(
+                                mediaSelectorState,
+                                sourceResults,
+                                watchingEpisode,
+                                fetchRequest,
+                                onFetchRequestChange,
+                                onClickItem = {
+                                    mediaSelectorState.select(it)
+                                    closeSelector()
+                                },
+                                onRestartSource = onRestartSource,
+                                modifier = Modifier.fillMaxWidth().weight(1f),
+                            )
+                        }
+                    }
+                }
+            }
+        } else {
+            ModalBottomSheet(
+                closeSelector,
+                sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true),
+                modifier = Modifier.desktopTitleBarPadding().statusBarsPadding(),
+                contentWindowInsets = {
+                    BottomSheetDefaults.windowInsets
+                        .add(WindowInsets.desktopTitleBar())
+                        .only(WindowInsetsSides.Horizontal + WindowInsetsSides.Top)
+                },
+            ) {
+                val topBar = @Composable {
+                    Row(
+                        Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 12.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        Text(
+                            stringResource(Lang.media_selector_sources),
+                            Modifier.weight(1f),
+                            style = MaterialTheme.typography.titleLarge,
+                        )
+                        MediaSelectorModeChip(mediaSelectorMode, onMediaSelectorModeChange, showBt = showBt)
+                    }
+                }
+                when (mediaSelectorMode) {
+                    MediaSelectorMode.AUTO -> Column(Modifier.fillMaxWidth()) {
+                        topBar()
+                        AutoMatchPage(
+                            mediaSelectorState,
+                            onClickItem = {
+                                mediaSelectorState.select(it)
+                                closeSelector()
+                            },
+                            onRestartSource = onRestartSource,
+                            onRequestManualSearch = { onMediaSelectorModeChange(MediaSelectorMode.MANUAL) },
+                            modifier = Modifier.padding(horizontal = 16.dp).fillMaxWidth(),
+                            scrollable = true,
+                        )
+                    }
+
+                    MediaSelectorMode.MANUAL -> ManualBrowsePage(
+                        manualBrowseState,
+                        watchingEpisode,
+                        onPlayed = closeSelector,
+                        topBar = topBar,
+                        modifier = Modifier.fillMaxSize(),
+                    )
+
+                    // Lazy 列表需要有界高度, 与下载对话框一样铺满 sheet.
+                    MediaSelectorMode.BT -> Column(Modifier.fillMaxSize()) {
+                        topBar()
+                        BtResourcesPage(
+                            mediaSelectorState,
+                            sourceResults,
+                            watchingEpisode,
+                            fetchRequest,
+                            onFetchRequestChange,
+                            onClickItem = {
+                                mediaSelectorState.select(it)
+                                closeSelector()
+                            },
+                            onRestartSource = onRestartSource,
+                            modifier = Modifier.fillMaxWidth().weight(1f),
+                        )
+                    }
+                }
+            }
+        }
+    }
+
     if (showDanmakuInfoSheet) {
         ModalBottomSheet(
             { showDanmakuInfoSheet = false },
@@ -646,11 +747,7 @@ fun EpisodeDetails(
                         DanmakuListContent(
                             state = danmakuListState,
                             onSetEnabled = onSetDanmakuSourceEnabled,
-                            onManualMatch = { serviceId ->
-                                danmakuStatistics.fetchResults.find { it.serviceId == serviceId }?.let {
-                                    onManualMatchDanmaku(it.providerId)
-                                }
-                            },
+                            onManualMatch = onManualMatchDanmaku,
                             onAdjustShift = { serviceId ->
                                 editingShiftServiceId = serviceId
                             },
@@ -676,84 +773,6 @@ fun EpisodeDetails(
             },
         )
     }
-}
-
-@Composable
-private fun DanmakuTimeShiftDialog(
-    serviceName: String,
-    currentShiftMillis: Long,
-    onDismissRequest: () -> Unit,
-    onConfirm: (Long) -> Unit,
-) {
-    val sliderRange = -30_000f..30_000f
-    var shift by remember {
-        mutableFloatStateOf(currentShiftMillis.toFloat().coerceIn(sliderRange.start, sliderRange.endInclusive))
-    }
-    LaunchedEffect(currentShiftMillis) {
-        shift = currentShiftMillis.toFloat().coerceIn(sliderRange.start, sliderRange.endInclusive)
-    }
-    fun adjust(amount: Float) {
-        shift = (shift + amount).coerceIn(sliderRange.start, sliderRange.endInclusive)
-    }
-
-    val shiftLabel = remember(shift) { formatDanmakuShiftMillis(shift.roundToLong()) }
-    val confirmText = stringResource(Lang.settings_danmaku_confirm)
-    val cancelText = stringResource(Lang.settings_danmaku_cancel)
-    val titleText = stringResource(Lang.subject_episode_danmaku_time_shift_title, serviceName)
-    val descriptionText = stringResource(Lang.subject_episode_danmaku_time_shift_description)
-    val currentOffsetText = stringResource(Lang.subject_episode_danmaku_time_shift_current_offset, shiftLabel)
-    val resetText = stringResource(Lang.subject_episode_danmaku_time_shift_reset)
-    val restoreText = stringResource(Lang.subject_episode_danmaku_time_shift_restore)
-
-    AlertDialog(
-        onDismissRequest = onDismissRequest,
-        confirmButton = {
-            TextButton(onClick = { onConfirm(shift.roundToLong()) }) {
-                Text(confirmText)
-            }
-        },
-        dismissButton = {
-            TextButton(onClick = onDismissRequest) {
-                Text(cancelText)
-            }
-        },
-        title = { Text(titleText) },
-        text = {
-            Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
-                Text(descriptionText)
-                Text(currentOffsetText)
-                Slider(
-                    value = shift,
-                    onValueChange = { shift = it.coerceIn(sliderRange.start, sliderRange.endInclusive) },
-                    valueRange = sliderRange,
-                )
-                FlowRow(
-                    horizontalArrangement = Arrangement.spacedBy(12.dp),
-                    verticalArrangement = Arrangement.spacedBy(8.dp),
-                ) {
-                    TextButton(onClick = { adjust(-500f) }) { Text("-0.5 s") }
-                    TextButton(onClick = { adjust(-100f) }) { Text("-0.1 s") }
-                    TextButton(onClick = { adjust(100f) }) { Text("+0.1 s") }
-                    TextButton(onClick = { adjust(500f) }) { Text("+0.5 s") }
-                }
-                FlowRow(
-                    horizontalArrangement = Arrangement.spacedBy(12.dp),
-                    verticalArrangement = Arrangement.spacedBy(8.dp),
-                ) {
-                    OutlinedButton(onClick = { shift = 0f }) {
-                        Text(resetText)
-                    }
-                    OutlinedButton(
-                        onClick = {
-                            shift = currentShiftMillis.toFloat().coerceIn(sliderRange.start, sliderRange.endInclusive)
-                        },
-                    ) {
-                        Text(restoreText)
-                    }
-                }
-            }
-        },
-    )
 }
 
 @Composable
@@ -1089,9 +1108,12 @@ private fun PreviewEpisodeDetailsImpl(
         EpisodeDetails(
             mediaSelectorSummary = createTestMediaSelectorSummaryAutoSelecting(),
             state,
-            initialMediaSelectorViewKind = ViewKind.WEB,
-            TestMediaFetchRequest,
-            { },
+            mediaSelectorMode = MediaSelectorMode.AUTO,
+            onMediaSelectorModeChange = {},
+            manualBrowseState = rememberTestManualBrowseState(),
+            watchingEpisode = WatchingEpisode("25", "OVA"),
+            fetchRequest = TestMediaFetchRequest,
+            onFetchRequestChange = { },
             episodeCarouselState = remember {
                 EpisodeCarouselState(
                     mutableStateOf(PreviewEpisodeCollections),
@@ -1109,7 +1131,7 @@ private fun PreviewEpisodeDetailsImpl(
                     previewPlayerStatisticsState(
                         playingMedia = playingMedia,
                         playingFilename = "filename-filename-filename-filename-filename-filename-filename.mkv",
-                        videoLoadingState = VideoLoadingState.Succeed(isBt = true),
+                        videoLoadingState = VideoLoadingState.Succeed(MediaCacheEngineKey.Anitorrent),
                     ),
                 )
             },
@@ -1117,7 +1139,6 @@ private fun PreviewEpisodeDetailsImpl(
             mediaSourceResultListPresentation = { TestMediaSourceResultListPresentation },
             selfInfo = selfInfo,
             onSwitchEpisode = {},
-            onRefreshMediaSources = {},
             onRestartSource = {},
             onSetDanmakuSourceEnabled = { _, _ -> },
             onAdjustDanmakuSourceShift = { _, _ -> },

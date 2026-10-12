@@ -48,6 +48,9 @@ import me.him188.ani.app.domain.media.selector.MediaSelectorAutoSelectUseCaseImp
 import me.him188.ani.app.domain.media.selector.MediaSelectorEventSavePreferenceUseCase
 import me.him188.ani.app.domain.media.selector.MediaSelectorEventSavePreferenceUseCaseImpl
 import me.him188.ani.app.domain.media.selector.MediaSelectorFactory
+import me.him188.ani.app.domain.media.selector.ReplayBrowseMemoryUseCase
+import me.him188.ani.app.domain.media.selector.ReplayBrowseMemoryUseCaseImpl
+import me.him188.ani.app.domain.media.fetch.MediaSourceManager
 import me.him188.ani.app.domain.mediasource.GetMediaSelectorSourceTiersUseCase
 import me.him188.ani.app.domain.mediasource.GetMediaSelectorSourceTiersUseCaseImpl
 import me.him188.ani.app.domain.mediasource.GetPreferredWebMediaSourceUseCase
@@ -99,6 +102,9 @@ fun KoinApplication.useCaseModules() = module {
     single { DownloadRequestSessionFactory(get(), get(), get(), MediaSelectorFactory.withKoin(koin), get(), get()) }
     single<GetPreferredWebMediaSourceUseCase> { GetPreferredWebMediaSourceUseCaseImpl(get()) }
     single<SetPreferredWebMediaSourceUseCase> { SetPreferredWebMediaSourceUseCaseImpl(get()) }
+    single<ReplayBrowseMemoryUseCase> {
+        ReplayBrowseMemoryUseCaseImpl(get(), get<MediaSourceManager>().allInstances)
+    }
 }
 
 val GlobalKoin get() = KoinPlatform.getKoin()

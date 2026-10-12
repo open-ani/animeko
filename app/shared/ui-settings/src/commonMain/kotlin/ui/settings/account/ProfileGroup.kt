@@ -84,15 +84,20 @@ import me.him188.ani.app.ui.foundation.layout.isWidthCompact
 import me.him188.ani.app.ui.foundation.rememberAsyncHandler
 import me.him188.ani.app.ui.foundation.rememberDragAndDropState
 import me.him188.ani.app.ui.foundation.widgets.HeroIcon
+import me.him188.ani.app.ui.foundation.widgets.LocalToaster
 import me.him188.ani.app.ui.lang.Lang
 import me.him188.ani.app.ui.lang.qr_login_settings_description
 import me.him188.ani.app.ui.lang.qr_login_title
+import me.him188.ani.app.ui.lang.settings_account_profile_account_deleted
+import me.him188.ani.app.ui.lang.settings_account_profile_account_management
 import me.him188.ani.app.ui.lang.settings_account_profile_avatar_invalid_format
 import me.him188.ani.app.ui.lang.settings_account_profile_avatar_size_exceeded
 import me.him188.ani.app.ui.lang.settings_account_profile_bind
 import me.him188.ani.app.ui.lang.settings_account_profile_crop_and_upload
 import me.him188.ani.app.ui.lang.settings_account_profile_crop_avatar
 import me.him188.ani.app.ui.lang.settings_account_profile_crop_hint
+import me.him188.ani.app.ui.lang.settings_account_profile_delete_account
+import me.him188.ani.app.ui.lang.settings_account_profile_delete_account_description
 import me.him188.ani.app.ui.lang.settings_account_profile_done
 import me.him188.ani.app.ui.lang.settings_account_profile_email
 import me.him188.ani.app.ui.lang.settings_account_profile_nickname
@@ -118,6 +123,7 @@ import me.him188.ani.app.ui.search.LoadErrorCard
 import me.him188.ani.app.ui.search.LoadErrorCardLayout
 import me.him188.ani.app.ui.search.LoadErrorCardRole
 import me.him188.ani.app.ui.search.renderLoadErrorMessage
+import me.him188.ani.app.ui.settings.framework.components.RowButtonItem
 import me.him188.ani.app.ui.settings.framework.components.SettingsScope
 import me.him188.ani.app.ui.settings.framework.components.TextFieldItem
 import me.him188.ani.app.ui.settings.framework.components.TextItem
@@ -196,6 +202,7 @@ fun SettingsScope.ProfileGroup(
                 vm.unbindEmail()
             }
         },
+        onDeleteAccount = { vm.deleteAccount() },
         modifier = modifier,
     )
 }
@@ -228,6 +235,10 @@ internal fun SettingsScope.ProfileGroupImpl(
      */
     onUnbindExternalAccount: (provider: String) -> Unit,
     onUnbindEmail: () -> Unit,
+    /**
+     * 注销账号. 返回时已经完成, 出错时抛出异常.
+     */
+    onDeleteAccount: suspend () -> Unit,
     modifier: Modifier = Modifier,
     /**
      * 点击 "扫码登录", 为其他设备 (例如电视) 登录当前账号. 为 `null` 时不显示. 未登录时也不显示
@@ -240,6 +251,7 @@ internal fun SettingsScope.ProfileGroupImpl(
     // 待确认解绑的第三方平台 ID
     var unbindingExternalProvider by remember { mutableStateOf<String?>(null) }
     var showUnbindEmailDialog by remember { mutableStateOf(false) }
+    var showDeleteAccountDialog by remember { mutableStateOf(false) }
 
     val currentInfo = state.selfInfo.selfInfo
     val currentState by rememberUpdatedState(state.selfInfo)
@@ -411,6 +423,21 @@ internal fun SettingsScope.ProfileGroupImpl(
                         )
                     }
                 }
+
+                if (currentState.isSessionValid == true) {
+                    Group(title = { Text(stringResource(Lang.settings_account_profile_account_management)) }) {
+                        RowButtonItem(
+                            onClick = { showDeleteAccountDialog = true },
+                            description = {
+                                Text(stringResource(Lang.settings_account_profile_delete_account_description))
+                            },
+                            color = MaterialTheme.colorScheme.error,
+                            modifier = Modifier.testTag("deleteAccount"),
+                        ) {
+                            Text(stringResource(Lang.settings_account_profile_delete_account))
+                        }
+                    }
+                }
             }
         }
     }
@@ -458,6 +485,23 @@ internal fun SettingsScope.ProfileGroupImpl(
                 unbindingExternalProvider = null
             },
             onCancel = { unbindingExternalProvider = null },
+        )
+    }
+
+    if (showDeleteAccountDialog) {
+        val asyncHandler = rememberAsyncHandler()
+        val toaster = LocalToaster.current
+        val accountDeletedText = stringResource(Lang.settings_account_profile_account_deleted)
+        DeleteAccountDialog(
+            isDeleting = asyncHandler.isWorking,
+            onConfirm = {
+                asyncHandler.launch {
+                    onDeleteAccount()
+                    toaster.toast(accountDeletedText)
+                    showDeleteAccountDialog = false
+                }
+            },
+            onCancel = { showDeleteAccountDialog = false },
         )
     }
 

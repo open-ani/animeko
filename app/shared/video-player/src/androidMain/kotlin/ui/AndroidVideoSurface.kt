@@ -22,6 +22,6 @@ internal fun registerAndroidVideoSurface(player: MediampPlayer, surfaceView: Sur
     }
 }
 
-fun MediampPlayer.findAndroidVideoSurface(): SurfaceView? = synchronized(videoSurfaces) {
+internal fun MediampPlayer.findAndroidVideoSurface(): SurfaceView? = synchronized(videoSurfaces) {
     videoSurfaces[this]?.get()
 }

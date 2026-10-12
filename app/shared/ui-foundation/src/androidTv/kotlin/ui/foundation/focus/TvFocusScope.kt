@@ -62,6 +62,7 @@ class TvFocusScope internal constructor(private val boundary: TvFocusBoundarySta
 
     internal var pending: Request? by mutableStateOf(null)
         private set
+    private var latestDestination: TvFocusTarget? = null
 
     internal fun targetOf(key: TvFocusKey): TvFocusTarget = targets.getOrPut(key) { TvFocusTarget(boundary) }
     fun requesterOf(key: TvFocusKey): FocusRequester = targetOf(key).requester
@@ -70,6 +71,12 @@ class TvFocusScope internal constructor(private val boundary: TvFocusBoundarySta
     fun onAnchorFocusChanged(key: TvFocusKey, focused: Boolean) {
         if (focused) focusedKeys.add(key) else focusedKeys.remove(key)
     }
+
+    /**
+     * Whether [key] is where this scope last sent focus. Compose also moves focus on its own, for example to a
+     * nearby item when a lazy layout removes the focused one; such focus is not a destination of this scope.
+     */
+    fun isLatestDestination(key: TvFocusKey): Boolean = latestDestination.let { it != null && it === targets[key] }
 
     private fun submit(request: Request) {
         if (isActive && request.relevant()) pending = request
@@ -163,6 +170,8 @@ class TvFocusScope internal constructor(private val boundary: TvFocusBoundarySta
                     pending = null
                 } else {
                     val target = result.target ?: return@collect
+                    // Focus callbacks run within requestFocus and may already ask for the destination.
+                    latestDestination = target
                     if (runCatching { target.requester.requestFocus() }.getOrDefault(false)) {
                         if (result.fallback) result.request.usedFallback = true
                         else if (pending === result.request) {

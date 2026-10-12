@@ -34,8 +34,8 @@ import me.him188.ani.app.domain.mediasource.codec.MediaSourceArguments
 import me.him188.ani.app.domain.mediasource.codec.MediaSourceCodecManager
 import me.him188.ani.app.domain.mediasource.codec.MediaSourceDecodeException
 import me.him188.ani.app.domain.mediasource.codec.UnsupportedVersionException
-import me.him188.ani.app.domain.mediasource.codec.decodeFromStringOrNull
 import me.him188.ani.app.domain.mediasource.codec.serializeToString
+import me.him188.ani.app.domain.mediasource.subscription.UnsupportedSubscriptionSchemaException
 import me.him188.ani.app.ui.foundation.getClipEntryText
 import me.him188.ani.app.ui.foundation.isInDebugMode
 import me.him188.ani.app.ui.foundation.rememberAsyncHandler
@@ -85,8 +85,12 @@ class ImportMediaSourceState<T : MediaSourceArguments>(
             parseResult = ParseResult.EmptyContent
             return
         }
-        val list = codecManager.decodeFromStringOrNull(string)
-        if (list == null) {
+        val list = try {
+            codecManager.decodeSubscriptionFromString(string)
+        } catch (_: UnsupportedSubscriptionSchemaException) {
+            parseResult = ParseResult.UnsupportedVersion
+            return
+        } catch (_: Exception) {
             parseResult = ParseResult.InvalidContent
             return
         }

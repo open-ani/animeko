@@ -34,6 +34,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
@@ -173,6 +174,7 @@ internal fun TvSubjectComments(
         }
         previousKeys = keys
     }
+    var focusNavigation by remember { mutableIntStateOf(focus.userNavGeneration) }
     fun anchor(key: String) = Modifier.tvFocusAnchor(focus, TvDetailsKey(key))
         .onFocusChanged {
             if (it.isFocused && isActive) {
@@ -181,6 +183,14 @@ internal fun TvSubjectComments(
                 if (entryFocusPending && focus.userNavGeneration == entryNavigation && key != entryTarget) {
                     return@onFocusChanged
                 }
+                // The list can drop the focused card before this panel recomposes with the new keys, and Compose
+                // then focuses a nearby card. Keep the removed review so the key update restores its neighbour.
+                val previous = panel.focusedItem
+                if (key != previous && previous != null && previous.startsWith("review:") &&
+                    comments.itemSnapshotList.items.none { review -> "review:${review.stableId}" == previous } &&
+                    focus.userNavGeneration == focusNavigation && !focus.isLatestDestination(TvDetailsKey(key))
+                ) return@onFocusChanged
+                focusNavigation = focus.userNavGeneration
                 entryFocusPending = false
                 if (key.startsWith("review:")) lastReview = key
                 onFocused(key)

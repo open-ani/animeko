@@ -28,6 +28,17 @@ import me.him188.ani.datasources.api.PackedDate
 import me.him188.ani.datasources.api.topic.UnifiedCollectionType
 
 
+/**
+ * 一个条目内剧集列表的顺序: 先按类型分组, 正片在前, 其他类型按 [EpisodeType] 的声明顺序, 与 [EpisodeSort.compareTo] 一致;
+ * 组内按序号. 类型不同的剧集序号互不相关, 例如 SP 的序号从 1 开始, 按序号混排会把 SP01 排到正片第 1 集后面.
+ */
+private const val EPISODE_LIST_ORDER = """
+    CASE episodeType
+        WHEN 'MainStory' THEN 0 WHEN 'SP' THEN 1 WHEN 'OP' THEN 2 WHEN 'ED' THEN 3
+        WHEN 'PV' THEN 4 WHEN 'MAD' THEN 5 WHEN 'OVA' THEN 6 WHEN 'OAD' THEN 7
+        ELSE 8
+    END, sortNumber ASC, sort ASC"""
+
 @Entity(
     tableName = "episode_collection",
     foreignKeys = [
@@ -101,7 +112,7 @@ interface EpisodeCollectionDao {
         SELECT * FROM episode_collection
         WHERE subjectId = :subjectId
         AND (episodeType = :episodeType)
-        ORDER BY sortNumber ASC, sort ASC
+        ORDER BY $EPISODE_LIST_ORDER
         """,
     )
     fun filterBySubjectId(
@@ -114,7 +125,7 @@ interface EpisodeCollectionDao {
         SELECT * FROM episode_collection
         WHERE subjectId = :subjectId
         AND (episodeType IN (:episodeTypes))
-        ORDER BY sortNumber ASC, sort ASC
+        ORDER BY $EPISODE_LIST_ORDER
         """,
     )
     fun filterBySubjectId(
@@ -126,7 +137,7 @@ interface EpisodeCollectionDao {
         """
         SELECT * FROM episode_collection
         WHERE subjectId = :subjectId
-        ORDER BY sortNumber ASC, sort ASC
+        ORDER BY $EPISODE_LIST_ORDER
         """,
     )
     fun filterBySubjectId(
@@ -137,7 +148,7 @@ interface EpisodeCollectionDao {
         """
         SELECT episodeId FROM episode_collection
         WHERE subjectId = :subjectId
-        ORDER BY sortNumber ASC, sort ASC
+        ORDER BY $EPISODE_LIST_ORDER
         """,
     )
     fun listIdBySubjectId(
@@ -148,7 +159,7 @@ interface EpisodeCollectionDao {
         """
         SELECT * FROM episode_collection
         WHERE subjectId = :subjectId 
-        ORDER BY sortNumber ASC, sort ASC""",
+        ORDER BY $EPISODE_LIST_ORDER""",
     )
     fun filterBySubjectIdPaging(subjectId: Int): PagingSource<Int, EpisodeCollectionEntity>
 

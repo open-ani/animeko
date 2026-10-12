@@ -62,9 +62,8 @@ data class SelectorTestSubjectPresentation(
             info: WebSearchSubjectInfo,
             query: SelectorSearchQuery,
             origin: Element?,
-            filterBySubjectName: Boolean,
         ): SelectorTestSubjectPresentation {
-            val tags = computeTags(info, query, filterBySubjectName)
+            val tags = computeTags(info, query)
             return SelectorTestSubjectPresentation(
                 name = info.name,
                 subjectDetailsPageUrl = info.fullUrl,
@@ -76,17 +75,11 @@ data class SelectorTestSubjectPresentation(
         private fun computeTags(
             info: WebSearchSubjectInfo,
             query: SelectorSearchQuery,
-            filterBySubjectName: Boolean,
         ) = buildMatchTags {
             with(query.toFilterContext()) {
                 val candidate = info.asCandidate()
-                if (filterBySubjectName) {
-                    if (!MediaListFilters.ContainsSubjectName.applyOn(candidate)) {
-                        emit("标题", isMatch = false)
-                    } else {
-                        emit("标题", isMatch = true)
-                    }
-                }
+                // 条目名匹配由 MediaSelector 对所有 WEB 资源执行, 这里只展示结果
+                emit("标题", isMatch = MediaListFilters.ContainsSubjectName.applyOn(candidate))
                 if (info.fullUrl.isBlank()) {
                     emit("链接", isMissing = true)
                 } else {

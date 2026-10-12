@@ -13,6 +13,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.cancel
 import kotlinx.coroutines.flow.filterNotNull
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.test.StandardTestDispatcher
 import kotlinx.coroutines.test.TestScope
 import kotlinx.coroutines.test.advanceTimeBy
@@ -39,12 +40,14 @@ import me.him188.ani.utils.coroutines.childScope
 import org.openani.mediamp.PlaybackErrorCode
 import org.openani.mediamp.PlaybackException
 import org.openani.mediamp.metadata.MediaProperties
+import org.openani.mediamp.test.TestMediampPlayer
 import kotlin.time.Duration
 import kotlin.time.Duration.Companion.minutes
 import kotlin.test.Ignore
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertNotEquals
+import kotlin.test.assertNotNull
 import kotlin.test.assertNull
 import kotlin.test.assertTrue
 
@@ -667,6 +670,33 @@ class RememberPlayProgressExtensionTest : AbstractPlayerExtensionTest() {
         advanceUntilIdle()
 
         assertEquals(500, suite.player.currentPositionMillis.value)
+        testScope.cancel()
+    }
+
+    @Test
+    fun `keeps position when player reopens the same media data`() = runTest {
+        val (testScope, suite, _) = createCase()
+        advanceUntilIdle()
+        repository.saveOrUpdate(episodeId = initialEpisodeId, 500)
+
+        suite.player.loadMedia(durationMs = 100_000L, playWhenReady = true, uri = "file://test")
+        advanceUntilIdle()
+        assertEquals(500, suite.player.currentPositionMillis.value)
+        val mediaData = assertNotNull(suite.player.mediaData.value)
+
+        // Android 上视频输出超时: 播放器出错, 随后在出错位置重新打开同一个 MediaData
+        suite.player.injectError(PlaybackException(PlaybackErrorCode.INTERNAL, "Detaching surface timed out"))
+        runCurrent()
+        val open = TestMediampPlayer.OpenBehavior.Hold()
+        suite.player.openBehavior = open
+        testScope.launch {
+            suite.player.setMediaData(mediaData, playWhenReady = true, startPositionMillis = 30_000L)
+        }
+        runCurrent()
+        open.release()
+        advanceUntilIdle()
+
+        assertEquals(30_000, suite.player.currentPositionMillis.value)
         testScope.cancel()
     }
 

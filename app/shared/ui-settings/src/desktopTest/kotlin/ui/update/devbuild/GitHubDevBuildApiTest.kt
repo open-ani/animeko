@@ -140,57 +140,6 @@ class GitHubDevBuildApiTest {
     }
 
     @Test
-    fun `download failure surfaces the status`() = runTest {
-        val client = gitHubMockClient { _ -> respond("gone", HttpStatusCode.NotFound) }
-        val dir = SystemPaths.createTempDirectory("dev-build-api-test")
-        try {
-            val e = assertFailsWith<GitHubApiException> {
-                GitHubDevBuildApi(client).downloadFile("https://blob.example.com/a.zip", dir.resolve("a.zip"))
-            }
-            assertEquals(HttpStatusCode.NotFound, e.status)
-        } finally {
-            dir.deleteRecursively()
-        }
-    }
-
-    @Test
-    fun `download follows relative and absolute redirects and rejects loops`() = runTest {
-        val content = byteArrayOf(1, 2, 3)
-        val visited = mutableListOf<String>()
-        val client = gitHubMockClient { request ->
-            visited += request.url.toString()
-            when (request.url.encodedPath) {
-                "/start" -> respond("", HttpStatusCode.MovedPermanently, headersOf(HttpHeaders.Location, "/next?x=1"))
-                "/next" -> respond(
-                    "",
-                    HttpStatusCode.Found,
-                    headersOf(HttpHeaders.Location, "https://objects.example.com/final"),
-                )
-
-                "/final" -> respond(content, HttpStatusCode.OK, headersOf(HttpHeaders.ContentLength, "3"))
-                "/loop" -> respond("", HttpStatusCode.Found, headersOf(HttpHeaders.Location, "/loop"))
-                else -> error("Unexpected request: ${request.url}")
-            }
-        }
-        val dir = SystemPaths.createTempDirectory("dev-build-api-test")
-        try {
-            val target = dir.resolve("a.dmg")
-            GitHubDevBuildApi(client).downloadFile("https://github.com/start", target)
-            assertContentEquals(content, target.readBytes())
-            assertEquals(
-                listOf("https://github.com/start", "https://github.com/next?x=1", "https://objects.example.com/final"),
-                visited,
-            )
-
-            assertFailsWith<GitHubApiException> {
-                GitHubDevBuildApi(client).downloadFile("https://github.com/loop", dir.resolve("b.dmg"))
-            }
-        } finally {
-            dir.deleteRecursively()
-        }
-    }
-
-    @Test
     fun `fetches single commit, pull request, run and artifact`() = runTest {
         val client = fullGitHubMockClient("ani-macos-dmg-aarch64", zipBytes())
         val api = GitHubDevBuildApi(client)

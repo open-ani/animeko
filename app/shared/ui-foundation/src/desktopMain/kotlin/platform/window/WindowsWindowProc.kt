@@ -135,6 +135,7 @@ internal open class BasicWindowProc(
             readPointerInfo = user32::GetPointerInfo,
             dispatch = bridge::send,
             cancel = bridge::cancel,
+            readPointerPenInfo = user32::GetPointerPenInfo,
             debugHookName = "BasicWindowProc",
         )
     }
@@ -614,6 +615,7 @@ internal class SkiaLayerHitTestWindowProc(
             readPointerInfo = user32::GetPointerInfo,
             dispatch = bridge::send,
             cancel = bridge::cancel,
+            readPointerPenInfo = user32::GetPointerPenInfo,
             debugHookName = "SkiaLayerHitTestWindowProc",
         )
     }

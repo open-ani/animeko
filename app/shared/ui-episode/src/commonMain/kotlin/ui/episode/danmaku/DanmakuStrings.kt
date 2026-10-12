@@ -11,9 +11,14 @@ package me.him188.ani.app.ui.episode.danmaku
 
 import androidx.compose.runtime.Composable
 import me.him188.ani.app.ui.lang.Lang
+import me.him188.ani.app.ui.lang.subject_episode_danmaku_match_exact
+import me.him188.ani.app.ui.lang.subject_episode_danmaku_match_fuzzy
+import me.him188.ani.app.ui.lang.subject_episode_danmaku_match_none
+import me.him188.ani.app.ui.lang.subject_episode_danmaku_match_semi_fuzzy
 import me.him188.ani.app.ui.lang.subject_episode_danmaku_service_bilibili
 import me.him188.ani.app.ui.lang.subject_episode_danmaku_service_dandanplay
 import me.him188.ani.danmaku.api.DanmakuServiceId
+import me.him188.ani.danmaku.api.provider.DanmakuMatchMethod
 import org.jetbrains.compose.resources.stringResource
 
 @Composable
@@ -28,3 +33,13 @@ fun renderDanmakuServiceId(serviceId: DanmakuServiceId): String = when (serviceI
     // `else` should not reach in production
     else -> serviceId.value
 }
+
+@Composable
+fun renderDanmakuMatchMethod(method: DanmakuMatchMethod): String = stringResource(
+    when (method) {
+        is DanmakuMatchMethod.Exact, is DanmakuMatchMethod.ExactId -> Lang.subject_episode_danmaku_match_exact
+        is DanmakuMatchMethod.ExactSubjectFuzzyEpisode -> Lang.subject_episode_danmaku_match_semi_fuzzy
+        is DanmakuMatchMethod.Fuzzy -> Lang.subject_episode_danmaku_match_fuzzy
+        DanmakuMatchMethod.NoMatch -> Lang.subject_episode_danmaku_match_none
+    },
+)

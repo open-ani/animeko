@@ -31,6 +31,7 @@ import me.him188.ani.utils.logging.info
 import me.him188.ani.utils.logging.logger
 import org.koin.core.Koin
 import org.openani.mediamp.MediaStatus
+import org.openani.mediamp.source.MediaData
 import kotlin.time.Duration
 import kotlin.time.Duration.Companion.minutes
 import kotlin.time.Duration.Companion.seconds
@@ -91,6 +92,9 @@ class RememberPlayProgressExtension(
         backgroundTaskScope.launch("PlaybackStateListener") {
             val player = context.player
             var haveResumedOnce = false
+            // 已经恢复过记忆进度的媒体. 播放器在原位置重新打开同一个 MediaData 时 (Android 上视频输出超时后恢复播放),
+            // 保留播放器打开时的位置, 不跳回记忆的进度.
+            var resumedMediaData: MediaData? = null
             player.state.collectLatest { state ->
                 when {
                     state.mediaStatus == MediaStatus.Opening -> {
@@ -99,17 +103,23 @@ class RememberPlayProgressExtension(
                     }
 
                     state.isPlaying -> {
+                        val mediaData = player.mediaData.value
+                        if (mediaData != null && mediaData === resumedMediaData) {
+                            haveResumedOnce = true
+                        }
                         // Some backends (notably desktop mpv) report playing before the loaded file accepts seeks.
                         // Restore once metadata is ready, but only report after playback remains active for 5 seconds.
                         if (!haveResumedOnce) {
                             if (automationGate.suppressed.value) {
                                 haveResumedOnce = true
+                                resumedMediaData = mediaData
                             } else {
                                 val positionMillis =
                                     playProgressRepository.getResumePositionMillisByEpisodeId(episodeSession.episodeId)
                                 if (positionMillis == null) {
                                     logger.info { "Did not find saved position" }
                                     haveResumedOnce = true
+                                    resumedMediaData = mediaData
                                 } else {
                                     logger.info {
                                         "Loaded saved position: $positionMillis, waiting for video properties"
@@ -120,7 +130,9 @@ class RememberPlayProgressExtension(
                                             "Video properties ready, seeking to saved position: $positionMillis"
                                         }
                                         player.seekTo(positionMillis)
+                                        // seek 引起的状态变化会取消本次收集, 标记必须在 NonCancellable 内完成
                                         haveResumedOnce = true
+                                        resumedMediaData = mediaData
                                     }
                                 }
                             }

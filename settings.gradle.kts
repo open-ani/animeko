@@ -86,6 +86,7 @@ includeProject(":utils:http-downloader")
 includeProject(":utils:build-config")
 includeProject(":utils:video-enhancement-shader-provider")
 includeProject(":utils:selector-workflow") // 数据源选择流程示意动画的数据层
+includeProject(":utils:macos-share") // macOS 系统分享菜单的 JNI 实现, 见其 build.gradle.kts
 
 
 includeProject(":torrent:torrent-api", "torrent/api") // Torrent 系统 API
@@ -150,7 +151,6 @@ includeProject(
     ":datasource:datasource-core",
     "datasource/core",
 ) // data source managers: MediaFetcher, MediaCacheStorage
-includeProject(":datasource:bangumi", "datasource/bangumi") // https://bangumi.tv
 //   BT 数据源
 includeProject(":datasource:dmhy", "datasource/bt/dmhy") // https://dmhy.org
 includeProject(":datasource:mikan", "datasource/bt/mikan") // https://mikanani.me/

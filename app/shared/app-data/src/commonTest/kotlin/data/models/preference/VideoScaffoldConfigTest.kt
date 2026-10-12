@@ -17,6 +17,20 @@ import kotlin.time.Duration.Companion.seconds
 
 class VideoScaffoldConfigTest {
     @Test
+    fun `foldable hover mode defaults to enabled and survives serialization`() {
+        val defaultConfig = DataStoreJson.decodeFromString(VideoScaffoldConfig.serializer(), "{}")
+        assertEquals(true, defaultConfig.enableFoldableHoverMode)
+
+        val disabledConfig = VideoScaffoldConfig.Default.copy(enableFoldableHoverMode = false)
+        val decoded = DataStoreJson.decodeFromString(
+            VideoScaffoldConfig.serializer(),
+            DataStoreJson.encodeToString(VideoScaffoldConfig.serializer(), disabledConfig),
+        )
+
+        assertEquals(false, decoded.enableFoldableHoverMode)
+    }
+
+    @Test
     fun `missing video enhancement default uses performance`() {
         val config = DataStoreJson.decodeFromString(VideoScaffoldConfig.serializer(), "{}")
 
@@ -35,6 +49,33 @@ class VideoScaffoldConfigTest {
         )
 
         assertEquals(VideoEnhancementDefaultMode.QUALITY, decoded.videoEnhancementDefaultMode)
+    }
+
+    @Test
+    fun `HLS ad filtering defaults to smart`() {
+        val config = DataStoreJson.decodeFromString(VideoScaffoldConfig.serializer(), "{}")
+
+        assertEquals(HlsAdFilteringMode.SMART, config.effectiveHlsAdFilteringMode)
+    }
+
+    @Test
+    fun `HLS ad filtering turned off in 6_2 stays off`() {
+        val config = DataStoreJson.decodeFromString(VideoScaffoldConfig.serializer(), """{"enableHlsAdFiltering":false}""")
+
+        assertEquals(HlsAdFilteringMode.OFF, config.effectiveHlsAdFilteringMode)
+    }
+
+    @Test
+    fun `chosen HLS ad filtering mode overrides the 6_2 switch`() {
+        val config = DataStoreJson.decodeFromString(VideoScaffoldConfig.serializer(), """{"enableHlsAdFiltering":false}""")
+            .copy(hlsAdFilteringMode = HlsAdFilteringMode.ALL)
+
+        val decoded = DataStoreJson.decodeFromString(
+            VideoScaffoldConfig.serializer(),
+            DataStoreJson.encodeToString(VideoScaffoldConfig.serializer(), config),
+        )
+
+        assertEquals(HlsAdFilteringMode.ALL, decoded.effectiveHlsAdFilteringMode)
     }
 
     @Test

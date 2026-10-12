@@ -435,7 +435,7 @@ private fun SubjectDetailsPage(
                 )
             },
             collectionData = {
-                SubjectDetailsDefaults.CollectionData(state.info?.collectionStats ?: SubjectCollectionStats.Zero)
+                SubjectDetailsDefaults.CollectionData(uiState.collectionStats)
             },
             collectionActions = {
                 state.info?.let { info ->

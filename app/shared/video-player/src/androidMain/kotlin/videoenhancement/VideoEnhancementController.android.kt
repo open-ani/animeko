@@ -11,6 +11,7 @@
 
 package me.him188.ani.app.videoplayer.videoenhancement
 
+import androidx.media3.common.Effect
 import androidx.media3.exoplayer.ExoPlayer
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.first
@@ -28,29 +29,31 @@ actual fun createVideoEnhancementController(
     val exoPlayer = player.impl as? ExoPlayer ?: return null
     return ExoPlayerVideoEnhancementController(
         player,
-        exoPlayer,
+        exoPlayer::setVideoEffects,
         playerKernelConfig.map { it.exoPlayerInitEffectGraphInAdvance },
         parentCoroutineContext,
     )
 }
 
-private class ExoPlayerVideoEnhancementController(
+internal class ExoPlayerVideoEnhancementController(
     player: MediampPlayer,
-    private val exoPlayer: ExoPlayer,
+    private val setVideoEffects: (List<Effect>) -> Unit,
     preinitVideoEffects: Flow<Boolean>,
     parentCoroutineContext: CoroutineContext,
 ) : BaseVideoEnhancementController(player, parentCoroutineContext) {
     private var appliedMode = VideoEnhancementMode.OFF
-    private var scalerApplied = false
-    private var appliedWidth = 0
-    private var appliedHeight = 0
+
+    /**
+     * The scaler of the applied effect list, or `null` while the mode is [VideoEnhancementMode.OFF].
+     */
+    private var appliedScaler: DesktopStyleLanczosSharpEffect? = null
 
     init {
         // Media3 requires the effect graph to exist before the first prepare in order to
         // support switching effects while playback is active.
         scope.launch {
             if (preinitVideoEffects.first()) {
-                exoPlayer.setVideoEffects(emptyList())
+                setVideoEffects(emptyList())
             }
         }
         startObserving()
@@ -66,13 +69,19 @@ private class ExoPlayerVideoEnhancementController(
             return
         }
 
-        val shouldApplyScaler = videoSize != null && viewportSize != null
-        if (
-            appliedMode == mode && scalerApplied == shouldApplyScaler &&
-            (!shouldApplyScaler || appliedWidth == viewportSize.width && appliedHeight == viewportSize.height)
-        ) return
+        // Only a mode change replaces the effect list. The shaders receive input dimensions in
+        // configure() and the scaler follows the viewport by itself, so neither metadata
+        // availability nor a viewport resize rebuilds the effect graph: compiling the quality
+        // shaders can stall playback, and Media3 deadlocks the playback thread when effect lists
+        // are replaced in quick succession, as the intermediate layout sizes of a fullscreen
+        // switch would do.
+        if (appliedMode == mode) {
+            appliedScaler?.viewportSize = viewportSize
+            return
+        }
 
-        exoPlayer.setVideoEffects(
+        val scaler = DesktopStyleLanczosSharpEffect().apply { this.viewportSize = viewportSize }
+        setVideoEffects(
             buildList {
                 when (mode) {
                     VideoEnhancementMode.OFF -> Unit
@@ -82,24 +91,18 @@ private class ExoPlayerVideoEnhancementController(
                         add(Anime4kUpscaleQualityEffect)
                     }
                 }
-                if (shouldApplyScaler) {
-                    add(DesktopStyleLanczosSharpEffect(viewportSize.width, viewportSize.height))
-                }
+                add(scaler)
             },
         )
         appliedMode = mode
-        scalerApplied = shouldApplyScaler
-        appliedWidth = if (shouldApplyScaler) viewportSize.width else 0
-        appliedHeight = if (shouldApplyScaler) viewportSize.height else 0
+        appliedScaler = scaler
     }
 
     override fun restore() {
         if (appliedMode == VideoEnhancementMode.OFF) return
-        exoPlayer.setVideoEffects(emptyList())
+        setVideoEffects(emptyList())
         appliedMode = VideoEnhancementMode.OFF
-        scalerApplied = false
-        appliedWidth = 0
-        appliedHeight = 0
+        appliedScaler = null
     }
 }
 

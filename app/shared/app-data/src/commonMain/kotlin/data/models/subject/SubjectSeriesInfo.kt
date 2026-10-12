@@ -33,6 +33,10 @@ data class SubjectSeriesInfo(
      * 系列作品名称, 不包含自己的名称
      */
     val seriesSubjectNamesWithoutSelf: Set<String>,
+    /**
+     * 当前条目所在的拆分季, 由服务端识别. 不是拆分季的一段时为 `null`.
+     */
+    val splitSeason: SplitSeason? = null,
 ) {
     companion object {
         fun compute(
@@ -65,6 +69,7 @@ data class SubjectSeriesInfo(
                 seasonSort = seasonSort,
                 sequelSubjectNames,
                 seriesSubjectNamesWithoutSelf,
+                splitSeason = requestingSubject.relations.splitSeason,
             )
         }
 
@@ -81,6 +86,7 @@ data class SubjectSeriesInfo(
 fun SubjectSeriesInfo.toBuilder() = SubjectSeriesInfoBuilder(seasonSort).apply {
     sequel(*sequelSubjectNames.toTypedArray())
     series(*seriesSubjectNamesWithoutSelf.toTypedArray())
+    splitSeason = this@toBuilder.splitSeason
 }
 
 // mainly designed for tests
@@ -93,6 +99,11 @@ class SubjectSeriesInfoBuilder(
 ) {
     private val sequelNames = mutableListOf<String>()
     private val seriesNames = mutableListOf<String>()
+
+    /**
+     * @see SubjectSeriesInfo.splitSeason
+     */
+    var splitSeason: SplitSeason? = null
 
     /**
      * 添加一个续集番名.
@@ -113,6 +124,7 @@ class SubjectSeriesInfoBuilder(
 
     fun build() = SubjectSeriesInfo(
         seasonSort, sequelSubjectNames = sequelNames.toSet(), seriesSubjectNamesWithoutSelf = seriesNames.toSet(),
+        splitSeason = splitSeason,
     )
 }
 
