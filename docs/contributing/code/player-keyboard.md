@@ -13,11 +13,11 @@ Enter 激活页面内其他控件，Tab 保持焦点遍历。
 
 scope 使用 `InterceptPlatformTextInput` 统计正在运行的输入法会话，进入会话前增加计数，结束时在 `finally` 中减少。
 计数由同一 controller 的 scope 共享，内部输入框的会话也能阻止外层 scope 分发快捷键。
-有输入会话或 `PlayerFocusTarget.TEXT_INPUT` 偏好时，文本、空格和方向键交给输入框。
+有输入会话时，文本、空格和方向键交给输入框；输入状态只由输入法会话判断。
 输入开始会取消正在等待或执行的键盘快进；只有已处理的 KeyDown 对应的 KeyUp 才能触发快捷键。
 
 `restorePlayerFocusWhenCleared` 是模块内部的焦点回退：移除已聚焦的浮层或清空焦点时，
-在偏好为 PLAYER 的情况下归还播放器焦点；移动到其他焦点目标时保留该目标。
+归还播放器焦点；移动到其他焦点目标时保留该目标。鼠标移动、全屏状态变化和弹幕发送不主动移动焦点。
 拥有独立焦点 owner 的弹窗不经过页面 scope。
 
 Android TV 使用自身的遥控器和焦点策略。

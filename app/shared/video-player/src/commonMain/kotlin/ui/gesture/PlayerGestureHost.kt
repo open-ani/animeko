@@ -682,7 +682,7 @@ fun PlayerGestureHost(
             .testTag("VideoGestureHost")
             // Enter belongs to focused controls; the player's combinedClickable must not activate it.
             .onPreviewKeyEvent { it.key == ComposeKey.Enter || it.key == ComposeKey.NumPadEnter }
-            .playerFocusHost(playerFocusState, isFullscreen)
+            .playerFocusHost(playerFocusState)
 
         if (family.autoHideController) {
             LaunchedEffect(controllerState.visibility, controllerState.alwaysOn) {
@@ -716,7 +716,7 @@ fun PlayerGestureHost(
                 combinedClickable(
                     remember { MutableInteractionSource() },
                     indication = null,
-                    onClick = remember(family, playerFocusState, inputSourceState) {
+                    onClick = remember(family, inputSourceState) {
                         {
                             // 按本次事件的指针类型解析, 组合期算好的 family 会慢一拍
                             val tapFamily = gestureFamilyOf(inputSourceState.latest, family)
@@ -726,10 +726,9 @@ fun PlayerGestureHost(
                             if (tapFamily.clickToToggleController) {
                                 controllerState.toggleFullVisible()
                             }
-                            playerFocusState.requestPlayerFocus()
                         }
                     },
-                    onDoubleClick = remember(family, fullscreenState, playerFocusState, inputSourceState) {
+                    onDoubleClick = remember(family, fullscreenState, inputSourceState) {
                         {
                             val tapFamily = gestureFamilyOf(inputSourceState.latest, family)
                             if (tapFamily.doubleClickToFullscreen) {
@@ -738,7 +737,6 @@ fun PlayerGestureHost(
                             if (tapFamily.doubleClickToPauseResume) {
                                 onTogglePauseResumeState()
                             }
-                            playerFocusState.requestPlayerFocus()
                         }
                     },
                 )
@@ -769,11 +767,6 @@ fun PlayerGestureHost(
                         },
                     ) {
                         swipeSeekInteraction.updatePreview()
-                    }
-                }
-                .onPointerEventMultiplatform(PointerEventType.Move) { event ->
-                    if (event.changes.firstOrNull()?.type == PointerType.Mouse) {
-                        playerFocusState.requestPlayerFocus()
                     }
                 }
                 // 始终挂载, 再按本次事件过滤. 否则触摸后的第一次 Mouse Move 只会切换 family,

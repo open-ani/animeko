@@ -32,18 +32,19 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.focus.onFocusChanged
+import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import kotlinx.coroutines.launch
 import me.him188.ani.app.data.models.preference.VideoScaffoldConfig
+import me.him188.ani.app.ui.foundation.effects.ComposeKey
+import me.him188.ani.app.ui.foundation.effects.onKey
 import me.him188.ani.app.ui.foundation.text.ProvideContentColor
 import me.him188.ani.app.ui.lang.Lang
 import me.him188.ani.app.ui.lang.episode_send_danmaku
 import me.him188.ani.app.videoplayer.ui.PlayerControllerState
-import me.him188.ani.app.videoplayer.ui.PlayerFocusState
-import me.him188.ani.app.videoplayer.ui.playerTextInputFocus
 import me.him188.ani.app.videoplayer.ui.progress.PlayerControllerDefaults
 import me.him188.ani.app.videoplayer.ui.rememberAlwaysOnRequester
 import me.him188.ani.danmaku.api.DanmakuContent
@@ -81,7 +82,7 @@ fun PlayerDanmakuEditor(
     text: String,
     onTextChange: (String) -> Unit,
     isSending: () -> Boolean,
-    onSend: suspend (me.him188.ani.danmaku.api.DanmakuContent) -> Unit,
+    onSend: suspend (DanmakuContent) -> Unit,
     danmakuTextPlaceholder: String,
     playerState: MediampPlayer,
     videoScaffoldConfig: VideoScaffoldConfig,
@@ -93,8 +94,6 @@ fun PlayerDanmakuEditor(
 ) {
     val danmakuEditorRequester = rememberAlwaysOnRequester(playerControllerState, "danmakuEditor")
     val stylePickerRequester = rememberAlwaysOnRequester(playerControllerState, "danmakuStylePicker")
-
-    val playerFocusState = playerControllerState.focusState
 
     /**
      * 是否设置了暂停
@@ -118,7 +117,6 @@ fun PlayerDanmakuEditor(
                             location = style.location,
                         ),
                     )
-                    playerFocusState.preferPlayer()
                 }
             },
             modifier = Modifier.onFocusChanged {
@@ -136,7 +134,6 @@ fun PlayerDanmakuEditor(
                     danmakuEditorRequester.cancelRequest()
                 }
             }.weight(1f),
-            playerFocusState = playerFocusState,
             onEscape = onEscape,
             // 样式按钮放在输入框内部的最前面, 表示"这条弹幕的样式"
             leadingIcon = {
@@ -160,17 +157,19 @@ fun PlayerDanmakuEditor(
     isSending: () -> Boolean,
     placeholderText: String,
     onSend: (text: String) -> Unit,
-    playerFocusState: PlayerFocusState,
     modifier: Modifier = Modifier,
     onEscape: (() -> Unit)? = null,
     colors: TextFieldColors = PlayerControllerDefaults.inVideoDanmakuTextFieldColors(),
     style: TextStyle = MaterialTheme.typography.bodyMedium,
     leadingIcon: (@Composable () -> Unit)? = null,
 ) {
+    val focusManager = LocalFocusManager.current
     PlayerControllerDefaults.DanmakuTextField(
         text,
         onValueChange = onTextChange,
-        modifier = modifier.playerTextInputFocus(playerFocusState, onEscape),
+        modifier = modifier.onKey(ComposeKey.Escape) {
+            if (onEscape == null) focusManager.clearFocus() else onEscape()
+        },
         leadingIcon = leadingIcon,
         onSend = {
             if (text.isEmpty()) return@DanmakuTextField

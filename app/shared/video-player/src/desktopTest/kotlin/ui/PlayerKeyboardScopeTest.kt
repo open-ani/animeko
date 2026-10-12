@@ -24,11 +24,13 @@ import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.ui.InternalComposeUiApi
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.focus.FocusManager
 import androidx.compose.ui.input.key.Key
 import androidx.compose.ui.input.key.KeyEvent
 import androidx.compose.ui.input.key.KeyEventType
 import androidx.compose.ui.input.key.key
 import androidx.compose.ui.input.key.onPreviewKeyEvent
+import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.test.assertIsFocused
@@ -58,6 +60,7 @@ import kotlin.test.assertTrue
 @OptIn(InternalComposeUiApi::class)
 class PlayerKeyboardScopeTest {
     private class Fixture {
+        lateinit var focusManager: FocusManager
         val controller = PlayerControllerState()
         val overlayVisible = mutableStateOf(false)
         val handlerVisible = mutableStateOf(true)
@@ -97,6 +100,7 @@ class PlayerKeyboardScopeTest {
     ) = runAniComposeUiTest {
         val fixture = Fixture()
         setContent {
+            fixture.focusManager = LocalFocusManager.current
             MaterialTheme {
                 CompositionLocalProvider(LocalLayoutDirection provides direction) {
                     PlayerKeyboardScope(fixture.controller) {
@@ -108,7 +112,7 @@ class PlayerKeyboardScopeTest {
                                     Box(
                                         Modifier.size(320.dp, 160.dp).testTag("player")
                                             .onPreviewKeyEvent { it.key == Key.Enter || it.key == Key.NumPadEnter }
-                                            .playerFocusHost(fixture.controller.focusState, null).focusable(),
+                                            .playerFocusHost(fixture.controller.focusState).focusable(),
                                     )
                                     val fieldModifier = Modifier.testTag("field")
                                     when (field) {
@@ -189,8 +193,7 @@ class PlayerKeyboardScopeTest {
             fixture.controller.keyboard.activeTextInputSessions > 0,
             "Focused desktop text field starts an intercepted session",
         )
-        assertEquals(PlayerFocusTarget.PLAYER, fixture.controller.focusState.preferredTarget)
-        // Key events exercise text editing and caret movement without playerTextInputFocus annotations.
+        // Key events exercise text editing and caret movement in an ordinary text field.
         for ((key, character) in listOf(Key.Spacebar to ' ', Key.A to 'a')) {
             onNodeWithTag("field").performKeyInput { keyDown(key) }
             onNodeWithTag("field").performKeyPress(
@@ -229,15 +232,14 @@ class PlayerKeyboardScopeTest {
     fun `OutlinedTextField session suppresses shortcuts`() = textInputTest(2)
 
     @Test
-    fun `danmaku text input preference suppresses shortcuts`() = runScopeTest { fixture ->
-        runOnIdle { fixture.controller.focusState.preferTextInput(this) }
-        press("player", Key.Spacebar)
-        press("player", Key.DirectionRight)
-        press("player", Key.DirectionUp)
-        assertEquals(0, fixture.pauses)
-        assertTrue(fixture.seeks.isEmpty())
-        assertTrue(fixture.volume.isEmpty())
-        runOnIdle { fixture.controller.focusState.preferPlayer() }
+    fun `clearing text input focus immediately restores playback shortcuts`() = runScopeTest { fixture ->
+        onNodeWithTag("field").requestFocus()
+        waitForIdle()
+        assertTrue(fixture.controller.keyboard.activeTextInputSessions > 0)
+        runOnIdle { fixture.focusManager.clearFocus() }
+        waitForIdle()
+        onNodeWithTag("player").assertIsFocused()
+        assertEquals(0, fixture.controller.keyboard.activeTextInputSessions)
         assertPlaybackCommands(fixture, "player")
     }
 
@@ -457,12 +459,12 @@ class PlayerKeyboardScopeTest {
         keyboard.register(first)
         keyboard.register(second)
         keyboard.unregister(first)
-        keyboard.dispatch(KeyEvent(Key.Spacebar, KeyEventType.KeyDown), PlayerFocusTarget.PLAYER)
-        keyboard.dispatch(KeyEvent(Key.Spacebar, KeyEventType.KeyUp), PlayerFocusTarget.PLAYER)
+        keyboard.dispatch(KeyEvent(Key.Spacebar, KeyEventType.KeyDown))
+        keyboard.dispatch(KeyEvent(Key.Spacebar, KeyEventType.KeyUp))
         assertEquals(0, firstCalls)
         assertEquals(2, secondCalls)
         keyboard.unregister(second)
-        assertEquals(false, keyboard.dispatch(KeyEvent(Key.Spacebar, KeyEventType.KeyDown), PlayerFocusTarget.PLAYER))
+        assertEquals(false, keyboard.dispatch(KeyEvent(Key.Spacebar, KeyEventType.KeyDown)))
     }
 
 }

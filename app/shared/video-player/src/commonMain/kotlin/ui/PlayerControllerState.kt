@@ -29,8 +29,6 @@ import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusProperties
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.focus.onFocusChanged
-import me.him188.ani.app.ui.foundation.effects.ComposeKey
-import me.him188.ani.app.ui.foundation.effects.onKey
 import me.him188.ani.app.ui.foundation.interaction.hoverable
 import me.him188.ani.utils.platform.annotations.TestOnly
 
@@ -47,73 +45,24 @@ fun rememberVideoControllerState(
     }
 }
 
-enum class PlayerFocusTarget {
-    PLAYER,
-    TEXT_INPUT,
-}
-
-/** Coordinates focus policy; [preferredTarget] is intent, not the currently focused Compose node. */
+/** Holds the player focus requester and observes cleared focus within its keyboard scopes. */
 @Stable
 class PlayerFocusState {
-    var preferredTarget: PlayerFocusTarget by mutableStateOf(PlayerFocusTarget.PLAYER)
-        private set
-
     internal val requester = FocusRequester()
-    private var textInputOwner: Any? = null
 
-    /**
-     * Incremented each time focus is cleared, see [restorePlayerFocusWhenCleared];
-     * [playerFocusHost] restores focus on change.
-     */
     internal var focusClearedCount by mutableIntStateOf(0)
         private set
-
-    fun preferPlayer() {
-        textInputOwner = null
-        preferredTarget = PlayerFocusTarget.PLAYER
-    }
-
-    internal fun preferTextInput(owner: Any) {
-        textInputOwner = owner
-        preferredTarget = PlayerFocusTarget.TEXT_INPUT
-    }
-
-    internal fun releaseTextInput(owner: Any) {
-        if (textInputOwner === owner) {
-            preferPlayer()
-        }
-    }
-
-    internal fun requestPlayerFocus() {
-        preferPlayer()
-        requester.requestFocus()
-    }
-
-    internal fun restorePlayerFocusIfPreferred() {
-        if (preferredTarget == PlayerFocusTarget.PLAYER) {
-            requester.requestFocus()
-        }
-    }
 
     internal fun onFocusCleared() {
         focusClearedCount++
     }
 }
 
-/**
- * Attaches the player requester and restores focus when its policy or [reapplyKey] changes, or when focus is cleared
- * (see [restorePlayerFocusWhenCleared]).
- */
+/** Attaches the player requester and restores focus when a keyboard scope loses its focused node. */
 @Composable
-internal fun Modifier.playerFocusHost(
-    state: PlayerFocusState,
-    reapplyKey: Any?,
-): Modifier {
-    val preferredTarget = state.preferredTarget
-    val focusClearedCount = state.focusClearedCount
-
-    LaunchedEffect(state, preferredTarget, reapplyKey, focusClearedCount) {
-        state.restorePlayerFocusIfPreferred()
+internal fun Modifier.playerFocusHost(state: PlayerFocusState): Modifier {
+    LaunchedEffect(state, state.focusClearedCount) {
+        state.requester.requestFocus()
     }
     return focusRequester(state.requester)
 }
@@ -123,7 +72,7 @@ internal fun Modifier.playerFocusHost(
  *
  * When the focused node inside the subtree is removed (a side sheet or popup closes, a controller bar hides) or focus
  * is cleared with `FocusManager.clearFocus`, no node holds focus and player keyboard shortcuts stop working. This
- * returns focus to the player in that case, subject to [PlayerFocusState.preferredTarget].
+ * returns focus to the player in that case.
  *
  * Focus moving to another target, inside or outside the subtree, is left alone. Moving out of the subtree calls the
  * group's `onExit` with the direction of the move; clearing calls it with [FocusDirection.Exit], and removing the
@@ -147,30 +96,6 @@ internal fun Modifier.restorePlayerFocusWhenCleared(state: PlayerFocusState): Mo
 private class FocusClearTracker {
     var hadFocus = false
     var movingOut = false
-}
-
-fun Modifier.playerTextInputFocus(
-    state: PlayerFocusState,
-    onEscape: (() -> Unit)? = null,
-): Modifier = composed {
-    val owner = remember { Any() }
-    DisposableEffect(state, owner) {
-        onDispose {
-            state.releaseTextInput(owner)
-        }
-    }
-
-    onFocusChanged {
-        if (it.hasFocus) {
-            state.preferTextInput(owner)
-        }
-    }.onKey(ComposeKey.Escape) {
-        if (onEscape == null) {
-            state.requestPlayerFocus()
-        } else {
-            onEscape()
-        }
-    }
 }
 
 @Immutable

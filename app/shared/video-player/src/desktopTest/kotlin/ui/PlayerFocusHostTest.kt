@@ -13,6 +13,7 @@ import androidx.compose.foundation.focusable
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusManager
@@ -56,15 +57,15 @@ class PlayerFocusHostTest {
                     Box(
                         Modifier.size(320.dp, 160.dp)
                             .testTag("player")
-                            .playerFocusHost(fixture.focusState, reapplyKey = null)
+                            .playerFocusHost(fixture.focusState)
                             .focusable(),
                     )
                     if (fixture.overlayVisible.value) {
                         Box(Modifier.size(80.dp).testTag("overlayItem").focusable())
-                        Box(
-                            Modifier.size(80.dp).testTag("overlayTextInput")
-                                .playerTextInputFocus(fixture.focusState)
-                                .focusable(),
+                        BasicTextField(
+                            value = "",
+                            onValueChange = {},
+                            modifier = Modifier.size(80.dp).testTag("overlayTextInput"),
                         )
                     }
                 }
@@ -125,12 +126,21 @@ class PlayerFocusHostTest {
     }
 
     @Test
-    fun `keeps text input preference when its focus is cleared`() = runFocusTest { fixture ->
+    fun `restores player focus when text input focus is cleared`() = runFocusTest { fixture ->
         focusOverlayItem(fixture, "overlayTextInput")
 
         fixture.focusManager.clearFocus()
         waitForIdle()
-        onNodeWithTag("player").assertIsNotFocused()
+        onNodeWithTag("player").assertIsFocused()
+    }
+
+    @Test
+    fun `restores player focus when the focused text field is removed`() = runFocusTest { fixture ->
+        focusOverlayItem(fixture, "overlayTextInput")
+
+        fixture.overlayVisible.value = false
+        waitForIdle()
+        onNodeWithTag("player").assertIsFocused()
     }
 
     @Test

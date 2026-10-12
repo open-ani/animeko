@@ -174,7 +174,6 @@ import me.him188.ani.app.videoplayer.screenshot.playerScreenshotFileName
 import me.him188.ani.app.videoplayer.ui.LocalVideoScaffoldSheetWindowInsets
 import me.him188.ani.app.videoplayer.ui.PlaybackSpeedControllerState
 import me.him188.ani.app.videoplayer.ui.PlayerControllerState
-import me.him188.ani.app.videoplayer.ui.PlayerFocusState
 import me.him188.ani.app.videoplayer.ui.PlayerFullscreenState
 import me.him188.ani.app.videoplayer.ui.PlayerKeyboardScope
 import me.him188.ani.app.videoplayer.ui.VideoAspectRatioControllerState
@@ -903,7 +902,6 @@ private fun EpisodeScreenPhoneDetails(
                     }
                 },
                 focusRequester,
-                vm.playerControllerState.focusState,
                 onDismiss = dismiss,
                 modifier = Modifier.imePadding(),
             )
@@ -919,7 +917,6 @@ private fun DetachedDanmakuEditorLayout(
     danmakuEditorState: DanmakuEditorState,
     onSend: (text: String) -> Unit,
     focusRequester: FocusRequester,
-    playerFocusState: PlayerFocusState,
     onDismiss: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
@@ -936,7 +933,6 @@ private fun DetachedDanmakuEditorLayout(
             isSending = { isSending.value },
             placeholderText = rememberRandomDanmakuPlaceholder(),
             onSend = onSend,
-            playerFocusState = playerFocusState,
             modifier = Modifier.fillMaxWidth().focusRequester(focusRequester),
             onEscape = onDismiss,
             colors = OutlinedTextFieldDefaults.colors(),

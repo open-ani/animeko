@@ -11,7 +11,6 @@ package me.him188.ani.app.videoplayer.ui
 
 import androidx.compose.foundation.layout.Box
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.Stable
 import androidx.compose.runtime.remember
 import androidx.compose.ui.ExperimentalComposeUiApi
@@ -52,12 +51,9 @@ fun PlayerKeyboardScope(
             }
         }
     }
-    LaunchedEffect(keyboard, focusState.preferredTarget) {
-        if (focusState.preferredTarget == PlayerFocusTarget.TEXT_INPUT) keyboard.cancel()
-    }
     InterceptPlatformTextInput(interceptor) {
         Box(
-            modifier.onPreviewKeyEvent { keyboard.dispatch(it, focusState.preferredTarget) }
+            modifier.onPreviewKeyEvent { keyboard.dispatch(it) }
                 .restorePlayerFocusWhenCleared(focusState),
             propagateMinConstraints = true,
         ) {
@@ -108,7 +104,7 @@ internal class PlayerKeyboardState {
         pressed.clear()
     }
 
-    fun dispatch(event: KeyEvent, preferredTarget: PlayerFocusTarget): Boolean {
+    fun dispatch(event: KeyEvent): Boolean {
         if (event.type == KeyEventType.KeyDown && (event.isCtrlPressed || event.isAltPressed || event.isMetaPressed)) {
             rejected.add(event.key)
             if (event.key in pressed) cancel()
@@ -121,7 +117,7 @@ internal class PlayerKeyboardState {
             }
             return false
         }
-        if (activeTextInputSessions > 0 || preferredTarget == PlayerFocusTarget.TEXT_INPUT) {
+        if (activeTextInputSessions > 0) {
             cancel()
             if (event.type == KeyEventType.KeyUp) cancelled.remove(event.key)
             return false
