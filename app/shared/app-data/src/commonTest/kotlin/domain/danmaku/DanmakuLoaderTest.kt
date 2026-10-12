@@ -15,20 +15,25 @@ import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.test.TestScope
+import kotlinx.coroutines.test.runCurrent
 import kotlinx.coroutines.test.runTest
 import me.him188.ani.app.data.models.episode.EpisodeInfo
+import me.him188.ani.app.data.models.subject.SplitSeasonTestData.ReZero
 import me.him188.ani.app.data.models.subject.SubjectInfo
 import me.him188.ani.app.data.repository.danmaku.SearchDanmakuRequest
 import me.him188.ani.danmaku.api.DanmakuContent
 import me.him188.ani.danmaku.api.DanmakuInfo
 import me.him188.ani.danmaku.api.DanmakuLocation
 import me.him188.ani.danmaku.api.DanmakuServiceId
+import me.him188.ani.danmaku.api.provider.DanmakuFetchRequest
 import me.him188.ani.danmaku.api.provider.DanmakuFetchResult
 import me.him188.ani.danmaku.api.provider.DanmakuMatchInfo
 import me.him188.ani.danmaku.api.provider.DanmakuMatchMethod
 import me.him188.ani.danmaku.api.provider.DanmakuProviderId
+import me.him188.ani.datasources.api.EpisodeSort
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertNotNull
 import kotlin.test.fail
 
 class DanmakuLoaderTest {
@@ -125,16 +130,42 @@ class DanmakuLoaderTest {
         }
     }
 
+    @Test
+    fun `fetch request carries split season`() = runTest {
+        val fetchRequests = mutableListOf<DanmakuFetchRequest>()
+        val request = createRequest().copy(
+            episodeInfo = EpisodeInfo.Empty.copy(episodeId = EPISODE_ID, sort = EpisodeSort(82), ep = EpisodeSort(5)),
+            splitSeason = ReZero.splitSeason(633836),
+        )
+        val loader = createLoader(
+            MutableSharedFlow(),
+            MutableSharedFlow(),
+            MutableStateFlow(request),
+            onFetchRemote = { fetchRequests += it },
+        )
+
+        loader.fetchResultFlow.test {
+            assertEquals(emptyList(), awaitItem())
+            runCurrent()
+            assertEquals(listOf(547888), assertNotNull(fetchRequests.single().splitSeason).previousPartSubjectIds)
+            cancelAndIgnoreRemainingEvents()
+        }
+    }
+
     private fun TestScope.createLoader(
         localResults: Flow<List<DanmakuFetchResult>>,
         remoteResults: Flow<List<DanmakuFetchResult>>,
         requestFlow: Flow<SearchDanmakuRequest?> = MutableStateFlow(createRequest()),
+        onFetchRemote: (DanmakuFetchRequest) -> Unit = {},
     ): DanmakuLoaderImpl {
         return DanmakuLoaderImpl(
             requestFlow = requestFlow,
             flowScope = backgroundScope,
             fetchFromLocal = { localResults },
-            fetchFromAllRemotes = { remoteResults },
+            fetchFromAllRemotes = {
+                onFetchRemote(it)
+                remoteResults
+            },
             cacheDanmakuIfNeeded = { _, _, _ -> },
         )
     }

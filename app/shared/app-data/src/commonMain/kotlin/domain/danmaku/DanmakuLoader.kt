@@ -233,6 +233,12 @@ class DanmakuLoaderImpl internal constructor(
             fileHash = fileHash,
             fileSize = fileLength,
             videoDuration = videoDuration,
+            splitSeason = SplitSeasonDanmakuMatcher.create(
+                splitSeason,
+                subjectInfo.allNames,
+                episodeInfo.sort,
+                episodeInfo.ep,
+            ),
         )
     }
 }

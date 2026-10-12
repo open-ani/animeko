@@ -47,6 +47,7 @@ import me.him188.ani.app.data.models.preference.UpdateSettings
 import me.him188.ani.app.data.models.preference.VideoResolverSettings
 import me.him188.ani.app.data.models.preference.VideoScaffoldConfig
 import me.him188.ani.app.data.models.preference.WatchTogetherSettings
+import me.him188.ani.app.data.models.subject.SplitSeason
 import me.him188.ani.app.data.models.subject.SubjectCollectionCounts
 import me.him188.ani.app.data.models.subject.SubjectCollectionInfo
 import me.him188.ani.app.data.models.subject.SubjectInfo
@@ -423,7 +424,13 @@ internal class FakeAddDownloadUseCase(private val storage: FakeDownloadStorage) 
     var gate: CompletableDeferred<Unit>? = null
     var failure: Throwable? = null
 
-    override suspend fun invoke(subject: SubjectInfo, episode: EpisodeInfo, media: Media, metadata: MediaCacheMetadata): MediaCache {
+    override suspend fun invoke(
+        subject: SubjectInfo,
+        episode: EpisodeInfo,
+        media: Media,
+        metadata: MediaCacheMetadata,
+        splitSeason: SplitSeason?,
+    ): MediaCache {
         gate?.await()
         failure?.let { throw it }
         val cache = testDownloadCache(episode.episodeId, subject.subjectId)
