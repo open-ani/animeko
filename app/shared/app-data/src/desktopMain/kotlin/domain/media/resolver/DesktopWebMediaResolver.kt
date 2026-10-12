@@ -58,6 +58,7 @@ import org.cef.network.CefRequest
 import org.koin.core.component.KoinComponent
 import org.koin.core.component.inject
 import kotlin.coroutines.cancellation.CancellationException
+import kotlin.time.Duration.Companion.seconds
 
 /**
  * 用 WebView 加载网站, 拦截 WebView 加载资源, 用各数据源提供的 [WebVideoMatcher]
@@ -145,6 +146,11 @@ class CefVideoExtractor(
     private companion object {
         private val logger = logger<WebViewVideoExtractor>()
         private val json = Json { ignoreUnknownKeys = true }
+
+        /**
+         * 每次解析前愿意为 JCEF 初始化等待的时间. 比启动时的上限短, 让真正坏掉的 CEF 尽快报错而不是每次播放都长等.
+         */
+        private val ON_DEMAND_CEF_INITIALIZATION_TIMEOUT = 15.seconds
     }
 
     override suspend fun getVideoResourceUrl(
@@ -159,11 +165,16 @@ class CefVideoExtractor(
         val userAgent = config.userAgent
 
         try {
+            // 启动时 JCEF 初始化可能因机器卡顿而超时, 实例仍在后台初始化, 这里接着等它就绪.
+            if (!AniCefApp.awaitInitialized(ON_DEMAND_CEF_INITIALIZATION_TIMEOUT)) {
+                logger.warn { "AniCefApp isn't initialized, web media cannot be resolved." }
+                throw MediaResolutionException(ResolutionFailures.WEB_ENGINE_UNAVAILABLE)
+            }
             val createdClient = AniCefApp.suspendCoroutineOnCefContext {
                 AniCefApp.createClient()
-            } ?: kotlin.run {
-                logger.warn { "AniCefApp isn't initialized yet." }
-                return@withContext null
+            } ?: run {
+                logger.warn { "AniCefApp was never initialized, web media cannot be resolved." }
+                throw MediaResolutionException(ResolutionFailures.WEB_ENGINE_UNAVAILABLE)
             }
             client = createdClient
             val browserCreated = AniCefApp.suspendCoroutineOnCefContext { createdClient.browserCreatedSignal() }
@@ -270,6 +281,8 @@ class CefVideoExtractor(
                 deferred.await()
             }
         } catch (e: CancellationException) {
+            throw e
+        } catch (e: MediaResolutionException) {
             throw e
         } catch (e: Throwable) {
             logger.error(e) { "Failed to get video url." }

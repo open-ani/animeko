@@ -1506,6 +1506,7 @@
     <string name="subject_episode_statistics_error_details">Error details</string>
     <string name="subject_episode_statistics_error">Error</string>
     <string name="subject_episode_statistics_no_matching_file">No matching file</string>
+    <string name="subject_episode_statistics_web_engine_unavailable">Built-in browser is not running, so web sources cannot be resolved. Restart the app</string>
     <string name="subject_episode_statistics_resolution_timed_out">Resolution timed out</string>
     <string name="subject_episode_statistics_unsupported_media">Unsupported video type</string>
     <string name="subject_episode_statistics_unknown_error_tap">Unknown error, tap to view</string>
@@ -1534,6 +1535,7 @@
     <string name="subject_episode_video_loading_cause_unknown_error">Unknown error</string>
     <string name="subject_episode_video_loading_cause_unsupported_media">Unsupported file type</string>
     <string name="subject_episode_video_loading_cause_no_matching_file">No playable file found</string>
+    <string name="subject_episode_video_loading_cause_web_engine_unavailable">Built-in browser is not running. Restart the app</string>
     <string name="subject_episode_video_loading_cause_cancelled">Cancelled</string>
     <string name="subject_episode_video_loading_cause_network_error">Network error</string>
     <string name="subject_episode_wish_change_to">Already marked as want to watch. Change to:</string>

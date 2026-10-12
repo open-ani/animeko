@@ -248,6 +248,10 @@ class CefCaptchaBrowser private constructor(
 
     companion object {
         internal suspend fun create(userAgent: String?): CefCaptchaBrowser {
+            // 启动时 JCEF 可能初始化超时, 实例仍在后台初始化; 先等它就绪, 再占用浏览器名额.
+            if (!AniCefApp.awaitInitialized(15.seconds)) {
+                error("AniCefApp is not initialized, cannot create CaptchaBrowser")
+            }
             var permit: AniCefApp.BrowserLifecyclePermit? = AniCefApp.acquireDataSourceBrowserPermit()
             var client: CefClient? = null
             var browser: CefBrowser? = null

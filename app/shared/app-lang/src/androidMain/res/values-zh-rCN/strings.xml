@@ -1546,6 +1546,7 @@
     <string name="subject_episode_statistics_error_details">错误详情</string>
     <string name="subject_episode_statistics_error">错误</string>
     <string name="subject_episode_statistics_no_matching_file">未匹配到文件</string>
+    <string name="subject_episode_statistics_web_engine_unavailable">内置浏览器未启动，无法解析网页数据源，请重启应用</string>
     <string name="subject_episode_statistics_resolution_timed_out">解析超时</string>
     <string name="subject_episode_statistics_unsupported_media">不支持的视频类型</string>
     <string name="subject_episode_statistics_unknown_error_tap">未知错误，点击查看</string>
@@ -1574,6 +1575,7 @@
     <string name="subject_episode_video_loading_cause_unknown_error">未知错误</string>
     <string name="subject_episode_video_loading_cause_unsupported_media">不支持该文件类型</string>
     <string name="subject_episode_video_loading_cause_no_matching_file">未找到可播放的文件</string>
+    <string name="subject_episode_video_loading_cause_web_engine_unavailable">内置浏览器未启动, 请重启应用</string>
     <string name="subject_episode_video_loading_cause_cancelled">已取消</string>
     <string name="subject_episode_video_loading_cause_network_error">网络错误</string>
     <string name="subject_episode_wish_change_to">已想看，可更改为：</string>
