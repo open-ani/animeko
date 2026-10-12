@@ -23,7 +23,6 @@ import me.him188.ani.app.domain.mediasource.web.captcha.BrowserImageCaptchaSolve
 import me.him188.ani.app.domain.mediasource.web.captcha.CaptchaBrowser
 import me.him188.ani.app.domain.mediasource.web.captcha.CaptchaBrowserFactory
 import me.him188.ani.app.domain.mediasource.web.captcha.DesktopCaptchaBrowserFactory
-import me.him188.ani.app.domain.mediasource.web.captcha.GirigiriSearchRoute
 import me.him188.ani.app.domain.mediasource.web.captcha.MacCmsImageCaptchaSolver
 import me.him188.ani.app.domain.mediasource.web.captcha.SolveOutcome
 import me.him188.ani.app.domain.mediasource.web.captcha.WebSessionManager
@@ -140,7 +139,6 @@ private fun createDesktopWebSessionManager(
             MacCmsImageCaptchaSolver(recognizer),
             BrowserImageCaptchaSolver(recognizer),
         ),
-        searchRoutes = listOf(GirigiriSearchRoute(evaluator)),
         maxSessions = browserFactory.recommendedMaxSessions,
     )
 }
