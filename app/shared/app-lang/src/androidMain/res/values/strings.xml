@@ -405,7 +405,12 @@
     <string name="settings_player_op_ed_skip_duration_seconds">%1$d seconds</string>
     <string name="settings_player_auto_switch_media_on_error">Automatically switch resources on playback failure</string>
     <string name="settings_player_hls_ad_filter">Filter inserted ads</string>
-    <string name="settings_player_hls_ad_filter_description">Automatically skips ads inserted into online videos. Some ads may not be detected; turn this off if playback fails</string>
+    <string name="settings_player_hls_ad_filter_all">All sources</string>
+    <string name="settings_player_hls_ad_filter_smart">Smart</string>
+    <string name="settings_player_hls_ad_filter_off">Off</string>
+    <string name="settings_player_hls_ad_filter_all_description">Filters ads on all online sources. Detecting ads delays playback by 1–4 seconds, up to 8 seconds</string>
+    <string name="settings_player_hls_ad_filter_smart_description">Only filters online sources that their subscription marks as having inserted ads. Some ads may not be detected; turn this off if playback fails</string>
+    <string name="settings_player_hls_ad_filter_off_description">Ads inserted into online videos are not filtered</string>
     <string name="settings_player_long_press_fast_forward_speed">Long-press playback speed</string>
     <string name="settings_player_long_press_fast_forward_speed_description">Playback speed used while long-pressing</string>
     <string name="settings_player_playback_speed_range">Playback speed range</string>

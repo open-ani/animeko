@@ -226,6 +226,7 @@ class MediaSourceSubscriptionUpdater(
                             serializedArguments = remote.data.arguments,
                             subscriptionId = subscription.subscriptionId,
                             idInSubscription = remote.id,
+                            tags = remote.data.tags,
                         ),
                     )
                     orderedInstanceIds.add(id)
@@ -238,6 +239,7 @@ class MediaSourceSubscriptionUpdater(
                     val updated = local.save.config.copy(
                         serializedArguments = remote.data.arguments,
                         idInSubscription = remote.id,
+                        tags = remote.data.tags,
                     )
                     if (!mediaSourceManager.updateConfig(local.save.instanceId, updated)) {
                         logger.error { "Failed to update existing save ${local.save.instanceId}" }

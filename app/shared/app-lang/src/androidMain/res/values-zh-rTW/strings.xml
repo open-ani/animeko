@@ -391,7 +391,12 @@
     <string name="settings_player_op_ed_skip_duration_seconds">%1$d 秒</string>
     <string name="settings_player_auto_switch_media_on_error">播放失敗時自動切換資源</string>
     <string name="settings_player_hls_ad_filter">過濾貼片廣告</string>
-    <string name="settings_player_hls_ad_filter_description">自動跳過線上來源影片中插入的廣告，個別廣告可能無法識別；如遇播放出錯可關閉</string>
+    <string name="settings_player_hls_ad_filter_all">全開</string>
+    <string name="settings_player_hls_ad_filter_smart">智慧</string>
+    <string name="settings_player_hls_ad_filter_off">關閉</string>
+    <string name="settings_player_hls_ad_filter_all_description">過濾所有線上來源的廣告。識別廣告會讓影片晚 1-4 秒開播，最多 8 秒</string>
+    <string name="settings_player_hls_ad_filter_smart_description">只過濾訂閱標記為含有插播廣告的線上來源，個別廣告可能無法識別；如遇播放出錯可關閉</string>
+    <string name="settings_player_hls_ad_filter_off_description">不過濾線上來源影片中插入的廣告</string>
     <string name="settings_player_long_press_fast_forward_speed">長按播放速度</string>
     <string name="settings_player_long_press_fast_forward_speed_description">長按時使用的播放速度</string>
     <string name="settings_player_playback_speed_range">倍速範圍</string>

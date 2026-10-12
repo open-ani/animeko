@@ -52,6 +52,33 @@ class VideoScaffoldConfigTest {
     }
 
     @Test
+    fun `HLS ad filtering defaults to smart`() {
+        val config = DataStoreJson.decodeFromString(VideoScaffoldConfig.serializer(), "{}")
+
+        assertEquals(HlsAdFilteringMode.SMART, config.effectiveHlsAdFilteringMode)
+    }
+
+    @Test
+    fun `HLS ad filtering turned off in 6_2 stays off`() {
+        val config = DataStoreJson.decodeFromString(VideoScaffoldConfig.serializer(), """{"enableHlsAdFiltering":false}""")
+
+        assertEquals(HlsAdFilteringMode.OFF, config.effectiveHlsAdFilteringMode)
+    }
+
+    @Test
+    fun `chosen HLS ad filtering mode overrides the 6_2 switch`() {
+        val config = DataStoreJson.decodeFromString(VideoScaffoldConfig.serializer(), """{"enableHlsAdFiltering":false}""")
+            .copy(hlsAdFilteringMode = HlsAdFilteringMode.ALL)
+
+        val decoded = DataStoreJson.decodeFromString(
+            VideoScaffoldConfig.serializer(),
+            DataStoreJson.encodeToString(VideoScaffoldConfig.serializer(), config),
+        )
+
+        assertEquals(HlsAdFilteringMode.ALL, decoded.effectiveHlsAdFilteringMode)
+    }
+
+    @Test
     fun `missing OP ED skip duration uses 85 seconds`() {
         val config = DataStoreJson.decodeFromString(VideoScaffoldConfig.serializer(), "{}")
 

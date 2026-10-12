@@ -102,6 +102,10 @@ data class MediaSourceConfig(
      * 数据源在所属订阅中的 ID, 由订阅作者提供. 订阅没有提供或不是来自订阅时为 `null`.
      */
     val idInSubscription: String? = null,
+    /**
+     * 订阅作者给数据源打的标签, 订阅更新时随之更新. 不是来自订阅时为空.
+     */
+    val tags: List<String> = emptyList(),
 ) {
     companion object {
         val Default = MediaSourceConfig()

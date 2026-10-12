@@ -155,7 +155,7 @@ fun MediaSourceCodecManager.serializeSubscriptionToString(
         iconUrl = metadata?.iconUrl,
         mediaSources = saves.mapNotNull {
             val args = it.config.serializedArguments ?: return@mapNotNull null
-            serialize(it.factoryId, args).copy(id = it.config.idInSubscription)
+            serialize(it.factoryId, args).copy(id = it.config.idInSubscription, tags = it.config.tags)
         },
     ),
 )
