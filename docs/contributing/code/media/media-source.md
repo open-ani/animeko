@@ -161,6 +161,29 @@ Selector 配置据此分两层：
 `MediaSourceSubscriptionUpdater` 在订阅仓库事务之外下载订阅，在事务内检查当前启用状态并应用数据源差异。
 订阅开关与差异应用共用仓库的串行更新边界，确保下载期间禁用订阅后不会应用过期响应。
 
+## 数据源标签
+
+订阅可以在数据源条目上写 `tags`，告诉客户端这个数据源需要特殊处理。标签写在条目上而不是 `arguments` 里，
+因此对所有数据源类型通用。标签随订阅更新覆盖到本地配置 `MediaSourceConfig.tags`，用户不能修改；
+本地添加的数据源没有标签。
+
+```json
+{
+  "schemaVersion": 2,
+  "mediaSources": [
+    { "id": "example", "tags": ["hls-ads"], "factoryId": "web-selector", "version": 2, "arguments": { } }
+  ]
+}
+```
+
+已知的标签见 `MediaSourceTags`：
+
+- `hls-ads`：这个数据源的 HLS 播放列表可能插有广告。过滤插播广告要在起播前探测时间戳，会推迟开播，
+  所以默认的「智能」模式只对带这个标签的数据源过滤，见 `HlsAdFilteringMode`。
+
+客户端忽略不认识的标签，旧客户端忽略整个 `tags` 字段，所以新增标签不需要提升 `schemaVersion`。
+订阅文件由第三方维护，已发布的标签不能改名。
+
 ## 扩展数据源支持
 
 有以下多种方法扩展数据源支持：

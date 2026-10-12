@@ -18,6 +18,9 @@ import me.him188.ani.app.ui.subject.collection.COLLECTION_TABS_SORTED
 import me.him188.ani.app.ui.subject.collection.UserCollectionsViewModel
 import me.him188.ani.tv.ui.foundation.TvNavigationEvent
 import me.him188.ani.tv.ui.foundation.TvNavigationEvents
+import me.him188.ani.utils.analytics.Analytics
+import me.him188.ani.utils.analytics.AnalyticsEvent.Companion.SubjectEnter
+import me.him188.ani.utils.analytics.recordEvent
 
 class TvCollectionViewModel : UserCollectionsViewModel() {
     private val navigation = TvNavigationEvents()
@@ -43,6 +46,10 @@ class TvCollectionViewModel : UserCollectionsViewModel() {
             is TvCollectionIntent.SwitchTab -> selectTab(state.selectedTypeIndex + intent.direction)
             is TvCollectionIntent.OpenSubject -> {
                 val info = intent.subject.subjectInfo
+                Analytics.recordEvent(SubjectEnter) {
+                    put("source", "collection")
+                    put("subject_id", info.subjectId)
+                }
                 navigation.emit(
                     TvNavigationEvent.Subject(
                         info.subjectId,

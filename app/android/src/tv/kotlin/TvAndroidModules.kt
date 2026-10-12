@@ -28,6 +28,8 @@ import me.him188.ani.app.navigation.NoopBrowserNavigator
 import me.him188.ani.app.platform.AppTerminator
 import me.him188.ani.app.platform.ContextMP
 import me.him188.ani.app.platform.findActivity
+import me.him188.ani.app.tools.update.AndroidUpdateInstaller
+import me.him188.ani.app.tools.update.UpdateInstaller
 import org.koin.android.ext.koin.androidContext
 import org.koin.dsl.module
 import kotlin.system.exitProcess
@@ -35,7 +37,7 @@ import kotlin.system.exitProcess
 /**
  * TV flavor 专属平台绑定.
  *
- * 按 §1.2 裁剪, torrent/缓存链路与 UpdateInstaller (D8 暂缓) 不注册.
+ * 按 §1.2 裁剪, torrent/缓存链路不注册.
  * Captcha 浏览器/识别器**需要**注册 —— 它们是 Web 数据源解析链 (WebSessionManager) 的依赖,
  * 服务于播放取源, 而非评论发送 (评论发送的 TurnstileState 才是裁剪对象).
  */
@@ -61,6 +63,8 @@ fun getTvAndroidModules() = module {
                 ),
         )
     }
+
+    single<UpdateInstaller> { AndroidUpdateInstaller() }
 
     single<AppTerminator> {
         object : AppTerminator {

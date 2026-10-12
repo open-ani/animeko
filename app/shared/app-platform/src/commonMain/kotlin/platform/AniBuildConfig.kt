@@ -100,5 +100,5 @@ inline val currentAniBuildConfig: AniBuildConfig get() = currentAniBuildConfigIm
  */
 fun getAniUserAgent(
     version: String = currentAniBuildConfig.versionName,
-    platform: String = currentPlatform().nameAndArch,
+    platform: String = currentPlatform().toString(),
 ): String = "open-ani/ani/$version ($platform) (https://github.com/open-ani/ani)"
