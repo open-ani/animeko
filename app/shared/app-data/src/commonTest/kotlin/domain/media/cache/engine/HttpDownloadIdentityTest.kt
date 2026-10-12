@@ -12,11 +12,14 @@ package me.him188.ani.app.domain.media.cache.engine
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.flowOf
+import kotlinx.coroutines.flow.toList
 import kotlinx.coroutines.test.runTest
 import kotlinx.io.files.Path
 import me.him188.ani.app.data.models.preference.PikPakConfig
 import me.him188.ani.app.data.persistent.database.dao.HttpCacheDownloadStateDao
 import me.him188.ani.app.domain.media.TestMediaList
+import me.him188.ani.app.domain.media.cache.storage.MediaCacheStorageSource
+import me.him188.ani.app.domain.media.cache.storage.TestMediaCacheStorage
 import me.him188.ani.app.domain.media.player.data.MediaDataProvider
 import me.him188.ani.app.domain.media.resolver.EpisodeMetadata
 import me.him188.ani.app.domain.media.resolver.MediaResolver
@@ -24,6 +27,8 @@ import me.him188.ani.app.domain.media.resolver.TestUniversalMediaResolver
 import me.him188.ani.datasources.api.EpisodeSort
 import me.him188.ani.datasources.api.Media
 import me.him188.ani.datasources.api.MediaCacheMetadata
+import me.him188.ani.datasources.api.isLocalCache
+import me.him188.ani.datasources.api.source.MediaFetchRequest
 import me.him188.ani.datasources.api.source.MediaSourceKind
 import me.him188.ani.datasources.api.topic.ResourceLocation
 import me.him188.ani.utils.httpdownloader.DownloadId
@@ -45,6 +50,39 @@ import kotlin.test.assertTrue
  * 恢复记录时优先匹配含剧集信息的标识, 其次匹配仅由 mediaId 派生的标识.
  */
 class HttpDownloadIdentityTest {
+    @Test
+    fun `completed episode remains queryable while another HTTP episode is downloading`() = runTest {
+        val downloader = FakeDownloader()
+        val engine = engine(downloader)
+        val media = TestMediaList.first().copy(
+            kind = MediaSourceKind.WEB,
+            download = ResourceLocation.HttpStreamingFile("https://example.com/episode.mp4"),
+        )
+        val downloading = engine.createCache(media, testMetadata(1), testEpisodeMetadata(1), backgroundScope.coroutineContext)
+        val downloadingId = downloader.states.keys.single()
+        val completed = engine.createCache(media, testMetadata(2), testEpisodeMetadata(2), backgroundScope.coroutineContext)
+        val completedId = downloader.states.keys.single { it != downloadingId }
+        downloader.states[completedId] = downloader.states.getValue(completedId).copy(status = DownloadStatus.COMPLETED)
+        val storage = TestMediaCacheStorage().apply {
+            listFlow.value = listOf(downloading, completed)
+        }
+        val query = MediaFetchRequest(
+            subjectId = "1",
+            episodeId = "2",
+            subjectNames = listOf("Subject"),
+            episodeSort = EpisodeSort(2),
+            episodeName = "Episode 2",
+        )
+
+        val results = MediaCacheStorageSource(storage, "Test HTTP Storage").fetch(query).results.toList()
+
+        val cached = results.single().media
+        assertTrue(cached.isLocalCache())
+        assertEquals(completed.getCachedMedia().download, cached.download)
+        assertEquals(listOf(EpisodeSort(2)), cached.episodeRange?.knownSorts?.toList())
+        assertEquals(DownloadStatus.DOWNLOADING, downloader.states.getValue(downloadingId).status)
+    }
+
     @Test
     fun `season episodes create different HTTP files and deleting one keeps the other`() = runTest {
         val downloader = FakeDownloader()
