@@ -125,7 +125,8 @@ class SwitchMediaOnPlayerErrorExtension(
                 videoLoadingStateFlow, // 解析链接出错 (未匹配到链接)
                 playerStateFlow, // 解析成功, 但播放器出错 (无法链接到链接, 例如链接错误)
             ) { videoLoadingState, playerState ->
-                videoLoadingState is VideoLoadingState.Failed || playerState.mediaStatus is MediaStatus.Error
+                (videoLoadingState is VideoLoadingState.Failed && PlayerLoadErrorHandler.canRecoverBySwitching(videoLoadingState))
+                        || playerState.mediaStatus is MediaStatus.Error
             }.distinctUntilChanged()
                 .collectLatest { isError ->
                     if (isError) {
@@ -213,6 +214,15 @@ internal class PlayerLoadErrorHandler(
 
     companion object {
         private val logger = logger<PlayerLoadErrorHandler>()
+
+        /**
+         * 换到另一个 media 是否有可能解决这次失败.
+         *
+         * 网页引擎不可用是环境问题而不是资源问题, 换源只会让每个网页资源以同样的方式失败一遍,
+         * 并且把真正的原因藏在一串"自动切换"之后. 此时保留报错让用户看到.
+         */
+        fun canRecoverBySwitching(state: VideoLoadingState.Failed): Boolean =
+            state !is VideoLoadingState.WebEngineUnavailable
     }
 
     @VisibleForTesting

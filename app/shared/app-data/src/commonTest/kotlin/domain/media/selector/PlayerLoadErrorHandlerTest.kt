@@ -25,6 +25,7 @@ import me.him188.ani.app.domain.media.selector.testFramework.collectEvents
 import me.him188.ani.app.domain.media.selector.testFramework.runFetchMediaSelectorTestSuite
 import me.him188.ani.app.domain.media.selector.testFramework.runSimpleMediaSelectorTestSuite
 import me.him188.ani.app.domain.media.selector.testFramework.tier
+import me.him188.ani.app.domain.player.VideoLoadingState
 import me.him188.ani.app.domain.player.extension.PlayerLoadErrorHandler
 import me.him188.ani.datasources.api.source.MediaSourceKind
 import me.him188.ani.datasources.api.source.MediaSourceKind.WEB
@@ -378,6 +379,21 @@ class PlayerLoadErrorHandlerTest {
         assertTrue(job.isCompleted)
         assertEquals(replacement.mediaId, selector.selected.value?.mediaId)
         assertEquals(setOf(failed.mediaId), handler.blacklist)
+    }
+
+    @Test
+    fun `web engine unavailable is not recoverable by switching media`() {
+        // 网页引擎不可用时换任何网页资源都会同样失败, 不应触发自动换源
+        assertFalse(PlayerLoadErrorHandler.canRecoverBySwitching(VideoLoadingState.WebEngineUnavailable))
+    }
+
+    @Test
+    fun `resource level failures are recoverable by switching media`() {
+        assertTrue(PlayerLoadErrorHandler.canRecoverBySwitching(VideoLoadingState.NoMatchingFile))
+        assertTrue(PlayerLoadErrorHandler.canRecoverBySwitching(VideoLoadingState.ResolutionTimedOut))
+        assertTrue(PlayerLoadErrorHandler.canRecoverBySwitching(VideoLoadingState.NetworkError))
+        assertTrue(PlayerLoadErrorHandler.canRecoverBySwitching(VideoLoadingState.UnsupportedMedia))
+        assertTrue(PlayerLoadErrorHandler.canRecoverBySwitching(VideoLoadingState.UnknownError(IllegalStateException())))
     }
 
     context(scope: TestScope)

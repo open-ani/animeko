@@ -1498,6 +1498,7 @@
     <string name="subject_episode_statistics_error_details">錯誤詳情</string>
     <string name="subject_episode_statistics_error">錯誤</string>
     <string name="subject_episode_statistics_no_matching_file">未匹配到檔案</string>
+    <string name="subject_episode_statistics_web_engine_unavailable">內建瀏覽器未啟動，無法解析網頁資料來源，請重新啟動應用程式</string>
     <string name="subject_episode_statistics_resolution_timed_out">解析逾時</string>
     <string name="subject_episode_statistics_unsupported_media">不支援的影片類型</string>
     <string name="subject_episode_statistics_unknown_error_tap">未知錯誤，點擊查看</string>
@@ -1526,6 +1527,7 @@
     <string name="subject_episode_video_loading_cause_unknown_error">未知錯誤</string>
     <string name="subject_episode_video_loading_cause_unsupported_media">不支援該檔案類型</string>
     <string name="subject_episode_video_loading_cause_no_matching_file">未找到可播放的檔案</string>
+    <string name="subject_episode_video_loading_cause_web_engine_unavailable">內建瀏覽器未啟動, 請重新啟動應用程式</string>
     <string name="subject_episode_video_loading_cause_cancelled">已取消</string>
     <string name="subject_episode_video_loading_cause_network_error">網路錯誤</string>
     <string name="subject_episode_wish_change_to">已想看，可更改為：</string>
