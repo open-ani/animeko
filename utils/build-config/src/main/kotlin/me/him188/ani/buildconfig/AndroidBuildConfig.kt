@@ -15,4 +15,7 @@ object AndroidBuildConfig {
 
     val APP_APPLICATION_ID: String
         get() = BuildConfig.APP_APPLICATION_ID
+
+    val DISTRO_CHANNEL: String
+        get() = BuildConfig.DISTRO_CHANNEL
 }

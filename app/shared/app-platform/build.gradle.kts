@@ -150,7 +150,7 @@ buildConfig {
         stringField("dandanplayAppSecret", dandanplayAppSecret)
         stringField("sentryDsn", sentryDsn)
         stringField("overrideAniApiServer", overrideAniApiServer ?: "")
-        stringField("distroChannel", distroChannel)
+        expressionField("distroChannel", "me.him188.ani.buildconfig.AndroidBuildConfig.DISTRO_CHANNEL")
         gitFields()
 
         booleanField("analyticsEnabled", enableFirebase)

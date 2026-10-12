@@ -91,7 +91,7 @@ fun TvSearchScreen(
         when {
             !state.hasSearched -> TvSearchCenteredHint("输入关键词, 按软键盘搜索键开始")
             results.itemCount == 0 -> TvSearchCenteredHint("没有找到相关番剧")
-            else -> TvSearchResultsGrid(results, { onIntent(TvSearchIntent.OpenSubject(it)) }, focus)
+            else -> TvSearchResultsGrid(results, { subject, position -> onIntent(TvSearchIntent.OpenSubject(subject, position)) }, focus)
         }
     }
 }
@@ -178,7 +178,7 @@ private fun TvSearchField(
 @Composable
 private fun TvSearchResultsGrid(
     results: LazyPagingItems<SubjectPreviewItemInfo>,
-    onClickSubject: (SubjectPreviewItemInfo) -> Unit,
+    onClickSubject: (SubjectPreviewItemInfo, Int) -> Unit,
     focus: TvFocusScope,
     modifier: Modifier = Modifier,
 ) {
@@ -195,7 +195,7 @@ private fun TvSearchResultsGrid(
                 imageUrl = details.imageUrl,
                 title = details.title,
                 obscureImage = details.nsfw && details.nsfwMode == NsfwMode.BLUR,
-                onClick = { onClickSubject(details) },
+                onClick = { onClickSubject(details, index) },
                 memoryId = "search-${details.subjectId}",
                 modifier = if (index == 0) Modifier.tvFocusAnchor(focus, TvSearchFocus.FirstResult) else Modifier,
             )

@@ -27,6 +27,9 @@ import me.him188.ani.app.ui.comment.UICommentSource
 import me.him188.ani.app.ui.subject.person.PeopleDetailsViewModel
 import me.him188.ani.tv.ui.foundation.TvNavigationEvent
 import me.him188.ani.tv.ui.foundation.TvNavigationEvents
+import me.him188.ani.utils.analytics.Analytics
+import me.him188.ani.utils.analytics.AnalyticsEvent.Companion.SubjectEnter
+import me.him188.ani.utils.analytics.recordEvent
 
 /** One instance per navigation entry, including separate entries for a person's two roles. */
 class TvPeopleDetailsViewModel(
@@ -77,8 +80,21 @@ class TvPeopleDetailsViewModel(
                 TvPeopleKind.VoiceActor -> TvNavigationEvent.VoiceActor(intent.target.id)
                 TvPeopleKind.Staff -> TvNavigationEvent.Staff(intent.target.id)
             })
-            is TvPeopleIntent.OpenSubject -> navigation.emit(TvNavigationEvent.Subject(intent.subject.subjectId,
-                SubjectDetailPlaceholder(intent.subject.subjectId, intent.subject.name, intent.subject.nameCn, intent.subject.imageLarge)))
+            is TvPeopleIntent.OpenSubject -> {
+                Analytics.recordEvent(SubjectEnter) {
+                    put(
+                        "source",
+                        when (target.kind) {
+                            TvPeopleKind.Character -> "character"
+                            TvPeopleKind.VoiceActor -> "voice_actor"
+                            TvPeopleKind.Staff -> "staff"
+                        },
+                    )
+                    put("subject_id", intent.subject.subjectId)
+                }
+                navigation.emit(TvNavigationEvent.Subject(intent.subject.subjectId,
+                    SubjectDetailPlaceholder(intent.subject.subjectId, intent.subject.name, intent.subject.nameCn, intent.subject.imageLarge)))
+            }
             is TvPeopleIntent.Vote -> if (intent.comment.source == UICommentSource.ANI && requireLogin()) {
                 commentState.toggleVote(intent.comment, intent.vote)
             }
