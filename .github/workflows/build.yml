@@ -231,6 +231,7 @@ jobs:
           app/desktop/build/update-e2e/**/*.log
           app/desktop/build/update-e2e/**/*.json
           app/desktop/build/update-e2e/**/*.jsonl
+          app/desktop/build/update-e2e/**/*.txt
         if-no-files-found: 'ignore'
       if: 'failure()'
     - id: 'step-25'
@@ -454,6 +455,7 @@ jobs:
           app/desktop/build/update-e2e/**/*.log
           app/desktop/build/update-e2e/**/*.json
           app/desktop/build/update-e2e/**/*.jsonl
+          app/desktop/build/update-e2e/**/*.txt
         if-no-files-found: 'ignore'
       if: 'failure()'
     - id: 'step-26'
@@ -1354,6 +1356,7 @@ jobs:
           app/desktop/build/update-e2e/**/*.log
           app/desktop/build/update-e2e/**/*.json
           app/desktop/build/update-e2e/**/*.jsonl
+          app/desktop/build/update-e2e/**/*.txt
         if-no-files-found: 'ignore'
       if: 'failure()'
   build_self-hosted-macos-15:

@@ -436,6 +436,11 @@ class DesktopUpdateE2e(
             tail("stdout", stdoutFile)
             tail("app log", dataDir.resolve("data/logs").listFiles()?.filter { it.isFile }?.maxByOrNull { it.lastModified() })
             tail("updater log", platform.updaterLog())
+            val threads = File(resultFile.path + ".threads.txt")
+            if (threads.isFile) {
+                appendLine("---- thread dump of the stuck app: $threads")
+                appendLine(threads.readText())
+            }
         }
     }
 

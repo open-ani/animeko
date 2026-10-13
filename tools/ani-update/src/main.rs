@@ -29,6 +29,8 @@ const APP_EXECUTABLE: &str = "Ani.exe";
 /// 应用退出后文件句柄释放、杀毒软件扫描都可能让重命名短暂失败, 在这段时间内重试.
 const RENAME_RETRY: Duration = Duration::from_secs(60);
 const RETRY_INTERVAL: Duration = Duration::from_millis(500);
+/// 应用的进程退出后, 等安装目录下再没有任何进程在运行 (启动器可能另起进程, JVM 退出也要一点时间) 的最长时间.
+const PROCESS_EXIT_WAIT: Duration = Duration::from_secs(120);
 /// 逐文件移动时只清理这两个目录里的旧文件, 安装目录根下用户自己放的文件不动.
 const MANAGED_DIRS: [&str; 2] = ["app", "runtime"];
 
@@ -66,8 +68,9 @@ fn main() {
 fn run(args: &Args, log: &mut Log) -> Result<(), String> {
     if let Some(pid) = args.pid {
         log.info(format!("{} (pid {})", msg::WAITING_EXIT, pid));
-        wait_for_exit(pid);
+        wait_for_exit(pid, log);
     }
+    wait_for_app_processes(&args.app_dir, log);
 
     let staging = match &args.source {
         Source::Staging(dir) => dir.clone(),
@@ -116,17 +119,23 @@ fn replace_app(app_dir: &Path, staging: &Path, log: &mut Log) -> Result<(), Stri
                 }
                 if let Err(error) = fs::remove_dir_all(&old_dir) {
                     log.warn(format!(
-                        "{} {}: {}",
+                        "{} {}: {}{}",
                         msg::OLD_LEFTOVER,
                         old_dir.display(),
-                        error
+                        error,
+                        running_processes_note(&old_dir)
                     ));
                 }
                 log.info(msg::SWAPPED);
                 return Ok(());
             }
             Err(error) => {
-                log.warn(format!("{}: {}", msg::SWAP_UNAVAILABLE, error));
+                log.warn(format!(
+                    "{}: {}{}",
+                    msg::SWAP_UNAVAILABLE,
+                    error,
+                    running_processes_note(app_dir)
+                ));
             }
         }
     } else {
@@ -159,8 +168,15 @@ fn move_files(app_dir: &Path, staging: &Path, log: &mut Log) -> Result<(), Strin
             fs::create_dir_all(parent)
                 .map_err(|e| format!("{} {}: {}", msg::MOVE_FAILED, target.display(), e))?;
         }
-        retry(RENAME_RETRY, || replace_file(&path, &target))
-            .map_err(|e| format!("{} {}: {}", msg::MOVE_FAILED, target.display(), e))?;
+        retry(RENAME_RETRY, || replace_file(&path, &target)).map_err(|e| {
+            format!(
+                "{} {}: {}{}",
+                msg::MOVE_FAILED,
+                target.display(),
+                e,
+                running_processes_note(app_dir)
+            )
+        })?;
         new_files.insert(relative);
     }
 
@@ -359,10 +375,10 @@ fn retry<T>(timeout: Duration, mut action: impl FnMut() -> io::Result<T>) -> io:
     }
 }
 
-/// 等 pid 对应的进程退出. 进程已经不在时直接返回.
+/// 等 pid 对应的进程退出. 进程已经不在时直接返回; 打不开进程时记下原因, 之后还有 [`wait_for_app_processes`] 兜底.
 #[cfg(windows)]
-fn wait_for_exit(pid: u32) {
-    use windows_sys::Win32::Foundation::CloseHandle;
+fn wait_for_exit(pid: u32, log: &mut Log) {
+    use windows_sys::Win32::Foundation::{CloseHandle, GetLastError};
     use windows_sys::Win32::System::Threading::{
         OpenProcess, WaitForSingleObject, INFINITE, PROCESS_SYNCHRONIZE,
     };
@@ -370,6 +386,12 @@ fn wait_for_exit(pid: u32) {
     unsafe {
         let handle = OpenProcess(PROCESS_SYNCHRONIZE, 0, pid);
         if handle.is_null() {
+            log.warn(format!(
+                "{} (pid {}, error {})",
+                msg::OPEN_PROCESS_FAILED,
+                pid,
+                GetLastError()
+            ));
             return;
         }
         WaitForSingleObject(handle, INFINITE);
@@ -379,7 +401,134 @@ fn wait_for_exit(pid: u32) {
 
 /// 更新器只在 Windows 上发布; 其他平台只用来跑测试.
 #[cfg(not(windows))]
-fn wait_for_exit(_pid: u32) {}
+fn wait_for_exit(_pid: u32, _log: &mut Log) {}
+
+/// 等到没有进程从 [`app_dir`] 里运行. 应用的主进程退出后, 它的子进程和尚未完成退出的 JVM 仍可能占着安装目录里的文件,
+/// 这时重命名目录和替换文件都会失败. 超过 [`PROCESS_EXIT_WAIT`] 只记日志, 后面的文件操作自己还会重试.
+fn wait_for_app_processes(app_dir: &Path, log: &mut Log) {
+    let start = Instant::now();
+    let mut reported = false;
+    loop {
+        let running = running_processes_under(app_dir);
+        if running.is_empty() {
+            return;
+        }
+        if !reported {
+            log.info(format!(
+                "{}: {}",
+                msg::WAITING_PROCESSES,
+                describe_processes(&running)
+            ));
+            reported = true;
+        }
+        if start.elapsed() > PROCESS_EXIT_WAIT {
+            log.warn(format!(
+                "{}: {}",
+                msg::PROCESSES_STILL_RUNNING,
+                describe_processes(&running)
+            ));
+            return;
+        }
+        std::thread::sleep(RETRY_INTERVAL);
+    }
+}
+
+/// 文件操作失败时附在日志里的说明: 还有哪些进程在 [`dir`] 里运行. 没有时为空.
+fn running_processes_note(dir: &Path) -> String {
+    let running = running_processes_under(dir);
+    if running.is_empty() {
+        String::new()
+    } else {
+        format!(
+            " ({}: {})",
+            msg::PROCESSES_STILL_RUNNING,
+            describe_processes(&running)
+        )
+    }
+}
+
+fn describe_processes(processes: &[(u32, PathBuf)]) -> String {
+    processes
+        .iter()
+        .map(|(pid, path)| format!("{} (pid {})", path.display(), pid))
+        .collect::<Vec<_>>()
+        .join(", ")
+}
+
+/// 可执行文件在 [`dir`] 下的进程 (不含自己) 的 pid 和路径.
+#[cfg(windows)]
+fn running_processes_under(dir: &Path) -> Vec<(u32, PathBuf)> {
+    use std::os::windows::ffi::OsStringExt;
+    use windows_sys::Win32::Foundation::{CloseHandle, INVALID_HANDLE_VALUE};
+    use windows_sys::Win32::System::Diagnostics::ToolHelp::{
+        CreateToolhelp32Snapshot, Process32FirstW, Process32NextW, PROCESSENTRY32W,
+        TH32CS_SNAPPROCESS,
+    };
+    use windows_sys::Win32::System::Threading::{
+        OpenProcess, QueryFullProcessImageNameW, PROCESS_NAME_WIN32,
+        PROCESS_QUERY_LIMITED_INFORMATION,
+    };
+
+    let own_pid = std::process::id();
+    let mut result = Vec::new();
+    // SAFETY: 快照和进程句柄用完都关闭; PROCESSENTRY32W 在调用前填好 dwSize; 路径缓冲区的长度传给了系统调用.
+    unsafe {
+        let snapshot = CreateToolhelp32Snapshot(TH32CS_SNAPPROCESS, 0);
+        if snapshot == INVALID_HANDLE_VALUE {
+            return result;
+        }
+        let mut entry: PROCESSENTRY32W = std::mem::zeroed();
+        entry.dwSize = std::mem::size_of::<PROCESSENTRY32W>() as u32;
+        if Process32FirstW(snapshot, &mut entry) != 0 {
+            loop {
+                let pid = entry.th32ProcessID;
+                if pid != 0 && pid != own_pid {
+                    let handle = OpenProcess(PROCESS_QUERY_LIMITED_INFORMATION, 0, pid);
+                    if !handle.is_null() {
+                        let mut buffer = vec![0u16; 32 * 1024];
+                        let mut length = buffer.len() as u32;
+                        if QueryFullProcessImageNameW(
+                            handle,
+                            PROCESS_NAME_WIN32,
+                            buffer.as_mut_ptr(),
+                            &mut length,
+                        ) != 0
+                        {
+                            let path =
+                                PathBuf::from(OsString::from_wide(&buffer[..length as usize]));
+                            if is_under(&path, dir) {
+                                result.push((pid, path));
+                            }
+                        }
+                        CloseHandle(handle);
+                    }
+                }
+                if Process32NextW(snapshot, &mut entry) == 0 {
+                    break;
+                }
+            }
+        }
+        CloseHandle(snapshot);
+    }
+    result
+}
+
+#[cfg(not(windows))]
+fn running_processes_under(_dir: &Path) -> Vec<(u32, PathBuf)> {
+    Vec::new()
+}
+
+/// [`path`] 是否在 [`dir`] 下. Windows 路径不分大小写, 可能带 `\\?\` 前缀.
+fn is_under(path: &Path, dir: &Path) -> bool {
+    fn normalize(path: &Path) -> String {
+        let text = path.to_string_lossy().replace('/', "\\");
+        let text = text.strip_prefix("\\\\?\\").unwrap_or(&text);
+        text.trim_end_matches('\\').to_lowercase()
+    }
+    let path = normalize(path);
+    let dir = normalize(dir);
+    path.len() > dir.len() && path.starts_with(&dir) && path.as_bytes()[dir.len()] == b'\\'
+}
 
 fn launch(app_dir: &Path) -> io::Result<()> {
     Command::new(app_dir.join(APP_EXECUTABLE))
@@ -525,6 +674,11 @@ mod msg {
         USAGE => "Usage: ani_update --app-dir <dir> (--staging <dir> | --archive <zip>) [--pid <pid>] [--no-launch]",
             "用法: ani_update --app-dir <安装目录> (--staging <新版本目录> | --archive <zip>) [--pid <进程 id>] [--no-launch]";
         WAITING_EXIT => "Waiting for Animeko to exit", "等待 Animeko 退出";
+        OPEN_PROCESS_FAILED => "Cannot open the process, not waiting for it", "无法打开进程, 不等待它退出";
+        WAITING_PROCESSES => "Waiting for processes still running from the installation directory",
+            "等待仍在安装目录中运行的进程退出";
+        PROCESSES_STILL_RUNNING => "Processes still running from the installation directory",
+            "仍在安装目录中运行的进程";
         EXTRACTING => "Extracting", "正在解压";
         EXTRACT_FAILED => "Failed to extract the package", "解压安装包失败";
         INVALID_STAGING => "The new version directory does not contain Ani.exe", "新版本目录里没有 Ani.exe";
@@ -572,6 +726,20 @@ fn is_chinese() -> bool {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn detects_executables_under_the_installation_directory() {
+        let dir = Path::new("D:\\Apps\\Ani");
+        assert!(is_under(Path::new("D:\\Apps\\Ani\\Ani.exe"), dir));
+        assert!(is_under(
+            Path::new("d:\\apps\\ani\\runtime\\bin\\java.exe"),
+            dir
+        ));
+        assert!(is_under(Path::new("\\\\?\\D:\\Apps\\Ani\\Ani.exe"), dir));
+        assert!(!is_under(Path::new("D:\\Apps\\Ani2\\Ani.exe"), dir));
+        assert!(!is_under(Path::new("D:\\Apps\\Ani"), dir));
+        assert!(!is_under(Path::new("C:\\Windows\\System32\\cmd.exe"), dir));
+    }
 
     #[test]
     fn parses_staging_arguments() {

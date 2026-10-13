@@ -24,6 +24,7 @@ import me.him188.ani.utils.logging.logger
 import org.koin.core.component.KoinComponent
 import org.koin.core.component.get
 import java.io.File
+import kotlin.concurrent.thread
 import kotlin.system.exitProcess
 
 /**
@@ -58,6 +59,7 @@ object UpdateE2eTestTask : KoinComponent {
     class Report(val phase: String, val detail: String? = null)
 
     private val logger = logger<UpdateE2eTestTask>()
+    private const val WATCHDOG_MILLIS = 6 * 60_000L
 
     fun run(configFile: File, context: DesktopContext): Nothing {
         val config = Json.decodeFromString(Config.serializer(), configFile.readText())
@@ -78,6 +80,18 @@ object UpdateE2eTestTask : KoinComponent {
         if (marker.isFile) {
             report("relaunched", marker.readText().trim())
             exitProcess(0)
+        }
+
+        // 流程卡住时留下线程栈再退出, 驱动器只能看到进程没退出, 看不到卡在哪.
+        thread(isDaemon = true, name = "update-e2e-watchdog") {
+            Thread.sleep(WATCHDOG_MILLIS)
+            val dump = Thread.getAllStackTraces().entries.joinToString("\n\n") { (thread, frames) ->
+                "\"${thread.name}\" daemon=${thread.isDaemon} state=${thread.state}\n" +
+                        frames.joinToString("\n") { "\tat $it" }
+            }
+            runCatching { File(config.resultFile + ".threads.txt").writeText(dump) }
+            report("timeout", "no progress in ${WATCHDOG_MILLIS / 60_000} minutes, thread dump written")
+            Runtime.getRuntime().halt(2)
         }
 
         return runBlocking {

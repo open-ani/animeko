@@ -2257,6 +2257,7 @@ class WithMatrix(
                     app/desktop/build/update-e2e/**/*.log
                     app/desktop/build/update-e2e/**/*.json
                     app/desktop/build/update-e2e/**/*.jsonl
+                    app/desktop/build/update-e2e/**/*.txt
                 """.trimIndent(),
                 ifNoFilesFound = UploadArtifact.BehaviorIfNoFilesFound.Ignore,
             ),
