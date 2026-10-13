@@ -21,7 +21,9 @@ import androidx.compose.material3.TextField
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.DisposableEffect
+import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
 import androidx.compose.ui.InternalComposeUiApi
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusManager
@@ -45,6 +47,14 @@ import androidx.compose.ui.text.TextRange
 import androidx.compose.ui.text.input.TextFieldValue
 import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.unit.dp
+import androidx.lifecycle.compose.LocalLifecycleOwner
+import me.him188.ani.app.navigation.AniNavigator
+import me.him188.ani.app.navigation.MainScreenPage
+import me.him188.ani.app.navigation.NavRoutes
+import me.him188.ani.app.ui.foundation.navigation.BackHandler
+import me.him188.ani.app.ui.foundation.navigation.LocalOnBackPressedDispatcherOwner
+import me.him188.ani.app.ui.foundation.navigation.SkikoOnBackPressedDispatcherOwner
+import me.him188.ani.app.ui.foundation.navigation.onBackNavigationInput
 import me.him188.ani.app.ui.framework.AniComposeUiTest
 import me.him188.ani.app.ui.framework.runAniComposeUiTest
 import me.him188.ani.app.videoplayer.ui.gesture.FastSkipState
@@ -61,6 +71,13 @@ import kotlin.test.assertTrue
 class PlayerKeyboardScopeTest {
     private class Fixture {
         lateinit var focusManager: FocusManager
+        val mainRoute = NavRoutes.Main(MainScreenPage.Exploration)
+        val subjectRoute = NavRoutes.SubjectDetail(1, null)
+        val episodeRoute = NavRoutes.EpisodeDetail(1, 2)
+        val navigator = AniNavigator().apply {
+            setBackStack(mutableStateListOf(mainRoute, subjectRoute, episodeRoute))
+        }
+        val fullscreenState = MutablePlayerFullscreenState()
         val controller = PlayerControllerState()
         val overlayVisible = mutableStateOf(false)
         val handlerVisible = mutableStateOf(true)
@@ -102,8 +119,19 @@ class PlayerKeyboardScopeTest {
         setContent {
             fixture.focusManager = LocalFocusManager.current
             MaterialTheme {
-                CompositionLocalProvider(LocalLayoutDirection provides direction) {
-                    PlayerKeyboardScope(fixture.controller) {
+                val lifecycleOwner = LocalLifecycleOwner.current
+                val backOwner = remember { SkikoOnBackPressedDispatcherOwner(fixture.navigator, lifecycleOwner) }
+                CompositionLocalProvider(
+                    LocalLayoutDirection provides direction,
+                    LocalOnBackPressedDispatcherOwner provides backOwner,
+                ) {
+                    BackHandler(enabled = fixture.fullscreenState.isFullscreen) {
+                        fixture.fullscreenState.request(false)
+                    }
+                    PlayerKeyboardScope(
+                        fixture.controller,
+                        Modifier.onBackNavigationInput(backOwner.onBackPressedDispatcher::onBackPressed),
+                    ) {
                         Column {
                             Box(Modifier.size(80.dp).testTag("tab").clickable { fixture.clicks++ })
                             val player: @Composable () -> Unit = {
@@ -436,6 +464,50 @@ class PlayerKeyboardScopeTest {
         press("player", Key.Enter)
         assertEquals(0, fixture.pauses)
     }
+
+    private fun escapeNavigationTest(target: String, removeOverlay: Boolean = false) =
+        runScopeTest(nested = true) { fixture ->
+            runOnIdle { fixture.fullscreenState.request(true) }
+            if (removeOverlay) {
+                runOnIdle { fixture.overlayVisible.value = true }
+                onNodeWithTag("overlay").requestFocus()
+                onNodeWithTag("overlay").assertIsFocused()
+                runOnIdle { fixture.overlayVisible.value = false }
+            } else {
+                onNodeWithTag(target).requestFocus()
+            }
+            onNodeWithTag(target).assertIsFocused()
+            val initialStack = listOf(fixture.mainRoute, fixture.subjectRoute, fixture.episodeRoute)
+
+            onNodeWithTag(target).performKeyInput { keyDown(Key.Escape) }
+            runOnIdle {
+                assertTrue(fixture.fullscreenState.isFullscreen)
+                assertEquals(initialStack, fixture.navigator.backStack)
+            }
+            onNodeWithTag(target).performKeyInput { keyUp(Key.Escape) }
+            runOnIdle {
+                assertFalse(fixture.fullscreenState.isFullscreen)
+                assertEquals(initialStack, fixture.navigator.backStack)
+            }
+            onNodeWithTag(target).assertIsFocused()
+
+            press(target, Key.Escape)
+            runOnIdle {
+                assertEquals(listOf(fixture.mainRoute, fixture.subjectRoute), fixture.navigator.backStack)
+                assertEquals(0, fixture.pauses)
+                assertTrue(fixture.seeks.isEmpty())
+            }
+        }
+
+    @Test
+    fun `Escape exits fullscreen then pops navigation with player focus`() = escapeNavigationTest("player")
+
+    @Test
+    fun `Escape exits fullscreen then pops navigation with tab focus`() = escapeNavigationTest("tab")
+
+    @Test
+    fun `Escape exits fullscreen then pops navigation after focused overlay removal`() =
+        escapeNavigationTest("player", removeOverlay = true)
 
     @Test
     fun `last registration wins and stale disposal preserves it`() {
